@@ -46,8 +46,7 @@
  * for any purpose.  It is provided "as is" without express or implied
  * warranty.
  *
- * $FreeBSD: src/usr.sbin/newsyslog/newsyslog.c,v 1.106 2006/07/21 22:13:06 sobomax Exp $
- * $DragonFly: src/usr.sbin/newsyslog/newsyslog.c,v 1.6 2007/05/12 08:52:00 swildner Exp $
+ * $FreeBSD: src/usr.sbin/newsyslog/newsyslog.c,v 1.117 2011/01/31 10:57:54 mm Exp $
  */
 
 /*
@@ -56,21 +55,17 @@
  */
 
 #define	OSF
-#ifndef COMPRESS_POSTFIX
-#define	COMPRESS_POSTFIX ".gz"
-#endif
-#ifndef	BZCOMPRESS_POSTFIX
-#define	BZCOMPRESS_POSTFIX ".bz2"
-#endif
 
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
+#include <assert.h>
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <glob.h>
@@ -79,6 +74,7 @@
 #include <pwd.h>
 #include <signal.h>
 #include <stdio.h>
+#include <libgen.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -88,10 +84,35 @@
 #include "extern.h"
 
 /*
+ * Compression suffixes
+ */
+#ifndef	COMPRESS_SUFFIX_GZ
+#define	COMPRESS_SUFFIX_GZ	".gz"
+#endif
+
+#ifndef	COMPRESS_SUFFIX_BZ2
+#define	COMPRESS_SUFFIX_BZ2	".bz2"
+#endif
+
+#ifndef	COMPRESS_SUFFIX_XZ
+#define	COMPRESS_SUFFIX_XZ	".xz"
+#endif
+
+#define	COMPRESS_SUFFIX_MAXLEN	MAX(MAX(sizeof(COMPRESS_SUFFIX_GZ),sizeof(COMPRESS_SUFFIX_BZ2)),sizeof(COMPRESS_SUFFIX_XZ))
+
+/*
+ * Compression types
+ */
+#define	COMPRESS_TYPES  4	/* Number of supported compression types */
+
+#define	COMPRESS_NONE	0
+#define	COMPRESS_GZIP	1
+#define	COMPRESS_BZIP2	2
+#define	COMPRESS_XZ	3
+
+/*
  * Bit-values for the 'flags' parsed from a config-file entry.
  */
-#define	CE_COMPACT	0x0001	/* Compact the achived log files with gzip. */
-#define	CE_BZCOMPACT	0x0002	/* Compact the achived log files with bzip2. */
 #define	CE_BINARY	0x0008	/* Logfile is in binary, do not add status */
 				/*    messages to logfile(s) when rotating. */
 #define	CE_NOSIGNAL	0x0010	/* There is no process to signal when */
@@ -110,8 +131,26 @@
 
 #define	DEFAULT_MARKER	"<default>"
 #define	DEBUG_MARKER	"<debug>"
+#define	INCLUDE_MARKER	"<include>"
+#define	DEFAULT_TIMEFNAME_FMT	"%Y%m%dT%H%M%S"
+
+#define	MAX_OLDLOGS 65536	/* Default maximum number of old logfiles */
+
+struct compress_types {
+	const char *flag;	/* Flag in configuration file */
+	const char *suffix;	/* Compression suffix */
+	const char *path;	/* Path to compression program */
+};
+
+const struct compress_types compress_type[COMPRESS_TYPES] = {
+	{ "", "", "" },					/* no compression */
+	{ "Z", COMPRESS_SUFFIX_GZ, _PATH_GZIP },	/* gzip compression */
+	{ "J", COMPRESS_SUFFIX_BZ2, _PATH_BZIP2 },	/* bzip2 compression */
+	{ "X", COMPRESS_SUFFIX_XZ, _PATH_XZ }		/* xz compression */
+};
 
 struct conf_entry {
+	STAILQ_ENTRY(conf_entry) cf_nextp;
 	char *log;		/* Name of the log */
 	char *pid_file;		/* PID file */
 	char *r_reason;		/* The reason this file is being rotated */
@@ -125,10 +164,10 @@ struct conf_entry {
 	int hours;		/* Hours between log trimming */
 	struct ptime_data *trim_at;	/* Specific time to do trimming */
 	unsigned int permissions;	/* File permissions on the log */
-	int flags;		/* CE_COMPACT, CE_BZCOMPACT, CE_BINARY */
+	int flags;		/* CE_BINARY */
+	int compress;		/* Compression */
 	int sig;		/* Signal to send */
 	int def_cfg;		/* Using the <default> rule for this file */
-	struct conf_entry *next;/* Linked list pointer */
 };
 
 struct sigwork_entry {
@@ -148,12 +187,24 @@ struct zipwork_entry {
 	char	 zw_fname[1];		/* the file to compress */
 };
 
+struct include_entry {
+	STAILQ_ENTRY(include_entry) inc_nextp;
+	const char *file;	/* Name of file to process */
+};
+
+struct oldlog_entry {
+	char *fname;		/* Filename of the log file */
+	time_t t;		/* Parsed timestamp of the logfile */
+};
+
 typedef enum {
 	FREE_ENT, KEEP_ENT
 }	fk_entry;
 
+STAILQ_HEAD(cflist, conf_entry);
 SLIST_HEAD(swlisthead, sigwork_entry) swhead = SLIST_HEAD_INITIALIZER(swhead);
 SLIST_HEAD(zwlisthead, zipwork_entry) zwhead = SLIST_HEAD_INITIALIZER(zwhead);
+STAILQ_HEAD(ilist, include_entry);
 
 int dbg_at_times;		/* -D Show details of 'trim_at' code */
 
@@ -166,12 +217,14 @@ int needroot = 1;		/* Root privs are necessary */
 int noaction = 0;		/* Don't do anything, just show it */
 int norotate = 0;		/* Don't rotate */
 int nosignal;			/* Do not send any signals */
+int enforcepid = 0;		/* If PID file does not exist or empty, do nothing */
 int force = 0;			/* Force the trim no matter what */
 int rotatereq = 0;		/* -R = Always rotate the file(s) as given */
 				/*    on the command (this also requires   */
 				/*    that a list of files *are* given on  */
 				/*    the run command). */
 char *requestor;		/* The name given on a -R request */
+char *timefnamefmt = NULL;	/* Use time based filenames instead of .0 etc */
 char *archdirname;		/* Directory path to old logfiles archive */
 char *destdir = NULL;		/* Directory to treat at root for logs */
 const char *conf;		/* Configuration file to use */
@@ -184,14 +237,19 @@ char daytime[DAYTIME_LEN];	/* The current time in human readable form,
 				 * used for rotation-tracking messages. */
 char hostname[MAXHOSTNAMELEN];	/* hostname */
 
-static struct conf_entry *get_worklist(char **files);
-static void parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
-		struct conf_entry **glob_p, struct conf_entry **defconf_p);
+const char *path_syslogpid = _PATH_SYSLOGPID;
+
+static struct cflist *get_worklist(char **files);
+static void parse_file(FILE *cf, struct cflist *work_p, struct cflist *glob_p,
+		    struct conf_entry *defconf_p, struct ilist *inclist);
+static void add_to_queue(const char *fname, struct ilist *inclist);
 static char *sob(char *p);
 static char *son(char *p);
 static int isnumberstr(const char *);
+static int isglobstr(const char *);
 static char *missing_field(char *p, char *errline);
 static void	 change_attrs(const char *, const struct conf_entry *);
+static const char *get_logfile_suffix(const char *logfile);
 static fk_entry	 do_entry(struct conf_entry *);
 static fk_entry	 do_rotate(const struct conf_entry *);
 static void	 do_sigwork(struct sigwork_entry *);
@@ -203,9 +261,8 @@ static struct zipwork_entry *
 		    sigwork_entry *, int, const char *);
 static void	 set_swpid(struct sigwork_entry *, const struct conf_entry *);
 static int	 sizefile(const char *);
-static void expand_globs(struct conf_entry **work_p,
-		struct conf_entry **glob_p);
-static void free_clist(struct conf_entry **firstent);
+static void expand_globs(struct cflist *work_p, struct cflist *glob_p);
+static void free_clist(struct cflist *list);
 static void free_entry(struct conf_entry *ent);
 static struct conf_entry *init_entry(const char *fname,
 		struct conf_entry *src_entry);
@@ -231,8 +288,8 @@ static void createlog(const struct conf_entry *ent);
 int
 main(int argc, char **argv)
 {
-	fk_entry free_or_keep;
-	struct conf_entry *p, *q;
+	struct cflist *worklist;
+	struct conf_entry *p;
 	struct sigwork_entry *stmp;
 	struct zipwork_entry *ztmp;
 
@@ -245,18 +302,17 @@ main(int argc, char **argv)
 
 	if (needroot && getuid() && geteuid())
 		errx(1, "must have root privs");
-	p = q = get_worklist(argv);
+	worklist = get_worklist(argv);
 
 	/*
 	 * Rotate all the files which need to be rotated.  Note that
 	 * some users have *hundreds* of entries in newsyslog.conf!
 	 */
-	while (p) {
-		free_or_keep = do_entry(p);
-		p = p->next;
-		if (free_or_keep == FREE_ENT)
-			free_entry(q);
-		q = p;
+	while (!STAILQ_EMPTY(worklist)) {
+		p = STAILQ_FIRST(worklist);
+		STAILQ_REMOVE_HEAD(worklist, cf_nextp);
+		if (do_entry(p) == FREE_ENT)
+			free_entry(p);
 	}
 
 	/*
@@ -343,6 +399,7 @@ init_entry(const char *fname, struct conf_entry *src_entry)
 			tempwork->trim_at = ptime_init(src_entry->trim_at);
 		tempwork->permissions = src_entry->permissions;
 		tempwork->flags = src_entry->flags;
+		tempwork->compress = src_entry->compress;
 		tempwork->sig = src_entry->sig;
 		tempwork->def_cfg = src_entry->def_cfg;
 	} else {
@@ -360,10 +417,10 @@ init_entry(const char *fname, struct conf_entry *src_entry)
 		tempwork->trim_at = NULL;
 		tempwork->permissions = 0;
 		tempwork->flags = 0;
+		tempwork->compress = COMPRESS_NONE;
 		tempwork->sig = SIGHUP;
 		tempwork->def_cfg = 0;
 	}
-	tempwork->next = NULL;
 
 	return (tempwork);
 }
@@ -401,21 +458,18 @@ free_entry(struct conf_entry *ent)
 }
 
 static void
-free_clist(struct conf_entry **firstent)
+free_clist(struct cflist *list)
 {
-	struct conf_entry *ent, *nextent;
+	struct conf_entry *ent;
 
-	if (firstent == NULL)
-		return;			/* There is nothing to do. */
-
-	ent = *firstent;
-	firstent = NULL;
-
-	while (ent) {
-		nextent = ent->next;
+	while (!STAILQ_EMPTY(list)) {
+		ent = STAILQ_FIRST(list);
+		STAILQ_REMOVE_HEAD(list, cf_nextp);
 		free_entry(ent);
-		ent = nextent;
 	}
+
+	free(list);
+	list = NULL;
 }
 
 static fk_entry
@@ -428,14 +482,9 @@ do_entry(struct conf_entry * ent)
 	char temp_reason[REASON_MAX];
 
 	free_or_keep = FREE_ENT;
-	if (verbose) {
-		if (ent->flags & CE_COMPACT)
-			printf("%s <%dZ>: ", ent->log, ent->numlogs);
-		else if (ent->flags & CE_BZCOMPACT)
-			printf("%s <%dJ>: ", ent->log, ent->numlogs);
-		else
-			printf("%s <%d>: ", ent->log, ent->numlogs);
-	}
+	if (verbose)
+		printf("%s <%d%s>: ", ent->log, ent->numlogs,
+		    compress_type[ent->compress].flag);
 	ent->fsize = sizefile(ent->log);
 	modtime = age_old_log(ent->log);
 	ent->rotate = 0;
@@ -540,17 +589,10 @@ do_entry(struct conf_entry * ent)
 				ent->r_reason = strdup(temp_reason);
 			if (verbose)
 				printf("--> trimming log....\n");
-			if (noaction && !verbose) {
-				if (ent->flags & CE_COMPACT)
-					printf("%s <%dZ>: trimming\n",
-					    ent->log, ent->numlogs);
-				else if (ent->flags & CE_BZCOMPACT)
-					printf("%s <%dJ>: trimming\n",
-					    ent->log, ent->numlogs);
-				else
-					printf("%s <%d>: trimming\n",
-					    ent->log, ent->numlogs);
-			}
+			if (noaction && !verbose)
+				printf("%s <%d%s>: trimming\n", ent->log,
+				    ent->numlogs,
+				    compress_type[ent->compress].flag);
 			free_or_keep = do_rotate(ent);
 		} else {
 			if (verbose)
@@ -579,7 +621,7 @@ parse_args(int argc, char **argv)
 		*p = '\0';
 
 	/* Parse command line options. */
-	while ((ch = getopt(argc, argv, "a:d:f:nrsvCD:FNR:")) != -1)
+	while ((ch = getopt(argc, argv, "a:d:f:nrst:vCD:FNPR:S:")) != -1)
 		switch (ch) {
 		case 'a':
 			archtodir++;
@@ -599,6 +641,13 @@ parse_args(int argc, char **argv)
 			break;
 		case 's':
 			nosignal = 1;
+			break;
+		case 't':
+			if (optarg[0] == '\0' ||
+			    strcmp(optarg, "DEFAULT") == 0)
+				timefnamefmt = strdup(DEFAULT_TIMEFNAME_FMT);
+			else
+				timefnamefmt = strdup(optarg);
 			break;
 		case 'v':
 			verbose++;
@@ -623,9 +672,15 @@ parse_args(int argc, char **argv)
 		case 'N':
 			norotate++;
 			break;
+		case 'P':
+			enforcepid++;
+			break;
 		case 'R':
 			rotatereq++;
 			requestor = strdup(optarg);
+			break;
+		case 'S':
+			path_syslogpid = optarg;
 			break;
 		case 'm':	/* Used by OpenBSD for "monitor mode" */
 		default:
@@ -719,7 +774,7 @@ usage(void)
 
 	fprintf(stderr,
 	    "usage: newsyslog [-CFNnrsv] [-a directory] [-d directory] [-f config-file]\n"
-	    "                 [ [-R requestor] filename ... ]\n");
+	    "                 [-S pidfile] [-t timefmt ] [ [-R requestor] filename ... ]\n");
 	exit(1);
 }
 
@@ -727,47 +782,66 @@ usage(void)
  * Parse a configuration file and return a linked list of all the logs
  * which should be processed.
  */
-static struct conf_entry *
+static struct cflist *
 get_worklist(char **files)
 {
 	FILE *f;
-	const char *fname;
 	char **given;
-	struct conf_entry *defconf, *dupent, *ent, *firstnew;
-	struct conf_entry *globlist, *lastnew, *worklist;
+	struct cflist *cmdlist, *filelist, *globlist;
+	struct conf_entry *defconf, *dupent, *ent;
+	struct ilist inclist;
+	struct include_entry *inc;
 	int gmatch, fnres;
 
-	defconf = globlist = worklist = NULL;
+	defconf = NULL;
+	STAILQ_INIT(&inclist);
 
-	fname = conf;
-	if (fname == NULL)
-		fname = _PATH_CONF;
+	filelist = malloc(sizeof(struct cflist));
+	if (filelist == NULL)
+		err(1, "malloc of filelist");
+	STAILQ_INIT(filelist);
+	globlist = malloc(sizeof(struct cflist));
+	if (globlist == NULL)
+		err(1, "malloc of globlist");
+	STAILQ_INIT(globlist);
 
-	if (strcmp(fname, "-") != 0)
-		f = fopen(fname, "r");
-	else {
-		f = stdin;
-		fname = "<stdin>";
+	inc = malloc(sizeof(struct include_entry));
+	if (inc == NULL)
+		err(1, "malloc of inc");
+	inc->file = conf;
+	if (inc->file == NULL)
+		inc->file = _PATH_CONF;
+	STAILQ_INSERT_TAIL(&inclist, inc, inc_nextp);
+
+	STAILQ_FOREACH(inc, &inclist, inc_nextp) {
+		if (strcmp(inc->file, "-") != 0)
+			f = fopen(inc->file, "r");
+		else {
+			f = stdin;
+			inc->file = "<stdin>";
+		}
+		if (!f)
+			err(1, "%s", inc->file);
+
+		if (verbose)
+			printf("Processing %s\n", inc->file);
+		parse_file(f, filelist, globlist, defconf, &inclist);
+		fclose(f);
 	}
-	if (!f)
-		err(1, "%s", fname);
-
-	parse_file(f, fname, &worklist, &globlist, &defconf);
-	fclose(f);
 
 	/*
 	 * All config-file information has been read in and turned into
-	 * a worklist and a globlist.  If there were no specific files
+	 * a filelist and a globlist.  If there were no specific files
 	 * given on the run command, then the only thing left to do is to
 	 * call a routine which finds all files matched by the globlist
-	 * and adds them to the worklist.  Then return the worklist.
+	 * and adds them to the filelist.  Then return the worklist.
 	 */
 	if (*files == NULL) {
-		expand_globs(&worklist, &globlist);
-		free_clist(&globlist);
+		expand_globs(filelist, globlist);
+		free_clist(globlist);
 		if (defconf != NULL)
 			free_entry(defconf);
-		return (worklist);
+		return (filelist);
 		/* NOTREACHED */
 	}
 
@@ -789,7 +863,7 @@ get_worklist(char **files)
 	 * If newsyslog was run with a list of specific filenames,
 	 * then create a new worklist which has only those files in
 	 * it, picking up the rotation-rules for those files from
-	 * the original worklist.
+	 * the original filelist.
 	 *
 	 * XXX - Note that this will copy multiple rules for a single
 	 *	logfile, if multiple entries are an exact match for
@@ -797,21 +871,21 @@ get_worklist(char **files)
 	 *	we want to continue to allow it?  If so, it should
 	 *	probably be handled more intelligently.
 	 */
-	firstnew = lastnew = NULL;
+	cmdlist = malloc(sizeof(struct cflist));
+	if (cmdlist == NULL)
+		err(1, "malloc of cmdlist");
+	STAILQ_INIT(cmdlist);
+
 	for (given = files; *given; ++given) {
 		/*
 		 * First try to find exact-matches for this given file.
 		 */
 		gmatch = 0;
-		for (ent = worklist; ent; ent = ent->next) {
+		STAILQ_FOREACH(ent, filelist, cf_nextp) {
 			if (strcmp(ent->log, *given) == 0) {
 				gmatch++;
 				dupent = init_entry(*given, ent);
-				if (!firstnew)
-					firstnew = dupent;
-				else
-					lastnew->next = dupent;
-				lastnew = dupent;
+				STAILQ_INSERT_TAIL(cmdlist, dupent, cf_nextp);
 			}
 		}
 		if (gmatch) {
@@ -827,7 +901,7 @@ get_worklist(char **files)
 		gmatch = 0;
 		if (verbose > 2 && globlist != NULL)
 			printf("\t+ Checking globs for %s\n", *given);
-		for (ent = globlist; ent; ent = ent->next) {
+		STAILQ_FOREACH(ent, globlist, cf_nextp) {
 			fnres = fnmatch(ent->log, *given, FNM_PATHNAME);
 			if (verbose > 2)
 				printf("\t+    = %d for pattern %s\n", fnres,
@@ -835,13 +909,9 @@ get_worklist(char **files)
 			if (fnres == 0) {
 				gmatch++;
 				dupent = init_entry(*given, ent);
-				if (!firstnew)
-					firstnew = dupent;
-				else
-					lastnew->next = dupent;
-				lastnew = dupent;
 				/* This new entry is not a glob! */
 				dupent->flags &= ~CE_GLOB;
+				STAILQ_INSERT_TAIL(cmdlist, dupent, cf_nextp);
 				/* Only allow a match to one glob-entry */
 				break;
 			}
@@ -861,25 +931,21 @@ get_worklist(char **files)
 			printf("\t+ No entry matched %s  (will use %s)\n",
 			    *given, DEFAULT_MARKER);
 		dupent = init_entry(*given, defconf);
-		if (!firstnew)
-			firstnew = dupent;
-		else
-			lastnew->next = dupent;
 		/* Mark that it was *not* found in a config file */
 		dupent->def_cfg = 1;
-		lastnew = dupent;
+		STAILQ_INSERT_TAIL(cmdlist, dupent, cf_nextp);
 	}
 
 	/*
 	 * Free all the entries in the original work list, the list of
 	 * glob entries, and the default entry.
 	 */
-	free_clist(&worklist);
-	free_clist(&globlist);
+	free_clist(filelist);
+	free_clist(globlist);
 	free_entry(defconf);
 
 	/* And finally, return a worklist which matches the given files. */
-	return (firstnew);
+	return (cmdlist);
 }
 
 /*
@@ -887,18 +953,14 @@ get_worklist(char **files)
  * which match those glob-entries onto the worklist.
  */
 static void
-expand_globs(struct conf_entry **work_p, struct conf_entry **glob_p)
+expand_globs(struct cflist *work_p, struct cflist *glob_p)
 {
 	int gmatch, gres;
 	size_t i;
 	char *mfname;
-	struct conf_entry *dupent, *ent, *firstmatch, *globent;
-	struct conf_entry *lastmatch;
+	struct conf_entry *dupent, *ent, *globent;
 	glob_t pglob;
 	struct stat st_fm;
-
-	if ((glob_p == NULL) || (*glob_p == NULL))
-		return;			/* There is nothing to do. */
 
 	/*
 	 * The worklist contains all fully-specified (non-GLOB) names.
@@ -908,9 +970,7 @@ expand_globs(struct conf_entry **work_p, struct conf_entry **glob_p)
 	 * that already exist.  Do not add a glob-related entry for any
 	 * file which already exists in the fully-specified list.
 	 */
-	firstmatch = lastmatch = NULL;
-	for (globent = *glob_p; globent; globent = globent->next) {
-
+	STAILQ_FOREACH(globent, glob_p, cf_nextp) {
 		gres = glob(globent->log, GLOB_NOCHECK, NULL, &pglob);
 		if (gres != 0) {
 			warn("cannot expand pattern (%d): %s", gres,
@@ -925,7 +985,7 @@ expand_globs(struct conf_entry **work_p, struct conf_entry **glob_p)
 
 			/* See if this file already has a specific entry. */
 			gmatch = 0;
-			for (ent = *work_p; ent; ent = ent->next) {
+			STAILQ_FOREACH(ent, work_p, cf_nextp) {
 				if (strcmp(mfname, ent->log) == 0) {
 					gmatch++;
 					break;
@@ -952,29 +1012,16 @@ expand_globs(struct conf_entry **work_p, struct conf_entry **glob_p)
 			if (verbose > 2)
 				printf("\t+  . add file %s\n", mfname);
 			dupent = init_entry(mfname, globent);
-			if (!firstmatch)
-				firstmatch = dupent;
-			else
-				lastmatch->next = dupent;
-			lastmatch = dupent;
 			/* This new entry is not a glob! */
 			dupent->flags &= ~CE_GLOB;
+
+			/* Add to the worklist. */
+			STAILQ_INSERT_TAIL(work_p, dupent, cf_nextp);
 		}
 		globfree(&pglob);
 		if (verbose > 2)
 			printf("\t+ Done with pattern %s\n", globent->log);
 	}
-
-	/* Add the list of matched files to the end of the worklist. */
-	if (!*work_p)
-		*work_p = firstmatch;
-	else {
-		ent = *work_p;
-		while (ent->next)
-			ent = ent->next;
-		ent->next = firstmatch;
-	}
-
 }
 
 /*
@@ -982,21 +1029,17 @@ expand_globs(struct conf_entry **work_p, struct conf_entry **glob_p)
  * process.
  */
 static void
-parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
-    struct conf_entry **glob_p, struct conf_entry **defconf_p)
+parse_file(FILE *cf, struct cflist *work_p, struct cflist *glob_p,
+    struct conf_entry *defconf_p, struct ilist *inclist)
 {
 	char line[BUFSIZ], *parse, *q;
 	char *cp, *errline, *group;
-	struct conf_entry *lastglob, *lastwork, *working;
+	struct conf_entry *working;
 	struct passwd *pwd;
 	struct group *grp;
+	glob_t pglob;
 	int eol, ptm_opts, res, special;
-
-	/*
-	 * XXX - for now, assume that only one config file will be read,
-	 *	ie, this routine is only called one time.
-	 */
-	lastglob = lastwork = NULL;
+	size_t i;
 
 	errline = NULL;
 	while (fgets(line, BUFSIZ, cf)) {
@@ -1027,7 +1070,7 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 
 		/*
 		 * Allow people to set debug options via the config file.
-		 * (NOTE: debug optons are undocumented, and may disappear
+		 * (NOTE: debug options are undocumented, and may disappear
 		 * at any time, etc).
 		 */
 		if (strcasecmp(DEBUG_MARKER, q) == 0) {
@@ -1041,23 +1084,49 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 				parse_doption(q);
 			}
 			continue;
+		} else if (strcasecmp(INCLUDE_MARKER, q) == 0) {
+			if (verbose)
+				printf("Found: %s", errline);
+			q = parse = missing_field(sob(++parse), errline);
+			parse = son(parse);
+			if (!*parse) {
+				warnx("include line missing argument:\n%s",
+				    errline);
+				continue;
+			}
+
+			*parse = '\0';
+
+			if (isglobstr(q)) {
+				res = glob(q, GLOB_NOCHECK, NULL, &pglob);
+				if (res != 0) {
+					warn("cannot expand pattern (%d): %s",
+					    res, q);
+					continue;
+				}
+
+				if (verbose > 2)
+					printf("\t+ Expanding pattern %s\n", q);
+
+				for (i = 0; i < pglob.gl_matchc; i++)
+					add_to_queue(pglob.gl_pathv[i],
+					    inclist);
+				globfree(&pglob);
+			} else
+				add_to_queue(q, inclist);
+			continue;
 		}
 
 		special = 0;
 		working = init_entry(q, NULL);
 		if (strcasecmp(DEFAULT_MARKER, q) == 0) {
 			special = 1;
-			if (defconf_p == NULL) {
-				warnx("Ignoring entry for %s in %s!", q,
-				    cfname);
-				free_entry(working);
-				continue;
-			} else if (*defconf_p != NULL) {
+			if (defconf_p != NULL) {
 				warnx("Ignoring duplicate entry for %s!", q);
 				free_entry(working);
 				continue;
 			}
-			*defconf_p = working;
+			defconf_p = working;
 		}
 
 		q = parse = missing_field(sob(++parse), errline);
@@ -1136,6 +1205,7 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 		}
 
 		working->flags = 0;
+		working->compress = COMPRESS_NONE;
 		q = parse = missing_field(sob(++parse), errline);
 		parse = son(parse);
 		eol = !*parse;
@@ -1214,7 +1284,7 @@ no_trimat:
 				working->flags |= CE_GLOB;
 				break;
 			case 'j':
-				working->flags |= CE_BZCOMPACT;
+				working->compress = COMPRESS_BZIP2;
 				break;
 			case 'n':
 				working->flags |= CE_NOSIGNAL;
@@ -1223,10 +1293,13 @@ no_trimat:
 				working->flags |= CE_SIGNALGROUP;
 				break;
 			case 'w':
-				/* Deprecated flag - keep for compatibility purposes */
+				/* Depreciated flag - keep for compatibility purposes */
+				break;
+			case 'x':
+				working->compress = COMPRESS_XZ;
 				break;
 			case 'z':
-				working->flags |= CE_COMPACT;
+				working->compress = COMPRESS_GZIP;
 				break;
 			case '-':
 				break;
@@ -1313,7 +1386,7 @@ no_trimat:
 				working->flags &= ~CE_SIGNALGROUP;
 			}
 			if (needroot)
-				working->pid_file = strdup(_PATH_SYSLOGPID);
+				working->pid_file = strdup(path_syslogpid);
 		}
 
 		/*
@@ -1323,17 +1396,9 @@ no_trimat:
 		if (special) {
 			;			/* Do not add to any list */
 		} else if (working->flags & CE_GLOB) {
-			if (!*glob_p)
-				*glob_p = working;
-			else
-				lastglob->next = working;
-			lastglob = working;
+			STAILQ_INSERT_TAIL(glob_p, working, cf_nextp);
 		} else {
-			if (!*work_p)
-				*work_p = working;
-			else
-				lastwork->next = working;
-			lastwork = working;
+			STAILQ_INSERT_TAIL(work_p, working, cf_nextp);
 		}
 	}
 	if (errline != NULL)
@@ -1349,17 +1414,243 @@ missing_field(char *p, char *errline)
 	return (p);
 }
 
+/*
+ * In our sort we return it in the reverse of what qsort normally
+ * would do, as we want the newest files first.  If we have two
+ * entries with the same time we don't really care about order.
+ *
+ * Support function for qsort() in delete_oldest_timelog().
+ */
+static int
+oldlog_entry_compare(const void *a, const void *b)
+{
+	const struct oldlog_entry *ola = a, *olb = b;
+
+	if (ola->t > olb->t)
+		return (-1);
+	else if (ola->t < olb->t)
+		return (1);
+	else
+		return (0);
+}
+
+/*
+ * Delete the oldest logfiles, when using time based filenames.
+ */
+static void
+delete_oldest_timelog(const struct conf_entry *ent, const char *archive_dir)
+{
+	char *logfname, *s, *dir, errbuf[80];
+	int dirfd, i, logcnt, max_logcnt, valid;
+	struct oldlog_entry *oldlogs;
+	size_t logfname_len;
+	struct dirent *dp;
+	const char *cdir;
+	struct tm tm;
+	DIR *dirp;
+
+	oldlogs = malloc(MAX_OLDLOGS * sizeof(struct oldlog_entry));
+	max_logcnt = MAX_OLDLOGS;
+	logcnt = 0;
+
+	if (archive_dir != NULL && archive_dir[0] != '\0')
+		cdir = archive_dir;
+	else
+		if ((cdir = dirname(ent->log)) == NULL)
+			err(1, "dirname()");
+	if ((dir = strdup(cdir)) == NULL)
+		err(1, "strdup()");
+
+	if ((s = basename(ent->log)) == NULL)
+		err(1, "basename()");
+	if ((logfname = strdup(s)) == NULL)
+		err(1, "strdup()");
+	logfname_len = strlen(logfname);
+	if (strcmp(logfname, "/") == 0)
+		errx(1, "Invalid log filename - became '/'");
+
+	if (verbose > 2)
+		printf("Searching for old logs in %s\n", dir);
+
+	/* First we create a 'list' of all archived logfiles */
+	if ((dirp = opendir(dir)) == NULL)
+		err(1, "Cannot open log directory '%s'", dir);
+	dirfd = dirfd(dirp);
+	while ((dp = readdir(dirp)) != NULL) {
+		if (dp->d_type != DT_REG)
+			continue;
+
+		/* Ignore everything but files with our logfile prefix */
+		if (strncmp(dp->d_name, logfname, logfname_len) != 0)
+			continue;
+		/* Ignore the actual non-rotated logfile */
+		if (dp->d_namlen == logfname_len)
+			continue;
+		/*
+		 * Make sure we created have found a logfile, so the
+		 * postfix is valid, IE format is: '.<time>(.[bg]z)?'.
+		 */
+		if (dp->d_name[logfname_len] != '.') {
+			if (verbose)
+				printf("Ignoring %s which has unexpected "
+				    "extension '%s'\n", dp->d_name,
+				    &dp->d_name[logfname_len]);
+			continue;
+		}
+		if ((s = strptime(&dp->d_name[logfname_len + 1],
+			    timefnamefmt, &tm)) == NULL) {
+			/*
+			 * We could special case "old" sequentially
+			 * named logfiles here, but we do not as that
+			 * would require special handling to decide
+			 * which one was the oldest compared to "new"
+			 * time based logfiles.
+			 */
+			if (verbose)
+				printf("Ignoring %s which does not "
+				    "match time format\n", dp->d_name);
+			continue;
+		}
+
+		for (int c = 0; c < COMPRESS_TYPES; c++)
+			if (strcmp(s, compress_type[c].suffix) == 0)
+				valid = 1;
+		if (valid != 1) {
+			if (verbose)
+				printf("Ignoring %s which has unexpected "
+				    "extension '%s'\n", dp->d_name, s);
+			continue;
+		}
+
+		/*
+		 * We should now have old an old rotated logfile, so
+		 * add it to the 'list'.
+		 */
+		if ((oldlogs[logcnt].t = timegm(&tm)) == -1)
+			err(1, "Could not convert time string to time value");
+		if ((oldlogs[logcnt].fname = strdup(dp->d_name)) == NULL)
+			err(1, "strdup()");
+		logcnt++;
+
+		/*
+		 * It is very unlikely we ever run out of space in the
+		 * logfile array from the default size, but lets
+		 * handle it anyway...
+		 */
+		if (logcnt >= max_logcnt) {
+			max_logcnt *= 4;
+			/* Detect integer overflow */
+			if (max_logcnt < logcnt)
+				errx(1, "Too many old logfiles found");
+			oldlogs = realloc(oldlogs,
+			    max_logcnt * sizeof(struct oldlog_entry));
+			if (oldlogs == NULL)
+				err(1, "realloc()");
+		}
+	}
+
+	/* Second, if needed we delete oldest archived logfiles */
+	if (logcnt > 0 && logcnt >= ent->numlogs && ent->numlogs > 1) {
+		oldlogs = realloc(oldlogs, logcnt *
+		    sizeof(struct oldlog_entry));
+		if (oldlogs == NULL)
+			err(1, "realloc()");
+
+		/*
+		 * We now sort the logs in the order of newest to
+		 * oldest.  That way we can simply skip over the
+		 * number of records we want to keep.
+		 */
+		qsort(oldlogs, logcnt, sizeof(struct oldlog_entry),
+		    oldlog_entry_compare);
+		for (i = ent->numlogs - 1; i < logcnt; i++) {
+			if (noaction)
+				printf("\trm -f %s/%s\n", dir,
+				    oldlogs[i].fname);
+			else if (unlinkat(dirfd, oldlogs[i].fname, 0) != 0) {
+				snprintf(errbuf, sizeof(errbuf),
+				    "Could not delete old logfile '%s'",
+				    oldlogs[i].fname);
+				perror(errbuf);
+			}
+		}
+	} else if (verbose > 1)
+		printf("No old logs to delete for logfile %s\n", ent->log);
+
+	/* Third, cleanup */
+	closedir(dirp);
+	for (i = 0; i < logcnt; i++) {
+		assert(oldlogs[i].fname != NULL);
+		free(oldlogs[i].fname);
+	}
+	free(oldlogs);
+	free(logfname);
+	free(dir);
+}
+
+/*
+ * Only add to the queue if the file hasn't already been added. This is
+ * done to prevent circular include loops.
+ */
+static void
+add_to_queue(const char *fname, struct ilist *inclist)
+{
+	struct include_entry *inc;
+
+	STAILQ_FOREACH(inc, inclist, inc_nextp) {
+		if (strcmp(fname, inc->file) == 0) {
+			warnx("duplicate include detected: %s", fname);
+			return;
+		}
+	}
+
+	inc = malloc(sizeof(struct include_entry));
+	if (inc == NULL)
+		err(1, "malloc of inc");
+	inc->file = strdup(fname);
+
+	if (verbose > 2)
+		printf("\t+ Adding %s to the processing queue.\n", fname);
+
+	STAILQ_INSERT_TAIL(inclist, inc, inc_nextp);
+}
+
+/*
+ * Search for logfile and return its compression suffix (if supported)
+ * The suffix detection is first-match in the order of compress_types
+ *
+ * Note: if logfile without suffix exists (uncompressed, COMPRESS_NONE)
+ * a zero-length string is returned
+ */
+static const char *
+get_logfile_suffix(const char *logfile)
+{
+	struct stat st;
+	char zfile[MAXPATHLEN];
+
+	for (int c = 0; c < COMPRESS_TYPES; c++) {
+		strlcpy(zfile, logfile, MAXPATHLEN);
+		strlcat(zfile, compress_type[c].suffix, MAXPATHLEN);
+		if (lstat(zfile, &st) == 0)
+			return (compress_type[c].suffix);
+	}
+	return (NULL);
+}
+
 static fk_entry
 do_rotate(const struct conf_entry *ent)
 {
 	char dirpart[MAXPATHLEN], namepart[MAXPATHLEN];
 	char file1[MAXPATHLEN], file2[MAXPATHLEN];
 	char zfile1[MAXPATHLEN], zfile2[MAXPATHLEN];
-	char jfile1[MAXPATHLEN];
+	const char *logfile_suffix;
+	char datetimestr[30];
 	int flags, numlogs_c;
 	fk_entry free_or_keep;
 	struct sigwork_entry *swork;
 	struct stat st;
+	struct tm tm;
+	time_t now;
 
 	flags = ent->flags;
 	free_or_keep = FREE_ENT;
@@ -1393,32 +1684,54 @@ do_rotate(const struct conf_entry *ent)
 		/* name of oldest log */
 		snprintf(file1, sizeof(file1), "%s/%s.%d", dirpart,
 		    namepart, ent->numlogs);
-		snprintf(zfile1, sizeof(zfile1), "%s%s", file1,
-		    COMPRESS_POSTFIX);
-		snprintf(jfile1, sizeof(jfile1), "%s%s", file1,
-		    BZCOMPRESS_POSTFIX);
 	} else {
+		/*
+		 * Tell delete_oldest_timelog() we are not using an
+		 * archive dir.
+		 */
+		dirpart[0] = '\0';
+
 		/* name of oldest log */
 		snprintf(file1, sizeof(file1), "%s.%d", ent->log,
 		    ent->numlogs);
-		snprintf(zfile1, sizeof(zfile1), "%s%s", file1,
-		    COMPRESS_POSTFIX);
-		snprintf(jfile1, sizeof(jfile1), "%s%s", file1,
-		    BZCOMPRESS_POSTFIX);
 	}
 
-	if (noaction) {
-		printf("\trm -f %s\n", file1);
-		printf("\trm -f %s\n", zfile1);
-		printf("\trm -f %s\n", jfile1);
-	} else {
-		unlink(file1);
-		unlink(zfile1);
-		unlink(jfile1);
+	/* Delete old logs */
+	if (timefnamefmt != NULL)
+		delete_oldest_timelog(ent, dirpart);
+	else {
+		/* name of oldest log */
+		for (int c = 0; c < COMPRESS_TYPES; c++) {
+			snprintf(zfile1, sizeof(zfile1), "%s%s", file1,
+			    compress_type[c].suffix);
+			if (noaction)
+				printf("\trm -f %s\n", zfile1);
+			else
+				unlink(zfile1);
+		}
 	}
+
+	if (timefnamefmt != NULL) {
+		/* If time functions fails we can't really do any sensible */
+		if (time(&now) == (time_t)-1 ||
+		    localtime_r(&now, &tm) == NULL)
+			bzero(&tm, sizeof(tm));
+
+		strftime(datetimestr, sizeof(datetimestr), timefnamefmt, &tm);
+		if (archtodir) {
+			snprintf(file1, sizeof(file1), "%s/%s.%s",
+			    dirpart, namepart, datetimestr);
+		} else {
+			snprintf(file1, sizeof(file1), "%s.%s",
+			    ent->log, datetimestr);
+		}
+
+		/* Don't run the code to move down logs */
+		numlogs_c = 0;
+	} else
+		numlogs_c = ent->numlogs;		/* copy for countdown */
 
 	/* Move down log files */
-	numlogs_c = ent->numlogs;		/* copy for countdown */
 	while (numlogs_c--) {
 
 		strlcpy(file2, file1, sizeof(file2));
@@ -1427,27 +1740,17 @@ do_rotate(const struct conf_entry *ent)
 			snprintf(file1, sizeof(file1), "%s/%s.%d",
 			    dirpart, namepart, numlogs_c);
 		else
-			snprintf(file1, sizeof(file1), "%s.%d", ent->log,
-			    numlogs_c);
+			snprintf(file1, sizeof(file1), "%s.%d",
+			    ent->log, numlogs_c);
 
-		strlcpy(zfile1, file1, sizeof(zfile1));
-		strlcpy(zfile2, file2, sizeof(zfile2));
-		if (lstat(file1, &st)) {
-			strlcat(zfile1, COMPRESS_POSTFIX,
-			    sizeof(zfile1));
-			strlcat(zfile2, COMPRESS_POSTFIX,
-			    sizeof(zfile2));
-			if (lstat(zfile1, &st)) {
-				strlcpy(zfile1, file1, sizeof(zfile1));
-				strlcpy(zfile2, file2, sizeof(zfile2));
-				strlcat(zfile1, BZCOMPRESS_POSTFIX,
-				    sizeof(zfile1));
-				strlcat(zfile2, BZCOMPRESS_POSTFIX,
-				    sizeof(zfile2));
-				if (lstat(zfile1, &st))
-					continue;
-			}
-		}
+		logfile_suffix = get_logfile_suffix(file1);
+		if (logfile_suffix == NULL)
+			continue;
+		strlcpy(zfile1, file1, MAXPATHLEN);
+		strlcpy(zfile2, file2, MAXPATHLEN);
+		strlcat(zfile1, logfile_suffix, MAXPATHLEN);
+		strlcat(zfile2, logfile_suffix, MAXPATHLEN);
+
 		if (noaction)
 			printf("\tmv %s %s\n", zfile1, zfile2);
 		else {
@@ -1493,7 +1796,7 @@ do_rotate(const struct conf_entry *ent)
 	swork = NULL;
 	if (ent->pid_file != NULL)
 		swork = save_sigwork(ent);
-	if (ent->numlogs > 0 && (flags & (CE_COMPACT | CE_BZCOMPACT))) {
+	if (ent->numlogs > 0 && ent->compress > COMPRESS_NONE) {
 		/*
 		 * The zipwork_entry will include a pointer to this
 		 * conf_entry, so the conf_entry should not be freed.
@@ -1588,15 +1891,16 @@ do_zipwork(struct zipwork_entry *zwork)
 
 	pgm_path = NULL;
 	strlcpy(zresult, zwork->zw_fname, sizeof(zresult));
-	if (zwork != NULL && zwork->zw_conf != NULL) {
-		if (zwork->zw_conf->flags & CE_COMPACT) {
-			pgm_path = _PATH_GZIP;
-			strlcat(zresult, COMPRESS_POSTFIX, sizeof(zresult));
-		} else if (zwork->zw_conf->flags & CE_BZCOMPACT) {
-			pgm_path = _PATH_BZIP2;
-			strlcat(zresult, BZCOMPRESS_POSTFIX, sizeof(zresult));
+	if (zwork != NULL && zwork->zw_conf != NULL &&
+	    zwork->zw_conf->compress > COMPRESS_NONE)
+		for (int c = 1; c < COMPRESS_TYPES; c++) {
+			if (zwork->zw_conf->compress == c) {
+				pgm_path = compress_type[c].path;
+				strlcat(zresult,
+				    compress_type[c].suffix, sizeof(zresult));
+				break;
+			}
 		}
-	}
 	if (pgm_path == NULL) {
 		warnx("invalid entry for %s in do_zipwork", zwork->zw_fname);
 		return;
@@ -1778,7 +2082,18 @@ set_swpid(struct sigwork_entry *swork, const struct conf_entry *ent)
 
 	f = fopen(ent->pid_file, "r");
 	if (f == NULL) {
-		warn("can't open pid file: %s", ent->pid_file);
+		if (errno == ENOENT && enforcepid == 0) {
+			/*
+			 * Warn if the PID file doesn't exist, but do
+			 * not consider it an error.  Most likely it
+			 * means the process has been terminated,
+			 * so it should be safe to rotate any log
+			 * files that the process would have been using.
+			 */
+			swork->sw_pidok = 1;
+			warnx("pid file doesn't exist: %s", ent->pid_file);
+		} else
+			warn("can't open pid file: %s", ent->pid_file);
 		return;
 	}
 
@@ -1789,7 +2104,7 @@ set_swpid(struct sigwork_entry *swork, const struct conf_entry *ent)
 		 * has terminated, so it should be safe to rotate any
 		 * log files that the process would have been using.
 		 */
-		if (feof(f)) {
+		if (feof(f) && enforcepid == 0) {
 			swork->sw_pidok = 1;
 			warnx("pid file is empty: %s", ent->pid_file);
 		} else
@@ -1863,9 +2178,8 @@ static int
 age_old_log(char *file)
 {
 	struct stat sb;
-	char *endp;
-	char tmp[MAXPATHLEN + sizeof(".0") + sizeof(COMPRESS_POSTFIX) +
-		sizeof(BZCOMPRESS_POSTFIX) + 1];
+	const char *logfile_suffix;
+	char tmp[MAXPATHLEN + sizeof(".0") + COMPRESS_SUFFIX_MAXLEN + 1];
 
 	if (archtodir) {
 		char *p;
@@ -1895,21 +2209,12 @@ age_old_log(char *file)
 	}
 
 	strlcat(tmp, ".0", sizeof(tmp));
-	if (stat(tmp, &sb) < 0) {
-		/*
-		 * A plain '.0' file does not exist.  Try again, first
-		 * with the added suffix of '.gz', then with an added
-		 * suffix of '.bz2' instead of '.gz'.
-		 */
-		endp = strchr(tmp, '\0');
-		strlcat(tmp, COMPRESS_POSTFIX, sizeof(tmp));
-		if (stat(tmp, &sb) < 0) {
-			*endp = '\0';		/* Remove .gz */
-			strlcat(tmp, BZCOMPRESS_POSTFIX, sizeof(tmp));
-			if (stat(tmp, &sb) < 0)
-				return (-1);
-		}
-	}
+	logfile_suffix = get_logfile_suffix(tmp);
+	if (logfile_suffix == NULL)
+		return (-1);
+	strlcat(tmp, logfile_suffix, sizeof(tmp));
+	if (stat(tmp, &sb) < 0)
+		return (-1);
 	return ((int)(ptimeget_secs(timenow) - sb.st_mtime + 1800) / 3600);
 }
 
@@ -1940,6 +2245,19 @@ isnumberstr(const char *string)
 			return (0);
 	}
 	return (1);
+}
+
+/* Check if string contains a glob */
+static int
+isglobstr(const char *string)
+{
+	char chr;
+
+	while ((chr = *string++)) {
+		if (chr == '*' || chr == '?' || chr == '[')
+			return (1);
+	}
+	return (0);
 }
 
 /*

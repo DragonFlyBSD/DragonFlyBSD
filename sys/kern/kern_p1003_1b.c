@@ -90,22 +90,26 @@ int p31b_proc(struct proc *p, pid_t pid, struct proc **pp)
 	int ret = 0;
 	struct proc *other_proc = 0;
 
-	if (pid == 0)
+	if (pid == 0) {
 		other_proc = p;
-	else
+		if (other_proc)
+			PHOLD(other_proc);
+	} else {
 		other_proc = pfind(pid);
+		/* ref from pfind() */
+	}
 
-	if (other_proc)
-	{
+	if (other_proc) {
 		/* Enforce permission policy.
 		 */
 		if (CAN_AFFECT(p, p->p_ucred, other_proc))
 			*pp = other_proc;
 		else
 			ret = EPERM;
-	}
-	else
+		PRELE(other_proc);
+	} else {
 		ret = ESRCH;
+	}
 
 	return ret;
 }

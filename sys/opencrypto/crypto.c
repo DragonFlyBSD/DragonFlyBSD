@@ -66,11 +66,10 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
+#include <sys/objcache.h>
 
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
-
-#include <vm/vm_zone.h>
 
 #include <ddb/ddb.h>
 
@@ -157,10 +156,12 @@ static	struct lock crypto_ret_q_lock;
 
 /*
  * Crypto op and desciptor data structures are allocated
- * from separate private zones.
+ * from separate object caches.
  */
-static	vm_zone_t cryptop_zone;
-static	vm_zone_t cryptodesc_zone;
+static struct objcache *cryptop_oc, *cryptodesc_oc;
+
+static MALLOC_DEFINE(M_CRYPTO_OP, "crypto op", "crypto op");
+static MALLOC_DEFINE(M_CRYPTO_DESC, "crypto desc", "crypto desc");
 
 int	crypto_userasymcrypto = 1;	/* userland may do asym crypto reqs */
 SYSCTL_INT(_kern, OID_AUTO, userasymcrypto, CTLFLAG_RW,
@@ -207,11 +208,11 @@ crypto_init(void)
 	TAILQ_INIT(&crp_ret_kq);
 	lockinit(&crypto_ret_q_lock, "crypto return queues", 0, LK_CANRECURSE);
 
-	cryptop_zone = zinit("cryptop", sizeof (struct cryptop), 0, 0, 1);
-	cryptodesc_zone = zinit("cryptodesc", sizeof (struct cryptodesc),
-				0, 0, 1);
-	if (cryptodesc_zone == NULL || cryptop_zone == NULL) {
-		kprintf("crypto_init: cannot setup crypto zones\n");
+	cryptop_oc = objcache_create_simple(M_CRYPTO_OP, sizeof(struct cryptop));
+	cryptodesc_oc = objcache_create_simple(M_CRYPTO_DESC,
+				sizeof(struct cryptodesc));
+	if (cryptodesc_oc == NULL || cryptop_oc == NULL) {
+		kprintf("crypto_init: cannot setup crypto caches\n");
 		error = ENOMEM;
 		goto bad;
 	}
@@ -296,10 +297,10 @@ crypto_destroy(void)
 	if (crypto_drivers != NULL)
 		kfree(crypto_drivers, M_CRYPTO_DATA);
 
-	if (cryptodesc_zone != NULL)
-		zdestroy(cryptodesc_zone);
-	if (cryptop_zone != NULL)
-		zdestroy(cryptop_zone);
+	if (cryptodesc_oc != NULL)
+		objcache_destroy(cryptodesc_oc);
+	if (cryptop_oc != NULL)
+		objcache_destroy(cryptop_oc);
 	lockuninit(&crypto_ret_q_lock);
 	lockuninit(&crypto_drivers_lock);
 }
@@ -1136,9 +1137,9 @@ crypto_freereq(struct cryptop *crp)
 
 	while ((crd = crp->crp_desc) != NULL) {
 		crp->crp_desc = crd->crd_next;
-		zfree(cryptodesc_zone, crd);
+		objcache_put(cryptodesc_oc, crd);
 	}
-	zfree(cryptop_zone, crp);
+	objcache_put(cryptop_oc, crp);
 }
 
 /*
@@ -1150,11 +1151,11 @@ crypto_getreq(int num)
 	struct cryptodesc *crd;
 	struct cryptop *crp;
 
-	crp = zalloc(cryptop_zone);
+	crp = objcache_get(cryptop_oc, M_WAITOK);
 	if (crp != NULL) {
 		bzero(crp, sizeof (*crp));
 		while (num--) {
-			crd = zalloc(cryptodesc_zone);
+			crd = objcache_get(cryptodesc_oc, M_WAITOK);
 			if (crd == NULL) {
 				crypto_freereq(crp);
 				return NULL;

@@ -47,6 +47,7 @@
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
+#include <sys/thread2.h>
 
 #include <vfs/procfs/procfs.h>
 
@@ -255,6 +256,26 @@ procfs_freevp(struct vnode *vp)
 	return (0);
 }
 
+/*
+ * Try to find the calling pid. Note that pfind()
+ * now references the proc structure to be returned
+ * and needs to be released later with PRELE().
+ */
+struct proc *
+pfs_pfind(pid_t pfs_pid)
+{
+	struct proc *p = NULL;
+
+	if (pfs_pid == 0) {
+		p = &proc0;
+		PHOLD(p);
+	} else {
+		p = pfind(pfs_pid);
+	}
+
+	return p;
+}
+
 int
 procfs_rw(struct vop_read_args *ap)
 {
@@ -274,14 +295,14 @@ procfs_rw(struct vop_read_args *ap)
 
 	lwkt_gettoken(&proc_token);
 
-	p = PFIND(pfs->pfs_pid);
+	p = pfs_pfind(pfs->pfs_pid);
 	if (p == NULL) {
-		lwkt_reltoken(&proc_token);
-		return (EINVAL);
+		rtval = (EINVAL);
+		goto out;
 	}
 	if (p->p_pid == 1 && securelevel > 0 && uio->uio_rw == UIO_WRITE) {
-		lwkt_reltoken(&proc_token);
-		return (EACCES);
+		rtval = (EACCES);
+		goto out;
 	}
 	/* XXX lwp */
 	lp = FIRST_LWP_IN_PROC(p);
@@ -291,6 +312,8 @@ procfs_rw(struct vop_read_args *ap)
 		tsleep(&pfs->pfs_lockowner, 0, "pfslck", 0);
 	}
 	pfs->pfs_lockowner = curproc->p_pid;
+
+	lwkt_gettoken(&p->p_token);
 
 	switch (pfs->pfs_type) {
 	case Pnote:
@@ -342,10 +365,18 @@ procfs_rw(struct vop_read_args *ap)
 		rtval = EOPNOTSUPP;
 		break;
 	}
+	lwkt_reltoken(&p->p_token);
 	LWPRELE(lp);
+
 	pfs->pfs_lockowner = 0;
 	lwkt_reltoken(&proc_token);
 	wakeup(&pfs->pfs_lockowner);
+
+out:
+	if (LWKT_TOKEN_HELD(&proc_token))
+		lwkt_reltoken(&proc_token);
+	if (p)
+		PRELE(p);
 
 	return rtval;
 }

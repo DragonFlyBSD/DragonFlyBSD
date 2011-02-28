@@ -28,11 +28,12 @@
  *
  * $Id: lexer.l,v 1.1 2002/11/24 20:22:39 max Exp $
  * $FreeBSD: src/usr.sbin/bluetooth/hcsecd/lexer.l,v 1.1 2003/05/10 21:50:35 julian Exp $
- * $DragonFly: src/usr.sbin/bthcid/lexer.l,v 1.1 2008/01/30 14:10:19 hasso Exp $
  */
 
 #include <string.h>
 #include "parser.h"
+
+#define YY_NO_INPUT
 
 int yylex(void);
 %}

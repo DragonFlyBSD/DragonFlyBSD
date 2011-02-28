@@ -54,10 +54,11 @@
 
 #include <sys/thread2.h>
 
+#include <machine_base/apic/ioapic_abi.h>
+#include <machine_base/isa/elcr_var.h>
+
 #include "icu.h"
 #include "icu_ipl.h"
-
-extern struct machintr_abi MachIntrABI_APIC;
 
 extern inthand_t
 	IDTVEC(icu_intr0),	IDTVEC(icu_intr1),
@@ -80,6 +81,16 @@ static inthand_t *icu_intr[ICU_HWI_VECTORS] = {
 	&IDTVEC(icu_intr14),	&IDTVEC(icu_intr15)
 };
 
+static struct icu_irqmap {
+	int			im_type;	/* ICU_IMT_ */
+	enum intr_trigger	im_trig;
+} icu_irqmaps[MAX_HARDINTS];	/* XXX MAX_HARDINTS may not be correct */
+
+#define ICU_IMT_UNUSED		0	/* KEEP THIS */
+#define ICU_IMT_RESERVED	1
+#define ICU_IMT_LINE		2
+#define ICU_IMT_SYSCALL		3
+
 extern void	ICU_INTREN(int);
 extern void	ICU_INTRDIS(int);
 
@@ -89,6 +100,8 @@ static int	icu_getvar(int, void *);
 static void	icu_finalize(void);
 static void	icu_cleanup(void);
 static void	icu_setdefault(void);
+static void	icu_stabilize(void);
+static void	icu_initmap(void);
 
 struct machintr_abi MachIntrABI_ICU = {
 	MACHINTR_ICU,
@@ -99,7 +112,9 @@ struct machintr_abi MachIntrABI_ICU = {
 	.getvar		= icu_getvar,
 	.finalize	= icu_finalize,
 	.cleanup	= icu_cleanup,
-	.setdefault	= icu_setdefault
+	.setdefault	= icu_setdefault,
+	.stabilize	= icu_stabilize,
+	.initmap	= icu_initmap
 };
 
 static int	icu_imcr_present;
@@ -145,39 +160,13 @@ icu_getvar(int varid, void *buf)
  * Called before interrupts are physically enabled
  */
 static void
-icu_finalize(void)
+icu_stabilize(void)
 {
 	int intr;
-
-#ifdef SMP
-	if (apic_io_enable) {
-		KKASSERT(MachIntrABI.type == MACHINTR_ICU);
-		MachIntrABI_APIC.setvar(MACHINTR_VAR_IMCR_PRESENT,
-					&icu_imcr_present);
-		MachIntrABI_APIC.finalize();
-		return;
-	}
-#endif
 
 	for (intr = 0; intr < ICU_HWI_VECTORS; ++intr)
 		machintr_intrdis(intr);
 	machintr_intren(ICU_IRQ_SLAVE);
-
-#if defined(SMP)
-	/*
-	 * If an IMCR is present, programming bit 0 disconnects the 8259
-	 * from the BSP.  The 8259 may still be connected to LINT0 on the
-	 * BSP's LAPIC.
-	 *
-	 * If we are running SMP the LAPIC is active, try to use virtual
-	 * wire mode so we can use other interrupt sources within the LAPIC
-	 * in addition to the 8259.
-	 */
-	if (icu_imcr_present) {
-		outb(0x22, 0x70);
-		outb(0x23, 0x01);
-	}
-#endif
 }
 
 /*
@@ -188,6 +177,57 @@ static void
 icu_cleanup(void)
 {
 	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
+}
+
+/*
+ * Called after stablize and cleanup; critical section is not
+ * held and interrupts are not physically disabled.
+ *
+ * For SMP:
+ * Further delayed after BSP's LAPIC is initialized
+ */
+static void
+icu_finalize(void)
+{
+	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
+
+#ifdef SMP
+	if (apic_io_enable) {
+		/*
+		 * MachIntrABI switching will happen in
+		 * MachIntrABI_IOAPIC.finalize()
+		 */
+		MachIntrABI_IOAPIC.setvar(MACHINTR_VAR_IMCR_PRESENT,
+					  &icu_imcr_present);
+		MachIntrABI_IOAPIC.finalize();
+		return;
+	}
+
+	/*
+	 * If an IMCR is present, programming bit 0 disconnects the 8259
+	 * from the BSP.  The 8259 may still be connected to LINT0 on the
+	 * BSP's LAPIC.
+	 *
+	 * If we are running SMP the LAPIC is active, try to use virtual
+	 * wire mode so we can use other interrupt sources within the LAPIC
+	 * in addition to the 8259.
+	 */
+	if (icu_imcr_present) {
+		register_t ef;
+
+		crit_enter();
+
+		ef = read_rflags();
+		cpu_disable_intr();
+
+		outb(0x22, 0x70);
+		outb(0x23, 0x01);
+
+		write_rflags(ef);
+
+		crit_exit();
+	}
+#endif	/* SMP */
 }
 
 static int
@@ -235,4 +275,36 @@ icu_setdefault(void)
 		setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYSIGT,
 		       SEL_KPL, 0);
 	}
+}
+
+static void
+icu_initmap(void)
+{
+	int i;
+
+	for (i = 0; i < ICU_HWI_VECTORS; ++i)
+		icu_irqmaps[i].im_type = ICU_IMT_LINE;
+	icu_irqmaps[ICU_IRQ_SLAVE].im_type = ICU_IMT_RESERVED;
+
+	if (elcr_found) {
+		for (i = 0; i < ICU_HWI_VECTORS; ++i)
+			icu_irqmaps[i].im_trig = elcr_read_trigger(i);
+	} else {
+		for (i = 0; i < ICU_HWI_VECTORS; ++i) {
+			switch (i) {
+			case 0:
+			case 1:
+			case 2:
+			case 8:
+			case 13:
+				icu_irqmaps[i].im_trig = INTR_TRIGGER_EDGE;
+				break;
+
+			default:
+				icu_irqmaps[i].im_trig = INTR_TRIGGER_LEVEL;
+				break;
+			}
+		}
+	}
+	icu_irqmaps[i].im_type = ICU_IMT_SYSCALL;
 }

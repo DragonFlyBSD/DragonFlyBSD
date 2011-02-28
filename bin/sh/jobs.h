@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)jobs.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/jobs.h,v 1.19 2006/10/07 16:51:16 stefanf Exp $
- * $DragonFly: src/bin/sh/jobs.h,v 1.3 2007/01/13 20:33:47 pavalos Exp $
+ * $FreeBSD: src/bin/sh/jobs.h,v 1.20 2010/06/29 22:37:45 jilles Exp $
  */
 
 /* Mode argument to forkshell.  Don't change FORK_FG or FORK_BG. */
@@ -73,6 +72,7 @@ struct job {
 	char used;		/* true if this entry is in used */
 	char changed;		/* true if status has changed */
 	char foreground;	/* true if running in the foreground */
+	char remembered;	/* true if $! referenced */
 #if JOBS
 	char jobctl;		/* job running under job control */
 	struct job *next;	/* job used after this one */
@@ -86,7 +86,6 @@ enum {
 	SHOWJOBS_PGIDS		/* PID of the group leader only */
 };
 
-extern pid_t backgndpid;	/* pid of last background process */
 extern int job_warning;		/* user was warned about stopped jobs */
 extern int in_waitcmd;		/* are we in waitcmd()? */
 extern int in_dowait;		/* are we in dowait()? */
@@ -99,10 +98,13 @@ int jobscmd(int, char **);
 void showjobs(int, int);
 int waitcmd(int, char **);
 int jobidcmd(int, char **);
+pid_t getjobpgrp(char *);
 struct job *makejob(union node *, int);
 pid_t forkshell(struct job *, union node *, int);
 int waitforjob(struct job *, int *);
 int stoppedjobs(void);
+int backgndpidset(void);
+pid_t backgndpidval(void);
 char *commandtext(union node *);
 
 #if ! JOBS

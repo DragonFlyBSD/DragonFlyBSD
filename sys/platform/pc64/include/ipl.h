@@ -37,7 +37,7 @@
 #ifndef _MACHINE_IPL_H_
 #define	_MACHINE_IPL_H_
 
-#include <machine_base/apic/apic_ipl.h>
+#include <machine_base/apic/ioapic_ipl.h>
 #include <machine_base/icu/icu_ipl.h>
 
 #endif

@@ -42,7 +42,7 @@
 #include <sys/queue.h>
 #endif
 
-enum machintr_type { MACHINTR_GENERIC, MACHINTR_ICU, MACHINTR_APIC };
+enum machintr_type { MACHINTR_GENERIC, MACHINTR_ICU, MACHINTR_IOAPIC };
 
 #define MACHINTR_VAR_SIZEMASK	0xFFFF
 
@@ -64,6 +64,8 @@ struct machintr_abi {
     void	(*finalize)(void);		/* final before ints enabled */
     void	(*cleanup)(void);		/* cleanup */
     void	(*setdefault)(void);		/* set default vectors */
+    void	(*stabilize)(void);		/* stable before ints enabled */
+    void	(*initmap)(void);		/* init irq mapping */
 };
 
 #define machintr_intren(intr)	MachIntrABI.intren(intr)

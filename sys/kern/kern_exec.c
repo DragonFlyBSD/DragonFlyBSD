@@ -52,7 +52,6 @@
 #include <sys/sysctl.h>
 #include <sys/vnode.h>
 #include <sys/vmmeter.h>
-#include <sys/aio.h>
 #include <sys/libkern.h>
 
 #include <cpu/lwbuf.h>
@@ -72,6 +71,7 @@
 #include <sys/user.h>
 #include <sys/reg.h>
 
+#include <sys/refcount.h>
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
@@ -183,6 +183,9 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
 	register_t *stack_base;
+	struct pargs *pa;
+	struct sigacts *ops;
+	struct sigacts *nps;
 	int error, len, i;
 	struct image_params image_params, *imgp;
 	struct vattr attr;
@@ -194,6 +197,7 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 	}
 
 	KKASSERT(p);
+	lwkt_gettoken(&p->p_token);
 	imgp = &image_params;
 
 	/*
@@ -344,15 +348,16 @@ interpret:
 	 * handlers. In execsigs(), the new process will have its signals
 	 * reset.
 	 */
-	if (p->p_sigacts->ps_refcnt > 1) {
-		struct sigacts *newsigacts;
-
-		newsigacts = (struct sigacts *)kmalloc(sizeof(*newsigacts),
-		       M_SUBPROC, M_WAITOK);
-		bcopy(p->p_sigacts, newsigacts, sizeof(*newsigacts));
-		p->p_sigacts->ps_refcnt--;
-		p->p_sigacts = newsigacts;
-		p->p_sigacts->ps_refcnt = 1;
+	ops = p->p_sigacts;
+	if (ops->ps_refcnt > 1) {
+		nps = kmalloc(sizeof(*nps), M_SUBPROC, M_WAITOK);
+		bcopy(ops, nps, sizeof(*nps));
+		refcount_init(&nps->ps_refcnt, 1);
+		p->p_sigacts = nps;
+		if (refcount_release(&ops->ps_refcnt)) {
+			kfree(ops, M_SUBPROC);
+			ops = NULL;
+		}
 	}
 
 	/*
@@ -485,19 +490,27 @@ interpret:
 	/* Set the access time on the vnode */
 	vn_mark_atime(imgp->vp, td);
 
-	/* Free any previous argument cache */
-	if (p->p_args && --p->p_args->ar_ref == 0)
-		FREE(p->p_args, M_PARGS);
+	/*
+	 * Free any previous argument cache
+	 */
+	pa = p->p_args;
 	p->p_args = NULL;
+	if (pa && refcount_release(&pa->ar_ref)) {
+		kfree(pa, M_PARGS);
+		pa = NULL;
+	}
 
-	/* Cache arguments if they fit inside our allowance */
+	/*
+	 * Cache arguments if they fit inside our allowance
+	 */
 	i = imgp->args->begin_envv - imgp->args->begin_argv;
-	if (ps_arg_cache_limit >= i + sizeof(struct pargs)) {
-		MALLOC(p->p_args, struct pargs *, sizeof(struct pargs) + i, 
-		    M_PARGS, M_WAITOK);
-		p->p_args->ar_ref = 1;
-		p->p_args->ar_length = i;
-		bcopy(imgp->args->begin_argv, p->p_args->ar_args, i);
+	if (sizeof(struct pargs) + i <= ps_arg_cache_limit) {
+		pa = kmalloc(sizeof(struct pargs) + i, M_PARGS, M_WAITOK);
+		refcount_init(&pa->ar_ref, 1);
+		pa->ar_length = i;
+		bcopy(imgp->args->begin_argv, pa->ar_args, i);
+		KKASSERT(p->p_args == NULL);
+		p->p_args = pa;
 	}
 
 exec_fail_dealloc:
@@ -515,6 +528,7 @@ exec_fail_dealloc:
 
 	if (error == 0) {
 		++mycpu->gd_cnt.v_exec;
+		lwkt_reltoken(&p->p_token);
 		return (0);
 	}
 
@@ -527,6 +541,7 @@ exec_fail:
 	 */
 	if (imgp->vmspace_destroyed & 2)
 		p->p_flag &= ~P_INEXEC;
+	lwkt_reltoken(&p->p_token);
 	if (imgp->vmspace_destroyed) {
 		/*
 		 * Sorry, no more process anymore. exit gracefully.
@@ -711,11 +726,6 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 	}
 	imgp->vmspace_destroyed |= 2;	/* we are responsible for P_INEXEC */
 	p->p_flag |= P_INEXEC;
-
-	/*
-	 * Prevent a pending AIO from modifying the new address space.
-	 */
-	aio_proc_rundown(imgp->proc);
 
 	/*
 	 * Blow away entire process VM, if address space not shared,

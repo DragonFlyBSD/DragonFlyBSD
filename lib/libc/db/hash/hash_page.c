@@ -52,7 +52,7 @@
  */
 
 #include "namespace.h"
-#include <sys/types.h>
+#include <sys/param.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -834,13 +834,24 @@ static int
 open_temp(HTAB *hashp)
 {
 	sigset_t set, oset;
-	static char namestr[] = "_hashXXXXXX";
+	int len;
+	char *envtmp = NULL;
+	char path[MAXPATHLEN];
+
+	if (issetugid() == 0)
+		envtmp = getenv("TMPDIR");
+	len = snprintf(path,
+	    sizeof(path), "%s/_hash.XXXXXX", envtmp ? envtmp : "/tmp");
+	if (len < 0 || len >= (int)sizeof(path)) {
+		errno = ENAMETOOLONG;
+		return (-1);
+	}
 
 	/* Block signals; make sure file goes away at process exit. */
 	sigfillset(&set);
 	_sigprocmask(SIG_BLOCK, &set, &oset);
-	if ((hashp->fp = mkstemp(namestr)) != -1) {
-		unlink(namestr);
+	if ((hashp->fp = mkstemp(path)) != -1) {
+		unlink(path);
 		_fcntl(hashp->fp, F_SETFD, 1);
 	}
 	_sigprocmask(SIG_SETMASK, &oset, NULL);

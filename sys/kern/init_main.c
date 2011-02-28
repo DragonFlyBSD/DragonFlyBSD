@@ -64,6 +64,7 @@
 #include <sys/malloc.h>
 #include <sys/machintr.h>
 
+#include <sys/refcount.h>
 #include <sys/file2.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
@@ -97,12 +98,15 @@ struct thread thread0;
 
 int cmask = CMASK;
 u_int cpu_mi_feature;
+cpumask_t usched_global_cpumask;
 extern	struct user *proc0paddr;
 extern int fallback_elf_brand;
 
 int	boothowto = 0;		/* initialized so that it can be patched */
 SYSCTL_INT(_debug, OID_AUTO, boothowto, CTLFLAG_RD, &boothowto, 0,
     "Reboot flags, from console subsystem");
+SYSCTL_ULONG(_kern, OID_AUTO, usched_global_cpumask, CTLFLAG_RW,
+    &usched_global_cpumask, 0, "global user scheduler cpumask");
 
 /*
  * This ensures that there is at least one entry so that the sysinit_set
@@ -167,6 +171,7 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	lwkt_set_comm(&thread0, "thread0");
 	RB_INIT(&proc0.p_lwp_tree);
 	spin_init(&proc0.p_spin);
+	lwkt_token_init(&proc0.p_token, "iproc");
 	proc0.p_lasttid = 0;	/* +1 = next TID */
 	lwp_rb_tree_RB_INSERT(&proc0.p_lwp_tree, &lwp0);
 	lwp0.lwp_thread = &thread0;
@@ -296,7 +301,7 @@ SYSINIT(announce, SI_BOOT1_COPYRIGHT, SI_ORDER_FIRST, print_caddr_t, copyright)
 static void
 leavecrit(void *dummy __unused)
 {
-	MachIntrABI.finalize();
+	MachIntrABI.stabilize();
 	cpu_enable_intr();
 	MachIntrABI.cleanup();
 	crit_exit();
@@ -366,14 +371,19 @@ proc0_init(void *dummy __unused)
 	 * Create process 0 (the swapper).
 	 */
 	LIST_INSERT_HEAD(&allproc, p, p_list);
-	p->p_pgrp = &pgrp0;
 	LIST_INSERT_HEAD(PGRPHASH(0), &pgrp0, pg_hash);
 	LIST_INIT(&pgrp0.pg_members);
+	lwkt_token_init(&pgrp0.pg_token, "pgrp0");
+	refcount_init(&pgrp0.pg_refs, 1);
+	lockinit(&pgrp0.pg_lock, "pgwt0", 0, 0);
 	LIST_INSERT_HEAD(&pgrp0.pg_members, p, p_pglist);
 
 	pgrp0.pg_session = &session0;
 	session0.s_count = 1;
 	session0.s_leader = p;
+
+	pgref(&pgrp0);
+	p->p_pgrp = &pgrp0;
 
 	p->p_sysent = &aout_sysvec;
 
@@ -403,7 +413,7 @@ proc0_init(void *dummy __unused)
 
 	/* Create sigacts. */
 	p->p_sigacts = &sigacts0;
-	p->p_sigacts->ps_refcnt = 1;
+	refcount_init(&p->p_sigacts->ps_refcnt, 1);
 
 	/* Initialize signal state for process 0. */
 	siginit(p);
@@ -706,5 +716,6 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 	lwkt_gdinit(gd);
 	vm_map_entry_reserve_cpu_init(gd);
 	sleep_gdinit(gd);
+	usched_global_cpumask |= CPUMASK(cpuid);
 }
 

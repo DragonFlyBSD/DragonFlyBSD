@@ -216,7 +216,7 @@ tunclose(struct dev_close_args *ap)
 	ifp->if_flags &= ~IFF_RUNNING;
 	if_purgeaddrs_nolink(ifp);
 
-	funsetown(tp->tun_sigio);
+	funsetown(&tp->tun_sigio);
 	KNOTE(&tp->tun_rkq.ki_note, 0);
 
 	TUNDEBUG(ifp, "closed\n");
@@ -504,7 +504,7 @@ tunioctl(struct dev_ioctl_args *ap)
 		return (fsetown(*(int *)ap->a_data, &tp->tun_sigio));
 
 	case FIOGETOWN:
-		*(int *)ap->a_data = fgetown(tp->tun_sigio);
+		*(int *)ap->a_data = fgetown(&tp->tun_sigio);
 		return (0);
 
 	/* This is deprecated, FIOSETOWN should be used instead. */
@@ -513,7 +513,7 @@ tunioctl(struct dev_ioctl_args *ap)
 
 	/* This is deprecated, FIOGETOWN should be used instead. */
 	case TIOCGPGRP:
-		*(int *)ap->a_data = -fgetown(tp->tun_sigio);
+		*(int *)ap->a_data = -fgetown(&tp->tun_sigio);
 		return (0);
 
 	default:

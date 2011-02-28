@@ -65,16 +65,6 @@
 #define	AIO_LISTIO_MAX		16
 
 /*
- * Private members for aiocb -- don't access
- * directly.
- */
-struct __aiocb_private {
-	int	status;
-	int	error;
-	void	*kernelinfo;
-};
-
-/*
  * I/O control block
  */
 typedef struct aiocb {
@@ -85,7 +75,9 @@ typedef struct aiocb {
 	struct	sigevent aio_sigevent;	/* Signal to deliver */
 	int	aio_lio_opcode;		/* LIO opcode */
 	int	aio_reqprio;		/* Request priority -- ignored */
-	struct	__aiocb_private	_aiocb_private;
+
+	int     _aio_val;
+	int     _aio_err;
 } aiocb_t;
 
 #ifndef _KERNEL
@@ -137,37 +129,6 @@ int	aio_suspend(const struct aiocb * const[], int, const struct timespec *);
 int	aio_waitcomplete(struct aiocb **, struct timespec *);
 
 __END_DECLS
-
-#else
-/*
- * Job queue item
- */
-
-#define AIOCBLIST_RUNDOWN       0x4
-#define AIOCBLIST_DONE          0x10
-
-struct aiocblist {
-        TAILQ_ENTRY	(aiocblist) list;	/* List of jobs */
-        TAILQ_ENTRY	(aiocblist) plist;	/* List of jobs for proc */
-        int	jobflags;
-        int	jobstate;
-        int	inputcharge, outputcharge;
-	struct	callout	timeout;
-        struct	buf *bp;		/* Buffer pointer */
-        struct	proc *userproc;		/* User process */
-        struct	file *fd_file;		/* Pointer to file structure */ 
-        struct	aio_liojob *lio;	/* Optional lio job */
-        struct	aiocb *uuaiocb;		/* Pointer in userspace of aiocb */
-	struct	klist klist;		/* list of knotes */
-        struct	aiocb uaiocb;		/* Kernel I/O control block */
-};
-
-/* Forward declarations for prototypes below. */
-struct socket;
-struct signalsockbuf;
-
-void	aio_proc_rundown(struct proc *p);
-void	aio_swake(struct socket *, struct signalsockbuf *);
 
 #endif
 

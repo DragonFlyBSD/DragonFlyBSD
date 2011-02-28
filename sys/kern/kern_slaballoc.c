@@ -433,6 +433,32 @@ zoneindex(unsigned long *bytes)
     return(0);
 }
 
+#ifdef SLAB_DEBUG
+/*
+ * Used to debug memory corruption issues.  Record up to (typically 32)
+ * allocation sources for this zone (for a particular chunk size).
+ */
+
+static void
+slab_record_source(SLZone *z, const char *file, int line)
+{
+    int i;
+    int b = line & (SLAB_DEBUG_ENTRIES - 1);
+
+    i = b;
+    do {
+	if (z->z_Sources[i].file == file && z->z_Sources[i].line == line)
+		return;
+	if (z->z_Sources[i].file == NULL)
+		break;
+	i = (i + 1) & (SLAB_DEBUG_ENTRIES - 1);
+    } while (i != b);
+    z->z_Sources[i].file = file;
+    z->z_Sources[i].line = line;
+}
+
+#endif
+
 /*
  * kmalloc()	(SLAB ALLOCATOR)
  *
@@ -449,8 +475,15 @@ zoneindex(unsigned long *bytes)
  *
  * MPSAFE
  */
+
+#ifdef SLAB_DEBUG
+void *
+kmalloc_debug(unsigned long size, struct malloc_type *type, int flags,
+	      const char *file, int line)
+#else
 void *
 kmalloc(unsigned long size, struct malloc_type *type, int flags)
+#endif
 {
     SLZone *z;
     SLChunk *chunk;
@@ -657,6 +690,9 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 		z->z_LChunks = chunk->c_Next;
 		if (z->z_LChunks == NULL)
 			z->z_LChunksp = &z->z_LChunks;
+#ifdef SLAB_DEBUG
+		slab_record_source(z, file, line);
+#endif
 		goto done;
 	}
 
@@ -681,6 +717,9 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    flags |= M_PASSIVE_ZERO;
 	}
 	chunk_mark_allocated(z, chunk);
+#ifdef SLAB_DEBUG
+	slab_record_source(z, file, line);
+#endif
 	goto done;
     }
 
@@ -743,6 +782,10 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	z->z_CpuGd = gd;
 	z->z_Cpu = gd->gd_cpuid;
 	z->z_LChunksp = &z->z_LChunks;
+#ifdef SLAB_DEBUG
+	bcopy(z->z_Sources, z->z_AltSources, sizeof(z->z_Sources));
+	bzero(z->z_Sources, sizeof(z->z_Sources));
+#endif
 	chunk = (SLChunk *)(z->z_BasePtr + z->z_UIndex * size);
 	z->z_Next = slgd->ZoneAry[zi];
 	slgd->ZoneAry[zi] = z;
@@ -753,6 +796,9 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	kup = btokup(z);
 	*kup = -(z->z_Cpu + 1);	/* -1 to -(N+1) */
 	chunk_mark_allocated(z, chunk);
+#ifdef SLAB_DEBUG
+	slab_record_source(z, file, line);
+#endif
 
 	/*
 	 * Slide the base index for initial allocations out of the next
@@ -796,8 +842,15 @@ fail:
  * not attempt to optimize it beyond reusing the same pointer if the
  * new size fits within the chunking of the old pointer's zone.
  */
+#ifdef SLAB_DEBUG
+void *
+krealloc_debug(void *ptr, unsigned long size,
+	       struct malloc_type *type, int flags,
+	       const char *file, int line)
+#else
 void *
 krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
+#endif
 {
     unsigned long osize;
     SLZone *z;
@@ -807,7 +860,7 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
     KKASSERT((flags & M_ZERO) == 0);	/* not supported */
 
     if (ptr == NULL || ptr == ZERO_LENGTH_PTR)
-	return(kmalloc(size, type, flags));
+	return(kmalloc_debug(size, type, flags, file, line));
     if (size == 0) {
 	kfree(ptr, type);
 	return(NULL);
@@ -822,7 +875,7 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 	osize = *kup << PAGE_SHIFT;
 	if (osize == round_page(size))
 	    return(ptr);
-	if ((nptr = kmalloc(size, type, flags)) == NULL)
+	if ((nptr = kmalloc_debug(size, type, flags, file, line)) == NULL)
 	    return(NULL);
 	bcopy(ptr, nptr, min(size, osize));
 	kfree(ptr, type);
@@ -854,7 +907,7 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 	if (z->z_ChunkSize == size)
 	    return(ptr);
     }
-    if ((nptr = kmalloc(size, type, flags)) == NULL)
+    if ((nptr = kmalloc_debug(size, type, flags, file, line)) == NULL)
 	return(NULL);
     bcopy(ptr, nptr, min(size, z->z_ChunkSize));
     kfree(ptr, type);
@@ -881,8 +934,14 @@ kmalloc_limit(struct malloc_type *type)
  *
  * (MP SAFE) (MAY BLOCK)
  */
+#ifdef SLAB_DEBUG
+char *
+kstrdup_debug(const char *str, struct malloc_type *type,
+	      const char *file, int line)
+#else
 char *
 kstrdup(const char *str, struct malloc_type *type)
+#endif
 {
     int zlen;	/* length inclusive of terminating NUL */
     char *nstr;
@@ -890,7 +949,7 @@ kstrdup(const char *str, struct malloc_type *type)
     if (str == NULL)
 	return(NULL);
     zlen = strlen(str) + 1;
-    nstr = kmalloc(zlen, type, M_WAITOK);
+    nstr = kmalloc_debug(zlen, type, M_WAITOK, file, line);
     bcopy(str, nstr, zlen);
     return(nstr);
 }

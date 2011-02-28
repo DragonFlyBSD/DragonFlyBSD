@@ -722,8 +722,10 @@ dsched_thread_io_alloc(struct disk *dp, struct dsched_thread_ctx *tdctx,
 	if (pol->new_tdio)
 		pol->new_tdio(tdio);
 
+	lockmgr(&tdio->diskctx->lock, LK_EXCLUSIVE);
 	TAILQ_INSERT_TAIL(&tdio->diskctx->tdio_list, tdio, dlink);
 	tdio->flags |= DSCHED_LINKED_DISK_CTX;
+	lockmgr(&tdio->diskctx->lock, LK_RELEASE);
 
 	if (tdctx) {
 		tdio->tdctx = tdctx;
@@ -777,12 +779,11 @@ dsched_thread_ctx_alloc(struct proc *p)
 	TAILQ_INIT(&tdctx->tdio_list);
 	tdctx->p = p;
 
-	/* XXX */
+	DSCHED_GLOBAL_THREAD_CTX_LOCK();
 	while ((dp = disk_enumerate(dp))) {
 		tdio = dsched_thread_io_alloc(dp, tdctx, dp->d_sched_policy);
 	}
 
-	DSCHED_GLOBAL_THREAD_CTX_LOCK();
 	TAILQ_INSERT_TAIL(&dsched_tdctx_list, tdctx, link);
 	DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
 
@@ -951,10 +952,14 @@ dsched_new_policy_thread_tdio(struct dsched_disk_ctx *diskctx,
 	struct dsched_thread_ctx *tdctx;
 	struct dsched_thread_io *tdio;
 
+	DSCHED_GLOBAL_THREAD_CTX_LOCK();
+
 	tdctx = dsched_get_thread_priv(curthread);
 	KKASSERT(tdctx != NULL);
-
 	tdio = dsched_thread_io_alloc(diskctx->dp, tdctx, pol);
+
+	DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
+
 	return tdio;
 }
 

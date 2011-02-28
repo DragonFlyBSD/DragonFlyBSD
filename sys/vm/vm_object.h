@@ -62,7 +62,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.14 2007/06/08 02:00:47 dillon Exp $
  */
 
 /*
@@ -87,9 +86,7 @@
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
 #ifndef _VM_VM_H_
 #include <vm/vm.h>
 #endif
@@ -98,6 +95,10 @@
 #endif
 
 #ifdef _KERNEL
+
+#ifndef _SYS_THREAD_H
+#include <sys/thread.h>
+#endif
 
 #ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
@@ -122,21 +123,6 @@ enum obj_type {
 	OBJT_MARKER	/* marker object */
 };
 typedef u_char objtype_t;
-
-/*
- * vm_object_lock	A lock covering byte ranges within a VM object
- *
- */
-struct vm_object_lock {
-	struct vm_object_lock *next;
-	int	type;			/* type of lock */
-	int	waiting;		/* someone is waiting on the lock */
-	off_t	base;			/* byte offset into object */
-	off_t	bytes;			/* extent in bytes */
-};
-
-#define VMOBJ_LOCK_SHARED	1
-#define VMOBJ_LOCK_EXCL		2
 
 /*
  * vm_object		A VM object which represents an arbitrarily sized
@@ -166,7 +152,8 @@ struct vm_object {
 	vm_ooffset_t backing_object_offset;/* Offset in backing object */
 	TAILQ_ENTRY(vm_object) pager_object_list; /* list of all objects of this pager type */
 	void *handle;
-	vm_object_lock_t range_locks;
+	struct lwkt_token tok;
+	
 	union {
 		/*
 		 * Device pager
@@ -309,6 +296,8 @@ void vm_object_init2 (void);
 vm_page_t vm_fault_object_page(vm_object_t, vm_ooffset_t, vm_prot_t, int, int *);
 void vm_object_dead_sleep(vm_object_t, const char *);
 void vm_object_dead_wakeup(vm_object_t);
+void vm_object_lock(vm_object_t);
+void vm_object_unlock(vm_object_t);
 
 #endif				/* _KERNEL */
 

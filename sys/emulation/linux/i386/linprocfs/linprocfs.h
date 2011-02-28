@@ -128,7 +128,7 @@ struct reg;
 struct fpreg;
 struct dbreg;
 
-#define PFIND(pid) ((pid) ? pfind(pid) : &proc0)
+#define PFIND(pid) ((pid) ? pfindn(pid) : &proc0) /* pfindn() not MPSAFE XXX */
 
 void linprocfs_init (void);
 void linprocfs_exit (struct thread *);

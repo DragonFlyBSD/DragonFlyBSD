@@ -189,9 +189,9 @@ platform/pc32/icu/icu.c			standard
 platform/pc32/icu/icu_abi.c		standard
 platform/pc32/icu/icu_ipl.s		standard
 platform/pc32/icu/icu_vector.s		standard
-platform/pc32/apic/apic_abi.c		optional	smp
+platform/pc32/apic/ioapic_abi.c		optional	smp
 platform/pc32/apic/mpapic.c		optional	smp
-platform/pc32/apic/apic_ipl.s		optional	smp
+platform/pc32/apic/ioapic_ipl.s		optional	smp
 platform/pc32/apic/apic_vector.s	optional	smp
 platform/pc32/i386/est.c		optional	cpu_enable_est
 # temporarily not in build until we get the 'apic' option working on UP

@@ -1139,7 +1139,7 @@ static struct cmd basic_cmds[] = {
 	DEF_CMD_ARG("pollcpu",			setifpollcpu)
 };
 
-static __constructor(100) void
+static __constructor(101) void
 ifconfig_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))

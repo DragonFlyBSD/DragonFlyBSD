@@ -104,7 +104,6 @@
 #include <sys/thread2.h>
 #include <sys/file2.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 static void fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd);
 static void fdreserve_locked (struct filedesc *fdp, int fd0, int incr);
@@ -269,7 +268,6 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 	if ((fp = holdfp(p->p_fd, fd, -1)) == NULL)
 		return (EBADF);
 
-	get_mplock();
 	switch (cmd) {
 	case F_GETFL:
 		dat->fc_flags = OFLAGS(fp->f_flag);
@@ -387,7 +385,6 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		error = EINVAL;
 		break;
 	}
-	rel_mplock();
 
 	fdrop(fp);
 	return (error);
@@ -644,34 +641,60 @@ retry:
  * If sigio is on the list associated with a process or process group,
  * disable signalling from the device, remove sigio from the list and
  * free sigio.
+ *
+ * MPSAFE
  */
 void
-funsetown(struct sigio *sigio)
+funsetown(struct sigio **sigiop)
 {
+	struct pgrp *pgrp;
+	struct proc *p;
+	struct sigio *sigio;
+
+	if ((sigio = *sigiop) != NULL) {
+		lwkt_gettoken(&proc_token);	/* protect sigio */
+		KKASSERT(sigiop == sigio->sio_myref);
+		sigio = *sigiop;
+		*sigiop = NULL;
+		lwkt_reltoken(&proc_token);
+	}
 	if (sigio == NULL)
 		return;
-	crit_enter();
-	*(sigio->sio_myref) = NULL;
-	crit_exit();
+
 	if (sigio->sio_pgid < 0) {
-		SLIST_REMOVE(&sigio->sio_pgrp->pg_sigiolst, sigio,
-			     sigio, sio_pgsigio);
+		pgrp = sigio->sio_pgrp;
+		sigio->sio_pgrp = NULL;
+		lwkt_gettoken(&pgrp->pg_token);
+		SLIST_REMOVE(&pgrp->pg_sigiolst, sigio, sigio, sio_pgsigio);
+		lwkt_reltoken(&pgrp->pg_token);
+		pgrel(pgrp);
 	} else /* if ((*sigiop)->sio_pgid > 0) */ {
-		SLIST_REMOVE(&sigio->sio_proc->p_sigiolst, sigio,
-			     sigio, sio_pgsigio);
+		p = sigio->sio_proc;
+		sigio->sio_proc = NULL;
+		PHOLD(p);
+		lwkt_gettoken(&p->p_token);
+		SLIST_REMOVE(&p->p_sigiolst, sigio, sigio, sio_pgsigio);
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
 	}
 	crfree(sigio->sio_ucred);
+	sigio->sio_ucred = NULL;
 	kfree(sigio, M_SIGIO);
 }
 
-/* Free a list of sigio structures. */
+/*
+ * Free a list of sigio structures.  Caller is responsible for ensuring
+ * that the list is MPSAFE.
+ *
+ * MPSAFE
+ */
 void
 funsetownlst(struct sigiolst *sigiolst)
 {
 	struct sigio *sigio;
 
 	while ((sigio = SLIST_FIRST(sigiolst)) != NULL)
-		funsetown(sigio);
+		funsetown(sigio->sio_myref);
 }
 
 /*
@@ -679,22 +702,28 @@ funsetownlst(struct sigiolst *sigiolst)
  *
  * After permission checking, add a sigio structure to the sigio list for
  * the process or process group.
+ *
+ * MPSAFE
  */
 int
 fsetown(pid_t pgid, struct sigio **sigiop)
 {
-	struct proc *proc;
-	struct pgrp *pgrp;
+	struct proc *proc = NULL;
+	struct pgrp *pgrp = NULL;
 	struct sigio *sigio;
+	int error;
 
 	if (pgid == 0) {
-		funsetown(*sigiop);
+		funsetown(sigiop);
 		return (0);
 	}
+
 	if (pgid > 0) {
 		proc = pfind(pgid);
-		if (proc == NULL)
-			return (ESRCH);
+		if (proc == NULL) {
+			error = ESRCH;
+			goto done;
+		}
 
 		/*
 		 * Policy - Don't allow a process to FSETOWN a process
@@ -704,14 +733,16 @@ fsetown(pid_t pgid, struct sigio **sigiop)
 		 * restrict FSETOWN to the current process or process
 		 * group for maximum safety.
 		 */
-		if (proc->p_session != curproc->p_session)
-			return (EPERM);
-
-		pgrp = NULL;
+		if (proc->p_session != curproc->p_session) {
+			error = EPERM;
+			goto done;
+		}
 	} else /* if (pgid < 0) */ {
 		pgrp = pgfind(-pgid);
-		if (pgrp == NULL)
-			return (ESRCH);
+		if (pgrp == NULL) {
+			error = ESRCH;
+			goto done;
+		}
 
 		/*
 		 * Policy - Don't allow a process to FSETOWN a process
@@ -721,38 +752,63 @@ fsetown(pid_t pgid, struct sigio **sigiop)
 		 * restrict FSETOWN to the current process or process
 		 * group for maximum safety.
 		 */
-		if (pgrp->pg_session != curproc->p_session)
-			return (EPERM);
-
-		proc = NULL;
+		if (pgrp->pg_session != curproc->p_session) {
+			error = EPERM;
+			goto done;
+		}
 	}
-	funsetown(*sigiop);
-	sigio = kmalloc(sizeof(struct sigio), M_SIGIO, M_WAITOK);
+	sigio = kmalloc(sizeof(struct sigio), M_SIGIO, M_WAITOK | M_ZERO);
 	if (pgid > 0) {
+		KKASSERT(pgrp == NULL);
+		lwkt_gettoken(&proc->p_token);
 		SLIST_INSERT_HEAD(&proc->p_sigiolst, sigio, sio_pgsigio);
 		sigio->sio_proc = proc;
+		lwkt_reltoken(&proc->p_token);
 	} else {
+		KKASSERT(proc == NULL);
+		lwkt_gettoken(&pgrp->pg_token);
 		SLIST_INSERT_HEAD(&pgrp->pg_sigiolst, sigio, sio_pgsigio);
 		sigio->sio_pgrp = pgrp;
+		lwkt_reltoken(&pgrp->pg_token);
+		pgrp = NULL;
 	}
 	sigio->sio_pgid = pgid;
 	sigio->sio_ucred = crhold(curthread->td_ucred);
 	/* It would be convenient if p_ruid was in ucred. */
 	sigio->sio_ruid = sigio->sio_ucred->cr_ruid;
 	sigio->sio_myref = sigiop;
-	crit_enter();
+
+	lwkt_gettoken(&proc_token);
+	while (*sigiop)
+		funsetown(sigiop);
 	*sigiop = sigio;
-	crit_exit();
-	return (0);
+	lwkt_reltoken(&proc_token);
+	error = 0;
+done:
+	if (pgrp)
+		pgrel(pgrp);
+	if (proc)
+		PRELE(proc);
+	return (error);
 }
 
 /*
  * This is common code for FIOGETOWN ioctl called by fcntl(fd, F_GETOWN, arg).
+ *
+ * MPSAFE
  */
 pid_t
-fgetown(struct sigio *sigio)
+fgetown(struct sigio **sigiop)
 {
-	return (sigio != NULL ? sigio->sio_pgid : 0);
+	struct sigio *sigio;
+	pid_t own;
+
+	lwkt_gettoken(&proc_token);
+	sigio = *sigiop;
+	own = (sigio != NULL ? sigio->sio_pgid : 0);
+	lwkt_reltoken(&proc_token);
+
+	return (own);
 }
 
 /*
@@ -898,9 +954,7 @@ sys_shutdown(struct shutdown_args *uap)
 {
 	int error;
 
-	get_mplock();
 	error = kern_shutdown(uap->s, uap->how);
-	rel_mplock();
 
 	return (error);
 }
@@ -974,9 +1028,7 @@ sys_fpathconf(struct fpathconf_args *uap)
 	case DTYPE_FIFO:
 	case DTYPE_VNODE:
 		vp = (struct vnode *)fp->f_data;
-		get_mplock();
 		error = VOP_PATHCONF(vp, uap->name, &uap->sysmsg_reg);
-		rel_mplock();
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -2317,7 +2369,6 @@ closef(struct file *fp, struct proc *p)
 	if (p != NULL && fp->f_type == DTYPE_VNODE &&
 	    (((struct vnode *)fp->f_data)->v_flag & VMAYHAVELOCKS)
 	) {
-		get_mplock();
 		if ((p->p_leader->p_flag & P_ADVLOCK) != 0) {
 			lf.l_whence = SEEK_SET;
 			lf.l_start = 0;
@@ -2329,6 +2380,7 @@ closef(struct file *fp, struct proc *p)
 		}
 		fdtol = p->p_fdtol;
 		if (fdtol != NULL) {
+			lwkt_gettoken(&p->p_token);
 			/*
 			 * Handle special case where file descriptor table
 			 * is shared between multiple process leaders.
@@ -2355,8 +2407,8 @@ closef(struct file *fp, struct proc *p)
 					wakeup(fdtol);
 				}
 			}
+			lwkt_reltoken(&p->p_token);
 		}
-		rel_mplock();
 	}
 	return (fdrop(fp));
 }
@@ -2398,7 +2450,6 @@ fdrop(struct file *fp)
 		return (0);
 
 	KKASSERT(SLIST_FIRST(&fp->f_klist) == NULL);
-	get_mplock();
 
 	/*
 	 * The last reference has gone away, we own the fp structure free
@@ -2421,7 +2472,6 @@ fdrop(struct file *fp)
 	else
 		error = 0;
 	ffree(fp);
-	rel_mplock();
 	return (error);
 }
 
@@ -2444,7 +2494,6 @@ sys_flock(struct flock_args *uap)
 
 	if ((fp = holdfp(p->p_fd, uap->fd, -1)) == NULL)
 		return (EBADF);
-	get_mplock();
 	if (fp->f_type != DTYPE_VNODE) {
 		error = EOPNOTSUPP;
 		goto done;
@@ -2473,7 +2522,6 @@ sys_flock(struct flock_args *uap)
 	else
 		error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, F_WAIT);
 done:
-	rel_mplock();
 	fdrop(fp);
 	return (error);
 }
@@ -2593,7 +2641,7 @@ filedesc_to_leader_alloc(struct filedesc_to_leader *old,
 	struct filedesc_to_leader *fdtol;
 	
 	fdtol = kmalloc(sizeof(struct filedesc_to_leader), 
-			M_FILEDESC_TO_LEADER, M_WAITOK);
+			M_FILEDESC_TO_LEADER, M_WAITOK | M_ZERO);
 	fdtol->fdl_refcount = 1;
 	fdtol->fdl_holdcount = 0;
 	fdtol->fdl_wakeup = 0;

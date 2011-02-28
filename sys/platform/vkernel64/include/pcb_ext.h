@@ -37,12 +37,8 @@
 /*
  * Extension to the 386 process control block
  */
-#ifndef _MACHINE_TSS_H_
 #include <machine/tss.h>
-#endif
-#ifndef _MACHINE_SEGMENTS_H_
 #include <machine/segments.h>
-#endif
 
 struct pcb_ext {
 	struct 	user_segment_descriptor ext_tssd;	/* tss descriptor */

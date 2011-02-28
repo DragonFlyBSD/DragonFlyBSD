@@ -66,6 +66,7 @@
 #include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/if_clone.h>
+#include <net/if_media.h>
 #include <net/route.h>
 #include <sys/devfs.h>
 
@@ -106,6 +107,7 @@ static int		tapifioctl	(struct ifnet *, u_long, caddr_t,
 static void		tapifinit	(void *);
 static void		tapifstop(struct tap_softc *, int);
 static void		tapifflags(struct tap_softc *);
+
 
 /* character device */
 static d_open_t		tapopen;
@@ -424,12 +426,12 @@ tapclose(struct dev_close_args *ap)
 		rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
 	}
 
-	funsetown(tp->tap_sigio);
+	funsetown(&tp->tap_sigio);
 	tp->tap_sigio = NULL;
 	KNOTE(&tp->tap_rkq.ki_note, 0);
 
 	tp->tap_flags &= ~TAP_OPEN;
-	funsetown(tp->tap_sigtd);
+	funsetown(&tp->tap_sigtd);
 	tp->tap_sigtd = NULL;
 
 	taprefcnt --;
@@ -550,14 +552,16 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct tap_softc 	*tp = (struct tap_softc *)(ifp->if_softc);
 	struct ifstat		*ifs = NULL;
-	int			 dummy;
+	struct ifmediareq	*ifmr = NULL;
+	int			error = 0;
+	int			dummy;
 
 	switch (cmd) {
 		case SIOCSIFADDR:
 		case SIOCGIFADDR:
 		case SIOCSIFMTU:
-			dummy = ether_ioctl(ifp, cmd, data);
-			return (dummy);
+			error = ether_ioctl(ifp, cmd, data);
+			break;
 
 		case SIOCSIFFLAGS:
 			tapifflags(tp);
@@ -565,6 +569,27 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 		case SIOCADDMULTI: /* XXX -- just like vmnet does */
 		case SIOCDELMULTI:
+			break;
+
+		case SIOCGIFMEDIA:
+			/*
+			 * The bridge code needs this when running the
+			 * spanning tree protocol.
+			 */
+			ifmr = (struct ifmediareq *)data;
+			dummy = ifmr->ifm_count;
+			ifmr->ifm_count = 1;
+			ifmr->ifm_status = IFM_AVALID;
+			ifmr->ifm_active = IFM_ETHER;
+			if (tp->tap_flags & TAP_OPEN)
+				ifmr->ifm_status |= IFM_ACTIVE;
+			ifmr->ifm_current = ifmr->ifm_active;
+			if (dummy >= 1) {
+				int media = IFM_ETHER;
+				error = copyout(&media,
+						ifmr->ifm_ulist,
+						sizeof(int));
+			}
 			break;
 
 		case SIOCGIFSTATUS:
@@ -586,10 +611,11 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			break;
 
 		default:
-			return (EINVAL);
+			error = EINVAL;
+			break;
 	}
 
-	return (0);
+	return (error);
 }
 
 
@@ -730,7 +756,7 @@ tapioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case FIOGETOWN:
-		*(int *)data = fgetown(tp->tap_sigio);
+		*(int *)data = fgetown(&tp->tap_sigio);
 		break;
 
 	/* this is deprecated, FIOSETOWN should be used instead */
@@ -740,7 +766,7 @@ tapioctl(struct dev_ioctl_args *ap)
 
 	/* this is deprecated, FIOGETOWN should be used instead */
 	case TIOCGPGRP:
-		*(int *)data = -fgetown(tp->tap_sigio);
+		*(int *)data = -fgetown(&tp->tap_sigio);
 		break;
 
 	/* VMware/VMnet port ioctl's */
@@ -969,7 +995,6 @@ tapkqfilter(struct dev_kqfilter_args *ap)
 		break;
 	default:
 		ap->a_result = EOPNOTSUPP;
-		rel_mplock();
 		return(0);
 	}
 

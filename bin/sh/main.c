@@ -35,8 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
- * $FreeBSD: src/bin/sh/main.c,v 1.29 2006/10/07 16:51:16 stefanf Exp $
- * $DragonFly: src/bin/sh/main.c,v 1.8 2007/01/13 23:36:14 pavalos Exp $
+ * $FreeBSD: src/bin/sh/main.c,v 1.44 2011/02/04 22:47:55 jilles Exp $
  */
 
 #include <stdio.h>
@@ -70,11 +69,10 @@
 
 int rootpid;
 int rootshell;
+struct jmploc main_handler;
 
-STATIC void read_profile(const char *);
-STATIC const char *find_dot_file(const char *);
-
-extern int oexitstatus;
+static void read_profile(const char *);
+static const char *find_dot_file(const char *);
 
 /*
  * Main routine.  We initialize things, parse the arguments, execute
@@ -87,27 +85,14 @@ extern int oexitstatus;
 int
 main(int argc, char *argv[])
 {
-	struct jmploc jmploc;
 	struct stackmark smark;
 	volatile int state;
 	char *shinit;
 
 	setlocale(LC_ALL, "");
 	state = 0;
-	if (setjmp(jmploc.loc)) {
-		/*
-		 * When a shell procedure is executed, we raise the
-		 * exception EXSHELLPROC to clean up before executing
-		 * the shell procedure.
-		 */
+	if (setjmp(main_handler.loc)) {
 		switch (exception) {
-		case EXSHELLPROC:
-			rootpid = getpid();
-			rootshell = 1;
-			minusc = NULL;
-			state = 3;
-			break;
-
 		case EXEXEC:
 			exitstatus = exerrno;
 			break;
@@ -120,15 +105,11 @@ main(int argc, char *argv[])
 			break;
 		}
 
-		if (exception != EXSHELLPROC) {
-		    if (state == 0 || iflag == 0 || ! rootshell)
-			    exitshell(exitstatus);
-		}
+		if (state == 0 || iflag == 0 || ! rootshell)
+			exitshell(exitstatus);
 		reset();
-		if (exception == EXINT) {
-			out2c('\n');
-			flushout(&errout);
-		}
+		if (exception == EXINT)
+			out2fmt_flush("\n");
 		popstackmark(&smark);
 		FORCEINTON;				/* enable interrupts */
 		if (state == 1)
@@ -140,7 +121,7 @@ main(int argc, char *argv[])
 		else
 			goto state4;
 	}
-	handler = &jmploc;
+	handler = &main_handler;
 #ifdef DEBUG
 	opentrace();
 	trputs("Shell args:  ");  trargs(argv);
@@ -150,10 +131,9 @@ main(int argc, char *argv[])
 	init();
 	setstackmark(&smark);
 	procargs(argc, argv);
-	if (getpwd() == NULL && iflag)
-		out2str("sh: cannot determine working directory\n");
-	if (getpwd() != NULL)
-		setvar ("PWD", getpwd(), VEXPORT);
+	pwd_init(iflag);
+	if (iflag)
+		chkmail(1);
 	if (argv[0] && argv[0][0] == '-') {
 		state = 1;
 		read_profile("/etc/profile");
@@ -175,7 +155,7 @@ state2:
 state3:
 	state = 4;
 	if (minusc) {
-		evalstring(minusc);
+		evalstring(minusc, sflag ? 0 : EV_EXIT);
 	}
 	if (sflag || minusc == NULL) {
 state4:	/* XXX ??? - why isn't this before the "if" statement */
@@ -220,7 +200,7 @@ cmdloop(int top)
 			if (!stoppedjobs()) {
 				if (!Iflag)
 					break;
-				out2str("\nUse \"exit\" to leave shell.\n");
+				out2fmt_flush("\nUse \"exit\" to leave shell.\n");
 			}
 			numeof++;
 		} else if (n != NULL && nflag == 0) {
@@ -230,8 +210,9 @@ cmdloop(int top)
 		}
 		popstackmark(&smark);
 		setstackmark(&smark);
-		if (evalskip == SKIPFILE) {
-			evalskip = 0;
+		if (evalskip != 0) {
+			if (evalskip == SKIPFILE)
+				evalskip = 0;
 			break;
 		}
 	}
@@ -244,7 +225,7 @@ cmdloop(int top)
  * Read /etc/profile or .profile.  Return on error.
  */
 
-STATIC void
+static void
 read_profile(const char *name)
 {
 	int fd;
@@ -266,7 +247,7 @@ read_profile(const char *name)
  */
 
 void
-readcmdfile(char *name)
+readcmdfile(const char *name)
 {
 	int fd;
 
@@ -288,7 +269,7 @@ readcmdfile(char *name)
  */
 
 
-STATIC const char *
+static const char *
 find_dot_file(const char *basename)
 {
 	static char localname[FILENAME_MAX+1];
@@ -312,18 +293,21 @@ find_dot_file(const char *basename)
 int
 dotcmd(int argc, char **argv)
 {
-	struct strlist *sp;
 	const char *fullname;
+	char *filename;
 
 	if (argc < 2)
 		error("missing filename");
 
 	exitstatus = 0;
 
-	for (sp = cmdenviron; sp ; sp = sp->next)
-		setvareq(savestr(sp->text), VSTRFIXED|VTEXTFIXED);
+	/*
+	 * Because we have historically not supported any options,
+	 * only treat "--" specially.
+	 */
+	filename = argc > 2 && strcmp(argv[1], "--") == 0 ? argv[2] : argv[1];
 
-	fullname = find_dot_file(argv[1]);
+	fullname = find_dot_file(filename);
 	setinputfile(fullname, 1);
 	commandname = fullname;
 	cmdloop(0);
@@ -338,10 +322,7 @@ exitcmd(int argc, char **argv)
 	if (stoppedjobs())
 		return 0;
 	if (argc > 1)
-		exitstatus = number(argv[1]);
+		exitshell(number(argv[1]));
 	else
-		exitstatus = oexitstatus;
-	exitshell(exitstatus);
-	/*NOTREACHED*/
-	return 0;
+		exitshell_savedstatus();
 }

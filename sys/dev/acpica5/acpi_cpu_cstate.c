@@ -1017,7 +1017,7 @@ acpi_cpu_quirks(void)
 	    if (val) {
 		ACPI_DEBUG_PRINT((ACPI_DB_INFO,
 		    "acpi_cpu: PIIX4: reset BRLD_EN_BM\n"));
-		AcpiReadBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 0);
+		AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 0);
 	    }
 	    break;
 	default:

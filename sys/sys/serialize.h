@@ -7,16 +7,12 @@
  * This API is designed to be used whenever low level serialization is
  * required.  Unlike tokens this serialization is not safe from deadlocks
  * nor is it recursive, and care must be taken when using it. 
- *
- * $DragonFly: src/sys/sys/serialize.h,v 1.9 2008/05/14 11:59:24 sephe Exp $
  */
 
 #ifndef _SYS_SERIALIZE_H_
 #define _SYS_SERIALIZE_H_
 
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
-#endif
 
 struct thread;
 

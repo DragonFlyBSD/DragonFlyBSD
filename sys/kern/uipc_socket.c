@@ -386,7 +386,7 @@ soclose(struct socket *so, int fflag)
 {
 	int error = 0;
 
-	funsetown(so->so_sigio);
+	funsetown(&so->so_sigio);
 	if (so->so_pcb == NULL)
 		goto discard;
 	if (so->so_state & SS_ISCONNECTED) {

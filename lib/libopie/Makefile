@@ -1,11 +1,11 @@
 # Makefile for libopie
 #
 # $FreeBSD: src/lib/libopie/Makefile,v 1.10.2.3 2002/07/15 14:17:08 des Exp $
-# $DragonFly: src/lib/libopie/Makefile,v 1.4 2006/01/18 02:33:35 dillon Exp $
 #
 OPIE_DIST?=	${.CURDIR}/../../contrib/opie
 DIST_DIR=	${OPIE_DIST}/${.CURDIR:T}
 SHLIB_MAJOR=    3
+WARNS?=		1
 
 KEYFILE?=	\"/etc/opiekeys\"
 

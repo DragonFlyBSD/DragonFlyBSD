@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/devd/token.l,v 1.7 2008/03/21 20:38:28 imp Exp $
- * $DragonFly: src/sbin/devd/token.l,v 1.1 2008/10/03 00:26:21 hasso Exp $
  */
 
 #include <ctype.h>
@@ -38,6 +37,7 @@
 #include "y.tab.h"
 
 int lineno = 1;
+#define YY_NO_INPUT
 #define YY_NO_UNPUT
 
 static void

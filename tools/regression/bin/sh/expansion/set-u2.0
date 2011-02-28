@@ -1,0 +1,12 @@
+# $FreeBSD: src/tools/regression/bin/sh/expansion/set-u2.0,v 1.1 2009/10/24 21:20:04 jilles Exp $
+
+set -u
+: $* $@ "$@" "$*"
+set -- x
+: $* $@ "$@" "$*"
+shift $#
+: $* $@ "$@" "$*"
+set -- y
+set --
+: $* $@ "$@" "$*"
+exit 0

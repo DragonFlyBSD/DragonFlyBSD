@@ -1,0 +1,3 @@
+# $FreeBSD: src/tools/regression/bin/sh/set-e/eval1.0,v 1.1 2009/05/31 17:23:27 stefanf Exp $
+set -e
+eval false || true

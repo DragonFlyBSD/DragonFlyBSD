@@ -1,0 +1,12 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/break2.0,v 1.1 2010/08/18 20:26:50 jilles Exp $
+
+# It is not immediately obvious that this should work, and someone probably
+# relies on it.
+
+while :; do
+	trap 'break' USR1
+	kill -USR1 $$
+	echo bad
+	exit 1
+done
+echo good

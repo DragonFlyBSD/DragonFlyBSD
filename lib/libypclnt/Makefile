@@ -11,7 +11,6 @@ CLEANFILES+= ${GENSRCS}
 INCS= ypclnt.h
 
 CFLAGS+= -I.
-WARNS?=	6
 
 GENSRCS=yp.h \
 	yp_clnt.c \

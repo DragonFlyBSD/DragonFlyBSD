@@ -71,7 +71,7 @@ static void dummy_schedulerclock(struct lwp *lp, sysclock_t period,
 static void dummy_recalculate_estcpu(struct lwp *lp);
 static void dummy_resetpriority(struct lwp *lp);
 static void dummy_forking(struct lwp *plp, struct lwp *lp);
-static void dummy_exiting(struct lwp *plp, struct lwp *lp);
+static void dummy_exiting(struct lwp *plp, struct proc *child);
 static void dummy_yield(struct lwp *lp);
 
 struct usched usched_dummy = {
@@ -437,7 +437,7 @@ dummy_forking(struct lwp *plp, struct lwp *lp)
  * MPSAFE
  */
 static void
-dummy_exiting(struct lwp *plp, struct lwp *lp)
+dummy_exiting(struct lwp *plp, struct proc *child)
 {
 }
 

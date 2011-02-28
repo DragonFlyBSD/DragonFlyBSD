@@ -1,0 +1,5 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/eval4.0,v 1.1 2010/08/01 22:39:07 jilles Exp $
+
+# eval should preserve $? from command substitutions when starting
+# the parsed command.
+[ $(eval 'echo $?' $(false)) = 1 ]

@@ -846,6 +846,12 @@ pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 		s->id = htobe64(pf_status.stateid++);
 		s->creatorid = pf_status.hostid;
 	}
+
+	/*
+	 * Calculate hash code for altq
+	 */
+	s->hash = crc32(s->key[PF_SK_WIRE], sizeof(*sks));
+
 	if (RB_INSERT(pf_state_tree_id, &tree_id, s) != NULL) {
 		if (pf_status.debug >= PF_DEBUG_MISC) {
 			kprintf("pf: state insert failed: "
@@ -2669,12 +2675,18 @@ pf_get_translation(struct pf_pdesc *pd, struct mbuf *m, int off, int direction,
 		naddr = &(*nkp)->addr[1];
 		nport = &(*nkp)->port[1];
 
+		/*
+		 * NOTE: Currently all translations will clear
+		 *	 BRIDGE_MBUF_TAGGED, telling the bridge to
+		 *	 ignore the original input encapsulation.
+		 */
 		switch (r->action) {
 		case PF_NONAT:
 		case PF_NOBINAT:
 		case PF_NORDR:
 			return (NULL);
 		case PF_NAT:
+			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 			if (pf_get_sport(pd->af, pd->proto, r, saddr,
 			    daddr, dport, naddr, nport, r->rpool.proxy_port[0],
 			    r->rpool.proxy_port[1], sn)) {
@@ -2687,6 +2699,7 @@ pf_get_translation(struct pf_pdesc *pd, struct mbuf *m, int off, int direction,
 			}
 			break;
 		case PF_BINAT:
+			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 			switch (direction) {
 			case PF_OUT:
 				if (r->rpool.cur->addr.type == PF_ADDR_DYNIFTL){
@@ -2763,6 +2776,7 @@ pf_get_translation(struct pf_pdesc *pd, struct mbuf *m, int off, int direction,
 			}
 			break;
 		case PF_RDR: {
+			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 			if (pf_map_addr(pd->af, r, saddr, naddr, NULL, sn))
 				return (NULL);
 			if ((r->rpool.opts & PF_POOL_TYPEMASK) ==
@@ -4441,10 +4455,18 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 		struct pf_state_key *nk = (*state)->key[pd->didx];
 
 		if (PF_ANEQ(pd->src, &nk->addr[pd->sidx], pd->af) ||
-		    nk->port[pd->sidx] != th->th_sport) 
+		    nk->port[pd->sidx] != th->th_sport)  {
+			/*
+			 * The translated source address may be completely
+			 * unrelated to the saved link header, make sure
+			 * a bridge doesn't try to use it.
+			 */
+			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
+			m->m_flags &= ~M_HASH;
 			pf_change_ap(pd->src, &th->th_sport, pd->ip_sum,
 			    &th->th_sum, &nk->addr[pd->sidx],
 			    nk->port[pd->sidx], 0, pd->af);
+		}
 
 		if (PF_ANEQ(pd->dst, &nk->addr[pd->didx], pd->af) ||
 		    nk->port[pd->didx] != th->th_dport) {
@@ -4518,10 +4540,18 @@ pf_test_state_udp(struct pf_state **state, int direction, struct pfi_kif *kif,
 		struct pf_state_key *nk = (*state)->key[pd->didx];
 
 		if (PF_ANEQ(pd->src, &nk->addr[pd->sidx], pd->af) ||
-		    nk->port[pd->sidx] != uh->uh_sport)
+		    nk->port[pd->sidx] != uh->uh_sport) {
+			/*
+			 * The translated source address may be completely
+			 * unrelated to the saved link header, make sure
+			 * a bridge doesn't try to use it.
+			 */
+			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
+			m->m_flags &= ~M_HASH;
 			pf_change_ap(pd->src, &uh->uh_sport, pd->ip_sum,
 			    &uh->uh_sum, &nk->addr[pd->sidx],
 			    nk->port[pd->sidx], 1, pd->af);
+		}
 
 		if (PF_ANEQ(pd->dst, &nk->addr[pd->didx], pd->af) ||
 		    nk->port[pd->didx] != uh->uh_dport) {

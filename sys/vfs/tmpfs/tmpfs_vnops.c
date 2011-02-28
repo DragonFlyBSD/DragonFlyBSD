@@ -49,8 +49,6 @@
 #include <sys/vfsops.h>
 #include <sys/vnode.h>
 
-#include <sys/mplock2.h>
-
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
@@ -550,8 +548,6 @@ tmpfs_write (struct vop_write_args *ap)
 	 */
 	extended = ((uio->uio_offset + uio->uio_resid) > node->tn_size);
 
-	get_mplock();
-
 	while (uio->uio_resid > 0) {
 		/*
 		 * Use buffer cache I/O (via tmpfs_strategy)
@@ -631,8 +627,6 @@ tmpfs_write (struct vop_write_args *ap)
 			break;
 		}
 	}
-
-	rel_mplock();
 
 	if (error) {
 		if (extended) {
@@ -1565,19 +1559,22 @@ filt_tmpfsread(struct knote *kn, long hint)
 		kn->kn_flags |= (EV_EOF | EV_ONESHOT);
 		return(1);
 	}
-	off = node->tn_size - kn->kn_fp->f_offset;
-	kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
-	if (kn->kn_sfflags & NOTE_OLDAPI)
-		return(1);
 
 	/*
-	 * Handle possible MP race interlock on filter check/write
+	 * Interlock against MP races when performing this function.
 	 */
-	if (kn->kn_data == 0) {
-		get_mplock();
-		kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
-		rel_mplock();
+	lwkt_gettoken(&vp->v_mount->mnt_token);
+	off = node->tn_size - kn->kn_fp->f_offset;
+	kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
+	if (kn->kn_sfflags & NOTE_OLDAPI) {
+		lwkt_reltoken(&vp->v_mount->mnt_token);
+		return(1);
 	}
+
+	if (kn->kn_data == 0) {
+		kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
+	}
+	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return (kn->kn_data != 0);
 }
 

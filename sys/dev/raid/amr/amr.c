@@ -134,10 +134,12 @@ static void	amr_setup_data(void *arg, bus_dma_segment_t *segs, int nsegments, in
 static void	amr_setup_ccb(void *arg, bus_dma_segment_t *segs, int nsegments, int error);
 static void	amr_abort_load(struct amr_command *ac);
 
+#if 0
 /*
  * Status monitoring
  */
 static void	amr_periodic(void *data);
+#endif
 
 /*
  * Interface-specific shims
@@ -353,10 +355,12 @@ amr_startup(void *arg)
     /* interrupts will be enabled before we do anything more */
     sc->amr_state |= AMR_STATE_INTEN;
 
+#if 0
     /*
      * Start the timeout routine.
      */
-/*    sc->amr_timeout = timeout(amr_periodic, sc, hz);*/
+    sc->amr_timeout = timeout(amr_periodic, sc, hz);
+#endif
 
     return;
 }
@@ -959,6 +963,7 @@ out:
     return(error);
 }
 
+#if 0
 /********************************************************************************
  ********************************************************************************
                                                                 Status Monitoring
@@ -983,6 +988,7 @@ amr_periodic(void *data)
     /* reschedule */
     callout_reset(&sc->amr_timeout, hz, amr_periodic, sc);
 }
+#endif
 
 /********************************************************************************
  ********************************************************************************

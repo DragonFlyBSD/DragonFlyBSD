@@ -1,0 +1,12 @@
+# $FreeBSD: src/tools/regression/bin/sh/execution/func2.0,v 1.2 2010/08/16 17:18:08 jilles Exp $
+# The empty pairs of braces here are to test that this does not cause a crash.
+
+f() { }
+f
+hash -v f >/dev/null
+f() { { }; }
+f
+hash -v f >/dev/null
+f() { { } }
+f
+hash -v f >/dev/null

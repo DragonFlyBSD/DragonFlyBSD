@@ -1,0 +1,12 @@
+# $FreeBSD: src/tools/regression/bin/sh/execution/hash1.0,v 1.1 2011/02/05 14:01:46 jilles Exp $
+
+T=`mktemp -d "${TMPDIR:-/tmp}/sh-test.XXXXXXXX"` || exit
+trap 'rm -rf "${T}"' 0
+PATH=$T:$PATH
+ls -ld . >/dev/null
+cat <<EOF >"$T/ls"
+:
+EOF
+chmod 755 "$T/ls"
+PATH=$PATH
+ls -ld .

@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libncp/ncpl_queue.c,v 1.2 1999/10/31 03:39:03 bp Exp $
- * $DragonFly: src/lib/libncp/ncpl_queue.c,v 1.3 2007/11/25 01:28:23 swildner Exp $
  *
  * NetWare queue interface
  *
@@ -217,7 +216,7 @@ ncp_get_queue_job_info(NWCONN_HANDLE connid, u_int32_t queue_id,
                 return error;
 
         if (conn->rpsize < sizeof(struct nw_queue_job_entry)) {
-                ncp_printf("ncp_reply_size %d < %d\n", conn->rpsize,sizeof(struct nw_queue_job_entry));
+                ncp_printf("ncp_reply_size %d < %zu\n", conn->rpsize,sizeof(struct nw_queue_job_entry));
                 return EINVAL;
         }    
 	memcpy(jobdata,ncp_reply_data(conn,0), sizeof(struct nw_queue_job_entry));

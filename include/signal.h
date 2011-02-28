@@ -40,9 +40,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/_posix.h>
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
-#endif
 #include <sys/signal.h>
 #include <sys/time.h>
 

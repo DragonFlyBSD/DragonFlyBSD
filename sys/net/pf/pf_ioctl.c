@@ -3271,7 +3271,7 @@ pf_load(void)
 static int
 pf_mask_del(struct radix_node *rn, void *arg)
 {
-	struct radix_node_head *rnh = rnh;
+	struct radix_node_head *rnh = arg;
 
 	rnh->rnh_deladdr(rn->rn_key, rn->rn_mask, rnh);
 	Free(rn);
@@ -3317,6 +3317,7 @@ pf_unload(void)
 		pf_maskhead->rnh_walktree(pf_maskhead,
 			pf_mask_del, pf_maskhead);
 		Free(pf_maskhead);
+		pf_maskhead = NULL;
 	}
 	return 0;
 }

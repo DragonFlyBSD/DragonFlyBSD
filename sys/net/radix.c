@@ -71,8 +71,8 @@ static struct radix_node
 static struct radix_mask *rn_mkfreelist;
 static struct radix_node_head *mask_rnheads[MAXCPU];
 
-static int max_keylen;
-static char *rn_zeros, *rn_ones;
+static char rn_zeros[RN_MAXKEYLEN];
+static char rn_ones[RN_MAXKEYLEN] = RN_MAXKEYONES;
 
 static int rn_lexobetter(char *m, char *n);
 static struct radix_mask *
@@ -440,13 +440,13 @@ rn_addmask(char *netmask, boolean_t search, int skip,
 	static int last_zeroed = 0;
 	char *addmask_key;
 
-	if ((mlen = clen(netmask)) > max_keylen)
-		mlen = max_keylen;
+	if ((mlen = clen(netmask)) > RN_MAXKEYLEN)
+		mlen = RN_MAXKEYLEN;
 	if (skip == 0)
 		skip = 1;
 	if (mlen <= skip)
 		return (mask_rnh->rnh_nodes);
-	R_Malloc(addmask_key, char *, max_keylen);
+	R_Malloc(addmask_key, char *, RN_MAXKEYLEN);
 	if (addmask_key == NULL)
 		return NULL;
 	if (skip > 1)
@@ -469,14 +469,19 @@ rn_addmask(char *netmask, boolean_t search, int skip,
 		bzero(addmask_key + m0, last_zeroed - m0);
 	*addmask_key = last_zeroed = mlen;
 	x = rn_search(addmask_key, mask_rnh->rnh_treetop);
-	if (bcmp(addmask_key, x->rn_key, mlen) != 0)
+	if (x->rn_key == NULL) {
+		kprintf("WARNING: radix_node->rn_key is NULL rn=%p\n", x);
+		print_backtrace(-1);
 		x = NULL;
+	} else if (bcmp(addmask_key, x->rn_key, mlen) != 0) {
+		x = NULL;
+	}
 	if (x != NULL || search)
 		goto out;
-	R_Malloc(x, struct radix_node *, max_keylen + 2 * (sizeof *x));
+	R_Malloc(x, struct radix_node *, RN_MAXKEYLEN + 2 * (sizeof *x));
 	if ((saved_x = x) == NULL)
 		goto out;
-	bzero(x, max_keylen + 2 * (sizeof *x));
+	bzero(x, RN_MAXKEYLEN + 2 * (sizeof *x));
 	netmask = cp = (char *)(x + 2);
 	bcopy(addmask_key, cp, mlen);
 	x = rn_insert(cp, mask_rnh, &maskduplicated, x);
@@ -1060,29 +1065,17 @@ rn_inithead(void **head, struct radix_node_head *maskhead, int off)
 void
 rn_init(void)
 {
-	char *cp, *cplim;
 	int cpu;
 #ifdef _KERNEL
 	struct domain *dom;
 
-	SLIST_FOREACH(dom, &domains, dom_next)
-		if (dom->dom_maxrtkey > max_keylen)
-			max_keylen = dom->dom_maxrtkey;
-#endif
-	if (max_keylen == 0) {
-		log(LOG_ERR,
-		    "rn_init: radix functions require max_keylen be set\n");
-		return;
+	SLIST_FOREACH(dom, &domains, dom_next) {
+		if (dom->dom_maxrtkey > RN_MAXKEYLEN) {
+			panic("domain %s maxkey too big %d/%d\n",
+			      dom->dom_name, dom->dom_maxrtkey, RN_MAXKEYLEN);
+		}
 	}
-	R_Malloc(rn_zeros, char *, 2 * max_keylen);
-	if (rn_zeros == NULL)
-		panic("rn_init");
-	bzero(rn_zeros, 2 * max_keylen);
-	rn_ones = cp = rn_zeros + max_keylen;
-	cplim = rn_ones + max_keylen;
-	while (cp < cplim)
-		*cp++ = -1;
-
+#endif
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		if (rn_inithead((void **)&mask_rnheads[cpu], NULL, 0) == 0)
 			panic("rn_init 2");

@@ -135,12 +135,14 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
-	int error = sysctl_handle_int(oidp, 0, ctob((int)Maxmem), req);
+	u_long pmem = ctob(physmem);
+
+	int error = sysctl_handle_long(oidp, &pmem, 0, req);
 	return (error);
 }
 
-SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_INT|CTLFLAG_RD,
-	0, 0, sysctl_hw_physmem, "IU", "");
+SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_ULONG|CTLFLAG_RD,
+	0, 0, sysctl_hw_physmem, "LU", "Total system memory in bytes (number of pages * page size)");
 
 static int
 sysctl_hw_usermem(SYSCTL_HANDLER_ARGS)

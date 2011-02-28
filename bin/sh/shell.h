@@ -34,9 +34,13 @@
  * SUCH DAMAGE.
  *
  *	@(#)shell.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/shell.h,v 1.17 2004/04/06 20:06:51 markm Exp $
- * $DragonFly: src/bin/sh/shell.h,v 1.3 2007/01/04 14:06:21 pavalos Exp $
+ * $FreeBSD: src/bin/sh/shell.h,v 1.21 2010/10/13 22:18:03 obrien Exp $
  */
+
+#ifndef SHELL_H_
+#define SHELL_H_
+
+#include <inttypes.h>
 
 /*
  * The follow should be set to reflect the type of system you have:
@@ -44,7 +48,7 @@
  *	define DEBUG=1 to compile in debugging (set global "debug" to turn on)
  *	define DEBUG=2 to compile in and turn on debugging.
  *
- * When debugging is on, debugging info will be written to $HOME/trace and
+ * When debugging is on, debugging info will be written to ./trace and
  * a quit signal will generate a core dump.
  */
 
@@ -55,13 +59,14 @@
 /*
  * Type of used arithmetics. SUSv3 requires us to have at least signed long.
  */
-typedef long arith_t;
-#define	ARITH_FORMAT_STR  "%ld"
-#define	atoarith_t(arg)  strtol(arg, NULL, 0)
-#define	strtoarith_t(nptr, endptr, base)  strtol(nptr, endptr, base)
+typedef intmax_t arith_t;
+#define	ARITH_FORMAT_STR  "%" PRIdMAX
+#define	atoarith_t(arg)  strtoimax(arg, NULL, 0)
+#define	strtoarith_t(nptr, endptr, base)  strtoimax(nptr, endptr, base)
+#define	ARITH_MIN INTMAX_MIN
+#define	ARITH_MAX INTMAX_MAX
 
 typedef void *pointer;
-#define STATIC  static
 #define MKINIT  /* empty */
 
 #include <sys/cdefs.h>
@@ -73,3 +78,5 @@ extern char nullstr[1];		/* null string */
 #else
 #define TRACE(param)
 #endif
+
+#endif /* !SHELL_H_ */

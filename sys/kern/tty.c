@@ -256,7 +256,7 @@ ttyclose(struct tty *tp)
 {
 	crit_enter();
 	lwkt_gettoken(&tty_token);
-	funsetown(tp->t_sigio);
+	funsetown(&tp->t_sigio);
 	if (constty == tp)
 		constty = NULL;
 
@@ -288,9 +288,16 @@ void
 ttyclearsession(struct tty *tp)
 {
 	struct session *sp;
+	struct pgrp *opgrp;
 
 	lwkt_gettoken(&tty_token);
+	opgrp = tp->t_pgrp;
 	tp->t_pgrp = NULL;
+	if (opgrp) {
+		pgrel(opgrp);
+		opgrp = NULL;
+	}
+
 	if ((sp = tp->t_session) != NULL) {
 		tp->t_session = NULL;
 #ifdef TTY_DO_FULL_CLOSE
@@ -845,6 +852,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
+	struct pgrp *opgrp;
 	struct tty *otp;
 	int error;
 
@@ -945,7 +953,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 			lwkt_reltoken(&tty_token);
 			return (ENOTTY);
 		}
-		*(int *)data = fgetown(tp->t_sigio);
+		*(int *)data = fgetown(&tp->t_sigio);
 		break;
 
 	case TIOCEXCL:			/* set exclusive use of tty */
@@ -1206,12 +1214,18 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		}
 		ttyhold(tp);
 		tp->t_session = p->p_session;
+		opgrp = tp->t_pgrp;
+		pgref(p->p_pgrp);
 		tp->t_pgrp = p->p_pgrp;
 		otp = p->p_session->s_ttyp;
 		p->p_session->s_ttyp = tp;
+		p->p_flag |= P_CONTROLT;
 		if (otp)
 			ttyunhold(otp);
-		p->p_flag |= P_CONTROLT;
+		if (opgrp) {
+			pgrel(opgrp);
+			opgrp = NULL;
+		}
 		break;
 	case TIOCSPGRP: {		/* set pgrp of tty */
 		pid_t pgid = *(int *)data;
@@ -1228,12 +1242,18 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		} else {
 			struct pgrp *pgrp = pgfind(pgid);
 			if (pgrp == NULL || pgrp->pg_session != p->p_session) {
+				if (pgrp)
+					pgrel(pgrp);
 				lwkt_reltoken(&proc_token);
 				lwkt_reltoken(&tty_token);
 				return (EPERM);
 			}
-
+			opgrp = tp->t_pgrp;
 			tp->t_pgrp = pgrp;
+			if (opgrp) {
+				pgrel(opgrp);
+				opgrp = NULL;
+			}
 		}
 		break;
 	}
@@ -2553,7 +2573,7 @@ ttyinfo(struct tty *tp)
 		ttyprintf(tp, "not a controlling terminal\n");
 	} else if (tp->t_pgrp == NULL) {
 		ttyprintf(tp, "no foreground process group\n");
-	} else if ((p = LIST_FIRST(&tp->t_pgrp->pg_members)) == 0) {
+	} else if ((p = LIST_FIRST(&tp->t_pgrp->pg_members)) == NULL) {
 		ttyprintf(tp, "empty foreground process group\n");
 	} else {
 		/*
@@ -2572,7 +2592,7 @@ ttyinfo(struct tty *tp)
 
 		/* XXX lwp should compare lwps */
 
-		for (pick = NULL; p != 0; p = LIST_NEXT(p, p_pglist)) {
+		for (pick = NULL; p != NULL; p = LIST_NEXT(p, p_pglist)) {
 			if (proc_compare(pick, p))
 				pick = p;
 		}

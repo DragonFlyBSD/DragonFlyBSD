@@ -62,7 +62,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.28 2008/05/09 07:24:48 dillon Exp $
  */
 
 /*
@@ -88,9 +87,7 @@
 #ifndef _VM_PMAP_H_
 #include <vm/pmap.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
 
 #ifdef _KERNEL
 
@@ -184,6 +181,10 @@ struct vm_page {
 	u_char	dirty;			/* map of dirty DEV_BSIZE chunks */
 
 	int	ku_pagecnt;		/* kmalloc helper */
+#ifdef VM_PAGE_DEBUG
+	const char *busy_func;
+	int	busy_line;
+#endif
 };
 
 #ifndef __VM_PAGE_T_DEFINED__
@@ -395,6 +396,23 @@ vm_page_flag_clear(vm_page_t m, unsigned int bits)
 	atomic_clear_int(&(m)->flags, bits);
 }
 
+#ifdef VM_PAGE_DEBUG
+
+static __inline void
+_vm_page_busy(vm_page_t m, const char *func, int lineno)
+{
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
+	KASSERT((m->flags & PG_BUSY) == 0,
+		("vm_page_busy: page already busy!!!"));
+	vm_page_flag_set(m, PG_BUSY);
+	m->busy_func = func;
+	m->busy_line = lineno;
+}
+
+#define vm_page_busy(m)	_vm_page_busy(m, __func__, __LINE__)
+
+#else
+
 static __inline void
 vm_page_busy(vm_page_t m)
 {
@@ -403,6 +421,8 @@ vm_page_busy(vm_page_t m)
 		("vm_page_busy: page already busy!!!"));
 	vm_page_flag_set(m, PG_BUSY);
 }
+
+#endif
 
 /*
  *	vm_page_flash:
@@ -514,6 +534,8 @@ void vm_page_event_internal(vm_page_t, vm_page_event_t);
 void vm_page_dirty(vm_page_t m);
 void vm_page_register_action(vm_page_action_t action, vm_page_event_t event);
 void vm_page_unregister_action(vm_page_action_t action);
+void vm_page_lock(vm_page_t m);
+void vm_page_unlock(vm_page_t m);
 
 /*
  * Reduce the protection of a page.  This routine never raises the 

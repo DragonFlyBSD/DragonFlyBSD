@@ -120,6 +120,8 @@
 #include <machine/sigframe.h>
 
 #include <sys/machintr.h>
+#include <machine_base/icu/icu_abi.h>
+#include <machine_base/apic/ioapic_abi.h>
 
 #define PHYSMAP_ENTRIES		10
 
@@ -159,19 +161,21 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 	CTLFLAG_RD, &tlb_flush_count, 0, "");
 #endif
 
-int physmem = 0;
+long physmem = 0;
 
 u_long ebda_addr = 0;
 
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
-	int error = sysctl_handle_int(oidp, 0, ctob(physmem), req);
+	u_long pmem = ctob(physmem);
+
+	int error = sysctl_handle_long(oidp, &pmem, 0, req);
 	return (error);
 }
 
-SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_INT|CTLFLAG_RD,
-	0, 0, sysctl_hw_physmem, "IU", "");
+SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_ULONG|CTLFLAG_RD,
+	0, 0, sysctl_hw_physmem, "LU", "Total system memory in bytes (number of pages * page size)");
 
 static int
 sysctl_hw_usermem(SYSCTL_HANDLER_ARGS)
@@ -365,6 +369,8 @@ again:
 	 */
 	mp_start();			/* fire up the APs and APICs */
 	mp_announce();
+#else
+	MachIntrABI.finalize();
 #endif  /* SMP */
 	cpu_setregs();
 }
@@ -1879,7 +1885,6 @@ TUNABLE_INT("hw.apic_io_enable", &apic_io_enable);
 extern struct machintr_abi MachIntrABI_APIC;
 #endif
 
-extern struct machintr_abi MachIntrABI_ICU;
 struct machintr_abi MachIntrABI;
 
 /*
@@ -2068,6 +2073,17 @@ init386(int first)
 	isa_defaultirq();
 #endif
 	rand_initialize();
+
+	/*
+	 * Initialize IRQ mapping
+	 *
+	 * NOTE:
+	 * SHOULD be after elcr_probe()
+	 */
+	MachIntrABI_ICU.initmap();
+#ifdef SMP
+	MachIntrABI_IOAPIC.initmap();
+#endif
 
 #ifdef DDB
 	kdb_init();

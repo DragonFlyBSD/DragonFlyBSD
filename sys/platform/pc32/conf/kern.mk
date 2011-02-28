@@ -14,6 +14,6 @@
 #
 CFLAGS+=	-mpreferred-stack-boundary=2
 CFLAGS+=	-fno-stack-protector
-CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3
+CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3 -msoft-float
 
 INLINE_LIMIT=	8000

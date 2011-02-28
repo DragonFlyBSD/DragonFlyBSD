@@ -1,5 +1,4 @@
 # $FreeBSD: src/lib/libnetgraph/Makefile,v 1.4.2.2 2001/04/25 10:04:35 ru Exp $
-# $DragonFly: src/lib/libnetgraph/Makefile,v 1.5 2008/10/28 16:54:09 swildner Exp $
 # $Whistle: Makefile,v 1.4 1999/01/17 03:41:02 julian Exp $
 
 LIB=		netgraph
@@ -9,8 +8,6 @@ SHLIB_MAJOR=	2
 
 SRCS=		sock.c msg.c debug.c
 INCS=		netgraph.h
-
-WARNS?=		6
 
 MLINKS+=	netgraph.3 NgMkSockNode.3
 MLINKS+=	netgraph.3 NgNameNode.3

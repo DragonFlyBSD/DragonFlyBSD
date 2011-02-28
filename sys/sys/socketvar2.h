@@ -32,7 +32,6 @@
  *
  * @(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar2.h,v 1.1 2007/11/07 18:24:04 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR2_H_
@@ -47,9 +46,7 @@
 #ifndef _SYS_MALLOC_H_
 #include <sys/malloc.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
 
 /*
  * Acquire a lock on a signalsockbuf, sleep if the lock is already held.

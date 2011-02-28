@@ -142,14 +142,14 @@ IDTVEC(icu_intr##irq_num) ; 						\
 	je	2f ;							\
 1: ;									\
 	/* set pending bit and return, leave interrupt masked */	\
-	movl	$0,%edx ;						\
-	orq	$IRQ_LBIT(irq_num),PCPU_E8(ipending,%edx) ;		\
+	movq	$0,%rdx ;						\
+	orq	$IRQ_LBIT(irq_num),PCPU_E8(ipending,%rdx) ;		\
 	orl	$RQF_INTPEND, PCPU(reqflags) ;				\
 	jmp	5f ;							\
 2: ;									\
 	/* clear pending bit, run handler */				\
-	movl	$0,%edx ;						\
-	andq	$~IRQ_LBIT(irq_num),PCPU_E8(ipending,%edx) ;		\
+	movq	$0,%rdx ;						\
+	andq	$~IRQ_LBIT(irq_num),PCPU_E8(ipending,%rdx) ;		\
 	pushq	$irq_num ;						\
 	movq	%rsp,%rdi ;		/* rdi = call argument */	\
 	incl	TD_CRITCOUNT(%rbx) ;					\

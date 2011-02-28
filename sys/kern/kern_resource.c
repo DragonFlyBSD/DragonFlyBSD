@@ -63,7 +63,6 @@
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 static int donice (struct proc *chgp, int n);
 static int doionice (struct proc *chgp, int n);
@@ -100,33 +99,40 @@ sys_getpriority(struct getpriority_args *uap)
 	int low = PRIO_MAX + 1;
 	int error;
 
-	get_mplock();
-
 	switch (uap->which) {
 	case PRIO_PROCESS:
-		if (uap->who == 0)
+		if (uap->who == 0) {
 			p = curp;
-		else
+			PHOLD(p);
+		} else {
 			p = pfind(uap->who);
-		if (p == 0)
-			break;
-		if (!PRISON_CHECK(curp->p_ucred, p->p_ucred))
-			break;
-		low = p->p_nice;
+		}
+		if (p) {
+			if (PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
+				low = p->p_nice;
+			}
+			PRELE(p);
+		}
 		break;
 
 	case PRIO_PGRP: 
 	{
 		struct pgrp *pg;
 
-		if (uap->who == 0)
+		if (uap->who == 0) {
 			pg = curp->p_pgrp;
-		else if ((pg = pgfind(uap->who)) == NULL)
+			pgref(pg);
+		} else if ((pg = pgfind(uap->who)) == NULL) {
 			break;
+		} /* else ref held from pgfind */
+
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
-			if ((PRISON_CHECK(curp->p_ucred, p->p_ucred) && p->p_nice < low))
+			if (PRISON_CHECK(curp->p_ucred, p->p_ucred) &&
+			    p->p_nice < low) {
 				low = p->p_nice;
+			}
 		}
+		pgrel(pg);
 		break;
 	}
 	case PRIO_USER:
@@ -149,7 +155,6 @@ sys_getpriority(struct getpriority_args *uap)
 	uap->sysmsg_result = low;
 	error = 0;
 done:
-	rel_mplock();
 	return (error);
 }
 
@@ -191,36 +196,43 @@ sys_setpriority(struct setpriority_args *uap)
 	struct proc *p;
 	int found = 0, error = 0;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
-		if (uap->who == 0)
+		if (uap->who == 0) {
 			p = curp;
-		else
+			PHOLD(p);
+		} else {
 			p = pfind(uap->who);
-		if (p == 0)
-			break;
-		if (!PRISON_CHECK(curp->p_ucred, p->p_ucred))
-			break;
-		error = donice(p, uap->prio);
-		found++;
+		}
+		if (p) {
+			if (PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
+				error = donice(p, uap->prio);
+				found++;
+			}
+			PRELE(p);
+		}
 		break;
 
 	case PRIO_PGRP: 
 	{
 		struct pgrp *pg;
 
-		if (uap->who == 0)
+		if (uap->who == 0) {
 			pg = curp->p_pgrp;
-		else if ((pg = pgfind(uap->who)) == NULL)
+			pgref(pg);
+		} else if ((pg = pgfind(uap->who)) == NULL) {
 			break;
+		} /* else ref held from pgfind */
+
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
 			if (PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
 				error = donice(p, uap->prio);
 				found++;
 			}
 		}
+		pgrel(pg);
 		break;
 	}
 	case PRIO_USER:
@@ -241,7 +253,8 @@ sys_setpriority(struct setpriority_args *uap)
 		break;
 	}
 
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
+
 	if (found == 0)
 		error = ESRCH;
 	return (error);
@@ -307,33 +320,40 @@ sys_ioprio_get(struct ioprio_get_args *uap)
 	int high = IOPRIO_MIN-2;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
-		if (uap->who == 0)
+		if (uap->who == 0) {
 			p = curp;
-		else
+			PHOLD(p);
+		} else {
 			p = pfind(uap->who);
-		if (p == 0)
-			break;
-		if (!PRISON_CHECK(curp->p_ucred, p->p_ucred))
-			break;
-		high = p->p_ionice;
+		}
+		if (p) {
+			if (PRISON_CHECK(curp->p_ucred, p->p_ucred))
+				high = p->p_ionice;
+			PRELE(p);
+		}
 		break;
 
 	case PRIO_PGRP:
 	{
 		struct pgrp *pg;
 
-		if (uap->who == 0)
+		if (uap->who == 0) {
 			pg = curp->p_pgrp;
-		else if ((pg = pgfind(uap->who)) == NULL)
+			pgref(pg);
+		} else if ((pg = pgfind(uap->who)) == NULL) {
 			break;
+		} /* else ref held from pgfind */
+
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
-			if ((PRISON_CHECK(curp->p_ucred, p->p_ucred) && p->p_nice > high))
+			if (PRISON_CHECK(curp->p_ucred, p->p_ucred) &&
+			    p->p_nice > high)
 				high = p->p_ionice;
 		}
+		pgrel(pg);
 		break;
 	}
 	case PRIO_USER:
@@ -356,7 +376,8 @@ sys_ioprio_get(struct ioprio_get_args *uap)
 	uap->sysmsg_result = high;
 	error = 0;
 done:
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
+
 	return (error);
 }
 
@@ -399,36 +420,43 @@ sys_ioprio_set(struct ioprio_set_args *uap)
 	struct proc *p;
 	int found = 0, error = 0;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
-		if (uap->who == 0)
+		if (uap->who == 0) {
 			p = curp;
-		else
+			PHOLD(p);
+		} else {
 			p = pfind(uap->who);
-		if (p == 0)
-			break;
-		if (!PRISON_CHECK(curp->p_ucred, p->p_ucred))
-			break;
-		error = doionice(p, uap->prio);
-		found++;
+		}
+		if (p) {
+			if (PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
+				error = doionice(p, uap->prio);
+				found++;
+			}
+			PRELE(p);
+		}
 		break;
 
 	case PRIO_PGRP:
 	{
 		struct pgrp *pg;
 
-		if (uap->who == 0)
+		if (uap->who == 0) {
 			pg = curp->p_pgrp;
-		else if ((pg = pgfind(uap->who)) == NULL)
+			pgref(pg);
+		} else if ((pg = pgfind(uap->who)) == NULL) {
 			break;
+		} /* else ref held from pgfind */
+
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
 			if (PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
 				error = doionice(p, uap->prio);
 				found++;
 			}
 		}
+		pgrel(pg);
 		break;
 	}
 	case PRIO_USER:
@@ -449,7 +477,8 @@ sys_ioprio_set(struct ioprio_set_args *uap)
 		break;
 	}
 
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
+
 	if (found == 0)
 		error = ESRCH;
 	return (error);
@@ -500,7 +529,7 @@ doionice(struct proc *chgp, int n)
 int
 sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 {
-	struct proc *p = curproc;
+	struct proc *p;
 	struct lwp *lp;
 	struct rtprio rtp;
 	struct ucred *cr = curthread->td_ucred;
@@ -512,9 +541,11 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 	if (uap->pid < 0)
 		return EINVAL;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
+
 	if (uap->pid == 0) {
-		/* curproc already loaded on p */
+		p = curproc;
+		PHOLD(p);
 	} else {
 		p = pfind(uap->pid);
 	}
@@ -599,7 +630,10 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 	}
 
 done:
-	rel_mplock();
+	if (p)
+		PRELE(p);
+	lwkt_reltoken(&proc_token);
+
 	return (error);
 }
 
@@ -611,7 +645,6 @@ done:
 int
 sys_rtprio(struct rtprio_args *uap)
 {
-	struct proc *curp = curproc;
 	struct proc *p;
 	struct lwp *lp;
 	struct ucred *cr = curthread->td_ucred;
@@ -622,11 +655,14 @@ sys_rtprio(struct rtprio_args *uap)
 	if (error)
 		return (error);
 
-	get_mplock();
-	if (uap->pid == 0)
-		p = curp;
-	else
+	lwkt_gettoken(&proc_token);
+
+	if (uap->pid == 0) {
+		p = curproc;
+		PHOLD(p);
+	} else {
 		p = pfind(uap->pid);
+	}
 
 	if (p == NULL) {
 		error = ESRCH;
@@ -691,7 +727,10 @@ sys_rtprio(struct rtprio_args *uap)
 		break;
 	}
 done:
-	rel_mplock();
+	if (p)
+		PRELE(p);
+	lwkt_reltoken(&proc_token);
+
 	return (error);
 }
 
@@ -805,7 +844,7 @@ sys_getrusage(struct getrusage_args *uap)
 	struct rusage *rup;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 
 	switch (uap->who) {
 	case RUSAGE_SELF:
@@ -823,7 +862,7 @@ sys_getrusage(struct getrusage_args *uap)
 	}
 	if (error == 0)
 		error = copyout(rup, uap->rusage, sizeof(struct rusage));
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 

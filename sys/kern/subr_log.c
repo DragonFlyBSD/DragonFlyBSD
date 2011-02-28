@@ -115,7 +115,7 @@ logclose(struct dev_close_args *ap)
 	log_open = 0;
 	callout_stop(&logsoftc.sc_callout);
 	logsoftc.sc_state = 0;
-	funsetown(logsoftc.sc_sigio);
+	funsetown(&logsoftc.sc_sigio);
 	return (0);
 }
 
@@ -257,7 +257,7 @@ logioctl(struct dev_ioctl_args *ap)
 		return (fsetown(*(int *)ap->a_data, &logsoftc.sc_sigio));
 
 	case FIOGETOWN:
-		*(int *)ap->a_data = fgetown(logsoftc.sc_sigio);
+		*(int *)ap->a_data = fgetown(&logsoftc.sc_sigio);
 		break;
 
 	/* This is deprecated, FIOSETOWN should be used instead. */
@@ -266,7 +266,7 @@ logioctl(struct dev_ioctl_args *ap)
 
 	/* This is deprecated, FIOGETOWN should be used instead */
 	case TIOCGPGRP:
-		*(int *)ap->a_data = -fgetown(logsoftc.sc_sigio);
+		*(int *)ap->a_data = -fgetown(&logsoftc.sc_sigio);
 		break;
 
 	default:

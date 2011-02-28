@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)mail.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mail.c,v 1.9.2.2 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/mail.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $FreeBSD: src/bin/sh/mail.c,v 1.16 2010/10/13 04:01:01 obrien Exp $
  */
 
 /*
@@ -44,6 +43,7 @@
 
 #include "shell.h"
 #include "exec.h"	/* defines padvance() */
+#include "mail.h"
 #include "var.h"
 #include "output.h"
 #include "memalloc.h"
@@ -52,13 +52,12 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 
-#include "mail.h"
 
 #define MAXMBOXES 10
 
 
-STATIC int nmboxes;			/* number of mailboxes */
-STATIC time_t mailtime[MAXMBOXES];	/* times of mailboxes */
+static int nmboxes;			/* number of mailboxes */
+static time_t mailtime[MAXMBOXES];	/* times of mailboxes */
 
 
 

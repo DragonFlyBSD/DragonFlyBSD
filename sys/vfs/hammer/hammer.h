@@ -437,7 +437,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_DELETED	0x0080	/* inode delete (backend) */
 #define HAMMER_INODE_DELONDISK	0x0100	/* delete synchronized to disk */
 #define HAMMER_INODE_RO		0x0200	/* read-only (because of as-of) */
-#define HAMMER_INODE_UNUSED0400	0x0400
+#define HAMMER_INODE_RECSW	0x0400	/* waiting on data record flush */
 #define HAMMER_INODE_DONDISK	0x0800	/* data records may be on disk */
 #define HAMMER_INODE_BUFS	0x1000	/* dirty high level bps present */
 #define HAMMER_INODE_REFLUSH	0x2000	/* flush on dependancy / reflush */

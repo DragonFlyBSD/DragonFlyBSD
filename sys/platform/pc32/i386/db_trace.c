@@ -292,7 +292,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 			struct proc *p;
 			struct pcb *pcb;
 
-			p = pfind(pid);
+			p = pfindn(pid);
 			if (p == NULL) {
 				db_printf("pid %d not found\n", pid);
 				return;

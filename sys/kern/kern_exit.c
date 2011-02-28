@@ -62,7 +62,6 @@
 #include <sys/filedesc.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
-#include <sys/aio.h>
 #include <sys/jail.h>
 #include <sys/kern_syscall.h>
 #include <sys/upcall.h>
@@ -79,6 +78,7 @@
 #include <vm/vm_extern.h>
 #include <sys/user.h>
 
+#include <sys/refcount.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
 #include <sys/mplock2.h>
@@ -89,6 +89,8 @@ static void killlwps(struct lwp *lp);
 
 static MALLOC_DEFINE(M_ATEXIT, "atexit", "atexit callback");
 static MALLOC_DEFINE(M_ZOMBIE, "zombie", "zombie proc status");
+
+static struct lwkt_token deadlwp_token = LWKT_TOKEN_INITIALIZER(deadlwp_token);
 
 /*
  * callout list for things to do at exit time
@@ -112,8 +114,6 @@ struct lwplist deadlwp_list[MAXCPU];
  *	Death of process.
  *
  * SYS_EXIT_ARGS(int rval)
- *
- * MPALMOSTSAFE
  */
 int
 sys_exit(struct exit_args *uap)
@@ -131,6 +131,7 @@ sys_exit(struct exit_args *uap)
 int
 sys_extexit(struct extexit_args *uap)
 {
+	struct proc *p = curproc;
 	int action, who;
 	int error;
 
@@ -158,7 +159,7 @@ sys_extexit(struct extexit_args *uap)
 		return (EINVAL);
 	}
 
-	get_mplock();
+	lwkt_gettoken(&p->p_token);
 
 	switch (who) {
 	case EXTEXIT_LWP:
@@ -168,20 +169,21 @@ sys_extexit(struct extexit_args *uap)
 		 * later, otherwise the proc will be an UNDEAD and not even a
 		 * SZOMB!
 		 */
-		if (curproc->p_nthreads > 1) {
-			lwp_exit(0);
+		if (p->p_nthreads > 1) {
+			lwp_exit(0);	/* called w/ p_token held */
 			/* NOT REACHED */
 		}
 		/* else last lwp in proc:  do the real thing */
 		/* FALLTHROUGH */
 	default:	/* to help gcc */
 	case EXTEXIT_PROC:
+		lwkt_reltoken(&p->p_token);
 		exit1(W_EXITCODE(uap->status, 0));
 		/* NOTREACHED */
 	}
 
 	/* NOTREACHED */
-	rel_mplock(); /* safety */
+	lwkt_reltoken(&p->p_token);	/* safety */
 }
 
 /*
@@ -276,14 +278,13 @@ exit1(int rv)
 	struct exitlist *ep;
 	int error;
 
+	lwkt_gettoken(&p->p_token);
+
 	if (p->p_pid == 1) {
 		kprintf("init died (signal %d, exit %d)\n",
 		    WTERMSIG(rv), WEXITSTATUS(rv));
 		panic("Going nowhere without my init!");
 	}
-
-	get_mplock();
-
 	varsymset_clean(&p->p_varsymset);
 	lockuninit(&p->p_varsymset.vx_lock);
 	/*
@@ -298,7 +299,6 @@ exit1(int rv)
 	}
 
 	caps_exit(lp->lwp_thread);
-	aio_proc_rundown(p);
 
 	/* are we a task leader? */
 	if (p == p->p_leader) {
@@ -482,23 +482,33 @@ exit1(int rv)
 	 */
 	proc_move_allproc_zombie(p);
 
+	/*
+	 * Reparent all of this process's children to the init process.
+	 * We must hold initproc->p_token in order to mess with
+	 * initproc->p_children.  We already hold p->p_token (to remove
+	 * the children from our list).
+	 */
 	q = LIST_FIRST(&p->p_children);
-	if (q)		/* only need this if any child is S_ZOMB */
-		wakeup((caddr_t) initproc);
-	for (; q != 0; q = nq) {
-		nq = LIST_NEXT(q, p_sibling);
-		LIST_REMOVE(q, p_sibling);
-		LIST_INSERT_HEAD(&initproc->p_children, q, p_sibling);
-		q->p_pptr = initproc;
-		q->p_sigparent = SIGCHLD;
-		/*
-		 * Traced processes are killed
-		 * since their existence means someone is screwing up.
-		 */
-		if (q->p_flag & P_TRACED) {
-			q->p_flag &= ~P_TRACED;
-			ksignal(q, SIGKILL);
+	if (q) {
+		lwkt_gettoken(&initproc->p_token);
+		while (q) {
+			nq = LIST_NEXT(q, p_sibling);
+			LIST_REMOVE(q, p_sibling);
+			LIST_INSERT_HEAD(&initproc->p_children, q, p_sibling);
+			q->p_pptr = initproc;
+			q->p_sigparent = SIGCHLD;
+			/*
+			 * Traced processes are killed
+			 * since their existence means someone is screwing up.
+			 */
+			if (q->p_flag & P_TRACED) {
+				q->p_flag &= ~P_TRACED;
+				ksignal(q, SIGKILL);
+			}
+			q = nq;
 		}
+		lwkt_reltoken(&initproc->p_token);
+		wakeup(initproc);
 	}
 
 	/*
@@ -520,29 +530,32 @@ exit1(int rv)
 	 */
 	if (p->p_pptr->p_sigacts->ps_flag & PS_NOCLDWAIT) {
 		struct proc *pp = p->p_pptr;
+
+		PHOLD(pp);
 		proc_reparent(p, initproc);
+
 		/*
 		 * If this was the last child of our parent, notify
 		 * parent, so in case he was wait(2)ing, he will
-		 * continue.
+		 * continue.  This function interlocks with pptr->p_token.
 		 */
 		if (LIST_EMPTY(&pp->p_children))
 			wakeup((caddr_t)pp);
+		PRELE(pp);
 	}
 
 	/* lwkt_gettoken(&proc_token); */
 	q = p->p_pptr;
+	PHOLD(q);
 	if (p->p_sigparent && q != initproc) {
-		PHOLD(q);
 	        ksignal(q, p->p_sigparent);
-		PRELE(q);
 	} else {
 	        ksignal(q, SIGCHLD);
 	}
+	wakeup(p->p_pptr);
+	PRELE(q);
 	/* lwkt_reltoken(&proc_token); */
 	/* NOTE: p->p_pptr can get ripped out */
-
-	wakeup(p->p_pptr);
 	/*
 	 * cpu_exit is responsible for clearing curproc, since
 	 * it is heavily integrated with the thread/switching sequence.
@@ -566,6 +579,8 @@ exit1(int rv)
 
 /*
  * Eventually called by every exiting LWP
+ *
+ * p->p_token must be held.  mplock may be held and will be released.
  */
 void
 lwp_exit(int masterexit)
@@ -578,6 +593,7 @@ lwp_exit(int masterexit)
 	 * lwp_exit() may be called without setting LWP_WEXIT, so
 	 * make sure it is set here.
 	 */
+	ASSERT_LWKT_TOKEN_HELD(&p->p_token);
 	lp->lwp_flag |= LWP_WEXIT;
 
 	/*
@@ -637,14 +653,22 @@ lwp_exit(int masterexit)
 		--p->p_nthreads;
 		if (p->p_nthreads <= 1)
 			wakeup(&p->p_nthreads);
+		lwkt_gettoken(&deadlwp_token);
 		LIST_INSERT_HEAD(&deadlwp_list[mycpuid], lp, u.lwp_reap_entry);
 		taskqueue_enqueue(taskqueue_thread[mycpuid],
 				  deadlwp_task[mycpuid]);
+		lwkt_reltoken(&deadlwp_token);
 	} else {
 		--p->p_nthreads;
 		if (p->p_nthreads <= 1)
 			wakeup(&p->p_nthreads);
 	}
+
+	/*
+	 * Release p_token.  The mp_token may also be held and we depend on
+	 * the lwkt_switch() code to clean it up.
+	 */
+	lwkt_reltoken(&p->p_token);
 	cpu_lwp_exit();
 }
 
@@ -752,17 +776,20 @@ kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 	struct lwp *lp;
 	struct proc *q = td->td_proc;
 	struct proc *p, *t;
+	struct pargs *pa;
+	struct sigacts *ps;
 	int nfound, error;
 
 	if (pid == 0)
 		pid = -q->p_pgid;
 	if (options &~ (WUNTRACED|WNOHANG|WCONTINUED|WLINUXCLONE))
 		return (EINVAL);
-	get_mplock();
+
+	lwkt_gettoken(&q->p_token);
 loop:
 	/*
-	 * Hack for backwards compatibility with badly written user code.  
-	 * Or perhaps we have to do this anyway, it is unclear. XXX
+	 * All sorts of things can change due to blocking so we have to loop
+	 * all the way back up here.
 	 *
 	 * The problem is that if a process group is stopped and the parent
 	 * is doing a wait*(..., WUNTRACED, ...), it will see the STOP
@@ -773,19 +800,22 @@ loop:
 	 *
 	 * Previously the CONT would overwrite the STOP because the tstop
 	 * was handled within tsleep(), and the parent would only see
-	 * the CONT when both are stopped and continued together.  This litte
+	 * the CONT when both are stopped and continued together.  This little
 	 * two-line hack restores this effect.
 	 */
 	while (q->p_stat == SSTOP)
             tstop();
 
 	nfound = 0;
+
 	LIST_FOREACH(p, &q->p_children, p_sibling) {
 		if (pid != WAIT_ANY &&
-		    p->p_pid != pid && p->p_pgid != -pid)
+		    p->p_pid != pid && p->p_pgid != -pid) {
 			continue;
+		}
 
-		/* This special case handles a kthread spawned by linux_clone 
+		/*
+		 * This special case handles a kthread spawned by linux_clone
 		 * (see linux_misc.c).  The linux_wait4 and linux_waitpid 
 		 * functions need to be able to distinguish between waiting
 		 * on a process and waiting on a thread.  It is a thread if
@@ -805,6 +835,7 @@ loop:
 			 * the master thread, otherwise we may race reaping
 			 * non-master threads.
 			 */
+			lwkt_gettoken(&p->p_token);
 			while (p->p_nthreads > 0) {
 				tsleep(&p->p_nthreads, 0, "lwpzomb", hz);
 			}
@@ -823,6 +854,7 @@ loop:
 				reaplwp(lp);
 			}
 			KKASSERT(p->p_nthreads == 0);
+			lwkt_reltoken(&p->p_token);
 
 			/*
 			 * Don't do anything really bad until all references
@@ -838,14 +870,10 @@ loop:
 			while (p->p_lock)
 				tsleep(p, 0, "reap3", hz);
 
-			/* scheduling hook for heuristic */
-			/* XXX no lwp available, we need a different heuristic */
-			/*
-			p->p_usched->heuristic_exiting(td->td_lwp, deadlp);
-			*/
-
 			/* Take care of our return values. */
 			*res = p->p_pid;
+			p->p_usched->heuristic_exiting(td->td_lwp, p);
+
 			if (status)
 				*status = p->p_xstat;
 			if (rusage)
@@ -854,12 +882,13 @@ loop:
 			 * If we got the child via a ptrace 'attach',
 			 * we need to give it back to the old parent.
 			 */
-			if (p->p_oppid && (t = pfind(p->p_oppid))) {
+			if (p->p_oppid && (t = pfind(p->p_oppid)) != NULL) {
 				p->p_oppid = 0;
 				proc_reparent(p, t);
 				ksignal(t, SIGCHLD);
 				wakeup((caddr_t)t);
 				error = 0;
+				PRELE(t);
 				goto done;
 			}
 
@@ -890,12 +919,18 @@ loop:
 			/*
 			 * Remove unused arguments
 			 */
-			if (p->p_args && --p->p_args->ar_ref == 0)
-				FREE(p->p_args, M_PARGS);
+			pa = p->p_args;
+			p->p_args = NULL;
+			if (pa && refcount_release(&pa->ar_ref)) {
+				kfree(pa, M_PARGS);
+				pa = NULL;
+			}
 
-			if (--p->p_sigacts->ps_refcnt == 0) {
-				kfree(p->p_sigacts, M_SUBPROC);
-				p->p_sigacts = NULL;
+			ps = p->p_sigacts;
+			p->p_sigacts = NULL;
+			if (ps && refcount_release(&ps->ps_refcnt)) {
+				kfree(ps, M_SUBPROC);
+				ps = NULL;
 			}
 
 			vm_waitproc(p);
@@ -909,6 +944,7 @@ loop:
 			p->p_flag |= P_WAITED;
 
 			*res = p->p_pid;
+			p->p_usched->heuristic_exiting(td->td_lwp, p);
 			if (status)
 				*status = W_STOPCODE(p->p_xstat);
 			/* Zero rusage so we get something consistent. */
@@ -919,6 +955,7 @@ loop:
 		}
 		if (options & WCONTINUED && (p->p_flag & P_CONTINUED)) {
 			*res = p->p_pid;
+			p->p_usched->heuristic_exiting(td->td_lwp, p);
 			p->p_flag &= ~P_CONTINUED;
 
 			if (status)
@@ -936,28 +973,47 @@ loop:
 		error = 0;
 		goto done;
 	}
-	error = tsleep((caddr_t)q, PCATCH, "wait", 0);
+
+	/*
+	 * Wait for signal - interlocked using q->p_token.
+	 */
+	error = tsleep(q, PCATCH, "wait", 0);
 	if (error) {
 done:
-		rel_mplock();
+		lwkt_reltoken(&q->p_token);
 		return (error);
 	}
 	goto loop;
 }
 
 /*
- * make process 'parent' the new parent of process 'child'.
+ * Make process 'parent' the new parent of process 'child'.
+ *
+ * p_children/p_sibling requires the parent's token, and
+ * changing pptr requires the child's token, so we have to
+ * get three tokens to do this operation.
  */
 void
 proc_reparent(struct proc *child, struct proc *parent)
 {
+	struct proc *opp = child->p_pptr;
 
-	if (child->p_pptr == parent)
+	if (opp == parent)
 		return;
-
+	PHOLD(opp);
+	PHOLD(parent);
+	lwkt_gettoken(&opp->p_token);
+	lwkt_gettoken(&child->p_token);
+	lwkt_gettoken(&parent->p_token);
+	KKASSERT(child->p_pptr == opp);
 	LIST_REMOVE(child, p_sibling);
 	LIST_INSERT_HEAD(&parent->p_children, child, p_sibling);
 	child->p_pptr = parent;
+	lwkt_reltoken(&parent->p_token);
+	lwkt_reltoken(&child->p_token);
+	lwkt_reltoken(&opp->p_token);
+	PRELE(parent);
+	PRELE(opp);
 }
 
 /*
@@ -1017,12 +1073,12 @@ reaplwps(void *context, int dummy)
 	struct lwplist *lwplist = context;
 	struct lwp *lp;
 
-	get_mplock();
+	lwkt_gettoken(&deadlwp_token);
 	while ((lp = LIST_FIRST(lwplist))) {
 		LIST_REMOVE(lp, u.lwp_reap_entry);
 		reaplwp(lp);
 	}
-	rel_mplock();
+	lwkt_reltoken(&deadlwp_token);
 }
 
 static void

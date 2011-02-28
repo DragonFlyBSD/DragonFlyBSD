@@ -10,7 +10,7 @@ __<bsd.init.mk>__:
 .if exists(${.CURDIR}/../Makefile.inc)
 .include "${.CURDIR}/../Makefile.inc"
 .endif
-.if ${CCVER} != ${_CCVER}
+.if ${CCVER} != ${_CCVER} || defined(FORCE_CPUTYPE)
 .include <bsd.cpu.mk>
 .endif
 .include <bsd.own.mk>

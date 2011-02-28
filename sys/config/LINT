@@ -249,9 +249,8 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 # which indicates that the 15-16MB range is *definitely* not being
 # occupied by an ISA memory hole.
 #
-# NOTE 1: The options, CPU_BTB_EN, CPU_LOOP_EN, CPU_IORT,
-# CPU_LOOP_EN and CPU_RSTK_EN should not be used because of CPU bugs.
-# These options may crash your system.
+# NOTE 1: The CPU_BTB_EN, CPU_IORT, CPU_LOOP_EN and CPU_RSTK_EN options
+# should not be used because of CPU bugs. They may crash your system.
 #
 # NOTE 2: If CYRIX_CACHE_REALLY_WORKS is not set, CPU cache is enabled
 # in write-through mode when revision < 2.7.  If revision of Cyrix
@@ -824,11 +823,6 @@ options		MSDOSFS_DEBUG		# Enable MSDOSFS Debugging
 # be dangerous (and even mounting read only could result in panics.)
 #
 options 	EXT2FS
-
-# Use real implementations of the aio_* system calls.  There are numerous
-# stability and security issues in the current aio code that make it
-# unsuitable for inclusion on machines with untrusted local users.
-options 	VFS_AIO
 
 # Optional character code conversion support with LIBICONV.
 # Each option requires their base file system and LIBICONV.
@@ -1579,7 +1573,6 @@ device		"snd_uaudio"
 # ctx: Cortex-I frame grabber
 # apm: Laptop Advanced Power Management (experimental)
 # spigot: The Creative Labs Video Spigot video-acquisition board
-# meteor: Matrox Meteor video capture board
 # bktr: Brooktree bt848/848a/849a/878/879 video capture and TV Tuner board
 # cy: Cyclades serial driver
 # dgb: Digiboard PC/Xi and PC/Xe series driver (ALPHA QUALITY!)
@@ -1868,17 +1861,6 @@ options 	AHD_REG_PRETTY_PRINT
 # Dell Precision desktop machines and the integrated 3c905-TX chips
 # in Dell Latitude laptop docking stations.
 #
-# The `meteor' device is a PCI video capture board. It can also have the
-# following options:
-#   options METEOR_ALLOC_PAGES=xxx	preallocate kernel pages for data entry
-#	figure (ROWS*COLUMN*BYTES_PER_PIXEL*FRAME+PAGE_SIZE-1)/PAGE_SIZE
-#   options METEOR_DEALLOC_PAGES	remove all allocated pages on close(2)
-#   options METEOR_DEALLOC_ABOVE=xxx	remove all allocated pages above the
-#	specified amount. If this value is below the allocated amount no action
-#	taken
-#   options METEOR_SYSTEM_DEFAULT={METEOR_PAL|METEOR_NTSC|METEOR_SECAM}, used
-#	for initialization of fps routine when a signal is not present.
-#
 # The 'bktr' device is a PCI video capture device using the Brooktree
 # bt848/bt848a/bt849a/bt878/bt879 chipset. When used with a TV Tuner it forms a
 # TV card, eg Miro PC/TV, Hauppauge WinCast/TV WinTV, VideoLogic Captivator,
@@ -2016,9 +1998,6 @@ device		ti		# Alteon (``Tigon I'', ``Tigon II'')
 device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet
 device		msk		# Marvell/SysKonnect Yukon II Gigabit Ethernet
 device		jme		# JMicron Gigabit/Fast Ethernet
-
-device		meteor
-
 
 # Brooktree driver has been ported to the new I2C framework. Thus,
 # you'll need to have the following 3 lines in the kernel config.
@@ -2835,7 +2814,6 @@ options 	LOCKF_DEBUG
 options 	LOUTB
 #options	MAXFILES=xxx
 options		MBUF_DEBUG
-options 	METEOR_TEST_VIDEO
 options 	NETATALKDEBUG
 options 	PANIC_DEBUG
 options 	PMAP_DEBUG

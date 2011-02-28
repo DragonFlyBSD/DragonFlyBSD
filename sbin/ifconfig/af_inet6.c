@@ -523,7 +523,7 @@ in6_Lopt_cb(const char *optarg __unused)
 }
 static struct option in6_Lopt = { "L", "[-L]", in6_Lopt_cb };
 
-static __constructor(100) void
+static __constructor(101) void
 inet6_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))

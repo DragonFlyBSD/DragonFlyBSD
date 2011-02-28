@@ -40,12 +40,8 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
-#ifndef _MACHINE_CPUFUNC_H_
 #include <machine/cpufunc.h>
-#endif
 
 /*
  * The general mutex structure provides recursive shared and exclusive

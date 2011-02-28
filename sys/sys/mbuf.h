@@ -54,6 +54,9 @@
 #ifndef _NET_NETISR_H_
 #include <net/netisr.h>
 #endif
+#ifndef _NET_ETHERNET_H_
+#include <net/ethernet.h>
+#endif
 
 /*
  * Mbufs are of a single size, MSIZE (machine/param.h), which
@@ -117,6 +120,13 @@ struct pkthdr_pf {
 #define	PF_TAG_DIVERTED_PACKET		0x10
 #define	PF_TAG_REROUTE			0x20
 
+/*
+ * Valid if BRIDGE_MBUF_TAGGED is set in fw_flags, records
+ * the original ether header (if compatible).  The bridge
+ */
+struct pkthdr_br {
+	struct ether_header ether;
+};
 
 /*
  * Packet tag structure (see below for details).
@@ -153,6 +163,7 @@ struct pkthdr {
 
 	/* variables for PF processing */
 	struct pkthdr_pf pf;		/* structure for PF */
+	struct pkthdr_br br;		/* structure for bridging */
 
 	uint16_t ether_vlantag;		/* ethernet 802.1p+q vlan tag */
 	uint16_t hash;			/* packet hash */
@@ -278,7 +289,7 @@ struct mbuf {
 #define	XX_MBUF_UNUSED20	0x00000020
 #define IPFORWARD_MBUF_TAGGED	0x00000040
 #define DUMMYNET_MBUF_TAGGED	0x00000080
-#define XX_MBUF_UNUSED100	0x00000100
+#define BRIDGE_MBUF_TAGGED	0x00000100
 #define FW_MBUF_REDISPATCH	0x00000200
 #define	IPFW_MBUF_GENERATED	FW_MBUF_GENERATED
 /*

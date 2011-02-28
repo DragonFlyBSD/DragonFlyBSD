@@ -87,6 +87,8 @@ X_db_symbol_values(db_symtab_t *symtab, c_db_sym_t dbsym, const char **namep,
 	c_linker_sym_t sym = (c_linker_sym_t) dbsym;
 	linker_symval_t symval;
 
+	symval.name = NULL;
+	symval.value = 0;
 	linker_ddb_symbol_values(sym, &symval);
 	if (namep)
 	    *namep = (const char*) symval.name;

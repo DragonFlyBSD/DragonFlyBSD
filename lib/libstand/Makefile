@@ -18,13 +18,14 @@ WARNS?=		2
 # Mostly OK, some of the libc imports are a bit noisy
 CFLAGS+=	-ffreestanding
 
-.if ${MACHINE_ARCH} == "x86_64"
-CFLAGS+=	-m32 -mpreferred-stack-boundary=2
-.endif
-.if ${MACHINE_ARCH} == "i386"
+.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
 CFLAGS+=	-mpreferred-stack-boundary=2
+FORCE_CPUTYPE=	i386
 .endif
 
+.if ${MACHINE_ARCH} == "x86_64"
+CFLAGS+=	-m32
+.endif
 
 # standalone components and stuff we have modified locally
 SRCS+=	__main.c assert.c bcd.c bswap.c environment.c getopt.c gets.c \

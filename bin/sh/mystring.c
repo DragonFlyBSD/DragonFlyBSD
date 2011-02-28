@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)mystring.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mystring.c,v 1.10.2.1 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/mystring.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $FreeBSD: src/bin/sh/mystring.c,v 1.14 2009/12/27 18:04:05 jilles Exp $
  */
 
 /*

@@ -739,7 +739,7 @@ static struct afswtch af_media = {
 	.af_other_status = media_status,
 };
 
-static __constructor(100) void
+static __constructor(101) void
 ifmedia_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))

@@ -275,7 +275,8 @@ sys_ptrace(struct ptrace_args *uap)
 }
 
 int
-kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *res)
+kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
+	    int data, int *res)
 {
 	struct proc *p, *pp;
 	struct lwp *lp;
@@ -291,6 +292,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 	write = 0;
 	if (req == PT_TRACE_ME) {
 		p = curp;
+		PHOLD(p);
 	} else {
 		if ((p = pfind(pid)) == NULL) {
 			lwkt_reltoken(&proc_token);
@@ -298,12 +300,16 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		}
 	}
 	if (!PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
+		PRELE(p);
 		lwkt_reltoken(&proc_token);
 		return (ESRCH);
 	}
 
+	lwkt_gettoken(&p->p_token);
 	/* Can't trace a process that's currently exec'ing. */
 	if ((p->p_flag & P_INEXEC) != 0) {
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
 		lwkt_reltoken(&proc_token);
 		return EAGAIN;
 	}
@@ -319,12 +325,16 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 	case PT_ATTACH:
 		/* Self */
 		if (p->p_pid == curp->p_pid) {
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return EINVAL;
 		}
 
 		/* Already traced */
 		if (p->p_flag & P_TRACED) {
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return EBUSY;
 		}
@@ -332,6 +342,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		if (curp->p_flag & P_TRACED)
 			for (pp = curp->p_pptr; pp != NULL; pp = pp->p_pptr)
 				if (pp == p) {
+					lwkt_reltoken(&p->p_token);
+					PRELE(p);
 					lwkt_reltoken(&proc_token);
 					return (EINVAL);
 				}
@@ -340,6 +352,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		if ((p->p_ucred->cr_ruid != curp->p_ucred->cr_ruid) ||
 		     (p->p_flag & P_SUGID)) {
 			if ((error = priv_check_cred(curp->p_ucred, PRIV_ROOT, 0)) != 0) {
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
 				lwkt_reltoken(&proc_token);
 				return error;
 			}
@@ -347,6 +361,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 
 		/* can't trace init when securelevel > 0 */
 		if (securelevel > 0 && p->p_pid == 1) {
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return EPERM;
 		}
@@ -383,12 +399,16 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 #endif
 		/* not being traced... */
 		if ((p->p_flag & P_TRACED) == 0) {
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return EPERM;
 		}
 
 		/* not being traced by YOU */
 		if (p->p_pptr != curp) {
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return EBUSY;
 		}
@@ -396,6 +416,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		/* not currently stopped */
 		if (p->p_stat != SSTOP ||
 		    (p->p_flag & P_WAITED) == 0) {
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return EBUSY;
 		}
@@ -404,6 +426,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		break;
 
 	default:
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
 		lwkt_reltoken(&proc_token);
 		return EINVAL;
 	}
@@ -428,6 +452,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		/* set my trace flag and "owner" so it can read/write me */
 		p->p_flag |= P_TRACED;
 		p->p_oppid = p->p_pptr->p_pid;
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
 		lwkt_reltoken(&proc_token);
 		return 0;
 
@@ -445,6 +471,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 	case PT_DETACH:
 		/* Zero means do not send any signal */
 		if (data < 0 || data > _SIG_MAXSIG) {
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return EINVAL;
 		}
@@ -454,6 +482,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		if (req == PT_STEP) {
 			if ((error = ptrace_single_step (lp))) {
 				LWPRELE(lp);
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
 				lwkt_reltoken(&proc_token);
 				return error;
 			}
@@ -463,6 +493,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 			if ((error = ptrace_set_pc (lp,
 			    (u_long)(uintfptr_t)addr))) {
 				LWPRELE(lp);
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
 				lwkt_reltoken(&proc_token);
 				return error;
 			}
@@ -498,6 +530,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 			ksignal(p, data);
 		}
 		crit_exit();
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
 		lwkt_reltoken(&proc_token);
 		return 0;
 
@@ -541,6 +575,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		}
 		if (!write)
 			*res = tmp;
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
 		lwkt_reltoken(&proc_token);
 		return (error);
 
@@ -570,11 +606,15 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 			uio.uio_rw = UIO_WRITE;
 			break;
 		default:
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return (EINVAL);
 		}
 		error = procfs_domem(curp, lp, NULL, &uio);
 		piod->piod_len -= uio.uio_resid;
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
 		lwkt_reltoken(&proc_token);
 		return (error);
 
@@ -593,6 +633,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 #endif /* PT_SETREGS */
 #if defined(PT_SETREGS) || defined(PT_GETREGS)
 		if (!procfs_validregs(lp)) {	/* no P_SYSTEM procs please */
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return EINVAL;
 		} else {
@@ -606,6 +648,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 			uio.uio_rw = write ? UIO_WRITE : UIO_READ;
 			uio.uio_td = curthread;
 			t = procfs_doregs(curp, lp, NULL, &uio);
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return t;
 		}
@@ -622,6 +666,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 #endif /* PT_SETFPREGS */
 #if defined(PT_SETFPREGS) || defined(PT_GETFPREGS)
 		if (!procfs_validfpregs(lp)) {	/* no P_SYSTEM procs please */
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return EINVAL;
 		} else {
@@ -635,6 +681,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 			uio.uio_rw = write ? UIO_WRITE : UIO_READ;
 			uio.uio_td = curthread;
 			t = procfs_dofpregs(curp, lp, NULL, &uio);
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return t;
 		}
@@ -651,6 +699,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 #endif /* PT_SETDBREGS */
 #if defined(PT_SETDBREGS) || defined(PT_GETDBREGS)
 		if (!procfs_validdbregs(lp)) {	/* no P_SYSTEM procs please */
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return EINVAL;
 		} else {
@@ -664,6 +714,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 			uio.uio_rw = write ? UIO_WRITE : UIO_READ;
 			uio.uio_td = curthread;
 			t = procfs_dodbregs(curp, lp, NULL, &uio);
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return t;
 		}
@@ -673,7 +725,10 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		break;
 	}
 
+	lwkt_reltoken(&p->p_token);
+	PRELE(p);
 	lwkt_reltoken(&proc_token);
+
 	return 0;
 }
 

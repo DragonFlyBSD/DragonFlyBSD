@@ -52,8 +52,8 @@ extern volatile u_int		checkstate_probed_cpus;
 extern void (*cpustop_restartfunc) (void);
 
 /* functions in apic_ipl.s */
-u_int	io_apic_read		(int, int);
-void	io_apic_write		(int, int, u_int);
+u_int	ioapic_read		(volatile void *, int);
+void	ioapic_write		(volatile void *, int, u_int);
 
 /* global data in mp_machdep.c */
 extern int			mp_naps;
@@ -124,8 +124,18 @@ struct lapic_enumerator {
 	void	(*lapic_enumerate)(struct lapic_enumerator *);
 };
 
-#define LAPIC_ENUM_PRIO_MPTABLE	20
-#define LAPIC_ENUM_PRIO_MADT	40
+#define LAPIC_ENUM_PRIO_MPTABLE		20
+#define LAPIC_ENUM_PRIO_MADT		40
+
+struct ioapic_enumerator {
+	int	ioapic_prio;
+	TAILQ_ENTRY(ioapic_enumerator) ioapic_link;
+	int	(*ioapic_probe)(struct ioapic_enumerator *);
+	void	(*ioapic_enumerate)(struct ioapic_enumerator *);
+};
+
+#define IOAPIC_ENUM_PRIO_MPTABLE	20
+#define IOAPIC_ENUM_PRIO_MADT		10
 
 /* global data in mpapic.c */
 extern volatile lapic_t		lapic;
@@ -146,6 +156,8 @@ int	io_apic_get_id		(int);
 int	ext_int_setup		(int, int);
 void	lapic_config(void);
 void	lapic_enumerator_register(struct lapic_enumerator *);
+void	ioapic_config(void);
+void	ioapic_enumerator_register(struct ioapic_enumerator *);
 extern int apic_io_enable;
 
 #if defined(READY)

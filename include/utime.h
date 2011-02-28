@@ -31,15 +31,12 @@
  * SUCH DAMAGE.
  *
  *	@(#)utime.h	8.1 (Berkeley) 6/2/93
- * $DragonFly: src/include/utime.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef	_UTIME_H_
 #define	_UTIME_H_
 
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
-#endif
 
 #ifndef _TIME_T_DECLARED
 #define	_TIME_T_DECLARED

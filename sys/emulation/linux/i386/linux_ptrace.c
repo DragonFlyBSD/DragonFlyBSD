@@ -266,6 +266,7 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 	void *addr;
 	pid_t pid;
 	int error, req;
+	struct proc *p = NULL;	/* held process */
 
 	error = 0;
 
@@ -498,5 +499,10 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 		break;
 	}
 
+	/*
+	 * Release held proces (if any) before returning.
+	 */
+	if (p)
+		PRELE(p);
 	return (error);
 }

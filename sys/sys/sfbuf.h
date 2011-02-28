@@ -38,8 +38,8 @@
 #ifndef _CPU_LWBUF_H_
 #include <cpu/lwbuf.h>
 #endif
-#ifndef _SYS_REF_H
-#include <sys/ref.h>
+#ifndef _SYS_REFCOUNT_H
+#include <sys/refcount.h>
 #endif
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
@@ -47,9 +47,9 @@
 #endif
 
 struct sf_buf {
-	struct lwbuf *lwbuf;	/* lightweight buffer */
-	struct kref ref;
-	struct lwbuf lwbuf_cache;
+	struct lwbuf	*lwbuf;	/* lightweight buffer */
+	u_int		ref;	/* ref count */
+	struct lwbuf	lwbuf_cache;
 };
 
 #define sf_buf_kva(sf)	(lwbuf_kva((sf)->lwbuf))

@@ -37,15 +37,12 @@
  *
  *	@(#)signal.h	8.4 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/signal.h,v 1.23.2.2 2001/04/19 01:38:35 alfred Exp $
- * $DragonFly: src/sys/sys/signal.h,v 1.6 2007/01/14 07:59:08 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNAL_H_
 #define	_SYS_SIGNAL_H_
 
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>	/* for __ types */
-#endif
 #include <sys/cdefs.h>
 #include <sys/_posix.h>
 
@@ -218,14 +215,18 @@ struct sigevent {
 	union {
 		int	__sigev_signo;	/* Signal number */
 		int	__sigev_notify_kqueue;
+		void	*__sigev_notify_attributes;
 	} __sigev_u;
 	union sigval sigev_value;	/* Signal value */
+	void (*sigev_notify_function)(union sigval);
 };
 #define sigev_signo		__sigev_u.__sigev_signo
+#define sigev_notify_attributes	__sigev_u.__sigev_notify_attributes
 #define sigev_notify_kqueue	__sigev_u.__sigev_notify_kqueue
 
 #define	SIGEV_NONE	0		/* No async notification */
 #define	SIGEV_SIGNAL	1		/* Generate a queued signal */
+#define SIGEV_THREAD	2		/* Call back in a pthread */
 #define SIGEV_KEVENT	3		/* Generate a kevent */
 
 typedef struct __siginfo {

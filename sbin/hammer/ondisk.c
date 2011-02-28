@@ -662,13 +662,17 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 	 * up to HAMMER_UNDO_LAYER2 large blocks.  Size to approximately
 	 * 0.1% of the disk.
 	 *
-	 * The minimum UNDO fifo size is 100MB.
+	 * The minimum UNDO fifo size is 500MB, or approximately 1% of
+	 * the recommended 50G disk.
+	 *
+	 * Changing this minimum is rather dangerous as complex filesystem
+	 * operations can cause the UNDO FIFO to fill up otherwise.
 	 */
 	undo_limit = UndoBufferSize;
 	if (undo_limit == 0) {
 		undo_limit = (ondisk->vol_buf_end - ondisk->vol_buf_beg) / 1000;
-		if (undo_limit < 100*1024*1024)
-			undo_limit = 100*1024*1024;
+		if (undo_limit < 500*1024*1024)
+			undo_limit = 500*1024*1024;
 	}
 	undo_limit = (undo_limit + HAMMER_LARGEBLOCK_MASK64) &
 		     ~HAMMER_LARGEBLOCK_MASK64;

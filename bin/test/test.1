@@ -1,3 +1,4 @@
+.\"-
 .\" Copyright (c) 1991, 1993
 .\"	The Regents of the University of California.  All rights reserved.
 .\"
@@ -33,10 +34,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)test.1	8.1 (Berkeley) 5/31/93
-.\" $FreeBSD: src/bin/test/test.1,v 1.11.2.5 2001/12/14 14:22:09 ru Exp $
-.\" $DragonFly: src/bin/test/test.1,v 1.7 2007/10/20 17:56:46 swildner Exp $
+.\" $FreeBSD: src/bin/test/test.1,v 1.31 2010/09/11 10:49:56 brucec Exp $
 .\"
-.Dd May 31, 1993
+.Dd September 10, 2010
 .Dt TEST 1
 .Os
 .Sh NAME
@@ -198,74 +198,80 @@ True if
 .Ar string
 is not the null
 string.
-.It Ar \&s\&1 Cm \&= Ar \&s\&2
+.It Ar s1 Cm = Ar s2
 True if the strings
-.Ar \&s\&1
+.Ar s1
 and
-.Ar \&s\&2
+.Ar s2
 are identical.
-.It Ar \&s\&1 Cm \&!= Ar \&s\&2
+.It Ar s1 Cm != Ar s2
 True if the strings
-.Ar \&s\&1
+.Ar s1
 and
-.Ar \&s\&2
+.Ar s2
 are not identical.
-.It Ar \&s\&1 Cm \&< Ar \&s\&2
+.It Ar s1 Cm < Ar s2
 True if string
-.Ar \&s\&1
+.Ar s1
 comes before
-.Ar \&s\&2
-based on the ASCII value of their characters.
-.It Ar \&s\&1 Cm \&> Ar \&s\&2
+.Ar s2
+based on the binary value of their characters.
+.It Ar s1 Cm > Ar s2
 True if string
-.Ar \&s\&1
+.Ar s1
 comes after
-.Ar \&s\&2
-based on the ASCII value of their characters.
-.It Ar \&s\&1
-True if
-.Ar \&s\&1
-is not the null
-string.
-.It Ar \&n\&1 Fl \&eq Ar \&n\&2
+.Ar s2
+based on the binary value of their characters.
+.It Ar n1 Fl eq Ar n2
 True if the integers
-.Ar \&n\&1
+.Ar n1
 and
-.Ar \&n\&2
+.Ar n2
 are algebraically
 equal.
-.It Ar \&n\&1 Fl \&ne Ar \&n\&2
+.It Ar n1 Fl ne Ar n2
 True if the integers
-.Ar \&n\&1
+.Ar n1
 and
-.Ar \&n\&2
+.Ar n2
 are not
 algebraically equal.
-.It Ar \&n\&1 Fl \&gt Ar \&n\&2
+.It Ar n1 Fl gt Ar n2
 True if the integer
-.Ar \&n\&1
+.Ar n1
 is algebraically
 greater than the integer
-.Ar \&n\&2 .
-.It Ar \&n\&1 Fl \&ge Ar \&n\&2
+.Ar n2 .
+.It Ar n1 Fl ge Ar n2
 True if the integer
-.Ar \&n\&1
+.Ar n1
 is algebraically
 greater than or equal to the integer
-.Ar \&n\&2 .
-.It Ar \&n\&1 Fl \&lt Ar \&n\&2
+.Ar n2 .
+.It Ar n1 Fl lt Ar n2
 True if the integer
-.Ar \&n\&1
+.Ar n1
 is algebraically less
 than the integer
-.Ar \&n\&2 .
-.It Ar \&n\&1 Fl \&le Ar \&n\&2
+.Ar n2 .
+.It Ar n1 Fl le Ar n2
 True if the integer
-.Ar \&n\&1
+.Ar n1
 is algebraically less
 than or equal to the integer
-.Ar \&n\&2 .
+.Ar n2 .
 .El
+.Pp
+If
+.Ar file
+is a symbolic link,
+.Nm
+will fully dereference it and then evaluate the expression
+against the file referenced, except for the
+.Fl h
+and
+.Fl L
+primaries.
 .Pp
 These primaries can be combined with the following operators:
 .Bl -tag -width Ar
@@ -285,7 +291,7 @@ True if either
 or
 .Ar expression2
 are true.
-.It Cm \&( Ns Ar expression Ns Cm \&)
+.It Cm \&( Ar expression Cm \&)
 True if expression is true.
 .El
 .Pp
@@ -304,18 +310,28 @@ manual page.
 .Sh GRAMMAR AMBIGUITY
 The
 .Nm
-grammar is inherently ambiguous.  In order to assure a degree of consistency,
+grammar is inherently ambiguous.
+In order to assure a degree of consistency,
 the cases described in the
 .St -p1003.2 ,
 section D11.2/4.62.4, standard
 are evaluated consistently according to the rules specified in the
-standards document.  All other cases are subject to the ambiguity in the
+standards document.
+All other cases are subject to the ambiguity in the
 command semantics.
-.Sh DIAGNOSTICS
+.Pp
+In particular, only expressions containing
+.Fl a ,
+.Fl o ,
+.Cm \&(
+or
+.Cm \&)
+can be ambiguous.
+.Sh EXIT STATUS
 The
 .Nm
 utility exits with one of the following values:
-.Bl -tag -width Ds
+.Bl -tag -width indent
 .It 0
 expression evaluated to true.
 .It 1
@@ -327,10 +343,23 @@ An error occurred.
 .Sh SEE ALSO
 .Xr builtin 1 ,
 .Xr expr 1 ,
-.Xr sh 1
+.Xr sh 1 ,
+.Xr symlink 7
 .Sh STANDARDS
 The
 .Nm
 utility implements a superset of the
 .St -p1003.2
 specification.
+.Sh BUGS
+Both sides are always evaluated in
+.Fl a
+and
+.Fl o .
+For instance, the writable status of
+.Pa file
+will be tested by the following command even though the former expression
+indicated false, which results in a gratuitous access to the file system:
+.Dl "[ -z abc -a -w file ]"
+To avoid this, write
+.Dl "[ -z abc ] && [ -w file ]"

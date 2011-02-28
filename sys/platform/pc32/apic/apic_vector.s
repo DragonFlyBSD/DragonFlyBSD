@@ -16,7 +16,7 @@
 #include "assym.s"
 
 #include "apicreg.h"
-#include "apic_ipl.h"
+#include <machine_base/apic/ioapic_ipl.h>
 #include <machine/smp.h>
 #include <machine/intr_machdep.h>
 
@@ -74,7 +74,7 @@
 	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_FLAGS
 
 #define MASK_IRQ(irq_num)						\
-	APIC_IMASK_LOCK ;			/* into critical reg */	\
+	IOAPIC_IMASK_LOCK ;			/* into critical reg */	\
 	testl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	jne	7f ;			/* masked, don't mask */	\
 	orl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
@@ -84,7 +84,7 @@
 	movl	%eax, (%ecx) ;			/* write the index */	\
 	orl	$IOART_INTMASK,IOAPIC_WINDOW(%ecx) ;/* set the mask */	\
 7: ;						/* already masked */	\
-	APIC_IMASK_UNLOCK ;						\
+	IOAPIC_IMASK_UNLOCK ;						\
 
 /*
  * Test to see whether we are handling an edge or level triggered INT.
@@ -103,7 +103,7 @@
 #define UNMASK_IRQ(irq_num)						\
 	cmpl	$0,%eax ;						\
 	jnz	8f ;							\
-	APIC_IMASK_LOCK ;			/* into critical reg */	\
+	IOAPIC_IMASK_LOCK ;			/* into critical reg */	\
 	testl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	je	7f ;			/* bit clear, not masked */	\
 	andl	$~IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
@@ -113,7 +113,7 @@
 	movl	%eax,(%ecx) ;			/* write the index */	\
 	andl	$~IOART_INTMASK,IOAPIC_WINDOW(%ecx) ;/* clear the mask */ \
 7: ;									\
-	APIC_IMASK_UNLOCK ;						\
+	IOAPIC_IMASK_UNLOCK ;						\
 8: ;									\
 
 #ifdef SMP /* APIC-IO */
@@ -134,7 +134,7 @@
 #define	INTR_HANDLER(irq_num)						\
 	.text ;								\
 	SUPERALIGN_TEXT ;						\
-IDTVEC(apic_intr##irq_num) ;						\
+IDTVEC(ioapic_intr##irq_num) ;						\
 	PUSH_FRAME ;							\
 	FAKE_MCOUNT(15*4(%esp)) ;					\
 	MASK_LEVEL_IRQ(irq_num) ;					\

@@ -37,7 +37,6 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.81 2008/09/11 00:35:49 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -50,9 +49,7 @@
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif
-#ifndef _MACHINE_STDARG_H_
 #include <machine/stdarg.h>
-#endif
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
 #include <sys/callout.h>
@@ -72,7 +69,7 @@ extern int selwait;		/* select timeout address */
 
 extern u_char curpriority;	/* priority of current process */
 
-extern int physmem;		/* physical memory */
+extern long physmem;		/* physical memory */
 
 extern cdev_t dumpdev;		/* dump device */
 extern u_int64_t dumplo64;	/* block number into dumpdev, start of dump */
@@ -99,6 +96,7 @@ extern int clocks_running;	/* timing/timeout subsystem is operational */
 extern u_int cpu_feature;	/* CPUID_* features */
 extern u_int cpu_feature2;	/* CPUID2_* features */
 extern u_int cpu_mi_feature;	/* CPU_MI_XXX machine-nonspecific features */
+extern cpumask_t usched_global_cpumask;
 
 extern int nfs_diskless_valid;	/* NFS diskless params were obtained */
 extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */

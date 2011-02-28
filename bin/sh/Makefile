@@ -1,35 +1,36 @@
 #	@(#)Makefile	8.4 (Berkeley) 5/5/95
-# $FreeBSD: src/bin/sh/Makefile,v 1.30.2.1 2001/12/15 10:05:18 knu Exp $
-# $DragonFly: src/bin/sh/Makefile,v 1.7 2006/09/28 22:29:44 pavalos Exp $
+# $FreeBSD: src/bin/sh/Makefile,v 1.56 2011/02/08 23:18:06 jilles Exp $
 
 PROG=	sh
-SHSRCS=	alias.c arith.y arith_lex.l cd.c echo.c error.c eval.c exec.c expand.c \
-	histedit.c input.c jobs.c mail.c main.c memalloc.c miscbltin.c \
+INSTALLFLAGS= -S
+SHSRCS=	alias.c arith_yacc.c arith_yylex.c cd.c echo.c error.c eval.c \
+	exec.c expand.c \
+	histedit.c input.c jobs.c kill.c mail.c main.c memalloc.c miscbltin.c \
 	mystring.c options.c output.c parser.c printf.c redir.c show.c \
 	test.c trap.c var.c
 GENSRCS= builtins.c init.c nodes.c syntax.c
-GENHDRS= builtins.h nodes.h syntax.h token.h y.tab.h
-SRCS= ${SHSRCS} ${GENSRCS} ${GENHDRS} y.tab.h
+GENHDRS= builtins.h nodes.h syntax.h token.h
+SRCS= ${SHSRCS} ${GENSRCS} ${GENHDRS}
 
 # MLINKS for Shell built in commands for which there are no userland
 # utilities of the same name are handled with the associated manpage,
-# builtin.1 in share/man/man1/.  
+# builtin.1 in share/man/man1/.
 
-DPADD+= ${LIBL} ${LIBEDIT} ${LIBTERMCAP}
-LDADD+= -ll -ledit -ltermcap
+DPADD= ${LIBEDIT} ${LIBTERMCAP}
+LDADD= -ledit -ltermcap
 
-LFLAGS= -8	# 8-bit lex scanner for arithmetic
 CFLAGS+=-DSHELL -I. -I${.CURDIR}
 # for debug:
-# CFLAGS+= -g -DDEBUG=2
+# DEBUG_FLAGS+= -g -DDEBUG=2 -fno-inline
 
 .if defined(BOOTSTRAPPING)
 CFLAGS+= -DNO_HISTORY
 .endif
 
 .PATH:	${.CURDIR}/bltin \
-	${.CURDIR}/../../usr.bin/printf \
-	${.CURDIR}/../../bin/test
+	${.CURDIR}/../kill \
+	${.CURDIR}/../test \
+	${.CURDIR}/../../usr.bin/printf
 
 CLEANFILES+= mkinit.nx mkinit.no mknodes.nx mknodes.no \
 	mksyntax.nx mksyntax.no
@@ -65,4 +66,6 @@ syntax.c syntax.h: mksyntax.nx
 token.h: mktokens
 	sh ${.CURDIR}/mktokens
 
+regress: sh
+	cd ${.CURDIR}/../../tools/regression/bin/sh && ${MAKE} SH=${.OBJDIR}/sh
 .include <bsd.prog.mk>

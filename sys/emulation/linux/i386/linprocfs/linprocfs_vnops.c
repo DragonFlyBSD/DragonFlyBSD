@@ -228,6 +228,7 @@ linprocfs_close(struct vop_close_args *ap)
 		 * told to stop on an event, but then the requesting process
 		 * has gone away or forgotten about it.
 		 */
+		p = NULL;
 		if ((ap->a_vp->v_opencount < 2)
 		    && (p = pfind(pfs->pfs_pid))
 		    && !(p->p_pfsflags & PF_LINGER)) {
@@ -235,6 +236,8 @@ linprocfs_close(struct vop_close_args *ap)
 			p->p_step = 0;
 			wakeup(&p->p_step);
 		}
+		if (p)
+			PRELE(p);
 		break;
 	default:
 		break;
@@ -261,8 +264,10 @@ linprocfs_ioctl(struct vop_ioctl_args *ap)
 		return ENOTTY;
 	}
 
-	if (p_trespass(ap->a_cred, procp->p_ucred))
-		return EPERM;
+	if (p_trespass(ap->a_cred, procp->p_ucred)) {
+		error = EPERM;
+		goto done;
+	}
 
 	switch (ap->a_command) {
 	case PIOCBIS:
@@ -279,7 +284,7 @@ linprocfs_ioctl(struct vop_ioctl_args *ap)
 #define NFLAGS	(PF_ISUGID)
 	  flags = (unsigned char)*(unsigned int*)ap->a_data;
 	  if (flags & NFLAGS && (error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)))
-	    return error;
+	    goto done;
 	  procp->p_pfsflags = flags;
 	  break;
 	case PIOCGFL:
@@ -301,7 +306,7 @@ linprocfs_ioctl(struct vop_ioctl_args *ap)
 	  if (procp->p_step == 0) {
 	    error = tsleep(&procp->p_stype, PCATCH, "piocwait", 0);
 	    if (error)
-	      return error;
+	      goto done;
 	  }
 	  psp->state = 1;	/* It stopped */
 	  psp->flags = procp->p_pfsflags;
@@ -310,20 +315,29 @@ linprocfs_ioctl(struct vop_ioctl_args *ap)
 	  psp->val = procp->p_xstat;	/* any extra info */
 	  break;
 	case PIOCCONT:	/* Restart a proc */
-	  if (procp->p_step == 0)
-	    return EINVAL;	/* Can only start a stopped process */
+	  if (procp->p_step == 0) {
+	    error = EINVAL;	/* Can only start a stopped process */
+	    goto done;
+	  }
 	  if ((signo = *(int*)ap->a_data) != 0) {
-	    if (signo >= NSIG || signo <= 0)
-	      return EINVAL;
+	    if (signo >= NSIG || signo <= 0) {
+	      error = EINVAL;
+	      goto done;
+	    }
 	    ksignal(procp, signo);
 	  }
 	  procp->p_step = 0;
 	  wakeup(&procp->p_step);
 	  break;
 	default:
-	  return (ENOTTY);
+	  error = ENOTTY;
+	  goto done;
 	}
-	return 0;
+	error = 0;
+done:
+	if (procp)
+		PRELE(procp);
+	return error;
 }
 
 /*
@@ -428,7 +442,7 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 	switch (pfs->pfs_type) {
 	case Proot:
 	case Pself:
-		procp = 0;
+		procp = NULL;
 		break;
 
 	default:

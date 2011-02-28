@@ -67,7 +67,6 @@
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_zone.h>
 
 #include <sys/buf2.h>
 

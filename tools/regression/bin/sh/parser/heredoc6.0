@@ -1,0 +1,5 @@
+# $FreeBSD: src/tools/regression/bin/sh/parser/heredoc6.0,v 1.1 2010/05/30 14:20:32 jilles Exp $
+
+r=
+! command eval ": <<EOF; )" 2>/dev/null; command eval : hi \${r:=0}
+exit ${r:-3}

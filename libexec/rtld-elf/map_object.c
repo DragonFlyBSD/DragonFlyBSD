@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/map_object.c,v 1.7.2.2 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/libexec/rtld-elf/map_object.c,v 1.6 2005/03/22 22:56:36 davidxu Exp $
  */
 
 #include <sys/param.h>
@@ -122,6 +121,7 @@ map_object(int fd, const char *path, const struct stat *sb)
 	case PT_DYNAMIC:
 	    phdyn = phdr;
 	    break;
+
 	case PT_TLS:
 	    phtls = phdr;
 	    break;

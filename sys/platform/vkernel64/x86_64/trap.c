@@ -228,9 +228,9 @@ recheck:
 	 * If the jungle wants us dead, so be it.
 	 */
 	if (lp->lwp_flag & LWP_WEXIT) {
-		get_mplock();
+		lwkt_gettoken(&p->p_token);
 		lwp_exit(0);
-		rel_mplock(); /* NOT REACHED */
+		lwkt_reltoken(&p->p_token);	/* NOT REACHED */
 	}
 
 	/*

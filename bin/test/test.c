@@ -1,6 +1,6 @@
 /*	$NetBSD: test.c,v 1.21 1999/04/05 09:48:38 kleink Exp $	*/
 
-/*
+/*-
  * test(1); version 7-like  --  author Erik Baalbergen
  * modified by Eric Gisin to be used as built-in.
  * modified by Arnold Robbins to add SVR3 compatibility
@@ -9,8 +9,7 @@
  *
  * This program is in the Public Domain.
  *
- * $FreeBSD: src/bin/test/test.c,v 1.29.2.7 2002/09/10 09:10:57 maxim Exp $
- * $DragonFly: src/bin/test/test.c,v 1.7 2004/11/07 19:42:16 eirikn Exp $
+ * $FreeBSD: src/bin/test/test.c,v 1.55 2010/03/28 13:16:08 ed Exp $
  */
 
 #include <sys/types.h>
@@ -19,6 +18,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -29,8 +29,11 @@
 #ifdef SHELL
 #define main testcmd
 #include "bltin/bltin.h"
+#include "error.h"
 #else
-static void error(const char *, ...) __dead2 __printflike(1, 2);
+#include <locale.h>
+
+static void error(const char *, ...) __dead2 __printf0like(1, 2);
 
 static void
 error(const char *msg, ...)
@@ -161,22 +164,25 @@ struct t_op {
 struct t_op const *t_wp_op;
 int nargc;
 char **t_wp;
+int parenlevel;
 
-static int	aexpr (enum token);
-static int	binop (void);
-static int	equalf (const char *, const char *);
-static int	filstat (char *, enum token);
-static int	getn (const char *);
-static long long getll (const char *);
-static int	intcmp (const char *, const char *);
-static int	isoperand (void);
-static int	newerf (const char *, const char *);
-static int	nexpr (enum token);
-static int	oexpr (enum token);
-static int	olderf (const char *, const char *);
-static int	primary (enum token);
-static void	syntax (const char *, const char *);
-static enum	token t_lex (char *);
+static int	aexpr(enum token);
+static int	binop(void);
+static int	equalf(const char *, const char *);
+static int	filstat(char *, enum token);
+static int	getn(const char *);
+static intmax_t	getq(const char *);
+static int	intcmp(const char *, const char *);
+static int	isunopoperand(void);
+static int	islparenoperand(void);
+static int	isrparenoperand(void);
+static int	newerf(const char *, const char *);
+static int	nexpr(enum token);
+static int	oexpr(enum token);
+static int	olderf(const char *, const char *);
+static int	primary(enum token);
+static void	syntax(const char *, const char *);
+static enum	token t_lex(char *);
 
 int
 main(int argc, char **argv)
@@ -200,6 +206,9 @@ main(int argc, char **argv)
 	if (--argc <= 0)
 		return 1;
 
+#ifndef SHELL
+	setlocale(LC_CTYPE, "");
+#endif
 	/* XXX work around the absence of an eaccess(2) syscall */
 	egid = getegid();
 	euid = geteuid();
@@ -210,7 +219,14 @@ main(int argc, char **argv)
 
 	nargc = argc;
 	t_wp = &argv[1];
-	res = !oexpr(t_lex(*t_wp));
+	parenlevel = 0;
+	if (nargc == 4 && strcmp(*t_wp, "!") == 0) {
+		/* Things like ! "" -o x do not fit in the normal grammar. */
+		--nargc;
+		++t_wp;
+		res = oexpr(t_lex(*t_wp));
+	} else
+		res = !oexpr(t_lex(*t_wp));
 
 	if (--nargc > 0)
 		syntax(*t_wp, "unexpected operator");
@@ -275,12 +291,16 @@ primary(enum token n)
 	if (n == EOI)
 		return 0;		/* missing expression */
 	if (n == LPAREN) {
+		parenlevel++;
 		if ((nn = t_lex(nargc > 0 ? (--nargc, *++t_wp) : NULL)) ==
-		    RPAREN)
+		    RPAREN) {
+			parenlevel--;
 			return 0;	/* missing expression */
+		}
 		res = oexpr(nn);
 		if (t_lex(nargc > 0 ? (--nargc, *++t_wp) : NULL) != RPAREN)
 			syntax(NULL, "closing paren expected");
+		parenlevel--;
 		return res;
 	}
 	if (t_wp_op && t_wp_op->op_type == UNOP) {
@@ -417,8 +437,10 @@ t_lex(char *s)
 	}
 	while (op->op_text) {
 		if (strcmp(s, op->op_text) == 0) {
-			if ((op->op_type == UNOP && isoperand()) ||
-			    (op->op_num == LPAREN && nargc == 1))
+			if (((op->op_type == UNOP || op->op_type == BUNOP)
+						&& isunopoperand()) ||
+			    (op->op_num == LPAREN && islparenoperand()) ||
+			    (op->op_num == RPAREN && isrparenoperand()))
 				break;
 			t_wp_op = op;
 			return op->op_num;
@@ -430,7 +452,7 @@ t_lex(char *s)
 }
 
 static int
-isoperand(void)
+isunopoperand(void)
 {
 	struct t_op const *op = ops;
 	char *s;
@@ -438,16 +460,50 @@ isoperand(void)
 
 	if (nargc == 1)
 		return 1;
-	if (nargc == 2)
-		return 0;
 	s = *(t_wp + 1);
+	if (nargc == 2)
+		return parenlevel == 1 && strcmp(s, ")") == 0;
 	t = *(t_wp + 2);
 	while (op->op_text) {
 		if (strcmp(s, op->op_text) == 0)
 			return op->op_type == BINOP &&
-			    (t[0] != ')' || t[1] != '\0');
+			    (parenlevel == 0 || t[0] != ')' || t[1] != '\0');
 		op++;
 	}
+	return 0;
+}
+
+static int
+islparenoperand(void)
+{
+	struct t_op const *op = ops;
+	char *s;
+
+	if (nargc == 1)
+		return 1;
+	s = *(t_wp + 1);
+	if (nargc == 2)
+		return parenlevel == 1 && strcmp(s, ")") == 0;
+	if (nargc != 3)
+		return 0;
+	while (op->op_text) {
+		if (strcmp(s, op->op_text) == 0)
+			return op->op_type == BINOP;
+		op++;
+	}
+	return 0;
+}
+
+static int
+isrparenoperand(void)
+{
+	char *s;
+
+	if (nargc == 1)
+		return 0;
+	s = *(t_wp + 1);
+	if (nargc == 2)
+		return parenlevel == 1 && strcmp(s, ")") == 0;
 	return 0;
 }
 
@@ -460,6 +516,9 @@ getn(const char *s)
 
 	errno = 0;
 	r = strtol(s, &p, 10);
+
+	if (s == p)
+		error("%s: bad number", s);
 
 	if (errno != 0)
 		error((errno == EINVAL) ? "%s: bad number" :
@@ -475,14 +534,17 @@ getn(const char *s)
 }
 
 /* atoi with error detection and 64 bit range */
-static long long
-getll(const char *s)
+static intmax_t
+getq(const char *s)
 {
 	char *p;
-	long long r;
+	intmax_t r;
 
 	errno = 0;
-	r = strtoll(s, &p, 10);
+	r = strtoimax(s, &p, 10);
+
+	if (s == p)
+		error("%s: bad number", s);
 
 	if (errno != 0)
 		error((errno == EINVAL) ? "%s: bad number" :
@@ -500,11 +562,11 @@ getll(const char *s)
 static int
 intcmp (const char *s1, const char *s2)
 {
-	long long q1, q2;
+	intmax_t q1, q2;
 
 
-	q1 = getll(s1);
-	q2 = getll(s2);
+	q1 = getq(s1);
+	q2 = getq(s2);
 
 	if (q1 > q2)
 		return 1;
@@ -523,12 +585,12 @@ newerf (const char *f1, const char *f2)
 	if (stat(f1, &b1) != 0 || stat(f2, &b2) != 0)
 		return 0;
 
-	if (b1.st_mtimespec.tv_sec > b2.st_mtimespec.tv_sec)
+	if (b1.st_mtim.tv_sec > b2.st_mtim.tv_sec)
 		return 1;
-	if (b1.st_mtimespec.tv_sec < b2.st_mtimespec.tv_sec)
+	if (b1.st_mtim.tv_sec < b2.st_mtim.tv_sec)
 		return 0;
 
-	return (b1.st_mtimespec.tv_nsec > b2.st_mtimespec.tv_nsec);
+       return (b1.st_mtim.tv_nsec > b2.st_mtim.tv_nsec);
 }
 
 static int

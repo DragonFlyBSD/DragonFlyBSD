@@ -3,6 +3,7 @@
 
 LIB=		crypto
 SHLIB_MAJOR=	5
+WARNS?=		0
 
 NOLINT=		true
 

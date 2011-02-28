@@ -1,8 +1,7 @@
 .\" This file contains changes from the Open Software Foundation.
 .\"
 .\"	from: @(#)newsyslog.8
-.\" $FreeBSD: src/usr.sbin/newsyslog/newsyslog.8,v 1.51 2005/06/14 12:26:35 ru Exp $
-.\" $DragonFly: src/usr.sbin/newsyslog/newsyslog.8,v 1.4 2007/05/12 08:52:00 swildner Exp $
+.\" $FreeBSD: src/usr.sbin/newsyslog/newsyslog.8,v 1.57 2011/01/31 11:30:26 mm Exp $
 .\"
 .\" Copyright 1988, 1989 by the Massachusetts Institute of Technology
 .\"
@@ -18,7 +17,7 @@
 .\" the suitability of this software for any purpose.  It is
 .\" provided "as is" without express or implied warranty.
 .\"
-.Dd May 2, 2007
+.Dd January 31, 2011
 .Dt NEWSYSLOG 8
 .Os
 .Sh NAME
@@ -26,11 +25,13 @@
 .Nd maintain system log files to manageable sizes
 .Sh SYNOPSIS
 .Nm
-.Op Fl CFNnrsv
+.Op Fl CFNPnrsv
 .Op Fl R Ar tagname
+.Op Fl S Ar pidfile
 .Op Fl a Ar directory
 .Op Fl d Ar directory
 .Op Fl f Ar config_file
+.Op Fl t Ar timefmt
 .Op Ar
 .Sh DESCRIPTION
 The
@@ -50,6 +51,11 @@ the last period's logs in it,
 has the next to last
 period's logs in it, and so on, up to a user-specified number of
 archived logs.
+It is also possible to let archived log filenames be created using the
+time the log file was archived instead of the sequential number using
+the
+.Fl t
+option.
 Optionally the archived logs can be compressed to save space.
 .Pp
 A log can be archived for three reasons:
@@ -140,6 +146,31 @@ However, this option is most likely to be useful when specified
 with the
 .Fl R
 option, and in that case the compression will be done.
+.It Fl t Ar timefmt
+If specified
+.Nm
+will create the
+.Dq rotated
+logfiles using the specified time format instead of the default
+sequential filenames.
+The time format is described in the
+.Xr strftime 3
+manual page.
+If the
+.Ar timefmt
+argument is set to an empty string or the string
+.Dq DEFAULT ,
+the default built in time format
+is used.
+If the
+.Ar timefmt
+string is changed the old files created using the previous time format
+will not be be automatically removed (unless the new format is very
+similar to the old format).
+This is also the case when changing from sequential filenames to time
+based file names, and the other way around.
+The time format should contain at least year, month, day, and hour to
+make sure rotating of old logfiles can select the correct logfiles.
 .It Fl C
 If specified once, then
 .Nm
@@ -167,6 +198,10 @@ This option is intended to be used with the
 or
 .Fl CC
 options when creating log files is the only objective.
+.It Fl P
+Prevent further action if we should send signal but the
+.Dq pidfile
+is empty or does not exist.
 .It Fl R Ar tagname
 Specify that
 .Nm
@@ -209,6 +244,12 @@ Skipping the signal step will also mean that
 will return faster, since
 .Nm
 normally waits a few seconds after any signal that is sent.
+.It Fl S Ar pidfile
+Use
+.Ar pidfile
+as
+.Xr syslogd 8 Ns 's
+pidfile.
 .El
 .Pp
 If additional command line arguments are given,
@@ -231,9 +272,10 @@ Beginning with
 this has been changed to a colon (``:'') character so that user and group
 names may contain the dot character.
 The dot (``.'') character is still accepted for backwards compatibility.
-.Sh "SEE ALSO"
+.Sh SEE ALSO
 .Xr bzip2 1 ,
 .Xr gzip 1 ,
+.Xr xz 1 ,
 .Xr syslog 3 ,
 .Xr newsyslog.conf 5 ,
 .Xr chown 8 ,

@@ -1,8 +1,6 @@
 # $FreeBSD: src/lib/libfetch/Makefile,v 1.51 2007/12/19 05:10:07 ru Exp $
-# $DragonFly: src/lib/libfetch/Makefile,v 1.9 2007/08/05 21:48:12 swildner Exp $
 
 LIB=		fetch
-WARNS?=		6
 CFLAGS+=	-I.
 CFLAGS+=	-DINET6 -DFTP_COMBINE_CWDS
 SRCS=		fetch.c common.c ftp.c http.c file.c \

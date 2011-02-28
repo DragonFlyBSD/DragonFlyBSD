@@ -32,16 +32,12 @@
  *
  *	@(#)types.h	8.3 (Berkeley) 1/5/94
  * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/types.h,v 1.2 2007/09/23 04:29:31 yanyh Exp $
  */
 
 #ifndef _MACHINE_TYPES_H_
 #define	_MACHINE_TYPES_H_
 
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
-#endif
-
 #include <cpu/types.h>
 
 /* Interrupt mask (spl, xxx_imask, etc) */

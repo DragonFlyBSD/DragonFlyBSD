@@ -329,6 +329,7 @@ struct vnode {
 #define	IO_DIRECT	0x0100		/* attempt to bypass buffer cache */
 #define	IO_RECURSE	0x0200		/* possibly device-recursive (vn) */
 #define	IO_CORE		0x0400		/* I/O is part of core dump */
+#define	IO_NRDELAY	0x0800		/* do not block on disk reads */
 
 #define	IO_SEQMAX	0x7F		/* seq heuristic max value */
 #define	IO_SEQSHIFT	16		/* seq heuristic in upper 16 bits */

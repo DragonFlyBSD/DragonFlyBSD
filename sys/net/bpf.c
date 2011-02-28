@@ -369,7 +369,7 @@ bpfclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d = dev->si_drv1;
 
-	funsetown(d->bd_sigio);
+	funsetown(&d->bd_sigio);
 	crit_enter();
 	if (d->bd_state == BPF_WAITING)
 		callout_stop(&d->bd_callout);
@@ -917,7 +917,7 @@ bpfioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case FIOGETOWN:
-		*(int *)ap->a_data = fgetown(d->bd_sigio);
+		*(int *)ap->a_data = fgetown(&d->bd_sigio);
 		break;
 
 	/* This is deprecated, FIOSETOWN should be used instead. */
@@ -927,7 +927,7 @@ bpfioctl(struct dev_ioctl_args *ap)
 
 	/* This is deprecated, FIOGETOWN should be used instead. */
 	case TIOCGPGRP:
-		*(int *)ap->a_data = -fgetown(d->bd_sigio);
+		*(int *)ap->a_data = -fgetown(&d->bd_sigio);
 		break;
 
 	case BIOCSRSIG:		/* Set receive signal */

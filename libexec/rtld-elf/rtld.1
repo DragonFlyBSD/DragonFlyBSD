@@ -1,5 +1,4 @@
 .\" $FreeBSD: src/libexec/rtld-elf/rtld.1,v 1.18.2.7 2002/01/10 17:51:28 ru Exp $
-.\" $DragonFly: src/libexec/rtld-elf/rtld.1,v 1.7 2008/05/02 02:05:05 swildner Exp $
 .\"
 .\" Copyright (c) 1995 Paul Kranenburg
 .\" All rights reserved.
@@ -29,14 +28,18 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd January 7, 2008
+.Dd February 21, 2011
 .Dt RTLD 1
 .Os
 .Sh NAME
 .Nm ld-elf.so.1 ,
 .Nm ld-elf.so.2 ,
-.Nm rtld
+.Nm rtld ,
+.Nm _rtld_functrace
 .Nd run-time link-editor
+.Sh SYNOPSIS
+.Ft int
+.Fn _rtld_functrace "const char *callerso" "const char *calleeso" "const char *calleefun" "void *stack"
 .Sh DESCRIPTION
 .Nm
 is a self-contained shared object providing run-time
@@ -169,13 +172,6 @@ might be called for functions called on its behalf,
 or that multiple threads could enter
 .Fn _rtld_functrace
 at the same time.
-.Pp
-The signature for
-.Fn _rtld_functrace
-is specified as follows.
-.Pp
-.Ft int
-.Fn _rtld_functrace "const char *callerso" "const char *calleeso" "const char *calleefun" "void *stack"
 .Sh DIFFERENCES BETWEEN .1 and .2
 ABI changes have been made to support TLS allocation and initialization
 and to give threading libraries a chance to complete initialization of the
@@ -185,6 +181,38 @@ libraries.
 .Bl -tag -width indent
 .It Pa /var/run/ld-elf.so.hints
 .El
+.Sh EXAMPLES
+To set up an
+.Fn _rtld_functrace
+for printing out the functions as they are called, this code can be used:
+.Bd -literal -offset indent
+#include <string.h>
+
+static int nl = 10;
+
+int
+_rtld_functrace(const char *callerso, const char *calleeso,
+    const char *calleefun, void *stack)
+{
+	write(2, "calling ", 8);
+	write(2, calleefun, strlen(calleefun));
+	write(2, &nl, 1);
+	return 1;
+}
+.Ed
+.Pp
+If put in a file named
+.Pa ft.c
+and compiled with
+.Bd -literal -offset indent
+$ cc -shared ft.c -o ft.so
+.Ed
+.Pp
+setting
+.Ev LD_PRELOAD
+to the path of
+.Pa ft.so
+will activate it.
 .Sh SEE ALSO
 .Xr ld 1 ,
 .Xr ldd 1 ,

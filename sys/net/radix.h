@@ -86,6 +86,17 @@ struct radix_node {
 #define	rn_right	rn_u.rn_node.rn_R
 
 /*
+ * We do this statically now because the dynamic initialization
+ * occurs too late and has an ordering problem w/ pf preloads
+ * vs protocol domains.
+ */
+#define RN_MAXKEYLEN	32
+#define RN_MAXKEYONES	{ -1, -1, -1, -1, -1, -1, -1, -1,	\
+			  -1, -1, -1, -1, -1, -1, -1, -1,	\
+			  -1, -1, -1, -1, -1, -1, -1, -1,	\
+			  -1, -1, -1, -1, -1, -1, -1, -1 }
+
+/*
  * Annotations to tree concerning potential routes applying to subtrees.
  */
 

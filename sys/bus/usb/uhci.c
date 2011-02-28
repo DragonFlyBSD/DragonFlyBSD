@@ -1,6 +1,5 @@
 /*	$NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.162.2.1 2006/03/01 01:59:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.30 2008/10/18 01:17:53 dillon Exp $	*/
 
 /*	Also already incorporated from NetBSD:
  *	$NetBSD: uhci.c,v 1.172 2003/02/23 04:19:26 simonb Exp $
@@ -248,7 +247,9 @@ static __inline uhci_soft_qh_t *uhci_find_prev_qh(uhci_soft_qh_t *,
 #ifdef USB_DEBUG
 static void		uhci_dump_all(uhci_softc_t *);
 static void		uhci_dumpregs(uhci_softc_t *);
+#if 0
 static void		uhci_dump_qhs(uhci_soft_qh_t *);
+#endif
 static void		uhci_dump_qh(uhci_soft_qh_t *);
 static void		uhci_dump_tds(uhci_soft_td_t *);
 static void		uhci_dump_td(uhci_soft_td_t *);
@@ -778,6 +779,7 @@ uhci_dump_all(uhci_softc_t *sc)
 	uhci_dump_qh(sc->sc_lctl_start);
 }
 
+#if 0
 void
 uhci_dump_qhs(uhci_soft_qh_t *sqh)
 {
@@ -808,6 +810,7 @@ uhci_dump_qhs(uhci_soft_qh_t *sqh)
 	else
 		DPRINTF(("No TD\n"));
 }
+#endif
 
 void
 uhci_dump_tds(uhci_soft_td_t *std)

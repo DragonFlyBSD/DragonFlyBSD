@@ -41,7 +41,7 @@
 .Nd process status
 .Sh SYNOPSIS
 .Nm
-.Op Fl aCcefHhjlmrSTuvwx
+.Op Fl aCcefHhjlmrRSTuvwx
 .Op Fl M Ar core
 .Op Fl N Ar system
 .Op Fl O Ar fmt
@@ -146,6 +146,9 @@ the standard header.
 Display information associated with the specified process ID.
 .It Fl r
 Sort by current CPU usage, instead of by process ID.
+.It Fl R
+Subsort by parent/child chain.  This very useful option makes
+the parent/child associations clear and understandable.
 .It Fl S
 Change the way the process time is calculated by summing all exited
 children to their parent process.
@@ -486,7 +489,8 @@ control terminal name (two letter abbreviation)
 .It Cm tty
 full name of control terminal
 .It Cm ucomm
-name to be used for accounting
+name to be used for accounting (alias
+.Cm comm )
 .It Cm uid
 effective user ID
 .It Cm user

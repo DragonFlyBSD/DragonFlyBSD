@@ -35,8 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkinit.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mkinit.c,v 1.14.2.1 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/mkinit.c,v 1.4 2005/04/19 05:18:19 cpressey Exp $
+ * $FreeBSD: src/bin/sh/mkinit.c,v 1.21 2011/02/04 22:47:55 jilles Exp $
  */
 
 /*
@@ -97,7 +96,7 @@ struct block {
  */
 
 struct event {
-	const char *name;   	/* name of event (e.g. INIT) */
+	const char *name;	/* name of event (e.g. INIT) */
 	const char *routine;	/* name of routine called on event */
 	const char *comment;	/* comment describing routine */
 	struct text code;	/* code for handling event */
@@ -121,17 +120,11 @@ char reset[] = "\
  * interactive shell and control is returned to the main command loop.\n\
  */\n";
 
-char shellproc[] = "\
-/*\n\
- * This routine is called to initialize the shell to run a shell procedure.\n\
- */\n";
-
 
 struct event event[] = {
-	{"INIT", "init", init, {NULL, 0, NULL, NULL}},
-	{"RESET", "reset", reset, {NULL, 0, NULL, NULL}},
-	{"SHELLPROC", "initshellproc", shellproc, {NULL, 0, NULL, NULL}},
-	{NULL, NULL, NULL, {NULL, 0, NULL, NULL}}
+	{ "INIT", "init", init, { NULL, 0, NULL, NULL } },
+	{ "RESET", "reset", reset, { NULL, 0, NULL, NULL } },
+	{ NULL, NULL, NULL, { NULL, 0, NULL, NULL } }
 };
 
 
@@ -154,7 +147,7 @@ void addstr(const char *, struct text *);
 void addchar(int, struct text *);
 void writetext(struct text *, FILE *);
 FILE *ckfopen(const char *, const char *);
-void *ckmalloc(int);
+void *ckmalloc(size_t);
 char *savestr(const char *);
 void error(const char *);
 
@@ -165,9 +158,9 @@ main(int argc __unused, char *argv[])
 {
 	char **ap;
 
-	header_files[0] = "\"shell.h\"";
-	header_files[1] = "\"mystring.h\"";
-	header_files[2] = "\"init.h\"";
+	header_files[0] = savestr("\"shell.h\"");
+	header_files[1] = savestr("\"mystring.h\"");
+	header_files[2] = savestr("\"init.h\"");
 	for (ap = argv + 1 ; *ap ; ap++)
 		readfile(*ap);
 	output();
@@ -268,7 +261,7 @@ doevent(struct event *ep, FILE *fp, const char *fname)
 {
 	char line[1024];
 	int indent;
-	char *p;
+	const char *p;
 
 	sprintf(line, "\n      /* from %s: */\n", fname);
 	addstr(line, &ep->code);
@@ -387,7 +380,7 @@ output(void)
 	for (ep = event ; ep->name ; ep++) {
 		fputs("\n\n\n", fp);
 		fputs(ep->comment, fp);
-		fprintf(fp, "\nvoid\n%s(void) {\n", ep->routine);
+		fprintf(fp, "\nvoid\n%s(void)\n{\n", ep->routine);
 		writetext(&ep->code, fp);
 		fprintf(fp, "}\n");
 	}
@@ -459,7 +452,7 @@ ckfopen(const char *file, const char *mode)
 }
 
 void *
-ckmalloc(int nbytes)
+ckmalloc(size_t nbytes)
 {
 	char *p;
 

@@ -958,24 +958,20 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data,
 		error = 0;
 		break;
 	case FIOSETOWN:
-		lwkt_gettoken(&proc_token);
 		error = fsetown(*(int *)data, &mpipe->pipe_sigio);
-		lwkt_reltoken(&proc_token);
 		break;
 	case FIOGETOWN:
-		*(int *)data = fgetown(mpipe->pipe_sigio);
+		*(int *)data = fgetown(&mpipe->pipe_sigio);
 		error = 0;
 		break;
 	case TIOCSPGRP:
 		/* This is deprecated, FIOSETOWN should be used instead. */
-		lwkt_gettoken(&proc_token);
 		error = fsetown(-(*(int *)data), &mpipe->pipe_sigio);
-		lwkt_reltoken(&proc_token);
 		break;
 
 	case TIOCGPGRP:
 		/* This is deprecated, FIOGETOWN should be used instead. */
-		*(int *)data = -fgetown(mpipe->pipe_sigio);
+		*(int *)data = -fgetown(&mpipe->pipe_sigio);
 		error = 0;
 		break;
 	default:
@@ -1022,9 +1018,7 @@ pipe_close(struct file *fp)
 	cpipe = (struct pipe *)fp->f_data;
 	fp->f_ops = &badfileops;
 	fp->f_data = NULL;
-	lwkt_gettoken(&proc_token);
-	funsetown(cpipe->pipe_sigio);
-	lwkt_reltoken(&proc_token);
+	funsetown(&cpipe->pipe_sigio);
 	pipeclose(cpipe);
 	return (0);
 }

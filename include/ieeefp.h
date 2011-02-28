@@ -1,6 +1,5 @@
 /*	$NetBSD: ieeefp.h,v 1.4 1998/01/09 08:03:43 perry Exp $	*/
-/* $FreeBSD: src/include/ieeefp.h,v 1.3.2.1 2000/08/17 08:08:14 jhb Exp $ */
-/* $DragonFly: src/include/ieeefp.h,v 1.4 2004/02/02 05:43:13 dillon Exp $ */
+/* $FreeBSD: src/include/ieeefp.h,v 1.7 2003/01/19 06:01:32 marcel Exp $ */
 
 /* 
  * Written by J.T. Conklin, Apr 6, 1995
@@ -13,19 +12,15 @@
 #include <sys/cdefs.h>
 #include <machine/ieeefp.h>
 
-#ifdef __i386__
-#include <machine/floatingpoint.h>
-#else /* !__i386__ */
 #if !defined(_IEEEFP_INLINED_)
 __BEGIN_DECLS
-extern fp_rnd_t    fpgetround (void);
-extern fp_rnd_t    fpsetround (fp_rnd_t);
-extern fp_except_t fpgetmask (void);
-extern fp_except_t fpsetmask (fp_except_t);
-extern fp_except_t fpgetsticky (void);
-extern fp_except_t fpsetsticky (fp_except_t);
+extern fp_rnd_t    fpgetround(void);
+extern fp_rnd_t    fpsetround(fp_rnd_t);
+extern fp_except_t fpgetmask(void);
+extern fp_except_t fpsetmask(fp_except_t);
+extern fp_except_t fpgetsticky(void);
+extern fp_except_t fpsetsticky(fp_except_t);
 __END_DECLS
 #endif /* !_IEEEFP_INLINED_ */
-#endif /* __i386__ */
 
 #endif /* _IEEEFP_H_ */

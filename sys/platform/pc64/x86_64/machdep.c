@@ -122,11 +122,11 @@
 #include <machine/sigframe.h>
 
 #include <sys/machintr.h>
+#include <machine_base/icu/icu_abi.h>
+#include <machine_base/apic/ioapic_abi.h>
 
 #define PHYSMAP_ENTRIES		10
 
-extern void init386(int first);
-extern void dblfault_handler(void);
 extern u_int64_t hammer_time(u_int64_t, u_int64_t);
 
 extern void printcpuinfo(void);	/* XXX header file */
@@ -170,19 +170,21 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 	CTLFLAG_RD, &tlb_flush_count, 0, "");
 #endif
 
-int physmem = 0;
+long physmem = 0;
 
 u_long ebda_addr = 0;
 
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
-	int error = sysctl_handle_int(oidp, 0, ctob(physmem), req);
+	u_long pmem = ctob(physmem);
+
+	int error = sysctl_handle_long(oidp, &pmem, 0, req);
 	return (error);
 }
 
-SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_INT|CTLFLAG_RD,
-	0, 0, sysctl_hw_physmem, "IU", "");
+SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_ULONG|CTLFLAG_RD,
+	0, 0, sysctl_hw_physmem, "LU", "Total system memory in bytes (number of pages * page size)");
 
 static int
 sysctl_hw_usermem(SYSCTL_HANDLER_ARGS)
@@ -388,6 +390,8 @@ again:
 	 */
 	mp_start();			/* fire up the APs and APICs */
 	mp_announce();
+#else
+	MachIntrABI.finalize();
 #endif  /* SMP */
 	cpu_setregs();
 }
@@ -1339,8 +1343,6 @@ ssdtosyssd(struct soft_segment_descriptor *ssd,
 	sd->sd_gran  = ssd->ssd_gran;
 }
 
-u_int basemem;
-
 /*
  * Populate the (physmap) array with base/bound pairs describing the
  * available physical memory in the system, then test this memory and
@@ -1352,13 +1354,24 @@ u_int basemem;
  * Total memory size may be set by the kernel environment variable
  * hw.physmem or the compile-time define MAXMEM.
  *
+ * Memory is aligned to PHYSMAP_ALIGN which must be a multiple
+ * of PAGE_SIZE.  This also greatly reduces the memory test time
+ * which would otherwise be excessive on machines with > 8G of ram.
+ *
  * XXX first should be vm_paddr_t.
  */
+
+#define PHYSMAP_ALIGN		(vm_paddr_t)(128 * 1024)
+#define PHYSMAP_ALIGN_MASK	(vm_paddr_t)(PHYSMAP_ALIGN - 1)
+
 static void
 getmemsize(caddr_t kmdp, u_int64_t first)
 {
-	int i, off, physmap_idx, pa_indx, da_indx;
-	vm_paddr_t pa, physmap[PHYSMAP_SIZE];
+	int off, physmap_idx, pa_indx, da_indx;
+	int i, j;
+	vm_paddr_t physmap[PHYSMAP_SIZE];
+	vm_paddr_t pa;
+	vm_paddr_t msgbuf_size;
 	u_long physmem_tunable;
 	pt_entry_t *pte;
 	struct bios_smap *smapbase, *smap, *smapend;
@@ -1366,7 +1379,6 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	quad_t dcons_addr, dcons_size;
 
 	bzero(physmap, sizeof(physmap));
-	basemem = 0;
 	physmap_idx = 0;
 
 	/*
@@ -1422,19 +1434,6 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 		physmap[physmap_idx + 1] = smap->base + smap->length;
 	}
 
-	/*
-	 * Find the 'base memory' segment for SMP
-	 */
-	basemem = 0;
-	for (i = 0; i <= physmap_idx; i += 2) {
-		if (physmap[i] == 0x00000000) {
-			basemem = physmap[i + 1] / 1024;
-			break;
-		}
-	}
-	if (basemem == 0)
-		panic("BIOS smap did not include a basemem segment!");
-
 #ifdef SMP
 	/* make hole for AP bootstrap code */
 	physmap[1] = mp_bootaddress(physmap[1] / 1024);
@@ -1467,7 +1466,7 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 		Maxmem = atop(physmap[physmap_idx + 1]);
 
 	/*
-	 *
+	 * Blowing out the DMAP will blow up the system.
 	 */
 	if (Maxmem > atop(DMAP_MAX_ADDRESS - DMAP_MIN_ADDRESS)) {
 		kprintf("Limiting Maxmem due to DMAP size\n");
@@ -1475,16 +1474,45 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	}
 
 	if (atop(physmap[physmap_idx + 1]) != Maxmem &&
-	    (boothowto & RB_VERBOSE))
+	    (boothowto & RB_VERBOSE)) {
 		kprintf("Physical memory use set to %ldK\n", Maxmem * 4);
+	}
 
-	/* call pmap initialization to make new kernel address space */
+	/*
+	 * Call pmap initialization to make new kernel address space
+	 *
+	 * Mask off page 0.
+	 */
 	pmap_bootstrap(&first);
+	physmap[0] = PAGE_SIZE;
+
+	/*
+	 * Align the physmap to PHYSMAP_ALIGN and cut out anything
+	 * exceeding Maxmem.
+	 */
+	for (i = j = 0; i <= physmap_idx; i += 2) {
+		if (physmap[i+1] > ptoa((vm_paddr_t)Maxmem))
+			physmap[i+1] = ptoa((vm_paddr_t)Maxmem);
+		physmap[i] = (physmap[i] + PHYSMAP_ALIGN_MASK) &
+			     ~PHYSMAP_ALIGN_MASK;
+		physmap[i+1] = physmap[i+1] & ~PHYSMAP_ALIGN_MASK;
+
+		physmap[j] = physmap[i];
+		physmap[j+1] = physmap[i+1];
+
+		if (physmap[i] < physmap[i+1])
+			j += 2;
+	}
+	physmap_idx = j - 2;
+
+	/*
+	 * Align anything else used in the validation loop.
+	 */
+	first = (first + PHYSMAP_ALIGN_MASK) & ~PHYSMAP_ALIGN_MASK;
 
 	/*
 	 * Size up each available chunk of physical memory.
 	 */
-	physmap[0] = PAGE_SIZE;		/* mask off page 0 */
 	pa_indx = 0;
 	da_indx = 1;
 	phys_avail[pa_indx++] = physmap[0];
@@ -1500,16 +1528,16 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 		dcons_addr = 0;
 
 	/*
-	 * physmap is in bytes, so when converting to page boundaries,
-	 * round up the start address and round down the end address.
+	 * Validate the physical memory.  The physical memory segments
+	 * have already been aligned to PHYSMAP_ALIGN which is a multiple
+	 * of PAGE_SIZE.
 	 */
 	for (i = 0; i <= physmap_idx; i += 2) {
 		vm_paddr_t end;
 
-		end = ptoa((vm_paddr_t)Maxmem);
-		if (physmap[i + 1] < end)
-			end = trunc_page(physmap[i + 1]);
-		for (pa = round_page(physmap[i]); pa < end; pa += PAGE_SIZE) {
+		end = physmap[i + 1];
+
+		for (pa = physmap[i]; pa < end; pa += PHYSMAP_ALIGN) {
 			int tmp, page_bad, full;
 			int *ptr = (int *)CADDR1;
 
@@ -1525,8 +1553,9 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			 */
 			if (dcons_addr > 0
 			    && pa >= trunc_page(dcons_addr)
-			    && pa < dcons_addr + dcons_size)
+			    && pa < dcons_addr + dcons_size) {
 				goto do_dump_avail;
+			}
 
 			page_bad = FALSE;
 
@@ -1541,24 +1570,28 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			 * Test for alternating 1's and 0's
 			 */
 			*(volatile int *)ptr = 0xaaaaaaaa;
+			cpu_mfence();
 			if (*(volatile int *)ptr != 0xaaaaaaaa)
 				page_bad = TRUE;
 			/*
 			 * Test for alternating 0's and 1's
 			 */
 			*(volatile int *)ptr = 0x55555555;
+			cpu_mfence();
 			if (*(volatile int *)ptr != 0x55555555)
 				page_bad = TRUE;
 			/*
 			 * Test for all 1's
 			 */
 			*(volatile int *)ptr = 0xffffffff;
+			cpu_mfence();
 			if (*(volatile int *)ptr != 0xffffffff)
 				page_bad = TRUE;
 			/*
 			 * Test for all 0's
 			 */
 			*(volatile int *)ptr = 0x0;
+			cpu_mfence();
 			if (*(volatile int *)ptr != 0x0)
 				page_bad = TRUE;
 			/*
@@ -1583,7 +1616,7 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			 * will terminate the loop.
 			 */
 			if (phys_avail[pa_indx] == pa) {
-				phys_avail[pa_indx] += PAGE_SIZE;
+				phys_avail[pa_indx] += PHYSMAP_ALIGN;
 			} else {
 				pa_indx++;
 				if (pa_indx == PHYS_AVAIL_ARRAY_END) {
@@ -1593,21 +1626,21 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 					full = TRUE;
 					goto do_dump_avail;
 				}
-				phys_avail[pa_indx++] = pa;	/* start */
-				phys_avail[pa_indx] = pa + PAGE_SIZE; /* end */
+				phys_avail[pa_indx++] = pa;
+				phys_avail[pa_indx] = pa + PHYSMAP_ALIGN;
 			}
-			physmem++;
+			physmem += PHYSMAP_ALIGN / PAGE_SIZE;
 do_dump_avail:
 			if (dump_avail[da_indx] == pa) {
-				dump_avail[da_indx] += PAGE_SIZE;
+				dump_avail[da_indx] += PHYSMAP_ALIGN;
 			} else {
 				da_indx++;
 				if (da_indx == DUMP_AVAIL_ARRAY_END) {
 					da_indx--;
 					goto do_next;
 				}
-				dump_avail[da_indx++] = pa; /* start */
-				dump_avail[da_indx] = pa + PAGE_SIZE; /* end */
+				dump_avail[da_indx++] = pa;
+				dump_avail[da_indx] = pa + PHYSMAP_ALIGN;
 			}
 do_next:
 			if (full)
@@ -1618,13 +1651,14 @@ do_next:
 	cpu_invltlb();
 
 	/*
-	 * XXX
 	 * The last chunk must contain at least one page plus the message
 	 * buffer to avoid complicating other code (message buffer address
 	 * calculation, etc.).
 	 */
-	while (phys_avail[pa_indx - 1] + PAGE_SIZE +
-	    round_page(MSGBUF_SIZE) >= phys_avail[pa_indx]) {
+	msgbuf_size = (MSGBUF_SIZE + PHYSMAP_ALIGN_MASK) & ~PHYSMAP_ALIGN_MASK;
+
+	while (phys_avail[pa_indx - 1] + PHYSMAP_ALIGN +
+	       msgbuf_size >= phys_avail[pa_indx]) {
 		physmem -= atop(phys_avail[pa_indx] - phys_avail[pa_indx - 1]);
 		phys_avail[pa_indx--] = 0;
 		phys_avail[pa_indx--] = 0;
@@ -1633,14 +1667,15 @@ do_next:
 	Maxmem = atop(phys_avail[pa_indx]);
 
 	/* Trim off space for the message buffer. */
-	phys_avail[pa_indx] -= round_page(MSGBUF_SIZE);
+	phys_avail[pa_indx] -= msgbuf_size;
 
 	avail_end = phys_avail[pa_indx];
 
 	/* Map the message buffer. */
-	for (off = 0; off < round_page(MSGBUF_SIZE); off += PAGE_SIZE)
-		pmap_kenter((vm_offset_t)msgbufp + off, phys_avail[pa_indx] +
-		    off);
+	for (off = 0; off < msgbuf_size; off += PAGE_SIZE) {
+		pmap_kenter((vm_offset_t)msgbufp + off,
+			    phys_avail[pa_indx] + off);
+	}
 }
 
 #ifdef SMP
@@ -1650,10 +1685,8 @@ int apic_io_enable = 1; /* Enabled by default for kernels compiled w/APIC_IO */
 int apic_io_enable = 0; /* Disabled by default for kernels compiled without */
 #endif
 TUNABLE_INT("hw.apic_io_enable", &apic_io_enable);
-extern struct machintr_abi MachIntrABI_APIC;
 #endif
 
-extern struct machintr_abi MachIntrABI_ICU;
 struct machintr_abi MachIntrABI;
 
 /*
@@ -1825,6 +1858,17 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	isa_defaultirq();
 #endif
 	rand_initialize();
+
+	/*
+	 * Initialize IRQ mapping
+	 *
+	 * NOTE:
+	 * SHOULD be after elcr_probe()
+	 */
+	MachIntrABI_ICU.initmap();
+#ifdef SMP
+	MachIntrABI_IOAPIC.initmap();
+#endif
 
 #ifdef DDB
 	kdb_init();

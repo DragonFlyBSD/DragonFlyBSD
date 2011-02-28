@@ -98,6 +98,7 @@ void
 command(const KINFO *k, const struct varent *vent)
 {
 	int left;
+	int indent;
 	char *cp, *vis_env, *vis_args;
 
 	if (cflag) {
@@ -117,19 +118,33 @@ command(const KINFO *k, const struct varent *vent)
 		if ((vis_env = malloc(strlen(k->ki_env) * 4 + 1)) == NULL)
 			err(1, NULL);
 		strvis(vis_env, k->ki_env, VIS_TAB | VIS_NL | VIS_NOSLASH);
-	} else
+	} else {
 		vis_env = NULL;
+	}
+
+	indent = k->ki_indent;
+	if (indent < 0)
+		indent = 0;
 
 	if (STAILQ_NEXT(vent, link) == NULL) {
 		/* last field */
 		if (termwidth == UNLIMITED) {
 			if (vis_env)
 				printf("%s ", vis_env);
+			while (indent) {
+				putchar(' ');
+				--indent;
+			}
 			printf("%s", vis_args);
 		} else {
 			left = termwidth - (totwidth - vent->width);
 			if (left < 1) /* already wrapped, just use std width */
 				left = vent->width;
+			while (indent && left > 1) {
+				putchar(' ');
+				--indent;
+				--left;
+			}
 			if ((cp = vis_env) != NULL) {
 				while (--left >= 0 && *cp)
 					putchar(*cp++);
@@ -150,7 +165,11 @@ command(const KINFO *k, const struct varent *vent)
 void
 ucomm(const KINFO *k, const struct varent *vent)
 {
-	printf("%-*s", vent->width, make_printable(KI_PROC(k, comm)));
+	/* Do not pad the last field */
+	if (STAILQ_NEXT(vent, link) == NULL)
+		printf("%s", make_printable(KI_PROC(k, comm)));
+	else
+		printf("%-*s", vent->width, make_printable(KI_PROC(k, comm)));
 }
 
 void
@@ -452,8 +471,20 @@ cputime(const KINFO *k, const struct varent *vent)
 	psecs = (psecs + 5000) / 10000;
 	secs += psecs / 100;
 	psecs = psecs % 100;
-	snprintf(obuff, sizeof(obuff),
-	    "%3ld:%02ld%c%02ld", secs/60, secs%60, decimal_point, psecs);
+#if 1
+	if (secs >= 86400) {
+		snprintf(obuff, sizeof(obuff), "%3ldd%02ld:%02ld",
+			secs / 86400, secs / (60 * 60) % 24, secs / 60 % 60);
+	} else if (secs >= 100 * 60) {
+		snprintf(obuff, sizeof(obuff), "%2ld:%02ld:%02ld",
+			secs / 60 / 60, secs / 60 % 60, secs % 60);
+	} else
+#endif
+	{
+		snprintf(obuff, sizeof(obuff), "%3ld:%02ld%c%02ld",
+			 secs / 60, secs % 60,
+			 decimal_point, psecs);
+	}
 	printf("%*s", vent->width, obuff);
 }
 

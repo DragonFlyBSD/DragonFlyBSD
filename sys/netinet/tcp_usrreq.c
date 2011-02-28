@@ -379,6 +379,10 @@ tcp_usr_listen(netmsg_t msg)
 #endif
 
 	COMMON_START(so, inp, 0);
+
+	if (tp->t_flags & TF_LISTEN)
+		goto out;
+
 	if (inp->inp_lport == 0) {
 		error = in_pcbbind(inp, NULL, td);
 		if (error)
@@ -386,7 +390,7 @@ tcp_usr_listen(netmsg_t msg)
 	}
 
 	tp->t_state = TCPS_LISTEN;
-	tp->t_flags |= TF_SYNCACHE;
+	tp->t_flags |= TF_LISTEN;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
 #ifdef SMP
@@ -395,6 +399,12 @@ tcp_usr_listen(netmsg_t msg)
 		 * We have to set the flag because we can't have other cpus
 		 * messing with our inp's flags.
 		 */
+		KASSERT(!(inp->inp_flags & INP_CONNECTED),
+			("already on connhash\n"));
+		KASSERT(!(inp->inp_flags & INP_WILDCARD),
+			("already on wildcardhash\n"));
+		KASSERT(!(inp->inp_flags & INP_WILDCARD_MP),
+			("already on MP wildcardhash\n"));
 		inp->inp_flags |= INP_WILDCARD_MP;
 
 		KKASSERT(so->so_port == cpu_portfn(0));
@@ -426,6 +436,10 @@ tcp6_usr_listen(netmsg_t msg)
 #endif
 
 	COMMON_START(so, inp, 0);
+
+	if (tp->t_flags & TF_LISTEN)
+		goto out;
+
 	if (inp->inp_lport == 0) {
 		if (!(inp->inp_flags & IN6P_IPV6_V6ONLY))
 			inp->inp_vflag |= INP_IPV4;
@@ -437,7 +451,7 @@ tcp6_usr_listen(netmsg_t msg)
 	}
 
 	tp->t_state = TCPS_LISTEN;
-	tp->t_flags |= TF_SYNCACHE;
+	tp->t_flags |= TF_LISTEN;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
 #ifdef SMP
@@ -446,6 +460,12 @@ tcp6_usr_listen(netmsg_t msg)
 		 * We have to set the flag because we can't have other cpus
 		 * messing with our inp's flags.
 		 */
+		KASSERT(!(inp->inp_flags & INP_CONNECTED),
+			("already on connhash\n"));
+		KASSERT(!(inp->inp_flags & INP_WILDCARD),
+			("already on wildcardhash\n"));
+		KASSERT(!(inp->inp_flags & INP_WILDCARD_MP),
+			("already on MP wildcardhash\n"));
 		inp->inp_flags |= INP_WILDCARD_MP;
 
 		KKASSERT(so->so_port == cpu_portfn(0));

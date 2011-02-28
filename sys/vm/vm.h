@@ -108,9 +108,6 @@ typedef struct vm_map *vm_map_t;
 struct vm_object;
 typedef struct vm_object *vm_object_t;
 
-struct vm_object_lock;
-typedef struct vm_object_lock *vm_object_lock_t;
-
 /*
  * This is also defined in vm/vm_page.h.
  */

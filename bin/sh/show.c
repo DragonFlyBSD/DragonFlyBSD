@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)show.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/show.c,v 1.23 2006/04/14 13:59:03 schweikh Exp $
- * $DragonFly: src/bin/sh/show.c,v 1.4 2007/01/14 06:21:52 pavalos Exp $
+ * $FreeBSD: src/bin/sh/show.c,v 1.27 2010/10/13 22:18:03 obrien Exp $
  */
 
 #include <fcntl.h>
@@ -274,7 +273,7 @@ indent(int amount, char *pfx, FILE *fp)
 
 FILE *tracefile;
 
-#if DEBUG == 2
+#if DEBUG >= 2
 int debug = 1;
 #else
 int debug = 0;
@@ -307,7 +306,7 @@ sh_trace(const char *fmt, ...)
 
 
 void
-trputs(char *s)
+trputs(const char *s)
 {
 	if (tracefile == NULL)
 		return;

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/msun/i387/fenv.h,v 1.6 2007/01/06 21:46:23 das Exp $
+ * $FreeBSD: src/lib/msun/i387/fenv.h,v 1.7 2010/02/03 20:23:47 kib Exp $
  */
 
 #ifndef	_FENV_H_
@@ -106,7 +106,7 @@ static __inline int
 feclearexcept(int __excepts)
 {
 	fenv_t __env;
-	int __mxcsr;
+	__uint32_t __mxcsr;
 
 	if (__excepts == FE_ALL_EXCEPT) {
 		__fnclex();
@@ -158,7 +158,7 @@ fetestexcept(int __excepts)
 static __inline int
 fegetround(void)
 {
-	int __control;
+	__uint16_t __control;
 
 	/*
 	 * We assume that the x87 and the SSE unit agree on the
@@ -201,7 +201,7 @@ static __inline int
 fesetenv(const fenv_t *__envp)
 {
 	fenv_t __env = *__envp;
-	int __mxcsr;
+	__uint32_t __mxcsr;
 
 	__mxcsr = __env.__mxcsr;
 	__env.__mxcsr = 0xffffffff;

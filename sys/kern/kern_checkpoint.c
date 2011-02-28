@@ -692,7 +692,7 @@ ckpt_freeze_proc(struct lwp *lp, struct file *fp)
 	rlim_t limit;
 	int error;
 
-	lwkt_gettoken(&proc_token);	/* needed for proc_*() calls */
+	lwkt_gettoken(&p->p_token);	/* needed for proc_*() calls */
 
         PRINTF(("calling generic_elf_coredump\n"));
 	limit = p->p_rlimit[RLIMIT_CORE].rlim_cur;
@@ -705,7 +705,7 @@ ckpt_freeze_proc(struct lwp *lp, struct file *fp)
 	} else {
 		error = ERANGE;
 	}
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 	return error;
 }
 

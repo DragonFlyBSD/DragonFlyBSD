@@ -805,8 +805,7 @@ lwkt_token_pool_lookup(void *ptr)
 }
 
 /*
- * Initialize a token.  If mpsafe is 0, the MP lock is acquired before
- * acquiring the token and released after releasing the token.
+ * Initialize a token.  
  */
 void
 lwkt_token_init(lwkt_token_t tok, const char *desc)

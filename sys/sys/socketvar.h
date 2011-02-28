@@ -87,7 +87,7 @@ struct signalsockbuf {
 #define	SSB_ASYNC	0x0010		/* ASYNC I/O, need signals */
 #define	SSB_UPCALL	0x0020		/* someone wants an upcall */
 #define	SSB_NOINTR	0x0040		/* operations not interruptible */
-#define SSB_AIO		0x0080		/* AIO operations queued */
+/*#define SSB_AIO	0x0080*/	/* AIO operations queued */
 #define SSB_KNOTE	0x0100		/* kernel note attached */
 #define SSB_MEVENT	0x0200		/* need message event notification */
 #define SSB_STOP	0x0400		/* backpressure indicator */
@@ -99,7 +99,7 @@ struct signalsockbuf {
 			 SSB_AUTOSIZE | SSB_AUTOLOWAT)
 
 #define SSB_NOTIFY_MASK	(SSB_WAIT | SSB_ASYNC | SSB_UPCALL | \
-			 SSB_AIO | SSB_KNOTE | SSB_MEVENT)
+			 SSB_KNOTE | SSB_MEVENT)
 
 /*
  * Per-socket kernel structure.  Contains universal send and receive queues,

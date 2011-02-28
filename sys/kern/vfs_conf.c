@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.34 2008/05/24 19:08:28 dillon Exp $
  */
 
 /*
@@ -216,12 +215,24 @@ vfs_mountroot_devfs(void)
 	struct vfsconf *vfsp;
 	int error;
 	struct ucred *cred = proc0.p_ucred;
+	const char *devfs_path, *init_chroot;
+	char *dev_malloced = NULL;
 
+	if ((init_chroot = kgetenv("init_chroot")) != NULL) {
+		size_t l;
+
+		l = strlen(init_chroot) + sizeof("/dev");
+		dev_malloced = kmalloc(l, M_MOUNT, M_WAITOK);
+		ksnprintf(dev_malloced, l, "%s/dev", init_chroot);
+		devfs_path = dev_malloced;
+	} else {
+		devfs_path = "/dev";
+	}
 	/*
 	 * Lookup the requested path and extract the nch and vnode.
 	 */
 	error = nlookup_init_raw(&nd,
-	     "/dev", UIO_SYSSPACE, NLC_FOLLOW,
+	     devfs_path, UIO_SYSSPACE, NLC_FOLLOW,
 	     cred, &rootnch);
 
 	if (error == 0) {
@@ -234,6 +245,9 @@ vfs_mountroot_devfs(void)
 			}
 		}
 	}
+	if (dev_malloced != NULL)
+		kfree(dev_malloced, M_MOUNT), dev_malloced = NULL;
+	devfs_path = NULL;
 	if (error) {
 		nlookup_done(&nd);
 		devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: nlookup failed, error: %d\n", error);
@@ -356,18 +370,16 @@ vfs_mountroot_devfs(void)
 static int
 vfs_mountroot_try(const char *mountfrom)
 {
-        struct mount	*mp, *mp2;
+	struct mount	*mp;
 	char		*vfsname, *devname;
 	int		error;
 	char		patt[32];
-	int		mountfromlen, len;
 	const char	*cp, *ep;
 	char		*mf;
 
 	vfsname = NULL;
 	devname = NULL;
 	mp      = NULL;
-	mp2		= NULL;
 	error   = EINVAL;
 
 	if (mountfrom == NULL)
@@ -377,7 +389,6 @@ vfs_mountroot_try(const char *mountfrom)
 	kprintf("Mounting root from %s\n", mountfrom);
 	crit_exit();
 
-	mountfromlen = strlen(mountfrom);
 	cp = mountfrom;
 	/* parse vfs name and devname */
 	vfsname = kmalloc(MFSNAMELEN, M_MOUNT, M_WAITOK);
@@ -385,7 +396,6 @@ vfs_mountroot_try(const char *mountfrom)
 	mf = kmalloc(MFSNAMELEN+MNAMELEN, M_MOUNT, M_WAITOK);
 	for(;;) {
 		for (ep = cp; (*ep != 0) && (*ep != ';'); ep++);
-		len = ep - cp;
 		bzero(vfsname, MFSNAMELEN);
 		bzero(devname, MNAMELEN);
 		bzero(mf, MFSNAMELEN+MNAMELEN);
@@ -569,7 +579,6 @@ struct kdbn_info {
 cdev_t
 kgetdiskbyname(const char *name) 
 {
-	char *cp;
 	cdev_t rdev;
 
 	/*
@@ -577,7 +586,6 @@ kgetdiskbyname(const char *name)
 	 */
 	if (strncmp(name, __SYS_PATH_DEV, sizeof(__SYS_PATH_DEV) - 1) == 0)
 		name += sizeof(__SYS_PATH_DEV) - 1;
-	cp = __DECONST(char *, name);
 
 	/*
 	 * Locate the device

@@ -78,7 +78,6 @@
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <sys/socketvar2.h>
-#include <sys/mplock2.h>
 #include <net/netmsg2.h>
 
 #ifdef SCTP
@@ -131,10 +130,8 @@ sys_socket(struct socket_args *uap)
 {
 	int error;
 
-	get_mplock();
 	error = kern_socket(uap->domain, uap->type, uap->protocol,
 			    &uap->sysmsg_iresult);
-	rel_mplock();
 
 	return (error);
 }
@@ -170,9 +167,7 @@ sys_bind(struct bind_args *uap)
 	error = getsockaddr(&sa, uap->name, uap->namelen);
 	if (error)
 		return (error);
-	get_mplock();
 	error = kern_bind(uap->s, sa);
-	rel_mplock();
 	FREE(sa, M_SONAME);
 
 	return (error);
@@ -205,9 +200,7 @@ sys_listen(struct listen_args *uap)
 {
 	int error;
 
-	get_mplock();
 	error = kern_listen(uap->s, uap->backlog);
-	rel_mplock();
 	return (error);
 }
 
@@ -327,7 +320,7 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	KNOTE(&head->so_rcv.ssb_kq.ki_note, 0);
 
 	if (head->so_sigio != NULL)
-		fsetown(fgetown(head->so_sigio), &so->so_sigio);
+		fsetown(fgetown(&head->so_sigio), &so->so_sigio);
 
 	nfp->f_type = DTYPE_SOCKET;
 	nfp->f_flag = fflag;
@@ -394,10 +387,8 @@ sys_accept(struct accept_args *uap)
 		if (error)
 			return (error);
 
-		get_mplock();
 		error = kern_accept(uap->s, 0, &sa, &sa_len,
 				    &uap->sysmsg_iresult);
-		rel_mplock();
 
 		if (error == 0)
 			error = copyout(sa, uap->name, sa_len);
@@ -408,10 +399,8 @@ sys_accept(struct accept_args *uap)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
-		get_mplock();
 		error = kern_accept(uap->s, 0, NULL, 0,
 				    &uap->sysmsg_iresult);
-		rel_mplock();
 	}
 	return (error);
 }
@@ -434,10 +423,8 @@ sys_extaccept(struct extaccept_args *uap)
 		if (error)
 			return (error);
 
-		get_mplock();
 		error = kern_accept(uap->s, fflags, &sa, &sa_len,
 				    &uap->sysmsg_iresult);
-		rel_mplock();
 
 		if (error == 0)
 			error = copyout(sa, uap->name, sa_len);
@@ -448,10 +435,8 @@ sys_extaccept(struct extaccept_args *uap)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
-		get_mplock();
 		error = kern_accept(uap->s, fflags, NULL, 0,
 				    &uap->sysmsg_iresult);
-		rel_mplock();
 	}
 	return (error);
 }
@@ -548,9 +533,7 @@ sys_connect(struct connect_args *uap)
 	error = getsockaddr(&sa, uap->name, uap->namelen);
 	if (error)
 		return (error);
-	get_mplock();
 	error = kern_connect(uap->s, 0, sa);
-	rel_mplock();
 	FREE(sa, M_SONAME);
 
 	return (error);
@@ -571,9 +554,7 @@ sys_extconnect(struct extconnect_args *uap)
 	error = getsockaddr(&sa, uap->name, uap->namelen);
 	if (error)
 		return (error);
-	get_mplock();
 	error = kern_connect(uap->s, fflags, sa);
-	rel_mplock();
 	FREE(sa, M_SONAME);
 
 	return (error);
@@ -647,9 +628,7 @@ sys_socketpair(struct socketpair_args *uap)
 {
 	int error, sockv[2];
 
-	get_mplock();
 	error = kern_socketpair(uap->domain, uap->type, uap->protocol, sockv);
-	rel_mplock();
 
 	if (error == 0)
 		error = copyout(sockv, uap->rsv, sizeof(sockv));
@@ -743,10 +722,8 @@ sys_sendto(struct sendto_args *uap)
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_td = td;
 
-	get_mplock();
 	error = kern_sendmsg(uap->s, sa, &auio, NULL, uap->flags,
 			     &uap->sysmsg_szresult);
-	rel_mplock();
 
 	if (sa)
 		FREE(sa, M_SONAME);
@@ -819,10 +796,8 @@ sys_sendmsg(struct sendmsg_args *uap)
 		}
 	}
 
-	get_mplock();
 	error = kern_sendmsg(uap->s, sa, &auio, control, uap->flags,
 			     &uap->sysmsg_szresult);
-	rel_mplock();
 
 cleanup:
 	iovec_free(&iov, aiov);
@@ -935,10 +910,8 @@ sys_recvfrom(struct recvfrom_args *uap)
 	auio.uio_rw = UIO_READ;
 	auio.uio_td = td;
 
-	get_mplock();
 	error = kern_recvmsg(uap->s, uap->from ? &sa : NULL, &auio, NULL,
 			     &uap->flags, &uap->sysmsg_szresult);
-	rel_mplock();
 
 	if (error == 0 && uap->from) {
 		/* note: sa may still be NULL */
@@ -1012,12 +985,10 @@ sys_recvmsg(struct recvmsg_args *uap)
 
 	flags = uap->flags;
 
-	get_mplock();
 	error = kern_recvmsg(uap->s,
 			     (msg.msg_name ? &sa : NULL), &auio,
 			     (msg.msg_control ? &control : NULL), &flags,
 			     &uap->sysmsg_szresult);
-	rel_mplock();
 
 	/*
 	 * Conditionally copyout the name and populate the namelen field.
@@ -1134,9 +1105,7 @@ sys_setsockopt(struct setsockopt_args *uap)
 			goto out;
 	}
 
-	get_mplock();
 	error = kern_setsockopt(uap->s, &sopt);
-	rel_mplock();
 out:
 	if (uap->val)
 		kfree(sopt.sopt_val, M_TEMP);
@@ -1207,9 +1176,7 @@ sys_getsockopt(struct getsockopt_args *uap)
 			goto out;
 	}
 
-	get_mplock();
 	error = kern_getsockopt(uap->s, &sopt);
-	rel_mplock();
 	if (error)
 		goto out;
 	valsize = sopt.sopt_valsize;
@@ -1279,9 +1246,7 @@ sys_getsockname(struct getsockname_args *uap)
 	if (error)
 		return (error);
 
-	get_mplock();
 	error = kern_getsockname(uap->fdes, &sa, &sa_len);
-	rel_mplock();
 
 	if (error == 0)
 		error = copyout(sa, uap->asa, sa_len);
@@ -1351,9 +1316,7 @@ sys_getpeername(struct getpeername_args *uap)
 	if (error)
 		return (error);
 
-	get_mplock();
 	error = kern_getpeername(uap->fdes, &sa, &sa_len);
-	rel_mplock();
 
 	if (error == 0)
 		error = copyout(sa, uap->asa, sa_len);
@@ -1398,11 +1361,9 @@ getsockaddr(struct sockaddr **namp, caddr_t uaddr, size_t len)
  * Detach a mapped page and release resources back to the system.
  * We must release our wiring and if the object is ripped out
  * from under the vm_page we become responsible for freeing the
- * page.  These routines must be MPSAFE.
+ * page.
  *
- * XXX HACK XXX TEMPORARY UNTIL WE IMPLEMENT EXT MBUF REFERENCE COUNTING
- *
- * XXX vm_page_*() routines are not MPSAFE yet, the MP lock is required.
+ * MPSAFE
  */
 static void
 sf_buf_mfree(void *arg)
@@ -1410,19 +1371,13 @@ sf_buf_mfree(void *arg)
 	struct sf_buf *sf = arg;
 	vm_page_t m;
 
-	/*
-	 * XXX vm_page_*() and SFBUF routines not MPSAFE yet.
-	 */
-	get_mplock();
-	crit_enter();
 	m = sf_buf_page(sf);
-	if (sf_buf_free(sf) == 0) {
+	if (sf_buf_free(sf)) {
+		/* sf invalid now */
 		vm_page_unwire(m, 0);
 		if (m->wire_count == 0 && m->object == NULL)
 			vm_page_try_to_free(m);
 	}
-	crit_exit();
-	rel_mplock();
 }
 
 /*
@@ -1473,7 +1428,6 @@ sys_sendfile(struct sendfile_args *uap)
 		fdrop(fp);
 		return (EINVAL);
 	}
-	get_mplock();
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
 	fdrop(fp);
@@ -1541,7 +1495,6 @@ sys_sendfile(struct sendfile_args *uap)
 done:
 	if (vp)
 		vrele(vp);
-	rel_mplock();
 	if (uap->sbytes != NULL) {
 		sbytes += hdtr_size;
 		copyout(&sbytes, uap->sbytes, sizeof(off_t));
@@ -1551,7 +1504,7 @@ done:
 
 int
 kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
-    struct mbuf *mheader, off_t *sbytes, int flags)
+	      struct mbuf *mheader, off_t *sbytes, int flags)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1851,7 +1804,6 @@ sys_sctp_peeloff(struct sctp_peeloff_args *uap)
 	if (error)
 		return (error);
 
-	get_mplock();
 	crit_enter();
 	head = (struct socket *)lfp->f_data;
 	error = sctp_can_peel_off(head, assoc_id);
@@ -1891,7 +1843,7 @@ sys_sctp_peeloff(struct sctp_peeloff_args *uap)
 	soclrstate(so, SS_NOFDREF | SS_COMP);	/* when clearing NOFDREF */
 	so->so_head = NULL;
 	if (head->so_sigio != NULL)
-		fsetown(fgetown(head->so_sigio), &so->so_sigio);
+		fsetown(fgetown(&head->so_sigio), &so->so_sigio);
 
 	nfp->f_type = DTYPE_SOCKET;
 	nfp->f_flag = fflag;
@@ -1912,7 +1864,6 @@ noconnection:
 	 * Release explicitly held references before returning.
 	 */
 done:
-	rel_mplock();
 	if (nfp != NULL)
 		fdrop(nfp);
 	fdrop(lfp);

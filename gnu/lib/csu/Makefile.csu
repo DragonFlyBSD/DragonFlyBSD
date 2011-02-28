@@ -1,5 +1,4 @@
 # $FreeBSD: src/gnu/lib/csu/Makefile,v 1.24 2004/09/10 06:48:04 ru Exp $
-# $DragonFly: src/gnu/lib/csu/Makefile.csu,v 1.2 2007/08/23 06:52:02 corecode Exp $
 
 SRCS+=		crtstuff.c
 HDRS+=		tm.h
@@ -14,7 +13,8 @@ OBJS+=	${SRCS:N*.h:R:S/$/.o/g}
 
 CFLAGS+=	-finhibit-size-directive -fno-inline-functions \
 		-fno-exceptions -fno-zero-initialized-in-bss \
-		-fno-omit-frame-pointer -fno-unit-at-a-time
+		-fno-omit-frame-pointer -fno-unit-at-a-time \
+		-fno-asynchronous-unwind-tables
 CFLAGS+=	-I.
 
 CRTS_CFLAGS=	-DCRTSTUFFS_O -DSHARED ${PICFLAG}

@@ -35,8 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mknodes.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mknodes.c,v 1.11.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/mknodes.c,v 1.3 2004/11/07 20:54:52 eirikn Exp $
+ * $FreeBSD: src/bin/sh/mknodes.c,v 1.20 2009/08/28 22:41:25 jilles Exp $
  */
 
 /*
@@ -98,7 +97,7 @@ static void indent(int, FILE *);
 static int nextfield(char *);
 static void skipbl(void);
 static int readline(void);
-static void error(const char *, ...) __printf0like(1, 2);
+static void error(const char *, ...) __printf0like(1, 2) __dead2;
 static char *savestr(const char *);
 
 
@@ -243,8 +242,11 @@ output(char *file)
 	fputs("\tstruct nodelist *next;\n", hfile);
 	fputs("\tunion node *n;\n", hfile);
 	fputs("};\n\n\n", hfile);
-	fputs("union node *copyfunc(union node *);\n", hfile);
-	fputs("void freefunc(union node *);\n", hfile);
+	fputs("struct funcdef;\n", hfile);
+	fputs("struct funcdef *copyfunc(union node *);\n", hfile);
+	fputs("union node *getfuncnode(struct funcdef *);\n", hfile);
+	fputs("void reffunc(struct funcdef *);\n", hfile);
+	fputs("void unreffunc(struct funcdef *);\n", hfile);
 
 	fputs(writer, cfile);
 	while (fgets(line, sizeof line, patfile) != NULL) {

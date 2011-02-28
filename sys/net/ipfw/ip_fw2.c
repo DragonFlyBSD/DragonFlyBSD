@@ -2411,6 +2411,8 @@ check_body:
 					m_tag_prepend(m, mtag);
 					m->m_pkthdr.fw_flags |=
 						IPFORWARD_MBUF_TAGGED;
+					m->m_pkthdr.fw_flags &=
+						~BRIDGE_MBUF_TAGGED;
 				}
 				retval = IP_FW_PASS;
 				goto done;
@@ -4152,6 +4154,10 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 		/* FALL THROUGH */
 
 	case IP_FW_DIVERT:
+		/*
+		 * Must clear bridge tag when changing
+		 */
+		m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 		if (ip_divert_p != NULL) {
 			m = ip_divert_p(m, tee, 1);
 		} else {

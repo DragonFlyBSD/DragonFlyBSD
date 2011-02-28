@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1993 Paul Kranenburg
  * All rights reserved.
  *
@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/link_elf.h,v 1.20.2.2 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/sys/sys/link_elf.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 /*
@@ -39,8 +38,8 @@
  * library scheme.
  */
 
-#ifndef _LINK_H_
-#define _LINK_H_
+#ifndef _SYS_LINK_ELF_H_
+#define _SYS_LINK_ELF_H_
 
 #if (defined(FREEBSD_ELF) || defined(__ELF__)) && !defined(FREEBSD_AOUT)
 
@@ -328,4 +327,4 @@ struct hints_bucket {
 
 #endif /* !__ELF__ */
 
-#endif /* _LINK_H_ */
+#endif /* _SYS_LINK_ELF_H_ */

@@ -23,12 +23,10 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libradius/Makefile,v 1.3.2.2 2002/06/17 02:24:57 brian Exp $
-#	$DragonFly: src/lib/libradius/Makefile,v 1.5 2006/04/08 20:16:45 swildner Exp $
 
 LIB=		radius
 SRCS=		radlib.c
 INCS=		radlib.h radlib_vs.h
-WARNS?=		6
 DPADD+=		${LIBMD}
 LDADD+=		-lmd
 SHLIB_MAJOR=	2

@@ -53,7 +53,6 @@
 #include <sys/socketops.h>
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>
-#include <sys/aio.h> /* for aio_swake proto */
 #include <sys/event.h>
 
 #include <sys/thread2.h>
@@ -494,8 +493,6 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 		pgsigio(so->so_sigio, SIGIO, 0);
 	if (ssb->ssb_flags & SSB_UPCALL)
 		(*so->so_upcall)(so, so->so_upcallarg, MB_DONTWAIT);
-	if (ssb->ssb_flags & SSB_AIO)
-		aio_swake(so, ssb);
 	KNOTE(&kqinfo->ki_note, 0);
 
 	/*

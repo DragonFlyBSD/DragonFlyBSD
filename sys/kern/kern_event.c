@@ -55,8 +55,6 @@
 #include <sys/file2.h>
 #include <sys/mplock2.h>
 
-#include <vm/vm_zone.h>
-
 /*
  * Global token for kqueue subsystem
  */
@@ -107,7 +105,6 @@ static void 	knote_drop(struct knote *kn);
 static void	knote_detach_and_drop(struct knote *kn);
 static void 	knote_enqueue(struct knote *kn);
 static void 	knote_dequeue(struct knote *kn);
-static void 	knote_init(void);
 static struct 	knote *knote_alloc(void);
 static void 	knote_free(struct knote *kn);
 
@@ -131,7 +128,6 @@ static struct filterops proc_filtops =
 static struct filterops timer_filtops =
 	{ 0, filt_timerattach, filt_timerdetach, filt_timer };
 
-static vm_zone_t	knote_zone;
 static int 		kq_ncallouts = 0;
 static int 		kq_calloutmax = (4 * 1024);
 SYSCTL_INT(_kern, OID_AUTO, kq_calloutmax, CTLFLAG_RW,
@@ -213,21 +209,21 @@ filt_procattach(struct knote *kn)
 	int immediate;
 
 	immediate = 0;
-	lwkt_gettoken(&proc_token);
 	p = pfind(kn->kn_id);
 	if (p == NULL && (kn->kn_sfflags & NOTE_EXIT)) {
 		p = zpfind(kn->kn_id);
 		immediate = 1;
 	}
 	if (p == NULL) {
-		lwkt_reltoken(&proc_token);
 		return (ESRCH);
 	}
 	if (!PRISON_CHECK(curthread->td_ucred, p->p_ucred)) {
-		lwkt_reltoken(&proc_token);
+		if (p)
+			PRELE(p);
 		return (EACCES);
 	}
 
+	lwkt_gettoken(&p->p_token);
 	kn->kn_ptr.p_proc = p;
 	kn->kn_flags |= EV_CLEAR;		/* automatically set */
 
@@ -249,7 +245,8 @@ filt_procattach(struct knote *kn)
 	 */
 	if (immediate && filt_proc(kn, NOTE_EXIT))
 		KNOTE_ACTIVATE(kn);
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
+	PRELE(p);
 
 	return (0);
 }
@@ -1204,7 +1201,7 @@ kqueue_close(struct file *fp)
 	kqueue_terminate(kq);
 
 	fp->f_data = NULL;
-	funsetown(kq->kq_sigio);
+	funsetown(&kq->kq_sigio);
 
 	kfree(kq, M_KQUEUE);
 	return (0);
@@ -1520,21 +1517,14 @@ knote_dequeue(struct knote *kn)
 	kq->kq_count--;
 }
 
-static void
-knote_init(void)
-{
-	knote_zone = zinit("KNOTE", sizeof(struct knote), 0, 0, 1);
-}
-SYSINIT(knote, SI_SUB_PSEUDO, SI_ORDER_ANY, knote_init, NULL)
-
 static struct knote *
 knote_alloc(void)
 {
-	return ((struct knote *)zalloc(knote_zone));
+	return kmalloc(sizeof(struct knote), M_KQUEUE, M_WAITOK);
 }
 
 static void
 knote_free(struct knote *kn)
 {
-	zfree(knote_zone, kn);
+	kfree(kn, M_KQUEUE);
 }

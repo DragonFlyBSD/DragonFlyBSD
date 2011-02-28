@@ -1,0 +1,28 @@
+# $FreeBSD: src/tools/regression/bin/sh/expansion/trim5.0,v 1.1 2010/10/28 21:51:14 jilles Exp $
+
+e= q='?' a='*' t=texttext s='ast*que?non' p='/et[c]/' w='a b c' b='{{(#)}}'
+h='##'
+failures=''
+ok=''
+
+testcase() {
+	code="$1"
+	expected="$2"
+	oIFS="$IFS"
+	eval "$code"
+	IFS='|'
+	result="$#|$*"
+	IFS="$oIFS"
+	if [ "x$result" = "x$expected" ]; then
+		ok=x$ok
+	else
+		failures=x$failures
+		echo "For $code, expected $expected actual $result"
+	fi
+}
+
+testcase 'set -- "${b%'\'}\''}"'		'1|{{(#)}'
+testcase 'set -- ${b%"}"}'			'1|{{(#)}'
+testcase 'set -- "${b%"}"}"'			'1|{{(#)}'
+
+test "x$failures" = x

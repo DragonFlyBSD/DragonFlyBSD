@@ -24,7 +24,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/gen/dladdr.3,v 1.3.2.4 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/dladdr.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
 .\"
 .Dd February 5, 1998
 .Os
@@ -41,8 +40,7 @@
 .Sh DESCRIPTION
 The
 .Fn dladdr
-function
-queries the dynamic linker for information about the shared object
+function queries the dynamic linker for information about the shared object
 containing the address
 .Fa addr .
 The information is returned in the structure specified by
@@ -72,8 +70,7 @@ The value of the symbol returned in
 .Pp
 The
 .Fn dladdr
-function
-is available only in dynamically linked programs.
+function is available only in dynamically linked programs.
 .Sh ERRORS
 If a mapped shared object containing
 .Fa addr

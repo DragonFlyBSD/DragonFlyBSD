@@ -1,5 +1,4 @@
 # $FreeBSD: src/lib/libftpio/Makefile,v 1.9.2.2 2001/04/25 10:04:30 ru Exp $
-# $DragonFly: src/lib/libftpio/Makefile,v 1.7 2008/10/28 16:54:09 swildner Exp $
 
 LIB=		ftpio
 SHLIB_MAJOR=	7
@@ -27,8 +26,6 @@ MLINKS+=	ftpio.3 ftpPutURL.3
 MLINKS+=	ftpio.3 ftpPutURLAf.3
 MLINKS+=	ftpio.3 ftpVerbose.3
 CLEANFILES=	ftperr.c
-
-WARNS?=		6
 
 ftperr.c:	ftp.errors
 	@echo '#include <stdio.h>' > ${.TARGET}

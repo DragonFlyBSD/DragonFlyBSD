@@ -21,6 +21,8 @@ SRCS+=	version.c
 
 MAN=	moduli.5
 
+WARNS?=	0
+
 DPADD+=	${LIBZ}
 LDADD+=	-lz
 

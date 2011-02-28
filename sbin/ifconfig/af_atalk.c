@@ -168,7 +168,7 @@ static struct afswtch af_atalk = {
 	.af_addreq	= &at_addreq,
 };
 
-static __constructor(100) void
+static __constructor(101) void
 atalk_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))

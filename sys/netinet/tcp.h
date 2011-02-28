@@ -32,7 +32,6 @@
  *
  *	@(#)tcp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp.h,v 1.13.2.3 2001/03/01 22:08:42 jlemon Exp $
- * $DragonFly: src/sys/netinet/tcp.h,v 1.7 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_H_
@@ -41,9 +40,7 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
-#endif
 
 typedef	u_int32_t tcp_seq;
 typedef int32_t	  tcp_seq_diff_t;

@@ -128,19 +128,21 @@ sys_getpgid(struct getpgid_args *uap)
 	struct proc *pt;
 	int error;
 
-	lwkt_gettoken(&proc_token);
 	error = 0;
 
 	if (uap->pid == 0) {
 		pt = p;
+		PHOLD(pt);
 	} else {
 		pt = pfind(uap->pid);
 		if (pt == NULL)
 			error = ESRCH;
 	}
+	/* XXX MPSAFE on pgrp? */
 	if (error == 0)
 		uap->sysmsg_result = pt->p_pgrp->pg_id;
-	lwkt_reltoken(&proc_token);
+	if (pt)
+		PRELE(pt);
 	return (error);
 }
 
@@ -154,11 +156,11 @@ sys_getsid(struct getsid_args *uap)
 	struct proc *pt;
 	int error;
 
-	lwkt_gettoken(&proc_token);
 	error = 0;
 
 	if (uap->pid == 0) {
 		pt = p;
+		PHOLD(pt);
 	} else {
 		pt = pfind(uap->pid);
 		if (pt == NULL)
@@ -166,7 +168,8 @@ sys_getsid(struct getsid_args *uap)
 	}
 	if (error == 0)
 		uap->sysmsg_result = pt->p_session->s_sid;
-	lwkt_reltoken(&proc_token);
+	if (pt)
+		PRELE(pt);
 	return (error);
 }
 
@@ -264,17 +267,20 @@ int
 sys_setsid(struct setsid_args *uap)
 {
 	struct proc *p = curproc;
+	struct pgrp *pg = NULL;
 	int error;
 
-	lwkt_gettoken(&proc_token);
-	if (p->p_pgid == p->p_pid || pgfind(p->p_pid)) {
+	lwkt_gettoken(&p->p_token);
+	if (p->p_pgid == p->p_pid || (pg = pgfind(p->p_pid)) != NULL) {
 		error = EPERM;
+		if (pg)
+			pgrel(pg);
 	} else {
 		enterpgrp(p, p->p_pid, 1);
 		uap->sysmsg_result = p->p_pid;
 		error = 0;
 	}
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 	return (error);
 }
 
@@ -296,18 +302,23 @@ sys_setpgid(struct setpgid_args *uap)
 {
 	struct proc *curp = curproc;
 	struct proc *targp;		/* target process */
-	struct pgrp *pgrp;		/* target pgrp */
+	struct pgrp *pgrp = NULL;	/* target pgrp */
 	int error;
 
 	if (uap->pgid < 0)
 		return (EINVAL);
 
-	lwkt_gettoken(&proc_token);
 	if (uap->pid != 0 && uap->pid != curp->p_pid) {
-		if ((targp = pfind(uap->pid)) == 0 || !inferior(targp)) {
+		if ((targp = pfind(uap->pid)) == NULL || !inferior(targp)) {
+			if (targp)
+				PRELE(targp);
 			error = ESRCH;
+			targp = NULL;
 			goto done;
 		}
+		lwkt_gettoken(&targp->p_token);
+		/* targp now referenced and its token is held */
+
 		if (targp->p_pgrp == NULL ||
 		    targp->p_session != curp->p_session) {
 			error = EPERM;
@@ -319,6 +330,8 @@ sys_setpgid(struct setpgid_args *uap)
 		}
 	} else {
 		targp = curp;
+		PHOLD(targp);
+		lwkt_gettoken(&targp->p_token);
 	}
 	if (SESS_LEADER(targp)) {
 		error = EPERM;
@@ -327,7 +340,7 @@ sys_setpgid(struct setpgid_args *uap)
 	if (uap->pgid == 0) {
 		uap->pgid = targp->p_pid;
 	} else if (uap->pgid != targp->p_pid) {
-		if ((pgrp = pgfind(uap->pgid)) == 0 ||
+		if ((pgrp = pgfind(uap->pgid)) == NULL ||
 	            pgrp->pg_session != curp->p_session) {
 			error = EPERM;
 			goto done;
@@ -335,7 +348,12 @@ sys_setpgid(struct setpgid_args *uap)
 	}
 	error = enterpgrp(targp, uap->pgid, 0);
 done:
-	lwkt_reltoken(&proc_token);
+	if (pgrp)
+		pgrel(pgrp);
+	if (targp) {
+		lwkt_reltoken(&targp->p_token);
+		PRELE(targp);
+	}
 	return (error);
 }
 

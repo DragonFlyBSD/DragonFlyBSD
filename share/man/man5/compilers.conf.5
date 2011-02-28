@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd March 4, 2010
+.Dd February 25, 2011
 .Os
 .Dt COMPILERS.CONF 5
 .Sh NAME
@@ -104,11 +104,15 @@ Currently, defaults are provided for
 .Nm clang
 (installed from
 .Xr pkgsrc 7 Ap s
-.Pa lang/clang )
-and
+.Pa lang/clang ),
 .Nm clangsvn
 (installed from SVN trunk as described in
-.Pa http://clang.llvm.org/get_started.html ) .
+.Pa http://clang.llvm.org/get_started.html )
+and
+.Nm gcc46
+(installed from
+.Xr pkgsrc 7 Ap s
+.Pa lang/gnat-aux ) .
 .Sh IMPLEMENTATION NOTES
 In
 .Dx ,

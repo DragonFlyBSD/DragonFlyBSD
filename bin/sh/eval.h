@@ -34,12 +34,12 @@
  * SUCH DAMAGE.
  *
  *	@(#)eval.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/eval.h,v 1.11 2005/12/04 18:44:21 stefanf Exp $
- * $DragonFly: src/bin/sh/eval.h,v 1.4 2007/01/07 01:14:53 pavalos Exp $
+ * $FreeBSD: src/bin/sh/eval.h,v 1.14 2009/12/27 18:04:05 jilles Exp $
  */
 
 extern const char *commandname;	/* currently executing command */
 extern int exitstatus;		/* exit status of last command */
+extern int oexitstatus;		/* saved exit status */
 extern struct strlist *cmdenviron;  /* environment for builtin command */
 
 
@@ -50,8 +50,13 @@ struct backcmd {		/* result of evalbackcmd */
 	struct job *jp;		/* job structure for command */
 };
 
+/* flags in argument to evaltree/evalstring */
+#define EV_EXIT 01		/* exit after evaluating tree */
+#define EV_TESTED 02		/* exit status is checked; ignore -e flag */
+#define EV_BACKCMD 04		/* command executing within back quotes */
+
 int evalcmd(int, char **);
-void evalstring(char *);
+void evalstring(char *, int);
 union node;	/* BLETCH for ansi C */
 void evaltree(union node *, int);
 void evalbackcmd(union node *, struct backcmd *);

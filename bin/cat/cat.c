@@ -60,20 +60,20 @@
 static int bflag, eflag, nflag, sflag, tflag, vflag, rval;
 static const char *filename;
 
-static void scanfiles (char **, int);
-static void cook_cat (FILE *);
-static void raw_cat (int);
+static void	scanfiles(char **, int);
+static void	cook_cat(FILE *);
+static void	raw_cat(int);
 
 #ifndef NO_UDOM_SUPPORT
-static int udom_open (const char *path, int flags);
+static int	udom_open(const char *, int);
 #endif
 
 static void
 usage(void)
 {
-        fprintf(stderr,
-                "usage: cat [-benstuv] [file ...]\n");
-        exit(EXIT_FAILURE);
+	fprintf(stderr,
+		"usage: cat [-benstuv] [file ...]\n");
+	exit(EXIT_FAILURE);
 }
 
 int
@@ -234,8 +234,7 @@ raw_cat(int rfd)
 {
 	int off;
 	size_t nbsize;
-	ssize_t nr;
-	ssize_t nw;
+	ssize_t nr, nw;
 	struct stat rst;
 	static struct stat ost;
 	static size_t bsize;

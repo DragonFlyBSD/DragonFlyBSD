@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)bltin.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/bltin/bltin.h,v 1.10.2.2 2002/07/19 04:38:54 tjr Exp $
- * $DragonFly: src/bin/sh/bltin/bltin.h,v 1.4 2004/11/07 20:54:52 eirikn Exp $
+ * $FreeBSD: src/bin/sh/bltin/bltin.h,v 1.18 2010/12/21 22:47:34 jilles Exp $
  */
 
 /*
@@ -48,6 +47,7 @@
 #include "../mystring.h"
 #ifdef SHELL
 #include "../output.h"
+#define FILE struct output
 #undef stdout
 #define stdout out1
 #undef stderr
@@ -59,23 +59,12 @@
 #define putchar(c)	out1c(c)
 #define fprintf outfmt
 #define fputs outstr
+#define fwrite(ptr, size, nmemb, file) outbin(ptr, (size) * (nmemb), file)
 #define fflush flushout
 #define INITARGS(argv)
-#define warnx1(a, b, c) {				\
-	char buf[64];					\
-	snprintf(buf, sizeof(buf), a);			\
-	error("%s", buf);				\
-}
-#define warnx2(a, b, c) {				\
-	char buf[64];					\
-	snprintf(buf, sizeof(buf), a, b);		\
-	error("%s", buf);				\
-}
-#define warnx3(a, b, c) {				\
-	char buf[64];					\
-	snprintf(buf, sizeof(buf), a, b, c);		\
-	error("%s", buf);				\
-}
+#define warnx warning
+#define warn(fmt, ...) warning(fmt ": %s", __VA_ARGS__, strerror(errno))
+#define errx(exitstatus, ...) error(__VA_ARGS__)
 
 int main(int, char *[]);
 
@@ -86,7 +75,9 @@ int main(int, char *[]);
 #define INITARGS(argv)	if ((commandname = argv[0]) == NULL) {fputs("Argc is zero\n", stderr); exit(2);} else
 #endif
 
-void error(const char *, ...) __printf0like(1, 2);
+#include <unistd.h>
+
+pid_t getjobpgrp(char *);
 
 
 extern char *commandname;

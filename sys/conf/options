@@ -117,7 +117,6 @@ MSGTQL		opt_sysvipc.h
 UCONSOLE
 ICMP_BANDLIM
 SHOW_BUSYBUFS
-VFS_AIO
 DIRECTIO	opt_directio.h
 
 # POSIX kernel options
@@ -480,6 +479,8 @@ SOCKBUF_DEBUG		opt_global.h
 PANIC_DEBUG		opt_global.h
 MBUF_DEBUG		opt_global.h
 PMAP_DEBUG		opt_global.h
+VM_PAGE_DEBUG		opt_global.h
+SLAB_DEBUG		opt_global.h
 
 # Sample system/interrupt PC
 DEBUG_PCTRACK		opt_pctrack.h
@@ -530,13 +531,6 @@ BKTR_NO_MSP_RESET		opt_bktr.h
 BKTR_430_FX_MODE		opt_bktr.h
 BKTR_SIS_VIA_MODE		opt_bktr.h
 BKTR_NEW_MSP34XX_DRIVER		opt_bktr.h
-
-# meteor opt_meteor.h
-METEOR_ALLOC_PAGES	opt_meteor.h
-METEOR_TEST_VIDEO	opt_meteor.h
-METEOR_SYSTEM_DEFAULT	opt_meteor.h
-METEOR_DEALLOC_PAGES	opt_meteor.h
-METEOR_DEALLOC_ABOVE	opt_meteor.h
 
 # Various mi ISA bus flags
 COMPAT_OLDISA		opt_compat_oldisa.h
