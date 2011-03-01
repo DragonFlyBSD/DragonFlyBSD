@@ -388,7 +388,7 @@ AcpiExSystemIoSpaceHandler (
     void                    *RegionContext)
 {
     ACPI_STATUS             Status = AE_OK;
-    UINT32                  Value32;
+    UINT32                  Value32 = 0;
 
 
     ACPI_FUNCTION_TRACE (ExSystemIoSpaceHandler);
