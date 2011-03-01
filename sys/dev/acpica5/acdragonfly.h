@@ -143,16 +143,6 @@
 #include <sys/libkern.h>
 #include <stdarg.h>
 
-#ifdef foo
-/*
- * Use acpica-unix default ACPI_THREAD_ID, which is ACPI_SIZE_T;
- * too much code in acpica assumes that ACPI_THREAD_ID has integer
- * type...
- */
-#include <sys/thread.h>
-#define ACPI_THREAD_ID	thread_t
-#endif
-
 #ifdef DEBUGGER_THREADING
 #undef DEBUGGER_THREADING
 #endif /* DEBUGGER_THREADING */
@@ -176,12 +166,12 @@ struct acpicache;
 
 #else /* _KERNEL */
 
+#define ACPI_CAST_PTHREAD_T(pthread)    ((ACPI_THREAD_ID) ACPI_TO_INTEGER (pthread))
+
 /* Not building kernel code, so use libc */
 #define ACPI_USE_STANDARD_HEADERS
 #define ACPI_FLUSH_CPU_CACHE()
 #include <sys/types.h>
-
-#define ACPI_THREAD_ID	pthread_t
 
 #define __cli()
 #define __sti()

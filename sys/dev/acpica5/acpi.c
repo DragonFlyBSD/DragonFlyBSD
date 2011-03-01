@@ -651,6 +651,15 @@ acpi_attach(device_t dev)
     if (!acpi_disabled("bus"))
 	acpi_probe_children(dev);
 
+    /* Update all GPEs and enable runtime GPEs. */
+    status = AcpiUpdateAllGpes();
+    if (ACPI_FAILURE(status))
+        device_printf(dev, "Could not update all GPEs: %s\n",
+                      AcpiFormatException(status));
+
+    /* Allow sleep request after a while. */
+    /* timeout(acpi_sleep_enable, sc, hz * ACPI_MINIMUM_AWAKETIME); */
+
     error = 0;
 
  out:
@@ -2319,7 +2328,6 @@ acpi_AckSleepState(struct apm_clone_data *clone, int error)
 static void
 acpi_sleep_enable(void *arg)
 {
-
     ((struct acpi_softc *)arg)->acpi_sleep_disabled = 0;
 }
 
