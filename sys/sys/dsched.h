@@ -163,28 +163,54 @@ struct dsched_policy {
 TAILQ_HEAD(dsched_policy_head, dsched_policy);
 
 
-#define	DSCHED_THREAD_IO_LOCKINIT(x)	lockinit(&(x)->lock, "tdiobioq", 0, LK_CANRECURSE)
-#define	DSCHED_THREAD_IO_LOCK(x)	dsched_thread_io_ref((x)); \
-					lockmgr(&(x)->lock, LK_EXCLUSIVE)
-#define	DSCHED_THREAD_IO_UNLOCK(x)	lockmgr(&(x)->lock, LK_RELEASE); \
-					dsched_thread_io_unref((x))
+#define	DSCHED_THREAD_IO_LOCKINIT(x)	\
+		lockinit(&(x)->lock, "tdiobioq", 0, LK_CANRECURSE)
 
-#define	DSCHED_DISK_CTX_LOCKINIT(x)	lockinit(&(x)->lock, "tdiodiskq", 0, LK_CANRECURSE)
-#define	DSCHED_DISK_CTX_LOCK(x)		dsched_disk_ctx_ref((x)); \
-					lockmgr(&(x)->lock, LK_EXCLUSIVE)
-#define	DSCHED_DISK_CTX_UNLOCK(x)	lockmgr(&(x)->lock, LK_RELEASE); \
-					dsched_disk_ctx_unref((x))
-#define DSCHED_DISK_CTX_LOCK_ASSERT(x)	KKASSERT(lockstatus(&(x)->lock, curthread) == LK_EXCLUSIVE)
+#define	DSCHED_THREAD_IO_LOCK(x)	do {			\
+			dsched_thread_io_ref((x)); 		\
+			lockmgr(&(x)->lock, LK_EXCLUSIVE);	\
+		} while(0)
 
-#define	DSCHED_GLOBAL_THREAD_CTX_LOCKINIT(x)	lockinit(&dsched_tdctx_lock, "tdctxglob", 0, LK_CANRECURSE)
-#define	DSCHED_GLOBAL_THREAD_CTX_LOCK(x)	lockmgr(&dsched_tdctx_lock, LK_EXCLUSIVE)
-#define	DSCHED_GLOBAL_THREAD_CTX_UNLOCK(x)	lockmgr(&dsched_tdctx_lock, LK_RELEASE)
+#define	DSCHED_THREAD_IO_UNLOCK(x)	do {			\
+			lockmgr(&(x)->lock, LK_RELEASE);	\
+			dsched_thread_io_unref((x));		\
+		} while(0)
 
-#define	DSCHED_THREAD_CTX_LOCKINIT(x)	lockinit(&(x)->lock, "tdctx", 0, LK_CANRECURSE)
-#define	DSCHED_THREAD_CTX_LOCK(x)	dsched_thread_ctx_ref((x));	\
-					lockmgr(&(x)->lock, LK_EXCLUSIVE)
-#define DSCHED_THREAD_CTX_UNLOCK(x)	lockmgr(&(x)->lock, LK_RELEASE);\
-					dsched_thread_ctx_unref((x))
+#define	DSCHED_DISK_CTX_LOCKINIT(x)	\
+		lockinit(&(x)->lock, "tdiodiskq", 0, LK_CANRECURSE)
+
+#define	DSCHED_DISK_CTX_LOCK(x)		do {			\
+			dsched_disk_ctx_ref((x));		\
+			lockmgr(&(x)->lock, LK_EXCLUSIVE);	\
+		} while(0)
+
+#define	DSCHED_DISK_CTX_UNLOCK(x)	do {			\
+			lockmgr(&(x)->lock, LK_RELEASE);	\
+			dsched_disk_ctx_unref((x));		\
+		} while(0)
+
+#define DSCHED_DISK_CTX_LOCK_ASSERT(x)	\
+		KKASSERT(lockstatus(&(x)->lock, curthread) == LK_EXCLUSIVE)
+
+#define	DSCHED_GLOBAL_THREAD_CTX_LOCKINIT(x)	\
+		lockinit(&dsched_tdctx_lock, "tdctxglob", 0, LK_CANRECURSE)
+#define	DSCHED_GLOBAL_THREAD_CTX_LOCK(x)	\
+		lockmgr(&dsched_tdctx_lock, LK_EXCLUSIVE)
+#define	DSCHED_GLOBAL_THREAD_CTX_UNLOCK(x)	\
+		lockmgr(&dsched_tdctx_lock, LK_RELEASE)
+
+#define	DSCHED_THREAD_CTX_LOCKINIT(x)	\
+		lockinit(&(x)->lock, "tdctx", 0, LK_CANRECURSE)
+
+#define	DSCHED_THREAD_CTX_LOCK(x)	do {			\
+			dsched_thread_ctx_ref((x));		\
+			lockmgr(&(x)->lock, LK_EXCLUSIVE);	\
+		} while(0)
+
+#define DSCHED_THREAD_CTX_UNLOCK(x)	do {			\
+			lockmgr(&(x)->lock, LK_RELEASE);	\
+			dsched_thread_ctx_unref((x));		\
+		} while(0)
 
 /* flags for thread_io */
 #define	DSCHED_LINKED_DISK_CTX		0x01
