@@ -1003,8 +1003,6 @@ fill_fpregs_xmm(struct savexmm *sv_xmm, struct save87 *sv_87)
 	/* FPU registers */
 	for (i = 0; i < 8; ++i)
 		sv_87->sv_ac[i] = sv_xmm->sv_fp[i].fp_acc;
-
-	sv_87->sv_ex_sw = sv_xmm->sv_ex_sw;
 }
 
 static void
@@ -1027,8 +1025,6 @@ set_fpregs_xmm(struct save87 *sv_87, struct savexmm *sv_xmm)
 	/* FPU registers */
 	for (i = 0; i < 8; ++i)
 		sv_xmm->sv_fp[i].fp_acc = sv_87->sv_ac[i];
-
-	sv_xmm->sv_ex_sw = sv_87->sv_ex_sw;
 }
 #endif /* CPU_DISABLE_SSE */
 

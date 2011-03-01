@@ -78,7 +78,7 @@ struct	fpacc87 {
 struct	save87 {
 	struct	env87 sv_env;	/* floating point control/status */
 	struct	fpacc87	sv_ac[8];	/* accumulator contents, 0-7 */
-	u_long	sv_ex_sw;	/* status word for last exception */
+	u_long	sv_unused001;
 	/*
 	 * Bogus padding for emulators.  Emulators should use their own
 	 * struct and arrange to store into this struct (ending here)
@@ -120,7 +120,7 @@ struct  savexmm {
 		u_char		fp_pad[6];      /* 6  (padding) */
 	} sv_fp[8];
 	struct xmmacc	sv_xmm[8];		/* 128 */
-	u_long sv_ex_sw;	/* status word for last exception */
+	u_long sv_unused001;
 	u_char sv_pad[220];
 } __attribute__((aligned(16)));
 

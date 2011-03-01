@@ -86,16 +86,6 @@
 				      : : "n" (CR0_TS) : "ax")
 #define stop_emulating()        __asm("clts")
 
-#ifndef CPU_DISABLE_SSE
-#define GET_FPU_EXSW_PTR(td) \
-	(cpu_fxsr ? \
-		&(td)->td_savefpu->sv_xmm.sv_ex_sw : \
-		&(td)->td_savefpu->sv_87.sv_ex_sw)
-#else /* CPU_DISABLE_SSE */
-#define GET_FPU_EXSW_PTR(td) \
-	(&(td)->td_savefpu->sv_87.sv_ex_sw)
-#endif /* CPU_DISABLE_SSE */
-
 typedef u_char bool_t;
 #ifndef CPU_DISABLE_SSE
 static	void	fpu_clean_state(void);
@@ -325,7 +315,6 @@ int
 npxdna(void)
 {
 	thread_t td = curthread;
-	u_long *exstat;
 	int didinit = 0;
 
 	if (mdcpu->gd_npxthread != NULL) {
@@ -358,8 +347,6 @@ npxdna(void)
 	 * Record new context early in case frstor causes an IRQ13.
 	 */
 	mdcpu->gd_npxthread = td;
-	exstat = GET_FPU_EXSW_PTR(td);
-	*exstat = 0;
 	/*
 	 * The following frstor may cause an IRQ13 when the state being
 	 * restored has a pending error.  The error will appear to have been
