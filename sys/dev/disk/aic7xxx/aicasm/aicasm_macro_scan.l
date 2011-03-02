@@ -41,7 +41,6 @@
  * $Id: //depot/aic7xxx/aic7xxx/aicasm/aicasm_macro_scan.l#8 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm_macro_scan.l,v 1.5 2003/12/16 23:54:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_macro_scan.l,v 1.5 2007/07/05 05:41:50 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -63,6 +62,7 @@
 #include "aicasm_macro_gram.h"
 
 #define MAX_STR_CONST 4096
+#define YY_NO_INPUT
 static char string_buf[MAX_STR_CONST];
 static char *string_buf_ptr;
 static int  parren_count;

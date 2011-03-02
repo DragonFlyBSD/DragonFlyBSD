@@ -63,6 +63,7 @@
 
 /* This is used for macro body capture too, so err on the large size. */
 #define MAX_STR_CONST 4096
+#define YY_NO_INPUT
 static char string_buf[MAX_STR_CONST];
 static char *string_buf_ptr;
 static int  parren_count;

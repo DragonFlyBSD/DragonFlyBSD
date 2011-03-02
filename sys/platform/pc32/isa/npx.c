@@ -128,16 +128,6 @@ void	stop_emulating	(void);
 
 #endif	/* __GNUC__ */
 
-#ifndef CPU_DISABLE_SSE
-#define GET_FPU_EXSW_PTR(td) \
-	(cpu_fxsr ? \
-		&(td)->td_savefpu->sv_xmm.sv_ex_sw : \
-		&(td)->td_savefpu->sv_87.sv_ex_sw)
-#else /* CPU_DISABLE_SSE */
-#define GET_FPU_EXSW_PTR(td) \
-	(&(td)->td_savefpu->sv_87.sv_ex_sw)
-#endif /* CPU_DISABLE_SSE */
-
 typedef u_char bool_t;
 #ifndef CPU_DISABLE_SSE
 static	void	fpu_clean_state(void);
@@ -763,8 +753,8 @@ npx_intr(void *dummy)
 {
 	int code;
 	u_short control;
+	u_short status;
 	struct intrframe *frame;
-	u_long *exstat;
 
 	crit_enter();
 
@@ -794,9 +784,8 @@ npx_intr(void *dummy)
 		panic("npxintr from non-current process");
 	}
 
-	exstat = GET_FPU_EXSW_PTR(curthread);
 	outb(0xf0, 0);
-	fnstsw(exstat);
+	fnstsw(&status);
 	fnstcw(&control);
 	fnclex();
 
@@ -824,7 +813,7 @@ npx_intr(void *dummy)
 		 * this exception.
 		 */
 		code = 
-		    fpetable[(*exstat & ~control & 0x3f) | (*exstat & 0x40)];
+		    fpetable[(status & ~control & 0x3f) | (status & 0x40)];
 		trapsignal(curthread->td_lwp, SIGFPE, code);
 	} else {
 		/*
@@ -859,7 +848,6 @@ int
 npxdna(void)
 {
 	thread_t td = curthread;
-	u_long *exstat;
 	int didinit = 0;
 
 	if (!npx_exists)
@@ -894,8 +882,6 @@ npxdna(void)
 	 * Record new context early in case frstor causes an IRQ13.
 	 */
 	mdcpu->gd_npxthread = td;
-	exstat = GET_FPU_EXSW_PTR(td);
-	*exstat = 0;
 	/*
 	 * The following frstor may cause an IRQ13 when the state being
 	 * restored has a pending error.  The error will appear to have been

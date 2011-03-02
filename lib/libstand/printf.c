@@ -36,8 +36,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
- * $FreeBSD: src/lib/libstand/printf.c,v 1.4 1999/12/27 08:45:14 peter Exp $
- * $DragonFly: src/lib/libstand/printf.c,v 1.6 2005/12/11 02:27:26 swildner Exp $
+ * $FreeBSD: src/lib/libstand/printf.c,v 1.14 2010/07/12 15:32:45 jkim Exp $
  */
 
 /*
@@ -45,6 +44,8 @@
  */
 
 #include <sys/types.h>
+#include <sys/stdint.h>
+#include <limits.h>
 #include <string.h>
 #include "stand.h"
 
@@ -59,7 +60,9 @@ struct snprintf_arg {
 	size_t	remain;
 };
 
-static char	*ksprintn(u_long, int, int *);
+#define MAXNBUF (sizeof(intmax_t) * CHAR_BIT + 1)
+
+static char	*ksprintn (char *buf, uintmax_t num, int base, int *len, int upper);
 static int	kvprintf(const char *, void (*)(int, void *), void *, int,
 			 va_list);
 static void	putchar_wrapper(int, void *);
@@ -150,22 +153,24 @@ snprintf_func(int ch, void *arg)
 }
 
 /*
- * Put a number (base <= 16) in a buffer in reverse order; return an
- * optional length and a pointer to the NULL terminated (preceded?)
- * buffer.
+ * Put a NUL-terminated ASCII number (base <= 36) in a buffer in reverse
+ * order; return an optional length and a pointer to the last character
+ * written in the buffer (i.e., the first character of the string).
+ * The buffer pointed to by `nbuf' must have length >= MAXNBUF.
  */
 static char *
-ksprintn(u_long ul, int base, int *lenp)
-{					/* A long in base 8, plus NULL. */
-	static char buf[sizeof(long) * NBBY / 3 + 2];
-	char *p;
+ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper)
+{
+	char *p, c;
 
-	p = buf;
+	p = nbuf;
+	*p = '\0';
 	do {
-		*++p = hex2ascii(ul % base);
-	} while (ul /= base);
+		c = hex2ascii(num % base);
+		*++p = upper ? toupper(c) : c;
+	} while (num /= base);
 	if (lenp)
-		*lenp = p - buf;
+		*lenp = p - nbuf;
 	return (p);
 }
 
@@ -200,15 +205,19 @@ kvprintf(char const *fmt, void (*func)(int, void *), void *arg, int radix,
 	 va_list ap)
 {
 #define PCHAR(c) {int cc=(c); if (func) (*func)(cc, arg); else *d++ = cc; retval++; }
-	char *p, *q, *d;
+	char nbuf[MAXNBUF];
+	char *d;
+	const char *p, *percent, *q;
 	u_char *up;
 	int ch, n;
-	u_long ul;
-	int base, lflag, tmp, width, ladjust, sharpflag, neg, sign, dot;
-	int dwidth;
+	uintmax_t num;
+	int base, lflag, qflag, tmp, width, ladjust, sharpflag, neg, sign, dot;
+	int cflag, hflag, jflag, tflag, zflag;
+	int dwidth, upper;
 	char padc;
-	int retval = 0;
+	int stop = 0, retval = 0;
 
+	num = 0;
 	if (!func)
 		d = (char *) arg;
 	else
@@ -223,13 +232,15 @@ kvprintf(char const *fmt, void (*func)(int, void *), void *arg, int radix,
 	for (;;) {
 		padc = ' ';
 		width = 0;
-		while ((ch = (u_char)*fmt++) != '%') {
-			if (ch == '\0') 
-				return retval;
+		while ((ch = (u_char)*fmt++) != '%' || stop) {
+			if (ch == '\0')
+				return (retval);
 			PCHAR(ch);
 		}
-		lflag = 0; ladjust = 0; sharpflag = 0; neg = 0;
-		sign = 0; dot = 0; dwidth = 0;
+		percent = fmt - 1;
+		qflag = 0; lflag = 0; ladjust = 0; sharpflag = 0; neg = 0;
+		sign = 0; dot = 0; dwidth = 0; upper = 0;
+		cflag = 0; hflag = 0; jflag = 0; tflag = 0; zflag = 0;
 reswitch:	switch (ch = (u_char)*fmt++) {
 		case '.':
 			dot = 1;
@@ -276,17 +287,17 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 				width = n;
 			goto reswitch;
 		case 'b':
-			ul = va_arg(ap, int);
+			num = (u_int)va_arg(ap, int);
 			p = va_arg(ap, char *);
-			for (q = ksprintn(ul, *p++, NULL); *q;)
+			for (q = ksprintn(nbuf, num, *p++, NULL, 0); *q;)
 				PCHAR(*q--);
 
-			if (!ul)
+			if (num == 0)
 				break;
 
 			for (tmp = 0; *p;) {
 				n = *p++;
-				if (ul & (1 << (n - 1))) {
+				if (num & (1 << (n - 1))) {
 					PCHAR(tmp ? ',' : '<');
 					for (; (n = *p) > ' '; ++p)
 						PCHAR(n);
@@ -316,26 +327,60 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			}
 			break;
 		case 'd':
-			ul = lflag ? va_arg(ap, long) : va_arg(ap, int);
-			sign = 1;
+		case 'i':
 			base = 10;
-			goto number;
+			sign = 1;
+			goto handle_sign;
+		case 'h':
+			if (hflag) {
+				hflag = 0;
+				cflag = 1;
+			} else
+				hflag = 1;
+			goto reswitch;
+		case 'j':
+			jflag = 1;
+			goto reswitch;
 		case 'l':
-			lflag = 1;
+			if (lflag) {
+				lflag = 0;
+				qflag = 1;
+			} else
+				lflag = 1;
 			goto reswitch;
 		case 'n':
-			ul = lflag ? va_arg(ap, u_long) : va_arg(ap, u_int);
-			base = radix;
-			goto number;
+			if (jflag)
+				*(va_arg(ap, intmax_t *)) = retval;
+			else if (qflag)
+				*(va_arg(ap, quad_t *)) = retval;
+			else if (lflag)
+				*(va_arg(ap, long *)) = retval;
+			else if (zflag)
+				*(va_arg(ap, size_t *)) = retval;
+			else if (hflag)
+				*(va_arg(ap, short *)) = retval;
+			else if (cflag)
+				*(va_arg(ap, char *)) = retval;
+			else
+				*(va_arg(ap, int *)) = retval;
+			break;
 		case 'o':
-			ul = lflag ? va_arg(ap, u_long) : va_arg(ap, u_int);
 			base = 8;
-			goto number;
+			goto handle_nosign;
 		case 'p':
-			ul = (u_long)va_arg(ap, void *);
 			base = 16;
-			sharpflag = 1;
+			sharpflag = (width == 0);
+			sign = 0;
+			num = (uintptr_t)va_arg(ap, void *);
 			goto number;
+		case 'q':
+			qflag = 1;
+			goto reswitch;
+		case 'r':
+			base = radix;
+			if (sign)
+				goto handle_sign;
+			goto handle_nosign;
 		case 's':
 			p = va_arg(ap, char *);
 			if (p == NULL)
@@ -357,19 +402,68 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 				while (width--)
 					PCHAR(padc);
 			break;
+		case 't':
+			tflag = 1;
+			goto reswitch;
 		case 'u':
-			ul = lflag ? va_arg(ap, u_long) : va_arg(ap, u_int);
 			base = 10;
-			goto number;
+			goto handle_nosign;
+		case 'X':
+			upper = 1;
 		case 'x':
-			ul = lflag ? va_arg(ap, u_long) : va_arg(ap, u_int);
 			base = 16;
-number:			if (sign && (long)ul < 0L) {
+			goto handle_nosign;
+		case 'y':
+			base = 16;
+			sign = 1;
+			goto handle_sign;
+		case 'z':
+			zflag = 1;
+			goto reswitch;
+handle_nosign:
+			sign = 0;
+			if (jflag)
+				num = va_arg(ap, uintmax_t);
+			else if (qflag)
+				num = va_arg(ap, u_quad_t);
+			else if (tflag)
+				num = va_arg(ap, ptrdiff_t);
+			else if (lflag)
+				num = va_arg(ap, u_long);
+			else if (zflag)
+				num = va_arg(ap, size_t);
+			else if (hflag)
+				num = (u_short)va_arg(ap, int);
+			else if (cflag)
+				num = (u_char)va_arg(ap, int);
+			else
+				num = va_arg(ap, u_int);
+			goto number;
+handle_sign:
+			if (jflag)
+				num = va_arg(ap, intmax_t);
+			else if (qflag)
+				num = va_arg(ap, quad_t);
+			else if (tflag)
+				num = va_arg(ap, ptrdiff_t);
+			else if (lflag)
+				num = va_arg(ap, long);
+			else if (zflag)
+				num = va_arg(ap, ssize_t);
+			else if (hflag)
+				num = (short)va_arg(ap, int);
+			else if (cflag)
+				num = (char)va_arg(ap, int);
+			else
+				num = va_arg(ap, int);
+number:
+			if (sign && (intmax_t)num < 0) {
 				neg = 1;
-				ul = -(long)ul;
+				num = -(intmax_t)num;
 			}
-			p = ksprintn(ul, base, &tmp);
-			if (sharpflag && ul != 0) {
+			p = ksprintn(nbuf, num, base, &n, upper);
+			tmp = 0;
+			if (sharpflag && num != 0) {
 				if (base == 8)
 					tmp++;
 				else if (base == 16)
@@ -378,12 +472,16 @@ number:			if (sign && (long)ul < 0L) {
 			if (neg)
 				tmp++;
 
-			if (!ladjust && width && (width -= tmp) > 0)
-				while (width--)
-					PCHAR(padc);
+			if (!ladjust && padc == '0')
+				dwidth = width - tmp;
+			width -= tmp + imax(dwidth, n);
+			dwidth -= n;
+			if (!ladjust)
+				while (width-- > 0)
+					PCHAR(' ');
 			if (neg)
 				PCHAR('-');
-			if (sharpflag && ul != 0) {
+			if (sharpflag && num != 0) {
 				if (base == 8) {
 					PCHAR('0');
 				} else if (base == 16) {
@@ -391,23 +489,29 @@ number:			if (sign && (long)ul < 0L) {
 					PCHAR('x');
 				}
 			}
+			while (dwidth-- > 0)
+				PCHAR('0');
 
 			while (*p)
 				PCHAR(*p--);
 
-			if (ladjust && width && (width -= tmp) > 0)
-				while (width--)
-					PCHAR(padc);
+			if (ladjust)
+				while (width-- > 0)
+					PCHAR(' ');
 
 			break;
 		default:
-			PCHAR('%');
-			if (lflag)
-				PCHAR('l');
-			PCHAR(ch);
+			while (percent < fmt)
+				PCHAR(*percent++);
+			/*
+			 * Since we ignore an formatting argument it is no
+			 * longer safe to obey the remaining formatting
+			 * arguments as the arguments will no longer match
+			 * the format specs.
+			 */
+			stop = 1;
 			break;
 		}
 	}
 #undef PCHAR
 }
-

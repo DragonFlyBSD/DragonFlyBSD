@@ -60,6 +60,9 @@ static dsched_cancel_t		noop_cancel;
 static dsched_queue_t		noop_queue;
 
 static void dsched_sysctl_add_disk(struct dsched_disk_ctx *diskctx, char *name);
+static void dsched_disk_ctx_destroy(struct dsched_disk_ctx *diskctx);
+static void dsched_thread_io_destroy(struct dsched_thread_io *tdio);
+static void dsched_thread_ctx_destroy(struct dsched_thread_ctx *tdctx);
 
 static int	dsched_inited = 0;
 static int	default_set = 0;
@@ -554,14 +557,19 @@ dsched_strategy_async(struct disk *dp, struct bio *bio, biodone_t *done, void *p
 	dev_dstrategy(dp->d_rawdev, nbio);
 }
 
+/*
+ * Ref and deref various structures.  The 1->0 transition of the reference
+ * count actually transitions 1->0x80000000 and causes the object to be
+ * destroyed.  It is possible for transitory references to occur on the
+ * object while it is being destroyed.  We use bit 31 to indicate that
+ * destruction is in progress and to prevent nested destructions.
+ */
 void
 dsched_disk_ctx_ref(struct dsched_disk_ctx *diskctx)
 {
 	int refcount;
 
 	refcount = atomic_fetchadd_int(&diskctx->refcount, 1);
-
-	KKASSERT(refcount >= 0);
 }
 
 void
@@ -570,8 +578,6 @@ dsched_thread_io_ref(struct dsched_thread_io *tdio)
 	int refcount;
 
 	refcount = atomic_fetchadd_int(&tdio->refcount, 1);
-
-	KKASSERT(refcount >= 0);
 }
 
 void
@@ -580,124 +586,212 @@ dsched_thread_ctx_ref(struct dsched_thread_ctx *tdctx)
 	int refcount;
 
 	refcount = atomic_fetchadd_int(&tdctx->refcount, 1);
-
-	KKASSERT(refcount >= 0);
 }
 
 void
 dsched_disk_ctx_unref(struct dsched_disk_ctx *diskctx)
 {
-	struct dsched_thread_io	*tdio, *tdio2;
-	int refcount;
+	int refs;
+	int nrefs;
 
-	refcount = atomic_fetchadd_int(&diskctx->refcount, -1);
+	/*
+	 * Handle 1->0 transitions for diskctx and nested destruction
+	 * recursions.  If the refs are already in destruction mode (bit 31
+	 * set) on the 1->0 transition we don't try to destruct it again.
+	 *
+	 * 0x80000001->0x80000000 transitions are handled normally and
+	 * thus avoid nested dstruction.
+	 */
+	for (;;) {
+		refs = diskctx->refcount;
+		cpu_ccfence();
+		nrefs = refs - 1;
 
-
-	KKASSERT(refcount >= 0 || refcount <= -0x400);
-
-	if (refcount == 1) {
-		atomic_subtract_int(&diskctx->refcount, 0x400); /* mark as: in destruction */
-#if 0
-		kprintf("diskctx (%p) destruction started, trace:\n", diskctx);
-		print_backtrace(4);
-#endif
-		lockmgr(&diskctx->lock, LK_EXCLUSIVE);
-		TAILQ_FOREACH_MUTABLE(tdio, &diskctx->tdio_list, dlink, tdio2) {
-			TAILQ_REMOVE(&diskctx->tdio_list, tdio, dlink);
-			tdio->flags &= ~DSCHED_LINKED_DISK_CTX;
-			dsched_thread_io_unref(tdio);
+		KKASSERT(((refs ^ nrefs) & 0x80000000) == 0);
+		if (nrefs) {
+			if (atomic_cmpset_int(&diskctx->refcount, refs, nrefs))
+				break;
+			continue;
 		}
-		lockmgr(&diskctx->lock, LK_RELEASE);
-		if (diskctx->dp->d_sched_policy->destroy_diskctx)
-			diskctx->dp->d_sched_policy->destroy_diskctx(diskctx);
-		objcache_put(dsched_diskctx_cache, diskctx);
-		atomic_subtract_int(&dsched_stats.diskctx_allocations, 1);
+		nrefs = 0x80000000;
+		if (atomic_cmpset_int(&diskctx->refcount, refs, nrefs)) {
+			dsched_disk_ctx_destroy(diskctx);
+			break;
+		}
 	}
+}
+
+static
+void
+dsched_disk_ctx_destroy(struct dsched_disk_ctx *diskctx)
+{
+	struct dsched_thread_io	*tdio;
+
+#if 0
+	kprintf("diskctx (%p) destruction started, trace:\n", diskctx);
+	print_backtrace(4);
+#endif
+	lockmgr(&diskctx->lock, LK_EXCLUSIVE);
+	while ((tdio = TAILQ_FIRST(&diskctx->tdio_list)) != NULL) {
+		KKASSERT(tdio->flags & DSCHED_LINKED_DISK_CTX);
+		TAILQ_REMOVE(&diskctx->tdio_list, tdio, dlink);
+		atomic_clear_int(&tdio->flags, DSCHED_LINKED_DISK_CTX);
+		tdio->diskctx = NULL;
+		/* XXX tdio->diskctx->dp->d_sched_policy->destroy_tdio(tdio);*/
+		dsched_thread_io_unref(tdio);
+	}
+	lockmgr(&diskctx->lock, LK_RELEASE);
+	if (diskctx->dp->d_sched_policy->destroy_diskctx)
+		diskctx->dp->d_sched_policy->destroy_diskctx(diskctx);
+	KKASSERT(diskctx->refcount == 0x80000000);
+	objcache_put(dsched_diskctx_cache, diskctx);
+	atomic_subtract_int(&dsched_stats.diskctx_allocations, 1);
 }
 
 void
 dsched_thread_io_unref(struct dsched_thread_io *tdio)
 {
-	struct dsched_thread_ctx	*tdctx;
-	struct dsched_disk_ctx	*diskctx;
-	int refcount;
+	int refs;
+	int nrefs;
 
-	refcount = atomic_fetchadd_int(&tdio->refcount, -1);
+	/*
+	 * Handle 1->0 transitions for tdio and nested destruction
+	 * recursions.  If the refs are already in destruction mode (bit 31
+	 * set) on the 1->0 transition we don't try to destruct it again.
+	 *
+	 * 0x80000001->0x80000000 transitions are handled normally and
+	 * thus avoid nested dstruction.
+	 */
+	for (;;) {
+		refs = tdio->refcount;
+		cpu_ccfence();
+		nrefs = refs - 1;
 
-	KKASSERT(refcount >= 0 || refcount <= -0x400);
-
-	if (refcount == 1) {
-		atomic_subtract_int(&tdio->refcount, 0x400); /* mark as: in destruction */
-#if 0
-		kprintf("tdio (%p) destruction started, trace:\n", tdio);
-		print_backtrace(8);
-#endif
-		diskctx = tdio->diskctx;
-		KKASSERT(diskctx != NULL);
-		KKASSERT(tdio->qlength == 0);
-
-		if (tdio->flags & DSCHED_LINKED_DISK_CTX) {
-			lockmgr(&diskctx->lock, LK_EXCLUSIVE);
-
-			TAILQ_REMOVE(&diskctx->tdio_list, tdio, dlink);
-			tdio->flags &= ~DSCHED_LINKED_DISK_CTX;
-
-			lockmgr(&diskctx->lock, LK_RELEASE);
+		KKASSERT(((refs ^ nrefs) & 0x80000000) == 0);
+		if (nrefs) {
+			if (atomic_cmpset_int(&tdio->refcount, refs, nrefs))
+				break;
+			continue;
 		}
-
-		if (tdio->flags & DSCHED_LINKED_THREAD_CTX) {
-			tdctx = tdio->tdctx;
-			KKASSERT(tdctx != NULL);
-
-			lockmgr(&tdctx->lock, LK_EXCLUSIVE);
-
-			TAILQ_REMOVE(&tdctx->tdio_list, tdio, link);
-			tdio->flags &= ~DSCHED_LINKED_THREAD_CTX;
-
-			lockmgr(&tdctx->lock, LK_RELEASE);
+		nrefs = 0x80000000;
+		if (atomic_cmpset_int(&tdio->refcount, refs, nrefs)) {
+			dsched_thread_io_destroy(tdio);
+			break;
 		}
-		if (tdio->diskctx->dp->d_sched_policy->destroy_tdio)
-			tdio->diskctx->dp->d_sched_policy->destroy_tdio(tdio);
-		objcache_put(dsched_tdio_cache, tdio);
-		atomic_subtract_int(&dsched_stats.tdio_allocations, 1);
-#if 0
-		dsched_disk_ctx_unref(diskctx);
-#endif
 	}
+}
+
+static void
+dsched_thread_io_destroy(struct dsched_thread_io *tdio)
+{
+	struct dsched_thread_ctx *tdctx;
+	struct dsched_disk_ctx	*diskctx;
+
+#if 0
+	kprintf("tdio (%p) destruction started, trace:\n", tdio);
+	print_backtrace(8);
+#endif
+	KKASSERT(tdio->qlength == 0);
+
+	while ((diskctx = tdio->diskctx) != NULL) {
+		dsched_disk_ctx_ref(diskctx);
+		lockmgr(&diskctx->lock, LK_EXCLUSIVE);
+		if (diskctx != tdio->diskctx) {
+			lockmgr(&diskctx->lock, LK_RELEASE);
+			dsched_disk_ctx_unref(diskctx);
+			continue;
+		}
+		KKASSERT(tdio->flags & DSCHED_LINKED_DISK_CTX);
+		if (diskctx->dp->d_sched_policy->destroy_tdio)
+			diskctx->dp->d_sched_policy->destroy_tdio(tdio);
+		TAILQ_REMOVE(&diskctx->tdio_list, tdio, dlink);
+		atomic_clear_int(&tdio->flags, DSCHED_LINKED_DISK_CTX);
+		tdio->diskctx = NULL;
+		lockmgr(&diskctx->lock, LK_RELEASE);
+		dsched_disk_ctx_unref(diskctx);
+	}
+	while ((tdctx = tdio->tdctx) != NULL) {
+		dsched_thread_ctx_ref(tdctx);
+		lockmgr(&tdctx->lock, LK_EXCLUSIVE);
+		if (tdctx != tdio->tdctx) {
+			lockmgr(&tdctx->lock, LK_RELEASE);
+			dsched_thread_ctx_unref(tdctx);
+			continue;
+		}
+		KKASSERT(tdio->flags & DSCHED_LINKED_THREAD_CTX);
+		TAILQ_REMOVE(&tdctx->tdio_list, tdio, link);
+		atomic_clear_int(&tdio->flags, DSCHED_LINKED_THREAD_CTX);
+		tdio->tdctx = NULL;
+		lockmgr(&tdctx->lock, LK_RELEASE);
+		dsched_thread_ctx_unref(tdctx);
+	}
+	KKASSERT(tdio->refcount == 0x80000000);
+	objcache_put(dsched_tdio_cache, tdio);
+	atomic_subtract_int(&dsched_stats.tdio_allocations, 1);
+#if 0
+	dsched_disk_ctx_unref(diskctx);
+#endif
 }
 
 void
 dsched_thread_ctx_unref(struct dsched_thread_ctx *tdctx)
 {
-	struct dsched_thread_io	*tdio, *tdio2;
-	int refcount;
+	int refs;
+	int nrefs;
 
-	refcount = atomic_fetchadd_int(&tdctx->refcount, -1);
+	/*
+	 * Handle 1->0 transitions for tdctx and nested destruction
+	 * recursions.  If the refs are already in destruction mode (bit 31
+	 * set) on the 1->0 transition we don't try to destruct it again.
+	 *
+	 * 0x80000001->0x80000000 transitions are handled normally and
+	 * thus avoid nested dstruction.
+	 */
+	for (;;) {
+		refs = tdctx->refcount;
+		cpu_ccfence();
+		nrefs = refs - 1;
 
-	KKASSERT(refcount >= 0 || refcount <= -0x400);
-
-	if (refcount == 1) {
-		atomic_subtract_int(&tdctx->refcount, 0x400); /* mark as: in destruction */
-#if 0
-		kprintf("tdctx (%p) destruction started, trace:\n", tdctx);
-		print_backtrace(8);
-#endif
-		DSCHED_GLOBAL_THREAD_CTX_LOCK();
-
-		TAILQ_FOREACH_MUTABLE(tdio, &tdctx->tdio_list, link, tdio2) {
-			TAILQ_REMOVE(&tdctx->tdio_list, tdio, link);
-			tdio->flags &= ~DSCHED_LINKED_THREAD_CTX;
-			dsched_thread_io_unref(tdio);
+		KKASSERT(((refs ^ nrefs) & 0x80000000) == 0);
+		if (nrefs) {
+			if (atomic_cmpset_int(&tdctx->refcount, refs, nrefs))
+				break;
+			continue;
 		}
-		TAILQ_REMOVE(&dsched_tdctx_list, tdctx, link);
-
-		DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
-
-		objcache_put(dsched_tdctx_cache, tdctx);
-		atomic_subtract_int(&dsched_stats.tdctx_allocations, 1);
+		nrefs = 0x80000000;
+		if (atomic_cmpset_int(&tdctx->refcount, refs, nrefs)) {
+			dsched_thread_ctx_destroy(tdctx);
+			break;
+		}
 	}
 }
 
+static void
+dsched_thread_ctx_destroy(struct dsched_thread_ctx *tdctx)
+{
+	struct dsched_thread_io	*tdio;
+
+#if 0
+	kprintf("tdctx (%p) destruction started, trace:\n", tdctx);
+	print_backtrace(8);
+#endif
+	DSCHED_GLOBAL_THREAD_CTX_LOCK();
+
+	while ((tdio = TAILQ_FIRST(&tdctx->tdio_list)) != NULL) {
+		KKASSERT(tdio->flags & DSCHED_LINKED_THREAD_CTX);
+		TAILQ_REMOVE(&tdctx->tdio_list, tdio, link);
+		atomic_clear_int(&tdio->flags, DSCHED_LINKED_THREAD_CTX);
+		tdio->tdctx = NULL;
+		dsched_thread_io_unref(tdio);
+	}
+	KKASSERT(tdctx->refcount == 0x80000000);
+	TAILQ_REMOVE(&dsched_tdctx_list, tdctx, link);
+
+	DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
+
+	objcache_put(dsched_tdctx_cache, tdctx);
+	atomic_subtract_int(&dsched_stats.tdctx_allocations, 1);
+}
 
 struct dsched_thread_io *
 dsched_thread_io_alloc(struct disk *dp, struct dsched_thread_ctx *tdctx,
@@ -724,7 +818,7 @@ dsched_thread_io_alloc(struct disk *dp, struct dsched_thread_ctx *tdctx,
 
 	lockmgr(&tdio->diskctx->lock, LK_EXCLUSIVE);
 	TAILQ_INSERT_TAIL(&tdio->diskctx->tdio_list, tdio, dlink);
-	tdio->flags |= DSCHED_LINKED_DISK_CTX;
+	atomic_set_int(&tdio->flags, DSCHED_LINKED_DISK_CTX);
 	lockmgr(&tdio->diskctx->lock, LK_RELEASE);
 
 	if (tdctx) {
@@ -735,7 +829,7 @@ dsched_thread_io_alloc(struct disk *dp, struct dsched_thread_ctx *tdctx,
 		DSCHED_THREAD_CTX_LOCK(tdctx);
 		TAILQ_INSERT_TAIL(&tdctx->tdio_list, tdio, link);
 		DSCHED_THREAD_CTX_UNLOCK(tdctx);
-		tdio->flags |= DSCHED_LINKED_THREAD_CTX;
+		atomic_set_int(&tdio->flags, DSCHED_LINKED_THREAD_CTX);
 	}
 
 	atomic_add_int(&dsched_stats.tdio_allocations, 1);
