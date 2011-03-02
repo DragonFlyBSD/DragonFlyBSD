@@ -3249,7 +3249,8 @@ expand_call_inline (basic_block bb, gimple stmt, copy_body_data *id)
 	       && strlen (reason)
 	       && !lookup_attribute ("noinline", DECL_ATTRIBUTES (fn))
 	       /* Avoid warnings during early inline pass. */
-	       && cgraph_global_info_ready)
+	       && cgraph_global_info_ready
+	       && strcmp(reason, "call is unlikely and code size would grow"))
 	{
 	  warning (OPT_Winline, "inlining failed in call to %q+F: %s",
 		   fn, reason);
