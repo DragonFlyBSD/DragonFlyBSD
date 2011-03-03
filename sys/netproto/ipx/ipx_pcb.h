@@ -56,6 +56,10 @@ struct ipxpcb {
 	u_char	ipxp_rpt;		/* last received packet type by ipx_input() */
 };
 
+LIST_HEAD(ipxpcbhead, ipxpcb);
+extern struct ipxpcbhead ipxpcb_list;
+extern struct ipxpcbhead ipxrawpcb_list;
+
 /* possible flags */
 
 #define IPXP_IN_ABORT		0x1	/* calling abort through socket */
@@ -78,10 +82,6 @@ struct ipxpcb {
 #define	IPXRCVQ		40960
 
 #ifdef _KERNEL
-LIST_HEAD(ipxpcbhead, ipxpcb);
-extern struct ipxpcbhead ipxpcb_list;
-extern struct ipxpcbhead ipxrawpcb_list;
-
 int	ipx_pcballoc (struct socket *so, struct ipxpcbhead *head);
 int	ipx_pcbbind (struct ipxpcb *ipxp, struct sockaddr *nam,
 			 struct thread *td);
