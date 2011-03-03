@@ -692,55 +692,6 @@ out:
 	lwkt_replymsg(&msg->lmsg, 0);
 }
 
-#ifdef notdef
-int
-spx_fixmtu(struct ipxpcb *ipxp)
-{
-	struct spxpcb *cb = (struct spxpcb *)(ipxp->ipxp_pcb);
-	struct mbuf *m;
-	struct spx *si;
-	struct ipx_errp *ep;
-	struct signalsockbuf *ssb;
-	int badseq, len;
-	struct mbuf *firstbad, *m0;
-
-	if (cb != NULL) {
-		/* 
-		 * The notification that we have sent
-		 * too much is bad news -- we will
-		 * have to go through queued up so far
-		 * splitting ones which are too big and
-		 * reassigning sequence numbers and checksums.
-		 * we should then retransmit all packets from
-		 * one above the offending packet to the last one
-		 * we had sent (or our allocation)
-		 * then the offending one so that the any queued
-		 * data at our destination will be discarded.
-		 */
-		 ep = (struct ipx_errp *)ipxp->ipxp_notify_param;
-		 ssb = &ipxp->ipxp_socket->so_snd;
-		 cb->s_mtu = ep->ipx_err_param;
-		 badseq = ep->ipx_err_ipx.si_seq;
-		 for (m = ssb->ssb_mb; m != NULL; m = m->m_nextpkt) {
-			si = mtod(m, struct spx *);
-			if (si->si_seq == badseq)
-				break;
-		 }
-		 if (m == NULL)
-			return;
-		 firstbad = m;
-		 /*for (;;) {*/
-			/* calculate length */
-			for (m0 = m, len = 0; m != NULL; m = m->m_next)
-				len += m->m_len;
-			if (len > cb->s_mtu) {
-			}
-		/* FINISH THIS
-		} */
-	}
-}
-#endif
-
 static int
 spx_output(struct spxpcb *cb, struct mbuf *m0)
 {
