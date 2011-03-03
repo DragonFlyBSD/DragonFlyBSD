@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_timer.c,v 1.3 1999/08/28 01:15:34 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_timer.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 /*
@@ -79,7 +78,7 @@ scsp_open_timeout(Harp_timer *stp)
 	 * Back off to start of DCS entry
 	 */
 	dcsp = (Scsp_dcs *) ((caddr_t)stp -
-			(int)(&((Scsp_dcs *)0)->sd_open_t));
+			(uintptr_t)(&((Scsp_dcs *)0)->sd_open_t));
 
 	/*
 	 * Retry the connection
@@ -117,7 +116,7 @@ scsp_hello_timeout(Harp_timer *stp)
 	 * Back off to start of DCS entry
 	 */
 	dcsp = (Scsp_dcs *) ((caddr_t)stp -
-			(int)(&((Scsp_dcs *)0)->sd_hello_h_t));
+			(uintptr_t)(&((Scsp_dcs *)0)->sd_hello_h_t));
 
 	/*
 	 * Call the Hello FSM
@@ -151,7 +150,7 @@ scsp_hello_rcv_timeout(Harp_timer *stp)
 	 * Back off to start of DCS entry
 	 */
 	dcsp = (Scsp_dcs *) ((caddr_t)stp -
-			(int)(&((Scsp_dcs *)0)->sd_hello_rcv_t));
+			(uintptr_t)(&((Scsp_dcs *)0)->sd_hello_rcv_t));
 
 	/*
 	 * Call the Hello FSM
@@ -181,7 +180,7 @@ scsp_ca_retran_timeout(Harp_timer *stp)
 	 * Back off to start of DCS entry
 	 */
 	dcsp = (Scsp_dcs *) ((caddr_t)stp -
-			(int)(&((Scsp_dcs *)0)->sd_ca_rexmt_t));
+			(uintptr_t)(&((Scsp_dcs *)0)->sd_ca_rexmt_t));
 
 	/*
 	 * Call the CA FSM
@@ -211,7 +210,7 @@ scsp_csus_retran_timeout(Harp_timer *stp)
 	 * Back off to start of DCS entry
 	 */
 	dcsp = (Scsp_dcs *) ((caddr_t)stp -
-			(int)(&((Scsp_dcs *)0)->sd_csus_rexmt_t));
+			(uintptr_t)(&((Scsp_dcs *)0)->sd_csus_rexmt_t));
 
 	/*
 	 * Call the CA FSM
@@ -242,7 +241,7 @@ scsp_csu_req_retran_timeout(Harp_timer *stp)
 	 * Back off to start of CSU Request retransmission entry
 	 */
 	rxp = (Scsp_csu_rexmt *) ((caddr_t)stp -
-			(int)(&((Scsp_csu_rexmt *)0)->sr_t));
+			(uintptr_t)(&((Scsp_csu_rexmt *)0)->sr_t));
 	dcsp = rxp->sr_dcs;
 
 	/*
