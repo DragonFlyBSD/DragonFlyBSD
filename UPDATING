@@ -13,7 +13,7 @@
 +-----------------------------------------------------------------------+
 
 pkg_radd settings
-=================
+-----------------
 
 The config file for pkg_radd has moved from /etc/settings.conf to 
 /etc/pkg_radd.conf.  Save the contents of settings.conf before upgrading
@@ -26,14 +26,14 @@ exists.  pkg_radd will continue to work with defaults.
 +-----------------------------------------------------------------------+
 
 OpenSSL
-========
+--------
 
 OpenSSL has been upgraded, and SHLIB_MAJOR was bumped for libssh and libcrypto.
 This shouldn't break any 3rd-party software, but you'll need to recompile your
 3rd-party software if you want it to link against the new version of OpenSSL.
 
 Loader
-=======
+-------
 
 A new loader (dloader) has been added which better handles booting from
 multiple kernel/module versions.
@@ -51,7 +51,7 @@ Note that you must installworld and run the 'upgrade' target before
 installing the new kernel.
 
 BIND
-=====
+-----
 
 BIND has been removed from the base system.  The ldns and drill tools have 
 been added for basic functionality.  Use 'drill' where you would normally 
