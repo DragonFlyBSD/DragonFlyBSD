@@ -2888,7 +2888,15 @@ mptable_bus_info_callback(void *xarg, const void *pos, int type)
 
 	if (type != 1)
 		return 0;
+
 	ent = pos;
+	TAILQ_FOREACH(bus, &bus_info->mbi_list, mb_link) {
+		if (bus->mb_id == ent->bus_id) {
+			kprintf("mptable_bus_info_alloc: duplicated bus id "
+				"(%d)\n", bus->mb_id);
+			return EINVAL;
+		}
+	}
 
 	bus = NULL;
 	if (strncmp(ent->bus_type, "PCI", 3) == 0) {
@@ -2900,23 +2908,8 @@ mptable_bus_info_callback(void *xarg, const void *pos, int type)
 	}
 
 	if (bus != NULL) {
-		const struct mptable_bus *bus1;
-
-		TAILQ_FOREACH(bus1, &bus_info->mbi_list, mb_link) {
-			if (bus1->mb_id == ent->bus_id) {
-				kprintf("mptable_bus_info_alloc: "
-					"duplicated bus id (%d)\n", bus1->mb_id);
-				break;
-			}
-		}
-
-		if (bus1 == NULL) {
-			bus->mb_id = ent->bus_id;
-			TAILQ_INSERT_TAIL(&bus_info->mbi_list, bus, mb_link);
-		} else {
-			kfree(bus, M_TEMP);
-			return EINVAL;
-		}
+		bus->mb_id = ent->bus_id;
+		TAILQ_INSERT_TAIL(&bus_info->mbi_list, bus, mb_link);
 	}
 	return 0;
 }
