@@ -57,8 +57,8 @@ static void	acpi_print_io_apic(u_char apic_id, u_int32_t int_base,
 				   u_int64_t apic_addr);
 static void	acpi_print_mps_flags(u_int16_t flags);
 static void	acpi_print_intr(u_int32_t intr, u_int16_t mps_flags);
-static void	acpi_print_apic(struct MADT_APIC *mp);
-static void	acpi_handle_apic(struct ACPIsdt *sdp);
+static void	acpi_print_madt(struct MADT_APIC *mp);
+static void	acpi_handle_madt(struct ACPIsdt *sdp);
 static void	acpi_handle_hpet(struct ACPIsdt *sdp);
 static void	acpi_print_sdt(struct ACPIsdt *sdp);
 static void	acpi_print_fadt(struct ACPIsdt *sdp);
@@ -112,6 +112,9 @@ acpi_print_gas(struct ACPIgas *gas)
 		printf("0x%x:%u[%u] (SMBus)", (uint16_t)gas->address,
 		       gas->bit_offset, gas->bit_width);
 		break;
+    case ACPI_GAS_CMOS:
+    case ACPI_GAS_PCIBAR:
+    case ACPI_GAS_DATATABLE:
 	case ACPI_GAS_FIXED:
 	default:
 		printf("0x%08lx (?)", (u_long)gas->address);
@@ -256,7 +259,7 @@ const char *platform_int_types[] = { "PMI", "INIT",
 				     "Corrected Platform Error" };
 
 static void
-acpi_print_apic(struct MADT_APIC *mp)
+acpi_print_madt(struct MADT_APIC *mp)
 {
 
 	printf("\tType=%s\n", apic_types[mp->type]);
@@ -315,7 +318,7 @@ acpi_print_apic(struct MADT_APIC *mp)
 }
 
 static void
-acpi_handle_apic(struct ACPIsdt *sdp)
+acpi_handle_madt(struct ACPIsdt *sdp)
 {
 	struct MADTbody *madtp;
 	struct MADT_APIC *madt_apicp;
@@ -331,7 +334,7 @@ acpi_handle_apic(struct ACPIsdt *sdp)
 	madt_apicp = (struct MADT_APIC *)madtp->body;
 	while (((uintptr_t)madt_apicp) - ((uintptr_t)sdp) < sdp->len) {
 		printf("\n");
-		acpi_print_apic(madt_apicp);
+		acpi_print_madt(madt_apicp);
 		madt_apicp = (struct MADT_APIC *) ((char *)madt_apicp +
 		    madt_apicp->len);
 	}
@@ -399,6 +402,84 @@ acpi_handle_mcfg(struct ACPIsdt *sdp)
 		printf("\tEnd Bus= %d\n", mcfg->s[i].end);
 	}
 	printf(END_COMMENT);
+}
+
+static void
+acpi_print_srat_memory(struct SRAT_mem_affinity *mp)
+{
+
+    printf("\tFlags={");
+    printf(mp->flags & ACPI_SRAT_FLAG_MEM_ENABLED ? "ENABLED" : "DISABLED");
+    if (mp->flags & ACPI_SRAT_FLAG_MEM_HOT_PLUGGABLE)
+        printf(",HOT_PLUGGABLE");
+    if (mp->flags & ACPI_SRAT_FLAG_MEM_NON_VOLATILE)
+        printf(",NON_VOLATILE");
+    printf("}\n");
+    printf("\tBase Address=0x%016jx\n", (uintmax_t)mp->base_address);
+    printf("\tLength=0x%016jx\n", (uintmax_t)mp->length);
+    printf("\tProximity Domain=%d\n", mp->proximity_domain);
+}
+
+static void
+acpi_print_srat_cpu(uint32_t apic_id, uint32_t pd, uint32_t flags)
+{
+    printf("\tFlags={");
+    printf(flags & ACPI_SRAT_FLAG_CPU_ENABLED ? "ENABLED": "DISABLED");
+    printf("}\n");
+    printf("\tAPIC ID=%d\n", apic_id);
+    printf("\tProximity Domain=%d\n", pd);
+}
+
+static void
+acpi_print_srat_cpu_affinity(struct SRAT_cpu_affinity *cpu)
+{
+    uint32_t pd =
+        cpu->proximity_domain_hi[2] << 24 | cpu->proximity_domain_hi[1] << 16 |
+        cpu->proximity_domain_hi[0] << 0 | cpu->proximity_domain_lo;
+    acpi_print_srat_cpu(cpu->apic_id, pd, cpu->flags);
+}
+
+static void
+acpi_print_srat(struct SRAT_APIC *sp)
+{
+    const char *srat_types[] = { "CPU", "Memory", "X2APIC" };
+    const unsigned char srat_types_n =
+        sizeof(srat_types) / sizeof(srat_types[0]);
+
+    printf("\tType(%d)=%s\n", sp->type,
+           sp->type < srat_types_n ? srat_types[sp->type] : "(unknown)");
+
+    switch (sp->type) {
+    case ACPI_SRAT_APIC_TYPE_CPU_AFFINITY:
+        acpi_print_srat_cpu_affinity((struct SRAT_cpu_affinity *) &sp->body);
+        break;
+    case ACPI_SRAT_APIC_TYPE_MEMORY_AFFINITY:
+        acpi_print_srat_memory((struct SRAT_mem_affinity *) &sp->body);
+        break;
+    case ACPI_SRAT_APIC_TYPE_X2APIC_CPU_AFFINITY: {
+        struct SRAT_x2apic_cpu_affinity *cpu =
+            (struct SRAT_x2apic_cpu_affinity *) &sp->body;
+        acpi_print_srat_cpu(cpu->apic_id, cpu->proximity_domain, cpu->flags);
+    } break;
+    }
+}
+
+static void
+acpi_handle_srat(struct ACPIsdt *sdp)
+{
+    struct SRATbody *srat = (struct SRATbody *) sdp->body;
+    struct SRAT_APIC *apic = (struct SRAT_APIC *)srat->body;
+
+    printf(BEGIN_COMMENT);
+    acpi_print_sdt(sdp);
+    printf("\tRevision=0x%04x\n", srat->revision);
+
+    for (; ((uintptr_t) apic) - ((uintptr_t) sdp) < sdp->len;
+         apic = (struct SRAT_APIC *) ((char *) apic + apic->len)) {
+        printf("\n");
+        acpi_print_srat(apic);
+    }
+    printf(END_COMMENT);
 }
 
 static void
@@ -548,6 +629,12 @@ acpi_print_fadt(struct ACPIsdt *sdp)
 	PRINTFLAG(fadt->flags, SEALED_CASE);
 	PRINTFLAG(fadt->flags, HEADLESS);
 	PRINTFLAG(fadt->flags, CPU_SW_SLP);
+    PRINTFLAG(fadt->flags, PCI_EXPRESS_WAKE);
+    PRINTFLAG(fadt->flags, PLATFORM_CLOCK);
+    PRINTFLAG(fadt->flags, S4_RTC_VALID);
+    PRINTFLAG(fadt->flags, REMOTE_POWER_ON);
+    PRINTFLAG(fadt->flags, APIC_CLUSTER);
+    PRINTFLAG(fadt->flags, APIC_PHYSICAL);
 	if (fadt->flags != 0)
 		printf("}\n");
 
@@ -703,13 +790,15 @@ acpi_handle_rsdt(struct ACPIsdt *rsdp)
 		if (!memcmp(sdp->signature, "FACP", 4))
 			acpi_handle_fadt(sdp);
 		else if (!memcmp(sdp->signature, "APIC", 4))
-			acpi_handle_apic(sdp);
+			acpi_handle_madt(sdp);
 		else if (!memcmp(sdp->signature, "HPET", 4))
 			acpi_handle_hpet(sdp);
 		else if (!memcmp(sdp->signature, "ECDT", 4))
 			acpi_handle_ecdt(sdp);
 		else if (!memcmp(sdp->signature, "MCFG", 4))
 			acpi_handle_mcfg(sdp);
+        else if (!memcmp(sdp->signature, "SRAT", 4))
+            acpi_handle_srat(sdp);
 		else {
 			printf(BEGIN_COMMENT);
 			acpi_print_sdt(sdp);

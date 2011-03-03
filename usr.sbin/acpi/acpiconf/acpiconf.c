@@ -85,7 +85,8 @@ acpi_battinfo(int num)
 {
 	union acpi_battery_ioctl_arg battio;
 	const char *pwr_units;
-	int hours, min;
+	int hours, min, amp;
+    uint32_t volt;
 
 	if (num < 0 || num > 64)
 		err(EX_USAGE, "invalid battery %d", num);
@@ -94,10 +95,8 @@ acpi_battinfo(int num)
 	battio.unit = num;
 	if (ioctl(acpifd, ACPIIO_BATT_GET_BIF, &battio) == -1)
 		err(EX_IOERR, "get battery info (%d) failed", num);
-	if (battio.bif.units == 0)
-		pwr_units = "mW";
-	else
-		pwr_units = "mA";
+    amp = battio.bif.units;
+    pwr_units = amp ? "mA" : "mW";
 
 	if (battio.bif.dcap == UNKNOWN_CAP)
 		printf("Design capacity:\tunknown\n");
@@ -123,6 +122,14 @@ acpi_battinfo(int num)
 	printf("Serial number:\t\t%s\n", battio.bif.serial);
 	printf("Type:\t\t\t%s\n", battio.bif.type);
 	printf("OEM info:\t\t%s\n", battio.bif.oeminfo);
+
+    /* Fetch battery voltage information. */
+    volt = UNKNOWN_VOLTAGE;
+    battio.unit = num;
+    if (ioctl(acpifd, ACPIIO_BATT_GET_BST, &battio) == -1)
+        err(EX_IOERR, "get battery status (%d) failed", num);
+    if (battio.bst.state != ACPI_BATT_STAT_NOT_PRESENT)
+        volt = battio.bst.volt;
 
 	/* Print current battery state information. */
 	battio.unit = num;
@@ -153,7 +160,11 @@ acpi_battinfo(int num)
 		}
 		if (battio.battinfo.rate == -1)
 			printf("Present rate:\t\tunknown\n");
-		else
+        else if (amp && volt != UNKNOWN_VOLTAGE) {
+            printf("Present rate:\t\t%d mA (%d mW)\n",
+                   battio.battinfo.rate,
+                   battio.battinfo.rate * volt / 1000);
+        } else
 			printf("Present rate:\t\t%d %s\n",
 			    battio.battinfo.rate, pwr_units);
 	} else

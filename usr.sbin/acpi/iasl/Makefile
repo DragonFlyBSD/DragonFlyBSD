@@ -3,17 +3,20 @@
 
 PROG=	iasl
 SRCS=	aslcompiler.y.h aslcompilerlex.l aslcompilerparse.y \
-	aslanalyze.c aslcodegen.c \
+	aslanalyze.c aslbtypes.c aslwalks.c aslcodegen.c \
 	aslcompile.c aslerror.c aslfiles.c asllength.c \
 	asllisting.c aslload.c asllookup.c aslmain.c \
 	aslmap.c aslopcodes.c asloperands.c aslstartup.c aslresource.c \
 	aslrestype1.c aslrestype2.c asltree.c aslutils.c \
-	asltransform.c aslfold.c aslstubs.c aslopt.c
+	asltransform.c aslfold.c aslstubs.c aslopt.c \
+	aslpredef.c asluuid.c aslrestype1i.c aslrestype2d.c aslrestype2e.c \
+	aslrestype2q.c aslrestype2w.c
+
 SRCS+=	adisasm.c getopt.c osunixxf.c
 SRCS+=	dbfileio.c dmbuffer.c dmnames.c dmopcode.c dmobject.c \
-        dmresrc.c dmresrcl.c dmresrcs.c dmutils.c dmwalk.c \
-        dsopcode.c dsutils.c dswexec.c dswload.c \
-	dswscope.c dswstate.c dsfield.c dsobject.c \
+        dmresrc.c dmresrcl.c dmresrcs.c dmutils.c dmwalk.c dmextern.c \
+        dsopcode.c dsargs.c dscontrol.c dsutils.c dswexec.c dswload.c \
+	dswscope.c dswstate.c dsfield.c dsobject.c dswload2.c \
         exconvrt.c excreate.c exdump.c exmisc.c \
         exmutex.c exnames.c exoparg1.c exoparg2.c \
         exoparg3.c exoparg6.c exprep.c exregion.c \
@@ -25,7 +28,9 @@ SRCS+=	dbfileio.c dmbuffer.c dmnames.c dmopcode.c dmobject.c \
         pstree.c psutils.c pswalk.c \
         tbfadt.c tbinstal.c tbutils.c tbxface.c \
 	utalloc.c utcopy.c utdebug.c utdelete.c utinit.c \
-        utglobal.c utobject.c utlock.c utmisc.c utmath.c utxface.c
+        utglobal.c utobject.c utlock.c utmisc.c utmath.c utdecode.c \
+		utxface.c utxferror.c \
+	dttemplate.c dtcompile.c dtsubtable.c dtutils.c dtfield.c dtio.c dttable.c dtexpress.c
 
 SRCS+=	adfile.c adwalk.c dmrestag.c dmtbdump.c dmtbinfo.c dmtable.c psloop.c utcache.c utmutex.c utresrc.c utstate.c
 

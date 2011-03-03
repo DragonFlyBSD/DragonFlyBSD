@@ -65,6 +65,8 @@ ACPI_TABLE_HEADER	dummy_dsdt_table = {
 
 int	aml_debug_prompt = 1;
 
+UINT8  AcpiGbl_RegionFillValue = 0;
+
 struct ACPIRegionContent {
 	TAILQ_ENTRY(ACPIRegionContent) links;
 	int			regtype;

@@ -35,10 +35,13 @@
 struct ACPIgas {
 	u_int8_t	address_space_id;
 #define ACPI_GAS_MEMORY		0
-#define ACPI_GAS_IO		1
+#define ACPI_GAS_IO	        1
 #define ACPI_GAS_PCI		2
 #define ACPI_GAS_EMBEDDED	3
 #define ACPI_GAS_SMBUS		4
+#define ACPI_GAS_CMOS       5
+#define ACPI_GAS_PCIBAR     6
+#define ACPI_GAS_DATATABLE  7
 #define ACPI_GAS_FIXED		0x7f
 	u_int8_t	bit_width;
 	u_int8_t	bit_offset;
@@ -70,8 +73,8 @@ struct ACPIsdt {
 	u_int32_t	oemrev;
 	u_char		creator[4];
 	u_int32_t	crerev;
-#define SIZEOF_SDT_HDR 36	/* struct size except body */
-	u_int32_t	body[1];/* This member should be casted */
+#define SIZEOF_SDT_HDR 36 /* struct size except body */
+	u_int32_t	body[1]; /* This member should be casted */
 } __packed;
 
 /* Fixed ACPI Description Table (body) */
@@ -132,6 +135,12 @@ struct FADTbody {
 #define FADT_FLAG_SEALED_CASE	2048	/* Case cannot be opened */
 #define FADT_FLAG_HEADLESS	4096	/* No monitor */
 #define FADT_FLAG_CPU_SW_SLP	8192	/* Supports CPU software sleep */
+#define FADT_FLAG_PCI_EXPRESS_WAKE (1<<14) /* PCIEXP_WAKE (STS/EN) bits */
+#define FADT_FLAG_PLATFORM_CLOCK (1<<15) /* OSPM should use platform-provided tmr */
+#define FADT_FLAG_S4_RTC_VALID (1<<16) /* RTC_STS valid after S4 wake */
+#define FADT_FLAG_REMOTE_POWER_ON (1<<17) /* System is compat. with remote pwr on */
+#define FADT_FLAG_APIC_CLUSTER (1<<18) /* All local APICs must use cluster model */
+#define FADT_FLAG_APIC_PHYSICAL (1<<19) /*All local xAPICs must use phys dest mode*/
 	struct ACPIgas	reset_reg;
 	u_int8_t	reset_value;
 	u_int8_t	reserved5[3];
@@ -304,6 +313,64 @@ struct MCFGbody {
 		uint8_t		end;		/* Ending bus number */
 		uint8_t		rsvd[4];	/* Reserved */
 	} s[1] __packed;
+} __packed;
+
+/*  SRAT - System Resource Affinity Table */
+
+struct SRAT_cpu_affinity {
+    uint8_t proximity_domain_lo;
+    uint8_t apic_id;
+    uint32_t flags;
+    uint8_t local_sapic_eid;
+    uint8_t proximity_domain_hi[3];
+    uint32_t reserved; /* must be zero */
+};
+
+#define ACPI_SRAT_FLAG_CPU_ENABLED 1
+
+struct SRAT_mem_affinity
+{
+    uint32_t proximity_domain;
+    uint16_t reserved; /* must be zero */
+    uint64_t base_address;
+    uint64_t length;
+    uint32_t reserved1;
+#define ACPI_SRAT_FLAG_MEM_ENABLED 1
+#define ACPI_SRAT_FLAG_MEM_HOT_PLUGGABLE 2
+#define ACPI_SRAT_FLAG_MEM_NON_VOLATILE 4
+    uint32_t flags;
+    uint64_t reserved2; /* must be zero */
+
+};
+
+struct SRAT_x2apic_cpu_affinity
+{
+    uint16_t reserved; /* must be zero */
+    uint32_t proximity_domain;
+    uint32_t apic_id;
+    uint32_t flags;
+    uint32_t clock_domain;
+    uint32_t reserved2;
+};
+
+struct SRAT_APIC {
+    u_char type;
+#define ACPI_SRAT_APIC_TYPE_CPU_AFFINITY 0
+#define ACPI_SRAT_APIC_TYPE_MEMORY_AFFINITY 1
+#define ACPI_SRAT_APIC_TYPE_X2APIC_CPU_AFFINITY 2
+#define ACPI_SRAT_APIC_TYPE_RESERVED 3
+    u_char len;
+    union {
+        struct SRAT_cpu_affinity cpu_affinity;
+        struct SRAT_mem_affinity mem_affinity;
+        struct SRAT_x2apic_cpu_affinity x2apic_cpu_affinity;
+    } body;
+} __packed;
+
+struct SRATbody {
+    u_int32_t revision;
+    u_int64_t reserved;
+    u_char body[1];
 } __packed;
 
 /*
