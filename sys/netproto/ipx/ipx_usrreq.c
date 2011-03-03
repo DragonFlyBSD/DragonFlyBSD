@@ -478,7 +478,7 @@ ipx_attach(netmsg_t msg)
 	if (ipxp != NULL) {
 		error = EINVAL;
 	} else {
-		error = ipx_pcballoc(so, &ipxpcb);
+		error = ipx_pcballoc(so, &ipxpcb_list);
 		if (error == 0) {
 			error = soreserve(so, ipxsendspace, ipxrecvspace,
 					  ai->sb_rlimit);
@@ -655,7 +655,7 @@ ripx_attach(netmsg_t msg)
 	error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY);
 	if (error)
 		goto out;
-	error = ipx_pcballoc(so, &ipxrawpcb);
+	error = ipx_pcballoc(so, &ipxrawpcb_list);
 	if (error)
 		goto out;
 	error = soreserve(so, ipxsendspace, ipxrecvspace, ai->sb_rlimit);

@@ -264,7 +264,7 @@ SYSCTL_STRUCT(_net_inet_ip, IPCTL_STATS, stats, CTLFLAG_RW,
 #define	IPREASS_HASH(x,y)						\
     (((((x) & 0xF) | ((((x) >> 8) & 0xF) << 4)) ^ (y)) & IPREASS_HMASK)
 
-static struct ipq ipq[IPREASS_NHASH];
+static TAILQ_HEAD(ipqhead, ipq) ipq[IPREASS_NHASH];
 
 #ifdef IPCTL_DEFMTU
 SYSCTL_INT(_net_inet_ip, IPCTL_DEFMTU, mtu, CTLFLAG_RW,
@@ -313,7 +313,7 @@ static struct malloc_pipe ipq_mpipe;
 
 static void		save_rte(struct mbuf *, u_char *, struct in_addr);
 static int		ip_dooptions(struct mbuf *m, int, struct sockaddr_in *);
-static void		ip_freef(struct ipq *);
+static void		ip_freef(struct ipqhead *, struct ipq *);
 static void		ip_input_handler(netmsg_t);
 
 /*
@@ -361,7 +361,7 @@ ip_init(void)
 	}
 
 	for (i = 0; i < IPREASS_NHASH; i++)
-		ipq[i].next = ipq[i].prev = &ipq[i];
+		TAILQ_INIT(&ipq[i]);
 
 	maxnipq = nmbclusters / 32;
 	maxfragsperpacket = 16;
@@ -978,6 +978,7 @@ ip_reass(struct mbuf *m)
 	struct mbuf *p = NULL, *q, *nq;
 	struct mbuf *n;
 	struct ipq *fp = NULL;
+	struct ipqhead *head;
 	int hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	int i, next;
 	u_short sum;
@@ -995,7 +996,8 @@ ip_reass(struct mbuf *m)
 	 * Look for queue of fragments of this datagram.
 	 */
 	lwkt_gettoken(&ipq_token);
-	for (fp = ipq[sum].next; fp != &ipq[sum]; fp = fp->next) {
+	head = &ipq[sum];
+	TAILQ_FOREACH(fp, head, ipq_list) {
 		if (ip->ip_id == fp->ipq_id &&
 		    ip->ip_src.s_addr == fp->ipq_src.s_addr &&
 		    ip->ip_dst.s_addr == fp->ipq_dst.s_addr &&
@@ -1015,19 +1017,23 @@ ip_reass(struct mbuf *m)
 		 * drop something from the tail of the current queue
 		 * before proceeding further
 		 */
-		if (ipq[sum].prev == &ipq[sum]) {   /* gak */
+		struct ipq *q = TAILQ_LAST(head, ipqhead);
+		if (q == NULL) {
+			/*
+			 * The current queue is empty,
+			 * so drop from one of the others.
+			 */
 			for (i = 0; i < IPREASS_NHASH; i++) {
-				if (ipq[i].prev != &ipq[i]) {
-					ipstat.ips_fragtimeout +=
-					    ipq[i].prev->ipq_nfrags;
-					ip_freef(ipq[i].prev);
+				struct ipq *r = TAILQ_LAST(&ipq[i], ipqhead);
+				if (r) {
+					ipstat.ips_fragtimeout += r->ipq_nfrags;
+					ip_freef(&ipq[i], r);
 					break;
 				}
 			}
 		} else {
-			ipstat.ips_fragtimeout +=
-			    ipq[sum].prev->ipq_nfrags;
-			ip_freef(ipq[sum].prev);
+			ipstat.ips_fragtimeout += q->ipq_nfrags;
+			ip_freef(head, q);
 		}
 	}
 found:
@@ -1078,7 +1084,7 @@ found:
 	if (fp == NULL) {
 		if ((fp = mpipe_alloc_nowait(&ipq_mpipe)) == NULL)
 			goto dropfrag;
-		insque(fp, &ipq[sum]);
+		TAILQ_INSERT_HEAD(head, fp, ipq_list);
 		nipq++;
 		fp->ipq_nfrags = 1;
 		fp->ipq_ttl = IPFRAGTTL;
@@ -1167,7 +1173,7 @@ inserted:
 		if (GETIP(q)->ip_off != next) {
 			if (fp->ipq_nfrags > maxfragsperpacket) {
 				ipstat.ips_fragdropped += fp->ipq_nfrags;
-				ip_freef(fp);
+				ip_freef(head, fp);
 			}
 			goto done;
 		}
@@ -1177,7 +1183,7 @@ inserted:
 	if (p->m_flags & M_FRAG) {
 		if (fp->ipq_nfrags > maxfragsperpacket) {
 			ipstat.ips_fragdropped += fp->ipq_nfrags;
-			ip_freef(fp);
+			ip_freef(head, fp);
 		}
 		goto done;
 	}
@@ -1190,7 +1196,7 @@ inserted:
 	if (next + (IP_VHL_HL(ip->ip_vhl) << 2) > IP_MAXPACKET) {
 		ipstat.ips_toolong++;
 		ipstat.ips_fragdropped += fp->ipq_nfrags;
-		ip_freef(fp);
+		ip_freef(head, fp);
 		goto done;
 	}
 
@@ -1230,7 +1236,7 @@ inserted:
 	ip->ip_len = next;
 	ip->ip_src = fp->ipq_src;
 	ip->ip_dst = fp->ipq_dst;
-	remque(fp);
+	TAILQ_REMOVE(head, fp, ipq_list);
 	nipq--;
 	mpipe_free(&ipq_mpipe, fp);
 	m->m_len += (IP_VHL_HL(ip->ip_vhl) << 2);
@@ -1277,14 +1283,14 @@ done:
  * Called with ipq_token held.
  */
 static void
-ip_freef(struct ipq *fp)
+ip_freef(struct ipqhead *fhp, struct ipq *fp)
 {
 	struct mbuf *q;
 
 	/*
 	 * Remove first to protect against blocking
 	 */
-	remque(fp);
+	TAILQ_REMOVE(fhp, fp, ipq_list);
 
 	/*
 	 * Clean out at our leisure
@@ -1307,20 +1313,17 @@ ip_freef(struct ipq *fp)
 void
 ip_slowtimo(void)
 {
-	struct ipq *fp;
+	struct ipq *fp, *fp_temp;
+	struct ipqhead *head;
 	int i;
 
 	lwkt_gettoken(&ipq_token);
 	for (i = 0; i < IPREASS_NHASH; i++) {
-		fp = ipq[i].next;
-		if (fp == NULL)
-			continue;
-		while (fp != &ipq[i]) {
-			--fp->ipq_ttl;
-			fp = fp->next;
-			if (fp->prev->ipq_ttl == 0) {
-				ipstat.ips_fragtimeout += fp->prev->ipq_nfrags;
-				ip_freef(fp->prev);
+		head = &ipq[i];
+		TAILQ_FOREACH_MUTABLE(fp, head, ipq_list, fp_temp) {
+			if (--fp->ipq_ttl == 0) {
+				ipstat.ips_fragtimeout += fp->ipq_nfrags;
+				ip_freef(head, fp);
 			}
 		}
 	}
@@ -1331,11 +1334,11 @@ ip_slowtimo(void)
 	 */
 	if (maxnipq >= 0 && nipq > maxnipq) {
 		for (i = 0; i < IPREASS_NHASH; i++) {
-			while (nipq > maxnipq &&
-				(ipq[i].next != &ipq[i])) {
+			head = &ipq[i];
+			while (nipq > maxnipq && !TAILQ_EMPTY(head)) {
 				ipstat.ips_fragdropped +=
-				    ipq[i].next->ipq_nfrags;
-				ip_freef(ipq[i].next);
+				    TAILQ_FIRST(head)->ipq_nfrags;
+				ip_freef(head, TAILQ_FIRST(head));
 			}
 		}
 	}
@@ -1349,13 +1352,15 @@ ip_slowtimo(void)
 void
 ip_drain(void)
 {
+	struct ipqhead *head;
 	int i;
 
 	lwkt_gettoken(&ipq_token);
 	for (i = 0; i < IPREASS_NHASH; i++) {
-		while (ipq[i].next != &ipq[i]) {
-			ipstat.ips_fragdropped += ipq[i].next->ipq_nfrags;
-			ip_freef(ipq[i].next);
+		head = &ipq[i];
+		while (!TAILQ_EMPTY(head)) {
+			ipstat.ips_fragdropped += TAILQ_FIRST(head)->ipq_nfrags;
+			ip_freef(head, TAILQ_FIRST(head));
 		}
 	}
 	lwkt_reltoken(&ipq_token);

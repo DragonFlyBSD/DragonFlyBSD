@@ -55,9 +55,10 @@
 #include "ipx_var.h"
 
 static struct	ipx_addr zeroipx_addr;
+static uint16_t	ipxpcb_lport_cache;
 
 int
-ipx_pcballoc(struct socket *so, struct ipxpcb *head)
+ipx_pcballoc(struct socket *so, struct ipxpcbhead *head)
 {
 	struct ipxpcb *ipxp;
 
@@ -68,7 +69,7 @@ ipx_pcballoc(struct socket *so, struct ipxpcb *head)
 	ipxp->ipxp_socket = so;
 	if (ipxcksum)
 		ipxp->ipxp_flags |= IPXP_CHECKSUM;
-	insque(ipxp, head);
+	LIST_INSERT_HEAD(head, ipxp, ipxp_list);
 	so->so_pcb = (caddr_t)ipxp;
 	return (0);
 }
@@ -107,11 +108,11 @@ ipx_pcbbind(struct ipxpcb *ipxp, struct sockaddr *nam, struct thread *td)
 noname:
 	if (lport == 0)
 		do {
-			ipxpcb.ipxp_lport++;
-			if ((ipxpcb.ipxp_lport < IPXPORT_RESERVED) ||
-			    (ipxpcb.ipxp_lport >= IPXPORT_WELLKNOWN))
-				ipxpcb.ipxp_lport = IPXPORT_RESERVED;
-			lport = htons(ipxpcb.ipxp_lport);
+			ipxpcb_lport_cache++;
+			if ((ipxpcb_lport_cache < IPXPORT_RESERVED) ||
+			    (ipxpcb_lport_cache >= IPXPORT_WELLKNOWN))
+				ipxpcb_lport_cache = IPXPORT_RESERVED;
+			lport = htons(ipxpcb_lport_cache);
 		} while (ipx_pcblookup(&zeroipx_addr, lport, 0));
 	ipxp->ipxp_lport = lport;
 	return (0);
@@ -266,7 +267,7 @@ ipx_pcbdetach(struct ipxpcb *ipxp)
 
 	if (ipxp->ipxp_route.ro_rt != NULL)
 		rtfree(ipxp->ipxp_route.ro_rt);
-	remque(ipxp);
+	LIST_REMOVE(ipxp, ipxp_list);
 	FREE(ipxp, M_PCB);
 }
 
@@ -304,7 +305,7 @@ ipx_pcblookup(struct ipx_addr *faddr, int lport, int wildp)
 	u_short fport;
 
 	fport = faddr->x_port;
-	for (ipxp = (&ipxpcb)->ipxp_next; ipxp != (&ipxpcb); ipxp = ipxp->ipxp_next) {
+	LIST_FOREACH(ipxp, &ipxpcb_list, ipxp_list) {
 		if (ipxp->ipxp_lport != lport)
 			continue;
 		wildcard = 0;

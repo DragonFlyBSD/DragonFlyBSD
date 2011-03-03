@@ -44,9 +44,7 @@
  * IPX protocol interface control block.
  */
 struct ipxpcb {
-	struct	ipxpcb *ipxp_next;	/* doubly linked list */
-	struct	ipxpcb *ipxp_prev;
-	struct	ipxpcb *ipxp_head;
+	LIST_ENTRY(ipxpcb) ipxp_list;
 	struct	socket *ipxp_socket;	/* back pointer to socket */
 	struct	ipx_addr ipxp_faddr;	/* destination address */
 	struct	ipx_addr ipxp_laddr;	/* socket's address */
@@ -80,9 +78,11 @@ struct ipxpcb {
 #define	IPXRCVQ		40960
 
 #ifdef _KERNEL
-extern struct ipxpcb ipxpcb;			/* head of list */
+LIST_HEAD(ipxpcbhead, ipxpcb);
+extern struct ipxpcbhead ipxpcb_list;
+extern struct ipxpcbhead ipxrawpcb_list;
 
-int	ipx_pcballoc (struct socket *so, struct ipxpcb *head);
+int	ipx_pcballoc (struct socket *so, struct ipxpcbhead *head);
 int	ipx_pcbbind (struct ipxpcb *ipxp, struct sockaddr *nam,
 			 struct thread *td);
 int	ipx_pcbconnect (struct ipxpcb *ipxp, struct sockaddr *nam,

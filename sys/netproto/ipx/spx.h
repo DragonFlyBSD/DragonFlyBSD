@@ -67,8 +67,7 @@ struct spx {
 	struct spxhdr 	si_s;
 };
 struct spx_q {
-	struct spx_q	*si_next;
-	struct spx_q	*si_prev;
+	LIST_ENTRY(spx_q)	sq_entry;
 	struct mbuf	*si_mbuf;
 };
 #define SI(x)   mtod((x)->si_mbuf, struct spx *)
@@ -91,7 +90,7 @@ struct spx_q {
  * SPX control block, one per connection
  */
 struct spxpcb {
-	struct	spx_q	s_q;		/* queue for out-of-order receipt */
+	LIST_HEAD(, spx_q)	s_q;	/* queue for out-of-order receipt */
 	struct	ipxpcb	*s_ipxpcb;	/* backpointer to internet pcb */
 	u_char	s_state;
 	u_char	s_flags;
