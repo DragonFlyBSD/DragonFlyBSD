@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarp_timer.c,v 1.3 1999/08/28 01:15:30 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_timer.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 /*
@@ -185,7 +184,7 @@ atmarp_keepalive_timeout(Harp_timer *tp)
 	 * Back off to start of DCS entry
 	 */
 	aip = (Atmarp_intf *) ((caddr_t)tp -
-			(int)(&((Atmarp_intf *)0)->ai_keepalive_t));
+			(uintptr_t)(&((Atmarp_intf *)0)->ai_keepalive_t));
 
 	/*
 	 * Get a message buffer

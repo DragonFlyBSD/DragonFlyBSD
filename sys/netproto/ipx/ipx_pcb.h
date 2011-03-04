@@ -44,20 +44,21 @@
  * IPX protocol interface control block.
  */
 struct ipxpcb {
-	struct	ipxpcb *ipxp_next;	/* doubly linked list */
-	struct	ipxpcb *ipxp_prev;
-	struct	ipxpcb *ipxp_head;
+	LIST_ENTRY(ipxpcb) ipxp_list;
 	struct	socket *ipxp_socket;	/* back pointer to socket */
 	struct	ipx_addr ipxp_faddr;	/* destination address */
 	struct	ipx_addr ipxp_laddr;	/* socket's address */
 	caddr_t	ipxp_pcb;		/* protocol specific stuff */
 	struct	route ipxp_route;	/* routing information */
 	struct	ipx_addr ipxp_lastdst;	/* validate cached route for dg socks*/
-	long	ipxp_notify_param;	/* extra info passed via ipx_pcbnotify*/
 	short	ipxp_flags;
 	u_char	ipxp_dpt;		/* default packet type for ipx_output */
 	u_char	ipxp_rpt;		/* last received packet type by ipx_input() */
 };
+
+LIST_HEAD(ipxpcbhead, ipxpcb);
+extern struct ipxpcbhead ipxpcb_list;
+extern struct ipxpcbhead ipxrawpcb_list;
 
 /* possible flags */
 
@@ -81,9 +82,7 @@ struct ipxpcb {
 #define	IPXRCVQ		40960
 
 #ifdef _KERNEL
-extern struct ipxpcb ipxpcb;			/* head of list */
-
-int	ipx_pcballoc (struct socket *so, struct ipxpcb *head);
+int	ipx_pcballoc (struct socket *so, struct ipxpcbhead *head);
 int	ipx_pcbbind (struct ipxpcb *ipxp, struct sockaddr *nam,
 			 struct thread *td);
 int	ipx_pcbconnect (struct ipxpcb *ipxp, struct sockaddr *nam,
@@ -92,8 +91,6 @@ void	ipx_pcbdetach (struct ipxpcb *ipxp);
 void	ipx_pcbdisconnect (struct ipxpcb *ipxp);
 struct ipxpcb *
 	ipx_pcblookup (struct ipx_addr *faddr, int lport, int wildp);
-void	ipx_pcbnotify (struct ipx_addr *dst, int error,
-			   void (*notify)(struct ipxpcb *), long param);
 void	ipx_setpeeraddr (struct ipxpcb *ipxp, struct sockaddr **nam);
 void	ipx_setsockaddr (struct ipxpcb *ipxp, struct sockaddr **nam);
 #endif /* _KERNEL */

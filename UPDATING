@@ -12,8 +12,23 @@
 +         UPGRADING DRAGONFLY FROM 2.8 to later versions                +
 +-----------------------------------------------------------------------+
 
+GCC 4.4
+-------
+
+GCC 4.4 has been made DragonFly's default compiler.
+
+That means that any settings that set CCVER to 'gcc44' are not needed
+anymore. Instead, CCVER can be set to 'gcc41' to go back to using
+GCC 4.1.
+
+The NO_GCC44 option has been removed and will not affect the build
+anymore. There is now a NO_GCC41 option that will prevent GCC 4.1 from
+building in a similar fashion.
+
+Also, we recommend to do a full buildworld/buildkernel for upgrading.
+
 pkg_radd settings
-=================
+-----------------
 
 The config file for pkg_radd has moved from /etc/settings.conf to 
 /etc/pkg_radd.conf.  Save the contents of settings.conf before upgrading
@@ -26,14 +41,14 @@ exists.  pkg_radd will continue to work with defaults.
 +-----------------------------------------------------------------------+
 
 OpenSSL
-========
+--------
 
 OpenSSL has been upgraded, and SHLIB_MAJOR was bumped for libssh and libcrypto.
 This shouldn't break any 3rd-party software, but you'll need to recompile your
 3rd-party software if you want it to link against the new version of OpenSSL.
 
 Loader
-=======
+-------
 
 A new loader (dloader) has been added which better handles booting from
 multiple kernel/module versions.
@@ -51,7 +66,7 @@ Note that you must installworld and run the 'upgrade' target before
 installing the new kernel.
 
 BIND
-=====
+-----
 
 BIND has been removed from the base system.  The ldns and drill tools have 
 been added for basic functionality.  Use 'drill' where you would normally 

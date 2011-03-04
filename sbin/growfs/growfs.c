@@ -39,7 +39,6 @@
  *
  * @(#) Copyright (c) 2000 Christoph Herrmann, Thomas-Henning von Kamptz Copyright (c) 1980, 1989, 1993 The Regents of the University of California. All rights reserved.
  * $FreeBSD: src/sbin/growfs/growfs.c,v 1.4.2.2 2001/08/14 12:45:11 chm Exp $
- * $DragonFly: src/sbin/growfs/growfs.c,v 1.6 2007/05/20 23:21:36 dillon Exp $
  */
 
 /* ********************************************************** INCLUDES ***** */
@@ -404,7 +403,7 @@ initcg(int cylno, time_t utime, int fso, unsigned int Nflag)
 		acg.cg_nextfreeoff = acg.cg_clusteroff + howmany
 		    (sblock.fs_cpg * sblock.fs_spc / NSPB(&sblock), NBBY);
 	}
-	if (acg.cg_nextfreeoff-(int)(&acg.cg_firstfield) > sblock.fs_cgsize) {
+	if (acg.cg_nextfreeoff-(intptr_t)(&acg.cg_firstfield) > sblock.fs_cgsize) {
 		/*
 		 * XXX This should never happen as we would have had that panic
 		 *     already on filesystem creation

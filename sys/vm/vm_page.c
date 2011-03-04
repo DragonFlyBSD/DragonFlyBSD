@@ -15,10 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -37,7 +33,6 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.40 2008/08/25 17:01:42 dillon Exp $
  */
 
 /*
@@ -417,6 +412,7 @@ vm_page_unhold(vm_page_t m)
  *
  * This routine may not block.
  * This routine must be called with the vm_token held.
+ * This routine must be called with the vm_object held.
  * This routine must be called with a critical section held.
  */
 void
@@ -491,6 +487,8 @@ vm_page_remove(vm_page_t m)
 
 	object = m->object;
 
+	vm_object_hold(object);
+
 	/*
 	 * Remove the page from the object and update the object.
 	 */
@@ -499,6 +497,8 @@ vm_page_remove(vm_page_t m)
 	object->agg_pv_list_count = object->agg_pv_list_count - m->md.pv_list_count;
 	object->generation++;
 	m->object = NULL;
+
+	vm_object_drop(object);
 
 	lwkt_reltoken(&vm_token);
 }
@@ -550,12 +550,14 @@ void
 vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 {
 	lwkt_gettoken(&vm_token);
+	vm_object_hold(new_object);
 	vm_page_remove(m);
 	vm_page_insert(m, new_object, new_pindex);
 	if (m->queue - m->pc == PQ_CACHE)
 		vm_page_deactivate(m);
 	vm_page_dirty(m);
 	vm_page_wakeup(m);
+	vm_object_drop(new_object);
 	lwkt_reltoken(&vm_token);
 }
 
@@ -1575,6 +1577,7 @@ vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 	KKASSERT(allocflags &
 		(VM_ALLOC_NORMAL|VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
 	lwkt_gettoken(&vm_token);
+	vm_object_hold(object);
 retrylookup:
 	if ((m = vm_page_lookup(object, pindex)) != NULL) {
 		if (m->busy || (m->flags & PG_BUSY)) {
@@ -1603,6 +1606,7 @@ retrylookup:
 		goto retrylookup;
 	}
 done:
+	vm_object_drop(object);
 	lwkt_reltoken(&vm_token);
 	return(m);
 }
@@ -1987,19 +1991,6 @@ vm_page_event_internal(vm_page_t m, vm_page_event_t event)
 	if (all)
 		vm_page_flag_clear(m, PG_ACTIONLIST);
 	lwkt_reltoken(&vm_token);
-}
-
-
-void
-vm_page_lock(vm_page_t m)
-{
-	lwkt_getpooltoken(m);
-}
-
-void
-vm_page_unlock(vm_page_t m)
-{
-	lwkt_relpooltoken(m);
 }
 
 #include "opt_ddb.h"

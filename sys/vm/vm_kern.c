@@ -216,7 +216,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 	 * race with page-out.  vm_map_wire will wire the pages.
 	 */
 	lwkt_gettoken(&vm_token);
-	vm_object_lock(&kernel_object);
+	vm_object_hold(&kernel_object);
 	for (i = gstart; i < size; i += PAGE_SIZE) {
 		vm_page_t mem;
 
@@ -228,7 +228,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 		vm_page_flag_clear(mem, PG_ZERO);
 		vm_page_wakeup(mem);
 	}
-	vm_object_unlock(&kernel_object);
+	vm_object_drop(&kernel_object);
 	lwkt_reltoken(&vm_token);
 
 	/*

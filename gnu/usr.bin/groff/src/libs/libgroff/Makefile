@@ -1,5 +1,4 @@
 # $FreeBSD: src/gnu/usr.bin/groff/src/libs/libgroff/Makefile,v 1.8 2004/10/24 15:32:29 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/src/libs/libgroff/Makefile,v 1.5 2005/09/09 14:11:04 asmodai Exp $
 
 PATCHES!=       echo ${.CURDIR}/patches/*.patch
 CONTRIBDIR=     ${DIST_DIR}
@@ -24,5 +23,5 @@ version.cpp: ${GROFF_DIST}/VERSION ${GROFF_DIST}/REVISION
 	@${ECHO} Making version.cpp
 	@echo const char \*version_string = \"`cat ${GROFF_DIST}/VERSION`\"\; >$@
 	@echo const char \*revision_string = \"`cat ${GROFF_DIST}/REVISION`\"\; >>$@
-	@echo extern \"C\" const char \*Version_string = \"`cat ${GROFF_DIST}/VERSION`.`cat ${GROFF_DIST}/REVISION`\"\; | \
+	@echo const char \*Version_string = \"`cat ${GROFF_DIST}/VERSION`.`cat ${GROFF_DIST}/REVISION`\"\; | \
 	  sed -e 's/\.0\"/\"/' >>$@

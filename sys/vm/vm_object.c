@@ -64,7 +64,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.33 2008/05/09 07:24:48 dillon Exp $
  */
 
 /*
@@ -81,6 +80,7 @@
 #include <sys/mount.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/refcount.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -100,6 +100,10 @@
 static void	vm_object_qcollapse(vm_object_t object);
 static int	vm_object_page_collect_flush(vm_object_t object, vm_page_t p,
 					     int pagerflags);
+static void	vm_object_lock_init(vm_object_t);
+static void	vm_object_hold_wake(vm_object_t);
+static void	vm_object_hold_wait(vm_object_t);
+
 
 /*
  *	Virtual memory objects maintain the actual data
@@ -138,7 +142,6 @@ static long object_bypasses;
 static int next_index;
 static vm_zone_t obj_zone;
 static struct vm_zone obj_zone_store;
-static int object_hash_rand;
 #define VM_OBJECTS_INIT 256
 static struct vm_object vm_objects_init[VM_OBJECTS_INIT];
 
@@ -160,6 +163,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	object->type = type;
 	object->size = size;
 	object->ref_count = 1;
+	object->hold_count = 0;
 	object->flags = 0;
 	if ((object->type == OBJT_DEFAULT) || (object->type == OBJT_SWAP))
 		vm_object_set_flag(object, OBJ_ONEMAPPING);
@@ -176,23 +180,15 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	object->handle = NULL;
 	object->backing_object = NULL;
 	object->backing_object_offset = (vm_ooffset_t) 0;
-	/*
-	 * Try to generate a number that will spread objects out in the
-	 * hash table.  We 'wipe' new objects across the hash in 128 page
-	 * increments plus 1 more to offset it a little more by the time
-	 * it wraps around.
-	 */
-	object->hash_rand = object_hash_rand - 129;
 
 	object->generation++;
 	object->swblock_count = 0;
 	RB_INIT(&object->swblock_root);
-	lwkt_token_init(&object->tok, "vmobjtk");
+	vm_object_lock_init(object);
 
 	lwkt_gettoken(&vmobj_token);
 	TAILQ_INSERT_TAIL(&vm_object_list, object, object_list);
 	vm_object_count++;
-	object_hash_rand = object->hash_rand;
 	lwkt_reltoken(&vmobj_token);
 }
 
@@ -256,13 +252,11 @@ vm_object_reference_locked(vm_object_t object)
 {
 	if (object) {
 		ASSERT_LWKT_TOKEN_HELD(&vmobj_token);
-		vm_object_lock(object);
 		object->ref_count++;
 		if (object->type == OBJT_VNODE) {
 			vref(object->handle);
 			/* XXX what if the vnode is being destroyed? */
 		}
-		vm_object_unlock(object);
 	}
 }
 
@@ -451,7 +445,7 @@ vm_object_terminate(vm_object_t object)
 	/*
 	 * Wait for the pageout daemon to be done with the object
 	 */
-	vm_object_pip_wait(object, "objtrm");
+	vm_object_pip_wait(object, "objtrm1");
 
 	KASSERT(!object->paging_in_progress,
 		("vm_object_terminate: pageout in progress"));
@@ -476,7 +470,7 @@ vm_object_terminate(vm_object_t object)
 	 * Wait for any I/O to complete, after which there had better not
 	 * be any references left on the object.
 	 */
-	vm_object_pip_wait(object, "objtrm");
+	vm_object_pip_wait(object, "objtrm2");
 
 	if (object->ref_count != 0) {
 		panic("vm_object_terminate: object with references, "
@@ -497,6 +491,11 @@ vm_object_terminate(vm_object_t object)
 	 * Let the pager know object is dead.
 	 */
 	vm_pager_deallocate(object);
+
+	/*
+	 * Wait for the object hold count to hit zero
+	 */
+	vm_object_hold_wait(object);
 
 	/*
 	 * Remove the object from the global object list.
@@ -1514,6 +1513,11 @@ vm_object_collapse(vm_object_t object)
 				 "over pages during collapse!",
 				 backing_object));
 
+			/*
+			 * Wait for hold count to hit zero
+			 */
+			vm_object_hold_wait(backing_object);
+
 			/* (we are holding vmobj_token) */
 			TAILQ_REMOVE(&vm_object_list, backing_object,
 				     object_list);
@@ -1740,10 +1744,8 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 		return (TRUE);
 	}
 
-	vm_object_lock(prev_object);
 	if (prev_object->type != OBJT_DEFAULT &&
 	    prev_object->type != OBJT_SWAP) {
-		vm_object_unlock(prev_object);
 		return (FALSE);
 	}
 
@@ -1759,7 +1761,6 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	 */
 
 	if (prev_object->backing_object != NULL) {
-		vm_object_unlock(prev_object);
 		return (FALSE);
 	}
 
@@ -1769,7 +1770,6 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 
 	if ((prev_object->ref_count > 1) &&
 	    (prev_object->size != next_pindex)) {
-		vm_object_unlock(prev_object);
 		return (FALSE);
 	}
 
@@ -1792,7 +1792,6 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	if (next_pindex + next_size > prev_object->size)
 		prev_object->size = next_pindex + next_size;
 
-	vm_object_unlock(prev_object);
 	return (TRUE);
 }
 
@@ -1817,16 +1816,58 @@ vm_object_set_writeable_dirty(vm_object_t object)
 	lwkt_reltoken(&vm_token);
 }
 
-void
-vm_object_lock(vm_object_t object)
+static void
+vm_object_lock_init(vm_object_t obj)
 {
-	lwkt_gettoken(&object->tok);
 }
 
 void
-vm_object_unlock(vm_object_t object)
+vm_object_lock(vm_object_t obj)
 {
-	lwkt_reltoken(&object->tok);
+	lwkt_getpooltoken(obj);
+}
+
+void
+vm_object_unlock(vm_object_t obj)
+{
+	lwkt_relpooltoken(obj);
+}
+
+void
+vm_object_hold(vm_object_t obj)
+{
+	vm_object_lock(obj);
+
+	refcount_acquire(&obj->hold_count);
+}
+
+void
+vm_object_drop(vm_object_t obj)
+{
+	int rc;
+
+	rc = refcount_release(&obj->hold_count);
+	vm_object_unlock(obj);
+
+	if (rc) 
+		vm_object_hold_wake(obj);
+}
+
+static void
+vm_object_hold_wake(vm_object_t obj)
+{
+	wakeup(obj);
+}
+
+static void
+vm_object_hold_wait(vm_object_t obj)
+{
+	vm_object_lock(obj);
+
+	while (obj->hold_count)
+		tsleep(obj, 0, "vmobjhld", 0);
+
+	vm_object_unlock(obj);
 }
 
 #include "opt_ddb.h"

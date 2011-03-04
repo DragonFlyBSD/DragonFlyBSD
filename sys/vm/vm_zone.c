@@ -407,6 +407,7 @@ zget(vm_zone_t z)
 		 * simply populate an existing mapping.
 		 */
 		lwkt_gettoken(&vm_token);
+		vm_object_hold(z->zobj);
 		savezpc = z->zpagecount;
 		nbytes = z->zpagecount * PAGE_SIZE;
 		nbytes -= nbytes % z->zsize;
@@ -418,7 +419,7 @@ zget(vm_zone_t z)
 			m = vm_page_alloc(z->zobj, z->zpagecount,
 					  z->zallocflag);
 			/* note: z might be modified due to blocking */
-			if (m == NULL)
+			if (m == NULL) 
 				break;
 
 			/*
@@ -439,6 +440,7 @@ zget(vm_zone_t z)
 			vmstats.v_wire_count++;
 		}
 		nitems = ((z->zpagecount * PAGE_SIZE) - nbytes) / z->zsize;
+		vm_object_drop(z->zobj);
 		lwkt_reltoken(&vm_token);
 	} else if (z->zflags & ZONE_SPECIAL) {
 		/*

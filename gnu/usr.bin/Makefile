@@ -1,5 +1,4 @@
 # $FreeBSD: src/gnu/usr.bin/Makefile,v 1.51 2000/01/16 00:11:34 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/Makefile,v 1.32 2007/09/05 21:40:10 pavalos Exp $
 
 SUBDIR= dialog diff diff3 grep groff man rcs sdiff sort texinfo
 
@@ -14,12 +13,12 @@ SUBDIR+=gdb
 SUBDIR+= binutils217
 SUBDIR+= binutils220
 
+.if !defined(NO_GCC41)
 SUBDIR+= cc41
 .ORDER: binutils217 cc41
+.endif
 
-.if !defined(NO_GCC44)
 SUBDIR+= cc44
 .ORDER: binutils217 cc44
-.endif
 
 .include <bsd.subdir.mk>

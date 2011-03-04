@@ -87,8 +87,8 @@ struct	sockaddr_ipx ipx_netmask, ipx_hostmask;
 
 static	u_short allones[] = {-1, -1, -1};
 
-struct	ipxpcb ipxpcb;
-struct	ipxpcb ipxrawpcb;
+struct	ipxpcbhead ipxpcb_list;
+struct	ipxpcbhead ipxrawpcb_list;
 
 long	ipx_pexseq;
 
@@ -108,8 +108,8 @@ ipx_init(void)
 	ipx_broadhost = *(union ipx_host *)allones;
 
 	read_random(&ipx_pexseq, sizeof ipx_pexseq);
-	ipxpcb.ipxp_next = ipxpcb.ipxp_prev = &ipxpcb;
-	ipxrawpcb.ipxp_next = ipxrawpcb.ipxp_prev = &ipxrawpcb;
+	LIST_INIT(&ipxpcb_list);
+	LIST_INIT(&ipxrawpcb_list);
 
 	ipx_netmask.sipx_len = 6;
 	ipx_netmask.sipx_addr.x_net = ipx_broadnet;
@@ -153,8 +153,7 @@ ipxintr(netmsg_t msg)
 	/*
 	 * Give any raw listeners a crack at the packet
 	 */
-	for (ipxp = ipxrawpcb.ipxp_next; ipxp != &ipxrawpcb;
-	     ipxp = ipxp->ipxp_next) {
+	LIST_FOREACH(ipxp, &ipxrawpcb_list, ipxp_list) {
 		struct mbuf *m1 = m_copy(m, 0, (int)M_COPYALL);
 		if (m1 != NULL)
 			ipx_input(m1, ipxp);
@@ -469,8 +468,7 @@ ipx_watch_output(struct mbuf *m, struct ifnet *ifp)
 	/*
 	 * Give any raw listeners a crack at the packet
 	 */
-	for (ipxp = ipxrawpcb.ipxp_next; ipxp != &ipxrawpcb;
-	     ipxp = ipxp->ipxp_next) {
+	LIST_FOREACH(ipxp, &ipxrawpcb_list, ipxp_list) {
 		struct mbuf *m0 = m_copy(m, 0, (int)M_COPYALL);
 		if (m0 != NULL) {
 			struct ipx *ipx;

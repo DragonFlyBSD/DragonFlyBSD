@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
 .\"
-.Dd May 5, 2010
+.Dd March 4, 2011
 .Dt MAKE.CONF 5
 .Os
 .Sh NAME
@@ -119,8 +119,9 @@ Currently accepted values for compilers which are part of
 .Dx
 are
 .Dq gcc41
-(default) and
-.Dq gcc44 .
+and
+.Dq gcc44
+(default).
 All other values will handled according to the settings in
 .Xr compilers.conf 5 .
 .It Va BINUTILSVER
@@ -349,9 +350,9 @@ Set to not build CVS.
 .It Va NO_GAMES
 .Pq Vt bool
 Set to not build games.
-.It Va NO_GCC44
+.It Va NO_GCC41
 .Pq Vt bool
-Set to not build the newer version of GCC (4.4).
+Set to not build the older version of GCC (4.1).
 .It Va NO_GDB
 .Pq Vt bool
 Set to not build

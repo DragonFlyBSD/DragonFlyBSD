@@ -17,7 +17,6 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/ppp/physical.h,v 1.20.2.3 2002/09/01 02:12:29 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/physical.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  *
  */
 
@@ -115,7 +114,7 @@ struct physical {
 };
 
 #define field2phys(fp, name) \
-  ((struct physical *)((char *)fp - (int)(&((struct physical *)0)->name)))
+  ((struct physical *)((char *)fp - (uintptr_t)(&((struct physical *)0)->name)))
 
 #define link2physical(l) \
   ((l)->type == PHYSICAL_LINK ? field2phys(l, link) : NULL)

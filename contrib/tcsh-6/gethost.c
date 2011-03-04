@@ -231,7 +231,7 @@ main(int argc, char *argv[])
 	    break;
 
 	case T_NONE:
-	    if (state != S_CODE && defs && *defs != '\0') {
+	    if (state != S_CODE && *defs != '\0') {
 		(void) fprintf(stderr, "%s: \"%s\", %d: Discarded\n",
 			       pname, fname, lineno);
 		if (++errs == 30) {

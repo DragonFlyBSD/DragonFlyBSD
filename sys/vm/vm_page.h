@@ -534,8 +534,6 @@ void vm_page_event_internal(vm_page_t, vm_page_event_t);
 void vm_page_dirty(vm_page_t m);
 void vm_page_register_action(vm_page_action_t action, vm_page_event_t event);
 void vm_page_unregister_action(vm_page_action_t action);
-void vm_page_lock(vm_page_t m);
-void vm_page_unlock(vm_page_t m);
 
 /*
  * Reduce the protection of a page.  This routine never raises the 

@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -140,19 +136,16 @@ struct vm_object {
 	vm_pindex_t size;		/* Object size */
 	int ref_count;			/* vmobj_token */
 	int shadow_count;		/* how many objects that this is a shadow for */
-	int hash_rand;			/* vm hash table randomizer	*/
 	objtype_t type;			/* type of pager */
 	u_short flags;			/* see below */
 	u_short pg_color;		/* color of first page in obj */
-	u_short unused01;
 	int paging_in_progress;		/* Paging (in or out) so don't collapse or destroy */
 	int resident_page_count;	/* number of resident pages */
         u_int agg_pv_list_count;        /* aggregate pv list count */
 	struct vm_object *backing_object; /* object that I'm a shadow of */
 	vm_ooffset_t backing_object_offset;/* Offset in backing object */
-	TAILQ_ENTRY(vm_object) pager_object_list; /* list of all objects of this pager type */
 	void *handle;
-	struct lwkt_token tok;
+	int hold_count;			/* refcount for object liveness */
 	
 	union {
 		/*
@@ -234,16 +227,6 @@ vm_object_pip_subtract(vm_object_t object, int i)
 }
 
 static __inline void
-vm_object_pip_wakeup(vm_object_t object)
-{
-	atomic_subtract_int(&object->paging_in_progress, 1);
-	if ((object->flags & OBJ_PIPWNT) && object->paging_in_progress == 0) {
-		vm_object_clear_flag(object, OBJ_PIPWNT);
-		wakeup(object);
-	}
-}
-
-static __inline void
 vm_object_pip_wakeupn(vm_object_t object, int i)
 {
 	if (i)
@@ -252,6 +235,12 @@ vm_object_pip_wakeupn(vm_object_t object, int i)
 		vm_object_clear_flag(object, OBJ_PIPWNT);
 		wakeup(object);
 	}
+}
+
+static __inline void
+vm_object_pip_wakeup(vm_object_t object)
+{
+	vm_object_pip_wakeupn(object, 1);
 }
 
 static __inline void
@@ -298,6 +287,8 @@ void vm_object_dead_sleep(vm_object_t, const char *);
 void vm_object_dead_wakeup(vm_object_t);
 void vm_object_lock(vm_object_t);
 void vm_object_unlock(vm_object_t);
+void vm_object_hold(vm_object_t);
+void vm_object_drop(vm_object_t);
 
 #endif				/* _KERNEL */
 

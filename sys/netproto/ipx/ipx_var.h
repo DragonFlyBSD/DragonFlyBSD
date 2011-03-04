@@ -67,7 +67,6 @@ SYSCTL_DECL(_net_ipx_ipx);
 extern int ipxcksum;
 extern long ipx_pexseq;
 extern struct ipxstat ipxstat;
-extern struct ipxpcb ipxrawpcb;
 extern struct pr_usrreqs ipx_usrreqs;
 extern struct pr_usrreqs ripx_usrreqs;
 extern struct sockaddr_ipx ipx_netmask;
@@ -80,6 +79,7 @@ extern union ipx_host ipx_broadhost;
 
 struct ifnet;
 struct ipx_addr;
+struct ipxpcb;
 struct mbuf;
 struct thread;
 struct route;

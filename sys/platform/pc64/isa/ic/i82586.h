@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ic/i82586.h,v 1.9 1999/08/28 00:45:14 peter Exp $
- * $DragonFly: src/sys/platform/pc64/isa/ic/i82586.h,v 1.1 2008/08/29 17:07:21 dillon Exp $
  */
 
 /*
@@ -304,7 +303,7 @@ ie_setup_config(volatile struct ie_config_cmd *cmd,
 	cmd->ie_ifs = 0x60;
 	cmd->ie_slot_low = 0;
 	cmd->ie_slot_high = 0xf2;
-	cmd->ie_promisc = !!promiscuous | manchester << 2;
+	cmd->ie_promisc = (!!promiscuous) | manchester << 2;
 	cmd->ie_crs_cdt = 0;
 	cmd->ie_min_len = 64;
 	cmd->ie_junk = 0xff;

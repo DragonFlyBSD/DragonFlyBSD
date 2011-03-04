@@ -55,9 +55,10 @@
 #include "ipx_var.h"
 
 static struct	ipx_addr zeroipx_addr;
+static uint16_t	ipxpcb_lport_cache;
 
 int
-ipx_pcballoc(struct socket *so, struct ipxpcb *head)
+ipx_pcballoc(struct socket *so, struct ipxpcbhead *head)
 {
 	struct ipxpcb *ipxp;
 
@@ -68,7 +69,7 @@ ipx_pcballoc(struct socket *so, struct ipxpcb *head)
 	ipxp->ipxp_socket = so;
 	if (ipxcksum)
 		ipxp->ipxp_flags |= IPXP_CHECKSUM;
-	insque(ipxp, head);
+	LIST_INSERT_HEAD(head, ipxp, ipxp_list);
 	so->so_pcb = (caddr_t)ipxp;
 	return (0);
 }
@@ -107,11 +108,11 @@ ipx_pcbbind(struct ipxpcb *ipxp, struct sockaddr *nam, struct thread *td)
 noname:
 	if (lport == 0)
 		do {
-			ipxpcb.ipxp_lport++;
-			if ((ipxpcb.ipxp_lport < IPXPORT_RESERVED) ||
-			    (ipxpcb.ipxp_lport >= IPXPORT_WELLKNOWN))
-				ipxpcb.ipxp_lport = IPXPORT_RESERVED;
-			lport = htons(ipxpcb.ipxp_lport);
+			ipxpcb_lport_cache++;
+			if ((ipxpcb_lport_cache < IPXPORT_RESERVED) ||
+			    (ipxpcb_lport_cache >= IPXPORT_WELLKNOWN))
+				ipxpcb_lport_cache = IPXPORT_RESERVED;
+			lport = htons(ipxpcb_lport_cache);
 		} while (ipx_pcblookup(&zeroipx_addr, lport, 0));
 	ipxp->ipxp_lport = lport;
 	return (0);
@@ -266,7 +267,7 @@ ipx_pcbdetach(struct ipxpcb *ipxp)
 
 	if (ipxp->ipxp_route.ro_rt != NULL)
 		rtfree(ipxp->ipxp_route.ro_rt);
-	remque(ipxp);
+	LIST_REMOVE(ipxp, ipxp_list);
 	FREE(ipxp, M_PCB);
 }
 
@@ -296,59 +297,6 @@ ipx_setpeeraddr(struct ipxpcb *ipxp, struct sockaddr **nam)
 	*nam = dup_sockaddr((struct sockaddr *)sipx);
 }
 
-/*
- * Pass some notification to all connections of a protocol
- * associated with address dst.  Call the
- * protocol specific routine to handle each connection.
- * Also pass an extra paramter via the ipxpcb. (which may in fact
- * be a parameter list!)
- */
-void
-ipx_pcbnotify(struct ipx_addr *dst, int error,
-	      void (*notify)(struct ipxpcb *), long param)
-{
-	struct ipxpcb *ipxp, *oinp;
-
-	crit_enter();
-
-	for (ipxp = (&ipxpcb)->ipxp_next; ipxp != (&ipxpcb);) {
-		if (!ipx_hosteq(*dst,ipxp->ipxp_faddr)) {
-	next:
-			ipxp = ipxp->ipxp_next;
-			continue;
-		}
-		if (ipxp->ipxp_socket == 0)
-			goto next;
-		if (error) 
-			ipxp->ipxp_socket->so_error = error;
-		oinp = ipxp;
-		ipxp = ipxp->ipxp_next;
-		oinp->ipxp_notify_param = param;
-		(*notify)(oinp);
-	}
-	crit_exit();
-}
-
-#ifdef notdef
-/*
- * After a routing change, flush old routing
- * and allocate a (hopefully) better one.
- */
-void
-ipx_rtchange(struct ipxpcb *ipxp)
-{
-	if (ipxp->ipxp_route.ro_rt != NULL) {
-		rtfree(ipxp->ipxp_route.ro_rt);
-		ipxp->ipxp_route.ro_rt = NULL;
-		/*
-		 * A new route can be allocated the next time
-		 * output is attempted.
-		 */
-	}
-	/* SHOULD NOTIFY HIGHER-LEVEL PROTOCOLS */
-}
-#endif
-
 struct ipxpcb *
 ipx_pcblookup(struct ipx_addr *faddr, int lport, int wildp)
 {
@@ -357,7 +305,7 @@ ipx_pcblookup(struct ipx_addr *faddr, int lport, int wildp)
 	u_short fport;
 
 	fport = faddr->x_port;
-	for (ipxp = (&ipxpcb)->ipxp_next; ipxp != (&ipxpcb); ipxp = ipxp->ipxp_next) {
+	LIST_FOREACH(ipxp, &ipxpcb_list, ipxp_list) {
 		if (ipxp->ipxp_lport != lport)
 			continue;
 		wildcard = 0;

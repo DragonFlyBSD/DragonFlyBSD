@@ -187,7 +187,7 @@ pclose(FILE *iop)
 	if (last == NULL)
 		SLIST_REMOVE_HEAD(&pidlist, next);
 	else
-		SLIST_REMOVE_NEXT(&pidlist, last, next);
+		SLIST_REMOVE_AFTER(last, next);
 	THREAD_UNLOCK();
 
 	fclose(iop);

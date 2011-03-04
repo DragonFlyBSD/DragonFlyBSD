@@ -1,4 +1,3 @@
-# $DragonFly: src/sys/conf/kern.pre.mk,v 1.8 2008/11/17 11:55:19 swildner Exp $
 #
 # This Makefile covers the top part of the MI kernel build instructions
 #
@@ -84,7 +83,7 @@ PROFILE_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
 NORMAL_M= awk -f $S/tools/makeobjops.awk -- -c $<; \
 	${CC} -c ${CFLAGS} ${PROF} ${.PREFIX}.c
 
-.if !defined(NO_WERROR) && ${CCVER} == "gcc41"
+.if !defined(NO_WERROR) && (${CCVER} == "gcc41" || ${CCVER} == "gcc44")
 WERROR=-Werror
 .endif
 

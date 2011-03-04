@@ -368,8 +368,7 @@ static int spxrexmtthresh = 3;
 static int
 spx_reass(struct spxpcb *cb, struct spx *si, struct mbuf *si_m)
 {
-	struct spx_q *q;
-	struct spx_q *nq;
+	struct spx_q *q, *nq, *q_temp;
 	struct mbuf *m;
 	struct socket *so = cb->s_ipxpcb->ipxp_socket;
 	char packetp = cb->s_flags & SF_HI;
@@ -557,7 +556,7 @@ update_window:
 	 * Loop through all packets queued up to insert in
 	 * appropriate sequence.
 	 */
-	for (q = cb->s_q.si_next; q != &cb->s_q; q = q->si_next) {
+	LIST_FOREACH(q, &cb->s_q, sq_entry) {
 		if (si->si_seq == SI(q)->si_seq) {
 			spxstat.spxs_rcvduppack++;
 			return (1);
@@ -572,7 +571,10 @@ update_window:
 		m_freem(si_m);
 		return (0);
 	}
-	insque(nq, q->si_prev);
+	if (q == NULL)
+		LIST_INSERT_HEAD(&cb->s_q, nq, sq_entry);
+	else
+		LIST_INSERT_BEFORE(q, nq, sq_entry);
 	nq->si_mbuf = si_m;
 	/*
 	 * If this packet is urgent, inform process
@@ -589,7 +591,7 @@ present:
 	 * number, and present all acknowledged data to user;
 	 * If in packet interface mode, show packet headers.
 	 */
-	for (q = cb->s_q.si_next; q != &cb->s_q; q = q->si_next) {
+	LIST_FOREACH_MUTABLE(q, &cb->s_q, sq_entry, q_temp) {
 		  if (SI(q)->si_seq == cb->s_ack) {
 			cb->s_ack++;
 			m = q->si_mbuf;
@@ -600,10 +602,8 @@ present:
 				else
 					sosetstate(so, SS_RCVATMARK);
 			}
-			nq = q;
-			q = q->si_prev;
-			remque(nq);
-			kfree(nq, M_SPX_Q);
+			LIST_REMOVE(q, sq_entry);
+			kfree(q, M_SPX_Q);
 			wakeup = 1;
 			spxstat.spxs_rcvpack++;
 #ifdef SF_NEWCALL
@@ -691,55 +691,6 @@ spx_ctlinput(netmsg_t msg)
 out:
 	lwkt_replymsg(&msg->lmsg, 0);
 }
-
-#ifdef notdef
-int
-spx_fixmtu(struct ipxpcb *ipxp)
-{
-	struct spxpcb *cb = (struct spxpcb *)(ipxp->ipxp_pcb);
-	struct mbuf *m;
-	struct spx *si;
-	struct ipx_errp *ep;
-	struct signalsockbuf *ssb;
-	int badseq, len;
-	struct mbuf *firstbad, *m0;
-
-	if (cb != NULL) {
-		/* 
-		 * The notification that we have sent
-		 * too much is bad news -- we will
-		 * have to go through queued up so far
-		 * splitting ones which are too big and
-		 * reassigning sequence numbers and checksums.
-		 * we should then retransmit all packets from
-		 * one above the offending packet to the last one
-		 * we had sent (or our allocation)
-		 * then the offending one so that the any queued
-		 * data at our destination will be discarded.
-		 */
-		 ep = (struct ipx_errp *)ipxp->ipxp_notify_param;
-		 ssb = &ipxp->ipxp_socket->so_snd;
-		 cb->s_mtu = ep->ipx_err_param;
-		 badseq = ep->ipx_err_ipx.si_seq;
-		 for (m = ssb->ssb_mb; m != NULL; m = m->m_nextpkt) {
-			si = mtod(m, struct spx *);
-			if (si->si_seq == badseq)
-				break;
-		 }
-		 if (m == NULL)
-			return;
-		 firstbad = m;
-		 /*for (;;) {*/
-			/* calculate length */
-			for (m0 = m, len = 0; m != NULL; m = m->m_next)
-				len += m->m_len;
-			if (len > cb->s_mtu) {
-			}
-		/* FINISH THIS
-		} */
-	}
-}
-#endif
 
 static int
 spx_output(struct spxpcb *cb, struct mbuf *m0)
@@ -1358,7 +1309,7 @@ spx_attach_oncpu(struct socket *so, int proto, struct pru_attach_info *ai)
 		error = EISCONN;
 		goto spx_attach_end;
 	}
-	error = ipx_pcballoc(so, &ipxpcb);
+	error = ipx_pcballoc(so, &ipxpcb_list);
 	if (error)
 		goto spx_attach_end;
 	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
@@ -1383,7 +1334,7 @@ spx_attach_oncpu(struct socket *so, int proto, struct pru_attach_info *ai)
 	cb->s_state = TCPS_LISTEN;
 	cb->s_smax = -1;
 	cb->s_swl1 = -1;
-	cb->s_q.si_next = cb->s_q.si_prev = &cb->s_q;
+	LIST_INIT(&cb->s_q);
 	cb->s_ipxpcb = ipxp;
 	cb->s_mtu = 576 - sizeof(struct spx);
 	cb->s_cwnd = ssb_space(ssb) * CUNIT / cb->s_mtu;
@@ -1707,19 +1658,14 @@ static struct spxpcb *
 spx_close(struct spxpcb *cb)
 {
 	struct spx_q *q;
-	struct spx_q *oq;
 	struct ipxpcb *ipxp = cb->s_ipxpcb;
 	struct socket *so = ipxp->ipxp_socket;
-	struct mbuf *m;
 
-	q = cb->s_q.si_next;
-	while (q != &(cb->s_q)) {
-		oq = q;
-		q = q->si_next;
-		m = oq->si_mbuf;
-		remque(oq);
-		m_freem(m);
-		kfree(oq, M_SPX_Q);
+	while (!LIST_EMPTY(&cb->s_q)) {
+		q = LIST_FIRST(&cb->s_q);
+		LIST_REMOVE(q, sq_entry);
+		m_freem(q->si_mbuf);
+		kfree(q, M_SPX_Q);
 	}
 	m_free(cb->s_ipx_m);
 	FREE(cb, M_PCB);
@@ -1781,9 +1727,7 @@ spx_fasttimo(void)
 	struct spxpcb *cb;
 
 	crit_enter();
-	ipxp = ipxpcb.ipxp_next;
-	if (ipxp != NULL) {
-	    for (; ipxp != &ipxpcb; ipxp = ipxp->ipxp_next) {
+	LIST_FOREACH(ipxp, &ipxpcb_list, ipxp_list) {
 		if ((cb = (struct spxpcb *)ipxp->ipxp_pcb) != NULL &&
 		    (cb->s_flags & SF_DELACK)) {
 			cb->s_flags &= ~SF_DELACK;
@@ -1791,7 +1735,6 @@ spx_fasttimo(void)
 			spxstat.spxs_delack++;
 			spx_output(cb, NULL);
 		}
-	    }
 	}
 	crit_exit();
 }
@@ -1804,7 +1747,7 @@ spx_fasttimo(void)
 void
 spx_slowtimo(void)
 {
-	struct ipxpcb *ip, *ipnxt;
+	struct ipxpcb *ip, *ip_temp;
 	struct spxpcb *cb;
 	int i;
 
@@ -1812,28 +1755,19 @@ spx_slowtimo(void)
 	 * Search through tcb's and update active timers.
 	 */
 	crit_enter();
-	ip = ipxpcb.ipxp_next;
-	if (ip == NULL) {
-		crit_exit();
-		return;
-	}
-	while (ip != &ipxpcb) {
+	LIST_FOREACH_MUTABLE(ip, &ipxpcb_list, ipxp_list, ip_temp) {
 		cb = ipxtospxpcb(ip);
-		ipnxt = ip->ipxp_next;
 		if (cb == NULL)
-			goto tpgone;
+			continue;
 		for (i = 0; i < SPXT_NTIMERS; i++) {
 			if (cb->s_timer[i] && --cb->s_timer[i] == 0) {
-				spx_timers(cb, i);
-				if (ipnxt->ipxp_prev != ip)
-					goto tpgone;
+				if (spx_timers(cb, i) == NULL)
+					continue;
 			}
 		}
 		cb->s_idle++;
 		if (cb->s_rtt)
 			cb->s_rtt++;
-tpgone:
-		ip = ipnxt;
 	}
 	spx_iss += SPX_ISSINCR/PR_SLOWHZ;		/* increment iss */
 	crit_exit();

@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/chap.h,v 1.17.2.4 2002/09/01 02:12:23 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/chap.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 struct mbuf;
@@ -62,7 +61,7 @@ struct chap {
 #define descriptor2chap(d) \
   ((d)->type == CHAP_DESCRIPTOR ? (struct chap *)(d) : NULL)
 #define auth2chap(a) \
-  ((struct chap *)((char *)a - (int)&((struct chap *)0)->auth))
+  ((struct chap *)((char *)a - (uintptr_t)&((struct chap *)0)->auth))
 
 struct MSCHAPv2_resp {		/* rfc2759 */
   char PeerChallenge[16];

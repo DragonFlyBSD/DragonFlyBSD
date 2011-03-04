@@ -19,10 +19,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -68,7 +64,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.36 2008/07/01 02:02:56 dillon Exp $
  */
 
 /*
@@ -297,6 +292,7 @@ vm_pageout_clean(vm_page_t m)
 	 * forward scan if room remains.
 	 */
 
+	vm_object_hold(object);
 more:
 	while (ib && pageout_count < vm_pageout_page_count) {
 		vm_page_t p;
@@ -363,6 +359,8 @@ more:
 	 */
 	if (ib && pageout_count < vm_pageout_page_count)
 		goto more;
+
+	vm_object_drop(object);
 
 	/*
 	 * we allow reads during pageouts...
@@ -489,6 +487,7 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
  *
  * The map must be locked.
  * The caller must hold vm_token.
+ * The caller must hold the vm_object.
  */
 static int vm_pageout_object_deactivate_pages_callback(vm_page_t, void *);
 
@@ -497,16 +496,23 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 				   vm_pindex_t desired, int map_remove_only)
 {
 	struct rb_vm_page_scan_info info;
+	vm_object_t tmp;
 	int remove_mode;
-
-	if (object->type == OBJT_DEVICE || object->type == OBJT_PHYS)
-		return;
 
 	while (object) {
 		if (pmap_resident_count(vm_map_pmap(map)) <= desired)
 			return;
-		if (object->paging_in_progress)
+
+		vm_object_hold(object);
+
+		if (object->type == OBJT_DEVICE || object->type == OBJT_PHYS) {
+			vm_object_drop(object);
 			return;
+		}
+		if (object->paging_in_progress) {
+			vm_object_drop(object);
+			return;
+		}
 
 		remove_mode = map_remove_only;
 		if (object->shadow_count > 1)
@@ -526,12 +532,15 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 				&info
 		);
 		crit_exit();
-		object = object->backing_object;
+		tmp = object->backing_object;
+		vm_object_drop(object);
+		object = tmp;
 	}
 }
 
 /*
  * The caller must hold vm_token.
+ * The caller must hold the vm_object.
  */
 static int
 vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
@@ -633,7 +642,7 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 		tmpe = tmpe->next;
 	}
 
-	if (bigobj)
+	if (bigobj) 
 		vm_pageout_object_deactivate_pages(map, bigobj, desired, 0);
 
 	/*
@@ -648,7 +657,7 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 		case VM_MAPTYPE_NORMAL:
 		case VM_MAPTYPE_VPAGETABLE:
 			obj = tmpe->object.vm_object;
-			if (obj)
+			if (obj) 
 				vm_pageout_object_deactivate_pages(map, obj, desired, 0);
 			break;
 		default:
