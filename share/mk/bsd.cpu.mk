@@ -1,5 +1,4 @@
 # $FreeBSD: src/share/mk/bsd.cpu.mk,v 1.2.2.5 2002/07/19 08:09:32 ru Exp $
-# $DragonFly: src/share/mk/bsd.cpu.mk,v 1.16 2007/09/26 22:14:17 dillon Exp $
 
 # include compiler-specific bsd.cpu.mk.  Note that CCVER may or may not
 # be passed as an environment variable.  If not set we make it consistent
@@ -15,7 +14,7 @@
 # If the host system does not have the desired compiler for HOST_CCVER
 # we back off to something it probably does have.
 
-_DEFAULT_CCVER=	gcc41
+_DEFAULT_CCVER=	gcc44
 
 CCVER ?= ${_DEFAULT_CCVER}
 _CCVER := ${CCVER}

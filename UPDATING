@@ -12,6 +12,21 @@
 +         UPGRADING DRAGONFLY FROM 2.8 to later versions                +
 +-----------------------------------------------------------------------+
 
+GCC 4.4
+-------
+
+GCC 4.4 has been made DragonFly's default compiler.
+
+That means that any settings that set CCVER to 'gcc44' are not needed
+anymore. Instead, CCVER can be set to 'gcc41' to go back to using
+GCC 4.1.
+
+The NO_GCC44 options has been removed and will not affect the build
+anymore. There is now a NO_GCC41 option that will prevent GCC 4.1 from
+building in a similar fashion.
+
+Also, we recommend to do a full buildworld/buildkernel for upgrading.
+
 pkg_radd settings
 -----------------
 

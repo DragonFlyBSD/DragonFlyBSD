@@ -122,7 +122,7 @@ world32: checkq
 
 world64: checkq
 	cd ${SRCDIR} && \
-	    make -j 4 TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 NO_GCC44=1 \
+	    make -j 4 TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 NO_GCC41=1 \
 	    buildworld
 
 kernel64: checkq
@@ -135,7 +135,7 @@ kernel64: checkq
 #
 quickworld64: checkq
 	cd ${SRCDIR} && \
-	    make -j 4 TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 NO_GCC44=1 \
+	    make -j 4 TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 NO_GCC41=1 \
 	    quickworld
 
 quickkernel64: checkq
@@ -176,7 +176,7 @@ umount: check
 install64: mount
 	cd ${SRCDIR} && \
 	    make -j 4 TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 \
-		 DESTDIR=${QEMUDIR}/root NO_GCC44=1 installworld
+		 DESTDIR=${QEMUDIR}/root NO_GCC41=1 installworld
 	cd ${SRCDIR}/etc && \
 	    make -j 4 TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 \
 		 DESTDIR=${QEMUDIR}/root distribution
@@ -201,7 +201,7 @@ reinstall64: mount
 	@echo "      64 bit kernel"
 	cd ${SRCDIR} && \
 	    make -j 4 TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 \
-		 DESTDIR=${QEMUDIR}/root NO_GCC44=1 installworld
+		 DESTDIR=${QEMUDIR}/root NO_GCC41=1 installworld
 
 reinstallkernel64: mount
 	cd ${SRCDIR} && \

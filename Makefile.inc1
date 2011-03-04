@@ -1,6 +1,5 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.118 2008/06/24 20:22:30 thomas Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -120,7 +119,7 @@ DESTDIRBASE?=		${OBJTREE}${.CURDIR}
 .MAKEFLAGS:=	${.MAKEFLAGS:NDESTDIR=*}
 
 # This sets the compiler we use to build the world/kernel with
-WORLD_CCVER?=	gcc41
+WORLD_CCVER?=	gcc44
 WORLD_BINUTILSVER?=	binutils217
 
 # temporary until everybody has converted to x86_64
@@ -794,12 +793,12 @@ bootstrap-tools:
 _share=	share/syscons/scrnmaps
 .endif
 
+.if !defined(NO_GCC41)
 _gcc41_cross= gnu/usr.bin/cc41
 _gcc41_tools= gnu/usr.bin/cc41/cc_prep gnu/usr.bin/cc41/cc_tools
-.if !defined(NO_GCC44)
+.endif
 _gcc44_cross= gnu/usr.bin/cc44
 _gcc44_tools= gnu/usr.bin/cc44/cc_prep gnu/usr.bin/cc44/cc_tools
-.endif
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
 
@@ -851,14 +850,14 @@ hierarchy:
 # to specify the correct CCVER or 'cc' will not exec the correct compiler.
 #
 libraries:
+.if !defined(NO_GCC41)
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc41 \
 		${MAKE} -f Makefile.inc1 _startup_libs41;
-.if !defined(NO_GCC44)
+.endif
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc44 \
 		${MAKE} -f Makefile.inc1 _startup_libs44;
-.endif
 	cd ${.CURDIR}; \
 	    ${MAKE} -f Makefile.inc1 _startup_libs; \
 	    ${MAKE} -f Makefile.inc1 _prebuild_libs; \
