@@ -446,6 +446,7 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 	/*
 	 * kernel_object maps 1:1 to kernel_map.
 	 */
+	vm_object_hold(&kernel_object);
 	vm_object_reference(&kernel_object);
 	vm_map_insert(map, &count, 
 		      &kernel_object, addr,
@@ -466,6 +467,8 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 		tmp_addr += PAGE_SIZE;
  	}
 	vm_map_wire(map, addr, addr + size, 0);
+
+	vm_object_drop(&kernel_object);
 
 	lwkt_reltoken(&vm_token);
 	crit_exit();

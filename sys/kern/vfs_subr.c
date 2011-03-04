@@ -37,7 +37,6 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.118 2008/09/17 21:44:18 dillon Exp $
  */
 
 /*
@@ -1244,7 +1243,13 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	 * If the vnode has an object, destroy it.
 	 */
 	lwkt_gettoken(&vmobj_token);
-	if ((object = vp->v_object) != NULL) {
+	object = vp->v_object;
+	if (object != NULL) {
+		/*
+		 * Use vm_object_lock() rather than vm_object_hold to avoid
+		 * creating an extra (self-)hold on the object.
+		 */
+		vm_object_lock(object);
 		KKASSERT(object == vp->v_object);
 		if (object->ref_count == 0) {
 			if ((object->flags & OBJ_DEAD) == 0)
@@ -1253,6 +1258,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 			vm_pager_deallocate(object);
 		}
 		vclrflags(vp, VOBJBUF);
+		vm_object_unlock(object);
 	}
 	lwkt_reltoken(&vmobj_token);
 	KKASSERT((vp->v_flag & VOBJBUF) == 0);

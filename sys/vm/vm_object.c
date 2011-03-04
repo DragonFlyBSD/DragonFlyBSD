@@ -488,14 +488,14 @@ vm_object_terminate(vm_object_t object)
 	lwkt_reltoken(&vm_token);
 
 	/*
-	 * Wait for the object hold count to hit zero
-	 */
-	vm_object_hold_wait(object);
-
-	/*
 	 * Let the pager know object is dead.
 	 */
 	vm_pager_deallocate(object);
+
+	/*
+	 * Wait for the object hold count to hit zero
+	 */
+	vm_object_hold_wait(object);
 
 	/*
 	 * Remove the object from the global object list.
