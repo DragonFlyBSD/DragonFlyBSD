@@ -252,8 +252,9 @@ int	m_defragrandomfailures;
 #endif
 
 struct objcache *mbuf_cache, *mbufphdr_cache;
-struct objcache *mclmeta_cache;
+struct objcache *mclmeta_cache, *mjclmeta_cache;
 struct objcache *mbufcluster_cache, *mbufphdrcluster_cache;
+struct objcache *mbufjcluster_cache, *mbufphdrjcluster_cache;
 
 int	nmbclusters;
 int	nmbufs;
@@ -356,7 +357,9 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragrandomfailures, CTLFLAG_RW,
 
 static MALLOC_DEFINE(M_MBUF, "mbuf", "mbuf");
 static MALLOC_DEFINE(M_MBUFCL, "mbufcl", "mbufcl");
+static MALLOC_DEFINE(M_MJBUFCL, "mbufcl", "mbufcl");
 static MALLOC_DEFINE(M_MCLMETA, "mclmeta", "mclmeta");
+static MALLOC_DEFINE(M_MJCLMETA, "mjclmeta", "mjclmeta");
 
 static void m_reclaim (void);
 static void m_mclref(void *arg);
@@ -455,6 +458,23 @@ mclmeta_ctor(void *obj, void *private, int ocflags)
 	return (TRUE);
 }
 
+static boolean_t
+mjclmeta_ctor(void *obj, void *private, int ocflags)
+{
+	struct mbcluster *cl = obj;
+	void *buf;
+
+	if (ocflags & M_NOWAIT)
+		buf = kmalloc(MJUMPAGESIZE, M_MBUFCL, M_NOWAIT | M_ZERO);
+	else
+		buf = kmalloc(MJUMPAGESIZE, M_MBUFCL, M_INTWAIT | M_ZERO);
+	if (buf == NULL)
+		return (FALSE);
+	cl->mcl_refs = 0;
+	cl->mcl_data = buf;
+	return (TRUE);
+}
+
 static void
 mclmeta_dtor(void *obj, void *private)
 {
@@ -465,7 +485,7 @@ mclmeta_dtor(void *obj, void *private)
 }
 
 static void
-linkcluster(struct mbuf *m, struct mbcluster *cl)
+linkjcluster(struct mbuf *m, struct mbcluster *cl, uint size)
 {
 	/*
 	 * Add the cluster to the mbuf.  The caller will detect that the
@@ -475,11 +495,17 @@ linkcluster(struct mbuf *m, struct mbcluster *cl)
 	m->m_ext.ext_buf = cl->mcl_data;
 	m->m_ext.ext_ref = m_mclref;
 	m->m_ext.ext_free = m_mclfree;
-	m->m_ext.ext_size = MCLBYTES;
+	m->m_ext.ext_size = size;
 	atomic_add_int(&cl->mcl_refs, 1);
 
 	m->m_data = m->m_ext.ext_buf;
 	m->m_flags |= M_EXT | M_EXT_CLUSTER;
+}
+
+static void
+linkcluster(struct mbuf *m, struct mbcluster *cl)
+{
+	linkjcluster(m, cl, MCLBYTES);
 }
 
 static boolean_t
@@ -500,6 +526,23 @@ mbufphdrcluster_ctor(void *obj, void *private, int ocflags)
 }
 
 static boolean_t
+mbufphdrjcluster_ctor(void *obj, void *private, int ocflags)
+{
+	struct mbuf *m = obj;
+	struct mbcluster *cl;
+
+	mbufphdr_ctor(obj, private, ocflags);
+	cl = objcache_get(mjclmeta_cache, ocflags);
+	if (cl == NULL) {
+		++mbstat[mycpu->gd_cpuid].m_drops;
+		return (FALSE);
+	}
+	m->m_flags |= M_CLCACHE;
+	linkjcluster(m, cl, MJUMPAGESIZE);
+	return (TRUE);
+}
+
+static boolean_t
 mbufcluster_ctor(void *obj, void *private, int ocflags)
 {
 	struct mbuf *m = obj;
@@ -513,6 +556,23 @@ mbufcluster_ctor(void *obj, void *private, int ocflags)
 	}
 	m->m_flags |= M_CLCACHE;
 	linkcluster(m, cl);
+	return (TRUE);
+}
+
+static boolean_t
+mbufjcluster_ctor(void *obj, void *private, int ocflags)
+{
+	struct mbuf *m = obj;
+	struct mbcluster *cl;
+
+	mbuf_ctor(obj, private, ocflags);
+	cl = objcache_get(mjclmeta_cache, ocflags);
+	if (cl == NULL) {
+		++mbstat[mycpu->gd_cpuid].m_drops;
+		return (FALSE);
+	}
+	m->m_flags |= M_CLCACHE;
+	linkjcluster(m, cl, MJUMPAGESIZE);
 	return (TRUE);
 }
 
@@ -533,7 +593,10 @@ mbufcluster_dtor(void *obj, void *private)
 		mcl = m->m_ext.ext_arg;
 		KKASSERT(mcl->mcl_refs == 1);
 		mcl->mcl_refs = 0;
-		objcache_put(mclmeta_cache, mcl);
+		if (m->m_flags & M_EXT && m->m_ext.ext_size != MCLBYTES)
+			objcache_put(mjclmeta_cache, mcl);
+		else
+			objcache_put(mclmeta_cache, mcl);
 	}
 }
 
@@ -555,6 +618,7 @@ mbinit(void *dummy)
 	for (i = 0; i < ncpus; i++) {
 		atomic_set_long_nonlocked(&mbstat[i].m_msize, MSIZE);
 		atomic_set_long_nonlocked(&mbstat[i].m_mclbytes, MCLBYTES);
+		atomic_set_long_nonlocked(&mbstat[i].m_mjumpagesize, MJUMPAGESIZE);
 		atomic_set_long_nonlocked(&mbstat[i].m_minclsize, MINCLSIZE);
 		atomic_set_long_nonlocked(&mbstat[i].m_mlen, MLEN);
 		atomic_set_long_nonlocked(&mbstat[i].m_mhlen, MHLEN);
@@ -584,6 +648,11 @@ mbinit(void *dummy)
 	    mclmeta_ctor, mclmeta_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mclmeta_malloc_args);
 
+	cl_limit = nmbclusters;
+	mjclmeta_cache = objcache_create("jcluster mbuf", &cl_limit, 0,
+	    mjclmeta_ctor, mclmeta_dtor, NULL,
+	    objcache_malloc_alloc, objcache_malloc_free, &mclmeta_malloc_args);
+
 	limit = nmbclusters;
 	mbufcluster_cache = objcache_create("mbuf + cluster", &limit, 0,
 	    mbufcluster_ctor, mbufcluster_dtor, NULL,
@@ -596,6 +665,18 @@ mbinit(void *dummy)
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
+	limit = nmbclusters;
+	mbufjcluster_cache = objcache_create("mbuf + jcluster", &limit, 0,
+	    mbufjcluster_ctor, mbufcluster_dtor, NULL,
+	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
+	mb_limit += limit;
+
+	limit = nmbclusters;
+	mbufphdrjcluster_cache = objcache_create("mbuf pkt hdr + jcluster",
+	    &limit, 64, mbufphdrjcluster_ctor, mbufcluster_dtor, NULL,
+	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
+	mb_limit += limit;
+
 	/*
 	 * Adjust backing kmalloc pools' limit
 	 *
@@ -605,7 +686,8 @@ mbinit(void *dummy)
 	cl_limit += cl_limit / 8;
 	kmalloc_raise_limit(mclmeta_malloc_args.mtype,
 			    mclmeta_malloc_args.objsize * cl_limit);
-	kmalloc_raise_limit(M_MBUFCL, MCLBYTES * cl_limit);
+	kmalloc_raise_limit(M_MBUFCL, MCLBYTES * cl_limit * 3/4 + MJUMPAGESIZE * cl_limit / 4);
+	/*kmalloc_raise_limit(M_MBUFCL, MCLBYTES * cl_limit);*/
 
 	mb_limit += mb_limit / 8;
 	kmalloc_raise_limit(mbuf_malloc_args.mtype,
@@ -698,7 +780,9 @@ retryonce:
 			struct objcache *reclaimlist[] = {
 				mbufphdr_cache,
 				mbufcluster_cache,
-				mbufphdrcluster_cache
+				mbufphdrcluster_cache,
+				mbufjcluster_cache,
+				mbufphdrjcluster_cache
 			};
 			const int nreclaims = __arysize(reclaimlist);
 
@@ -733,7 +817,8 @@ retryonce:
 		if ((how & MB_TRYWAIT) && ntries++ == 0) {
 			struct objcache *reclaimlist[] = {
 				mbuf_cache,
-				mbufcluster_cache, mbufphdrcluster_cache
+				mbufcluster_cache, mbufphdrcluster_cache,
+				mbufjcluster_cache, mbufphdrjcluster_cache
 			};
 			const int nreclaims = __arysize(reclaimlist);
 
@@ -766,6 +851,51 @@ m_getclr(int how, int type)
 	m = m_get(how, type);
 	if (m != NULL)
 		bzero(m->m_data, MLEN);
+	return (m);
+}
+
+struct mbuf *
+m_getjcl(int how, short type, int flags, size_t size)
+{
+	struct mbuf *m = NULL;
+	int ocflags = MBTOM(how);
+	int ntries = 0;
+
+retryonce:
+
+	if (flags & M_PKTHDR)
+		m = objcache_get(mbufphdrjcluster_cache, ocflags);
+	else
+		m = objcache_get(mbufjcluster_cache, ocflags);
+
+	if (m == NULL) {
+		if ((how & MB_TRYWAIT) && ntries++ == 0) {
+			struct objcache *reclaimlist[1];
+
+			if (flags & M_PKTHDR)
+				reclaimlist[0] = mbufjcluster_cache;
+			else
+				reclaimlist[0] = mbufphdrjcluster_cache;
+			if (!objcache_reclaimlist(reclaimlist, 1, ocflags))
+				m_reclaim();
+			goto retryonce;
+		}
+		++mbstat[mycpu->gd_cpuid].m_drops;
+		return (NULL);
+	}
+
+#ifdef MBUF_DEBUG
+	KASSERT(m->m_data == m->m_ext.ext_buf,
+		("mbuf %p: bad m_data in get", m));
+#endif
+	m->m_type = type;
+	m->m_len = 0;
+	m->m_pkthdr.len = 0;	/* just do it unconditonally */
+
+	mbuftrack(m);
+
+	atomic_add_long_nonlocked(&mbtypes[mycpu->gd_cpuid][type], 1);
+	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters, 1);
 	return (m);
 }
 
@@ -1018,10 +1148,17 @@ m_free(struct mbuf *m)
 			 * an mbuf).
 			 */
 			m->m_data = m->m_ext.ext_buf;
-			if (m->m_flags & M_PHCACHE)
-				objcache_put(mbufphdrcluster_cache, m);
-			else
-				objcache_put(mbufcluster_cache, m);
+			if (m->m_flags & M_EXT && m->m_ext.ext_size != MCLBYTES) {
+				if (m->m_flags & M_PHCACHE)
+					objcache_put(mbufphdrjcluster_cache, m);
+				else
+					objcache_put(mbufjcluster_cache, m);
+			} else {
+				if (m->m_flags & M_PHCACHE)
+					objcache_put(mbufphdrcluster_cache, m);
+				else
+					objcache_put(mbufcluster_cache, m);
+			}
 			atomic_subtract_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters, 1);
 		} else {
 			/*
@@ -1036,12 +1173,20 @@ m_free(struct mbuf *m)
 			 * XXX we could try to connect another cluster to
 			 * it.
 			 */
+
 			m->m_ext.ext_free(m->m_ext.ext_arg); 
 			m->m_flags &= ~(M_EXT | M_EXT_CLUSTER);
-			if (m->m_flags & M_PHCACHE)
-				objcache_dtor(mbufphdrcluster_cache, m);
-			else
-				objcache_dtor(mbufcluster_cache, m);
+			if (m->m_ext.ext_size == MCLBYTES) {
+				if (m->m_flags & M_PHCACHE)
+					objcache_dtor(mbufphdrcluster_cache, m);
+				else
+					objcache_dtor(mbufcluster_cache, m);
+			} else {
+				if (m->m_flags & M_PHCACHE)
+					objcache_dtor(mbufphdrjcluster_cache, m);
+				else
+					objcache_dtor(mbufjcluster_cache, m);
+			}
 		}
 		break;
 	case M_EXT | M_EXT_CLUSTER:
@@ -1397,7 +1542,10 @@ m_dup_data(struct mbuf *m, int how)
 	 * Optimize the mbuf allocation but do not get too carried away.
 	 */
 	if (m->m_next || m->m_len > MLEN)
-		gsize = MCLBYTES;
+		if (m->m_flags & M_EXT && m->m_ext.ext_size == MCLBYTES)
+			gsize = MCLBYTES;
+		else
+			gsize = MJUMPAGESIZE;
 	else
 		gsize = MLEN;
 
