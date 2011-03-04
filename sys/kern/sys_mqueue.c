@@ -54,7 +54,6 @@
 #include <sys/malloc.h>
 #include <sys/mplock2.h>
 #include <sys/mqueue.h>
-#include <sys/objcache.h>
 #include <sys/proc.h>
 #include <sys/queue.h>
 #include <sys/event.h>
@@ -79,7 +78,6 @@ static u_int			mq_def_maxmsg = 32;
 static u_int			mq_max_maxmsg = 16 * 32;
 
 struct lock			mqlist_mtx;
-static struct objcache *	mqmsg_cache;
 static LIST_HEAD(, mqueue)	mqueue_head =
 	LIST_HEAD_INITIALIZER(mqueue_head);
 
@@ -113,26 +111,12 @@ static struct fileops mqops = {
 MALLOC_DECLARE(M_MQBUF);
 MALLOC_DEFINE(M_MQBUF, "mqueues", "Buffers to message queues");
 
-/* Malloc arguments for object cache */
-struct objcache_malloc_args mqueue_malloc_args = {
-	sizeof(struct mqueue), M_MQBUF };
-
 /*
  * Initialize POSIX message queue subsystem.
  */
 void
 mqueue_sysinit(void)
 {
-	mqmsg_cache = objcache_create("mqmsg_cache",
-	    0,		/* infinite depot's capacity */
-	    0,		/* default magazine's capacity */
-	    NULL,	/* constructor */
-	    NULL,	/* deconstructor */
-	    NULL,
-	    objcache_malloc_alloc,
-	    objcache_malloc_free,
-	    &mqueue_malloc_args);
-
 	lockinit(&mqlist_mtx, "mqlist_mtx", 0, LK_CANRECURSE);
 }
 
@@ -142,12 +126,7 @@ mqueue_sysinit(void)
 static void
 mqueue_freemsg(struct mq_msg *msg, const size_t size)
 {
-
-	if (size > MQ_DEF_MSGSIZE) {
-		kfree(msg, M_MQBUF);
-	} else {
-		objcache_put(mqmsg_cache, msg);
-	}
+	kfree(msg, M_MQBUF);
 }
 
 /*
@@ -837,11 +816,7 @@ mq_send1(struct lwp *l, mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 	if (size > mq_max_msgsize)
 		return EMSGSIZE;
 
-	if (size > MQ_DEF_MSGSIZE) {
-		msg = kmalloc(size, M_MQBUF, M_WAITOK | M_NULLOK);
-	} else {
-		msg = objcache_get(mqmsg_cache, M_WAITOK | M_NULLOK);
-	}
+	msg = kmalloc(size, M_MQBUF, M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
 
