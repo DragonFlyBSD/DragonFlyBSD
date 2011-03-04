@@ -324,6 +324,7 @@ struct mbstat {
 	u_long	m_mpfail;	/* times m_pullup failed */
 	u_long	m_msize;	/* length of an mbuf */
 	u_long	m_mclbytes;	/* length of an mbuf cluster */
+	u_long	m_mjumpagesize;	/* length of a jumbo mbuf cluster */
 	u_long	m_minclsize;	/* min length of data to allocate a cluster */
 	u_long	m_mlen;		/* length of data in an mbuf */
 	u_long	m_mhlen;	/* length of data in a header mbuf */
@@ -508,6 +509,7 @@ void		 m_freem(struct mbuf *);
 struct	mbuf	*m_get(int, int);
 struct	mbuf	*m_getc(int len, int how, int type);
 struct	mbuf	*m_getcl(int how, short type, int flags);
+struct	mbuf	*m_getjcl(int how, short type, int flags, uint size);
 struct	mbuf	*m_getclr(int, int);
 struct	mbuf	*m_gethdr(int, int);
 struct	mbuf	*m_getm(struct mbuf *, int, int, int);
