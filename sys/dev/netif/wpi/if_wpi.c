@@ -977,8 +977,8 @@ wpi_alloc_rx_ring(struct wpi_softc *sc, struct wpi_rx_ring *ring)
 
         error = bus_dma_tag_create(ring->data_dmat, 1, 0,
 	    BUS_SPACE_MAXADDR_32BIT,
-            BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, 1,
-            MCLBYTES, BUS_DMA_NOWAIT, &ring->data_dmat);
+            BUS_SPACE_MAXADDR, NULL, NULL, MJUMPAGESIZE, 1,
+            MJUMPAGESIZE, BUS_DMA_NOWAIT, &ring->data_dmat);
         if (error != 0) {
                 device_printf(sc->sc_dev,
 		    "%s: bus_dma_tag_create_failed, error %d\n",
@@ -1001,7 +1001,7 @@ wpi_alloc_rx_ring(struct wpi_softc *sc, struct wpi_rx_ring *ring)
 			    __func__, error);
 			goto fail;
 		}
-		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		m = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
 		if (m == NULL) {
 			device_printf(sc->sc_dev,
 			   "%s: could not allocate rx mbuf\n", __func__);
@@ -1010,7 +1010,7 @@ wpi_alloc_rx_ring(struct wpi_softc *sc, struct wpi_rx_ring *ring)
 		}
 		/* map page */
 		error = bus_dmamap_load(ring->data_dmat, data->map,
-		    mtod(m, caddr_t), MCLBYTES,
+		    mtod(m, caddr_t), MJUMPAGESIZE,
 		    wpi_dma_map_addr, &paddr, BUS_DMA_NOWAIT);
 		if (error != 0 && error != EFBIG) {
 			device_printf(sc->sc_dev,
@@ -1115,8 +1115,8 @@ wpi_alloc_tx_ring(struct wpi_softc *sc, struct wpi_tx_ring *ring, int count,
 	}
 
 	error = bus_dma_tag_create(ring->data_dmat, 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES,
-	    WPI_MAX_SCATTER - 1, MCLBYTES, BUS_DMA_NOWAIT,
+	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MJUMPAGESIZE,
+	    WPI_MAX_SCATTER - 1, MJUMPAGESIZE, BUS_DMA_NOWAIT,
 	    &ring->data_dmat);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create data DMA tag\n");
@@ -1497,7 +1497,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 	}
 
 	/* XXX don't need mbuf, just dma buffer */
-	mnew = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	mnew = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
 	if (mnew == NULL) {
 		DPRINTFN(WPI_DEBUG_RX, ("%s: no mbuf to restock ring\n",
 		    __func__));
@@ -1505,7 +1505,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 		return;
 	}
 	error = bus_dmamap_load(ring->data_dmat, data->map,
-	    mtod(mnew, caddr_t), MCLBYTES,
+	    mtod(mnew, caddr_t), MJUMPAGESIZE,
 	    wpi_dma_map_addr, &paddr, BUS_DMA_NOWAIT);
 	if (error != 0 && error != EFBIG) {
 		device_printf(sc->sc_dev,
@@ -2560,7 +2560,7 @@ wpi_scan(struct wpi_softc *sc)
 	desc = &ring->desc[ring->cur];
 	data = &ring->data[ring->cur];
 
-	data->m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	data->m = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
 	if (data->m == NULL) {
 		device_printf(sc->sc_dev,
 		    "could not allocate mbuf for scan command\n");
