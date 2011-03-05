@@ -1242,6 +1242,7 @@ bstp_enable_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 	bstp_initialize_port(sc, bif);
 	if (sc->sc_ifp->if_flags & IFF_LINK1)
 		bstp_timer_start(&bif->bif_link1_timer, 0);
+	bstp_configuration_update(sc);
 	bstp_port_state_selection(sc);
 }
 
