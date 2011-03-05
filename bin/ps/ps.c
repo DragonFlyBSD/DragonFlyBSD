@@ -602,6 +602,8 @@ pscomp(const void *arg_a, const void *arg_b)
 {
 	const KINFO *a = *(KINFO * const *)arg_a;
 	const KINFO *b = *(KINFO * const *)arg_b;
+	double di;
+	segsz_t si;
 	int i;
 
 #define VSIZE(k) (KI_PROC(k, vm_dsize) + KI_PROC(k, vm_ssize) + \
@@ -611,11 +613,23 @@ pscomp(const void *arg_a, const void *arg_b)
 	if (sortby == SORTIAC)
 		return (KI_PROC(a)->p_usdata.bsd4.interactive - KI_PROC(b)->p_usdata.bsd4.interactive);
 #endif
-	if (sortby == SORTCPU)
-		return (getpcpu(b) - getpcpu(a));
-	if (sortby == SORTMEM)
-		return (VSIZE(b) - VSIZE(a));
-	i =  KI_PROC(a, tdev) - KI_PROC(b, tdev);
+	if (sortby == SORTCPU) {
+		di = getpcpu(b) - getpcpu(a);
+		if (di < 0.0)
+			return(-1);
+		if (di > 0.0)
+			return(+1);
+		/* fall through */
+	}
+	if (sortby == SORTMEM) {
+		si = VSIZE(b) - VSIZE(a);
+		if (si < 0)
+			return(-1);
+		if (si > 0)
+			return(+1);
+		/* fall through */
+	}
+	i = KI_PROC(a, tdev) - KI_PROC(b, tdev);
 	if (i == 0)
 		i = KI_PROC(a, pid) - KI_PROC(b, pid);
 	return (i);
