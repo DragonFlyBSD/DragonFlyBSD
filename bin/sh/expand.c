@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
- * $FreeBSD: src/bin/sh/expand.c,v 1.82 2011/02/02 21:48:53 jilles Exp $
+ * $FreeBSD: src/bin/sh/expand.c,v 1.83 2011/02/21 09:01:34 brucec Exp $
  */
 
 #include <sys/types.h>
@@ -958,7 +958,7 @@ numvar:
 
 
 /*
- * Record the the fact that we have to scan this region of the
+ * Record the fact that we have to scan this region of the
  * string for IFS characters.
  */
 
