@@ -39,157 +39,40 @@ __BEGIN_DECLS
 extern int	__flt_rounds(void);
 __END_DECLS
 
-#ifdef __FLT_RADIX__
-#define FLT_RADIX	__FLT_RADIX__
-#else
 #define FLT_RADIX	2		/* b */
-#endif
 #define	FLT_ROUNDS	__flt_rounds()
 #if __ISO_C_VISIBLE >= 1999
-#ifdef __FLT_EVAL_METHOD__
-#define FLT_EVAL_METHOD	__FLT_EVAL_METHOD__
-#else
 #define	FLT_EVAL_METHOD	0		/* no promotions */
-#endif
 #define	DECIMAL_DIG	21		/* max precision in decimal digits */
 #endif
 
-#ifdef __FLT_MANT_DIG__
-#define FLT_MANT_DIG	__FLT_MANT_DIG__
-#else
 #define FLT_MANT_DIG	24		/* p */
-#endif
-#ifdef __FLT_EPSILON__
-#define FLT_EPSILON	__FLT_EPSILON__
-#else
 #define FLT_EPSILON	1.19209290E-07F	/* b**(1-p) */
-#endif
-#ifdef __FLT_DIG__
-#define FLT_DIG		__FLT_DIG__
-#else
 #define FLT_DIG		6		/* floor((p-1)*log10(b))+(b == 10) */
-#endif
-#ifdef __FLT_MIN_EXP__
-#define FLT_MIN_EXP	__FLT_MIN_EXP__
-#else
 #define FLT_MIN_EXP	(-125)		/* emin */
-#endif
-#ifdef __FLT_MIN__
-#define FLT_MIN		__FLT_MIN__
-#else
 #define FLT_MIN		1.17549435E-38F	/* b**(emin-1) */
-#endif
-#ifdef __FLT_MIN_10_EXP__
-#define FLT_MIN_10_EXP	__FLT_MIN_10_EXP__
-#else
 #define FLT_MIN_10_EXP	(-37)		/* ceil(log10(b**(emin-1))) */
-#endif
-#ifdef __FLT_MAX_EXP__
-#define FLT_MAX_EXP	__FLT_MAX_EXP__
-#else
 #define FLT_MAX_EXP	128		/* emax */
-#endif
-#ifdef __FLT_MAX__
-#define FLT_MAX		__FLT_MAX__
-#else
 #define FLT_MAX		3.40282347E+38F	/* (1-b**(-p))*b**emax */
-#endif
-#ifdef __FLT_MAX_10_EXP__
-#define FLT_MAX_10_EXP	__FLT_MAX_10_EXP__
-#else
 #define FLT_MAX_10_EXP	38		/* floor(log10((1-b**(-p))*b**emax)) */
-#endif
 
-#ifdef __DBL_MANT_DIG__
-#define DBL_MANT_DIG	__DBL_MANT_DIG__
-#else
 #define DBL_MANT_DIG	53
-#endif
-#ifdef __DBL_EPSILON__
-#define DBL_EPSILON	__DBL_EPSILON__
-#else
 #define DBL_EPSILON	2.2204460492503131E-16
-#endif
-#ifdef __DBL_DIG__
-#define DBL_DIG		__DBL_DIG__
-#else
 #define DBL_DIG		15
-#endif
-#ifdef __DBL_MIN_EXP__
-#define DBL_MIN_EXP	__DBL_MIN_EXP__
-#else
 #define DBL_MIN_EXP	(-1021)
-#endif
-#ifdef __DBL_MIN__
-#define DBL_MIN		__DBL_MIN__
-#else
 #define DBL_MIN		2.2250738585072014E-308
-#endif
-#ifdef __DBL_MIN_10_EXP__
-#define DBL_MIN_10_EXP	__DBL_MIN_10_EXP__
-#else
 #define DBL_MIN_10_EXP	(-307)
-#endif
-#ifdef __DBL_MAX_EXP__
-#define DBL_MAX_EXP	__DBL_MAX_EXP__
-#else
 #define DBL_MAX_EXP	1024
-#endif
-#ifdef __DBL_MAX__
-#define DBL_MAX		__DBL_MAX__
-#else
 #define DBL_MAX		1.7976931348623157E+308
-#endif
-#ifdef __DBL_MAX_10_EXP__
-#define DBL_MAX_10_EXP	__DBL_MAX_10_EXP__
-#else
 #define DBL_MAX_10_EXP	308
-#endif
 
-#ifdef __LDBL_MANT_DIG__
-#define	LDBL_MANT_DIG	__LDBL_MANT_DIG__
-#else
 #define LDBL_MANT_DIG	64
-#endif
-#ifdef __LDBL_EPSILON__
-#define	LDBL_EPSILON	__LDBL_EPSILON__
-#else
 #define LDBL_EPSILON	1.0842021724855044340E-19L
-#endif
-#ifdef __LDBL_DIG__
-#define	LDBL_DIG	__LDBL_DIG__
-#else
 #define LDBL_DIG	18
-#endif
-#ifdef __LDBL_MIN_EXP__
-#define	LDBL_MIN_EXP	__LDBL_MIN_EXP__
-#else
 #define LDBL_MIN_EXP	(-16381)
-#endif
-#ifdef __LDBL_MIN__
-#define	LDBL_MIN	__LDBL_MIN__
-#else
 #define LDBL_MIN	3.3621031431120935063E-4932L
-#endif
-#ifdef __LDBL_MIN_10_EXP__
-#define	LDBL_MIN_10_EXP	__LDBL_MIN_10_EXP__
-#else
 #define LDBL_MIN_10_EXP	(-4931)
-#endif
-#ifdef __LDBL_MAX_EXP__
-#define	LDBL_MAX_EXP	__LDBL_MAX_EXP__
-#else
 #define LDBL_MAX_EXP	16384
-#endif
-#ifdef __LDBL_MAX__
-#define	LDBL_MAX	__LDBL_MAX__
-#else
 #define LDBL_MAX	1.1897314953572317650E+4932L
-#endif
-#ifdef __LDBL_MAX_10_EXP__
-#define	LDBL_MAX_10_EXP	__LDBL_MAX_10_EXP__
-#else
 #define LDBL_MAX_10_EXP	4932
-#endif
-
 #endif /* _CPU_FLOAT_H_ */
