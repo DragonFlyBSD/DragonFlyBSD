@@ -624,18 +624,6 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	crit_exit();
 	lp->lwp_cpumask &= usched_mastermask;
 
-	/*
-	 * Assign a TID to the lp.  Loop until the insert succeeds (returns
-	 * NULL).
-	 */
-	lp->lwp_tid = destproc->p_lasttid;
-	do {
-		if (++lp->lwp_tid < 0)
-			lp->lwp_tid = 1;
-	} while (lwp_rb_tree_RB_INSERT(&destproc->p_lwp_tree, lp) != NULL);
-	destproc->p_lasttid = lp->lwp_tid;
-	destproc->p_nthreads++;
-
 	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, 0);
 	lp->lwp_thread = td;
 	td->td_proc = destproc;
@@ -651,6 +639,19 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	cpu_fork(origlp, lp, flags);
 	caps_fork(origlp->lwp_thread, lp->lwp_thread);
 	kqueue_init(&lp->lwp_kqueue, destproc->p_fd);
+
+	/*
+	 * Assign a TID to the lp.  Loop until the insert succeeds (returns
+	 * NULL).
+	 */
+	lp->lwp_tid = destproc->p_lasttid;
+	do {
+		if (++lp->lwp_tid < 0)
+			lp->lwp_tid = 1;
+	} while (lwp_rb_tree_RB_INSERT(&destproc->p_lwp_tree, lp) != NULL);
+	destproc->p_lasttid = lp->lwp_tid;
+	destproc->p_nthreads++;
+
 
 	return (lp);
 }
