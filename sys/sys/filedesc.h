@@ -164,7 +164,7 @@ void	fsetcred (struct file *fp, struct ucred *cr);
 void	fdinit_bootstrap(struct proc *p0, struct filedesc *fdp0, int cmask);
 struct	filedesc *fdinit (struct proc *p);
 struct	filedesc *fdshare (struct proc *p);
-struct	filedesc *fdcopy (struct proc *p);
+int	fdcopy (struct proc *p, struct filedesc **fpp);
 void	fdfree (struct proc *p, struct filedesc *repl);
 int	fdrevoke(void *f_data, short f_type, struct ucred *cred);
 int	closef (struct file *fp, struct proc *p);

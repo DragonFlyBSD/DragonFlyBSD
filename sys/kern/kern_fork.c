@@ -283,7 +283,11 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		if (flags & RFFDG) {
 			if (p1->p_fd->fd_refcnt > 1) {
 				struct filedesc *newfd;
-				newfd = fdcopy(p1);
+				error = fdcopy(p1, &newfd);
+				if (error != 0) {
+					error = ENOMEM;
+					goto done;
+				}
 				fdfree(p1, newfd);
 			}
 		}
@@ -439,7 +443,11 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		p2->p_fd = fdinit(p1);
 		fdtol = NULL;
 	} else if (flags & RFFDG) {
-		p2->p_fd = fdcopy(p1);
+		error = fdcopy(p1, &p2->p_fd);
+		if (error != 0) {
+			error = ENOMEM;
+			goto done;
+		}
 		fdtol = NULL;
 	} else {
 		p2->p_fd = fdshare(p1);
