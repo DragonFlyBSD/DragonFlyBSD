@@ -1057,12 +1057,20 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 		goto done;
 	}
 
+
+	/*
+	 * Replace p_args with the new pa.  p_args may have previously
+	 * been NULL.
+	 */
 	opa = p->p_args;
 	p->p_args = pa;
 
-	KKASSERT(opa->ar_ref > 0);
-	if (refcount_release(&opa->ar_ref)) {
-		kfree(opa, M_PARGS);
+	if (opa) {
+		KKASSERT(opa->ar_ref > 0);
+		if (refcount_release(&opa->ar_ref)) {
+			kfree(opa, M_PARGS);
+			/* opa = NULL; */
+		}
 	}
 done:
 	PRELE(p);
