@@ -374,6 +374,7 @@ struct bridge_softc {
 	struct bridge_iflist_head sc_spanlist;	/* span ports list */
 	int			sc_span;	/* has span ports */
 	struct bridge_timer	sc_link_timer;
+	int			sc_copy_flags;	/* copy if_flags */
 };
 #define sc_if                   sc_arp.ac_if
 

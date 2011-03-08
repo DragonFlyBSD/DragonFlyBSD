@@ -444,6 +444,7 @@ static int	bridge_ioctl_daddr(struct bridge_softc *, void *);
 static int	bridge_ioctl_flush(struct bridge_softc *, void *);
 static int	bridge_ioctl_gpri(struct bridge_softc *, void *);
 static int	bridge_ioctl_spri(struct bridge_softc *, void *);
+static int	bridge_ioctl_reinit(struct bridge_softc *, void *);
 static int	bridge_ioctl_ght(struct bridge_softc *, void *);
 static int	bridge_ioctl_sht(struct bridge_softc *, void *);
 static int	bridge_ioctl_gfd(struct bridge_softc *, void *);
@@ -875,6 +876,19 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			 */
 			ifp->if_init(sc);
 		}
+
+		/*
+		 * If running and link flag state change we have to
+		 * reinitialize as well.
+		 */
+		if ((ifp->if_flags & IFF_RUNNING) &&
+		    (ifp->if_flags & (IFF_LINK0|IFF_LINK1|IFF_LINK2)) !=
+		    sc->sc_copy_flags) {
+			sc->sc_copy_flags = ifp->if_flags &
+					(IFF_LINK0|IFF_LINK1|IFF_LINK2);
+			bridge_control(sc, 0, bridge_ioctl_reinit, NULL);
+		}
+
 		break;
 
 	case SIOCSIFMTU:
@@ -1578,6 +1592,14 @@ bridge_ioctl_spri(struct bridge_softc *sc, void *arg)
 	if (sc->sc_ifp->if_flags & IFF_RUNNING)
 		bstp_initialization(sc);
 
+	return (0);
+}
+
+static int
+bridge_ioctl_reinit(struct bridge_softc *sc, void *arg __unused)
+{
+	if (sc->sc_ifp->if_flags & IFF_RUNNING)
+		bstp_initialization(sc);
 	return (0);
 }
 

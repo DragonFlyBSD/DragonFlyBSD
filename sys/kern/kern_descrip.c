@@ -1813,8 +1813,8 @@ fdshare(struct proc *p)
  *
  * MPSAFE
  */
-struct filedesc *
-fdcopy(struct proc *p)
+int
+fdcopy(struct proc *p, struct filedesc **fpp)
 {
 	struct filedesc *fdp = p->p_fd;
 	struct filedesc *newfdp;
@@ -1826,14 +1826,19 @@ fdcopy(struct proc *p)
 	 * Certain daemons might not have file descriptors. 
 	 */
 	if (fdp == NULL)
-		return (NULL);
+		return (0);
 
 	/*
 	 * Allocate the new filedesc and fd_files[] array.  This can race
 	 * with operations by other threads on the fdp so we have to be
 	 * careful.
 	 */
-	newfdp = kmalloc(sizeof(struct filedesc), M_FILEDESC, M_WAITOK | M_ZERO);
+	newfdp = kmalloc(sizeof(struct filedesc), 
+			 M_FILEDESC, M_WAITOK | M_ZERO | M_NULLOK);
+	if (newfdp == NULL) {
+		*fpp = NULL;
+		return (-1);
+	}
 again:
 	spin_lock(&fdp->fd_spin);
 	if (fdp->fd_lastfile < NDFILE) {
@@ -1925,7 +1930,8 @@ again:
 		}
 	}
 	spin_unlock(&fdp->fd_spin);
-	return (newfdp);
+	*fpp = newfdp;
+	return (0);
 }
 
 /*

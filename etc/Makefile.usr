@@ -31,6 +31,7 @@ help all:
 .endif
 .else
 	@echo "    make src-create          - fetch initial src repo from the net"
+	@echo "    make src-create-shallow  - fetch initial history-free src repo"
 	@echo "    make src-update          - update your src repo from the net"
 .endif
 	@echo ""
@@ -56,12 +57,12 @@ pkgsrc-create:
 		git remote add origin git://${GITHOST}/pkgsrcv2.git
 	cd ${.CURDIR}/pkgsrc && git fetch origin
 	cd ${.CURDIR}/pkgsrc && git branch master origin/master
-	cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2010Q3 origin/pkgsrc-2010Q3
-	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2010Q3
+	cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2010Q4 origin/pkgsrc-2010Q4
+	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2010Q4
 	cd ${.CURDIR}/pkgsrc && git pull
 
 pkgsrc-checkout:
-	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2010Q3
+	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2010Q4
 
 pkgsrc-update:
 	cd ${.CURDIR}/pkgsrc && git pull
@@ -74,6 +75,18 @@ src-create:
 	cd ${.CURDIR}/src && \
 		git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch origin
+	cd ${.CURDIR}/src && git branch master origin/master
+	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git pull
+
+src-create-shallow:
+	@echo "If problems occur you may have to rm -rf src and try again."
+	@echo ""
+	mkdir -p ${.CURDIR}/src
+	cd ${.CURDIR}/src && git init
+	cd ${.CURDIR}/src && \
+	    git remote add origin git://git.dragonflybsd.org/dragonfly.git
+	cd ${.CURDIR}/src && git fetch --depth=1 origin
 	cd ${.CURDIR}/src && git branch master origin/master
 	cd ${.CURDIR}/src && git checkout master
 	cd ${.CURDIR}/src && git pull

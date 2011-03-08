@@ -1408,7 +1408,7 @@ hdac_dma_alloc(struct hdac_softc *sc, struct hdac_dma *dma, bus_size_t size)
 {
 	bus_size_t roundsz;
 	int result;
-	int lowaddr;
+	bus_addr_t lowaddr;
 
 	roundsz = roundup2(size, HDAC_DMA_ALIGNMENT);
 	lowaddr = (sc->support_64bit) ? BUS_SPACE_MAXADDR :

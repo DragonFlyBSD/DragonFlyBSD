@@ -496,7 +496,7 @@ lwkt_free_thread(thread_t td)
  * cpusync operations if we run any IPIs prior to switching the thread out.
  *
  * WE MUST BE VERY CAREFUL NOT TO RUN SPLZ DIRECTLY OR INDIRECTLY IF
- * THE CURRENET THREAD HAS BEEN DESCHEDULED!
+ * THE CURRENT THREAD HAS BEEN DESCHEDULED!
  */
 void
 lwkt_switch(void)
@@ -1502,6 +1502,11 @@ lwkt_fairq_accumulate(globaldata_t gd, thread_t td)
  * We must be sure to remove ourselves from the current cpu's tsleepq
  * before potentially moving to another queue.  The thread can be on
  * a tsleepq due to a left-over tsleep_interlock().
+ *
+ * We also have to make sure that the switch code doesn't allow an IPI
+ * processing operation to leak in between our send and our switch, or
+ * any other potential livelock such that might occur when we release the
+ * current process designation, so do that first.
  */
 #ifdef SMP
 static void lwkt_setcpu_remote(void *arg);
@@ -1515,6 +1520,8 @@ lwkt_setcpu_self(globaldata_t rgd)
 
     if (td->td_gd != rgd) {
 	crit_enter_quick(td);
+	if (td->td_release)
+	    td->td_release(td);
 	if (td->td_flags & TDF_TSLEEPQ)
 	    tsleep_remove(td);
 	td->td_flags |= TDF_MIGRATING;

@@ -581,29 +581,43 @@ retry:
 		int doingzomb = 0;
 
 		pidchecked = PID_MAX;
+
 		/*
 		 * Scan the active and zombie procs to check whether this pid
 		 * is in use.  Remember the lowest pid that's greater
 		 * than nextpid, so we can avoid checking for a while.
+		 *
+		 * NOTE: Processes in the midst of being forked may not
+		 *	 yet have p_pgrp and p_pgrp->pg_session set up
+		 *	 yet, so we have to check for NULL.
+		 *
+		 *	 Processes being torn down should be interlocked
+		 *	 with proc_token prior to the clearing of their
+		 *	 p_pgrp.
 		 */
 		p = LIST_FIRST(&allproc);
 again:
-		for (; p != 0; p = LIST_NEXT(p, p_list)) {
+		for (; p != NULL; p = LIST_NEXT(p, p_list)) {
 			while (p->p_pid == nextpid ||
-			    p->p_pgrp->pg_id == nextpid ||
-			    p->p_session->s_sid == nextpid) {
+			    (p->p_pgrp && p->p_pgrp->pg_id == nextpid) ||
+			    (p->p_pgrp && p->p_session &&
+			     p->p_session->s_sid == nextpid)) {
 				nextpid++;
 				if (nextpid >= pidchecked)
 					goto retry;
 			}
 			if (p->p_pid > nextpid && pidchecked > p->p_pid)
 				pidchecked = p->p_pid;
-			if (p->p_pgrp->pg_id > nextpid &&
-			    pidchecked > p->p_pgrp->pg_id)
+			if (p->p_pgrp &&
+			    p->p_pgrp->pg_id > nextpid &&
+			    pidchecked > p->p_pgrp->pg_id) {
 				pidchecked = p->p_pgrp->pg_id;
-			if (p->p_session->s_sid > nextpid &&
-			    pidchecked > p->p_session->s_sid)
+			}
+			if (p->p_pgrp && p->p_session &&
+			    p->p_session->s_sid > nextpid &&
+			    pidchecked > p->p_session->s_sid) {
 				pidchecked = p->p_session->s_sid;
+			}
 		}
 		if (!doingzomb) {
 			doingzomb = 1;
@@ -1043,12 +1057,20 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 		goto done;
 	}
 
+
+	/*
+	 * Replace p_args with the new pa.  p_args may have previously
+	 * been NULL.
+	 */
 	opa = p->p_args;
 	p->p_args = pa;
 
-	KKASSERT(opa->ar_ref > 0);
-	if (refcount_release(&opa->ar_ref)) {
-		kfree(opa, M_PARGS);
+	if (opa) {
+		KKASSERT(opa->ar_ref > 0);
+		if (refcount_release(&opa->ar_ref)) {
+			kfree(opa, M_PARGS);
+			/* opa = NULL; */
+		}
 	}
 done:
 	PRELE(p);

@@ -481,13 +481,11 @@ ktrsetchildren(struct thread *td, struct proc *top, int ops, int facs,
 	struct proc *np;
 	int ret = 0;
 
-	np = top;
-	if (np) {
-		PHOLD(np);
-	}
+	p = top;
+	PHOLD(p);
+	lwkt_gettoken(&p->p_token);
 
-	while ((p = np) != NULL) {
-		lwkt_gettoken(&p->p_token);
+	for (;;) {
 		ret |= ktrops(td, p, ops, facs, tracenode);
 
 		/*
@@ -495,25 +493,40 @@ ktrsetchildren(struct thread *td, struct proc *top, int ops, int facs,
 		 * otherwise do any siblings, and if done with this level,
 		 * follow back up the tree (but not past top).
 		 */
-		if (!LIST_EMPTY(&p->p_children)) {
-			np = LIST_FIRST(&p->p_children);
-		} else {
-			for (;;) {
-				if (p == top) {
-					np = NULL;
-					break;
-				}
-				if (LIST_NEXT(p, p_sibling)) {
-					np = LIST_NEXT(p, p_sibling);
-					break;
-				}
-				np = p->p_pptr;
-			}
-		}
-		if (np)
+		if ((np = LIST_FIRST(&p->p_children)) != NULL) {
 			PHOLD(np);
+		}
+		while (np == NULL) {
+			if (p == top)
+				break;
+			if ((np = LIST_NEXT(p, p_sibling)) != NULL) {
+				PHOLD(np);
+				break;
+			}
+
+			/*
+			 * recurse up to parent, set p in our inner
+			 * loop when doing this.  np can be NULL if
+			 * we race a reparenting to init (thus 'top'
+			 * is skipped past and never encountered).
+			 */
+			np = p->p_pptr;
+			if (np == NULL)
+				break;
+			PHOLD(np);
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
+			p = np;
+			lwkt_gettoken(&p->p_token);
+			np = NULL;
+		}
 		lwkt_reltoken(&p->p_token);
 		PRELE(p);
+		p = np;
+		if (p == NULL)
+			break;
+		/* Already held, but we need the token too */
+		lwkt_gettoken(&p->p_token);
 	}
 	return (ret);
 }

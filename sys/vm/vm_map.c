@@ -490,7 +490,6 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max, pmap_t pmap)
 	map->nentries = 0;
 	map->size = 0;
 	map->system_map = 0;
-	map->infork = 0;
 	map->min_offset = min;
 	map->max_offset = max;
 	map->pmap = pmap;
@@ -3053,7 +3052,6 @@ vmspace_fork(struct vmspace *vm1)
 	lwkt_gettoken(&vmspace_token);
 	lwkt_gettoken(&vmobj_token);
 	vm_map_lock(old_map);
-	old_map->infork = 1;
 
 	/*
 	 * XXX Note: upcalls are not copied.
@@ -3152,7 +3150,6 @@ vmspace_fork(struct vmspace *vm1)
 	}
 
 	new_map->size = old_map->size;
-	old_map->infork = 0;
 	vm_map_unlock(old_map);
 	vm_map_unlock(new_map);
 	vm_map_entry_release(count);

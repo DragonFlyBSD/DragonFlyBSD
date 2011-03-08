@@ -338,7 +338,9 @@ interpret:
 	if (p->p_fd->fd_refcnt > 1) {
 		struct filedesc *tmp;
 
-		tmp = fdcopy(p);
+		error = fdcopy(p, &tmp);
+		if (error != 0)
+			goto exec_fail;
 		fdfree(p, tmp);
 	}
 
