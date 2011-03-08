@@ -509,7 +509,7 @@ void		 m_freem(struct mbuf *);
 struct	mbuf	*m_get(int, int);
 struct	mbuf	*m_getc(int len, int how, int type);
 struct	mbuf	*m_getcl(int how, short type, int flags);
-struct	mbuf	*m_getjcl(int how, short type, int flags, uint size);
+struct	mbuf	*m_getjcl(int how, short type, int flags, size_t size);
 struct	mbuf	*m_getclr(int, int);
 struct	mbuf	*m_gethdr(int, int);
 struct	mbuf	*m_getm(struct mbuf *, int, int, int);
