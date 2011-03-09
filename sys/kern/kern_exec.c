@@ -117,8 +117,7 @@ exec_objcache_init(void *arg __unused)
 	cluster_limit = 16;	/* up to this many objects */
 	exec_objcache = objcache_create_mbacked(
 					M_EXECARGS, PATH_MAX + ARG_MAX,
-					&cluster_limit,
-					2,	/* minimal magazine capacity */
+					&cluster_limit, 8,
 					NULL, NULL, NULL);
 }
 SYSINIT(exec_objcache, SI_BOOT2_MACHDEP, SI_ORDER_ANY, exec_objcache_init, 0);

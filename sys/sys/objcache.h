@@ -60,7 +60,7 @@ typedef void (objcache_free_fn)(void *obj, void *allocator_args);
 struct objcache;
 
 struct objcache
-	*objcache_create(const char *name, int *cluster_limit, int mag_capacity,
+	*objcache_create(const char *name, int *cluster_limit, int nom_cache,
 			 objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
 			 void *privdata,
 			 objcache_alloc_fn *alloc, objcache_free_fn *free,
@@ -69,7 +69,7 @@ struct objcache
 	*objcache_create_simple(malloc_type_t mtype, size_t objsize);
 struct objcache
 	*objcache_create_mbacked(malloc_type_t mtype, size_t objsize,
-			  int *cluster_limit, int mag_capacity,
+			  int *cluster_limit, int nom_cache,
 			  objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
 			  void *privdata);
 void	*objcache_get(struct objcache *oc, int ocflags);
