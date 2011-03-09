@@ -858,24 +858,36 @@ struct mbuf *
 m_getjcl(int how, short type, int flags, size_t size)
 {
 	struct mbuf *m = NULL;
+	struct objcache *mbclc, *mbphclc;
 	int ocflags = MBTOM(how);
 	int ntries = 0;
 
+	switch (size) {
+		case MCLBYTES:
+			mbclc = mbufcluster_cache;
+			mbphclc = mbufphdrcluster_cache;
+			break;
+		default:
+			mbclc = mbufjcluster_cache;
+			mbphclc = mbufphdrjcluster_cache;
+			break;
+	}
+			
 retryonce:
 
 	if (flags & M_PKTHDR)
-		m = objcache_get(mbufphdrjcluster_cache, ocflags);
+		m = objcache_get(mbphclc, ocflags);
 	else
-		m = objcache_get(mbufjcluster_cache, ocflags);
+		m = objcache_get(mbclc, ocflags);
 
 	if (m == NULL) {
 		if ((how & MB_TRYWAIT) && ntries++ == 0) {
 			struct objcache *reclaimlist[1];
 
 			if (flags & M_PKTHDR)
-				reclaimlist[0] = mbufjcluster_cache;
+				reclaimlist[0] = mbclc;
 			else
-				reclaimlist[0] = mbufphdrjcluster_cache;
+				reclaimlist[0] = mbphclc;
 			if (!objcache_reclaimlist(reclaimlist, 1, ocflags))
 				m_reclaim();
 			goto retryonce;
@@ -909,46 +921,7 @@ retryonce:
 struct mbuf *
 m_getcl(int how, short type, int flags)
 {
-	struct mbuf *m;
-	int ocflags = MBTOM(how);
-	int ntries = 0;
-
-retryonce:
-
-	if (flags & M_PKTHDR)
-		m = objcache_get(mbufphdrcluster_cache, ocflags);
-	else
-		m = objcache_get(mbufcluster_cache, ocflags);
-
-	if (m == NULL) {
-		if ((how & MB_TRYWAIT) && ntries++ == 0) {
-			struct objcache *reclaimlist[1];
-
-			if (flags & M_PKTHDR)
-				reclaimlist[0] = mbufcluster_cache;
-			else
-				reclaimlist[0] = mbufphdrcluster_cache;
-			if (!objcache_reclaimlist(reclaimlist, 1, ocflags))
-				m_reclaim();
-			goto retryonce;
-		}
-		++mbstat[mycpu->gd_cpuid].m_drops;
-		return (NULL);
-	}
-
-#ifdef MBUF_DEBUG
-	KASSERT(m->m_data == m->m_ext.ext_buf,
-		("mbuf %p: bad m_data in get", m));
-#endif
-	m->m_type = type;
-	m->m_len = 0;
-	m->m_pkthdr.len = 0;	/* just do it unconditonally */
-
-	mbuftrack(m);
-
-	atomic_add_long_nonlocked(&mbtypes[mycpu->gd_cpuid][type], 1);
-	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters, 1);
-	return (m);
+	return (m_getjcl(how, type, flags, MCLBYTES));
 }
 
 /*
