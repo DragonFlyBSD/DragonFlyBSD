@@ -90,6 +90,7 @@ static const uint32_t	lapic_timer_divisors[] = {
 };
 #define APIC_TIMER_NDIVISORS (int)(NELEM(lapic_timer_divisors))
 
+int			lapic_id_max;
 
 /*
  * Enable LAPIC, configure interrupts.

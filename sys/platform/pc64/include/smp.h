@@ -150,6 +150,7 @@ struct ioapic_enumerator {
 /* global data in mpapic.c */
 extern volatile lapic_t		*lapic;
 extern volatile ioapic_t	**ioapic;
+extern int			lapic_id_max;
 
 /* functions in mpapic.c */
 void	apic_dump		(char*);
