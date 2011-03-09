@@ -969,7 +969,7 @@ mptable_pass2(struct mptable_pos *mpt)
 	    M_DEVBUF, M_WAITOK);
 
 	for (x = 0; x < mp_napics; x++)
-		ioapic[x] = permanent_io_mapping(io_apic_address[x]);
+		ioapic[x] = ioapic_map(io_apic_address[x]);
 
 	/* clear various tables */
 	for (x = 0; x < NAPICID; ++x) {
@@ -2129,7 +2129,7 @@ mptable_default(int type)
  * block is assumed not to cross a page boundary.
  */
 void *
-permanent_io_mapping(vm_paddr_t pa)
+ioapic_map(vm_paddr_t pa)
 {
 	KKASSERT(pa < 0x100000000LL);
 
