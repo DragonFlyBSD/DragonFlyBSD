@@ -205,6 +205,10 @@ int	vswscanf(const wchar_t * __restrict, const wchar_t * __restrict,
 		 __va_list);
 int	vwscanf(const wchar_t * __restrict, __va_list);
 #endif
+
+#if __POSIX_VISIBLE >= 200809 || __BSD_VISIBLE
+wchar_t	*wcsdup(const wchar_t *);
+#endif
 __END_DECLS
 
 #define getwc(f) fgetwc(f)
