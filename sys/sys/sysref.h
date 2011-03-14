@@ -80,7 +80,7 @@ struct sysref_class {
 	int	proto;			/* RPC protocol id */
 	int	offset;			/* offset of sysref in resource */
 	int	objsize;		/* size of the resource structure */
-	int	mag_capacity;		/* magazine capacity init (def 64) */
+	int	nom_cache;		/* nominal objects to cache */
 	int	flags;
 	struct objcache *oc;		/* object cache */
 	objcache_ctor_fn *ctor;		/* objcache ctor chaining */

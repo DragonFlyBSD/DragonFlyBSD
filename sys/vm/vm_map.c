@@ -132,7 +132,7 @@ struct sysref_class vmspace_sysref_class = {
 	.proto =	SYSREF_PROTO_VMSPACE,
 	.offset =	offsetof(struct vmspace, vm_sysref),
 	.objsize =	sizeof(struct vmspace),
-	.mag_capacity =	32,
+	.nom_cache =	32,
 	.flags = SRC_MANAGEDINIT,
 	.dtor = vmspace_dtor,
 	.ops = {
@@ -498,6 +498,7 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max, pmap_t pmap)
 	map->timestamp = 0;
 	map->flags = 0;
 	lockinit(&map->lock, "thrd_sleep", 0, 0);
+	TUNABLE_INT("vm.cache_vmspaces", &vmspace_sysref_class.nom_cache);
 }
 
 /*

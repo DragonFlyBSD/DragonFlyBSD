@@ -87,7 +87,7 @@ extern struct apic_intmapinfo	int_to_apicintpin[];
 extern struct pcb		stoppcbs[];
 
 /* functions in mp_machdep.c */
-void	*permanent_io_mapping(vm_paddr_t);
+void	*ioapic_map(vm_paddr_t);
 u_int	mp_bootaddress		(u_int);
 void	mp_start		(void);
 void	mp_announce		(void);
@@ -140,6 +140,7 @@ struct ioapic_enumerator {
 /* global data in mpapic.c */
 extern volatile lapic_t		lapic;
 extern volatile ioapic_t	**ioapic;
+extern int			lapic_id_max;
 
 /* functions in mpapic.c */
 void	apic_dump		(char*);

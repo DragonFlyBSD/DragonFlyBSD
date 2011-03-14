@@ -173,7 +173,7 @@ null_ctor(void *obj, void *privdata, int ocflags)
  * Create an object cache.
  */
 struct objcache *
-objcache_create(const char *name, int *cluster_limit0, int mag_capacity,
+objcache_create(const char *name, int *cluster_limit0, int nom_cache,
 		objcache_ctor_fn *ctor, objcache_dtor_fn *dtor, void *privdata,
 		objcache_alloc_fn *alloc, objcache_free_fn *free,
 		void *allocator_args)
@@ -181,9 +181,8 @@ objcache_create(const char *name, int *cluster_limit0, int mag_capacity,
 	struct objcache *oc;
 	struct magazinedepot *depot;
 	int cpuid;
-	int need;
-	int factor;
 	int nmagdepot;
+	int mag_capacity;
 	int i;
 	int cluster_limit;
 
@@ -192,63 +191,69 @@ objcache_create(const char *name, int *cluster_limit0, int mag_capacity,
 	else
 		cluster_limit = *cluster_limit0;
 
-	/* allocate object cache structure */
+	/*
+	 * Allocate object cache structure
+	 */
 	oc = kmalloc(__offsetof(struct objcache, cache_percpu[ncpus]),
 		    M_OBJCACHE, M_WAITOK | M_ZERO);
 	oc->name = kstrdup(name, M_TEMP);
 	oc->ctor = ctor ? ctor : null_ctor;
 	oc->dtor = dtor ? dtor : null_dtor;
 	oc->privdata = privdata;
+	oc->alloc = alloc;
 	oc->free = free;
 	oc->allocator_args = allocator_args;
 
-	/* initialize depots */
+	/*
+	 * Initialize depot list(s).
+	 */
 	depot = &oc->depot[0];
 
 	spin_init(&depot->spin);
 	SLIST_INIT(&depot->fullmagazines);
 	SLIST_INIT(&depot->emptymagazines);
 
-	if (mag_capacity == 0)
-		mag_capacity = INITIAL_MAG_CAPACITY;
+	/*
+	 * Figure out the nominal number of free objects to cache and
+	 * the magazine capacity.  By default we want to cache up to
+	 * half the cluster_limit.  If there is no cluster_limit then
+	 * we want to cache up to 128 objects.
+	 */
+	if (nom_cache == 0)
+		nom_cache = cluster_limit / 2;
+	if (cluster_limit && nom_cache > cluster_limit)
+		nom_cache = cluster_limit;
+	if (nom_cache == 0)
+		nom_cache = INITIAL_MAG_CAPACITY * 2;
 
 	/*
-	 * The cluster_limit must be sufficient to have three magazines per
-	 * cpu.  If we have a lot of cpus the mag_capacity might just be
-	 * too big, reduce it if necessary.
-	 *
-	 * Each cpu can hold up to two magazines, with the remainder in the
-	 * depot.  If many objects are allocated fewer magazines are
-	 * available.  We have to make sure that each cpu has access to
-	 * free objects until the object cache hits 75% of its limit.
+	 * Magazine capacity for 2 active magazines per cpu plus 2
+	 * magazines in the depot.  Minimum capacity is 4 objects.
+	 */
+	mag_capacity = nom_cache / (ncpus + 1) / 2 + 1;
+	if (mag_capacity > 128)
+		mag_capacity = 128;
+	if (mag_capacity < 4)
+		mag_capacity = 4;
+	depot->magcapacity = mag_capacity;
+
+	/*
+	 * The cluster_limit must be sufficient to have two magazines per
+	 * cpu plus at least two magazines in the depot.  However, because
+	 * partial magazines can stay on the cpus what we really need here
+	 * is to specify the number of extra magazines we allocate for the
+	 * depot.
 	 */
 	if (cluster_limit == 0) {
 		depot->unallocated_objects = -1;
 	} else {
-		factor = 8;
-		need = mag_capacity * ncpus * factor;
-		if (cluster_limit < need && mag_capacity > 16) {
-			kprintf("objcache(%s): too small for ncpus"
-				", adjusting mag_capacity %d->",
-				name, mag_capacity);
-			while (need > cluster_limit && mag_capacity > 16) {
-				mag_capacity >>= 1;
-				need = mag_capacity * ncpus * factor;
-			}
-			kprintf("%d\n", mag_capacity);
-		}
-		if (cluster_limit < need) {
-			kprintf("objcache(%s): too small for ncpus"
-				", adjusting cluster_limit %d->%d\n",
-				name, cluster_limit, need);
-			cluster_limit = need;
-		}
-		depot->unallocated_objects = cluster_limit;
+		depot->unallocated_objects = ncpus * mag_capacity * 2 +
+					     cluster_limit;
 	}
-	depot->magcapacity = mag_capacity;
-	oc->alloc = alloc;
 
-	/* initialize per-cpu caches */
+	/*
+	 * Initialize per-cpu caches
+	 */
 	for (cpuid = 0; cpuid < ncpus; cpuid++) {
 		struct percpu_objcache *cache_percpu = &oc->cache_percpu[cpuid];
 
@@ -256,23 +261,27 @@ objcache_create(const char *name, int *cluster_limit0, int mag_capacity,
 		cache_percpu->previous_magazine = mag_alloc(mag_capacity);
 	}
 
-	/* compute initial number of empty magazines in depot */
-	nmagdepot = 0;
-	if (cluster_limit > 0) {
-		/* max number of magazines in depot */
-		nmagdepot = (cluster_limit - ncpus * 2 * mag_capacity) /
-				mag_capacity;
-
-		/* retain at most 50% of the limit */
-		nmagdepot /= 2;
-	}
-	/* bound result to acceptable range */
+	/*
+	 * Compute how many empty magazines to place in the depot.  This
+	 * determines the retained cache size and is based on nom_cache.
+	 *
+	 * The actual cache size is larger because there are two magazines
+	 * for each cpu as well but those can be in any fill state so we
+	 * just can't count them.
+	 *
+	 * There is a minimum of two magazines in the depot.
+	 */
+	nmagdepot = nom_cache / mag_capacity + 1;
 	if (nmagdepot < 2)
 		nmagdepot = 2;
-	if (nmagdepot > 1000)
-		nmagdepot = 1000;
+	if (bootverbose) {
+		kprintf("ndepotmags=%-3d x mag_cap=%-3d for %s\n",
+			nmagdepot, mag_capacity, name);
+	}
 
-	/* put empty magazines in depot */
+	/*
+	 * Put empty magazines in depot
+	 */
 	for (i = 0; i < nmagdepot; i++) {
 		struct magazine *mag = mag_alloc(mag_capacity);
 		SLIST_INSERT_HEAD(&depot->emptymagazines, mag, nextmagazine);
@@ -305,7 +314,7 @@ objcache_create_simple(malloc_type_t mtype, size_t objsize)
 
 struct objcache *
 objcache_create_mbacked(malloc_type_t mtype, size_t objsize,
-			int *cluster_limit, int mag_capacity,
+			int *cluster_limit, int nom_cache,
 			objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
 			void *privdata)
 {
@@ -316,7 +325,7 @@ objcache_create_mbacked(malloc_type_t mtype, size_t objsize,
 	margs->objsize = objsize;
 	margs->mtype = mtype;
 	oc = objcache_create(mtype->ks_shortdesc,
-			     cluster_limit, mag_capacity,
+			     cluster_limit, nom_cache,
 			     ctor, dtor, privdata,
 			     objcache_malloc_alloc, objcache_malloc_free,
 			     margs);

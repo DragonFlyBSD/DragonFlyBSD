@@ -28742,9 +28742,13 @@ ix86_mangle_type (const_tree type)
 static tree
 ix86_stack_protect_fail (void)
 {
+#if 0 /* XXX swildner */
   return TARGET_64BIT
 	 ? default_external_stack_protect_fail ()
 	 : default_hidden_stack_protect_fail ();
+#else
+  return default_external_stack_protect_fail ();
+#endif
 }
 
 /* Select a format to encode pointers in exception handling data.  CODE

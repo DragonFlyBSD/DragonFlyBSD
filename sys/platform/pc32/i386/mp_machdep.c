@@ -948,7 +948,7 @@ mptable_pass2(struct mptable_pos *mpt)
 	    M_DEVBUF, M_WAITOK);
 
 	for (x = 0; x < mp_napics; x++)
-		ioapic[x] = permanent_io_mapping(io_apic_address[x]);
+		ioapic[x] = ioapic_map(io_apic_address[x]);
 
 	/* clear various tables */
 	for (x = 0; x < NAPICID; ++x) {
@@ -1542,6 +1542,9 @@ mp_set_cpuids(int cpu_id, int apic_id)
 {
 	CPU_TO_ID(cpu_id) = apic_id;
 	ID_TO_CPU(apic_id) = cpu_id;
+
+	if (apic_id > lapic_id_max)
+		lapic_id_max = apic_id;
 }
 
 static int
@@ -2101,7 +2104,7 @@ mptable_default(int type)
  * block is assumed not to cross a page boundary.
  */
 void *
-permanent_io_mapping(vm_paddr_t pa)
+ioapic_map(vm_paddr_t pa)
 {
 	vm_offset_t vaddr;
 	int pgeflag;

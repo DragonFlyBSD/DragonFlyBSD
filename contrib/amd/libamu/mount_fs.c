@@ -694,7 +694,7 @@ compute_nfs_args(nfs_args_t *nap, mntent_t *mntp, int genflags, struct sockaddr_
 
 #if defined(MNT2_NFS_OPT_MAXGRPS) && defined(MNTTAB_OPT_MAXGROUPS)
   nap->maxgrouplist = hasmntval(mntp, MNTTAB_OPT_MAXGROUPS);
-  if (nap->maxgrouplist != NULL)
+  if (nap->maxgrouplist != 0)
     nap->flags |= MNT2_NFS_OPT_MAXGRPS;
 #endif /* defined(MNT2_NFS_OPT_MAXGRPS) && defined(MNTTAB_OPT_MAXGROUPS) */
 

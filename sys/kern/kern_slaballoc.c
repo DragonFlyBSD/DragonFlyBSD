@@ -176,7 +176,7 @@ static void chunk_mark_free(SLZone *z, void *chunk);
  */
 #define MIN_CHUNK_SIZE		8		/* in bytes */
 #define MIN_CHUNK_MASK		(MIN_CHUNK_SIZE - 1)
-#define ZONE_RELS_THRESH	2		/* threshold number of zones */
+#define ZONE_RELS_THRESH	32		/* threshold number of zones */
 #define IN_SAME_PAGE_MASK	(~(intptr_t)PAGE_MASK | MIN_CHUNK_MASK)
 
 /*
@@ -222,8 +222,10 @@ SYSCTL_INT(_debug, OID_AUTO, use_malloc_pattern, CTLFLAG_RW,
     "Initialize memory to -1 if M_ZERO not specified");
 #endif
 
+static int ZoneRelsThresh = ZONE_RELS_THRESH;
 SYSCTL_INT(_kern, OID_AUTO, zone_big_alloc, CTLFLAG_RD, &ZoneBigAlloc, 0, "");
 SYSCTL_INT(_kern, OID_AUTO, zone_gen_alloc, CTLFLAG_RD, &ZoneGenAlloc, 0, "");
+SYSCTL_INT(_kern, OID_AUTO, zone_cache, CTLFLAG_RW, &ZoneRelsThresh, 0, "");
 
 static void
 kmeminit(void *dummy)
@@ -560,9 +562,9 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
      *	     might race another cpu allocating the kva and setting
      *	     ku_pagecnt.
      */
-    while (slgd->NFreeZones > ZONE_RELS_THRESH && (flags & M_RNOWAIT) == 0) {
+    while (slgd->NFreeZones > ZoneRelsThresh && (flags & M_RNOWAIT) == 0) {
 	crit_enter();
-	if (slgd->NFreeZones > ZONE_RELS_THRESH) {	/* crit sect race */
+	if (slgd->NFreeZones > ZoneRelsThresh) {	/* crit sect race */
 	    int *kup;
 
 	    z = slgd->FreeZones;

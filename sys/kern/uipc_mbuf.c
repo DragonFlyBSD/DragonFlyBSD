@@ -580,7 +580,7 @@ mbinit(void *dummy)
 	mb_limit += limit;
 
 	limit = nmbufs;
-	mbufphdr_cache = objcache_create("mbuf pkt hdr", &limit, 64,
+	mbufphdr_cache = objcache_create("mbuf pkt hdr", &limit, 128,
 	    mbufphdr_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
@@ -598,7 +598,7 @@ mbinit(void *dummy)
 
 	limit = nmbclusters;
 	mbufphdrcluster_cache = objcache_create("mbuf pkt hdr + cluster",
-	    &limit, 64, mbufphdrcluster_ctor, mbufcluster_dtor, NULL,
+	    &limit, 128, mbufphdrcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 

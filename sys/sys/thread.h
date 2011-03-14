@@ -391,8 +391,6 @@ struct thread {
 
 #define LWKT_THREAD_STACK	(UPAGES * PAGE_SIZE)
 
-#define CACHE_NTHREADS		6
-
 #define IN_CRITICAL_SECT(td)	((td)->td_critcount)
 
 #ifdef _KERNEL

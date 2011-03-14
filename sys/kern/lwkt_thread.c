@@ -147,6 +147,9 @@ SYSCTL_INT(_lwkt, OID_AUTO, spin_fatal, CTLFLAG_RW,
 static int preempt_enable = 1;
 SYSCTL_INT(_lwkt, OID_AUTO, preempt_enable, CTLFLAG_RW,
 	&preempt_enable, 0, "Enable preemption");
+static int lwkt_cache_threads = 32;
+SYSCTL_INT(_lwkt, OID_AUTO, cache_threads, CTLFLAG_RD,
+	&lwkt_cache_threads, 0, "thread+kstack cache");
 
 static __cachealign int lwkt_cseq_rindex;
 static __cachealign int lwkt_cseq_windex;
@@ -233,14 +236,17 @@ _lwkt_thread_dtor(void *obj, void *privdata)
 
 /*
  * Initialize the lwkt s/system.
+ *
+ * Nominally cache up to 32 thread + kstack structures.
  */
 void
 lwkt_init(void)
 {
-    /* An objcache has 2 magazines per CPU so divide cache size by 2. */
-    thread_cache = objcache_create_mbacked(M_THREAD, sizeof(struct thread),
-			NULL, CACHE_NTHREADS/2,
-			_lwkt_thread_ctor, _lwkt_thread_dtor, NULL);
+    TUNABLE_INT("lwkt.cache_threads", &lwkt_cache_threads);
+    thread_cache = objcache_create_mbacked(
+				M_THREAD, sizeof(struct thread),
+				NULL, lwkt_cache_threads,
+				_lwkt_thread_ctor, _lwkt_thread_dtor, NULL);
 }
 
 /*
