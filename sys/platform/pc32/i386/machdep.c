@@ -1881,8 +1881,6 @@ int apic_io_enable = 1; /* Enabled by default for kernels compiled w/APIC_IO */
 #else
 int apic_io_enable = 0; /* Disabled by default for kernels compiled without */
 #endif
-TUNABLE_INT("hw.apic_io_enable", &apic_io_enable);
-extern struct machintr_abi MachIntrABI_APIC;
 #endif
 
 struct machintr_abi MachIntrABI;
