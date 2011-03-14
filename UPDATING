@@ -25,7 +25,7 @@ The NO_GCC44 option has been removed and will not affect the build
 anymore. There is now a NO_GCC41 option that will prevent GCC 4.1 from
 building in a similar fashion.
 
-Also, we recommend to do a full buildworld/buildkernel for upgrading.
+Note that you must do a full buildworld/buildkernel for upgrading.
 
 pkg_radd settings
 -----------------
