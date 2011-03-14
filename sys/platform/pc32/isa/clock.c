@@ -1035,25 +1035,29 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 	/* Finish initializing 8253 timer 0. */
 #ifdef SMP /* APIC-IO */
 if (apic_io_enable) {
-	apic_8254_intr = isa_apic_irq(0);
-	if (apic_8254_intr >= 0 ) {
-		if (apic_int_type(0, 0) == 3)
-			apic_8254_trial = 1;
-	} else {
-		/* look for ExtInt on pin 0 */
-		if (apic_int_type(0, 0) == 3) {
-			apic_8254_intr = apic_irq(0, 0);
-			setup_8254_mixed_mode();
-		} else 
-			panic("APIC_IO: Cannot route 8254 interrupt to CPU");
-	}
+	if (ioapic_use_old) {
+		apic_8254_intr = isa_apic_irq(0);
+		if (apic_8254_intr >= 0 ) {
+			if (apic_int_type(0, 0) == 3)
+				apic_8254_trial = 1;
+		} else {
+			/* look for ExtInt on pin 0 */
+			if (apic_int_type(0, 0) == 3) {
+				apic_8254_intr = apic_irq(0, 0);
+				setup_8254_mixed_mode();
+			} else {
+				panic("APIC_IO: Cannot route 8254 "
+				      "interrupt to CPU");
+			}
+		}
 
-	clkdesc = register_int(apic_8254_intr, clkintr, NULL, "clk",
-			       NULL,
-			       INTR_EXCL | INTR_CLOCK |
-			       INTR_NOPOLL | INTR_MPSAFE | 
-			       INTR_NOENTROPY);
-	machintr_intren(apic_8254_intr);
+		clkdesc = register_int(apic_8254_intr, clkintr, NULL, "clk",
+				       NULL,
+				       INTR_EXCL | INTR_CLOCK |
+				       INTR_NOPOLL | INTR_MPSAFE | 
+				       INTR_NOENTROPY);
+		machintr_intren(apic_8254_intr);
+	}
 } else {
 #endif
 	register_int(0, clkintr, NULL, "clk", NULL,
@@ -1070,7 +1074,7 @@ if (apic_io_enable) {
 	writertc(RTC_STATUSB, RTCSB_24HR);
 
 #ifdef SMP /* APIC-IO */
-if (apic_io_enable) {
+if (apic_io_enable && ioapic_use_old) {
 	if (apic_8254_trial) {
 		sysclock_t base;
 		long lastcnt;

@@ -533,10 +533,12 @@ mp_announce(void)
 	}
 
 if (apic_io_enable) {
-	for (x = 0; x < mp_napics; ++x) {
-		kprintf(" io%d (APIC): apic id: %2d", x, IO_TO_ID(x));
-		kprintf(", version: 0x%08x", io_apic_versions[x]);
-		kprintf(", at 0x%08lx\n", io_apic_address[x]);
+	if (ioapic_use_old) {
+		for (x = 0; x < mp_napics; ++x) {
+			kprintf(" io%d (APIC): apic id: %2d", x, IO_TO_ID(x));
+			kprintf(", version: 0x%08x", io_apic_versions[x]);
+			kprintf(", at 0x%08lx\n", io_apic_address[x]);
+		}
 	}
 } else {
 	kprintf(" Warning: APIC I/O disabled\n");
@@ -674,7 +676,7 @@ mp_enable(u_int boot_addr)
 		mptable_imcr(&mpt);
 		mptable_unmap(&mpt);
 	}
-if (apic_io_enable) {
+if (apic_io_enable && ioapic_use_old) {
 
 	if (!mptable_fps_phyaddr)
 		panic("no MP table, disable APIC_IO! (set hw.apic_io_enable=0)\n");

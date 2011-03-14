@@ -1876,6 +1876,8 @@ do_next:
 }
 
 #ifdef SMP
+int ioapic_use_old = 1;
+
 #ifdef APIC_IO
 int apic_io_enable = 1; /* Enabled by default for kernels compiled w/APIC_IO */
 #else
@@ -1944,6 +1946,7 @@ init386(int first)
 	MachIntrABI = MachIntrABI_ICU;
 #ifdef SMP
 	TUNABLE_INT_FETCH("hw.apic_io_enable", &apic_io_enable);
+	TUNABLE_INT_FETCH("hw.ioapic_use_old", &ioapic_use_old);
 #endif
 
 	/*
