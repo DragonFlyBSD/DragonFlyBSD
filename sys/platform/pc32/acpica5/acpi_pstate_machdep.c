@@ -299,13 +299,13 @@ acpi_pst_amd0f_check_pstates(const struct acpi_pstate *pstates, int npstates)
 		vid = AMD0F_PST_CTL_VID(p->st_cval);
 
 		if (fid > fv_max.fid || fid < fv_min.fid) {
-			kprintf("cpu%d: Invalid FID %#x [%#x, %#x]\n",
+			kprintf("cpu%d: Invalid FID %#x, out [%#x, %#x]\n",
 				mycpuid, fid, fv_min.fid, fv_max.fid);
 			return EINVAL;
 		}
 		if (vid < fv_max.vid || vid > fv_min.vid) {
-			kprintf("cpu%d: Invalid VID %#x [%#x, %#x]\n",
-				mycpuid, vid, fv_max.vid, fv_min.fid);
+			kprintf("cpu%d: Invalid VID %#x, in [%#x, %#x]\n",
+				mycpuid, vid, fv_max.vid, fv_min.vid);
 			return EINVAL;
 		}
 
