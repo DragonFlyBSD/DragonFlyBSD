@@ -290,6 +290,11 @@ acpi_pst_amd0f_check_pstates(const struct acpi_pstate *pstates, int npstates)
 
 	amd0f_fidvid_limit(&fv_min, &fv_max);
 
+	if (fv_min.fid == fv_max.fid && fv_min.vid == fv_max.vid) {
+		kprintf("cpu%d: only one P-State is supported\n", mycpuid);
+		return EOPNOTSUPP;
+	}
+
 	for (i = 0; i < npstates; ++i) {
 		const struct acpi_pstate *p = &pstates[i];
 		uint32_t fid, vid, mvs, rvo;
@@ -298,15 +303,41 @@ acpi_pst_amd0f_check_pstates(const struct acpi_pstate *pstates, int npstates)
 		fid = AMD0F_PST_CTL_FID(p->st_cval);
 		vid = AMD0F_PST_CTL_VID(p->st_cval);
 
-		if (fid > fv_max.fid || fid < fv_min.fid) {
-			kprintf("cpu%d: Invalid FID %#x, out [%#x, %#x]\n",
-				mycpuid, fid, fv_min.fid, fv_max.fid);
-			return EINVAL;
-		}
-		if (vid < fv_max.vid || vid > fv_min.vid) {
-			kprintf("cpu%d: Invalid VID %#x, in [%#x, %#x]\n",
-				mycpuid, vid, fv_max.vid, fv_min.vid);
-			return EINVAL;
+		if (i == 0) {
+			if (vid != fv_max.vid) {
+				kprintf("cpu%d: max VID mismatch "
+					"real %u, lim %d\n", mycpuid,
+					vid, fv_max.vid);
+			}
+			if (fid != fv_max.fid) {
+				kprintf("cpu%d: max FID mismatch "
+					"real %u, lim %d\n", mycpuid,
+					fid, fv_max.fid);
+			}
+		} else if (i == npstates - 1) {
+			if (vid != fv_min.vid) {
+				kprintf("cpu%d: min VID mismatch "
+					"real %u, lim %d\n", mycpuid,
+					vid, fv_min.vid);
+			}
+			if (fid != fv_min.fid) {
+				kprintf("cpu%d: min FID mismatch "
+					"real %u, lim %d\n", mycpuid,
+					fid, fv_min.fid);
+			}
+		} else {
+			if (fid >= fv_max.fid || fid < (fv_min.fid + 0x8)) {
+				kprintf("cpu%d: Invalid FID %#x, "
+					"out [%#x, %#x]\n", mycpuid, fid,
+					fv_min.fid + 0x8, fv_max.fid);
+				return EINVAL;
+			}
+			if (vid < fv_max.vid || vid > fv_min.vid) {
+				kprintf("cpu%d: Invalid VID %#x, "
+					"in [%#x, %#x]\n", mycpuid, vid,
+					fv_max.vid, fv_min.vid);
+				return EINVAL;
+			}
 		}
 
 		mvs = AMD0F_PST_CTL_MVS(p->st_cval);
