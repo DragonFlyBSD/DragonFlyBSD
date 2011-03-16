@@ -52,7 +52,6 @@
 #include <sys/priv.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
-#include <sys/mplock2.h>
 #include <sys/mqueue.h>
 #include <sys/proc.h>
 #include <sys/queue.h>
@@ -295,9 +294,9 @@ mq_stat_fop(file_t *fp, struct stat *st, struct ucred *cred)
 }
 
 static struct filterops mqfiltops_read =
-	{ FILTEROP_ISFD, NULL, mqfilter_read_detach, mqfilter_read };
+{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, mqfilter_read_detach, mqfilter_read };
 static struct filterops mqfiltops_write =
-	{ FILTEROP_ISFD, NULL, mqfilter_write_detach, mqfilter_write };
+{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, mqfilter_write_detach, mqfilter_write };
 
 static int
 mq_kqfilter_fop(struct file *fp, struct knote *kn)
