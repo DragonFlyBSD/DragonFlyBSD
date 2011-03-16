@@ -37,8 +37,6 @@
 #include <sys/unistd.h>
 #include <sys/wait.h>
 
-#include <sys/mplock2.h>
-
 #include <machine/stdarg.h>
 
 static struct lwkt_token kpsus_token = LWKT_TOKEN_INITIALIZER(kpsus_token);

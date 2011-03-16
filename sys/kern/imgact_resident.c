@@ -64,7 +64,6 @@
 #include <vm/vm_extern.h>
 
 #include <sys/sysref2.h>
-#include <sys/mplock2.h>
 
 static int exec_res_id = 0;
 

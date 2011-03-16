@@ -57,7 +57,6 @@
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
-#include <sys/mplock2.h>
 
 static void vnode_terminate(struct vnode *vp);
 static boolean_t vnode_ctor(void *obj, void *private, int ocflags);
