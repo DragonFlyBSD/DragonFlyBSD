@@ -2238,7 +2238,9 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 	 */
 	ifnet_serialize_all(ifp);
 	if ((ifp->if_flags & IFF_UP) != 0) {
+#ifdef INET
 		struct ifaddr_container *ifac;
+#endif
 
 		ifp->if_flags &= ~IFF_UP;
 		ifr.ifr_flags = ifp->if_flags;
