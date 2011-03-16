@@ -519,11 +519,8 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 		    error == EINTR || error == EWOULDBLOCK))
 			error = 0;
 		/* Socket layer is responsible for issuing SIGPIPE. */
-		if (error == EPIPE) {
-			get_mplock();
+		if (error == EPIPE)
 			lwpsignal(lp->lwp_proc, lp, SIGPIPE);
-			rel_mplock();
-		}
 	}
 #ifdef KTRACE
 	if (ktriov != NULL) {
@@ -841,8 +838,6 @@ sys_select(struct select_args *uap)
 
 /*
  * Pselect system call.
- *
- * MPALMOSTSAFE
  */
 int
 sys_pselect(struct pselect_args *uap)
@@ -872,12 +867,11 @@ sys_pselect(struct pselect_args *uap)
 		error = copyin(uap->sigmask, &sigmask, sizeof(sigmask));
 		if (error)
 			return (error);
-		get_mplock();
+		lwkt_gettoken(&lp->lwp_proc->p_token);
 		lp->lwp_oldsigmask = lp->lwp_sigmask;
 		SIG_CANTMASK(sigmask);
 		lp->lwp_sigmask = sigmask;
-	} else {
-		get_mplock();
+		lwkt_reltoken(&lp->lwp_proc->p_token);
 	}
 
 	/*
@@ -887,6 +881,7 @@ sys_pselect(struct pselect_args *uap)
 			 &uap->sysmsg_result);
 
 	if (uap->sigmask != NULL) {
+		lwkt_gettoken(&lp->lwp_proc->p_token);
 		/* doselect() responsible for turning ERESTART into EINTR */
 		KKASSERT(error != ERESTART);
 		if (error == EINTR) {
@@ -903,8 +898,8 @@ sys_pselect(struct pselect_args *uap)
 			 */
 			lp->lwp_sigmask = lp->lwp_oldsigmask;
 		}
+		lwkt_reltoken(&lp->lwp_proc->p_token);
 	}
-	rel_mplock();
 
 	return (error);
 }
