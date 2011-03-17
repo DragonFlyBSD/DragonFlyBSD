@@ -44,6 +44,8 @@
  * x86_64 Trap and System call handling
  */
 
+#include "use_isa.h"
+
 #include "opt_ddb.h"
 #include "opt_ktrace.h"
 
@@ -508,6 +510,7 @@ trap(struct trapframe *frame)
 			i = SIGFPE;
 			break;
 
+#if NISA > 0
 		case T_NMI:
 			MAKEMPSAFE(have_mplock);
 			/* machine/parity/power fail/"kitchen sink" faults */
@@ -526,6 +529,7 @@ trap(struct trapframe *frame)
 			} else if (panic_on_nmi)
 				panic("NMI indicates hardware failure");
 			break;
+#endif /* NISA > 0 */
 
 		case T_OFLOW:		/* integer overflow fault */
 			ucode = FPE_INTOVF;
@@ -698,10 +702,10 @@ trap(struct trapframe *frame)
 #endif
 			break;
 
+#if NISA > 0
 		case T_NMI:
 			MAKEMPSAFE(have_mplock);
 			/* machine/parity/power fail/"kitchen sink" faults */
-#if NISA > 0
 			if (isa_nmi(code) == 0) {
 #ifdef DDB
 				/*
