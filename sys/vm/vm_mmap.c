@@ -1056,9 +1056,9 @@ sys_mlockall(struct mlockall_args *uap)
 	vm_map_unlock(map);
 
 	return (rc);
-#else
+#else /* !_P1003_1B_VISIBLE */
 	return (ENOSYS);
-#endif
+#endif /* _P1003_1B_VISIBLE */
 }
 
 /*
