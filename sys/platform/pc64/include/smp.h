@@ -172,6 +172,8 @@ void	ioapic_config(void);
 void	ioapic_enumerator_register(struct ioapic_enumerator *);
 void	ioapic_add(void *, int, int);
 void	ioapic_intsrc(int, int);
+void	*ioapic_gsi_ioaddr(int);
+int	ioapic_gsi_pin(int);
 
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);

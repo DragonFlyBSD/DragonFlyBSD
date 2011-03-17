@@ -28,6 +28,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/bus.h>
 #include <machine/globaldata.h>
 #include <machine/smp.h>
 #include <machine/cputypes.h>
@@ -77,6 +78,12 @@ static void	lapic_timer_intr_reload(struct cputimer_intr *, sysclock_t);
 static void	lapic_timer_intr_enable(struct cputimer_intr *);
 static void	lapic_timer_intr_restart(struct cputimer_intr *);
 static void	lapic_timer_intr_pmfixup(struct cputimer_intr *);
+
+static void	ioapic_setup(const struct ioapic_info *);
+static void	ioapic_set_apic_id(const struct ioapic_info *);
+static void	ioapic_gsi_setup(int);
+static const struct ioapic_info *
+		ioapic_gsi_search(int);
 
 static struct cputimer_intr lapic_cputimer_intr = {
 	.freq = 0,
@@ -1096,14 +1103,15 @@ ioapic_config(void)
 	if (!ioapic_use_old) {
 		struct ioapic_info *info;
 
+		/*
+		 * Fixup the rest of the fields of ioapic_info
+		 */
 		i = 0;
 		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
 			const struct ioapic_info *prev_info;
 
 			info->io_idx = i++;
 			info->io_apic_id = info->io_idx + lapic_id_max + 1;
-
-			/* TODO set apic id, config all pins */
 
 			if (bootverbose) {
 				kprintf("IOAPIC: idx %d, apic id %d, "
@@ -1127,6 +1135,13 @@ ioapic_config(void)
 				}
 			}
 		}
+
+		/*
+		 * Setup all I/O APIC
+		 */
+		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
+			ioapic_setup(info);
+
 		panic("ioapic_config: new ioapic not working yet\n");
 	}
 }
@@ -1195,4 +1210,102 @@ ioapic_intsrc(int irq, int gsi)
 			irq, ioapic_conf.ioc_intsrc[irq], gsi);
 	}
 	ioapic_conf.ioc_intsrc[irq] = gsi;
+}
+
+static void
+ioapic_set_apic_id(const struct ioapic_info *info)
+{
+	uint32_t id;
+
+	id = ioapic_read(info->io_addr, IOAPIC_ID);
+
+	id &= ~APIC_ID_MASK;
+	id |= (info->io_apic_id << 24);
+
+	ioapic_write(info->io_addr, IOAPIC_ID, id);
+
+	/*
+	 * Re-read && test
+	 */
+	id = ioapic_read(info->io_addr, IOAPIC_ID);
+	if (((id & APIC_ID_MASK) >> 24) != info->io_apic_id) {
+		panic("ioapic_set_apic_id: can't set apic id to %d\n",
+		      info->io_apic_id);
+	}
+}
+
+static void
+ioapic_gsi_setup(int gsi)
+{
+	enum intr_trigger trig;
+	enum intr_polarity pola;
+	int irq;
+
+	for (irq = 0; irq < 16; ++irq) {
+		if (gsi == ioapic_conf.ioc_intsrc[irq]) {
+			trig = INTR_TRIGGER_EDGE;
+			pola = INTR_POLARITY_HIGH;
+			break;
+		}
+	}
+
+	if (irq == 16) {
+		if (gsi == 0) {
+			/* TODO Program EXTINT */
+			return;
+		} else if (gsi < 16) {
+			trig = INTR_TRIGGER_EDGE;
+			pola = INTR_POLARITY_HIGH;
+		} else {
+			trig = INTR_TRIGGER_LEVEL;
+			pola = INTR_POLARITY_LOW;
+		}
+		irq = gsi;
+	}
+
+#if 0
+	ioapic_abi_set_irqmap(irq, gsi, trig, pola);
+#endif
+}
+
+void *
+ioapic_gsi_ioaddr(int gsi)
+{
+	const struct ioapic_info *info;
+
+	info = ioapic_gsi_search(gsi);
+	return info->io_addr;
+}
+
+int
+ioapic_gsi_pin(int gsi)
+{
+	const struct ioapic_info *info;
+
+	info = ioapic_gsi_search(gsi);
+	return gsi - info->io_gsi_base;
+}
+
+static const struct ioapic_info *
+ioapic_gsi_search(int gsi)
+{
+	const struct ioapic_info *info;
+
+	TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
+		if (gsi >= info->io_gsi_base &&
+		    gsi < info->io_gsi_base + info->io_npin)
+			return info;
+	}
+	panic("ioapic_gsi_search: no I/O APIC\n");
+}
+
+static void
+ioapic_setup(const struct ioapic_info *info)
+{
+	int i;
+
+	ioapic_set_apic_id(info);
+
+	for (i = 0; i < info->io_npin; ++i)
+		ioapic_gsi_setup(info->io_gsi_base + i);
 }
