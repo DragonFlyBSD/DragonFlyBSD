@@ -3633,7 +3633,8 @@ mptable_ioapic_enumerate(struct ioapic_enumerator *e)
 					prev_ioapic->mio_gsi_base +
 					prev_ioapic->mio_npin;
 			}
-			/* TODO */
+			ioapic_add(addr, ioapic->mio_gsi_base,
+			    ioapic->mio_npin);
 		}
 		if (bootverbose) {
 			kprintf("MPTABLE: IOAPIC addr 0x%08x, "

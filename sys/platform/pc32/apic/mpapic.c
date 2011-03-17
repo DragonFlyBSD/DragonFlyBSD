@@ -46,6 +46,22 @@ extern pt_entry_t *SMPpt;
 #define ELCR0	0x4d0			/* eisa irq 0-7 */
 #define ELCR1	0x4d1			/* eisa irq 8-15 */
 
+struct ioapic_info {
+	int		io_idx;
+	int		io_apic_id;
+	void		*io_addr;
+	int		io_npin;
+	int		io_gsi_base;
+
+	TAILQ_ENTRY(ioapic_info) io_link;
+};
+TAILQ_HEAD(ioapic_info_list, ioapic_info);
+
+struct ioapic_conf {
+	struct ioapic_info_list ioc_list;
+	int		ioc_intsrc[16];	/* XXX magic number */
+};
+
 static void	lapic_timer_calibrate(void);
 static void	lapic_timer_set_divisor(int);
 static void	lapic_timer_fixup_handler(void *);
@@ -91,6 +107,8 @@ static const uint32_t	lapic_timer_divisors[] = {
 #define APIC_TIMER_NDIVISORS (int)(NELEM(lapic_timer_divisors))
 
 int			lapic_id_max;
+
+static struct ioapic_conf	ioapic_conf;
 
 /*
  * Enable LAPIC, configure interrupts.
@@ -1052,7 +1070,12 @@ void
 ioapic_config(void)
 {
 	struct ioapic_enumerator *e;
-	int error;
+	int error, i;
+
+	TAILQ_INIT(&ioapic_conf.ioc_list);
+	/* XXX magic number */
+	for (i = 0; i < 16; ++i)
+		ioapic_conf.ioc_intsrc[i] = -1;
 
 	TAILQ_FOREACH(e, &ioapic_enumerators, ioapic_link) {
 		error = e->ioapic_probe(e);
@@ -1070,8 +1093,42 @@ ioapic_config(void)
 
 	e->ioapic_enumerate(e);
 
-	if (!ioapic_use_old)
+	if (!ioapic_use_old) {
+		struct ioapic_info *info;
+
+		i = 0;
+		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
+			const struct ioapic_info *prev_info;
+
+			info->io_idx = i++;
+			info->io_apic_id = info->io_idx + lapic_id_max + 1;
+
+			/* TODO set apic id, config all pins */
+
+			if (bootverbose) {
+				kprintf("IOAPIC: idx %d, apic id %d, "
+					"gsi base %d, npin %d\n",
+					info->io_idx,
+					info->io_apic_id,
+					info->io_gsi_base,
+					info->io_npin);
+			}
+
+			/* Warning about possible GSI hole */
+			prev_info = TAILQ_PREV(info, ioapic_info_list, io_link);
+			if (prev_info != NULL) {
+				if (info->io_gsi_base !=
+				prev_info->io_gsi_base + prev_info->io_npin) {
+					kprintf("IOAPIC: warning gsi hole "
+						"[%d, %d]\n",
+						prev_info->io_gsi_base +
+						prev_info->io_npin,
+						info->io_gsi_base - 1);
+				}
+			}
+		}
 		panic("ioapic_config: new ioapic not working yet\n");
+	}
 }
 
 void
@@ -1086,4 +1143,44 @@ ioapic_enumerator_register(struct ioapic_enumerator *ne)
 		}
 	}
 	TAILQ_INSERT_TAIL(&ioapic_enumerators, ne, ioapic_link);
+}
+
+void
+ioapic_add(void *addr, int gsi_base, int npin)
+{
+	struct ioapic_info *info, *ninfo;
+	int gsi_end;
+
+	gsi_end = gsi_base + npin - 1;
+	TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
+		if ((gsi_base >= info->io_gsi_base &&
+		     gsi_base < info->io_gsi_base + info->io_npin) ||
+		    (gsi_end >= info->io_gsi_base &&
+		     gsi_end < info->io_gsi_base + info->io_npin)) {
+			panic("ioapic_add: overlapped gsi, base %d npin %d, "
+			      "hit base %d, npin %d\n", gsi_base, npin,
+			      info->io_gsi_base, info->io_npin);
+		}
+		if (info->io_addr == addr)
+			panic("ioapic_add: duplicated addr %p\n", addr);
+	}
+
+	ninfo = kmalloc(sizeof(*ninfo), M_DEVBUF, M_WAITOK | M_ZERO);
+	ninfo->io_addr = addr;
+	ninfo->io_npin = npin;
+	ninfo->io_gsi_base = gsi_base;
+
+	/*
+	 * Create IOAPIC list in ascending order of GSI base
+	 */
+	TAILQ_FOREACH_REVERSE(info, &ioapic_conf.ioc_list,
+	    ioapic_info_list, io_link) {
+		if (ninfo->io_gsi_base > info->io_gsi_base) {
+			TAILQ_INSERT_AFTER(&ioapic_conf.ioc_list,
+			    info, ninfo, io_link);
+			break;
+		}
+	}
+	if (info == NULL)
+		TAILQ_INSERT_HEAD(&ioapic_conf.ioc_list, ninfo, io_link);
 }

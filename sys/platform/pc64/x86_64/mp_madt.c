@@ -851,6 +851,20 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 		MADT_VPRINTF("IOAPIC addr 0x%08x, apic id %d, gsi base %u\n",
 			     ioapic_ent->mio_addr, ioapic_ent->mio_apic_id,
 			     ioapic_ent->mio_gsi_base);
+
+		if (!ioapic_use_old) {
+			uint32_t ver;
+			void *addr;
+			int npin;
+
+			addr = ioapic_map(ioapic_ent->mio_addr);
+
+			ver = ioapic_read(addr, IOAPIC_VER);
+			npin = ((ver & IOART_VER_MAXREDIR) >>
+				MAXREDIRSHIFT) + 1;
+
+			ioapic_add(addr, ioapic_ent->mio_gsi_base, npin);
+		}
 	}
 	return 0;
 }
