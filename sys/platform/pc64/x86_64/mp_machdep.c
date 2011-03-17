@@ -198,6 +198,8 @@ struct mptable_ioapic {
 	int		mio_idx;
 	int		mio_apic_id;
 	uint32_t	mio_addr;
+	int		mio_gsi_base;
+	int		mio_npin;
 	TAILQ_ENTRY(mptable_ioapic) mio_link;
 };
 
@@ -3597,7 +3599,7 @@ static void
 mptable_ioapic_enumerate(struct ioapic_enumerator *e)
 {
 	struct mptable_bus_info bus_info;
-	const struct mptable_ioapic *ioapic;
+	struct mptable_ioapic *ioapic;
 	struct mptable_pos mpt;
 	mpcth_t cth;
 	int error;
@@ -3606,13 +3608,37 @@ mptable_ioapic_enumerate(struct ioapic_enumerator *e)
 	KKASSERT(!TAILQ_EMPTY(&mptable_ioapic_list));
 
 	TAILQ_FOREACH(ioapic, &mptable_ioapic_list, mio_link) {
+		if (!ioapic_use_old) {
+			const struct mptable_ioapic *prev_ioapic;
+			uint32_t ver;
+			void *addr;
+
+			addr = ioapic_map(ioapic->mio_addr);
+
+			ver = ioapic_read(addr, IOAPIC_VER);
+			ioapic->mio_npin = ((ver & IOART_VER_MAXREDIR)
+					    >> MAXREDIRSHIFT) + 1;
+
+			prev_ioapic = TAILQ_PREV(ioapic,
+					mptable_ioapic_list, mio_link);
+			if (prev_ioapic == NULL) {
+				ioapic->mio_gsi_base = 0;
+			} else {
+				ioapic->mio_gsi_base =
+					prev_ioapic->mio_gsi_base +
+					prev_ioapic->mio_npin;
+			}
+			/* TODO */
+		}
 		if (bootverbose) {
 			kprintf("MPTABLE: IOAPIC addr 0x%08x, "
-				"apic id %d, idx %d\n",
+				"apic id %d, idx %d, gsi base %d, npin %d\n",
 				ioapic->mio_addr,
-				ioapic->mio_apic_id, ioapic->mio_idx);
+				ioapic->mio_apic_id,
+				ioapic->mio_idx,
+				ioapic->mio_gsi_base,
+				ioapic->mio_npin);
 		}
-		/* TODO */
 	}
 
 	if (mptable_use_default) {

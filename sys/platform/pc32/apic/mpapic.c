@@ -1069,6 +1069,9 @@ ioapic_config(void)
 	}
 
 	e->ioapic_enumerate(e);
+
+	if (!ioapic_use_old)
+		panic("ioapic_config: new ioapic not working yet\n");
 }
 
 void
