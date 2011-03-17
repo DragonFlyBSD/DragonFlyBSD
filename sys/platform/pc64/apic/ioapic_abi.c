@@ -710,19 +710,13 @@ ioapic_setdefault(void)
 	}
 }
 
-/* XXX magic number */
 static void
 ioapic_initmap(void)
 {
 	int i;
 
-	for (i = 0; i < 16; ++i) {
-		struct ioapic_irqmap *map = &ioapic_irqmaps[i];
-
-		map->im_type = IOAPIC_IMT_LINE;
-		map->im_trig = INTR_TRIGGER_EDGE;
-		map->im_gsi = i;
-	}
+	for (i = 0; i < IOAPIC_HWI_VECTORS; ++i)
+		ioapic_irqmaps[i].im_gsi = -1;
 	ioapic_irqmaps[IOAPIC_HWI_SYSCALL].im_type = IOAPIC_IMT_SYSCALL;
 }
 
