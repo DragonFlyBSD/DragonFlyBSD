@@ -160,6 +160,7 @@ void	lapic_enumerator_register(struct lapic_enumerator *);
 void	ioapic_config(void);
 void	ioapic_enumerator_register(struct ioapic_enumerator *);
 void	ioapic_add(void *, int, int);
+void	ioapic_intsrc(int, int);
 extern int apic_io_enable;
 extern int ioapic_use_old;
 

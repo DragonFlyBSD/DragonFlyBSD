@@ -839,11 +839,13 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 		const struct acpi_madt_intsrc *intsrc_ent;
 
 		intsrc_ent = (const struct acpi_madt_intsrc *)ent;
-		if (intsrc_ent->mint_src == intsrc_ent->mint_gsi)
+		if (intsrc_ent->mint_src == intsrc_ent->mint_gsi ||
+		    intsrc_ent->mint_bus != MADT_INT_BUS_ISA)
 			return 0;
 
 		MADT_VPRINTF("INTSRC irq %d -> gsi %u\n",
 			     intsrc_ent->mint_src, intsrc_ent->mint_gsi);
+		ioapic_intsrc(intsrc_ent->mint_src, intsrc_ent->mint_gsi);
 	} else if (ent->me_type == MADT_ENT_IOAPIC) {
 		const struct acpi_madt_ioapic *ioapic_ent;
 

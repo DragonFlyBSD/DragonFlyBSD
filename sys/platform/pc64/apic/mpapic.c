@@ -1246,3 +1246,15 @@ ioapic_add(void *addr, int gsi_base, int npin)
 	if (info == NULL)
 		TAILQ_INSERT_HEAD(&ioapic_conf.ioc_list, ninfo, io_link);
 }
+
+void
+ioapic_intsrc(int irq, int gsi)
+{
+	KKASSERT(irq < 16);
+	if (ioapic_conf.ioc_intsrc[irq] != -1 &&
+	    ioapic_conf.ioc_intsrc[irq] != gsi) {
+		kprintf("IOAPIC: warning intsrc irq %d, gsi %d -> gsi %d\n",
+			irq, ioapic_conf.ioc_intsrc[irq], gsi);
+	}
+	ioapic_conf.ioc_intsrc[irq] = gsi;
+}

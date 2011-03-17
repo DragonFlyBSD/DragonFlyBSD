@@ -3565,6 +3565,7 @@ static int
 mptable_ioapic_int_callback(void *xarg, const void *pos, int type)
 {
 	struct mptable_ioapic_int_cbarg *arg = xarg;
+	const struct mptable_ioapic *ioapic;
 	const struct mptable_bus *bus;
 	const struct INTENTRY *ent;
 
@@ -3585,11 +3586,40 @@ mptable_ioapic_int_callback(void *xarg, const void *pos, int type)
 	if (bus == NULL)
 		return 0;
 
-	/* XXX rough estimation */
-	if (ent->src_bus_irq != ent->dst_apic_int) {
-		if (bootverbose) {
-			kprintf("MPTABLE: INTSRC irq %d -> GSI %d\n",
-				ent->src_bus_irq, ent->dst_apic_int);
+	TAILQ_FOREACH(ioapic, &mptable_ioapic_list, mio_link) {
+		if (ioapic->mio_apic_id == ent->dst_apic_id)
+			break;
+	}
+	if (ioapic == NULL) {
+		kprintf("MPTABLE: warning ISA int dst apic id %d "
+			"does not exist\n", ent->dst_apic_id);
+		return 0;
+	}
+
+	if (!ioapic_use_old) {
+		int gsi;
+
+		if (ent->dst_apic_int >= ioapic->mio_npin) {
+			panic("mptable_ioapic_enumerate: invalid I/O APIC "
+			      "pin %d, should be < %d",
+			      ent->dst_apic_int, ioapic->mio_npin);
+		}
+		gsi = ioapic->mio_gsi_base + ent->dst_apic_int;
+
+		if (ent->src_bus_irq != gsi) {
+			if (bootverbose) {
+				kprintf("MPTABLE: INTSRC irq %d -> GSI %d\n",
+					ent->src_bus_irq, gsi);
+			}
+			ioapic_intsrc(ent->src_bus_irq, gsi);
+		}
+	} else {
+		/* XXX rough estimation */
+		if (ent->src_bus_irq != ent->dst_apic_int) {
+			if (bootverbose) {
+				kprintf("MPTABLE: INTSRC irq %d -> GSI %d\n",
+					ent->src_bus_irq, ent->dst_apic_int);
+			}
 		}
 	}
 	return 0;
@@ -3645,7 +3675,7 @@ mptable_ioapic_enumerate(struct ioapic_enumerator *e)
 	if (mptable_use_default) {
 		if (bootverbose)
 			kprintf("MPTABLE: INTSRC irq 0 -> GSI 2 (default)\n");
-		/* TODO default intsrc */
+		ioapic_intsrc(0, 2);
 		return;
 	}
 
@@ -3661,7 +3691,7 @@ mptable_ioapic_enumerate(struct ioapic_enumerator *e)
 	if (TAILQ_EMPTY(&bus_info.mbi_list)) {
 		if (bootverbose)
 			kprintf("MPTABLE: INTSRC irq 0 -> GSI 2 (no bus)\n");
-		/* TODO default intsrc */
+		ioapic_intsrc(0, 2);
 	} else {
 		struct mptable_ioapic_int_cbarg arg;
 
@@ -3678,7 +3708,7 @@ mptable_ioapic_enumerate(struct ioapic_enumerator *e)
 				kprintf("MPTABLE: INTSRC irq 0 -> GSI 2 "
 					"(no int)\n");
 			}
-			/* TODO default intsrc */
+			ioapic_intsrc(0, 2);
 		}
 	}
 
