@@ -29,9 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/man4.i386/est.4,v 1.1 2007/12/21 09:00:41 swildner Exp $
-.\"
-.Dd May 8, 2009
+.Dd March 17, 2011
 .Os
 .Dt POWERNOW 4
 .Sh NAME
@@ -65,11 +63,13 @@ branch of the
 MIB.
 .Bl -tag -width ".Va frequency.available" -offset indent
 .It Va frequency.available
-(read only) The list of frequencies supported by
+The list of frequencies supported by
 .Nm
-for the CPU.
+for the CPU (read only).
 .It Va frequency.current
-(read/write) The currect CPU frequency.
+The current CPU frequency (read only).
+.It Va frequency.target
+The target CPU frequency (read/write).
 .El
 .Pp
 .Sh HISTORY
