@@ -885,10 +885,11 @@ nogo:
 			    (void *)frame->tf_addr,
 			    (void *)frame->tf_rip,
 			    p->p_pid, p->p_comm);
+#ifdef DDB
 		if (ddb_on_seg_fault)
 			Debugger("ddb_on_seg_fault");
+#endif
 	}
-	/* Debugger("seg-fault"); */
 
 	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);
 }
