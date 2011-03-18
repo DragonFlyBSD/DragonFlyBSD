@@ -454,6 +454,7 @@ static inthand_t *ioapic_intr[IOAPIC_HWI_VECTORS] = {
 static struct ioapic_irqmap {
 	int			im_type;	/* IOAPIC_IMT_ */
 	enum intr_trigger	im_trig;
+	enum intr_polarity	im_pola;
 	int			im_gsi;
 } ioapic_irqmaps[MAX_HARDINTS];	/* XXX MAX_HARDINTS may not be correct */
 
