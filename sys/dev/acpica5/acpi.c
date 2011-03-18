@@ -3122,7 +3122,7 @@ acpiioctl(struct dev_ioctl_args *ap)
 	break;
     case ACPIIO_ACKSLPSTATE:
 	error = EOPNOTSUPP;
-#if notyet
+#if 0 /* notyet */
 	error = *(int *)ap->a_data;
 	error = acpi_AckSleepState(sc->acpi_clone, error);
 #endif

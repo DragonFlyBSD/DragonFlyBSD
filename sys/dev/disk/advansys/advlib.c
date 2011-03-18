@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advlib.c,v 1.15.2.1 2000/04/14 13:32:49 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.10 2008/02/10 00:01:02 pavalos Exp $
  */
 /*
  * Ported from:
@@ -238,7 +237,7 @@ static void	 adv_toggle_irq_act(struct adv_softc *adv);
 /* Chip Control */
 static int	 adv_host_req_chip_halt(struct adv_softc *adv);
 static void	 adv_set_chip_ih(struct adv_softc *adv, u_int16_t ins_code);
-#if UNUSED
+#if 0 /* UNUSED */
 static u_int8_t  adv_get_chip_scsi_ctrl(struct adv_softc *adv);
 #endif
 
@@ -1616,7 +1615,7 @@ adv_set_chip_ih(struct adv_softc *adv, u_int16_t ins_code)
 	adv_set_bank(adv, 0);
 }
 
-#if UNUSED
+#if 0 /* UNUSED */
 static u_int8_t
 adv_get_chip_scsi_ctrl(struct adv_softc *adv)
 {

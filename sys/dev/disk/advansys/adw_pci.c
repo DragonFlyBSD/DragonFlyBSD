@@ -33,7 +33,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adw_pci.c,v 1.12.2.1 2000/08/02 22:22:40 peter Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adw_pci.c,v 1.5 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -101,7 +100,7 @@ struct adw_pci_identity adw_pci_ident_table[] =
 		&adw_asc38C0800_mcode_data,
 		&adw_asc38C0800_default_eeprom
 	},
-#if NOTYET
+#if 0 /* NOTYET */
 	/* XXX Disabled until I have hardware to test with */
 	/* asc38C1600 based controllers */
 	{

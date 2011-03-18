@@ -58,7 +58,7 @@ struct linux_emuldata_shared {
 #define LINUX_LES_USE_NPTL	0x2	/* Need to emulate NPTL threads */
 
 struct linux_emuldata {
-#if notyet
+#if 0 /* notyet */
 	sigset_t ps_siginfo;	/* Which signals have a RT handler */
 #endif
 	int	debugreg[8];	/* GDB information for ptrace - for use, */

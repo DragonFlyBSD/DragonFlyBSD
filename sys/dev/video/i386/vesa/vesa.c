@@ -1182,7 +1182,7 @@ vesa_load_palette(video_adapter_t *adp, const u_char *palette)
 	int ret;
 
 	lwkt_gettoken(&tty_token);
-#if notyet
+#if 0 /* notyet */
 	int bits;
 	int error;
 
@@ -1518,7 +1518,7 @@ set_palette(video_adapter_t *adp, int base, int count,
 	    u_char *red, u_char *green, u_char *blue, u_char *trans)
 {
 	return 1;
-#if notyet
+#if 0 /* notyet */
 	u_char *r;
 	u_char *g;
 	u_char *b;

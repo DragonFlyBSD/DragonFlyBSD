@@ -25,7 +25,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scterm-sc.c,v 1.4.2.10 2001/06/11 09:05:39 phk Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scterm-sc.c,v 1.8 2008/08/10 19:47:31 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -209,7 +208,7 @@ scterm_scan_esc(scr_stat *scp, term_stat *tcp, u_char c)
 			sc_term_up_scroll(scp, 1, sc->scr_map[0x20],
 					  tcp->cur_attr, 0, 0);
 			break;
-#if notyet
+#if 0 /* notyet */
 		case 'Q':
 			tcp->esc = 4;
 			return;
@@ -614,7 +613,7 @@ scterm_scan_esc(scr_stat *scp, term_stat *tcp, u_char c)
 			}
 			break;
 		}
-#if notyet
+#if 0 /* notyet */
 	} else if (tcp->esc == 4) {	/* seen ESC Q */
 		/* to be filled */
 #endif

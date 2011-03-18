@@ -116,7 +116,7 @@ Byte_t rp_sBitMapSetTbl[8] =
 };
 
 /* Actually not used */
-#if notdef
+#if 0 /* notdef */
 struct termios deftermios = {
 	TTYDEF_IFLAG,
 	TTYDEF_OFLAG,
@@ -906,7 +906,7 @@ rp_attachcommon(CONTROLLER_T *ctlp, int num_aiops, int num_ports)
 
 			rp->rp_intmask = RXF_TRIG | TXFIFO_MT | SRC_INT |
 				DELTA_CD | DELTA_CTS | DELTA_DSR;
-#if notdef
+#if 0 /* notdef */
 			ChanStatus = sGetChanStatus(&rp->rp_channel);
 #endif /* notdef */
 			if(sInitChan(ctlp, &rp->rp_channel, aiop, chan) == 0) {

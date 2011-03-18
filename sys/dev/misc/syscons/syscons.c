@@ -579,7 +579,7 @@ scclose(struct dev_close_args *ap)
 	if (finish_vt_acq(scp) == 0)		/* force acknowledge */
 	    DPRINTF(5, ("reset WAIT_ACQ, "));
 	syscons_lock();
-#if not_yet_done
+#if 0 /* notyet */
 	if (scp == &main_console) {
 	    scp->pid = 0;
 	    scp->proc = NULL;

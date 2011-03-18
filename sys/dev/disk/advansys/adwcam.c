@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.19 2008/05/18 20:30:20 pavalos Exp $
  */
 /*
  * Ported from:
@@ -1241,7 +1240,7 @@ adw_intr(void *arg)
 			 * Handle RDMA failure by resetting the
 			 * SCSI Bus and chip.
 			 */
-#if XXX
+#if 0 /* XXX */
 			AdvResetChipAndSB(adv_dvc_varp);
 #endif
 			break;

@@ -605,7 +605,7 @@ bridge_modevent(module_t mod, int type, void *data)
 		bridge_detach_cookie = EVENTHANDLER_REGISTER(
 		    ifnet_detach_event, bridge_ifdetach, NULL,
 		    EVENTHANDLER_PRI_ANY);
-#if notyet
+#if 0 /* notyet */
 		bstp_linkstate_p = bstp_linkstate;
 #endif
 		break;
@@ -618,7 +618,7 @@ bridge_modevent(module_t mod, int type, void *data)
 		bridge_input_p = NULL;
 		bridge_output_p = NULL;
 		bridge_interface_p = NULL;
-#if notyet
+#if 0 /* notyet */
 		bstp_linkstate_p = NULL;
 #endif
 		break;
@@ -4083,7 +4083,7 @@ bridge_ip_checkbasic(struct mbuf **mp)
 
 	if (*mp == NULL)
 		return (-1);
-#if notyet
+#if 0 /* notyet */
 	if (IP_HDR_ALIGNED_P(mtod(m, caddr_t)) == 0) {
 		if ((m = m_copyup(m, sizeof(struct ip),
 			(max_linkhdr + 3) & ~3)) == NULL) {
@@ -4185,7 +4185,7 @@ bridge_ip6_checkbasic(struct mbuf **mp)
 	 * it.  Otherwise, if it is aligned, make sure the entire base
 	 * IPv6 header is in the first mbuf of the chain.
 	 */
-#if notyet
+#if 0 /* notyet */
 	if (IP6_HDR_ALIGNED_P(mtod(m, caddr_t)) == 0) {
 		struct ifnet *inifp = m->m_pkthdr.rcvif;
 		if ((m = m_copyup(m, sizeof(struct ip6_hdr),

@@ -273,7 +273,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 			frame = (struct i386_frame *)(SP_REGS(&ddb_regs) - 4);
 		callpc = PC_REGS(&ddb_regs);
 	} else if (!INKERNEL(addr)) {
-#if needswork
+#if 0 /* needswork */
 		pid = (addr % 16) + ((addr >> 4) % 16) * 10 +
 		    ((addr >> 8) % 16) * 100 + ((addr >> 12) % 16) * 1000 +
 		    ((addr >> 16) % 16) * 10000;

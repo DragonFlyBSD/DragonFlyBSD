@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rpvar.h,v 1.5.2.1 2002/06/18 03:11:46 obrien Exp $
- * $DragonFly: src/sys/dev/serial/rp/rpvar.h,v 1.3 2004/12/03 17:59:20 joerg Exp $
  */
 
 /*
@@ -84,6 +83,6 @@ struct rp_port {
 };
 
 /* Actually not used */
-#if notdef
+#if 0 /* notdef */
 extern struct termios deftermios;
 #endif /* notdef */

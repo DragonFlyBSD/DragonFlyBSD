@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netkey/key_debug.c,v 1.10.2.5 2002/04/28 05:40:28 suz Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key_debug.c,v 1.9 2008/09/16 09:25:45 swildner Exp $	*/
 /*	$KAME: key_debug.c,v 1.26 2001/06/27 10:46:50 sakane Exp $	*/
 
 /*
@@ -573,7 +572,7 @@ kdebug_secasv(struct secasvar *sav)
 	if (sav->lft_s != NULL)
 		kdebug_sadb_lifetime((struct sadb_ext *)sav->lft_s);
 
-#if notyet
+#if 0 /* notyet */
 	/* XXX: misc[123] ? */
 #endif
 

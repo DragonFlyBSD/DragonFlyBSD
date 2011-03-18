@@ -1,6 +1,5 @@
 /*-
  * $FreeBSD: src/sys/sys/kbio.h,v 1.5.2.1 2000/10/29 16:59:32 dwmalone Exp $
- * $DragonFly: src/sys/sys/kbio.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef	_SYS_KBIO_H_
@@ -24,7 +23,7 @@
 #define KDMKTONE	_IO('K', 8 /*, int */)
 
 /* see console.h for the definitions of the following ioctls */
-#if notdef
+#if 0 /* notdef */
 #define KDGETMODE	_IOR('K', 9, int)
 #define KDSETMODE	_IO('K', 10 /*, int */)
 #define KDSBORDER	_IO('K', 13 /*, int */)
@@ -64,7 +63,7 @@
 #define KDSETRAD	_IO('K', 67 /*, int */)
 
 /* see console.h for the definition of the following ioctl */
-#if notdef
+#if 0 /* notdef */
 #define KDRASTER	_IOW('K', 100, scr_size_t)
 #endif
 
@@ -216,7 +215,7 @@ typedef struct fkeyarg	fkeyarg_t;
 
 #define GETFKEY		_IOWR('k', 0, fkeyarg_t)
 #define SETFKEY		_IOWR('k', 1, fkeyarg_t)
-#if notdef		/* see console.h */
+#if 0 /* see console.h */
 #define GIO_SCRNMAP	_IOR('k', 2, scrmap_t)
 #define PIO_SCRNMAP	_IOW('k', 3, scrmap_t)
 #endif

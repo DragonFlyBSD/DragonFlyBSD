@@ -25,7 +25,6 @@
  *
  * $NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.19 2003/11/16 12:26:10 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.20 2008/01/16 12:24:31 matthias Exp $
  */
 
 /*
@@ -178,7 +177,7 @@ static	void uvscom_break(struct uvscom_softc *, int);
 
 static	void uvscom_set(void *, int, int, int);
 static	void uvscom_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
-#if TODO
+#if 0 /* TODO */
 static	int  uvscom_ioctl(void *, int, u_long, caddr_t, int, struct thread *);
 #endif
 static	int  uvscom_param(void *, int, struct termios *);
@@ -836,7 +835,7 @@ uvscom_get_status(void *addr, int portno, u_char *lsr, u_char *msr)
 		*msr = sc->sc_msr;
 }
 
-#if TODO
+#if 0 /* TODO */
 static int
 uvscom_ioctl(void *addr, int portno, u_long cmd, caddr_t data, int flag,
 	     struct thread *p)

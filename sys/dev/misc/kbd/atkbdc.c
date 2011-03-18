@@ -167,7 +167,7 @@ atkbdc_configure(void)
 	tag = 0;	/* XXX */
 #endif
 
-#if notyet
+#if 0 /* notyet */
 	bus_space_map(tag, port0, IO_KBDSIZE, 0, &h0);
 	bus_space_map(tag, port1, IO_KBDSIZE, 0, &h1);
 #else

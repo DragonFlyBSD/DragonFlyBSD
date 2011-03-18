@@ -33,7 +33,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp_pci.c,v 1.3.2.1 2002/06/18 03:11:46 obrien Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp_pci.c,v 1.8 2006/10/25 20:56:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +88,7 @@ static devclass_t rp_devclass;
 
 static int rp_pciprobe(device_t dev);
 static int rp_pciattach(device_t dev);
-#if notdef
+#if 0 /* notdef */
 static int rp_pcidetach(device_t dev);
 static int rp_pcishutdown(device_t dev);
 #endif /* notdef */
@@ -190,7 +189,7 @@ nogo:
 	return (retval);
 }
 
-#if notdef
+#if 0 /* notdef */
 static int
 rp_pcidetach(device_t dev)
 {
@@ -279,7 +278,7 @@ sPCIInitController( CONTROLLER_t *CtlP,
       			CtlP->AiopNumChan[i] = 8;
 			break;
 		default:
-#if notdef
+#if 0 /* notdef */
       			CtlP->AiopNumChan[i] = 8;
 #else
       			CtlP->AiopNumChan[i] = sReadAiopNumChan(CtlP, i);
@@ -333,7 +332,7 @@ static device_method_t rp_pcimethods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		rp_pciprobe),
 	DEVMETHOD(device_attach,	rp_pciattach),
-#if notdef
+#if 0 /* notdef */
 	DEVMETHOD(device_detach,	rp_pcidetach),
 	DEVMETHOD(device_shutdown,	rp_pcishutdown),
 #endif /* notdef */

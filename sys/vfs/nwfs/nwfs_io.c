@@ -30,9 +30,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.24 2007/02/22 15:50:50 corecode Exp $
- *
  */
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/resourcevar.h>	/* defines plimit structure in proc struct */
@@ -225,7 +224,7 @@ nwfs_writevnode(struct vnode *vp, struct uio *uiop, struct ucred *cred,
 		/* We can relay only on local information about file size,
 		 * because until file is closed NetWare will not return
 		 * the correct size. */
-#if notyet
+#if 0 /* notyet */
 			nwfs_attr_cacheremove(vp);
 			error = VOP_GETATTR(vp, &vattr);
 			if (error) return (error);

@@ -33,7 +33,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp_isa.c,v 1.3.2.1 2002/06/18 03:11:46 obrien Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp_isa.c,v 1.7 2006/10/25 20:56:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -231,7 +230,7 @@ rp_attach(device_t dev)
 
 	ctlp = device_get_softc(dev);
 
-#if notdef
+#if 0 /* notdef */
 	num_aiops = sInitController(ctlp,
 				rp_controller,
 				MAX_AIOPS_PER_BOARD, 0,

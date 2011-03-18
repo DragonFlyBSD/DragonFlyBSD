@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/vga_isa.c,v 1.17 2000/01/29 15:08:56 peter Exp $
- * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.14 2008/03/20 21:25:30 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -166,7 +165,7 @@ isavga_attach(device_t dev)
 	if (bootverbose)
 		(*vidsw[sc->adp->va_index]->diag)(sc->adp, bootverbose);
 
-#if experimental
+#if 0 /* experimental */
 	device_add_child(dev, "fb", -1);
 	bus_generic_attach(dev);
 #endif

@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.31 2008/10/03 00:26:21 hasso Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -453,7 +452,7 @@ void	bus_data_generation_update(void);
  * the bus that have no more specific driver for them (aka ugen).
  */
 #define BUS_PROBE_SPECIFIC      0       /* Only I can use this device */
-#if notyet
+#if 0 /* notyet */
 #define BUS_PROBE_VENDOR        (-10)   /* Vendor supplied driver */
 #define BUS_PROBE_DEFAULT       (-20)   /* Base OS default driver */
 #define BUS_PROBE_LOW_PRIORITY  (-40)   /* Older, less desirable drivers */

@@ -1628,7 +1628,7 @@ vga_load_state(video_adapter_t *adp, void *p)
     inb(crtc_addr + 6);				/* reset flip-flop */
     outb(ATC, 0x20);				/* enable palette */
 
-#if notyet /* a temporary workaround for kernel panic, XXX */
+#if 0 /* XXX a temporary workaround for kernel panic */
 #ifndef VGA_NO_BIOS
     if (adp->va_unit == V_ADP_PRIMARY) {
 	writeb(BIOS_PADDRTOVADDR(0x44a), buf[0]);	/* COLS */
@@ -1640,7 +1640,7 @@ vga_load_state(video_adapter_t *adp, void *p)
 #endif
     }
 #endif /* VGA_NO_BIOS */
-#endif /* notyet */
+#endif /* XXX */
 
     crit_exit();
     return 0;

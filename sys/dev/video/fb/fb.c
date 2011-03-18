@@ -316,7 +316,7 @@ vid_configure(int flags)
 
 #ifdef FB_INSTALL_CDEV
 
-#if experimental
+#if 0 /* experimental */
 
 static devclass_t	fb_devclass;
 

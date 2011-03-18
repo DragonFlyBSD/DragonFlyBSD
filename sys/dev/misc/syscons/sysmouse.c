@@ -254,7 +254,7 @@ smioctl(struct dev_ioctl_args *ap)
 		lwkt_reltoken(&tty_token);
 		return 0;
 
-#if notyet
+#if 0 /* notyet */
 	case MOUSE_GETVARS:	/* get internal mouse variables */
 	case MOUSE_SETVARS:	/* set internal mouse variables */
 		lwkt_reltoken(&tty_token);

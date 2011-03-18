@@ -1895,7 +1895,7 @@ itjc_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 static void
 itjc_bchannel_start(int unit, int h_chan)
 {
-#if Buggy_code
+#if 0 /* buggy code */
 	/*
 	 * I disabled this routine because it was causing crashes when
 	 * this driver was used with the ISP (kernel SPPP) protocol driver.

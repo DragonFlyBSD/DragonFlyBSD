@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.27 2008/01/05 14:02:41 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1738,7 +1737,7 @@ ntfs_readattr(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t attrnum,
 	return (error);
 }
 
-#if UNUSED_CODE
+#if 0 /* UNUSED */
 int
 ntfs_parserun(cn_t *cn, cn_t *cl, u_int8_t *run, u_long len, u_long *off)
 {
@@ -1820,7 +1819,7 @@ ntfs_procfixups(struct ntfsmount *ntmp, u_int32_t magic, caddr_t buf,
 	return (0);
 }
 
-#if UNUSED_CODE
+#if 0 /* UNUSED */
 int
 ntfs_runtocn(cn_t *cn,	struct ntfsmount *ntmp, u_int8_t *run, u_long len,
 	     cn_t vcn)
