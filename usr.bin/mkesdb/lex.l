@@ -1,5 +1,4 @@
 /*	$NetBSD: src/usr.bin/mkesdb/lex.l,v 1.2 2003/10/27 00:12:43 lukem Exp $	*/
-/*	$DragonFly: src/usr.bin/mkesdb/lex.l,v 1.2 2006/09/09 23:24:43 pavalos Exp $ */
 
 %{
 /*-
@@ -40,6 +39,7 @@
 #include "ldef.h"
 #include "yacc.h"
 
+#define	YY_NO_INPUT
 #define	YY_NO_UNPUT
 
 int line_number = 1;

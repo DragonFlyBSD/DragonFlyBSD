@@ -1,5 +1,4 @@
 /*	$NetBSD: lex.l,v 1.4 2006/02/09 22:03:15 dogcow Exp $	*/
-/*	$DragonFly: src/usr.bin/mkcsmapper/lex.l,v 1.3 2008/04/10 10:21:13 hasso Exp $ */
 
 %{
 /*-
@@ -39,6 +38,7 @@
 #include "ldef.h"
 #include "yacc.h"
 
+#define	YY_NO_INPUT
 #define	YY_NO_UNPUT
 
 int line_number = 1;
