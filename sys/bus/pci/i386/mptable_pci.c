@@ -61,7 +61,7 @@ mptable_pci_route_interrupt(device_t pcib, device_t dev, int pin)
 
 	line = pci_apic_irq(bus, slot, pin);
 	if (line >= 0) {
-		return line;
+		goto done;
 	} else {
 		int irq = pci_get_irq(dev);
 
@@ -76,12 +76,16 @@ mptable_pci_route_interrupt(device_t pcib, device_t dev, int pin)
 			bus, slot, 'A' + pin - 1, irq);
 		line = isa_apic_irq(irq);
 		if (line >= 0)
-			return line;
+			goto done;
 	}
 
 	kprintf("MPTable: Unable to route for bus %d slot %d INT%c\n",
 		bus, slot, 'A' + pin - 1);
 	return PCI_INVALID_IRQ;
+
+done:
+	BUS_CONFIG_INTR(dev, dev, line, INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
+	return line;
 }
 
 /* Host to PCI bridge driver. */
