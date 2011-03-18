@@ -308,7 +308,7 @@ icu_initmap(void)
 			}
 		}
 	}
-	icu_irqmaps[i].im_type = ICU_IMT_SYSCALL;
+	icu_irqmaps[IDT_OFFSET_SYSCALL - IDT_OFFSET].im_type = ICU_IMT_SYSCALL;
 }
 
 static void
