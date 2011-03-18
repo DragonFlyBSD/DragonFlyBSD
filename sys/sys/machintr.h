@@ -38,6 +38,9 @@
  * vector and masking layer.
  */
 
+#ifndef _SYS_BUS_H_
+#include <sys/bus.h>
+#endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
@@ -66,6 +69,8 @@ struct machintr_abi {
     void	(*setdefault)(void);		/* set default vectors */
     void	(*stabilize)(void);		/* stable before ints enabled */
     void	(*initmap)(void);		/* init irq mapping */
+    void	(*intr_config)			/* config intr */
+    		(int, enum intr_trigger, enum intr_polarity);
 };
 
 #define machintr_intren(intr)	MachIntrABI.intren(intr)
@@ -74,6 +79,9 @@ struct machintr_abi {
 	    MachIntrABI.vectorctl(MACHINTR_VECTOR_SETUP, intr, flags)
 #define machintr_vector_teardown(intr)		\
 	    MachIntrABI.vectorctl(MACHINTR_VECTOR_TEARDOWN, intr, 0)
+
+#define machintr_intr_config(intr, trig, pola)	\
+	    MachIntrABI.intr_config((intr), (trig), (pola))
 
 #ifdef _KERNEL
 

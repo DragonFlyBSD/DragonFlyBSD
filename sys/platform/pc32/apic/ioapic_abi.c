@@ -457,12 +457,15 @@ static struct ioapic_irqmap {
 	enum intr_trigger	im_trig;
 	enum intr_polarity	im_pola;
 	int			im_gsi;
+	uint32_t		im_flags;	/* IOAPIC_IMF_ */
 } ioapic_irqmaps[MAX_HARDINTS];	/* XXX MAX_HARDINTS may not be correct */
 
 #define IOAPIC_IMT_UNUSED	0
 #define IOAPIC_IMT_RESERVED	1
 #define IOAPIC_IMT_LINE		2
 #define IOAPIC_IMT_SYSCALL	3
+
+#define IOAPIC_IMF_CONF		0x1
 
 extern void	IOAPIC_INTREN(int);
 extern void	IOAPIC_INTRDIS(int);
@@ -475,6 +478,7 @@ static void	ioapic_cleanup(void);
 static void	ioapic_setdefault(void);
 static void	ioapic_stabilize(void);
 static void	ioapic_initmap(void);
+static void	ioapic_intr_config(int, enum intr_trigger, enum intr_polarity);
 
 static int	ioapic_imcr_present;
 
@@ -489,7 +493,8 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 	.cleanup	= ioapic_cleanup,
 	.setdefault	= ioapic_setdefault,
 	.stabilize	= ioapic_stabilize,
-	.initmap	= ioapic_initmap
+	.initmap	= ioapic_initmap,
+	.intr_config	= ioapic_intr_config
 };
 
 static int
@@ -755,11 +760,11 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 
 	if (bootverbose) {
 		kprintf("IOAPIC: irq %d -> gsi %d %c\n", irq, map->im_gsi,
-			trig == INTR_TRIGGER_LEVEL ? 'L' : 'E');
+			map->im_trig == INTR_TRIGGER_LEVEL ? 'L' : 'E');
 	}
 
-	pin = ioapic_gsi_pin(gsi);
-	ioaddr = ioapic_gsi_ioaddr(gsi);
+	pin = ioapic_gsi_pin(map->im_gsi);
+	ioaddr = ioapic_gsi_ioaddr(map->im_gsi);
 
 	info = &int_to_apicintpin[irq];
 
@@ -768,7 +773,68 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 	info->apic_address = ioaddr;
 	info->redirindex = IOAPIC_REDTBL + (2 * pin);
 	info->flags = IOAPIC_IM_FLAG_MASKED;
-	if (trig == INTR_TRIGGER_LEVEL)
+	if (map->im_trig == INTR_TRIGGER_LEVEL)
+		info->flags |= IOAPIC_IM_FLAG_LEVEL;
+
+	ioapic_pin_setup(ioaddr, pin, IDT_OFFSET + irq,
+	    map->im_trig, map->im_pola);
+}
+
+static void
+ioapic_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
+{
+	struct apic_intmapinfo *info;
+	struct ioapic_irqmap *map;
+	void *ioaddr;
+	int pin;
+
+	if (ioapic_use_old)
+		return;
+
+	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
+	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
+	KKASSERT((trig == INTR_TRIGGER_EDGE && pola == INTR_POLARITY_HIGH) ||
+		 (trig == INTR_TRIGGER_LEVEL && pola == INTR_POLARITY_LOW));
+
+	KKASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS);
+	map = &ioapic_irqmaps[irq];
+
+	KKASSERT(map->im_type == IOAPIC_IMT_LINE);
+
+	if (map->im_flags & IOAPIC_IMF_CONF) {
+		if (trig != map->im_trig) {
+			panic("ioapic_intr_config: trig %c -> %c\n",
+			      map->im_trig == INTR_TRIGGER_EDGE ? 'E' : 'L',
+			      trig == INTR_TRIGGER_EDGE ? 'E' : 'L');
+		}
+		if (pola != map->im_pola) {
+			panic("ioapic_intr_config: pola %s -> %s\n",
+			      map->im_pola == INTR_POLARITY_HIGH ? "hi" : "lo",
+			      pola == INTR_POLARITY_HIGH ? "hi" : "lo");
+		}
+		return;
+	}
+	map->im_flags |= IOAPIC_IMF_CONF;
+
+	if (trig == map->im_trig && pola == map->im_pola)
+		return;
+
+	if (bootverbose) {
+		kprintf("IOAPIC: irq %d, gsi %d %c -> %c\n", irq, map->im_gsi,
+			map->im_trig == INTR_TRIGGER_LEVEL ? 'L' : 'E',
+			trig == INTR_TRIGGER_LEVEL ? 'L' : 'E');
+	}
+
+	map->im_trig = trig;
+	map->im_pola = pola;
+
+	pin = ioapic_gsi_pin(map->im_gsi);
+	ioaddr = ioapic_gsi_ioaddr(map->im_gsi);
+
+	info = &int_to_apicintpin[irq];
+
+	info->flags &= ~IOAPIC_IM_FLAG_LEVEL;
+	if (map->im_trig == INTR_TRIGGER_LEVEL)
 		info->flags |= IOAPIC_IM_FLAG_LEVEL;
 
 	ioapic_pin_setup(ioaddr, pin, IDT_OFFSET + irq,

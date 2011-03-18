@@ -102,6 +102,7 @@ static void	icu_cleanup(void);
 static void	icu_setdefault(void);
 static void	icu_stabilize(void);
 static void	icu_initmap(void);
+static void	icu_intr_config(int, enum intr_trigger, enum intr_polarity);
 
 struct machintr_abi MachIntrABI_ICU = {
 	MACHINTR_ICU,
@@ -114,7 +115,8 @@ struct machintr_abi MachIntrABI_ICU = {
 	.cleanup	= icu_cleanup,
 	.setdefault	= icu_setdefault,
 	.stabilize	= icu_stabilize,
-	.initmap	= icu_initmap
+	.initmap	= icu_initmap,
+	.intr_config	= icu_intr_config
 };
 
 static int	icu_imcr_present;
@@ -307,4 +309,10 @@ icu_initmap(void)
 		}
 	}
 	icu_irqmaps[IDT_OFFSET_SYSCALL - IDT_OFFSET].im_type = ICU_IMT_SYSCALL;
+}
+
+static void
+icu_intr_config(int irq __unused, enum intr_trigger trig __unused,
+    enum intr_polarity pola __unused)
+{
 }
