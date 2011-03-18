@@ -56,6 +56,7 @@
 
 #include <sys/thread2.h>
 
+#include <machine_base/apic/ioapic_abi.h>
 #include <machine_base/apic/ioapic_ipl.h>
 
 #ifdef SMP /* APIC-IO */
@@ -719,6 +720,51 @@ ioapic_initmap(void)
 	for (i = 0; i < IOAPIC_HWI_VECTORS; ++i)
 		ioapic_irqmaps[i].im_gsi = -1;
 	ioapic_irqmaps[IOAPIC_HWI_SYSCALL].im_type = IOAPIC_IMT_SYSCALL;
+}
+
+void
+ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
+    enum intr_polarity pola)
+{
+	struct apic_intmapinfo *info;
+	struct ioapic_irqmap *map;
+	void *ioaddr;
+	int pin;
+
+	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
+	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
+	KKASSERT((trig == INTR_TRIGGER_EDGE && pola == INTR_POLARITY_HIGH) ||
+		 (trig == INTR_TRIGGER_LEVEL && pola == INTR_POLARITY_LOW));
+
+	KKASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS);
+	map = &ioapic_irqmaps[irq];
+
+	KKASSERT(map->im_type == IOAPIC_IMT_UNUSED);
+	map->im_type = IOAPIC_IMT_LINE;
+
+	map->im_gsi = gsi;
+	map->im_trig = trig;
+	map->im_pola = pola;
+
+	if (bootverbose) {
+		kprintf("IOAPIC: irq %d -> gsi %d %c\n", irq, map->im_gsi,
+			trig == INTR_TRIGGER_LEVEL ? 'L' : 'E');
+	}
+
+	pin = ioapic_gsi_pin(gsi);
+	ioaddr = ioapic_gsi_ioaddr(gsi);
+
+	info = &int_to_apicintpin[irq];
+
+	info->ioapic = 0; /* XXX unused */
+	info->int_pin = pin;
+	info->apic_address = ioaddr;
+	info->redirindex = IOAPIC_REDTBL + (2 * pin);
+	info->flags = IOAPIC_IM_FLAG_MASKED;
+	if (trig == INTR_TRIGGER_LEVEL)
+		info->flags |= IOAPIC_IM_FLAG_LEVEL;
+
+	/* TODO setup pin */
 }
 
 #endif	/* SMP */

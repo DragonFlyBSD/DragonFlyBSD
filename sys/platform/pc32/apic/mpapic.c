@@ -35,6 +35,7 @@
 #include <machine/md_var.h>
 #include <machine/pmap.h>
 #include <machine_base/apic/mpapic.h>
+#include <machine_base/apic/ioapic_abi.h>
 #include <machine/segments.h>
 #include <sys/thread2.h>
 
@@ -1263,9 +1264,7 @@ ioapic_gsi_setup(int gsi)
 		irq = gsi;
 	}
 
-#if 0
 	ioapic_abi_set_irqmap(irq, gsi, trig, pola);
-#endif
 }
 
 void *
