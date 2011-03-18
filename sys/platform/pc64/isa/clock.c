@@ -1071,7 +1071,7 @@ if (apic_io_enable) {
 		     INTR_EXCL | INTR_CLOCK |
 		     INTR_NOPOLL | INTR_MPSAFE |
 		     INTR_NOENTROPY);
-	machintr_intren(ICU_IRQ0);
+	machintr_intren(0);
 #ifdef SMP /* APIC-IO */
 }
 #endif
