@@ -153,6 +153,10 @@ extern volatile lapic_t		*lapic;
 extern volatile ioapic_t	**ioapic;
 extern int			lapic_id_max;
 
+#ifndef _SYS_BUS_H_
+#include <sys/bus.h>
+#endif
+
 /* functions in mpapic.c */
 void	apic_dump		(char*);
 void	apic_initialize		(boolean_t);
@@ -174,6 +178,9 @@ void	ioapic_add(void *, int, int);
 void	ioapic_intsrc(int, int);
 void	*ioapic_gsi_ioaddr(int);
 int	ioapic_gsi_pin(int);
+void	ioapic_pin_setup(void *, int, int,
+	    enum intr_trigger, enum intr_polarity);
+void	ioapic_extpin_setup(void *, int, int);
 
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);

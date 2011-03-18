@@ -85,6 +85,8 @@ static void	ioapic_set_apic_id(const struct ioapic_info *);
 static void	ioapic_gsi_setup(int);
 static const struct ioapic_info *
 		ioapic_gsi_search(int);
+static void	ioapic_pin_prog(void *, int, int,
+		    enum intr_trigger, enum intr_polarity, uint32_t);
 
 static struct cputimer_intr lapic_cputimer_intr = {
 	.freq = 0,
@@ -1242,6 +1244,13 @@ ioapic_gsi_setup(int gsi)
 	enum intr_polarity pola;
 	int irq;
 
+	if (gsi == 0) {
+		/* ExtINT */
+		ioapic_extpin_setup(ioapic_gsi_ioaddr(gsi),
+		    ioapic_gsi_pin(gsi), 0);
+		return;
+	}
+
 	for (irq = 0; irq < 16; ++irq) {
 		if (gsi == ioapic_conf.ioc_intsrc[irq]) {
 			trig = INTR_TRIGGER_EDGE;
@@ -1251,10 +1260,7 @@ ioapic_gsi_setup(int gsi)
 	}
 
 	if (irq == 16) {
-		if (gsi == 0) {
-			/* TODO Program EXTINT */
-			return;
-		} else if (gsi < 16) {
+		if (gsi < 16) {
 			trig = INTR_TRIGGER_EDGE;
 			pola = INTR_POLARITY_HIGH;
 		} else {
@@ -1296,6 +1302,94 @@ ioapic_gsi_search(int gsi)
 			return info;
 	}
 	panic("ioapic_gsi_search: no I/O APIC\n");
+}
+
+void
+ioapic_extpin_setup(void *addr, int pin, int vec)
+{
+	imen_lock();
+	ioapic_pin_prog(addr, pin, vec,
+	    INTR_TRIGGER_CONFORM, INTR_POLARITY_CONFORM, IOART_DELEXINT);
+	imen_unlock();
+}
+
+void
+ioapic_pin_setup(void *addr, int pin, int vec,
+    enum intr_trigger trig, enum intr_polarity pola)
+{
+	/*
+	 * Always clear an I/O APIC pin before [re]programming it.  This is
+	 * particularly important if the pin is set up for a level interrupt
+	 * as the IOART_REM_IRR bit might be set.   When we reprogram the
+	 * vector any EOI from pending ints on this pin could be lost and
+	 * IRR might never get reset.
+	 *
+	 * To fix this problem, clear the vector and make sure it is 
+	 * programmed as an edge interrupt.  This should theoretically
+	 * clear IRR so we can later, safely program it as a level 
+	 * interrupt.
+	 */
+	imen_lock();
+
+	ioapic_pin_prog(addr, pin, vec, INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH,
+	    IOART_DELFIXED);
+	ioapic_pin_prog(addr, pin, vec, trig, pola, IOART_DELFIXED);
+
+	imen_unlock();
+}
+
+static void
+ioapic_pin_prog(void *addr, int pin, int vec,
+    enum intr_trigger trig, enum intr_polarity pola, uint32_t del_mode)
+{
+	uint32_t flags, target;
+	int select;
+
+	KKASSERT(del_mode == IOART_DELEXINT || del_mode == IOART_DELFIXED);
+
+	select = IOAPIC_REDTBL0 + (2 * pin);
+
+	flags = ioapic_read(addr, select) & IOART_RESV;
+	flags |= IOART_INTMSET | IOART_DESTPHY | del_mode;
+
+	if (del_mode == IOART_DELEXINT) {
+		KKASSERT(trig == INTR_TRIGGER_CONFORM &&
+			 pola == INTR_POLARITY_CONFORM);
+		flags |= IOART_TRGREDG | IOART_INTAHI;
+	} else {
+		switch (trig) {
+		case INTR_TRIGGER_EDGE:
+			flags |= IOART_TRGREDG;
+			break;
+
+		case INTR_TRIGGER_LEVEL:
+			flags |= IOART_TRGRLVL;
+			break;
+
+		case INTR_TRIGGER_CONFORM:
+			panic("ioapic_pin_prog: trig conform is not "
+			      "supported\n");
+		}
+		switch (pola) {
+		case INTR_POLARITY_HIGH:
+			flags |= IOART_INTAHI;
+			break;
+
+		case INTR_POLARITY_LOW:
+			flags |= IOART_INTALO;
+			break;
+
+		case INTR_POLARITY_CONFORM:
+			panic("ioapic_pin_prog: pola conform is not "
+			      "supported\n");
+		}
+	}
+
+	target = ioapic_read(addr, select + 1) & IOART_HI_DEST_RESV;
+	target |= 0;
+
+	ioapic_write(addr, select, flags | vec);
+	ioapic_write(addr, select + 1, target);
 }
 
 static void

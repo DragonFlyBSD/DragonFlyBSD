@@ -764,7 +764,8 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 	if (trig == INTR_TRIGGER_LEVEL)
 		info->flags |= IOAPIC_IM_FLAG_LEVEL;
 
-	/* TODO setup pin */
+	ioapic_pin_setup(ioaddr, pin, IDT_OFFSET + irq,
+	    map->im_trig, map->im_pola);
 }
 
 #endif	/* SMP */
