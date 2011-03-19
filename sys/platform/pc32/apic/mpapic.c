@@ -130,6 +130,34 @@ lapic_init(boolean_t bsp)
 	u_int   temp;
 
 	/*
+	 * Install vectors
+	 *
+	 * Since IDT is shared between BSP and APs, these vectors
+	 * only need to be installed once; we do it on BSP.
+	 */
+	if (bsp) {
+		/* Install a 'Spurious INTerrupt' vector */
+		setidt(XSPURIOUSINT_OFFSET, Xspuriousint,
+		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+
+		/* Install an inter-CPU IPI for TLB invalidation */
+		setidt(XINVLTLB_OFFSET, Xinvltlb,
+		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+
+		/* Install an inter-CPU IPI for IPIQ messaging */
+		setidt(XIPIQ_OFFSET, Xipiq,
+		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+
+		/* Install a timer vector */
+		setidt(XTIMER_OFFSET, Xtimer,
+		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+		
+		/* Install an inter-CPU IPI for CPU stop/restart */
+		setidt(XCPUSTOP_OFFSET, Xcpustop,
+		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	}
+
+	/*
 	 * Setup LINT0 as ExtINT on the BSP.  This is theoretically an
 	 * aggregate interrupt input from the 8259.  The INTA cycle
 	 * will be routed to the external controller (the 8259) which

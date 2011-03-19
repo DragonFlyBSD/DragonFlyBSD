@@ -689,30 +689,6 @@ if (apic_io_enable && ioapic_use_old) {
 
 }
 
-	/*
-	 * These are required for SMP operation
-	 */
-
-	/* install a 'Spurious INTerrupt' vector */
-	setidt(XSPURIOUSINT_OFFSET, Xspuriousint,
-	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-
-	/* install an inter-CPU IPI for TLB invalidation */
-	setidt(XINVLTLB_OFFSET, Xinvltlb,
-	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-
-	/* install an inter-CPU IPI for IPIQ messaging */
-	setidt(XIPIQ_OFFSET, Xipiq,
-	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-
-	/* install a timer vector */
-	setidt(XTIMER_OFFSET, Xtimer,
-	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	
-	/* install an inter-CPU IPI for CPU stop/restart */
-	setidt(XCPUSTOP_OFFSET, Xcpustop,
-	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-
 	/* start each Application Processor */
 	start_all_aps(boot_addr);
 }
