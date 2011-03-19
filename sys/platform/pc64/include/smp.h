@@ -160,7 +160,7 @@ extern int			lapic_id_max;
 
 /* functions in mpapic.c */
 void	apic_dump		(char*);
-void	apic_initialize		(boolean_t);
+void	lapic_init		(boolean_t);
 void	imen_dump		(void);
 int	apic_ipi		(int, int, int);
 void	selected_apic_ipi	(cpumask_t, int, int);

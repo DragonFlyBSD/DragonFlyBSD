@@ -124,7 +124,7 @@ static struct ioapic_conf	ioapic_conf;
  * Enable LAPIC, configure interrupts.
  */
 void
-apic_initialize(boolean_t bsp)
+lapic_init(boolean_t bsp)
 {
 	uint32_t timer;
 	u_int   temp;

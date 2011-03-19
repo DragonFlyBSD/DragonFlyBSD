@@ -2159,7 +2159,7 @@ start_all_aps(u_int boot_addr)
 	POSTCODE(START_ALL_APS_POST);
 
 	/* Initialize BSP's local APIC */
-	apic_initialize(TRUE);
+	lapic_init(TRUE);
 
 	/* Finalize PIC */
 	MachIntrABI.finalize();
@@ -2799,7 +2799,7 @@ ap_init(void)
 	}
 
 	/* Initialize AP's local APIC for irq's */
-	apic_initialize(FALSE);
+	lapic_init(FALSE);
 
 	/* Set memory range attributes for this CPU to match the BSP */
 	mem_range_AP_init();
