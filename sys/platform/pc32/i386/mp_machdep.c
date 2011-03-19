@@ -652,6 +652,9 @@ mp_enable(u_int boot_addr)
 
 	lapic_config();
 
+	/* Initialize BSP's local APIC */
+	lapic_init(TRUE);
+
 	if (apic_io_enable)
 		ioapic_config();
 
@@ -688,6 +691,9 @@ if (apic_io_enable && ioapic_use_old) {
 			panic("IO APIC setup failure");
 
 }
+
+	/* Finalize PIC */
+	MachIntrABI.finalize();
 
 	/* start each Application Processor */
 	start_all_aps(boot_addr);
@@ -2136,12 +2142,6 @@ start_all_aps(u_int boot_addr)
 	uintptr_t kptbase;
 
 	POSTCODE(START_ALL_APS_POST);
-
-	/* Initialize BSP's local APIC */
-	lapic_init(TRUE);
-
-	/* Finalize PIC */
-	MachIntrABI.finalize();
 
 	/* install the AP 1st level boot code */
 	install_ap_tramp(boot_addr);
