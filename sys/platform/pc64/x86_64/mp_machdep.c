@@ -332,7 +332,6 @@ static void	mptable_fix(void);
 #endif
 static int	mptable_map(struct mptable_pos *);
 static void	mptable_unmap(struct mptable_pos *);
-static void	mptable_imcr(struct mptable_pos *);
 static void	mptable_bus_info_alloc(const mpcth_t,
 		    struct mptable_bus_info *);
 static void	mptable_bus_info_free(struct mptable_bus_info *);
@@ -359,6 +358,8 @@ static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
 cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 static u_int	bootMP_size;
+
+int			imcr_present;
 
 static vm_paddr_t	mptable_fps_phyaddr;
 static int		mptable_use_default;
@@ -410,6 +411,8 @@ mptable_probe(void)
 		kprintf("MPTABLE: use default configuration\n");
 		mptable_use_default = 1;
 	}
+	if (mpt.mp_fps->mpfb2 & 0x80)
+		imcr_present = 1;
 
 	mptable_unmap(&mpt);
 }
@@ -673,11 +676,6 @@ mp_enable(u_int boot_addr)
 	if (apic_io_enable)
 		ioapic_config();
 
-	if (mptable_fps_phyaddr) {
-		mptable_map(&mpt);
-		mptable_imcr(&mpt);
-		mptable_unmap(&mpt);
-	}
 if (apic_io_enable && ioapic_use_old) {
 
 	if (!mptable_fps_phyaddr)
@@ -3028,14 +3026,6 @@ mptable_lapic_pass2_callback(void *xarg, const void *pos, int type)
 		}
 	}
 	return 0;
-}
-
-static void
-mptable_imcr(struct mptable_pos *mpt)
-{
-	/* record whether PIC or virtual-wire mode */
-	machintr_setvar_simple(MACHINTR_VAR_IMCR_PRESENT,
-			       mpt->mp_fps->mpfb2 & 0x80);
 }
 
 static void

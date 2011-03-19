@@ -119,43 +119,19 @@ struct machintr_abi MachIntrABI_ICU = {
 	.intr_config	= icu_intr_config
 };
 
-static int	icu_imcr_present;
-
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
  */
 static int
 icu_setvar(int varid, const void *buf)
 {
-	int error = 0;
-	
-	switch(varid) {
-	case MACHINTR_VAR_IMCR_PRESENT:
-		icu_imcr_present = *(const int *)buf;
-		break;
-
-	default:
-		error = ENOENT;
-		break;
-	}
-	return error;
+	return ENOENT;
 }
 
 static int
 icu_getvar(int varid, void *buf)
 {
-	int error = 0;
-	
-	switch(varid) {
-	case MACHINTR_VAR_IMCR_PRESENT:
-		*(int *)buf = icu_imcr_present;
-		break;
-
-	default:
-		error = ENOENT;
-		break;
-	}
-	return error;
+	return ENOENT;
 }
 
 /*
@@ -199,8 +175,6 @@ icu_finalize(void)
 		 * MachIntrABI switching will happen in
 		 * MachIntrABI_IOAPIC.finalize()
 		 */
-		MachIntrABI_IOAPIC.setvar(MACHINTR_VAR_IMCR_PRESENT,
-					  &icu_imcr_present);
 		MachIntrABI_IOAPIC.finalize();
 		return;
 	}
@@ -214,7 +188,7 @@ icu_finalize(void)
 	 * wire mode so we can use other interrupt sources within the LAPIC
 	 * in addition to the 8259.
 	 */
-	if (icu_imcr_present) {
+	if (imcr_present) {
 		register_t ef;
 
 		crit_enter();

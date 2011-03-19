@@ -480,8 +480,6 @@ static void	ioapic_stabilize(void);
 static void	ioapic_initmap(void);
 static void	ioapic_intr_config(int, enum intr_trigger, enum intr_polarity);
 
-static int	ioapic_imcr_present;
-
 struct machintr_abi MachIntrABI_IOAPIC = {
 	MACHINTR_IOAPIC,
 	.intrdis	= IOAPIC_INTRDIS,
@@ -500,35 +498,13 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 static int
 ioapic_setvar(int varid, const void *buf)
 {
-	int error = 0;
-
-	switch (varid) {
-	case MACHINTR_VAR_IMCR_PRESENT:
-		ioapic_imcr_present = *(const int *)buf;
-		break;
-
-	default:
-		error = ENOENT;
-		break;
-	}
-	return error;
+	return ENOENT;
 }
 
 static int
 ioapic_getvar(int varid, void *buf)
 {
-	int error = 0;
-
-	switch (varid) {
-	case MACHINTR_VAR_IMCR_PRESENT:
-		*(int *)buf = ioapic_imcr_present;
-		break;
-
-	default:
-		error = ENOENT;
-		break;
-	}
-	return error;
+	return ENOENT;
 }
 
 /*
@@ -554,7 +530,7 @@ ioapic_finalize(void)
 	 * from the BSP.  The 8259 may still be connected to LINT0 on
 	 * the BSP's LAPIC.
 	 */
-	if (ioapic_imcr_present) {
+	if (imcr_present) {
 		outb(0x22, 0x70);	/* select IMCR */
 		outb(0x23, 0x01);	/* disconnect 8259 */
 	}

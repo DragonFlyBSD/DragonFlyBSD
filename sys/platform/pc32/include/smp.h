@@ -56,6 +56,7 @@ u_int	ioapic_read		(volatile void *, int);
 void	ioapic_write		(volatile void *, int, u_int);
 
 /* global data in mp_machdep.c */
+extern int			imcr_present;
 extern int			mp_naps;
 extern int			mp_napics;
 extern vm_offset_t		io_apic_address[];
