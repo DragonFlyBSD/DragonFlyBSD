@@ -29,6 +29,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
+#include <sys/machintr.h>
 #include <machine/globaldata.h>
 #include <machine/smp.h>
 #include <machine/cputypes.h>
@@ -1121,6 +1122,7 @@ ioapic_config(void)
 {
 	struct ioapic_enumerator *e;
 	int error, i;
+	u_long ef = 0;
 
 	TAILQ_INIT(&ioapic_conf.ioc_list);
 	/* XXX magic number */
@@ -1139,6 +1141,20 @@ ioapic_config(void)
 		kprintf("no I/O APIC\n");
 		return;
 #endif
+	}
+
+	if (!ioapic_use_old) {
+		crit_enter();
+
+		ef = read_eflags();
+		cpu_disable_intr();
+
+		/*
+		 * Switch to I/O APIC MachIntrABI and reconfigure
+		 * the default IDT entries.
+		 */
+		MachIntrABI = MachIntrABI_IOAPIC;
+		MachIntrABI.setdefault();
 	}
 
 	e->ioapic_enumerate(e);
@@ -1184,6 +1200,12 @@ ioapic_config(void)
 		 */
 		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
 			ioapic_setup(info);
+
+		write_eflags(ef);
+
+		MachIntrABI.cleanup();
+
+		crit_exit();
 
 		panic("ioapic_config: new ioapic not working yet\n");
 	}

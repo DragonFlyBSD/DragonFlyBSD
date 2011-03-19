@@ -507,50 +507,20 @@ ioapic_getvar(int varid, void *buf)
 	return ENOENT;
 }
 
-/*
- * Called from ICU's finalize if I/O APIC is enabled, after BSP's LAPIC
- * is initialized; some of the BSP's LAPIC configuration are adjusted.
- *
- * - disable 'pic mode'.
- * - disable 'virtual wire mode'.
- * - switch MachIntrABI
- * - enable NMI.
- */
 static void
 ioapic_finalize(void)
 {
-	register_t ef;
-
-	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
+	KKASSERT(MachIntrABI.type == MACHINTR_IOAPIC);
 	KKASSERT(apic_io_enable);
 
 	/*
 	 * If an IMCR is present, program bit 0 to disconnect the 8259
-	 * from the BSP.  The 8259 may still be connected to LINT0 on
-	 * the BSP's LAPIC.
+	 * from the BSP.
 	 */
 	if (imcr_present) {
 		outb(0x22, 0x70);	/* select IMCR */
 		outb(0x23, 0x01);	/* disconnect 8259 */
 	}
-
-	crit_enter();
-
-	ef = read_rflags();
-	cpu_disable_intr();
-
-	/*
-	 * 8259 is completely disconnected; switch to IOAPIC MachIntrABI
-	 * and reconfigure the default IDT entries.
-	 */
-	MachIntrABI = MachIntrABI_IOAPIC;
-	MachIntrABI.setdefault();
-
-	write_rflags(ef);
-
-	MachIntrABI.cleanup();
-
-	crit_exit();
 }
 
 /*

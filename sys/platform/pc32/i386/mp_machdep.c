@@ -56,6 +56,7 @@
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
 #include <machine/cputypes.h>
+#include <machine_base/apic/ioapic_abi.h>
 #include <machine_base/apic/mpapic.h>
 #include <machine/psl.h>
 #include <machine/segments.h>
@@ -659,9 +660,22 @@ mp_enable(u_int boot_addr)
 		ioapic_config();
 
 if (apic_io_enable && ioapic_use_old) {
+	u_long ef;
 
 	if (!mptable_fps_phyaddr)
 		panic("no MP table, disable APIC_IO! (set hw.apic_io_enable=0)\n");
+
+	crit_enter();
+
+	ef = read_eflags();
+	cpu_disable_intr();
+
+	/*
+	 * Switch to I/O APIC MachIntrABI and reconfigure
+	 * the default IDT entries.
+	 */
+	MachIntrABI = MachIntrABI_IOAPIC;
+	MachIntrABI.setdefault();
 
 	mptable_map(&mpt);
 
@@ -690,6 +704,11 @@ if (apic_io_enable && ioapic_use_old) {
 		if (io_apic_setup(apic) < 0)
 			panic("IO APIC setup failure");
 
+	write_eflags(ef);
+
+	MachIntrABI.cleanup();
+
+	crit_exit();
 }
 
 	/* Finalize PIC */

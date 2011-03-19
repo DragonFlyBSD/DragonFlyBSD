@@ -65,6 +65,7 @@
 
 #include <machine/md_var.h>		/* setidt() */
 #include <machine_base/icu/icu.h>	/* IPIs */
+#include <machine_base/apic/ioapic_abi.h>
 #include <machine/intr_machdep.h>	/* IPIs */
 
 #define FIXUP_EXTRA_APIC_INTS	8	/* additional entries we may create */
@@ -680,9 +681,22 @@ mp_enable(u_int boot_addr)
 		ioapic_config();
 
 if (apic_io_enable && ioapic_use_old) {
+	register_t ef;
 
 	if (!mptable_fps_phyaddr)
 		panic("no MP table, disable APIC_IO! (set hw.apic_io_enable=0)\n");
+
+	crit_enter();
+
+	ef = read_rflags();
+	cpu_disable_intr();
+
+	/*
+	 * Switch to I/O APIC MachIntrABI and reconfigure
+	 * the default IDT entries.
+	 */
+	MachIntrABI = MachIntrABI_IOAPIC;
+	MachIntrABI.setdefault();
 
 	mptable_map(&mpt);
 
@@ -711,6 +725,11 @@ if (apic_io_enable && ioapic_use_old) {
 		if (io_apic_setup(apic) < 0)
 			panic("IO APIC setup failure");
 
+	write_rflags(ef);
+
+	MachIntrABI.cleanup();
+
+	crit_exit();
 }
 
 	/* Finalize PIC */

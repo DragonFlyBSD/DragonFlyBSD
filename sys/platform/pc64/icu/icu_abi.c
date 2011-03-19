@@ -54,7 +54,6 @@
 
 #include <sys/thread2.h>
 
-#include <machine_base/apic/ioapic_abi.h>
 #include <machine_base/isa/elcr_var.h>
 
 #include "icu.h"
@@ -160,9 +159,6 @@ icu_cleanup(void)
 /*
  * Called after stablize and cleanup; critical section is not
  * held and interrupts are not physically disabled.
- *
- * For SMP:
- * Further delayed after BSP's LAPIC is initialized
  */
 static void
 icu_finalize(void)
@@ -170,14 +166,7 @@ icu_finalize(void)
 	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
 
 #ifdef SMP
-	if (apic_io_enable) {
-		/*
-		 * MachIntrABI switching will happen in
-		 * MachIntrABI_IOAPIC.finalize()
-		 */
-		MachIntrABI_IOAPIC.finalize();
-		return;
-	}
+	KKASSERT(!apic_io_enable);
 
 	/*
 	 * If an IMCR is present, programming bit 0 disconnects the 8259
@@ -189,19 +178,8 @@ icu_finalize(void)
 	 * in addition to the 8259.
 	 */
 	if (imcr_present) {
-		register_t ef;
-
-		crit_enter();
-
-		ef = read_rflags();
-		cpu_disable_intr();
-
 		outb(0x22, 0x70);
 		outb(0x23, 0x01);
-
-		write_rflags(ef);
-
-		crit_exit();
 	}
 #endif	/* SMP */
 }
