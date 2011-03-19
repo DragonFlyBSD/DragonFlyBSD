@@ -77,6 +77,7 @@ static struct command commands[] = {
 	{"objcopy",	BINUTILS2},
 	{"objdump",	BINUTILS2},
 	{"ranlib",	BINUTILS2},
+	{"readelf",	BINUTILS2},
 	{"size",	BINUTILS2},
 	{"strings",	BINUTILS2},
 	{"strip",	BINUTILS2},
