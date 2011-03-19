@@ -520,7 +520,6 @@ static void
 ioapic_finalize(void)
 {
 	register_t ef;
-	uint32_t temp;
 
 	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
 	KKASSERT(apic_io_enable);
@@ -534,15 +533,6 @@ ioapic_finalize(void)
 		outb(0x22, 0x70);	/* select IMCR */
 		outb(0x23, 0x01);	/* disconnect 8259 */
 	}
-
-	/*
-	 * Setup LINT0 (the 8259 'virtual wire' connection).  We
-	 * mask the interrupt, completing the disconnection of the
-	 * 8259.
-	 */
-	temp = lapic->lvt_lint0;
-	temp |= APIC_LVT_MASKED;
-	lapic->lvt_lint0 = temp;
 
 	crit_enter();
 
@@ -561,16 +551,6 @@ ioapic_finalize(void)
 	MachIntrABI.cleanup();
 
 	crit_exit();
-
-	/*
-	 * Setup LINT1 to handle an NMI 
-	 */
-	temp = lapic->lvt_lint1;
-	temp &= ~APIC_LVT_MASKED;
-	lapic->lvt_lint1 = temp;
-
-	if (bootverbose)
-		apic_dump("ioapic_finalize()");
 }
 
 /*

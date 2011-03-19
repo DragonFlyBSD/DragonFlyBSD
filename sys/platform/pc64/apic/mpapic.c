@@ -172,26 +172,38 @@ lapic_init(boolean_t bsp)
 	 *
 	 * Must be setup edge triggered, active high.
 	 *
+	 * Disable LINT0 on BSP, if I/O APIC is enabled.
+	 *
 	 * Disable LINT0 on the APs.  It doesn't matter what delivery
 	 * mode we use because we leave it masked.
 	 */
 	temp = lapic->lvt_lint0;
 	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
 		  APIC_LVT_POLARITY_MASK | APIC_LVT_DM_MASK);
-	if (bsp)
+	if (bsp) {
 		temp |= APIC_LVT_DM_EXTINT;
-	else
+		if (apic_io_enable)
+			temp |= APIC_LVT_MASKED;
+	} else {
 		temp |= APIC_LVT_DM_FIXED | APIC_LVT_MASKED;
+	}
 	lapic->lvt_lint0 = temp;
 
 	/*
-	 * Setup LINT1 as NMI, masked till later.
-	 * Edge trigger, active high.
+	 * Setup LINT1 as NMI.
+	 *
+	 * Must be setup edge trigger, active high.
+	 *
+	 * Enable LINT1 on BSP, if I/O APIC is enabled.
+	 *
+	 * Disable LINT1 on the APs.
 	 */
 	temp = lapic->lvt_lint1;
 	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
 		  APIC_LVT_POLARITY_MASK | APIC_LVT_DM_MASK);
 	temp |= APIC_LVT_MASKED | APIC_LVT_DM_NMI;
+	if (bsp && apic_io_enable)
+		temp &= ~APIC_LVT_MASKED;
 	lapic->lvt_lint1 = temp;
 
 	/*
