@@ -73,7 +73,8 @@ hack.So: Makefile
 assym.s: $S/kern/genassym.sh genassym.o
 	sh $S/kern/genassym.sh genassym.o > ${.TARGET}
 
-genassym.o: $S/platform/$P/$M/genassym.c ${FORWARD_HEADERS_COOKIE}
+genassym.o: $S/platform/$P/$M/genassym.c ${FORWARD_HEADERS_COOKIE} \
+	    ${MFILES:T:S/.m$/.h/}
 	${CC} -c ${CFLAGS:N-fno-common:N-mcmodel=small} ${WERROR} \
 	$S/platform/$P/$M/genassym.c
 
