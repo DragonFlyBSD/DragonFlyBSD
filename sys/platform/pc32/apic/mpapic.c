@@ -171,7 +171,7 @@ lapic_init(boolean_t bsp)
 	temp = lapic.lvt_lint0;
 	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
 		  APIC_LVT_POLARITY_MASK | APIC_LVT_DM_MASK);
-	if (mycpu->gd_cpuid == 0)
+	if (bsp)
 		temp |= APIC_LVT_DM_EXTINT;
 	else
 		temp |= APIC_LVT_DM_FIXED | APIC_LVT_MASKED;
