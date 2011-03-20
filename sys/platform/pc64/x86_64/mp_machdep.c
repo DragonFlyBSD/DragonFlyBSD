@@ -3421,6 +3421,7 @@ mptable_pci_int_register(void)
 	if (TAILQ_EMPTY(&bus_info.mbi_list))
 		goto done;
 
+	force_pci0 = 0;
 	npcibus = 0;
 	TAILQ_FOREACH(bus, &bus_info.mbi_list, mb_link) {
 		if (bus->mb_type == MPTABLE_BUS_PCI)
