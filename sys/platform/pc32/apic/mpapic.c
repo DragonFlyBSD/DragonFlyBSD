@@ -1200,6 +1200,7 @@ ioapic_config(void)
 		 */
 		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
 			ioapic_setup(info);
+		ioapic_abi_fixup_irqmap();
 
 		write_eflags(ef);
 

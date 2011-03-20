@@ -703,6 +703,22 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 	imen_unlock();
 }
 
+void
+ioapic_abi_fixup_irqmap(void)
+{
+	int i;
+
+	for (i = 0; i < 16; ++i) {
+		struct ioapic_irqmap *map = &ioapic_irqmaps[i];
+
+		if (map->im_type == IOAPIC_IMT_UNUSED) {
+			map->im_type = IOAPIC_IMT_RESERVED;
+			if (bootverbose)
+				kprintf("IOAPIC: irq %d reserved\n", i);
+		}
+	}
+}
+
 static void
 ioapic_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 {

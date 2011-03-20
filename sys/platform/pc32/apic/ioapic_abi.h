@@ -50,6 +50,7 @@
 extern struct machintr_abi MachIntrABI_IOAPIC;
 
 void	ioapic_abi_set_irqmap(int, int, enum intr_trigger, enum intr_polarity);
+void	ioapic_abi_fixup_irqmap(void);
 
 #endif	/* SMP */
 
