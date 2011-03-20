@@ -1308,8 +1308,10 @@ ioapic_gsi_setup(int gsi)
 
 	if (gsi == 0) {
 		/* ExtINT */
+		imen_lock();
 		ioapic_extpin_setup(ioapic_gsi_ioaddr(gsi),
 		    ioapic_gsi_pin(gsi), 0);
+		imen_unlock();
 		return;
 	}
 
@@ -1369,10 +1371,8 @@ ioapic_gsi_search(int gsi)
 void
 ioapic_extpin_setup(void *addr, int pin, int vec)
 {
-	imen_lock();
 	ioapic_pin_prog(addr, pin, vec,
 	    INTR_TRIGGER_CONFORM, INTR_POLARITY_CONFORM, IOART_DELEXINT);
-	imen_unlock();
 }
 
 void
@@ -1391,13 +1391,9 @@ ioapic_pin_setup(void *addr, int pin, int vec,
 	 * clear IRR so we can later, safely program it as a level 
 	 * interrupt.
 	 */
-	imen_lock();
-
 	ioapic_pin_prog(addr, pin, vec, INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH,
 	    IOART_DELFIXED);
 	ioapic_pin_prog(addr, pin, vec, trig, pola, IOART_DELFIXED);
-
-	imen_unlock();
 }
 
 static void

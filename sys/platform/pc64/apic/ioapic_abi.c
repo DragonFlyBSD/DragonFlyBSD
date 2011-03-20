@@ -687,6 +687,8 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 
 	info = &int_to_apicintpin[irq];
 
+	imen_lock();
+
 	info->ioapic = 0; /* XXX unused */
 	info->int_pin = pin;
 	info->apic_address = ioaddr;
@@ -697,6 +699,8 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 
 	ioapic_pin_setup(ioaddr, pin, IDT_OFFSET + irq,
 	    map->im_trig, map->im_pola);
+
+	imen_unlock();
 }
 
 static void
@@ -757,12 +761,16 @@ ioapic_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 
 	info = &int_to_apicintpin[irq];
 
+	imen_lock();
+
 	info->flags &= ~IOAPIC_IM_FLAG_LEVEL;
 	if (map->im_trig == INTR_TRIGGER_LEVEL)
 		info->flags |= IOAPIC_IM_FLAG_LEVEL;
 
 	ioapic_pin_setup(ioaddr, pin, IDT_OFFSET + irq,
 	    map->im_trig, map->im_pola);
+
+	imen_unlock();
 }
 
 #endif	/* SMP */
