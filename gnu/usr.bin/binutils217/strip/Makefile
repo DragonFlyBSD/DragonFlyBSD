@@ -1,11 +1,11 @@
-# $DragonFly: src/gnu/usr.bin/binutils217/strip/Makefile,v 1.1 2007/04/13 12:24:33 corecode Exp $
-
 .include "../Makefile.inc0"
 
 .PATH: ${SRCDIR}/binutils ${SRCDIR}/binutils/doc
 
 PROG=	strip
 SRCS=	objcopy.c is-strip.c
+MAN=	strip217.1
+MLINKS+=strip217.1 strip.1
 WARNS=	1
 CFLAGS+= -I${.CURDIR}/${RELTOP}/libbinutils
 CFLAGS+= -I${SRCDIR}/binutils
@@ -25,6 +25,11 @@ maybe_stripped: strip
 	-strip maybe_stripped
 .endif
 .endif
+
+strip217.1: ${SRCDIR}/binutils/doc/strip.1
+	cp ${.ALLSRC} ${.TARGET}
+
+CLEANFILES+=	strip217.1
 
 realinstall:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \

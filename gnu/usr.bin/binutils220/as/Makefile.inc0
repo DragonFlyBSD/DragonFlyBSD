@@ -6,7 +6,7 @@ RELTOP:= ../${RELTOP}
 TARGET_OS?=	dragonfly
 
 PROG=	as
-MAN=	doc/as.1
+MAN=	as220.1
 SRCS+=	app.c as.c atof-generic.c atof-ieee.c \
 	cond.c depend.c dwarf2dbg.c dw2gencfi.c ecoff.c ehopt.c \
 	expr.c flonum-copy.c \
@@ -30,3 +30,8 @@ NOSHARED?=	yes
 
 DPADD+=	${RELTOP}/libopcodes/libopcodes.a
 LDADD+=	${RELTOP}/libopcodes/libopcodes.a
+
+as220.1: ${SRCDIR}/gas/doc/as.1
+	cp ${.ALLSRC} ${.TARGET}
+
+CLEANFILES+=	as220.1

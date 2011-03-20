@@ -1,5 +1,3 @@
-# $DragonFly: src/gnu/usr.bin/binutils217/ld/Makefile,v 1.1 2007/04/13 12:24:32 corecode Exp $
-
 ELF_SCR_EXT=	x xbn xn xr xs xu xc xsc
 
 .include "../Makefile.inc0"
@@ -7,6 +5,8 @@ ELF_SCR_EXT=	x xbn xn xr xs xu xc xsc
 .PATH: ${SRCDIR}/ld
 
 PROG=	ld
+MAN=	ld217.1
+MLINKS+=ld217.1 ld.1
 LIBEXEC_BINUTILS= /usr/libexec/binutils217
 SCRIPTDIR= ${LIBEXEC_BINUTILS}/ldscripts
 SRCS+=	ldcref.c ldctor.c ldemul.c ldemul-list.h ldexp.c ldfile.c \
@@ -55,6 +55,11 @@ ldemul-list.h:
 
 stringify.sed:
 	${LN} -sf ${SRCDIR}/ld/emultempl/astring.sed ${.TARGET}
+
+ld217.1: ${SRCDIR}/ld/ld.1
+	cp ${.ALLSRC} ${.TARGET}
+
+CLEANFILES+=	ld217.1
 
 afterinstall:
 	${INSTALL} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \

@@ -5,6 +5,7 @@ ELF_SCR_EXT=	x xbn xc xd xdc xdw xn xr xs xsc xsw xu xw
 .PATH: ${SRCDIR}/ld
 
 PROG=	ld
+MAN=	ld220.1
 LIBEXEC_BINUTILS= ${BINDIR}/..
 SCRIPTDIR= ${LIBEXEC_BINUTILS}/ldscripts
 SRCS+=	ldgram.y ldlex.l lexsup.c ldlang.c mri.c ldctor.c ldmain.c \
@@ -35,6 +36,11 @@ ldemul-list.h:
 
 stringify.sed:
 	${LN} -sf ${SRCDIR}/ld/emultempl/astring.sed ${.TARGET}
+
+ld220.1: ${SRCDIR}/ld/ld.1
+	cp ${.ALLSRC} ${.TARGET}
+
+CLEANFILES+=	ld220.1
 
 afterinstall: install-ldscripts
 

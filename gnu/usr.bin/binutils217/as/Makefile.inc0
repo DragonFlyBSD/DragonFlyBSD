@@ -1,5 +1,3 @@
-# $DragonFly: src/gnu/usr.bin/binutils217/as/Makefile.inc0,v 1.1 2007/04/13 12:24:32 corecode Exp $
-
 .include "${.CURDIR}/../../Makefile.inc0"
 
 RELTOP:= ../${RELTOP}
@@ -9,7 +7,8 @@ TARGET_VENDOR?=	DragonFly
 TARGET_OS?=	dragonfly1.9
 
 PROG=	as
-MAN=	doc/as.1
+MAN=	as217.1
+MLINKS+=as217.1 as.1
 SRCS+=	app.c as.c atof-generic.c atof-ieee.c \
 	cond.c dwarf2dbg.c dw2gencfi.c ecoff.c expr.c flonum-copy.c \
 	flonum-konst.c flonum-mult.c frags.c hash.c input-file.c \
@@ -58,3 +57,8 @@ CFLAGS+= -I${BINUTILSDISTDIR}/bfd
 CFLAGS+= -I${BINUTILSDISTDIR}/include
 CFLAGS+= -I${BINUTILSDISTDIR}
 .endif
+
+as217.1: ${SRCDIR}/gas/doc/as.1
+	cp ${.ALLSRC} ${.TARGET}
+
+CLEANFILES+=	as217.1
