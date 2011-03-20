@@ -3,9 +3,10 @@
 
 PROG=	gcov
 MAN=	gcov${GCCSHORTVER}.1
+MLINKS=	gcov${GCCSHORTVER}.1 gcov.1
 
 .if ${GCCDOCSUFFIX} != ${GCCSHORTVER}
-MLINKS=	gcov${GCCSHORTVER}.1 gcov${GCCDOCSUFFIX}.1
+MLINKS+=gcov${GCCSHORTVER}.1 gcov${GCCDOCSUFFIX}.1
 .endif
 
 SRCS=	gcov.c intl.c errors.c version.c

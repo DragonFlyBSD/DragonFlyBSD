@@ -1,12 +1,9 @@
-# $DragonFly: src/gnu/usr.bin/cc41/cpp/Makefile,v 1.1 2006/09/27 12:10:35 corecode Exp $
-
 .include "../Makefile.inc"
 .include "../cc_tools/Makefile.tools"
 .include "../Makefile.langs"
 
 PROG=	cpp
 MAN=	cpp41.1
-MLINKS=	cpp41.1 cpp.1
 
 SRCS=	gcc.c cppspec.c intl.c prefix.c version.c
 

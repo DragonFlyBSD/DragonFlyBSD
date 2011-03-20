@@ -3,9 +3,10 @@
 
 PROG=	cpp
 MAN=	cpp${GCCSHORTVER}.1
+MLINKS=	cpp${GCCSHORTVER}.1 cpp.1
 
 .if ${GCCSHORTVER} != ${GCCDOCSUFFIX}
-MLINKS=	cpp${GCCSHORTVER}.1 cpp${GCCDOCSUFFIX}.1
+MLINKS+=cpp${GCCSHORTVER}.1 cpp${GCCDOCSUFFIX}.1
 .endif
 
 SRCS=	${GCC_SRCS} cppspec.c intl.c prefix.c version.c
