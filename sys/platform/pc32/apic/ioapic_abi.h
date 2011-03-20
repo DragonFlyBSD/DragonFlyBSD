@@ -52,6 +52,9 @@ extern struct machintr_abi MachIntrABI_IOAPIC;
 void	ioapic_abi_set_irqmap(int, int, enum intr_trigger, enum intr_polarity);
 void	ioapic_abi_fixup_irqmap(void);
 
+int	ioapic_abi_find_gsi(int, enum intr_trigger, enum intr_polarity);
+int	ioapic_abi_find_irq(int, enum intr_trigger, enum intr_polarity);
+
 #endif	/* SMP */
 
 #endif	/* !_ARCH_APIC_IOAPIC_ABI_H_ */

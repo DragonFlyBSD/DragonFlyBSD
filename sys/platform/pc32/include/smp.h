@@ -113,6 +113,8 @@ int	stop_cpus		(cpumask_t);
 void	ap_init			(void);
 int	restart_cpus		(cpumask_t);
 void	forward_signal		(struct proc *);
+int	mptable_pci_int_route(int, int, int, int);
+void	mptable_pci_int_dump(void);
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
@@ -171,6 +173,7 @@ int	ioapic_gsi_pin(int);
 void	ioapic_pin_setup(void *, int, int,
 	    enum intr_trigger, enum intr_polarity);
 void	ioapic_extpin_setup(void *, int, int);
+int	ioapic_gsi(int, int);
 
 extern int apic_io_enable;
 extern int ioapic_use_old;

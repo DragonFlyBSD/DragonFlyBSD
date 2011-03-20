@@ -1207,8 +1207,6 @@ ioapic_config(void)
 		MachIntrABI.cleanup();
 
 		crit_exit();
-
-		panic("ioapic_config: new ioapic not working yet\n");
 	}
 }
 
@@ -1367,6 +1365,22 @@ ioapic_gsi_search(int gsi)
 			return info;
 	}
 	panic("ioapic_gsi_search: no I/O APIC\n");
+}
+
+int
+ioapic_gsi(int idx, int pin)
+{
+	const struct ioapic_info *info;
+
+	TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
+		if (info->io_idx == idx)
+			break;
+	}
+	if (info == NULL)
+		return -1;
+	if (pin >= info->io_npin)
+		return -1;
+	return info->io_gsi_base + pin;
 }
 
 void

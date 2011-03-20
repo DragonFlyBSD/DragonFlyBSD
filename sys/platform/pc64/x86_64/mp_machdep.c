@@ -3715,3 +3715,54 @@ mptable_ioapic_enum_register(void)
 }
 SYSINIT(mptable_ioapic, SI_BOOT2_PRESMP, SI_ORDER_ANY,
 	mptable_ioapic_enum_register, 0);
+
+void
+mptable_pci_int_dump(void)
+{
+	const struct mptable_pci_int *pci_int;
+
+	TAILQ_FOREACH(pci_int, &mptable_pci_int_list, mpci_link) {
+		kprintf("MPTABLE: %d:%d:%d -> IOAPIC %d.%d\n",
+			pci_int->mpci_bus,
+			pci_int->mpci_dev,
+			pci_int->mpci_pin,
+			pci_int->mpci_ioapic_idx,
+			pci_int->mpci_ioapic_pin);
+	}
+}
+
+int
+mptable_pci_int_route(int bus, int dev, int pin, int intline)
+{
+	const struct mptable_pci_int *pci_int;
+	int irq = -1;
+
+	KKASSERT(pin >= 1);
+	--pin;	/* zero based */
+
+	TAILQ_FOREACH(pci_int, &mptable_pci_int_list, mpci_link) {
+		if (pci_int->mpci_bus == bus &&
+		    pci_int->mpci_dev == dev &&
+		    pci_int->mpci_pin == pin)
+			break;
+	}
+	if (pci_int != NULL) {
+		int gsi;
+
+		gsi = ioapic_gsi(pci_int->mpci_ioapic_idx,
+			pci_int->mpci_ioapic_pin);
+		if (gsi >= 0) {
+			irq = ioapic_abi_find_gsi(gsi,
+				INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
+		}
+	}
+
+	if (irq < 0) {
+		if (bootverbose)
+			kprintf("MPTABLE: fixed interrupt routing\n");
+
+		irq = ioapic_abi_find_irq(intline,
+			INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
+	}
+	return irq;
+}
