@@ -11,6 +11,7 @@ SRCS=	linux_dummy.c linux_emuldata.c linux_epoll.c \
 	linux_socket.c \
 	linux_stats.c linux_sysctl.c linux_sysent.c linux_sysvec.c \
 	linux_util.c opt_compat.h opt_global.h opt_vmpage.h
+SRCS+=	bus_if.h device_if.h
 SRCS+=	opt_nfs.h assym.s
 OBJS=	linux_support.o linux_locore.o
 
