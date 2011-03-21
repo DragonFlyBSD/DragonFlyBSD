@@ -91,7 +91,6 @@
 
 #ifdef SMP /* APIC-IO */
 /* The interrupt triggered by the 8254 (timer) chip */
-int apic_8254_intr;
 static void setup_8254_mixed_mode (void);
 #endif
 static void i8254_restore(void);
@@ -1014,6 +1013,7 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 #ifdef SMP /* APIC-IO */
 	int apic_8254_trial = 0;
 	void *clkdesc = NULL;
+	int irq = 0;
 #endif
 
 	callout_init(&sysbeepstop_ch);
@@ -1036,14 +1036,14 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 #ifdef SMP /* APIC-IO */
 if (apic_io_enable) {
 	if (ioapic_use_old) {
-		apic_8254_intr = isa_apic_irq(0);
-		if (apic_8254_intr >= 0 ) {
+		irq = isa_apic_irq(0);
+		if (irq >= 0 ) {
 			if (apic_int_type(0, 0) == 3)
 				apic_8254_trial = 1;
 		} else {
 			/* look for ExtInt on pin 0 */
 			if (apic_int_type(0, 0) == 3) {
-				apic_8254_intr = apic_irq(0, 0);
+				irq = apic_irq(0, 0);
 				setup_8254_mixed_mode();
 			} else {
 				panic("APIC_IO: Cannot route 8254 "
@@ -1051,12 +1051,12 @@ if (apic_io_enable) {
 			}
 		}
 
-		clkdesc = register_int(apic_8254_intr, clkintr, NULL, "clk",
+		clkdesc = register_int(irq, clkintr, NULL, "clk",
 				       NULL,
 				       INTR_EXCL | INTR_CLOCK |
 				       INTR_NOPOLL | INTR_MPSAFE | 
 				       INTR_NOENTROPY);
-		machintr_intren(apic_8254_intr);
+		machintr_intren(irq);
 	}
 } else {
 #endif
@@ -1086,7 +1086,7 @@ if (apic_io_enable && ioapic_use_old) {
 		KKASSERT(sys_cputimer == &i8254_cputimer);
 		KKASSERT(cti == &i8254_cputimer_intr);
 
-		lastcnt = get_interrupt_counter(apic_8254_intr);
+		lastcnt = get_interrupt_counter(irq);
 
 		/*
 		 * Force an 8254 Timer0 interrupt and wait 1/100s for
@@ -1097,20 +1097,20 @@ if (apic_io_enable && ioapic_use_old) {
 		base = sys_cputimer->count();
 		while (sys_cputimer->count() - base < sys_cputimer->freq / 100)
 			;	/* nothing */
-		if (get_interrupt_counter(apic_8254_intr) - lastcnt == 0) {
+		if (get_interrupt_counter(irq) - lastcnt == 0) {
 			/* 
 			 * The MP table is broken.
 			 * The 8254 was not connected to the specified pin
 			 * on the IO APIC.
 			 * Workaround: Limited variant of mixed mode.
 			 */
-			machintr_intrdis(apic_8254_intr);
+			machintr_intrdis(irq);
 			unregister_int(clkdesc);
 			kprintf("APIC_IO: Broken MP table detected: "
 			       "8254 is not connected to "
 			       "IOAPIC #%d intpin %d\n",
-			       int_to_apicintpin[apic_8254_intr].ioapic,
-			       int_to_apicintpin[apic_8254_intr].int_pin);
+			       int_to_apicintpin[irq].ioapic,
+			       int_to_apicintpin[irq].int_pin);
 			/* 
 			 * Revoke current ISA IRQ 0 assignment and 
 			 * configure a fallback interrupt routing from
@@ -1119,25 +1119,25 @@ if (apic_io_enable && ioapic_use_old) {
 			 * We reuse the low level interrupt handler number.
 			 */
 			if (apic_irq(0, 0) < 0) {
-				revoke_apic_irq(apic_8254_intr);
-				assign_apic_irq(0, 0, apic_8254_intr);
+				revoke_apic_irq(irq);
+				assign_apic_irq(0, 0, irq);
 			}
-			apic_8254_intr = apic_irq(0, 0);
+			irq = apic_irq(0, 0);
 			setup_8254_mixed_mode();
-			register_int(apic_8254_intr, clkintr, NULL, "clk",
+			register_int(irq, clkintr, NULL, "clk",
 				     NULL,
 				     INTR_EXCL | INTR_CLOCK |
 				     INTR_NOPOLL | INTR_MPSAFE |
 				     INTR_NOENTROPY);
-			machintr_intren(apic_8254_intr);
+			machintr_intren(irq);
 		}
 	}
 	if (apic_int_type(0, 0) != 3 ||
-	    int_to_apicintpin[apic_8254_intr].ioapic != 0 ||
-	    int_to_apicintpin[apic_8254_intr].int_pin != 0) {
+	    int_to_apicintpin[irq].ioapic != 0 ||
+	    int_to_apicintpin[irq].int_pin != 0) {
 		kprintf("APIC_IO: routing 8254 via IOAPIC #%d intpin %d\n",
-		       int_to_apicintpin[apic_8254_intr].ioapic,
-		       int_to_apicintpin[apic_8254_intr].int_pin);
+		       int_to_apicintpin[irq].ioapic,
+		       int_to_apicintpin[irq].int_pin);
 	} else {
 		kprintf("APIC_IO: "
 		       "routing 8254 via 8259 and IOAPIC #0 intpin 0\n");

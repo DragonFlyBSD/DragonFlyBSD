@@ -37,9 +37,6 @@ extern int	tsc_present;
 extern int64_t	tsc_frequency;
 extern int	tsc_is_broken;
 extern int	wall_cmos_clock;
-#ifdef SMP /* APIC-IO */
-extern int	apic_8254_intr;
-#endif
 
 /*
  * Driver to clock driver interface.
