@@ -1267,7 +1267,15 @@ ioapic_add(void *addr, int gsi_base, int npin)
 void
 ioapic_intsrc(int irq, int gsi)
 {
+	KKASSERT(irq != gsi);
 	KKASSERT(irq < 16);
+
+	if (gsi == 0) {
+		/* Don't allow mixed mode */
+		kprintf("IOAPIC: warning intsrc irq %d -> gsi 0\n", irq);
+		return;
+	}
+
 	if (ioapic_conf.ioc_intsrc[irq] != -1 &&
 	    ioapic_conf.ioc_intsrc[irq] != gsi) {
 		kprintf("IOAPIC: warning intsrc irq %d, gsi %d -> gsi %d\n",
