@@ -1398,6 +1398,12 @@ ioapic_extpin_setup(void *addr, int pin, int vec)
 	    INTR_TRIGGER_CONFORM, INTR_POLARITY_CONFORM, IOART_DELEXINT);
 }
 
+int
+ioapic_extpin_gsi(void)
+{
+	return 0;
+}
+
 void
 ioapic_pin_setup(void *addr, int pin, int vec,
     enum intr_trigger trig, enum intr_polarity pola)

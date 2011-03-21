@@ -56,6 +56,7 @@
 
 #include <sys/thread2.h>
 
+#include <machine_base/icu/icu_var.h>
 #include <machine_base/apic/ioapic_abi.h>
 #include <machine_base/apic/ioapic_ipl.h>
 
@@ -495,6 +496,8 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 	.intr_config	= ioapic_intr_config
 };
 
+static int	ioapic_abi_extint_irq = -1;
+
 static int
 ioapic_setvar(int varid, const void *buf)
 {
@@ -845,6 +848,68 @@ ioapic_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 	    map->im_trig, map->im_pola);
 
 	imen_unlock();
+}
+
+int
+ioapic_abi_extint_irqmap(int irq)
+{
+	struct apic_intmapinfo *info;
+	struct ioapic_irqmap *map;
+	void *ioaddr;
+	int pin, error, vec;
+
+	vec = IDT_OFFSET + irq;
+
+	if (ioapic_abi_extint_irq == irq)
+		return 0;
+	else if (ioapic_abi_extint_irq >= 0)
+		return EEXIST;
+
+	error = icu_ioapic_extint(irq, vec);
+	if (error)
+		return error;
+
+	map = &ioapic_irqmaps[irq];
+
+	KKASSERT(map->im_type == IOAPIC_IMT_RESERVED ||
+		 map->im_type == IOAPIC_IMT_LINE);
+	if (map->im_type == IOAPIC_IMT_LINE) {
+		if (map->im_flags & IOAPIC_IMF_CONF)
+			return EEXIST;
+	}
+	ioapic_abi_extint_irq = irq;
+
+	map->im_type = IOAPIC_IMT_LINE;
+	map->im_trig = INTR_TRIGGER_EDGE;
+	map->im_pola = INTR_POLARITY_HIGH;
+	map->im_flags = IOAPIC_IMF_CONF;
+
+	map->im_gsi = ioapic_extpin_gsi();
+	KKASSERT(map->im_gsi >= 0);
+
+	if (bootverbose) {
+		kprintf("IOAPIC: irq %d -> extint gsi %d E\n", irq,
+			map->im_gsi);
+	}
+
+	pin = ioapic_gsi_pin(map->im_gsi);
+	ioaddr = ioapic_gsi_ioaddr(map->im_gsi);
+
+	info = &int_to_apicintpin[irq];
+
+	imen_lock();
+
+	info->ioapic = 0; /* XXX unused */
+	info->int_pin = pin;
+	info->apic_address = ioaddr;
+	info->redirindex = IOAPIC_REDTBL + (2 * pin);
+	info->flags = IOAPIC_IM_FLAG_MASKED;
+
+	ioapic_extpin_setup(ioaddr, pin, vec);
+
+	imen_unlock();
+
+	return 0;
 }
 
 #endif	/* SMP */

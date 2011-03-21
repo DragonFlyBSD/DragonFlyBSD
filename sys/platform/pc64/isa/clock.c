@@ -86,6 +86,9 @@
 #include <machine/specialreg.h>
 #include <machine/intr_machdep.h>
 
+#ifdef SMP
+#include <machine_base/apic/ioapic_abi.h>
+#endif
 #include <machine_base/icu/icu.h>
 #include <bus/isa/isa.h>
 #include <bus/isa/rtc.h>
@@ -1008,6 +1011,40 @@ resettodr(void)
 	crit_exit();
 }
 
+#ifdef SMP
+
+static int
+i8254_ioapic_trial(int irq, struct cputimer_intr *cti)
+{
+	sysclock_t base;
+	long lastcnt;
+
+	/*
+	 * Following code assumes the 8254 is the cpu timer,
+	 * so make sure it is.
+	 */
+	KKASSERT(sys_cputimer == &i8254_cputimer);
+	KKASSERT(cti == &i8254_cputimer_intr);
+
+	lastcnt = get_interrupt_counter(irq);
+
+	/*
+	 * Force an 8254 Timer0 interrupt and wait 1/100s for
+	 * it to happen, then see if we got it.
+	 */
+	kprintf("IOAPIC: testing 8254 interrupt delivery\n");
+
+	i8254_intr_reload(cti, 2);
+	base = sys_cputimer->count();
+	while (sys_cputimer->count() - base < sys_cputimer->freq / 100)
+		; /* nothing */
+
+	if (get_interrupt_counter(irq) - lastcnt == 0)
+		return ENOENT;
+	return 0;
+}
+
+#endif	/* SMP */
 
 /*
  * Start both clocks running.  DragonFly note: the stat clock is no longer
@@ -1020,16 +1057,13 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 #ifdef SMP /* APIC-IO */
 	int apic_8254_trial = 0;
 	void *clkdesc = NULL;
-	int irq = 0;
+	int irq = 0, mixed_mode = 0, error;
 #endif
 
 	callout_init(&sysbeepstop_ch);
 
-	if (!selected && i8254_intr_disable) {
-		i8254_nointr = 1; /* don't try to register again */
-		cputimer_intr_deregister(cti);
-		return;
-	}
+	if (!selected && i8254_intr_disable)
+		goto nointr;
 
 	/*
 	 * The stat interrupt mask is different without the
@@ -1064,6 +1098,37 @@ if (apic_io_enable) {
 				       INTR_NOPOLL | INTR_MPSAFE | 
 				       INTR_NOENTROPY);
 		machintr_intren(irq);
+	} else {
+		irq = ioapic_abi_find_irq(0, INTR_TRIGGER_EDGE,
+			INTR_POLARITY_HIGH);
+		if (irq < 0) {
+mixed_mode_setup:
+			error = ioapic_abi_extint_irqmap(0);
+			if (!error) {
+				irq = ioapic_abi_find_irq(0, INTR_TRIGGER_EDGE,
+					INTR_POLARITY_HIGH);
+				if (irq < 0)
+					error = ENOENT;
+			}
+
+			if (error) {
+				if (!selected) {
+					kprintf("IOAPIC: setup mixed mode for "
+						"irq 0 failed: %d\n", error);
+					goto nointr;
+				} else {
+					panic("IOAPIC: setup mixed mode for "
+					      "irq 0 failed: %d\n", error);
+				}
+			}
+			mixed_mode = 1;
+		}
+		clkdesc = register_int(irq, clkintr, NULL, "clk",
+				       NULL,
+				       INTR_EXCL | INTR_CLOCK |
+				       INTR_NOPOLL | INTR_MPSAFE |
+				       INTR_NOENTROPY);
+		machintr_intren(irq);
 	}
 } else {
 #endif
@@ -1081,7 +1146,8 @@ if (apic_io_enable) {
 	writertc(RTC_STATUSB, RTCSB_24HR);
 
 #ifdef SMP /* APIC-IO */
-if (apic_io_enable && ioapic_use_old) {
+if (apic_io_enable) {
+if (ioapic_use_old) {
 	if (apic_8254_trial) {
 		sysclock_t base;
 		long lastcnt;
@@ -1149,8 +1215,34 @@ if (apic_io_enable && ioapic_use_old) {
 		kprintf("APIC_IO: "
 		       "routing 8254 via 8259 and IOAPIC #0 intpin 0\n");
 	}
+} else {	/* !ioapic_use_old */
+	error = i8254_ioapic_trial(irq, cti);
+	if (error) {
+		if (mixed_mode) {
+			if (!selected) {
+				kprintf("IOAPIC: mixed mode for irq %d "
+					"trial failed: %d\n", irq, error);
+				goto nointr;
+			} else {
+				panic("IOAPIC: mixed mode for irq %d "
+				      "trial failed: %d\n", irq, error);
+			}
+		} else {
+			kprintf("IOAPIC: warning 8254 is not connected "
+				"to the correct pin, try mixed mode\n");
+			machintr_intrdis(irq);
+			unregister_int(clkdesc);
+			goto mixed_mode_setup;
+		}
+	}
+}		/* ioapic_use_old */
 }
 #endif
+	return;
+
+nointr:
+	i8254_nointr = 1; /* don't try to register again */
+	cputimer_intr_deregister(cti);
 }
 
 #ifdef SMP /* APIC-IO */

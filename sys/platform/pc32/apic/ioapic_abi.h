@@ -49,6 +49,7 @@
 
 extern struct machintr_abi MachIntrABI_IOAPIC;
 
+int	ioapic_abi_extint_irqmap(int);
 void	ioapic_abi_set_irqmap(int, int, enum intr_trigger, enum intr_polarity);
 void	ioapic_abi_fixup_irqmap(void);
 

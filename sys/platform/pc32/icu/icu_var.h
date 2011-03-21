@@ -43,4 +43,6 @@ void		icu_reinit(void);
 
 intrmask_t	icu_irq_pending(void);
 
+int		icu_ioapic_extint(int, int);
+
 #endif /* !_ARCH_ICU_ICU_VAR_H_ */

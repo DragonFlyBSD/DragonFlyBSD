@@ -153,3 +153,30 @@ icu_irq_pending(void)
 	irr2 = inb(IO_ICU2);
 	return ((irr2 << 8) | irr1);
 }
+
+int
+icu_ioapic_extint(int irq, int vec)
+{
+	uint8_t mask;
+
+	/*
+	 * Only first 8 interrupt is supported.
+	 * Don't allow setup for the slave link.
+	 */
+	if (irq >= 8 || irq == 2)
+		return EOPNOTSUPP;
+
+	mask = ~(1 << irq);
+
+	/*
+	 * Re-initialize master 8259:
+	 *   reset; prog 4 bytes, single ICU, edge triggered
+	 */
+	outb(IO_ICU1, 0x13);
+	outb(IO_ICU1 + 1, vec);		/* start vector (unused) */
+	outb(IO_ICU1 + 1, 0x00);	/* ignore slave */
+	outb(IO_ICU1 + 1, 0x03);	/* auto EOI, 8086 */
+	outb(IO_ICU1 + 1, mask);
+
+	return 0;
+}
