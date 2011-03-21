@@ -504,7 +504,7 @@ pmp)
 int
 dos2unixfn(u_char dn[11], u_char *un, int lower, struct msdosfsmount *pmp)
 {
-	int i;
+	size_t i;
 	int thislong = 1;
 	u_char c;
 
@@ -662,7 +662,7 @@ unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
  */
 
 int
-unix2dosfn(const u_char *un, u_char dn[12], int unlen, u_int gen, struct msdosfsmount *pmp)
+unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen, struct msdosfsmount *pmp)
 {
 	ssize_t i, j;
         int l;
@@ -906,7 +906,7 @@ instr,
  *	 i.e. doesn't consist solely of blanks and dots
  */
 int
-unix2winfn(const u_char *un, int unlen, struct winentry *wep, int cnt, int chksum, struct msdosfsmount *pmp)
+unix2winfn(const u_char *un, size_t unlen, struct winentry *wep, int cnt, int chksum, struct msdosfsmount *pmp)
 {
         u_int8_t *wcp;
         int i, end;
@@ -1167,7 +1167,7 @@ winChksum(u_int8_t *name)
  * Determine the number of slots necessary for Win95 names
  */
 int
-winSlotCnt(const u_char *un, int unlen, struct msdosfsmount *pmp)
+winSlotCnt(const u_char *un, size_t unlen, struct msdosfsmount *pmp)
 {
         size_t wlen;
         char wn[WIN_MAXLEN * 2 + 1], *wnp;
@@ -1188,8 +1188,8 @@ winSlotCnt(const u_char *un, int unlen, struct msdosfsmount *pmp)
 /*
  * Determine the number of bytes neccesary for Win95 names
  */
-int
-winLenFixup(const u_char *un, int unlen)
+size_t
+winLenFixup(const u_char *un, size_t unlen)
 {
 	for (un += unlen; unlen > 0; unlen--)
 		if (*--un != ' ' && *un != '.')
