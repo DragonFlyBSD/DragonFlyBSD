@@ -161,9 +161,11 @@ dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit)
 	}
 
 	if (!policy) {
-		if (!default_set) {
-			dsched_debug(0, "No policy for %s%d specified, "
-			    "or policy not found\n", head_name, unit);
+		if (!default_set && bootverbose) {
+			dsched_debug(0,
+				     "No policy for %s%d specified, "
+				     "or policy not found\n",
+				     head_name, unit);
 		}
 		dsched_set_policy(dp, default_policy);
 	} else {
