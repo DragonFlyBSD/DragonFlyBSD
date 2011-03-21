@@ -1437,7 +1437,17 @@ ioapic_pin_prog(void *addr, int pin, int vec,
 	select = IOAPIC_REDTBL0 + (2 * pin);
 
 	flags = ioapic_read(addr, select) & IOART_RESV;
-	flags |= IOART_INTMSET | IOART_DESTPHY | del_mode;
+	flags |= IOART_INTMSET | IOART_DESTPHY;
+#ifdef foo
+	flags |= del_mode;
+#else
+	/*
+	 * We only support limited I/O APIC mixed mode,
+	 * so even for ExtINT, we still use "fixed"
+	 * delivery mode.
+	 */
+	flags |= IOART_DELFIXED;
+#endif
 
 	if (del_mode == IOART_DELEXINT) {
 		KKASSERT(trig == INTR_TRIGGER_CONFORM &&
