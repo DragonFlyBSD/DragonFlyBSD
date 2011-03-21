@@ -1679,7 +1679,7 @@ do_next:
 }
 
 #ifdef SMP
-int ioapic_use_old = 1;
+int ioapic_use_old = 0;
 
 #ifdef APIC_IO
 int apic_io_enable = 1; /* Enabled by default for kernels compiled w/APIC_IO */
