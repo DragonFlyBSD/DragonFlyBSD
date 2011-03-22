@@ -114,13 +114,13 @@ AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, UINT64 *Value,
     int bytes = Width / 8;
 
     if (Width == 64)
-        return (AE_SUPPORT);
+	return (AE_SUPPORT);
 
     if (!pci_cfgregopen())
         return (AE_NOT_EXIST);
 
     *(UINT64 *)Value = pci_cfgregread(PciId->Bus, PciId->Device,
-                                      PciId->Function, Register, bytes);
+    				      PciId->Function, Register, bytes);
     *Value &= (1 << (bytes * 8)) - 1;
 
     return (AE_OK);
@@ -132,13 +132,13 @@ AcpiOsWritePciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register,
     UINT64 Value, UINT32 Width)
 {
     if (Width == 64)
-        return (AE_SUPPORT);
+	return (AE_SUPPORT);
 
     if (!pci_cfgregopen())
     	return (AE_NOT_EXIST);
 
     pci_cfgregwrite(PciId->Bus, PciId->Device, PciId->Function, Register,
-                    (u_int32_t) Value, Width / 8); /* XXX casting */
+    		    (u_int32_t)Value, Width / 8); /* XXX casting */
 
     return (AE_OK);
 }

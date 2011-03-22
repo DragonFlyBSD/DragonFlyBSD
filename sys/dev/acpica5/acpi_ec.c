@@ -661,10 +661,11 @@ EcGpeQueryHandler(void *Context)
 
     /* Reenable runtime GPE if its execution was deferred. */
     if (sc->ec_sci_pend) {
-        Status = AcpiFinishGpe(sc->ec_gpehandle, sc->ec_gpebit);
-        if (ACPI_FAILURE(Status))
-            device_printf(sc->ec_dev, "reenabling runtime GPE failed: %s\n",
-                          AcpiFormatException(Status));
+	Status = AcpiFinishGpe(sc->ec_gpehandle, sc->ec_gpebit);
+	if (ACPI_FAILURE(Status)) {
+	    device_printf(sc->ec_dev, "reenabling runtime GPE failed: %s\n",
+		AcpiFormatException(Status));
+    	}
     }
 }
 
