@@ -260,14 +260,10 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
 		pci_get_slot(dev), 'A' + pin, prt->SourceIndex);
 	if (prt->SourceIndex) {
 	    interrupt = prt->SourceIndex;
-/*	interrupt = BUS_CONFIG_INTR(device_get_parent(dev), dev, interrupt, INTR_TRIGGER_LEVEL,
-		INTR_POLARITY_LOW);
-*/
-        /* pci_apic_irq() accepts pin number (WHY?) instead of irq number, so we pass it.
-	 * Interrupt routing still depends on mptable and is not of any use then.
-	 */
-	interrupt = BUS_CONFIG_INTR(device_get_parent(dev), dev, pin, INTR_TRIGGER_LEVEL,
-		INTR_POLARITY_LOW);
+
+	    /* TODO MachIntr.intr_find */
+	    BUS_CONFIG_INTR(device_get_parent(dev), dev, interrupt,
+		INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
 	} else
 	    device_printf(pcib, "error: invalid hard-wired IRQ of 0\n");
 	goto out;
