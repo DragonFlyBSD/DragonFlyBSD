@@ -84,46 +84,45 @@ static device_method_t acpi_pci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		acpi_pci_probe),
 	DEVMETHOD(device_attach,	acpi_pci_attach),
-        DEVMETHOD(device_shutdown,      bus_generic_shutdown),
-        DEVMETHOD(device_suspend,       acpi_pci_suspend),
-        DEVMETHOD(device_resume,        acpi_pci_resume),
+	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
+	DEVMETHOD(device_suspend,	acpi_pci_suspend),
+	DEVMETHOD(device_resume,	acpi_pci_resume),
 
 	/* Bus interface */
-	DEVMETHOD(bus_print_child,      pci_print_child),
-        DEVMETHOD(bus_get_resource_list,pci_get_resource_list),
-        DEVMETHOD(bus_set_resource,     bus_generic_rl_set_resource),
-        DEVMETHOD(bus_get_resource,     bus_generic_rl_get_resource),
-        DEVMETHOD(bus_delete_resource,  pci_delete_resource),
-        DEVMETHOD(bus_alloc_resource,   pci_alloc_resource),
-        DEVMETHOD(bus_release_resource, bus_generic_rl_release_resource),
-        DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
-        DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
+	DEVMETHOD(bus_print_child,	pci_print_child),
+	DEVMETHOD(bus_get_resource_list,pci_get_resource_list),
+	DEVMETHOD(bus_set_resource,	bus_generic_rl_set_resource),
+	DEVMETHOD(bus_get_resource,	bus_generic_rl_get_resource),
+	DEVMETHOD(bus_delete_resource,	pci_delete_resource),
+	DEVMETHOD(bus_alloc_resource,	pci_alloc_resource),
+	DEVMETHOD(bus_release_resource,	bus_generic_rl_release_resource),
+	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
+	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
 	DEVMETHOD(bus_read_ivar,	acpi_pci_read_ivar),
 	DEVMETHOD(bus_write_ivar,	acpi_pci_write_ivar),
-        DEVMETHOD(bus_driver_added,     bus_generic_driver_added),
-        DEVMETHOD(bus_setup_intr,       bus_generic_setup_intr),
-        DEVMETHOD(bus_teardown_intr,    bus_generic_teardown_intr),
+	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
+	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
+	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
 	DEVMETHOD(bus_child_location_str, acpi_pci_child_location_str_method),
 
 	/* PCI interface */
+	DEVMETHOD(pci_read_config,	pci_read_config_method),
+	DEVMETHOD(pci_write_config,	pci_write_config_method),
+	DEVMETHOD(pci_enable_busmaster,	pci_enable_busmaster_method),
+	DEVMETHOD(pci_disable_busmaster, pci_disable_busmaster_method),
+	DEVMETHOD(pci_enable_io,	pci_enable_io_method),
+	DEVMETHOD(pci_disable_io,	pci_disable_io_method),
+	DEVMETHOD(pci_get_powerstate,	pci_get_powerstate_method),
 	DEVMETHOD(pci_set_powerstate,	acpi_pci_set_powerstate_method),
-        DEVMETHOD(pci_read_config,      pci_read_config_method),
-        DEVMETHOD(pci_write_config,     pci_write_config_method),
-        DEVMETHOD(pci_enable_busmaster, pci_enable_busmaster_method),
-        DEVMETHOD(pci_disable_busmaster, pci_disable_busmaster_method),
-        DEVMETHOD(pci_enable_io,        pci_enable_io_method),
-        DEVMETHOD(pci_disable_io,       pci_disable_io_method),
-        DEVMETHOD(pci_get_powerstate,   pci_get_powerstate_method),
-        DEVMETHOD(pci_set_powerstate,   acpi_pci_set_powerstate_method),
-        DEVMETHOD(pci_assign_interrupt, pci_assign_interrupt_method),
+	DEVMETHOD(pci_assign_interrupt,	pci_assign_interrupt_method),
 
 	{ 0, 0 }
 };
 
 static driver_t acpi_pci_driver = {
-        "pci",
-        acpi_pci_methods,
-        0,                      /* no softc */
+	"pci",
+	acpi_pci_methods,
+	0,	/* no softc */
 };
 
 static devclass_t pci_devclass;
@@ -326,9 +325,10 @@ acpi_pci_attach(device_t dev)
 	 */
 	busno = pcib_get_bus(dev);
 	domain = pcib_get_domain(dev);
-	if (bootverbose)
-	       device_printf(dev, "domain=%d, physical bus=%d\n",
-                    domain, busno);
+	if (bootverbose) {
+		device_printf(dev, "domain=%d, physical bus=%d\n",
+		    domain, busno);
+	}
 
 	ACPI_SERIAL_INIT(pci_powerstate);
 
@@ -352,75 +352,86 @@ acpi_pci_attach(device_t dev)
 int
 acpi_pci_suspend(device_t dev)
 {
-        int dstate, error, i, numdevs;
-        device_t acpi_dev, child, *devlist;
-        struct pci_devinfo *dinfo;
-        /*
-         * Save the PCI configuration space for each child and set the
-         * device in the appropriate power state for this sleep state.
-         */
-        acpi_dev = NULL;
+	int dstate, error, i, numdevs;
+	device_t acpi_dev, child, *devlist;
+	struct pci_devinfo *dinfo;
+
 	acpi_dev = devclass_get_device(devclass_find("acpi"), 0);
-        device_get_children(dev, &devlist, &numdevs);
-        for (i = 0; i < numdevs; i++) {
-                child = devlist[i];
-                dinfo = (struct pci_devinfo *) device_get_ivars(child);
-                pci_cfg_save(child, dinfo, 0);
-        }
-        /* Suspend devices before potentially powering them down. */
-        error = bus_generic_suspend(dev);
-        if (error) {
-                kfree(devlist, M_TEMP);
-                return (error);
-        }
-        /*
-         * Always set the device to D3.  If ACPI suggests a different
-         * power state, use it instead.  If ACPI is not present, the
-         * firmware is responsible for managing device power.  Skip
-         * children who aren't attached since they are powered down
-         * separately.  Only manage type 0 devices for now.
-         */
-        for (i = 0; acpi_dev && i < numdevs; i++) {
-                child = devlist[i];
-                dinfo = (struct pci_devinfo *) device_get_ivars(child);
-                if (device_is_attached(child) && dinfo->cfg.hdrtype == 0) {
-                        dstate = PCI_POWERSTATE_D3;
-                        ACPI_PWR_FOR_SLEEP(acpi_dev, child, &dstate);
-                        pci_set_powerstate(child, dstate);
-                }
-        }
-        kfree(devlist, M_TEMP);
-        return (0);
+	device_get_children(dev, &devlist, &numdevs);
+
+	/*
+	 * Save the PCI configuration space for each child and set the
+	 * device in the appropriate power state for this sleep state.
+	 */
+	for (i = 0; i < numdevs; i++) {
+		child = devlist[i];
+		dinfo = (struct pci_devinfo *)device_get_ivars(child);
+		pci_cfg_save(child, dinfo, 0);
+	}
+
+	/*
+	 * Suspend devices before potentially powering them down.
+	 */
+	error = bus_generic_suspend(dev);
+	if (error) {
+		kfree(devlist, M_TEMP);
+		return (error);
+	}
+
+	/*
+	 * Always set the device to D3.  If ACPI suggests a different
+	 * power state, use it instead.  If ACPI is not present, the
+	 * firmware is responsible for managing device power.  Skip
+	 * children who aren't attached since they are powered down
+	 * separately.  Only manage type 0 devices for now.
+	 */
+	for (i = 0; acpi_dev && i < numdevs; i++) {
+		child = devlist[i];
+		dinfo = (struct pci_devinfo *)device_get_ivars(child);
+		if (device_is_attached(child) && dinfo->cfg.hdrtype == 0) {
+			dstate = PCI_POWERSTATE_D3;
+			ACPI_PWR_FOR_SLEEP(acpi_dev, child, &dstate);
+			pci_set_powerstate(child, dstate);
+		}
+	}
+
+	kfree(devlist, M_TEMP);
+	return (0);
 }
 
 int
 acpi_pci_resume(device_t dev)
 {
-        int i, numdevs;
-        device_t acpi_dev, child, *devlist;
-        struct pci_devinfo *dinfo;
-        /*
-         * Set each child to D0 and restore its PCI configuration space.
-         */
-        acpi_dev = NULL;
+	int i, numdevs;
+	device_t acpi_dev, child, *devlist;
+	struct pci_devinfo *dinfo;
+
 	acpi_dev = devclass_get_device(devclass_find("acpi"), 0);
-        device_get_children(dev, &devlist, &numdevs);
-        for (i = 0; i < numdevs; i++) {
-                /*
-                 * Notify ACPI we're going to D0 but ignore the result.  If
-                 * ACPI is not present, the firmware is responsible for
-                 * managing device power.  Only manage type 0 devices for now.
-                 */
-                child = devlist[i];
-                dinfo = (struct pci_devinfo *) device_get_ivars(child);
-                if (acpi_dev && device_is_attached(child) &&
-                    dinfo->cfg.hdrtype == 0) {
+	device_get_children(dev, &devlist, &numdevs);
+
+	/*
+	 * Set each child to D0 and restore its PCI configuration space.
+	 */
+	for (i = 0; i < numdevs; i++) {
+		/*
+		 * Notify ACPI we're going to D0 but ignore the result.  If
+		 * ACPI is not present, the firmware is responsible for
+		 * managing device power.  Only manage type 0 devices for now.
+		 */
+		child = devlist[i];
+		dinfo = (struct pci_devinfo *) device_get_ivars(child);
+		if (acpi_dev && device_is_attached(child) &&
+		    dinfo->cfg.hdrtype == 0) {
 			ACPI_PWR_FOR_SLEEP(acpi_dev, child, NULL);
-                        pci_set_powerstate(child, PCI_POWERSTATE_D0);
-                }
-                /* Now the device is powered up, restore its config space. */
-                pci_cfg_restore(child, dinfo);
-        }
-        kfree(devlist, M_TEMP);
-        return (bus_generic_resume(dev));
+			pci_set_powerstate(child, PCI_POWERSTATE_D0);
+		}
+
+		/*
+		 * Now the device is powered up, restore its config space.
+		 */
+		pci_cfg_restore(child, dinfo);
+	}
+
+	kfree(devlist, M_TEMP);
+	return (bus_generic_resume(dev));
 }

@@ -66,8 +66,6 @@ static void	prt_lookup_device(ACPI_PCI_ROUTING_TABLE *entry, void *arg);
 static void	prt_walk_table(ACPI_BUFFER *prt, prt_entry_handler *handler,
 		    void *arg);
 
-#define PCI_INVALID_IRQ 255
-
 static void
 prt_walk_table(ACPI_BUFFER *prt, prt_entry_handler *handler, void *arg)
 {
@@ -141,7 +139,6 @@ acpi_pcib_attach(device_t dev, ACPI_BUFFER *prt, int busno)
      * XXX: This isn't entirely correct since we may be a PCI bus
      * on a hot-plug docking station, etc.
      */
-
     if (!acpi_DeviceIsPresent(dev))
 	return_VALUE(ENXIO);
 
@@ -281,9 +278,8 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
 	prt->SourceIndex);
 
     if (bootverbose && PCI_INTERRUPT_VALID(interrupt)) {
-	if (PCI_INTERRUPT_VALID(interrupt))
-	    device_printf(pcib, "slot %d INT%c routed to irq %d via %s\n",
-	         pci_get_slot(dev), 'A' + pin, interrupt, acpi_name(lnkdev));
+	device_printf(pcib, "slot %d INT%c routed to irq %d via %s\n",
+	    pci_get_slot(dev), 'A' + pin, interrupt, acpi_name(lnkdev));
     }
 
 out:
