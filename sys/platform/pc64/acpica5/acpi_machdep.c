@@ -50,11 +50,20 @@ static device_t	acpi_dev;
 #include <machine/apm_bios.h>
 #include <machine/pc/bios.h>
 #include <machine_base/apm/apm.h>
+#include <machine/smp.h>
 
 uint32_t acpi_reset_video = 1;
 TUNABLE_INT("hw.acpi.reset_video", &acpi_reset_video);
 
+/*
+ * -1 == unset. Use acpi_GetDefaultIntrModel()
+ */
+#ifdef SMP /* APIC-IO */
+static int intr_model = -1;
+#else
 static int intr_model = ACPI_INTR_PIC;
+#endif
+
 static struct apm_softc	apm_softc;
 
 static d_open_t apmopen;
@@ -321,6 +330,25 @@ acpi_capm_init(struct acpi_softc *sc)
 	kprintf("Warning: ACPI is disabling APM's device.  You can't run both\n");
 }
 
+/*
+ * Lazy initialize intr_model
+ */
+static int
+acpi_GetDefaultIntrModel(void)
+{
+	if (intr_model == -1) {
+#ifdef SMP /* APIC-IO */
+		if (apic_io_enable)
+			intr_model = ACPI_INTR_APIC;
+		else
+			intr_model = ACPI_INTR_PIC;
+#else
+		intr_model = ACPI_INTR_PIC;
+#endif
+	}
+	return intr_model;
+}
+
 int
 acpi_machdep_init(device_t dev)
 {
@@ -341,7 +369,7 @@ acpi_machdep_init(device_t dev)
 
 	acpi_install_wakeup_handler(sc);
 
-	if (intr_model == ACPI_INTR_PIC)
+	if (acpi_GetDefaultIntrModel() == ACPI_INTR_PIC)
 		BUS_CONFIG_INTR(dev, dev, AcpiGbl_FADT.SciInterrupt,
 		    INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
 	else
