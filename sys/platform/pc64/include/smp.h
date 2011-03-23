@@ -149,7 +149,7 @@ struct ioapic_enumerator {
 };
 
 #define IOAPIC_ENUM_PRIO_MPTABLE	20
-#define IOAPIC_ENUM_PRIO_MADT		10
+#define IOAPIC_ENUM_PRIO_MADT		40
 
 /* global data in mpapic.c */
 extern volatile lapic_t		*lapic;
