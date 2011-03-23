@@ -3728,10 +3728,10 @@ mptable_pci_int_dump(void)
 	const struct mptable_pci_int *pci_int;
 
 	TAILQ_FOREACH(pci_int, &mptable_pci_int_list, mpci_link) {
-		kprintf("MPTABLE: %d:%d.%c -> IOAPIC %d.%d\n",
+		kprintf("MPTABLE: %d:%d INT%c -> IOAPIC %d.%d\n",
 			pci_int->mpci_bus,
 			pci_int->mpci_dev,
-			pci_int->mpci_pin + 'a',
+			pci_int->mpci_pin + 'A',
 			pci_int->mpci_ioapic_idx,
 			pci_int->mpci_ioapic_pin);
 	}
@@ -3766,11 +3766,16 @@ mptable_pci_int_route(int bus, int dev, int pin, int intline)
 	if (irq < 0) {
 		if (bootverbose) {
 			kprintf("MPTABLE: fixed interrupt routing "
-				"for %d:%d.%c\n", bus, dev, pin + 'a');
+				"for %d:%d INT%c\n", bus, dev, pin + 'A');
 		}
 
 		irq = ioapic_abi_find_irq(intline,
 			INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
+	}
+
+	if (irq >= 0 && bootverbose) {
+		kprintf("MPTABLE: %d:%d INT%c routed to irq %d\n",
+			bus, dev, pin + 'A', irq);
 	}
 	return irq;
 }
