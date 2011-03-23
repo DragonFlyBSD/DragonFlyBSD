@@ -154,7 +154,7 @@ configure_final(void *dummy)
 
 	if (bootverbose) {
 #ifdef SMP /* APIC-IO */
-	if (apic_io_enable)
+	if (apic_io_enable && ioapic_use_old)
 		imen_dump();
 #endif
 
