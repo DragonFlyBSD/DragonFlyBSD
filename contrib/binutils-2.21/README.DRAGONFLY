@@ -1,0 +1,41 @@
+
+    BINUTILS-2.21 AS USED BY DRAGONFLY
+    ==================================
+
+    This directory contains a selected set of files from the GNU
+    binutils-2.21 distribution.  The entire distribution is 123MB but
+    we really only need around 14MB of it. No files have been moved
+    from their extracted position.
+
+    ON THE VENDOR BRANCH (vendor/BINUTILS221), DO NOT CREATE OR EDIT ANY
+    FILES IN THIS DIRECTORY HIERARCHY!  THIS HIERARCHY REPRESENTS AN EXACT
+    COPY, MINUS UNNEEDED FILES, OF THE GNU BINUTILS DISTRIBUTION:
+    http://repo.or.cz/w/binutils.git/tree/c63d06a13f1254f18bb957e3dc40f7932b7e85d4
+    Committed: Sat, 5 Mar 2011 23:00:12 +0000 (23:00 +0000)
+
+
+    The follow files were imported from a pre-built instance:
+
+	binutils/doc/addr2line.1
+	binutils/doc/ar.1
+	binutils/doc/c++filt.1
+	binutils/doc/elfedit.1
+	binutils/doc/nm.1
+	binutils/doc/objcopy.1
+	binutils/doc/objdump.1
+	binutils/doc/ranlib.1
+	binutils/doc/readelf.1
+	binutils/doc/size.1
+	binutils/doc/strings.1
+	binutils/doc/strip.1
+	bfd/doc/bfdver.texi
+	bfd/bfdver.h
+	gas/doc/as.1
+	ld/ld.1
+
+
+    The following files were patched:
+
+	gas/config/tc-i386.c
+	bfd/config.bfd
+	ld/ldlex.l
