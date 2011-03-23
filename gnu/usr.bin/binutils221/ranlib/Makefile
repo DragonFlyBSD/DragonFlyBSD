@@ -11,4 +11,6 @@ NOSHARED?= yes
 ranlib221.1: ${SRCDIR}/binutils/doc/ranlib.1
 	cp ${.ALLSRC} ${.TARGET}
 
+CLEANFILES+=	ranlib221.1
+
 .include <bsd.prog.mk>

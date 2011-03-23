@@ -13,6 +13,6 @@ LDADD+=	${.OBJDIR}/../libopcodes/libopcodes.a
 objdump221.1: ${SRCDIR}/binutils/doc/objdump.1
 	cp ${.ALLSRC} ${.TARGET}
 
-CLEANFILES+=	objcopy221.1
+CLEANFILES+=	objdump221.1
 
 .include <bsd.prog.mk>
