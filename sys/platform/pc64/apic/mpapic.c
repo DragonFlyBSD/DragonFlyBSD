@@ -1545,7 +1545,8 @@ ioapic_pin_prog(void *addr, int pin, int vec,
 	}
 
 	target = ioapic_read(addr, select + 1) & IOART_HI_DEST_RESV;
-	target |= 0;
+	target |= (CPU_TO_ID(0) << IOART_HI_DEST_SHIFT) &
+		  IOART_HI_DEST_MASK;
 
 	ioapic_write(addr, select, flags | vec);
 	ioapic_write(addr, select + 1, target);
