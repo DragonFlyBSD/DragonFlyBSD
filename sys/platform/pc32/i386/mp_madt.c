@@ -33,6 +33,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
 
@@ -760,11 +761,6 @@ madt_ioapic_probe_callback(void *xarg, const struct acpi_madt_ent *ent)
 			return EINVAL;
 		}
 
-		if (intsrc_ent->mint_src == intsrc_ent->mint_gsi) {
-			kprintf("ACPI MADT: warning intsrc irq %d "
-				"no gsi change\n", intsrc_ent->mint_src);
-		}
-
 		if (intsrc_ent->mint_bus != MADT_INT_BUS_ISA) {
 			kprintf("ACPI MADT: warning intsrc irq %d "
 				"bus is not ISA (%d)\n",
@@ -773,16 +769,14 @@ madt_ioapic_probe_callback(void *xarg, const struct acpi_madt_ent *ent)
 
 		trig = (intsrc_ent->mint_flags & MADT_INT_TRIG_MASK) >>
 		       MADT_INT_TRIG_SHIFT;
-		if (trig != MADT_INT_TRIG_EDGE &&
-		    trig != MADT_INT_TRIG_CONFORM) {
+		if (trig == MADT_INT_TRIG_RSVD) {
 			kprintf("ACPI MADT: warning invalid intsrc irq %d "
 				"trig (%d)\n", intsrc_ent->mint_src, trig);
 		}
 
 		pola = (intsrc_ent->mint_flags & MADT_INT_POLA_MASK) >>
 		       MADT_INT_POLA_SHIFT;
-		if (pola != MADT_INT_POLA_HIGH &&
-		    pola != MADT_INT_POLA_CONFORM) {
+		if (pola == MADT_INT_POLA_RSVD) {
 			kprintf("ACPI MADT: warning invalid intsrc irq %d "
 				"pola (%d)\n", intsrc_ent->mint_src, pola);
 		}
@@ -838,15 +832,39 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 {
 	if (ent->me_type == MADT_ENT_INTSRC) {
 		const struct acpi_madt_intsrc *intsrc_ent;
+		enum intr_trigger trig;
+		enum intr_polarity pola;
+		int ent_trig;
 
 		intsrc_ent = (const struct acpi_madt_intsrc *)ent;
-		if (intsrc_ent->mint_src == intsrc_ent->mint_gsi ||
-		    intsrc_ent->mint_bus != MADT_INT_BUS_ISA)
+
+		KKASSERT(intsrc_ent->mint_src < 16);
+		if (intsrc_ent->mint_bus != MADT_INT_BUS_ISA)
 			return 0;
 
-		MADT_VPRINTF("INTSRC irq %d -> gsi %u\n",
-			     intsrc_ent->mint_src, intsrc_ent->mint_gsi);
-		ioapic_intsrc(intsrc_ent->mint_src, intsrc_ent->mint_gsi);
+		ent_trig = (intsrc_ent->mint_flags & MADT_INT_TRIG_MASK) >>
+			   MADT_INT_TRIG_SHIFT;
+		if (ent_trig == MADT_INT_TRIG_RSVD) {
+			return 0;
+		} else if (ent_trig == MADT_INT_TRIG_LEVEL) {
+			trig = INTR_TRIGGER_LEVEL;
+			pola = INTR_POLARITY_LOW;
+		} else {
+			trig = INTR_TRIGGER_EDGE;
+			pola = INTR_POLARITY_HIGH;
+		}
+
+		if (intsrc_ent->mint_src == intsrc_ent->mint_gsi &&
+		    trig == INTR_TRIGGER_EDGE) {
+			/* Nothing changed */
+			return 0;
+		}
+
+		MADT_VPRINTF("INTSRC irq %d -> gsi %u %c\n",
+			     intsrc_ent->mint_src, intsrc_ent->mint_gsi,
+			     trig == INTR_TRIGGER_EDGE ? 'E' : 'L');
+		ioapic_intsrc(intsrc_ent->mint_src, intsrc_ent->mint_gsi,
+			      trig, pola);
 	} else if (ent->me_type == MADT_ENT_IOAPIC) {
 		const struct acpi_madt_ioapic *ioapic_ent;
 

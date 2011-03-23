@@ -3634,7 +3634,8 @@ mptable_ioapic_int_callback(void *xarg, const void *pos, int type)
 				kprintf("MPTABLE: INTSRC irq %d -> GSI %d\n",
 					ent->src_bus_irq, gsi);
 			}
-			ioapic_intsrc(ent->src_bus_irq, gsi);
+			ioapic_intsrc(ent->src_bus_irq, gsi,
+			    INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH);
 		}
 	} else {
 		/* XXX rough estimation */
@@ -3698,7 +3699,7 @@ mptable_ioapic_enumerate(struct ioapic_enumerator *e)
 	if (mptable_use_default) {
 		if (bootverbose)
 			kprintf("MPTABLE: INTSRC irq 0 -> GSI 2 (default)\n");
-		ioapic_intsrc(0, 2);
+		ioapic_intsrc(0, 2, INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH);
 		return;
 	}
 
@@ -3714,7 +3715,7 @@ mptable_ioapic_enumerate(struct ioapic_enumerator *e)
 	if (TAILQ_EMPTY(&bus_info.mbi_list)) {
 		if (bootverbose)
 			kprintf("MPTABLE: INTSRC irq 0 -> GSI 2 (no bus)\n");
-		ioapic_intsrc(0, 2);
+		ioapic_intsrc(0, 2, INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH);
 	} else {
 		struct mptable_ioapic_int_cbarg arg;
 
@@ -3731,7 +3732,8 @@ mptable_ioapic_enumerate(struct ioapic_enumerator *e)
 				kprintf("MPTABLE: INTSRC irq 0 -> GSI 2 "
 					"(no int)\n");
 			}
-			ioapic_intsrc(0, 2);
+			ioapic_intsrc(0, 2, INTR_TRIGGER_EDGE,
+			    INTR_POLARITY_HIGH);
 		}
 	}
 

@@ -63,9 +63,15 @@ struct ioapic_info {
 };
 TAILQ_HEAD(ioapic_info_list, ioapic_info);
 
+struct ioapic_intsrc {
+	int		int_gsi;
+	enum intr_trigger int_trig;
+	enum intr_polarity int_pola;
+};
+
 struct ioapic_conf {
 	struct ioapic_info_list ioc_list;
-	int		ioc_intsrc[16];	/* XXX magic number */
+	struct ioapic_intsrc ioc_intsrc[16];	/* XXX magic number */
 };
 
 static void	lapic_timer_calibrate(void);
@@ -1148,7 +1154,7 @@ ioapic_config(void)
 	TAILQ_INIT(&ioapic_conf.ioc_list);
 	/* XXX magic number */
 	for (i = 0; i < 16; ++i)
-		ioapic_conf.ioc_intsrc[i] = -1;
+		ioapic_conf.ioc_intsrc[i].int_gsi = -1;
 
 	TAILQ_FOREACH(e, &ioapic_enumerators, ioapic_link) {
 		error = e->ioapic_probe(e);
@@ -1323,10 +1329,12 @@ ioapic_add(void *addr, int gsi_base, int npin)
 }
 
 void
-ioapic_intsrc(int irq, int gsi)
+ioapic_intsrc(int irq, int gsi, enum intr_trigger trig, enum intr_polarity pola)
 {
-	KKASSERT(irq != gsi);
+	struct ioapic_intsrc *int_src;
+
 	KKASSERT(irq < 16);
+	int_src = &ioapic_conf.ioc_intsrc[irq];
 
 	if (gsi == 0) {
 		/* Don't allow mixed mode */
@@ -1334,12 +1342,29 @@ ioapic_intsrc(int irq, int gsi)
 		return;
 	}
 
-	if (ioapic_conf.ioc_intsrc[irq] != -1 &&
-	    ioapic_conf.ioc_intsrc[irq] != gsi) {
-		kprintf("IOAPIC: warning intsrc irq %d, gsi %d -> gsi %d\n",
-			irq, ioapic_conf.ioc_intsrc[irq], gsi);
+	if (int_src->int_gsi != -1) {
+		if (int_src->int_gsi != gsi) {
+			kprintf("IOAPIC: warning intsrc irq %d, gsi "
+				"%d -> %d\n", irq, int_src->int_gsi, gsi);
+		}
+		if (int_src->int_trig != trig) {
+			kprintf("IOAPIC: warning intsrc irq %d, trig "
+				"%c -> %c\n", irq,
+				int_src->int_trig == INTR_TRIGGER_EDGE
+				? 'E' : 'L',
+				trig == INTR_TRIGGER_EDGE ? 'E' : 'L');
+		}
+		if (int_src->int_pola != pola) {
+			kprintf("IOAPIC: warning intsrc irq %d, pola "
+				"%s -> %s\n", irq,
+				int_src->int_pola == INTR_POLARITY_HIGH
+				? "hi" : "lo",
+				pola == INTR_POLARITY_HIGH ? "hi" : "lo");
+		}
 	}
-	ioapic_conf.ioc_intsrc[irq] = gsi;
+	int_src->int_gsi = gsi;
+	int_src->int_trig = trig;
+	int_src->int_pola = pola;
 }
 
 static void
@@ -1391,9 +1416,12 @@ ioapic_gsi_setup(int gsi)
 	pola = 0;	/* silence older gcc's */
 
 	for (irq = 0; irq < 16; ++irq) {
-		if (gsi == ioapic_conf.ioc_intsrc[irq]) {
-			trig = INTR_TRIGGER_EDGE;
-			pola = INTR_POLARITY_HIGH;
+		const struct ioapic_intsrc *int_src =
+		    &ioapic_conf.ioc_intsrc[irq];
+
+		if (gsi == int_src->int_gsi) {
+			trig = int_src->int_trig;
+			pola = int_src->int_pola;
 			break;
 		}
 	}
