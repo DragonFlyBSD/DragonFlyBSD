@@ -43,6 +43,9 @@
 
 #include "apicvar.h"
 
+#define IOAPIC_COUNT_MAX	16
+#define IOAPIC_ID_MASK		(IOAPIC_COUNT_MAX - 1)
+
 /* EISA Edge/Level trigger control registers */
 #define ELCR0	0x4d0			/* eisa irq 0-7 */
 #define ELCR1	0x4d1			/* eisa irq 8-15 */
@@ -82,7 +85,10 @@ static void	lapic_timer_intr_enable(struct cputimer_intr *);
 static void	lapic_timer_intr_restart(struct cputimer_intr *);
 static void	lapic_timer_intr_pmfixup(struct cputimer_intr *);
 
+static int	lapic_unused_apic_id(int);
+
 static void	ioapic_setup(const struct ioapic_info *);
+static int	ioapic_alloc_apic_id(int);
 static void	ioapic_set_apic_id(const struct ioapic_info *);
 static void	ioapic_gsi_setup(int);
 static const struct ioapic_info *
@@ -1134,6 +1140,18 @@ u_sleep(int count)
 		 /* spin */ ;
 }
 
+static int
+lapic_unused_apic_id(int start)
+{
+	int i;
+
+	for (i = start; i < NAPICID; ++i) {
+		if (ID_TO_CPU(i) == -1)
+			return i;
+	}
+	return NAPICID;
+}
+
 void
 lapic_map(vm_offset_t lapic_addr)
 {
@@ -1149,7 +1167,10 @@ void
 lapic_config(void)
 {
 	struct lapic_enumerator *e;
-	int error;
+	int error, i;
+
+	for (i = 0; i < NAPICID; ++i)
+		ID_TO_CPU(i) = -1;
 
 	TAILQ_FOREACH(e, &lapic_enumerators, lapic_link) {
 		error = e->lapic_probe(e);
@@ -1223,27 +1244,52 @@ ioapic_config(void)
 
 	if (!ioapic_use_old) {
 		struct ioapic_info *info;
+		int start_apic_id = 0;
 
 		/*
-		 * Fixup the rest of the fields of ioapic_info
+		 * Setup index
 		 */
 		i = 0;
+		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
+			info->io_idx = i++;
+
+		if (i > IOAPIC_COUNT_MAX) /* XXX magic number */
+			panic("ioapic_config: more than 16 I/O APIC\n");
+
+		/*
+		 * Setup APIC ID
+		 */
+		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
+			int apic_id;
+
+			apic_id = ioapic_alloc_apic_id(start_apic_id);
+			if (apic_id == NAPICID) {
+				kprintf("IOAPIC: can't alloc APIC ID for "
+					"%dth I/O APIC\n", info->io_idx);
+				break;
+			}
+			info->io_apic_id = apic_id;
+
+			start_apic_id = apic_id + 1;
+		}
+		if (info != NULL) {
+			/*
+			 * xAPIC allows I/O APIC's APIC ID to be same
+			 * as the LAPIC's APIC ID
+			 */
+			kprintf("IOAPIC: use xAPIC model to alloc APIC ID "
+				"for I/O APIC\n");
+
+			TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
+				info->io_apic_id = info->io_idx;
+		}
+
+		/*
+		 * Warning about any GSI holes
+		 */
 		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
 			const struct ioapic_info *prev_info;
 
-			info->io_idx = i++;
-			info->io_apic_id = info->io_idx + lapic_id_max + 1;
-
-			if (bootverbose) {
-				kprintf("IOAPIC: idx %d, apic id %d, "
-					"gsi base %d, npin %d\n",
-					info->io_idx,
-					info->io_apic_id,
-					info->io_gsi_base,
-					info->io_npin);
-			}
-
-			/* Warning about possible GSI hole */
 			prev_info = TAILQ_PREV(info, ioapic_info_list, io_link);
 			if (prev_info != NULL) {
 				if (info->io_gsi_base !=
@@ -1254,6 +1300,17 @@ ioapic_config(void)
 						prev_info->io_npin,
 						info->io_gsi_base - 1);
 				}
+			}
+		}
+
+		if (bootverbose) {
+			TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
+				kprintf("IOAPIC: idx %d, apic id %d, "
+					"gsi base %d, npin %d\n",
+					info->io_idx,
+					info->io_apic_id,
+					info->io_gsi_base,
+					info->io_npin);
 			}
 		}
 
@@ -1310,6 +1367,7 @@ ioapic_add(void *addr, int gsi_base, int npin)
 	ninfo->io_addr = addr;
 	ninfo->io_npin = npin;
 	ninfo->io_gsi_base = gsi_base;
+	ninfo->io_apic_id = -1;
 
 	/*
 	 * Create IOAPIC list in ascending order of GSI base
@@ -1350,6 +1408,7 @@ static void
 ioapic_set_apic_id(const struct ioapic_info *info)
 {
 	uint32_t id;
+	int apic_id;
 
 	id = ioapic_read(info->io_addr, IOAPIC_ID);
 
@@ -1362,9 +1421,15 @@ ioapic_set_apic_id(const struct ioapic_info *info)
 	 * Re-read && test
 	 */
 	id = ioapic_read(info->io_addr, IOAPIC_ID);
-	if (((id & APIC_ID_MASK) >> 24) != info->io_apic_id) {
-		panic("ioapic_set_apic_id: can't set apic id to %d\n",
-		      info->io_apic_id);
+	apic_id = (id & APIC_ID_MASK) >> 24;
+
+	/*
+	 * I/O APIC ID is a 4bits field
+	 */
+	if ((apic_id & IOAPIC_ID_MASK) !=
+	    (info->io_apic_id & IOAPIC_ID_MASK)) {
+		panic("ioapic_set_apic_id: can't set apic id to %d, "
+		      "currently set to %d\n", info->io_apic_id, apic_id);
 	}
 }
 
@@ -1561,4 +1626,45 @@ ioapic_setup(const struct ioapic_info *info)
 
 	for (i = 0; i < info->io_npin; ++i)
 		ioapic_gsi_setup(info->io_gsi_base + i);
+}
+
+static int
+ioapic_alloc_apic_id(int start)
+{
+	for (;;) {
+		const struct ioapic_info *info;
+		int apic_id, apic_id16;
+
+		apic_id = lapic_unused_apic_id(start);
+		if (apic_id == NAPICID) {
+			kprintf("IOAPIC: can't find unused APIC ID\n");
+			return apic_id;
+		}
+		apic_id16 = apic_id & IOAPIC_ID_MASK;
+
+		/*
+		 * Check against other I/O APIC's APIC ID's lower 4bits.
+		 *
+		 * The new APIC ID will have to be different from others
+		 * in the lower 4bits, no matter whether xAPIC is used
+		 * or not.
+		 */
+		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
+			if (info->io_apic_id == -1) {
+				info = NULL;
+				break;
+			}
+			if ((info->io_apic_id & IOAPIC_ID_MASK) == apic_id16)
+				break;
+		}
+		if (info == NULL)
+			return apic_id;
+
+		kprintf("IOAPIC: APIC ID %d has same lower 4bits as "
+			"%dth I/O APIC, keep searching...\n",
+			apic_id, info->io_idx);
+
+		start = apic_id + 1;
+	}
+	panic("ioapic_unused_apic_id: never reached\n");
 }
