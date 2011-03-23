@@ -2382,10 +2382,14 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	/*
 	 * If the packet is unicast, destined for someone on
 	 * "this" side of the bridge, drop it.
+	 *
+	 * src_if implies the entire bonding set so we have to compare MAC
+	 * addresses and not just if pointers.
 	 */
 	if ((m->m_flags & (M_BCAST|M_MCAST)) == 0) {
 		dst_if = bridge_rtlookup(sc, eh->ether_dhost);
-		if (src_if == dst_if) {
+		if (dst_if && memcmp(IF_LLADDR(src_if), IF_LLADDR(dst_if),
+				     ETHER_ADDR_LEN) == 0) {
 			m_freem(m);
 			return;
 		}
@@ -2410,6 +2414,9 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 
 	/*
 	 * Unicast, kinda replicates the output side of bridge_output().
+	 *
+	 * Even though this is a uni-cast packet we may have to select
+	 * an interface from a bonding set.
 	 */
 	bif = bridge_lookup_member_if(sc, dst_if);
 	if (bif == NULL) {
@@ -2425,6 +2432,10 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 
 		TAILQ_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid],
 				     bif_next, nbif) {
+			/*
+			 * dst_if may imply a bonding set so we must compare
+			 * MAC addresses.
+			 */
 			if (memcmp(IF_LLADDR(bif->bif_ifp),
 				   IF_LLADDR(dst_if),
 				   ETHER_ADDR_LEN) != 0) {
@@ -3023,11 +3034,21 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 
 	TAILQ_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid], bif_next, nbif) {
 		dst_if = bif->bif_ifp;
-		if (dst_if == src_if)
-			continue;
 
 		if ((dst_if->if_flags & IFF_RUNNING) == 0)
 			continue;
+
+		/*
+		 * Don't bounce the packet out the same interface it came
+		 * in on.  We have to test MAC addresses because a packet
+		 * can come in a bonded interface and we don't want it to
+		 * be echod out the forwarding interface for the same bonding
+		 * set.
+		 */
+		if (src_if && memcmp(IF_LLADDR(src_if), IF_LLADDR(dst_if),
+				     ETHER_ADDR_LEN) == 0) {
+			continue;
+		}
 
 		/*
 		 * Generally speaking we only broadcast through forwarding
