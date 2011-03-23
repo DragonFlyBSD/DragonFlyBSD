@@ -1,0 +1,2 @@
+SRCS+=		i386-dis.c i386-opc.c
+CFLAGS+=	-DARCH_i386
