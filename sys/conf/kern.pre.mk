@@ -96,7 +96,7 @@ SYSTEM_LD= @${LD} -Bdynamic -T $S/platform/$P/conf/ldscript.$M \
 	-export-dynamic -dynamic-linker /red/herring \
 	-o ${.TARGET} -X ${SYSTEM_OBJS} vers.o
 .if ${P} == "pc64"
-# XXX swildner: Workaround to make kernels linked with binutils220 boot.
+# XXX swildner: Workaround to make kernels linked with binutils221 boot.
 #
 SYSTEM_LD+= -z max-page-size=1048576
 .endif

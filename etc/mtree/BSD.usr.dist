@@ -64,7 +64,7 @@
             elf
             ..
         ..
-        binutils220
+        binutils221
             ldscripts
             ..
             elf
