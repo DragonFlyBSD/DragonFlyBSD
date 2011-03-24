@@ -317,6 +317,7 @@ static basetable_entry basetable_entry_types[] =
 static u_int	boot_address;
 static u_int	base_memory;
 static int	mp_finish;
+static int	mp_finish_lapic;
 
 static void	mp_enable(u_int boot_addr);
 
@@ -356,6 +357,7 @@ static int	start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest);
 static int	smitest(void);
 
 static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
+static cpumask_t smp_lapic_mask = 1;	/* which cpus have lapic been inited */
 cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 static u_int	bootMP_size;
@@ -677,6 +679,9 @@ mp_enable(u_int boot_addr)
 	/* Initialize BSP's local APIC */
 	lapic_init(TRUE);
 
+	/* start each Application Processor */
+	start_all_aps(boot_addr);
+
 	if (apic_io_enable)
 		ioapic_config();
 
@@ -734,9 +739,6 @@ if (apic_io_enable && ioapic_use_old) {
 
 	/* Finalize PIC */
 	MachIntrABI.finalize();
-
-	/* start each Application Processor */
-	start_all_aps(boot_addr);
 }
 
 
@@ -2221,7 +2223,6 @@ start_all_aps(u_int boot_addr)
 		kprintf("SMI Frequency (worst case): %d Hz (%d us)\n",
 			1000000 / smibest, smibest);
 
-	kprintf("SMP: Starting %d APs: ", mp_naps);
 	/* start each AP */
 	for (x = 1; x <= mp_naps; ++x) {
 
@@ -2308,6 +2309,24 @@ start_all_aps(u_int boot_addr)
 	 * up, clean out the P==V mapping we did earlier.
 	 */
 	pmap_set_opt();
+
+	/*
+	 * Wait all APs to finish initializing LAPIC
+	 */
+	mp_finish_lapic = 1;
+	if (bootverbose)
+		kprintf("SMP: Waiting APs LAPIC initialization\n");
+	if (cpu_feature & CPUID_TSC)
+		tsc0_offset = rdtsc();
+	tsc_offsets[0] = 0;
+	rel_mplock();
+	while (smp_lapic_mask != smp_startup_mask) {
+		cpu_lfence();
+		if (cpu_feature & CPUID_TSC)
+			tsc0_offset = rdtsc();
+	}
+	while (try_mplock() == 0)
+		;
 
 	/* number of APs actually started */
 	return ncpus - 1;
@@ -2745,18 +2764,18 @@ ap_init(void)
 	cpu_mfence();
 
 	/*
-	 * Interlock for finalization.  Wait until mp_finish is non-zero,
-	 * then get the MP lock.
+	 * Interlock for LAPIC initialization.  Wait until mp_finish_lapic is
+	 * non-zero, then get the MP lock.
 	 *
 	 * Note: We are in a critical section.
 	 *
 	 * Note: we are the idle thread, we can only spin.
 	 *
 	 * Note: The load fence is memory volatile and prevents the compiler
-	 * from improperly caching mp_finish, and the cpu from improperly
+	 * from improperly caching mp_finish_lapic, and the cpu from improperly
 	 * caching it.
 	 */
-	while (mp_finish == 0)
+	while (mp_finish_lapic == 0)
 		cpu_lfence();
 	while (try_mplock() == 0)
 		;
@@ -2779,8 +2798,6 @@ ap_init(void)
 	/* Build our map of 'other' CPUs. */
 	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
 
-	kprintf(" %d", mycpu->gd_cpuid);
-
 	/* A quick check from sanity claus */
 	apic_id = (apic_id_to_logical[(lapic->id & 0xff000000) >> 24]);
 	if (mycpu->gd_cpuid != apic_id) {
@@ -2795,6 +2812,33 @@ ap_init(void)
 
 	/* Initialize AP's local APIC for irq's */
 	lapic_init(FALSE);
+
+	/* LAPIC initialization is done */
+	smp_lapic_mask |= CPUMASK(mycpu->gd_cpuid);
+	cpu_mfence();
+
+	/* Let BSP move onto the next initialization stage */
+	rel_mplock();
+
+	/*
+	 * Interlock for finalization.  Wait until mp_finish is non-zero,
+	 * then get the MP lock.
+	 *
+	 * Note: We are in a critical section.
+	 *
+	 * Note: we are the idle thread, we can only spin.
+	 *
+	 * Note: The load fence is memory volatile and prevents the compiler
+	 * from improperly caching mp_finish, and the cpu from improperly
+	 * caching it.
+	 */
+	while (mp_finish == 0)
+		cpu_lfence();
+	while (try_mplock() == 0)
+		;
+
+	/* BSP may have changed PTD while we're waiting for the lock */
+	cpu_invltlb();
 
 	/* Set memory range attributes for this CPU to match the BSP */
 	mem_range_AP_init();
@@ -2845,18 +2889,11 @@ ap_finish(void)
 	mp_finish = 1;
 	if (bootverbose)
 		kprintf("Finish MP startup\n");
-	if (cpu_feature & CPUID_TSC)
-		tsc0_offset = rdtsc();
-	tsc_offsets[0] = 0;
 	rel_mplock();
-	while (smp_active_mask != smp_startup_mask) {
+	while (smp_active_mask != smp_startup_mask)
 		cpu_lfence();
-		if (cpu_feature & CPUID_TSC)
-			tsc0_offset = rdtsc();
-	}
 	while (try_mplock() == 0)
 		;
-	kprintf("\n");
 	if (bootverbose) {
 		kprintf("Active CPU Mask: %016jx\n",
 			(uintmax_t)smp_active_mask);
