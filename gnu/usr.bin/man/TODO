@@ -61,7 +61,7 @@ XX  Add some way to automatically to run preprocessors.  The Sun man
 
           '\"  X
 
-      where  X is separated from the the `"' by a single SPACE and
+      where  X is separated from the `"' by a single SPACE and
       consists of any combination of characters in  the  following
       list,  man  pipes  its input to troff(1) or nroff(1) through
       the corresponding preprocessors.

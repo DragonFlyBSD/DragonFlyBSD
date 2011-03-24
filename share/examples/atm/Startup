@@ -70,7 +70,7 @@ See the file atm-config.sh for an example ATM startup script.
 	      <vci> is the VCI value for the PVC;
 	      <aal> is the AAL type which the PVC endpoints will use;
 	      <encaps> is the encapsulation which the PVC endpoints will use;
-	      <owner> specifies the the owner of the PVC, which may be:
+	      <owner> specifies the owner of the PVC, which may be:
 			ip - the PVC is used for IP traffic;
 
 	additional parameters may be required, depending on the PVC owner:
@@ -124,5 +124,3 @@ See the file atm-config.sh for an example ATM startup script.
     See the man pages scspd(8) and atmarpd(8) for further information.
 
 	@(#) $FreeBSD: src/share/examples/atm/Startup,v 1.2 1999/08/28 00:19:07 peter Exp $
-	@(#) $DragonFly: src/share/examples/atm/Startup,v 1.2 2003/06/17 04:36:57 dillon Exp $
-

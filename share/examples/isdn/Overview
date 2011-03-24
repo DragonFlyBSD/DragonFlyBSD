@@ -5,7 +5,6 @@
 	Copyright (c) 1998 Hellmuth Michaelis. All rights reserved.
 
  $FreeBSD: src/share/examples/isdn/Overview,v 1.3 1999/08/28 00:19:19 peter Exp $
- $DragonFly: src/share/examples/isdn/Overview,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 	Last edit-date: [Tue Oct 27 11:26:03 1998]
 
@@ -227,7 +226,7 @@ Layer 3
     layer 4 with layer 3: layer 3 "knows" the routines to call within
     layer 4 by name, but in case layer 4 has to call layer 3, several
     possibilities exist (i.e. active / passive cards) so it has to call
-    the routines which the ISDN controller had put into the the function
+    the routines which the ISDN controller had put into the function
     pointer array (N_CONNECT_REQUEST, N_CONNECT_RESPONSE etc) at init time.
 
     Layer 3 shares a structure called call_desc_t (call descriptor) with

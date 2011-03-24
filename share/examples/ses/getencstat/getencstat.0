@@ -1,5 +1,4 @@
 .\"	$FreeBSD: src/share/examples/ses/getencstat/getencstat.0,v 1.1 2000/02/29 05:44:12 mjacob Exp $
-.\"	$DragonFly: src/share/examples/ses/getencstat/getencstat.0,v 1.2 2003/06/17 04:36:57 dillon Exp $
 .\"
 .\" Copyright (c) 2000 Matthew Jacob
 .\" All rights reserved.
@@ -46,7 +45,7 @@
 .Nm
 gets summary and detailed SCSI Environmental Services (or SAF-TE) device
 enclosure status. The overall status is printed out. If the overall status
-is considered okay, nothing else is printed out (unless the the
+is considered okay, nothing else is printed out (unless the
 .Fl v
 option is used).
 .Pp

@@ -31,8 +31,6 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.17 2007/09/14 23:47:53 swildner Exp $
-.\"
 .Dd February 8, 2009
 .Dt JSCAN 8
 .Os
@@ -159,7 +157,7 @@ Change the size limit for rotating files created via
 The default is 100M.  Values are in bytes or may be suffixed with k,
 m, or g.
 If a raw transaction causes the file's size limit to be exceeded, a new file
-will be created.  If a raw transaction is, in-whole, larger the the file's
+will be created.  If a raw transaction is, in-whole, larger than the file's
 size limit, the raw transaction will still be fully written to the file before
 a new file is created.  Raw transactions are typically limited to the size
 of the source system's memory FIFO.  This option is typically used to size
