@@ -70,7 +70,6 @@ static struct command commands[] = {
 	{"addr2line",	BINUTILS2},
 	{"ar",		BINUTILS2},
 	{"as",		BINUTILS2},
-	{"gdb",		BINUTILS2},
 	{"ld",		BINUTILS2},
 	{"nm",		BINUTILS2},
 	{"objcopy",	BINUTILS2},
