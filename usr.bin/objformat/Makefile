@@ -23,7 +23,6 @@ CFLAGS+=	-DOBJFORMAT_PATH_DEFAULT="\"${OBJFORMAT_BUILTIN_PATH_DEFAULT}\""
 LINKS+=	${BINDIR}/objformat ${BINDIR}/addr2line
 LINKS+=	${BINDIR}/objformat ${BINDIR}/ar
 LINKS+=	${BINDIR}/objformat ${BINDIR}/as
-LINKS+=	${BINDIR}/objformat ${BINDIR}/gasp
 LINKS+=	${BINDIR}/objformat ${BINDIR}/ld
 LINKS+=	${BINDIR}/objformat ${BINDIR}/nm
 LINKS+=	${BINDIR}/objformat ${BINDIR}/objcopy
