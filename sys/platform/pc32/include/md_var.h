@@ -36,6 +36,11 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
+
+#include <machine/globaldata.h>
 
 /*
  * Miscellaneous machine-dependent declarations.
@@ -90,7 +95,7 @@ void	cpu_lwkt_restore (void);	/* cannot be called from C */
 void	cpu_idle_restore (void);	/* cannot be called from C */
 void	cpu_kthread_restore (void);/* cannot be called from C */
 void	cpu_exit_idleptd (void); 	/* disassociate proc MMU */
-void	cpu_exit_switch (struct thread *next);
+thread_t cpu_exit_switch (struct thread *next);
 void	doreti_iret (void) __asm(__STRING(doreti_iret));
 void	doreti_iret_fault (void) __asm(__STRING(doreti_iret_fault));
 void	doreti_popl_ds (void) __asm(__STRING(doreti_popl_ds));

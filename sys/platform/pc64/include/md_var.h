@@ -92,7 +92,7 @@ void npxpop(struct __mcontext *mctx);
 void	cpu_heavy_restore (void);
 void	cpu_kthread_restore (void);/* cannot be called from C */
 
-void	cpu_exit_switch (struct thread *next);
+thread_t cpu_exit_switch (struct thread *next);
 
 void	syscall2 (struct trapframe *);
 void    minidumpsys(struct dumperinfo *);

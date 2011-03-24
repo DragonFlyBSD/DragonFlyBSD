@@ -1257,7 +1257,9 @@ sched_thread(void *dummy)
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
 			spin_unlock(&bsd4_spin);
+#ifdef SMP
 			lwkt_acquire(nlp->lwp_thread);
+#endif
 			lwkt_schedule(nlp->lwp_thread);
 		} else {
 			spin_unlock(&bsd4_spin);
@@ -1267,7 +1269,9 @@ sched_thread(void *dummy)
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
 			spin_unlock(&bsd4_spin);
+#ifdef SMP
 			lwkt_acquire(nlp->lwp_thread);
+#endif
 			lwkt_schedule(nlp->lwp_thread);
 		} else {
 			/*

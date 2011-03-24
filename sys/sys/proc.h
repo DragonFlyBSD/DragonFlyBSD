@@ -525,8 +525,8 @@ void	proc_unstop (struct proc *);
 void	sleep_gdinit (struct globaldata *);
 int	suser (struct thread *td);
 int	suser_cred (struct ucred *cred, int flag);
-void	cpu_heavy_switch (struct thread *);
-void	cpu_lwkt_switch (struct thread *);
+thread_t cpu_heavy_switch (struct thread *);
+thread_t cpu_lwkt_switch (struct thread *);
 
 void	cpu_lwp_exit (void) __dead2;
 void	cpu_thread_exit (void) __dead2;

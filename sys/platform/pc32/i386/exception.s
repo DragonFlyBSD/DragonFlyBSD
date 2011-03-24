@@ -46,6 +46,8 @@
 
 	.text
 
+	.globl	lwkt_switch_return
+
 #ifdef DEBUG_INTERRUPTS
 	.globl	Xrsvdary
 
@@ -892,8 +894,18 @@ IDTVEC(int0x80_syscall)
  *
  * The MP lock is not held at any point but the critcount is bumped
  * on entry to prevent interruption of the trampoline at a bad point.
+ *
+ * This is effectively what td->td_switch() returns to.  It 'returns' the
+ * old thread in %eax and since this is not returning to a td->td_switch()
+ * call from lwkt_switch() we must handle the cleanup for the old thread
+ * by calling lwkt_switch_return().
+ *
+ * fork_trampoline(%eax:otd, %esi:func, %ebx:arg)
  */
 ENTRY(fork_trampoline)
+	pushl	%eax
+	call	lwkt_switch_return
+	addl	$4,%esp
 	movl	PCPU(curthread),%eax
 	decl	TD_CRITCOUNT(%eax)
 

@@ -91,7 +91,7 @@ void cpu_heavy_restore(void);	/* cannot be called from C */
 void cpu_lwkt_restore(void);    /* cannot be called from C */
 void cpu_idle_restore(void);    /* cannot be called from C */
 void cpu_kthread_restore(void);	/* cannot be called from C */
-void cpu_exit_switch (struct thread *next);
+thread_t cpu_exit_switch (struct thread *next);
 void cpu_setregs (void);
 void cpu_idle (void);
 void cpu_mask_all_signals (void);

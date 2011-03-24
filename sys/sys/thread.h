@@ -249,7 +249,7 @@ struct thread {
     char	*td_kstack;	/* kernel stack */
     int		td_kstack_size;	/* size of kernel stack */
     char	*td_sp;		/* kernel stack pointer for LWKT restore */
-    void	(*td_switch)(struct thread *ntd);
+    thread_t	(*td_switch)(struct thread *ntd);
     __uint64_t	td_uticks;	/* Statclock hits in user mode (uS) */
     __uint64_t	td_sticks;      /* Statclock hits in system mode (uS) */
     __uint64_t	td_iticks;	/* Statclock hits processing intr (uS) */
@@ -275,6 +275,7 @@ struct thread {
     struct lwkt_tokref td_toks_array[LWKT_MAXTOKENS];
     int		td_fairq_lticks;	/* fairq wakeup accumulator reset */
     int		td_fairq_accum;		/* fairq priority accumulator */
+    struct globaldata *td_migrate_gd;	/* target gd for thread migration */
     const void	*td_mplock_stallpc;	/* last mplock stall address */
 #ifdef DEBUG_CRIT_SECTIONS
 #define CRIT_DEBUG_ARRAY_SIZE   32
@@ -421,6 +422,7 @@ extern void lwkt_wait_free(struct thread *);
 extern void lwkt_free_thread(struct thread *);
 extern void lwkt_gdinit(struct globaldata *);
 extern void lwkt_switch(void);
+extern void lwkt_switch_return(struct thread *);
 extern void lwkt_preempt(thread_t, int);
 extern void lwkt_schedule(thread_t);
 extern void lwkt_schedule_noresched(thread_t);

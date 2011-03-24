@@ -43,6 +43,8 @@
 
 	.text
 
+	.globl	lwkt_switch_return
+
 /*
  * This function is what cpu_heavy_restore jumps to after a new process
  * is created.  The LWKT subsystem switches while holding a critical
@@ -53,8 +55,17 @@
  *
  * The MP lock is not held at any point but the critcount is bumped
  * on entry to prevent interruption of the trampoline at a bad point.
+ *
+ * This is effectively what td->td_switch() returns to.  It 'returns' the
+ * old thread in %eax and since this is not returning to a td->td_switch()
+ * call from lwkt_switch() we must handle the cleanup for the old thread
+ * by calling lwkt_switch_return().
+ *
+ * fork_trampoline(%rax:otd, %rbp:func, %r12:arg)
  */
 ENTRY(fork_trampoline)
+	movq	%rax,%rdi
+	call	lwkt_switch_return
 	movq	PCPU(curthread),%rax
 	decl	TD_CRITCOUNT(%rax)
 

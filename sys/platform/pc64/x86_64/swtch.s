@@ -93,6 +93,7 @@
 	.data
 
 	.globl	panic
+	.globl	lwkt_switch_return
 
 #if defined(SWTCH_OPTIM_STATS)
 	.globl	swtch_optim_stats, tlb_flush_count
@@ -278,9 +279,7 @@ ENTRY(cpu_exit_switch)
  *
  *	This entry is only called if the thread was previously saved
  *	using cpu_heavy_switch() (the heavy weight process thread switcher),
- *	or when a new process is initially scheduled.  The first thing we
- *	do is clear the TDF_RUNNING bit in the old thread and set it in the
- *	new thread.
+ *	or when a new process is initially scheduled.
  *
  *	NOTE: The lwp may be in any state, not necessarily LSRUN, because
  *	a preemption switch may interrupt the process and then return via 
@@ -348,20 +347,17 @@ ENTRY(cpu_heavy_restore)
 	movq	%rcx,%cr3
 4:
 	/*
-	 * Clear TDF_RUNNING flag in old thread only after cleaning up
-	 * %cr3.  The target thread is already protected by being TDF_RUNQ
-	 * so setting TDF_RUNNING isn't as big a deal.
+	 * NOTE: %rbx is the previous thread and %eax is the new thread.
+	 *	 %rbx is retained throughout so we can return it.
+	 *
+	 *	 lwkt_switch[_return] is responsible for handling TDF_RUNNING.
 	 */
-	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
-	orl	$TDF_RUNNING,TD_FLAGS(%rax)
 
 	/*
 	 * Deal with the PCB extension, restore the private tss
 	 */
 	movq	PCB_EXT(%rdx),%rdi	/* check for a PCB extension */
-	/* JG cheaper than "movq $1,%rbx", right? */
-	/* JG what's that magic value $1? */
-	movl	$1,%ebx			/* maybe mark use of a private tss */
+	movq	$1,%rcx			/* maybe mark use of a private tss */
 	testq	%rdi,%rdi
 #if JG
 	jnz	2f
@@ -373,16 +369,16 @@ ENTRY(cpu_heavy_restore)
 	 * usermode.  The PCB is at the top of the stack but we need another
 	 * 16 bytes to take vm86 into account.
 	 */
-	movq	%rdx,%rbx
-	/*leaq	-TF_SIZE(%rdx),%rbx*/
-	movq	%rbx, PCPU(common_tss) + TSS_RSP0
+	movq	%rdx,%rcx
+	/*leaq	-TF_SIZE(%rdx),%rcx*/
+	movq	%rcx, PCPU(common_tss) + TSS_RSP0
 
 #if JG
 	cmpl	$0,PCPU(private_tss)	/* don't have to reload if      */
 	je	3f			/* already using the common TSS */
 
 	/* JG? */
-	subl	%ebx,%ebx		/* unmark use of private tss */
+	subq	%rcx,%rcx		/* unmark use of private tss */
 
 	/*
 	 * Get the address of the common TSS descriptor for the ltr.
@@ -401,7 +397,7 @@ ENTRY(cpu_heavy_restore)
 	 */
 2:
 	/* JG */
-	movl	%ebx,PCPU(private_tss)		/* mark/unmark private tss */
+	movl	%rcx,PCPU(private_tss)		/* mark/unmark private tss */
 	movq	PCPU(tss_gdt), %rbx		/* entry in GDT */
 	movq	0(%rdi), %rax
 	movq	%rax, 0(%rbx)
@@ -437,9 +433,8 @@ ENTRY(cpu_heavy_restore)
 5:
 
 	/*
-	 * Restore general registers.
+	 * Restore general registers.  %rbx is restored later.
 	 */
-	movq	PCB_RBX(%rdx), %rbx
 	movq	PCB_RSP(%rdx), %rsp
 	movq	PCB_RBP(%rdx), %rbp
 	movq	PCB_R12(%rdx), %r12
@@ -495,14 +490,14 @@ ENTRY(cpu_heavy_restore)
 	/* JG correct value? */
 	andq    $0x0000fc00,%rax         /*   reserved bits               */
 	/* JG we've got more registers on x86_64 */
-	pushq   %rbx
-	movq    PCB_DR7(%rdx),%rbx
+	movq    PCB_DR7(%rdx),%rcx
 	/* JG correct value? */
-	andq	$~0x0000fc00,%rbx
-	orq     %rbx,%rax
-	popq	%rbx
+	andq	$~0x0000fc00,%rcx
+	orq     %rcx,%rax
 	movq    %rax,%dr7
 1:
+	movq	%rbx,%rax
+	movq	PCB_RBX(%rdx),%rbx
 	ret
 
 /*
@@ -576,6 +571,8 @@ ENTRY(savectx)
  *	switching.
  *
  *	Clear TDF_RUNNING in old thread only after we've cleaned up %cr3.
+ *	This only occurs during system boot so no special handling is
+ *	required for migration.
  *
  *	If we are an AP we have to call ap_init() before jumping to
  *	cpu_idle().  ap_init() will synchronize with the BP and finish
@@ -592,7 +589,9 @@ ENTRY(cpu_idle_restore)
 	pushq	$0
 	movq	%rcx,%cr3
 	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
+#if 0
 	orl	$TDF_RUNNING,TD_FLAGS(%rax)
+#endif
 #ifdef SMP
 	cmpl	$0,PCPU(cpuid)
 	je	1f
@@ -614,22 +613,38 @@ ENTRY(cpu_idle_restore)
  *	LWKT based kernel thread only.  cpu_lwkt_switch() will be used
  *	after this.
  *
+ *	Because this switch target does not 'return' to lwkt_switch()
+ *	we have to call lwkt_switch_return(otd) to clean up otd.
+ *	otd is in %ebx.
+ *
  *	Since all of our context is on the stack we are reentrant and
  *	we can release our critical section and enable interrupts early.
  */
 ENTRY(cpu_kthread_restore)
 	sti
 	movq	KPML4phys,%rcx
-	movq	TD_PCB(%rax),%rdx
+	movq	TD_PCB(%rax),%r13
 	/* JG "movq $0, %rbp"? "xorq %rbp, %rbp"? */
 	movq	$0,%rbp
 	movq	%rcx,%cr3
-	/* rax and rbx come from the switchout code */
+
+	/*
+	 * rax and rbx come from the switchout code.  Call
+	 * lwkt_switch_return(otd).
+	 *
+	 * NOTE: unlike i386, %rsi and %rdi are not call-saved regs.
+	 */
+	pushq	%rax
+	movq	%rbx,%rdi
+	call	lwkt_switch_return
+	popq	%rax
+#if 0
 	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
 	orl	$TDF_RUNNING,TD_FLAGS(%rax)
+#endif
 	decl	TD_CRITCOUNT(%rax)
-	movq	PCB_R12(%rdx),%rdi	/* argument to RBX function */
-	movq	PCB_RBX(%rdx),%rax	/* thread function */
+	movq	PCB_R12(%r13),%rdi	/* argument to RBX function */
+	movq	PCB_RBX(%r13),%rax	/* thread function */
 	/* note: top of stack return address inherited by function */
 	jmp	*%rax
 
@@ -705,8 +720,13 @@ ENTRY(cpu_lwkt_restore)
 	je	1f
 	movq	%rcx,%cr3
 1:
-	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
-	orl	$TDF_RUNNING,TD_FLAGS(%rax)
+	/*
+	 * NOTE: %rbx is the previous thread and %eax is the new thread.
+	 *	 %rbx is retained throughout so we can return it.
+	 *
+	 *	 lwkt_switch[_return] is responsible for handling TDF_RUNNING.
+	 */
+	movq	%rbx,%rax
 	popfq
 	popq	%r15
 	popq	%r14

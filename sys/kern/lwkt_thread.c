@@ -99,6 +99,7 @@ static struct objcache *thread_cache;
 
 #ifdef SMP
 static void lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame);
+static void lwkt_setcpu_remote(void *arg);
 #endif
 static void lwkt_fairq_accumulate(globaldata_t gd, thread_t td);
 
@@ -933,12 +934,58 @@ haveidle:
 	    td->td_critcount, ntd->td_critcount));
 
     if (td != ntd) {
+	/*
+	 * Execute the actual thread switch operation.  This function
+	 * returns to the current thread and returns the previous thread
+	 * (which may be different from the thread we switched to).
+	 *
+	 * We are responsible for marking ntd as TDF_RUNNING.
+	 */
 	++switch_count;
 	KTR_LOG(ctxsw_sw, gd->gd_cpuid, ntd);
-	td->td_switch(ntd);
+	ntd->td_flags |= TDF_RUNNING;
+	lwkt_switch_return(td->td_switch(ntd));
+	/* ntd invalid, td_switch() can return a different thread_t */
     }
     /* NOTE: current cpu may have changed after switch */
     crit_exit_quick(td);
+}
+
+/*
+ * Called by assembly in the td_switch (thread restore path) for thread
+ * bootstrap cases which do not 'return' to lwkt_switch().
+ */
+void
+lwkt_switch_return(thread_t otd)
+{
+#ifdef SMP
+	globaldata_t rgd;
+
+	/*
+	 * Check if otd was migrating.  Now that we are on ntd we can finish
+	 * up the migration.  This is a bit messy but it is the only place
+	 * where td is known to be fully descheduled.
+	 *
+	 * We can only activate the migration if otd was migrating but not
+	 * held on the cpu due to a preemption chain.  We still have to
+	 * clear TDF_RUNNING on the old thread either way.
+	 *
+	 * We are responsible for clearing the previously running thread's
+	 * TDF_RUNNING.
+	 */
+	if ((rgd = otd->td_migrate_gd) != NULL &&
+	    (otd->td_flags & TDF_PREEMPT_LOCK) == 0) {
+		KKASSERT((otd->td_flags & (TDF_MIGRATING | TDF_RUNNING)) ==
+			 (TDF_MIGRATING | TDF_RUNNING));
+		otd->td_migrate_gd = NULL;
+		otd->td_flags &= ~TDF_RUNNING;
+		lwkt_send_ipiq(rgd, lwkt_setcpu_remote, otd);
+	} else {
+		otd->td_flags &= ~TDF_RUNNING;
+	}
+#else
+	otd->td_flags &= ~TDF_RUNNING;
+#endif
 }
 
 /*
@@ -971,6 +1018,7 @@ void
 lwkt_preempt(thread_t ntd, int critcount)
 {
     struct globaldata *gd = mycpu;
+    thread_t xtd;
     thread_t td;
     int save_gd_intr_nesting_level;
 
@@ -1043,6 +1091,9 @@ lwkt_preempt(thread_t ntd, int critcount)
      * We must temporarily clear gd_intr_nesting_level around the switch
      * since switchouts from the target thread are allowed (they will just
      * return to our thread), and since the target thread has its own stack.
+     *
+     * A preemption must switch back to the original thread, assert the
+     * case.
      */
     ++preempt_hit;
     ntd->td_preempted = td;
@@ -1050,7 +1101,10 @@ lwkt_preempt(thread_t ntd, int critcount)
     KTR_LOG(ctxsw_pre, gd->gd_cpuid, ntd);
     save_gd_intr_nesting_level = gd->gd_intr_nesting_level;
     gd->gd_intr_nesting_level = 0;
-    td->td_switch(ntd);
+    ntd->td_flags |= TDF_RUNNING;
+    xtd = td->td_switch(ntd);
+    KKASSERT(xtd == ntd);
+    lwkt_switch_return(xtd);
     gd->gd_intr_nesting_level = save_gd_intr_nesting_level;
 
     KKASSERT(ntd->td_preempted && (td->td_flags & TDF_PREEMPT_DONE));
@@ -1347,6 +1401,7 @@ lwkt_acquire(thread_t td)
 {
     globaldata_t gd;
     globaldata_t mygd;
+    int retry = 10000000;
 
     KKASSERT(td->td_flags & TDF_MIGRATING);
     gd = td->td_gd;
@@ -1361,6 +1416,11 @@ lwkt_acquire(thread_t td)
 	    lwkt_process_ipiq();
 #endif
 	    cpu_lfence();
+	    if (--retry == 0) {
+		kprintf("lwkt_acquire: stuck: td %p td->td_flags %08x\n",
+			td, td->td_flags);
+		retry = 10000000;
+	    }
 	}
 	DEBUG_POP_INFO();
 	cpu_mfence();
@@ -1500,23 +1560,21 @@ lwkt_fairq_accumulate(globaldata_t gd, thread_t td)
 /*
  * Migrate the current thread to the specified cpu. 
  *
- * This is accomplished by descheduling ourselves from the current cpu,
- * moving our thread to the tdallq of the target cpu, IPI messaging the
- * target cpu, and switching out.  TDF_MIGRATING prevents scheduling
- * races while the thread is being migrated.
+ * This is accomplished by descheduling ourselves from the current cpu
+ * and setting td_migrate_gd.  The lwkt_switch() code will detect that the
+ * 'old' thread wants to migrate after it has been completely switched out
+ * and will complete the migration.
+ *
+ * TDF_MIGRATING prevents scheduling races while the thread is being migrated.
+ *
+ * We must be sure to release our current process designation (if a user
+ * process) before clearing out any tsleepq we are on because the release
+ * code may re-add us.
  *
  * We must be sure to remove ourselves from the current cpu's tsleepq
  * before potentially moving to another queue.  The thread can be on
  * a tsleepq due to a left-over tsleep_interlock().
- *
- * We also have to make sure that the switch code doesn't allow an IPI
- * processing operation to leak in between our send and our switch, or
- * any other potential livelock such that might occur when we release the
- * current process designation, so do that first.
  */
-#ifdef SMP
-static void lwkt_setcpu_remote(void *arg);
-#endif
 
 void
 lwkt_setcpu_self(globaldata_t rgd)
@@ -1526,16 +1584,28 @@ lwkt_setcpu_self(globaldata_t rgd)
 
     if (td->td_gd != rgd) {
 	crit_enter_quick(td);
+
 	if (td->td_release)
 	    td->td_release(td);
 	if (td->td_flags & TDF_TSLEEPQ)
 	    tsleep_remove(td);
+
+	/*
+	 * Set TDF_MIGRATING to prevent a spurious reschedule while we are
+	 * trying to deschedule ourselves and switch away, then deschedule
+	 * ourself, remove us from tdallq, and set td_migrate_gd.  Finally,
+	 * call lwkt_switch() to complete the operation.
+	 */
 	td->td_flags |= TDF_MIGRATING;
 	lwkt_deschedule_self(td);
 	TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq);
-	lwkt_send_ipiq(rgd, (ipifunc1_t)lwkt_setcpu_remote, td);
+	td->td_migrate_gd = rgd;
 	lwkt_switch();
-	/* we are now on the target cpu */
+
+	/*
+	 * We are now on the target cpu
+	 */
+	KKASSERT(rgd == mycpu);
 	TAILQ_INSERT_TAIL(&rgd->gd_tdallq, td, td_allq);
 	crit_exit_quick(td);
     }
@@ -1553,43 +1623,28 @@ lwkt_migratecpu(int cpuid)
 #endif
 }
 
+#ifdef SMP
 /*
  * Remote IPI for cpu migration (called while in a critical section so we
- * do not have to enter another one).  The thread has already been moved to
- * our cpu's allq, but we must wait for the thread to be completely switched
- * out on the originating cpu before we schedule it on ours or the stack
- * state may be corrupt.  We clear TDF_MIGRATING after flushing the GD
- * change to main memory.
+ * do not have to enter another one).
  *
- * XXX The use of TDF_MIGRATING might not be sufficient to avoid races
- * against wakeups.  It is best if this interface is used only when there
- * are no pending events that might try to schedule the thread.
+ * The thread (td) has already been completely descheduled from the
+ * originating cpu and we can simply assert the case.  The thread is
+ * assigned to the new cpu and enqueued.
+ *
+ * The thread will re-add itself to tdallq when it resumes execution.
  */
-#ifdef SMP
 static void
 lwkt_setcpu_remote(void *arg)
 {
     thread_t td = arg;
     globaldata_t gd = mycpu;
-    int retry = 10000000;
 
-    DEBUG_PUSH_INFO("lwkt_setcpu_remote");
-    while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK)) {
-#ifdef SMP
-	lwkt_process_ipiq();
-#endif
-	cpu_lfence();
-	cpu_pause();
-	if (--retry == 0) {
-		kprintf("lwkt_setcpu_remote: td->td_flags %08x\n",
-			td->td_flags);
-		retry = 10000000;
-	}
-    }
-    DEBUG_POP_INFO();
+    KKASSERT((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK)) == 0);
     td->td_gd = gd;
     cpu_mfence();
     td->td_flags &= ~TDF_MIGRATING;
+    KKASSERT(td->td_migrate_gd == NULL);
     KKASSERT(td->td_lwp == NULL || (td->td_lwp->lwp_flag & LWP_ONRUNQ) == 0);
     _lwkt_enqueue(td);
 }
