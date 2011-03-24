@@ -1387,6 +1387,9 @@ ioapic_gsi_setup(int gsi)
 		return;
 	}
 
+	trig = 0;	/* silence older gcc's */
+	pola = 0;	/* silence older gcc's */
+
 	for (irq = 0; irq < 16; ++irq) {
 		if (gsi == ioapic_conf.ioc_intsrc[irq]) {
 			trig = INTR_TRIGGER_EDGE;
