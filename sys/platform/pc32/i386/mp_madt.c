@@ -846,9 +846,11 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 			   MADT_INT_TRIG_SHIFT;
 		if (ent_trig == MADT_INT_TRIG_RSVD) {
 			return 0;
+#ifdef notyet
 		} else if (ent_trig == MADT_INT_TRIG_LEVEL) {
 			trig = INTR_TRIGGER_LEVEL;
 			pola = INTR_POLARITY_LOW;
+#endif
 		} else {
 			trig = INTR_TRIGGER_EDGE;
 			pola = INTR_POLARITY_HIGH;
