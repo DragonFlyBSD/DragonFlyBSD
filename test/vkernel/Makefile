@@ -15,7 +15,7 @@ USEKERNEL=VKERNEL
 USEKERNEL=VKERNEL64
 .endif
 
-scratch: world kernel install
+scratch: world kernel root install
 	@echo "Run the environment with:"
 	@echo "make VKDIR=${VKDIR} run"
 
