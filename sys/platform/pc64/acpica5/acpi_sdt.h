@@ -39,6 +39,7 @@
 #define ACPI_RSDT_SIG		"RSDT"
 #define ACPI_XSDT_SIG		"XSDT"
 #define ACPI_MADT_SIG		"APIC"
+#define ACPI_FADT_SIG		"FACP"
 
 /* System Description Table Header */
 struct acpi_sdth {

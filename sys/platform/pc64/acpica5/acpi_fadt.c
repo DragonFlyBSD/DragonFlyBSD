@@ -32,26 +32,78 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _ACPI_SDT_H_
-#define _ACPI_SDT_H_
+#include <sys/param.h>
+#include <sys/bus.h>
+#include <sys/kernel.h>
+#include <sys/systm.h>
 
-#define ACPI_SDTH_SIGLEN	4
-#define ACPI_RSDT_SIG		"RSDT"
-#define ACPI_XSDT_SIG		"XSDT"
-#define ACPI_MADT_SIG		"APIC"
-#define ACPI_FADT_SIG		"FACP"
+#include <machine/pmap.h>
+#include <machine/smp.h>
+#include <machine/md_var.h>
+#include <machine/specialreg.h>
+#include <machine_base/apic/mpapic.h>
 
-/* System Description Table Header */
-struct acpi_sdth {
-	uint8_t			sdth_sig[ACPI_SDTH_SIGLEN];
-	uint32_t		sdth_len;
-	uint8_t			sdth_rev;
-	uint8_t			sdth_cksum;
-	uint8_t			sdth_oem_id[6];
-	uint8_t			sdth_oem_tbid[8];
-	uint32_t		sdth_oem_rev;
-	uint32_t		sdth_crt_id;
-	uint32_t		sdth_crt_rev;
+#include "acpi_sdt.h"
+#include "acpi_sdt_var.h"
+
+#define FADT_VPRINTF(fmt, arg...) \
+do { \
+	if (bootverbose) \
+		kprintf("ACPI FADT: " fmt , ##arg); \
+} while (0)
+
+/* Fixed ACPI Description Table */
+struct acpi_fadt {
+	struct acpi_sdth	fadt_hdr;
+	uint32_t		fadt_fw_ctrl;
+	uint32_t		fadt_dsdt;
+	uint8_t			fadt_rsvd1;
+	uint8_t			fadt_pm_prof;
+	uint16_t		fadt_sci_int;
+	uint32_t		fadt_smi_cmd;
+	uint8_t			fadt_acpi_en;
+	uint8_t			fadt_acpi_dis;
+	uint8_t			fadt_s4bios;
+	uint8_t			fadt_pstate;
+	/* More ... */
 } __packed;
 
-#endif	/* !_ACPI_SDT_H_ */
+static int			acpi_sci_irq = -1;
+
+static void
+fadt_probe(void)
+{
+	struct acpi_fadt *fadt;
+	vm_paddr_t fadt_paddr;
+
+	fadt_paddr = sdt_search(ACPI_FADT_SIG);
+	if (fadt_paddr == 0) {
+		kprintf("fadt_probe: can't locate FADT\n");
+		return;
+	}
+
+	fadt = sdt_sdth_map(fadt_paddr);
+	KKASSERT(fadt != NULL);
+
+	/*
+	 * FADT in ACPI specification 1.0 - 4.0
+	 */
+	if (fadt->fadt_hdr.sdth_rev < 1 || fadt->fadt_hdr.sdth_rev > 4) {
+		kprintf("fadt_probe: unsupported FADT revision %d\n",
+			fadt->fadt_hdr.sdth_rev);
+		goto back;
+	}
+
+	if (fadt->fadt_hdr.sdth_len < sizeof(*fadt)) {
+		kprintf("fadt_probe: invalid FADT length %u\n",
+			fadt->fadt_hdr.sdth_len);
+		goto back;
+	}
+
+	acpi_sci_irq = fadt->fadt_sci_int;
+	kprintf("ACPI FADT: SCI irq %d\n", acpi_sci_irq);
+
+back:
+	sdt_sdth_unmap(&fadt->fadt_hdr);
+}
+SYSINIT(fadt_probe, SI_BOOT2_PRESMP, SI_ORDER_SECOND, fadt_probe, 0);
