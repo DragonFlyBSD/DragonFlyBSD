@@ -2235,7 +2235,7 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 		 * this is a DEL.
 		 */
 		if (target_ip->flush_state == HAMMER_FST_FLUSH) {
-			if (rec->flush_state == HAMMER_MEM_RECORD_ADD)
+			if (rec->type == HAMMER_MEM_RECORD_ADD)
 				ip->flags |= HAMMER_INODE_REFLUSH;
 			else
 				target_ip->flags |= HAMMER_INODE_REFLUSH;
@@ -2634,7 +2634,7 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	}
 
 	/*
-	 * If the whole inode is being deleting all on-disk records will
+	 * If the whole inode is being deleted and all on-disk records will
 	 * be deleted very soon, we can't sync any new records to disk
 	 * because they will be deleted in the same transaction they were
 	 * created in (delete_tid == create_tid), which will assert.
