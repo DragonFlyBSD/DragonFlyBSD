@@ -75,6 +75,9 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_KERNEL_H_
+#include <sys/kernel.h>
+#endif
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
 #endif
@@ -226,6 +229,8 @@ struct vm_map {
 	vm_map_entry_t first_free;	/* First free space hint */
 	vm_flags_t flags;		/* flags for this vm_map */
 	struct pmap *pmap;		/* Physical map */
+	u_int president_cache;		/* Remember president count */
+	u_int president_ticks;		/* Save ticks for cache */
 #define	min_offset		header.start
 #define max_offset		header.end
 };
@@ -366,6 +371,9 @@ struct vmresident {
 	lockmgr(&(map)->lock, LK_RELEASE)
 #endif
 
+#define vm_map_lock_read_try(map) \
+	lockmgr(&(map)->lock, LK_SHARED | LK_NOWAIT)
+
 static __inline__ int
 vm_map_lock_upgrade(vm_map_t map) {
 	int error;
@@ -413,8 +421,11 @@ vmspace_resident_count(struct vmspace *vmspace)
 	return pmap_resident_count(vmspace_pmap(vmspace));
 }
 
-/* Calculates the proportional RSS and returning the
- * accrued result.
+/*
+ * Calculates the proportional RSS and returning the
+ * accrued result.  This is a loose value for statistics/display
+ * purposes only and will only be updated if we can acquire
+ * a non-blocking map lock.
  */
 static __inline u_int
 vmspace_president_count(struct vmspace *vmspace)
@@ -423,6 +434,9 @@ vmspace_president_count(struct vmspace *vmspace)
 	vm_map_entry_t cur;
 	vm_object_t object;
 	u_int count = 0;
+
+	if (map->president_ticks == ticks / hz || vm_map_lock_read_try(map))
+		return(map->president_cache);
 
 	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
 		switch(cur->maptype) {
@@ -434,14 +448,19 @@ vmspace_president_count(struct vmspace *vmspace)
 			    object->type != OBJT_SWAP) {
 				break;
 			}
-			if(object->agg_pv_list_count != 0) {
-					count += (object->resident_page_count / object->agg_pv_list_count);
+			if (object->agg_pv_list_count != 0) {
+				count += object->resident_page_count /
+					 object->agg_pv_list_count;
 			}
 			break;
 		default:
 			break;
 		}
 	}
+	map->president_cache = count;
+	map->president_ticks = ticks / hz;
+	vm_map_unlock_read(map);
+
 	return(count);
 }
 
