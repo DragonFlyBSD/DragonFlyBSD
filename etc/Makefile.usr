@@ -85,7 +85,7 @@ src-create-shallow:
 	mkdir -p ${.CURDIR}/src
 	cd ${.CURDIR}/src && git init
 	cd ${.CURDIR}/src && \
-	    git remote add origin git://git.dragonflybsd.org/dragonfly.git
+	    git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch --depth=1 origin
 	cd ${.CURDIR}/src && git branch master origin/master
 	cd ${.CURDIR}/src && git checkout master
