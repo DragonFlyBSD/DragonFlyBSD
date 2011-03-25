@@ -136,7 +136,7 @@ static  int	rtc_loaded;
 static int i8254_cputimer_div;
 
 static int i8254_nointr;
-static int i8254_intr_disable = 0;
+static int i8254_intr_disable = 1;
 TUNABLE_INT("hw.i8254.intr_disable", &i8254_intr_disable);
 
 static struct callout sysbeepstop_ch;
