@@ -686,8 +686,10 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 	map->im_pola = pola;
 
 	if (bootverbose) {
-		kprintf("IOAPIC: irq %d -> gsi %d %c\n", irq, map->im_gsi,
-			map->im_trig == INTR_TRIGGER_LEVEL ? 'L' : 'E');
+		kprintf("IOAPIC: irq %d -> gsi %d %s/%s\n",
+			irq, map->im_gsi,
+			intr_str_trigger(map->im_trig),
+			intr_str_polarity(map->im_pola));
 	}
 
 	pin = ioapic_gsi_pin(map->im_gsi);
@@ -800,14 +802,14 @@ ioapic_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 
 	if (map->im_flags & IOAPIC_IMF_CONF) {
 		if (trig != map->im_trig) {
-			panic("ioapic_intr_config: trig %c -> %c\n",
-			      map->im_trig == INTR_TRIGGER_EDGE ? 'E' : 'L',
-			      trig == INTR_TRIGGER_EDGE ? 'E' : 'L');
+			panic("ioapic_intr_config: trig %s -> %s\n",
+			      intr_str_trigger(map->im_trig),
+			      intr_str_trigger(trig));
 		}
 		if (pola != map->im_pola) {
 			panic("ioapic_intr_config: pola %s -> %s\n",
-			      map->im_pola == INTR_POLARITY_HIGH ? "hi" : "lo",
-			      pola == INTR_POLARITY_HIGH ? "hi" : "lo");
+			      intr_str_polarity(map->im_pola),
+			      intr_str_polarity(pola));
 		}
 		return;
 	}
@@ -817,11 +819,13 @@ ioapic_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 		return;
 
 	if (bootverbose) {
-		kprintf("IOAPIC: irq %d, gsi %d %c -> %c\n", irq, map->im_gsi,
-			map->im_trig == INTR_TRIGGER_LEVEL ? 'L' : 'E',
-			trig == INTR_TRIGGER_LEVEL ? 'L' : 'E');
+		kprintf("IOAPIC: irq %d, gsi %d %s/%s -> %s/%s\n",
+			irq, map->im_gsi,
+			intr_str_trigger(map->im_trig),
+			intr_str_polarity(map->im_pola),
+			intr_str_trigger(trig),
+			intr_str_polarity(pola));
 	}
-
 	map->im_trig = trig;
 	map->im_pola = pola;
 
@@ -880,8 +884,10 @@ ioapic_abi_extint_irqmap(int irq)
 	KKASSERT(map->im_gsi >= 0);
 
 	if (bootverbose) {
-		kprintf("IOAPIC: irq %d -> extint gsi %d E\n", irq,
-			map->im_gsi);
+		kprintf("IOAPIC: irq %d -> extint gsi %d %s/%s\n",
+			irq, map->im_gsi,
+			intr_str_trigger(map->im_trig),
+			intr_str_polarity(map->im_pola));
 	}
 
 	pin = ioapic_gsi_pin(map->im_gsi);

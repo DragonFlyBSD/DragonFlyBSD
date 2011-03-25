@@ -1349,17 +1349,15 @@ ioapic_intsrc(int irq, int gsi, enum intr_trigger trig, enum intr_polarity pola)
 		}
 		if (int_src->int_trig != trig) {
 			kprintf("IOAPIC: warning intsrc irq %d, trig "
-				"%c -> %c\n", irq,
-				int_src->int_trig == INTR_TRIGGER_EDGE
-				? 'E' : 'L',
-				trig == INTR_TRIGGER_EDGE ? 'E' : 'L');
+				"%s -> %s\n", irq,
+				intr_str_trigger(int_src->int_trig),
+				intr_str_trigger(trig));
 		}
 		if (int_src->int_pola != pola) {
 			kprintf("IOAPIC: warning intsrc irq %d, pola "
 				"%s -> %s\n", irq,
-				int_src->int_pola == INTR_POLARITY_HIGH
-				? "hi" : "lo",
-				pola == INTR_POLARITY_HIGH ? "hi" : "lo");
+				intr_str_polarity(int_src->int_pola),
+				intr_str_polarity(pola));
 		}
 	}
 	int_src->int_gsi = gsi;

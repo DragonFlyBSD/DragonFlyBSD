@@ -146,6 +146,9 @@ SLIST_HEAD(resource_list, resource_list_entry);
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 #ifdef _KERNEL
 
+const char	*intr_str_polarity(enum intr_polarity);
+const char	*intr_str_trigger(enum intr_trigger);
+
 /**
  * devctl hooks.  Typically one should use the devctl_notify
  * hook to send the message.  However, devctl_queue_data is also

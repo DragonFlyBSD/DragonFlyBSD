@@ -3385,3 +3385,35 @@ bus_data_generation_update(void)
 {
 	bus_data_generation++;
 }
+
+const char *
+intr_str_polarity(enum intr_polarity pola)
+{
+	switch (pola) {
+	case INTR_POLARITY_LOW:
+		return "low";
+
+	case INTR_POLARITY_HIGH:
+		return "high";
+
+	case INTR_POLARITY_CONFORM:
+		return "conform";
+	}
+	return "unknown";
+}
+
+const char *
+intr_str_trigger(enum intr_trigger trig)
+{
+	switch (trig) {
+	case INTR_TRIGGER_EDGE:
+		return "edge";
+
+	case INTR_TRIGGER_LEVEL:
+		return "level";
+
+	case INTR_TRIGGER_CONFORM:
+		return "conform";
+	}
+	return "unknown";
+}

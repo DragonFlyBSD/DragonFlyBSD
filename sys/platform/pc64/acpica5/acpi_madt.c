@@ -606,9 +606,9 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 			return 0;
 		}
 
-		MADT_VPRINTF("INTSRC irq %d -> gsi %u %c\n",
+		MADT_VPRINTF("INTSRC irq %d -> gsi %u %s/%s\n",
 			     intsrc_ent->mint_src, intsrc_ent->mint_gsi,
-			     trig == INTR_TRIGGER_EDGE ? 'E' : 'L');
+			     intr_str_trigger(trig), intr_str_polarity(pola));
 		ioapic_intsrc(intsrc_ent->mint_src, intsrc_ent->mint_gsi,
 			      trig, pola);
 	} else if (ent->me_type == MADT_ENT_IOAPIC) {
