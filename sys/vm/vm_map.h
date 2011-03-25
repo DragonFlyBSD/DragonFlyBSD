@@ -75,8 +75,10 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifdef _KERNEL
 #ifndef _SYS_KERNEL_H_
-#include <sys/kernel.h>
+#include <sys/kernel.h>	/* ticks */
+#endif
 #endif
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
@@ -426,6 +428,8 @@ vmspace_resident_count(struct vmspace *vmspace)
  * accrued result.  This is a loose value for statistics/display
  * purposes only and will only be updated if we can acquire
  * a non-blocking map lock.
+ *
+ * (used by userland or the kernel)
  */
 static __inline u_int
 vmspace_president_count(struct vmspace *vmspace)
@@ -435,8 +439,10 @@ vmspace_president_count(struct vmspace *vmspace)
 	vm_object_t object;
 	u_int count = 0;
 
+#ifdef _KERNEL
 	if (map->president_ticks == ticks / hz || vm_map_lock_read_try(map))
 		return(map->president_cache);
+#endif
 
 	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
 		switch(cur->maptype) {
@@ -457,9 +463,11 @@ vmspace_president_count(struct vmspace *vmspace)
 			break;
 		}
 	}
+#ifdef _KERNEL
 	map->president_cache = count;
 	map->president_ticks = ticks / hz;
 	vm_map_unlock_read(map);
+#endif
 
 	return(count);
 }
