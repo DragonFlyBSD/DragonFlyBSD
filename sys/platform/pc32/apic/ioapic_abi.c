@@ -674,8 +674,6 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
-	KKASSERT((trig == INTR_TRIGGER_EDGE && pola == INTR_POLARITY_HIGH) ||
-		 (trig == INTR_TRIGGER_LEVEL && pola == INTR_POLARITY_LOW));
 
 	KKASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS);
 	map = &ioapic_irqmaps[irq];
@@ -736,8 +734,6 @@ ioapic_abi_find_gsi(int gsi, enum intr_trigger trig, enum intr_polarity pola)
 
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
-	KKASSERT((trig == INTR_TRIGGER_EDGE && pola == INTR_POLARITY_HIGH) ||
-		 (trig == INTR_TRIGGER_LEVEL && pola == INTR_POLARITY_LOW));
 
 	for (irq = 0; irq < IOAPIC_HWI_VECTORS; ++irq) {
 		const struct ioapic_irqmap *map = &ioapic_irqmaps[irq];
@@ -763,8 +759,6 @@ ioapic_abi_find_irq(int irq, enum intr_trigger trig, enum intr_polarity pola)
 
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
-	KKASSERT((trig == INTR_TRIGGER_EDGE && pola == INTR_POLARITY_HIGH) ||
-		 (trig == INTR_TRIGGER_LEVEL && pola == INTR_POLARITY_LOW));
 
 	if (irq < 0 || irq >= IOAPIC_HWI_VECTORS)
 		return -1;
@@ -798,8 +792,6 @@ ioapic_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
-	KKASSERT((trig == INTR_TRIGGER_EDGE && pola == INTR_POLARITY_HIGH) ||
-		 (trig == INTR_TRIGGER_LEVEL && pola == INTR_POLARITY_LOW));
 
 	KKASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS);
 	map = &ioapic_irqmaps[irq];
