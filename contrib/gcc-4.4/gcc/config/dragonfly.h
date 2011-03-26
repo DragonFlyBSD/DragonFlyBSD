@@ -74,8 +74,7 @@ along with GCC; see the file COPYING3.  If not see
    When the -shared link option is used a final link is not being
    done.  */
 
-#undef	LINK_SPEC
-#define	LINK_SPEC \
+#define DFBSD_LINK_SPEC \
  "%{p:%nconsider using '-pg' instead of '-p' with gprof(1)} \
   %{v:-V} \
   %{assert*} %{R*} %{rpath*} %{defsym*} \
@@ -86,6 +85,9 @@ along with GCC; see the file COPYING3.  If not see
         -dynamic-linker %(dfbsd_dynamic_linker) } \
     %{static:-Bstatic}} \
   %{symbolic:-Bsymbolic}"
+
+#undef  LINK_SPEC
+#define LINK_SPEC DFBSD_LINK_SPEC
 
 #define	DFBSD_DYNAMIC_LINKER \
   "/usr/libexec/ld-elf.so.2"

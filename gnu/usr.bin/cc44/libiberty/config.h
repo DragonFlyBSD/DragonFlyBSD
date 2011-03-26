@@ -44,7 +44,7 @@
 
 /* Define to 1 if you have the declaration of `basename', and to 0 if you
    don't. */
-#define HAVE_DECL_BASENAME 1
+#define HAVE_DECL_BASENAME 0
 
 /* Define to 1 if you have the declaration of `calloc', and to 0 if you don't.
    */
@@ -405,13 +405,7 @@
 #define PACKAGE_VERSION ""
 
 /* The size of a `int', as computed by sizeof. */
-#if defined(__i386__)
 #define SIZEOF_INT 4
-#elif defined(__x86_64__)
-#define SIZEOF_INT 8
-#else
-#error "Unknown target platform"
-#endif
 
 /* Define if you know the direction of stack growth for your system; otherwise
    it will be automatically deduced at run-time. STACK_DIRECTION > 0 => grows

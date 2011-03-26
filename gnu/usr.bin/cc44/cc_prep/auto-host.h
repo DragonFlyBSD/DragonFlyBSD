@@ -30,7 +30,7 @@
    fully standards-compliant handling of destructors, but requires
    __cxa_atexit in libc. */
 #ifndef USED_FOR_TARGET
-/* #undef DEFAULT_USE_CXA_ATEXIT */
+#define DEFAULT_USE_CXA_ATEXIT 2
 #endif
 
 
@@ -246,7 +246,7 @@
 
 /* Define true if the assembler supports '.long foo@GOTOFF'. */
 #ifndef USED_FOR_TARGET
-#define HAVE_AS_GOTOFF_IN_DATA 1
+#define HAVE_AS_GOTOFF_IN_DATA 0
 #endif
 
 
@@ -275,7 +275,19 @@
 #endif
 
 
-/* Define if your assembler supports the sahf mnemonic. */
+/* Define if your assembler supports the .quad directive. */
+#ifndef USED_FOR_TARGET
+#define HAVE_AS_IX86_QUAD 1
+#endif
+
+
+/* Define true if the assembler supports 'rep <insn>, lock <insn>'. */
+#ifndef USED_FOR_TARGET
+#define HAVE_AS_IX86_REP_LOCK_PREFIX 1
+#endif
+
+
+/* Define if your assembler supports the sahf mnemonic in 64bit mode. */
 #ifndef USED_FOR_TARGET
 #define HAVE_AS_IX86_SAHF 1
 #endif
@@ -840,6 +852,12 @@
 #endif
 
 
+/* Define 0/1 if your assembler supports .cfi_sections. */
+#ifndef USED_FOR_TARGET
+#define HAVE_GAS_CFI_SECTIONS_DIRECTIVE 0
+#endif
+
+
 /* Define if your assembler uses the new HImode fild and fist notation. */
 #ifndef USED_FOR_TARGET
 #define HAVE_GAS_FILDS_FISTS 1
@@ -1047,6 +1065,12 @@
    a read-write section. */
 #ifndef USED_FOR_TARGET
 #define HAVE_LD_RO_RW_SECTION_MIXING 1
+#endif
+
+
+/* Define if your linker supports the *_sol2 emulations. */
+#ifndef USED_FOR_TARGET
+/* #undef HAVE_LD_SOL2_EMULATION */
 #endif
 
 
@@ -1366,9 +1390,7 @@
 
 /* Define to 1 if HOST_WIDE_INT must be 64 bits wide (see hwint.h). */
 #ifndef USED_FOR_TARGET
-#ifdef CROSS_COMPILE
 #define NEED_64BIT_HOST_WIDE_INT 1
-#endif
 #endif
 
 

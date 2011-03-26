@@ -44,7 +44,7 @@
 
 /* Define to 1 if you have the declaration of `errno', and to 0 if you don't.
    */
-#define HAVE_DECL_ERRNO 1
+#define HAVE_DECL_ERRNO 0
 
 /* Define to 1 if you have the declaration of `feof_unlocked', and to 0 if you
    don't. */
@@ -218,11 +218,7 @@
 
 /* Define to the widest efficient host integer type at least as wide as the
    target's size_t type. */
-#ifdef CROSS_COMPILE
-#define HOST_WIDE_INT long long
-#else
 #define HOST_WIDE_INT long
-#endif
 
 /* Define as const if the declaration of iconv() needs const. */
 #define ICONV_CONST 
@@ -249,7 +245,14 @@
 #define SIZEOF_INT 4
 
 /* The size of a `long', as computed by sizeof. */
+#if defined(__i386__)
 #define SIZEOF_LONG 4
+#elif defined(__x86_64__)
+#define SIZEOF_LONG 8
+#else
+#error "Unknown target platform"
+#endif
+
 
 /* If using the C implementation of alloca, define if you know the
    direction of stack growth for your system; otherwise it will be
