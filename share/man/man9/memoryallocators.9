@@ -30,7 +30,7 @@
 .Dt MEMORYALLOCATORS 9
 .Os
 .Sh NAME
-.Nm memoryallocators ,
+.Nm memoryallocators
 .Nd introduction to kernel memory allocators
 .Sh DESCRIPTION
 The
@@ -40,10 +40,10 @@ and purposes.
 .Ss kmalloc
 kmalloc is the primary kernel memory allocator. kmalloc allocates pages from
 the kernel address space via
-.Xr vm_page_alloc 9 
+.Xr vm_page_alloc 9
 and constructs buffers by slicing allocated pages. Allocations larger than 8 KB
-are served directly with pages from the kernel address space. kmalloc tracks 
-allocation statistics in a malloc_zone structure, which must be declared 
+are served directly with pages from the kernel address space. kmalloc tracks
+allocation statistics in a malloc_zone structure, which must be declared
 before use.
 .Pp
 kmalloc is implemented as a slab allocator, with per-CPU slab structures. It
@@ -53,8 +53,8 @@ For more information, see
 .Xr kmalloc 9 .
 .Ss Object caches
 The object cache is a frontend memory allocator to some backing allocator. It
-provides for per-CPU caches of constructed objects, saving time on setup of 
-allocated structures. The object cache is well-suited to oft-allocated 
+provides for per-CPU caches of constructed objects, saving time on setup of
+allocated structures. The object cache is well-suited to oft-allocated
 structures which have relatively complex setup routines.
 .Pp
 The object cache routines may block allocating cache structures or buffers.
@@ -67,33 +67,33 @@ a fixed number of buffers. The MPIPE guarantees that the desired
 number of buffers are available and can be allocated without blocking. Beyond
 the fixed count, MPIPE calls kmalloc and may block or may fail to allocate.
 .Pp
-For more information see 
+For more information see
 .Xr mpipe 9 .
 .Ss The Zone Allocator
 The zone allocator is a specialized memory allocator; it performs a similar
 function to kmalloc, but it can run from statically allocated structures in
 addition to dynamically allocated vm_pages. The zone allocator should be
-restricted to use before the VM is initialized and to core VM structures. 
+restricted to use before the VM is initialized and to core VM structures.
 .Pp
 The zone allocator may block.
 .Pp
 For more information see
 .Xr zalloc 9 .
 .Sh HISTORY
-The kmalloc and Zone allocators were inherited from 
+The kmalloc and Zone allocators were inherited from
 .Fx .
 The kmalloc allocator was converted to a per-CPU slab allocator in
 .Dx 1.0 .
 .Pp
-The MPIPE allocator appeared in 
+The MPIPE allocator appeared in
 .Dx 1.0 .
 The Object cache appeared in
 .Dx 1.3 .
 .Sh AUTHORS
+.An -nosplit
 This manual page is based on the
-.Nx 
-analogue, by 
+.Nx
+analogue, by
 .An Elad Efrat Aq elad@NetBSD.org
 and
-.An YAMAMOTO Takashi Aq yamt@NetBSD.org
-.
+.An YAMAMOTO Takashi Aq yamt@NetBSD.org .
