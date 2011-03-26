@@ -55,7 +55,7 @@ static struct xlat16_table kiconv_xlat16_open(const char *, const char *, int);
 
 static int my_iconv_init(void);
 static iconv_t (*my_iconv_open)(const char *, const char *);
-static size_t (*my_iconv)(iconv_t, const char **, size_t *, char **, size_t *);
+static size_t (*my_iconv)(iconv_t, char **, size_t *, char **, size_t *);
 static int (*my_iconv_close)(iconv_t);
 static size_t my_iconv_char(iconv_t, const u_char **, size_t *, u_char **, size_t *);
 
@@ -251,8 +251,9 @@ kiconv_xlat16_open(const char *tocode, const char *fromcode, int lcase)
 static int
 my_iconv_init(void)
 {
-	void *iconv_lib;
 #ifdef __PIC__
+	void *iconv_lib;
+
 	iconv_lib = dlopen("libc.so", RTLD_LAZY | RTLD_GLOBAL);
 	if (iconv_lib == NULL) {
 		warn("Unable to load iconv library: %s\n", dlerror());
@@ -286,7 +287,7 @@ my_iconv_char(iconv_t cd, const u_char **ibuf, size_t * ilen, u_char **obuf,
 	ir = *ilen;
 
 	bzero(*obuf, *olen);
-	ret = my_iconv(cd, (const char **)&sp, ilen, (char **)&dp, olen);
+	ret = my_iconv(cd, (char **)&sp, ilen, (char **)&dp, olen);
 	c1 = (*obuf)[0];
 	c2 = (*obuf)[1];
 
@@ -309,7 +310,7 @@ my_iconv_char(iconv_t cd, const u_char **ibuf, size_t * ilen, u_char **obuf,
 	sp = ilocal;
 	dp = olocal;
 
-	if ((my_iconv(cd,(const char **)&sp, &ir, (char **)&dp, &or)) != -1) {
+	if ((my_iconv(cd, (char **)&sp, &ir, (char **)&dp, &or)) != (size_t)-1) {
 		if (olocal[0] != c1)
 			return (ret);
 
@@ -363,7 +364,7 @@ my_iconv_char(iconv_t cd, const u_char **ibuf, size_t * ilen, u_char **obuf,
 	sp = ilocal + 1;
 	dp = olocal;
 
-	if ((my_iconv(cd,(const char **)&sp, &ir, (char **)&dp, &or)) != -1) {
+	if ((my_iconv(cd, (char **)&sp, &ir, (char **)&dp, &or)) != (size_t)-1) {
 		if (olocal[0] == c2)
 			/*
 			 * inbuf is a single byte char

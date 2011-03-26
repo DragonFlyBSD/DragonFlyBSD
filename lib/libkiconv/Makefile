@@ -4,7 +4,7 @@ LIB=		kiconv
 SHLIBDIR?=	/usr/lib
 SRCS=		xlat16_iconv.c xlat16_sysctl.c
 SRCS+=		quirks.c
-WARNS?=		0
+WARNS?=		3
 
 SHLIB_MAJOR=	3
 
