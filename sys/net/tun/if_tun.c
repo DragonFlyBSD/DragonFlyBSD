@@ -602,12 +602,12 @@ tunwrite(struct dev_write_args *ap)
 	tlen = uio->uio_resid;
 
 	/* get a header mbuf */
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_WAIT, MT_DATA);
 	if (m == NULL)
 		return ENOBUFS;
 	mlen = MHLEN;
 
-	top = 0;
+	top = NULL;
 	mp = &top;
 	while (error == 0 && uio->uio_resid > 0) {
 		m->m_len = (int)szmin(mlen, uio->uio_resid);
@@ -615,7 +615,7 @@ tunwrite(struct dev_write_args *ap)
 		*mp = m;
 		mp = &m->m_next;
 		if (uio->uio_resid > 0) {
-			MGET (m, MB_DONTWAIT, MT_DATA);
+			MGET (m, MB_WAIT, MT_DATA);
 			if (m == 0) {
 				error = ENOBUFS;
 				break;

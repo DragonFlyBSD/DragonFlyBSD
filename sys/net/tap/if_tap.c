@@ -890,7 +890,7 @@ tapwrite(struct dev_write_args *ap)
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
 	struct mbuf		*top = NULL, **mp = NULL, *m = NULL;
-	int			error = 0;
+	int			error;
 	size_t			tlen, mlen;
 
 	TAPDEBUG(ifp, "writing, minor = %#x\n", minor(tp->tap_dev));
@@ -913,20 +913,22 @@ tapwrite(struct dev_write_args *ap)
 	tlen = uio->uio_resid;
 
 	/* get a header mbuf */
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_WAIT, MT_DATA);
 	if (m == NULL)
 		return (ENOBUFS);
 	mlen = MHLEN;
 
-	top = 0;
+	top = NULL;
 	mp = &top;
-	while ((error == 0) && (uio->uio_resid > 0)) {
+	error = 0;
+
+	while (error == 0 && uio->uio_resid > 0) {
 		m->m_len = (int)szmin(mlen, uio->uio_resid);
 		error = uiomove(mtod(m, caddr_t), (size_t)m->m_len, uio);
 		*mp = m;
 		mp = &m->m_next;
 		if (uio->uio_resid > 0) {
-			MGET(m, MB_DONTWAIT, MT_DATA);
+			MGET(m, MB_WAIT, MT_DATA);
 			if (m == NULL) {
 				error = ENOBUFS;
 				break;
