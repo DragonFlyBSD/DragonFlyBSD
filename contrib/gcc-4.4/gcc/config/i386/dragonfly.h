@@ -4,8 +4,6 @@
    Modified for stabs-in-ELF by H.J. Lu.
    Adapted from GNU/Linux version by John Polstra.
    Continued development by David O'Brien <obrien@freebsd.org>
-   Adapted from the FreeBSD version.
-
 
 This file is part of GCC.
 
@@ -51,18 +49,18 @@ along with GCC; see the file COPYING3.  If not see
 /* Make gcc agree with <machine/ansi.h>.  */
 
 #undef  SIZE_TYPE
-#define SIZE_TYPE	"unsigned int"
- 
+#define SIZE_TYPE	(TARGET_64BIT ? "long unsigned int" : "unsigned int")
+
 #undef  PTRDIFF_TYPE
-#define PTRDIFF_TYPE	"int"
-  
+#define PTRDIFF_TYPE	(TARGET_64BIT ? "long int" : "int")
+
 #undef  WCHAR_TYPE_SIZE
-#define WCHAR_TYPE_SIZE	BITS_PER_WORD
+#define WCHAR_TYPE_SIZE	(TARGET_64BIT ? 32 : BITS_PER_WORD)
 
 #undef  SUBTARGET_EXTRA_SPECS	/* i386.h bogusly defines it.  */
 #define SUBTARGET_EXTRA_SPECS \
   { "dfbsd_dynamic_linker", DFBSD_DYNAMIC_LINKER }
-    
+
 
 /* A C statement to output to the stdio stream FILE an assembler
    command to advance the location counter to a multiple of 1<<LOG
@@ -87,7 +85,13 @@ along with GCC; see the file COPYING3.  If not see
 #undef  DEFAULT_PCC_STRUCT_RETURN
 #define DEFAULT_PCC_STRUCT_RETURN 0
 
-/* DragonFly sets the rounding precision of the FPU to 53 bits.  Let the
-   compiler get the contents of <float.h> and std::numeric_limits correct.  */
+/* DragonFly sets the rounding precision of the FPU to 53 bits, but GNAT
+   resets it to full precision.  */
 #undef TARGET_96_ROUND_53_LONG_DOUBLE
-#define TARGET_96_ROUND_53_LONG_DOUBLE (!TARGET_64BIT)
+#define TARGET_96_ROUND_53_LONG_DOUBLE 0
+
+/* Define this to be nonzero if static stack checking is supported. */
+/*#define STACK_CHECK_STATIC_BUILTIN 1 */
+
+/* Define location of OS-specific unwind support configuration. */
+/* #define MD_UNWIND_SUPPORT "config/i386/dragonfly-unwind.h"  */
