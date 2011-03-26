@@ -1060,7 +1060,7 @@ vfs/hpfs/hpfs_lookup.c		optional hpfs
 vfs/hpfs/hpfs_subr.c		optional hpfs
 vfs/hpfs/hpfs_vfsops.c		optional hpfs
 vfs/hpfs/hpfs_vnops.c		optional hpfs
-vfs/msdosfs/msdosfs_conv.c	optional nowerror msdosfs
+vfs/msdosfs/msdosfs_conv.c	optional msdosfs
 vfs/msdosfs/msdosfs_denode.c	optional msdosfs
 vfs/msdosfs/msdosfs_fat.c	optional msdosfs
 vfs/msdosfs/msdosfs_lookup.c	optional msdosfs
