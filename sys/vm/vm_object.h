@@ -147,6 +147,17 @@ struct vm_object {
 	void *handle;
 	int hold_count;			/* refcount for object liveness */
 	
+#if defined(DEBUG_LOCKS)
+	/* 
+	 * Record threads holding a vm_object
+	 */
+
+#define VMOBJ_DEBUG_ARRAY_SIZE		(32)
+	u_int debug_hold_bitmap;
+	thread_t debug_hold_thrs[VMOBJ_DEBUG_ARRAY_SIZE];
+
+#endif
+
 	union {
 		/*
 		 * Device pager

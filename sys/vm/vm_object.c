@@ -1819,6 +1819,14 @@ vm_object_set_writeable_dirty(vm_object_t object)
 static void
 vm_object_lock_init(vm_object_t obj)
 {
+#if defined(DEBUG_LOCKS)
+	int i;
+
+	obj->debug_hold_bitmap = 0;
+	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
+		obj->debug_hold_thrs[i] = NULL;
+	}
+#endif
 }
 
 void
@@ -1839,12 +1847,42 @@ vm_object_hold(vm_object_t obj)
 	vm_object_lock(obj);
 
 	refcount_acquire(&obj->hold_count);
+
+#if defined(DEBUG_LOCKS)
+	int i;
+
+	i = ffs(~obj->debug_hold_bitmap) - 1;
+	if (i == -1) {
+		panic("vm_object hold count > VMOBJ_DEBUG_ARRAY_SIZE");
+	}
+
+	obj->debug_hold_bitmap |= (1 << i);
+	obj->debug_hold_thrs[i] = curthread;
+#endif
 }
 
 void
 vm_object_drop(vm_object_t obj)
 {
 	int rc;
+
+#if defined(DEBUG_LOCKS)
+	int found = 0;
+	int i;
+
+	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
+		if ((obj->debug_hold_bitmap & (1 << i)) &&
+		    (obj->debug_hold_thrs[i] == curthread)) {
+			obj->debug_hold_bitmap &= ~(1 << i);
+			obj->debug_hold_thrs[i] = NULL;
+			found = 1;
+			break;
+		}
+	}
+
+	if (found == 0)
+		panic("vm_object: attempt to drop hold on non-self-held obj");
+#endif
 
 	rc = refcount_release(&obj->hold_count);
 	vm_object_unlock(obj);
@@ -1863,6 +1901,16 @@ static void
 vm_object_hold_wait(vm_object_t obj)
 {
 	vm_object_lock(obj);
+
+#if defined(DEBUG_LOCKS)
+	int i;
+
+	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
+		if ((obj->debug_hold_bitmap & (1 << i)) &&
+		    (obj->debug_hold_thrs[i] == curthread))
+			panic("vm_object: self-hold in terminate or collapse");
+	}
+#endif
 
 	while (obj->hold_count)
 		tsleep(obj, 0, "vmobjhld", 0);
