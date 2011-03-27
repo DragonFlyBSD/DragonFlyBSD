@@ -33,7 +33,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #elif defined(__x86_64__)
 #define __GMP_BITS_PER_MP_LIMB             64
 #else
-#error port me!
+#error Platform Not Supported!
 #endif
 #define __GMP_HAVE_HOST_CPU_FAMILY_power   0
 #define __GMP_HAVE_HOST_CPU_FAMILY_powerpc 0
@@ -1530,7 +1530,7 @@ __GMP_DECLSPEC mp_size_t mpn_gcd __GMP_PROTO ((mp_ptr, mp_ptr, mp_size_t, mp_ptr
 __GMP_DECLSPEC mp_limb_t mpn_gcd_1 __GMP_PROTO ((mp_srcptr, mp_size_t, mp_limb_t)) __GMP_ATTRIBUTE_PURE;
 
 #define mpn_gcdext_1 __MPN(gcdext_1)
-__GMP_DECLSPEC mp_limb_t mpn_gcdext_1 __GMP_PROTO ((mp_ptr, mp_ptr, mp_limb_t, mp_limb_t));
+__GMP_DECLSPEC mp_limb_t mpn_gcdext_1 __GMP_PROTO ((mp_limb_signed_t *, mp_limb_signed_t *, mp_limb_t, mp_limb_t));
 
 #define mpn_gcdext __MPN(gcdext)
 __GMP_DECLSPEC mp_size_t mpn_gcdext __GMP_PROTO ((mp_ptr, mp_ptr, mp_size_t *, mp_ptr, mp_size_t, mp_ptr, mp_size_t));
@@ -1555,6 +1555,9 @@ __GMP_DECLSPEC mp_limb_t mpn_mul_1 __GMP_PROTO ((mp_ptr, mp_srcptr, mp_size_t, m
 
 #define mpn_mul_n __MPN(mul_n)
 __GMP_DECLSPEC void mpn_mul_n __GMP_PROTO ((mp_ptr, mp_srcptr, mp_srcptr, mp_size_t));
+
+#define mpn_sqr __MPN(sqr)
+__GMP_DECLSPEC void mpn_sqr __GMP_PROTO ((mp_ptr, mp_srcptr, mp_size_t));
 
 #define mpn_neg_n __MPN(neg_n)
 #if __GMP_INLINE_PROTOTYPES || defined (__GMP_FORCE_mpn_neg_n)
@@ -2221,13 +2224,13 @@ enum
 };
 
 /* Define CC and CFLAGS which were used to build this version of GMP */
-#define __GMP_CC "gcc"
+#define __GMP_CC "gcc -std=gnu99"
 #define __GMP_CFLAGS "-m32 -O2 -pedantic -fomit-frame-pointer -mtune=k8 -march=k8"
 
 /* Major version number is the value of __GNU_MP__ too, above and in mp.h. */
 #define __GNU_MP_VERSION 4
 #define __GNU_MP_VERSION_MINOR 3
-#define __GNU_MP_VERSION_PATCHLEVEL 1
+#define __GNU_MP_VERSION_PATCHLEVEL 2
 
 #define __GMP_H__
 #endif /* __GMP_H__ */
