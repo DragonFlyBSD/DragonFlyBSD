@@ -1928,6 +1928,8 @@ bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 {
 	struct netmsg_packet *nmp;
 
+	mbuftrackid(m, 64);
+
 	nmp = &m->m_hdr.mh_netmsg;
 	netmsg_init(&nmp->base, NULL, &netisr_apanic_rport,
 		    0, bridge_enqueue_handler);
@@ -1936,6 +1938,152 @@ bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 
 	lwkt_sendmsg(ifnet_portfn(mycpu->gd_cpuid), &nmp->base.lmsg);
 }
+
+/*
+ * After looking up dst_if in our forwarding table we still have to
+ * deal with channel bonding.  Find the best interface in the bonding set.
+ */
+static struct ifnet *
+bridge_select_unicast(struct bridge_softc *sc, struct ifnet *dst_if,
+		      int from_blocking, struct mbuf *m)
+{
+	struct bridge_iflist *bif, *nbif;
+	struct ifnet *alt_if;
+	int alt_priority;
+	int priority;
+
+	/*
+	 * Unicast, kinda replicates the output side of bridge_output().
+	 *
+	 * Even though this is a uni-cast packet we may have to select
+	 * an interface from a bonding set.
+	 */
+	bif = bridge_lookup_member_if(sc, dst_if);
+	if (bif == NULL) {
+		/* Not a member of the bridge (anymore?) */
+		return NULL;
+	}
+
+	/*
+	 * If STP is enabled on the target we are an equal opportunity
+	 * employer and do not necessarily output to dst_if.  Instead
+	 * scan available links with the same MAC as the current dst_if
+	 * and choose the best one.
+	 *
+	 * We also need to do this because arp entries tag onto a particular
+	 * interface and if it happens to be dead then the packets will
+	 * go into a bit bucket.
+	 *
+	 * If LINK2 is set the matching links are bonded and we-round robin.
+	 * (the MAC address must be the same for the participating links).
+	 * In this case links in a STP FORWARDING or BONDED state are
+	 * allowed for unicast packets.
+	 */
+	if (bif->bif_flags & IFBIF_STP) {
+		alt_if = NULL;
+		alt_priority = 0;
+		priority = 0;
+
+		TAILQ_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid],
+				     bif_next, nbif) {
+			/*
+			 * dst_if may imply a bonding set so we must compare
+			 * MAC addresses.
+			 */
+			if (memcmp(IF_LLADDR(bif->bif_ifp),
+				   IF_LLADDR(dst_if),
+				   ETHER_ADDR_LEN) != 0) {
+				continue;
+			}
+
+			if ((bif->bif_ifp->if_flags & IFF_RUNNING) == 0)
+				continue;
+
+			/*
+			 * NOTE: We allow tranmissions through a BLOCKING
+			 *	 or LEARNING interface only as a last resort.
+			 *	 We DISALLOW both cases if the receiving
+			 *
+			 * NOTE: If we send a packet through a learning
+			 *	 interface the receiving end (if also in
+			 *	 LEARNING) will throw it away, so this is
+			 *	 the ultimate last resort.
+			 */
+			switch(bif->bif_state) {
+			case BSTP_IFSTATE_BLOCKING:
+				if (from_blocking == 0 &&
+				    bif->bif_priority + 256 > alt_priority) {
+					alt_priority = bif->bif_priority + 256;
+					alt_if = bif->bif_ifp;
+				}
+				continue;
+			case BSTP_IFSTATE_LEARNING:
+				if (from_blocking == 0 &&
+				    bif->bif_priority > alt_priority) {
+					alt_priority = bif->bif_priority;
+					alt_if = bif->bif_ifp;
+				}
+				continue;
+			case BSTP_IFSTATE_L1BLOCKING:
+			case BSTP_IFSTATE_LISTENING:
+			case BSTP_IFSTATE_DISABLED:
+				continue;
+			default:
+				/* FORWARDING, BONDED */
+				break;
+			}
+
+			/*
+			 * XXX we need to use the toepliz hash or
+			 *     something like that instead of
+			 *     round-robining.
+			 */
+			if (sc->sc_ifp->if_flags & IFF_LINK2) {
+				dst_if = bif->bif_ifp;
+				if (++bif->bif_bond_count >=
+				    bif->bif_bond_weight) {
+					bif->bif_bond_count = 0;
+					TAILQ_REMOVE(&sc->sc_iflists[mycpuid],
+						     bif, bif_next);
+					TAILQ_INSERT_TAIL(
+						     &sc->sc_iflists[mycpuid],
+						     bif, bif_next);
+				}
+				priority = 1;
+				break;
+			}
+
+			/*
+			 * Select best interface in the FORWARDING or
+			 * BONDED set.  Well, there shouldn't be any
+			 * in a BONDED state if LINK2 is not set (they
+			 * will all be in a BLOCKING) state, but there
+			 * could be a transitory condition here.
+			 */
+			if (bif->bif_priority > priority) {
+				priority = bif->bif_priority;
+				dst_if = bif->bif_ifp;
+			}
+		}
+
+		/*
+		 * If no suitable interfaces were found but a suitable
+		 * alternative interface was found, use the alternative
+		 * interface.
+		 */
+		if (priority == 0 && alt_if)
+			dst_if = alt_if;
+	}
+
+	/*
+	 * At this point, we're dealing with a unicast frame
+	 * going to a different interface.
+	 */
+	if ((dst_if->if_flags & IFF_RUNNING) == 0)
+		dst_if = NULL;
+	return (dst_if);
+}
+
 
 /*
  * bridge_output:
@@ -1955,10 +2103,10 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	struct ether_header *eh;
 	struct ifnet *dst_if, *alt_if, *bifp;
 	int from_us;
-	int priority;
 	int alt_priority;
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
+	mbuftrackid(m, 65);
 
 	/*
 	 * Make sure that we are still a member of a bridge interface.
@@ -2111,106 +2259,15 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 		return (0);
 	}
 
-sendunicast:
 	/*
-	 * If STP is enabled on the target we are an equal opportunity
-	 * employer and do not necessarily output to dst_if.  Instead
-	 * scan available links with the same MAC as the current dst_if
-	 * and choose the best one.
-	 *
-	 * We also need to do this because arp entries tag onto a particular
-	 * interface and if it happens to be dead then the packets will
-	 * go into a bit bucket.
-	 *
-	 * If LINK2 is set the matching links are bonded and we-round robin.
-	 * (the MAC address must be the same for the participating links).
-	 * In this case links in a STP FORWARDING or BONDED state are
-	 * allowed for unicast packets.
+	 * Unicast
 	 */
-	bif = bridge_lookup_member_if(sc, dst_if);
-	if (bif->bif_flags & IFBIF_STP) {
-		alt_if = NULL;
-		priority = 0;
-		alt_priority = 0;
-
-		TAILQ_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid],
-				     bif_next, nbif) {
-			/*
-			 * Ignore member interfaces which aren't running.
-			 */
-			if ((bif->bif_ifp->if_flags & IFF_RUNNING) == 0)
-				continue;
-
-			/*
-			 * member interfaces with the same MAC (usually TAPs)
-			 * are considered to be the same.  Select the best
-			 * one from BONDED or FORWARDING and keep track of
-			 * the best one in the BLOCKING state if no
-			 * candidates are available otherwise.
-			 */
-			if (memcmp(IF_LLADDR(bif->bif_ifp),
-				   IF_LLADDR(dst_if),
-				   ETHER_ADDR_LEN) != 0) {
-				continue;
-			}
-
-			switch(bif->bif_state) {
-			case BSTP_IFSTATE_BLOCKING:
-				if (bif->bif_priority > alt_priority + 256) {
-					alt_priority = bif->bif_priority + 256;
-					alt_if = bif->bif_ifp;
-				}
-				continue;
-			case BSTP_IFSTATE_LEARNING:
-				if (bif->bif_priority > alt_priority) {
-					alt_priority = bif->bif_priority;
-					alt_if = bif->bif_ifp;
-				}
-				continue;
-			case BSTP_IFSTATE_L1BLOCKING:
-			case BSTP_IFSTATE_LISTENING:
-			case BSTP_IFSTATE_DISABLED:
-				continue;
-			default:
-				/* bonded, forwarding */
-				break;
-			}
-
-			/*
-			 * XXX we need to use the toepliz hash or
-			 *     something like that instead of
-			 *     round-robining.
-			 */
-			if (sc->sc_ifp->if_flags & IFF_LINK2) {
-				dst_if = bif->bif_ifp;
-				if (++bif->bif_bond_count >=
-				    bif->bif_bond_weight) {
-					bif->bif_bond_count = 0;
-					TAILQ_REMOVE(&sc->sc_iflists[mycpuid],
-						     bif, bif_next);
-					TAILQ_INSERT_TAIL(
-						     &sc->sc_iflists[mycpuid],
-						     bif, bif_next);
-				}
-				priority = 1;
-				break;
-			}
-			if (bif->bif_priority > priority) {
-				priority = bif->bif_priority;
-				dst_if = bif->bif_ifp;
-			}
-		}
-
-		/*
-		 * Interface of last resort if nothing was found.
-		 */
-		if (priority == 0 && alt_if)
-			dst_if = alt_if;
-	}
+sendunicast:
+	dst_if = bridge_select_unicast(sc, dst_if, 0, m);
 
 	if (sc->sc_span)
 		bridge_span(sc, m);
-	if ((dst_if->if_flags & IFF_RUNNING) == 0)
+	if (dst_if == NULL)
 		m_freem(m);
 	else
 		bridge_handoff(sc, dst_if, m, from_us);
@@ -2255,6 +2312,7 @@ bridge_start(struct ifnet *ifp)
 		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
+		mbuftrackid(m, 75);
 
 		if (m->m_len < sizeof(*eh)) {
 			m = m_pullup(m, sizeof(*eh));
@@ -2271,8 +2329,21 @@ bridge_start(struct ifnet *ifp)
 		if ((m->m_flags & (M_BCAST|M_MCAST)) == 0)
 			dst_if = bridge_rtlookup(sc, eh->ether_dhost);
 
-		if (dst_if == NULL)
+		/*
+		 * Multicast or broadcast
+		 */
+		if (dst_if == NULL) {
 			bridge_start_bcast(sc, m);
+			continue;
+		}
+
+		/*
+		 * Unicast
+		 */
+		dst_if = bridge_select_unicast(sc, dst_if, 0, m);
+
+		if (dst_if == NULL)
+			m_freem(m);
 		else
 			bridge_enqueue(dst_if, m);
 	}
@@ -2290,13 +2361,12 @@ bridge_start(struct ifnet *ifp)
 static void
 bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 {
-	struct bridge_iflist *bif, *nbif;
-	struct ifnet *src_if, *dst_if, *alt_if, *ifp;
+	struct bridge_iflist *bif;
+	struct ifnet *src_if, *dst_if, *ifp;
 	struct ether_header *eh;
-	int priority;
-	int alt_priority;
 	int from_blocking;
 
+	mbuftrackid(m, 66);
 	src_if = m->m_pkthdr.rcvif;
 	ifp = sc->sc_ifp;
 
@@ -2412,120 +2482,9 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 		return;
 	}
 
-	/*
-	 * Unicast, kinda replicates the output side of bridge_output().
-	 *
-	 * Even though this is a uni-cast packet we may have to select
-	 * an interface from a bonding set.
-	 */
-	bif = bridge_lookup_member_if(sc, dst_if);
-	if (bif == NULL) {
-		/* Not a member of the bridge (anymore?) */
-		m_freem(m);
-		return;
-	}
+	dst_if = bridge_select_unicast(sc, dst_if, from_blocking, m);
 
-	if (bif->bif_flags & IFBIF_STP) {
-		alt_if = NULL;
-		alt_priority = 0;
-		priority = 0;
-
-		TAILQ_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid],
-				     bif_next, nbif) {
-			/*
-			 * dst_if may imply a bonding set so we must compare
-			 * MAC addresses.
-			 */
-			if (memcmp(IF_LLADDR(bif->bif_ifp),
-				   IF_LLADDR(dst_if),
-				   ETHER_ADDR_LEN) != 0) {
-				continue;
-			}
-
-			if ((bif->bif_ifp->if_flags & IFF_RUNNING) == 0)
-				continue;
-
-			/*
-			 * NOTE: We allow tranmissions through a BLOCKING
-			 *	 or LEARNING interface only as a last resort.
-			 *	 We DISALLOW both cases if the receiving
-			 *
-			 * NOTE: If we send a packet through a learning
-			 *	 interface the receiving end (if also in
-			 *	 LEARNING) will throw it away, so this is
-			 *	 the ultimate last resort.
-			 */
-			switch(bif->bif_state) {
-			case BSTP_IFSTATE_BLOCKING:
-				if (from_blocking == 0 &&
-				    bif->bif_priority + 256 > alt_priority) {
-					alt_priority = bif->bif_priority + 256;
-					alt_if = bif->bif_ifp;
-				}
-				continue;
-			case BSTP_IFSTATE_LEARNING:
-				if (from_blocking == 0 &&
-				    bif->bif_priority > alt_priority) {
-					alt_priority = bif->bif_priority;
-					alt_if = bif->bif_ifp;
-				}
-				continue;
-			case BSTP_IFSTATE_L1BLOCKING:
-			case BSTP_IFSTATE_LISTENING:
-			case BSTP_IFSTATE_DISABLED:
-				continue;
-			default:
-				/* FORWARDING, BONDED */
-				break;
-			}
-
-			/*
-			 * XXX we need to use the toepliz hash or
-			 *     something like that instead of
-			 *     round-robining.
-			 */
-			if (sc->sc_ifp->if_flags & IFF_LINK2) {
-				dst_if = bif->bif_ifp;
-				if (++bif->bif_bond_count >=
-				    bif->bif_bond_weight) {
-					bif->bif_bond_count = 0;
-					TAILQ_REMOVE(&sc->sc_iflists[mycpuid],
-						     bif, bif_next);
-					TAILQ_INSERT_TAIL(
-						     &sc->sc_iflists[mycpuid],
-						     bif, bif_next);
-				}
-				priority = 1;
-				break;
-			}
-
-			/*
-			 * Select best interface in the FORWARDING or
-			 * BONDED set.  Well, there shouldn't be any
-			 * in a BONDED state if LINK2 is not set (they
-			 * will all be in a BLOCKING) state, but there
-			 * could be a transitory condition here.
-			 */
-			if (bif->bif_priority > priority) {
-				priority = bif->bif_priority;
-				dst_if = bif->bif_ifp;
-			}
-		}
-
-		/*
-		 * If no suitable interfaces were found but a suitable
-		 * alternative interface was found, use the alternative
-		 * interface.
-		 */
-		if (priority == 0 && alt_if)
-			dst_if = alt_if;
-	}
-
-	/*
-	 * At this point, we're dealing with a unicast frame
-	 * going to a different interface.
-	 */
-	if ((dst_if->if_flags & IFF_RUNNING) == 0) {
+	if (dst_if == NULL) {
 		m_freem(m);
 		return;
 	}
@@ -2565,6 +2524,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	int from_blocking;
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
+	mbuftrackid(m, 67);
 
 	/*
 	 * Make sure that we are still a member of a bridge interface.
@@ -2919,6 +2879,7 @@ bridge_start_bcast(struct bridge_softc *sc, struct mbuf *m)
 	int found = 0;
 	int alt_priority;
 
+	mbuftrackid(m, 68);
 	bifp = sc->sc_ifp;
 	ASSERT_IFNET_SERIALIZED_ALL(bifp);
 
@@ -3004,6 +2965,7 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 	int alt_priority;
 	int from_us;
 
+	mbuftrackid(m, 69);
 	bifp = sc->sc_ifp;
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(bifp);
 
@@ -3150,6 +3112,7 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
 	struct ifnet *dst_if, *bifp;
 	struct mbuf *mc;
 
+	mbuftrackid(m, 70);
 	bifp = sc->sc_ifp;
 	ifnet_serialize_all(bifp);
 
@@ -4311,6 +4274,7 @@ bridge_enqueue_handler(netmsg_t msg)
 	nmp = &msg->packet;
 	m = nmp->nm_packet;
 	dst_ifp = nmp->base.lmsg.u.ms_resultp;
+	mbuftrackid(m, 71);
 
 	bridge_handoff(dst_ifp->if_bridge, dst_ifp, m, 1);
 }
@@ -4323,6 +4287,7 @@ bridge_handoff(struct bridge_softc *sc, struct ifnet *dst_ifp,
 	struct ifnet *bifp;
 
 	bifp = sc->sc_ifp;
+	mbuftrackid(m, 72);
 
 	/* We may be sending a fragment so traverse the mbuf */
 	for (; m; m = m0) {
