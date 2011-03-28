@@ -246,7 +246,11 @@
 
 /* Define true if the assembler supports '.long foo@GOTOFF'. */
 #ifndef USED_FOR_TARGET
+#if defined(__i386__)
+#define HAVE_AS_GOTOFF_IN_DATA 1
+#else
 #define HAVE_AS_GOTOFF_IN_DATA 0
+#endif
 #endif
 
 
@@ -1390,7 +1394,9 @@
 
 /* Define to 1 if HOST_WIDE_INT must be 64 bits wide (see hwint.h). */
 #ifndef USED_FOR_TARGET
+#if defined(__x86_64__)
 #define NEED_64BIT_HOST_WIDE_INT 1
+#endif
 #endif
 
 
