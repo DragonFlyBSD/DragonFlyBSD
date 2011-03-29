@@ -174,8 +174,6 @@ struct nchandle {
 
 #ifdef _KERNEL
 
-extern int cache_mpsafe;
-
 struct componentname;
 struct nlcomponent;
 struct mount;
