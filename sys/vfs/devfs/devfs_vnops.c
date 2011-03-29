@@ -606,6 +606,9 @@ devfs_vop_setattr(struct vop_setattr_args *ap)
 {
 	struct devfs_node *node = DEVFS_NODE(ap->a_vp);
 	struct vattr *vap;
+	uid_t cur_uid;
+	gid_t cur_gid;
+	mode_t cur_mode;
 	int error = 0;
 
 	if (!devfs_node_is_accessible(node))
@@ -616,33 +619,29 @@ devfs_vop_setattr(struct vop_setattr_args *ap)
 
 	vap = ap->a_vap;
 
-	if (vap->va_uid != (uid_t)VNOVAL) {
-		if ((ap->a_cred->cr_uid != node->uid) &&
-		    (!groupmember(node->gid, ap->a_cred))) {
-			error = priv_check(curthread, PRIV_VFS_CHOWN);
-			if (error)
-				goto out;
-		}
-		node->uid = vap->va_uid;
-	}
+	if ((vap->va_uid != (uid_t)VNOVAL) || (vap->va_gid != (gid_t)VNOVAL)) {
+		cur_uid = node->uid;
+		cur_gid = node->gid;
+		cur_mode = node->mode;
+		error = vop_helper_chown(ap->a_vp, vap->va_uid, vap->va_gid,
+		    ap->a_cred, &cur_uid, &cur_gid, &cur_mode);
+		if (error)
+			goto out;
 
-	if (vap->va_gid != (uid_t)VNOVAL) {
-		if ((ap->a_cred->cr_uid != node->uid) &&
-		    (!groupmember(node->gid, ap->a_cred))) {
-			error = priv_check(curthread, PRIV_VFS_CHOWN);
-			if (error)
-				goto out;
+		if (node->uid != cur_uid || node->gid != cur_gid) {
+			node->uid = cur_uid;
+			node->gid = cur_gid;
+			node->mode = cur_mode;
 		}
-		node->gid = vap->va_gid;
 	}
 
 	if (vap->va_mode != (mode_t)VNOVAL) {
-		if (ap->a_cred->cr_uid != node->uid) {
-			error = priv_check(curthread, PRIV_VFS_ADMIN);
-			if (error)
-				goto out;
+		cur_mode = node->mode;
+		error = vop_helper_chmod(ap->a_vp, vap->va_mode, ap->a_cred,
+		    node->uid, node->gid, &cur_mode);
+		if (error == 0 && node->mode != cur_mode) {
+			node->mode = cur_mode;
 		}
-		node->mode = vap->va_mode;
 	}
 
 out:
