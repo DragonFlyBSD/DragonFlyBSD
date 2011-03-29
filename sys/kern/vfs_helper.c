@@ -208,12 +208,6 @@ vop_helper_create_uid(struct mount *mp, mode_t dmode, uid_t duid,
 
 /*
  * This helper may be used by VFSs to implement unix chmod semantics.
- *
- * XXX TEMPORARY chmod override for VCHR devices.  Allow the device to
- *		 override the uid if the uid is not root.  This is used
- *		 by pty's to set the owner for the related tty.
- *
- * XXX REMOVE THE OVERRIDE WHEN DEVFS IS MERGED.
  */
 int
 vop_helper_chmod(struct vnode *vp, mode_t new_mode, struct ucred *cred,
