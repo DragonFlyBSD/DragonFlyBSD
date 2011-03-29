@@ -1823,6 +1823,7 @@ vm_object_lock_init(vm_object_t obj)
 	int i;
 
 	obj->debug_hold_bitmap = 0;
+	obj->debug_hold_ovfl = 0;
 	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
 		obj->debug_hold_thrs[i] = NULL;
 	}
@@ -1853,7 +1854,8 @@ vm_object_hold(vm_object_t obj)
 
 	i = ffs(~obj->debug_hold_bitmap) - 1;
 	if (i == -1) {
-		panic("vm_object hold count > VMOBJ_DEBUG_ARRAY_SIZE");
+		kprintf("vm_object hold count > VMOBJ_DEBUG_ARRAY_SIZE");
+		obj->debug_hold_ovfl = 1;
 	}
 
 	obj->debug_hold_bitmap |= (1 << i);
@@ -1880,7 +1882,7 @@ vm_object_drop(vm_object_t obj)
 		}
 	}
 
-	if (found == 0)
+	if (found == 0 && obj->debug_hold_ovfl == 0)
 		panic("vm_object: attempt to drop hold on non-self-held obj");
 #endif
 
@@ -1907,7 +1909,7 @@ vm_object_hold_wait(vm_object_t obj)
 
 	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
 		if ((obj->debug_hold_bitmap & (1 << i)) &&
-		    (obj->debug_hold_thrs[i] == curthread))
+		    (obj->debug_hold_thrs[i] == curthread)) 
 			panic("vm_object: self-hold in terminate or collapse");
 	}
 #endif
