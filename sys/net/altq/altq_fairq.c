@@ -76,10 +76,14 @@
  * EXAMPLE:
  *
  *  altq on em0 fairq bandwidth 650Kb queue { std, bulk }
- *  queue std  priority 3 bandwidth 400Kb \
+ *  queue std  priority 3 bandwidth 200Kb \
  *	fairq (buckets 64, default, hogs 1Kb) qlimit 50
  *  queue bulk priority 2 bandwidth 100Kb \
  *	fairq (buckets 64, hogs 1Kb) qlimit 50
+ *
+ *	NOTE: When the aggregate bandwidth is less than the link bandwidth
+ *	      any remaining bandwidth is dynamically assigned using the
+ *	      existing bandwidth specs as weightings.
  *
  *  pass out on em0 from any to any keep state queue std
  *  pass out on em0 inet proto tcp ..... port ... keep state queue bulk
@@ -118,9 +122,11 @@
 static int	fairq_clear_interface(struct fairq_if *);
 static int	fairq_request(struct ifaltq *, int, void *);
 static void	fairq_purge(struct fairq_if *);
-static struct fairq_class *fairq_class_create(struct fairq_if *, int, int, u_int, struct fairq_opts *, int);
+static struct fairq_class *fairq_class_create(struct fairq_if *, int,
+					int, u_int, struct fairq_opts *, int);
 static int	fairq_class_destroy(struct fairq_class *);
-static int	fairq_enqueue(struct ifaltq *, struct mbuf *, struct altq_pktattr *);
+static int	fairq_enqueue(struct ifaltq *, struct mbuf *,
+					struct altq_pktattr *);
 static struct mbuf *fairq_dequeue(struct ifaltq *, struct mbuf *, int);
 
 static int	fairq_addq(struct fairq_class *, struct mbuf *, int hash);
@@ -129,14 +135,16 @@ static struct mbuf *fairq_pollq(struct fairq_class *, uint64_t, int *);
 static fairq_bucket_t *fairq_selectq(struct fairq_class *, int);
 static void	fairq_purgeq(struct fairq_class *);
 
-static void	get_class_stats(struct fairq_classstats *, struct fairq_class *);
+static void	get_class_stats(struct fairq_classstats *,
+					struct fairq_class *);
 static struct fairq_class *clh_to_clp(struct fairq_if *, uint32_t);
 
 int
 fairq_pfattach(struct pf_altq *a, struct ifaltq *ifq)
 {
 	return altq_attach(ifq, ALTQT_FAIRQ, a->altq_disc,
-	    fairq_enqueue, fairq_dequeue, fairq_request, NULL, NULL);
+			   fairq_enqueue, fairq_dequeue,
+			   fairq_request, NULL, NULL);
 }
 
 int
@@ -395,7 +403,7 @@ fairq_class_create(struct fairq_if *pif, int pri, int qlimit,
 	for (i = 0; i < cl->cl_nbuckets; ++i) {
 		qlimit(&cl->cl_buckets[i].queue) = qlimit;
 	}
-	cl->cl_bandwidth = bandwidth / 8;
+	cl->cl_bandwidth = bandwidth / 8;	/* cvt to bytes per second */
 	cl->cl_qtype = Q_DROPTAIL;
 	cl->cl_flags = flags & FARF_USERFLAGS;
 	cl->cl_pri = pri;
@@ -405,6 +413,7 @@ fairq_class_create(struct fairq_if *pif, int pri, int qlimit,
 	cl->cl_handle = qid;
 	cl->cl_hogs_m1 = opts->hogs_m1 / 8;
 	cl->cl_lssc_m1 = opts->lssc_m1 / 8;	/* NOT YET USED */
+	cl->cl_bw_current = 0;
 
 #ifdef ALTQ_RED
 	if (flags & (FARF_RED|FARF_RIO)) {
@@ -565,6 +574,8 @@ fairq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 	struct mbuf *best_m;
 	struct mbuf *m;
 	uint64_t cur_time = read_machclk();
+	u_int best_scale;
+	u_int scale;
 	int pri;
 	int hit_limit;
 
@@ -586,6 +597,7 @@ fairq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 	} else {
 		best_cl = NULL;
 		best_m = NULL;
+		best_scale = 0xFFFFFFFFU;
 
 		for (pri = pif->pif_maxpri;  pri >= 0; pri--) {
 			if ((cl = pif->pif_classes[pri]) == NULL)
@@ -599,22 +611,29 @@ fairq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 			}
 
 			/*
-			 * Only override the best choice if we are under
-			 * the BW limit.
+			 * We can halt the search immediately if the queue
+			 * did not hit its bandwidth limit.
 			 */
-			if (hit_limit == 0 || best_cl == NULL) {
+			if (hit_limit == 0) {
 				best_cl = cl;
 				best_m = m;
+				break;
 			}
 
 			/*
-			 * Remember the highest priority mbuf in case we
-			 * do not find any lower priority mbufs.
+			 * Otherwise calculate the scale factor and select
+			 * the queue with the lowest scale factor.  This
+			 * apportions any unused bandwidth weighted by
+			 * the relative bandwidth specification.
 			 */
-			if (hit_limit)
-				continue;
-			break;
+			scale = cl->cl_bw_current * 100 / cl->cl_bandwidth;
+			if (scale < best_scale) {
+				best_cl = cl;
+				best_m = m;
+				best_scale = scale;
+			}
 		}
+
 		if (op == ALTDQ_POLL) {
 			pif->pif_poll_cache = best_cl;
 			m = best_m;
@@ -736,8 +755,10 @@ fairq_getq(struct fairq_class *cl, uint64_t cur_time)
 		cl->cl_bw_delta += delta;
 		cl->cl_bw_bytes += m->m_pkthdr.len;
 		cl->cl_last_time = cur_time;
-		cl->cl_bw_delta -= cl->cl_bw_delta >> 3;
-		cl->cl_bw_bytes -= cl->cl_bw_bytes >> 3;
+		if (cl->cl_bw_delta > machclk_freq) {
+			cl->cl_bw_delta -= cl->cl_bw_delta >> 2;
+			cl->cl_bw_bytes -= cl->cl_bw_bytes >> 2;
+		}
 
 		/*
 		 * Per-bucket bandwidth calculation
@@ -748,8 +769,10 @@ fairq_getq(struct fairq_class *cl, uint64_t cur_time)
 		b->bw_delta += delta;
 		b->bw_bytes += m->m_pkthdr.len;
 		b->last_time = cur_time;
-		b->bw_delta -= b->bw_delta >> 3;
-		b->bw_bytes -= b->bw_bytes >> 3;
+		if (b->bw_delta > machclk_freq) {
+			b->bw_delta -= b->bw_delta >> 2;
+			b->bw_bytes -= b->bw_bytes >> 2;
+		}
 	}
 	return(m);
 }
@@ -789,6 +812,7 @@ fairq_pollq(struct fairq_class *cl, uint64_t cur_time, int *hit_limit)
 
 		if (bw > cl->cl_bandwidth)
 			*hit_limit = 1;
+		cl->cl_bw_current = bw;
 #if 0
 		kprintf("BW %6lld relative to %6u %d queue %p\n",
 			bw, cl->cl_bandwidth, *hit_limit, b);

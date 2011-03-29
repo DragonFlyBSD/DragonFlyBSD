@@ -101,6 +101,7 @@ struct fairq_class {
 	u_int		cl_hogs_m1;
 	u_int		cl_lssc_m1;
 	u_int		cl_bandwidth;
+	u_int		cl_bw_current;
 	uint64_t	cl_bw_bytes;
 	uint64_t	cl_bw_delta;
 	uint64_t	cl_last_time;

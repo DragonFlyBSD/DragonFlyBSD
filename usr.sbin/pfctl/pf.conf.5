@@ -898,13 +898,18 @@ or
 .Pp
 Packet selection operates as follows:
 The queues are scanned from highest priority to lowest priority.
-If a queue has pending packets and has not reached its bandwidth limit the
+If a queue has pending packets and is under its bandwidth minimum the
 scan stops and a packet is selected from that queue.
-If a queue has reached its bandwidth limit the scan continues searching for
-other, lower priority queues which have not.
-If no queue is found to be
-suitable then the highest priority queue with pending packets is used
-regardless of whether it has reached its bandwidth limit or not.
+If all queues have reached their bandwidth minimum a scale factor based
+on each queue's bandwidth minimum verses that queue's current bandwidth
+usage is calculated and the queue with the lowest scale factor is selected.
+This effectively uses the minimum bandwidth specification as a relative
+weighting for apportioning any remaining bandwidth on the link.
+.Pp
+The priority mechanic is only applicable in cases where the aggregate
+minimum bandwidth guarantees exceed the link bandwidth, and also has
+a small effect on queue selection when prioritizing between equal scale
+calculations.
 .Pp
 A
 .Ar fairq
@@ -926,6 +931,12 @@ rules not characterized by
 .Ar keep state
 is supported.
 Such a queue serves as a basic priority queue with a bandwidth specification.
+.Pp
+Also note that when specifying rules it is always a good idea to specify
+a secondary queue for any tcp rules.
+The secondary queue is selected for pure ACKs without payloads and should
+generally be dedicated to that purpose with a minimum bandwidth specification
+sufficient to max-out the bandwidth for your incoming traffic.
 .El
 .Pp
 The interfaces on which queueing should be activated are declared using
