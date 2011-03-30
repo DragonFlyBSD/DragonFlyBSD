@@ -1078,6 +1078,8 @@ bstp_forward_delay_timer_expiry(struct bridge_softc *sc,
 		    bif->bif_change_detection_enabled) {
 			bstp_topology_change_detection(sc);
 		}
+		bstp_configuration_update(sc);
+		bstp_port_state_selection(sc);
 		if (sc->sc_ifp->if_flags & IFF_LINK2)
 			bstp_adjust_bonded_states(sc, bif);
 	}
@@ -1249,6 +1251,15 @@ bstp_stop(struct bridge_softc *sc)
 	crit_exit();
 }
 
+/*
+ * [re]initialize a port.  The port is initialized to a L1BLOCKING state
+ * or a BLOCKING state.  When link ping/pong is enabled (LINK1) we start
+ * out in the L1BLOCKING state to prevent flapping from blowing up the
+ * state of the other ports.
+ *
+ * Either way the first config packet received will knock the port into
+ * the LISTENING state.
+ */
 static void
 bstp_initialize_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
@@ -1256,7 +1267,10 @@ bstp_initialize_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 			    bif->bif_state == BSTP_IFSTATE_BLOCKING ||
 			    bif->bif_state == BSTP_IFSTATE_BONDED);
 
-	bstp_set_port_state(bif, BSTP_IFSTATE_BLOCKING);
+	if (sc->sc_ifp->if_flags & IFF_LINK1)
+		bstp_set_port_state(bif, BSTP_IFSTATE_L1BLOCKING);
+	else
+		bstp_set_port_state(bif, BSTP_IFSTATE_BLOCKING);
 	bstp_clear_peer_info(sc, bif);
 	bif->bif_topology_change_acknowledge = 0;
 	bif->bif_config_pending = 0;
@@ -1269,20 +1283,38 @@ bstp_initialize_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 		bstp_adjust_bonded_states(sc, bif);
 }
 
+/*
+ * When enabling a port that was previously disabled no configuration
+ * update occurs, otherwise down/up or running/not-running flapping
+ * (e.g. by openvpn on a TAP interface) will blow up the other ports.
+ */
 static void
 bstp_enable_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
+	int was_disabled = (bif->bif_state == BSTP_IFSTATE_DISABLED ||
+			    bif->bif_state == BSTP_IFSTATE_L1BLOCKING);
+
 	bstp_initialize_port(sc, bif);
 	if (sc->sc_ifp->if_flags & IFF_LINK1)
 		bstp_timer_start(&bif->bif_link1_timer, 0);
-	bstp_configuration_update(sc);
-	bstp_port_state_selection(sc);
+	if (was_disabled == 0) {
+		bstp_configuration_update(sc);
+		bstp_port_state_selection(sc);
+	}
+	bstp_adjust_bonded_states(sc, bif);
 }
 
+/*
+ * When disabling a port that was previously in a non-forwarding or bonded
+ * state no configuration update occurs, otherwise down/up or
+ * running/not-running flapping (e.g. by openvpn on a TAP interface) will
+ * blow up the other ports.
+ */
 static void
 bstp_disable_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
 	int was_forwarding = (bif->bif_state == BSTP_IFSTATE_FORWARDING);
+	int was_bonded = (bif->bif_state == BSTP_IFSTATE_BONDED);
 	int iamroot;
 
 	iamroot = bstp_root_bridge(sc);
@@ -1294,8 +1326,10 @@ bstp_disable_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 	bstp_timer_stop(&bif->bif_message_age_timer);
 	bstp_timer_stop(&bif->bif_forward_delay_timer);
 	bstp_timer_stop(&bif->bif_link1_timer);
-	bstp_configuration_update(sc);
-	bstp_port_state_selection(sc);
+	if (was_forwarding || was_bonded) {
+		bstp_configuration_update(sc);
+		bstp_port_state_selection(sc);
+	}
 	bridge_rtdelete(sc, bif->bif_ifp, IFBF_FLUSHDYN);
 	if (was_forwarding && (sc->sc_ifp->if_flags & IFF_LINK2))
 		bstp_adjust_bonded_states(sc, bif);
