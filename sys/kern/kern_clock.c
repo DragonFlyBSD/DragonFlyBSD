@@ -156,6 +156,29 @@ SYSCTL_STRUCT(_kern, OID_AUTO, cputime, CTLFLAG_RD, &cpu_time, kinfo_cputime,
     "CPU time statistics");
 #endif
 
+static int
+sysctl_cp_time(SYSCTL_HANDLER_ARGS)
+{
+	long cpu_states[5] = {0};
+	int cpu, error = 0;
+	size_t size = sizeof(cpu_states);
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		cpu_states[0] += cputime_percpu[cpu].cp_user;
+		cpu_states[1] += cputime_percpu[cpu].cp_nice;
+		cpu_states[2] += cputime_percpu[cpu].cp_sys;
+		cpu_states[3] += cputime_percpu[cpu].cp_intr;
+		cpu_states[4] += cputime_percpu[cpu].cp_idle;
+	}
+
+	error = SYSCTL_OUT(req, cpu_states, size);
+
+	return (error);
+}
+
+SYSCTL_PROC(_kern, OID_AUTO, cp_time, (CTLTYPE_LONG|CTLFLAG_RD), 0, 0,
+	sysctl_cp_time, "LU", "CPU time statistics");
+
 /*
  * boottime is used to calculate the 'real' uptime.  Do not confuse this with
  * microuptime().  microtime() is not drift compensated.  The real uptime
