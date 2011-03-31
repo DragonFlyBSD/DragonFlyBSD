@@ -2032,7 +2032,6 @@ ${OSACPI_MI_DIR}/acpi_timer.c		optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdCache.c		optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdDebug.c		optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdHardware.c	optional acpi
-${OSACPI_MI_DIR}/Osd/OsdInterface.c	optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdInterrupt.c	optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdMemory.c	optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdSchedule.c	optional acpi
@@ -2061,6 +2060,8 @@ ${ACPICA_DIR}/debugger/dbexec.c			optional acpi acpi_debug
 ${ACPICA_DIR}/debugger/dbfileio.c		optional acpi acpi_debug
 ${ACPICA_DIR}/debugger/dbhistry.c		optional acpi acpi_debug
 ${ACPICA_DIR}/debugger/dbinput.c		optional acpi acpi_debug
+${ACPICA_DIR}/debugger/dbmethod.c		optional acpi acpi_debug
+${ACPICA_DIR}/debugger/dbnames.c		optional acpi acpi_debug
 ${ACPICA_DIR}/debugger/dbstats.c		optional acpi acpi_debug
 ${ACPICA_DIR}/debugger/dbutils.c		optional acpi acpi_debug
 ${ACPICA_DIR}/debugger/dbxface.c		optional acpi acpi_debug
@@ -2076,20 +2077,26 @@ ${ACPICA_DIR}/disassembler/dmwalk.c		optional acpi acpi_debug
 ${ACPICA_DIR}/events/evevent.c			optional acpi
 ${ACPICA_DIR}/events/evgpe.c			optional acpi
 ${ACPICA_DIR}/events/evgpeblk.c			optional acpi
+${ACPICA_DIR}/events/evgpeinit.c		optional acpi
+${ACPICA_DIR}/events/evgpeutil.c		optional acpi
 ${ACPICA_DIR}/events/evmisc.c			optional acpi
 ${ACPICA_DIR}/events/evregion.c			optional acpi
 ${ACPICA_DIR}/events/evrgnini.c			optional acpi
 ${ACPICA_DIR}/events/evsci.c			optional acpi
 ${ACPICA_DIR}/events/evxface.c			optional acpi
 ${ACPICA_DIR}/events/evxfevnt.c			optional acpi
+${ACPICA_DIR}/events/evxfgpe.c			optional acpi
 ${ACPICA_DIR}/events/evxfregn.c			optional acpi
 ${ACPICA_DIR}/hardware/hwacpi.c			optional acpi
 ${ACPICA_DIR}/hardware/hwgpe.c			optional acpi
+${ACPICA_DIR}/hardware/hwpci.c			optional acpi
 ${ACPICA_DIR}/hardware/hwregs.c			optional acpi
 ${ACPICA_DIR}/hardware/hwsleep.c		optional acpi
 ${ACPICA_DIR}/hardware/hwtimer.c		optional acpi
 ${ACPICA_DIR}/hardware/hwvalid.c		optional acpi
 ${ACPICA_DIR}/hardware/hwxface.c		optional acpi
+${ACPICA_DIR}/dispatcher/dsargs.c		optional acpi
+${ACPICA_DIR}/dispatcher/dscontrol.c		optional acpi
 ${ACPICA_DIR}/dispatcher/dsfield.c		optional acpi
 ${ACPICA_DIR}/dispatcher/dsinit.c		optional acpi
 ${ACPICA_DIR}/dispatcher/dsmethod.c		optional acpi
@@ -2099,11 +2106,13 @@ ${ACPICA_DIR}/dispatcher/dsopcode.c		optional acpi
 ${ACPICA_DIR}/dispatcher/dsutils.c		optional acpi
 ${ACPICA_DIR}/dispatcher/dswexec.c		optional acpi
 ${ACPICA_DIR}/dispatcher/dswload.c		optional acpi
+${ACPICA_DIR}/dispatcher/dswload2.c		optional acpi
 ${ACPICA_DIR}/dispatcher/dswscope.c		optional acpi
 ${ACPICA_DIR}/dispatcher/dswstate.c		optional acpi
 ${ACPICA_DIR}/executer/exconfig.c		optional acpi
 ${ACPICA_DIR}/executer/exconvrt.c		optional acpi
 ${ACPICA_DIR}/executer/excreate.c		optional acpi
+${ACPICA_DIR}/executer/exdebug.c		optional acpi
 ${ACPICA_DIR}/executer/exdump.c			optional acpi
 ${ACPICA_DIR}/executer/exfield.c		optional acpi
 ${ACPICA_DIR}/executer/exfldio.c		optional acpi
@@ -2144,6 +2153,8 @@ ${ACPICA_DIR}/namespace/nsnames.c		optional acpi
 ${ACPICA_DIR}/namespace/nsobject.c		optional acpi
 ${ACPICA_DIR}/namespace/nsparse.c		optional acpi
 ${ACPICA_DIR}/namespace/nspredef.c		optional acpi
+${ACPICA_DIR}/namespace/nsrepair.c		optional acpi
+${ACPICA_DIR}/namespace/nsrepair2.c		optional acpi
 ${ACPICA_DIR}/namespace/nssearch.c		optional acpi
 ${ACPICA_DIR}/namespace/nsutils.c		optional acpi
 ${ACPICA_DIR}/namespace/nswalk.c		optional acpi
@@ -2173,15 +2184,19 @@ ${ACPICA_DIR}/utilities/utcache.c		optional acpi
 ${ACPICA_DIR}/utilities/utclib.c		optional acpi
 ${ACPICA_DIR}/utilities/utcopy.c		optional acpi
 ${ACPICA_DIR}/utilities/utdebug.c		optional acpi
+${ACPICA_DIR}/utilities/utdecode.c		optional acpi
 ${ACPICA_DIR}/utilities/utdelete.c		optional acpi
 ${ACPICA_DIR}/utilities/uteval.c		optional acpi
 ${ACPICA_DIR}/utilities/utglobal.c		optional acpi
+${ACPICA_DIR}/utilities/utids.c			optional acpi
 ${ACPICA_DIR}/utilities/utinit.c		optional acpi
 ${ACPICA_DIR}/utilities/utlock.c		optional acpi
 ${ACPICA_DIR}/utilities/utmath.c		optional acpi
 ${ACPICA_DIR}/utilities/utmisc.c		optional acpi
 ${ACPICA_DIR}/utilities/utmutex.c		optional acpi
 ${ACPICA_DIR}/utilities/utobject.c		optional acpi
+${ACPICA_DIR}/utilities/utosi.c			optional acpi
 ${ACPICA_DIR}/utilities/utresrc.c		optional acpi
 ${ACPICA_DIR}/utilities/utstate.c		optional acpi
 ${ACPICA_DIR}/utilities/utxface.c		optional acpi
+${ACPICA_DIR}/utilities/utxferror.c		optional acpi
