@@ -27,7 +27,6 @@
 .\"
 .\"	From: @(#)err.3	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/gen/err.3,v 1.24 2008/10/31 15:14:40 rwatson Exp $
-.\" $DragonFly: src/lib/libc/gen/err.3,v 1.4 2008/10/06 21:21:30 swildner Exp $
 .\"
 .Dd March 6, 1999
 .Dt ERR 3
@@ -140,9 +139,11 @@ functions use the global variable
 to look up the error message.
 .Pp
 The
-.Fn errx
+.Fn errx ,
+.Fn verrx ,
+.Fn warnx ,
 and
-.Fn warnx
+.Fn vwarnx
 functions do not append an error message.
 .Pp
 The
