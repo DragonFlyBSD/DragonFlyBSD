@@ -31,9 +31,8 @@
 .\"
 .\"     @(#)getmntinfo.3	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/gen/getmntinfo.3,v 1.8.2.4 2003/03/13 18:05:37 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/getmntinfo.3,v 1.5 2008/06/03 12:40:09 swildner Exp $
 .\"
-.Dd June 9, 1993
+.Dd April 1, 2011
 .Dt GETMNTINFO 3
 .Os
 .Sh NAME
@@ -66,6 +65,18 @@ passes its
 .Fa flags
 argument transparently to
 .Xr getfsstat 2 .
+.Pp
+The
+.Fn getmntvinfo
+function
+returns an array of
+.Vt statfs
+and
+.Vt statvfs
+structures describing each currently mounted file system (see
+.Xr statfs 2 ) ,
+and otherwise works like
+.Fn getmntinfo .
 .Sh RETURN VALUES
 On successful completion,
 .Fn getmntinfo
@@ -85,26 +96,25 @@ will be lost.
 The
 .Fn getmntvinfo
 function
-returns an array of
-.Fn statfs
-and
-.Fn statvfs
-structures describing each currently mounted file system (see
-.Xr statfs 2 ) ,
-and otherwise works like
-.Fn getmntinfo .
+additionally stores the pointer to the
+.Vt statvfs
+array into
+.Fa mntvbufp .
 .Sh ERRORS
 The
 .Fn getmntinfo
-function may fail and set
+and
+.Fn getmntvinfo
+functions may fail and set
 .Va errno
 for any of the errors specified for the library routines
-.Xr getfsstat 2
+.Xr getfsstat 2 ,
 .Xr getvfsstat 2
 or
 .Xr malloc 3 .
 .Sh SEE ALSO
 .Xr getfsstat 2 ,
+.Xr getvfsstat 2 ,
 .Xr mount 2 ,
 .Xr statfs 2 ,
 .Xr mount 8
@@ -113,18 +123,29 @@ The
 .Fn getmntinfo
 function first appeared in
 .Bx 4.4 .
+.Pp
+The
+.Fn getmntvinfo
+function first appeared in
+.Dx 1.13 .
 .Sh BUGS
 The
 .Fn getmntinfo
-function writes the array of structures to an internal static object
+and
+.Fn getmntvinfo
+functions write the array of structures to an internal static object
 and returns
 a pointer to that object.
 Subsequent calls to
 .Fn getmntinfo
+or
+.Fn getmntvinfo
 will modify the same object.
 .Pp
 The memory allocated by
 .Fn getmntinfo
+or
+.Fn getmntvinfo
 cannot be
 .Xr free 3 Ns 'd
 by the application.
