@@ -1141,7 +1141,14 @@ kern_fstatfs(int fd, struct statfs *buf)
 	KKASSERT(p);
 	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
 		return (error);
-	mp = ((struct vnode *)fp->f_data)->v_mount;
+
+	/*
+	 * Try to use mount info from any overlays rather than the
+	 * mount info for the underlying vnode, otherwise we will
+	 * fail when operating on null-mounted paths inside a chroot.
+	 */
+	if ((mp = fp->f_nchandle.mount) == NULL)
+		mp = ((struct vnode *)fp->f_data)->v_mount;
 	if (mp == NULL) {
 		error = EBADF;
 		goto done;
@@ -1247,7 +1254,8 @@ kern_fstatvfs(int fd, struct statvfs *buf)
 	KKASSERT(p);
 	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
 		return (error);
-	mp = ((struct vnode *)fp->f_data)->v_mount;
+	if ((mp = fp->f_nchandle.mount) == NULL)
+		mp = ((struct vnode *)fp->f_data)->v_mount;
 	if (mp == NULL) {
 		error = EBADF;
 		goto done;
