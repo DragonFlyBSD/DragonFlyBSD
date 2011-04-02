@@ -96,7 +96,7 @@ static int vm_swapcache_data_enable = 0;
 static int vm_swapcache_meta_enable = 0;
 static int vm_swapcache_maxswappct = 75;
 static int vm_swapcache_hysteresis;
-static int vm_swapcache_use_chflags = 1;	/* require chflags cache */
+int vm_swapcache_use_chflags = 1;	/* require chflags cache */
 static int64_t vm_swapcache_minburst = 10000000LL;	/* 10MB */
 static int64_t vm_swapcache_curburst = 4000000000LL;	/* 4G after boot */
 static int64_t vm_swapcache_maxburst = 2000000000LL;	/* 2G nominal max */
@@ -316,6 +316,15 @@ vm_swapcache_writing(vm_page_t marker)
 		switch(vp->v_type) {
 		case VREG:
 			/*
+			 * PG_NOTMETA generically means 'don't swapcache this',
+			 * and HAMMER will set this for regular data buffers
+			 * (and leave it unset for meta-data buffers) as
+			 * appropriate when double buffering is enabled.
+			 */
+			if (m->flags & PG_NOTMETA)
+				continue;
+
+			/*
 			 * If data_enable is 0 do not try to swapcache data.
 			 * If use_chflags is set then only swapcache data for
 			 * VSWAPCACHE marked vnodes, otherwise any vnode.
@@ -334,8 +343,10 @@ vm_swapcache_writing(vm_page_t marker)
 			break;
 		case VCHR:
 			/*
-			 * The PG_NOTMETA flag only applies to pages
-			 * associated with block devices.
+			 * PG_NOTMETA generically means 'don't swapcache this',
+			 * and HAMMER will set this for regular data buffers
+			 * (and leave it unset for meta-data buffers) as
+			 * appropriate when double buffering is enabled.
 			 */
 			if (m->flags & PG_NOTMETA)
 				continue;
@@ -534,7 +545,9 @@ vm_swapcache_cleaning(vm_object_t marker)
 	lwkt_gettoken(&vm_token);
 	lwkt_gettoken(&vmobj_token);
 
-	while ((object = TAILQ_NEXT(object, object_list)) != NULL && count--) {
+	while ((object = TAILQ_NEXT(object, object_list)) != NULL) {
+		if (--count <= 0)
+			break;
 		if (object->type != OBJT_VNODE)
 			continue;
 		if ((object->flags & OBJ_DEAD) || object->swblock_count == 0)

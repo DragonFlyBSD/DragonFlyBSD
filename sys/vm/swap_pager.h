@@ -93,6 +93,8 @@ extern int vm_swap_cache_use;
 extern int vm_swap_anon_use;
 extern int vm_swapcache_read_enable;
 extern int vm_swapcache_inactive_heuristic;
+extern int vm_swapcache_use_chflags;
+
 extern struct blist *swapblist;
 extern int nswap_lowat, nswap_hiwat;
 
