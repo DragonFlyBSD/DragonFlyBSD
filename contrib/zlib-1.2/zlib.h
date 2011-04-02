@@ -28,8 +28,8 @@
   (zlib format), rfc1951.txt (deflate format) and rfc1952.txt (gzip format).
 */
 
-#ifndef _ZLIB_H
-#define _ZLIB_H
+#ifndef ZLIB_H
+#define ZLIB_H
 
 #include "zconf.h"
 
@@ -1610,4 +1610,4 @@ ZEXTERN int            ZEXPORT inflateUndermine OF((z_streamp, int));
 }
 #endif
 
-#endif /* _ZLIB_H */
+#endif /* ZLIB_H */
