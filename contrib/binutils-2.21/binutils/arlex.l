@@ -31,7 +31,9 @@
 #include "libiberty.h"
 #include "arparse.h"
 
+#ifndef YY_NO_UNPUT
 #define YY_NO_UNPUT
+#endif
 
 extern int yylex (void);
 
