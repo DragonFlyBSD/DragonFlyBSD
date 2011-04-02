@@ -576,6 +576,8 @@ format_root(const char *label)
 	idata->nlinks = 1;
 	if (HammerVersion >= HAMMER_VOL_VERSION_TWO)
 		idata->cap_flags |= HAMMER_INODE_CAP_DIR_LOCAL_INO;
+	if (HammerVersion >= HAMMER_VOL_VERSION_SIX)
+		idata->cap_flags |= HAMMER_INODE_CAP_DIRHASH_ALG1;
 
 	pfsd->sync_low_tid = 1;
 	pfsd->sync_beg_tid = 0;
