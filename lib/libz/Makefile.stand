@@ -6,6 +6,6 @@
 ZLIBDIR= ${.CURDIR}/../../contrib/zlib-1.2
 .PATH: ${ZLIBDIR}
 
-CFLAGS+=-DHAVE_MEMCPY -I${ZLIBDIR}
+CFLAGS+=-DCOMPILING_LIBSTAND -I${ZLIBDIR}
 SRCS+=	adler32.c crc32.c deflate.c infback.c inffast.c inflate.c \
 	inftrees.c zutil.c

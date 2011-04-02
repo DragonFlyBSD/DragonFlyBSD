@@ -356,7 +356,9 @@ typedef uLong FAR uLongf;
    typedef Byte       *voidp;
 #endif
 
-#ifdef HAVE_UNISTD_H    /* may be set to #if 1 by ./configure */
+
+/* XXX:  We actually want this to be #if 1, but libstand has some issues. */
+#ifndef COMPILING_LIBSTAND    /* may be set to #if 1 by ./configure */
 #  define Z_HAVE_UNISTD_H
 #endif
 

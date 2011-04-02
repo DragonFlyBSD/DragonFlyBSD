@@ -26,7 +26,6 @@
 #  include <limits.h>
 #endif
 #include <fcntl.h>
-#include <unistd.h>
 
 #ifdef NO_DEFLATE       /* for compatibility with old definition */
 #  define NO_GZCOMPRESS
