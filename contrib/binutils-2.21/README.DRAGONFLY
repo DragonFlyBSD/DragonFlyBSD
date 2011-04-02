@@ -16,6 +16,8 @@
 
     The follow files were imported from a pre-built instance:
 
+	bfd/bfdver.h
+	bfd/doc/bfdver.texi
 	binutils/doc/addr2line.1
 	binutils/doc/ar.1
 	binutils/doc/c++filt.1
@@ -28,14 +30,13 @@
 	binutils/doc/size.1
 	binutils/doc/strings.1
 	binutils/doc/strip.1
-	bfd/doc/bfdver.texi
-	bfd/bfdver.h
 	gas/doc/as.1
 	ld/ld.1
 
 
     The following files were patched:
 
-	gas/config/tc-i386.c
 	bfd/config.bfd
+	binutils/arlex.l
+	gas/config/tc-i386.c
 	ld/ldlex.l
