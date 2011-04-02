@@ -5,6 +5,6 @@ INFO = diff
 
 INFOENTRY_diff= "* DIFF: (diff).                 DIFF/PATCH Reference Manual."
 
-SRCDIR=${.CURDIR}/../../../../contrib/diffutils-2.8/doc
+SRCDIR=${.CURDIR}/../../../../contrib/diffutils/doc
 
 .include <bsd.info.mk>
