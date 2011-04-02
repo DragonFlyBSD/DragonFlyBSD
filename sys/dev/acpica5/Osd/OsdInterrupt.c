@@ -48,7 +48,6 @@ ACPI_MODULE_NAME("INTERRUPT")
 static void		InterruptWrapper(void *arg);
 
 static ACPI_OSD_HANDLER	InterruptHandler;
-static UINT32		InterruptOverride = 0;
 
 ACPI_STATUS
 AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
@@ -72,17 +71,6 @@ AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
 	return_ACPI_STATUS (AE_ALREADY_EXISTS);
     }
     InterruptHandler = ServiceRoutine;
-
-    /*
-     * If the MADT contained an interrupt override directive for the SCI,
-     * we use that value instead of the one from the FADT.
-     */
-    if (InterruptOverride != 0) {
-	    device_printf(sc->acpi_dev,
-		"Overriding SCI Interrupt from IRQ %u to IRQ %u\n",
-		InterruptNumber, InterruptOverride);
-	    InterruptNumber = InterruptOverride;
-    }
 
     /* Set up the interrupt resource. */
     sc->acpi_irq_rid = 0;
@@ -139,18 +127,6 @@ AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER ServiceRou
     sc->acpi_irq = NULL;
     InterruptHandler = NULL;
 
-    return_ACPI_STATUS (AE_OK);
-}
-
-ACPI_STATUS
-acpi_OverrideInterruptLevel(UINT32 InterruptNumber)
-{
-
-    ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
-
-    if (InterruptOverride != 0)
-	return_ACPI_STATUS (AE_ALREADY_EXISTS);
-    InterruptOverride = InterruptNumber;
     return_ACPI_STATUS (AE_OK);
 }
 
