@@ -4,7 +4,6 @@
 
 PROG=	nm
 MAN=	nm217.1
-MLINKS+=nm217.1 nm.1
 WARNS=	2
 CFLAGS+= -I${.CURDIR}/${RELTOP}/libbinutils
 CFLAGS+= -I${SRCDIR}/binutils

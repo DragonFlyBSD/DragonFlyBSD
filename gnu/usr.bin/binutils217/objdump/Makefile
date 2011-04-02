@@ -5,7 +5,6 @@
 PROG=	objdump
 SRCS=	objdump.c prdbg.c
 MAN=	objdump217.1
-MLINKS+=objdump217.1 objdump.1
 WARNS=	1
 CFLAGS+= -I${.CURDIR}/${RELTOP}/libbinutils
 CFLAGS+= -I${SRCDIR}/binutils

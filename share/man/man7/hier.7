@@ -32,7 +32,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd September 9, 2010
+.Dd April 2, 2011
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -324,8 +324,17 @@ holds the download firmware images
 .It Pa libexec/
 system daemons & system utilities (executed by other programs)
 .Pp
-.Bl -tag -width ".Pa binutils217/" -compact
-.It Pa binutils217/
+.Bl -tag -width ".Pa binutils220/" -compact
+.It Pa binutils220/
+.Pp
+.Bl -tag -width ".Pa ldscripts/" -compact
+.It Pa ldscripts/
+linker scripts;
+see
+.Xr ld 1
+.El
+.Pp
+.It Pa binutils221/
 .Pp
 .Bl -tag -width ".Pa ldscripts/" -compact
 .It Pa ldscripts/

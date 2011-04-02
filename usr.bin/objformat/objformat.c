@@ -39,7 +39,7 @@
 #endif
 
 #ifndef BINUTILSVER_DEFAULT
-#define	BINUTILSVER_DEFAULT "binutils217"
+#define	BINUTILSVER_DEFAULT "binutils221"
 #endif
 
 #ifndef OBJFORMAT_PATH_DEFAULT
@@ -70,7 +70,9 @@ static struct command commands[] = {
 	{"addr2line",	BINUTILS2},
 	{"ar",		BINUTILS2},
 	{"as",		BINUTILS2},
-	{"cxxfilt",	BINUTILS2},
+#if 0
+	{"c++filt",	BINUTILS2},
+#endif
 	{"elfedit",	BINUTILS2},
 	{"ld",		BINUTILS2},
 	{"nm",		BINUTILS2},

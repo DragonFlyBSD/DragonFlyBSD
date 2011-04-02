@@ -4,7 +4,6 @@
 
 PROG=	readelf
 MAN=	readelf217.1
-MLINKS+=readelf217.1 readelf.1
 WARNS=	1
 CFLAGS+= -I${.CURDIR}/${RELTOP}/libbinutils -I${SRCDIR}/binutils
 CFLAGS+= -I${SRCDIR}/bfd -I${.OBJDIR}/../libbfd

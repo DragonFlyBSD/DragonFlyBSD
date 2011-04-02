@@ -5,6 +5,7 @@
 PROG=	strip
 SRCS=	objcopy.c is-strip.c
 MAN=	strip221.1
+MLINKS+=strip221.1 strip.1
 WARNS=	1
 
 CLEANFILES+=	maybe_stripped

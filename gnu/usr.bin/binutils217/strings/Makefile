@@ -4,7 +4,6 @@
 
 PROG=	strings
 MAN=	strings217.1
-MLINKS+=strings217.1 strings.1
 WARNS=	2
 CFLAGS+= -I${.CURDIR}/${RELTOP}/libbinutils
 CFLAGS+= -I${SRCDIR}/binutils

@@ -12,14 +12,19 @@
 +         UPGRADING DRAGONFLY FROM 2.8 to later versions                +
 +-----------------------------------------------------------------------+
 
-GCC 4.4
--------
+GCC 4.4 & BINUTILS 2.21
+-----------------------
 
-GCC 4.4 has been made DragonFly's default compiler.
+GCC 4.4 has been made DragonFly's default compiler and Binutils 2.21 has
+been made DragonFly's default Binutils.
 
 That means that any settings that set CCVER to 'gcc44' are not needed
 anymore. Instead, CCVER can be set to 'gcc41' to go back to using
 GCC 4.1.
+
+It also means that 'binutils221' as a value for BINUTILSVER has no
+effect anymore. 2.17 has been removed and 'binutils220' is available
+as an option.
 
 The NO_GCC44 option has been removed and will not affect the build
 anymore. There is now a NO_GCC41 option that will prevent GCC 4.1 from

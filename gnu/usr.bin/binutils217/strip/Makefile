@@ -5,7 +5,6 @@
 PROG=	strip
 SRCS=	objcopy.c is-strip.c
 MAN=	strip217.1
-MLINKS+=strip217.1 strip.1
 WARNS=	1
 CFLAGS+= -I${.CURDIR}/${RELTOP}/libbinutils
 CFLAGS+= -I${SRCDIR}/binutils

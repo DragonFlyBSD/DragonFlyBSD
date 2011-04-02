@@ -6,7 +6,6 @@ ELF_SCR_EXT=	x xbn xn xr xs xu xc xsc
 
 PROG=	ld
 MAN=	ld217.1
-MLINKS+=ld217.1 ld.1
 LIBEXEC_BINUTILS= /usr/libexec/binutils217
 SCRIPTDIR= ${LIBEXEC_BINUTILS}/ldscripts
 SRCS+=	ldcref.c ldctor.c ldemul.c ldemul-list.h ldexp.c ldfile.c \

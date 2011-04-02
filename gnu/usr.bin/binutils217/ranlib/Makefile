@@ -5,7 +5,6 @@
 PROG=	ranlib
 SRCS=	ar.c is-ranlib.c
 MAN=	ranlib217.1
-MLINKS+=ranlib217.1 ranlib.1
 CFLAGS+= -I${.CURDIR}/${RELTOP}/libbinutils
 CFLAGS+= -I${SRCDIR}/binutils
 CFLAGS+= -I${SRCDIR}/bfd -I${.OBJDIR}/../libbfd

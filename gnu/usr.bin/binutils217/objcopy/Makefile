@@ -6,7 +6,6 @@ PROG=	objcopy
 SRCS=	debug.c ieee.c not-strip.c objcopy.c rename.c rdcoff.c rddbg.c \
 	stabs.c wrstabs.c
 MAN=	objcopy217.1
-MLINKS+=objcopy217.1 objcopy.1
 WARNS=	1
 CFLAGS+= -I${.CURDIR}/${RELTOP}/libbinutils
 CFLAGS+= -I${SRCDIR}/binutils

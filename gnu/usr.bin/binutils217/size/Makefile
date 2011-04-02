@@ -4,7 +4,6 @@
 
 PROG=	size
 MAN=	size217.1
-MLINKS+=size217.1 size.1
 WARNS=	2
 CFLAGS+= -I${.CURDIR}/${RELTOP}/libbinutils
 CFLAGS+= -I${SRCDIR}/binutils

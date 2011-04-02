@@ -120,7 +120,7 @@ DESTDIRBASE?=		${OBJTREE}${.CURDIR}
 
 # This sets the compiler we use to build the world/kernel with
 WORLD_CCVER?=	gcc44
-WORLD_BINUTILSVER?=	binutils217
+WORLD_BINUTILSVER?=	binutils221
 
 # temporary until everybody has converted to x86_64
 .if ${MACHINE_ARCH} == "amd64"

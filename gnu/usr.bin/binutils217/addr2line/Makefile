@@ -5,7 +5,6 @@
 PROG=	addr2line
 SRCS=	addr2line.c
 MAN=	addr2line217.1
-MLINKS+=addr2line217.1 addr2line.1
 WARNS=	2
 CFLAGS+= -I${.CURDIR}/${RELTOP}/libbinutils
 CFLAGS+= -I${SRCDIR}/binutils -I${.OBJDIR}/../libbfd

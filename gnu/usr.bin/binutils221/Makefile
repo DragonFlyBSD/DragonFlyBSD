@@ -1,6 +1,8 @@
+# notyet: cxxfilt gold libgold
+
 SUBDIR=		libiberty libbfd libopcodes libbinutils \
 		addr2line ar as ld nm objcopy objdump ranlib readelf \
-		elfedit size strings strip cxxfilt doc
+		elfedit size strings strip doc
 
 TARGET_ARCH?=	${MACHINE_ARCH}
 

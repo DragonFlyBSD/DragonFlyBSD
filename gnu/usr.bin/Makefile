@@ -10,15 +10,15 @@ SUBDIR+=cvs
 SUBDIR+=gdb
 .endif
 
-SUBDIR+= binutils217
+SUBDIR+= binutils220
 SUBDIR+= binutils221
 
 .if !defined(NO_GCC41)
 SUBDIR+= cc41
-.ORDER: binutils217 cc41
+.ORDER: binutils221 cc41
 .endif
 
 SUBDIR+= cc44
-.ORDER: binutils217 cc44
+.ORDER: binutils221 cc44
 
 .include <bsd.subdir.mk>
