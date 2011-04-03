@@ -3233,6 +3233,14 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	lwkt_gettoken(&hmp->fs_token);
 
 	/*
+	 * Disallow swapcache operation on the vnode buffer if double
+	 * buffering is enabled, the swapcache will get the data via
+	 * the block device buffer.
+	 */
+	if (hammer_double_buffer)
+		bp->b_flags |= B_NOTMETA;
+
+	/*
 	 * Interlock with inode destruction (no in-kernel or directory
 	 * topology visibility).  If we queue new IO while trying to
 	 * destroy the inode we can deadlock the vtrunc call in
