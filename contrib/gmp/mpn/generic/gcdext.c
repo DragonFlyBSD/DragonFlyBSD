@@ -1,6 +1,6 @@
 /* mpn_gcdext -- Extended Greatest Common Divisor.
 
-Copyright 1996, 1998, 2000, 2001, 2002, 2003, 2004, 2005, 2008 Free Software
+Copyright 1996, 1998, 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009 Free Software
 Foundation, Inc.
 
 This file is part of the GNU MP Library.
@@ -388,22 +388,27 @@ mpn_gcdext (mp_ptr gp, mp_ptr up, mp_size_t *usizep,
 	}
     }
 
-  if (mpn_zero_p (ap, n))
+  if (UNLIKELY (mpn_cmp (ap, bp, n) == 0))
     {
-      MPN_COPY (gp, bp, n);
-      MPN_NORMALIZE_NOT_ZERO (u0, un);
-      MPN_COPY (up, u0, un);
-      *usizep = -un;
+      /* Must return the smallest cofactor, +u1 or -u0 */
+      int c;
 
-      TMP_FREE;
-      return n;
-    }
-  else if (mpn_zero_p (bp, n))
-    {
       MPN_COPY (gp, ap, n);
-      MPN_NORMALIZE_NOT_ZERO (u1, un);
-      MPN_COPY (up, u1, un);
-      *usizep = un;
+
+      MPN_CMP (c, u0, u1, un);
+      ASSERT (c != 0);
+      if (c < 0)
+	{
+	  MPN_NORMALIZE (u0, un);
+	  MPN_COPY (up, u0, un);
+	  *usizep = -un;
+	}
+      else
+	{
+	  MPN_NORMALIZE_NOT_ZERO (u1, un);
+	  MPN_COPY (up, u1, un);
+	  *usizep = un;
+	}
 
       TMP_FREE;
       return n;

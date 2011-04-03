@@ -751,7 +751,7 @@ mpn_mul_n (mp_ptr p, mp_srcptr a, mp_srcptr b, mp_size_t n)
 }
 
 void
-mpn_sqr_n (mp_ptr p, mp_srcptr a, mp_size_t n)
+mpn_sqr (mp_ptr p, mp_srcptr a, mp_size_t n)
 {
   ASSERT (n >= 1);
   ASSERT (! MPN_OVERLAP_P (p, 2 * n, a, n));

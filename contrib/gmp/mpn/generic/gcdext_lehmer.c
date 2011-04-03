@@ -1,6 +1,6 @@
 /* mpn_gcdext -- Extended Greatest Common Divisor.
 
-Copyright 1996, 1998, 2000, 2001, 2002, 2003, 2004, 2005, 2008 Free Software
+Copyright 1996, 1998, 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009 Free Software
 Foundation, Inc.
 
 This file is part of the GNU MP Library.
@@ -119,36 +119,77 @@ mpn_gcdext_lehmer_n (mp_ptr gp, mp_ptr up, mp_size_t *usize,
 	  un = updated_un;
 	}
     }
-  if (ap[0] == 0)
-    {
-      gp[0] = bp[0];
+  ASSERT_ALWAYS (ap[0] > 0);
+  ASSERT_ALWAYS (bp[0] > 0);
 
-      MPN_NORMALIZE_NOT_ZERO (u0, un);
-      MPN_COPY (up, u0, un);
-
-      *usize = -un;
-      return 1;
-    }
-  else if (bp[0] == 0)
+  if (ap[0] == bp[0])
     {
+      int c;
+
+      /* Which cofactor to return now? Candidates are +u1 and -u0,
+	 depending on which of a and b was most recently reduced,
+	 which we don't keep track of. So compare and get the smallest
+	 one. */
+
       gp[0] = ap[0];
 
-      MPN_NORMALIZE_NOT_ZERO (u1, un);
-      MPN_COPY (up, u1, un);
-
-      *usize = un;
+      MPN_CMP (c, u0, u1, un);
+      ASSERT (c != 0 || (un == 1 && u0[0] == 1 && u1[0] == 1));
+      if (c < 0)
+	{
+	  MPN_NORMALIZE (u0, un);
+	  MPN_COPY (up, u0, un);
+	  *usize = -un;
+	}
+      else
+	{
+	  MPN_NORMALIZE_NOT_ZERO (u1, un);
+	  MPN_COPY (up, u1, un);
+	  *usize = un;
+	}
       return 1;
     }
   else
     {
       mp_limb_t uh, vh;
-      mp_limb_t u;
-      mp_limb_t v;
+      mp_limb_signed_t u;
+      mp_limb_signed_t v;
+      int negate;
 
       gp[0] = mpn_gcdext_1 (&u, &v, ap[0], bp[0]);
 
-      /* Set up = u u1 + v u0. Keep track of size, un grows by one or
+      /* Set up = u u1 - v u0. Keep track of size, un grows by one or
 	 two limbs. */
+
+      if (u == 0)
+	{
+	  ASSERT (v == 1);
+	  MPN_NORMALIZE (u0, un);
+	  MPN_COPY (up, u0, un);
+	  *usize = -un;
+	  return 1;
+	}
+      else if (v == 0)
+	{
+	  ASSERT (u == 1);
+	  MPN_NORMALIZE (u1, un);
+	  MPN_COPY (up, u1, un);
+	  *usize = un;
+	  return 1;
+	}
+      else if (u > 0)
+	{
+	  negate = 0;
+	  ASSERT (v < 0);
+	  v = -v;
+	}
+      else
+	{
+	  negate = 1;
+	  ASSERT (v > 0);
+	  u = -u;
+	}
+
       uh = mpn_mul_1 (up, u1, un, u);
       vh = mpn_addmul_1 (up, u0, un, v);
 
@@ -162,7 +203,7 @@ mpn_gcdext_lehmer_n (mp_ptr gp, mp_ptr up, mp_size_t *usize,
 
       MPN_NORMALIZE_NOT_ZERO (up, un);
 
-      *usize = un;
+      *usize = negate ? -un : un;
       return 1;
     }
 }

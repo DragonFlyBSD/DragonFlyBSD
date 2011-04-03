@@ -271,30 +271,27 @@ mpn_get_d (mp_srcptr up, mp_size_t size, mp_size_t sign, long exp)
       }
     else if (UNLIKELY (exp <= CONST_NEG_1023))
       {
-	int rshift = GMP_LIMB_BITS - lshift;
+	int rshift;
 
 	if (LIKELY (exp <= CONST_NEG_1022_SUB_53))
 	  return 0.0;	 /* denorm underflows to zero */
 
 	rshift = -1022 - exp;
 	ASSERT (rshift > 0 && rshift < 53);
-	if (GMP_LIMB_BITS == 64)
+#if GMP_LIMB_BITS > 53
+	mlo >>= rshift;
+	mhi = mlo >> 32;
+#else
+	if (rshift >= 32)
 	  {
-	    mlo = (mlo >> rshift) | (mhi << lshift);
-	    mhi >>= rshift;
+	    mlo = mhi;
+	    mhi = 0;
+	    rshift -= 32;
 	  }
-	else
-	  {
-	    if (rshift >= 32)
-	      {
-		mlo = mhi;
-		mhi = 0;
-		rshift -= 32;
-	      }
-	    lshift = GMP_LIMB_BITS - rshift;
-	    mlo = (mlo >> rshift) | (rshift == 0 ? 0 : mhi << lshift);
-	    mhi >>= rshift;
-	  }
+	lshift = GMP_LIMB_BITS - rshift;
+	mlo = (mlo >> rshift) | (rshift == 0 ? 0 : mhi << lshift);
+	mhi >>= rshift;
+#endif
 	exp = -1023;
       }
   }

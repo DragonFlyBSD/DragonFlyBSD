@@ -64,7 +64,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #define HAVE_NATIVE_mpn_addsub_n 1
 #endif
 
-static void mpn_mul_fft_internal
+static mp_limb_t mpn_mul_fft_internal
 __GMP_PROTO ((mp_ptr, mp_srcptr, mp_srcptr, mp_size_t, int, int, mp_ptr *, mp_ptr *,
 	      mp_ptr, mp_ptr, mp_size_t, mp_size_t, mp_size_t, int **, mp_ptr,
 	      int));
@@ -75,7 +75,18 @@ __GMP_PROTO ((mp_ptr, mp_srcptr, mp_srcptr, mp_size_t, int, int, mp_ptr *, mp_pt
    Don't declare it static since it is needed by tuneup.
 */
 #ifdef MUL_FFT_TABLE2
-#define MPN_FFT_TABLE2_SIZE 512
+
+#if defined (MUL_FFT_TABLE2_SIZE) && defined (SQR_FFT_TABLE2_SIZE)
+#if MUL_FFT_TABLE2_SIZE > SQR_FFT_TABLE2_SIZE
+#define FFT_TABLE2_SIZE MUL_FFT_TABLE2_SIZE
+#else
+#define FFT_TABLE2_SIZE SQR_FFT_TABLE2_SIZE
+#endif
+#endif
+
+#ifndef FFT_TABLE2_SIZE
+#define FFT_TABLE2_SIZE 200
+#endif
 
 /* FIXME: The format of this should change to need less space.
    Perhaps put n and k in the same 32-bit word, with n shifted-down
@@ -83,11 +94,11 @@ __GMP_PROTO ((mp_ptr, mp_srcptr, mp_srcptr, mp_size_t, int, int, mp_ptr *, mp_pt
    n-1 is highly divisible.
    Alternatively, separate n and k out into separate arrays.  */
 struct nk {
-  mp_size_t n;
-  unsigned char k;
+  unsigned int n:27;
+  unsigned int k:5;
 };
 
-static struct nk mpn_fft_table2[2][MPN_FFT_TABLE2_SIZE] =
+static struct nk mpn_fft_table2[2][FFT_TABLE2_SIZE] =
 {
   MUL_FFT_TABLE2,
   SQR_FFT_TABLE2
@@ -728,7 +739,7 @@ mpn_mul_fft_decompose (mp_ptr A, mp_ptr *Ap, int K, int nprime, mp_srcptr n,
    the out carry.
 */
 
-static void
+static mp_limb_t
 mpn_mul_fft_internal (mp_ptr op, mp_srcptr n, mp_srcptr m, mp_size_t pl,
 		      int k, int K,
 		      mp_ptr *Ap, mp_ptr *Bp,
@@ -827,6 +838,8 @@ mpn_mul_fft_internal (mp_ptr op, mp_srcptr n, mp_srcptr m, mp_size_t pl,
   i = mpn_fft_norm_modF (op, pl, p, pla);
   if (rec) /* store the carry out */
     op[pl] = i;
+
+  return i;
 }
 
 /* return the lcm of a and 2^k */
@@ -843,7 +856,8 @@ mpn_mul_fft_lcm (unsigned long int a, unsigned int k)
   return a << l;
 }
 
-void
+
+mp_limb_t
 mpn_mul_fft (mp_ptr op, mp_size_t pl,
 	     mp_srcptr n, mp_size_t nl,
 	     mp_srcptr m, mp_size_t ml,
@@ -854,6 +868,7 @@ mpn_mul_fft (mp_ptr op, mp_size_t pl,
   mp_ptr *Ap, *Bp, A, T, B;
   int **_fft_l;
   int sqr = (n == m && nl == ml);
+  mp_limb_t h;
   TMP_DECL;
 
   TRACE (printf ("\nmpn_mul_fft pl=%ld nl=%ld ml=%ld k=%d\n", pl, nl, ml, k));
@@ -910,10 +925,12 @@ mpn_mul_fft (mp_ptr op, mp_size_t pl,
   if (n != m)
     mpn_mul_fft_decompose (B, Bp, K, nprime, m, ml, l, Mp, T);
 
-  mpn_mul_fft_internal (op, n, m, pl, k, K, Ap, Bp, A, B, nprime, l, Mp, _fft_l, T, 0);
+  h = mpn_mul_fft_internal (op, n, m, pl, k, K, Ap, Bp, A, B, nprime, l, Mp, _fft_l, T, 0);
 
   TMP_FREE;
   __GMP_FREE_FUNC_LIMBS (A, 2 * K * (nprime + 1));
+
+  return h;
 }
 
 /* multiply {n, nl} by {m, ml}, and put the result in {op, nl+ml} */
@@ -956,17 +973,20 @@ mpn_mul_fft_full (mp_ptr op,
 		 nl, ml, pl2, pl3, k2));
 
   ASSERT_ALWAYS(pl3 <= pl);
-  mpn_mul_fft (op, pl3, n, nl, m, ml, k3);     /* mu */
+  cc = mpn_mul_fft (op, pl3, n, nl, m, ml, k3);     /* mu */
+  ASSERT_ALWAYS(cc == 0);
   pad_op = __GMP_ALLOCATE_FUNC_LIMBS (pl2);
-  mpn_mul_fft (pad_op, pl2, n, nl, m, ml, k2); /* lambda */
-  cc = mpn_sub_n (pad_op, pad_op, op, pl2);    /* lambda - low(mu) */
+  cc = mpn_mul_fft (pad_op, pl2, n, nl, m, ml, k2); /* lambda */
+  cc = -cc + mpn_sub_n (pad_op, pad_op, op, pl2);    /* lambda - low(mu) */
   /* 0 <= cc <= 1 */
+  ASSERT_ALWAYS(0 <= cc && cc <= 1);
   l = pl3 - pl2; /* l = pl2 / 2 since pl3 = 3/2 * pl2 */
   c2 = mpn_add_n (pad_op, pad_op, op + pl2, l);
-  cc = mpn_add_1 (pad_op + l, pad_op + l, l, (mp_limb_t) c2) - cc; /* -1 <= cc <= 1 */
+  cc = mpn_add_1 (pad_op + l, pad_op + l, l, (mp_limb_t) c2) - cc;
+  ASSERT_ALWAYS(-1 <= cc && cc <= 1);
   if (cc < 0)
     cc = mpn_add_1 (pad_op, pad_op, pl2, (mp_limb_t) -cc);
-  /* 0 <= cc <= 1 */
+  ASSERT_ALWAYS(0 <= cc && cc <= 1);
   /* now lambda-mu = {pad_op, pl2} - cc mod 2^(pl2*GMP_NUMB_BITS)+1 */
   oldcc = cc;
 #if HAVE_NATIVE_mpn_addsub_n
