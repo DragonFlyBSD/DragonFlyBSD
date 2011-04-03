@@ -409,7 +409,11 @@ hammer_dedup_validate(hammer_dedup_cache_t dcp, int zone, int bytes,
 	 * there or if a non-blocking attempt to acquire it failed use
 	 * device-based buffer (for large-zone data blocks it will
 	 * generate a separate read).
+	 *
+	 * XXX vnode-based checking is not MP safe so when live-dedup
+	 *     is turned on we must always use the device buffer.
 	 */
+#if 0
 	if (hammer_double_buffer) {
 		error = 1;
 	} else if (_vnode_validate(dcp, data, &error)) {
@@ -420,11 +424,20 @@ hammer_dedup_validate(hammer_dedup_cache_t dcp, int zone, int bytes,
 			hammer_live_dedup_findblk_failures++;
 	}
 
-	if (error) { /* yes, if there was an error previously */
+	/*
+	 * If there was an error previously or if double buffering is
+	 * enabled.
+	 */
+	if (error) {
 		if (_dev_validate(dcp, data, &error)) {
 			hammer_live_dedup_device_bcmps++;
 			return (1);
 		}
+	}
+#endif
+	if (_dev_validate(dcp, data, &error)) {
+		hammer_live_dedup_device_bcmps++;
+		return (1);
 	}
 
 	return (0);
