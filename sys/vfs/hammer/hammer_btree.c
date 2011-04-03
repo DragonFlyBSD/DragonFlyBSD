@@ -805,7 +805,12 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 		switch(elm->leaf.base.rec_type) {
 		case HAMMER_RECTYPE_DATA:
 		case HAMMER_RECTYPE_DB:
-			hammer_io_notmeta(cursor->data_buffer);
+			if ((data_off & HAMMER_ZONE_LARGE_DATA) == 0)
+				break;
+			if (hammer_double_buffer == 0 ||
+			    (cursor->flags & HAMMER_CURSOR_NOSWAPCACHE)) {
+				hammer_io_notmeta(cursor->data_buffer);
+			}
 			break;
 		default:
 			break;

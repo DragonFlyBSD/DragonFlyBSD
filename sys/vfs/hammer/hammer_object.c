@@ -669,6 +669,8 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	int error;
 	u_int32_t max_iterations;
 
+	KKASSERT(dip->ino_data.obj_type == HAMMER_OBJTYPE_DIRECTORY);
+
 	record = hammer_alloc_mem_record(dip, HAMMER_ENTRY_SIZE(bytes));
 
 	record->type = HAMMER_MEM_RECORD_ADD;

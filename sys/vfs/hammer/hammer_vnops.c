@@ -46,6 +46,7 @@
 #include <sys/dirent.h>
 #include <sys/file.h>
 #include <vm/vm_extern.h>
+#include <vm/swap_pager.h>
 #include <vfs/fifofs/fifo.h>
 
 #include "hammer.h"
@@ -2752,6 +2753,17 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	}
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 
+	/*
+	 * Set NOSWAPCACHE for cursor data extraction if double buffering
+	 * is disabled or (if the file is not marked cacheable via chflags
+	 * and vm.swapcache_use_chflags is enabled).
+	 */
+	if (hammer_double_buffer == 0 ||
+	    ((ap->a_vp->v_flag & VSWAPCACHE) == 0 &&
+	     vm_swapcache_use_chflags)) {
+		cursor.flags |= HAMMER_CURSOR_NOSWAPCACHE;
+	}
+
 	error = hammer_ip_first(&cursor);
 	boff = 0;
 
@@ -2891,6 +2903,18 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		bzero((char *)bp->b_data + boff, bp->b_bufsize - boff);
 		/* boff = bp->b_bufsize; */
 	}
+
+	/*
+	 * Disallow swapcache operation on the vnode buffer if double
+	 * buffering is enabled, the swapcache will get the data via
+	 * the block device buffer.
+	 */
+	if (hammer_double_buffer)
+		bp->b_flags |= B_NOTMETA;
+
+	/*
+	 * Cleanup
+	 */
 	bp->b_resid = 0;
 	bp->b_error = error;
 	if (error)

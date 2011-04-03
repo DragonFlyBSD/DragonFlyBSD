@@ -116,6 +116,7 @@ retry:
 
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 	cursor.flags |= HAMMER_CURSOR_BACKEND;
+	cursor.flags |= HAMMER_CURSOR_NOSWAPCACHE;
 
 	/*
 	 * This flag allows the btree scan code to return internal nodes,
