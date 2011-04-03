@@ -1824,9 +1824,22 @@ vfs_vmio_release(struct buf *bp)
 				vm_page_free(m);
 			} else
 #endif
+			/*
+			 * Cache the page if we are really low on free
+			 * pages.
+			 *
+			 * Also bypass the active and inactive queues
+			 * if B_NOTMETA is set.  This flag is set by HAMMER
+			 * on a regular file buffer when double buffering
+			 * is enabled or on a block device buffer representing
+			 * file data when double buffering is not enabled.
+			 * The flag prevents two copies of the same data from
+			 * being cached for long periods of time.
+			 */
 			if (bp->b_flags & B_DIRECT) {
 				vm_page_try_to_free(m);
-			} else if (vm_page_count_severe()) {
+			} else if ((bp->b_flags & B_NOTMETA) ||
+				   vm_page_count_severe()) {
 				m->act_count = bp->b_act_count;
 				vm_page_try_to_cache(m);
 			} else {
