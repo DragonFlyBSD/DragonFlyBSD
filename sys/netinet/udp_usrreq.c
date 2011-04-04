@@ -219,7 +219,7 @@ check_multicast_membership(struct ip *ip, struct inpcb *inp, struct mbuf *m)
 	mopt = inp->inp_moptions;
 	if (mopt == NULL)
 		return (-1);
-	for (mshipno = 0; mshipno <= mopt->imo_num_memberships; ++mshipno) {
+	for (mshipno = 0; mshipno < mopt->imo_num_memberships; ++mshipno) {
 		struct in_multi *maddr = mopt->imo_membership[mshipno];
 
 		if (ip->ip_dst.s_addr == maddr->inm_addr.s_addr &&
