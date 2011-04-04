@@ -56,8 +56,8 @@ __gmpfr_ceil_exp2 (double d)
     {
       while (exp != 0)
         {
-        x.d *= (1.0 / 2.0);
-        exp++;
+          x.d *= (1.0 / 2.0);
+          exp++;
         }
     }
 #endif

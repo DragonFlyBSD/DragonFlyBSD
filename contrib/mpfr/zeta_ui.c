@@ -177,7 +177,9 @@ mpfr_zeta_ui (mpfr_ptr z, unsigned long m, mp_rnd_t r)
                   mpz_mul_ui (t, t, 2 * k - 1);
                 }
               mpz_div_2exp (t, t, 1);
-              if (n < 1UL << (BITS_PER_MP_LIMB / 2))
+              /* Warning: the test below assumes that an unsigned long
+                 has no padding bits. */
+              if (n < 1UL << ((sizeof(unsigned long) * CHAR_BIT) / 2))
                 /* (n - k + 1) * (n + k - 1) < n^2 */
                 mpz_divexact_ui (t, t, (n - k + 1) * (n + k - 1));
               else

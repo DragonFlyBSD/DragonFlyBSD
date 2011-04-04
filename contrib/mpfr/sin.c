@@ -78,6 +78,10 @@ mpfr_sin (mpfr_ptr y, mpfr_srcptr x, mp_rnd_t rnd_mode)
                         the reduction. */
         {
           reduce = 1;
+          /* As expx + m - 1 will silently be converted into mpfr_prec_t
+             in the mpfr_set_prec call, the assert below may be useful to
+             avoid undefined behavior. */
+          MPFR_ASSERTN (expx + m - 1 <= MPFR_PREC_MAX);
           mpfr_set_prec (c, expx + m - 1);
           mpfr_set_prec (xr, m);
           mpfr_const_pi (c, GMP_RNDN);

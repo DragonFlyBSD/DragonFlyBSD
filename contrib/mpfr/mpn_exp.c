@@ -26,7 +26,7 @@ MA 02110-1301, USA. */
 #include "mpfr-impl.h"
 
 /* this function computes an approximation of b^e in {a, n}, with exponent
-   stored in exp_r. The computed value is rounded towards zero (truncated).
+   stored in exp_r. The computed value is rounded toward zero (truncated).
    It returns an integer f such that the final error is bounded by 2^f ulps,
    that is:
    a*2^exp_r <= b^e <= 2^exp_r (a + 2^f),

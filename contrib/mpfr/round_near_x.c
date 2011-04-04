@@ -38,7 +38,7 @@ MA 02110-1301, USA. */
    y is the destination (a mpfr_t), v the value to set (a mpfr_t),
    err the error term (a mpfr_uexp_t) such that |g(x)| < 2^(EXP(x)-err),
    dir (an int) is the direction of the error (if dir = 0,
-   it rounds towards 0, if dir=1, it rounds away from 0),
+   it rounds toward 0, if dir=1, it rounds away from 0),
    rnd the rounding mode.
 
    It returns 0 if it can't round.

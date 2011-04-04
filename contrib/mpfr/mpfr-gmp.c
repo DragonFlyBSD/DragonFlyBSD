@@ -301,7 +301,7 @@ mpfr_assert_fail (const char *filename, int linenum,
       if (linenum != -1)
         fprintf (stderr, "%d: ", linenum);
     }
-  fprintf (stderr, " assertion failed: %s\n", expr);
+  fprintf (stderr, "MPFR assertion failed: %s\n", expr);
   abort();
 }
 

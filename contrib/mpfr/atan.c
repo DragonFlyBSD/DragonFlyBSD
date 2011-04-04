@@ -28,6 +28,8 @@ MA 02110-1301, USA. */
    Assumes |x| < 1.
 
    If X=x^2, we want 1 - X/3 + X^2/5 - ... + (-1)^k*X^k/(2k+1) + ...
+
+   Assume p is non-zero.
 */
 static void
 mpfr_atan_aux (mpfr_ptr y, mpz_ptr p, long r, int m, mpz_t *tab)
@@ -39,11 +41,7 @@ mpfr_atan_aux (mpfr_ptr y, mpz_ptr p, long r, int m, mpz_t *tab)
   mp_prec_t mult, *accu, *log2_nb_terms;
   mp_prec_t precy = MPFR_PREC(y);
 
-  if (mpz_cmp_ui (p, 0) == 0)
-    {
-      mpfr_set_ui (y, 1, GMP_RNDN); /* limit(atan(x)/x, x=0) */
-      return;
-    }
+  MPFR_ASSERTD(mpz_cmp_ui (p, 0) != 0);
 
   accu = (mp_prec_t*) (*__gmp_allocate_func) ((2 * m + 2) * sizeof (mp_prec_t));
   log2_nb_terms = accu + m + 1;
@@ -194,7 +192,7 @@ mpfr_atan (mpfr_ptr atan, mpfr_srcptr x, mp_rnd_t rnd_mode)
   mp_exp_t exptol;
   mp_prec_t prec, realprec;
   unsigned long twopoweri;
-  int comparaison, inexact, inexact2;
+  int comparaison, inexact;
   int i, n0, oldn0;
   MPFR_GROUP_DECL (group);
   MPFR_SAVE_EXPO_DECL (expo);
@@ -213,6 +211,7 @@ mpfr_atan (mpfr_ptr atan, mpfr_srcptr x, mp_rnd_t rnd_mode)
         }
       else if (MPFR_IS_INF (x))
         {
+          MPFR_SAVE_EXPO_MARK (expo);
           if (MPFR_IS_POS (x))  /* arctan(+inf) = Pi/2 */
             inexact = mpfr_const_pi (atan, rnd_mode);
           else /* arctan(-inf) = -Pi/2 */
@@ -221,10 +220,9 @@ mpfr_atan (mpfr_ptr atan, mpfr_srcptr x, mp_rnd_t rnd_mode)
                                         MPFR_INVERT_RND (rnd_mode));
               MPFR_CHANGE_SIGN (atan);
             }
-          inexact2 = mpfr_div_2ui (atan, atan, 1, rnd_mode);
-          if (MPFR_UNLIKELY (inexact2))
-            inexact = inexact2; /* An underflow occurs */
-          MPFR_RET (inexact);
+          mpfr_div_2ui (atan, atan, 1, rnd_mode);  /* exact (no exceptions) */
+          MPFR_SAVE_EXPO_FREE (expo);
+          return mpfr_check_range (atan, inexact, rnd_mode);
         }
       else /* x is necessarily 0 */
         {
@@ -244,6 +242,8 @@ mpfr_atan (mpfr_ptr atan, mpfr_srcptr x, mp_rnd_t rnd_mode)
   /* Set x_p=|x| */
   MPFR_TMP_INIT_ABS (xp, x);
 
+  MPFR_SAVE_EXPO_MARK (expo);
+
   /* Other simple case arctan(-+1)=-+pi/4 */
   comparaison = mpfr_cmp_ui (xp, 1);
   if (MPFR_UNLIKELY (comparaison == 0))
@@ -256,16 +256,13 @@ mpfr_atan (mpfr_ptr atan, mpfr_srcptr x, mp_rnd_t rnd_mode)
           inexact = -inexact;
           MPFR_CHANGE_SIGN (atan);
         }
-      inexact2 = mpfr_div_2ui (atan, atan, 2, rnd_mode);
-      if (MPFR_UNLIKELY (inexact2))
-        inexact = inexact2; /* an underflow occurs */
-      return inexact;
+      mpfr_div_2ui (atan, atan, 2, rnd_mode);  /* exact (no exceptions) */
+      MPFR_SAVE_EXPO_FREE (expo);
+      return mpfr_check_range (atan, inexact, rnd_mode);
     }
 
   realprec = MPFR_PREC (atan) + MPFR_INT_CEIL_LOG2 (MPFR_PREC (atan)) + 4;
   prec = realprec + BITS_PER_MP_LIMB;
-
-  MPFR_SAVE_EXPO_MARK (expo);
 
   /* Initialisation    */
   mpz_init (ukz);
@@ -300,7 +297,7 @@ mpfr_atan (mpfr_ptr atan, mpfr_srcptr x, mp_rnd_t rnd_mode)
           for (i = 0; i < oldn0; i++)
             mpz_init (tabz[i]);
         }
-      else if (MPFR_UNLIKELY (oldn0 < 3*n0+1))
+      else if (MPFR_UNLIKELY (oldn0 < 3 * (n0 + 1)))
         {
           tabz = (mpz_t *) (*__gmp_reallocate_func)
             (tabz, oldn0*sizeof (mpz_t), 3*(n0+1)*sizeof (mpz_t));
@@ -316,9 +313,24 @@ mpfr_atan (mpfr_ptr atan, mpfr_srcptr x, mp_rnd_t rnd_mode)
 
       /* sk is 1/|x| if |x| > 1, and |x| otherwise, i.e. min(|x|, 1/|x|) */
 
+      /* If sk=1, then if |x| < 1, we have 1 - 2^(-prec-1) <= |x| < 1,
+         or if |x| > 1, we have 1 - 2^(-prec-1) <= 1/|x| < 1, thus in all
+         cases ||x| - 1| <= 2^(-prec), from which it follows
+         |atan|x| - Pi/4| <= 2^(-prec), given the Taylor expansion
+         atan(1+x) = Pi/4 + x/2 - x^2/4 + ...
+         Since Pi/4 = 0.785..., the error is at most one ulp.
+      */
+      if (MPFR_UNLIKELY(mpfr_cmp_ui (sk, 1) == 0))
+        {
+          mpfr_const_pi (arctgt, GMP_RNDN); /* 1/2 ulp extra error */
+          mpfr_div_2ui (arctgt, arctgt, 2, GMP_RNDN); /* exact */
+          realprec = prec - 2;
+          goto can_round;
+        }
+
       /* Assignation  */
       MPFR_SET_ZERO (arctgt);
-      twopoweri = 1<<0;
+      twopoweri = 1 << 0;
       MPFR_ASSERTD (n0 >= 4);
       /* FIXME: further reduce the argument so that it is less than
          1/n where n is the output precision. In such a way, the
@@ -334,12 +346,15 @@ mpfr_atan (mpfr_ptr atan, mpfr_srcptr x, mp_rnd_t rnd_mode)
           mpfr_trunc (tmp, tmp);
           if (!MPFR_IS_ZERO (tmp))
             {
+              /* tmp = ukz*2^exptol */
               exptol = mpfr_get_z_exp (ukz, tmp);
               /* since the s_k are decreasing (see algorithms.tex),
                  and s_0 = min(|x|, 1/|x|) < 1, we have sk < 1,
                  thus exptol < 0 */
               MPFR_ASSERTD (exptol < 0);
               mpz_tdiv_q_2exp (ukz, ukz, (unsigned long int) (-exptol));
+              /* since tmp is a non-zero integer, and tmp = ukzold*2^exptol,
+                 we now have ukz = tmp, thus ukz is non-zero */
               /* Calculation of arctan(Ak) */
               mpfr_set_z (tmp, ukz, GMP_RNDN);
               mpfr_div_2ui (tmp, tmp, twopoweri, GMP_RNDN);
@@ -365,6 +380,7 @@ mpfr_atan (mpfr_ptr atan, mpfr_srcptr x, mp_rnd_t rnd_mode)
         }
       MPFR_SET_POS (arctgt);
 
+    can_round:
       if (MPFR_LIKELY (MPFR_CAN_ROUND (arctgt, realprec, MPFR_PREC (atan),
                                        rnd_mode)))
         break;

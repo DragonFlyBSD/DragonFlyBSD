@@ -21,8 +21,6 @@ along with the GNU MPFR Library; see the file COPYING.LIB.  If not, write to
 the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
 MA 02110-1301, USA. */
 
-#include <string.h> /* For strlen */
-
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
 
@@ -48,13 +46,13 @@ static const char num_to_text[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 #define MPFR_ROUND_FAILED 3
 
-/* Input: an approximation r*2^f of an real Y, with |r*2^f-Y| <= 2^(e+f).
+/* Input: an approximation r*2^f of a real Y, with |r*2^f-Y| <= 2^(e+f).
    Returns if possible in the string s the mantissa corresponding to
    the integer nearest to Y, within the direction rnd, and returns the
    exponent in exp.
    n is the number of limbs of r.
    e represents the maximal error in the approximation of Y
-      (e < 0 iff the approximation is exact, i.e. r*2^f = Y).
+      (e < 0 iff the approximation is exact, i.e., r*2^f = Y).
    b is the wanted base (2 <= b <= 36).
    m is the number of wanted digits in the mantissa.
    rnd is the rounding mode.
@@ -169,7 +167,7 @@ mpfr_get_str_aux (char *const str, mp_exp_t *const exp, mp_limb_t *const r,
                 {
                   if (dir == 0 && exact) /* exact: even rounding */
                     {
-                      rnd1 = ((str1[size_s1-2] & 1) == 0)
+                      rnd1 = ((str1[size_s1 - 2] & 1) == 0)
                         ? GMP_RNDD : GMP_RNDU;
                     }
                   else
@@ -190,7 +188,7 @@ mpfr_get_str_aux (char *const str, mp_exp_t *const exp, mp_limb_t *const r,
             }
 
           /* now rnd1 is either GMP_RNDD or GMP_RNDZ -> truncate
-                             or GMP_RDNU -> round towards infinity */
+                             or GMP_RDNU -> round toward infinity */
 
           /* round away from zero */
           if (rnd1 == GMP_RNDU)
@@ -1454,7 +1452,7 @@ mpfr_get_str (char *s, mp_exp_t *e, int b, size_t m, mpfr_srcptr x, mp_rnd_t rnd
          the first base-b digit contains only one bit, so we get
          1 + ceil((n-1)/k) = 2 + floor((n-2)/k) instead.
       */
-      m = 1 + ceil_mul (IS_POW2(b) ? MPFR_PREC(x) - 1: MPFR_PREC(x), b, 1);
+      m = 1 + ceil_mul (IS_POW2(b) ? MPFR_PREC(x) - 1 : MPFR_PREC(x), b, 1);
       if (m < 2)
         m = 2;
     }

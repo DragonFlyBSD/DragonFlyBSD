@@ -1,5 +1,5 @@
-/* mpfr_get_z_exp -- get a multiple-precision integer from
-                     a floating-point number
+/* mpfr_get_z -- get a multiple-precision integer from
+                 a floating-point number
 
 Copyright 2004, 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
 Contributed by the Arenaire and Cacao projects, INRIA.
@@ -30,12 +30,12 @@ mpfr_get_z (mpz_ptr z, mpfr_srcptr f, mp_rnd_t rnd)
   mp_exp_t exp = MPFR_EXP (f);
 
   /* if exp <= 0, then |f|<1, thus |o(f)|<=1 */
-  MPFR_ASSERTD (MPFR_PREC_MIN == 2);
-  mpfr_init2 (r, (exp <= 0) ? MPFR_PREC_MIN : exp + 1);
+  MPFR_ASSERTN (exp < 0 || exp <= MPFR_PREC_MAX);
+  mpfr_init2 (r, (exp < (mp_exp_t) MPFR_PREC_MIN ?
+                  MPFR_PREC_MIN : (mpfr_prec_t) exp));
   mpfr_rint (r, f, rnd);
   MPFR_ASSERTN (MPFR_IS_FP (r) );
   exp = mpfr_get_z_exp (z, r);
-  /* FIXME: It seems that exp < 0 is always true */
   if (exp >= 0)
     mpz_mul_2exp (z, z, exp);
   else

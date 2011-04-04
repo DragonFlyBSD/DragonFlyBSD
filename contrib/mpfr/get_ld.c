@@ -107,14 +107,17 @@ mpfr_get_ld (mpfr_srcptr x, mp_rnd_t rnd_mode)
 {
   mpfr_long_double_t ld;
   mpfr_t tmp;
+  int inex;
   MPFR_SAVE_EXPO_DECL (expo);
 
   MPFR_SAVE_EXPO_MARK (expo);
-  mpfr_set_emin (-16382-63);
-  mpfr_set_emax (16383);
 
   mpfr_init2 (tmp, MPFR_LDBL_MANT_DIG);
-  mpfr_subnormalize(tmp, mpfr_set (tmp, x, rnd_mode), rnd_mode);
+  inex = mpfr_set (tmp, x, rnd_mode);
+
+  mpfr_set_emin (-16382-63);
+  mpfr_set_emax (16384);
+  mpfr_subnormalize (tmp, mpfr_check_range (tmp, inex, rnd_mode), rnd_mode);
   mpfr_prec_round (tmp, 64, GMP_RNDZ); /* exact */
   if (MPFR_UNLIKELY (MPFR_IS_SINGULAR (tmp)))
     ld.ld = (long double) mpfr_get_d (tmp, rnd_mode);
@@ -125,7 +128,10 @@ mpfr_get_ld (mpfr_srcptr x, mp_rnd_t rnd_mode)
 
       tmpmant = MPFR_MANT (tmp);
       e = MPFR_GET_EXP (tmp);
-      denorm = MPFR_UNLIKELY (e < -16382) ? - e - 16382 + 1 : 0;
+      /* the smallest normal number is 2^(-16382), which is 0.5*2^(-16381)
+         in MPFR, thus any exponent <= -16382 corresponds to a subnormal
+         number */
+      denorm = MPFR_UNLIKELY (e <= -16382) ? - e - 16382 + 1 : 0;
 #if BITS_PER_MP_LIMB >= 64
       ld.s.manl = (tmpmant[0] >> denorm);
       ld.s.manh = (tmpmant[0] >> denorm) >> 32;

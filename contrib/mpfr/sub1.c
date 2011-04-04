@@ -320,7 +320,7 @@ mpfr_sub1 (mpfr_ptr a, mpfr_srcptr b, mpfr_srcptr c, mp_rnd_t rnd_mode)
             }
         }
     }
-  else /* directed rounding: set rnd_mode to RNDZ iff towards zero */
+  else /* directed rounding: set rnd_mode to RNDZ iff toward zero */
     {
       if (MPFR_IS_RNDUTEST_OR_RNDDNOTTEST(rnd_mode, MPFR_IS_NEG(a)))
         rnd_mode = GMP_RNDZ;

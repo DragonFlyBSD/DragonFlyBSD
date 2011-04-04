@@ -518,9 +518,9 @@ mpfr_pow (mpfr_ptr z, mpfr_srcptr x, mpfr_srcptr y, mp_rnd_t rnd_mode)
       MPFR_SAVE_EXPO_MARK (expo);
       mpfr_init2 (t, 53);
       /* we want a lower bound on y*log2|x|:
-         (i) if x > 0, it suffices to round log2(x) towards zero, and
-             to round y*o(log2(x)) towards zero too;
-         (ii) if x < 0, we first compute t = o(-x), with rounding towards 1,
+         (i) if x > 0, it suffices to round log2(x) toward zero, and
+             to round y*o(log2(x)) toward zero too;
+         (ii) if x < 0, we first compute t = o(-x), with rounding toward 1,
               and then follow as in case (1). */
       if (MPFR_SIGN (x) > 0)
         mpfr_log2 (t, x, GMP_RNDZ);

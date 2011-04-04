@@ -37,6 +37,8 @@ mpfr_frac (mpfr_ptr r, mpfr_srcptr u, mp_rnd_t rnd_mode)
   int sh;
   mpfr_t tmp;
   mpfr_ptr t;
+  int inex;
+  MPFR_SAVE_EXPO_DECL (expo);
 
   /* Special cases */
   if (MPFR_UNLIKELY(MPFR_IS_NAN(u)))
@@ -55,6 +57,8 @@ mpfr_frac (mpfr_ptr r, mpfr_srcptr u, mp_rnd_t rnd_mode)
   ue = MPFR_GET_EXP (u);
   if (ue <= 0)  /* |u| < 1 */
     return mpfr_set (r, u, rnd_mode);
+
+  /* Now |u| >= 1, meaning that an overflow is not possible. */
 
   uq = MPFR_PREC(u);
   un = (uq - 1) / BITS_PER_MP_LIMB;  /* index of most significant limb */
@@ -99,7 +103,6 @@ mpfr_frac (mpfr_ptr r, mpfr_srcptr u, mp_rnd_t rnd_mode)
      of u into account, because of the mpn_lshift below. */
   MPFR_CLEAR_FLAGS(t);
   MPFR_SET_SAME_SIGN(t, u);
-  MPFR_SET_EXP (t, re);
 
   /* Put the fractional part of u into t */
   tn = (MPFR_PREC(t) - 1) / BITS_PER_MP_LIMB;
@@ -113,14 +116,31 @@ mpfr_frac (mpfr_ptr r, mpfr_srcptr u, mp_rnd_t rnd_mode)
   if (t0 > 0)
     MPN_ZERO(tp, t0);
 
+  MPFR_SAVE_EXPO_MARK (expo);
+
   if (t != r)
     { /* t is tmp */
-      int inex;
-
-      inex = mpfr_set (r, t, rnd_mode);
+      MPFR_EXP (t) = 0;  /* should be re, but not necessarily in the range */
+      inex = mpfr_set (r, t, rnd_mode);  /* no underflow */
       mpfr_clear (t);
-      return inex;
+      MPFR_EXP (r) += re;
     }
   else
-    MPFR_RET(0);
+    { /* There may be remaining non-significant bits in t (= r). */
+      int carry;
+
+      MPFR_EXP (r) = re;
+      carry = mpfr_round_raw (tp, tp,
+                              (mp_prec_t) (tn + 1) * BITS_PER_MP_LIMB,
+                              MPFR_IS_NEG (r), MPFR_PREC (r), rnd_mode,
+                              &inex);
+      if (carry)
+        {
+          tp[tn] = MPFR_LIMB_HIGHBIT;
+          MPFR_EXP (r) ++;
+        }
+    }
+
+  MPFR_SAVE_EXPO_FREE (expo);
+  return mpfr_check_range (r, inex, rnd_mode);
 }

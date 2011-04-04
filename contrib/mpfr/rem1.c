@@ -127,13 +127,14 @@ mpfr_rem1 (mpfr_ptr rem, long *quo, mp_rnd_t rnd_q,
     }
   else                          /* ex > ey */
     {
-      if (quo)
+      if (quo) /* remquo case */
         /* for remquo, to get the low WANTED_BITS more bits of the quotient,
            we first compute R =  X mod Y*2^WANTED_BITS, where X and Y are
            defined below. Then the low WANTED_BITS of the quotient are
            floor(R/Y). */
         mpz_mul_2exp (my, my, WANTED_BITS);     /* 2^WANTED_BITS*Y */
-      else
+
+      else if (rnd_q == GMP_RNDN) /* remainder case */
         /* Let X = mx*2^(ex-ey) and Y = my. Then both X and Y are integers.
            Assume X = R mod Y, then x = X*2^ey = R*2^ey mod (Y*2^ey=y).
            To be able to perform the rounding, we need the least significant
@@ -154,23 +155,25 @@ mpfr_rem1 (mpfr_ptr rem, long *quo, mp_rnd_t rnd_q,
           *quo = mpz_get_si (mx);
           q_is_odd = *quo & 1;
         }
-      else                      /* now 0 <= r < 2Y */
+      else if (rnd_q == GMP_RNDN) /* now 0 <= r < 2Y in the remainder case */
         {
           mpz_div_2exp (my, my, 1);     /* back to Y */
-          if (rnd_q == GMP_RNDN)
-            {
-              /* least significant bit of q */
-              q_is_odd = mpz_cmpabs (r, my) >= 0;
-              if (q_is_odd)
-                mpz_sub (r, r, my);
-            }
+          /* least significant bit of q */
+          q_is_odd = mpz_cmpabs (r, my) >= 0;
+          if (q_is_odd)
+            mpz_sub (r, r, my);
         }
       /* now 0 <= |r| < |my|, and if needed,
          q_is_odd is the least significant bit of q */
     }
 
   if (mpz_cmp_ui (r, 0) == 0)
-    inex = mpfr_set_ui (rem, 0, GMP_RNDN);
+    {
+      inex = mpfr_set_ui (rem, 0, GMP_RNDN);
+      /* take into account sign of x */
+      if (signx < 0)
+        mpfr_neg (rem, rem, GMP_RNDN);
+    }
   else
     {
       if (rnd_q == GMP_RNDN)
@@ -190,6 +193,9 @@ mpfr_rem1 (mpfr_ptr rem, long *quo, mp_rnd_t rnd_q,
                 *quo += 1;
             }
         }
+      /* take into account sign of x */
+      if (signx < 0)
+        mpz_neg (r, r);
       inex = mpfr_set_z (rem, r, rnd);
       /* if ex > ey, rem should be multiplied by 2^ey, else by 2^ex */
       MPFR_EXP (rem) += (ex > ey) ? ey : ex;
@@ -197,13 +203,6 @@ mpfr_rem1 (mpfr_ptr rem, long *quo, mp_rnd_t rnd_q,
 
   if (quo)
     *quo *= sign;
-
-  /* take into account sign of x */
-  if (signx < 0)
-    {
-      mpfr_neg (rem, rem, GMP_RNDN);
-      inex = -inex;
-    }
 
   mpz_clear (mx);
   mpz_clear (my);

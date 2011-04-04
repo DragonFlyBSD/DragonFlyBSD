@@ -45,6 +45,7 @@ compile         - auxiliary installation file
 config.*        - auxiliary installation files
 configure*      - configuration files
 depcomp         - auxiliary installation file
+examples/       - directory containing examples
 fdl.texi        - the GNU Free Documentation License
 get_patches.sh  - rebuild get_patches.c when patches have been applied
 install-sh      - installation file

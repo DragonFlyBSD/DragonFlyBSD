@@ -20,7 +20,6 @@ along with the GNU MPFR Library; see the file COPYING.LIB.  If not, write to
 the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
 MA 02110-1301, USA. */
 
-#include <string.h> /* For strlen */
 #include <stdlib.h> /* For strtol */
 #include <ctype.h>  /* For isspace */
 
@@ -600,7 +599,7 @@ parsed_string_to_mpfr (mpfr_t x, struct parsed_string *pstr, mp_rnd_t rnd)
              pstr_size most significant digits from pstr->mant, i.e., the
              only difference can come from the neglected pstr->prec-pstr_size
              least significant digits of pstr->mant.
-             If exact is zero, then z is rounded towards zero with respect
+             If exact is zero, then z is rounded toward zero with respect
              to that value. */
 
           /* multiply(y = 0.mant_s[0]...mant_s[pr-1])_base by base^(exp_s-g) */
@@ -711,7 +710,7 @@ parsed_string_to_mpfr (mpfr_t x, struct parsed_string *pstr, mp_rnd_t rnd)
          speedup for rare cases only. */
       exact = exact && (pstr_size == pstr->prec);
 
-      /* at this point, result is an approximation rounded towards zero
+      /* at this point, result is an approximation rounded toward zero
          of the pstr_size most significant digits of pstr->mant, with
          equality in case exact is non-zero. */
 

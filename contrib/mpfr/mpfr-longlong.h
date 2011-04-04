@@ -70,7 +70,7 @@ MA 02110-1301, USA. */
 
    4) sdiv_qrnnd(quotient, remainder, high_numerator, low_numerator,
    denominator).  Like udiv_qrnnd but the numbers are signed.  The quotient
-   is rounded towards 0.
+   is rounded toward 0.
 
    5) count_leading_zeros(count, x) counts the number of zero-bits from the
    msb to the first non-zero bit in the UWtype X.  This is the number of
@@ -1011,7 +1011,15 @@ extern UWtype __MPN(udiv_qrnnd) _PROTO ((UWtype *, UWtype, UWtype, UWtype));
 #endif /* __m88000__ */
 
 #if defined (__mips) && W_TYPE_SIZE == 32
-#if __GNUC__ > 2 || __GNUC_MINOR__ >= 7
+#if (__GNUC__ >= 5) || (__GNUC__ >= 4 && __GNUC_MINOR__ >= 4)
+#define umul_ppmm(w1, w0, u, v) \
+  do {									\
+    UDItype _r;							\
+    _r = (UDItype) u * v;						\
+    (w1) = _r >> 32;							\
+    (w0) = (USItype) _r;						\
+  } while (0)
+#elif __GNUC__ > 2 || __GNUC_MINOR__ >= 7
 #define umul_ppmm(w1, w0, u, v) \
   __asm__ ("multu %2,%3" : "=l" (w0), "=h" (w1) : "d" (u), "d" (v))
 #else
@@ -1024,7 +1032,16 @@ extern UWtype __MPN(udiv_qrnnd) _PROTO ((UWtype *, UWtype, UWtype, UWtype));
 #endif /* __mips */
 
 #if (defined (__mips) && __mips >= 3) && W_TYPE_SIZE == 64
-#if __GNUC__ > 2 || __GNUC_MINOR__ >= 7
+#if (__GNUC__ >= 5) || (__GNUC__ >= 4 && __GNUC_MINOR__ >= 4)
+typedef unsigned int UTItype __attribute__ ((mode (TI)));
+#define umul_ppmm(w1, w0, u, v) \
+  do {									\
+    UTItype _r;							\
+    _r = (UTItype) u * v;						\
+    (w1) = _r >> 64;							\
+    (w0) = (UDItype) _r;						\
+  } while (0)
+#elif __GNUC__ > 2 || __GNUC_MINOR__ >= 7
 #define umul_ppmm(w1, w0, u, v) \
   __asm__ ("dmultu %2,%3" : "=l" (w0), "=h" (w1) : "d" (u), "d" (v))
 #else

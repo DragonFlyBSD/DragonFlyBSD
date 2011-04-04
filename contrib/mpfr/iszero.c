@@ -1,4 +1,4 @@
-/* mpfr_zero_p -- check for infinities
+/* mpfr_zero_p -- check for zero
 
 Copyright 2004, 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
 Contributed by the Arenaire and Cacao projects, INRIA.

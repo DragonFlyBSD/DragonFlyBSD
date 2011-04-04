@@ -33,8 +33,10 @@ MA 02110-1301, USA. */
    also force to disable incompatible features). */
 #if defined (__cplusplus)
 #include <cstdio>
+#include <cstring>
 #else
 #include <stdio.h>
+#include <string.h>
 #endif
 #include <limits.h>
 
@@ -63,6 +65,12 @@ MA 02110-1301, USA. */
 # ifndef __GMP_IMPL_H__
 #  include "gmp-impl.h"
 # endif
+# ifndef BITS_PER_MP_LIMB
+#  define BITS_PER_MP_LIMB GMP_LIMB_BITS
+# endif
+#ifndef mpn_sqr_n
+# define mpn_sqr_n mpn_sqr
+#endif
 # ifdef MPFR_NEED_LONGLONG_H
 #  include "longlong.h"
 # endif
@@ -395,34 +403,34 @@ static double double_zero = 0.0;
 # define DBL_NEG_ZERO (-0.0)
 #endif
 
-/* Note: the argument x must be a lvalue of type double. */
-#if _GMP_IEEE_FLOATS
-typedef union ieee_double_extract Ieee_double_extract;
-
-# define DOUBLE_ISNANorINF(x) (((Ieee_double_extract *)&(x))->s.exp == 0x7ff)
-# define DOUBLE_ISINF(x) (DOUBLE_ISNANorINF(x) && \
-                         (((Ieee_double_extract *)&(x))->s.manl == 0) && \
-                         (((Ieee_double_extract *)&(x))->s.manh == 0))
-# define DOUBLE_ISNAN(x) (DOUBLE_ISNANorINF(x) && \
-                         ((((Ieee_double_extract *)&(x))->s.manl != 0) || \
-                         (((Ieee_double_extract *)&(x))->s.manh != 0)))
-#else
+/* Note: In the past, there was specific code for _GMP_IEEE_FLOATS, which
+   was based on NaN and Inf memory representations. This code was breaking
+   the aliasing rules (see ISO C99, 6.5#6 and 6.5#7 on the effective type)
+   and for this reason it did not behave correctly with GCC 4.5.0 20091119.
+   The code needed a memory transfer and was probably not better than the
+   macros below with a good compiler (a fix based on the NaN / Inf memory
+   representation would be even worse due to C limitations), and this code
+   could be selected only when MPFR was built with --with-gmp-build, thus
+   introducing a difference (bad for maintaining/testing MPFR); therefore
+   it has been removed. The old code required that the argument x be an
+   lvalue of type double. We still require that, in case one would need
+   to change the macros below, e.g. for some broken compiler. But the
+   LVALUE(x) condition could be removed if really necessary. */
 /* Below, the &(x) == &(x) || &(x) != &(x) allows to make sure that x
    is a lvalue without (probably) any warning from the compiler.  The
    &(x) != &(x) is needed to avoid a failure under Mac OS X 10.4.11
    (with Xcode 2.4.1, i.e. the latest one). */
-# define LVALUE(x) (&(x) == &(x) || &(x) != &(x))
-# define DOUBLE_ISINF(x) (LVALUE(x) && ((x) > DBL_MAX || (x) < -DBL_MAX))
-# ifdef MPFR_NANISNAN
+#define LVALUE(x) (&(x) == &(x) || &(x) != &(x))
+#define DOUBLE_ISINF(x) (LVALUE(x) && ((x) > DBL_MAX || (x) < -DBL_MAX))
+#ifdef MPFR_NANISNAN
 /* Avoid MIPSpro / IRIX64 / gcc -ffast-math (incorrect) optimizations.
    The + must not be replaced by a ||. With gcc -ffast-math, NaN is
    regarded as a positive number or something like that; the second
    test catches this case. */
-#  define DOUBLE_ISNAN(x) \
+# define DOUBLE_ISNAN(x) \
     (LVALUE(x) && !((((x) >= 0.0) + ((x) <= 0.0)) && -(x)*(x) <= 0.0))
-# else
-#  define DOUBLE_ISNAN(x) (LVALUE(x) && (x) != (x))
-# endif
+#else
+# define DOUBLE_ISNAN(x) (LVALUE(x) && (x) != (x))
 #endif
 
 /******************************************************
@@ -1242,7 +1250,7 @@ typedef struct {
 
    y is the destination (a mpfr_t), v the value to set (a mpfr_t),
    err1+err2 with err2 <= 3 the error term (mp_exp_t's), dir (an int) is
-   the direction of the committed error (if dir = 0, it rounds towards 0,
+   the direction of the committed error (if dir = 0, it rounds toward 0,
    if dir=1, it rounds away from 0), rnd the rounding mode.
 
    It returns from the function a ternary value in case of success.
@@ -1635,8 +1643,10 @@ __MPFR_DECLSPEC int mpfr_const_log2_internal _MPFR_PROTO((mpfr_ptr,mp_rnd_t));
 __MPFR_DECLSPEC int mpfr_const_euler_internal _MPFR_PROTO((mpfr_ptr, mp_rnd_t));
 __MPFR_DECLSPEC int mpfr_const_catalan_internal _MPFR_PROTO((mpfr_ptr, mp_rnd_t));
 
+#if 0
 __MPFR_DECLSPEC void mpfr_init_cache _MPFR_PROTO ((mpfr_cache_t,
                                            int(*)(mpfr_ptr,mpfr_rnd_t)));
+#endif
 __MPFR_DECLSPEC void mpfr_clear_cache _MPFR_PROTO ((mpfr_cache_t));
 __MPFR_DECLSPEC int  mpfr_cache _MPFR_PROTO ((mpfr_ptr, mpfr_cache_t,
                                               mpfr_rnd_t));
