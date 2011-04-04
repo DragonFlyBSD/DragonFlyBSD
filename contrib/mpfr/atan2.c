@@ -123,7 +123,7 @@ mpfr_atan2 (mpfr_ptr dest, mpfr_srcptr y, mpfr_srcptr x, mp_rnd_t rnd_mode)
             {
               mpfr_t tmp2;
               MPFR_ZIV_DECL (loop2);
-              mp_prec_t prec2 = MPFR_PREC (dest) + BITS_PER_MP_LIMB;
+              mp_prec_t prec2 = MPFR_PREC (dest) + 10;
 
               mpfr_init2 (tmp2, prec2);
               MPFR_ZIV_INIT (loop2, prec2);
@@ -200,7 +200,7 @@ mpfr_atan2 (mpfr_ptr dest, mpfr_srcptr y, mpfr_srcptr x, mp_rnd_t rnd_mode)
                Assuming pz <= -2 emin + 5, we can round away from zero
                (this is what mpfr_underflow always does on GMP_RNDN).
                In the case GMP_RNDN with |y/x| <= 2^(emin-2), we round
-               towards zero, as |atan(z)/z| < 1. */
+               toward zero, as |atan(z)/z| < 1. */
             MPFR_ASSERTN (MPFR_PREC_MAX <=
                           2 * (mpfr_uexp_t) - MPFR_EMIN_MIN + 5);
             if (rnd_mode == GMP_RNDN && MPFR_IS_ZERO (tmp))

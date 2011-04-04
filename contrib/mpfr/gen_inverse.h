@@ -87,7 +87,7 @@ FUNCTION (mpfr_ptr y, mpfr_srcptr x, mp_rnd_t rnd_mode)
         }
       mpfr_ui_div (z, 1, z, GMP_RNDN);
       /* the error is less than c_w + 2*c_u*k_u (see algorithms.tex),
-         where c_w = 1/2, c_u = 1 since z was rounded towards zero,
+         where c_w = 1/2, c_u = 1 since z was rounded toward zero,
          thus 1/2 + 2 < 4 */
       if (MPFR_LIKELY (MPFR_CAN_ROUND (z, m - 2, precy, rnd_mode)))
         break;

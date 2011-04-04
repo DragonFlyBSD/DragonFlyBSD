@@ -87,25 +87,23 @@ bernoulli (mpz_t *b, unsigned long n)
    and the smallest value of alpha multiplied by the smallest working
    precision should be >= 4.
 */
-static double
-mpfr_gamma_alpha (mp_prec_t p)
+static void
+mpfr_gamma_alpha (mpfr_t s, mp_prec_t p)
 {
   if (p <= 100)
-    return 0.6;
-  else if (p <= 200)
-    return 0.8;
+    mpfr_set_ui_2exp (s, 614, -10, GMP_RNDN); /* about 0.6 */
   else if (p <= 500)
-    return 0.8;
+    mpfr_set_ui_2exp (s, 819, -10, GMP_RNDN); /* about 0.8 */
   else if (p <= 1000)
-    return 1.3;
+    mpfr_set_ui_2exp (s, 1331, -10, GMP_RNDN); /* about 1.3 */
   else if (p <= 2000)
-    return 1.7;
+    mpfr_set_ui_2exp (s, 1741, -10, GMP_RNDN); /* about 1.7 */
   else if (p <= 5000)
-    return 2.2;
+    mpfr_set_ui_2exp (s, 2253, -10, GMP_RNDN); /* about 2.2 */
   else if (p <= 10000)
-    return 3.4;
-  else /* heuristic fit from above */
-    return 0.26 * (double) MPFR_INT_CEIL_LOG2 ((unsigned long) p);
+    mpfr_set_ui_2exp (s, 3482, -10, GMP_RNDN); /* about 3.4 */
+  else
+    mpfr_set_ui_2exp (s, 9, -1, GMP_RNDN); /* 4.5 */
 }
 
 #ifndef IS_GAMMA
@@ -139,7 +137,7 @@ unit_bit (mpfr_srcptr (x))
 /* lngamma(x) = log(gamma(x)).
    We use formula [6.1.40] from Abramowitz&Stegun:
    lngamma(z) = (z-1/2)*log(z) - z + 1/2*log(2*Pi)
-              + sum (Bernoulli[2n]/(2m)/(2m-1)/z^(2m-1),m=1..infinity)
+              + sum (Bernoulli[2m]/(2m)/(2m-1)/z^(2m-1),m=1..infinity)
    According to [6.1.42], if the sum is truncated after m=n, the error
    R_n(z) is bounded by |B[2n+2]|*K(z)/(2n+1)/(2n+2)/|z|^(2n+1)
    where K(z) = max (z^2/(u^2+z^2)) for u >= 0.
@@ -363,11 +361,17 @@ GAMMA_FUNC (mpfr_ptr y, mpfr_srcptr z0, mp_rnd_t rnd)
       w += MPFR_INT_CEIL_LOG2 (w) + 13;
       MPFR_ASSERTD (w >= 3);
 
+      /* argument reduction: we compute gamma(z0 + k), where the series
+         has error term B_{2n}/(z0+k)^(2n) ~ (n/(Pi*e*(z0+k)))^(2n)
+         and we need k steps of argument reconstruction. Assuming k is large
+         with respect to z0, and k = n, we get 1/(Pi*e)^(2n) ~ 2^(-w), i.e.,
+         k ~ w*log(2)/2/log(Pi*e) ~ 0.1616 * w.
+         However, since the series is more expensive to compute, the optimal
+         value seems to be k ~ 4.5 * w experimentally. */
       mpfr_set_prec (s, 53);
-      /* we need z >= w*log(2)/(2*Pi) to get an absolute error less than 2^(-w)
-         but the optimal value is about 0.155665*w */
-      /* FIXME: replace double by mpfr_t types. */
-      mpfr_set_d (s, mpfr_gamma_alpha (precy) * (double) w, GMP_RNDU);
+      mpfr_gamma_alpha (s, w);
+      mpfr_set_ui_2exp (s, 9, -1, GMP_RNDU);
+      mpfr_mul_ui (s, s, w, GMP_RNDU);
       if (mpfr_cmp (z0, s) < 0)
         {
           mpfr_sub (s, s, z0, GMP_RNDU);

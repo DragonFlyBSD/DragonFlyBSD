@@ -52,7 +52,7 @@ mpfr_pow_pos_z (mpfr_ptr y, mpfr_srcptr x, mpz_srcptr z, mp_rnd_t rnd, int cr)
   SIZ (absz) = ABS(SIZ(absz)); /* Hack to get abs(z) */
   MPFR_MPZ_SIZEINBASE2 (size_z, z);
 
-  /* round towards 1 (or -1) to avoid spurious overflow or underflow,
+  /* round toward 1 (or -1) to avoid spurious overflow or underflow,
      i.e. if an overflow or underflow occurs, it is a real exception
      and is not just due to the rounding error. */
   rnd1 = (MPFR_EXP(x) >= 1) ? GMP_RNDZ

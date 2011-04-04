@@ -287,7 +287,7 @@ mpfr_mpn_rec_sqrt (mp_ptr x, mp_prec_t p,
          and to the 2nd most significant bit of t[tn-1] if as=1 */
 
       /* compute t <- 1 - t, which is B^tn - {t, tn+1},
-         with rounding towards -Inf, i.e., rounding the input t towards +Inf.
+         with rounding toward -Inf, i.e., rounding the input t toward +Inf.
          We could only modify the low tn - th limbs from t, but it gives only
          a small speedup, and would make the code more complex.
       */
@@ -303,8 +303,8 @@ mpfr_mpn_rec_sqrt (mp_ptr x, mp_prec_t p,
           /* we should add 1 here to get 1-th complement, and subtract 1 for
              -ulp(th), thus we do nothing */
         }
-      else /* negative case: we want 1 - t rounded towards -Inf, i.e.,
-              th + eps rounded towards +Inf, which is th + ulp(th):
+      else /* negative case: we want 1 - t rounded toward -Inf, i.e.,
+              th + eps rounded toward +Inf, which is th + ulp(th):
               we discard the bit corresponding to 1,
               and we add 1 to the least significant bit of t */
         {

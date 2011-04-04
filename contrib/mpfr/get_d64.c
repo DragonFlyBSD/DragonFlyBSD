@@ -26,7 +26,6 @@ the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
 MA 02110-1301, USA. */
 
 #include <stdlib.h> /* for strtol */
-#include <string.h> /* for strcmp */
 #include "mpfr-impl.h"
 
 #define ISDIGIT(c) ('0' <= c && c <= '9')
@@ -368,7 +367,8 @@ mpfr_get_decimal64 (mpfr_srcptr src, mp_rnd_t rnd_mode)
               /* Warning: we can have e2 = e + 1 here, when rounding to
                  nearest or away from zero. */
               s[negative + digits] = 'E';
-              sprintf (s + negative + digits + 1, "%d", e2 - digits);
+              sprintf (s + negative + digits + 1, "%ld",
+                       (long int)e2 - digits);
               return string_to_Decimal64 (s);
             }
         }
@@ -385,7 +385,7 @@ mpfr_get_decimal64 (mpfr_srcptr src, mp_rnd_t rnd_mode)
       else /* -382 <= e <= 385 */
         {
           s[16 + negative] = 'E';
-          sprintf (s + 17 + negative, "%d", e - 16);
+          sprintf (s + 17 + negative, "%ld", (long int)e - 16);
           return string_to_Decimal64 (s);
         }
     }

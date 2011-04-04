@@ -391,7 +391,7 @@ mpfr_div (mpfr_ptr q, mpfr_srcptr u, mpfr_srcptr v, mp_rnd_t rnd_mode)
       else
         {
           /* We know the estimated quotient is an upper bound of the exact
-             quotient (with rounding towards zero), with a difference of at
+             quotient (with rounding toward zero), with a difference of at
              most 2 in qp[0].
              Thus we can round except when sticky3 is 000...000 or 000...001
              for directed rounding, and 100...000 or 100...001 for rounding

@@ -80,7 +80,7 @@ mpfr_exp2 (mpfr_ptr y, mpfr_srcptr x, mp_rnd_t rnd_mode)
 
   /* 2^x = 1 + x*log(2) + O(x^2) for x near zero, and for |x| <= 1 we have
      |2^x - 1| <= x < 2^EXP(x). If x > 0 we must round away from 0 (dir=1);
-     if x < 0 we must round towards 0 (dir=0). */
+     if x < 0 we must round toward 0 (dir=0). */
   MPFR_SMALL_INPUT_AFTER_SAVE_EXPO (y, __gmpfr_one, - MPFR_GET_EXP (x), 0,
                                     MPFR_SIGN(x) > 0, rnd_mode, expo, {});
 

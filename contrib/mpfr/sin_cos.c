@@ -82,17 +82,19 @@ mpfr_sin_cos (mpfr_ptr y, mpfr_ptr z, mpfr_srcptr x, mp_rnd_t rnd_mode)
       if (y != x)
         /* y and x differ, thus we can safely try to compute y first */
         {
-          MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, x, -2 * expx, 2, 0, rnd_mode,
-                                            { inexy = _inexact;
-                                              goto small_input; });
+          MPFR_FAST_COMPUTE_IF_SMALL_INPUT (
+            y, x, -2 * expx, 2, 0, rnd_mode,
+            { inexy = _inexact;
+              goto small_input; });
           if (0)
             {
             small_input:
               /* we can go here only if we can round sin(x) */
-              MPFR_FAST_COMPUTE_IF_SMALL_INPUT (z, __gmpfr_one, -2 * expx,
-                                                1, 0, rnd_mode,
-                                                { inexz = _inexact;
-                                                  goto end; });
+              MPFR_FAST_COMPUTE_IF_SMALL_INPUT (
+                z, __gmpfr_one, -2 * expx, 1, 0, rnd_mode,
+                { inexz = _inexact;
+                  MPFR_SAVE_EXPO_UPDATE_FLAGS (expo, __gmpfr_flags);
+                  goto end; });
             }
 
           /* if we go here, one of the two MPFR_FAST_COMPUTE_IF_SMALL_INPUT
@@ -101,18 +103,19 @@ mpfr_sin_cos (mpfr_ptr y, mpfr_ptr z, mpfr_srcptr x, mp_rnd_t rnd_mode)
       else /* y and x are the same variable: try to compute z first, which
               necessarily differs */
         {
-          MPFR_FAST_COMPUTE_IF_SMALL_INPUT (z, __gmpfr_one, -2 * expx,
-                                            1, 0, rnd_mode,
-                                            { inexz = _inexact;
-                                              goto small_input2; });
+          MPFR_FAST_COMPUTE_IF_SMALL_INPUT (
+            z, __gmpfr_one, -2 * expx, 1, 0, rnd_mode,
+            { inexz = _inexact;
+              goto small_input2; });
           if (0)
             {
             small_input2:
               /* we can go here only if we can round cos(x) */
-              MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, x, -2 * expx, 2, 0,
-                                                rnd_mode,
-                                                { inexy = _inexact;
-                                                  goto end; });
+              MPFR_FAST_COMPUTE_IF_SMALL_INPUT (
+                y, x, -2 * expx, 2, 0, rnd_mode,
+                { inexy = _inexact;
+                  MPFR_SAVE_EXPO_UPDATE_FLAGS (expo, __gmpfr_flags);
+                  goto end; });
             }
         }
       m += 2 * (-expx);
@@ -160,7 +163,7 @@ mpfr_sin_cos (mpfr_ptr y, mpfr_ptr z, mpfr_srcptr x, mp_rnd_t rnd_mode)
         err = m;
       else
         err = MPFR_GET_EXP (c) + (mp_exp_t) (m - 3);
-      if (!mpfr_can_round (c, err, GMP_RNDN, rnd_mode,
+      if (!mpfr_can_round (c, err, GMP_RNDN, GMP_RNDZ,
                            MPFR_PREC (z) + (rnd_mode == GMP_RNDN)))
         goto next_step;
 
@@ -168,19 +171,22 @@ mpfr_sin_cos (mpfr_ptr y, mpfr_ptr z, mpfr_srcptr x, mp_rnd_t rnd_mode)
          call below fails, we will have clobbered the input */
       mpfr_set_prec (xr, MPFR_PREC(c));
       mpfr_swap (xr, c); /* save the approximation of the cosine in xr */
-      mpfr_sqr (c, xr, GMP_RNDU);
-      mpfr_ui_sub (c, 1, c, GMP_RNDN);
-      err = 2 + (- MPFR_GET_EXP (c)) / 2;
-      mpfr_sqrt (c, c, GMP_RNDN);
+      mpfr_sqr (c, xr, GMP_RNDU); /* the absolute error is bounded by
+                                     2^(5-m) if reduce=1, and by 2^(2-m)
+                                     otherwise */
+      mpfr_ui_sub (c, 1, c, GMP_RNDN); /* error bounded by 2^(6-m) if reduce
+                                          is 1, and 2^(3-m) otherwise */
+      mpfr_sqrt (c, c, GMP_RNDN); /* the absolute error is bounded by
+                                     2^(6-m-Exp(c)) if reduce=1, and
+                                     2^(3-m-Exp(c)) otherwise */
+      err = 3 + 3 * reduce - MPFR_GET_EXP (c);
       if (neg)
         MPFR_CHANGE_SIGN (c);
 
       /* the absolute error on c is at most 2^(err-m), which we must put
-         in the form 2^(EXP(c)-err). If there was an argument reduction,
-         we need to add 2^(2-m); since err >= 2, the error is bounded by
-         2^(err+1-m) in that case. */
-      err = MPFR_GET_EXP (c) + (mp_exp_t) m - (err + reduce);
-      if (mpfr_can_round (c, err, GMP_RNDN, rnd_mode,
+         in the form 2^(EXP(c)-err). */
+      err = MPFR_GET_EXP (c) + (mp_exp_t) m - err;
+      if (mpfr_can_round (c, err, GMP_RNDN, GMP_RNDZ,
                           MPFR_PREC (y) + (rnd_mode == GMP_RNDN)))
         break;
       /* check for huge cancellation */
@@ -204,7 +210,6 @@ mpfr_sin_cos (mpfr_ptr y, mpfr_ptr z, mpfr_srcptr x, mp_rnd_t rnd_mode)
   mpfr_clear (xr);
 
  end:
-  /* FIXME: update the underflow flag if need be. */
   MPFR_SAVE_EXPO_FREE (expo);
   mpfr_check_range (y, inexy, rnd_mode);
   mpfr_check_range (z, inexz, rnd_mode);

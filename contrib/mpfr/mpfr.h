@@ -26,8 +26,8 @@ MA 02110-1301, USA. */
 /* Define MPFR version number */
 #define MPFR_VERSION_MAJOR 2
 #define MPFR_VERSION_MINOR 4
-#define MPFR_VERSION_PATCHLEVEL 1
-#define MPFR_VERSION_STRING "2.4.1"
+#define MPFR_VERSION_PATCHLEVEL 2
+#define MPFR_VERSION_STRING "2.4.2-p3"
 
 /* Macros dealing with MPFR VERSION */
 #define MPFR_VERSION_NUM(a,b,c) (((a) << 16L) | ((b) << 8) | (c))
@@ -48,19 +48,35 @@ MPFR_VERSION_NUM(MPFR_VERSION_MAJOR,MPFR_VERSION_MINOR,MPFR_VERSION_PATCHLEVEL)
 # define _MPFR_H_HAVE_VA_LIST 1
 #endif
 
-/* Check if stdint.h/inttypes.h is included or if the user wants intmax_t */
-#if (defined (INTMAX_C) && defined (UINTMAX_C)) || defined (MPFR_USE_INTMAX_T)
+/* Check if <stdint.h> / <inttypes.h> is included or if the user
+   explicitly wants intmax_t, by checking INTMAX_C and UINTMAX_C.
+   We do not check INTMAX_MAX and UINTMAX_MAX because under Solaris,
+   these macros are always defined by <limits.h> (i.e. even when
+   <stdint.h> and <inttypes.h> are not included).
+   Note: with C++ implementations, the test of the C99 macros will
+   work only if the user has defined __STDC_CONSTANT_MACROS before
+   <stdint.h> has been included (see ISO C99 standard); that's why
+   _STDINT_H (defined by the glibc) and _STDINT_H_ (defined under
+   Mac OS X) are tested too, but under other OS, MPFR_USE_INTMAX_T
+   may need to be defined. */
+#if (defined (INTMAX_C) && defined (UINTMAX_C)) || \
+  defined (MPFR_USE_INTMAX_T) || defined (_STDINT_H) || defined (_STDINT_H_)
 # define _MPFR_H_HAVE_INTMAX_T 1
 #endif
 
-/* Definition of rounding modes (DON'T USE GMP_RNDNA!)
+/* Definition of rounding modes (DON'T USE GMP_RNDNA!).
    Warning! Changing the contents of this enum should be seen as an
    interface change since the old and the new types are not compatible
    (the integer type compatible with the enumerated type can even change,
    see ISO C99, 6.7.2.2#4), and in Makefile.am, AGE should be set to 0. */
 typedef enum {
-  GMP_RNDN=0, GMP_RNDZ, GMP_RNDU, GMP_RNDD, GMP_RND_MAX,
-  GMP_RNDNA=-1
+  GMP_RNDN=0,  /* round to nearest, with ties to even */
+  GMP_RNDZ,    /* round toward zero */
+  GMP_RNDU,    /* round toward +Inf */
+  GMP_RNDD,    /* round toward -Inf */
+  GMP_RND_MAX, /* gives number of supported rounding modes, those after are
+                  only supported by some functions */
+  GMP_RNDNA=-1 /* round to nearest, with ties away from zero (mpfr_round) */
 } mpfr_rnd_t;
 
 /* Define precision : 1 (short), 2 (int) or 3 (long) (DON'T USE IT!)*/
@@ -173,11 +189,14 @@ typedef enum {
 # define __MPFR_DECLSPEC __GMP_DECLSPEC
 #endif
 
-/* Note: some functions need that a specific system header is included before
-   mpfr.h to be defined. If the user forgets to include the header, the mpfr
-   function prototype in the user object file is not correct. In order to
-   raise a linker error in that case, we change their internal name in the
-   GNU mpfr library (prefixed by __gmpfr instead of mpfr)*/
+/* Note: In order to be declared, some functions need a specific
+   system header to be included *before* "mpfr.h". If the user
+   forgets to include the header, the MPFR function prototype in
+   the user object file is not correct. To avoid wrong results,
+   we raise a linker error in that case by changing their internal
+   name in the library (prefixed by __gmpfr instead of mpfr). See
+   the lines of the form "#define mpfr_xxx __gmpfr_xxx" below. */
+
 #if defined (__cplusplus)
 extern "C" {
 #endif

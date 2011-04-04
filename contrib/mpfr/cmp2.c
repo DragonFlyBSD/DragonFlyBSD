@@ -61,7 +61,7 @@ mpfr_cmp2 (mpfr_srcptr b, mpfr_srcptr c, mp_prec_t *cancel)
       cp = MPFR_MANT(c);
 
       bn = (MPFR_PREC(b) - 1) / BITS_PER_MP_LIMB;
-      cn = (MPFR_PREC(c) - 1) / BITS_PER_MP_LIMB;
+      cn = (MPFR_PREC(c) - 1) / BITS_PER_MP_LIMB; /* # of limbs of c minus 1 */
 
       if (MPFR_UNLIKELY( diff_exp == 0 ))
         {
@@ -130,7 +130,9 @@ mpfr_cmp2 (mpfr_srcptr b, mpfr_srcptr c, mp_prec_t *cancel)
 
   /* now we have removed the identical upper limbs of b and c
      (can happen only when diff_exp = 0), and after the possible
-     swap, we have |b| > |c|: bp[bn] > cc, bn >= 0, cn >= 0 */
+     swap, we have |b| > |c|: bp[bn] > cc, bn >= 0, cn >= 0,
+     diff_exp = EXP(b) - EXP(c).
+  */
 
   if (MPFR_LIKELY (diff_exp < BITS_PER_MP_LIMB))
     {
@@ -141,9 +143,12 @@ mpfr_cmp2 (mpfr_srcptr b, mpfr_srcptr c, mp_prec_t *cancel)
       cn--;
     }
   else
-    diff_exp -= BITS_PER_MP_LIMB;
+    diff_exp -= BITS_PER_MP_LIMB; /* cc = 0 */
 
   dif = bp[bn--] - cc; /* necessarily dif >= 1 */
+  MPFR_ASSERTD(dif >= 1);
+
+  /* now high_dif = 0, dif >= 1, lastc is the neglected part of cp[cn+1] */
 
   while (MPFR_UNLIKELY ((cn >= 0 || lastc != 0)
                         && (high_dif == 0) && (dif == 1)))

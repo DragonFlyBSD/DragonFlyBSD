@@ -198,7 +198,7 @@ decimal64_to_string (char *s, _Decimal64 d)
     }
   else
     {
-      i = mpn_get_str (t, 10, rp, rn);
+      i = mpn_get_str ((unsigned char*)t, 10, rp, rn);
     }
   while (i-- > 0)
     *t++ += '0';

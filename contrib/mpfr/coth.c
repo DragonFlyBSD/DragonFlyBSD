@@ -24,15 +24,15 @@ MA 02110-1301, USA. */
    coth (NaN) = NaN.
    coth (+Inf) = 1
    coth (-Inf) = -1
-   coth (+0) = +0.
-   coth (-0) = -0.
+   coth (+0) = +Inf.
+   coth (-0) = -Inf.
 */
 
 #define FUNCTION mpfr_coth
 #define INVERSE  mpfr_tanh
 #define ACTION_NAN(y) do { MPFR_SET_NAN(y); MPFR_RET_NAN; } while (1)
 #define ACTION_INF(y) return mpfr_set_si (y, MPFR_IS_POS(x) ? 1 : -1, rnd_mode)
-#define ACTION_ZERO(y,x) do { MPFR_SET_SAME_SIGN(y,x); MPFR_SET_ZERO(y); \
+#define ACTION_ZERO(y,x) do { MPFR_SET_SAME_SIGN(y,x); MPFR_SET_INF(y); \
                               MPFR_RET(0); } while (1)
 
 /* We know |coth(x)| > 1, thus if the approximation z is such that

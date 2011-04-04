@@ -23,14 +23,15 @@ MA 02110-1301, USA. */
 
 #include "mpfr-impl.h"
 
-/* puts the mantissa of f into z, and returns 'exp' such that f = z * 2^exp
+/* puts the significand of f into z, and returns 'exp' such that f = z * 2^exp
  *
  * 0 doesn't have an exponent, therefore the returned exponent in this case
  * isn't really important. We choose to return __gmpfr_emin because
  *   1) it is in the exponent range [__gmpfr_emin,__gmpfr_emax],
  *   2) the smaller a number is (in absolute value), the smaller its
  *      exponent is. In other words, the f -> exp function is monotonous
- *      on nonnegative numbers.
+ *      on nonnegative numbers. --> This is WRONG since the returned
+ *      exponent is not necessarily in the exponent range!
  * Note that this is different from the C function frexp().
  */
 
@@ -64,7 +65,7 @@ mpfr_get_z_exp (mpz_ptr z, mpfr_srcptr f)
 
   /* Test if the result is representable. Later, we could choose
      to return MPFR_EXP_MIN if it isn't, or perhaps MPFR_EXP_MAX
-     to signal an error. The mantissa would still be meaningful. */
+     to signal an error. The significand would still be meaningful. */
   MPFR_ASSERTD ((mp_exp_unsigned_t) MPFR_GET_EXP (f) - MPFR_EXP_MIN
                 >= (mp_exp_unsigned_t) MPFR_PREC(f));
 

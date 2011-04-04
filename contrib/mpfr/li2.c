@@ -333,6 +333,8 @@ mpfr_li2 (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
         {
           mpfr_ui_sub (u, 1, x, GMP_RNDN);
           mpfr_log (u, u, GMP_RNDU);
+          if (MPFR_IS_ZERO(u))
+            goto next_m;
           mpfr_neg (u, u, GMP_RNDN);    /* u = -log(1-x) */
           expo_l = MPFR_GET_EXP (u);
           k = li2_series (s, u, GMP_RNDU);
@@ -349,6 +351,7 @@ mpfr_li2 (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
           if (MPFR_CAN_ROUND (s, (mp_exp_t) m - err, yp, rnd_mode))
             break;
 
+        next_m:
           MPFR_ZIV_NEXT (loop, m);
           mpfr_set_prec (u, m);
           mpfr_set_prec (s, m);

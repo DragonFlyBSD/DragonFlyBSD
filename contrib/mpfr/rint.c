@@ -151,7 +151,7 @@ mpfr_rint (mpfr_ptr r, mpfr_srcptr u, mpfr_rnd_t rnd_mode)
                  Decide the rounding direction here. */
               if (rnd_mode == GMP_RNDN &&
                   (rp[0] & (MPFR_LIMB_ONE << sh)) == 0)
-                { /* halfway cases rounded towards zero */
+                { /* halfway cases rounded toward zero */
                   mp_limb_t a, b;
                   /* a: rounding bit and some of the following bits */
                   /* b: boundary for a (weight of the rounding bit in a) */
@@ -236,7 +236,7 @@ mpfr_rint (mpfr_ptr r, mpfr_srcptr u, mpfr_rnd_t rnd_mode)
                 rnd_away = 0; /* rounding bit = 0 (not represented in u) */
               else if (rnd_mode == GMP_RNDN &&
                        (rp[0] & (MPFR_LIMB_ONE << sh)) == 0)
-                { /* halfway cases rounded towards zero */
+                { /* halfway cases rounded toward zero */
                   mp_limb_t a, b;
                   /* a: rounding bit and some of the following bits */
                   /* b: boundary for a (weight of the rounding bit in a) */

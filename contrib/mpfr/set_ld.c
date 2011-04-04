@@ -32,15 +32,15 @@ MA 02110-1301, USA. */
    has been seen with the problem, and gcc 2.95.4 on FreeBSD 4.7.  */
 
 #if HAVE_LDOUBLE_IEEE_EXT_LITTLE
-static const struct {
+static const union {
   char         bytes[10];
-  long double  dummy;  /* for memory alignment */
+  long double  d;
 } ldbl_max_struct = {
   { '\377','\377','\377','\377',
     '\377','\377','\377','\377',
-    '\376','\177' }, 0.0
+    '\376','\177' }
 };
-#define MPFR_LDBL_MAX   (* (const long double *) ldbl_max_struct.bytes)
+#define MPFR_LDBL_MAX   (ldbl_max_struct.d)
 #else
 #define MPFR_LDBL_MAX   LDBL_MAX
 #endif

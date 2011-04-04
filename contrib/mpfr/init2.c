@@ -36,6 +36,8 @@ mpfr_init2 (mpfr_ptr x, mp_prec_t p)
   MPFR_ASSERTN( BITS_PER_MP_LIMB == BYTES_PER_MP_LIMB * CHAR_BIT
                 && sizeof(mp_limb_t) == BYTES_PER_MP_LIMB );
 
+  MPFR_ASSERTN (mp_bits_per_limb == BITS_PER_MP_LIMB);
+
   /* Check for correct EXP NAN, ZERO & INF in both mpfr.h and in mpfr-impl.h */
   MPFR_ASSERTN( __MPFR_EXP_NAN  == MPFR_EXP_NAN  );
   MPFR_ASSERTN( __MPFR_EXP_ZERO == MPFR_EXP_ZERO );
