@@ -2,8 +2,8 @@
 #define PREFIX2	PREFIX
 #endif
 
-/* #define LINK_LIBGCC_SPEC "" */
-/* #define LIBGCC_SPEC "%{shared: -lgcc_pic} %{!shared: -lgcc}" */
+#define LINK_LIBGCC_SPEC ""
+#define LIBGCC_SPEC "%{shared: -lgcc_pic} %{!shared: -lgcc}"
 
 #undef	LINK_SPEC
 #define LINK_SPEC							\

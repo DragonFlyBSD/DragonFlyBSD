@@ -488,16 +488,6 @@ case ${target} in
       default_use_cxa_atexit=yes;;
   esac
   ;;
-*-*-dragonfly*)
-  gas=yes
-  gnu_ld=yes
-  extra_parts="crtbegin.o crtend.o crtbeginS.o crtendS.o"
-  tmake_file="t-libc-ok t-libgcc-pic"
-  case ${enable_threads} in
-    "" | yes | posix) thread_file='posix' ;;
-  esac
-  default_use_cxa_atexit=yes
-  ;;
 *-*-linux* | frv-*-*linux* | *-*-kfreebsd*-gnu | *-*-knetbsd*-gnu | *-*-gnu* | *-*-kopensolaris*-gnu)
   extra_parts="crtbegin.o crtbeginS.o crtbeginT.o crtend.o crtendS.o"
   gas=yes
@@ -1061,13 +1051,6 @@ i[34567]86-*-freebsd*)
 	;;
 x86_64-*-freebsd*)
 	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h ${fbsd_tm_file} i386/x86-64.h i386/freebsd.h i386/freebsd64.h"
-	tmake_file="${tmake_file} i386/t-crtstuff"
-	;;
-i[34567]86-*-dragonfly*)
-	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h dragonfly.h i386/dragonfly.h"
-	;;
-x86_64-*-dragonfly*)
-	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h dragonfly.h i386/x86-64.h i386/dragonfly64.h"
 	tmake_file="${tmake_file} i386/t-crtstuff"
 	;;
 i[34567]86-*-netbsdelf*)

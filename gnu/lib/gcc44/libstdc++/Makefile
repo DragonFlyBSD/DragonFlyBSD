@@ -13,6 +13,7 @@ SRCDIR=	${GCCDIR}/libstdc++-v3
 glibcxx_srcdir=	${SRCDIR}
 
 .PATH:	${SRCDIR}/src ${SRCDIR}/libmath ${SRCDIR}/config/io
+.PATH:	${SRCDIR}/config/locale/dragonfly
 .PATH:	${SRCDIR}/config/locale/generic ${SRCDIR}
 .PATH:	${GCCDIR}/gcc ${GCCDIR}/libiberty
 

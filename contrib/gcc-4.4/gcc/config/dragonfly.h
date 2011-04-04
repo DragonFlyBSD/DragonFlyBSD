@@ -29,8 +29,31 @@ along with GCC; see the file COPYING3.  If not see
    Further work by David O'Brien <obrien@FreeBSD.org> and
    Loren J. Rittle <ljrittle@acm.org>.  */
 
+
+/* This defines which switch letters take arguments.  On DragonFly, most of
+   the normal cases (defined in gcc.c) apply, and we also have -h* and
+   -z* options (for the linker) (coming from SVR4).
+   We also have -R (alias --rpath), no -z, --soname (-h), --assert etc.  */
+
+#undef  SWITCH_TAKES_ARG
+#define SWITCH_TAKES_ARG(CHAR)						\
+  (DEFAULT_SWITCH_TAKES_ARG (CHAR)					\
+    || (CHAR) == 'h'							\
+    || (CHAR) == 'z' /* ignored by ld */				\
+    || (CHAR) == 'R')
+
+
+#undef  WORD_SWITCH_TAKES_ARG
+#define WORD_SWITCH_TAKES_ARG(STR)					\
+  (DEFAULT_WORD_SWITCH_TAKES_ARG (STR)					\
+   || !strcmp ((STR), "rpath")  || !strcmp ((STR), "rpath-link")	\
+   || !strcmp ((STR), "soname") || !strcmp ((STR), "defsym") 		\
+   || !strcmp ((STR), "assert") || !strcmp ((STR), "dynamic-linker"))
+
+
 /* JRM: 15 Nov 2010
-   SWITCH_TAKES_ARG & WORD_SWITCH_TAKES_ARG removed due to poisoning.
+   SWITCH_TAKES_ARG & WORD_SWITCH_TAKES_ARG removed due to poisoning
+   prior to gcc 4.6.0 release.  Replaced with dragonfly.opt.
    http://gcc.gnu.org/ml/gcc-patches/2010-10/msg02102.html
    http://gcc.gnu.org/ml/gcc-patches/2010-10/msg02373.html */
    

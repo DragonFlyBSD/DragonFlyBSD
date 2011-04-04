@@ -149,8 +149,6 @@ case ${host} in
   # machine-specific sections may refine and add to this
   # configuration.
   ;;
-*-*-dragonfly*)
-  ;;
 *-*-linux* | frv-*-*linux* | *-*-kfreebsd*-gnu | *-*-knetbsd*-gnu | *-*-gnu*)
   extra_parts="crtbegin.o crtbeginS.o crtbeginT.o crtend.o crtendS.o"
   ;;
@@ -282,10 +280,6 @@ i[34567]86-*-aout*)
 i[34567]86-*-freebsd*)
 	;;
 x86_64-*-freebsd*)
-	;;
-i[34567]86-*-dragonfly*)
-	;;
-x86_64-*-dragonfly*)
 	;;
 i[34567]86-*-netbsdelf*)
 	;;
