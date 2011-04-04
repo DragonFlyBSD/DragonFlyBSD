@@ -11,13 +11,7 @@ INSTALLOBJS+=	${NOBJS} ${SOBJS}
 
 OBJS+=	${SRCS:N*.h:R:S/$/.o/g}
 
-CFLAGS+=	-finhibit-size-directive -fno-inline-functions \
-		-fno-exceptions -fno-zero-initialized-in-bss \
-		-fno-omit-frame-pointer -fno-unit-at-a-time \
-		-fno-asynchronous-unwind-tables
-CFLAGS+=	-I.
-
-CRTS_CFLAGS=	-DCRTSTUFFS_O -DSHARED ${PICFLAG}
+CRTS_CFLAGS=	${PICFLAG}
 MKDEP=		-DCRT_BEGIN
 
 BEGINSRC?=	crtstuff.c
@@ -30,7 +24,7 @@ crtbegin.o:	${BEGINSRC}
 		-c -o ${.TARGET} ${.ALLSRC:N*.h}
 
 crtbeginS.o:	${BEGINSRC}
-	${CC} ${CFLAGS} -g0 -DCRT_BEGIN ${CRTS_CFLAGS} \
+	${CC} ${CFLAGS} ${CRTS_CFLAGS} -g0 -DCRT_BEGIN -DCRTSTUFFS_O \
 		-c -o ${.TARGET} ${.ALLSRC:N*.h}
 
 crtend.o:	${ENDSRC}
@@ -38,7 +32,7 @@ crtend.o:	${ENDSRC}
 		-c -o ${.TARGET} ${.ALLSRC:N*.h}
 
 crtendS.o:	${ENDSRC}
-	${CC} ${CFLAGS} -g0 -DCRT_END ${CRTS_CFLAGS} \
+	${CC} ${CFLAGS} ${CRTS_CFLAGS} -g0 -DCRT_END -DCRTSTUFFS_O \
 		-c -o ${.TARGET} ${.ALLSRC:N*.h}
 
 CLEANFILES+=	tm.h options.h auto-host.h
