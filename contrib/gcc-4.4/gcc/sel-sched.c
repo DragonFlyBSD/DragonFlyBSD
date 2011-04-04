@@ -1,5 +1,5 @@
 /* Instruction scheduling pass.  Selective scheduler and pipeliner.
-   Copyright (C) 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -587,6 +587,7 @@ advance_one_cycle (fence_t fence)
   FENCE_ISSUED_INSNS (fence) = 0;
   FENCE_STARTS_CYCLE_P (fence) = 1;
   can_issue_more = issue_rate;
+  FENCE_ISSUE_MORE (fence) = can_issue_more;
 
   for (i = 0; VEC_iterate (rtx, FENCE_EXECUTING_INSNS (fence), i, insn); )
     {
@@ -834,7 +835,8 @@ count_occurrences_1 (rtx *cur_rtx, void *arg)
 
   if (GET_CODE (*cur_rtx) == SUBREG
       && REG_P (p->x)
-      && REGNO (SUBREG_REG (*cur_rtx)) == REGNO (p->x))
+      && (!REG_P (SUBREG_REG (*cur_rtx))
+	  || REGNO (SUBREG_REG (*cur_rtx)) == REGNO (p->x)))
     {
       /* ??? Do not support substituting regs inside subregs.  In that case,
          simplify_subreg will be called by validate_replace_rtx, and 
@@ -1227,19 +1229,19 @@ mark_unavailable_hard_regs (def_t def, struct reg_rename *reg_rename_p,
   if (!reload_completed && !HARD_REGISTER_NUM_P (regno))
     return;
 
-  mode = GET_MODE (orig_dest);
+  if (reload_completed)
+    cl = get_reg_class (def->orig_insn);
 
-  /* Stop when mode is not supported for renaming.  Also can't proceed 
-     if the original register is one of the fixed_regs, global_regs or 
-     frame pointer.  */
-  if (fixed_regs[regno] 
+  /* Stop if the original register is one of the fixed_regs, global_regs or
+     frame pointer, or we could not discover its class.  */
+  if (fixed_regs[regno]
       || global_regs[regno]
 #if FRAME_POINTER_REGNUM != HARD_FRAME_POINTER_REGNUM
-	|| (frame_pointer_needed && regno == HARD_FRAME_POINTER_REGNUM)
+      || (frame_pointer_needed && regno == HARD_FRAME_POINTER_REGNUM)
 #else
-	|| (frame_pointer_needed && regno == FRAME_POINTER_REGNUM)
+      || (frame_pointer_needed && regno == FRAME_POINTER_REGNUM)
 #endif
-      )
+      || (reload_completed && cl == NO_REGS))
     {
       SET_HARD_REG_SET (reg_rename_p->unavailable_hard_regs);
 
@@ -1294,10 +1296,10 @@ mark_unavailable_hard_regs (def_t def, struct reg_rename *reg_rename_p,
 
   /* Leave regs as 'available' only from the current 
      register class.  */
-  cl = get_reg_class (def->orig_insn);
-  gcc_assert (cl != NO_REGS);
   COPY_HARD_REG_SET (reg_rename_p->available_for_renaming,
                      reg_class_contents[cl]);
+
+  mode = GET_MODE (orig_dest);
 
   /* Leave only registers available for this mode.  */
   if (!sel_hrd.regs_for_mode_ok[mode])
@@ -1427,6 +1429,16 @@ choose_best_reg_1 (HARD_REG_SET hard_regs_used,
                                   0, cur_reg, hrsi)
     if (! TEST_HARD_REG_BIT (hard_regs_used, cur_reg))
       {
+	/* Check that all hard regs for mode are available.  */
+	for (i = 1, n = hard_regno_nregs[cur_reg][mode]; i < n; i++)
+	  if (TEST_HARD_REG_BIT (hard_regs_used, cur_reg + i)
+	      || !TEST_HARD_REG_BIT (reg_rename_p->available_for_renaming,
+				     cur_reg + i))
+	    break;
+
+	if (i < n)
+	  continue;
+
         /* All hard registers are available.  */
         if (best_new_reg < 0
             || reg_rename_tick[cur_reg] < reg_rename_tick[best_new_reg])
@@ -1458,6 +1470,7 @@ choose_best_reg (HARD_REG_SET hard_regs_used, struct reg_rename *reg_rename_p,
   rtx best_reg = choose_best_reg_1 (hard_regs_used, reg_rename_p, 
                                     original_insns, is_orig_reg_p_ptr);
 
+  /* FIXME loop over hard_regno_nregs here.  */
   gcc_assert (best_reg == NULL_RTX
 	      || TEST_HARD_REG_BIT (sel_hrd.regs_ever_used, REGNO (best_reg)));
 
@@ -1641,14 +1654,6 @@ collect_unavailable_regs_from_bnds (expr_t expr, blist_t bnds, regset used_regs,
 static bool
 try_replace_dest_reg (ilist_t orig_insns, rtx best_reg, expr_t expr)
 {
-  if (expr_dest_regno (expr) == REGNO (best_reg))
-    {
-      EXPR_TARGET_AVAILABLE (expr) = 1;
-      return true;
-    }
-
-  gcc_assert (orig_insns);
-
   /* Try whether we'll be able to generate the insn
      'dest := best_reg' at the place of the original operation.  */
   for (; orig_insns; orig_insns = ILIST_NEXT (orig_insns))
@@ -1657,14 +1662,19 @@ try_replace_dest_reg (ilist_t orig_insns, rtx best_reg, expr_t expr)
 
       gcc_assert (EXPR_SEPARABLE_P (INSN_EXPR (orig_insn)));
 
-      if (!replace_src_with_reg_ok_p (orig_insn, best_reg)
-	  || !replace_dest_with_reg_ok_p (orig_insn, best_reg))
+      if (REGNO (best_reg) != REGNO (INSN_LHS (orig_insn))
+	  && (! replace_src_with_reg_ok_p (orig_insn, best_reg)
+	      || ! replace_dest_with_reg_ok_p (orig_insn, best_reg)))
 	return false;
     }
 
   /* Make sure that EXPR has the right destination
      register.  */
-  replace_dest_with_reg_in_expr (expr, best_reg);
+  if (expr_dest_regno (expr) != REGNO (best_reg))
+    replace_dest_with_reg_in_expr (expr, best_reg);
+  else
+    EXPR_TARGET_AVAILABLE (expr) = 1;
+
   return true;
 }
 
@@ -2680,8 +2690,7 @@ compute_av_set_at_bb_end (insn_t insn, ilist_t p, int ws)
                                VEC_index (int, sinfo->probs_ok, is), 
                                sinfo->all_prob);
 
-      if (sinfo->all_succs_n > 1 
-          && sinfo->all_succs_n == sinfo->succs_ok_n)
+      if (sinfo->all_succs_n > 1)
 	{
           /* Find EXPR'es that came from *all* successors and save them 
              into expr_in_all_succ_branches.  This set will be used later
@@ -3238,9 +3247,9 @@ sel_target_adjust_priority (expr_t expr)
 
   gcc_assert (EXPR_PRIORITY_ADJ (expr) >= 0);
 
-  if (sched_verbose >= 2)
-    sel_print ("sel_target_adjust_priority: insn %d,  %d +%d = %d.\n", 
-	       INSN_UID (EXPR_INSN_RTX (expr)), EXPR_PRIORITY (expr), 
+  if (sched_verbose >= 4)
+    sel_print ("sel_target_adjust_priority: insn %d,  %d+%d = %d.\n",
+	       INSN_UID (EXPR_INSN_RTX (expr)), EXPR_PRIORITY (expr),
 	       EXPR_PRIORITY_ADJ (expr), new_priority);
 
   return new_priority;
@@ -4036,8 +4045,8 @@ invoke_reorder_hooks (fence_t fence)
 
       ran_hook = true;
     }
-  else 
-    issue_more = issue_rate;
+  else
+    issue_more = FENCE_ISSUE_MORE (fence);
 
   /* Ensure that ready list and vec_av_set are in line with each other,
      i.e. vec_av_set[i] == ready_element (&ready, i).  */
@@ -4227,9 +4236,7 @@ get_expr_cost (expr_t expr, fence_t fence)
 
   if (recog_memoized (insn) < 0)
     {
-      if (!FENCE_STARTS_CYCLE_P (fence) 
-          /* FIXME: Is this condition necessary?  */
-          && VINSN_UNIQUE_P (EXPR_VINSN (expr))
+      if (!FENCE_STARTS_CYCLE_P (fence)
 	  && INSN_ASM_P (insn))
 	/* This is asm insn which is tryed to be issued on the
 	   cycle not first.  Issue it on the next cycle.  */
@@ -4524,11 +4531,27 @@ find_seqno_for_bookkeeping (insn_t place_to_insert, insn_t join_point)
   if (INSN_P (next) 
       && JUMP_P (next)
       && BLOCK_FOR_INSN (next) == BLOCK_FOR_INSN (place_to_insert))
-    seqno = INSN_SEQNO (next);
+    {
+      gcc_assert (INSN_SCHED_TIMES (next) == 0);
+      seqno = INSN_SEQNO (next);
+    }
   else if (INSN_SEQNO (join_point) > 0)
     seqno = INSN_SEQNO (join_point);
   else
-    seqno = get_seqno_by_preds (place_to_insert);
+    {
+      seqno = get_seqno_by_preds (place_to_insert);
+
+      /* Sometimes the fences can move in such a way that there will be
+         no instructions with positive seqno around this bookkeeping.
+         This means that there will be no way to get to it by a regular
+         fence movement.  Never mind because we pick up such pieces for
+         rescheduling anyways, so any positive value will do for now.  */
+      if (seqno < 0)
+        {
+          gcc_assert (pipelining_p);
+          seqno = 1;
+        }
+    }
   
   gcc_assert (seqno > 0);
   return seqno;
@@ -4661,18 +4684,35 @@ static void
 move_cond_jump (rtx insn, bnd_t bnd)
 {
   edge ft_edge;
-  basic_block block_from, block_next, block_new;
-  rtx next, prev, link;
+  basic_block block_from, block_next, block_new, block_bnd, bb;
+  rtx next, prev, link, head;
 
-  /* BLOCK_FROM holds basic block of the jump.  */
   block_from = BLOCK_FOR_INSN (insn);
+  block_bnd = BLOCK_FOR_INSN (BND_TO (bnd));
+  prev = BND_TO (bnd);
 
-  /* Moving of jump should not cross any other jumps or
-  beginnings of new basic blocks.  */
-  gcc_assert (block_from == BLOCK_FOR_INSN (BND_TO (bnd)));
+#ifdef ENABLE_CHECKING
+  /* Moving of jump should not cross any other jumps or beginnings of new
+     basic blocks.  The only exception is when we move a jump through
+     mutually exclusive insns along fallthru edges.  */
+  if (block_from != block_bnd)
+    {
+      bb = block_from;
+      for (link = PREV_INSN (insn); link != PREV_INSN (prev);
+           link = PREV_INSN (link))
+        {
+          if (INSN_P (link))
+            gcc_assert (sched_insns_conditions_mutex_p (insn, link));
+          if (BLOCK_FOR_INSN (link) && BLOCK_FOR_INSN (link) != bb)
+            {
+              gcc_assert (single_pred (bb) == BLOCK_FOR_INSN (link));
+              bb = BLOCK_FOR_INSN (link);
+            }
+        }
+    }
+#endif
 
   /* Jump is moved to the boundary.  */
-  prev = BND_TO (bnd);
   next = PREV_INSN (insn);
   BND_TO (bnd) = insn;
 
@@ -4687,28 +4727,35 @@ move_cond_jump (rtx insn, bnd_t bnd)
   gcc_assert (block_new->next_bb == block_next
               && block_from->next_bb == block_new);
 
-  gcc_assert (BB_END (block_from) == insn);
-
-  /* Move all instructions except INSN from BLOCK_FROM to
-     BLOCK_NEW.  */
-  for (link = prev; link != insn; link = NEXT_INSN (link))
+  /* Move all instructions except INSN to BLOCK_NEW.  */
+  bb = block_bnd;
+  head = BB_HEAD (block_new);
+  while (bb != block_from->next_bb)
     {
-      EXPR_ORIG_BB_INDEX (INSN_EXPR (link)) = block_new->index;
-      df_insn_change_bb (link, block_new);
+      rtx from, to;
+      from = bb == block_bnd ? prev : sel_bb_head (bb);
+      to = bb == block_from ? next : sel_bb_end (bb);
+
+      /* The jump being moved can be the first insn in the block.
+         In this case we don't have to move anything in this block.  */
+      if (NEXT_INSN (to) != from)
+        {
+          reorder_insns (from, to, head);
+
+          for (link = to; link != head; link = PREV_INSN (link))
+            EXPR_ORIG_BB_INDEX (INSN_EXPR (link)) = block_new->index;
+          head = to;
+        }
+
+      /* Cleanup possibly empty blocks left.  */
+      block_next = bb->next_bb;
+      if (bb != block_from)
+	tidy_control_flow (bb, false);
+      bb = block_next;
     }
-
-  /* Set correct basic block and instructions properties.  */
-  BB_END (block_new) = PREV_INSN (insn);
-
-  NEXT_INSN (PREV_INSN (prev)) = insn;
-  PREV_INSN (insn) = PREV_INSN (prev);
 
   /* Assert there is no jump to BLOCK_NEW, only fallthrough edge.  */
   gcc_assert (NOTE_INSN_BASIC_BLOCK_P (BB_HEAD (block_new)));
-  PREV_INSN (prev) = BB_HEAD (block_new);
-  NEXT_INSN (next) = NEXT_INSN (BB_HEAD (block_new));
-  NEXT_INSN (BB_HEAD (block_new)) = prev;
-  PREV_INSN (NEXT_INSN (next)) = next;
 
   gcc_assert (!sel_bb_empty_p (block_from)
               && !sel_bb_empty_p (block_new));
@@ -4978,12 +5025,21 @@ move_exprs_to_boundary (bnd_t bnd, expr_t expr_vliw,
   
   EXECUTE_IF_SET_IN_BITMAP (current_copies, 0, book_uid, bi)
     {
+      unsigned uid;
+      bitmap_iterator bi;
+
       /* We allocate these bitmaps lazily.  */
       if (! INSN_ORIGINATORS_BY_UID (book_uid))
         INSN_ORIGINATORS_BY_UID (book_uid) = BITMAP_ALLOC (NULL);
       
       bitmap_copy (INSN_ORIGINATORS_BY_UID (book_uid), 
                    current_originators);
+
+      /* Transitively add all originators' originators.  */
+      EXECUTE_IF_SET_IN_BITMAP (current_originators, 0, uid, bi)
+       if (INSN_ORIGINATORS_BY_UID (uid))
+	 bitmap_ior_into (INSN_ORIGINATORS_BY_UID (book_uid),
+			  INSN_ORIGINATORS_BY_UID (uid));
     }
 
   return should_move;
@@ -5043,6 +5099,7 @@ advance_state_on_fence (fence_t fence, insn_t insn)
   if (sched_verbose >= 2)
     debug_state (FENCE_STATE (fence));
   FENCE_STARTS_CYCLE_P (fence) = 0;
+  FENCE_ISSUE_MORE (fence) = can_issue_more;
   return asm_p;
 }
 
@@ -5224,6 +5281,7 @@ fill_insns (fence_t fence, int seqno, ilist_t **scheduled_insns_tailpp)
   blist_add (&bnds, insn, NULL, FENCE_DC (fence));
   bnds_tailp = &BLIST_NEXT (bnds);
   set_target_context (FENCE_TC (fence));
+  can_issue_more = FENCE_ISSUE_MORE (fence);
   target_bb = INSN_BB (insn);
 
   /* Do while we can add any operation to the current group.  */
@@ -5549,14 +5607,19 @@ maybe_emit_renaming_copy (rtx insn,
                           moveop_static_params_p params)
 {
   bool insn_emitted  = false;
-  rtx cur_reg = expr_dest_reg (params->c_expr);
+  rtx cur_reg;
 
-  gcc_assert (!cur_reg || (params->dest && REG_P (params->dest)));
+  /* Bail out early when expression can not be renamed at all.  */
+  if (!EXPR_SEPARABLE_P (params->c_expr))
+    return false;
+
+  cur_reg = expr_dest_reg (params->c_expr);
+  gcc_assert (cur_reg && params->dest && REG_P (params->dest));
 
   /* If original operation has expr and the register chosen for
      that expr is not original operation's dest reg, substitute
      operation's right hand side with the register chosen.  */
-  if (cur_reg != NULL_RTX && REGNO (params->dest) != REGNO (cur_reg))
+  if (REGNO (params->dest) != REGNO (cur_reg))
     {
       insn_t reg_move_insn, reg_move_insn_rtx;
       
@@ -6479,23 +6542,6 @@ setup_current_loop_nest (int rgn)
   gcc_assert (LOOP_MARKED_FOR_PIPELINING_P (current_loop_nest));
 }
 
-/* Purge meaningless empty blocks in the middle of a region.  */
-static void
-purge_empty_blocks (void)
-{
-  int i ;
-
-  for (i = 1; i < current_nr_blocks; )
-    {
-      basic_block b = BASIC_BLOCK (BB_TO_BLOCK (i));
-
-      if (maybe_tidy_empty_bb (b))
-	continue;
-
-      i++;
-    }
-}
-
 /* Compute instruction priorities for current region.  */
 static void
 sel_compute_priorities (int rgn)
@@ -7074,6 +7120,12 @@ update_seqnos_and_stage (int min_seqno, int max_seqno,
       gcc_assert (INSN_SEQNO (insn) < 0);
       INSN_SEQNO (insn) += highest_seqno_in_use + max_seqno - min_seqno + 2;
       gcc_assert (INSN_SEQNO (insn) <= new_hs);
+
+      /* When not pipelining, purge unneeded insn info on the scheduled insns.
+         For example, having reg_last array of INSN_DEPS_CONTEXT in memory may
+         require > 1GB of memory e.g. on limit-fnargs.c.  */
+      if (! pipelining_p)
+        free_data_for_scheduled_insn (insn);
     }
 
   ilist_clear (pscheduled_insns);

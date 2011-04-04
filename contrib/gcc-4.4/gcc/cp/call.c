@@ -887,10 +887,7 @@ standard_conversion (tree to, tree from, tree expr, bool c_cast_p,
 	  || cp_type_quals (fbase) != cp_type_quals (tbase))
 	return NULL;
 
-      from = cp_build_qualified_type (tbase, cp_type_quals (fbase));
-      from = build_method_type_directly (from,
-					 TREE_TYPE (fromfn),
-					 TREE_CHAIN (TYPE_ARG_TYPES (fromfn)));
+      from = build_memfn_type (fromfn, tbase, cp_type_quals (tbase));
       from = build_ptrmemfunc_type (build_pointer_type (from));
       conv = build_conv (ck_pmem, from, conv);
       conv->base_p = true;
@@ -1221,6 +1218,8 @@ reference_binding (tree rto, tree rfrom, tree expr, bool c_cast_p, int flags)
 	  && CONSTRUCTOR_NELTS (expr) == 1)
 	{
 	  expr = CONSTRUCTOR_ELT (expr, 0)->value;
+	  if (error_operand_p (expr))
+	    return NULL;
 	  from = TREE_TYPE (expr);
 	}
     }
@@ -4744,7 +4743,7 @@ convert_like_real (conversion *convs, tree expr, tree fn, int argnum,
   switch (convs->kind)
     {
     case ck_rvalue:
-      expr = convert_bitfield_to_declared_type (expr);
+      expr = decay_conversion (expr);
       if (! MAYBE_CLASS_TYPE_P (totype))
 	return expr;
       /* Else fall through.  */
@@ -6327,8 +6326,9 @@ compare_ics (conversion *ics1, conversion *ics2)
       /* We couldn't make up our minds; try to figure it out below.  */
     }
 
-  if (ics1->ellipsis_p)
-    /* Both conversions are ellipsis conversions.  */
+  if (ics1->ellipsis_p || ics1->kind == ck_list)
+    /* Both conversions are ellipsis conversions or both are building a
+       std::initializer_list.  */
     return 0;
 
   /* User-defined  conversion sequence U1 is a better conversion sequence

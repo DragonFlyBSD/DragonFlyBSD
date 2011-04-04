@@ -3213,6 +3213,7 @@ vect_supported_load_permutation_p (slp_instance slp_instn, int group_size,
 {
   int i = 0, j, prev = -1, next, k;
   bool supported;
+  sbitmap load_index;
 
   /* FORNOW: permutations are only supported for loop-aware SLP.  */
   if (!slp_instn)
@@ -3233,6 +3234,8 @@ vect_supported_load_permutation_p (slp_instance slp_instn, int group_size,
     return false;
 
   supported = true;
+  load_index = sbitmap_alloc (group_size);
+  sbitmap_zero (load_index); 
   for (j = 0; j < group_size; j++)
     {
       for (i = j * group_size, k = 0;
@@ -3246,8 +3249,22 @@ vect_supported_load_permutation_p (slp_instance slp_instn, int group_size,
           }
 
          prev = next;
-       }  
+       } 
+
+      if (TEST_BIT (load_index, prev))
+        {
+          supported = false;
+          break;
+        }
+
+      SET_BIT (load_index, prev);
     }
+
+  for (j = 0; j < group_size; j++)
+    if (!TEST_BIT (load_index, j))
+      return false;
+
+  sbitmap_free (load_index);
 
   if (supported && i == group_size * group_size
       && vect_supported_slp_permutation_p (slp_instn))
@@ -3495,7 +3512,9 @@ vect_detect_hybrid_slp_stmts (slp_tree node)
       FOR_EACH_IMM_USE_STMT (use_stmt, imm_iter, gimple_op (stmt, 0))
 	if (vinfo_for_stmt (use_stmt)
 	    && !STMT_SLP_TYPE (vinfo_for_stmt (use_stmt))
-            && STMT_VINFO_RELEVANT (vinfo_for_stmt (use_stmt)))
+            && (STMT_VINFO_RELEVANT (vinfo_for_stmt (use_stmt))
+                || STMT_VINFO_DEF_TYPE (vinfo_for_stmt (use_stmt)) 
+                    == vect_reduction_def))
 	  vect_mark_slp_stmts (node, hybrid, i);
 
   vect_detect_hybrid_slp_stmts (SLP_TREE_LEFT (node));

@@ -3397,20 +3397,7 @@ c_common_truthvalue_conversion (location_t location, tree expr)
 			inner);
 	    return truthvalue_true_node;
 	  }
-
-	/* If we still have a decl, it is possible for its address to
-	   be NULL, so we cannot optimize.  */
-	if (DECL_P (inner))
-	  {
-	    gcc_assert (DECL_WEAK (inner));
-	    break;
-	  }
-
-	if (TREE_SIDE_EFFECTS (inner))
-	  return build2 (COMPOUND_EXPR, truthvalue_type_node,
-			 inner, truthvalue_true_node);
-	else
-	  return truthvalue_true_node;
+	break;
       }
 
     case COMPLEX_EXPR:
@@ -5957,10 +5944,12 @@ handle_aligned_attribute (tree *node, tree ARG_UNUSED (name), tree args,
     }
   else if (is_type)
     {
+      if ((flags & (int) ATTR_FLAG_TYPE_IN_PLACE))
+	/* OK, modify the type in place.  */;
       /* If we have a TYPE_DECL, then copy the type, so that we
 	 don't accidentally modify a builtin type.  See pushdecl.  */
-      if (decl && TREE_TYPE (decl) != error_mark_node
-	  && DECL_ORIGINAL_TYPE (decl) == NULL_TREE)
+      else if (decl && TREE_TYPE (decl) != error_mark_node
+	       && DECL_ORIGINAL_TYPE (decl) == NULL_TREE)
 	{
 	  tree tt = TREE_TYPE (decl);
 	  *type = build_variant_type_copy (*type);
@@ -5969,7 +5958,7 @@ handle_aligned_attribute (tree *node, tree ARG_UNUSED (name), tree args,
 	  TREE_USED (*type) = TREE_USED (decl);
 	  TREE_TYPE (decl) = *type;
 	}
-      else if (!(flags & (int) ATTR_FLAG_TYPE_IN_PLACE))
+      else
 	*type = build_variant_type_copy (*type);
 
       TYPE_ALIGN (*type) = (1 << i) * BITS_PER_UNIT;
@@ -7633,15 +7622,14 @@ fold_offsetof_1 (tree expr, tree stop_ref)
       error ("cannot apply %<offsetof%> when %<operator[]%> is overloaded");
       return error_mark_node;
 
-    case INTEGER_CST:
-      gcc_assert (integer_zerop (expr));
-      return size_zero_node;
-
     case NOP_EXPR:
     case INDIRECT_REF:
-      base = fold_offsetof_1 (TREE_OPERAND (expr, 0), stop_ref);
-      gcc_assert (base == error_mark_node || base == size_zero_node);
-      return base;
+      if (!integer_zerop (TREE_OPERAND (expr, 0)))
+	{
+	  error ("cannot apply %<offsetof%> to a non constant address");
+	  return error_mark_node;
+	}
+      return size_zero_node;
 
     case COMPONENT_REF:
       base = fold_offsetof_1 (TREE_OPERAND (expr, 0), stop_ref);

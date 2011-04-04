@@ -1198,8 +1198,12 @@ typedef enum cp_parser_flags
   /* The construct is optional.  If it is not present, then no error
      should be issued.  */
   CP_PARSER_FLAGS_OPTIONAL = 0x1,
-  /* When parsing a type-specifier, do not allow user-defined types.  */
-  CP_PARSER_FLAGS_NO_USER_DEFINED_TYPES = 0x2
+  /* When parsing a type-specifier, treat user-defined type-names
+     as non-type identifiers.  */
+  CP_PARSER_FLAGS_NO_USER_DEFINED_TYPES = 0x2,
+  /* When parsing a type-specifier, do not try to parse a class-specifier
+     or enum-specifier.  */
+  CP_PARSER_FLAGS_NO_TYPE_DEFINITIONS = 0x4
 } cp_parser_flags;
 
 /* The different kinds of declarators we want to parse.  */
@@ -1735,10 +1739,11 @@ static tree cp_parser_type_id
   (cp_parser *);
 static tree cp_parser_template_type_arg
   (cp_parser *);
+static tree cp_parser_trailing_type_id (cp_parser *);
 static tree cp_parser_type_id_1
-  (cp_parser *, bool);
+  (cp_parser *, bool, bool);
 static void cp_parser_type_specifier_seq
-  (cp_parser *, bool, cp_decl_specifier_seq *);
+  (cp_parser *, bool, bool, cp_decl_specifier_seq *);
 static tree cp_parser_parameter_declaration_clause
   (cp_parser *);
 static tree cp_parser_parameter_declaration_list
@@ -5740,6 +5745,7 @@ cp_parser_new_type_id (cp_parser* parser, tree *nelts)
     = "types may not be defined in a new-type-id";
   /* Parse the type-specifier-seq.  */
   cp_parser_type_specifier_seq (parser, /*is_condition=*/false,
+				/*is_trailing_return=*/false,
 				&type_specifier_seq);
   /* Restore the old message.  */
   parser->type_definition_forbidden_message = saved_message;
@@ -7414,6 +7420,7 @@ cp_parser_condition (cp_parser* parser)
     = "types may not be defined in conditions";
   /* Parse the type-specifier-seq.  */
   cp_parser_type_specifier_seq (parser, /*is_condition==*/true,
+				/*is_trailing_return=*/false,
 				&type_specifiers);
   /* Restore the saved message.  */
   parser->type_definition_forbidden_message = saved_message;
@@ -8918,12 +8925,25 @@ cp_parser_decltype (cp_parser *parser)
     cp_parser_parse_definitely (parser);
   else
     {
+      bool saved_greater_than_is_operator_p;
+
       /* Abort our attempt to parse an id-expression or member access
          expression.  */
       cp_parser_abort_tentative_parse (parser);
 
+      /* Within a parenthesized expression, a `>' token is always
+	 the greater-than operator.  */
+      saved_greater_than_is_operator_p
+	= parser->greater_than_is_operator_p;
+      parser->greater_than_is_operator_p = true;
+
       /* Parse a full expression.  */
       expr = cp_parser_expression (parser, /*cast_p=*/false, NULL);
+
+      /* The `>' token might be the end of a template-id or
+	 template-parameter-list now.  */
+      parser->greater_than_is_operator_p
+	= saved_greater_than_is_operator_p;
     }
 
   /* Go back to evaluating expressions.  */
@@ -9032,6 +9052,7 @@ cp_parser_conversion_type_id (cp_parser* parser)
   attributes = cp_parser_attributes_opt (parser);
   /* Parse the type-specifiers.  */
   cp_parser_type_specifier_seq (parser, /*is_condition=*/false,
+				/*is_trailing_return=*/false,
 				&type_specifiers);
   /* If that didn't work, stop.  */
   if (type_specifiers.type == error_mark_node)
@@ -10679,18 +10700,26 @@ cp_parser_template_argument (cp_parser* parser)
 	cp_parser_abort_tentative_parse (parser);
       else
 	{
+	  tree probe;
+
 	  if (TREE_CODE (argument) == INDIRECT_REF)
 	    {
 	      gcc_assert (REFERENCE_REF_P (argument));
 	      argument = TREE_OPERAND (argument, 0);
 	    }
 
-	  if (TREE_CODE (argument) == VAR_DECL)
+	  /* If we're in a template, we represent a qualified-id referring
+	     to a static data member as a SCOPE_REF even if the scope isn't
+	     dependent so that we can check access control later.  */
+	  probe = argument;
+	  if (TREE_CODE (probe) == SCOPE_REF)
+	    probe = TREE_OPERAND (probe, 1);
+	  if (TREE_CODE (probe) == VAR_DECL)
 	    {
 	      /* A variable without external linkage might still be a
 		 valid constant-expression, so no error is issued here
 		 if the external-linkage check fails.  */
-	      if (!address_p && !DECL_EXTERNAL_LINKAGE_P (argument))
+	      if (!address_p && !DECL_EXTERNAL_LINKAGE_P (probe))
 		cp_parser_simulate_error (parser);
 	    }
 	  else if (is_overloaded_fn (argument))
@@ -10994,6 +11023,9 @@ cp_parser_type_specifier (cp_parser* parser,
   switch (keyword)
     {
     case RID_ENUM:
+      if ((flags & CP_PARSER_FLAGS_NO_TYPE_DEFINITIONS))
+	goto elaborated_type_specifier;
+
       /* Look for the enum-specifier.  */
       type_spec = cp_parser_enum_specifier (parser);
       /* If that worked, we're done.  */
@@ -11016,6 +11048,9 @@ cp_parser_type_specifier (cp_parser* parser,
     case RID_CLASS:
     case RID_STRUCT:
     case RID_UNION:
+      if ((flags & CP_PARSER_FLAGS_NO_TYPE_DEFINITIONS))
+	goto elaborated_type_specifier;
+
       /* Parse tentatively so that we can back up if we don't find a
 	 class-specifier.  */
       cp_parser_parse_tentatively (parser);
@@ -11882,6 +11917,7 @@ cp_parser_enum_specifier (cp_parser* parser)
 
       /* Parse the type-specifier-seq.  */
       cp_parser_type_specifier_seq (parser, /*is_condition=*/false,
+				    /*is_trailing_return=*/false,
                                     &type_specifiers);
 
       /* At this point this is surely not elaborated type specifier.  */
@@ -13299,11 +13335,13 @@ cp_parser_direct_declarator (cp_parser* parser,
 		bounds = fold_non_dependent_expr (bounds);
 	      /* Normally, the array bound must be an integral constant
 		 expression.  However, as an extension, we allow VLAs
-		 in function scopes.  */
-	      else if (!parser->in_function_body)
+		 in function scopes as long as they aren't part of a
+		 parameter declaration.  */
+	      else if (!parser->in_function_body
+		       || current_binding_level->kind == sk_function_parms)
 		{
-		  error ("%Harray bound is not an integer constant",
-			 &token->location);
+		  cp_parser_error (parser,
+				   "array bound is not an integer constant");
 		  bounds = error_mark_node;
 		}
 	      else if (processing_template_decl && !error_operand_p (bounds))
@@ -13713,7 +13751,7 @@ cp_parser_cv_qualifier_seq_opt (cp_parser* parser)
 /* Parse a late-specified return type, if any.  This is not a separate
    non-terminal, but part of a function declarator, which looks like
 
-   -> type-id
+   -> trailing-type-specifier-seq abstract-declarator(opt)
 
    Returns the type indicated by the type-id.  */
 
@@ -13731,7 +13769,7 @@ cp_parser_late_return_type_opt (cp_parser* parser)
   /* Consume the ->.  */
   cp_lexer_consume_token (parser->lexer);
 
-  return cp_parser_type_id (parser);
+  return cp_parser_trailing_type_id (parser);
 }
 
 /* Parse a declarator-id.
@@ -13784,13 +13822,15 @@ cp_parser_declarator_id (cp_parser* parser, bool optional_p)
    Returns the TYPE specified.  */
 
 static tree
-cp_parser_type_id_1 (cp_parser* parser, bool is_template_arg)
+cp_parser_type_id_1 (cp_parser* parser, bool is_template_arg,
+		     bool is_trailing_return)
 {
   cp_decl_specifier_seq type_specifier_seq;
   cp_declarator *abstract_declarator;
 
   /* Parse the type-specifier-seq.  */
   cp_parser_type_specifier_seq (parser, /*is_condition=*/false,
+				is_trailing_return,
 				&type_specifier_seq);
   if (type_specifier_seq.type == error_mark_node)
     return error_mark_node;
@@ -13828,12 +13868,17 @@ cp_parser_type_id_1 (cp_parser* parser, bool is_template_arg)
 
 static tree cp_parser_type_id (cp_parser *parser)
 {
-  return cp_parser_type_id_1 (parser, false);
+  return cp_parser_type_id_1 (parser, false, false);
 }
 
 static tree cp_parser_template_type_arg (cp_parser *parser)
 {
-  return cp_parser_type_id_1 (parser, true);
+  return cp_parser_type_id_1 (parser, true, false);
+}
+
+static tree cp_parser_trailing_type_id (cp_parser *parser)
+{
+  return cp_parser_type_id_1 (parser, false, true);
 }
 
 /* Parse a type-specifier-seq.
@@ -13849,11 +13894,15 @@ static tree cp_parser_template_type_arg (cp_parser *parser)
    If IS_CONDITION is true, we are at the start of a "condition",
    e.g., we've just seen "if (".
 
+   If IS_TRAILING_RETURN is true, we are in a trailing-return-type,
+   i.e. we've just seen "->".
+
    Sets *TYPE_SPECIFIER_SEQ to represent the sequence.  */
 
 static void
 cp_parser_type_specifier_seq (cp_parser* parser,
 			      bool is_condition,
+			      bool is_trailing_return,
 			      cp_decl_specifier_seq *type_specifier_seq)
 {
   bool seen_type_specifier = false;
@@ -13862,6 +13911,12 @@ cp_parser_type_specifier_seq (cp_parser* parser,
 
   /* Clear the TYPE_SPECIFIER_SEQ.  */
   clear_decl_specs (type_specifier_seq);
+
+  /* In the context of a trailing return type, enum E { } is an
+     elaborated-type-specifier followed by a function-body, not an
+     enum-specifier.  */
+  if (is_trailing_return)
+    flags |= CP_PARSER_FLAGS_NO_TYPE_DEFINITIONS;
 
   /* Parse the type-specifiers and attributes.  */
   while (true)
@@ -14334,6 +14389,7 @@ cp_parser_parameter_declaration (cp_parser *parser,
 			 the default argument; otherwise the default
 			 argument continues.  */
 		      bool error = false;
+		      tree t;
 
 		      /* Set ITALP so cp_parser_parameter_declaration_list
 			 doesn't decide to commit to this parse.  */
@@ -14342,7 +14398,11 @@ cp_parser_parameter_declaration (cp_parser *parser,
 
 		      cp_parser_parse_tentatively (parser);
 		      cp_lexer_consume_token (parser->lexer);
+		      begin_scope (sk_function_parms, NULL_TREE);
 		      cp_parser_parameter_declaration_list (parser, &error);
+		      for (t = current_binding_level->names; t; t = TREE_CHAIN (t))
+			pop_binding (DECL_NAME (t), t);
+		      leave_scope ();
 		      if (!cp_parser_error_occurred (parser) && !error)
 			done = true;
 		      cp_parser_abort_tentative_parse (parser);
@@ -16565,7 +16625,8 @@ cp_parser_exception_declaration (cp_parser* parser)
     = "types may not be defined in exception-declarations";
 
   /* Parse the type-specifier-seq.  */
-  cp_parser_type_specifier_seq (parser, /*is_condition=*/false,
+  cp_parser_type_specifier_seq (parser, /*is_declaration=*/true,
+				/*is_trailing_return=*/false,
 				&type_specifiers);
   /* If it's a `)', then there is no declarator.  */
   if (cp_lexer_next_token_is (parser->lexer, CPP_CLOSE_PAREN))
@@ -20953,6 +21014,32 @@ cp_parser_omp_atomic (cp_parser *parser, cp_token *pragma_tok)
       rhs = integer_one_node;
       break;
 
+    case COMPOUND_EXPR:
+      if (TREE_CODE (TREE_OPERAND (lhs, 0)) == SAVE_EXPR
+	 && TREE_CODE (TREE_OPERAND (lhs, 1)) == COMPOUND_EXPR
+	 && TREE_CODE (TREE_OPERAND (TREE_OPERAND (lhs, 1), 0)) == MODIFY_EXPR
+	 && TREE_OPERAND (TREE_OPERAND (lhs, 1), 1) == TREE_OPERAND (lhs, 0)
+	 && TREE_CODE (TREE_TYPE (TREE_OPERAND (TREE_OPERAND
+					     (TREE_OPERAND (lhs, 1), 0), 0)))
+	    == BOOLEAN_TYPE)
+       /* Undo effects of boolean_increment for post {in,de}crement.  */
+       lhs = TREE_OPERAND (TREE_OPERAND (lhs, 1), 0);
+      /* FALLTHRU */
+    case MODIFY_EXPR:
+      if (TREE_CODE (lhs) == MODIFY_EXPR
+	 && TREE_CODE (TREE_TYPE (TREE_OPERAND (lhs, 0))) == BOOLEAN_TYPE)
+       {
+	 /* Undo effects of boolean_increment.  */
+	 if (integer_onep (TREE_OPERAND (lhs, 1)))
+	   {
+	     /* This is pre or post increment.  */
+	     rhs = TREE_OPERAND (lhs, 1);
+	     lhs = TREE_OPERAND (lhs, 0);
+	     code = NOP_EXPR;
+	     break;
+	   }
+       }
+      /* FALLTHRU */
     default:
       switch (cp_lexer_peek_token (parser->lexer)->type)
 	{
@@ -21249,7 +21336,8 @@ cp_parser_omp_for_loop (cp_parser *parser, tree clauses, tree *par_clauses)
 	     cp_parser_condition, from whence the bulk of this is copied.  */
 
 	  cp_parser_parse_tentatively (parser);
-	  cp_parser_type_specifier_seq (parser, /*is_condition=*/false,
+	  cp_parser_type_specifier_seq (parser, /*is_declaration=*/true,
+					/*is_trailing_return=*/false,
 					&type_specifiers);
 	  if (cp_parser_parse_definitely (parser))
 	    {
@@ -21567,7 +21655,8 @@ cp_parser_omp_for_loop (cp_parser *parser, tree clauses, tree *par_clauses)
 	    }
 	  collapse_err = true;
 	  cp_parser_statement_seq_opt (parser, NULL);
-	  cp_parser_require (parser, CPP_CLOSE_BRACE, "%<}%>");
+	  if (cp_lexer_next_token_is (parser->lexer, CPP_EOF))
+	    break;
 	}
     }
 

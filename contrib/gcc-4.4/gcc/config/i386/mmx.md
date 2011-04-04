@@ -336,7 +336,7 @@
   "TARGET_3DNOW && !(MEM_P (operands[0]) && MEM_P (operands[1]))"
   "@
    pfsub\t{%2, %0|%0, %2}
-   pfsubr\t{%2, %0|%0, %2}"
+   pfsubr\t{%1, %0|%0, %1}"
   [(set_attr "type" "mmxadd")
    (set_attr "mode" "V2SF")])
 
@@ -1202,7 +1202,10 @@
   "TARGET_SSE || TARGET_3DNOW_A"
 {
   operands[3] = GEN_INT (exact_log2 (INTVAL (operands[3])));
-  return "pinsrw\t{%3, %k2, %0|%0, %k2, %3}";
+  if (MEM_P (operands[2]))
+    return "pinsrw\t{%3, %2, %0|%0, %2, %3}";
+  else
+    return "pinsrw\t{%3, %k2, %0|%0, %k2, %3}";
 }
   [(set_attr "type" "mmxcvt")
    (set_attr "mode" "DI")])

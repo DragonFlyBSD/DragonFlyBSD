@@ -1421,10 +1421,6 @@ scan_sharing_clauses (tree clauses, omp_context *ctx)
 	  break;
 
 	case OMP_CLAUSE_COPYPRIVATE:
-	  if (ctx->outer)
-	    scan_omp_op (&OMP_CLAUSE_DECL (c), ctx->outer);
-	  /* FALLTHRU */
-
 	case OMP_CLAUSE_COPYIN:
 	  decl = OMP_CLAUSE_DECL (c);
 	  by_ref = use_pointer_for_field (decl, NULL);
@@ -2671,7 +2667,7 @@ lower_copyprivate_clauses (tree clauses, gimple_seq *slist, gimple_seq *rlist,
 
   for (c = clauses; c ; c = OMP_CLAUSE_CHAIN (c))
     {
-      tree var, ref, x;
+      tree var, new_var, ref, x;
       bool by_ref;
 
       if (OMP_CLAUSE_CODE (c) != OMP_CLAUSE_COPYPRIVATE)
@@ -2681,17 +2677,27 @@ lower_copyprivate_clauses (tree clauses, gimple_seq *slist, gimple_seq *rlist,
       by_ref = use_pointer_for_field (var, NULL);
 
       ref = build_sender_ref (var, ctx);
-      x = lookup_decl_in_outer_ctx (var, ctx);
-      x = by_ref ? build_fold_addr_expr (x) : x;
+      x = new_var = lookup_decl_in_outer_ctx (var, ctx);
+      if (by_ref)
+	{
+	  x = build_fold_addr_expr (new_var);
+	  x = fold_convert (TREE_TYPE (ref), x);
+	}
       gimplify_assign (ref, x, slist);
 
-      ref = build_receiver_ref (var, by_ref, ctx);
+      ref = build_receiver_ref (var, false, ctx);
+      if (by_ref)
+	{
+	  ref = fold_convert (build_pointer_type (TREE_TYPE (new_var)), ref);
+	  ref = build_fold_indirect_ref (ref);
+	}
       if (is_reference (var))
 	{
+	  ref = fold_convert (TREE_TYPE (new_var), ref);
 	  ref = build_fold_indirect_ref (ref);
-	  var = build_fold_indirect_ref (var);
+	  new_var = build_fold_indirect_ref (new_var);
 	}
-      x = lang_hooks.decls.omp_clause_assign_op (c, var, ref);
+      x = lang_hooks.decls.omp_clause_assign_op (c, new_var, ref);
       gimplify_and_add (x, rlist);
     }
 }
@@ -4606,7 +4612,7 @@ expand_omp_sections (struct omp_region *region)
   l2_bb = region->exit;
   if (exit_reachable)
     {
-      if (single_pred (l2_bb) == l0_bb)
+      if (single_pred_p (l2_bb) && single_pred (l2_bb) == l0_bb)
 	l2 = gimple_block_label (l2_bb);
       else
 	{
@@ -6788,6 +6794,27 @@ diagnose_sb_2 (gimple_stmt_iterator *gsi_p, bool *handled_ops_p,
 	  	       diagnose_sb_2, NULL, wi);
       walk_gimple_seq (gimple_omp_body (stmt), diagnose_sb_2, NULL, wi);
       wi->info = context;
+      break;
+
+    case GIMPLE_COND:
+	{
+	  tree lab = gimple_cond_true_label (stmt);
+	  if (lab)
+	    {
+	      n = splay_tree_lookup (all_labels,
+				     (splay_tree_key) lab);
+	      diagnose_sb_0 (gsi_p, context,
+			     n ? (gimple) n->value : NULL);
+	    }
+	  lab = gimple_cond_false_label (stmt);
+	  if (lab)
+	    {
+	      n = splay_tree_lookup (all_labels,
+				     (splay_tree_key) lab);
+	      diagnose_sb_0 (gsi_p, context,
+			     n ? (gimple) n->value : NULL);
+	    }
+	}
       break;
 
     case GIMPLE_GOTO:

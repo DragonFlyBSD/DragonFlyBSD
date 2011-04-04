@@ -1,6 +1,6 @@
 /* Tree lowering pass.  This pass converts the GENERIC functions-as-trees
    tree representation into the GIMPLE form.
-   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
    Major work done by Sebastian Pop <s.pop@laposte.net>,
    Diego Novillo <dnovillo@redhat.com> and Jason Merrill <jason@redhat.com>.
@@ -74,9 +74,10 @@ enum gimplify_omp_var_data
 enum omp_region_type
 {
   ORT_WORKSHARE = 0,
-  ORT_TASK = 1,
   ORT_PARALLEL = 2,
-  ORT_COMBINED_PARALLEL = 3
+  ORT_COMBINED_PARALLEL = 3,
+  ORT_TASK = 4,
+  ORT_UNTIED_TASK = 5
 };
 
 struct gimplify_omp_ctx
@@ -320,7 +321,7 @@ new_omp_context (enum omp_region_type region_type)
   c->privatized_types = pointer_set_create ();
   c->location = input_location;
   c->region_type = region_type;
-  if (region_type != ORT_TASK)
+  if ((region_type & ORT_TASK) == 0)
     c->default_kind = OMP_CLAUSE_DEFAULT_SHARED;
   else
     c->default_kind = OMP_CLAUSE_DEFAULT_UNSPECIFIED;
@@ -2762,6 +2763,36 @@ gimple_boolify (tree expr)
 {
   tree type = TREE_TYPE (expr);
 
+  if (TREE_CODE (expr) == NE_EXPR
+      && TREE_CODE (TREE_OPERAND (expr, 0)) == CALL_EXPR
+      && integer_zerop (TREE_OPERAND (expr, 1)))
+    {
+      tree call = TREE_OPERAND (expr, 0);
+      tree fn = get_callee_fndecl (call);
+
+      /* For __builtin_expect ((long) (x), y) recurse into x as well
+	 if x is truth_value_p.  */
+      if (fn
+	  && DECL_BUILT_IN_CLASS (fn) == BUILT_IN_NORMAL
+	  && DECL_FUNCTION_CODE (fn) == BUILT_IN_EXPECT
+	  && call_expr_nargs (call) == 2)
+	{
+	  tree arg = CALL_EXPR_ARG (call, 0);
+	  if (arg)
+	    {
+	      if (TREE_CODE (arg) == NOP_EXPR
+		  && TREE_TYPE (arg) == TREE_TYPE (call))
+		arg = TREE_OPERAND (arg, 0);
+	      if (truth_value_p (TREE_CODE (arg)))
+		{
+		  arg = gimple_boolify (arg);
+		  CALL_EXPR_ARG (call, 0)
+		    = fold_convert (TREE_TYPE (call), arg);
+		}
+	    }
+	}
+    }
+
   if (TREE_CODE (type) == BOOLEAN_TYPE)
     return expr;
 
@@ -3684,6 +3715,22 @@ gimplify_init_constructor (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p,
 	      }
 	  }
 
+	/* If the target is volatile, we have non-zero elements and more than
+	   one field to assign, initialize the target from a temporary.  */
+	if (TREE_THIS_VOLATILE (object)
+	    && !TREE_ADDRESSABLE (type)
+	    && num_nonzero_elements > 0
+	    && VEC_length (constructor_elt, elts) > 1)
+	  {
+	    tree temp = create_tmp_var (TYPE_MAIN_VARIANT (type), NULL);
+	    TREE_OPERAND (*expr_p, 0) = temp;
+	    *expr_p = build2 (COMPOUND_EXPR, TREE_TYPE (*expr_p),
+			      *expr_p,
+			      build2 (MODIFY_EXPR, void_type_node,
+				      object, temp));
+	    return GS_OK;
+	  }
+
 	if (notify_temp_creation)
 	  return GS_OK;
 
@@ -3874,18 +3921,21 @@ gimple_fold_indirect_ref (tree t)
 
       /* *(foo *)&fooarray => fooarray[0] */
       if (TREE_CODE (optype) == ARRAY_TYPE
+	  && TREE_CODE (TYPE_SIZE (TREE_TYPE (optype))) == INTEGER_CST
 	  && useless_type_conversion_p (type, TREE_TYPE (optype)))
        {
          tree type_domain = TYPE_DOMAIN (optype);
          tree min_val = size_zero_node;
          if (type_domain && TYPE_MIN_VALUE (type_domain))
            min_val = TYPE_MIN_VALUE (type_domain);
-         return build4 (ARRAY_REF, type, op, min_val, NULL_TREE, NULL_TREE);
+	 if (TREE_CODE (min_val) == INTEGER_CST)
+	   return build4 (ARRAY_REF, type, op, min_val, NULL_TREE, NULL_TREE);
        }
     }
 
   /* *(foo *)fooarrptr => (*fooarrptr)[0] */
   if (TREE_CODE (TREE_TYPE (subtype)) == ARRAY_TYPE
+      && TREE_CODE (TYPE_SIZE (TREE_TYPE (TREE_TYPE (subtype)))) == INTEGER_CST
       && useless_type_conversion_p (type, TREE_TYPE (TREE_TYPE (subtype))))
     {
       tree type_domain;
@@ -3897,7 +3947,8 @@ gimple_fold_indirect_ref (tree t)
       type_domain = TYPE_DOMAIN (TREE_TYPE (sub));
       if (type_domain && TYPE_MIN_VALUE (type_domain))
         min_val = TYPE_MIN_VALUE (type_domain);
-      return build4 (ARRAY_REF, type, sub, min_val, NULL_TREE, NULL_TREE);
+      if (TREE_CODE (min_val) == INTEGER_CST)
+	return build4 (ARRAY_REF, type, sub, min_val, NULL_TREE, NULL_TREE);
     }
 
   return NULL_TREE;
@@ -3931,11 +3982,14 @@ gimplify_modify_expr_rhs (tree *expr_p, tree *from_p, tree *to_p,
     switch (TREE_CODE (*from_p))
       {
       case VAR_DECL:
-	/* If we're assigning from a constant constructor, move the
-	   constructor expression to the RHS of the MODIFY_EXPR.  */
+	/* If we're assigning from a read-only variable initialized with
+	   a constructor, do the direct assignment from the constructor,
+	   but only if neither source nor target are volatile since this
+	   latter assignment might end up being done on a per-field basis.  */
 	if (DECL_INITIAL (*from_p)
 	    && TREE_READONLY (*from_p)
 	    && !TREE_THIS_VOLATILE (*from_p)
+	    && !TREE_THIS_VOLATILE (*to_p)
 	    && TREE_CODE (DECL_INITIAL (*from_p)) == CONSTRUCTOR)
 	  {
 	    tree old_from = *from_p;
@@ -5238,6 +5292,32 @@ omp_add_variable (struct gimplify_omp_ctx *ctx, tree decl, unsigned int flags)
   splay_tree_insert (ctx->variables, (splay_tree_key)decl, flags);
 }
 
+/* Notice a threadprivate variable DECL used in OpenMP context CTX.
+   This just prints out diagnostics about threadprivate variable uses
+   in untied tasks.  If DECL2 is non-NULL, prevent this warning
+   on that variable.  */
+
+static bool
+omp_notice_threadprivate_variable (struct gimplify_omp_ctx *ctx, tree decl,
+				   tree decl2)
+{
+  splay_tree_node n;
+
+  if (ctx->region_type != ORT_UNTIED_TASK)
+    return false;
+  n = splay_tree_lookup (ctx->variables, (splay_tree_key)decl);
+  if (n == NULL)
+    {
+      error ("threadprivate variable %qs used in untied task",
+	     IDENTIFIER_POINTER (DECL_NAME (decl)));
+      error ("%Henclosing task", &ctx->location);
+      splay_tree_insert (ctx->variables, (splay_tree_key)decl, 0);
+    }
+  if (decl2)
+    splay_tree_insert (ctx->variables, (splay_tree_key)decl2, 0);
+  return false;
+}
+
 /* Record the fact that DECL was used within the OpenMP context CTX.
    IN_CODE is true when real code uses DECL, and false when we should
    merely emit default(none) errors.  Return true if DECL is going to
@@ -5258,14 +5338,14 @@ omp_notice_variable (struct gimplify_omp_ctx *ctx, tree decl, bool in_code)
   if (is_global_var (decl))
     {
       if (DECL_THREAD_LOCAL_P (decl))
-	return false;
+	return omp_notice_threadprivate_variable (ctx, decl, NULL_TREE);
 
       if (DECL_HAS_VALUE_EXPR_P (decl))
 	{
 	  tree value = get_base_address (DECL_VALUE_EXPR (decl));
 
 	  if (value && DECL_P (value) && DECL_THREAD_LOCAL_P (value))
-	    return false;
+	    return omp_notice_threadprivate_variable (ctx, decl, value);
 	}
     }
 
@@ -5290,9 +5370,13 @@ omp_notice_variable (struct gimplify_omp_ctx *ctx, tree decl, bool in_code)
 	{
 	case OMP_CLAUSE_DEFAULT_NONE:
 	  error ("%qs not specified in enclosing parallel",
-		 IDENTIFIER_POINTER (DECL_NAME (decl)));
-	  error ("%Henclosing parallel", &ctx->location);
-	  /* FALLTHRU */
+		 IDENTIFIER_POINTER (DECL_NAME
+				(lang_hooks.decls.omp_report_decl (decl))));
+	  if ((ctx->region_type & ORT_TASK) != 0)
+	    error ("%Henclosing task", &ctx->location);
+	  else
+	    error ("%Henclosing parallel", &ctx->location);
+ 	  /* FALLTHRU */
 	case OMP_CLAUSE_DEFAULT_SHARED:
 	  flags |= GOVD_SHARED;
 	  break;
@@ -5304,7 +5388,7 @@ omp_notice_variable (struct gimplify_omp_ctx *ctx, tree decl, bool in_code)
 	  break;
 	case OMP_CLAUSE_DEFAULT_UNSPECIFIED:
 	  /* decl will be either GOVD_FIRSTPRIVATE or GOVD_SHARED.  */
-	  gcc_assert (ctx->region_type == ORT_TASK);
+	  gcc_assert ((ctx->region_type & ORT_TASK) != 0);
 	  if (ctx->outer_context)
 	    omp_notice_variable (ctx->outer_context, decl, in_code);
 	  for (octx = ctx->outer_context; octx; octx = octx->outer_context)
@@ -5807,7 +5891,10 @@ gimplify_omp_task (tree *expr_p, gimple_seq *pre_p)
   gimple_seq body = NULL;
   struct gimplify_ctx gctx;
 
-  gimplify_scan_omp_clauses (&OMP_TASK_CLAUSES (expr), pre_p, ORT_TASK);
+  gimplify_scan_omp_clauses (&OMP_TASK_CLAUSES (expr), pre_p,
+			     find_omp_clause (OMP_TASK_CLAUSES (expr),
+					      OMP_CLAUSE_UNTIED)
+			     ? ORT_UNTIED_TASK : ORT_TASK);
 
   push_gimplify_context (&gctx);
 
@@ -6098,8 +6185,12 @@ goa_stabilize_expr (tree *expr_p, gimple_seq *pre_p, tree lhs_addr,
 	{
 	case TRUTH_ANDIF_EXPR:
 	case TRUTH_ORIF_EXPR:
+	case TRUTH_AND_EXPR:
+	case TRUTH_OR_EXPR:
+	case TRUTH_XOR_EXPR:
 	  saw_lhs |= goa_stabilize_expr (&TREE_OPERAND (expr, 1), pre_p,
 					 lhs_addr, lhs_var);
+	case TRUTH_NOT_EXPR:
 	  saw_lhs |= goa_stabilize_expr (&TREE_OPERAND (expr, 0), pre_p,
 					 lhs_addr, lhs_var);
 	  break;
@@ -6134,6 +6225,8 @@ gimplify_omp_atomic (tree *expr_p, gimple_seq *pre_p)
   tree tmp_load;
 
    tmp_load = create_tmp_var (type, NULL);
+   if (TREE_CODE (type) == COMPLEX_TYPE || TREE_CODE (type) == VECTOR_TYPE)
+     DECL_GIMPLE_REG_P (tmp_load) = 1;
    if (goa_stabilize_expr (&rhs, pre_p, addr, tmp_load) < 0)
      return GS_ERROR;
 

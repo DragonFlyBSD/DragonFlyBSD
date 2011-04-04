@@ -40,6 +40,7 @@ extern void lhd_do_nothing (void);
 extern void lhd_do_nothing_t (tree);
 extern void lhd_do_nothing_i (int);
 extern void lhd_do_nothing_f (struct function *);
+extern tree lhd_pass_through_t (tree);
 extern bool lhd_post_options (const char **);
 extern alias_set_type lhd_get_alias_set (tree);
 extern tree lhd_return_null_tree_v (void);
@@ -195,6 +196,7 @@ extern tree lhd_make_node (enum tree_code);
 #define LANG_HOOKS_COMDAT_GROUP lhd_comdat_group
 #define LANG_HOOKS_OMP_PRIVATIZE_BY_REFERENCE hook_bool_const_tree_false
 #define LANG_HOOKS_OMP_PREDETERMINED_SHARING lhd_omp_predetermined_sharing
+#define LANG_HOOKS_OMP_REPORT_DECL lhd_pass_through_t
 #define LANG_HOOKS_OMP_DISREGARD_VALUE_EXPR hook_bool_tree_bool_false
 #define LANG_HOOKS_OMP_PRIVATE_DEBUG_CLAUSE hook_bool_tree_bool_false
 #define LANG_HOOKS_OMP_PRIVATE_OUTER_REF hook_bool_tree_false
@@ -214,6 +216,7 @@ extern tree lhd_make_node (enum tree_code);
   LANG_HOOKS_COMDAT_GROUP, \
   LANG_HOOKS_OMP_PRIVATIZE_BY_REFERENCE, \
   LANG_HOOKS_OMP_PREDETERMINED_SHARING, \
+  LANG_HOOKS_OMP_REPORT_DECL, \
   LANG_HOOKS_OMP_DISREGARD_VALUE_EXPR, \
   LANG_HOOKS_OMP_PRIVATE_DEBUG_CLAUSE, \
   LANG_HOOKS_OMP_PRIVATE_OUTER_REF, \
