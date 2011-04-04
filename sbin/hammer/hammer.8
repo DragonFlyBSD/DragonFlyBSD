@@ -1341,6 +1341,36 @@ The
 directive requires that the target be configured as a slave and that the
 .Cm shared-uuid
 field of the mirroring source and target match.
+.Sh DOUBLE_BUFFER MODE
+There is a limit to the number of vnodes the kernel can cache, and because
+file buffers are associated with a vnode the related data cache can get
+blown away when operating on large numbers of files even if the system has
+sufficient memory to hold the file data.
+.Pp
+If you turn on hammer's double buffer mode by setting
+.Va vfs.hammer.double_buffer
+to 1
+.Nm HAMMER
+will cache file data via the block device and copy it into the per-file
+buffers as needed.  The data will be double-cached at least until the
+buffer cache throws away the file buffer.
+This mode is typically used in conjuction with
+.Xr swapcache 8
+when
+.Va vm.swapcache.data_enable
+is turned on in order to prevent unnecessary re-caching of file data
+due to vnode recycling.
+The swapcache will save the cached VM pages related to hammer's block
+device (which doesn't recycle unless you umount the filesystem) instead
+of the cached VM pages backing the file vnodes.
+.Pp
+Double buffering should also be turned on if live dedup is enabled via
+.Va vfs.hammer.live_dedup .
+This is because the live dedup must validate the contents of a potential
+duplicate file block and it must run through the block device to do that
+and not the file vnode.
+If double buffering is not enabled then live dedup will create extra disk
+reads to validate potential data duplicates.
 .Sh UPGRADE INSTRUCTIONS HAMMER V1 TO V2
 This upgrade changes the way directory entries are stored.
 It is possible to upgrade a V1 file system to V2 in place, but

@@ -148,41 +148,64 @@ Turning on
 (with or without other features) allows bulk file data to be cached.
 This feature is very useful for web server operation when the
 operational data set fits in swap.
-The usefulness is somewhat mitigated by the maximum number
-of vnodes supported by the system via
-.Va kern.maxfiles ,
-because the bulk data in the cache is lost when the related
-vnode is recycled.
-In this case it might be desirable to
-take the plunge into running a 64-bit kernel which can support
-far more vnodes.
-32-bit kernels have limited kernel virtual
-memory (KVM) and cannot reliably support more than around
-100,000 active vnodes.
-64-bit kernels can support 300,000+ active vnodes.
+However, care must be taken to avoid thrashing the swapcache.
+In almost all cases you will want to leave chflags mode enabled
+and use 'chflags cache' on governing directories to control which
+directory subtrees file data should be cached for.
+.Pp
+Vnode recycling can also cause problems.
+32-bit systems are typically limited to 100,000 cached vnodes and
+64-bit systems are typically limited to around 400,000 cached vnodes.
+When operating on a filesystem containing a large number of files
+vnode recycling by the kernel will cause related swapcache data
+to be lost and also cause potential thrashing of the swapcache.
+Cache thrashing due to vnode recyclement can occur whether chflags
+mode is used or not.
+.Pp
+To solve the thrashing problem you can turn on HAMMER's
+double buffering feature via
+.Va vfs.hammer.double_buffer .
+This causes HAMMER to cache file data via its block device.
+HAMMER cannot avoid also caching file data via individual vnodes
+but will try to expire the second copy more quickly (hence
+why it is called double buffer mode), but the key point here is
+that
+.Nm
+will only cache the data blocks via the block device when
+double_buffer mode is used and since the block device is associated
+with the mount it will not get recycled.
+This allows the data for any number (potentially millions) of files to
+be cached.
+You still should use chflags mode to control the size of the dataset
+being cached to remain under 75% of configured swap space.
 .Pp
 Data caching is definitely more wasteful of the SSD's write durability
 than meta-data caching.
-The swapcache may exhaust its burst and smack against the long term
-average bandwidth limit, causing the SSD to wear out at the maximum rate
-you programmed.
+If not carefully managed the swapcache may exhaust its burst and smack
+against the long term average bandwidth limit, causing the SSD to wear
+out at the maximum rate you programmed.
 Data caching is far less wasteful and more efficient
-if (on a 64-bit system only) you provide a sufficiently large SSD and
-increase
-.Va kern.maxvnodes
-to cover the entire directory topology being served.
-Each vnode requires about 1KB of physical RAM.
+if (on a 64-bit system only) you provide a sufficiently large SSD.
 .Pp
-Due to the higher SSD write rate you may want to use a
-medium-sized SSD with good write performance to reduce interference
-between reading and writing.
-Write durability also scales with larger SSDs.
+When caching large data sets you may want to use a medium-sized SSD
+with good write performance instead of a small SSD to accomodate
+the higher burst write rate data caching incurs and to reduce
+interference between reading and writing.
+Write durability also tends to scale with larger SSDs, but keep in mind
+that newer flash technologies use smaller feature sizes on-chip
+which reduce the write durability of the chips, so pay careful attention
+to the type of flash employed by the SSD when making durability
+assumptions.
 For example, an Intel X25-V only has 40MB/s in write performance
 and burst writing by swapcache will seriously interfere with
 concurrent read operation on the SSD.
 The 80GB X25-M on the otherhand has double the write performance.
+But the Intel 310 series SSDs use flash chips with a smaller feature
+size so an 80G 310 series SSD will wind up with a durability relative
+close to the older 40G X25-V.
 .Pp
-When data caching is turned on you generally want to use
+When data caching is turned on you generally always want swapcache's
+chflags mode enabled and use
 .Xr chflags 1
 with the
 .Va cache
@@ -197,9 +220,11 @@ A typical setup is something like this:
 .Dl chflags cache /etc /sbin /bin /usr /home
 .Dl chflags noscache /usr/obj
 .Pp
-If that doesn't work you can turn off
+It is possible to tell
+.Nm
+to ignore the cache flag by setting
 .Va vm.swapcache.use_chflags
-entirely and not bother with any
+to zero, but it is not recommended.
 .Nm chflag Ns 'ing .
 .Pp
 Filesystems such as NFS which do not support flags generally
@@ -210,7 +235,7 @@ mount option which enables swapcache operation on the mount.
 .It Va vm.swapcache.maxfilesize
 This may be used to reduce cache thrashing when a focus on a small
 potentially fragmented filespace is desired, leaving the
-larger files alone.
+larger (more linearly accessed) files alone.
 .Pp
 .It Va vm.swapcache.minburst
 This controls hysteresis and prevents nickel-and-dime write bursting.
@@ -231,6 +256,8 @@ can do a better job write-combining and erasing blocks.
 This controls the maximum amount of swapspace
 .Nm
 may use, in percentage terms.
+The default is 75%, leaving the remaining 25% of swap available for normal
+paging operations.
 .El
 .Pp
 It is important to note that you should always use
@@ -244,10 +271,13 @@ inefficiencies on the SSD.
 .Pp
 Finally, interleaved swap (multiple SSDs) may be used to increase
 performance even further.
-A single SATA SSD is typically capable of reading 120-220MB/sec.
+A single SATA-II SSD is typically capable of reading 120-220MB/sec.
 Configuring two SSDs for your swap will
 improve aggregate swapcache read performance by 1.5x to 1.8x.
 In tests with two Intel 40GB SSDs 300MB/sec was easily achieved.
+With two SATA-III SSDs it is possible to achieve 600MB/sec or better
+and well over 400MB/sec random-read performance (verses the ~3MB/sec
+random read performance a hard drive gives you).
 .Pp
 At this point you will be configuring more swap space than a 32 bit
 .Dx
@@ -255,31 +285,14 @@ kernel can handle (due to KVM limitations).
 By default, 32 bit
 .Dx
 systems only support 32GB of configured swap and while this limit
-can be increased somewhat in
+can be increased somewhat by using
+.Va kern.maxswzone
+in
 .Pa /boot/loader.conf
-you should really be using a 64-bit
-.Dx
-kernel instead.
-64-bit systems support up to 512GB of swap by default
-and can be boosted to up to 8TB if you are really crazy and have enough RAM.
-Each 1GB of swap requires around 1MB of physical memory to manage it so
-the practical limit is more around 1TB of swap.
-.Pp
-Of course, a 1TB SSD is something on the order of $3000+ as of this writing.
-Even though a 1TB configuration might not be cost effective, storage levels
-more in the 100-200GB range certainly are.
-If the machine has only a 1GigE
-ethernet (100MB/s) there's no point configuring it for more SSD bandwidth.
-A single SSD of the desired size would be sufficient.
-.Sh INITIAL BURSTING & REPEATED BURSTING
-Even though the average write bandwidth is limited it is desirable
-to have a large initial burst after boot to load the cache.
-.Va curburst
-is initialized to 4GB by default and you can force rebursting
-by adjusting it with a sysctl.
-Remember that
-.Va curburst
-dynamically tracks burst and will go up and down depending.
+(a setting of 96m == a maximum of 96GB of swap),
+you will quickly run out of KVM.
+Running a 64-bit system with its 512G maximum swap space default
+is preferable at that point.
 .Pp
 In addition there will be periods of time where the system is in
 steady state and not writing to the swapcache.
@@ -290,6 +303,9 @@ will inch back up but will not exceed
 Thus the
 .Va maxburst
 value controls how large a repeated burst can be.
+Remember that
+.Va curburst
+dynamically tracks burst and will go up and down depending.
 .Pp
 A second bursting parameter called
 .Va vm.swapcache.minburst
@@ -490,6 +506,19 @@ For UFS you should create the filesystem with at least a 4K fragment
 size, verses the default 2K.
 Modern Windows filesystems use 4K clusters but it is unclear how SSD-friendly
 NTFS is.
+.Sh EXPLANATION OF FLASH CHIP FEATURE SIZE VS ERASE/REWRITE CYCLE DURABILITY
+Manufacturers continue to produce flash chips with smaller feature sizes.
+Smaller flash cells means reduced erase/rewrite cycle durability which in
+turn reduces the durability of the SSD.
+.Pp
+The older 34nm flash typically had a 10,000 cell durability while the newer
+25nm flash is closer to 1000.  The newer flash uses larger ECCs and more
+sensitive voltage comparators on-chip to increase the durability closer to
+3000 cycles.  Generally speaking you should assume a durability of around
+1/3 for the same storage capacity using the new chips verses the older
+chips.  If you can squeeze out a 400TB durability from an older 40GB X25-V
+using 34nm technology then you should assume around a 400TB durability from
+a newer 120GB 310 series SSD using 25nm technology.
 .Sh WARNINGS
 I am going to repeat and expand a bit on SSD wear.
 Wear on SSDs is a function of the write durability of the cells,
@@ -574,8 +603,8 @@ durability of approximately 40TB, but
 should be able to squeeze out upwards of 200TB due the fairly optimal
 write clustering it does.
 The theoretical limit for the Intel X25V is 400TB (10,000 erase cycles
-per MLC cell, 40GB drive), but the firmware doesn't do perfect static
-wear leveling so the actual durability is less.
+per MLC cell, 40GB drive, with 34nm technology), but the firmware doesn't
+do perfect static wear leveling so the actual durability is less.
 In tests over several hundred days we have validated a write endurance
 greater than 200TB on the 40G Intel X25V using
 .Nm .
