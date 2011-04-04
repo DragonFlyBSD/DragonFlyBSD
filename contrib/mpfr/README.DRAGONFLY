@@ -1,7 +1,15 @@
 Original Source can be downloaded from:
-http://www.mpfr.org/mpfr-current/
+http://www.mpfr.org
 
-SHA1 (mpfr-2.4.1.tar.bz2) = 1f965793526cafefb30cda64cebf3712cb75b488
+file = mpfr-2.4.2.tar
+date = 30 Nov 2009
+size = 7137280
+sha1 = a927628065345b0706a71bfc1f08c23f036061a8
+
+file = mpfr-2.4.2-allpatches
+date = 11 Jan 2010
+size = 12218
+sha1 = c1a576a8279c705dbba3b33822ee615b009a1ac2
 
 A list of files and directories removed is in README.DELETED
 

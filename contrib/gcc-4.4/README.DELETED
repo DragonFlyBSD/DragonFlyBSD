@@ -152,7 +152,9 @@ gcc/config/i386/sol2-10.h
 gcc/config/i386/sol2-c1.asm
 gcc/config/i386/sol2-ci.asm
 gcc/config/i386/sol2-cn.asm
+gcc/config/i386/sol2-gas.h
 gcc/config/i386/sol2-gc1.asm
+gcc/config/i386/sol2-unwind.h
 gcc/config/i386/sol2.h
 gcc/config/i386/sysv4.h
 gcc/config/i386/t-crtfm
@@ -240,6 +242,7 @@ gcc/config/sh/
 gcc/config/soft-fp/
 gcc/config/sol2-10.h
 gcc/config/sol2-c.c
+gcc/config/sol2-gld.h
 gcc/config/sol2-protos.h
 gcc/config/sol2.c
 gcc/config/sol2.h
@@ -266,6 +269,7 @@ gcc/config/t-openbsd-thread
 gcc/config/t-rtems
 gcc/config/t-slibgcc-darwin
 gcc/config/t-slibgcc-elf-ver
+gcc/config/t-slibgcc-libgcc
 gcc/config/t-slibgcc-nolc-override
 gcc/config/t-slibgcc-sld
 gcc/config/t-sol2
@@ -592,6 +596,8 @@ libstdc++-v3/config/cpu/powerpc/
 libstdc++-v3/config/cpu/sh/
 libstdc++-v3/config/cpu/sparc/
 libstdc++-v3/config/locale/darwin/
+libstdc++-v3/config/locale/generic/c_locale.cc
+libstdc++-v3/config/locale/generic/ctype_members.cc
 libstdc++-v3/config/locale/gnu/
 libstdc++-v3/config/locale/ieee_1003.1-2001/
 libstdc++-v3/config/os/aix/

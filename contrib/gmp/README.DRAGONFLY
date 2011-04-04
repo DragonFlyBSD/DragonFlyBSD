@@ -1,7 +1,10 @@
 Original Source can be downloaded from:
 http://gmplib.org/
 
-SHA1 (gmp-4.3.1.tar.bz2) = acbd1edc61230b1457e9742136994110e4f381b2
+file = gmp-4.3.2.tar
+date = 7 Jan 2010
+size = 12042240
+sha1 = 00c67a5fe9dc1fd76c1d2b006aea0cb5d06fd241
 
 A list of files and directories removed is in README.DELETED
 
