@@ -5,7 +5,6 @@ PROG=	lint1
 SRCS=	cgram.y scan.l mem1.c mem.c err.c main1.c decl.c tree.c func.c \
 	init.c emit.c emit1.c y.tab.h
 NOMAN=
-WARNS?=	0
 LDADD+=	-ll
 DPADD+=	${LIBL}
 CFLAGS+= -I. -I${.CURDIR}
