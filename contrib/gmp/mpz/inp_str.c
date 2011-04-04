@@ -151,9 +151,8 @@ mpz_inp_str_nowhite (mpz_ptr x, FILE *stream, int base, int c, size_t nread)
     }
   else
     {
-      xsize = (((mp_size_t)
-                (str_size / __mp_bases[base].chars_per_bit_exactly))
-               / GMP_NUMB_BITS + 2);
+      xsize = 2 + (mp_size_t)
+	(str_size / (GMP_NUMB_BITS * mp_bases[base].chars_per_bit_exactly));
       MPZ_REALLOC (x, xsize);
 
       /* Convert the byte array in base BASE to our bignum format.  */

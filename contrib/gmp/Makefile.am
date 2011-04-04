@@ -2,7 +2,7 @@
 
 
 # Copyright 1991, 1993, 1994, 1996, 1997, 1999, 2000, 2001, 2002, 2003, 2004,
-# 2006, 2007, 2008 Free Software Foundation, Inc.
+# 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
 #
 # This file is part of the GNU MP Library.
 #
@@ -63,7 +63,8 @@ AUTOMAKE_OPTIONS = 1.8 gnu no-dependencies ansi2knr
 #        4.2.3    7:3:4    4:3:0   4:12:1
 #        4.2.4    7:4:4    4:4:0   4:13:1
 #        4.3.0    8:0:5    5:0:1   4:14:1
-#        4.3.1    8:1:5    5:1:1   4:15:1
+#        4.3.1    8:1:5    5:1:1   4:15:1	WRONG Really used same as 4.3.0
+#        4.3.2    8:2:5    5:2:1   4:16:1
 #
 # Starting at 3:0:0 is a slight abuse of the versioning system, but it
 # ensures we're past soname libgmp.so.2, which was used on Debian GNU/Linux
@@ -77,15 +78,15 @@ AUTOMAKE_OPTIONS = 1.8 gnu no-dependencies ansi2knr
 # libgmpxx.so.3.0.4) incrementing, to make it clear which GMP it's from.
 
 LIBGMP_LT_CURRENT =  8
-LIBGMP_LT_REVISION = 0
+LIBGMP_LT_REVISION = 2
 LIBGMP_LT_AGE =      5
 
 LIBGMPXX_LT_CURRENT =  5
-LIBGMPXX_LT_REVISION = 0
+LIBGMPXX_LT_REVISION = 2
 LIBGMPXX_LT_AGE =      1
 
 LIBMP_LT_CURRENT =  4
-LIBMP_LT_REVISION = 14
+LIBMP_LT_REVISION = 16
 LIBMP_LT_AGE =      1
 
 
@@ -405,3 +406,6 @@ gen-psqr_.c: gen-psqr.c $(ANSI2KNR)
 dist-hook:
 	-find $(distdir) \( -name CVS -type d \) -o -name "*~" -o -name ".#*" \
 		| xargs rm -rf
+	grep -F $(VERSION) $(srcdir)/Makefile.am \
+		| grep -q "^# *$(VERSION) *$(LIBGMP_LT_CURRENT):$(LIBGMP_LT_REVISION):$(LIBGMP_LT_AGE) *$(LIBGMPXX_LT_CURRENT):$(LIBGMPXX_LT_REVISION):$(LIBGMPXX_LT_AGE) *$(LIBMP_LT_CURRENT):$(LIBMP_LT_REVISION):$(LIBMP_LT_AGE)"
+	test -z "`sed -n 's/^# *[0-9]*\.[0-9]*\.[0-9]* *\([0-9]*:[0-9]*:[0-9]*\) *\([0-9]*:[0-9]*:[0-9]*\) *\([0-9]*:[0-9]*:[0-9]*\).*/A\1\nB\2\nC\3/p' $(srcdir)/Makefile.am | grep -v 'A6:3:3\|B3:5:0\|C4:7:1' | sort | uniq -d`"

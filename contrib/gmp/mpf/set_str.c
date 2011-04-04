@@ -250,8 +250,8 @@ mpf_set_str (mpf_ptr x, const char *str, int base)
       str_size = n_chars_needed;
 #endif
 
-    ma = (((mp_size_t) (str_size / mp_bases[base].chars_per_bit_exactly))
-	  / GMP_NUMB_BITS + 2);
+    ma = 2 + (mp_size_t)
+      (str_size / (GMP_NUMB_BITS * mp_bases[base].chars_per_bit_exactly));
     mp = TMP_ALLOC_LIMBS (ma);
     mn = mpn_set_str (mp, (unsigned char *) begs, str_size, base);
 

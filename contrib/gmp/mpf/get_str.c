@@ -174,7 +174,8 @@ mpf_get_str (char *dbuf, mp_exp_t *exp, int base, size_t n_digits, mpf_srcptr u)
      conversion.)  */
   tstr = (unsigned char *) TMP_ALLOC (n_digits + 2 * GMP_LIMB_BITS + 3);
 
-  n_limbs_needed = 2 + ((mp_size_t) (n_digits / mp_bases[base].chars_per_bit_exactly)) / GMP_NUMB_BITS;
+  n_limbs_needed = 2 + (mp_size_t)
+    (n_digits / (GMP_NUMB_BITS * mp_bases[base].chars_per_bit_exactly));
 
   if (ue <= n_limbs_needed)
     {

@@ -864,8 +864,7 @@ __GMP_DECLSPEC void mpn_mullow_n __GMP_PROTO ((mp_ptr, mp_srcptr, mp_srcptr, mp_
 #define mpn_mullow_basecase __MPN(mullow_basecase)
 __GMP_DECLSPEC void mpn_mullow_basecase __GMP_PROTO ((mp_ptr, mp_srcptr, mp_srcptr, mp_size_t));
 
-#define mpn_sqr_n __MPN(sqr_n)
-__GMP_DECLSPEC void mpn_sqr_n __GMP_PROTO ((mp_ptr, mp_srcptr, mp_size_t));
+#define mpn_sqr_n __MPN(sqr)	/* compatibility */
 
 #ifndef mpn_sqr_basecase  /* if not done with cpuvec in a fat binary */
 #define mpn_sqr_basecase __MPN(sqr_basecase)
@@ -1142,7 +1141,7 @@ void      mpn_toom4_sqr __GMP_PROTO ((mp_ptr, mp_srcptr, mp_size_t, mp_ptr));
 int       mpn_fft_best_k __GMP_PROTO ((mp_size_t, int)) ATTRIBUTE_CONST;
 
 #define   mpn_mul_fft __MPN(mul_fft)
-void      mpn_mul_fft __GMP_PROTO ((mp_ptr, mp_size_t, mp_srcptr, mp_size_t, mp_srcptr, mp_size_t, int));
+mp_limb_t mpn_mul_fft __GMP_PROTO ((mp_ptr, mp_size_t, mp_srcptr, mp_size_t, mp_srcptr, mp_size_t, int));
 
 #define   mpn_mul_fft_full __MPN(mul_fft_full)
 void      mpn_mul_fft_full __GMP_PROTO ((mp_ptr, mp_srcptr, mp_size_t, mp_srcptr, mp_size_t));
