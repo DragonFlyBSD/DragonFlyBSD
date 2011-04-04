@@ -40,13 +40,6 @@ MA 02110-1301, USA. */
 #endif
 #include <limits.h>
 
-/*
- * DragonFly: needed to build gcc44 on DragonFly-2.2, since the
- * headers are confused and define INTMAX_C et al, but not intmax_t.
- * So we include stdint.h explicitly to have these types for sure.
- */
-#include <stdint.h>
-
 /* Check if we are inside a build of MPFR or inside the test suite.
    This is needed in mpfr.h to export or import the functions.
    It matters only for Windows DLL */
