@@ -5463,12 +5463,17 @@ build_reinterpret_cast_1 (tree type, tree expr, bool c_cast_p,
 		 intype, type);
 
       expr = cp_build_unary_op (ADDR_EXPR, expr, 0, complain);
+
+      if (warn_strict_aliasing > 2)
+	strict_aliasing_warning (TREE_TYPE (expr), type, expr);
+
       if (expr != error_mark_node)
 	expr = build_reinterpret_cast_1
 	  (build_pointer_type (TREE_TYPE (type)), expr, c_cast_p,
 	   valid_p, complain);
       if (expr != error_mark_node)
-	expr = cp_build_indirect_ref (expr, 0, complain);
+	/* cp_build_indirect_ref isn't right for rvalue refs.  */
+	expr = convert_from_reference (fold_convert (type, expr));
       return expr;
     }
 
@@ -6091,11 +6096,15 @@ cp_build_modify_expr (tree lhs, enum tree_code modifycode, tree rhs,
     {
       int from_array;
 
-      if (BRACE_ENCLOSED_INITIALIZER_P (rhs))
-	rhs = digest_init (lhstype, rhs);
+      if (BRACE_ENCLOSED_INITIALIZER_P (newrhs))
+	{
+	  if (check_array_initializer (lhs, lhstype, newrhs))
+	    return error_mark_node;
+	  newrhs = digest_init (lhstype, newrhs);
+	}
 
       else if (!same_or_base_type_p (TYPE_MAIN_VARIANT (lhstype),
-				     TYPE_MAIN_VARIANT (TREE_TYPE (rhs))))
+				     TYPE_MAIN_VARIANT (TREE_TYPE (newrhs))))
 	{
 	  if (complain & tf_error)
 	    error ("incompatible types in assignment of %qT to %qT",

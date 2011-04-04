@@ -328,13 +328,17 @@ add_double_with_sign (unsigned HOST_WIDE_INT l1, HOST_WIDE_INT h1,
   HOST_WIDE_INT h;
 
   l = l1 + l2;
-  h = h1 + h2 + (l < l1);
+  h = (HOST_WIDE_INT) ((unsigned HOST_WIDE_INT) h1
+		       + (unsigned HOST_WIDE_INT) h2
+		       + (l < l1));
 
   *lv = l;
   *hv = h;
 
   if (unsigned_p)
-    return (unsigned HOST_WIDE_INT) h < (unsigned HOST_WIDE_INT) h1;
+    return ((unsigned HOST_WIDE_INT) h < (unsigned HOST_WIDE_INT) h1
+	    || (h == h1
+		&& l < l1));
   else
     return OVERFLOW_SUM_SIGN (h1, h2, h);
 }
@@ -4475,9 +4479,9 @@ make_range (tree exp, int *pin_p, tree *plow, tree *phigh,
 	  n_high = range_binop (MINUS_EXPR, exp_type,
 				build_int_cst (exp_type, 0),
 				0, low, 0);
-	  low = n_low, high = n_high;
-	  exp = arg0;
-	  continue;
+	  if (n_high != 0 && TREE_OVERFLOW (n_high))
+	    break;
+	  goto normalize;
 
 	case BIT_NOT_EXPR:
 	  /* ~ X -> -X - 1  */
@@ -4510,6 +4514,7 @@ make_range (tree exp, int *pin_p, tree *plow, tree *phigh,
 	  if (TYPE_OVERFLOW_UNDEFINED (arg0_type))
 	    *strict_overflow_p = true;
 
+	normalize:
 	  /* Check for an unsigned range which has wrapped around the maximum
 	     value thus making n_high < n_low, and normalize it.  */
 	  if (n_low && n_high && tree_int_cst_lt (n_high, n_low))

@@ -1601,7 +1601,13 @@ instantiate_virtual_regs_in_insn (rtx insn)
       if (!safe_insn_predicate (insn_code, i, x))
 	{
 	  start_sequence ();
-	  x = force_reg (insn_data[insn_code].operand[i].mode, x);
+	  if (REG_P (x))
+	    {
+	      gcc_assert (REGNO (x) <= LAST_VIRTUAL_REGISTER);
+	      x = copy_to_reg (x);
+	    }
+	  else
+	    x = force_reg (insn_data[insn_code].operand[i].mode, x);
 	  seq = get_insns ();
 	  end_sequence ();
 	  if (seq)
@@ -3401,12 +3407,10 @@ gimplify_parameters (void)
 		  DECL_IGNORED_P (local) = 0;
 		  /* If PARM was addressable, move that flag over
 		     to the local copy, as its address will be taken,
-		     not the PARMs.  */
+		     not the PARMs.  Keep the parms address taken
+		     as we'll query that flag during gimplification.  */
 		  if (TREE_ADDRESSABLE (parm))
-		    {
-		      TREE_ADDRESSABLE (parm) = 0;
-		      TREE_ADDRESSABLE (local) = 1;
-		    }
+		    TREE_ADDRESSABLE (local) = 1;
 		}
 	      else
 		{
@@ -4274,12 +4278,8 @@ stack_protect_prologue (void)
   tree guard_decl = targetm.stack_protect_guard ();
   rtx x, y;
 
-  /* Avoid expand_expr here, because we don't want guard_decl pulled
-     into registers unless absolutely necessary.  And we know that
-     crtl->stack_protect_guard is a local stack slot, so this skips
-     all the fluff.  */
-  x = validize_mem (DECL_RTL (crtl->stack_protect_guard));
-  y = validize_mem (DECL_RTL (guard_decl));
+  x = expand_normal (crtl->stack_protect_guard);
+  y = expand_normal (guard_decl);
 
   /* Allow the target to copy from Y to X without leaking Y into a
      register.  */
@@ -4312,12 +4312,8 @@ stack_protect_epilogue (void)
   rtx label = gen_label_rtx ();
   rtx x, y, tmp;
 
-  /* Avoid expand_expr here, because we don't want guard_decl pulled
-     into registers unless absolutely necessary.  And we know that
-     crtl->stack_protect_guard is a local stack slot, so this skips
-     all the fluff.  */
-  x = validize_mem (DECL_RTL (crtl->stack_protect_guard));
-  y = validize_mem (DECL_RTL (guard_decl));
+  x = expand_normal (crtl->stack_protect_guard);
+  y = expand_normal (guard_decl);
 
   /* Allow the target to compare Y with X without leaking either into
      a register.  */

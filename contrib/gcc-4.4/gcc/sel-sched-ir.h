@@ -1,6 +1,6 @@
 /* Instruction scheduling pass.  This file contains definitions used
    internally in the scheduler.
-   Copyright (C) 2006, 2007, 2008 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -296,6 +296,9 @@ struct _fence
   /* Insn, which has been scheduled last on this fence.  */
   rtx last_scheduled_insn;
 
+  /* The last value of can_issue_more variable on this fence.  */
+  int issue_more;
+
   /* If non-NULL force the next scheduled insn to be SCHED_NEXT.  */
   rtx sched_next;
 
@@ -325,6 +328,7 @@ typedef struct _fence *fence_t;
 #define FENCE_DC(F) ((F)->dc)
 #define FENCE_TC(F) ((F)->tc)
 #define FENCE_LAST_SCHEDULED_INSN(F) ((F)->last_scheduled_insn)
+#define FENCE_ISSUE_MORE(F) ((F)->issue_more)
 #define FENCE_EXECUTING_INSNS(F) ((F)->executing_insns)
 #define FENCE_READY_TICKS(F) ((F)->ready_ticks)
 #define FENCE_READY_TICKS_SIZE(F) ((F)->ready_ticks_size)
@@ -714,8 +718,9 @@ struct _sel_insn_data
      bitmap has its bit set.  */
   bitmap found_deps;
 
-  /* An INSN_UID bit is set when this is a bookkeeping insn generated from 
-     a parent with this uid.  */
+  /* An INSN_UID bit is set when this is a bookkeeping insn generated from
+     a parent with this uid.  If a parent is a bookkeeping copy, all its
+     originators are transitively included in this set.  */
   bitmap originators;
 
   /* A hashtable caching the result of insn transformations through this one.  */
@@ -1120,7 +1125,8 @@ get_all_loop_exits (basic_block bb)
 
       /* Traverse all loop headers.  */
       for (i = 0; VEC_iterate (edge, exits, i, e); i++)
-	if (in_current_region_p (e->dest))
+	if (in_current_region_p (e->dest)
+	    || inner_loop_header_p (e->dest))
 	  {
 	    VEC(edge, heap) *next_exits = get_all_loop_exits (e->dest);
   
@@ -1356,12 +1362,11 @@ _eligible_successor_edge_p (edge e1, succ_iterator *ip)
           && !(flags & SUCCS_OUT))
         return false;
 
+      if (EDGE_COUNT (bb->succs) == 0)
+	return false;
+
       e2 = EDGE_SUCC (bb, 0);
       bb = e2->dest;
-      
-      /* This couldn't happen inside a region.  */
-      gcc_assert (! in_current_region_p (bb)
-                  || (flags & SUCCS_OUT));
     }
   
   /* Save the second edge for later checks.  */
@@ -1575,16 +1580,15 @@ extern bool tidy_control_flow (basic_block, bool);
 extern void free_bb_note_pool (void);
 
 extern void sel_remove_empty_bb (basic_block, bool, bool);
-extern bool maybe_tidy_empty_bb (basic_block bb);
+extern void purge_empty_blocks (void);
 extern basic_block sel_split_edge (edge);
 extern basic_block sel_create_recovery_block (insn_t);
 extern void sel_merge_blocks (basic_block, basic_block);
-extern void sel_redirect_edge_and_branch (edge, basic_block);
+extern bool sel_redirect_edge_and_branch (edge, basic_block);
 extern void sel_redirect_edge_and_branch_force (edge, basic_block);
 extern void sel_init_pipelining (void);
 extern void sel_finish_pipelining (void);
 extern void sel_sched_region (int);
-extern void sel_find_rgns (void);
 extern loop_p get_loop_nest_for_rgn (unsigned int);
 extern bool considered_for_pipelining_p (struct loop *);
 extern void make_region_from_loop_preheader (VEC(basic_block, heap) **);
@@ -1609,6 +1613,7 @@ extern void init_lv_sets (void);
 extern void free_lv_sets (void);
 extern void setup_nop_and_exit_insns (void);
 extern void free_nop_and_exit_insns (void);
+extern void free_data_for_scheduled_insn (insn_t);
 extern void setup_nop_vinsn (void);
 extern void free_nop_vinsn (void);
 extern void sel_set_sched_flags (void);

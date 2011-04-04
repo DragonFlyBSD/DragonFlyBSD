@@ -1,6 +1,6 @@
 # GCC target-specific configuration file.
 # Copyright 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007,
-# 2008, 2009 Free Software Foundation, Inc.
+# 2008, 2009, 2010 Free Software Foundation, Inc.
 
 #This file is part of GCC.
 
@@ -481,6 +481,12 @@ case ${target} in
       ;;
   esac
   fbsd_tm_file="${fbsd_tm_file} freebsd-spec.h freebsd.h"
+  case ${target} in
+    *-*-freebsd[345].*)
+      :;;
+    *)
+      default_use_cxa_atexit=yes;;
+  esac
   ;;
 *-*-dragonfly*)
   gas=yes
@@ -724,7 +730,7 @@ arm*-*-linux*)			# ARM GNU/Linux with ELF
 	case ${target} in
 	arm*-*-linux-*eabi)
 	    tm_file="$tm_file arm/bpabi.h arm/linux-eabi.h"
-	    tmake_file="$tmake_file arm/t-arm-elf arm/t-bpabi arm/t-linux-eabi"
+	    tmake_file="$tmake_file arm/t-arm-elf arm/t-bpabi arm/t-linux-eabi t-slibgcc-libgcc"
   	    # The BPABI long long divmod functions return a 128-bit value in
 	    # registers r0-r3.  Correctly modeling that requires the use of
 	    # TImode.
@@ -1105,7 +1111,7 @@ i[34567]86-*-linux* | i[34567]86-*-kfreebsd*-gnu | i[34567]86-*-knetbsd*-gnu | i
 			tmake_file="${tmake_file} i386/t-linux64"
 			need_64bit_hwint=yes
 			case X"${with_cpu}" in
-			Xgeneric|Xcore2|Xnocona|Xx86-64|Xamdfam10|Xbarcelona|Xk8|Xopteron|Xathlon64|Xathlon-fx)
+			Xgeneric|Xcore2|Xnocona|Xx86-64|Xamdfam10|Xbarcelona|Xk8|Xopteron|Xathlon64|Xathlon-fx|Xathlon64-sse3|Xk8-sse3|Xopteron-sse3)
 				;;
 			X)
 				if test x$with_cpu_64 = x; then
@@ -1114,7 +1120,7 @@ i[34567]86-*-linux* | i[34567]86-*-kfreebsd*-gnu | i[34567]86-*-knetbsd*-gnu | i
 				;;
 			*)
 				echo "Unsupported CPU used in --with-cpu=$with_cpu, supported values:" 1>&2
-				echo "generic core2 nocona x86-64 amdfam10 barcelona k8 opteron athlon64 athlon-fx" 1>&2
+				echo "generic core2 nocona x86-64 amdfam10 barcelona k8 opteron athlon64 athlon-fx athlon64-sse3 k8-sse3 opteron-sse3" 1>&2
 				exit 1
 				;;
 			esac
@@ -1194,6 +1200,12 @@ i[34567]86-*-solaris2*)
 		;;
 	esac
 	tm_file="${tm_file} i386/sol2.h"
+	if test x$gnu_ld = xyes; then
+		tm_file="${tm_file} sol2-gld.h"
+	fi
+	if test x$gas = xyes; then
+		tm_file="${tm_file} i386/sol2-gas.h"
+	fi
 	tmake_file="${tmake_file} t-sol2 t-svr4"
 	c_target_objs="${c_target_objs} sol2-c.o"
 	cxx_target_objs="${cxx_target_objs} sol2-c.o"
@@ -1219,7 +1231,7 @@ i[34567]86-*-solaris2*)
 		# libgcc/configure.ac instead.
 		need_64bit_hwint=yes
 		case X"${with_cpu}" in
-		Xgeneric|Xcore2|Xnocona|Xx86-64|Xamdfam10|Xbarcelona|Xk8|Xopteron|Xathlon64|Xathlon-fx)
+		Xgeneric|Xcore2|Xnocona|Xx86-64|Xamdfam10|Xbarcelona|Xk8|Xopteron|Xathlon64|Xathlon-fx|Xathlon64-sse3|Xk8-sse3|Xopteron-sse3)
 			;;
 		X)
 			if test x$with_cpu_64 = x; then
@@ -1228,7 +1240,7 @@ i[34567]86-*-solaris2*)
 			;;
 		*)
 			echo "Unsupported CPU used in --with-cpu=$with_cpu, supported values:" 1>&2
-			echo "generic core2 nocona x86-64 amdfam10 barcelona k8 opteron athlon64 athlon-fx" 1>&2
+			echo "generic core2 nocona x86-64 amdfam10 barcelona k8 opteron athlon64 athlon-fx athlon64-sse3 k8-sse3 opteron-sse3" 1>&2
 			exit 1
 			;;
 		esac
@@ -2208,7 +2220,7 @@ sparc-*-elf*)
 	extra_parts="crti.o crtn.o crtbegin.o crtend.o"
 	;;
 sparc-*-linux*)		# SPARC's running GNU/Linux, libc6
-	tm_file="${tm_file} dbxelf.h elfos.h svr4.h sparc/sysv4.h linux.h"
+	tm_file="${tm_file} dbxelf.h elfos.h svr4.h sparc/sysv4.h sparc/gas.h linux.h"
 	extra_options="${extra_options} sparc/long-double-switch.opt"
 	tmake_file="${tmake_file} sparc/t-linux"
 	if test x$enable_targets = xall; then
@@ -2233,7 +2245,7 @@ sparc64-*-solaris2* | sparcv9-*-solaris2*)
 	esac
 	tm_file="${tm_file} sparc/sol2.h sparc/sol2-64.h sparc/sol2-bi.h"
 	if test x$gnu_ld = xyes; then
-		tm_file="${tm_file} sparc/sol2-gld.h sparc/sol2-gld-bi.h"
+		tm_file="${tm_file} sol2-gld.h sparc/sol2-gld-bi.h"
 	fi
 	if test x$gas = xyes; then
 		tm_file="${tm_file} sparc/sol2-gas.h sparc/sol2-gas-bi.h"
@@ -2244,6 +2256,9 @@ sparc64-*-solaris2* | sparcv9-*-solaris2*)
 		tmake_file="$tmake_file t-slibgcc-elf-ver"
 	else
 		tmake_file="$tmake_file t-slibgcc-sld"
+	fi
+	if test x$gas = xyes; then
+		tm_file="usegas.h ${tm_file}"
 	fi
 	c_target_objs="sol2-c.o"
 	cxx_target_objs="sol2-c.o"
@@ -2264,7 +2279,7 @@ sparc-*-solaris2*)
 	esac
 	tm_file="${tm_file} sparc/sol2.h"
 	if test x$gnu_ld = xyes; then
-		tm_file="${tm_file} sparc/sol2-gld.h"
+		tm_file="${tm_file} sol2-gld.h"
 	fi
 	if test x$gas = xyes; then
 		tm_file="${tm_file} sparc/sol2-gas.h"
@@ -2281,6 +2296,9 @@ sparc-*-solaris2*)
 	fi
 	if test x$gas = xyes; then
 		tm_file="${tm_file} sparc/sol2-gas-bi.h"
+	fi
+	if test x$gas = xyes; then
+		tm_file="usegas.h ${tm_file}"
 	fi
 	tm_file="${tm_file} tm-dwarf2.h"
 	tmake_file="$tmake_file sparc/t-sol2-64"
@@ -2320,7 +2338,7 @@ sparc64-*-freebsd*|ultrasparc-*-freebsd*)
 	esac
 	;;
 sparc64-*-linux*)		# 64-bit SPARC's running GNU/Linux
-	tm_file="sparc/biarch64.h ${tm_file} dbxelf.h elfos.h svr4.h sparc/sysv4.h linux.h sparc/linux64.h"
+	tm_file="sparc/biarch64.h ${tm_file} dbxelf.h elfos.h svr4.h sparc/sysv4.h sparc/gas.h linux.h sparc/linux64.h"
 	extra_options="${extra_options} sparc/long-double-switch.opt"
 	tmake_file="${tmake_file} sparc/t-linux sparc/t-linux64 sparc/t-crtfm"
 	;;
@@ -2489,7 +2507,10 @@ if test x$with_cpu = x ; then
         amdfam10-*|barcelona-*)
           with_cpu=amdfam10
           ;;
-        k8-*|opteron-*|athlon_64-*)
+        k8_sse3-*|opteron_sse3-*|athlon64_sse3-*)
+          with_cpu=k8-sse3
+          ;;
+        k8-*|opteron-*|athlon64-*|athlon_fx-*)
           with_cpu=k8
           ;;
         athlon_xp-*|athlon_mp-*|athlon_4-*)
@@ -2535,7 +2556,10 @@ if test x$with_cpu = x ; then
         amdfam10-*|barcelona-*)
           with_cpu=amdfam10
           ;;
-        k8-*|opteron-*|athlon_64-*)
+        k8_sse3-*|opteron_sse3-*|athlon64_sse3-*)
+          with_cpu=k8-sse3
+          ;;
+        k8-*|opteron-*|athlon64-*|athlon_fx-*)
           with_cpu=k8
           ;;
         nocona-*)
@@ -2692,7 +2716,7 @@ case "${target}" in
 
 		case "$with_fpu" in
 		"" \
-		| fpa | fpe2 | fpe3 | maverick | vfp | vfp3 | neon )
+		| fpa | fpe2 | fpe3 | maverick | vfp | vfp3 | vfpv3 | vfpv3-d16 | neon )
 			# OK
 			;;
 		*)
@@ -2829,7 +2853,7 @@ case "${target}" in
 				esac
 				# OK
 				;;
-			"" | amdfam10 | barcelona | k8 | opteron | athlon64 | athlon-fx | nocona | core2 | generic)
+			"" | amdfam10 | barcelona | k8-sse3 | opteron-sse3 | athlon64-sse3 | k8 | opteron | athlon64 | athlon-fx | nocona | core2 | generic)
 				# OK
 				;;
 			*)

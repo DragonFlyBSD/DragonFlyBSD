@@ -2780,6 +2780,8 @@ expand_template_argument_pack (tree args)
   for (in_arg = 0; in_arg < nargs; ++in_arg)
     {
       tree arg = TREE_VEC_ELT (args, in_arg);
+      if (arg == NULL_TREE)
+	return args;
       if (ARGUMENT_PACK_P (arg))
         {
           int num_packed = TREE_VEC_LENGTH (ARGUMENT_PACK_ARGS (arg));
@@ -3670,7 +3672,8 @@ check_default_tmpl_args (tree decl, tree parms, int is_primary,
   else if (is_friend_decl)
     msg = "default template arguments may not be used in function template friend declarations";
   else if (TREE_CODE (decl) == FUNCTION_DECL && (cxx_dialect == cxx98))
-    msg = "default template arguments may not be used in function templates";
+    msg = ("default template arguments may not be used in function templates "
+	   "without -std=c++0x or -std=gnu++0x");
   else if (is_partial)
     msg = "default template arguments may not be used in partial specializations";
   else
@@ -4321,6 +4324,52 @@ convert_nontype_argument_function (tree type, tree expr)
   return fn;
 }
 
+/* Subroutine of convert_nontype_argument.
+   Check if EXPR of type TYPE is a valid pointer-to-member constant.
+   Emit an error otherwise.  */
+
+static bool
+check_valid_ptrmem_cst_expr (tree type, tree expr)
+{
+  STRIP_NOPS (expr);
+  if (expr && (null_ptr_cst_p (expr) || TREE_CODE (expr) == PTRMEM_CST))
+    return true;
+  error ("%qE is not a valid template argument for type %qT",
+	 expr, type);
+  error ("it must be a pointer-to-member of the form `&X::Y'");
+  return false;
+}
+
+/* Returns TRUE iff the address of OP is value-dependent.
+
+   14.6.2.4 [temp.dep.temp]:
+   A non-integral non-type template-argument is dependent if its type is
+   dependent or it has either of the following forms
+     qualified-id
+     & qualified-id
+   and contains a nested-name-specifier which specifies a class-name that
+   names a dependent type.
+
+   We generalize this to just say that the address of a member of a
+   dependent class is value-dependent; the above doesn't cover the
+   address of a static data member named with an unqualified-id.  */
+
+static bool
+has_value_dependent_address (tree op)
+{
+  /* We could use get_inner_reference here, but there's no need;
+     this is only relevant for template non-type arguments, which
+     can only be expressed as &id-expression.  */
+  if (DECL_P (op))
+    {
+      tree ctx = CP_DECL_CONTEXT (op);
+      if (TYPE_P (ctx) && dependent_type_p (ctx))
+	return true;
+    }
+
+  return false;
+}
+
 /* Attempt to convert the non-type template parameter EXPR to the
    indicated TYPE.  If the conversion is successful, return the
    converted value.  If the conversion is unsuccessful, return
@@ -4359,6 +4408,11 @@ convert_nontype_argument (tree type, tree expr)
       return NULL_TREE;
     }
 
+  /* Add the ADDR_EXPR now for the benefit of
+     value_dependent_expression_p.  */
+  if (TYPE_PTROBV_P (type))
+    expr = decay_conversion (expr);
+
   /* If we are in a template, EXPR may be non-dependent, but still
      have a syntactic, rather than semantic, form.  For example, EXPR
      might be a SCOPE_REF, rather than the VAR_DECL to which the
@@ -4366,7 +4420,11 @@ convert_nontype_argument (tree type, tree expr)
      so that access checking can be performed when the template is
      instantiated -- but here we need the resolved form so that we can
      convert the argument.  */
-  expr = fold_non_dependent_expr (expr);
+  if (TYPE_REF_OBJ_P (type)
+      && has_value_dependent_address (expr))
+    /* If we want the address and it's value-dependent, don't fold.  */;
+  else
+    expr = fold_non_dependent_expr (expr);
   if (error_operand_p (expr))
     return error_mark_node;
   expr_type = TREE_TYPE (expr);
@@ -4620,6 +4678,11 @@ convert_nontype_argument (tree type, tree expr)
       if (expr == error_mark_node)
 	return error_mark_node;
 
+      /* [temp.arg.nontype] bullet 1 says the pointer to member
+         expression must be a pointer-to-member constant.  */
+      if (!check_valid_ptrmem_cst_expr (type, expr))
+	return error_mark_node;
+
       /* There is no way to disable standard conversions in
 	 resolve_address_of_overloaded_function (called by
 	 instantiate_type). It is possible that the call succeeded by
@@ -4646,6 +4709,11 @@ convert_nontype_argument (tree type, tree expr)
      qualification conversions (_conv.qual_) are applied.  */
   else if (TYPE_PTRMEM_P (type))
     {
+      /* [temp.arg.nontype] bullet 1 says the pointer to member
+         expression must be a pointer-to-member constant.  */
+      if (!check_valid_ptrmem_cst_expr (type, expr))
+	return error_mark_node;
+
       expr = perform_qualification_conversions (type, expr);
       if (expr == error_mark_node)
 	return expr;
@@ -5061,7 +5129,7 @@ convert_template_argument (tree parm,
 		      error ("type/value mismatch at argument %d in "
 			     "template parameter list for %qD",
 			     i + 1, in_decl);
-		      error ("  expected a template of type %qD, got %qD",
+		      error ("  expected a template of type %qD, got %qT",
 			     parm, orig_arg);
 		    }
 
@@ -9575,13 +9643,8 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	  {
 	    /* The type of the implicit object parameter gets its
 	       cv-qualifiers from the FUNCTION_TYPE. */
-	    tree method_type;
-	    tree this_type = cp_build_qualified_type (TYPE_MAIN_VARIANT (r),
-						      cp_type_quals (type));
 	    tree memptr;
-	    method_type = build_method_type_directly (this_type,
-						      TREE_TYPE (type),
-						      TYPE_ARG_TYPES (type));
+	    tree method_type = build_memfn_type (type, r, cp_type_quals (type));
 	    memptr = build_ptrmemfunc_type (build_pointer_type (method_type));
 	    return cp_build_qualified_type_real (memptr, cp_type_quals (t),
 						 complain);
@@ -9684,6 +9747,7 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 				     in_decl, /*entering_scope=*/1);
 	tree f = tsubst_copy (TYPENAME_TYPE_FULLNAME (t), args,
 			      complain, in_decl);
+	int quals;
 
 	if (ctx == error_mark_node || f == error_mark_node)
 	  return error_mark_node;
@@ -9733,8 +9797,15 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 		     t, f);
 	  }
 
-	return cp_build_qualified_type_real
-	  (f, cp_type_quals (f) | cp_type_quals (t), complain);
+	/* cv-quals from the template are discarded when
+	   substituting in a function or reference type.  */
+	if (TREE_CODE (f) == FUNCTION_TYPE
+	    || TREE_CODE (f) == METHOD_TYPE
+	    || TREE_CODE (f) == REFERENCE_TYPE)
+	  quals = cp_type_quals (f);
+	else
+	  quals = cp_type_quals (f) | cp_type_quals (t);
+	return cp_build_qualified_type_real (f, quals, complain);
       }
 
     case UNBOUND_CLASS_TEMPLATE:
@@ -9866,7 +9937,7 @@ tsubst_baselink (tree baselink, tree object_type,
     qualifying_scope = tsubst (qualifying_scope, args,
 			       complain, in_decl);
     fns = BASELINK_FUNCTIONS (baselink);
-    optype = BASELINK_OPTYPE (baselink);
+    optype = tsubst (BASELINK_OPTYPE (baselink), args, complain, in_decl);
     if (TREE_CODE (fns) == TEMPLATE_ID_EXPR)
       {
 	template_id_p = true;
@@ -9877,6 +9948,8 @@ tsubst_baselink (tree baselink, tree object_type,
 						complain, in_decl);
       }
     name = DECL_NAME (get_first_fn (fns));
+    if (IDENTIFIER_TYPENAME_P (name))
+      name = mangle_conv_op_name_for_type (optype);
     baselink = lookup_fnfields (qualifying_scope, name, /*protect=*/1);
 
     /* If lookup found a single function, mark it as used at this
@@ -9895,8 +9968,7 @@ tsubst_baselink (tree baselink, tree object_type,
 		    BASELINK_FUNCTIONS (baselink),
 		    template_args);
     /* Update the conversion operator type.  */
-    BASELINK_OPTYPE (baselink) 
-      = tsubst (optype, args, complain, in_decl);
+    BASELINK_OPTYPE (baselink) = optype;
 
     if (!object_type)
       object_type = current_class_type;
@@ -12657,9 +12729,11 @@ type_unification_real (tree tparms,
 	     to explicitly check cxx_dialect here.  */
           if (TREE_PURPOSE (TREE_VEC_ELT (tparms, i)))
             {
-              tree arg = tsubst_template_arg
-				(TREE_PURPOSE (TREE_VEC_ELT (tparms, i)),
-				 targs, tf_none, NULL_TREE);
+	      tree parm = TREE_VALUE (TREE_VEC_ELT (tparms, i));
+	      tree arg = TREE_PURPOSE (TREE_VEC_ELT (tparms, i));
+              arg = tsubst_template_arg (arg, targs, tf_none, NULL_TREE);
+	      arg = convert_template_argument (parm, arg, targs, tf_none,
+					       i, NULL_TREE);
               if (arg == error_mark_node)
                 return 1;
               else
@@ -16410,6 +16484,13 @@ value_dependent_expression_p (tree expression)
     case MODOP_EXPR:
       return ((value_dependent_expression_p (TREE_OPERAND (expression, 0)))
 	      || (value_dependent_expression_p (TREE_OPERAND (expression, 2))));
+
+    case ADDR_EXPR:
+      {
+	tree op = TREE_OPERAND (expression, 0);
+	return (value_dependent_expression_p (op)
+		|| has_value_dependent_address (op));
+      }
 
     default:
       /* A constant expression is value-dependent if any subexpression is

@@ -1,5 +1,5 @@
 /* Instruction scheduling pass.  Selective scheduler and pipeliner.
-   Copyright (C) 2006, 2007, 2008 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -258,10 +258,10 @@ init_fence_for_scheduling (fence_t f)
 
 /* Add new fence consisting of INSN and STATE to the list pointed to by LP.  */
 static void
-flist_add (flist_t *lp, insn_t insn, state_t state, deps_t dc, void *tc, 
-           insn_t last_scheduled_insn, VEC(rtx,gc) *executing_insns, 
-           int *ready_ticks, int ready_ticks_size, insn_t sched_next, 
-           int cycle, int cycle_issued_insns, 
+flist_add (flist_t *lp, insn_t insn, state_t state, deps_t dc, void *tc,
+           insn_t last_scheduled_insn, VEC(rtx,gc) *executing_insns,
+           int *ready_ticks, int ready_ticks_size, insn_t sched_next,
+           int cycle, int cycle_issued_insns, int issue_more,
            bool starts_cycle_p, bool after_stall_p)
 {
   fence_t f;
@@ -286,6 +286,7 @@ flist_add (flist_t *lp, insn_t insn, state_t state, deps_t dc, void *tc,
   FENCE_TC (f) = tc;
 
   FENCE_LAST_SCHEDULED_INSN (f) = last_scheduled_insn;
+  FENCE_ISSUE_MORE (f) = issue_more;
   FENCE_EXECUTING_INSNS (f) = executing_insns;
   FENCE_READY_TICKS (f) = ready_ticks;
   FENCE_READY_TICKS_SIZE (f) = ready_ticks_size;
@@ -432,7 +433,7 @@ reset_target_context (tc_t tc, bool clean_p)
 static void
 copy_deps_context (deps_t to, deps_t from)
 {
-  init_deps (to);
+  init_deps (to, false);
   deps_join (to, from);
 }
 
@@ -449,7 +450,7 @@ create_deps_context (void)
 {
   deps_t dc = alloc_deps_context ();
 
-  init_deps (dc);
+  init_deps (dc, false);
   return dc;
 }
 
@@ -483,7 +484,7 @@ static void
 reset_deps_context (deps_t dc)
 {
   clear_deps_context (dc);
-  init_deps (dc);
+  init_deps (dc, false);
 }
 
 /* This structure describes the dependence analysis hooks for advancing 
@@ -616,8 +617,9 @@ init_fences (insn_t old_fence)
                  XCNEWVEC (int, ready_ticks_size), /* ready_ticks */
                  ready_ticks_size,
                  NULL_RTX /* sched_next */,
-		 1 /* cycle */, 0 /* cycle_issued_insns */, 
-		 1 /* starts_cycle_p */, 0 /* after_stall_p */);  
+		 1 /* cycle */, 0 /* cycle_issued_insns */,
+		 issue_rate, /* issue_more */
+		 1 /* starts_cycle_p */, 0 /* after_stall_p */);
     }
 }
 
@@ -627,15 +629,15 @@ init_fences (insn_t old_fence)
    2) deps context and cycle is propagated from more probable edge;
    3) all other fields are set to corresponding constant values.  
 
-   INSN, STATE, DC, TC, LAST_SCHEDULED_INSN, EXECUTING_INSNS, 
-   READY_TICKS, READY_TICKS_SIZE, SCHED_NEXT, CYCLE and AFTER_STALL_P
-   are the corresponding fields of the second fence.  */
+   INSN, STATE, DC, TC, LAST_SCHEDULED_INSN, EXECUTING_INSNS,
+   READY_TICKS, READY_TICKS_SIZE, SCHED_NEXT, CYCLE, ISSUE_MORE
+   and AFTER_STALL_P are the corresponding fields of the second fence.  */
 static void
 merge_fences (fence_t f, insn_t insn,
 	      state_t state, deps_t dc, void *tc, 
               rtx last_scheduled_insn, VEC(rtx, gc) *executing_insns,
               int *ready_ticks, int ready_ticks_size,
-	      rtx sched_next, int cycle, bool after_stall_p)
+	      rtx sched_next, int cycle, int issue_more, bool after_stall_p)
 {
   insn_t last_scheduled_insn_old = FENCE_LAST_SCHEDULED_INSN (f);
 
@@ -665,6 +667,7 @@ merge_fences (fence_t f, insn_t insn,
         FENCE_CYCLE (f) = cycle;
 
       FENCE_LAST_SCHEDULED_INSN (f) = NULL;
+      FENCE_ISSUE_MORE (f) = issue_rate;
       VEC_free (rtx, gc, executing_insns);
       free (ready_ticks);
       if (FENCE_EXECUTING_INSNS (f))
@@ -696,6 +699,7 @@ merge_fences (fence_t f, insn_t insn,
           delete_target_context (tc);
   
           FENCE_LAST_SCHEDULED_INSN (f) = NULL;
+	  FENCE_ISSUE_MORE (f) = issue_rate;
         }
       else
         if (candidate->src == BLOCK_FOR_INSN (last_scheduled_insn))
@@ -712,6 +716,7 @@ merge_fences (fence_t f, insn_t insn,
             FENCE_TC (f) = tc;
 
             FENCE_LAST_SCHEDULED_INSN (f) = last_scheduled_insn;
+	    FENCE_ISSUE_MORE (f) = issue_more;
           }
         else
           {
@@ -795,10 +800,11 @@ merge_fences (fence_t f, insn_t insn,
    other parameters.  */
 static void
 add_to_fences (flist_tail_t new_fences, insn_t insn,
-               state_t state, deps_t dc, void *tc, rtx last_scheduled_insn, 
-               VEC(rtx, gc) *executing_insns, int *ready_ticks, 
-               int ready_ticks_size, rtx sched_next, int cycle, 
-               int cycle_issued_insns, bool starts_cycle_p, bool after_stall_p)
+               state_t state, deps_t dc, void *tc, rtx last_scheduled_insn,
+               VEC(rtx, gc) *executing_insns, int *ready_ticks,
+               int ready_ticks_size, rtx sched_next, int cycle,
+               int cycle_issued_insns, int issue_rate,
+	       bool starts_cycle_p, bool after_stall_p)
 {
   fence_t f = flist_lookup (FLIST_TAIL_HEAD (new_fences), insn);
 
@@ -807,16 +813,16 @@ add_to_fences (flist_tail_t new_fences, insn_t insn,
       flist_add (FLIST_TAIL_TAILP (new_fences), insn, state, dc, tc,
 		 last_scheduled_insn, executing_insns, ready_ticks, 
                  ready_ticks_size, sched_next, cycle, cycle_issued_insns,
-		 starts_cycle_p, after_stall_p);
+		 issue_rate, starts_cycle_p, after_stall_p);
 
       FLIST_TAIL_TAILP (new_fences)
 	= &FLIST_NEXT (*FLIST_TAIL_TAILP (new_fences));
     }
   else
     {
-      merge_fences (f, insn, state, dc, tc, last_scheduled_insn, 
-                    executing_insns, ready_ticks, ready_ticks_size, 
-                    sched_next, cycle, after_stall_p);
+      merge_fences (f, insn, state, dc, tc, last_scheduled_insn,
+                    executing_insns, ready_ticks, ready_ticks_size,
+                    sched_next, cycle, issue_rate, after_stall_p);
     }
 }
 
@@ -835,7 +841,7 @@ move_fence_to_fences (flist_t old_fences, flist_tail_t new_fences)
       merge_fences (f, old->insn, old->state, old->dc, old->tc,
                     old->last_scheduled_insn, old->executing_insns,
                     old->ready_ticks, old->ready_ticks_size,
-                    old->sched_next, old->cycle, 
+                    old->sched_next, old->cycle, old->issue_more,
                     old->after_stall_p);
     }
   else
@@ -861,7 +867,7 @@ add_clean_fence_to_fences (flist_tail_t new_fences, insn_t succ, fence_t fence)
                  NULL_RTX, NULL, 
                  XCNEWVEC (int, ready_ticks_size), ready_ticks_size,
                  NULL_RTX, FENCE_CYCLE (fence) + 1,
-                 0, 1, FENCE_AFTER_STALL_P (fence));
+                 0, issue_rate, 1, FENCE_AFTER_STALL_P (fence));
 }
 
 /* Add a new fence to NEW_FENCES list and initialize all of its data 
@@ -885,6 +891,7 @@ add_dirty_fence_to_fences (flist_tail_t new_fences, insn_t succ, fence_t fence)
                  FENCE_SCHED_NEXT (fence),
                  FENCE_CYCLE (fence),
                  FENCE_ISSUED_INSNS (fence),
+		 FENCE_ISSUE_MORE (fence),
                  FENCE_STARTS_CYCLE_P (fence),
                  FENCE_AFTER_STALL_P (fence));
 }
@@ -1504,14 +1511,6 @@ insert_in_history_vect (VEC (expr_history_def, heap) **pvect,
   if (res)
     {
       expr_history_def *phist = VEC_index (expr_history_def, vect, ind);
-
-      /* When merging, either old vinsns are the *same* or, if not, both 
-         old and new vinsns are different pointers.  In the latter case, 
-         though, new vinsns should be equal.  */
-      gcc_assert (phist->old_expr_vinsn == old_expr_vinsn
-                  || (phist->new_expr_vinsn != new_expr_vinsn 
-                      && (vinsn_equal_p 
-                          (phist->old_expr_vinsn, old_expr_vinsn))));
 
       /* It is possible that speculation types of expressions that were 
          propagated through different paths will be different here.  In this
@@ -2679,7 +2678,7 @@ deps_init_id (idata_t id, insn_t insn, bool force_unique_p)
   deps_init_id_data.force_unique_p = force_unique_p;
   deps_init_id_data.force_use_p = false;
 
-  init_deps (dc);
+  init_deps (dc, false);
 
   memcpy (&deps_init_id_sched_deps_info,
 	  &const_deps_init_id_sched_deps_info,
@@ -2751,7 +2750,7 @@ init_first_time_insn_data (insn_t insn)
   /* These are needed for nops too.  */
   INSN_LIVE (insn) = get_regset_from_pool ();
   INSN_LIVE_VALID_P (insn) = false;
-  
+
   if (!INSN_NOP_P (insn))
     {
       INSN_ANALYZED_DEPS (insn) = BITMAP_ALLOC (NULL);
@@ -2759,8 +2758,34 @@ init_first_time_insn_data (insn_t insn)
       INSN_TRANSFORMED_INSNS (insn) 
         = htab_create (16, hash_transformed_insns,
                        eq_transformed_insns, free_transformed_insns);
-      init_deps (&INSN_DEPS_CONTEXT (insn));
+      init_deps (&INSN_DEPS_CONTEXT (insn), true);
     }
+}
+
+/* Free almost all above data for INSN that is scheduled already.
+   Used for extra-large basic blocks.  */
+void
+free_data_for_scheduled_insn (insn_t insn)
+{
+  gcc_assert (! first_time_insn_init (insn));
+
+  if (! INSN_ANALYZED_DEPS (insn))
+    return;
+
+  BITMAP_FREE (INSN_ANALYZED_DEPS (insn));
+  BITMAP_FREE (INSN_FOUND_DEPS (insn));
+  htab_delete (INSN_TRANSFORMED_INSNS (insn));
+
+  /* This is allocated only for bookkeeping insns.  */
+  if (INSN_ORIGINATORS (insn))
+    BITMAP_FREE (INSN_ORIGINATORS (insn));
+  free_deps (&INSN_DEPS_CONTEXT (insn));
+
+  INSN_ANALYZED_DEPS (insn) = NULL;
+
+  /* Clear the readonly flag so we would ICE when trying to recalculate
+     the deps context (as we believe that it should not happen).  */
+  (&INSN_DEPS_CONTEXT (insn))->readonly = 0;
 }
 
 /* Free the same data as above for INSN.  */
@@ -2769,17 +2794,10 @@ free_first_time_insn_data (insn_t insn)
 {
   gcc_assert (! first_time_insn_init (insn));
 
-  BITMAP_FREE (INSN_ANALYZED_DEPS (insn));
-  BITMAP_FREE (INSN_FOUND_DEPS (insn));
-  htab_delete (INSN_TRANSFORMED_INSNS (insn));
+  free_data_for_scheduled_insn (insn);
   return_regset_to_pool (INSN_LIVE (insn));
   INSN_LIVE (insn) = NULL;
   INSN_LIVE_VALID_P (insn) = false;
-
-  /* This is allocated only for bookkeeping insns.  */
-  if (INSN_ORIGINATORS (insn))
-    BITMAP_FREE (INSN_ORIGINATORS (insn));
-  free_deps (&INSN_DEPS_CONTEXT (insn));
 }
 
 /* Initialize region-scope data structures for basic blocks.  */
@@ -3216,6 +3234,11 @@ has_dependence_p (expr_t expr, insn_t pred, ds_t **has_dep_pp)
     return false;
 
   dc = &INSN_DEPS_CONTEXT (pred);
+
+  /* We init this field lazily.  */
+  if (dc->reg_last == NULL)
+    init_deps_reg_last (dc);
+
   if (!dc->readonly)
     {
       has_dependence_data.pro = NULL;
@@ -3484,21 +3507,58 @@ verify_backedges (void)
 
 /* Functions to work with control flow.  */
 
+/* Recompute BLOCK_TO_BB and BB_FOR_BLOCK for current region so that blocks
+   are sorted in topological order (it might have been invalidated by
+   redirecting an edge).  */
+static void
+sel_recompute_toporder (void)
+{
+  int i, n, rgn;
+  int *postorder, n_blocks;
+
+  postorder = XALLOCAVEC (int, n_basic_blocks);
+  n_blocks = post_order_compute (postorder, false, false);
+
+  rgn = CONTAINING_RGN (BB_TO_BLOCK (0));
+  for (n = 0, i = n_blocks - 1; i >= 0; i--)
+    if (CONTAINING_RGN (postorder[i]) == rgn)
+      {
+	BLOCK_TO_BB (postorder[i]) = n;
+	BB_TO_BLOCK (n) = postorder[i];
+	n++;
+      }
+
+  /* Assert that we updated info for all blocks.  We may miss some blocks if
+     this function is called when redirecting an edge made a block
+     unreachable, but that block is not deleted yet.  */
+  gcc_assert (n == RGN_NR_BLOCKS (rgn));
+}
+
 /* Tidy the possibly empty block BB.  */
-bool
-maybe_tidy_empty_bb (basic_block bb)
+static bool
+maybe_tidy_empty_bb (basic_block bb, bool recompute_toporder_p)
 {
   basic_block succ_bb, pred_bb;
+  edge e;
+  edge_iterator ei;
   bool rescan_p;
 
   /* Keep empty bb only if this block immediately precedes EXIT and
-     has incoming non-fallthrough edge.  Otherwise remove it.  */
-  if (!sel_bb_empty_p (bb) 
-      || (single_succ_p (bb) 
+     has incoming non-fallthrough edge, or it has no predecessors or
+     successors.  Otherwise remove it.  */
+  if (!sel_bb_empty_p (bb)
+      || (single_succ_p (bb)
           && single_succ (bb) == EXIT_BLOCK_PTR
-          && (!single_pred_p (bb) 
-              || !(single_pred_edge (bb)->flags & EDGE_FALLTHRU))))
+          && (!single_pred_p (bb)
+              || !(single_pred_edge (bb)->flags & EDGE_FALLTHRU)))
+      || EDGE_COUNT (bb->preds) == 0
+      || EDGE_COUNT (bb->succs) == 0)
     return false;
+
+  /* Do not attempt to redirect complex edges.  */
+  FOR_EACH_EDGE (e, ei, bb->preds)
+    if (e->flags & EDGE_COMPLEX)
+      return false;
 
   free_data_sets (bb);
 
@@ -3518,9 +3578,6 @@ maybe_tidy_empty_bb (basic_block bb)
   /* Redirect all non-fallthru edges to the next bb.  */
   while (rescan_p)
     {
-      edge e;
-      edge_iterator ei;
-
       rescan_p = false;
 
       FOR_EACH_EDGE (e, ei, bb->preds)
@@ -3529,7 +3586,7 @@ maybe_tidy_empty_bb (basic_block bb)
 
           if (!(e->flags & EDGE_FALLTHRU))
             {
-              sel_redirect_edge_and_branch (e, succ_bb);
+              recompute_toporder_p |= sel_redirect_edge_and_branch (e, succ_bb);
               rescan_p = true;
               break;
             }
@@ -3545,9 +3602,13 @@ maybe_tidy_empty_bb (basic_block bb)
     {
       gcc_assert (pred_bb != NULL);
 
-      move_bb_info (pred_bb, bb);
+      if (in_current_region_p (pred_bb))
+	move_bb_info (pred_bb, bb);
       remove_empty_bb (bb, true);
     }
+
+  if (recompute_toporder_p)
+    sel_recompute_toporder ();
 
 #ifdef ENABLE_CHECKING
   verify_backedges ();
@@ -3565,7 +3626,7 @@ tidy_control_flow (basic_block xbb, bool full_tidying)
   bool changed = true;
   
   /* First check whether XBB is empty.  */
-  changed = maybe_tidy_empty_bb (xbb);
+  changed = maybe_tidy_empty_bb (xbb, false);
   if (changed || !full_tidying)
     return changed;
   
@@ -3602,24 +3663,47 @@ tidy_control_flow (basic_block xbb, bool full_tidying)
       /* Also this jump is not at the scheduling boundary.  */
       && !IN_CURRENT_FENCE_P (BB_END (xbb->prev_bb)))
     {
+      bool recompute_toporder_p;
       /* Clear data structures of jump - jump itself will be removed
          by sel_redirect_edge_and_branch.  */
       clear_expr (INSN_EXPR (BB_END (xbb->prev_bb)));
-      sel_redirect_edge_and_branch (EDGE_SUCC (xbb->prev_bb, 0), xbb);
+      recompute_toporder_p
+        = sel_redirect_edge_and_branch (EDGE_SUCC (xbb->prev_bb, 0), xbb);
+
       gcc_assert (EDGE_SUCC (xbb->prev_bb, 0)->flags & EDGE_FALLTHRU);
 
       /* It can turn out that after removing unused jump, basic block
          that contained that jump, becomes empty too.  In such case
          remove it too.  */
       if (sel_bb_empty_p (xbb->prev_bb))
-        changed = maybe_tidy_empty_bb (xbb->prev_bb);
+        changed = maybe_tidy_empty_bb (xbb->prev_bb, recompute_toporder_p);
+      else if (recompute_toporder_p)
+	sel_recompute_toporder ();
     }
 
   return changed;
 }
 
-/* Rip-off INSN from the insn stream.  When ONLY_DISCONNECT is true, 
-   do not delete insn's data, because it will be later re-emitted.  
+/* Purge meaningless empty blocks in the middle of a region.  */
+void
+purge_empty_blocks (void)
+{
+  /* Do not attempt to delete preheader.  */
+  int i = sel_is_loop_preheader_p (BASIC_BLOCK (BB_TO_BLOCK (0))) ? 1 : 0;
+
+  while (i < current_nr_blocks)
+    {
+      basic_block b = BASIC_BLOCK (BB_TO_BLOCK (i));
+
+      if (maybe_tidy_empty_bb (b, false))
+	continue;
+
+      i++;
+    }
+}
+
+/* Rip-off INSN from the insn stream.  When ONLY_DISCONNECT is true,
+   do not delete insn's data, because it will be later re-emitted.
    Return true if we have removed some blocks afterwards.  */
 bool
 sel_remove_insn (insn_t insn, bool only_disconnect, bool full_tidying)
@@ -3734,7 +3818,8 @@ get_seqno_of_a_pred (insn_t insn)
   return seqno;
 }
 
-/*  Find the proper seqno for inserting at INSN.  */
+/*  Find the proper seqno for inserting at INSN.  Returns -1 if no predecessors
+    with positive seqno exist.  */
 int
 get_seqno_by_preds (rtx insn)
 {
@@ -3753,7 +3838,6 @@ get_seqno_by_preds (rtx insn)
   for (i = 0, seqno = -1; i < n; i++)
     seqno = MAX (seqno, INSN_SEQNO (preds[i]));
 
-  gcc_assert (seqno > 0);
   return seqno;
 }
 
@@ -3818,8 +3902,17 @@ extend_insn_data (void)
              - VEC_length (sel_insn_data_def, s_i_d));
   if (reserve > 0 
       && ! VEC_space (sel_insn_data_def, s_i_d, reserve))
-    VEC_safe_grow_cleared (sel_insn_data_def, heap, s_i_d,
-                           3 * sched_max_luid / 2);
+    {
+      int size;
+
+      if (sched_max_luid / 2 > 1024)
+        size = sched_max_luid + 1024;
+      else
+        size = 3 * sched_max_luid / 2;
+
+
+      VEC_safe_grow_cleared (sel_insn_data_def, heap, s_i_d, size);
+    }
 }
 
 /* Finalize data structures for insns from current region.  */
@@ -4198,7 +4291,7 @@ sel_bb_head (basic_block bb)
       note = bb_note (bb);
       head = next_nonnote_insn (note);
 
-      if (head && BLOCK_FOR_INSN (head) != bb)
+      if (head && (BARRIER_P (head) || BLOCK_FOR_INSN (head) != bb))
 	head = NULL_RTX;
     }
 
@@ -4261,6 +4354,11 @@ fallthru_bb_of_jump (rtx jump)
   if (!any_condjump_p (jump))
     return NULL;
 
+  /* A basic block that ends with a conditional jump may still have one successor
+     (and be followed by a barrier), we are not interested.  */
+  if (single_succ_p (BLOCK_FOR_INSN (jump)))
+    return NULL;
+
   return FALLTHRU_EDGE (BLOCK_FOR_INSN (jump))->dest;
 }
 
@@ -4286,11 +4384,12 @@ sel_init_bbs (bb_vec_t bbs, basic_block bb)
   sched_scan (&ssi, bbs, bb, new_insns, NULL);
 }
 
-/* Restore other notes for the whole region.  */
+/* Restore notes for the whole region.  */
 static void
-sel_restore_other_notes (void)
+sel_restore_notes (void)
 {
   int bb;
+  insn_t insn;
 
   for (bb = 0; bb < current_nr_blocks; bb++)
     {
@@ -4305,6 +4404,10 @@ sel_restore_other_notes (void)
 	  restore_other_notes (NULL, first);
 	  BB_NOTE_LIST (first) = NULL_RTX;
 
+	  FOR_BB_INSNS (first, insn)
+	    if (INSN_P (insn))
+	      reemit_notes (insn);
+
           first = first->next_bb;
 	}
       while (first != last);
@@ -4315,7 +4418,7 @@ sel_restore_other_notes (void)
 void
 sel_finish_bbs (void)
 {
-  sel_restore_other_notes ();
+  sel_restore_notes ();
 
   /* Remove current loop preheader from this loop.  */
   if (current_loop_nest)
@@ -5252,8 +5355,6 @@ sel_create_recovery_block (insn_t orig_insn)
 void
 sel_merge_blocks (basic_block a, basic_block b)
 {
-  gcc_assert (can_merge_blocks_p (a, b));
-
   sel_remove_empty_bb (b, true, false);
   merge_blocks (a, b);
 
@@ -5290,14 +5391,17 @@ sel_redirect_edge_and_branch_force (edge e, basic_block to)
     sel_init_new_insn (jump, INSN_INIT_TODO_LUID | INSN_INIT_TODO_SIMPLEJUMP);
 }
 
-/* A wrapper for redirect_edge_and_branch.  */
-void
+/* A wrapper for redirect_edge_and_branch.  Return TRUE if blocks connected by
+   redirected edge are in reverse topological order.  */
+bool
 sel_redirect_edge_and_branch (edge e, basic_block to)
 {
   bool latch_edge_p;
   basic_block src;
   int prev_max_uid;
   rtx jump;
+  edge redirected;
+  bool recompute_toporder_p = false;
 
   latch_edge_p = (pipelining_p
                   && current_loop_nest
@@ -5305,9 +5409,10 @@ sel_redirect_edge_and_branch (edge e, basic_block to)
 
   src = e->src;
   prev_max_uid = get_max_uid ();
-  
-  redirect_edge_and_branch (e, to);
-  gcc_assert (last_added_blocks == NULL);
+
+  redirected = redirect_edge_and_branch (e, to);
+
+  gcc_assert (redirected && last_added_blocks == NULL);
 
   /* When we've redirected a latch edge, update the header.  */
   if (latch_edge_p)
@@ -5316,9 +5421,18 @@ sel_redirect_edge_and_branch (edge e, basic_block to)
       gcc_assert (loop_latch_edge (current_loop_nest));
     }
 
+  /* In rare situations, the topological relation between the blocks connected
+     by the redirected edge can change (see PR42245 for an example).  Update
+     block_to_bb/bb_to_block.  */
+  if (CONTAINING_RGN (e->src->index) == CONTAINING_RGN (to->index)
+      && BLOCK_TO_BB (e->src->index) > BLOCK_TO_BB (to->index))
+    recompute_toporder_p = true;
+
   jump = find_new_jump (src, NULL, prev_max_uid);
   if (jump)
     sel_init_new_insn (jump, INSN_INIT_TODO_LUID | INSN_INIT_TODO_SIMPLEJUMP);
+
+  return recompute_toporder_p;
 }
 
 /* This variable holds the cfg hooks used by the selective scheduler.  */
@@ -5745,7 +5859,7 @@ considered_for_pipelining_p (struct loop *loop)
      latch.  We can't use header here, because this header could be 
      just removed preheader and it will give us the wrong region number.
      Latch can't be used because it could be in the inner loop too.  */
-  if (LOOP_MARKED_FOR_PIPELINING_P (loop) && pipelining_p)
+  if (LOOP_MARKED_FOR_PIPELINING_P (loop))
     {
       int rgn = CONTAINING_RGN (loop->latch->index);
 
@@ -5896,7 +6010,10 @@ sel_add_loop_preheaders (void)
   for (i = 0;
        VEC_iterate (basic_block, preheader_blocks, i, bb);
        i++)
+    {
+      VEC_safe_push (basic_block, heap, last_added_blocks, bb);
       sel_add_bb (bb);
+    }
 
   VEC_free (basic_block, heap, preheader_blocks);
 }

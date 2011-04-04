@@ -1,6 +1,6 @@
 /* Expand builtin functions.
    Copyright (C) 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
-   2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
+   2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
 This file is part of GCC.
@@ -151,7 +151,7 @@ static rtx expand_builtin_expect (tree, rtx);
 static tree fold_builtin_constant_p (tree);
 static tree fold_builtin_expect (tree, tree);
 static tree fold_builtin_classify_type (tree);
-static tree fold_builtin_strlen (tree);
+static tree fold_builtin_strlen (tree, tree);
 static tree fold_builtin_inf (tree, int);
 static tree fold_builtin_nan (tree, tree, int);
 static tree rewrite_call_expr (tree, int, tree, int, ...);
@@ -2275,6 +2275,8 @@ expand_builtin_interclass_mathfn (tree exp, rtx target, rtx subtarget)
   /* Before working hard, check whether the instruction is available.  */
   if (icode != CODE_FOR_nothing)
     {
+      rtx last = get_last_insn ();
+      tree orig_arg = arg;
       /* Make a suitable register to place result in.  */
       if (!target
 	  || GET_MODE (target) != TYPE_MODE (TREE_TYPE (exp)))
@@ -2295,8 +2297,10 @@ expand_builtin_interclass_mathfn (tree exp, rtx target, rtx subtarget)
 
       /* Compute into TARGET.
 	 Set TARGET to wherever the result comes back.  */
-      emit_unop_insn (icode, target, op0, UNKNOWN);
-      return target;
+      if (maybe_emit_unop_insn (icode, target, op0, UNKNOWN))
+	return target;
+      delete_insns_since (last);
+      CALL_EXPR_ARG (exp, 0) = orig_arg;
     }
 
   /* If there is no optab, try generic code.  */
@@ -2987,7 +2991,10 @@ expand_builtin_pow (tree exp, rtx target, rtx subtarget)
 	  && ((flag_unsafe_math_optimizations
 	       && optimize_insn_for_speed_p ()
 	       && powi_cost (n/2) <= POWI_MAX_MULTS)
-	      || n == 1))
+	      /* Even the c==0.5 case cannot be done unconditionally
+	         when we need to preserve signed zeros, as
+		 pow (-0, 0.5) is +0, while sqrt(-0) is -0.  */
+	      || (!HONOR_SIGNED_ZEROS (mode) && n == 1)))
 	{
 	  tree call_expr = build_call_expr (fn, 1, narg0);
 	  /* Use expand_expr in case the newly built call expression
@@ -3712,7 +3719,15 @@ expand_builtin_strcpy_args (tree fndecl, tree dest, tree src,
 {
   tree result = fold_builtin_strcpy (fndecl, dest, src, 0);
   if (result)
-    return expand_expr (result, target, mode, EXPAND_NORMAL);
+    {
+      while (TREE_CODE (result) == COMPOUND_EXPR)
+	{
+	  expand_expr (TREE_OPERAND (result, 0), const0_rtx, VOIDmode,
+		       EXPAND_NORMAL);
+	  result = TREE_OPERAND (result, 1);
+	}
+      return expand_expr (result, target, mode, EXPAND_NORMAL);
+    }
   return expand_movstr (dest, src, target, /*endp=*/0);
 
 }
@@ -5826,9 +5841,11 @@ expand_builtin_signbit (tree exp, rtx target)
   icode = signbit_optab->handlers [(int) fmode].insn_code;
   if (icode != CODE_FOR_nothing)
     {
+      rtx last = get_last_insn ();
       target = gen_reg_rtx (TYPE_MODE (TREE_TYPE (exp)));
-      emit_unop_insn (icode, target, temp, UNKNOWN);
-      return target;
+      if (maybe_emit_unop_insn (icode, target, temp, UNKNOWN))
+	return target;
+      delete_insns_since (last);
     }
 
   /* For floating point formats without a sign bit, implement signbit
@@ -7351,7 +7368,7 @@ fold_builtin_classify_type (tree arg)
 /* Fold a call to __builtin_strlen with argument ARG.  */
 
 static tree
-fold_builtin_strlen (tree arg)
+fold_builtin_strlen (tree type, tree arg)
 {
   if (!validate_arg (arg, POINTER_TYPE))
     return NULL_TREE;
@@ -7360,12 +7377,7 @@ fold_builtin_strlen (tree arg)
       tree len = c_strlen (arg, 0);
 
       if (len)
-	{
-	  /* Convert from the internal "sizetype" type to "size_t".  */
-	  if (size_type_node)
-	    len = fold_convert (size_type_node, len);
-	  return len;
-	}
+	return fold_convert (type, len);
 
       return NULL_TREE;
     }
@@ -10126,7 +10138,7 @@ fold_builtin_1 (tree fndecl, tree arg0, bool ignore)
       return fold_builtin_classify_type (arg0);
 
     case BUILT_IN_STRLEN:
-      return fold_builtin_strlen (arg0);
+      return fold_builtin_strlen (type, arg0);
 
     CASE_FLT_FN (BUILT_IN_FABS):
       return fold_builtin_fabs (arg0, type);

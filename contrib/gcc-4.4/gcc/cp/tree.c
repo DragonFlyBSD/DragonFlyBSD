@@ -922,10 +922,14 @@ cp_build_qualified_type_real (tree type,
 tree
 canonical_type_variant (tree t)
 {
+  tree r;
+
   if (t == error_mark_node)
     return error_mark_node;
 
-  return cp_build_qualified_type (TYPE_MAIN_VARIANT (t), cp_type_quals (t));
+  r = cp_build_type_attribute_variant (TYPE_MAIN_VARIANT (t),
+				       TYPE_ATTRIBUTES (t));
+  return cp_build_qualified_type (r, cp_type_quals (t));
 }
 
 /* Makes a copy of BINFO and TYPE, which is to be inherited into a
@@ -1909,6 +1913,8 @@ cp_tree_equal (tree t1, tree t2)
     case TEMPLATE_PARM_INDEX:
       return (TEMPLATE_PARM_IDX (t1) == TEMPLATE_PARM_IDX (t2)
 	      && TEMPLATE_PARM_LEVEL (t1) == TEMPLATE_PARM_LEVEL (t2)
+	      && (TEMPLATE_PARM_PARAMETER_PACK (t1)
+		  == TEMPLATE_PARM_PARAMETER_PACK (t2))
 	      && same_type_p (TREE_TYPE (TEMPLATE_PARM_DECL (t1)),
 			      TREE_TYPE (TEMPLATE_PARM_DECL (t2))));
 
