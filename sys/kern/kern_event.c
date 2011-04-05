@@ -370,8 +370,10 @@ filt_timerattach(struct knote *kn)
 	struct timeval tv;
 	int tticks;
 
-	if (kq_ncallouts >= kq_calloutmax)
+	if (kq_ncallouts >= kq_calloutmax) {
+		kn->kn_hook = NULL;
 		return (ENOMEM);
+	}
 	kq_ncallouts++;
 
 	tv.tv_sec = kn->kn_sdata / 1000;

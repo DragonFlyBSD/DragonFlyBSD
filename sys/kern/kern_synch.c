@@ -616,16 +616,21 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	 * scheduling is blocked while in a critical section.  Coincide
 	 * the descheduled-by-tsleep flag with the descheduling of the
 	 * lwkt.
+	 *
+	 * The timer callout is localized on our cpu and interlocked by
+	 * our critical section.
 	 */
 	lwkt_deschedule_self(td);
 	td->td_flags |= TDF_TSLEEP_DESCHEDULED;
 	td->td_wmesg = wmesg;
 
 	/*
-	 * Setup the timeout, if any
+	 * Setup the timeout, if any.  The timeout is only operable while
+	 * the thread is flagged descheduled.
 	 */
+	KKASSERT((td->td_flags & TDF_TIMEOUT) == 0);
 	if (timo) {
-		callout_init(&thandle);
+		callout_init_mp(&thandle);
 		callout_reset(&thandle, timo, endtsleep, td);
 	}
 
@@ -644,6 +649,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 			lp->lwp_stat = LSSLEEP;
 		lp->lwp_ru.ru_nvcsw++;
 		lwkt_switch();
+		td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;
 
 		/*
 		 * And when we are woken up, put us back in LSRUN.  If we
@@ -655,6 +661,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 		lp->lwp_slptime = 0;
 	} else {
 		lwkt_switch();
+		td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;
 	}
 
 	/* 
@@ -664,31 +671,29 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	KKASSERT(gd == td->td_gd);
 
 	/*
-	 * Cleanup the timeout.
+	 * Cleanup the timeout.  If the timeout has already occured thandle
+	 * has already been stopped, otherwise stop thandle.
 	 */
 	if (timo) {
 		if (td->td_flags & TDF_TIMEOUT) {
 			td->td_flags &= ~TDF_TIMEOUT;
 			error = EWOULDBLOCK;
 		} else {
+			/* does not block when on same cpu */
 			callout_stop(&thandle);
 		}
 	}
 
 	/*
-	 * Make sure we have been removed from the sleepq.  This should
-	 * have been done for us already.
-	 *
-	 * However, it is possible for a scheduling IPI to be in flight
-	 * from a previous tsleep/tsleep_interlock or due to a straight-out
-	 * call to lwkt_schedule() (in the case of an interrupt thread).
-	 * So don't complain if DESCHEDULED is still set.
+	 * Make sure we have been removed from the sleepq.  In most
+	 * cases this will have been done for us already but it is
+	 * possible for a scheduling IPI to be in-flight from a
+	 * previous tsleep/tsleep_interlock() or due to a straight-out
+	 * call to lwkt_schedule() (in the case of an interrupt thread),
+	 * causing a spurious wakeup.
 	 */
 	_tsleep_remove(td);
 	td->td_wmesg = NULL;
-	if (td->td_flags & TDF_TSLEEP_DESCHEDULED) {
-		td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;
-	}
 
 	/*
 	 * Figure out the correct error return.  If interrupted by a
@@ -862,19 +867,28 @@ endtsleep(void *arg)
 	struct lwp *lp;
 
 	crit_enter();
-	lp = td->td_lwp;
 
-	if (lp)
+	/*
+	 * Do this before we potentially block acquiring the token.  Setting
+	 * TDF_TIMEOUT tells tsleep that we have already stopped the callout.
+	 */
+	lwkt_hold(td);
+	td->td_flags |= TDF_TIMEOUT;
+
+	/*
+	 * This can block
+	 */
+	if ((lp = td->td_lwp) != NULL)
 		lwkt_gettoken(&lp->lwp_proc->p_token);
 
 	/*
-	 * cpu interlock.  Thread flags are only manipulated on
-	 * the cpu owning the thread.  proc flags are only manipulated
-	 * by the holder of p->p_token.  We have both.
+	 * Only do nominal wakeup processing if TDF_TIMEOUT and
+	 * TDF_TSLEEP_DESCHEDULED are both still set.  Otherwise
+	 * we raced a wakeup or we began executed and raced due to
+	 * blocking in the token above, and should do nothing.
 	 */
-	if (td->td_flags & TDF_TSLEEP_DESCHEDULED) {
-		td->td_flags |= TDF_TIMEOUT;
-
+	if ((td->td_flags & (TDF_TIMEOUT | TDF_TSLEEP_DESCHEDULED)) ==
+	    (TDF_TIMEOUT | TDF_TSLEEP_DESCHEDULED)) {
 		if (lp) {
 			lp->lwp_flag |= LWP_BREAKTSLEEP;
 			if (lp->lwp_proc->p_stat != SSTOP)
@@ -885,6 +899,7 @@ endtsleep(void *arg)
 	}
 	if (lp)
 		lwkt_reltoken(&lp->lwp_proc->p_token);
+	lwkt_rele(td);
 	crit_exit();
 }
 
@@ -1191,8 +1206,8 @@ loadav_count_runnable(struct lwp *lp, void *data)
 static void
 sched_setup(void *dummy)
 {
-	callout_init(&loadav_callout);
-	callout_init(&schedcpu_callout);
+	callout_init_mp(&loadav_callout);
+	callout_init_mp(&schedcpu_callout);
 
 	/* Kick off timeout driven events by calling first time. */
 	schedcpu(NULL);
