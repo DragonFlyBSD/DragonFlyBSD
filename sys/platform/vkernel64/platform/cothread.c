@@ -46,6 +46,7 @@
 #include <sys/memrange.h>
 #include <sys/tls.h>
 #include <sys/types.h>
+#include <sys/bus.h>
 
 #include <vm/vm_extern.h>
 #include <vm/vm_kern.h>
@@ -91,7 +92,8 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 
 	cotd->pintr = pthread_self();
 
-	cotd->intr_id = register_int(1, (void *)thr_intr, cotd, name, NULL, 0);
+	cotd->intr_id = register_int(1, (void *)thr_intr, cotd, name, NULL,
+				     INTR_MPSAFE);
 
 	/*
 	 * The vkernel's cpu_disable_intr() masks signals.  We don't want

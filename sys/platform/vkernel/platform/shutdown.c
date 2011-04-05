@@ -45,6 +45,7 @@
 #include <sys/kthread.h>
 #include <sys/reboot.h>
 #include <sys/interrupt.h>
+#include <sys/bus.h>
 #include <ddb/ddb.h>
 
 #include <sys/thread2.h>
@@ -73,7 +74,7 @@ initshutdown(void *arg __unused)
 	sa.sa_handler = shutdownsig;
 	sigaction(SIGTERM, &sa, NULL);
 
-	register_int(2, shutdown_intr, NULL, "shutdown", NULL, 0);
+	register_int(2, shutdown_intr, NULL, "shutdown", NULL, INTR_MPSAFE);
 }
 
 static

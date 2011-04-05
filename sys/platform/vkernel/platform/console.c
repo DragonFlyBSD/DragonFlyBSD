@@ -45,6 +45,7 @@
 #include <sys/signalvar.h>
 #include <sys/eventhandler.h>
 #include <sys/interrupt.h>
+#include <sys/bus.h>
 #include <machine/md_var.h>
 #include <unistd.h>
 #include <termios.h>
@@ -345,7 +346,7 @@ vconsinit_fini(struct consdev *cp)
 	 * We have to do this here rather then in early boot to be able
 	 * to use the interrupt subsystem.
 	 */
-	register_int(3, vconswinch_intr, NULL, "swinch", NULL, 0);
+	register_int(3, vconswinch_intr, NULL, "swinch", NULL, INTR_MPSAFE);
 	bzero(&sa, sizeof(sa));
 	sigemptyset(&sa.sa_mask);
 	sa.sa_handler = vconswinchsig;
