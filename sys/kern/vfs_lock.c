@@ -837,7 +837,7 @@ allocfreevnode(void)
 
 /*
  * Obtain a new vnode from the freelist, allocating more if necessary.
- * The returned vnode is VX locked & refd.
+ * The returned vnode is VX locked & vrefd.
  *
  * All new vnodes set the VAGE flags.  An open() of the vnode will
  * decrement the (2-bit) flags.  Vnodes which are opened several times

@@ -984,18 +984,25 @@ diskclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct disk *dp;
 	int error;
+	int lcount;
 
 	error = 0;
 	dp = dev->si_disk;
 
+	/*
+	 * The cdev_t represents the disk/slice/part.  The shared
+	 * dp structure governs all cdevs associated with the disk.
+	 *
+	 * As a safety only close the underlying raw device on the last
+	 * close the disk device if our tracking of the slices/partitions
+	 * also indicates nothing is open.
+	 */
 	KKASSERT(dp->d_opencount >= 1);
-	/* If this is not the last close, just ignore it */
-	if ((atomic_fetchadd_int(&dp->d_opencount, -1)) > 1)
-		return 0;
+	lcount = atomic_fetchadd_int(&dp->d_opencount, -1);
 
 	get_mplock();
 	dsclose(dev, ap->a_devtype, dp->d_slice);
-	if (!dsisopen(dp->d_slice)) {
+	if (lcount <= 1 && !dsisopen(dp->d_slice)) {
 		error = dev_dclose(dp->d_rawdev, ap->a_fflag, ap->a_devtype);
 	}
 	rel_mplock();

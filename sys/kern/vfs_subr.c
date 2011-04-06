@@ -1055,8 +1055,10 @@ reassignbuf(struct buf *bp)
 }
 
 /*
- * Create a vnode for a block device.
- * Used for mounting the root file system.
+ * Create a vnode for a block device.  Used for mounting the root file
+ * system.
+ *
+ * A vref()'d vnode is returned.
  */
 extern struct vop_ops *devfs_vnode_dev_vops_p;
 int
