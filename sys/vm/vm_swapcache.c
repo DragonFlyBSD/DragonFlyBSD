@@ -62,6 +62,7 @@
 #include <sys/vnode.h>
 #include <sys/vmmeter.h>
 #include <sys/sysctl.h>
+#include <sys/eventhandler.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -137,6 +138,19 @@ SYSCTL_QUAD(_vm_swapcache, OID_AUTO, write_count,
 	((int64_t)vm_swap_max * (vm_swapcache_maxswappct + (adj)) / 100)
 
 /*
+ * When shutting down the machine we want to stop swapcache operation
+ * immediately so swap is not accessed after devices have been shuttered.
+ */
+static void
+shutdown_swapcache(void *arg __unused)
+{
+	vm_swapcache_read_enable = 0;
+	vm_swapcache_data_enable = 0;
+	vm_swapcache_meta_enable = 0;
+	wakeup(&vm_swapcache_sleep);	/* shortcut 5-second wait */
+}
+
+/*
  * vm_swapcached is the high level pageout daemon.
  *
  * No requirements.
@@ -153,7 +167,10 @@ vm_swapcached_thread(void)
 	 * Thread setup
 	 */
 	curthread->td_flags |= TDF_SYSTHREAD;
-
+	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc,
+			      swapcached_thread, SHUTDOWN_PRI_FIRST);
+	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_swapcache,
+			      NULL, SHUTDOWN_PRI_SECOND);
 	lwkt_gettoken(&vm_token);
 	crit_enter();
 
@@ -178,6 +195,11 @@ vm_swapcached_thread(void)
 	lwkt_reltoken(&vmobj_token);
 
 	for (;;) {
+		/*
+		 * Handle shutdown
+		 */
+		kproc_suspend_loop();
+
 		/*
 		 * Check every 5 seconds when not enabled or if no swap
 		 * is present.
