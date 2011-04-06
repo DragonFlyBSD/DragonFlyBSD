@@ -162,28 +162,5 @@ struct vattr {
 #define VA_GID_UUID_VALID	0x0008	/* uuid fields also populated */
 #define VA_FSID_UUID_VALID	0x0010	/* uuid fields also populated */
 
-#if 0	/* NOT YET */
-
-/*
- * The vfscache structure holds the system cacheable elements associated with 
- * a file or device.  This structure is most typically embedded within a
- * vnode.
- */
-struct vfscache {
-	int			fc_flags;
-	struct vm_object	*fc_object;	/* cached data */
-	struct vattr		fc_attr;	/* cached attribute data */
-};
-
-#define FCF_ATTR_GOOD		0x00000001	/* FUTURE */
-#define FCF_ATTR_ATIME		0x00010000	/* FUTURE attr modifications */
-#define FCF_ATTR_MTIME		0x00020000	/* FUTURE attr modifications */
-#define FCF_ATTR_CTIME		0x00040000	/* FUTURE attr modifications */
-#define FCF_ATTR_UID		0x00080000	/* FUTURE attr modifications */
-#define FCF_ATTR_GID		0x00100000	/* FUTURE attr modifications */
-#define FCF_ATTR_SIZE		0x00200000	/* FUTURE attr modifications */
-
-#endif
-
 #endif
 
