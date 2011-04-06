@@ -953,6 +953,8 @@ hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
 	if (hmp->ronly == 0) {
 		hmp->ronly = 2;		/* special errored read-only mode */
 		hmp->mp->mnt_flag |= MNT_RDONLY;
+		RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
+			hammer_adjust_volume_mode, NULL);
 		kprintf("HAMMER(%s): Forcing read-only mode\n",
 			hmp->mp->mnt_stat.f_mntfromname);
 	}

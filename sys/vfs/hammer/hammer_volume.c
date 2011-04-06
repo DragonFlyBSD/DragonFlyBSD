@@ -775,9 +775,9 @@ hammer_setup_device(struct vnode **devvpp, const char *dev_path, int ronly)
 static void
 hammer_close_device(struct vnode **devvpp, int ronly)
 {
-	VOP_CLOSE(*devvpp, (ronly ? FREAD : FREAD|FWRITE));
 	if (*devvpp) {
 		vinvalbuf(*devvpp, ronly ? 0 : V_SAVE, 0, 0);
+		VOP_CLOSE(*devvpp, (ronly ? FREAD : FREAD|FWRITE));
 		vrele(*devvpp);
 		*devvpp = NULL;
 	}
