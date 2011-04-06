@@ -107,69 +107,6 @@ struct mountctl_opt {
 };
 
 /*
- * Range locks protect offset ranges in files and directories at a high
- * level, allowing the actual I/O to be broken down into smaller pieces.
- * Range locks will eventually be integrated into the clustered cache
- * coherency infrastructure.
- *
- * We use a simple data structure for now, but eventually this should 
- * probably be a btree or red-black tree.
- */
-struct vrangelock;
-
-TAILQ_HEAD(vrangelock_list, vrangelock);
-
-struct vrangehead {
-	struct vrangelock_list	vh_list;
-};
-
-struct vrangelock {
-	TAILQ_ENTRY(vrangelock) vr_node;
-	int		vr_flags;
-	off_t		vr_offset;
-	off_t		vr_length;
-};
-
-#define RNGL_WAITING	0x0001		/* waiting for lock, else has lock */
-#define RNGL_CHECK	0x0002		/* check for work on unlock */
-#define RNGL_SHARED	0x0004		/* shared lock, else exclusive */
-#define RNGL_ONLIST	0x0008		/* sanity check */
-
-static __inline
-void
-vrange_init(struct vrangelock *vr, int flags, off_t offset, off_t length)
-{
-	vr->vr_flags = flags;
-	vr->vr_offset = offset;
-	vr->vr_length = length;
-}
-
-#ifdef _KERNEL
-
-void	vrange_lock(struct vnode *vp, struct vrangelock *vr);
-void	vrange_unlock(struct vnode *vp, struct vrangelock *vr);
-
-static __inline
-void
-vrange_lock_shared(struct vnode *vp, struct vrangelock *vr, 
-		    off_t offset, off_t length)
-{
-	vrange_init(vr, RNGL_SHARED, offset, length);
-	vrange_lock(vp, vr);
-}
-
-static __inline
-void
-vrange_lock_excl(struct vnode *vp, struct vrangelock *vr,
-		    off_t offset, off_t length)
-{
-	vrange_init(vr, 0, offset, length);
-	vrange_lock(vp, vr);
-}
-
-#endif
-
-/*
  * The vnode infrastructure is being reorgranized.  Most reference-related
  * fields are locked by the BGL, and most file I/O related operations and
  * vnode teardown functions are locked by the vnode lock.
@@ -259,13 +196,11 @@ struct vnode {
 		struct	kqinfo vpi_kqinfo;	/* identity of poller(s) */
 	} v_pollinfo;
 	struct vmresident *v_resident;		/* optional vmresident */
-	struct vrangehead v_range;		/* range lock */
 	struct ccms_dataspace v_ccms;		/* cache coherency */
 #ifdef	DEBUG_LOCKS
 	const char *filename;			/* Source file doing locking */
 	int line;				/* Line number doing locking */
 #endif
-	void	*v_xaddr;
 };
 #define	v_socket	v_un.vu_socket
 #define v_umajor	v_un.vu_cdev.vu_umajor
