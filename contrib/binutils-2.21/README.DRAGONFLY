@@ -39,4 +39,5 @@
 	bfd/config.bfd
 	binutils/arlex.l
 	gas/config/tc-i386.c
+	ld/ldlang.c
 	ld/ldlex.l
