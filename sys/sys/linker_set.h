@@ -60,8 +60,10 @@
 
 #endif
 
-#define __MAKE_SET(set, sym)                                            \
-        static void const * const __set_##set##_sym_##sym               \
+#define __MAKE_SET(set, sym)						\
+	__GLOBL(__CONCAT(__start_set_,set));				\
+	__GLOBL(__CONCAT(__stop_set_,set));				\
+	static void const * const __set_##set##_sym_##sym		\
 	__section("set_" #set) __used = &sym
 
 #define TEXT_SET(set, sym) __MAKE_SET(set, sym)

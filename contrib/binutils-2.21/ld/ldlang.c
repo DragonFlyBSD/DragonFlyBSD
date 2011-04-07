@@ -1757,15 +1757,10 @@ lang_insert_orphan (asection *s,
 	  e_align = exp_unop (ALIGN_K,
 			      exp_intop ((bfd_vma) 1 << s->alignment_power));
 	  lang_add_assignment (exp_assign (".", e_align));
-	  if (link_info.shared)
-	    lang_add_assignment (exp_assign (symname,
-                                             exp_unop (ABSOLUTE,
-                                               exp_nameop (NAME, "."))));
-          else
-            lang_add_assignment (exp_provide (symname,
-					      exp_unop (ABSOLUTE,
-                                                exp_nameop (NAME, ".")),
-					      FALSE));
+	  lang_add_assignment (exp_provide (symname,
+					    exp_unop (ABSOLUTE,
+						      exp_nameop (NAME, ".")),
+					    FALSE));
 	}
     }
 
@@ -1795,13 +1790,9 @@ lang_insert_orphan (asection *s,
       symname = (char *) xmalloc (ps - secname + sizeof "__stop_" + 1);
       symname[0] = bfd_get_symbol_leading_char (link_info.output_bfd);
       sprintf (symname + (symname[0] != 0), "__stop_%s", secname);
-      if (link_info.shared)
-        lang_add_assignment (exp_assign (symname,
-					 exp_nameop (NAME, ".")));
-      else
-        lang_add_assignment (exp_provide (symname,
-                                          exp_nameop (NAME, "."),
-                                          FALSE));
+      lang_add_assignment (exp_provide (symname,
+					exp_nameop (NAME, "."),
+					FALSE));
     }
 
   /* Restore the global list pointer.  */

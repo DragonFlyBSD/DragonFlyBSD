@@ -505,4 +505,12 @@
 #endif
 #endif
 
+/*
+ * GLOBL macro exists to preserve __start_set_* and __stop_set_* sections
+ * of kernel modules which are discarded from binutils 2.17.50+ otherwise.
+ */
+
+#define	__GLOBL1(sym)	__asm__(".globl " #sym)
+#define	__GLOBL(sym)	__GLOBL1(sym)
+
 #endif /* !_SYS_CDEFS_H_ */
