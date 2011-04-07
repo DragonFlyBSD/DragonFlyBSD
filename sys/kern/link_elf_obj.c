@@ -106,6 +106,7 @@ typedef struct elf_file {
 	int		preloaded;
 
 	caddr_t		address;	/* Relocation address */
+	size_t		bytes;		/* Chunk size in bytes */
 	vm_object_t	object;		/* VM object to hold file pages */
 	Elf_Shdr       *e_shdr;
 
@@ -198,6 +199,7 @@ link_elf_obj_preload_file(const char *filename, linker_file_t *result)
 	ef = kmalloc(sizeof(struct elf_file), M_LINKER, M_WAITOK | M_ZERO);
 	ef->preloaded = 1;
 	ef->address = *(caddr_t *) baseptr;
+	ef->bytes = 0;
 	lf = linker_make_file(filename, ef, &link_elf_obj_file_ops);
 	if (lf == NULL) {
 		kfree(ef, M_LINKER);
@@ -659,12 +661,18 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 		goto out;
 	}
 	ef->address = (caddr_t) vm_map_min(&kernel_map);
+	ef->bytes = 0;
 
 	/*
 	 * In order to satisfy x86_64's architectural requirements on the
 	 * location of code and data in the kernel's address space, request a
 	 * mapping that is above the kernel.
+	 *
+	 * vkernel64's text+data is outside the managed VM space entirely.
 	 */
+#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+	error = vkernel_module_memory_alloc(&mapbase, round_page(mapsize));
+#else
 	mapbase = KERNBASE;
 	error = vm_map_find(&kernel_map, ef->object, 0, &mapbase,
 			    round_page(mapsize), PAGE_SIZE,
@@ -672,19 +680,21 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 			    VM_PROT_ALL, VM_PROT_ALL, FALSE);
 	if (error) {
 		vm_object_deallocate(ef->object);
-		ef->object = 0;
+		ef->object = NULL;
 		goto out;
 	}
 	/* Wire the pages */
 	error = vm_map_wire(&kernel_map, mapbase,
 			    mapbase + round_page(mapsize), 0);
+#endif
 	if (error != KERN_SUCCESS) {
 		error = ENOMEM;
 		goto out;
 	}
 	/* Inform the kld system about the situation */
 	lf->address = ef->address = (caddr_t) mapbase;
-	lf->size = mapsize;
+	lf->size = round_page(mapsize);
+	ef->bytes = mapsize;
 
 	/*
 	 * Now load code/data(progbits), zero bss(nobits), allocate space for
@@ -897,9 +907,15 @@ link_elf_obj_unload_file(linker_file_t file)
 		kfree(ef->progtab, M_LINKER);
 
 	if (ef->object) {
+#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+		vkernel_module_memory_free((vm_offset_t)ef->address, ef->bytes);
+#else
 		vm_map_remove(&kernel_map, (vm_offset_t) ef->address,
 		    (vm_offset_t) ef->address +
 		    (ef->object->size << PAGE_SHIFT));
+#endif
+		vm_object_deallocate(ef->object);
+		ef->object = NULL;
 	}
 	if (ef->e_shdr)
 		kfree(ef->e_shdr, M_LINKER);

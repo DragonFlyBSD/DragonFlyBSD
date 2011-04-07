@@ -558,6 +558,10 @@ int vmspace_anonymous_count (struct vmspace *vmspace);
 void vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *);
 void vm_map_transition_wait(vm_map_t map);
 
+#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+int vkernel_module_memory_alloc(vm_offset_t *, size_t);
+void vkernel_module_memory_free(vm_offset_t, size_t);
+#endif
 
 #endif
 #endif				/* _VM_VM_MAP_H_ */

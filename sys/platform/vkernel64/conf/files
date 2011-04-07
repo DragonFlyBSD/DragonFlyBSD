@@ -5,6 +5,7 @@
 #
 emulation/dragonfly12/dfbsd12_getdirentries.c	optional	compat_df12
 emulation/dragonfly12/dfbsd12_stat.c		optional	compat_df12
+kern/link_elf_obj.c		standard
 vfs/smbfs/smbfs_io.c		optional	smbfs
 vfs/smbfs/smbfs_node.c		optional	smbfs
 vfs/smbfs/smbfs_smb.c		optional	smbfs
