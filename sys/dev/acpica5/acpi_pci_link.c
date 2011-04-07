@@ -152,7 +152,7 @@ acpi_pci_link_probe(device_t dev)
 	 * We explicitly do not check _STA since not all systems set it to
 	 * sensible values.
 	 */
-	if (!acpi_enabled("pci_link") ||
+	if (acpi_disabled("pci_link") ||
 	    ACPI_ID_PROBE(device_get_parent(dev), dev, pci_link_ids) == NULL)
 		return (ENXIO);
 
