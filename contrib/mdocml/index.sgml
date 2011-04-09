@@ -39,10 +39,9 @@
 					</P>
 
 					<P>
-					<SPAN CLASS="nm">mdocml</SPAN> consists of the <A HREF="mdoc.3.html">libmdoc</A>, <A
-					HREF="man.3.html">libman</A>, and <A HREF="roff.3.html">libroff</A> validating compilers; and <A
-					HREF="mandoc.1.html">mandoc</A>, which interfaces with the compiler libraries to format output for UNIX
-					terminals, XHTML, HTML, PostScript, and PDF.  It is a <A CLASS="external"
+					<SPAN CLASS="nm">mdocml</SPAN> consists of the <A HREF="mandoc.3.html">libmandoc</A> validating
+					compiler and <A HREF="mandoc.1.html">mandoc</A>, which interfaces with the compiler library to format
+					output for UNIX terminals, XHTML, HTML, PostScript, and PDF.  It is a <A CLASS="external"
 					HREF="http://bsd.lv/">BSD.lv</A> project.  
 					</P>
 
@@ -59,9 +58,8 @@
 					</H1>
 
 					<P>
-					<SPAN CLASS="nm">mdocml</SPAN> is architecture- and system-neutral, written in plain-old C.  The most
-					current version is <SPAN CLASS="attn">@VERSION@</SPAN>, dated <SPAN class="attn">@VDATE@</SPAN>.  A full
-					<A HREF="ChangeLog.html">ChangeLog</A> (<A HREF="ChangeLog.txt">txt</A>) is written with each release.
+					<SPAN CLASS="nm">mdocml</SPAN> is in plain-old ANSI C and should build and run on any UNIX system.
+					The most current version is <SPAN CLASS="attn">@VERSION@</SPAN>, dated <SPAN class="attn">@VDATE@</SPAN>.
 					</P>
 
 					<H2>
@@ -172,38 +170,14 @@
 							</TD>
 						</TR>
 						<TR>
-							<TD VALIGN="top"><A HREF="man.3.html">man(3)</A></TD>
+							<TD VALIGN="top"><A HREF="mandoc.3.html">mandoc(3)</A></TD>
 							<TD VALIGN="top">
-								man macro compiler library
+								mandoc macro compiler library
 								<SPAN STYLE="font-size: smaller;">
-									(<A HREF="man.3.txt">text</A> | 
-									<A HREF="man.3.xhtml">xhtml</A> |
-									<A HREF="man.3.pdf">pdf</A> |
-									<A HREF="man.3.ps">postscript</A>)
-								</SPAN>
-							</TD>
-						</TR>
-						<TR>
-							<TD VALIGN="top"><A HREF="mdoc.3.html">mdoc(3)</A></TD>
-							<TD VALIGN="top">
-								mdoc macro compiler library
-								<SPAN STYLE="font-size: smaller;">
-									(<A HREF="mdoc.3.txt">text</A> | 
-									<A HREF="mdoc.3.xhtml">xhtml</A> |
-									<A HREF="mdoc.3.pdf">pdf</A> |
-									<A HREF="mdoc.3.ps">postscript</A>)
-								</SPAN>
-							</TD>
-						</TR>
-						<TR>
-							<TD VALIGN="top"><A HREF="roff.3.html">roff(3)</A></TD>
-							<TD VALIGN="top">
-								roff macro compiler library
-								<SPAN STYLE="font-size: smaller;">
-									(<A HREF="roff.3.txt">text</A> | 
-									<A HREF="roff.3.xhtml">xhtml</A> |
-									<A HREF="roff.3.pdf">pdf</A> |
-									<A HREF="roff.3.ps">postscript</A>)
+									(<A HREF="mandoc.3.txt">text</A> | 
+									<A HREF="mandoc.3.xhtml">xhtml</A> |
+									<A HREF="mandoc.3.pdf">pdf</A> |
+									<A HREF="mandoc.3.ps">postscript</A>)
 								</SPAN>
 							</TD>
 						</TR>
@@ -216,6 +190,18 @@
 									<A HREF="man.7.xhtml">xhtml</A> |
 									<A HREF="man.7.pdf">pdf</A> |
 									<A HREF="man.7.ps">postscript</A>)
+								</SPAN>
+							</TD>
+						</TR>
+						<TR>
+							<TD VALIGN="top"><A HREF="eqn.7.html">eqn(7)</A></TD>
+							<TD VALIGN="top">
+								eqn-mandoc language reference
+								<SPAN STYLE="font-size: smaller;">
+									(<A HREF="eqn.7.txt">text</A> | 
+									<A HREF="eqn.7.xhtml">xhtml</A> |
+									<A HREF="eqn.7.pdf">pdf</A> |
+									<A HREF="eqn.7.ps">postscript</A>)
 								</SPAN>
 							</TD>
 						</TR>
@@ -283,8 +269,12 @@
 					</H1>
 
 					<P>
-						Please use the mailing lists for bug-reports, patches, questions, etc. (these require
-						subscription).  Beyond that, contact Kristaps at <A
+						Use the mailing lists for bug-reports, patches, questions, etc. (these require
+						subscription).
+						Please check the
+						<A HREF="http://mdocml.bsd.lv/cgi-bin/cvsweb/TODO?cvsroot=mdocml">TODO</A> for known issues
+						before posting.
+						Beyond that, contact Kristaps at <A
 						HREF="http://mailhide.recaptcha.net/d?k=01M6h_w7twDp58ZgH57eWC_w==&amp;c=Q2DBUt401ePlSeupJFrq_Q=="
 						TITLE="Reveal this e-mail address">kris...</A>@bsd.lv.
 					</P>
@@ -334,6 +324,27 @@
 					</H1>
 					<DIV CLASS="news">
 						<P>
+							<SPAN CLASS="date">04-04-2011</SPAN>:
+							version 1.11.1
+						</P>
+						<P>
+							The earlier <I>libroff</I>, <I>libmdoc</I>, and <I>libman</I> soup have been merged into
+							a single library, <A HREF="mandoc.3.html">libmandoc</A>, which manages all aspects of
+							parsing real manuals (from line-handling to <A HREF="tbl.7.html">tbl</A> parsing).
+						</P>
+						<P>
+							Beyond this structural change, initial <A HREF="eqn.7.html">eqn</A> functionality is in
+							place.  For the time being, this is limited to the recognition of equation blocks;
+							future version of <SPAN CLASS="nm">mdocml</SPAN> will expand upon this framework.
+						</P>
+						<P>
+							As usual, many general fixes and improvements have also occured.  In particular, a great
+							deal of redundancy and superfluous code has been removed with the merging of the backend
+							libraries.
+						</P>
+					</DIV>
+					<DIV CLASS="news">
+						<P>
 							<SPAN CLASS="date">07-01-2011</SPAN>:
 							version 1.10.9
 						</P>
@@ -348,7 +359,7 @@
 							still minimal, especially for <SPAN CLASS="flag">-Thtml</SPAN> and <SPAN
 							CLASS="flag">-Txhtml</SPAN>, but manages to at least display data.  This means that <A
 							HREF="mandoc.1.html">mandoc</A> now has built-in support for two troff preprocessors via
-							<A HREF="roff.3.html">libroff</A>: soelim and tbl.
+							<DEL>libroff</DEL>: soelim and tbl.
 						</P>
 					</DIV>
 					<DIV CLASS="news">
@@ -375,7 +386,7 @@
 							HREF="#documentation">DOCUMENTATION</A> section for examples.  <SPAN
 							CLASS="attn">Attention: available style-sheet classes have been considerably
 							changed!</SPAN> See the <SPAN CLASS="file">example.style.css</SPAN> file for details.
-							Lastly, <A HREF="mdoc.3.html">libmdoc</A> and <A HREF="man.3.html">libman</A> have been
+							Lastly, <DEL>libmdoc</DEL> and <DEL>libman</DEL> have been
 							cleaned up and reduced in size and complexity.
 						</P>
 					</DIV>
@@ -388,7 +399,7 @@
 			<TR>
 				<TD>
 					<DIV CLASS="foot">
-						Copyright &#169; 2008&#8211;2010 Kristaps Dzonsons, $Date: 2011/01/07 13:10:03 $
+						Copyright &#169; 2008&#8211;2011 Kristaps Dzonsons, $Date: 2011/04/04 21:07:20 $
 					</DIV>
 				</TD>
 			</TR>
