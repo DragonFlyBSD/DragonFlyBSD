@@ -306,7 +306,7 @@ labelkre(void)
 	mvprintw(VMSTATROW + 16, VMSTATCOL + 10, "numvnodes");
 	mvprintw(VMSTATROW + 17, VMSTATCOL + 10, "freevnodes");
 
-	mvprintw(GENSTATROW, GENSTATCOL, "  Csw   Trp   Sys   Int  Sof   Flt");
+	mvprintw(GENSTATROW, GENSTATCOL, "  Csw  Trp  Sys  Int  Sof  Flt");
 
 	mvprintw(GRAPHROW, GRAPHCOL,
 		"  . %%Sys    . %%Intr   . %%User   . %%Nice   . %%Idle");
@@ -527,20 +527,20 @@ showkre(void)
 	putlong(s.desiredvnodes, VMSTATROW + 15, VMSTATCOL, 9, 'D');
 	putlong(s.numvnodes, VMSTATROW + 16, VMSTATCOL, 9, 'D');
 	putlong(s.freevnodes, VMSTATROW + 17, VMSTATCOL, 9, 'D');
-	PUTRATE(Vmm.v_vnodein, PAGEROW + 2, PAGECOL + 5, 5);
-	PUTRATE(Vmm.v_vnodeout, PAGEROW + 2, PAGECOL + 10, 5);
-	PUTRATE(Vmm.v_swapin, PAGEROW + 2, PAGECOL + 17, 5);
-	PUTRATE(Vmm.v_swapout, PAGEROW + 2, PAGECOL + 22, 5);
-	PUTRATE(Vmm.v_vnodepgsin, PAGEROW + 3, PAGECOL + 5, 5);
-	PUTRATE(Vmm.v_vnodepgsout, PAGEROW + 3, PAGECOL + 10, 5);
-	PUTRATE(Vmm.v_swappgsin, PAGEROW + 3, PAGECOL + 17, 5);
-	PUTRATE(Vmm.v_swappgsout, PAGEROW + 3, PAGECOL + 22, 5);
-	PUTRATE(Vmm.v_swtch, GENSTATROW + 1, GENSTATCOL, 5);
-	PUTRATE(Vmm.v_trap, GENSTATROW + 1, GENSTATCOL + 6, 5);
-	PUTRATE(Vmm.v_syscall, GENSTATROW + 1, GENSTATCOL + 12, 5);
-	PUTRATE(Vmm.v_intr, GENSTATROW + 1, GENSTATCOL + 18, 5);
-	PUTRATE(Vmm.v_soft, GENSTATROW + 1, GENSTATCOL + 23, 5);
-	PUTRATE(Vmm.v_vm_faults, GENSTATROW + 1, GENSTATCOL + 29, 5);
+	PUTRATE(Vmm.v_vnodein, PAGEROW + 2, PAGECOL + 6, 4);
+	PUTRATE(Vmm.v_vnodeout, PAGEROW + 2, PAGECOL + 11, 4);
+	PUTRATE(Vmm.v_swapin, PAGEROW + 2, PAGECOL + 18, 4);
+	PUTRATE(Vmm.v_swapout, PAGEROW + 2, PAGECOL + 23, 4);
+	PUTRATE(Vmm.v_vnodepgsin, PAGEROW + 3, PAGECOL + 6, 4);
+	PUTRATE(Vmm.v_vnodepgsout, PAGEROW + 3, PAGECOL + 11, 4);
+	PUTRATE(Vmm.v_swappgsin, PAGEROW + 3, PAGECOL + 18, 4);
+	PUTRATE(Vmm.v_swappgsout, PAGEROW + 3, PAGECOL + 23, 4);
+	PUTRATE(Vmm.v_swtch, GENSTATROW + 1, GENSTATCOL + 1, 4);
+	PUTRATE(Vmm.v_trap, GENSTATROW + 1, GENSTATCOL + 6, 4);
+	PUTRATE(Vmm.v_syscall, GENSTATROW + 1, GENSTATCOL + 11, 4);
+	PUTRATE(Vmm.v_intr, GENSTATROW + 1, GENSTATCOL + 16, 4);
+	PUTRATE(Vmm.v_soft, GENSTATROW + 1, GENSTATCOL + 21, 4);
+	PUTRATE(Vmm.v_vm_faults, GENSTATROW + 1, GENSTATCOL + 26, 4);
 	mvprintw(DISKROW, DISKCOL + 5, "                              ");
 	for (i = 0, lc = 0; i < num_devices && lc < MAXDRIVES; i++)
 		if (dev_select[i].selected) {
