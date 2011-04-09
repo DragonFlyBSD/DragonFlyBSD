@@ -1,29 +1,18 @@
 .PATH:	${.CURDIR}/../../contrib/mdocml
 
 PROG=	mandoc
-MAN=	mandoc.1 mandoc_char.7
-#MAN+=	man.3 man.7 mdoc.3 mdoc.7 roff.3 roff.7 tbl.7
+MAN=	mandoc.1 mandoc.3 mandoc_char.7
+#MAN+=	eqn.7 man.7 mdoc.7 roff.7 tbl.7
 WARNS?=	3
 
-VERSION=1.10.9
+VERSION=1.11.1
 CFLAGS+=-DVERSION=\"${VERSION}\"
 
-MDOCSRCS   = mdoc_macro.c mdoc.c mdoc_hash.c mdoc_strings.c \
-	     mdoc_argv.c mdoc_validate.c lib.c att.c \
-	     arch.c vol.c msec.c st.c
-
-MAINSRCS   = main.c mdoc_term.c chars.c term.c tree.c compat.c \
-	     man_term.c html.c mdoc_html.c man_html.c out.c \
-	     term_ps.c term_ascii.c tbl_term.c tbl_html.c
-
-MANSRCS	   = man_macro.c man.c man_hash.c man_validate.c \
-	     man_argv.c
-
-MANDOCSRCS = mandoc.c
-
-ROFFSRCS   = roff.c tbl.c tbl_opts.c tbl_layout.c tbl_data.c
-
-SRCS	   = $(MDOCSRCS) $(MAINSRCS) $(MANSRCS) \
-	     $(MANDOCSRCS) $(ROFFSRCS)
+SRCS=	arch.c att.c chars.c compat.c eqn.c html.c lib.c main.c man.c \
+	man_hash.c man_html.c man_macro.c man_term.c man_validate.c mandoc.c \
+	mdoc.c mdoc_argv.c mdoc_hash.c mdoc_html.c mdoc_macro.c mdoc_term.c \
+	mdoc_validate.c msec.c out.c read.c roff.c st.c tbl.c tbl_data.c \
+	tbl_html.c tbl_layout.c tbl_opts.c tbl_term.c term.c term_ascii.c \
+	term_ps.c tree.c vol.c
 
 .include <bsd.prog.mk>
