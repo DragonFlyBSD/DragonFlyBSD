@@ -22,8 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/csu/i386-elf/crt1.c,v 1.4.2.2 2002/11/18 04:57:13 bde Exp $
- * $DragonFly: src/lib/csu/i386/crt1.c,v 1.3 2005/05/11 19:46:51 dillon Exp $
+ * $FreeBSD: src/lib/csu/i386-elf/crt1.c, svn 200038 2009/12/02 kib $
  */
 
 #ifndef __GNUC__
@@ -51,29 +50,15 @@ extern int etext;
 extern int _DYNAMIC;
 #pragma weak _DYNAMIC
 
-#ifdef __i386__
-#define get_rtld_cleanup()				\
-    ({ fptr __value;					\
-       __asm__("movl %%edx,%0" : "=rm"(__value));	\
-       __value; })
-#else
-#error "This file only supports the i386 architecture"
-#endif
-
 char **environ;
 char *__progname = "";
+void _start1(fptr, int, char *[]) __dead2;
 
 void
-_start(char *arguments, ...)
+_start1(fptr cleanup, int argc, char *argv[])
 {
-    fptr rtld_cleanup;
-    int argc;
-    char **argv;
     char **env;
 
-    rtld_cleanup = get_rtld_cleanup();
-    argv = &arguments;
-    argc = * (int *) (argv - 1);
     env = argv + argc + 1;
     environ = env;
     if(argc > 0 && argv[0] != NULL) {
@@ -88,13 +73,13 @@ _start(char *arguments, ...)
      * Setup the initial TLS space.  The RTLD does not set up our TLS
      * (it can't, it doesn't know how our errno is declared).  It simply
      * does all the groundwork required so that we can call
-     * _rtld_allocate_tls().  
+     * _rtld_allocate_tls().
      */
     _init_tls();
     _rtld_call_init();
 
     if(&_DYNAMIC != NULL)
-	atexit(rtld_cleanup);
+	atexit(cleanup);
 
 #ifdef GCRT
     atexit(_mcleanup);
@@ -102,46 +87,10 @@ _start(char *arguments, ...)
     atexit(_fini);
 #ifdef GCRT
     monstartup(&eprol, &etext);
+__asm__("eprol:");
 #endif
     _init();
-#ifndef __GNUC__
     exit( main(argc, argv, env) );
-#else
-	/*
-	 * Some versions of gcc-2 expect the stack frame to be aligned as
-	 * follows after it is set up in main():
-	 *
-	 *  +--------------+ <--- aligned by PREFERRED_STACK_BOUNDARY
-	 *  +%ebp (if any) +
-	 *  +--------------+
-	 *  |return address|
-	 *  +--------------+
-	 *  |  arguments   |
-	 *  |      :       |
-	 *  |      :       |
-	 *  +--------------+
-	 *
-	 * We implement the above to fix just the usual case in FreeBSD-4.
-	 * Alignment for main() is too compiler-dependent to handle correctly
-	 * in all cases here (or in the kernel).  E.g., a different alignment
-	 * is required for at least gcc-2.95.4 even for the small variation
-	 * of compiling main() with -fomit-frame-pointer.
-	 */
-	__asm__("\n"
-	"andl	$~0xf, %%esp		# align stack to 16-byte boundary\n"
-	"subl	$12+12, %%esp		# space for args and padding\n"
-	"movl	%0, 0(%%esp)\n"
-	"movl	%1, 4(%%esp)\n"
-	"movl	%2, 8(%%esp)\n"
-	"call	main\n"
-	"movl	%%eax, 0(%%esp)\n"
-	"call	exit\n"
-	: : "r" (argc), "r" (argv), "r" (env) : "ax", "cx", "dx", "memory");
-#endif
 }
 
-#ifdef GCRT
-__asm__(".text");
-__asm__("eprol:");
-__asm__(".previous");
-#endif
+__asm(".hidden  _start1");
