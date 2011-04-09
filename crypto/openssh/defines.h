@@ -56,8 +56,6 @@ enum
 /*
  * Definitions for DiffServ Codepoints as per RFC2474
  */
-#include <netinet/in_systm.h>
-#include <netinet/ip.h>
 #ifndef IPTOS_DSCP_AF11
 # define	IPTOS_DSCP_AF11		0x28
 # define	IPTOS_DSCP_AF12		0x30

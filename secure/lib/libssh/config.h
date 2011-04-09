@@ -112,7 +112,7 @@
 /* #undef DISABLE_UTMP */
 
 /* Define if you don't want to use utmpx */
-/* #define DISABLE_UTMPX */
+/* #undef DISABLE_UTMPX */
 
 /* Define if you don't want to use wtmp */
 /* #undef DISABLE_WTMP */
@@ -125,6 +125,9 @@
 
 /* Builtin PRNG command timeout */
 #define ENTROPY_TIMEOUT_MSEC 200
+
+/* File names may not contain backslash characters */
+/* #undef FILESYSTEM_NO_BACKSLASH */
 
 /* fsid_t has member val */
 /* #undef FSID_HAS_VAL */
@@ -143,6 +146,9 @@
 
 /* Define if your system glob() function has gl_matchc options in glob_t */
 #define GLOB_HAS_GL_MATCHC 1
+
+/* Define if your system glob() function has gl_statv options in glob_t */
+/* #undef GLOB_HAS_GL_STATV */
 
 /* Define this if you want GSSAPI support in the version 2 protocol */
 /* #undef GSSAPI */
@@ -204,6 +210,9 @@
 /* Define to 1 if you have the `bindresvport_sa' function. */
 #define HAVE_BINDRESVPORT_SA 1
 
+/* Define to 1 if you have the `BN_is_prime_ex' function. */
+#define HAVE_BN_IS_PRIME_EX 1
+
 /* Define to 1 if you have the <bsm/audit.h> header file. */
 /* #undef HAVE_BSM_AUDIT_H */
 
@@ -229,7 +238,7 @@
 /* #undef HAVE_CRYPTO_SHA2_H */
 
 /* Define to 1 if you have the <crypt.h> header file. */
-/* #undef HAVE_CRYPT_H */
+#define HAVE_CRYPT_H 1
 
 /* Define if you are on Cygwin */
 /* #undef HAVE_CYGWIN */
@@ -312,11 +321,14 @@
 /* Define to 1 if you have the `dirname' function. */
 #define HAVE_DIRNAME 1
 
+/* Define to 1 if you have the `DSA_generate_parameters_ex' function. */
+#define HAVE_DSA_GENERATE_PARAMETERS_EX 1
+
 /* Define to 1 if you have the <endian.h> header file. */
 /* #undef HAVE_ENDIAN_H */
 
 /* Define to 1 if you have the `endutent' function. */
-/* #undef HAVE_ENDUTENT */
+#define HAVE_ENDUTENT 1
 
 /* Define to 1 if you have the `endutxent' function. */
 #define HAVE_ENDUTXENT 1
@@ -436,7 +448,7 @@
 #define HAVE_GETTTYENT 1
 
 /* Define to 1 if you have the `getutent' function. */
-/* #undef HAVE_GETUTENT */
+#define HAVE_GETUTENT 1
 
 /* Define to 1 if you have the `getutid' function. */
 /* #undef HAVE_GETUTID */
@@ -448,10 +460,10 @@
 #define HAVE_GETUTXENT 1
 
 /* Define to 1 if you have the `getutxid' function. */
-/* #undef HAVE_GETUTXID */
+#define HAVE_GETUTXID 1
 
 /* Define to 1 if you have the `getutxline' function. */
-/* #undef HAVE_GETUTXLINE */
+#define HAVE_GETUTXLINE 1
 
 /* Define to 1 if you have the `getutxuser' function. */
 /* #undef HAVE_GETUTXUSER */
@@ -505,7 +517,7 @@
 /* #undef HAVE_ID_IN_UTMP */
 
 /* Define if you have ut_id in utmpx.h */
-#define HAVE_ID_IN_UTMPX  1
+#define HAVE_ID_IN_UTMPX 1
 
 /* Define to 1 if you have the `inet_aton' function. */
 #define HAVE_INET_ATON 1
@@ -534,8 +546,14 @@
 /* Define to 1 if the system has the type `in_port_t'. */
 #define HAVE_IN_PORT_T 1
 
+/* Define if you have isblank(3C). */
+#define HAVE_ISBLANK 1
+
 /* Define to 1 if you have the <lastlog.h> header file. */
 /* #undef HAVE_LASTLOG_H */
+
+/* Define to 1 if you have the <libaudit.h> header file. */
+/* #undef HAVE_LIBAUDIT_H */
 
 /* Define to 1 if you have the `bsm' library (-lbsm). */
 /* #undef HAVE_LIBBSM */
@@ -580,7 +598,7 @@
 /* #undef HAVE_LINUX_IF_TUN_H */
 
 /* Define if your libraries define login() */
-/* #undef HAVE_LOGIN */
+#define HAVE_LOGIN 1
 
 /* Define to 1 if you have the <login_cap.h> header file. */
 #define HAVE_LOGIN_CAP_H 1
@@ -739,6 +757,12 @@
 /* Define to 1 if you have the `rresvport_af' function. */
 #define HAVE_RRESVPORT_AF 1
 
+/* Define to 1 if you have the `RSA_generate_key_ex' function. */
+#define HAVE_RSA_GENERATE_KEY_EX 1
+
+/* Define to 1 if you have the `RSA_get_default_method' function. */
+#define HAVE_RSA_GET_DEFAULT_METHOD 1
+
 /* define if you have sa_family_t data type */
 #define HAVE_SA_FAMILY_T 1
 
@@ -806,10 +830,10 @@
 #define HAVE_SETSID 1
 
 /* Define to 1 if you have the `setutent' function. */
-/* #undef HAVE_SETUTENT */
+#define HAVE_SETUTENT 1
 
 /* Define to 1 if you have the `setutxdb' function. */
-/* #undef HAVE_SETUTXDB */
+#define HAVE_SETUTXDB 1
 
 /* Define to 1 if you have the `setutxent' function. */
 #define HAVE_SETUTXENT 1
@@ -1045,6 +1069,9 @@
 /* Define if you have ut_time in utmpx.h */
 /* #undef HAVE_TIME_IN_UTMPX */
 
+/* Define to 1 if you have the `timingsafe_bcmp' function. */
+/* #undef HAVE_TIMINGSAFE_BCMP */
+
 /* Define to 1 if you have the <tmpdir.h> header file. */
 /* #undef HAVE_TMPDIR_H */
 
@@ -1085,7 +1112,7 @@
 /* #undef HAVE_UPDWTMP */
 
 /* Define to 1 if you have the `updwtmpx' function. */
-/* #undef HAVE_UPDWTMPX */
+#define HAVE_UPDWTMPX 1
 
 /* Define to 1 if you have the <usersec.h> header file. */
 /* #undef HAVE_USERSEC_H */
@@ -1103,10 +1130,10 @@
 #define HAVE_UTIME_H 1
 
 /* Define to 1 if you have the `utmpname' function. */
-/* #undef HAVE_UTMPNAME */
+#define HAVE_UTMPNAME 1
 
 /* Define to 1 if you have the `utmpxname' function. */
-/* #undef HAVE_UTMPXNAME */
+#define HAVE_UTMPXNAME 1
 
 /* Define to 1 if you have the <utmpx.h> header file. */
 #define HAVE_UTMPX_H 1
@@ -1260,6 +1287,9 @@
 /* Define if EVP_DigestUpdate returns void */
 /* #undef OPENSSL_EVP_DIGESTUPDATE_VOID */
 
+/* libcrypto includes complete ECC support */
+#define OPENSSL_HAS_ECC 1
+
 /* libcrypto is missing AES 192 and 256 bit functions */
 /* #undef OPENSSL_LOBOTOMISED_AES */
 
@@ -1391,8 +1421,11 @@
 /* Use libedit for sftp */
 #define USE_LIBEDIT 1
 
+/* Use Linux audit module */
+/* #undef USE_LINUX_AUDIT */
+
 /* Enable OpenSSL engine support */
-/* #undef USE_OPENSSL_ENGINE */
+#define USE_OPENSSL_ENGINE 1
 
 /* Define if you want to enable PAM support */
 #define USE_PAM 1
@@ -1402,6 +1435,9 @@
 
 /* Define if you have Solaris process contracts */
 /* #undef USE_SOLARIS_PROCESS_CONTRACTS */
+
+/* Define if you have Solaris projects */
+/* #undef USE_SOLARIS_PROJECTS */
 
 /* Define if you shouldn't strip 'tty' from your ttyname in [uw]tmp */
 /* #undef WITH_ABBREV_NO_TTY */

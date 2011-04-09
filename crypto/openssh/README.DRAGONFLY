@@ -5,7 +5,7 @@ A list of deleted files is in README.DELETED.
 
 Upgrading notes:
 ./configure --prefix=/usr --sysconfdir=/etc/ssh \
-	--with-pam --with-tcp-wrappers --with-libedit
+	--with-pam --with-tcp-wrappers --with-libedit --with-ssl-engine
 
 Update config.h and version.h in secure/lib/libssh.
 Update ssh{,d}_config and ssh{,d}_config.5.

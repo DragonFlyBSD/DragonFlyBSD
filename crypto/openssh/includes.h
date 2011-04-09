@@ -111,6 +111,7 @@
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h> /* For typedefs */
+#include <netinet/ip.h>
 #ifdef HAVE_RPC_TYPES_H
 # include <rpc/types.h> /* For INADDR_LOOPBACK */
 #endif

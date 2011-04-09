@@ -8,8 +8,5 @@ MAN=	ssh-keysign.8
 BINMODE=4511
 .endif
 
-DPADD+=	${LIBZ}
-LDADD+=	-lz
-
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>

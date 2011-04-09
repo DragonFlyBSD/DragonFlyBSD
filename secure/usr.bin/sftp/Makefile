@@ -2,7 +2,7 @@
 # $DragonFly: src/secure/usr.bin/sftp/Makefile,v 1.5 2008/09/28 03:19:46 pavalos Exp $
 
 PROG=	sftp
-SRCS=	sftp.c sftp-client.c sftp-common.c sftp-glob.c roaming_dummy.c
+SRCS=	progressmeter.c sftp.c sftp-client.c sftp-common.c sftp-glob.c roaming_dummy.c
 WARNS?=	0
 
 # Portability layer

@@ -2,7 +2,7 @@
 # $DragonFly: src/secure/usr.bin/ssh-agent/Makefile,v 1.4 2008/04/07 01:20:18 pavalos Exp $
 
 PROG=	ssh-agent
-SRCS=	ssh-agent.c roaming_dummy.c
+SRCS=	ssh-agent.c ssh-pkcs11-client.c roaming_dummy.c
 WARNS?=	3
 
 .include "../../Makefile.ssh.common"

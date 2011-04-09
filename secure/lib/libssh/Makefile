@@ -10,21 +10,18 @@ SRCS=	acss.c authfd.c authfile.c bufaux.c bufbn.c buffer.c \
 	log.c match.c md-sha256.c moduli.c nchan.c packet.c \
 	readpass.c rsa.c ttymodes.c xmalloc.c addrmatch.c \
 	atomicio.c key.c dispatch.c kex.c mac.c uidswap.c uuencode.c misc.c \
-	monitor_fdpass.c rijndael.c ssh-dss.c ssh-rsa.c dh.c kexdh.c \
-	kexgex.c kexdhc.c kexgexc.c msg.c progressmeter.c dns.c \
-	entropy.c gss-genr.c umac.c jpake.c schnorr.c \
-	ssh-pkcs11.c
+	monitor_fdpass.c rijndael.c ssh-dss.c ssh-ecdsa.c ssh-rsa.c dh.c \
+	kexdh.c kexgex.c kexdhc.c kexgexc.c bufec.c kexecdh.c kexecdhc.c \
+	msg.c progressmeter.c dns.c entropy.c gss-genr.c umac.c jpake.c \
+	schnorr.c ssh-pkcs11.c
 # Portability layer
-SRCS+=	bsd-misc.c getrrsetbyname.c port-tun.c
+SRCS+=	bsd-misc.c getrrsetbyname.c port-tun.c timingsafe_bcmp.c
 # FreeBSD additions
 SRCS+=	version.c
 
 MAN=	moduli.5
 
 WARNS?=	0
-
-DPADD+=	${LIBZ}
-LDADD+=	-lz
 
 .include "../../Makefile.ssh.common"
 .include <bsd.lib.mk>

@@ -7,11 +7,8 @@ CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${SSHDIR} -include ssh_namespace.h
 NOLINT=	true
 
 .if ${.CURDIR:T} != "libssh"
-DPADD+=	${LIBSSH}
-LDADD+=	-lssh
+DPADD+=	${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
+LDADD+=	-lssh -lcrypto -lutil -lz
 .endif
-
-DPADD+=	${LIBCRYPTO}
-LDADD+=	-lcrypto
 
 .PATH:	${SSHDIR}

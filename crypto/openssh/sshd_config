@@ -13,7 +13,7 @@
 # Note that some of DragonFly's defaults differ from OpenBSD's, and
 # DragonFly has a few additional options.
 
-#VersionAddendum DragonFly-20090620
+#VersionAddendum DragonFly-20110408
 
 #Port 22
 #AddressFamily any

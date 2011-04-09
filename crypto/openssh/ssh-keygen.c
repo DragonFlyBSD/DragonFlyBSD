@@ -1478,7 +1478,7 @@ do_ca_sign(struct passwd *pw, int argc, char **argv)
 		fclose(f);
 
 		if (!quiet) {
-			logit("Signed %s key %s: id \"%s\" serial %ju%s%s "
+			logit("Signed %s key %s: id \"%s\" serial %llu%s%s "
 			    "valid %s", key_cert_type(public), 
 			    out, public->cert->key_id,
 			    (unsigned long long)public->cert->serial,

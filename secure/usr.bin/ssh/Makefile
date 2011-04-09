@@ -16,8 +16,5 @@ SRCS=	ssh.c readconf.c clientloop.c sshtty.c \
 CFLAGS+= -DXAUTH_PATH=\"${X11BASE}/bin/xauth\"
 .endif
 
-LDADD+=	-lutil -lz
-DPADD+=	${LIBUTIL} ${LIBZ}
-
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>
