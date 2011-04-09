@@ -7,6 +7,7 @@ README.privsep
 TODO
 WARNING.RNG
 aclocal.m4
+audit-linux.c
 buildpkg.sh.in
 config.guess
 config.h.in
@@ -39,6 +40,7 @@ openbsd-compat/bsd-poll.c
 openbsd-compat/bsd-snprintf.c
 openbsd-compat/bsd-statvfs.c
 openbsd-compat/bsd-waitpid.c
+openbsd-compat/charclass.h
 openbsd-compat/daemon.c
 openbsd-compat/dirname.c
 openbsd-compat/fake-rfc2553.c
