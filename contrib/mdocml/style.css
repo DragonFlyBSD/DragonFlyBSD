@@ -1,4 +1,4 @@
-/* $Id: style.css,v 1.20 2010/12/24 22:51:13 kristaps Exp $ */
+/* $Id: style.css,v 1.21 2011/02/09 09:52:47 kristaps Exp $ */
 
 html		{ max-width: 800px; }
 body		{ color: #333333;
@@ -30,23 +30,18 @@ h2		{ margin-bottom: 0px; color: #000000; font-size: 0.93em; margin-left: -2ex; 
 div.section	{ margin-bottom: 2ex; margin-left: 4ex; } /* Sections (Sh, SH). */
 div.subsection	{ } /* Sub-sections (Ss, SS). */
 table.synopsis	{ } /* SYNOPSIS section table. */
-table.synopsis td { vertical-align: top; } /* SYNOPSIS section table. */
 
 /* Vertical spacing. */
 
 p		{ } /* Paragraph: Pp, Lp. */
 blockquote	{ margin-top: 0px; margin-bottom: 0px; }
 table		{ margin-top: 0px; margin-bottom: 0px; }
+td 		{ vertical-align: top; } /* SYNOPSIS section table. */
 
 /* General font modes. */
 
-.lit		{ font-family: monospace; font-style: normal; font-weight: normal; } /* Literal: Dl, Li, Bf -literal, Bl -literal, Bl -unfilled. */
-.italic		{ font-style: italic; font-weight: normal; } /* Italic: BI, IB, I, (implicit). */
 .emph		{ font-style: italic; font-weight: normal; } /* Emphasis: Em, Bl -emphasis. */
-.bold		{ font-style: normal; font-weight: bold; } /* Bold: SB, BI, IB, BR, RB, B, (implicit). */
 .symb		{ font-style: normal; font-weight: bold; } /* Symbolic: Sy, Ms, Bf -symbolic. */
-.roman		{ font-style: normal; font-weight: normal; } /* Roman: (implicit). */
-.small		{ font-style: normal; font-weight: normal; font-size: smaller; } /* Small: SB, SM. */
 
 /* Block modes. */
 
@@ -75,6 +70,8 @@ b.fname		{ font-style: normal; } /* Function name (Fa, Fn, Rv). */
 i.ftype		{ font-weight: normal; } /* Function types (Ft, Fn). */
 b.includes	{ font-style: normal; } /* Header includes (In). */
 span.lib	{ } /* Library (Lb). */
+i.link-sec	{ font-weight: normal; } /* Section links (Sx). */
+code.lit	{ font-style: normal; font-weight: normal; } /* Literal: Dl, Li, Bf -literal, Bl -literal, Bl -unfilled. */
 b.macro		{ font-style: normal; } /* Macro-ish thing (Fd). */
 b.name		{ color: blue; font-style: normal; } /* Name of utility (Nm). */
 span.opt	{ } /* Options (Op, Oo/Oc). */
@@ -144,3 +141,11 @@ li.list-item	{ }
 
 ol.list-enum	{ padding-left: 2em; }
 li.list-enum	{ }
+
+/* Equation modes.  See eqn(7). */
+
+span.eqn	{ }
+
+/* Table modes.  See tbl(7). */
+
+table.tbl	{ }
