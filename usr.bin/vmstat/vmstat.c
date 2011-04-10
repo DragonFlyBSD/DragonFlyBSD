@@ -743,7 +743,7 @@ dointr(void)
 	intrcnt = calloc(nintr, sizeof(*intrcnt));
 	if (intrcnt == NULL)
 		err(1, "malloc");
-	sysctlbyname("hw.intrcnt", intrcnt, &size, NULL, 0);
+	sysctlbyname("hw.intrcnt_all", intrcnt, &size, NULL, 0);
 
 	nwidth = 21;
 	for (i = 0; i < nintr; ++i) {

@@ -780,7 +780,7 @@ getinfo(struct Info *ls)
 
 	if (nintr) {
 		size = nintr * sizeof(ls->intrcnt[0]);
-		sysctlbyname("hw.intrcnt", ls->intrcnt, &size, NULL, 0);
+		sysctlbyname("hw.intrcnt_all", ls->intrcnt, &size, NULL, 0);
 	}
 	size = sizeof(ls->Total);
 	if (sysctlbyname("vm.vmtotal", &ls->Total, &size, NULL, 0) < 0) {

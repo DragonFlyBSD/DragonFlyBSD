@@ -1077,6 +1077,27 @@ failed:
 SYSCTL_PROC(_hw, OID_AUTO, intrcnt, CTLTYPE_OPAQUE | CTLFLAG_RD,
 	NULL, 0, sysctl_intrcnt, "", "Interrupt Counts");
 
+static int
+sysctl_intrcnt_all(SYSCTL_HANDLER_ARGS)
+{
+    struct intr_info *info;
+    int error = 0;
+    int intr;
+
+    for (intr = 0; intr < MAX_INTS; ++intr) {
+	info = &intr_info_ary[intr];
+
+	error = SYSCTL_OUT(req, &info->i_count, sizeof(info->i_count));
+	if (error)
+		goto failed;
+    }
+failed:
+    return(error);
+}
+
+SYSCTL_PROC(_hw, OID_AUTO, intrcnt_all, CTLTYPE_OPAQUE | CTLFLAG_RD,
+	NULL, 0, sysctl_intrcnt_all, "", "Interrupt Counts");
+
 static void
 int_moveto_destcpu(int *orig_cpuid0, int *cpuid0, int intr)
 {
