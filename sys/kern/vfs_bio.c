@@ -903,6 +903,41 @@ bread(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
 }
 
 /*
+ * This version of bread issues any required I/O asyncnronously and
+ * makes a callback on completion.
+ *
+ * The callback must check whether BIO_DONE is set in the bio and issue
+ * the bpdone(bp, 0) if it isn't.  The callback is responsible for clearing
+ * BIO_DONE and disposing of the I/O (bqrelse()ing it).
+ */
+void
+breadcb(struct vnode *vp, off_t loffset, int size,
+	void (*func)(struct bio *), void *arg)
+{
+	struct buf *bp;
+
+	bp = getblk(vp, loffset, size, 0, 0);
+
+	/* if not found in cache, do some I/O */
+	if ((bp->b_flags & B_CACHE) == 0) {
+		bp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL);
+		bp->b_cmd = BUF_CMD_READ;
+		bp->b_bio1.bio_done = func;
+		bp->b_bio1.bio_caller_info1.ptr = arg;
+		vfs_busy_pages(vp, bp);
+		BUF_KERNPROC(bp);
+		vn_strategy(vp, &bp->b_bio1);
+	} else if (func) {
+		/*bp->b_bio1.bio_done = func;*/
+		bp->b_bio1.bio_caller_info1.ptr = arg;
+		bp->b_bio1.bio_flags |= BIO_DONE;
+		func(&bp->b_bio1);
+	} else {
+		bqrelse(bp);
+	}
+}
+
+/*
  * breadn:
  *
  *	Operates like bread, but also starts asynchronous I/O on

@@ -405,7 +405,9 @@ void	clearbiocache(struct bio *);
 void	bremfree (struct buf *);
 int	bread (struct vnode *, off_t, int, struct buf **);
 int	breadn (struct vnode *, off_t, int, off_t *, int *, int,
-	    struct buf **);
+		struct buf **);
+void	breadcb(struct vnode *, off_t, int,
+		void (*)(struct bio *), void *);
 int	bwrite (struct buf *);
 void	bdwrite (struct buf *);
 void	buwrite (struct buf *);
