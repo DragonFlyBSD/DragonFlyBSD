@@ -876,6 +876,9 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 			case AHCI_PREG_SSTS_SPD_GEN2:
 				ccb->cpi.base_transfer_speed = 300000;
 				break;
+			case AHCI_PREG_SSTS_SPD_GEN3:
+				ccb->cpi.base_transfer_speed = 600000;
+				break;
 			default:
 				/* unknown */
 				ccb->cpi.base_transfer_speed = 1000;

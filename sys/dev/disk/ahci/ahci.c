@@ -1404,10 +1404,23 @@ ahci_comreset(struct ahci_port *ap, int *pmdetectp)
 	 * take longer when plugged into a SATA-3 port.
 	 */
 	r |= AHCI_PREG_SCTL_DET_INIT;
-	if (AhciForceGen1 & (1 << ap->ap_num))
-		r |= AHCI_PREG_SCTL_SPD_GEN1;
-	else
+	switch(AhciForceGen) {
+	case 0:
 		r |= AHCI_PREG_SCTL_SPD_ANY;
+		break;
+	case 1:
+		r |= AHCI_PREG_SCTL_SPD_GEN1;
+		break;
+	case 2:
+		r |= AHCI_PREG_SCTL_SPD_GEN2;
+		break;
+	case 3:
+		r |= AHCI_PREG_SCTL_SPD_GEN3;
+		break;
+	default:
+		r |= AHCI_PREG_SCTL_SPD_GEN3;
+		break;
+	}
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
 	ahci_os_sleep(1000);
 	r &= ~AHCI_PREG_SCTL_SPD;

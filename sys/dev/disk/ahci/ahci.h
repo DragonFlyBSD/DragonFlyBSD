@@ -57,7 +57,8 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_REG_CAP_SNZO		(1<<19) /* Non Zero DMA Offsets */
 #define  AHCI_REG_CAP_ISS		(0xf<<20) /* Interface Speed Support */
 #define  AHCI_REG_CAP_ISS_G1		(0x1<<20) /* Gen 1 (1.5 Gbps) */
-#define  AHCI_REG_CAP_ISS_G1_2		(0x2<<20) /* Gen 1 and 2 (3 Gbps) */
+#define  AHCI_REG_CAP_ISS_G2		(0x2<<20) /* Gen 2 (3 Gbps) */
+#define  AHCI_REG_CAP_ISS_G3		(0x3<<20) /* Gen 3 (6 Gbps) */
 #define  AHCI_REG_CAP_SCLO		(1<<24) /* Cmd List Override */
 #define  AHCI_REG_CAP_SAL		(1<<25) /* Activity LED */
 #define  AHCI_REG_CAP_SALP		(1<<26) /* Aggressive Link Pwr Mgmt */
@@ -205,6 +206,7 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_PREG_SSTS_SPD_NONE	0x00
 #define  AHCI_PREG_SSTS_SPD_GEN1	0x10
 #define  AHCI_PREG_SSTS_SPD_GEN2	0x20
+#define  AHCI_PREG_SSTS_SPD_GEN3	0x30
 #define  AHCI_PREG_SSTS_IPM		0xf00 /* Interface Power Management */
 #define  AHCI_PREG_SSTS_IPM_NONE	0x000
 #define  AHCI_PREG_SSTS_IPM_ACTIVE	0x100
@@ -220,6 +222,7 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_PREG_SCTL_SPD_ANY		0x00
 #define  AHCI_PREG_SCTL_SPD_GEN1	0x10
 #define  AHCI_PREG_SCTL_SPD_GEN2	0x20
+#define  AHCI_PREG_SCTL_SPD_GEN3	0x30
 #define  AHCI_PREG_SCTL_IPM		0xf00 /* Interface Power Management */
 #define  AHCI_PREG_SCTL_IPM_NONE	0x000
 #define  AHCI_PREG_SCTL_IPM_NOPARTIAL	0x100
@@ -574,7 +577,7 @@ void	ahci_os_lock_port(struct ahci_port *ap);
 int	ahci_os_lock_port_nb(struct ahci_port *ap);
 void	ahci_os_unlock_port(struct ahci_port *ap);
 
-extern u_int32_t AhciForceGen1;
+extern u_int32_t AhciForceGen;
 extern u_int32_t AhciNoFeatures;
 
 enum {AHCI_LINK_PWR_MGMT_NONE, AHCI_LINK_PWR_MGMT_MEDIUM,

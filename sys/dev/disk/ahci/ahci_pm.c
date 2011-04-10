@@ -431,11 +431,22 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	at->at_probe = ATA_PROBE_FAILED;
 	at->at_type = ATA_PORT_T_NONE;
 	data = AHCI_PREG_SCTL_IPM_DISABLED | AHCI_PREG_SCTL_DET_INIT;
-	if (AhciForceGen1 & (1 << ap->ap_num)) {
-		kprintf("%s.%d: Force 1.5GBits\n", PORTNAME(ap), target);
-		data |= AHCI_PREG_SCTL_SPD_GEN1;
-	} else {
+	switch(AhciForceGen) {
+	case 0:
 		data |= AHCI_PREG_SCTL_SPD_ANY;
+		break;
+	case 1:
+		data |= AHCI_PREG_SCTL_SPD_GEN1;
+		break;
+	case 2:
+		data |= AHCI_PREG_SCTL_SPD_GEN2;
+		break;
+	case 3:
+		data |= AHCI_PREG_SCTL_SPD_GEN3;
+		break;
+	default:
+		data |= AHCI_PREG_SCTL_SPD_GEN3;
+		break;
 	}
 	if (ahci_pm_write(ap, target, SATA_PMREG_SCTL, data))
 		goto err;

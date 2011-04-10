@@ -49,6 +49,7 @@
 #define  SATA_PM_SSTS_SPD_NONE		0x00
 #define  SATA_PM_SSTS_SPD_GEN1		0x10
 #define  SATA_PM_SSTS_SPD_GEN2		0x20
+#define  SATA_PM_SSTS_SPD_GEN3		0x30
 #define  SATA_PM_SSTS_IPM		0xf00 /* Interface Power Management */
 #define  SATA_PM_SSTS_IPM_NONE		0x000
 #define  SATA_PM_SSTS_IPM_ACTIVE	0x100
@@ -63,6 +64,7 @@
 #define  SATA_PM_SCTL_SPD_ANY		0x00
 #define  SATA_PM_SCTL_SPD_GEN1		0x10
 #define  SATA_PM_SCTL_SPD_GEN2		0x20
+#define  SATA_PM_SCTL_SPD_GEN3		0x30
 #define  SATA_PM_SCTL_IPM		0xf00 /* Interface Power Management */
 #define  SATA_PM_SCTL_IPM_NONE		0x000
 #define  SATA_PM_SCTL_IPM_NOPARTIAL	0x100

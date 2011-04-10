@@ -39,7 +39,7 @@
 
 #include "ahci.h"
 
-u_int32_t AhciForceGen1 = 0;
+u_int32_t AhciForceGen = 0;
 u_int32_t AhciNoFeatures = 0;
 
 /*
@@ -94,10 +94,6 @@ ahci_probe (device_t dev)
 
 	if (kgetenv("hint.ahci.disabled"))
 		return(ENXIO);
-	if (kgetenv("hint.ahci.force150"))
-		AhciForceGen1 = -1;
-	if (kgetenv("hint.ahci.nofeatures"))
-		AhciNoFeatures = -1;
 
 	ad = ahci_lookup_device(dev);
 	if (ad) {
@@ -117,6 +113,20 @@ ahci_attach (device_t dev)
 	sc->sc_ad = ahci_lookup_device(dev);
 	if (sc->sc_ad == NULL)
 		return(ENXIO);
+
+	/*
+	 * Some chipsets do not properly implement the AHCI spec and may
+	 * require the link speed to be specifically requested.
+	 */
+	if (kgetenv("hint.ahci.force150"))
+		AhciForceGen = 1;
+	if (kgetenv("hint.ahci.force300"))
+		AhciForceGen = 2;
+	if (kgetenv("hint.ahci.force600"))
+		AhciForceGen = 3;
+
+	if (kgetenv("hint.ahci.nofeatures"))
+		AhciNoFeatures = -1;
 
 	sysctl_ctx_init(&sc->sysctl_ctx);
 	ksnprintf(name, sizeof(name), "%s%d",

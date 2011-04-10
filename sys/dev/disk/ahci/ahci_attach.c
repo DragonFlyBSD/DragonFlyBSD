@@ -316,8 +316,11 @@ ahci_pci_attach(device_t dev)
 	case AHCI_REG_CAP_ISS_G1:
 		gen = "1 (1.5Gbps)";
 		break;
-	case AHCI_REG_CAP_ISS_G1_2:
-		gen = "1 (1.5Gbps) and 2 (3Gbps)";
+	case AHCI_REG_CAP_ISS_G2:
+		gen = "2 (3Gbps)";
+		break;
+	case AHCI_REG_CAP_ISS_G3:
+		gen = "3 (6Gbps)";
 		break;
 	default:
 		gen = "unknown";
