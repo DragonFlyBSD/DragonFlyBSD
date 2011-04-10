@@ -106,8 +106,14 @@ sili_cam_attach(struct sili_port *ap)
 	if (devq == NULL) {
 		return (ENOMEM);
 	}
+
+	/*
+	 * Give the devq enough room to run with 32 max_dev_transactions,
+	 * but set the overall max tags to 1 until NCQ is negotiated.
+	 */
 	sim = cam_sim_alloc(sili_xpt_action, sili_xpt_poll, "sili",
-			   (void *)ap, unit, &ap->ap_sim_lock, 1, 1, devq);
+			   (void *)ap, unit, &ap->ap_sim_lock,
+			   32, 1, devq);
 	cam_simq_release(devq);
 	if (sim == NULL) {
 		return (ENOMEM);
@@ -370,8 +376,8 @@ sili_cam_probe(struct sili_port *ap, struct ata_port *atx)
 				}
 			}
 			if (at->at_ncqdepth >= ap->ap_sc->sc_ncmds) {
-				cam_devq_resize(ap->ap_sim->devq,
-						at->at_ncqdepth - 1);
+				cam_sim_set_max_tags(ap->ap_sim,
+						     at->at_ncqdepth - 1);
 			}
 		}
 	} else {
