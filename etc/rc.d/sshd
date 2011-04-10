@@ -45,6 +45,14 @@ sshd_keygen()
 		/usr/bin/ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -N ''
 	fi
 
+	if [ -f /etc/ssh/ssh_host_ecdsa_key ]; then
+		echo "You already have a ECDSA host key" \
+		    "in /etc/ssh/ssh_host_ecdsa_key"
+		echo "Skipping protocol version 2 ECDSA Key Generation"
+	else
+		/usr/bin/ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N ''
+	fi
+
 	if [ -f /etc/ssh/ssh_host_rsa_key ]; then
 		echo "You already have a RSA host key" \
 		    "in /etc/ssh/ssh_host_rsa_key"
@@ -59,6 +67,7 @@ sshd_precmd()
 {
 	if [ ! -f /etc/ssh/ssh_host_key -o \
 	    ! -f /etc/ssh/ssh_host_dsa_key -o \
+	    ! -f /etc/ssh/ssh_host_ecdsa_key -o \
 	    ! -f /etc/ssh/ssh_host_rsa_key ]; then
 		run_rc_command keygen
 	fi
