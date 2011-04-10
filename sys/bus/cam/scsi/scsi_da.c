@@ -95,7 +95,9 @@ typedef enum {
 	DA_FLAG_WENT_IDLE	= 0x040,
 	DA_FLAG_RETRY_UA	= 0x080,
 	DA_FLAG_OPEN		= 0x100,
-	DA_FLAG_SCTX_INIT	= 0x200
+	DA_FLAG_SCTX_INIT	= 0x200,
+	DA_FLAG_RD_LIMIT	= 0x400,
+	DA_FLAG_WR_LIMIT	= 0x800
 } da_flags;
 
 typedef enum {
@@ -128,7 +130,8 @@ struct disk_params {
 };
 
 struct da_softc {
-	struct	 bio_queue_head bio_queue;
+	struct	 bio_queue_head bio_queue_rd;
+	struct	 bio_queue_head bio_queue_wr;
 	struct	 devstat device_stats;
 	SLIST_ENTRY(da_softc) links;
 	LIST_HEAD(, ccb_hdr) pending_ccbs;
@@ -137,7 +140,8 @@ struct da_softc {
 	da_quirks quirks;
 	int	 minimum_cmd_size;
 	int	 ordered_tag_count;
-	int	 outstanding_cmds;
+	int	 outstanding_cmds_rd;
+	int	 outstanding_cmds_wr;
 	struct	 disk_params params;
 	struct	 disk disk;
 	union	 ccb saved_ccb;
@@ -330,7 +334,7 @@ static int		dagetcapacity(struct cam_periph *periph);
 static int		dacheckmedia(struct cam_periph *periph);
 static void		dasetgeom(struct cam_periph *periph, uint32_t block_len,
 				  uint64_t maxsector);
-
+static void		daflushbioq(struct bio_queue_head *bioq, int error);
 static timeout_t	dasendorderedtag;
 static void		dashutdown(void *arg, int howto);
 
@@ -631,7 +635,10 @@ dastrategy(struct dev_strategy_args *ap)
 	/*
 	 * Place it in the queue of disk activities for this disk
 	 */
-	bioqdisksort(&softc->bio_queue, bio);
+	if (bp->b_cmd == BUF_CMD_WRITE || bp->b_cmd == BUF_CMD_FLUSH)
+		bioqdisksort(&softc->bio_queue_wr, bio);
+	else
+		bioqdisksort(&softc->bio_queue_rd, bio);
 	
 	/*
 	 * Schedule ourselves for performing the work.
@@ -791,8 +798,6 @@ static void
 daoninvalidate(struct cam_periph *periph)
 {
 	struct da_softc *softc;
-	struct bio *q_bio;
-	struct buf *q_bp;
 
 	softc = (struct da_softc *)periph->softc;
 
@@ -808,15 +813,25 @@ daoninvalidate(struct cam_periph *periph)
 	 * XXX Handle any transactions queued to the card
 	 *     with XPT_ABORT_CCB.
 	 */
-	while ((q_bio = bioq_first(&softc->bio_queue)) != NULL){
-		bioq_remove(&softc->bio_queue, q_bio);
+	daflushbioq(&softc->bio_queue_wr, ENXIO);
+	daflushbioq(&softc->bio_queue_rd, ENXIO);
+	xpt_print(periph->path, "lost device\n");
+}
+
+static void
+daflushbioq(struct bio_queue_head *bioq, int error)
+{
+	struct bio *q_bio;
+	struct buf *q_bp;
+
+	while ((q_bio = bioq_first(bioq)) != NULL){
+		bioq_remove(bioq, q_bio);
 		q_bp = q_bio->bio_buf;
 		q_bp->b_resid = q_bp->b_bcount;
-		q_bp->b_error = ENXIO;
+		q_bp->b_error = error;
 		q_bp->b_flags |= B_ERROR;
 		biodone(q_bio);
 	}
-	xpt_print(periph->path, "lost device\n");
 }
 
 static void
@@ -1016,7 +1031,8 @@ daregister(struct cam_periph *periph, void *arg)
 	softc = kmalloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	LIST_INIT(&softc->pending_ccbs);
 	softc->state = DA_STATE_PROBE;
-	bioq_init(&softc->bio_queue);
+	bioq_init(&softc->bio_queue_rd);
+	bioq_init(&softc->bio_queue_wr);
 	if (SID_IS_REMOVABLE(&cgd->inq_data))
 		softc->flags |= DA_FLAG_PACK_REMOVABLE;
 	if ((cgd->inq_data.flags & SID_CmdQue) != 0)
@@ -1152,13 +1168,18 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 	{
 		/* Pull a buffer from the queue and get going on it */		
 		struct bio *bio;
+		struct bio *bio_rd;
+		struct bio *bio_wr;
 		struct buf *bp;
 		u_int8_t tag_code;
+		int limit;
 
 		/*
 		 * See if there is a buf with work for us to do..
 		 */
-		bio = bioq_first(&softc->bio_queue);
+		bio_rd = bioq_first(&softc->bio_queue_rd);
+		bio_wr = bioq_first(&softc->bio_queue_wr);
+
 		if (periph->immediate_priority <= periph->pinfo.priority) {
 			CAM_DEBUG_PRINT(CAM_DEBUG_SUBTRACE,
 					("queuing for immediate ccb\n"));
@@ -1167,7 +1188,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 					  periph_links.sle);
 			periph->immediate_priority = CAM_PRIORITY_NONE;
 			wakeup(&periph->ccb_list);
-			if (bio != NULL) {
+			if (bio_rd || bio_wr) {
 				/*
 				 * Have more work to do, so ensure we stay
 				 * scheduled
@@ -1176,7 +1197,49 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 			}
 			break;
 		}
-		if (bio == NULL) {
+
+		/*
+		 * Select a read or write buffer to queue.  Limit the number
+		 * of tags dedicated to reading or writing, giving reads
+		 * precedence.
+		 *
+		 * Writes to modern hard drives go into the HDs cache and
+		 * return completion nearly instantly.  That is until the
+		 * cache becomes full.  When the HDs cache becomes full
+		 * write commands will begin to stall.  If all available
+		 * tags are taken up by writes which saturate the drive
+		 * reads will become tag-starved.
+		 *
+		 * A similar situation can occur with reads.  With many
+		 * parallel readers all tags can be taken up by reads
+		 * and prevent any writes from draining, even if the HD's
+		 * cache is not full.
+		 */
+		limit = (periph->sim->max_tagged_dev_openings + 1) * 2 / 3;
+#if 0
+		/* DEBUGGING */
+		static int savets;
+		static long savets2;
+		if (time_second != savets2 || (ticks != savets && (softc->outstanding_cmds_rd || softc->outstanding_cmds_wr))) {
+			kprintf("%d %d (%d)\n",
+				softc->outstanding_cmds_rd,
+				softc->outstanding_cmds_wr,
+				limit);
+			savets = ticks;
+			savets2 = time_second;
+		}
+#endif
+		if (bio_rd && softc->outstanding_cmds_rd < limit) {
+			bio = bio_rd;
+			bioq_remove(&softc->bio_queue_rd, bio);
+		} else if (bio_wr && softc->outstanding_cmds_wr < limit) {
+			bio = bio_wr;
+			bioq_remove(&softc->bio_queue_wr, bio);
+		} else {
+			if (bio_rd)
+				softc->flags |= DA_FLAG_RD_LIMIT;
+			if (bio_wr)
+				softc->flags |= DA_FLAG_WR_LIMIT;
 			xpt_release_ccb(start_ccb);
 			break;
 		}
@@ -1184,7 +1247,6 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 		/*
 		 * We can queue new work.
 		 */
-		bioq_remove(&softc->bio_queue, bio);
 		bp = bio->bio_buf;
 
 		devstat_start_transaction(&softc->device_stats);
@@ -1261,7 +1323,12 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 			start_ccb->ccb_h.ccb_state = DA_CCB_BUFFER_IO;
 			LIST_INSERT_HEAD(&softc->pending_ccbs,
 					 &start_ccb->ccb_h, periph_links.le);
-			softc->outstanding_cmds++;
+			if (bp->b_cmd == BUF_CMD_WRITE ||
+			    bp->b_cmd == BUF_CMD_FLUSH) {
+				++softc->outstanding_cmds_wr;
+			} else {
+				++softc->outstanding_cmds_rd;
+			}
 
 			/* We expect a unit attention from this device */
 			if ((softc->flags & DA_FLAG_RETRY_UA) != 0) {
@@ -1276,9 +1343,10 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 		/*
 		 * Be sure we stay scheduled if we have more work to do.
 		 */
-		bio = bioq_first(&softc->bio_queue);
-		if (bio != NULL)
+		if (bioq_first(&softc->bio_queue_rd) ||
+		    bioq_first(&softc->bio_queue_wr)) {
 			xpt_schedule(periph, 1);
+		}
 		break;
 	}
 	case DA_STATE_PROBE:
@@ -1390,6 +1458,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 	{
 		struct buf *bp;
 		struct bio *bio;
+		int mustsched = 0;
 
 		bio = (struct bio *)done_ccb->ccb_h.ccb_bio;
 		bp = bio->bio_buf;
@@ -1411,9 +1480,6 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				return;
 			}
 			if (error != 0) {
-				struct bio *q_bio;
-				struct buf *q_bp;
-
 				if (error == ENXIO) {
 					/*
 					 * Catastrophic error.  Mark our pack as
@@ -1429,19 +1495,13 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				}
 
 				/*
-				 * return all queued I/O with EIO, so that
-				 * the client can retry these I/Os in the
+				 * Return all queued write I/O's with EIO
+				 * so the client can retry these I/Os in the
 				 * proper order should it attempt to recover.
+				 *
+				 * Leave read I/O's alone.
 				 */
-				while ((q_bio = bioq_first(&softc->bio_queue))
-					!= NULL) {
-					bioq_remove(&softc->bio_queue, q_bio);
-					q_bp = q_bio->bio_buf;
-					q_bp->b_resid = q_bp->b_bcount;
-					q_bp->b_error = EIO;
-					q_bp->b_flags |= B_ERROR;
-					biodone(q_bio);
-				}
+				daflushbioq(&softc->bio_queue_wr, EIO);
 				bp->b_error = error;
 				bp->b_resid = bp->b_bcount;
 				bp->b_flags |= B_ERROR;
@@ -1470,12 +1530,30 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 		 * while we touch the pending ccb list.
 		 */
 		LIST_REMOVE(&done_ccb->ccb_h, periph_links.le);
-		softc->outstanding_cmds--;
-		if (softc->outstanding_cmds == 0)
+		if (bp->b_cmd == BUF_CMD_WRITE || bp->b_cmd == BUF_CMD_FLUSH) {
+			--softc->outstanding_cmds_wr;
+			if (softc->flags & DA_FLAG_WR_LIMIT) {
+				softc->flags &= ~DA_FLAG_WR_LIMIT;
+				mustsched = 1;
+			}
+		} else {
+			--softc->outstanding_cmds_rd;
+			if (softc->flags & DA_FLAG_RD_LIMIT) {
+				softc->flags &= ~DA_FLAG_RD_LIMIT;
+				mustsched = 1;
+			}
+		}
+		if (softc->outstanding_cmds_rd +
+		    softc->outstanding_cmds_wr == 0) {
 			softc->flags |= DA_FLAG_WENT_IDLE;
+		}
 
 		devstat_end_transaction_buf(&softc->device_stats, bp);
 		biodone(bio);
+
+		if (mustsched)
+			xpt_schedule(periph, /*priority*/1);
+
 		break;
 	}
 	case DA_CCB_PROBE:
@@ -1978,7 +2056,7 @@ dasendorderedtag(void *arg)
 		 && ((softc->flags & DA_FLAG_WENT_IDLE) == 0)) {
 			softc->flags |= DA_FLAG_NEED_OTAG;
 		}
-		if (softc->outstanding_cmds > 0)
+		if (softc->outstanding_cmds_rd || softc->outstanding_cmds_wr)
 			softc->flags &= ~DA_FLAG_WENT_IDLE;
 
 		softc->ordered_tag_count = 0;

@@ -78,6 +78,7 @@ struct cam_sim *  cam_sim_alloc(sim_action_func sim_action,
 				struct cam_devq *queue);
 void		  cam_sim_free(struct cam_sim *sim);
 void		  cam_sim_release(struct cam_sim *sim, int flags);
+void		  cam_sim_set_max_tags(struct cam_sim *sim, int max_tags);
 
 #define CAM_SIM_SOFTC	0x0002
 

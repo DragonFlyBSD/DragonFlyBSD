@@ -216,6 +216,15 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 	return (sim);
 }
 
+void
+cam_sim_set_max_tags(struct cam_sim *sim, int max_tags)
+{
+	if (max_tags > 256)
+		max_tags = 256;
+        sim->max_tagged_dev_openings = max_tags;
+	cam_devq_set_openings(sim->devq, max_tags);
+}
+
 static void deadsim_poll(struct cam_sim *sim);
 static void deadsim_action(struct cam_sim *sim, union ccb *ccb);
 

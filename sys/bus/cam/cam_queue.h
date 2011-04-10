@@ -75,6 +75,7 @@ struct cam_devq {
 	int	send_openings;
 	int	send_active;
 	int	refcount;
+	int	max_openings;
 };
 
 
@@ -85,6 +86,8 @@ int		 cam_devq_init(struct cam_devq *devq, int devices,
 void		 cam_devq_reference(struct cam_devq *devq);
 void		 cam_devq_release(struct cam_devq *devq);
 u_int32_t	 cam_devq_resize(struct cam_devq *camq, int openings);
+void		 cam_devq_set_openings(struct cam_devq *devq, int openings);
+
 	
 /*
  * Allocate a cam_ccb_queue structure and initialize it.

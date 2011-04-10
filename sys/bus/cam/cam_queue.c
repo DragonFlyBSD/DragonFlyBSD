@@ -220,12 +220,22 @@ cam_devq_init(struct cam_devq *devq, int devices, int openings)
 	bzero(devq, sizeof(*devq));
 	camq_init(&devq->alloc_queue, devices);
 	camq_init(&devq->send_queue, devices);
+	devq->max_openings = openings;
 	devq->alloc_openings = openings;
 	devq->alloc_active = 0;
 	devq->send_openings = openings;
 	devq->send_active = 0;	
 	devq->refcount = 1;
 	return (0);	
+}
+
+void
+cam_devq_set_openings(struct cam_devq *devq, int openings)
+{
+	int delta = openings - devq->max_openings;
+	devq->alloc_openings += delta;
+	devq->send_openings += delta;
+	devq->max_openings = openings;
 }
 
 void
