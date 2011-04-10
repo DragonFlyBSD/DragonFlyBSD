@@ -2700,13 +2700,25 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	 * device.
 	 */
 	nbio = push_bio(bio);
-	if (hammer_double_buffer == 0 &&
-	    (nbio->bio_offset & HAMMER_OFF_ZONE_MASK) ==
+	if ((nbio->bio_offset & HAMMER_OFF_ZONE_MASK) ==
 	    HAMMER_ZONE_LARGE_DATA) {
-		lwkt_gettoken(&hmp->fs_token);
-		error = hammer_io_direct_read(hmp, nbio, NULL);
-		lwkt_reltoken(&hmp->fs_token);
-		return (error);
+		if (hammer_double_buffer == 0) {
+			lwkt_gettoken(&hmp->fs_token);
+			error = hammer_io_direct_read(hmp, nbio, NULL);
+			lwkt_reltoken(&hmp->fs_token);
+			return (error);
+		}
+
+		/*
+		 * Try to shortcut requests for double_buffer mode too.
+		 * Since this mode runs through the device buffer cache
+		 * only compatible buffer sizes (meaning those generated
+		 * by normal filesystem buffers) are legal.
+		 */
+		if (hammer_live_dedup == 0 && (bp->b_flags & B_PAGING) == 0) {
+			error = hammer_io_indirect_read(hmp, nbio, NULL);
+			return (error);
+		}
 	}
 
 	/*
@@ -2851,6 +2863,9 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 * The buffer on-disk should be zerod past any real
 		 * truncation point, but may not be for any synthesized
 		 * truncation point from above.
+		 *
+		 * NOTE: disk_offset is only valid if the cursor data is
+		 *	 on-disk.
 		 */
 		disk_offset = cursor.leaf->data_offset + roff;
 		isdedupable = (boff == 0 && n == bp->b_bufsize &&
@@ -2858,12 +2873,30 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 			       ((int)disk_offset & HAMMER_BUFMASK) == 0);
 
 		if (isdedupable && hammer_double_buffer == 0) {
+			/*
+			 * Direct read case
+			 */
 			KKASSERT((disk_offset & HAMMER_OFF_ZONE_MASK) ==
 				 HAMMER_ZONE_LARGE_DATA);
 			nbio->bio_offset = disk_offset;
 			error = hammer_io_direct_read(hmp, nbio, cursor.leaf);
 			if (hammer_live_dedup && error == 0)
 				hammer_dedup_cache_add(ip, cursor.leaf);
+			goto done;
+		} else if (isdedupable) {
+			/*
+			 * Async I/O case for reading from backing store
+			 * and copying the data to the filesystem buffer.
+			 * live-dedup has to verify the data anyway if it
+			 * gets a hit later so we can just add the entry
+			 * now.
+			 */
+			KKASSERT((disk_offset & HAMMER_OFF_ZONE_MASK) ==
+				 HAMMER_ZONE_LARGE_DATA);
+			nbio->bio_offset = disk_offset;
+			if (hammer_live_dedup)
+				hammer_dedup_cache_add(ip, cursor.leaf);
+			error = hammer_io_indirect_read(hmp, nbio, cursor.leaf);
 			goto done;
 		} else if (n) {
 			error = hammer_ip_resolve_data(&cursor);

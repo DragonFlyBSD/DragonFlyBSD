@@ -56,6 +56,7 @@
 
 static void hammer_io_modify(hammer_io_t io, int count);
 static void hammer_io_deallocate(struct buf *bp);
+static void hammer_indirect_callback(struct bio *bio);
 #if 0
 static void hammer_io_direct_read_complete(struct bio *nbio);
 #endif
@@ -1481,6 +1482,147 @@ done:
 		biodone(bio);
 	}
 	return(error);
+}
+
+/*
+ * This works similarly to hammer_io_direct_read() except instead of
+ * directly reading from the device into the bio we instead indirectly
+ * read through the device's buffer cache and then copy the data into
+ * the bio.
+ *
+ * If leaf is non-NULL and validation is enabled, the CRC will be checked.
+ *
+ * This routine also executes asynchronously.  It allows hammer strategy
+ * calls to operate asynchronously when in double_buffer mode (in addition
+ * to operating asynchronously when in normal mode).
+ */
+int
+hammer_io_indirect_read(hammer_mount_t hmp, struct bio *bio,
+			hammer_btree_leaf_elm_t leaf)
+{
+	hammer_off_t buf_offset;
+	hammer_off_t zone2_offset;
+	hammer_volume_t volume;
+	struct buf *bp;
+	int vol_no;
+	int error;
+
+	buf_offset = bio->bio_offset;
+	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) ==
+		 HAMMER_ZONE_LARGE_DATA);
+
+	/*
+	 * The buffer cache may have an aliased buffer (the reblocker can
+	 * write them).  If it does we have to sync any dirty data before
+	 * we can build our direct-read.  This is a non-critical code path.
+	 */
+	bp = bio->bio_buf;
+	hammer_sync_buffers(hmp, buf_offset, bp->b_bufsize);
+
+	/*
+	 * Resolve to a zone-2 offset.  The conversion just requires
+	 * munging the top 4 bits but we want to abstract it anyway
+	 * so the blockmap code can verify the zone assignment.
+	 */
+	zone2_offset = hammer_blockmap_lookup(hmp, buf_offset, &error);
+	if (error)
+		goto done;
+	KKASSERT((zone2_offset & HAMMER_OFF_ZONE_MASK) ==
+		 HAMMER_ZONE_RAW_BUFFER);
+
+	/*
+	 * Resolve volume and raw-offset for 3rd level bio.  The
+	 * offset will be specific to the volume.
+	 */
+	vol_no = HAMMER_VOL_DECODE(zone2_offset);
+	volume = hammer_get_volume(hmp, vol_no, &error);
+	if (error == 0 && zone2_offset >= volume->maxbuf_off)
+		error = EIO;
+
+	if (error == 0) {
+		/*
+		 * Convert to the raw volume->devvp offset and acquire
+		 * the buf, issuing async I/O if necessary.
+		 */
+		buf_offset = volume->ondisk->vol_buf_beg +
+			     (zone2_offset & HAMMER_OFF_SHORT_MASK);
+
+		if (leaf && hammer_verify_data) {
+			bio->bio_caller_info1.uvalue32 = leaf->data_crc;
+			bio->bio_caller_info2.index = 1;
+		} else {
+			bio->bio_caller_info2.index = 0;
+		}
+		breadcb(volume->devvp, buf_offset, bp->b_bufsize,
+			hammer_indirect_callback, bio);
+	}
+	hammer_rel_volume(volume, 0);
+done:
+	if (error) {
+		kprintf("hammer_direct_read: failed @ %016llx\n",
+			(long long)zone2_offset);
+		bp->b_error = error;
+		bp->b_flags |= B_ERROR;
+		biodone(bio);
+	}
+	return(error);
+}
+
+/*
+ * Indirect callback on completion.  bio/bp specify the device-backed
+ * buffer.  bio->bio_caller_info1.ptr holds obio.
+ *
+ * obio/obp is the original regular file buffer.  obio->bio_caller_info*
+ * contains the crc specification.
+ *
+ * We are responsible for calling bpdone() and bqrelse() on bio/bp, and
+ * for calling biodone() on obio.
+ */
+static void
+hammer_indirect_callback(struct bio *bio)
+{
+	struct buf *bp = bio->bio_buf;
+	struct buf *obp;
+	struct bio *obio;
+
+	/*
+	 * If BIO_DONE is already set the device buffer was already
+	 * fully valid (B_CACHE).  If it is not set then I/O was issued
+	 * and we have to run I/O completion as the last bio.
+	 *
+	 * Nobody is waiting for our device I/O to complete, we are
+	 * responsible for bqrelse()ing it which means we also have to do
+	 * the equivalent of biowait() and clear BIO_DONE (which breadcb()
+	 * may have set).
+	 *
+	 * Any preexisting device buffer should match the requested size,
+	 * but due to bigblock recycling and other factors there is some
+	 * fragility there, so we assert that the device buffer covers
+	 * the request.
+	 */
+	if ((bio->bio_flags & BIO_DONE) == 0)
+		bpdone(bp, 0);
+	bio->bio_flags &= ~(BIO_DONE | BIO_SYNC);
+
+	obio = bio->bio_caller_info1.ptr;
+	obp = obio->bio_buf;
+
+	if (bp->b_flags & B_ERROR) {
+		obp->b_flags |= B_ERROR;
+		obp->b_error = bp->b_error;
+	} else if (obio->bio_caller_info2.index &&
+		   obio->bio_caller_info1.uvalue32 !=
+		    crc32(bp->b_data, bp->b_bufsize)) {
+		obp->b_flags |= B_ERROR;
+		obp->b_error = EIO;
+	} else {
+		KKASSERT(bp->b_bufsize >= obp->b_bufsize);
+		bcopy(bp->b_data, obp->b_data, obp->b_bufsize);
+		obp->b_resid = 0;
+		obp->b_flags |= B_AGE;
+	}
+	biodone(obio);
+	bqrelse(bp);
 }
 
 #if 0

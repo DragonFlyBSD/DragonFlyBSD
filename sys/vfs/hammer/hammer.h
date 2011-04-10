@@ -1428,6 +1428,8 @@ void hammer_io_waitdep(struct hammer_io *io);
 void hammer_io_wait_all(hammer_mount_t hmp, const char *ident, int doflush);
 int hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 			hammer_btree_leaf_elm_t leaf);
+int hammer_io_indirect_read(hammer_mount_t hmp, struct bio *bio,
+			hammer_btree_leaf_elm_t leaf);
 int hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
 			hammer_record_t record);
 void hammer_io_direct_wait(hammer_record_t record);
