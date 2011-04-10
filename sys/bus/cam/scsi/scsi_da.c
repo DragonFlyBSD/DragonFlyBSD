@@ -1215,12 +1215,12 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 		 * and prevent any writes from draining, even if the HD's
 		 * cache is not full.
 		 */
-		limit = (periph->sim->max_tagged_dev_openings + 1) * 2 / 3;
+		limit = periph->sim->max_tagged_dev_openings * 2 / 3 + 1;
 #if 0
 		/* DEBUGGING */
 		static int savets;
 		static long savets2;
-		if (time_second != savets2 || (ticks != savets && (softc->outstanding_cmds_rd || softc->outstanding_cmds_wr))) {
+		if (1 || time_second != savets2 || (ticks != savets && (softc->outstanding_cmds_rd || softc->outstanding_cmds_wr))) {
 			kprintf("%d %d (%d)\n",
 				softc->outstanding_cmds_rd,
 				softc->outstanding_cmds_wr,
