@@ -238,9 +238,6 @@ cpu_startup(void *dummy)
 	vm_size_t size = 0;
 	vm_offset_t firstaddr;
 
-	if (boothowto & RB_VERBOSE)
-		bootverbose++;
-
 	/*
 	 * Good {morning,afternoon,evening,night}.
 	 */
@@ -1766,6 +1763,9 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	ksym_start = MD_FETCH(kmdp, MODINFOMD_SSYM, uintptr_t);
 	ksym_end = MD_FETCH(kmdp, MODINFOMD_ESYM, uintptr_t);
 #endif
+
+	if (boothowto & RB_VERBOSE)
+		bootverbose++;
 
 	/*
 	 * Default MachIntrABI to ICU

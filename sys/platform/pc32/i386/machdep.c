@@ -218,9 +218,6 @@ cpu_startup(void *dummy)
 	vm_size_t size = 0;
 	vm_offset_t firstaddr;
 
-	if (boothowto & RB_VERBOSE)
-		bootverbose++;
-
 	/*
 	 * Good {morning,afternoon,evening,night}.
 	 */
@@ -1939,6 +1936,9 @@ init386(int first)
 	}
 	if (bootinfo.bi_envp)
 		kern_envp = (caddr_t)bootinfo.bi_envp + KERNBASE;
+
+	if (boothowto & RB_VERBOSE)
+		bootverbose++;
 
 	/*
 	 * Default MachIntrABI to ICU
