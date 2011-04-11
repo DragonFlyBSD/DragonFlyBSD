@@ -89,7 +89,7 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	reblock->key_cur.localization += ip->obj_localization;
 
 	checkspace_count = 0;
-	seq = trans->hmp->flusher.act;
+	seq = trans->hmp->flusher.done;
 retry:
 	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
 	if (error) {

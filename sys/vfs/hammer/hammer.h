@@ -838,8 +838,7 @@ TAILQ_HEAD(hammer_flusher_info_list, hammer_flusher_info);
 
 struct hammer_flusher {
 	int		signal;		/* flusher thread sequencer */
-	int		act;		/* currently active flush group */
-	int		done;		/* set to act when complete */
+	int		done;		/* last completed flush group */
 	int		next;		/* next unallocated flg seqno */
 	int		group_lock;	/* lock sequencing of the next flush */
 	int		exiting;	/* request master exit */

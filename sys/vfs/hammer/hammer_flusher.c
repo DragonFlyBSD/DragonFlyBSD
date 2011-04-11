@@ -44,7 +44,7 @@
 
 static void hammer_flusher_master_thread(void *arg);
 static void hammer_flusher_slave_thread(void *arg);
-static void hammer_flusher_flush(hammer_mount_t hmp);
+static int hammer_flusher_flush(hammer_mount_t hmp, int *nomorep);
 static void hammer_flusher_flush_inode(hammer_inode_t ip,
 					hammer_transaction_t trans);
 
@@ -95,8 +95,9 @@ hammer_flusher_sync(hammer_mount_t hmp)
  *
  * Returns the sequence number of the last closed flush group,
  * which may be close_flg.  When syncing to the end if there
- * are no flush groups pending we still cycle the flusher, so
- * we return the next seq number not yet allocated.
+ * are no flush groups pending we still cycle the flusher, and
+ * must allocate a sequence number to placemark the spot even
+ * though no flush group will ever be associated with it.
  */
 int
 hammer_flusher_async(hammer_mount_t hmp, hammer_flush_group_t close_flg)
@@ -125,7 +126,12 @@ hammer_flusher_async(hammer_mount_t hmp, hammer_flush_group_t close_flg)
 	if (hmp->flusher.td) {
 		if (hmp->flusher.signal++ == 0)
 			wakeup(&hmp->flusher.signal);
-		seq = flg ? flg->seq : hmp->flusher.next;
+		if (flg) {
+			seq = flg->seq;
+		} else {
+			seq = hmp->flusher.next;
+			++hmp->flusher.next;
+		}
 	} else {
 		seq = hmp->flusher.done;
 	}
@@ -162,19 +168,15 @@ hammer_flusher_async_one(hammer_mount_t hmp)
 }
 
 /*
- * Wait for the flusher to get to the specified sequence number.
- * Signal the flusher as often as necessary to keep it going.
+ * Wait for the flusher to finish flushing the specified sequence
+ * number.  The flush is already running and will signal us on
+ * each completion.
  */
 void
 hammer_flusher_wait(hammer_mount_t hmp, int seq)
 {
-	while ((int)(seq - hmp->flusher.done) > 0) {
-		if ((int)(seq - hmp->flusher.act) > 0) {
-			if (hmp->flusher.signal++ == 0)
-				wakeup(&hmp->flusher.signal);
-		}
+	while ((int)(seq - hmp->flusher.done) > 0)
 		tsleep(&hmp->flusher.done, 0, "hmrfls", 0);
-	}
 }
 
 void
@@ -193,7 +195,6 @@ hammer_flusher_create(hammer_mount_t hmp)
 	int i;
 
 	hmp->flusher.signal = 0;
-	hmp->flusher.act = 0;
 	hmp->flusher.done = 0;
 	hmp->flusher.next = 1;
 	hammer_ref(&hmp->flusher.finalize_lock);
@@ -247,8 +248,9 @@ hammer_flusher_destroy(hammer_mount_t hmp)
 static void
 hammer_flusher_master_thread(void *arg)
 {
-	hammer_flush_group_t flg;
 	hammer_mount_t hmp;
+	int seq;
+	int nomore;
 
 	hmp = arg;
 
@@ -256,21 +258,21 @@ hammer_flusher_master_thread(void *arg)
 
 	for (;;) {
 		/*
-		 * Flush all closed flgs.  If no flg's are closed we still
-		 * do at least one flush cycle as we may have to update
-		 * the UNDO FIFO even if no inodes are queued.
+		 * Flush all sequence numbers up to but not including .next,
+		 * or until an open flush group is encountered.
 		 */
 		for (;;) {
 			while (hmp->flusher.group_lock)
-				tsleep(&hmp->flusher.group_lock, 0, "hmrhld", 0);
+				tsleep(&hmp->flusher.group_lock, 0, "hmrhld",0);
 			hammer_flusher_clean_loose_ios(hmp);
-			hammer_flusher_flush(hmp);
-			hmp->flusher.done = hmp->flusher.act;
+
+			seq = hammer_flusher_flush(hmp, &nomore);
+			hmp->flusher.done = seq;
 			wakeup(&hmp->flusher.done);
-			flg = TAILQ_FIRST(&hmp->flush_group_list);
-			if (flg == NULL || flg->closed == 0)
-				break;
+
 			if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
+				break;
+			if (nomore)
 				break;
 		}
 
@@ -281,13 +283,7 @@ hammer_flusher_master_thread(void *arg)
 			break;
 		while (hmp->flusher.signal == 0)
 			tsleep(&hmp->flusher.signal, 0, "hmrwwa", 0);
-
-		/*
-		 * Flush for each count on signal but only allow one extra
-		 * flush request to build up.
-		 */
-		if (--hmp->flusher.signal != 0)
-			hmp->flusher.signal = 1;
+		hmp->flusher.signal = 0;
 	}
 
 	/*
@@ -300,10 +296,14 @@ hammer_flusher_master_thread(void *arg)
 }
 
 /*
- * Flush all inodes in the current flush group.
+ * Flush the next sequence number until an open flush group is encountered
+ * or we reach (next).  Not all sequence numbers will have flush groups
+ * associated with them.  These require that the UNDO/REDO FIFO still be
+ * flushed since it can take at least one additional run to synchronize
+ * the FIFO, and more to also synchronize the reserve structures.
  */
-static void
-hammer_flusher_flush(hammer_mount_t hmp)
+static int
+hammer_flusher_flush(hammer_mount_t hmp, int *nomorep)
 {
 	hammer_flusher_info_t info;
 	hammer_flush_group_t flg;
@@ -312,29 +312,45 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	hammer_inode_t next_ip;
 	int slave_index;
 	int count;
+	int seq;
 
 	/*
-	 * Just in-case there's a flush race on mount
+	 * Just in-case there's a flush race on mount.  Seq number
+	 * does not change.
 	 */
 	if (TAILQ_FIRST(&hmp->flusher.ready_list) == NULL) {
-		return;
+		*nomorep = 1;
+		return (hmp->flusher.done);
 	}
+	*nomorep = 0;
 
 	/*
-	 * Set the actively flushing sequence number.  If no flushable
-	 * groups are present allocate a dummy sequence number for the
-	 * operation.
+	 * Flush the next sequence number.  Sequence numbers can exist
+	 * without an assigned flush group, indicating that just a FIFO flush
+	 * should occur.
 	 */
+	seq = hmp->flusher.done + 1;
 	flg = TAILQ_FIRST(&hmp->flush_group_list);
 	if (flg == NULL) {
-		hmp->flusher.act = hmp->flusher.next;
-		++hmp->flusher.next;
-	} else if (flg->closed) {
-		KKASSERT(flg->running == 0);
-		flg->running = 1;
-		hmp->flusher.act = flg->seq;
-		if (hmp->fill_flush_group == flg)
-			hmp->fill_flush_group = TAILQ_NEXT(flg, flush_entry);
+		if (seq == hmp->flusher.next) {
+			*nomorep = 1;
+			return (hmp->flusher.done);
+		}
+	} else if (seq == flg->seq) {
+		if (flg->closed) {
+			KKASSERT(flg->running == 0);
+			flg->running = 1;
+			if (hmp->fill_flush_group == flg) {
+				hmp->fill_flush_group =
+					TAILQ_NEXT(flg, flush_entry);
+			}
+		} else {
+			*nomorep = 1;
+			return (hmp->flusher.done);
+		}
+	} else {
+		KKASSERT((int)(flg->seq - seq) > 0);
+		flg = NULL;
 	}
 
 	/*
@@ -348,9 +364,7 @@ hammer_flusher_flush(hammer_mount_t hmp)
 		++count;
 		if (hammer_debug_general & 0x0001) {
 			kprintf("hammer_flush %d ttl=%d recs=%d\n",
-				hmp->flusher.act,
-				flg->total_count,
-				flg->refs);
+				flg->seq, flg->total_count, flg->refs);
 		}
 		if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
 			break;
@@ -465,10 +479,11 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	 * it can no longer be reused.
 	 */
 	while ((resv = TAILQ_FIRST(&hmp->delay_list)) != NULL) {
-		if (resv->flush_group != hmp->flusher.act)
+		if ((int)(resv->flush_group - seq) > 0)
 			break;
 		hammer_reserve_clrdelay(hmp, resv);
 	}
+	return (seq);
 }
 
 
