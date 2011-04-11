@@ -3419,7 +3419,7 @@ iwn_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			if (!(ifp->if_flags & IFF_RUNNING)) {
-				iwn_init(sc);
+				iwn_init_locked(sc);
 				if (IWN_READ(sc, IWN_GP_CNTRL) & IWN_GP_CNTRL_RFKILL)
 					startall = 1;
 				else
@@ -3427,7 +3427,7 @@ iwn_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 			}
 		} else {
 			if (ifp->if_flags & IFF_RUNNING)
-				iwn_stop(sc);
+				iwn_stop_locked(sc);
 		}
 		if (startall)
 			ieee80211_start_all(ic);
