@@ -101,7 +101,7 @@ fadt_probe(void)
 	}
 
 	acpi_sci_irq = fadt->fadt_sci_int;
-	kprintf("ACPI FADT: SCI irq %d\n", acpi_sci_irq);
+	FADT_VPRINTF("ACPI FADT: SCI irq %d\n", acpi_sci_irq);
 
 back:
 	sdt_sdth_unmap(&fadt->fadt_hdr);
