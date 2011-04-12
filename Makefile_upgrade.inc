@@ -1573,6 +1573,8 @@ TO_REMOVE+=/usr/share/man/man3/SLIST_REMOVE_NEXT.3.gz
 TO_REMOVE+=/usr/share/man/cat3/STAILQ_REMOVE_NEXT.3.gz
 TO_REMOVE+=/usr/share/man/man3/STAILQ_REMOVE_NEXT.3.gz
 TO_REMOVE+=/usr/bin/gasp
+TO_REMOVE+=/usr/share/man/cat/cat9/memoryallocators.9.gz
+TO_REMOVE+=/usr/share/man/cat/man9/memoryallocators.9.gz
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/cat4/pfsync.4.gz

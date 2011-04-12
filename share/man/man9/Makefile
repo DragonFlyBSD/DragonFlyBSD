@@ -112,7 +112,7 @@ MAN=	accept_filter.9 \
 	make_dev.9 \
 	mbuf.9 \
 	MD5.9 \
-	memoryallocators.9 \
+	memory.9 \
 	microseq.9 \
 	microtime.9 \
 	microuptime.9 \
