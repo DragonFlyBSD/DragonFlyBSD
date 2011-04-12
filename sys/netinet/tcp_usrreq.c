@@ -1045,7 +1045,7 @@ tcp_connect(netmsg_t msg)
 	struct sockaddr_in *if_sin;
 	struct inpcb *inp;
 	struct tcpcb *tp;
-	int error;
+	int error, calc_laddr = 1;
 #ifdef SMP
 	lwkt_port_t port;
 #endif
@@ -1072,6 +1072,8 @@ tcp_connect(netmsg_t msg)
 			error = in_pcbconn_bind(inp, nam, td);
 			if (error)
 				goto out;
+
+			calc_laddr = 0;
 		}
 	} else {
 		/*
@@ -1082,7 +1084,9 @@ tcp_connect(netmsg_t msg)
 			if (error)
 				goto out;
 		}
+	}
 
+	if (calc_laddr) {
 		/*
 		 * Calculate the correct protocol processing thread.  The
 		 * connect operation must run there.  Set the forwarding
@@ -1093,7 +1097,6 @@ tcp_connect(netmsg_t msg)
 		if (error)
 			goto out;
 	}
-
 	KKASSERT(inp->inp_socket == so);
 
 #ifdef SMP
