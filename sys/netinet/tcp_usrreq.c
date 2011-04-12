@@ -1063,8 +1063,6 @@ tcp_connect(netmsg_t msg)
 		if (error)
 			goto out;
 	}
-	so = inp->inp_socket;
-	KKASSERT(so);
 
 	/*
 	 * Calculate the correct protocol processing thread.  The connect
@@ -1074,6 +1072,8 @@ tcp_connect(netmsg_t msg)
 	error = in_pcbladdr(inp, nam, &if_sin, td);
 	if (error)
 		goto out;
+
+	KKASSERT(inp->inp_socket == so);
 
 #ifdef SMP
 	port = tcp_addrport(sin->sin_addr.s_addr, sin->sin_port,
