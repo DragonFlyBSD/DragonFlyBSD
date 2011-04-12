@@ -1060,8 +1060,11 @@ tcp_connect(netmsg_t msg)
 		in_pcblink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 	}
 
-	if (tcp_lport_extension) {
-		if (inp->inp_lport == 0) {
+	/*
+	 * Bind if we have to
+	 */
+	if (inp->inp_lport == 0) {
+		if (tcp_lport_extension) {
 			KKASSERT(inp->inp_laddr.s_addr == INADDR_ANY);
 
 			error = in_pcbladdr(inp, nam, &if_sin, td);
@@ -1074,12 +1077,7 @@ tcp_connect(netmsg_t msg)
 				goto out;
 
 			calc_laddr = 0;
-		}
-	} else {
-		/*
-		 * Bind if we have to
-		 */
-		if (inp->inp_lport == 0) {
+		} else {
 			error = in_pcbbind(inp, NULL, td);
 			if (error)
 				goto out;
