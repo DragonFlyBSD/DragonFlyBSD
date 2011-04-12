@@ -111,9 +111,6 @@ addlib(const char *lib)
 	if (strcmp(lib, "pthread") == 0)
 		/* FreeBSD's gcc uses -pthread instead of -lpthread. */
 		addarg("-pthread");
-	else if (strcmp(lib, "rt") == 0)
-		/* librt functionality is in libc or unimplemented. */
-		;
 	else if (strcmp(lib, "xnet") == 0)
 		/* xnet functionality is in libc. */
 		;
