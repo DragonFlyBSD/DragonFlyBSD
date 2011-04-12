@@ -159,6 +159,11 @@ static struct tcpcb *
 #define	TCPDEBUG2(req)
 #endif
 
+static int	tcp_lport_extension = 0;
+
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, lportext, CTLFLAG_RW,
+    &tcp_lport_extension, 0, "");
+
 /*
  * TCP attaches to socket via pru_attach(), reserving space,
  * and an internet control block.  This is likely occuring on
@@ -1055,23 +1060,39 @@ tcp_connect(netmsg_t msg)
 		in_pcblink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 	}
 
-	/*
-	 * Bind if we have to
-	 */
-	if (inp->inp_lport == 0) {
-		error = in_pcbbind(inp, NULL, td);
+	if (tcp_lport_extension) {
+		if (inp->inp_lport == 0) {
+			KKASSERT(inp->inp_laddr.s_addr == INADDR_ANY);
+
+			error = in_pcbladdr(inp, nam, &if_sin, td);
+			if (error)
+				goto out;
+			inp->inp_laddr.s_addr = if_sin->sin_addr.s_addr;
+
+			error = in_pcbconn_bind(inp, nam, td);
+			if (error)
+				goto out;
+		}
+	} else {
+		/*
+		 * Bind if we have to
+		 */
+		if (inp->inp_lport == 0) {
+			error = in_pcbbind(inp, NULL, td);
+			if (error)
+				goto out;
+		}
+
+		/*
+		 * Calculate the correct protocol processing thread.  The
+		 * connect operation must run there.  Set the forwarding
+		 * port before we forward the message or it will get bounced
+		 * right back to us.
+		 */
+		error = in_pcbladdr(inp, nam, &if_sin, td);
 		if (error)
 			goto out;
 	}
-
-	/*
-	 * Calculate the correct protocol processing thread.  The connect
-	 * operation must run there.  Set the forwarding port before we
-	 * forward the message or it will get bounced right back to us.
-	 */
-	error = in_pcbladdr(inp, nam, &if_sin, td);
-	if (error)
-		goto out;
 
 	KKASSERT(inp->inp_socket == so);
 
