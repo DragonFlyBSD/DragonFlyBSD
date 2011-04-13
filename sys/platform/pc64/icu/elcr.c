@@ -65,7 +65,7 @@ static int	elcr_status;
 void
 elcr_probe(void)
 {
-	int disable;
+	int disable = 0;
 
 	TUNABLE_INT_FETCH("hw.elcr_disable", &disable);
 	if (disable)
