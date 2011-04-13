@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/libexec/rtld-elf/rtld.h,v 1.15.2.6 2003/02/20 20:42:46 kan Exp $
+ * $FreeBSD: src/libexec/rtld-elf/rtld.h,v 1.50 2011/02/09 09:20:27 kib Exp $
  */
 
 #ifndef RTLD_H /* { */
@@ -34,8 +34,10 @@
 
 #include <elf-hints.h>
 #include <link.h>
+#include <setjmp.h>
 #include <stddef.h>
 
+#include "rtld_lock.h"
 #include "rtld_machdep.h"
 
 #ifndef STANDARD_LIBRARY_PATH
@@ -77,6 +79,11 @@ typedef struct Struct_Needed_Entry {
     unsigned long name;		/* Offset of name in string table */
 } Needed_Entry;
 
+typedef struct Struct_Name_Entry {
+    STAILQ_ENTRY(Struct_Name_Entry) link;
+    char   name[1];
+} Name_Entry;
+
 /* Lock object */
 typedef struct Struct_LockInfo {
     void *context;		/* Client context for creating locks */
@@ -93,6 +100,15 @@ typedef struct Struct_LockInfo {
     void (*lock_destroy)(void *lock);
     void (*context_destroy)(void *context);
 } LockInfo;
+
+typedef struct Struct_Ver_Entry {
+	Elf_Word     hash;
+	unsigned int flags;
+	const char  *name;
+	const char  *file;
+} Ver_Entry;
+
+#define VER_INFO_HIDDEN	0x01
 
 /*
  * Shared object descriptor.
@@ -152,28 +168,47 @@ typedef struct Struct_Obj_Entry {
     const char *strtab;		/* String table */
     unsigned long strsize;	/* Size in bytes of string table */
 
+    const Elf_Verneed *verneed; /* Required versions. */
+    Elf_Word verneednum;	/* Number of entries in verneed table */
+    const Elf_Verdef  *verdef;	/* Provided versions. */
+    Elf_Word verdefnum;		/* Number of entries in verdef table */
+    const Elf_Versym *versyms;  /* Symbol versions table */
+
     const Elf_Hashelt *buckets;	/* Hash table buckets array */
     unsigned long nbuckets;	/* Number of buckets */
     const Elf_Hashelt *chains;	/* Hash table chain array */
     unsigned long nchains;	/* Number of chains */
 
-    const char *rpath;		/* Search path specified in object */
+    char *rpath;		/* Search path specified in object */
     Needed_Entry *needed;	/* Shared objects needed by this one (%) */
 
-    InitFunc init;		/* Initialization function to call */
-    InitFunc fini;		/* Termination function to call */
+    STAILQ_HEAD(, Struct_Name_Entry) names; /* List of names for this object we
+					       know about. */
+    Ver_Entry *vertab;		/* Versions required /defined by this object */
+    int vernum;			/* Number of entries in vertab */
 
-    bool mainprog;		/* True if this is the main program */
-    bool rtld;			/* True if this is the dynamic linker */
-    bool textrel;		/* True if there are relocations to text seg */
-    bool symbolic;		/* True if generated with "-Bsymbolic" */
-    bool bind_now;		/* True if all relocations should be made first */
-    bool traced;		/* Already printed in ldd trace output */
-    bool jmpslots_done;		/* Already have relocated the jump slots */
-    bool init_done;		/* Already have added object to init list */
-    bool tls_done;		/* Already allocated offset for static TLS */
+    Elf_Addr init;		/* Initialization function to call */
+    Elf_Addr fini;		/* Termination function to call */
 
-    struct link_map linkmap;	/* for GDB and dlinfo() */
+    bool mainprog : 1;		/* True if this is the main program */
+    bool rtld : 1;		/* True if this is the dynamic linker */
+    bool textrel : 1;		/* True if there are relocations to text seg */
+    bool symbolic : 1;		/* True if generated with "-Bsymbolic" */
+    bool bind_now : 1;		/* True if all relocations should be made first */
+    bool traced : 1;		/* Already printed in ldd trace output */
+    bool jmpslots_done : 1;	/* Already have relocated the jump slots */
+    bool init_done : 1;		/* Already have added object to init list */
+    bool tls_done : 1;		/* Already allocated offset for static TLS */
+    bool phdr_alloc : 1;	/* Phdr is allocated and needs to be freed. */
+    bool z_origin : 1;		/* Process rpath and soname tokens */
+    bool z_nodelete : 1;	/* Do not unload the object and dependencies */
+    bool z_noopen : 1;		/* Do not load on dlopen */
+    bool ref_nodel : 1;		/* Refcount increased to prevent dlclose */
+    bool init_scanned: 1;	/* Object is already on init list. */
+    bool on_fini_list: 1;	/* Object is already on fini list. */
+    bool dag_inited : 1;	/* Object has its DAG initialized. */
+
+    struct link_map linkmap;	/* For GDB and dlinfo() */
     Objlist dldags;		/* Object belongs to these dlopened DAGs (%) */
     Objlist dagmembers;		/* DAG has these members (%) */
     dev_t dev;			/* Object's filesystem's device */
@@ -184,6 +219,17 @@ typedef struct Struct_Obj_Entry {
 #define RTLD_MAGIC	0xd550b87a
 #define RTLD_VERSION	1
 
+/* Flags to be passed into symlook_ family of functions. */
+#define SYMLOOK_IN_PLT	0x01	/* Lookup for PLT symbol */
+#define SYMLOOK_DLSYM	0x02	/* Return newes versioned symbol. Used by
+				   dlsym. */
+
+/* Flags for load_object(). */
+#define	RTLD_LO_NOLOAD	0x01	/* dlopen() specified RTLD_NOLOAD. */
+#define	RTLD_LO_DLOPEN	0x02	/* Load_object() called from dlopen(). */
+#define	RTLD_LO_TRACE		0x04	/* Only tracing. */
+#define	RTLD_LO_NODELETE	0x08	/* Loaded object cannot be closed. */
+
 /*
  * Symbol cache entry used during relocation to avoid multiple lookups
  * of the same symbol.
@@ -193,46 +239,53 @@ typedef struct Struct_SymCache {
     const Obj_Entry *obj;	/* Shared object which defines it */
 } SymCache;
 
-void		 _rtld_error(const char *, ...) __printflike(1, 2);
-Obj_Entry	*map_object(int, const char *, const struct stat *);
-void		*xcalloc(size_t);
-void		*xmalloc(size_t);
-void		*xrealloc(void *, size_t);
-char		*xstrdup(const char *);
+struct Struct_RtldLockState {
+	int lockstate;
+	sigjmp_buf env;
+};
 
-void		 dump_relocations(Obj_Entry *);
-void		 dump_obj_relocations(Obj_Entry *);
-void		 dump_Elf_Rel(Obj_Entry *, const Elf_Rel *, u_long);
-void		 dump_Elf_Rela(Obj_Entry *, const Elf_Rela *, u_long);
-
+void _rtld_error(const char *, ...) __printflike(1, 2);
+Obj_Entry *map_object(int, const char *, const struct stat *);
+void *xcalloc(size_t);
+void *xmalloc(size_t);
+char *xstrdup(const char *);
+void *xrealloc(void *, size_t);
 extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
+
+void dump_relocations(Obj_Entry *);
+void dump_obj_relocations(Obj_Entry *);
+void dump_Elf_Rel(Obj_Entry *, const Elf_Rel *, u_long);
+void dump_Elf_Rela(Obj_Entry *, const Elf_Rela *, u_long);
 
 /*
  * Function declarations.
  */
-const char	*basename(const char *);
-int		 do_copy_relocations(Obj_Entry *);
-
-unsigned long	 elf_hash(const char *);
-const Elf_Sym	 *find_symdef(unsigned long, const Obj_Entry *,
-			      const Obj_Entry **, bool, SymCache *);
-void		 init_pltgot(Obj_Entry *);
-void		 lockdflt_init(LockInfo *);
-void		 obj_free(Obj_Entry *);
-Obj_Entry	*obj_new(void);
-int		 reloc_non_plt(Obj_Entry *, Obj_Entry *);
-int		 reloc_plt(Obj_Entry *);
-int		 reloc_jmpslots(Obj_Entry *);
-void		 _rtld_bind_start(void);
+const char *basename(const char *);
+unsigned long elf_hash(const char *);
+const Elf_Sym *find_symdef(unsigned long, const Obj_Entry *,
+  const Obj_Entry **, int, SymCache *);
+void init_pltgot(Obj_Entry *);
+void lockdflt_init(void);
+void obj_free(Obj_Entry *);
+Obj_Entry *obj_new(void);
+void _rtld_bind_start(void);
 const Elf_Sym	*symlook_obj(const char *, unsigned long, const Obj_Entry *,
-			     bool);
-
-void		*tls_get_addr_common(void **, int, size_t);
+  const Ver_Entry *, int);
+void *tls_get_addr_common(Elf_Addr** dtvp, int index, size_t offset);
 struct tls_tcb	*allocate_tls(Obj_Entry *);
-void		 free_tls(struct tls_tcb *);
-void		 *allocate_module_tls(int);
-bool		 allocate_tls_offset(Obj_Entry *);
-void		 free_tls_offset(Obj_Entry *);
-void		 allocate_initial_tls(Obj_Entry *);
+void free_tls(struct tls_tcb *);
+void *allocate_module_tls(int index);
+bool allocate_tls_offset(Obj_Entry *obj);
+void free_tls_offset(Obj_Entry *obj);
+const Ver_Entry *fetch_ventry(const Obj_Entry *obj, unsigned long);
+
+/*
+ * MD function declarations.
+ */
+int do_copy_relocations(Obj_Entry *);
+int reloc_non_plt(Obj_Entry *, Obj_Entry *);
+int reloc_plt(Obj_Entry *);
+int reloc_jmpslots(Obj_Entry *);
+void allocate_initial_tls(Obj_Entry *);
 
 #endif /* } */

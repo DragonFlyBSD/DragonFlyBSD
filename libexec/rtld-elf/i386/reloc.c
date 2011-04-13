@@ -22,8 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/libexec/rtld-elf/i386/reloc.c,v 1.6.2.2 2002/06/16 20:02:09 dillon Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.13 2005/05/11 19:47:09 dillon Exp $
+ * $FreeBSD: src/libexec/rtld-elf/i386/reloc.c,v 1.22 2010/12/25 08:51:20 kib Exp $
  */
 
 /*
@@ -76,6 +75,7 @@ do_copy_relocations(Obj_Entry *dstobj)
 	    size_t size;
 	    const void *srcaddr;
 	    const Elf_Sym *srcsym;
+	    const Ver_Entry *ve;
 	    Obj_Entry *srcobj;
 
 	    dstaddr = (void *) (dstobj->relocbase + rel->r_offset);
@@ -83,9 +83,10 @@ do_copy_relocations(Obj_Entry *dstobj)
 	    name = dstobj->strtab + dstsym->st_name;
 	    hash = elf_hash(name);
 	    size = dstsym->st_size;
+	    ve = fetch_ventry(dstobj, ELF_R_SYM(rel->r_info));
 
 	    for (srcobj = dstobj->next;  srcobj != NULL;  srcobj = srcobj->next)
-		if ((srcsym = symlook_obj(name, hash, srcobj, false)) != NULL)
+		if ((srcsym = symlook_obj(name, hash, srcobj, ve, 0)) != NULL)
 		    break;
 
 	    if (srcobj == NULL) {
@@ -114,20 +115,21 @@ init_pltgot(Obj_Entry *obj)
 
 /* Process the non-PLT relocations. */
 int
-reloc_non_plt(Obj_Entry *obj, Obj_Entry *obj_rtld __unused)
+reloc_non_plt(Obj_Entry *obj, Obj_Entry *obj_rtld)
 {
 	const Elf_Rel *rellim;
 	const Elf_Rel *rel;
 	SymCache *cache;
-	int bytes = obj->nchains * sizeof(SymCache);
 	int r = -1;
 
 	/*
 	 * The dynamic loader may be called from a thread, we have
 	 * limited amounts of stack available so we cannot use alloca().
 	 */
-	cache = mmap(NULL, bytes, PROT_READ|PROT_WRITE, MAP_ANON, -1, 0);
-	if (cache == MAP_FAILED)
+	if (obj != obj_rtld) {
+	    cache = calloc(obj->nchains, sizeof(SymCache));
+	    /* No need to check for NULL here */
+	} else
 	    cache = NULL;
 
 	rellim = (const Elf_Rel *) ((c_caddr_t) obj->rel + obj->relsize);
@@ -303,8 +305,8 @@ reloc_non_plt(Obj_Entry *obj, Obj_Entry *obj_rtld __unused)
 	}
 	r = 0;
 done:
-	if (cache)
-	    munmap(cache, bytes);
+	if (cache != NULL)
+	    free(cache);
 	return(r);
 }
 
@@ -339,7 +341,7 @@ reloc_jmpslots(Obj_Entry *obj)
 	return 0;
     rellim = (const Elf_Rel *)((const char *)obj->pltrel + obj->pltrelsize);
     for (rel = obj->pltrel;  rel < rellim;  rel++) {
-	Elf_Addr *where;
+	Elf_Addr *where, target;
 	const Elf_Sym *def;
 	const Obj_Entry *defobj;
 
@@ -348,7 +350,8 @@ reloc_jmpslots(Obj_Entry *obj)
 	def = find_symdef(ELF_R_SYM(rel->r_info), obj, &defobj, true, NULL);
 	if (def == NULL)
 	    return -1;
-	reloc_jmpslot(where, (Elf_Addr)(defobj->relocbase + def->st_value));
+	target = (Elf_Addr)(defobj->relocbase + def->st_value);
+	reloc_jmpslot(where, target, defobj, obj, rel);
     }
     obj->jmpslots_done = true;
     return 0;
@@ -360,9 +363,12 @@ void *
 ___tls_get_addr(tls_index *ti)
 {
     struct tls_tcb *tcb;
+    Elf_Addr* dtv;
 
     tcb = tls_get_tcb();
-    return tls_get_addr_common(&tcb->tcb_dtv, ti->ti_module, ti->ti_offset);
+    dtv = (Elf_Addr*)tcb->tcb_dtv;
+
+    return tls_get_addr_common(&dtv, ti->ti_module, ti->ti_offset);
 }
 
 /* Sun ABI */
@@ -370,15 +376,20 @@ void *
 __tls_get_addr(tls_index *ti)
 {
     struct tls_tcb *tcb;
+    Elf_Addr* dtv;
 
     tcb = tls_get_tcb();
-    return tls_get_addr_common(&tcb->tcb_dtv, ti->ti_module, ti->ti_offset);
+    dtv = (Elf_Addr*)tcb->tcb_dtv;
+
+    return tls_get_addr_common(&dtv, ti->ti_module, ti->ti_offset);
 }
 
 /* Sun ABI */
 void *
 __tls_get_addr_tcb(struct tls_tcb *tcb, tls_index *ti)
 {
-    return tls_get_addr_common(&tcb->tcb_dtv, ti->ti_module, ti->ti_offset);
+    Elf_Addr* dtv = (Elf_Addr*)tcb->tcb_dtv;
+
+    return tls_get_addr_common(&dtv, ti->ti_module, ti->ti_offset);
 }
 

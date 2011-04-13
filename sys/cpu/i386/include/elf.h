@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/include/elf.h,v 1.9.2.1 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/cpu/i386/include/elf.h,v 1.8 2006/11/07 06:43:22 dillon Exp $
+ * $FreeBSD: src/sys/i386/include/elf.h,v 1.22 2011/01/07 14:22:34 kib Exp $
  */
 
 #ifndef _CPU_ELF_H_
@@ -73,16 +72,16 @@ typedef struct {
 __ElfType(Auxinfo);
 
 /* Values for a_type. */
-#define AT_NULL		0	/* Terminates the vector. */
-#define AT_IGNORE	1	/* Ignored entry. */
-#define AT_EXECFD	2	/* File descriptor of program to load. */
-#define AT_PHDR		3	/* Program header of program already loaded. */
-#define AT_PHENT	4	/* Size of each program header entry. */
-#define AT_PHNUM	5	/* Number of program header entries. */
-#define AT_PAGESZ	6	/* Page size in bytes. */
-#define AT_BASE		7	/* Interpreter's base address. */
-#define AT_FLAGS	8	/* Flags (unused for i386). */
-#define AT_ENTRY	9	/* Where interpreter should transfer control. */
+#define	AT_NULL		0	/* Terminates the vector. */
+#define	AT_IGNORE	1	/* Ignored entry. */
+#define	AT_EXECFD	2	/* File descriptor of program to load. */
+#define	AT_PHDR		3	/* Program header of program already loaded. */
+#define	AT_PHENT	4	/* Size of each program header entry. */
+#define	AT_PHNUM	5	/* Number of program header entries. */
+#define	AT_PAGESZ	6	/* Page size in bytes. */
+#define	AT_BASE		7	/* Interpreter's base address. */
+#define	AT_FLAGS	8	/* Flags (unused for i386). */
+#define	AT_ENTRY	9	/* Where interpreter should transfer control. */
 
 /*
  * The following non-standard values are used for passing information
@@ -92,19 +91,28 @@ __ElfType(Auxinfo);
  * Unfortunately, these overlap the Linux non-standard values, so they
  * must not be used in the same context.
  */
-#define AT_BRK		10	/* Starting point for sbrk and brk. */
-#define AT_DEBUG	11	/* Debugging level. */
+#define	AT_BRK		10	/* Starting point for sbrk and brk. */
+#define	AT_DEBUG	11	/* Debugging level. */
 
 /*
  * The following non-standard values are used in Linux ELF binaries.
+ * Types 16 - 23 are not implemented in the kernel
  */
-#define AT_NOTELF	10	/* Program is not ELF ?? */
-#define AT_UID		11	/* Real uid. */
-#define AT_EUID		12	/* Effective uid. */
-#define AT_GID		13	/* Real gid. */
-#define AT_EGID		14	/* Effective gid. */
+#define	AT_NOTELF	10	/* Program is not ELF ?? */
+#define	AT_UID		11	/* Real uid. */
+#define	AT_EUID		12	/* Effective uid. */
+#define	AT_GID		13	/* Real gid. */
+#define	AT_EGID		14	/* Effective gid. */
+#define	AT_EXECPATH	15	/* Path to the executable. */
+#define	AT_CANARY	16	/* Canary for SSP. */
+#define	AT_CANARYLEN	17	/* Length of the canary. */
+#define	AT_OSRELDATE	18	/* OSRELDATE. */
+#define	AT_NCPUS	19	/* Number of CPUs. */
+#define	AT_PAGESIZES	20	/* Pagesizes. */
+#define	AT_PAGESIZESLEN	21	/* Number of pagesizes. */
+#define	AT_STACKPROT	23	/* Initial stack protection. */
 
-#define AT_COUNT	15	/* Count of defined aux entry types. */
+#define	AT_COUNT	24	/* Count of defined aux entry types. */
 
 /*
  * Relocation types.

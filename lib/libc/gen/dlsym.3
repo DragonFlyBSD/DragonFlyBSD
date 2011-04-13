@@ -1,0 +1,224 @@
+.\" This source code is a product of Sun Microsystems, Inc. and is provided
+.\" for unrestricted use provided that this legend is included on all tape
+.\" media and as a part of the software program in whole or part.  Users
+.\" may copy or modify this source code without charge, but are not authorized
+.\" to license or distribute it to anyone else except as part of a product or
+.\" program developed by the user.
+.\"
+.\" THIS PROGRAM CONTAINS SOURCE CODE COPYRIGHTED BY SUN MICROSYSTEMS, INC.
+.\" SUN MICROSYSTEMS, INC., MAKES NO REPRESENTATIONS ABOUT THE SUITABLITY
+.\" OF SUCH SOURCE CODE FOR ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT
+.\" EXPRESS OR IMPLIED WARRANTY OF ANY KIND.  SUN MICROSYSTEMS, INC. DISCLAIMS
+.\" ALL WARRANTIES WITH REGARD TO SUCH SOURCE CODE, INCLUDING ALL IMPLIED
+.\" WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  IN
+.\" NO EVENT SHALL SUN MICROSYSTEMS, INC. BE LIABLE FOR ANY SPECIAL, INDIRECT,
+.\" INCIDENTAL, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
+.\" FROM USE OF SUCH SOURCE CODE, REGARDLESS OF THE THEORY OF LIABILITY.
+.\"
+.\" This source code is provided with no support and without any obligation on
+.\" the part of Sun Microsystems, Inc. to assist in its use, correction,
+.\" modification or enhancement.
+.\"
+.\" SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
+.\" INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY THIS
+.\" SOURCE CODE OR ANY PART THEREOF.
+.\"
+.\" Sun Microsystems, Inc.
+.\" 2550 Garcia Avenue
+.\" Mountain View, California 94043
+.\"
+.\" Copyright (c) 1991 Sun Microsystems, Inc.
+.\"
+.\" $FreeBSD: release/8.1.0/lib/libc/gen/dlopen.3 205979 2010-03-31 13:51:31Z gahr $
+.\"
+.Dd March 4, 2011
+.Os
+.Dt DLSYM 3
+.Sh NAME
+.Nm dlsym ,
+.Nm dlfunc
+.Nd shared object symbol lookup function
+.Sh LIBRARY
+This function is not in a library.  It is included in every dynamically linked
+program automatically.
+.Sh SYNOPSIS
+.In dlfcn.h
+.Ft void *
+.Fn dlsym "void * handle" "const char * name"
+.Ft dlfunc_t
+.Fn dlfunc "void * handle" "const char * name"
+.Sh DESCRIPTION
+The
+.Fn dlsym
+function
+returns the address binding of the symbol described in the null-terminated
+character string
+.Fa symbol ,
+as it occurs in the shared object identified by
+.Fa handle .
+The symbols exported by objects added to the address space by
+.Fn dlopen
+can be accessed only through calls to
+.Fn dlsym .
+Such symbols do not supersede any definition of those symbols already present
+in the address space when the object is loaded, nor are they available to
+satisfy normal dynamic linking references.
+.Pp
+If
+.Fn dlsym
+is called with the special
+.Fa handle
+.Dv NULL ,
+it is interpreted as a reference to the executable or shared object
+from which the call
+is being made.
+Thus a shared object can reference its own symbols.
+.Pp
+If
+.Fn dlsym
+is called with the special
+.Fa handle
+.Dv RTLD_DEFAULT ,
+the search for the symbol follows the algorithm used for resolving
+undefined symbols when objects are loaded.
+The objects searched are
+as follows, in the given order:
+.Bl -enum
+.It
+The referencing object itself (or the object from which the call to
+.Fn dlsym
+is made), if that object was linked using the
+.Fl Wsymbolic
+option to
+.Xr ld 1 .
+.It
+All objects loaded at program start-up.
+.It
+All objects loaded via
+.Fn dlopen
+with the
+.Dv RTLD_GLOBAL
+flag set in the
+.Fa mode
+argument.
+.It
+All objects loaded via
+.Fn dlopen
+which are in needed-object DAGs that also contain the referencing object.
+.El
+.Pp
+If
+.Fn dlsym
+is called with the special
+.Fa handle
+.Dv RTLD_NEXT ,
+then the search for the symbol is limited to the shared objects
+which were loaded after the one issuing the call to
+.Fn dlsym .
+Thus, if the function is called from the main program, all
+the shared libraries are searched.
+If it is called from a shared library, all subsequent shared
+libraries are searched.
+.Dv RTLD_NEXT
+is useful for implementing wrappers around library functions.
+For example, a wrapper function
+.Fn getpid
+could access the
+.Dq real
+.Fn getpid
+with
+.Li dlsym(RTLD_NEXT, \&"getpid\&") .
+(Actually, the
+.Fn dlfunc
+interface, below, should be used, since
+.Fn getpid
+is a function and not a data object.)
+.Pp
+If
+.Fn dlsym
+is called with the special
+.Fa handle
+.Dv RTLD_SELF ,
+then the search for the symbol is limited to the shared object
+issuing the call to
+.Fn dlsym
+and those shared objects which were loaded after it.
+.Pp
+The
+.Fn dlfunc
+function
+implements all of the behavior of
+.Fn dlsym ,
+but has a return type which can be cast to a function pointer without
+triggering compiler diagnostics.
+(The
+.Fn dlsym
+function
+returns a data pointer; in the C standard, conversions between
+data and function pointer types are undefined.
+Some compilers and
+.Xr lint 1
+utilities warn about such casts.)
+The precise return type of
+.Fn dlfunc
+is unspecified; applications must cast it to an appropriate function pointer
+type.
+.Sh NOTES
+ELF executables need to be linked
+using the
+.Fl export-dynamic
+option to
+.Xr ld 1
+for symbols defined in the executable to become visible to
+.Fn dlsym .
+.Sh RETURN VALUE
+The
+.Fn dlsym
+and
+.Fn dlfunc
+functions
+return the address of the symbol unless the symbol can not be found.
+In this case, they return a null pointer and set an error condition
+which may be queried with
+.Fn dlerror .
+.Sh EXAMPLE
+The following program will obtain a pointer to the cosine function using
+dlsym, and then it will use it to print out the value of cosine (2.0).
+.Bd -literal
+#include <dlfcn.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+int
+main (int argc, char *argv[])
+{
+    void       *handle;
+    double     (*func_cosine)(double x);
+
+    /* open the system shared math library */
+    handle = dlopen("libm.so", RTLD_LAZY);
+    if (!handle) {
+       fprintf (stderr, "%s\\n", dlerror ());
+       exit (EXIT_FAILURE);
+    }
+
+    /* get pointer to cosine function */
+    func_cosine = dlsym (handle, "cos");
+    if (func_cosine == NULL) {
+       fprintf (stderr, "%s function not found\\n", "cos");
+       dlclose (handle);
+       exit (EXIT_FAILURE);
+    }
+
+    /* Calculate and display the cosine of 2.0 */
+    printf ("cosine of 2.0 = %f\\n", func_cosine(2.0));
+    dlclose (handle);
+
+    exit(EXIT_SUCCESS);
+}
+.Ed
+.Sh SEE ALSO
+.Xr rtld 1 ,
+.Xr dlfcn 3 ,
+.Xr dlopen 3 ,
+.Xr dlvsym 3

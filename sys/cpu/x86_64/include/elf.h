@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/amd64/include/elf.h,v 1.18 2004/08/03 08:21:48 dfr Exp $
+ * $FreeBSD: src/sys/amd64/include/elf.h,v 1.25 2011/01/07 14:22:34 kib Exp $
  */
 
 #ifndef _CPU_ELF_H_
@@ -95,14 +95,23 @@ __ElfType(Auxinfo);
 
 /*
  * The following non-standard values are used in Linux ELF binaries.
+ * Types 16 - 23 are not implemented in the kernel
  */
 #define	AT_NOTELF	10	/* Program is not ELF ?? */
 #define	AT_UID		11	/* Real uid. */
 #define	AT_EUID		12	/* Effective uid. */
 #define	AT_GID		13	/* Real gid. */
 #define	AT_EGID		14	/* Effective gid. */
+#define	AT_EXECPATH	15	/* Path to the executable. */
+#define	AT_CANARY	16	/* Canary for SSP */
+#define	AT_CANARYLEN	17	/* Length of the canary. */
+#define	AT_OSRELDATE	18	/* OSRELDATE. */
+#define	AT_NCPUS	19	/* Number of CPUs. */
+#define	AT_PAGESIZES	20	/* Pagesizes. */
+#define	AT_PAGESIZESLEN	21	/* Number of pagesizes. */
+#define	AT_STACKPROT	23	/* Initial stack protection. */
 
-#define	AT_COUNT	15	/* Count of defined aux entry types. */
+#define	AT_COUNT	24	/* Count of defined aux entry types. */
 
 /*
  * Relocation types.

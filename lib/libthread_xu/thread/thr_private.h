@@ -31,8 +31,7 @@
  *
  * Private thread definitions for the uthread kernel.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.19 2008/07/15 01:18:53 dillon Exp $
+ * $FreeBSD: head/lib/libthr/thread/thr_private.h 217706 2010-08-23 $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -796,6 +795,9 @@ _thr_check_init(void)
 	if (_thr_initial == 0)
 		_libpthread_init(0);
 }
+
+struct dl_phdr_info;
+void __pthread_cxa_finalize(struct dl_phdr_info *phdr_info);
 
 __END_DECLS
 

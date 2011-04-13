@@ -1,0 +1,117 @@
+.\" This source code is a product of Sun Microsystems, Inc. and is provided
+.\" for unrestricted use provided that this legend is included on all tape
+.\" media and as a part of the software program in whole or part.  Users
+.\" may copy or modify this source code without charge, but are not authorized
+.\" to license or distribute it to anyone else except as part of a product or
+.\" program developed by the user.
+.\"
+.\" THIS PROGRAM CONTAINS SOURCE CODE COPYRIGHTED BY SUN MICROSYSTEMS, INC.
+.\" SUN MICROSYSTEMS, INC., MAKES NO REPRESENTATIONS ABOUT THE SUITABLITY
+.\" OF SUCH SOURCE CODE FOR ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT
+.\" EXPRESS OR IMPLIED WARRANTY OF ANY KIND.  SUN MICROSYSTEMS, INC. DISCLAIMS
+.\" ALL WARRANTIES WITH REGARD TO SUCH SOURCE CODE, INCLUDING ALL IMPLIED
+.\" WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  IN
+.\" NO EVENT SHALL SUN MICROSYSTEMS, INC. BE LIABLE FOR ANY SPECIAL, INDIRECT,
+.\" INCIDENTAL, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
+.\" FROM USE OF SUCH SOURCE CODE, REGARDLESS OF THE THEORY OF LIABILITY.
+.\"
+.\" This source code is provided with no support and without any obligation on
+.\" the part of Sun Microsystems, Inc. to assist in its use, correction,
+.\" modification or enhancement.
+.\"
+.\" SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
+.\" INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY THIS
+.\" SOURCE CODE OR ANY PART THEREOF.
+.\"
+.\" Sun Microsystems, Inc.
+.\" 2550 Garcia Avenue
+.\" Mountain View, California 94043
+.\"
+.\" Copyright (c) 1991 Sun Microsystems, Inc.
+.\"
+.\" $FreeBSD: head/lib/libc/gen/dlopen.3 211397 2010-08-16 15:18:30Z joel $
+.\"
+.Dd February 20, 2011
+.Os
+.Dt DLVSYM 3
+.Sh NAME
+.Nm dlsym
+.Nd shared object symbol lookup by version function
+.Sh LIBRARY
+This function is not in a library.  It is included in every dynamically linked
+program automatically.
+.Sh SYNOPSIS
+.In dlfcn.h
+.Ft void *
+.Fn dlsym "void * handle" "const char * name" "const char * version"
+.Sh DESCRIPTION
+The
+.Fn dlvsym
+function
+does the same as
+.Fn dlsym
+but takes a version string as an additional argument.  Both the name and
+the version must match in order for the symbol to be resolved.
+.Sh NOTES
+ELF executables need to be linked
+using the
+.Fl export-dynamic
+option to
+.Xr ld 1
+for symbols defined in the executable to become visible to
+.Fn dlvsym .
+.Sh RETURN VALUE
+The
+.Fn dlvsym
+function
+returns the address of the symbol unless the symbol can not be found.
+In this case, it returns a null pointer and sets an error condition
+which may be queried with
+.Fn dlerror .
+.Sh EXAMPLE
+The following program will obtain a pointer to the gcc library __adsvsi3
+function using dlvsym specified to version GCC_3.0, and then it will use it
+to print out the sum of 500 + 325.
+.Bd -literal
+#include <dlfcn.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+int
+main (int argc, char *argv[])
+{
+    void       *handle;
+    int        (*func_sum)(int a, int b);
+
+    /* open the pkgsrc shared gcc library  */
+    handle = dlopen("/usr/pkg/lib/libgcc_s.so", RTLD_LAZY);
+    if (!handle) {
+       fprintf (stderr, "%s\\n", dlerror ());
+       exit (EXIT_FAILURE);
+    }
+
+    /* get pointer to integer sum function */
+    func_sum = dlvsym (handle, "__addvsi3", "GCC_3.0");
+    if (func_sum == NULL) {
+       fprintf (stderr, "function %s version %s not found\\n",
+                "__addvsi3", "GCC_3.0");
+       dlclose (handle);
+       exit (EXIT_FAILURE);
+    }
+
+    /* Calculate and display the sum of 500 + 325 */
+    printf ("500 + 325 = %d\\n", func_sum((int)500, (int)325));
+    dlclose (handle);
+
+    exit(EXIT_SUCCESS);
+}
+.Ed
+.Sh SEE ALSO
+.Xr rtld 1 ,
+.Xr dlfcn 3 ,
+.Xr dlsym 3
+.Sh HISTORY
+The
+.Nm
+function first appeared in
+.Dx 2.9 .

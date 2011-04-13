@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/rtld_start.S,v 1.3 1999/08/28 00:10:15 peter Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/rtld_start.S,v 1.4 2008/01/08 00:02:04 corecode Exp $
  */
 
 	.text
@@ -91,3 +90,5 @@ _rtld_bind_start:
 	popf				# Restore eflags
 	leal	4(%esp),%esp		# Discard reloff, do not change eflags
 	ret				# "Return" to target address
+
+	.section .note.GNU-stack,"",%progbits

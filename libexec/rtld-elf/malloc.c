@@ -31,8 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)malloc.c	5.11 (Berkeley) 2/23/91
- * $FreeBSD: src/libexec/rtld-elf/malloc.c,v 1.3.2.3 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/malloc.c,v 1.3 2008/06/05 18:01:49 swildner Exp $
+ * $FreeBSD: src/libexec/rtld-elf/malloc.c, svn 114625 2003/05/04 obrien Exp $
  */
 
 /*
@@ -177,7 +176,7 @@ malloc(nbytes)
 		}
 		bucket = 0;
 		amt = 8;
-		while (pagesz > amt) {
+		while ((unsigned)pagesz > amt) {
 			amt <<= 1;
 			bucket++;
 		}
@@ -188,7 +187,7 @@ malloc(nbytes)
 	 * stored in hash buckets which satisfies request.
 	 * Account for space used per block for accounting.
 	 */
-	if (nbytes <= (n = pagesz - sizeof (*op) - RSLOP)) {
+	if (nbytes <= (unsigned long)(n = pagesz - sizeof (*op) - RSLOP)) {
 #ifndef RCHECK
 		amt = 8;	/* size of first bucket */
 		bucket = 0;
@@ -376,7 +375,7 @@ realloc(cp, nbytes)
 			i = NBUCKETS;
 	}
 	onb = 1 << (i + 3);
-	if (onb < pagesz)
+	if (onb < (u_int)pagesz)
 		onb -= sizeof (*op) + RSLOP;
 	else
 		onb += pagesz - sizeof (*op) - RSLOP;
@@ -389,7 +388,7 @@ realloc(cp, nbytes)
 			else
 				i += pagesz - sizeof (*op) - RSLOP;
 		}
-		if (nbytes <= onb && nbytes > i) {
+		if (nbytes <= onb && nbytes > (size_t)i) {
 #ifdef RCHECK
 			op->ov_size = (nbytes + RSLOP - 1) & ~(RSLOP - 1);
 			*(u_short *)((caddr_t)(op + 1) + op->ov_size) = RMAGIC;

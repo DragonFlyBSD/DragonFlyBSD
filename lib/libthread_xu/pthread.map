@@ -1,5 +1,4 @@
-# $FreeBSD: src/lib/libpthread/pthread.map,v 1.13 2004/09/26 06:50:14 deischen Exp $
-# $DragonFly: src/lib/libthread_xu/pthread.map,v 1.8 2005/10/25 12:14:52 davidxu Exp $
+# $FreeBSD: src/lib/libpthread/pthread.map,v 1.13 2010/10/23 $
 
 LIBTHREAD_1_0 {
 global:
@@ -15,6 +14,7 @@ global:
 	__poll;
 	__pthread_cond_timedwait;
 	__pthread_cond_wait;
+	__pthread_cxa_finalize;
 	__pthread_mutex_init;
 	__pthread_mutex_lock;
 	__pthread_mutex_trylock;

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -30,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/include/dlfcn.h,v 1.10.2.3 2003/02/20 20:42:45 kan Exp $
+ * $FreeBSD: src/include/dlfcn.h,v 1.24 2010/03/24 15:59:51 gahr Exp $
  */
 
 #ifndef _DLFCN_H_
@@ -48,6 +44,8 @@
 #define	RTLD_GLOBAL	0x100	/* Make symbols globally available. */
 #define	RTLD_LOCAL	0	/* Opposite of RTLD_GLOBAL, and the default. */
 #define	RTLD_TRACE	0x200	/* Trace loaded objects and exit. */
+#define	RTLD_NODELETE	0x01000	/* Do not remove members. */
+#define	RTLD_NOLOAD	0x02000	/* Do not load if not already loaded. */
 
 /*
  * Request arguments for dlinfo().
@@ -56,6 +54,7 @@
 #define	RTLD_DI_SERINFO		4	/* Obtain search path info. */
 #define	RTLD_DI_SERINFOSIZE	5	/*  ... query for required space. */
 #define	RTLD_DI_ORIGIN		6	/* Obtain object origin */
+#define	RTLD_DI_MAX		RTLD_DI_ORIGIN
 
 /*
  * Special handle arguments for dlsym()/dlinfo().
@@ -113,7 +112,7 @@ typedef void (*dlfunc_t)(struct __dlfunc_arg);
 __BEGIN_DECLS
 /* XSI functions first. */
 int		 dlclose(void *);
-const char 	*dlerror(void);
+char		*dlerror(void);
 void		*dlopen(const char *, int);
 void		*dlsym(void * __restrict, const char * __restrict);
 
@@ -121,9 +120,8 @@ void		*dlsym(void * __restrict, const char * __restrict);
 int		 dladdr(const void * __restrict, Dl_info * __restrict);
 dlfunc_t	 dlfunc(void * __restrict, const char * __restrict);
 int		 dlinfo(void * __restrict, int, void * __restrict);
-void		 dllockinit(void *, void *(*)(void *), void (*)(void *),
-			    void (*)(void *), void (*)(void *),
-			    void (*)(void *), void (*)(void *));
+void		*dlvsym(void * __restrict, const char * __restrict,
+		    const char * __restrict);
 #endif /* __BSD_VISIBLE */
 __END_DECLS
 

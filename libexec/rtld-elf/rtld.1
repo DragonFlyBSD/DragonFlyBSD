@@ -1,5 +1,3 @@
-.\" $FreeBSD: src/libexec/rtld-elf/rtld.1,v 1.18.2.7 2002/01/10 17:51:28 ru Exp $
-.\"
 .\" Copyright (c) 1995 Paul Kranenburg
 .\" All rights reserved.
 .\"
@@ -28,12 +26,14 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
+.\" $FreeBSD: src/libexec/rtld-elf/rtld.1 216695 2010-12-25 08:51:20Z kib $
+.\"
 .Dd February 21, 2011
 .Dt RTLD 1
 .Os
 .Sh NAME
-.Nm ld-elf.so.1 ,
 .Nm ld-elf.so.2 ,
+.Nm ld-elf.so.1 ,
 .Nm rtld ,
 .Nm _rtld_functrace
 .Nd run-time link-editor
@@ -41,8 +41,9 @@
 .Ft int
 .Fn _rtld_functrace "const char *callerso" "const char *calleeso" "const char *calleefun" "void *stack"
 .Sh DESCRIPTION
+The
 .Nm
-is a self-contained shared object providing run-time
+utility is a self-contained shared object providing run-time
 support for loading and link-editing shared objects into a process'
 address space.
 It is also commonly known as the dynamic linker.
@@ -61,8 +62,28 @@ to be called on a per-object basis, giving a shared object an opportunity
 to perform any extra set-up before execution of the program proper begins.
 This is useful for C++ libraries that contain static constructors.
 .Pp
+When resolving dependencies for the loaded objects,
 .Nm
-itself is loaded by the kernel together with any dynamically-linked
+may be allowed to translate dynamic token strings in rpath and soname
+by setting
+.Fl "z origin"
+option of the static linker
+.Xr ld 1 .
+The following strings are recognized now:
+.Bl -tag -width ".Pa $PLATFORM"
+.It Pa $ORIGIN
+Translated to the full path of the loaded object.
+.It Pa $OSNAME
+Translated to the name of the operating system implementation.
+.It Pa $OSREL
+Translated to the release level of the operating system.
+.It Pa $PLATFORM
+Translated to the machine hardware platform.
+.El
+.Pp
+The
+.Nm
+utility itself is loaded by the kernel together with any dynamically-linked
 program that is to be executed.
 The kernel transfers control to the
 dynamic linker.
@@ -70,7 +91,7 @@ After the dynamic linker has finished loading,
 relocating, and initializing the program and its required shared
 objects, it transfers control to the entry point of the program.
 .Pp
-To locate the required shared objects in the filesystem,
+To locate the required shared objects in the file system,
 .Nm
 may use a
 .Dq hints
@@ -78,14 +99,49 @@ file prepared by the
 .Xr ldconfig 8
 utility.
 .Pp
+The
 .Nm
+utility
 recognizes a number of environment variables that can be used to modify
 its behaviour as follows:
-.Bl -tag -width ".Ev LD_LIBRARY_PATH"
+.Bl -tag -width ".Ev LD_LIBMAP_DISABLE"
+.It Ev LD_DUMP_REL_POST
+If set,
+.Nm
+will print a table containing all relocations after symbol
+binding and relocation.
+.It Ev LD_DUMP_REL_PRE
+If set,
+.Nm
+will print a table containing all relocations before symbol
+binding and relocation.
+.It Ev LD_LIBMAP
+A library replacement list in the same format as
+.Xr libmap.conf 5 .
+For convenience, the characters
+.Ql =
+and
+.Ql \&,
+can be used instead of a space and a newline.
+This variable is parsed after
+.Xr libmap.conf 5 ,
+and will override its entries.
+This variable is unset for set-user-ID and set-group-ID programs.
+.It Ev LD_LIBMAP_DISABLE
+If set, disables the use of
+.Xr libmap.conf 5
+and
+.Ev LD_LIBMAP .
+This variable is unset for set-user-ID and set-group-ID programs.
+.It Ev LD_ELF_HINTS_PATH
+This variable will override the default location of
+.Dq hints
+file.
+This variable is unset for set-user-ID and set-group-ID programs.
 .It Ev LD_LIBRARY_PATH
 A colon separated list of directories, overriding the default search path
 for shared libraries.
-This is ignored for set-user-ID and set-group-ID programs.
+This variable is unset for set-user-ID and set-group-ID programs.
 .It Ev LD_PRELOAD
 A list of shared libraries, separated by colons and/or white space,
 to be linked in before any
@@ -95,7 +151,7 @@ the directories specified by
 .Ev LD_LIBRARY_PATH
 will be searched first
 followed by the set of built-in standard directories.
-This is ignored for set-user-ID and set-group-ID programs.
+This variable is unset for set-user-ID and set-group-ID programs.
 .It Ev LD_BIND_NOW
 When set to a nonempty string, causes
 .Nm
@@ -111,6 +167,11 @@ When set to a nonempty string, causes
 .Nm
 to exit after loading the shared objects and printing a summary which includes
 the absolute pathnames of all objects, to standard output.
+.It Ev LD_TRACE_LOADED_OBJECTS_ALL
+When set to a nonempty string, causes
+.Nm
+to expand the summary to indicate which objects caused each object to
+be loaded.
 .It Ev LD_TRACE_LOADED_OBJECTS_FMT1
 .It Ev LD_TRACE_LOADED_OBJECTS_FMT2
 When set, these variables are interpreted as format strings a la
@@ -121,6 +182,12 @@ to customize the trace output and are used by
 option and allows
 .Xr ldd 1
 to be operated as a filter more conveniently.
+If the dependency name starts with string
+.Pa lib ,
+.Ev LD_TRACE_LOADED_OBJECTS_FMT1
+is used, otherwise
+.Ev LD_TRACE_LOADED_OBJECTS_FMT2
+is used.
 The following conversions can be used:
 .Bl -tag -width 4n
 .It Li %a
@@ -129,11 +196,12 @@ The main program's name
 .Dq __progname ) .
 .It Li \&%A
 The value of the environment variable
-.Ev LD_TRACE_LOADED_OBJECTS_PROGNAME
+.Ev LD_TRACE_LOADED_OBJECTS_PROGNAME .
+Typically used to print both the names of programs and shared libraries
+being inspected using
+.Xr ldd 1 .
 .It Li %o
 The library name.
-.It Li %m
-The library's major version number.
 .It Li %p
 The full pathname as determined by
 .Nm rtld Ns 's
@@ -147,6 +215,11 @@ Additionally,
 and
 .Ql \et
 are recognized and have their usual meaning.
+.It Ev LD_UTRACE
+If set,
+.Nm
+will log events such as the loading and unloading of shared objects via
+.Xr utrace 2 .
 .El
 .Pp
 If a shared object preloaded by the
@@ -178,8 +251,11 @@ and to give threading libraries a chance to complete initialization of the
 TCB prior to the calling of the _init() functions for the dynamically loaded
 libraries.
 .Sh FILES
-.Bl -tag -width indent
+.Bl -tag -width ".Pa /var/run/ld-elf.so.hints" -compact
 .It Pa /var/run/ld-elf.so.hints
+Hints file.
+.It Pa /etc/libmap.conf
+The libmap configuration file.
 .El
 .Sh EXAMPLES
 To set up an
@@ -217,4 +293,5 @@ will activate it.
 .Xr ld 1 ,
 .Xr ldd 1 ,
 .Xr elf 5 ,
+.Xr libmap.conf 5 ,
 .Xr ldconfig 8

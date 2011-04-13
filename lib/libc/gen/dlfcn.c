@@ -23,16 +23,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gen/dlfcn.c,v 1.6.2.1 2003/02/20 20:42:45 kan Exp $
- * $DragonFly: src/lib/libc/gen/dlfcn.c,v 1.5 2008/06/05 18:06:30 swildner Exp $
+ * $FreeBSD: src/lib/libc/gen/dlfcn.c 217154 2011-01-08 17:13:43Z kib $
  */
 
 #include <dlfcn.h>
+#include <link.h>
 #include <stddef.h>
 
 void	_rtld_error(const char *, ...);
 
-static const char sorry[] = "Service unavailable";
+static char sorry[] = "Service unavailable";
 
 /*
  * For ELF, the dynamic linker directly resolves references to its
@@ -67,7 +67,7 @@ dlclose(void *handle __unused)
 }
 
 #pragma weak dlerror
-const char *
+char *
 dlerror(void)
 {
 	return sorry;
@@ -89,6 +89,23 @@ dlsym(void *handle __unused, const char *name __unused)
 	return NULL;
 }
 
+#pragma weak dlfunc
+dlfunc_t
+dlfunc(void * handle __unused, const char * name __unused)
+{
+	_rtld_error(sorry);
+	return NULL;
+}
+
+#pragma weak dlvsym
+void *
+dlvsym(void *handle __unused,const char *name __unused,
+    const char *version __unused)
+{
+	_rtld_error(sorry);
+	return NULL;
+}
+
 #pragma weak dlinfo
 int
 dlinfo(void *handle __unused, int request __unused, void *p __unused)
@@ -96,3 +113,21 @@ dlinfo(void *handle __unused, int request __unused, void *p __unused)
 	_rtld_error(sorry);
 	return 0;
 }
+
+#pragma weak dl_iterate_phdr
+int
+dl_iterate_phdr(int (*callback)(struct dl_phdr_info *, size_t, void *),
+    void *data)
+{
+	_rtld_error(sorry);
+	return 0;
+}
+
+#pragma weak _rtld_addr_phdr
+int
+_rtld_addr_phdr(const void *addr, struct dl_phdr_info *phdr_info)
+{
+
+	return (0);
+}
+

@@ -23,45 +23,42 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.3.2.2 2002/07/02 04:10:51 jdp Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.7 2005/05/11 19:47:09 dillon Exp $
+ * $FreeBSD: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.13 2011/01/25 21:12:31 kib Exp $
  */
 
 #ifndef RTLD_MACHDEP_H
 #define RTLD_MACHDEP_H	1
+
+#include <sys/types.h>
+#include <machine/atomic.h>
+
+#define CACHE_LINE_SIZE	32
+
+struct Struct_Obj_Entry;
 
 /* Return the address of the .dynamic section in the dynamic linker. */
 #define rtld_dynamic(obj) \
     ((const Elf_Dyn *)((obj)->relocbase + (Elf_Addr)&_DYNAMIC))
 
 /* Fixup the jump slot at "where" to transfer control to "target". */
-#define reloc_jmpslot(where, target)			\
-    do {						\
-	dbg("reloc_jmpslot: *%p = %p", (void *)(where),	\
-	  (void *)(target));				\
-	(*(Elf_Addr *)(where) = (Elf_Addr)(target));	\
-    } while (0)
-
-static inline void
-atomic_decr_int(volatile int *p)
+static inline Elf_Addr
+reloc_jmpslot(Elf_Addr *where, Elf_Addr target,
+	      const struct Struct_Obj_Entry *obj,
+	      const struct Struct_Obj_Entry *refobj, const Elf_Rel *rel)
 {
-    __asm __volatile ("lock; decl %0" : "+m"(*p) : : "cc");
+#ifdef dbg
+    dbg("reloc_jmpslot: *%p = %p", (void *)(where),
+	(void *)(target));
+#endif
+    (*(Elf_Addr *)(where) = (Elf_Addr)(target));
+    return target;
 }
 
-static inline void
-atomic_incr_int(volatile int *p)
-{
-    __asm __volatile ("lock; incl %0" : "+m"(*p) : : "cc");
-}
+#define make_function_pointer(def, defobj) \
+	((defobj)->relocbase + (def)->st_value)
 
-static inline void
-atomic_add_int(volatile int *p, int val)
-{
-    __asm __volatile ("lock; addl %1, %0"
-	: "+m"(*p)
-	: "ri"(val)
-	: "cc");
-}
+#define call_initfini_pointer(obj, target) \
+	(((InitFunc)(target))())
 
 #define round(size, align) \
 	(((size) + (align) - 1) & ~((align) - 1))

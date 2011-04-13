@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf32.h,v 1.7 1999/08/28 00:51:41 peter Exp $
- * $DragonFly: src/sys/sys/elf32.h,v 1.5 2006/10/23 21:50:33 dillon Exp $
  */
 
 #ifndef _SYS_ELF32_H_
@@ -158,5 +157,51 @@ typedef struct {
 
 /* Macro for constructing st_info from field values. */
 #define ELF32_ST_INFO(bind, type)	(((bind) << 4) + ((type) & 0xf))
+
+/* Macro for accessing the fields of st_other. */
+#define ELF32_ST_VISIBILITY(oth)	((oth) & 0x3)
+
+/* Structures used by Sun & GNU symbol versioning. */
+typedef struct
+{
+	Elf32_Half	vd_version;
+	Elf32_Half	vd_flags;
+	Elf32_Half	vd_ndx;
+	Elf32_Half	vd_cnt;
+	Elf32_Word	vd_hash;
+	Elf32_Word	vd_aux;
+	Elf32_Word	vd_next;
+} Elf32_Verdef;
+
+typedef struct
+{
+	Elf32_Word	vda_name;
+	Elf32_Word	vda_next;
+} Elf32_Verdaux;
+
+typedef struct
+{
+	Elf32_Half	vn_version;
+	Elf32_Half	vn_cnt;
+	Elf32_Word	vn_file;
+	Elf32_Word	vn_aux;
+	Elf32_Word	vn_next;
+} Elf32_Verneed;
+
+typedef struct
+{
+	Elf32_Word	vna_hash;
+	Elf32_Half	vna_flags;
+	Elf32_Half	vna_other;
+	Elf32_Word	vna_name;
+	Elf32_Word	vna_next;
+} Elf32_Vernaux;
+
+typedef Elf32_Half Elf32_Versym;
+
+typedef struct {
+	Elf32_Half	si_boundto;	/* direct bindings - symbol bound to */
+	Elf32_Half	si_flags;	/* per symbol flags */
+} Elf32_Syminfo;
 
 #endif /* !_SYS_ELF32_H_ */

@@ -1,7 +1,6 @@
-.\" $FreeBSD: src/usr.bin/ldd/ldd.1,v 1.12.2.7 2002/06/21 15:27:41 charnier Exp $
-.\" $DragonFly: src/usr.bin/ldd/ldd.1,v 1.2 2003/06/17 04:29:27 dillon Exp $
+.\" $FreeBSD: head/usr.bin/ldd/ldd.1 199871 2009-11-28 11:05:22Z danger $
 .\"
-.Dd October 22, 1993
+.Dd February 20, 2011
 .Dt LDD 1
 .Os
 .Sh NAME
@@ -9,6 +8,7 @@
 .Nd list dynamic object dependencies
 .Sh SYNOPSIS
 .Nm
+.Op Fl a
 .Op Fl v
 .Op Fl f Ar format
 .Ar program ...
@@ -32,15 +32,38 @@ The argument is a format string passed to
 and allows customization of
 .Nm Ns 's
 output.
+If one is given, it sets
+.Ev LD_TRACE_LOADED_OBJECTS_FMT1 .
+If two are given, they set
+.Ev LD_TRACE_LOADED_OBJECTS_FMT1
+and
+.Ev LD_TRACE_LOADED_OBJECTS_FMT2 ,
+respectively.
 See
 .Xr rtld 1
-for a list of recognized conversion characters.
+for details, including a list of recognized conversion characters.
+.Pp
+The
+.Fl a
+option displays the list of all objects that are needed by each loaded
+object.
+This option does not work with
+.Xr a.out 5
+binaries.
 .Pp
 The
 .Fl v
-option displays an verbose listing of the dynamic linking headers
-encoded in the executable.  See the source code and include
+option displays a verbose listing of the dynamic linking headers
+encoded in the executable.
+See the source code and include
 files for the definitive meaning of all the fields.
+.Sh EXAMPLES
+The following is an example of a shell pipeline which uses the
+.Fl f
+option.
+It will print a report of all ELF binaries in the current directory,
+which link against libc.so.6:
+.Dl "find . -type f | xargs -n1 file -F ' ' | grep ELF | cut -f1 -d' ' | xargs ldd -f '%A %o\en' | grep libc.so.6"
 .Sh SEE ALSO
 .Xr ld 1 ,
 .Xr nm 1 ,

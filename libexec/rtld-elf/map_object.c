@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/libexec/rtld-elf/map_object.c,v 1.7.2.2 2002/12/28 19:49:41 dillon Exp $
+ * $FreeBSD: src/libexec/rtld-elf/map_object.c,v 1.25 2011/01/25 21:12:31 kib Exp $
  */
 
 #include <sys/param.h>
@@ -35,6 +35,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "debug.h"
 #include "rtld.h"
 
 static Elf_Ehdr *get_elf_header (int, const char *);
@@ -60,7 +61,6 @@ map_object(int fd, const char *path, const struct stat *sb)
     Elf_Phdr **segs;
     int nsegs;
     Elf_Phdr *phdyn;
-    Elf_Phdr *phphdr;
     Elf_Phdr *phinterp;
     Elf_Phdr *phtls;
     caddr_t mapbase;
@@ -78,25 +78,27 @@ map_object(int fd, const char *path, const struct stat *sb)
     Elf_Addr clear_vaddr;
     caddr_t clear_addr;
     caddr_t clear_page;
-    size_t nclear;
+    Elf_Addr phdr_vaddr;
+    size_t nclear, phsize;
     Elf_Addr bss_vaddr;
     Elf_Addr bss_vlimit;
     caddr_t bss_addr;
 
     hdr = get_elf_header(fd, path);
     if (hdr == NULL)
-	return NULL;
+	return (NULL);
 
     /*
      * Scan the program header entries, and save key information.
      *
-     * We rely on there being exactly two load segments, text and data,
-     * in that order.
+     * We expect that the loadable segments are ordered by load address.
      */
     phdr = (Elf_Phdr *) ((char *)hdr + hdr->e_phoff);
+    phsize  = hdr->e_phnum * sizeof (phdr[0]);
     phlimit = phdr + hdr->e_phnum;
     nsegs = -1;
-    phdyn = phphdr = phinterp = phtls = NULL;
+    phdyn = phinterp = phtls = NULL;
+    phdr_vaddr = 0;
     segs = alloca(sizeof(segs[0]) * hdr->e_phnum);
     while (phdr < phlimit) {
 	switch (phdr->p_type) {
@@ -107,7 +109,7 @@ map_object(int fd, const char *path, const struct stat *sb)
 
 	case PT_LOAD:
 	    segs[++nsegs] = phdr;
-    	    if (segs[nsegs]->p_align < PAGE_SIZE) {
+	    if ((segs[nsegs]->p_align & (PAGE_SIZE - 1)) != 0) {
 		_rtld_error("%s: PT_LOAD segment %d not page-aligned",
 		    path, nsegs);
 		return NULL;
@@ -115,7 +117,8 @@ map_object(int fd, const char *path, const struct stat *sb)
 	    break;
 
 	case PT_PHDR:
-	    phphdr = phdr;
+	    phdr_vaddr = phdr->p_vaddr;
+	    phsize = phdr->p_memsz;
 	    break;
 
 	case PT_DYNAMIC:
@@ -149,8 +152,8 @@ map_object(int fd, const char *path, const struct stat *sb)
     mapsize = base_vlimit - base_vaddr;
     base_addr = hdr->e_type == ET_EXEC ? (caddr_t) base_vaddr : NULL;
 
-    mapbase = mmap(base_addr, mapsize, convert_prot(segs[0]->p_flags),
-      convert_flags(segs[0]->p_flags), fd, base_offset);
+    mapbase = mmap(base_addr, mapsize, PROT_NONE, MAP_ANON | MAP_PRIVATE |
+      MAP_NOCORE, -1, 0);
     if (mapbase == (caddr_t) -1) {
 	_rtld_error("%s: mmap of entire address space failed: %s",
 	  path, strerror(errno));
@@ -163,7 +166,7 @@ map_object(int fd, const char *path, const struct stat *sb)
 	return NULL;
     }
 
-    for (i = 0; i <=  nsegs; i++) {
+    for (i = 0; i <= nsegs; i++) {
 	/* Overlay the segment onto the proper region. */
 	data_offset = trunc_page(segs[i]->p_offset);
 	data_vaddr = trunc_page(segs[i]->p_vaddr);
@@ -171,50 +174,59 @@ map_object(int fd, const char *path, const struct stat *sb)
 	data_addr = mapbase + (data_vaddr - base_vaddr);
 	data_prot = convert_prot(segs[i]->p_flags);
 	data_flags = convert_flags(segs[i]->p_flags) | MAP_FIXED;
-	/* Do not call mmap on the first segment - this is redundant */
-	if (i && mmap(data_addr, data_vlimit - data_vaddr, data_prot,
+	if (mmap(data_addr, data_vlimit - data_vaddr, data_prot,
 	  data_flags, fd, data_offset) == (caddr_t) -1) {
 	    _rtld_error("%s: mmap of data failed: %s", path, strerror(errno));
 	    return NULL;
 	}
 
-	/* Clear any BSS in the last page of the segment. */
-	clear_vaddr = segs[i]->p_vaddr + segs[i]->p_filesz;
-	clear_addr = mapbase + (clear_vaddr - base_vaddr);
-	clear_page = mapbase + (trunc_page(clear_vaddr) - base_vaddr);
-	if ((nclear = data_vlimit - clear_vaddr) > 0) {
-	    /* Make sure the end of the segment is writable */
-	    if ((data_prot & PROT_WRITE) == 0) {
-		if (mprotect(clear_page, PAGE_SIZE, data_prot|PROT_WRITE) < 0) {
+	/* Do BSS setup */
+	if (segs[i]->p_filesz != segs[i]->p_memsz) {
+
+	    /* Clear any BSS in the last page of the segment. */
+	    clear_vaddr = segs[i]->p_vaddr + segs[i]->p_filesz;
+	    clear_addr = mapbase + (clear_vaddr - base_vaddr);
+	    clear_page = mapbase + (trunc_page(clear_vaddr) - base_vaddr);
+
+	    if ((nclear = data_vlimit - clear_vaddr) > 0) {
+		/* Make sure the end of the segment is writable */
+		if ((data_prot & PROT_WRITE) == 0) {
+		    if (mprotect(clear_page, PAGE_SIZE, data_prot|PROT_WRITE) < 0) {
 			_rtld_error("%s: mprotect failed: %s", path,
 			    strerror(errno));
 			return NULL;
+		    }
+		}
+
+		memset(clear_addr, 0, nclear);
+
+		/*
+		 * reset the data protection back, enable the segment to be
+		 * coredumped since we modified it.
+		 */
+		if ((data_prot & PROT_WRITE) == 0) {
+		    madvise(clear_page, PAGE_SIZE, MADV_CORE);
+		    mprotect(clear_page, PAGE_SIZE, data_prot);
 		}
 	    }
 
-	    memset(clear_addr, 0, nclear);
-
-	    /*
-	     * reset the data protection back, enable the segment to be
-	     * coredumped since we modified it.
-	     */
-	    if ((data_prot & PROT_WRITE) == 0) {
-		madvise(clear_page, PAGE_SIZE, MADV_CORE);
-		mprotect(clear_page, PAGE_SIZE, data_prot);
+	    /* Overlay the BSS segment onto the proper region. */
+	    bss_vaddr = data_vlimit;
+	    bss_vlimit = round_page(segs[i]->p_vaddr + segs[i]->p_memsz);
+	    bss_addr = mapbase +  (bss_vaddr - base_vaddr);
+	    if (bss_vlimit > bss_vaddr) {	/* There is something to do */
+		if (mprotect(bss_addr, bss_vlimit - bss_vaddr, data_prot) == -1) {
+		    _rtld_error("%s: mprotect of bss failed: %s", path,
+			strerror(errno));
+		    return NULL;
+		}
 	    }
 	}
 
-	/* Overlay the BSS segment onto the proper region. */
-	bss_vaddr = data_vlimit;
-	bss_vlimit = round_page(segs[i]->p_vaddr + segs[i]->p_memsz);
-	bss_addr = mapbase +  (bss_vaddr - base_vaddr);
-	if (bss_vlimit > bss_vaddr) {	/* There is something to do */
-	    if (mmap(bss_addr, bss_vlimit - bss_vaddr, data_prot,
-		MAP_PRIVATE|MAP_FIXED|MAP_ANON, -1, 0) == (caddr_t) -1) {
-		    _rtld_error("%s: mmap of bss failed: %s", path,
-			strerror(errno));
-		return NULL;
-	    }
+	if (phdr_vaddr == 0 && data_offset <= hdr->e_phoff &&
+	  (data_vlimit - data_vaddr + data_offset) >=
+	  (hdr->e_phoff + hdr->e_phnum * sizeof (Elf_Phdr))) {
+	    phdr_vaddr = data_vaddr + hdr->e_phoff - data_offset;
 	}
     }
 
@@ -232,10 +244,19 @@ map_object(int fd, const char *path, const struct stat *sb)
     obj->dynamic = (const Elf_Dyn *) (obj->relocbase + phdyn->p_vaddr);
     if (hdr->e_entry != 0)
 	obj->entry = (caddr_t) (obj->relocbase + hdr->e_entry);
-    if (phphdr != NULL) {
-	obj->phdr = (const Elf_Phdr *) (obj->relocbase + phphdr->p_vaddr);
-	obj->phsize = phphdr->p_memsz;
+    if (phdr_vaddr != 0) {
+	obj->phdr = (const Elf_Phdr *) (obj->relocbase + phdr_vaddr);
+    } else {
+	obj->phdr = malloc(phsize);
+	if (obj->phdr == NULL) {
+	    obj_free(obj);
+	    _rtld_error("%s: cannot allocate program header", path);
+	     return NULL;
+	}
+	memcpy((char *)obj->phdr, (char *)hdr + hdr->e_phoff, phsize);
+	obj->phdr_alloc = true;
     }
+    obj->phsize = phsize;
     if (phinterp != NULL)
 	obj->interp = (const char *) (obj->relocbase + phinterp->p_vaddr);
     if (phtls != NULL) {
@@ -258,7 +279,7 @@ get_elf_header (int fd, const char *path)
     } u;
     ssize_t nbytes;
 
-    if ((nbytes = read(fd, u.buf, PAGE_SIZE)) == -1) {
+    if ((nbytes = pread(fd, u.buf, PAGE_SIZE, 0)) == -1) {
 	_rtld_error("%s: read error: %s", path, strerror(errno));
 	return NULL;
     }
@@ -310,15 +331,17 @@ obj_free(Obj_Entry *obj)
 {
     Objlist_Entry *elm;
 
-    if (obj->tls_done) {
+    if (obj->tls_done)
 	free_tls_offset(obj);
-    }
-    free(obj->origin_path);
-    free(obj->path);
     while (obj->needed != NULL) {
 	Needed_Entry *needed = obj->needed;
 	obj->needed = needed->next;
 	free(needed);
+    }
+    while (!STAILQ_EMPTY(&obj->names)) {
+	Name_Entry *entry = STAILQ_FIRST(&obj->names);
+	STAILQ_REMOVE_HEAD(&obj->names, link);
+	free(entry);
     }
     while (!STAILQ_EMPTY(&obj->dldags)) {
 	elm = STAILQ_FIRST(&obj->dldags);
@@ -330,6 +353,18 @@ obj_free(Obj_Entry *obj)
 	STAILQ_REMOVE_HEAD(&obj->dagmembers, link);
 	free(elm);
     }
+    if (obj->vertab)
+	free(obj->vertab);
+    if (obj->origin_path)
+	free(obj->origin_path);
+    if (obj->z_origin)
+	free(obj->rpath);
+    if (obj->priv)
+	free(obj->priv);
+    if (obj->path)
+	free(obj->path);
+    if (obj->phdr_alloc)
+	free((void *)obj->phdr);
     free(obj);
 }
 
@@ -341,6 +376,7 @@ obj_new(void)
     obj = CNEW(Obj_Entry);
     STAILQ_INIT(&obj->dldags);
     STAILQ_INIT(&obj->dagmembers);
+    STAILQ_INIT(&obj->names);
     return obj;
 }
 

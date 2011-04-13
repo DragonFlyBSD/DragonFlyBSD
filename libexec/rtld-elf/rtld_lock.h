@@ -1,5 +1,5 @@
 /*-
- * Copyright 1996-1998 John D. Polstra.
+ * Copyright 2003 Alexander Kabaev.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,40 +22,51 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/libexec/rtld-elf/debug.h,v 1.7 2006/03/28 18:26:47 des Exp $
+ * $FreeBSD: src/libexec/rtld-elf/rtld_lock.h,v 1.6 2010/12/25 08:51:20 kib Exp $
  */
 
-/*
- * Support for printing debugging messages.
- */
+#ifndef _RTLD_LOCK_H_
+#define	_RTLD_LOCK_H_
 
-#ifndef DEBUG_H
-#define DEBUG_H 1
+#define	RTLI_VERSION	0x01
 
-#ifndef __GNUC__
-#error "This file must be compiled with GCC"
+struct RtldLockInfo
+{
+	unsigned int rtli_version;
+	void *(*lock_create)(void);
+	void  (*lock_destroy)(void *);
+	void  (*rlock_acquire)(void *);
+	void  (*wlock_acquire)(void *);
+	void  (*lock_release)(void *);
+	int   (*thread_set_flag)(int);
+	int   (*thread_clr_flag)(int);
+	void  (*at_fork)(void);
+};
+
+extern void _rtld_thread_init(struct RtldLockInfo *);
+
+#ifdef IN_RTLD
+
+struct rtld_lock;
+typedef struct rtld_lock *rtld_lock_t;
+
+extern rtld_lock_t	rtld_bind_lock;
+extern rtld_lock_t	rtld_libc_lock;
+extern rtld_lock_t	rtld_phdr_lock;
+
+#define	RTLD_LOCK_UNLOCKED	0
+#define	RTLD_LOCK_RLOCKED	1
+#define	RTLD_LOCK_WLOCKED	2
+
+struct Struct_RtldLockState;
+typedef struct Struct_RtldLockState RtldLockState;
+
+void	rlock_acquire(rtld_lock_t, RtldLockState *);
+void 	wlock_acquire(rtld_lock_t, RtldLockState *);
+void	lock_release(rtld_lock_t, RtldLockState *);
+void	lock_upgrade(rtld_lock_t, RtldLockState *);
+void	lock_restart_for_upgrade(RtldLockState *);
+
+#endif	/* IN_RTLD */
+
 #endif
-
-#include <sys/cdefs.h>
-
-#include <string.h>
-#include <unistd.h>
-
-extern void debug_printf(const char *, ...) __printflike(1, 2);
-extern int debug;
-
-#ifdef DEBUG
-#define dbg(...)	debug_printf(__VA_ARGS__)
-#else
-#define dbg(...)	((void) 0)
-#endif
-
-#define _MYNAME	"ld-elf.so.2"
-#define assert(cond)	((cond) ? (void) 0 :		\
-    (msg(_MYNAME ": assert failed: " __FILE__ ":"	\
-      __XSTRING(__LINE__) "\n"), abort()))
-#define msg(s)		write(STDOUT_FILENO, s, strlen(s))
-#define trace()		msg(_MYNAME ": " __XSTRING(__LINE__) "\n")
-
-
-#endif /* DEBUG_H */

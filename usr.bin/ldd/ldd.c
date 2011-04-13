@@ -28,11 +28,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ldd/ldd.c,v 1.18.2.7 2002/02/27 18:35:53 sobomax Exp $
- * $DragonFly: src/usr.bin/ldd/ldd.c,v 1.6 2006/01/12 13:43:11 corecode Exp $
  */
 
 #include <sys/param.h>
 #include <sys/wait.h>
+
 #include <machine/elf.h>
 #include <a.out.h>
 #include <dlfcn.h>
@@ -48,7 +48,7 @@ extern int	error_count;
 void
 usage(void)
 {
-	fprintf(stderr, "usage: ldd [-v] [-f format] program ...\n");
+	fprintf(stderr, "usage: ldd [-a] [-v] [-f format] program ...\n");
 	exit(1);
 }
 
@@ -58,12 +58,13 @@ main(int argc, char **argv)
 	char		*fmt1 = NULL, *fmt2 = NULL;
 	int		rval;
 	int		c;
-	int		vflag = 0;
+	int		aflag, vflag;
 
-	while ((c = getopt(argc, argv, "vf:")) != -1) {
+	aflag = vflag = 0;
+	while ((c = getopt(argc, argv, "avf:")) != -1) {
 		switch (c) {
-		case 'v':
-			vflag++;
+		case 'a':
+			aflag++;
 			break;
 		case 'f':
 			if (fmt1) {
@@ -73,9 +74,12 @@ main(int argc, char **argv)
 			} else
 				fmt1 = optarg;
 			break;
+		case 'v':
+			vflag++;
+			break;
 		default:
 			usage();
-			/*NOTREACHED*/
+			/* NOTREACHED */
 		}
 	}
 	argc -= optind;
@@ -86,7 +90,7 @@ main(int argc, char **argv)
 
 	if (argc <= 0) {
 		usage();
-		/*NOTREACHED*/
+		/* NOTREACHED */
 	}
 
 #ifdef __i386__
@@ -98,7 +102,7 @@ main(int argc, char **argv)
 #endif
 
 	/* ld.so magic */
-	if (setenv("LD_TRACE_LOADED_OBJECTS", "1", 1) == -1)
+	if (setenv("LD_TRACE_LOADED_OBJECTS", "yes", 1) == -1)
 		err(1, "setenv: cannot set LD_TRACE_LOADED_OBJECTS=1");
 	if (fmt1) {
 		if (setenv("LD_TRACE_LOADED_OBJECTS_FMT1", fmt1, 1) == -1)
@@ -187,10 +191,10 @@ main(int argc, char **argv)
 
 		if (setenv("LD_TRACE_LOADED_OBJECTS_PROGNAME", *argv, 1) == -1)
 			err(1, "setenv: cannot set LD_TRACE_LOADED_OBJECTS_PROGNAME=%s", *argv);
-		if (fmt1 == NULL && fmt2 == NULL)
+		if (aflag) setenv("LD_TRACE_LOADED_OBJECTS_ALL", "1", 1);
+		else if (fmt1 == NULL && fmt2 == NULL)
 			/* Default formats */
 			printf("%s:\n", *argv);
-
 		fflush(stdout);
 
 		switch (fork()) {

@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -31,8 +27,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)paths.h	8.1 (Berkeley) 6/2/93
- * $FreeBSD: src/include/paths.h,v 1.9.6.4 2002/07/19 07:53:41 jmallett Exp $
- * $DragonFly: src/include/paths.h,v 1.5 2008/08/30 16:07:58 hasso Exp $
+ * $FreeBSD: src/include/paths.h,v 1.30 2010/02/16 19:39:50 imp Exp $
  */
 
 #ifndef _PATHS_H_
@@ -67,6 +62,7 @@
 #define	_PATH_ICONV	"/usr/share/i18n/iconv"
 #define	_PATH_CSMAPPER	"/usr/share/i18n/csmapper"
 #define	_PATH_KMEM	__SYS_PATH_KMEM
+#define	_PATH_LIBMAP_CONF	"/etc/libmap.conf"
 #define	_PATH_LOCALE	"/usr/share/locale"
 #define	_PATH_LOGIN	"/usr/bin/login"
 #define	_PATH_MAILDIR	"/var/mail"

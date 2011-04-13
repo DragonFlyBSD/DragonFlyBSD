@@ -1,6 +1,5 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
-# $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.29 2008/10/06 21:01:37 swildner Exp $
+# $FreeBSD: head/lib/libc/gen/Makefile.inc 214680 2010-11-02 17:00:56Z ed $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -9,7 +8,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	alarm.c arc4random.c assert.c basename.c \
 	clock.c closedir.c confstr.c \
 	ctermid.c ctype.c daemon.c devname.c dirname.c disklabel.c disktab.c \
-	dlfcn.c dlfunc.c drand48.c erand48.c err.c errlst.c exec.c \
+	dlfcn.c drand48.c elf_utils.c erand48.c err.c errlst.c exec.c \
 	fdevname.c fmtcheck.c fmtmsg.c fnmatch.c fpclassifyd.c fpclassifyf.c \
 	frexp.c fstab.c ftok.c fts.c ftw.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdevpath.c getdomainname.c \
@@ -52,6 +51,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	confstr.3 ctermid.3 ctype.3 daemon.3 \
 	devname.3 directory.3 dirname.3 \
 	dladdr.3 dlinfo.3 dlopen.3 \
+	dlclose.3 dlerror.3 dlfcn.3 dlsym.3 dlvsym.3 dl_iterate_phdr.3 \
 	endutxent.3 err.3 exec.3 \
 	fmtcheck.3 fmtmsg.3 fnmatch.3 fpclassify.3 frexp.3 ftok.3 fts.3 ftw.3 \
 	getbootfile.3 getbsize.3 getcap.3 getcontext.3 getcwd.3 \
@@ -86,8 +86,8 @@ MLINKS+=ctermid.3 ctermid_r.3
 MLINKS+=directory.3 closedir.3 directory.3 dirfd.3 directory.3 opendir.3 \
 	directory.3 readdir.3 directory.3 readdir_r.3 directory.3 rewinddir.3 \
 	directory.3 seekdir.3 directory.3 telldir.3 directory.3 fdopendir.3
+MLINKS+=dlsym.3 dlfunc.3
 MLINKS+=devname.3 devname_r.3 devname.3 fdevname.3 devname.3 fdevname_r.3
-MLINKS+=dlopen.3 dlclose.3 dlopen.3 dlerror.3 dlopen.3 dlsym.3
 MLINKS+=endutxent.3 getutxent.3 endutxent.3 getutxid.3 \
 	endutxent.3 getutxline.3 endutxent.3 pututxline.3 \
 	endutxent.3 setutxent.3 endutxent.3 setutxdb.3

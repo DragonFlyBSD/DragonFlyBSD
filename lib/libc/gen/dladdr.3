@@ -23,24 +23,26 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc/gen/dladdr.3,v 1.3.2.4 2003/03/15 15:11:05 trhodes Exp $
+.\" $FreeBSD: head/lib/libc/gen/dladdr.3 206622 2010-04-14 19:08:06Z uqs $
 .\"
-.Dd February 5, 1998
-.Os
+.Dd February 20, 2011
 .Dt DLADDR 3
+.Os
 .Sh NAME
 .Nm dladdr
 .Nd find the shared object containing a given address
 .Sh LIBRARY
-.Lb libc
+This function is not in a library.  It is included in every dynamically linked
+program automatically.
 .Sh SYNOPSIS
 .In dlfcn.h
 .Ft int
-.Fn dladdr "const void *addr" "Dl_info *info"
+.Fn dladdr "const void * addr" "Dl_info * dlip"
 .Sh DESCRIPTION
 The
 .Fn dladdr
-function queries the dynamic linker for information about the shared object
+function
+queries the dynamic linker for information about the shared object
 containing the address
 .Fa addr .
 The information is returned in the structure specified by
@@ -70,7 +72,8 @@ The value of the symbol returned in
 .Pp
 The
 .Fn dladdr
-function is available only in dynamically linked programs.
+function
+is available only in dynamically linked programs.
 .Sh ERRORS
 If a mapped shared object containing
 .Fa addr
@@ -84,14 +87,15 @@ calling
 On success, a non-zero value is returned.
 .Sh SEE ALSO
 .Xr rtld 1 ,
-.Xr dlopen 3
+.Xr dlfcn 3
 .Sh HISTORY
 The
 .Fn dladdr
 function first appeared in the Solaris operating system.
 .Sh BUGS
 This implementation is bug-compatible with the Solaris
-implementation.  In particular, the following bugs are present:
+implementation.
+In particular, the following bugs are present:
 .Bl -bullet
 .It
 If
@@ -99,12 +103,15 @@ If
 lies in the main executable rather than in a shared library, the
 pathname returned in
 .Va dli_fname
-may not be correct.  The pathname is taken directly from
+may not be correct.
+The pathname is taken directly from
 .Va argv[0]
-of the calling process.  When executing a program specified by its
+of the calling process.
+When executing a program specified by its
 full pathname, most shells set
 .Va argv[0]
-to the pathname.  But this is not required of shells or guaranteed
+to the pathname.
+But this is not required of shells or guaranteed
 by the operating system.
 .It
 If
@@ -113,10 +120,12 @@ is of the form
 .Va &func ,
 where
 .Va func
-is a global function, its value may be an unpleasant surprise.  In
+is a global function, its value may be an unpleasant surprise.
+In
 dynamically linked programs, the address of a global function is
 considered to point to its program linkage table entry, rather than to
-the entry point of the function itself.  This causes most global
+the entry point of the function itself.
+This causes most global
 functions to appear to be defined within the main executable, rather
 than in the shared libraries where the actual code resides.
 .It

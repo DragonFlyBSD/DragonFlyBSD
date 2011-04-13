@@ -22,8 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/libexec/rtld-elf/debug.c,v 1.2 1999/08/28 00:10:09 peter Exp $
- * $DragonFly: src/libexec/rtld-elf/debug.c,v 1.4 2005/03/30 00:53:59 joerg Exp $
+ * $FreeBSD: src/libexec/rtld-elf/debug.c,v 1.4 2003/06/19 16:09:18 mdodd Exp $
  */
 
 /*
@@ -39,7 +38,7 @@
 static const char rel_header[] =
     " symbol name               r_info r_offset st_value st_size    address    value\n"
     " ------------------------------------------------------------------------------\n";
-static const char rel_format[] =  " %-25s %6lx %08lx %08lx %7ld %10p %08lx\n";
+static const char rel_format[] =  " %-25s %6lx %08lx %08lx %7d %10p %08lx\n";
 
 int debug = 0;
 
@@ -114,9 +113,9 @@ dump_Elf_Rel (Obj_Entry *obj, const Elf_Rel *rel0, u_long relsize)
         sym = obj->symtab + ELF_R_SYM(rel->r_info);
         printf(rel_format,
 		obj->strtab + sym->st_name,
-		(long)rel->r_info, (long)rel->r_offset,
-		(long)sym->st_value, (long)sym->st_size,
-		dstaddr, (long)*dstaddr);
+		(u_long)rel->r_info, (u_long)rel->r_offset,
+		(u_long)sym->st_value, (int)sym->st_size,
+		dstaddr, (u_long)*dstaddr);
     }
     return;
 }
@@ -136,9 +135,9 @@ dump_Elf_Rela (Obj_Entry *obj, const Elf_Rela *rela0, u_long relasize)
         sym = obj->symtab + ELF_R_SYM(rela->r_info);
         printf(rel_format,
 		obj->strtab + sym->st_name,
-		(long)rela->r_info, (long)rela->r_offset,
-		(long)sym->st_value, (long)sym->st_size,
-		dstaddr, (long)*dstaddr);
+		(u_long)rela->r_info, (u_long)rela->r_offset,
+		(u_long)sym->st_value, (int)sym->st_size,
+		dstaddr, (u_long)*dstaddr);
     }
     return;
 }

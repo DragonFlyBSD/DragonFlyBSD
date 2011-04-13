@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/libexec/rtld-elf/amd64/rtld_start.S,v 1.5 2004/03/21 01:43:39 peter Exp $
+ * $FreeBSD: src/libexec/rtld-elf/amd64/rtld_start.S,v 1.6 2011/01/07 16:07:05 kib Exp $
  */
 
 /*
@@ -95,6 +95,7 @@ _rtld_bind_start:
 	pushq	%r9			# Save %r9
 	pushq	%r10			# Save %r10
 	pushq	%r11			# Save %r11
+
 	movq	0x58(%rsp),%rdi		# Fetch obj argument    (arg 1)
 	movq	0x60(%rsp),%rsi		# Fetch reloff argument (arg 2)
 	leaq	0x68(%rsp),%rdx		# Fetch original stack pointer (arg 3)
@@ -117,3 +118,5 @@ _rtld_bind_start:
 	popfq				# Restore rflags
 	leaq	16(%rsp),%rsp		# Discard spare, obj, do not change rflags
 	ret				# "Return" to target address
+
+	.section .note.GNU-stack,"",%progbits

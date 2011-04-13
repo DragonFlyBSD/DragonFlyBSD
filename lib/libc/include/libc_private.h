@@ -10,10 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by John Birrell.
- * 4. Neither the name of the author nor the names of any co-contributors
+ * 3. Neither the name of the author nor the names of any co-contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -29,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/include/libc_private.h,v 1.3 1999/08/27 23:59:47 peter Exp $
+ * $FreeBSD: head/lib/libc/include/libc_private.h 213153 2010-09-25 01:57:47Z davidxu $
  *
  * Private definitions for libc, libc_r and libpthread.
  *
@@ -93,5 +90,8 @@ extern void (*__cleanup)(void);
 /* execve() with PATH processing to implement posix_spawnp() */
 int _execvpe(const char *, char * const *, char * const *);
 void _nmalloc_thr_init(void);
+
+struct dl_phdr_info;
+int __elf_phdr_match_addr(struct dl_phdr_info *, void *);
 
 #endif /* _LIBC_PRIVATE_H_ */

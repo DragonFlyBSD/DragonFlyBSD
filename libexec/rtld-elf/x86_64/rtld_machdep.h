@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/libexec/rtld-elf/amd64/rtld_machdep.h,v 1.13 2006/03/29 12:29:01 des Exp $
+ * $FreeBSD: src/libexec/rtld-elf/amd64/rtld_machdep.h,v 1.15 2011/01/25 21:12:31 kib Exp $
  */
 
 #ifndef RTLD_MACHDEP_H
@@ -42,7 +42,9 @@ struct Struct_Obj_Entry;
 
 /* Fixup the jump slot at "where" to transfer control to "target". */
 static inline Elf_Addr
-reloc_jmpslot(Elf_Addr *where, Elf_Addr target)
+reloc_jmpslot(Elf_Addr *where, Elf_Addr target,
+	      const struct Struct_Obj_Entry *obj,
+	      const struct Struct_Obj_Entry *refobj, const Elf_Rel *rel)
 {
 #ifdef dbg
     dbg("reloc_jmpslot: *%p = %p", (void *)(where),
@@ -50,18 +52,6 @@ reloc_jmpslot(Elf_Addr *where, Elf_Addr target)
 #endif
     (*(Elf_Addr *)(where) = (Elf_Addr)(target));
     return target;
-}
-
-static inline void
-atomic_decr_int(volatile int *p)
-{
-    __asm __volatile ("lock; decl %0" : "+m"(*p) : : "cc");
-}
-
-static inline void
-atomic_incr_int(volatile int *p)
-{
-    __asm __volatile ("lock; incl %0" : "+m"(*p) : : "cc");
 }
 
 #define make_function_pointer(def, defobj) \
