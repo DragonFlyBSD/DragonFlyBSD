@@ -13,7 +13,8 @@ TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 \
 	/tmp/upc1 \
 	/tmp/exec1 /tmp/exec2 \
 	/tmp/mem1 /tmp/mem2 \
-	/tmp/cld1
+	/tmp/cld1 \
+	/tmp/rr1
 
 .if defined(NO_OPTIMIZE)
 COPTFLAGS= -O
@@ -119,6 +120,9 @@ all:	$(TARGETS)
 
 /tmp/read1: read1.c blib.c
 	$(CC) $(CFLAGS) read1.c blib.c -o /tmp/read1
+
+/tmp/rr1: randread.c blib.c
+	$(CC) $(CFLAGS) randread.c blib.c -o /tmp/rr1
 
 clean:
 	rm -f $(TARGETS)

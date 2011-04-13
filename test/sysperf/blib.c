@@ -41,6 +41,9 @@ stop_timing(long long count, const char *ctl, ...)
 	count,
 	(double)us / (double)count
     );
+
+    tv1 = tv2;
+
     return(0);
 }
 
