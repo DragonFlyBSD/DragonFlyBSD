@@ -35,6 +35,7 @@
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/kernel.h>
+#include <sys/machintr.h>
 #include <sys/systm.h>
 
 #include <machine/pmap.h>
@@ -45,6 +46,7 @@
 
 #include "acpi_sdt.h"
 #include "acpi_sdt_var.h"
+#include "acpi_sci_var.h"
 
 #define FADT_VPRINTF(fmt, arg...) \
 do { \
@@ -68,13 +70,20 @@ struct acpi_fadt {
 	/* More ... */
 } __packed;
 
+static int			acpi_sci_mode_detect = 0;
 static int			acpi_sci_irq = -1;
+static enum intr_trigger	acpi_sci_trig = INTR_TRIGGER_CONFORM;
+static enum intr_polarity	acpi_sci_pola = INTR_POLARITY_CONFORM;
 
 static void
 fadt_probe(void)
 {
 	struct acpi_fadt *fadt;
 	vm_paddr_t fadt_paddr;
+	enum intr_trigger trig;
+	enum intr_polarity pola;
+	int enabled = 1;
+	char *env;
 
 	fadt_paddr = sdt_search(ACPI_FADT_SIG);
 	if (fadt_paddr == 0) {
@@ -100,10 +109,107 @@ fadt_probe(void)
 		goto back;
 	}
 
-	acpi_sci_irq = fadt->fadt_sci_int;
-	FADT_VPRINTF("ACPI FADT: SCI irq %d\n", acpi_sci_irq);
+	kgetenv_int("hw.acpi.sci.enabled", &enabled);
+	if (!enabled)
+		goto back;
 
+	acpi_sci_irq = fadt->fadt_sci_int;
+
+	env = kgetenv("hw.acpi.sci.trigger");
+	if (env == NULL)
+		goto back;
+
+	trig = INTR_TRIGGER_CONFORM;
+	if (strcmp(env, "edge") == 0)
+		trig = INTR_TRIGGER_EDGE;
+	else if (strcmp(env, "level") == 0)
+		trig = INTR_TRIGGER_LEVEL;
+
+	kfreeenv(env);
+
+	if (trig == INTR_TRIGGER_CONFORM)
+		goto back;
+
+	env = kgetenv("hw.acpi.sci.polarity");
+	if (env == NULL)
+		goto back;
+
+	pola = INTR_POLARITY_CONFORM;
+	if (strcmp(env, "high") == 0)
+		pola = INTR_POLARITY_HIGH;
+	else if (strcmp(env, "low") == 0)
+		pola = INTR_POLARITY_LOW;
+
+	kfreeenv(env);
+
+	if (pola == INTR_POLARITY_CONFORM)
+		goto back;
+
+	acpi_sci_trig = trig;
+	acpi_sci_pola = pola;
 back:
+	if (acpi_sci_irq >= 0) {
+		FADT_VPRINTF("SCI irq %d, %s/%s\n", acpi_sci_irq,
+			     intr_str_trigger(acpi_sci_trig),
+			     intr_str_polarity(acpi_sci_pola));
+	} else {
+		FADT_VPRINTF("SCI is disabled\n");
+	}
 	sdt_sdth_unmap(&fadt->fadt_hdr);
 }
 SYSINIT(fadt_probe, SI_BOOT2_PRESMP, SI_ORDER_SECOND, fadt_probe, 0);
+
+void
+acpi_sci_config(void)
+{
+	KKASSERT(acpi_sci_irq >= 0);
+
+	if (acpi_sci_trig != INTR_TRIGGER_CONFORM) {
+		KKASSERT(acpi_sci_pola != INTR_POLARITY_CONFORM);
+		machintr_intr_config(acpi_sci_irq,
+		    acpi_sci_trig, acpi_sci_pola);
+		return;
+	}
+
+	if (!acpi_sci_mode_detect) {
+		/*
+		 * XXX
+		 * DO NOT configure SCI according to ACPI specification
+		 * as level/low.  There are so many broken BIOSes that
+		 * could generate SCI as level/high, which will cause
+		 * interrupt storm on IRQ 9 if we by default configure
+		 * SCI as level/low; or BIOSes will generate SCI using
+		 * edge trigger, which may cause spurious interrupt
+		 * storm on IRQ 7 if 8259 used.  So to be safe, we just
+		 * configure SCI as edge/high at the cost that power
+		 * button may not work at all.
+		 */
+		acpi_sci_trig = INTR_TRIGGER_EDGE;
+		acpi_sci_pola = INTR_POLARITY_HIGH;
+
+		machintr_intr_config(acpi_sci_irq,
+		    acpi_sci_trig, acpi_sci_pola);
+		return;
+	}
+	/* TODO SCI mode detect */
+}
+
+int
+acpi_sci_enabled(void)
+{
+	if (acpi_sci_irq >= 0)
+		return 1;
+	else
+		return 0;
+}
+
+int
+acpi_sci_pci_shariable(void)
+{
+	if (acpi_sci_irq >= 0 &&
+	    acpi_sci_trig == INTR_TRIGGER_LEVEL &&
+	    acpi_sci_pola == INTR_POLARITY_LOW)
+		return 1;
+	else
+		return 0;
+}
