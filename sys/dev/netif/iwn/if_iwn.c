@@ -1280,8 +1280,8 @@ iwn_alloc_rx_ring(struct iwn_softc *sc, struct iwn_rx_ring *ring)
 
 	error = bus_dma_tag_create(sc->sc_dmat, 1, 0,
 	    BUS_SPACE_MAXADDR_32BIT,
-	    BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, 1,
-	    MCLBYTES, BUS_DMA_NOWAIT, &ring->data_dmat);
+	    BUS_SPACE_MAXADDR, NULL, NULL, MJUMPAGESIZE, 1,
+	    MJUMPAGESIZE, BUS_DMA_NOWAIT, &ring->data_dmat);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: bus_dma_tag_create_failed, error %d\n",
@@ -1315,7 +1315,8 @@ iwn_alloc_rx_ring(struct iwn_softc *sc, struct iwn_rx_ring *ring)
 			goto fail;
 		}
 
-		data->m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		data->m = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR,
+				   MJUMPAGESIZE);
 		if (data->m == NULL) {
 			device_printf(sc->sc_dev,
 			    "%s: could not allocate rx mbuf\n", __func__);
@@ -1325,7 +1326,7 @@ iwn_alloc_rx_ring(struct iwn_softc *sc, struct iwn_rx_ring *ring)
 
 		/* Map page. */
 		error = bus_dmamap_load(ring->data_dmat, data->map,
-		    mtod(data->m, caddr_t), MCLBYTES,
+		    mtod(data->m, caddr_t), MJUMPAGESIZE,
 		    iwn_dma_map_addr, &paddr, BUS_DMA_NOWAIT);
 		if (error != 0 && error != EFBIG) {
 			device_printf(sc->sc_dev,
@@ -1436,8 +1437,8 @@ iwn_alloc_tx_ring(struct iwn_softc *sc, struct iwn_tx_ring *ring, int qid)
 
 	error = bus_dma_tag_create(sc->sc_dmat, 1, 0,
 	    BUS_SPACE_MAXADDR_32BIT,
-	    BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, IWN_MAX_SCATTER - 1,
-	    MCLBYTES, BUS_DMA_NOWAIT, &ring->data_dmat);
+	    BUS_SPACE_MAXADDR, NULL, NULL, MJUMPAGESIZE, IWN_MAX_SCATTER - 1,
+	    MJUMPAGESIZE, BUS_DMA_NOWAIT, &ring->data_dmat);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: bus_dma_tag_create_failed, error %d\n",
@@ -2107,7 +2108,7 @@ iwn_rx_done(struct iwn_softc *sc, struct iwn_rx_desc *desc,
 	}
 
 	/* XXX don't need mbuf, just dma buffer */
-	m1 = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m1 = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
 	if (m1 == NULL) {
 		DPRINTF(sc, IWN_DEBUG_ANY, "%s: no mbuf to restock ring\n",
 		    __func__);
@@ -2117,7 +2118,7 @@ iwn_rx_done(struct iwn_softc *sc, struct iwn_rx_desc *desc,
 	bus_dmamap_unload(ring->data_dmat, data->map);
 
 	error = bus_dmamap_load(ring->data_dmat, data->map,
-	    mtod(m1, caddr_t), MCLBYTES,
+	    mtod(m1, caddr_t), MJUMPAGESIZE,
 	    iwn_dma_map_addr, &paddr, BUS_DMA_NOWAIT);
 	if (error != 0 && error != EFBIG) {
 		device_printf(sc->sc_dev,
@@ -3467,9 +3468,9 @@ iwn_cmd(struct iwn_softc *sc, int code, const void *buf, int size, int async)
 
 	if (size > sizeof cmd->data) {
 		/* Command is too large to fit in a descriptor. */
-		if (totlen > MCLBYTES)
+		if (totlen > MJUMPAGESIZE)
 			return EINVAL;
-		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		m = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
 		if (m == NULL)
 			return ENOMEM;
 		cmd = mtod(m, struct iwn_tx_cmd *);
