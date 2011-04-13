@@ -367,10 +367,7 @@ acpi_machdep_init(device_t dev)
 
 	acpi_install_wakeup_handler(sc);
 
-	if (acpi_GetDefaultIntrModel() == ACPI_INTR_PIC)
-		BUS_CONFIG_INTR(dev, dev, AcpiGbl_FADT.SciInterrupt,
-		    INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
-	else
+	if (acpi_GetDefaultIntrModel() != ACPI_INTR_PIC)
 		acpi_SetIntrModel(acpi_GetDefaultIntrModel());
 
 	SYSCTL_ADD_UINT(&sc->acpi_sysctl_ctx,

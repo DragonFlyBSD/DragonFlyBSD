@@ -41,6 +41,7 @@
 #include "acpi.h"
 #include "accommon.h"
 #include <dev/acpica5/acpivar.h>
+#include <dev/acpica5/acpi_sci_var.h>
 
 #define _COMPONENT	ACPI_OS_SERVICES
 ACPI_MODULE_NAME("INTERRUPT")
@@ -54,6 +55,7 @@ AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
     ACPI_OSD_HANDLER ServiceRoutine, void *Context)
 {
     struct acpi_softc	*sc;
+    u_int flags;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
@@ -61,6 +63,9 @@ AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
 	panic("can't find ACPI device to register interrupt");
     if (sc->acpi_dev == NULL)
 	panic("acpi softc has invalid device");
+
+    if (!acpi_sci_enabled())
+	return_ACPI_STATUS (AE_OK);
 
     if (InterruptNumber < 0 || InterruptNumber > 255)
 	return_ACPI_STATUS (AE_BAD_PARAMETER);
@@ -72,11 +77,20 @@ AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
     }
     InterruptHandler = ServiceRoutine;
 
+    /*
+     * Configure SCI mode
+     */
+    acpi_sci_config();
+
+    flags = RF_ACTIVE;
+    if (acpi_sci_pci_shariable())
+	flags |= RF_SHAREABLE;
+
     /* Set up the interrupt resource. */
     sc->acpi_irq_rid = 0;
     bus_set_resource(sc->acpi_dev, SYS_RES_IRQ, 0, InterruptNumber, 1);
     sc->acpi_irq = bus_alloc_resource_any(sc->acpi_dev, SYS_RES_IRQ,
-	&sc->acpi_irq_rid, RF_SHAREABLE | RF_ACTIVE);
+	&sc->acpi_irq_rid, flags);
     if (sc->acpi_irq == NULL) {
 	device_printf(sc->acpi_dev, "could not allocate interrupt\n");
 	goto error;
@@ -108,6 +122,9 @@ AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER ServiceRou
     struct acpi_softc	*sc;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+
+    if (!acpi_sci_enabled())
+	return_ACPI_STATUS (AE_OK);
 
     if (InterruptNumber < 0 || InterruptNumber > 255)
 	return_ACPI_STATUS (AE_BAD_PARAMETER);
