@@ -342,7 +342,7 @@ customizeiso:
 		    ${ISOROOT}/var/db/pkg.refcount
 	test -e ${ISODIR}/.didbootstrap || \
 	    ${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
-		export share_dir=/usr/pkgobj/bootstrap/work/share; \
+		export share_dir=/usr/pkgobj/bootstrap/work/share USE_DESTDIR=no; \
 		./bootstrap --workdir /usr/pkgobj/bootstrap/work"
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo ".ifdef BSD_PKG_MK	# added by nrelease" \
