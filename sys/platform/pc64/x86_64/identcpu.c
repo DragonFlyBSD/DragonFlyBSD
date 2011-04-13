@@ -252,7 +252,7 @@ printcpuinfo(void)
 				"\014<b11>"
 				"\015<b12>"
 				"\016CX16"	/* CMPXCHG16B Instruction */
-				"\017xTPR"	/* Send Task Priority Messages*/
+				"\017xTPR"	/* Send Task Priority Messages */
 				"\020PDCM"	/* Perf/Debug Capability MSR */
 				"\021<b16>"
 				"\022PCID"	/* Process-context Identifiers */
@@ -263,7 +263,7 @@ printcpuinfo(void)
 				"\027MOVBE"	/* MOVBE instruction */
 				"\030POPCNT"
 				"\031TSC-DL"	/* TSC Deadline */
-				"\032AESNI"	/* AES Crypto*/
+				"\032AESNI"	/* AES Crypto */
 				"\033XSAVE"
 				"\034OSXSAVE"
 				"\035AVX"	/* Advanced Vector Extensions */
