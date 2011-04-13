@@ -189,6 +189,7 @@ platform/pc32/icu/icu.c			standard
 platform/pc32/icu/icu_abi.c		standard
 platform/pc32/icu/icu_ipl.s		standard
 platform/pc32/icu/icu_vector.s		standard
+platform/pc32/icu/elcr.c		standard
 platform/pc32/apic/ioapic_abi.c		optional	smp
 platform/pc32/apic/mpapic.c		optional	smp
 platform/pc32/apic/ioapic_ipl.s		optional	smp
@@ -224,7 +225,6 @@ platform/pc32/acpica5/acpi_fadt.c	standard
 platform/pc32/acpica5/acpi_madt.c	optional	smp
 platform/pc32/isa/asc.c			optional	asc
 platform/pc32/isa/clock.c		standard nowerror
-platform/pc32/isa/elcr.c		standard
 dev/video/ctx/ctx.c			optional	ctx
 dev/serial/cy/cy.c			optional	cy
 dev/netif/elink_layer/elink.c		optional	ep

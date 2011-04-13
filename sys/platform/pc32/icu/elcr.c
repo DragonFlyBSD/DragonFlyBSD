@@ -50,7 +50,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 
-#include <machine_base/isa/elcr_var.h>
+#include <machine_base/icu/elcr_var.h>
 
 #define	ELCR_PORT	0x4d0
 #define	ELCR_MASK(irq)	(1 << (irq))

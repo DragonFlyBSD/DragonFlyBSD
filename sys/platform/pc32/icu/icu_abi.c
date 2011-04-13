@@ -54,10 +54,10 @@
 
 #include <sys/thread2.h>
 
-#include <machine_base/isa/elcr_var.h>
+#include <machine_base/icu/elcr_var.h>
 
-#include "icu.h"
-#include "icu_ipl.h"
+#include <machine_base/icu/icu.h>
+#include <machine_base/icu/icu_ipl.h>
 
 extern inthand_t
 	IDTVEC(icu_intr0),	IDTVEC(icu_intr1),

@@ -181,6 +181,7 @@ platform/pc64/icu/icu.c                 standard
 platform/pc64/icu/icu_abi.c             standard
 platform/pc64/icu/icu_ipl.s             standard
 platform/pc64/icu/icu_vector.s          standard
+platform/pc64/icu/elcr.c		standard
 
 bus/pci/x86_64/legacy.c			optional	pci
 bus/pci/x86_64/pci_bus.c			optional	pci
@@ -210,6 +211,5 @@ dev/serial/sio/sio.c			optional	sio
 bus/isa/syscons_isa.c			optional	sc
 bus/isa/vga_isa.c			optional	vga
 platform/pc64/isa/clock.c		standard nowerror
-platform/pc64/isa/elcr.c		standard
 platform/pc64/isa/isa_intr.c		standard
 platform/pc64/x86_64/spinlock.s		standard

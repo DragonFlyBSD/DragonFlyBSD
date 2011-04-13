@@ -115,7 +115,6 @@
 #include <bus/isa/isa_device.h>
 #endif
 #include <machine_base/isa/isa_intr.h>
-#include <machine_base/isa/elcr_var.h>
 #include <bus/isa/rtc.h>
 #include <sys/random.h>
 #include <sys/ptrace.h>
@@ -123,6 +122,7 @@
 
 #include <sys/machintr.h>
 #include <machine_base/icu/icu_abi.h>
+#include <machine_base/icu/elcr_var.h>
 #include <machine_base/apic/ioapic_abi.h>
 
 #define PHYSMAP_ENTRIES		10
