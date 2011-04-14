@@ -676,9 +676,7 @@ acpi_pci_link_add_reference(device_t dev, int index, device_t pcib, int slot,
 	} else if (!PCI_INTERRUPT_VALID(link->l_bios_irq)) {
 		link->l_bios_irq = bios_irq;
 		/*
-		 * Avoid sharing interrupt with SCI if possible,
-		 * since ACPI interrupt handler is generally time
-		 * consuming.
+		 * SCI setting is handled by acpi_pci_link_identify()
 		 */
 		if (bios_irq < NUM_ISA_INTERRUPTS &&
 		    AcpiGbl_FADT.SciInterrupt != bios_irq)
@@ -1025,11 +1023,11 @@ acpi_pci_link_choose_irq(device_t dev, struct link *link)
 		}
 	}
 
-	/*
-	 * Check SCI as the last resort.
+        /*
+	 * If this is an ISA IRQ and SCI could be shared, try using
+	 * the SCI as a fallback.
 	 */
-	if (!PCI_INTERRUPT_VALID(best_irq) && link->l_isa_irq &&
-	    acpi_sci_pci_shariable()) {
+	if (link->l_isa_irq && acpi_sci_pci_shariable()) {
 		pos_irq = AcpiGbl_FADT.SciInterrupt;
 		pos_weight = pci_link_interrupt_weights[pos_irq];
 		if (pos_weight < best_weight) {
@@ -1089,8 +1087,25 @@ acpi_pci_link_route_interrupt(device_t dev, int index)
 	return (link->l_irq);
 }
 
+/*
+ * This is gross, but we abuse the identify routine to perform one-time
+ * SYSINIT() style initialization for the driver.
+ */
+static void
+acpi_pci_link_identify(driver_t *driver, device_t parent)
+{
+	/*
+	 * If the SCI is an ISA IRQ and could be shared,
+	 * add it to the bitmask of known good ISA IRQs.
+	 */
+	if (AcpiGbl_FADT.SciInterrupt < NUM_ISA_INTERRUPTS &&
+	    acpi_sci_pci_shariable())
+		pci_link_bios_isa_irqs |= (1 << AcpiGbl_FADT.SciInterrupt);
+}
+
 static device_method_t acpi_pci_link_methods[] = {
 	/* Device interface */
+	DEVMETHOD(device_identify,	acpi_pci_link_identify),
 	DEVMETHOD(device_probe,		acpi_pci_link_probe),
 	DEVMETHOD(device_attach,	acpi_pci_link_attach),
 	DEVMETHOD(device_resume,	acpi_pci_link_resume),
