@@ -212,7 +212,7 @@ clkintr(void *dummy, void *frame_arg)
 		continue;
 	    if (gscan != gd) {
 		lwkt_send_ipiq3(gscan, (ipifunc3_t)systimer_intr, 
-				&sysclock_count, 0);
+				&sysclock_count, 1);
 	    } else {
 		systimer_intr(&sysclock_count, 0, frame_arg);
 	    }

@@ -239,8 +239,8 @@ static int	sysctl_eachburst(SYSCTL_HANDLER_ARGS);
 static void	poll_comm_init(int);
 static void	poll_comm_start(int);
 static void	poll_comm_adjust_pollhz(struct poll_comm *);
-static void	poll_comm_systimer0(systimer_t, struct intrframe *);
-static void	poll_comm_systimer(systimer_t, struct intrframe *);
+static void	poll_comm_systimer0(systimer_t, int, struct intrframe *);
+static void	poll_comm_systimer(systimer_t, int, struct intrframe *);
 static void	sysctl_pollhz_handler(netmsg_t);
 static void	sysctl_stfrac_handler(netmsg_t);
 static void	sysctl_txfrac_handler(netmsg_t);
@@ -1172,7 +1172,7 @@ static void
 poll_comm_start(int cpuid)
 {
 	struct poll_comm *comm = poll_common[cpuid];
-	void (*func)(systimer_t, struct intrframe *);
+	systimer_func_t func;
 
 	/*
 	 * Initialize systimer
@@ -1195,7 +1195,8 @@ _poll_comm_systimer(struct poll_comm *comm)
 }
 
 static void
-poll_comm_systimer0(systimer_t info, struct intrframe *frame __unused)
+poll_comm_systimer0(systimer_t info, int in_ipi __unused,
+    struct intrframe *frame __unused)
 {
 	struct poll_comm *comm = info->data;
 	globaldata_t gd = mycpu;
@@ -1214,7 +1215,8 @@ poll_comm_systimer0(systimer_t info, struct intrframe *frame __unused)
 }
 
 static void
-poll_comm_systimer(systimer_t info, struct intrframe *frame __unused)
+poll_comm_systimer(systimer_t info, int in_ipi __unused,
+    struct intrframe *frame __unused)
 {
 	struct poll_comm *comm = info->data;
 	globaldata_t gd = mycpu;
