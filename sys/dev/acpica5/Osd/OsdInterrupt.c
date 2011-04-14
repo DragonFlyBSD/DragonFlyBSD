@@ -64,6 +64,16 @@ AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
     if (sc->acpi_dev == NULL)
 	panic("acpi softc has invalid device");
 
+    /*
+     * Configure SCI mode
+     */
+    acpi_sci_config();
+
+    /*
+     * This could happen:
+     * - SCI is disabled by user
+     * - No suitable interrupt mode for SCI
+     */
     if (!acpi_sci_enabled())
 	return_ACPI_STATUS (AE_OK);
 
@@ -76,11 +86,6 @@ AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
 	return_ACPI_STATUS (AE_ALREADY_EXISTS);
     }
     InterruptHandler = ServiceRoutine;
-
-    /*
-     * Configure SCI mode
-     */
-    acpi_sci_config();
 
     flags = RF_ACTIVE;
     if (acpi_sci_pci_shariable())

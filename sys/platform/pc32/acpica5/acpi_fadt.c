@@ -34,6 +34,7 @@
 
 #include <sys/param.h>
 #include <sys/bus.h>
+#include <sys/interrupt.h>
 #include <sys/kernel.h>
 #include <sys/machintr.h>
 #include <sys/systm.h>
@@ -70,10 +71,27 @@ struct acpi_fadt {
 	/* More ... */
 } __packed;
 
-static int			acpi_sci_mode_detect = 0;
+struct acpi_sci_mode {
+	enum intr_trigger	sci_trig;
+	enum intr_polarity	sci_pola;
+};
+
 static int			acpi_sci_irq = -1;
 static enum intr_trigger	acpi_sci_trig = INTR_TRIGGER_CONFORM;
 static enum intr_polarity	acpi_sci_pola = INTR_POLARITY_CONFORM;
+
+static const struct acpi_sci_mode acpi_sci_modes[] = {
+	/*
+	 * NOTE: Order is critical
+	 */
+	{ INTR_TRIGGER_LEVEL,	INTR_POLARITY_LOW },
+	{ INTR_TRIGGER_LEVEL,	INTR_POLARITY_HIGH },
+	{ INTR_TRIGGER_EDGE,	INTR_POLARITY_HIGH },
+	{ INTR_TRIGGER_EDGE,	INTR_POLARITY_LOW },
+
+	/* Required last entry */
+	{ INTR_TRIGGER_CONFORM,	INTR_POLARITY_CONFORM }
+};
 
 static void
 fadt_probe(void)
@@ -159,10 +177,18 @@ back:
 }
 SYSINIT(fadt_probe, SI_BOOT2_PRESMP, SI_ORDER_SECOND, fadt_probe, 0);
 
+static void
+acpi_sci_dummy_intr(void *dummy __unused, void *frame __unused)
+{
+}
+
 void
 acpi_sci_config(void)
 {
-	KKASSERT(acpi_sci_irq >= 0);
+	const struct acpi_sci_mode *mode;
+
+	if (acpi_sci_irq < 0)
+		return;
 
 	if (acpi_sci_trig != INTR_TRIGGER_CONFORM) {
 		KKASSERT(acpi_sci_pola != INTR_POLARITY_CONFORM);
@@ -171,27 +197,43 @@ acpi_sci_config(void)
 		return;
 	}
 
-	if (!acpi_sci_mode_detect) {
-		/*
-		 * XXX
-		 * DO NOT configure SCI according to ACPI specification
-		 * as level/low.  There are so many broken BIOSes that
-		 * could generate SCI as level/high, which will cause
-		 * interrupt storm on IRQ 9 if we by default configure
-		 * SCI as level/low; or BIOSes will generate SCI using
-		 * edge trigger, which may cause spurious interrupt
-		 * storm on IRQ 7 if 8259 used.  So to be safe, we just
-		 * configure SCI as edge/high at the cost that power
-		 * button may not work at all.
-		 */
-		acpi_sci_trig = INTR_TRIGGER_EDGE;
-		acpi_sci_pola = INTR_POLARITY_HIGH;
+	kprintf("ACPI FADT: SCI testing interrupt mode ...\n");
+	for (mode = acpi_sci_modes; mode->sci_trig != INTR_TRIGGER_CONFORM;
+	     ++mode) {
+		void *sci_desc;
+		long last_cnt;
+
+		FADT_VPRINTF("SCI testing %s/%s\n",
+		    intr_str_trigger(mode->sci_trig),
+		    intr_str_polarity(mode->sci_pola));
+
+		last_cnt = get_interrupt_counter(acpi_sci_irq);
 
 		machintr_intr_config(acpi_sci_irq,
-		    acpi_sci_trig, acpi_sci_pola);
-		return;
+		    mode->sci_trig, mode->sci_pola);
+
+		sci_desc = register_int(acpi_sci_irq,
+		    acpi_sci_dummy_intr, NULL, "sci", NULL,
+		    INTR_EXCL | INTR_CLOCK |
+		    INTR_NOPOLL | INTR_MPSAFE | INTR_NOENTROPY);
+
+		DELAY(100 * 1000);
+
+		unregister_int(sci_desc);
+
+		if (get_interrupt_counter(acpi_sci_irq) - last_cnt < 20) {
+			acpi_sci_trig = mode->sci_trig;
+			acpi_sci_pola = mode->sci_pola;
+
+			kprintf("ACPI FADT: SCI select %s/%s\n",
+			    intr_str_trigger(acpi_sci_trig),
+			    intr_str_polarity(acpi_sci_pola));
+			return;
+		}
 	}
-	/* TODO SCI mode detect */
+
+	kprintf("ACPI FADT: no suitable interrupt mode for SCI, disable\n");
+	acpi_sci_irq = -1;
 }
 
 int
