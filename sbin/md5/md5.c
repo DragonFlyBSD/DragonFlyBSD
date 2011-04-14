@@ -158,7 +158,7 @@ digestfile(const char *fname, char *buf, const Algorithm_t *alg,
 	}
 	if (begin > end) {
 		warnx("%s is %jd bytes long. Begin-offset %jd (%jd) is "
-		    "larger than end-offet %jd (%jd)",
+		    "larger than end-offset %jd (%jd)",
 		    fname, (intmax_t)st.st_size,
 		    (intmax_t)begin, (intmax_t)*beginp,
 		    (intmax_t)end, (intmax_t)*endp);
