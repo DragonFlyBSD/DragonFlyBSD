@@ -82,7 +82,7 @@ hammer_ioc_rebalance(hammer_transaction_t trans, hammer_inode_t ip,
 
 	hammer_btree_lcache_init(trans->hmp, &lcache, 2);
 
-	seq = trans->hmp->flusher.act;
+	seq = trans->hmp->flusher.done;
 
 	/*
 	 * Scan forwards.  Retries typically occur if a deadlock is detected.

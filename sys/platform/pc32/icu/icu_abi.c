@@ -54,10 +54,10 @@
 
 #include <sys/thread2.h>
 
-#include <machine_base/isa/elcr_var.h>
+#include <machine_base/icu/elcr_var.h>
 
-#include "icu.h"
-#include "icu_ipl.h"
+#include <machine_base/icu/icu.h>
+#include <machine_base/icu/icu_ipl.h>
 
 extern inthand_t
 	IDTVEC(icu_intr0),	IDTVEC(icu_intr1),
@@ -244,27 +244,44 @@ icu_initmap(void)
 		for (i = 0; i < ICU_HWI_VECTORS; ++i)
 			icu_irqmaps[i].im_trig = elcr_read_trigger(i);
 	} else {
-		for (i = 0; i < ICU_HWI_VECTORS; ++i) {
-			switch (i) {
-			case 0:
-			case 1:
-			case 2:
-			case 8:
-			case 13:
-				icu_irqmaps[i].im_trig = INTR_TRIGGER_EDGE;
-				break;
-
-			default:
-				icu_irqmaps[i].im_trig = INTR_TRIGGER_LEVEL;
-				break;
-			}
-		}
+		/*
+		 * NOTE: Trigger mode does not matter at all
+		 */
+		for (i = 0; i < ICU_HWI_VECTORS; ++i)
+			icu_irqmaps[i].im_trig = INTR_TRIGGER_EDGE;
 	}
 	icu_irqmaps[IDT_OFFSET_SYSCALL - IDT_OFFSET].im_type = ICU_IMT_SYSCALL;
 }
 
 static void
-icu_intr_config(int irq __unused, enum intr_trigger trig __unused,
+icu_intr_config(int irq, enum intr_trigger trig,
     enum intr_polarity pola __unused)
 {
+	struct icu_irqmap *map;
+
+	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
+
+	KKASSERT(irq >= 0 && irq < MAX_HARDINTS);
+	map = &icu_irqmaps[irq];
+
+	KKASSERT(map->im_type == ICU_IMT_LINE);
+
+	/* TODO: Check whether it is configured or not */
+
+	if (trig == map->im_trig)
+		return;
+
+	if (bootverbose) {
+		kprintf("ICU: irq %d, %s -> %s\n", irq,
+			intr_str_trigger(map->im_trig),
+			intr_str_trigger(trig));
+	}
+	map->im_trig = trig;
+
+	if (!elcr_found) {
+		if (bootverbose)
+			kprintf("ICU: no ELCR, skip irq %d config\n", irq);
+		return;
+	}
+	elcr_write_trigger(irq, map->im_trig);
 }

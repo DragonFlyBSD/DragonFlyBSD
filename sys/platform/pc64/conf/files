@@ -181,6 +181,7 @@ platform/pc64/icu/icu.c                 standard
 platform/pc64/icu/icu_abi.c             standard
 platform/pc64/icu/icu_ipl.s             standard
 platform/pc64/icu/icu_vector.s          standard
+platform/pc64/icu/elcr.c		standard
 
 bus/pci/x86_64/legacy.c			optional	pci
 bus/pci/x86_64/pci_bus.c			optional	pci
@@ -199,9 +200,9 @@ platform/pc64/x86_64/console.c	standard
 platform/pc64/x86_64/ipl_funcs.c	standard
 kern/syscalls.c			standard
 platform/pc64/x86_64/mp_machdep.c		optional	smp
-platform/pc64/acpica5/acpi_sdt.c	optional	smp
+platform/pc64/acpica5/acpi_sdt.c	standard
+platform/pc64/acpica5/acpi_fadt.c	standard
 platform/pc64/acpica5/acpi_madt.c	optional	smp
-platform/pc64/acpica5/acpi_fadt.c	optional	smp
 dev/misc/atkbd/atkbd_isa.c		optional	atkbd
 dev/misc/atkbdc_layer/atkbdc_isa.c	optional	atkbdc
 dev/misc/ppc/ppc.c			optional	ppc
@@ -210,6 +211,5 @@ dev/serial/sio/sio.c			optional	sio
 bus/isa/syscons_isa.c			optional	sc
 bus/isa/vga_isa.c			optional	vga
 platform/pc64/isa/clock.c		standard nowerror
-platform/pc64/isa/elcr.c		standard
 platform/pc64/isa/isa_intr.c		standard
 platform/pc64/x86_64/spinlock.s		standard

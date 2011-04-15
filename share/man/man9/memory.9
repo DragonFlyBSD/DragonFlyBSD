@@ -27,10 +27,10 @@
 .\" $FreeBSD: src/share/man/man9/zone.9,v 1.9.2.4 2002/05/02 20:01:29 asmodai Exp $
 .\"
 .Dd March 23, 2011
-.Dt MEMORYALLOCATORS 9
+.Dt MEMORY 9
 .Os
 .Sh NAME
-.Nm memoryallocators
+.Nm memory
 .Nd introduction to kernel memory allocators
 .Sh DESCRIPTION
 The
@@ -78,7 +78,7 @@ restricted to use before the VM is initialized and to core VM structures.
 The zone allocator may block.
 .Pp
 For more information see
-.Xr zalloc 9 .
+.Xr zone 9 .
 .Sh HISTORY
 The kmalloc and Zone allocators were inherited from
 .Fx .

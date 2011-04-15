@@ -284,7 +284,8 @@ sys_clock_getres(struct clock_getres_args *uap)
  * MPSAFE
  */
 static void
-ns1_systimer(systimer_t info)
+ns1_systimer(systimer_t info, int in_ipi __unused,
+    struct intrframe *frame __unused)
 {
 	lwkt_schedule(info->data);
 }

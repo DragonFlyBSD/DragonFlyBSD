@@ -117,7 +117,7 @@ int max_installed_soft_intr;
 
 static int sysctl_emergency_freq(SYSCTL_HANDLER_ARGS);
 static int sysctl_emergency_enable(SYSCTL_HANDLER_ARGS);
-static void emergency_intr_timer_callback(systimer_t, struct intrframe *);
+static void emergency_intr_timer_callback(systimer_t, int, struct intrframe *);
 static void ithread_handler(void *arg);
 static void ithread_emergency(void *arg);
 static void report_stray_interrupt(int intr, struct intr_info *info);
@@ -583,7 +583,8 @@ report_stray_interrupt(int intr, struct intr_info *info)
  * might not be held).
  */
 static void
-ithread_livelock_wakeup(systimer_t st)
+ithread_livelock_wakeup(systimer_t st, int in_ipi __unused,
+    struct intrframe *frame __unused)
 {
     struct intr_info *info;
 
@@ -987,7 +988,8 @@ ithread_emergency(void *arg __unused)
  */
 static
 void
-emergency_intr_timer_callback(systimer_t info, struct intrframe *frame __unused)
+emergency_intr_timer_callback(systimer_t info, int in_ipi __unused,
+    struct intrframe *frame __unused)
 {
     if (emergency_intr_enable)
 	lwkt_schedule(info->data);

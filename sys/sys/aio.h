@@ -126,6 +126,11 @@ int	aio_cancel(int, struct aiocb *);
  */
 int	aio_suspend(const struct aiocb * const[], int, const struct timespec *);
 
+/*
+ * Synchronize I/O
+ */
+int	aio_fsync(int, struct aiocb *);
+
 int	aio_waitcomplete(struct aiocb **, struct timespec *);
 
 __END_DECLS

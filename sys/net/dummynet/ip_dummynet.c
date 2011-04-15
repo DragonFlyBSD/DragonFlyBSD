@@ -186,7 +186,7 @@ static void	ready_event_wfq(struct dn_pipe *);
 static int	config_pipe(struct dn_ioc_pipe *);
 static void	dummynet_flush(void);
 
-static void	dummynet_clock(systimer_t, struct intrframe *);
+static void	dummynet_clock(systimer_t, int, struct intrframe *);
 static void	dummynet(netmsg_t);
 
 static struct dn_pipe *dn_find_pipe(int);
@@ -1868,7 +1868,8 @@ dummynet_ctl(struct dn_sopt *dn_sopt)
 }
 
 static void
-dummynet_clock(systimer_t info __unused, struct intrframe *frame __unused)
+dummynet_clock(systimer_t info __unused, int in_ipi __unused,
+    struct intrframe *frame __unused)
 {
     KASSERT(mycpuid == ip_dn_cpu,
     	    ("dummynet systimer comes on cpu%d, should be %d!\n",

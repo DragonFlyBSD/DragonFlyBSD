@@ -793,6 +793,7 @@ ioapic_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 
 	KKASSERT(map->im_type == IOAPIC_IMT_LINE);
 
+#ifdef notyet
 	if (map->im_flags & IOAPIC_IMF_CONF) {
 		if (trig != map->im_trig) {
 			panic("ioapic_intr_config: trig %s -> %s\n",
@@ -806,6 +807,7 @@ ioapic_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 		}
 		return;
 	}
+#endif
 	map->im_flags |= IOAPIC_IMF_CONF;
 
 	if (trig == map->im_trig && pola == map->im_pola)

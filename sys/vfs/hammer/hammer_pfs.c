@@ -364,7 +364,7 @@ hammer_pfs_rollback(hammer_transaction_t trans,
 	key_cur.create_tid = 1;
 	key_cur.rec_type = HAMMER_MIN_RECTYPE;
 
-	seq = trans->hmp->flusher.act;
+	seq = trans->hmp->flusher.done;
 
 retry:
 	error = hammer_init_cursor(trans, &cursor, NULL, NULL);

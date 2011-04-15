@@ -58,15 +58,14 @@ struct intrframe;
 
 typedef __uint32_t	sysclock_t;
 typedef TAILQ_HEAD(systimerq, systimer) *systimerq_t;
-typedef void (*systimer_func_t)(struct systimer *);
-typedef void (*systimer_func2_t)(struct systimer *, struct intrframe *);
+typedef void (*systimer_func_t)(struct systimer *, int, struct intrframe *);
 
 typedef struct systimer {
     TAILQ_ENTRY(systimer)	node;
     systimerq_t			queue;
     sysclock_t			time;		/* absolute time next intr */
     sysclock_t			periodic;	/* if non-zero */
-    systimer_func2_t		func;
+    systimer_func_t		func;
     void			*data;
     int				flags;
     int				freq;		/* frequency if periodic */
@@ -82,10 +81,10 @@ void systimer_intr_enable(void);
 void systimer_intr(sysclock_t *, int, struct intrframe *);
 void systimer_add(systimer_t);
 void systimer_del(systimer_t);
-void systimer_init_periodic(systimer_t, void *, void *, int);
-void systimer_init_periodic_nq(systimer_t, void *, void *, int);
+void systimer_init_periodic(systimer_t, systimer_func_t, void *, int);
+void systimer_init_periodic_nq(systimer_t, systimer_func_t, void *, int);
 void systimer_adjust_periodic(systimer_t, int);
-void systimer_init_oneshot(systimer_t, void *, void *, int);
+void systimer_init_oneshot(systimer_t, systimer_func_t, void *, int);
 
 /*
  * cputimer interface.  This provides a free-running (non-interrupt) 
@@ -127,7 +126,7 @@ extern struct cputimer *sys_cputimer;
 #define CPUTIMER_VKERNEL	4
 #define CPUTIMER_HPET		5
 #define CPUTIMER_GEODE		6
-#define CPUTIMER_CS5536	7
+#define CPUTIMER_CS5536		7
 
 #define CPUTIMER_PRI_DUMMY	-10
 #define CPUTIMER_PRI_8254	0

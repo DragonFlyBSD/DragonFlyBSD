@@ -1094,7 +1094,7 @@ acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
 	    if (!error) {
 		cputimer_intr_restart();
 	    } else {
-		kprintf("no suitable intr cuptimer found\n");
+		kprintf("no suitable intr cputimer found\n");
 
 		/* Restore */
 		sc->cpu_cx_lowest = old_lowest;

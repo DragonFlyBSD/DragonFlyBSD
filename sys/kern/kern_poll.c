@@ -180,7 +180,7 @@ static void	poll_sysctl_burstmax(netmsg_t);
 static void	poll_sysctl_eachburst(netmsg_t);
 
 /* Systimer handler */
-static void	pollclock(systimer_t, struct intrframe *);
+static void	pollclock(systimer_t, int, struct intrframe *);
 
 /* Sysctl handlers */
 static int	sysctl_pollhz(SYSCTL_HANDLER_ARGS);
@@ -462,7 +462,8 @@ sysctl_eachburst(SYSCTL_HANDLER_ARGS)
  * WARNING! called from fastint or IPI, the MP lock might not be held.
  */
 static void
-pollclock(systimer_t info, struct intrframe *frame __unused)
+pollclock(systimer_t info, int in_ipi __unused,
+    struct intrframe *frame __unused)
 {
 	struct pollctx *pctx = info->data;
 	struct timeval t;

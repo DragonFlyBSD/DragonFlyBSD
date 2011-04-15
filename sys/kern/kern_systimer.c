@@ -68,7 +68,7 @@
  * hardclock, statclock, and other finely-timed routines.
  */
 void
-systimer_intr(sysclock_t *timep, int dummy, struct intrframe *frame)
+systimer_intr(sysclock_t *timep, int in_ipi, struct intrframe *frame)
 {
     globaldata_t gd = mycpu;
     sysclock_t time = *timep;
@@ -99,7 +99,7 @@ systimer_intr(sysclock_t *timep, int dummy, struct intrframe *frame)
 	TAILQ_REMOVE(info->queue, info, node);
 	gd->gd_systimer_inprog = info;
 	crit_exit();
-	info->func(info, frame);
+	info->func(info, in_ipi, frame);
 	crit_enter();
 
 	/*
@@ -236,7 +236,8 @@ systimer_del(systimer_t info)
  *	the realtime clock.
  */
 void
-systimer_init_periodic(systimer_t info, void *func, void *data, int hz)
+systimer_init_periodic(systimer_t info, systimer_func_t func, void *data,
+    int hz)
 {
     sysclock_t base_count;
 
@@ -254,7 +255,8 @@ systimer_init_periodic(systimer_t info, void *func, void *data, int hz)
 }
 
 void
-systimer_init_periodic_nq(systimer_t info, void *func, void *data, int hz)
+systimer_init_periodic_nq(systimer_t info, systimer_func_t func, void *data,
+    int hz)
 {
     sysclock_t base_count;
 
@@ -293,7 +295,7 @@ systimer_adjust_periodic(systimer_t info, int hz)
  *	it to the system.  The frequency is uncompensated and approximate.
  */
 void
-systimer_init_oneshot(systimer_t info, void *func, void *data, int us)
+systimer_init_oneshot(systimer_t info, systimer_func_t func, void *data, int us)
 {
     bzero(info, sizeof(struct systimer));
     info->time = sys_cputimer->count() + sys_cputimer->fromus(us);
@@ -303,4 +305,3 @@ systimer_init_oneshot(systimer_t info, void *func, void *data, int us)
     info->gd = mycpu;
     systimer_add(info);
 }
-

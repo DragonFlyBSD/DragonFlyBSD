@@ -126,6 +126,12 @@ acpi_config_intr(device_t dev, ACPI_RESOURCE *res)
     default:
 	panic("%s: bad resource type %u", __func__, res->Type);
     }
+
+    if (irq == AcpiGbl_FADT.SciInterrupt) {
+	kprintf("acpi_config_intr: Skip SCI config\n");
+	return;
+    }
+
     BUS_CONFIG_INTR(dev, dev, irq, (trig == ACPI_EDGE_SENSITIVE) ?
 	INTR_TRIGGER_EDGE : INTR_TRIGGER_LEVEL, (pol == ACPI_ACTIVE_HIGH) ?
 	INTR_POLARITY_HIGH : INTR_POLARITY_LOW);

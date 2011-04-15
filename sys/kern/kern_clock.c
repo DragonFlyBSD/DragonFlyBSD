@@ -234,9 +234,9 @@ SYSCTL_STRUCT(_kern, KERN_BOOTTIME, boottime, CTLFLAG_RD,
 SYSCTL_PROC(_kern, OID_AUTO, basetime, CTLTYPE_STRUCT|CTLFLAG_RD, 0, 0,
     sysctl_get_basetime, "S,timespec", "System basetime");
 
-static void hardclock(systimer_t info, struct intrframe *frame);
-static void statclock(systimer_t info, struct intrframe *frame);
-static void schedclock(systimer_t info, struct intrframe *frame);
+static void hardclock(systimer_t info, int, struct intrframe *frame);
+static void statclock(systimer_t info, int, struct intrframe *frame);
+static void schedclock(systimer_t info, int, struct intrframe *frame);
 static void getnanotime_nbt(struct timespec *nbt, struct timespec *tsp);
 
 int	ticks;			/* system master ticks at hz */
@@ -371,7 +371,7 @@ set_timeofday(struct timespec *ts)
  * manipulate objects owned by the current cpu.
  */
 static void
-hardclock(systimer_t info, struct intrframe *frame)
+hardclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 {
 	sysclock_t cputicks;
 	struct proc *p;
@@ -597,7 +597,7 @@ hardclock(systimer_t info, struct intrframe *frame)
  * interrupted.
  */
 static void
-statclock(systimer_t info, struct intrframe *frame)
+statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 {
 #ifdef GPROF
 	struct gmonparam *g;
@@ -646,6 +646,16 @@ statclock(systimer_t info, struct intrframe *frame)
 		else
 			cpu_time.cp_user += bump;
 	} else {
+		int intr_nest = mycpu->gd_intr_nesting_level;
+
+		if (in_ipi) {
+			/*
+			 * IPI processing code will bump gd_intr_nesting_level
+			 * up by one, which breaks following CLKF_INTR testing,
+			 * so we substract it by one here.
+			 */
+			--intr_nest;
+		}
 #ifdef GPROF
 		/*
 		 * Kernel statistics are just like addupc_intr, only easier.
@@ -674,12 +684,12 @@ statclock(systimer_t info, struct intrframe *frame)
 		 * XXX assume system if frame is NULL.  A NULL frame 
 		 * can occur if ipi processing is done from a crit_exit().
 		 */
-		if (frame && CLKF_INTR(frame))
+		if (frame && CLKF_INTR(intr_nest))
 			td->td_iticks += bump;
 		else
 			td->td_sticks += bump;
 
-		if (frame && CLKF_INTR(frame)) {
+		if (frame && CLKF_INTR(intr_nest)) {
 #ifdef DEBUG_PCTRACK
 			do_pctrack(frame, PCTRACK_INT);
 #endif
@@ -754,7 +764,7 @@ SYSCTL_PROC(_kern, OID_AUTO, pctrack, (CTLTYPE_OPAQUE|CTLFLAG_RD), 0, 0,
  * Each cpu has its own scheduler clock.
  */
 static void
-schedclock(systimer_t info, struct intrframe *frame)
+schedclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 {
 	struct lwp *lp;
 	struct rusage *ru;

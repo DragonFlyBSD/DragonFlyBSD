@@ -94,7 +94,7 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 		goto failed;
 	prune->elms = copy_elms;
 
-	seq = trans->hmp->flusher.act;
+	seq = trans->hmp->flusher.done;
 
 	/*
 	 * Scan backwards.  Retries typically occur if a deadlock is detected.

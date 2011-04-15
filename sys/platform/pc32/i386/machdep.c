@@ -112,7 +112,6 @@
 #include <bus/isa/isa_device.h>
 #endif
 #include <machine_base/isa/isa_intr.h>
-#include <machine_base/isa/elcr_var.h>
 #include <bus/isa/rtc.h>
 #include <machine/vm86.h>
 #include <sys/random.h>
@@ -121,6 +120,7 @@
 
 #include <sys/machintr.h>
 #include <machine_base/icu/icu_abi.h>
+#include <machine_base/icu/elcr_var.h>
 #include <machine_base/apic/ioapic_abi.h>
 
 #define PHYSMAP_ENTRIES		10
@@ -217,9 +217,6 @@ cpu_startup(void *dummy)
 	caddr_t v;
 	vm_size_t size = 0;
 	vm_offset_t firstaddr;
-
-	if (boothowto & RB_VERBOSE)
-		bootverbose++;
 
 	/*
 	 * Good {morning,afternoon,evening,night}.
@@ -1939,6 +1936,9 @@ init386(int first)
 	}
 	if (bootinfo.bi_envp)
 		kern_envp = (caddr_t)bootinfo.bi_envp + KERNBASE;
+
+	if (boothowto & RB_VERBOSE)
+		bootverbose++;
 
 	/*
 	 * Default MachIntrABI to ICU

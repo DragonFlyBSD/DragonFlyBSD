@@ -348,7 +348,7 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 	int seq;
 
 	localization = (u_int32_t)mirror->pfs_id << 16;
-	seq = trans->hmp->flusher.act;
+	seq = trans->hmp->flusher.done;
 
 	/*
 	 * Validate the mirror structure and relocalize the tracking keys.

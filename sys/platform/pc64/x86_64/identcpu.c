@@ -252,21 +252,21 @@ printcpuinfo(void)
 				"\014<b11>"
 				"\015<b12>"
 				"\016CX16"	/* CMPXCHG16B Instruction */
-				"\017xTPR"	/* Send Task Priority Messages*/
+				"\017xTPR"	/* Send Task Priority Messages */
 				"\020PDCM"	/* Perf/Debug Capability MSR */
 				"\021<b16>"
-				"\022<b17>"
+				"\022PCID"	/* Process-context Identifiers */
 				"\023DCA"	/* Direct Cache Access */
 				"\024SSE4.1"
 				"\025SSE4.2"
 				"\026x2APIC"	/* xAPIC Extensions */
 				"\027MOVBE"	/* MOVBE instruction */
 				"\030POPCNT"
-				"\031<b24>"
-				"\032AESNI"	/* AES Crypto*/
+				"\031TSC-DL"	/* TSC Deadline */
+				"\032AESNI"	/* AES Crypto */
 				"\033XSAVE"
 				"\034OSXSAVE"
-				"\035<b28>"
+				"\035AVX"	/* Advanced Vector Extensions */
 				"\036<b29>"
 				"\037<b30>"
 				"\040VMM"	/*  Running on a hypervisor */
