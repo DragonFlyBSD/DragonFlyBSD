@@ -41,6 +41,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #include "usb_if.h"
@@ -275,6 +276,7 @@ usbd_transfer(usbd_xfer_handle xfer)
 	usb_dma_t *dmap = &xfer->dmabuf;
 	usbd_status err;
 	u_int size;
+	int didtry;
 
 	DPRINTFN(5,("usbd_transfer: xfer=%p, flags=%d, pipe=%p, running=%d\n",
 		    xfer, xfer->flags, pipe, pipe->running));
@@ -326,11 +328,23 @@ usbd_transfer(usbd_xfer_handle xfer)
 	if (err != USBD_IN_PROGRESS)
 		return (err);
 	crit_enter();
-	if (!xfer->done) {
-		if (pipe->device->bus->use_polling)
-			panic("usbd_transfer: not done");
-		tsleep(xfer, 0, "usbsyn", 0);
+	didtry = 0;
+	while (!xfer->done) {
+		if (pipe->device->bus->use_polling) {
+			pipe->device->bus->methods->do_poll(pipe->device->bus);
+			if (didtry++ == 0) {
+				kprintf("Warning: usbd_transfer: not done, "
+					"retrying.");
+			} else {
+				if (didtry == 10)
+					usbd_abort_pipe(pipe);
+				kprintf(".");
+			}
+		}
+		tsleep(xfer, 0, "usbsyn", hz);
 	}
+	if (didtry)
+		kprintf(" ok\n");
 	crit_exit();
 	return (xfer->status);
 }
