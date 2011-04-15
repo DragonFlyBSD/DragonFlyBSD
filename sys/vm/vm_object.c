@@ -493,9 +493,26 @@ vm_object_terminate(vm_object_t object)
 	vm_pager_deallocate(object);
 
 	/*
-	 * Wait for the object hold count to hit zero
+	 * Wait for the object hold count to hit zero, clean out pages as
+	 * we go.
 	 */
-	vm_object_hold_wait(object);
+	lwkt_gettoken(&vm_token);
+	for (;;) {
+		vm_object_hold_wait(object);
+		if (RB_ROOT(&object->rb_memq) == NULL)
+			break;
+		kprintf("vm_object_terminate: Warning, object %p "
+			"still has %d pages\n",
+			object, object->resident_page_count);
+		vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL,
+					vm_object_terminate_callback, NULL);
+	}
+	lwkt_reltoken(&vm_token);
+
+	/*
+	 * There had better not be any pages left
+	 */
+	KKASSERT(object->resident_page_count == 0);
 
 	/*
 	 * Remove the object from the global object list.

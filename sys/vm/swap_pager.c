@@ -591,6 +591,9 @@ swap_pager_freespace_all(vm_object_t object)
  * If we exhaust the object we will return a value n <= count.
  *
  * The caller must hold vm_token.
+ *
+ * WARNING!  If count == 0 then -1 can be returned as a degenerate case,
+ *	     callers should always pass a count value > 0.
  */
 static int swap_pager_condfree_callback(struct swblock *swap, void *data);
 
