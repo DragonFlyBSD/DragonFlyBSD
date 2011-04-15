@@ -28,7 +28,6 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/usr.bin/keylogout/keylogout.c,v 1.3 1999/08/28 01:02:29 peter Exp $
- * $DragonFly: src/usr.bin/keylogout/keylogout.c,v 1.4 2007/11/25 01:28:23 swildner Exp $
  */
 /*
  * Copyright (C) 1986, Sun Microsystems, Inc.
@@ -40,6 +39,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <rpc/key_prot.h>
 
