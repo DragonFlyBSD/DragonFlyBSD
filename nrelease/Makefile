@@ -343,8 +343,7 @@ customizeiso:
 	test -e ${ISODIR}/.didbootstrap || \
 	    ${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
 		export share_dir=/usr/pkgobj/bootstrap/work/share; \
-		export USE_DESTDIR=no; \
-		./bootstrap --workdir /usr/pkgobj/bootstrap/work"
+		env USE_DESTDIR=no ./bootstrap --workdir /usr/pkgobj/bootstrap/work"
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo ".ifdef BSD_PKG_MK	# added by nrelease" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
@@ -370,7 +369,7 @@ customizeiso:
 .for PKG in ${PKGSRC_PACKAGES}
 	${CHROOT_CMD} "cd /usr/pkgsrc/${PKG} && \
 	    (bmake check > /dev/null 2>&1 || \
-	    bmake ${PKGSRC_OPTIONS} clean build install)"
+	    env USE_DESTDIR=no bmake ${PKGSRC_OPTIONS} clean build install)"
 .endfor
 	#
 	# Remove packages which nothing depends on, add a whatis database
