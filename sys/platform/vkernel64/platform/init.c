@@ -52,6 +52,7 @@
 #include <sys/sysctl.h>
 #include <sys/un.h>
 #include <vm/vm_page.h>
+#include <vm/vm_map.h>
 #include <sys/mplock2.h>
 
 #include <machine/cpu.h>
@@ -1295,4 +1296,46 @@ setrealcpu(void)
 		/* do not map virtual cpus to real cpus */
 		break;
 	}
+}
+
+/*
+ * Allocate and free memory for module loading.  The loaded module
+ * has to be placed somewhere near the current kernel binary load
+ * point or the relocations will not work.
+ *
+ * I'm not sure why this isn't working.
+ */
+int
+vkernel_module_memory_alloc(vm_offset_t *basep, size_t bytes)
+{
+	kprintf("module loading for vkernel64's not currently supported\n");
+	*basep = 0;
+	return ENOMEM;
+#if 0
+#if 1
+	size_t xtra;
+	xtra = (PAGE_SIZE - (vm_offset_t)sbrk(0)) & PAGE_MASK;
+	*basep = (vm_offset_t)sbrk(xtra + bytes) + xtra;
+	bzero((void *)*basep, bytes);
+#else
+	*basep = (vm_offset_t)mmap((void *)0x000000000, bytes,
+				   PROT_READ|PROT_WRITE|PROT_EXEC,
+				   MAP_ANON|MAP_SHARED, -1, 0);
+	if ((void *)*basep == MAP_FAILED)
+		return ENOMEM;
+#endif
+	kprintf("basep %p %p %zd\n",
+		(void *)vkernel_module_memory_alloc, (void *)*basep, bytes);
+	return 0;
+#endif
+}
+
+void
+vkernel_module_memory_free(vm_offset_t base, size_t bytes)
+{
+#if 0
+#if 0
+	munmap((void *)base, bytes);
+#endif
+#endif
 }
