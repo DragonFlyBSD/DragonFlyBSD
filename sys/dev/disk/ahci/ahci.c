@@ -3091,8 +3091,8 @@ ahci_put_ccb(struct ahci_ccb *ccb)
 {
 	struct ahci_port		*ap = ccb->ccb_port;
 
-	ccb->ccb_xa.state = ATA_S_PUT;
 	lockmgr(&ap->ap_ccb_lock, LK_EXCLUSIVE);
+	ccb->ccb_xa.state = ATA_S_PUT;
 	TAILQ_INSERT_TAIL(&ap->ap_ccb_free, ccb, ccb_entry);
 	lockmgr(&ap->ap_ccb_lock, LK_RELEASE);
 }
