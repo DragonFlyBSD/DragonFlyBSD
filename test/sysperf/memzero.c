@@ -64,6 +64,7 @@ main(int ac, char **av)
     bzero(buf, bytes * 2);
 
     test_using("bzero", buf, bytes, (void *)bzero);
+#if 0
     test_using("dozero1", buf, bytes, dozero1);
     test_using("dozero2", buf, bytes, dozero2);
     test_using("dozero3", buf, bytes, dozero3);
@@ -71,6 +72,7 @@ main(int ac, char **av)
     test_using("dozero5", buf, bytes, dozero5);
     test_using("dozero6", buf, bytes, dozero6);
     test_using("dozero7", buf, bytes, dozero7);
+#endif
     return(0);
 }
 
@@ -91,7 +93,9 @@ test_using(const char *ctl, char *buf, int bytes, void (*zerof)(void *d, size_t 
     for (i = loops - 1; i >= 0; --i) {
 	zerof(buf, bytes);
     }
+#if 0
     fpcleanup();
+#endif
     stop_timing(loops, ctl);
     us = get_timing();
     printf("%s %d %5.2f MBytes/sec\n", ctl, bytes, 

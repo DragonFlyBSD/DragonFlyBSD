@@ -10,6 +10,7 @@ int glob[16384];
 
 void test_using(const char *ctl, char *buf, int bytes, void (*copyf)(const void *s1, void *d, size_t bytes));
 
+#if 0
 extern void docopy1(const void *s, void *d, size_t bytes);
 extern void docopy2(const void *s, void *d, size_t bytes);
 extern void docopy3(const void *s, void *d, size_t bytes);
@@ -18,6 +19,7 @@ extern void docopy5(const void *s, void *d, size_t bytes);
 extern void docopy6(const void *s, void *d, size_t bytes);
 extern void docopy7(const void *s, void *d, size_t bytes);
 extern void fpcleanup(void);
+#endif
 
 int
 main(int ac, char **av)
@@ -63,6 +65,7 @@ main(int ac, char **av)
     bzero(buf, bytes * 2);
 
     test_using("bcopy", buf, bytes, bcopy);
+#if 0
     test_using("docopy1", buf, bytes, docopy1);
     test_using("docopy2", buf, bytes, docopy2);
     test_using("docopy3", buf, bytes, docopy3);
@@ -70,6 +73,7 @@ main(int ac, char **av)
     test_using("docopy5", buf, bytes, docopy5);
     test_using("docopy6", buf, bytes, docopy6);
     test_using("docopy7", buf, bytes, docopy7);
+#endif
     return(0);
 }
 
@@ -90,7 +94,9 @@ test_using(const char *ctl, char *buf, int bytes, void (*copyf)(const void *s1, 
     for (i = loops - 1; i >= 0; --i) {
 	copyf(buf, buf + bytes, bytes);
     }
+#if 0
     fpcleanup();
+#endif
     stop_timing(loops, ctl);
     us = get_timing();
     printf("%s %d %5.2f MBytes/sec\n", ctl, bytes, 

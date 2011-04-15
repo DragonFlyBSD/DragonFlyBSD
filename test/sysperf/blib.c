@@ -14,6 +14,7 @@
 
 static struct timeval tv1;
 static struct timeval tv2;
+static long long last_us;
 
 void
 start_timing(void)
@@ -29,6 +30,7 @@ stop_timing(long long count, const char *ctl, ...)
 
     gettimeofday(&tv2, NULL);
     us = (tv2.tv_usec - tv1.tv_usec) + (tv2.tv_sec - tv1.tv_sec) * 1000000LL;
+    last_us = us;
     if (ctl == NULL) 	/* dummy call to pre-cache */
 	return(us > 1000000);
 
@@ -67,11 +69,7 @@ stop_timing2(long long count, long long us, const char *ctl, ...)
 long long
 get_timing(void)
 {
-    long long us;
-
-    gettimeofday(&tv2, NULL);
-    us = (tv2.tv_usec - tv1.tv_usec) + (tv2.tv_sec - tv1.tv_sec) * 1000000LL;
-    return(us);
+    return (last_us);
 }
 
 void

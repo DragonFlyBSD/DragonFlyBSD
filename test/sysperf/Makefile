@@ -112,11 +112,11 @@ all:	$(TARGETS)
 /tmp/exec2: exec1.c blib.c
 	$(CC) $(CFLAGS) exec1.c blib.c -o /tmp/exec2
 
-/tmp/mem1: memcpy.c memcpy.S blib.c
-	$(CC) $(CFLAGS) memcpy.c memcpy.S blib.c -o /tmp/mem1
+/tmp/mem1: memcpy.c blib.c
+	$(CC) $(CFLAGS) memcpy.c blib.c -o /tmp/mem1
 
-/tmp/mem2: memzero.c memzero.S blib.c
-	$(CC) $(CFLAGS) memzero.c memzero.S blib.c -o /tmp/mem2
+/tmp/mem2: memzero.c blib.c
+	$(CC) $(CFLAGS) memzero.c blib.c -o /tmp/mem2
 
 /tmp/read1: read1.c blib.c
 	$(CC) $(CFLAGS) read1.c blib.c -o /tmp/read1
