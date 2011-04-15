@@ -1198,7 +1198,7 @@ pfioctl(struct dev_ioctl_args *ap)
 		}
 		bcopy(&pr->rule, rule, sizeof(struct pf_rule));
 		rule->cuid = ap->a_cred->cr_ruid;
-		rule->cpid = (int)NULL;
+		rule->cpid = 0;
 		rule->anchor = NULL;
 		rule->kif = NULL;
 		TAILQ_INIT(&rule->rpool.list);
@@ -1440,7 +1440,7 @@ pfioctl(struct dev_ioctl_args *ap)
 			}
 			bcopy(&pcr->rule, newrule, sizeof(struct pf_rule));
 			newrule->cuid = ap->a_cred->cr_ruid;
-			newrule->cpid = (int)NULL;
+			newrule->cpid = 0;
 			TAILQ_INIT(&newrule->rpool.list);
 			/* initialize refcounting */
 			newrule->states_cur = 0;
