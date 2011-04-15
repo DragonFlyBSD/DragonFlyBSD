@@ -271,8 +271,10 @@ buildiso:
 srcs:
 .if !defined(WITHOUT_SRCS)
 .if make(gui)
-	cd ${ISOROOT}/usr && make pkgsrc-create GITHOST=${GITHOST}
-	cd ${ISOROOT}/usr && make src-create GITHOST=${GITHOST}
+	rm -f ${ISOROOT}/usr/src-sys.tgz
+	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
+	cd ${ISOROOT}/usr && make pkgsrc-create-repo GITHOST=${GITHOST}
+	cd ${ISOROOT}/usr && make src-create-repo GITHOST=${GITHOST}
 .else
 	rm -f ${ISOROOT}/usr/src-sys.tgz
 	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
@@ -408,9 +410,10 @@ mkimg:
 	rm -f ${IMGFILE}
 	sz=`bc -e "((${IMGSIZE}) * 512)" -equit`; truncate -s $${sz} ${IMGFILE}
 .else
-	@echo "STEP: determine required image size in 1GB steps"
+	@echo "STEP: Determine required image size in 1GB steps"
+	@echo "      Leave ~600MB of unused space"
 	sz=`du -ck ${ISOROOT} | tail -n 1 | cut -f 1`;			\
-	    sz=`bc -e "(($${sz}) * 1.15 + 999999) / 1000000" -equit | \
+	    sz=`bc -e "(($${sz}) * 1.15 + 999999 + 600000) / 1000000" -equit | \
 	    cut -f1 -d.`;						\
 	    sz=`bc -e "(($${sz}) * 953)" -equit | cut -f1 -d.`;		\
 	    rm -f ${IMGFILE};						\
@@ -439,6 +442,10 @@ mkimg:
 	cpdup ${ISOROOT} ${IMGMNT}
 	@echo "STEP: fixup ${IMGMNT}/etc/fstab"
 	echo "/dev/${IMGUSBDEV}s1a / ufs rw,noatime 0 1" > ${IMGMNT}/etc/fstab
+	echo "dummy /tmp tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
+	echo "dummy /var/tmp tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
+	echo "dummy /var/run tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
+	echo "dummy /usr/obj tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	@echo "STEP: fixup ${IMGMNT}/boot/loader.conf"
 	-fgrep -v kernel_options ${IMGMNT}/boot/loader.conf > ${IMGMNT}/boot/loader.conf.new

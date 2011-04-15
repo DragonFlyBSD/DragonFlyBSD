@@ -1,9 +1,10 @@
 #
 # Device		Mountpoint	FStype	Options		Dump	Pass#
 /dev/cd0		/		cd9660	ro,noauto	0	0
-tmpfs			/root		tmpfs	rw,-C,-s=4M	0	0
-tmpfs			/var		tmpfs	rw,-C,-s=6M	0	0
-tmpfs			/tmp		tmpfs	rw,-C,-s=4M	0	0
-tmpfs			/etc		tmpfs	rw,-C,-s=12M	0	0
-tmpfs			/usr/pkg/etc	tmpfs	rw,-C,-s=4M	0	0
+dummy			/root		tmpfs	rw,-C		0	0
+dummy			/var		tmpfs	rw,-C		0	0
+dummy			/tmp		tmpfs	rw,-C		0	0
+dummy			/etc		tmpfs	rw,-C		0	0
+dummy			/usr/pkg/etc	tmpfs	rw,-C		0	0
+dummy			/usr/obj	tmpfs	rw,		0	0
 proc			/proc		procfs	rw		0	0
