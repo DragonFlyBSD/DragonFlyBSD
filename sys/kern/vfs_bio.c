@@ -928,6 +928,10 @@ breadcb(struct vnode *vp, off_t loffset, int size,
 		BUF_KERNPROC(bp);
 		vn_strategy(vp, &bp->b_bio1);
 	} else if (func) {
+		/*
+		 * Since we are issuing the callback synchronously it cannot
+		 * race the BIO_DONE, so no need for atomic ops here.
+		 */
 		/*bp->b_bio1.bio_done = func;*/
 		bp->b_bio1.bio_caller_info1.ptr = arg;
 		bp->b_bio1.bio_flags |= BIO_DONE;
@@ -3602,7 +3606,6 @@ _biowait(struct bio *bio, const char *wmesg, int to)
 		flags = bio->bio_flags;
 		if (flags & BIO_DONE)
 			break;
-		tsleep_interlock(bio, 0);
 		nflags = flags | BIO_WANT;
 		tsleep_interlock(bio, 0);
 		if (atomic_cmpset_int(&bio->bio_flags, flags, nflags)) {
