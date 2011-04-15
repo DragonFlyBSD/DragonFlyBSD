@@ -18,6 +18,7 @@ help all:
 .endif
 .else
 	@echo "    make pkgsrc-create       - fetch initial pkgsrc repo from the net"
+	@echo "    make pkgsrc-create-repo  - fetch pkgsrc repo only, no checkout"
 	@echo "    make pkgsrc-update       - update your pkgsrc repo from the net"
 .endif
 	@echo ""
@@ -32,6 +33,7 @@ help all:
 .else
 	@echo "    make src-create          - fetch initial src repo from the net"
 	@echo "    make src-create-shallow  - fetch initial history-free src repo"
+	@echo "    make src-create-repo     - fetch src repo only, no checkout"
 	@echo "    make src-update          - update your src repo from the net"
 .endif
 	@echo ""
@@ -48,7 +50,7 @@ help all:
 	@echo "make src-create and/or make pkgsrc-create to set up the initial"
 	@echo "git repo."
 
-pkgsrc-create:
+pkgsrc-create-repo:
 	@echo "If problems occur you may have to rm -rf pkgsrc and try again."
 	@echo ""
 	mkdir -p ${.CURDIR}/pkgsrc
@@ -58,7 +60,10 @@ pkgsrc-create:
 	cd ${.CURDIR}/pkgsrc && git fetch origin
 	cd ${.CURDIR}/pkgsrc && git branch master origin/master
 	cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2010Q4 origin/pkgsrc-2010Q4
-	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2010Q4
+	cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2011Q1 origin/pkgsrc-2011Q1
+
+pkgsrc-create: pkgsrc-create-repo
+	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2011Q1
 	cd ${.CURDIR}/pkgsrc && git pull
 
 pkgsrc-checkout:
@@ -67,7 +72,7 @@ pkgsrc-checkout:
 pkgsrc-update:
 	cd ${.CURDIR}/pkgsrc && git pull
 
-src-create:
+src-create-repo:
 	@echo "If problems occur you may have to rm -rf src and try again."
 	@echo ""
 	mkdir -p ${.CURDIR}/src
@@ -76,6 +81,8 @@ src-create:
 		git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch origin
 	cd ${.CURDIR}/src && git branch master origin/master
+
+src-create: src-create-repo
 	cd ${.CURDIR}/src && git checkout master
 	cd ${.CURDIR}/src && git pull
 
