@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
- * $FreeBSD: src/bin/sh/parser.c,v 1.105 2011/02/05 15:02:19 jilles Exp $
+ * $FreeBSD: src/bin/sh/parser.c,v 1.106 2011/03/13 20:02:39 jilles Exp $
  */
 
 #include <stdio.h>
@@ -1446,6 +1446,7 @@ parsesub: {
 	int bracketed_name = 0; /* used to handle ${[0-9]*} variables */
 	int linno;
 	int length;
+	int c1;
 
 	c = pgetc();
 	if (c != '(' && c != '{' && (is_eof(c) || !is_name(c)) &&
@@ -1472,15 +1473,9 @@ parsesub: {
 		if (c == '{') {
 			bracketed_name = 1;
 			c = pgetc();
-			if (c == '#') {
-				if ((c = pgetc()) == '}')
-					c = '#';
-				else
-					subtype = VSLENGTH;
-			}
-			else
-				subtype = 0;
+			subtype = 0;
 		}
+varname:
 		if (!is_eof(c) && is_name(c)) {
 			length = 0;
 			do {
@@ -1510,19 +1505,35 @@ parsesub: {
 				STPUTC(c, out);
 				c = pgetc();
 			}
-		} else {
-			if (! is_special(c)) {
-				subtype = VSERROR;
-				if (c == '}')
-					pungetc();
-				else if (c == '\n' || c == PEOF)
-					synerror("Unexpected end of line in substitution");
-				else
-					USTPUTC(c, out);
-			} else {
-				USTPUTC(c, out);
+		} else if (is_special(c)) {
+			c1 = c;
+			c = pgetc();
+			if (subtype == 0 && c1 == '#') {
+				subtype = VSLENGTH;
+				if (strchr(types, c) == NULL && c != ':' &&
+				    c != '#' && c != '%')
+					goto varname;
+				c1 = c;
 				c = pgetc();
+				if (c1 != '}' && c == '}') {
+					pungetc();
+					c = c1;
+					goto varname;
+				}
+				pungetc();
+				c = c1;
+				c1 = '#';
+				subtype = 0;
 			}
+			USTPUTC(c1, out);
+		} else {
+			subtype = VSERROR;
+			if (c == '}')
+				pungetc();
+			else if (c == '\n' || c == PEOF)
+				synerror("Unexpected end of line in substitution");
+			else
+				USTPUTC(c, out);
 		}
 		if (subtype == 0) {
 			switch (c) {
