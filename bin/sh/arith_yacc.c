@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/bin/sh/arith_yacc.c,v 1.1 2011/02/08 23:18:06 jilles Exp $
+ * $FreeBSD: src/bin/sh/arith_yacc.c,v 1.3 2011/03/05 13:27:13 jilles Exp $
  */
 
 #include <sys/limits.h>
@@ -204,7 +204,7 @@ again:
 }
 
 static arith_t
-binop2(arith_t a, int op, int lprec, int noeval)
+binop2(arith_t a, int op, int precedence, int noeval)
 {
 	for (;;) {
 		union yystype val;
@@ -227,7 +227,7 @@ binop2(arith_t a, int op, int lprec, int noeval)
 		a = noeval ? b : do_binop(op, a, b);
 
 		if (op2 < ARITH_BINOP_MIN || op2 >= ARITH_BINOP_MAX ||
-		    arith_prec(op2) >= lprec)
+		    arith_prec(op2) >= precedence)
 			return a;
 
 		op = op2;

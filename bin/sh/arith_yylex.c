@@ -30,6 +30,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/bin/sh/arith_yylex.c,v 1.3 2011/03/07 07:31:15 stefanf Exp $
  */
 
 #include <inttypes.h>
@@ -54,6 +56,7 @@ yylex(void)
 {
 	int value;
 	const char *buf = arith_buf;
+	char *end;
 	const char *p;
 
 	for (;;) {
@@ -76,8 +79,8 @@ yylex(void)
 		case '7':
 		case '8':
 		case '9':
-			yylval.val = strtoarith_t(buf,
-			    __DECONST(char **, &arith_buf), 0);
+			yylval.val = strtoarith_t(buf, &end, 0);
+			arith_buf = end;
 			return ARITH_NUM;
 		case 'A':
 		case 'B':
