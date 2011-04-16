@@ -620,7 +620,7 @@ EcGpeQueryHandler(void *Context)
     struct acpi_ec_softc	*sc = (struct acpi_ec_softc *)Context;
     UINT8			Data;
     ACPI_STATUS			Status;
-    int				retry;
+    int				retry, sci_enqueued;
     char			qxx[5];
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
@@ -641,6 +641,7 @@ EcGpeQueryHandler(void *Context)
      * that may arise from running the query from causing another query
      * to be queued, we clear the pending flag only after running it.
      */
+    sci_enqueued = sc->ec_sci_pend;
     for (retry = 0; retry < 2; retry++) {
 	Status = EcCommand(sc, EC_COMMAND_QUERY);
 	if (ACPI_SUCCESS(Status))
@@ -679,6 +680,14 @@ EcGpeQueryHandler(void *Context)
 	device_printf(sc->ec_dev, "evaluation of query method %s failed: %s\n",
 	    qxx, AcpiFormatException(Status));
     }
+
+    /* Reenable runtime GPE if its execution was deferred. */
+    if (sci_enqueued) {
+	Status = AcpiFinishGpe(sc->ec_gpehandle, sc->ec_gpebit);
+	if (ACPI_FAILURE(Status))
+	    device_printf(sc->ec_dev, "reenabling runtime GPE failed: %s\n",
+		AcpiFormatException(Status));
+    }
 }
 
 /*
@@ -709,12 +718,14 @@ EcGpeHandler(ACPI_HANDLE GpeDevice, UINT32 GpeNumber, void *Context)
     EcStatus = EC_GET_CSR(sc);
     if ((EcStatus & EC_EVENT_SCI) && !sc->ec_sci_pend) {
 	Status = AcpiOsExecute(OSL_GPE_HANDLER, EcGpeQueryHandler, Context);
-	if (ACPI_SUCCESS(Status))
+	if (ACPI_SUCCESS(Status)) {
 	    sc->ec_sci_pend = TRUE;
-	else
+	    return (0);
+	} else {
 	    kprintf("EcGpeHandler: queuing GPE query handler failed\n");
+    	}
     }
-    return (0);
+    return (ACPI_REENABLE_GPE);
 }
 
 static ACPI_STATUS
