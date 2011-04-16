@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/builtins/trap3.0,v 1.1 2009/11/21 20:44:34 jilles Exp $
+# $FreeBSD: src/tools/regression/bin/sh/builtins/trap3.0,v 1.2 2011/02/20 14:18:58 jilles Exp $
 
 {
 	trap '' garbage && exit 3
@@ -8,5 +8,4 @@
 	trap - 99999 && exit 3
 	trap true 99999 && exit 3
 } 2>/dev/null
-test -n "$(trap true garbage TERM 2>/dev/null || trap)" || exit 3
 exit 0
