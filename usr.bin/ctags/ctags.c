@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1987, 1993, 1994, 1995 The Regents of the University of California.  All rights reserved.
  * @(#)ctags.c	8.4 (Berkeley) 2/7/95
  * $FreeBSD: src/usr.bin/ctags/ctags.c,v 1.7.2.1 2001/09/18 04:16:53 mikeh Exp $
- * $DragonFly: src/usr.bin/ctags/ctags.c,v 1.4 2003/11/03 19:31:29 eirikn Exp $
  */
 
 #include <err.h>
@@ -77,7 +76,7 @@ static void usage(void);
 int
 main(int argc, char **argv)
 {
-	static char	*outfile = "tags";	/* output file */
+	static const char *outfile = "tags";	/* output file */
 	int	aflag;				/* -a: append to tags */
 	int	uflag;				/* -u: update tags */
 	int	exit_val;			/* exit value */
@@ -188,7 +187,7 @@ void
 init(void)
 {
 	int		i;
-	unsigned char	*sp;
+	const unsigned char *sp;
 
 	for (i = 0; i < 256; i++) {
 		_wht[i] = _etk[i] = _itk[i] = _btk[i] = NO;
