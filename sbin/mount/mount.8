@@ -42,6 +42,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl adfpruvw
+.Op Fl F Ar fstab
 .Op Fl o Ar options
 .Op Fl t Ar type
 .Nm
@@ -95,6 +96,10 @@ flag to
 determine what the
 .Nm
 command is trying to do.
+.It Fl F Ar fstab
+Specify the
+.Pa fstab
+file to use.
 .It Fl f
 Forces the revocation of write access when trying to downgrade
 a filesystem mount status from read-write to read-only.
@@ -357,6 +362,13 @@ option.
 Verbose mode.
 .It Fl w
 The file system object is to be read and write.
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width PATH_FSTAB
+.It Pa PATH_FSTAB
+If the environment variable
+.Pa PATH_FSTAB
+is set all operations are performed against the specified file.
 .El
 .Sh FILES
 .Bl -tag -width /etc/fstab -compact
