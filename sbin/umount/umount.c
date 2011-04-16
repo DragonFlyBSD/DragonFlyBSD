@@ -749,6 +749,6 @@ usage(void)
 
 	fprintf(stderr, "%s\n%s\n",
 	    "usage: umount [-fv] special | node",
-	    "       umount -a | -A [ -F fstab] [-fv] [-h host] [-t type]");
+	    "       umount -a | -A [-F fstab] [-fv] [-h host] [-t type]");
 	exit(1);
 }

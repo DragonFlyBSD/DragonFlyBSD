@@ -654,7 +654,7 @@ usage(void)
 {
 
 	fprintf(stderr, "%s\n%s\n%s\n",
-"usage: mount [-adfpruvw] [ -F fstab] [-o options] [-t type]",
+"usage: mount [-adfpruvw] [-F fstab] [-o options] [-t type]",
 "       mount [-dfpruvw] {special | node}",
 "       mount [-dfpruvw] [-o options] [-t type] special node");
 	exit(1);
