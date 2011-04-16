@@ -1,6 +1,5 @@
 /* $NetBSD: usbhid.c,v 1.14 2000/07/03 02:51:37 matt Exp $ */
 /* $FreeBSD: src/usr.bin/usbhidctl/usbhid.c,v 1.12 2007/12/21 03:40:36 imp Exp $ */
-/* $DragonFly: src/usr.bin/usbhidctl/usbhid.c,v 1.4 2008/11/24 17:15:17 hasso Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -94,16 +93,14 @@ prbits(int bits, char **strs, int n)
 void
 usage(void)
 {
-	extern char *__progname;
-
 	fprintf(stderr,
                 "usage: %s -f device "
                 "[-l] [-n] [-r] [-t tablefile] [-v] [-x] name ...\n",
-                __progname);
+                getprogname());
 	fprintf(stderr,
                 "       %s -f device "
                 "[-l] [-n] [-r] [-t tablefile] [-v] [-x] -a\n",
-                __progname);
+                getprogname());
 	exit(1);
 }
 
