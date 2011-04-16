@@ -32,7 +32,6 @@
  *
  * @(#)get_names.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/get_names.c,v 1.6.2.1 2001/07/30 10:31:29 dd Exp $
- * $DragonFly: src/usr.bin/talk/get_names.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <err.h>
@@ -60,7 +59,7 @@ get_names(int argc, char **argv)
 	char hostname[MAXHOSTNAMELEN];
 	char *his_name, *my_name;
 	char *my_machine_name, *his_machine_name;
-	char *my_tty, *his_tty;
+	const char *his_tty;
 	char *cp;
 
 	if (argc < 2 )

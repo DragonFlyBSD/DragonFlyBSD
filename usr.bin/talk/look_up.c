@@ -32,7 +32,6 @@
  *
  * @(#)look_up.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/look_up.c,v 1.5 1999/08/28 01:06:14 peter Exp $
- * $DragonFly: src/usr.bin/talk/look_up.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -98,8 +97,6 @@ check_local(void)
 int
 look_for_invite(CTL_RESPONSE *rp)
 {
-	struct in_addr machine_addr;
-
 	current_state = "Checking for invitation on caller's machine";
 	ctl_transact(his_machine_addr, msg, LOOK_UP, rp);
 	/* the switch is for later options, such as multiple invitations */

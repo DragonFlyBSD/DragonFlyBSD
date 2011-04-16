@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  *	@(#)talk.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/talk/talk.h,v 1.4 2004/08/19 23:32:02 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +46,7 @@ extern	int sockt;
 extern	int curses_initialized;
 extern	int invitation_waiting;
 
-extern	char *current_state;
+extern	const char *current_state;
 extern	int current_line;
 
 typedef struct xwin {
@@ -79,10 +78,10 @@ extern	void	init_display(void);
 extern	void	invite_remote(void);
 extern	int	look_for_invite(CTL_RESPONSE *);
 extern	int	max(int, int);
-extern	void	message(char *);
+extern	void	message(const char *);
 extern	void	open_ctl(void);
 extern	void	open_sockt(void);
-extern	void	p_error(char *);
+extern	void	p_error(const char *);
 extern	void	print_addr(struct sockaddr_in);
 extern	void	quit(void);
 extern	int	readwin(WINDOW *, int, int);

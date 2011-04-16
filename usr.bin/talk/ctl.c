@@ -32,7 +32,6 @@
  *
  * @(#)ctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/ctl.c,v 1.6 1999/08/28 01:06:10 peter Exp $
- * $DragonFly: src/usr.bin/talk/ctl.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 /*
@@ -45,9 +44,9 @@
 #include <sys/socket.h>
 #include "talk.h"
 
-struct	sockaddr_in daemon_addr = { sizeof(daemon_addr), AF_INET };
-struct	sockaddr_in ctl_addr = { sizeof(ctl_addr), AF_INET };
-struct	sockaddr_in my_addr = { sizeof(my_addr), AF_INET };
+struct	sockaddr_in daemon_addr = { .sin_len = sizeof(daemon_addr), .sin_family = AF_INET };
+struct	sockaddr_in ctl_addr = { .sin_len = sizeof(ctl_addr), .sin_family = AF_INET };
+struct	sockaddr_in my_addr = { .sin_len = sizeof(my_addr), .sin_family = AF_INET };
 
 	/* inet addresses of the two machines */
 struct	in_addr my_machine_addr;

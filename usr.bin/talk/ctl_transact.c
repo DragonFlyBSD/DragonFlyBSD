@@ -32,7 +32,6 @@
  *
  * @(#)ctl_transact.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/ctl_transact.c,v 1.5 1999/08/28 01:06:11 peter Exp $
- * $DragonFly: src/usr.bin/talk/ctl_transact.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include <errno.h>
@@ -48,13 +47,13 @@
  * of time
  */
 void
-ctl_transact(struct in_addr target, CTL_MSG msg, int type, CTL_RESPONSE *rp)
+ctl_transact(struct in_addr target, CTL_MSG lmsg, int type, CTL_RESPONSE *rp)
 {
 	fd_set read_mask, ctl_mask;
 	int nready = 0, cc;
 	struct timeval wait;
 
-	msg.type = type;
+	lmsg.type = type;
 	daemon_addr.sin_addr = target;
 	daemon_addr.sin_port = daemon_port;
 	FD_ZERO(&ctl_mask);
@@ -69,10 +68,10 @@ ctl_transact(struct in_addr target, CTL_MSG msg, int type, CTL_RESPONSE *rp)
 		wait.tv_usec = 0;
 		/* resend message until a response is obtained */
 		do {
-			cc = sendto(ctl_sockt, (char *)&msg, sizeof (msg), 0,
+			cc = sendto(ctl_sockt, (char *)&lmsg, sizeof (lmsg), 0,
 			    (struct sockaddr *)&daemon_addr,
 			    sizeof (daemon_addr));
-			if (cc != sizeof (msg)) {
+			if (cc != sizeof (lmsg)) {
 				if (errno == EINTR)
 					continue;
 				p_error("Error on write to talk daemon");

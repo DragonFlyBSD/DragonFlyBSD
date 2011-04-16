@@ -32,7 +32,6 @@
  *
  * @(#)invite.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/invite.c,v 1.6.2.1 2000/10/05 17:40:38 ru Exp $
- * $DragonFly: src/usr.bin/talk/invite.c,v 1.4 2004/08/19 23:32:02 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -63,7 +62,7 @@ jmp_buf invitebuf;
 void
 invite_remote(void)
 {
-	int nfd, read_mask, template, new_sockt;
+	int new_sockt;
 	struct itimerval itimer;
 	CTL_RESPONSE response;
 
@@ -118,7 +117,7 @@ invite_remote(void)
  */
 /* ARGSUSED */
 void
-re_invite(int signo)
+re_invite(int signo __unused)
 {
 
 	message("Ringing your party again");
@@ -131,7 +130,7 @@ re_invite(int signo)
 	longjmp(invitebuf, 1);
 }
 
-static	char *answers[] = {
+static	const char *answers[] = {
 	"answer #0",					/* SUCCESS */
 	"Your party is not logged on",			/* NOT_HERE */
 	"Target machine is too confused to talk to us",	/* FAILED */

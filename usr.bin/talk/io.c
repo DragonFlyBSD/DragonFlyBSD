@@ -32,7 +32,6 @@
  *
  * @(#)io.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/io.c,v 1.9.2.2 2001/10/15 13:42:07 dd Exp $
- * $DragonFly: src/usr.bin/talk/io.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 /*
@@ -140,7 +139,7 @@ talk(void)
  * on the screen and then exits. (i.e. a curses version of perror)
  */
 void
-p_error(char *string)
+p_error(const char *string)
 {
 	wmove(my_win.x_win, current_line, 0);
 	wprintw(my_win.x_win, "[%s : %s (%d)]\n",
@@ -155,7 +154,7 @@ p_error(char *string)
  * Display string in the standard location
  */
 void
-message(char *string)
+message(const char *string)
 {
 	wmove(my_win.x_win, current_line, 0);
 	wprintw(my_win.x_win, "[%s]\n", string);

@@ -32,7 +32,6 @@
  *
  * @(#)msgs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/msgs.c,v 1.5 1999/08/28 01:06:14 peter Exp $
- * $DragonFly: src/usr.bin/talk/msgs.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 /*
@@ -45,12 +44,12 @@
 
 #define MSG_INTERVAL 4
 
-char	*current_state;
+const char	*current_state;
 int	current_line = 0;
 
 /* ARGSUSED */
 void
-disp_msg(int signo)
+disp_msg(int signo __unused)
 {
 	message(current_state);
 }
