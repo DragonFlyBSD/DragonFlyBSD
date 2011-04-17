@@ -318,7 +318,7 @@ acpi_pci_attach(device_t dev)
 	 */
 	pci_add_children(dev, domain, busno, sizeof(struct acpi_pci_devinfo));
 	AcpiWalkNamespace(ACPI_TYPE_DEVICE, acpi_get_handle(dev), 1,
-	    NULL, acpi_pci_save_handle, dev, NULL);
+	    acpi_pci_save_handle, NULL, dev, NULL);
 
 	return (bus_generic_attach(dev));
 }

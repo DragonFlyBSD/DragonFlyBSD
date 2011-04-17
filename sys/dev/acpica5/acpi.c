@@ -1419,8 +1419,8 @@ acpi_device_scan_children(device_t bus, device_t dev, int max_depth,
     ctx.user_fn = user_fn;
     ctx.arg = arg;
     ctx.parent = h;
-    return (AcpiWalkNamespace(ACPI_TYPE_ANY, h, max_depth, NULL,
-	acpi_device_scan_cb, &ctx, NULL));
+    return (AcpiWalkNamespace(ACPI_TYPE_ANY, h, max_depth,
+	acpi_device_scan_cb, NULL, &ctx, NULL));
 }
 
 /*
@@ -1543,8 +1543,8 @@ acpi_probe_children(device_t bus)
      * devices as they appear, which might be smarter.)
      */
     ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "namespace scan\n"));
-    AcpiWalkNamespace(ACPI_TYPE_ANY, ACPI_ROOT_OBJECT, 100, NULL,
-	acpi_probe_child, bus, NULL);
+    AcpiWalkNamespace(ACPI_TYPE_ANY, ACPI_ROOT_OBJECT, 100,
+	acpi_probe_child, NULL, bus, NULL);
 
     /* Pre-allocate resources for our rman from any sysresource devices. */
     acpi_sysres_alloc(bus);
@@ -2606,8 +2606,8 @@ acpi_wake_prep_walk(int sstate)
     ACPI_HANDLE sb_handle;
 
     if (ACPI_SUCCESS(AcpiGetHandle(ACPI_ROOT_OBJECT, "\\_SB_", &sb_handle))) {
-	AcpiWalkNamespace(ACPI_TYPE_DEVICE, sb_handle, 100, NULL,
-	    acpi_wake_prep, &sstate, NULL);
+	AcpiWalkNamespace(ACPI_TYPE_DEVICE, sb_handle, 100,
+	    acpi_wake_prep, NULL, &sstate, NULL);
     }
     return (0);
 }
