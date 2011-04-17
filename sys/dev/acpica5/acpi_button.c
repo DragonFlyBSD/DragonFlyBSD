@@ -126,6 +126,7 @@ acpi_button_probe(device_t dev)
 static int
 acpi_button_attach(device_t dev)
 {
+    struct acpi_prw_data	prw;
     struct acpi_button_softc	*sc;
     ACPI_STATUS			status;
     int event;
@@ -162,8 +163,10 @@ acpi_button_attach(device_t dev)
 	return_VALUE (ENXIO);
     }
 
-    /* Enable the GPE for wake */
+    /* Enable the GPE for wake/runtime */
     acpi_wake_set_enable(dev, 1);
+    if (acpi_parse_prw(sc->button_handle, &prw) == 0)
+	AcpiEnableGpe(prw.gpe_handle, prw.gpe_bit);
     
     return_VALUE (0);
 }
