@@ -586,6 +586,10 @@ acpi_attach(device_t dev)
 	kfreeenv(env);
     }
 
+    /* Only enable reboot by default if the FADT says it is available. */
+    if (AcpiGbl_FADT.Flags & ACPI_FADT_RESET_REGISTER)
+	sc->acpi_handle_reboot = 1;
+
     /* Only enable S4BIOS by default if the FACS says it is available. */
     status = AcpiGetTable(ACPI_SIG_FACS, 0, (ACPI_TABLE_HEADER **)&facs);
     if (ACPI_FAILURE(status)) {
@@ -1735,12 +1739,9 @@ acpi_shutdown_final(void *arg, int howto)
 	    DELAY(1000000);
 	    kprintf("ACPI power-off failed - timeout\n");
 	}
-    } else if ((howto & RB_HALT) == 0 &&
-	(AcpiGbl_FADT.Flags & ACPI_FADT_RESET_REGISTER) &&
-	sc->acpi_handle_reboot) {
+    } else if ((howto & RB_HALT) == 0 && sc->acpi_handle_reboot) {
 	/* Reboot using the reset register. */
-	status = AcpiWrite(
-	    AcpiGbl_FADT.ResetValue, &AcpiGbl_FADT.ResetRegister);
+	status = AcpiReset();
 	if (ACPI_FAILURE(status)) {
 	    kprintf("ACPI reset failed - %s\n", AcpiFormatException(status));
 	} else {
