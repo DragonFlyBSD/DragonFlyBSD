@@ -33,6 +33,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/globaldata.h>
 
@@ -136,6 +137,9 @@ static const struct acpi_pst_md acpi_pst_intel = {
 	.pmd_set_pstate		= acpi_pst_intel_set_pstate,
 	.pmd_get_pstate		= acpi_pst_intel_get_pstate
 };
+
+static int acpi_pst_stringent_check = 1;
+TUNABLE_INT("hw.acpi.cpu.pstate.strigent_check", &acpi_pst_stringent_check);
 
 const struct acpi_pst_md *
 acpi_pst_md_probe(void)
@@ -292,7 +296,8 @@ acpi_pst_amd0f_check_pstates(const struct acpi_pstate *pstates, int npstates)
 
 	if (fv_min.fid == fv_max.fid && fv_min.vid == fv_max.vid) {
 		kprintf("cpu%d: only one P-State is supported\n", mycpuid);
-		return EOPNOTSUPP;
+		if (acpi_pst_stringent_check)
+			return EOPNOTSUPP;
 	}
 
 	for (i = 0; i < npstates; ++i) {
@@ -330,13 +335,15 @@ acpi_pst_amd0f_check_pstates(const struct acpi_pstate *pstates, int npstates)
 				kprintf("cpu%d: Invalid FID %#x, "
 					"out [%#x, %#x]\n", mycpuid, fid,
 					fv_min.fid + 0x8, fv_max.fid);
-				return EINVAL;
+				if (acpi_pst_stringent_check)
+					return EINVAL;
 			}
 			if (vid < fv_max.vid || vid > fv_min.vid) {
 				kprintf("cpu%d: Invalid VID %#x, "
 					"in [%#x, %#x]\n", mycpuid, vid,
 					fv_max.vid, fv_min.vid);
-				return EINVAL;
+				if (acpi_pst_stringent_check)
+					return EINVAL;
 			}
 		}
 
