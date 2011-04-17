@@ -86,20 +86,8 @@ main(int ac, char **av)
 	av += optind;
 
 	/*
-	 * Prime delta cputime calculation, make sure at least dom0 exists,
-	 * and make sure powerd is not already running.
+	 * Make sure powerd is not already running.
 	 */
-	getcputime();
-	savg = 0.0;
-
-	setupdominfo();
-	if (DomBeg >= DomEnd) {
-		fprintf(stderr, "hw.acpi.cpu.px_dom* sysctl not available\n");
-		exit(1);
-	}
-	DomLimit = DomEnd;
-	CpuLimit = NCpus;
-
 	PowerFd = open("/var/run/powerd.pid", O_CREAT|O_RDWR, 0644);
 	if (PowerFd < 0) {
 		fprintf(stderr,
@@ -124,6 +112,34 @@ main(int ac, char **av)
 		ftruncate(PowerFd, 0);
 		snprintf(buf, sizeof(buf), "%d\n", (int)getpid());
 		write(PowerFd, buf, strlen(buf));
+	}
+
+	/*
+	 * Wait hw.acpi.cpu.px_dom* sysctl to be created by kernel
+	 *
+	 * Since hw.acpi.cpu.px_dom* creation is queued into ACPI
+	 * taskqueue and ACPI taskqueue is shared across various
+	 * ACPI modules, any delay in other modules may cause
+	 * hw.acpi.cpu.px_dom* to be created at quite a later time
+	 * (e.g. cmbat module's task could take quite a lot of time).
+	 */
+	for (;;) {
+		/*
+		 * Prime delta cputime calculation, make sure at least
+		 * dom0 exists.
+		 */
+		getcputime();
+		savg = 0.0;
+
+		setupdominfo();
+		if (DomBeg >= DomEnd) {
+			sleep(1);
+			continue;
+		}
+
+		DomLimit = DomEnd;
+		CpuLimit = NCpus;
+		break;
 	}
 
 	/*
