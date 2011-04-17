@@ -406,7 +406,6 @@ static int
 acpi_attach(device_t dev)
 {
     struct acpi_softc	*sc;
-    ACPI_TABLE_FACS	*facs;
     ACPI_STATUS		status;
     int			error, state;
     UINT32		flags;
@@ -591,14 +590,7 @@ acpi_attach(device_t dev)
 	sc->acpi_handle_reboot = 1;
 
     /* Only enable S4BIOS by default if the FACS says it is available. */
-    status = AcpiGetTable(ACPI_SIG_FACS, 0, (ACPI_TABLE_HEADER **)&facs);
-    if (ACPI_FAILURE(status)) {
-	device_printf(dev, "couldn't get FACS: %s\n",
-		      AcpiFormatException(status));
-	error = ENXIO;
-	goto out;
-    }
-    if (facs->Flags & ACPI_FACS_S4_BIOS_PRESENT)
+    if (AcpiGbl_FACS->Flags & ACPI_FACS_S4_BIOS_PRESENT)
 	sc->acpi_s4bios = 1;
 
     /*
