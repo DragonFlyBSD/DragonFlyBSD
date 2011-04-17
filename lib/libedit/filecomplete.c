@@ -27,7 +27,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: filecomplete.c,v 1.11 2008/04/29 06:53:01 martin Exp $
- * $DragonFly: src/lib/libedit/filecomplete.c,v 1.3 2008/05/17 22:48:04 pavalos Exp $
  */
 
 #include "config.h"
@@ -74,12 +73,7 @@ static char break_chars[] = { ' ', '\t', '\n', '"', '\\', '\'', '`', '@', '$',
 char *
 fn_tilde_expand(const char *txt)
 {
-	/*
-		XXX: replace the next line with this line when getpwuid_r or
-		getpwnam_r become available:
 	struct passwd pwres, *pass;
-	*/
-	struct passwd *pass;
 	char *temp;
 	size_t len = 0;
 	char pwbuf[1024];
@@ -101,22 +95,11 @@ fn_tilde_expand(const char *txt)
 		temp[len - 2] = '\0';
 	}
 	if (temp[0] == 0) {
-		/*
-			XXX: use the following instead of the next line when
-			getpwuid_r is available:
 		if (getpwuid_r(getuid(), &pwres, pwbuf, sizeof(pwbuf), &pass) != 0)
 			pass = NULL;
-		*/
-		pass = getpwuid(getuid());
 	} else {
-		
-		/*
-			XXX: use the following instead of the next line when
-			getpwname_r is available:
 		if (getpwnam_r(temp, &pwres, pwbuf, sizeof(pwbuf), &pass) != 0)
 			pass = NULL;
-		*/
-		pass = getpwnam(temp);
 	}
 	free(temp);		/* value no more needed */
 	if (pass == NULL)
