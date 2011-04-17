@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/usr.sbin/vknetd/vknetd.c,v 1.2 2008/06/02 20:03:22 dillon Exp $
  */
 /*
  * vknet [-cdU] [-b bridgeN] [-p socket_path] [-t tapN] [address/cidrbits]
@@ -65,7 +63,7 @@ main(int ac, char **av)
 	const char *pathName = "/var/run/vknet";
 	const char *tapName = "auto";
 	const char *bridgeName = NULL;
-	int net_fd, tap_fd;
+	int net_fd;
 	int connectOpt = 0;
 	int c;
 	ioinfo_t tap_info;

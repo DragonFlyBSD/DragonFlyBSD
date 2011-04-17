@@ -1,10 +1,7 @@
-# $DragonFly: src/usr.sbin/vknetd/Makefile,v 1.1 2008/05/27 01:58:01 dillon Exp $
-#
-
 PROG=	vknetd
 MAN=	vknetd.8
-CFLAGS += -DUSE_PTHREADS=1 -pthread
+CFLAGS+=-DUSE_PTHREADS=1
+LDADD=	-pthread
 SRCS=	vknetd.c bridge.c mac.c filter.c
-WARNS?=	1
 
 .include <bsd.prog.mk>
