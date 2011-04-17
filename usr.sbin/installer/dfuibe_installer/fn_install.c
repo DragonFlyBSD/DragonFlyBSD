@@ -556,8 +556,6 @@ fn_install_os(struct i_fn_args *a)
 				    subpartition_get_device_name(sp),
 				    subpartition_get_mountpoint(sp),
 				    a->os_root);
-				command_add(cmds, "%s%s 'kern.emergency_intr_enable=1' >>%smnt/boot/loader.conf",
-				    a->os_root, cmd_name(a, "ECHO"), a->os_root);
 			} else if (subpartition_is_tmpfsbacked(sp)) {
 				command_add(cmds, "%s%s 'tmpfs\t\t\t%s\t\ttmpfs\trw,-s%luM\t1\t1' >>%smnt/etc/fstab",
 				    a->os_root, cmd_name(a, "ECHO"),
@@ -589,8 +587,6 @@ fn_install_os(struct i_fn_args *a)
 				    subpartition_get_device_name(sp),
 				    subpartition_get_mountpoint(sp),
 				    a->os_root);
-				command_add(cmds, "%s%s 'kern.emergency_intr_enable=1' >>%smnt/boot/loader.conf",
-				    a->os_root, cmd_name(a, "ECHO"), a->os_root);
 				if (subpartition_is_encrypted(sp)) {
 					command_add(cmds,
 					    "%s%s 'vfs.root.mountfrom=\"ufs:md0s0\"' >>%smnt/boot/loader.conf",
