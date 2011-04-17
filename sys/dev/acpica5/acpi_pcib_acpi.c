@@ -38,7 +38,7 @@
 #include "acpi.h"
 #include <dev/acpica5/acpivar.h>
 
-#include <bus/pci/i386/pci_cfgreg.h>
+#include <bus/pci/pci_cfgreg.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcib_private.h>
 #include "pcib_if.h"
@@ -130,14 +130,18 @@ MODULE_DEPEND(acpi_pcib, acpi, 1, 1, 1);
 static int
 acpi_pcib_acpi_probe(device_t dev)
 {
+    int error;
+
     static char *pcib_ids[] = { "PNP0A03", NULL };
 
     if (acpi_disabled("pcib") ||
 	ACPI_ID_PROBE(device_get_parent(dev), dev, pcib_ids) == NULL)
 	return (ENXIO);
 
-    if (pci_cfgregopen() == 0)
-	return (ENXIO);
+    error = acpi_pcib_probe(dev);
+    if (error)
+	return (error);
+
     device_set_desc(dev, "ACPI Host-PCI bridge");
     return (0);
 }

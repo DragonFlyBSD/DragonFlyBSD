@@ -40,6 +40,7 @@
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
+#include <bus/pci/pci_cfgreg.h>
 #include "pcib_if.h"
 
 /* Hooks for the ACPI CA debugging infrastructure. */
@@ -133,14 +134,10 @@ acpi_pcib_attach(device_t dev, ACPI_BUFFER *prt, int busno)
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
-    /*
-     * Don't attach if we're not really there.
-     *
-     * XXX: This isn't entirely correct since we may be a PCI bus
-     * on a hot-plug docking station, etc.
-     */
-    if (!acpi_DeviceIsPresent(dev))
-	return_VALUE(ENXIO);
+    if (!acpi_DeviceIsPresent(dev)) {
+    	/* Caller should already have checked it */
+	panic("%s device is not present\n", __func__);
+    }
 
     ACPI_SERIAL_INIT(pcib);
 
@@ -286,4 +283,22 @@ out:
     ACPI_SERIAL_END(pcib);
 
     return_VALUE (interrupt);
+}
+
+int
+acpi_pcib_probe(device_t dev)
+{
+    /*
+     * Don't attach if we're not really there.
+     *
+     * XXX: This isn't entirely correct since we may be a PCI bus
+     * on a hot-plug docking station, etc.
+     */
+    if (!acpi_DeviceIsPresent(dev))
+	return ENXIO;
+
+    if (pci_cfgregopen() == 0)
+	return ENXIO;
+
+    return 0;
 }

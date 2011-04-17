@@ -39,7 +39,6 @@
 #include <dev/acpica5/acpivar.h>
 #include <dev/acpica5/acpi_pcibvar.h>
 
-#include <bus/pci/i386/pci_cfgreg.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcib_private.h>
@@ -111,14 +110,16 @@ MODULE_DEPEND(acpi_pcib, acpi, 1, 1, 1);
 static int
 acpi_pcib_pci_probe(device_t dev)
 {
+    int error;
+
     if (pci_get_class(dev) != PCIC_BRIDGE ||
 	pci_get_subclass(dev) != PCIS_BRIDGE_PCI ||
 	acpi_disabled("pci"))
 	return (ENXIO);
-    if (acpi_get_handle(dev) == NULL)
-	return (ENXIO);
-    if (pci_cfgregopen() == 0)
-	return (ENXIO);
+
+    error = acpi_pcib_probe(dev);
+    if (error)
+	return (error);
 
     device_set_desc(dev, "ACPI PCI-PCI bridge");
     return (-100);
