@@ -1,3 +1,1 @@
-# $DragonFly: src/lib/pam_module/Makefile.shlib,v 1.1 2005/07/08 15:42:01 joerg Exp $
-
 MODULE_SHLIB_MAJOR=	1
