@@ -1607,8 +1607,7 @@ acpi_probe_child(ACPI_HANDLE handle, UINT32 level, void *context, void **status)
     ACPI_HANDLE h;
     device_t bus, child;
     int order;
-    char *handle_str, **search;
-    static char *scopes[] = {"\\_PR_", "\\_TZ_", "\\_SI_", "\\_SB_", NULL};
+    char *handle_str;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
@@ -1624,23 +1623,23 @@ acpi_probe_child(ACPI_HANDLE handle, UINT32 level, void *context, void **status)
 	handle_str = acpi_name(handle);
 	switch (type) {
 	case ACPI_TYPE_DEVICE:
+	    /*
+	     * Since we scan from \, be sure to skip system scope objects.
+	     * \_SB_ and \_TZ_ are defined in ACPICA as devices to work around
+	     * BIOS bugs.  For example, \_SB_ is to allow \_SB_._INI to be run
+	     * during the intialization and \_TZ_ is to support Notify() on it.
+	     */
+	    if (strcmp(handle_str, "\\_SB_") == 0 ||
+		strcmp(handle_str, "\\_TZ_") == 0)
+		break;
+
+	    if (acpi_parse_prw(handle, &prw) == 0)
+		AcpiSetupGpeForWake(handle, prw.gpe_handle, prw.gpe_bit);
+
+	    /* FALLTHROUGH */
 	case ACPI_TYPE_PROCESSOR:
 	case ACPI_TYPE_THERMAL:
 	case ACPI_TYPE_POWER:
-	    /*
-	     * Since we scan from \, be sure to skip system scope objects.
-	     * At least \_SB and \_TZ are detected as devices (ACPI-CA bug?)
-	     */
-	    for (search = scopes; *search != NULL; search++) {
-		if (strcmp(handle_str, *search) == 0)
-		    break;
-	    }
-	    if (*search != NULL)
-		break;
-
-	    if (type == ACPI_TYPE_DEVICE && acpi_parse_prw(handle, &prw) == 0)
-		AcpiSetupGpeForWake(handle, prw.gpe_handle, prw.gpe_bit);
-
 	    /* 
 	     * Create a placeholder device for this node.  Sort the
 	     * placeholder so that the probe/attach passes will run
