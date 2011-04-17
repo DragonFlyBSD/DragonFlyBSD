@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kbdcontrol/kbdcontrol.c,v 1.30.2.2 2001/06/08 18:27:32 sobomax Exp $
- * $DragonFly: src/usr.sbin/kbdcontrol/kbdcontrol.c,v 1.5 2005/10/30 23:00:57 swildner Exp $
  */
 #include <sys/kbio.h>
 
@@ -99,12 +98,14 @@ int 		number;
 char 		letter;
 int		token;
 
-int		get_accent_definition_line(accentmap_t *);
-void	mux_keyboard(u_int op, char *kbd);
-int		get_key_definition_line(keymap_t *);
-void		usage(void);
+static int	get_accent_definition_line(accentmap_t *);
+static void	mux_keyboard(u_int op, char *kbd);
+static int	get_key_definition_line(keymap_t *);
+static void	usage(void);
 
-char *
+extern FILE *yyin;
+
+static const char *
 nextarg(int ac, char **av, int *indp, int oc)
 {
 	if (*indp < ac)
@@ -115,7 +116,7 @@ nextarg(int ac, char **av, int *indp, int oc)
 }
 
 
-char *
+static char *
 mkfullname(const char *s1, const char *s2, const char *s3)
 {
 	static char	*buf = NULL;
@@ -142,7 +143,7 @@ mkfullname(const char *s1, const char *s2, const char *s3)
 }
 
 
-int
+static int
 get_entry(void)
 {
 	switch ((token = yylex())) {
@@ -260,7 +261,7 @@ get_definition_line(FILE *fd, keymap_t *keymap, accentmap_t *accentmap)
 	return c;
 }
 
-int
+static int
 get_key_definition_line(keymap_t *map)
 {
 	int i, def, scancode;
@@ -287,7 +288,7 @@ get_key_definition_line(keymap_t *map)
 	return (scancode + 1);
 }
 
-int
+static int
 get_accent_definition_line(accentmap_t *map)
 {
 	int accent;
@@ -348,7 +349,7 @@ get_accent_definition_line(accentmap_t *map)
 	return (accent + 1);
 }
 
-void
+static void
 print_entry(FILE *fp, int value)
 {
 	int val = value & 0xFF;
@@ -470,7 +471,7 @@ print_entry(FILE *fp, int value)
 }
 
 
-void
+static void
 print_key_definition_line(FILE *fp, int scancode, struct keyent_t *key)
 {
 	int i;
@@ -506,7 +507,7 @@ print_key_definition_line(FILE *fp, int scancode, struct keyent_t *key)
 	}
 }
 
-void
+static void
 print_accent_definition_line(FILE *fp, int accent, struct acc_t *key)
 {
 	int c;
@@ -547,7 +548,7 @@ print_accent_definition_line(FILE *fp, int accent, struct acc_t *key)
 	fprintf(fp, "\n");
 }
 
-void
+static void
 dump_entry(int value)
 {
 	if (value & 0x100) {
@@ -662,7 +663,7 @@ dump_entry(int value)
 	}
 }
 
-void
+static void
 dump_key_definition(char *name, keymap_t *keymap)
 {
 	int	i, j;
@@ -690,7 +691,7 @@ dump_key_definition(char *name, keymap_t *keymap)
 	printf("} };\n\n");
 }
 
-void
+static void
 dump_accent_definition(char *name, accentmap_t *accentmap)
 {
 	int i, j;
@@ -734,16 +735,16 @@ dump_accent_definition(char *name, accentmap_t *accentmap)
 	printf("} };\n\n");
 }
 
-void
+static void
 load_keymap(char *opt, int dumponly)
 {
 	keymap_t keymap;
 	accentmap_t accentmap;
-	FILE	*fd;
+	FILE	*fd = NULL;
 	int	i;
-	char	*name, *cp;
-	char	*prefix[]  = {"", "", KEYMAP_PATH, KEYMAP_PATH, NULL};
-	char	*postfix[] = {"", ".kbd", "", ".kbd"};
+	char	*name = NULL, *cp;
+	const char *prefix[]  = {"", "", KEYMAP_PATH, KEYMAP_PATH, NULL};
+	const char *postfix[] = {"", ".kbd", "", ".kbd"};
 
 	for (i=0; prefix[i]; i++) {
 		name = mkfullname(prefix[i], opt, postfix[i]);
@@ -786,7 +787,7 @@ load_keymap(char *opt, int dumponly)
 	}
 }
 
-void
+static void
 print_keymap(void)
 {
 	keymap_t keymap;
@@ -813,7 +814,7 @@ print_keymap(void)
 }
 
 
-void
+static void
 load_default_functionkeys(void)
 {
 	fkeyarg_t fkey;
@@ -828,8 +829,8 @@ load_default_functionkeys(void)
 	}
 }
 
-void
-set_functionkey(char *keynumstr, char *string)
+static void
+set_functionkey(char *keynumstr, const char *string)
 {
 	fkeyarg_t fkey;
 
@@ -855,10 +856,10 @@ set_functionkey(char *keynumstr, char *string)
 }
 
 
-void
+static void
 set_bell_values(char *opt)
 {
-	int bell, duration, pitch;
+	int bell, duration = 0, pitch = 0;
 
 	bell = 0;
 	if (!strncmp(opt, "quiet.", 6)) {
@@ -896,7 +897,7 @@ badopt:
 }
 
 
-void
+static void
 set_keyrates(char *opt)
 {
 	int arg[2];
@@ -946,7 +947,7 @@ badopt:
 }
 
 
-void
+static void
 set_history(char *opt)
 {
 	int size;
@@ -960,18 +961,18 @@ set_history(char *opt)
 		warn("setting history buffer size");
 }
 
-static char *
+static const char *
 get_kbd_type_name(int type)
 {
 	static struct {
 		int type;
-		char *name;
+		const char *name;
 	} name_table[] = {
 		{ KB_84,	"AT 84" },
 		{ KB_101,	"AT 101/102" },
 		{ KB_OTHER,	"generic" },
 	};
-	int i;
+	size_t i;
 
 	for (i = 0; i < sizeof(name_table)/sizeof(name_table[0]); ++i) {
 		if (type == name_table[i].type)
@@ -980,7 +981,7 @@ get_kbd_type_name(int type)
 	return "unknown";
 }
 
-void
+static void
 show_kbd_info(void)
 {
 	keyboard_info_t info;
@@ -996,7 +997,7 @@ show_kbd_info(void)
 }
 
 
-void
+static void
 set_keyboard(char *device)
 {
 	keyboard_info_t info;
@@ -1031,7 +1032,7 @@ set_keyboard(char *device)
 }
 
 
-void
+static void
 release_keyboard(void)
 {
 	keyboard_info_t info;
@@ -1054,7 +1055,7 @@ release_keyboard(void)
 		warn("unable to release the keyboard");
 }
 
-void
+static void
 mux_keyboard(u_int op, char *kbd)
 {
 	keyboard_info_t	info;
@@ -1118,7 +1119,7 @@ mux_keyboard(u_int op, char *kbd)
 		warn("unable to (un)mux the keyboard");
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n",

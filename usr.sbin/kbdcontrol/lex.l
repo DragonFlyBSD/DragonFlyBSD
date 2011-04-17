@@ -26,13 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kbdcontrol/lex.l,v 1.11.2.1 2000/10/29 16:59:32 dwmalone Exp $
- * $DragonFly: src/usr.sbin/kbdcontrol/lex.l,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
 
 %{
-
 #include "lex.h"
 
+#define YY_NO_INPUT
+#define YY_NO_UNPUT
 %}
 
 D	[0-9]
