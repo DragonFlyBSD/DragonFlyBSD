@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/bitstring.h,v 1.1.1.1.14.1 2000/10/30 11:21:04 dwmalone Exp $
- * $DragonFly: src/include/bitstring.h,v 1.3 2007/04/18 18:39:11 swildner Exp $
  */
 
 #ifndef _BITSTRING_H_
@@ -148,34 +147,23 @@ typedef	unsigned char bitstr_t;
 	*(value) = _value; \
 } while (0)
 
-#define _fls(mask, value) do { \
-	int _fmask = (mask); \
-	int *_value = (value); \
-	int _bit = 0; \
-	if (_fmask == 0) { \
-		*(_value) = 0; \
-		break; \
-	} \
-	for (_bit = 1; _fmask != 1; _bit++) \
-		_fmask = (unsigned char) _fmask >> 1; \
-	*(_value) = _bit; \
-} while (0)
-
 				/* find last bit set in name */
-#define bit_fls(name, nbits, value) do { \
+#define	bit_fls(name, nbits, value) do { \
 	bitstr_t *_name = (name); \
-	int _nbits = (nbits); \
-	int _byte = _bit_byte(_nbits - 1); \
-	int *_value = (value); \
-	int _mask = 0;\
+	int _byte, _nbits = (nbits); \
+	int _startbyte = _bit_byte(_nbits - 1), _value = -1; \
 	if (_nbits > 0) \
-		for (; _byte >= 0; _byte--) { \
-			if (!_name[_byte]) \
-				continue; \
-			_fls(_name[_byte], &_mask); \
-			break; \
-		} \
-	*(_value) = (_mask * (_byte + 1)) - 1; \
+		for (_byte = _startbyte; _byte >= 0; --_byte) \
+			if (_name[_byte]) { \
+				bitstr_t _lb; \
+				_value = _byte << 3; \
+				for (_lb = _name[_byte]; _lb != 0x1; \
+				    ++_value, _lb >>= 1); \
+				break; \
+			} \
+	if (_value >= nbits) \
+		_value = -1; \
+	*(value) = _value; \
 } while (0)
 
 				/* find clear range of length len */
@@ -198,7 +186,7 @@ typedef	unsigned char bitstr_t;
 				continue; \
 			} \
 		} else { \
-			if (_tmplen >= 0) { \
+			if (_tmplen > 0) { \
 				if (bit_test((_name), _bit) == 0) { \
 					_tmplen--; \
 				} else { \
@@ -208,6 +196,7 @@ typedef	unsigned char bitstr_t;
 				} \
 			} else { \
 				*(_value) = _bit0; \
+                                break; \
 			} \
 		} \
 	} \
