@@ -46,6 +46,7 @@ void
 hammer_cmd_get_version(char **av, int ac)
 {
 	struct hammer_ioc_version version;
+	char wip[16];
 	int fd;
 
 	if (ac != 1)
@@ -66,9 +67,10 @@ hammer_cmd_get_version(char **av, int ac)
 		fprintf(stderr, "hammer version ioctl: %s\n", strerror(errno));
 		exit(1);
 	}
-	printf("min=%d wip=%d max=%d current=%d description=\"%s\"\n",
+	snprintf(wip, 16, "%d", version.wip_version);
+	printf("min=%d wip=%s max=%d current=%d description=\"%s\"\n",
 		version.min_version,
-		version.wip_version,
+	       (version.wip_version > version.max_version) ? "none" : wip,
 		version.max_version,
 		version.cur_version,
 		version.description
