@@ -1,16 +1,21 @@
-			    DRAGONFLY CDROM README FILE
+			    DRAGONFLY 'Live CD' README FILE
 
-    This CDROM boots DragonFly BSD.  Basically what you get is a full base
-    system on CD with certain critical directories, such as /tmp, remounted
-    read-write using MFS.  Your existing hard drive is not affected by
-    booting this CDROM.
+    This CD/DVD/USB stick boots DragonFly BSD.  Basically what you get is a
+    full base system on the media with certain critical directories, such as
+    /tmp, remounted read-write using TMPFS.  Your existing hard drive is not
+    affected by booting this media.
+
+    DragonFly 'Live CD' can be used from either CD, DVD or USB stick, in the
+    following the media is called 'CD' for brevity (nothing is specific to the
+    CD media).  The DragonFly 'Live CD' is used for both trying out DragonFly,
+    installing DragonFly and for emergency repair of DragonFly systems.
 
     NOTE!!! DRAGONFLY IS UNDERGOING DEVELOPMENT AND IS CONSIDERED
     EXPERIMENTAL!  BSD RELATED EXPERIENCE IS RECOMMENDED WHEN USING
-    THIS CDROM.
+    THIS CD.
 
     If you just want to play with DragonFly and not mess with your hard disk,
-    this CDROM boots into a fully operational console-based system, though
+    this CD boots into a fully operational console-based system, though
     without swap it should be noted that you are limited by available memory.
     It is a good idea to test your hardware for compatibility from a CD boot
     before spending time installing the dist on your hard disk.
@@ -30,13 +35,13 @@
     To set this up manually is a bit of work, but much of it can be automated
     by writing a couple of lines into a configuration file on a floppy disk
     or USB pendrive, and inserting or attaching that to the computer before
-    booting the CDROM.  See the file /etc/defaults/pfi.conf for more info.
+    booting the CD.  See the file /etc/defaults/pfi.conf for more info.
 
     rconfig is a client/server protocol which requires a server (typically on
     the same network).  An example server setup can be found in
     /usr/share/examples/rconfig.  If you have multiple machines you can setup
     an installation script and run rconfig on a server and then install the
-    clients from CD boot with network connectivity (e.g. dhclient <blah>)
+    clients from CD boot with network connectivity (e.g. 'dhclient <if>')
     and then, typically, 'rconfig -a'.
 
     You can also just boot from the CD, login as 'root' to get a shell
@@ -47,18 +52,17 @@
 				  CONSOLE OPERATION
 
     The second stage boot (boot2) and third stage boot (loader) default
-    to dual serial & video console I/O.  The system will also throw a login
-    prompt up on ttyd0 by default.  You can direct the boot output
+    to dual serial & video console I/O.  You can direct the boot output
     to just the serial port by creating the file /boot.config with the
     line '-h', or to just the screen using '-V'.  If you wish to leave
     boot2 in dual I/O mode but want the third stage to use just one or the
     other, you can set the 'console' environment variable in /boot/loader.conf
-    to either 'console=vidconsole' or 'console=comconsole'.
+    to either 'vidconsole' or 'comconsole'.
 
     The dual serial port operation might have to be disabled if you use
     the serial port for things like UPSs.  Also note that by default
-    the CD will run a login prompt on the serial port after booting is
-    complete.  This can be disabled by editing the 'ttyd0' line in /etc/ttys
+    the CD will not run a login prompt on the serial port after booting is
+    complete.  This can be enabled by editing the 'ttyd0' line in /etc/ttys
     after installation is complete.
 
     Note that the kernel itself currently only supports one console or the
@@ -70,18 +74,25 @@
 
     Manual installation of DragonFly onto an HD involves the following sequence
     of commands.  You must be familiar with BSD style UNIX systems to do
-    installations manually.  The primary IDE hard drive is typically 'ad0'
-    and DragonFly is typically installed onto the first free slice
-    (ad0s1 if disk is empty, ad0s2 if your first slice contains
-    another OS, etc).  Be careful to substitute the correct partition name
-    in the steps below.
+    installations manually.  The primary IDE hard drive is typically 'ad0',
+    if using AHCI, SILI or SCSI HD controller it is typically 'da0', and if
+    using USB HD controller it is typically 'da8'.
+    DragonFly is typically installed onto the first free slice (ad0s1 if disk
+    is empty, ad0s2 if your first slice contains another OS, etc).  Be careful
+    to substitute the correct disk and partition name in the steps below.
+
+    You need to decide which file system to use for DragonFly install: UFS or
+    HAMMER.  UFS is the classical BSD file system and HAMMER is a newer and
+    more feature rich file system, HAMMER needs 50GB space at minimum, see
+    'man HAMMER'.  The installation is somewhat different depending on the
+    file system used.
 
 	# OPTIONAL STEP: If your disk is already partitioned and you
 	# have a spare primary partition on which you want to install
-	# Dragonfly, skip this step.  However, sometimes old boot
+	# DragonFly, skip this step.  However, sometimes old boot
 	# blocks or cruft in the boot area can interfere with the
 	# initialization process.  A cure is to zero out the start of
-	# the disk before running fdisk.
+	# the disk before running fdisk.  Replace 'ad0' with the choosen disk.
 	#
 	# WARNING: This COMPLETELY WIPES and repartitions your hard drive.
 	#
@@ -90,9 +101,9 @@
 	fdisk -B ad0
 
 	# If you didn't zero the disk as above, but have a spare slice
-	# whose partition type you want to change to UFS, use fdisk(8).
+	# whose partition type you want to change to DragonFly, use fdisk(8).
 
-	# This installs boot blocks onto the HD and verifies their 
+	# This installs boot blocks onto the HD and verifies their
 	# installation.  See note just above the 'reboot' below for
 	# things to try if it does not boot from your HD.  If you
 	# already have a multi-OS bootloader installed you can skip
@@ -112,31 +123,44 @@
 	# Edit the label.  Create various standard partitions.  The typical
 	# configuration is:
 	#
-	#	ad0s1a	256m		This will be your /
-	#	ad0s1b	1024m		This will be your swap
+	# UFS (fstype 4.2BSD):
+	#	ad0s1a	768m		This will be your /
+	#	ad0s1b	4096m		This will be your swap
 	#	ad0s1c			(leave alone)
-	#	ad0s1d	256m		This will be your /var
-	#	ad0s1e	256m		This will be your /tmp
+	#	ad0s1d	512m		This will be your /var
+	#	ad0s1e	512m		This will be your /tmp
 	#	ad0s1f	8192m		This will be your /usr (min 4096m)
 	#	ad0s1g	*		All remaining space to your /home
+	#
+	# HAMMER (fstype HAMMER):
+	#	ad0s1a  768m		This will be your /boot; UFS
+	#       ad0s1b	4096m		This will be your swap
+	#	ad0s1d	*		All remaining space to your /; HAMMER
 	#
 	# An example disklabel can be found in /etc/disklabel.ad0s1.
 	#
 	disklabel -e ad0s1
 
-        # Newfs (format) the various filesystems.  Softupdates is not 
-	# normally enabled on the root filesystem because large kernel or
-	# world installs/upgrades can run it out of space due to softupdate's
-	# delayed bitmap freeing code.
+	# Newfs (format) the various file systems.
+	#
+	# UFS:
+	# Softupdates is not normally enabled on the root file system because
+	# large kernel or world installs/upgrades can run it out of space due
+	# to softupdate's delayed bitmap freeing code.
 	#
 	newfs /dev/ad0s1a
 	newfs -U /dev/ad0s1d
 	newfs -U /dev/ad0s1e
 	newfs -U /dev/ad0s1f
 	newfs -U /dev/ad0s1g
-
-	# Mount the filesystems.
 	#
+	# HAMMER:
+	newfs /dev/ad0s1a
+	newfs_hammer -L ROOT /dev/ad0s1d
+
+	# Mount the file systems.
+	#
+	# UFS:
 	mount /dev/ad0s1a /mnt
 	mkdir /mnt/var
 	mkdir /mnt/tmp
@@ -146,15 +170,51 @@
 	mount /dev/ad0s1e /mnt/tmp
 	mount /dev/ad0s1f /mnt/usr
 	mount /dev/ad0s1g /mnt/home
+	#
+	# HAMMER:
+	mount -t hammer /dev/ad0s1d /mnt
+	mkdir /mnt/boot
+	mount /dev/ad0s1a /mnt/boot
+	# Make HAMMER pseudo file systems (PFSs), and NULL mount them.
+	# All PFSs share all space in a HAMMER file system, but policy on how
+	# often to make snapshots, how long to keep them and general ability to
+	# delete them is per PFS.  Also mirroring (e.g. for backup) is done
+	# per PFS.  Typical setup is:
+	#
+	mkdir /mnt/pfs
+	hammer pfs-master /mnt/pfs/var
+	hammer pfs-master /mnt/pfs/var.crash
+	hammer pfs-master /mnt/pfs/tmp
+	hammer pfs-master /mnt/pfs/usr
+	hammer pfs-master /mnt/pfs/usr.obj
+	hammer pfs-master /mnt/pfs/home
+	mkdir /mnt/var
+	mkdir /mnt/tmp
+	mkdir /mnt/usr
+	mkdir /mnt/home
+	mount -t null /mnt/pfs/var /mnt/var
+	mount -t null /mnt/pfs/tmp /mnt/tmp
+	mount -t null /mnt/pfs/usr /mnt/usr
+	mount -t null /mnt/pfs/home /mnt/home
+	mkdir /mnt/var/crash
+	mkdir /mnt/usr/obj
+	mount -t null /mnt/pfs/var.crash /mnt/var/crash
+	mount -t null /mnt/pfs/usr.obj /mnt/usr/obj
+	# add root file system to /boot/loader.conf
+	echo 'vfs.root.mountfrom="hammer:ad0s1d"' >> /mnt/boot/loader.conf
 
-	# Copy the CDRom onto the target.  cpdup won't cross mount boundaries
-	# on the source (e.g. the MFS remounts) so it takes a few commands.
+
+	# UFS & HAMMER:
+	# Copy the CD onto the target.  cpdup won't cross mount boundaries
+	# on the source (e.g. the TMPFS remounts) or destination, so it takes
+	# a few commands.
 	#
 	# Note that /etc contains the config files used for booting from the
-	# CDROM itself, and /etc.hdd contains those for booting off a
+	# CD itself, and /etc.hdd contains those for booting off a
 	# hard disk.  So it's the latter that you want to copy to /mnt/etc.
 	#
 	cpdup / /mnt
+	cpdup /boot /mnt/boot
 	cpdup /var /mnt/var
 	cpdup /etc.hdd /mnt/etc
 	cpdup /usr /mnt/usr
@@ -177,7 +237,7 @@
 	# it to /etc so you can get at it from your backups.  You do intend
 	# to backup your system, yah? :-)  (This isn't critical but it's a
 	# good idea).
-	# 
+	#
 	disklabel ad0s1 > /mnt/etc/disklabel.ad0s1
 
 
@@ -189,7 +249,7 @@
     to mount the CD's root partition.
 
 	# Remove or edit /mnt/boot/loader.conf so the kernel does not try
-	# to obtain the root filesystem from the CD, and remove the other
+	# to obtain the root file system from the CD, and remove the other
 	# cruft that was sitting on the CD that you don't need on the HD.
 	#
 	rm /mnt/boot/loader.conf
@@ -217,7 +277,7 @@
 
 				    THE ACPI ISSUE
 
-    You will notice in the boot menu that you can choose to boot with or 
+    You will notice in the boot menu that you can choose to boot with or
     without ACPI.  ACPI is an infrastructure designed to allow an operating
     system to configure hardware devices associated with the system.
     Unfortunately, as usual, PC BIOS makers have royally screwed up the
@@ -241,7 +301,7 @@
     Once you have a working HD based system you can clean up /etc/rc.conf
     to enable things like cron, sendmail, setup your networking, and so
     forth.  If 'ifconfig' does not show your networking device you could
-    try to kldload it from /modules.  With a recognized network device
+    try to kldload it from /boot/kernel.  With a recognized network device
     you can ifconfig its IP address or, if you have a DHCP server on your
     network, use 'dhclient <interfacename>' to obtain an IP address from
     the network.
@@ -257,8 +317,8 @@
 
     cd /usr/src
     make buildworld
-    make buildkernel KERNCONF=<KERNELNAME>
-    make installkernel KERNCONF=<KERNELNAME>
+    make KERNCONF=<KERNELNAME> buildkernel
+    make KERNCONF=<KERNELNAME> installkernel
     make installworld
 
     You will also want to run the 'upgrade' target to upgrade your /etc
@@ -281,39 +341,54 @@
 		OBTAINING A PKGSRC TREE TO BUILD/INSTALL PACKAGES
 
     In order to obtain a reasonably current snapshot of the pkgsrc tree, use
-    the tarball from NetBSD:
+    our repo:
 
-    fetch -o /tmp/pkgsrc.tar.gz ftp://ftp.NetBSD.org/pub/NetBSD/packages/pkgsrc.tar.gz
-    cd /usr; tar -xzf /tmp/pkgsrc.tar.gz; chown -R root:wheel pkgsrc
+    cd /usr
+    make help
+    make pkgsrc-create
 
-    This tree can then be kept up to date with cvs update:
+    This tree can then be kept up to date with:
 
-    cd /usr/pkgsrc; cvs up
+    cd /usr
+    make pkgsrc-update
 
 
-			EMERGENCY RECOVERY FROM THE CD
+			EMERGENCY RECOVERY FROM THE 'Live CD'
 
     Lets say you blew up your kernel or something else in / and you need to
-    boot the CD to fix it.  Remember that you have a fully operational 
-    system when booting the CD, but that you have to fsck and mount your
+    boot the 'Live CD' to fix it.  Remember that you have a fully operational
+    system when booting the 'Live CD', but that you have to fsck and mount your
     hard drive (typically onto /mnt) to get at the contents of your HD.
 
-    Your HD is typically an IDE hard drive, so the device is typically
-    /dev/ad0.  DragonFly is typically on the first slice, which is
-    /dev/ad0s1, and the root partition is always in partition 'a',
-    which is /dev/ad0s1a.
+    Your HD is typically an IDE hard drive, so the device is typically 'ad0',
+    if using AHCI, SILI or SCSI HD controller it is typically 'da0', and if
+    using USB HD controller it is typically 'da8'.  Steps below will use 'ad0',
+    be careful to substitute the correct disk name below.
 
-    # fsck root before trying to mount it.  
+    DragonFly is typically on the first slice, which is /dev/ad0s1.  For UFS
+    setup the root partition is always in partition 'a', which is /dev/ad0s1a.
+    For HAMMER setup the typical setup is that boot partition is partition 'a',
+    and root partition is partition 'd'.
+
+    # UFS:
+    # fsck root before trying to mount it.
     fsck /dev/ad0s1a
     # mount root read-write onto /mnt
     mount /dev/ad0s1a /mnt
+    #
+    # HAMMER:
+    # fsck boot before trying to mount it.
+    fsck /dev/ad0s1a
+    # mount root read-write onto /mnt
+    mount -t hammer /dev/ad0s1d /mnt
+    # mount boot read-write onto /mnt/boot
+    mount /dev/ad0s1a /mnt/boot
+    #
     # copy files from the CD as appropriate to make it possible to boot
-    # from your HD again.  Note that /mnt/kernel may be flags-protected.
-    chflags noschg /mnt/kernel
-    cp /kernel /mnt/kernel
-    cp /modules/* /mnt/modules/
+    # from your HD again.  Note that /mnt/boot/kernel/kernel may be
+    # flags-protected.
+    chflags noschg /mnt/boot/kernel/kernel
+    cp /boot/kernel/* /mnt/boot/kernel
 
     If you want to mount other partitions from your HD but have forgotten
-    what they are, simply cat /mnt/etc/fstab after mounting the root
-    partition.
-
+    what they are, simply cat /mnt/etc/fstab after mounting the root partition.
