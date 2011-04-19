@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd April 8, 2010
-.Os
+.Dd April 19, 2011
 .Dt HAMMER 5
+.Os
 .Sh NAME
 .Nm HAMMER
 .Nd HAMMER file system
@@ -40,7 +40,7 @@ To compile this driver into the kernel,
 place the following line in your
 kernel configuration file:
 .Bd -ragged -offset indent
-.Cd options HAMMER
+.Cd "options HAMMER"
 .Ed
 .Pp
 Alternatively, to load the driver as a
@@ -63,11 +63,15 @@ and is intended to replace
 .Xr ffs 5
 as the default file system for
 .Dx .
+.Pp
 Among its features are instant crash recovery,
 large file systems spanning multiple volumes,
 data integrity checking,
-fine grained history retention,
-mirroring capability, and pseudo file systems.
+data deduplication,
+fine grained history retention and snapshots,
+pseudo-filesystems (PFSs),
+mirroring capability and
+unlimited number of files and links.
 .Pp
 All functions related to managing
 .Nm
@@ -75,6 +79,7 @@ file systems are provided by the
 .Xr newfs_hammer 8 ,
 .Xr mount_hammer 8 ,
 .Xr hammer 8 ,
+.Xr sysctl 8 ,
 .Xr chflags 1 ,
 and
 .Xr undo 1
@@ -88,11 +93,18 @@ For some common usages of
 see the
 .Sx EXAMPLES
 section below.
+.Pp
+Description of
+.Nm
+features:
 .Ss Instant Crash Recovery
 After a non-graceful system shutdown,
 .Nm
 file systems will be brought back into a fully coherent state
 when mounting the file system, usually within a few seconds.
+.Pp
+Related commands:
+.Xr mount_hammer 8
 .Ss Large File Systems & Multi Volume
 A
 .Nm
@@ -110,6 +122,15 @@ For volumes over 2 TB in size
 and
 .Xr disklabel64 8
 normally need to be used.
+.Pp
+Related
+.Xr hammer 8
+commands:
+.Cm volume-add ,
+.Cm volume-del ,
+.Cm volume-list ;
+see also
+.Xr newfs_hammer 8
 .Ss Data Integrity Checking
 .Nm
 has high focus on data integrity,
@@ -129,30 +150,51 @@ and piping it to something like
 .Xr md5 1
 will yield a consistent result.
 The consistency is also retained on mirroring targets.
+.Ss Data Deduplication
+To save disk space data deduplication can be used.
+Data deduplication will identify data blocks which occur multiple times
+and only store one copy, multiple reference will be made to this copy.
+.Pp
+Related
+.Xr hammer 8
+commands:
+.Cm dedup ,
+.Cm dedup-simulate ,
+.Cm cleanup ,
+.Cm config
 .Ss Transaction IDs
 The
 .Nm
-file system uses 64 bit, hexadecimal transaction IDs to refer to historical
+file system uses 64-bit transaction ids to refer to historical
 file or directory data.
-An ID has the
-.Xr printf 3
-format
-.Li %#016llx ,
+Transaction ids used by
+.Nm
+are monotonically increasing over time.
+In other words:
+when a transaction is made,
+.Nm
+will always use higher transaction ids for following transactions.
+A transaction id is given in hexadecimal format
+.Li 0x016llx ,
 such as
 .Li 0x00000001061a8ba6 .
 .Pp
 Related
 .Xr hammer 8
 commands:
-.Ar snapshot ,
-.Ar synctid
+.Cm snapshot ,
+.Cm snap ,
+.Cm snaplo ,
+.Cm snapq ,
+.Cm snapls ,
+.Cm synctid
 .Ss History & Snapshots
 History metadata on the media is written with every sync operation, so that
 by default the resolution of a file's history is 30-60 seconds until the next
 prune operation.
-Prior versions of files or directories are generally accessible by appending
-.Li @@
-and a transaction ID to the name.
+Prior versions of files and directories are generally accessible by appending
+.Ql @@
+and a transaction id to the name.
 The common way of accessing history, however, is by taking snapshots.
 .Pp
 Snapshots are softlinks to prior versions of directories and their files.
@@ -160,13 +202,23 @@ Their data will be retained across prune operations for as long as the
 softlink exists.
 Removing the softlink enables the file system to reclaim the space
 again upon the next prune & reblock operations.
+In
+.Nm
+Version 3+ snapshots are also maintained as file system meta-data.
 .Pp
 Related
 .Xr hammer 8
 commands:
-.Ar cleanup ,
-.Ar history ,
-.Ar snapshot ;
+.Cm cleanup ,
+.Cm history ,
+.Cm snapshot ,
+.Cm snap ,
+.Cm snaplo ,
+.Cm snapq ,
+.Cm snaprm ,
+.Cm snapls ,
+.Cm config ,
+.Cm viconfig ;
 see also
 .Xr undo 1
 .Ss Pruning & Reblocking
@@ -181,7 +233,7 @@ Reblocking will reorder all elements and thus defragment the file system and
 free space for reuse.
 After pruning a file system must be reblocked to recover all available space.
 Reblocking is needed even when using the
-.Ar nohistory
+.Cm nohistory
 .Xr mount_hammer 8
 option or
 .Xr chflags 1
@@ -190,61 +242,105 @@ flag.
 Related
 .Xr hammer 8
 commands:
-.Ar cleanup ,
-.Ar snapshot ,
-.Ar prune ,
-.Ar prune-everything ,
-.Ar rebalance ,
-.Ar reblock ,
-.Ar reblock-btree ,
-.Ar reblock-inodes ,
-.Ar reblock-dirs ,
-.Ar reblock-data
-.Ss Mirroring & Pseudo File Systems
-In order to allow inode numbers to be duplicated on the slaves
-.Nm Ap s
-mirroring feature uses
-.Dq Pseudo File Systems
-(PFSs).
+.Cm cleanup ,
+.Cm snapshot ,
+.Cm prune ,
+.Cm prune-everything ,
+.Cm rebalance ,
+.Cm reblock ,
+.Cm reblock-btree ,
+.Cm reblock-inodes ,
+.Cm reblock-dirs ,
+.Cm reblock-data
+.Ss Pseudo-Filesystems (PFSs)
+A pseudo-filesystem, PFS for short, is a sub file system in a
+.Nm
+file system.
+Each PFS has independent inode numbers.
+All disk space in a
+.Nm
+file system is shared between all PFSs in it,
+so each PFS is free to use all remaining space.
 A
 .Nm
-file system supports up to 65535 PFSs.
-Multiple slaves per master are supported, but multiple masters per slave
-are not.
-Slaves are always read-only.
+file system supports up to 65536 PFSs.
+The root of a
+.Nm
+file system is PFS# 0, it is called the root PFS and is always a master PFS.
+.Pp
+A PFS can be either master or slave.
+Slaves are always read-only,
+so they can't be updated by normal file operations, only by
+.Xr hammer 8
+operations like mirroring and pruning.
 Upgrading slaves to masters and downgrading masters to slaves are supported.
 .Pp
 It is recommended to use a
 .Nm null
-mount to access a PFS;
+mount to access a PFS, except for root PFS;
 this way no tools are confused by the PFS root being a symlink
 and inodes not being unique across a
 .Nm
 file system.
 .Pp
+Many
+.Xr hammer 8
+operations operates per PFS,
+this includes mirroring, offline deduping, pruning, reblocking and rebalancing.
+.Pp
 Related
 .Xr hammer 8
 commands:
-.Ar pfs-master ,
-.Ar pfs-slave ,
-.Ar pfs-cleanup ,
-.Ar pfs-status ,
-.Ar pfs-update ,
-.Ar pfs-destroy ,
-.Ar pfs-upgrade ,
-.Ar pfs-downgrade ,
-.Ar mirror-copy ,
-.Ar mirror-stream ,
-.Ar mirror-read ,
-.Ar mirror-read-stream ,
-.Ar mirror-write ,
-.Ar mirror-dump
+.Cm pfs-master ,
+.Cm pfs-slave ,
+.Cm pfs-status ,
+.Cm pfs-update ,
+.Cm pfs-destroy ,
+.Cm pfs-upgrade ,
+.Cm pfs-downgrade ;
+see also
+.Xr mount_null 8
+.Ss Mirroring
+Mirroring is copying of all data in a file system, including snapshots
+and other historical data.
+In order to allow inode numbers to be duplicated on the slaves
+.Nm
+mirroring feature uses PFSs.
+A master or slave PFS can be mirrored to a slave PFS.
+I.e.\& for mirroring multiple slaves per master are supported,
+but multiple masters per slave are not.
+.Pp
+Related
+.Xr hammer 8
+commands:
+.Cm mirror-copy ,
+.Cm mirror-stream ,
+.Cm mirror-read ,
+.Cm mirror-read-stream ,
+.Cm mirror-write ,
+.Cm mirror-dump
+.Ss Fsync Flush Modes
+The
+.Nm
+file system implements several different
+.Fn fsync
+flush modes, the mode used is set via the
+.Va vfs.hammer.flush_mode
+sysctl, see
+.Xr hammer 8
+for details.
+.Ss Unlimited Number of Files and Links
+There is no limit on the number of files or links in a
+.Nm
+file system, apart from available disk space.
 .Ss NFS Export
 .Nm
 file systems support NFS export.
 NFS export of PFSs is done using
 .Nm null
-mounts.
+mounts (for file/directory in root PFS
+.Nm null
+mount is not needed).
 For example, to export the PFS
 .Pa /hammer/pfs/data ,
 create a
@@ -261,9 +357,22 @@ Only
 mount for PFS root
 (e.g.\&
 .Pa /hammer/data
-above)
-should be exported
-(subdirectory may be escaped if exported).
+above) should be exported (subdirectory may be escaped if exported).
+.Ss File System Versions
+As new features have been introduced to
+.Nm
+a version number has been bumped.
+Each
+.Nm
+file system has a version, which can be upgraded to support new features.
+.Pp
+Related
+.Xr hammer 8
+commands:
+.Cm version ,
+.Cm version-upgrade ;
+see also
+.Xr newfs_hammer 8
 .Sh EXAMPLES
 .Ss Preparing the File System
 To create and mount a
@@ -294,13 +403,13 @@ file systems need periodic clean up making snapshots, pruning and reblocking,
 in order to have access to history and file system not to fill up.
 For this it is recommended to use the
 .Xr hammer 8
-.Ar cleanup
+.Cm cleanup
 metacommand.
 .Pp
 By default,
 .Dx
 is set up to run
-.Nm hammer Ar cleanup
+.Nm hammer Cm cleanup
 nightly via
 .Xr periodic 8 .
 .Pp
@@ -317,7 +426,7 @@ file system every night at 2:15 for up to 5 minutes:
 The
 .Xr hammer 8
 utility's
-.Ar snapshot
+.Cm snapshot
 command provides several ways of taking snapshots.
 They all assume a directory where snapshots are kept.
 .Bd -literal -offset indent
@@ -343,21 +452,23 @@ file systems via
 and to keep them for 60 days.
 .Ss Pruning
 A snapshot directory is also the argument to the
-.Xr hammer 8 Ap s
-.Ar prune
+.Xr hammer 8
+.Cm prune
 command which frees historical data from the file system that is not
-pointed to by any snapshot link and is not from after the latest snapshot.
+pointed to by any snapshot link and is not from after the latest snapshot
+and is older than
+.Cm prune-min .
 .Bd -literal -offset indent
 rm /snaps/snap1
 hammer prune /snaps
 .Ed
 .Ss Mirroring
-Mirroring can be set up using
-.Nm Ap s
-pseudo file systems.
+Mirroring is set up using
+.Nm
+pseudo-filesystems (PFSs).
 To associate the slave with the master its shared UUID should be set to
 the master's shared UUID as output by the
-.Nm hammer Ar pfs-master
+.Nm hammer Cm pfs-master
 command.
 .Bd -literal -offset indent
 hammer pfs-master /home/pfs/master
@@ -369,11 +480,11 @@ The
 link is unusable for as long as no mirroring operation has taken place.
 .Pp
 To mirror the master's data, either pipe a
-.Fa mirror-read
+.Cm mirror-read
 command into a
-.Fa mirror-write
+.Cm mirror-write
 or, as a short-cut, use the
-.Fa mirror-copy
+.Cm mirror-copy
 command (which works across a
 .Xr ssh 1
 connection as well).
@@ -382,6 +493,18 @@ Initial mirroring operation has to be done to the PFS path (as
 can't access it yet).
 .Bd -literal -offset indent
 hammer mirror-copy /home/pfs/master /home/pfs/slave
+.Ed
+.Pp
+It is also possible to have the target PFS auto created
+by just issuing the same
+.Cm mirror-copy
+command, if the target PFS doesn't exist you will be prompted
+if you would like to create it.
+You can even omit the prompting by using the
+.Fl y
+flag:
+.Bd -literal -offset indent
+hammer -y mirror-copy /home/pfs/master /home/pfs/slave
 .Ed
 .Pp
 After this initial step
@@ -406,7 +529,9 @@ the directory
 .Pa /hammer/non-pfs
 without PFSs, and the PFS
 .Pa /hammer/pfs/data ,
-the latter is null mounted to
+the latter is
+.Nm null
+mounted to
 .Pa /hammer/data .
 .Pp
 Add to
@@ -425,6 +550,24 @@ Add to
 /hammer/non-pfs
 /hammer/data
 .Ed
+.Sh DIAGNOSTICS
+.Bl -diag
+.It "hammer: System has insuffient buffers to rebalance the tree.  nbuf < %d"
+Rebalancing a
+.Nm
+PFS uses quite a bit of memory and
+can't be done on low memory systems.
+It has been reported to fail on 512MB systems.
+Rebalancing isn't critical for
+.Nm
+file system operation;
+it is done by
+.Nm hammer
+.Cm rebalance ,
+often as part of
+.Nm hammer
+.Cm cleanup .
+.El
 .Sh SEE ALSO
 .Xr chflags 1 ,
 .Xr md5 1 ,
@@ -438,7 +581,9 @@ Add to
 .Xr hammer 8 ,
 .Xr mount_hammer 8 ,
 .Xr mount_null 8 ,
-.Xr newfs_hammer 8
+.Xr newfs_hammer 8 ,
+.Xr periodic 8 ,
+.Xr sysctl 8
 .Rs
 .%A Matthew Dillon
 .%D June 2008
@@ -455,7 +600,7 @@ Add to
 .%A Michael Neumann
 .%D January 2010
 .%O http://www.ntecs.de/sysarch09/HAMMER.pdf
-.%T "Slideshow for a presentation held at KIT (http://www.kit.edu)."
+.%T "Slideshow for a presentation held at KIT (http://www.kit.edu)"
 .Re
 .Sh FILESYSTEM PERFORMANCE
 The
@@ -482,9 +627,9 @@ kern.bioq_reorder_burst_interval: 60
 .Ed
 .Pp
 If a higher read priority is desired it is recommended that the
-.Fa kern.bioq_reorder_minor_interval
+.Va kern.bioq_reorder_minor_interval
 be increased to 15, 30, or even 60, and the
-.Fa kern.bioq_reorder_burst_bytes
+.Va kern.bioq_reorder_burst_bytes
 be decreased to 262144 or 524288.
 .Sh HISTORY
 The
@@ -496,6 +641,12 @@ file system first appeared in
 The
 .Nm
 file system was designed and implemented by
-.An Matthew Dillon Aq dillon@backplane.com .
+.An Matthew Dillon Aq dillon@backplane.com ,
+data deduplication was added by
+.An Ilya Dryomov .
 This manual page was written by
-.An Sascha Wildner .
+.An Sascha Wildner
+and updated by
+.An Thomas Nikolajsen .
+.Sh CAVEATS
+Data deduplication is considered experimental.
