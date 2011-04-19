@@ -1,12 +1,12 @@
 .\" Copyright (c) 2007 The DragonFly Project.  All rights reserved.
-.\" 
+.\"
 .\" This code is derived from software contributed to The DragonFly Project
 .\" by Matthew Dillon <dillon@backplane.com>
-.\" 
+.\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
-.\" 
+.\"
 .\" 1. Redistributions of source code must retain the above copyright
 .\"    notice, this list of conditions and the following disclaimer.
 .\" 2. Redistributions in binary form must reproduce the above copyright
@@ -16,7 +16,7 @@
 .\" 3. Neither the name of The DragonFly Project nor the names of its
 .\"    contributors may be used to endorse or promote products derived
 .\"    from this software without specific, prior written permission.
-.\" 
+.\"
 .\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 .\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 .\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -29,9 +29,9 @@
 .\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
-.\" 
+.\"
 .\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.10 2008/07/27 16:47:19 thomas Exp $
-.Dd September 28, 2009
+.Dd April 10, 2011
 .Dt NEWFS_HAMMER 8
 .Os
 .Sh NAME
@@ -76,7 +76,7 @@ or
 labels
 .Pc ,
 or in
-.Xr disklabel 5
+.Xr disklabel32 5
 partitions which do not overlap the label area (have a starting sector
 greater than 16).
 .Pp
@@ -85,7 +85,7 @@ file systems are designed for large storage systems, up to 1 Exabyte, and
 will not operate efficiently on small storage systems.
 The minimum recommended file system size is 50GB.
 .Nm HAMMER
-must reserve 500MB to 1GB of its storage for reblocking and UNDO.
+must reserve 500MB to 1GB of its storage for reblocking and UNDO/REDO.
 In addition,
 .Nm HAMMER
 file systems operating normally, with full history
@@ -113,9 +113,11 @@ The
 is specified in bytes.
 By default a boot area of approximately 4MB will be created.
 .It Fl f
-Force the creation of a
+Force operation.
+This is needed for the creation of a
 .Nm HAMMER
-file system with less than 100MB UNDO FIFO.
+file system less than 10GB size or
+with less than 500MB UNDO/REDO FIFO.
 This should not be used under normal circumstances.
 .It Fl m Ar savesize
 Specify a fixed area which
@@ -126,14 +128,14 @@ The
 .Ar savesize
 is specified in bytes.
 .It Fl u Ar undosize
-Specify the size of the fixed UNDO FIFO.
+Specify the size of the fixed UNDO/REDO FIFO.
 The
 .Ar undosize
 is specified in bytes.
 By default 0.1% of the root
 volume's size is used, with a reasonable minimum and a reasonable cap.
-The UNDO FIFO is used to sequence meta-data out to the media for instant
-crash recovery.
+The UNDO/REDO FIFO is used to sequence meta-data out to the media for
+instant crash recovery.
 .It Fl V Ar version
 Specify the
 .Nm HAMMER
@@ -156,7 +158,7 @@ The
 .Ar savesize
 and
 .Ar undosize
-can be given with a suffix of
+must be given with a suffix of
 .Cm K , M , G
 or
 .Cm T
@@ -174,7 +176,7 @@ on
 .Sh DIAGNOSTICS
 Exit status is 0 on success and 1 on error.
 .Sh SEE ALSO
-.Xr disklabel 5 ,
+.Xr disklabel32 5 ,
 .Xr disklabel64 5 ,
 .Xr HAMMER 5 ,
 .Xr fdisk 8 ,

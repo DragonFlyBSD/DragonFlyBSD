@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.44 2008/08/21 23:32:27 thomas Exp $
  */
 
@@ -105,13 +105,14 @@ main(int ac, char **av)
 					 HAMMER_LARGEBLOCK_SIZE,
 					 HAMMER_LARGEBLOCK_SIZE *
 					 HAMMER_UNDO_LAYER2, 2);
-			if (UndoBufferSize < 100*1024*1024 && ForceOpt == 0)
-				errx(1, "The minimum UNDO fifo size is 100MB\n");
-			if (UndoBufferSize < 100*1024*1024) {
-				fprintf(stderr, 
-					"WARNING: you have specified an UNDO "
-					"FIFO size less than 100MB, which may\n"
-					"lead to VFS panics.\n");
+			if (UndoBufferSize < 500*1024*1024 && ForceOpt == 0)
+				errx(1, "The minimum UNDO/REDO FIFO size is "
+					"500MB\n");
+			if (UndoBufferSize < 500*1024*1024) {
+				fprintf(stderr,
+					"WARNING: you have specified an "
+					"UNDO/REDO FIFO size less than 500MB,\n"
+					"which may lead to VFS panics.\n");
 			}
 			break;
 		case 'V':
@@ -248,13 +249,13 @@ main(int ac, char **av)
 	printf("NOTE: Please remember that you may have to manually set up a\n"
 		"cron(8) job to prune and reblock the filesystem regularly.\n"
 		"By default, the system automatically runs 'hammer cleanup'\n"
-		"on a nightly basis. The periodic.conf(5) variable\n"
+		"on a nightly basis.  The periodic.conf(5) variable\n"
 		"'daily_clean_hammer_enable' can be unset to disable this.\n"
 		"Also see 'man hammer' and 'man HAMMER' for more information.\n");
 	if (total < 10*GIG) {
-		printf("\nWARNING: The minimum UNDO/REDO FIFO is 500MB, you"
+		printf("\nWARNING: The minimum UNDO/REDO FIFO is 500MB, you "
 		       "really should not\n"
-		       " try to format a HAMMER filesystem this small\n");
+		       "try to format a HAMMER filesystem this small.\n");
 	}
 	if (total < 50*GIG) {
 		printf("\nWARNING: HAMMER filesystems less than 50GB are "
@@ -355,7 +356,7 @@ getsize(const char *str, int64_t minval, int64_t maxval, int powerof2)
 		/* not reached */
 	}
 	if ((powerof2 & 2) && (val & HAMMER_BUFMASK)) {
-		errx(1, "Value not an integral multiple of %dK: %s", 
+		errx(1, "Value not an integral multiple of %dK: %s",
 		     HAMMER_BUFSIZE / 1024, str);
 		/* not reached */
 	}
@@ -496,7 +497,9 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 	ondisk->vol_signature = HAMMER_FSBUF_VOLUME;
 
 	vol->vol_free_off = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
-	vol->vol_free_end = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, (ondisk->vol_buf_end - ondisk->vol_buf_beg) & ~HAMMER_LARGEBLOCK_MASK64);
+	vol->vol_free_end = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no,
+				(ondisk->vol_buf_end - ondisk->vol_buf_beg) &
+				~HAMMER_LARGEBLOCK_MASK64);
 
 	/*
 	 * Format the root volume.
@@ -514,9 +517,9 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		ondisk->vol0_stat_freebigblocks = freeblks;
 
 		freebytes = freeblks * HAMMER_LARGEBLOCK_SIZE64;
-		if (freebytes < 1*GIG && ForceOpt == 0) {
+		if (freebytes < 10*GIG && ForceOpt == 0) {
 			errx(1, "Cannot create a HAMMER filesystem less than "
-				"1GB unless you use -f.  HAMMER filesystems\n"
+				"10GB unless you use -f.  HAMMER filesystems\n"
 				"less than 50GB are not recommended\n");
 		}
 			
@@ -630,4 +633,3 @@ format_root(const char *label)
 
 	return(btree_off);
 }
-
