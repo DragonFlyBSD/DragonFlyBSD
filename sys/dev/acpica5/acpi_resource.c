@@ -128,7 +128,8 @@ acpi_config_intr(device_t dev, ACPI_RESOURCE *res)
     }
 
     if (irq == AcpiGbl_FADT.SciInterrupt) {
-	kprintf("acpi_config_intr: Skip SCI config\n");
+	if (bootverbose)
+		kprintf("acpi_config_intr: Skip SCI config\n");
 	return;
     }
 
