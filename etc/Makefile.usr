@@ -67,7 +67,7 @@ pkgsrc-create: pkgsrc-create-repo
 	cd ${.CURDIR}/pkgsrc && git pull
 
 pkgsrc-checkout:
-	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2010Q4
+	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2011Q1
 
 pkgsrc-update:
 	cd ${.CURDIR}/pkgsrc && git pull
