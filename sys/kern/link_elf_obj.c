@@ -660,6 +660,7 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 		error = ENOMEM;
 		goto out;
 	}
+	vm_object_reference(ef->object);
 	ef->address = (caddr_t) vm_map_min(&kernel_map);
 	ef->bytes = 0;
 
