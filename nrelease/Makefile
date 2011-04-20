@@ -114,11 +114,18 @@ ROOTSKELS?=	${REQ_ROOTSKELS}
 ISOFILE?=		${ISODIR}/dfly-gui.iso
 IMGFILE?=		${ISODIR}/dfly-gui.img
 
+# NOTE: order important, do not sort package list
+#
+# Apps we want in the gui build but which have problems building:
+#	chat/xchat	link error on x86-64, something about ___progname
+#
+#
 .if !make(nopkgs)
-PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-apps \
-			meta-pkgs/modular-xorg-drivers \
+PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-libs \
 			meta-pkgs/modular-xorg-fonts \
-			meta-pkgs/modular-xorg-libs \
+			meta-pkgs/modular-xorg-apps \
+			meta-pkgs/modular-xorg-drivers \
+			x11/libXinerama \
 			wm/fluxbox \
 			wm/fvwm \
 			www/firefox \
@@ -127,7 +134,6 @@ PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-apps \
 			editors/emacs \
 			editors/vim \
 			chat/irssi \
-			chat/xchat \
 			x11/modular-xorg-server \
 			x11/eterm \
 			lang/perl5 \
