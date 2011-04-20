@@ -52,9 +52,11 @@
 #include <sys/bus.h>
 #include <sys/uio.h>
 #include <sys/conf.h>
+#include <sys/event.h>
 #include <sys/device.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
+#include <sys/devfs.h>
 #include <sys/thread2.h>
 
 #include <bus/usb/usb.h>
@@ -94,6 +96,8 @@ struct ulpt_softc {
 	usbd_device_handle sc_udev;	/* device */
 	usbd_interface_handle sc_iface;	/* interface */
 	int sc_ifaceno;
+	cdev_t	sc_cdev1;
+	cdev_t	sc_cdev2;
 
 	int sc_out;
 	usbd_pipe_handle sc_out_pipe;	/* bulk out pipe */
@@ -114,6 +118,7 @@ struct ulpt_softc {
 
 	int sc_refcnt;
 	u_char sc_dying;
+	struct kqinfo	sc_wkq;
 	int vendor;
 	int product;
 };
@@ -122,6 +127,10 @@ static d_open_t ulptopen;
 static d_close_t ulptclose;
 static d_write_t ulptwrite;
 static d_ioctl_t ulptioctl;
+static d_kqfilter_t ulptkqfilter;
+
+static void ulpt_filt_detach(struct knote *);
+static int ulpt_filt(struct knote *, long);
 
 static struct dev_ops ulpt_ops = {
 	{ "ulpt", 0, 0 },
@@ -129,6 +138,7 @@ static struct dev_ops ulpt_ops = {
 	.d_close =	ulptclose,
 	.d_write =	ulptwrite,
 	.d_ioctl =	ulptioctl,
+	.d_kqfilter =	ulptkqfilter
 };
 
 void ulpt_disco(void *);
@@ -292,13 +302,12 @@ ulpt_attach(device_t self)
 	sc->sc_ifaceno = id->bInterfaceNumber;
 	sc->sc_udev = dev;
 
-	make_dev(&ulpt_ops, device_get_unit(self),
-		 UID_ROOT, GID_OPERATOR, 0644,
-		 "ulpt%d", device_get_unit(self));
-	make_dev(&ulpt_ops,
-		 device_get_unit(self)|ULPT_NOPRIME,
-		 UID_ROOT, GID_OPERATOR, 0644,
-		 "unlpt%d", device_get_unit(self));
+	sc->sc_cdev1 = make_dev(&ulpt_ops, device_get_unit(self),
+				UID_ROOT, GID_OPERATOR, 0644,
+				"ulpt%d", device_get_unit(self));
+	sc->sc_cdev2 = make_dev(&ulpt_ops, device_get_unit(self)|ULPT_NOPRIME,
+				UID_ROOT, GID_OPERATOR, 0644,
+				"unlpt%d", device_get_unit(self));
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
 			   sc->sc_dev);
@@ -335,9 +344,10 @@ ulpt_detach(device_t self)
 	crit_exit();
 
 	dev_ops_remove_minor(&ulpt_ops, /*-1, */device_get_unit(self));
+	devfs_assume_knotes(sc->sc_cdev1, &sc->sc_wkq);
+	devfs_assume_knotes(sc->sc_cdev2, &sc->sc_wkq);
 
-	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
-			   sc->sc_dev);
+	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev, sc->sc_dev);
 
 	return (0);
 }
@@ -656,6 +666,54 @@ ulptioctl(struct dev_ioctl_args *ap)
 	}
 
 	return (error);
+}
+
+static struct filterops ulpt_filtops =
+	{ FILTEROP_ISFD, NULL, ulpt_filt_detach, ulpt_filt };
+
+static int
+ulptkqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+	struct ulpt_softc *sc;
+	struct klist *klist;
+
+	ap->a_result = 0;
+
+	switch(kn->kn_filter) {
+	case EVFILT_WRITE:
+		sc = devclass_get_softc(ulpt_devclass, ULPTUNIT(dev));
+		kn->kn_fop = &ulpt_filtops;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
+	}
+
+	klist = &sc->sc_wkq.ki_note;
+	knote_insert(klist, kn);
+
+	return(0);
+}
+
+static void
+ulpt_filt_detach(struct knote *kn)
+{
+	struct ulpt_softc *sc = (struct ulpt_softc *)kn->kn_hook;
+	struct klist *klist;
+
+	klist = &sc->sc_wkq.ki_note;
+	knote_remove(klist, kn);
+}
+
+static int
+ulpt_filt(struct knote *kn, long hint)
+{
+/*        struct ulpt_softc *sc = (struct ulpt_softc *)kn->kn_hook;*/
+
+	return 1;
 }
 
 #if 0
