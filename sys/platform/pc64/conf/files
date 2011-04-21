@@ -164,6 +164,7 @@ platform/pc64/x86_64/trap.c		standard
 platform/pc64/x86_64/procfs_machdep.c	standard
 platform/pc64/x86_64/initcpu.c		standard
 platform/pc64/x86_64/identcpu.c		standard
+platform/pc64/x86_64/amd64_mem.c	standard
 platform/pc64/x86_64/cpufreq_machdep.c    standard
 
 platform/pc64/apic/ioapic_abi.c		optional	smp
