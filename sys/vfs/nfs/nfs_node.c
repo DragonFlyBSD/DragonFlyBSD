@@ -405,6 +405,10 @@ nfs_inactive(struct vop_inactive_args *ap)
 /*
  * Reclaim an nfsnode so that it can be used for other purposes.
  *
+ * There should be no direct references to the related nfs node
+ * since nobody is holding the vnode any more, other than hash
+ * lookups which are interlocked against nfsnhash_token and vget().
+ *
  * nfs_reclaim(struct vnode *a_vp)
  */
 int
@@ -413,18 +417,26 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
 	struct nfsdmap *dp, *dp2;
-	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
+/*	struct nfsmount *nmp = VFSTONFS(vp->v_mount);*/
 
 	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("nfs_reclaim: pushing active", vp);
 
 
 	/*
-	 * Remove from hash table
+	 * Remove from hash table and remove the cross links.
+	 *
+	 * NOTE: Other NFS code may look up a np and vget() the
+	 *	 related vnode, then will check np->n_vnode.
+	 *	 We must clear np->n_vnode here to ensure that all
+	 *	 possible races are dealt with.
 	 */
 	lwkt_gettoken(&nfsnhash_token);
+	KKASSERT(np->n_vnode == vp);
 	if (np->n_hash.le_prev != NULL)
 		LIST_REMOVE(np, n_hash);
+	np->n_vnode = NULL;
+	vp->v_data = NULL;
 	lwkt_reltoken(&nfsnhash_token);
 
 	/*
@@ -432,7 +444,6 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 	 * large file handle structures that might be associated with
 	 * this nfs node.
 	 */
-	lwkt_gettoken(&nmp->nm_token);
 	if (vp->v_type == VDIR) {
 		dp = np->n_cookies.lh_first;
 		while (dp) {
@@ -452,9 +463,6 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 		crfree(np->n_wucred);
 		np->n_wucred = NULL;
 	}
-	vp->v_data = NULL;
-
-	lwkt_reltoken(&nmp->nm_token);
 	objcache_put(nfsnode_objcache, np);
 
 	return (0);
