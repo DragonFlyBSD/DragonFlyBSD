@@ -64,7 +64,7 @@
 .
 .
 .\" Default .Os value
-.ds doc-default-operating-system DragonFly\~2.9
+.ds doc-default-operating-system DragonFly\~2.10
 .
 .
 .\" DragonFly releases not found in doc-common
