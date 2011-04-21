@@ -37,7 +37,7 @@
 
 #define REFCNTF_WAITING	0x40000000
 
-void _refcount_wait(volatile u_int *countp);
+void _refcount_wait(volatile u_int *countp, const char *wstr);
 int _refcount_release_wakeup(volatile u_int *countp);
 
 static __inline void
@@ -83,10 +83,10 @@ refcount_release_wakeup(volatile u_int *countp)
  *	     use refcount_release_wakeup() instead of refcount_release().
  */
 static __inline void
-refcount_wait(volatile u_int *countp)
+refcount_wait(volatile u_int *countp, const char *wstr)
 {
 	if (*countp)
-		_refcount_wait(countp);
+		_refcount_wait(countp, wstr);
 }
 
 #endif	/* ! __SYS_REFCOUNT_H__ */
