@@ -35,23 +35,58 @@
 
 #include <machine/atomic.h>
 
+#define REFCNTF_WAITING	0x40000000
+
+void _refcount_wait(volatile u_int *countp);
+int _refcount_release_wakeup(volatile u_int *countp);
+
 static __inline void
-refcount_init(volatile u_int *count, u_int value)
+refcount_init(volatile u_int *countp, u_int value)
 {
-	*count = value;
+	*countp = value;
 }
 
 static __inline void
-refcount_acquire(volatile u_int *count)
+refcount_acquire(volatile u_int *countp)
 {
-	atomic_add_acq_int(count, 1);	
+	atomic_add_acq_int(countp, 1);
 }
 
 static __inline int
-refcount_release(volatile u_int *count)
+refcount_release(volatile u_int *countp)
 {
-	/* XXX: Should this have a rel membar? */
-	return (atomic_fetchadd_int(count, -1) == 1);
+	return (atomic_fetchadd_int(countp, -1) == 1);
+}
+
+/*
+ * Release a refcount and also handle waiters who have (atomically)
+ * set the REFCNTF_WAITING flag.  If the flag was set the atomic op
+ * will fail (because the 'old' value we pass it is with the flag
+ * cleared).  The atomic op can also fail on a race so the helper
+ * function deals with all cases.
+ *
+ * This function returns TRUE(1) on the last release and FALSE(0) otherwise.
+ */
+static __inline int
+refcount_release_wakeup(volatile u_int *countp)
+{
+	u_int n = *countp & ~REFCNTF_WAITING;
+	if (!atomic_cmpset_int(countp, n, n - 1))
+		return(_refcount_release_wakeup(countp));
+	return(n == 1);
+}
+
+/*
+ * Wait for all refs on *countp to go away.
+ *
+ * WARNING!  If this function is used then all releases on countp MUST
+ *	     use refcount_release_wakeup() instead of refcount_release().
+ */
+static __inline void
+refcount_wait(volatile u_int *countp)
+{
+	if (*countp)
+		_refcount_wait(countp);
 }
 
 #endif	/* ! __SYS_REFCOUNT_H__ */
