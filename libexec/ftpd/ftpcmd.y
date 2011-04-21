@@ -1753,7 +1753,7 @@ expglob(char *s)
 	glob_t gl;
 
 	memset(&gl, 0, sizeof(gl));
-	flags |= GLOB_LIMIT;
+	/*flags |= GLOB_LIMIT;*/
 	gl.gl_matchc = MAXGLOBARGS;
 	if (glob(s, flags, NULL, &gl) == 0 && gl.gl_pathc != 0) {
 		for (pp = gl.gl_pathv, p = NULL, n = 0; *pp; pp++)
