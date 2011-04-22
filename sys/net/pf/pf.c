@@ -3515,8 +3515,9 @@ pf_test_rule(struct pf_rule **rm, struct pf_state **sm, int direction,
 			u_int32_t	 ack = ntohl(th->th_seq) + pd->p_len;
 			int		 len = 0;
 			struct ip	*h4;
+#ifdef INET6
 			struct ip6_hdr	*h6;
-
+#endif
 			switch (af) {
 			case AF_INET:
 				h4 = mtod(m, struct ip *);
