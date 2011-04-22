@@ -2268,8 +2268,10 @@ ohci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 		return;
 	}
 
+#if 0
 	if (xfer->device->bus->intr_context /* || !curproc REMOVED DFly */)
 		panic("ohci_abort_xfer: not in process context");
+#endif
 
 	/*
 	 * If an abort is already in progress then just wait for it to
