@@ -606,7 +606,7 @@ umodem_ioctl(void *addr, int portno, u_long cmd, caddr_t data, int flag,
 
 	default:
 		DPRINTF(("umodem_ioctl: unknown\n"));
-		error = ENOTTY;
+		error = ENOIOCTL;
 		break;
 	}
 
