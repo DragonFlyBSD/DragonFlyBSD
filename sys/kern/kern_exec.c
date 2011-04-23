@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.64 2008/10/26 04:29:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -222,6 +221,8 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 	imgp->vp = NULL;
 	imgp->firstpage = NULL;
 	imgp->ps_strings = 0;
+	imgp->execpath = imgp->freepath = NULL;
+	imgp->execpathp = 0;
 	imgp->image_header = NULL;
 
 interpret:
@@ -310,6 +311,18 @@ interpret:
 			goto exec_fail;
 		goto interpret;
 	}
+
+	/*
+	 * Do the best to calculate the full path to the image file
+	 */
+	if (imgp->auxargs != NULL &&
+	   ((args->fname != NULL && args->fname[0] == '/') ||
+	    vn_fullpath(imgp->proc,
+			imgp->vp,
+			&imgp->execpath,
+			&imgp->freepath,
+			0) != 0))
+		imgp->execpath = args->fname;
 
 	/*
 	 * Copy out strings (args and env) and initialize stack base
@@ -532,6 +545,9 @@ exec_fail_dealloc:
 		lwkt_reltoken(&p->p_token);
 		return (0);
 	}
+
+	if (imgp->freepath)
+		kfree(imgp->freepath, M_TEMP);
 
 exec_fail:
 	/*
@@ -894,12 +910,17 @@ exec_copyout_strings(struct image_params *imgp)
 	char *stringp, *destp;
 	register_t *stack_base;
 	struct ps_strings *arginfo;
+	size_t execpath_len;
 	int szsigcode;
 
 	/*
 	 * Calculate string base and vector table pointers.
 	 * Also deal with signal trampoline code for this exec type.
 	 */
+	if (imgp->execpath != NULL && imgp->auxargs != NULL)
+		execpath_len = strlen(imgp->execpath) + 1;
+	else
+		execpath_len = 0;
 	arginfo = (struct ps_strings *)PS_STRINGS;
 	szsigcode = *(imgp->proc->p_sysent->sv_szsigcode);
 	if (stackgap_random != 0)
@@ -907,6 +928,7 @@ exec_copyout_strings(struct image_params *imgp)
 	else
 		sgap = 0;
 	destp =	(caddr_t)arginfo - szsigcode - SPARE_USRSPACE - sgap -
+	    roundup(execpath_len, sizeof(char *)) -
 	    roundup((ARG_MAX - imgp->args->space), sizeof(char *));
 
 	/*
@@ -915,6 +937,16 @@ exec_copyout_strings(struct image_params *imgp)
 	if (szsigcode)
 		copyout(imgp->proc->p_sysent->sv_sigcode,
 		    ((caddr_t)arginfo - szsigcode), szsigcode);
+
+	/*
+	 * Copy the image path for the rtld
+	 */
+	if (execpath_len != 0) {
+		imgp->execpathp = (uintptr_t)arginfo
+				  - szsigcode
+				  - execpath_len;
+		copyout(imgp->execpath, (void *)imgp->execpathp, execpath_len);
+	}
 
 	/*
 	 * If we have a valid auxargs ptr, prepare some room
@@ -926,7 +958,8 @@ exec_copyout_strings(struct image_params *imgp)
 	 */
 	if (imgp->auxargs) {
 		vectp = (char **)(destp - (imgp->args->argc +
-			imgp->args->envc + 2 + AT_COUNT * 2) * sizeof(char*));
+			imgp->args->envc + 2 + (AT_COUNT * 2) + execpath_len) *
+			sizeof(char*));
 	} else {
 		vectp = (char **)(destp - (imgp->args->argc +
 			imgp->args->envc + 2) * sizeof(char*));

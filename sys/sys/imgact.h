@@ -68,6 +68,9 @@ struct image_params {
 	struct lwbuf *firstpage;	/* first page that we mapped */
 	struct lwbuf firstpage_cache;
 	unsigned long ps_strings; /* PS_STRINGS for BSD/OS binaries */
+	char *execpath;
+	unsigned long execpathp;
+	char *freepath;
 };
 
 #ifdef _KERNEL
