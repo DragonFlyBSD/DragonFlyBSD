@@ -68,13 +68,10 @@ void	ioapic_write		(volatile void *, int, u_int);
 extern int			imcr_present;
 extern int			apic_io_enable;
 extern int			mp_naps;
-extern int			mp_napics;
-extern vm_offset_t		io_apic_address[];
 extern u_int32_t		cpu_apic_versions[];
-extern u_int32_t		*io_apic_versions;
 extern int			cpu_num_to_apic_id[];
-extern int			io_num_to_apic_id[];
 extern int			apic_id_to_logical[];
+
 #define APIC_INTMAPSIZE 192
 /*
  * NOTE:
@@ -103,21 +100,6 @@ u_int	mp_bootaddress		(u_int);
 void	mp_start		(void);
 void	mp_announce		(void);
 void	mp_set_cpuids		(int, int);
-u_int	isa_apic_mask		(u_int);
-int	isa_apic_irq		(int);
-int	pci_apic_irq		(int, int, int);
-int	apic_irq		(int, int);
-int	next_apic_irq		(int);
-int	undirect_isa_irq	(int);
-int	undirect_pci_irq	(int);
-int	apic_bus_type		(int);
-int	apic_src_bus_id		(int, int);
-int	apic_src_bus_irq	(int, int);
-int	apic_int_type		(int, int);
-int	apic_trigger		(int, int);
-int	apic_polarity		(int, int);
-void	assign_apic_irq		(int apic, int intpin, int irq);
-void	revoke_apic_irq		(int irq);
 void	init_secondary		(void);
 int	stop_cpus		(cpumask_t);
 void	ap_init			(void);
@@ -152,7 +134,6 @@ struct ioapic_enumerator {
 
 /* global data in mpapic.c */
 extern volatile lapic_t		*lapic;
-extern volatile ioapic_t	**ioapic;
 extern int			lapic_id_max;
 
 #ifndef _SYS_BUS_H_
@@ -162,16 +143,10 @@ extern int			lapic_id_max;
 /* functions in mpapic.c */
 void	apic_dump		(char*);
 void	lapic_init		(boolean_t);
-void	imen_dump		(void);
 int	apic_ipi		(int, int, int);
 void	selected_apic_ipi	(cpumask_t, int, int);
 void	single_apic_ipi(int cpu, int vector, int delivery_mode);
 int	single_apic_ipi_passive(int cpu, int vector, int delivery_mode);
-int	io_apic_setup		(int);
-void	io_apic_setup_intpin	(int, int);
-void	io_apic_set_id		(int, int);
-int	io_apic_get_id		(int);
-int	ext_int_setup		(int, int);
 void	lapic_config(void);
 void	lapic_enumerator_register(struct lapic_enumerator *);
 void	ioapic_config(void);
