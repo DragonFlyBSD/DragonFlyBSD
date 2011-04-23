@@ -118,9 +118,7 @@ int
 pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg, u_int intflags)
 {
 	int error;
-#ifdef SMP /* APIC-IO */
-	int nextpin, muxcnt;
-#endif
+
 	if (cfg->intpin != 0) {
 		int irq = cfg->intline;
 		int rid = 0;
@@ -156,57 +154,6 @@ pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg, u_int intflags
 		 * move to the nexus code which actually registers the
 		 * interrupt.
 		 */
-#endif
-
-#ifdef SMP /* APIC-IO */
-if (apic_io_enable) {
-		nextpin = next_apic_irq(irq);
-		
-		if (nextpin < 0)
-			return 1;
-
-		/* 
-		 * Attempt handling of some broken mp tables.
-		 *
-		 * It's OK to yell (since the mp tables are broken).
-		 * 
-		 * Hanging in the boot is not OK
-		 */
-
-		muxcnt = 2;
-		nextpin = next_apic_irq(nextpin);
-		while (muxcnt < 5 && nextpin >= 0) {
-			muxcnt++;
-			nextpin = next_apic_irq(nextpin);
-		}
-		if (muxcnt >= 5) {
-			kprintf("bogus MP table, more than 4 IO APIC pins connected to the same PCI device or ISA/EISA interrupt\n");
-			return 0;
-		}
-		
-		kprintf("bogus MP table, %d IO APIC pins connected to the same PCI device or ISA/EISA interrupt\n", muxcnt);
-
-		nextpin = next_apic_irq(irq);
-		while (nextpin >= 0) {
-			rid = 0;
-			res = bus_alloc_resource(cfg->dev, SYS_RES_IRQ, &rid,
-						 nextpin, nextpin, 1,
-						 resflags);
-			if (!res) {
-				kprintf("pci_map_int: can't allocate extra interrupt\n");
-				return 0;
-			}
-			error = BUS_SETUP_INTR(device_get_parent(cfg->dev),
-					       cfg->dev, res, flags,
-					       handler, arg, &ih, NULL);
-			if (error != 0) {
-				kprintf("pci_map_int: BUS_SETUP_INTR failed\n");
-				return 0;
-			}
-			kprintf("Registered extra interrupt handler for int %d (in addition to int %d)\n", nextpin, irq);
-			nextpin = next_apic_irq(nextpin);
-		}
-}
 #endif
 	}
 	return (1);
