@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2010 Konstantin Belousov <kib@FreeBSD.org>
+ * Copyright (c) 2010 Pawel Jakub Dawidek <pjd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * FreeBSD: src/sys/crypto/aesni/aesni_wrap.c,v 1.1 2010/07/23 11:00:46 kib Exp 
+ * $FreeBSD: src/sys/crypto/aesni/aesni_wrap.c,v 1.7 2010/11/27 15:41:44 kib Exp $
  */
 
 #include <sys/param.h>
@@ -35,33 +36,12 @@
 
 MALLOC_DECLARE(M_AESNI);
 
-#ifdef DEBUG
-static void
-ps_len(const char *string, const uint8_t *data, int length)
-{
-	int i;
-
-	kprintf("%-12s[0x", string);
-	for(i = 0; i < length; i++) {
-		if (i % AES_BLOCK_LEN == 0 && i > 0)
-			kprintf("+");
-		kprintf("%02x", data[i]);
-	}
-	kprintf("]\n");
-}
-#endif
-
 void
 aesni_encrypt_cbc(int rounds, const void *key_schedule, size_t len,
     const uint8_t *from, uint8_t *to, const uint8_t iv[AES_BLOCK_LEN])
 {
 	const uint8_t *ivp;
 	size_t i;
-
-#ifdef DEBUG
-	ps_len("AES CBC encrypt iv:", iv, AES_BLOCK_LEN);
-	ps_len("from:", from, len);
-#endif
 
 	len /= AES_BLOCK_LEN;
 	ivp = iv;
@@ -71,9 +51,6 @@ aesni_encrypt_cbc(int rounds, const void *key_schedule, size_t len,
 		from += AES_BLOCK_LEN;
 		to += AES_BLOCK_LEN;
 	}
-#ifdef DEBUG
-	ps_len("to:", to - len * AES_BLOCK_LEN, len * AES_BLOCK_LEN);
-#endif
 }
 
 void
@@ -104,38 +81,167 @@ aesni_decrypt_ecb(int rounds, const void *key_schedule, size_t len,
 	}
 }
 
-int
-aesni_cipher_setup(struct aesni_session *ses, struct cryptoini *encini)
-{
-	struct thread *td;
-	int error = 0;
+#define	AES_XTS_BLOCKSIZE	16
+#define	AES_XTS_IVSIZE		8
+#define	AES_XTS_ALPHA		0x87	/* GF(2^128) generator polynomial */
 
-	switch (encini->cri_klen) {
-	case 128:
-		ses->rounds = AES128_ROUNDS;
+static void
+aesni_crypt_xts_block(int rounds, const void *key_schedule, uint8_t *tweak,
+    const uint8_t *from, uint8_t *to, int do_encrypt)
+{
+	uint8_t block[AES_XTS_BLOCKSIZE];
+	u_int i, carry_in, carry_out;
+
+	for (i = 0; i < AES_XTS_BLOCKSIZE; i++)
+		block[i] = from[i] ^ tweak[i];
+
+	if (do_encrypt)
+		aesni_enc(rounds - 1, key_schedule, block, to, NULL);
+	else
+		aesni_dec(rounds - 1, key_schedule, block, to, NULL);
+
+	for (i = 0; i < AES_XTS_BLOCKSIZE; i++)
+		to[i] ^= tweak[i];
+
+	/* Exponentiate tweak. */
+	carry_in = 0;
+	for (i = 0; i < AES_XTS_BLOCKSIZE; i++) {
+		carry_out = tweak[i] & 0x80;
+		tweak[i] = (tweak[i] << 1) | (carry_in ? 1 : 0);
+		carry_in = carry_out;
+	}
+	if (carry_in)
+		tweak[0] ^= AES_XTS_ALPHA;
+	bzero(block, sizeof(block));
+}
+
+static void
+aesni_crypt_xts(int rounds, const void *data_schedule,
+    const void *tweak_schedule, size_t len, const uint8_t *from, uint8_t *to,
+    const uint8_t iv[AES_BLOCK_LEN], int do_encrypt)
+{
+	uint8_t tweak[AES_XTS_BLOCKSIZE];
+	uint64_t blocknum;
+	size_t i;
+
+	/*
+	 * Prepare tweak as E_k2(IV). IV is specified as LE representation
+	 * of a 64-bit block number which we allow to be passed in directly.
+	 */
+	bcopy(iv, &blocknum, AES_XTS_IVSIZE);
+	for (i = 0; i < AES_XTS_IVSIZE; i++) {
+		tweak[i] = blocknum & 0xff;
+		blocknum >>= 8;
+	}
+	/* Last 64 bits of IV are always zero. */
+	bzero(tweak + AES_XTS_IVSIZE, AES_XTS_IVSIZE);
+	aesni_enc(rounds - 1, tweak_schedule, tweak, tweak, NULL);
+
+	len /= AES_XTS_BLOCKSIZE;
+	for (i = 0; i < len; i++) {
+		aesni_crypt_xts_block(rounds, data_schedule, tweak, from, to,
+		    do_encrypt);
+		from += AES_XTS_BLOCKSIZE;
+		to += AES_XTS_BLOCKSIZE;
+	}
+
+	bzero(tweak, sizeof(tweak));
+}
+
+static void
+aesni_encrypt_xts(int rounds, const void *data_schedule,
+    const void *tweak_schedule, size_t len, const uint8_t *from, uint8_t *to,
+    const uint8_t iv[AES_BLOCK_LEN])
+{
+
+	aesni_crypt_xts(rounds, data_schedule, tweak_schedule, len, from, to,
+	    iv, 1);
+}
+
+static void
+aesni_decrypt_xts(int rounds, const void *data_schedule,
+    const void *tweak_schedule, size_t len, const uint8_t *from, uint8_t *to,
+    const uint8_t iv[AES_BLOCK_LEN])
+{
+
+	aesni_crypt_xts(rounds, data_schedule, tweak_schedule, len, from, to,
+	    iv, 0);
+}
+
+static int
+aesni_cipher_setup_common(struct aesni_session *ses, const uint8_t *key,
+    int keylen)
+{
+
+	switch (ses->algo) {
+	case CRYPTO_AES_CBC:
+		switch (keylen) {
+		case 128:
+			ses->rounds = AES128_ROUNDS;
+			break;
+		case 192:
+			ses->rounds = AES192_ROUNDS;
+			break;
+		case 256:
+			ses->rounds = AES256_ROUNDS;
+			break;
+		default:
+			return (EINVAL);
+		}
 		break;
-	case 192:
-		ses->rounds = AES192_ROUNDS;
-		break;
-	case 256:
-		ses->rounds = AES256_ROUNDS;
+	case CRYPTO_AES_XTS:
+		switch (keylen) {
+		case 256:
+			ses->rounds = AES128_ROUNDS;
+			break;
+		case 512:
+			ses->rounds = AES256_ROUNDS;
+			break;
+		default:
+			return (EINVAL);
+		}
 		break;
 	default:
 		return (EINVAL);
 	}
 
+	aesni_set_enckey(key, ses->enc_schedule, ses->rounds);
+	aesni_set_deckey(ses->enc_schedule, ses->dec_schedule, ses->rounds);
+	if (ses->algo == CRYPTO_AES_CBC)
+		karc4rand(ses->iv, sizeof(ses->iv));
+	else /* if (ses->algo == CRYPTO_AES_XTS) */ {
+		aesni_set_enckey(key + keylen / 16, ses->xts_schedule,
+		    ses->rounds);
+	}
+
+	return (0);
+}
+
+int
+aesni_cipher_setup(struct aesni_session *ses, struct cryptoini *encini)
+{
+	struct thread *td;
+	int error = 0;
+#if 0
+	int saved_ctx;
+#endif
+
 	td = curthread;
 #if 0
-	error = fpu_kern_enter(td, &ses->fpu_ctx, FPU_KERN_NORMAL);
+	if (!is_fpu_kern_thread(0)) {
+		error = fpu_kern_enter(td, &ses->fpu_ctx, FPU_KERN_NORMAL);
+		saved_ctx = 1;
+	} else {
+		error = 0;
+		saved_ctx = 0;
+	}
 #endif
 	if (error == 0) {
-		aesni_set_enckey(encini->cri_key, ses->enc_schedule,
-		    ses->rounds);
-		aesni_set_deckey(ses->enc_schedule, ses->dec_schedule,
-		    ses->rounds);
-		karc4rand(ses->iv, sizeof(ses->iv));
+		error = aesni_cipher_setup_common(ses, encini->cri_key,
+		    encini->cri_klen);
 #if 0
-		fpu_kern_leave(td, &ses->fpu_ctx);
+		if (saved_ctx)
+			fpu_kern_leave(td, &ses->fpu_ctx);
 #endif
 	}
 	return (error);
@@ -148,41 +254,66 @@ aesni_cipher_process(struct aesni_session *ses, struct cryptodesc *enccrd,
 	struct thread *td;
 	uint8_t *buf;
 	int error = 0, allocated;
+#if 0
+	int saved_ctx;
+#endif
 
 	buf = aesni_cipher_alloc(enccrd, crp, &allocated);
-	if (buf == NULL) {
-		error = ENOMEM;
-		goto out;
-	}
+	if (buf == NULL)
+		return (ENOMEM);
 
 	td = curthread;
 #if 0
-	error = fpu_kern_enter(td, &ses->fpu_ctx, FPU_KERN_NORMAL);
+	if (!is_fpu_kern_thread(0)) {
+		error = fpu_kern_enter(td, &ses->fpu_ctx, FPU_KERN_NORMAL);
+		if (error != 0)
+			goto out;
+		saved_ctx = 1;
+	} else {
+		saved_ctx = 0;
+		error = 0;
+	}
 #endif
-	if (error != 0)
-		goto out1;
+
+	if ((enccrd->crd_flags & CRD_F_KEY_EXPLICIT) != 0) {
+		error = aesni_cipher_setup_common(ses, enccrd->crd_key,
+		    enccrd->crd_klen);
+		if (error != 0)
+			goto out;
+	}
 
 	if ((enccrd->crd_flags & CRD_F_ENCRYPT) != 0) {
 		if ((enccrd->crd_flags & CRD_F_IV_EXPLICIT) != 0)
 			bcopy(enccrd->crd_iv, ses->iv, AES_BLOCK_LEN);
-
 		if ((enccrd->crd_flags & CRD_F_IV_PRESENT) == 0)
 			crypto_copyback(crp->crp_flags, crp->crp_buf,
 			    enccrd->crd_inject, AES_BLOCK_LEN, ses->iv);
-
-		aesni_encrypt_cbc(ses->rounds, ses->enc_schedule,
-		    enccrd->crd_len, buf, buf, ses->iv);
+		if (ses->algo == CRYPTO_AES_CBC) {
+			aesni_encrypt_cbc(ses->rounds, ses->enc_schedule,
+			    enccrd->crd_len, buf, buf, ses->iv);
+		} else /* if (ses->algo == CRYPTO_AES_XTS) */ {
+			aesni_encrypt_xts(ses->rounds, ses->enc_schedule,
+			    ses->xts_schedule, enccrd->crd_len, buf, buf,
+			    ses->iv);
+		}
 	} else {
 		if ((enccrd->crd_flags & CRD_F_IV_EXPLICIT) != 0)
 			bcopy(enccrd->crd_iv, ses->iv, AES_BLOCK_LEN);
 		else
 			crypto_copydata(crp->crp_flags, crp->crp_buf,
 			    enccrd->crd_inject, AES_BLOCK_LEN, ses->iv);
-		aesni_decrypt_cbc(ses->rounds, ses->dec_schedule,
-		    enccrd->crd_len, buf, ses->iv);
+		if (ses->algo == CRYPTO_AES_CBC) {
+			aesni_decrypt_cbc(ses->rounds, ses->dec_schedule,
+			    enccrd->crd_len, buf, ses->iv);
+		} else /* if (ses->algo == CRYPTO_AES_XTS) */ {
+			aesni_decrypt_xts(ses->rounds, ses->dec_schedule,
+			    ses->xts_schedule, enccrd->crd_len, buf, buf,
+			    ses->iv);
+		}
 	}
 #if 0
-	fpu_kern_leave(td, &ses->fpu_ctx);
+	if (saved_ctx)
+		fpu_kern_leave(td, &ses->fpu_ctx);
 #endif
 	if (allocated)
 		crypto_copyback(crp->crp_flags, crp->crp_buf, enccrd->crd_skip,
@@ -191,11 +322,10 @@ aesni_cipher_process(struct aesni_session *ses, struct cryptodesc *enccrd,
 		crypto_copydata(crp->crp_flags, crp->crp_buf,
 		    enccrd->crd_skip + enccrd->crd_len - AES_BLOCK_LEN,
 		    AES_BLOCK_LEN, ses->iv);
- out1:
+ out:
 	if (allocated) {
 		bzero(buf, enccrd->crd_len);
 		kfree(buf, M_AESNI);
 	}
- out:
 	return (error);
 }

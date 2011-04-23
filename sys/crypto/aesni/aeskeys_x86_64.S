@@ -36,7 +36,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * FreeBSD: src/sys/crypto/aesni/aeskeys_amd64.S,v 1.1 2010/07/23 11:00:46 kib Exp
+ * $FreeBSD: src/sys/crypto/aesni/aeskeys_amd64.S,v 1.2 2011/03/02 14:56:58 kib Exp $
  */
 
 #include <machine/asmacros.h>
@@ -164,7 +164,7 @@ ENTRY(aesni_set_enckey)
 	.byte	0x66,0x0f,0x3a,0xdf,0xc8,0x20
 	call	_key_expansion_256b
 //	aeskeygenassist $0x40,%xmm2,%xmm1	# round 7
-	.byte	0x66,0x0f,0x3a,0xdf,0xca,0x20
+	.byte	0x66,0x0f,0x3a,0xdf,0xca,0x40
 	call	_key_expansion_256a
 	retq
 .Lenc_key192:
