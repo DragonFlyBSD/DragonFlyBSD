@@ -325,12 +325,6 @@ static int	mptable_iterate_entries(const mpcth_t,
 static int	mptable_search(void);
 static long	mptable_search_sig(u_int32_t target, int count);
 static int	mptable_hyperthread_fixup(cpumask_t, int);
-#ifdef SMP /* APIC-IO */
-static void	mptable_pass1(struct mptable_pos *);
-static void	mptable_pass2(struct mptable_pos *);
-static void	mptable_default(int type);
-static void	mptable_fix(void);
-#endif
 static int	mptable_map(struct mptable_pos *);
 static void	mptable_unmap(struct mptable_pos *);
 static void	mptable_bus_info_alloc(const mpcth_t,
@@ -345,7 +339,6 @@ static int	mptable_ioapic_probe(struct ioapic_enumerator *);
 static void	mptable_ioapic_enumerate(struct ioapic_enumerator *);
 
 #ifdef SMP /* APIC-IO */
-static void	setup_apic_irq_mapping(void);
 static int	apic_int_is_bus_type(int intr, int bus_type);
 #endif
 static int	start_all_aps(u_int boot_addr);
@@ -539,17 +532,8 @@ mp_announce(void)
 		kprintf(", version: 0x%08x\n", cpu_apic_versions[x]);
 	}
 
-if (apic_io_enable) {
-	if (ioapic_use_old) {
-		for (x = 0; x < mp_napics; ++x) {
-			kprintf(" io%d (APIC): apic id: %2d", x, IO_TO_ID(x));
-			kprintf(", version: 0x%08x", io_apic_versions[x]);
-			kprintf(", at 0x%08lx\n", io_apic_address[x]);
-		}
-	}
-} else {
-	kprintf(" Warning: APIC I/O disabled\n");
-}
+	if (!apic_io_enable)
+		kprintf(" Warning: APIC I/O disabled\n");
 }
 
 /*
@@ -667,10 +651,6 @@ init_secondary(void)
 static void
 mp_enable(u_int boot_addr)
 {
-	int     apic;
-	u_int   ux;
-	struct mptable_pos mpt;
-
 	POSTCODE(MP_ENABLE_POST);
 
 	lapic_config();
@@ -683,58 +663,6 @@ mp_enable(u_int boot_addr)
 
 	if (apic_io_enable)
 		ioapic_config();
-
-if (apic_io_enable && ioapic_use_old) {
-	register_t ef;
-
-	if (!mptable_fps_phyaddr)
-		panic("no MP table, disable APIC_IO! (set hw.apic_io_enable=0)\n");
-
-	crit_enter();
-
-	ef = read_rflags();
-	cpu_disable_intr();
-
-	/*
-	 * Switch to I/O APIC MachIntrABI and reconfigure
-	 * the default IDT entries.
-	 */
-	MachIntrABI = MachIntrABI_IOAPIC;
-	MachIntrABI.setdefault();
-
-	mptable_map(&mpt);
-
-	/*
-	 * Examine the MP table for needed info
-	 */
-	mptable_pass1(&mpt);
-	mptable_pass2(&mpt);
-
-	mptable_unmap(&mpt);
-
-	/* Post scan cleanup */
-	mptable_fix();
-
-	setup_apic_irq_mapping();
-
-	/* fill the LOGICAL io_apic_versions table */
-	for (apic = 0; apic < mp_napics; ++apic) {
-		ux = ioapic_read(ioapic[apic], IOAPIC_VER);
-		io_apic_versions[apic] = ux;
-		io_apic_set_id(apic, IO_TO_ID(apic));
-	}
-
-	/* program each IO APIC in the system */
-	for (apic = 0; apic < mp_napics; ++apic)
-		if (io_apic_setup(apic) < 0)
-			panic("IO APIC setup failure");
-
-	write_rflags(ef);
-
-	MachIntrABI.cleanup();
-
-	crit_exit();
-}
 
 	/* Finalize PIC */
 	MachIntrABI.finalize();
@@ -794,42 +722,6 @@ typedef struct BUSTYPENAME {
 	char    name[7];
 }       bus_type_name;
 
-static bus_type_name bus_type_table[] =
-{
-	{CBUS, "CBUS"},
-	{CBUSII, "CBUSII"},
-	{EISA, "EISA"},
-	{MCA, "MCA"},
-	{UNKNOWN_BUSTYPE, "---"},
-	{ISA, "ISA"},
-	{MCA, "MCA"},
-	{UNKNOWN_BUSTYPE, "---"},
-	{UNKNOWN_BUSTYPE, "---"},
-	{UNKNOWN_BUSTYPE, "---"},
-	{UNKNOWN_BUSTYPE, "---"},
-	{UNKNOWN_BUSTYPE, "---"},
-	{PCI, "PCI"},
-	{UNKNOWN_BUSTYPE, "---"},
-	{UNKNOWN_BUSTYPE, "---"},
-	{UNKNOWN_BUSTYPE, "---"},
-	{UNKNOWN_BUSTYPE, "---"},
-	{XPRESS, "XPRESS"},
-	{UNKNOWN_BUSTYPE, "---"}
-};
-
-/* from MP spec v1.4, table 5-1 */
-static int default_data[7][5] =
-{
-/*   nbus, id0, type0, id1, type1 */
-	{1, 0, ISA, 255, 255},
-	{1, 0, EISA, 255, 255},
-	{1, 0, EISA, 255, 255},
-	{1, 0, MCA, 255, 255},
-	{2, 0, ISA, 1, PCI},
-	{2, 0, EISA, 1, PCI},
-	{2, 0, MCA, 1, PCI}
-};
-
 /* the bus data */
 static bus_datum *bus_data;
 
@@ -838,171 +730,6 @@ static io_int  *io_apic_ints;
 static int nintrs;
 
 static int processor_entry	(const struct PROCENTRY *entry, int cpu);
-static int bus_entry		(const struct BUSENTRY *entry, int bus);
-static int io_apic_entry	(const struct IOAPICENTRY *entry, int apic);
-static int int_entry		(const struct INTENTRY *entry, int intr);
-static int lookup_bus_type	(char *name);
-
-static int
-mptable_ioapic_pass1_callback(void *xarg, const void *pos, int type)
-{
-	const struct IOAPICENTRY *ioapic_ent;
-
-	switch (type) {
-	case 1: /* bus_entry */
-		++mp_nbusses;
-		break;
-
-	case 2: /* io_apic_entry */
-		ioapic_ent = pos;
-		if (ioapic_ent->apic_flags & IOAPICENTRY_FLAG_EN) {
-			io_apic_address[mp_napics++] =
-			    (vm_offset_t)ioapic_ent->apic_address;
-		}
-		break;
-
-	case 3: /* int_entry */
-		++nintrs;
-		break;
-	}
-	return 0;
-}
-
-/*
- * 1st pass on motherboard's Intel MP specification table.
- *
- * determines:
- *	io_apic_address[N]
- *	mp_nbusses
- *	mp_napics
- *	nintrs
- */
-static void
-mptable_pass1(struct mptable_pos *mpt)
-{
-	mpfps_t fps;
-	int x;
-
-	POSTCODE(MPTABLE_PASS1_POST);
-
-	fps = mpt->mp_fps;
-	KKASSERT(fps != NULL);
-
-	/* clear various tables */
-	for (x = 0; x < NAPICID; ++x)
-		io_apic_address[x] = ~0;	/* IO APIC address table */
-
-	mp_nbusses = 0;
-	mp_napics = 0;
-	nintrs = 0;
-
-	/* check for use of 'default' configuration */
-	if (fps->mpfb1 != 0) {
-		io_apic_address[0] = DEFAULT_IO_APIC_BASE;
-		mp_nbusses = default_data[fps->mpfb1 - 1][0];
-		mp_napics = 1;
-		nintrs = 16;
-	} else {
-		int error;
-
-		error = mptable_iterate_entries(mpt->mp_cth,
-			    mptable_ioapic_pass1_callback, NULL);
-		if (error)
-			panic("mptable_iterate_entries(ioapic_pass1) failed\n");
-	}
-}
-
-struct mptable_ioapic2_cbarg {
-	int	bus;
-	int	apic;
-	int	intr;
-};
-
-static int
-mptable_ioapic_pass2_callback(void *xarg, const void *pos, int type)
-{
-	struct mptable_ioapic2_cbarg *arg = xarg;
-
-	switch (type) {
-	case 1:
-		if (bus_entry(pos, arg->bus))
-			++arg->bus;
-		break;
-
-	case 2:
-		if (io_apic_entry(pos, arg->apic))
-			++arg->apic;
-		break;
-
-	case 3:
-		if (int_entry(pos, arg->intr))
-			++arg->intr;
-		break;
-	}
-	return 0;
-}
-
-/*
- * 2nd pass on motherboard's Intel MP specification table.
- *
- * sets:
- *	ID_TO_IO(N), phy APIC ID to log CPU/IO table
- *	IO_TO_ID(N), logical IO to APIC ID table
- *	bus_data[N]
- *	io_apic_ints[N]
- */
-static void
-mptable_pass2(struct mptable_pos *mpt)
-{
-	struct mptable_ioapic2_cbarg arg;
-	mpfps_t fps;
-	int error, x;
-
-	POSTCODE(MPTABLE_PASS2_POST);
-
-	fps = mpt->mp_fps;
-	KKASSERT(fps != NULL);
-
-	MALLOC(io_apic_versions, u_int32_t *, sizeof(u_int32_t) * mp_napics,
-	    M_DEVBUF, M_WAITOK);
-	MALLOC(ioapic, volatile ioapic_t **, sizeof(ioapic_t *) * mp_napics,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	MALLOC(io_apic_ints, io_int *, sizeof(io_int) * (nintrs + FIXUP_EXTRA_APIC_INTS),
-	    M_DEVBUF, M_WAITOK);
-	MALLOC(bus_data, bus_datum *, sizeof(bus_datum) * mp_nbusses,
-	    M_DEVBUF, M_WAITOK);
-
-	for (x = 0; x < mp_napics; x++)
-		ioapic[x] = ioapic_map(io_apic_address[x]);
-
-	/* clear various tables */
-	for (x = 0; x < NAPICID; ++x) {
-		ID_TO_IO(x) = -1;	/* phy APIC ID to log CPU/IO table */
-		IO_TO_ID(x) = -1;	/* logical IO to APIC ID table */
-	}
-
-	/* clear bus data table */
-	for (x = 0; x < mp_nbusses; ++x)
-		bus_data[x].bus_id = 0xff;
-
-	/* clear IO APIC INT table */
-	for (x = 0; x < nintrs + FIXUP_EXTRA_APIC_INTS; ++x) {
-		io_apic_ints[x].int_type = 0xff;
-		io_apic_ints[x].int_vector = 0xff;
-	}
-
-	/* check for use of 'default' configuration */
-	if (fps->mpfb1 != 0) {
-		mptable_default(fps->mpfb1);
-		return;
-	}
-
-	bzero(&arg, sizeof(arg));
-	error = mptable_iterate_entries(mpt->mp_cth,
-		    mptable_ioapic_pass2_callback, &arg);
-	if (error)
-		panic("mptable_iterate_entries(ioapic_pass2) failed\n");
-}
 
 /*
  * Check if we should perform a hyperthreading "fix-up" to
@@ -1222,350 +949,6 @@ revoke_apic_irq(int irq)
 	}
 }
 
-/*
- * Allocate an IRQ 
- */
-static void
-allocate_apic_irq(int intr)
-{
-	int apic;
-	int intpin;
-	int irq;
-	
-	if (io_apic_ints[intr].int_vector != 0xff)
-		return;		/* Interrupt handler already assigned */
-	
-	if (io_apic_ints[intr].int_type != 0 &&
-	    (io_apic_ints[intr].int_type != 3 ||
-	     (io_apic_ints[intr].dst_apic_id == IO_TO_ID(0) &&
-	      io_apic_ints[intr].dst_apic_int == 0)))
-		return;		/* Not INT or ExtInt on != (0, 0) */
-	
-	irq = 0;
-	while (irq < APIC_INTMAPSIZE &&
-	       int_to_apicintpin[irq].ioapic != -1)
-		irq++;
-	
-	if (irq >= APIC_INTMAPSIZE)
-		return;		/* No free interrupt handlers */
-	
-	apic = ID_TO_IO(io_apic_ints[intr].dst_apic_id);
-	intpin = io_apic_ints[intr].dst_apic_int;
-	
-	assign_apic_irq(apic, intpin, irq);
-}
-
-
-static void
-swap_apic_id(int apic, int oldid, int newid)
-{
-	int x;
-	int oapic;
-	
-
-	if (oldid == newid)
-		return;			/* Nothing to do */
-	
-	kprintf("Changing APIC ID for IO APIC #%d from %d to %d in MP table\n",
-	       apic, oldid, newid);
-	
-	/* Swap physical APIC IDs in interrupt entries */
-	for (x = 0; x < nintrs; x++) {
-		if (io_apic_ints[x].dst_apic_id == oldid)
-			io_apic_ints[x].dst_apic_id = newid;
-		else if (io_apic_ints[x].dst_apic_id == newid)
-			io_apic_ints[x].dst_apic_id = oldid;
-	}
-	
-	/* Swap physical APIC IDs in IO_TO_ID mappings */
-	for (oapic = 0; oapic < mp_napics; oapic++)
-		if (IO_TO_ID(oapic) == newid)
-			break;
-	
-	if (oapic < mp_napics) {
-		kprintf("Changing APIC ID for IO APIC #%d from "
-		       "%d to %d in MP table\n",
-		       oapic, newid, oldid);
-		IO_TO_ID(oapic) = oldid;
-	}
-	IO_TO_ID(apic) = newid;
-}
-
-
-static void
-fix_id_to_io_mapping(void)
-{
-	int x;
-
-	for (x = 0; x < NAPICID; x++)
-		ID_TO_IO(x) = -1;
-	
-	for (x = 0; x <= mp_naps; x++) {
-		if ((u_int)CPU_TO_ID(x) < NAPICID)
-			ID_TO_IO(CPU_TO_ID(x)) = x;
-	}
-	
-	for (x = 0; x < mp_napics; x++) {
-		if ((u_int)IO_TO_ID(x) < NAPICID)
-			ID_TO_IO(IO_TO_ID(x)) = x;
-	}
-}
-
-
-static int
-first_free_apic_id(void)
-{
-	int freeid, x;
-	
-	for (freeid = 0; freeid < NAPICID; freeid++) {
-		for (x = 0; x <= mp_naps; x++)
-			if (CPU_TO_ID(x) == freeid)
-				break;
-		if (x <= mp_naps)
-			continue;
-		for (x = 0; x < mp_napics; x++)
-			if (IO_TO_ID(x) == freeid)
-				break;
-		if (x < mp_napics)
-			continue;
-		return freeid;
-	}
-	return freeid;
-}
-
-
-static int
-io_apic_id_acceptable(int apic, int id)
-{
-	int cpu;		/* Logical CPU number */
-	int oapic;		/* Logical IO APIC number for other IO APIC */
-
-	if ((u_int)id >= NAPICID)
-		return 0;	/* Out of range */
-	
-	for (cpu = 0; cpu <= mp_naps; cpu++) {
-		if (CPU_TO_ID(cpu) == id)
-			return 0;	/* Conflict with CPU */
-	}
-	
-	for (oapic = 0; oapic < mp_napics && oapic < apic; oapic++) {
-		if (IO_TO_ID(oapic) == id)
-			return 0;	/* Conflict with other APIC */
-	}
-	
-	return 1;		/* ID is acceptable for IO APIC */
-}
-
-static
-io_int *
-io_apic_find_int_entry(int apic, int pin)
-{
-	int     x;
-
-	/* search each of the possible INTerrupt sources */
-	for (x = 0; x < nintrs; ++x) {
-		if ((apic == ID_TO_IO(io_apic_ints[x].dst_apic_id)) &&
-		    (pin == io_apic_ints[x].dst_apic_int))
-			return (&io_apic_ints[x]);
-	}
-	return NULL;
-}
-
-/*
- * parse an Intel MP specification table
- */
-static void
-mptable_fix(void)
-{
-	int	x;
-	int	id;
-	int	apic;		/* IO APIC unit number */
-	int     freeid;		/* Free physical APIC ID */
-	int	physid;		/* Current physical IO APIC ID */
-	io_int *io14;
-	int	bus_0 = 0;	/* Stop GCC warning */
-	int	bus_pci = 0;	/* Stop GCC warning */
-	int	num_pci_bus;
-
-	/*
-	 * Fix mis-numbering of the PCI bus and its INT entries if the BIOS
-	 * did it wrong.  The MP spec says that when more than 1 PCI bus
-	 * exists the BIOS must begin with bus entries for the PCI bus and use
-	 * actual PCI bus numbering.  This implies that when only 1 PCI bus
-	 * exists the BIOS can choose to ignore this ordering, and indeed many
-	 * MP motherboards do ignore it.  This causes a problem when the PCI
-	 * sub-system makes requests of the MP sub-system based on PCI bus
-	 * numbers.	So here we look for the situation and renumber the
-	 * busses and associated INTs in an effort to "make it right".
-	 */
-
-	/* find bus 0, PCI bus, count the number of PCI busses */
-	for (num_pci_bus = 0, x = 0; x < mp_nbusses; ++x) {
-		if (bus_data[x].bus_id == 0) {
-			bus_0 = x;
-		}
-		if (bus_data[x].bus_type == PCI) {
-			++num_pci_bus;
-			bus_pci = x;
-		}
-	}
-	/*
-	 * bus_0 == slot of bus with ID of 0
-	 * bus_pci == slot of last PCI bus encountered
-	 */
-
-	/* check the 1 PCI bus case for sanity */
-	/* if it is number 0 all is well */
-	if (num_pci_bus == 1 &&
-	    bus_data[bus_pci].bus_id != 0) {
-		
-		/* mis-numbered, swap with whichever bus uses slot 0 */
-
-		/* swap the bus entry types */
-		bus_data[bus_pci].bus_type = bus_data[bus_0].bus_type;
-		bus_data[bus_0].bus_type = PCI;
-
-		/* swap each relevant INTerrupt entry */
-		id = bus_data[bus_pci].bus_id;
-		for (x = 0; x < nintrs; ++x) {
-			if (io_apic_ints[x].src_bus_id == id) {
-				io_apic_ints[x].src_bus_id = 0;
-			}
-			else if (io_apic_ints[x].src_bus_id == 0) {
-				io_apic_ints[x].src_bus_id = id;
-			}
-		}
-	}
-
-	/* Assign IO APIC IDs.
-	 * 
-	 * First try the existing ID. If a conflict is detected, try
-	 * the ID in the MP table.  If a conflict is still detected, find
-	 * a free id.
-	 *
-	 * We cannot use the ID_TO_IO table before all conflicts has been
-	 * resolved and the table has been corrected.
-	 */
-	for (apic = 0; apic < mp_napics; ++apic) { /* For all IO APICs */
-		
-		/* First try to use the value set by the BIOS */
-		physid = io_apic_get_id(apic);
-		if (io_apic_id_acceptable(apic, physid)) {
-			if (IO_TO_ID(apic) != physid)
-				swap_apic_id(apic, IO_TO_ID(apic), physid);
-			continue;
-		}
-
-		/* Then check if the value in the MP table is acceptable */
-		if (io_apic_id_acceptable(apic, IO_TO_ID(apic)))
-			continue;
-
-		/* Last resort, find a free APIC ID and use it */
-		freeid = first_free_apic_id();
-		if (freeid >= NAPICID)
-			panic("No free physical APIC IDs found");
-		
-		if (io_apic_id_acceptable(apic, freeid)) {
-			swap_apic_id(apic, IO_TO_ID(apic), freeid);
-			continue;
-		}
-		panic("Free physical APIC ID not usable");
-	}
-	fix_id_to_io_mapping();
-
-	/* detect and fix broken Compaq MP table */
-	if (apic_int_type(0, 0) == -1) {
-		kprintf("APIC_IO: MP table broken: 8259->APIC entry missing!\n");
-		io_apic_ints[nintrs].int_type = 3;	/* ExtInt */
-		io_apic_ints[nintrs].int_vector = 0xff;	/* Unassigned */
-		/* XXX fixme, set src bus id etc, but it doesn't seem to hurt */
-		io_apic_ints[nintrs].dst_apic_id = IO_TO_ID(0);
-		io_apic_ints[nintrs].dst_apic_int = 0;	/* Pin 0 */
-		nintrs++;
-	} else if (apic_int_type(0, 0) == 0) {
-		kprintf("APIC_IO: MP table broken: ExtINT entry corrupt!\n");
-		for (x = 0; x < nintrs; ++x)
-			if ((ID_TO_IO(io_apic_ints[x].dst_apic_id) == 0) &&
-			    (io_apic_ints[x].dst_apic_int) == 0) {
-				io_apic_ints[x].int_type = 3;
-				io_apic_ints[x].int_vector = 0xff;
-				break;
-			}
-	}
-
-	/*
-	 * Fix missing IRQ 15 when IRQ 14 is an ISA interrupt.  IDE
-	 * controllers universally come in pairs.  If IRQ 14 is specified
-	 * as an ISA interrupt, then IRQ 15 had better be too.
-	 *
-	 * [ Shuttle XPC / AMD Athlon X2 ]
-	 *	The MPTable is missing an entry for IRQ 15.  Note that the
-	 *	ACPI table has an entry for both 14 and 15.
-	 */
-	if (apic_int_type(0, 14) == 0 && apic_int_type(0, 15) == -1) {
-		kprintf("APIC_IO: MP table broken: IRQ 15 not ISA when IRQ 14 is!\n");
-		io14 = io_apic_find_int_entry(0, 14);
-		io_apic_ints[nintrs] = *io14;
-		io_apic_ints[nintrs].src_bus_irq = 15;
-		io_apic_ints[nintrs].dst_apic_int = 15;
-		nintrs++;
-	}
-}
-
-/* Assign low level interrupt handlers */
-static void
-setup_apic_irq_mapping(void)
-{
-	int	x;
-	int	int_vector;
-
-	/* Clear array */
-	for (x = 0; x < APIC_INTMAPSIZE; x++) {
-		int_to_apicintpin[x].ioapic = -1;
-		int_to_apicintpin[x].int_pin = 0;
-		int_to_apicintpin[x].apic_address = NULL;
-		int_to_apicintpin[x].redirindex = 0;
-
-		/* Default to masked */
-		int_to_apicintpin[x].flags = IOAPIC_IM_FLAG_MASKED;
-	}
-
-	/* First assign ISA/EISA interrupts */
-	for (x = 0; x < nintrs; x++) {
-		int_vector = io_apic_ints[x].src_bus_irq;
-		if (int_vector < APIC_INTMAPSIZE &&
-		    io_apic_ints[x].int_vector == 0xff && 
-		    int_to_apicintpin[int_vector].ioapic == -1 &&
-		    (apic_int_is_bus_type(x, ISA) ||
-		     apic_int_is_bus_type(x, EISA)) &&
-		    io_apic_ints[x].int_type == 0) {
-			assign_apic_irq(ID_TO_IO(io_apic_ints[x].dst_apic_id), 
-					io_apic_ints[x].dst_apic_int,
-					int_vector);
-		}
-	}
-
-	/* Assign ExtInt entry if no ISA/EISA interrupt 0 entry */
-	for (x = 0; x < nintrs; x++) {
-		if (io_apic_ints[x].dst_apic_int == 0 &&
-		    io_apic_ints[x].dst_apic_id == IO_TO_ID(0) &&
-		    io_apic_ints[x].int_vector == 0xff && 
-		    int_to_apicintpin[0].ioapic == -1 &&
-		    io_apic_ints[x].int_type == 3) {
-			assign_apic_irq(0, 0, 0);
-			break;
-		}
-	}
-
-	/* Assign PCI interrupts */
-	for (x = 0; x < nintrs; ++x) {
-		if (io_apic_ints[x].int_type == 0 &&
-		    io_apic_ints[x].int_vector == 0xff && 
-		    apic_int_is_bus_type(x, PCI))
-			allocate_apic_irq(x);
-	}
-}
-
 void
 mp_set_cpuids(int cpu_id, int apic_id)
 {
@@ -1598,81 +981,6 @@ processor_entry(const struct PROCENTRY *entry, int cpu)
 	}
 
 	return 0;
-}
-
-static int
-bus_entry(const struct BUSENTRY *entry, int bus)
-{
-	int     x;
-	char    c, name[8];
-
-	/* encode the name into an index */
-	for (x = 0; x < 6; ++x) {
-		if ((c = entry->bus_type[x]) == ' ')
-			break;
-		name[x] = c;
-	}
-	name[x] = '\0';
-
-	if ((x = lookup_bus_type(name)) == UNKNOWN_BUSTYPE)
-		panic("unknown bus type: '%s'", name);
-
-	bus_data[bus].bus_id = entry->bus_id;
-	bus_data[bus].bus_type = x;
-
-	return 1;
-}
-
-static int
-io_apic_entry(const struct IOAPICENTRY *entry, int apic)
-{
-	if (!(entry->apic_flags & IOAPICENTRY_FLAG_EN))
-		return 0;
-
-	IO_TO_ID(apic) = entry->apic_id;
-	ID_TO_IO(entry->apic_id) = apic;
-
-	return 1;
-}
-
-static int
-lookup_bus_type(char *name)
-{
-	int     x;
-
-	for (x = 0; x < MAX_BUSTYPE; ++x)
-		if (strcmp(bus_type_table[x].name, name) == 0)
-			return bus_type_table[x].type;
-
-	return UNKNOWN_BUSTYPE;
-}
-
-static int
-int_entry(const struct INTENTRY *entry, int intr)
-{
-	int apic;
-
-	io_apic_ints[intr].int_type = entry->int_type;
-	io_apic_ints[intr].int_flags = entry->int_flags;
-	io_apic_ints[intr].src_bus_id = entry->src_bus_id;
-	io_apic_ints[intr].src_bus_irq = entry->src_bus_irq;
-	if (entry->dst_apic_id == 255) {
-		/* This signal goes to all IO APICS.  Select an IO APIC
-		   with sufficient number of interrupt pins */
-		for (apic = 0; apic < mp_napics; apic++)
-			if (((ioapic_read(ioapic[apic], IOAPIC_VER) & 
-			      IOART_VER_MAXREDIR) >> MAXREDIRSHIFT) >= 
-			    entry->dst_apic_int)
-				break;
-		if (apic < mp_napics)
-			io_apic_ints[intr].dst_apic_id = IO_TO_ID(apic);
-		else
-			io_apic_ints[intr].dst_apic_id = entry->dst_apic_id;
-	} else
-		io_apic_ints[intr].dst_apic_id = entry->dst_apic_id;
-	io_apic_ints[intr].dst_apic_int = entry->dst_apic_int;
-
-	return 1;
 }
 
 static int
@@ -2018,114 +1326,6 @@ apic_polarity(int apic, int pin)
 			return (io_apic_ints[x].int_flags & 0x03);
 
 	return -1;		/* NOT found */
-}
-
-/*
- * set data according to MP defaults
- * FIXME: probably not complete yet...
- */
-static void
-mptable_default(int type)
-{
-	int     io_apic_id;
-	int     pin;
-
-#if 0
-	kprintf("  MP default config type: %d\n", type);
-	switch (type) {
-	case 1:
-		kprintf("   bus: ISA, APIC: 82489DX\n");
-		break;
-	case 2:
-		kprintf("   bus: EISA, APIC: 82489DX\n");
-		break;
-	case 3:
-		kprintf("   bus: EISA, APIC: 82489DX\n");
-		break;
-	case 4:
-		kprintf("   bus: MCA, APIC: 82489DX\n");
-		break;
-	case 5:
-		kprintf("   bus: ISA+PCI, APIC: Integrated\n");
-		break;
-	case 6:
-		kprintf("   bus: EISA+PCI, APIC: Integrated\n");
-		break;
-	case 7:
-		kprintf("   bus: MCA+PCI, APIC: Integrated\n");
-		break;
-	default:
-		kprintf("   future type\n");
-		break;
-		/* NOTREACHED */
-	}
-#endif	/* 0 */
-
-	/* one and only IO APIC */
-	io_apic_id = (ioapic_read(ioapic[0], IOAPIC_ID) & APIC_ID_MASK) >> 24;
-
-	/*
-	 * sanity check, refer to MP spec section 3.6.6, last paragraph
-	 * necessary as some hardware isn't properly setting up the IO APIC
-	 */
-#if defined(REALLY_ANAL_IOAPICID_VALUE)
-	if (io_apic_id != 2) {
-#else
-	if ((io_apic_id == 0) || (io_apic_id == 1) || (io_apic_id == 15)) {
-#endif	/* REALLY_ANAL_IOAPICID_VALUE */
-		io_apic_set_id(0, 2);
-		io_apic_id = 2;
-	}
-	IO_TO_ID(0) = io_apic_id;
-	ID_TO_IO(io_apic_id) = 0;
-
-	/* fill out bus entries */
-	switch (type) {
-	case 1:
-	case 2:
-	case 3:
-	case 4:
-	case 5:
-	case 6:
-	case 7:
-		bus_data[0].bus_id = default_data[type - 1][1];
-		bus_data[0].bus_type = default_data[type - 1][2];
-		bus_data[1].bus_id = default_data[type - 1][3];
-		bus_data[1].bus_type = default_data[type - 1][4];
-		break;
-
-	/* case 4: case 7:		   MCA NOT supported */
-	default:		/* illegal/reserved */
-		panic("BAD default MP config: %d", type);
-		/* NOTREACHED */
-	}
-
-	/* general cases from MP v1.4, table 5-2 */
-	for (pin = 0; pin < 16; ++pin) {
-		io_apic_ints[pin].int_type = 0;
-		io_apic_ints[pin].int_flags = 0x05;	/* edge/active-hi */
-		io_apic_ints[pin].src_bus_id = 0;
-		io_apic_ints[pin].src_bus_irq = pin;	/* IRQ2 caught below */
-		io_apic_ints[pin].dst_apic_id = io_apic_id;
-		io_apic_ints[pin].dst_apic_int = pin;	/* 1-to-1 */
-	}
-
-	/* special cases from MP v1.4, table 5-2 */
-	if (type == 2) {
-		io_apic_ints[2].int_type = 0xff;	/* N/C */
-		io_apic_ints[13].int_type = 0xff;	/* N/C */
-#if !defined(APIC_MIXED_MODE)
-		/** FIXME: ??? */
-		panic("sorry, can't support type 2 default yet");
-#endif	/* APIC_MIXED_MODE */
-	}
-	else
-		io_apic_ints[2].src_bus_irq = 0;	/* ISA IRQ0 is on APIC INT 2 */
-
-	if (type == 7)
-		io_apic_ints[0].int_type = 0xff;	/* N/C */
-	else
-		io_apic_ints[0].int_type = 3;	/* vectored 8259 */
 }
 
 /*
@@ -3586,6 +2786,7 @@ mptable_ioapic_int_callback(void *xarg, const void *pos, int type)
 	const struct mptable_ioapic *ioapic;
 	const struct mptable_bus *bus;
 	const struct INTENTRY *ent;
+	int gsi;
 
 	if (type != 3)
 		return 0;
@@ -3614,32 +2815,20 @@ mptable_ioapic_int_callback(void *xarg, const void *pos, int type)
 		return 0;
 	}
 
-	if (!ioapic_use_old) {
-		int gsi;
+	if (ent->dst_apic_int >= ioapic->mio_npin) {
+		panic("mptable_ioapic_enumerate: invalid I/O APIC "
+		      "pin %d, should be < %d",
+		      ent->dst_apic_int, ioapic->mio_npin);
+	}
+	gsi = ioapic->mio_gsi_base + ent->dst_apic_int;
 
-		if (ent->dst_apic_int >= ioapic->mio_npin) {
-			panic("mptable_ioapic_enumerate: invalid I/O APIC "
-			      "pin %d, should be < %d",
-			      ent->dst_apic_int, ioapic->mio_npin);
+	if (ent->src_bus_irq != gsi) {
+		if (bootverbose) {
+			kprintf("MPTABLE: INTSRC irq %d -> GSI %d\n",
+				ent->src_bus_irq, gsi);
 		}
-		gsi = ioapic->mio_gsi_base + ent->dst_apic_int;
-
-		if (ent->src_bus_irq != gsi) {
-			if (bootverbose) {
-				kprintf("MPTABLE: INTSRC irq %d -> GSI %d\n",
-					ent->src_bus_irq, gsi);
-			}
-			ioapic_intsrc(ent->src_bus_irq, gsi,
-			    INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH);
-		}
-	} else {
-		/* XXX rough estimation */
-		if (ent->src_bus_irq != ent->dst_apic_int) {
-			if (bootverbose) {
-				kprintf("MPTABLE: INTSRC irq %d -> GSI %d\n",
-					ent->src_bus_irq, ent->dst_apic_int);
-			}
-		}
+		ioapic_intsrc(ent->src_bus_irq, gsi,
+		    INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH);
 	}
 	return 0;
 }
@@ -3657,29 +2846,27 @@ mptable_ioapic_enumerate(struct ioapic_enumerator *e)
 	KKASSERT(!TAILQ_EMPTY(&mptable_ioapic_list));
 
 	TAILQ_FOREACH(ioapic, &mptable_ioapic_list, mio_link) {
-		if (!ioapic_use_old) {
-			const struct mptable_ioapic *prev_ioapic;
-			uint32_t ver;
-			void *addr;
+		const struct mptable_ioapic *prev_ioapic;
+		uint32_t ver;
+		void *addr;
 
-			addr = ioapic_map(ioapic->mio_addr);
+		addr = ioapic_map(ioapic->mio_addr);
 
-			ver = ioapic_read(addr, IOAPIC_VER);
-			ioapic->mio_npin = ((ver & IOART_VER_MAXREDIR)
-					    >> MAXREDIRSHIFT) + 1;
+		ver = ioapic_read(addr, IOAPIC_VER);
+		ioapic->mio_npin = ((ver & IOART_VER_MAXREDIR)
+				    >> MAXREDIRSHIFT) + 1;
 
-			prev_ioapic = TAILQ_PREV(ioapic,
-					mptable_ioapic_list, mio_link);
-			if (prev_ioapic == NULL) {
-				ioapic->mio_gsi_base = 0;
-			} else {
-				ioapic->mio_gsi_base =
-					prev_ioapic->mio_gsi_base +
-					prev_ioapic->mio_npin;
-			}
-			ioapic_add(addr, ioapic->mio_gsi_base,
-			    ioapic->mio_npin);
+		prev_ioapic = TAILQ_PREV(ioapic,
+				mptable_ioapic_list, mio_link);
+		if (prev_ioapic == NULL) {
+			ioapic->mio_gsi_base = 0;
+		} else {
+			ioapic->mio_gsi_base =
+				prev_ioapic->mio_gsi_base +
+				prev_ioapic->mio_npin;
 		}
+		ioapic_add(addr, ioapic->mio_gsi_base, ioapic->mio_npin);
+
 		if (bootverbose) {
 			kprintf("MPTABLE: IOAPIC addr 0x%08x, "
 				"apic id %d, idx %d, gsi base %d, npin %d\n",

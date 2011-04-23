@@ -777,14 +777,6 @@ ioapic_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 	void *ioaddr;
 	int pin;
 
-	if (ioapic_use_old) {
-		if (bootverbose) {
-			kprintf("irq %d, trig %c\n", irq,
-				trig == INTR_TRIGGER_EDGE ? 'E' : 'L');
-		}
-		return;
-	}
-
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
 
