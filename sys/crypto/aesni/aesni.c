@@ -117,7 +117,7 @@ aesni_detach(device_t dev)
 	}
 	while ((ses = TAILQ_FIRST(&sc->sessions)) != NULL) {
 		TAILQ_REMOVE(&sc->sessions, ses, next);
-		kfree(ses, M_AESNI);
+		kfree(ses->freeaddr, M_AESNI);
 	}
 	spin_unlock(&sc->lock);
 	spin_uninit(&sc->lock);
@@ -129,7 +129,7 @@ static int
 aesni_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 {
 	struct aesni_softc *sc;
-	struct aesni_session *ses;
+	struct aesni_session *ases, *ses;
 	struct cryptoini *encini;
 	int error;
 
@@ -160,13 +160,19 @@ aesni_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	 */
 	ses = TAILQ_FIRST(&sc->sessions);
 	if (ses == NULL || ses->used) {
-		ses = kmalloc(sizeof(*ses), M_AESNI, M_NOWAIT | M_ZERO);
+		ses = kmalloc(sizeof(*ses) + 16, M_AESNI, M_NOWAIT | M_ZERO);
 		if (ses == NULL) {
 			spin_unlock(&sc->lock);
 			return (ENOMEM);
 		}
-		KASSERT(((uintptr_t)ses) % 0x10 == 0,
-		    ("kmalloc returned unaligned pointer"));
+		/* Check if 'ses' is 16-byte aligned. If not, align it. */
+		if (((uintptr_t)ses & 0xf) != 0) {
+			ases = AESNI_ALIGN(ses);
+			ases->freeaddr = ses;
+			ses = ases;
+		} else {
+			ses->freeaddr = ses;
+		}
 		ses->id = sc->sid++;
 	} else {
 		TAILQ_REMOVE(&sc->sessions, ses, next);
@@ -191,10 +197,13 @@ static void
 aesni_freesession_locked(struct aesni_softc *sc, struct aesni_session *ses)
 {
 	uint32_t sid;
+	void *freeaddr;
 
 	sid = ses->id;
 	TAILQ_REMOVE(&sc->sessions, ses, next);
+	freeaddr = ses->freeaddr;
 	bzero(ses, sizeof(*ses));
+	ses->freeaddr = freeaddr;
 	ses->id = sid;
 	TAILQ_INSERT_HEAD(&sc->sessions, ses, next);
 }
