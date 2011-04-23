@@ -796,7 +796,7 @@ state_diskutil_menu(struct i_fn_args *a)
 			a->short_desc = _("Select the disks on which "
 			    "you wish to install bootblocks.");
 			a->cancel_desc = _("Return to Utilities Menu");
-			fn_install_bootblocks(a);
+			fn_install_bootblocks(a, NULL);
 		} else if (strcmp(dfui_response_get_action_id(r), "format_msdos_floppy") == 0) {
 			fn_format_msdos_floppy(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "create_cdboot_floppy") == 0) {
@@ -1251,7 +1251,8 @@ state_install_bootstrap(struct i_fn_args *a)
 
 	a->short_desc = msg_buf[0];
 	a->cancel_desc = _("Skip this Step");
-	fn_install_bootblocks(a);
+	fn_install_bootblocks(a,
+	    disk_get_device_name(storage_get_selected_disk(a->s)));
 	state = state_finish_install;
 }
 

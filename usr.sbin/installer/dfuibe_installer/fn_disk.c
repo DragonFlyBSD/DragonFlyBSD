@@ -401,7 +401,7 @@ ask_to_wipe_boot_sector(struct i_fn_args *a, struct commands *fcmds)
 }
 
 void
-fn_install_bootblocks(struct i_fn_args *a)
+fn_install_bootblocks(struct i_fn_args *a, const char *device)
 {
 	struct dfui_form *f;
 	struct dfui_response *r;
@@ -450,13 +450,21 @@ fn_install_bootblocks(struct i_fn_args *a)
 
 	dfui_form_set_multiple(f, 1);
 
-	for (d = storage_disk_first(a->s); d != NULL; d = disk_next(d)) {
+	if (device != NULL) {
 		ds = dfui_dataset_new();
-		/* XXX need to see how this is handled in OpenBSD/NetBSD */
-		dfui_dataset_celldata_add(ds, "disk", disk_get_device_name(d));
+		dfui_dataset_celldata_add(ds, "disk", device);
 		dfui_dataset_celldata_add(ds, "boot0cfg", "Y");
 		dfui_dataset_celldata_add(ds, "packet", "Y");
 		dfui_form_dataset_add(f, ds);
+	} else {
+		for (d = storage_disk_first(a->s); d != NULL; d = disk_next(d)) {
+			ds = dfui_dataset_new();
+			dfui_dataset_celldata_add(ds, "disk",
+			    disk_get_device_name(d));
+			dfui_dataset_celldata_add(ds, "boot0cfg", "Y");
+			dfui_dataset_celldata_add(ds, "packet", "Y");
+			dfui_form_dataset_add(f, ds);
+		}
 	}
 
 	if (!dfui_be_present(a->c, f, &r))
