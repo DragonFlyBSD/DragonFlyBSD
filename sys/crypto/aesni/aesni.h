@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/crypto/aesni/aesni.h,v 1.1 2010/07/23 11:00:46 kib Exp $
+ * $FreeBSD: src/sys/crypto/aesni/aesni.h,v 1.2 2010/09/23 11:57:25 pjd Exp $
  */
 
 #ifndef _AESNI_H_
@@ -55,7 +55,9 @@
 struct aesni_session {
 	uint8_t enc_schedule[AES_SCHED_LEN] __aligned(16);
 	uint8_t dec_schedule[AES_SCHED_LEN] __aligned(16);
+	uint8_t xts_schedule[AES_SCHED_LEN] __aligned(16);
 	uint8_t iv[AES_BLOCK_LEN];
+	int algo;
 	int rounds;
 	/* uint8_t *ses_ictx; */
 	/* uint8_t *ses_octx; */

@@ -36,7 +36,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * FreeBSD: src/sys/crypto/aesni/aeskeys_i386.S,v 1.1 2010/07/23 11:00:46 kib Exp
+ * $FreeBSD: src/sys/crypto/aesni/aeskeys_i386.S,v 1.3 2011/03/02 14:56:58 kib Exp $
  */
 
 #include <machine/asmacros.h>
@@ -54,7 +54,7 @@ _key_expansion_256a:
 	pxor	%xmm1,%xmm0
 	movaps	%xmm0,(%edx)
 	addl	$0x10,%edx
-	ret 	/* was retq (?!!) */
+	retl
 	.cfi_endproc
 END(_key_expansion_128)
 
@@ -78,7 +78,7 @@ ENTRY(_key_expansion_192a)
 	shufps	$0b01001110,%xmm2,%xmm1
 	movaps	%xmm1,0x10(%edx)
 	addl	$0x20,%edx
-	ret	/* was retq (?!!) */
+	retl
 	.cfi_endproc
 END(_key_expansion_192a)
 
@@ -169,7 +169,7 @@ ENTRY(aesni_set_enckey)
 	.byte	0x66,0x0f,0x3a,0xdf,0xc8,0x20
 	call	_key_expansion_256b
 //	aeskeygenassist $0x40,%xmm2,%xmm1	# round 7
-	.byte	0x66,0x0f,0x3a,0xdf,0xca,0x20
+	.byte	0x66,0x0f,0x3a,0xdf,0xca,0x40
 	call	_key_expansion_256a
 	.cfi_adjust_cfa_offset -4
 	leave

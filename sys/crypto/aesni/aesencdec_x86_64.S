@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * FreeBSD: src/sys/crypto/aesni/aesencdec_amd64.S,v 1.1 2010/07/23 11:00:46 kib Exp
+ * $FreeBSD: src/sys/crypto/aesni/aesencdec_amd64.S,v 1.1 2010/07/23 11:00:46 kib Exp $
  */
 
 #include <machine/asmacros.h>
