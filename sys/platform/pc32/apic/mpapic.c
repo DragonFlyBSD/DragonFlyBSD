@@ -1147,6 +1147,8 @@ static TAILQ_HEAD(, ioapic_enumerator) ioapic_enumerators =
 void
 ioapic_config(void)
 {
+	struct ioapic_info *info;
+	int start_apic_id = 0;
 	struct ioapic_enumerator *e;
 	int error, i;
 	u_long ef = 0;
@@ -1170,107 +1172,100 @@ ioapic_config(void)
 #endif
 	}
 
-	if (!ioapic_use_old) {
-		crit_enter();
+	crit_enter();
 
-		ef = read_eflags();
-		cpu_disable_intr();
+	ef = read_eflags();
+	cpu_disable_intr();
 
-		/*
-		 * Switch to I/O APIC MachIntrABI and reconfigure
-		 * the default IDT entries.
-		 */
-		MachIntrABI = MachIntrABI_IOAPIC;
-		MachIntrABI.setdefault();
-	}
+	/*
+	 * Switch to I/O APIC MachIntrABI and reconfigure
+	 * the default IDT entries.
+	 */
+	MachIntrABI = MachIntrABI_IOAPIC;
+	MachIntrABI.setdefault();
 
 	e->ioapic_enumerate(e);
 
-	if (!ioapic_use_old) {
-		struct ioapic_info *info;
-		int start_apic_id = 0;
+	/*
+	 * Setup index
+	 */
+	i = 0;
+	TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
+		info->io_idx = i++;
 
-		/*
-		 * Setup index
-		 */
-		i = 0;
-		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
-			info->io_idx = i++;
+	if (i > IOAPIC_COUNT_MAX) /* XXX magic number */
+		panic("ioapic_config: more than 16 I/O APIC\n");
 
-		if (i > IOAPIC_COUNT_MAX) /* XXX magic number */
-			panic("ioapic_config: more than 16 I/O APIC\n");
+	/*
+	 * Setup APIC ID
+	 */
+	TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
+		int apic_id;
 
-		/*
-		 * Setup APIC ID
-		 */
-		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
-			int apic_id;
-
-			apic_id = ioapic_alloc_apic_id(start_apic_id);
-			if (apic_id == NAPICID) {
-				kprintf("IOAPIC: can't alloc APIC ID for "
-					"%dth I/O APIC\n", info->io_idx);
-				break;
-			}
-			info->io_apic_id = apic_id;
-
-			start_apic_id = apic_id + 1;
+		apic_id = ioapic_alloc_apic_id(start_apic_id);
+		if (apic_id == NAPICID) {
+			kprintf("IOAPIC: can't alloc APIC ID for "
+				"%dth I/O APIC\n", info->io_idx);
+			break;
 		}
-		if (info != NULL) {
-			/*
-			 * xAPIC allows I/O APIC's APIC ID to be same
-			 * as the LAPIC's APIC ID
-			 */
-			kprintf("IOAPIC: use xAPIC model to alloc APIC ID "
-				"for I/O APIC\n");
+		info->io_apic_id = apic_id;
 
-			TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
-				info->io_apic_id = info->io_idx;
-		}
-
-		/*
-		 * Warning about any GSI holes
-		 */
-		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
-			const struct ioapic_info *prev_info;
-
-			prev_info = TAILQ_PREV(info, ioapic_info_list, io_link);
-			if (prev_info != NULL) {
-				if (info->io_gsi_base !=
-				prev_info->io_gsi_base + prev_info->io_npin) {
-					kprintf("IOAPIC: warning gsi hole "
-						"[%d, %d]\n",
-						prev_info->io_gsi_base +
-						prev_info->io_npin,
-						info->io_gsi_base - 1);
-				}
-			}
-		}
-
-		if (bootverbose) {
-			TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
-				kprintf("IOAPIC: idx %d, apic id %d, "
-					"gsi base %d, npin %d\n",
-					info->io_idx,
-					info->io_apic_id,
-					info->io_gsi_base,
-					info->io_npin);
-			}
-		}
-
-		/*
-		 * Setup all I/O APIC
-		 */
-		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
-			ioapic_setup(info);
-		ioapic_abi_fixup_irqmap();
-
-		write_eflags(ef);
-
-		MachIntrABI.cleanup();
-
-		crit_exit();
+		start_apic_id = apic_id + 1;
 	}
+	if (info != NULL) {
+		/*
+		 * xAPIC allows I/O APIC's APIC ID to be same
+		 * as the LAPIC's APIC ID
+		 */
+		kprintf("IOAPIC: use xAPIC model to alloc APIC ID "
+			"for I/O APIC\n");
+
+		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
+			info->io_apic_id = info->io_idx;
+	}
+
+	/*
+	 * Warning about any GSI holes
+	 */
+	TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
+		const struct ioapic_info *prev_info;
+
+		prev_info = TAILQ_PREV(info, ioapic_info_list, io_link);
+		if (prev_info != NULL) {
+			if (info->io_gsi_base !=
+			prev_info->io_gsi_base + prev_info->io_npin) {
+				kprintf("IOAPIC: warning gsi hole "
+					"[%d, %d]\n",
+					prev_info->io_gsi_base +
+					prev_info->io_npin,
+					info->io_gsi_base - 1);
+			}
+		}
+	}
+
+	if (bootverbose) {
+		TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link) {
+			kprintf("IOAPIC: idx %d, apic id %d, "
+				"gsi base %d, npin %d\n",
+				info->io_idx,
+				info->io_apic_id,
+				info->io_gsi_base,
+				info->io_npin);
+		}
+	}
+
+	/*
+	 * Setup all I/O APIC
+	 */
+	TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
+		ioapic_setup(info);
+	ioapic_abi_fixup_irqmap();
+
+	write_eflags(ef);
+
+	MachIntrABI.cleanup();
+
+	crit_exit();
 }
 
 void

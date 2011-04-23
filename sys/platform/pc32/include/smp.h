@@ -177,7 +177,6 @@ int	ioapic_extpin_gsi(void);
 int	ioapic_gsi(int, int);
 
 extern int apic_io_enable;
-extern int ioapic_use_old;
 
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);

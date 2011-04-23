@@ -155,11 +155,6 @@ configure_final(void *dummy)
 	cninit_finish();
 
 	if (bootverbose) {
-#ifdef SMP /* APIC-IO */
-		if (apic_io_enable && ioapic_use_old)
-			imen_dump();
-#endif
-
 		/*
 		 * Print out the BIOS's idea of the disk geometries.
 		 */

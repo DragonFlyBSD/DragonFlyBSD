@@ -92,10 +92,6 @@
 
 #include <machine/intr_machdep.h>
 
-#ifdef SMP /* APIC-IO */
-/* The interrupt triggered by the 8254 (timer) chip */
-static void setup_8254_mixed_mode (void);
-#endif
 static void i8254_restore(void);
 static void resettodr_on_shutdown(void *arg __unused);
 
@@ -1048,7 +1044,6 @@ static void
 i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 {
 #ifdef SMP /* APIC-IO */
-	int apic_8254_trial = 0;
 	void *clkdesc = NULL;
 	int irq = 0, mixed_mode = 0, error;
 #endif
@@ -1068,30 +1063,7 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 
 	/* Finish initializing 8253 timer 0. */
 #ifdef SMP /* APIC-IO */
-if (apic_io_enable) {
-	if (ioapic_use_old) {
-		irq = isa_apic_irq(0);
-		if (irq >= 0 ) {
-			if (apic_int_type(0, 0) == 3)
-				apic_8254_trial = 1;
-		} else {
-			/* look for ExtInt on pin 0 */
-			if (apic_int_type(0, 0) == 3) {
-				irq = apic_irq(0, 0);
-				setup_8254_mixed_mode();
-			} else {
-				panic("APIC_IO: Cannot route 8254 "
-				      "interrupt to CPU");
-			}
-		}
-
-		clkdesc = register_int(irq, clkintr, NULL, "clk",
-				       NULL,
-				       INTR_EXCL | INTR_CLOCK |
-				       INTR_NOPOLL | INTR_MPSAFE | 
-				       INTR_NOENTROPY);
-		machintr_intren(irq);
-	} else {
+	if (apic_io_enable) {
 		irq = ioapic_abi_find_irq(0, INTR_TRIGGER_EDGE,
 			INTR_POLARITY_HIGH);
 		if (irq < 0) {
@@ -1122,8 +1094,7 @@ mixed_mode_setup:
 				       INTR_NOPOLL | INTR_MPSAFE |
 				       INTR_NOENTROPY);
 		machintr_intren(irq);
-	}
-} else {
+	} else {
 #endif
 	register_int(0, clkintr, NULL, "clk", NULL,
 		     INTR_EXCL | INTR_CLOCK |
@@ -1131,7 +1102,7 @@ mixed_mode_setup:
 		     INTR_NOENTROPY);
 	machintr_intren(0);
 #ifdef SMP /* APIC-IO */
-}
+	}
 #endif
 
 	/* Initialize RTC. */
@@ -1139,97 +1110,28 @@ mixed_mode_setup:
 	writertc(RTC_STATUSB, RTCSB_24HR);
 
 #ifdef SMP /* APIC-IO */
-if (apic_io_enable) {
-if (ioapic_use_old) {
-	if (apic_8254_trial) {
-		sysclock_t base;
-		long lastcnt;
-
-		/*
-		 * Following code assumes the 8254 is the cpu timer,
-		 * so make sure it is.
-		 */
-		KKASSERT(sys_cputimer == &i8254_cputimer);
-		KKASSERT(cti == &i8254_cputimer_intr);
-
-		lastcnt = get_interrupt_counter(irq);
-
-		/*
-		 * Force an 8254 Timer0 interrupt and wait 1/100s for
-		 * it to happen, then see if we got it.
-		 */
-		kprintf("APIC_IO: Testing 8254 interrupt delivery\n");
-		i8254_intr_reload(cti, 2);
-		base = sys_cputimer->count();
-		while (sys_cputimer->count() - base < sys_cputimer->freq / 100)
-			;	/* nothing */
-		if (get_interrupt_counter(irq) - lastcnt == 0) {
-			/* 
-			 * The MP table is broken.
-			 * The 8254 was not connected to the specified pin
-			 * on the IO APIC.
-			 * Workaround: Limited variant of mixed mode.
-			 */
-			machintr_intrdis(irq);
-			unregister_int(clkdesc);
-			kprintf("APIC_IO: Broken MP table detected: "
-			       "8254 is not connected to "
-			       "IOAPIC #%d intpin %d\n",
-			       int_to_apicintpin[irq].ioapic,
-			       int_to_apicintpin[irq].int_pin);
-			/* 
-			 * Revoke current ISA IRQ 0 assignment and 
-			 * configure a fallback interrupt routing from
-			 * the 8254 Timer via the 8259 PIC to the
-			 * an ExtInt interrupt line on IOAPIC #0 intpin 0.
-			 * We reuse the low level interrupt handler number.
-			 */
-			if (apic_irq(0, 0) < 0) {
-				revoke_apic_irq(irq);
-				assign_apic_irq(0, 0, irq);
-			}
-			irq = apic_irq(0, 0);
-			setup_8254_mixed_mode();
-			register_int(irq, clkintr, NULL, "clk",
-				     NULL,
-				     INTR_EXCL | INTR_CLOCK |
-				     INTR_NOPOLL | INTR_MPSAFE |
-				     INTR_NOENTROPY);
-			machintr_intren(irq);
-		}
-	}
-	if (apic_int_type(0, 0) != 3 ||
-	    int_to_apicintpin[irq].ioapic != 0 ||
-	    int_to_apicintpin[irq].int_pin != 0) {
-		kprintf("APIC_IO: routing 8254 via IOAPIC #%d intpin %d\n",
-		       int_to_apicintpin[irq].ioapic,
-		       int_to_apicintpin[irq].int_pin);
-	} else {
-		kprintf("APIC_IO: "
-		       "routing 8254 via 8259 and IOAPIC #0 intpin 0\n");
-	}
-} else {	/* !ioapic_use_old */
-	error = i8254_ioapic_trial(irq, cti);
-	if (error) {
-		if (mixed_mode) {
-			if (!selected) {
-				kprintf("IOAPIC: mixed mode for irq %d "
-					"trial failed: %d\n", irq, error);
-				goto nointr;
+	if (apic_io_enable) {
+		error = i8254_ioapic_trial(irq, cti);
+		if (error) {
+			if (mixed_mode) {
+				if (!selected) {
+					kprintf("IOAPIC: mixed mode for irq %d "
+						"trial failed: %d\n",
+						irq, error);
+					goto nointr;
+				} else {
+					panic("IOAPIC: mixed mode for irq %d "
+					      "trial failed: %d\n", irq, error);
+				}
 			} else {
-				panic("IOAPIC: mixed mode for irq %d "
-				      "trial failed: %d\n", irq, error);
+				kprintf("IOAPIC: warning 8254 is not connected "
+					"to the correct pin, try mixed mode\n");
+				machintr_intrdis(irq);
+				unregister_int(clkdesc);
+				goto mixed_mode_setup;
 			}
-		} else {
-			kprintf("IOAPIC: warning 8254 is not connected "
-				"to the correct pin, try mixed mode\n");
-			machintr_intrdis(irq);
-			unregister_int(clkdesc);
-			goto mixed_mode_setup;
 		}
 	}
-}		/* ioapic_use_old */
-}
 #endif
 	return;
 
@@ -1237,28 +1139,6 @@ nointr:
 	i8254_nointr = 1; /* don't try to register again */
 	cputimer_intr_deregister(cti);
 }
-
-#ifdef SMP /* APIC-IO */
-
-static void 
-setup_8254_mixed_mode(void)
-{
-	/*
-	 * Allow 8254 timer to INTerrupt 8259:
-	 *  re-initialize master 8259:
-	 *   reset; prog 4 bytes, single ICU, edge triggered
-	 */
-	outb(IO_ICU1, 0x13);
-	outb(IO_ICU1 + 1, IDT_OFFSET);	/* start vector (unused) */
-	outb(IO_ICU1 + 1, 0x00);	/* ignore slave */
-	outb(IO_ICU1 + 1, 0x03);	/* auto EOI, 8086 */
-	outb(IO_ICU1 + 1, 0xfe);	/* unmask INT0 */
-	
-	/* program IO APIC for type 3 INT on INT0 */
-	if (ext_int_setup(0, 0) < 0)
-		panic("8254 redirect via APIC pin0 impossible!");
-}
-#endif
 
 void
 setstatclockrate(int newhz)

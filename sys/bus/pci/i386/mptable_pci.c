@@ -54,38 +54,15 @@
 static int
 mptable_pci_route_interrupt(device_t pcib, device_t dev, int pin)
 {
-	int line, bus, slot;
+	int line, bus, slot, irq;
 
 	bus = pci_get_bus(dev);
 	slot = pci_get_slot(dev);
+	irq = pci_get_irq(dev);
 
-	if (ioapic_use_old) {
-		line = pci_apic_irq(bus, slot, pin);
-		if (line >= 0) {
-			goto done;
-		} else {
-			int irq = pci_get_irq(dev);
-
-			/* 
-			 * PCI interrupts might be redirected to the
-			 * ISA bus according to some MP tables.  Use the
-			 * same methods as used by the ISA devices
-			 * devices to find the proper IOAPIC int pin.
-			 */
-			kprintf("MPTable: Try routing through ISA bus for "
-				"bus %d slot %d INT%c irq %d\n",
-				bus, slot, 'A' + pin - 1, irq);
-			line = isa_apic_irq(irq);
-			if (line >= 0)
-				goto done;
-		}
-	} else {
-		int irq = pci_get_irq(dev);
-
-		line = mptable_pci_int_route(bus, slot, pin, irq);
-		if (line >= 0)
-			goto done;
-	}
+	line = mptable_pci_int_route(bus, slot, pin, irq);
+	if (line >= 0)
+		goto done;
 
 	kprintf("MPTABLE: Unable to route for bus %d slot %d INT%c\n",
 		bus, slot, 'A' + pin - 1);
@@ -110,10 +87,9 @@ mptable_hostb_probe(device_t dev)
 	if (mptable_pci_probe_table(pcib_get_bus(dev)) != 0)
 		return (ENXIO);
 #endif
-	if (!ioapic_use_old) {
-		if (bootverbose)
-			mptable_pci_int_dump();
-	}
+
+	if (bootverbose)
+		mptable_pci_int_dump();
 
 	device_set_desc(dev, "MPTABLE Host-PCI bridge");
 	return (0);
