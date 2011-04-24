@@ -67,8 +67,6 @@
 #include <machine_base/apic/ioapic_abi.h>
 #include <machine/intr_machdep.h>	/* IPIs */
 
-#define FIXUP_EXTRA_APIC_INTS	8	/* additional entries we may create */
-
 #define WARMBOOT_TARGET		0
 #define WARMBOOT_OFF		(KERNBASE + 0x0467)
 #define WARMBOOT_SEG		(KERNBASE + 0x0469)
@@ -688,27 +686,6 @@ mptable_search_sig(u_int32_t target, int count)
 	pmap_unmapdev((vm_offset_t)addr, map_size);
 	return ret;
 }
-
-
-typedef struct BUSDATA {
-	u_char  bus_id;
-	enum busTypes bus_type;
-}       bus_datum;
-
-typedef struct INTDATA {
-	u_char  int_type;
-	u_short int_flags;
-	u_char  src_bus_id;
-	u_char  src_bus_irq;
-	u_char  dst_apic_id;
-	u_char  dst_apic_int;
-	u_char	int_vector;
-}       io_int, local_int;
-
-typedef struct BUSTYPENAME {
-	u_char  type;
-	char    name[7];
-}       bus_type_name;
 
 static int processor_entry	(const struct PROCENTRY *entry, int cpu);
 
