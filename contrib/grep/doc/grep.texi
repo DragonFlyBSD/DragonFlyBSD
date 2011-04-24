@@ -651,6 +651,15 @@ For each directory mentioned on the command line,
 read and process all files in that directory, recursively.
 This is the same as the @samp{--directories=recurse} option.
 
+@item -O
+@itemx --only-files
+@opindex -O
+@opindex --only-files
+@cindex ignoring special files
+@cindex ignoring symlinked directories
+Ignore all special files, except for symlinks.
+When recursing into directories, ignore symlinked directories as well.
+
 @end table
 
 @node Other Options

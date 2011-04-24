@@ -272,7 +272,7 @@ static struct exclude *included_patterns;
 static struct exclude *excluded_directory_patterns;
 /* Short options.  */
 static char const short_options[] =
-"0123456789A:B:C:D:EFGHIPTUVX:abcd:e:f:hiKLlm:noqRrsuvwxyZz";
+"0123456789A:B:C:D:EFGHIOPTUVX:abcd:e:f:hiKLlm:noqRrsuvwxyZz";
 
 /* Non-boolean long options that have no corresponding short equivalents.  */
 enum
@@ -331,6 +331,7 @@ static struct option const long_options[] =
   {"no-messages", no_argument, NULL, 's'},
   {"null", no_argument, NULL, 'Z'},
   {"null-data", no_argument, NULL, 'z'},
+  {"only-files", no_argument, NULL, 'O'},
   {"only-matching", no_argument, NULL, 'o'},
   {"quiet", no_argument, NULL, 'q'},
   {"recursive", no_argument, NULL, 'r'},
@@ -377,6 +378,9 @@ static enum directories_type const directories_types[] =
 ARGMATCH_VERIFY (directories_args, directories_types);
 
 static enum directories_type directories = READ_DIRECTORIES;
+
+/* How to handle dir/device/links */
+static int only_files;
 
 /* How to handle devices. */
 static enum
@@ -1208,6 +1212,20 @@ grepfile (char const *file, struct stats *stats)
           suppressible_error (file, errno);
           return 1;
         }
+      if (only_files)
+        {
+          if (S_ISDIR (stats->stat.st_mode))
+            {
+              if (directories != RECURSE_DIRECTORIES)
+                return 1;
+              if (lstat(file, &stats->stat) != 0)
+                return 1;
+              if (!S_ISDIR (stats->stat.st_mode))
+                return 1;
+            }
+          else if (!S_ISREG (stats->stat.st_mode))
+            return 1;
+        }
       if (directories == SKIP_DIRECTORIES && S_ISDIR (stats->stat.st_mode))
         return 1;
       if (devices == SKIP_DEVICES && (S_ISCHR (stats->stat.st_mode)
@@ -1224,11 +1242,13 @@ grepfile (char const *file, struct stats *stats)
 
           if (is_EISDIR (e, file) && directories == RECURSE_DIRECTORIES)
             {
+#if 0  /* DISABLED by only-files local modification option */
               if (stat (file, &stats->stat) != 0)
                 {
                   error (0, errno, "%s", file);
                   return 1;
                 }
+#endif
 
               return grepdir (file, stats);
             }
@@ -1445,15 +1465,18 @@ Output control:\n\
       printf (_("\
       --include=FILE_PATTERN  search only files that match FILE_PATTERN\n\
       --exclude=FILE_PATTERN  skip files and directories matching FILE_PATTERN\n\
-      --exclude-from=FILE   skip files matching any file pattern from FILE\n\
-      --exclude-dir=PATTERN  directories that match PATTERN will be skipped.\n\
+      --exclude-from=FILE     skip files matching any file pattern from FILE\n\
+      --exclude-dir=PATTERN   directories that match PATTERN will be skipped.\n\
 "));
       printf (_("\
+  -O, --only-files           Ignore special files, except symlinks.\n\
+                             When recursing directories, ignore symlinked\n\
+                             directories as well.\n\
   -L, --files-without-match  print only names of FILEs containing no match\n\
-  -l, --files-with-matches  print only names of FILEs containing matches\n\
-  -c, --count               print only a count of matching lines per FILE\n\
-  -T, --initial-tab         make tabs line up (if needed)\n\
-  -Z, --null                print 0 byte after FILE name\n"));
+  -l, --files-with-matches   print only names of FILEs containing matches\n\
+  -c, --count                print only a count of matching lines per FILE\n\
+  -T, --initial-tab          make tabs line up (if needed)\n\
+  -Z, --null                 print 0 byte after FILE name\n"));
       printf (_("\
 \n\
 Context control:\n\
@@ -1850,6 +1873,10 @@ main (int argc, char **argv)
 
       case 'I':
         binary_files = WITHOUT_MATCH_BINARY_FILES;
+        break;
+
+      case 'O':
+        only_files = 1;
         break;
 
       case 'T':
