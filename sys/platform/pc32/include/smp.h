@@ -124,7 +124,6 @@ struct ioapic_enumerator {
 
 /* global data in mpapic.c */
 extern volatile lapic_t		lapic;
-extern int			lapic_id_max;
 
 #ifndef _SYS_BUS_H_
 #include <sys/bus.h>

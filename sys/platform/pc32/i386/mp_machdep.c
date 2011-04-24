@@ -864,9 +864,6 @@ mp_set_cpuids(int cpu_id, int apic_id)
 {
 	CPU_TO_ID(cpu_id) = apic_id;
 	ID_TO_CPU(apic_id) = cpu_id;
-
-	if (apic_id > lapic_id_max)
-		lapic_id_max = apic_id;
 }
 
 static int

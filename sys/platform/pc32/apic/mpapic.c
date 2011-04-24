@@ -48,10 +48,6 @@
 /* XXX */
 extern pt_entry_t *SMPpt;
 
-/* EISA Edge/Level trigger control registers */
-#define ELCR0	0x4d0			/* eisa irq 0-7 */
-#define ELCR1	0x4d1			/* eisa irq 8-15 */
-
 struct ioapic_info {
 	int		io_idx;
 	int		io_apic_id;
@@ -122,8 +118,6 @@ static const uint32_t	lapic_timer_divisors[] = {
 	APIC_TDCR_32,	APIC_TDCR_64,	APIC_TDCR_128,	APIC_TDCR_1
 };
 #define APIC_TIMER_NDIVISORS (int)(NELEM(lapic_timer_divisors))
-
-int			lapic_id_max;
 
 static struct ioapic_conf	ioapic_conf;
 
