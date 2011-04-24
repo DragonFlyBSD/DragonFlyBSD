@@ -57,7 +57,7 @@
 
 #define AUTHORS \
   proper_name ("Mike Haertel"), \
-  _("others, see <http://git.sv.gnu.org/cgit/grep.git/tree/AUTHORS>")
+  _("others, see\n<http://git.sv.gnu.org/cgit/grep.git/tree/AUTHORS>")
 
 struct stats
 {
@@ -1093,7 +1093,10 @@ grep (int fd, char const *file, struct stats *stats)
   if (! fillbuf (save, stats))
     {
       if (! is_EISDIR (errno, file))
-        suppressible_error (filename, errno);
+        {
+          if (errno != EINVAL)
+            suppressible_error (filename, errno);
+        }
       return 0;
     }
 
