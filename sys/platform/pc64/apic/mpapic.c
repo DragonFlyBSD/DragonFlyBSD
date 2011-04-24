@@ -46,10 +46,6 @@
 #define IOAPIC_COUNT_MAX	16
 #define IOAPIC_ID_MASK		(IOAPIC_COUNT_MAX - 1)
 
-/* EISA Edge/Level trigger control registers */
-#define ELCR0	0x4d0			/* eisa irq 0-7 */
-#define ELCR1	0x4d1			/* eisa irq 8-15 */
-
 struct ioapic_info {
 	int		io_idx;
 	int		io_apic_id;
@@ -124,7 +120,6 @@ static const uint32_t	lapic_timer_divisors[] = {
 };
 #define APIC_TIMER_NDIVISORS (int)(NELEM(lapic_timer_divisors))
 
-int			lapic_id_max;
 static struct ioapic_conf	ioapic_conf;
 
 void
