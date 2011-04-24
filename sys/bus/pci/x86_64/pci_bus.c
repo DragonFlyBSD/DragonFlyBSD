@@ -203,15 +203,6 @@ legacy_pcib_is_host_bridge(int bus, int slot, int func,
 		break;
 
 		/* AMD -- vendor 0x1022 */
-	case 0x30001022:
-		s = "AMD Elan SC520 host to PCI bridge";
-#ifdef CPU_ELAN
-		init_AMD_Elan_sc520();
-#else
-		kprintf(
-"*** WARNING: missing CPU_ELAN -- timekeeping may be wrong\n");
-#endif
-		break;
 	case 0x70061022:
 		s = "AMD-751 host to PCI bridge";
 		break;
