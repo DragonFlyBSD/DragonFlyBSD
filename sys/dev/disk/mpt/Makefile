@@ -1,7 +1,5 @@
 # $FreeBSD: src/sys/modules/mpt/Makefile,v 1.3 2008/05/06 20:49:53 jhb Exp $
 
-.PATH:  ${.CURDIR}
-
 KMOD=	mpt
 SRCS=	bus_if.h device_if.h pci_if.h \
 	opt_cam.h opt_ddb.h \

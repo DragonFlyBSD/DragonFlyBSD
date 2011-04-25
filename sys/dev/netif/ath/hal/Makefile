@@ -32,7 +32,6 @@
 ATH_RATE?=	sample		# tx rate control algorithm
 
 HAL=${.CURDIR}/ath_hal
-.PATH:	${.CURDIR}
 .PATH:	${HAL}
 KMOD=	ath_hal
 #SRCS=	if_ath.c if_ath_pci.c
