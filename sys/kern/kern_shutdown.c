@@ -364,7 +364,8 @@ boot(int howto)
 			 */
 			kprintf("giving up on %d buffers\n", nbusy);
 #ifdef DDB
-			Debugger("busy buffer problem");
+			if (debugger_on_panic)
+				Debugger("busy buffer problem");
 #endif /* DDB */
 			tsleep(boot, 0, "shutdn", hz * 5 + 1);
 		} else {
@@ -402,9 +403,18 @@ boot(int howto)
 	/* NOTREACHED */
 }
 
+/*
+ * Pass 1 - Figure out if there are any busy or dirty buffers still present.
+ *
+ *	We ignore TMPFS mounts in this pass.
+ */
 static int
 shutdown_busycount1(struct buf *bp, void *info)
 {
+	struct vnode *vp;
+
+	if ((vp = bp->b_vp) != NULL && vp->v_tag == VT_TMPFS)
+		return (0);
 	if ((bp->b_flags & B_INVAL) == 0 && BUF_REFCNT(bp) > 0)
 		return(1);
 	if ((bp->b_flags & (B_DELWRI | B_INVAL)) == B_DELWRI)
@@ -412,9 +422,33 @@ shutdown_busycount1(struct buf *bp, void *info)
 	return (0);
 }
 
+/*
+ * Pass 2 - only run after pass 1 has completed or has given up
+ *
+ *	We ignore TMPFS, NFS, MFS, and SMBFS mounts in this pass.
+ */
 static int
 shutdown_busycount2(struct buf *bp, void *info)
 {
+	struct vnode *vp;
+
+	/*
+	 * Ignore tmpfs and nfs mounts
+	 */
+	if ((vp = bp->b_vp) != NULL) {
+		if (vp->v_tag == VT_TMPFS)
+			return (0);
+		if (vp->v_tag == VT_NFS)
+			return (0);
+		if (vp->v_tag == VT_MFS)
+			return (0);
+		if (vp->v_tag == VT_SMBFS)
+			return (0);
+	}
+
+	/*
+	 * Only count buffers stuck on I/O, ignore everything else
+	 */
 	if (((bp->b_flags & B_INVAL) == 0 && BUF_REFCNT(bp)) ||
 	    ((bp->b_flags & (B_DELWRI|B_INVAL)) == B_DELWRI)) {
 		/*
