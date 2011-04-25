@@ -1171,10 +1171,6 @@ union descriptor ldt[NLDT];		/* local descriptor table */
 /* table descriptors - used to load tables by cpu */
 struct region_descriptor r_gdt, r_idt;
 
-#if defined(I586_CPU) && !defined(NO_F00F_HACK)
-extern int has_f00f_bug;
-#endif
-
 /* JG proc0paddr is a virtual address */
 void *proc0paddr;
 /* JG alignment? */
@@ -1991,41 +1987,6 @@ globaldata_find(int cpu)
 	KKASSERT(cpu >= 0 && cpu < ncpus);
 	return(&CPU_prvspace[cpu].mdglobaldata.mi);
 }
-
-#if defined(I586_CPU) && !defined(NO_F00F_HACK)
-static void f00f_hack(void *unused);
-SYSINIT(f00f_hack, SI_BOOT2_BIOS, SI_ORDER_ANY, f00f_hack, NULL);
-
-static void
-f00f_hack(void *unused) 
-{
-	struct gate_descriptor *new_idt;
-	vm_offset_t tmp;
-
-	if (!has_f00f_bug)
-		return;
-
-	kprintf("Intel Pentium detected, installing workaround for F00F bug\n");
-
-	r_idt.rd_limit = sizeof(idt0) - 1;
-
-	tmp = kmem_alloc(&kernel_map, PAGE_SIZE * 2);
-	if (tmp == 0)
-		panic("kmem_alloc returned 0");
-	if (((unsigned int)tmp & (PAGE_SIZE-1)) != 0)
-		panic("kmem_alloc returned non-page-aligned memory");
-	/* Put the first seven entries in the lower page */
-	new_idt = (struct gate_descriptor*)(tmp + PAGE_SIZE - (7*8));
-	bcopy(idt, new_idt, sizeof(idt0));
-	r_idt.rd_base = (int)new_idt;
-	lidt(&r_idt);
-	idt = new_idt;
-	if (vm_map_protect(&kernel_map, tmp, tmp + PAGE_SIZE,
-			   VM_PROT_READ, FALSE) != KERN_SUCCESS)
-		panic("vm_map_protect failed");
-	return;
-}
-#endif /* defined(I586_CPU) && !NO_F00F_HACK */
 
 int
 ptrace_set_pc(struct lwp *lp, unsigned long addr)

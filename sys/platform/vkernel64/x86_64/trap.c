@@ -412,9 +412,6 @@ user_trap(struct trapframe *frame)
 	}
 #endif
 
-#if defined(I586_CPU) && !defined(NO_F00F_HACK)
-restart:
-#endif
 	type = frame->tf_trapno;
 	code = frame->tf_err;
 
@@ -476,13 +473,7 @@ restart:
 	case T_PAGEFLT:		/* page fault */
 		MAKEMPSAFE(have_mplock);
 		i = trap_pfault(frame, TRUE, eva);
-		if (i == -1)
-			goto out;
-#if defined(I586_CPU) && !defined(NO_F00F_HACK)
-		if (i == -2)
-			goto restart;
-#endif
-		if (i == 0)
+		if (i == -1 || i == 0)
 			goto out;
 
 		ucode = T_PAGEFLT;

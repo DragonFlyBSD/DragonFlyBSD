@@ -36,7 +36,6 @@
  *
  * from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/npx.c,v 1.8 2008/01/29 19:54:56 dillon Exp $
  */
 
 #include "opt_debug_npx.h"
@@ -97,7 +96,7 @@ static struct krate badfprate = { 1 };
 static	void	fpusave		(union savefpu *);
 static	void	fpurstor	(union savefpu *);
 
-#if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
+#ifndef CPU_DISABLE_SSE
 int mmxopt = 1;
 SYSCTL_INT(_kern, OID_AUTO, mmxopt, CTLFLAG_RD, &mmxopt, 0,
 	"MMX/XMM optimized bcopy/copyin/copyout support");
