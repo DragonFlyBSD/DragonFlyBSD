@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/libutil.h,v 1.26.2.3 2000/11/22 03:49:49 murray Exp $
- * $DragonFly: src/lib/libutil/libutil.h,v 1.8 2008/09/14 20:04:59 swildner Exp $
  */
 
 #ifndef _LIBUTIL_H_
@@ -110,6 +109,19 @@ struct passwd *pw_scan(const char *_line, int _flags);
 const char *pw_tempname(void);
 int	pw_tmp(int _mfd);
 #endif
+
+/* Error checked functions */
+void		(*esetfunc(void (*)(int, const char *, ...)))
+		(int, const char *, ...);
+size_t		estrlcpy(char *, const char *, size_t);
+size_t		estrlcat(char *, const char *, size_t);
+char		*estrdup(const char *);
+char		*estrndup(const char *, size_t);
+void		*ecalloc(size_t, size_t);
+void		*emalloc(size_t);
+void		*erealloc(void *, size_t);
+int		easprintf(char ** __restrict, const char * __restrict, ...)
+		__printflike(2, 3);
 __END_DECLS
 
 #define UU_LOCK_INUSE (1)

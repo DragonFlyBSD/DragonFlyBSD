@@ -11,7 +11,8 @@ SRCS=	flopen.c login.c login_tty.c logout.c logwtmp.c logwtmpx.c pty.c \
 	login_crypt.c loginx.c logoutx.c _secure_path.c uucplock.c \
 	property.c auth.c \
 	realhostname.c fparseln.c stub.c pidfile.c trimdomain.c \
-	dehumanize_number.c humanize_number.c humanize_unsigned.c pw_util.c
+	dehumanize_number.c humanize_number.c humanize_unsigned.c pw_util.c \
+	efun.c
 INCS=	libutil.h login_cap.h
 WARNS?=	3
 
@@ -22,7 +23,8 @@ MAN+=	flopen.3 login.3 loginx.3 login_auth.3 login_tty.3 logout.3 logwtmp.3 \
 	login_cap.3 login_class.3 login_times.3 login_ok.3 \
 	_secure_path.3 uucplock.3 property.3 auth.3 realhostname.3 \
 	realhostname_sa.3 trimdomain.3 fparseln.3 pidfile.3 \
-	humanize_number.3 humanize_unsigned.3
+	humanize_number.3 humanize_unsigned.3 \
+	efun.3
 MAN+=	login.conf.5 auth.conf.5
 MLINKS+= property.3 properties_read.3  property.3 properties_free.3
 MLINKS+= property.3 property_find.3
