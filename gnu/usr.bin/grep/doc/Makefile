@@ -1,7 +1,9 @@
-# $FreeBSD: src/gnu/usr.bin/grep/doc/Makefile,v 1.3 1999/11/22 08:56:30 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/grep/doc/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
+.include	"../Makefile.inc"
 
-INFO=		grep
+SRCDIR=		${BASEDIR}/doc
 INFOSECTION=	"System Utilities"
+INFO=		grep
+
+grep.info:	grep.texi version.texi fdl.texi
 
 .include <bsd.info.mk>
