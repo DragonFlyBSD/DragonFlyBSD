@@ -1,0 +1,20 @@
+GNU GREP 2.7
+============
+
+Original source can be downloaded from:
+http://ftp.gnu.org/gnu/grep
+
+file = grep-2.7.tar.gz
+date = 20 Sep 2010
+size = 1501297
+sha1 = 8a5a4a14129d8f3f663b17e68e438881f5b95ac3 
+
+A list of files and directories removed is in README.DELETED
+
+Local modifications applied to following files:
+	src/main.c
+	doc/grep.1
+	doc/grep.texi
+
+The follow files were pregenerated:
+	doc/grep.1
