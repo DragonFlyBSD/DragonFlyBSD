@@ -42,9 +42,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <util.h>
+#include <libutil.h>
 
-#include "ealloc.h"
 #include "sprite.h"
 #include "hash.h"
 

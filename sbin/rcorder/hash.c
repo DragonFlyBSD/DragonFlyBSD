@@ -43,6 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <libutil.h>
 
 /* hash.c --
  *
@@ -56,7 +57,6 @@
 #include "make.h"
 #endif /* ORDER */
 #include "hash.h"
-#include "ealloc.h"
 
 /*
  * Forward references to local procedures that are used before they're
