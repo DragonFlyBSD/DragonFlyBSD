@@ -174,6 +174,7 @@ SUBDIR=	alias \
 	showmount \
 	sockstat \
 	soelim \
+	sort \
 	split \
 	stat \
 	su \

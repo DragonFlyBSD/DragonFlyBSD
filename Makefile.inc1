@@ -773,7 +773,7 @@ bootstrap-tools:
     usr.bin/tail usr.bin/unifdef \
     usr.sbin/chown usr.sbin/mtree usr.sbin/config \
     usr.sbin/btxld usr.sbin/zic usr.sbin/makewhatis \
-    gnu/usr.bin/texinfo gnu/usr.bin/grep gnu/usr.bin/sort \
+    gnu/usr.bin/texinfo gnu/usr.bin/grep usr.bin/sort \
     usr.bin/gzip usr.bin/bzip2 usr.bin/mkcsmapper usr.bin/mkesdb
 	${ECHODIR} "===> ${_tool} (bootstrap-tools)"; \
 		cd ${.CURDIR}/${_tool}; \

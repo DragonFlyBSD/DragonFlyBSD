@@ -1,6 +1,6 @@
 # $FreeBSD: src/gnu/usr.bin/Makefile,v 1.51 2000/01/16 00:11:34 obrien Exp $
 
-SUBDIR= dialog diff diff3 grep groff man rcs sdiff sort texinfo
+SUBDIR= dialog diff diff3 grep groff man rcs sdiff texinfo
 
 .if !defined(NO_CVS)
 SUBDIR+=cvs
