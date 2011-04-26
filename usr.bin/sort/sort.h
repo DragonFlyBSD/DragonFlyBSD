@@ -199,3 +199,5 @@ void	 rd_append(int, int, int, FILE *, u_char *, u_char *);
 void	 radix_sort(RECHEADER **, RECHEADER **, int);
 int	 setfield(const char *, struct field *, int);
 void	 settables(void);
+
+#define __arraycount(__x) (sizeof(__x) / sizeof(__x[0]))

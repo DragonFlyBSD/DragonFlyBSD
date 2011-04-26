@@ -88,7 +88,8 @@ makeline_copydown(RECHEADER *recbuf)
 }
 
 int
-makeline(FILE *fp, RECHEADER *recbuf, u_char *bufend, struct field *dummy2)
+makeline(FILE *fp, RECHEADER *recbuf, u_char *bufend,
+  struct field __attribute ((unused)) *dummy2)
 {
 	u_char *pos;
 	int c;
@@ -251,7 +252,8 @@ putkeydump(const RECHEADER *rec, FILE *fp)
  * get a record from a temporary file. (Used by merge sort.)
  */
 int
-geteasy(FILE *fp, RECHEADER *rec, u_char *end, struct field *dummy2)
+geteasy(FILE *fp, RECHEADER *rec, u_char *end,
+  struct field __attribute__ ((unused)) *dummy2)
 {
 	length_t file_len;
 	int i;

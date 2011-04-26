@@ -49,7 +49,6 @@ __RCSID("$NetBSD: radix_sort.c,v 1.3 2009/09/10 22:02:40 dsl Exp $");
 
 #include <assert.h>
 #include <errno.h>
-#include <util.h>
 #include "sort.h"
 
 typedef struct {
@@ -78,6 +77,7 @@ radix_sort(RECHEADER **a, RECHEADER **ta, int n)
 	stack *s, *sp, *sp0, *sp1, temp;
 	RECHEADER **top[256];
 	u_int *cp, bigc;
+	size_t alloc_size;
 	int data_index = 0;
 
 	if (n < THRESHOLD && !DEBUG('r')) {
@@ -85,7 +85,10 @@ radix_sort(RECHEADER **a, RECHEADER **ta, int n)
 		return;
 	}
 
-	s = emalloc(stack_size * sizeof *s);
+	alloc_size = stack_size * sizeof *s;
+	s = malloc(alloc_size);
+	if (s == NULL)
+		err(1, "Cannot allocate %zu bytes", alloc_size);
 	memset(&count, 0, sizeof count);
 	/* Technically 'top' doesn't need zeroing */
 	memset(&top, 0, sizeof top);
@@ -129,7 +132,11 @@ radix_sort(RECHEADER **a, RECHEADER **ta, int n)
 		 */
 		if (sp + nc > s + stack_size) {
 			stack_size *= 2;
-			sp1 = erealloc(s, stack_size * sizeof *s);
+			alloc_size = stack_size * sizeof *s;
+			sp1 = realloc(s, alloc_size);
+			if (sp1 == NULL)
+				err(1, "Cannot re-allocate %zu bytes",
+				    alloc_size);
 			sp = sp1 + (sp - s);
 			s = sp1;
 		}

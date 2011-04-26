@@ -172,7 +172,7 @@ enterkey(RECHEADER *keybuf, const u_char *keybuf_end, u_char *line_data,
  */
 static u_char *
 enterfield(u_char *tablepos, const u_char *endkey, struct field *cur_fld,
-    int gflags)
+    int __attribute__ ((unused)) gflags)
 {
 	u_char *start, *end, *lineend, *mask, *lweight;
 	struct column icol, tcol;

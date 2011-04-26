@@ -69,7 +69,6 @@ __RCSID("$NetBSD: msort.c,v 1.29 2009/11/06 18:34:22 joerg Exp $");
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <util.h>
 
 /* Subroutines using comparisons: merge sort and check order */
 #define DELETE (1)

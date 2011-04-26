@@ -66,7 +66,7 @@
  * a choice of merge sort and radix sort for external sorting.
  */
 
-#include <util.h>
+#include <sys/stat.h>
 #include "sort.h"
 #include "fsort.h"
 #include "pathnames.h"
@@ -123,6 +123,7 @@ main(int argc, char *argv[])
 	char *outfile, *outpath = 0;
 	struct field *fldtab;
 	size_t fldtab_sz, fld_cnt;
+	size_t alloc_size;
 	struct filelist filelist;
 	int num_input_files;
 	FILE *outfp = NULL;
@@ -144,8 +145,11 @@ main(int argc, char *argv[])
 	/* fldtab[0] is the global options. */
 	fldtab_sz = 3;
 	fld_cnt = 0;
-	fldtab = emalloc(fldtab_sz * sizeof(*fldtab));
-	memset(fldtab, 0, fldtab_sz * sizeof(*fldtab));
+	alloc_size = fldtab_sz * sizeof(*fldtab);
+	fldtab = malloc(alloc_size);
+	if (fldtab == NULL)
+	    err(1, "Cannot allocate %zu bytes", alloc_size);
+	memset(fldtab, 0, alloc_size);
 
 #define SORT_OPTS "bcdD:fHik:lmno:rR:sSt:T:ux"
 
@@ -175,7 +179,10 @@ main(int argc, char *argv[])
 			/* That is now the default. */
 			break;
 		case 'k':
-			fldtab = erealloc(fldtab, (fldtab_sz + 1) * sizeof(*fldtab));
+		        alloc_size = (fldtab_sz + 1) * sizeof(*fldtab);
+		        fldtab = realloc(fldtab, alloc_size);
+		        if (fldtab == NULL)
+		            err(1, "Cannot re-allocate %zu bytes", alloc_size);
 			memset(&fldtab[fldtab_sz], 0, sizeof(fldtab[0]));
 			fldtab_sz++;
 
@@ -380,7 +387,7 @@ main(int argc, char *argv[])
 }
 
 static void
-onsignal(int sig)
+onsignal(int __attribute__ ((unused)) sig)
 {
 	cleanup();
 }
@@ -408,6 +415,9 @@ usage(const char *msg)
 RECHEADER *
 allocrec(RECHEADER *rec, size_t size)
 {
-
-	return (erealloc(rec, size + sizeof(long) - 1));
+        size_t alloc_size = size + sizeof(long) - 1;
+        RECHEADER *ach = realloc(rec, alloc_size);
+        if (ach == NULL)
+            err(1, "Cannot re-allocate %zu bytes", alloc_size);
+        return (ach);
 }
