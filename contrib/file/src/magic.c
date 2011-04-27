@@ -33,7 +33,7 @@
 #include "file.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: magic.c,v 1.69 2010/09/20 14:14:49 christos Exp $")
+FILE_RCSID("@(#)$File: magic.c,v 1.72 2011/03/20 20:36:52 christos Exp $")
 #endif	/* lint */
 
 #include "magic.h"
@@ -108,49 +108,82 @@ private const char *
 get_default_magic(void)
 {
 	static const char hmagic[] = "/.magic/magic.mgc";
-	static char default_magic[2 * MAXPATHLEN + 2];
-	char *home;
-	char hmagicpath[MAXPATHLEN + 1] = { 0 };
+	static char *default_magic;
+	char *home, *hmagicpath;
 
 #ifndef WIN32
+	struct stat st;
+
+	if (default_magic) {
+		free(default_magic);
+		default_magic = NULL;
+	}
 	if ((home = getenv("HOME")) == NULL)
 		return MAGIC;
 
-	(void)snprintf(hmagicpath, sizeof(hmagicpath), "%s%s", home, hmagic);
-
-	if (access(hmagicpath, R_OK) == -1)
+	if (asprintf(&hmagicpath, "%s/.magic", home) < 0)
 		return MAGIC;
+	if (stat(hmagicpath, &st) == -1)
+		goto out;
+	if (S_ISDIR(st.st_mode)) {
+		free(hmagicpath);
+		if (asprintf(&hmagicpath, "%s/%s", home, hmagic) < 0)
+			return MAGIC;
+		if (access(hmagicpath, R_OK) == -1)
+			goto out;
+	}
 
-	(void)snprintf(default_magic, sizeof(default_magic), "%s:%s",
-	    hmagicpath, MAGIC);
+	if (asprintf(&default_magic, "%s:%s", hmagicpath, MAGIC) < 0)
+		goto out;
+	free(hmagicpath);
+	return default_magic;
+out:
+	default_magic = NULL;
+	free(hmagicpath);
+	return MAGIC;
 #else
 	char *hmagicp = hmagicpath;
-	char tmppath[MAXPATHLEN + 1] = { 0 };
-	char *hmagicend = &hmagicpath[sizeof(hmagicpath) - 1];
-	static const char pathsep[] = { PATHSEP, '\0' };
+	char *tmppath = NULL;
 
 #define APPENDPATH() \
-	if (access(tmppath, R_OK) != -1)
-		hmagicp += snprintf(hmagicp, hmagicend - hmagicp, \
-		    "%s%s", hmagicp == hmagicpath ? "" : pathsep, tmppath)
+	do { \
+		if (tmppath && access(tmppath, R_OK) != -1) { \
+			if (hmagicpath == NULL) { \
+				hmagicpath = tmppath; \
+				tmppath = NULL; \
+			} else { \
+				free(tmppath); \
+				if (asprintf(&hmagicp, "%s%c%s", hmagicpath, \
+				    PATHSEP, tmppath) >= 0) { \
+					free(hmagicpath); \
+					hmagicpath = hmagicp; \
+				} \
+			} \
+	} while (/*CONSTCOND*/0)
+				
+	if (default_magic) {
+		free(default_magic);
+		default_magic = NULL;
+	}
+
 	/* First, try to get user-specific magic file */
 	if ((home = getenv("LOCALAPPDATA")) == NULL) {
 		if ((home = getenv("USERPROFILE")) != NULL)
-			(void)snprintf(tmppath, sizeof(tmppath),
+			if (asprintf(&tmppath,
 			    "%s/Local Settings/Application Data%s", home,
-			    hmagic);
+			    hmagic) < 0)
+				tmppath = NULL;
 	} else {
-		(void)snprintf(tmppath, sizeof(tmppath), "%s%s",
-		    home, hmagic);
+		if (asprintf(&tmppath, "%s%s", home, hmagic) < 0)
+			tmppath = NULL;
 	}
-	if (tmppath[0] != '\0') {
-		APPENDPATH();
-	}
+
+	APPENDPATH();
 
 	/* Second, try to get a magic file from Common Files */
 	if ((home = getenv("COMMONPROGRAMFILES")) != NULL) {
-		(void)snprintf(tmppath, sizeof(tmppath), "%s%s", home, hmagic);
-		APPENDPATH();
+		if (asprintf(&tmppath, "%s%s", home, hmagic) >= 0)
+			APPENDPATH();
 	}
 
 
@@ -158,27 +191,24 @@ get_default_magic(void)
 	if (dllpath[0] != 0) {
 		if (strlen(dllpath) > 3 &&
 		    stricmp(&dllpath[strlen(dllpath) - 3], "bin") == 0) {
-			(void)snprintf(tmppath, sizeof(tmppath),
-			    "%s/../share/misc/magic.mgc", dllpath);
-			APPENDPATH();
-		} else {
-			(void)snprintf(tmppath, sizeof(tmppath),
-			    "%s/share/misc/magic.mgc", dllpath);
-			APPENDPATH()
-			else {
-				(void)snprintf(tmppath, sizeof(tmppath),
-				    "%s/magic.mgc", dllpath);
+			if (asprintf(&tmppath,
+			    "%s/../share/misc/magic.mgc", dllpath) >= 0)
 				APPENDPATH();
-			}
+		} else {
+			if (asprintf(&tmppath,
+			    "%s/share/misc/magic.mgc", dllpath) >= 0)
+				APPENDPATH();
+			else if (asprintf(&tmppath,
+			    "%s/magic.mgc", dllpath) >= 0)
+				APPENDPATH();
 		}
 	}
 
 	/* Don't put MAGIC constant - it likely points to a file within MSys
 	tree */
-	(void)strlcpy(default_magic, hmagicpath, sizeof(default_magic));
-#endif
-
+	default_magic = hmagicpath;
 	return default_magic;
+#endif
 }
 
 public const char *

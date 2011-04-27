@@ -32,7 +32,7 @@
 #include "file.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: file.c,v 1.140 2010/11/30 14:58:53 rrt Exp $")
+FILE_RCSID("@(#)$File: file.c,v 1.143 2011/03/20 20:36:52 christos Exp $")
 #endif	/* lint */
 
 #include "magic.h"
@@ -85,10 +85,6 @@ int getopt_long(int argc, char * const *argv, const char *optstring, const struc
     "file ...\n" \
     "       %s -C [-m magicfiles]\n" \
     "       %s [--help]\n"
-
-#ifndef MAXPATHLEN
-#define	MAXPATHLEN	1024
-#endif
 
 private int 		/* Global command-line options 		*/
 	bflag = 0,	/* brief output format	 		*/
@@ -255,9 +251,9 @@ main(int argc, char *argv[])
 		case 'v':
 			if (magicfile == NULL)
 				magicfile = magic_getpath(magicfile, action);
-			(void)fprintf(stderr, "%s-%d.%.2d\n", progname,
+			(void)fprintf(stdout, "%s-%d.%.2d\n", progname,
 				       FILE_VERSION_MAJOR, patchlevel);
-			(void)fprintf(stderr, "magic file from %s\n",
+			(void)fprintf(stdout, "magic file from %s\n",
 				       magicfile);
 			return 1;
 		case 'z':
@@ -375,8 +371,10 @@ load(const char *magicfile, int flags)
 private int
 unwrap(struct magic_set *ms, const char *fn)
 {
-	char buf[MAXPATHLEN];
 	FILE *f;
+	ssize_t len;
+	char *line = NULL;
+	size_t llen = 0;
 	int wid = 0, cwid;
 	int e = 0;
 
@@ -390,9 +388,10 @@ unwrap(struct magic_set *ms, const char *fn)
 			return 1;
 		}
 
-		while (fgets(buf, sizeof(buf), f) != NULL) {
-			buf[strcspn(buf, "\n")] = '\0';
-			cwid = file_mbswidth(buf);
+		while ((len = getline(&line, &llen, f)) > 0) {
+			if (line[len - 1] == '\n')
+				line[len - 1] = '\0';
+			cwid = file_mbswidth(line);
 			if (cwid > wid)
 				wid = cwid;
 		}
@@ -400,13 +399,15 @@ unwrap(struct magic_set *ms, const char *fn)
 		rewind(f);
 	}
 
-	while (fgets(buf, sizeof(buf), f) != NULL) {
-		buf[strcspn(buf, "\n")] = '\0';
-		e |= process(ms, buf, wid);
+	while ((len = getline(&line, &llen, f)) > 0) {
+		if (line[len - 1] == '\n')
+			line[len - 1] = '\0';
+		e |= process(ms, line, wid);
 		if(nobuffer)
 			(void)fflush(stdout);
 	}
 
+	free(line);
 	(void)fclose(f);
 	return e;
 }
@@ -486,13 +487,14 @@ help(void)
 	(void)fputs(
 "Usage: file [OPTION...] [FILE...]\n"
 "Determine type of FILEs.\n"
-"\n", stderr);
+"\n", stdout);
 #define OPT(shortname, longname, opt, doc)      \
-	fprintf(stderr, "  -%c, --" longname doc, shortname);
+	fprintf(stdout, "  -%c, --" longname doc, shortname);
 #define OPT_LONGONLY(longname, opt, doc)        \
-	fprintf(stderr, "      --" longname doc);
+	fprintf(stdout, "      --" longname doc);
 #include "file_opts.h"
 #undef OPT
 #undef OPT_LONGONLY
+	fprintf(stdout, "\nReport bugs to http://bugs.gw.com/\n");
 	exit(0);
 }

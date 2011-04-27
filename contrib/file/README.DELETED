@@ -25,6 +25,7 @@ python/
 src/Makefile.am
 src/Makefile.in
 src/asprintf.c
+src/getline.c
 src/getopt_long.c
 src/strlcat.c
 src/strlcpy.c

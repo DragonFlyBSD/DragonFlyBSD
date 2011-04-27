@@ -1,4 +1,4 @@
-.\" $File: file.man,v 1.87 2010/11/05 20:51:38 christos Exp $
+.\" $File: file.man,v 1.93 2011/03/12 19:01:27 rrt Exp $
 .Dd July 23, 2010
 .Dt FILE __CSECTION__
 .Os
@@ -378,7 +378,7 @@ is that this version treats any white space
 as a delimiter, so that spaces in pattern strings must be escaped.
 For example,
 .Bd -literal -offset indent
->10	string	language impress\ 	(imPRESS data)
+>10	string	language impress\       (imPRESS data)
 .Ed
 .Pp
 in an existing magic file would have to be changed to
@@ -431,7 +431,7 @@ keep the old magic file around for comparison purposes
 $ file file.c file /dev/{wd0a,hda}
 file.c:   C program text
 file:     ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV),
-	  dynamically linked (uses shared libs), stripped
+          dynamically linked (uses shared libs), stripped
 /dev/wd0a: block special (0/0)
 /dev/hda: block special (3/0)
 
@@ -470,34 +470,44 @@ the external list of magic types.
 This slowed the program down slightly but made it a lot more flexible.
 .Pp
 This program, based on the System V version,
-was written by Ian Darwin <ian@darwinsys.com>
+was written by Ian Darwin
+.Aq ian@darwinsys.com
 without looking at anybody else's source code.
 .Pp
 John Gilmore revised the code extensively, making it better than
 the first version.
 Geoff Collyer found several inadequacies
 and provided some magic file entries.
-Contributions by the `&' operator by Rob McMahon, cudcv@warwick.ac.uk, 1989.
+Contributions by the `&' operator by Rob McMahon
+.Aq cudcv@warwick.ac.uk ,
+1989.
 .Pp
-Guy Harris, guy@netapp.com, made many changes from 1993 to the present.
+Guy Harris
+.Aq guy@netapp.com
+made many changes from 1993 to the present.
 .Pp
 Primary development and maintenance from 1990 to the present by
-Christos Zoulas (christos@astron.com).
+Christos Zoulas
+.Aq christos@astron.com .
 .Pp
-Altered by Chris Lowth, chris@lowth.com, 2000:
-Handle the
+Altered by Chris Lowth
+.Aq chris@lowth.com ,
+2000: handle the
 .Fl i
 option to output mime type strings, using an alternative
 magic file and internal logic.
 .Pp
-Altered by Eric Fischer (enf@pobox.com), July, 2000,
-to identify character codes and attempt to identify the languages
+Altered by Eric Fischer
+.Aq enf@pobox.com
+July, 2000, to identify character codes and attempt to identify the languages
 of non-ASCII files.
 .Pp
-Altered by Reuben Thomas (rrt@sc3d.org), 2007-2009, to improve MIME
-support and merge MIME and non-MIME magic, support directories as well
-as files of magic, apply many bug fixes, update and fix a lot of magic,
-and improve the build system.
+Altered by Reuben Thomas
+.Aq rrt@sc3d.org ,
+2007-2011, to improve MIME support, merge MIME and non-MIME magic,
+support directories as well as files of magic, apply many bug fixes,
+update and fix a lot of magic, improve the build system, improve the
+documentation, and rewrite the Python bindings in pure Python.
 .Pp
 The list of contributors to the
 .Sq magic
@@ -517,55 +527,42 @@ and
 were written by John Gilmore from his public-domain
 .Xr tar 1
 program, and are not covered by the above license.
+.Sh RETURN CODE
+.Nm
+returns 0 on success, and non-zero on error.
 .Sh BUGS
 .Pp
 Please report bugs and send patches to the bug tracker at
 .Pa http://bugs.gw.com/
 or the mailing list at
 .Aq file@mx.gw.com .
+.Sh TODO
 .Pp
-.Nm
-uses several algorithms that favor speed over accuracy,
-thus it can be misled about the contents of
-text
-files.
+Fix output so that tests for MIME and APPLE flags are not needed all
+over the place, and actual output is only done in one place. This
+needs a design. Suggestion: push possible outputs on to a list, then
+pick the last-pushed (most specific, one hopes) value at the end, or
+use a default if the list is empty. This should not slow down evaluation.
 .Pp
-The support for text files (primarily for programming languages)
-is simplistic, inefficient and requires recompilation to update.
+Continue to squash all magic bugs. See Debian BTS for a good source.
 .Pp
-The list of keywords in
-.Dv ascmagic
-probably belongs in the Magic file.
-This could be done by using some keyword like
-.Sq *
-for the offset value.
+Store arbitrarily long strings, for example for %s patterns, so that
+they can be printed out. Fixes Debian bug #271672. Would require more
+complex store/load code in apprentice.
 .Pp
-Complain about conflicts in the magic file entries.
-Make a rule that the magic entries sort based on file offset rather
-than position within the magic file?
+Add syntax for relative offsets after current level (Debian bug #466037).
 .Pp
-The program should provide a way to give an estimate
-of
-.Sq how good
-a guess is.
-We end up removing guesses (e.g.
-.Sq From\
-as first 5 chars of file) because
-they are not as good as other guesses (e.g.
-.Sq Newsgroups:
-versus
-.Sq Return-Path:
-).
-Still, if the others don't pan out, it should be possible to use the
-first guess.
+Make file -ki work, i.e. give multiple MIME types.
 .Pp
-This manual page, and particularly this section, is too long.
-.Sh RETURN CODE
-.Nm
-returns 0 on success, and non-zero on error.
+Add a zip library so we can peek inside Office2007 documents to
+figure out what they are.
+.Pp
+Don't complain when ~/.magic is not compiled.
+.Pp
+Add an option to print URLs for the sources of the file descriptions.
 .Sh AVAILABILITY
 You can obtain the original author's latest version by anonymous FTP
-on
+from
 .Dv ftp.astron.com
 in the directory
 .Dv /pub/file/file-X.YZ.tar.gz
