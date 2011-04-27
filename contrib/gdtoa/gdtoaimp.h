@@ -89,12 +89,18 @@ THIS SOFTWARE.
  * #define IBM for IBM mainframe-style floating-point arithmetic.
  * #define VAX for VAX-style floating-point arithmetic (D_floating).
  * #define No_leftright to omit left-right logic in fast floating-point
- *	computation of dtoa.
+ *	computation of dtoa and gdtoa.  This will cause modes 4 and 5 to be
+ *	treated the same as modes 2 and 3 for some inputs.
  * #define Check_FLT_ROUNDS if FLT_ROUNDS can assume the values 2 or 3.
  * #define RND_PRODQUOT to use rnd_prod and rnd_quot (assembly routines
  *	that use extended-precision instructions to compute rounded
  *	products and quotients) with IBM.
- * #define ROUND_BIASED for IEEE-format with biased rounding.
+ * #define ROUND_BIASED for IEEE-format with biased rounding and arithmetic
+ *	that rounds toward +Infinity.
+ * #define ROUND_BIASED_without_Round_Up for IEEE-format with biased
+ *	rounding when the underlying floating-point arithmetic uses
+ *	unbiased rounding.  This prevent using ordinary floating-point
+ *	arithmetic when the result could be computed with one rounding error.
  * #define Inaccurate_Divide for IEEE-format with correctly rounded
  *	products but inaccurate quotients, e.g., for Intel i860.
  * #define NO_LONG_LONG on machines that do not have a "long long"
@@ -403,6 +409,11 @@ typedef union { double d; ULong L[2]; } U;
 
 #ifndef IEEE_Arith
 #define ROUND_BIASED
+#else
+#ifdef ROUND_BIASED_without_Round_Up
+#undef  ROUND_BIASED
+#define ROUND_BIASED
+#endif
 #endif
 
 #ifdef RND_PRODQUOT
