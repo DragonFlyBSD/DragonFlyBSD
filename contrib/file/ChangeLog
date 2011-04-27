@@ -1,3 +1,45 @@
+2011-03-30  15:45  Christos Zoulas <christos@zoulas.com>
+
+	* Fix cdf string buffer setting (Sven Anders)
+
+2011-03-20  16:35  Christos Zoulas <christos@zoulas.com>
+
+	* Eliminate MAXPATHLEN and use dynamic allocation for
+	  path and file buffers.
+
+2011-03-15  18:15  Christos Zoulas <christos@zoulas.com>
+
+	* binary tests on magic entries with masks could spuriously
+	  get converted to ascii.
+
+2011-03-12  18:06  Reuben Thomas <rrt@sc3d.org>
+
+	* Improve file.man (remove BUGS, present email addresses consistently).
+
+2011-03-07  19:38  Christos Zoulas <christos@zoulas.com>
+
+	* add lrzip support (from Ville Skytta)
+
+2011-02-10  16:36  Christos Zoulas <christos@zoulas.com>
+
+	* fix CDF bounds checking (Guy Helmer)
+
+2011-02-10  12:03  Christos Zoulas <christos@zoulas.com>
+
+	* add cdf_ctime() that prints a meaningful error when time cannot
+	  be converted.
+
+2011-02-02  20:40  Christos Zoulas <christos@zoulas.com>
+
+	* help and version output to stdout.
+
+	* When matching softmagic for ascii files, don't just print
+	  the softmagic classification, keep going and print the
+	  text classification too. This fixes broken troff files when
+	  we moved them from keyword recognition to softmagic
+	  (they stopped printing "with CRLF" etc.)
+	  Reported by Doug McIlroy.
+
 2011-01-16  19:31  Reuben Thomas <rrt@sc3d.org>
 
 	* Fix two potential buffer overruns in apprentice_list.

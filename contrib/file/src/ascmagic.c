@@ -26,8 +26,7 @@
  * SUCH DAMAGE.
  */
 /*
- * ASCII magic -- file types that we know based on keywords
- * that can appear anywhere in the file.
+ * ASCII magic -- try to detect text encoding.
  *
  * Extensively modified by Eric Fischer <enf@pobox.com> in July, 2000,
  * to handle character codes other than ASCII on a unified basis.
@@ -36,7 +35,7 @@
 #include "file.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: ascmagic.c,v 1.77 2010/11/30 14:58:53 rrt Exp $")
+FILE_RCSID("@(#)$File: ascmagic.c,v 1.81 2011/03/15 22:16:29 christos Exp $")
 #endif	/* lint */
 
 #include "magic.h"
@@ -125,7 +124,7 @@ file_ascmagic_with_encoding(struct magic_set *ms, const unsigned char *buf,
 	int n_lf = 0;
 	int n_cr = 0;
 	int n_nel = 0;
-	int score, curtype;
+	int score, curtype, executable = 0;
 
 	size_t last_line_end = (size_t)-1;
 	int has_long_lines = 0;
@@ -150,11 +149,12 @@ file_ascmagic_with_encoding(struct magic_set *ms, const unsigned char *buf,
 			file_oomem(ms, mlen);
 			goto done;
 		}
-		if ((utf8_end = encode_utf8(utf8_buf, mlen, ubuf, ulen)) == NULL)
+		if ((utf8_end = encode_utf8(utf8_buf, mlen, ubuf, ulen))
+		    == NULL)
 			goto done;
-		if ((rv = file_softmagic(ms, utf8_buf, (size_t)(utf8_end - utf8_buf),
-					 TEXTTEST)) != 0)
-			goto done;
+		if ((rv = file_softmagic(ms, utf8_buf,
+		    (size_t)(utf8_end - utf8_buf), TEXTTEST)) != 0)
+			goto subtype_identified;
 		else
 			rv = -1;
 	}
@@ -246,7 +246,7 @@ subtype_identified:
 		goto done;
 	}
 	if (mime) {
-		if ((mime & MAGIC_MIME_TYPE) != 0) {
+		if (!file_printedlen(ms) && (mime & MAGIC_MIME_TYPE) != 0) {
 			if (subtype_mime) {
 				if (file_printf(ms, "%s", subtype_mime) == -1)
 					goto done;
@@ -256,6 +256,28 @@ subtype_identified:
 			}
 		}
 	} else {
+		if (file_printedlen(ms)) {
+			switch (file_replace(ms, " text$", ", ")) {
+			case 0:
+				switch (file_replace(ms, " text executable$",
+				    ", ")) {
+				case 0:
+					if (file_printf(ms, ", ") == -1)
+						goto done;
+				case -1:
+					goto done;
+				default:
+					executable = 1;
+					break;
+				}
+				break;
+			case -1:
+				goto done;
+			default:
+				break;
+			}
+		}
+
 		if (file_printf(ms, "%s", code) == -1)
 			goto done;
 
@@ -266,6 +288,10 @@ subtype_identified:
 
 		if (file_printf(ms, " %s", type) == -1)
 			goto done;
+
+		if (executable)
+			if (file_printf(ms, " executable") == -1)
+				goto done;
 
 		if (has_long_lines)
 			if (file_printf(ms, ", with very long lines") == -1)
