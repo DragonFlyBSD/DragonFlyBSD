@@ -363,6 +363,7 @@ strtod
 			) {
 		if (!e)
 			goto ret;
+#ifndef ROUND_BIASED_without_Round_Up
 		if (e > 0) {
 			if (e <= Ten_pmax) {
 #ifdef VAX
@@ -423,6 +424,7 @@ strtod
 			goto ret;
 			}
 #endif
+#endif /* ROUND_BIASED_without_Round_Up */
 		}
 	e1 += nd - k;
 
