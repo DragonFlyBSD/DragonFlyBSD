@@ -726,7 +726,7 @@ unp_attach(struct socket *so, struct pru_attach_info *ai)
 		if (error)
 			goto failed;
 	}
-	unp = kmalloc(sizeof(*unp), M_UNPCB, M_NOWAIT|M_ZERO);
+	unp = kmalloc(sizeof(*unp), M_UNPCB, M_WAITOK | M_ZERO | M_NULLOK);
 	if (unp == NULL) {
 		error = ENOBUFS;
 		goto failed;
