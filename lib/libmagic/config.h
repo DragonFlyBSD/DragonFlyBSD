@@ -36,6 +36,9 @@
 /* Define to 1 if fseeko (and presumably ftello) exists and is declared. */
 #define HAVE_FSEEKO 1
 
+/* Define to 1 if you have the `getline' function. */
+#define HAVE_GETLINE 1
+
 /* Define to 1 if you have the <getopt.h> header file. */
 #define HAVE_GETOPT_H 1
 
@@ -213,13 +216,13 @@
 #define PACKAGE_NAME "file"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "file 5.05"
+#define PACKAGE_STRING "file 5.06"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "file"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "5.05"
+#define PACKAGE_VERSION "5.06"
 
 /* The size of `long long', as computed by sizeof. */
 #define SIZEOF_LONG_LONG 8
@@ -231,7 +234,7 @@
 /* #undef TM_IN_SYS_TIME */
 
 /* Version number of package */
-#define VERSION "5.05"
+#define VERSION "5.06"
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */
