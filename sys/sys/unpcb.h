@@ -79,7 +79,7 @@ struct	unpcb {
 	struct	unp_head unp_refs;	/* referencing socket linked list */
 	LIST_ENTRY(unpcb) unp_reflink;	/* link in unp_refs list */
 	struct	sockaddr_un *unp_addr;	/* bound address of socket */
-	int	unused01;
+	int	unp_refcnt;		/* referece count */
 	int	unused02;
 	unp_gen_t unp_gencnt;		/* generation count of this instance */
 	int	unp_flags;		/* flags */
