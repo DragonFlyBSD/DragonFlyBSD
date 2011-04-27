@@ -179,8 +179,6 @@ THIS SOFTWARE.
 #ifndef GDTOAIMP_H_INCLUDED
 #define GDTOAIMP_H_INCLUDED
 
-#define	Long	int
-
 #define USE_LOCALE
 #define Honor_FLT_ROUNDS
 
