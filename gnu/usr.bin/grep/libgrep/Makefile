@@ -7,6 +7,7 @@ CONTRIBDIR=	${BASEDIR}/src
 .PATH:		${CONTRIBDIR}
 
 CFLAGS+=	-I${CONTRIBDIR} -I${.CURDIR} -I${.OBJDIR}
+CFLAGS+=	-I${BASEDIR}/lib -I${.CURDIR}/../libgreputils
 CFLAGS+=	-DHAVE_CONFIG_H
 
 SRCS=		kwset.c \

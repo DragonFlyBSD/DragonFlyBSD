@@ -4,6 +4,6 @@
 PROG=		egrep
 NOMAN=
 
-CFLAGS+=	-I${.CURDIR}/../libgrep
+CFLAGS+=	-I${SRCDIR}/lib -I${.CURDIR}/../libgreputils
 
 .include <bsd.prog.mk>
