@@ -97,20 +97,12 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF THE COPYRIGHT
  * OWNER OR CONTRIBUTOR IS ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/mpt/mpt_pci.c,v 1.54 2009/07/10 08:18:08 scottl Exp $
+ * $FreeBSD: src/sys/dev/mpt/mpt_pci.c,v 1.61 2011/04/22 09:59:16 marius Exp $
  */
 
 #include <dev/disk/mpt/mpt.h>
 #include <dev/disk/mpt/mpt_cam.h>
 #include <dev/disk/mpt/mpt_raid.h>
-
-#if __FreeBSD_version < 700000
-#define	pci_msix_count(x)	0
-#define	pci_msi_count(x)	0
-#define	pci_alloc_msi(x, y)	1
-#define	pci_alloc_msix(x, y)	1
-#define	pci_release_msi(x)	do { ; } while (0)
-#endif
 
 #ifndef	PCI_VENDOR_LSI
 #define	PCI_VENDOR_LSI			0x1000
@@ -193,8 +185,6 @@
 #endif
 
 
-#define	MPT_IO_BAR	0
-#define	MPT_MEM_BAR	1
 
 static int mpt_pci_probe(device_t);
 static int mpt_pci_attach(device_t);
@@ -279,7 +269,6 @@ mpt_pci_probe(device_t dev)
 	return (0);
 }
 
-#if	__FreeBSD_version < 500000
 static void
 mpt_set_options(struct mpt_softc *mpt)
 {
@@ -340,38 +329,6 @@ mpt_set_options(struct mpt_softc *mpt)
 	}
 	mpt->msi_enable = 0;
 }
-#else
-static void
-mpt_set_options(struct mpt_softc *mpt)
-{
-	int tval;
-
-	tval = 0;
-	if (resource_int_value(device_get_name(mpt->dev),
-	    device_get_unit(mpt->dev), "disable", &tval) == 0 && tval != 0) {
-		mpt->disabled = 1;
-	}
-	tval = 0;
-	if (resource_int_value(device_get_name(mpt->dev),
-	    device_get_unit(mpt->dev), "debug", &tval) == 0 && tval != 0) {
-		mpt->verbose = tval;
-	}
-	tval = -1;
-	if (resource_int_value(device_get_name(mpt->dev),
-	    device_get_unit(mpt->dev), "role", &tval) == 0 && tval >= 0 &&
-	    tval <= 3) {
-		mpt->cfg_role = tval;
-		mpt->do_cfg_role = 1;
-	}
-
-	tval = 0;
-	mpt->msi_enable = 0;
-	if (resource_int_value(device_get_name(mpt->dev),
-	    device_get_unit(mpt->dev), "msi_enable", &tval) == 0 && tval == 1) {
-		mpt->msi_enable = 1;
-	}
-}
-#endif
 
 
 static void
@@ -419,6 +376,7 @@ mpt_pci_attach(device_t dev)
 	struct mpt_softc *mpt;
 	int		  iqd;
 	uint32_t	  data, cmd;
+	int		  mpt_io_bar, mpt_mem_bar;
 
 	/* Allocate the softc structure */
 	mpt  = (struct mpt_softc*)device_get_softc(dev);
@@ -459,6 +417,7 @@ mpt_pci_attach(device_t dev)
 	mpt->raid_queue_depth = MPT_RAID_QUEUE_DEPTH_DEFAULT;
 	mpt->verbose = MPT_PRT_NONE;
 	mpt->role = MPT_ROLE_NONE;
+	mpt->mpt_ini_id = MPT_INI_ID_NONE;
 	mpt_set_options(mpt);
 	if (mpt->verbose == MPT_PRT_NONE) {
 		mpt->verbose = MPT_PRT_WARN;
@@ -484,7 +443,7 @@ mpt_pci_attach(device_t dev)
 	 * Make sure we've disabled the ROM.
 	 */
 	data = pci_read_config(dev, PCIR_BIOS, 4);
-	data &= ~1;
+	data &= ~PCIM_BIOS_ENABLE;
 	pci_write_config(dev, PCIR_BIOS, data, 4);
 
 	/*
@@ -499,13 +458,27 @@ mpt_pci_attach(device_t dev)
 	}
 
 	/*
+	 * Figure out which are the I/O and MEM Bars
+	 */
+	data = pci_read_config(dev, PCIR_BAR(0), 4);
+	if (PCI_BAR_IO(data)) {
+		/* BAR0 is IO, BAR1 is memory */
+		mpt_io_bar = 0;
+		mpt_mem_bar = 1;
+	} else {
+		/* BAR0 is memory, BAR1 is IO */
+		mpt_mem_bar = 0;
+		mpt_io_bar = 1;
+	}
+
+	/*
 	 * Set up register access.  PIO mode is required for
 	 * certain reset operations (but must be disabled for
 	 * some cards otherwise).
 	 */
-	mpt->pci_pio_rid = PCIR_BAR(MPT_IO_BAR);
-	mpt->pci_pio_reg = bus_alloc_resource(dev, SYS_RES_IOPORT,
-			    &mpt->pci_pio_rid, 0, ~0, 0, RF_ACTIVE);
+	mpt->pci_pio_rid = PCIR_BAR(mpt_io_bar);
+	mpt->pci_pio_reg = bus_alloc_resource_any(dev, SYS_RES_IOPORT,
+			    &mpt->pci_pio_rid, RF_ACTIVE);
 	if (mpt->pci_pio_reg == NULL) {
 		device_printf(dev, "unable to map registers in PIO mode\n");
 		goto bad;
@@ -514,9 +487,9 @@ mpt_pci_attach(device_t dev)
 	mpt->pci_pio_sh = rman_get_bushandle(mpt->pci_pio_reg);
 
 	/* Allocate kernel virtual memory for the 9x9's Mem0 region */
-	mpt->pci_mem_rid = PCIR_BAR(MPT_MEM_BAR);
-	mpt->pci_reg = bus_alloc_resource(dev, SYS_RES_MEMORY,
-			&mpt->pci_mem_rid, 0, ~0, 0, RF_ACTIVE);
+	mpt->pci_mem_rid = PCIR_BAR(mpt_mem_bar);
+	mpt->pci_reg = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
+			&mpt->pci_mem_rid, RF_ACTIVE);
 	if (mpt->pci_reg == NULL) {
 		device_printf(dev, "Unable to memory map registers.\n");
 		if (mpt->is_sas) {
@@ -568,14 +541,14 @@ mpt_pci_attach(device_t dev)
 	mpt_disable_ints(mpt);
 
 	/* Register the interrupt handler */
-	if (mpt_setup_intr(dev, mpt->pci_irq, MPT_IFLAGS, NULL, mpt_pci_intr,
+	if (mpt_setup_intr(dev, mpt->pci_irq, 0, NULL, mpt_pci_intr,
 	    mpt, &mpt->ih)) {
 		device_printf(dev, "could not setup interrupt\n");
 		goto bad;
 	}
 
 	/* Allocate dma memory */
-	/* XXX JGibbs -Should really be done based on IOCFacts. */
+/* XXX JGibbs -Should really be done based on IOCFacts. */
 	if (mpt_dma_mem_alloc(mpt)) {
 		mpt_prt(mpt, "Could not allocate DMA memory\n");
 		goto bad;
@@ -587,7 +560,7 @@ mpt_pci_attach(device_t dev)
 	 * Hard resets are known to screw up the BAR for diagnostic
 	 * memory accesses (Mem1).
 	 *
-	 * Using Mem1 is known to make the chip stop responding to 
+	 * Using Mem1 is known to make the chip stop responding to
 	 * configuration space transfers, so we need to save it now
 	 */
 
@@ -714,9 +687,6 @@ mpt_pci_shutdown(device_t dev)
 static int
 mpt_dma_mem_alloc(struct mpt_softc *mpt)
 {
-	int i, error, nsegs;
-	uint8_t *vptr;
-	uint32_t pptr, end;
 	size_t len;
 	struct mpt_map_info mi;
 
@@ -726,20 +696,11 @@ mpt_dma_mem_alloc(struct mpt_softc *mpt)
 	}
 
 	len = sizeof (request_t) * MPT_MAX_REQUESTS(mpt);
-#ifdef	RELENG_4
-	mpt->request_pool = (request_t *)kmalloc(len, M_DEVBUF, M_WAITOK);
-	if (mpt->request_pool == NULL) {
-		mpt_prt(mpt, "cannot allocate request pool\n");
-		return (1);
-	}
-	memset(mpt->request_pool, 0, len);
-#else
 	mpt->request_pool = (request_t *)kmalloc(len, M_DEVBUF, M_WAITOK|M_ZERO);
 	if (mpt->request_pool == NULL) {
 		mpt_prt(mpt, "cannot allocate request pool\n");
 		return (1);
 	}
-#endif
 
 	/*
 	 * Create a parent dma tag for this device.
@@ -747,12 +708,12 @@ mpt_dma_mem_alloc(struct mpt_softc *mpt)
 	 * Align at byte boundaries,
 	 * Limit to 32-bit addressing for request/reply queues.
 	 */
-	if (mpt_dma_tag_create(mpt, /*parent*/bus_get_dma_tag(mpt->dev),
+	if (mpt_dma_tag_create(mpt, /*parent*/NULL,
 	    /*alignment*/1, /*boundary*/0, /*lowaddr*/BUS_SPACE_MAXADDR,
 	    /*highaddr*/BUS_SPACE_MAXADDR, /*filter*/NULL, /*filterarg*/NULL,
 	    /*maxsize*/BUS_SPACE_MAXSIZE_32BIT,
-	    /*nsegments*/BUS_SPACE_MAXSIZE_32BIT,
-	    /*maxsegsz*/BUS_SPACE_UNRESTRICTED, /*flags*/0,
+	    /*nsegments*/BUS_SPACE_UNRESTRICTED,
+	    /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT, /*flags*/0,
 	    &mpt->parent_dmat) != 0) {
 		mpt_prt(mpt, "cannot create parent dma tag\n");
 		return (1);
@@ -767,7 +728,7 @@ mpt_dma_mem_alloc(struct mpt_softc *mpt)
 		return (1);
 	}
 
-	/* Allocate some DMA accessable memory for replies */
+	/* Allocate some DMA accessible memory for replies */
 	if (bus_dmamem_alloc(mpt->reply_dmat, (void **)&mpt->reply,
 	    BUS_DMA_NOWAIT, &mpt->reply_dmap) != 0) {
 		mpt_prt(mpt, "cannot allocate %lu bytes of reply memory\n",
@@ -789,107 +750,23 @@ mpt_dma_mem_alloc(struct mpt_softc *mpt)
 	}
 	mpt->reply_phys = mi.phys;
 
-	/* Create a child tag for data buffers */
-
-	/*
-	 * XXX: we should say that nsegs is 'unrestricted, but that
-	 * XXX: tickles a horrible bug in the busdma code. Instead,
-	 * XXX: we'll derive a reasonable segment limit from MPT_MAXPHYS
-	 */
-	nsegs = (MPT_MAXPHYS / PAGE_SIZE) + 1;
-	if (mpt_dma_tag_create(mpt, mpt->parent_dmat, 1,
-	    0, BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-	    NULL, NULL, MAXBSIZE, nsegs, BUS_SPACE_MAXSIZE_32BIT, 0,
-	    &mpt->buffer_dmat) != 0) {
-		mpt_prt(mpt, "cannot create a dma tag for data buffers\n");
-		return (1);
-	}
-
-	/* Create a child tag for request buffers */
-	if (mpt_dma_tag_create(mpt, mpt->parent_dmat, PAGE_SIZE, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-	    NULL, NULL, MPT_REQ_MEM_SIZE(mpt), 1, BUS_SPACE_MAXSIZE_32BIT, 0,
-	    &mpt->request_dmat) != 0) {
-		mpt_prt(mpt, "cannot create a dma tag for requests\n");
-		return (1);
-	}
-
-	/* Allocate some DMA accessable memory for requests */
-	if (bus_dmamem_alloc(mpt->request_dmat, (void **)&mpt->request,
-	    BUS_DMA_NOWAIT, &mpt->request_dmap) != 0) {
-		mpt_prt(mpt, "cannot allocate %d bytes of request memory\n",
-		    MPT_REQ_MEM_SIZE(mpt));
-		return (1);
-	}
-
-	mi.mpt = mpt;
-	mi.error = 0;
-
-	/* Load and lock it into "bus space" */
-        bus_dmamap_load(mpt->request_dmat, mpt->request_dmap, mpt->request,
-	    MPT_REQ_MEM_SIZE(mpt), mpt_map_rquest, &mi, 0);
-
-	if (mi.error) {
-		mpt_prt(mpt, "error %d loading dma map for DMA request queue\n",
-		    mi.error);
-		return (1);
-	}
-	mpt->request_phys = mi.phys;
-
-	/*
-	 * Now create per-request dma maps
-	 */
-	i = 0;
-	pptr =  mpt->request_phys;
-	vptr =  mpt->request;
-	end = pptr + MPT_REQ_MEM_SIZE(mpt);
-	while(pptr < end) {
-		request_t *req = &mpt->request_pool[i];
-		req->index = i++;
-
-		/* Store location of Request Data */
-		req->req_pbuf = pptr;
-		req->req_vbuf = vptr;
-
-		pptr += MPT_REQUEST_AREA;
-		vptr += MPT_REQUEST_AREA;
-
-		req->sense_pbuf = (pptr - MPT_SENSE_SIZE);
-		req->sense_vbuf = (vptr - MPT_SENSE_SIZE);
-
-		error = bus_dmamap_create(mpt->buffer_dmat, 0, &req->dmap);
-		if (error) {
-			mpt_prt(mpt, "error %d creating per-cmd DMA maps\n",
-			    error);
-			return (1);
-		}
-	}
-
 	return (0);
 }
 
 
 
-/* Deallocate memory that was allocated by mpt_dma_mem_alloc 
+/* Deallocate memory that was allocated by mpt_dma_mem_alloc
  */
 static void
 mpt_dma_mem_free(struct mpt_softc *mpt)
 {
-	int i;
 
         /* Make sure we aren't double destroying */
         if (mpt->reply_dmat == 0) {
 		mpt_lprt(mpt, MPT_PRT_DEBUG, "already released dma memory\n");
 		return;
         }
-                
-	for (i = 0; i < MPT_MAX_REQUESTS(mpt); i++) {
-		bus_dmamap_destroy(mpt->buffer_dmat, mpt->request_pool[i].dmap);
-	}
-	bus_dmamap_unload(mpt->request_dmat, mpt->request_dmap);
-	bus_dmamem_free(mpt->request_dmat, mpt->request, mpt->request_dmap);
-	bus_dma_tag_destroy(mpt->request_dmat);
-	bus_dma_tag_destroy(mpt->buffer_dmat);
+
 	bus_dmamap_unload(mpt->reply_dmat, mpt->reply_dmap);
 	bus_dmamem_free(mpt->reply_dmat, mpt->reply, mpt->reply_dmap);
 	bus_dma_tag_destroy(mpt->reply_dmat);

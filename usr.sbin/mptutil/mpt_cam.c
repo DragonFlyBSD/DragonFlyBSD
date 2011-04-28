@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/mptutil/mpt_cam.c,v 1.2 2010/02/19 15:16:00 jhb Exp $
+ * $FreeBSD: src/usr.sbin/mptutil/mpt_cam.c,v 1.3 2010/11/09 19:28:06 jhb Exp $
  */
 
 #include <sys/param.h>
@@ -62,6 +62,7 @@ fetch_path_id(path_id_t *path_id)
 	struct bus_match_pattern *b;
 	union ccb ccb;
 	size_t bufsize;
+	int error;
 
 	if (xpt_open() < 0)
 		return (ENXIO);
@@ -90,9 +91,10 @@ fetch_path_id(path_id_t *path_id)
 	b->flags = BUS_MATCH_NAME | BUS_MATCH_UNIT | BUS_MATCH_BUS_ID;
 
 	if (ioctl(xptfd, CAMIOCOMMAND, &ccb) < 0) {
+		error = errno;
 		free(ccb.cdm.matches);
 		free(ccb.cdm.patterns);
-		return (errno);
+		return (error);
 	}
 	free(ccb.cdm.patterns);
 
@@ -123,7 +125,7 @@ mpt_query_disk(U8 VolumeBus, U8 VolumeID, struct mpt_query_disk *qd)
 	union ccb ccb;
 	path_id_t path_id;
 	size_t bufsize;
-	int error, i;
+	int error;
 
 	/* mpt(4) only handles devices on bus 0. */
 	if (VolumeBus != 0)
@@ -163,10 +165,10 @@ mpt_query_disk(U8 VolumeBus, U8 VolumeID, struct mpt_query_disk *qd)
 	p->flags = PERIPH_MATCH_PATH | PERIPH_MATCH_NAME | PERIPH_MATCH_TARGET;
 
 	if (ioctl(xptfd, CAMIOCOMMAND, &ccb) < 0) {
-		i = errno;
+		error = errno;
 		free(ccb.cdm.matches);
 		free(ccb.cdm.patterns);
-		return (i);
+		return (error);
 	}
 	free(ccb.cdm.patterns);
 
@@ -396,8 +398,8 @@ mpt_fetch_disks(int fd, int *ndisks, struct mpt_standalone_disk **disksp)
 	union ccb ccb;
 	path_id_t path_id;
 	size_t bufsize;
-	u_int i;
 	int count, error;
+	uint32_t i;
 
 	if (xpt_open() < 0)
 		return (ENXIO);
@@ -430,10 +432,10 @@ mpt_fetch_disks(int fd, int *ndisks, struct mpt_standalone_disk **disksp)
 		p->flags = PERIPH_MATCH_PATH | PERIPH_MATCH_NAME;
 
 		if (ioctl(xptfd, CAMIOCOMMAND, &ccb) < 0) {
-			i = errno;
+			error = errno;
 			free(ccb.cdm.matches);
 			free(ccb.cdm.patterns);
-			return (i);
+			return (error);
 		}
 		free(ccb.cdm.patterns);
 
@@ -480,6 +482,8 @@ mpt_fetch_disks(int fd, int *ndisks, struct mpt_standalone_disk **disksp)
 	 * exclude them from the list.
 	 */
 	ioc2 = mpt_read_ioc_page(fd, 2, NULL);
+	if (ioc2 == NULL)
+		return (errno);
 	disks = calloc(ccb.cdm.num_matches, sizeof(*disks));
 	count = 0;
 	for (i = 0; i < ccb.cdm.num_matches; i++) {

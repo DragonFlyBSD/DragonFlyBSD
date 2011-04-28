@@ -33,7 +33,6 @@
 #ifndef __MPTUTIL_H__
 #define	__MPTUTIL_H__
 
-#include <sys/cdefs.h>
 #include <sys/linker_set.h>
 
 #include <dev/disk/mpt/mpilib/mpi_type.h>

@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/mptutil/mpt_evt.c,v 1.1 2009/08/14 13:13:12 scottl Exp $
+ * $FreeBSD: src/usr.sbin/mptutil/mpt_evt.c,v 1.2 2010/11/09 19:28:06 jhb Exp $
  */
 
 #include <sys/param.h>
@@ -93,18 +93,20 @@ show_events(int ac, char **av)
 {
 	CONFIG_PAGE_LOG_0 *log;
 	MPI_LOG_0_ENTRY **entries;
-	int ch, fd, i, num_events, verbose;
+	int ch, error, fd, i, num_events, verbose;
 
 	fd = mpt_open(mpt_unit);
 	if (fd < 0) {
+		error = errno;
 		warn("mpt_open");
-		return (errno);
+		return (error);
 	}
 
 	log = mpt_get_events(fd, NULL);
 	if (log == NULL) {
+		error = errno;
 		warn("Failed to get event log info");
-		return (errno);
+		return (error);
 	}
 
 	/* Default settings. */
@@ -127,6 +129,8 @@ show_events(int ac, char **av)
 
 	/* Build a list of valid entries and sort them by sequence. */
 	entries = malloc(sizeof(MPI_LOG_0_ENTRY *) * log->NumLogEntries);
+	if (entries == NULL)
+		return (ENOMEM);
 	num_events = 0;
 	for (i = 0; i < log->NumLogEntries; i++) {
 		if (log->LogEntry[i].LogEntryQualifier ==

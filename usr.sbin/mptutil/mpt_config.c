@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/mptutil/mpt_config.c,v 1.1 2009/08/14 13:13:12 scottl Exp $
+ * $FreeBSD: src/usr.sbin/mptutil/mpt_config.c,v 1.3 2010/11/22 14:36:04 jhb Exp $
  */
 
 #include <sys/param.h>
@@ -48,8 +48,6 @@
 #ifdef DEBUG
 static void	dump_config(CONFIG_PAGE_RAID_VOL_0 *vol);
 #endif
-
-#define powerof2(x)    ((((x)-1)&(x))==0)
 
 static long
 dehumanize(const char *value)
@@ -101,15 +99,15 @@ mpt_lock_volume(U8 VolumeBus, U8 VolumeID)
 		 */
 		return (0);
 	if (error) {
-		errno = error;
-		warn("Unable to lookup volume device name");
-		return (-1);
+		warnc(error, "Unable to lookup volume device name");
+		return (error);
 	}
 	snprintf(path, sizeof(path), "%s%s", _PATH_DEV, qd.devname);
 	vfd = open(path, O_RDWR);
 	if (vfd < 0) {
+		error = errno;
 		warn("Unable to lock volume %s", qd.devname);
-		return (-1);
+		return (error);
 	}
 	return (0);
 }
@@ -118,13 +116,14 @@ static int
 mpt_lock_physdisk(struct mpt_standalone_disk *disk)
 {
 	char path[MAXPATHLEN];
-	int dfd;
+	int dfd, error;
 
 	snprintf(path, sizeof(path), "%s%s", _PATH_DEV, disk->devname);
 	dfd = open(path, O_RDWR);
 	if (dfd < 0) {
+		error = errno;
 		warn("Unable to lock disk %s", disk->devname);
-		return (-1);
+		return (error);
 	}
 	return (0);
 }
@@ -143,8 +142,7 @@ mpt_lookup_standalone_disk(const char *name, struct mpt_standalone_disk *disks,
 		id = strtol(cp + 1, &cp, 0);
 		if (*cp == '\0') {
 			if (bus < 0 || bus > 0xff || id < 0 || id > 0xff) {
-				errno = EINVAL;
-				return (-1);
+				return (EINVAL);
 			}
 			for (i = 0; i < ndisks; i++) {
 				if (disks[i].bus == (U8)bus &&
@@ -153,8 +151,7 @@ mpt_lookup_standalone_disk(const char *name, struct mpt_standalone_disk *disks,
 					return (0);
 				}
 			}
-			errno = ENOENT;
-			return (-1);
+			return (ENOENT);
 		}
 	}
 
@@ -165,12 +162,10 @@ mpt_lookup_standalone_disk(const char *name, struct mpt_standalone_disk *disks,
 				return (0);
 			}
 		}
-		errno = ENOENT;
-		return (-1);
+		return (ENOENT);
 	}
 
-	errno = EINVAL;
-	return (-1);
+	return (EINVAL);
 }
 
 /*
@@ -181,16 +176,17 @@ mpt_create_physdisk(int fd, struct mpt_standalone_disk *disk, U8 *PhysDiskNum)
 {
 	CONFIG_PAGE_HEADER header;
 	CONFIG_PAGE_RAID_PHYS_DISK_0 *config_page;
+	int error;
 	U32 ActionData;
 
-	if (mpt_read_config_page_header(fd, MPI_CONFIG_PAGETYPE_RAID_PHYSDISK,
-	    0, 0, &header, NULL) < 0)
-		return (-1);
+	error = mpt_read_config_page_header(fd, MPI_CONFIG_PAGETYPE_RAID_PHYSDISK,
+	    0, 0, &header, NULL);
+	if (error)
+		return (error);
 	if (header.PageVersion > MPI_RAIDPHYSDISKPAGE0_PAGEVERSION) {
 		warnx("Unsupported RAID physdisk page 0 version %d",
 		    header.PageVersion);
-		errno = EOPNOTSUPP;
-		return (-1);
+		return (EOPNOTSUPP);
 	}		
 	config_page = calloc(1, sizeof(CONFIG_PAGE_RAID_PHYS_DISK_0));
 	config_page->Header.PageType = MPI_CONFIG_PAGETYPE_RAID_PHYSDISK;
@@ -202,10 +198,11 @@ mpt_create_physdisk(int fd, struct mpt_standalone_disk *disk, U8 *PhysDiskNum)
 	config_page->PhysDiskID = disk->target;
 
 	/* XXX: Enclosure info for PhysDiskSettings? */
-	if (mpt_raid_action(fd, MPI_RAID_ACTION_CREATE_PHYSDISK, 0, 0, 0, 0,
+	error = mpt_raid_action(fd, MPI_RAID_ACTION_CREATE_PHYSDISK, 0, 0, 0, 0,
 	    config_page, sizeof(CONFIG_PAGE_RAID_PHYS_DISK_0), NULL,
-	    &ActionData, sizeof(ActionData), NULL, NULL, 1) < 0)
-		return (-1);
+	    &ActionData, sizeof(ActionData), NULL, NULL, 1);
+	if (error)
+		return (error);
 	*PhysDiskNum = ActionData & 0xff;
 	return (0);
 }
@@ -231,18 +228,20 @@ clear_config(int ac __unused, char **av __unused)
 	IOC_3_PHYS_DISK *disk;
 	CONFIG_PAGE_IOC_5 *ioc5;
 	IOC_5_HOT_SPARE *spare;
-	int ch, fd, i;
+	int ch, error, fd, i;
 
 	fd = mpt_open(mpt_unit);
 	if (fd < 0) {
+		error = errno;
 		warn("mpt_open");
-		return (errno);
+		return (error);
 	}
 
 	ioc2 = mpt_read_ioc_page(fd, 2, NULL);
 	if (ioc2 == NULL) {
+		error = errno;
 		warn("Failed to fetch volume list");
-		return (errno);
+		return (error);
 	}
 
 	/* Lock all the volumes first. */
@@ -266,14 +265,16 @@ clear_config(int ac __unused, char **av __unused)
 
 	/* Delete all the volumes. */
 	vol = ioc2->RaidVolume;
-	for (i = 0; i < ioc2->NumActiveVolumes; vol++, i++)
-		if (mpt_raid_action(fd, MPI_RAID_ACTION_DELETE_VOLUME,
+	for (i = 0; i < ioc2->NumActiveVolumes; vol++, i++) {
+		error = mpt_raid_action(fd, MPI_RAID_ACTION_DELETE_VOLUME,
 		    vol->VolumeBus, vol->VolumeID, 0,
 		    MPI_RAID_ACTION_ADATA_DEL_PHYS_DISKS |
 		    MPI_RAID_ACTION_ADATA_ZERO_LBA0, NULL, 0, NULL, NULL, 0,
-		    NULL, NULL, 0) < 0)
-			warn("Failed to delete volume %s",
+		    NULL, NULL, 0);
+		if (error)
+			warnc(error, "Failed to delete volume %s",
 			    mpt_volume_name(vol->VolumeBus, vol->VolumeID));
+	}
 	free(ioc2);
 
 	/* Delete all the spares. */
@@ -410,8 +411,9 @@ parse_volume(int fd, int raid_type, struct config_id_state *state,
 		/* See if it is a standalone disk. */
 		if (mpt_lookup_standalone_disk(cp, state->sdisks,
 		    state->nsdisks, &i) < 0) {
+			error = errno;
 			warn("Unable to lookup drive %s", cp);
-			return (errno);
+			return (error);
 		}
 		dinfo->sdisk = &state->sdisks[i];
 
@@ -432,17 +434,18 @@ add_drives(int fd, struct volume_info *info, int verbose)
 {
 	struct drive_info *dinfo;
 	U8 PhysDiskNum;
-	int i;
+	int error, i;
 
 	for (i = 0, dinfo = info->drives; i < info->drive_count;
 	     i++, dinfo++) {
 		if (dinfo->info == NULL) {
 			if (mpt_create_physdisk(fd, dinfo->sdisk,
 			    &PhysDiskNum) < 0) {
+				error = errno;
 				warn(
 			    "Failed to create physical disk page for %s",
 				    dinfo->sdisk->devname);
-				return (errno);
+				return (error);
 			}
 			if (verbose)
 				printf("Added drive %s with PhysDiskNum %u\n",
@@ -499,11 +502,14 @@ build_volume(int fd, struct volume_info *info, int raid_type, long stripe_size,
         U32 MinLBA;
 	uint64_t MaxLBA;
 	size_t page_size;
-	int i;
+	int error, i;
 
-	if (mpt_read_config_page_header(fd, MPI_CONFIG_PAGETYPE_RAID_VOLUME,
-	    0, 0, &header, NULL) < 0)
+	error = mpt_read_config_page_header(fd, MPI_CONFIG_PAGETYPE_RAID_VOLUME,
+	    0, 0, &header, NULL);
+	if (error) {
+		errno = error;
 		return (NULL);
+	}
 	if (header.PageVersion > MPI_RAIDVOLPAGE0_PAGEVERSION) {
 		warnx("Unsupported RAID volume page 0 version %d",
 		    header.PageVersion);
@@ -513,6 +519,8 @@ build_volume(int fd, struct volume_info *info, int raid_type, long stripe_size,
 	page_size = sizeof(CONFIG_PAGE_RAID_VOL_0) +
 	    sizeof(RAID_VOL0_PHYS_DISK) * (info->drive_count - 1);
 	vol = calloc(1, page_size);
+	if (vol == NULL)
+		return (NULL);
 
 	/* Header */
 	vol->Header.PageType = MPI_CONFIG_PAGETYPE_RAID_VOLUME;
@@ -606,8 +614,8 @@ create_volume(int ac, char **av)
 	CONFIG_PAGE_RAID_VOL_0 *vol;
 	struct config_id_state state;
 	struct volume_info *info;
-	int ch, error, fd, i, raid_type, verbose, quick;
 	long stripe_size;
+	int ch, error, fd, i, quick, raid_type, verbose;
 #ifdef DEBUG
 	int dump;
 #endif
@@ -619,8 +627,9 @@ create_volume(int ac, char **av)
 	
 	fd = mpt_open(mpt_unit);
 	if (fd < 0) {
+		error = errno;
 		warn("mpt_open");
-		return (errno);
+		return (error);
 	}
 
 	/* Lookup the RAID type first. */
@@ -676,8 +685,9 @@ create_volume(int ac, char **av)
 	/* Fetch existing config data. */
 	state.ioc2 = mpt_read_ioc_page(fd, 2, NULL);
 	if (state.ioc2 == NULL) {
+		error = errno;
 		warn("Failed to read volume list");
-		return (errno);
+		return (error);
 	}
 	state.list = mpt_pd_list(fd);
 	if (state.list == NULL)
@@ -695,6 +705,8 @@ create_volume(int ac, char **av)
 		return (EINVAL);
 	}
 	info = calloc(1, sizeof(*info));
+	if (info == NULL)
+		return (ENOMEM);
 	error = parse_volume(fd, raid_type, &state, av[0], info);
 	if (error)
 		return (error);
@@ -706,6 +718,8 @@ create_volume(int ac, char **av)
 
 	/* Build the volume. */
 	vol = build_volume(fd, info, raid_type, stripe_size, &state, verbose);
+	if (vol == NULL)
+		return (errno);
 
 #ifdef DEBUG
 	if (dump) {
@@ -715,12 +729,13 @@ create_volume(int ac, char **av)
 #endif
 
 	/* Send the new volume to the controller. */
-	if (mpt_raid_action(fd, MPI_RAID_ACTION_CREATE_VOLUME, vol->VolumeBus,
+	error = mpt_raid_action(fd, MPI_RAID_ACTION_CREATE_VOLUME, vol->VolumeBus,
 	    vol->VolumeID, 0, quick ? MPI_RAID_ACTION_ADATA_DO_NOT_SYNC : 0,
-	    vol, vol->Header.PageLength * 4, NULL, NULL, 0, NULL, NULL, 1) <
-	    0) {
+	    vol, vol->Header.PageLength * 4, NULL, NULL, 0, NULL, NULL, 1);
+	if (error) {
+		errno = error;
 		warn("Failed to add volume");
-		return (errno);
+		return (error);
 	}
 
 #ifdef DEBUG
@@ -744,7 +759,7 @@ static int
 delete_volume(int ac, char **av)
 {
 	U8 VolumeBus, VolumeID;
-	int fd;
+	int error, fd;
 
 	if (ac != 2) {
 		warnx("delete: volume required");
@@ -753,24 +768,27 @@ delete_volume(int ac, char **av)
 
 	fd = mpt_open(mpt_unit);
 	if (fd < 0) {
+		error = errno;
 		warn("mpt_open");
-		return (errno);
+		return (error);
 	}
 
-	if (mpt_lookup_volume(fd, av[1], &VolumeBus, &VolumeID) < 0) {
-		warn("Invalid volume %s", av[1]);
-		return (errno);
+	error = mpt_lookup_volume(fd, av[1], &VolumeBus, &VolumeID);
+	if (error) {
+		warnc(error, "Invalid volume %s", av[1]);
+		return (error);
 	}
 
 	if (mpt_lock_volume(VolumeBus, VolumeID) < 0)
 		return (errno);
 
-	if (mpt_raid_action(fd, MPI_RAID_ACTION_DELETE_VOLUME, VolumeBus,
+	error = mpt_raid_action(fd, MPI_RAID_ACTION_DELETE_VOLUME, VolumeBus,
 	    VolumeID, 0, MPI_RAID_ACTION_ADATA_DEL_PHYS_DISKS |
 	    MPI_RAID_ACTION_ADATA_ZERO_LBA0, NULL, 0, NULL, NULL, 0, NULL,
-	    NULL, 0) < 0) {
-		warn("Failed to delete volume");
-		return (errno);
+	    NULL, 0);
+	if (error) {
+		warnc(error, "Failed to delete volume");
+		return (error);
 	}
 
 	mpt_rescan_bus(-1, -1);
@@ -787,16 +805,17 @@ find_volume_spare_pool(int fd, const char *name, int *pool)
 	CONFIG_PAGE_IOC_2 *ioc2;
 	CONFIG_PAGE_IOC_2_RAID_VOL *vol;
 	U8 VolumeBus, VolumeID;
-	int i, j, new_pool, pool_count[7];
+	int error, i, j, new_pool, pool_count[7];
 
-	if (mpt_lookup_volume(fd, name, &VolumeBus, &VolumeID) < 0) {
-		warn("Invalid volume %s", name);
-		return (-1);
+	error = mpt_lookup_volume(fd, name, &VolumeBus, &VolumeID);
+	if (error) {
+		warnc(error, "Invalid volume %s", name);
+		return (error);
 	}
 
 	info = mpt_vol_info(fd, VolumeBus, VolumeID, NULL);
 	if (info == NULL)
-		return (-1);
+		return (errno);
 
 	/*
 	 * Check for an existing pool other than pool 0 (used for
@@ -816,15 +835,16 @@ find_volume_spare_pool(int fd, const char *name, int *pool)
 	 */
 	ioc2 = mpt_read_ioc_page(fd, 2, NULL);
 	if (ioc2 == NULL) {
+		error = errno;
 		warn("Failed to fetch volume list");
-		return (-1);
+		return (error);
 	}
 	bzero(pool_count, sizeof(pool_count));	
 	vol = ioc2->RaidVolume;
 	for (i = 0; i < ioc2->NumActiveVolumes; vol++, i++) {
 		info = mpt_vol_info(fd, vol->VolumeBus, vol->VolumeID, NULL);
 		if (info == NULL)
-			return (-1);
+			return (errno);
 		for (j = 0; j < 7; j++)
 			if (info->VolumeSettings.HotSparePool & (1 << (j + 1)))
 				pool_count[j]++;
@@ -842,14 +862,15 @@ find_volume_spare_pool(int fd, const char *name, int *pool)
 	/* Add this pool to the volume. */
 	info = mpt_vol_info(fd, VolumeBus, VolumeID, NULL);
 	if (info == NULL)
-		return (-1);
+		return (error);
 	info->VolumeSettings.HotSparePool |= (1 << new_pool);
-	if (mpt_raid_action(fd, MPI_RAID_ACTION_CHANGE_VOLUME_SETTINGS,
+	error = mpt_raid_action(fd, MPI_RAID_ACTION_CHANGE_VOLUME_SETTINGS,
 	    VolumeBus, VolumeID, 0, *(U32 *)&info->VolumeSettings, NULL, 0,
-	    NULL, NULL, 0, NULL, NULL, 0) < 0) {
+	    NULL, NULL, 0, NULL, NULL, 0);
+	if (error) {
 		warnx("Failed to add spare pool %d to %s", new_pool,
 		    mpt_volume_name(VolumeBus, VolumeID));
-		return (-1);
+		return (error);
 	}
 	free(info);
 
@@ -864,7 +885,7 @@ add_spare(int ac, char **av)
 	struct mpt_standalone_disk *sdisks;
 	struct mpt_drive_list *list;
 	U8 PhysDiskNum;
-	int error, fd, i, nsdisks, pool;
+	int error, fd, i, nsdisks, pool = 0;
 
 	if (ac < 2) {
 		warnx("add spare: drive required");
@@ -877,13 +898,15 @@ add_spare(int ac, char **av)
 
 	fd = mpt_open(mpt_unit);
 	if (fd < 0) {
+		error = errno;
 		warn("mpt_open");
-		return (errno);
+		return (error);
 	}
 
 	if (ac == 3) {
-		if (find_volume_spare_pool(fd, av[2], &pool) < 0)
-			return (errno);
+		error = find_volume_spare_pool(fd, av[2], &pool);
+		if (error)
+			return (error);
 	} else
 		pool = MPI_RAID_HOT_SPARE_POOL_0;
 
@@ -901,16 +924,18 @@ add_spare(int ac, char **av)
 
 		if (mpt_lookup_standalone_disk(av[1], sdisks, nsdisks, &i) <
 		    0) {
+			error = errno;
 			warn("Unable to lookup drive %s", av[1]);
-			return (errno);
+			return (error);
 		}
 
 		if (mpt_lock_physdisk(&sdisks[i]) < 0)
 			return (errno);
 
 		if (mpt_create_physdisk(fd, &sdisks[i], &PhysDiskNum) < 0) {
+			error = errno;
 			warn("Failed to create physical disk page");
-			return (errno);
+			return (error);
 		}
 		free(sdisks);
 	}
@@ -918,8 +943,9 @@ add_spare(int ac, char **av)
 
 	info = mpt_pd_info(fd, PhysDiskNum, NULL);
 	if (info == NULL) {
+		error = errno;
 		warn("Failed to fetch drive info");
-		return (errno);
+		return (error);
 	}
 
 	info->PhysDiskSettings.HotSparePool = pool;
@@ -927,8 +953,8 @@ add_spare(int ac, char **av)
 	    0, PhysDiskNum, *(U32 *)&info->PhysDiskSettings, NULL, 0, NULL,
 	    NULL, 0, NULL, NULL, 0);
 	if (error) {
-		warn("Failed to assign spare");
-		return (errno);
+		warnc(error, "Failed to assign spare");
+		return (error);
 	}
 
 	free(info);
@@ -953,8 +979,9 @@ remove_spare(int ac, char **av)
 
 	fd = mpt_open(mpt_unit);
 	if (fd < 0) {
+		error = errno;
 		warn("mpt_open");
-		return (errno);
+		return (error);
 	}
 
 	list = mpt_pd_list(fd);
@@ -971,8 +998,9 @@ remove_spare(int ac, char **av)
 	
 	info = mpt_pd_info(fd, PhysDiskNum, NULL);
 	if (info == NULL) {
+		error = errno;
 		warn("Failed to fetch drive info");
-		return (errno);
+		return (error);
 	}
 
 	if (info->PhysDiskSettings.HotSparePool == 0) {
@@ -981,8 +1009,9 @@ remove_spare(int ac, char **av)
 	}
 
 	if (mpt_delete_physdisk(fd, PhysDiskNum) < 0) {
+		error = errno;
 		warn("Failed to delete physical disk page");
-		return (errno);
+		return (error);
 	}
 
 	mpt_rescan_bus(info->PhysDiskBus, info->PhysDiskID);
@@ -1010,8 +1039,9 @@ pd_create(int ac, char **av)
 
 	fd = mpt_open(mpt_unit);
 	if (fd < 0) {
+		error = errno;
 		warn("mpt_open");
-		return (errno);
+		return (error);
 	}
 
 	error = mpt_fetch_disks(fd, &ndisks, &disks);
@@ -1021,16 +1051,18 @@ pd_create(int ac, char **av)
 	}
 
 	if (mpt_lookup_standalone_disk(av[1], disks, ndisks, &i) < 0) {
+		error = errno;
 		warn("Unable to lookup drive");
-		return (errno);
+		return (error);
 	}
 
 	if (mpt_lock_physdisk(&disks[i]) < 0)
 		return (errno);
 
 	if (mpt_create_physdisk(fd, &disks[i], &PhysDiskNum) < 0) {
+		error = errno;
 		warn("Failed to create physical disk page");
-		return (errno);
+		return (error);
 	}
 	free(disks);
 
@@ -1047,7 +1079,7 @@ pd_delete(int ac, char **av)
 {
 	CONFIG_PAGE_RAID_PHYS_DISK_0 *info;
 	struct mpt_drive_list *list;
-	int fd;
+	int error, fd;
 	U8 PhysDiskNum;
 
 	if (ac != 2) {
@@ -1057,8 +1089,9 @@ pd_delete(int ac, char **av)
 
 	fd = mpt_open(mpt_unit);
 	if (fd < 0) {
+		error = errno;
 		warn("mpt_open");
-		return (errno);
+		return (error);
 	}
 
 	list = mpt_pd_list(fd);
@@ -1066,20 +1099,23 @@ pd_delete(int ac, char **av)
 		return (errno);
 
 	if (mpt_lookup_drive(list, av[1], &PhysDiskNum) < 0) {
+		error = errno;
 		warn("Failed to find drive %s", av[1]);
-		return (errno);
+		return (error);
 	}
 	mpt_free_pd_list(list);
 
 	info = mpt_pd_info(fd, PhysDiskNum, NULL);
 	if (info == NULL) {
+		error = errno;
 		warn("Failed to fetch drive info");
-		return (errno);
+		return (error);
 	}
 
 	if (mpt_delete_physdisk(fd, PhysDiskNum) < 0) {
+		error = errno;
 		warn("Failed to delete physical disk page");
-		return (errno);
+		return (error);
 	}
 
 	mpt_rescan_bus(info->PhysDiskBus, info->PhysDiskID);
@@ -1125,7 +1161,7 @@ debug_config(int ac, char **av)
 {
 	CONFIG_PAGE_RAID_VOL_0 *vol;
 	U8 VolumeBus, VolumeID;
-	int fd;
+	int error, fd;
 
 	if (ac != 2) {
 		warnx("debug: volume required");
@@ -1134,19 +1170,22 @@ debug_config(int ac, char **av)
 
 	fd = mpt_open(mpt_unit);
 	if (fd < 0) {
+		error = errno;
 		warn("mpt_open");
-		return (errno);
+		return (error);
 	}
 
-	if (mpt_lookup_volume(fd, av[1], &VolumeBus, &VolumeID) < 0) {
-		warn("Invalid volume: %s", av[1]);
-		return (errno);
+	error = mpt_lookup_volume(fd, av[1], &VolumeBus, &VolumeID);
+	if (error) {
+		warnc(error, "Invalid volume: %s", av[1]);
+		return (error);
 	}
 
 	vol = mpt_vol_info(fd, VolumeBus, VolumeID, NULL);
 	if (vol == NULL) {
+		error = errno;
 		warn("Failed to get volume info");
-		return (errno);
+		return (error);
 	}
 
 	dump_config(vol);

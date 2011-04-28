@@ -29,14 +29,14 @@
  *
  * LSI MPT-Fusion Host Adapter FreeBSD userland interface
  *
- * $FreeBSD: src/sys/dev/mpt/mpt_user.c,v 1.4 2009/05/20 17:29:21 imp Exp $
+ * $FreeBSD: src/sys/dev/mpt/mpt_user.c,v 1.5 2011/03/06 12:48:15 marius Exp $
  */
 
 #include <sys/param.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/errno.h>
 #include <sys/ioccom.h>
-#include <sys/device.h>
 #include <sys/mpt_ioctl.h>
 
 #include <dev/disk/mpt/mpt.h>
@@ -77,11 +77,12 @@ DECLARE_MPT_PERSONALITY(mpt_user, SI_ORDER_SECOND);
 
 static mpt_reply_handler_t	mpt_user_reply_handler;
 
-static int              mpt_open(struct dev_open_args *ap);
-static int              mpt_close(struct dev_close_args *ap);
-static int              mpt_ioctl(struct dev_ioctl_args *ap);
+static d_open_t		mpt_open;
+static d_close_t	mpt_close;
+static d_ioctl_t	mpt_ioctl;
 
-static struct dev_ops mpt_cdevsw = {
+static struct dev_ops mpt_ops = {
+	{ "mpt", 0, 0 },
 	.d_open =	mpt_open,
 	.d_close =	mpt_close,
 	.d_ioctl =	mpt_ioctl,
@@ -115,7 +116,7 @@ mpt_user_attach(struct mpt_softc *mpt)
 		return (error);
 	}
 	unit = device_get_unit(mpt->dev);
-	mpt->cdev = make_dev(&mpt_cdevsw, unit, UID_ROOT, GID_OPERATOR, 0640,
+	mpt->cdev = make_dev(&mpt_ops, unit, UID_ROOT, GID_OPERATOR, 0640,
 	    "mpt%d", unit);
 	if (mpt->cdev == NULL) {
 		MPT_LOCK(mpt);
@@ -201,7 +202,7 @@ mpt_alloc_buffer(struct mpt_softc *mpt, struct mpt_page_memory *page_mem,
 	if (error)
 		return (error);
 	error = bus_dmamem_alloc(page_mem->tag, &page_mem->vaddr,
-	    BUS_DMA_NOWAIT, &page_mem->map);
+	    BUS_DMA_NOWAIT | BUS_DMA_COHERENT, &page_mem->map);
 	if (error) {
 		bus_dma_tag_destroy(page_mem->tag);
 		return (error);
@@ -299,6 +300,8 @@ mpt_user_read_cfg_page(struct mpt_softc *mpt, struct mpt_cfg_page_req *page_req,
 	params.PageNumber = hdr->PageNumber;
 	params.PageType = hdr->PageType & MPI_CONFIG_PAGETYPE_MASK;
 	params.PageAddress = le32toh(page_req->page_address);
+	bus_dmamap_sync(mpt_page->tag, mpt_page->map,
+	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 	error = mpt_issue_cfg_req(mpt, req, &params, mpt_page->paddr,
 	    le32toh(page_req->len), TRUE, 5000);
 	if (error != 0) {
@@ -309,7 +312,7 @@ mpt_user_read_cfg_page(struct mpt_softc *mpt, struct mpt_cfg_page_req *page_req,
 	page_req->ioc_status = htole16(req->IOCStatus);
 	if ((req->IOCStatus & MPI_IOCSTATUS_MASK) == MPI_IOCSTATUS_SUCCESS)
 		bus_dmamap_sync(mpt_page->tag, mpt_page->map,
-		    BUS_DMASYNC_POSTREAD);
+		    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
 	mpt_free_request(mpt, req);
 	return (0);
 }
@@ -387,6 +390,8 @@ mpt_user_read_extcfg_page(struct mpt_softc *mpt,
 	params.PageAddress = le32toh(ext_page_req->page_address);
 	params.ExtPageType = hdr->ExtPageType;
 	params.ExtPageLength = hdr->ExtPageLength;
+	bus_dmamap_sync(mpt_page->tag, mpt_page->map,
+	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 	error = mpt_issue_cfg_req(mpt, req, &params, mpt_page->paddr,
 	    le32toh(ext_page_req->len), TRUE, 5000);
 	if (error != 0) {
@@ -397,7 +402,7 @@ mpt_user_read_extcfg_page(struct mpt_softc *mpt,
 	ext_page_req->ioc_status = htole16(req->IOCStatus);
 	if ((req->IOCStatus & MPI_IOCSTATUS_MASK) == MPI_IOCSTATUS_SUCCESS)
 		bus_dmamap_sync(mpt_page->tag, mpt_page->map,
-		    BUS_DMASYNC_POSTREAD);
+		    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
 	mpt_free_request(mpt, req);
 	return (0);
 }
@@ -432,7 +437,8 @@ mpt_user_write_cfg_page(struct mpt_softc *mpt,
 	if (req == NULL)
 		return (ENOMEM);
 
-	bus_dmamap_sync(mpt_page->tag, mpt_page->map, BUS_DMASYNC_PREWRITE);
+	bus_dmamap_sync(mpt_page->tag, mpt_page->map, BUS_DMASYNC_PREREAD |
+	    BUS_DMASYNC_PREWRITE);
 
 	/*
 	 * There isn't any point in restoring stripped out attributes
@@ -459,6 +465,8 @@ mpt_user_write_cfg_page(struct mpt_softc *mpt,
 	}
 
 	page_req->ioc_status = htole16(req->IOCStatus);
+	bus_dmamap_sync(mpt_page->tag, mpt_page->map, BUS_DMASYNC_POSTREAD |
+	    BUS_DMASYNC_POSTWRITE);
 	mpt_free_request(mpt, req);
 	return (0);
 }
@@ -474,8 +482,6 @@ mpt_user_reply_handler(struct mpt_softc *mpt, request_t *req,
 		return (TRUE);
 
 	if (reply_frame != NULL) {
-		bus_dmamap_sync(mpt->request_dmat, mpt->request_dmap,
-		    BUS_DMASYNC_POSTREAD);
 		reply = (MSG_RAID_ACTION_REPLY *)reply_frame;
 		req->IOCStatus = le16toh(reply->IOCStatus);
 		res = (struct mpt_user_raid_action_result *)
@@ -532,7 +538,7 @@ mpt_user_raid_action(struct mpt_softc *mpt, struct mpt_raid_action *raid_act,
 	se = (SGE_SIMPLE32 *)&rap->ActionDataSGE;
 	if (mpt_page->vaddr != NULL && raid_act->len != 0) {
 		bus_dmamap_sync(mpt_page->tag, mpt_page->map,
-		    BUS_DMASYNC_PREWRITE);
+		    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 		se->Address = htole32(mpt_page->paddr);
 		MPI_pSGE_SET_LENGTH(se, le32toh(raid_act->len));
 		MPI_pSGE_SET_FLAGS(se, (MPI_SGE_FLAGS_SIMPLE_ELEMENT |
@@ -571,7 +577,7 @@ mpt_user_raid_action(struct mpt_softc *mpt, struct mpt_raid_action *raid_act,
 	    sizeof(res->action_data));
 	if (mpt_page->vaddr != NULL)
 		bus_dmamap_sync(mpt_page->tag, mpt_page->map,
-		    BUS_DMASYNC_POSTREAD);
+		    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
 	mpt_free_request(mpt, req);
 	return (0);
 }
@@ -584,6 +590,9 @@ mpt_user_raid_action(struct mpt_softc *mpt, struct mpt_raid_action *raid_act,
 static int
 mpt_ioctl(struct dev_ioctl_args *ap)
 {
+	cdev_t dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	caddr_t arg = ap->a_data;
 	struct mpt_softc *mpt;
 	struct mpt_cfg_page_req *page_req;
 	struct mpt_ext_cfg_page_req *ext_page_req;
@@ -597,12 +606,9 @@ mpt_ioctl(struct dev_ioctl_args *ap)
 	struct mpt_raid_action32 *raid_act32;
 	struct mpt_raid_action raid_act_swab;
 #endif
-	u_long cmd = ap->a_cmd;
-	caddr_t arg = ap->a_data;
-	struct cdev *kdev = ap->a_head.a_dev;
 	int error;
 
-	mpt = kdev->si_drv1;
+	mpt = dev->si_drv1;
 	page_req = (void *)arg;
 	ext_page_req = (void *)arg;
 	raid_act = (void *)arg;

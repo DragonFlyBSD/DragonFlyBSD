@@ -62,7 +62,7 @@
  * Support from LSI-Logic has also gone a great deal toward making this a
  * workable subsystem and is gratefully acknowledged.
  *
- * $FreeBSD: src/sys/dev/mpt/mpt_debug.c,v 1.18 2006/12/07 22:02:28 mjacob Exp $
+ * $FreeBSD: src/sys/dev/mpt/mpt_debug.c,v 1.19 2011/04/22 09:59:16 marius Exp $
  */
 
 #include <dev/disk/mpt/mpt.h>
@@ -358,10 +358,10 @@ mpt_print_reply_hdr(MSG_DEFAULT_REPLY *msg)
 {
 	kprintf("%s Reply @ %p\n", mpt_ioc_function(msg->Function), msg);
 	kprintf("\tIOC Status    %s\n", mpt_ioc_status(msg->IOCStatus));
-	kprintf("\tIOCLogInfo    0x%08x\n", (unsigned)msg->IOCLogInfo);
+	kprintf("\tIOCLogInfo    0x%08x\n", msg->IOCLogInfo);
 	kprintf("\tMsgLength     0x%02x\n", msg->MsgLength);
 	kprintf("\tMsgFlags      0x%02x\n", msg->MsgFlags);
-	kprintf("\tMsgContext    0x%08x\n", (unsigned)msg->MsgContext);
+	kprintf("\tMsgContext    0x%08x\n", msg->MsgContext);
 }
 
 static void
@@ -384,19 +384,18 @@ mpt_print_ioc_facts(MSG_IOC_FACTS_REPLY *msg)
 	kprintf("\tFlags         %d\n",		msg->Flags);
 	kprintf("\tReplyQueueDepth %d\n",	msg->ReplyQueueDepth);
 	kprintf("\tReqFrameSize  0x%04x\n",	msg->RequestFrameSize);
-	kprintf("\tFW Version    0x%08x\n",	(unsigned)msg->FWVersion.Word);
+	kprintf("\tFW Version    0x%08x\n",	msg->FWVersion.Word);
 	kprintf("\tProduct ID    0x%04x\n",	msg->ProductID);
 	kprintf("\tCredits       0x%04x\n",	msg->GlobalCredits);
 	kprintf("\tPorts         %d\n",		msg->NumberOfPorts);
 	kprintf("\tEventState    0x%02x\n",	msg->EventState);
-	kprintf("\tHostMFA_HA    0x%08x\n",
-		(unsigned)msg->CurrentHostMfaHighAddr);
+	kprintf("\tHostMFA_HA    0x%08x\n",	msg->CurrentHostMfaHighAddr);
 	kprintf("\tSenseBuf_HA   0x%08x\n",
-		(unsigned)msg->CurrentSenseBufferHighAddr);
+	    msg->CurrentSenseBufferHighAddr);
 	kprintf("\tRepFrameSize  0x%04x\n",	msg->CurReplyFrameSize);
 	kprintf("\tMaxDevices    0x%02x\n",	msg->MaxDevices);
 	kprintf("\tMaxBuses      0x%02x\n",	msg->MaxBuses);
-	kprintf("\tFWImageSize   0x%04x\n",	(unsigned)msg->FWImageSize);
+	kprintf("\tFWImageSize   0x%04x\n",	msg->FWImageSize);
 }
 
 static void
@@ -415,9 +414,9 @@ mpt_print_scsi_io_reply(MSG_SCSI_IO_REPLY *msg)
 	kprintf("\tCDBLength     %d\n", msg->CDBLength);
 	kprintf("\tSCSI Status:  %s\n", mpt_scsi_status(msg->SCSIStatus));
 	kprintf("\tSCSI State:   %s\n", mpt_scsi_state(msg->SCSIState));
-	kprintf("\tTransferCnt   0x%04x\n", (unsigned)msg->TransferCount);
-	kprintf("\tSenseCnt      0x%04x\n", (unsigned)msg->SenseCount);
-	kprintf("\tResponseInfo  0x%08x\n", (unsigned)msg->ResponseInfo);
+	kprintf("\tTransferCnt   0x%04x\n", msg->TransferCount);
+	kprintf("\tSenseCnt      0x%04x\n", msg->SenseCount);
+	kprintf("\tResponseInfo  0x%08x\n", msg->ResponseInfo);
 }
 
 
@@ -427,51 +426,50 @@ mpt_print_event_notice(MSG_EVENT_NOTIFY_REPLY *msg)
 {
 	mpt_print_reply_hdr((MSG_DEFAULT_REPLY *)msg);
 	kprintf("\tEvent:        %s\n", mpt_ioc_event(msg->Event));
-	kprintf("\tEventContext  0x%04x\n", (unsigned)msg->EventContext);
+	kprintf("\tEventContext  0x%04x\n", msg->EventContext);
 	kprintf("\tAckRequired     %d\n", msg->AckRequired);
 	kprintf("\tEventDataLength %d\n", msg->EventDataLength);
 	kprintf("\tContinuation    %d\n", msg->MsgFlags & 0x80);
 	switch(msg->Event) {
 	case MPI_EVENT_LOG_DATA:
-		kprintf("\tEvtLogData:   0x%04x\n",
-			(unsigned)msg->Data[0]);
+		kprintf("\tEvtLogData:   0x%04x\n", msg->Data[0]);
 		break;
 
 	case MPI_EVENT_UNIT_ATTENTION:
 		kprintf("\tTargetID:     0x%04x\n",
-			(unsigned)msg->Data[0] & 0xff);
+			msg->Data[0] & 0xff);
 		kprintf("\tBus:          0x%04x\n",
-			(unsigned)(msg->Data[0] >> 8) & 0xff);
+			(msg->Data[0] >> 8) & 0xff);
 		break;
 
 	case MPI_EVENT_IOC_BUS_RESET:
 	case MPI_EVENT_EXT_BUS_RESET:
 	case MPI_EVENT_RESCAN:
-		kprintf("\tPort:           %u\n",
+		kprintf("\tPort:           %d\n",
 			(msg->Data[0] >> 8) & 0xff);
 		break;
 
 	case MPI_EVENT_LINK_STATUS_CHANGE:
-		kprintf("\tLinkState:    %u\n",
+		kprintf("\tLinkState:    %d\n",
 			msg->Data[0] & 0xff);
-		kprintf("\tPort:         %u\n",
+		kprintf("\tPort:         %d\n",
 			(msg->Data[1] >> 8) & 0xff);
 		break;
 
 	case MPI_EVENT_LOOP_STATE_CHANGE:
-		kprintf("\tType:         %u\n",
+		kprintf("\tType:         %d\n",
 			(msg->Data[0] >> 16) & 0xff);
 		kprintf("\tChar3:      0x%02x\n",
 			(msg->Data[0] >> 8) & 0xff);
 		kprintf("\tChar4:      0x%02x\n",
 			(msg->Data[0]     ) & 0xff);
-		kprintf("\tPort:         %u\n",
+		kprintf("\tPort:         %d\n",
 			(msg->Data[1] >> 8) & 0xff);
 		break;
 
 	case MPI_EVENT_LOGOUT:
 		kprintf("\tN_PortId:   0x%04x\n", msg->Data[0]);
-		kprintf("\tPort:         %u\n",
+		kprintf("\tPort:         %d\n",
 			(msg->Data[1] >> 8) & 0xff);
 		break;
 	}
@@ -514,8 +512,8 @@ mpt_print_request_hdr(MSG_REQUEST_HEADER *req)
 {
 	kprintf("%s @ %p\n", mpt_ioc_function(req->Function), req);
 	kprintf("\tChain Offset  0x%02x\n", req->ChainOffset);
-	kprintf("\tMsgFlags      0x%02x\n", (unsigned)req->MsgFlags);
-	kprintf("\tMsgContext    0x%08x\n", (unsigned)req->MsgContext);
+	kprintf("\tMsgFlags      0x%02x\n", req->MsgFlags);
+	kprintf("\tMsgContext    0x%08x\n", req->MsgContext);
 }
 
 void
@@ -530,7 +528,7 @@ mpt_print_scsi_io_request(MSG_SCSI_IO_REQUEST *orig_msg)
 	kprintf("\tTargetID            %d\n", msg->TargetID);
 	kprintf("\tSenseBufferLength   %d\n", msg->SenseBufferLength);
 	kprintf("\tLUN:              0x%0x\n", msg->LUN[1]);
-	kprintf("\tControl           0x%08x ", (unsigned)msg->Control);
+	kprintf("\tControl           0x%08x ", msg->Control);
 #define MPI_PRINT_FIELD(x)						\
 	case MPI_SCSIIO_CONTROL_ ## x :					\
 		kprintf(" " #x " ");					\
@@ -559,8 +557,8 @@ mpt_print_scsi_io_request(MSG_SCSI_IO_REQUEST *orig_msg)
 	kprintf("\n");
 #undef MPI_PRINT_FIELD
 
-	kprintf("\tDataLength\t0x%08x\n", (unsigned)msg->DataLength);
-	kprintf("\tSenseBufAddr\t0x%08x\n", (unsigned)msg->SenseBufferLowAddr);
+	kprintf("\tDataLength\t0x%08x\n", msg->DataLength);
+	kprintf("\tSenseBufAddr\t0x%08x\n", msg->SenseBufferLowAddr);
 	kprintf("\tCDB[0:%d]\t", msg->CDBLength);
 	for (i = 0; i < msg->CDBLength; i++)
 		kprintf("%02x ", msg->CDB[i]);
@@ -579,7 +577,7 @@ mpt_print_scsi_tmf_request(MSG_SCSI_TASK_MGMT *msg)
 	mpt_print_request_hdr((MSG_REQUEST_HEADER *)msg);
 	kprintf("\tLun             0x%02x\n", msg->LUN[1]);
 	kprintf("\tTaskType        %s\n", mpt_scsi_tm_type(msg->TaskType));
-	kprintf("\tTaskMsgContext  0x%08x\n", (unsigned)msg->TaskMsgContext);
+	kprintf("\tTaskMsgContext  0x%08x\n", msg->TaskMsgContext);
 }
 
 
@@ -590,10 +588,10 @@ mpt_print_scsi_target_assist_request(PTR_MSG_TARGET_ASSIST_REQUEST msg)
 	kprintf("\tStatusCode    0x%02x\n", msg->StatusCode);
 	kprintf("\tTargetAssist  0x%02x\n", msg->TargetAssistFlags);
 	kprintf("\tQueueTag      0x%04x\n", msg->QueueTag);
-	kprintf("\tReplyWord     0x%08x\n", (unsigned)msg->ReplyWord);
+	kprintf("\tReplyWord     0x%08x\n", msg->ReplyWord);
 	kprintf("\tLun           0x%02x\n", msg->LUN[1]);
-	kprintf("\tRelativeOff   0x%08x\n", (unsigned)msg->RelativeOffset);
-	kprintf("\tDataLength    0x%08x\n", (unsigned)msg->DataLength);
+	kprintf("\tRelativeOff   0x%08x\n", msg->RelativeOffset);
+	kprintf("\tDataLength    0x%08x\n", msg->DataLength);
 	mpt_dump_sgl(msg->SGL, 0);
 }
 
@@ -605,7 +603,7 @@ mpt_print_scsi_target_status_send_request(MSG_TARGET_STATUS_SEND_REQUEST *msg)
 	kprintf("\tStatusCode    0x%02x\n", msg->StatusCode);
 	kprintf("\tStatusFlags   0x%02x\n", msg->StatusFlags);
 	kprintf("\tQueueTag      0x%04x\n", msg->QueueTag);
-	kprintf("\tReplyWord     0x%08x\n", (unsigned)msg->ReplyWord);
+	kprintf("\tReplyWord     0x%08x\n", msg->ReplyWord);
 	kprintf("\tLun           0x%02x\n", msg->LUN[1]);
 	x.u.Simple = msg->StatusDataSGE;
 	mpt_dump_sgl(&x, 0);
@@ -744,16 +742,12 @@ mpt_dump_sgl(SGE_IO_UNION *su, int offset)
 			if (flags & MPI_SGE_FLAGS_64_BIT_ADDRESSING) {
 				SGE_SIMPLE64 *se64 = (SGE_SIMPLE64 *)se;
 				kprintf("SE64 %p: Addr=0x%08x%08x FlagsLength"
-				    "=0x%0x\n", se64,
-				    (unsigned)se64->Address.High,
-				    (unsigned)se64->Address.Low,
-				    (unsigned)se64->FlagsLength);
+				    "=0x%0x\n", se64, se64->Address.High,
+				    se64->Address.Low, se64->FlagsLength);
 				nxtaddr = se64 + 1;
 			} else {
 				kprintf("SE32 %p: Addr=0x%0x FlagsLength=0x%0x"
-	                            "\n", se,
-				    (unsigned)se->Address,
-				    (unsigned)se->FlagsLength);
+	                            "\n", se, se->Address, se->FlagsLength);
 			}
 			kprintf(" ");
 			break;
@@ -762,20 +756,15 @@ mpt_dump_sgl(SGE_IO_UNION *su, int offset)
 				SGE_CHAIN64 *ce64 = (SGE_CHAIN64 *) se;
 				kprintf("CE64 %p: Addr=0x%08x%08x NxtChnO=0x%x "
 				    "Flgs=0x%x Len=0x%0x\n", ce64,
-				    (unsigned)ce64->Address.High,
-				    (unsigned)ce64->Address.Low,
+				    ce64->Address.High, ce64->Address.Low,
 				    ce64->NextChainOffset,
-				    (unsigned)ce64->Flags,
-				    (unsigned)ce64->Length);
+				    ce64->Flags, ce64->Length);
 				nxtaddr = ce64 + 1;
 			} else {
 				SGE_CHAIN32 *ce = (SGE_CHAIN32 *) se;
 				kprintf("CE32 %p: Addr=0x%0x NxtChnO=0x%x "
-				    " Flgs=0x%x Len=0x%0x\n", ce,
-				    (unsigned)ce->Address,
-				    ce->NextChainOffset,
-				    ce->Flags,
-				    ce->Length);
+				    " Flgs=0x%x Len=0x%0x\n", ce, ce->Address,
+				    ce->NextChainOffset, ce->Flags, ce->Length);
 			}
 			flags = 0;
 			break;
@@ -830,13 +819,8 @@ mpt_dump_request(struct mpt_softc *mpt, request_t *req)
 {
         uint32_t *pReq = req->req_vbuf;
 	int o;
-#if __FreeBSD_version >= 500000
 	mpt_prt(mpt, "Send Request %d (%jx):",
 	    req->index, (uintmax_t) req->req_pbuf);
-#else
-	mpt_prt(mpt, "Send Request %d (%llx):",
-	    req->index, (unsigned long long) req->req_pbuf);
-#endif
 	for (o = 0; o < mpt->ioc_facts.RequestFrameSize; o++) {
 		if ((o & 0x7) == 0) {
 			mpt_prtc(mpt, "\n");
@@ -846,31 +830,6 @@ mpt_dump_request(struct mpt_softc *mpt, request_t *req)
 	}
 	mpt_prtc(mpt, "\n");
 }
-
-#if __FreeBSD_version < 500000
-void
-mpt_lprt(struct mpt_softc *mpt, int level, const char *fmt, ...)
-{
-	__va_list ap;
-        if (level <= mpt->verbose) {
-		kprintf("%s: ", device_get_nameunit(mpt->dev));
-		__va_start(ap, fmt);
-		kvprintf(fmt, ap);
-		__va_end(ap);
-	}
-}
-
-void
-mpt_lprtc(struct mpt_softc *mpt, int level, const char *fmt, ...)
-{
-	__va_list ap;
-        if (level <= mpt->verbose) {
-		__va_start(ap, fmt);
-		kvprintf(fmt, ap);
-		__va_end(ap);
-	}
-}
-#endif
 
 void
 mpt_prt(struct mpt_softc *mpt, const char *fmt, ...)

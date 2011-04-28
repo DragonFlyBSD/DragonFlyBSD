@@ -39,7 +39,7 @@
  * Support from LSI-Logic has also gone a great deal toward making this a
  * workable subsystem and is gratefully acknowledged.
  *
- * $FreeBSD: src/sys/dev/mpt/mpt_raid.c,v 1.20 2009/05/21 12:36:40 jhb Exp $
+ * $FreeBSD: src/sys/dev/mpt/mpt_raid.c,v 1.28 2011/01/12 19:53:56 mdf Exp $
  */
 
 #include <dev/disk/mpt/mpt.h>
@@ -51,13 +51,9 @@
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_sim.h>
-#include <bus/cam/cam_xpt_periph.h>
 #include <bus/cam/cam_xpt_sim.h>
 
-#if __FreeBSD_version < 500000
 #include <sys/devicestat.h>
-#define	GIANT_REQUIRED
-#endif
 #include <bus/cam/cam_periph.h>
 
 #include <sys/callout.h>
@@ -119,11 +115,7 @@ static void mpt_enable_vol(struct mpt_softc *mpt,
 static void mpt_verify_mwce(struct mpt_softc *, struct mpt_raid_volume *);
 static void mpt_adjust_queue_depth(struct mpt_softc *, struct mpt_raid_volume *,
     struct cam_path *);
-#if __FreeBSD_version < 500000
-#define	mpt_raid_sysctl_attach(x)	do { } while (0)
-#else
 static void mpt_raid_sysctl_attach(struct mpt_softc *);
-#endif
 
 static uint32_t raid_handler_id = MPT_HANDLER_ID_NONE;
 
@@ -270,7 +262,7 @@ mpt_raid_attach(struct mpt_softc *mpt)
 	mpt_handler_t	 handler;
 	int		 error;
 
-	mpt_callout_init(&mpt->raid_timer);
+	mpt_callout_init(mpt, &mpt->raid_timer);
 
 	error = mpt_spawn_raid_thread(mpt);
 	if (error != 0) {
@@ -320,9 +312,9 @@ mpt_raid_detach(struct mpt_softc *mpt)
 	mpt_handler_t handler;
 
 	callout_stop(&mpt->raid_timer);
+
 	MPT_LOCK(mpt);
 	mpt_terminate_raid_thread(mpt);
-
 	handler.reply_handler = mpt_raid_reply_handler;
 	mpt_deregister_handler(mpt, MPT_HANDLER_REPLY, handler,
 			       raid_handler_id);
@@ -450,9 +442,9 @@ mpt_raid_event(struct mpt_softc *mpt, request_t *req,
 
 	if (print_event) {
 		if (mpt_disk != NULL) {
-			mpt_disk_prt(mpt, mpt_disk, NULL);
+			mpt_disk_prt(mpt, mpt_disk, "");
 		} else if (mpt_vol != NULL) {
-			mpt_vol_prt(mpt, mpt_vol, NULL);
+			mpt_vol_prt(mpt, mpt_vol, "");
 		} else {
 			mpt_prt(mpt, "Volume(%d:%d", raid_event->VolumeBus,
 				raid_event->VolumeID);
@@ -475,7 +467,7 @@ mpt_raid_event(struct mpt_softc *mpt, request_t *req,
 	if (raid_event->ReasonCode == MPI_EVENT_RAID_RC_SMART_DATA) {
 		/* XXX Use CAM's print sense for this... */
 		if (mpt_disk != NULL)
-			mpt_disk_prt(mpt, mpt_disk, NULL);
+			mpt_disk_prt(mpt, mpt_disk, "");
 		else
 			mpt_prt(mpt, "Volume(%d:%d:%d: ",
 			    raid_event->VolumeBus, raid_event->VolumeID,
@@ -646,20 +638,19 @@ mpt_terminate_raid_thread(struct mpt_softc *mpt)
 		return;
 	}
 	mpt->shutdwn_raid = 1;
-	wakeup(mpt->raid_volumes);
+	wakeup(&mpt->raid_volumes);
 	/*
 	 * Sleep on a slightly different location
 	 * for this interlock just for added safety.
 	 */
-	mpt_sleep(mpt, &mpt->raid_thread, PUSER, "thtrm", 0);
+	mpt_sleep(mpt, &mpt->raid_thread, 0, "thtrm", 0);
 }
 
 static void
 mpt_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
-
-	xpt_free_path(ccb->ccb_h.path);
-	xpt_free_ccb(ccb);
+    xpt_free_path(ccb->ccb_h.path);
+    kfree(ccb, M_TEMP);
 }
 
 static void
@@ -670,14 +661,11 @@ mpt_raid_thread(void *arg)
 
 	mpt = (struct mpt_softc *)arg;
 	firstrun = 1;
-
-	get_mplock();
 	MPT_LOCK(mpt);
-
 	while (mpt->shutdwn_raid == 0) {
 
 		if (mpt->raid_wakeup == 0) {
-			mpt_sleep(mpt, &mpt->raid_volumes, PUSER, "idle", 0);
+			mpt_sleep(mpt, &mpt->raid_volumes, 0, "idle", 0);
 			continue;
 		}
 
@@ -701,36 +689,37 @@ mpt_raid_thread(void *arg)
 
 		if (mpt->raid_rescan != 0) {
 			union ccb *ccb;
-			struct cam_path *path;
 			int error;
 
 			mpt->raid_rescan = 0;
 			MPT_UNLOCK(mpt);
 
-			ccb = xpt_alloc_ccb();
+			ccb = kmalloc(sizeof(union ccb), M_TEMP,
+			    M_WAITOK | M_ZERO);
 
 			MPT_LOCK(mpt);
-			error = xpt_create_path(&path, xpt_periph,
+			error = xpt_create_path(&ccb->ccb_h.path, xpt_periph,
 			    cam_sim_path(mpt->phydisk_sim),
 			    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
 			if (error != CAM_REQ_CMP) {
-				xpt_free_ccb(ccb);
+				kfree(ccb, M_TEMP);
 				mpt_prt(mpt, "Unable to rescan RAID Bus!\n");
 			} else {
-				xpt_setup_ccb(&ccb->ccb_h, path, 5);
+				xpt_setup_ccb(&ccb->ccb_h, ccb->ccb_h.path,
+				    5/*priority (low)*/);
 				ccb->ccb_h.func_code = XPT_SCAN_BUS;
 				ccb->ccb_h.cbfcnp = mpt_cam_rescan_callback;
 				ccb->crcn.flags = CAM_FLAG_NONE;
-				MPTLOCK_2_CAMLOCK(mpt);
 				xpt_action(ccb);
-				CAMLOCK_2_MPTLOCK(mpt);
+
+				/* scan is now in progress */
 			}
 		}
 	}
 	mpt->raid_thread = NULL;
 	wakeup(&mpt->raid_thread);
 	MPT_UNLOCK(mpt);
-	rel_mplock();
+	mpt_kthread_exit(0);
 }
 
 #if 0
@@ -1064,6 +1053,7 @@ mpt_adjust_queue_depth(struct mpt_softc *mpt, struct mpt_raid_volume *mpt_vol,
 
 	xpt_setup_ccb(&crs.ccb_h, path, /*priority*/5);
 	crs.ccb_h.func_code = XPT_REL_SIMQ;
+	crs.ccb_h.flags = CAM_DEV_QFREEZE;
 	crs.release_flags = RELSIM_ADJUST_OPENINGS;
 	crs.openings = mpt->raid_queue_depth;
 	xpt_action((union ccb *)&crs);
@@ -1190,10 +1180,10 @@ mpt_announce_disk(struct mpt_softc *mpt, struct mpt_raid_disk *mpt_disk)
 
 	disk_pg = &mpt_disk->config_page;
 	mpt_disk_prt(mpt, mpt_disk,
-		     "Physical (%s:%d:%d:0), Pass-thru (%s:%d:%jd:0)\n",
+		     "Physical (%s:%d:%d:0), Pass-thru (%s:%d:%d:0)\n",
 		     device_get_nameunit(mpt->dev), rd_bus,
 		     disk_pg->PhysDiskID, device_get_nameunit(mpt->dev),
-		     pt_bus, (intmax_t)(mpt_disk - mpt->raid_disks));
+		     pt_bus, mpt_disk - mpt->raid_disks);
 	if (disk_pg->PhysDiskSettings.HotSparePool == 0)
 		return;
 	mpt_disk_prt(mpt, mpt_disk, "Member of Hot Spare Pool%s",
@@ -1566,9 +1556,8 @@ mpt_raid_timer(void *arg)
 	struct mpt_softc *mpt;
 
 	mpt = (struct mpt_softc *)arg;
-	MPT_LOCK(mpt);
+	MPT_LOCK_ASSERT(mpt);
 	mpt_raid_wakeup(mpt);
-	MPT_UNLOCK(mpt);
 }
 
 void
@@ -1611,7 +1600,6 @@ mpt_raid_free_mem(struct mpt_softc *mpt)
 	mpt->raid_max_disks =  0;
 }
 
-#if __FreeBSD_version >= 500000
 static int
 mpt_raid_set_vol_resync_rate(struct mpt_softc *mpt, u_int rate)
 {
@@ -1743,8 +1731,6 @@ mpt_raid_sysctl_vol_member_wce(SYSCTL_HANDLER_ARGS)
 	u_int size;
 	u_int i;
 
-	GIANT_REQUIRED;
-
 	mpt = (struct mpt_softc *)arg1;
 	str = mpt_vol_mwce_strs[mpt->raid_mwce_setting];
 	error = SYSCTL_OUT(req, str, strlen(str) + 1);
@@ -1777,8 +1763,6 @@ mpt_raid_sysctl_vol_resync_rate(SYSCTL_HANDLER_ARGS)
 	u_int raid_resync_rate;
 	int error;
 
-	GIANT_REQUIRED;
-
 	mpt = (struct mpt_softc *)arg1;
 	raid_resync_rate = mpt->raid_resync_rate;
 
@@ -1797,8 +1781,6 @@ mpt_raid_sysctl_vol_queue_depth(SYSCTL_HANDLER_ARGS)
 	u_int raid_queue_depth;
 	int error;
 
-	GIANT_REQUIRED;
-
 	mpt = (struct mpt_softc *)arg1;
 	raid_queue_depth = mpt->raid_queue_depth;
 
@@ -1813,26 +1795,26 @@ mpt_raid_sysctl_vol_queue_depth(SYSCTL_HANDLER_ARGS)
 static void
 mpt_raid_sysctl_attach(struct mpt_softc *mpt)
 {
-	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(mpt->dev);
-	struct sysctl_oid *tree = device_get_sysctl_tree(mpt->dev);
-
-	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
+	SYSCTL_ADD_PROC(&mpt->mpt_sysctl_ctx,
+			SYSCTL_CHILDREN(mpt->mpt_sysctl_tree), OID_AUTO,
 			"vol_member_wce", CTLTYPE_STRING | CTLFLAG_RW, mpt, 0,
 			mpt_raid_sysctl_vol_member_wce, "A",
 			"volume member WCE(On,Off,On-During-Rebuild,NC)");
 
-	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
+	SYSCTL_ADD_PROC(&mpt->mpt_sysctl_ctx,
+			SYSCTL_CHILDREN(mpt->mpt_sysctl_tree), OID_AUTO,
 			"vol_queue_depth", CTLTYPE_INT | CTLFLAG_RW, mpt, 0,
 			mpt_raid_sysctl_vol_queue_depth, "I",
 			"default volume queue depth");
 
-	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
+	SYSCTL_ADD_PROC(&mpt->mpt_sysctl_ctx,
+			SYSCTL_CHILDREN(mpt->mpt_sysctl_tree), OID_AUTO,
 			"vol_resync_rate", CTLTYPE_INT | CTLFLAG_RW, mpt, 0,
 			mpt_raid_sysctl_vol_resync_rate, "I",
 			"volume resync priority (0 == NC, 1 - 255)");
-	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
+	SYSCTL_ADD_UINT(&mpt->mpt_sysctl_ctx,
+			SYSCTL_CHILDREN(mpt->mpt_sysctl_tree), OID_AUTO,
 			"nonoptimal_volumes", CTLFLAG_RD,
 			&mpt->raid_nonopt_volumes, 0,
 			"number of nonoptimal volumes");
 }
-#endif

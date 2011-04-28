@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/mptutil/mpt_cmd.c,v 1.1 2009/08/14 13:13:12 scottl Exp $
+ * $FreeBSD: src/usr.sbin/mptutil/mpt_cmd.c,v 1.2 2010/11/09 19:28:06 jhb Exp $
  */
 
 #include <sys/param.h>
@@ -309,18 +309,15 @@ mpt_lookup_volume(int fd, const char *name, U8 *VolumeBus, U8 *VolumeID)
 		id = strtol(cp + 1, &cp, 0);
 		if (*cp == '\0') {
 			if (bus < 0 || bus > 0xff || id < 0 || id > 0xff) {
-				errno = EINVAL;
-				return (-1);
+				return (EINVAL);
 			}
 			*VolumeBus = bus;
 			*VolumeID = id;
 			return (0);
 		}
 	} else if (*cp == '\0') {
-		if (bus < 0 || bus > 0xff) {
-			errno = EINVAL;
-			return (-1);
-		}
+		if (bus < 0 || bus > 0xff)
+			return (EINVAL);
 		*VolumeBus = 0;
 		*VolumeID = bus;
 		return (0);
@@ -328,7 +325,7 @@ mpt_lookup_volume(int fd, const char *name, U8 *VolumeBus, U8 *VolumeID)
 
 	ioc2 = mpt_read_ioc_page(fd, 2, NULL);
 	if (ioc2 == NULL)
-		return (-1);
+		return (errno);
 
 	vol = ioc2->RaidVolume;
 	for (i = 0; i < ioc2->NumActiveVolumes; vol++, i++) {
@@ -342,8 +339,7 @@ mpt_lookup_volume(int fd, const char *name, U8 *VolumeBus, U8 *VolumeID)
 		}
 	}
 	free(ioc2);
-	errno = EINVAL;
-	return (-1);
+	return (EINVAL);
 }
 
 int
@@ -359,15 +355,14 @@ mpt_read_config_page_header(int fd, U8 PageType, U8 PageNumber, U32 PageAddress,
 	req.header.PageNumber = PageNumber;
 	req.page_address = PageAddress;
 	if (ioctl(fd, MPTIO_READ_CFG_HEADER, &req) < 0)
-		return (-1);
+		return (errno);
 	if (!IOC_STATUS_SUCCESS(req.ioc_status)) {
 		if (IOCStatus != NULL)
 			*IOCStatus = req.ioc_status;
 		else
 			warnx("Reading config page header failed: %s",
 			    mpt_ioc_status(req.ioc_status));
-		errno = EIO;
-		return (-1);
+		return (EIO);
 	}
 	*header = req.header;
 	return (0);
@@ -379,7 +374,7 @@ mpt_read_config_page(int fd, U8 PageType, U8 PageNumber, U32 PageAddress,
 {
 	struct mpt_cfg_page_req req;
 	void *buf;
-	int save_errno;
+	int error;
 
 	if (IOCStatus != NULL)
 		*IOCStatus = MPI_IOCSTATUS_SUCCESS;
@@ -403,9 +398,9 @@ mpt_read_config_page(int fd, U8 PageType, U8 PageNumber, U32 PageAddress,
 	req.buf = buf;
 	bcopy(&req.header, buf, sizeof(req.header));
 	if (ioctl(fd, MPTIO_READ_CFG_PAGE, &req) < 0) {
-		save_errno = errno;
+		error = errno;
 		free(buf);
-		errno = save_errno;
+		errno = error;
 		return (NULL);
 	}
 	if (!IOC_STATUS_SUCCESS(req.ioc_status)) {
@@ -427,7 +422,7 @@ mpt_read_extended_config_page(int fd, U8 ExtPageType, U8 PageVersion,
 {
 	struct mpt_ext_cfg_page_req req;
 	void *buf;
-	int save_errno;
+	int error;
 
 	if (IOCStatus != NULL)
 		*IOCStatus = MPI_IOCSTATUS_SUCCESS;
@@ -452,9 +447,9 @@ mpt_read_extended_config_page(int fd, U8 ExtPageType, U8 PageVersion,
 	req.buf = buf;
 	bcopy(&req.header, buf, sizeof(req.header));
 	if (ioctl(fd, MPTIO_READ_EXT_CFG_PAGE, &req) < 0) {
-		save_errno = errno;
+		error = errno;
 		free(buf);
-		errno = save_errno;
+		errno = error;
 		return (NULL);
 	}
 	if (!IOC_STATUS_SUCCESS(req.ioc_status)) {
@@ -483,7 +478,7 @@ mpt_write_config_page(int fd, void *buf, U16 *IOCStatus)
 	hdr = buf;
 	req.len = hdr->PageLength * 4;
 	if (ioctl(fd, MPTIO_WRITE_CFG_PAGE, &req) < 0)
-		return (-1);
+		return (errno);
 	if (!IOC_STATUS_SUCCESS(req.ioc_status)) {
 		if (IOCStatus != NULL) {
 			*IOCStatus = req.ioc_status;
@@ -491,8 +486,7 @@ mpt_write_config_page(int fd, void *buf, U16 *IOCStatus)
 		}
 		warnx("Writing config page failed: %s",
 		    mpt_ioc_status(req.ioc_status));
-		errno = EIO;
-		return (-1);
+		return (EIO);
 	}
 	return (0);
 }
@@ -506,10 +500,8 @@ mpt_raid_action(int fd, U8 Action, U8 VolumeBus, U8 VolumeID, U8 PhysDiskNum,
 
 	if (IOCStatus != NULL)
 		*IOCStatus = MPI_IOCSTATUS_SUCCESS;
-	if (datalen < 0 || (unsigned)datalen > sizeof(raid_act.action_data)) {
-		errno = EINVAL;
-		return (-1);
-	}
+	if (datalen < 0 || (unsigned)datalen > sizeof(raid_act.action_data))
+		return (EINVAL);
 	bzero(&raid_act, sizeof(raid_act));
 	raid_act.action = Action;
 	raid_act.volume_bus = VolumeBus;
@@ -523,7 +515,7 @@ mpt_raid_action(int fd, U8 Action, U8 VolumeBus, U8 VolumeID, U8 PhysDiskNum,
 	}
 
 	if (ioctl(fd, MPTIO_RAID_ACTION, &raid_act) < 0)
-		return (-1);
+		return (errno);
 
 	if (!IOC_STATUS_SUCCESS(raid_act.ioc_status)) {
 		if (IOCStatus != NULL) {
@@ -532,8 +524,7 @@ mpt_raid_action(int fd, U8 Action, U8 VolumeBus, U8 VolumeID, U8 PhysDiskNum,
 		}
 		warnx("RAID action failed: %s",
 		    mpt_ioc_status(raid_act.ioc_status));
-		errno = EIO;
-		return (-1);
+		return (EIO);
 	}
 
 	if (ActionStatus != NULL)
@@ -543,8 +534,7 @@ mpt_raid_action(int fd, U8 Action, U8 VolumeBus, U8 VolumeID, U8 PhysDiskNum,
 			return (0);
 		warnx("RAID action failed: %s",
 		    mpt_raid_status(raid_act.action_status));
-		errno = EIO;
-		return (-1);
+		return (EIO);
 	}
 
 	if (VolumeStatus != NULL)
