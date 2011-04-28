@@ -615,10 +615,10 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	int pagerflags;
 	int curgeneration;
 
-	lwkt_gettoken(&vm_token);
+	vm_object_hold(object);
 	if (object->type != OBJT_VNODE ||
 	    (object->flags & OBJ_MIGHTBEDIRTY) == 0) {
-		lwkt_reltoken(&vm_token);
+		vm_object_drop(object);
 		return;
 	}
 
@@ -656,8 +656,10 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 */
 	if (wholescan) {
 		info.error = 0;
+		lwkt_gettoken(&vm_token);
 		vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
 					vm_object_page_clean_pass1, &info);
+		lwkt_reltoken(&vm_token);
 		if (info.error == 0) {
 			vm_object_clear_flag(object,
 					     OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY);
@@ -675,13 +677,15 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	do {
 		info.error = 0;
 		curgeneration = object->generation;
+		lwkt_gettoken(&vm_token);
 		vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
 					vm_object_page_clean_pass2, &info);
+		lwkt_reltoken(&vm_token);
 	} while (info.error || curgeneration != object->generation);
 
 	vm_object_clear_flag(object, OBJ_CLEANING);
 	crit_exit();
-	lwkt_reltoken(&vm_token);
+	vm_object_drop(object);
 }
 
 /*
