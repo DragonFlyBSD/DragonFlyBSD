@@ -14,5 +14,5 @@ CFLAGS+=-I${.CURDIR}/../../contrib/gdtoa
 MISRCS+=gdtoa_${src}
 CLEANFILES+=gdtoa_${src}
 gdtoa_${src}:
-	ln -sf ${.CURDIR}/../../contrib/gdtoa/${src} ${.TARGET}
+	${LN} -sf ${.CURDIR}/../../contrib/gdtoa/${src} ${.TARGET}
 .endfor
