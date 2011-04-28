@@ -643,7 +643,7 @@ AAA
 			if (msg->header.cmd == NGM_PPPOE_SERVICE) {
 				break;
 			}
-			if (sp->state |= PPPOE_SNONE) {
+			if (sp->state != PPPOE_SNONE) {
 				kprintf("pppoe: Session already active\n");
 				LEAVE(EISCONN);
 			}
