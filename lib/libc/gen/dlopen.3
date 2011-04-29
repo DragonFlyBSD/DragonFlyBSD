@@ -32,7 +32,7 @@
 .\" @(#) dlopen.3 1.6 90/01/31 SMI
 .\" $FreeBSD: head/lib/libc/gen/dlopen.3 211397 2010-08-16 15:18:30Z joel $
 .\"
-.Dd February 20, 2011
+.Dd April 28, 2011
 .Dt DLOPEN 3
 .Os
 .Sh NAME
@@ -163,20 +163,20 @@ main (int argc, char *argv[])
     /* open shared gcc library  */
     handle = dlopen("libgcc_s.so", RTLD_LAZY);
     if (!handle) {
-       fprintf (stderr, "%s\n", dlerror ());
+       fprintf (stderr, "%s\en", dlerror ());
        exit (EXIT_FAILURE);
     }
 
     /* get information about the library origin */
     result = dlinfo (handle, RTLD_DI_ORIGIN, (void *)&origin);
     if (result < 0) {
-       fprintf (stderr, "%s\n", dlerror ());
+       fprintf (stderr, "%s\en", dlerror ());
        dlclose (handle);
        exit (EXIT_FAILURE);
     }
 
     /* Display the origin */
-    printf ("libgcc_s origin is %s\\n", &origin[0]);
+    printf ("libgcc_s origin is %s\en", &origin[0]);
     dlclose (handle);
 
     exit(EXIT_SUCCESS);
@@ -185,7 +185,6 @@ main (int argc, char *argv[])
 .Sh SEE ALSO
 .Xr rtld 1 ,
 .Xr dlclose 3 ,
-.Xr dlinfo 3 ,
 .Xr dlerror 3 ,
-.Xr dlfcn 3
-
+.Xr dlfcn 3 ,
+.Xr dlinfo 3

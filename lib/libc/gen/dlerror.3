@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: release/8.1.0/lib/libc/gen/dlopen.3 205979 2010-03-31 13:51:31Z gahr $
 .\"
-.Dd February 20, 2011
+.Dd April 28, 2011
 .Os
 .Dt DLERROR 3
 .Sh NAME
@@ -42,7 +42,7 @@ This function is not in a library.  It is included in every dynamically linked
 program automatically.
 .Sh SYNOPSIS
 .In dlfcn.h
-.Ft char *
+.Ft const char *
 .Fn dlerror "void"
 .Sh DESCRIPTION
 The
@@ -70,8 +70,8 @@ where the second call follows the first immediately, the second call
 will always return a null pointer.
 .Sh SEE ALSO
 .Xr rtld 1 ,
+.Xr dlclose 3 ,
 .Xr dlfcn 3 ,
 .Xr dlopen 3 ,
-.Xr dlclose 3 ,
 .Xr dlsym 3 ,
 .Xr dlvsym 3

@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: release/8.1.0/lib/libc/gen/dlopen.3 205979 2010-03-31 13:51:31Z gahr $
 .\"
-.Dd March 4, 2011
+.Dd April 28, 2011
 .Os
 .Dt DLSYM 3
 .Sh NAME
@@ -44,9 +44,9 @@ program automatically.
 .Sh SYNOPSIS
 .In dlfcn.h
 .Ft void *
-.Fn dlsym "void * handle" "const char * name"
+.Fn dlsym "void *handle" "const char *name"
 .Ft dlfunc_t
-.Fn dlfunc "void * handle" "const char * name"
+.Fn dlfunc "void *handle" "const char *name"
 .Sh DESCRIPTION
 The
 .Fn dlsym
@@ -198,20 +198,20 @@ main (int argc, char *argv[])
     /* open the system shared math library */
     handle = dlopen("libm.so", RTLD_LAZY);
     if (!handle) {
-       fprintf (stderr, "%s\\n", dlerror ());
+       fprintf (stderr, "%s\en", dlerror ());
        exit (EXIT_FAILURE);
     }
 
     /* get pointer to cosine function */
     func_cosine = dlsym (handle, "cos");
     if (func_cosine == NULL) {
-       fprintf (stderr, "%s function not found\\n", "cos");
+       fprintf (stderr, "%s function not found\en", "cos");
        dlclose (handle);
        exit (EXIT_FAILURE);
     }
 
     /* Calculate and display the cosine of 2.0 */
-    printf ("cosine of 2.0 = %f\\n", func_cosine(2.0));
+    printf ("cosine of 2.0 = %f\en", func_cosine(2.0));
     dlclose (handle);
 
     exit(EXIT_SUCCESS);

@@ -15,7 +15,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd February 10, 2011
+.Dd April 28, 2011
 .Os
 .Dt DL_ITERATE_PHDR 3
 .Sh NAME
@@ -85,10 +85,10 @@ static int
 callback(struct dl_phdr_info *info, size_t size, void *data)
 {
     int j;
-    printf("name=%s (%d segments)\n", info->dlpi_name,
+    printf("name=%s (%d segments)\en", info->dlpi_name,
         info->dlpi_phnum);
     for (j = 0; j < info->dlpi_phnum; j++)
-         printf("\t\t header %2d: address=%10p\n", j,
+         printf("\t\t header %2d: address=%10p\en", j,
              (void *) (info->dlpi_addr + info->dlpi_phdr[j].p_vaddr));
     return 0;
 }
