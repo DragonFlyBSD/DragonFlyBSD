@@ -13,6 +13,7 @@ SRCS=	flopen.c login.c login_tty.c logout.c logwtmp.c logwtmpx.c pty.c \
 	dehumanize_number.c humanize_number.c humanize_unsigned.c pw_util.c \
 	efun.c
 INCS=	libutil.h login_cap.h
+INCSLINKS=libutil.h ${INCLUDEDIR}/util.h
 WARNS?=	3
 
 CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../libc/gen/
