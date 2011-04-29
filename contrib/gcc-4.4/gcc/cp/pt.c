@@ -5452,7 +5452,7 @@ coerce_template_parms (tree parms,
 		    sorry ("cannot expand %<%T%> into a fixed-length "
 			   "argument list", arg);
 		}
-	      return error_mark_node;
+	      ++lost;
             }
         }
       else if (require_all_args)
@@ -5473,7 +5473,7 @@ coerce_template_parms (tree parms,
            reported) that we are trying to recover from, e.g., a class
            template with a parameter list such as
            template<typename..., typename>.  */
-        return error_mark_node;
+	++lost;
       else
 	arg = convert_template_argument (TREE_VALUE (parm),
 					 arg, new_args, complain, 
@@ -14125,6 +14125,9 @@ unify (tree tparms, tree targs, tree parm, tree arg, int strict)
       return 1;
 
     default:
+      /* An unresolved overload is a nondeduced context.  */
+      if (type_unknown_p (parm))
+	return 0;
       gcc_assert (EXPR_P (parm));
 
       /* We must be looking at an expression.  This can happen with
@@ -15533,8 +15536,13 @@ instantiate_decl (tree d, int defer_ok,
   if (!pattern_defined && expl_inst_class_mem_p
       && DECL_EXPLICIT_INSTANTIATION (d))
     {
-      DECL_NOT_REALLY_EXTERN (d) = 0;
-      DECL_INTERFACE_KNOWN (d) = 0;
+      /* Leave linkage flags alone on instantiations with anonymous
+	 visibility.  */
+      if (TREE_PUBLIC (d))
+	{
+	  DECL_NOT_REALLY_EXTERN (d) = 0;
+	  DECL_INTERFACE_KNOWN (d) = 0;
+	}
       SET_DECL_IMPLICIT_INSTANTIATION (d);
     }
 
