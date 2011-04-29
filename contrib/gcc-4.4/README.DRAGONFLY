@@ -1,23 +1,20 @@
 
-			GCC-4.4.5 AS USED BY DRAGONFLY
+			GCC-4.4.6 AS USED BY DRAGONFLY
 
     This directory contains a selected set of files from the GNU
-    gcc-4.4.5 distribution, using the `core', `g++' and `objc' parts,
-    which are 197MB together, but we really only need 53MB of those.
-    No files have been moved or modified from their extracted position.
+    gcc-4.4.6 distribution; the subset occupies about 53MB.
 
     ON THE VENDOR BRANCH (vendor/GCC44), DO NOT CREATE OR EDIT ANY FILES
     IN THIS DIRECTORY HIERARCHY!  THIS HIERARCHY REPRESENTS AN EXACT COPY,
     MINUS UNNEEDED FILES, OF THE GNU GCC DISTRIBUTION.
 
     All modifications are made in the master or release branches!
-
     The file README.DELETED contains a list of deleted files.
 
-
-SHA1 (gcc-core-4.4.5.tar.bz2) = 8e2202cde3be496f0452219c60311f8fe36f87f6
-SHA1 ( gcc-g++-4.4.5.tar.bz2) = cdbf1fc7b367c084b16e8f25089e2bd98fcdf4dc
-SHA1 (gcc-objc-4.4.5.tar.bz2) = d21df03f2f49bf1463422d0b9c68fd44f9c04b5f
+    file = gcc-4.4.6.tar.bz2
+    date = 16 April 2011
+    size = 63135296
+    sha1 = fc5e6c60b03650f6508470c088440d3d9360adf9
 
 
     The following files have been added or patched:
@@ -32,9 +29,11 @@ SHA1 (gcc-objc-4.4.5.tar.bz2) = d21df03f2f49bf1463422d0b9c68fd44f9c04b5f
     /libgcc/config.host
     /gcc/c-format.c
     /gcc/c-opts.c
-    /gcc/config.gcc
+    /gcc/crtstuff.c
     /gcc/tree-inline.c
+    /gcc/unwind-dw2-fde-glibc.c
     /gcc/config/dragonfly.h
+    /gcc/config/i386/dragonfly-unwind.h
     /gcc/config/i386/dragonfly.h
     /gcc/config/i386/dragonfly64.h
     /gcc/config/i386/i386.c

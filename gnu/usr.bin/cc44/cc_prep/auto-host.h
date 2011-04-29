@@ -197,7 +197,7 @@
 
 /* Define if your assembler supports the --debug-prefix-map option. */
 #ifndef USED_FOR_TARGET
-/* #undef HAVE_AS_DEBUG_PREFIX_MAP */
+#define HAVE_AS_DEBUG_PREFIX_MAP 1
 #endif
 
 
@@ -852,13 +852,13 @@
 
 /* Define 0/1 if your assembler supports .cfi_personality. */
 #ifndef USED_FOR_TARGET
-#define HAVE_GAS_CFI_PERSONALITY_DIRECTIVE 0
+#define HAVE_GAS_CFI_PERSONALITY_DIRECTIVE 1
 #endif
 
 
 /* Define 0/1 if your assembler supports .cfi_sections. */
 #ifndef USED_FOR_TARGET
-#define HAVE_GAS_CFI_SECTIONS_DIRECTIVE 0
+#define HAVE_GAS_CFI_SECTIONS_DIRECTIVE 1
 #endif
 
 

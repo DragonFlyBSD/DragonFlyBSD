@@ -38,7 +38,7 @@ SRCS+=		${FUNCS:S/$/.c/g}
 CLEANFILES+=	${FUNCS:S/$/.c/g}
 
 # LIB2ADDEH, gcc/Makefile
-SRCS+=	unwind-dw2.c unwind-dw2-fde.c unwind-sjlj.c
+SRCS+=	unwind-dw2.c unwind-dw2-fde-glibc.c unwind-sjlj.c
 SRCS+=	gthr-gnat.c unwind-c.c
 
 SRCS+=	unwind.h

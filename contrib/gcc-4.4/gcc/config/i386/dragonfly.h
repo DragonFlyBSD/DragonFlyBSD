@@ -94,4 +94,4 @@ along with GCC; see the file COPYING3.  If not see
 /*#define STACK_CHECK_STATIC_BUILTIN 1 */
 
 /* Define location of OS-specific unwind support configuration. */
-/* #define MD_UNWIND_SUPPORT "config/i386/dragonfly-unwind.h"  */
+#define MD_UNWIND_SUPPORT "config/i386/dragonfly-unwind.h"

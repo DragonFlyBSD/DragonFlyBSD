@@ -81,20 +81,11 @@ call_ ## FUNC (void)					\
 }
 #endif
 
-#if defined(OBJECT_FORMAT_ELF) \
-    && !defined(OBJECT_FORMAT_FLAT) \
-    && defined(HAVE_LD_EH_FRAME_HDR) \
-    && !defined(inhibit_libc) && !defined(CRTSTUFFT_O) \
-    && defined(__GLIBC__) && __GLIBC__ >= 2
+#if defined(__DragonFly__)  /* implement dl_iterate_phdr EH */
 #include <link.h>
-/* uClibc pretends to be glibc 2.2 and DT_CONFIG is defined in its link.h.
-   But it doesn't use PT_GNU_EH_FRAME ELF segment currently.  */
-# if !defined(__UCLIBC__) \
-     && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ > 2) \
-     || (__GLIBC__ == 2 && __GLIBC_MINOR__ == 2 && defined(DT_CONFIG)))
-#  define USE_PT_GNU_EH_FRAME
-# endif
+#define USE_PT_GNU_EH_FRAME
 #endif
+
 #if defined(EH_FRAME_SECTION_NAME) && !defined(USE_PT_GNU_EH_FRAME)
 # define USE_EH_FRAME_REGISTRY
 #endif

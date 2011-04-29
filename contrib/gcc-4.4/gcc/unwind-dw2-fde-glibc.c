@@ -32,9 +32,7 @@
 
 #include "tconfig.h"
 #include "tsystem.h"
-#ifndef inhibit_libc
 #include <link.h>
-#endif
 #include "coretypes.h"
 #include "tm.h"
 #include "dwarf2.h"
@@ -45,9 +43,9 @@
 #include "unwind-compat.h"
 #include "gthr.h"
 
-#if !defined(inhibit_libc) && defined(HAVE_LD_EH_FRAME_HDR) \
-    && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ > 2) \
-	|| (__GLIBC__ == 2 && __GLIBC_MINOR__ == 2 && defined(DT_CONFIG)))
+#if defined(__DragonFly__)
+
+#define ElfW __ElfN
 
 #ifndef __RELOC_POINTER
 # define __RELOC_POINTER(ptr, base) ((ptr) + (base))
