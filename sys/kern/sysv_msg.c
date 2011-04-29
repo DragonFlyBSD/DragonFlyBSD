@@ -546,7 +546,7 @@ sys_msgsnd(struct msgsnd_args *uap)
 #ifdef MSG_DEBUG_OK
 		kprintf("requester doesn't have write access\n");
 #endif
-		eval = eval;
+		eval = EINVAL;
 		goto done;
 	}
 
