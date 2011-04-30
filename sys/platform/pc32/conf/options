@@ -17,6 +17,7 @@ WLCACHE			opt_wavelan.h
 WLDEBUG			opt_wavelan.h
 BROKEN_KEYBOARD_RESET	opt_reset.h
 APIC_IO			opt_apic.h
+COMPAT_OLDISA		opt_compat_oldisa.h
 
 # Options for emulators.  These should only be used at config time, so
 # they are handled like options for static file systems
