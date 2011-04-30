@@ -2668,7 +2668,15 @@ mxge_rx_done_small(struct mxge_slice_state *ss, uint32_t len, uint32_t csum,
 	ether_input_chain(ifp, m, NULL, chain);
 }
 
-static inline void
+/*
+ * XXX
+ *
+ * Inlining the call to this function causes mxge_intr() to grow too large
+ * for GCC's stack size limits (which shouldn't take into account inlining
+ * of leaf functions at one call site anyway). Inlining is definitely a
+ * good idea in this case though, so mark the function appropriately.
+ */
+static __always_inline void
 mxge_clean_rx_done(struct mxge_slice_state *ss)
 {
 	mxge_rx_done_t *rx_done = &ss->rx_done;
