@@ -1,24 +1,22 @@
 /* Shared definitions for GNU DIFF
 
-   Copyright (C) 1988, 1989, 1991, 1992, 1993, 1994, 1995, 1998, 2001,
-   2002, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1988-1989, 1991-1995, 1998, 2001-2002, 2004, 2009-2010 Free
+   Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
-   GNU DIFF is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-   GNU DIFF is distributed in the hope that it will be useful,
+   This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; see the file COPYING.
-   If not, write to the Free Software Foundation,
-   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "system.h"
 #include <gnuregex.h>
@@ -152,6 +150,9 @@ XTERN size_t tabsize;
    without changing the characters in it (-T).  */
 XTERN bool initial_tab;
 
+/* Do not output an initial space or tab before the text of an empty line.  */
+XTERN bool suppress_blank_empty;
+
 /* Remove trailing carriage returns from input.  */
 XTERN bool strip_trailing_cr;
 
@@ -197,9 +198,6 @@ XTERN struct exclude *excluded;
 /* Don't discard lines.  This makes things slower (sometimes much
    slower) but will find a guaranteed minimal set of changes.  */
 XTERN bool minimal;
-
-/* Name of program the user invoked (for error messages).  */
-XTERN char *program_name;
 
 /* The strftime format to use for time strings.  */
 XTERN char const *time_format;

@@ -1,12 +1,12 @@
 /* exclude.h -- declarations for excluding file names
 
-   Copyright (C) 1992, 1993, 1994, 1997, 1999, 2001, 2002, 2003 Free
-   Software Foundation, Inc.
+   Copyright (C) 1992, 1993, 1994, 1997, 1999, 2001, 2002, 2003, 2005, 2006,
+   2009, 2010 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,11 +14,15 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; see the file COPYING.
-   If not, write to the Free Software Foundation,
-   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-/* Written by Paul Eggert <eggert@twinsun.com>  */
+#ifndef _GL_EXCLUDE_H
+#define _GL_EXCLUDE_H 1
+
+#include <stdbool.h>
+
+/* Written by Paul Eggert <eggert@twinsun.com>
+   and Sergey Poznyakoff <gray@gnu.org> */
 
 /* Exclude options, which can be ORed with fnmatch options.  */
 
@@ -35,9 +39,14 @@
 
 struct exclude;
 
+bool fnmatch_pattern_has_wildcards (const char *, int);
+
 struct exclude *new_exclude (void);
 void free_exclude (struct exclude *);
 void add_exclude (struct exclude *, char const *, int);
 int add_exclude_file (void (*) (struct exclude *, char const *, int),
-		      struct exclude *, char const *, int, char);
-bool excluded_filename (struct exclude const *, char const *);
+                      struct exclude *, char const *, int, char);
+bool excluded_file_name (struct exclude const *, char const *);
+bool exclude_fnmatch (char const *pattern, char const *f, int options);
+
+#endif /* _GL_EXCLUDE_H */

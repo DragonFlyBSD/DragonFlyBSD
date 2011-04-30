@@ -1,30 +1,27 @@
 /* Read, sort and compare two directories.  Used for GNU DIFF.
 
-   Copyright (C) 1988, 1989, 1992, 1993, 1994, 1995, 1998, 2001, 2002,
-   2004 Free Software Foundation, Inc.
+   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006-2007,
+   2009-2010 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
-   GNU DIFF is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-   GNU DIFF is distributed in the hope that it will be useful,
+   This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; see the file COPYING.
-   If not, write to the Free Software Foundation,
-   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "diff.h"
 #include <error.h>
 #include <exclude.h>
 #include <setjmp.h>
-#include <strcase.h>
 #include <xalloc.h>
 
 /* Read the directory named by DIR and store into DIRDATA a sorted vector
@@ -92,14 +89,14 @@ dir_read (struct file_data const *dir, struct dirdata *dirdata)
       while ((errno = 0, (next = readdir (reading)) != 0))
 	{
 	  char *d_name = next->d_name;
-	  size_t d_size = NAMLEN (next) + 1;
+	  size_t d_size = _D_EXACT_NAMLEN (next) + 1;
 
 	  /* Ignore "." and "..".  */
 	  if (d_name[0] == '.'
 	      && (d_name[1] == 0 || (d_name[1] == '.' && d_name[2] == 0)))
 	    continue;
 
-	  if (excluded_filename (excluded, d_name))
+	  if (excluded_file_name (excluded, d_name))
 	    continue;
 
 	  while (data_alloc < data_used + d_size)
@@ -208,7 +205,7 @@ diff_dirs (struct comparison const *cmp,
   if ((cmp->file[0].desc == -1 || dir_loop (cmp, 0))
       && (cmp->file[1].desc == -1 || dir_loop (cmp, 1)))
     {
-      error (0, 0, "%s: recursive directory loop",
+      error (0, 0, _("%s: recursive directory loop"),
 	     cmp->file[cmp->file[0].desc == -1].name);
       return EXIT_TROUBLE;
     }
@@ -266,10 +263,8 @@ diff_dirs (struct comparison const *cmp,
 
   for (i = 0; i < 2; i++)
     {
-      if (dirdata[i].names)
-	free (dirdata[i].names);
-      if (dirdata[i].data)
-	free (dirdata[i].data);
+      free (dirdata[i].names);
+      free (dirdata[i].data);
     }
 
   return val;

@@ -1,7 +1,7 @@
 /* sdiff-format output routines for GNU DIFF.
 
-   Copyright (C) 1991, 1992, 1993, 1998, 2001, 2002, 2004 Free
-   Software Foundation, Inc.
+   Copyright (C) 1991-1993, 1998, 2001-2002, 2004, 2009-2010 Free Software
+   Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -9,18 +9,20 @@
    but WITHOUT ANY WARRANTY.  No author or distributor
    accepts responsibility to anyone for the consequences of using it
    or for whether it serves any particular purpose or works at all,
-   unless he says so in writing.  Refer to the GNU DIFF General Public
+   unless he says so in writing.  Refer to the GNU General Public
    License for full details.
 
    Everyone is granted permission to copy, modify and redistribute
    GNU DIFF, but only under the conditions described in the
-   GNU DIFF General Public License.   A copy of this license is
+   GNU General Public License.   A copy of this license is
    supposed to have been given to you along with GNU DIFF so you
    can know your rights and responsibilities.  It should be in a
    file named COPYING.  Among other things, the copyright notice
    and this notice must be preserved on all copies.  */
 
 #include "diff.h"
+
+#include <wchar.h>
 
 static void print_sdiff_common_lines (lin, lin);
 static void print_sdiff_hunk (struct change *);
@@ -73,10 +75,12 @@ print_half_line (char const *const *line, size_t indent, size_t out_bound)
   register size_t out_position = 0;
   register char const *text_pointer = line[0];
   register char const *text_limit = line[1];
+  mbstate_t mbstate = { 0 };
 
   while (text_pointer < text_limit)
     {
-      register unsigned char c = *text_pointer++;
+      char const *tp0 = text_pointer;
+      register char c = *text_pointer++;
 
       switch (c)
 	{
@@ -127,18 +131,53 @@ print_half_line (char const *const *line, size_t indent, size_t out_bound)
 	    }
 	  break;
 
+	default:
+	  {
+	    wchar_t wc;
+	    size_t bytes = mbrtowc (&wc, tp0, text_limit - tp0, &mbstate);
+
+	    if (0 < bytes && bytes < (size_t) -2)
+	      {
+		int width = wcwidth (wc);
+		if (0 < width)
+		  in_position += width;
+		if (in_position <= out_bound)
+		  {
+		    out_position = in_position;
+		    fwrite (tp0, 1, bytes, stdout);
+		  }
+		text_pointer = tp0 + bytes;
+		break;
+	      }
+	  }
+	  /* Fall through.  */
 	case '\f':
 	case '\v':
-	control_char:
 	  if (in_position < out_bound)
 	    putc (c, out);
 	  break;
 
-	default:
-	  if (! isprint (c))
-	    goto control_char;
-	  /* falls through */
-	case ' ':
+	case ' ': case '!': case '"': case '#': case '%':
+	case '&': case '\'': case '(': case ')': case '*':
+	case '+': case ',': case '-': case '.': case '/':
+	case '0': case '1': case '2': case '3': case '4':
+	case '5': case '6': case '7': case '8': case '9':
+	case ':': case ';': case '<': case '=': case '>':
+	case '?':
+	case 'A': case 'B': case 'C': case 'D': case 'E':
+	case 'F': case 'G': case 'H': case 'I': case 'J':
+	case 'K': case 'L': case 'M': case 'N': case 'O':
+	case 'P': case 'Q': case 'R': case 'S': case 'T':
+	case 'U': case 'V': case 'W': case 'X': case 'Y':
+	case 'Z':
+	case '[': case '\\': case ']': case '^': case '_':
+	case 'a': case 'b': case 'c': case 'd': case 'e':
+	case 'f': case 'g': case 'h': case 'i': case 'j':
+	case 'k': case 'l': case 'm': case 'n': case 'o':
+	case 'p': case 'q': case 'r': case 's': case 't':
+	case 'u': case 'v': case 'w': case 'x': case 'y':
+	case 'z': case '{': case '|': case '}': case '~':
+	  /* These characters are printable ASCII characters.  */
 	  if (in_position++ < out_bound)
 	    {
 	      out_position = in_position;

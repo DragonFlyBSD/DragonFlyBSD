@@ -1,35 +1,28 @@
 /* Context-format output routines for GNU DIFF.
 
-   Copyright (C) 1988, 1989, 1991, 1992, 1993, 1994, 1995, 1998, 2001,
-   2002, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1988-1989, 1991-1995, 1998, 2001-2002, 2004, 2006, 2009-2010
+   Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
-   GNU DIFF is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-   GNU DIFF is distributed in the hope that it will be useful,
+   This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; see the file COPYING.
-   If not, write to the Free Software Foundation,
-   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "diff.h"
+#include "c-ctype.h"
 #include <inttostr.h>
-
-#ifdef ST_MTIM_NSEC
-# define TIMESPEC_NS(timespec) ((timespec).ST_MTIM_NSEC)
-#else
-# define TIMESPEC_NS(timespec) 0
-#endif
-
-size_t nstrftime (char *, size_t, char const *, struct tm const *, int, int);
+#include <stat-time.h>
+#include <strftime.h>
 
 static char const *find_function (char const * const *, lin);
 static struct change *find_hunk (struct change *);
@@ -57,12 +50,26 @@ print_context_label (char const *mark,
       char buf[MAX (INT_STRLEN_BOUND (int) + 32,
 		    INT_STRLEN_BOUND (time_t) + 11)];
       struct tm const *tm = localtime (&inf->stat.st_mtime);
-      int nsec = TIMESPEC_NS (inf->stat.st_mtim);
+      int nsec = get_stat_mtime_ns (&inf->stat);
       if (! (tm && nstrftime (buf, sizeof buf, time_format, tm, 0, nsec)))
 	{
-	  long int sec = inf->stat.st_mtime;
-	  verify (info_preserved, sizeof inf->stat.st_mtime <= sizeof sec);
-	  sprintf (buf, "%ld.%.9d", sec, nsec);
+	  verify (TYPE_IS_INTEGER (time_t));
+	  if (LONG_MIN <= TYPE_MINIMUM (time_t)
+	      && TYPE_MAXIMUM (time_t) <= LONG_MAX)
+	    {
+	      long int sec = inf->stat.st_mtime;
+	      sprintf (buf, "%ld.%.9d", sec, nsec);
+	    }
+	  else if (TYPE_MAXIMUM (time_t) <= INTMAX_MAX)
+	    {
+	      intmax_t sec = inf->stat.st_mtime;
+	      sprintf (buf, "%"PRIdMAX".%.9d", sec, nsec);
+	    }
+	  else
+	    {
+	      uintmax_t sec = inf->stat.st_mtime;
+	      sprintf (buf, "%"PRIuMAX".%.9d", sec, nsec);
+	    }
 	}
       fprintf (outfile, "%s %s\t%s\n", mark, inf->name, buf);
     }
@@ -139,11 +146,15 @@ print_context_number_range (struct file_data const *file, lin a, lin b)
 static void
 print_context_function (FILE *out, char const *function)
 {
-  int i;
+  int i, j;
   putc (' ', out);
-  for (i = 0; i < 40 && function[i] != '\n'; i++)
+  for (i = 0; c_isspace ((unsigned char) function[i]) && function[i] != '\n'; i++)
     continue;
-  fwrite (function, sizeof (char), i, out);
+  for (j = i; j < i + 40 && function[j] != '\n'; j++)
+    continue;
+  while (i < j && c_isspace ((unsigned char) function[j - 1]))
+    j--;
+  fwrite (function + i, sizeof (char), j - i, out);
 }
 
 /* Print a portion of an edit script in context format.
@@ -182,21 +193,21 @@ pr_context_hunk (struct change *hunk)
     last1 = files[1].valid_lines - 1;
 
   /* If desired, find the preceding function definition line in file 0.  */
-  function = 0;
+  function = NULL;
   if (function_regexp.fastmap)
     function = find_function (files[0].linbuf, first0);
 
   begin_output ();
   out = outfile;
 
-  fprintf (out, "***************");
+  fputs ("***************", out);
 
   if (function)
     print_context_function (out, function);
 
-  fprintf (out, "\n*** ");
+  fputs ("\n*** ", out);
   print_context_number_range (&files[0], first0, last0);
-  fprintf (out, " ****\n");
+  fputs (" ****\n", out);
 
   if (changes & OLD)
     {
@@ -223,9 +234,9 @@ pr_context_hunk (struct change *hunk)
 	}
     }
 
-  fprintf (out, "--- ");
+  fputs ("--- ", out);
   print_context_number_range (&files[1], first1, last1);
-  fprintf (out, " ----\n");
+  fputs (" ----\n", out);
 
   if (changes & NEW)
     {
@@ -312,18 +323,18 @@ pr_unidiff_hunk (struct change *hunk)
     last1 = files[1].valid_lines - 1;
 
   /* If desired, find the preceding function definition line in file 0.  */
-  function = 0;
+  function = NULL;
   if (function_regexp.fastmap)
     function = find_function (files[0].linbuf, first0);
 
   begin_output ();
   out = outfile;
 
-  fprintf (out, "@@ -");
+  fputs ("@@ -", out);
   print_unidiff_number_range (&files[0], first0, last0);
-  fprintf (out, " +");
+  fputs (" +", out);
   print_unidiff_number_range (&files[1], first1, last1);
-  fprintf (out, " @@");
+  fputs (" @@", out);
 
   if (function)
     print_context_function (out, function);
@@ -341,8 +352,10 @@ pr_unidiff_hunk (struct change *hunk)
 
       if (!next || i < next->line0)
 	{
-	  putc (initial_tab ? '\t' : ' ', out);
-	  print_1_line (0, &files[0].linbuf[i++]);
+	  char const *const *line = &files[0].linbuf[i++];
+	  if (! (suppress_blank_empty && **line == '\n'))
+	    putc (initial_tab ? '\t' : ' ', out);
+	  print_1_line (NULL, line);
 	  j++;
 	}
       else
@@ -352,10 +365,11 @@ pr_unidiff_hunk (struct change *hunk)
 	  k = next->deleted;
 	  while (k--)
 	    {
+	      char const * const *line = &files[0].linbuf[i++];
 	      putc ('-', out);
-	      if (initial_tab)
+	      if (initial_tab && ! (suppress_blank_empty && **line == '\n'))
 		putc ('\t', out);
-	      print_1_line (0, &files[0].linbuf[i++]);
+	      print_1_line (NULL, line);
 	    }
 
 	  /* Then output the inserted part. */
@@ -363,10 +377,11 @@ pr_unidiff_hunk (struct change *hunk)
 	  k = next->inserted;
 	  while (k--)
 	    {
+	      char const * const *line = &files[1].linbuf[j++];
 	      putc ('+', out);
-	      if (initial_tab)
+	      if (initial_tab && ! (suppress_blank_empty && **line == '\n'))
 		putc ('\t', out);
-	      print_1_line (0, &files[1].linbuf[j++]);
+	      print_1_line (NULL, line);
 	    }
 
 	  /* We're done with this hunk, so on to the next! */
@@ -429,7 +444,7 @@ mark_ignorable (struct change *script)
       lin first0, last0, first1, last1;
 
       /* Turn this change into a hunk: detach it from the others.  */
-      script->link = 0;
+      script->link = NULL;
 
       /* Determine whether this change is ignorable.  */
       script->ignore = ! analyze_hunk (script,
@@ -445,7 +460,7 @@ mark_ignorable (struct change *script)
 
 /* Find the last function-header line in LINBUF prior to line number LINENUM.
    This is a line containing a match for the regexp in `function_regexp'.
-   Return the address of the text, or 0 if no function-header is found.  */
+   Return the address of the text, or NULL if no function-header is found.  */
 
 static char const *
 find_function (char const * const *linbuf, lin linenum)
@@ -463,7 +478,7 @@ find_function (char const * const *linbuf, lin linenum)
       /* FIXME: re_search's size args should be size_t, not int.  */
       int len = MIN (linelen, INT_MAX);
 
-      if (0 <= re_search (&function_regexp, line, len, 0, len, 0))
+      if (0 <= re_search (&function_regexp, line, len, 0, len, NULL))
 	{
 	  find_function_last_match = i;
 	  return line;
@@ -474,5 +489,5 @@ find_function (char const * const *linbuf, lin linenum)
   if (find_function_last_match != LIN_MAX)
     return linbuf[find_function_last_match];
 
-  return 0;
+  return NULL;
 }
