@@ -1,0 +1,11 @@
+RELTOP:=	..
+
+RELSRC=		${RELTOP}/../../../contrib/diffutils
+SRCDIR=		${.CURDIR}/${RELSRC}
+
+CFLAGS+=	-I. -I${.CURDIR}
+
+DPADD=		${RELTOP}/libdiffutils/libdiffutils.a
+LDADD=		${RELTOP}/libdiffutils/libdiffutils.a
+
+BINDIR?=	/usr/bin

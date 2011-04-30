@@ -19,7 +19,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "system.h"
-#include <gnuregex.h>
+#include <regex.h>
 #include <stdio.h>
 #include <unlocked-io.h>
 
