@@ -1,24 +1,24 @@
-This is diff.info, produced by makeinfo version 4.7 from diff.texi.
+This is diff.info, produced by makeinfo version 4.13 from diff.texi.
 
-   This manual is for GNU Diffutils (version 2.8.7, 12 April 2004), and
+This manual is for GNU Diffutils (version 3.0, 15 April 2010), and
 documents the GNU `diff', `diff3', `sdiff', and `cmp' commands for
 showing the differences between files and the GNU `patch' command for
 using their output to update files.
 
-   Copyright (C) 1992, 1993, 1994, 1998, 2001, 2002, 2004 Free Software
-Foundation, Inc.
+   Copyright (C) 1992-1994, 1998, 2001-2002, 2004, 2006, 2009-2010 Free
+Software Foundation, Inc.
 
      Permission is granted to copy, distribute and/or modify this
      document under the terms of the GNU Free Documentation License,
-     Version 1.1 or any later version published by the Free Software
+     Version 1.3 or any later version published by the Free Software
      Foundation; with no Invariant Sections, with the Front-Cover texts
      being "A GNU Manual," and with the Back-Cover Texts as in (a)
      below.  A copy of the license is included in the section entitled
      "GNU Free Documentation License."
 
-     (a) The FSF's Back-Cover Text is: "You have freedom to copy and
-     modify this GNU Manual, like GNU software.  Copies published by
-     the Free Software Foundation raise funds for GNU development."
+     (a) The FSF's Back-Cover Text is: "You have the freedom to copy
+     and modify this GNU manual.  Buying copies from the FSF supports
+     it in developing GNU and promoting software freedom."
 
 INFO-DIR-SECTION Individual utilities
 START-INFO-DIR-ENTRY
@@ -40,25 +40,25 @@ File: diff.info,  Node: Top,  Next: Overview,  Up: (dir)
 Comparing and Merging Files
 ***************************
 
-This manual is for GNU Diffutils (version 2.8.7, 12 April 2004), and
+This manual is for GNU Diffutils (version 3.0, 15 April 2010), and
 documents the GNU `diff', `diff3', `sdiff', and `cmp' commands for
 showing the differences between files and the GNU `patch' command for
 using their output to update files.
 
-   Copyright (C) 1992, 1993, 1994, 1998, 2001, 2002, 2004 Free Software
-Foundation, Inc.
+   Copyright (C) 1992-1994, 1998, 2001-2002, 2004, 2006, 2009-2010 Free
+Software Foundation, Inc.
 
      Permission is granted to copy, distribute and/or modify this
      document under the terms of the GNU Free Documentation License,
-     Version 1.1 or any later version published by the Free Software
+     Version 1.3 or any later version published by the Free Software
      Foundation; with no Invariant Sections, with the Front-Cover texts
      being "A GNU Manual," and with the Back-Cover Texts as in (a)
      below.  A copy of the license is included in the section entitled
      "GNU Free Documentation License."
 
-     (a) The FSF's Back-Cover Text is: "You have freedom to copy and
-     modify this GNU Manual, like GNU software.  Copies published by
-     the Free Software Foundation raise funds for GNU development."
+     (a) The FSF's Back-Cover Text is: "You have the freedom to copy
+     and modify this GNU manual.  Buying copies from the FSF supports
+     it in developing GNU and promoting software freedom."
 
 * Menu:
 
@@ -283,14 +283,19 @@ where `$' denotes the line end:
 
    The `-w' or `--ignore-all-space' option is stronger still.  It
 ignores differences even if one line has white space where the other
-line has none.  "White space" characters include tab, newline, vertical
-tab, form feed, carriage return, and space; some locales may define
+line has none.  "White space" characters include tab, vertical tab,
+form feed, carriage return, and space; some locales may define
 additional characters to be white space.  With this option, `diff'
 considers the following two lines to be equivalent, where `$' denotes
 the line end and `^M' denotes a carriage return:
 
      Here lyeth  muche  rychnesse in lytell space.--  John Heywood$
        He relyeth much erychnes  seinly tells pace.  --John Heywood   ^M$
+
+   For many other programs newline is also a white space character, but
+`diff' is a line-oriented program and a newline character always ends a
+line.  Hence the `-w' or `--ignore-all-space' option does not ignore
+newline-related changes; it ignores only other white space changes.
 
 
 File: diff.info,  Node: Blank Lines,  Next: Specified Lines,  Prev: White Space,  Up: Comparison
@@ -667,7 +672,7 @@ a traditional time stamp like `Thu Feb 21 23:30:39 2002' is used if the
 `LC_TIME' locale category is either `C' or `POSIX'.
 
    You can change the header's content with the `--label=LABEL' option;
-see *Note Alternate Names::.
+see *note Alternate Names::.
 
    Next come one or more hunks of differences; each hunk shows one area
 where the files differ.  Context format hunks look like this:
@@ -1779,11 +1784,12 @@ These adjustments can be applied to any output format.
 
 * Menu:
 
-* Tabs::       Preserving the alignment of tab stops.
-* Pagination:: Page numbering and time-stamping `diff' output.
+* Tabs::            Preserving the alignment of tab stops.
+* Trailing Blanks:: Suppressing blanks before empty output lines.
+* Pagination::      Page numbering and time-stamping `diff' output.
 
 
-File: diff.info,  Node: Tabs,  Next: Pagination,  Up: Adjusting Output
+File: diff.info,  Node: Tabs,  Next: Trailing Blanks,  Up: Adjusting Output
 
 5.1 Preserving Tab Stop Alignment
 =================================
@@ -1815,9 +1821,33 @@ type indicator character.  Select this method with the `-T' or
 `--initial-tab' option.
 
 
-File: diff.info,  Node: Pagination,  Prev: Tabs,  Up: Adjusting Output
+File: diff.info,  Node: Trailing Blanks,  Next: Pagination,  Prev: Tabs,  Up: Adjusting Output
 
-5.2 Paginating `diff' Output
+5.2 Omitting trailing blanks
+============================
+
+When outputting lines in normal or context format, or outputting an
+unchanged line in unified format, `diff' normally outputs a blank just
+before each line.  If the line is empty, the output of `diff' therefore
+contains trailing blanks even though the input does not contain them.
+For example, when outputting an unchanged empty line in context format,
+`diff' normally outputs a line with two leading spaces.
+
+   Some text editors and email agents routinely delete trailing blanks,
+so it can be a problem to deal with diff output files that contain
+them.  You can avoid this problem with the `--suppress-blank-empty'
+option.  It causes `diff' to omit trailing blanks at the end of output
+lines in normal, context, and unified format, unless the trailing
+blanks were already present in the input.  This changes the output
+format slightly, so that output lines are guaranteed to never end in a
+blank unless an input line ends in a blank.  This format is less likely
+to be munged by text editors or by transmission via email.  It is
+accepted by GNU `patch' as well.
+
+
+File: diff.info,  Node: Pagination,  Prev: Trailing Blanks,  Up: Adjusting Output
+
+5.3 Paginating `diff' Output
 ============================
 
 It can be convenient to have long output page-numbered and time-stamped.
@@ -1893,7 +1923,7 @@ File: diff.info,  Node: Comparing Three Files,  Next: diff3 Merging,  Prev: diff
 ***********************
 
 Use the program `diff3' to compare three files and show any differences
-among them.  (`diff3' can also merge files; see *Note diff3 Merging::).
+among them.  (`diff3' can also merge files; see *note diff3 Merging::).
 
    The "normal" `diff3' output format shows each hunk of differences
 without surrounding context.  Hunks are labeled depending on whether
@@ -2003,7 +2033,7 @@ correctly.  *Note Tabs::, for more information.
 `FILE:Rc'
      This hunk contains the lines in the range R of file FILE.  The
      range R is a comma-separated pair of line numbers, or just one
-     number if the range is a singleton.  To edit this file to yield the
+     number if there is only one line.  To edit this file to yield the
      other files, one must change the specified lines to be the lines
      taken from the other files.  For example, `2:11,13c' means that
      the hunk contains lines 11 through 13 from the second file.
@@ -2363,20 +2393,24 @@ Follow each command with <RET>.
      what file and lines the version came from.
 
 `el'
+`e1'
      Edit a copy of the left version, then copy the result to the
      output.
 
 `er'
+`e2'
      Edit a copy of the right version, then copy the result to the
      output.
 
 `l'
+`1'
      Copy the left version to the output.
 
 `q'
      Quit.
 
 `r'
+`2'
      Copy the right version to the output.
 
 `s'
@@ -3349,7 +3383,8 @@ can be combined into a single command line word: `-bl' is equivalent to
 `-l'
 `--verbose'
      Output the (decimal) byte numbers and (octal) values of all
-     differing bytes, instead of the default standard output.
+     differing bytes, instead of the default standard output.  Also,
+     output the EOF message if one file is shorter than the other.
 
 `-n COUNT'
 `--bytes=COUNT'
@@ -3531,10 +3566,9 @@ optional argument.
      For proper operation, `patch' typically needs at least two lines of
      context.
 
-     On older systems, `diff' supports an obsolete option `-LINES' that
-     has effect when combined with `-c' or `-p'.  POSIX 1003.1-2001
-     (*note Standards conformance::) does not allow this; use `-C LINES'
-     instead.
+     For compatibility `diff' also supports an obsolete option syntax
+     `-LINES' that has effect when combined with `-c', `-p', or `-u'.
+     New scripts should use `-C LINES' or `-U LINES' instead.
 
 `--changed-group-format=FORMAT'
      Use FORMAT to output a line group containing differing lines from
@@ -3689,6 +3723,11 @@ optional argument.
 `--tabsize=COLUMNS'
      Assume that tab stops are set every COLUMNS (default 8) print
      columns.  *Note Tabs::.
+
+`--suppress-blank-empty'
+     Suppress any blanks before newlines when printing the
+     representation of an empty line, when outputting normal, context,
+     or unified format.  *Note Trailing Blanks::.
 
 `--to-file=FILE'
      Compare each operand to FILE; FILE may be a directory.
@@ -4453,20 +4492,10 @@ File: diff.info,  Node: Copying This Manual,  Next: Translations,  Prev: Project
 Appendix A Copying This Manual
 ******************************
 
-* Menu:
+                     Version 1.3, 3 November 2008
 
-* GNU Free Documentation License::  License for copying this manual.
-
-
-File: diff.info,  Node: GNU Free Documentation License,  Up: Copying This Manual
-
-A.1 GNU Free Documentation License
-==================================
-
-                      Version 1.2, November 2002
-
-     Copyright (C) 2000,2001,2002 Free Software Foundation, Inc.
-     59 Temple Place, Suite 330, Boston, MA  02111-1307, USA
+     Copyright (C) 2000, 2001, 2002, 2007, 2008 Free Software Foundation, Inc.
+     `http://fsf.org/'
 
      Everyone is permitted to copy and distribute verbatim copies
      of this license document, but changing it is not allowed.
@@ -4567,6 +4596,9 @@ A.1 GNU Free Documentation License
      works in formats which do not have any title page as such, "Title
      Page" means the text near the most prominent appearance of the
      work's title, preceding the beginning of the body of the text.
+
+     The "publisher" means any person or entity that distributes copies
+     of the Document to the public.
 
      A section "Entitled XYZ" means a named subunit of the Document
      whose title either is precisely XYZ or contains XYZ in parentheses
@@ -4833,12 +4865,29 @@ A.1 GNU Free Documentation License
   9. TERMINATION
 
      You may not copy, modify, sublicense, or distribute the Document
-     except as expressly provided for under this License.  Any other
-     attempt to copy, modify, sublicense or distribute the Document is
-     void, and will automatically terminate your rights under this
-     License.  However, parties who have received copies, or rights,
-     from you under this License will not have their licenses
-     terminated so long as such parties remain in full compliance.
+     except as expressly provided under this License.  Any attempt
+     otherwise to copy, modify, sublicense, or distribute it is void,
+     and will automatically terminate your rights under this License.
+
+     However, if you cease all violation of this License, then your
+     license from a particular copyright holder is reinstated (a)
+     provisionally, unless and until the copyright holder explicitly
+     and finally terminates your license, and (b) permanently, if the
+     copyright holder fails to notify you of the violation by some
+     reasonable means prior to 60 days after the cessation.
+
+     Moreover, your license from a particular copyright holder is
+     reinstated permanently if the copyright holder notifies you of the
+     violation by some reasonable means, this is the first time you have
+     received notice of violation of this License (for any work) from
+     that copyright holder, and you cure the violation prior to 30 days
+     after your receipt of the notice.
+
+     Termination of your rights under this section does not terminate
+     the licenses of parties who have received copies or rights from
+     you under this License.  If your rights have been terminated and
+     not permanently reinstated, receipt of a copy of some or all of
+     the same material does not give you any rights to use it.
 
  10. FUTURE REVISIONS OF THIS LICENSE
 
@@ -4856,10 +4905,44 @@ A.1 GNU Free Documentation License
      published (not as a draft) by the Free Software Foundation.  If
      the Document does not specify a version number of this License,
      you may choose any version ever published (not as a draft) by the
-     Free Software Foundation.
+     Free Software Foundation.  If the Document specifies that a proxy
+     can decide which future versions of this License can be used, that
+     proxy's public statement of acceptance of a version permanently
+     authorizes you to choose that version for the Document.
 
-A.1.1 ADDENDUM: How to use this License for your documents
-----------------------------------------------------------
+ 11. RELICENSING
+
+     "Massive Multiauthor Collaboration Site" (or "MMC Site") means any
+     World Wide Web server that publishes copyrightable works and also
+     provides prominent facilities for anybody to edit those works.  A
+     public wiki that anybody can edit is an example of such a server.
+     A "Massive Multiauthor Collaboration" (or "MMC") contained in the
+     site means any set of copyrightable works thus published on the MMC
+     site.
+
+     "CC-BY-SA" means the Creative Commons Attribution-Share Alike 3.0
+     license published by Creative Commons Corporation, a not-for-profit
+     corporation with a principal place of business in San Francisco,
+     California, as well as future copyleft versions of that license
+     published by that same organization.
+
+     "Incorporate" means to publish or republish a Document, in whole or
+     in part, as part of another Document.
+
+     An MMC is "eligible for relicensing" if it is licensed under this
+     License, and if all works that were first published under this
+     License somewhere other than this MMC, and subsequently
+     incorporated in whole or in part into the MMC, (1) had no cover
+     texts or invariant sections, and (2) were thus incorporated prior
+     to November 1, 2008.
+
+     The operator of an MMC Site may republish an MMC contained in the
+     site under CC-BY-SA on the same site at any time before August 1,
+     2009, provided the MMC is eligible for relicensing.
+
+
+ADDENDUM: How to use this License for your documents
+====================================================
 
 To use this License in a document you have written, include a copy of
 the License in the document and put the following copyright and license
@@ -4867,7 +4950,7 @@ notices just after the title page:
 
        Copyright (C)  YEAR  YOUR NAME.
        Permission is granted to copy, distribute and/or modify this document
-       under the terms of the GNU Free Documentation License, Version 1.2
+       under the terms of the GNU Free Documentation License, Version 1.3
        or any later version published by the Free Software Foundation;
        with no Invariant Sections, no Front-Cover Texts, and no Back-Cover
        Texts.  A copy of the license is included in the section entitled ``GNU
@@ -4952,13 +5035,11 @@ Appendix C Index
 * directory structure changes:           Changing Structure.  (line   6)
 * dry runs for patch:                    Dry Runs.            (line   6)
 * ed script output format:               ed Scripts.          (line   6)
-* EDITOR:                                Merge Commands.      (line  46)
+* EDITOR:                                Merge Commands.      (line  50)
 * empty files, removing:                 Creating and Removing.
                                                               (line   6)
-* exabyte, definition of:                cmp Options.         (line 105)
-* exbibyte, definition of:               cmp Options.         (line 109)
-* FDL, GNU Free Documentation License:   GNU Free Documentation License.
-                                                              (line   6)
+* exabyte, definition of:                cmp Options.         (line 106)
+* exbibyte, definition of:               cmp Options.         (line 110)
 * file name alternates:                  Alternate Names.     (line   6)
 * file names with unusual characters:    Unusual File Names.  (line   6)
 * format of diff output:                 Output Formats.      (line   6)
@@ -4969,8 +5050,8 @@ Appendix C Index
 * full lines:                            Incomplete Lines.    (line   6)
 * function headings, C:                  C Function Headings. (line   6)
 * fuzz factor when patching:             Inexact.             (line   6)
-* gibibyte, definition of:               cmp Options.         (line  88)
-* gigabyte, definition of:               cmp Options.         (line  84)
+* gibibyte, definition of:               cmp Options.         (line  89)
+* gigabyte, definition of:               cmp Options.         (line  85)
 * headings:                              Sections.            (line   6)
 * hunks:                                 Hunks.               (line   6)
 * hunks for diff3:                       diff3 Hunks.         (line   6)
@@ -4993,16 +5074,16 @@ Appendix C Index
 * invoking sdiff:                        Invoking sdiff.      (line   6)
 * keyboard input to patch:               patch and Keyboard Input.
                                                               (line   6)
-* kibibyte, definition of:               cmp Options.         (line  72)
-* kilobyte, definition of:               cmp Options.         (line  67)
+* kibibyte, definition of:               cmp Options.         (line  73)
+* kilobyte, definition of:               cmp Options.         (line  68)
 * LC_COLLATE:                            Comparing Directories.
                                                               (line   6)
 * LC_NUMERIC:                            Line Group Formats.  (line 144)
 * LC_TIME:                               Detailed Context.    (line  12)
 * line formats:                          Line Formats.        (line   6)
 * line group formats:                    Line Group Formats.  (line   6)
-* mebibyte, definition of:               cmp Options.         (line  81)
-* megabyte, definition of:               cmp Options.         (line  77)
+* mebibyte, definition of:               cmp Options.         (line  82)
+* megabyte, definition of:               cmp Options.         (line  78)
 * merge commands:                        Merge Commands.      (line   6)
 * merged diff3 format:                   Bypassing ed.        (line   6)
 * merged output format:                  If-then-else.        (line   6)
@@ -5039,15 +5120,15 @@ Appendix C Index
 * patches, shrinking:                    Generating Smaller Patches.
                                                               (line   6)
 * patching directories:                  patch Directories.   (line   6)
-* pebibyte, definition of:               cmp Options.         (line 102)
+* pebibyte, definition of:               cmp Options.         (line 103)
 * performance of diff:                   diff Performance.    (line   6)
-* petabyte, definition of:               cmp Options.         (line  98)
+* petabyte, definition of:               cmp Options.         (line  99)
 * POSIX <1>:                             Standards conformance.
                                                               (line   6)
 * POSIX:                                 patch and POSIX.     (line   6)
-* POSIXLY_CORRECT <1>:                   patch and POSIX.     (line   6)
-* POSIXLY_CORRECT:                       Standards conformance.
+* POSIXLY_CORRECT <1>:                   Standards conformance.
                                                               (line   6)
+* POSIXLY_CORRECT:                       patch and POSIX.     (line   6)
 * projects for directories:              Shortcomings.        (line   6)
 * quoting style:                         patch Quoting Style. (line   6)
 * QUOTING_STYLE:                         patch Quoting Style. (line  30)
@@ -5080,8 +5161,8 @@ Appendix C Index
                                                               (line   6)
 * tab and blank difference suppression:  White Space.         (line   6)
 * tab stop alignment:                    Tabs.                (line   6)
-* tebibyte, definition of:               cmp Options.         (line  95)
-* terabyte, definition of:               cmp Options.         (line  91)
+* tebibyte, definition of:               cmp Options.         (line  96)
+* terabyte, definition of:               cmp Options.         (line  92)
 * testing patch:                         Dry Runs.            (line   6)
 * text versus binary diff:               Binary.              (line   6)
 * time stamp format, context diffs:      Detailed Context.    (line  12)
@@ -5089,6 +5170,7 @@ Appendix C Index
 * time stamps on patched files:          Patching Time Stamps.
                                                               (line   6)
 * traditional patch:                     patch and Tradition. (line   6)
+* trailing blanks:                       Trailing Blanks.     (line   6)
 * two-column output:                     Side by Side.        (line   6)
 * unified output format:                 Unified Format.      (line   6)
 * unmerged change:                       Which Changes.       (line   6)
@@ -5097,127 +5179,127 @@ Appendix C Index
 * verbose messages from patch:           More or Fewer Messages.
                                                               (line   6)
 * version control:                       Revision Control.    (line   6)
-* VERSION_CONTROL <1>:                   Revision Control.    (line  22)
-* VERSION_CONTROL:                       Backup Names.        (line  21)
+* VERSION_CONTROL <1>:                   Backup Names.        (line  21)
+* VERSION_CONTROL:                       Revision Control.    (line  22)
 * white space in patches:                Changed White Space. (line   6)
-* yottabyte, definition of:              cmp Options.         (line 120)
-* zettabyte, definition of:              cmp Options.         (line 112)
+* yottabyte, definition of:              cmp Options.         (line 121)
+* zettabyte, definition of:              cmp Options.         (line 113)
 
 
 
 Tag Table:
-Node: Top1678
-Node: Overview4139
-Node: Comparison7763
-Node: Hunks10461
-Node: White Space11899
-Node: Blank Lines13354
-Node: Specified Lines14384
-Node: Case Folding15506
-Node: Brief15918
-Node: Binary17237
-Node: Output Formats21322
-Node: Sample diff Input22042
-Node: Context23536
-Node: Context Format25108
-Node: Example Context25895
-Node: Less Context27397
-Node: Detailed Context28581
-Node: Unified Format30774
-Node: Example Unified31565
-Node: Detailed Unified32598
-Node: Sections34240
-Node: Specified Headings34994
-Node: C Function Headings36543
-Node: Alternate Names37385
-Node: Side by Side38294
-Node: Side by Side Format40438
-Node: Example Side by Side41336
-Node: Normal42671
-Node: Example Normal43666
-Node: Detailed Normal44397
-Node: Scripts46131
-Node: ed Scripts46531
-Node: Example ed47733
-Node: Detailed ed48178
-Node: Forward ed49932
-Node: RCS50703
-Node: If-then-else51915
-Node: Line Group Formats53588
-Node: Line Formats59459
-Node: Example If-then-else62724
-Node: Detailed If-then-else63798
-Node: Incomplete Lines65676
-Node: Comparing Directories67308
-Node: Adjusting Output71352
-Node: Tabs71778
-Node: Pagination73383
-Node: diff Performance73836
-Node: Comparing Three Files76919
-Node: Sample diff3 Input77792
-Node: Example diff3 Normal78735
-Node: Detailed diff3 Normal79780
-Node: diff3 Hunks81537
-Node: diff3 Merging82828
-Node: Which Changes85067
-Node: Marking Conflicts86466
-Node: Bypassing ed88920
-Node: Merging Incomplete Lines90259
-Node: Saving the Changed File90980
-Node: Interactive Merging91591
-Node: sdiff Option Summary92296
-Node: Merge Commands93467
-Node: Merging with patch94733
-Node: patch Input97100
-Node: Revision Control97777
-Node: Imperfect98943
-Node: Changed White Space100086
-Node: Reversed Patches100878
-Node: Inexact102338
-Node: Dry Runs105892
-Node: Creating and Removing106751
-Node: Patching Time Stamps107797
-Node: Multiple Patches109995
-Node: patch Directories112653
-Node: Backups114274
-Node: Backup Names115335
-Ref: Backup Names-Footnote-1118299
-Node: Reject Names118426
-Node: patch Messages119010
-Node: More or Fewer Messages120065
-Node: patch and Keyboard Input120691
-Node: patch Quoting Style121717
-Node: patch and POSIX122862
-Node: patch and Tradition123697
-Node: Making Patches127149
-Node: Tips for Patch Producers127970
-Node: Tips for Patch Consumers129221
-Node: Avoiding Common Mistakes129853
-Node: Generating Smaller Patches132373
-Node: Invoking cmp134129
-Node: cmp Options135547
-Node: Invoking diff138960
-Node: diff Options140813
-Node: Invoking diff3149059
-Node: diff3 Options149692
-Node: Invoking patch152720
-Node: patch Options153923
-Node: Invoking sdiff159145
-Node: sdiff Options160287
-Node: Standards conformance163162
-Node: Projects164903
-Node: Shortcomings165609
-Node: Internationalization166706
-Node: Changing Structure167867
-Node: Special Files168966
-Node: Unusual File Names170073
-Node: Time Stamp Order170707
-Node: Ignoring Changes171345
-Node: Speedups172110
-Node: Bugs172569
-Node: Copying This Manual173417
-Node: GNU Free Documentation License173654
-Node: Translations196061
-Node: Index196428
+Node: Top1675
+Node: Overview4135
+Node: Comparison7759
+Node: Hunks10457
+Node: White Space11895
+Node: Blank Lines13623
+Node: Specified Lines14653
+Node: Case Folding15775
+Node: Brief16187
+Node: Binary17506
+Node: Output Formats21591
+Node: Sample diff Input22311
+Node: Context23805
+Node: Context Format25377
+Node: Example Context26164
+Node: Less Context27666
+Node: Detailed Context28850
+Node: Unified Format31043
+Node: Example Unified31834
+Node: Detailed Unified32867
+Node: Sections34509
+Node: Specified Headings35263
+Node: C Function Headings36812
+Node: Alternate Names37654
+Node: Side by Side38563
+Node: Side by Side Format40707
+Node: Example Side by Side41605
+Node: Normal42940
+Node: Example Normal43935
+Node: Detailed Normal44666
+Node: Scripts46400
+Node: ed Scripts46800
+Node: Example ed48002
+Node: Detailed ed48447
+Node: Forward ed50201
+Node: RCS50972
+Node: If-then-else52184
+Node: Line Group Formats53857
+Node: Line Formats59728
+Node: Example If-then-else62993
+Node: Detailed If-then-else64067
+Node: Incomplete Lines65945
+Node: Comparing Directories67577
+Node: Adjusting Output71621
+Node: Tabs72123
+Node: Trailing Blanks73733
+Node: Pagination74954
+Node: diff Performance75418
+Node: Comparing Three Files78501
+Node: Sample diff3 Input79374
+Node: Example diff3 Normal80317
+Node: Detailed diff3 Normal81362
+Node: diff3 Hunks83117
+Node: diff3 Merging84408
+Node: Which Changes86647
+Node: Marking Conflicts88046
+Node: Bypassing ed90500
+Node: Merging Incomplete Lines91839
+Node: Saving the Changed File92560
+Node: Interactive Merging93171
+Node: sdiff Option Summary93876
+Node: Merge Commands95047
+Node: Merging with patch96331
+Node: patch Input98698
+Node: Revision Control99375
+Node: Imperfect100541
+Node: Changed White Space101684
+Node: Reversed Patches102476
+Node: Inexact103936
+Node: Dry Runs107490
+Node: Creating and Removing108349
+Node: Patching Time Stamps109395
+Node: Multiple Patches111593
+Node: patch Directories114251
+Node: Backups115872
+Node: Backup Names116933
+Ref: Backup Names-Footnote-1119897
+Node: Reject Names120024
+Node: patch Messages120608
+Node: More or Fewer Messages121663
+Node: patch and Keyboard Input122289
+Node: patch Quoting Style123315
+Node: patch and POSIX124460
+Node: patch and Tradition125295
+Node: Making Patches128747
+Node: Tips for Patch Producers129568
+Node: Tips for Patch Consumers130819
+Node: Avoiding Common Mistakes131451
+Node: Generating Smaller Patches133971
+Node: Invoking cmp135727
+Node: cmp Options137145
+Node: Invoking diff140632
+Node: diff Options142485
+Node: Invoking diff3150912
+Node: diff3 Options151545
+Node: Invoking patch154573
+Node: patch Options155776
+Node: Invoking sdiff160998
+Node: sdiff Options162140
+Node: Standards conformance165015
+Node: Projects166756
+Node: Shortcomings167462
+Node: Internationalization168559
+Node: Changing Structure169720
+Node: Special Files170819
+Node: Unusual File Names171926
+Node: Time Stamp Order172560
+Node: Ignoring Changes173198
+Node: Speedups173963
+Node: Bugs174422
+Node: Copying This Manual175270
+Node: Translations200404
+Node: Index200771
 
 End Tag Table

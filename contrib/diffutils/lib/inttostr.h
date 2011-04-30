@@ -1,11 +1,11 @@
 /* inttostr.h -- convert integers to printable strings
 
-   Copyright (C) 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+   Copyright (C) 2001-2006, 2009-2010 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -13,35 +13,33 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* Written by Paul Eggert */
 
-#if HAVE_CONFIG_H
-# include <config.h>
+#include <stdint.h>
+#include <sys/types.h>
+
+#include "intprops.h"
+
+#ifndef __GNUC_PREREQ
+# if defined __GNUC__ && defined __GNUC_MINOR__
+#  define __GNUC_PREREQ(maj, min) \
+         ((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
+# else
+#  define __GNUC_PREREQ(maj, min) 0
+# endif
 #endif
 
-#if HAVE_INTTYPES_H
-# include <inttypes.h>
-#endif
-#if HAVE_STDINT_H
-# include <stdint.h>
-#endif
-
-#include <limits.h>
-
-#if HAVE_SYS_TYPES_H
-# include <sys/types.h>
+#if __GNUC_PREREQ (3,4)
+# undef __attribute_warn_unused_result__
+# define __attribute_warn_unused_result__ \
+   __attribute__ ((__warn_unused_result__))
+#else
+# define __attribute_warn_unused_result__ /* empty */
 #endif
 
-/* Upper bound on the string length of an integer converted to string.
-   302 / 1000 is ceil (log10 (2.0)).  Subtract 1 for the sign bit;
-   add 1 for integer division truncation; add 1 more for a minus sign.  */
-#define INT_STRLEN_BOUND(t) ((sizeof (t) * CHAR_BIT - 1) * 302 / 1000 + 2)
-
-#define INT_BUFSIZE_BOUND(t) (INT_STRLEN_BOUND (t) + 1)
-
-char *offtostr (off_t, char *);
-char *imaxtostr (intmax_t, char *);
-char *umaxtostr (uintmax_t, char *);
+char *offtostr (off_t, char *) __attribute_warn_unused_result__;
+char *imaxtostr (intmax_t, char *) __attribute_warn_unused_result__;
+char *umaxtostr (uintmax_t, char *) __attribute_warn_unused_result__;
+char *uinttostr (unsigned int, char *) __attribute_warn_unused_result__;

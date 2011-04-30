@@ -1,29 +1,27 @@
 /* Support routines for GNU DIFF.
 
-   Copyright (C) 1988, 1989, 1992, 1993, 1994, 1995, 1998, 2001, 2002,
-   2004 Free Software Foundation, Inc.
+   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2010
+   Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
-   GNU DIFF is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-   GNU DIFF is distributed in the hope that it will be useful,
+   This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; see the file COPYING.
-   If not, write to the Free Software Foundation,
-   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "diff.h"
 #include <dirname.h>
 #include <error.h>
-#include <quotesys.h>
+#include <sh-quote.h>
 #include <xalloc.h>
 
 char const pr_program[] = PR_PROGRAM;
@@ -226,11 +224,11 @@ begin_output (void)
 	  }
 #else
 	char *command = xmalloc (sizeof pr_program - 1 + 7
-				 + quote_system_arg ((char *) 0, name) + 1);
+				 + shell_quote_length (name) + 1);
 	char *p;
 	sprintf (command, "%s -f -h ", pr_program);
 	p = command + sizeof pr_program - 1 + 7;
-	p += quote_system_arg (p, name);
+	p = shell_quote_copy (p, name);
 	*p = 0;
 	errno = 0;
 	outfile = popen (command, "w");
@@ -508,7 +506,8 @@ print_script (struct change *script,
 
 /* Print the text of a single line LINE,
    flagging it with the characters in LINE_FLAG (which say whether
-   the line is inserted, deleted, changed, etc.).  */
+   the line is inserted, deleted, changed, etc.).  LINE_FLAG must not
+   end in a blank, unless it is a single blank.  */
 
 void
 print_1_line (char const *line_flag, char const *const *line)
@@ -519,12 +518,25 @@ print_1_line (char const *line_flag, char const *const *line)
 
   /* If -T was specified, use a Tab between the line-flag and the text.
      Otherwise use a Space (as Unix diff does).
-     Print neither space nor tab if line-flags are empty.  */
+     Print neither space nor tab if line-flags are empty.
+     But omit trailing blanks if requested.  */
 
   if (line_flag && *line_flag)
     {
-      flag_format = initial_tab ? "%s\t" : "%s ";
-      fprintf (out, flag_format, line_flag);
+      char const *flag_format_1 = flag_format = initial_tab ? "%s\t" : "%s ";
+      char const *line_flag_1 = line_flag;
+
+      if (suppress_blank_empty && **line == '\n')
+	{
+	  flag_format_1 = "%s";
+
+	  /* This hack to omit trailing blanks takes advantage of the
+	     fact that the only way that LINE_FLAG can end in a blank
+	     is when LINE_FLAG consists of a single blank.  */
+	  line_flag_1 += *line_flag_1 == ' ';
+	}
+
+      fprintf (out, flag_format_1, line_flag_1);
     }
 
   output_1_line (base, limit, flag_format, line_flag);
@@ -751,8 +763,9 @@ zalloc (size_t size)
 char *
 dir_file_pathname (char const *dir, char const *file)
 {
-  char const *base = base_name (dir);
-  bool omit_slash = !*base || base[strlen (base) - 1] == '/';
+  char const *base = last_component (dir);
+  size_t baselen = base_len (base);
+  bool omit_slash = baselen == 0 || base[baselen - 1] == '/';
   return concat (dir, "/" + omit_slash, file);
 }
 

@@ -1,12 +1,12 @@
-/* basename.c -- return the last element in a path
+/* basename.c -- return the last element in a file name
 
-   Copyright (C) 1990, 1998, 1999, 2000, 2001, 2003 Free Software
+   Copyright (C) 1990, 1998-2001, 2003-2006, 2009-2010 Free Software
    Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,66 +14,45 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#if HAVE_CONFIG_H
-# include <config.h>
-#endif
+#include <config.h>
 
 #include "dirname.h"
+
 #include <string.h>
-
-/* In general, we can't use the builtin `basename' function if available,
-   since it has different meanings in different environments.
-   In some environments the builtin `basename' modifies its argument.
-
-   Return the address of the last file name component of NAME.  If
-   NAME has no file name components because it is all slashes, return
-   NAME if it is empty, the address of its last slash otherwise.  */
+#include "xalloc.h"
+#include "xstrndup.h"
 
 char *
 base_name (char const *name)
 {
-  char const *base = name + FILESYSTEM_PREFIX_LEN (name);
-  char const *p;
+  char const *base = last_component (name);
+  size_t length;
 
-  for (p = base; *p; p++)
+  /* If there is no last component, then name is a file system root or the
+     empty string.  */
+  if (! *base)
+    return xstrndup (name, base_len (name));
+
+  /* Collapse a sequence of trailing slashes into one.  */
+  length = base_len (base);
+  if (ISSLASH (base[length]))
+    length++;
+
+  /* On systems with drive letters, `a/b:c' must return `./b:c' rather
+     than `b:c' to avoid confusion with a drive letter.  On systems
+     with pure POSIX semantics, this is not an issue.  */
+  if (FILE_SYSTEM_PREFIX_LEN (base))
     {
-      if (ISSLASH (*p))
-	{
-	  /* Treat multiple adjacent slashes like a single slash.  */
-	  do p++;
-	  while (ISSLASH (*p));
-
-	  /* If the file name ends in slash, use the trailing slash as
-	     the basename if no non-slashes have been found.  */
-	  if (! *p)
-	    {
-	      if (ISSLASH (*base))
-		base = p - 1;
-	      break;
-	    }
-
-	  /* *P is a non-slash preceded by a slash.  */
-	  base = p;
-	}
+      char *p = xmalloc (length + 3);
+      p[0] = '.';
+      p[1] = '/';
+      memcpy (p + 2, base, length);
+      p[length + 2] = '\0';
+      return p;
     }
 
-  return (char *) base;
-}
-
-/* Return the length of of the basename NAME.  Typically NAME is the
-   value returned by base_name.  Act like strlen (NAME), except omit
-   redundant trailing slashes.  */
-
-size_t
-base_len (char const *name)
-{
-  size_t len;
-
-  for (len = strlen (name);  1 < len && ISSLASH (name[len - 1]);  len--)
-    continue;
-
-  return len;
+  /* Finally, copy the basename.  */
+  return xstrndup (base, length);
 }

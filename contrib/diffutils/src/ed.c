@@ -1,24 +1,22 @@
 /* Output routines for ed-script format.
 
-   Copyright (C) 1988, 1989, 1991, 1992, 1993, 1995, 1998, 2001, 2004
+   Copyright (C) 1988-1989, 1991-1993, 1995, 1998, 2001, 2004, 2006, 2009-2010
    Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
-   GNU DIFF is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-   GNU DIFF is distributed in the hope that it will be useful,
+   This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; see the file COPYING.
-   If not, write to the Free Software Foundation,
-   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "diff.h"
 
@@ -55,33 +53,44 @@ print_ed_hunk (struct change *hunk)
 
   /* Print out the line number header for this hunk */
   print_number_range (',', &files[0], f0, l0);
-  fprintf (outfile, "%c\n", change_letter[changes]);
+  fputc (change_letter[changes], outfile);
+  fputc ('\n', outfile);
 
   /* Print new/changed lines from second file, if needed */
   if (changes != OLD)
     {
       lin i;
+      bool insert_mode = true;
+
       for (i = f1; i <= l1; i++)
 	{
+	  if (!insert_mode)
+	    {
+	      fputs ("a\n", outfile);
+	      insert_mode = true;
+	    }
 	  if (files[1].linbuf[i][0] == '.' && files[1].linbuf[i][1] == '\n')
 	    {
 	      /* The file's line is just a dot, and it would exit
 		 insert mode.  Precede the dot with another dot, exit
-		 insert mode, remove the extra dot, and then resume
-		 insert mode.  */
-	      fprintf (outfile, "..\n.\ns/.//\na\n");
+		 insert mode and remove the extra dot.  */
+	      fputs ("..\n.\ns/.//\n", outfile);
+	      insert_mode = false;
 	    }
 	  else
 	    print_1_line ("", &files[1].linbuf[i]);
 	}
 
-      fprintf (outfile, ".\n");
+      if (insert_mode)
+	fputs (".\n", outfile);
     }
 }
 
 /* Print change script in the style of ed commands,
    but print the changes in the order they appear in the input files,
-   which means that the commands are not truly useful with ed.  */
+   which means that the commands are not truly useful with ed.
+   Because of the issue with lines containing just a dot, the output
+   is not even parseable.  */
 
 void
 pr_forward_ed_script (struct change *script)
@@ -101,9 +110,9 @@ pr_forward_ed_hunk (struct change *hunk)
 
   begin_output ();
 
-  fprintf (outfile, "%c", change_letter[changes]);
+  fputc (change_letter[changes], outfile);
   print_number_range (' ', files, f0, l0);
-  fprintf (outfile, "\n");
+  fputc ('\n', outfile);
 
   /* If deletion only, print just the number range.  */
 
@@ -116,7 +125,7 @@ pr_forward_ed_hunk (struct change *hunk)
   for (i = f1; i <= l1; i++)
     print_1_line ("", &files[1].linbuf[i]);
 
-  fprintf (outfile, ".\n");
+  fputs (".\n", outfile);
 }
 
 /* Print in a format somewhat like ed commands
@@ -148,19 +157,16 @@ print_rcs_hunk (struct change *hunk)
 
   if (changes & OLD)
     {
-      fprintf (outfile, "d");
       /* For deletion, print just the starting line number from file 0
 	 and the number of lines deleted.  */
-      fprintf (outfile, "%ld %ld\n", tf0, tf0 <= tl0 ? tl0 - tf0 + 1 : 1);
+      fprintf (outfile, "d%ld %ld\n", tf0, tf0 <= tl0 ? tl0 - tf0 + 1 : 1);
     }
 
   if (changes & NEW)
     {
-      fprintf (outfile, "a");
-
       /* Take last-line-number from file 0 and # lines from file 1.  */
       translate_range (&files[1], f1, l1, &tf1, &tl1);
-      fprintf (outfile, "%ld %ld\n", tl0, tf1 <= tl1 ? tl1 - tf1 + 1 : 1);
+      fprintf (outfile, "a%ld %ld\n", tl0, tf1 <= tl1 ? tl1 - tf1 + 1 : 1);
 
       /* Print the inserted lines.  */
       for (i = f1; i <= l1; i++)

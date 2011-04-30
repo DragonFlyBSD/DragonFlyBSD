@@ -1,24 +1,22 @@
 /* sdiff - side-by-side merge of file differences
 
-   Copyright (C) 1992, 1993, 1994, 1995, 1996, 1998, 2001, 2002, 2004
-   Free Software Foundation, Inc.
+   Copyright (C) 1992-1996, 1998, 2001-2002, 2004, 2006-2007, 2009-2010 Free
+   Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
-   GNU DIFF is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-   GNU DIFF is distributed in the hope that it will be useful,
+   This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-   See the GNU General Public License for more details.
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; see the file COPYING.
-   If not, write to the Free Software Foundation,
-   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "system.h"
 #include "paths.h"
@@ -29,18 +27,22 @@
 #include <c-stack.h>
 #include <dirname.h>
 #include <error.h>
-#include <exit.h>
 #include <exitfail.h>
 #include <file-type.h>
 #include <getopt.h>
-#include <quotesys.h>
+#include <progname.h>
+#include <sh-quote.h>
 #include <version-etc.h>
 #include <xalloc.h>
 
+/* The official name of this program (e.g., no `g' prefix).  */
+#define PROGRAM_NAME "sdiff"
+
+#define AUTHORS \
+  proper_name ("Thomas Lord")
+
 /* Size of chunks read from files which must be parsed into lines.  */
 #define SDIFF_BUFSIZE ((size_t) 65536)
-
-char *program_name;
 
 static char const *editor_program = DEFAULT_EDITOR_PROGRAM;
 static char const **diffargv;
@@ -81,11 +83,13 @@ static int const sigs[] = {
 #ifdef SIGXFSZ
        SIGXFSZ,
 #endif
-       SIGINT,
-       SIGPIPE
+#ifdef SIGPIPE
+       SIGPIPE,
+# define handler_index_of_SIGPIPE (NUM_SIGS - 2)
+#endif
+       SIGINT
+#define handler_index_of_SIGINT (NUM_SIGS - 1)
 };
-#define handler_index_of_SIGINT (NUM_SIGS - 2)
-#define handler_index_of_SIGPIPE (NUM_SIGS - 1)
 
 #if HAVE_SIGACTION
   /* Prefer `sigaction' if available, since `signal' can lose signals.  */
@@ -111,8 +115,14 @@ static int const sigs[] = {
 # ifndef SIG_SETMASK
 #  define SIG_SETMASK (! SIG_BLOCK)
 # endif
+# if ! HAVE_SIGBLOCK
+#  define sigblock(mask) (mask)
+#  define sigsetmask(mask) (mask)
+# endif
 # define sigprocmask(how, n, o) \
-    ((how) == SIG_BLOCK ? *(o) = sigblock (*(n)) : sigsetmask (*(n)))
+    ((how) == SIG_BLOCK \
+     ? ((o) ? (*(sigset_t *) (o) = sigblock (*(n))) : sigblock (*(n))) \
+     : sigsetmask (*(n)))
 #endif
 
 static bool diraccess (char const *);
@@ -219,10 +229,10 @@ usage (void)
       printf ("  %s\n", _(*p));
     else
       putchar ('\n');
-  printf ("\n%s\n%s\n\n%s\n",
+  printf ("\n%s\n%s\n",
 	  _("If a FILE is `-', read standard input."),
-	  _("Exit status is 0 if inputs are the same, 1 if different, 2 if trouble."),
-	  _("Report bugs to <bug-gnu-utils@gnu.org>."));
+	  _("Exit status is 0 if inputs are the same, 1 if different, 2 if trouble."));
+  emit_bug_reporting_address ();
 }
 
 /* Clean up after a signal or other failure.  This function is
@@ -329,20 +339,21 @@ ck_fflush (FILE *f)
 static char const *
 expand_name (char *name, bool is_dir, char const *other_name)
 {
-  if (strcmp (name, "-") == 0)
+  if (STREQ (name, "-"))
     fatal ("cannot interactively merge standard input");
   if (! is_dir)
     return name;
   else
     {
       /* Yield NAME/BASE, where BASE is OTHER_NAME's basename.  */
-      char const *base = base_name (other_name);
-      size_t namelen = strlen (name), baselen = strlen (base);
-      bool insert_slash = *base_name (name) && name[namelen - 1] != '/';
+      char const *base = last_component (other_name);
+      size_t namelen = strlen (name), baselen = base_len (base);
+      bool insert_slash = *last_component (name) && name[namelen - 1] != '/';
       char *r = xmalloc (namelen + insert_slash + baselen + 1);
       memcpy (r, name, namelen);
       r[namelen] = '/';
-      memcpy (r + namelen + insert_slash, base, baselen + 1);
+      memcpy (r + namelen + insert_slash, base, baselen);
+      r[namelen + insert_slash + baselen] = '\0';
       return r;
     }
 }
@@ -453,7 +464,7 @@ main (int argc, char *argv[])
 
   exit_failure = EXIT_TROUBLE;
   initialize_main (&argc, &argv);
-  program_name = argv[0];
+  set_program_name (argv[0]);
   setlocale (LC_ALL, "");
   bindtextdomain (PACKAGE, LOCALEDIR);
   textdomain (PACKAGE);
@@ -521,8 +532,8 @@ main (int argc, char *argv[])
 	  break;
 
 	case 'v':
-	  version_etc (stdout, "sdiff", PACKAGE_NAME, PACKAGE_VERSION,
-		       "Thomas Lord", (char *) 0);
+	  version_etc (stdout, PROGRAM_NAME, PACKAGE_NAME, PACKAGE_VERSION,
+		       AUTHORS, (char *) NULL);
 	  check_stdout ();
 	  return EXIT_SUCCESS;
 
@@ -614,11 +625,11 @@ main (int argc, char *argv[])
 	int i;
 
 	for (i = 0;  diffargv[i];  i++)
-	  cmdsize += quote_system_arg (0, diffargv[i]) + 1;
+	  cmdsize += shell_quote_length (diffargv[i]) + 1;
 	command = p = xmalloc (cmdsize);
 	for (i = 0;  diffargv[i];  i++)
 	  {
-	    p += quote_system_arg (p, diffargv[i]);
+	    p = shell_quote_copy (p, diffargv[i]);
 	    *p++ = ' ';
 	  }
 	p[-1] = 0;
@@ -857,11 +868,11 @@ give_help (void)
   fprintf (stderr, "%s", _("\
 ed:\tEdit then use both versions, each decorated with a header.\n\
 eb:\tEdit then use both versions.\n\
-el:\tEdit then use the left version.\n\
-er:\tEdit then use the right version.\n\
-e:\tEdit a new version.\n\
-l:\tUse the left version.\n\
-r:\tUse the right version.\n\
+el or e1:\tEdit then use the left version.\n\
+er or e2:\tEdit then use the right version.\n\
+e:\tDiscard both versions then edit a new one.\n\
+l or 1:\tUse the left version.\n\
+r or 2:\tUse the right version.\n\
 s:\tSilently include common lines.\n\
 v:\tVerbosely include common lines.\n\
 q:\tQuit.\n\
@@ -903,10 +914,9 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 {
   for (;;)
     {
-      int cmd0, cmd1;
+      int cmd0 IF_LINT (= 0);
+      int cmd1 IF_LINT (= 0);
       bool gotcmd = false;
-
-      cmd1 = 0; /* Pacify `gcc -W'.  */
 
       while (! gotcmd)
 	{
@@ -917,7 +927,8 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 	  cmd0 = skip_white ();
 	  switch (cmd0)
 	    {
-	    case 'l': case 'r': case 's': case 'v': case 'q':
+	    case '1': case '2': case 'l': case 'r':
+	    case 's': case 'v': case 'q':
 	      if (skip_white () != '\n')
 		{
 		  give_help ();
@@ -931,7 +942,7 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 	      cmd1 = skip_white ();
 	      switch (cmd1)
 		{
-		case 'b': case 'd': case 'l': case 'r':
+		case '1': case '2': case 'b': case 'd': case 'l': case 'r':
 		  if (skip_white () != '\n')
 		    {
 		      give_help ();
@@ -969,11 +980,11 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 
       switch (cmd0)
 	{
-	case 'l':
+	case '1': case 'l':
 	  lf_copy (left, llen, outfile);
 	  lf_skip (right, rlen);
 	  return true;
-	case 'r':
+	case '2': case 'r':
 	  lf_copy (right, rlen, outfile);
 	  lf_skip (left, llen);
 	  return true;
@@ -1014,7 +1025,7 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 			       (long int) (lline + llen - 1));
 		  }
 		/* Fall through.  */
-	      case 'b': case 'l':
+	      case '1': case 'b': case 'l':
 		lf_copy (left, llen, tmp);
 		break;
 
@@ -1036,7 +1047,7 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 			       (long int) (rline + rlen - 1));
 		  }
 		/* Fall through.  */
-	      case 'b': case 'r':
+	      case '2': case 'b': case 'r':
 		lf_copy (right, rlen, tmp);
 		break;
 
@@ -1056,9 +1067,9 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 	      {
 #if ! (HAVE_WORKING_FORK || HAVE_WORKING_VFORK)
 		char *command =
-		  xmalloc (quote_system_arg (0, editor_program)
+		  xmalloc (shell_quote_length (editor_program)
 			   + 1 + strlen (tmpname) + 1);
-		sprintf (command + quote_system_arg (command, editor_program),
+		sprintf (shell_quote_copy (command, editor_program),
 			 " %s", tmpname);
 		wstatus = system (command);
 		if (wstatus == -1)

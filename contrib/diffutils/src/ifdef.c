@@ -1,6 +1,6 @@
 /* #ifdef-format output routines for GNU DIFF.
 
-   Copyright (C) 1989, 1991, 1992, 1993, 1994, 2001, 2002, 2004 Free
+   Copyright (C) 1989, 1991-1994, 2001-2002, 2004, 2006, 2009-2010 Free
    Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -9,12 +9,12 @@
    but WITHOUT ANY WARRANTY.  No author or distributor
    accepts responsibility to anyone for the consequences of using it
    or for whether it serves any particular purpose or works at all,
-   unless he says so in writing.  Refer to the GNU DIFF General Public
+   unless he says so in writing.  Refer to the GNU General Public
    License for full details.
 
    Everyone is granted permission to copy, modify and redistribute
    GNU DIFF, but only under the conditions described in the
-   GNU DIFF General Public License.   A copy of this license is
+   GNU General Public License.   A copy of this license is
    supposed to have been given to you along with GNU DIFF so you
    can know your rights and responsibilities.  It should be in a
    file named COPYING.  Among other things, the copyright notice
@@ -329,7 +329,7 @@ do_printf_spec (FILE *out, char const *spec,
 	return 0;
       else
 	{
-	  char value;
+	  char value IF_LINT (= 0);
 	  f = scan_char_literal (f, &value);
 	  if (!f)
 	    return 0;
@@ -389,7 +389,7 @@ do_printf_spec (FILE *out, char const *spec,
 /* Scan the character literal represented in the string LIT; LIT points just
    after the initial apostrophe.  Put the literal's value into *VALPTR.
    Yield the address of the first character after the closing apostrophe,
-   or zero if the literal is ill-formed.  */
+   or a null pointer if the literal is ill-formed.  */
 static char const *
 scan_char_literal (char const *lit, char *valptr)
 {
@@ -402,7 +402,7 @@ scan_char_literal (char const *lit, char *valptr)
     {
       case 0:
       case '\'':
-	return 0;
+	return NULL;
 
       case '\\':
 	value = 0;
@@ -410,18 +410,18 @@ scan_char_literal (char const *lit, char *valptr)
 	  {
 	    unsigned int digit = c - '0';
 	    if (8 <= digit)
-	      return 0;
+	      return NULL;
 	    value = 8 * value + digit;
 	  }
 	digits = p - lit - 2;
 	if (! (1 <= digits && digits <= 3))
-	  return 0;
+	  return NULL;
 	break;
 
       default:
 	value = c;
 	if (*p++ != '\'')
-	  return 0;
+	  return NULL;
 	break;
     }
 

@@ -1,22 +1,20 @@
 /* diff3 - compare three files line by line
 
-   Copyright (C) 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1998, 2001,
-   2002, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1988-1989, 1992-1996, 1998, 2001-2002, 2004, 2006, 2009-2010
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-   See the GNU General Public License for more details.
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; see the file COPYING.
-   If not, write to the Free Software Foundation,
-   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "system.h"
 #include "paths.h"
@@ -31,9 +29,17 @@
 #include <file-type.h>
 #include <getopt.h>
 #include <inttostr.h>
-#include <quotesys.h>
+#include <progname.h>
+#include <sh-quote.h>
 #include <version-etc.h>
 #include <xalloc.h>
+#include <xfreopen.h>
+
+/* The official name of this program (e.g., no `g' prefix).  */
+#define PROGRAM_NAME "diff3"
+
+#define AUTHORS \
+  proper_name ("Randy Smith")
 
 /* Internal data structures and macros for the diff3 program; includes
    data structures for both diff3 diffs and normal diffs.  */
@@ -160,8 +166,6 @@ static bool finalwrite;
 /* If nonzero, output a merged file.  */
 static bool merge;
 
-char *program_name;
-
 static char *read_diff (char const *, char const *, char **);
 static char *scan_diff_line (char *, char **, size_t *, char *, char);
 static enum diff_type process_diff_control (char **, struct diff_block *);
@@ -226,9 +230,9 @@ main (int argc, char **argv)
   char **file;
   struct stat statb;
 
-  exit_failure = 2;
+  exit_failure = EXIT_TROUBLE;
   initialize_main (&argc, &argv);
-  program_name = argv[0];
+  set_program_name (argv[0]);
   setlocale (LC_ALL, "");
   bindtextdomain (PACKAGE, LOCALEDIR);
   textdomain (PACKAGE);
@@ -276,8 +280,8 @@ main (int argc, char **argv)
 	  strip_trailing_cr = true;
 	  break;
 	case 'v':
-	  version_etc (stdout, "diff3", PACKAGE_NAME, PACKAGE_VERSION,
-		       "Randy Smith", (char *) 0);
+	  version_etc (stdout, PROGRAM_NAME, PACKAGE_NAME, PACKAGE_VERSION,
+		       AUTHORS, (char *) NULL);
 	  check_stdout ();
 	  return EXIT_SUCCESS;
 	case DIFF_PROGRAM_OPTION:
@@ -340,13 +344,13 @@ main (int argc, char **argv)
 
   common = 2 - (edscript | merge);
 
-  if (strcmp (file[common], "-") == 0)
+  if (STREQ (file[common], "-"))
     {
       /* Sigh.  We've got standard input as the common file.  We can't
 	 call diff twice on stdin.  Use the other arg as the common
 	 file instead.  */
       common = 3 - common;
-      if (strcmp (file[0], "-") == 0 || strcmp (file[common], "-") == 0)
+      if (STREQ (file[0], "-") || STREQ (file[common], "-"))
 	fatal ("`-' specified for more than one input file");
     }
 
@@ -384,8 +388,7 @@ main (int argc, char **argv)
 			       tag_strings[0], tag_strings[1], tag_strings[2]);
   else if (merge)
     {
-      if (! freopen (file[rev_mapping[FILE0]], "r", stdin))
-	perror_with_exit (file[rev_mapping[FILE0]]);
+      xfreopen (file[rev_mapping[FILE0]], "r", stdin);
       conflicts_found
 	= output_diff3_merge (stdin, stdout, diff3, mapping, rev_mapping,
 			      tag_strings[0], tag_strings[1], tag_strings[2]);
@@ -456,10 +459,10 @@ usage (void)
       printf ("  %s\n", _(*p));
     else
       putchar ('\n');
-  printf ("\n%s\n%s\n\n%s\n",
+  printf ("\n%s\n%s\n",
 	  _("If a FILE is `-', read standard input."),
-	  _("Exit status is 0 if successful, 1 if conflicts, 2 if trouble."),
-	  _("Report bugs to <bug-gnu-utils@gnu.org>."));
+	  _("Exit status is 0 if successful, 1 if conflicts, 2 if trouble."));
+  emit_bug_reporting_address ();
 }
 
 /* Combine the two diffs together into one.
@@ -635,7 +638,6 @@ make_3way_diff (struct diff_block *thread0, struct diff_block *thread1)
 	  if (high_water_mark < D_HIGHLINE (other_diff, FC))
 	    {
 	      high_water_thread ^= 1;
-	      high_water_diff = other_diff;
 	      high_water_mark = D_HIGHLINE (other_diff, FC);
 	    }
 
@@ -926,15 +928,15 @@ process_diff (char const *filea,
   char *scan_diff;
   enum diff_type dt;
   lin i;
-  struct diff_block *block_list, **block_list_end, *bptr;
+  struct diff_block *block_list;
+  struct diff_block **block_list_end = &block_list;
+  struct diff_block *bptr IF_LINT (= NULL);
   size_t too_many_lines = (PTRDIFF_MAX
 			   / MIN (sizeof *bptr->lines[1],
 				  sizeof *bptr->lengths[1]));
 
   diff_limit = read_diff (filea, fileb, &diff_contents);
   scan_diff = diff_contents;
-  block_list_end = &block_list;
-  bptr = 0; /* Pacify `gcc -W'.  */
 
   while (scan_diff < diff_limit)
     {
@@ -1018,7 +1020,7 @@ process_diff (char const *filea,
       block_list_end = &bptr->next;
     }
 
-  *block_list_end = 0;
+  *block_list_end = NULL;
   *last_block = bptr;
   return block_list;
 }
@@ -1192,14 +1194,14 @@ read_diff (char const *filea,
 
   FILE *fpipe;
   char const args[] = " --horizon-lines=100 -- ";
-  char *command = xmalloc (quote_system_arg (0, diff_program)
+  char *command = xmalloc (shell_quote_length (diff_program)
 			   + sizeof "-a"
 			   + sizeof "--strip-trailing-cr"
 			   + sizeof args - 1
-			   + quote_system_arg (0, filea) + 1
-			   + quote_system_arg (0, fileb) + 1);
+			   + shell_quote_length (filea) + 1
+			   + shell_quote_length (fileb) + 1);
   char *p = command;
-  p += quote_system_arg (p, diff_program);
+  p = shell_quote_copy (p, diff_program);
   if (text)
     {
       strcpy (p, " -a");
@@ -1212,9 +1214,9 @@ read_diff (char const *filea,
     }
   strcpy (p, args);
   p += sizeof args - 1;
-  p += quote_system_arg (p, filea);
+  p = shell_quote_copy (p, filea);
   *p++ = ' ';
-  p += quote_system_arg (p, fileb);
+  p = shell_quote_copy (p, fileb);
   *p = 0;
   errno = 0;
   fpipe = popen (command, "r");
@@ -1406,7 +1408,7 @@ output_diff3 (FILE *outputfile, struct diff3_block *diff,
 	      line = 0;
 	      do
 		{
-		  fprintf (outputfile, line_prefix);
+		  fputs (line_prefix, outputfile);
 		  cp = D_RELNUM (ptr, realfile, line);
 		  length = D_RELLEN (ptr, realfile, line);
 		  fwrite (cp, sizeof (char), length, outputfile);
@@ -1438,7 +1440,7 @@ dotlines (FILE *outputfile, struct diff3_block *b, int filenum)
       if (line[0] == '.')
 	{
 	  leading_dot = true;
-	  fprintf (outputfile, ".");
+	  fputc ('.', outputfile);
 	}
       fwrite (line, sizeof (char),
 	      D_RELLEN (b, filenum, i), outputfile);
@@ -1455,7 +1457,7 @@ dotlines (FILE *outputfile, struct diff3_block *b, int filenum)
 static void
 undotlines (FILE *outputfile, bool leading_dot, long int start, lin num)
 {
-  fprintf (outputfile, ".\n");
+  fputs (".\n", outputfile);
   if (leading_dot)
     {
       if (num == 1)
@@ -1534,7 +1536,7 @@ output_diff3_edscript (FILE *outputfile, struct diff3_block *diff,
 		  leading_dot = dotlines (outputfile, b, mapping[FILE1]);
 		}
 	      /* Append lines from FILE2.  */
-	      fprintf (outputfile, "=======\n");
+	      fputs ("=======\n", outputfile);
 	      leading_dot |= dotlines (outputfile, b, mapping[FILE2]);
 	    }
 	  fprintf (outputfile, ">>>>>>> %s\n", file2);
@@ -1552,7 +1554,7 @@ output_diff3_edscript (FILE *outputfile, struct diff3_block *diff,
 	    {
 	      /* Prepend lines from FILE1.  */
 	      leading_dot = dotlines (outputfile, b, mapping[FILE1]);
-	      fprintf (outputfile, "=======\n");
+	      fputs ("=======\n", outputfile);
 	    }
 	  undotlines (outputfile, leading_dot, low0 + 1,
 		      D_NUMLINES (b, mapping[FILE1]));
@@ -1585,7 +1587,8 @@ output_diff3_edscript (FILE *outputfile, struct diff3_block *diff,
 		      low0, D_NUMLINES (b, mapping[FILE2]));
 	}
     }
-  if (finalwrite) fprintf (outputfile, "w\nq\n");
+  if (finalwrite)
+    fputs ("w\nq\n", outputfile);
   return conflicts_found;
 }
 
@@ -1676,7 +1679,7 @@ output_diff3_merge (FILE *infile, FILE *outputfile, struct diff3_block *diff,
 			D_RELLEN (b, mapping[FILE1], i), outputfile);
 	    }
 
-	  fprintf (outputfile, "=======\n");
+	  fputs ("=======\n", outputfile);
 	}
 
       /* Put in lines from FILE2.  */

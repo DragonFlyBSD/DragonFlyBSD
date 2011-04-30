@@ -1,29 +1,26 @@
 /* File I/O for GNU DIFF.
 
-   Copyright (C) 1988, 1989, 1992, 1993, 1994, 1995, 1998, 2001, 2002,
-   2004 Free Software Foundation, Inc.
+   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2010
+   Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
-   GNU DIFF is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-   GNU DIFF is distributed in the hope that it will be useful,
+   This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; see the file COPYING.
-   If not, write to the Free Software Foundation,
-   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "diff.h"
 #include <cmpbuf.h>
 #include <file-type.h>
-#include <setmode.h>
 #include <xalloc.h>
 
 /* Rotate an unsigned value to the left.  */
@@ -34,7 +31,7 @@
 
 /* The type of a hash value.  */
 typedef size_t hash_value;
-verify (hash_value_is_unsigned, ! TYPE_SIGNED (hash_value));
+verify (! TYPE_SIGNED (hash_value));
 
 /* Lines are put into equivalence classes of lines that match in lines_differ.
    Each equivalence class is represented by one of these structures,
@@ -114,26 +111,11 @@ sip (struct file_data *current, bool skip_test)
 	{
 	  /* Check first part of file to see if it's a binary file.  */
 
-	  bool was_binary = set_binary_mode (current->desc, true);
-	  off_t buffered;
+	  /* FIXME: if O_BINARY, this should revert to text mode
+	     if the file is not binary.  */
+
 	  file_block_read (current, current->bufsize);
-	  buffered = current->buffered;
-
-	  if (! was_binary)
-	    {
-	      /* Revert to text mode and seek back to the beginning to
-		 reread the file.  Use relative seek, since file
-		 descriptors like stdin might not start at offset
-		 zero.  */
-
-	      if (lseek (current->desc, - buffered, SEEK_CUR) == -1)
-		pfatal_with_name (current->name);
-	      set_binary_mode (current->desc, false);
-	      current->buffered = 0;
-	      current->eof = false;
-	    }
-
-	  return binary_file_p (current->buffer, buffered);
+	  return binary_file_p (current->buffer, current->buffered);
 	}
     }
 
@@ -394,14 +376,13 @@ find_and_hash_each_line (struct file_data *current)
 	  && current->missing_newline
 	  && ROBUST_OUTPUT_STYLE (output_style))
 	{
-	  /* This line is incomplete.  If this is significant,
-	     put the line into buckets[-1].  */
+	  /* The last line is incomplete and we do not silently
+	     complete lines.  If the line cannot compare equal to any
+	     complete line, put it into buckets[-1] so that it can
+	     compare equal only to the other file's incomplete line
+	     (if one exists).  */
 	  if (ignore_white_space < IGNORE_SPACE_CHANGE)
 	    bucket = &buckets[-1];
-
-	  /* Omit the inserted newline when computing linbuf later.  */
-	  p--;
-	  bufend = suffix_begin = p;
 	}
 
       for (i = *bucket;  ;  i = eqs[i].next)
@@ -489,7 +470,13 @@ find_and_hash_each_line (struct file_data *current)
       linbuf[line] = p;
 
       if (p == bufend)
-	break;
+	{
+	  /* If the last line is incomplete and we do not silently
+	     complete lines, don't count its appended newline.  */
+	  if (current->missing_newline && ROBUST_OUTPUT_STYLE (output_style))
+	    linbuf[line]--;
+	  break;
+	}
 
       if (context <= i && no_diff_means_no_output)
 	break;
@@ -665,10 +652,11 @@ find_identical_ends (struct file_data filevec[])
       beg0 = filevec[0].prefix_end + (n0 < n1 ? 0 : n0 - n1);
 
       /* Scan back until chars don't match or we reach that point.  */
-      for (; p0 != beg0; p0--, p1--)
-	if (*p0 != *p1)
+      while (p0 != beg0)
+	if (*--p0 != *--p1)
 	  {
 	    /* Point at the first char of the matching suffix.  */
+	    ++p0, ++p1;
 	    beg0 = p0;
 	    break;
 	  }
@@ -796,8 +784,7 @@ static unsigned char const prime_offset[] =
 
 /* Verify that this host's size_t is not too wide for the above table.  */
 
-verify (enough_prime_offsets,
-	sizeof (size_t) * CHAR_BIT <= sizeof prime_offset);
+verify (sizeof (size_t) * CHAR_BIT <= sizeof prime_offset);
 
 /* Given a vector of two file_data objects, read the file associated
    with each one, and build the table of equivalence classes.
@@ -821,8 +808,7 @@ read_files (struct file_data filevec[], bool pretend_binary)
     }
   if (appears_binary)
     {
-      set_binary_mode (filevec[0].desc, true);
-      set_binary_mode (filevec[1].desc, true);
+      /* FIXME: If O_BINARY, this should set both files to binary mode.  */
       return true;
     }
 

@@ -1,11 +1,12 @@
 /* Buffer primitives for comparison operations.
 
-   Copyright (C) 1993, 1995, 1998, 2001, 2002 Free Software Foundation, Inc.
+   Copyright (C) 1993, 1995, 1998, 2001-2002, 2006, 2009-2010 Free Software
+   Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -13,13 +14,9 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; see the file COPYING.
-   If not, write to the Free Software Foundation,
-   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#if HAVE_CONFIG_H
-# include <config.h>
-#endif
+#include <config.h>
 
 #include <errno.h>
 #include <limits.h>
@@ -33,33 +30,11 @@
 # endif
 #endif
 
-#if HAVE_UNISTD_H
-# include <unistd.h>
-#endif
-
-#if HAVE_INTTYPES_H
-# include <inttypes.h>
-#endif
-
+#include <unistd.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include "cmpbuf.h"
-
-/* Determine whether an integer type is signed, and its bounds.
-   This code assumes two's (or one's!) complement with no holes.  */
-
-/* The extra casts work around common compiler bugs,
-   e.g. Cray C 5.0.3.0 when t == time_t.  */
-#ifndef TYPE_SIGNED
-# define TYPE_SIGNED(t) (! ((t) 0 < (t) -1))
-#endif
-#ifndef TYPE_MINIMUM
-# define TYPE_MINIMUM(t) ((t) (TYPE_SIGNED (t) \
-			       ? ~ (t) 0 << (sizeof (t) * CHAR_BIT - 1) \
-			       : (t) 0))
-#endif
-#ifndef TYPE_MAXIMUM
-# define TYPE_MAXIMUM(t) ((t) (~ (t) 0 - TYPE_MINIMUM (t)))
-#endif
+#include "intprops.h"
 
 #ifndef PTRDIFF_MAX
 # define PTRDIFF_MAX TYPE_MAXIMUM (ptrdiff_t)
@@ -85,11 +60,12 @@ block_read (int fd, char *buf, size_t nbytes)
 {
   char *bp = buf;
   char const *buflim = buf + nbytes;
-  size_t readlim = SSIZE_MAX;
+  size_t readlim = MIN (SSIZE_MAX, SIZE_MAX);
 
   do
     {
-      size_t bytes_to_read = MIN (buflim - bp, readlim);
+      size_t bytes_remaining = buflim - bp;
+      size_t bytes_to_read = MIN (bytes_remaining, readlim);
       ssize_t nread = read (fd, bp, bytes_to_read);
       if (nread <= 0)
 	{
