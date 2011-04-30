@@ -1,5 +1,5 @@
-\input texinfo.tex    @c -*-texinfo-*-
-@comment $Id: info-stnd.texi,v 1.9 2004/12/14 16:58:15 karl Exp $
+vb\input texinfo.tex    @c -*-texinfo-*-
+@comment $Id: info-stnd.texi,v 1.24 2008/08/29 17:27:18 karl Exp $
 @c We must \input texinfo.tex instead of texinfo, otherwise make
 @c distcheck in the Texinfo distribution fails, because the texinfo Info
 @c file is made first, and texi2dvi must include . first in the path.
@@ -18,21 +18,26 @@ a program for viewing documents in Info format (usually created from
 Texinfo source files).
 
 Copyright @copyright{} 1992, 1993, 1996, 1997, 1998, 1999, 2001, 2002,
-2003, 2004 Free Software Foundation, Inc.
+2003, 2004, 2005, 2006, 2007, 2008 Free Software Foundation, Inc.
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.1 or
+under the terms of the GNU Free Documentation License, Version 1.2 or
 any later version published by the Free Software Foundation; with no
-Invariant Sections, with the Front-Cover texts being ``A GNU Manual,''
+Invariant Sections, with the Front-Cover texts being ``A GNU Manual'',
 and with the Back-Cover Texts as in (a) below.  A copy of the
 license is included in the section entitled ``GNU Free Documentation
-License.''
+License' in the Texinfo manual.
 
-(a) The FSF's Back-Cover Text is: ``You have freedom to copy and modify
-this GNU Manual, like GNU software.  Copies published by the Free
-Software Foundation raise funds for GNU development.''
+(a) The FSF's Back-Cover Text is: ``You have the freedom to
+copy and modify this GNU manual.  Buying copies from the FSF
+supports it in developing GNU and promoting software freedom.''
 @end quotation
+
+This document is part of a collection distributed under the GNU Free
+Documentation License.  If you want to distribute this document
+separately from the collection, you can do so by adding a copy of the
+license to the document, as described in section 6 of the license.
 @end copying
 
 @dircategory Texinfo documentation system
@@ -44,7 +49,7 @@ Software Foundation raise funds for GNU development.''
 @titlepage
 @title GNU Info
 @subtitle for version @value{VERSION}, @value{UPDATED}
-@author Brian J. Fox (bfox@@gnu.org)
+@author Brian J. Fox
 @page
 @vskip 0pt plus 1filll
 @insertcopying
@@ -56,16 +61,16 @@ Software Foundation raise funds for GNU development.''
 @node Top
 @top GNU Info
 
-@insertcopying
-
-This documentation is different from the documentation for the Info
-reader that is part of GNU Emacs.  If you do not know how to use Info,
-but have a working Info reader, you should read the Emacs documentation
-first, as it includes more background information and a thorough tutorial.
+If you do not know how to use Info, but have a working Info reader,
+you should read the Info manual before this one (@pxref{Top, Getting
+Started,,info, Info}), as it includes more background information and
+a thorough tutorial.  This documentation describes the stand-alone Info
+reader that is part of the Texinfo distribution, not the Info reader
+that is part of GNU Emacs.
 @end ifnottex
 
 @menu
-* What is Info::                What is Info?
+* Stand-alone Info::            What is Info?
 * Invoking Info::               Options you can pass on the command line.
 * Cursor Commands::             Commands which move the cursor within a node.
 * Scrolling Commands::          Commands for reading the text within a node.
@@ -77,23 +82,32 @@ first, as it includes more background information and a thorough tutorial.
 * Miscellaneous Commands::      A few commands that defy categories.
 * Variables::                   How to change the default behavior of Info.
 * Custom Key Bindings::         How to define your own key-to-command bindings.
-* Copying This Manual::         The GNU Free Documentation License.
-* Index::                       Global index containing keystrokes,
-                                  command names, variable names,
-                                  and general concepts.
+* Index::                       Global index with keystrokes, command names,
+                                  variable names, and general concepts.
 @end menu
 
 
-@node What is Info
-@chapter What is Info?
+@node Stand-alone Info
+@chapter Stand-alone Info
 
-@dfn{Info} is a program which is used to view Info files on an ASCII
-terminal.  @dfn{Info files} are the result of processing Texinfo files
-with the program @code{makeinfo} or with one of the Emacs commands, such
-as @code{M-x texinfo-format-buffer}.  Texinfo itself is a documentation
-system that uses a single source file to produce both on-line
-information and printed output.  You can typeset and print the files
-that you read in Info.
+The @dfn{Info} program is a stand-alone program, part of the Texinfo
+distribution, which is used to view Info files on an ASCII terminal.
+@dfn{Info files} are typically the result of processing Texinfo files
+with the program @code{makeinfo} (also in the Texinfo distribution)
+
+Texinfo itself is a documentation system that uses a single source
+file to produce both on-line information and printed output.  You can
+typeset and print the files that you read in Info.
+
+GNU Emacs also provides an Info reader (just type @kbd{M-x info} in
+Emacs).  Emacs Info and stand-alone Info have nearly identical user
+interfaces, although customization and other details are different
+(this manual explains the stand-alone Info reader).  The Emacs Info
+reader supports the X Window System and other such bitmapped
+interfaces, not just plain ASCII, so if you want the prettiest
+display for Info files, you should try it.  You can use Emacs Info
+without using Emacs for anything else.  (Type @kbd{C-x C-c} to exit;
+this also works in the stand-alone Info reader.)
 
 
 @node Invoking Info
@@ -118,15 +132,16 @@ The program accepts the following options:
 @table @code
 @anchor{--apropos}
 @item --apropos=@var{string}
+@itemx -k @var{string}
 @cindex Searching all indices
 @cindex Info files@r{, searching all indices}
 @cindex Apropos@r{, in Info files}
 Specify a string to search in every index of every Info file installed
-on your system.  Info looks up the named @var{string} in all the indices
-it can find, prints the results to standard output, and then exits.  If
-you are not sure which Info file explains certain issues, this option is
-your friend.  Note that if your system has a lot of Info files
-installed, searching all of them might take some time.
+on your system.  Info looks up the named @var{string} in all the
+indices it can find, prints the results to standard output, and then
+exits.  If you are not sure which Info file explains certain issues,
+this option is your friend.  (If your system has a lot of Info files
+installed, searching all of them might take some time!)
 
 You can invoke the apropos command from inside Info; see
 @ref{Searching Commands}.
@@ -257,6 +272,11 @@ previous Info session (see the description of the @samp{--dribble}
 option above).  When the keystrokes in the files are all read, Info
 reverts its input to the usual interactive operation.
 
+@item --show-malformed-multibytes
+@itemx --no-show-malformed-multibytes
+  Show malformed multibyte sequences in the output.  By default, such
+sequences are dropped.
+
 @anchor{--show-options}
 @cindex command-line options, how to find
 @cindex invocation description, how to find
@@ -339,6 +359,10 @@ index or the invocation node is the file where Info finds itself after
 following all the menu items given on the command line.  This is so
 @samp{info emacs --show-options} does what you'd expect.
 
+Finally, Info defines many default key bindings and variables.
+@xref{Custom Key Bindings}, for information on how to customize these
+settings.
+
 @c FIXME: the feature with lowercasing the file name isn't documented
 
 
@@ -350,11 +374,11 @@ following all the menu items given on the command line.  This is so
 Many people find that reading screens of text page by page is made
 easier when one is able to indicate particular pieces of text with
 some kind of pointing device.  Since this is the case, GNU Info (both
-the Emacs and standalone versions) have several commands which allow
+the Emacs and stand-alone versions) have several commands which allow
 you to move the cursor about the screen.  The notation used in this
 manual to describe keystrokes is identical to the notation used within
 the Emacs manual, and the GNU Readline manual.  @xref{User Input,,,
-emacs, the GNU Emacs Manual}, if you are unfamiliar with the
+emacs, The GNU Emacs Manual}, if you are unfamiliar with the
 notation.@footnote{Here's a short summary.  @kbd{C-@var{x}} means
 press the @kbd{CTRL} key and the key @var{x}.  @kbd{M-@var{x}} means
 press the @kbd{META} key and the key @var{x}.  On many terminals th
@@ -366,7 +390,7 @@ The following table lists the basic cursor movement commands in Info.
 Each entry consists of the key sequence you should type to execute the
 cursor movement, the @code{M-x}@footnote{@code{M-x} is also a command; it
 invokes @code{execute-extended-command}.  @xref{M-x, , Executing an
-extended command, emacs, the GNU Emacs Manual}, for more detailed
+extended command, emacs, The GNU Emacs Manual}, for more detailed
 information.} command name (displayed in parentheses), and a short
 description of what the command does.  All of the cursor motion commands
 can take a @dfn{numeric} argument (see @ref{Miscellaneous Commands,
@@ -379,66 +403,66 @@ given to the @code{next-line} command would cause the cursor to move
 @emph{up} 4 lines.
 
 @table @asis
-@item @key{C-n} (@code{next-line})
+@item @kbd{C-n} (@code{next-line})
 @itemx @key{DOWN} (an arrow key)
 @kindex C-n
 @kindex DOWN (an arrow key)
 @findex next-line
 Move the cursor down to the next line.
 
-@item @key{C-p} (@code{prev-line})
+@item @kbd{C-p} (@code{prev-line})
 @itemx @key{UP} (an arrow key)
 @kindex C-p
 @kindex UP (an arrow key)
 @findex prev-line
 Move the cursor up to the previous line.
 
-@item @key{C-a} (@code{beginning-of-line})
+@item @kbd{C-a} (@code{beginning-of-line})
 @itemx @key{Home} (on DOS/Windows only)
 @kindex C-a, in Info windows
 @kindex Home
 @findex beginning-of-line
 Move the cursor to the start of the current line.
 
-@item @key{C-e} (@code{end-of-line})
+@item @kbd{C-e} (@code{end-of-line})
 @itemx @key{End} (on DOS/Windows only)
 @kindex C-e, in Info windows
 @kindex End
 @findex end-of-line
 Move the cursor to the end of the current line.
 
-@item @key{C-f} (@code{forward-char})
+@item @kbd{C-f} (@code{forward-char})
 @itemx @key{RIGHT} (an arrow key)
 @kindex C-f, in Info windows
 @kindex RIGHT (an arrow key)
 @findex forward-char
 Move the cursor forward a character.
 
-@item @key{C-b} (@code{backward-char})
+@item @kbd{C-b} (@code{backward-char})
 @itemx @key{LEFT} (an arrow key)
 @kindex C-b, in Info windows
 @kindex LEFT (an arrow key)
 @findex backward-char
 Move the cursor backward a character.
 
-@item @key{M-f} (@code{forward-word})
+@item @kbd{M-f} (@code{forward-word})
 @itemx @kbd{C-@key{RIGHT}} (on DOS/Windows only)
 @kindex M-f, in Info windows
 @kindex C-RIGHT
 @findex forward-word
 Move the cursor forward a word.
 
-@item @key{M-b} (@code{backward-word})
+@item @kbd{M-b} (@code{backward-word})
 @itemx @kbd{C-@key{LEFT}} (on DOS/Windows only)
 @kindex M-b, in Info windows
 @kindex C-LEFT
 @findex backward-word
 Move the cursor backward a word.
 
-@item @key{M-<} (@code{beginning-of-node})
-@itemx @key{C-@key{Home}} (on DOS/Windows only)
-@itemx @key{b}
-@itemx @key{M-b}, vi-like operation
+@item @kbd{M-<} (@code{beginning-of-node})
+@itemx @kbd{C-@key{Home}} (on DOS/Windows only)
+@itemx @kbd{b}
+@itemx @kbd{M-b}, vi-like operation
 @kindex b, in Info windows
 @kindex M-<
 @kindex C-Home
@@ -446,16 +470,16 @@ Move the cursor backward a word.
 @findex beginning-of-node
 Move the cursor to the start of the current node.
 
-@item @key{M->} (@code{end-of-node})
-@itemx @key{C-@key{End}} (on DOS/Windows only)
-@itemx @key{e}
+@item @kbd{M->} (@code{end-of-node})
+@itemx @kbd{C-@key{End}} (on DOS/Windows only)
+@itemx @kbd{e}
 @kindex M->
 @kindex e, in Info windows
 @kindex C-End
 @findex end-of-node
 Move the cursor to the end of the current node.
 
-@item @key{M-r} (@code{move-to-window-line})
+@item @kbd{M-r} (@code{move-to-window-line})
 @kindex M-r
 @findex move-to-window-line
 Move the cursor to a specific line of the window.  Without a numeric
@@ -474,9 +498,11 @@ current paragraph you are reading is visible on the screen.  The
 commands detailed in this section are used to shift which part of the
 current node is visible on the screen.
 
-Scrolling commands are bound differently when @samp{--vi-keys} operation
-is in effect (@pxref{--vi-keys}).  These key bindings are designated
-with ``vi-like operation''.
+Scrolling commands are bound differently when @samp{--vi-keys}
+operation is in effect (@pxref{--vi-keys}).  These key bindings are
+designated with ``vi-like operation''.  @xref{Custom Key Bindings},
+for information on arbitrarily customizing key bindings and variable
+settings.
 
 @table @asis
 @item @key{SPC} (@code{scroll-forward})
@@ -498,10 +524,10 @@ invoking the (@code{scroll-forward-page-only-set-window}) command,
 @samp{z} under @samp{--vi-keys}, with a numeric argument.
 
 @item @key{NEXT} (an arrow key) (@code{scroll-forward-page-only})
-@itemx @key{C-v}
-@itemx @key{C-f}, vi-like operation
-@itemx @key{f}, vi-like operation
-@itemx @key{M-SPC}, vi-like operation
+@itemx @kbd{C-v}
+@itemx @kbd{C-f}, vi-like operation
+@itemx @kbd{f}, vi-like operation
+@itemx @kbd{M-SPC}, vi-like operation
 @kindex NEXT
 @kindex C-v
 @kindex C-f, vi-like operation
@@ -516,7 +542,7 @@ current node.
 The @key{NEXT} key is known as the @key{PageDown} key on some
 keyboards.
 
-@item @key{z} (@code{scroll-forward-page-only-set-window}, vi-like operation)
+@item @kbd{z} (@code{scroll-forward-page-only-set-window}, vi-like operation)
 @kindex z, vi-like operation
 @findex scroll-forward-page-only-set-window
 Scroll forward, like with @key{NEXT}, but if a numeric argument is
@@ -537,9 +563,9 @@ invoking the (@code{scroll-backward-page-only-set-window}) command,
 
 @itemx @key{PREVIOUS} (arrow key) (@code{scroll-backward-page-only})
 @itemx @key{PRIOR} (arrow key)
-@itemx @key{M-v}
-@itemx @key{b}, vi-like operation
-@itemx @key{C-b}, vi-like operation
+@itemx @kbd{M-v}
+@itemx @kbd{b}, vi-like operation
+@itemx @kbd{C-b}, vi-like operation
 @kindex PREVIOUS
 @kindex M-v
 @kindex b, vi-like operation
@@ -551,15 +577,15 @@ the current node.  The default scroll size can be changed by invoking
 the(@code{scroll-backward-page-only-set-window}) command, @samp{w} under
 @samp{--vi-keys}, with a numeric argument.
 
-@item @key{w} (@code{scroll-backward-page-only-set-window}, vi-like operation)
+@item @kbd{w} (@code{scroll-backward-page-only-set-window}, vi-like operation)
 @kindex w, vi-like operation
 @findex scroll-backward-page-only-set-window
 Scroll backward, like with @key{PREVIOUS}, but if a numeric argument is
 specified, it becomes the default scroll size for subsequent
 @code{scroll-forward} and @code{scroll-backward} commands.
 
-@item @key{C-n} (@code{down-line}, vi-like operation)
-@itemx @key{C-e}, vi-like operation
+@item @kbd{C-n} (@code{down-line}, vi-like operation)
+@itemx @kbd{C-e}, vi-like operation
 @itemx @key{RET}, vi-like operation
 @itemx @key{LFD}, vi-like operation
 @itemx @key{DOWN}, vi-like operation
@@ -572,12 +598,12 @@ specified, it becomes the default scroll size for subsequent
 Scroll forward by one line.  With a numeric argument, scroll forward
 that many lines.
 
-@item @key{C-p} (@code{up-line}, vi-like operation)
+@item @kbd{C-p} (@code{up-line}, vi-like operation)
 @itemx @key{UP}, vi-like operation
-@itemx @key{y}, vi-like operation
-@itemx @key{k}, vi-like operation
-@itemx @key{C-k}, vi-like operation
-@itemx @key{C-y}, vi-like operation
+@itemx @kbd{y}, vi-like operation
+@itemx @kbd{k}, vi-like operation
+@itemx @kbd{C-k}, vi-like operation
+@itemx @kbd{C-y}, vi-like operation
 @kindex C-p, vi-like operation
 @kindex UP, vi-like operation
 @kindex y, vi-like operation
@@ -588,8 +614,8 @@ that many lines.
 Scroll backward one line.  With a numeric argument, scroll backward that
 many lines.
 
-@item @key{d} (@code{scroll-half-screen-down}, vi-like operation)
-@itemx @key{C-d}, vi-like operation
+@item @kbd{d} (@code{scroll-half-screen-down}, vi-like operation)
+@itemx @kbd{C-d}, vi-like operation
 @kindex d, vi-like operation
 @kindex C-d, vi-like operation
 @findex scroll-half-screen-down
@@ -598,8 +624,8 @@ scroll that many lines.  If an argument is specified, it becomes the new
 default number of lines to scroll for subsequent @samp{d} and @samp{u}
 commands.
 
-@item @key{u} (@code{scroll-half-screen-up}, vi-like operation)
-@itemx @key{C-u}, vi-like operation
+@item @kbd{u} (@code{scroll-half-screen-up}, vi-like operation)
+@itemx @kbd{C-u}, vi-like operation
 @kindex u, vi-like operation
 @kindex C-u, vi-like operation
 @findex scroll-half-screen-up
@@ -614,8 +640,7 @@ The @code{scroll-forward} and @code{scroll-backward} commands can also
 move forward and backward through the node structure of the file.  If
 you press @key{SPC} while viewing the end of a node, or @key{DEL} while
 viewing the beginning of a node, what happens is controlled by the
-variable @code{scroll-behavior}.  @xref{Variables,
-@code{scroll-behavior}}, for more information.
+variable @code{scroll-behavior} (@pxref{scroll-behavior}).
 
 The @code{scroll-forward-page-only} and @code{scroll-backward-page-only}
 commands never scroll beyond the current node.
@@ -628,11 +653,11 @@ current node.
 
 @kindex BS (backspace)
 If your keyboard lacks the @key{DEL} key, look for a key called
-@key{BS}, or @samp{BackSpace}, sometimes designated with an arrow which
+@key{BS}, or @samp{Backspace}, sometimes designated with an arrow which
 points to the left, which should perform the same function.
 
 @table @asis
-@item @key{C-l} (@code{redraw-display})
+@item @kbd{C-l} (@code{redraw-display})
 @kindex C-l
 @findex redraw-display
 Redraw the display from scratch, or shift the line containing the cursor
@@ -641,7 +666,7 @@ the screen, and then redraws its entire contents.  Given a numeric
 argument of @var{n}, the line containing the cursor is shifted so that
 it is on the @var{n}th line of the window.
 
-@item @kbd{C-x @key{w}} (@code{toggle-wrap})
+@item @kbd{C-x @kbd{w}} (@code{toggle-wrap})
 @kindex C-w
 @findex toggle-wrap
 Toggles the state of line wrapping in the current window.  Normally,
@@ -675,9 +700,9 @@ are.  Info uses this line to move about the node structure of the file
 when you use the following commands:
 
 @table @asis
-@item @key{n} (@code{next-node})
+@item @kbd{n} (@code{next-node})
 @itemx @kbd{C-@key{NEXT}} (on DOS/Windows only)
-@itemx @kbd{C-x @key{n}}, vi-like operation
+@itemx @kbd{C-x @kbd{n}}, vi-like operation
 @kindex n
 @kindex C-NEXT
 @kindex C-x n, vi-like operation
@@ -688,7 +713,7 @@ Select the `Next' node.
 The @key{NEXT} key is known as the @key{PgDn} key on some
 keyboards.
 
-@item @key{p} (@code{prev-node})
+@item @kbd{p} (@code{prev-node})
 @itemx @kbd{C-@key{PREVIOUS}} (on DOS/Windows only)
 @kindex p
 @kindex C-PREVIOUS
@@ -699,9 +724,9 @@ Select the `Prev' node.
 The @key{PREVIOUS} key is known as the @key{PgUp} key on some
 keyboards.
 
-@item @key{u} (@code{up-node})
+@item @kbd{u} (@code{up-node})
 @itemx @kbd{C-@key{UP}} (an arrow key on DOS/Windows only)
-@itemx @kbd{C-x @key{u}}, vi-like operation
+@itemx @kbd{C-x @kbd{u}}, vi-like operation
 @kindex u
 @kindex C-UP
 @kindex C-x u, vi-like operation
@@ -721,9 +746,9 @@ by the time you get to the first node you visited in a window, the
 entire history of that window is discarded.
 
 @table @asis
-@item @key{l} (@code{history-node})
-@itemx @key{C-@key{CENTER}} (on DOS/Windows only)
-@itemx @key{'}, vi-like operation
+@item @kbd{l} (@code{history-node})
+@itemx @kbd{C-@key{CENTER}} (on DOS/Windows only)
+@itemx @kbd{'}, vi-like operation
 @kindex l
 @kindex C-CENTER
 @kindex ', vi-like operation
@@ -736,15 +761,15 @@ Two additional commands make it easy to select the most commonly
 selected nodes; they are @samp{t} and @samp{d}.
 
 @table @asis
-@item @key{t} (@code{top-node})
-@itemx @key{M-t}, vi-like operation
+@item @kbd{t} (@code{top-node})
+@itemx @kbd{M-t}, vi-like operation
 @kindex t
 @kindex M-t, vi-like operation
 @findex top-node
 Select the node @samp{Top} in the current Info file.
 
-@item @key{d} (@code{dir-node})
-@itemx @key{M-d}, vi-like operation
+@item @kbd{d} (@code{dir-node})
+@itemx @kbd{M-d}, vi-like operation
 @kindex d
 @kindex M-d, vi-like operation
 @findex dir-node
@@ -755,8 +780,8 @@ Here are some other commands which immediately result in the selection
 of a different node in the current window:
 
 @table @asis
-@item @key{<} (@code{first-node})
-@itemx @key{g}, vi-like operation
+@item @kbd{<} (@code{first-node})
+@itemx @kbd{g}, vi-like operation
 @kindex <
 @kindex g, vi-like operation
 @findex first-node
@@ -765,8 +790,8 @@ often @samp{Top}, but it does not have to be.  With a numeric argument
 @var{N}, select the @var{N}th node (the first node is node 1).  An
 argument of zero is the same as the argument of 1.
 
-@item @key{>} (@code{last-node})
-@itemx @key{G}, vi-like operation
+@item @kbd{>} (@code{last-node})
+@itemx @kbd{G}, vi-like operation
 @kindex >
 @kindex G, vi-like operation
 @findex last-node
@@ -775,7 +800,7 @@ Select the last node which appears in this file.  With a numeric argument
 argument of zero is the same as no argument, i.e., it selects the last
 node.
 
-@item @key{]} (@code{global-next-node})
+@item @kbd{]} (@code{global-next-node})
 @kindex ]
 @findex global-next-node
 Move forward or down through node structure.  If the node that you are
@@ -784,7 +809,7 @@ Otherwise, if this node has a menu, the first menu item is selected.  If
 there is no @samp{Next} and no menu, the same process is tried with the
 @samp{Up} node of this node.
 
-@item @key{[} (@code{global-prev-node})
+@item @kbd{[} (@code{global-prev-node})
 @kindex [
 @findex global-prev-node
 Move backward or up through node structure.  If the node that you are
@@ -795,13 +820,12 @@ and if it has a menu, the last item in the menu is selected.
 
 You can get the same behavior as @code{global-next-node} and
 @code{global-prev-node} while simply scrolling through the file with
-@key{SPC} and @key{DEL}; @xref{Variables, @code{scroll-behavior}}, for
-more information.
+@key{SPC} and @key{DEL} (@pxref{scroll-behavior}).
 
 @table @asis
 @anchor{goto-node}
-@item @key{g} (@code{goto-node})
-@itemx @kbd{C-x @key{g}}, vi-like operation
+@item @kbd{g} (@code{goto-node})
+@itemx @kbd{C-x @kbd{g}}, vi-like operation
 @kindex g
 @kindex C-x g, vi-like operation
 @findex goto-node
@@ -819,8 +843,8 @@ must include the Info file of the other file.  For example,
 finds the node @samp{Buffers} in the Info file @file{emacs}.
 
 @anchor{goto-invocation}
-@item @key{O} (@code{goto-invocation}
-@itemx @key{I}
+@item @kbd{O} (@code{goto-invocation}
+@itemx @kbd{I}
 @kindex O
 @kindex I
 @findex goto-invocation
@@ -842,7 +866,7 @@ know what Info file documents the command, or if invoking @samp{I}
 doesn't display the right node, go to the @samp{(dir)} node (using the
 @samp{d} command) and invoke @samp{I} from there.
 
-@item @key{G} (@code{menu-sequence})
+@item @kbd{G} (@code{menu-sequence})
 @kindex G
 @findex menu-sequence
 @cindex menu, following, from inside Info
@@ -872,7 +896,7 @@ exactly, Info will find it faster.)
 If any of the menu items you type are not found, Info stops at the last
 entry it did find and reports an error.
 
-@item @kbd{C-x @key{k}} (@code{kill-node})
+@item @kbd{C-x @kbd{k}} (@code{kill-node})
 @kindex C-x k
 @findex kill-node
 Kill a node.  The node name is prompted for in the echo area, with a
@@ -900,7 +924,7 @@ Make a window containing a menu of all of the currently visited nodes.
 This window becomes the selected window, and you may use the standard
 Info commands within it.
 
-@item @kbd{C-x @key{b}} (@code{select-visited-node})
+@item @kbd{C-x @kbd{b}} (@code{select-visited-node})
 @kindex C-x b
 @findex select-visited-node
 Select a node which has been previously visited in a visible window.
@@ -918,18 +942,20 @@ entire Info file, search through the indices of an Info file, or find
 areas within an Info file which discuss a particular topic.
 
 @table @asis
-@item @key{s} (@code{search})
-@itemx @key{/}
+@item @kbd{s} (@code{search})
+@itemx @kbd{/}
 @kindex s
 @kindex /
 @findex search
-Read a string in the echo area and search for it.  If the string
-includes upper-case characters, the Info file is searched
-case-sensitively; otherwise Info ignores the letter case.  With a
-numeric argument of @var{N}, search for @var{N}th occurrence of the
-string.  Negative arguments search backwards.
+@cindex regular expression search
+Read a string in the echo area and search for it, either as a regular
+expression (by default) or a literal string.  If the string includes
+upper-case characters, the Info file is searched case-sensitively;
+otherwise Info ignores the letter case.  With a numeric argument of
+@var{N}, search for @var{N}th occurrence of the string.  Negative
+arguments search backwards.
 
-@item @key{?} (@code{search-backward}, vi-like operation)
+@item @kbd{?} (@code{search-backward}, vi-like operation)
 @kindex ?, vi-like operation
 @findex search-backward
 Read a string in the echo area and search backward through the Info file
@@ -938,7 +964,15 @@ file is searched case-sensitively; otherwise Info ignores the letter
 case.  With a numeric argument of @var{N}, search for @var{N}th
 occurrence of the string.  Negative arguments search forward.
 
-@item @key{S} (@code{search-case-sensitively}
+@item @kbd{R} (@code{toggle-regexp})
+@kindex R
+@findex toggle-regexp
+Toggle between using regular expressions and literal strings for
+searching.  Info uses so-called `extended' regular expression syntax,
+similar to Emacs (@pxref{Regexps, , Using Regular Expressions, emacs,
+The GNU Emacs Manual}).
+
+@item @kbd{S} (@code{search-case-sensitively}
 @kindex S
 @findex search-case-sensitively
 @cindex search, case-sensitive
@@ -948,8 +982,8 @@ if the string includes only lower-case letters.  With a numeric argument
 of @var{N}, search for @var{N}th occurrence of the string.  Negative
 arguments search backwards.
 
-@item @kbd{C-x @key{n}} (@code{search-next})
-@itemx @key{n}, vi-like operation
+@item @kbd{C-x @kbd{n}} (@code{search-next})
+@itemx @kbd{n}, vi-like operation
 @kindex C-x n
 @kindex n, vi-like operation
 @findex search-next
@@ -958,8 +992,8 @@ Search for the same string used in the last search command, in the same
 direction, and with the same case-sensitivity option.  With a numeric
 argument of @var{N}, search for @var{N}th next occurrence.
 
-@item @kbd{C-x @key{N}} (@code{search-previous})
-@itemx @key{N}, vi-like operation
+@item @kbd{C-x @kbd{N}} (@code{search-previous})
+@itemx @kbd{N}, vi-like operation
 @kindex C-x N
 @kindex n, vi-like operation
 @findex search-previous
@@ -967,7 +1001,7 @@ Search for the same string used in the last search command, and with the
 same case-sensitivity option, but in the reverse direction.  With a
 numeric argument of @var{N}, search for @var{N}th previous occurrence.
 
-@item @key{C-s} (@code{isearch-forward})
+@item @kbd{C-s} (@code{isearch-forward})
 @kindex C-s
 @findex isearch-forward
 @cindex incremental search
@@ -975,14 +1009,14 @@ Interactively search forward through the Info file for a string as you
 type it.  If the string includes upper-case characters, the search is
 case-sensitive; otherwise Info ignores the letter case.
 
-@item @key{C-r} (@code{isearch-backward})
+@item @kbd{C-r} (@code{isearch-backward})
 @kindex C-r
 @findex isearch-backward
 Interactively search backward through the Info file for a string as
 you type it.  If the string includes upper-case characters, the search
 is case-sensitive; otherwise Info ignores the letter case.
 
-@item @key{i} (@code{index-search})
+@item @kbd{i} (@code{index-search})
 @kindex i
 @findex index-search
 @cindex index, searching
@@ -990,7 +1024,7 @@ is case-sensitive; otherwise Info ignores the letter case.
 Look up a string in the indices for this Info file, and select a node
 to which the found index entry points.
 
-@item @key{,} (@code{next-index-match})
+@item @kbd{,} (@code{next-index-match})
 @kindex ,
 @findex next-index-match
 Move to the node containing the next matching index item from the last
@@ -1113,10 +1147,10 @@ references.
 The following table lists the Info commands which operate on menu items.
 
 @table @asis
-@item @key{1} (@code{menu-digit})
-@itemx @key{2} @dots{} @key{9}
-@itemx @key{M-1}, vi-like operation
-@itemx @key{M-2} @dots{} @key{M-9}, vi-like operation
+@item @kbd{1} (@code{menu-digit})
+@itemx @kbd{2} @dots{} @kbd{9}
+@itemx @kbd{M-1}, vi-like operation
+@itemx @kbd{M-2} @dots{} @kbd{M-9}, vi-like operation
 @cindex 1 @dots{} 9, in Info windows
 @cindex M-1 @dots{} M-9, vi-like operation
 @kindex 1 @dots{} 9, in Info windows
@@ -1128,16 +1162,16 @@ For convenience, there is one exception; pressing @samp{0} selects the
 @emph{last} item in the node's menu.  When @samp{--vi-keys} is in
 effect, digits set the numeric argument, so these commands are remapped
 to their @samp{M-} varieties.  For example, to select the last menu
-item, press @key{M-0}.
+item, press @kbd{M-0}.
 
-@item @key{0} (@code{last-menu-item})
-@itemx @key{M-0}, vi-like operation
+@item @kbd{0} (@code{last-menu-item})
+@itemx @kbd{M-0}, vi-like operation
 @kindex 0, in Info windows
 @kindex M-0, vi-like operation
 @findex last-menu-item
 Select the last item in the current node's menu.
 
-@item @key{m} (@code{menu-item})
+@item @kbd{m} (@code{menu-item})
 @kindex m
 @findex menu-item
 Reads the name of a menu item in the echo area and selects its node.
@@ -1152,10 +1186,10 @@ Move the cursor to the start of this node's menu.
 This table lists the Info commands which operate on cross references.
 
 @table @asis
-@item @key{f} (@code{xref-item})
-@itemx @key{r}
-@item @key{M-f}, vi-like operation
-@itemx @kbd{C-x @key{r}}, vi-like operation
+@item @kbd{f} (@code{xref-item})
+@itemx @kbd{r}
+@item @kbd{M-f}, vi-like operation
+@itemx @kbd{C-x @kbd{r}}, vi-like operation
 @kindex f
 @kindex r
 @kindex M-f, vi-like operation
@@ -1176,8 +1210,8 @@ Move the cursor to the start of the next nearest menu item or note
 reference in this node.  You can then use @key{RET}
 (@code{select-reference-this-line}) to select the menu or note reference.
 
-@item @key{M-TAB} (@code{move-to-prev-xref})
-@itemx @key{Shift-@key{TAB}} (on DOS/Windows only)
+@item @kbd{M-TAB} (@code{move-to-prev-xref})
+@itemx @kbd{Shift-@key{TAB}} (on DOS/Windows only)
 @kindex M-TAB, in Info windows
 @findex move-to-prev-xref
 Move the cursor the start of the nearest previous menu item or note
@@ -1189,7 +1223,7 @@ On DOS/Windows only, the @kbd{Shift-@key{TAB}} key is an alias for
 @kbd{M-@key{TAB}}.  This key is sometimes called @samp{BackTab}.
 
 @item @key{RET} (@code{select-reference-this-line})
-@itemx @key{M-g}, vi-like operation
+@itemx @kbd{M-g}, vi-like operation
 @kindex RET, in Info windows
 @kindex M-g, vi-like operation
 @findex select-reference-this-line
@@ -1277,7 +1311,7 @@ own mode line (@pxref{The Mode Line}) and history of nodes viewed in that
 window (@pxref{Node Commands, , @code{history-node}}).
 
 @table @asis
-@item @kbd{C-x @key{o}} (@code{next-window})
+@item @kbd{C-x @kbd{o}} (@code{next-window})
 @cindex windows, selecting
 @kindex C-x o
 @findex next-window
@@ -1294,7 +1328,7 @@ the previous window on the screen.
 Select the previous window on the screen.  This is identical to
 @samp{C-x o} with a negative argument.
 
-@item @kbd{C-x @key{2}} (@code{split-window})
+@item @kbd{C-x @kbd{2}} (@code{split-window})
 @cindex windows, creating
 @kindex C-x 2
 @findex split-window
@@ -1304,7 +1338,7 @@ remains in the original window.  The variable @code{automatic-tiling}
 can cause all of the windows on the screen to be resized for you
 automatically (@pxref{Variables, , automatic-tiling}).
 
-@item @kbd{C-x @key{0}} (@code{delete-window})
+@item @kbd{C-x @kbd{0}} (@code{delete-window})
 @cindex windows, deleting
 @kindex C-x 0
 @findex delete-window
@@ -1312,26 +1346,26 @@ Delete the current window from the screen.  If you have made too many
 windows and your screen appears cluttered, this is the way to get rid of
 some of them.
 
-@item @kbd{C-x @key{1}} (@code{keep-one-window})
+@item @kbd{C-x @kbd{1}} (@code{keep-one-window})
 @kindex C-x 1
 @findex keep-one-window
 Delete all of the windows excepting the current one.
 
-@item @kbd{ESC @key{C-v}} (@code{scroll-other-window})
+@item @kbd{ESC @kbd{C-v}} (@code{scroll-other-window})
 @kindex ESC C-v, in Info windows
 @findex scroll-other-window
 Scroll the other window, in the same fashion that @samp{C-v} might
 scroll the current window.  Given a negative argument, scroll the
 ``other'' window backward.
 
-@item @kbd{C-x @key{^}} (@code{grow-window})
+@item @kbd{C-x @kbd{^}} (@code{grow-window})
 @kindex C-x ^
 @findex grow-window
 Grow (or shrink) the current window.  Given a numeric argument, grow
 the current window that many lines; with a negative numeric argument,
 shrink the window instead.
 
-@item @kbd{C-x @key{t}} (@code{tile-windows})
+@item @kbd{C-x @kbd{t}} (@code{tile-windows})
 @cindex tiling
 @kindex C-x t
 @findex tile-windows
@@ -1356,41 +1390,41 @@ table briefly lists the commands that are available while input is being
 read in the echo area:
 
 @table @asis
-@item @key{C-f} (@code{echo-area-forward})
+@item @kbd{C-f} (@code{echo-area-forward})
 @itemx @key{RIGHT} (an arrow key)
-@itemx @key{M-h}, vi-like operation
+@itemx @kbd{M-h}, vi-like operation
 @kindex C-f, in the echo area
 @kindex RIGHT, in the echo area
 @kindex M-h, in the echo area, vi-like operation
 @findex echo-area-forward
 Move forward a character.
 
-@item @key{C-b} (@code{echo-area-backward})
+@item @kbd{C-b} (@code{echo-area-backward})
 @itemx @key{LEFT} (an arrow key)
-@itemx @key{M-l}, vi-like operation
+@itemx @kbd{M-l}, vi-like operation
 @kindex LEFT, in the echo area
 @kindex C-b, in the echo area
 @kindex M-l, in the echo area, vi-like operation
 @findex echo-area-backward
 Move backward a character.
 
-@item @key{C-a} (@code{echo-area-beg-of-line})
-@itemx @key{M-0}, vi-like operation
+@item @kbd{C-a} (@code{echo-area-beg-of-line})
+@itemx @kbd{M-0}, vi-like operation
 @kindex C-a, in the echo area
 @kindex M-0, in the echo area, vi-like operation
 @findex echo-area-beg-of-line
 Move to the start of the input line.
 
-@item @key{C-e} (@code{echo-area-end-of-line})
-@itemx @key{M-$}, vi-like operation
+@item @kbd{C-e} (@code{echo-area-end-of-line})
+@itemx @kbd{M-$}, vi-like operation
 @kindex C-e, in the echo area
 @kindex M-$, vi-like operation
 @findex echo-area-end-of-line
 Move to the end of the input line.
 
-@item @key{M-f} (@code{echo-area-forward-word})
-@itemx @key{C-@key{RIGHT}} (DOS/Windows only)
-@itemx @key{M-w}, vi-like operation
+@item @kbd{M-f} (@code{echo-area-forward-word})
+@itemx @kbd{C-@key{RIGHT}} (DOS/Windows only)
+@itemx @kbd{M-w}, vi-like operation
 @kindex M-f, in the echo area
 @kindex M-w, in the echo area, vi-like operation
 @findex echo-area-forward-word
@@ -1399,8 +1433,8 @@ Move forward a word.
 @kindex C-RIGHT, in the echo area
 On DOS/Windows, @kbd{C-@key{RIGHT}} moves forward by words.
 
-@item @key{M-b} (@code{echo-area-backward-word})
-@itemx @key{C-@key{LEFT}} (DOS/Windows only)
+@item @kbd{M-b} (@code{echo-area-backward-word})
+@itemx @kbd{C-@key{LEFT}} (DOS/Windows only)
 @kindex M-b, in the echo area
 @findex echo-area-backward-word
 Move backward a word.
@@ -1408,8 +1442,8 @@ Move backward a word.
 @kindex C-LEFT, in the echo area
 On DOS/Windows, @kbd{C-@key{LEFT}} moves backward by words.
 
-@item @key{C-d} (@code{echo-area-delete})
-@itemx @key{M-x}, vi-like operation
+@item @kbd{C-d} (@code{echo-area-delete})
+@itemx @kbd{M-x}, vi-like operation
 @kindex C-d, in the echo area
 @kindex M-x, in the echo area, vi-like operation
 @findex echo-area-delete
@@ -1421,11 +1455,11 @@ Delete the character under the cursor.
 Delete the character behind the cursor.
 
 On some keyboards, this key is designated @key{BS}, for
-@samp{BackSpace}.  Those keyboards will usually bind @key{DEL} in the
+@samp{Backspace}.  Those keyboards will usually bind @key{DEL} in the
 echo area to @code{echo-area-delete}.
 
-@item @key{C-g} (@code{echo-area-abort})
-@itemx @key{C-u}, vi-like operation
+@item @kbd{C-g} (@code{echo-area-abort})
+@itemx @kbd{C-u}, vi-like operation
 @kindex C-g, in the echo area
 @kindex C-u, in the echo area, vi-like operation
 @findex echo-area-abort
@@ -1438,8 +1472,8 @@ completion.  If the input line is empty, it aborts the calling function.
 @findex echo-area-newline
 Accept (or forces completion of) the current input line.
 
-@item @key{C-q} (@code{echo-area-quoted-insert})
-@itemx @key{C-v}, vi-like operation
+@item @kbd{C-q} (@code{echo-area-quoted-insert})
+@itemx @kbd{C-v}, vi-like operation
 @kindex C-q, in the echo area
 @kindex C-v, in the echo area, vi-like operation
 @findex echo-area-quoted-insert
@@ -1454,8 +1488,8 @@ Insert the character.  Characters that have their 8th bit set, and not
 bound to @samp{M-} commands, are also inserted verbatim; this is useful
 for terminals which support Latin scripts.
 
-@item @key{M-TAB} (@code{echo-area-tab-insert})
-@itemx @key{Shift-@key{TAB}} (on DOS/Windows only)
+@item @kbd{M-TAB} (@code{echo-area-tab-insert})
+@itemx @kbd{Shift-@key{TAB}} (on DOS/Windows only)
 @kindex M-TAB, in the echo area
 @kindex Shift-TAB, in the echo area
 @findex echo-area-tab-insert
@@ -1466,7 +1500,7 @@ Insert a TAB character.
 On DOS/Windows only, the @kbd{Shift-@key{TAB}} key is an alias for
 @kbd{M-@key{TAB}}.  This key is sometimes called @samp{BackTab}.
 
-@item @key{C-t} (@code{echo-area-transpose-chars})
+@item @kbd{C-t} (@code{echo-area-transpose-chars})
 @kindex C-t, in the echo area
 @findex echo-area-transpose-chars
 Transpose the characters at the cursor.
@@ -1480,25 +1514,25 @@ yanking, see @ref{Killing, , Killing and Deleting, emacs, the GNU Emacs
 Manual}.
 
 @table @asis
-@item @key{M-d} (@code{echo-area-kill-word})
-@itemx @key{M-X}, vi-like operation
+@item @kbd{M-d} (@code{echo-area-kill-word})
+@itemx @kbd{M-X}, vi-like operation
 @kindex M-d, in the echo area
 @kindex M-X, in the echo area, vi-like operation
 @findex echo-area-kill-word
 Kill the word following the cursor.
 
-@item @key{M-DEL} (@code{echo-area-backward-kill-word})
-@itemx @key{M-@key{BS}}
+@item @kbd{M-@key{DEL}} (@code{echo-area-backward-kill-word})
+@itemx @kbd{M-@key{BS}}
 @kindex M-DEL, in the echo area
 @findex echo-area-backward-kill-word
 Kill the word preceding the cursor.
 
 @kindex M-BS, in the echo area
-On some keyboards, the @code{Backspace} key is used instead of
+On some keyboards, the @samp{Backspace} key is used instead of
 @code{DEL}, so @code{M-@key{Backspace}} has the same effect as
 @code{M-@key{DEL}}.
 
-@item @key{C-k} (@code{echo-area-kill-line})
+@item @kbd{C-k} (@code{echo-area-kill-line})
 @kindex C-k, in the echo area
 @findex echo-area-kill-line
 Kill the text from the cursor to the end of the line.
@@ -1508,12 +1542,12 @@ Kill the text from the cursor to the end of the line.
 @findex echo-area-backward-kill-line
 Kill the text from the cursor to the beginning of the line.
 
-@item @key{C-y} (@code{echo-area-yank})
+@item @kbd{C-y} (@code{echo-area-yank})
 @kindex C-y, in the echo area
 @findex echo-area-yank
 Yank back the contents of the last kill.
 
-@item @key{M-y} (@code{echo-area-yank-pop})
+@item @kbd{M-y} (@code{echo-area-yank-pop})
 @kindex M-y, in the echo area
 @findex echo-area-yank-pop
 Yank back a previous kill, removing the last yanked text first.
@@ -1539,7 +1573,7 @@ The following commands are available when completing in the echo area:
 @findex echo-area-complete
 Insert as much of a completion as is possible.
 
-@item @key{?} (@code{echo-area-possible-completions})
+@item @kbd{?} (@code{echo-area-possible-completions})
 @kindex ?, in the echo area
 @findex echo-area-possible-completions
 Display a window containing a list of the possible completions of what
@@ -1641,8 +1675,8 @@ description of what the variable affects.
 Read the name of an Info command in the echo area, and then display
 a key sequence which can be typed in order to invoke that command.
 
-@item @key{C-h} (@code{get-help-window})
-@itemx @key{?}
+@item @kbd{C-h} (@code{get-help-window})
+@itemx @kbd{?}
 @itemx @key{F1} (on DOS/Windows only)
 @itemx h, vi-like operation
 @kindex C-h
@@ -1654,8 +1688,8 @@ Create (or Move into) the window displaying @code{*Help*}, and place
 a node containing a quick reference card into it.  This window displays
 the most concise information about GNU Info available.
 
-@item @key{h} (@code{get-info-help-node})
-@itemx @key{M-h}, vi-like operation
+@item @kbd{h} (@code{get-info-help-node})
+@itemx @kbd{M-h}, vi-like operation
 @kindex h
 @kindex M-h, vi-like operation
 @findex get-info-help-node
@@ -1668,7 +1702,7 @@ placed into the location of your Info directory.
 Here are the commands for creating a numeric argument:
 
 @table @asis
-@item @key{C-u} (@code{universal-argument})
+@item @kbd{C-u} (@code{universal-argument})
 @cindex numeric arguments
 @kindex C-u
 @findex universal-argument
@@ -1679,12 +1713,12 @@ scrolling commands; @samp{C-u C-v} scrolls the screen 4 lines, while
 by digit keys sets the numeric argument to the number thus typed:
 @kbd{C-u 1 2 0} sets the argument to 120.
 
-@item @key{M-1} (@code{add-digit-to-numeric-arg})
-@itemx @key{1}, vi-like operation
-@itemx @key{M-2} @dots{} @key{M-9}
-@itemx @key{2} @dots{} @key{9}, vi-like operation
-@itemx @key{M-0}
-@itemx @key{0}, vi-like operation
+@item @kbd{M-1} (@code{add-digit-to-numeric-arg})
+@itemx @kbd{1}, vi-like operation
+@itemx @kbd{M-2} @dots{} @kbd{M-9}
+@itemx @kbd{2} @dots{} @kbd{9}, vi-like operation
+@itemx @kbd{M-0}
+@itemx @kbd{0}, vi-like operation
 @kindex M-0 @dots{} M-9
 @kindex 0 @dots{} 9, vi-like operation
 @findex add-digit-to-numeric-arg
@@ -1704,8 +1738,8 @@ or
 @kbd{M-3 2 C-l}
 @end example
 
-@item @key{M--} (@code{add-digit-to-numeric-arg}
-@itemx @key{-}
+@item @kbd{M--} (@code{add-digit-to-numeric-arg}
+@itemx @kbd{-}
 @kindex M--
 @kindex -
 @cindex negative arguments
@@ -1726,8 +1760,8 @@ sequence, to cancel lengthy operations (such as multi-file searches) and
 to cancel reading input in the echo area.
 
 @table @asis
-@item @key{C-g} (@code{abort-key})
-@itemx @key{C-u}, vi-like operation
+@item @kbd{C-g} (@code{abort-key})
+@itemx @kbd{C-u}, vi-like operation
 @cindex cancelling typeahead
 @cindex cancelling the current operation
 @kindex C-g, in Info windows
@@ -1741,7 +1775,7 @@ The @samp{q} command of Info simply quits running Info.  Under
 or @samp{ZZ}.
 
 @table @asis
-@item @key{q} (@code{quit})
+@item @kbd{q} (@code{quit})
 @itemx @kbd{C-x C-c}
 @itemx @kbd{:q}, vi-like operation
 @itemx @kbd{ZZ}, vi-like operation
@@ -1773,7 +1807,7 @@ Finally, Info provides a convenient way to display footnotes which might
 be associated with the current node that you are viewing:
 
 @table @asis
-@item @key{ESC C-f} (@code{show-footnotes})
+@item @kbd{ESC C-f} (@code{show-footnotes})
 @kindex ESC C-f
 @findex show-footnotes
 @cindex footnotes, displaying
@@ -1841,6 +1875,13 @@ window.  There are exceptions to the automatic tiling; specifically, the
 windows @samp{*Completions*} and @samp{*Footnotes*} are @emph{not}
 resized through automatic tiling; they remain their original size.
 
+@anchor{cursor-movement-scrolls}
+@item cursor-movement-scrolls
+Normally, cursor movement commands (@pxref{Cursor Commands}) stop when
+top or bottom of a node is reached.  When this variable is set to
+@code{On}, cursor movement commands act as scrolling ones and their
+behavior is controlled by the @code{scroll-behavior} variable (see below).
+
 @item errors-ring-bell
 @vindex errors-ring-bell
 When set to @code{On}, errors cause the bell to ring.  The default
@@ -1870,12 +1911,15 @@ Info that it is running in an environment where the European standard
 character set is in use, and allows you to input such characters to
 Info, as well as display them.
 
+@anchor{scroll-behavior}
 @item scroll-behavior
+@itemx scroll-behaviour
 @vindex scroll-behavior
+@vindex scroll-behaviour
 Control what happens when forward scrolling is requested at the end of
 a node, or when backward scrolling is requested at the beginning of a
-node.  The default value for this variable is @code{Continuous}.  There
-are three possible values for this variable:
+node.  The default value for this variable is @code{Continuous}.
+There are three possible values for this variable:
 
 @table @code
 @item Continuous
@@ -1885,6 +1929,32 @@ This behavior is identical to using the @samp{]}
 (@code{global-next-node}) and @samp{[} (@code{global-prev-node})
 commands.
 
+@item scroll-last-node
+@vindex scroll-last-node
+Control what happens when a scrolling command is issued at the end of
+the last node. Possible values are:
+
+@table @code
+@item Stop
+Do not scroll. Display the @samp{No more nodes within this document.}
+message. This is the default.
+
+@item Scroll
+Scroll as usual. Since the last node is usually an index, this means
+that the very first node from the menu will be selected.
+
+@item Top
+Go to the top node of this document.
+@end table
+
+This variable is in effect only if @code{scroll-behaviour} is set to
+@code{Continuous}.
+
+Notice that the default behavior has changed in version 4.12. Previous
+versions behaved as if @code{scroll-last-node=Scroll} was set. This
+behavior was counter-intuitive, therefore since version 4.12 the
+default is to stop at the last node.
+
 @item Next Only
 Only try to get the @samp{Next} node.
 
@@ -1893,6 +1963,13 @@ Simply give up, changing nothing.  If @code{scroll-behavior} is
 @code{Page Only}, no scrolling command can change the node that is being
 viewed.
 @end table
+
+This variable normally affects only scrolling commands.
+@xref{cursor-movement-scrolls}, for information on how to widen its
+scope.
+
+The two names, @code{scroll-behavior} and @code{scroll-behaviour}, are
+a historical accident.  They are merely synonyms.
 
 @item scroll-step
 @vindex scroll-step
@@ -1942,10 +2019,10 @@ effect.  However, you can make Info perform quietly by setting the
 @cindex .infokey
 @cindex _info file (MS-DOS)
 
-For those whose editor/pager of choice is not Emacs and who are not
-entirely satisfied with the --vi-keys option (@pxref{--vi-keys}), GNU
-Info provides a way to define different key-to-command bindings and
-variable settings from the defaults described in this document.
+GNU Info provides a way to define arbitrary key-to-command bindings
+and variable settings, overriding the defaults described in this
+document.  (The @option{--vi-keys} option rebinds many keys at once;
+@pxref{--vi-keys}.)
 
 On startup, GNU Info looks for a configuration file in the invoker's
 HOME directory called @file{.info}@footnote{Due to the limitations of
@@ -2183,16 +2260,6 @@ Building DIR on the fly.
 
 Some common ways to organize Info files.
 @end ignore
-
-
-@node Copying This Manual
-@appendix Copying This Manual
-
-@menu
-* GNU Free Documentation License::  License for copying this manual.
-@end menu
-
-@include fdl.texi
 
 
 @node Index

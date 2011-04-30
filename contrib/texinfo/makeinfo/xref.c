@@ -1,12 +1,12 @@
 /* xref.c -- cross references for Texinfo.
-   $Id: xref.c,v 1.4 2004/12/21 17:28:35 karl Exp $
+   $Id: xref.c,v 1.14 2007/09/26 20:53:40 karl Exp $
 
-   Copyright (C) 2004 Free Software Foundation, Inc.
+   Copyright (C) 2004, 2005, 2007 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,8 +14,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "system.h"
 #include "cmds.h"
@@ -131,7 +130,7 @@ cm_xref (int arg)
         {
           if (!ref_flag)
             add_word (px_ref_flag || printing_index
-                ? (char *) _("see ") : (char *) _("See "));
+                ? (char *) gdt("see ") : (char *) gdt("See "));
 
           if (!*arg4 && !*arg5)
             {
@@ -155,7 +154,7 @@ cm_xref (int arg)
             }
           else if (*arg5)
             {
-              add_word_args (_("See section ``%s'' in "), *arg3 ? arg3 : arg1);
+              add_word_args (gdt("See section ``%s'' in "), *arg3 ? arg3 : arg1);
               xml_insert_element (CITE, START);
               add_word (arg5);
               xml_insert_element (CITE, END);
@@ -168,7 +167,7 @@ cm_xref (int arg)
       else if (xml)
         {
           if (!ref_flag)
-            add_word_args ("%s", px_ref_flag ? _("see ") : _("See "));
+            add_word_args ("%s", px_ref_flag ? gdt("see ") : gdt("See "));
 
           xml_insert_element (XREF, START);
           xml_insert_element (XREFNODENAME, START);
@@ -203,10 +202,10 @@ cm_xref (int arg)
       else if (html)
         {
           if (!ref_flag)
-            add_word_args ("%s", px_ref_flag ? _("see ") : _("See "));
+            add_word_args ("%s", px_ref_flag ? gdt("see ") : gdt("See "));
         }
       else
-        add_word_args ("%s", px_ref_flag ? "*note " : "*Note ");
+        add_word_args ("%s", px_ref_flag || ref_flag ? "*note " : "*Note ");
 
       if (!xml)
         {
@@ -387,7 +386,11 @@ cm_xref (int arg)
       if (temp == -1)
         warning (_("End of file reached while looking for `.' or `,'"));
       else if (temp != '.' && temp != ',')
-        warning (_("`.' or `,' must follow @%s, not `%c'"), command, temp);
+        {
+          warning (_("`.' or `,' must follow @%s, not `%c'"), command, temp);
+          if (temp == ')')
+            warning (_("for cross-references in parentheses, use @pxref"));
+        }
     }
 }
 
@@ -453,7 +456,7 @@ cm_inforef (int arg)
         {
           char *tem;
 
-          add_word ((char *) _("see "));
+          add_word ((char *) gdt("see "));
           /* html fixxme: revisit this */
           add_html_elt ("<a href=");
           if (splitting)
@@ -487,7 +490,6 @@ cm_uref (int arg)
 {
   if (arg == START)
     {
-      extern int printing_index;
       char *url  = get_xref_token (1); /* expands all macros in uref */
       char *desc = get_xref_token (0);
       char *replacement = get_xref_token (0);
@@ -495,7 +497,7 @@ cm_uref (int arg)
       if (docbook)
         {
           xml_insert_element_with_attribute (UREF, START, "url=\"%s\"",
-              text_expansion (url));
+					     maybe_escaped_expansion (url, 0, 1));
           if (*replacement)
             execute_string ("%s", replacement);
           else if (*desc)
@@ -574,10 +576,20 @@ cm_email (int arg)
 
       if (xml && docbook)
         {
-          xml_insert_element_with_attribute (EMAIL, START, "url=\"mailto:%s\"", addr);
-          if (*name)
+	  if (*name)
+	    {
+	      xml_insert_element_with_attribute (EMAIL, START,
+						 "url=\"mailto:%s\"",
+						 maybe_escaped_expansion (addr, 0, 1));
               execute_string ("%s", name);
-          xml_insert_element (EMAIL, END);
+	      xml_insert_element (EMAIL, END);
+	    }
+	  else
+	    {
+	      xml_insert_element (EMAILADDRESS, START);
+	      execute_string ("%s", addr);
+	      xml_insert_element (EMAILADDRESS, END);
+	    }
         }
       else if (xml)
         {

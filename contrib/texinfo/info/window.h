@@ -1,15 +1,15 @@
 /* window.h -- Structure and flags used in manipulating Info windows.
-   $Id: window.h,v 1.3 2004/04/11 17:56:46 karl Exp $
+   $Id: window.h,v 1.12 2008/09/13 10:02:01 gray Exp $
 
    This file is part of GNU Info, a program for reading online documentation
    stored in Info format.
 
-   Copyright (C) 1993, 1997, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1993, 1997, 2004, 2007 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,8 +17,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -35,6 +34,18 @@
 /* Smallest number of screen lines that can be used to fully present a
    window.  This number includes the modeline of the window. */
 #define WINDOW_MIN_SIZE (WINDOW_MIN_HEIGHT + 1)
+
+/* A line map structure keeps a table of point values corresponding to
+   column offsets within the current line.  It is used to convert
+   point values into columns on screen and vice versa. */
+typedef struct line_map_struct
+{
+  NODE *node;      /* Node to which this line pertains */
+  size_t nline;    /* Line number for which the map is computed. */
+  size_t size;     /* Number of elements map can accomodate */
+  size_t used;     /* Number of used map slots */
+  long *map;       /* The map itself */
+} LINE_MAP;
 
 /* The exact same elements are used within the WINDOW_STATE structure and a
    subsection of the WINDOW structure.  We could define a structure which
@@ -65,6 +76,7 @@ typedef struct window_struct
   int goal_column;      /* The column we would like the cursor to appear in. */
   Keymap keymap;        /* Keymap used to read commands in this window. */
   WINDOW_STATE_DECL;    /* Node, pagetop and point. */
+  LINE_MAP line_map;    /* Current line map */
   char *modeline;       /* Calculated text of the modeline for this window. */
   char **line_starts;   /* Array of printed line starts for this node. */
   int line_count;       /* Number of lines appearing in LINE_STARTS. */
@@ -95,6 +107,8 @@ extern WINDOW *windows;         /* List of visible Info windows. */
 extern WINDOW *active_window;   /* The currently active window. */
 extern WINDOW *the_screen;      /* The Info screen is just another window. */
 extern WINDOW *the_echo_area;   /* THE_ECHO_AREA is a window in THE_SCREEN. */
+
+extern int show_malformed_multibyte_p; /* Show malformed multibyte sequences */
 
 /* Global variable control redisplay of scrolled windows.  If non-zero, it
    is the desired number of lines to scroll the window in order to make
@@ -167,13 +181,13 @@ extern void window_goto_percentage (WINDOW *window, int percent);
 
 /* Build a new node which has FORMAT printed with ARG1 and ARG2 as the
    contents. */
-extern NODE *build_message_node (char *format, void *arg1, void *arg2);
+extern NODE *build_message_node (const char *format, void *arg1, void *arg2);
 
 /* Useful functions can be called from outside of window.c. */
 extern void initialize_message_buffer (void);
 
 /* Print FORMAT with ARG1,2 to the end of the current message buffer. */
-extern void printf_to_message_buffer (char *format, void *arg1, void *arg2,
+extern void printf_to_message_buffer (const char *format, void *arg1, void *arg2,
     void *arg3);
 
 /* Convert the contents of the message buffer to a node. */
@@ -189,13 +203,13 @@ extern int pad_to (int count, char *string);
    The arguments are treated similar to printf () arguments, but not all of
    printf () hair is present.  The message appears immediately.  If there was
    already a message appearing in the echo area, it is removed. */
-extern void window_message_in_echo_area (char *format, void *arg1, void *arg2);
+extern void window_message_in_echo_area (const char *format, void *arg1, void *arg2);
 
 /* Place a temporary message in the echo area built from FORMAT, ARG1
    and ARG2.  The message appears immediately, but does not destroy
    any existing message.  A future call to unmessage_in_echo_area ()
    restores the old contents. */
-extern void message_in_echo_area (char *format, void *arg1, void *arg2);
+extern void message_in_echo_area (const char *format, void *arg1, void *arg2);
 extern void unmessage_in_echo_area (void);
 
 /* Clear the echo area, removing any message that is already present.
@@ -234,8 +248,23 @@ extern int window_get_cursor_column (WINDOW *window);
 extern void window_get_state (WINDOW *window, SEARCH_STATE *state);
 extern void window_set_state (WINDOW *window, SEARCH_STATE *state);
 
-/* Count the number of characters in LINE that precede the printed column
-   offset of GOAL. */
-extern int window_chars_to_goal (char *line, int goal);
+/* Count the number of characters in current line of WIN that precede
+   the printed column offset of GOAL. */
+extern int window_chars_to_goal (WINDOW *win, int goal);
+
+extern size_t process_node_text
+        (WINDOW *win, char *start, int do_tags,
+         int (*fun) (void *, size_t, const char *, char *, size_t, size_t),
+	 void *closure);
+
+void clean_manpage (char *manpage);
+
+extern void window_compute_line_map (WINDOW *win);
+
+int window_point_to_column (WINDOW *win, long point, long *np);
+
+void window_line_map_init (WINDOW *win);
+
+long window_end_of_line (WINDOW *win);
 
 #endif /* not INFO_WINDOW_H */

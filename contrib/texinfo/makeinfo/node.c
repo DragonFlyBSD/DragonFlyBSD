@@ -1,13 +1,13 @@
 /* node.c -- nodes for Texinfo.
-   $Id: node.c,v 1.27 2004/12/20 23:56:07 karl Exp $
+   $Id: node.c,v 1.41 2008/07/05 23:57:29 karl Exp $
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "system.h"
 #include "cmds.h"
@@ -137,7 +136,7 @@ write_tag_table_indirect (void)
 static void
 normalize_node_name (char *string)
 {
-  if (strcasecmp (string, "Top") == 0)
+  if (mbscasecmp (string, "Top") == 0)
     strcpy (string, "Top");
 }
 
@@ -403,7 +402,7 @@ isolate_nodename (char *nodename)
       if (c == '\t' ||
           c == '\n' ||
           c == ','  ||
-          ((paren_seen && nodename[i - 1] == ')') &&
+          ((paren_seen && i > 0 && nodename[i - 1] == ')') &&
            (c == ' ' || c == '.')) ||
           (c == '.' &&
            ((!nodename[i + 1] ||
@@ -582,7 +581,7 @@ cm_node (void)
   if (html && splitting
       /* If there is a Top node, it always goes into index.html.  So
 	 don't start a new HTML file for Top.  */
-      && (top_node_seen || strcasecmp (node, "Top") != 0))
+      && (top_node_seen || mbscasecmp (node, "Top") != 0))
     {
       /* We test *node here so that @node without a valid name won't
 	 start a new file name with a bogus name such as ".html".
@@ -657,7 +656,6 @@ cm_node (void)
   no_indent = 1;
   if (xml)
     {
-      xml_begin_document (current_output_filename);
       xml_begin_node ();
       if (!docbook)
 	{
@@ -760,7 +758,8 @@ cm_node (void)
                         search_forward ("\n* ", input_text_offset);
 
                       if (input_text_offset != -1)
-                        nodename_from_menu = glean_node_from_menu (0, 0);
+                        nodename_from_menu = glean_node_from_menu (0, 
+						     (enum reftype) 0);
 
                       if (nodename_from_menu)
                         {
@@ -844,7 +843,7 @@ cm_node (void)
                   prev = xstrdup (ref->next->node);
                 }
               else if (!ref->next
-                       && strcasecmp (ref->containing_node, "Top") == 0)
+                       && mbscasecmp (ref->containing_node, "Top") == 0)
                 {
                   free (prev);
                   prev = xstrdup (ref->containing_node);
@@ -912,8 +911,8 @@ cm_node (void)
 	  if (!tag)
 	    {
 	      output_stream = fopen (filename, "w");
-	      html_output_head_p = 0; /* so that we generate HTML preamble */
-	      html_output_head ();
+	      output_head_p = 0; /* so that we generate HTML preamble */
+	      output_head ();
 	    }
 	  else if ((tag->flags & TAG_FLAG_ANCHOR) != 0)
 	    {
@@ -930,8 +929,8 @@ cm_node (void)
 	      free (tag->html_fname);
 	      tag->html_fname = NULL;
 	      output_stream = fopen (filename, "w");
-	      html_output_head_p = 0; /* so that we generate HTML preamble */
-	      html_output_head ();
+	      output_head_p = 0; /* so that we generate HTML preamble */
+	      output_head ();
 	    }
 	  else
 	    {
@@ -950,7 +949,7 @@ cm_node (void)
 				output_stream) == NULL
 		      /* Paranoia: did someone change the way HTML
 			 files are finished up?  */
-		      || strcasecmp (end_line, html_end) != 0)
+		      || mbscasecmp (end_line, html_end) != 0)
 		    {
 		      line_error (_("Unexpected string at end of split-HTML file `%s'"),
 				  fname_for_this_node);
@@ -976,8 +975,6 @@ cm_node (void)
       if (splitting || !no_headers)
         { /* Navigation bar. */
           add_html_block_elt ("<div class=\"node\">\n");
-          /* The <p> avoids the links area running on with old Lynxen. */
-          add_word_args ("<p>%s\n", splitting ? "" : "<hr>");
 
           /* In the split HTML case, the filename is wrong for the 
              old-style converted names, but we'll add them anyway, for
@@ -985,10 +982,15 @@ cm_node (void)
              no_headers) nonsplit case.)  */
           add_html_names (node);
 
+          /* Do this after adding the anchors, so the browser rendering
+             can be better.  The <p> avoids the links area running on
+             with old Lynxen.  */
+          add_word_args ("<p>%s\n", splitting ? "" : "<hr>");
+          
           if (next)
             {
               tem = expansion (next, 0);
-	      add_word ((char *) _("Next:"));
+	      add_word ((char *) gdt("Next:"));
               add_word ("&nbsp;");
               
 	      add_word ("<a rel=\"next\" accesskey=\"n\" href=\"");
@@ -1004,7 +1006,7 @@ cm_node (void)
           if (prev)
             {
               tem = expansion (prev, 0);
-	      add_word ((char *) _("Previous:"));
+	      add_word ((char *) gdt("Previous:"));
               add_word ("&nbsp;");
 	      add_word ("<a rel=\"previous\" accesskey=\"p\" href=\"");
 	      add_anchor_name (tem, 1);
@@ -1018,7 +1020,7 @@ cm_node (void)
           if (up)
             {
               tem = expansion (up, 0);
-	      add_word ((char *) _("Up:"));
+	      add_word ((char *) gdt("Up:"));
               add_word ("&nbsp;");
 	      add_word ("<a rel=\"up\" accesskey=\"u\" href=\"");
 	      add_anchor_name (tem, 1);
@@ -1102,7 +1104,17 @@ cm_anchor (int arg)
   char *fname_for_anchor = NULL;
 
   if (arg == END)
-    return;
+    {
+      /* We want to ignore whitespace following @anchor a la
+         texinfo.tex, but we're sitting at the }.  So advance past it,
+         ignore the whitespace, and then go back one character.  When we
+         return, reader_loop will increment input_text_offset again (see
+         the '}' case).  Sorry.  */
+      input_text_offset++;
+      skip_whitespace_and_newlines ();
+      input_text_offset--;
+      return;
+    }
 
   /* Parse the anchor text.  */
   anchor = get_xref_token (1);
@@ -1118,7 +1130,7 @@ cm_anchor (int arg)
       if (!paragraph_is_open)
 	{
 	  if (!executing_string && html)
-	    html_output_head ();
+	    output_head ();
 	  start_paragraph ();
 	  if (!in_fixed_width_font || in_menu || in_detailmenu)
 	    {
@@ -1219,11 +1231,14 @@ cm_anchor (int arg)
 	    }
 	}
     }
-  else if (xml)
+  else if (xml || docbook)
     {
-      xml_insert_element_with_attribute (ANCHOR, START, "name=\"%s\"", anchor);
+      xml_insert_element_with_attribute (ANCHOR, START,
+					 docbook ? "id=\"%s\"" : "name=\"%s\"",
+					 anchor);
       xml_insert_element (ANCHOR, END);
     }
+
   /* Save it in the tag table.  */
   remember_node (anchor, NULL, NULL, NULL,
                  output_position + output_paragraph_offset,
@@ -1360,9 +1375,9 @@ reftype_type_string (enum reftype type)
   switch (type)
     {
     case menu_reference:
-      return _("Menu");
+      return gdt("Menu");
     case followed_reference:
-      return _("Cross");
+      return gdt("Cross");
     default:
       return "Internal-bad-reference-type";
     }
@@ -1421,7 +1436,7 @@ validate_file (TAG_ENTRY *tag_table)
       /* If this node has a Next, then make sure that the Next exists. */
       if (tags->next)
         {
-          validate (tags->next, tags->line_no, _("Next"));
+          validate (tags->next, tags->line_no, gdt("Next"));
 
           /* If the Next node exists, and there is no Up, then make sure
              that the Prev of the Next points back.  But do nothing if
@@ -1459,7 +1474,7 @@ validate_file (TAG_ENTRY *tag_table)
          field at this stage. */
       if (!(tags->flags & TAG_FLAG_PREV_ERROR) && tags->prev)
         {
-          int valid_p = validate (tags->prev, tags->line_no, _("Prev"));
+          int valid_p = validate (tags->prev, tags->line_no, gdt("Prev"));
 
           if (!valid_p)
             tags->flags |= TAG_FLAG_PREV_ERROR;
@@ -1517,11 +1532,11 @@ validate_file (TAG_ENTRY *tag_table)
 
       if (!tags->up
           && !(tags->flags & TAG_FLAG_ANCHOR)
-          && strcasecmp (tags->node, "Top") != 0)
+          && mbscasecmp (tags->node, "Top") != 0)
         line_error (_("`%s' has no Up field (perhaps incorrect sectioning?)"), tags->node);
       else if (tags->up)
         {
-          int valid_p = validate (tags->up, tags->line_no, _("Up"));
+          int valid_p = validate (tags->up, tags->line_no, gdt("Up"));
 
           /* If node X has Up: Y, then warn if Y fails to have a menu item
              or note pointing at X, if Y isn't of the form "(Y)". */
@@ -1609,17 +1624,6 @@ validate_file (TAG_ENTRY *tag_table)
           continue;
         }
 
-      /* Special hack.  If the node in question appears to have
-         been referenced more than REFERENCE_WARNING_LIMIT times,
-         give a warning. */
-      if (tags->touched > reference_warning_limit)
-        {
-          input_filename = tags->filename;
-          line_number = tags->line_no;
-          warning (_("node `%s' has been referenced %d times"),
-                   tags->node, tags->touched);
-        }
-
       if (tags->touched == 0)
         {
           input_filename = tags->filename;
@@ -1628,7 +1632,7 @@ validate_file (TAG_ENTRY *tag_table)
           /* Notice that the node "Top" is special, and doesn't have to
              be referenced.   Anchors don't have to be referenced
              either, you might define them for another document.  */
-          if (strcasecmp (tags->node, "Top") != 0
+          if (mbscasecmp (tags->node, "Top") != 0
               && !(tags->flags & TAG_FLAG_ANCHOR))
             warning (_("unreferenced node `%s'"), tags->node);
         }

@@ -1,13 +1,12 @@
-
-@node GNU Free Documentation License
-@appendixsec GNU Free Documentation License
-
-@cindex FDL, GNU Free Documentation License
+@c The GNU Free Documentation License.
 @center Version 1.2, November 2002
+
+@c This file is intended to be included within another document,
+@c hence no sectioning command or @node.  
 
 @display
 Copyright @copyright{} 2000,2001,2002 Free Software Foundation, Inc.
-59 Temple Place, Suite 330, Boston, MA  02111-1307, USA
+51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA
 
 Everyone is permitted to copy and distribute verbatim copies
 of this license document, but changing it is not allowed.
@@ -408,7 +407,7 @@ as a draft) by the Free Software Foundation.
 @end enumerate
 
 @page
-@appendixsubsec ADDENDUM: How to use this License for your documents
+@heading ADDENDUM: How to use this License for your documents
 
 To use this License in a document you have written, include a copy of
 the License in the document and put the following copyright and
@@ -427,7 +426,7 @@ license notices just after the title page:
 @end smallexample
 
 If you have Invariant Sections, Front-Cover Texts and Back-Cover Texts,
-replace the ``with...Texts.'' line with this:
+replace the ``with@dots{}Texts.'' line with this:
 
 @smallexample
 @group

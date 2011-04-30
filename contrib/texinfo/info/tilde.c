@@ -1,13 +1,13 @@
 /* tilde.c -- tilde expansion code (~/foo := $HOME/foo).
-   $Id: tilde.c,v 1.3 2004/04/11 17:56:46 karl Exp $
+   $Id: tilde.c,v 1.8 2008/06/11 09:55:43 gray Exp $
 
    Copyright (C) 1988, 1989, 1990, 1991, 1992, 1993, 1996, 1998, 1999,
-   2002, 2004 Free Software Foundation, Inc.
+   2002, 2004, 2006, 2007, 2008 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,12 +15,10 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Brian Fox (bfox@ai.mit.edu). */
 
-/* Include config.h before doing alloca.  */
 #include "info.h"
 #include "tilde.h"
 
@@ -32,19 +30,19 @@ static void *xmalloc (), *xrealloc ();
    whitespace preceding a tilde so that simple programs which do not
    perform any word separation get desired behaviour. */
 static char *default_prefixes[] =
-  { " ~", "\t~", (char *)NULL };
+  { " ~", "\t~", NULL };
 
 /* The default value of tilde_additional_suffixes.  This is set to
    whitespace or newline so that simple programs which do not
    perform any word separation get desired behaviour. */
 static char *default_suffixes[] =
-  { " ", "\n", (char *)NULL };
+  { " ", "\n", NULL };
 
 /* If non-null, this contains the address of a function to call if the
    standard meaning for expanding a tilde fails.  The function is called
    with the text (sans tilde, as in "foo"), and returns a malloc()'ed string
    which is the expansion, or a NULL pointer if there is no expansion. */
-CFunction *tilde_expansion_failure_hook = (CFunction *)NULL;
+CFunction *tilde_expansion_failure_hook = NULL;
 
 /* When non-null, this is a NULL terminated array of strings which
    are duplicates for a tilde prefix.  Bash uses this to expand
@@ -69,7 +67,7 @@ tilde_find_prefix (char *string, int *len)
   *len = 0;
 
   if (!*string || *string == '~')
-    return (0);
+    return 0;
 
   if (prefixes)
     {
@@ -80,12 +78,12 @@ tilde_find_prefix (char *string, int *len)
               if (strncmp (string + i, prefixes[j], strlen (prefixes[j])) == 0)
                 {
                   *len = strlen (prefixes[j]) - 1;
-                  return (i + *len);
+                  return i + *len;
                 }
             }
         }
     }
-  return (string_len);
+  return string_len;
 }
 
 /* Find the end of a tilde expansion in STRING, and return the index of
@@ -106,10 +104,10 @@ tilde_find_suffix (char *string)
       for (j = 0; suffixes && suffixes[j]; j++)
         {
           if (strncmp (string + i, suffixes[j], strlen (suffixes[j])) == 0)
-            return (i);
+            return i;
         }
     }
-  return (i);
+  return i;
 }
 
 /* Return a new string which is the result of tilde expanding STRING. */
@@ -120,7 +118,7 @@ tilde_expand (char *string)
   int result_size, result_index;
 
   result_size = result_index = 0;
-  result = (char *)NULL;
+  result = NULL;
 
   /* Scan through STRING expanding tildes as we come to them. */
   while (1)
@@ -134,7 +132,7 @@ tilde_expand (char *string)
 
       /* Copy the skipped text into the result. */
       if ((result_index + start + 1) > result_size)
-        result = (char *)xrealloc (result, 1 + (result_size += (start + 20)));
+        result = xrealloc (result, 1 + (result_size += (start + 20)));
 
       strncpy (result + result_index, string, start);
       result_index += start;
@@ -151,7 +149,7 @@ tilde_expand (char *string)
         break;
 
       /* Expand the entire tilde word, and copy it into RESULT. */
-      tilde_word = (char *)xmalloc (1 + end);
+      tilde_word = xmalloc (1 + end);
       strncpy (tilde_word, string, end);
       tilde_word[end] = '\0';
       string += end;
@@ -161,7 +159,7 @@ tilde_expand (char *string)
 
       len = strlen (expansion);
       if ((result_index + len + 1) > result_size)
-        result = (char *)xrealloc (result, 1 + (result_size += (len + 20)));
+        result = xrealloc (result, 1 + (result_size += (len + 20)));
 
       strcpy (result + result_index, expansion);
       result_index += len;
@@ -170,7 +168,7 @@ tilde_expand (char *string)
 
   result[result_index] = '\0';
 
-  return (result);
+  return result;
 }
 
 /* Do the work of tilde expansion on FILENAME.  FILENAME starts with a
@@ -311,7 +309,7 @@ xmalloc (bytes)
 
   if (!temp)
     memory_error_and_abort ();
-  return (temp);
+  return temp;
 }
 
 static void *
@@ -329,7 +327,7 @@ xrealloc (pointer, bytes)
   if (!temp)
     memory_error_and_abort ();
 
-  return (temp);
+  return temp;
 }
 
 static void

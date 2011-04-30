@@ -1,12 +1,13 @@
 /* infokey.c -- compile ~/.infokey to ~/.info.
-   $Id: infokey.c,v 1.9 2004/12/14 00:15:36 karl Exp $
+   $Id: infokey.c,v 1.18 2008/06/11 09:55:42 gray Exp $
 
-   Copyright (C) 1999, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1999, 2001, 2002, 2003, 2004, 2005, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Andrew Bettison <andrewb@zip.com.au>. */
 
@@ -25,7 +25,7 @@
 #include "key.h"
 #include "getopt.h"
 
-static char *program_name = "infokey";
+char *program_name = "infokey";
 
 /* Non-zero means print version info only. */
 static int print_version_p = 0;
@@ -35,11 +35,11 @@ static int print_help_p = 0;
 
 /* String specifying the source file.  This is set by the user on the
    command line, or a default is used. */
-static char *input_filename = (char *) NULL;
+static char *input_filename = NULL;
 
 /* String specifying the name of the file to output to.  This is
    set by the user on the command line, or a default is used. */
-static char *output_filename = (char *) NULL;
+static char *output_filename = NULL;
 
 /* Structure describing the options that Infokey accepts.  We pass this
    structure to getopt_long ().  If you add or otherwise change this
@@ -142,11 +142,11 @@ main (int argc, char **argv)
     {
       printf ("%s (GNU %s) %s\n", program_name, PACKAGE, VERSION);
       puts ("");
-      printf (_ ("Copyright (C) %s Free Software Foundation, Inc.\n\
-There is NO warranty.  You may redistribute this software\n\
-under the terms of the GNU General Public License.\n\
-For more information about these matters, see the files named COPYING.\n"),
-	      "2003");
+      printf (_("Copyright (C) %s Free Software Foundation, Inc.\n\
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
+This is free software: you are free to change and redistribute it.\n\
+There is NO WARRANTY, to the extent permitted by law.\n"),
+	      "2008");
       xexit (0);
     }
 
@@ -638,7 +638,7 @@ compile (FILE *fp, const char *filename, struct sect *sections)
 	      else
 		{
 		  syntax_error (filename, lnum,
-                      (char *) _("NUL character (^%c) not permitted"),
+                      _("NUL character (^%c) not permitted"),
                       (void *) (long) c, NULL, NULL, NULL);
 		  error = 1;
 		}
@@ -662,7 +662,7 @@ compile (FILE *fp, const char *filename, struct sect *sections)
 	      rescan = 1;
 	      if (alen == 0)
 		{
-		  syntax_error (filename, lnum, (char *) _("missing action name"),
+		  syntax_error (filename, lnum, _("missing action name"),
 				(void *) (long) c, NULL, NULL, NULL);
 		  error = 1;
 		}

@@ -1,13 +1,13 @@
 /* cmds.c -- Texinfo commands.
-   $Id: cmds.c,v 1.55 2004/12/14 00:15:36 karl Exp $
+   $Id: cmds.c,v 1.83 2008/04/09 17:07:31 karl Exp $
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006,
+   2007, 2008 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,15 +15,16 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "system.h"
+#include "mbswidth.h"
 #include "cmds.h"
 #include "defun.h"
 #include "files.h"
 #include "footnote.h"
 #include "html.h"
+#include "index.h"
 #include "insertion.h"
 #include "lang.h"
 #include "macro.h"
@@ -39,11 +40,16 @@
 #include <time.h>
 #endif
 
-/* Options. */
+/* Simple commands defined and only called here. */
 static void cm_exampleindent (void),
      cm_firstparagraphindent (void),
-     cm_paragraphindent (void),
-     cm_novalidate (void);
+     cm_fonttextsize (void),
+     cm_frenchspacing (void),
+     cm_geq (int arg),
+     cm_leq (int arg),
+     cm_minus (int arg),
+     cm_novalidate (void),
+     cm_paragraphindent (void);
 
 /* Internals. */
 static void cm_obsolete (int arg, int start, int end),
@@ -90,12 +96,14 @@ COMMAND command_table[] = {
   { "afourpaper", cm_ignore_line, NO_BRACE_ARGS },
   { "afourwide", cm_ignore_line, NO_BRACE_ARGS },
   { "alias", cm_alias, NO_BRACE_ARGS },
+  { "allowcodebreaks", cm_ignore_line, NO_BRACE_ARGS },
   { "anchor", cm_anchor, BRACE_ARGS },
   { "appendix", cm_appendix, NO_BRACE_ARGS },
   { "appendixsection", cm_appendixsec, NO_BRACE_ARGS },
   { "appendixsec", cm_appendixsec, NO_BRACE_ARGS },
   { "appendixsubsec", cm_appendixsubsec, NO_BRACE_ARGS },
   { "appendixsubsubsec", cm_appendixsubsubsec, NO_BRACE_ARGS },
+  { "arrow", cm_arrow, BRACE_ARGS },
   { "asis", cm_no_op, BRACE_ARGS },
   { "author", cm_author, NO_BRACE_ARGS },
   { "b", cm_b, BRACE_ARGS },
@@ -111,6 +119,9 @@ COMMAND command_table[] = {
   { "cindex", cm_cindex, NO_BRACE_ARGS },
   { "cite", cm_cite, BRACE_ARGS },
   { "clear", cm_clear, NO_BRACE_ARGS },
+  { "click", cm_click, BRACE_ARGS },
+  { "clicksequence", cm_clicksequence, BRACE_ARGS },
+  { "clickstyle", cm_clickstyle, NO_BRACE_ARGS },
   { "code", cm_code, BRACE_ARGS },
   { "comma", cm_comma, BRACE_ARGS },
   { "command", cm_code, BRACE_ARGS },
@@ -185,9 +196,13 @@ COMMAND command_table[] = {
   { "error", cm_error, BRACE_ARGS },
   { "euro", cm_special_char, BRACE_ARGS },
   { "evenfooting", cm_ignore_line, NO_BRACE_ARGS },
+  { "evenfootingmarks", cm_ignore_line, NO_BRACE_ARGS },
   { "evenheading", cm_ignore_line, NO_BRACE_ARGS },
+  { "evenheadingmarks", cm_ignore_line, NO_BRACE_ARGS },
   { "everyfooting", cm_ignore_line, NO_BRACE_ARGS },
+  { "everyfootingmarks", cm_ignore_line, NO_BRACE_ARGS },
   { "everyheading", cm_ignore_line, NO_BRACE_ARGS },
+  { "everyheadingmarks", cm_ignore_line, NO_BRACE_ARGS },
   { "example", cm_example, NO_BRACE_ARGS },
   { "exampleindent", cm_exampleindent, NO_BRACE_ARGS },
   { "exclamdown", cm_special_char, BRACE_ARGS },
@@ -200,11 +215,20 @@ COMMAND command_table[] = {
   { "float", cm_float, NO_BRACE_ARGS },
   { "flushleft", cm_flushleft, NO_BRACE_ARGS },
   { "flushright", cm_flushright, NO_BRACE_ARGS },
+  { "fonttextsize", cm_fonttextsize, NO_BRACE_ARGS },
   { "footnote", cm_footnote, NO_BRACE_ARGS}, /* self-arg eater */
   { "footnotestyle", cm_footnotestyle, NO_BRACE_ARGS },
   { "format", cm_format, NO_BRACE_ARGS },
+  { "frenchspacing", cm_frenchspacing, NO_BRACE_ARGS },
   { "ftable", cm_ftable, NO_BRACE_ARGS },
+  { "geq", cm_geq, BRACE_ARGS },
   { "group", cm_group, NO_BRACE_ARGS },
+  { "guillemetleft", cm_special_char, BRACE_ARGS },
+  { "guillemetright", cm_special_char, BRACE_ARGS },
+  { "guillemotleft", cm_special_char, BRACE_ARGS },
+  { "guillemotright", cm_special_char, BRACE_ARGS },
+  { "guilsinglleft", cm_guilsinglleft, BRACE_ARGS },
+  { "guilsinglright", cm_guilsinglright, BRACE_ARGS },
   { "heading", cm_heading, NO_BRACE_ARGS },
   { "headings", cm_ignore_line, NO_BRACE_ARGS },
   { "headitem", cm_headitem, NO_BRACE_ARGS },
@@ -241,6 +265,7 @@ COMMAND command_table[] = {
   { "key", cm_key, BRACE_ARGS },
   { "kindex", cm_kindex, NO_BRACE_ARGS },
   { "l", cm_special_char, BRACE_ARGS },
+  { "leq", cm_leq, BRACE_ARGS },
   { "lisp", cm_lisp, NO_BRACE_ARGS },
   { "listoffloats", cm_listoffloats, NO_BRACE_ARGS },
   { "lowersections", cm_lowersections, NO_BRACE_ARGS },
@@ -257,7 +282,9 @@ COMMAND command_table[] = {
   { "nwnode", cm_node, NO_BRACE_ARGS },
   { "o", cm_special_char, BRACE_ARGS },
   { "oddfooting", cm_ignore_line, NO_BRACE_ARGS },
+  { "oddfootingmarks", cm_ignore_line, NO_BRACE_ARGS },
   { "oddheading", cm_ignore_line, NO_BRACE_ARGS },
+  { "oddheadingmarks", cm_ignore_line, NO_BRACE_ARGS },
   { "oe", cm_special_char, BRACE_ARGS },
   { "option", cm_code, BRACE_ARGS },
   { "ordf", cm_special_char, BRACE_ARGS },
@@ -273,6 +300,12 @@ COMMAND command_table[] = {
   { "pxref", cm_pxref, BRACE_ARGS },
   { "questiondown", cm_special_char, BRACE_ARGS },
   { "quotation", cm_quotation, NO_BRACE_ARGS },
+  { "quotedblbase", cm_quotedblbase, BRACE_ARGS },
+  { "quotedblleft", cm_quotedblleft, BRACE_ARGS },
+  { "quotedblright", cm_quotedblright, BRACE_ARGS },
+  { "quoteleft", cm_quoteleft, BRACE_ARGS },
+  { "quoteright", cm_quoteright, BRACE_ARGS },
+  { "quotesinglbase", cm_quotesinglbase, BRACE_ARGS },
   { "r", cm_r, BRACE_ARGS },
   { "raisesections", cm_raisesections, NO_BRACE_ARGS },
   { "ref", cm_ref, BRACE_ARGS },
@@ -316,6 +349,7 @@ COMMAND command_table[] = {
   { "tab", cm_tab, NO_BRACE_ARGS },
   { "table", cm_table, NO_BRACE_ARGS },
   { "tex", cm_tex, NO_BRACE_ARGS },
+  { "textdegree", cm_special_char, BRACE_ARGS },
   { "tie", cm_tie, BRACE_ARGS },
   { "tieaccent", cm_accent, MAYBE_BRACE_ARGS },
   { "tindex", cm_tindex, NO_BRACE_ARGS },
@@ -451,9 +485,9 @@ cm_enddots (int arg)
 	}
       else
 	if (html && !in_fixed_width_font)
-	  insert_string ("<small class=\"enddots\">....</small>");
+	  insert_string ("<small class=\"enddots\">...</small>");
 	else
-	  add_word ("....");
+	  add_word ("...");
     }
 }
 
@@ -473,7 +507,35 @@ cm_bullet (int arg)
     }
 }
 
-void
+static void
+cm_geq (int arg)
+{
+  if (arg == START)
+    {
+      if (xml)
+        xml_insert_entity ("ge");
+      else if (html)
+        add_word ("&ge;");
+      else
+        insert_string (">=");
+    }
+}
+
+static void
+cm_leq (int arg)
+{
+  if (arg == START)
+    {
+      if (xml)
+        xml_insert_entity ("le");
+      else if (html)
+        add_word ("&le;");
+      else
+        insert_string ("<=");
+    }
+}
+
+static void
 cm_minus (int arg)
 {
   if (arg == START)
@@ -578,6 +640,138 @@ cm_registeredsymbol (int arg)
     }
 }
 
+/* Left single guillemet (single left-pointing angle quotation mark). */
+void
+cm_guilsinglleft (int arg)
+{
+  if (arg == START)
+    {
+      if (html)
+        add_word ("&lsaquo;");
+      else if (xml && !docbook)
+        xml_insert_entity ("lsaquo");
+      else
+        add_word ("<");
+    }
+}
+
+/* Right single guillemet (single right-pointing angle quotation mark). */
+void
+cm_guilsinglright (int arg)
+{
+  if (arg == START)
+    {
+      if (html)
+        add_word ("&rsaquo;");
+      else if (xml && !docbook)
+        xml_insert_entity ("rsaquo");
+      else
+        add_word (">");
+    }
+}
+
+/* Double low-9 quotation mark. */
+void
+cm_quotedblbase (int arg)
+{
+  if (arg == START)
+    {
+      if (html)
+        add_word ("&bdquo;");
+      else if (docbook)
+        xml_insert_entity ("ldquor");
+      else if (xml && !docbook)
+        xml_insert_entity ("bdquo");
+      else
+        add_word ("\"");
+    }
+}
+
+/* Left double quotation mark. */
+void
+cm_quotedblleft (int arg)
+{
+  if (arg == START)
+    {
+      if (html)
+        add_word ("&ldquo;");
+      else if (docbook)
+        xml_insert_entity ("ldquo");
+      else if (xml && !docbook)
+        xml_insert_entity ("ldquo");
+      else
+        add_word ("\"");
+    }
+}
+
+/* Right double quotation mark. */
+void
+cm_quotedblright (int arg)
+{
+  if (arg == START)
+    {
+      if (html)
+        add_word ("&rdquo;");
+      else if (docbook)
+        xml_insert_entity ("rdquo");
+      else if (xml && !docbook)
+        xml_insert_entity ("rdquo");
+      else
+        add_word ("\"");
+    }
+}
+
+/* Left single quotation mark. */
+void
+cm_quoteleft (int arg)
+{
+  if (arg == START)
+    {
+      if (html)
+        add_word ("&lsquo;");
+      else if (docbook)
+        xml_insert_entity ("lsquo");
+      else if (xml && !docbook)
+        xml_insert_entity ("lsquo");
+      else
+        add_word ("`");
+    }
+}
+
+/* Right single quotation mark. */
+void
+cm_quoteright (int arg)
+{
+  if (arg == START)
+    {
+      if (html)
+        add_word ("&rsquo;");
+      else if (docbook)
+        xml_insert_entity ("rsquo");
+      else if (xml && !docbook)
+        xml_insert_entity ("rsquo");
+      else
+        add_word ("'");
+    }
+}
+
+/* Single low-9 quotation mark. */
+void
+cm_quotesinglbase (int arg)
+{
+  if (arg == START)
+    {
+      if (html)
+        add_word ("&sbquo;");
+      else if (docbook)
+        xml_insert_entity ("lsquor");
+      else if (xml && !docbook)
+        xml_insert_entity ("sbquo");
+      else
+        add_word (",");
+    }
+}
+
 void
 cm_today (int arg)
 {
@@ -600,7 +794,7 @@ cm_comment (void)
   /* For HTML, do not output comments before HTML header is written,
      otherwise comments before @settitle cause an empty <title> in the
      header.  */
-  if ((html && html_output_head_p) || xml)
+  if ((html && output_head_p) || xml)
     {
       char *line;
       get_rest_of_line (0, &line);
@@ -624,6 +818,7 @@ cm_comment (void)
           /* Use insert for HTML, and XML when indentation is enabled.
              For Docbook, use add_char.  */
           if (xml && xml_indentation_increment > 0
+	      && output_paragraph_offset > 0
               && output_paragraph[output_paragraph_offset-1] != '\n')
             insert ('\n');
 
@@ -829,21 +1024,21 @@ cm_code (int arg)
         { /* Use <samp> tag in general to get typewriter.  */
           if (arg == START)
             { /* If @samp specifically, add quotes a la TeX output.  */
-              if (STREQ (command, "samp")) add_char ('`');
-              add_word ("<samp>");
+              if (STREQ (command, "samp"))
+		add_word ("&lsquo;");
+	      insert_html_tag (arg, "samp");
             }
           insert_html_tag_with_attribute (arg, "span", "class=\"%s\"",command);
           if (arg == END)
             {
-              add_word ("</samp>");
-              if (STREQ (command, "samp")) add_char ('\'');
+	      insert_html_tag (arg, "samp");
+              if (STREQ (command, "samp"))
+		add_word ("&rsquo;");
             }
         }
     }
   else
     {
-      extern int printing_index;
-
       if (!printing_index)
         {
           if (arg == START)
@@ -1100,15 +1295,16 @@ cm_strong (int arg, int start_pos, int end_pos)
     insert_html_tag (arg, "strong");
   else
     add_char ('*');
-  
+
   if (!xml && !html && !docbook && !no_headers
       && arg == END
       && end_pos - start_pos >= 6
       && (STRNCASEEQ ((char *) output_paragraph + start_pos, "*Note:", 6)
-          || STRNCASEEQ ((char *) output_paragraph + start_pos, "*Note ", 6)))
+          || STRNCASEEQ ((char *) output_paragraph + start_pos, "*Note ", 6))
+          )
     {
       /* Translators: "Note:" is literal here and should not be
-         translated.  @strong{Nota}, say, does not cause the problem.  */
+         translated.  A document with @strong{Nota}, say, is fine.  */
       warning (_("@strong{Note...} produces a spurious cross-reference in Info; reword to avoid that"));
       /* Adjust the output to avoid writing the bad xref.  */
       output_paragraph[start_pos + 5] = '_';
@@ -1126,7 +1322,9 @@ cm_cite (int arg, int position)
     {
       if (arg == START)
         add_char ('`');
-      else
+      else if (!looking_at ("}'"))
+        /* In the simple case of, e.g.,  ... @cite{Foo}'s ...
+           don't output a double ''.  */
         add_char ('\'');
     }
 }
@@ -1145,7 +1343,6 @@ cm_i (int arg)
 {
   /* Make use of <lineannotation> of Docbook, if we are
      inside an @example or similar.  */
-  extern int printing_index;
   if (docbook && !filling_enabled && !printing_index)
     xml_insert_element (LINEANNOTATION, arg);
   else if (xml)
@@ -1161,7 +1358,6 @@ cm_slanted (int arg)
 {
   /* Make use of <lineannotation> of Docbook, if we are
      inside an @example or similar.  */
-  extern int printing_index;
   if (docbook && !filling_enabled && !printing_index)
     xml_insert_element (LINEANNOTATION, arg);
   else if (xml)
@@ -1176,7 +1372,6 @@ void
 cm_b (int arg)
 {
   /* See cm_i comments.  */
-  extern int printing_index;
   if (docbook && !filling_enabled && !printing_index)
     xml_insert_element (LINEANNOTATION, arg);
   else if (docbook && arg == START)
@@ -1193,7 +1388,6 @@ void
 cm_r (int arg)
 {
   /* See cm_i comments.  */
-  extern int printing_index;
   if (docbook && !filling_enabled && !printing_index)
     xml_insert_element (LINEANNOTATION, arg);
   else if (xml)
@@ -1208,7 +1402,6 @@ void
 cm_sansserif (int arg)
 {
   /* See cm_i comments.  */
-  extern int printing_index;
   if (docbook && !filling_enabled && !printing_index)
     xml_insert_element (LINEANNOTATION, arg);
   else if (xml)
@@ -1283,17 +1476,23 @@ cm_w (int arg)
 
 /* An unbreakable word space.  Same as @w{ } for makeinfo, but different
    for TeX (the space stretches and stretches, and does not inhibit
-   hyphenation).  */
+   hyphenation).  For XML and HTML, insert the non-breaking-space
+   character and entity, respectively */
 void
 cm_tie (int arg)
 {
   if (arg == START)
+    if (html)
+      insert_string ("&nbsp;");
+    else if (xml)
+      insert_string ("&#xa0;");
+    else
     {
       cm_w (START);
       add_char (' ');
     }
   else
-    cm_w (END);
+    if (!html && !xml) cm_w (END);
 }
 
 /* Explain that this command is obsolete, thus the user shouldn't
@@ -1371,7 +1570,6 @@ cm_settitle (void)
 {
   if (xml)
     {
-      xml_begin_document (current_output_filename);
       xml_insert_element (SETTITLE, START);
       xml_in_book_title = 1;
       get_rest_of_line (0, &title);
@@ -1434,9 +1632,6 @@ cm_sp (void)
           /* close_paragraph generates an extra blank line.  */
           close_single_paragraph ();
 
-          if (lines && html && !executing_string)
-            html_output_head ();
-
           if (html)
             add_html_block_elt ("<pre class=\"sp\">\n");
 
@@ -1474,10 +1669,14 @@ cm_dircategory (void)
 
       if (!no_headers && !html)
         {
+          /* use add_* instead of insert_* because otherwise the
+             file header ("This is ...") will end up inside the
+             dir section markers.  */
           kill_self_indent (-1); /* make sure there's no indentation */
-          insert_string ("INFO-DIR-SECTION ");
-          insert_string (line);
-          insert ('\n');
+          cm_noindent (); /* make sure again */
+          add_word ("INFO-DIR-SECTION ");
+          add_word (line);
+          close_single_paragraph ();  /* newline */
         }
 
       free (line);
@@ -1501,7 +1700,7 @@ cm_center (void)
     }
   else
     {
-      int i, start, length;
+      int i, start, length, width;
       char *line;
       int save_indented_fill = indented_fill;
       int save_filling_enabled = filling_enabled;
@@ -1530,13 +1729,14 @@ cm_center (void)
 
            output_paragraph_offset = ++i;
            length = output_paragraph_offset - start;
+	   width = mbsnwidth ((char *)(output_paragraph + start), length, 0);
 
-           if (length < (fill_column - fudge_factor))
+           if (width < (fill_column - fudge_factor))
              {
                line = xmalloc (1 + length);
                memcpy (line, (char *)(output_paragraph + start), length);
 
-               i = (fill_column - fudge_factor - length) / 2;
+               i = (fill_column - fudge_factor - width) / 2;
                output_paragraph_offset = start;
 
                while (i--)
@@ -1553,9 +1753,54 @@ cm_center (void)
       filling_enabled = save_filling_enabled;
       indented_fill = save_indented_fill;
       close_single_paragraph ();
-      if (looking_at("\n"))
+      if (looking_at ("\n"))
         insert ('\n');
     }
+}
+
+
+/* Define what @click{} does.  */
+static char *click_command = "@arrow";
+
+void
+cm_clickstyle (void)
+{
+  click_command = get_item_function ();
+
+  if (looking_at ("\n"))
+    {
+      input_text_offset++;
+      line_number++;
+    }
+}
+
+/* @clicksequence{File @click{} Open} */
+void
+cm_clicksequence (int arg)
+{
+  if (xml)
+    xml_insert_element (CLICKSEQUENCE, arg);
+}
+
+void
+cm_click (int arg)
+{
+  if (xml)
+    xml_insert_element (CLICK, arg);
+  else if (arg == END)
+    execute_string ("%s{}", click_command);
+}
+
+
+/* Generic right arrow, default clickstyle.  */
+void
+cm_arrow (int arg)
+{
+  if (arg == END)
+    if (html || xml)
+      xml_insert_entity ("rarr");
+    else
+      add_word ("->");
 }
 
 /* Show what an expression returns. */
@@ -1563,7 +1808,10 @@ void
 cm_result (int arg)
 {
   if (arg == END)
-    add_word (html ? "=&gt;" : "=>");
+    if (html || xml)
+      xml_insert_entity ("rArr");
+    else
+      add_word ("=>");
 }
 
 /* What an expression expands to. */
@@ -1673,15 +1921,27 @@ handle_include (int verbatim_include)
   if (!insertion_stack)
     close_paragraph ();  /* No blank lines etc. if not at outer level.  */
     
+  if (macro_expansion_output_stream && verbatim_include)
+    {
+      me_append_before_this_command ();
+      return;
+    }
+    
   get_rest_of_line (0, &arg);
   /* We really only want to expand @value, but it's easier to just do
      everything.  TeX will only work with @value.  */
-  filename = text_expansion (arg);
-  free (arg);
+  {
+    int save_in_fixed_width_font = in_fixed_width_font;
+    in_fixed_width_font = 1;  /* do not change -- to -, etc.  */
+    filename = text_expansion (arg);
+    in_fixed_width_font = save_in_fixed_width_font;    
+  }
 
+  free (arg);
+  
   if (macro_expansion_output_stream && !executing_string)
     remember_itext (input_text, input_text_offset);
-
+  
   pushfile ();
 
   /* In verbose mode we print info about including another file. */
@@ -1816,7 +2076,7 @@ cm_firstparagraphindent (void)
 
   get_rest_of_line (1, &arg);
   if (set_firstparagraphindent (arg) != 0)
-    line_error (_("Bad argument to %c%s"), COMMAND_PREFIX, command);
+    line_error (_("Bad argument to @%s: %s"), command, arg);
 
   free (arg);
 }
@@ -1834,7 +2094,8 @@ cm_colon (void)
         {
           /* Erase literal character that's there, except `>', which is
              part of the XML tag.  */
-          if (output_paragraph[output_paragraph_offset-1] != '>')
+          if (output_paragraph_offset > 0
+	      && output_paragraph[output_paragraph_offset-1] != '>')
             output_paragraph_offset--;
 
           switch (input_text[input_text_offset-3])
@@ -1861,7 +2122,7 @@ cm_colon (void)
 void
 cm_punct (int arg)
 {
-  if (xml && !docbook)
+  if (xml && !docbook && input_text_offset > 0)
     {
       switch (input_text[input_text_offset-1])
         {
@@ -1880,4 +2141,44 @@ cm_punct (int arg)
     {
       insert_self (arg);
     }
+}
+
+
+/* If @frenchspacing is in effect, avoid outputting extra spaces after
+   sentence-ending periods.  Actually, we explicitly do this only in one
+   tiny case (see add_char in makeinfo.c).  Usually we just output
+   whatever the user gives us.  */
+void
+cm_frenchspacing (void)
+{
+  char *val;
+  get_rest_of_line (1, &val);
+
+  if (STREQ (val, "on")) {
+    french_spacing = 1;
+  } else if (STREQ (val, "off")) {
+    french_spacing = 0;
+  } else {
+    line_error (_("Expected @%s on or off, not `%s'"), command, val);
+  }
+  
+  if (xml && !docbook) {
+    xml_insert_element_with_attribute (FRENCHSPACING, START,
+                                       "val=\"%s\"", val);
+    xml_insert_element (FRENCHSPACING, END);
+  }
+}
+
+
+/* Body font size.  This is only for TeX, so we're just checking
+   validity here.  Don't think we should even pass it on to XML.  */
+void
+cm_fonttextsize (void)
+{
+  char *val;
+  get_rest_of_line (1, &val);
+
+  if (! (STREQ (val, "10") || STREQ (val, "off"))) {
+    line_error (_("Only @%s 10 or 11 is supported, not `%s'"), command, val);
+  }
 }

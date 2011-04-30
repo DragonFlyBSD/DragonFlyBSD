@@ -1,13 +1,13 @@
 /* filesys.c -- filesystem specific functions.
-   $Id: filesys.c,v 1.6 2004/07/30 17:17:40 karl Exp $
+   $Id: filesys.c,v 1.12 2008/06/11 09:55:42 gray Exp $
 
-   Copyright (C) 1993, 1997, 1998, 2000, 2002, 2003, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1993, 1997, 1998, 2000, 2002, 2003, 2004, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -56,6 +55,7 @@ static char *info_suffixes[] = {
 static COMPRESSION_ALIST compress_suffixes[] = {
   { ".gz", "gunzip" },
   { ".bz2", "bunzip2" },
+  { ".lzma", "unlzma" },
   { ".z", "gunzip" },
   { ".Z", "uncompress" },
   { ".Y", "unyabba" },
@@ -63,20 +63,20 @@ static COMPRESSION_ALIST compress_suffixes[] = {
   { "gz", "gunzip" },
   { "z", "gunzip" },
 #endif
-  { (char *)NULL, (char *)NULL }
+  { NULL, NULL }
 };
 
 /* The path on which we look for info files.  You can initialize this
    from the environment variable INFOPATH if there is one, or you can
    call info_add_path () to add paths to the beginning or end of it.
    You can call zap_infopath () to make the path go away. */
-char *infopath = (char *)NULL;
+char *infopath = NULL;
 static int infopath_size = 0;
 
 /* Expand the filename in PARTIAL to make a real name for this operating
    system.  This looks in INFO_PATHS in order to find the correct file.
    If it can't find the file, it returns NULL. */
-static char *local_temp_filename = (char *)NULL;
+static char *local_temp_filename = NULL;
 static int local_temp_filename_size = 0;
 
 char *
@@ -96,7 +96,7 @@ info_find_fullpath (char *partial)
       expansion = lookup_info_filename (partial);
 
       if (expansion)
-        return (expansion);
+        return expansion;
 
       /* If we have the full path to this file, we still may have to add
          various extensions to it.  I guess we have to stat this file
@@ -119,7 +119,7 @@ info_find_fullpath (char *partial)
 		(partial[1] == '.' && IS_SLASH (partial[2]))))
         {
           if (local_temp_filename_size < 1024)
-            local_temp_filename = (char *)xrealloc
+            local_temp_filename = xrealloc
               (local_temp_filename, (local_temp_filename_size = 1024));
 #if defined (HAVE_GETCWD)
           if (!getcwd (local_temp_filename, local_temp_filename_size))
@@ -128,7 +128,7 @@ info_find_fullpath (char *partial)
 #endif /* !HAVE_GETCWD */
             {
               filesys_error_number = errno;
-              return (partial);
+              return partial;
             }
 
           strcat (local_temp_filename, "/");
@@ -144,15 +144,15 @@ info_find_fullpath (char *partial)
         {
           remember_info_filename (partial, temp);
           if (strlen (temp) > (unsigned int) local_temp_filename_size)
-            local_temp_filename = (char *) xrealloc
+            local_temp_filename = xrealloc
               (local_temp_filename,
                (local_temp_filename_size = (50 + strlen (temp))));
           strcpy (local_temp_filename, temp);
           free (temp);
-          return (local_temp_filename);
+          return local_temp_filename;
         }
     }
-  return (partial);
+  return partial;
 }
 
 /* Scan the list of directories in PATH looking for FILENAME.  If we find
@@ -187,7 +187,7 @@ info_file_in_path (char *filename, char *path)
           temp_dirname = expanded_dirname;
         }
 
-      temp = (char *)xmalloc (30 + strlen (temp_dirname) + strlen (filename));
+      temp = xmalloc (30 + strlen (temp_dirname) + strlen (filename));
       strcpy (temp, temp_dirname);
       if (!IS_SLASH (temp[(strlen (temp)) - 1]))
         strcat (temp, "/");
@@ -209,7 +209,7 @@ info_file_in_path (char *filename, char *path)
             {
               if (S_ISREG (finfo.st_mode))
                 {
-                  return (temp);
+                  return temp;
                 }
               else if (S_ISDIR (finfo.st_mode))
                 {
@@ -223,7 +223,7 @@ info_file_in_path (char *filename, char *path)
                   if (newtemp)
                     {
                       free (temp);
-                      return (newtemp);
+                      return newtemp;
                     }
                 }
             }
@@ -242,13 +242,13 @@ info_file_in_path (char *filename, char *path)
 
                   statable = (stat (temp, &finfo) == 0);
                   if (statable && (S_ISREG (finfo.st_mode)))
-                    return (temp);
+                    return temp;
                 }
             }
         }
       free (temp);
     }
-  return ((char *)NULL);
+  return NULL;
 }
 
 /* Assume FNAME is an absolute file name, and check whether it is
@@ -307,7 +307,7 @@ typedef struct
 } FILENAME_LIST;
 
 /* An array of remembered arguments and results. */
-static FILENAME_LIST **names_and_files = (FILENAME_LIST **)NULL;
+static FILENAME_LIST **names_and_files = NULL;
 static int names_and_files_index = 0;
 static int names_and_files_slots = 0;
 
@@ -322,10 +322,10 @@ lookup_info_filename (char *filename)
       for (i = 0; names_and_files[i]; i++)
         {
           if (FILENAME_CMP (names_and_files[i]->filename, filename) == 0)
-            return (names_and_files[i]->expansion);
+            return names_and_files[i]->expansion;
         }
     }
-  return (char *)NULL;;
+  return NULL;
 }
 
 /* Add a filename and its expansion to our list. */
@@ -341,16 +341,15 @@ remember_info_filename (char *filename, char *expansion)
 
       alloc_size = names_and_files_slots * sizeof (FILENAME_LIST *);
 
-      names_and_files =
-        (FILENAME_LIST **) xrealloc (names_and_files, alloc_size);
+      names_and_files = xrealloc (names_and_files, alloc_size);
     }
 
-  new = (FILENAME_LIST *)xmalloc (sizeof (FILENAME_LIST));
+  new = xmalloc (sizeof (FILENAME_LIST));
   new->filename = xstrdup (filename);
-  new->expansion = expansion ? xstrdup (expansion) : (char *)NULL;
+  new->expansion = expansion ? xstrdup (expansion) : NULL;
 
   names_and_files[names_and_files_index++] = new;
-  names_and_files[names_and_files_index] = (FILENAME_LIST *)NULL;
+  names_and_files[names_and_files_index] = NULL;
 }
 
 static void
@@ -374,14 +373,14 @@ info_add_path (char *path, int where)
 
   if (!infopath)
     {
-      infopath = (char *)xmalloc (infopath_size = 200 + strlen (path));
+      infopath = xmalloc (infopath_size = 200 + strlen (path));
       infopath[0] = '\0';
     }
 
   len = strlen (path) + strlen (infopath);
 
   if (len + 2 >= infopath_size)
-    infopath = (char *)xrealloc (infopath, (infopath_size += (2 * len) + 2));
+    infopath = xrealloc (infopath, (infopath_size += (2 * len) + 2));
 
   if (!*infopath)
     strcpy (infopath, path);
@@ -407,7 +406,7 @@ zap_infopath (void)
   if (infopath)
     free (infopath);
 
-  infopath = (char *)NULL;
+  infopath = NULL;
   infopath_size = 0;
 }
 
@@ -442,7 +441,7 @@ convert_eols (char *text, long int textlen)
       *d++ = *s++;
     }
 
-  return (long)(d - text);
+  return d - text;
 }
 
 /* Read the contents of PATHNAME, returning a buffer with the contents of
@@ -461,7 +460,7 @@ filesys_read_info_file (char *pathname, long int *filesize,
   if (compressed_filename_p (pathname))
     {
       *is_compressed = 1;
-      return (filesys_read_compressed (pathname, filesize));
+      return filesys_read_compressed (pathname, filesize);
     }
   else
     {
@@ -475,18 +474,18 @@ filesys_read_info_file (char *pathname, long int *filesize,
       if (descriptor < 0)
         {
           filesys_error_number = errno;
-          return ((char *)NULL);
+          return NULL;
         }
 
       /* Try to read the contents of this file. */
       st_size = (long) finfo->st_size;
-      contents = (char *)xmalloc (1 + st_size);
+      contents = xmalloc (1 + st_size);
       if ((read (descriptor, contents, st_size)) != st_size)
         {
 	  filesys_error_number = errno;
 	  close (descriptor);
 	  free (contents);
-	  return ((char *)NULL);
+	  return NULL;
         }
 
       close (descriptor);
@@ -499,10 +498,10 @@ filesys_read_info_file (char *pathname, long int *filesize,
       /* EOL conversion can shrink the text quite a bit.  We don't
 	 want to waste storage.  */
       if (*filesize < st_size)
-	contents = (char *)xrealloc (contents, 1 + *filesize);
+	contents = xrealloc (contents, 1 + *filesize);
       contents[*filesize] = '\0';
 
-      return (contents);
+      return contents;
     }
 }
 
@@ -517,16 +516,16 @@ filesys_read_compressed (char *pathname, long int *filesize)
 {
   FILE *stream;
   char *command, *decompressor;
-  char *contents = (char *)NULL;
+  char *contents = NULL;
 
   *filesize = filesys_error_number = 0;
 
   decompressor = filesys_decompressor_for_file (pathname);
 
   if (!decompressor)
-    return ((char *)NULL);
+    return NULL;
 
-  command = (char *)xmalloc (15 + strlen (pathname) + strlen (decompressor));
+  command = xmalloc (15 + strlen (pathname) + strlen (decompressor));
   /* Explicit .exe suffix makes the diagnostics of `popen'
      better on systems where COMMAND.COM is the stock shell.  */
   sprintf (command, "%s%s < %s",
@@ -537,7 +536,7 @@ filesys_read_compressed (char *pathname, long int *filesize)
     {
       char *temp;
 
-      temp = (char *)xmalloc (5 + strlen (command));
+      temp = xmalloc (5 + strlen (command));
       sprintf (temp, "%s...", command);
       message_in_echo_area ("%s", temp, NULL);
       free (temp);
@@ -554,7 +553,7 @@ filesys_read_compressed (char *pathname, long int *filesize)
       char *chunk;
     
       offset = size = 0;
-      chunk = (char *)xmalloc (FILESYS_PIPE_BUFFER_SIZE);
+      chunk = xmalloc (FILESYS_PIPE_BUFFER_SIZE);
 
       while (1)
         {
@@ -563,7 +562,7 @@ filesys_read_compressed (char *pathname, long int *filesize)
           bytes_read = fread (chunk, 1, FILESYS_PIPE_BUFFER_SIZE, stream);
 
           if (bytes_read + offset >= size)
-            contents = (char *)xrealloc
+            contents = xrealloc
               (contents, size += (2 * FILESYS_PIPE_BUFFER_SIZE));
 
           memcpy (contents + offset, chunk, bytes_read);
@@ -577,13 +576,13 @@ filesys_read_compressed (char *pathname, long int *filesize)
 	{
 	  if (contents)
 	    free (contents);
-	  contents = (char *)NULL;
+	  contents = NULL;
 	  filesys_error_number = errno;
 	}
       else
 	{
 	  *filesize = convert_eols (contents, offset);
-	  contents = (char *)xrealloc (contents, 1 + *filesize);
+	  contents = xrealloc (contents, 1 + *filesize);
 	  contents[*filesize] = '\0';
 	}
     }
@@ -596,7 +595,7 @@ filesys_read_compressed (char *pathname, long int *filesize)
   if (info_windows_initialized_p)
     unmessage_in_echo_area ();
 #endif /* !BUILDING_LIBRARY */
-  return (contents);
+  return contents;
 }
 
 /* Return non-zero if FILENAME belongs to a compressed file. */
@@ -610,9 +609,9 @@ compressed_filename_p (char *filename)
   decompressor = filesys_decompressor_for_file (filename);
 
   if (decompressor)
-    return (1);
+    return 1;
   else
-    return (0);
+    return 0;
 }
 
 /* Return the command string that would be used to decompress FILENAME. */
@@ -620,7 +619,7 @@ char *
 filesys_decompressor_for_file (char *filename)
 {
   register int i;
-  char *extension = (char *)NULL;
+  char *extension = NULL;
 
   /* Find the final extension of FILENAME, and see if it appears in our
      list of known compression extensions. */
@@ -632,11 +631,11 @@ filesys_decompressor_for_file (char *filename)
       }
 
   if (!extension)
-    return ((char *)NULL);
+    return NULL;
 
   for (i = 0; compress_suffixes[i].suffix; i++)
     if (FILENAME_CMP (extension, compress_suffixes[i].suffix) == 0)
-      return (compress_suffixes[i].decompressor);
+      return compress_suffixes[i].decompressor;
 
 #if defined (__MSDOS__)
   /* If no other suffix matched, allow any extension which ends
@@ -648,7 +647,7 @@ filesys_decompressor_for_file (char *filename)
     return "gunzip";
 #endif
 
-  return ((char *)NULL);
+  return NULL;
 }
 
 /* The number of the most recent file system error. */
@@ -656,7 +655,7 @@ int filesys_error_number = 0;
 
 /* A function which returns a pointer to a static buffer containing
    an error message for FILENAME and ERROR_NUM. */
-static char *errmsg_buf = (char *)NULL;
+static char *errmsg_buf = NULL;
 static int errmsg_buf_size = 0;
 
 char *
@@ -666,16 +665,16 @@ filesys_error_string (char *filename, int error_num)
   char *result;
 
   if (error_num == 0)
-    return ((char *)NULL);
+    return NULL;
 
   result = strerror (error_num);
 
   len = 4 + strlen (filename) + strlen (result);
   if (len >= errmsg_buf_size)
-    errmsg_buf = (char *)xrealloc (errmsg_buf, (errmsg_buf_size = 2 + len));
+    errmsg_buf = xrealloc (errmsg_buf, (errmsg_buf_size = 2 + len));
 
   sprintf (errmsg_buf, "%s: %s", filename, result);
-  return (errmsg_buf);
+  return errmsg_buf;
 }
 
 
@@ -694,7 +693,7 @@ is_dir_name (char *filename)
       strcpy (trydir, "dir");
       strcat (trydir, info_suffixes[i]);
       
-      if (strcasecmp (filename, trydir) == 0)
+      if (mbscasecmp (filename, trydir) == 0)
         return 1;
 
       for (c = 0; compress_suffixes[c].suffix; c++)
@@ -702,7 +701,7 @@ is_dir_name (char *filename)
           char dir_compressed[50]; /* can be short */
           strcpy (dir_compressed, trydir); 
           strcat (dir_compressed, compress_suffixes[c].suffix);
-          if (strcasecmp (filename, dir_compressed) == 0)
+          if (mbscasecmp (filename, dir_compressed) == 0)
             return 1;
         }
     }  

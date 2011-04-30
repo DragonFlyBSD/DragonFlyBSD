@@ -1,12 +1,13 @@
-/* xml.c -- xml output.
-   $Id: xml.c,v 1.52 2004/12/19 17:02:23 karl Exp $
+/* xml.c -- xml output, both TexinfoML and Docbook.
+   $Id: xml.c,v 1.75 2008/01/31 18:33:27 karl Exp $
 
-   Copyright (C) 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+   Copyright (C) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Originally written by Philippe Martin <feloy@free.fr>.  */
 
@@ -30,8 +30,12 @@
 
 #include "xml.h"
 
-/* Options */
-int xml_index_divisions = 1;
+#include <assert.h>
+
+#if !__OPTIMIZE__
+/* To make enum names available to debugger. */
+static enum xml_element xml_element_dummy;
+#endif
 
 typedef struct _element
 {
@@ -161,6 +165,9 @@ element texinfoml_element_list [] = {
 
   { "dmn",                 0, 1, 0 },
 
+  { "clicksequence",       0, 1, 0 },
+  { "click",               0, 1, 0 },
+
   { "xref",                0, 1, 0 },
   { "xrefnodename",        0, 1, 0 },
   { "xrefinfoname",        0, 1, 0 },
@@ -249,6 +256,7 @@ element texinfoml_element_list [] = {
   { "defclass",            0, 0, 0 },
   { "defclassvar",         0, 0, 0 },
   { "defoperation",        0, 0, 0 },
+  { "frenchspacing",       0, 0, 0 },
 
   { "para",                0, 0, 0 } /* Must be last */
   /* name / contains para / contained in para / preserve space */
@@ -329,6 +337,8 @@ element docbook_element_list [] = {
   { "wordasword",          0, 1, 0 }, /* I */
   { "emphasis",            0, 1, 0 }, /* B */
   { "",                    0, 1, 0 }, /* R */
+  { "",                    0, 1, 0 }, /* SLANTED */
+  { "",                    0, 1, 0 }, /* SANSSERIF */
 
   { "",                    0, 0, 0 }, /* EXDENT */
 
@@ -372,6 +382,9 @@ element docbook_element_list [] = {
 
   { "",                    0, 1, 0 }, /* DIMENSION */
 
+  { "",                    0, 1, 0 }, /* CLICKSEQUENCE */
+  { "",                    0, 1, 0 }, /* CLICK */
+
   { "xref",                0, 1, 0 }, /* XREF */
   { "link",                0, 1, 0 }, /* XREFNODENAME */
   { "",                    0, 1, 0 }, /* XREFINFONAME */
@@ -390,7 +403,7 @@ element docbook_element_list [] = {
   { "",                    0, 1, 0 }, /* UREFREPLACEMENT */
 
   { "ulink",               0, 1, 0 }, /* EMAIL */
-  { "",                    0, 1, 0 }, /* EMAILADDRESS */
+  { "email",               0, 1, 0 }, /* EMAILADDRESS */
   { "",                    0, 1, 0 }, /* EMAILNAME */
 
   { "",                    0, 0, 0 }, /* GROUP */
@@ -405,9 +418,9 @@ element docbook_element_list [] = {
   { "example",             1, 1, 0 },
   { "sidebar",             1, 0, 0 },
 
-  { "index",               0, 1, 0 }, /* PRINTINDEX */
+  { "index",               0, 0, 0 }, /* PRINTINDEX */
   { "",                    0, 1, 0 }, /* LISTOFFLOATS */
-  { "",                    0, 1, 0 }, /* ANCHOR */
+  { "anchor",              0, 1, 0 }, /* ANCHOR */
 
   { "",                    0, 0, 0 }, /* IMAGE */
   { "inlinemediaobject",   0, 1, 0 }, /* INLINEIMAGE */
@@ -446,13 +459,13 @@ element docbook_element_list [] = {
   { "",                    0, 0, 0 }, /* SETVALUE (xml) */
   { "",                    0, 0, 0 }, /* CLEARVALUE (xml) */
 
-  { "blockquote",          1, 0, 0 }, /* DEFINITION */
-  { "screen",              0, 0, 1 }, /* DEFINITIONTERM */
-  { "",                    0, 0, 0 }, /* DEFINITIONITEM (xml) */
+  { "informalfigure",      1, 0, 0 }, /* DEFINITION */
+  { "synopsis",            0, 0, 1 }, /* DEFINITIONTERM */
+  { "blockquote",          1, 0, 0 }, /* DEFINITIONITEM (xml) */
   { "",                    0, 0, 0 }, /* DEFCATEGORY (xml) */
   { "function",            0, 0, 0 }, /* DEFFUNCTION */
   { "varname",             0, 0, 0 }, /* DEFVARIABLE */
-  { "varname",             0, 0, 0 }, /* DEFPARAM */
+  { "replaceable",         0, 0, 0 }, /* DEFPARAM */
   { "",                    0, 0, 0 }, /* DEFDELIMITER (xml) */
   { "returnvalue",         0, 0, 0 }, /* DEFTYPE */
   { "type",                0, 0, 0 }, /* DEFPARAMTYPE */
@@ -460,6 +473,7 @@ element docbook_element_list [] = {
   { "classname",           0, 0, 0 }, /* DEFCLASS */
   { "property",            0, 0, 0 }, /* DEFCLASSVAR */
   { "methodname",          0, 0, 0 }, /* DEFOPERATION */
+  { "",                    0, 0, 0 }, /* FRENCHSPACING */
 
   { "para",                0, 0, 0 } /* Must be last */
   /* name / contains para / contained in para / preserve space */
@@ -525,6 +539,8 @@ int xml_no_indent = 0;
 
 int xml_no_para = 0;
 char *xml_node_id = NULL;
+
+/* Currently sorting the index. */
 int xml_sort_index = 0;
 
 int xml_in_xref_token = 0;
@@ -558,6 +574,15 @@ static int in_indexentry = 0;
 static int in_secondary = 0;
 static int in_indexterm = 0;
 
+/* Technically there are certain Unicode characters which cannot
+   appear.  Trying to implement the real rules would lead to deep
+   waters.  So essentially just pass along what we are given.  Some
+   references:
+   http://www.w3.org/TR/xml-id/ 
+   -> http://www.w3.org/TR/xml-names11/#NT-NCName
+   -> http://www.w3.org/TR/xml11/#NT-NameChar
+*/
+
 char *
 xml_id (char *id)
 {
@@ -565,17 +590,18 @@ xml_id (char *id)
   char *p = tem;
   strcpy (tem, id);
   while (*p)
-    { /* Check if a character is allowed in ID attributes.  This list differs
-         slightly from XML specs that it doesn't contain underscores.
-         See http://xml.coverpages.org/sgmlsyn/sgmlsyn.htm, ``9.3 Name''  */
-      if (!strchr ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.", *p))
+    {
+      if (strchr (":\" \t\f\r\n", *p))
         *p = '-';
       p++;
     }
   p = tem;
-  /* First character can only be a letter.  */
-  if (!strchr ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", *p))
+
+  /* First character cannot be a number.  Clearly we should make this
+     dependent on the actual numeral found.  */
+  if (strchr ("0123456789", *p))
     *p = 'i';
+
   return tem;
 }
 
@@ -583,9 +609,9 @@ int
 xml_element (char *name)
 {
   int i;
-  for (i=0; i<=PARA; i++)
+  for (i = 0; i<=PARA; i++)
     {
-      if (strcasecmp (name, texinfoml_element_list[i].name) == 0)
+      if (mbscasecmp (name, texinfoml_element_list[i].name) == 0)
         return i;
     }
   printf ("Error xml_element\n");
@@ -593,7 +619,7 @@ xml_element (char *name)
 }
 
 void
-xml_begin_document (char *output_filename)
+xml_begin_document (const char *output_basename)
 {
   if (book_started)
     return;
@@ -635,17 +661,32 @@ xml_begin_document (char *output_filename)
       insert_string ("/texinfo.dtd\">");
       xml_element_list = texinfoml_element_list;
     }
+
+  if (strcmp (xml_element_list[PARA].name, "para"))
+    {
+      warning ("internal error: xml_element_list table inconsistent");
+      xexit (-1);
+    }
+
   if (language_code != last_language_code)
     {
       if (docbook)
-        xml_insert_element_with_attribute (TEXINFO, START, "lang=\"%s\"", language_table[language_code].abbrev);
+	/* The toplevel <book> element needs an id attribute if you want
+           to use the chunk.xml feature of the Docbook-XSL stylesheets.
+           Might as well use the output filename?  */
+        xml_insert_element_with_attribute (TEXINFO, START,
+                                           "id=\"%s\" lang=\"%s\"",
+                                         output_basename,
+                                         language_table[language_code].abbrev);
       else
-	xml_insert_element_with_attribute (TEXINFO, START, "xml:lang=\"%s\"", language_table[language_code].abbrev);
+	xml_insert_element_with_attribute (TEXINFO, START,
+                                           "xml:lang=\"%s\"",
+                                         language_table[language_code].abbrev);
     }
   if (!docbook)
     {
       xml_insert_element (SETFILENAME, START);
-      insert_string (output_filename);
+      insert_string (output_basename);
       xml_insert_element (SETFILENAME, END);
     }
 }
@@ -657,6 +698,7 @@ static int element_stack_index = 0;
 static int
 xml_current_element (void)
 {
+  assert (element_stack_index > 0);
   return element_stack[element_stack_index-1];
 }
 
@@ -664,10 +706,9 @@ static void
 xml_push_current_element (int elt)
 {
   element_stack[element_stack_index++] = elt;
-  if (element_stack_index > 200)
-    printf ("*** stack overflow (%d - %s) ***\n",
-            element_stack_index,
-            xml_element_list[elt].name);
+  if (element_stack_index > 200)  /* fixxme, no hard limits */
+    warning ("internal error: xml stack overflow (%d - %s)",
+             element_stack_index, xml_element_list[elt].name);
 }
 
 static void
@@ -675,9 +716,11 @@ xml_pop_current_element (void)
 {
   element_stack_index--;
   if (element_stack_index < 0)
-    printf ("*** stack underflow (%d - %d) ***\n",
-            element_stack_index,
-            xml_current_element());
+    {
+      warning ("internal error: xml stack underflow (index %d)",
+               element_stack_index);
+      element_stack_index = 0;
+    }
 }
 
 int
@@ -712,7 +755,8 @@ xml_start_para (void)
       || !xml_element_list[xml_current_element()].contains_para)
     return;
 
-  while (output_paragraph[output_paragraph_offset-1] == '\n')
+  while (output_paragraph_offset > 0
+	 && output_paragraph[output_paragraph_offset-1] == '\n')
     output_paragraph_offset--;
   xml_indent ();
 
@@ -730,7 +774,8 @@ xml_end_para (void)
   if (!xml_in_para || xml_in_footnote)
     return;
 
-  while (cr_or_whitespace(output_paragraph[output_paragraph_offset-1]))
+  while (output_paragraph_offset > 0
+	 && cr_or_whitespace(output_paragraph[output_paragraph_offset-1]))
     output_paragraph_offset--;
 
   insert_string ("</para>");
@@ -789,7 +834,7 @@ xml_insert_element_with_attribute (elt, arg, format, va_alist)
   /* Look at the replace_elements table to see if we have to change the element */
   if (xml_sort_index)
       return;
-  if (docbook)
+  if (docbook && element_stack_index > 0)
     {
       replace_element *element_list = replace_elements;
       while (element_list->element_to_replace >= 0)
@@ -884,6 +929,20 @@ xml_insert_element_with_attribute (elt, arg, format, va_alist)
   if (arg == END && xml_in_para && !xml_element_list[elt].contained_in_para)
     xml_end_para ();
 
+  /* Oddly, we want to do the same thing whether we starting or ending
+     the detailmenu -- close any existing menu elements before inserting
+     the detailmenu element.  */
+  if (elt == DETAILMENU && xml_in_menu_entry)
+    {
+      if (xml_in_menu_entry_comment)
+        {
+          xml_insert_element (MENUCOMMENT, END);
+          xml_in_menu_entry_comment = 0;
+        }
+      xml_insert_element (MENUENTRY, END);
+      xml_in_menu_entry = 0;
+    }
+    
   if (docbook && xml_table_level && !in_table_title
       && !xml_in_tableitem[xml_table_level] && !xml_in_item[xml_table_level]
       && arg == START && elt != TABLEITEM && elt != TABLETERM
@@ -905,13 +964,15 @@ xml_insert_element_with_attribute (elt, arg, format, va_alist)
   /* Eat one newline before </example> and the like.  */
   if (!docbook && arg == END
       && (xml_element_list[elt].keep_space || elt == GROUP)
+      && output_paragraph_offset > 0
       && output_paragraph[output_paragraph_offset-1] == '\n')
     output_paragraph_offset--;
 
   /* And eat whitespace before </entry> in @multitables.  */
   if (arg == END && elt == ENTRY)
-      while (cr_or_whitespace(output_paragraph[output_paragraph_offset-1]))
-    output_paragraph_offset--;
+      while (output_paragraph_offset > 0 &&
+	     cr_or_whitespace(output_paragraph[output_paragraph_offset-1]))
+        output_paragraph_offset--;
 
   /* Indent elements that can contain <para>.  */
   if (arg == END && !xml_in_para && !xml_keep_space
@@ -995,15 +1056,18 @@ xml_insert_entity (char *entity_name)
 {
   int saved_escape_html = escape_html;
 
-  if (!book_started)
-    return;
-  if (docbook && !only_macro_expansion && (in_menu || in_detailmenu))
-    return;
+  if (xml)
+    {
+    if (!book_started)
+      return;
+    if (docbook && !only_macro_expansion && (in_menu || in_detailmenu))
+      return;
 
-  if (!xml_in_para && !xml_no_para && !only_macro_expansion
-      && xml_element_list[xml_current_element ()].contains_para
-      && !in_fixed_width_font)
-    xml_start_para ();
+    if (!xml_in_para && !xml_no_para && !only_macro_expansion
+        && xml_element_list[xml_current_element ()].contains_para
+        && !in_fixed_width_font)
+      xml_start_para ();
+  }
 
   escape_html = 0;
   add_char ('&');
@@ -1035,7 +1099,7 @@ xml_begin_node (void)
       xml_insert_element (BOOKINFO, END);
       xml_in_bookinfo = 0;
     }
-  if (xml_node_open && ! docbook)
+  if (xml_node_open && !docbook)
     {
       if (xml_node_level != -1)
         {
@@ -1107,13 +1171,13 @@ xml_start_menu_entry (char *tem)
       if (xml_in_menu_entry_comment)
         {
           xml_insert_element (MENUCOMMENT, END);
-          xml_in_menu_entry_comment=0;
+          xml_in_menu_entry_comment = 0;
         }
       xml_insert_element (MENUENTRY, END);
-      xml_in_menu_entry=0;
+      xml_in_menu_entry = 0;
     }
   xml_insert_element (MENUENTRY, START);
-  xml_in_menu_entry=1;
+  xml_in_menu_entry = 1;
 
   xml_insert_element (MENUNODE, START);
   string = expansion (tem, 0);
@@ -1214,7 +1278,8 @@ xml_add_char (int character)
       xml_just_after_element = 0;
     }
 
-  if (xml_element_list[xml_current_element()].contains_para
+  if (element_stack_index > 0
+      && xml_element_list[xml_current_element()].contains_para
       && !xml_in_para && !only_macro_expansion && !xml_no_para
       && !cr_or_whitespace (character) && !in_fixed_width_font)
     xml_start_para ();
@@ -1249,6 +1314,8 @@ xml_add_char (int character)
       insert_string ("&amp;");
   else if (character == '<' && escape_html)
       insert_string ("&lt;");
+  else if (character == '>' && escape_html)
+      insert_string ("&gt;");
   else if (character == '\n' && !xml_keep_space)
     {
       if (!xml_in_para && xml_just_after_element && !multitable_active)
@@ -1304,20 +1371,20 @@ xml_insert_quotation (char *type, int arg)
     type = quotation_stack->type;
 
   /* Make use of special quotation styles of Docbook if we can.  */
-  if (docbook && strlen(type))
+  if (docbook && strlen (type))
     {
       /* Let's assume it started.  */
       quotation_started = 1;
 
-      if (strcasecmp (type, "tip") == 0)
+      if (mbscasecmp (type, "tip") == 0)
         xml_insert_element (TIP, arg);
-      else if (strcasecmp (type, "note") == 0)
+      else if (mbscasecmp (type, "note") == 0)
         xml_insert_element (NOTE, arg);
-      else if (strcasecmp (type, "important") == 0)
+      else if (mbscasecmp (type, "important") == 0)
         xml_insert_element (IMPORTANT, arg);
-      else if (strcasecmp (type, "warning") == 0)
+      else if (mbscasecmp (type, "warning") == 0)
         xml_insert_element (WARNING, arg);
-      else if (strcasecmp (type, "caution") == 0)
+      else if (mbscasecmp (type, "caution") == 0)
         xml_insert_element (CAUTION, arg);
       else
         /* Didn't find a known quotation type :\ */
@@ -1398,11 +1465,17 @@ xml_begin_table (int type, char *item_function)
         }
       break;
     case itemize:
+      if (!docbook || item_function==default_item_function)
+	xml_insert_element (ITEMIZE, START);
+      else
+	xml_insert_element_with_attribute (ITEMIZE, START,
+					   "mark=\"%s\"",
+					   (*item_function == COMMAND_PREFIX) ?
+					   &item_function[1] : item_function);
+      xml_table_level ++;
+      xml_in_item[xml_table_level] = 0;
       if (!docbook)
         {
-          xml_insert_element (ITEMIZE, START);
-          xml_table_level ++;
-          xml_in_item[xml_table_level] = 0;
           xml_insert_element (ITEMFUNCTION, START);
           if (*item_function == COMMAND_PREFIX
               && item_function[strlen (item_function) - 1] != '}'
@@ -1411,15 +1484,6 @@ xml_begin_table (int type, char *item_function)
           else
             execute_string ("%s", item_function);
           xml_insert_element (ITEMFUNCTION, END);
-        }
-      else
-        {
-          xml_insert_element_with_attribute (ITEMIZE, START,
-                                             "mark=\"%s\"",
-                                             (*item_function == COMMAND_PREFIX) ?
-                                             &item_function[1] : item_function);
-          xml_table_level ++;
-          xml_in_item[xml_table_level] = 0;
         }
       break;
     }
@@ -1773,94 +1837,16 @@ xml_close_indexentry (void)
 void
 xml_begin_index (void)
 {
-  typedef struct xml_index_title {
-      struct xml_index_title *next;
-      char *title;
-  } XML_INDEX_TITLE;
-
-  static XML_INDEX_TITLE *xml_index_titles = NULL;
-
-  if (!handling_delayed_writes)
-    { /* We assume that we just opened a section, and so that the last output is
-         <SECTION ID="node-name"><TITLE>Title</TITLE>
-         where SECTION can be CHAPTER, ...  */
-
-      XML_INDEX_TITLE *new = xmalloc (sizeof (XML_INDEX_TITLE));
-      xml_section *temp = last_section;
-
-      int l = output_paragraph_offset-xml_last_section_output_position;
-      char *tmp = xmalloc (l+1);
-      char *p = tmp;
-      strncpy (tmp, (char *) output_paragraph, l);
-
-      /* We remove <SECTION */
-      tmp[l] = '\0';
-      while (*p != '<')
-        p++;
-      while (*p != ' ')
-        p++;
-      /* ... and its label attribute.  */
-      if (strncmp (p, " label=", 7) == 0)
-        {
-          p++;
-          while (*p != ' ')
-            p++;
-        }
-
-      output_paragraph_offset = xml_last_section_output_position;
-      xml_last_section_output_position = 0;
-
-      xml_pop_current_element (); /* remove section element from elements stack */
-
-      if (last_section)
-        last_section = last_section->prev; /* remove section from sections stack */
-      if (temp)
-        {
-          free (temp->name);
-          free (temp);
-        }
-
-      new->title = xstrdup (p);
-      new->next = xml_index_titles;
-      xml_index_titles = new;
-    }
-  else
+  if (handling_delayed_writes)
     {
-      static int xml_index_titles_reversed = 0;
-
-      if (!xml_index_titles_reversed)
-        {
-          xml_index_titles = (XML_INDEX_TITLE *) reverse_list
-            ((GENERIC_LIST *) xml_index_titles);
-          xml_index_titles_reversed = 1;
-        }
-
       /* We put <INDEX> */
       xml_insert_element (PRINTINDEX, START);
-      if (xml_index_titles)
-        {
-          /* Remove the final > */
-          output_paragraph_offset--;
-          /* and put  ID="node-name"><TITLE>Title</TITLE> */
-          insert_string (xml_index_titles->title);
-          free (xml_index_titles->title);
-          xml_index_titles = xml_index_titles->next;
-        }
-
-      if (xml_index_divisions)
-        {
-          xml_insert_element (INDEXDIV, START);
-          indexdivempty = 1;
-        }
     }
 }
 
 void
 xml_end_index (void)
 {
-  xml_close_indexentry ();
-  if (xml_index_divisions)
-    xml_insert_element (INDEXDIV, END);
   xml_insert_element (PRINTINDEX, END);
 }
 
@@ -1886,75 +1872,6 @@ xml_index_divide (char *entry)
       insert (toupper (c));
       xml_insert_element (TITLE, END);
     }
-}
-
-void
-xml_insert_indexentry (char *entry, char *node)
-{
-  char *primary = NULL, *secondary;
-  if (xml_index_divisions)
-    xml_index_divide (entry);
-
-  indexdivempty = 0;
-  if (strstr (entry+1, INDEX_SEP))
-    {
-      primary = xmalloc (strlen (entry) + 1);
-      strcpy (primary, entry);
-      secondary = strstr (primary+1, INDEX_SEP);
-      *secondary = '\0';
-      secondary += strlen (INDEX_SEP);
-
-      if (in_secondary && strcmp (primary, index_primary) == 0)
-        {
-          xml_insert_element (SECONDARYIE, END);
-          xml_insert_element (SECONDARYIE, START);
-          execute_string ("%s", secondary);
-        }
-      else
-        {
-          xml_close_indexentry ();
-          xml_insert_element (INDEXENTRY, START);
-          in_indexentry = 1;
-          xml_insert_element (PRIMARYIE, START);
-          execute_string ("%s", primary);
-          xml_insert_element (PRIMARYIE, END);
-          xml_insert_element (SECONDARYIE, START);
-          execute_string ("%s", secondary);
-          in_secondary = 1;
-        }
-    }
-  else
-    {
-      xml_close_indexentry ();
-      xml_insert_element (INDEXENTRY, START);
-      in_indexentry = 1;
-      xml_insert_element (PRIMARYIE, START);
-      execute_string ("%s", entry);
-    }
-  add_word (", ");
-
-  /* Don't link to @unnumbered sections directly.
-     We are disabling warnings temporarily, otherwise these xrefs
-     will cause bogus warnings about missing punctuation.  */
-  {
-    extern int print_warnings;
-    int save_print_warnings = print_warnings;
-    print_warnings = 0;
-    execute_string ("%cxref{%s}", COMMAND_PREFIX, xstrdup (node));
-    print_warnings = save_print_warnings;
-  }
-
-  if (primary)
-    {
-      strcpy (index_primary, primary);
-      /*      xml_insert_element (SECONDARYIE, END);*/
-      /*     *(secondary-1) = ',';*/ /* necessary ? */
-      free (primary);
-    }
-  else
-    xml_insert_element (PRIMARYIE, END);
-
-  /*  xml_insert_element (INDEXENTRY, END); */
 }
 
 void
@@ -2012,7 +1929,7 @@ xml_begin_multitable (int ncolumns, int *column_widths)
   else
     {
       xml_insert_element (MULTITABLE, START);
-      for (i=0; i<ncolumns; i++)
+      for (i = 0; i < ncolumns; i++)
         {
           xml_insert_element (COLSPEC, START);
           add_word_args ("%d", column_widths[i]);
@@ -2030,7 +1947,7 @@ xml_begin_multitable_group (void)
   xml_insert_element_with_attribute (TGROUP, START, "cols=\"%d\"",
       multitable_columns_count);
 
-  for (i=0; i < multitable_columns_count; i++)
+  for (i = 0; i < multitable_columns_count; i++)
     {
       xml_insert_element_with_attribute (COLSPEC, START,
           "colwidth=\"%d*\"", multitable_column_widths[i]);
@@ -2210,7 +2127,11 @@ xml_begin_def_term (int base_type, const char *category,
     char *defined_name, char *type_name, char *type_name2)
 {
   xml_after_def_term = 0;
-  xml_insert_element (DEFINITIONTERM, START);
+  if (docbook)
+    xml_insert_element_with_attribute (DEFINITIONTERM, START,
+				       "role=\"%s\"", category);
+  else
+    xml_insert_element (DEFINITIONTERM, START);
 
   /* Index entry */
   switch (base_type)
@@ -2239,10 +2160,13 @@ xml_begin_def_term (int base_type, const char *category,
     }
 
   /* Start with category.  */
-  xml_insert_element (DEFCATEGORY, START);
-  execute_string (docbook ? "--- %s:" : "%s", category);
-  xml_insert_element (DEFCATEGORY, END);
-  add_char(' ');
+  if (! docbook)
+    {
+      xml_insert_element (DEFCATEGORY, START);
+      execute_string (docbook ? "[%s]" : "%s", category);
+      xml_insert_element (DEFCATEGORY, END);
+      add_char(' ');
+    }
 
   /* Output type name first for typed definitions.  */
   switch (base_type)

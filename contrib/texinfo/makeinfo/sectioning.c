@@ -1,12 +1,13 @@
 /* sectioning.c -- for @chapter, @section, ..., @contents ...
-   $Id: sectioning.c,v 1.25 2004/07/05 22:23:23 karl Exp $
+   $Id: sectioning.c,v 1.29 2007/07/01 21:20:33 karl Exp $
 
-   Copyright (C) 1999, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1999, 2001, 2002, 2003, 2004, 2007
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Originally written by Karl Heinz Marbaise <kama@hippo.fido.de>.  */
 
@@ -491,7 +491,7 @@ insert_and_underscore (int level, char *cmd)
      insert it into the TOC.  */
   ending_pos = output_paragraph + output_paragraph_offset;
   if (section_alist[index].toc == TOC_YES)
-    toc_add_entry (substring (starting_pos, ending_pos - 1),
+    toc_add_entry (substring ((char *)starting_pos, (char *)ending_pos - 1),
                    level, current_node, NULL);
 
   free (temp);
@@ -534,8 +534,9 @@ sectioning_html (int level, char *cmd)
 
       starting_pos = output_paragraph + output_paragraph_offset;
       add_word_args ("%sTOC%d\">", a_name, toc_ref_count++);
-      toc_anchor = substring (starting_pos + sizeof (a_name) - 1,
-                              output_paragraph + output_paragraph_offset);
+      toc_anchor = substring ((char *)starting_pos + sizeof (a_name) - 1,
+                              (char *)output_paragraph
+			      + output_paragraph_offset);
       /* This must be added after toc_anchor is extracted, since
          toc_anchor cannot include the closing </a>.  For details,
          see toc.c:toc_add_entry and toc.c:contents_update_html.
@@ -585,7 +586,7 @@ sectioning_html (int level, char *cmd)
   /* Pluck ``X.Y SECTION-NAME'' from the output buffer and insert it
      into the TOC.  */
   if (section_alist[index].toc == TOC_YES)
-    toc_add_entry (substring (starting_pos, ending_pos),
+    toc_add_entry (substring ((char *)starting_pos, (char *)ending_pos),
                    level, current_node, toc_anchor);
 
   free (temp);

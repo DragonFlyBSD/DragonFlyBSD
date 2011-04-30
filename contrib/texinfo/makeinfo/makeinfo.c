@@ -1,13 +1,14 @@
 /* makeinfo -- convert Texinfo source into other formats.
-   $Id: makeinfo.c,v 1.74 2004/12/19 17:15:42 karl Exp $
+   $Id: makeinfo.c,v 1.123 2008/08/28 22:53:30 karl Exp $
 
    Copyright (C) 1987, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
-   2000, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+   2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,13 +16,13 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Original author of makeinfo: Brian Fox (bfox@ai.mit.edu).  */
 
 #include "system.h"
 #include "getopt.h"
+#include "mbswidth.h"
 
 #define COMPILING_MAKEINFO
 #include "makeinfo.h"
@@ -70,9 +71,6 @@ char *output_filename = NULL;
    Such a name overrides any name found with the @setfilename command. */
 char *command_output_filename = NULL;
 static char *save_command_output_filename = NULL;
-
-#define INITIAL_PARAGRAPH_SPACE 5000
-int paragraph_buffer_len = INITIAL_PARAGRAPH_SPACE;
 
 /* The amount of indentation to add at the starts of paragraphs.
    0 means don't change existing indentation at paragraph starts.
@@ -143,6 +141,11 @@ static int executing_macro = 0;
 /* True when we are inside a <li> block of a menu.  */
 static int in_menu_item = 0;
 
+/* The column position of output_paragraph[0].  This is not saved and restored
+   in the multitable code because flush_output () is only called in environment
+   0. */
+static int output_paragraph_start_column = 0;
+
 typedef struct brace_element
 {
   struct brace_element *next;
@@ -164,6 +167,7 @@ static void init_brace_stack (void);
 static void init_internals (void);
 static void pop_and_call_brace (void);
 static void remember_brace (COMMAND_FUNCTION (*proc));
+static void write_trailer (char *filename, char *trailer);
 static int end_of_sentence_p (void);
 
 void maybe_update_execution_strings (char **text, unsigned int new_len);
@@ -350,48 +354,50 @@ Info files suitable for reading online with Emacs or standalone GNU Info.\n"));
     printf (_("\
 General options:\n\
       --error-limit=NUM       quit after NUM errors (default %d).\n\
+      --document-language=STR locale to use in translating Texinfo keywords\n\
+                                for the output document (default C).\n\
       --force                 preserve output even if errors.\n\
       --help                  display this help and exit.\n\
       --no-validate           suppress node cross-reference validation.\n\
       --no-warn               suppress warnings (but not errors).\n\
-      --reference-limit=NUM   warn about at most NUM references (default %d).\n\
   -v, --verbose               explain what is being done.\n\
       --version               display version information and exit.\n"),
-            max_error_level, reference_warning_limit);
+            max_error_level);
     puts ("");
 
      /* xgettext: no-wrap */
     puts (_("\
 Output format selection (default is to produce Info):\n\
-      --docbook             output Docbook XML rather than Info.\n\
-      --html                output HTML rather than Info.\n\
-      --xml                 output Texinfo XML rather than Info.\n\
-      --plaintext           output plain text rather than Info.\n\
+      --docbook               output Docbook XML rather than Info.\n\
+      --html                  output HTML rather than Info.\n\
+      --xml                   output Texinfo XML rather than Info.\n\
+      --plaintext             output plain text rather than Info.\n\
 "));
 
     puts (_("\
 General output options:\n\
-  -E, --macro-expand FILE   output macro-expanded source to FILE.\n\
-                            ignoring any @setfilename.\n\
-      --no-headers          suppress node separators, Node: lines, and menus\n\
-                              from Info output (thus producing plain text)\n\
-                              or from HTML (thus producing shorter output);\n\
-                              also, write to standard output by default.\n\
-      --no-split            suppress splitting of Info or HTML output,\n\
-                            generate only one output file.\n\
-      --number-sections     output chapter and sectioning numbers.\n\
-  -o, --output=FILE         output to FILE (directory if split HTML),\n\
+  -E, --macro-expand=FILE     output macro-expanded source to FILE,\n\
+                                ignoring any @setfilename.\n\
+      --no-headers            suppress node separators, Node: lines, and menus\n\
+                                from Info output (thus producing plain text)\n\
+                                or from HTML (thus producing shorter output);\n\
+                                also, write to standard output by default.\n\
+      --no-split              suppress the splitting of Info or HTML output,\n\
+                                generate only one output file.\n\
+      --number-sections       output chapter and sectioning numbers.\n\
+  -o, --output=FILE           output to FILE (or directory if split HTML).\n\
 "));
 
     printf (_("\
 Options for Info and plain text:\n\
-      --enable-encoding       output accented and special characters in\n\
-                                Info output based on @documentencoding.\n\
+      --disable-encoding      do not output accented and special characters\n\
+                                in Info output based on @documentencoding.\n\
+      --enable-encoding       override --disable-encoding (default).\n\
       --fill-column=NUM       break Info lines at NUM characters (default %d).\n\
       --footnote-style=STYLE  output footnotes in Info according to STYLE:\n\
                                 `separate' to put them in their own node;\n\
-                                `end' to put them at the end of the node\n\
-                                  in which they are defined (default).\n\
+                                `end' to put them at the end of the node, in\n\
+                                which they are defined (this is the default).\n\
       --paragraph-indent=VAL  indent Info paragraphs by VAL spaces (default %d).\n\
                                 If VAL is `none', do not indent; if VAL is\n\
                                 `asis', preserve existing indentation.\n\
@@ -402,14 +408,18 @@ Options for Info and plain text:\n\
 
     puts (_("\
 Options for HTML:\n\
-      --css-include=FILE        include FILE in HTML <style> output;\n\
-                                  read stdin if FILE is -.\n\
+      --css-include=FILE      include FILE in HTML <style> output;\n\
+                                read stdin if FILE is -.\n\
+      --css-ref=URL           generate reference to a CSS file.\n\
+      --internal-links=FILE   produce list of internal links in FILE.\n\
+      --transliterate-file-names\n\
+                              produce file names in ASCII transliteration.\n\
 "));
 
     printf (_("\
 Options for XML and Docbook:\n\
-      --output-indent=VAL       indent XML elements by VAL spaces (default %d).\n\
-                                  If VAL is 0, ignorable whitespace is dropped.\n\
+      --output-indent=VAL     indent XML elements by VAL spaces (default %d).\n\
+                                If VAL is 0, ignorable whitespace is dropped.\n\
 "), xml_indentation_increment);
     puts ("");
 
@@ -451,15 +461,15 @@ Conditional processing in input:\n\
 
     fputs (_("\
 Examples:\n\
-  makeinfo foo.texi                     write Info to foo's @setfilename\n\
-  makeinfo --html foo.texi              write HTML to @setfilename\n\
-  makeinfo --xml foo.texi               write Texinfo XML to @setfilename\n\
-  makeinfo --docbook foo.texi           write DocBook XML to @setfilename\n\
-  makeinfo --no-headers foo.texi        write plain text to standard output\n\
+  makeinfo foo.texi                      write Info to foo's @setfilename\n\
+  makeinfo --html foo.texi               write HTML to @setfilename\n\
+  makeinfo --xml foo.texi                write Texinfo XML to @setfilename\n\
+  makeinfo --docbook foo.texi            write DocBook XML to @setfilename\n\
+  makeinfo --no-headers foo.texi         write plain text to standard output\n\
 \n\
-  makeinfo --html --no-headers foo.texi write html without node lines, menus\n\
-  makeinfo --number-sections foo.texi   write Info with numbered sections\n\
-  makeinfo --no-split foo.texi          write one Info file however big\n\
+  makeinfo --html --no-headers foo.texi  write html without node lines, menus\n\
+  makeinfo --number-sections foo.texi    write Info with numbered sections\n\
+  makeinfo --no-split foo.texi           write one Info file however big\n\
 "), stdout);
 
     puts (_("\n\
@@ -472,12 +482,19 @@ Texinfo home page: http://www.gnu.org/software/texinfo/"));
   xexit (exit_value);
 }
 
+#define OPT_CSSREF    256
+#define OPT_TRANSLITERATE_FILE_NAMES 257
+#define OPT_INTERNAL_LINKS 258
+
 struct option long_options[] =
 {
   { "commands-in-node-names", 0, &expensive_validation, 1 },
   { "css-include", 1, 0, 'C' },
+  { "css-ref", 1, 0, OPT_CSSREF },
   { "docbook", 0, 0, 'd' },
+  { "disable-encoding", 0, &enable_encoding, 0 },
   { "enable-encoding", 0, &enable_encoding, 1 },
+  { "document-language", 1, 0, 'l' },
   { "error-limit", 1, 0, 'e' },
   { "fill-column", 1, 0, 'f' },
   { "footnote-style", 1, 0, 's' },
@@ -490,6 +507,7 @@ struct option long_options[] =
   { "ifplaintext", 0, &process_plaintext, 1 },
   { "iftex", 0, &process_tex, 1 },
   { "ifxml", 0, &process_xml, 1 },
+  { "internal-links", 1, 0, OPT_INTERNAL_LINKS },
   { "macro-expand", 1, 0, 'E' },
   { "no-headers", 0, &no_headers, 1 },
   { "no-ifdocbook", 0, &process_docbook, 0 },
@@ -512,6 +530,7 @@ struct option long_options[] =
   { "plaintext", 0, 0, 't' },
   { "reference-limit", 1, 0, 'r' },
   { "split-size", 1, 0, 'S'},
+  { "transliterate-file-names", 0, &transliterate_file_names, 1 },
   { "verbose", 0, &verbose_mode, 1 },
   { "version", 0, 0, 'V' },
   { "xml", 0, 0, 'x' },
@@ -534,7 +553,7 @@ static COMMAND_LINE_DEFINE *command_line_defines = NULL;
 /* For each file mentioned in the command line, process it, turning
    Texinfo commands into wonderfully formatted output text. */
 int
-main (int argc, char **argv)
+main (int argc, char *argv[])
 {
   int c, ind;
   int reading_from_stdin = 0;
@@ -543,7 +562,7 @@ main (int argc, char **argv)
   /* Do not use LC_ALL, because LC_NUMERIC screws up the scanf parsing
      of the argument to @multicolumn.  */
   setlocale (LC_TIME, "");
-#ifdef LC_MESSAGES /* ultrix */
+#ifdef LC_MESSAGES /* ultrix, djgpp 2.04 */
   setlocale (LC_MESSAGES, "");
 #endif
   setlocale (LC_CTYPE, "");
@@ -617,6 +636,10 @@ main (int argc, char **argv)
           css_include = xstrdup (optarg);
           break;
 
+	case OPT_CSSREF:
+	  css_ref = xstrdup (optarg);
+	  break;
+	  
         case 'D':
         case 'U':
           /* User specified variable to set or clear. */
@@ -685,6 +708,11 @@ main (int argc, char **argv)
           append_to_include_path (optarg);
           break;
 
+	case 'l':
+	  /* save the override language code */
+	  document_language = xstrdup (optarg);
+	  break;
+
         case 'i':
           if (sscanf (optarg, "%d", &xml_indentation_increment) != 1)
             {
@@ -695,6 +723,22 @@ main (int argc, char **argv)
             }
           break;
 
+	case OPT_INTERNAL_LINKS:
+	  if (!internal_links_stream)
+	    {
+	      internal_links_filename = xstrdup (optarg);
+	      internal_links_stream = strcmp (optarg, "-") == 0 ? stdout :
+                fopen (optarg, "w");
+              if (!internal_links_stream)
+                error (_("%s: could not open internal links output `%s'"),
+                       progname, optarg);
+            }
+          else
+            fprintf (stderr,
+            	     _("%s: ignoring second internal links output `%s'.\n"),
+            	     progname, optarg);
+          break;
+	  
         case 'o': /* --output */
           command_output_filename = xstrdup (optarg);
           save_command_output_filename = command_output_filename;
@@ -715,14 +759,7 @@ main (int argc, char **argv)
           prepend_to_include_path (optarg);
           break;
 
-        case 'r': /* --reference-limit */
-          if (sscanf (optarg, "%d", &reference_warning_limit) != 1)
-            {
-              fprintf (stderr,
-                     _("%s: %s arg must be numeric, not `%s'.\n"),
-                     progname, "--reference-limit", optarg);
-              usage (1);
-            }
+        case 'r': /* was --reference-limit; obsolete, ignore */
           break;
 
         case 's': /* --footnote-style */
@@ -762,10 +799,11 @@ main (int argc, char **argv)
         case 'V': /* --version */
           print_version_info ();
           puts ("");
-          puts ("Copyright (C) 2004 Free Software Foundation, Inc.");
-          printf (_("There is NO warranty.  You may redistribute this software\n\
-under the terms of the GNU General Public License.\n\
-For more information about these matters, see the files named COPYING.\n"));
+          printf (_("Copyright (C) %s Free Software Foundation, Inc.\n\
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
+This is free software: you are free to change and redistribute it.\n\
+There is NO WARRANTY, to the extent permitted by law.\n"),
+	      "2008");
           xexit (0);
           break;
 
@@ -846,7 +884,13 @@ For more information about these matters, see the files named COPYING.\n"));
   if (!reading_from_stdin)
     {
       while (optind != argc)
-        convert_from_file (argv[optind++]);
+        {
+          if (STREQ (argv[optind], "-"))
+            convert_from_stream (stdin, "stdin");
+          else
+            convert_from_file (argv[optind]);
+          optind++;
+        }
     }
   else
     convert_from_stream (stdin, "stdin");
@@ -1304,7 +1348,7 @@ convert_from_stream (FILE *stream, char *name)
 
   /* Read until the end of the stream.  This isn't strictly correct, since
      the texinfo input may end before the stream ends, but it is a quick
-     working hueristic. */
+     working heuristic. */
   while (!feof (stream))
     {
       int count;
@@ -1348,14 +1392,13 @@ convert_from_file (char *name)
   int i;
   char *filename = xmalloc (strlen (name) + 50);
 
-  /* Prepend file directory to the search path, so relative links work.  */
+  /* Prepend NAME's directory to the search path, so relative links work.  */
   prepend_to_include_path (pathname_part (name));
 
   initialize_conversion ();
 
   /* Try to load the file specified by NAME, concatenated with our
-     various suffixes.  Prefer files like `makeinfo.texi' to
-     `makeinfo'.  */
+     various suffixes.  Prefer files like `makeinfo.texi' to `makeinfo'.  */
   for (i = 0; suffixes[i]; i++)
     {
       strcpy (filename, name);
@@ -1363,13 +1406,6 @@ convert_from_file (char *name)
 
       if (find_and_load (filename, 1))
         break;
-
-      if (!suffixes[i][0] && strrchr (filename, '.'))
-        {
-          fs_error (filename);
-          free (filename);
-          return;
-        }
     }
 
   if (!suffixes[i])
@@ -1379,8 +1415,14 @@ convert_from_file (char *name)
       return;
     }
 
+  /* `find_and_load' (when successful) clobbers this global with new
+     memory.  We're about to reset it, so may as well free first.  */
+  free (input_filename);
+  
+  /* Set the current filename.  */
   input_filename = filename;
 
+  /* Do the main conversion.  */
   convert_from_loaded_file (name);
 
   /* Pop the prepended path, so multiple filenames in the
@@ -1630,10 +1672,7 @@ convert_from_loaded_file (char *name)
     }
 
   set_current_output_filename (real_output_filename);
-
-  if (xml && !docbook)
-    xml_begin_document (filename_part (output_filename));
-
+  
   if (verbose_mode)
     printf (_("Making %s file `%s' from `%s'.\n"),
             no_headers ? "text"
@@ -1647,6 +1686,9 @@ convert_from_loaded_file (char *name)
       fs_error (real_output_filename);
       goto finished;
     }
+
+  if (xml)
+    xml_begin_document (filename_part (output_filename));
 
   /* Make the displayable filename from output_filename.  Only the base
      portion of the filename need be displayed. */
@@ -1667,13 +1709,6 @@ convert_from_loaded_file (char *name)
       if (input_text[temp++] == '\n')
         line_number++;
   }
-
-  /* html fixxme: should output this as trailer on first page.  */
-  if (!no_headers && !html && !xml)
-    add_word_args (_("This is %s, produced by makeinfo version %s from %s.\n"),
-                   output_filename, VERSION, input_filename);
-
-  close_paragraph ();
 
   if (xml && !docbook)
     {
@@ -1725,25 +1760,12 @@ _("%s: Removing macro output file `%s' due to errors; use --force to preserve.\n
           close_paragraph ();
         }
 
-      /* maybe we want local variables in info output.  */
-      {
-        char *trailer = info_trailer ();
-	if (!xml && !docbook && trailer)
-          {
-            if (html)
-              insert_string ("<!--");
-            insert_string (trailer);
-            free (trailer);
-            if (html)
-              insert_string ("\n-->\n");
-          }
-      }
-
       /* Write stuff makeinfo generates after @bye, ie. info_trailer.  */
       flush_output ();
 
       if (output_stream != stdout)
-        fclose (output_stream);
+        if (fclose (output_stream) != 0)
+          fs_error (real_output_filename);
 
       /* If validating, then validate the entire file right now. */
       if (validating)
@@ -1757,6 +1779,10 @@ _("%s: Removing macro output file `%s' due to errors; use --force to preserve.\n
           if (!no_headers && !html && !STREQ (current_output_filename, "-"))
             write_tag_table (real_output_filename);
         }
+
+      /* Maybe we want local variables in info output.  Must be after
+         tag table, since otherwise usually Emacs will not see it.  */
+      write_trailer (real_output_filename, info_trailer ());
 
       if (splitting && !html && (!errors_printed || force))
         {
@@ -1776,6 +1802,26 @@ _("%s: Removing macro output file `%s' due to errors; use --force to preserve.\n
             perror (real_output_filename);
         }
     }
+
+  if (internal_links_stream)
+    {
+      if (internal_links_stream != stdout
+          && fclose (internal_links_stream) != 0)
+        fs_error(internal_links_filename);
+      internal_links_stream = NULL;
+      if (errors_printed && !force
+          && strcmp (internal_links_filename, "-") != 0
+          && FILENAME_CMP (internal_links_filename, NULL_DEVICE) != 0
+          && FILENAME_CMP (internal_links_filename, ALSO_NULL_DEVICE) != 0)
+        {
+          fprintf (stderr,
+_("%s: Removing internal links output file `%s' due to errors; use --force to preserve.\n"),
+                   progname, internal_links_filename);
+          if (unlink (internal_links_filename) < 0)
+            perror (internal_links_filename);
+        }
+    }
+     
   free (real_output_filename);
 }
 
@@ -1804,6 +1850,37 @@ info_trailer (void)
   free (encoding);
   return NULL;
 }
+
+/* Append TRAILER to FILENAME for Info and HTML output.  Include HTML
+   comments if needed.  */
+static void
+write_trailer (char *filename, char *trailer)
+{
+  if (!trailer || xml || docbook) 
+    return;
+
+  if (output_stream != stdout)
+    output_stream = fopen (filename, "a");
+  if (!output_stream)
+    {
+      fs_error (filename);
+      return;
+    }
+
+  if (html)
+    fwrite ("<!--", 1, 4, output_stream);
+
+  fwrite (trailer, 1, strlen (trailer), output_stream);
+  free (trailer);
+
+  if (html)
+    fwrite ("\n-->\n", 1, 5, output_stream);
+
+  if (output_stream != stdout)
+    if (fclose (output_stream) != 0)
+      fs_error (filename);
+}
+
 
 void
 free_and_clear (char **pointer)
@@ -1839,11 +1916,12 @@ init_internals (void)
 void
 init_paragraph (void)
 {
-  free (output_paragraph);
+  if (output_paragraph)
+    free (output_paragraph);
   output_paragraph = xmalloc (paragraph_buffer_len);
   output_paragraph[0] = 0;
   output_paragraph_offset = 0;
-  output_column = 0;
+  output_paragraph_start_column = 0;
   paragraph_is_open = 0;
   current_indent = 0;
   meta_char_pos = 0;
@@ -1973,7 +2051,8 @@ get_command_entry (char *string)
   /* We never heard of this command. */
   return (COMMAND *) -1;
 }
-
+
+
 /* input_text_offset is right at the command prefix character.
    Read the next token to determine what to do.  Return zero
    if there's no known command or macro after the prefix character.  */
@@ -2202,6 +2281,7 @@ reader_loop (void)
              menu swallows its newline, so check here instead.  */
           if (!only_macro_expansion && in_menu
               && input_text_offset + 1 < input_text_length
+	      && input_text_offset > 0
               && input_text[input_text_offset-1] == '\n')
             handle_menu_entry ();
           else
@@ -2300,7 +2380,7 @@ remember_brace_1 (COMMAND_FUNCTION (*proc), int position)
   BRACE_ELEMENT *new = xmalloc (sizeof (BRACE_ELEMENT));
   new->next = brace_stack;
   new->proc = proc;
-  new->command = command ? xstrdup (command) : "";
+  new->command = xstrdup (command ? command : "");
   new->pos = position;
   new->line = line_number;
   new->in_fixed_width_font = in_fixed_width_font;
@@ -2407,37 +2487,63 @@ discard_braces (void)
     }
 }
 
-static int
-get_char_len (int character)
+/* Return the 0-based number of the current output column */
+int
+current_output_column (void)
 {
-  /* Return the printed length of the character. */
-  int len;
+  int i, column;
 
-  switch (character)
+  for (i = output_paragraph_offset; i > 0 && output_paragraph[i - 1] != '\n';
+       i--)
+     ;
+  if (i == 0)
+    column = output_paragraph_start_column;
+  else
+    column = 0;
+  while (i < output_paragraph_offset)
     {
-    case '\t':
-      len = (output_column + 8) & 0xf7;
-      if (len > fill_column)
-        len = fill_column - output_column;
-      else
-        len = len - output_column;
-      break;
+      int j;
 
-    case '\n':
-      len = fill_column - output_column;
-      break;
+      /* Find a span of non-control characters */
+      for (j = i; j < output_paragraph_offset; j++)
+ 	{
+ 	  char c;
 
-    default:
-      /* ASCII control characters appear as two characters in the output
-         (e.g., ^A).  But characters with the high bit set are just one
-         on suitable terminals, so don't count them as two for line
-         breaking purposes.  */
-      if (0 <= character && character < ' ')
-        len = 2;
-      else
-        len = 1;
+ 	  c = output_paragraph[j];
+ 	  if ((0 <= c && c < ' ') || c == '\t' || c == NON_BREAKING_SPACE)
+ 	    break;
+ 	}
+      if (i < j)
+ 	{
+ 	  column += mbsnwidth ((char *)(output_paragraph + i), j - i, 0);
+	  i = j;
+ 	}
+      if (i < output_paragraph_offset)
+ 	{
+ 	  char c;
+
+ 	  /* Handle a control character */
+ 	  c = output_paragraph[i];
+ 	  if (c == '\t')
+ 	    {
+ 	      column = (column + 8) & ~0x7;
+ 	      if (column > fill_column)
+ 		column = fill_column;
+ 	    }
+	  else if (c == NON_BREAKING_SPACE)
+	    column++;
+ 	  else
+ 	    {
+ 	      /* ASCII control characters appear as two characters in the
+ 		 output (e.g., ^A).  */
+ 	      if (!(0 <= c && c < ' '))
+ 		abort ();
+ 	      column += 2;
+ 	    }
+ 	  i++;
+ 	}
     }
-  return len;
+  return column;
 }
 
 void
@@ -2539,7 +2645,42 @@ defining_copying (void)
   return 0;
 }
 
+/* Output the header for Info.
+   html fixxme: should output this as trailer on first page (at least).  */
 
+static void
+info_output_head (void)
+{
+  add_word_args (gdt("This is %s, produced by makeinfo version %s from %s.\n"),
+                 output_filename, VERSION, input_filename);
+
+  /* Start afresh with whatever real text we have.  */
+  close_paragraph ();
+
+  /* We do not want indentation in what follows, which is usually going
+     to be a node marker (CTRL-_).  */
+  if (inhibit_paragraph_indentation == 0)
+    inhibit_paragraph_indentation = -1;
+}
+
+void
+output_head (void)
+{
+  if (output_head_p) /* no-op if we're mistakenly called twice */
+    return;
+  output_head_p = 1;
+  
+  if (html)
+    html_output_head ();
+  else if (xml)
+    ; /* handled differently, via xml_begin_document */
+  else if (no_headers)
+    ; /* no header for plain text */
+  else
+    info_output_head ();
+}
+
+
 /* Add the character to the current paragraph.  If filling_enabled is
    nonzero, then do filling as well. */
 void
@@ -2562,13 +2703,13 @@ add_char (int character)
      ignore close_paragraph () calls any more. */
   if (must_start_paragraph && character != '\n')
     {
+      int column;
+
       must_start_paragraph = 0;
       line_already_broken = 0;  /* The line is no longer broken. */
-      if (current_indent > output_column)
-        {
-          indent (current_indent - output_column);
-          output_column = current_indent;
-        }
+      column = current_output_column ();
+      if (current_indent > column)
+	indent (current_indent - column);
     }
 
   if (non_splitting_words
@@ -2584,7 +2725,7 @@ add_char (int character)
           character = ';';
         }
       else
-        character = META (' '); /* unmeta-d in flush_output */
+        character = NON_BREAKING_SPACE; /* restored in flush_output */
     }
 
   insertion_paragraph_closed = 0;
@@ -2603,17 +2744,16 @@ add_char (int character)
               flush_output ();
             }
 
-          output_column = 0;
-
           if (!no_indent && paragraph_is_open)
-            indent (output_column = current_indent);
+            indent (current_indent);
           break;
         }
-      else if (end_of_sentence_p ())
-        /* CHARACTER is newline, and filling is enabled. */
+      else if (end_of_sentence_p () && !french_spacing)
+        /* CHARACTER is newline, filling is enabled, and we're at the
+           end of a sentence.  Insert an extra space, unless
+           @frenchspacing is in effect.  */
         {
           insert (' ');
-          output_column++;
           last_inserted_character = character;
         }
 
@@ -2631,13 +2771,12 @@ add_char (int character)
             insert ('\n');
           else
             insert (' ');
-          output_column++;
         }
       break;
 
     default: /* not at newline */
       {
-        int len = get_char_len (character);
+        int column;
         int suppress_insert = 0;
 
         if ((character == ' ') && (last_char_was_newline))
@@ -2649,15 +2788,19 @@ add_char (int character)
               }
           }
 
-        /* This is sad, but it seems desirable to not force any
-           particular order on the front matter commands.  This way,
-           the document can do @settitle, @documentlanguage, etc, in
-           any order and with any omissions, and we'll still output
-           the html <head> `just in time'.  */
+        /* This is a sad place to do this, but it seems highly desirable
+           to not force any particular order on the front matter
+           commands.  This way, the document can do @settitle,
+           @documentlanguage, etc, in any order and with any omissions,
+           and we'll still output the header ("produced by makeinfo",
+           HTML <head>, etc.) `just in time'.  */
         if ((executing_macro || !executing_string)
             && !only_macro_expansion
-            && html && !html_output_head_p && !defining_copying ())
-          html_output_head ();
+            && !defining_copying ()
+            && !output_head_p)
+          {
+            output_head ();
+          }
 
         if (!paragraph_is_open)
           {
@@ -2685,8 +2828,11 @@ add_char (int character)
               }
           }
 
-        output_column += len;
-        if (output_column > fill_column)
+	output_paragraph[output_paragraph_offset] = character;
+	output_paragraph_offset++;
+	column = current_output_column ();
+	output_paragraph_offset--;
+        if (column > fill_column)
           {
             if (filling_enabled && !html)
               {
@@ -2773,11 +2919,6 @@ add_char (int character)
                             output_paragraph_offset += current_indent;
                             free (temp_buffer);
                           }
-                        output_column = 0;
-                        while (temp < output_paragraph_offset)
-                          output_column +=
-                            get_char_len (output_paragraph[temp++]);
-                        output_column += len;
                         break;
                       }
                   }
@@ -2870,7 +3011,6 @@ kill_self_indent (int count)
   /* Handle infinite case first. */
   if (count < 0)
     {
-      output_column = 0;
       while (output_paragraph_offset)
         {
           if (whitespace (output_paragraph[output_paragraph_offset - 1]))
@@ -2922,22 +3062,17 @@ flush_output (void)
           node_line_number++;
         }
 
-      /* If we turned on the 8th bit for a space inside @w, turn it
-         back off for output.  This might be problematic, since the
-         0x80 character may be used in 8-bit character sets.  Sigh.
-         In any case, don't do this for HTML, since the nbsp character
-         is valid input and must be passed along to the browser.  */
-      if (!html && (output_paragraph[i] & meta_character_bit))
-        {
-          int temp = UNMETA (output_paragraph[i]);
-          if (temp == ' ')
-            output_paragraph[i] &= 0x7f;
-        }
+      /* If we turned on the 8th bit for a space inside @w, turn it back off
+         for output.  Don't do this for HTML, since the nbsp character is valid
+         input and must be passed along to the browser.  */
+      if (!html && output_paragraph[i] == NON_BREAKING_SPACE)
+	output_paragraph[i] = ' ';
     }
 
   fwrite (output_paragraph, 1, output_paragraph_offset, output_stream);
 
   output_position += output_paragraph_offset;
+  output_paragraph_start_column = current_output_column ();
   output_paragraph_offset = 0;
   meta_char_pos = 0;
 }
@@ -2988,6 +3123,8 @@ close_insertion_paragraph (void)
     }
   else
     {
+      int column;
+
       /* If the insertion paragraph is closed already, then we are seeing
          two `@end' commands in a row.  Note that the first one we saw was
          handled in the first part of this if-then-else clause, and at that
@@ -2995,8 +3132,9 @@ close_insertion_paragraph (void)
          indentation of the current line.  However, the indentation level
          may have just changed again, so we may have to outdent the current
          line to the new indentation level. */
-      if (current_indent < output_column)
-        kill_self_indent (output_column - current_indent);
+      column = current_output_column ();
+      if (current_indent < column)
+        kill_self_indent (column - current_indent);
     }
 
   insertion_paragraph_closed = 1;
@@ -3009,7 +3147,7 @@ close_paragraph (void)
   int i;
 
   /* We don't need these newlines in XML and Docbook outputs for
-     paragraph seperation.  We have <para> element for that.  */
+     paragraph separation.  We have the <para> element for that.  */
   if (xml)
     return;
 
@@ -3062,7 +3200,6 @@ close_paragraph (void)
       flush_output ();
       paragraph_is_open = 0;
       no_indent = 0;
-      output_column = 0;
     }
 
   ignore_blank_line ();
@@ -3076,38 +3213,40 @@ ignore_blank_line (void)
   last_char_was_newline = 1;
 }
 
-/* Align the end of the text in output_paragraph with fill_column. */
+/* Align the end of the text in output_paragraph with fill_column.  The last
+   character in output_paragraph is '\n'. */
 static void
 do_flush_right_indentation (void)
 {
   char *temp;
-  int temp_len;
 
   kill_self_indent (-1);
 
   if (output_paragraph[0] != '\n')
     {
-      output_paragraph[output_paragraph_offset] = 0;
+      int width;
 
-      if (output_paragraph_offset < fill_column)
+      width = mbsnwidth ((char *)output_paragraph, output_paragraph_offset - 1,
+			 0) + 1;
+      if (width < fill_column)
         {
           int i;
 
-          if (fill_column >= paragraph_buffer_len)
+          if (output_paragraph_offset + (fill_column - width)
+	      >= paragraph_buffer_len)
             output_paragraph =
               xrealloc (output_paragraph,
                         (paragraph_buffer_len += fill_column));
 
-          temp_len = strlen ((char *)output_paragraph);
-          temp = xmalloc (temp_len + 1);
-          memcpy (temp, (char *)output_paragraph, temp_len);
+          temp = xmalloc (output_paragraph_offset);
+          memcpy (temp, (char *)output_paragraph, output_paragraph_offset);
 
-          for (i = 0; i < fill_column - output_paragraph_offset; i++)
+          for (i = 0; i < fill_column - width; i++)
             output_paragraph[i] = ' ';
 
-          memcpy ((char *)output_paragraph + i, temp, temp_len);
+          memcpy ((char *)output_paragraph + i, temp, output_paragraph_offset);
           free (temp);
-          output_paragraph_offset = fill_column;
+          output_paragraph_offset += i;
           adjust_braces_following (0, i);
         }
     }
@@ -3137,6 +3276,8 @@ start_paragraph (void)
       /* If doing indentation, then insert the appropriate amount. */
       if (!no_indent)
         {
+	  int column;
+
           if (inhibit_paragraph_indentation)
             {
               amount_to_indent = current_indent;
@@ -3148,12 +3289,9 @@ start_paragraph (void)
           else
             amount_to_indent = current_indent + paragraph_start_indent;
 
-          if (amount_to_indent >= output_column)
-            {
-              amount_to_indent -= output_column;
-              indent (amount_to_indent);
-              output_column += amount_to_indent;
-            }
+	  column = current_output_column ();
+          if (amount_to_indent >= column)
+	    indent (amount_to_indent - column);
         }
     }
   else
@@ -3173,9 +3311,9 @@ indent (int amount)
 }
 
 /* Search forward for STRING in input_text.
-   FROM says where where to start. */
+   FROM says where to start. */
 int
-search_forward (char *string, int from)
+search_forward (const char *string, int from)
 {
   int len = strlen (string);
 
@@ -3240,9 +3378,36 @@ next_nonwhitespace_character (void)
 
   return -1;
 }
+
+
+
+/* Replace " with \" and \ with \\.  Used for alt tag in Info output.
+   Return a newly-malloced string in all cases.  */
+
+static char *
+bs_escape_quote (const char *src)
+{
+  int c;
+  char *dest = xmalloc (2 * strlen (src) + 1);  /* can't need more.  */
+  char *p = dest;
+  
+  for (; c = *src; src++)
+    {
+      if (c == '"' || c == '\\')
+        *p++ = '\\';
+
+      *p++ = c;
+    }
+  *p = 0;
+  
+  return dest;
+}
+
+
 
 /* An external image is a reference, kind of.  The parsing is (not
    coincidentally) similar, anyway.  */
+
 void
 cm_image (int arg)
 {
@@ -3261,8 +3426,10 @@ cm_image (int arg)
     {
       struct stat file_info;
       char *pathname = NULL;
-      char *fullname = xmalloc (strlen (name_arg)
-                       + (ext_arg && *ext_arg ? strlen (ext_arg) + 1: 4) + 1);
+      unsigned ext_len = (ext_arg && *ext_arg) ? strlen (ext_arg) : 0;
+      /* One byte for the . period separator, one byte for the null.
+         The 3 is for the max length of the hardwired extensions we try.  */
+      char *fullname = xmalloc (strlen (name_arg) + 1 + MAX (ext_len, 3) + 1);
 
       if (ext_arg && *ext_arg)
         {
@@ -3290,10 +3457,16 @@ cm_image (int arg)
             if (pathname == NULL) {
               sprintf (fullname, "%s.jpg", name_arg);
               if (access (fullname, R_OK) != 0) {
-                sprintf (fullname, "%s.gif", name_arg);
-                if (access (fullname, R_OK) != 0) {
-                  pathname = get_file_info_in_path (fullname,
-                                               include_files_path, &file_info);
+		  pathname = get_file_info_in_path (fullname,
+						    include_files_path,
+						    &file_info);
+		  if (pathname == NULL) {
+		    sprintf (fullname, "%s.gif", name_arg);
+		    if (access (fullname, R_OK) != 0) {
+		      pathname = get_file_info_in_path (fullname,
+							include_files_path,
+							&file_info);
+		    }
                 }
               }
             }
@@ -3355,12 +3528,10 @@ cm_image (int arg)
             xml_no_para--;
         }
       else
-        { /* Try to open foo.EXT or foo.txt.  */
+        { /* Prefer foo.txt for Info/ASCII.  Seems wrong nowadays.  */
           FILE *image_file;
           char *txtpath = NULL;
-          char *txtname = xmalloc (strlen (name_arg)
-                                   + (ext_arg && *ext_arg
-                                      ? strlen (ext_arg) : 4) + 1);
+          char *txtname = xmalloc (strlen (name_arg) + 4 + 1);
           strcpy (txtname, name_arg);
           strcat (txtname, ".txt");
           image_file = fopen (txtname, "r");
@@ -3402,7 +3573,13 @@ cm_image (int arg)
                     add_word_args (" src=\"%s\"", fullname);
 
                   if (*alt_arg)
-                    add_word_args (" alt=\"%s\"", alt_arg);
+                    {
+                      char *expanded = text_expansion (alt_arg);
+                      char *escaped = bs_escape_quote (expanded);
+                      add_word_args (" alt=\"%s\"", escaped);
+                      free (expanded);
+                      free (escaped);
+                    }
                 }
 
               if (image_file != NULL)
@@ -3591,13 +3768,13 @@ cm_ifeq (void)
 {
   char **arglist;
 
-  arglist = get_brace_args (0);
+  arglist = get_brace_args (quote_none);
 
   if (arglist)
     {
       if (array_len (arglist) > 1)
         {
-          if ((strcasecmp (arglist[0], arglist[1]) == 0) &&
+          if ((mbscasecmp (arglist[0], arglist[1]) == 0) &&
               (arglist[2]))
             execute_string ("%s\n", arglist[2]);
         }
@@ -3642,7 +3819,6 @@ cm_value (int arg, int start_pos, int end_pos)
       output_paragraph[end_pos] = 0;
       name = xstrdup (name);
       value = set_p (name);
-      output_column -= end_pos - start_pos;
       output_paragraph_offset = start_pos;
 
       /* Restore the previous value of meta_char_pos if the stuff
@@ -3941,8 +4117,7 @@ maybe_update_execution_strings (char **text, unsigned int new_len)
   abort ();
 }
 
-/* FIXME: this is an arbitrary limit.  */
-#define EXECUTE_STRING_MAX 16*1024
+#define EXECUTE_STRING_MAX (32*1024) /* FIXXME: this is an arbitrary limit.  */
 
 /* Execute the string produced by formatting the ARGs with FORMAT.  This
    is like submitting a new file with @include. */
@@ -4036,6 +4211,7 @@ maybe_escaped_expansion (char *str, int implicit_code, int do_html_escape)
   indented_fill = 0;
   no_indent = 1;
   escape_html = do_html_escape;
+  xml_no_para++;
 
   result = full_expansion (str, implicit_code);
 
@@ -4043,6 +4219,7 @@ maybe_escaped_expansion (char *str, int implicit_code, int do_html_escape)
   indented_fill = saved_indented_fill;
   no_indent = saved_no_indent;
   escape_html = saved_escape_html;
+  xml_no_para--;
 
   return result;
 }
@@ -4061,7 +4238,6 @@ full_expansion (char *str, int implicit_code)
   /* Inhibit any real output.  */
   int start = output_paragraph_offset;
   int saved_paragraph_is_open = paragraph_is_open;
-  int saved_output_column = output_column;
 
   /* More output state to save.  */
   int saved_meta_pos = meta_char_pos;
@@ -4096,7 +4272,6 @@ full_expansion (char *str, int implicit_code)
 
   output_paragraph_offset = start;
   paragraph_is_open = saved_paragraph_is_open;
-  output_column = saved_output_column;
 
   meta_char_pos = saved_meta_pos;
   last_inserted_character = saved_last_char;
@@ -4154,4 +4329,69 @@ set_paragraph_indent (char *string)
         }
     }
   return 0;
+}
+
+
+/* Translate MSGID according to the document language (@documentlanguage
+   value or --document-language), rather than the current locale
+   (LANGUAGE/LC_ALL/LANG).  This code is from the get_title function in
+   gettext.  (xsetenv and unsetenv come from the gnulib xsetenv module.)  */
+
+char *
+getdocumenttext (const char *msgid)
+{
+  /* The original get_title also saves, sets, and restores
+     OUTPUT_CHARSET, so that the translation will be given in
+     the proper encoding (via canonical_locale_charset).  But defining
+     that function ends up pulling a whole lot of subsidiary functions.
+     Not sure how to handle it; skip the whole thing for now.  */
+  const char *tmp;
+  char *old_LC_ALL;
+  char *old_LANGUAGE;
+  const char *result;
+#ifdef HAVE_SETLOCALE
+  char *old_locale;
+#endif
+
+  /* Save LC_ALL, LANGUAGE environment variables.  */
+
+  tmp = getenv ("LC_ALL");
+  old_LC_ALL = (tmp != NULL ? xstrdup (tmp) : NULL);
+
+  tmp = getenv ("LANGUAGE");
+  old_LANGUAGE = (tmp != NULL ? xstrdup (tmp) : NULL);
+
+  xsetenv ("LC_ALL", document_language, 1);
+  unsetenv ("LANGUAGE");
+
+#ifdef HAVE_SETLOCALE
+  old_locale = xstrdup (setlocale (LC_ALL, NULL));
+  if (setlocale (LC_ALL, "") == NULL)
+    /* Nonexistent locale.  Use the original.  */
+    result = msgid;
+  else
+#endif
+    {
+      /* Fetch the translation.  */
+      result = gettext ((char *) msgid);
+    }
+
+  /* Restore LC_ALL, LANGUAGE environment variables.  */
+
+  if (old_LC_ALL != NULL)
+    xsetenv ("LC_ALL", old_LC_ALL, 1), free (old_LC_ALL);
+  else
+    unsetenv ("LC_ALL");
+
+  if (old_LANGUAGE != NULL)
+    xsetenv ("LANGUAGE", old_LANGUAGE, 1), free (old_LANGUAGE);
+  else
+    unsetenv ("LANGUAGE");
+
+#ifdef HAVE_SETLOCALE
+  setlocale (LC_ALL, old_locale);
+  free (old_locale);
+#endif
+
+  return (char *) result;
 }

@@ -1,13 +1,13 @@
 /* m-x.c -- Meta-x minibuffer reader.
-   $Id: m-x.c,v 1.3 2004/04/11 17:56:46 karl Exp $
+   $Id: m-x.c,v 1.8 2008/06/11 09:55:42 gray Exp $
 
-   Copyright (C) 1993, 1997, 1998, 2001, 2002, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1993, 1997, 1998, 2001, 2002, 2004, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Originally written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -33,11 +32,11 @@
    name.  A return value of NULL indicates that no function name could
    be read. */
 char *
-read_function_name (char *prompt, WINDOW *window)
+read_function_name (const char *prompt, WINDOW *window)
 {
   register int i;
   char *line;
-  REFERENCE **array = (REFERENCE **)NULL;
+  REFERENCE **array = NULL;
   int array_index = 0, array_slots = 0;
 
   /* Make an array of REFERENCE which actually contains the names of
@@ -46,10 +45,10 @@ read_function_name (char *prompt, WINDOW *window)
     {
       REFERENCE *entry;
 
-      entry = (REFERENCE *)xmalloc (sizeof (REFERENCE));
+      entry = xmalloc (sizeof (REFERENCE));
       entry->label = xstrdup (function_doc_array[i].func_name);
-      entry->nodename = (char *)NULL;
-      entry->filename = (char *)NULL;
+      entry->nodename = NULL;
+      entry->filename = NULL;
 
       add_pointer_to_array
         (entry, array_index, array, array_slots, 200, REFERENCE *);
@@ -62,7 +61,7 @@ read_function_name (char *prompt, WINDOW *window)
   if (!echo_area_is_active)
     window_clear_echo_area ();
 
-  return (line);
+  return line;
 }
 
 DECLARE_INFO_COMMAND (describe_command,
@@ -70,7 +69,7 @@ DECLARE_INFO_COMMAND (describe_command,
 {
   char *line;
 
-  line = read_function_name ((char *) _("Describe command: "), window);
+  line = read_function_name (_("Describe command: "), window);
 
   if (!line)
     {
@@ -99,7 +98,7 @@ DECLARE_INFO_COMMAND (info_execute_command,
   char *keys;
   char *prompt;
 
-  prompt = (char *)xmalloc (20);
+  prompt = xmalloc (20);
 
   keys = where_is (info_keymap, InfoCmd(info_execute_command));
   /* If the where_is () function thinks that this command doesn't exist,
@@ -137,7 +136,7 @@ DECLARE_INFO_COMMAND (info_execute_command,
         (strncmp (line, "echo-area-", 10) == 0))
       {
         free (line);
-        info_error ((char *) _("Cannot execute an `echo-area' command here."),
+        info_error (_("Cannot execute an `echo-area' command here."),
             NULL, NULL);
         return;
       }
@@ -151,7 +150,7 @@ DECLARE_INFO_COMMAND (info_execute_command,
     if (InfoFunction(command))
       (*InfoFunction(command)) (active_window, count, 0);
     else
-      info_error ((char *) _("Undefined command: %s"), line, NULL);
+      info_error (_("Undefined command: %s"), line, NULL);
   }
 }
 

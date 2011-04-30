@@ -1,12 +1,13 @@
 /* display.c -- How to display Info windows.
-   $Id: display.c,v 1.7 2004/04/11 17:56:45 karl Exp $
+   $Id: display.c,v 1.16 2008/06/11 09:55:41 gray Exp $
 
-   Copyright (C) 1993, 1997, 2003, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1993, 1997, 2003, 2004, 2006, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Originally written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -33,7 +33,7 @@ void handle_tag_end (char *tag);
 
 /* An array of display lines which tell us what is currently visible on
    the display.  */
-DISPLAY_LINE **the_display = (DISPLAY_LINE **)NULL;
+DISPLAY_LINE **the_display = NULL;
 
 /* Non-zero means do no output. */
 int display_inhibited = 0;
@@ -117,27 +117,138 @@ handle_tag (char *tag)
       handle_tag_start (tag);
 }
 
-/* Display WIN on the_display.  Unlike display_update_display (), this
-   function only does one window. */
+
+struct display_node_closure {
+  WINDOW *win;
+  DISPLAY_LINE **display;
+};
+
+static int
+find_diff (const char *a, size_t alen, const char *b, size_t blen, int *ppos)
+{
+  mbi_iterator_t itra, itrb;
+  int i = 0;
+  int pos = 0;
+  
+  for (i = 0, mbi_init (itra, a, alen), mbi_init (itrb, b, blen);
+       mbi_avail (itra) && mbi_avail (itrb);
+       mbi_advance (itra), mbi_advance (itrb))
+    {
+      if (mb_cmp (mbi_cur (itra), mbi_cur (itrb)))
+	break;
+      pos += mb_len (mbi_cur (itra));
+    }
+  *ppos = pos;
+  return i;
+}
+
+int
+display_node_text(void *closure, size_t line_index,
+		  const char *src_line,
+		  char *printed_line, size_t pl_index, size_t pl_count)
+{
+  struct display_node_closure *dn = closure;
+  WINDOW *win = dn->win;
+  DISPLAY_LINE **display = dn->display;
+  DISPLAY_LINE *entry = display[win->first_row + line_index];
+
+  /* We have the exact line as it should appear on the screen.
+     Check to see if this line matches the one already appearing
+     on the screen. */
+
+  /* If the window is very small, entry might be NULL. */
+  if (entry)
+    {
+      int i, off;
+	      
+      /* If the screen line is inversed, then we have to clear
+	 the line from the screen first.  Why, I don't know.
+	 (But don't do this if we have no visible entries, as can
+	 happen if the window is shrunk very small.)  */
+      if (entry->inverse
+	  /* Need to erase the line if it has escape sequences.  */
+	  || (raw_escapes_p && mbschr (entry->text, '\033') != 0))
+	{
+	  terminal_goto_xy (0, win->first_row + line_index);
+	  terminal_clear_to_eol ();
+	  entry->inverse = 0;
+	  entry->text[0] = '\0';
+	  entry->textlen = 0;
+	}
+
+      i = find_diff (printed_line, pl_index,
+		     entry->text, strlen (entry->text), &off);
+
+      /* If the lines are not the same length, or if they differed
+	 at all, we must do some redrawing. */
+      if (i != pl_count || pl_count != entry->textlen)
+	{
+	  /* Move to the proper point on the terminal. */
+	  terminal_goto_xy (i, win->first_row + line_index);
+	  /* If there is any text to print, print it. */
+	  if (i != pl_count)
+	    terminal_put_text (printed_line + i);
+	  
+	  /* If the printed text didn't extend all the way to the edge
+	     of the window, and text was appearing between here and the
+	     edge of the window, clear from here to the end of the
+	     line. */
+	  if ((pl_count < win->width && pl_count < entry->textlen)
+	      || entry->inverse)
+	    terminal_clear_to_eol ();
+	  
+	  fflush (stdout);
+	  
+	  /* Update the display text buffer. */
+	  if (strlen (printed_line) > (unsigned int) screenwidth)
+	    /* printed_line[] can include more than screenwidth
+	       characters, e.g. if multibyte encoding is used or
+	       if we are under -R and there are escape sequences
+	       in it.  However, entry->text was allocated (in
+	       display_initialize_display) for screenwidth
+	       bytes only.  */
+	    entry->text = xrealloc (entry->text, strlen (printed_line) + 1);
+	  strcpy (entry->text + off, printed_line + off);
+	  entry->textlen = pl_count;
+	  
+	  /* Lines showing node text are not in inverse.  Only modelines
+	     have that distinction. */
+	  entry->inverse = 0;
+	}
+    }
+
+  /* A line has been displayed, and the screen reflects that state.
+     If there is typeahead pending, then let that typeahead be read
+     now, instead of continuing with the display. */
+  if (info_any_buffered_input_p ())
+    {
+      display_was_interrupted_p = 1;
+      return 1;
+    }
+
+  if (line_index + 1 == win->height)
+    return 1;
+
+  return 0;
+}
+
 void
 display_update_one_window (WINDOW *win)
 {
-  register char *nodetext;      /* Current character to display. */
-  register char *last_node_char; /* Position of the last character in node. */
-  register int i;               /* General use index. */
-  char *printed_line;           /* Buffer for a printed line. */
-  int pl_index = 0;             /* Index into PRINTED_LINE. */
-  int line_index = 0;           /* Number of lines done so far. */
-  int pl_ignore = 0;		/* How many chars use zero width on screen. */
-  int allocated_win_width;
+  size_t line_index = 0;
   DISPLAY_LINE **display = the_display;
 
   /* If display is inhibited, that counts as an interrupted display. */
   if (display_inhibited)
     display_was_interrupted_p = 1;
 
-  /* If the window has no height, or display is inhibited, quit now. */
-  if (!win->height || display_inhibited)
+  /* If the window has no height, or display is inhibited, quit now.
+     Strictly speaking, it should only be necessary to test if the
+     values are equal to zero, since window_new_screen_size should
+     ensure that the window height/width never becomes negative, but
+     since historically this has often been the culprit for crashes, do
+     our best to be doubly safe.  */
+  if (win->height <= 0 || win->width <= 0 || display_inhibited)
     return;
 
   /* If the window's first row doesn't appear in the_screen, then it
@@ -147,259 +258,27 @@ display_update_one_window (WINDOW *win)
   if ((win->first_row < 0) || (win->first_row > the_screen->height))
     return;
 
-  /* Print each line in the window into our local buffer, and then
-     check the contents of that buffer against the display.  If they
-     differ, update the display. */
-  allocated_win_width = win->width + 1;
-  printed_line = (char *)xmalloc (allocated_win_width);
-
-  if (!win->node || !win->line_starts)
-    goto done_with_node_display;
-
-  nodetext = win->line_starts[win->pagetop];
-  last_node_char = win->node->contents + win->node->nodelen;
-
-  for (; nodetext < last_node_char; nodetext++)
+  if (win->node && win->line_starts)
     {
-      char *rep = NULL, *rep_carried_over, rep_temp[2];
-      int replen;
+      struct display_node_closure dnc;
 
-      if (isprint (*nodetext))
-        {
-          rep_temp[0] = *nodetext;
-          replen = 1;
-          rep_temp[1] = '\0';
-          rep = rep_temp;
-        }
-      else
-        {
-          if (*nodetext == '\r' || *nodetext == '\n')
-            {
-              replen = win->width - pl_index + pl_ignore;
-            }
-	  else if (*nodetext == '\0'
-		   && (nodetext + 2) < last_node_char
-		   && *(nodetext + 1) == '\b'
-		   && *(nodetext + 2) == '[')
-	    {
-	      /* Found new style tag/cookie \0\b[
-		 Read until the closing tag \0\b] */
-	      int element_len = 0;
-	      char *element;
-
-	      /* Skip the escapes.  */
-	      nodetext += 3;
-
-	      while (!(*nodetext == '\0'
-		    && *(nodetext + 1) == '\b'
-		    && *(nodetext + 2) == ']'))
-		{
-		  nodetext++;
-		  element_len++;
-		}
-
-	      element = (char *) malloc (element_len + 1);
-	      strncpy (element, nodetext - element_len, element_len);
-
-	      /* Skip the escapes.  */
-	      nodetext += 2;
-	      pl_ignore += element_len + 5;
-	      /* Append string terminator.  */
-	      element[element_len] = '\0';
-
-	      handle_tag (element);
-
-	      /* Over and out */
-	      free (element);
-
-	      continue;
-	    }
-          else
-            {
-              rep = printed_representation (*nodetext, pl_index);
-              replen = strlen (rep);
-            }
-        }
-
-      /* Support ANSI escape sequences under -R.  */
-      if (raw_escapes_p
-	  && *nodetext == '\033'
-	  && nodetext[1] == '['
-	  && isdigit (nodetext[2]))
-	{
-	  if (nodetext[3] == 'm')
-	    pl_ignore += 4;
-	  else if (isdigit (nodetext[3]) && nodetext[4] == 'm')
-	    pl_ignore += 5;
-	}
-      while (pl_index + 2 >= allocated_win_width - 1)
-	{
-	  allocated_win_width *= 2;
-	  printed_line = (char *)xrealloc (printed_line, allocated_win_width);
-	}
-
-      /* If this character can be printed without passing the width of
-         the line, then stuff it into the line. */
-      if (replen + pl_index < win->width + pl_ignore)
-        {
-          /* Optimize if possible. */
-          if (replen == 1)
-            {
-              printed_line[pl_index++] = *rep;
-            }
-          else
-            {
-              for (i = 0; i < replen; i++)
-                printed_line[pl_index++] = rep[i];
-            }
-        }
-      else
-        {
-          DISPLAY_LINE *entry;
-
-          /* If this character cannot be printed in this line, we have
-             found the end of this line as it would appear on the screen.
-             Carefully print the end of the line, and then compare. */
-          if (*nodetext == '\n' || *nodetext == '\r' || *nodetext == '\t')
-            {
-              printed_line[pl_index] = '\0';
-              rep_carried_over = (char *)NULL;
-            }
-          else
-            {
-              /* The printed representation of this character extends into
-                 the next line.  Remember the offset of the last character
-                 printed out of REP so that we can carry the character over
-                 to the next line. */
-              for (i = 0; pl_index < (win->width + pl_ignore - 1);)
-                printed_line[pl_index++] = rep[i++];
-
-              rep_carried_over = rep + i;
-
-              /* If printing the last character in this window couldn't
-                 possibly cause the screen to scroll, place a backslash
-                 in the rightmost column. */
-              if (1 + line_index + win->first_row < the_screen->height)
-                {
-                  if (win->flags & W_NoWrap)
-                    printed_line[pl_index++] = '$';
-                  else
-                    printed_line[pl_index++] = '\\';
-                }
-              printed_line[pl_index] = '\0';
-            }
-
-          /* We have the exact line as it should appear on the screen.
-             Check to see if this line matches the one already appearing
-             on the screen. */
-          entry = display[line_index + win->first_row];
-
-          /* If the screen line is inversed, then we have to clear
-             the line from the screen first.  Why, I don't know.
-             (But don't do this if we have no visible entries, as can
-             happen if the window is shrunk very small.)  */
-          if ((entry && entry->inverse)
-	      /* Need to erase the line if it has escape sequences.  */
-	      || (raw_escapes_p && strchr (entry->text, '\033') != 0))
-            {
-              terminal_goto_xy (0, line_index + win->first_row);
-              terminal_clear_to_eol ();
-              entry->inverse = 0;
-              entry->text[0] = '\0';
-              entry->textlen = 0;
-            }
-
-          /* Find the offset where these lines differ. */
-          for (i = 0; i < pl_index; i++)
-            if (printed_line[i] != entry->text[i])
-              break;
-
-          /* If the lines are not the same length, or if they differed
-             at all, we must do some redrawing. */
-          if ((i != pl_index) || (pl_index != entry->textlen))
-            {
-              /* Move to the proper point on the terminal. */
-              terminal_goto_xy (i, line_index + win->first_row);
-
-              /* If there is any text to print, print it. */
-              if (i != pl_index)
-                terminal_put_text (printed_line + i);
-
-              /* If the printed text didn't extend all the way to the edge
-                 of the window, and text was appearing between here and the
-                 edge of the window, clear from here to the end of the line. */
-              if ((pl_index < win->width + pl_ignore
-		   && pl_index < entry->textlen)
-		  || (entry->inverse))
-                terminal_clear_to_eol ();
-
-              fflush (stdout);
-
-              /* Update the display text buffer. */
-	      if (strlen (printed_line) > (unsigned int) screenwidth)
-		/* printed_line[] can include more than screenwidth
-		   characters if we are under -R and there are escape
-		   sequences in it.  However, entry->text was
-		   allocated (in display_initialize_display) for
-		   screenwidth characters only.  */
-		entry->text = xrealloc (entry->text, strlen (printed_line)+1);
-              strcpy (entry->text + i, printed_line + i);
-              entry->textlen = pl_index;
-
-              /* Lines showing node text are not in inverse.  Only modelines
-                 have that distinction. */
-              entry->inverse = 0;
-            }
-
-          /* We have done at least one line.  Increment our screen line
-             index, and check against the bottom of the window. */
-          if (++line_index == win->height)
-            break;
-
-          /* A line has been displayed, and the screen reflects that state.
-             If there is typeahead pending, then let that typeahead be read
-             now, instead of continuing with the display. */
-          if (info_any_buffered_input_p ())
-            {
-              free (printed_line);
-              display_was_interrupted_p = 1;
-              return;
-            }
-
-          /* Reset PL_INDEX to the start of the line. */
-          pl_index = 0;
-	  pl_ignore = 0;	/* this is computed per line */
-
-          /* If there are characters from REP left to print, stuff them
-             into the buffer now. */
-          if (rep_carried_over)
-            for (; rep[pl_index]; pl_index++)
-              printed_line[pl_index] = rep[pl_index];
-
-          /* If this window has chosen not to wrap lines, skip to the end
-             of the physical line in the buffer, and start a new line here. */
-          if (pl_index && (win->flags & W_NoWrap))
-            {
-              char *begin;
-
-              pl_index = 0;
-              printed_line[0] = '\0';
-
-              begin = nodetext;
-
-              while ((nodetext < last_node_char) && (*nodetext != '\n'))
-                nodetext++;
-            }
-        }
+      dnc.win = win;
+      dnc.display = the_display;
+      
+      line_index = process_node_text (win, win->line_starts[win->pagetop],
+				      1,
+				      display_node_text,
+				      &dnc);
+      if (display_was_interrupted_p)
+	return;
     }
-
- done_with_node_display:
+  
   /* We have reached the end of the node or the end of the window.  If it
      is the end of the node, then clear the lines of the window from here
      to the end of the window. */
   for (; line_index < win->height; line_index++)
     {
-      DISPLAY_LINE *entry = display[line_index + win->first_row];
+      DISPLAY_LINE *entry = display[win->first_row + line_index];
 
       /* If this line has text on it then make it go away. */
       if (entry && entry->textlen)
@@ -407,7 +286,7 @@ display_update_one_window (WINDOW *win)
           entry->textlen = 0;
           entry->text[0] = '\0';
 
-          terminal_goto_xy (0, line_index + win->first_row);
+          terminal_goto_xy (0, win->first_row + line_index);
           terminal_clear_to_eol ();
         }
     }
@@ -415,7 +294,7 @@ display_update_one_window (WINDOW *win)
   /* Finally, if this window has a modeline it might need to be redisplayed.
      Check the window's modeline against the one in the display, and update
      if necessary. */
-  if ((win->flags & W_InhibitMode) == 0)
+  if (!(win->flags & W_InhibitMode))
     {
       window_make_modeline (win);
       line_index = win->first_row + win->height;
@@ -436,10 +315,10 @@ display_update_one_window (WINDOW *win)
         }
     }
 
+  fflush (stdout);
+
   /* Okay, this window doesn't need updating anymore. */
   win->flags &= ~W_UpdateWindow;
-  free (printed_line);
-  fflush (stdout);
 }
 
 /* Scroll the region of the_display starting at START, ending at END, and
@@ -614,17 +493,17 @@ make_display (int width, int height)
   register int i;
   DISPLAY_LINE **display;
 
-  display = (DISPLAY_LINE **)xmalloc ((1 + height) * sizeof (DISPLAY_LINE *));
+  display = xmalloc ((1 + height) * sizeof (DISPLAY_LINE *));
 
   for (i = 0; i < height; i++)
     {
-      display[i] = (DISPLAY_LINE *)xmalloc (sizeof (DISPLAY_LINE));
-      display[i]->text = (char *)xmalloc (1 + width);
+      display[i] = xmalloc (sizeof (DISPLAY_LINE));
+      display[i]->text = xmalloc (1 + width);
       display[i]->textlen = 0;
       display[i]->inverse = 0;
     }
-  display[i] = (DISPLAY_LINE *)NULL;
-  return (display);
+  display[i] = NULL;
+  return display;
 }
 
 /* Free the storage allocated to DISPLAY. */
@@ -644,3 +523,4 @@ free_display (DISPLAY_LINE **display)
     }
   free (display);
 }
+

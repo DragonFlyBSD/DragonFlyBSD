@@ -1,15 +1,15 @@
 /* echo-area.h -- Functions used in reading information from the echo area.
-   $Id: echo-area.h,v 1.4 2004/08/07 22:03:08 karl Exp $
+   $Id: echo-area.h,v 1.8 2008/02/26 16:51:05 karl Exp $
 
    This file is part of GNU Info, a program for reading online documentation
    stored in Info format.
 
-   Copyright (C) 1993, 1997, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1993, 1997, 2004, 2007 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,8 +17,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -37,25 +36,25 @@ extern void inform_in_echo_area (const char *message);
 extern void echo_area_inform_of_deleted_window (WINDOW *window);
 extern void echo_area_prep_read (void);
 extern VFunction *ea_last_executed_command;
-extern char * info_read_completing_internal (WINDOW *window, char *prompt,
+extern char * info_read_completing_internal (WINDOW *window, const char *prompt,
     REFERENCE **completions, int force);
 
 /* Read a line of text in the echo area.  Return a malloc ()'ed string,
    or NULL if the user aborted out of this read.  WINDOW is the currently
    active window, so that we can restore it when we need to.  PROMPT, if
    non-null, is a prompt to print before reading the line. */
-extern char *info_read_in_echo_area (WINDOW *window, char *prompt);
+extern char *info_read_in_echo_area (WINDOW *window, const char *prompt);
 
 /* Read a line in the echo area with completion over COMPLETIONS.
    Takes arguments of WINDOW, PROMPT, and COMPLETIONS, a REFERENCE **. */
 char *info_read_completing_in_echo_area (WINDOW *window,
-    char *prompt, REFERENCE **completions);
+    const char *prompt, REFERENCE **completions);
 
 /* Read a line in the echo area allowing completion over COMPLETIONS, but
    not requiring it.  Takes arguments of WINDOW, PROMPT, and COMPLETIONS,
    a REFERENCE **. */
 extern char *info_read_maybe_completing (WINDOW *window,
-    char *prompt, REFERENCE **completions);
+    const char *prompt, REFERENCE **completions);
 
 extern void ea_insert (WINDOW *window, int count, unsigned char key);
 extern void ea_quoted_insert (WINDOW *window, int count, unsigned char key);

@@ -1,12 +1,13 @@
 /* dir.c -- how to build a special "dir" node from "localdir" files.
-   $Id: dir.c,v 1.3 2004/04/11 17:56:45 karl Exp $
+   $Id: dir.c,v 1.8 2008/06/11 09:55:41 gray Exp $
 
-   Copyright (C) 1993, 1997, 1998, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1993, 1997, 1998, 2004, 2007, 
+   2008 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,10 +15,9 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-   Written by Brian Fox (bfox@ai.mit.edu). */
+  Written by Brian Fox (bfox@ai.mit.edu). */
 
 #include "info.h"
 #include "info-utils.h"
@@ -35,7 +35,7 @@ static void insert_text_into_fb_at_binding (FILE_BUFFER *fb,
 void maybe_build_dir_node (char *dirname);
 
 static char *dirs_to_add[] = {
-  "dir", "localdir", (char *)NULL
+  "dir", "localdir", NULL
 };
 
 
@@ -44,8 +44,8 @@ static char *dirs_to_add[] = {
 
 typedef struct
 {
-  unsigned long device;
-  unsigned long inode;
+  dev_t device;
+  ino_t inode;
 } dir_file_list_entry_type;
 
 static int
@@ -279,7 +279,7 @@ insert_text_into_fb_at_binding (FILE_BUFFER *fb,
   start = binding->start;
   end = fb->filesize;
 
-  contents = (char *)xmalloc (fb->filesize + textlen + 1);
+  contents = xmalloc (fb->filesize + textlen + 1);
   memcpy (contents, fb->contents, start);
   memcpy (contents + start, text, textlen);
   memcpy (contents + start + textlen, fb->contents + start, end - start);

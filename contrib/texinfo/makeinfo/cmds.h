@@ -1,22 +1,21 @@
 /* cmds.h -- declarations for cmds.c.
-   $Id: cmds.h,v 1.9 2004/11/26 00:48:35 karl Exp $
+   $Id: cmds.h,v 1.15 2008/04/09 17:07:31 karl Exp $
 
-   Copyright (C) 1998, 1999, 2002, 2003, 2004 Free Software Foundation,
-   Inc.
+   Copyright (C) 1998, 1999, 2002, 2003, 2004, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License along
-   with this program; if not, write to the Free Software Foundation, Inc.,
-   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #ifndef CMDS_H
 #define CMDS_H
@@ -89,7 +88,11 @@ extern void cm_anchor (int arg),
 /* Special insertions.  */
 extern void cm_LaTeX (int arg),
   cm_TeX (int arg),
+  cm_arrow (int arg),
   cm_bullet (int arg),
+  cm_click (int arg),
+  cm_clicksequence (int arg),
+  cm_clickstyle (void),
   cm_colon (void),
   cm_comma (int arg),
   cm_copyright (int arg),
@@ -100,10 +103,17 @@ extern void cm_LaTeX (int arg),
   cm_expansion (int arg),
   cm_image (int arg),
   cm_insert_copying (void),
-  cm_minus (int arg),
+  cm_guilsinglleft (int arg),
+  cm_guilsinglright (int arg),
   cm_point (int arg),
   cm_print (int arg),
   cm_punct (int arg),
+  cm_quotedblbase (int arg),
+  cm_quotedblleft (int arg),
+  cm_quotedblright (int arg),
+  cm_quoteleft (int arg),
+  cm_quoteright (int arg),
+  cm_quotesinglbase (int arg),
   cm_registeredsymbol (int arg),
   cm_result (int arg);
 

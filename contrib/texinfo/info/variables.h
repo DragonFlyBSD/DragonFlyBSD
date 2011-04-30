@@ -1,15 +1,15 @@
 /* variables.h -- Description of user visible variables in Info.
-   $Id: variables.h,v 1.3 2004/04/11 17:56:46 karl Exp $
+   $Id: variables.h,v 1.9 2008/03/04 09:45:27 gray Exp $
 
    This file is part of GNU Info, a program for reading online documentation
    stored in Info format.
 
-   Copyright (C) 1993, 1997, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1993, 1997, 2004, 2007 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,8 +17,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -42,7 +41,7 @@ typedef struct {
 /* Read the name of an Info variable in the echo area and return the
    address of a VARIABLE_ALIST member.  A return value of NULL indicates
    that no variable could be read. */
-extern VARIABLE_ALIST *read_variable_name (char *prompt, WINDOW *window);
+extern VARIABLE_ALIST *read_variable_name (const char *prompt, WINDOW *window);
 
 /* Make an array of REFERENCE which actually contains the names of the
    variables available in Info. */
@@ -61,6 +60,8 @@ extern int gc_compressed_files;
 extern int show_index_match;
 extern int info_scroll_behaviour;
 extern int window_scroll_step;
+extern int cursor_movement_scrolls_p;
 extern int ISO_Latin_p;
+extern int scroll_last_node;
 
 #endif /* not INFO_VARIABLES_H */

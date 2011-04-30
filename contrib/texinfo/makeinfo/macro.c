@@ -1,12 +1,13 @@
 /* macro.c -- user-defined macros for Texinfo.
-   $Id: macro.c,v 1.6 2004/04/11 17:56:47 karl Exp $
+   $Id: macro.c,v 1.12 2007/07/01 21:20:32 karl Exp $
 
-   Copyright (C) 1998, 1999, 2002, 2003 Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2002, 2003, 2005, 2007
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "system.h"
 #include "cmds.h"
@@ -151,13 +151,14 @@ add_macro (char *name, char **arglist, char *body, char *source_file,
   def->source_lineno = source_lineno;
   def->body = body;
   def->arglist = arglist;
+  def->argcount = array_len (arglist);
   def->inhibited = 0;
   def->flags = flags;
 }
 
 
 char **
-get_brace_args (int quote_single)
+get_brace_args (enum quote_type quote)
 {
   char **arglist, *word;
   int arglist_index, arglist_size;
@@ -187,8 +188,10 @@ get_brace_args (int quote_single)
           depth++;
           input_text_offset++;
         }
-      else if ((character == ',' && !quote_single) ||
-               ((character == '}') && depth == 1))
+      else if ((character == ','
+		&& !(quote == quote_single
+		     || (quote == quote_many && depth > 1)))
+	       || ((character == '}') && depth == 1))
         {
           int len = input_text_offset - start;
 
@@ -264,7 +267,8 @@ get_macro_args (MACRO_DEF *def)
               char **arglist;
 
               get_rest_of_line (0, &word);
-              if (input_text[input_text_offset - 1] == '\n')
+              if (input_text_offset > 0
+		  && input_text[input_text_offset - 1] == '\n')
                 {
                   input_text_offset--;
                   line_number--;
@@ -284,7 +288,7 @@ get_macro_args (MACRO_DEF *def)
             }
         }
     }
-  return get_brace_args (def->flags & ME_QUOTE_ARG);
+  return get_brace_args (def->argcount == 1 ? quote_single : quote_many);
 }
 
 /* Substitute actual parameters for named parameters in body.
@@ -385,17 +389,13 @@ char *
 expand_macro (MACRO_DEF *def)
 {
   char **arglist;
-  int num_args;
   char *execution_string = NULL;
   int start_line = line_number;
-
-  /* Find out how many arguments this macro definition takes. */
-  num_args = array_len (def->arglist);
 
   /* Gather the arguments present on the line if there are any. */
   arglist = get_macro_args (def);
 
-  if (num_args < array_len (arglist))
+  if (def->argcount < array_len (arglist))
     {
       free_array (arglist);
       line_error (_("Macro `%s' called on line %d with too many args"),
@@ -566,12 +566,6 @@ define_macro (char *mactype, int recursive)
                 }
             }
         }
-      
-      /* If we have exactly one argument, do @quote-arg implicitly.  Not
-         only does this match TeX's behavior (which can't feasibly be
-         changed), but it's a good idea.  */
-      if (arglist_index == 1)
-        flags |= ME_QUOTE_ARG;
     }
 
   /* Read the text carefully until we find an "@end macro" which
@@ -594,6 +588,7 @@ define_macro (char *mactype, int recursive)
           (strncmp (line + 1, "allow-recursion", 15) == 0) &&
           (line[16] == 0 || whitespace (line[16])))
         {
+	  warning (_("@allow-recursion is deprecated; please use @rmacro instead"));
           for (i = 16; whitespace (line[i]); i++);
           strcpy (line, line + i);
           flags |= ME_RECURSE;
@@ -608,20 +603,14 @@ define_macro (char *mactype, int recursive)
           (strncmp (line + 1, "quote-arg", 9) == 0) &&
           (line[10] == 0 || whitespace (line[10])))
         {
+	  warning (_("@quote-arg is deprecated; arguments are quoted by default"));
           for (i = 10; whitespace (line[i]); i++);
           strcpy (line, line + i);
-
-          if (arglist && arglist[0] && !arglist[1])
-            {
-              flags |= ME_QUOTE_ARG;
-              if (!*line)
-                {
-                  free (line);
-                  continue;
-                }
-            }
-          else
-           line_error (_("@quote-arg only useful for single-argument macros"));
+	  if (!*line)
+	    {
+	      free (line);
+	      continue;
+	    }
         }
 
       if (*line == COMMAND_PREFIX
@@ -899,13 +888,12 @@ me_execute_string (char *execution_string)
 void
 me_execute_string_keep_state (char *execution_string, char *append_string)
 {
-  int op_orig, opcol_orig, popen_orig;
+  int op_orig, popen_orig;
   int fill_orig, newline_orig, indent_orig, meta_pos_orig;
 
   remember_itext (input_text, input_text_offset);
   op_orig = output_paragraph_offset;
   meta_pos_orig = meta_char_pos;
-  opcol_orig = output_column;
   popen_orig = paragraph_is_open;
   fill_orig = filling_enabled;
   newline_orig = last_char_was_newline;
@@ -917,7 +905,6 @@ me_execute_string_keep_state (char *execution_string, char *append_string)
     write_region_to_macro_output (append_string, 0, strlen (append_string));
   output_paragraph_offset = op_orig;
   meta_char_pos = meta_pos_orig;
-  output_column = opcol_orig;
   paragraph_is_open = popen_orig;
   filling_enabled = fill_orig;
   last_char_was_newline = newline_orig;

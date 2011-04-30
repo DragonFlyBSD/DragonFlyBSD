@@ -1,16 +1,16 @@
 /* tilde.h: Externally available variables and function in libtilde.a.
-   $Id: tilde.h,v 1.3 2004/04/11 17:56:46 karl Exp $
+   $Id: tilde.h,v 1.6 2007/07/01 21:20:31 karl Exp $
 
    This file has appeared in prior works by the Free Software Foundation;
    thus it carries copyright dates from 1988 through 1993.
 
-   Copyright (C) 1988, 1989, 1990, 1991, 1992, 1993, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1988, 1989, 1990, 1991, 1992, 1993, 2004, 2007
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,8 +18,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Brian Fox (bfox@ai.mit.edu). */
 

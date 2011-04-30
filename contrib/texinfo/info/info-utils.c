@@ -1,12 +1,13 @@
 /* info-utils.c -- miscellanous.
-   $Id: info-utils.c,v 1.4 2004/04/11 17:56:45 karl Exp $
+   $Id: info-utils.c,v 1.12 2008/06/11 09:55:42 gray Exp $
 
-   Copyright (C) 1993, 1998, 2003, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1993, 1998, 2003, 2004, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Originally written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -31,11 +31,11 @@ int ISO_Latin_p = 1;
 
 /* Variable which holds the most recent filename parsed as a result of
    calling info_parse_xxx (). */
-char *info_parsed_filename = (char *)NULL;
+char *info_parsed_filename = NULL;
 
 /* Variable which holds the most recent nodename parsed as a result of
    calling info_parse_xxx (). */
-char *info_parsed_nodename = (char *)NULL;
+char *info_parsed_nodename = NULL;
 
 /* Variable which holds the most recent line number parsed as a result of
    calling info_parse_xxx (). */
@@ -62,8 +62,8 @@ info_parse_node (char *string, int newlines_okay)
   register int i = 0;
 
   /* Default the answer. */
-  save_filename ((char *)NULL);
-  save_nodename ((char *)NULL);
+  save_filename (NULL);
+  save_nodename (NULL);
 
   /* Special case of nothing passed.  Return nothing. */
   if (!string || !*string)
@@ -99,7 +99,7 @@ info_parse_node (char *string, int newlines_okay)
   if (info_parsed_nodename && !*info_parsed_nodename)
     {
       free (info_parsed_nodename);
-      info_parsed_nodename = (char *)NULL;
+      info_parsed_nodename = NULL;
     }
 
   /* Parse ``(line ...)'' part of menus, if any.  */
@@ -145,8 +145,8 @@ info_parse_label (char *label, NODE *node)
   char *nodeline;
 
   /* Default answer to failure. */
-  save_nodename ((char *)NULL);
-  save_filename ((char *)NULL);
+  save_nodename (NULL);
+  save_filename (NULL);
 
   /* Find the label in the first line of this node. */
   nodeline = node->contents;
@@ -173,7 +173,7 @@ info_menu_of_node (NODE *node)
 {
   long position;
   SEARCH_BINDING tmp_search;
-  REFERENCE **menu = (REFERENCE **)NULL;
+  REFERENCE **menu = NULL;
 
   tmp_search.buffer = node->contents;
   tmp_search.start = 0;
@@ -184,7 +184,7 @@ info_menu_of_node (NODE *node)
   position = search_forward (INFO_MENU_LABEL, &tmp_search);
 
   if (position == -1)
-    return ((REFERENCE **) NULL);
+    return NULL;
 
   /* We have the start of the menu now.  Glean menu items from the rest
      of the node. */
@@ -192,7 +192,7 @@ info_menu_of_node (NODE *node)
   tmp_search.start += skip_line (tmp_search.buffer + tmp_search.start);
   tmp_search.start--;
   menu = info_menu_items (&tmp_search);
-  return (menu);
+  return menu;
 }
 
 /* Return a NULL terminated array of REFERENCE * which represents the cross
@@ -205,7 +205,7 @@ info_xrefs_of_node (NODE *node)
 
 #if defined (HANDLE_MAN_PAGES)
   if (node->flags & N_IsManPage)
-    return (xrefs_of_manpage (node));
+    return xrefs_of_manpage (node);
 #endif
 
   tmp_search.buffer = node->contents;
@@ -213,7 +213,7 @@ info_xrefs_of_node (NODE *node)
   tmp_search.end = node->nodelen;
   tmp_search.flags = S_FoldCase;
 
-  return (info_xrefs (&tmp_search));
+  return info_xrefs (&tmp_search);
 }
 
 /* Glean menu entries from BINDING->buffer + BINDING->start until we
@@ -222,7 +222,7 @@ info_xrefs_of_node (NODE *node)
 REFERENCE **
 info_menu_items (SEARCH_BINDING *binding)
 {
-  return (info_references_internal (INFO_MENU_ENTRY_LABEL, binding));
+  return info_references_internal (INFO_MENU_ENTRY_LABEL, binding);
 }
 
 /* Glean cross references from BINDING->buffer + BINDING->start until
@@ -231,7 +231,7 @@ info_menu_items (SEARCH_BINDING *binding)
 REFERENCE **
 info_xrefs (SEARCH_BINDING *binding)
 {
-  return (info_references_internal (INFO_XREF_LABEL, binding));
+  return info_references_internal (INFO_XREF_LABEL, binding);
 }
 
 /* Glean cross references or menu items from BINDING.  Return an array
@@ -240,7 +240,7 @@ static REFERENCE **
 info_references_internal (char *label, SEARCH_BINDING *binding)
 {
   SEARCH_BINDING tmp_search;
-  REFERENCE **refs = (REFERENCE **)NULL;
+  REFERENCE **refs = NULL;
   int refs_index = 0, refs_slots = 0;
   int searching_for_menu_items = 0;
   long position;
@@ -250,7 +250,7 @@ info_references_internal (char *label, SEARCH_BINDING *binding)
   tmp_search.end = binding->end;
   tmp_search.flags = S_FoldCase | S_SkipDest;
 
-  searching_for_menu_items = (strcasecmp (label, INFO_MENU_ENTRY_LABEL) == 0);
+  searching_for_menu_items = (mbscasecmp (label, INFO_MENU_ENTRY_LABEL) == 0);
 
   while ((position = search_forward (label, &tmp_search)) != -1)
     {
@@ -283,14 +283,15 @@ info_references_internal (char *label, SEARCH_BINDING *binding)
             }
         }
 
-      entry = (REFERENCE *)xmalloc (sizeof (REFERENCE));
-      entry->filename = (char *)NULL;
-      entry->nodename = (char *)NULL;
-      entry->label = (char *)xmalloc (offset);
+      entry = xmalloc (sizeof (REFERENCE));
+      entry->filename = NULL;
+      entry->nodename = NULL;
+      entry->label = xmalloc (offset);
       strncpy (entry->label, refdef, offset - 1);
       entry->label[offset - 1] = '\0';
       canonicalize_whitespace (entry->label);
-
+      entry->line_number = 0;
+      
       refdef += offset;
       entry->start = start;
       entry->end = refdef - binding->buffer;
@@ -325,7 +326,7 @@ info_references_internal (char *label, SEARCH_BINDING *binding)
       add_pointer_to_array
         (entry, refs_index, refs, refs_slots, 50, REFERENCE *);
     }
-  return (refs);
+  return refs;
 }
 
 /* Get the entry associated with LABEL in REFERENCES.  Return a pointer
@@ -339,9 +340,9 @@ info_get_labeled_reference (char *label, REFERENCE **references)
   for (i = 0; references && (entry = references[i]); i++)
     {
       if (strcmp (label, entry->label) == 0)
-        return (entry);
+        return entry;
     }
-  return ((REFERENCE *)NULL);
+  return NULL;
 }
 
 /* A utility function for concatenating REFERENCE **.  Returns a new
@@ -356,9 +357,9 @@ info_concatenate_references (REFERENCE **ref1, REFERENCE **ref2)
 
   /* With one argument passed as NULL, simply return the other arg. */
   if (!ref1)
-    return (ref2);
+    return ref2;
   else if (!ref2)
-    return (ref1);
+    return ref1;
 
   /* Get the total size of the slots that we will need. */
   for (i = 0; ref1[i]; i++);
@@ -366,7 +367,7 @@ info_concatenate_references (REFERENCE **ref1, REFERENCE **ref2)
   for (i = 0; ref2[i]; i++);
   size += i;
 
-  result = (REFERENCE **)xmalloc ((1 + size) * sizeof (REFERENCE *));
+  result = xmalloc ((1 + size) * sizeof (REFERENCE *));
 
   /* Copy the contents over. */
   for (i = 0; ref1[i]; i++)
@@ -376,10 +377,10 @@ info_concatenate_references (REFERENCE **ref1, REFERENCE **ref2)
   for (i = 0; ref2[i]; i++)
     result[j++] = ref2[i];
 
-  result[j] = (REFERENCE *)NULL;
+  result[j] = NULL;
   free (ref1);
   free (ref2);
-  return (result);
+  return result;
 }
 
 
@@ -396,6 +397,7 @@ info_copy_reference (REFERENCE *src)
   dest->nodename = src->nodename ? xstrdup (src->nodename) : NULL;
   dest->start = src->start;
   dest->end = src->end;
+  dest->line_number = 0;
   
   return dest;
 }
@@ -438,7 +440,7 @@ canonicalize_whitespace (char *string)
     return;
 
   len = strlen (string);
-  temp = (char *)xmalloc (1 + len);
+  temp = xmalloc (1 + len);
 
   /* Search for sequences of whitespace or newlines.  Replace all such
      sequences in the string with just a single space. */
@@ -477,59 +479,85 @@ canonicalize_whitespace (char *string)
 }
 
 /* String representation of a char returned by printed_representation (). */
-static char the_rep[10];
+static char *the_rep;
+static size_t the_rep_size;
 
 /* Return a pointer to a string which is the printed representation
    of CHARACTER if it were printed at HPOS. */
 char *
-printed_representation (unsigned char character, int hpos)
+printed_representation (const unsigned char *cp, size_t len, size_t hpos,
+			/* Return: */
+			size_t *plen)
 {
   register int i = 0;
   int printable_limit = ISO_Latin_p ? 255 : 127;
-
-  if (raw_escapes_p && character == '\033')
-    the_rep[i++] = character;
-  /* Show CTRL-x as ^X.  */
-  else if (iscntrl (character) && character < 127)
+#define REPSPACE(s)                                            \
+  do                                                           \
+    {                                                          \
+      while (the_rep_size < s) 			               \
+	{						       \
+	  if (the_rep_size == 0)			       \
+	    the_rep_size = 8; /* Initial allocation */	       \
+	  the_rep = x2realloc (the_rep, &the_rep_size);	       \
+	}						       \
+    }                                                          \
+  while (0)
+    
+#define SC(c)                                                  \
+  do                                                           \
+    {                                                          \
+      REPSPACE(i + 1);                                         \
+      the_rep[i++] = c;                                        \
+    }                                                          \
+  while (0)
+  
+  for (; len > 0; cp++, len--)
     {
-      switch (character)
-        {
-        case '\r':
-        case '\n':
-          the_rep[i++] = character;
-          break;
+      if (raw_escapes_p && *cp == '\033')
+	SC(*cp);
+      /* Show CTRL-x as ^X.  */
+      else if (iscntrl (*cp) && *cp < 127)
+	{
+	  switch (*cp)
+	    {
+	    case '\r':
+	    case '\n':
+	      SC(*cp);
+	      break;
 
-        case '\t':
-          {
-            int tw;
+	    case '\t':
+	      {
+		int tw;
 
-            tw = ((hpos + 8) & 0xf8) - hpos;
-            while (i < tw)
-              the_rep[i++] = ' ';
-          }
-          break;
-
-        default:
-          the_rep[i++] = '^';
-          the_rep[i++] = (character | 0x40);
-        }
+		tw = ((hpos + 8) & 0xf8) - hpos;
+		while (i < tw)
+		  SC(' ');
+		break;
+	      }
+	      
+	    default:
+	      SC('^');
+	      SC(*cp | 0x40);
+	    }
+	}
+      /* Show META-x as 0370.  */
+      else if (*cp > printable_limit)
+	{
+	  REPSPACE (i + 5);
+	  sprintf (the_rep + i, "\\%0o", *cp);
+	  i = strlen (the_rep);
+	}
+      else if (*cp == DEL)
+	{
+	  SC('^');
+	  SC('?');
+	}
+      else
+	SC(*cp);
     }
-  /* Show META-x as 0370.  */
-  else if (character > printable_limit)
-    {
-      sprintf (the_rep + i, "\\%0o", character);
-      i = strlen (the_rep);
-    }
-  else if (character == DEL)
-    {
-      the_rep[i++] = '^';
-      the_rep[i++] = '?';
-    }
-  else
-    the_rep[i++] = character;
-
-  the_rep[i] = 0;
-
+  
+  SC(0);
+  *plen = i - 1;
   return the_rep;
 }
 
@@ -593,13 +621,13 @@ save_string (char *string, char **string_p, int *string_size_p)
       if (*string_p)
         free (*string_p);
 
-      *string_p = (char *)NULL;
+      *string_p = NULL;
       *string_size_p = 0;
     }
   else
     {
       if (strlen (string) >= (unsigned int) *string_size_p)
-        *string_p = (char *)xrealloc
+        *string_p = xrealloc
           (*string_p, (*string_size_p = 1 + strlen (string)));
 
       strcpy (*string_p, string);
@@ -615,13 +643,13 @@ saven_string (char *string, int len, char **string_p, int *string_size_p)
       if (*string_p)
         free (*string_p);
 
-      *string_p = (char *)NULL;
+      *string_p = NULL;
       *string_size_p = 0;
     }
   else
     {
       if (len >= *string_size_p)
-        *string_p = (char *)xrealloc (*string_p, (*string_size_p = 1 + len));
+        *string_p = xrealloc (*string_p, (*string_size_p = 1 + len));
 
       strncpy (*string_p, string, len);
       (*string_p)[len] = '\0';
@@ -640,7 +668,7 @@ filename_non_directory (char *pathname)
   while (filename > pathname && !IS_SLASH (filename[-1]))
     filename--;
 
-  return (filename);
+  return filename;
 }
 
 /* Return non-zero if NODE is one especially created by Info. */
@@ -651,11 +679,11 @@ internal_info_node_p (NODE *node)
   if (node &&
       (node->filename && !*node->filename) &&
       !node->parent && node->nodename)
-    return (1);
+    return 1;
   else
-    return (0);
+    return 0;
 #else
-  return ((node != (NODE *)NULL) && ((node->flags & N_IsInternal) != 0));
+  return (node != NULL) && ((node->flags & N_IsInternal) != 0);
 #endif /* !NEVER */
 }
 
@@ -667,7 +695,7 @@ name_internal_node (NODE *node, char *name)
     return;
 
   node->filename = "";
-  node->parent = (char *)NULL;
+  node->parent = NULL;
   node->nodename = name;
   node->flags |= N_IsInternal;
 }
@@ -684,18 +712,18 @@ get_internal_info_window (char *name)
         (strcmp (win->node->nodename, name) == 0))
       break;
 
-  return (win);
+  return win;
 }
 
 /* Return a window displaying the node NODE. */
 WINDOW *
 get_window_of_node (NODE *node)
 {
-  WINDOW *win = (WINDOW *)NULL;
+  WINDOW *win = NULL;
 
   for (win = windows; win; win = win->next)
     if (win->node == node)
       break;
 
-  return (win);
+  return win;
 }

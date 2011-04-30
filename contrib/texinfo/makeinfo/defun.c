@@ -1,13 +1,13 @@
 /* defun.c -- @defun and friends.
-   $Id: defun.c,v 1.11 2004/04/11 17:56:46 karl Exp $
+   $Id: defun.c,v 1.18 2007/09/15 23:48:45 karl Exp $
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "system.h"
 #include "defun.h"
@@ -299,9 +298,9 @@ next_nonwhite_defun_arg (char ***arg_pointer)
 /* This is needed also in insertion.c.  */
 
 enum insertion_type
-get_base_type (int type)
+get_base_type (enum insertion_type type)
 {
-  int base_type;
+  enum insertion_type base_type;
   switch (type)
     {
     case defivar:	base_type = defcv; break;
@@ -329,9 +328,9 @@ get_base_type (int type)
    TYPE says which insertion this is.
    X_P, if nonzero, says not to start a new insertion. */
 static void
-defun_internal (int type, int x_p)
+defun_internal (enum insertion_type type, int x_p)
 {
-  int base_type;
+  enum insertion_type base_type;
   char **defun_args, **scan_args;
   const char *category;
   char *defined_name;
@@ -368,7 +367,7 @@ defun_internal (int type, int x_p)
       line_continuation:
         i = strlen (line) - 1;
 
-        if (line[i] == '@' && line[i-1] != '@')
+        if (i > 0 && line[i] == '@' && line[i-1] != '@')
           {
             get_rest_of_line (0, &next_line);
             new_line = (char *) xmalloc (i + strlen (next_line) + 2);
@@ -400,28 +399,28 @@ defun_internal (int type, int x_p)
     {
     case defun:
     case deftypefun:
-      category = _("Function");
+      category = gdt("Function");
       break;
     case defmac:
-      category = _("Macro");
+      category = gdt("Macro");
       break;
     case defspec:
-      category = _("Special Form");
+      category = gdt("Special Form");
       break;
     case defvar:
     case deftypevar:
-      category = _("Variable");
+      category = gdt("Variable");
       break;
     case defopt:
-      category = _("User Option");
+      category = gdt("User Option");
       break;
     case defivar:
     case deftypeivar:
-      category = _("Instance Variable");
+      category = gdt("Instance Variable");
       break;
     case defmethod:
     case deftypemethod:
-      category = _("Method");
+      category = gdt("Method");
       break;
     default:
       category = next_nonwhite_defun_arg (&scan_args);
@@ -497,24 +496,24 @@ defun_internal (int type, int x_p)
         execute_string (" --- %s: %s %s", category, type_name, defined_name);
         break;
       case defcv:
-        execute_string (" --- %s %s %s: %s", category, _("of"), type_name,
+        execute_string (" --- %s %s %s: %s", category, gdt("of"), type_name,
                         defined_name);
         break;
       case deftypecv:
       case deftypeivar:
-        execute_string (" --- %s %s %s: %s %s", category, _("of"), type_name,
+        execute_string (" --- %s %s %s: %s %s", category, gdt("of"), type_name,
                         type_name2, defined_name);
         break;
       case defop:
-        execute_string (" --- %s %s %s: %s", category, _("on"), type_name,
+        execute_string (" --- %s %s %s: %s", category, gdt("on"), type_name,
                         defined_name);
         break;
       case deftypeop:
-        execute_string (" --- %s %s %s: %s %s", category, _("on"), type_name,
+        execute_string (" --- %s %s %s: %s %s", category, gdt("on"), type_name,
                         type_name2, defined_name);
         break;
       case deftypemethod:
-        execute_string (" --- %s %s %s: %s %s", category, _("on"), type_name,
+        execute_string (" --- %s %s %s: %s %s", category, gdt("on"), type_name,
                         type_name2, defined_name);
         break;
       }
@@ -542,13 +541,13 @@ defun_internal (int type, int x_p)
         case defcv:
         case deftypecv:
         case deftypeivar:
-	  execute_string ("--- %s %s %s: ", category, _("of"), type_name);
+	  execute_string ("--- %s %s %s: ", category, gdt("of"), type_name);
 	  break;
 
         case defop:
         case deftypemethod:
         case deftypeop:
-	  execute_string ("--- %s %s %s: ", category, _("on"), type_name);
+	  execute_string ("--- %s %s %s: ", category, gdt("on"), type_name);
 	  break;
 	} /* switch (base_type)... */
 
@@ -641,13 +640,13 @@ defun_internal (int type, int x_p)
 	execute_string ("@vindex %s\n", defined_name);
 	break;
       case deftypeivar:
-	execute_string ("@vindex %s %s %s\n", defined_name, _("of"),
+	execute_string ("@vindex %s %s %s\n", defined_name, gdt("of"),
                         type_name);
 	break;
       case defop:
       case deftypeop:
       case deftypemethod:
-	execute_string ("@findex %s %s %s\n", defined_name, _("on"),
+	execute_string ("@findex %s %s %s\n", defined_name, gdt("on"),
                         type_name);
 	break;
       case deftp:
@@ -688,8 +687,9 @@ defun_internal (int type, int x_p)
 void
 cm_defun (void)
 {
-  int type;
+  enum insertion_type type;
   char *base_command = xstrdup (command);  /* command with any `x' removed */
+  /* FIXME: is strlen(command) allways > 0? */
   int x_p = (command[strlen (command) - 1] == 'x');
 
   if (x_p)

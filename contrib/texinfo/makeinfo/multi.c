@@ -1,13 +1,13 @@
 /* multi.c -- multiple-column tables (@multitable) for makeinfo.
-   $Id: multi.c,v 1.8 2004/04/11 17:56:47 karl Exp $
+   $Id: multi.c,v 1.18 2007/07/01 21:20:33 karl Exp $
 
-   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2004, 2005, 2007
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,12 +15,12 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-   
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
    Originally written by phr@gnu.org (Paul Rubin).  */
 
 #include "system.h"
+#include "mbswidth.h"
 #include "cmds.h"
 #include "insertion.h"
 #include "makeinfo.h"
@@ -54,13 +54,13 @@
 
 /* contents of an output environment */
 /* some more vars may end up being needed here later @@ */
-struct env
+static struct env
 {
   unsigned char *output_paragraph;
   int output_paragraph_offset;
-  int meta_char_pos;
-  int output_column;
+  int paragraph_buffer_len;
   int paragraph_is_open;
+  int meta_char_pos;
   int current_indent;
   int fill_column;
 } envs[MAXCOLS];                /* the environment table */
@@ -142,9 +142,9 @@ select_output_environment (int n)
   /* stash current env info from global vars into the old environment */
   e->output_paragraph = output_paragraph;
   e->output_paragraph_offset = output_paragraph_offset;
-  e->meta_char_pos = meta_char_pos;
-  e->output_column = output_column;
+  e->paragraph_buffer_len = paragraph_buffer_len;
   e->paragraph_is_open = paragraph_is_open;
+  e->meta_char_pos = meta_char_pos;
   e->current_indent = current_indent;
   e->fill_column = fill_column;
 
@@ -153,11 +153,17 @@ select_output_environment (int n)
   e = &envs[current_env_no];
   output_paragraph = e->output_paragraph;
   output_paragraph_offset = e->output_paragraph_offset;
-  meta_char_pos = e->meta_char_pos;
-  output_column = e->output_column;
+  /* All the elements in the output environment structures start out as
+     zeros from the static declaration.  However, we don't want to try
+     to malloc zero bytes when init_paragraph is called just below,
+     after we return.  */
+  paragraph_buffer_len = e->paragraph_buffer_len ? e->paragraph_buffer_len
+                         : INITIAL_PARAGRAPH_BUFFER_LEN;
   paragraph_is_open = e->paragraph_is_open;
+  meta_char_pos = e->meta_char_pos;
   current_indent = e->current_indent;
   fill_column = e->fill_column;
+
   return old_env_no;
 }
 
@@ -348,7 +354,8 @@ do_multitable (void)
   if (xml)
     {
       xml_no_para = 1;
-      if (output_paragraph[output_paragraph_offset-1] == '\n')
+      if (output_paragraph_offset > 0
+	  && output_paragraph[output_paragraph_offset-1] == '\n')
         output_paragraph_offset--;
     }
 
@@ -430,9 +437,9 @@ output_multitable_row (void)
 
   /* remove trailing whitespace from each column */
   for (i = 1; i <= last_column; i++) {
-    if (envs[i].output_paragraph_offset)
-      while (cr_or_whitespace (CHAR_AT (envs[i].output_paragraph_offset - 1)))
-        envs[i].output_paragraph_offset--;
+    while (envs[i].output_paragraph_offset
+           && cr_or_whitespace (CHAR_AT (envs[i].output_paragraph_offset - 1)))
+      envs[i].output_paragraph_offset--;
 
     if (i == current_env_no)
       output_paragraph_offset = envs[i].output_paragraph_offset;
@@ -467,15 +474,16 @@ output_multitable_row (void)
           break;
         out_char (CHAR_AT (j));
       }
-      offset[i] += j + 1;       /* skip last text plus skip the newline */
-      
       /* Do not output trailing blanks if we're in the last column and
          there will be no trailing |.  */
       if (i < last_column && !vsep)
-        for (; j <= envs[i].fill_column; j++)
+        for (s = mbsnwidth ((char *)&CHAR_AT (0), j, 0);
+	     s <= envs[i].fill_column; s++)
           out_char (' ');
       if (vsep)
         out_char ('|'); /* draw column separator */
+
+      offset[i] += j + 1;       /* skip last text plus skip the newline */
     }
     out_char ('\n');    /* end of line */
     had_newline = 1;

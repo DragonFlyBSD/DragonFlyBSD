@@ -1,12 +1,13 @@
 /* toc.c -- table of contents handling.
-   $Id: toc.c,v 1.6 2004/04/11 17:56:47 karl Exp $
+   $Id: toc.c,v 1.12 2008/05/19 18:26:48 karl Exp $
 
-   Copyright (C) 1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
+   Copyright (C) 1999, 2000, 2001, 2002, 2003, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Originally written by Karl Heinz Marbaise <kama@hippo.fido.de>.  */
 
@@ -42,7 +42,7 @@ static int toc_counter = 0;
 int
 toc_add_entry (char *tocname, int level, char *node_name, char *anchor)
 {
-  char *tocname_and_node, *expanded_node, *d;
+  char *expanded_node, *d;
   char *s = NULL;
   char *filename = NULL;
 
@@ -79,40 +79,22 @@ toc_add_entry (char *tocname, int level, char *node_name, char *anchor)
 	  else
 	    filename = filename_part (current_output_filename);
 	}
-      /* Sigh...  Need to HTML-escape the expanded node name like
-         add_anchor_name does, except that we are not writing this to
-         the output, so can't use add_anchor_name...  */
-      /* The factor 5 in the next allocation is because the maximum
-         expansion of HTML-escaping is for the & character, which is
-         output as "&amp;".  2 is for "> that separates node from tocname.  */
-      d = tocname_and_node = (char *)xmalloc (2 + 5 * strlen (expanded_node)
-                                              + strlen (tocname) + 1);
       if (!anchor)
-        {
-          for (; *s; s++)
-            {
-              if (cr_or_whitespace (*s))
-                *d++ = '-';
-              else if (! URL_SAFE_CHAR (*s))
-                {
-                  sprintf (d, "_00%x", (unsigned char) *s);
-                  /* do this manually since sprintf returns char * on
-                     SunOS 4 and other old systems.  */
-                  while (*d)
-                    d++;
-                }
-              else
-                *d++ = *s;
-            }
-          strcpy (d, "\">");
-        }
+        /* Need to HTML-escape the expanded node name like
+            add_anchor_name does...  */
+        d = escaped_anchor_name (expanded_node);
       else
         /* Section outside any node, they provided explicit anchor.  */
-        strcpy (d, anchor);
+        d = xstrdup(anchor);
+        
+      /* Add space for the "> which may be needed, and the tocname */  
+      d = xrealloc (d, strlen (d) + strlen (tocname) + 3);
+      if (!anchor)
+        strcat (d, "\">");
       strcat (d, tocname);
       free (tocname);       /* it was malloc'ed by substring() */
       free (expanded_node);
-      toc_entry_alist[toc_counter]->name = tocname_and_node;
+      toc_entry_alist[toc_counter]->name = d;
     }
   else
     toc_entry_alist[toc_counter]->name = tocname;
@@ -194,7 +176,7 @@ contents_update_html (void)
       /* no, so return to sender ;-) */
       return;
 
-  add_html_block_elt_args ("\n<div class=\"contents\">\n<h2>%s</h2>\n<ul>\n", _("Table of Contents"));
+  add_html_block_elt_args ("\n<div class=\"contents\">\n<h2>%s</h2>\n<ul>\n", gdt("Table of Contents"));
 
   last_level = toc_entry_alist[0]->level;
 
@@ -240,6 +222,14 @@ contents_update_html (void)
 		p++;
 	      add_word_args ("name=\"toc_%.*s\" ",
 		       p - toc_entry_alist[i]->name, toc_entry_alist[i]->name);
+              /* save the link if necessary */		       
+              if (internal_links_stream) 
+                {
+                  fprintf (internal_links_stream, "%s#toc_%.*s\ttoc\t%s\n",
+                      splitting ? toc_entry_alist[i]->html_file : "",
+                      p - toc_entry_alist[i]->name, toc_entry_alist[i]->name,
+                      p + 2);
+                }
 	    }
 	  add_word_args ("href=\"%s#%s</a>\n",
 		   splitting ? toc_entry_alist[i]->html_file : "",
@@ -268,9 +258,9 @@ contents_update_info (void)
   if (!toc_counter)
       return;
 
-  insert_string ((char *) _("Table of Contents"));
+  insert_string ((char *) gdt("Table of Contents"));
   insert ('\n');
-  for (i = 0; i < strlen (_("Table of Contents")); i++)
+  for (i = 0; i < strlen (gdt("Table of Contents")); i++)
     insert ('*');
   insert_string ("\n\n");
 
@@ -301,7 +291,7 @@ shortcontents_update_html (char *contents_filename)
   if (!toc_counter)
     return;
 
-  add_html_block_elt_args ("\n<div class=\"shortcontents\">\n<h2>%s</h2>\n<ul>\n", _("Short Contents"));
+  add_html_block_elt_args ("\n<div class=\"shortcontents\">\n<h2>%s</h2>\n<ul>\n", gdt("Short Contents"));
 
   if (contents_filename)
     toc_file = filename_part (contents_filename);
@@ -334,9 +324,9 @@ shortcontents_update_info (void)
   if (!toc_counter)
       return;
 
-  insert_string ((char *) _("Short Contents"));
+  insert_string ((char *) gdt("Short Contents"));
   insert ('\n');
-  for (i = 0; i < strlen (_("Short Contents")); i++)
+  for (i = 0; i < strlen (gdt("Short Contents")); i++)
     insert ('*');
   insert_string ("\n\n");
 

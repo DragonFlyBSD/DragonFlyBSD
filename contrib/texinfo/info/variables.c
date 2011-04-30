@@ -1,12 +1,13 @@
 /* variables.c -- how to manipulate user visible variables in Info.
-   $Id: variables.c,v 1.3 2004/04/11 17:56:46 karl Exp $
+   $Id: variables.c,v 1.10 2008/06/11 09:55:43 gray Exp $
 
-   Copyright (C) 1993, 1997, 2001, 2002, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1993, 1997, 2001, 2002, 2004, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -30,7 +30,7 @@
 
 /* Choices used by the completer when reading a zero/non-zero value for
    a variable. */
-static char *on_off_choices[] = { "Off", "On", (char *)NULL };
+static char *on_off_choices[] = { "Off", "On", NULL };
 
 VARIABLE_ALIST info_variables[] = {
   { "automatic-footnotes",
@@ -60,15 +60,29 @@ VARIABLE_ALIST info_variables[] = {
       N_("Controls what happens when scrolling is requested at the end of a node"),
       &info_scroll_behaviour, (char **)info_scroll_choices },
 
+  /* Alternate spelling */
+  { "scroll-behavior",
+      N_("Same as scroll-behaviour"),
+      &info_scroll_behaviour, (char **)info_scroll_choices },
+
   { "scroll-step",
       N_("The number lines to scroll when the cursor moves out of the window"),
-      &window_scroll_step, (char **)NULL },
+      &window_scroll_step, NULL },
 
+  { "cursor-movement-scrolls",
+    N_("Controls whether scroll-behavior affects cursor movement commands"),
+    &cursor_movement_scrolls_p, (char **)on_off_choices },
+  
   { "ISO-Latin",
       N_("When \"On\", Info accepts and displays ISO Latin characters"),
       &ISO_Latin_p, (char **)on_off_choices },
 
-  { (char *)NULL, (char *)NULL, (int *)NULL, (char **)NULL }
+  { "scroll-last-node",
+    N_("What to do when a scrolling command is issued at the end of the "
+       "last node"),
+    &scroll_last_node, (char**)scroll_last_node_choices },
+  
+  { NULL }
 };
 
 DECLARE_INFO_COMMAND (describe_variable, _("Explain the use of a variable"))
@@ -77,13 +91,13 @@ DECLARE_INFO_COMMAND (describe_variable, _("Explain the use of a variable"))
   char *description;
 
   /* Get the variable's name. */
-  var = read_variable_name ((char *) _("Describe variable: "), window);
+  var = read_variable_name (_("Describe variable: "), window);
 
   if (!var)
     return;
 
-  description = (char *)xmalloc (20 + strlen (var->name)
-				 + strlen (_(var->doc)));
+  description = xmalloc (20 + strlen (var->name)
+			 + strlen (_(var->doc)));
 
   if (var->choices)
     sprintf (description, "%s (%s): %s.",
@@ -102,7 +116,7 @@ DECLARE_INFO_COMMAND (set_variable, _("Set the value of an Info variable"))
   char *line;
 
   /* Get the variable's name and value. */
-  var = read_variable_name ((char *) _("Set variable: "), window);
+  var = read_variable_name (_("Set variable: "), window);
 
   if (!var)
     return;
@@ -144,7 +158,7 @@ DECLARE_INFO_COMMAND (set_variable, _("Set the value of an Info variable"))
     else
       {
         register int i;
-        REFERENCE **array = (REFERENCE **)NULL;
+        REFERENCE **array = NULL;
         int array_index = 0;
         int array_slots = 0;
 
@@ -152,10 +166,10 @@ DECLARE_INFO_COMMAND (set_variable, _("Set the value of an Info variable"))
           {
             REFERENCE *entry;
 
-            entry = (REFERENCE *)xmalloc (sizeof (REFERENCE));
+            entry = xmalloc (sizeof (REFERENCE));
             entry->label = xstrdup (var->choices[i]);
-            entry->nodename = (char *)NULL;
-            entry->filename = (char *)NULL;
+            entry->nodename = NULL;
+            entry->filename = NULL;
 
             add_pointer_to_array
               (entry, array_index, array, array_slots, 10, REFERENCE *);
@@ -201,7 +215,7 @@ DECLARE_INFO_COMMAND (set_variable, _("Set the value of an Info variable"))
    address of a VARIABLE_ALIST member.  A return value of NULL indicates
    that no variable could be read. */
 VARIABLE_ALIST *
-read_variable_name (char *prompt, WINDOW *window)
+read_variable_name (const char *prompt, WINDOW *window)
 {
   register int i;
   char *line;
@@ -223,14 +237,14 @@ read_variable_name (char *prompt, WINDOW *window)
   if (!line)
     {
       info_abort_key (active_window, 0, 0);
-      return ((VARIABLE_ALIST *)NULL);
+      return NULL;
     }
 
   /* User accepted "default"?  (There is none.) */
   if (!*line)
     {
       free (line);
-      return ((VARIABLE_ALIST *)NULL);
+      return NULL;
     }
 
   /* Find the variable in our list of variables. */
@@ -239,9 +253,9 @@ read_variable_name (char *prompt, WINDOW *window)
       break;
 
   if (!info_variables[i].name)
-    return ((VARIABLE_ALIST *)NULL);
+    return NULL;
   else
-    return (&(info_variables[i]));
+    return &info_variables[i];
 }
 
 /* Make an array of REFERENCE which actually contains the names of the
@@ -250,23 +264,23 @@ REFERENCE **
 make_variable_completions_array (void)
 {
   register int i;
-  REFERENCE **array = (REFERENCE **)NULL;
+  REFERENCE **array = NULL;
   int array_index = 0, array_slots = 0;
 
   for (i = 0; info_variables[i].name; i++)
     {
       REFERENCE *entry;
 
-      entry = (REFERENCE *) xmalloc (sizeof (REFERENCE));
+      entry = xmalloc (sizeof (REFERENCE));
       entry->label = xstrdup (info_variables[i].name);
-      entry->nodename = (char *)NULL;
-      entry->filename = (char *)NULL;
+      entry->nodename = NULL;
+      entry->filename = NULL;
 
       add_pointer_to_array
         (entry, array_index, array, array_slots, 200, REFERENCE *);
     }
 
-  return (array);
+  return array;
 }
 
 #if defined(INFOKEY)

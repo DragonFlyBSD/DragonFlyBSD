@@ -1,13 +1,13 @@
 /* makeinfo.h -- declarations for Makeinfo.
-   $Id: makeinfo.h,v 1.17 2004/11/30 02:03:23 karl Exp $
+   $Id: makeinfo.h,v 1.31 2008/03/26 23:57:12 karl Exp $
 
-   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004 Free
-   Software Foundation, Inc.
+   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+   2005, 2006, 2007, 2008 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -47,14 +46,13 @@ DECLARE (char *, pretty_output_filename, NULL);
 /* Current output file name.  */
 DECLARE (char *, current_output_filename, NULL);
 
-/* Output paragraph buffer. */
+/* Output paragraph buffer and its length. */
+#define INITIAL_PARAGRAPH_BUFFER_LEN 5000
 DECLARE (unsigned char *, output_paragraph, NULL);
+DECLARE (int, paragraph_buffer_len, INITIAL_PARAGRAPH_BUFFER_LEN);
 
 /* Offset into OUTPUT_PARAGRAPH. */
 DECLARE (int, output_paragraph_offset, 0);
-
-/* The output paragraph "cursor" horizontal position. */
-DECLARE (int, output_column, 0);
 
 /* Position in the output file. */
 DECLARE (int, output_position, 0);
@@ -73,6 +71,9 @@ DECLARE (int, paragraph_is_open, 0);
 /* Nonzero means that `start_paragraph' MUST be called before we pay
    any attention to `close_paragraph' calls. */
 DECLARE (int, must_start_paragraph, 0);
+
+/* Nonzero if we have output the topmatter of the output file.  */
+DECLARE (int, output_head_p, 0);
 
 /* Nonzero means that we have seen "@top" once already. */
 DECLARE (int, top_node_seen, 0);
@@ -109,6 +110,9 @@ DECLARE (int, force_flush_right, 0);
 /* The column at which long lines are broken. */
 DECLARE (int, fill_column, 72);
 
+/* Nonzero means we're doing one space after sentences (@frenchspacing).  */
+DECLARE (int, french_spacing, 0);
+
 /* Nonzero means that words are not to be split, even in long lines.  This
    gets changed for cm_w (). */
 DECLARE (int, non_splitting_words, 0);
@@ -129,9 +133,9 @@ DECLARE (int, xml, 0);
 /* Nonzero means that we're generating DocBook. (--docbook) */
 DECLARE (int, docbook, 0);
 
-/* Nonzero means true 8-bit output for Info and plain text.
-   (--enable-encoding) */
-DECLARE (int, enable_encoding, 0);
+/* Nonzero means 8-bit output for Info and plain text, according to
+   @documentencoding.  (--enable-encoding) */
+DECLARE (int, enable_encoding, 1);
 
 /* Nonzero means escape characters in HTML output. */
 DECLARE (int, escape_html, 1);
@@ -186,6 +190,12 @@ DECLARE (char *, node_filename, NULL);
 /* Name of CSS file to include, if any.  (--css-include).  */
 DECLARE (char *, css_include, NULL);
 
+/* Name of CSS to reference, if any.  (--css-ref).  */
+DECLARE (char *, css_ref, NULL);
+
+/* Transliterate file names into ASCII */
+DECLARE (int, transliterate_file_names, 0);
+
 /* Nonzero means do not output "Node: Foo" for node separations, that
    is, generate plain text.  (--no-headers) */
 DECLARE (int, no_headers, 0);
@@ -213,10 +223,6 @@ DECLARE (int, process_tex, 0);
 /* Nonzero means that we process @xml and @ifxml.  (--ifxml) */
 DECLARE (int, process_xml, 0);
 
-/* Maximum number of references to a single node before complaining.
-   (--reference-limit) */
-DECLARE (int, reference_warning_limit, 1000);
-
 /* Default is to check node references.  (--no-validate) */
 DECLARE (int, validating, 1);
 
@@ -241,13 +247,6 @@ DECLARE (int, expensive_validation, 0);
 
 #define coerce_to_upper(c) ((islower(c) ? toupper(c) : (c)))
 #define coerce_to_lower(c) ((isupper(c) ? tolower(c) : (c)))
-
-#define control_character_bit 0x40 /* %01000000, must be off. */
-#define meta_character_bit 0x080/* %10000000, must be on.  */
-#define CTL(c) ((c) & (~control_character_bit))
-#define UNCTL(c) coerce_to_upper(((c)|control_character_bit))
-#define META(c) ((c) | (meta_character_bit))
-#define UNMETA(c) ((c) & (~meta_character_bit))
 
 #define whitespace(c)       ((c) == '\t' || (c) == ' ')
 #define sentence_ender(c)   ((c) == '.'  || (c) == '?' || (c) == '!')
@@ -278,9 +277,12 @@ DECLARE (int, expensive_validation, 0);
 #define OLD_URL_SAFE_CHAR(ch) (strchr (OLD_HTML_SAFE, ch))
 
 /* For the current/stable scheme.  */
-#define URL_SAFE_CHAR(ch) (isalnum (ch))
+#define URL_SAFE_CHAR(ch) (((unsigned char)ch)<128 && isalnum (ch))
 
 #define COMMAND_PREFIX '@'
+
+/* A byte value to represent a non-breaking space until flush_output (). */
+#define NON_BREAKING_SPACE 036
 
 #define END_VERBATIM "end verbatim"
 
@@ -315,6 +317,11 @@ DECLARE (int, splitting, 1);    /* Defaults to true for now. */
 typedef struct generic_list {
   struct generic_list *next;
 } GENERIC_LIST;
+
+/* Use `gdt' instead of `_' to translate strings that end up in the
+   output document.  */
+extern char *getdocumenttext (const char *msgid);
+#define gdt(s) getdocumenttext(s)
 
 /* Reverse the order of a list.  */
 extern GENERIC_LIST * reverse_list (GENERIC_LIST *list);
@@ -354,14 +361,16 @@ extern void free_and_clear (char **pointer),
   discard_braces (void),
   replace_with_expansion (int from, int *to),
   fix_whitespace (char *string),
+  output_head (void),
   add_html_elt (char *string);
 
 extern int get_until (char *match, char **string),
   set_paragraph_indent (char *string),
   self_delimiting (int character),
-  search_forward (char *string, int from),
+  search_forward (const char *string, int from),
   search_forward_until_pos (char *string, int from, int end_pos),
   next_nonwhitespace_character (void),
+  current_output_column (void),
   fs_error (char *filename);
 
 #if defined (VA_FPRINTF) && __STDC__

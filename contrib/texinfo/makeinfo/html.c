@@ -1,13 +1,13 @@
 /* html.c -- html-related utilities.
-   $Id: html.c,v 1.28 2004/12/06 01:13:06 karl Exp $
+   $Id: html.c,v 1.42 2008/05/19 18:26:47 karl Exp $
 
-   Copyright (C) 1999, 2000, 2001, 2002, 2003, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "system.h"
 #include "cmds.h"
@@ -28,6 +27,11 @@
 #include "sectioning.h"
 
 
+
+/* Filename to which to write list of index entries */
+char *internal_links_filename = NULL;
+FILE *internal_links_stream = NULL;
+
 /* Append CHAR to BUFFER, (re)allocating as necessary.  We don't handle
    null characters.  */
 
@@ -108,6 +112,7 @@ process_css_file (char *filename)
               if (nextchar == 'i' || nextchar == 'c')
                 {
                   append_char (import_text, c);
+                  append_char (import_text, nextchar);
                   state = import_state;
                 }
               else
@@ -167,6 +172,9 @@ process_css_file (char *filename)
       lastchar = c;
     }
 
+  fclose (f);  /* Even closing stdin should be ok, can't read it more
+                  than once?  */
+  
   /* Reached the end of the file.  We should not be still in a comment.  */
   if (state == comment_state)
     warning (_("%s:%d: --css-file ended in comment"), filename, lineno);
@@ -186,25 +194,18 @@ process_css_file (char *filename)
 HSTACK *htmlstack = NULL;
 
 /* See html.h.  */
-int html_output_head_p = 0;
 int html_title_written = 0;
 
 void
 html_output_head (void)
 {
   static const char *html_title = NULL;
-  char *encoding;
-
-  if (html_output_head_p)
-    return;
-  html_output_head_p = 1;
-
-  encoding = current_document_encoding ();
+  char *encoding = current_document_encoding ();
 
   /* The <title> should not have markup, so use text_expansion.  */
   if (!html_title)
     html_title = escape_string (title ?
-        text_expansion (title) : (char *) _("Untitled"));
+        text_expansion (title) : (char *) gdt("Untitled"));
 
   /* Make sure this is the very first string of the output document.  */
   output_paragraph_offset = 0;
@@ -212,8 +213,8 @@ html_output_head (void)
   add_html_block_elt_args ("<html lang=\"%s\">\n<head>\n",
       language_table[language_code].abbrev);
 
-  /* When splitting, add current node's name to title if it's available and not
-     Top.  */
+  /* When splitting, add current node's name to title if it's available
+     and not Top.  */
   if (splitting && current_node && !STREQ (current_node, "Top"))
     add_word_args ("<title>%s - %s</title>\n",
         escape_string (xstrdup (current_node)), html_title);
@@ -324,7 +325,10 @@ rel=\"generator-home\" title=\"Texinfo Homepage\">\n");
 
     add_word ("--></style>\n");
   }
-
+  if (css_ref)
+    add_word_args ("<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">\n",
+	            css_ref);
+  
   add_word ("</head>\n<body>\n");
 
   if (title && !html_title_written && titlepage_cmd_present)
@@ -395,7 +399,7 @@ escape_string (char *string)
         }
     }
   while (string[i++]);
-  free (string);
+
   return newstring - newlen;
 }
 
@@ -437,7 +441,9 @@ rollback_empty_tag (char *tag)
   int check_position = output_paragraph_offset;
   int taglen = strlen (tag);
   int rollback_happened = 0;
-  char *contents = "";
+  char *contents = "";			/* FIXME (ptr to constant, later
+  					   assigned to malloc'd address).
+					 */
   char *contents_canon_white = "";
 
   /* If output_paragraph is empty, we cannot rollback :-\  */
@@ -445,7 +451,7 @@ rollback_empty_tag (char *tag)
     return 0;
 
   /* Find the end of the previous tag.  */
-  while (output_paragraph[check_position-1] != '>' && check_position > 0)
+  while (check_position > 0 && output_paragraph[check_position-1] != '>')
     check_position--;
 
   /* Save stuff between tag's end to output_paragraph's end.  */
@@ -462,7 +468,7 @@ rollback_empty_tag (char *tag)
     }
 
   /* Find the start of the previous tag.  */
-  while (output_paragraph[check_position-1] != '<' && check_position > 0)
+  while (check_position > 0 && output_paragraph[check_position-1] != '<')
     check_position--;
 
   /* Check to see if this is the tag.  */
@@ -549,6 +555,7 @@ insert_html_tag_with_attribute (start_or_end, tag, format, va_alist)
   /* texinfo.tex doesn't support more than one font attribute
      at the same time.  */
   if ((start_or_end == START) && old_tag && *old_tag
+      && !STREQ (old_tag, "samp")
       && !rollback_empty_tag (old_tag))
     add_word_args ("</%s>", old_tag);
 
@@ -556,13 +563,13 @@ insert_html_tag_with_attribute (start_or_end, tag, format, va_alist)
     {
       if (start_or_end == START)
         add_word_args (format ? "<%s %s>" : "<%s>", tag, formatted_attribs);
-      else if (!rollback_empty_tag (tag))
+      else if (STREQ (tag, "samp") || !rollback_empty_tag (tag))
         /* Insert close tag only if we didn't rollback,
            in which case the opening tag is removed.  */
         add_word_args ("</%s>", tag);
     }
 
-  if ((start_or_end != START) && old_tag && *old_tag)
+  if ((start_or_end != START) && old_tag && *old_tag && !STREQ (old_tag, "samp"))
     add_word_args (strlen (old_attribs) > 0 ? "<%s %s>" : "<%s>",
         old_tag, old_attribs);
 
@@ -577,17 +584,52 @@ insert_html_tag (int start_or_end, char *tag)
 
 /* Output an HTML <link> to the filename for NODE, including the
    other string as extra attributes. */
+
 void
 add_link (char *nodename, char *attributes)
 {
   if (nodename)
     {
+      char *escaped_nodename;
       add_html_elt ("<link ");
       add_word_args ("%s", attributes);
       add_word_args (" href=\"");
       add_anchor_name (nodename, 1);
-      add_word_args ("\" title=\"%s\">\n", nodename);
+      escaped_nodename = escape_string (nodename);
+      add_word_args ("\" title=\"%s\">\n", escaped_nodename);
+      if (escaped_nodename != nodename)
+        free (escaped_nodename);
     }
+}
+
+/* Copy a name with characters escaped as appropriate for an anchor
+   name, i.e., escape URL special characters with our _00hh convention.
+   (See the manual for details on the new scheme.) */
+   
+char *
+escaped_anchor_name (const char *name)
+{
+  /* The factor 5 in the next allocation allows all chars to be expanded.  */
+  char *res = xmalloc (5 * strlen (name) + 1);
+  char *d = res;
+  
+  for (; *name; name++)
+    {
+      if (cr_or_whitespace (*name))
+        *d++ = '-';
+      else if (! URL_SAFE_CHAR (*name))
+        {
+          sprintf (d, "_00%x", (unsigned char) *name);
+          /* do this manually since sprintf returns char * on
+             SunOS 4 and other old systems.  */
+          while (*d)
+            d++;
+        }
+      else
+        *d++ = *name;
+    }
+  *d = 0;
+  return res;
 }
 
 /* Output NAME with characters escaped as appropriate for an anchor
@@ -612,21 +654,21 @@ add_escaped_anchor_name (char *name, int old)
          have a nonletter.  */
       add_word ("g_t");
     }
-
-  for (; *name; name++)
+  if (!old) 
+    {
+      char *expanded = escaped_anchor_name (name);
+      add_word (expanded);
+      free (expanded);
+    }
+  else for (; *name; name++)
     {
       if (cr_or_whitespace (*name))
         add_char ('-');
 
-      else if (!old && !URL_SAFE_CHAR (*name))
+      else if (!URL_SAFE_CHAR (*name) && !OLD_URL_SAFE_CHAR (*name))
         /* Cast so characters with the high bit set are treated as >128,
-           for example o-umlaut should be 246, not -10.  */
-        add_word_args ("_00%x", (unsigned char) *name);
-
-      else if (old && !URL_SAFE_CHAR (*name) && !OLD_URL_SAFE_CHAR (*name))
-        /* Different output convention, but still cast as above.  */
+           for example o-umlaut should be 246, not -10.  */ 
         add_word_args ("%%%x", (unsigned char) *name);
-
       else
         add_char (*name);
     }
@@ -653,10 +695,10 @@ add_anchor_name (char *nodename, int href)
      exact node on its file.  This is so several nodes could share the
      same file, in case of file-name clashes, but also for more
      accurate browser positioning.  */
-  if (strcasecmp (nodename, "(dir)") == 0)
+  if (mbscasecmp (nodename, "(dir)") == 0)
     /* Strip the parens, but keep the original letter-case.  */
     add_word_args ("%.3s", nodename + 1);
-  else if (strcasecmp (nodename, "top") == 0)
+  else if (mbscasecmp (nodename, "top") == 0)
     add_word ("Top");
   else
     add_escaped_anchor_name (nodename, href < 0);
@@ -670,8 +712,10 @@ add_url_name (char *nodename, int href)
     add_nodename_to_filename (nodename, href);
 }
 
-/* Convert non [A-Za-z0-9] to _00xx, where xx means the hexadecimal
-   representation of the ASCII character.  Also convert spaces and
+/* Convert non [A-Za-z0-9] characters depending on the command line options given.
+   If --transliterate-file-names is specified, these are replaced with their ASCII
+   phonetic transliteration. Otherwise, _00xx notation is used, where xx means the
+   hexadecimal representation of the ASCII character.  Also convert spaces and
    newlines to dashes.  */
 static void
 fix_filename (char *filename)
@@ -684,7 +728,11 @@ fix_filename (char *filename)
 
   for (i = 0; i < len; i++)
     {
-      if (cr_or_whitespace (oldname[i]))
+      const char *p = lang_transliterate_char (oldname[i]);
+
+      if (p)
+	strcat (filename, p);
+      else if (cr_or_whitespace (oldname[i]))
         strcat (filename, "-");
       else if (URL_SAFE_CHAR (oldname[i]))
         strncat (filename, (char *) oldname + i, 1);
@@ -715,7 +763,7 @@ nodename_to_filename_1 (char *nodename, int href)
   char *filename;
   char dirname[PATH_MAX];
 
-  if (strcasecmp (nodename, "Top") == 0)
+  if (mbscasecmp (nodename, "Top") == 0)
     {
       /* We want to convert references to the Top node into
 	 "index.html#Top".  */
@@ -724,7 +772,7 @@ nodename_to_filename_1 (char *nodename, int href)
       else
 	filename = xstrdup ("Top");
     }
-  else if (strcasecmp (nodename, "(dir)") == 0)
+  else if (mbscasecmp (nodename, "(dir)") == 0)
     /* We want to convert references to the (dir) node into
        "../index.html".  */
     filename = xstrdup ("../index.html");

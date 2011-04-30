@@ -1,13 +1,13 @@
 /* info-utils.h -- Exported functions and variables from info-utils.c.
-   $Id: info-utils.h,v 1.4 2004/04/11 17:56:45 karl Exp $   
+   $Id: info-utils.h,v 1.8 2008/05/10 14:39:04 gray Exp $   
 
-   Copyright (C) 1993, 1996, 1998, 2002, 2003, 2004 Free Software
+   Copyright (C) 1993, 1996, 1998, 2002, 2003, 2004, 2007 Free Software
    Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -99,7 +98,8 @@ void canonicalize_whitespace (char *string);
 
 /* Return a pointer to a string which is the printed representation
    of CHARACTER if it were printed at HPOS. */
-extern char *printed_representation (unsigned char character, int hpos);
+extern char *printed_representation (const unsigned char *cp, size_t len,
+				     size_t hpos, size_t *plen);
 
 /* Return a pointer to the part of PATHNAME that simply defines the file. */
 extern char *filename_non_directory (char *pathname);

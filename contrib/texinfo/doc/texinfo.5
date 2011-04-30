@@ -1,5 +1,5 @@
 .\" texinfo(5)
-.\" $Id: texinfo.5,v 1.2 2004/04/11 17:56:45 karl Exp $
+.\" $Id: texinfo.5,v 1.3 2005/01/20 22:38:32 karl Exp $
 .\"
 .\" Copyright (C) 1998, 1999, 2002 Free Software Foundation, Inc.
 .\"
@@ -17,6 +17,16 @@
 .\" versions, except that this permission notice may be stated in a
 .\" translation approved by the Foundation.
 .\"
+.de EX
+.nf
+.ft CW
+.in +5
+..
+.de EE
+.in -5
+.ft R
+.fi
+..
 .TH TEXINFO 5 "GNU Texinfo" "FSF"
 .SH NAME
 texinfo \- software documentation system
@@ -28,13 +38,13 @@ designed for writing software manuals.
 For a full description of the Texinfo language and associated tools,
 please see the Texinfo manual (written in Texinfo itself).  Most likely,
 running this command from your shell:
-.RS
-.I info texinfo
-.RE
+.EX
+info texinfo
+.EE
 or this key sequence from inside Emacs:
-.RS
-.I M-x info RET m texinfo RET
-.RE
+.EX
+M-x info RET m texinfo RET
+.EE
 will get you there.
 .SH AVAILABILITY
 ftp://ftp.gnu.org/gnu/texinfo/

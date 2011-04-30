@@ -1,13 +1,13 @@
 /* info.h -- Header file which includes all of the other headers.
-   $Id: info.h,v 1.4 2004/04/11 17:56:45 karl Exp $
+   $Id: info.h,v 1.9 2008/05/10 14:39:05 gray Exp $
 
-   Copyright (C) 1993, 1997, 1998, 1999, 2001, 2002, 2003, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1993, 1997, 1998, 1999, 2001, 2002, 2003, 2004, 2007
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -43,6 +42,10 @@ typedef char *CFunction ();
 #include "echo-area.h"
 #include "footnotes.h"
 #include "gc.h"
+
+#include "string.h"
+#include "mbiter.h"
+#include "mbchar.h"
 
 #define info_toupper(x) (islower (x) ? toupper (x) : x)
 #define info_tolower(x) (isupper (x) ? tolower (x) : x)
@@ -126,7 +129,7 @@ extern int raw_escapes_p;
 /* Print FORMAT with ARG1 and ARG2.  If the window system was initialized,
    then the message is printed in the echo area.  Otherwise, a message is
    output to stderr. */
-extern void info_error (char *format, void *arg1, void *arg2);
+extern void info_error (const char *format, void *arg1, void *arg2);
 
 extern void add_file_directory_to_path (char *filename);
 
@@ -155,6 +158,6 @@ extern void set_variable_to_value (char *name, char *value);
 #endif /* INFOKEY */
 
 /* Found in m-x.c.  */
-extern char *read_function_name (char *prompt, WINDOW *window);
+extern char *read_function_name (const char *prompt, WINDOW *window);
 
 #endif /* !INFO_H */

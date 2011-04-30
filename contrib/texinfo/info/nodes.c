@@ -1,13 +1,13 @@
 /* nodes.c -- how to get an Info file and node.
-   $Id: nodes.c,v 1.4 2004/04/11 17:56:46 karl Exp $
+   $Id: nodes.c,v 1.11 2008/06/11 09:55:42 gray Exp $
 
-   Copyright (C) 1993, 1998, 1999, 2000, 2002, 2003, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1993, 1998, 1999, 2000, 2002, 2003, 2004, 2006, 2007,
+   2008 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Originally written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -116,8 +115,11 @@ info_get_node (char *filename, char *nodename)
   /* Look for the node.  */
   node = info_get_node_of_file_buffer (nodename, file_buffer);
 
-  /* If the node not found was "Top", try again with different case.  */
-  if (!node && (nodename == NULL || strcasecmp (nodename, "Top") == 0))
+  /* If the node not found was "Top", try again with different case,
+     unless this was a man page.  */
+  if (!node
+      && mbscasecmp (filename, MANPAGE_FILE_BUFFER_NAME) != 0
+      && (nodename == NULL || mbscasecmp (nodename, "Top") == 0))
     {
       node = info_get_node_of_file_buffer ("Top", file_buffer);
       if (!node)
@@ -137,6 +139,7 @@ NODE *
 info_get_node_of_file_buffer (char *nodename, FILE_BUFFER *file_buffer)
 {
   NODE *node = NULL;
+  int implicit_nodename = 0;
 
   /* If we are unable to find the file, we have to give up.  There isn't
      anything else we can do. */
@@ -149,14 +152,17 @@ info_get_node_of_file_buffer (char *nodename, FILE_BUFFER *file_buffer)
 
   /* If NODENAME is not specified, it defaults to "Top". */
   if (!nodename)
-    nodename = "Top";
+    {
+      nodename = "Top";
+      implicit_nodename = 1;  /* don't return man page for top */
+    }
 
   /* If the name of the node that we wish to find is exactly "*", then the
      node body is the contents of the entire file.  Create and return such
      a node. */
   if (strcmp (nodename, "*") == 0)
     {
-      node = (NODE *)xmalloc (sizeof (NODE));
+      node = xmalloc (sizeof (NODE));
       node->filename = file_buffer->fullpath;
       node->parent   = NULL;
       node->nodename = xstrdup ("*");
@@ -168,9 +174,9 @@ info_get_node_of_file_buffer (char *nodename, FILE_BUFFER *file_buffer)
 #if defined (HANDLE_MAN_PAGES)
   /* If the file buffer is the magic one associated with manpages, call
      the manpage node finding function instead. */
-  else if (file_buffer->flags & N_IsManPage)
+  else if (!implicit_nodename && file_buffer->flags & N_IsManPage)
     {
-        node = get_manpage_node (file_buffer, nodename);
+      node = get_manpage_node (file_buffer, nodename);
     }
 #endif /* HANDLE_MAN_PAGES */
   /* If this is the "main" info file, it might contain a tags table.  Search
@@ -288,7 +294,7 @@ info_find_file_internal (char *filename, int get_tags)
 #if defined (HANDLE_MAN_PAGES)
   /* If the name of the file that we want is our special file buffer for
      Unix manual pages, then create the file buffer, and return it now. */
-  if (strcasecmp (filename, MANPAGE_FILE_BUFFER_NAME) == 0)
+  if (mbscasecmp (filename, MANPAGE_FILE_BUFFER_NAME) == 0)
     file_buffer = create_manpage_file_buffer ();
   else
 #endif /* HANDLE_MAN_PAGES */
@@ -325,7 +331,7 @@ info_load_file_internal (char *filename, int get_tags)
      doesn't exist, then try again with the last part of the filename
      appearing in lowercase. */
   /* This is probably not needed at all on those systems which define
-     FILENAME_CMP to be strcasecmp.  But let's do it anyway, lest some
+     FILENAME_CMP to be mbscasecmp.  But let's do it anyway, lest some
      network redirector supports case sensitivity.  */
   if (retcode < 0)
     {
@@ -722,8 +728,8 @@ get_tags_of_indirect_tags_table (FILE_BUFFER *file_buffer,
         if (colon == -1)
           break;
 
-        subfile = (SUBFILE *)xmalloc (sizeof (SUBFILE));
-        subfile->filename = (char *)xmalloc (colon);
+        subfile = xmalloc (sizeof (SUBFILE));
+        subfile->filename = xmalloc (colon);
         strncpy (subfile->filename, line, colon - 1);
         subfile->filename[colon - 1] = 0;
         subfile->first_byte = (long) atol (line + colon);
@@ -784,13 +790,13 @@ get_tags_of_indirect_tags_table (FILE_BUFFER *file_buffer,
 
         for (i = 0; subfiles[i]; i++);
 
-        file_buffer->subfiles = (char **) xmalloc ((1 + i) * sizeof (char *));
+        file_buffer->subfiles = xmalloc ((1 + i) * sizeof (char *));
 
         for (i = 0; subfiles[i]; i++)
           {
             char *fullpath;
 
-            fullpath = (char *) xmalloc
+            fullpath = xmalloc
               (2 + strlen (subfiles[i]->filename) + len_containing_dir);
 
             sprintf (fullpath, "%s/%s",

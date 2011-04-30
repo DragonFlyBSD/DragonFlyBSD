@@ -1,12 +1,12 @@
 /* dribble.c -- dribble files for Info.
-   $Id: dribble.c,v 1.3 2004/04/11 17:56:45 karl Exp $
+   $Id: dribble.c,v 1.7 2008/06/11 09:55:41 gray Exp $
 
-   Copyright (C) 1993, 1998, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1993, 1998, 2004, 2007, 2008 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,8 +14,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -24,7 +23,7 @@
 
 /* When non-zero, it is a stream to write all input characters to for the
    duration of this info session. */
-FILE *info_dribble_file = (FILE *)NULL;
+FILE *info_dribble_file = NULL;
 
 /* Open a dribble file named NAME, perhaps closing an already open one.
    This sets the global variable INFO_DRIBBLE_FILE to the open stream. */
@@ -40,9 +39,9 @@ open_dribble_file (char *name)
 #if defined (HAVE_SETVBUF)
   if (info_dribble_file)
 #  if defined (SETVBUF_REVERSED)
-    setvbuf (info_dribble_file, _IONBF, (char *)NULL, 1);
+    setvbuf (info_dribble_file, _IONBF, NULL, 1);
 #  else
-    setvbuf (info_dribble_file, (char *)NULL, _IONBF, 1);
+    setvbuf (info_dribble_file, NULL, _IONBF, 1);
 #  endif /* !SETVBUF_REVERSED */
 #endif /* HAVE_SETVBUF */
 }
@@ -55,7 +54,7 @@ close_dribble_file (void)
     {
       fflush (info_dribble_file);
       fclose (info_dribble_file);
-      info_dribble_file = (FILE *)NULL;
+      info_dribble_file = NULL;
     }
 }
 

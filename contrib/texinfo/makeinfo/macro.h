@@ -1,12 +1,12 @@
 /* macro.h -- declarations for macro.c.
-   $Id: macro.h,v 1.2 2004/04/11 17:56:47 karl Exp $
+   $Id: macro.h,v 1.6 2007/07/01 21:20:32 karl Exp $
 
-   Copyright (C) 1998, 99 Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2007 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,9 +14,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-   */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #ifndef MACRO_H
 #define MACRO_H
@@ -37,16 +35,16 @@ typedef struct {
 typedef struct {
   char *name;                   /* Name of the macro. */
   char **arglist;               /* Args to replace when executing. */
+  int argcount;                 /* Number of args in arglist */
   char *body;                   /* Macro body. */
   char *source_file;            /* File where this macro is defined. */
   int source_lineno;            /* Line number within FILENAME. */
   int inhibited;                /* Nonzero means make find_macro () fail. */
-  int flags;                    /* ME_RECURSE, ME_QUOTE_ARG, etc. */
+  int flags;                    /* ME_RECURSE, etc. */
 } MACRO_DEF;
 
 /* flags for MACRO_DEF */
 #define ME_RECURSE      0x01
-#define ME_QUOTE_ARG    0x02
 
 extern void execute_macro (MACRO_DEF *def);
 extern MACRO_DEF *find_macro (char *name);
@@ -72,6 +70,8 @@ extern void cm_alias (void), cm_definfoenclose (void);
 
 extern int array_len (char **array);
 extern void free_array (char **array);
-extern char **get_brace_args (int quote_single);
+
+enum quote_type { quote_none, quote_single, quote_many };
+extern char **get_brace_args (enum quote_type type);
 
 #endif /* not MACRO_H */

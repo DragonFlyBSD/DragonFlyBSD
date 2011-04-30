@@ -1,13 +1,13 @@
 /* infodoc.c -- functions which build documentation nodes.
-   $Id: infodoc.c,v 1.8 2004/04/11 17:56:45 karl Exp $
+   $Id: infodoc.c,v 1.26 2008/06/11 09:55:42 gray Exp $
 
-   Copyright (C) 1993, 1997, 1998, 1999, 2001, 2002, 2003, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1993, 1997, 1998, 1999, 2001, 2002, 2003, 2004, 2006,
+   2007, 2008 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Written by Brian Fox (bfox@ai.mit.edu). */
 
@@ -31,10 +30,10 @@
 static char *info_help_nodename = "*Info Help*";
 
 /* A node containing printed key bindings and their documentation. */
-static NODE *internal_info_help_node = (NODE *)NULL;
+static NODE *internal_info_help_node = NULL;
 
 /* A pointer to the contents of the help node. */
-static char *internal_info_help_node_contents = (char *)NULL;
+static char *internal_info_help_node_contents = NULL;
 
 /* The (more or less) static text which appears in the internal info
    help node.  The actual key bindings are inserted.  Keep the
@@ -43,49 +42,44 @@ static char *internal_info_help_node_contents = (char *)NULL;
 #if defined(INFOKEY)
 
 static char *info_internal_help_text[] = {
-  N_("Basic Commands in Info Windows\n\
-******************************\n"),
+  N_("Basic Info command keys\n"),
   "\n",
-  N_("\\%-10[quit-help]  Quit this help.\n"),
+  N_("\\%-10[quit-help]  Close this help window.\n"),
   N_("\\%-10[quit]  Quit Info altogether.\n"),
   N_("\\%-10[get-info-help-node]  Invoke the Info tutorial.\n"),
   "\n",
-  N_("Selecting other nodes:\n\
-----------------------\n"),
-  N_("\\%-10[next-node]  Move to the \"next\" node of this node.\n"),
-  N_("\\%-10[prev-node]  Move to the \"previous\" node of this node.\n"),
-  N_("\\%-10[up-node]  Move \"up\" from this node.\n"),
-  N_("\\%-10[menu-item]  Pick menu item specified by name.\n\
-              Picking a menu item causes another node to be selected.\n"),
-  N_("\\%-10[xref-item]  Follow a cross reference.  Reads name of reference.\n"),
-  N_("\\%-10[history-node]  Move to the last node seen in this window.\n"),
-  N_("\\%-10[move-to-next-xref]  Skip to next hypertext link within this node.\n"),
-  N_("\\%-10[move-to-prev-xref]  Skip to previous hypertext link within this node.\n"),
-  N_("\\%-10[select-reference-this-line]  Follow the hypertext link under cursor.\n"),
-  N_("\\%-10[dir-node]  Move to the `directory' node.  Equivalent to `\\[goto-node] (DIR)'.\n"),
-  N_("\\%-10[top-node]  Move to the Top node.  Equivalent to `\\[goto-node] Top'.\n"),
-  "\n",
-  N_("Moving within a node:\n\
----------------------\n"),
+  N_("\\%-10[prev-line]  Move up one line.\n"),
+  N_("\\%-10[next-line]  Move down one line.\n"),
+  N_("\\%-10[scroll-backward]  Scroll backward one screenful.\n"),
+  N_("\\%-10[scroll-forward]  Scroll forward one screenful.\n"),
   N_("\\%-10[beginning-of-node]  Go to the beginning of this node.\n"),
   N_("\\%-10[end-of-node]  Go to the end of this node.\n"),
-  N_("\\%-10[next-line]  Scroll forward 1 line.\n"),
-  N_("\\%-10[prev-line]  Scroll backward 1 line.\n"),
-  N_("\\%-10[scroll-forward]  Scroll forward a page.\n"),
-  N_("\\%-10[scroll-backward]  Scroll backward a page.\n"),
   "\n",
-  N_("Other commands:\n\
----------------\n"),
-  N_("\\%-10[menu-digit]  Pick first ... ninth item in node's menu.\n"),
-  N_("\\%-10[last-menu-item]  Pick last item in node's menu.\n"),
-  N_("\\%-10[index-search]  Search for a specified string in the index entries of this Info\n\
-              file, and select the node referenced by the first entry found.\n"),
-  N_("\\%-10[goto-node]  Move to node specified by name.\n\
-              You may include a filename as well, as in (FILENAME)NODENAME.\n"),
-  N_("\\%-10[search]  Search forward for a specified string\n\
-              and select the node in which the next occurrence is found.\n"),
-  N_("\\%-10[search-backward]  Search backward for a specified string\n\
-              and select the node in which the previous occurrence is found.\n"),
+  N_("\\%-10[move-to-next-xref]  Skip to the next hypertext link.\n"),
+  N_("\\%-10[select-reference-this-line]  Follow the hypertext link under the cursor.\n"),
+  N_("\\%-10[history-node]  Go back to the last node seen in this window.\n"),
+  "\n",
+  N_("\\%-10[global-prev-node]  Go to the previous node in the document.\n"),
+  N_("\\%-10[global-next-node]  Go to the next node in the document.\n"),
+  N_("\\%-10[prev-node]  Go to the previous node on this level.\n"),
+  N_("\\%-10[next-node]  Go to the next node on this level.\n"),
+  N_("\\%-10[up-node]  Go up one level.\n"),
+  N_("\\%-10[top-node]  Go to the top node of this document.\n"),
+  N_("\\%-10[dir-node]  Go to the main `directory' node.\n"),
+  "\n",
+  N_("1...9       Pick the first...ninth item in this node's menu.\n"),
+  N_("\\%-10[last-menu-item]  Pick the last item in this node's menu.\n"),
+  N_("\\%-10[menu-item]  Pick a menu item specified by name.\n"),
+  N_("\\%-10[xref-item]  Follow a cross reference specified by name.\n"),
+  N_("\\%-10[goto-node]  Go to a node specified by name.\n"),
+  "\n",
+  N_("\\%-10[search]  Search forward for a specified string.\n"),
+  N_("\\%-10[search-previous]  Search for previous occurrence.\n"),
+  N_("\\%-10[search-next]  Search for next occurrence.\n"),
+  N_("\\%-10[index-search]  Search for a specified string in the index, and\n\
+              select the node referenced by the first entry found.\n"),
+  N_("\\%-10[abort-key]  Cancel the current operation.\n"),
+  "\n",
   NULL
 };
 
@@ -104,8 +98,8 @@ static char *info_internal_help_text[] = {
   N_("  %-10s  Move to the `next' node of this node.\n"),
   N_("  %-10s  Move to the `previous' node of this node.\n"),
   N_("  %-10s  Move `up' from this node.\n"),
-  N_("  %-10s  Pick menu item specified by name.\n"),
-  N_("              Picking a menu item causes another node to be selected.\n"),
+  N_("  %-10s  Pick menu item specified by name.\n\
+              Picking a menu item causes another node to be selected.\n"),
   N_("  %-10s  Follow a cross reference.  Reads name of reference.\n"),
   N_("  %-10s  Move to the last node seen in this window.\n"),
   N_("  %-10s  Skip to next hypertext link within this node.\n"),
@@ -124,16 +118,18 @@ static char *info_internal_help_text[] = {
   "\n",
   N_("Other commands:\n\
 ---------------\n"),
-  N_("  %-10s  Pick first ... ninth item in node's menu.\n"),
+  N_("  %-10s  Pick first...ninth item in node's menu.\n"),
   N_("  %-10s  Pick last item in node's menu.\n"),
-  N_("  %-10s  Search for a specified string in the index entries of this Info\n"),
-  N_("              file, and select the node referenced by the first entry found.\n"),
-  N_("  %-10s  Move to node specified by name.\n"),
-  N_("              You may include a filename as well, as in (FILENAME)NODENAME.\n"),
-  N_("  %-10s  Search forward for a specified string,\n"),
-  N_("              and select the node in which the next occurrence is found.\n"),
-  N_("  %-10s  Search backward for a specified string\n"),
-  N_("              and select the node in which the next occurrence is found.\n"),
+  /* The next four strings are each a unity, so they each need to be
+     kept as one string for the translators.  */
+  N_("  %-10s  Search for a specified string in the index entries of this Info\n\
+              file, and select the node referenced by the first entry found.\n"),
+  N_("  %-10s  Move to node specified by name.\n\
+              You may include a filename as well, as in (FILENAME)NODENAME.\n"),
+  N_("  %-10s  Search forward for a specified string,\n\
+              and select the node in which the next occurrence is found.\n"),
+  N_("  %-10s  Search backward for a specified string,\n\
+              and select the node in which the next occurrence is found.\n"),
   NULL
 };
 
@@ -192,7 +188,7 @@ dump_map_to_message_buffer (char *prefix, Keymap map)
 {
   register int i;
   unsigned prefix_len = strlen (prefix);
-  char *new_prefix = (char *)xmalloc (prefix_len + 2);
+  char *new_prefix = xmalloc (prefix_len + 2);
 
   strncpy (new_prefix, prefix, prefix_len);
   new_prefix[prefix_len + 1] = '\0';
@@ -293,7 +289,7 @@ create_internal_info_help_node (int help_is_only_window_p)
         {
 #ifdef INFOKEY
           printf_to_message_buffer (replace_in_documentation
-              ((char *) _(info_internal_help_text[i]), help_is_only_window_p),
+              (_(info_internal_help_text[i]), help_is_only_window_p),
               NULL, NULL, NULL);
 #else
           /* Don't translate blank lines, gettext outputs the po file
@@ -312,16 +308,16 @@ create_internal_info_help_node (int help_is_only_window_p)
 #endif /* !INFOKEY */
         }
 
-      printf_to_message_buffer ("---------------------\n\n", NULL, NULL, NULL);
-      printf_to_message_buffer ((char *) _("The current search path is:\n"),
+      printf_to_message_buffer ("---------------------\n", NULL, NULL, NULL);
+      printf_to_message_buffer (_("The current search path is:\n"),
           NULL, NULL, NULL);
-      printf_to_message_buffer ("  %s\n", infopath, NULL, NULL);
+      printf_to_message_buffer ("%s\n", infopath, NULL, NULL);
       printf_to_message_buffer ("---------------------\n\n", NULL, NULL, NULL);
-      printf_to_message_buffer ((char *) _("Commands available in Info windows:\n\n"),
+      printf_to_message_buffer (_("Commands available in Info windows:\n\n"),
           NULL, NULL, NULL);
       dump_map_to_message_buffer ("", info_keymap);
       printf_to_message_buffer ("---------------------\n\n", NULL, NULL, NULL);
-      printf_to_message_buffer ((char *) _("Commands available in the echo area:\n\n"),
+      printf_to_message_buffer (_("Commands available in the echo area:\n\n"),
           NULL, NULL, NULL);
       dump_map_to_message_buffer ("", echo_area_keymap);
 
@@ -344,11 +340,11 @@ create_internal_info_help_node (int help_is_only_window_p)
                       NULL, NULL, NULL);
                   if (exec_keys && exec_keys[0])
                       printf_to_message_buffer
-                        ((char *) _("The following commands can only be invoked via %s:\n\n"),
+                        (_("The following commands can only be invoked via %s:\n\n"),
                          exec_keys, NULL, NULL);
                   else
                       printf_to_message_buffer
-                        ((char *) _("The following commands cannot be invoked at all:\n\n"),
+                        (_("The following commands cannot be invoked at all:\n\n"),
                          NULL, NULL, NULL);
                   printed_one_mx = 1;
                 }
@@ -358,7 +354,7 @@ create_internal_info_help_node (int help_is_only_window_p)
                  exec_keys,
                  function_doc_array[i].func_name,
                  replace_in_documentation (strlen (function_doc_array[i].doc)
-                   ? (char *) _(function_doc_array[i].doc) : "", 0)
+                   ? _(function_doc_array[i].doc) : "", 0)
                 );
 
             }
@@ -370,10 +366,6 @@ create_internal_info_help_node (int help_is_only_window_p)
       maybe_free (exec_keys);
 #endif /* NAMED_FUNCTIONS */
 
-      printf_to_message_buffer
-        ("%s", replace_in_documentation
-         ((char *) _("--- Use `\\[history-node]' or `\\[kill-node]' to exit ---\n"), 0),
-         NULL, NULL);
       node = message_buffer_to_node ();
       internal_info_help_node_contents = node->contents;
     }
@@ -494,7 +486,7 @@ DECLARE_INFO_COMMAND (info_get_help_window, _("Display help message"))
     }
   else
     {
-      info_error ((char *) msg_cant_make_help, NULL, NULL);
+      info_error (msg_cant_make_help, NULL, NULL);
     }
 }
 
@@ -513,7 +505,7 @@ DECLARE_INFO_COMMAND (info_get_info_help_node, _("Visit Info node `(info)Help'")
     for (win = windows; win; win = win->next)
       {
         if (win->node && win->node->filename &&
-            (strcasecmp
+            (mbscasecmp
              (filename_non_directory (win->node->filename), "info") == 0) &&
             ((strcmp (win->node->nodename, "Help") == 0) ||
              (strcmp (win->node->nodename, "Help-Small-Screen") == 0)))
@@ -538,7 +530,7 @@ DECLARE_INFO_COMMAND (info_get_info_help_node, _("Visit Info node `(info)Help'")
       if (info_recent_file_error)
         info_error (info_recent_file_error, NULL, NULL);
       else
-        info_error ((char *) msg_cant_file_node, "Info", nodename);
+        info_error (msg_cant_file_node, "Info", nodename);
     }
   else
     {
@@ -586,7 +578,7 @@ function_documentation (InfoCommand *cmd)
 
 #endif /* !INFOKEY */
 
-  return replace_in_documentation ((strlen (doc) == 0) ? doc : (char *) _(doc), 0);
+  return replace_in_documentation ((strlen (doc) == 0) ? doc : _(doc), 0);
 }
 
 #if defined (NAMED_FUNCTIONS)
@@ -607,7 +599,7 @@ function_name (InfoCommand *cmd)
     if (InfoFunction(cmd) == function_doc_array[i].func)
       break;
 
-  return (function_doc_array[i].func_name);
+  return function_doc_array[i].func_name;
 
 #endif /* !INFOKEY */
 }
@@ -622,7 +614,7 @@ named_function (char *name)
     if (strcmp (function_doc_array[i].func_name, name) == 0)
       break;
 
-  return (DocInfoCmd(&function_doc_array[i]));
+  return DocInfoCmd(&function_doc_array[i]);
 }
 #endif /* NAMED_FUNCTIONS */
 
@@ -633,9 +625,9 @@ key_documentation (char key, Keymap map)
   InfoCommand *function = map[key].function;
 
   if (function)
-    return (function_documentation (function));
+    return function_documentation (function);
   else
-    return ((char *)NULL);
+    return NULL;
 }
 
 DECLARE_INFO_COMMAND (describe_key, _("Print documentation for KEY"))
@@ -650,7 +642,7 @@ DECLARE_INFO_COMMAND (describe_key, _("Print documentation for KEY"))
 
   for (;;)
     {
-      message_in_echo_area ((char *) _("Describe key: %s"),
+      message_in_echo_area (_("Describe key: %s"),
           pretty_keyseq (keys), NULL);
       keystroke = info_get_input_char ();
       unmessage_in_echo_area ();
@@ -675,9 +667,9 @@ DECLARE_INFO_COMMAND (describe_key, _("Print documentation for KEY"))
       *k++ = keystroke;
       *k = '\0';
 
-      if (map[keystroke].function == (InfoCommand *)NULL)
+      if (map[keystroke].function == NULL)
         {
-          message_in_echo_area ((char *) _("%s is undefined."),
+          message_in_echo_area (_("%s is undefined."),
               pretty_keyseq (keys), NULL);
           return;
         }
@@ -704,9 +696,9 @@ DECLARE_INFO_COMMAND (describe_key, _("Print documentation for KEY"))
                                        ? Meta (tolower (UnMeta (keystroke)))
                                        : tolower (keystroke);
 
-              if (map[lowerkey].function == (InfoCommand *)NULL)
+              if (map[lowerkey].function == NULL)
                 {
-                  message_in_echo_area ((char *) _("%s is undefined."),
+                  message_in_echo_area (_("%s is undefined."),
                                         pretty_keyseq (keys), NULL);
                   return;
                 }
@@ -721,7 +713,7 @@ DECLARE_INFO_COMMAND (describe_key, _("Print documentation for KEY"))
 
           fundoc = function_documentation (map[keystroke].function);
 
-          message = (char *)xmalloc
+          message = xmalloc
             (10 + strlen (keyname) + strlen (fundoc) + strlen (funname));
 
 #if defined (NAMED_FUNCTIONS)
@@ -784,7 +776,7 @@ pretty_keyname (unsigned char key)
           rep = rep_buffer;
         }
     }
-  return (rep);
+  return rep;
 }
 
 /* Return the pretty printable string which represents KEYSEQ. */
@@ -799,7 +791,7 @@ pretty_keyseq (char *keyseq)
   keyseq_rep[0] = '\0';
   if (*keyseq)
     pretty_keyseq_internal (keyseq, keyseq_rep);
-  return (keyseq_rep);
+  return keyseq_rep;
 }
 
 static void
@@ -870,7 +862,7 @@ pretty_keyseq_internal (char *keyseq, char *rep)
 }
 
 /* Return a pointer to the last character in s that is found in f. */
-static char *
+static const char *
 strrpbrk (const char *s, const char *f)
 {
   register const char *e = s + strlen(s);
@@ -880,21 +872,21 @@ strrpbrk (const char *s, const char *f)
     {
       for (t = f; *t; t++)
         if (*e == *t)
-          return (char *)e;
+          return e;
     }
   return NULL;
 }
 
 /* Replace the names of functions with the key that invokes them. */
 char *
-replace_in_documentation (char *string, int help_is_only_window_p)
+replace_in_documentation (const char *string, int help_is_only_window_p)
 {
   unsigned reslen = strlen (string);
   register int i, start, next;
-  static char *result = (char *)NULL;
+  static char *result = NULL;
 
   maybe_free (result);
-  result = (char *)xmalloc (1 + reslen);
+  result = xmalloc (1 + reslen);
 
   i = next = start = 0;
 
@@ -926,7 +918,7 @@ replace_in_documentation (char *string, int help_is_only_window_p)
                       while (isdigit(string[j]))
                         j++;
                     }
-                  fmt = (char *)xmalloc (j - i + 2);
+                  fmt = xmalloc (j - i + 2);
                   strncpy (fmt, string + i + 1, j - i);
                   fmt[j - i - 1] = 's';
                   fmt[j - i] = '\0';
@@ -964,13 +956,13 @@ replace_in_documentation (char *string, int help_is_only_window_p)
               /* Move to the end of the function name. */
               for (i = start; string[i] && (string[i] != ']'); i++);
 
-              rep_name = (char *)xmalloc (1 + i - start);
+              rep_name = xmalloc (1 + i - start);
               strncpy (rep_name, string + start, i - start);
               rep_name[i - start] = '\0';
 
             /* If we have only one window (because the window size was too
                small to split it), we have to quit help by going back one
-               noew in the history list, not deleting the window.  */
+               node in the history list, not deleting the window.  */
               if (strcmp (rep_name, "quit-help") == 0)
                 fun_name = help_is_only_window_p ? "history-node"
                                                  : "delete-window";
@@ -990,13 +982,14 @@ replace_in_documentation (char *string, int help_is_only_window_p)
 
               if (arg)
                 {
-                  char *argrep, *p;
+                  char *argrep;
+		  const char *p;
 
                   argrep = where_is (info_keymap, InfoCmd(info_add_digit_to_numeric_arg));
                   p = argrep ? strrpbrk (argrep, "0123456789-") : NULL;
                   if (p)
                     {
-                      argstr = (char *)xmalloc (p - argrep + 21);
+                      argstr = xmalloc (p - argrep + 21);
                       strncpy (argstr, argrep, p - argrep);
                       sprintf (argstr + (p - argrep), "%d", arg);
                     }
@@ -1007,7 +1000,7 @@ replace_in_documentation (char *string, int help_is_only_window_p)
               if (!rep)
                 rep = "N/A";
               replen = (argstr ? strlen (argstr) : 0) + strlen (rep) + 1;
-              repstr = (char *)xmalloc (replen);
+              repstr = xmalloc (replen);
               repstr[0] = '\0';
               if (argstr)
                 {
@@ -1027,7 +1020,7 @@ replace_in_documentation (char *string, int help_is_only_window_p)
               if (next + replen > reslen)
                 {
                   reslen = next + replen + 1;
-                  result = (char *)xrealloc (result, reslen + 1);
+                  result = xrealloc (result, reslen + 1);
                 }
 
               if (fmt)
@@ -1047,12 +1040,12 @@ replace_in_documentation (char *string, int help_is_only_window_p)
         }
     }
   strcpy (result + next, string + start);
-  return (result);
+  return result;
 }
 
 /* Return a string of characters which could be typed from the keymap
    MAP to invoke FUNCTION. */
-static char *where_is_rep = (char *)NULL;
+static char *where_is_rep = NULL;
 static int where_is_rep_index = 0;
 static int where_is_rep_size = 0;
 
@@ -1062,7 +1055,7 @@ where_is (Keymap map, InfoCommand *cmd)
   char *rep;
 
   if (!where_is_rep_size)
-    where_is_rep = (char *)xmalloc (where_is_rep_size = 100);
+    where_is_rep = xmalloc (where_is_rep_size = 100);
   where_is_rep_index = 0;
 
   rep = where_is_internal (map, cmd);
@@ -1084,7 +1077,7 @@ where_is (Keymap map, InfoCommand *cmd)
 
       rep = where_is_rep;
     }
-  return (rep);
+  return rep;
 }
 
 /* Return the printed rep of the keystrokes that invoke FUNCTION,
@@ -1120,7 +1113,7 @@ where_is_internal (Keymap map, InfoCommand *cmd)
     if ((map[i].type == ISFUNC) && map[i].function == cmd)
       {
         sprintf (where_is_rep + where_is_rep_index, "%s", pretty_keyname (i));
-        return (where_is_rep);
+        return where_is_rep;
       }
 
   /* Okay, search subsequent maps for this function. */
@@ -1138,7 +1131,7 @@ where_is_internal (Keymap map, InfoCommand *cmd)
           rep = where_is_internal ((Keymap)map[i].function, cmd);
 
           if (rep)
-            return (where_is_rep);
+            return where_is_rep;
 
           where_is_rep_index = saved_index;
         }
@@ -1154,7 +1147,7 @@ DECLARE_INFO_COMMAND (info_where_is,
 {
   char *command_name;
 
-  command_name = read_function_name ((char *) _("Where is command: "), window);
+  command_name = read_function_name (_("Where is command: "), window);
 
   if (!command_name)
     {
@@ -1176,23 +1169,23 @@ DECLARE_INFO_COMMAND (info_where_is,
 
           if (!location || !location[0])
             {
-              info_error ((char *) _("`%s' is not on any keys"),
+              info_error (_("`%s' is not on any keys"),
                   command_name, NULL);
             }
           else
             {
               if (strstr (location, function_name (command)))
                 window_message_in_echo_area
-                  ((char *) _("%s can only be invoked via %s."),
+                  (_("%s can only be invoked via %s."),
                    command_name, location);
               else
                 window_message_in_echo_area
-                  ((char *) _("%s can be invoked via %s."),
+                  (_("%s can be invoked via %s."),
                    command_name, location);
             }
         }
       else
-        info_error ((char *) _("There is no function named `%s'"),
+        info_error (_("There is no function named `%s'"),
             command_name, NULL);
     }
 

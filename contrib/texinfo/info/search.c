@@ -1,12 +1,13 @@
 /* search.c -- searching large bodies of text.
-   $Id: search.c,v 1.3 2004/04/11 17:56:46 karl Exp $
+   $Id: search.c,v 1.9 2008/06/11 09:55:42 gray Exp $
 
-   Copyright (C) 1993, 1997, 1998, 2002, 2004 Free Software Foundation, Inc.
+   Copyright (C) 1993, 1997, 1998, 2002, 2004, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,12 +15,12 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-   Written by Brian Fox (bfox@ai.mit.edu). */
+   Originally written by Brian Fox (bfox@ai.mit.edu). */
 
 #include "info.h"
+#include <regex.h>
 
 #include "search.h"
 #include "nodes.h"
@@ -40,13 +41,13 @@ make_binding (char *buffer, long int start, long int end)
 {
   SEARCH_BINDING *binding;
 
-  binding = (SEARCH_BINDING *)xmalloc (sizeof (SEARCH_BINDING));
+  binding = xmalloc (sizeof (SEARCH_BINDING));
   binding->buffer = buffer;
   binding->start = start;
   binding->end = end;
   binding->flags = 0;
 
-  return (binding);
+  return binding;
 }
 
 /* Make a copy of BINDING without duplicating the data. */
@@ -57,7 +58,7 @@ copy_binding (SEARCH_BINDING *binding)
 
   copy = make_binding (binding->buffer, binding->start, binding->end);
   copy->flags = binding->flags;
-  return (copy);
+  return copy;
 }
 
 
@@ -80,7 +81,186 @@ search (char *string, SEARCH_BINDING *binding)
   else
     result = search_forward (string, binding);
 
-  return (result);
+  return result;
+}
+
+/* Search forwards or backwards for anything matching the regexp in the text
+   delimited by BINDING. The search is forwards if BINDING->start is greater
+   than BINDING->end.
+
+   If PRET is specified, it receives a copy of BINDING at the end of a
+   succeded search.  Its START and END fields contain bounds of the found
+   string instance. 
+*/
+long
+regexp_search (char *regexp, SEARCH_BINDING *binding, long length,
+	       SEARCH_BINDING *pret)
+{
+  static char *previous_regexp = NULL;
+  static char *previous_content = NULL;
+  static int was_insensitive = 0;
+  static regex_t preg;
+  static regmatch_t *matches;
+  static int match_alloc = 0;
+  static int match_count = 0;
+  regoff_t pos;
+
+  if (previous_regexp == NULL
+      || ((binding->flags & S_FoldCase) != was_insensitive)
+      || (strcmp (previous_regexp, regexp) != 0))
+    {
+      /* need to compile a new regexp */
+      int result;
+      char *unescaped_regexp;
+      char *p, *q;
+
+      previous_content = NULL;
+
+      if (previous_regexp != NULL)
+        {
+          free (previous_regexp);
+          previous_regexp = NULL;
+          regfree (&preg);
+        }
+
+      was_insensitive = binding->flags & S_FoldCase;
+
+      /* expand the \n and \t in regexp */
+      unescaped_regexp = xmalloc (1 + strlen (regexp));
+      for (p = regexp, q = unescaped_regexp; *p != '\0'; p++, q++)
+        {
+          if (*p == '\\')
+            switch(*++p)
+              {
+              case 'n':
+                *q = '\n';
+                break;
+              case 't':
+                *q = '\t';
+                break;
+              case '\0':
+                *q = '\\';
+                p--;
+                break;
+              default:
+                *q++ = '\\';
+                *q = *p;
+                break;
+              }
+          else
+            *q = *p;
+        }
+      *q = '\0';
+
+      result = regcomp (&preg, unescaped_regexp,
+                       REG_EXTENDED|
+                       REG_NEWLINE|
+                       (was_insensitive ? REG_ICASE : 0));
+      free (unescaped_regexp);
+
+      if (result != 0)
+        {
+          int size = regerror (result, &preg, NULL, 0);
+          char *buf = xmalloc (size);
+          regerror (result, &preg, buf, size);
+          info_error (_("regexp error: %s"), buf, NULL);
+          return -1;
+        }
+
+      previous_regexp = xstrdup(regexp);
+    }
+
+  if (previous_content != binding->buffer)
+    {
+      /* new buffer to search in, let's scan it */
+      regoff_t start = 0;
+      char saved_char;
+
+      previous_content = binding->buffer;
+      saved_char = previous_content[length-1];
+      previous_content[length-1] = '\0';
+
+      for (match_count = 0; start < length; )
+        {
+          int result = 0;
+          if (match_count >= match_alloc)
+            {
+              /* match list full. Initially allocate 256 entries, then double
+                 every time we fill it */
+              match_alloc = (match_alloc > 0 ? match_alloc * 2 : 256);
+              matches = xrealloc (matches,
+				  match_alloc * sizeof(regmatch_t));
+            }
+
+          result = regexec (&preg, &previous_content[start],
+                            1, &matches[match_count], 0);
+          if (result == 0)
+            {
+              if (matches[match_count].rm_eo == 0)
+                {
+                  /* ignore empty matches */
+                  start++;
+                }
+              else
+                {
+                  matches[match_count].rm_so += start;
+                  matches[match_count].rm_eo += start;
+                  start = matches[match_count++].rm_eo;
+                }
+            }
+          else
+            {
+              break;
+            }
+        }
+      previous_content[length-1] = saved_char;
+    }
+
+  pos = binding->start;
+  if (pos > binding->end)
+    {
+      /* searching backward */
+      int i;
+      for (i = match_count - 1; i >= 0; i--)
+        {
+          if (matches[i].rm_so <= pos)
+	    {
+	      if (pret)
+		{
+		  pret->buffer = binding->buffer;
+		  pret->flags = binding->flags;
+		  pret->start = matches[i].rm_so;
+		  pret->end = matches[i].rm_eo;
+		}
+	      return matches[i].rm_so;
+	    }
+        }
+    }
+  else
+    {
+      /* searching forward */
+      int i;
+      for (i = 0; i < match_count; i++)
+        {
+          if (matches[i].rm_so >= pos)
+            {
+	      if (pret)
+		{
+		  pret->buffer = binding->buffer;
+		  pret->flags = binding->flags;
+		  pret->start = matches[i].rm_so;
+		  pret->end = matches[i].rm_eo;
+		}
+              if (binding->flags & S_SkipDest)
+                return matches[i].rm_eo;
+              else
+                return matches[i].rm_so;
+            }
+        }
+    }
+
+  /* not found */
+  return -1;
 }
 
 /* Search forwards for STRING through the text delimited in BINDING. */
@@ -89,7 +269,7 @@ search_forward (char *string, SEARCH_BINDING *binding)
 {
   register int c, i, len;
   register char *buff, *end;
-  char *alternate = (char *)NULL;
+  char *alternate = NULL;
 
   len = strlen (string);
 
@@ -130,7 +310,7 @@ search_forward (char *string, SEARCH_BINDING *binding)
             free (alternate);
           if (binding->flags & S_SkipDest)
             buff += len;
-          return ((long) (buff - binding->buffer));
+          return buff - binding->buffer;
         }
 
       buff++;
@@ -139,7 +319,7 @@ search_forward (char *string, SEARCH_BINDING *binding)
   if (alternate)
     free (alternate);
 
-  return ((long) -1);
+  return -1;
 }
 
 /* Search for STRING backwards through the text delimited in BINDING. */
@@ -149,12 +329,12 @@ search_backward (char *input_string, SEARCH_BINDING *binding)
   register int c, i, len;
   register char *buff, *end;
   char *string;
-  char *alternate = (char *)NULL;
+  char *alternate = NULL;
 
   len = strlen (input_string);
 
   /* Reverse the characters in the search string. */
-  string = (char *)xmalloc (1 + len);
+  string = xmalloc (1 + len);
   for (c = 0, i = len - 1; input_string[c]; c++, i--)
     string[i] = input_string[c];
 
@@ -199,7 +379,7 @@ search_backward (char *input_string, SEARCH_BINDING *binding)
 
           if (binding->flags & S_SkipDest)
             buff -= len;
-          return ((long) (1 + (buff - binding->buffer)));
+          return 1 + buff - binding->buffer;
         }
 
       buff--;
@@ -209,7 +389,7 @@ search_backward (char *input_string, SEARCH_BINDING *binding)
   if (alternate)
     free (alternate);
 
-  return ((long) -1);
+  return -1;
 }
 
 /* Find STRING in LINE, returning the offset of the end of the string.
@@ -230,7 +410,7 @@ string_in_line (char *string, char *line)
   binding.end = end;
   binding.flags = S_FoldCase | S_SkipDest;
 
-  return (search_forward (string, &binding));
+  return search_forward (string, &binding);
 }
 
 /* Return non-zero if STRING is the first text to appear at BINDING. */
@@ -244,7 +424,7 @@ looking_at (char *string, SEARCH_BINDING *binding)
   /* If the string was not found, SEARCH_END is -1.  If the string was found,
      but not right away, SEARCH_END is != binding->start.  Otherwise, the
      string was found at binding->start. */
-  return (search_end == binding->start);
+  return search_end == binding->start;
 }
 
 /* **************************************************************** */
@@ -266,7 +446,7 @@ skip_whitespace (char *string)
   register int i;
 
   for (i = 0; string && whitespace (string[i]); i++);
-  return (i);
+  return i;
 }
 
 /* Return the index of the first non-whitespace or newline character in
@@ -277,7 +457,7 @@ skip_whitespace_and_newlines (char *string)
   register int i;
 
   for (i = 0; string && whitespace_or_newline (string[i]); i++);
-  return (i);
+  return i;
 }
 
 /* Return the index of the first whitespace character in STRING. */
@@ -287,7 +467,7 @@ skip_non_whitespace (char *string)
   register int i;
 
   for (i = 0; string && string[i] && !whitespace (string[i]); i++);
-  return (i);
+  return i;
 }
 
 /* Return the index of the first non-node character in STRING.  Note that
@@ -309,7 +489,7 @@ skip_node_characters (char *string, int newlines_okay)
      nodename proper.  In that case, a period at the start of the nodename
      indicates an empty nodename. */
   if (string && *string == '.')
-    return (0);
+    return 0;
 
   if (string && *string == '(')
     {
@@ -350,7 +530,7 @@ skip_node_characters (char *string, int newlines_okay)
             (string[i + 1] == ')'))))
         break;
     }
-  return (i);
+  return i;
 }
 
 
@@ -382,8 +562,8 @@ find_node_separator (SEARCH_BINDING *binding)
         ((body[i] == INFO_COOKIE) &&
          (body[i + 1] == '\n' ||
           (body[i + 1] == INFO_FF && body[i + 2] == '\n'))))
-      return (i);
-  return (-1);
+      return i;
+  return -1;
 }
 
 /* Return the length of the node separator characters that BODY is
@@ -399,15 +579,15 @@ skip_node_separator (char *body)
     i++;
 
   if (body[i++] != INFO_COOKIE)
-    return (0);
+    return 0;
 
   if (body[i] == INFO_FF)
     i++;
 
   if (body[i++] != '\n')
-    return (0);
+    return 0;
 
-  return (i);
+  return i;
 }
 
 /* Return the number of characters from STRING to the start of
@@ -422,7 +602,7 @@ skip_line (char *string)
   if (string[i] == '\n')
     i++;
 
-  return (i);
+  return i;
 }
 
 /* Return the absolute position of the beginning of a tags table in this
@@ -445,9 +625,9 @@ find_tags_table (SEARCH_BINDING *binding)
           + tmp_search.start);
 
       if (looking_at (TAGS_TABLE_BEG_LABEL, &tmp_search))
-        return (position);
+        return position;
     }
-  return (-1);
+  return -1;
 }
 
 /* Return the absolute position of the node named NODENAME in BINDING.
@@ -491,7 +671,7 @@ find_node_in_binding (char *nodename, SEARCH_BINDING *binding)
        if ((offset == namelen) &&
            (tmp_search.buffer[tmp_search.start] == nodename[0]) &&
            (strncmp (tmp_search.buffer + tmp_search.start, nodename, offset) == 0))
-         return (position);
+         return position;
     }
-  return (-1);
+  return -1;
 }

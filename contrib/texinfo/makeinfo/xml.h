@@ -1,12 +1,13 @@
-/* xml.h -- xml output declarations.
-   $Id: xml.h,v 1.24 2004/11/26 00:48:35 karl Exp $
+/* xml.h -- xml (including Docbook) output declarations.
+   $Id: xml.h,v 1.32 2008/01/31 18:33:28 karl Exp $
 
-   Copyright (C) 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+   Copyright (C) 2001, 2002, 2003, 2004, 2005, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,19 +15,17 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
    Originally written by Philippe Martin <feloy@free.fr>.  */
 
 #ifndef XML_H
 #define XML_H
 
-/* Options. */
-
-/* Separate index entries into divisions for each letters. */
-extern int xml_index_divisions;
+/* Currently sorting the index. */
 extern int xml_sort_index;
+
+/* Options. */
 
 extern int xml_no_indent;
 
@@ -80,6 +79,7 @@ enum xml_element
   ITEMIZE, ITEMFUNCTION, ITEM, ENUMERATE, TABLE, TABLEITEM, TABLETERM,
   INDEXTERM, 
   MATH, DIMENSION,
+  CLICKSEQUENCE, CLICK,
   XREF, XREFNODENAME, XREFINFONAME, XREFPRINTEDDESC, XREFINFOFILE,
     XREFPRINTEDNAME, 
   INFOREF, INFOREFNODENAME, INFOREFREFNAME, INFOREFINFONAME, 
@@ -100,6 +100,7 @@ enum xml_element
   DEFINITION, DEFINITIONTERM, DEFINITIONITEM,
   DEFCATEGORY, DEFFUNCTION, DEFVARIABLE, DEFPARAM, DEFDELIMITER, DEFTYPE,
   DEFPARAMTYPE, DEFDATATYPE, DEFCLASS, DEFCLASSVAR, DEFOPERATION,
+  FRENCHSPACING,
   PARA
 };
 
@@ -109,13 +110,12 @@ extern void xml_add_char (int character),
   xml_insert_entity (char *entity_name),
   xml_insert_footnote (char *note),
   xml_insert_quotation (char *type, int arg),
-  xml_insert_indexentry (char *entry, char *node),
   xml_insert_indexterm (char *indexterm, char *index),
   xml_insert_docbook_image (char *name_arg),
   xml_synindex (char *from, char *to),
   xml_start_para (void),
   xml_end_para (void),
-  xml_begin_document (char *output_filename),
+  xml_begin_document (const char *output_basename),
   xml_end_document (void),
   xml_start_menu_entry (char *tem),
   xml_end_menu (void),

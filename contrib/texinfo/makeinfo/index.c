@@ -1,13 +1,13 @@
 /* index.c -- indexing for Texinfo.
-   $Id: index.c,v 1.17 2004/11/30 02:03:23 karl Exp $
+   $Id: index.c,v 1.27 2008/05/19 18:26:48 karl Exp $
 
-   Copyright (C) 1998, 1999, 2002, 2003, 2004 Free Software Foundation,
-   Inc.
+   Copyright (C) 1998, 1999, 2002, 2003, 2004, 2007, 2008
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,10 +15,10 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "system.h"
+#include "mbswidth.h"
 #include "files.h"
 #include "footnote.h"
 #include "html.h"
@@ -29,12 +29,8 @@
 #include "toc.h"
 #include "xml.h"
 
-INDEX_ALIST **name_index_alist = NULL;
-
-/* An array of pointers.  Each one is for a different index.  The
-   "synindex" command changes which array slot is pointed to by a
-   given "index". */
-INDEX_ELT **the_indices = NULL;
+/* Nonzero means that we are in the middle of printing an index. */
+int printing_index = 0;
 
 /* The number of defined indices. */
 int defined_indices = 0;
@@ -46,12 +42,14 @@ int index_counter = 0;
 COMMAND **user_command_array = NULL;
 int user_command_array_len = 0;
 
-/* How to compare index entries for sorting.  May be set to strcoll.  */
-int (*index_compare_fn) (const char *a, const char *b) = strcasecmp;
+INDEX_ALIST **name_index_alist = NULL;
 
-/* Function to compare index entries for sorting.  (Calls
-   `index_compare_fn' above.)  */
-int index_element_compare (const void *element1, const void *element2);
+/* An array of pointers.  Each one is for a different index.  The @synindex
+   command changes which array slot is pointed to by a given index.  */
+static INDEX_ELT **the_indices = NULL;
+
+/* How to compare index entries for sorting.  May be set to strcoll.  */
+static int (*index_compare_fn) (const char *a, const char *b) = mbscasecmp;
 
 /* Find which element in the known list of indices has this name.
    Returns -1 if NAME isn't found. */
@@ -260,7 +258,7 @@ index_add_arg (char *name)
   if (xml)
     xml_insert_indexterm (index_entry, name);
 }
-
+
 /* The function which user defined index commands call. */
 static void
 gen_index (void)
@@ -271,7 +269,7 @@ gen_index (void)
   index_add_arg (name);
   free (name);
 }
-
+
 /* Define an index known as NAME.  We assign the slot number.
    If CODE is nonzero, make this a code index. */
 static void
@@ -503,8 +501,8 @@ cm_tindex (void)                    /* Data Type index. */
 {
   index_add_arg ("tp");
 }
-
-int
+
+static int
 index_element_compare (const void *element1, const void *element2)
 {
   INDEX_ELT **elt1 = (INDEX_ELT **) element1;
@@ -653,11 +651,28 @@ sort_index (INDEX_ELT *index)
 
   return array;
 }
+
+/* Return the number of times that the byte CH occurs in the LEN bytes
+   starting at STR.  Multibyte strings are not taken into account, which
+   is incorrect, but we need this for @tie; see more comments below.  */
+
+static int
+count_strn_chars (const char *str, int len, int ch)
+{
+  int count = 0;
+  int i;
+  
+  for (i = 0; i < len; i++)
+    if (str[i] == ch)
+      count++;
+
+  return count;
+}
 
 static void
 insert_index_output_line_no (int line_number, int output_line_number_len)
 {
-  int last_column;
+  int last_column, out_line_no_width;
   int str_size = output_line_number_len + strlen (_("(line )"))
     + sizeof (NULL);
   char *out_line_no_str = (char *) xmalloc (str_size + 1);
@@ -673,16 +688,20 @@ insert_index_output_line_no (int line_number, int output_line_number_len)
     int i = output_paragraph_offset; 
     while (0 < i && output_paragraph[i-1] != '\n')
       i--;
-    last_column = output_paragraph_offset - i;
+    last_column = mbsnwidth ((char *)(output_paragraph + i),
+			     output_paragraph_offset - i, 0);
+    last_column += count_strn_chars (output_paragraph + i,
+                              output_paragraph_offset - i, NON_BREAKING_SPACE);
   }
 
-  if (last_column + strlen (out_line_no_str) > fill_column)
+  out_line_no_width = mbswidth (out_line_no_str, 0);
+  if (last_column + out_line_no_width > fill_column)
     {
       insert ('\n');
       last_column = 0;
     }
 
-  while (last_column + strlen (out_line_no_str) < fill_column)
+  while (last_column + out_line_no_width < fill_column)
     {
       insert (' ');
       last_column++;
@@ -693,10 +712,7 @@ insert_index_output_line_no (int line_number, int output_line_number_len)
 
   free (out_line_no_str);
 }
-
-/* Nonzero means that we are in the middle of printing an index. */
-int printing_index = 0;
-
+
 /* Takes one arg, a short name of an index to print.
    Outputs a menu of the sorted elements of the index. */
 void
@@ -711,10 +727,11 @@ cm_printindex (void)
   if (!handling_delayed_writes)
     line_number--;
 
-  if (xml && !docbook)
+  if (xml)
     {
       xml_insert_element (PRINTINDEX, START);
-      insert_string (index_name);
+      if (! docbook)
+	insert_string (index_name);
       xml_insert_element (PRINTINDEX, END);
     }
   else if (!handling_delayed_writes)
@@ -723,9 +740,6 @@ cm_printindex (void)
       char *index_command = xmalloc (command_len + 1);
 
       close_paragraph ();
-      if (docbook)
-        xml_begin_index ();
-
       sprintf (index_command, "@%s %s", command, index_name);
       register_delayed_write (index_command);
       free (index_command);
@@ -743,6 +757,7 @@ cm_printindex (void)
       int saved_line_number = line_number;
       char *saved_input_filename = input_filename;
       unsigned output_line_number_len;
+      FILE *saved_output_stream = output_stream;
 
       index = index_list (index_name);
       if (index == (INDEX_ELT *)-1)
@@ -866,18 +881,27 @@ cm_printindex (void)
                 add_word_args ("#%s</a>", index_node);
 
               add_html_block_elt ("</li>");
+
+              if (internal_links_stream)
+                {
+                  char *escaped = escaped_anchor_name (index->entry_text);
+                  fprintf (internal_links_stream, "%s#index-%s-%d\t%s\t%s\n",
+                      (splitting && index->output_file) ? index->output_file : "",
+                      escaped, index->entry_number, index_name, 
+                      index->entry_text);
+                  free (escaped);
+                }              
             }
           else if (xml && docbook)
             {
-              /* In the DocBook case, the expanded index entry is not
-                 good for us, since it was expanded for non-DocBook mode
-                 inside sort_index.  So we send the original entry text
-                 to be used with execute_string.  */
-              xml_insert_indexentry (index->entry_text, index_node);
+	      /* Let DocBook processor generate the index. */
             }
           else
             {
-              unsigned new_length = strlen (index->entry);
+#define MIN_ENTRY_COLUMNS 37
+	      /* Make sure there is enough space even if index->entry has zero
+		 width. */
+              unsigned new_length = strlen (index->entry) + MIN_ENTRY_COLUMNS;
 
               if (new_length < 50) /* minimum length used below */
                 new_length = 50;
@@ -894,10 +918,25 @@ cm_printindex (void)
                  @@ has turned into @. */
               if (!no_headers)
                 {
-                  sprintf (line, "* %-37s  ", index->entry);
+                  int nspaces;
+		  int width = mbswidth (index->entry, 0);
+		  
+		  /* Unfortunately, our @tie{} / @w{ } magic is an
+                     unprintable character, and so mbswidth doesn't
+                     count it.  If that byte value occurs in a multibyte
+                     string, we'd lose, but at least it's only a
+                     question of minor formatting, not functionality.  */
+		  width += count_strn_chars (index->entry,
+                                    strlen (index->entry), NON_BREAKING_SPACE);
+		  
+		  nspaces = -(strlen (index->entry)
+                              + (MIN_ENTRY_COLUMNS - width));
+                  sprintf (line, "* %*s  ",
+                           width < MIN_ENTRY_COLUMNS ? nspaces : 0, 
+			   index->entry);
                   line[2 + strlen (index->entry)] = ':';
                   insert_string (line);
-                  /* Make sure any non-macros in the node name are expanded.  */
+                  /* Expand any non-macros in the node name.  */
                   in_fixed_width_font++;
                   execute_string ("%s. ", index_node);
                   insert_index_output_line_no (index->output_line,
@@ -910,7 +949,8 @@ cm_printindex (void)
                      there's little sense in referring to them in the
                      index.  Instead, output the number or name of the
                      section that corresponds to that node.  */
-                  sprintf (line, "%-*s ", number_sections ? 46 : 1, index->entry);
+                  sprintf (line, "%-*s ", number_sections ? 46 : 1,
+                           index->entry);
                   line[strlen (index->entry)] = ':';
                   insert_string (line);
 

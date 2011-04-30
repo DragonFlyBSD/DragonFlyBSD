@@ -1,13 +1,13 @@
 /* session.h -- Functions found in session.c.
-   $Id: session.h,v 1.3 2004/04/11 17:56:46 karl Exp $
+   $Id: session.h,v 1.10 2008/03/04 09:44:57 gray Exp $
 
-   Copyright (C) 1993, 1998, 1999, 2001, 2002, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1993, 1998, 1999, 2001, 2002, 2004, 2007
+   Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,10 +15,9 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-   Written by Brian Fox (bfox@ai.mit.edu). */
+   Originally written by Brian Fox (bfox@ai.mit.edu). */
 
 #ifndef SESSION_H
 #define SESSION_H
@@ -59,6 +58,18 @@ extern char *info_scroll_choices[];
                            "Next:" of the up. */
 #define IS_NextOnly   1 /* Try to get "Next:" menu item. */
 #define IS_PageOnly   2 /* Simply give up at the bottom of a node. */
+
+extern int cursor_movement_scrolls_p;
+
+/* Values for scroll_last_node */
+#define SLN_Stop   0 /* Stop at the last node */
+#define SLN_Scroll 1 /* Do usual scrolling */
+#define SLN_Top    2 /* Go to the top node */
+
+extern char *scroll_last_node_choices[];
+/* Controls what to do when a scrolling command is issued at the end of the
+   last node. */
+extern int scroll_last_node;
 
 /* Utility functions found in session.c */
 extern void info_dispatch_on_key (unsigned char key, Keymap map);
@@ -108,7 +119,7 @@ extern void begin_multiple_window_info_session (char *filename,
     char **nodenames);
 extern void begin_info_session (NODE *initial_node);
 extern void begin_info_session_with_error (NODE *initial_node,
-    char *format, void *arg1, void *arg2);
+    const char *format, void *arg1, void *arg2);
 extern void info_session (void);
 extern void initialize_info_session (NODE *node, int clear_screen);
 extern void info_read_and_dispatch (void);
@@ -134,6 +145,7 @@ extern void info_scroll_forward (WINDOW *window, int count, unsigned char key);
 extern void info_scroll_backward (WINDOW *window, int count, unsigned char key);
 extern void info_redraw_display (WINDOW *window, int count, unsigned char key);
 extern void info_toggle_wrap (WINDOW *window, int count, unsigned char key);
+extern void info_toggle_regexp (WINDOW *window, int count, unsigned char key);
 extern void info_move_to_window_line (WINDOW *window, int count,
     unsigned char key);
 extern void info_up_line (WINDOW *window, int count, unsigned char key);

@@ -1,13 +1,13 @@
 /* insertion.c -- insertions for Texinfo.
-   $Id: insertion.c,v 1.55 2004/11/11 18:34:28 karl Exp $
+   $Id: insertion.c,v 1.71 2008/04/09 17:31:10 karl Exp $
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004 Free Software
-   Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006,
+   2007, 2008 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "system.h"
 #include "cmds.h"
@@ -79,6 +78,8 @@ static int raw_output_block = 0;
 /* Non-zero if a <dl> element has a <dt> element in it.  We use this when
    deciding whether to insert a <br> or not.  */
 static int html_deflist_has_term = 0;
+
+const char default_item_function[] = { "@bullet" };
 
 void
 init_insertion_stack (void)
@@ -142,7 +143,7 @@ current_item_function (void)
    change it to "@ ", since "@" by itself is not a command.  This makes
    "@ ", "@\t", and "@\n" all the same, but their default meanings are
    the same anyway, and let's not worry about supporting redefining them.  */
-static char *
+char *
 get_item_function (void)
 {
   char *item_function;
@@ -209,7 +210,10 @@ pop_insertion (void)
   inhibit_paragraph_indentation = temp->inhibited;
   filling_enabled = temp->filling_enabled;
   indented_fill = temp->indented_fill;
-  free_and_clear (&(temp->item_function));
+  if (temp->item_function == default_item_function)
+    temp->item_function = NULL;
+  else
+    free_and_clear (&(temp->item_function));
   free_and_clear (&(temp->filename));
   insertion_stack = insertion_stack->next;
   free (temp);
@@ -370,7 +374,7 @@ enumerate_item (void)
   else
     sprintf (temp, "%d. ", current_enumval);
 
-  indent (output_column += (current_indent - strlen (temp)));
+  indent (current_output_column () + (current_indent - strlen (temp)));
   add_word (temp);
   current_enumval++;
 }
@@ -472,7 +476,7 @@ begin_insertion (enum insertion_type type)
       if (xml)
         {
           xml_insert_element (DETAILMENU, START);
-          skip_whitespace_and_newlines();
+          skip_whitespace_and_newlines ();
         }
       else
         in_fixed_width_font++;
@@ -484,7 +488,12 @@ begin_insertion (enum insertion_type type)
       close_single_paragraph ();
       filling_enabled = no_indent = 0;
       inhibit_paragraph_indentation = 1;
-      insert_string ("START-INFO-DIR-ENTRY\n");
+      add_word ("START-INFO-DIR-ENTRY\n");
+      
+      /* The zsh manual, maybe others, wrongly indents the * line of the
+         direntry in the source.  Ignore that whitespace.  */
+      skip_whitespace_and_newlines ();
+      no_discard++;
       break;
 
     case documentdescription:
@@ -522,7 +531,7 @@ begin_insertion (enum insertion_type type)
          output it right away since xml output is never split.
          For html, we output it specifically in html_output_head. 
          For plain text, there's no way to hide it, so the author must
-          use @insertcopying in the desired location.  */
+         use @insertcopying in the desired location.  */
       if (docbook)
 	{
 	  if (!xml_in_bookinfo)
@@ -538,7 +547,6 @@ begin_insertion (enum insertion_type type)
 
       if (docbook)
         xml_insert_element (LEGALNOTICE, END);
-
       break;
 
     case quotation:
@@ -553,8 +561,8 @@ begin_insertion (enum insertion_type type)
           last_char_was_newline = no_indent = 0;
           indented_fill = filling_enabled = 1;
           inhibit_paragraph_indentation = 1;
+          current_indent += default_indentation_increment;
         }
-      current_indent += default_indentation_increment;
       if (xml)
         xml_insert_quotation (insertion_stack->item_function, START);
       else if (strlen(insertion_stack->item_function))
@@ -622,7 +630,7 @@ begin_insertion (enum insertion_type type)
           if (!(*insertion_stack->item_function))
             {
               free (insertion_stack->item_function);
-              insertion_stack->item_function = xstrdup ("@bullet");
+              insertion_stack->item_function = (char *) default_item_function;
             }
         }
 
@@ -955,9 +963,9 @@ begin_insertion (enum insertion_type type)
    of the stack.  Otherwise, if TYPE doesn't match the top of the
    insertion stack, give error. */
 static void
-end_insertion (int type)
+end_insertion (enum insertion_type type)
 {
-  int temp_type;
+  enum insertion_type temp_type;
 
   if (!insertion_level)
     return;
@@ -1082,7 +1090,9 @@ end_insertion (int type)
           xml_keep_space--;
         }
 
-      if ((xml || html) && output_paragraph[output_paragraph_offset-1] == '\n')
+      if ((xml || html)
+	  && output_paragraph_offset > 0
+	  && output_paragraph[output_paragraph_offset-1] == '\n')
         output_paragraph_offset--;
       break;
 
@@ -1211,7 +1221,7 @@ end_insertion (int type)
          without a change in indentation. */
       if (type != format && type != smallformat && type != quotation)
         current_indent -= example_indentation_increment;
-      else if (type == quotation)
+      else if (type == quotation && !html)
         current_indent -= default_indentation_increment;
 
       if (html)
@@ -1219,8 +1229,10 @@ end_insertion (int type)
              does not function here, since we've inserted non-whitespace
              (the </whatever>) before it.  The indentation already got
              inserted at the end of the last example line, so we have to
-             delete it, or browsers wind up showing an extra blank line.  */
-          kill_self_indent (default_indentation_increment);
+             delete it, or browsers wind up showing an extra blank line.
+             Furthermore, if we're inside indented environments, we
+             might have arbitrarily much indentation, so remove it all.  */
+          kill_self_indent (-1);
           add_html_block_elt (type == quotation
               ? "</blockquote>\n" : "</pre>\n");
         }
@@ -1361,7 +1373,8 @@ cm_example (void)
     {
       /* Rollback previous newlines.  These occur between
          </para> and <example>.  */
-      if (output_paragraph[output_paragraph_offset-1] == '\n')
+      if (output_paragraph_offset > 0
+	  && output_paragraph[output_paragraph_offset-1] == '\n')
         output_paragraph_offset--;
 
       xml_insert_element (EXAMPLE, START);
@@ -1384,7 +1397,8 @@ cm_smallexample (void)
   if (xml)
     {
       /* See cm_example comments about newlines.  */
-      if (output_paragraph[output_paragraph_offset-1] == '\n')
+      if (output_paragraph_offset > 0
+	  && output_paragraph[output_paragraph_offset-1] == '\n')
         output_paragraph_offset--;
       xml_insert_element (SMALLEXAMPLE, START);
       if (docbook)
@@ -1403,7 +1417,8 @@ cm_lisp (void)
   if (xml)
     {
       /* See cm_example comments about newlines.  */
-      if (output_paragraph[output_paragraph_offset-1] == '\n')
+      if (output_paragraph_offset > 0
+	  && output_paragraph[output_paragraph_offset-1] == '\n')
         output_paragraph_offset--;
       xml_insert_element (LISP, START);
       if (docbook)
@@ -1422,7 +1437,8 @@ cm_smalllisp (void)
   if (xml)
     {
       /* See cm_example comments about newlines.  */
-      if (output_paragraph[output_paragraph_offset-1] == '\n')
+      if (output_paragraph_offset > 0
+	  && output_paragraph[output_paragraph_offset-1] == '\n')
         output_paragraph_offset--;
       xml_insert_element (SMALLLISP, START);
       if (docbook)
@@ -1459,6 +1475,12 @@ cm_insert_copying (void)
       return;
     }
 
+  /* It is desirable that @copying is set early in the input file.  For
+     Info output, we write the copying text out right away, and thus it
+     may well be the first thing in the output, and we want the file
+     header first.  The special case in add_char has to check for
+     executing_string, so it won't be effective.  Thus, do it explicitly.  */
+  output_head ();
   execute_string ("%s", copying_text);
 
   if (!xml && !html)
@@ -1483,7 +1505,8 @@ cm_format (void)
       else
         {
           /* See cm_example comments about newlines.  */
-          if (output_paragraph[output_paragraph_offset-1] == '\n')
+          if (output_paragraph_offset > 0
+	      && output_paragraph[output_paragraph_offset-1] == '\n')
             output_paragraph_offset--;
           xml_insert_element (FORMAT, START);
           if (docbook)
@@ -1499,7 +1522,8 @@ cm_smallformat (void)
   if (xml)
     {
       /* See cm_example comments about newlines.  */
-      if (output_paragraph[output_paragraph_offset-1] == '\n')
+      if (output_paragraph_offset > 0
+	  && output_paragraph[output_paragraph_offset-1] == '\n')
         output_paragraph_offset--;
       xml_insert_element (SMALLFORMAT, START);
       if (docbook)
@@ -1515,7 +1539,8 @@ cm_display (void)
   if (xml)
     {
       /* See cm_example comments about newlines.  */
-      if (output_paragraph[output_paragraph_offset-1] == '\n')
+      if (output_paragraph_offset > 0
+	  && output_paragraph[output_paragraph_offset-1] == '\n')
         output_paragraph_offset--;
       xml_insert_element (DISPLAY, START);
       if (docbook)
@@ -1531,7 +1556,8 @@ cm_smalldisplay (void)
   if (xml)
     {
       /* See cm_example comments about newlines.  */
-      if (output_paragraph[output_paragraph_offset-1] == '\n')
+      if (output_paragraph_offset > 0
+	  && output_paragraph[output_paragraph_offset-1] == '\n')
         output_paragraph_offset--;
       xml_insert_element (SMALLDISPLAY, START);
       if (docbook)
@@ -1576,7 +1602,7 @@ cm_itemize (void)
 /* Start an enumeration insertion of type TYPE.  If the user supplied
    no argument on the line, then use DEFAULT_STRING as the initial string. */
 static void
-do_enumeration (int type, char *default_string)
+do_enumeration (enum insertion_type type, char *default_string)
 {
   get_until_in_line (0, ".", &enumeration_arg);
   canon_white (enumeration_arg);
@@ -1608,14 +1634,20 @@ cm_enumerate (void)
   do_enumeration (enumerate, "1");
 }
 
-/*  Handle verbatim environment:
+
+
+/* Handle verbatim environment:
     find_end_verbatim == 0:  process until end of file
     find_end_verbatim != 0:  process until 'COMMAND_PREFIXend verbatim'
                              or end of file
 
-  We cannot simply copy input stream onto output stream; as the
-  verbatim environment may be encapsulated in an @example environment,
-  for example. */
+   No indentation is inserted: this is verbatim after all.
+   If you want indentation, enclose @verbatim in @example.
+
+   Thus, we cannot simply copy the input to the output, since the
+   verbatim environment may be encapsulated in an @example environment,
+   for example. */
+
 void
 handle_verbatim_environment (int find_end_verbatim)
 {
@@ -1623,7 +1655,6 @@ handle_verbatim_environment (int find_end_verbatim)
   int seen_end = 0;
   int save_filling_enabled = filling_enabled;
   int save_inhibit_paragraph_indentation = inhibit_paragraph_indentation;
-  int save_escape_html = escape_html;
 
   if (!insertion_stack)
     close_single_paragraph (); /* no blank lines if not at outer level */
@@ -1631,11 +1662,6 @@ handle_verbatim_environment (int find_end_verbatim)
   filling_enabled = 0;
   in_fixed_width_font++;
   last_char_was_newline = 0;
-
-  /* No indentation: this is verbatim after all
-     If you want indent, enclose @verbatim in @example
-       current_indent += default_indentation_increment;
-   */
 
   if (html)
     { /* If inside @example, we'll be preceded by the indentation
@@ -1651,10 +1677,15 @@ handle_verbatim_environment (int find_end_verbatim)
   else if (xml)
     {
       xml_insert_element (VERBATIM, START);
-      escape_html = 0;
-      add_word ("<![CDATA[");
     }
 
+  if (find_end_verbatim)
+    { /* Ignore the remainder of the @verbatim line.  */
+      char *junk;
+      get_rest_of_line (0, &junk);
+      free (junk);
+    }
+  
   while (input_text_offset < input_text_length)
     {
       character = curchar ();
@@ -1693,9 +1724,7 @@ handle_verbatim_environment (int find_end_verbatim)
     }
   else if (xml)
     {
-      add_word ("]]>");
       xml_insert_element (VERBATIM, END);
-      escape_html = save_escape_html;
     }
   
   in_fixed_width_font--;
@@ -2054,7 +2083,7 @@ void
 cm_end (void)
 {
   char *temp;
-  int type;
+  enum insertion_type type;
 
   get_rest_of_line (0, &temp);
 
@@ -2194,8 +2223,7 @@ cm_item (void)
 
                   if (current_item_function ())
                     {
-                      output_column = current_indent - 2;
-                      indent (output_column);
+                      indent (current_indent - 2);
 
                       /* The item marker can be given with or without
                          braces -- @bullet and @bullet{} are both ok.
@@ -2214,7 +2242,6 @@ cm_item (void)
                             execute_string ("%s", item_func);
                         }
                       insert (' ');
-                      output_column++;
                     }
                   else
                     enumerate_item ();

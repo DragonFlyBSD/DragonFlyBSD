@@ -1,13 +1,13 @@
 /* info.c -- Display nodes of Info files in multiple windows.
-   $Id: info.c,v 1.11 2004/04/11 17:56:45 karl Exp $
+   $Id: info.c,v 1.33 2008/08/14 17:36:13 karl Exp $
 
    Copyright (C) 1993, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-   2004 Free Software Foundation, Inc.
+   2004, 2005, 2007, 2008 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,10 +15,9 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-   Written by Brian Fox (bfox@ai.mit.edu). */
+   Originally written by Brian Fox (bfox@ai.mit.edu). */
 
 #include "info.h"
 #include "indices.h"
@@ -28,13 +27,13 @@
 #  include "man.h"
 #endif /* HANDLE_MAN_PAGES */
 
-static char *program_name = "info";
+char *program_name = "info";
 
 /* Non-zero means search all indices for APROPOS_SEARCH_STRING. */
 static int apropos_p = 0;
 
 /* Variable containing the string to search for when apropos_p is non-zero. */
-static char *apropos_search_string = (char *)NULL;
+static char *apropos_search_string = NULL;
 
 /* Non-zero means search all indices for INDEX_SEARCH_STRING.  Unlike
    apropos, this puts the user at the node, running info. */
@@ -47,7 +46,7 @@ static int goto_invocation_p = 0;
 
 /* Variable containing the string to search for when index_search_p is
    non-zero. */
-static char *index_search_string = (char *)NULL;
+static char *index_search_string = NULL;
 
 /* Non-zero means print version info only. */
 static int print_version_p = 0;
@@ -57,17 +56,17 @@ static int print_help_p = 0;
 
 /* Array of the names of nodes that the user specified with "--node" on the
    command line. */
-static char **user_nodenames = (char **)NULL;
+static char **user_nodenames = NULL;
 static int user_nodenames_index = 0;
 static int user_nodenames_slots = 0;
 
 /* String specifying the first file to load.  This string can only be set
    by the user specifying "--file" on the command line. */
-static char *user_filename = (char *)NULL;
+static char *user_filename = NULL;
 
 /* String specifying the name of the file to dump nodes to.  This value is
    filled if the user speficies "--output" on the command line. */
-static char *user_output_filename = (char *)NULL;
+static char *user_output_filename = NULL;
 
 /* Non-zero indicates that when "--output" is specified, all of the menu
    items of the specified nodes (and their subnodes as well) should be
@@ -95,12 +94,11 @@ int speech_friendly = 0;
 /* Structure describing the options that Info accepts.  We pass this structure
    to getopt_long ().  If you add or otherwise change this structure, you must
    also change the string which follows it. */
-#define APROPOS_OPTION 1
 #define DRIBBLE_OPTION 2
 #define RESTORE_OPTION 3
 #define IDXSRCH_OPTION 4
 static struct option long_options[] = {
-  { "apropos", 1, 0, APROPOS_OPTION },
+  { "apropos", 1, 0, 'k' },
   { "directory", 1, 0, 'd' },
   { "dribble", 1, 0, DRIBBLE_OPTION },
   { "file", 1, 0, 'f' },
@@ -111,6 +109,8 @@ static struct option long_options[] = {
   { "output", 1, 0, 'o' },
   { "raw-escapes", 0, &raw_escapes_p, 1 },
   { "no-raw-escapes", 0, &raw_escapes_p, 0 },
+  { "show-malformed-multibytes", 0, &show_malformed_multibyte_p, 1 },
+  { "no-show-malformed-multibytes", 0, &show_malformed_multibyte_p, 0 },
   { "restore", 1, 0, RESTORE_OPTION },
   { "show-options", 0, 0, 'O' },
   { "subnodes", 0, &dump_subnodes, 1 },
@@ -126,9 +126,9 @@ static struct option long_options[] = {
 
 /* String describing the shorthand versions of the long options found above. */
 #ifdef __MSDOS__
-static char *short_options = "d:n:f:ho:ORswb";
+static char *short_options = "k:d:n:f:ho:ORswb";
 #else
-static char *short_options = "d:n:f:ho:ORws";
+static char *short_options = "k:d:n:f:ho:ORws";
 #endif
 
 /* When non-zero, the Info window system has been initialized. */
@@ -146,7 +146,7 @@ static void init_messages (void);
 /* **************************************************************** */
 
 int
-main (int argc, char **argv)
+main (int argc, char *argv[])
 {
   int getopt_long_index;        /* Index returned by getopt_long (). */
   NODE *initial_node;           /* First node loaded by Info. */
@@ -154,7 +154,7 @@ main (int argc, char **argv)
 #ifdef HAVE_SETLOCALE
   /* Set locale via LC_ALL.  */
   setlocale (LC_ALL, "");
-#endif
+#endif /* HAVE_SETLOCALE */
 
 #ifdef ENABLE_NLS
   /* Set the text message domain.  */
@@ -247,7 +247,7 @@ main (int argc, char **argv)
 #endif /* __MSDOS__ */
 
           /* User has specified a string to search all indices for. */
-        case APROPOS_OPTION:
+        case 'k':
           apropos_p = 1;
           maybe_free (apropos_search_string);
           apropos_search_string = xstrdup (optarg);
@@ -280,7 +280,7 @@ main (int argc, char **argv)
   /* If the output device is not a terminal, and no output filename has been
      specified, make user_output_filename be "-", so that the info is written
      to stdout, and turn on the dumping of subnodes. */
-  if ((!isatty (fileno (stdout))) && (user_output_filename == (char *)NULL))
+  if ((!isatty (fileno (stdout))) && (user_output_filename == NULL))
     {
       user_output_filename = xstrdup ("-");
       dump_subnodes = 1;
@@ -289,12 +289,13 @@ main (int argc, char **argv)
   /* If the user specified --version, then show the version and exit. */
   if (print_version_p)
     {
-      printf ("%s (GNU %s) %s\n", program_name, PACKAGE, VERSION);
+      printf ("info (GNU %s) %s\n", PACKAGE, VERSION);
       puts ("");
-      puts ("Copyright (C) 2004 Free Software Foundation, Inc.");
-      printf (_("There is NO warranty.  You may redistribute this software\n\
-under the terms of the GNU General Public License.\n\
-For more information about these matters, see the files named COPYING.\n"));
+      printf (_("Copyright (C) %s Free Software Foundation, Inc.\n\
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
+This is free software: you are free to change and redistribute it.\n\
+There is NO WARRANTY, to the extent permitted by law.\n"),
+	      "2008");
       xexit (0);
     }
 
@@ -366,7 +367,7 @@ For more information about these matters, see the files named COPYING.\n"));
       if (info_recent_file_error)
         info_error (info_recent_file_error, NULL, NULL);
       else
-        info_error ((char *) msg_cant_find_node,
+        info_error (msg_cant_find_node,
                     user_nodenames ? user_nodenames[0] : "Top", NULL);
       xexit (1);
     }
@@ -397,8 +398,15 @@ For more information about these matters, see the files named COPYING.\n"));
   {
     const char *errstr;
     char *errarg1, *errarg2;
+    NODE *new_initial_node;
 
-    NODE *new_initial_node = info_follow_menus (initial_node, argv + optind,
+   /* If they say info -O info, we want to show them the invocation node
+      for standalone info; there's nothing useful in info.texi.  */
+   if (goto_invocation_p && argv[optind]
+       && mbscasecmp (argv[optind], "info") == 0)
+     argv[optind] = "info-stnd";
+
+    new_initial_node = info_follow_menus (initial_node, argv + optind,
         &errstr, &errarg1, &errarg2);
 
     if (new_initial_node && new_initial_node != initial_node)
@@ -425,13 +433,13 @@ For more information about these matters, see the files named COPYING.\n"));
           dump_node_to_file (initial_node, user_output_filename,
                              dump_subnodes);
         else
-          info_error ((char *) errstr, errarg1, errarg2);
+          info_error (errstr, errarg1, errarg2);
       }
     else
       {
 
         if (errstr)
-          begin_info_session_with_error (initial_node, (char *) errstr,
+          begin_info_session_with_error (initial_node, errstr,
               errarg1, errarg2);
         /* If the user specified `--index-search=STRING' or
            --show-options, start the info session in the node
@@ -447,7 +455,7 @@ For more information about these matters, see the files named COPYING.\n"));
               {
                 terminal_prep_terminal ();
                 terminal_clear_screen ();
-                info_last_executed_command = (VFunction *)NULL;
+                info_last_executed_command = NULL;
 
                 if (index_search_p)
                   do_info_index_search (windows, 0, index_search_string);
@@ -548,14 +556,19 @@ int info_error_rings_bell_p = 1;
    then the message is printed in the echo area.  Otherwise, a message is
    output to stderr. */
 void
-info_error (char *format, void *arg1, void *arg2)
+info_error (const char *format, void *arg1, void *arg2)
 {
   info_error_was_printed = 1;
 
   if (!info_windows_initialized_p || display_inhibited)
     {
       fprintf (stderr, "%s: ", program_name);
-      fprintf (stderr, format, arg1, arg2);
+      if (arg1)
+        fprintf (stderr, format, arg1, arg2);
+      else
+        /* If we're passed a string, just print it.  Otherwise a % in a
+           filename gets treated as a format specifier.  */
+        fputs (format, stderr);
       fprintf (stderr, "\n");
       fflush (stderr);
     }
@@ -569,9 +582,7 @@ info_error (char *format, void *arg1, void *arg2)
         }
       else
         {
-          NODE *temp;
-
-          temp = build_message_node (format, arg1, arg2);
+          NODE *temp = build_message_node (format, arg1, arg2);
           if (info_error_rings_bell_p)
             terminal_ring_bell ();
           inform_in_echo_area (temp->contents);
@@ -586,51 +597,62 @@ info_error (char *format, void *arg1, void *arg2)
 static void
 info_short_help (void)
 {
-#ifdef __MSDOS__
-  static const char speech_friendly_string[] = N_("\
-  -b, --speech-friendly        be friendly to speech synthesizers.\n");
-#else
-  static const char speech_friendly_string[] = "";
-#endif
-
-
   printf (_("\
 Usage: %s [OPTION]... [MENU-ITEM...]\n\
 \n\
-Read documentation in Info format.\n\
-\n\
+Read documentation in Info format.\n"), program_name);
+  puts ("");
+
+  puts (_("\
 Options:\n\
-      --apropos=STRING         look up STRING in all indices of all manuals.\n\
+  -k, --apropos=STRING         look up STRING in all indices of all manuals.\n\
   -d, --directory=DIR          add DIR to INFOPATH.\n\
       --dribble=FILENAME       remember user keystrokes in FILENAME.\n\
-  -f, --file=FILENAME          specify Info file to visit.\n\
+  -f, --file=FILENAME          specify Info file to visit."));
+
+  puts (_("\
   -h, --help                   display this help and exit.\n\
       --index-search=STRING    go to node pointed by index entry STRING.\n\
   -n, --node=NODENAME          specify nodes in first visited Info file.\n\
-  -o, --output=FILENAME        output selected nodes to FILENAME.\n\
+  -o, --output=FILENAME        output selected nodes to FILENAME."));
+
+  puts (_("\
   -R, --raw-escapes            output \"raw\" ANSI escapes (default).\n\
       --no-raw-escapes         output escapes as literal text.\n\
       --restore=FILENAME       read initial keystrokes from FILENAME.\n\
-  -O, --show-options, --usage  go to command-line options node.\n%s\
+  -O, --show-options, --usage  go to command-line options node."));
+
+#ifdef __MSDOS__
+  puts (_("\
+  -b, --speech-friendly        be friendly to speech synthesizers."));
+#endif
+
+  puts (_("\
       --subnodes               recursively output menu items.\n\
-  -w, --where, --location      print physical location of Info file.\n\
       --vi-keys                use vi-like and less-like key bindings.\n\
       --version                display version information and exit.\n\
-\n\
+  -w, --where, --location      print physical location of Info file."));
+
+  puts (_("\n\
 The first non-option argument, if present, is the menu entry to start from;\n\
 it is searched for in all `dir' files along INFOPATH.\n\
 If it is not present, info merges all `dir' files and shows the result.\n\
 Any remaining arguments are treated as the names of menu\n\
-items relative to the initial node visited.\n\
-\n\
+items relative to the initial node visited."));
+
+  puts (_("\n\
+For a summary of key bindings, type h within Info."));
+
+  puts (_("\n\
 Examples:\n\
   info                       show top-level dir menu\n\
+  info info                  show the general manual for Info readers\n\
+  info info-stnd             show the manual specific to this Info program\n\
   info emacs                 start at emacs node from top-level dir\n\
   info emacs buffers         start at buffers node within emacs manual\n\
   info --show-options emacs  start at node with emacs' command line options\n\
-  info -f ./foo.info         show file ./foo.info, not searching dir\n\
-"),
-  program_name, speech_friendly_string);
+  info --subnodes -o out.txt emacs  dump entire manual to out.txt\n\
+  info -f ./foo.info         show file ./foo.info, not searching dir"));
 
   puts (_("\n\
 Email bug reports to bug-texinfo@gnu.org,\n\
