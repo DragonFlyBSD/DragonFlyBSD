@@ -4456,7 +4456,7 @@
    movsd\t{%2, %0|%0, %2}
    movlpd\t{%2, %0|%0, %2}
    movsd\t{%2, %0|%0, %2}
-   shufpd\t{$2, %2, %0|%0, %2, 2}
+   shufpd\t{$2, %1, %0|%0, %1, 2}
    movhpd\t{%H1, %0|%0, %H1}
    #
    #
@@ -4533,7 +4533,7 @@
    movsd\t{%2, %0|%0, %2}
    movlpd\t{%2, %0|%0, %2}
    movlpd\t{%2, %0|%0, %2}
-   shufpd\t{$2, %2, %0|%0, %2, 2}
+   shufpd\t{$2, %1, %0|%0, %1, 2}
    movhps\t{%H1, %0|%0, %H1}
    movhps\t{%1, %H0|%H0, %1}"
   [(set_attr "type" "ssemov,ssemov,ssemov,sselog,ssemov,ssemov")
@@ -8421,7 +8421,7 @@
 	(ss_plus:V8HI
 	  (mult:V8HI
 	    (zero_extend:V8HI
-	      (vec_select:V4QI
+	      (vec_select:V8QI
 		(match_operand:V16QI 1 "register_operand" "x")
 		(parallel [(const_int 0)
 			   (const_int 2)
@@ -8444,7 +8444,7 @@
 			   (const_int 14)]))))
 	  (mult:V8HI
 	    (zero_extend:V8HI
-	      (vec_select:V16QI (match_dup 1)
+	      (vec_select:V8QI (match_dup 1)
 		(parallel [(const_int 1)
 			   (const_int 3)
 			   (const_int 5)
@@ -8454,7 +8454,7 @@
 			   (const_int 13)
 			   (const_int 15)])))
 	    (sign_extend:V8HI
-	      (vec_select:V16QI (match_dup 2)
+	      (vec_select:V8QI (match_dup 2)
 		(parallel [(const_int 1)
 			   (const_int 3)
 			   (const_int 5)
@@ -8474,7 +8474,7 @@
 	(ss_plus:V8HI
 	  (mult:V8HI
 	    (zero_extend:V8HI
-	      (vec_select:V4QI
+	      (vec_select:V8QI
 		(match_operand:V16QI 1 "register_operand" "0")
 		(parallel [(const_int 0)
 			   (const_int 2)
@@ -8497,7 +8497,7 @@
 			   (const_int 14)]))))
 	  (mult:V8HI
 	    (zero_extend:V8HI
-	      (vec_select:V16QI (match_dup 1)
+	      (vec_select:V8QI (match_dup 1)
 		(parallel [(const_int 1)
 			   (const_int 3)
 			   (const_int 5)
@@ -8507,7 +8507,7 @@
 			   (const_int 13)
 			   (const_int 15)])))
 	    (sign_extend:V8HI
-	      (vec_select:V16QI (match_dup 2)
+	      (vec_select:V8QI (match_dup 2)
 		(parallel [(const_int 1)
 			   (const_int 3)
 			   (const_int 5)
@@ -8543,13 +8543,13 @@
 			   (const_int 6)]))))
 	  (mult:V4HI
 	    (zero_extend:V4HI
-	      (vec_select:V8QI (match_dup 1)
+	      (vec_select:V4QI (match_dup 1)
 		(parallel [(const_int 1)
 			   (const_int 3)
 			   (const_int 5)
 			   (const_int 7)])))
 	    (sign_extend:V4HI
-	      (vec_select:V8QI (match_dup 2)
+	      (vec_select:V4QI (match_dup 2)
 		(parallel [(const_int 1)
 			   (const_int 3)
 			   (const_int 5)
@@ -11657,7 +11657,7 @@
   [(set (match_operand:AVXMODEF2P 0 "register_operand" "=x")
 	(unspec:AVXMODEF2P
 	  [(match_operand:AVXMODEF2P 1 "memory_operand" "m")
-	   (match_operand:AVXMODEF2P 2 "register_operand" "x")
+	   (match_operand:<avxpermvecmode> 2 "register_operand" "x")
 	   (match_dup 0)]
 	  UNSPEC_MASKLOAD))]
   "TARGET_AVX"
@@ -11669,7 +11669,7 @@
 (define_insn "avx_maskstorep<avxmodesuffixf2c><avxmodesuffix>"
   [(set (match_operand:AVXMODEF2P 0 "memory_operand" "=m")
 	(unspec:AVXMODEF2P
-	  [(match_operand:AVXMODEF2P 1 "register_operand" "x")
+	  [(match_operand:<avxpermvecmode> 1 "register_operand" "x")
 	   (match_operand:AVXMODEF2P 2 "register_operand" "x")
 	   (match_dup 0)]
 	  UNSPEC_MASKSTORE))]
