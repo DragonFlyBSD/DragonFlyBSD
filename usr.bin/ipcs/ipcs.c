@@ -327,15 +327,15 @@ main(int argc, char **argv)
 	    kvm_read(kd, symbols[X_SHMINFO].n_value, &shminfo, sizeof(shminfo))) {
 		if (display & SHMTOTAL) {
 			printf("shminfo:\n");
-			printf("\tshmmax: %7d\t(max shared memory segment size)\n",
+			printf("\tshmmax: %12lu\t(max shared memory segment size)\n",
 			    shminfo.shmmax);
-			printf("\tshmmin: %7d\t(min shared memory segment size)\n",
+			printf("\tshmmin: %12d\t(min shared memory segment size)\n",
 			    shminfo.shmmin);
-			printf("\tshmmni: %7d\t(max number of shared memory identifiers)\n",
+			printf("\tshmmni: %12d\t(max number of shared memory identifiers)\n",
 			    shminfo.shmmni);
-			printf("\tshmseg: %7d\t(max shared memory segments per process)\n",
+			printf("\tshmseg: %12d\t(max shared memory segments per process)\n",
 			    shminfo.shmseg);
-			printf("\tshmall: %7d\t(max amount of shared memory in pages)\n\n",
+			printf("\tshmall: %12d\t(max amount of shared memory in pages)\n\n",
 			    shminfo.shmall);
 		}
 		if (display & SHMINFO) {
@@ -353,11 +353,11 @@ main(int argc, char **argv)
 			if (option & OUTSTANDING)
 				printf(" NATTCH");
 			if (option & BIGGEST)
-				printf("  SEGSZ");
+				printf("         SEGSZ");
 			if (option & PID)
-				printf("  CPID  LPID");
+				printf("   CPID   LPID");
 			if (option & TIME)
-				printf("   ATIME    DTIME    CTIME");
+				printf("    ATIME    DTIME    CTIME");
 			printf("\n");
 			for (i = 0; i < shminfo.shmmni; i += 1) {
 				if (xshmids[i].shm_perm.mode & 0x0800) {
@@ -392,7 +392,7 @@ main(int argc, char **argv)
 						    shmptr->shm_nattch);
 
 					if (option & BIGGEST)
-						printf(" %6d",
+						printf(" %12ul",
 						    shmptr->shm_segsz);
 
 					if (option & PID)
@@ -401,7 +401,7 @@ main(int argc, char **argv)
 						    shmptr->shm_lpid);
 
 					if (option & TIME)
-						printf("%s %s %s",
+						printf(" %s %s %s",
 						    atime_buf,
 						    dtime_buf,
 						    ctime_buf);
