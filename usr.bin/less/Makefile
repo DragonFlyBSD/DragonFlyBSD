@@ -19,5 +19,7 @@ LINKS=	${BINDIR}/less ${BINDIR}/more
 MLINKS=	less.1 more.1
 CLEANFILES= less.1
 
+WARNS?=	0
+
 .include <Makefile.common>
 .include <bsd.prog.mk>

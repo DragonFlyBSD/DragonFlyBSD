@@ -5,9 +5,6 @@ A list of deleted files is in README.DELETED.
 
 When upgrading, remember to update usr.bin/less/defines.h.
 
-cvs import hint:
-cvs import src/contrib/less-4 LESS v4??
-
 This source is used in:
 	usr.bin/less
 	usr.bin/lessecho

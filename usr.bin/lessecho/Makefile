@@ -5,5 +5,7 @@ PROG=	lessecho
 SRCS=	lessecho.c version.c
 NOMAN=
 
+WARNS?=	2
+
 .include "${.CURDIR}/../less/Makefile.common"
 .include <bsd.prog.mk>

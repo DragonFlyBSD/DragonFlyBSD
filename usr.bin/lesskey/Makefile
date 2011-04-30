@@ -4,6 +4,7 @@
 PROG=	lesskey
 SRCS=	lesskey.c version.c
 CLEANFILES= lesskey.1
+WARNS?=	2
 
 .include "${.CURDIR}/../less/Makefile.common"
 .include <bsd.prog.mk>
