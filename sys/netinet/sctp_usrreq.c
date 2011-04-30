@@ -1,5 +1,4 @@
 /*	$KAME: sctp_usrreq.c,v 1.47 2005/03/06 16:04:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.14 2008/04/20 13:44:25 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -2001,7 +2000,7 @@ sctp_optsget(struct socket *so,
 #endif /* SCTP_DEBUG */
 		if ((size_t)m->m_len < sizeof(sctp_assoc_t)) {
 #ifdef SCTP_DEBUG
-			kprintf("m->m_len:%d not %d\n",
+			kprintf("m->m_len:%d not %zd\n",
 			       m->m_len, sizeof(sctp_assoc_t));
 #endif /* SCTP_DEBUG */
 			error = EINVAL;
@@ -3727,8 +3726,8 @@ sctp_usr_recvd(netmsg_t msg)
 	inp = (struct sctp_inpcb *)so->so_pcb;
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_USRREQ2)
-		kprintf("Read for so:%x inp:%x Flags:%x\n",
-		       (u_int)so, (u_int)inp, (u_int)flags);
+		kprintf("Read for so:%p inp:%p Flags:%x\n",
+		       so, inp, (u_int)flags);
 #endif
 
 	if (inp == 0) {
@@ -3778,8 +3777,8 @@ sctp_usr_recvd(netmsg_t msg)
 			}
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_USRREQ2)
-				kprintf("remove from socket queue for inp:%x tcbret:%x\n",
-				       (u_int)inp, (u_int)stcb);
+				kprintf("remove from socket queue for inp:%p tcbret:%p\n",
+				       inp, stcb);
 #endif
 
  			stcb->asoc.my_rwnd_control_len = sctp_sbspace_sub(stcb->asoc.my_rwnd_control_len,
@@ -3826,8 +3825,8 @@ sctp_usr_recvd(netmsg_t msg)
 		int sq_cnt=0;
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ2)
-			kprintf("Something off, inp:%x so->so_rcv->ssb_mb is empty and sockq is not.. cleaning\n",
-			       (u_int)inp);
+			kprintf("Something off, inp:%p so->so_rcv->ssb_mb is empty and sockq is not.. cleaning\n",
+			       inp);
 #endif
 		if (((inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0)
 		   && ((inp->sctp_flags & SCTP_PCB_FLAGS_CONNECTED) == 0)) {

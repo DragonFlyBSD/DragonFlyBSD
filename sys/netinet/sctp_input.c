@@ -1,5 +1,4 @@
 /*	$KAME: sctp_input.c,v 1.27 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.13 2008/04/20 13:44:25 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -3878,8 +3877,8 @@ sctp_common_input_processing(struct mbuf **mm, int iphlen, int offset,
 
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_INPUT1) {
-		kprintf("Ok, Common input processing called, m:%x iphlen:%d offset:%d\n",
-		       (u_int)m, iphlen, offset);
+		kprintf("Ok, Common input processing called, m:%p iphlen:%d offset:%d\n",
+		       m, iphlen, offset);
 	}
 #endif /* SCTP_DEBUG */
 	if (IS_SCTP_CONTROL(ch)) {
@@ -4181,8 +4180,8 @@ sctp_input(struct mbuf **mp, int *offp, int proto)
 		if (calc_check != check) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_INPUT1) {
-				kprintf("Bad CSUM on SCTP packet calc_check:%x check:%x  m:%x mlen:%d iphlen:%d\n",
-				       calc_check, check, (u_int)m, mlen, iphlen);
+				kprintf("Bad CSUM on SCTP packet calc_check:%x check:%x  m:%p mlen:%d iphlen:%d\n",
+				       calc_check, check, m, mlen, iphlen);
 			}
 #endif
 

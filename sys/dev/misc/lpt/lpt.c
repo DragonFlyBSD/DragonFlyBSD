@@ -77,6 +77,7 @@
 #include <sys/rman.h>
 
 #include <machine/clock.h>
+#include <machine/inttypes.h>
 
 #include "lptio.h"
 #include <bus/ppbus/ppbconf.h>
@@ -393,7 +394,7 @@ lpt_attach(device_t dev)
 		sc->sc_irq = 0;
 		device_printf(dev, "Polled port\n");
 	}
-	lprintf(("irq %x %x\n", irq, sc->sc_irq));
+	lprintf(("irq %"PRIxPTR" %x\n", irq, sc->sc_irq));
 
 	lpt_release_ppbus(dev);
 

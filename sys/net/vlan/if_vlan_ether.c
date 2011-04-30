@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan_ether.c,v 1.3 2008/05/16 13:19:12 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +111,7 @@ vlan_start_dispatch(netmsg_t msg)
 		evl->evl_encap_proto = htons(ETHERTYPE_VLAN);
 		evl->evl_tag = htons(vlantag);
 #ifdef DEBUG
-		kprintf("vlan_start: %*D\n", sizeof *evl,
+		kprintf("vlan_start: %*D\n", (int)sizeof *evl,
 			(unsigned char *)evl, ":");
 #endif
 		/* Hardware does not need to setup vlan tagging */

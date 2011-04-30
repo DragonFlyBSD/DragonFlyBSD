@@ -28,7 +28,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.21 2008/11/19 13:57:49 sephe Exp $
  */
 
 /*
@@ -4447,7 +4446,7 @@ bce_start(struct ifnet *ifp)
 		return;
 
 	DBPRINT(sc, BCE_INFO_SEND,
-		"%s(): Start: tx_prod = 0x%04X, tx_chain_prod = %04X, "
+		"%s(): Start: tx_prod = 0x%04X, tx_chain_prod = %04zX, "
 		"tx_prod_bseq = 0x%08X\n",
 		__func__,
 		sc->tx_prod, TX_CHAIN_IDX(sc->tx_prod), sc->tx_prod_bseq);
@@ -4499,7 +4498,7 @@ bce_start(struct ifnet *ifp)
 	}
 
 	DBPRINT(sc, BCE_INFO_SEND,
-		"%s(): End: tx_prod = 0x%04X, tx_chain_prod = 0x%04X, "
+		"%s(): End: tx_prod = 0x%04X, tx_chain_prod = 0x%04zX, "
 		"tx_prod_bseq = 0x%08X\n",
 		__func__,
 		sc->tx_prod, TX_CHAIN_IDX(sc->tx_prod), sc->tx_prod_bseq);

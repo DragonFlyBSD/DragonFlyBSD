@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/dev/ubsec/ubsec.c,v 1.6.2.12 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.13 2006/12/22 23:26:15 swildner Exp $ */
 /*	$OpenBSD: ubsec.c,v 1.115 2002/09/24 18:33:26 jason Exp $	*/
 
 /*
@@ -2738,12 +2737,12 @@ ubsec_kprocess_rsapriv(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 
 #ifdef DIAGNOSTIC
 	if (rp->rpr_msgin.dma_paddr & 3 || rp->rpr_msgin.dma_size & 3) {
-		panic("%s: rsapriv: invalid msgin %x(0x%x)",
+		panic("%s: rsapriv: invalid msgin %x(0x%lx)",
 		    device_get_nameunit(sc->sc_dev),
 		    rp->rpr_msgin.dma_paddr, rp->rpr_msgin.dma_size);
 	}
 	if (rp->rpr_msgout.dma_paddr & 3 || rp->rpr_msgout.dma_size & 3) {
-		panic("%s: rsapriv: invalid msgout %x(0x%x)",
+		panic("%s: rsapriv: invalid msgout %x(0x%lx)",
 		    device_get_nameunit(sc->sc_dev),
 		    rp->rpr_msgout.dma_paddr, rp->rpr_msgout.dma_size);
 	}

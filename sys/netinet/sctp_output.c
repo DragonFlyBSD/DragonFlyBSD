@@ -1,5 +1,4 @@
 /*	$KAME: sctp_output.c,v 1.46 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.14 2008/04/20 13:44:25 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -1042,7 +1041,7 @@ sctp_choose_v4_boundall(struct sctp_inpcb *inp,
 								    loopscope, ipv4_scope, &sin_loop, &sin_local);
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			kprintf("Found ifn:%x %d preferred source addresses\n", (u_int)ifn, num_prefered);
+			kprintf("Found ifn:%p %d preferred source addresses\n", ifn, num_prefered);
 		}
 #endif
 		if (num_prefered == 0) {
@@ -1760,7 +1759,7 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 	if (sin6) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			kprintf("Selected address %d ifn:%x for the route\n", cur_addr_num, (u_int)ifn);
+			kprintf("Selected address %d ifn:%p for the route\n", cur_addr_num, ifn);
 		}
 #endif
 		if (net) {
@@ -1790,14 +1789,14 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 		inp->next_ifn_touse = TAILQ_FIRST(&ifnet);
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			kprintf("Start at first IFN:%x\n", (u_int)inp->next_ifn_touse);
+			kprintf("Start at first IFN:%p\n", inp->next_ifn_touse);
 		}
 #endif
 	} else {
 		inp->next_ifn_touse = TAILQ_NEXT(inp->next_ifn_touse, if_list);
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			kprintf("Resume at IFN:%x\n", (u_int)inp->next_ifn_touse);
+			kprintf("Resume at IFN:%p\n", inp->next_ifn_touse);
 		}
 #endif
 		if (inp->next_ifn_touse == NULL) {
@@ -1840,7 +1839,7 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 		num_eligible_addr = sctp_count_v6_num_eligible_boundall (ifn, stcb, non_asoc_addr_ok, loopscope, loc_scope);
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			kprintf("IFN:%x has %d eligible\n", (u_int)ifn, num_eligible_addr);
+			kprintf("IFN:%p has %d eligible\n", ifn, num_eligible_addr);
 		}
 #endif
 		if (num_eligible_addr == 0) {
@@ -1866,9 +1865,9 @@ sctp_choose_v6_boundall(struct sctp_inpcb *inp,
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			kprintf("Selected the %d'th address of ifn:%x\n",
+			kprintf("Selected the %d'th address of ifn:%p\n",
 			       cur_addr_num,
-			       (u_int)ifn);
+			       ifn);
 		}
 #endif
 		return (sin6);
@@ -3005,8 +3004,7 @@ sctp_send_initiate(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 	}
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT4) {
-		kprintf("Calling lowlevel output stcb:%x net:%x\n",
-		       (u_int)stcb, (u_int)net);
+		kprintf("Calling lowlevel output stcb:%p net:%p\n", stcb, net);
 	}
 #endif
 	ret = sctp_lowlevel_chunk_output(inp, stcb, net,

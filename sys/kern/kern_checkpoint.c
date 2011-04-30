@@ -22,8 +22,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.20 2008/09/17 21:44:18 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -57,6 +55,7 @@
 #include <sys/uio.h>
 #include <sys/namei.h>
 #include <sys/vnode.h>
+#include <machine/inttypes.h>
 #include <machine/limits.h>
 #include <machine/frame.h>
 #include <sys/signalvar.h>
@@ -98,12 +97,12 @@ read_check(struct file *fp, void *buf, size_t nbyte)
 	size_t nread;
 	int error;
 
-	PRINTF(("reading %d bytes\n", nbyte));
+	PRINTF(("reading %zd bytes\n", nbyte));
 	error = fp_read(fp, buf, nbyte, &nread, 1, UIO_SYSSPACE);
 	if (error) {
                 PRINTF(("read failed - %d", error));
 	} else if (nread != nbyte) {
-                PRINTF(("wanted to read %d - read %d\n", nbyte, nread));
+                PRINTF(("wanted to read %zd - read %zd\n", nbyte, nread));
 		error = EINVAL;
 	}
 	return error;
@@ -119,13 +118,13 @@ elf_gethdr(struct file *fp, Elf_Ehdr *ehdr)
 		goto done;
 	if (!(ehdr->e_ehsize == sizeof(Elf_Ehdr))) {
 		PRINTF(("wrong elf header size: %d\n"
-		       "expected size        : %d\n", 
+		       "expected size        : %zd\n",
 		       ehdr->e_ehsize, sizeof(Elf_Ehdr)));
 		return EINVAL;
 	}
 	if (!(ehdr->e_phentsize == sizeof(Elf_Phdr))) {
 		PRINTF(("wrong program header size: %d\n"
-		       "expected size            : %d\n",  
+		       "expected size            : %zd\n",
 		       ehdr->e_phentsize, sizeof(Elf_Phdr)));
 		return EINVAL;
 	}
@@ -164,10 +163,10 @@ elf_getphdrs(struct file *fp, Elf_Phdr *phdr, size_t nbyte)
 	PRINTF(("headers section:\n"));
 	for (i = 0; i < nheaders; i++) {
 		PRINTF(("entry type:   %d\n", phdr[i].p_type));
-		PRINTF(("file offset:  %d\n", phdr[i].p_offset));
+		PRINTF(("file offset:  %ld\n", phdr[i].p_offset));
 		PRINTF(("virt address: %p\n", (uint32_t *)phdr[i].p_vaddr));
-		PRINTF(("file size:    %d\n", phdr[i].p_filesz));
-		PRINTF(("memory size:  %d\n", phdr[i].p_memsz));
+		PRINTF(("file size:    %ld\n", phdr[i].p_filesz));
+		PRINTF(("memory size:  %ld\n", phdr[i].p_memsz));
 		PRINTF(("\n"));
 	}
  done:
@@ -327,7 +326,7 @@ elf_getnote(void *src, size_t *off, const char *name, unsigned int type,
 	}
 	bcopy((char *)src + *off, &note, sizeof note);
 	
-	PRINTF(("at offset: %d expected note of type: %d - got: %d\n",
+	PRINTF(("at offset: %zd expected note of type: %d - got: %d\n",
 	       *off, type, note.n_type));
 	*off += sizeof note;
 	if (type != note.n_type) {
@@ -423,8 +422,8 @@ mmap_phdr(struct file *fp, Elf_Phdr *phdr)
 	if ((error = fp_mmap(addr, len, prot, flags, fp, pos, &addr)) != 0) {
 		PRINTF(("mmap failed: %d\n", error);	   );
 	}
-	PRINTF(("map @%08x-%08x fileoff %08x-%08x\n", (int)addr,
-		   (int)((char *)addr + len), (int)pos, (int)(pos + len)));
+	PRINTF(("map @%08"PRIxPTR"-%08"PRIxPTR" fileoff %08x-%08x\n", (uintptr_t)addr,
+		   (uintptr_t)((char *)addr + len), (int)pos, (int)(pos + len)));
 	TRACE_EXIT;
 	return error;
 }

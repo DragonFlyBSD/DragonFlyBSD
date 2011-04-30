@@ -79,6 +79,7 @@
 #include <sys/thread2.h>
 
 #include <machine/clock.h>
+#include <machine/inttypes.h>
 #include <machine/ioctl_fd.h>
 #include <machine/stdarg.h>
 
@@ -1475,7 +1476,7 @@ fdstrategy(struct dev_strategy_args *ap)
 	if (bp->b_cmd != BUF_CMD_FORMAT) {
 		if (bio->bio_offset < 0) {
 			kprintf(
-		"fd%d: fdstrat: bad request offset = %lld, bcount = %d\n",
+		"fd%d: fdstrat: bad request offset = %"PRId64", bcount = %d\n",
 			       fdu, bio->bio_offset, bp->b_bcount);
 			bp->b_error = EINVAL;
 			bp->b_flags |= B_ERROR;

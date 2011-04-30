@@ -22,7 +22,6 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
- * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.18 2008/08/17 04:32:33 sephe Exp $
  */
 
 /*
@@ -1274,15 +1273,15 @@ mn_probe (device_t self)
 	u_int id = pci_get_devid(self);
 
 	if (sizeof (struct m32xreg) != 256) {
-		kprintf("MN: sizeof(struct m32xreg) = %d, should have been 256\n", sizeof (struct m32xreg));
+		kprintf("MN: sizeof(struct m32xreg) = %zd, should have been 256\n", sizeof (struct m32xreg));
 		return (ENXIO);
 	}
 	if (sizeof (struct f54rreg) != 128) {
-		kprintf("MN: sizeof(struct f54rreg) = %d, should have been 128\n", sizeof (struct f54rreg));
+		kprintf("MN: sizeof(struct f54rreg) = %zd, should have been 128\n", sizeof (struct f54rreg));
 		return (ENXIO);
 	}
 	if (sizeof (struct f54wreg) != 128) {
-		kprintf("MN: sizeof(struct f54wreg) = %d, should have been 128\n", sizeof (struct f54wreg));
+		kprintf("MN: sizeof(struct f54wreg) = %zd, should have been 128\n", sizeof (struct f54wreg));
 		return (ENXIO);
 	}
 

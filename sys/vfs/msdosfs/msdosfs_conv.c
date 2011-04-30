@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_conv.c,v 1.29.2.1 2002/11/08 22:01:22 semenu Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_conv.c,v 1.7 2006/12/23 00:41:29 swildner Exp $ */
 /*	$NetBSD: msdosfs_conv.c,v 1.25 1997/11/17 15:36:40 ws Exp $	*/
 
 /*-
@@ -998,7 +997,7 @@ winChkName(struct mbnambuf *nbp, const u_char *un, size_t unlen, int chksum,
         if (!mbnambuf_flush(nbp, d_name, &d_namlen) || d_namlen == 0)
                 return -1;
 #ifdef MSDOSFS_DEBUG
-        kprintf("winChkName(): un=%s:%d,d_name=%s:%d\n", un, unlen,
+        kprintf("winChkName(): un=%s:%zd,d_name=%s:%d\n", un, unlen,
                                                         d_name,
                                                         d_namlen);
 #endif

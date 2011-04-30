@@ -1,5 +1,4 @@
 /*	$KAME: sctp6_usrreq.c,v 1.35 2004/08/17 06:28:03 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.10 2007/04/22 01:13:14 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -272,8 +271,8 @@ sctp6_input(struct mbuf **mp, int *offp, int proto)
 		if (calc_check != check) {
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_INPUT1) {
-				kprintf("Bad CSUM on SCTP packet calc_check:%x check:%x  m:%x mlen:%d iphlen:%d\n",
-				       calc_check, check, (u_int)m,
+				kprintf("Bad CSUM on SCTP packet calc_check:%x check:%x  m:%p mlen:%d iphlen:%d\n",
+				       calc_check, check, m,
 				       mlen, iphlen);
 			}
 #endif

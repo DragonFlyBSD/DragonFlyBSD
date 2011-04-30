@@ -1,5 +1,4 @@
 /*	$KAME: sctp_timer.c,v 1.28 2004/08/17 04:06:20 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_timer.c,v 1.6 2006/12/22 23:57:52 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -1505,8 +1504,8 @@ sctp_iterator_timer(struct sctp_iterator *it)
 	}
 	if ((it->inp->inp_starting_point_for_iterator != NULL) &&
 	    (it->inp->inp_starting_point_for_iterator != it)) {
-		kprintf("Iterator collision, we must wait for other iterator at %x\n",
-		       (u_int)it->inp);
+		kprintf("Iterator collision, we must wait for other iterator at %p\n",
+		       it->inp);
 		SCTP_INP_WUNLOCK(it->inp);
 		goto start_timer_return;
 	}

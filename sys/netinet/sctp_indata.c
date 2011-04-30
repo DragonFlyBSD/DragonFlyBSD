@@ -1,5 +1,4 @@
 /*	$KAME: sctp_indata.c,v 1.35 2004/08/17 04:06:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.8 2008/06/05 18:06:32 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -444,9 +443,9 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		to = (struct sockaddr *)sctp_recover_scope((struct sockaddr_in6 *)to,
 		    &lsa6);
 		if (((struct sockaddr_in *)to)->sin_port == 0) {
-			kprintf("Huh a, port is %d not net:%x %d?\n",
+			kprintf("Huh a, port is %d not net:%p %d?\n",
 			       ((struct sockaddr_in *)to)->sin_port,
-			       (u_int)chk->whoTo,
+			       chk->whoTo,
 			       (int)(ntohs(stcb->rport)));
 			((struct sockaddr_in *)to)->sin_port = stcb->rport;
 		}
@@ -669,9 +668,9 @@ sctp_service_reassembly(struct sctp_tcb *stcb, struct sctp_association *asoc, in
 			to = (struct sockaddr *)sctp_recover_scope((struct sockaddr_in6 *)to,
 								   &lsa6);
 			if (((struct sockaddr_in *)to)->sin_port == 0) {
-				kprintf("Huh b, port is %d not net:%x %d?\n",
+				kprintf("Huh b, port is %d not net:%p %d?\n",
 				       ((struct sockaddr_in *)to)->sin_port,
-				       (u_int)chk->whoTo,
+				       chk->whoTo,
 				       (int)(ntohs(stcb->rport)));
 				((struct sockaddr_in *)to)->sin_port = stcb->rport;
 			}
@@ -1982,9 +1981,9 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		to = (struct sockaddr *)sctp_recover_scope((struct sockaddr_in6 *)to,
 		    &lsa6);
 		if (((struct sockaddr_in *)to)->sin_port == 0) {
-			kprintf("Huh c, port is %d not net:%x %d?\n",
+			kprintf("Huh c, port is %d not net:%p %d?\n",
 			       ((struct sockaddr_in *)to)->sin_port,
-			       (u_int)net,
+			       net,
 			       (int)(ntohs(stcb->rport)));
 			((struct sockaddr_in *)to)->sin_port = stcb->rport;
 		}

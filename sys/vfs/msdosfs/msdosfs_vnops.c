@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.54 2007/11/20 21:03:50 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -71,6 +70,8 @@
 #include <vm/vnode_pager.h>
 
 #include <sys/buf2.h>
+
+#include <machine/inttypes.h>
 
 #include "bpb.h"
 #include "direntry.h"
@@ -346,9 +347,9 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 	    (vap->va_bytes != VNOVAL) || (vap->va_gen != VNOVAL)) {
 #ifdef MSDOSFS_DEBUG
 		kprintf("msdosfs_setattr(): returning EINVAL\n");
-		kprintf("    va_type %d, va_nlink %llx, va_fsid %x, va_fileid %llx\n",
+		kprintf("    va_type %u, va_nlink %"PRIx64", va_fsid %x, va_fileid %"PRIx64"\n",
 		    vap->va_type, vap->va_nlink, vap->va_fsid, vap->va_fileid);
-		kprintf("    va_blocksize %lx, va_rmajor %x, va_bytes %qx, va_gen %llx\n",
+		kprintf("    va_blocksize %lx, va_rmajor %x, va_bytes %"PRIx64", va_gen %"PRIx64"\n",
 		    vap->va_blocksize, vap->va_rmajor, vap->va_bytes, vap->va_gen);
 		kprintf("    va_uid %x, va_gid %x\n",
 		    vap->va_uid, vap->va_gid);

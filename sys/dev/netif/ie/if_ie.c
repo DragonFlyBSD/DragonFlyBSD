@@ -48,7 +48,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.34 2008/08/02 01:14:42 dillon Exp $
  */
 
 /*
@@ -133,6 +132,7 @@ iomem and and with 0xffff.
 #include <netinet/if_ether.h>
 
 #include <machine/clock.h>
+#include <machine/inttypes.h>
 #include <machine/md_var.h>
 
 #include <bus/isa/isa_device.h>
@@ -456,7 +456,7 @@ el_probe(struct isa_device *dvp)
 	c = (inb(PORT + IE507_MADDR) & 0x1c) + 0xc0;
 
 	if (kvtop(dvp->id_maddr) != ((int) c << 12)) {
-		kprintf("ie%d: kernel configured maddr %llx "
+		kprintf("ie%d: kernel configured maddr %"PRIx64" "
 		       "doesn't match board configured maddr %x\n",
 		       unit, kvtop(dvp->id_maddr), (int) c << 12);
 		return (0);
@@ -645,7 +645,7 @@ ee16_probe(struct isa_device *dvp)
 	}
 	dvp->id_msize = 0x8000;
 	if (kvtop(dvp->id_maddr) != bd_maddr) {
-		kprintf("ie%d: kernel configured maddr %llx "
+		kprintf("ie%d: kernel configured maddr %"PRIx64" "
 		       "doesn't match board configured maddr %lx\n",
 		       unit, kvtop(dvp->id_maddr), bd_maddr);
 	}
