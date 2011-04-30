@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)swapon.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/swapon/swapon.c,v 1.8.2.2 2001/07/30 10:30:11 dd Exp $
- * $DragonFly: src/sbin/swapon/swapon.c,v 1.5 2005/11/06 12:50:21 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -306,13 +305,10 @@ swaplist(int lflag, int sflag, int hflag)
 		if (xsw->xsw_nblks == 0)
 			continue;
 
-		if (sflag) {
-			tmp_total = (long long)xsw->xsw_nblks * pagesize;
-			tmp_used = (long long)xsw->xsw_used * pagesize;
-			total += tmp_total;
-			used += tmp_used;
-		}
-
+		tmp_total = (long long)xsw->xsw_nblks * pagesize;
+		tmp_used = (long long)xsw->xsw_used * pagesize;
+		total += tmp_total;
+		used += tmp_used;
 		if (lflag) {
 			sizetobuf(buf, sizeof(buf), hflag, tmp_total, hlen,
 			    blocksize);
