@@ -133,7 +133,6 @@ SUBDIR= 802_11 \
 	watch \
 	watchdogd \
 	wlandebug \
-	xten \
 	yp_mkdb \
 	ypbind \
 	yppoll \
@@ -178,14 +177,15 @@ SUBDIR+=apm \
 	lptcontrol \
 	mptable \
 	rndcontrol \
-	sgsc \
 	sicontrol \
-	spkrtest \
-	stallion
+	spkrtest
 .endif
 
 .if ${MACHINE_ARCH} == "i386"
-SUBDIR+=wlconfig
+SUBDIR+=sgsc \
+	stallion \
+	wlconfig \
+	xten
 
 .if !defined(NO_I4B)
 SUBDIR+=i4b

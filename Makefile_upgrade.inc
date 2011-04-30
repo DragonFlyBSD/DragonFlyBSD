@@ -1575,6 +1575,33 @@ TO_REMOVE+=/usr/share/man/man3/STAILQ_REMOVE_NEXT.3.gz
 TO_REMOVE+=/usr/bin/gasp
 TO_REMOVE+=/usr/share/man/cat9/memoryallocators.9.gz
 TO_REMOVE+=/usr/share/man/man9/memoryallocators.9.gz
+TO_REMOVE+=/usr/share/man/cat4/rc.4.gz
+TO_REMOVE+=/usr/share/man/man4/rc.4.gz
+
+.if ${MACHINE_ARCH} == "x86_64"
+TO_REMOVE+=/usr/sbin/sgsc
+TO_REMOVE+=/usr/share/man/cat1/sgsc.1.gz
+TO_REMOVE+=/usr/share/man/man1/sgsc.1.gz
+TO_REMOVE+=/usr/include/machine/gsc.h
+TO_REMOVE+=/usr/sbin/xten
+TO_REMOVE+=/usr/share/man/cat1/xten.1.gz
+TO_REMOVE+=/usr/share/man/man1/xten.1.gz
+TO_REMOVE+=/usr/libdata/stallion/2681.sys
+TO_REMOVE+=/usr/libdata/stallion/cdk.sys
+TO_REMOVE+=/usr/sbin/stlload
+TO_REMOVE+=/usr/share/man/cat8/i386/stlload.8.gz
+TO_REMOVE+=/usr/share/man/man8/i386/stlload.8.gz
+TO_REMOVE+=/usr/sbin/stlstats
+TO_REMOVE+=/usr/share/man/cat8/i386/stlstats.8.gz
+TO_REMOVE+=/usr/share/man/man8/i386/stlstats.8.gz
+TO_REMOVE+=/usr/sbin/stlstty
+TO_REMOVE+=/usr/share/man/cat8/i386/stlstty.8.gz
+TO_REMOVE+=/usr/share/man/man8/i386/stlstty.8.gz
+TO_REMOVE+=/usr/share/man/cat4/i386/stl.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/stl.4.gz
+TO_REMOVE+=/usr/share/man/cat4/i386/stli.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/stli.4.gz
+.endif
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/cat4/pfsync.4.gz

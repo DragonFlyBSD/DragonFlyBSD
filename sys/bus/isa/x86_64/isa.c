@@ -64,14 +64,9 @@
 #include "../isavar.h"
 #include "../isa_common.h"
 
-#include "opt_compat_oldisa.h"
-
 void
 isa_init(void)
 {
-#ifdef COMPAT_OLDISA
-	isa_wrap_old_drivers();
-#endif
 }
 
 /*
