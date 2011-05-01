@@ -2,7 +2,6 @@
 .PATH: ${SRCDIR}/info ${SRCDIR}/doc
 
 PROG=		infokey
-NOMAN=
 
 CFLAGS+=	-I${SRCDIR} -I${SRCDIR}/info -I${SRCDIR}/gnulib/lib
 CFLAGS+=	-I${.CURDIR}/../libgnu -I${.CURDIR}/../info
