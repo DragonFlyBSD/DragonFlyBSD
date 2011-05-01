@@ -213,3 +213,5 @@ bus/isa/vga_isa.c			optional	vga
 platform/pc64/isa/clock.c		standard
 platform/pc64/isa/isa_intr.c		standard
 platform/pc64/x86_64/spinlock.s		standard
+dev/netif/elink_layer/elink.c		optional	ep
+dev/netif/elink_layer/elink.c		optional	ie
