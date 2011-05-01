@@ -127,6 +127,7 @@ dev/raid/pst/pst-raid.c			optional	pst
 dev/misc/puc/puc.c			optional	puc
 dev/misc/puc/pucdata.c			optional	puc
 dev/netif/sbni/if_sbni.c		optional	sbni
+dev/netif/sbni/if_sbni_pci.c		optional	sbni pci
 dev/misc/syscons/schistory.c		optional	sc
 dev/misc/syscons/scmouse.c		optional	sc
 dev/misc/syscons/scterm.c		optional	sc

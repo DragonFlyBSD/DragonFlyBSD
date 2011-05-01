@@ -693,7 +693,6 @@ dev/crypto/rndtest/rndtest.c	optional rndtest
 dev/serial/rp/rp.c		optional nrp
 dev/serial/rp/rp_isa.c		optional nrp isa
 dev/serial/rp/rp_pci.c		optional nrp pci
-dev/netif/sbni/if_sbni_pci.c	optional sbni pci
 dev/netif/sbsh/if_sbsh.c	optional sbsh
 dev/disk/sdhci/sdhci.c		optional sdhci pci
 bus/smbus/smbus_if.m		optional smbus
