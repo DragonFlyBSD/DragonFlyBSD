@@ -110,7 +110,9 @@ dev/video/fb/fb.c			optional	fb
 dev/video/fb/fb.c			optional	vga
 dev/video/fb/splash.c			optional	splash
 dev/video/fb/vga.c			optional	vga
+dev/netif/fe/if_fe.c			optional	fe
 dev/netif/fe/if_fe_isa.c		optional	fe isa
+dev/netif/fe/if_fe_pccard.c		optional	fe pccard
 dev/misc/kbd/atkbd.c			optional	atkbd
 dev/misc/kbd/atkbdc.c			optional	atkbdc
 dev/misc/kbd/kbd.c			optional	atkbd

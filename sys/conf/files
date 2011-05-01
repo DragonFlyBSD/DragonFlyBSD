@@ -346,8 +346,6 @@ dev/netif/et/if_et.c		optional et
 dev/netif/ex/if_ex.c		optional ex
 dev/netif/ex/if_ex_isa.c	optional ex isa
 dev/netif/ex/if_ex_pccard.c	optional ex pccard
-dev/netif/fe/if_fe.c		optional fe
-dev/netif/fe/if_fe_pccard.c	optional fe pccard
 bus/firewire/firewire.c		optional firewire
 bus/firewire/fwcrom.c		optional firewire
 bus/firewire/fwdev.c		optional firewire
