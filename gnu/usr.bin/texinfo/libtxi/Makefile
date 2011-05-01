@@ -1,11 +1,17 @@
-# $FreeBSD: src/gnu/usr.bin/texinfo/libtxi/Makefile,v 1.7.2.1 2002/07/19 18:46:24 ru Exp $
-# $DragonFly: src/gnu/usr.bin/texinfo/libtxi/Makefile,v 1.3 2005/08/28 12:25:05 asmodai Exp $
+.include "../Makefile.inc"
 
-LIB=	txi
-INTERNALLIB= true
+LIB=		txi
+INTERNALLIB= 	true
 
-SRCS=	substring.c xexit.c xmalloc.c xstrdup.c
+CONTRIBDIR=	${BASEDIR}/lib
+.PATH:		${CONTRIBDIR}
+
+CFLAGS+=	-I${CONTRIBDIR} -I${.CURDIR} -I${.OBJDIR}
+CFLAGS+=	-I${BASEDIR} -I${.CURDIR}/../libgnu
+CFLAGS+=	-I${BASEDIR}/gnulib/lib
+CFLAGS+=	-DHAVE_CONFIG_H
+
+SRCS=		substring.c \
+		xexit.c
 
 .include <bsd.lib.mk>
-
-.PATH: ${TXIDIR}/lib

@@ -1,14 +1,12 @@
-# $FreeBSD: src/gnu/usr.bin/texinfo/texindex/Makefile,v 1.7.2.1 2002/08/07 16:53:39 ru Exp $
-# $DragonFly: src/gnu/usr.bin/texinfo/texindex/Makefile,v 1.3 2006/02/11 01:21:27 joerg Exp $
+.include "../Makefile.inc0"
+.PATH: ${SRCDIR}/util ${SRCDIR}/doc
 
-PROG=	texindex
+PROG=		texindex
+MAN=		texindex.1 texi2dvi.1 texi2pdf.1 pdftexi2dvi.1
+SCRIPTS=	texi2dvi texi2pdf pdftexi2dvi
 
-PATCHES=	texindex.c.patch
-CONTRIBDIR=	${TXIDIR}/util
-
-DPADD=	${LIBTXI}
-LDADD=	${LIBTXI}
+CFLAGS+=	-I${SRCDIR} -I${SRCDIR}/gnulib/lib
+CFLAGS+=	-I${.CURDIR}/../libgnu
 
 .include <bsd.prog.mk>
 
-.PATH:	${TXIDIR}/util ${TXIDIR}/doc

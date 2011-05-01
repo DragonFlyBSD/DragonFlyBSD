@@ -1,16 +1,10 @@
-# $FreeBSD: src/gnu/usr.bin/texinfo/install-info/Makefile,v 1.11.2.1 2002/08/07 16:53:36 ru Exp $
-# $DragonFly: src/gnu/usr.bin/texinfo/install-info/Makefile,v 1.4 2005/08/28 14:19:30 asmodai Exp $
+.include "../Makefile.inc0"
+.PATH: ${SRCDIR}/install-info ${SRCDIR}/doc
 
-PATCHES!=	echo ${.CURDIR}/patches/*.patch
-CONTRIBDIR=	${TXIDIR}/util
+PROG=		install-info
 
-PROG=	install-info
-SRCS=	install-info.c
-SRCS+=	${PATCHES}
-
-DPADD=	${LIBTXI}
-LDADD=	${LIBTXI}
+CFLAGS+=	-I${SRCDIR} -I${SRCDIR}/gnulib/lib
+CFLAGS+=	-I${.CURDIR}/../libgnu
 
 .include <bsd.prog.mk>
 
-.PATH:	${TXIDIR}/util ${TXIDIR}/doc

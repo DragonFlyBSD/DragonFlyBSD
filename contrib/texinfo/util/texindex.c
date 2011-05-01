@@ -132,9 +132,11 @@ main (int argc, char *argv[])
   setlocale (LC_ALL, "");
 #endif
 
+#ifdef ENABLE_NLS
   /* Set the text message domain.  */
   bindtextdomain (PACKAGE, LOCALEDIR);
   textdomain (PACKAGE);
+#endif
 
   /* In case we write to a redirected stdout that fails.  */
   /* not ready atexit (close_stdout); */

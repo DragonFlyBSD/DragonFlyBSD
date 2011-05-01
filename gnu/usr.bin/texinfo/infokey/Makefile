@@ -1,14 +1,14 @@
-# $FreeBSD: src/gnu/usr.bin/texinfo/infokey/Makefile,v 1.1.2.1 2002/03/30 17:09:25 ru Exp $
-# $DragonFly: src/gnu/usr.bin/texinfo/infokey/Makefile,v 1.3 2005/08/28 12:25:04 asmodai Exp $
+.include "../Makefile.inc0"
+.PATH: ${SRCDIR}/info ${SRCDIR}/doc
 
-PROG=	infokey
-NOMAN=	noman
+PROG=		infokey
+NOMAN=
 
-SRCS=	infokey.c key.c
+CFLAGS+=	-I${SRCDIR} -I${SRCDIR}/info -I${SRCDIR}/gnulib/lib
+CFLAGS+=	-I${.CURDIR}/../libgnu -I${.CURDIR}/../info
+CFLAGS+=	-DHAVE_CONFIG_H
 
-DPADD=	${LIBTXI}
-LDADD=	${LIBTXI}
+SRCS=		infokey.c\
+		key.c
 
 .include <bsd.prog.mk>
-
-.PATH:	${TXIDIR}/info

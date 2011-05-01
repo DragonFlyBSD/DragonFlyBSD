@@ -1,14 +1,28 @@
-# $FreeBSD: src/gnu/usr.bin/texinfo/makeinfo/Makefile,v 1.13.2.2 2002/08/07 16:53:37 ru Exp $
-# $DragonFly: src/gnu/usr.bin/texinfo/makeinfo/Makefile,v 1.3 2005/08/28 12:25:05 asmodai Exp $
+.include "../Makefile.inc0"
+.PATH: ${SRCDIR}/makeinfo ${SRCDIR}/doc
 
-PROG=	makeinfo
-SRCS=	cmds.c defun.c files.c float.c footnote.c html.c \
-	index.c insertion.c lang.c macro.c makeinfo.c multi.c \
-	node.c sectioning.c toc.c xml.c xref.c
+PROG=		makeinfo
 
-DPADD=	${LIBTXI}
-LDADD=	${LIBTXI}
+CFLAGS+=	-I${SRCDIR} -I${SRCDIR}/makeinfo -I${SRCDIR}/gnulib/lib
+CFLAGS+=	-I${.CURDIR}/../libgnu
+CFLAGS+=	-DHAVE_CONFIG_H
+
+SRCS=		cmds.c \
+		defun.c \
+		files.c \
+		float.c \
+		footnote.c \
+		html.c \
+		index.c \
+		insertion.c \
+		lang.c \
+		macro.c \
+		makeinfo.c \
+		multi.c \
+		node.c \
+		sectioning.c \
+		toc.c \
+		xml.c \
+		xref.c
 
 .include <bsd.prog.mk>
-
-.PATH:	$(TXIDIR)/makeinfo $(TXIDIR)/doc
