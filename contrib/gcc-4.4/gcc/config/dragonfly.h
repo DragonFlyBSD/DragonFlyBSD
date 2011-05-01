@@ -50,12 +50,16 @@ along with GCC; see the file COPYING3.  If not see
    || !strcmp ((STR), "soname") || !strcmp ((STR), "defsym") 		\
    || !strcmp ((STR), "assert") || !strcmp ((STR), "dynamic-linker"))
 
+#define HANDLE_PRAGMA_PACK_PUSH_POP 1
 
 /* JRM: 15 Nov 2010
    SWITCH_TAKES_ARG & WORD_SWITCH_TAKES_ARG removed due to poisoning
    prior to gcc 4.6.0 release.  Replaced with dragonfly.opt.
    http://gcc.gnu.org/ml/gcc-patches/2010-10/msg02102.html
-   http://gcc.gnu.org/ml/gcc-patches/2010-10/msg02373.html */
+   http://gcc.gnu.org/ml/gcc-patches/2010-10/msg02373.html
+
+   HANDLE_PRAGMA_PACK_PUSH_POP poisoned by GCC 4.6.0
+   http://gcc.gnu.org/ml/gcc-patches/2010-11/msg02106.html */
    
 #undef  TARGET_OS_CPP_BUILTINS
 #define TARGET_OS_CPP_BUILTINS()            \
