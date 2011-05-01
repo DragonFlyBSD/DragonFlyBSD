@@ -18,7 +18,6 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si_isa.c,v 1.1 2000/01/24 07:24:01 peter Exp $
- * $DragonFly: src/sys/dev/serial/si/si_isa.c,v 1.7 2006/12/22 23:26:24 swildner Exp $
  */
 
 #include "opt_debug_si.h"
@@ -72,7 +71,7 @@ si_isa_probe(device_t dev)
 		goto fail;
 	}
 
-	if (((u_int)paddr & 0x7fff) != 0) {
+	if (((uintptr_t)paddr & 0x7fff) != 0) {
 		DPRINT((0, DBG_AUTOBOOT|DBG_FAIL,
 			"si%d: iomem (%p) not on 32k boundary\n", unit, paddr));
 		goto fail;

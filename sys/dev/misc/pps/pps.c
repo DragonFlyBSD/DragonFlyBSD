@@ -83,7 +83,7 @@ ppsattach(device_t ppsdev)
 {
 	struct pps_data *sc = DEVTOSOFTC(ppsdev);
 	device_t ppbus = device_get_parent(ppsdev);
-	int irq;
+	uintptr_t irq;
 	int unit;
 	int zero = 0;
 

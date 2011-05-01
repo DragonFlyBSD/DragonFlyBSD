@@ -1,5 +1,4 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.14 2008/03/07 11:34:20 sephe Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -751,7 +750,7 @@ sctp_findassociation_ep_asocid(struct sctp_inpcb *inp, caddr_t asoc_id)
 		return (NULL);
 	}
 	SCTP_INP_INFO_RLOCK();
-	vtag = (u_int32_t)asoc_id;
+	vtag = (u_int32_t)(uintptr_t)asoc_id;
 	head = &sctppcbinfo.sctp_asochash[SCTP_PCBHASH_ASOC(vtag,
 	    sctppcbinfo.hashasocmark)];
 	if (head == NULL) {

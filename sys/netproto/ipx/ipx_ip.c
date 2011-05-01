@@ -34,7 +34,6 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.18 2008/06/08 08:38:05 sephe Exp $
  */
 
 /*
@@ -247,7 +246,7 @@ ipxipoutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	if (len & 1)
 		len++;		/* Preserve Garbage Byte */
 	/* following clause not necessary on vax */
-	if (3 & (int)m->m_data) {
+	if (3 & (intptr_t)m->m_data) {
 		/* force longword alignment of ip hdr */
 		struct mbuf *m0 = m_gethdr(MT_HEADER, MB_DONTWAIT);
 		if (m0 == NULL) {

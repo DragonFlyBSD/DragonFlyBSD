@@ -1,5 +1,4 @@
 /*	$KAME: sctputil.h,v 1.14 2004/08/17 04:06:21 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.h,v 1.6 2007/04/22 01:13:14 dillon Exp $	*/
 
 #ifndef _NETINET_SCTPUTIL_H_
 #define _NETINET_SCTPUTIL_H_
@@ -148,7 +147,7 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
 	force_comile_error;
 #endif
 
-#define sctp_get_associd(stcb) ((sctp_assoc_t)stcb->asoc.my_vtag)
+#define sctp_get_associd(stcb) ((sctp_assoc_t)(uintptr_t)stcb->asoc.my_vtag)
 
 /*
  * Function prototypes
