@@ -1,6 +1,6 @@
 /* YACC parser for Fortran expressions, for GDB.
    Copyright (C) 1986, 1989, 1990, 1991, 1993, 1994, 1995, 1996, 2000, 2001,
-   2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
+   2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Contributed by Motorola.  Adapted from the C parser by Farooq Butt
@@ -196,6 +196,7 @@ static int parse_number (char *, int, int, YYSTYPE *);
 /* Special type cases, put in to allow the parser to distinguish different
    legal basetypes.  */
 %token INT_KEYWORD INT_S2_KEYWORD LOGICAL_S1_KEYWORD LOGICAL_S2_KEYWORD 
+%token LOGICAL_S8_KEYWORD
 %token LOGICAL_KEYWORD REAL_KEYWORD REAL_S8_KEYWORD REAL_S16_KEYWORD 
 %token COMPLEX_S8_KEYWORD COMPLEX_S16_KEYWORD COMPLEX_S32_KEYWORD 
 %token BOOL_AND BOOL_OR BOOL_NOT   
@@ -492,9 +493,9 @@ variable:	name_not_typename
 			    {
 			      if (symbol_read_needs_frame (sym))
 				{
-				  if (innermost_block == 0 ||
-				      contained_in (block_found, 
-						    innermost_block))
+				  if (innermost_block == 0
+				      || contained_in (block_found, 
+						       innermost_block))
 				    innermost_block = block_found;
 				}
 			      write_exp_elt_opcode (OP_VAR_VALUE);
@@ -606,6 +607,8 @@ typebase  /* Implements (approximately): (type-qualifier)* type-specifier */
 			{ $$ = parse_f_type->builtin_integer_s2; }
 	|	CHARACTER 
 			{ $$ = parse_f_type->builtin_character; }
+	|	LOGICAL_S8_KEYWORD
+			{ $$ = parse_f_type->builtin_logical_s8; }
 	|	LOGICAL_KEYWORD 
 			{ $$ = parse_f_type->builtin_logical; }
 	|	LOGICAL_S2_KEYWORD
@@ -858,6 +861,7 @@ static const struct token f77_keywords[] =
   { "integer_2", INT_S2_KEYWORD, BINOP_END },
   { "logical_1", LOGICAL_S1_KEYWORD, BINOP_END },
   { "logical_2", LOGICAL_S2_KEYWORD, BINOP_END },
+  { "logical_8", LOGICAL_S8_KEYWORD, BINOP_END },
   { "complex_8", COMPLEX_S8_KEYWORD, BINOP_END },
   { "integer", INT_KEYWORD, BINOP_END },
   { "logical", LOGICAL_KEYWORD, BINOP_END },
@@ -1124,14 +1128,14 @@ yylex ()
       return c;
     }
   
-  if (!(c == '_' || c == '$'
+  if (!(c == '_' || c == '$' || c ==':'
 	|| (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')))
     /* We must have come across a bad character (e.g. ';').  */
     error ("Invalid character '%c' in expression.", c);
   
   namelen = 0;
   for (c = tokstart[namelen];
-       (c == '_' || c == '$' || (c >= '0' && c <= '9') 
+       (c == '_' || c == '$' || c == ':' || (c >= '0' && c <= '9')
 	|| (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); 
        c = tokstart[++namelen]);
   

@@ -7,7 +7,7 @@
 
 @c This file is part of the GDB manual.
 @c
-@c Copyright (C) 2003, 2004, 2005, 2006, 2009
+@c Copyright (C) 2003, 2004, 2005, 2006, 2009, 2010
 @c               Free Software Foundation, Inc.
 @c
 @c See the file gdb.texinfo for copying conditions.
@@ -58,8 +58,6 @@ debugging agent in real-time applications.
 * Bytecode Descriptions::       What each one does.
 * Using Agent Expressions::     How agent expressions fit into the big picture.
 * Varying Target Capabilities:: How to discover what the target can do.
-* Tracing on Symmetrix::        Special info for implementation on EMC's
-                                boxes.
 * Rationale::                   Why we did it this way.
 @end menu
 
@@ -442,6 +440,24 @@ alignment within the bytecode stream; thus, on machines where fetching a
 16-bit on an unaligned address raises an exception, you should fetch the
 register number one byte at a time.
 
+@item @code{getv} (0x2c) @var{n}: @result{} @var{v}
+Push the value of trace state variable number @var{n}, without sign
+extension.
+
+The variable number @var{n} is encoded as a 16-bit unsigned integer
+immediately following the @code{getv} bytecode.  It is always stored most
+significant byte first, regardless of the target's normal endianness.
+The variable number is not guaranteed to fall at any particular
+alignment within the bytecode stream; thus, on machines where fetching a
+16-bit on an unaligned address raises an exception, you should fetch the
+register number one byte at a time.
+
+@item @code{setv} (0x2d) @var{n}: @result{} @var{v}
+Set trace state variable number @var{n} to the value found on the top
+of the stack.  The stack is unchanged, so that the value is readily
+available if the assignment is part of a larger expression.  The
+handling of @var{n} is as described for @code{getv}.
+
 @item @code{trace} (0x0c): @var{addr} @var{size} @result{}
 Record the contents of the @var{size} bytes at @var{addr} in a trace
 buffer, for later retrieval by GDB.
@@ -458,6 +474,10 @@ trace}, but we provide it anyway to save space in bytecode strings.
 Identical to trace_quick, except that @var{size} is a 16-bit big-endian
 unsigned integer, not a single byte.  This should probably have been
 named @code{trace_quick16}, for consistency.
+
+@item @code{tracev} (0x2e) @var{n}: @result{} @var{a}
+Record the value of trace state variable number @var{n} in the trace
+buffer.  The handling of @var{n} is as described for @code{getv}.
 
 @item @code{end} (0x27): @result{}
 Stop executing bytecode; the result should be the top element of the
@@ -503,9 +523,7 @@ GDB transmits the tracepoints and their associated expressions to the
 GDB agent, running on the debugging target.
 
 @item
-The agent arranges to be notified when a trace point is hit.  Note that,
-on some systems, the target operating system is completely responsible
-for collecting the data; see @ref{Tracing on Symmetrix}.
+The agent arranges to be notified when a trace point is hit.
 
 @item
 When execution on the target reaches a trace point, the agent evaluates
@@ -558,142 +576,6 @@ which registers are actually available for collection
 whether the target supports disabled tracepoints
 
 @end itemize
-
-
-
-@node Tracing on Symmetrix
-@section Tracing on Symmetrix
-
-This section documents the API used by the GDB agent to collect data on
-Symmetrix systems.
-
-Cygnus originally implemented these tracing features to help EMC
-Corporation debug their Symmetrix high-availability disk drives.  The
-Symmetrix application code already includes substantial tracing
-facilities; the GDB agent for the Symmetrix system uses those facilities
-for its own data collection, via the API described here.
-
-@deftypefn Function DTC_RESPONSE adbg_find_memory_in_frame (FRAME_DEF *@var{frame}, char *@var{address}, char **@var{buffer}, unsigned int *@var{size})
-Search the trace frame @var{frame} for memory saved from @var{address}.
-If the memory is available, provide the address of the buffer holding
-it; otherwise, provide the address of the next saved area.
-
-@itemize @bullet
-
-@item
-If the memory at @var{address} was saved in @var{frame}, set
-@code{*@var{buffer}} to point to the buffer in which that memory was
-saved, set @code{*@var{size}} to the number of bytes from @var{address}
-that are saved at @code{*@var{buffer}}, and return
-@code{OK_TARGET_RESPONSE}.  (Clearly, in this case, the function will
-always set @code{*@var{size}} to a value greater than zero.)
-
-@item
-If @var{frame} does not record any memory at @var{address}, set
-@code{*@var{size}} to the distance from @var{address} to the start of
-the saved region with the lowest address higher than @var{address}.  If
-there is no memory saved from any higher address, set @code{*@var{size}}
-to zero.  Return @code{NOT_FOUND_TARGET_RESPONSE}.
-@end itemize
-
-These two possibilities allow the caller to either retrieve the data, or
-walk the address space to the next saved area.
-@end deftypefn
-
-This function allows the GDB agent to map the regions of memory saved in
-a particular frame, and retrieve their contents efficiently.
-
-This function also provides a clean interface between the GDB agent and
-the Symmetrix tracing structures, making it easier to adapt the GDB
-agent to future versions of the Symmetrix system, and vice versa.  This
-function searches all data saved in @var{frame}, whether the data is
-there at the request of a bytecode expression, or because it falls in
-one of the format's memory ranges, or because it was saved from the top
-of the stack.  EMC can arbitrarily change and enhance the tracing
-mechanism, but as long as this function works properly, all collected
-memory is visible to GDB.
-
-The function itself is straightforward to implement.  A single pass over
-the trace frame's stack area, memory ranges, and expression blocks can
-yield the address of the buffer (if the requested address was saved),
-and also note the address of the next higher range of memory, to be
-returned when the search fails.
-
-As an example, suppose the trace frame @code{f} has saved sixteen bytes
-from address @code{0x8000} in a buffer at @code{0x1000}, and thirty-two
-bytes from address @code{0xc000} in a buffer at @code{0x1010}.  Here are
-some sample calls, and the effect each would have:
-
-@table @code
-
-@item adbg_find_memory_in_frame (f, (char*) 0x8000, &buffer, &size)
-This would set @code{buffer} to @code{0x1000}, set @code{size} to
-sixteen, and return @code{OK_TARGET_RESPONSE}, since @code{f} saves
-sixteen bytes from @code{0x8000} at @code{0x1000}.
-
-@item adbg_find_memory_in_frame (f, (char *) 0x8004, &buffer, &size)
-This would set @code{buffer} to @code{0x1004}, set @code{size} to
-twelve, and return @code{OK_TARGET_RESPONSE}, since @file{f} saves the
-twelve bytes from @code{0x8004} starting four bytes into the buffer at
-@code{0x1000}.  This shows that request addresses may fall in the middle
-of saved areas; the function should return the address and size of the
-remainder of the buffer.
-
-@item adbg_find_memory_in_frame (f, (char *) 0x8100, &buffer, &size)
-This would set @code{size} to @code{0x3f00} and return
-@code{NOT_FOUND_TARGET_RESPONSE}, since there is no memory saved in
-@code{f} from the address @code{0x8100}, and the next memory available
-is at @code{0x8100 + 0x3f00}, or @code{0xc000}.  This shows that request
-addresses may fall outside of all saved memory ranges; the function
-should indicate the next saved area, if any.
-
-@item adbg_find_memory_in_frame (f, (char *) 0x7000, &buffer, &size)
-This would set @code{size} to @code{0x1000} and return
-@code{NOT_FOUND_TARGET_RESPONSE}, since the next saved memory is at
-@code{0x7000 + 0x1000}, or @code{0x8000}.
-
-@item adbg_find_memory_in_frame (f, (char *) 0xf000, &buffer, &size)
-This would set @code{size} to zero, and return
-@code{NOT_FOUND_TARGET_RESPONSE}.  This shows how the function tells the
-caller that no further memory ranges have been saved.
-
-@end table
-
-As another example, here is a function which will print out the
-addresses of all memory saved in the trace frame @code{frame} on the
-Symmetrix INLINES console:
-@example
-void
-print_frame_addresses (FRAME_DEF *frame)
-@{
-  char *addr;
-  char *buffer;
-  unsigned long size;
-
-  addr = 0;
-  for (;;)
-    @{
-      /* Either find out how much memory we have here, or discover
-         where the next saved region is.  */
-      if (adbg_find_memory_in_frame (frame, addr, &buffer, &size)
-          == OK_TARGET_RESPONSE)
-        printp ("saved %x to %x\n", addr, addr + size);
-      if (size == 0)
-        break;
-      addr += size;
-    @}
-@}
-@end example
-
-Note that there is not necessarily any connection between the order in
-which the data is saved in the trace frame, and the order in which
-@code{adbg_find_memory_in_frame} will return those memory ranges.  The
-code above will always print the saved memory regions in order of
-increasing address, while the underlying frame structure might store the
-data in a random order.
-
-[[This section should cover the rest of the Symmetrix functions the stub
-relies upon, too.]]
 
 @node Rationale
 @section Rationale

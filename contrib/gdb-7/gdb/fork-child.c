@@ -1,7 +1,8 @@
 /* Fork a Unix child process, and set up to debug it, for GDB.
 
    Copyright (C) 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000,
-   2001, 2004, 2005, 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2001, 2004, 2005, 2006, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
 
    Contributed by Cygnus Support.
 
@@ -138,6 +139,7 @@ fork_inferior (char *exec_file_arg, char *allargs, char **env,
   int shell = 0;
   static char **argv;
   const char *inferior_io_terminal = get_inferior_io_terminal ();
+  struct inferior *inf;
 
   /* If no exec file handed to us, get it from the exec-file command
      -- with a good, common error message if none is specified.  */
@@ -176,6 +178,7 @@ fork_inferior (char *exec_file_arg, char *allargs, char **env,
 	 assuming that every other character is a separate
 	 argument.  */
       int argc = (strlen (allargs) + 1) / 2 + 2;
+
       argv = (char **) xmalloc (argc * sizeof (*argv));
       argv[0] = exec_file;
       breakup_args (allargs, &argv[1]);
@@ -395,7 +398,9 @@ fork_inferior (char *exec_file_arg, char *allargs, char **env,
   if (!have_inferiors ())
     init_thread_list ();
 
-  add_inferior (pid);
+  inf = current_inferior ();
+
+  inferior_appeared (inf, pid);
 
   /* Needed for wait_for_inferior stuff below.  */
   inferior_ptid = pid_to_ptid (pid);

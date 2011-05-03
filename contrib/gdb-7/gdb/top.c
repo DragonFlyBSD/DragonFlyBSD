@@ -2,7 +2,7 @@
 
    Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
    1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007,
-   2008, 2009 Free Software Foundation, Inc.
+   2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -184,15 +184,6 @@ int remote_debug = 0;
 char *lim_at_start;
 #endif
 
-/* Signal to catch ^Z typed while reading a command: SIGTSTP or SIGCONT.  */
-
-#ifndef STOP_SIGNAL
-#ifdef SIGTSTP
-#define STOP_SIGNAL SIGTSTP
-static void stop_sig (int);
-#endif
-#endif
-
 /* Hooks for alternate command interfaces.  */
 
 /* Called after most modules have been initialized, but before taking users
@@ -259,9 +250,6 @@ void (*deprecated_interactive_hook) (void);
    that several registers have changed (see value_assign). */
 void (*deprecated_register_changed_hook) (int regno);
 
-/* Tell the GUI someone changed LEN bytes of memory at ADDR */
-void (*deprecated_memory_changed_hook) (CORE_ADDR addr, int len);
-
 /* Called when going to wait for the target.  Usually allows the GUI to run
    while waiting for target events.  */
 
@@ -310,7 +298,7 @@ quit_cover (void *s)
 /* NOTE 1999-04-29: This variable will be static again, once we modify
    gdb to use the event loop as the default command loop and we merge
    event-top.c into this file, top.c */
-/* static */ char *source_file_name;
+/* static */ const char *source_file_name;
 
 /* Clean up on error during a "source" command (or execution of a
    user-defined command).  */
@@ -368,25 +356,6 @@ execute_command (char *p, int from_tty)
   enum language flang;
   static int warned = 0;
   char *line;
-  long time_at_cmd_start = 0;
-#ifdef HAVE_SBRK
-  long space_at_cmd_start = 0;
-#endif
-  extern int display_time;
-  extern int display_space;
-
-  if (target_can_async_p ())
-    {
-      time_at_cmd_start = get_run_time ();
-
-      if (display_space)
-	{
-#ifdef HAVE_SBRK
-	  char *lim = (char *) sbrk (0);
-	  space_at_cmd_start = lim - lim_at_start;
-#endif
-	}
-    }
 
   prepare_execute_command ();
 
@@ -457,10 +426,13 @@ execute_command (char *p, int from_tty)
 
     }
 
-  /* Tell the user if the language has changed (except first time).  */
+  /* Tell the user if the language has changed (except first time).
+     First make sure that a new frame has been selected, in case this
+     command or the hooks changed the program state.  */
+  deprecated_safe_get_selected_frame ();
   if (current_language != expected_language)
     {
-      if (language_mode == language_mode_auto)
+      if (language_mode == language_mode_auto && info_verbose)
 	{
 	  language_info (1);	/* Print what changed.  */
 	}
@@ -486,6 +458,39 @@ execute_command (char *p, int from_tty)
     }
 }
 
+/* Run execute_command for P and FROM_TTY.  Capture its output into the
+   returned string, do not display it to the screen.  BATCH_FLAG will be
+   temporarily set to true.  */
+
+char *
+execute_command_to_string (char *p, int from_tty)
+{
+  struct ui_file *str_file;
+  struct cleanup *cleanup;
+  char *retval;
+
+  /* GDB_STDOUT should be better already restored during these
+     restoration callbacks.  */
+  cleanup = set_batch_flag_and_make_cleanup_restore_page_info ();
+
+  str_file = mem_fileopen ();
+
+  make_cleanup_restore_ui_file (&gdb_stdout);
+  make_cleanup_restore_ui_file (&gdb_stderr);
+  make_cleanup_ui_file_delete (str_file);
+
+  gdb_stdout = str_file;
+  gdb_stderr = str_file;
+
+  execute_command (p, from_tty);
+
+  retval = ui_file_xstrdup (str_file, NULL);
+
+  do_cleanups (cleanup);
+
+  return retval;
+}
+
 /* Read commands from `instream' and execute them
    until end of file or error reading instream.  */
 
@@ -495,12 +500,6 @@ command_loop (void)
   struct cleanup *old_chain;
   char *command;
   int stdin_is_tty = ISATTY (stdin);
-  long time_at_cmd_start;
-#ifdef HAVE_SBRK
-  long space_at_cmd_start = 0;
-#endif
-  extern int display_time;
-  extern int display_space;
 
   while (instream && !feof (instream))
     {
@@ -519,15 +518,7 @@ command_loop (void)
       if (command == 0)
 	return;
 
-      time_at_cmd_start = get_run_time ();
-
-      if (display_space)
-	{
-#ifdef HAVE_SBRK
-	  char *lim = (char *) sbrk (0);
-	  space_at_cmd_start = lim - lim_at_start;
-#endif
-	}
+      make_command_stats_cleanup (1);
 
       execute_command (command, instream == stdin);
 
@@ -535,28 +526,6 @@ command_loop (void)
       bpstat_do_actions ();
 
       do_cleanups (old_chain);
-
-      if (display_time)
-	{
-	  long cmd_time = get_run_time () - time_at_cmd_start;
-
-	  printf_unfiltered (_("Command execution time: %ld.%06ld\n"),
-			     cmd_time / 1000000, cmd_time % 1000000);
-	}
-
-      if (display_space)
-	{
-#ifdef HAVE_SBRK
-	  char *lim = (char *) sbrk (0);
-	  long space_now = lim - lim_at_start;
-	  long space_diff = space_now - space_at_cmd_start;
-
-	  printf_unfiltered (_("Space used: %ld (%s%ld for this command)\n"),
-			     space_now,
-			     (space_diff >= 0 ? "+" : ""),
-			     space_diff);
-#endif
-	}
     }
 }
 
@@ -785,57 +754,6 @@ gdb_readline_wrapper (char *prompt)
 }
 
 
-#ifdef STOP_SIGNAL
-static void
-stop_sig (int signo)
-{
-#if STOP_SIGNAL == SIGTSTP
-  signal (SIGTSTP, SIG_DFL);
-#if HAVE_SIGPROCMASK
-  {
-    sigset_t zero;
-
-    sigemptyset (&zero);
-    sigprocmask (SIG_SETMASK, &zero, 0);
-  }
-#elif HAVE_SIGSETMASK
-  sigsetmask (0);
-#endif
-  kill (getpid (), SIGTSTP);
-  signal (SIGTSTP, stop_sig);
-#else
-  signal (STOP_SIGNAL, stop_sig);
-#endif
-  printf_unfiltered ("%s", get_prompt ());
-  gdb_flush (gdb_stdout);
-
-  /* Forget about any previous command -- null line now will do nothing.  */
-  dont_repeat ();
-}
-#endif /* STOP_SIGNAL */
-
-/* Initialize signal handlers. */
-static void
-float_handler (int signo)
-{
-  /* This message is based on ANSI C, section 4.7.  Note that integer
-     divide by zero causes this, so "float" is a misnomer.  */
-  signal (SIGFPE, float_handler);
-  error (_("Erroneous arithmetic operation."));
-}
-
-static void
-do_nothing (int signo)
-{
-  /* Under System V the default disposition of a signal is reinstated after
-     the signal is caught and delivered to an application process.  On such
-     systems one must restore the replacement signal handler if one wishes
-     to continue handling the signal in one's program.  On BSD systems this
-     is not needed but it is harmless, and it simplifies the code to just do
-     it unconditionally. */
-  signal (signo, do_nothing);
-}
-
 /* The current saved history number from operate-and-get-next.
    This is -1 if not valid.  */
 static int operate_saved_history = -1;
@@ -846,6 +764,7 @@ static void
 gdb_rl_operate_and_get_next_completion (void)
 {
   int delta = where_history () - operate_saved_history;
+
   /* The `key' argument to rl_get_previous_history is ignored.  */
   rl_get_previous_history (delta, 0);
   operate_saved_history = -1;
@@ -1118,7 +1037,7 @@ print_gdb_version (struct ui_file *stream)
 
   /* Second line is a copyright notice. */
 
-  fprintf_filtered (stream, "Copyright (C) 2009 Free Software Foundation, Inc.\n");
+  fprintf_filtered (stream, "Copyright (C) 2010 Free Software Foundation, Inc.\n");
 
   /* Following the copyright is a brief statement that the program is
      free software, that users are free to copy and change it on
@@ -1187,6 +1106,9 @@ kill_or_detach (struct inferior *inf, void *args)
   struct qt_args *qt = args;
   struct thread_info *thread;
 
+  if (inf->pid == 0)
+    return 0;
+
   thread = any_thread_of_process (inf->pid);
   if (thread != NULL)
     {
@@ -1213,6 +1135,9 @@ static int
 print_inferior_quit_action (struct inferior *inf, void *arg)
 {
   struct ui_file *stb = arg;
+
+  if (inf->pid == 0)
+    return 0;
 
   if (inf->attach_flag)
     fprintf_filtered (stb,
@@ -1349,6 +1274,9 @@ input_from_terminal_p (void)
 {
   if (interactive_mode != AUTO_BOOLEAN_AUTO)
     return interactive_mode == AUTO_BOOLEAN_TRUE;
+
+  if (batch_flag)
+    return 0;
 
   if (gdb_has_a_terminal () && instream == stdin)
     return 1;
@@ -1570,8 +1498,6 @@ Notification of completion for asynchronous execution commands is %s.\n"),
 static void
 init_main (void)
 {
-  struct cmd_list_element *c;
-
   /* initialize the prompt stack to a simple "(gdb) " prompt or to
      whatever the DEFAULT_PROMPT is.  */
   the_prompts.top = 0;
@@ -1721,6 +1647,13 @@ gdb_init (char *argv0)
   initialize_targets ();	/* Setup target_terminal macros for utils.c */
   initialize_utils ();		/* Make errors and warnings possible */
   initialize_all_files ();
+  /* This creates the current_program_space.  Do this after all the
+     _initialize_foo routines have had a chance to install their
+     per-sspace data keys.  Also do this before
+     initialize_current_architecture is called, because it accesses
+     exec_bfd of the current program space.  */
+  initialize_progspace ();
+  initialize_inferiors ();
   initialize_current_architecture ();
   init_cli_cmds();
   init_main ();			/* But that omits this file!  Do it now */

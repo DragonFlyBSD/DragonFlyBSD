@@ -1,7 +1,7 @@
 /* C language support definitions for GDB, the GNU debugger.
 
    Copyright (C) 1992, 1994, 1995, 1996, 1997, 1998, 2000, 2002, 2005, 2006,
-   2007, 2008, 2009 Free Software Foundation, Inc.
+   2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -63,13 +63,14 @@ extern void c_error (char *);
 extern int c_parse_escape (char **, struct obstack *);
 
 /* Defined in c-typeprint.c */
-extern void c_print_type (struct type *, char *, struct ui_file *, int,
+extern void c_print_type (struct type *, const char *, struct ui_file *, int,
 			  int);
 
 extern void c_print_typedef (struct type *, struct symbol *, struct ui_file *);
 
 extern int c_val_print (struct type *, const gdb_byte *, int, CORE_ADDR,
 			struct ui_file *, int,
+			const struct value *,
 			const struct value_print_options *);
 
 extern int c_value_print (struct value *, struct ui_file *,
@@ -81,11 +82,16 @@ extern void c_printchar (int, struct type *, struct ui_file *);
 
 extern void c_printstr (struct ui_file * stream, struct type *elttype,
 			const gdb_byte *string, unsigned int length,
-			int force_ellipses,
+			const char *user_encoding, int force_ellipses,
 			const struct value_print_options *options);
 
 extern void c_language_arch_info (struct gdbarch *gdbarch,
 				  struct language_arch_info *lai);
+
+extern const struct exp_descriptor exp_descriptor_c;
+
+extern void c_emit_char (int c, struct type *type,
+			 struct ui_file *stream, int quoter);
 
 /* These are in c-typeprint.c: */
 
@@ -99,12 +105,24 @@ extern void cp_print_class_member (const gdb_byte *, struct type *,
 extern void cp_print_value_fields (struct type *, struct type *,
 				   const gdb_byte *, int, CORE_ADDR,
 				   struct ui_file *, int,
+				   const struct value *,
 				   const struct value_print_options *,
 				   struct type **, int);
+
+extern void cp_print_value_fields_rtti (struct type *,
+					const gdb_byte *, int, CORE_ADDR,
+					struct ui_file *, int,
+					const struct value *,
+					const struct value_print_options *,
+					struct type **, int);
 
 extern int cp_is_vtbl_ptr_type (struct type *);
 
 extern int cp_is_vtbl_member (struct type *);
+
+/* These are in c-valprint.c.  */
+
+extern int c_textual_element_type (struct type *, char);
 
 
 #endif /* !defined (C_LANG_H) */

@@ -1,5 +1,7 @@
 \input texinfo
 @setfilename stabs.info
+@setchapternewpage odd
+@settitle STABS
 
 @c @finalout
 
@@ -12,12 +14,13 @@
 
 @copying
 Copyright @copyright{} 1992, 1993, 1994, 1995, 1997, 1998, 2000, 2001,
-2002, 2003, 2004, 2005, 2006, 2007, 2009 Free Software Foundation, Inc.
+2002, 2003, 2004, 2005, 2006, 2007, 2009, 2010
+Free Software Foundation, Inc.
 Contributed by Cygnus Support.  Written by Julia Menapace, Jim Kingdon,
 and David MacKenzie.
 
 Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.1 or
+under the terms of the GNU Free Documentation License, Version 1.3 or
 any later version published by the Free Software Foundation; with no
 Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
 Texts.  A copy of the license is included in the section entitled ``GNU
@@ -30,8 +33,6 @@ This document describes the stabs debugging symbol tables.
 @insertcopying
 @end ifnottex
 
-@setchapternewpage odd
-@settitle STABS
 @titlepage
 @title The ``stabs'' debug format
 @author Julia Menapace, Jim Kingdon, David MacKenzie
@@ -4114,9 +4115,9 @@ is no more work than having the linker relocate ELF symbols, and it
 solves the problem of having to associate the ELF and stab symbols.
 However, no one has yet designed or implemented such a scheme.
 
-@raisesections
+@node GNU Free Documentation License
+@appendix GNU Free Documentation License
 @include fdl.texi
-@lowersections
 
 @node Symbol Types Index
 @unnumbered Symbol Types Index

@@ -1,7 +1,8 @@
 /* Declarations and definitions of codes relating to the DWARF2 and
    DWARF3 symbolic debugging information formats.
    Copyright (C) 1992, 1993, 1995, 1996, 1997, 1999, 2000, 2001, 2002,
-   2003, 2004, 2005, 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
 
    Written by Gary Funck (gary@intrepid.com) The Ada Joint Program
    Office (AJPO), Florida State University and Silicon Graphics Inc.
@@ -66,6 +67,7 @@ typedef struct
   unsigned short li_version;
   unsigned int   li_prologue_length;
   unsigned char  li_min_insn_length;
+  unsigned char  li_max_ops_per_insn;
   unsigned char  li_default_is_stmt;
   int            li_line_base;
   unsigned char  li_line_range;
@@ -196,14 +198,20 @@ enum dwarf_tag
     DW_TAG_shared_type = 0x40,
     /* DWARF 4.  */
     DW_TAG_type_unit = 0x41,
+    DW_TAG_rvalue_reference_type = 0x42,
+    DW_TAG_template_alias = 0x43,
 
     DW_TAG_lo_user = 0x4080,
     DW_TAG_hi_user = 0xffff,
 
     /* SGI/MIPS Extensions.  */
     DW_TAG_MIPS_loop = 0x4081,
+
     /* HP extensions.  See: ftp://ftp.hp.com/pub/lang/tools/WDB/wdb-4.0.tar.gz .  */
     DW_TAG_HP_array_descriptor = 0x4090,
+    DW_TAG_HP_Bliss_field      = 0x4091,
+    DW_TAG_HP_Bliss_field_set  = 0x4092,
+
     /* GNU extensions.  */
     DW_TAG_format_label = 0x4101,	/* For FORTRAN 77 and Fortran 90.  */
     DW_TAG_function_template = 0x4102,	/* For C++.  */
@@ -213,6 +221,13 @@ enum dwarf_tag
     /* Template template parameter.
        See http://gcc.gnu.org/wiki/TemplateParmsDwarf .  */
     DW_TAG_GNU_template_template_param = 0x4106,
+
+    /* Template parameter pack extension, specified at
+       http://wiki.dwarfstd.org/index.php?title=C%2B%2B0x:_Variadic_templates
+       The values of these two TAGS are in the DW_TAG_GNU_* space until the tags
+       are properly part of DWARF 5.  */
+    DW_TAG_GNU_template_parameter_pack = 0x4107,
+    DW_TAG_GNU_formal_parameter_pack = 0x4108,
     /* Extensions for UPC.  See: http://upc.gwu.edu/~upc.  */
     DW_TAG_upc_shared_type = 0x8765,
     DW_TAG_upc_strict_type = 0x8766,
@@ -254,7 +269,8 @@ enum dwarf_form
     DW_FORM_sec_offset = 0x17,
     DW_FORM_exprloc = 0x18,
     DW_FORM_flag_present = 0x19,
-    DW_FORM_sig8 = 0x20
+    DW_FORM_ref_sig8 = 0x20
+#define DW_FORM_sig8  DW_FORM_ref_sig8  /* Note: The use of DW_FORM_sig8 is deprecated.  */
   };
 
 /* Attribute names and codes.  */
@@ -353,7 +369,12 @@ enum dwarf_attribute
     DW_AT_pure          = 0x67,
     DW_AT_recursive     = 0x68,
     /* DWARF 4.  */
-    DW_AT_signature     = 0x69,
+    DW_AT_signature       = 0x69,
+    DW_AT_main_subprogram = 0x6a,
+    DW_AT_data_bit_offset = 0x6b,
+    DW_AT_const_expr      = 0x6c,
+    DW_AT_enum_class      = 0x6d,
+    DW_AT_linkage_name    = 0x6e,
 
     DW_AT_lo_user = 0x2000,	/* Implementation-defined range start.  */
     DW_AT_hi_user = 0x3ff0,	/* Implementation-defined range end.  */
@@ -373,6 +394,8 @@ enum dwarf_attribute
     /* HP extensions.  */
     DW_AT_HP_block_index         = 0x2000,
     DW_AT_HP_unmodifiable        = 0x2001, /* Same as DW_AT_MIPS_fde.  */
+    DW_AT_HP_prologue            = 0x2005, /* Same as DW_AT_MIPS_loop_unroll.  */
+    DW_AT_HP_epilogue            = 0x2008, /* Same as DW_AT_MIPS_stride.  */
     DW_AT_HP_actuals_stmt_list   = 0x2010,
     DW_AT_HP_proc_per_section    = 0x2011,
     DW_AT_HP_raw_data_ptr        = 0x2012,
@@ -385,6 +408,13 @@ enum dwarf_attribute
     DW_AT_HP_all_variables_modifiable = 0x2019,
     DW_AT_HP_linkage_name        = 0x201a,
     DW_AT_HP_prof_flags          = 0x201b,  /* In comp unit of procs_info for -g.  */
+    DW_AT_HP_unit_name           = 0x201f,
+    DW_AT_HP_unit_size           = 0x2020,
+    DW_AT_HP_widened_byte_size   = 0x2021,
+    DW_AT_HP_definition_points   = 0x2022,
+    DW_AT_HP_default_location    = 0x2023,
+    DW_AT_HP_is_result_param     = 0x2029,
+
     /* GNU extensions.  */
     DW_AT_sf_names   = 0x2101,
     DW_AT_src_info   = 0x2102,
@@ -393,11 +423,28 @@ enum dwarf_attribute
     DW_AT_body_begin = 0x2105,
     DW_AT_body_end   = 0x2106,
     DW_AT_GNU_vector = 0x2107,
+    /* Thread-safety annotations.
+       See http://gcc.gnu.org/wiki/ThreadSafetyAnnotation .  */
+    DW_AT_GNU_guarded_by    = 0x2108,
+    DW_AT_GNU_pt_guarded_by = 0x2109,
+    DW_AT_GNU_guarded       = 0x210a,
+    DW_AT_GNU_pt_guarded    = 0x210b,
+    DW_AT_GNU_locks_excluded = 0x210c,
+    DW_AT_GNU_exclusive_locks_required = 0x210d,
+    DW_AT_GNU_shared_locks_required = 0x210e,
+    /* One-definition rule violation detection.
+       See http://gcc.gnu.org/wiki/DwarfSeparateTypeInfo .  */
+    DW_AT_GNU_odr_signature = 0x210f,
     /* Template template argument name.
        See http://gcc.gnu.org/wiki/TemplateParmsDwarf .  */
     DW_AT_GNU_template_name = 0x2110,
     /* VMS extensions.  */
     DW_AT_VMS_rtnbeg_pd_address = 0x2201,
+    /* GNAT extensions.  */
+    /* GNAT descriptive type.
+       See http://gcc.gnu.org/wiki/DW_AT_GNAT_descriptive_type .  */
+    DW_AT_use_GNAT_descriptive_type = 0x2301,
+    DW_AT_GNAT_descriptive_type	= 0x2302,
     /* UPC extension.  */
     DW_AT_upc_threads_scaled = 0x3210,
     /* PGI (STMicroelectronics) extensions.  */
@@ -607,18 +654,29 @@ enum dwarf_type
     DW_ATE_signed_fixed = 0xd,
     DW_ATE_unsigned_fixed = 0xe,
     DW_ATE_decimal_float = 0xf,
+    /* DWARF 4.  */
+    DW_ATE_UTF = 0x10,
 
     DW_ATE_lo_user = 0x80,
     DW_ATE_hi_user = 0xff,
 
     /* HP extensions.  */
-    DW_ATE_HP_float80            = 0x80, /* Floating-point (80 bit).  */
-    DW_ATE_HP_complex_float80    = 0x81, /* Complex floating-point (80 bit).  */
-    DW_ATE_HP_float128           = 0x82, /* Floating-point (128 bit).  */
-    DW_ATE_HP_complex_float128   = 0x83, /* Complex floating-point (128 bit).  */
-    DW_ATE_HP_floathpintel       = 0x84, /* Floating-point (82 bit IA64).  */
-    DW_ATE_HP_imaginary_float80  = 0x85,
-    DW_ATE_HP_imaginary_float128 = 0x86
+    DW_ATE_HP_float80             = 0x80, /* Floating-point (80 bit).  */
+    DW_ATE_HP_complex_float80     = 0x81, /* Complex floating-point (80 bit).  */
+    DW_ATE_HP_float128            = 0x82, /* Floating-point (128 bit).  */
+    DW_ATE_HP_complex_float128    = 0x83, /* Complex fp (128 bit).  */
+    DW_ATE_HP_floathpintel        = 0x84, /* Floating-point (82 bit IA64).  */
+    DW_ATE_HP_imaginary_float80   = 0x85,
+    DW_ATE_HP_imaginary_float128  = 0x86,
+    DW_ATE_HP_VAX_float           = 0x88, /* F or G floating.  */
+    DW_ATE_HP_VAX_float_d         = 0x89, /* D floating.  */
+    DW_ATE_HP_packed_decimal      = 0x8a, /* Cobol.  */
+    DW_ATE_HP_zoned_decimal       = 0x8b, /* Cobol.  */
+    DW_ATE_HP_edited              = 0x8c, /* Cobol.  */
+    DW_ATE_HP_signed_fixed        = 0x8d, /* Cobol.  */
+    DW_ATE_HP_unsigned_fixed      = 0x8e, /* Cobol.  */
+    DW_ATE_HP_VAX_complex_float   = 0x8f, /* F or G floating complex.  */
+    DW_ATE_HP_VAX_complex_float_d = 0x90  /* D floating complex.  */
   };
 
 /* Decimal sign encodings.  */
@@ -694,7 +752,8 @@ enum dwarf_calling_convention
     DW_CC_lo_user = 0x40,
     DW_CC_hi_user = 0xff,
 
-    DW_CC_GNU_renesas_sh = 0x40
+    DW_CC_GNU_renesas_sh = 0x40,
+    DW_CC_GNU_borland_fastcall_i386 = 0x41
   };
 
 /* Inline attribute.  */
@@ -750,6 +809,7 @@ enum dwarf_line_number_x_ops
     DW_LNE_HP_negate_function_exit     = 0x18,
     DW_LNE_HP_negate_front_end_logical = 0x19,
     DW_LNE_HP_define_proc              = 0x20,
+    DW_LNE_HP_source_file_correlation  = 0x80,
 
     DW_LNE_lo_user = 0x80,
     DW_LNE_hi_user = 0xff
@@ -831,6 +891,8 @@ enum dwarf_source_language
     DW_LANG_ObjC_plus_plus = 0x0011,
     DW_LANG_UPC = 0x0012,
     DW_LANG_D = 0x0013,
+    /* DWARF 4.  */
+    DW_LANG_Python = 0x0014,
 
     DW_LANG_lo_user = 0x8000,	/* Implementation-defined range start.  */
     DW_LANG_hi_user = 0xffff,	/* Implementation-defined range start.  */
@@ -838,7 +900,13 @@ enum dwarf_source_language
     /* MIPS.  */
     DW_LANG_Mips_Assembler = 0x8001,
     /* UPC.  */
-    DW_LANG_Upc = 0x8765
+    DW_LANG_Upc = 0x8765,
+    /* HP extensions.  */
+    DW_LANG_HP_Bliss     = 0x8003,
+    DW_LANG_HP_Basic91   = 0x8004,
+    DW_LANG_HP_Pascal91  = 0x8005,
+    DW_LANG_HP_IMacro    = 0x8006,
+    DW_LANG_HP_Assembler = 0x8007
   };
 
 /* Names and codes for macro information.  */

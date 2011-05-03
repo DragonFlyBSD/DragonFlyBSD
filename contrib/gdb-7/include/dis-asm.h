@@ -1,11 +1,11 @@
 /* Interface between the opcode library and its callers.
 
-   Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2009
+   Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2009, 2010
    Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
+   the Free Software Foundation; either version 3, or (at your option)
    any later version.
 
    This program is distributed in the hope that it will be useful,
@@ -127,18 +127,18 @@ typedef struct disassemble_info
      Returns an errno value or 0 for success.  */
   int (*read_memory_func)
     (bfd_vma memaddr, bfd_byte *myaddr, unsigned int length,
-     struct disassemble_info *info);
+     struct disassemble_info *dinfo);
 
   /* Function which should be called if we get an error that we can't
      recover from.  STATUS is the errno value from read_memory_func and
      MEMADDR is the address that we were trying to read.  INFO is a
      pointer to this struct.  */
   void (*memory_error_func)
-    (int status, bfd_vma memaddr, struct disassemble_info *info);
+    (int status, bfd_vma memaddr, struct disassemble_info *dinfo);
 
   /* Function called to print ADDR.  */
   void (*print_address_func)
-    (bfd_vma addr, struct disassemble_info *info);
+    (bfd_vma addr, struct disassemble_info *dinfo);
 
   /* Function called to determine if there is a symbol at the given ADDR.
      If there is, the function returns 1, otherwise it returns 0.
@@ -148,13 +148,13 @@ typedef struct disassemble_info
      address, (normally because there is a symbol associated with
      that address), but sometimes we want to mask out the overlay bits.  */
   int (* symbol_at_address_func)
-    (bfd_vma addr, struct disassemble_info * info);
+    (bfd_vma addr, struct disassemble_info *dinfo);
 
   /* Function called to check if a SYMBOL is can be displayed to the user.
      This is used by some ports that want to hide special symbols when
      displaying debugging outout.  */
   bfd_boolean (* symbol_is_valid)
-    (asymbol *, struct disassemble_info * info);
+    (asymbol *, struct disassemble_info *dinfo);
 
   /* These are for buffer_read_memory.  */
   bfd_byte *buffer;
@@ -261,8 +261,6 @@ extern int print_insn_m68hc11		(bfd_vma, disassemble_info *);
 extern int print_insn_m68hc12		(bfd_vma, disassemble_info *);
 extern int print_insn_m68k		(bfd_vma, disassemble_info *);
 extern int print_insn_m88k		(bfd_vma, disassemble_info *);
-extern int print_insn_maxq_big		(bfd_vma, disassemble_info *);
-extern int print_insn_maxq_little	(bfd_vma, disassemble_info *);
 extern int print_insn_mcore		(bfd_vma, disassemble_info *);
 extern int print_insn_mep		(bfd_vma, disassemble_info *);
 extern int print_insn_microblaze	(bfd_vma, disassemble_info *);
@@ -286,6 +284,7 @@ extern int print_insn_spu		(bfd_vma, disassemble_info *);
 extern int print_insn_tic30		(bfd_vma, disassemble_info *);
 extern int print_insn_tic4x		(bfd_vma, disassemble_info *);
 extern int print_insn_tic54x		(bfd_vma, disassemble_info *);
+extern int print_insn_tic6x		(bfd_vma, disassemble_info *);
 extern int print_insn_tic80		(bfd_vma, disassemble_info *);
 extern int print_insn_v850		(bfd_vma, disassemble_info *);
 extern int print_insn_vax		(bfd_vma, disassemble_info *);
@@ -296,6 +295,7 @@ extern int print_insn_xtensa		(bfd_vma, disassemble_info *);
 extern int print_insn_z80		(bfd_vma, disassemble_info *);
 extern int print_insn_z8001		(bfd_vma, disassemble_info *);
 extern int print_insn_z8002		(bfd_vma, disassemble_info *);
+extern int print_insn_rx		(bfd_vma, disassemble_info *);
 
 extern disassembler_ftype arc_get_disassembler (void *);
 extern disassembler_ftype cris_get_disassembler (bfd *);
@@ -316,7 +316,7 @@ extern disassembler_ftype disassembler (bfd *);
 
 /* Amend the disassemble_info structure as necessary for the target architecture.
    Should only be called after initialising the info->arch field.  */
-extern void disassemble_init_for_target (struct disassemble_info * info);
+extern void disassemble_init_for_target (struct disassemble_info * dinfo);
 
 /* Document any target specific options available from the disassembler.  */
 extern void disassembler_usage (FILE *);
@@ -351,7 +351,7 @@ extern bfd_boolean generic_symbol_is_valid
 
 /* Method to initialize a disassemble_info struct.  This should be
    called by all applications creating such a struct.  */
-extern void init_disassemble_info (struct disassemble_info *info, void *stream,
+extern void init_disassemble_info (struct disassemble_info *dinfo, void *stream,
 				   fprintf_ftype fprintf_func);
 
 /* For compatibility with existing code.  */

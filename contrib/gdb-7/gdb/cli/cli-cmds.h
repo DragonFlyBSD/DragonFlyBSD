@@ -1,5 +1,5 @@
 /* Header file for GDB CLI command implementation library.
-   Copyright (c) 2000,2006,2007,2008,2009 Free Software Foundation, Inc.
+   Copyright (c) 2000,2006,2007,2008,2009,2010 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -123,10 +123,10 @@ extern void quit_command (char *, int);
 
 extern void source_script (char *, int);
 
-/* Used everywhere whenever at least one parameter is required and
-  none is specified. */
+/* Exported to objfiles.c.  */
 
-extern NORETURN void error_no_arg (char *) ATTR_NORETURN;
+extern int find_and_open_script (const char *file, int search_path,
+				 FILE **streamp, char **full_path);
 
 /* Command tracing state.  */
 

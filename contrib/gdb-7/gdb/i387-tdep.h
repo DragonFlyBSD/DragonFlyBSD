@@ -1,6 +1,6 @@
 /* Target-dependent code for the i387.
 
-   Copyright (C) 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009
+   Copyright (C) 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -27,9 +27,14 @@ struct regcache;
 struct type;
 struct ui_file;
 
+/* Number of i387 floating point registers.  */
+#define I387_NUM_REGS	16
+
 #define I387_ST0_REGNUM(tdep) ((tdep)->st0_regnum)
 #define I387_NUM_XMM_REGS(tdep) ((tdep)->num_xmm_regs)
 #define I387_MM0_REGNUM(tdep) ((tdep)->mm0_regnum)
+#define I387_NUM_YMM_REGS(tdep) ((tdep)->num_ymm_regs)
+#define I387_YMM0H_REGNUM(tdep) ((tdep)->ymm0h_regnum)
 
 #define I387_FCTRL_REGNUM(tdep) (I387_ST0_REGNUM (tdep) + 8)
 #define I387_FSTAT_REGNUM(tdep) (I387_FCTRL_REGNUM (tdep) + 1)
@@ -42,6 +47,8 @@ struct ui_file;
 #define I387_XMM0_REGNUM(tdep) (I387_ST0_REGNUM (tdep) + 16)
 #define I387_MXCSR_REGNUM(tdep) \
   (I387_XMM0_REGNUM (tdep) + I387_NUM_XMM_REGS (tdep))
+#define I387_YMMENDH_REGNUM(tdep) \
+  (I387_YMM0H_REGNUM (tdep) + I387_NUM_YMM_REGS (tdep))
 
 /* Print out the i387 floating point state.  */
 
@@ -96,6 +103,11 @@ extern void i387_collect_fsave (const struct regcache *regcache, int regnum,
 extern void i387_supply_fxsave (struct regcache *regcache, int regnum,
 				const void *fxsave);
 
+/* Similar to i387_supply_fxsave, but use XSAVE extended state.  */
+
+extern void i387_supply_xsave (struct regcache *regcache, int regnum,
+			       const void *xsave);
+
 /* Fill register REGNUM (if it is a floating-point or SSE register) in
    *FXSAVE with the value from REGCACHE.  If REGNUM is -1, do this for
    all registers.  This function doesn't touch any of the reserved
@@ -103,6 +115,11 @@ extern void i387_supply_fxsave (struct regcache *regcache, int regnum,
 
 extern void i387_collect_fxsave (const struct regcache *regcache, int regnum,
 				 void *fxsave);
+
+/* Similar to i387_collect_fxsave, but use XSAVE extended state.  */
+
+extern void i387_collect_xsave (const struct regcache *regcache,
+				int regnum, void *xsave, int gcore);
 
 /* Prepare the FPU stack in REGCACHE for a function return.  */
 

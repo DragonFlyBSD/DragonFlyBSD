@@ -1,5 +1,5 @@
 /* DWARF 1 find nearest line (_bfd_dwarf1_find_nearest_line).
-   Copyright 1998, 1999, 2000, 2001, 2002, 2004, 2005, 2007, 2008
+   Copyright 1998, 1999, 2000, 2001, 2002, 2004, 2005, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Written by Gavin Romig-Koch of Cygnus Solutions (gavin@cygnus.com).
@@ -251,8 +251,8 @@ parse_die (bfd *             abfd,
 	  break;
 	case FORM_STRING:
 	  if (attr == AT_name)
-	    aDieInfo->name = (char *)xptr;
-	  xptr += strlen (aDieInfo->name) + 1;
+	    aDieInfo->name = (char *) xptr;
+	  xptr += strlen ((char *) xptr) + 1;
 	  break;
 	}
     }

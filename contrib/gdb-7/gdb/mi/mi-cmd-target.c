@@ -1,5 +1,5 @@
 /* MI Command Set - target commands.
-   Copyright (C) 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -76,7 +76,7 @@ mi_cmd_target_file_delete (char *command, char **argv, int argc)
 {
   int optind = 0;
   char *optarg;
-  const char *remote_file, *local_file;
+  const char *remote_file;
   static struct mi_opt opts[] =
   {
     { 0, 0, 0 }

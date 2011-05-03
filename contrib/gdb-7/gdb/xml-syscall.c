@@ -1,9 +1,7 @@
 /* Functions that provide the mechanism to parse a syscall XML file
    and get its values.
 
-   Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
-   1998, 1999, 2000, 2001, 2003, 2004, 2005, 2006, 2007, 2008
-   Free Software Foundation, Inc.
+   Copyright (C) 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -52,7 +50,7 @@ syscall_warn_user (void)
 void
 set_xml_syscall_file_name (const char *name)
 {
-  syscall_warn_user ();
+  return;
 }
 
 void
@@ -80,8 +78,11 @@ get_syscall_names (void)
   return NULL;
 }
 
-
 #else /* ! HAVE_LIBEXPAT */
+
+/* Variable that will hold the last known data-directory.  This is useful to
+   know whether we should re-read the XML info for the target.  */
+static char *my_gdb_datadir = NULL;
 
 /* Structure which describes a syscall.  */
 typedef struct syscall_desc
@@ -114,7 +115,7 @@ struct syscall_parsing_data
 
 /* Structure used to store information about the available syscalls in
    the system.  */
-static const struct syscalls_info *_sysinfo = NULL;
+static const struct syscalls_info *sysinfo = NULL;
 
 /* A flag to tell if we already initialized the structure above.  */
 static int have_initialized_sysinfo = 0;
@@ -168,17 +169,6 @@ syscall_create_syscall_desc (struct syscalls_info *sysinfo,
   VEC_safe_push (syscall_desc_p, sysinfo->syscalls, sysdesc);
 }
 
-/* Handle the start of a <syscalls_info> element.  */
-static void
-syscall_start_syscalls_info (struct gdb_xml_parser *parser,
-                             const struct gdb_xml_element *element,
-                             void *user_data,
-                             VEC(gdb_xml_value_s) *attributes)
-{
-  struct syscall_parsing_data *data = user_data;
-  struct syscalls_info *sysinfo = data->sysinfo;
-}
-
 /* Handle the start of a <syscall> element.  */
 static void
 syscall_start_syscall (struct gdb_xml_parser *parser,
@@ -225,7 +215,7 @@ static const struct gdb_xml_element syscalls_info_children[] = {
 
 static const struct gdb_xml_element syselements[] = {
   { "syscalls_info", NULL, syscalls_info_children,
-    GDB_XML_EF_NONE, syscall_start_syscalls_info, NULL },
+    GDB_XML_EF_NONE, NULL, NULL },
   { NULL, NULL, NULL, GDB_XML_EF_NONE, NULL, NULL }
 };
 
@@ -236,8 +226,6 @@ syscall_parse_xml (const char *document, xml_fetch_another fetcher,
   struct cleanup *result_cleanup;
   struct gdb_xml_parser *parser;
   struct syscall_parsing_data data;
-  char *expanded_text;
-  int i;
 
   parser = gdb_xml_create_parser_and_cleanup (_("syscalls info"),
 					      syselements, &data);
@@ -275,10 +263,7 @@ xml_init_syscalls_info (const char *filename)
 
   full_file = xml_fetch_content_from_file (filename, gdb_datadir);
   if (full_file == NULL)
-    {
-      warning (_("Could not open \"%s\""), filename);
-      return NULL;
-    }
+    return NULL;
 
   back_to = make_cleanup (xfree, full_file);
 
@@ -297,31 +282,43 @@ xml_init_syscalls_info (const char *filename)
 static void
 init_sysinfo (void)
 {
+  /* Should we re-read the XML info for this target?  */
+  if (my_gdb_datadir && strcmp (my_gdb_datadir, gdb_datadir) != 0)
+    {
+      /* The data-directory changed from the last time we used it.
+	 It means that we have to re-read the XML info.  */
+      have_initialized_sysinfo = 0;
+      xfree (my_gdb_datadir);
+      my_gdb_datadir = NULL;
+      if (sysinfo)
+	free_syscalls_info ((void *) sysinfo);
+    }
+
   /* Did we already try to initialize the structure?  */
   if (have_initialized_sysinfo)
     return;
-/*  if (xml_syscall_file == NULL)
-    internal_error (__FILE__, __LINE__,
-                    _("This architecture has not set the XML syscall file "
-                      "name.  This is a bug and should not happen; please "
-                      "report it.")); */
 
-  _sysinfo = xml_init_syscalls_info (xml_syscall_file);
+  sysinfo = xml_init_syscalls_info (xml_syscall_file);
 
   have_initialized_sysinfo = 1;
 
-  if (_sysinfo == NULL)
+  if (sysinfo == NULL)
     {
       if (xml_syscall_file)
-        /* The initialization failed.  Let's show a warning
-           message to the user (just this time) and leave.  */
-        warning (_("Could not load the syscall XML file `%s'.\n\
-GDB will not be able to display syscall names."), xml_syscall_file);
+	warning (_("\
+Could not load the syscall XML file `%s/%s'."),
+		 gdb_datadir, xml_syscall_file);
       else
-        /* There's no file to open.  Let's warn the user.  */
-        warning (_("There is no XML file to open.\n\
-GDB will not be able to display syscall names."));
+	warning (_("\
+There is no XML file to open."));
+
+      warning (_("\
+GDB will not be able to display syscall names nor to verify if\n\
+any provided syscall numbers are valid."));
     }
+
+  /* Saving the data-directory used to read this XML info.  */
+  my_gdb_datadir = xstrdup (gdb_datadir);
 }
 
 static int
@@ -364,13 +361,6 @@ xml_get_syscall_name (const struct syscalls_info *sysinfo,
   return NULL;
 }
 
-static int
-xml_number_of_syscalls (const struct syscalls_info *sysinfo)
-{
-  return (sysinfo == NULL ? 0 : VEC_length (syscall_desc_p,
-                                            sysinfo->syscalls));
-}
-
 static const char **
 xml_list_of_syscalls (const struct syscalls_info *sysinfo)
 {
@@ -408,7 +398,7 @@ get_syscall_by_number (int syscall_number,
   init_sysinfo ();
 
   s->number = syscall_number;
-  s->name = xml_get_syscall_name (_sysinfo, syscall_number);
+  s->name = xml_get_syscall_name (sysinfo, syscall_number);
 }
 
 void
@@ -417,7 +407,7 @@ get_syscall_by_name (const char *syscall_name,
 {
   init_sysinfo ();
 
-  s->number = xml_get_syscall_number (_sysinfo, syscall_name);
+  s->number = xml_get_syscall_number (sysinfo, syscall_name);
   s->name = syscall_name;
 }
 
@@ -426,7 +416,7 @@ get_syscall_names (void)
 {
   init_sysinfo ();
 
-  return xml_list_of_syscalls (_sysinfo);
+  return xml_list_of_syscalls (sysinfo);
 }
 
 #endif /* ! HAVE_LIBEXPAT */

@@ -1,6 +1,6 @@
 /* Objective-C language support routines for GDB, the GNU debugger.
 
-   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009
+   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Contributed by Apple Computer, Inc.
@@ -244,22 +244,24 @@ objc_demangle (const char *mangled, int options)
 	  xfree(demangled);	/* not mangled name */
 	  return NULL;
 	}
-      if (cp[1] == '_') {	/* easy case: no category name     */
-	*cp++ = ' ';		/* replace two '_' with one ' '    */
-	strcpy(cp, mangled + (cp - demangled) + 2);
-      }
-      else {
-	*cp++ = '(';		/* less easy case: category name */
-	cp = strchr(cp, '_');
-	if (!cp)
-	  {
-	    xfree(demangled);	/* not mangled name */
-	    return NULL;
-	  }
-	*cp++ = ')';
-	*cp++ = ' ';		/* overwriting 1st char of method name...  */
-	strcpy(cp, mangled + (cp - demangled));	/* get it back */
-      }
+      if (cp[1] == '_')		/* easy case: no category name     */
+	{
+	  *cp++ = ' ';		/* replace two '_' with one ' '    */
+	  strcpy(cp, mangled + (cp - demangled) + 2);
+	}
+      else
+	{
+	  *cp++ = '(';		/* less easy case: category name */
+	  cp = strchr(cp, '_');
+	  if (!cp)
+	    {
+	      xfree(demangled);	/* not mangled name */
+	      return NULL;
+	    }
+	  *cp++ = ')';
+	  *cp++ = ' ';		/* overwriting 1st char of method name...  */
+	  strcpy(cp, mangled + (cp - demangled));	/* get it back */
+	}
 
       while (*cp && *cp == '_')
 	cp++;			/* skip any initial underbars in method name */
@@ -283,7 +285,6 @@ objc_demangle (const char *mangled, int options)
 static void
 objc_emit_char (int c, struct type *type, struct ui_file *stream, int quoter)
 {
-
   c &= 0xFF;			/* Avoid sign bit follies.  */
 
   if (PRINT_LITERAL_FORM (c))
@@ -343,14 +344,13 @@ objc_printchar (int c, struct type *type, struct ui_file *stream)
 static void
 objc_printstr (struct ui_file *stream, struct type *type,
 	       const gdb_byte *string, unsigned int length,
-	       int force_ellipses,
+	       const char *encoding, int force_ellipses,
 	       const struct value_print_options *options)
 {
   unsigned int i;
   unsigned int things_printed = 0;
   int in_quotes = 0;
   int need_comma = 0;
-  int width = TYPE_LENGTH (type);
 
   /* If the string was not truncated due to `set print elements', and
      the last byte of it is a null, we don't print that, in
@@ -575,28 +575,34 @@ add_msglist(struct stoken *str, int addcolon)
   char *s, *p;
   int len, plen;
 
-  if (str == 0) {		/* Unnamed arg, or...  */
-    if (addcolon == 0) {	/* variable number of args.  */
-      msglist_len++;
-      return;
+  if (str == 0)			/* Unnamed arg, or...  */
+    {
+      if (addcolon == 0)	/* variable number of args.  */
+	{
+	  msglist_len++;
+	  return;
+	}
+      p = "";
+      plen = 0;
     }
-    p = "";
-    plen = 0;
-  } else {
-    p = str->ptr;
-    plen = str->length;
-  }
+  else
+    {
+      p = str->ptr;
+      plen = str->length;
+    }
   len = plen + strlen(msglist_sel) + 2;
   s = (char *)xmalloc(len);
   strcpy(s, msglist_sel);
   strncat(s, p, plen);
   xfree(msglist_sel);
   msglist_sel = s;
-  if (addcolon) {
-    s[len-2] = ':';
-    s[len-1] = 0;
-    msglist_len++;
-  } else
+  if (addcolon)
+    {
+      s[len-2] = ':';
+      s[len-1] = 0;
+      msglist_len++;
+    }
+  else
     s[len-2] = '\0';
 }
 
@@ -994,17 +1000,18 @@ parse_selector (char *method, char **selector)
   nselector = s1;
   s2 = s1;
 
-  for (;;) {
-    if (isalnum (*s2) || (*s2 == '_') || (*s2 == ':'))
-      *s1++ = *s2;
-    else if (isspace (*s2))
-      ;
-    else if ((*s2 == '\0') || (*s2 == '\''))
-      break;
-    else
-      return NULL;
-    s2++;
-  }
+  for (;;)
+    {
+      if (isalnum (*s2) || (*s2 == '_') || (*s2 == ':'))
+	*s1++ = *s2;
+      else if (isspace (*s2))
+	;
+      else if ((*s2 == '\0') || (*s2 == '\''))
+	break;
+      else
+	return NULL;
+      s2++;
+    }
   *s1++ = '\0';
 
   while (isspace (*s2))
@@ -1088,17 +1095,18 @@ parse_method (char *method, char *type, char **class,
   nselector = s2;
   s1 = s2;
 
-  for (;;) {
-    if (isalnum (*s2) || (*s2 == '_') || (*s2 == ':'))
-      *s1++ = *s2;
-    else if (isspace (*s2))
-      ;
-    else if (*s2 == ']')
-      break;
-    else
-      return NULL;
-    s2++;
-  }
+  for (;;)
+    {
+      if (isalnum (*s2) || (*s2 == '_') || (*s2 == ':'))
+	*s1++ = *s2;
+      else if (isspace (*s2))
+	;
+      else if (*s2 == ']')
+	break;
+      else
+	return NULL;
+      s2++;
+    }
   *s1++ = '\0';
   s2++;
 
@@ -1173,19 +1181,13 @@ find_methods (struct symtab *symtab, char type,
 
       ALL_OBJFILE_MSYMBOLS (objfile, msymbol)
 	{
+	  struct gdbarch *gdbarch = get_objfile_arch (objfile);
+	  CORE_ADDR pc = SYMBOL_VALUE_ADDRESS (msymbol);
+
 	  QUIT;
 
-	  if ((MSYMBOL_TYPE (msymbol) != mst_text)
-	      && (MSYMBOL_TYPE (msymbol) != mst_file_text))
-	    /* Not a function or method.  */
-	    continue;
-
-	  if (symtab)
-	    if ((SYMBOL_VALUE_ADDRESS (msymbol) <  BLOCK_START (block)) ||
-		(SYMBOL_VALUE_ADDRESS (msymbol) >= BLOCK_END (block)))
-	      /* Not in the specified symtab.  */
-	      continue;
-
+	  /* Check the symbol name first as this can be done entirely without
+	     sending any query to the target.  */
 	  symname = SYMBOL_NATURAL_NAME (msymbol);
 	  if (symname == NULL)
 	    continue;
@@ -1193,7 +1195,18 @@ find_methods (struct symtab *symtab, char type,
 	  if ((symname[0] != '-' && symname[0] != '+') || (symname[1] != '['))
 	    /* Not a method name.  */
 	    continue;
-      
+
+	  /* The minimal symbol might point to a function descriptor;
+	     resolve it to the actual code address instead.  */
+	  pc = gdbarch_convert_from_func_ptr_addr (gdbarch, pc,
+						   &current_target);
+
+	  if (symtab)
+	    if (pc < BLOCK_START (block) || pc >= BLOCK_END (block))
+	      /* Not in the specified symtab.  */
+	      continue;
+
+	  /* Now that thinks are a bit sane, clean up the symname.  */
 	  while ((strlen (symname) + 1) >= tmplen)
 	    {
 	      tmplen = (tmplen == 0) ? 1024 : tmplen * 2;
@@ -1221,7 +1234,7 @@ find_methods (struct symtab *symtab, char type,
 	      ((nselector == NULL) || (strcmp (selector, nselector) != 0)))
 	    continue;
 
-	  sym = find_pc_function (SYMBOL_VALUE_ADDRESS (msymbol));
+	  sym = find_pc_function (pc);
 	  if (sym != NULL)
 	    {
 	      const char *newsymname = SYMBOL_NATURAL_NAME (sym);
@@ -1304,36 +1317,36 @@ char *find_imps (struct symtab *symtab, struct block *block,
   strcpy (buf, method);
   tmp = parse_method (buf, &type, &class, &category, &selector);
 
-  if (tmp == NULL) {
-    
-    struct symbol *sym = NULL;
-    struct minimal_symbol *msym = NULL;
-    
-    strcpy (buf, method);
-    tmp = parse_selector (buf, &selector);
-    
-    if (tmp == NULL)
-      return NULL;
-    
-    sym = lookup_symbol (selector, block, VAR_DOMAIN, 0);
-    if (sym != NULL) 
-      {
-	if (syms)
-	  syms[csym] = sym;
-	csym++;
-	cdebug++;
-      }
+  if (tmp == NULL)
+    {
+      struct symbol *sym = NULL;
+      struct minimal_symbol *msym = NULL;
 
-    if (sym == NULL)
-      msym = lookup_minimal_symbol (selector, 0, 0);
+      strcpy (buf, method);
+      tmp = parse_selector (buf, &selector);
 
-    if (msym != NULL) 
-      {
-	if (syms)
-	  syms[csym] = (struct symbol *)msym;
-	csym++;
-      }
-  }
+      if (tmp == NULL)
+	return NULL;
+
+      sym = lookup_symbol (selector, block, VAR_DOMAIN, 0);
+      if (sym != NULL) 
+	{
+	  if (syms)
+	    syms[csym] = sym;
+	  csym++;
+	  cdebug++;
+	}
+
+      if (sym == NULL)
+	msym = lookup_minimal_symbol (selector, 0, 0);
+
+      if (msym != NULL) 
+	{
+	  if (syms)
+	    syms[csym] = (struct symbol *)msym;
+	  csym++;
+	}
+    }
 
   if (syms != NULL)
     find_methods (symtab, type, class, category, selector, 
@@ -1495,26 +1508,29 @@ static void
 find_objc_msgsend (void)
 {
   unsigned int i;
-  for (i = 0; i < nmethcalls; i++) {
 
-    struct minimal_symbol *func;
+  for (i = 0; i < nmethcalls; i++)
+    {
+      struct minimal_symbol *func;
 
-    /* Try both with and without underscore.  */
-    func = lookup_minimal_symbol (methcalls[i].name, NULL, NULL);
-    if ((func == NULL) && (methcalls[i].name[0] == '_')) {
-      func = lookup_minimal_symbol (methcalls[i].name + 1, NULL, NULL);
+      /* Try both with and without underscore.  */
+      func = lookup_minimal_symbol (methcalls[i].name, NULL, NULL);
+      if ((func == NULL) && (methcalls[i].name[0] == '_'))
+	{
+	  func = lookup_minimal_symbol (methcalls[i].name + 1, NULL, NULL);
+	}
+      if (func == NULL)
+	{ 
+	  methcalls[i].begin = 0;
+	  methcalls[i].end = 0;
+	  continue; 
+	}
+
+      methcalls[i].begin = SYMBOL_VALUE_ADDRESS (func);
+      do {
+	methcalls[i].end = SYMBOL_VALUE_ADDRESS (++func);
+      } while (methcalls[i].begin == methcalls[i].end);
     }
-    if (func == NULL) { 
-      methcalls[i].begin = 0;
-      methcalls[i].end = 0;
-      continue; 
-    }
-    
-    methcalls[i].begin = SYMBOL_VALUE_ADDRESS (func);
-    do {
-      methcalls[i].end = SYMBOL_VALUE_ADDRESS (++func);
-    } while (methcalls[i].begin == methcalls[i].end);
-  }
 }
 
 /* find_objc_msgcall (replaces pc_off_limits)
@@ -1614,6 +1630,7 @@ read_objc_method (struct gdbarch *gdbarch, CORE_ADDR addr,
 		  struct objc_method *method)
 {
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+
   method->name  = read_memory_unsigned_integer (addr + 0, 4, byte_order);
   method->types = read_memory_unsigned_integer (addr + 4, 4, byte_order);
   method->imp   = read_memory_unsigned_integer (addr + 8, 4, byte_order);
@@ -1623,6 +1640,7 @@ static unsigned long
 read_objc_methlist_nmethods (struct gdbarch *gdbarch, CORE_ADDR addr)
 {
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+
   return read_memory_unsigned_integer (addr + 4, 4, byte_order);
 }
 
@@ -1639,6 +1657,7 @@ read_objc_object (struct gdbarch *gdbarch, CORE_ADDR addr,
 		  struct objc_object *object)
 {
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+
   object->isa = read_memory_unsigned_integer (addr, 4, byte_order);
 }
 
@@ -1647,6 +1666,7 @@ read_objc_super (struct gdbarch *gdbarch, CORE_ADDR addr,
 		 struct objc_super *super)
 {
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+
   super->receiver = read_memory_unsigned_integer (addr, 4, byte_order);
   super->class = read_memory_unsigned_integer (addr + 4, 4, byte_order);
 };
@@ -1656,6 +1676,7 @@ read_objc_class (struct gdbarch *gdbarch, CORE_ADDR addr,
 		 struct objc_class *class)
 {
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+
   class->isa = read_memory_unsigned_integer (addr, 4, byte_order);
   class->super_class = read_memory_unsigned_integer (addr + 4, 4, byte_order);
   class->name = read_memory_unsigned_integer (addr + 8, 4, byte_order);
@@ -1700,8 +1721,8 @@ find_implementation_from_class (struct gdbarch *gdbarch,
 	  for (i = 0; i < nmethods; i++) 
 	    {
 	      struct objc_method meth_str;
-	      read_objc_methlist_method (gdbarch, mlist, i, &meth_str);
 
+	      read_objc_methlist_method (gdbarch, mlist, i, &meth_str);
 #if 0
 	      fprintf (stderr, 
 		       "checking method 0x%lx against selector 0x%lx\n", 

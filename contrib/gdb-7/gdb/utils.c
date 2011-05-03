@@ -2,7 +2,7 @@
 
    Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
    1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008,
-   2009 Free Software Foundation, Inc.
+   2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -26,6 +26,9 @@
 #include "event-top.h"
 #include "exceptions.h"
 #include "gdbthread.h"
+#ifdef HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif /* HAVE_SYS_RESOURCE_H */
 
 #ifdef TUI
 #include "tui/tui.h"		/* For tui_get_command_dimension.   */
@@ -55,6 +58,7 @@
 #include "gdb_obstack.h"
 #include "gdbcore.h"
 #include "top.h"
+#include "main.h"
 
 #include "inferior.h"		/* for signed_pointer_to_address */
 
@@ -68,6 +72,7 @@
 #include <time.h>
 
 #include "gdb_usleep.h"
+#include "interps.h"
 
 #if !HAVE_DECL_MALLOC
 extern PTR malloc ();		/* ARI: PTR */
@@ -87,7 +92,7 @@ void (*deprecated_error_begin_hook) (void);
 /* Prototypes for local functions */
 
 static void vfprintf_maybe_filtered (struct ui_file *, const char *,
-				     va_list, int) ATTR_FORMAT (printf, 2, 0);
+				     va_list, int) ATTRIBUTE_PRINTF (2, 0);
 
 static void fputs_maybe_filtered (const char *, struct ui_file *, int);
 
@@ -245,6 +250,7 @@ static void
 do_close_cleanup (void *arg)
 {
   int *fd = arg;
+
   close (*fd);
 }
 
@@ -252,6 +258,7 @@ struct cleanup *
 make_cleanup_close (int fd)
 {
   int *saved_fd = xmalloc (sizeof (fd));
+
   *saved_fd = fd;
   return make_cleanup_dtor (do_close_cleanup, saved_fd, xfree);
 }
@@ -262,7 +269,8 @@ static void
 do_fclose_cleanup (void *arg)
 {
   FILE *file = arg;
-  fclose (arg);
+
+  fclose (file);
 }
 
 /* Return a new cleanup that closes FILE.  */
@@ -279,6 +287,7 @@ static void
 do_obstack_free (void *arg)
 {
   struct obstack *ob = arg;
+
   obstack_free (ob, NULL);
 }
 
@@ -324,21 +333,61 @@ static void
 restore_integer (void *p)
 {
   struct restore_integer_closure *closure = p;
+
   *(closure->variable) = closure->value;
 }
 
 /* Remember the current value of *VARIABLE and make it restored when the cleanup
    is run.  */
+
 struct cleanup *
 make_cleanup_restore_integer (int *variable)
 {
   struct restore_integer_closure *c =
     xmalloc (sizeof (struct restore_integer_closure));
+
   c->variable = variable;
   c->value = *variable;
 
   return make_my_cleanup2 (&cleanup_chain, restore_integer, (void *)c,
 			   xfree);
+}
+
+/* Remember the current value of *VARIABLE and make it restored when the cleanup
+   is run.  */
+
+struct cleanup *
+make_cleanup_restore_uinteger (unsigned int *variable)
+{
+  return make_cleanup_restore_integer ((int *) variable);
+}
+
+struct restore_ui_file_closure
+{
+  struct ui_file **variable;
+  struct ui_file *value;
+};
+
+static void
+do_restore_ui_file (void *p)
+{
+  struct restore_ui_file_closure *closure = p;
+
+  *(closure->variable) = closure->value;
+}
+
+/* Remember the current value of *VARIABLE and make it restored when
+   the cleanup is run.  */
+
+struct cleanup *
+make_cleanup_restore_ui_file (struct ui_file **variable)
+{
+  struct restore_ui_file_closure *c = XNEW (struct restore_ui_file_closure);
+
+  c->variable = variable;
+  c->value = *variable;
+
+  return make_cleanup_dtor (do_restore_ui_file, (void *) c, xfree);
 }
 
 struct cleanup *
@@ -385,6 +434,7 @@ do_my_cleanups (struct cleanup **pmy_chain,
 		struct cleanup *old_chain)
 {
   struct cleanup *ptr;
+
   while ((ptr = *pmy_chain) != old_chain)
     {
       *pmy_chain = ptr->next;	/* Do this first incase recursion */
@@ -415,6 +465,7 @@ discard_my_cleanups (struct cleanup **pmy_chain,
 		     struct cleanup *old_chain)
 {
   struct cleanup *ptr;
+
   while ((ptr = *pmy_chain) != old_chain)
     {
       *pmy_chain = ptr->next;
@@ -477,6 +528,7 @@ void
 free_current_contents (void *ptr)
 {
   void **location = ptr;
+
   if (location == NULL)
     internal_error (__FILE__, __LINE__,
 		    _("free_current_contents: NULL pointer"));
@@ -497,6 +549,100 @@ free_current_contents (void *ptr)
 void
 null_cleanup (void *arg)
 {
+}
+
+/* If nonzero, display time usage both at startup and for each command.  */
+
+static int display_time;
+
+/* If nonzero, display space usage both at startup and for each command.  */
+
+static int display_space;
+
+/* Records a run time and space usage to be used as a base for
+   reporting elapsed time or change in space.  In addition,
+   the msg_type field indicates whether the saved time is from the
+   beginning of GDB execution (0) or the beginning of an individual 
+   command execution (1).  */
+struct cmd_stats 
+{
+  int msg_type;
+  long start_time;
+  long start_space;
+};
+
+/* Set whether to display time statistics to NEW_VALUE (non-zero 
+   means true).  */
+void
+set_display_time (int new_value)
+{
+  display_time = new_value;
+}
+
+/* Set whether to display space statistics to NEW_VALUE (non-zero
+   means true).  */
+void
+set_display_space (int new_value)
+{
+  display_space = new_value;
+}
+
+/* As indicated by display_time and display_space, report GDB's elapsed time
+   and space usage from the base time and space provided in ARG, which
+   must be a pointer to a struct cmd_stat. This function is intended
+   to be called as a cleanup. */
+static void
+report_command_stats (void *arg)
+{
+  struct cmd_stats *start_stats = (struct cmd_stats *) arg;
+  int msg_type = start_stats->msg_type;
+
+  if (display_time)
+    {
+      long cmd_time = get_run_time () - start_stats->start_time;
+
+      printf_unfiltered (msg_type == 0
+			 ? _("Startup time: %ld.%06ld\n")
+			 : _("Command execution time: %ld.%06ld\n"),
+			 cmd_time / 1000000, cmd_time % 1000000);
+    }
+
+  if (display_space)
+    {
+#ifdef HAVE_SBRK
+      char *lim = (char *) sbrk (0);
+
+      long space_now = lim - lim_at_start;
+      long space_diff = space_now - start_stats->start_space;
+
+      printf_unfiltered (msg_type == 0
+			 ? _("Space used: %ld (%c%ld during startup)\n")
+			 : _("Space used: %ld (%c%ld for this command)\n"),
+			 space_now,
+			 (space_diff >= 0 ? '+' : '-'),
+			 space_diff);
+#endif
+    }
+}
+
+/* Create a cleanup that reports time and space used since its
+   creation.  Precise messages depend on MSG_TYPE:
+      0:  Initial time/space
+      1:  Individual command time/space.  */
+struct cleanup *
+make_command_stats_cleanup (int msg_type)
+{
+  struct cmd_stats *new_stat = XMALLOC (struct cmd_stats);
+  
+#ifdef HAVE_SBRK
+  char *lim = (char *) sbrk (0);
+  new_stat->start_space = lim - lim_at_start;
+#endif
+
+  new_stat->msg_type = msg_type;
+  new_stat->start_time = get_run_time ();
+
+  return make_cleanup_dtor (report_command_stats, new_stat, xfree);
 }
 
 /* Continuations are implemented as cleanups internally.  Inherit from
@@ -548,7 +694,6 @@ add_inferior_continuation (void (*continuation_hook) (void *), void *args,
 void
 do_all_inferior_continuations (void)
 {
-  struct cleanup *old_chain;
   struct cleanup *as_cleanup;
   struct inferior *inf = current_inferior ();
 
@@ -573,6 +718,7 @@ void
 discard_all_inferior_continuations (struct inferior *inf)
 {
   struct cleanup *continuation_ptr = &inf->continuations->base;
+
   discard_my_cleanups (&continuation_ptr, NULL);
   inf->continuations = NULL;
 }
@@ -581,6 +727,7 @@ static void
 restore_thread_cleanup (void *arg)
 {
   ptid_t *ptid_p = arg;
+
   switch_to_thread (*ptid_p);
 }
 
@@ -661,6 +808,7 @@ discard_all_continuations_thread_callback (struct thread_info *thread,
 					   void *data)
 {
   struct cleanup *continuation_ptr = &thread->continuations->base;
+
   discard_my_cleanups (&continuation_ptr, NULL);
   thread->continuations = NULL;
   return 0;
@@ -737,6 +885,7 @@ discard_all_intermediate_continuations_thread_callback (struct thread_info *thre
 							void *data)
 {
   struct cleanup *continuation_ptr = &thread->intermediate_continuations->base;
+
   discard_my_cleanups (&continuation_ptr, NULL);
   thread->intermediate_continuations = NULL;
   return 0;
@@ -792,6 +941,7 @@ void
 warning (const char *string, ...)
 {
   va_list args;
+
   va_start (args, string);
   vwarning (string, args);
   va_end (args);
@@ -801,16 +951,17 @@ warning (const char *string, ...)
    The first argument STRING is the error message, used as a fprintf string,
    and the remaining args are passed as arguments to it.  */
 
-NORETURN void
+void
 verror (const char *string, va_list args)
 {
   throw_verror (GENERIC_ERROR, string, args);
 }
 
-NORETURN void
+void
 error (const char *string, ...)
 {
   va_list args;
+
   va_start (args, string);
   throw_verror (GENERIC_ERROR, string, args);
   va_end (args);
@@ -820,27 +971,67 @@ error (const char *string, ...)
    The first argument STRING is the error message, used as a fprintf string,
    and the remaining args are passed as arguments to it.  */
 
-NORETURN void
+void
 vfatal (const char *string, va_list args)
 {
   throw_vfatal (string, args);
 }
 
-NORETURN void
+void
 fatal (const char *string, ...)
 {
   va_list args;
+
   va_start (args, string);
   throw_vfatal (string, args);
   va_end (args);
 }
 
-NORETURN void
+void
 error_stream (struct ui_file *stream)
 {
   char *message = ui_file_xstrdup (stream, NULL);
+
   make_cleanup (xfree, message);
   error (("%s"), message);
+}
+
+/* Dump core trying to increase the core soft limit to hard limit first.  */
+
+static void
+dump_core (void)
+{
+#ifdef HAVE_SETRLIMIT
+  struct rlimit rlim = { RLIM_INFINITY, RLIM_INFINITY };
+
+  setrlimit (RLIMIT_CORE, &rlim);
+#endif /* HAVE_SETRLIMIT */
+
+  abort ();		/* NOTE: GDB has only three calls to abort().  */
+}
+
+/* Check whether GDB will be able to dump core using the dump_core function.  */
+
+static int
+can_dump_core (const char *reason)
+{
+#ifdef HAVE_GETRLIMIT
+  struct rlimit rlim;
+
+  /* Be quiet and assume we can dump if an error is returned.  */
+  if (getrlimit (RLIMIT_CORE, &rlim) != 0)
+    return 1;
+
+  if (rlim.rlim_max == 0)
+    {
+      fprintf_unfiltered (gdb_stderr,
+			  _("%s\nUnable to dump core, use `ulimit -c unlimited'"
+			    " before executing GDB next time.\n"), reason);
+      return 0;
+    }
+#endif /* HAVE_GETRLIMIT */
+
+  return 1;
 }
 
 /* Allow the user to configure the debugger behavior with respect to
@@ -856,7 +1047,6 @@ static const char *internal_problem_modes[] =
   internal_problem_no,
   NULL
 };
-static const char *internal_problem_mode = internal_problem_ask;
 
 /* Print a message reporting an internal error/warning. Ask the user
    if they want to continue, dump core, or just exit.  Return
@@ -873,7 +1063,7 @@ struct internal_problem
    has been reported, and assuming GDB didn't quit, the caller can
    either allow execution to resume or throw an error.  */
 
-static void ATTR_FORMAT (printf, 4, 0)
+static void ATTRIBUTE_PRINTF (4, 0)
 internal_vproblem (struct internal_problem *problem,
 		   const char *file, int line, const char *fmt, va_list ap)
 {
@@ -885,6 +1075,7 @@ internal_vproblem (struct internal_problem *problem,
   /* Don't allow infinite error/warning recursion.  */
   {
     static char msg[] = "Recursive internal problem.\n";
+
     switch (dejavu)
       {
       case 0:
@@ -893,7 +1084,7 @@ internal_vproblem (struct internal_problem *problem,
       case 1:
 	dejavu = 2;
 	fputs_unfiltered (msg, gdb_stderr);
-	abort ();	/* NOTE: GDB has only four calls to abort().  */
+	abort ();	/* NOTE: GDB has only three calls to abort().  */
       default:
 	dejavu = 3;
         /* Newer GLIBC versions put the warn_unused_result attribute
@@ -902,7 +1093,7 @@ internal_vproblem (struct internal_problem *problem,
            does not fix this problem.  This is the solution suggested
            at http://gcc.gnu.org/bugzilla/show_bug.cgi?id=25509.  */
 	if (write (STDERR_FILENO, msg, sizeof (msg)) != sizeof (msg))
-          abort (); /* NOTE: GDB has only four calls to abort().  */
+          abort (); /* NOTE: GDB has only three calls to abort().  */
 	exit (1);
       }
   }
@@ -918,6 +1109,7 @@ internal_vproblem (struct internal_problem *problem,
      so that the user knows that they are living on the edge.  */
   {
     char *msg;
+
     msg = xstrvprintf (fmt, ap);
     reason = xstrprintf ("\
 %s:%d: %s: %s\n\
@@ -951,13 +1143,18 @@ further debugging may prove unreliable.", file, line, problem->name, msg);
 
   if (problem->should_dump_core == internal_problem_ask)
     {
-      /* Default (yes/batch case) is to dump core.  This leaves a GDB
-         `dropping' so that it is easier to see that something went
-         wrong in GDB.  */
-      dump_core_p = query (_("%s\nCreate a core file of GDB? "), reason);
+      if (!can_dump_core (reason))
+	dump_core_p = 0;
+      else
+	{
+	  /* Default (yes/batch case) is to dump core.  This leaves a GDB
+	     `dropping' so that it is easier to see that something went
+	     wrong in GDB.  */
+	  dump_core_p = query (_("%s\nCreate a core file of GDB? "), reason);
+	}
     }
   else if (problem->should_dump_core == internal_problem_yes)
-    dump_core_p = 1;
+    dump_core_p = can_dump_core (reason);
   else if (problem->should_dump_core == internal_problem_no)
     dump_core_p = 0;
   else
@@ -966,7 +1163,7 @@ further debugging may prove unreliable.", file, line, problem->name, msg);
   if (quit_p)
     {
       if (dump_core_p)
-	abort ();		/* NOTE: GDB has only four calls to abort().  */
+	dump_core ();
       else
 	exit (1);
     }
@@ -976,7 +1173,7 @@ further debugging may prove unreliable.", file, line, problem->name, msg);
 	{
 #ifdef HAVE_WORKING_FORK
 	  if (fork () == 0)
-	    abort ();		/* NOTE: GDB has only four calls to abort().  */
+	    dump_core ();
 #endif
 	}
     }
@@ -988,17 +1185,18 @@ static struct internal_problem internal_error_problem = {
   "internal-error", internal_problem_ask, internal_problem_ask
 };
 
-NORETURN void
+void
 internal_verror (const char *file, int line, const char *fmt, va_list ap)
 {
   internal_vproblem (&internal_error_problem, file, line, fmt, ap);
   deprecated_throw_reason (RETURN_ERROR);
 }
 
-NORETURN void
+void
 internal_error (const char *file, int line, const char *string, ...)
 {
   va_list ap;
+
   va_start (ap, string);
   internal_verror (file, line, string, ap);
   va_end (ap);
@@ -1018,6 +1216,7 @@ void
 internal_warning (const char *file, int line, const char *string, ...)
 {
   va_list ap;
+
   va_start (ap, string);
   internal_vwarning (file, line, string, ap);
   va_end (ap);
@@ -1072,13 +1271,15 @@ add_internal_problem_command (struct internal_problem *problem)
   add_prefix_cmd ((char*) problem->name,
 		  class_maintenance, set_internal_problem_cmd, set_doc,
 		  set_cmd_list,
-		  concat ("maintenance set ", problem->name, " ", NULL),
+		  concat ("maintenance set ", problem->name, " ",
+			  (char *) NULL),
 		  0/*allow-unknown*/, &maintenance_set_cmdlist);
 
   add_prefix_cmd ((char*) problem->name,
 		  class_maintenance, show_internal_problem_cmd, show_doc,
 		  show_cmd_list,
-		  concat ("maintenance show ", problem->name, " ", NULL),
+		  concat ("maintenance show ", problem->name, " ",
+			  (char *) NULL),
 		  0/*allow-unknown*/, &maintenance_show_cmdlist);
 
   set_doc = xstrprintf (_("\
@@ -1126,7 +1327,7 @@ Show whether GDB will create a core file of GDB when %s is detected"),
    as the file name for which the error was encountered.
    Then return to command level.  */
 
-NORETURN void
+void
 perror_with_name (const char *string)
 {
   char *err;
@@ -1192,7 +1393,7 @@ quit (void)
 /* Called when a memory allocation fails, with the number of bytes of
    memory requested in SIZE. */
 
-NORETURN void
+void
 nomem (long size)
 {
   if (size > 0)
@@ -1295,6 +1496,7 @@ xstrprintf (const char *format, ...)
 {
   char *ret;
   va_list args;
+
   va_start (args, format);
   ret = xstrvprintf (format, args);
   va_end (args);
@@ -1305,6 +1507,7 @@ void
 xasprintf (char **ret, const char *format, ...)
 {
   va_list args;
+
   va_start (args, format);
   (*ret) = xstrvprintf (format, args);
   va_end (args);
@@ -1321,6 +1524,7 @@ xstrvprintf (const char *format, va_list ap)
 {
   char *ret = NULL;
   int status = vasprintf (&ret, format, ap);
+
   /* NULL is returned when there was a memory allocation problem, or
      any other error (for instance, a bad format string).  A negative
      status (the printed length) with a non-NULL buffer should never
@@ -1374,6 +1578,7 @@ char *
 savestring (const char *ptr, size_t size)
 {
   char *p = (char *) xmalloc (size + 1);
+
   memcpy (p, ptr, size);
   p[size] = 0;
   return p;
@@ -1404,7 +1609,7 @@ gdb_print_host_address (const void *addr, struct ui_file *stream)
    ARGS are the arguments passed along with the CTLSTR argument to
    printf.  */
 
-static int ATTR_FORMAT (printf, 1, 0)
+static int ATTRIBUTE_PRINTF (1, 0)
 defaulted_query (const char *ctlstr, const char defchar, va_list args)
 {
   int answer;
@@ -1606,7 +1811,7 @@ query (const char *ctlstr, ...)
    function returns 1.  Otherwise, the function returns 0.  */
 
 static int
-host_char_to_target (int c, int *target_c)
+host_char_to_target (struct gdbarch *gdbarch, int c, int *target_c)
 {
   struct obstack host_data;
   char the_char = c;
@@ -1616,7 +1821,7 @@ host_char_to_target (int c, int *target_c)
   obstack_init (&host_data);
   cleanups = make_cleanup_obstack_free (&host_data);
 
-  convert_between_encodings (target_charset (), host_charset (),
+  convert_between_encodings (target_charset (gdbarch), host_charset (),
 			     &the_char, 1, 1, &host_data, translit_none);
 
   if (obstack_object_size (&host_data) == 1)
@@ -1645,10 +1850,11 @@ host_char_to_target (int c, int *target_c)
    after the zeros.  A value of 0 does not mean end of string.  */
 
 int
-parse_escape (char **string_ptr)
+parse_escape (struct gdbarch *gdbarch, char **string_ptr)
 {
   int target_char = -2;	/* initialize to avoid GCC warnings */
   int c = *(*string_ptr)++;
+
   switch (c)
     {
       case '\n':
@@ -1711,11 +1917,11 @@ parse_escape (char **string_ptr)
       break;
     }
 
-  if (!host_char_to_target (c, &target_char))
+  if (!host_char_to_target (gdbarch, c, &target_char))
     error
       ("The escape sequence `\%c' is equivalent to plain `%c', which"
        " has no equivalent\n" "in the `%s' character set.", c, c,
-       target_charset ());
+       target_charset (gdbarch));
   return target_char;
 }
 
@@ -1729,7 +1935,6 @@ printchar (int c, void (*do_fputs) (const char *, struct ui_file *),
 	   void (*do_fprintf) (struct ui_file *, const char *, ...)
 	   ATTRIBUTE_FPTR_PRINTF_2, struct ui_file *stream, int quoter)
 {
-
   c &= 0xFF;			/* Avoid sign bit follies */
 
   if (c < 0x20 ||		/* Low control chars */
@@ -1796,6 +2001,7 @@ fputstrn_filtered (const char *str, int n, int quoter,
 		   struct ui_file *stream)
 {
   int i;
+
   for (i = 0; i < n; i++)
     printchar (str[i], fputs_filtered, fprintf_filtered, stream, quoter);
 }
@@ -1805,6 +2011,7 @@ fputstrn_unfiltered (const char *str, int n, int quoter,
 		     struct ui_file *stream)
 {
   int i;
+
   for (i = 0; i < n; i++)
     printchar (str[i], fputs_unfiltered, fprintf_unfiltered, stream, quoter);
 }
@@ -1865,6 +2072,12 @@ static int wrap_column;
 void
 init_page_info (void)
 {
+  if (batch_flag)
+    {
+      lines_per_page = UINT_MAX;
+      chars_per_line = UINT_MAX;
+    }
+  else
 #if defined(TUI)
   if (!tui_get_command_dimension (&chars_per_line, &lines_per_page))
 #endif
@@ -1907,6 +2120,44 @@ init_page_info (void)
 
   set_screen_size ();
   set_width ();
+}
+
+/* Helper for make_cleanup_restore_page_info.  */
+
+static void
+do_restore_page_info_cleanup (void *arg)
+{
+  set_screen_size ();
+  set_width ();
+}
+
+/* Provide cleanup for restoring the terminal size.  */
+
+struct cleanup *
+make_cleanup_restore_page_info (void)
+{
+  struct cleanup *back_to;
+
+  back_to = make_cleanup (do_restore_page_info_cleanup, NULL);
+  make_cleanup_restore_uinteger (&lines_per_page);
+  make_cleanup_restore_uinteger (&chars_per_line);
+
+  return back_to;
+}
+
+/* Temporarily set BATCH_FLAG and the associated unlimited terminal size.
+   Provide cleanup for restoring the original state.  */
+
+struct cleanup *
+set_batch_flag_and_make_cleanup_restore_page_info (void)
+{
+  struct cleanup *back_to = make_cleanup_restore_page_info ();
+  
+  make_cleanup_restore_integer (&batch_flag);
+  batch_flag = 1;
+  init_page_info ();
+
+  return back_to;
 }
 
 /* Set the screen size based on LINES_PER_PAGE and CHARS_PER_LINE.  */
@@ -2000,6 +2251,7 @@ prompt_for_continue (void)
   if (ignore)
     {
       char *p = ignore;
+
       while (*p == ' ' || *p == '\t')
 	++p;
       if (p[0] == 'q')
@@ -2163,8 +2415,12 @@ fputs_maybe_filtered (const char *linebuffer, struct ui_file *stream,
     return;
 
   /* Don't do any filtering if it is disabled.  */
-  if ((stream != gdb_stdout) || !pagination_enabled
-      || (lines_per_page == UINT_MAX && chars_per_line == UINT_MAX))
+  if (stream != gdb_stdout
+      || ! pagination_enabled
+      || ! input_from_terminal_p ()
+      || (lines_per_page == UINT_MAX && chars_per_line == UINT_MAX)
+      || top_level_interpreter () == NULL
+      || ui_out_is_mi_like_p (interp_ui_out (top_level_interpreter ())))
     {
       fputs_unfiltered (linebuffer, stream);
       return;
@@ -2264,6 +2520,7 @@ int
 putchar_unfiltered (int c)
 {
   char buf = c;
+
   ui_file_write (gdb_stdout, &buf, 1);
   return c;
 }
@@ -2281,6 +2538,7 @@ int
 fputc_unfiltered (int c, struct ui_file *stream)
 {
   char buf = c;
+
   ui_file_write (stream, &buf, 1);
   return c;
 }
@@ -2462,6 +2720,7 @@ void
 fprintf_filtered (struct ui_file *stream, const char *format, ...)
 {
   va_list args;
+
   va_start (args, format);
   vfprintf_filtered (stream, format, args);
   va_end (args);
@@ -2471,6 +2730,7 @@ void
 fprintf_unfiltered (struct ui_file *stream, const char *format, ...)
 {
   va_list args;
+
   va_start (args, format);
   vfprintf_unfiltered (stream, format, args);
   va_end (args);
@@ -2484,6 +2744,7 @@ fprintfi_filtered (int spaces, struct ui_file *stream, const char *format,
 		   ...)
 {
   va_list args;
+
   va_start (args, format);
   print_spaces_filtered (spaces, stream);
 
@@ -2496,6 +2757,7 @@ void
 printf_filtered (const char *format, ...)
 {
   va_list args;
+
   va_start (args, format);
   vfprintf_filtered (gdb_stdout, format, args);
   va_end (args);
@@ -2506,6 +2768,7 @@ void
 printf_unfiltered (const char *format, ...)
 {
   va_list args;
+
   va_start (args, format);
   vfprintf_unfiltered (gdb_stdout, format, args);
   va_end (args);
@@ -2518,6 +2781,7 @@ void
 printfi_filtered (int spaces, const char *format, ...)
 {
   va_list args;
+
   va_start (args, format);
   print_spaces_filtered (spaces, gdb_stdout);
   vfprintf_filtered (gdb_stdout, format, args);
@@ -2737,6 +3001,7 @@ int
 subset_compare (char *string_to_compare, char *template_string)
 {
   int match;
+
   if (template_string != (char *) NULL && string_to_compare != (char *) NULL
       && strlen (string_to_compare) <= strlen (template_string))
     match =
@@ -2770,8 +3035,6 @@ show_debug_timestamp (struct ui_file *file, int from_tty,
 void
 initialize_utils (void)
 {
-  struct cmd_list_element *c;
-
   add_setshow_uinteger_cmd ("width", class_support, &chars_per_line, _("\
 Set number of characters gdb thinks are in a line."), _("\
 Show number of characters gdb thinks are in a line."), NULL,
@@ -2850,6 +3113,7 @@ get_cell (void)
 {
   static char buf[NUMCELLS][CELLSIZE];
   static int cell = 0;
+
   if (++cell >= NUMCELLS)
     cell = 0;
   return buf[cell];
@@ -2881,8 +3145,8 @@ decimal2str (char *sign, ULONGEST addr, int width)
      about the real size of addr as the above does? */
   unsigned long temp[3];
   char *str = get_cell ();
-
   int i = 0;
+
   do
     {
       temp[i] = addr % (1000 * 1000 * 1000);
@@ -2922,8 +3186,8 @@ octal2str (ULONGEST addr, int width)
 {
   unsigned long temp[3];
   char *str = get_cell ();
-
   int i = 0;
+
   do
     {
       temp[i] = addr % (0100000 * 0100000);
@@ -3017,6 +3281,7 @@ phex_nz (ULONGEST l, int sizeof_l)
     case 8:
       {
 	unsigned long high = (unsigned long) (l >> thirty_two);
+
 	str = get_cell ();
 	if (high == 0)
 	  xsnprintf (str, CELLSIZE, "%lx",
@@ -3048,6 +3313,7 @@ char *
 hex_string (LONGEST num)
 {
   char *result = get_cell ();
+
   xsnprintf (result, CELLSIZE, "0x%s", phex_nz (num, sizeof (num)));
   return result;
 }
@@ -3092,6 +3358,7 @@ int_string (LONGEST val, int radix, int is_signed, int width,
     case 16:
       {
 	char *result;
+
 	if (width == 0)
 	  result = hex_string (val);
 	else
@@ -3110,6 +3377,7 @@ int_string (LONGEST val, int radix, int is_signed, int width,
     case 8:
       {
 	char *result = octal2str (val, width);
+
 	if (use_c_format || val == 0)
 	  return result;
 	else
@@ -3126,6 +3394,7 @@ const char *
 core_addr_to_string (const CORE_ADDR addr)
 {
   char *str = get_cell ();
+
   strcpy (str, "0x");
   strcat (str, phex (addr, sizeof (addr)));
   return str;
@@ -3135,6 +3404,7 @@ const char *
 core_addr_to_string_nz (const CORE_ADDR addr)
 {
   char *str = get_cell ();
+
   strcpy (str, "0x");
   strcat (str, phex_nz (addr, sizeof (addr)));
   return str;
@@ -3150,6 +3420,7 @@ string_to_core_addr (const char *my_string)
     {
       /* Assume that it is in hex.  */
       int i;
+
       for (i = 2; my_string[i] != '\0'; i++)
 	{
 	  if (isdigit (my_string[i]))
@@ -3164,6 +3435,7 @@ string_to_core_addr (const char *my_string)
     {
       /* Assume that it is in decimal.  */
       int i;
+
       for (i = 0; my_string[i] != '\0'; i++)
 	{
 	  if (isdigit (my_string[i]))
@@ -3203,6 +3475,7 @@ gdb_realpath (const char *filename)
 # endif
 # if defined (USE_REALPATH)
     const char *rp = realpath (filename, buf);
+
     if (rp == NULL)
       rp = filename;
     return xstrdup (rp);
@@ -3216,6 +3489,7 @@ gdb_realpath (const char *filename)
 #if defined(HAVE_CANONICALIZE_FILE_NAME)
   {
     char *rp = canonicalize_file_name (filename);
+
     if (rp == NULL)
       return xstrdup (filename);
     else
@@ -3243,11 +3517,13 @@ gdb_realpath (const char *filename)
   {
     /* Find out the max path size.  */
     long path_max = pathconf ("/", _PC_PATH_MAX);
+
     if (path_max > 0)
       {
 	/* PATH_MAX is bounded.  */
 	char *buf = alloca (path_max);
 	char *rp = realpath (filename, buf);
+
 	return xstrdup (rp ? rp : filename);
       }
   }
@@ -3295,9 +3571,9 @@ xfullpath (const char *filename)
      directory separator, avoid doubling it.  */
   real_path = gdb_realpath (dir_name);
   if (IS_DIR_SEPARATOR (real_path[strlen (real_path) - 1]))
-    result = concat (real_path, base_name, (char *)NULL);
+    result = concat (real_path, base_name, (char *) NULL);
   else
-    result = concat (real_path, SLASH_STRING, base_name, (char *)NULL);
+    result = concat (real_path, SLASH_STRING, base_name, (char *) NULL);
 
   xfree (real_path);
   return result;
@@ -3398,6 +3674,7 @@ hashtab_obstack_allocate (void *data, size_t size, size_t count)
 {
   unsigned int total = size * count;
   void *ptr = obstack_alloc ((struct obstack *) data, total);
+
   memset (ptr, 0, total);
   return ptr;
 }
@@ -3549,9 +3826,78 @@ char **
 gdb_buildargv (const char *s)
 {
   char **argv = buildargv (s);
+
   if (s != NULL && argv == NULL)
     nomem (0);
   return argv;
+}
+
+int
+compare_positive_ints (const void *ap, const void *bp)
+{
+  /* Because we know we're comparing two ints which are positive,
+     there's no danger of overflow here.  */
+  return * (int *) ap - * (int *) bp;
+}
+
+#define AMBIGUOUS_MESS1	".\nMatching formats:"
+#define AMBIGUOUS_MESS2	".\nUse \"set gnutarget format-name\" to specify the format."
+
+const char *
+gdb_bfd_errmsg (bfd_error_type error_tag, char **matching)
+{
+  char *ret, *retp;
+  int ret_len;
+  char **p;
+
+  /* Check if errmsg just need simple return.  */
+  if (error_tag != bfd_error_file_ambiguously_recognized || matching == NULL)
+    return bfd_errmsg (error_tag);
+
+  ret_len = strlen (bfd_errmsg (error_tag)) + strlen (AMBIGUOUS_MESS1)
+            + strlen (AMBIGUOUS_MESS2);
+  for (p = matching; *p; p++)
+    ret_len += strlen (*p) + 1;
+  ret = xmalloc (ret_len + 1);
+  retp = ret;
+  make_cleanup (xfree, ret);
+
+  strcpy (retp, bfd_errmsg (error_tag));
+  retp += strlen (retp);
+
+  strcpy (retp, AMBIGUOUS_MESS1);
+  retp += strlen (retp);
+
+  for (p = matching; *p; p++)
+    {
+      sprintf (retp, " %s", *p);
+      retp += strlen (retp);
+    }
+  xfree (matching);
+
+  strcpy (retp, AMBIGUOUS_MESS2);
+
+  return ret;
+}
+
+/* Return ARGS parsed as a valid pid, or throw an error.  */
+
+int
+parse_pid_to_attach (char *args)
+{
+  unsigned long pid;
+  char *dummy;
+
+  if (!args)
+    error_no_arg (_("process-id to attach"));
+
+  dummy = args;
+  pid = strtoul (args, &dummy, 0);
+  /* Some targets don't set errno on errors, grrr!  */
+  if ((pid == 0 && dummy == args) || dummy != &args[strlen (args)])
+    error (_("Illegal process-id: %s."), args);
+
+  return pid;
 }
 
 /* Provide a prototype to silence -Wmissing-prototypes.  */

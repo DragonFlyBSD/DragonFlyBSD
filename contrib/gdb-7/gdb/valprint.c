@@ -2,7 +2,7 @@
 
    Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
    1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008,
-   2009 Free Software Foundation, Inc.
+   2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -35,6 +35,7 @@
 #include "exceptions.h"
 #include "dfp.h"
 #include "python/python.h"
+#include "ada-lang.h"
 
 #include <errno.h>
 
@@ -244,6 +245,39 @@ scalar_type_p (struct type *type)
     }
 }
 
+/* Helper function to check the validity of some bits of a value.
+
+   If TYPE represents some aggregate type (e.g., a structure), return 1.
+   
+   Otherwise, any of the bytes starting at OFFSET and extending for
+   TYPE_LENGTH(TYPE) bytes are invalid, print a message to STREAM and
+   return 0.  The checking is done using FUNCS.
+   
+   Otherwise, return 1.  */
+
+static int
+valprint_check_validity (struct ui_file *stream,
+			 struct type *type,
+			 int offset,
+			 const struct value *val)
+{
+  CHECK_TYPEDEF (type);
+
+  if (TYPE_CODE (type) != TYPE_CODE_UNION
+      && TYPE_CODE (type) != TYPE_CODE_STRUCT
+      && TYPE_CODE (type) != TYPE_CODE_ARRAY)
+    {
+      if (! value_bits_valid (val, TARGET_CHAR_BIT * offset,
+			      TARGET_CHAR_BIT * TYPE_LENGTH (type)))
+	{
+	  fprintf_filtered (stream, _("<value optimized out>"));
+	  return 0;
+	}
+    }
+
+  return 1;
+}
+
 /* Print using the given LANGUAGE the data of type TYPE located at VALADDR
    (within GDB), which came from the inferior at address ADDRESS, onto
    stdio stream STREAM according to OPTIONS.
@@ -262,6 +296,7 @@ scalar_type_p (struct type *type)
 int
 val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 	   CORE_ADDR address, struct ui_file *stream, int recurse,
+	   const struct value *val,
 	   const struct value_print_options *options,
 	   const struct language_defn *language)
 {
@@ -282,16 +317,19 @@ val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 
   if (TYPE_STUB (real_type))
     {
-      fprintf_filtered (stream, "<incomplete type>");
+      fprintf_filtered (stream, _("<incomplete type>"));
       gdb_flush (stream);
       return (0);
     }
 
+  if (!valprint_check_validity (stream, real_type, embedded_offset, val))
+    return 0;
+
   if (!options->raw)
     {
       ret = apply_val_pretty_printer (type, valaddr, embedded_offset,
-				      address, stream, recurse, options,
-				      language);
+				      address, stream, recurse,
+				      val, options, language);
       if (ret)
 	return ret;
     }
@@ -307,7 +345,8 @@ val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
   TRY_CATCH (except, RETURN_MASK_ERROR)
     {
       ret = language->la_val_print (type, valaddr, embedded_offset, address,
-				    stream, recurse, &local_opts);
+				    stream, recurse, val,
+				    &local_opts);
     }
   if (except.reason < 0)
     fprintf_filtered (stream, _("<error reading variable>"));
@@ -328,7 +367,7 @@ value_check_printable (struct value *val, struct ui_file *stream)
       return 0;
     }
 
-  if (value_optimized_out (val))
+  if (value_entirely_optimized_out (val))
     {
       fprintf_filtered (stream, _("<value optimized out>"));
       return 0;
@@ -361,15 +400,24 @@ common_val_print (struct value *val, struct ui_file *stream, int recurse,
   if (!value_check_printable (val, stream))
     return 0;
 
-  return val_print (value_type (val), value_contents_all (val),
+  if (language->la_language == language_ada)
+    /* The value might have a dynamic type, which would cause trouble
+       below when trying to extract the value contents (since the value
+       size is determined from the type size which is unknown).  So
+       get a fixed representation of our value.  */
+    val = ada_to_fixed_value (val);
+
+  return val_print (value_type (val), value_contents_for_printing (val),
 		    value_embedded_offset (val), value_address (val),
-		    stream, recurse, options, language);
+		    stream, recurse,
+		    val, options, language);
 }
 
-/* Print the value VAL in C-ish syntax on stream STREAM according to
-   OPTIONS.
-   If the object printed is a string pointer, returns
-   the number of string bytes printed.  */
+/* Print on stream STREAM the value VAL according to OPTIONS.  The value
+   is printed using the current_language syntax.
+
+   If the object printed is a string pointer, return the number of string
+   bytes printed.  */
 
 int
 value_print (struct value *val, struct ui_file *stream,
@@ -381,11 +429,12 @@ value_print (struct value *val, struct ui_file *stream,
   if (!options->raw)
     {
       int r = apply_val_pretty_printer (value_type (val),
-					value_contents_all (val),
+					value_contents_for_printing (val),
 					value_embedded_offset (val),
 					value_address (val),
-					stream, 0, options,
-					current_language);
+					stream, 0,
+					val, options, current_language);
+
       if (r)
 	return r;
     }
@@ -1024,44 +1073,27 @@ print_char_chars (struct ui_file *stream, struct type *type,
 
    Return 1 if the operation was successful. Return zero otherwise,
    in which case the values of LOW_BOUND and HIGH_BOUNDS are unmodified.
-   
-   Computing the array upper and lower bounds is pretty easy, but this
-   function does some additional verifications before returning them.
-   If something incorrect is detected, it is better to return a status
-   rather than throwing an error, making it easier for the caller to
-   implement an error-recovery plan.  For instance, it may decide to
-   warn the user that the bounds were not found and then use some
-   default values instead.  */
+  
+   We now simply use get_discrete_bounds call to get the values
+   of the low and high bounds. 
+   get_discrete_bounds can return three values:
+   1, meaning that index is a range,
+   0, meaning that index is a discrete type,
+   or -1 for failure.  */
 
 int
-get_array_bounds (struct type *type, long *low_bound, long *high_bound)
+get_array_bounds (struct type *type, LONGEST *low_bound, LONGEST *high_bound)
 {
   struct type *index = TYPE_INDEX_TYPE (type);
-  long low = 0;
-  long high = 0;
-                                  
+  LONGEST low = 0;
+  LONGEST high = 0;
+  int res;
+                                
   if (index == NULL)
     return 0;
 
-  if (TYPE_CODE (index) == TYPE_CODE_RANGE)
-    {
-      low = TYPE_LOW_BOUND (index);
-      high = TYPE_HIGH_BOUND (index);
-    }
-  else if (TYPE_CODE (index) == TYPE_CODE_ENUM)
-    {
-      const int n_enums = TYPE_NFIELDS (index);
-
-      low = TYPE_FIELD_BITPOS (index, 0);
-      high = TYPE_FIELD_BITPOS (index, n_enums - 1);
-    }
-  else
-    return 0;
-
-  /* Abort if the lower bound is greater than the higher bound, except
-     when low = high + 1.  This is a very common idiom used in Ada when
-     defining empty ranges (for instance "range 1 .. 0").  */
-  if (low > high + 1)
+  res = get_discrete_bounds (index, &low, &high);
+  if (res == -1)
     return 0;
 
   if (low_bound)
@@ -1104,6 +1136,7 @@ void
 val_print_array_elements (struct type *type, const gdb_byte *valaddr,
 			  CORE_ADDR address, struct ui_file *stream,
 			  int recurse,
+			  const struct value *val,
 			  const struct value_print_options *options,
 			  unsigned int i)
 {
@@ -1116,7 +1149,7 @@ val_print_array_elements (struct type *type, const gdb_byte *valaddr,
   unsigned int rep1;
   /* Number of repetitions we have detected so far.  */
   unsigned int reps;
-  long low_bound_index = 0;
+  LONGEST low_bound_index = 0;
 
   elttype = TYPE_TARGET_TYPE (type);
   eltlen = TYPE_LENGTH (check_typedef (elttype));
@@ -1131,7 +1164,8 @@ val_print_array_elements (struct type *type, const gdb_byte *valaddr,
     len = TYPE_LENGTH (type) / eltlen;
   else
     {
-      long low, hi;
+      LONGEST low, hi;
+
       if (get_array_bounds (type, &low, &hi))
         len = hi - low + 1;
       else
@@ -1181,7 +1215,7 @@ val_print_array_elements (struct type *type, const gdb_byte *valaddr,
       if (reps > options->repeat_count_threshold)
 	{
 	  val_print (elttype, valaddr + i * eltlen, 0, address + i * eltlen,
-		     stream, recurse + 1, options, current_language);
+		     stream, recurse + 1, val, options, current_language);
 	  annotate_elt_rep (reps);
 	  fprintf_filtered (stream, " <repeats %u times>", reps);
 	  annotate_elt_rep_end ();
@@ -1192,7 +1226,7 @@ val_print_array_elements (struct type *type, const gdb_byte *valaddr,
       else
 	{
 	  val_print (elttype, valaddr + i * eltlen, 0, address + i * eltlen,
-		     stream, recurse + 1, options, current_language);
+		     stream, recurse + 1, val, options, current_language);
 	  annotate_elt ();
 	  things_printed++;
 	}
@@ -1451,7 +1485,8 @@ val_print_string (struct type *elttype, CORE_ADDR addr, int len,
 	{
 	  fputs_filtered (" ", stream);
 	}
-      LA_PRINT_STRING (stream, elttype, buffer, bytes_read / width, force_ellipsis, options);
+      LA_PRINT_STRING (stream, elttype, buffer, bytes_read / width,
+		       NULL, force_ellipsis, options);
     }
 
   if (errcode != 0)
@@ -1621,8 +1656,6 @@ show_print (char *args, int from_tty)
 void
 _initialize_valprint (void)
 {
-  struct cmd_list_element *c;
-
   add_prefix_cmd ("print", no_class, set_print,
 		  _("Generic command for setting how things print."),
 		  &setprintlist, "set print ", 0, &setlist);

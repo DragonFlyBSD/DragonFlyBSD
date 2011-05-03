@@ -461,22 +461,22 @@ static bfd_boolean
 pass_over (bfd *abfd, bfd_boolean (*func) (bfd *, int, char *))
 {
   unsigned int chars_on_line;
-  bfd_boolean eof = FALSE;
+  bfd_boolean is_eof = FALSE;
 
   /* To the front of the file.  */
   if (bfd_seek (abfd, (file_ptr) 0, SEEK_SET) != 0)
     return FALSE;
-  while (! eof)
+  while (! is_eof)
     {
       char src[MAXCHUNK];
       char type;
 
       /* Find first '%'.  */
-      eof = (bfd_boolean) (bfd_bread (src, (bfd_size_type) 1, abfd) != 1);
-      while (*src != '%' && !eof)
-	eof = (bfd_boolean) (bfd_bread (src, (bfd_size_type) 1, abfd) != 1);
+      is_eof = (bfd_boolean) (bfd_bread (src, (bfd_size_type) 1, abfd) != 1);
+      while (*src != '%' && !is_eof)
+	is_eof = (bfd_boolean) (bfd_bread (src, (bfd_size_type) 1, abfd) != 1);
 
-      if (eof)
+      if (is_eof)
 	break;
 
       /* Fetch the type and the length and the checksum.  */
@@ -952,6 +952,8 @@ tekhex_print_symbol (bfd *abfd,
 #define tekhex_bfd_link_hash_table_free             _bfd_generic_link_hash_table_free
 #define tekhex_bfd_link_add_symbols                 _bfd_generic_link_add_symbols
 #define tekhex_bfd_link_just_syms                   _bfd_generic_link_just_syms
+#define tekhex_bfd_copy_link_hash_symbol_type \
+  _bfd_generic_copy_link_hash_symbol_type
 #define tekhex_bfd_final_link                       _bfd_generic_final_link
 #define tekhex_bfd_link_split_section               _bfd_generic_link_split_section
 #define tekhex_get_section_contents_in_window       _bfd_generic_get_section_contents_in_window

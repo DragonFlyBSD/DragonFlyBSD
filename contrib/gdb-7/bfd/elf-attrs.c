@@ -1,5 +1,5 @@
 /* ELF attributes support (based on ARM EABI attributes).
-   Copyright 2005, 2006, 2007, 2009
+   Copyright 2005, 2006, 2007, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -96,7 +96,7 @@ vendor_obj_attr_size (bfd *abfd, int vendor)
 
   attr = elf_known_obj_attributes (abfd)[vendor];
   size = 0;
-  for (i = 4; i < NUM_KNOWN_OBJ_ATTRIBUTES; i++)
+  for (i = LEAST_KNOWN_OBJ_ATTRIBUTE; i < NUM_KNOWN_OBJ_ATTRIBUTES; i++)
     size += obj_attr_size (i, &attr[i]);
 
   for (list = elf_other_obj_attributes (abfd)[vendor];
@@ -188,7 +188,7 @@ vendor_set_obj_attr_contents (bfd *abfd, bfd_byte *contents, bfd_vma size,
   p += 4;
 
   attr = elf_known_obj_attributes (abfd)[vendor];
-  for (i = 4; i < NUM_KNOWN_OBJ_ATTRIBUTES; i++)
+  for (i = LEAST_KNOWN_OBJ_ATTRIBUTE; i < NUM_KNOWN_OBJ_ATTRIBUTES; i++)
     {
       int tag = i;
       if (get_elf_backend_data (abfd)->obj_attrs_order)
@@ -349,9 +349,11 @@ _bfd_elf_copy_obj_attributes (bfd *ibfd, bfd *obfd)
 
   for (vendor = OBJ_ATTR_FIRST; vendor <= OBJ_ATTR_LAST; vendor++)
     {
-      in_attr = &elf_known_obj_attributes (ibfd)[vendor][4];
-      out_attr = &elf_known_obj_attributes (obfd)[vendor][4];
-      for (i = 4; i < NUM_KNOWN_OBJ_ATTRIBUTES; i++)
+      in_attr
+	= &elf_known_obj_attributes (ibfd)[vendor][LEAST_KNOWN_OBJ_ATTRIBUTE];
+      out_attr
+	= &elf_known_obj_attributes (obfd)[vendor][LEAST_KNOWN_OBJ_ATTRIBUTE];
+      for (i = LEAST_KNOWN_OBJ_ATTRIBUTE; i < NUM_KNOWN_OBJ_ATTRIBUTES; i++)
 	{
 	  out_attr->type = in_attr->type;
 	  out_attr->i = in_attr->i;
@@ -564,7 +566,8 @@ _bfd_elf_merge_object_attributes (bfd *ibfd, bfd *obfd)
       if (in_attr->i > 0 && strcmp (in_attr->s, "gnu") != 0)
 	{
 	  _bfd_error_handler
-		(_("error: %B: Must be processed by '%s' toolchain"),
+		(_("error: %B: Object has vendor-specific contents that "
+		   "must be processed by the '%s' toolchain"),
 		 ibfd, in_attr->s);
 	  return FALSE;
 	}

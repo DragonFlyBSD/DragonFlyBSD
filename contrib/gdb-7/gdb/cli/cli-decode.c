@@ -1,7 +1,7 @@
 /* Handle lists of commands, their decoding and documentation, for GDB.
 
    Copyright (c) 1986, 1989, 1990, 1991, 1998, 2000, 2001, 2002, 2004, 2007,
-   2008, 2009 Free Software Foundation, Inc.
+   2008, 2009, 2010 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -149,7 +149,7 @@ add_cmd (char *name, enum command_class class, void (*fun) (char *, int),
 	 char *doc, struct cmd_list_element **list)
 {
   struct cmd_list_element *c
-  = (struct cmd_list_element *) xmalloc (sizeof (struct cmd_list_element));
+    = (struct cmd_list_element *) xmalloc (sizeof (struct cmd_list_element));
   struct cmd_list_element *p, *iter;
 
   /* Turn each alias of the old command into an alias of the new
@@ -240,6 +240,7 @@ add_alias_cmd (char *name, char *oldname, enum command_class class,
   char *copied_name;
   struct cmd_list_element *old;
   struct cmd_list_element *c;
+
   copied_name = (char *) alloca (strlen (oldname) + 1);
   strcpy (copied_name, oldname);
   old = lookup_cmd (&copied_name, *list, "", 1, 1);
@@ -250,6 +251,7 @@ add_alias_cmd (char *name, char *oldname, enum command_class class,
       struct cmd_list_element *aliases = delete_cmd (name, list,
 						     &prehook, &prehookee,
 						     &posthook, &posthookee);
+
       /* If this happens, it means a programmer error somewhere.  */
       gdb_assert (!aliases && !prehook && !prehookee
 		  && !posthook && ! posthookee);
@@ -282,6 +284,7 @@ add_prefix_cmd (char *name, enum command_class class, void (*fun) (char *, int),
 		struct cmd_list_element **list)
 {
   struct cmd_list_element *c = add_cmd (name, class, fun, doc, list);
+
   c->prefixlist = prefixlist;
   c->prefixname = prefixname;
   c->allow_unknown = allow_unknown;
@@ -297,6 +300,7 @@ add_abbrev_prefix_cmd (char *name, enum command_class class,
 		       int allow_unknown, struct cmd_list_element **list)
 {
   struct cmd_list_element *c = add_cmd (name, class, fun, doc, list);
+
   c->prefixlist = prefixlist;
   c->prefixname = prefixname;
   c->allow_unknown = allow_unknown;
@@ -336,6 +340,7 @@ add_set_or_show_cmd (char *name,
 		     struct cmd_list_element **list)
 {
   struct cmd_list_element *c = add_cmd (name, class, NULL, doc, list);
+
   gdb_assert (type == set_cmd || type == show_cmd);
   c->type = type;
   c->var_type = var_type;
@@ -416,6 +421,7 @@ add_setshow_enum_cmd (char *name,
 		      struct cmd_list_element **show_list)
 {
   struct cmd_list_element *c;
+
   add_setshow_cmd_full (name, class, var_enum, var,
 			set_doc, show_doc, help_doc,
 			set_func, show_func,
@@ -441,6 +447,7 @@ add_setshow_auto_boolean_cmd (char *name,
 {
   static const char *auto_boolean_enums[] = { "on", "off", "auto", NULL };
   struct cmd_list_element *c;
+
   add_setshow_cmd_full (name, class, var_auto_boolean, var,
 			set_doc, show_doc, help_doc,
 			set_func, show_func,
@@ -464,6 +471,7 @@ add_setshow_boolean_cmd (char *name, enum command_class class, int *var,
 {
   static const char *boolean_enums[] = { "on", "off", NULL };
   struct cmd_list_element *c;
+
   add_setshow_cmd_full (name, class, var_boolean, var,
 			set_doc, show_doc, help_doc,
 			set_func, show_func,
@@ -485,6 +493,7 @@ add_setshow_filename_cmd (char *name, enum command_class class,
 			  struct cmd_list_element **show_list)
 {
   struct cmd_list_element *set_result;
+
   add_setshow_cmd_full (name, class, var_filename, var,
 			set_doc, show_doc, help_doc,
 			set_func, show_func,
@@ -752,10 +761,11 @@ add_com_alias (char *name, char *oldname, enum command_class class,
 */
 void 
 apropos_cmd (struct ui_file *stream, struct cmd_list_element *commandlist,
-			 struct re_pattern_buffer *regex, char *prefix)
+	     struct re_pattern_buffer *regex, char *prefix)
 {
   struct cmd_list_element *c;
   int returnvalue;
+
   /* Walk through the commands */
   for (c=commandlist;c;c=c->next)
     {
@@ -763,7 +773,8 @@ apropos_cmd (struct ui_file *stream, struct cmd_list_element *commandlist,
       if (c->name != NULL)
 	{
 	  /* Try to match against the name*/
-	  returnvalue=re_search(regex,c->name,strlen(c->name),0,strlen(c->name),NULL);
+	  returnvalue = re_search (regex, c->name, strlen(c->name),
+				   0, strlen (c->name), NULL);
 	  if (returnvalue >= 0)
 	    {
 	      print_help_for_command (c, prefix, 
@@ -1051,10 +1062,10 @@ help_cmd_list (struct cmd_list_element *list, enum command_class class,
 
   for (c = list; c; c = c->next)
     {      
-      if (c->abbrev_flag == 0 &&
-	  (class == all_commands
-	   || (class == all_classes && c->func == NULL)
-	   || (class == c->class && c->func != NULL)))
+      if (c->abbrev_flag == 0
+	  && (class == all_commands
+	      || (class == all_classes && c->func == NULL)
+	      || (class == c->class && c->func != NULL)))
 	{
 	  print_help_for_command (c, prefix, recurse, stream);
 	}
@@ -1108,11 +1119,11 @@ find_command_name_length (const char *text)
      used as a suffix for print, examine and display.
      Note that this is larger than the character set allowed when creating
      user-defined commands.  */
-  while (isalnum (*p) || *p == '-' || *p == '_' ||
+  while (isalnum (*p) || *p == '-' || *p == '_'
 	 /* Characters used by TUI specific commands.  */
-	 *p == '+' || *p == '<' || *p == '>' || *p == '$' ||
+	 || *p == '+' || *p == '<' || *p == '>' || *p == '$'
 	 /* Characters used for XDB compatibility.  */
-	 (xdb_commands && (*p == '!' || *p == '/' || *p == '?')))
+	 || (xdb_commands && (*p == '!' || *p == '/' || *p == '?')))
     p++;
 
   return p - text;
@@ -1195,6 +1206,7 @@ lookup_cmd_1 (char **text, struct cmd_list_element *clist,
       for (tmp = 0; tmp < len; tmp++)
 	{
 	  char x = command[tmp];
+
 	  command[tmp] = isupper (x) ? tolower (x) : x;
 	}
       found = find_cmd (command, len, clist, ignore_help_classes, &nfound);
@@ -1336,7 +1348,7 @@ lookup_cmd (char **line, struct cmd_list_element *list, char *cmdtype,
 				 allow_unknown);
       char *local_cmdtype = last_list ? last_list->prefixname : cmdtype;
       struct cmd_list_element *local_list =
-      (last_list ? *(last_list->prefixlist) : list);
+	(last_list ? *(last_list->prefixlist) : list);
 
       if (local_allow_unknown < 0)
 	{
@@ -1422,8 +1434,6 @@ deprecated_cmd_warning (char **text)
   struct cmd_list_element *alias = NULL;
   struct cmd_list_element *prefix_cmd = NULL;
   struct cmd_list_element *cmd = NULL;
-  struct cmd_list_element *c;
-  char *type;
 
   if (!lookup_cmd_composition (*text, &alias, &prefix_cmd, &cmd))
     /* return if text doesn't evaluate to a command */
@@ -1452,22 +1462,22 @@ deprecated_cmd_warning (char **text)
     printf_filtered ("' is deprecated.\n"); 
   
 
-  /* if it is only the alias that is deprecated, we want to indicate the
-     new alias, otherwise we'll indicate the new command */
+  /* If it is only the alias that is deprecated, we want to indicate the
+     new alias, otherwise we'll indicate the new command.  */
 
   if (alias && !(cmd->flags & CMD_DEPRECATED))
     {
       if (alias->replacement)
-      printf_filtered ("Use '%s'.\n\n", alias->replacement);
+	printf_filtered ("Use '%s'.\n\n", alias->replacement);
       else
-      printf_filtered ("No alternative known.\n\n");
+	printf_filtered ("No alternative known.\n\n");
      }  
   else
     {
       if (cmd->replacement)
-      printf_filtered ("Use '%s'.\n\n", cmd->replacement);
+	printf_filtered ("Use '%s'.\n\n", cmd->replacement);
       else
-      printf_filtered ("No alternative known.\n\n");
+	printf_filtered ("No alternative known.\n\n");
     }
 
   /* We've warned you, now we'll keep quiet */
@@ -1503,6 +1513,7 @@ lookup_cmd_composition (char *text,
   int len, tmp, nfound;
   struct cmd_list_element *cur_list;
   struct cmd_list_element *prev_cmd;
+
   *alias = NULL;
   *prefix_cmd = NULL;
   *cmd = NULL;
@@ -1512,12 +1523,12 @@ lookup_cmd_composition (char *text,
   while (1)
     { 
       /* Go through as many command lists as we need to 
-       to find the command TEXT refers to. */
+	 to find the command TEXT refers to. */
       
       prev_cmd = *cmd;
       
       while (*text == ' ' || *text == '\t')
-      (text)++;
+	(text)++;
       
       /* Identify the name of the command.  */
       len = find_command_name_length (text);
@@ -1526,8 +1537,8 @@ lookup_cmd_composition (char *text,
       if (len == 0)
 	return 0;
       
-      /* text is the start of the first command word to lookup (and
-       it's length is len).  We copy this into a local temporary */
+      /* Text is the start of the first command word to lookup (and
+	 it's length is len).  We copy this into a local temporary.  */
       
       command = (char *) alloca (len + 1);
       memcpy (command, text, len);
@@ -1539,41 +1550,41 @@ lookup_cmd_composition (char *text,
       *cmd = find_cmd (command, len, cur_list, 1, &nfound);
       
       /* We didn't find the command in the entered case, so lower case it
-       and search again.
+	 and search again.
       */
       if (!*cmd || nfound == 0)
-      {
-        for (tmp = 0; tmp < len; tmp++)
-          {
-            char x = command[tmp];
-            command[tmp] = isupper (x) ? tolower (x) : x;
-          }
-        *cmd = find_cmd (command, len, cur_list, 1, &nfound);
-      }
+	{
+	  for (tmp = 0; tmp < len; tmp++)
+	    {
+	      char x = command[tmp];
+
+	      command[tmp] = isupper (x) ? tolower (x) : x;
+	    }
+	  *cmd = find_cmd (command, len, cur_list, 1, &nfound);
+	}
       
       if (*cmd == (struct cmd_list_element *) -1)
-      {
-        return 0;              /* ambiguous */
-      }
+	{
+	  return 0;              /* ambiguous */
+	}
       
       if (*cmd == NULL)
-      return 0;                /* nothing found */
+	return 0;                /* nothing found */
       else
-      {
-        if ((*cmd)->cmd_pointer)
-          {
-            /* cmd was actually an alias, we note that an alias was used 
-               (by assigning *alais) and we set *cmd. 
-             */
-            *alias = *cmd;
-            *cmd = (*cmd)->cmd_pointer;
-          }
-        *prefix_cmd = prev_cmd;
-      }
+	{
+	  if ((*cmd)->cmd_pointer)
+	    {
+	      /* cmd was actually an alias, we note that an alias was used 
+		 (by assigning *alais) and we set *cmd.  */
+	      *alias = *cmd;
+	      *cmd = (*cmd)->cmd_pointer;
+	    }
+	  *prefix_cmd = prev_cmd;
+	}
       if ((*cmd)->prefixlist)
-      cur_list = *(*cmd)->prefixlist;
+	cur_list = *(*cmd)->prefixlist;
       else
-      return 1;
+	return 1;
       
       text += len;
     }
@@ -1597,43 +1608,65 @@ complete_on_cmdlist (struct cmd_list_element *list, char *text, char *word)
   int sizeof_matchlist;
   int matches;
   int textlen = strlen (text);
+  int pass;
+  int saw_deprecated_match = 0;
 
   sizeof_matchlist = 10;
   matchlist = (char **) xmalloc (sizeof_matchlist * sizeof (char *));
   matches = 0;
 
-  for (ptr = list; ptr; ptr = ptr->next)
-    if (!strncmp (ptr->name, text, textlen)
-	&& !ptr->abbrev_flag
-	&& (ptr->func
-	    || ptr->prefixlist))
-      {
-	if (matches == sizeof_matchlist)
+  /* We do one or two passes.  In the first pass, we skip deprecated
+     commands.  If we see no matching commands in the first pass, and
+     if we did happen to see a matching deprecated command, we do
+     another loop to collect those.  */
+  for (pass = 0; matches == 0 && pass < 2; ++pass)
+    {
+      for (ptr = list; ptr; ptr = ptr->next)
+	if (!strncmp (ptr->name, text, textlen)
+	    && !ptr->abbrev_flag
+	    && (ptr->func
+		|| ptr->prefixlist))
 	  {
-	    sizeof_matchlist *= 2;
-	    matchlist = (char **) xrealloc ((char *) matchlist,
-					    (sizeof_matchlist
-					     * sizeof (char *)));
-	  }
+	    if (pass == 0)
+	      {
+		if ((ptr->flags & CMD_DEPRECATED) != 0)
+		  {
+		    saw_deprecated_match = 1;
+		    continue;
+		  }
+	      }
 
-	matchlist[matches] = (char *)
-	  xmalloc (strlen (word) + strlen (ptr->name) + 1);
-	if (word == text)
-	  strcpy (matchlist[matches], ptr->name);
-	else if (word > text)
-	  {
-	    /* Return some portion of ptr->name.  */
-	    strcpy (matchlist[matches], ptr->name + (word - text));
+	    if (matches == sizeof_matchlist)
+	      {
+		sizeof_matchlist *= 2;
+		matchlist = (char **) xrealloc ((char *) matchlist,
+						(sizeof_matchlist
+						 * sizeof (char *)));
+	      }
+
+	    matchlist[matches] = (char *)
+	      xmalloc (strlen (word) + strlen (ptr->name) + 1);
+	    if (word == text)
+	      strcpy (matchlist[matches], ptr->name);
+	    else if (word > text)
+	      {
+		/* Return some portion of ptr->name.  */
+		strcpy (matchlist[matches], ptr->name + (word - text));
+	      }
+	    else
+	      {
+		/* Return some of text plus ptr->name.  */
+		strncpy (matchlist[matches], word, text - word);
+		matchlist[matches][text - word] = '\0';
+		strcat (matchlist[matches], ptr->name);
+	      }
+	    ++matches;
 	  }
-	else
-	  {
-	    /* Return some of text plus ptr->name.  */
-	    strncpy (matchlist[matches], word, text - word);
-	    matchlist[matches][text - word] = '\0';
-	    strcat (matchlist[matches], ptr->name);
-	  }
-	++matches;
-      }
+      /* If we saw no matching deprecated commands in the first pass,
+	 just bail out.  */
+      if (!saw_deprecated_match)
+	break;
+    }
 
   if (matches == 0)
     {

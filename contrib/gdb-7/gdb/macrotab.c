@@ -1,5 +1,5 @@
 /* C preprocessor macro tables for GDB.
-   Copyright (C) 2002, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2002, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
    Contributed by Red Hat, Inc.
 
    This file is part of GDB.
@@ -113,6 +113,7 @@ macro_bcache (struct macro_table *t, const void *addr, int len)
   else
     {
       void *copy = xmalloc (len);
+
       memcpy (copy, addr, len);
       return copy;
     }
@@ -316,6 +317,7 @@ key_compare (struct macro_key *key,
              const char *name, struct macro_source_file *file, int line)
 {
   int names = strcmp (key->name, name);
+
   if (names)
     return names;
 
@@ -879,6 +881,7 @@ macro_definition_location (struct macro_source_file *source,
   if (n)
     {
       struct macro_key *key = (struct macro_key *) n->key;
+
       *definition_line = key->start_line;
       return key->start_file;
     }
@@ -905,6 +908,7 @@ foreach_macro (splay_tree_node node, void *arg)
   struct macro_for_each_data *datum = (struct macro_for_each_data *) arg;
   struct macro_key *key = (struct macro_key *) node->key;
   struct macro_definition *def = (struct macro_definition *) node->value;
+
   (*datum->fn) (key->name, def, datum->user_data);
   return 0;
 }
@@ -915,6 +919,7 @@ macro_for_each (struct macro_table *table, macro_callback_fn fn,
 		void *user_data)
 {
   struct macro_for_each_data datum;
+
   datum.fn = fn;
   datum.user_data = user_data;
   datum.file = NULL;
@@ -946,6 +951,7 @@ macro_for_each_in_scope (struct macro_source_file *file, int line,
 			 macro_callback_fn fn, void *user_data)
 {
   struct macro_for_each_data datum;
+
   datum.fn = fn;
   datum.user_data = user_data;
   datum.file = file;

@@ -797,6 +797,17 @@ _bfd_generic_link_just_syms (asection *sec,
   sec->output_offset = sec->vma;
 }
 
+/* Copy the type of a symbol assiciated with a linker hast table entry.
+   Override this so that symbols created in linker scripts get their
+   type from the RHS of the assignment.
+   The default implementation does nothing.  */
+void
+_bfd_generic_copy_link_hash_symbol_type (bfd *abfd ATTRIBUTE_UNUSED,
+    struct bfd_link_hash_entry * hdest ATTRIBUTE_UNUSED,
+    struct bfd_link_hash_entry * hsrc ATTRIBUTE_UNUSED)
+{
+}
+
 /* Add symbols from an object file to the global hash table.  */
 
 static bfd_boolean

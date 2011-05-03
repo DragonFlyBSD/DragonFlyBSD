@@ -1,6 +1,7 @@
 /* Definitions for frame unwinder, for GDB, the GNU debugger.
 
-   Copyright (C) 2003, 2004, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2003, 2004, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -48,6 +49,7 @@ frame_unwind_init (struct obstack *obstack)
 {
   struct frame_unwind_table *table
     = OBSTACK_ZALLOC (obstack, struct frame_unwind_table);
+
   /* Start the table out with a few default sniffers.  OSABI code
      can't override this.  */
   table->list = OBSTACK_ZALLOC (obstack, struct frame_unwind_table_entry);
@@ -89,11 +91,10 @@ frame_unwind_append_unwinder (struct gdbarch *gdbarch,
 const struct frame_unwind *
 frame_unwind_find_by_frame (struct frame_info *this_frame, void **this_cache)
 {
-  int i;
   struct gdbarch *gdbarch = get_frame_arch (this_frame);
   struct frame_unwind_table *table = gdbarch_data (gdbarch, frame_unwind_data);
   struct frame_unwind_table_entry *entry;
-  struct cleanup *old_cleanup;
+
   for (entry = table->list; entry != NULL; entry = entry->next)
     {
       struct cleanup *old_cleanup;

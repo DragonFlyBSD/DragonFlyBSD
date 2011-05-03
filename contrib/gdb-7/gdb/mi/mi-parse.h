@@ -1,5 +1,5 @@
 /* MI Command Set - MI Command Parser.
-   Copyright (C) 2000, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2000, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
    Contributed by Cygnus Solutions (a Red Hat company).
 
    This file is part of GDB.
@@ -46,6 +46,8 @@ struct mi_parse
     char *args;
     char **argv;
     int argc;
+    int all;
+    int thread_group; /* At present, the same as inferior number.  */
     int thread;
     int frame;
   };

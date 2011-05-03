@@ -1,5 +1,5 @@
 /* Interface to functions for deciding which macros are currently in scope.
-   Copyright (C) 2002, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2002, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
    Contributed by Red Hat, Inc.
 
    This file is part of GDB.

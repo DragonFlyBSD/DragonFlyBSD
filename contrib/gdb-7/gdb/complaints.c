@@ -1,7 +1,7 @@
 /* Support for complaint handling during symbol reading in GDB.
 
    Copyright (C) 1990, 1991, 1992, 1993, 1995, 1998, 1999, 2000, 2002, 2004,
-   2005, 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2005, 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -120,7 +120,7 @@ get_complaints (struct complaints **c)
   return (*c);
 }
 
-static struct complain *
+static struct complain * ATTRIBUTE_PRINTF (4, 0)
 find_complaint (struct complaints *complaints, const char *file,
 		int line, const char *fmt)
 {
@@ -164,13 +164,14 @@ static int stop_whining = 0;
 /* Print a complaint, and link the complaint block into a chain for
    later handling.  */
 
-static void ATTR_FORMAT (printf, 4, 0)
+static void ATTRIBUTE_PRINTF (4, 0)
 vcomplaint (struct complaints **c, const char *file, int line, const char *fmt,
 	    va_list args)
 {
   struct complaints *complaints = get_complaints (c);
   struct complain *complaint = find_complaint (complaints, file, line, fmt);
   enum complaint_series series;
+
   gdb_assert (complaints != NULL);
 
   complaint->counter++;
@@ -243,6 +244,7 @@ void
 complaint (struct complaints **complaints, const char *fmt, ...)
 {
   va_list args;
+
   va_start (args, fmt);
   vcomplaint (complaints, NULL/*file*/, 0/*line*/, fmt, args);
   va_end (args);

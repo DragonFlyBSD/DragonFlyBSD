@@ -2,8 +2,8 @@
 
 /* Dynamic architecture support for GDB, the GNU debugger.
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007
-   Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006,
+   2007, 2008, 2009 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -118,11 +118,17 @@ extern void set_gdbarch_long_bit (struct gdbarch *gdbarch, int long_bit);
 extern int gdbarch_long_long_bit (struct gdbarch *gdbarch);
 extern void set_gdbarch_long_long_bit (struct gdbarch *gdbarch, int long_long_bit);
 
-/* The ABI default bit-size and format for "float", "double", and "long
-   double".  These bit/format pairs should eventually be combined into
-   a single object.  For the moment, just initialize them as a pair.
+/* The ABI default bit-size and format for "half", "float", "double", and
+   "long double".  These bit/format pairs should eventually be combined
+   into a single object.  For the moment, just initialize them as a pair.
    Each format describes both the big and little endian layouts (if
    useful). */
+
+extern int gdbarch_half_bit (struct gdbarch *gdbarch);
+extern void set_gdbarch_half_bit (struct gdbarch *gdbarch, int half_bit);
+
+extern const struct floatformat ** gdbarch_half_format (struct gdbarch *gdbarch);
+extern void set_gdbarch_half_format (struct gdbarch *gdbarch, const struct floatformat ** half_format);
 
 extern int gdbarch_float_bit (struct gdbarch *gdbarch);
 extern void set_gdbarch_float_bit (struct gdbarch *gdbarch, int float_bit);
@@ -406,6 +412,14 @@ extern void set_gdbarch_inner_than (struct gdbarch *gdbarch, gdbarch_inner_than_
 typedef const gdb_byte * (gdbarch_breakpoint_from_pc_ftype) (struct gdbarch *gdbarch, CORE_ADDR *pcptr, int *lenptr);
 extern const gdb_byte * gdbarch_breakpoint_from_pc (struct gdbarch *gdbarch, CORE_ADDR *pcptr, int *lenptr);
 extern void set_gdbarch_breakpoint_from_pc (struct gdbarch *gdbarch, gdbarch_breakpoint_from_pc_ftype *breakpoint_from_pc);
+
+/* Return the adjusted address and kind to use for Z0/Z1 packets.
+   KIND is usually the memory length of the breakpoint, but may have a
+   different target-specific meaning. */
+
+typedef void (gdbarch_remote_breakpoint_from_pc_ftype) (struct gdbarch *gdbarch, CORE_ADDR *pcptr, int *kindptr);
+extern void gdbarch_remote_breakpoint_from_pc (struct gdbarch *gdbarch, CORE_ADDR *pcptr, int *kindptr);
+extern void set_gdbarch_remote_breakpoint_from_pc (struct gdbarch *gdbarch, gdbarch_remote_breakpoint_from_pc_ftype *remote_breakpoint_from_pc);
 
 extern int gdbarch_adjust_breakpoint_address_p (struct gdbarch *gdbarch);
 
@@ -798,6 +812,24 @@ typedef CORE_ADDR (gdbarch_displaced_step_location_ftype) (struct gdbarch *gdbar
 extern CORE_ADDR gdbarch_displaced_step_location (struct gdbarch *gdbarch);
 extern void set_gdbarch_displaced_step_location (struct gdbarch *gdbarch, gdbarch_displaced_step_location_ftype *displaced_step_location);
 
+/* Relocate an instruction to execute at a different address.  OLDLOC
+   is the address in the inferior memory where the instruction to
+   relocate is currently at.  On input, TO points to the destination
+   where we want the instruction to be copied (and possibly adjusted)
+   to.  On output, it points to one past the end of the resulting
+   instruction(s).  The effect of executing the instruction at TO shall
+   be the same as if executing it at FROM.  For example, call
+   instructions that implicitly push the return address on the stack
+   should be adjusted to return to the instruction after OLDLOC;
+   relative branches, and other PC-relative instructions need the
+   offset adjusted; etc. */
+
+extern int gdbarch_relocate_instruction_p (struct gdbarch *gdbarch);
+
+typedef void (gdbarch_relocate_instruction_ftype) (struct gdbarch *gdbarch, CORE_ADDR *to, CORE_ADDR from);
+extern void gdbarch_relocate_instruction (struct gdbarch *gdbarch, CORE_ADDR *to, CORE_ADDR from);
+extern void set_gdbarch_relocate_instruction (struct gdbarch *gdbarch, gdbarch_relocate_instruction_ftype *relocate_instruction);
+
 /* Refresh overlay mapped state for section OSECT. */
 
 extern int gdbarch_overlay_update_p (struct gdbarch *gdbarch);
@@ -902,6 +934,47 @@ extern void set_gdbarch_has_global_solist (struct gdbarch *gdbarch, int has_glob
 
 extern int gdbarch_has_global_breakpoints (struct gdbarch *gdbarch);
 extern void set_gdbarch_has_global_breakpoints (struct gdbarch *gdbarch, int has_global_breakpoints);
+
+/* True if inferiors share an address space (e.g., uClinux). */
+
+typedef int (gdbarch_has_shared_address_space_ftype) (struct gdbarch *gdbarch);
+extern int gdbarch_has_shared_address_space (struct gdbarch *gdbarch);
+extern void set_gdbarch_has_shared_address_space (struct gdbarch *gdbarch, gdbarch_has_shared_address_space_ftype *has_shared_address_space);
+
+/* True if a fast tracepoint can be set at an address. */
+
+typedef int (gdbarch_fast_tracepoint_valid_at_ftype) (struct gdbarch *gdbarch, CORE_ADDR addr, int *isize, char **msg);
+extern int gdbarch_fast_tracepoint_valid_at (struct gdbarch *gdbarch, CORE_ADDR addr, int *isize, char **msg);
+extern void set_gdbarch_fast_tracepoint_valid_at (struct gdbarch *gdbarch, gdbarch_fast_tracepoint_valid_at_ftype *fast_tracepoint_valid_at);
+
+/* Return the "auto" target charset. */
+
+typedef const char * (gdbarch_auto_charset_ftype) (void);
+extern const char * gdbarch_auto_charset (struct gdbarch *gdbarch);
+extern void set_gdbarch_auto_charset (struct gdbarch *gdbarch, gdbarch_auto_charset_ftype *auto_charset);
+
+/* Return the "auto" target wide charset. */
+
+typedef const char * (gdbarch_auto_wide_charset_ftype) (void);
+extern const char * gdbarch_auto_wide_charset (struct gdbarch *gdbarch);
+extern void set_gdbarch_auto_wide_charset (struct gdbarch *gdbarch, gdbarch_auto_wide_charset_ftype *auto_wide_charset);
+
+/* If non-empty, this is a file extension that will be opened in place
+   of the file extension reported by the shared library list.
+  
+   This is most useful for toolchains that use a post-linker tool,
+   where the names of the files run on the target differ in extension
+   compared to the names of the files GDB should load for debug info. */
+
+extern const char * gdbarch_solib_symbols_extension (struct gdbarch *gdbarch);
+extern void set_gdbarch_solib_symbols_extension (struct gdbarch *gdbarch, const char * solib_symbols_extension);
+
+/* If true, the target OS has DOS-based file system semantics.  That
+   is, absolute paths include a drive name, and the backslash is
+   considered a directory separator. */
+
+extern int gdbarch_has_dos_based_file_system (struct gdbarch *gdbarch);
+extern void set_gdbarch_has_dos_based_file_system (struct gdbarch *gdbarch, int has_dos_based_file_system);
 
 /* Definition for an unknown syscall, used basically in error-cases.  */
 #define UNKNOWN_SYSCALL (-1)

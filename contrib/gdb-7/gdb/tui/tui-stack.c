@@ -1,7 +1,7 @@
 /* TUI display locator.
 
    Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2006, 2007, 2008,
-   2009 Free Software Foundation, Inc.
+   2009, 2010 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -218,7 +218,8 @@ tui_get_function_from_frame (struct frame_info *fi)
   struct ui_file *stream = tui_sfileopen (256);
   char *p;
 
-  print_address_symbolic (get_frame_pc (fi), stream, demangle, "");
+  print_address_symbolic (get_frame_arch (fi), get_frame_pc (fi),
+			  stream, demangle, "");
   p = tui_file_get_strbuf (stream);
 
   /* Use simple heuristics to isolate the function name.  The symbol
@@ -255,10 +256,15 @@ tui_show_locator_content (void)
 
       string = tui_make_status_line (&element->which_element.locator);
       wmove (locator->handle, 0, 0);
-      wstandout (locator->handle);
+      /* We ignore the return value from wstandout and wstandend, casting
+	 them to void in order to avoid a compiler warning.  The warning
+	 itself was introduced by a patch to ncurses 5.7 dated 2009-08-29,
+	 changing these macro to expand to code that causes the compiler
+	 to generate an unused-value warning.  */
+      (void) wstandout (locator->handle);
       waddstr (locator->handle, string);
       wclrtoeol (locator->handle);
-      wstandend (locator->handle);
+      (void) wstandend (locator->handle);
       tui_refresh_win (locator);
       wmove (locator->handle, 0, 0);
       xfree (string);
@@ -349,6 +355,7 @@ tui_show_frame_info (struct frame_info *fi)
       for (i = 0; i < (tui_source_windows ())->count; i++)
 	{
 	  union tui_which_element *item;
+
 	  win_info = (tui_source_windows ())->list[i];
 
 	  item = &((struct tui_win_element *) locator->content[0])->which_element;
@@ -372,6 +379,7 @@ tui_show_frame_info (struct frame_info *fi)
 	  if (win_info == TUI_SRC_WIN)
 	    {
 	      struct tui_line_or_address l;
+
 	      l.loa = LOA_LINE;
 	      l.u.line_no = start_line;
 	      if (!(source_already_displayed
@@ -389,6 +397,7 @@ tui_show_frame_info (struct frame_info *fi)
 	      if (win_info == TUI_DISASM_WIN)
 		{
 		  struct tui_line_or_address a;
+
 		  a.loa = LOA_ADDRESS;
 		  a.u.addr = low;
 		  if (!tui_addr_is_displayed (item->locator.addr, win_info, TRUE))

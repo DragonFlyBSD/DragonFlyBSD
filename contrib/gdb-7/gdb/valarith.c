@@ -1,8 +1,8 @@
 /* Perform arithmetic and other operations on values, for GDB.
 
    Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
-   1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008, 2009,
+   2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -31,6 +31,7 @@
 #include "dfp.h"
 #include <math.h>
 #include "infcall.h"
+#include "exceptions.h"
 
 /* Define whether or not the C operator '/' truncates towards zero for
    differently signed operands (truncation direction is undefined in C). */
@@ -122,6 +123,13 @@ First argument of `-' is a pointer and second argument is neither\n\
 an integer nor a pointer of the same type."));
 
   sz = TYPE_LENGTH (check_typedef (TYPE_TARGET_TYPE (type1)));
+  if (sz == 0) 
+    {
+      warning (_("Type size unknown, assuming 1. "
+               "Try casting to a known type, or void *."));
+      sz = 1;
+    }
+
   return (value_as_long (arg1) - value_as_long (arg2)) / sz;
 }
 
@@ -139,7 +147,6 @@ an integer nor a pointer of the same type."));
 struct value *
 value_subscript (struct value *array, LONGEST index)
 {
-  struct value *bound;
   int c_style = current_language->c_style_arrays;
   struct type *tarray;
 
@@ -151,8 +158,8 @@ value_subscript (struct value *array, LONGEST index)
     {
       struct type *range_type = TYPE_INDEX_TYPE (tarray);
       LONGEST lowerbound, upperbound;
-      get_discrete_bounds (range_type, &lowerbound, &upperbound);
 
+      get_discrete_bounds (range_type, &lowerbound, &upperbound);
       if (VALUE_LVAL (array) != lval_memory)
 	return value_subscripted_rvalue (array, index, lowerbound);
 
@@ -191,7 +198,8 @@ value_subscripted_rvalue (struct value *array, LONGEST index, int lowerbound)
   unsigned int elt_offs = elt_size * longest_to_int (index - lowerbound);
   struct value *v;
 
-  if (index < lowerbound || elt_offs >= TYPE_LENGTH (array_type))
+  if (index < lowerbound || (!TYPE_ARRAY_UPPER_BOUND_IS_UNDEFINED (array_type)
+			     && elt_offs >= TYPE_LENGTH (array_type)))
     error (_("no such vector element"));
 
   v = allocate_value (elt_type);
@@ -256,22 +264,35 @@ value_bitstring_subscript (struct type *type,
    For now, we do not overload the `=' operator.  */
 
 int
-binop_user_defined_p (enum exp_opcode op, struct value *arg1, struct value *arg2)
+binop_types_user_defined_p (enum exp_opcode op,
+			    struct type *type1, struct type *type2)
 {
-  struct type *type1, *type2;
   if (op == BINOP_ASSIGN || op == BINOP_CONCAT)
     return 0;
 
-  type1 = check_typedef (value_type (arg1));
+  type1 = check_typedef (type1);
   if (TYPE_CODE (type1) == TYPE_CODE_REF)
     type1 = check_typedef (TYPE_TARGET_TYPE (type1));
 
-  type2 = check_typedef (value_type (arg2));
+  type2 = check_typedef (type1);
   if (TYPE_CODE (type2) == TYPE_CODE_REF)
     type2 = check_typedef (TYPE_TARGET_TYPE (type2));
 
   return (TYPE_CODE (type1) == TYPE_CODE_STRUCT
 	  || TYPE_CODE (type2) == TYPE_CODE_STRUCT);
+}
+
+/* Check to see if either argument is a structure, or a reference to
+   one.  This is called so we know whether to go ahead with the normal
+   binop or look for a user defined function instead.
+
+   For now, we do not overload the `=' operator.  */
+
+int
+binop_user_defined_p (enum exp_opcode op,
+		      struct value *arg1, struct value *arg2)
+{
+  return binop_types_user_defined_p (op, value_type (arg1), value_type (arg2));
 }
 
 /* Check to see if argument is a structure.  This is called so
@@ -284,6 +305,7 @@ int
 unop_user_defined_p (enum exp_opcode op, struct value *arg1)
 {
   struct type *type1;
+
   if (op == UNOP_ADDR)
     return 0;
   type1 = check_typedef (value_type (arg1));
@@ -296,6 +318,67 @@ unop_user_defined_p (enum exp_opcode op, struct value *arg1)
       else
 	return 0;
     }
+}
+
+/* Try to find an operator named OPERATOR which takes NARGS arguments
+   specified in ARGS.  If the operator found is a static member operator
+   *STATIC_MEMFUNP will be set to 1, and otherwise 0.
+   The search if performed through find_overload_match which will handle
+   member operators, non member operators, operators imported implicitly or
+   explicitly, and perform correct overload resolution in all of the above
+   situations or combinations thereof.  */
+
+static struct value *
+value_user_defined_cpp_op (struct value **args, int nargs, char *operator,
+                           int *static_memfuncp)
+{
+
+  struct symbol *symp = NULL;
+  struct value *valp = NULL;
+  struct type **arg_types;
+  int i;
+
+  arg_types = (struct type **) alloca (nargs * (sizeof (struct type *)));
+  /* Prepare list of argument types for overload resolution */
+  for (i = 0; i < nargs; i++)
+    arg_types[i] = value_type (args[i]);
+
+  find_overload_match (arg_types, nargs, operator, BOTH /* could be method */,
+                       0 /* strict match */, &args[0], /* objp */
+                       NULL /* pass NULL symbol since symbol is unknown */,
+                       &valp, &symp, static_memfuncp, 0);
+
+  if (valp)
+    return valp;
+
+  if (symp)
+    {
+      /* This is a non member function and does not
+         expect a reference as its first argument
+         rather the explicit structure.  */
+      args[0] = value_ind (args[0]);
+      return value_of_variable (symp, 0);
+    }
+
+  error (_("Could not find %s."), operator);
+}
+
+/* Lookup user defined operator NAME.  Return a value representing the
+   function, otherwise return NULL.  */
+
+static struct value *
+value_user_defined_op (struct value **argp, struct value **args, char *name,
+                       int *static_memfuncp, int nargs)
+{
+  struct value *result = NULL;
+
+  if (current_language->la_language == language_cplus)
+    result = value_user_defined_cpp_op (args, nargs, name, static_memfuncp);
+  else
+    result = value_struct_elt (argp, args, name, static_memfuncp,
+                               "structure");
+
+  return result;
 }
 
 /* We know either arg1 or arg2 is a structure, so try to find the right
@@ -438,7 +521,8 @@ value_x_binop (struct value *arg1, struct value *arg2, enum exp_opcode op,
       error (_("Invalid binary operation specified."));
     }
 
-  argvec[0] = value_struct_elt (&arg1, argvec + 1, tstr, &static_memfuncp, "structure");
+  argvec[0] = value_user_defined_op (&arg1, argvec + 1, tstr,
+                                     &static_memfuncp, 2);
 
   if (argvec[0])
     {
@@ -450,6 +534,7 @@ value_x_binop (struct value *arg1, struct value *arg2, enum exp_opcode op,
       if (noside == EVAL_AVOID_SIDE_EFFECTS)
 	{
 	  struct type *return_type;
+
 	  return_type
 	    = TYPE_TARGET_TYPE (check_typedef (value_type (argvec[0])));
 	  return value_zero (return_type, VALUE_LVAL (arg1));
@@ -535,7 +620,8 @@ value_x_unop (struct value *arg1, enum exp_opcode op, enum noside noside)
       error (_("Invalid unary operation specified."));
     }
 
-  argvec[0] = value_struct_elt (&arg1, argvec + 1, tstr, &static_memfuncp, "structure");
+  argvec[0] = value_user_defined_op (&arg1, argvec + 1, tstr,
+                                     &static_memfuncp, nargs);
 
   if (argvec[0])
     {
@@ -548,6 +634,7 @@ value_x_unop (struct value *arg1, enum exp_opcode op, enum noside noside)
       if (noside == EVAL_AVOID_SIDE_EFFECTS)
 	{
 	  struct type *return_type;
+
 	  return_type
 	    = TYPE_TARGET_TYPE (check_typedef (value_type (argvec[0])));
 	  return value_zero (return_type, VALUE_LVAL (arg1));
@@ -603,6 +690,7 @@ value_concat (struct value *arg1, struct value *arg2)
   if (TYPE_CODE (type2) == TYPE_CODE_INT)
     {
       struct type *tmp = type1;
+
       type1 = tmp;
       tmp = type2;
       inval1 = arg2;
@@ -629,6 +717,7 @@ value_concat (struct value *arg1, struct value *arg2)
 	  if (TYPE_CODE (type2) == TYPE_CODE_CHAR)
 	    {
 	      char_type = type2;
+
 	      inchar = (char) unpack_long (type2,
 					   value_contents (inval2));
 	      for (idx = 0; idx < count; idx++)
@@ -639,6 +728,7 @@ value_concat (struct value *arg1, struct value *arg2)
 	  else
 	    {
 	      char_type = TYPE_TARGET_TYPE (type2);
+
 	      for (idx = 0; idx < count; idx++)
 		{
 		  memcpy (ptr + (idx * inval2len), value_contents (inval2),
@@ -672,11 +762,13 @@ value_concat (struct value *arg1, struct value *arg2)
       if (TYPE_CODE (type1) == TYPE_CODE_CHAR)
 	{
 	  char_type = type1;
+
 	  *ptr = (char) unpack_long (type1, value_contents (inval1));
 	}
       else
 	{
 	  char_type = TYPE_TARGET_TYPE (type1);
+
 	  memcpy (ptr, value_contents (inval1), inval1len);
 	}
       if (TYPE_CODE (type2) == TYPE_CODE_CHAR)
@@ -860,7 +952,6 @@ value_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
   if (TYPE_CODE (type1) == TYPE_CODE_DECFLOAT
       || TYPE_CODE (type2) == TYPE_CODE_DECFLOAT)
     {
-      struct type *v_type;
       int len_v1, len_v2, len_v;
       enum bfd_endian byte_order_v1, byte_order_v2, byte_order_v;
       gdb_byte v1[16], v2[16];
@@ -908,6 +999,7 @@ value_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
          in target format.  real.c in GCC probably has the necessary
          code.  */
       DOUBLEST v1, v2, v = 0;
+
       v1 = value_as_double (arg1);
       v2 = value_as_double (arg2);
 
@@ -966,6 +1058,7 @@ value_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
 	   || TYPE_CODE (type2) == TYPE_CODE_BOOL)
     {
       LONGEST v1, v2, v = 0;
+
       v1 = value_as_long (arg1);
       v2 = value_as_long (arg2);
 
@@ -1029,6 +1122,7 @@ value_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
 	{
 	  LONGEST v2_signed = value_as_long (arg2);
 	  ULONGEST v1, v2, v = 0;
+
 	  v1 = (ULONGEST) value_as_long (arg1);
 	  v2 = (ULONGEST) v2_signed;
 
@@ -1128,6 +1222,18 @@ value_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
 	      v = v1 < v2;
 	      break;
 
+	    case BINOP_GTR:
+	      v = v1 > v2;
+	      break;
+
+	    case BINOP_LEQ:
+	      v = v1 <= v2;
+	      break;
+
+	    case BINOP_GEQ:
+	      v = v1 >= v2;
+	      break;
+
 	    default:
 	      error (_("Invalid binary operation on numbers."));
 	    }
@@ -1142,6 +1248,7 @@ value_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
       else
 	{
 	  LONGEST v1, v2, v = 0;
+
 	  v1 = value_as_long (arg1);
 	  v2 = value_as_long (arg2);
 
@@ -1237,8 +1344,24 @@ value_binop (struct value *arg1, struct value *arg2, enum exp_opcode op)
 	      v = v1 == v2;
 	      break;
 
+            case BINOP_NOTEQUAL:
+              v = v1 != v2;
+              break;
+
 	    case BINOP_LESS:
 	      v = v1 < v2;
+	      break;
+
+	    case BINOP_GTR:
+	      v = v1 > v2;
+	      break;
+
+	    case BINOP_LEQ:
+	      v = v1 <= v2;
+	      break;
+
+	    case BINOP_GEQ:
+	      v = v1 >= v2;
 	      break;
 
 	    default:
@@ -1350,6 +1473,7 @@ value_equal (struct value *arg1, struct value *arg2)
       /* NOTE: kettenis/20050816: Avoid compiler bug on systems where
 	 `long double' values are returned in static storage (m68k).  */
       DOUBLEST d = value_as_double (arg1);
+
       return d == value_as_double (arg2);
     }
   else if ((code1 == TYPE_CODE_DECFLOAT || is_int1)
@@ -1397,6 +1521,24 @@ value_equal (struct value *arg1, struct value *arg2)
     }
 }
 
+/* Compare values based on their raw contents.  Useful for arrays since
+   value_equal coerces them to pointers, thus comparing just the address
+   of the array instead of its contents.  */
+
+int
+value_equal_contents (struct value *arg1, struct value *arg2)
+{
+  struct type *type1, *type2;
+
+  type1 = check_typedef (value_type (arg1));
+  type2 = check_typedef (value_type (arg2));
+
+  return (TYPE_CODE (type1) == TYPE_CODE (type2)
+	  && TYPE_LENGTH (type1) == TYPE_LENGTH (type2)
+	  && memcmp (value_contents (arg1), value_contents (arg2),
+		     TYPE_LENGTH (type1)) == 0);
+}
+
 /* Simulate the C operator < by returning 1
    iff ARG1's contents are less than ARG2's.  */
 
@@ -1427,6 +1569,7 @@ value_less (struct value *arg1, struct value *arg2)
       /* NOTE: kettenis/20050816: Avoid compiler bug on systems where
 	 `long double' values are returned in static storage (m68k).  */
       DOUBLEST d = value_as_double (arg1);
+
       return d < value_as_double (arg2);
     }
   else if ((code1 == TYPE_CODE_DECFLOAT || is_int1)
@@ -1548,6 +1691,7 @@ value_bit_index (struct type *type, const gdb_byte *valaddr, int index)
   LONGEST word;
   unsigned rel_index;
   struct type *range = TYPE_INDEX_TYPE (type);
+
   if (get_discrete_bounds (range, &low_bound, &high_bound) < 0)
     return -2;
   if (index < low_bound || index > high_bound)
@@ -1567,6 +1711,7 @@ value_in (struct value *element, struct value *set)
   int member;
   struct type *settype = check_typedef (value_type (set));
   struct type *eltype = check_typedef (value_type (element));
+
   if (TYPE_CODE (eltype) == TYPE_CODE_RANGE)
     eltype = TYPE_TARGET_TYPE (eltype);
   if (TYPE_CODE (settype) != TYPE_CODE_SET)

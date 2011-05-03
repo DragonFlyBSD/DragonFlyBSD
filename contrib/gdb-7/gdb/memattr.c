@@ -1,6 +1,6 @@
 /* Memory attributes support, for GDB.
 
-   Copyright (C) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
+   Copyright (C) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -292,9 +292,6 @@ lookup_mem_region (CORE_ADDR addr)
 void
 invalidate_target_mem_regions (void)
 {
-  struct mem_region *m;
-  int ix;
-
   if (!target_mem_regions_valid)
     return;
 
@@ -443,6 +440,7 @@ mem_info_command (char *args, int from_tty)
   for (ix = 0; VEC_iterate (mem_region_s, mem_region_list, ix, m); ix++)
     {
       char *tmp;
+
       printf_filtered ("%-3d %-3c\t",
 		       m->number,
 		       m->enabled_p ? 'y' : 'n');
@@ -455,17 +453,17 @@ mem_info_command (char *args, int from_tty)
 
       if (gdbarch_addr_bit (target_gdbarch) <= 32)
 	{
-	if (m->hi == 0)
-	  tmp = "0x100000000";
-	else
-	  tmp = hex_string_custom ((unsigned long) m->hi, 8);
+	  if (m->hi == 0)
+	    tmp = "0x100000000";
+	  else
+	    tmp = hex_string_custom ((unsigned long) m->hi, 8);
 	}
       else
 	{
-	if (m->hi == 0)
-	  tmp = "0x10000000000000000";
-	else
-	  tmp = hex_string_custom ((unsigned long) m->hi, 16);
+	  if (m->hi == 0)
+	    tmp = "0x10000000000000000";
+	  else
+	    tmp = hex_string_custom ((unsigned long) m->hi, 16);
 	}
 
       printf_filtered ("%s ", tmp);
@@ -655,7 +653,7 @@ mem_disable_command (char *args, int from_tty)
 static void
 mem_delete (int num)
 {
-  struct mem_region *m1, *m;
+  struct mem_region *m;
   int ix;
 
   if (!mem_region_list)
@@ -732,9 +730,9 @@ _initialize_mem (void)
 Define attributes for memory region or reset memory region handling to\n\
 target-based.\n\
 Usage: mem auto\n\
-       mem <lo addr> <hi addr> [<mode> <width> <cache>], \n\
-where <mode>  may be rw (read/write), ro (read-only) or wo (write-only), \n\
-      <width> may be 8, 16, 32, or 64, and \n\
+       mem <lo addr> <hi addr> [<mode> <width> <cache>],\n\
+where <mode>  may be rw (read/write), ro (read-only) or wo (write-only),\n\
+      <width> may be 8, 16, 32, or 64, and\n\
       <cache> may be cache or nocache"));
 
   add_cmd ("mem", class_vars, mem_enable_command, _("\

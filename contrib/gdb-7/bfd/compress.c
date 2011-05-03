@@ -1,5 +1,5 @@
-/* ELF attributes support (based on ARM EABI attributes).
-   Copyright 2008
+/* Compressed section support (intended for debug sections).
+   Copyright 2008, 2010
    Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -51,12 +51,10 @@ DESCRIPTION
 */
 
 bfd_boolean
-bfd_uncompress_section_contents (bfd_byte **buffer, bfd_size_type *size)
+bfd_uncompress_section_contents (bfd_byte **buffer ATTRIBUTE_UNUSED,
+				 bfd_size_type *size ATTRIBUTE_UNUSED)
 {
 #ifndef HAVE_ZLIB_H
-  /* These are just to quiet gcc.  */
-  buffer = 0;
-  size = 0;
   return FALSE;
 #else
   bfd_size_type compressed_size = *size;

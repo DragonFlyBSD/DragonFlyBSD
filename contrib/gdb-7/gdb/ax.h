@@ -1,5 +1,5 @@
 /* Definitions for expressions designed to be executed on the agent
-   Copyright (C) 1998, 1999, 2000, 2007, 2008, 2009
+   Copyright (C) 1998, 1999, 2000, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -51,6 +51,33 @@
    to the host GDB.  */
 
 
+/* Different kinds of flaws an agent expression might have, as
+   detected by ax_reqs.  */
+enum agent_flaws
+  {
+    agent_flaw_none = 0,	/* code is good */
+
+    /* There is an invalid instruction in the stream.  */
+    agent_flaw_bad_instruction,
+
+    /* There is an incomplete instruction at the end of the expression.  */
+    agent_flaw_incomplete_instruction,
+
+    /* ax_reqs was unable to prove that every jump target is to a
+       valid offset.  Valid offsets are within the bounds of the
+       expression, and to a valid instruction boundary.  */
+    agent_flaw_bad_jump,
+
+    /* ax_reqs was unable to prove to its satisfaction that, for each
+       jump target location, the stack will have the same height whether
+       that location is reached via a jump or by straight execution.  */
+    agent_flaw_height_mismatch,
+
+    /* ax_reqs was unable to prove that every instruction following
+       an unconditional jump was the target of some other jump.  */
+    agent_flaw_hole
+  };
+
 /* Agent expression data structures.  */
 
 /* The type of an element of the agent expression stack.
@@ -67,14 +94,56 @@ union agent_val
 /* A buffer containing a agent expression.  */
 struct agent_expr
   {
+    /* The bytes of the expression.  */
     unsigned char *buf;
-    int len;			/* number of characters used */
-    int size;			/* allocated size */
+
+    /* The number of bytecode in the expression.  */
+    int len;
+
+    /* Allocated space available currently.  */
+    int size;
+
+    /* The target architecture assumed to be in effect.  */
+    struct gdbarch *gdbarch;
+
+    /* The address to which the expression applies.  */
     CORE_ADDR scope;
+
+    /* If the following is not equal to agent_flaw_none, the rest of the
+       information in this structure is suspect.  */
+    enum agent_flaws flaw;
+
+    /* Number of elements left on stack at end; may be negative if expr
+       only consumes elements.  */
+    int final_height;
+
+    /* Maximum and minimum stack height, relative to initial height.  */
+    int max_height, min_height;
+
+    /* Largest `ref' or `const' opcode used, in bits.  Zero means the
+       expression has no such instructions.  */
+    int max_data_size;
+
+    /* Bit vector of registers needed.  Register R is needed iff
+
+       reg_mask[R / 8] & (1 << (R % 8))
+
+       is non-zero.  Note!  You may not assume that this bitmask is long
+       enough to hold bits for all the registers of the machine; the
+       agent expression code has no idea how many registers the machine
+       has.  However, the bitmask is reg_mask_len bytes long, so the
+       valid register numbers run from 0 to reg_mask_len * 8 - 1.
+
+       Also note that this mask may contain registers that are needed
+       for the original collection expression to work, but that are
+       not referenced by any bytecode.  This could, for example, occur
+       when collecting a local variable allocated to a register; the
+       compiler sets the mask bit and skips generating a bytecode whose
+       result is going to be discarded anyway.
+    */
+    int reg_mask_len;
+    unsigned char *reg_mask;
   };
-
-
-
 
 /* The actual values of the various bytecode operations.
 
@@ -131,6 +200,9 @@ enum agent_op
     aop_pop = 0x29,
     aop_zero_ext = 0x2a,
     aop_swap = 0x2b,
+    aop_getv = 0x2c,
+    aop_setv = 0x2d,
+    aop_tracev = 0x2e,
     aop_trace16 = 0x30,
     aop_last
   };
@@ -140,7 +212,7 @@ enum agent_op
 /* Functions for building expressions.  */
 
 /* Allocate a new, empty agent expression.  */
-extern struct agent_expr *new_agent_expr (CORE_ADDR);
+extern struct agent_expr *new_agent_expr (struct gdbarch *, CORE_ADDR);
 
 /* Free a agent expression.  */
 extern void free_agent_expr (struct agent_expr *);
@@ -182,6 +254,12 @@ extern void ax_const_d (struct agent_expr *EXPR, LONGEST d);
 /* Assemble code to push the value of register number REG on the
    stack.  */
 extern void ax_reg (struct agent_expr *EXPR, int REG);
+
+/* Add the given register to the register mask of the expression.  */
+extern void ax_reg_mask (struct agent_expr *ax, int reg);
+
+/* Assemble code to operate on a trace state variable.  */
+extern void ax_tsv (struct agent_expr *expr, enum agent_op op, int num);
 
 
 /* Functions for printing out expressions, and otherwise debugging
@@ -220,72 +298,8 @@ struct aop_map
 /* Map of the bytecodes, indexed by bytecode number.  */
 extern struct aop_map aop_map[];
 
-/* Different kinds of flaws an agent expression might have, as
-   detected by agent_reqs.  */
-enum agent_flaws
-  {
-    agent_flaw_none = 0,	/* code is good */
+/* Given an agent expression AX, analyze and update its requirements.  */
 
-    /* There is an invalid instruction in the stream.  */
-    agent_flaw_bad_instruction,
-
-    /* There is an incomplete instruction at the end of the expression.  */
-    agent_flaw_incomplete_instruction,
-
-    /* agent_reqs was unable to prove that every jump target is to a
-       valid offset.  Valid offsets are within the bounds of the
-       expression, and to a valid instruction boundary.  */
-    agent_flaw_bad_jump,
-
-    /* agent_reqs was unable to prove to its satisfaction that, for each
-       jump target location, the stack will have the same height whether
-       that location is reached via a jump or by straight execution.  */
-    agent_flaw_height_mismatch,
-
-    /* agent_reqs was unable to prove that every instruction following
-       an unconditional jump was the target of some other jump.  */
-    agent_flaw_hole
-  };
-
-/* Structure describing the requirements of a bytecode expression.  */
-struct agent_reqs
-  {
-
-    /* If the following is not equal to agent_flaw_none, the rest of the
-       information in this structure is suspect.  */
-    enum agent_flaws flaw;
-
-    /* Number of elements left on stack at end; may be negative if expr
-       only consumes elements.  */
-    int final_height;
-
-    /* Maximum and minimum stack height, relative to initial height.  */
-    int max_height, min_height;
-
-    /* Largest `ref' or `const' opcode used, in bits.  Zero means the
-       expression has no such instructions.  */
-    int max_data_size;
-
-    /* Bit vector of registers used.  Register R is used iff
-
-       reg_mask[R / 8] & (1 << (R % 8))
-
-       is non-zero.  Note!  You may not assume that this bitmask is long
-       enough to hold bits for all the registers of the machine; the
-       agent expression code has no idea how many registers the machine
-       has.  However, the bitmask is reg_mask_len bytes long, so the
-       valid register numbers run from 0 to reg_mask_len * 8 - 1.  
-
-       We're assuming eight-bit bytes.  So sue me.
-
-       The caller should free reg_list when done.  */
-    int reg_mask_len;
-    unsigned char *reg_mask;
-  };
-
-
-/* Given an agent expression AX, fill in an agent_reqs structure REQS
-   describing it.  */
-extern void ax_reqs (struct agent_expr *ax, struct agent_reqs *reqs);
+extern void ax_reqs (struct agent_expr *ax);
 
 #endif /* AGENTEXPR_H */

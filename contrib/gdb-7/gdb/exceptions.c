@@ -2,7 +2,7 @@
 
    Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
    1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008,
-   2009 Free Software Foundation, Inc.
+   2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -104,6 +104,7 @@ static void
 catcher_pop (void)
 {
   struct catcher *old_catcher = current_catcher;
+
   current_catcher = old_catcher->prev;
 
   /* Restore the cleanup chain, the error/quit messages, and the uiout
@@ -174,6 +175,7 @@ exceptions_state_mc (enum catcher_action action)
 	case CATCH_ITER:
 	  {
 	    struct gdb_exception exception = *current_catcher->exception;
+
 	    if (current_catcher->mask & RETURN_MASK (exception.reason))
 	      {
 		/* Exit normally if this catcher can handle this
@@ -210,7 +212,7 @@ exceptions_state_mc_action_iter_1 (void)
 
 /* Return EXCEPTION to the nearest containing catch_errors().  */
 
-NORETURN void
+void
 throw_exception (struct gdb_exception exception)
 {
   struct thread_info *tp = NULL;
@@ -239,10 +241,11 @@ throw_exception (struct gdb_exception exception)
 
 static char *last_message;
 
-NORETURN void
+void
 deprecated_throw_reason (enum return_reason reason)
 {
   struct gdb_exception exception;
+
   memset (&exception, 0, sizeof exception);
 
   exception.reason = reason;
@@ -299,6 +302,7 @@ print_exception (struct ui_file *file, struct gdb_exception e)
      as that way the MI's behavior is preserved.  */
   const char *start;
   const char *end;
+
   for (start = e.message; start != NULL; start = end)
     {
       end = strchr (start, '\n');
@@ -374,7 +378,7 @@ print_any_exception (struct ui_file *file, const char *prefix,
     }
 }
 
-NORETURN static void ATTR_NORETURN ATTR_FORMAT (printf, 3, 0)
+static void ATTRIBUTE_NORETURN ATTRIBUTE_PRINTF (3, 0)
 throw_it (enum return_reason reason, enum errors error, const char *fmt,
 	  va_list ap)
 {
@@ -396,22 +400,23 @@ throw_it (enum return_reason reason, enum errors error, const char *fmt,
   throw_exception (e);
 }
 
-NORETURN void
+void
 throw_verror (enum errors error, const char *fmt, va_list ap)
 {
   throw_it (RETURN_ERROR, error, fmt, ap);
 }
 
-NORETURN void
+void
 throw_vfatal (const char *fmt, va_list ap)
 {
   throw_it (RETURN_QUIT, GDB_NO_ERROR, fmt, ap);
 }
 
-NORETURN void
+void
 throw_error (enum errors error, const char *fmt, ...)
 {
   va_list args;
+
   va_start (args, fmt);
   throw_it (RETURN_ERROR, error, fmt, args);
   va_end (args);
@@ -457,6 +462,7 @@ catch_exception (struct ui_out *uiout,
 		 return_mask mask)
 {
   volatile struct gdb_exception exception;
+
   TRY_CATCH (exception, mask)
     {
       (*func) (uiout, func_args);
@@ -473,6 +479,7 @@ catch_exceptions_with_msg (struct ui_out *uiout,
 {
   volatile struct gdb_exception exception;
   volatile int val = 0;
+
   TRY_CATCH (exception, mask)
     {
       val = (*func) (uiout, func_args);
@@ -505,6 +512,7 @@ catch_errors (catch_errors_ftype *func, void *func_args, char *errstring,
 {
   volatile int val = 0;
   volatile struct gdb_exception exception;
+
   TRY_CATCH (exception, mask)
     {
       val = func (func_args);
@@ -520,6 +528,7 @@ catch_command_errors (catch_command_errors_ftype * command,
 		      char *arg, int from_tty, return_mask mask)
 {
   volatile struct gdb_exception e;
+
   TRY_CATCH (e, mask)
     {
       command (arg, from_tty);

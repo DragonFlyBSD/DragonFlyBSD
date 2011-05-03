@@ -3,8 +3,7 @@
    Low level functions to implement Oeprating System specific
    code to manipulate I386 debug registers.
 
-   Copyright (C) 2009
-   Free Software Foundation, Inc.
+   Copyright (C) 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -49,16 +48,19 @@ extern void i386_use_watchpoints (struct target_ops *);
    functions are:
 
       set_control              -- set the debug control (DR7)
-				  register to a given value
+				  register to a given value for all LWPs
 
       set_addr                 -- put an address into one debug
-				  register
+				  register for all LWPs
 
       reset_addr               -- reset the address stored in
-				  one debug register
+				  one debug register for all LWPs
 
       get_status               -- return the value of the debug
-				  status (DR6) register.
+				  status (DR6) register for current LWP
+
+      unset_status             -- unset the specified bits of the debug
+				  status (DR6) register for all LWPs
 
    Additionally, the native file should set the debug_register_length
    field to 4 or 8 depending on the number of bytes used for
@@ -70,6 +72,7 @@ struct i386_dr_low_type
     void (*set_addr) (int, CORE_ADDR);
     void (*reset_addr) (int);
     unsigned long (*get_status) (void);
+    void (*unset_status) (unsigned long);
     int debug_register_length;
   };
 

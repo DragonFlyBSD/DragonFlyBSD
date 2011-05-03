@@ -1,7 +1,8 @@
 /* Intel 387 floating point stuff.
 
    Copyright (C) 1988, 1989, 1991, 1992, 1993, 1994, 1998, 1999, 2000, 2001,
-   2002, 2003, 2004, 2005, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -33,6 +34,7 @@
 
 #include "i386-tdep.h"
 #include "i387-tdep.h"
+#include "i386-xstate.h"
 
 /* Print the floating point number specified by RAW.  */
 
@@ -203,7 +205,6 @@ i387_print_float_info (struct gdbarch *gdbarch, struct ui_file *file,
 		       struct frame_info *frame, const char *args)
 {
   struct gdbarch_tdep *tdep = gdbarch_tdep (get_frame_arch (frame));
-  gdb_byte buf[4];
   ULONGEST fctrl;
   ULONGEST fstat;
   ULONGEST ftag;
@@ -643,6 +644,477 @@ i387_collect_fxsave (const struct regcache *regcache, int regnum, void *fxsave)
 	      {
 		/* The opcode occupies only 11 bits.  Make sure we
                    don't touch the other bits.  */
+		buf[1] &= ((1 << 3) - 1);
+		buf[1] |= ((FXSAVE_ADDR (tdep, regs, i))[1] & ~((1 << 3) - 1));
+	      }
+	    else if (i == I387_FTAG_REGNUM (tdep))
+	      {
+		/* Converting back is much easier.  */
+
+		unsigned short ftag;
+		int fpreg;
+
+		ftag = (buf[1] << 8) | buf[0];
+		buf[0] = 0;
+		buf[1] = 0;
+
+		for (fpreg = 7; fpreg >= 0; fpreg--)
+		  {
+		    int tag = (ftag >> (fpreg * 2)) & 3;
+
+		    if (tag != 3)
+		      buf[0] |= (1 << fpreg);
+		  }
+	      }
+	    memcpy (FXSAVE_ADDR (tdep, regs, i), buf, 2);
+	  }
+	else
+	  regcache_raw_collect (regcache, i, FXSAVE_ADDR (tdep, regs, i));
+      }
+
+  if (regnum == I387_MXCSR_REGNUM (tdep) || regnum == -1)
+    regcache_raw_collect (regcache, I387_MXCSR_REGNUM (tdep),
+			  FXSAVE_MXCSR_ADDR (regs));
+}
+
+/* `xstate_bv' is at byte offset 512.  */
+#define XSAVE_XSTATE_BV_ADDR(xsave) (xsave + 512)
+
+/* At xsave_avxh_offset[REGNUM] you'll find the offset to the location in
+   the upper 128bit of AVX register data structure used by the "xsave"
+   instruction where GDB register REGNUM is stored.  */
+
+static int xsave_avxh_offset[] =
+{
+  576 + 0 * 16,		/* Upper 128bit of %ymm0 through ...  */
+  576 + 1 * 16,
+  576 + 2 * 16,
+  576 + 3 * 16,
+  576 + 4 * 16,
+  576 + 5 * 16,
+  576 + 6 * 16,
+  576 + 7 * 16,
+  576 + 8 * 16,
+  576 + 9 * 16,
+  576 + 10 * 16,
+  576 + 11 * 16,
+  576 + 12 * 16,
+  576 + 13 * 16,
+  576 + 14 * 16,
+  576 + 15 * 16		/* Upper 128bit of ... %ymm15 (128 bits each).  */
+};
+
+#define XSAVE_AVXH_ADDR(tdep, xsave, regnum) \
+  (xsave + xsave_avxh_offset[regnum - I387_YMM0H_REGNUM (tdep)])
+
+/* Similar to i387_supply_fxsave, but use XSAVE extended state.  */
+
+void
+i387_supply_xsave (struct regcache *regcache, int regnum,
+		   const void *xsave)
+{
+  struct gdbarch_tdep *tdep = gdbarch_tdep (get_regcache_arch (regcache));
+  const gdb_byte *regs = xsave;
+  int i;
+  unsigned int clear_bv;
+  const gdb_byte *p;
+  enum
+    {
+      none = 0x0,
+      x87 = 0x1,
+      sse = 0x2,
+      avxh = 0x4,
+      all = x87 | sse | avxh
+    } regclass;
+
+  gdb_assert (tdep->st0_regnum >= I386_ST0_REGNUM);
+  gdb_assert (tdep->num_xmm_regs > 0);
+
+  if (regnum == -1)
+    regclass = all;
+  else if (regnum >= I387_YMM0H_REGNUM (tdep)
+	   && regnum < I387_YMMENDH_REGNUM (tdep))
+    regclass = avxh;
+  else if (regnum >= I387_XMM0_REGNUM(tdep)
+	   && regnum < I387_MXCSR_REGNUM (tdep))
+    regclass = sse;
+  else if (regnum >= I387_ST0_REGNUM (tdep)
+	   && regnum < I387_FCTRL_REGNUM (tdep))
+    regclass = x87;
+  else
+    regclass = none;
+
+  if (regs != NULL && regclass != none)
+    {
+      /* Get `xstat_bv'.  */
+      const gdb_byte *xstate_bv_p = XSAVE_XSTATE_BV_ADDR (regs);
+
+      /* The supported bits in `xstat_bv' are 1 byte.  Clear part in
+	 vector registers if its bit in xstat_bv is zero.  */
+      clear_bv = (~(*xstate_bv_p)) & tdep->xcr0;
+    }
+  else
+    clear_bv = I386_XSTATE_AVX_MASK;
+
+  switch (regclass)
+    {
+    case none:
+      break;
+
+    case avxh:
+      if ((clear_bv & I386_XSTATE_AVX))
+	p = NULL;
+      else
+	p = XSAVE_AVXH_ADDR (tdep, regs, regnum);
+      regcache_raw_supply (regcache, regnum, p);
+      return;
+
+    case sse:
+      if ((clear_bv & I386_XSTATE_SSE))
+	p = NULL;
+      else
+	p = FXSAVE_ADDR (tdep, regs, regnum);
+      regcache_raw_supply (regcache, regnum, p);
+      return;
+
+    case x87:
+      if ((clear_bv & I386_XSTATE_X87))
+	p = NULL;
+      else
+	p = FXSAVE_ADDR (tdep, regs, regnum);
+      regcache_raw_supply (regcache, regnum, p);
+      return;
+
+    case all:
+      /* Hanle the upper YMM registers.  */
+      if ((tdep->xcr0 & I386_XSTATE_AVX))
+	{
+	  if ((clear_bv & I386_XSTATE_AVX))
+	    p = NULL;
+	  else
+	    p = regs;
+
+	  for (i = I387_YMM0H_REGNUM (tdep);
+	       i < I387_YMMENDH_REGNUM (tdep); i++)
+	    {
+	      if (p != NULL)
+		p = XSAVE_AVXH_ADDR (tdep, regs, i);
+	      regcache_raw_supply (regcache, i, p);
+	    }
+	}
+
+      /* Handle the XMM registers.  */
+      if ((tdep->xcr0 & I386_XSTATE_SSE))
+	{
+	  if ((clear_bv & I386_XSTATE_SSE))
+	    p = NULL;
+	  else
+	    p = regs;
+
+	  for (i = I387_XMM0_REGNUM (tdep);
+	       i < I387_MXCSR_REGNUM (tdep); i++)
+	    {
+	      if (p != NULL)
+		p = FXSAVE_ADDR (tdep, regs, i);
+	      regcache_raw_supply (regcache, i, p);
+	    }
+	}
+
+      /* Handle the x87 registers.  */
+      if ((tdep->xcr0 & I386_XSTATE_X87))
+	{
+	  if ((clear_bv & I386_XSTATE_X87))
+	    p = NULL;
+	  else
+	    p = regs;
+
+	  for (i = I387_ST0_REGNUM (tdep);
+	       i < I387_FCTRL_REGNUM (tdep); i++)
+	    {
+	      if (p != NULL)
+		p = FXSAVE_ADDR (tdep, regs, i);
+	      regcache_raw_supply (regcache, i, p);
+	    }
+	}
+      break;
+    }
+
+  /* Only handle x87 control registers.  */
+  for (i = I387_FCTRL_REGNUM (tdep); i < I387_XMM0_REGNUM (tdep); i++)
+    if (regnum == -1 || regnum == i)
+      {
+	if (regs == NULL)
+	  {
+	    regcache_raw_supply (regcache, i, NULL);
+	    continue;
+	  }
+
+	/* Most of the FPU control registers occupy only 16 bits in
+	   the xsave extended state.  Give those a special treatment.  */
+	if (i != I387_FIOFF_REGNUM (tdep)
+	    && i != I387_FOOFF_REGNUM (tdep))
+	  {
+	    gdb_byte val[4];
+
+	    memcpy (val, FXSAVE_ADDR (tdep, regs, i), 2);
+	    val[2] = val[3] = 0;
+	    if (i == I387_FOP_REGNUM (tdep))
+	      val[1] &= ((1 << 3) - 1);
+	    else if (i== I387_FTAG_REGNUM (tdep))
+	      {
+		/* The fxsave area contains a simplified version of
+		   the tag word.  We have to look at the actual 80-bit
+		   FP data to recreate the traditional i387 tag word.  */
+
+		unsigned long ftag = 0;
+		int fpreg;
+		int top;
+
+		top = ((FXSAVE_ADDR (tdep, regs,
+				     I387_FSTAT_REGNUM (tdep)))[1] >> 3);
+		top &= 0x7;
+
+		for (fpreg = 7; fpreg >= 0; fpreg--)
+		  {
+		    int tag;
+
+		    if (val[0] & (1 << fpreg))
+		      {
+			int regnum = (fpreg + 8 - top) % 8 
+				       + I387_ST0_REGNUM (tdep);
+			tag = i387_tag (FXSAVE_ADDR (tdep, regs, regnum));
+		      }
+		    else
+		      tag = 3;		/* Empty */
+
+		    ftag |= tag << (2 * fpreg);
+		  }
+		val[0] = ftag & 0xff;
+		val[1] = (ftag >> 8) & 0xff;
+	      }
+	    regcache_raw_supply (regcache, i, val);
+	  }
+	else 
+	  regcache_raw_supply (regcache, i, FXSAVE_ADDR (tdep, regs, i));
+      }
+
+  if (regnum == I387_MXCSR_REGNUM (tdep) || regnum == -1)
+    {
+      p = regs == NULL ? NULL : FXSAVE_MXCSR_ADDR (regs);
+      regcache_raw_supply (regcache, I387_MXCSR_REGNUM (tdep), p);
+    }
+}
+
+/* Similar to i387_collect_fxsave, but use XSAVE extended state.  */
+
+void
+i387_collect_xsave (const struct regcache *regcache, int regnum,
+		    void *xsave, int gcore)
+{
+  struct gdbarch_tdep *tdep = gdbarch_tdep (get_regcache_arch (regcache));
+  gdb_byte *regs = xsave;
+  int i;
+  enum
+    {
+      none = 0x0,
+      check = 0x1,
+      x87 = 0x2 | check,
+      sse = 0x4 | check,
+      avxh = 0x8 | check,
+      all = x87 | sse | avxh
+    } regclass;
+
+  gdb_assert (tdep->st0_regnum >= I386_ST0_REGNUM);
+  gdb_assert (tdep->num_xmm_regs > 0);
+
+  if (regnum == -1)
+    regclass = all;
+  else if (regnum >= I387_YMM0H_REGNUM (tdep)
+	   && regnum < I387_YMMENDH_REGNUM (tdep))
+    regclass = avxh;
+  else if (regnum >= I387_XMM0_REGNUM(tdep)
+	   && regnum < I387_MXCSR_REGNUM (tdep))
+    regclass = sse;
+  else if (regnum >= I387_ST0_REGNUM (tdep)
+	   && regnum < I387_FCTRL_REGNUM (tdep))
+    regclass = x87;
+  else
+    regclass = none;
+
+  if (gcore)
+    {
+      /* Clear XSAVE extended state.  */
+      memset (regs, 0, I386_XSTATE_SIZE (tdep->xcr0));
+
+      /* Update XCR0 and `xstate_bv' with XCR0 for gcore.  */
+      if (tdep->xsave_xcr0_offset != -1)
+	memcpy (regs + tdep->xsave_xcr0_offset, &tdep->xcr0, 8);
+      memcpy (XSAVE_XSTATE_BV_ADDR (regs), &tdep->xcr0, 8);
+    }
+
+  if ((regclass & check))
+    {
+      gdb_byte raw[I386_MAX_REGISTER_SIZE];
+      gdb_byte *xstate_bv_p = XSAVE_XSTATE_BV_ADDR (regs);
+      unsigned int xstate_bv = 0;
+      /* The supported bits in `xstat_bv' are 1 byte. */
+      unsigned int clear_bv = (~(*xstate_bv_p)) & tdep->xcr0;
+      gdb_byte *p;
+
+      /* Clear register set if its bit in xstat_bv is zero.  */
+      if (clear_bv)
+	{
+	  if ((clear_bv & I386_XSTATE_AVX))
+	    for (i = I387_YMM0H_REGNUM (tdep);
+		 i < I387_YMMENDH_REGNUM (tdep); i++)
+	      memset (XSAVE_AVXH_ADDR (tdep, regs, i), 0, 16);
+
+	  if ((clear_bv & I386_XSTATE_SSE))
+	    for (i = I387_XMM0_REGNUM (tdep);
+		 i < I387_MXCSR_REGNUM (tdep); i++)
+	      memset (FXSAVE_ADDR (tdep, regs, i), 0, 16);
+
+	  if ((clear_bv & I386_XSTATE_X87))
+	    for (i = I387_ST0_REGNUM (tdep);
+		 i < I387_FCTRL_REGNUM (tdep); i++)
+	      memset (FXSAVE_ADDR (tdep, regs, i), 0, 10);
+	}
+
+      if (regclass == all)
+	{
+	  /* Check if any upper YMM registers are changed.  */
+	  if ((tdep->xcr0 & I386_XSTATE_AVX))
+	    for (i = I387_YMM0H_REGNUM (tdep);
+		 i < I387_YMMENDH_REGNUM (tdep); i++)
+	      {
+		regcache_raw_collect (regcache, i, raw);
+		p = XSAVE_AVXH_ADDR (tdep, regs, i);
+		if (memcmp (raw, p, 16))
+		  {
+		    xstate_bv |= I386_XSTATE_AVX;
+		    memcpy (p, raw, 16);
+		  }
+	      }
+
+	  /* Check if any SSE registers are changed.  */
+	  if ((tdep->xcr0 & I386_XSTATE_SSE))
+	    for (i = I387_XMM0_REGNUM (tdep);
+		 i < I387_MXCSR_REGNUM (tdep); i++)
+	      {
+		regcache_raw_collect (regcache, i, raw);
+		p = FXSAVE_ADDR (tdep, regs, i);
+		if (memcmp (raw, p, 16))
+		  {
+		    xstate_bv |= I386_XSTATE_SSE;
+		    memcpy (p, raw, 16);
+		  }
+	      }
+
+	  /* Check if any X87 registers are changed.  */
+	  if ((tdep->xcr0 & I386_XSTATE_X87))
+	    for (i = I387_ST0_REGNUM (tdep);
+		 i < I387_FCTRL_REGNUM (tdep); i++)
+	      {
+		regcache_raw_collect (regcache, i, raw);
+		p = FXSAVE_ADDR (tdep, regs, i);
+		if (memcmp (raw, p, 10))
+		  {
+		    xstate_bv |= I386_XSTATE_X87;
+		    memcpy (p, raw, 10);
+		  }
+	      }
+	}
+      else
+	{
+	  /* Check if REGNUM is changed.  */
+	  regcache_raw_collect (regcache, regnum, raw);
+
+	  switch (regclass)
+	    {
+	    default:
+	      internal_error (__FILE__, __LINE__,
+			      _("invalid i387 regclass"));
+
+	    case avxh:
+	      /* This is an upper YMM register.  */
+	      p = XSAVE_AVXH_ADDR (tdep, regs, regnum);
+	      if (memcmp (raw, p, 16))
+		{
+		  xstate_bv |= I386_XSTATE_AVX;
+		  memcpy (p, raw, 16);
+		}
+	      break;
+
+	    case sse:
+	      /* This is an SSE register.  */
+	      p = FXSAVE_ADDR (tdep, regs, regnum);
+	      if (memcmp (raw, p, 16))
+		{
+		  xstate_bv |= I386_XSTATE_SSE;
+		  memcpy (p, raw, 16);
+		}
+	      break;
+
+	    case x87:
+	      /* This is an x87 register.  */
+	      p = FXSAVE_ADDR (tdep, regs, regnum);
+	      if (memcmp (raw, p, 10))
+		{
+		  xstate_bv |= I386_XSTATE_X87;
+		  memcpy (p, raw, 10);
+		}
+	      break;
+	    }
+	}
+
+      /* Update the corresponding bits in `xstate_bv' if any SSE/AVX
+	 registers are changed.  */
+      if (xstate_bv)
+	{
+	  /* The supported bits in `xstat_bv' are 1 byte.  */
+	  *xstate_bv_p |= (gdb_byte) xstate_bv;
+
+	  switch (regclass)
+	    {
+	    default:
+	      internal_error (__FILE__, __LINE__,
+			      _("invalid i387 regclass"));
+
+	    case all:
+	      break;
+
+	    case x87:
+	    case sse:
+	    case avxh:
+	      /* Register REGNUM has been updated.  Return.  */
+	      return;
+	    }
+	}
+      else
+	{
+	  /* Return if REGNUM isn't changed.  */
+	  if (regclass != all)
+	    return;
+	}
+    }
+
+  /* Only handle x87 control registers.  */
+  for (i = I387_FCTRL_REGNUM (tdep); i < I387_XMM0_REGNUM (tdep); i++)
+    if (regnum == -1 || regnum == i)
+      {
+	/* Most of the FPU control registers occupy only 16 bits in
+	   the xsave extended state.  Give those a special treatment.  */
+	if (i != I387_FIOFF_REGNUM (tdep)
+	    && i != I387_FOOFF_REGNUM (tdep))
+	  {
+	    gdb_byte buf[4];
+
+	    regcache_raw_collect (regcache, i, buf);
+
+	    if (i == I387_FOP_REGNUM (tdep))
+	      {
+		/* The opcode occupies only 11 bits.  Make sure we
+		   don't touch the other bits.  */
 		buf[1] &= ((1 << 3) - 1);
 		buf[1] |= ((FXSAVE_ADDR (tdep, regs, i))[1] & ~((1 << 3) - 1));
 	      }

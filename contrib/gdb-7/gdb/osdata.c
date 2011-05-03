@@ -1,6 +1,6 @@
 /* Routines for handling XML generic OS data provided by target.
 
-   Copyright (C) 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -83,6 +83,7 @@ osdata_start_item (struct gdb_xml_parser *parser,
 {
   struct osdata_parsing_data *data = user_data;
   struct osdata_item item = { NULL };
+
   VEC_safe_push (osdata_item_s, data->osdata->items, &item);
 }
 
@@ -95,6 +96,7 @@ osdata_start_column (struct gdb_xml_parser *parser,
 {
   struct osdata_parsing_data *data = user_data;
   const char *name = VEC_index (gdb_xml_value_s, attributes, 0)->value;
+
   data->property_name = xstrdup (name);
 }
 
@@ -123,6 +125,7 @@ static void
 clear_parsing_data (void *p)
 {
   struct osdata_parsing_data *data = p;
+
   osdata_free (data->osdata);
   data->osdata = NULL;
   xfree (data->property_name);
@@ -192,6 +195,7 @@ osdata_item_clear (struct osdata_item *item)
     {
       struct osdata_column *col;
       int ix;
+
       for (ix = 0;
 	   VEC_iterate (osdata_column_s, item->columns,
 			ix, col);
@@ -215,6 +219,7 @@ osdata_free (struct osdata *osdata)
     {
       struct osdata_item *item;
       int ix;
+
       for (ix = 0;
           VEC_iterate (osdata_item_s, osdata->items,
                        ix, item);
@@ -230,6 +235,7 @@ static void
 osdata_free_cleanup (void *arg)
 {
   struct osdata *osdata = arg;
+
   osdata_free (osdata);
 }
 
@@ -244,12 +250,18 @@ get_osdata (const char *type)
 {
   struct osdata *osdata = NULL;
   char *xml = target_get_osdata (type);
+
   if (xml)
     {
       struct cleanup *old_chain = make_cleanup (xfree, xml);
 
       if (xml[0] == '\0')
-	warning (_("Empty data returned by target.  Wrong osdata type?"));
+	{
+	  if (type)
+	    warning (_("Empty data returned by target.  Wrong osdata type?"));
+	  else
+	    warning (_("Empty type list returned by target.  No type data?"));
+	}
       else
 	osdata = osdata_parse (xml);
 
@@ -287,14 +299,13 @@ info_osdata_command (char *type, int from_tty)
   int ncols;
   int nprocs;
 
-  if (type == 0)
-    /* TODO: No type could mean "list availables types".  */
-    error (_("Argument required."));
-
   osdata = get_osdata (type);
   old_chain = make_cleanup_osdata_free (osdata);
 
   nprocs = VEC_length (osdata_item_s, osdata->items);
+
+  if (!type && nprocs == 0)
+    error (_("Available types of OS data not reported."));
 
   last = VEC_last (osdata_item_s, osdata->items);
   if (last && last->columns)
@@ -309,6 +320,7 @@ info_osdata_command (char *type, int from_tty)
     {
       struct osdata_column *col;
       int ix;
+
       for (ix = 0;
           VEC_iterate (osdata_column_s, last->columns,
                        ix, col);
@@ -323,6 +335,7 @@ info_osdata_command (char *type, int from_tty)
     {
       struct osdata_item *item;
       int ix_items;
+
       for (ix_items = 0;
           VEC_iterate (osdata_item_s, osdata->items,
                        ix_items, item);

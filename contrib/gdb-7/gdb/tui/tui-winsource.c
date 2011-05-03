@@ -1,7 +1,7 @@
 /* TUI display source/assembly window.
 
    Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2006, 2007, 2008,
-   2009 Free Software Foundation, Inc.
+   2009, 2010 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -221,7 +221,8 @@ tui_clear_source_content (struct tui_win_info *win_info,
       for (i = 0; i < win_info->generic.content_size; i++)
 	{
 	  struct tui_win_element *element =
-	  (struct tui_win_element *) win_info->generic.content[i];
+	    (struct tui_win_element *) win_info->generic.content[i];
+
 	  element->which_element.source.has_break = FALSE;
 	  element->which_element.source.is_exec_point = FALSE;
 	}
@@ -328,6 +329,7 @@ tui_horizontal_source_scroll (struct tui_win_info *win_info,
       if (win_info->generic.type == SRC_WIN)
 	{
 	  struct symtab_and_line cursal = get_current_source_symtab_and_line ();
+
 	  if (cursal.symtab == NULL)
 	    s = find_pc_symtab (get_frame_pc (get_selected_frame (NULL)));
 	  else

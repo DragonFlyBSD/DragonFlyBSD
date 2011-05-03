@@ -1,5 +1,6 @@
 /* UI_FILE - a generic STDIO like output stream.
-   Copyright (C) 1999, 2000, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 1999, 2000, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -19,6 +20,7 @@
 #ifndef UI_FILE_H
 #define UI_FILE_H
 
+struct obstack;
 struct ui_file;
 
 /* Create a generic ui_file object with null methods. */
@@ -77,7 +79,10 @@ extern void ui_file_put (struct ui_file *src, ui_file_put_method_ftype *write, v
    minus that appended NUL. */
 extern char *ui_file_xstrdup (struct ui_file *file, long *length);
 
-
+/* Similar to ui_file_xstrdup, but return a new string allocated on
+   OBSTACK.  */
+extern char *ui_file_obsavestring (struct ui_file *file,
+				   struct obstack *obstack, long *length);
 
 extern long ui_file_read (struct ui_file *file, char *buf, long length_buf);
 

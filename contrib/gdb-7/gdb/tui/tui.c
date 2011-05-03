@@ -1,7 +1,7 @@
 /* General functions for the WDB TUI.
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009,
+   2010 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -244,6 +244,7 @@ tui_rl_command_key (int count, int key)
           /* Must save the command because it can be modified by
              execute_command.  */
           char *cmd = alloca (strlen (tui_commands[i].cmd) + 1);
+
           strcpy (cmd, tui_commands[i].cmd);
           execute_command (cmd, TRUE);
           return 0;
@@ -364,6 +365,9 @@ tui_initialize_readline (void)
 void
 tui_enable (void)
 {
+  if (!tui_allowed_p ())
+    error (_("TUI mode not allowed"));
+
   if (tui_active)
     return;
 
@@ -527,6 +531,7 @@ void
 tui_show_source (const char *file, int line)
 {
   struct symtab_and_line cursal = get_current_source_symtab_and_line ();
+
   /* Make sure that the source window is displayed.  */
   tui_add_win_to_layout (SRC_WIN);
 

@@ -1,6 +1,6 @@
 /* addrmap.c --- implementation of address map data structure.
 
-   Copyright (C) 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -224,8 +224,8 @@ static splay_tree_key
 allocate_key (struct addrmap_mutable *map, CORE_ADDR addr)
 {
   CORE_ADDR *key = obstack_alloc (map->obstack, sizeof (*key));
-  *key = addr;
 
+  *key = addr;
   return (splay_tree_key) key;
 }
 

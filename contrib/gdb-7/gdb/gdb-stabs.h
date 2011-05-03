@@ -1,6 +1,6 @@
 /* Definitions for symbol-reading containing "stabs", for GDB.
-   Copyright (C) 1992, 1993, 1995, 1996, 1997, 1999, 2000, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   Copyright (C) 1992, 1993, 1995, 1996, 1997, 1999, 2000, 2007, 2008, 2009,
+   2010 Free Software Foundation, Inc.
    Contributed by Cygnus Support.  Written by John Gilmore.
 
    This file is part of GDB.

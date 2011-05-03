@@ -1,5 +1,5 @@
 /* Event loop machinery for GDB, the GNU debugger.
-   Copyright (C) 1999, 2000, 2001, 2002, 2005, 2006, 2007, 2008, 2009
+   Copyright (C) 1999, 2000, 2001, 2002, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
    Written by Elena Zannoni <ezannoni@cygnus.com> of Cygnus Solutions.
 
@@ -37,6 +37,13 @@
 #include "exceptions.h"
 #include "gdb_assert.h"
 #include "gdb_select.h"
+
+/* Tell create_file_handler what events we are interested in. 
+   This is used by the select version of the event loop. */
+
+#define GDB_READABLE	(1<<1)
+#define GDB_WRITABLE	(1<<2)
+#define GDB_EXCEPTION	(1<<3)
 
 /* Data point to pass to the event handler.  */
 typedef union event_data
@@ -218,8 +225,7 @@ struct gdb_timer
     struct gdb_timer *next;
     timer_handler_func *proc;	/* Function to call to do the work */
     gdb_client_data client_data;	/* Argument to async_handler_func */
-  }
-gdb_timer;
+  };
 
 /* List of currently active timers. It is sorted in order of
    increasing timers. */
@@ -262,7 +268,6 @@ static void create_file_handler (int fd, int mask, handler_func *proc,
 				 gdb_client_data client_data);
 static void handle_file_event (event_data data);
 static void check_async_event_handlers (void);
-static void check_async_signal_handlers (void);
 static int gdb_wait_for_event (int);
 static void poll_timers (void);
 
@@ -860,8 +865,8 @@ gdb_wait_for_event (int block)
   else
     {
       struct timeval select_timeout;
-
       struct timeval *timeout_p;
+
       if (block)
 	timeout_p = gdb_notifier.timeout_valid
 	  ? &gdb_notifier.select_timeout : NULL;
@@ -1189,7 +1194,7 @@ create_timer (int milliseconds, timer_handler_func * proc, gdb_client_data clien
 
   gettimeofday (&time_now, NULL);
 
-  timer_ptr = (struct gdb_timer *) xmalloc (sizeof (gdb_timer));
+  timer_ptr = (struct gdb_timer *) xmalloc (sizeof (*timer_ptr));
   timer_ptr->when.tv_sec = time_now.tv_sec + delta.tv_sec;
   timer_ptr->when.tv_usec = time_now.tv_usec + delta.tv_usec;
   /* carry? */
@@ -1212,9 +1217,9 @@ create_timer (int milliseconds, timer_handler_func * proc, gdb_client_data clien
     {
       /* If the seconds field is greater or if it is the same, but the
          microsecond field is greater. */
-      if ((timer_index->when.tv_sec > timer_ptr->when.tv_sec) ||
-	  ((timer_index->when.tv_sec == timer_ptr->when.tv_sec)
-	   && (timer_index->when.tv_usec > timer_ptr->when.tv_usec)))
+      if ((timer_index->when.tv_sec > timer_ptr->when.tv_sec)
+	  || ((timer_index->when.tv_sec == timer_ptr->when.tv_sec)
+	      && (timer_index->when.tv_usec > timer_ptr->when.tv_usec)))
 	break;
     }
 
@@ -1288,9 +1293,9 @@ handle_timer_event (event_data dummy)
 
   while (timer_ptr != NULL)
     {
-      if ((timer_ptr->when.tv_sec > time_now.tv_sec) ||
-	  ((timer_ptr->when.tv_sec == time_now.tv_sec) &&
-	   (timer_ptr->when.tv_usec > time_now.tv_usec)))
+      if ((timer_ptr->when.tv_sec > time_now.tv_sec)
+	  || ((timer_ptr->when.tv_sec == time_now.tv_sec)
+	      && (timer_ptr->when.tv_usec > time_now.tv_usec)))
 	break;
 
       /* Get rid of the timer from the beginning of the list. */

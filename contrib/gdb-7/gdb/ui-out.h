@@ -1,6 +1,6 @@
 /* Output generating routines for GDB.
 
-   Copyright (C) 1999, 2000, 2001, 2002, 2003, 2005, 2007, 2008, 2009
+   Copyright (C) 1999, 2000, 2001, 2002, 2003, 2005, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions.
@@ -27,7 +27,6 @@
 /* The ui_out structure */
 
 struct ui_out;
-struct ui_out_data;
 struct ui_file;
 
 /* the current ui_out */
@@ -125,7 +124,7 @@ extern void ui_out_field_stream (struct ui_out *uiout, const char *fldname,
 
 extern void ui_out_field_fmt (struct ui_out *uiout, const char *fldname,
 			      const char *format, ...)
-     ATTR_FORMAT (printf, 3, 4);
+     ATTRIBUTE_PRINTF (3, 4);
 
 extern void ui_out_field_skip (struct ui_out *uiout, const char *fldname);
 
@@ -135,7 +134,7 @@ extern void ui_out_text (struct ui_out *uiout, const char *string);
 
 extern void ui_out_message (struct ui_out *uiout, int verbosity,
 			    const char *format, ...)
-     ATTR_FORMAT (printf, 3, 4);
+     ATTRIBUTE_PRINTF (3, 4);
 
 extern struct ui_stream *ui_out_stream_new (struct ui_out *uiout);
 
@@ -264,13 +263,16 @@ struct ui_out_impl
     int is_mi_like_p;
   };
 
-extern struct ui_out_data *ui_out_data (struct ui_out *uiout);
+extern void *ui_out_data (struct ui_out *uiout);
 
+extern void uo_field_string (struct ui_out *uiout, int fldno, int width,
+			     enum ui_align align, const char *fldname,
+			     const char *string);
 
 /* Create a ui_out object */
 
 extern struct ui_out *ui_out_new (struct ui_out_impl *impl,
-				  struct ui_out_data *data,
+				  void *data,
 				  int flags);
 
 /* Redirect the ouptut of a ui_out object temporarily.  */

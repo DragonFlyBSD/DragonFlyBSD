@@ -1,6 +1,6 @@
 /* YACC grammar for Modula-2 expressions, for GDB.
    Copyright (C) 1986, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1999,
-   2000, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2000, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
    Generated from expread.y (now c-exp.y) and contributed by the Department
    of Computer Science at the State University of New York at Buffalo, 1991.
 
@@ -651,22 +651,6 @@ type
 
 %%
 
-#if 0  /* FIXME! */
-int
-overflow(a,b)
-   long a,b;
-{
-   return (MAX_OF_TYPE(parse_m2_type->builtin_int) - b) < a;
-}
-
-int
-uoverflow(a,b)
-   unsigned long a,b;
-{
-   return (MAX_OF_TYPE(parse_m2_type->builtin_card) - b) < a;
-}
-#endif /* FIXME */
-
 /* Take care of parsing a number (anything that starts with a digit).
    Set yylval and return the token type; update lexptr.
    LEN is the number of characters in it.  */
@@ -1022,7 +1006,7 @@ yylex ()
     char *tmp = copy_name (yylval.sval);
     struct symbol *sym;
 
-    if (lookup_partial_symtab (tmp))
+    if (lookup_symtab (tmp))
       return BLOCKNAME;
     sym = lookup_symbol (tmp, expression_context_block, VAR_DOMAIN, 0);
     if (sym && SYMBOL_CLASS (sym) == LOC_BLOCK)

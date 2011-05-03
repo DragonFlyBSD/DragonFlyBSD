@@ -1,5 +1,6 @@
 /* YACC parser for Pascal expressions, for GDB.
-   Copyright (C) 2000, 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2000, 2006, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -524,6 +525,9 @@ exp	:	SIZEOF '(' type ')'	%prec UNARY
 			  write_exp_elt_opcode (OP_LONG); }
 	;
 
+exp	:	SIZEOF  '(' exp ')'      %prec UNARY
+			{ write_exp_elt_opcode (UNOP_SIZEOF); }
+	
 exp	:	STRING
 			{ /* C strings are converted into array constants with
 			     an explicit null byte added at the end.  Thus
@@ -1084,7 +1088,6 @@ yylex ()
   char *tokstart;
   char *uptokstart;
   char *tokptr;
-  char *p;
   int explen, tempbufindex;
   static char *tempbuf;
   static int tempbufsize;
@@ -1137,7 +1140,7 @@ yylex ()
       lexptr++;
       c = *lexptr++;
       if (c == '\\')
-	c = parse_escape (&lexptr);
+	c = parse_escape (parse_gdbarch, &lexptr);
       else if (c == '\'')
 	error ("Empty character constant.");
 
@@ -1302,7 +1305,7 @@ yylex ()
 	    break;
 	  case '\\':
 	    tokptr++;
-	    c = parse_escape (&tokptr);
+	    c = parse_escape (parse_gdbarch, &tokptr);
 	    if (c == -1)
 	      {
 		continue;

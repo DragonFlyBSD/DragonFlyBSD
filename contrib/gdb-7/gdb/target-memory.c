@@ -1,7 +1,7 @@
 /* Parts of target interface that deal with accessing memory and memory-like
    objects.
 
-   Copyright (C) 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -84,6 +84,7 @@ claim_memory (VEC(memory_write_request_s) *blocks,
 	{
 	  struct memory_write_request *n =
 	    VEC_safe_push (memory_write_request_s, *result, NULL);
+
 	  *n = *r;
 	  n->begin = claimed_begin;
 	  n->end = claimed_end;
@@ -116,8 +117,8 @@ split_regular_and_flash_blocks (VEC(memory_write_request_s) *blocks,
   while (1)
     {
       VEC(memory_write_request_s) **r;
-      region = lookup_mem_region (cur_address);
 
+      region = lookup_mem_region (cur_address);
       r = region->attrib.mode == MEM_FLASH ? flash_blocks : regular_blocks;
       cur_address = region->hi;
       claim_memory (blocks, r, region->lo, region->hi);
@@ -175,6 +176,7 @@ blocks_to_erase (VEC(memory_write_request_s) *written)
 	{
 	  struct memory_write_request *n =
 	    VEC_safe_push (memory_write_request_s, result, NULL);
+
 	  memset (n, 0, sizeof (struct memory_write_request));
 	  n->begin = begin;
 	  n->end = end;
@@ -255,6 +257,7 @@ compute_garbled_blocks (VEC(memory_write_request_s) *erased_blocks,
 	    {
 	      struct memory_write_request *n =
 		VEC_safe_push (memory_write_request_s, result, NULL);
+
 	      memset (n, 0, sizeof (struct memory_write_request));
 	      n->begin = erased.begin;
 	      n->end = written->begin;
@@ -300,6 +303,7 @@ static void
 cleanup_write_requests_vector (void *p)
 {
   VEC(memory_write_request_s) **v = p;
+
   VEC_free (memory_write_request_s, *v);
 }
 

@@ -1,7 +1,7 @@
 /* Fortran language support definitions for GDB, the GNU debugger.
 
-   Copyright (C) 1992, 1993, 1994, 1995, 1998, 2000, 2005, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   Copyright (C) 1992, 1993, 1994, 1995, 1998, 2000, 2005, 2007, 2008, 2009,
+   2010 Free Software Foundation, Inc.
 
    Contributed by Motorola.  Adapted from the C definitions by Farooq Butt
    (fmbutt@engage.sps.mot.com).
@@ -25,11 +25,12 @@ extern int f_parse (void);
 
 extern void f_error (char *);	/* Defined in f-exp.y */
 
-extern void f_print_type (struct type *, char *, struct ui_file *, int,
+extern void f_print_type (struct type *, const char *, struct ui_file *, int,
 			  int);
 
 extern int f_val_print (struct type *, const gdb_byte *, int, CORE_ADDR,
 			struct ui_file *, int,
+			const struct value *,
 			const struct value_print_options *);
 
 /* Language-specific data structures */
@@ -113,6 +114,7 @@ struct builtin_f_type
   struct type *builtin_logical;
   struct type *builtin_logical_s1;
   struct type *builtin_logical_s2;
+  struct type *builtin_logical_s8;
   struct type *builtin_real;
   struct type *builtin_real_s8;
   struct type *builtin_real_s16;

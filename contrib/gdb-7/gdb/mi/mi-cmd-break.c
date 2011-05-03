@@ -1,5 +1,5 @@
 /* MI Command Set - breakpoint and watchpoint commands.
-   Copyright (C) 2000, 2001, 2002, 2007, 2008, 2009
+   Copyright (C) 2000, 2001, 2002, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
    Contributed by Cygnus Solutions (a Red Hat company).
 
@@ -66,20 +66,22 @@ void
 mi_cmd_break_insert (char *command, char **argv, int argc)
 {
   char *address = NULL;
-  enum bp_type type = REG_BP;
+  int hardware = 0;
   int temp_p = 0;
   int thread = -1;
   int ignore_count = 0;
   char *condition = NULL;
   int pending = 0;
   int enabled = 1;
+  int tracepoint = 0;
+  struct cleanup *back_to;
+  enum bptype type_wanted;
 
-  struct gdb_exception e;
-  struct gdb_events *old_hooks;
   enum opt
     {
-      HARDWARE_OPT, TEMP_OPT /*, REGEXP_OPT */ , CONDITION_OPT,
-      IGNORE_COUNT_OPT, THREAD_OPT, PENDING_OPT, DISABLE_OPT
+      HARDWARE_OPT, TEMP_OPT, CONDITION_OPT,
+      IGNORE_COUNT_OPT, THREAD_OPT, PENDING_OPT, DISABLE_OPT,
+      TRACEPOINT_OPT,
     };
   static struct mi_opt opts[] =
   {
@@ -90,6 +92,7 @@ mi_cmd_break_insert (char *command, char **argv, int argc)
     {"p", THREAD_OPT, 1},
     {"f", PENDING_OPT, 0},
     {"d", DISABLE_OPT, 0},
+    {"a", TRACEPOINT_OPT, 0},
     { 0, 0, 0 }
   };
 
@@ -97,6 +100,7 @@ mi_cmd_break_insert (char *command, char **argv, int argc)
      to denote the end of the option list. */
   int optind = 0;
   char *optarg;
+
   while (1)
     {
       int opt = mi_getopt ("mi_cmd_break_insert", argc, argv, opts, &optind, &optarg);
@@ -108,13 +112,8 @@ mi_cmd_break_insert (char *command, char **argv, int argc)
 	  temp_p = 1;
 	  break;
 	case HARDWARE_OPT:
-	  type = HW_BP;
+	  hardware = 1;
 	  break;
-#if 0
-	case REGEXP_OPT:
-	  type = REGEXP_BP;
-	  break;
-#endif
 	case CONDITION_OPT:
 	  condition = optarg;
 	  break;
@@ -129,6 +128,10 @@ mi_cmd_break_insert (char *command, char **argv, int argc)
 	  break;
 	case DISABLE_OPT:
 	  enabled = 0;
+	  break;
+	case TRACEPOINT_OPT:
+	  tracepoint = 1;
+	  break;
 	}
     }
 
@@ -147,40 +150,28 @@ mi_cmd_break_insert (char *command, char **argv, int argc)
       mi_breakpoint_observers_installed = 1;
     }
 
+  back_to = make_cleanup_restore_integer (&mi_can_breakpoint_notify);
   mi_can_breakpoint_notify = 1;
-  /* Make sure we restore hooks even if exception is thrown.  */
-  TRY_CATCH (e, RETURN_MASK_ALL)
-    {
-      switch (type)
-	{
-	case REG_BP:
-	  set_breakpoint (get_current_arch (), address, condition,
-			  0 /*hardwareflag */ , temp_p,
-			  thread, ignore_count,
-			  pending, enabled);
-	  break;
-	case HW_BP:
-	  set_breakpoint (get_current_arch (), address, condition,
-			  1 /*hardwareflag */ , temp_p,
-			  thread, ignore_count,
-			  pending, enabled);
-	  break;
-#if 0
-	case REGEXP_BP:
-	  if (temp_p)
-	    error (_("mi_cmd_break_insert: Unsupported tempoary regexp breakpoint"));
-	  else
-	    rbreak_command_wrapper (address, FROM_TTY);
-	  break;
-#endif
-	default:
-	  internal_error (__FILE__, __LINE__,
-			  _("mi_cmd_break_insert: Bad switch."));
-	}
-    }
-  mi_can_breakpoint_notify = 0;
-  if (e.reason < 0)
-    throw_exception (e);
+
+  /* Note that to request a fast tracepoint, the client uses the
+     "hardware" flag, although there's nothing of hardware related to
+     fast tracepoints -- one can implement slow tracepoints with
+     hardware breakpoints, but fast tracepoints are always software.
+     "fast" is a misnomer, actually, "jump" would be more appropriate.
+     A simulator or an emulator could conceivably implement fast
+     regular non-jump based tracepoints.  */
+  type_wanted = (tracepoint
+		 ? (hardware ? bp_fast_tracepoint : bp_tracepoint)
+		 : (hardware ? bp_hardware_breakpoint : bp_breakpoint));
+
+  create_breakpoint (get_current_arch (), address, condition, thread,
+		     0 /* condition and thread are valid.  */,
+		     temp_p, type_wanted,
+		     ignore_count,
+		     pending ? AUTO_BOOLEAN_TRUE : AUTO_BOOLEAN_FALSE,
+		     NULL, 0, enabled);
+  do_cleanups (back_to);
+
 }
 
 enum wp_type
@@ -189,6 +180,31 @@ enum wp_type
   READ_WP,
   ACCESS_WP
 };
+
+void
+mi_cmd_break_passcount (char *command, char **argv, int argc)
+{
+  int n;
+  int p;
+  struct breakpoint *t;
+
+  if (argc != 2)
+    error (_("Usage: tracepoint-number passcount"));
+
+  n = atoi (argv[0]);
+  p = atoi (argv[1]);
+  t = get_tracepoint (n);
+
+  if (t)
+    {
+      t->pass_count = p;
+      observer_notify_tracepoint_modified (n);
+    }
+  else
+    {
+      error (_("Cound not find tracepoint %d"), n);
+    }
+}
 
 /* Insert a watchpoint. The type of watchpoint is specified by the
    first argument: 
@@ -215,9 +231,12 @@ mi_cmd_break_watch (char *command, char **argv, int argc)
   /* Parse arguments. */
   int optind = 0;
   char *optarg;
+
   while (1)
     {
-      int opt = mi_getopt ("mi_cmd_break_watch", argc, argv, opts, &optind, &optarg);
+      int opt = mi_getopt ("mi_cmd_break_watch", argc, argv,
+			   opts, &optind, &optarg);
+
       if (opt < 0)
 	break;
       switch ((enum opt) opt)
@@ -263,7 +282,7 @@ static int mi_command_line_array_cnt;
 static int mi_command_line_array_ptr;
 
 static char *
-mi_read_next_line ()
+mi_read_next_line (void)
 {
   if (mi_command_line_array_ptr == mi_command_line_array_cnt)
     return NULL;
@@ -298,7 +317,12 @@ mi_cmd_break_commands (char *command, char **argv, int argc)
   mi_command_line_array_ptr = 1;
   mi_command_line_array_cnt = argc;
 
-  break_command = read_command_lines_1 (mi_read_next_line, 0);
+  if (is_tracepoint (b))
+    break_command = read_command_lines_1 (mi_read_next_line, 1,
+					  check_tracepoint_command, b);
+  else
+    break_command = read_command_lines_1 (mi_read_next_line, 1, 0, 0);
+
   breakpoint_set_commands (b, break_command);
 }
 

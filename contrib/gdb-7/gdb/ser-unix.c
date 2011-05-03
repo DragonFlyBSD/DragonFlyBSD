@@ -1,7 +1,7 @@
 /* Serial interface for local (hardwired) serial ports on Un*x like systems
 
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001, 2003,
-   2004, 2005, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2004, 2005, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -306,6 +306,7 @@ hardwire_drain_output (struct serial *scb)
      to be discarded. */
   {
     struct hardwire_ttystate state;
+
     if (get_tty_state (scb, &state))
       {
 	return (-1);
@@ -888,6 +889,7 @@ void
 _initialize_ser_hardwire (void)
 {
   struct serial_ops *ops = XMALLOC (struct serial_ops);
+
   memset (ops, 0, sizeof (struct serial_ops));
   ops->name = "hardwire";
   ops->next = 0;

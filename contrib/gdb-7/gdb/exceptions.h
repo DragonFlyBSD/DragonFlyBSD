@@ -2,7 +2,7 @@
 
    Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
    1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008,
-   2009 Free Software Foundation, Inc.
+   2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -74,6 +74,9 @@ enum errors {
 
   /* Error accessing memory.  */
   MEMORY_ERROR,
+
+  /* Feature is not supported in this copy of GDB.  */
+  UNSUPPORTED_ERROR,
 
   /* Add more errors here.  */
   NR_ERRORS
@@ -150,7 +153,7 @@ int exceptions_state_mc_action_iter_1 (void);
 extern void exception_print (struct ui_file *file, struct gdb_exception e);
 extern void exception_fprintf (struct ui_file *file, struct gdb_exception e,
 			       const char *prefix,
-			       ...) ATTR_FORMAT (printf, 3, 4);
+			       ...) ATTRIBUTE_PRINTF (3, 4);
 
 /* Throw an exception (as described by "struct gdb_exception").  Will
    execute a LONG JUMP to the inner most containing exception handler
@@ -163,17 +166,18 @@ extern void exception_fprintf (struct ui_file *file, struct gdb_exception e,
    be a good thing or a dangerous thing.'' -- the Existential
    Wombat.  */
 
-extern NORETURN void throw_exception (struct gdb_exception exception) ATTR_NORETURN;
-extern NORETURN void throw_verror (enum errors, const char *fmt, va_list ap)
-     ATTR_NORETURN ATTR_FORMAT (printf, 2, 0);
-extern NORETURN void throw_vfatal (const char *fmt, va_list ap)
-     ATTR_NORETURN ATTR_FORMAT (printf, 1, 0);
-extern NORETURN void throw_error (enum errors error, const char *fmt,
-				  ...) ATTR_NORETURN ATTR_FORMAT (printf, 2, 3);
+extern void throw_exception (struct gdb_exception exception) ATTRIBUTE_NORETURN;
+extern void throw_verror (enum errors, const char *fmt, va_list ap)
+     ATTRIBUTE_NORETURN ATTRIBUTE_PRINTF (2, 0);
+extern void throw_vfatal (const char *fmt, va_list ap)
+     ATTRIBUTE_NORETURN ATTRIBUTE_PRINTF (1, 0);
+extern void throw_error (enum errors error, const char *fmt, ...)
+     ATTRIBUTE_NORETURN ATTRIBUTE_PRINTF (2, 3);
 
 /* Instead of deprecated_throw_reason, code should use catch_exception
    and throw_exception.  */
-extern NORETURN void deprecated_throw_reason (enum return_reason reason) ATTR_NORETURN;
+extern void deprecated_throw_reason (enum return_reason reason)
+     ATTRIBUTE_NORETURN;
 
 /* Call FUNC(UIOUT, FUNC_ARGS) but wrapped within an exception
    handler.  If an exception (enum return_reason) is thrown using

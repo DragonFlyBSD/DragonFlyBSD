@@ -2,7 +2,7 @@
 
    Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
    1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007,
-   2008, 2009 Free Software Foundation, Inc.
+   2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -50,7 +50,7 @@ struct value *value_next (struct value *);
 
 /* Type of the value.  */
 
-extern struct type *value_type (struct value *);
+extern struct type *value_type (const struct value *);
 
 /* This is being used to change the type of an existing value, that
    code should instead be creating a new value with the changed type
@@ -61,14 +61,14 @@ extern void deprecated_set_value_type (struct value *value,
 
 /* Only used for bitfields; number of bits contained in them.  */
 
-extern int value_bitsize (struct value *);
+extern int value_bitsize (const struct value *);
 extern void set_value_bitsize (struct value *, int bit);
 
 /* Only used for bitfields; position of start of field.  For
    gdbarch_bits_big_endian=0 targets, it is the position of the LSB.  For
    gdbarch_bits_big_endian=1 targets, it is the position of the MSB.  */
 
-extern int value_bitpos (struct value *);
+extern int value_bitpos (const struct value *);
 extern void set_value_bitpos (struct value *, int bit);
 
 /* Only used for bitfields; the containing value.  This allows a
@@ -83,7 +83,7 @@ struct value *value_parent (struct value *);
    within the registers structure.  Note also the member
    embedded_offset below.  */
 
-extern int value_offset (struct value *);
+extern int value_offset (const struct value *);
 extern void set_value_offset (struct value *, int offset);
 
 /* The comment from "struct value" reads: ``Is it modifiable?  Only
@@ -164,13 +164,21 @@ struct lval_funcs
      should call 'error'.  */
   void (*write) (struct value *toval, struct value *fromval);
 
+  /* Check the validity of some bits in VALUE.  This should return 1
+     if all the bits starting at OFFSET and extending for LENGTH bits
+     are valid, or 0 if any bit is invalid.  */
+  int (*check_validity) (const struct value *value, int offset, int length);
+
+  /* Return 1 if any bit in VALUE is valid, 0 if they are all invalid.  */
+  int (*check_any_valid) (const struct value *value);
+
   /* Return a duplicate of VALUE's closure, for use in a new value.
      This may simply return the same closure, if VALUE's is
      reference-counted or statically allocated.
 
      This may be NULL, in which case VALUE's closure is re-used in the
      new value.  */
-  void *(*copy_closure) (struct value *v);
+  void *(*copy_closure) (const struct value *v);
 
   /* Drop VALUE's reference to its closure.  Maybe this frees the
      closure; maybe this decrements a reference count; maybe the
@@ -195,7 +203,7 @@ extern struct lval_funcs *value_computed_funcs (struct value *value);
 /* If VALUE is lval_computed, return its closure.  The meaning of the
    returned value depends on the functions VALUE uses.  */
 
-extern void *value_computed_closure (struct value *value);
+extern void *value_computed_closure (const struct value *value);
 
 /* If zero, contents of this value are in the contents field.  If
    nonzero, contents are in inferior.  If the lval field is lval_memory,
@@ -249,6 +257,11 @@ extern gdb_byte *value_contents_writeable (struct value *);
 extern gdb_byte *value_contents_all_raw (struct value *);
 extern const gdb_byte *value_contents_all (struct value *);
 
+/* Like value_contents_all, but does not require that the returned
+   bits be valid.  This should only be used in situations where you
+   plan to check the validity manually.  */
+extern const gdb_byte *value_contents_for_printing (struct value *value);
+
 extern int value_fetch_lazy (struct value *val);
 extern int value_contents_equal (struct value *val1, struct value *val2);
 
@@ -256,6 +269,10 @@ extern int value_contents_equal (struct value *val1, struct value *val2);
    exist in the program.  */
 extern int value_optimized_out (struct value *value);
 extern void set_value_optimized_out (struct value *value, int val);
+
+/* Like value_optimized_out, but return false if any bit in the object
+   is valid.  */
+extern int value_entirely_optimized_out (const struct value *value);
 
 /* Set or return field indicating whether a variable is initialized or
    not, based on debugging information supplied by the compiler. 
@@ -266,7 +283,7 @@ extern void set_value_initialized (struct value *, int);
 /* Set COMPONENT's location as appropriate for a component of WHOLE
    --- regardless of what kind of lvalue WHOLE is.  */
 extern void set_value_component_location (struct value *component,
-                                          struct value *whole);
+                                          const struct value *whole);
 
 /* While the following fields are per- VALUE .CONTENT .PIECE (i.e., a
    single value might have multiple LVALs), this hacked interface is
@@ -313,6 +330,13 @@ extern struct value *coerce_ref (struct value *value);
 
 extern struct value *coerce_array (struct value *value);
 
+/* Given a value, determine whether the bits starting at OFFSET and
+   extending for LENGTH bits are valid.  This returns nonzero if all
+   bits in the given range are valid, zero if any bit is invalid.  */
+
+extern int value_bits_valid (const struct value *value,
+			     int offset, int length);
+
 
 
 #include "symtab.h"
@@ -342,6 +366,7 @@ extern LONGEST unpack_field_as_long (struct type *type,
 extern void pack_long (gdb_byte *buf, struct type *type, LONGEST num);
 
 extern struct value *value_from_longest (struct type *type, LONGEST num);
+extern struct value *value_from_ulongest (struct type *type, ULONGEST num);
 extern struct value *value_from_pointer (struct type *type, CORE_ADDR addr);
 extern struct value *value_from_double (struct type *type, DOUBLEST num);
 extern struct value *value_from_decfloat (struct type *type,
@@ -431,25 +456,30 @@ extern struct value *value_complement (struct value *arg1);
 
 extern struct value *value_struct_elt (struct value **argp,
 				       struct value **args,
-				       char *name, int *static_memfuncp,
-				       char *err);
+				       const char *name, int *static_memfuncp,
+				       const char *err);
 
 extern struct value *value_aggregate_elt (struct type *curtype,
 					  char *name,
+					  struct type *expect_type,
 					  int want_address,
 					  enum noside noside);
 
 extern struct value *value_static_field (struct type *type, int fieldno);
 
-extern struct fn_field *value_find_oload_method_list (struct value **, char *,
+extern struct fn_field *value_find_oload_method_list (struct value **,
+						      const char *,
 						      int, int *,
 						      struct type **, int *);
 
+enum oload_search_type { NON_METHOD, METHOD, BOTH };
+
 extern int find_overload_match (struct type **arg_types, int nargs,
-				char *name, int method, int lax,
+				const char *name,
+				enum oload_search_type method, int lax,
 				struct value **objp, struct symbol *fsym,
 				struct value **valp, struct symbol **symp,
-				int *staticp);
+				int *staticp, const int no_adl);
 
 extern struct value *value_field (struct value *arg1, int fieldno);
 
@@ -467,6 +497,11 @@ extern struct value *value_full_object (struct value *, struct type *, int,
 extern struct value *value_cast_pointers (struct type *, struct value *);
 
 extern struct value *value_cast (struct type *type, struct value *arg2);
+
+extern struct value *value_reinterpret_cast (struct type *type,
+					     struct value *arg);
+
+extern struct value *value_dynamic_cast (struct type *type, struct value *arg);
 
 extern struct value *value_zero (struct type *type, enum lval_type lv);
 
@@ -502,6 +537,10 @@ extern struct value *evaluate_subexp (struct type *expect_type,
 
 extern struct value *evaluate_subexpression_type (struct expression *exp,
 						  int subexp);
+
+extern void fetch_subexp_value (struct expression *exp, int *pc,
+				struct value **valp, struct value **resultp,
+				struct value **val_chain);
 
 extern char *extract_field_op (struct expression *exp, int *subexp);
 
@@ -562,6 +601,8 @@ extern struct internalvar *lookup_internalvar (const char *name);
 
 extern int value_equal (struct value *arg1, struct value *arg2);
 
+extern int value_equal_contents (struct value *arg1, struct value *arg2);
+
 extern int value_less (struct value *arg1, struct value *arg2);
 
 extern int value_logical_not (struct value *arg1);
@@ -581,6 +622,10 @@ extern struct value *value_x_unop (struct value *arg1, enum exp_opcode op,
 extern struct value *value_fn_field (struct value **arg1p, struct fn_field *f,
 				     int j, struct type *type, int offset);
 
+extern int binop_types_user_defined_p (enum exp_opcode op,
+				       struct type *type1,
+				       struct type *type2);
+
 extern int binop_user_defined_p (enum exp_opcode op, struct value *arg1,
 				 struct value *arg2);
 
@@ -593,6 +638,8 @@ extern void value_incref (struct value *val);
 extern void value_free (struct value *val);
 
 extern void free_all_values (void);
+
+extern void free_value_chain (struct value *v);
 
 extern void release_value (struct value *val);
 
@@ -631,6 +678,7 @@ extern struct value *value_release_to_mark (struct value *mark);
 extern int val_print (struct type *type, const gdb_byte *valaddr,
 		      int embedded_offset, CORE_ADDR address,
 		      struct ui_file *stream, int recurse,
+		      const struct value *val,
 		      const struct value_print_options *options,
 		      const struct language_defn *language);
 

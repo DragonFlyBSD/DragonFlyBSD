@@ -1,7 +1,7 @@
 /* Scheme/Guile language support routines for GDB, the GNU debugger.
 
-   Copyright (C) 1995, 1996, 1998, 1999, 2000, 2001, 2005, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   Copyright (C) 1995, 1996, 1998, 1999, 2000, 2001, 2005, 2007, 2008, 2009,
+   2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -62,9 +62,9 @@ scm_inferior_print (struct type *type, LONGEST value, struct ui_file *stream,
     {
       /* XXX: Should we cache these symbols?  */
       gdb_output_sym =
-	lookup_symbol_global ("gdb_output", NULL, NULL, VAR_DOMAIN);
+	lookup_symbol_global ("gdb_output", NULL, VAR_DOMAIN);
       gdb_output_len_sym =
-	lookup_symbol_global ("gdb_output_length", NULL, NULL, VAR_DOMAIN);
+	lookup_symbol_global ("gdb_output_length", NULL, VAR_DOMAIN);
 
       if ((gdb_output_sym == NULL) || (gdb_output_len_sym == NULL))
 	ret = -1;
@@ -135,6 +135,7 @@ scm_scmlist_print (struct type *type, LONGEST svalue,
 #define SCM_SIZE (TYPE_LENGTH (type))
 #define SCM_BYTE_ORDER (gdbarch_byte_order (get_type_arch (type)))
   unsigned int more = options->print_max;
+
   if (recurse > 6)
     {
       fputs_filtered ("...", stream);
@@ -240,6 +241,7 @@ taloop:
 #if 0
 	      SCM name;
 #endif
+
 	      fputs_filtered ("#<latte ", stream);
 #if 1
 	      fputs_filtered ("???", stream);
@@ -313,6 +315,7 @@ taloop:
 	    int i;
 	    LONGEST elements = SCM_CDR (svalue);
 	    LONGEST val;
+
 	    fputs_filtered ("#(", stream);
 	    for (i = 0; i < len; ++i)
 	      {
@@ -329,6 +332,7 @@ taloop:
 	  {
 	    SCM result;
 	    SCM hook;
+
 	    hook = scm_get_lvector_hook (exp, LV_PRINT_FN);
 	    if (hook == BOOL_F)
 	      {
@@ -370,6 +374,7 @@ taloop:
 #define SCM_CHARS(x) ((char *)(SCM_CDR(x)))
 	    char *str = CHARS (SNAME (exp));
 #endif
+
 	    fprintf_filtered (stream, "#<primitive-procedure %s>",
 			      str);
 	  }
@@ -417,9 +422,12 @@ int
 scm_val_print (struct type *type, const gdb_byte *valaddr,
 	       int embedded_offset, CORE_ADDR address,
 	       struct ui_file *stream, int recurse,
+	       const struct value *val,
 	       const struct value_print_options *options)
 {
-  if (is_scmvalue_type (type))
+  if (is_scmvalue_type (type)
+      && value_bits_valid (val, TARGET_CHAR_BIT * embedded_offset,
+			   TARGET_CHAR_BIT * TYPE_LENGTH (type)))
     {
       enum bfd_endian byte_order = gdbarch_byte_order (get_type_arch (type));
       LONGEST svalue
@@ -438,7 +446,8 @@ scm_val_print (struct type *type, const gdb_byte *valaddr,
     }
   else
     {
-      return c_val_print (type, valaddr, 0, address, stream, recurse, options);
+      return c_val_print (type, valaddr, 0, address, stream, recurse,
+			  val, options);
     }
 }
 
@@ -447,6 +456,7 @@ scm_value_print (struct value *val, struct ui_file *stream,
 		 const struct value_print_options *options)
 {
   struct value_print_options opts = *options;
+
   opts.deref_ref = 1;
   return (common_val_print (val, stream, 0, &opts, current_language));
 }

@@ -1,6 +1,6 @@
 /* Include file for stabs debugging format support functions.
    Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
-   1996, 1997, 1999, 2000, 2001, 2002, 2003, 2007, 2008, 2009
+   1996, 1997, 1999, 2000, 2001, 2002, 2003, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -175,21 +175,18 @@ extern void process_one_symbol (int, int, CORE_ADDR, char *,
 				struct section_offsets *, struct objfile *);
 
 extern void elfstab_build_psymtabs (struct objfile *objfile,
-				    int mainline,
 				    asection *stabsect,
 				    file_ptr stabstroffset,
 				    unsigned int stabstrsize);
 
 extern void coffstab_build_psymtabs
   (struct objfile *objfile,
-   int mainline,
    CORE_ADDR textaddr, unsigned int textsize,
    struct stab_section_list *stabs,
    file_ptr stabstroffset, unsigned int stabstrsize);
 
-extern void stabsect_build_psymtabs
-  (struct objfile *objfile,
-   int mainline, char *stab_name, char *stabstr_name, char *text_name);
+extern void stabsect_build_psymtabs (struct objfile *objfile, char *stab_name,
+				     char *stabstr_name, char *text_name);
 
 extern void elfstab_offset_sections (struct objfile *,
 				     struct partial_symtab *);

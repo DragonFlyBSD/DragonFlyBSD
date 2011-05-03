@@ -1,7 +1,7 @@
 /* Basic C++ demangling support for GDB.
 
    Copyright (C) 1991, 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001,
-   2003, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2003, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    Written by Fred Fish at Cygnus Support.
 
@@ -177,7 +177,6 @@ is_cplus_marker (int c)
 void
 _initialize_demangler (void)
 {
-  struct cmd_list_element *set, *show;
   int i, ndems;
 
   /* Fill the demangling_style_names[] array.  */

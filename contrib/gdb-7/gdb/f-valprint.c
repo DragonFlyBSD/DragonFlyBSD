@@ -1,7 +1,7 @@
 /* Support for printing Fortran values for GDB, the GNU debugger.
 
    Copyright (C) 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2003, 2005, 2006,
-   2007, 2008, 2009 Free Software Foundation, Inc.
+   2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    Contributed by Motorola.  Adapted from the C definitions by Farooq Butt
    (fmbutt@engage.sps.mot.com), additionally worked over by Stan Shebs.
@@ -92,7 +92,6 @@ f77_get_dynamic_length_of_aggregate (struct type *type)
 {
   int upper_bound = -1;
   int lower_bound = 1;
-  int retcode;
 
   /* Recursively go all the way down into a possibly multi-dimensional
      F77 array and get the bounds.  For simple arrays, this is pretty
@@ -126,7 +125,7 @@ f77_create_arrayprint_offset_tbl (struct type *type, struct ui_file *stream)
   struct type *tmp_type;
   int eltlen;
   int ndimen = 1;
-  int upper, lower, retcode;
+  int upper, lower;
 
   tmp_type = type;
 
@@ -165,6 +164,7 @@ static void
 f77_print_array_1 (int nss, int ndimensions, struct type *type,
 		   const gdb_byte *valaddr, CORE_ADDR address,
 		   struct ui_file *stream, int recurse,
+		   const struct value *val,
 		   const struct value_print_options *options,
 		   int *elts)
 {
@@ -178,7 +178,7 @@ f77_print_array_1 (int nss, int ndimensions, struct type *type,
 	  f77_print_array_1 (nss + 1, ndimensions, TYPE_TARGET_TYPE (type),
 			     valaddr + i * F77_DIM_OFFSET (nss),
 			     address + i * F77_DIM_OFFSET (nss),
-			     stream, recurse, options, elts);
+			     stream, recurse, val, options, elts);
 	  fprintf_filtered (stream, ") ");
 	}
       if (*elts >= options->print_max && i < F77_DIM_SIZE (nss)) 
@@ -193,7 +193,7 @@ f77_print_array_1 (int nss, int ndimensions, struct type *type,
 		     valaddr + i * F77_DIM_OFFSET (ndimensions),
 		     0,
 		     address + i * F77_DIM_OFFSET (ndimensions),
-		     stream, recurse, options, current_language);
+		     stream, recurse, val, options, current_language);
 
 	  if (i != (F77_DIM_SIZE (nss) - 1))
 	    fprintf_filtered (stream, ", ");
@@ -211,7 +211,9 @@ f77_print_array_1 (int nss, int ndimensions, struct type *type,
 static void
 f77_print_array (struct type *type, const gdb_byte *valaddr,
 		 CORE_ADDR address, struct ui_file *stream,
-		 int recurse, const struct value_print_options *options)
+		 int recurse,
+		 const struct value *val,
+		 const struct value_print_options *options)
 {
   int ndimensions;
   int elts = 0;
@@ -229,7 +231,7 @@ f77_print_array (struct type *type, const gdb_byte *valaddr,
   f77_create_arrayprint_offset_tbl (type, stream);
 
   f77_print_array_1 (1, ndimensions, type, valaddr, address, stream,
-		     recurse, options, &elts);
+		     recurse, val, options, &elts);
 }
 
 
@@ -243,6 +245,7 @@ f77_print_array (struct type *type, const gdb_byte *valaddr,
 int
 f_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 	     CORE_ADDR address, struct ui_file *stream, int recurse,
+	     const struct value *original_value,
 	     const struct value_print_options *options)
 {
   struct gdbarch *gdbarch = get_type_arch (type);
@@ -259,12 +262,12 @@ f_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
     case TYPE_CODE_STRING:
       f77_get_dynamic_length_of_aggregate (type);
       LA_PRINT_STRING (stream, builtin_type (gdbarch)->builtin_char,
-		       valaddr, TYPE_LENGTH (type), 0, options);
+		       valaddr, TYPE_LENGTH (type), NULL, 0, options);
       break;
 
     case TYPE_CODE_ARRAY:
       fprintf_filtered (stream, "(");
-      f77_print_array (type, valaddr, address, stream, recurse, options);
+      f77_print_array (type, valaddr, address, stream, recurse, original_value, options);
       fprintf_filtered (stream, ")");
       break;
 
@@ -312,6 +315,7 @@ f_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 	{
 	  CORE_ADDR addr
 	    = extract_typed_address (valaddr + embedded_offset, type);
+
 	  fprintf_filtered (stream, "@");
 	  fputs_filtered (paddress (gdbarch, addr), stream);
 	  if (options->deref_ref)
@@ -323,9 +327,10 @@ f_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 	  if (TYPE_CODE (elttype) != TYPE_CODE_UNDEF)
 	    {
 	      struct value *deref_val =
-	      value_at
-	      (TYPE_TARGET_TYPE (type),
-	       unpack_pointer (type, valaddr + embedded_offset));
+		value_at
+		(TYPE_TARGET_TYPE (type),
+		 unpack_pointer (type, valaddr + embedded_offset));
+
 	      common_val_print (deref_val, stream, recurse,
 				options, current_language);
 	    }
@@ -353,6 +358,7 @@ f_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
       if (options->format || options->output_format)
 	{
 	  struct value_print_options opts = *options;
+
 	  opts.format = (options->format ? options->format
 			 : options->output_format);
 	  print_scalar_formatted (valaddr, type, &opts, 0, stream);
@@ -392,7 +398,7 @@ f_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
       break;
 
     case TYPE_CODE_ERROR:
-      fprintf_filtered (stream, "<error type>");
+      fprintf_filtered (stream, "%s", TYPE_ERROR_NAME (type));
       break;
 
     case TYPE_CODE_RANGE:
@@ -404,6 +410,7 @@ f_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
       if (options->format || options->output_format)
 	{
 	  struct value_print_options opts = *options;
+
 	  opts.format = (options->format ? options->format
 			 : options->output_format);
 	  print_scalar_formatted (valaddr, type, &opts, 0, stream);
@@ -421,7 +428,8 @@ f_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 	    {
 	      /* Bash the type code temporarily.  */
 	      TYPE_CODE (type) = TYPE_CODE_INT;
-	      f_val_print (type, valaddr, 0, address, stream, recurse, options);
+	      val_print (type, valaddr, 0, address, stream, recurse,
+			 original_value, options, current_language);
 	      /* Restore the type code so later uses work as intended. */
 	      TYPE_CODE (type) = TYPE_CODE_BOOL;
 	    }
@@ -452,8 +460,10 @@ f_val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
       for (index = 0; index < TYPE_NFIELDS (type); index++)
         {
           int offset = TYPE_FIELD_BITPOS (type, index) / 8;
-          f_val_print (TYPE_FIELD_TYPE (type, index), valaddr + offset,
-                       embedded_offset, address, stream, recurse, options);
+
+          val_print (TYPE_FIELD_TYPE (type, index), valaddr + offset,
+		     embedded_offset, address, stream, recurse + 1,
+		     original_value, options, current_language);
           if (index != TYPE_NFIELDS (type) - 1)
             fputs_filtered (", ", stream);
         }
@@ -538,7 +548,7 @@ info_common_command (char *comname, int from_tty)
   else
     {
       struct minimal_symbol *msymbol =
-      lookup_minimal_symbol_by_pc (get_frame_pc (fi));
+	lookup_minimal_symbol_by_pc (get_frame_pc (fi));
 
       if (msymbol != NULL)
 	funname = SYMBOL_LINKAGE_NAME (msymbol);
@@ -627,7 +637,7 @@ there_is_a_visible_common_named (char *comname)
   else
     {
       struct minimal_symbol *msymbol =
-      lookup_minimal_symbol_by_pc (fi->pc);
+	lookup_minimal_symbol_by_pc (fi->pc);
 
       if (msymbol != NULL)
 	funname = SYMBOL_LINKAGE_NAME (msymbol);

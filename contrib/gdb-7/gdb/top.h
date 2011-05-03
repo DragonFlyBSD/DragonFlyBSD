@@ -1,7 +1,7 @@
 /* Top level stuff for GDB, the GNU debugger.
 
    Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1996,
-   1997, 1998, 1999, 2000, 2005, 2006, 2007, 2008, 2009
+   1997, 1998, 1999, 2000, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -35,8 +35,6 @@ extern char gdbinit[];
 
 extern void print_gdb_version (struct ui_file *);
 
-extern void source_script (char *, int);
-extern void cd_command (char *, int);
 extern void read_command_file (FILE *);
 extern void init_history (void);
 extern void command_loop (void);
@@ -70,7 +68,7 @@ extern void gdb_init (char *);
 /* For use by event-top.c */
 /* Variables from top.c. */
 extern int source_line_number;
-extern char *source_file_name;
+extern const char *source_file_name;
 extern int history_expansion_p;
 extern int server_command;
 extern char *lim_at_start;

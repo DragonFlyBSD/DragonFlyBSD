@@ -1,7 +1,7 @@
 /* Definitions for expressions stored in reversed prefix form, for GDB.
 
-   Copyright (C) 1986, 1989, 1992, 1994, 2000, 2003, 2005, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   Copyright (C) 1986, 1989, 1992, 1994, 2000, 2003, 2005, 2007, 2008, 2009,
+   2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -88,6 +88,13 @@ enum exp_opcode
        when X is a pointer instead of an aggregate.  */
     STRUCTOP_MPTR,
 
+    /* TYPE_INSTANCE is used when the user specifies a specific
+       type instantiation for overloaded methods/functions.
+
+       The format is:
+       TYPE_INSTANCE num_types type0 ... typeN num_types TYPE_INSTANCE  */
+    TYPE_INSTANCE,
+
     /* end of C++.  */
 
     /* For Modula-2 integer division DIV */
@@ -101,8 +108,6 @@ enum exp_opcode
 
     /* Modula-2 standard (binary) procedures */
     BINOP_VAL,
-    BINOP_INCL,
-    BINOP_EXCL,
 
     /* Concatenate two operands, such as character strings or bitstrings.
        If the first operand is a integer expression, then it means concatenate
@@ -226,6 +231,12 @@ enum exp_opcode
        It casts the value of the following subexpression.  */
     UNOP_CAST,
 
+    /* The C++ dynamic_cast operator.  */
+    UNOP_DYNAMIC_CAST,
+
+    /* The C++ reinterpret_cast operator.  */
+    UNOP_REINTERPRET_CAST,
+
     /* UNOP_MEMVAL is followed by a type pointer in the next exp_element
        With another UNOP_MEMVAL at the end, this makes three exp_elements.
        It casts the contents of the word addressed by the value of the
@@ -265,9 +276,6 @@ enum exp_opcode
     UNOP_MIN,
     UNOP_ODD,
     UNOP_TRUNC,
-
-    /* (The deleted) Chill builtin functions.  */
-    UNOP_LOWER, UNOP_UPPER, UNOP_LENGTH, UNOP_CARD, UNOP_CHMAX, UNOP_CHMIN,
 
     OP_BOOL,			/* Modula-2 builtin BOOLEAN type */
     OP_M2_STRING,		/* Modula-2 string constants */
@@ -333,6 +341,10 @@ enum exp_opcode
        and a dec long constant value in the following exp_element.
        Then comes another OP_DECFLOAT.  */
     OP_DECFLOAT,
+
+    /* OP_ADL_FUNC specifies that the function is to be looked up in an
+       Argument Dependent manner (Koenig lookup).  */
+    OP_ADL_FUNC,
 
      /* First extension operator.  Individual language modules define
 	extra operators in *.inc include files below always starting with

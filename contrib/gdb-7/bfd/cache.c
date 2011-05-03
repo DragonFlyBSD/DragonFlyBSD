@@ -144,33 +144,33 @@ bfd_cache_delete (bfd *abfd)
 static bfd_boolean
 close_one (void)
 {
-  register bfd *kill;
+  register bfd *to_kill;
 
   if (bfd_last_cache == NULL)
-    kill = NULL;
+    to_kill = NULL;
   else
     {
-      for (kill = bfd_last_cache->lru_prev;
-	   ! kill->cacheable;
-	   kill = kill->lru_prev)
+      for (to_kill = bfd_last_cache->lru_prev;
+	   ! to_kill->cacheable;
+	   to_kill = to_kill->lru_prev)
 	{
-	  if (kill == bfd_last_cache)
+	  if (to_kill == bfd_last_cache)
 	    {
-	      kill = NULL;
+	      to_kill = NULL;
 	      break;
 	    }
 	}
     }
 
-  if (kill == NULL)
+  if (to_kill == NULL)
     {
       /* There are no open cacheable BFD's.  */
       return TRUE;
     }
 
-  kill->where = real_ftell ((FILE *) kill->iostream);
+  to_kill->where = real_ftell ((FILE *) to_kill->iostream);
 
-  return bfd_cache_delete (kill);
+  return bfd_cache_delete (to_kill);
 }
 
 /* Check to see if the required BFD is the same as the last one

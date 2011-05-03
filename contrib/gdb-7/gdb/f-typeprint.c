@@ -1,7 +1,8 @@
 /* Support for printing Fortran types for GDB, the GNU debugger.
 
    Copyright (C) 1986, 1988, 1989, 1991, 1993, 1994, 1995, 1996, 1998, 2000,
-   2001, 2002, 2003, 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2001, 2002, 2003, 2006, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
 
    Contributed by Motorola.  Adapted from the C version by Farooq Butt
    (fmbutt@engage.sps.mot.com).
@@ -51,7 +52,7 @@ void f_type_print_base (struct type *, struct ui_file *, int, int);
 /* LEVEL is the depth to indent lines by.  */
 
 void
-f_print_type (struct type *type, char *varstring, struct ui_file *stream,
+f_print_type (struct type *type, const char *varstring, struct ui_file *stream,
 	      int show, int level)
 {
   enum type_code code;
@@ -60,15 +61,13 @@ f_print_type (struct type *type, char *varstring, struct ui_file *stream,
   f_type_print_base (type, stream, show, level);
   code = TYPE_CODE (type);
   if ((varstring != NULL && *varstring != '\0')
-      ||
   /* Need a space if going to print stars or brackets;
      but not if we will print just a type name.  */
-      ((show > 0 || TYPE_NAME (type) == 0)
-       &&
-       (code == TYPE_CODE_PTR || code == TYPE_CODE_FUNC
-	|| code == TYPE_CODE_METHOD
-	|| code == TYPE_CODE_ARRAY
-	|| code == TYPE_CODE_REF)))
+      || ((show > 0 || TYPE_NAME (type) == 0)
+          && (code == TYPE_CODE_PTR || code == TYPE_CODE_FUNC
+	      || code == TYPE_CODE_METHOD
+	      || code == TYPE_CODE_ARRAY
+	      || code == TYPE_CODE_REF)))
     fputs_filtered (" ", stream);
   f_type_print_varspec_prefix (type, stream, show, 0);
 
@@ -154,7 +153,7 @@ f_type_print_varspec_suffix (struct type *type, struct ui_file *stream,
 			     int arrayprint_recurse_level)
 {
   int upper_bound, lower_bound;
-  int retcode;
+
   /* No static variables are permitted as an error call may occur during
      execution of this function.  */
 
@@ -259,9 +258,7 @@ void
 f_type_print_base (struct type *type, struct ui_file *stream, int show,
 		   int level)
 {
-  int retcode;
   int upper_bound;
-
   int index;
 
   QUIT;
@@ -315,7 +312,7 @@ f_type_print_base (struct type *type, struct ui_file *stream, int show,
       break;
 
     case TYPE_CODE_ERROR:
-      fprintfi_filtered (level, stream, "<unknown type>");
+      fprintfi_filtered (level, stream, "%s", TYPE_ERROR_NAME (type));
       break;
 
     case TYPE_CODE_RANGE:
@@ -371,6 +368,10 @@ f_type_print_base (struct type *type, struct ui_file *stream, int show,
 	} 
       fprintfi_filtered (level, stream, "End Type ");
       fputs_filtered (TYPE_TAG_NAME (type), stream);
+      break;
+
+    case TYPE_CODE_MODULE:
+      fprintfi_filtered (level, stream, "module %s", TYPE_TAG_NAME (type));
       break;
 
     default_case:

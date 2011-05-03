@@ -1,7 +1,7 @@
 /* Fortran language support routines for GDB, the GNU debugger.
 
    Copyright (C) 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001, 2002, 2003,
-   2004, 2005, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2004, 2005, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    Contributed by Motorola.  Adapted from the C parser by Farooq Butt
    (fmbutt@engage.sps.mot.com).
@@ -31,6 +31,7 @@
 #include "f-lang.h"
 #include "valprint.h"
 #include "value.h"
+#include "cp-support.h"
 
 
 /* Following is dubious stuff that had been in the xcoff reader. */
@@ -143,14 +144,13 @@ f_printchar (int c, struct type *type, struct ui_file *stream)
 
 static void
 f_printstr (struct ui_file *stream, struct type *type, const gdb_byte *string,
-	    unsigned int length, int force_ellipses,
+	    unsigned int length, const char *encoding, int force_ellipses,
 	    const struct value_print_options *options)
 {
   unsigned int i;
   unsigned int things_printed = 0;
   int in_quotes = 0;
   int need_comma = 0;
-  int width = TYPE_LENGTH (type);
 
   if (length == 0)
     {
@@ -259,6 +259,7 @@ enum f_primitive_types {
   f_primitive_type_logical,
   f_primitive_type_logical_s1,
   f_primitive_type_logical_s2,
+  f_primitive_type_logical_s8,
   f_primitive_type_integer,
   f_primitive_type_integer_s2,
   f_primitive_type_real,
@@ -289,6 +290,8 @@ f_language_arch_info (struct gdbarch *gdbarch,
     = builtin->builtin_logical_s1;
   lai->primitive_type_vector [f_primitive_type_logical_s2]
     = builtin->builtin_logical_s2;
+  lai->primitive_type_vector [f_primitive_type_logical_s8]
+    = builtin->builtin_logical_s8;
   lai->primitive_type_vector [f_primitive_type_real]
     = builtin->builtin_real;
   lai->primitive_type_vector [f_primitive_type_real_s8]
@@ -304,6 +307,38 @@ f_language_arch_info (struct gdbarch *gdbarch,
 
   lai->bool_type_symbol = "logical";
   lai->bool_type_default = builtin->builtin_logical_s2;
+}
+
+/* Remove the modules separator :: from the default break list.  */
+
+static char *
+f_word_break_characters (void)
+{
+  static char *retval;
+
+  if (!retval)
+    {
+      char *s;
+
+      retval = xstrdup (default_word_break_characters ());
+      s = strchr (retval, ':');
+      if (s)
+	{
+	  char *last_char = &s[strlen (s) - 1];
+
+	  *s = *last_char;
+	  *last_char = 0;
+	}
+    }
+  return retval;
+}
+
+/* Consider the modules separator :: as a valid symbol name character class.  */
+
+static char **
+f_make_symbol_completion_list (char *text, char *word)
+{
+  return default_make_symbol_completion_list_break_on (text, word, ":");
 }
 
 /* This is declared in c-lang.h but it is silly to import that file for what
@@ -333,15 +368,15 @@ const struct language_defn f_language_defn =
   c_value_print,		/* FIXME */
   NULL,				/* Language specific skip_trampoline */
   NULL,                    	/* name_of_this */
-  basic_lookup_symbol_nonlocal,	/* lookup_symbol_nonlocal */
+  cp_lookup_symbol_nonlocal,	/* lookup_symbol_nonlocal */
   basic_lookup_transparent_type,/* lookup_transparent_type */
   NULL,				/* Language specific symbol demangler */
   NULL,				/* Language specific class_name_from_physname */
   f_op_print_tab,		/* expression operators for printing */
   0,				/* arrays are first-class (not c-style) */
   1,				/* String lower bound */
-  default_word_break_characters,
-  default_make_symbol_completion_list,
+  f_word_break_characters,
+  f_make_symbol_completion_list,
   f_language_arch_info,
   default_print_array_index,
   default_pass_by_reference,
@@ -371,6 +406,10 @@ build_fortran_types (struct gdbarch *gdbarch)
   builtin_f_type->builtin_logical_s2
     = arch_boolean_type (gdbarch, gdbarch_short_bit (gdbarch), 1,
 			 "logical*2");
+
+  builtin_f_type->builtin_logical_s8
+    = arch_boolean_type (gdbarch, gdbarch_long_long_bit (gdbarch), 1,
+			 "logical*8");
 
   builtin_f_type->builtin_integer
     = arch_integer_type (gdbarch, gdbarch_int_bit (gdbarch), 0,

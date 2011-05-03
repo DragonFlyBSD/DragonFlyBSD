@@ -100,7 +100,8 @@ i[3456]86-*-nto*) 	gdb_host=nto ;;
 i[34567]86-*-openbsd[0-2].* | i[34567]86-*-openbsd3.[0-3])
 			gdb_host=obsdaout ;;
 i[34567]86-*-openbsd*)	gdb_host=obsd ;;
-i[34567]86-*-solaris2.1[0-9]*)	gdb_host=sol2-64 ;;
+i[34567]86-*-solaris2.1[0-9]* | x86_64-*-solaris2.1[0-9]*)
+			gdb_host=sol2-64 ;;
 i[34567]86-*-solaris*)	gdb_host=i386sol2 ;;
 i[34567]86-*-cygwin*)	gdb_host=cygwin ;;
 

@@ -1,6 +1,6 @@
 /* Output generating routines for GDB CLI.
 
-   Copyright (C) 1999, 2000, 2001, 2002, 2003, 2005, 2007, 2008, 2009
+   Copyright (C) 1999, 2000, 2001, 2002, 2003, 2005, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions.
@@ -23,195 +23,38 @@
 
 #include "defs.h"
 #include "ui-out.h"
+#include "cli-out.h"
 #include "tui.h"
 #include "gdb_string.h"
 #include "gdb_assert.h"
 
-struct ui_out_data
+struct tui_ui_out_data
   {
-    struct ui_file *stream;
-    int suppress_output;
+    struct cli_ui_out_data base;
+
     int line;
     int start_of_line;
   };
-typedef struct ui_out_data tui_out_data;
+typedef struct tui_ui_out_data tui_out_data;
 
-/* These are the CLI output functions.  */
+/* This is the TUI ui-out implementation functions vector.  It is
+   initialized below in _initialize_tui_out, inheriting the CLI
+   version, and overriding a few methods.  */
 
-static void tui_table_begin (struct ui_out *uiout, 
-			     int nbrofcols, int nr_rows, 
-			     const char *tblid);
-static void tui_table_body (struct ui_out *uiout);
-static void tui_table_end (struct ui_out *uiout);
-static void tui_table_header (struct ui_out *uiout, 
-			      int width, enum ui_align alig, 
-			      const char *col_name,
-			      const char *colhdr);
-static void tui_begin (struct ui_out *uiout, 
-		       enum ui_out_type type,
-		       int level, const char *lstid);
-static void tui_end (struct ui_out *uiout, 
-		     enum ui_out_type type, int level);
-static void tui_field_int (struct ui_out *uiout, 
-			   int fldno, int width,
-			   enum ui_align alig, 
-			   const char *fldname, int value);
-static void tui_field_skip (struct ui_out *uiout, 
-			    int fldno, int width,
-			    enum ui_align alig, 
-			    const char *fldname);
-static void tui_field_string (struct ui_out *uiout, 
-			      int fldno, int width,
-			      enum ui_align alig, 
-			      const char *fldname,
-			      const char *string);
-static void tui_field_fmt (struct ui_out *uiout, int fldno,
-			   int width, enum ui_align align,
-			   const char *fldname, 
-			   const char *format,
-			   va_list args) 
-     ATTR_FORMAT (printf, 6, 0);
-static void tui_spaces (struct ui_out *uiout, int numspaces);
-static void tui_text (struct ui_out *uiout, const char *string);
-static void tui_message (struct ui_out *uiout, int verbosity,
-			 const char *format, va_list args)
-     ATTR_FORMAT (printf, 3, 0);
-static void tui_wrap_hint (struct ui_out *uiout, 
-			   char *identstring);
-static void tui_flush (struct ui_out *uiout);
-
-/* This is the CLI ui-out implementation functions vector.  */
-
-/* FIXME: This can be initialized dynamically after default is set to
-   handle initial output in main.c.  */
-
-static struct ui_out_impl tui_ui_out_impl = {
-  tui_table_begin,
-  tui_table_body,
-  tui_table_end,
-  tui_table_header,
-  tui_begin,
-  tui_end,
-  tui_field_int,
-  tui_field_skip,
-  tui_field_string,
-  tui_field_fmt,
-  tui_spaces,
-  tui_text,
-  tui_message,
-  tui_wrap_hint,
-  tui_flush,
-  NULL,
-  0, /* Does not need MI hacks (i.e. needs CLI hacks).  */
-};
-
-/* Prototypes for local functions.  */
-
-extern void _initialize_tui_out (void);
-
-static void field_separator (void);
-
-static void out_field_fmt (struct ui_out *uiout, 
-			   int fldno,
-			   const char *fldname,
-			   const char *format,...) 
-     ATTR_FORMAT (printf, 4, 5);
-
-/* local variables */
-
-/* (none yet) */
-
-/* Mark beginning of a table.  */
-
-void
-tui_table_begin (struct ui_out *uiout, 
-		 int nbrofcols,
-		 int nr_rows,
-		 const char *tblid)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  if (nr_rows == 0)
-    data->suppress_output = 1;
-  else
-    /* Only the table suppresses the output and, fortunately, a table
-       is not a recursive data structure.  */
-    gdb_assert (data->suppress_output == 0);
-}
-
-/* Mark beginning of a table body.  */
-
-void
-tui_table_body (struct ui_out *uiout)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  if (data->suppress_output)
-    return;
-  /* First, close the table header line.  */
-  tui_text (uiout, "\n");
-}
-
-/* Mark end of a table.  */
-
-void
-tui_table_end (struct ui_out *uiout)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  data->suppress_output = 0;
-}
-
-/* Specify table header.  */
-
-void
-tui_table_header (struct ui_out *uiout, 
-		  int width, 
-		  enum ui_align alignment,
-		  const char *col_name,
-		  const char *colhdr)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  if (data->suppress_output)
-    return;
-  tui_field_string (uiout, 0, width, alignment, 0, colhdr);
-}
-
-/* Mark beginning of a list.  */
-
-void
-tui_begin (struct ui_out *uiout,
-	   enum ui_out_type type,
-	   int level,
-	   const char *id)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  if (data->suppress_output)
-    return;
-}
-
-/* Mark end of a list.  */
-
-void
-tui_end (struct ui_out *uiout,
-	 enum ui_out_type type,
-	 int level)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  if (data->suppress_output)
-    return;
-}
+static struct ui_out_impl tui_ui_out_impl;
 
 /* Output an int field.  */
 
-void
+static void
 tui_field_int (struct ui_out *uiout, 
 	       int fldno, int width,
 	       enum ui_align alignment,
 	       const char *fldname, 
 	       int value)
 {
-  char buffer[20];	/* FIXME: how many chars long a %d can become?  */
-
   tui_out_data *data = ui_out_data (uiout);
-  if (data->suppress_output)
+
+  if (data->base.suppress_output)
     return;
 
   /* Don't print line number, keep it for later.  */
@@ -222,39 +65,24 @@ tui_field_int (struct ui_out *uiout,
       return;
     }
   data->start_of_line ++;
-  sprintf (buffer, "%d", value);
-  tui_field_string (uiout, fldno, width, alignment, fldname, buffer);
+
+  (*cli_ui_out_impl.field_int) (uiout, fldno,
+				width, alignment, fldname, value);
 }
 
-/* Used to ommit a field.  */
+/* Other cli_field_* end up here so alignment and field separators are
+   both handled by tui_field_string.  */
 
-void
-tui_field_skip (struct ui_out *uiout, 
-		int fldno, int width,
-		enum ui_align alignment,
-		const char *fldname)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  if (data->suppress_output)
-    return;
-  tui_field_string (uiout, fldno, width, alignment, fldname, "");
-}
-
-/* Other specific tui_field_* end up here so alignment and field
-   separators are both handled by tui_field_string.  */
-
-void
+static void
 tui_field_string (struct ui_out *uiout,
 		  int fldno, int width,
 		  enum ui_align align,
 		  const char *fldname,
 		  const char *string)
 {
-  int before = 0;
-  int after = 0;
-
   tui_out_data *data = ui_out_data (uiout);
-  if (data->suppress_output)
+
+  if (data->base.suppress_output)
     return;
 
   if (fldname && data->line > 0 && strcmp (fldname, "file") == 0)
@@ -267,44 +95,16 @@ tui_field_string (struct ui_out *uiout,
       return;
     }
   
-  data->start_of_line ++;
-  if ((align != ui_noalign) && string)
-    {
-      before = width - strlen (string);
-      if (before <= 0)
-	before = 0;
-      else
-	{
-	  if (align == ui_right)
-	    after = 0;
-	  else if (align == ui_left)
-	    {
-	      after = before;
-	      before = 0;
-	    }
-	  else
-	    /* ui_center */
-	    {
-	      after = before / 2;
-	      before -= after;
-	    }
-	}
-    }
+  data->start_of_line++;
 
-  if (before)
-    ui_out_spaces (uiout, before);
-  if (string)
-    out_field_fmt (uiout, fldno, fldname, "%s", string);
-  if (after)
-    ui_out_spaces (uiout, after);
-
-  if (align != ui_noalign)
-    field_separator ();
+  (*cli_ui_out_impl.field_string) (uiout, fldno,
+				   width, align,
+				   fldname, string);
 }
 
 /* This is the only field function that does not align.  */
 
-void
+static void
 tui_field_fmt (struct ui_out *uiout, int fldno,
 	       int width, enum ui_align align,
 	       const char *fldname,
@@ -312,30 +112,23 @@ tui_field_fmt (struct ui_out *uiout, int fldno,
 	       va_list args)
 {
   tui_out_data *data = ui_out_data (uiout);
-  if (data->suppress_output)
+
+  if (data->base.suppress_output)
     return;
 
-  data->start_of_line ++;
-  vfprintf_filtered (data->stream, format, args);
+  data->start_of_line++;
 
-  if (align != ui_noalign)
-    field_separator ();
+  (*cli_ui_out_impl.field_fmt) (uiout, fldno,
+				width, align,
+				fldname, format, args);
 }
 
-void
-tui_spaces (struct ui_out *uiout, int numspaces)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  if (data->suppress_output)
-    return;
-  print_spaces_filtered (numspaces, data->stream);
-}
-
-void
+static void
 tui_text (struct ui_out *uiout, const char *string)
 {
   tui_out_data *data = ui_out_data (uiout);
-  if (data->suppress_output)
+
+  if (data->base.suppress_output)
     return;
   data->start_of_line ++;
   if (data->line > 0)
@@ -349,69 +142,9 @@ tui_text (struct ui_out *uiout, const char *string)
     }
   if (strchr (string, '\n'))
     data->start_of_line = 0;
-  fputs_filtered (string, data->stream);
+
+  (*cli_ui_out_impl.text) (uiout, string);
 }
-
-void
-tui_message (struct ui_out *uiout, 
-	     int verbosity,
-	     const char *format, 
-	     va_list args)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  if (data->suppress_output)
-    return;
-  if (ui_out_get_verblvl (uiout) >= verbosity)
-    vfprintf_unfiltered (data->stream, format, args);
-}
-
-void
-tui_wrap_hint (struct ui_out *uiout, char *identstring)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  if (data->suppress_output)
-    return;
-  wrap_here (identstring);
-}
-
-void
-tui_flush (struct ui_out *uiout)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  gdb_flush (data->stream);
-}
-
-/* Local functions.  */
-
-/* Like tui_field_fmt, but takes a variable number of args and makes a
-   va_list and does not insert a separator.  */
-
-/* VARARGS */
-static void
-out_field_fmt (struct ui_out *uiout, 
-	       int fldno,
-	       const char *fldname,
-	       const char *format,...)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  va_list args;
-
-  va_start (args, format);
-  vfprintf_filtered (data->stream, format, args);
-
-  va_end (args);
-}
-
-/* Access to ui_out format private members.  */
-
-static void
-field_separator (void)
-{
-  tui_out_data *data = ui_out_data (uiout);
-  fputc_filtered (' ', data->stream);
-}
-
-/* Initalize private members at startup.  */
 
 struct ui_out *
 tui_out_new (struct ui_file *stream)
@@ -419,16 +152,30 @@ tui_out_new (struct ui_file *stream)
   int flags = 0;
 
   tui_out_data *data = XMALLOC (tui_out_data);
-  data->stream = stream;
-  data->suppress_output = 0;
+
+  /* Initialize base "class".  */
+  cli_out_data_ctor (&data->base, stream);
+
+  /* Initialize our fields.  */
   data->line = -1;
   data->start_of_line = 0;
+
   return ui_out_new (&tui_ui_out_impl, data, flags);
 }
 
 /* Standard gdb initialization hook.  */
+
+extern void _initialize_tui_out (void);
+
 void
 _initialize_tui_out (void)
 {
-  /* Nothing needs to be done.  */
+  /* Inherit the CLI version.  */
+  tui_ui_out_impl = cli_ui_out_impl;
+
+  /* Override a few methods.  */
+  tui_ui_out_impl.field_int = tui_field_int;
+  tui_ui_out_impl.field_string = tui_field_string;
+  tui_ui_out_impl.field_fmt = tui_field_fmt;
+  tui_ui_out_impl.text = tui_text;
 }

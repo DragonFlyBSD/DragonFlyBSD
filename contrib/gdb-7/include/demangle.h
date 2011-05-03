@@ -160,6 +160,9 @@ java_demangle_v3_callback (const char *mangled,
 extern char*
 java_demangle_v3 (const char *mangled);
 
+char *
+ada_demangle (const char *mangled, int options);
+
 enum gnu_v3_ctor_kinds {
   gnu_v3_complete_object_ctor = 1,
   gnu_v3_base_object_ctor,
@@ -323,6 +326,9 @@ enum demangle_component_type
   DEMANGLE_COMPONENT_PTRMEM_TYPE,
   /* A fixed-point type.  */
   DEMANGLE_COMPONENT_FIXED_TYPE,
+  /* A vector type.  The left subtree is the number of elements,
+     the right subtree is the element type.  */
+  DEMANGLE_COMPONENT_VECTOR_TYPE,
   /* An argument list.  The left subtree is the current argument, and
      the right subtree is either NULL or another ARGLIST node.  */
   DEMANGLE_COMPONENT_ARGLIST,
@@ -375,12 +381,20 @@ enum demangle_component_type
   DEMANGLE_COMPONENT_COMPOUND_NAME,
   /* A name formed by a single character.  */
   DEMANGLE_COMPONENT_CHARACTER,
+  /* A number.  */
+  DEMANGLE_COMPONENT_NUMBER,
   /* A decltype type.  */
   DEMANGLE_COMPONENT_DECLTYPE,
   /* Global constructors keyed to name.  */
   DEMANGLE_COMPONENT_GLOBAL_CONSTRUCTORS,
   /* Global destructors keyed to name.  */
   DEMANGLE_COMPONENT_GLOBAL_DESTRUCTORS,
+  /* A lambda closure type.  */
+  DEMANGLE_COMPONENT_LAMBDA,
+  /* A default argument scope.  */
+  DEMANGLE_COMPONENT_DEFAULT_ARG,
+  /* An unnamed type.  */
+  DEMANGLE_COMPONENT_UNNAMED_TYPE,
   /* A pack expansion.  */
   DEMANGLE_COMPONENT_PACK_EXPANSION
 };
@@ -493,6 +507,14 @@ struct demangle_component
       /* Right subtree.  */
       struct demangle_component *right;
     } s_binary;
+
+    struct
+    {
+      /* subtree, same place as d_left.  */
+      struct demangle_component *sub;
+      /* integer.  */
+      int num;
+    } s_unary_num;
 
   } u;
 };

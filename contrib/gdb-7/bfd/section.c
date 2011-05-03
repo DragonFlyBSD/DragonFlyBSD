@@ -1,6 +1,6 @@
 /* Object file "section" support for the BFD library.
    Copyright 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
-   2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
+   2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
    Written by Cygnus Support.
 
@@ -383,20 +383,12 @@ CODE_FRAGMENT
 .  {* Bits used by various backends.  The generic code doesn't touch
 .     these fields.  *}
 .
-.  {* Nonzero if this section has TLS related relocations.  *}
-.  unsigned int has_tls_reloc:1;
-.
-.  {* Nonzero if this section has a call to __tls_get_addr.  *}
-.  unsigned int has_tls_get_addr_call:1;
-.
-.  {* Nonzero if this section has a gp reloc.  *}
-.  unsigned int has_gp_reloc:1;
-.
-.  {* Nonzero if this section needs the relax finalize pass.  *}
-.  unsigned int need_finalize_relax:1;
-.
-.  {* Whether relocations have been processed.  *}
-.  unsigned int reloc_done : 1;
+.  unsigned int sec_flg0:1;
+.  unsigned int sec_flg1:1;
+.  unsigned int sec_flg2:1;
+.  unsigned int sec_flg3:1;
+.  unsigned int sec_flg4:1;
+.  unsigned int sec_flg5:1;
 .
 .  {* End of internal packed boolean fields.  *}
 .
@@ -661,17 +653,17 @@ CODE_FRAGMENT
 .  {* name, id,  index, next, prev, flags, user_set_vma,            *}	\
 .  { NAME,  IDX, 0,     NULL, NULL, FLAGS, 0,				\
 .									\
-.  {* linker_mark, linker_has_input, gc_mark,                       *}	\
-.     0,           0,                1,         			\
+.  {* linker_mark, linker_has_input, gc_mark, segment_mark,         *}	\
+.     0,           0,                1,       0,			\
 .									\
-.  {* segment_mark, sec_info_type, use_rela_p, has_tls_reloc,       *}	\
-.     0,            0,             0,          0,			\
+.  {* sec_info_type, use_rela_p,                                    *}	\
+.     0,             0,							\
 .									\
-.  {* has_tls_get_addr_call, has_gp_reloc, need_finalize_relax,     *}	\
-.     0,                     0,            0,				\
+.  {* sec_flg0, sec_flg1, sec_flg2, sec_flg3, sec_flg4, sec_flg5,   *}	\
+.     0,        0,        0,        0,        0,        0,		\
 .									\
-.  {* reloc_done, vma, lma, size, rawsize, relax, relax_count,      *}	\
-.     0,          0,   0,   0,    0,       0,     0,			\
+.  {* vma, lma, size, rawsize, relax, relax_count,                  *}	\
+.     0,   0,   0,    0,       0,     0,				\
 .									\
 .  {* output_offset, output_section,              alignment_power,  *}	\
 .     0,             (struct bfd_section *) &SEC, 0,			\

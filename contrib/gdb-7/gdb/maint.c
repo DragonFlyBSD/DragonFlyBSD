@@ -1,7 +1,7 @@
 /* Support for GDB maintenance commands.
 
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1999, 2000, 2001, 2002,
-   2003, 2004, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2003, 2004, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    Written by Fred Fish at Cygnus Support.
 
@@ -171,23 +171,19 @@ maintenance_demangle (char *args, int from_tty)
 static void
 maintenance_time_display (char *args, int from_tty)
 {
-  extern int display_time;
-
   if (args == NULL || *args == '\0')
     printf_unfiltered (_("\"maintenance time\" takes a numeric argument.\n"));
   else
-    display_time = strtol (args, NULL, 10);
+    set_display_time (strtol (args, NULL, 10));
 }
 
 static void
 maintenance_space_display (char *args, int from_tty)
 {
-  extern int display_space;
-
   if (args == NULL || *args == '\0')
     printf_unfiltered ("\"maintenance space\" takes a numeric argument.\n");
   else
-    display_space = strtol (args, NULL, 10);
+    set_display_space (strtol (args, NULL, 10));
 }
 
 /* The "maintenance info" command is defined as a prefix, with
@@ -354,6 +350,7 @@ print_objfile_section_info (bfd *abfd,
     {
       struct gdbarch *gdbarch = gdbarch_from_bfd (abfd);
       int addr_size = gdbarch_addr_bit (gdbarch) / 8;
+
       maint_print_section_info (name, flags,
 				obj_section_addr (asect),
 				obj_section_endaddr (asect),
@@ -425,6 +422,7 @@ maintenance_print_architecture (char *args, int from_tty)
     {
       struct cleanup *cleanups;
       struct ui_file *file = gdb_fopen (args, "w");
+
       if (file == NULL)
 	perror_with_name (_("maintenance print architecture"));
       cleanups = make_cleanup_ui_file_delete (file);
@@ -538,8 +536,8 @@ maintenance_deprecate (char *args, int from_tty)
 {
   if (args == NULL || *args == '\0')
     {
-      printf_unfiltered (_("\"maintenance deprecate\" takes an argument, \n\
-the command you want to deprecate, and optionally the replacement command \n\
+      printf_unfiltered (_("\"maintenance deprecate\" takes an argument,\n\
+the command you want to deprecate, and optionally the replacement command\n\
 enclosed in quotes.\n"));
     }
 
@@ -571,7 +569,6 @@ the command you want to undeprecate.\n"));
 static void
 maintenance_do_deprecate (char *text, int deprecate)
 {
-
   struct cmd_list_element *alias = NULL;
   struct cmd_list_element *prefix_cmd = NULL;
   struct cmd_list_element *cmd = NULL;
@@ -618,7 +615,6 @@ maintenance_do_deprecate (char *text, int deprecate)
      memory. */
   if (alias)
     {
-
       if (alias->flags & MALLOCED_REPLACEMENT)
 	xfree (alias->replacement);
 
@@ -722,6 +718,7 @@ maintenance_set_profile_cmd (char *args, int from_tty, struct cmd_list_element *
   else
     {
       extern void _mcleanup (void);
+
       _mcleanup ();
     }
 }
@@ -736,8 +733,6 @@ maintenance_set_profile_cmd (char *args, int from_tty, struct cmd_list_element *
 void
 _initialize_maint_cmds (void)
 {
-  struct cmd_list_element *tmpcmd;
-
   add_prefix_cmd ("maintenance", class_maintenance, maintenance_command, _("\
 Commands for use by GDB maintainers.\n\
 Includes commands to dump specific internal GDB structures in\n\

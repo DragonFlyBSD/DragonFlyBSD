@@ -1,5 +1,6 @@
 /* Definitions used by the GDB event loop.
-   Copyright (C) 1999, 2000, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 1999, 2000, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
    Written by Elena Zannoni <ezannoni@cygnus.com> of Cygnus Solutions.
 
    This file is part of GDB.
@@ -86,13 +87,6 @@ typedef enum
     HEAD
   }
 queue_position;
-
-/* Tell create_file_handler what events we are interested in. 
-   This is used by the select version of the event loop. */
-
-#define GDB_READABLE	(1<<1)
-#define GDB_WRITABLE	(1<<2)
-#define GDB_EXCEPTION	(1<<3)
 
 /* Exported functions from event-loop.c */
 

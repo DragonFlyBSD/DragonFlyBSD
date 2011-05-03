@@ -1,6 +1,6 @@
 /* YACC parser for Ada expressions, for GDB.
    Copyright (C) 1986, 1989, 1990, 1991, 1993, 1994, 1997, 2000, 2003, 2004,
-   2007, 2008, 2009 Free Software Foundation, Inc.
+   2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1021,8 +1021,8 @@ block_lookup (struct block *context, char *raw_name)
     name = ada_encode (raw_name);
 
   nsyms = ada_lookup_symbol_list (name, context, VAR_DOMAIN, &syms);
-  if (context == NULL &&
-      (nsyms == 0 || SYMBOL_CLASS (syms[0].sym) != LOC_BLOCK))
+  if (context == NULL
+      && (nsyms == 0 || SYMBOL_CLASS (syms[0].sym) != LOC_BLOCK))
     symtab = lookup_symtab (name);
   else
     symtab = NULL;
@@ -1091,7 +1091,6 @@ find_primitive_type (char *name)
     {
       /* Check to see if we have a regular definition of this
 	 type that just didn't happen to have been read yet.  */
-      int ntypes;
       struct symbol *sym;
       char *expanded_name = 
 	(char *) alloca (strlen (name) + sizeof ("standard__"));
@@ -1366,7 +1365,6 @@ write_var_or_type (struct block *block, struct stoken name0)
 	    }
 	  else if (nsyms == 0) 
 	    {
-	      int i;
 	      struct minimal_symbol *msym 
 		= ada_lookup_simple_minsym (encoded_name);
 	      if (msym != NULL)

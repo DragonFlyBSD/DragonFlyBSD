@@ -1,6 +1,6 @@
 /* Native-dependent code for the i386.
 
-   Copyright (C) 2001, 2004, 2005, 2007, 2008, 2009
+   Copyright (C) 2001, 2004, 2005, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -137,8 +137,11 @@ struct i386_dr_low_type i386_dr_low;
 #define I386_DR_GET_RW_LEN(i) \
   ((dr_control_mirror >> (DR_CONTROL_SHIFT + DR_CONTROL_SIZE * (i))) & 0x0f)
 
+/* Mask that this I'th watchpoint has triggered.  */
+#define I386_DR_WATCH_MASK(i)	(1 << (i))
+
 /* Did the watchpoint whose address is in the I'th register break?  */
-#define I386_DR_WATCH_HIT(i)	(dr_status_mirror & (1 << (i)))
+#define I386_DR_WATCH_HIT(i)	(dr_status_mirror & I386_DR_WATCH_MASK (i))
 
 /* A macro to loop over all debug registers.  */
 #define ALL_DEBUG_REGISTERS(i)	for (i = 0; i < DR_NADDR; i++)
@@ -265,7 +268,8 @@ i386_length_and_rw_bits (int len, enum target_hw_bp_type type)
 	rw = DR_RW_WRITE;
 	break;
       case hw_read:
-	/* The i386 doesn't support data-read watchpoints.  */
+	internal_error (__FILE__, __LINE__,
+			_("The i386 doesn't support data-read watchpoints.\n"));
       case hw_access:
 	rw = DR_RW_READ;
 	break;
@@ -357,6 +361,10 @@ i386_insert_aligned_watchpoint (CORE_ADDR addr, unsigned len_rw_bits)
   /* Finally, actually pass the info to the inferior.  */
   i386_dr_low.set_addr (i, addr);
   i386_dr_low.set_control (dr_control_mirror);
+
+  /* Only a sanity check for leftover bits (set possibly only by inferior).  */
+  if (i386_dr_low.unset_status)
+    i386_dr_low.unset_status (I386_DR_WATCH_MASK (i));
 
   return 0;
 }
@@ -476,9 +484,13 @@ Invalid value %d of operation in i386_handle_nonaligned_watchpoint.\n"),
    of the type TYPE.  Return 0 on success, -1 on failure.  */
 
 static int
-i386_insert_watchpoint (CORE_ADDR addr, int len, int type)
+i386_insert_watchpoint (CORE_ADDR addr, int len, int type,
+			struct expression *cond)
 {
   int retval;
+
+  if (type == hw_read)
+    return 1; /* unsupported */
 
   if (((len != 1 && len !=2 && len !=4) && !(TARGET_HAS_DR_LEN_8 && len == 8))
       || addr % len != 0)
@@ -500,7 +512,8 @@ i386_insert_watchpoint (CORE_ADDR addr, int len, int type)
    address ADDR, whose length is LEN bytes, and for accesses of the
    type TYPE.  Return 0 on success, -1 on failure.  */
 static int
-i386_remove_watchpoint (CORE_ADDR addr, int len, int type)
+i386_remove_watchpoint (CORE_ADDR addr, int len, int type,
+			struct expression *cond)
 {
   int retval;
 
@@ -579,27 +592,6 @@ i386_stopped_by_watchpoint (void)
 {
   CORE_ADDR addr = 0;
   return i386_stopped_data_address (&current_target, &addr);
-}
-
-/* Return non-zero if the inferior has some break/watchpoint that
-   triggered.  */
-
-static int
-i386_stopped_by_hwbp (void)
-{
-  int i;
-
-  dr_status_mirror = i386_dr_low.get_status ();
-  if (maint_show_dr)
-    i386_show_dr ("stopped_by_hwbp", 0, 0, hw_execute);
-
-  ALL_DEBUG_REGISTERS(i)
-    {
-      if (I386_DR_WATCH_HIT (i))
-	return 1;
-    }
-
-  return 0;
 }
 
 /* Insert a hardware-assisted breakpoint at BP_TGT->placed_address.

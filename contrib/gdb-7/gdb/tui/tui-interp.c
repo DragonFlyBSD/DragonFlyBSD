@@ -1,6 +1,6 @@
 /* TUI Interpreter definitions for GDB, the GNU debugger.
 
-   Copyright (C) 2003, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2003, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -45,11 +45,16 @@ tui_exit (void)
   tui_disable ();
 }
 
+/* True if TUI is the top-level interpreter.  */
+static int tui_is_toplevel = 0;
+
 /* These implement the TUI interpreter.  */
 
 static void *
 tui_init (int top_level)
 {
+  tui_is_toplevel = top_level;
+
   /* Install exit handler to leave the screen in a good shape.  */
   atexit (tui_exit);
 
@@ -57,9 +62,22 @@ tui_init (int top_level)
 
   tui_initialize_io ();
   tui_initialize_win ();
-  tui_initialize_readline ();
+  if (ui_file_isatty (gdb_stdout))
+    tui_initialize_readline ();
 
   return NULL;
+}
+
+/* True if enabling the TUI is allowed.  Example, if the top level
+   interpreter is MI, enabling curses will certainly lose.  */
+
+int
+tui_allowed_p (void)
+{
+  /* Only if TUI is the top level interpreter.  Also don't try to
+     setup curses (and print funny control characters) if we're not
+     outputting to a terminal.  */
+  return tui_is_toplevel && ui_file_isatty (gdb_stdout);
 }
 
 static int
@@ -151,6 +169,7 @@ tui_command_loop (void *data)
   while (1)
     {
       int result = catch_errors (gdb_do_one_event, 0, "", RETURN_MASK_ALL);
+
       if (result < 0)
 	break;
 
@@ -204,7 +223,6 @@ _initialize_tui_interp (void)
     tui_display_prompt_p,
     tui_command_loop,
   };
-  struct interp *tui_interp;
 
   /* Create a default uiout builder for the TUI.  */
   tui_out = tui_out_new (gdb_stdout);

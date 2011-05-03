@@ -260,6 +260,11 @@
 #define bfd_elfNN_bfd_link_just_syms	_bfd_elf_link_just_syms
 #endif
 
+#ifndef bfd_elfNN_bfd_copy_link_hash_symbol_type
+#define bfd_elfNN_bfd_copy_link_hash_symbol_type \
+  _bfd_elf_copy_link_hash_symbol_type
+#endif
+
 #ifndef bfd_elfNN_bfd_link_split_section
 #define bfd_elfNN_bfd_link_split_section _bfd_generic_link_split_section
 #endif

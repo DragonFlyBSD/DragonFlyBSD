@@ -1,7 +1,7 @@
 /* Definitions for symbol file management in GDB.
 
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001,
-   2002, 2003, 2004, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2002, 2003, 2004, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -23,6 +23,7 @@
 
 #include "gdb_obstack.h"	/* For obstack internals.  */
 #include "symfile.h"		/* For struct psymbol_allocation_list */
+#include "progspace.h"
 
 struct bcache;
 struct htab;
@@ -99,15 +100,11 @@ struct objfile_data;
 
 struct entry_info
   {
-
-    /* The value we should use for this objects entry point.
-       The illegal/unknown value needs to be something other than 0, ~0
-       for instance, which is much less likely than 0. */
-
+    /* The relocated value we should use for this objfile entry point.  */
     CORE_ADDR entry_point;
 
-#define INVALID_ENTRY_POINT (~0)	/* ~0 will not be in any file, we hope.  */
-
+    /* Set to 1 iff ENTRY_POINT contains a valid value.  */
+    unsigned entry_point_p : 1;
   };
 
 /* Sections in an objfile.  The section offsets are stored in the
@@ -200,6 +197,10 @@ struct objfile
 
     unsigned short flags;
 
+    /* The program space associated with this objfile.  */
+
+    struct program_space *pspace;
+
     /* Each objfile points to a linked list of symtabs derived from this file,
        one symtab structure for each compilation unit (source file).  Each link
        in the symtab list contains a backpointer to this objfile. */
@@ -250,6 +251,7 @@ struct objfile
 
     struct bcache *psymbol_cache;	/* Byte cache for partial syms */
     struct bcache *macro_cache;          /* Byte cache for macros */
+    struct bcache *filename_cache;	 /* Byte cache for file names.  */
 
     /* Hash table for mapping symbol names to demangled names.  Each
        entry in the hash table is actually two consecutive strings,
@@ -361,15 +363,25 @@ struct objfile
     struct obj_section
      *sections, *sections_end;
 
-    /* Link to objfile that contains the debug symbols for this one.
-       One is loaded if this file has an debug link to an existing
-       debug file with the right checksum */
+    /* GDB allows to have debug symbols in separate object files.  This is
+       used by .gnu_debuglink, ELF build id note and Mach-O OSO.
+       Although this is a tree structure, GDB only support one level
+       (ie a separate debug for a separate debug is not supported).  Note that
+       separate debug object are in the main chain and therefore will be
+       visited by ALL_OBJFILES & co iterators.  Separate debug objfile always
+       has a non-nul separate_debug_objfile_backlink.  */
+
+    /* Link to the first separate debug object, if any.  */
     struct objfile *separate_debug_objfile;
 
     /* If this is a separate debug object, this is used as a link to the
        actual executable objfile. */
     struct objfile *separate_debug_objfile_backlink;
-    
+
+    /* If this is a separate debug object, this is a link to the next one
+       for the same executable objfile.  */
+    struct objfile *separate_debug_objfile_link;
+
     /* Place to stash various statistics about this objfile */
       OBJSTATS;
 
@@ -414,11 +426,6 @@ struct objfile
 
 #define OBJF_USERLOADED	(1 << 3)	/* User loaded */
 
-/* The object file that the main symbol table was loaded from (e.g. the
-   argument to the "symbol-file" or "file" command).  */
-
-extern struct objfile *symfile_objfile;
-
 /* The object file that contains the runtime common minimal symbols
    for SunOS4. Note that this objfile has no associated BFD.  */
 
@@ -439,11 +446,6 @@ extern struct objfile *rt_common_objfile;
 
 extern struct objfile *current_objfile;
 
-/* All known objfiles are kept in a linked list.  This points to the
-   root of this list. */
-
-extern struct objfile *object_files;
-
 /* Declarations for functions defined in objfiles.c */
 
 extern struct objfile *allocate_objfile (bfd *, int);
@@ -452,19 +454,28 @@ extern struct gdbarch *get_objfile_arch (struct objfile *);
 
 extern void init_entry_point_info (struct objfile *);
 
+extern int entry_point_address_query (CORE_ADDR *entry_p);
+
 extern CORE_ADDR entry_point_address (void);
 
 extern int build_objfile_section_table (struct objfile *);
 
 extern void terminate_minimal_symbol_table (struct objfile *objfile);
 
+extern struct objfile *objfile_separate_debug_iterate (const struct objfile *,
+                                                       const struct objfile *);
+
 extern void put_objfile_before (struct objfile *, struct objfile *);
 
 extern void objfile_to_front (struct objfile *);
 
+extern void add_separate_debug_objfile (struct objfile *, struct objfile *);
+
 extern void unlink_objfile (struct objfile *);
 
 extern void free_objfile (struct objfile *);
+
+extern void free_objfile_separate_debug (struct objfile *);
 
 extern struct cleanup *make_cleanup_free_objfile (struct objfile *);
 
@@ -475,6 +486,8 @@ extern void objfile_relocate (struct objfile *, struct section_offsets *);
 extern int objfile_has_partial_symbols (struct objfile *objfile);
 
 extern int objfile_has_full_symbols (struct objfile *objfile);
+
+extern int objfile_has_symbols (struct objfile *objfile);
 
 extern int have_partial_symbols (void);
 
@@ -520,16 +533,30 @@ extern void *objfile_data (struct objfile *objfile,
 
 extern struct bfd *gdb_bfd_ref (struct bfd *abfd);
 extern void gdb_bfd_unref (struct bfd *abfd);
+extern int gdb_bfd_close_or_warn (struct bfd *abfd);
 
 
-/* Traverse all object files.  ALL_OBJFILES_SAFE works even if you delete
-   the objfile during the traversal.  */
+/* Traverse all object files in the current program space.
+   ALL_OBJFILES_SAFE works even if you delete the objfile during the
+   traversal.  */
 
-#define	ALL_OBJFILES(obj) \
-  for ((obj) = object_files; (obj) != NULL; (obj) = (obj)->next)
+/* Traverse all object files in program space SS.  */
 
-#define	ALL_OBJFILES_SAFE(obj,nxt) \
-  for ((obj) = object_files; 	   \
+#define ALL_PSPACE_OBJFILES(ss, obj)					\
+  for ((obj) = ss->objfiles; (obj) != NULL; (obj) = (obj)->next)	\
+
+#define ALL_PSPACE_OBJFILES_SAFE(ss, obj, nxt)		\
+  for ((obj) = ss->objfiles;			\
+       (obj) != NULL? ((nxt)=(obj)->next,1) :0;	\
+       (obj) = (nxt))
+
+#define ALL_OBJFILES(obj)			    \
+  for ((obj) = current_program_space->objfiles; \
+       (obj) != NULL;				    \
+       (obj) = (obj)->next)
+
+#define ALL_OBJFILES_SAFE(obj,nxt)			\
+  for ((obj) = current_program_space->objfiles;	\
        (obj) != NULL? ((nxt)=(obj)->next,1) :0;	\
        (obj) = (nxt))
 
@@ -538,37 +565,38 @@ extern void gdb_bfd_unref (struct bfd *abfd);
 #define	ALL_OBJFILE_SYMTABS(objfile, s) \
     for ((s) = (objfile) -> symtabs; (s) != NULL; (s) = (s) -> next)
 
-/* Traverse all psymtabs in one objfile.  */
-
-#define	ALL_OBJFILE_PSYMTABS(objfile, p) \
-    for ((p) = (objfile) -> psymtabs; (p) != NULL; (p) = (p) -> next)
-
 /* Traverse all minimal symbols in one objfile.  */
 
 #define	ALL_OBJFILE_MSYMBOLS(objfile, m) \
     for ((m) = (objfile) -> msymbols; SYMBOL_LINKAGE_NAME(m) != NULL; (m)++)
 
-/* Traverse all symtabs in all objfiles.  */
+/* Traverse all symtabs in all objfiles in the current symbol
+   space.  */
 
 #define	ALL_SYMTABS(objfile, s) \
   ALL_OBJFILES (objfile)	 \
     ALL_OBJFILE_SYMTABS (objfile, s)
 
-/* Traverse all symtabs in all objfiles, skipping included files
-   (which share a blockvector with their primary symtab).  */
+#define ALL_PSPACE_SYMTABS(ss, objfile, s)		\
+  ALL_PSPACE_OBJFILES (ss, objfile)			\
+    ALL_OBJFILE_SYMTABS (objfile, s)
+
+/* Traverse all symtabs in all objfiles in the current program space,
+   skipping included files (which share a blockvector with their
+   primary symtab).  */
 
 #define ALL_PRIMARY_SYMTABS(objfile, s) \
   ALL_OBJFILES (objfile)		\
     ALL_OBJFILE_SYMTABS (objfile, s)	\
       if ((s)->primary)
 
-/* Traverse all psymtabs in all objfiles.  */
+#define ALL_PSPACE_PRIMARY_SYMTABS(pspace, objfile, s)	\
+  ALL_PSPACE_OBJFILES (ss, objfile)			\
+    ALL_OBJFILE_SYMTABS (objfile, s)			\
+      if ((s)->primary)
 
-#define	ALL_PSYMTABS(objfile, p) \
-  ALL_OBJFILES (objfile)	 \
-    ALL_OBJFILE_PSYMTABS (objfile, p)
-
-/* Traverse all minimal symbols in all objfiles.  */
+/* Traverse all minimal symbols in all objfiles in the current symbol
+   space.  */
 
 #define	ALL_MSYMBOLS(objfile, m) \
   ALL_OBJFILES (objfile)	 \

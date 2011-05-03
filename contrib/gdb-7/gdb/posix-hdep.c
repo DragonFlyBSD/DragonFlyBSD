@@ -1,6 +1,6 @@
 /* Host support routines for MinGW, for GDB, the GNU debugger.
 
-   Copyright (C) 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -37,6 +37,7 @@ safe_strerror (int errnum)
   if (msg == NULL)
     {
       static char buf[32];
+
       xsnprintf (buf, sizeof buf, "(undocumented errno %d)", errnum);
       msg = buf;
     }

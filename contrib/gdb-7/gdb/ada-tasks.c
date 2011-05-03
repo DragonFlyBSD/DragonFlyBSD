@@ -1,5 +1,5 @@
 /* Copyright (C) 1992, 1993, 1994, 1997, 1998, 1999, 2000, 2003, 2004, 2005,
-   2007, 2008, 2009 Free Software Foundation, Inc.
+   2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -198,6 +198,7 @@ get_task_number_from_id (CORE_ADDR task_id)
 int
 valid_task_id (int task_num)
 {
+  ada_build_task_list (0);
   return (task_num > 0
           && task_num <= VEC_length (ada_task_info_s, task_list));
 }
@@ -292,7 +293,6 @@ get_known_tasks_addr (void)
 
   if (ada_tasks_check_symbol_table)
     {
-      struct symbol *sym;
       struct minimal_symbol *msym;
 
       msym = lookup_minimal_symbol (KNOWN_TASKS_NAME, NULL, NULL);
@@ -875,6 +875,19 @@ task_command_1 (char *taskno_str, int from_tty)
      that thread, we need to make sure that any new threads gets added
      to the thread list.  */
   target_find_new_threads ();
+
+  /* Verify that the ptid of the task we want to switch to is valid
+     (in other words, a ptid that GDB knows about).  Otherwise, we will
+     cause an assertion failure later on, when we try to determine
+     the ptid associated thread_info data.  We should normally never
+     encounter such an error, but the wrong ptid can actually easily be
+     computed if target_get_ada_task_ptid has not been implemented for
+     our target (yet).  Rather than cause an assertion error in that case,
+     it's nicer for the user to just refuse to perform the task switch.  */
+  if (!find_thread_ptid (task_info->ptid))
+    error (_("Unable to compute thread ID for task %d.\n"
+             "Cannot switch to this task."),
+           taskno);
 
   switch_to_thread (task_info->ptid);
   ada_find_printable_frame (get_selected_frame (NULL));

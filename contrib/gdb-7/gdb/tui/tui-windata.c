@@ -1,7 +1,7 @@
 /* Data/register window display.
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009,
+   2010 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -168,7 +168,6 @@ tui_display_data_from_line (int line_no)
     tui_display_registers_from_line (_line_no, TRUE);
   else
     {
-      int element_no, start_line_no;
       int regs_last_line = tui_last_regs_line_no ();
 
 
@@ -283,8 +282,6 @@ tui_vertical_data_scroll (enum tui_scroll_direction scroll_direction,
 
   if (first_line >= 0)
     {
-      int last_element_no, last_line;
-
       if (scroll_direction == FORWARD_SCROLL)
 	first_line += num_to_scroll;
       else
