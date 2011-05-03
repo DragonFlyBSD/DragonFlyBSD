@@ -129,7 +129,7 @@ kernel_from_dumpnr(int nr)
 	snprintf(path, sizeof(path), "%s/info.%d", crashdir, nr);
 	info = fopen(path, "r");
 	if (info == NULL) {
-		warn(path);
+		warn("%s", path);
 		return;
 	}
 	while (fgets(path, sizeof(path), info) != NULL) {
@@ -226,11 +226,13 @@ kgdb_dmesg(void)
 		return;
 	bufp = kgdb_parse("msgbufp->msg_ptr");
 	size = (int)kgdb_parse("msgbufp->msg_size");
+	if (bufp == 0 || size == 0)
+		return;
 	rseq = (int)kgdb_parse("msgbufp->msg_bufr");
 	wseq = (int)kgdb_parse("msgbufp->msg_bufx");
 	rseq = MSGBUF_SEQ_TO_POS(size, rseq);
 	wseq = MSGBUF_SEQ_TO_POS(size, wseq);
-	if (bufp == 0 || size == 0 || rseq == wseq)
+	if (rseq == wseq)
 		return;
 
 	printf("\nUnread portion of the kernel message buffer:\n");
@@ -333,6 +335,7 @@ main(int argc, char *argv[])
 	args.interpreter_p = INTERP_CONSOLE;
 	args.argv = malloc(sizeof(char *));
 	args.argv[0] = argv[0];
+	add_arg(&args, "--kernel");
 
 	while ((ch = getopt(argc, argv, "ac:d:fn:qr:vw")) != -1) {
 		switch (ch) {
@@ -409,7 +412,7 @@ main(int argc, char *argv[])
 	if (dumpnr >= 0) {
 		snprintf(path, sizeof(path), "%s/vmcore.%d", crashdir, dumpnr);
 		if (stat(path, &st) == -1)
-			err(1, path);
+			err(1, "%s", path);
 		if (!S_ISREG(st.st_mode))
 			errx(1, "%s: not a regular file", path);
 		vmcore = strdup(path);

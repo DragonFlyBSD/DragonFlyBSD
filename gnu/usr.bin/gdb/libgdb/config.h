@@ -1,6 +1,10 @@
 /* config.h.  Generated from config.in by configure.  */
 /* config.in.  Generated from configure.ac by autoheader.  */
 
+/* Define if the compiler is building for multiple architectures of Apple
+   platforms at once. */
+/* #undef AA_APPLE_UNIVERSAL_BUILD */
+
 /* Define if building universal (internal helper macro) */
 /* #undef AC_APPLE_UNIVERSAL_BUILD */
 
@@ -38,11 +42,9 @@
 #define DEBUGDIR_RELOCATABLE 1
 
 /* Define to BFD's default architecture. */
-/* This is set by Makefile.ARCH */
 /* #define DEFAULT_BFD_ARCH bfd_i386_arch */
 
 /* Define to BFD's default target vector. */
-/* This is set by Makefile.ARCH */
 /* #define DEFAULT_BFD_VEC bfd_elf32_i386_freebsd_vec */
 
 /* Define to 1 if translation of program messages to the user's native
@@ -73,6 +75,12 @@
 
 /* Define to the default OS ABI for this configuration. */
 #define GDB_OSABI_DEFAULT GDB_OSABI_DRAGONFLY
+
+/* Define to 1 when the gnulib module memchr should be tested. */
+#define GNULIB_TEST_MEMCHR 1
+
+/* Define to 1 when the gnulib module memmem should be tested. */
+#define GNULIB_TEST_MEMMEM 1
 
 /* Define to 1 if you have `alloca', as a function or macro. */
 #define HAVE_ALLOCA 1
@@ -110,6 +118,10 @@
 /* Define to 1 if you have the declaration of `getopt', and to 0 if you don't.
    */
 #define HAVE_DECL_GETOPT 1
+
+/* Define to 1 if you have the declaration of `getthrds', and to 0 if you
+   don't. */
+/* #undef HAVE_DECL_GETTHRDS */
 
 /* Define to 1 if you have the declaration of `malloc', and to 0 if you don't.
    */
@@ -168,6 +180,9 @@
 /* Define to 1 if you have the `getpagesize' function. */
 #define HAVE_GETPAGESIZE 1
 
+/* Define to 1 if you have the `getrlimit' function. */
+#define HAVE_GETRLIMIT 1
+
 /* Define to 1 if you have the `getrusage' function. */
 #define HAVE_GETRUSAGE 1
 
@@ -180,17 +195,11 @@
 /* Define if <sys/procfs.h> has gregset_t. */
 #define HAVE_GREGSET_T 1
 
-/* Define if you have HPUX threads */
-/* #undef HAVE_HPUX_THREAD_SUPPORT */
-
 /* Define if you have the iconv() function. */
 #define HAVE_ICONV 1
 
 /* Define to 1 if you have the `iconvlist' function. */
 /* #undef HAVE_ICONVLIST */
-
-/* Define if your compiler supports the #include_next directive. */
-#define HAVE_INCLUDE_NEXT 1
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
@@ -222,6 +231,9 @@
 /* Define if Python 2.6 is being used. */
 /* #undef HAVE_LIBPYTHON2_6 */
 
+/* Define if Python 2.7 is being used. */
+/* #undef HAVE_LIBPYTHON2_7 */
+
 /* Define if libunwind library is being used. */
 /* #undef HAVE_LIBUNWIND */
 
@@ -252,6 +264,10 @@
 /* Define to 1 if you have the <machine/reg.h> header file. */
 #define HAVE_MACHINE_REG_H 1
 
+/* Define to 1 if mmap()'s MAP_ANONYMOUS flag is available after including
+   config.h and <sys/mman.h>. */
+#define HAVE_MAP_ANONYMOUS 1
+
 /* Define to 1 if you have the `memchr' function. */
 #define HAVE_MEMCHR 1
 
@@ -266,6 +282,9 @@
 
 /* Define to 1 if you have the `monstartup' function. */
 #define HAVE_MONSTARTUP 1
+
+/* Define to 1 if you have the `mprotect' function. */
+#define HAVE_MPROTECT 1
 
 /* Define to 1 if you have the <ncurses.h> header file. */
 #define HAVE_NCURSES_H 1
@@ -293,6 +312,9 @@
 
 /* Define to 1 if you have the <poll.h> header file. */
 #define HAVE_POLL_H 1
+
+/* Define to 1 if you have the `posix_madvise' function. */
+#define HAVE_POSIX_MADVISE 1
 
 /* Define to 1 if you have the `pread64' function. */
 /* #undef HAVE_PREAD64 */
@@ -354,8 +376,95 @@
 /* Define if Python interpreter is being linked in. */
 /* #undef HAVE_PYTHON */
 
+/* Define to 1 if btowc is declared even after undefining macros. */
+#define HAVE_RAW_DECL_BTOWC 1
+
+/* Define to 1 if mbrlen is declared even after undefining macros. */
+#define HAVE_RAW_DECL_MBRLEN 1
+
+/* Define to 1 if mbrtowc is declared even after undefining macros. */
+#define HAVE_RAW_DECL_MBRTOWC 1
+
+/* Define to 1 if mbsinit is declared even after undefining macros. */
+#define HAVE_RAW_DECL_MBSINIT 1
+
+/* Define to 1 if mbsnrtowcs is declared even after undefining macros. */
+/* #undef HAVE_RAW_DECL_MBSNRTOWCS */
+
+/* Define to 1 if mbsrtowcs is declared even after undefining macros. */
+#define HAVE_RAW_DECL_MBSRTOWCS 1
+
+/* Define to 1 if memmem is declared even after undefining macros. */
+#define HAVE_RAW_DECL_MEMMEM 1
+
+/* Define to 1 if mempcpy is declared even after undefining macros. */
+/* #undef HAVE_RAW_DECL_MEMPCPY */
+
+/* Define to 1 if memrchr is declared even after undefining macros. */
+#define HAVE_RAW_DECL_MEMRCHR 1
+
+/* Define to 1 if rawmemchr is declared even after undefining macros. */
+/* #undef HAVE_RAW_DECL_RAWMEMCHR */
+
+/* Define to 1 if stpcpy is declared even after undefining macros. */
+#define HAVE_RAW_DECL_STPCPY 1
+
+/* Define to 1 if stpncpy is declared even after undefining macros. */
+/* #undef HAVE_RAW_DECL_STPNCPY */
+
+/* Define to 1 if strcasestr is declared even after undefining macros. */
+#define HAVE_RAW_DECL_STRCASESTR 1
+
+/* Define to 1 if strchrnul is declared even after undefining macros. */
+/* #undef HAVE_RAW_DECL_STRCHRNUL */
+
+/* Define to 1 if strdup is declared even after undefining macros. */
+#define HAVE_RAW_DECL_STRDUP 1
+
+/* Define to 1 if strncat is declared even after undefining macros. */
+#define HAVE_RAW_DECL_STRNCAT 1
+
+/* Define to 1 if strndup is declared even after undefining macros. */
+#define HAVE_RAW_DECL_STRNDUP 1
+
+/* Define to 1 if strnlen is declared even after undefining macros. */
+#define HAVE_RAW_DECL_STRNLEN 1
+
+/* Define to 1 if strpbrk is declared even after undefining macros. */
+#define HAVE_RAW_DECL_STRPBRK 1
+
+/* Define to 1 if strsep is declared even after undefining macros. */
+#define HAVE_RAW_DECL_STRSEP 1
+
+/* Define to 1 if strsignal is declared even after undefining macros. */
+#define HAVE_RAW_DECL_STRSIGNAL 1
+
+/* Define to 1 if strtok_r is declared even after undefining macros. */
+#define HAVE_RAW_DECL_STRTOK_R 1
+
+/* Define to 1 if strverscmp is declared even after undefining macros. */
+/* #undef HAVE_RAW_DECL_STRVERSCMP */
+
+/* Define to 1 if wcrtomb is declared even after undefining macros. */
+#define HAVE_RAW_DECL_WCRTOMB 1
+
+/* Define to 1 if wcsnrtombs is declared even after undefining macros. */
+/* #undef HAVE_RAW_DECL_WCSNRTOMBS */
+
+/* Define to 1 if wcsrtombs is declared even after undefining macros. */
+#define HAVE_RAW_DECL_WCSRTOMBS 1
+
+/* Define to 1 if wctob is declared even after undefining macros. */
+#define HAVE_RAW_DECL_WCTOB 1
+
+/* Define to 1 if wcwidth is declared even after undefining macros. */
+#define HAVE_RAW_DECL_WCWIDTH 1
+
 /* Define to 1 if you have the `realpath' function. */
 #define HAVE_REALPATH 1
+
+/* Define to 1 if you have the `resize_term' function. */
+#define HAVE_RESIZE_TERM 1
 
 /* Define to 1 if you have the `sbrk' function. */
 #define HAVE_SBRK 1
@@ -368,6 +477,9 @@
 
 /* Define to 1 if you have the `setpgrp' function. */
 #define HAVE_SETPGRP 1
+
+/* Define to 1 if you have the `setrlimit' function. */
+#define HAVE_SETRLIMIT 1
 
 /* Define to 1 if you have the `setsid' function. */
 #define HAVE_SETSID 1
@@ -484,6 +596,9 @@
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
 #define HAVE_SYS_IOCTL_H 1
 
+/* Define to 1 if you have the <sys/mman.h> header file. */
+#define HAVE_SYS_MMAN_H 1
+
 /* Define to 1 if you have the <sys/ndir.h> header file, and it defines `DIR'.
    */
 /* #undef HAVE_SYS_NDIR_H */
@@ -563,6 +678,9 @@
 /* Define to 1 if you have the <vfork.h> header file. */
 /* #undef HAVE_VFORK_H */
 
+/* Define to 1 if you have the `waitpid' function. */
+#define HAVE_WAITPID 1
+
 /* Define to 1 if you have the <wait.h> header file. */
 /* #undef HAVE_WAIT_H */
 
@@ -572,11 +690,20 @@
 /* Define to 1 if you have the <wchar.h> header file. */
 #define HAVE_WCHAR_H 1
 
+/* Define if you have the 'wchar_t' type. */
+#define HAVE_WCHAR_T 1
+
+/* Define if you have the 'wint_t' type. */
+#define HAVE_WINT_T 1
+
 /* Define to 1 if `fork' works. */
 #define HAVE_WORKING_FORK 1
 
 /* Define to 1 if `vfork' works. */
 #define HAVE_WORKING_VFORK 1
+
+/* Define to 1 if you have the `wresize' function. */
+#define HAVE_WRESIZE 1
 
 /* Define to 1 if you have the `XML_StopParser' function. */
 /* #undef HAVE_XML_STOPPARSER */
@@ -592,6 +719,9 @@
 
 /* Define as const if the declaration of iconv() needs const. */
 #define ICONV_CONST 
+
+/* Define to a substitute value for mmap()'s MAP_ANONYMOUS flag. */
+#define MAP_ANONYMOUS MAP_ANON
 
 /* Define if you want to use new multi-fd /proc interface (replaces
    HAVE_MULTIPLE_PROC_FDS as well as other macros). */
@@ -649,6 +779,9 @@
 /* Define to l, ll, u, ul, ull, etc., as suitable for constants of type
    'ptrdiff_t'. */
 /* #undef PTRDIFF_T_SUFFIX */
+
+/* Define if the python directory should be relocated when GDB is moved. */
+/* #undef PYTHON_PATH_RELOCATABLE */
 
 /* Relocated directory for source files. */
 /* #undef RELOC_SRCDIR */
@@ -722,6 +855,10 @@
    'wint_t'. */
 /* #undef WINT_T_SUFFIX */
 
+/* Define if --with-python provides a path, either directly or via
+   python-config.py --exec-prefix. */
+/* #undef WITH_PYTHON_PATH */
+
 /* Define if the simulator is being linked in. */
 /* #undef WITH_SIM */
 
@@ -737,9 +874,15 @@
 # endif
 #endif
 
+/* Number of bits in a file offset, on hosts where this is settable. */
+/* #undef _FILE_OFFSET_BITS */
+
 /* Define to 1 so <sys/proc.h> gets a definition of anon_hdl. Works around a
    <sys/proc.h> problem on IRIX 5. */
 /* #undef _KMEMUSER */
+
+/* Define for large files, on AIX-style hosts. */
+/* #undef _LARGE_FILES */
 
 /* Define to 1 if on MINIX. */
 /* #undef _MINIX */
@@ -757,6 +900,9 @@
 
 /* Define if <sys/link.h> has link_map32 (solaris sparc-64 target) */
 /* #undef _SYSCALL32 */
+
+/* Define to 500 only on HP-UX. */
+/* #undef _XOPEN_SOURCE */
 
 /* Enable extensions on AIX 3, Interix.  */
 #ifndef _ALL_SOURCE
@@ -789,24 +935,48 @@
 /* #undef inline */
 #endif
 
-/* Define to rpl_memcmp if the replacement function should be used. */
-/* #undef memcmp */
+/* Work around a bug in Apple GCC 4.0.1 build 5465: In C99 mode, it supports
+   the ISO C 99 semantics of 'extern inline' (unlike the GNU C semantics of
+   earlier versions), but does not display it by setting __GNUC_STDC_INLINE__.
+   __APPLE__ && __MACH__ test for MacOS X.
+   __APPLE_CC__ tests for the Apple compiler and its version.
+   __STDC_VERSION__ tests for the C99 mode.  */
+#if defined __APPLE__ && defined __MACH__ && __APPLE_CC__ >= 5465 && !defined __cplusplus && __STDC_VERSION__ >= 199901L && !defined __GNUC_STDC_INLINE__
+# define __GNUC_STDC_INLINE__ 1
+#endif
 
 /* Define to `int' if <sys/types.h> does not define. */
 /* #undef pid_t */
+
+/* readline-6.0 started to use different name. */
+/* #undef readline_echoing_p */
 
 /* Define to the equivalent of the C99 'restrict' keyword, or to
    nothing if this is not supported.  Do not define if restrict is
    supported directly.  */
 #define restrict __restrict
-/* Work around a bug in Sun C++: it does not support _Restrict, even
-   though the corresponding Sun C compiler does, which causes
-   "#define restrict _Restrict" in the previous line.  Perhaps some future
-   version of Sun C++ will work with _Restrict; if so, it'll probably
-   define __RESTRICT, just as Sun C does.  */
+/* Work around a bug in Sun C++: it does not support _Restrict or
+   __restrict__, even though the corresponding Sun C compiler ends up with
+   "#define restrict _Restrict" or "#define restrict __restrict__" in the
+   previous line.  Perhaps some future version of Sun C++ will work with
+   restrict; if so, hopefully it defines __RESTRICT like Sun C does.  */
 #if defined __SUNPRO_CC && !defined __RESTRICT
 # define _Restrict
+# define __restrict__
 #endif
+
+/* Define as a marker that can be attached to declarations that might not
+    be used.  This helps to reduce warnings, such as from
+    GCC -Wunused-parameter.  */
+#if __GNUC__ >= 3 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 7)
+# define _GL_UNUSED __attribute__ ((__unused__))
+#else
+# define _GL_UNUSED
+#endif
+/* The name _UNUSED_PARAMETER_ is an earlier spelling, although the name
+   is a misnomer outside of parameter lists.  */
+#define _UNUSED_PARAMETER_ _GL_UNUSED
+
 
 /* Define as `fork' if `vfork' does not work. */
 /* #undef vfork */

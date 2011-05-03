@@ -91,6 +91,9 @@ extern int write_files;
 /* GDB as it has been invoked from the command line (i.e. argv[0]).  */
 static char *gdb_program_name;
 
+/* DragonFly kgdb support */
+int kernel_debugger;
+
 static void print_gdb_help (struct ui_file *);
 
 /* These two are used to set the external editor commands when gdb is farming
@@ -379,6 +382,7 @@ captured_main (void *data)
       OPT_ANNOTATE,
       OPT_STATISTICS,
       OPT_TUI,
+      OPT_KGDB,
       OPT_NOWINDOWS,
       OPT_WINDOWS
     };
@@ -404,6 +408,7 @@ captured_main (void *data)
       {"fullname", no_argument, 0, 'f'},
       {"f", no_argument, 0, 'f'},
 
+      {"kernel", no_argument, 0, OPT_KGDB},
       {"annotate", required_argument, 0, OPT_ANNOTATE},
       {"help", no_argument, &print_help, 1},
       {"se", required_argument, 0, OPT_SE},
@@ -491,6 +496,9 @@ captured_main (void *data)
 				argv[0]);
 	    exit (1);
 #endif
+	    break;
+	  case OPT_KGDB:
+	    kernel_debugger = 1;
 	    break;
 	  case OPT_WINDOWS:
 	    /* FIXME: cagney/2003-03-01: Not sure if this option is
@@ -915,6 +923,7 @@ Can't attach to process and specify a core file at the same time."));
 int
 gdb_main (struct captured_main_args *args)
 {
+  kernel_debugger = 0;
   use_windows = args->use_windows;
   catch_errors (captured_main, args, "", RETURN_MASK_ALL);
   /* The only way to end up here is by an error (normal exit is

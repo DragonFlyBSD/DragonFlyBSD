@@ -86,11 +86,12 @@ static void
 kgdb_trgt_open(char *filename, int from_tty)
 {
 	struct cleanup *old_chain;
-	struct thread_info *ti;
 	struct kthr *kt;
+	struct inferior *inf8;
+	struct program_space *pspace;
 	kvm_t *nkvm;
 	char *temp;
-	int ontop;
+	int first_inferior = 1;
 
 	target_preopen (from_tty);
 	if (!filename)
@@ -120,7 +121,7 @@ kgdb_trgt_open(char *filename, int from_tty)
 	vmcore = filename;
 	old_chain = make_cleanup(kgdb_core_cleanup, NULL);
 
-	ontop = !push_target (&kgdb_trgt_ops);
+	push_target (&kgdb_trgt_ops);
 	discard_cleanups (old_chain);
 
 	kgdb_dmesg();
@@ -128,9 +129,25 @@ kgdb_trgt_open(char *filename, int from_tty)
 	init_thread_list();
 	kt = kgdb_thr_init();
 	while (kt != NULL) {
-		if (!in_inferior_list(kt->pid))
-			add_inferior(kt->pid);
-		ti = add_thread_silent(ptid_build(kt->pid, 0, kt->tid));
+		if (!in_inferior_list(kt->pid)) {
+                     inf8 = add_inferior(kt->pid);
+                     if (first_inferior) {
+                       first_inferior = 0;
+                       set_current_inferior (inf8);
+                       pspace = current_program_space;
+                       pspace->ebfd = 0;
+                       pspace->ebfd_mtime = 0;
+                     } else {                    
+                       pspace = add_program_space(new_address_space());
+                       pspace->symfile_object_file = symfile_objfile;
+                       pspace->objfiles = object_files;
+                       pspace->target_sections = 
+                               current_program_space->target_sections;
+                     }
+                     inf8->pspace = pspace;
+                     inf8->aspace = pspace->aspace;
+                }
+		add_thread(ptid_build(kt->pid, 0, kt->tid));
 		kt = kgdb_thr_next(kt);
 	}
 	if (curkthr != 0)
@@ -138,17 +155,12 @@ kgdb_trgt_open(char *filename, int from_tty)
 
 	frame_unwind_prepend_unwinder(get_frame_arch(get_current_frame()), &kgdb_trgt_trapframe_unwind);
 
-	if (ontop) {
-		/* XXX: fetch registers? */
-		kld_init();
-		reinit_frame_cache();
-		select_frame (get_current_frame());
-		print_stack_frame(get_selected_frame(NULL),
-		    frame_relative_level(get_selected_frame(NULL)), 1);
-	} else
-		warning(
-	"you won't be able to access this vmcore until you terminate\n\
-your %s; do ``info files''", target_longname);
+	/* XXX: fetch registers? */
+	kld_init();
+	reinit_frame_cache();
+	select_frame (get_current_frame());
+	print_stack_frame(get_selected_frame(NULL),
+	  frame_relative_level(get_selected_frame(NULL)), 1);
 }
 
 static void

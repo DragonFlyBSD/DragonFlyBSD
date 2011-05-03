@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/kld.c,v 1.11 2008/10/02 20:42:10 jhb Exp $
+ * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/kld.c, svn 210424 2010/07/23 avg $
  */
 
 #include <sys/param.h>
@@ -205,12 +205,32 @@ find_kld_address (char *arg, CORE_ADDR *address)
 }
 
 static void
+adjust_section_address (struct target_section *sec, CORE_ADDR *curr_base)
+{
+	struct bfd_section *asect = sec->the_bfd_section;
+	bfd *abfd = sec->bfd;
+
+	if ((abfd->flags & (EXEC_P | DYNAMIC)) != 0) {
+		sec->addr += *curr_base;
+		sec->endaddr += *curr_base;
+		return;
+	}
+
+	*curr_base = align_power(*curr_base,
+	    bfd_get_section_alignment(abfd, asect));
+	sec->addr = *curr_base;
+	sec->endaddr = sec->addr + bfd_section_size(abfd, asect);
+	*curr_base = sec->endaddr;
+}
+
+static void
 load_kld (char *path, CORE_ADDR base_addr, int from_tty)
 {
 	struct section_addr_info *sap;
 	struct target_section *sections = NULL, *sections_end = NULL, *s;
 	struct cleanup *cleanup;
 	bfd *bfd;
+	CORE_ADDR curr_addr;
 	int i;
 
 	/* Open the kld. */
@@ -231,10 +251,9 @@ load_kld (char *path, CORE_ADDR base_addr, int from_tty)
 	if (build_section_table (bfd, &sections, &sections_end))
 		error("\"%s\": can't find file sections", path);
 	cleanup = make_cleanup(xfree, sections);
-	for (s = sections; s < sections_end; s++) {
-		s->addr += base_addr;
-		s->endaddr += base_addr;
-	}
+	curr_addr = base_addr;
+	for (s = sections; s < sections_end; s++)
+		adjust_section_address(s, &curr_addr);
 
 	/* Build a section addr info to pass to symbol_file_add(). */
 	sap = build_section_addr_info_from_section_table (sections,
@@ -291,9 +310,12 @@ kgdb_add_kld_cmd (char *arg, int from_tty)
 static void
 kld_relocate_section_addresses (struct so_list *so, struct target_section *sec)
 {
+	static CORE_ADDR curr_addr;
 
-	sec->addr += so->lm_info->base_address;
-	sec->endaddr += so->lm_info->base_address;
+	if (sec == so->sections)
+		curr_addr = so->lm_info->base_address;
+
+	adjust_section_address(sec, &curr_addr);
 }
 
 static void
@@ -309,7 +331,7 @@ kld_clear_solib (void)
 }
 
 static void
-kld_solib_create_inferior_hook (void)
+kld_solib_create_inferior_hook (int from_tty)
 {
 }
 

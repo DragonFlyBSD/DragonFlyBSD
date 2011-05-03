@@ -1,4 +1,4 @@
-CSTD?=		gnu89
+#CSTD?=		gnu89
 
 BASEDIR=	${.CURDIR}/${RELATIVE}../../../../contrib/gdb-7
 

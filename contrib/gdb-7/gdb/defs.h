@@ -1233,4 +1233,8 @@ void dummy_obstack_deallocate (void *object, void *data);
 extern void initialize_progspace (void);
 extern void initialize_inferiors (void);
 
+/* For DragonFly kgdb */
+
+extern int kernel_debugger;
+
 #endif /* #ifndef DEFS_H */

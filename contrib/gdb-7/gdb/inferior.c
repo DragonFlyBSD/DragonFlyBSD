@@ -137,7 +137,7 @@ add_inferior_silent (int pid)
 
   observer_notify_inferior_added (inf);
 
-  if (pid != 0)
+  if (kernel_debugger || (pid != 0))
     inferior_appeared (inf, pid);
 
   return inf;
@@ -334,7 +334,7 @@ discard_all_inferiors (void)
 
   for (inf = inferior_list; inf; inf = inf->next)
     {
-      if (inf->pid != 0)
+      if (kernel_debugger || (inf->pid != 0))
 	exit_inferior_silent (inf->pid);
     }
 }
@@ -359,7 +359,7 @@ find_inferior_pid (int pid)
   /* Looking for inferior pid == 0 is always wrong, and indicative of
      a bug somewhere else.  There may be more than one with pid == 0,
      for instance.  */
-  gdb_assert (pid != 0);
+  gdb_assert (kernel_debugger || (pid != 0));
 
   for (inf = inferior_list; inf; inf = inf->next)
     if (inf->pid == pid)
@@ -452,7 +452,7 @@ have_inferiors (void)
   struct inferior *inf;
 
   for (inf = inferior_list; inf; inf = inf->next)
-    if (inf->pid != 0)
+    if (kernel_debugger || (inf->pid != 0))
       return 1;
 
   return 0;
@@ -488,7 +488,7 @@ prune_inferiors (void)
     {
       if (ss == current
 	  || !ss->removable
-	  || ss->pid != 0)
+	  || (kernel_debugger || (ss->pid != 0)))
 	{
 	  ss_link = &ss->next;
 	  ss = *ss_link;
@@ -568,11 +568,11 @@ print_inferior (struct ui_out *uiout, int requested_inferior)
 
       ui_out_field_int (uiout, "number", inf->num);
 
-      if (inf->pid)
+      if (kernel_debugger || (inf->pid != 0))
 	ui_out_field_string (uiout, "target-id",
 			     target_pid_to_str (pid_to_ptid (inf->pid)));
       else
-	ui_out_field_string (uiout, "target-id", "<null>");
+        ui_out_field_string (uiout, "target-id", "<null>");
 
       if (inf->pspace->ebfd)
 	ui_out_field_string (uiout, "exec",
@@ -1028,9 +1028,16 @@ initialize_inferiors (void)
      can only allocate an inferior when all those modules have done
      that.  Do this after initialize_progspace, due to the
      current_program_space reference.  */
-  current_inferior_ = add_inferior (0);
-  current_inferior_->pspace = current_program_space;
-  current_inferior_->aspace = current_program_space->aspace;
+     
+  /* However, when invoked by DragonFly kgdb which always has many inferiors,
+     the default inferior will not be defined.  The swapper process always has
+     pid 0, which conflicts with the default. */
+
+  if (!kernel_debugger) {
+    current_inferior_ = add_inferior (0);
+    current_inferior_->pspace = current_program_space;
+    current_inferior_->aspace = current_program_space->aspace;
+  }
 
   add_info ("inferiors", info_inferiors_command,
 	    _("IDs of currently known inferiors."));

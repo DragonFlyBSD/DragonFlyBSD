@@ -46,18 +46,18 @@
 
 #include "kgdb.h"
 
-static uintptr_t dumppcb;
+static CORE_ADDR dumppcb;
 static int dumptid;
 
 static struct kthr *first;
 struct kthr *curkthr;
 
-uintptr_t
+CORE_ADDR
 kgdb_lookup(const char *sym)
 {
 	struct nlist nl[2];
 
-	nl[0].n_name = (char *)(uintptr_t)sym;
+	nl[0].n_name = (char *)(CORE_ADDR)sym;
 	nl[1].n_name = NULL;
 	if (kvm_nlist(kvm, nl) != 0)
 		return (0);
@@ -78,7 +78,7 @@ kgdb_thr_init(void)
 	struct lwp lwp;
 	struct mdglobaldata gd;
 	struct kthr *kt;
-	uintptr_t addr, paddr, prvspace;
+	CORE_ADDR addr, paddr, prvspace;
 	int cpu, ncpus;
 
 	while (first != NULL) {

@@ -44,8 +44,8 @@ CFLAGS+= -DSELECT_ARCHITECTURES='${ARCHITECTURES:S/^/\&/:S/$/,/} 0'
 CFLAGS+= -DDEFAULT_VECTOR=${DEFAULT_VECTOR}
 
 
-SRCS+=		bfd.h bfdver.h
-CLEANFILES+=	bfd.h bfdver.h
+SRCS+=		bfd.h
+CLEANFILES+=	bfd.h
 
 # Used to do keyword replacement in bfd-X.h
 #
@@ -66,13 +66,6 @@ bfd.h: 	${CONTRIBDIR}/bfd-in2.h
 	    -e "s/@BFD_HOSTPTR_T@/${BFD_HOSTPTR_T}/g" \
 	    < ${CONTRIBDIR}/bfd-in2.h > bfd.h.new
 	mv -f bfd.h.new bfd.h
-
-bfdver.h: ${CONTRIBDIR}/version.h
-	sed -e "s/@bfd_version_string@/\"2.20.51\"/g" \
-	    -e "s/@bfd_version_package@/\"(GNU Binutils, GDB packaged)\"/g" \
-	    -e "s/@bfd_version@/220510000/g" \
-	    < ${CONTRIBDIR}/version.h > bfdver.h.new
-	mv -f bfdver.h.new bfdver.h
 
 SRCS+=		bfd_stdint.h
 CLEANFILES+=	bfd_stdint.h

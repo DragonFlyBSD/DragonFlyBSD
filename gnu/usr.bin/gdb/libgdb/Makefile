@@ -2,8 +2,8 @@
 
 TARGET_ARCH?=	${MACHINE_ARCH}
 
-LIB=	gdb
-INTERNALLIB=	# yes
+LIB=		gdb
+INTERNALLIB=	yes
 
 CONTRIBDIR=	${BASEDIR}/gdb
 .PATH:	${CONTRIBDIR} ${CONTRIBDIR}/cli ${CONTRIBDIR}/mi
@@ -23,7 +23,7 @@ CFLAGS+= -DMACHINE_ARCH='"${MACHINE_ARCH}"'
 CFLAGS+= -DTARGET_ARCH='"${TARGET_ARCH}"'
 CFLAGS+= -DVERSION_STRING='"${VERSION}"'
 
-SRCS+=	observer.h gdb_stdint.h gstdint.h
+SRCS+=	observer.h gdb_stdint.h
 
 # The order of these sources is important,
 # because init.c below needs to obey a certain ordering
@@ -39,15 +39,17 @@ SRCS+=	\
 	blockframe.c breakpoint.c findvar.c regcache.c \
 	charset.c disasm.c dummy-frame.c dfp.c \
 	source.c value.c eval.c valops.c valarith.c valprint.c printcmd.c \
-	block.c symtab.c symfile.c symmisc.c linespec.c dictionary.c \
+	block.c symtab.c psymtab.c symfile.c symmisc.c linespec.c dictionary.c \
 	infcall.c \
 	infcmd.c infrun.c \
 	expprint.c environ.c stack.c thread.c \
 	exceptions.c \
+	filesystem.c \
 	inf-child.c \
 	interps.c \
 	main.c \
 	macrotab.c macrocmd.c macroexp.c macroscope.c \
+	mi-common.c \
 	event-loop.c event-top.c inf-loop.c completer.c \
 	gdbarch.c arch-utils.c gdbtypes.c osabi.c copying.c \
 	memattr.c mem-break.c target.c parse.c language.c buildsym.c \
@@ -59,7 +61,7 @@ SRCS+=	\
 	dbxread.c coffread.c coff-pe-read.c \
 	dwarf2read.c mipsread.c stabsread.c corefile.c \
 	dwarf2expr.c dwarf2loc.c dwarf2-frame.c \
-	ada-lang.c c-lang.c f-lang.c objc-lang.c \
+	ada-lang.c c-lang.c d-lang.c f-lang.c objc-lang.c \
 	ada-tasks.c \
 	ui-out.c cli-out.c \
 	varobj.c vec.c wrapper.c \
@@ -69,7 +71,8 @@ SRCS+=	\
 	sentinel-frame.c \
 	complaints.c typeprint.c \
 	ada-typeprint.c c-typeprint.c f-typeprint.c m2-typeprint.c \
-	ada-valprint.c c-valprint.c cp-valprint.c f-valprint.c m2-valprint.c \
+	ada-valprint.c c-valprint.c cp-valprint.c d-valprint.c f-valprint.c \
+	m2-valprint.c \
 	serial.c mdebugread.c top.c utils.c \
 	ui-file.c \
 	user-regs.c \
@@ -81,11 +84,11 @@ SRCS+=	\
 	reggroups.c regset.c \
 	trad-frame.c \
 	tramp-frame.c \
-	solib.c solib-null.c \
+	solib.c solib-target.c \
 	prologue-value.c memory-map.c xml-support.c xml-syscall.c \
 	target-descriptions.c target-memory.c xml-tdesc.c xml-builtin.c \
-	inferior.c osdata.c gdb_usleep.c record.c \
-	jit.c
+	inferior.c osdata.c gdb_usleep.c record.c gcore.c \
+	jit.c progspace.c
 
 # TSOBS
 SRCS+=	inflow.c
@@ -109,14 +112,21 @@ SRCS+=	mi-out.c mi-console.c \
 	mi-interp.c \
 	mi-main.c mi-parse.c mi-getopt.c mi-common.c
 
+# PYTHON OBJS
+SRCS+=	python.c \
+	py-auto-load.c \
+	py-value.c \
+	py-prettyprint.c 
+
 # CONFIG_OBS
-SRCS+=	python.c py-value.c py-prettyprint.c elfread.c posix-hdep.c
+SRCS+=	elfread.c posix-hdep.c
 
 # SUBDIR_TUI_OBS
 SRCS+=	tui-command.c \
 	tui-data.c \
 	tui-disasm.c \
-	tui-file.c tui.c \
+	tui-file.c \
+	tui.c \
 	tui-hooks.c \
 	tui-interp.c \
 	tui-io.c \
@@ -136,7 +146,9 @@ SRCS+=	c-exp.y \
 	objc-exp.y \
 	ada-exp.y \
 	jv-exp.y \
-	f-exp.y m2-exp.y p-exp.y
+	f-exp.y \
+	m2-exp.y \
+	p-exp.y
 
 SRCS+=	init.c
 
@@ -179,10 +191,7 @@ observer.inc: observer.sh doc/observer.texi
 gdb_stdint.h:
 	touch ${.TARGET}
 
-gstdint.h:
-	echo '#include <stdint.h>' > ${.TARGET}
-
-CLEANFILES+=	observer.h observer.inc gdb_stdint.h gstdint.h
+CLEANFILES+=	observer.h observer.inc gdb_stdint.h
 
 
 .include <bsd.lib.mk>
