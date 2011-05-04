@@ -16,6 +16,12 @@
 
 #ifdef _KERNEL
 
+/*
+ * Size of APIC ID list.
+ * Also used a MAX size of various other arrays.
+ */
+#define NAPICID		256
+
 #if defined(SMP)
 
 #ifndef LOCORE

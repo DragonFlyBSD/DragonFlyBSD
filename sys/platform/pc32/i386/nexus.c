@@ -57,7 +57,6 @@
 
 #include <machine/nexusvar.h>
 #include <machine/smp.h>
-#include <machine_base/apic/mpapic.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
