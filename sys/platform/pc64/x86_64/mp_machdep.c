@@ -55,6 +55,7 @@
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
 #include <machine_base/apic/lapic.h>
+#include <machine_base/apic/ioapic.h>
 #include <machine/psl.h>
 #include <machine/segments.h>
 #include <machine/tss.h>
