@@ -301,7 +301,6 @@ extern pt_entry_t *KPTphys;
 		(SMP_MAXCPU * sizeof(struct privatespace) / PAGE_SIZE)
 
 extern pt_entry_t *SMPpt;
-static int SMPpt_alloc_index = IO_MAPPING_START_INDEX;
 
 struct pcb stoppcbs[MAXCPU];
 
@@ -868,44 +867,11 @@ processor_entry(const struct PROCENTRY *entry, int cpu)
 	return 0;
 }
 
-/*
- * Map a physical memory address representing I/O into KVA.  The I/O
- * block is assumed not to cross a page boundary.
- */
 void *
 ioapic_map(vm_paddr_t pa)
 {
-	vm_offset_t vaddr;
-	int pgeflag;
-	int i;
-
 	KKASSERT(pa < 0x100000000LL);
-
-	pgeflag = 0;	/* not used for SMP yet */
-
-	/*
-	 * If the requested physical address has already been incidently
-	 * mapped, just use the existing mapping.  Otherwise create a new
-	 * mapping.
-	 */
-	for (i = IO_MAPPING_START_INDEX; i < SMPpt_alloc_index; ++i) {
-		if (((vm_offset_t)SMPpt[i] & PG_FRAME) ==
-		    ((vm_offset_t)pa & PG_FRAME)) {
-			break;
-		}
-	}
-	if (i == SMPpt_alloc_index) {
-		if (i == NPTEPG - 2) {
-			panic("permanent_io_mapping: We ran out of space"
-			      " in SMPpt[]!");
-		}
-		SMPpt[i] = (pt_entry_t)(PG_V | PG_RW | PG_N | pgeflag |
-			   ((vm_offset_t)pa & PG_FRAME));
-		++SMPpt_alloc_index;
-	}
-	vaddr = (vm_offset_t)CPU_prvspace + (i * PAGE_SIZE) +
-		((vm_offset_t)pa & PAGE_MASK);
-	return ((void *)vaddr);
+	return pmap_mapdev_uncacheable(pa, PAGE_SIZE);
 }
 
 /*
