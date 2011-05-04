@@ -82,6 +82,7 @@
 #include <machine/vmparam.h>
 #include <machine/md_var.h>
 #include <machine_base/isa/isa_intr.h>
+#include <machine_base/apic/lapic.h>
 
 #include <ddb/ddb.h>
 

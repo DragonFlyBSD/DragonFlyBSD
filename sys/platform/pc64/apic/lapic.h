@@ -30,7 +30,7 @@
 #ifndef _ARCH_APIC_LAPIC_H_
 #define _ARCH_APIC_LAPIC_H_
 
-#include "apicreg.h"
+#include <machine_base/apic/apicreg.h>
 
 /*
  * the physical/logical APIC ID management macros
@@ -38,10 +38,39 @@
 #define CPU_TO_ID(CPU)	(cpu_num_to_apic_id[CPU])
 #define ID_TO_CPU(ID)	(apic_id_to_logical[ID])
 
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+
+struct lapic_enumerator {
+	int	lapic_prio;
+	TAILQ_ENTRY(lapic_enumerator) lapic_link;
+	int	(*lapic_probe)(struct lapic_enumerator *);
+	void	(*lapic_enumerate)(struct lapic_enumerator *);
+};
+
+#define LAPIC_ENUM_PRIO_MPTABLE		20
+#define LAPIC_ENUM_PRIO_MADT		40
+
 #ifdef SMP
 
+extern volatile lapic_t		*lapic;
+
+void	apic_dump(char*);
+void	lapic_init(boolean_t);
+int	apic_ipi(int, int, int);
+void	selected_apic_ipi(cpumask_t, int, int);
+void	single_apic_ipi(int, int, int);
+int	single_apic_ipi_passive(int, int, int);
+void	lapic_config(void);
+void	lapic_enumerator_register(struct lapic_enumerator *);
+void	set_apic_timer(int);
+int	get_apic_timer_frequency(void);
+int	read_apic_timer(void);
+void	u_sleep(int);
+
 /*
- * send an IPI INTerrupt containing 'vector' to all CPUs EXCEPT myself
+ * Send an IPI INTerrupt containing 'vector' to all CPUs EXCEPT myself
  */
 static __inline int
 all_but_self_ipi(int vector)

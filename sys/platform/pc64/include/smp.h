@@ -118,16 +118,6 @@ void	mptable_pci_int_dump(void);
 #include <sys/queue.h>
 #endif
 
-struct lapic_enumerator {
-	int	lapic_prio;
-	TAILQ_ENTRY(lapic_enumerator) lapic_link;
-	int	(*lapic_probe)(struct lapic_enumerator *);
-	void	(*lapic_enumerate)(struct lapic_enumerator *);
-};
-
-#define LAPIC_ENUM_PRIO_MPTABLE		20
-#define LAPIC_ENUM_PRIO_MADT		40
-
 struct ioapic_enumerator {
 	int	ioapic_prio;
 	TAILQ_ENTRY(ioapic_enumerator) ioapic_link;
@@ -138,22 +128,11 @@ struct ioapic_enumerator {
 #define IOAPIC_ENUM_PRIO_MPTABLE	20
 #define IOAPIC_ENUM_PRIO_MADT		40
 
-/* global data in mpapic.c */
-extern volatile lapic_t		*lapic;
-
 #ifndef _SYS_BUS_H_
 #include <sys/bus.h>
 #endif
 
 /* functions in mpapic.c */
-void	apic_dump		(char*);
-void	lapic_init		(boolean_t);
-int	apic_ipi		(int, int, int);
-void	selected_apic_ipi	(cpumask_t, int, int);
-void	single_apic_ipi(int cpu, int vector, int delivery_mode);
-int	single_apic_ipi_passive(int cpu, int vector, int delivery_mode);
-void	lapic_config(void);
-void	lapic_enumerator_register(struct lapic_enumerator *);
 void	ioapic_config(void);
 void	ioapic_enumerator_register(struct ioapic_enumerator *);
 void	ioapic_add(void *, int, int);
@@ -171,10 +150,6 @@ void	clr_io_apic_mask24	(int, u_int32_t);
 void	set_io_apic_mask24	(int, u_int32_t);
 #endif /* READY */
 
-void	set_apic_timer		(int);
-int	get_apic_timer_frequency(void);
-int	read_apic_timer		(void);
-void	u_sleep			(int);
 void	cpu_send_ipiq		(int);
 int	cpu_send_ipiq_passive	(int);
 
