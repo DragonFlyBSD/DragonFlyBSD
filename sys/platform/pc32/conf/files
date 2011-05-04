@@ -205,6 +205,7 @@ platform/pc32/i386/est.c		optional	cpu_enable_est
 platform/pc32/i386/mpboot.s		optional	smp
 platform/pc32/i386/mp_clock.c		optional	smp
 platform/pc32/i386/mp_machdep.c		optional	smp
+platform/pc32/i386/mptable.c		optional	smp
 platform/pc32/i386/nexus.c		standard
 platform/pc32/i386/p4tcc.c		optional	cpu_enable_tcc
 platform/pc32/i386/perfmon.c		optional	perfmon
