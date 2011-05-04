@@ -201,6 +201,7 @@ platform/pc64/x86_64/console.c	standard
 platform/pc64/x86_64/ipl_funcs.c	standard
 kern/syscalls.c			standard
 platform/pc64/x86_64/mp_machdep.c		optional	smp
+platform/pc64/x86_64/mptable.c		optional	smp
 platform/pc64/acpica5/acpi_sdt.c	standard
 platform/pc64/acpica5/acpi_fadt.c	standard
 platform/pc64/acpica5/acpi_madt.c	optional	smp
