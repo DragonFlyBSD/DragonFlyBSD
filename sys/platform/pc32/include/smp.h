@@ -57,10 +57,6 @@ extern volatile cpumask_t	started_cpus;
 extern volatile u_int		checkstate_probed_cpus;
 extern void (*cpustop_restartfunc) (void);
 
-/* functions in apic_ipl.s */
-u_int	ioapic_read		(volatile void *, int);
-void	ioapic_write		(volatile void *, int, u_int);
-
 /* global data in mp_machdep.c */
 extern int			imcr_present;
 extern int			mp_naps;
@@ -103,37 +99,6 @@ int	restart_cpus		(cpumask_t);
 void	forward_signal		(struct proc *);
 int	mptable_pci_int_route(int, int, int, int);
 void	mptable_pci_int_dump(void);
-
-#ifndef _SYS_QUEUE_H_
-#include <sys/queue.h>
-#endif
-
-struct ioapic_enumerator {
-	int	ioapic_prio;
-	TAILQ_ENTRY(ioapic_enumerator) ioapic_link;
-	int	(*ioapic_probe)(struct ioapic_enumerator *);
-	void	(*ioapic_enumerate)(struct ioapic_enumerator *);
-};
-
-#define IOAPIC_ENUM_PRIO_MPTABLE	20
-#define IOAPIC_ENUM_PRIO_MADT		40
-
-#ifndef _SYS_BUS_H_
-#include <sys/bus.h>
-#endif
-
-/* functions in mpapic.c */
-void	ioapic_config(void);
-void	ioapic_enumerator_register(struct ioapic_enumerator *);
-void	ioapic_add(void *, int, int);
-void	ioapic_intsrc(int, int, enum intr_trigger, enum intr_polarity);
-void	*ioapic_gsi_ioaddr(int);
-int	ioapic_gsi_pin(int);
-void	ioapic_pin_setup(void *, int, int,
-	    enum intr_trigger, enum intr_polarity);
-void	ioapic_extpin_setup(void *, int, int);
-int	ioapic_extpin_gsi(void);
-int	ioapic_gsi(int, int);
 
 extern int apic_io_enable;
 
