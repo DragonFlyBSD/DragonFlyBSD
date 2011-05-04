@@ -138,7 +138,8 @@ IDTVEC(ioapic_intr##irq_num) ;						\
 	PUSH_FRAME ;							\
 	FAKE_MCOUNT(15*4(%esp)) ;					\
 	MASK_LEVEL_IRQ(irq_num) ;					\
-	movl	$0, lapic_eoi ;						\
+	movl	lapic,%eax ;						\
+	movl	$0,LA_EOI(%eax) ;					\
 	movl	PCPU(curthread),%ebx ;					\
 	movl	$0,%eax ;	/* CURRENT CPL IN FRAME (REMOVED) */	\
 	pushl	%eax ;							\
@@ -198,7 +199,8 @@ Xspuriousint:
 	.globl	Xinvltlb
 Xinvltlb:
 	PUSH_FRAME
-	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
+	movl	lapic,%eax
+	movl	$0,LA_EOI(%eax)		/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(15*4(%esp))
 
 	subl	$8,%esp			/* make same as interrupt frame */
@@ -235,7 +237,8 @@ Xcpustop:
 	movl	$KPSEL, %eax
 	mov	%ax, %fs
 
-	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
+	movl	lapic, %eax
+	movl	$0, LA_EOI(%eax)	/* End Of Interrupt to APIC */
 
 	movl	PCPU(cpuid), %eax
 	imull	$PCB_SIZE, %eax
@@ -300,7 +303,8 @@ Xcpustop:
 	.globl Xipiq
 Xipiq:
 	PUSH_FRAME
-	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
+	movl	lapic,%eax
+	movl	$0,LA_EOI(%eax)		/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(15*4(%esp))
 
 	incl    PCPU(cnt) + V_IPI
@@ -329,7 +333,8 @@ Xipiq:
 	.globl Xtimer
 Xtimer:
 	PUSH_FRAME
-	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
+	movl	lapic,%eax
+	movl	$0,LA_EOI(%eax)		/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(15*4(%esp))
 
 	incl    PCPU(cnt) + V_TIMER

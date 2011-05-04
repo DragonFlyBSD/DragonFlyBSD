@@ -41,9 +41,8 @@
 	 * segment.
 	 */
 	.data
-	.globl	CPU_prvspace, lapic
+	.globl	CPU_prvspace
 	.set	CPU_prvspace,(MPPTDI << PDRSHIFT)
-	.set	lapic,CPU_prvspace + (NPTEPG-1) * PAGE_SIZE
 
 	.globl	globaldata
 	.set	globaldata,0
@@ -97,71 +96,3 @@
 	.set	gd_ipending,globaldata + GD_IPENDING
 	.set	gd_spending,globaldata + GD_SPENDING
 	.set	gd_cnt,globaldata + GD_CNT
-
-#ifdef SMP
-	.globl	lapic_eoi, lapic_svr, lapic_tpr, lapic_irr1, lapic_ver
-	.globl	lapic_icr_lo,lapic_icr_hi,lapic_isr1
-/*
- * Do not clutter our namespace with these unless we need them in other
- * assembler code.  The C code uses different definitions.
- */
-#if 0
-	.globl	lapic_id,lapic_ver,lapic_tpr,lapic_apr,lapic_ppr,lapic_eoi
-	.globl	lapic_ldr,lapic_dfr,lapic_svr,lapic_isr,lapic_isr0
-	.globl	lapic_isr2,lapic_isr3,lapic_isr4,lapic_isr5,lapic_isr6
-	.globl	lapic_isr7,lapic_tmr,lapic_tmr0,lapic_tmr1,lapic_tmr2
-	.globl	lapic_tmr3,lapic_tmr4,lapic_tmr5,lapic_tmr6,lapic_tmr7
-	.globl	lapic_irr,lapic_irr0,lapic_irr1,lapic_irr2,lapic_irr3
-	.globl	lapic_irr4,lapic_irr5,lapic_irr6,lapic_irr7,lapic_esr
-	.globl	lapic_lvtt,lapic_pcint,lapic_lvt1
-	.globl	lapic_lvt2,lapic_lvt3,lapic_ticr,lapic_tccr,lapic_tdcr
-#endif
-	.set	lapic_id,	lapic + 0x020
-	.set	lapic_ver,	lapic + 0x030
-	.set	lapic_tpr,	lapic + 0x080
-	.set	lapic_apr,	lapic + 0x090
-	.set	lapic_ppr,	lapic + 0x0a0
-	.set	lapic_eoi,	lapic + 0x0b0
-	.set	lapic_ldr,	lapic + 0x0d0
-	.set	lapic_dfr,	lapic + 0x0e0
-	.set	lapic_svr,	lapic + 0x0f0
-	.set	lapic_isr,	lapic + 0x100
-	.set	lapic_isr0,	lapic + 0x100
-	.set	lapic_isr1,	lapic + 0x110
-	.set	lapic_isr2,	lapic + 0x120
-	.set	lapic_isr3,	lapic + 0x130
-	.set	lapic_isr4,	lapic + 0x140
-	.set	lapic_isr5,	lapic + 0x150
-	.set	lapic_isr6,	lapic + 0x160
-	.set	lapic_isr7,	lapic + 0x170
-	.set	lapic_tmr,	lapic + 0x180
-	.set	lapic_tmr0,	lapic + 0x180
-	.set	lapic_tmr1,	lapic + 0x190
-	.set	lapic_tmr2,	lapic + 0x1a0
-	.set	lapic_tmr3,	lapic + 0x1b0
-	.set	lapic_tmr4,	lapic + 0x1c0
-	.set	lapic_tmr5,	lapic + 0x1d0
-	.set	lapic_tmr6,	lapic + 0x1e0
-	.set	lapic_tmr7,	lapic + 0x1f0
-	.set	lapic_irr,	lapic + 0x200
-	.set	lapic_irr0,	lapic + 0x200
-	.set	lapic_irr1,	lapic + 0x210
-	.set	lapic_irr2,	lapic + 0x220
-	.set	lapic_irr3,	lapic + 0x230
-	.set	lapic_irr4,	lapic + 0x240
-	.set	lapic_irr5,	lapic + 0x250
-	.set	lapic_irr6,	lapic + 0x260
-	.set	lapic_irr7,	lapic + 0x270
-	.set	lapic_esr,	lapic + 0x280
-	.set	lapic_icr_lo,	lapic + 0x300
-	.set	lapic_icr_hi,	lapic + 0x310
-	.set	lapic_lvtt,	lapic + 0x320
-	.set	lapic_pcint,	lapic + 0x340
-	.set	lapic_lvt1,	lapic + 0x350
-	.set	lapic_lvt2,	lapic + 0x360
-	.set	lapic_lvt3,	lapic + 0x370
-	.set	lapic_ticr,	lapic + 0x380
-	.set	lapic_tccr,	lapic + 0x390
-	.set	lapic_tdcr,	lapic + 0x3e0
-#endif
-

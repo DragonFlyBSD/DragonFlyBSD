@@ -107,15 +107,6 @@ mp_begin:	/* now running relocated at KERNBASE */
 	movl	%eax, %cr4
 1:
 
-	/* disable the APIC, just to be SURE */
-	movl	lapic_svr, %eax			/* get spurious vector reg. */
-	andl	$~APIC_SVR_ENABLE, %eax		/* clear software enable bit */
-	movl	%eax, lapic_svr
-
-	/* data returned to BSP */
-	movl	lapic_ver, %eax			/* our version reg contents */
-	movl	%eax, cpu_apic_versions		/* into [ 0 ] */
-
 	CHECKPOINT(0x39, $6)
 
 	/*

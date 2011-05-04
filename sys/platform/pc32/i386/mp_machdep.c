@@ -1046,7 +1046,7 @@ start_all_aps(u_int boot_addr)
 	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
 
 	/* fill in our (BSP) APIC version */
-	cpu_apic_versions[0] = lapic.version;
+	cpu_apic_versions[0] = lapic->version;
 
 	/* restore the warmstart vector */
 	*(u_long *) WARMBOOT_OFF = mpbioswarmvec;
@@ -1212,18 +1212,18 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 	 * icr_hi once and then just trigger operations with
 	 * icr_lo.
 	 */
-	icr_hi = lapic.icr_hi & ~APIC_ID_MASK;
+	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
 	icr_hi |= (physical_cpu << 24);
-	icr_lo = lapic.icr_lo & 0xfff00000;
-	lapic.icr_hi = icr_hi;
+	icr_lo = lapic->icr_lo & 0xfff00000;
+	lapic->icr_hi = icr_hi;
 
 	/*
 	 * Do an INIT IPI: assert RESET
 	 *
 	 * Use edge triggered mode to assert INIT
 	 */
-	lapic.icr_lo = icr_lo | 0x0000c500;
-	while (lapic.icr_lo & APIC_DELSTAT_MASK)
+	lapic->icr_lo = icr_lo | 0x0000c500;
+	while (lapic->icr_lo & APIC_DELSTAT_MASK)
 		 /* spin */ ;
 
 	/*
@@ -1251,8 +1251,8 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 	 * Use level triggered mode to deassert.  It is unclear
 	 * why we need to do this.
 	 */
-	lapic.icr_lo = icr_lo | 0x00008500;
-	while (lapic.icr_lo & APIC_DELSTAT_MASK)
+	lapic->icr_lo = icr_lo | 0x00008500;
+	while (lapic->icr_lo & APIC_DELSTAT_MASK)
 		 /* spin */ ;
 	u_sleep(150);				/* wait 150us */
 
@@ -1264,8 +1264,8 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 	 * run. OR the previous INIT IPI was ignored. and this STARTUP IPI
 	 * will run.
 	 */
-	lapic.icr_lo = icr_lo | 0x00000600 | vector;
-	while (lapic.icr_lo & APIC_DELSTAT_MASK)
+	lapic->icr_lo = icr_lo | 0x00000600 | vector;
+	while (lapic->icr_lo & APIC_DELSTAT_MASK)
 		 /* spin */ ;
 	u_sleep(200);		/* wait ~200uS */
 
@@ -1275,8 +1275,8 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 	 * this STARTUP IPI will be ignored, as only ONE STARTUP IPI is
 	 * recognized after hardware RESET or INIT IPI.
 	 */
-	lapic.icr_lo = icr_lo | 0x00000600 | vector;
-	while (lapic.icr_lo & APIC_DELSTAT_MASK)
+	lapic->icr_lo = icr_lo | 0x00000600 | vector;
+	while (lapic->icr_lo & APIC_DELSTAT_MASK)
 		 /* spin */ ;
 
 	/* Resume normal operation */
@@ -1542,7 +1542,7 @@ ap_init(void)
 	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
 
 	/* A quick check from sanity claus */
-	apic_id = (apic_id_to_logical[(lapic.id & 0xff000000) >> 24]);
+	apic_id = (apic_id_to_logical[(lapic->id & 0xff000000) >> 24]);
 	if (mycpu->gd_cpuid != apic_id) {
 		kprintf("SMP: cpuid = %d\n", mycpu->gd_cpuid);
 		kprintf("SMP: apic_id = %d\n", apic_id);
@@ -1808,7 +1808,7 @@ mptable_lapic_default(void)
 	/* Map local apic before the id field is accessed */
 	lapic_map(DEFAULT_APIC_BASE);
 
-	bsp_apicid = APIC_ID(lapic.id);
+	bsp_apicid = APIC_ID(lapic->id);
 	ap_apicid = (bsp_apicid == 0) ? 1 : 0;
 
 	/* BSP */

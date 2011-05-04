@@ -53,7 +53,7 @@ struct lapic_enumerator {
 
 #ifdef SMP
 
-extern volatile lapic_t		lapic;
+extern volatile lapic_t		*lapic;
 
 void	apic_dump(char*);
 void	lapic_init(boolean_t);

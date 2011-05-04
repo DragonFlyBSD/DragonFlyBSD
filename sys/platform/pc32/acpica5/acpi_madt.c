@@ -42,6 +42,7 @@
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
 #include <machine_base/apic/lapic.h>
+#include <machine_base/apic/ioapic.h>
 
 #include "acpi_sdt.h"
 #include "acpi_sdt_var.h"
@@ -459,7 +460,7 @@ madt_lapic_enumerate(struct lapic_enumerator *e)
 
 	lapic_map(lapic_addr);
 
-	bsp_apic_id = APIC_ID(lapic.id);
+	bsp_apic_id = APIC_ID(lapic->id);
 	if (madt_lapic_pass2(bsp_apic_id))
 		panic("madt_lapic_enumerate: madt_lapic_pass2 failed\n");
 }

@@ -95,6 +95,7 @@
 #include <machine/intr_machdep.h>
 
 #include <machine_base/isa/isa_intr.h>
+#include <machine_base/apic/lapic.h>
 
 #ifdef POWERFAIL_NMI
 #include <sys/syslog.h>
@@ -1045,7 +1046,7 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 #ifdef SMP
 	/* three separate prints in case of a trap on an unmapped page */
 	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
-	kprintf("lapic.id = %08x\n", lapic.id);
+	kprintf("lapic.id = %08x\n", lapic->id);
 #endif
 	if (type == T_PAGEFLT) {
 		kprintf("fault virtual address	= %p\n", (void *)eva);
@@ -1161,7 +1162,7 @@ dblfault_handler(void)
 #ifdef SMP
 	/* three separate prints in case of a trap on an unmapped page */
 	kprintf("cpuid = %d; ", gd->mi.gd_cpuid);
-	kprintf("lapic.id = %08x\n", lapic.id);
+	kprintf("lapic.id = %08x\n", lapic->id);
 #endif
 	panic("double fault");
 }

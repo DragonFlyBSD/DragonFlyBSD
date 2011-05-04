@@ -234,6 +234,8 @@ ASSYM(KPSEL, GSEL(GPRIV_SEL, SEL_KPL));
 ASSYM(BC32SEL, GSEL(GBIOSCODE32_SEL, SEL_KPL));
 ASSYM(VM86_FRAMESIZE, sizeof(struct vm86frame));
 
+ASSYM(LA_EOI, offsetof(struct LAPIC, eoi));
+
 #ifdef SMP
 ASSYM(IOAPIC_IM_ADDR, offsetof(struct apic_intmapinfo, apic_address));
 ASSYM(IOAPIC_IM_ENTIDX, offsetof(struct apic_intmapinfo, redirindex));
