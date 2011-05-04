@@ -76,5 +76,6 @@ all_but_self_ipi(int vector)
 #endif
 
 void	lapic_map(vm_offset_t /* XXX should be vm_paddr_t */);
+int	lapic_unused_apic_id(int);
 
 #endif /* _MACHINE_MPAPIC_H */
