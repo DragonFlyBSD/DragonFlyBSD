@@ -27,32 +27,10 @@
  * $DragonFly: src/sys/platform/pc64/apic/mpapic.h,v 1.1 2008/08/29 17:07:12 dillon Exp $
  */
 
-#ifndef _MACHINE_MPAPIC_H_
-#define _MACHINE_MPAPIC_H_
+#ifndef _ARCH_APIC_LAPIC_H_
+#define _ARCH_APIC_LAPIC_H_
 
 #include "apicreg.h"
-
-#include <machine_base/icu/icu.h>
-
-/*
- * Size of APIC ID list.
- * Also used a MAX size of various other arrays.
- */
-#define NAPICID		256
-
-/* these don't really belong in here... */
-enum busTypes {
-    CBUS = 1,
-    CBUSII = 2,
-    EISA = 3,
-    MCA = 4,
-    ISA = 6,
-    PCI = 13,
-    XPRESS = 18,
-    MAX_BUSTYPE = 18,
-    UNKNOWN_BUSTYPE = 0xff
-};
-
 
 /*
  * the physical/logical APIC ID management macros
@@ -78,4 +56,4 @@ all_but_self_ipi(int vector)
 void	lapic_map(vm_offset_t /* XXX should be vm_paddr_t */);
 int	lapic_unused_apic_id(int);
 
-#endif /* _MACHINE_MPAPIC_H */
+#endif /* _ARCH_APIC_LAPIC_H_ */

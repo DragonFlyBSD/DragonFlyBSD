@@ -58,7 +58,6 @@
 
 #include <machine/nexusvar.h>
 #include <machine/smp.h>
-#include <machine_base/apic/mpapic.h>
 
 #define I386_BUS_SPACE_IO       0       /* space is i/o space */
 #define I386_BUS_SPACE_MEM      1       /* space is mem space */
