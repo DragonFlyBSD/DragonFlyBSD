@@ -286,6 +286,7 @@ extern char *ptvmmap;		/* poor name! */
 void	pmap_interlock_wait (struct vmspace *);
 void	pmap_bootstrap (vm_paddr_t, vm_paddr_t);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
+void	*pmap_mapdev_uncacheable (vm_paddr_t, vm_size_t);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
 unsigned *pmap_kernel_pte (vm_offset_t) __pure2;
 struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);

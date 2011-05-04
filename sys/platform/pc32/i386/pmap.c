@@ -3313,6 +3313,35 @@ pmap_mapdev(vm_paddr_t pa, vm_size_t size)
 	return ((void *)(va + offset));
 }
 
+void *
+pmap_mapdev_uncacheable(vm_paddr_t pa, vm_size_t size)
+{
+	vm_offset_t va, tmpva, offset;
+	unsigned *pte;
+
+	offset = pa & PAGE_MASK;
+	size = roundup(offset + size, PAGE_SIZE);
+
+	va = kmem_alloc_nofault(&kernel_map, size, PAGE_SIZE);
+	if (va == 0) {
+		panic("pmap_mapdev_uncacheable: "
+		    "Couldn't alloc kernel virtual memory");
+	}
+
+	pa = pa & PG_FRAME;
+	for (tmpva = va; size > 0;) {
+		pte = (unsigned *)vtopte(tmpva);
+		*pte = pa | PG_RW | PG_V | PG_N; /* | pgeflag; */
+		size -= PAGE_SIZE;
+		tmpva += PAGE_SIZE;
+		pa += PAGE_SIZE;
+	}
+	cpu_invltlb();
+	smp_invltlb();
+
+	return ((void *)(va + offset));
+}
+
 /*
  * No requirements.
  */
