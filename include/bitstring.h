@@ -172,34 +172,28 @@ typedef	unsigned char bitstr_t;
 	int _nbits = (nbits); \
 	int *_value = (value); \
 	int _len = (len); \
-	int _bit, _bit0; \
+	int _bit, _bit0 = -1; \
 	int _tmplen = _len; \
 	int _match = 0; \
 	*(_value) = -1; \
-	for (_bit = 0; _bit < _nbits; _bit++) { \
+	for (_bit = 0; _bit < _nbits && _tmplen > 0; _bit++) { \
 		if (_match == 0) { \
 			if (bit_test((_name), _bit) == 0) { \
 				_match = 1; \
 				_tmplen--; \
 				_bit0 = _bit; \
-			} else { \
-				continue; \
 			} \
 		} else { \
-			if (_tmplen > 0) { \
-				if (bit_test((_name), _bit) == 0) { \
-					_tmplen--; \
-				} else { \
-					_match = 0; \
-					_tmplen = _len; \
-					continue; \
-				} \
+			if (bit_test((_name), _bit) == 0) { \
+				_tmplen--; \
 			} else { \
-				*(_value) = _bit0; \
-                                break; \
+				_match = 0; \
+				_tmplen = _len; \
 			} \
 		} \
 	} \
+	if (_tmplen == 0) \
+	        *(_value) = _bit0; \
 } while (0)
 
 #endif /* !_BITSTRING_H_ */
