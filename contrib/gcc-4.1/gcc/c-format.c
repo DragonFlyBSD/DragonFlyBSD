@@ -520,7 +520,6 @@ static const format_char_info print_char_table[] =
   { "D",   1, STD_EXT, { T89_V,  BADLEN,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-wp",      "cR",	&dfly_ext_char_info },
   { "b",   0, STD_EXT, { T89_I,  BADLEN,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-wp",      "",	&dfly_ext_char_info },
   { "ry",  0, STD_EXT, { T89_I,  BADLEN,   BADLEN,   T89_L,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-wp0 +#",  "i",	NULL  },
-  { "z",   0, STD_EXT, { T89_UI,  T99_UC,  T89_US,  T89_UL,  T9L_ULL, TEX_ULL, T99_ST,  T99_UPD, T99_UIM }, "-wp0#",     "i",	NULL },
   { NULL,  0, 0, NOLENGTHS, NULL, NULL, NULL }
 };
 
