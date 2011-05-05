@@ -83,6 +83,13 @@ static const uint32_t	lapic_timer_divisors[] = {
 #define APIC_TIMER_NDIVISORS (int)(NELEM(lapic_timer_divisors))
 
 /*
+ * APIC ID logical/physical mapping structures.
+ * We oversize these to simplify boot-time config.
+ */
+int	cpu_num_to_apic_id[NAPICID];
+int	apic_id_to_logical[NAPICID];
+
+/*
  * Enable LAPIC, configure interrupts.
  */
 void

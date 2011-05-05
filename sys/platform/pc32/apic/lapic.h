@@ -54,6 +54,8 @@ struct lapic_enumerator {
 #ifdef SMP
 
 extern volatile lapic_t		*lapic;
+extern int			cpu_num_to_apic_id[];
+extern int			apic_id_to_logical[];
 
 void	apic_dump(char*);
 void	lapic_init(boolean_t);

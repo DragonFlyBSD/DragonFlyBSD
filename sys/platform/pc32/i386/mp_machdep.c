@@ -147,13 +147,6 @@ extern int64_t tsc_offsets[];
 struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
 #endif
 
-/*
- * APIC ID logical/physical mapping structures.
- * We oversize these to simplify boot-time config.
- */
-int     cpu_num_to_apic_id[NAPICID];
-int     apic_id_to_logical[NAPICID];
-
 /* AP uses this during bootstrap.  Do not staticize.  */
 char *bootSTK;
 static int bootAP;
