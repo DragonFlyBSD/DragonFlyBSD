@@ -70,7 +70,6 @@ extern void (*cpustop_restartfunc) (void);
 extern int			imcr_present;
 extern int			apic_io_enable;
 extern int			mp_naps;
-extern u_int32_t		cpu_apic_versions[];
 extern int			cpu_num_to_apic_id[];
 extern int			apic_id_to_logical[];
 

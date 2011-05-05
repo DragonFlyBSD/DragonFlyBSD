@@ -140,7 +140,6 @@ extern struct region_descriptor r_gdt, r_idt;
 int	mp_naps;		/* # of Applications processors */
 extern	int nkpt;
 
-u_int32_t cpu_apic_versions[MAXCPU];
 int64_t tsc0_offset;
 extern int64_t tsc_offsets[];
 
@@ -233,12 +232,9 @@ mp_announce(void)
 	POSTCODE(MP_ANNOUNCE_POST);
 
 	kprintf("DragonFly/MP: Multiprocessor motherboard\n");
-	kprintf(" cpu0 (BSP): apic id: %2d", CPU_TO_ID(0));
-	kprintf(", version: 0x%08x\n", cpu_apic_versions[0]);
-	for (x = 1; x <= mp_naps; ++x) {
-		kprintf(" cpu%d (AP):  apic id: %2d", x, CPU_TO_ID(x));
-		kprintf(", version: 0x%08x\n", cpu_apic_versions[x]);
-	}
+	kprintf(" cpu0 (BSP): apic id: %2d\n", CPU_TO_ID(0));
+	for (x = 1; x <= mp_naps; ++x)
+		kprintf(" cpu%d (AP):  apic id: %2d\n", x, CPU_TO_ID(x));
 
 	if (!apic_io_enable)
 		kprintf(" Warning: APIC I/O disabled\n");
@@ -499,9 +495,6 @@ start_all_aps(u_int boot_addr)
 				panic("bye-bye");
 		}
 		CHECK_PRINT("trace");		/* show checkpoints */
-
-		/* record its version info */
-		cpu_apic_versions[x] = cpu_apic_versions[0];
 	}
 
 	/* set ncpus to 1 + highest logical cpu.  Not all may have come up */
@@ -525,9 +518,6 @@ start_all_aps(u_int boot_addr)
 	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
 	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * ncpus);
 	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
-
-	/* fill in our (BSP) APIC version */
-	cpu_apic_versions[0] = lapic->version;
 
 	/* restore the warmstart vector */
 	*(u_long *) WARMBOOT_OFF = mpbioswarmvec;
