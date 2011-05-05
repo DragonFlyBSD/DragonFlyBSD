@@ -344,13 +344,6 @@ mp_set_cpuids(int cpu_id, int apic_id)
 	ID_TO_CPU(apic_id) = cpu_id;
 }
 
-void *
-ioapic_map(vm_paddr_t pa)
-{
-	KKASSERT(pa < 0x100000000LL);
-	return pmap_mapdev_uncacheable(pa, PAGE_SIZE);
-}
-
 /*
  * start each AP in our list
  */

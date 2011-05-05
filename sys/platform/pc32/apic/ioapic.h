@@ -61,5 +61,6 @@ void	ioapic_pin_setup(void *, int, int,
 void	ioapic_extpin_setup(void *, int, int);
 int	ioapic_extpin_gsi(void);
 int	ioapic_gsi(int, int);
+void	*ioapic_map(vm_paddr_t);
 
 #endif	/* !_ARCH_APIC_IOAPIC_H_ */

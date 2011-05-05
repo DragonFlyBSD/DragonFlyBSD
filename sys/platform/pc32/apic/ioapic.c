@@ -30,6 +30,7 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/machintr.h>
+#include <vm/pmap.h>
 #include <machine/globaldata.h>
 #include <machine/smp.h>
 #include <machine/cputypes.h>
@@ -570,4 +571,11 @@ ioapic_alloc_apic_id(int start)
 		start = apic_id + 1;
 	}
 	panic("ioapic_unused_apic_id: never reached\n");
+}
+
+void *
+ioapic_map(vm_paddr_t pa)
+{
+	KKASSERT(pa < 0x100000000LL);
+	return pmap_mapdev_uncacheable(pa, PAGE_SIZE);
 }

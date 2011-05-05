@@ -86,7 +86,6 @@ extern struct apic_intmapinfo	int_to_apicintpin[];
 extern struct pcb		stoppcbs[];
 
 /* functions in mp_machdep.c */
-void	*ioapic_map(vm_paddr_t);
 u_int	mp_bootaddress		(u_int);
 void	mp_start		(void);
 void	mp_announce		(void);
