@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_output.c,v 1.26 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_output.c,v 1.9 2008/09/25 13:30:15 sephe Exp $
  */
 
 /*
@@ -253,6 +252,23 @@ db_more(int *nl)
 		}
 	}
 	return(0);
+}
+
+/*
+ * Replacement for old '%z' kprintf format.
+ */
+void
+db_format_hex(char *buf, size_t bufsiz, quad_t val, int altflag)
+{
+	/* Only use alternate form if val is nonzero. */
+	const char *fmt = (altflag && val) ? "-%#qx" : "-%qx";
+
+	if (val < 0)
+		val = -val;
+	else
+		++fmt;
+
+	ksnprintf(buf, bufsiz, fmt, val);
 }
 
 /* #define TEMPORARY_DEBUGGING */

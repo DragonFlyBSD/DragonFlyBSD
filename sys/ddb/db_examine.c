@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_examine.c,v 1.27 1999/08/28 00:41:07 peter Exp $
- * $DragonFly: src/sys/ddb/db_examine.c,v 1.6 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -78,6 +77,7 @@ db_examine(db_addr_t addr, char *fmt, int count)
 	int		size;
 	int		width;
 	char *		fp;
+	char		tbuf[24];
 
 	while (--count >= 0) {
 	    fp = fmt;
@@ -131,7 +131,8 @@ db_examine(db_addr_t addr, char *fmt, int count)
 			    case 'z':	/* signed hex */
 				value = db_get_value(addr, size, TRUE);
 				addr += size;
-				db_printf("%-*lz", width, (long)value);
+				db_format_hex(tbuf, 24, value, FALSE);
+				db_printf("%-*s", width, tbuf);
 				break;
 			    case 'd':	/* signed decimal */
 				value = db_get_value(addr, size, TRUE);
@@ -211,8 +212,13 @@ db_print_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count, char *modif)
 		db_printf("%8lx", (unsigned long)addr);
 		break;
 	    case 'z':
-		db_printf("%8lz", (long)addr);
-		break;
+		{
+		    char tbuf[24];
+
+		    db_format_hex(tbuf, 24, addr, FALSE);
+		    db_printf("%8s", tbuf);
+		    break;
+		}
 	    case 'd':
 		db_printf("%11ld", (long)addr);
 		break;
