@@ -65,8 +65,8 @@
 #include <vfs/nfs/rpcv2.h>
 #include <vfs/nfs/nfs.h>
 #include <vfs/nfs/nfsdiskless.h>
-#ifdef SMP
 #include <machine_base/apic/apicreg.h>
+#ifdef SMP
 #include <machine/smp.h>
 #endif
 #include <machine/segments.h>
