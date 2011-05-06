@@ -1581,6 +1581,16 @@ TO_REMOVE+=/usr/share/man/cat9/memoryallocators.9.gz
 TO_REMOVE+=/usr/share/man/man9/memoryallocators.9.gz
 TO_REMOVE+=/usr/share/man/cat4/rc.4.gz
 TO_REMOVE+=/usr/share/man/man4/rc.4.gz
+TO_REMOVE+=/usr/bin/zegrep
+TO_REMOVE+=/usr/share/man/cat1/zegrep.1.gz
+TO_REMOVE+=/usr/share/man/man1/zegrep.1.gz
+TO_REMOVE+=/usr/bin/zfgrep
+TO_REMOVE+=/usr/share/man/cat1/zfgrep.1.gz
+TO_REMOVE+=/usr/share/man/man1/zfgrep.1.gz
+TO_REMOVE+=/usr/bin/zgrep
+TO_REMOVE+=/usr/share/man/cat1/zgrep.1.gz
+TO_REMOVE+=/usr/share/man/man1/zgrep.1.gz
+TO_REMOVE+=/usr/include/dev/disk/mpt/mpilib/fc_log.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/sgsc
