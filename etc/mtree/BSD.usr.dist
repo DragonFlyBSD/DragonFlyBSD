@@ -141,8 +141,6 @@
             ..
             find_interface
             ..
-            ipfilter
-            ..
             ipfw
             ..
             isdn

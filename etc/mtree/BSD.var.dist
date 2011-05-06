@@ -1,5 +1,4 @@
 # $FreeBSD: src/etc/mtree/BSD.var.dist,v 1.43.2.9 2002/06/30 17:57:17 des Exp $
-# $DragonFly: src/etc/mtree/BSD.var.dist,v 1.8 2008/02/02 18:24:00 matthias Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -33,8 +32,6 @@
         ..
     ..
     db
-        ipf             mode=0700
-        ..
     ..
     empty               mode=0555 flags=schg
     ..

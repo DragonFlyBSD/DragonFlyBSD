@@ -432,7 +432,7 @@ options 	IPSEC_ESP		#IP security (crypto; define w/ IPSEC)
 options 	IPSEC_DEBUG		#debug for IP security
 #
 # Set IPSEC_FILTERGIF to force packets coming through a gif tunnel
-# to be processed by any configured packet filtering (ipfw, ipf).
+# to be processed by any configured packet filtering (ipfw).
 # The default is that packets coming from a tunnel are _not_ processed;
 # they are assumed trusted.
 #
@@ -621,9 +621,6 @@ options 	IPV6FIREWALL_VERBOSE
 options 	IPV6FIREWALL_VERBOSE_LIMIT=100
 options 	IPV6FIREWALL_DEFAULT_TO_ACCEPT
 options 	IPDIVERT		#divert sockets
-options 	IPFILTER		#ipfilter support
-options 	IPFILTER_LOG		#ipfilter logging
-options 	IPFILTER_DEFAULT_BLOCK	#block all packets by default
 options 	IPSTEALTH		#support for stealth forwarding
 options 	TCPDEBUG
 

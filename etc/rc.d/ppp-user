@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/ppp-user,v 1.4 2003/04/18 17:55:05 mtm Exp $
-# $DragonFly: src/etc/rc.d/ppp-user,v 1.4 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: ppp-user
@@ -38,10 +37,6 @@ ppp_start()
 
 	echo "Starting ppp as \"${ppp_user}\""
 	su -m ${ppp_user} -c "exec ${ppp_command}"
-
-	# Re-Sync ipfilter so it picks up any new network interfaces
-	#
-	/etc/rc.d/ipfilter resync
 }
 
 ppp_stop()
@@ -53,7 +48,6 @@ ppp_stop()
 		done
 		wait_for_pids ${pids}
 	fi
-	/etc/rc.d/ipfilter resync
 }
 
 load_rc_config $name

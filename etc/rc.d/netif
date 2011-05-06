@@ -23,11 +23,10 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/netif,v 1.2 2003/06/29 05:34:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/netif,v 1.8 2008/07/06 23:56:32 thomas Exp $
 #
 
 # PROVIDE: netif
-# REQUIRE: atm1 ipfilter mountcritlocal serial sppp sysctl tty
+# REQUIRE: atm1 mountcritlocal serial sppp sysctl tty
 
 . /etc/rc.subr
 . /etc/network.subr
@@ -68,9 +67,6 @@ network_start()
 	# before we start pounding them.  In particular, dhclient
 	# and named can get mightily confused.
 	sleep 2
-
-	# Resync ipfilter
-	/etc/rc.d/ipfilter resync
 }
 
 network_stop()

@@ -80,15 +80,6 @@ dev/disk/iscsi/initiator/isc_subr.c	optional iscsi_initiator scbus
 dev/disk/iscsi/initiator/iscsi.c	optional iscsi_initiator scbus
 dev/disk/iscsi/initiator/iscsi_subr.c	optional iscsi_initiator scbus
 
-contrib/ipfilter/netinet/fil.c		optional ipfilter inet
-contrib/ipfilter/netinet/ip_auth.c	optional ipfilter inet
-contrib/ipfilter/netinet/ip_fil.c	optional ipfilter inet
-contrib/ipfilter/netinet/ip_frag.c	optional ipfilter inet
-contrib/ipfilter/netinet/ip_log.c	optional ipfilter inet
-contrib/ipfilter/netinet/ip_nat.c	optional ipfilter inet
-contrib/ipfilter/netinet/ip_proxy.c	optional ipfilter inet
-contrib/ipfilter/netinet/ip_state.c	optional ipfilter inet
-contrib/ipfilter/netinet/mlfk_ipl.c	optional ipfilter inet
 crypto/blowfish/bf_skey.c		optional ipsec ipsec_esp
 crypto/des/des_ecb.c			optional ipsec ipsec_esp
 crypto/des/des_setkey.c			optional ipsec ipsec_esp

@@ -1,5 +1,4 @@
 # $FreeBSD: src/etc/periodic/security/Makefile,v 1.6 2006/08/25 07:34:36 trhodes Exp $
-# $DragonFly: src/etc/periodic/security/Makefile,v 1.3 2007/12/29 21:44:44 matthias Exp $
 
 FILES=	100.chksetuid \
 	200.chkmounts \
@@ -7,7 +6,6 @@ FILES=	100.chksetuid \
 	400.passwdless \
 	410.logincheck \
 	500.ipfwdenied \
-	510.ipfdenied \
 	520.pfdenied \
 	550.ipfwlimit \
 	600.ip6fwdenied \

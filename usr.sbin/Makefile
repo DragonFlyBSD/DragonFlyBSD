@@ -144,13 +144,6 @@ SUBDIR= 802_11 \
 # XXX re-add when adjusted to the new 802.11 framework
 #MAN+=	ndiscvt \
 
-.if !defined(NO_IPFILTER)
-SUBDIR+=ipftest \
-	ipresend \
-	ipsend \
-	iptest
-.endif
-
 .if !defined(NO_LPR)
 SUBDIR+=lpr
 .endif

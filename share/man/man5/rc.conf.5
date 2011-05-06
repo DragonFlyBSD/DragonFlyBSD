@@ -287,9 +287,7 @@ the
 .Pa pf.ko
 kernel module will be loaded.
 See also
-.Va firewall_enable
-and
-.Va ipfilter_enable .
+.Va firewall_enable .
 .It Va pf_rules
 .Pq Vt str
 Path to the
@@ -346,9 +344,7 @@ the
 .Pa ipfw.ko
 kernel module will be loaded.
 See also
-.Va pf_enable
-and
-.Va ipfilter_enable .
+.Va pf_enable .
 .It Va ipv6_firewall_enable
 .Pq Vt bool
 The IPv6 equivalent of
@@ -493,228 +489,6 @@ or
 flag is automatically added with the above
 .Va natd_interface
 as an argument.
-.\" ----- ipfilter_enable setting --------------------------------
-.It Va ipfilter_enable
-.Pq Vt bool
-Set to
-.Dq Li NO
-by default.
-Setting this to
-.Dq Li YES
-enables
-.Xr ipf 8
-packet filtering.
-.Pp
-Typical usage will require putting
-.Bd -literal
-ipfilter_enable="YES"
-ipnat_enable="YES"
-ipmon_enable="YES"
-ipfs_enable="YES"
-.Ed
-.Pp
-into
-.Pa /etc/rc.conf
-and editing
-.Pa /etc/ipf.rules
-and
-.Pa /etc/ipnat.rules
-appropriately.
-.Pp
-Note that
-.Va ipfilter_enable
-and
-.Va ipnat_enable
-can be enabled independently.
-.Va ipmon_enable
-and
-.Va ipfs_enable
-both require at least one of
-.Va ipfilter_enable
-and
-.Va ipnat_enable
-to be enabled.
-.Pp
-Having
-.Bd -literal
-options IPFILTER
-options IPFILTER_LOG
-options IPFILTER_DEFAULT_BLOCK
-.Ed
-.Pp
-in the kernel configuration file is a good idea, too.
-See also
-.Va pf_enable
-and
-.Va firewall_enable .
-.\" ----- ipfilter_program setting ------------------------------
-.It Va ipfilter_program
-.Pq Vt str
-Path to
-.Xr ipf 8
-(default
-.Pa /sbin/ipf ) .
-.\" ----- ipfilter_rules setting --------------------------------
-.It Va ipfilter_rules
-.Pq Vt str
-Set to
-.Pa /etc/ipf.rules
-by default.
-The name of the filter rule definition file.
-The file is expected to be readable for the
-.Xr ipf 8
-command to execute.
-.\" ----- ipv6_ipfilter_rules setting ---------------------------
-.It Va ipv6_ipfilter_rules
-.Pq Vt str
-Set to
-.Pa /etc/ipf6.rules
-by default.
-The name of the IPv6 filter rule definition file.
-The file is expected to be readable for the
-.Xr ipf 8
-command to execute.
-.\" ----- ipfilter_flags setting --------------------------------
-.It Va ipfilter_flags
-.Pq Vt str
-Empty by default.
-Flags passed to the
-.Xr ipf 8
-program.
-.\" ----- ipnat_enable setting ----------------------------------
-.It Va ipnat_enable
-.Pq Vt bool
-Set to
-.Dq Li NO
-by default.
-Set it to
-.Dq Li YES
-to enable
-.Xr ipnat 8
-network address translation.
-See
-.Va ipfilter_enable
-for a detailed discussion.
-.\" ----- ipnat_program setting ---------------------------------
-.It Va ipnat_program
-.Pq Vt str
-Path to
-.Xr ipnat 8
-(default
-.Pa /sbin/ipnat ) .
-.\" ----- ipnat_rules setting -----------------------------------
-.It Va ipnat_rules
-.Pq Vt str
-Set to
-.Pa /etc/ipnat.rules
-by default.
-The name of the file
-holding the network address translation definition.
-This file is expected to be readable for the
-.Xr ipnat 8
-command to execute.
-.\" ----- ipnat_flags setting -----------------------------------
-.It Va ipnat_flags
-.Pq Vt str
-Empty by default.
-Flags passed to the
-.Xr ipnat 8
-program.
-.\" ----- ipmon_enable setting ----------------------------------
-.It Va ipmon_enable
-.Pq Vt bool
-Set to
-.Dq Li NO
-by default.
-Set it to
-.Dq Li YES
-to enable
-.Xr ipmon 8
-monitoring (logging
-.Xr ipf 8
-and
-.Xr ipnat 8
-events).
-Setting this variable needs setting
-.Va ipfilter_enable
-or
-.Va ipnat_enable
-too.
-See
-.Va ipfilter_enable
-for a detailed discussion.
-.\" ----- ipmon_program setting ---------------------------------
-.It Va ipmon_program
-.Pq Vt str
-Path to
-.Xr ipmon 8
-(default
-.Pa /sbin/ipmon ) .
-.\" ----- ipmon_flags setting -----------------------------------
-.It Va ipmon_flags
-.Pq Vt str
-Set to
-.Dq Li -Ds
-by default.
-Flags passed to the
-.Xr ipmon 8
-program.
-Another typical example would be
-.Dq Fl D Pa /var/log/ipflog
-to have
-.Xr ipmon 8
-log directly to a file bypassing
-.Xr syslogd 8 .
-Make sure to adjust
-.Pa /etc/newsyslog.conf
-in such case like this:
-.Bd -literal
-/var/log/ipflog  640  10  100  *  Z  /var/run/ipmon.pid
-.Ed
-.\" ----- ipfs_enable setting -----------------------------------
-.It Va ipfs_enable
-.Pq Vt bool
-Set to
-.Dq Li NO
-by default.
-Set it to
-.Dq Li YES
-to enable
-.Xr ipfs 8
-saving the filter and NAT state tables during shutdown
-and reloading them during startup again.
-Setting this variable needs setting
-.Va ipfilter_enable
-or
-.Va ipnat_enable
-to
-.Dq Li YES
-too.
-See
-.Va ipfilter_enable
-for a detailed discussion.
-Note that if
-.Va kern_securelevel
-is set to 3,
-.Va ipfs_enable
-cannot be used because the raised securelevel will prevent
-.Xr ipfs 8
-from saving the state tables at shutdown time.
-.\" ----- ipfs_program setting ----------------------------------
-.It Va ipfs_program
-.Pq Vt str
-Path to
-.Xr ipfs 8
-(default
-.Pa /sbin/ipfs ) .
-.\" ----- ipfs_flags setting ------------------------------------
-.It Va ipfs_flags
-.Pq Vt str
-Empty by default.
-Flags passed to the
-.Xr ipfs 8
-program.
-.\" ----- end of added ipf hook ---------------------------------
 .It Va tcp_extensions
 .Pq Vt bool
 Set to
@@ -2907,7 +2681,6 @@ if it is not set.
 .Xr varsym 1 ,
 .Xr vidcontrol 1 ,
 .Xr ip 4 ,
-.Xr ipf 4 ,
 .Xr ipfw 4 ,
 .Xr kld 4 ,
 .Xr pf 4 ,

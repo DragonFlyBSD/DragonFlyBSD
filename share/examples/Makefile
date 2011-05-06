@@ -1,10 +1,9 @@
 # $FreeBSD: src/share/examples/Makefile,v 1.28.2.6 2002/08/08 09:03:47 ru Exp $
-# $DragonFly: src/share/examples/Makefile,v 1.3 2005/07/07 11:49:56 corecode Exp $
 #
 # Doing a make install builds /usr/share/examples
 
 DIRS!=	for i in *; do \
-	    if test -d $$i -a $$i != ipfilter -a $$i != smbfs; then \
+	    if test -d $$i -a $$i != smbfs; then \
 		echo $$i; \
             fi; \
 	done
@@ -42,9 +41,6 @@ etc-examples:
 
 .if ${SHARED} != "symlinks"
 SUBDIR=	smbfs
-.if !defined(NO_IPFILTER)
-SUBDIR+=ipfilter
-.endif
 .endif
 
 .include <bsd.subdir.mk>

@@ -49,10 +49,6 @@ INCLUDES+= -I/usr/include
 .include "$S/conf/acpi.mk"
 INCLUDES+= -I${.OBJDIR} -I"$S/${OSACPI_MI_DIR}" -I"$S/${ACPICA_DIR}/include"
 
-# This hack lets us use the ipfilter code without spamming a new
-# include path into 100+ source files.
-INCLUDES+= -I$S/contrib/ipfilter
-
 # ... and the same for Atheros HAL
 INCLUDES+= -I$S/dev/netif/ath/hal -I$S/dev/netif/ath/hal/ath_hal
 
