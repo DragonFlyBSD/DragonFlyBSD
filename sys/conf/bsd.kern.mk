@@ -9,7 +9,7 @@
 #
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
-		-std=c99
+		-Wold-style-definition -std=c99
 #
 # The following flags are next up for working on:
 #	-W
