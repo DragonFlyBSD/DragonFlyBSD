@@ -1183,7 +1183,7 @@ mpt_announce_disk(struct mpt_softc *mpt, struct mpt_raid_disk *mpt_disk)
 		     "Physical (%s:%d:%d:0), Pass-thru (%s:%d:%d:0)\n",
 		     device_get_nameunit(mpt->dev), rd_bus,
 		     disk_pg->PhysDiskID, device_get_nameunit(mpt->dev),
-		     pt_bus, mpt_disk - mpt->raid_disks);
+		     pt_bus, (int)(mpt_disk - mpt->raid_disks));
 	if (disk_pg->PhysDiskSettings.HotSparePool == 0)
 		return;
 	mpt_disk_prt(mpt, mpt_disk, "Member of Hot Spare Pool%s",
