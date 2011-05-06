@@ -57,9 +57,11 @@ const char *mpt_vol_type(struct mpt_raid_volume *);
 const char *mpt_vol_state(struct mpt_raid_volume *);
 const char *mpt_disk_state(struct mpt_raid_disk *);
 void
-mpt_vol_prt(struct mpt_softc *, struct mpt_raid_volume *, const char *fmt, ...);
+mpt_vol_prt(struct mpt_softc *, struct mpt_raid_volume *, const char *fmt, ...)
+__printflike(3, 4);
 void
-mpt_disk_prt(struct mpt_softc *, struct mpt_raid_disk *, const char *, ...);
+mpt_disk_prt(struct mpt_softc *, struct mpt_raid_disk *, const char *, ...)
+__printflike(3, 4);
 
 int
 mpt_issue_raid_req(struct mpt_softc *, struct mpt_raid_volume *,

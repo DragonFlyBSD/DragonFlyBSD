@@ -442,9 +442,9 @@ mpt_raid_event(struct mpt_softc *mpt, request_t *req,
 
 	if (print_event) {
 		if (mpt_disk != NULL) {
-			mpt_disk_prt(mpt, mpt_disk, "");
+			mpt_disk_prt(mpt, mpt_disk, "%s", "");
 		} else if (mpt_vol != NULL) {
-			mpt_vol_prt(mpt, mpt_vol, "");
+			mpt_vol_prt(mpt, mpt_vol, "%s", "");
 		} else {
 			mpt_prt(mpt, "Volume(%d:%d", raid_event->VolumeBus,
 				raid_event->VolumeID);
@@ -467,7 +467,7 @@ mpt_raid_event(struct mpt_softc *mpt, request_t *req,
 	if (raid_event->ReasonCode == MPI_EVENT_RAID_RC_SMART_DATA) {
 		/* XXX Use CAM's print sense for this... */
 		if (mpt_disk != NULL)
-			mpt_disk_prt(mpt, mpt_disk, "");
+			mpt_disk_prt(mpt, mpt_disk, "%s", "");
 		else
 			mpt_prt(mpt, "Volume(%d:%d:%d: ",
 			    raid_event->VolumeBus, raid_event->VolumeID,
