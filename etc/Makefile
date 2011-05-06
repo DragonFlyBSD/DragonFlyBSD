@@ -98,6 +98,7 @@ remove-obsolete-files:
 	@for item in ${TO_REMOVE}; do \
 		if [ -e ${DESTDIR}$${item} -o -L ${DESTDIR}$${item} ]; then \
 			echo "${DESTDIR}$${item}"; \
+			chflags -Rf noschg "${DESTDIR}$${item}"; \
 			rm -rf "${DESTDIR}$${item}"; \
 		fi; \
 	done
