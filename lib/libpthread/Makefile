@@ -133,14 +133,11 @@ MLINKS+= \
 
 realinstall: linkinstall
 linkinstall:
-	# Do not overwrite existing symlinks
-	if [ ! -e ${DESTDIR}${TARGET_SHLIBDIR}/${SONAME} ]; then \
-		${LN} -fs thread/lib${THREAD_LIB}.so \
-			${DESTDIR}${TARGET_SHLIBDIR}/${SONAME}; \
-	fi
-	if [ ! -e ${DESTDIR}${TARGET_LIBDIR}/${LIBNAME}.a ]; then \
-		${LN} -fs thread/lib${THREAD_LIB}.a \
-			${DESTDIR}${TARGET_LIBDIR}/${LIBNAME}.a; \
-	fi
+	# Always overwrite existing symlinks.  If the user wants the
+	# library to point elsewhere he can set THREAD_LIB in /etc/make.conf.
+	${LN} -fs thread/lib${THREAD_LIB}.so \
+		${DESTDIR}${TARGET_SHLIBDIR}/${SONAME}; \
+	${LN} -fs thread/lib${THREAD_LIB}.a \
+		${DESTDIR}${TARGET_LIBDIR}/${LIBNAME}.a; \
 
 .include <bsd.lib.mk>
