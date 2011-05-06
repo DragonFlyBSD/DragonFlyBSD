@@ -163,10 +163,10 @@ elf_getphdrs(struct file *fp, Elf_Phdr *phdr, size_t nbyte)
 	PRINTF(("headers section:\n"));
 	for (i = 0; i < nheaders; i++) {
 		PRINTF(("entry type:   %d\n", phdr[i].p_type));
-		PRINTF(("file offset:  %ld\n", phdr[i].p_offset));
+		PRINTF(("file offset:  %jd\n", (intmax_t)phdr[i].p_offset));
 		PRINTF(("virt address: %p\n", (uint32_t *)phdr[i].p_vaddr));
-		PRINTF(("file size:    %ld\n", phdr[i].p_filesz));
-		PRINTF(("memory size:  %ld\n", phdr[i].p_memsz));
+		PRINTF(("file size:    %jd\n", (intmax_t)phdr[i].p_filesz));
+		PRINTF(("memory size:  %jd\n", (intmax_t)phdr[i].p_memsz));
 		PRINTF(("\n"));
 	}
  done:
