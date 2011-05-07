@@ -44,7 +44,6 @@ LIBGPLUSPLUS?=	${DESTDIR}${GCCLIBDIR}/libg++.a
 LIBG2C?=	${DESTDIR}${LIBDIR}/libg2c.a
 LIBGCC?=	${DESTDIR}${GCCLIBDIR}/libgcc.a
 LIBGCC_PIC?=	${DESTDIR}${GCCLIBDIR}/libgcc_pic.a
-LIBGNUREGEX?=	${DESTDIR}${LIBDIR}/libgnuregex.a
 LIBGSSAPI?=	${DESTDIR}${LIBDIR}/libgssapi.a	# XXX in secure dist, not base
 LIBHISTORY?=	${DESTDIR}${LIBDIR}/libhistory.a
 LIBIPSEC?=	${DESTDIR}${LIBDIR}/libipsec.a
