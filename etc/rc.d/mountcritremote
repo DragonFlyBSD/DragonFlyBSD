@@ -2,11 +2,10 @@
 #
 # $NetBSD: mountcritremote,v 1.7 2002/04/29 12:29:53 lukem Exp $
 # $FreeBSD: src/etc/rc.d/mountcritremote,v 1.6 2003/06/01 01:43:37 gordon Exp $
-# $DragonFly: src/etc/rc.d/mountcritremote,v 1.6 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: mountcritremote
-# REQUIRE: NETWORKING root mountcritlocal
+# REQUIRE: NETWORKING root mountcritlocal cleanvar
 
 . /etc/rc.subr
 
