@@ -18,7 +18,7 @@ GNU General Public License for more details.
 #include "system.h"
 #include <stdio.h>
 #include <setjmp.h>
-#include "gnuregex.h"
+#include "regex.h"
 #include "diffrun.h"
 
 #define TAB_WIDTH 8

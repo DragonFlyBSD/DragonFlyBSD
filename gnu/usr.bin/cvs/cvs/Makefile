@@ -1,5 +1,4 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.32.2.6 2003/01/21 23:06:51 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.13 2007/09/04 16:53:56 corecode Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -14,22 +13,21 @@ MAN=	cvs.1 cvs.5
 
 SRCS=	add.c admin.c annotate.c buffer.c \
 	checkin.c checkout.c classify.c client.c \
-	commit.c create_adm.c cvsrc.c edit.c entries.c error.c \
+	commit.c create_adm.c cvsrc.c diff.c edit.c entries.c error.c \
 	exithandle.c expand_path.c fileattr.c filesubr.c find_names.c \
 	hardlink.c hash.c history.c ignore.c import.c lock.c log.c \
-	log-buffer.c login.c logmsg.c ls.c mkmodules.c \
+	log-buffer.c login.c logmsg.c ls.c main.c mkmodules.c \
 	modules.c ms-buffer.c myndbm.c no_diff.c parseinfo.c patch.c \
 	rcs.c rcscmds.c \
 	recurse.c release.c remove.c repos.c root.c rsh-client.c run.c \
-	scramble.c server.c socket-client.c stack.c status.c subr.c tag.c \
-	update.c vers_ts.c version.c watch.c wrapper.c zlib.c \
-	main.c diff.c ${PATCHES}
+	scramble.c server.c stack.c status.c subr.c tag.c \
+	update.c version.c vers_ts.c watch.c wrapper.c zlib.c
 
 CFLAGS+= -I${.CURDIR} -I../lib -DHAVE_CONFIG_H \
 	 -I${CVSDIR}/src -I${CVSDIR}/lib -I${CVSDIR}/diff -I.
 
-DPADD+=	${LIBCVS} ${LIBDIFF} ${LIBGNUREGEX} ${LIBMD} ${LIBCRYPT} ${LIBZ}
-LDADD+=	${LIBCVS} ${LIBDIFF} -lgnuregex -lmd -lcrypt -lz
+DPADD+=	${LIBDIFF} ${LIBCVS} ${LIBCRYPT} ${LIBZ}
+LDADD+=	${LIBDIFF} ${LIBCVS} -lcrypt -lz
 
 #
 # Regression test support

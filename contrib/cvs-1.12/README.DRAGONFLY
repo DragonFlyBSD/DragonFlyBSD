@@ -1,7 +1,29 @@
-Original source can be downloaded from FSF/nongnu at
-<http://ftp.gnu.org/non-gnu/cvs/source/feature/1.12.13/cvs-1.12.13.tar.bz2>
+CVS 1.12.13 (Feature Branch)
+============================
 
-MD5 (cvs-1.12.13.tar.bz2) = 956ab476ce276c2d19d583e227dbdbea
-SHA1 (cvs-1.12.13.tar.bz2) = 93a8dacc6ff0e723a130835713235863f1f5ada9
+Original source can be downloaded from:
+http://ftp.gnu.org/non-gnu/cvs/source/feature/1.12.13
 
-A list of deleted files is in README.DELETED.
+file = cvs-1.12.13.tar.bz2
+date = 3 Oct 2005
+size = 3911104
+sha1 = 93a8dacc6ff0e723a130835713235863f1f5ada9
+
+A list of files and directories removed is in README.DELETED
+
+Local modifications applied to following files:
+	doc/cvs.1
+	doc/cvs.texinfo
+	lib/closeout.c
+	lib/save-cwd.c
+	lib/xgetcwd.c
+	src/annotate.c
+	src/commit.c
+	src/cvs.h
+	src/diff.c
+	src/main.c
+	src/parseinfo.c
+	src/rcs.c
+	src/rcs.h
+	src/root.c
+	src/zlib.c
