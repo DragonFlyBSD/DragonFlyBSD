@@ -1,5 +1,5 @@
 /* Remote target communications for serial-line targets in custom GDB protocol
-   Copyright (C) 1999, 2003, 2004, 2005, 2006, 2007, 2008, 2009
+   Copyright (C) 1999, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -22,8 +22,6 @@
 
 struct target_desc;
 
-/* FIXME?: move this interface down to tgt vector) */
-
 /* Read a packet from the remote machine, with error checking, and
    store it in *BUF.  Resize *BUF using xrealloc if necessary to hold
    the result, and update *SIZEOF_BUF.  If FOREVER, wait forever
@@ -40,19 +38,7 @@ extern void getpkt (char **buf, long *sizeof_buf, int forever);
 
 extern int putpkt (char *buf);
 
-/* Send HEX encoded string to the target console. (gdb_stdtarg) */
-
-extern void remote_console_output (char *);
-
-
-/* FIXME: cagney/1999-09-20: The remote cisco stuff in remote.c needs
-   to be broken out into a separate file (remote-cisco.[hc]?).  Before
-   that can happen, a remote protocol stack framework needs to be
-   implemented. */
-
-extern void remote_cisco_objfile_relocate (bfd_signed_vma text_off,
-					   bfd_signed_vma data_off,
-					   bfd_signed_vma bss_off);
+extern char *unpack_varlen_hex (char *buff, ULONGEST *result);
 
 extern void async_remote_interrupt_twice (void *arg);
 
@@ -61,11 +47,9 @@ extern int remote_write_bytes (CORE_ADDR memaddr, const gdb_byte *myaddr,
 
 extern int remote_read_bytes (CORE_ADDR memaddr, gdb_byte *myaddr, int len);
 
-extern void (*deprecated_target_resume_hook) (void);
-extern void (*deprecated_target_wait_loop_hook) (void);
-
 void register_remote_g_packet_guess (struct gdbarch *gdbarch, int bytes,
 				     const struct target_desc *tdesc);
+void register_remote_support_xml (const char *);
 
 void remote_file_put (const char *local_file, const char *remote_file,
 		      int from_tty);

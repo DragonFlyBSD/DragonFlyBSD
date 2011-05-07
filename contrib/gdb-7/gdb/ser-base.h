@@ -1,6 +1,6 @@
 /* Generic serial interface functions.
 
-   Copyright (C) 2005, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2005, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -26,7 +26,6 @@ struct ui_file;
 extern int generic_readchar (struct serial *scb, int timeout,
 			     int (*do_readchar) (struct serial *scb,
 						 int timeout));
-extern void reschedule (struct serial *scb);
 extern int ser_base_flush_output (struct serial *scb);
 extern int ser_base_flush_input (struct serial *scb);
 extern int ser_base_send_break (struct serial *scb);

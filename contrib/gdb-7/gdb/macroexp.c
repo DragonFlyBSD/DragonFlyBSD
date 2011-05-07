@@ -1,5 +1,5 @@
 /* C preprocessor macro expansion for GDB.
-   Copyright (C) 2002, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2002, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
    Contributed by Red Hat, Inc.
 
    This file is part of GDB.
@@ -525,6 +525,7 @@ get_token (struct macro_buffer *tok,
       {
         /* How many characters did we consume, including whitespace?  */
         int consumed = p - src->text + tok->len;
+
         src->text += consumed;
         src->len -= consumed;
         return 1;
@@ -767,6 +768,7 @@ gather_arguments (const char *name, struct macro_buffer *src,
      paren.  */
   {
     struct macro_buffer temp;
+
     init_shared_buffer (&temp, src->text, src->len);
 
     if (! get_token (&tok, &temp)
@@ -805,8 +807,6 @@ gather_arguments (const char *name, struct macro_buffer *src,
       depth = 0;
       for (;;)
         {
-          char *start = src->text;
-
           if (! get_token (&tok, src))
             error (_("Malformed argument list for macro `%s'."), name);
       
@@ -1004,7 +1004,7 @@ substitute_args (struct macro_buffer *dest,
 	       && lookahead.text[0] == '#'
 	       && lookahead.text[1] == '#')
 	{
-	  int arg, finished = 0;
+	  int finished = 0;
 	  int prev_was_comma = 0;
 
 	  /* Note that GCC warns if the result of splicing is not a
@@ -1018,6 +1018,7 @@ substitute_args (struct macro_buffer *dest,
 	    {
 	      int arg = find_parameter (&tok, is_varargs, va_arg_name,
 					def->argc, def->argv);
+
 	      if (arg != -1)
 		appendmem (dest, argv[arg].text, argv[arg].len);
 	      else
@@ -1057,6 +1058,7 @@ substitute_args (struct macro_buffer *dest,
 		{
 		  int arg = find_parameter (&tok, is_varargs, va_arg_name,
 					    def->argc, def->argv);
+
 		  if (arg != -1)
 		    appendmem (dest, argv[arg].text, argv[arg].len);
 		  else
@@ -1195,6 +1197,7 @@ expand (const char *id,
 	  else
 	    {
 	      int len = strlen (def->argv[def->argc - 1]);
+
 	      if (len > 3
 		  && strcmp (def->argv[def->argc - 1] + len - 3, "...") == 0)
 		{
@@ -1299,6 +1302,7 @@ maybe_expand (struct macro_buffer *dest,
          lookup function expects.  */
       char *id = xmalloc (src_first->len + 1);
       struct cleanup *back_to = make_cleanup (xfree, id);
+
       memcpy (id, src_first->text, src_first->len);
       id[src_first->len] = 0;
           

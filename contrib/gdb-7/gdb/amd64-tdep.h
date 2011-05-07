@@ -1,6 +1,6 @@
 /* Target-dependent definitions for AMD64.
 
-   Copyright (C) 2001, 2003, 2004, 2007, 2008, 2009
+   Copyright (C) 2001, 2003, 2004, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
    Contributed by Jiri Smid, SuSE Labs.
 
@@ -61,11 +61,15 @@ enum amd64_regnum
   AMD64_FSTAT_REGNUM = AMD64_ST0_REGNUM + 9,
   AMD64_XMM0_REGNUM = 40,	/* %xmm0 */
   AMD64_XMM1_REGNUM,		/* %xmm1 */
-  AMD64_MXCSR_REGNUM = AMD64_XMM0_REGNUM + 16
+  AMD64_MXCSR_REGNUM = AMD64_XMM0_REGNUM + 16,
+  AMD64_YMM0H_REGNUM,		/* %ymm0h */
+  AMD64_YMM15H_REGNUM = AMD64_YMM0H_REGNUM + 15
 };
 
 /* Number of general purpose registers.  */
 #define AMD64_NUM_GREGS		24
+
+#define AMD64_NUM_REGS		(AMD64_YMM15H_REGNUM + 1)
 
 extern struct displaced_step_closure *amd64_displaced_step_copy_insn
   (struct gdbarch *gdbarch, CORE_ADDR from, CORE_ADDR to,
@@ -77,12 +81,6 @@ extern void amd64_displaced_step_fixup (struct gdbarch *gdbarch,
 
 extern void amd64_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch);
 
-/* Functions from amd64-tdep.c which may be needed on architectures
-   with extra registers.  */
-
-extern const char *amd64_register_name (struct gdbarch *gdbarch, int regnum);
-extern struct type *amd64_register_type (struct gdbarch *gdbarch, int regnum);
-
 /* Fill register REGNUM in REGCACHE with the appropriate
    floating-point or SSE register value from *FXSAVE.  If REGNUM is
    -1, do this for all registers.  This function masks off any of the
@@ -91,6 +89,10 @@ extern struct type *amd64_register_type (struct gdbarch *gdbarch, int regnum);
 extern void amd64_supply_fxsave (struct regcache *regcache, int regnum,
 				 const void *fxsave);
 
+/* Similar to amd64_supply_fxsave, but use XSAVE extended state.  */
+extern void amd64_supply_xsave (struct regcache *regcache, int regnum,
+				const void *xsave);
+
 /* Fill register REGNUM (if it is a floating-point or SSE register) in
    *FXSAVE with the value from REGCACHE.  If REGNUM is -1, do this for
    all registers.  This function doesn't touch any of the reserved
@@ -98,7 +100,17 @@ extern void amd64_supply_fxsave (struct regcache *regcache, int regnum,
 
 extern void amd64_collect_fxsave (const struct regcache *regcache, int regnum,
 				  void *fxsave);
+
+/* Similar to amd64_collect_fxsave, but but use XSAVE extended state.  */
+extern void amd64_collect_xsave (const struct regcache *regcache,
+				 int regnum, void *xsave, int gcore);
+
+void amd64_classify (struct type *type, enum amd64_reg_class class[2]);
+
 
+
+/* Variables exported from amd64-linux-tdep.c.  */
+extern int amd64_linux_gregset_reg_offset[];
 
 /* Variables exported from amd64nbsd-tdep.c.  */
 extern int amd64nbsd_r_reg_offset[];

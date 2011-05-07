@@ -1,7 +1,8 @@
 /* Multiple source language support for GDB.
 
    Copyright (C) 1991, 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001,
-   2002, 2003, 2004, 2005, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
 
    Contributed by the Department of Computer Science at the State University
    of New York at Buffalo.
@@ -63,7 +64,7 @@ static void unk_lang_emit_char (int c, struct type *type,
 static void unk_lang_printchar (int c, struct type *type,
 				struct ui_file *stream);
 
-static void unk_lang_print_type (struct type *, char *, struct ui_file *,
+static void unk_lang_print_type (struct type *, const char *, struct ui_file *,
 				 int, int);
 
 static int unk_lang_value_print (struct value *, struct ui_file *,
@@ -485,6 +486,7 @@ binop_result_type (struct value *v1, struct value *v2)
     {
     case language_c:
     case language_cplus:
+    case language_d:
     case language_objc:
       if (TYPE_CODE (t1) == TYPE_CODE_FLT)
 	return TYPE_CODE (t2) == TYPE_CODE_FLT && l2 > l1 ?
@@ -596,6 +598,7 @@ integral_type (struct type *type)
     {
     case language_c:
     case language_cplus:
+    case language_d:
     case language_objc:
       return (TYPE_CODE (type) != TYPE_CODE_INT) &&
 	(TYPE_CODE (type) != TYPE_CODE_ENUM) ? 0 : 1;
@@ -636,6 +639,7 @@ character_type (struct type *type)
 
     case language_c:
     case language_cplus:
+    case language_d:
     case language_objc:
       return (TYPE_CODE (type) == TYPE_CODE_INT) &&
 	TYPE_LENGTH (type) == sizeof (char)
@@ -658,6 +662,7 @@ string_type (struct type *type)
 
     case language_c:
     case language_cplus:
+    case language_d:
     case language_objc:
       /* C does not have distinct string type. */
       return (0);
@@ -677,6 +682,7 @@ boolean_type (struct type *type)
     {
     case language_c:
     case language_cplus:
+    case language_d:
     case language_objc:
       /* Might be more cleanly handled by having a
          TYPE_CODE_INT_NOT_BOOL for (the deleted) CHILL and such
@@ -696,6 +702,7 @@ float_type (struct type *type)
   CHECK_TYPEDEF (type);
   return TYPE_CODE (type) == TYPE_CODE_FLT;
 }
+#endif
 
 /* Returns non-zero if the value is a pointer type */
 int
@@ -705,6 +712,7 @@ pointer_type (struct type *type)
     TYPE_CODE (type) == TYPE_CODE_REF;
 }
 
+#if 0
 /* Returns non-zero if the value is a structured type */
 int
 structured_type (struct type *type)
@@ -714,6 +722,7 @@ structured_type (struct type *type)
     {
     case language_c:
     case language_cplus:
+    case language_d:
     case language_objc:
       return (TYPE_CODE (type) == TYPE_CODE_STRUCT) ||
 	(TYPE_CODE (type) == TYPE_CODE_UNION) ||
@@ -764,8 +773,8 @@ void
 type_error (const char *string,...)
 {
   va_list args;
-  va_start (args, string);
 
+  va_start (args, string);
   switch (type_check)
     {
     case type_check_warn:
@@ -790,8 +799,8 @@ void
 range_error (const char *string,...)
 {
   va_list args;
-  va_start (args, string);
 
+  va_start (args, string);
   switch (range_check)
     {
     case range_check_warn:
@@ -972,6 +981,7 @@ skip_language_trampoline (struct frame_info *frame, CORE_ADDR pc)
       if (languages[i]->skip_trampoline)
 	{
 	  CORE_ADDR real_pc = (languages[i]->skip_trampoline) (frame, pc);
+
 	  if (real_pc)
 	    return real_pc;
 	}
@@ -1045,7 +1055,7 @@ default_print_array_index (struct value *index_value, struct ui_file *stream,
 
 void
 default_get_string (struct value *value, gdb_byte **buffer, int *length,
-		    const char **charset)
+		    struct type **char_type, const char **charset)
 {
   error (_("Getting a string is unsupported in this language."));
 }
@@ -1080,15 +1090,15 @@ unk_lang_printchar (int c, struct type *type, struct ui_file *stream)
 static void
 unk_lang_printstr (struct ui_file *stream, struct type *type,
 		   const gdb_byte *string, unsigned int length,
-		   int force_ellipses,
+		   const char *encoding, int force_ellipses,
 		   const struct value_print_options *options)
 {
   error (_("internal error - unimplemented function unk_lang_printstr called."));
 }
 
 static void
-unk_lang_print_type (struct type *type, char *varstring, struct ui_file *stream,
-		     int show, int level)
+unk_lang_print_type (struct type *type, const char *varstring,
+		     struct ui_file *stream, int show, int level)
 {
   error (_("internal error - unimplemented function unk_lang_print_type called."));
 }
@@ -1097,6 +1107,7 @@ static int
 unk_lang_val_print (struct type *type, const gdb_byte *valaddr,
 		    int embedded_offset, CORE_ADDR address,
 		    struct ui_file *stream, int recurse,
+		    const struct value *val,
 		    const struct value_print_options *options)
 {
   error (_("internal error - unimplemented function unk_lang_val_print called."));
@@ -1289,6 +1300,7 @@ language_string_char_type (const struct language_defn *la,
 {
   struct language_gdbarch *ld = gdbarch_data (gdbarch,
 					      language_gdbarch_data);
+
   return ld->arch_info[la->la_language].string_char_type;
 }
 
@@ -1302,11 +1314,13 @@ language_bool_type (const struct language_defn *la,
   if (ld->arch_info[la->la_language].bool_type_symbol)
     {
       struct symbol *sym;
+
       sym = lookup_symbol (ld->arch_info[la->la_language].bool_type_symbol,
 			   NULL, VAR_DOMAIN, NULL);
       if (sym)
 	{
 	  struct type *type = SYMBOL_TYPE (sym);
+
 	  if (type && TYPE_CODE (type) == TYPE_CODE_BOOL)
 	    return type;
 	}
@@ -1323,6 +1337,7 @@ language_lookup_primitive_type_by_name (const struct language_defn *la,
   struct language_gdbarch *ld = gdbarch_data (gdbarch,
 					      language_gdbarch_data);
   struct type *const *p;
+
   for (p = ld->arch_info[la->la_language].primitive_type_vector;
        (*p) != NULL;
        p++)

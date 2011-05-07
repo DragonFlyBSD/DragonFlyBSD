@@ -1,6 +1,6 @@
 /* Helper routines for parsing XML using Expat.
 
-   Copyright (C) 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -199,13 +199,13 @@ int gdb_xml_parse (struct gdb_xml_parser *parser, const char *buffer);
 /* Issue a debugging message from one of PARSER's handlers.  */
 
 void gdb_xml_debug (struct gdb_xml_parser *parser, const char *format, ...)
-     ATTR_FORMAT (printf, 2, 0);
+     ATTRIBUTE_PRINTF (2, 0);
 
 /* Issue an error message from one of PARSER's handlers, and stop
    parsing.  */
 
 void gdb_xml_error (struct gdb_xml_parser *parser, const char *format, ...)
-     ATTR_NORETURN ATTR_FORMAT (printf, 2, 0);
+     ATTRIBUTE_NORETURN ATTRIBUTE_PRINTF (2, 0);
 
 /* Parse an integer attribute into a ULONGEST.  */
 

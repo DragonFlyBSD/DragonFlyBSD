@@ -15,7 +15,6 @@ case $targ in
  d10v-*-* | \
  hppa*-*-hiux* | \
  i[34567]86-ncr-* | \
- i[34567]86-*-lynxos* | \
  m68*-cisco*-* | \
  m68*-tandem-* | \
  m68*-*-os68k* | \
@@ -90,6 +89,10 @@ arm*-*-openbsd*)
 	# Target: OpenBSD/arm
 	gdb_target_obs="arm-tdep.o armbsd-tdep.o armobsd-tdep.o obsd-tdep.o \
 			corelow.o solib.o solib-svr4.o"
+	;;
+arm*-*-symbianelf*)
+	# Target: SymbianOS/arm
+	gdb_target_obs="arm-tdep.o solib-target.o arm-symbian-tdep.o"
 	;;
 arm*-*-* | thumb*-*-* | strongarm*-*-* | xscale-*-*)
 	# Target: ARM embedded system
@@ -192,7 +195,7 @@ i[34567]86-*-nto*)
 			i386-nto-tdep.o nto-tdep.o"
 	build_gdbserver=yes
 	;;
-i[34567]86-*-solaris2.1[0-9]*)
+i[34567]86-*-solaris2.1[0-9]* | x86_64-*-solaris2.1[0-9]*)
 	# Target: Solaris x86_64
 	gdb_target_obs="i386-tdep.o i387-tdep.o amd64-tdep.o amd64-sol2-tdep.o \
 			i386-sol2-tdep.o sol2-tdep.o \
@@ -318,6 +321,19 @@ mep-*-*)
 	# No sim needed. Target uses SID.
 	;;
 
+microblaze*-linux-*)
+	# Target: Xilinx MicroBlaze running Linux
+	gdb_target_obs="microblaze-tdep.o microblaze-linux-tdep.o microblaze-rom.o \
+			monitor.o dsrec.o solib.o solib-svr4.o corelow.o \
+			symfile-mem.o"
+	gdb_sim=../sim/microblaze/libsim.a
+	;;
+microblaze*-xilinx-*)
+	# Target: Xilinx MicroBlaze running standalone
+	gdb_target_obs="microblaze-tdep.o microblaze-rom.o monitor.o dsrec.o"
+	gdb_sim=../sim/microblaze/libsim.a
+	;;
+
 mips*-sgi-irix5*)
 	# Target: MIPS SGI running Irix 5
 	gdb_target_obs="mips-tdep.o mips-irix-tdep.o solib.o solib-irix.o"
@@ -381,7 +397,7 @@ powerpc-*-linux* | powerpc64-*-linux*)
 	# Target: PowerPC running Linux
 	gdb_target_obs="rs6000-tdep.o ppc-linux-tdep.o ppc-sysv-tdep.o \
 			solib.o solib-svr4.o solib-spu.o spu-multiarch.o \
-			corelow.o symfile-mem.o"
+			corelow.o symfile-mem.o linux-tdep.o"
 	gdb_sim=../sim/ppc/libsim.a
 	build_gdbserver=yes
 	;;
@@ -396,8 +412,14 @@ powerpc*-*-*)
 
 s390*-*-*)
 	# Target: S390 running Linux
-	gdb_target_obs="s390-tdep.o solib.o solib-svr4.o"
+	gdb_target_obs="s390-tdep.o solib.o solib-svr4.o linux-tdep.o"
 	build_gdbserver=yes
+	;;
+
+rx-*-elf)
+	# Target: Renesas RX
+	gdb_target_obs="rx-tdep.o"
+	gdb_sim=../sim/rx/libsim.a
 	;;
 
 score-*-*)
@@ -412,7 +434,8 @@ score-*-*)
 sh*-*-linux*)
 	# Target: GNU/Linux Super-H
 	gdb_target_obs="sh-tdep.o sh64-tdep.o sh-linux-tdep.o monitor.o \
-			dsrec.o solib.o solib-svr4.o symfile-mem.o glibc-tdep.o"
+			dsrec.o solib.o solib-svr4.o symfile-mem.o \
+			glibc-tdep.o corelow.o"
 	gdb_sim=../sim/sh/libsim.a
 	build_gdbserver=yes
 	;;
@@ -571,6 +594,7 @@ x86_64-*-mingw*)
 	gdb_target_obs="amd64-tdep.o amd64-windows-tdep.o \
                         i386-tdep.o i386-cygwin-tdep.o i387-tdep.o \
                         solib-target.o windows-tdep.o"
+	build_gdbserver=yes
         ;;
 x86_64-*-netbsd* | x86_64-*-knetbsd*-gnu)
 	# Target: NetBSD/amd64
@@ -618,4 +642,6 @@ m68*-*-openbsd* | m88*-*-openbsd* | vax-*-openbsd*) ;;
 *-*-mingw* | *-*-cygwin*)
 		gdb_osabi=GDB_OSABI_CYGWIN ;;
 *-*-dicos*)	gdb_osabi=GDB_OSABI_DICOS ;;
+*-*-symbianelf*)
+		gdb_osabi=GDB_OSABI_SYMBIAN ;;
 esac

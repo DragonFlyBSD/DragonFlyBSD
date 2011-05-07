@@ -1,6 +1,6 @@
 /* Routines for name->symbol lookups in GDB.
    
-   Copyright (C) 2003, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2003, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    Contributed by David Carlton <carlton@bactrian.org> and by Kealia,
    Inc.
@@ -578,7 +578,6 @@ iterator_first_hashed (const struct dictionary *dict,
 static struct symbol *
 iterator_next_hashed (struct dict_iterator *iterator)
 {
-  const struct dictionary *dict = DICT_ITERATOR_DICT (iterator);
   struct symbol *next;
 
   next = DICT_ITERATOR_CURRENT (iterator)->hash_next;
@@ -725,21 +724,24 @@ expand_hashtable (struct dictionary *dict)
   DICT_HASHED_NBUCKETS (dict) = new_nbuckets;
   DICT_HASHED_BUCKETS (dict) = new_buckets;
 
-  for (i = 0; i < old_nbuckets; ++i) {
-    struct symbol *sym, *next_sym;
+  for (i = 0; i < old_nbuckets; ++i)
+    {
+      struct symbol *sym, *next_sym;
 
-    sym = old_buckets[i];
-    if (sym != NULL) {
-      for (next_sym = sym->hash_next;
-	   next_sym != NULL;
-	   next_sym = sym->hash_next) {
-	insert_symbol_hashed (dict, sym);
-	sym = next_sym;
-      }
+      sym = old_buckets[i];
+      if (sym != NULL) 
+	{
+	  for (next_sym = sym->hash_next;
+	       next_sym != NULL;
+	       next_sym = sym->hash_next)
+	    {
+	      insert_symbol_hashed (dict, sym);
+	      sym = next_sym;
+	    }
 
-      insert_symbol_hashed (dict, sym);
+	  insert_symbol_hashed (dict, sym);
+	}
     }
-  }
 
   xfree (old_buckets);
 }
@@ -822,13 +824,14 @@ add_symbol_linear_expandable (struct dictionary *dict,
   int nsyms = ++DICT_LINEAR_NSYMS (dict);
 
   /* Do we have enough room?  If not, grow it.  */
-  if (nsyms > DICT_LINEAR_EXPANDABLE_CAPACITY (dict)) {
-    DICT_LINEAR_EXPANDABLE_CAPACITY (dict) *= 2;
-    DICT_LINEAR_SYMS (dict)
-      = xrealloc (DICT_LINEAR_SYMS (dict),
-		  DICT_LINEAR_EXPANDABLE_CAPACITY (dict)
-		  * sizeof (struct symbol *));
-  }
+  if (nsyms > DICT_LINEAR_EXPANDABLE_CAPACITY (dict))
+    {
+      DICT_LINEAR_EXPANDABLE_CAPACITY (dict) *= 2;
+      DICT_LINEAR_SYMS (dict)
+	= xrealloc (DICT_LINEAR_SYMS (dict),
+		    DICT_LINEAR_EXPANDABLE_CAPACITY (dict)
+		    * sizeof (struct symbol *));
+    }
 
   DICT_LINEAR_SYM (dict, nsyms - 1) = sym;
 }

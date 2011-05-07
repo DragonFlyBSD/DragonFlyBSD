@@ -1,7 +1,7 @@
 /* Support for printing Java values for GDB, the GNU debugger.
 
    Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007,
-   2008, 2009 Free Software Foundation, Inc.
+   2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -79,6 +79,7 @@ java_value_print (struct value *val, struct ui_file *stream,
       int reps;
       struct type *el_type
 	= java_primitive_type_from_name (gdbarch, name, i - 2);
+
       i = 0;
       read_memory (address + get_java_object_header_size (gdbarch), buf4, 4);
 
@@ -258,6 +259,7 @@ static void
 java_print_value_fields (struct type *type, const gdb_byte *valaddr,
 			 CORE_ADDR address, struct ui_file *stream,
 			 int recurse,
+			 const struct value *val,
 			 const struct value_print_options *options)
 {
   int i, len, n_baseclasses;
@@ -301,7 +303,7 @@ java_print_value_fields (struct type *type, const gdb_byte *valaddr,
 	  base_valaddr = valaddr;
 
 	  java_print_value_fields (baseclass, base_valaddr, address + boffset,
-				   stream, recurse + 1, options);
+				   stream, recurse + 1, val, options);
 	  fputs_filtered (", ", stream);
 	}
 
@@ -319,6 +321,7 @@ java_print_value_fields (struct type *type, const gdb_byte *valaddr,
 	  if (field_is_static (&TYPE_FIELD (type, i)))
 	    {
 	      char *name = TYPE_FIELD_NAME (type, i);
+
 	      if (!options->static_field_print)
 		continue;
 	      if (name != NULL && strcmp (name, "class") == 0)
@@ -390,6 +393,11 @@ java_print_value_fields (struct type *type, const gdb_byte *valaddr,
 		{
 		  fputs_filtered ("<optimized out or zero length>", stream);
 		}
+	      else if (!value_bits_valid (val, TYPE_FIELD_BITPOS (type, i),
+					  TYPE_FIELD_BITSIZE (type, i)))
+		{
+		  fputs_filtered (_("<value optimized out>"), stream);
+		}
 	      else
 		{
 		  struct value_print_options opts;
@@ -412,12 +420,14 @@ java_print_value_fields (struct type *type, const gdb_byte *valaddr,
 	      else if (field_is_static (&TYPE_FIELD (type, i)))
 		{
 		  struct value *v = value_static_field (type, i);
+
 		  if (v == NULL)
 		    fputs_filtered ("<optimized out>", stream);
 		  else
 		    {
 		      struct value_print_options opts;
 		      struct type *t = check_typedef (value_type (v));
+
 		      if (TYPE_CODE (t) == TYPE_CODE_STRUCT)
 			v = value_addr (v);
 		      opts = *options;
@@ -431,11 +441,12 @@ java_print_value_fields (struct type *type, const gdb_byte *valaddr,
 	      else
 		{
 		  struct value_print_options opts = *options;
+
 		  opts.deref_ref = 0;
 		  val_print (TYPE_FIELD_TYPE (type, i),
 			     valaddr + TYPE_FIELD_BITPOS (type, i) / 8, 0,
 			     address + TYPE_FIELD_BITPOS (type, i) / 8,
-			     stream, recurse + 1, &opts,
+			     stream, recurse + 1, val, &opts,
 			     current_language);
 		}
 	    }
@@ -462,6 +473,7 @@ int
 java_val_print (struct type *type, const gdb_byte *valaddr,
 		int embedded_offset, CORE_ADDR address,
 		struct ui_file *stream, int recurse,
+		const struct value *val,
 		const struct value_print_options *options)
 {
   struct gdbarch *gdbarch = get_type_arch (type);
@@ -522,6 +534,7 @@ java_val_print (struct type *type, const gdb_byte *valaddr,
       if (options->format || options->output_format)
 	{
 	  struct value_print_options opts = *options;
+
 	  opts.format = (options->format ? options->format
 			 : options->output_format);
 	  print_scalar_formatted (valaddr, type, &opts, 0, stream);
@@ -537,12 +550,12 @@ java_val_print (struct type *type, const gdb_byte *valaddr,
 
     case TYPE_CODE_STRUCT:
       java_print_value_fields (type, valaddr, address, stream, recurse,
-			       options);
+			       val, options);
       break;
 
     default:
       return c_val_print (type, valaddr, embedded_offset, address, stream,
-			  recurse, options);
+			  recurse, val, options);
     }
 
   return 0;

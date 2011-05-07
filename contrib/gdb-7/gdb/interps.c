@@ -1,6 +1,6 @@
 /* Manages interpreters for GDB, the GNU debugger.
 
-   Copyright (C) 2000, 2002, 2003, 2007, 2008, 2009
+   Copyright (C) 2000, 2002, 2003, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Written by Jim Ingham <jingham@apple.com> of Apple Computer, Inc.
@@ -306,6 +306,7 @@ static int
 interp_set_quiet (struct interp *interp, int quiet)
 {
   int old_val = interp->quiet_p;
+
   interp->quiet_p = quiet;
   return old_val;
 }
@@ -343,7 +344,6 @@ clear_interpreter_hooks (void)
   deprecated_readline_hook = 0;
   deprecated_readline_end_hook = 0;
   deprecated_register_changed_hook = 0;
-  deprecated_memory_changed_hook = 0;
   deprecated_context_hook = 0;
   deprecated_target_wait_hook = 0;
   deprecated_call_command_hook = 0;
@@ -401,6 +401,7 @@ interpreter_exec_cmd (char *args, int from_tty)
   for (i = 1; i < nrules; i++)
     {
       struct gdb_exception e = interp_exec (interp_to_use, prules[i]);
+
       if (e.reason < 0)
 	{
 	  interp_set (old_interp, 0);

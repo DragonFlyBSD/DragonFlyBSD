@@ -1,5 +1,5 @@
 /* Functions for deciding which macros are currently in scope.
-   Copyright (C) 2002, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2002, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
    Contributed by Red Hat, Inc.
 
    This file is part of GDB.
@@ -88,6 +88,7 @@ struct macro_scope *
 user_macro_scope (void)
 {
   struct macro_scope *ms;
+
   ms = XNEW (struct macro_scope);
   ms->file = macro_main (macro_user_macros);
   ms->line = -1;

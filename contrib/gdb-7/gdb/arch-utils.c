@@ -1,7 +1,7 @@
 /* Dynamic architecture support for GDB, the GNU debugger.
 
    Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007,
-   2008, 2009 Free Software Foundation, Inc.
+   2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -533,6 +533,7 @@ gdbarch_from_bfd (bfd *abfd)
 {
   struct gdbarch_info info;
   gdbarch_info_init (&info);
+
   info.abfd = abfd;
   return gdbarch_find_by_info (info);
 }
@@ -580,9 +581,9 @@ void
 initialize_current_architecture (void)
 {
   const char **arches = gdbarch_printable_names ();
+  struct gdbarch_info info;
 
   /* determine a default architecture and byte order. */
-  struct gdbarch_info info;
   gdbarch_info_init (&info);
   
   /* Find a default architecture. */
@@ -652,7 +653,6 @@ initialize_current_architecture (void)
   /* Create the ``set architecture'' command appending ``auto'' to the
      list of architectures. */
   {
-    struct cmd_list_element *c;
     /* Append ``auto''. */
     int nr;
     for (nr = 0; arches[nr] != NULL; nr++);
@@ -757,6 +757,32 @@ get_current_arch (void)
     return target_gdbarch;
 }
 
+int
+default_has_shared_address_space (struct gdbarch *gdbarch)
+{
+  /* Simply say no.  In most unix-like targets each inferior/process
+     has its own address space.  */
+  return 0;
+}
+
+int
+default_fast_tracepoint_valid_at (struct gdbarch *gdbarch,
+				  CORE_ADDR addr, int *isize, char **msg)
+{
+  /* We don't know if maybe the target has some way to do fast
+     tracepoints that doesn't need gdbarch, so always say yes.  */
+  if (msg)
+    *msg = NULL;
+  return 1;
+}
+
+void
+default_remote_breakpoint_from_pc (struct gdbarch *gdbarch, CORE_ADDR *pcptr,
+				   int *kindptr)
+{
+  gdbarch_breakpoint_from_pc (gdbarch, pcptr, kindptr);
+}
+
 /* */
 
 extern initialize_file_ftype _initialize_gdbarch_utils; /* -Wmissing-prototypes */
@@ -764,7 +790,6 @@ extern initialize_file_ftype _initialize_gdbarch_utils; /* -Wmissing-prototypes 
 void
 _initialize_gdbarch_utils (void)
 {
-  struct cmd_list_element *c;
   add_setshow_enum_cmd ("endian", class_support,
 			endian_enum, &set_endian_string, _("\
 Set endianness of target."), _("\

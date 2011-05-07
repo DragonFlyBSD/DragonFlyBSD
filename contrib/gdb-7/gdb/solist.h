@@ -1,6 +1,6 @@
 /* Shared library declarations for GDB, the GNU Debugger.
    Copyright (C) 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000,
-   2001, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2001, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -52,6 +52,9 @@ struct so_list
     /* shared object file name, expanded to something GDB can open */
     char so_name[SO_NAME_MAX_PATH_SIZE];
 
+    /* Program space this shared library belongs to.  */
+    struct program_space *pspace;
+
     /* The following fields of the structure are built from
        information gathered from the shared object file itself, and
        are set when we actually add it to our symbol tables.
@@ -60,8 +63,12 @@ struct so_list
 
     bfd *abfd;
     char symbols_loaded;	/* flag: symbols read in yet? */
-    char from_tty;		/* flag: print msgs? */
-    struct objfile *objfile;	/* objfile for loaded lib */
+
+    /* objfile with symbols for a loaded library.  Target memory is read from
+       ABFD.  OBJFILE may be NULL either before symbols have been loaded, if
+       the file cannot be found or after the command "nosharedlibrary".  */
+    struct objfile *objfile;
+
     struct target_section *sections;
     struct target_section *sections_end;
 
@@ -87,7 +94,7 @@ struct target_so_ops
     void (*clear_solib) (void);
 
     /* Target dependent code to run after child process fork.  */
-    void (*solib_create_inferior_hook) (void);
+    void (*solib_create_inferior_hook) (int from_tty);
 
     /* Do additional symbol handling, lookup, etc. after symbols
        for a shared object have been loaded.  */
@@ -114,7 +121,6 @@ struct target_so_ops
     /* Hook for looking up global symbols in a library-specific way.  */
     struct symbol * (*lookup_lib_global_symbol) (const struct objfile *objfile,
 						 const char *name,
-						 const char *linkage_name,
 						 const domain_enum domain);
 
     /* Given two so_list objects, one from the GDB thread list
@@ -123,6 +129,14 @@ struct target_so_ops
        Falls back to using strcmp on so_original_name field when set
        to NULL.  */
     int (*same) (struct so_list *gdb, struct so_list *inferior);
+
+    /* Return whether a region of memory must be kept in a core file
+       for shared libraries loaded before "gcore" is used to be
+       handled correctly when the core file is loaded.  This only
+       applies when the section would otherwise not be kept in the
+       core file (in particular, for readonly sections).  */
+    int (*keep_data_in_core) (CORE_ADDR vaddr,
+			      unsigned long size);
   };
 
 /* Free the memory associated with a (so_list *).  */
@@ -146,7 +160,6 @@ extern struct target_so_ops *current_target_so_ops;
 /* Handler for library-specific global symbol lookup in solib.c.  */
 struct symbol *solib_global_lookup (const struct objfile *objfile,
 				    const char *name,
-				    const char *linkage_name,
 				    const domain_enum domain);
 
 #endif

@@ -1,6 +1,6 @@
 /* Select disassembly routine for specified architecture.
    Copyright 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-   2004, 2005, 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2004, 2005, 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of the GNU opcodes library.
 
@@ -53,7 +53,6 @@
 #define ARCH_m68hc12
 #define ARCH_m68k
 #define ARCH_m88k
-#define ARCH_maxq
 #define ARCH_mcore
 #define ARCH_mep
 #define ARCH_microblaze
@@ -71,6 +70,7 @@
 #define ARCH_pj
 #define ARCH_powerpc
 #define ARCH_rs6000
+#define ARCH_rx
 #define ARCH_s390
 #define ARCH_score
 #define ARCH_sh
@@ -79,6 +79,7 @@
 #define ARCH_tic30
 #define ARCH_tic4x
 #define ARCH_tic54x
+#define ARCH_tic6x
 #define ARCH_tic80
 #define ARCH_v850
 #define ARCH_vax
@@ -255,11 +256,6 @@ disassembler (abfd)
       disassemble = print_insn_m88k;
       break;
 #endif
-#ifdef ARCH_maxq
-    case bfd_arch_maxq:
-      disassemble = print_insn_maxq_little;
-      break;
-#endif
 #ifdef ARCH_mt
     case bfd_arch_mt:
       disassemble = print_insn_mt;
@@ -352,6 +348,11 @@ disassembler (abfd)
 	disassemble = print_insn_rs6000;
       break;
 #endif
+#ifdef ARCH_rx
+    case bfd_arch_rx:
+      disassemble = print_insn_rx;
+      break;
+#endif
 #ifdef ARCH_s390
     case bfd_arch_s390:
       disassemble = print_insn_s390;
@@ -393,6 +394,11 @@ disassembler (abfd)
 #ifdef ARCH_tic54x
     case bfd_arch_tic54x:
       disassemble = print_insn_tic54x;
+      break;
+#endif
+#ifdef ARCH_tic6x
+    case bfd_arch_tic6x:
+      disassemble = print_insn_tic6x;
       break;
 #endif
 #ifdef ARCH_tic80

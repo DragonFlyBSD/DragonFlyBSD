@@ -1,7 +1,7 @@
 /* Cache and manage the values of registers for GDB, the GNU debugger.
 
    Copyright (C) 1986, 1987, 1989, 1991, 1994, 1995, 1996, 1998, 2000, 2001,
-   2002, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2002, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -23,6 +23,7 @@
 
 struct regcache;
 struct gdbarch;
+struct address_space;
 
 extern struct regcache *get_current_regcache (void);
 extern struct regcache *get_thread_regcache (ptid_t ptid);
@@ -30,11 +31,16 @@ extern struct regcache *get_thread_arch_regcache (ptid_t, struct gdbarch *);
 
 void regcache_xfree (struct regcache *regcache);
 struct cleanup *make_cleanup_regcache_xfree (struct regcache *regcache);
-struct regcache *regcache_xmalloc (struct gdbarch *gdbarch);
+struct regcache *regcache_xmalloc (struct gdbarch *gdbarch,
+				   struct address_space *aspace);
 
 /* Return REGCACHE's architecture.  */
 
 extern struct gdbarch *get_regcache_arch (const struct regcache *regcache);
+
+/* Return REGCACHE's address space.  */
+
+extern struct address_space *get_regcache_aspace (const struct regcache *regcache);
 
 /* Transfer a raw register [0..NUM_REGS) between core-gdb and the
    regcache. */
@@ -153,5 +159,6 @@ extern void regcache_cpy (struct regcache *dest, struct regcache *src);
 extern void regcache_cpy_no_passthrough (struct regcache *dest, struct regcache *src);
 
 extern void registers_changed (void);
+extern void registers_changed_ptid (ptid_t);
 
 #endif /* REGCACHE_H */

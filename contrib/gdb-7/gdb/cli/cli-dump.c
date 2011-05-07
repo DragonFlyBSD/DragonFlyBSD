@@ -1,6 +1,7 @@
 /* Dump-to-file commands, for GDB, the GNU debugger.
 
-   Copyright (c) 2002, 2005, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (c) 2002, 2005, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
 
    Contributed by Red Hat.
 
@@ -51,6 +52,7 @@ scan_expression_with_cleanup (char **cmd, const char *def)
   if ((*cmd) == NULL || (**cmd) == '\0')
     {
       char *exp = xstrdup (def);
+
       make_cleanup (xfree, exp);
       return exp;
     }
@@ -107,6 +109,7 @@ FILE *
 fopen_with_cleanup (const char *filename, const char *mode)
 {
   FILE *file = fopen (filename, mode);
+
   if (file == NULL)
     perror_with_name (filename);
   make_cleanup_fclose (file);
@@ -222,7 +225,6 @@ dump_memory_to_file (char *cmd, char *mode, char *file_format)
   void *buf;
   char *lo_exp;
   char *hi_exp;
-  int len;
 
   /* Open the file.  */
   filename = scan_filename_with_cleanup (&cmd, NULL);
@@ -389,6 +391,7 @@ static void
 call_dump_func (struct cmd_list_element *c, char *args, int from_tty)
 {
   struct dump_context *d = get_cmd_context (c);
+
   d->func (args, d->mode);
 }
 
@@ -512,7 +515,6 @@ static void
 restore_binary_file (char *filename, struct callback_data *data)
 {
   FILE *file = fopen_with_cleanup (filename, FOPEN_RB);
-  int status;
   gdb_byte *buf;
   long len;
 
@@ -665,6 +667,7 @@ void
 _initialize_cli_dump (void)
 {
   struct cmd_list_element *c;
+
   add_prefix_cmd ("dump", class_vars, dump_command, _("\
 Dump target code/data to a local file."),
 		  &dump_cmdlist, "dump ",

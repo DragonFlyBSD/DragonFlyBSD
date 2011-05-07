@@ -1,7 +1,7 @@
 /* TUI layout window management.
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009,
+   2010 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -21,6 +21,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "defs.h"
+#include "arch-utils.h"
 #include "command.h"
 #include "symtab.h"
 #include "frame.h"
@@ -522,7 +523,7 @@ static void
 extract_display_start_addr (struct gdbarch **gdbarch_p, CORE_ADDR *addr_p)
 {
   enum tui_layout_type cur_layout = tui_current_layout ();
-  struct gdbarch *gdbarch = NULL;
+  struct gdbarch *gdbarch = get_current_arch ();
   CORE_ADDR addr;
   CORE_ADDR pc;
   struct symtab_and_line cursal = get_current_source_symtab_and_line ();

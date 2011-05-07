@@ -1,7 +1,7 @@
 /* TUI data manipulation routines.
 
    Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2006, 2007, 2008,
-   2009 Free Software Foundation, Inc.
+   2009, 2010 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -402,6 +402,7 @@ tui_partial_win_by_name (char *name)
           if (tui_win_list[i] != 0)
             {
               char *cur_name = tui_win_name (&tui_win_list[i]->generic);
+
               if (strlen (name) <= strlen (cur_name)
 		  && strncmp (name, cur_name, strlen (name)) == 0)
                 win_info = tui_win_list[i];

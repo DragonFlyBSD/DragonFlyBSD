@@ -1,6 +1,7 @@
 /* Traditional frame unwind support, for GDB the GNU Debugger.
 
-   Copyright (C) 2003, 2004, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2003, 2004, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -56,6 +57,7 @@ trad_frame_alloc_saved_regs (struct frame_info *this_frame)
   int numregs = gdbarch_num_regs (gdbarch) + gdbarch_num_pseudo_regs (gdbarch);
   struct trad_frame_saved_reg *this_saved_regs
     = FRAME_OBSTACK_CALLOC (numregs, struct trad_frame_saved_reg);
+
   for (regnum = 0; regnum < numregs; regnum++)
     {
       this_saved_regs[regnum].realreg = regnum;
@@ -135,7 +137,6 @@ trad_frame_get_prev_register (struct frame_info *this_frame,
 			      struct trad_frame_saved_reg this_saved_regs[],
 			      int regnum)
 {
-  struct gdbarch *gdbarch = get_frame_arch (this_frame);
   if (trad_frame_addr_p (this_saved_regs, regnum))
     /* The register was saved in memory.  */
     return frame_unwind_got_memory (this_frame, regnum,

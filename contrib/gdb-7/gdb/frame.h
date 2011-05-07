@@ -1,7 +1,7 @@
 /* Definitions for dealing with stack frames, for GDB, the GNU debugger.
 
    Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1996, 1997,
-   1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009
+   1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -405,6 +405,15 @@ extern int frame_relative_level (struct frame_info *fi);
 /* Return the frame's type.  */
 
 extern enum frame_type get_frame_type (struct frame_info *);
+
+/* Return the frame's program space.  */
+extern struct program_space *get_frame_program_space (struct frame_info *);
+
+/* Unwind THIS frame's program space from the NEXT frame.  */
+extern struct program_space *frame_unwind_program_space (struct frame_info *);
+
+/* Return the frame's address space.  */
+extern struct address_space *get_frame_address_space (struct frame_info *);
 
 /* For frames where we can not unwind further, describe why.  */
 

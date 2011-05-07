@@ -1,6 +1,6 @@
 /* Annotation routines for GDB.
    Copyright (C) 1986, 1989, 1990, 1991, 1992, 1994, 1995, 1996, 1998, 1999,
-   2000, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2000, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 

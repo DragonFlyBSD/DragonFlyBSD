@@ -1,6 +1,8 @@
 \input texinfo   @c -*- texinfo -*-
 @setfilename gdbint.info
 @include gdb-cfg.texi
+@settitle @value{GDBN} Internals
+@setchapternewpage off
 @dircategory Software development
 @direntry
 * Gdb-Internals: (gdbint).	The GNU debugger's internals.
@@ -8,13 +10,13 @@
 
 @copying
 Copyright @copyright{} 1990, 1991, 1992, 1993, 1994, 1996, 1998, 1999,
-2000, 2001, 2002, 2003, 2004, 2005, 2006, 2008, 2009
+2000, 2001, 2002, 2003, 2004, 2005, 2006, 2008, 2009, 2010
 Free Software Foundation, Inc.
 Contributed by Cygnus Solutions.  Written by John Gilmore.
 Second Edition by Stan Shebs.
 
 Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.1 or
+under the terms of the GNU Free Documentation License, Version 1.3 or
 any later version published by the Free Software Foundation; with no
 Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
 Texts.  A copy of the license is included in the section entitled ``GNU
@@ -27,8 +29,6 @@ This file documents the internals of the GNU debugger @value{GDBN}.
 @insertcopying
 @end ifnottex
 
-@setchapternewpage off
-@settitle @value{GDBN} Internals
 
 @syncodeindex fn cp
 @syncodeindex vr cp
@@ -781,11 +781,6 @@ inferior after a watchpoint has been hit.  This is usually set
 when watchpoints trigger at the instruction following an interesting
 read or write.
 
-@findex CANNOT_STEP_HW_WATCHPOINTS
-@item CANNOT_STEP_HW_WATCHPOINTS
-If this is defined to a non-zero value, @value{GDBN} will remove all
-watchpoints before stepping the inferior.
-
 @findex STOPPED_BY_WATCHPOINT
 @item STOPPED_BY_WATCHPOINT (@var{wait_status})
 Return non-zero if stopped by a watchpoint.  @var{wait_status} is of
@@ -985,13 +980,6 @@ These functions work like @code{i386_insert_watchpoint} and
 the debug registers to watch instruction execution, and each
 hardware-assisted breakpoint always requires exactly one debug
 register.
-
-@findex i386_stopped_by_hwbp
-@item i386_stopped_by_hwbp (void)
-This function returns non-zero if the inferior has some watchpoint or
-hardware breakpoint that triggered.  It works like
-@code{i386_stopped_data_address}, except that it doesn't record the
-address whose watchpoint triggered.
 
 @findex i386_cleanup_dregs
 @item i386_cleanup_dregs (void)
@@ -2301,6 +2289,12 @@ and all the psymbols themselves are allocated in a pair of large arrays
 on an obstack, so there is little to be gained by trying to free them
 unless you want to do a lot more work.
 
+Whether or not psymtabs are created depends on the objfile's symbol
+reader.  The core of @value{GDBN} hides the details of partial symbols
+and partial symbol tables behind a set of function pointers known as
+the @dfn{quick symbol functions}.  These are documented in
+@file{symfile.h}.
+
 @section Types
 
 @unnumberedsubsec Fundamental Types (e.g., @code{FT_VOID}, @code{FT_BOOLEAN}).
@@ -2789,19 +2783,6 @@ the printf format conversion specifier @code{ll}.  This is set by the
 Define this if @code{lseek (n)} does not necessarily move to byte number
 @code{n} in the file.  This is only used when reading source files.  It
 is normally faster to define @code{CRLF_SOURCE_FILES} when possible.
-
-@item NORETURN
-If defined, this should be one or more tokens, such as @code{volatile},
-that can be used in both the declaration and definition of functions to
-indicate that they never return.  The default is already set correctly
-if compiling with GCC.  This will almost never need to be defined.
-
-@item ATTR_NORETURN
-If defined, this should be one or more tokens, such as
-@code{__attribute__ ((noreturn))}, that can be used in the declarations
-of functions to indicate that they never return.  The default is already
-set correctly if compiling with GCC.  This will almost never need to be
-defined.
 
 @item lint
 Define this to help placate @code{lint} in some situations.
@@ -6264,6 +6245,10 @@ the code detected a user error, recovered from it and issued a
 @code{warning} or the code failed to correctly recover from the user
 error and issued an @code{internal_error}.}
 
+@subsection Command Names
+
+GDB U/I commands are written @samp{foo-bar}, not @samp{foo_bar}.
+
 @subsection File Names
 
 Any file used when building the core of @value{GDBN} must be in lower
@@ -6759,15 +6744,44 @@ Update the copyright year in the startup message
 
 Update the copyright year in:
 @itemize @bullet
-@item file @file{top.c}, function @code{print_gdb_version}
-@item file @file{gdbserver/server.c}, function @code{gdbserver_version}
-@item file @file{gdbserver/gdbreplay.c}, function @code{gdbreplay_version}
+  @item
+  file @file{top.c}, function @code{print_gdb_version}
+  @item
+  file @file{gdbserver/server.c}, function @code{gdbserver_version}
+  @item
+  file @file{gdbserver/gdbreplay.c}, function @code{gdbreplay_version}
 @end itemize
 
 @item
-Add the new year in the copyright notices of all source and documentation
-files.  This can be done semi-automatically by running the @code{copyright.sh}
-script.  This script requires Emacs 22 or later to be installed.
+Run the @file{copyright.sh} script to add the new year in the copyright
+notices of most source files.  This script requires Emacs 22 or later to
+be installed.
+
+@item
+The new year also needs to be added manually in all other files that
+are not already taken care of by the @file{copyright.sh} script:
+@itemize @bullet
+  @item
+  @file{*.s}
+  @item
+  @file{*.f}
+  @item
+  @file{*.f90}
+  @item
+  @file{*.igen}
+  @item
+  @file{*.ac}
+  @item
+  @file{*.texi}
+  @item
+  @file{*.texinfo}
+  @item
+  @file{*.tex}
+  @item
+  @file{*.defs}
+  @item
+  @file{*.1}
+@end itemize
 
 @end itemize
 
@@ -7577,6 +7591,14 @@ will give a result of ``UNRESOLVED'', like this:
 UNRESOLVED: gdb.base/example.exp: This test script does not work on a remote host.
 @end smallexample
 
+@section Testsuite Parameters
+
+Several variables exist to modify the behavior of the testsuite.
+
+@itemize @bullet
+
+@item @code{TRANSCRIPT}
+
 Sometimes it is convenient to get a transcript of the commands which
 the testsuite sends to @value{GDBN}.  For example, if @value{GDBN}
 crashes during testing, a transcript can be used to more easily
@@ -7597,6 +7619,103 @@ make check RUNTESTFLAGS=TRANSCRIPT=y
 
 Note that the transcript is not always complete.  In particular, tests
 of completion can yield partial command lines.
+
+@item @code{GDB}
+
+Sometimes one wishes to test a different @value{GDBN} than the one in the build
+directory.  For example, one may wish to run the testsuite on
+@file{/usr/bin/gdb}.
+
+@smallexample
+make check RUNTESTFLAGS=GDB=/usr/bin/gdb
+@end smallexample
+
+@item @code{GDBSERVER}
+
+When testing a different @value{GDBN}, it is often useful to also test a
+different gdbserver.
+
+@smallexample
+make check RUNTESTFLAGS="GDB=/usr/bin/gdb GDBSERVER=/usr/bin/gdbserver"
+@end smallexample
+
+@item @code{INTERNAL_GDBFLAGS}
+
+When running the testsuite normally one doesn't want whatever is in
+@file{~/.gdbinit} to interfere with the tests, therefore the test harness
+passes @option{-nx} to @value{GDBN}.  One also doesn't want any windowed
+version of @value{GDBN}, e.g., @command{gdbtui}, to run.
+This is achieved via @code{INTERNAL_GDBFLAGS}.  
+
+@smallexample
+set INTERNAL_GDBFLAGS "-nw -nx"
+@end smallexample
+
+This is all well and good, except when testing an installed @value{GDBN}
+that has been configured with @option{--with-system-gdbinit}.  Here one
+does not want @file{~/.gdbinit} loaded but one may want the system
+@file{.gdbinit} file loaded.  This can be achieved by pointing @code{$HOME}
+at a directory without a @file{.gdbinit} and by overriding
+@code{INTERNAL_GDBFLAGS} and removing @option{-nx}.
+
+@smallexample
+cd testsuite
+HOME=`pwd` runtest \
+  GDB=/usr/bin/gdb \
+  GDBSERVER=/usr/bin/gdbserver \
+  INTERNAL_GDBFLAGS=-nw
+@end smallexample
+
+@end itemize
+
+There are two ways to run the testsuite and pass additional parameters
+to DejaGnu.  The first is with @kbd{make check} and specifying the
+makefile variable @samp{RUNTESTFLAGS}.
+
+@smallexample
+make check RUNTESTFLAGS=TRANSCRIPT=y
+@end smallexample
+
+The second is to cd to the @file{testsuite} directory and invoke the DejaGnu
+@command{runtest} command directly.
+
+@smallexample
+cd testsuite
+make site.exp
+runtest TRANSCRIPT=y
+@end smallexample
+
+@section Testsuite Configuration
+@cindex Testsuite Configuration
+
+It is possible to adjust the behavior of the testsuite by defining
+the global variables listed below, either in a @file{site.exp} file,
+or in a board file.
+
+@itemize @bullet
+
+@item @code{gdb_test_timeout}
+
+Defining this variable changes the default timeout duration used during
+communication with @value{GDBN}.  More specifically, the global variable
+used during testing is @code{timeout}, but this variable gets reset to
+@code{gdb_test_timeout} at the beginning of each testcase, making sure
+that any local change to @code{timeout} in a testcase does not affect
+subsequent testcases.
+
+This global variable comes in handy when the debugger is slower than
+normal due to the testing environment, triggering unexpected @code{TIMEOUT}
+test failures.  Examples include when testing on a remote machine, or
+against a system where communications are slow.
+
+If not specifically defined, this variable gets automatically defined
+to the same value as @code{timeout} during the testsuite initialization.
+The default value of the timeout is defined in the file
+@file{gdb/testsuite/config/unix.exp} that is part of the @value{GDBN}
+test suite@footnote{If you are using a board file, it could override
+the test-suite default; search the board file for "timeout".}.
+
+@end itemize
 
 @section Testsuite Organization
 
@@ -7693,7 +7812,7 @@ appear anywhere else in the directory.
 * Debugging GDB::		Debugging @value{GDBN} with itself
 @end menu
 
-@node Getting Started,,, Hints
+@node Getting Started
 
 @section Getting Started
 
@@ -7776,7 +7895,7 @@ wondering if anyone could give me some tips about understanding
 @value{GDBN}''---if we had some magic secret we would put it in this manual.
 Suggestions for improving the manual are always welcome, of course.
 
-@node Debugging GDB,,,Hints
+@node Debugging GDB
 
 @section Debugging @value{GDBN} with itself
 @cindex debugging @value{GDBN}
@@ -7884,9 +8003,10 @@ information about the architecture.  The test results are stored in log files
 in the directory the script was called from.
 
 @include observer.texi
-@raisesections
+
+@node GNU Free Documentation License
+@appendix GNU Free Documentation License
 @include fdl.texi
-@lowersections
 
 @node Index
 @unnumbered Index

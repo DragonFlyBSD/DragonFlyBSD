@@ -1,6 +1,6 @@
 /* Remote File-I/O communications
 
-   Copyright (C) 2003, 2005, 2006, 2007, 2008, 2009
+   Copyright (C) 2003, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -35,6 +35,15 @@
 #include <sys/time.h>
 #ifdef __CYGWIN__
 #include <sys/cygwin.h>		/* For cygwin_conv_to_full_posix_path.  */
+#include <cygwin/version.h>
+#if CYGWIN_VERSION_DLL_MAKE_COMBINED(CYGWIN_VERSION_API_MAJOR,CYGWIN_VERSION_API_MINOR) < 181
+# define CCP_POSIX_TO_WIN_A 0
+# define CCP_WIN_A_TO_POSIX 2
+# define cygwin_conv_path(op, from, to, size)  \
+         (op == CCP_WIN_A_TO_POSIX) ? \
+         cygwin_conv_to_full_posix_path (from, to) : \
+         cygwin_conv_to_win32_path (from, to)
+#endif
 #endif
 #include <signal.h>
 
@@ -100,6 +109,7 @@ static int
 remote_fileio_fd_to_targetfd (int fd)
 {
   int target_fd = remote_fileio_next_free_fd ();
+
   remote_fio_data.fd_map[target_fd] = fd;
   return target_fd;
 }
@@ -741,7 +751,7 @@ remote_fileio_func_read (char *buf)
 	  static char *remaining_buf = NULL;
 	  static int remaining_length = 0;
 
-	  buffer = (gdb_byte *) xmalloc (32768);
+	  buffer = (gdb_byte *) xmalloc (16384);
 	  if (remaining_buf)
 	    {
 	      remote_fio_no_longjmp = 1;
@@ -763,7 +773,18 @@ remote_fileio_func_read (char *buf)
 	    }
 	  else
 	    {
-	      ret = ui_file_read (gdb_stdtargin, (char *) buffer, 32767);
+	      /* Windows (at least XP and Server 2003) has difficulty
+		 with large reads from consoles.  If a handle is
+		 backed by a real console device, overly large reads
+		 from the handle will fail and set errno == ENOMEM.
+		 On a Windows Server 2003 system where I tested,
+		 reading 26608 bytes from the console was OK, but
+		 anything above 26609 bytes would fail.  The limit has
+		 been observed to vary on different systems.  So, we
+		 limit this read to something smaller than that - by a
+		 safe margin, in case the limit depends on system
+		 resources or version.  */
+	      ret = ui_file_read (gdb_stdtargin, (char *) buffer, 16383);
 	      remote_fio_no_longjmp = 1;
 	      if (ret > 0 && (size_t)ret > length)
 		{
@@ -1010,12 +1031,14 @@ remote_fileio_func_rename (char *buf)
 		errno = EISDIR;
 	      else
 		{
-		  char oldfullpath[PATH_MAX + 1];
-		  char newfullpath[PATH_MAX + 1];
+		  char oldfullpath[PATH_MAX];
+		  char newfullpath[PATH_MAX];
 		  int len;
 
-		  cygwin_conv_to_full_posix_path (oldpath, oldfullpath);
-		  cygwin_conv_to_full_posix_path (newpath, newfullpath);
+		  cygwin_conv_path (CCP_WIN_A_TO_POSIX, oldpath, oldfullpath,
+				    PATH_MAX);
+		  cygwin_conv_path (CCP_WIN_A_TO_POSIX, newpath, newfullpath,
+				    PATH_MAX);
 		  len = strlen (oldfullpath);
 		  if (newfullpath[len] == '/'
 		      && !strncmp (oldfullpath, newfullpath, len))
@@ -1405,28 +1428,44 @@ remote_fileio_reset (void)
     }
 }
 
+/* Handle a file I/O request. BUF points to the packet containing the
+   request. CTRLC_PENDING_P should be nonzero if the target has not
+   acknowledged the Ctrl-C sent asynchronously earlier.  */
+
 void
-remote_fileio_request (char *buf)
+remote_fileio_request (char *buf, int ctrlc_pending_p)
 {
   int ex;
 
   remote_fileio_sig_init ();
 
-  remote_fio_ctrl_c_flag = 0;
-  remote_fio_no_longjmp = 0;
-
-  ex = catch_exceptions (uiout, do_remote_fileio_request, (void *)buf,
-			 RETURN_MASK_ALL);
-  switch (ex)
+  if (ctrlc_pending_p)
     {
-      case RETURN_ERROR:
-	remote_fileio_reply (-1, FILEIO_ENOSYS);
-        break;
-      case RETURN_QUIT:
-        remote_fileio_reply (-1, FILEIO_EINTR);
-	break;
-      default:
-        break;
+      /* If the target hasn't responded to the Ctrl-C sent
+	 asynchronously earlier, take this opportunity to send the
+	 Ctrl-C synchronously.  */
+      remote_fio_ctrl_c_flag = 1;
+      remote_fio_no_longjmp = 0;
+      remote_fileio_reply (-1, FILEIO_EINTR);
+    }
+  else
+    {
+      remote_fio_ctrl_c_flag = 0;
+      remote_fio_no_longjmp = 0;
+
+      ex = catch_exceptions (uiout, do_remote_fileio_request, (void *)buf,
+			     RETURN_MASK_ALL);
+      switch (ex)
+	{
+	case RETURN_ERROR:
+	  remote_fileio_reply (-1, FILEIO_ENOSYS);
+	  break;
+	case RETURN_QUIT:
+	  remote_fileio_reply (-1, FILEIO_EINTR);
+	  break;
+	default:
+	  break;
+	}
     }
 
   remote_fileio_sig_exit ();
@@ -1439,6 +1478,7 @@ set_system_call_allowed (char *args, int from_tty)
     {
       char *arg_end;
       int val = strtoul (args, &arg_end, 10);
+
       if (*args && *arg_end == '\0')
         {
 	  remote_fio_system_call_allowed = !!val;

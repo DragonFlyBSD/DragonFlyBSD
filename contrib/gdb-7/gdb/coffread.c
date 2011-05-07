@@ -1,7 +1,7 @@
 /* Read coff symbol tables and convert to internal format, for GDB.
    Copyright (C) 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
-   1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008, 2009,
+   2010 Free Software Foundation, Inc.
    Contributed by David D. Johnson, Brown University (ddj@cs.brown.edu).
 
    This file is part of GDB.
@@ -44,6 +44,8 @@
 #include "dictionary.h"
 
 #include "coff-pe-read.h"
+
+#include "psymtab.h"
 
 extern void _initialize_coffread (void);
 
@@ -258,6 +260,7 @@ static void
 find_targ_sec (bfd *abfd, asection *sect, void *obj)
 {
   struct find_targ_sec_arg *args = (struct find_targ_sec_arg *) obj;
+
   if (sect->target_index == args->targ_index)
     *args->resultp = sect;
 }
@@ -280,6 +283,7 @@ static int
 cs_to_section (struct coff_symbol *cs, struct objfile *objfile)
 {
   asection *sect = cs_to_bfd_section (cs, objfile);
+
   if (sect == NULL)
     return SECT_OFF_TEXT (objfile);
   return sect->index;
@@ -402,9 +406,6 @@ coff_end_symtab (struct objfile *objfile)
 
   symtab = end_symtab (current_source_end_addr, objfile, SECT_OFF_TEXT (objfile));
 
-  if (symtab != NULL)
-    free_named_symtabs (symtab->filename);
-
   /* Reinitialize for beginning of new file. */
   last_source_file = NULL;
 }
@@ -415,6 +416,7 @@ record_minimal_symbol (struct coff_symbol *cs, CORE_ADDR address,
 		       struct objfile *objfile)
 {
   struct bfd_section *bfd_section;
+
   /* We don't want TDESC entry points in the minimal symbol table */
   if (cs->c_name[0] == '@')
     return NULL;
@@ -501,7 +503,7 @@ static bfd *symfile_bfd;
 /* Read a symbol file, after initialization by coff_symfile_init.  */
 
 static void
-coff_symfile_read (struct objfile *objfile, int mainline)
+coff_symfile_read (struct objfile *objfile, int symfile_flags)
 {
   struct coff_symfile_info *info;
   struct dbx_symfile_info *dbxinfo;
@@ -514,8 +516,6 @@ coff_symfile_read (struct objfile *objfile, int mainline)
   int stringtab_offset;
   struct cleanup *back_to, *cleanup_minimal_symbols;
   int stabstrsize;
-  int len;
-  char * target;
   
   info = (struct coff_symfile_info *) objfile->deprecated_sym_private;
   dbxinfo = objfile->deprecated_sym_stab_info;
@@ -607,15 +607,6 @@ coff_symfile_read (struct objfile *objfile, int mainline)
   /* Free the installed minimal symbol data.  */
   do_cleanups (cleanup_minimal_symbols);
 
-  /* If we are reinitializing, or if we have not loaded syms yet,
-     empty the psymtab.  "mainline" is cleared so the *_read_psymtab
-     functions do not all re-initialize it.  */
-  if (mainline)
-    {
-      init_psymbol_list (objfile, 0);
-      mainline = 0;
-    }
-
   bfd_map_over_sections (abfd, coff_locate_sections, (void *) info);
 
   if (info->stabsects)
@@ -634,7 +625,6 @@ coff_symfile_read (struct objfile *objfile, int mainline)
       stabstrsize = bfd_section_size (abfd, info->stabstrsect);
 
       coffstab_build_psymtabs (objfile,
-			       mainline,
 			       info->textaddr, info->textsize,
 			       info->stabsects,
 			       info->stabstrsect->filepos, stabstrsize);
@@ -642,10 +632,26 @@ coff_symfile_read (struct objfile *objfile, int mainline)
   if (dwarf2_has_info (objfile))
     {
       /* DWARF2 sections.  */
-      dwarf2_build_psymtabs (objfile, mainline);
+      dwarf2_build_psymtabs (objfile);
     }
 
   dwarf2_build_frame_info (objfile);
+
+  /* Try to add separate debug file if no symbols table found.   */
+  if (!objfile_has_partial_symbols (objfile))
+    {
+      char *debugfile;
+
+      debugfile = find_separate_debug_file_by_debuglink (objfile);
+
+      if (debugfile)
+	{
+	  bfd *abfd = symfile_bfd_open (debugfile);
+
+	  symbol_file_add_separate (abfd, symfile_flags, objfile);
+	  xfree (debugfile);
+	}
+    }
 
   do_cleanups (back_to);
 }
@@ -777,6 +783,7 @@ coff_symtab_read (long symtab_offset, unsigned int nsyms,
 	{
 	  /* Record all functions -- external and static -- in minsyms. */
 	  int section = cs_to_section (cs, objfile);
+
 	  tmpaddr = cs->c_value + ANOFFSET (objfile->section_offsets, SECT_OFF_TEXT (objfile));
 	  record_minimal_symbol (cs, tmpaddr, mst_text, section, objfile);
 
@@ -882,6 +889,7 @@ coff_symtab_read (long symtab_offset, unsigned int nsyms,
 		/* This is a common symbol.  See if the target
 		   environment knows where it has been relocated to.  */
 		CORE_ADDR reladdr;
+
 		if (target_lookup_symbol (cs->c_name, &reladdr))
 		  {
 		    /* Error in lookup; ignore symbol.  */
@@ -906,6 +914,7 @@ coff_symtab_read (long symtab_offset, unsigned int nsyms,
 	    else
 	      {
 		asection *bfd_section = cs_to_bfd_section (cs, objfile);
+
 		sec = cs_to_section (cs, objfile);
 		tmpaddr = cs->c_value;
  		/* Statics in a PE file also get relocated */
@@ -947,6 +956,7 @@ coff_symtab_read (long symtab_offset, unsigned int nsyms,
 	    if (SDB_TYPE (cs->c_type))
 	      {
 		struct symbol *sym;
+
 		sym = process_coff_symbol
 		  (cs, &main_aux, objfile);
 		SYMBOL_VALUE (sym) = tmpaddr;
@@ -1434,10 +1444,10 @@ patch_opaque_types (struct symtab *s)
          Remove syms from the chain when their types are stored,
          but search the whole chain, as there may be several syms
          from different files with the same name.  */
-      if (SYMBOL_CLASS (real_sym) == LOC_TYPEDEF &&
-	  SYMBOL_DOMAIN (real_sym) == VAR_DOMAIN &&
-	  TYPE_CODE (SYMBOL_TYPE (real_sym)) == TYPE_CODE_PTR &&
-	  TYPE_LENGTH (TYPE_TARGET_TYPE (SYMBOL_TYPE (real_sym))) != 0)
+      if (SYMBOL_CLASS (real_sym) == LOC_TYPEDEF
+	  && SYMBOL_DOMAIN (real_sym) == VAR_DOMAIN
+	  && TYPE_CODE (SYMBOL_TYPE (real_sym)) == TYPE_CODE_PTR
+	  && TYPE_LENGTH (TYPE_TARGET_TYPE (SYMBOL_TYPE (real_sym))) != 0)
 	{
 	  char *name = SYMBOL_LINKAGE_NAME (real_sym);
 	  int hash = hashname (name);
@@ -1446,8 +1456,8 @@ patch_opaque_types (struct symtab *s)
 	  prev = 0;
 	  for (sym = opaque_type_chain[hash]; sym;)
 	    {
-	      if (name[0] == SYMBOL_LINKAGE_NAME (sym)[0] &&
-		  strcmp (name + 1, SYMBOL_LINKAGE_NAME (sym) + 1) == 0)
+	      if (name[0] == SYMBOL_LINKAGE_NAME (sym)[0]
+		  && strcmp (name + 1, SYMBOL_LINKAGE_NAME (sym) + 1) == 0)
 		{
 		  if (prev)
 		    {
@@ -1495,15 +1505,15 @@ process_coff_symbol (struct coff_symbol *cs,
 		     struct objfile *objfile)
 {
   struct symbol *sym
-  = (struct symbol *) obstack_alloc (&objfile->objfile_obstack,
-				     sizeof (struct symbol));
+    = (struct symbol *) obstack_alloc (&objfile->objfile_obstack,
+				       sizeof (struct symbol));
   char *name;
 
   memset (sym, 0, sizeof (struct symbol));
   name = cs->c_name;
   name = EXTERNAL_NAME (name, objfile->obfd);
   SYMBOL_LANGUAGE (sym) = current_subfile->language;
-  SYMBOL_SET_NAMES (sym, name, strlen (name), objfile);
+  SYMBOL_SET_NAMES (sym, name, strlen (name), 1, objfile);
 
   /* default assumptions */
   SYMBOL_VALUE (sym) = cs->c_value;
@@ -1632,10 +1642,10 @@ process_coff_symbol (struct coff_symbol *cs,
 	     simple forward reference (TYPE_CODE_UNDEF) is not an
 	     empty structured type, though; the forward references
 	     work themselves out via the magic of coff_lookup_type.  */
-	  if (TYPE_CODE (SYMBOL_TYPE (sym)) == TYPE_CODE_PTR &&
-	      TYPE_LENGTH (TYPE_TARGET_TYPE (SYMBOL_TYPE (sym))) == 0 &&
-	      TYPE_CODE (TYPE_TARGET_TYPE (SYMBOL_TYPE (sym))) !=
-	      TYPE_CODE_UNDEF)
+	  if (TYPE_CODE (SYMBOL_TYPE (sym)) == TYPE_CODE_PTR
+	      && TYPE_LENGTH (TYPE_TARGET_TYPE (SYMBOL_TYPE (sym))) == 0
+	      && TYPE_CODE (TYPE_TARGET_TYPE (SYMBOL_TYPE (sym)))
+	         != TYPE_CODE_UNDEF)
 	    {
 	      int i = hashname (SYMBOL_LINKAGE_NAME (sym));
 
@@ -2096,6 +2106,7 @@ coff_read_enum_type (int index, int length, int lastsym,
       for (; j < syms->nsyms; j++, n++)
 	{
 	  struct symbol *xsym = syms->symbol[j];
+
 	  SYMBOL_TYPE (xsym) = type;
 	  TYPE_FIELD_NAME (type, n) = SYMBOL_LINKAGE_NAME (xsym);
 	  SET_FIELD_BITPOS (TYPE_FIELD (type, n), SYMBOL_VALUE (xsym));
@@ -2126,6 +2137,8 @@ static struct sym_fns coff_sym_fns =
   default_symfile_segments,	/* sym_segments: Get segment information from
 				   a file.  */
   NULL,                         /* sym_read_linetable  */
+  default_symfile_relocate,	/* sym_relocate: Relocate a debug section.  */
+  &psym_functions,
   NULL				/* next: pointer to next struct sym_fns */
 };
 

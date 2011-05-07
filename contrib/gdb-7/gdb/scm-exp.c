@@ -1,6 +1,6 @@
 /* Scheme/Guile language support routines for GDB, the GNU debugger.
 
-   Copyright (C) 1995, 1996, 2000, 2003, 2005, 2008, 2009
+   Copyright (C) 1995, 1996, 2000, 2003, 2005, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -112,6 +112,7 @@ scm_istring2number (char *str, int len, int radix)
 #if 0
   SCM res;
 #endif
+
   if (len == 1)
     if (*str == '+' || *str == '-')	/* Catches lone `+' and `-' for speed */
       return SCM_BOOL_F;
@@ -238,6 +239,7 @@ static int
 scm_skip_ws (void)
 {
   int c;
+
   while (1)
     switch ((c = *lexptr++))
       {
@@ -272,6 +274,7 @@ scm_lreadparen (int skipping)
   for (;;)
     {
       int c = scm_skip_ws ();
+
       if (')' == c || ']' == c)
 	return;
       --lexptr;
@@ -287,6 +290,7 @@ scm_lreadr (int skipping)
   int c, j;
   struct stoken str;
   LONGEST svalue = 0;
+
 tryagain:
   c = *lexptr++;
   switch (c)
@@ -309,6 +313,7 @@ tryagain:
       if (!skipping)
 	{
 	  struct value *val = scm_evaluate_string (str.ptr, lexptr - str.ptr);
+
 	  if (!is_scmvalue_type (value_type (val)))
 	    error ("quoted scm form yields non-SCM value");
 	  svalue = extract_signed_integer (value_contents (val),
@@ -481,6 +486,7 @@ int
 scm_parse (void)
 {
   char *start;
+
   while (*lexptr == ' ')
     lexptr++;
   start = lexptr;

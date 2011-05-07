@@ -2,7 +2,7 @@
    convert to internal format, for GDB. Used as a last resort if no
    debugging symbols recognized.
 
-   Copyright (C) 2003, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2003, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -108,7 +108,6 @@ add_pe_exported_sym (char *sym_name,
 
   char *qualified_name = 0;
   int dll_name_len = strlen (dll_name);
-  int count;
 
   /* Generate a (hopefully unique) qualified name using the first part
      of the dll name, e.g. KERNEL32!AddAtomA. This matches the style
@@ -283,7 +282,6 @@ read_pe_exported_syms (struct objfile *objfile)
       unsigned long secptr1 = secptr + 40 * i;
       unsigned long vsize = pe_get32 (dll, secptr1 + 8);
       unsigned long vaddr = pe_get32 (dll, secptr1 + 12);
-      unsigned long flags = pe_get32 (dll, secptr1 + 36);
       char sec_name[9];
       int sectix;
 

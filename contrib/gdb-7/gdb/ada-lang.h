@@ -1,7 +1,7 @@
 /* Ada language support definitions for GDB, the GNU debugger.
 
    Copyright (C) 1992, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-   2007, 2008, 2009 Free Software Foundation, Inc.
+   2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -21,7 +21,6 @@
 #if !defined (ADA_LANG_H)
 #define ADA_LANG_H 1
 
-struct partial_symbol;
 struct frame_info;
 
 #include "value.h"
@@ -157,11 +156,15 @@ extern int ada_parse (void);    /* Defined in ada-exp.y */
 extern void ada_error (char *); /* Defined in ada-exp.y */
 
                         /* Defined in ada-typeprint.c */
-extern void ada_print_type (struct type *, char *, struct ui_file *, int,
+extern void ada_print_type (struct type *, const char *, struct ui_file *, int,
                             int);
+
+extern void ada_print_typedef (struct type *type, struct symbol *new_symbol,
+			       struct ui_file *stream);
 
 extern int ada_val_print (struct type *, const gdb_byte *, int, CORE_ADDR,
                           struct ui_file *, int,
+			  const struct value *,
 			  const struct value_print_options *);
 
 extern int ada_value_print (struct value *, struct ui_file *,
@@ -174,7 +177,7 @@ extern void ada_emit_char (int, struct type *, struct ui_file *, int, int);
 extern void ada_printchar (int, struct type *, struct ui_file *);
 
 extern void ada_printstr (struct ui_file *, struct type *, const gdb_byte *,
-			  unsigned int, int,
+			  unsigned int, const char *, int,
 			  const struct value_print_options *);
 
 struct value *ada_convert_actual (struct value *actual,
@@ -184,6 +187,8 @@ struct value *ada_convert_actual (struct value *actual,
 
 extern struct value *ada_value_subscript (struct value *, int,
                                           struct value **);
+
+extern void ada_fixup_array_indexes_type (struct type *index_desc_type);
 
 extern struct type *ada_array_element_type (struct type *, int);
 
@@ -199,12 +204,15 @@ extern int ada_is_array_descriptor_type (struct type *);
 
 extern int ada_is_bogus_array_descriptor (struct type *);
 
+extern LONGEST ada_discrete_type_low_bound (struct type *);
+
+extern LONGEST ada_discrete_type_high_bound (struct type *);
+
 extern char *ada_decode_symbol (const struct general_symbol_info*);
 
 extern const char *ada_decode (const char*);
 
-extern enum language ada_update_initial_language (enum language, 
-						  struct partial_symtab*);
+extern enum language ada_update_initial_language (enum language);
 
 extern void clear_ada_sym_cache (void);
 
@@ -243,7 +251,7 @@ extern struct type *ada_parent_type (struct type *);
 
 extern int ada_is_ignored_field (struct type *, int);
 
-extern int ada_is_packed_array_type (struct type *);
+extern int ada_is_constrained_packed_array_type (struct type *);
 
 extern struct value *ada_value_primitive_packed_val (struct value *,
 						     const gdb_byte *,
@@ -301,12 +309,6 @@ extern DOUBLEST ada_fixed_to_float (struct type *, LONGEST);
 
 extern LONGEST ada_float_to_fixed (struct type *, DOUBLEST);
 
-extern int ada_is_vax_floating_type (struct type *);
-
-extern int ada_vax_float_type_suffix (struct type *);
-
-extern struct value *ada_vax_float_print_function (struct type *);
-
 extern struct type *ada_system_address_type (void);
 
 extern int ada_which_variant_applies (struct type *, struct type *,
@@ -315,6 +317,8 @@ extern int ada_which_variant_applies (struct type *, struct type *,
 extern struct type *ada_to_fixed_type (struct type *, const gdb_byte *,
 				       CORE_ADDR, struct value *,
                                        int check_tag);
+
+extern struct value *ada_to_fixed_value (struct value *val);
 
 extern struct type *ada_template_to_fixed_record_type_1 (struct type *type,
 							 const gdb_byte *valaddr,

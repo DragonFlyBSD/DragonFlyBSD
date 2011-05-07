@@ -2,7 +2,7 @@
 
    Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
    1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008,
-   2009 Free Software Foundation, Inc.
+   2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -51,6 +51,9 @@
 #include "gdb_assert.h"
 #include <ctype.h>
 #include "gdb_string.h"
+
+#include "psymtab.h"
+#include "symfile.h"
 
 void (*deprecated_selected_frame_level_changed_hook) (int);
 
@@ -284,6 +287,7 @@ print_frame_args (struct symbol *func, struct frame_info *frame,
 	  if (*SYMBOL_LINKAGE_NAME (sym))
 	    {
 	      struct symbol *nsym;
+
 	      nsym = lookup_symbol (SYMBOL_LINKAGE_NAME (sym),
 				    b, VAR_DOMAIN, NULL);
 	      gdb_assert (nsym != NULL);
@@ -481,6 +485,7 @@ static void
 gdb_disassembly_stub (void *args)
 {
   struct gdb_disassembly_stub_args *p = args;
+
   gdb_disassembly (p->gdbarch, uiout, 0,
                    DISASSEMBLY_RAW_INSN, p->how_many,
                    p->low, p->high);
@@ -620,6 +625,7 @@ print_frame_info (struct frame_info *frame, int print_level,
 	  else
 	    {
 	      struct value_print_options opts;
+
 	      get_user_print_options (&opts);
 	      /* We used to do this earlier, but that is clearly
 		 wrong. This function is used by many different
@@ -643,12 +649,12 @@ print_frame_info (struct frame_info *frame, int print_level,
       /* If disassemble-next-line is set to on and there is line debug
          messages, output assembly codes for next line.  */
       if (disassemble_next_line == AUTO_BOOLEAN_TRUE)
-	do_gdb_disassembly (get_frame_arch (frame), -1,
-			    get_frame_pc (frame), sal.end);
+	do_gdb_disassembly (get_frame_arch (frame), -1, sal.pc, sal.end);
     }
 
   if (print_what != LOCATION)
-    set_default_breakpoint (1, get_frame_pc (frame), sal.symtab, sal.line);
+    set_default_breakpoint (1, sal.pspace,
+			    get_frame_pc (frame), sal.symtab, sal.line);
 
   annotate_frame_end ();
 
@@ -717,6 +723,7 @@ find_frame_funname (struct frame_info *frame, char **funname,
 		 with DMGL_PARAMS turned on, and here we don't want to
 		 display parameters.  So remove the parameters.  */
 	      char *func_only = cp_remove_params (*funname);
+
 	      if (func_only)
 		{
 		  *funname = func_only;
@@ -788,6 +795,7 @@ print_frame (struct frame_info *frame, int print_level,
     {
       struct print_args_args args;
       struct cleanup *args_list_chain;
+
       args.frame = frame;
       args.func = find_pc_function (get_frame_address_in_block (frame));
       args.stream = gdb_stdout;
@@ -810,6 +818,7 @@ print_frame (struct frame_info *frame, int print_level,
       if (ui_out_is_mi_like_p (uiout))
 	{
 	  const char *fullname = symtab_to_fullname (sal.symtab);
+
 	  if (fullname != NULL)
 	    ui_out_field_string (uiout, "fullname", fullname);
 	}
@@ -825,7 +834,8 @@ print_frame (struct frame_info *frame, int print_level,
 #ifdef PC_SOLIB
       char *lib = PC_SOLIB (get_frame_pc (frame));
 #else
-      char *lib = solib_name_from_address (get_frame_pc (frame));
+      char *lib = solib_name_from_address (get_frame_program_space (frame),
+					   get_frame_pc (frame));
 #endif
       if (lib)
 	{
@@ -861,9 +871,6 @@ parse_frame_specification_1 (const char *frame_exp, const char *message,
     numargs = 0;
   else
     {
-      char *addr_string;
-      struct cleanup *tmp_cleanup;
-
       numargs = 0;
       while (1)
 	{
@@ -917,6 +924,7 @@ parse_frame_specification_1 (const char *frame_exp, const char *message,
     {
       struct frame_info *fid;
       int level = value_as_long (args[0]);
+
       fid = find_relative_frame (get_current_frame (), &level);
       if (level == 0)
 	/* find_relative_frame was successful */
@@ -926,6 +934,7 @@ parse_frame_specification_1 (const char *frame_exp, const char *message,
   /* Convert each value into a corresponding address.  */
   {
     int i;
+
     for (i = 0; i < numargs; i++)
       addrs[i] = value_as_address (args[i]);
   }
@@ -990,7 +999,7 @@ frame_info (char *addr_exp, int from_tty)
   struct symbol *func;
   struct symtab *s;
   struct frame_info *calling_frame_info;
-  int i, count, numregs;
+  int numregs;
   char *funname = 0;
   enum language funlang = language_unknown;
   const char *pc_regname;
@@ -1032,6 +1041,7 @@ frame_info (char *addr_exp, int from_tty)
 	     with DMGL_PARAMS turned on, and here we don't want to
 	     display parameters.  So remove the parameters.  */
 	  char *func_only = cp_remove_params (funname);
+
 	  if (func_only)
 	    {
 	      funname = func_only;
@@ -1193,6 +1203,7 @@ frame_info (char *addr_exp, int from_tty)
 	    int sp_size = register_size (gdbarch, gdbarch_sp_regnum (gdbarch));
 	    gdb_byte value[MAX_REGISTER_SIZE];
 	    CORE_ADDR sp;
+
 	    frame_register_unwind (fi, gdbarch_sp_regnum (gdbarch),
 				   &optimized, &lval, &addr,
 				   &realnum, value);
@@ -1310,8 +1321,6 @@ backtrace_command_1 (char *count_exp, int show_locals, int from_tty)
 
   if (info_verbose)
     {
-      struct partial_symtab *ps;
-
       /* Read in symbols for all of the frames.  Need to do this in a
          separate pass so that "Reading in symbols for xxx" messages
          don't screw up the appearance of the backtrace.  Also if
@@ -1320,10 +1329,11 @@ backtrace_command_1 (char *count_exp, int show_locals, int from_tty)
       i = count;
       for (fi = trailing; fi != NULL && i--; fi = get_prev_frame (fi))
 	{
+	  CORE_ADDR pc;
+
 	  QUIT;
-	  ps = find_pc_psymtab (get_frame_address_in_block (fi));
-	  if (ps)
-	    PSYMTAB_TO_SYMTAB (ps); /* Force syms to come in.  */
+	  pc = get_frame_address_in_block (fi);
+	  find_pc_sect_symtab_via_partial (pc, find_pc_mapped_section (pc));
 	}
     }
 
@@ -1373,6 +1383,7 @@ static int
 backtrace_command_stub (void *data)
 {
   struct backtrace_command_args *args = data;
+
   backtrace_command_1 (args->count_exp, args->show_locals, args->from_tty);
   return 0;
 }
@@ -1444,6 +1455,7 @@ static void
 backtrace_full_command (char *arg, int from_tty)
 {
   struct backtrace_command_args btargs;
+
   btargs.count_exp = arg;
   btargs.show_locals = 1;
   btargs.from_tty = from_tty;
@@ -1451,17 +1463,16 @@ backtrace_full_command (char *arg, int from_tty)
 }
 
 
-/* Print the local variables of a block B active in FRAME on STREAM.
-   Return 1 if any variables were printed; 0 otherwise.  */
+/* Iterate over the local variables of a block B, calling CB with
+   CB_DATA.  */
 
-static int
-print_block_frame_locals (struct block *b, struct frame_info *frame,
-			  int num_tabs, struct ui_file *stream)
+static void
+iterate_over_block_locals (struct block *b,
+			   iterate_over_block_arg_local_vars_cb cb,
+			   void *cb_data)
 {
   struct dict_iterator iter;
   struct symbol *sym;
-  int values_printed = 0;
-  int j;
 
   ALL_BLOCK_SYMBOLS (b, iter, sym)
     {
@@ -1473,8 +1484,7 @@ print_block_frame_locals (struct block *b, struct frame_info *frame,
 	case LOC_COMPUTED:
 	  if (SYMBOL_IS_ARGUMENT (sym))
 	    break;
-	  values_printed = 1;
-	  print_variable_and_value (NULL, sym, frame, stream, 4 * num_tabs);
+	  (*cb) (SYMBOL_PRINT_NAME (sym), sym, cb_data);
 	  break;
 
 	default:
@@ -1482,12 +1492,18 @@ print_block_frame_locals (struct block *b, struct frame_info *frame,
 	  break;
 	}
     }
-
-  return values_printed;
 }
+
 
 /* Same, but print labels.  */
 
+#if 0
+/* Commented out, as the code using this function has also been
+   commented out.  FIXME:brobecker/2009-01-13: Find out why the code
+   was commented out in the first place.  The discussion introducing
+   this change (2007-12-04: Support lexical blocks and function bodies
+   that occupy non-contiguous address ranges) did not explain why
+   this change was made.  */
 static int
 print_block_frame_labels (struct gdbarch *gdbarch, struct block *b,
 			  int *have_default, struct ui_file *stream)
@@ -1508,6 +1524,7 @@ print_block_frame_labels (struct gdbarch *gdbarch, struct block *b,
 	{
 	  struct symtab_and_line sal;
 	  struct value_print_options opts;
+
 	  sal = find_pc_line (SYMBOL_VALUE_ADDRESS (sym), 0);
 	  values_printed = 1;
 	  fputs_filtered (SYMBOL_PRINT_NAME (sym), stream);
@@ -1525,40 +1542,77 @@ print_block_frame_labels (struct gdbarch *gdbarch, struct block *b,
 
   return values_printed;
 }
+#endif
 
-/* Print on STREAM all the local variables in frame FRAME, including
-   all the blocks active in that frame at its current PC.
+/* Iterate over all the local variables in block B, including all its
+   superblocks, stopping when the top-level block is reached.  */
 
-   Returns 1 if the job was done, or 0 if nothing was printed because
-   we have no info on the function running in FRAME.  */
+void
+iterate_over_block_local_vars (struct block *block,
+			       iterate_over_block_arg_local_vars_cb cb,
+			       void *cb_data)
+{
+  while (block)
+    {
+      iterate_over_block_locals (block, cb, cb_data);
+      /* After handling the function's top-level block, stop.  Don't
+	 continue to its superblock, the block of per-file
+	 symbols.  */
+      if (BLOCK_FUNCTION (block))
+	break;
+      block = BLOCK_SUPERBLOCK (block);
+    }
+}
+
+/* Data to be passed around in the calls to the locals and args
+   iterators.  */
+
+struct print_variable_and_value_data
+{
+  struct frame_info *frame;
+  int num_tabs;
+  struct ui_file *stream;
+  int values_printed;
+};
+
+/* The callback for the locals and args iterators  */
+
+static void
+do_print_variable_and_value (const char *print_name,
+			     struct symbol *sym,
+			     void *cb_data)
+{
+  struct print_variable_and_value_data *p = cb_data;
+
+  print_variable_and_value (print_name, sym,
+			    p->frame, p->stream, p->num_tabs);
+  p->values_printed = 1;
+}
 
 static void
 print_frame_local_vars (struct frame_info *frame, int num_tabs,
 			struct ui_file *stream)
 {
-  struct block *block = get_frame_block (frame, 0);
-  int values_printed = 0;
+  struct print_variable_and_value_data cb_data;
+  struct block *block;
 
+  block = get_frame_block (frame, 0);
   if (block == 0)
     {
       fprintf_filtered (stream, "No symbol table info available.\n");
       return;
     }
 
-  while (block)
-    {
-      if (print_block_frame_locals (block, frame, num_tabs, stream))
-	values_printed = 1;
-      /* After handling the function's top-level block, stop.  Don't
-         continue to its superblock, the block of per-file symbols.
-         Also do not continue to the containing function of an inlined
-         function.  */
-      if (BLOCK_FUNCTION (block))
-	break;
-      block = BLOCK_SUPERBLOCK (block);
-    }
+  cb_data.frame = frame;
+  cb_data.num_tabs = 4 * num_tabs;
+  cb_data.stream = stream;
+  cb_data.values_printed = 0;
 
-  if (!values_printed)
+  iterate_over_block_local_vars (block,
+				 do_print_variable_and_value,
+				 &cb_data);
+
+  if (!cb_data.values_printed)
     fprintf_filtered (stream, _("No locals.\n"));
 }
 
@@ -1648,36 +1702,28 @@ locals_info (char *args, int from_tty)
 static void
 catch_info (char *ignore, int from_tty)
 {
-  struct symtab_and_line *sal;
-
   /* Assume g++ compiled code; old GDB 4.16 behaviour.  */
   print_frame_label_vars (get_selected_frame (_("No frame selected.")),
                           0, gdb_stdout);
 }
 
-static void
-print_frame_arg_vars (struct frame_info *frame, struct ui_file *stream)
+/* Iterate over all the argument variables in block B.
+
+   Returns 1 if any argument was walked; 0 otherwise.  */
+
+void
+iterate_over_block_arg_vars (struct block *b,
+			     iterate_over_block_arg_local_vars_cb cb,
+			     void *cb_data)
 {
-  struct symbol *func = get_frame_function (frame);
-  struct block *b;
   struct dict_iterator iter;
   struct symbol *sym, *sym2;
-  int values_printed = 0;
 
-  if (func == 0)
-    {
-      fprintf_filtered (stream, _("No symbol table info available.\n"));
-      return;
-    }
-
-  b = SYMBOL_BLOCK_VALUE (func);
   ALL_BLOCK_SYMBOLS (b, iter, sym)
     {
       /* Don't worry about things which aren't arguments.  */
       if (SYMBOL_IS_ARGUMENT (sym))
 	{
-	  values_printed = 1;
-
 	  /* We have to look up the symbol because arguments can have
 	     two entries (one a parameter, one a local) and the one we
 	     want is the local, which lookup_symbol will find for us.
@@ -1691,12 +1737,33 @@ print_frame_arg_vars (struct frame_info *frame, struct ui_file *stream)
 
 	  sym2 = lookup_symbol (SYMBOL_LINKAGE_NAME (sym),
 				b, VAR_DOMAIN, NULL);
-	  print_variable_and_value (SYMBOL_PRINT_NAME (sym), sym2,
-				    frame, stream, 0);
+	  (*cb) (SYMBOL_PRINT_NAME (sym), sym2, cb_data);
 	}
     }
+}
 
-  if (!values_printed)
+static void
+print_frame_arg_vars (struct frame_info *frame, struct ui_file *stream)
+{
+  struct print_variable_and_value_data cb_data;
+  struct symbol *func;
+
+  func = get_frame_function (frame);
+  if (func == NULL)
+    {
+      fprintf_filtered (stream, _("No symbol table info available.\n"));
+      return;
+    }
+
+  cb_data.frame = frame;
+  cb_data.num_tabs = 0;
+  cb_data.stream = gdb_stdout;
+  cb_data.values_printed = 0;
+
+  iterate_over_block_arg_vars (SYMBOL_BLOCK_VALUE (func),
+			       do_print_variable_and_value, &cb_data);
+
+  if (!cb_data.values_printed)
     fprintf_filtered (stream, _("No arguments.\n"));
 }
 
@@ -1759,6 +1826,7 @@ find_relative_frame (struct frame_info *frame, int *level_offset_ptr)
   while (*level_offset_ptr > 0)
     {
       struct frame_info *prev = get_prev_frame (frame);
+
       if (!prev)
 	break;
       (*level_offset_ptr)--;
@@ -1769,6 +1837,7 @@ find_relative_frame (struct frame_info *frame, int *level_offset_ptr)
   while (*level_offset_ptr < 0)
     {
       struct frame_info *next = get_next_frame (frame);
+
       if (!next)
 	break;
       (*level_offset_ptr)++;
@@ -1849,6 +1918,7 @@ down_silently_base (char *count_exp)
 {
   struct frame_info *frame;
   int count = -1;
+
   if (count_exp)
     count = -parse_and_eval_long (count_exp);
 
@@ -1955,6 +2025,7 @@ If you continue, the return value that you specified will be ignored.\n";
   if (from_tty)
     {
       int confirmed;
+
       if (thisfun == NULL)
 	confirmed = query (_("%sMake selected stack frame return now? "),
 			   query_prefix);
@@ -2087,10 +2158,6 @@ void _initialize_stack (void);
 void
 _initialize_stack (void)
 {
-#if 0
-  backtrace_limit = 30;
-#endif
-
   add_com ("return", class_stack, return_command, _("\
 Make selected stack frame return to its caller.\n\
 Control remains in the debugger, but when you continue\n\
@@ -2143,7 +2210,7 @@ Use of the 'full' qualifier also prints the values of the local variables.\n"));
     {
       add_com_alias ("t", "backtrace", class_stack, 0);
       add_com ("T", class_stack, backtrace_full_command, _("\
-Print backtrace of all stack frames, or innermost COUNT frames \n\
+Print backtrace of all stack frames, or innermost COUNT frames\n\
 and the values of the local variables.\n\
 With a negative argument, print outermost -COUNT frames.\n\
 Usage: T <count>\n"));
@@ -2195,12 +2262,4 @@ source line."),
 			        show_disassemble_next_line,
 			        &setlist, &showlist);
   disassemble_next_line = AUTO_BOOLEAN_FALSE;
-
-#if 0
-  add_cmd ("backtrace-limit", class_stack, set_backtrace_limit_command, _(\
-"Specify maximum number of frames for \"backtrace\" to print by default."),
-	   &setlist);
-  add_info ("backtrace-limit", backtrace_limit_info, _("\
-The maximum number of frames for \"backtrace\" to print by default."));
-#endif
 }

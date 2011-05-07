@@ -1,7 +1,7 @@
 /* Declarations for caching.  Typically used by remote back ends for
    caching remote memory.
 
-   Copyright (C) 1992, 1993, 1995, 1999, 2000, 2001, 2007, 2008, 2009
+   Copyright (C) 1992, 1993, 1995, 1999, 2000, 2001, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.

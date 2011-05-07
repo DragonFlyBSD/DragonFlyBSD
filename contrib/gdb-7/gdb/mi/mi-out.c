@@ -1,6 +1,6 @@
 /* MI Command Set - output generating routines.
 
-   Copyright (C) 2000, 2002, 2003, 2004, 2005, 2007, 2008, 2009
+   Copyright (C) 2000, 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions (a Red Hat company).
@@ -55,12 +55,12 @@ static void mi_field_string (struct ui_out *uiout, int fldno, int width,
 static void mi_field_fmt (struct ui_out *uiout, int fldno,
 			  int width, enum ui_align align,
 			  const char *fldname, const char *format,
-			  va_list args) ATTR_FORMAT (printf, 6, 0);
+			  va_list args) ATTRIBUTE_PRINTF (6, 0);
 static void mi_spaces (struct ui_out *uiout, int numspaces);
 static void mi_text (struct ui_out *uiout, const char *string);
 static void mi_message (struct ui_out *uiout, int verbosity,
 			const char *format, va_list args)
-     ATTR_FORMAT (printf, 3, 0);
+     ATTRIBUTE_PRINTF (3, 0);
 static void mi_wrap_hint (struct ui_out *uiout, char *identstring);
 static void mi_flush (struct ui_out *uiout);
 
@@ -106,7 +106,6 @@ mi_table_begin (struct ui_out *uiout,
 		int nr_rows,
 		const char *tblid)
 {
-  mi_out_data *data = ui_out_data (uiout);
   mi_open (uiout, tblid, ui_out_type_tuple);
   mi_field_int (uiout, -1/*fldno*/, -1/*width*/, -1/*alin*/,
 		"nr_rows", nr_rows);
@@ -121,6 +120,7 @@ void
 mi_table_body (struct ui_out *uiout)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   if (data->suppress_output)
     return;
   /* close the table header line if there were any headers */
@@ -134,6 +134,7 @@ void
 mi_table_end (struct ui_out *uiout)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   data->suppress_output = 0;
   mi_close (uiout, ui_out_type_list); /* body */
   mi_close (uiout, ui_out_type_tuple);
@@ -147,6 +148,7 @@ mi_table_header (struct ui_out *uiout, int width, enum ui_align alignment,
 		 const char *colhdr)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   if (data->suppress_output)
     return;
   mi_open (uiout, NULL, ui_out_type_tuple);
@@ -166,6 +168,7 @@ mi_begin (struct ui_out *uiout,
 	  const char *id)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   if (data->suppress_output)
     return;
   mi_open (uiout, id, type);
@@ -179,6 +182,7 @@ mi_end (struct ui_out *uiout,
 	int level)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   if (data->suppress_output)
     return;
   mi_close (uiout, type);
@@ -190,8 +194,9 @@ void
 mi_field_int (struct ui_out *uiout, int fldno, int width,
               enum ui_align alignment, const char *fldname, int value)
 {
-  char buffer[20];		/* FIXME: how many chars long a %d can become? */
+  char buffer[20];	/* FIXME: how many chars long a %d can become? */
   mi_out_data *data = ui_out_data (uiout);
+
   if (data->suppress_output)
     return;
 
@@ -206,6 +211,7 @@ mi_field_skip (struct ui_out *uiout, int fldno, int width,
                enum ui_align alignment, const char *fldname)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   if (data->suppress_output)
     return;
   mi_field_string (uiout, fldno, width, alignment, fldname, "");
@@ -223,6 +229,7 @@ mi_field_string (struct ui_out *uiout,
 		 const char *string)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   if (data->suppress_output)
     return;
   field_separator (uiout);
@@ -244,6 +251,7 @@ mi_field_fmt (struct ui_out *uiout, int fldno,
 	      va_list args)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   if (data->suppress_output)
     return;
   field_separator (uiout);
@@ -282,6 +290,7 @@ void
 mi_flush (struct ui_out *uiout)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   gdb_flush (data->buffer);
 }
 
@@ -293,6 +302,7 @@ static void
 field_separator (struct ui_out *uiout)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   if (data->suppress_field_separator)
     data->suppress_field_separator = 0;
   else
@@ -305,6 +315,7 @@ mi_open (struct ui_out *uiout,
 	 enum ui_out_type type)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   field_separator (uiout);
   data->suppress_field_separator = 1;
   if (name)
@@ -327,6 +338,7 @@ mi_close (struct ui_out *uiout,
 	  enum ui_out_type type)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   switch (type)
     {
     case ui_out_type_tuple:
@@ -347,6 +359,7 @@ void
 mi_out_buffered (struct ui_out *uiout, char *string)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   fprintf_unfiltered (data->buffer, "%s", string);
 }
 
@@ -356,6 +369,7 @@ void
 mi_out_rewind (struct ui_out *uiout)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   ui_file_rewind (data->buffer);
 }
 
@@ -372,6 +386,7 @@ mi_out_put (struct ui_out *uiout,
 	    struct ui_file *stream)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   ui_file_put (data->buffer, do_write, stream);
   ui_file_rewind (data->buffer);
 }
@@ -382,6 +397,7 @@ int
 mi_version (struct ui_out *uiout)
 {
   mi_out_data *data = ui_out_data (uiout);
+
   return data->mi_version;
 }
 
@@ -391,6 +407,7 @@ struct ui_out *
 mi_out_new (int mi_version)
 {
   int flags = 0;
+
   mi_out_data *data = XMALLOC (mi_out_data);
   data->suppress_field_separator = 0;
   data->suppress_output = 0;

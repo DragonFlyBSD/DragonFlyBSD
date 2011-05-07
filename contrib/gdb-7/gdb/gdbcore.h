@@ -1,7 +1,7 @@
 /* Machine independent variables that describe the core file under GDB.
 
    Copyright (C) 1986, 1987, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
-   1997, 1998, 1999, 2000, 2001, 2004, 2007, 2008, 2009
+   1997, 1998, 1999, 2000, 2001, 2004, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -28,6 +28,7 @@ struct type;
 struct regcache;
 
 #include "bfd.h"
+#include "exec.h"
 
 /* Return the name of the executable file as a string.
    ERR nonzero means get error if there is none specified;
@@ -103,13 +104,9 @@ extern void (*deprecated_file_changed_hook) (char *filename);
 
 extern void specify_exec_file_hook (void (*hook) (char *filename));
 
-/* Binary File Diddlers for the exec and core files.  */
+/* Binary File Diddler for the core file.  */
 
 extern bfd *core_bfd;
-extern bfd *exec_bfd;
-
-/* The mtime when we last opened exec_bfd.  */
-extern long exec_bfd_mtime;
 
 /* Whether to open exec and core files read-only or read-write.  */
 

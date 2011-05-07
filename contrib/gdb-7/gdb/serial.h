@@ -1,6 +1,6 @@
 /* Remote serial support interface definitions for GDB, the GNU Debugger.
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001, 2004,
-   2005, 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2005, 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -21,6 +21,7 @@
 #define SERIAL_H
 
 #ifdef USE_WIN32API
+#include <winsock2.h>
 #include <windows.h>
 #endif
 
@@ -86,7 +87,7 @@ extern int serial_write (struct serial *scb, const char *str, int len);
 /* Write a printf style string onto the serial port.  */
 
 extern void serial_printf (struct serial *desc, 
-			   const char *,...) ATTR_FORMAT (printf, 2, 3);
+			   const char *,...) ATTRIBUTE_PRINTF (2, 3);
 
 /* Allow pending output to drain.  */
 

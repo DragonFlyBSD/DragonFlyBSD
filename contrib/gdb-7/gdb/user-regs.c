@@ -1,6 +1,6 @@
 /* User visible, per-frame registers, for GDB, the GNU debugger.
 
-   Copyright (C) 2002, 2003, 2004, 2007, 2008, 2009
+   Copyright (C) 2002, 2003, 2004, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Contributed by Red Hat.
@@ -96,7 +96,9 @@ static void *
 user_regs_init (struct gdbarch *gdbarch)
 {
   struct user_reg *reg;
-  struct gdb_user_regs *regs = GDBARCH_OBSTACK_ZALLOC (gdbarch, struct gdb_user_regs);
+  struct gdb_user_regs *regs 
+    = GDBARCH_OBSTACK_ZALLOC (gdbarch, struct gdb_user_regs);
+
   regs->last = &regs->first;
   for (reg = builtin_user_regs.first; reg != NULL; reg = reg->next)
     append_user_reg (regs, reg->name, reg->read, reg->baton,
@@ -109,6 +111,7 @@ user_reg_add (struct gdbarch *gdbarch, const char *name,
 	      user_reg_read_ftype *read, const void *baton)
 {
   struct gdb_user_regs *regs = gdbarch_data (gdbarch, user_regs_data);
+
   if (regs == NULL)
     {
       /* ULGH, called during architecture initialization.  Patch
@@ -134,9 +137,11 @@ user_reg_map_name_to_regnum (struct gdbarch *gdbarch, const char *name,
     int i;
     int maxregs = (gdbarch_num_regs (gdbarch)
 		   + gdbarch_num_pseudo_regs (gdbarch));
+
     for (i = 0; i < maxregs; i++)
       {
 	const char *regname = gdbarch_register_name (gdbarch, i);
+
 	if (regname != NULL && len == strlen (regname)
 	    && strncmp (regname, name, len) == 0)
 	  {
@@ -150,6 +155,7 @@ user_reg_map_name_to_regnum (struct gdbarch *gdbarch, const char *name,
     struct gdb_user_regs *regs = gdbarch_data (gdbarch, user_regs_data);
     struct user_reg *reg;
     int nr;
+
     for (nr = 0, reg = regs->first; reg != NULL; reg = reg->next, nr++)
       {
 	if ((len < 0 && strcmp (reg->name, name))
@@ -168,6 +174,7 @@ usernum_to_user_reg (struct gdbarch *gdbarch, int usernum)
 {
   struct gdb_user_regs *regs = gdbarch_data (gdbarch, user_regs_data);
   struct user_reg *reg;
+
   for (reg = regs->first; reg != NULL; reg = reg->next)
     {
       if (usernum == 0)
@@ -182,6 +189,7 @@ user_reg_map_regnum_to_name (struct gdbarch *gdbarch, int regnum)
 {
   int maxregs = (gdbarch_num_regs (gdbarch)
 		 + gdbarch_num_pseudo_regs (gdbarch));
+
   if (regnum < 0)
     return NULL;
   else if (regnum < maxregs)
@@ -203,6 +211,7 @@ value_of_user_reg (int regnum, struct frame_info *frame)
   int maxregs = (gdbarch_num_regs (gdbarch)
 		 + gdbarch_num_pseudo_regs (gdbarch));
   struct user_reg *reg = usernum_to_user_reg (gdbarch, regnum - maxregs);
+
   gdb_assert (reg != NULL);
   return reg->read (frame, reg->baton);
 }

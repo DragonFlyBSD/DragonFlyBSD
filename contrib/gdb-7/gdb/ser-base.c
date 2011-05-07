@@ -1,7 +1,7 @@
 /* Generic serial interface functions.
 
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001, 2003,
-   2004, 2005, 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2004, 2005, 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -63,12 +63,13 @@ enum {
    the need to make redundant calls into the event-loop - the next
    scheduled task is only changed when needed. */
 
-void
+static void
 reschedule (struct serial *scb)
 {
   if (serial_is_async_p (scb))
     {
       int next_state;
+
       switch (scb->async_state)
 	{
 	case FD_SCHEDULED:
@@ -170,6 +171,7 @@ static void
 push_event (void *context)
 {
   struct serial *scb = context;
+
   scb->async_state = NOTHING_SCHEDULED; /* Timers are one-off */
   scb->async_handler (scb, scb->async_context);
   /* re-schedule */
@@ -363,6 +365,13 @@ generic_readchar (struct serial *scb, int timeout,
 	  s = read (scb->error_fd, &buf, to_read);
 	  if (s == -1)
 	    break;
+	  if (s == 0)
+	    {
+	      /* EOF */
+	      close (scb->error_fd);
+	      scb->error_fd = -1;
+	      break;
+	    }
 
 	  /* In theory, embedded newlines are not a problem.
 	     But for MI, we want each output line to have just

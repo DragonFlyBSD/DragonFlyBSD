@@ -1,5 +1,5 @@
 /* Serial interface for a pipe to a separate program
-   Copyright (C) 1999, 2000, 2001, 2007, 2008, 2009
+   Copyright (C) 1999, 2000, 2001, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions.
@@ -63,10 +63,15 @@ pipe_open (struct serial *scb, const char *name)
   int pdes[2];
   int err_pdes[2];
   int pid;
+
   if (socketpair (AF_UNIX, SOCK_STREAM, 0, pdes) < 0)
     return -1;
   if (socketpair (AF_UNIX, SOCK_STREAM, 0, err_pdes) < 0)
-    return -1;
+    {
+      close (pdes[0]);
+      close (pdes[1]);
+      return -1;
+    }
 
   /* Create the child process to run the command in.  Note that the
      apparent call to vfork() below *might* actually be a call to
@@ -94,6 +99,15 @@ pipe_open (struct serial *scb, const char *name)
   /* Child. */
   if (pid == 0)
     {
+      /* We don't want ^c to kill the connection.  */
+#ifdef HAVE_SETSID
+      pid_t sid = setsid ();
+      if (sid == -1)
+	signal (SIGINT, SIG_IGN);
+#else
+      signal (SIGINT, SIG_IGN);
+#endif
+
       /* re-wire pdes[1] to stdin/stdout */
       close (pdes[0]);
       if (pdes[1] != STDOUT_FILENO)
@@ -123,6 +137,8 @@ pipe_open (struct serial *scb, const char *name)
 
   /* Parent. */
   close (pdes[1]);
+  if (err_pdes[1] != -1)
+    close (err_pdes[1]);
   /* :end chunk */
   state = XMALLOC (struct pipe_state);
   state->pid = pid;
@@ -140,24 +156,29 @@ static void
 pipe_close (struct serial *scb)
 {
   struct pipe_state *state = scb->state;
+
   if (state != NULL)
     {
       int pid = state->pid;
       close (scb->fd);
       scb->fd = -1;
+      if (scb->error_fd != -1)
+	close (scb->error_fd);
+      scb->error_fd = -1;
       xfree (state);
       scb->state = NULL;
       kill (pid, SIGTERM);
-      /* Might be useful to check that the child does die. */
+      /* Might be useful to check that the child does die,
+	 and while we're waiting for it to die print any remaining
+	 stderr output.  */
     }
 }
-
-static struct serial_ops pipe_ops;
 
 void
 _initialize_ser_pipe (void)
 {
   struct serial_ops *ops = XMALLOC (struct serial_ops);
+
   memset (ops, 0, sizeof (struct serial_ops));
   ops->name = "pipe";
   ops->next = 0;

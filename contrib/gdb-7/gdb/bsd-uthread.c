@@ -1,6 +1,6 @@
 /* BSD user-level threads support.
 
-   Copyright (C) 2005, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2005, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -250,7 +250,7 @@ bsd_uthread_solib_loaded (struct so_list *so)
     {
       if (strncmp (so->so_original_name, *names, strlen (*names)) == 0)
 	{
-	  solib_read_symbols (so, so->from_tty ? SYMFILE_VERBOSE : 0);
+	  solib_read_symbols (so, 0);
 
 	  if (bsd_uthread_activate (so->objfile))
 	    {

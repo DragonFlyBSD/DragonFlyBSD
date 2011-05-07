@@ -1,6 +1,6 @@
 /* MI Console code.
 
-   Copyright (C) 2000, 2001, 2002, 2007, 2008, 2009
+   Copyright (C) 2000, 2001, 2002, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions (a Red Hat company).
@@ -47,6 +47,7 @@ mi_console_file_new (struct ui_file *raw,
 {
   struct ui_file *ui_file = ui_file_new ();
   struct mi_console_file *mi_console = XMALLOC (struct mi_console_file);
+
   mi_console->magic = &mi_console_file_magic;
   mi_console->raw = raw;
   mi_console->buffer = mem_fileopen ();
@@ -62,6 +63,7 @@ static void
 mi_console_file_delete (struct ui_file *file)
 {
   struct mi_console_file *mi_console = ui_file_data (file);
+
   if (mi_console->magic != &mi_console_file_magic)
     internal_error (__FILE__, __LINE__,
 		    _("mi_console_file_delete: bad magic number"));
@@ -73,6 +75,7 @@ mi_console_file_fputs (const char *buf,
 		       struct ui_file *file)
 {
   struct mi_console_file *mi_console = ui_file_data (file);
+
   if (mi_console->magic != &mi_console_file_magic)
     internal_error (__FILE__, __LINE__,
 		    "mi_console_file_fputs: bad magic number");
@@ -90,6 +93,7 @@ mi_console_raw_packet (void *data,
 		       long length_buf)
 {
   struct mi_console_file *mi_console = data;
+
   if (mi_console->magic != &mi_console_file_magic)
     internal_error (__FILE__, __LINE__,
 		    _("mi_console_file_transform: bad magic number"));
@@ -116,6 +120,7 @@ static void
 mi_console_file_flush (struct ui_file *file)
 {
   struct mi_console_file *mi_console = ui_file_data (file);
+
   if (mi_console->magic != &mi_console_file_magic)
     internal_error (__FILE__, __LINE__,
 		    _("mi_console_file_flush: bad magic number"));

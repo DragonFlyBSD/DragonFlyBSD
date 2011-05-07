@@ -1,6 +1,6 @@
 /* Inline frame unwinder for GDB.
 
-   Copyright (C) 2008 Free Software Foundation, Inc.
+   Copyright (C) 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -22,6 +22,7 @@
 #include "block.h"
 #include "frame-unwind.h"
 #include "inferior.h"
+#include "regcache.h"
 #include "symtab.h"
 #include "vec.h"
 
@@ -59,7 +60,8 @@ DEF_VEC_O(inline_state_s);
 
 static VEC(inline_state_s) *inline_states;
 
-/* Locate saved inlined frame state for PTID, if it exists.  */
+/* Locate saved inlined frame state for PTID, if it exists
+   and is valid.  */
 
 static struct inline_state *
 find_inline_frame_state (ptid_t ptid)
@@ -70,7 +72,20 @@ find_inline_frame_state (ptid_t ptid)
   for (ix = 0; VEC_iterate (inline_state_s, inline_states, ix, state); ix++)
     {
       if (ptid_equal (state->ptid, ptid))
-	return state;
+	{
+	  struct regcache *regcache = get_thread_regcache (ptid);
+	  CORE_ADDR current_pc = regcache_read_pc (regcache);
+
+	  if (current_pc != state->saved_pc)
+	    {
+	      /* PC has changed - this context is invalid.  Use the
+		 default behavior.  */
+	      VEC_unordered_remove (inline_state_s, inline_states, ix);
+	      return NULL;
+	    }
+	  else
+	    return state;
+	}
     }
 
   return NULL;
@@ -110,6 +125,7 @@ clear_inline_frame_state (ptid_t ptid)
     {
       VEC (inline_state_s) *new_states = NULL;
       int pid = ptid_get_pid (ptid);
+
       for (ix = 0; VEC_iterate (inline_state_s, inline_states, ix, state); ix++)
 	if (pid != ptid_get_pid (state->ptid))
 	  VEC_safe_push (inline_state_s, new_states, state);
@@ -225,13 +241,8 @@ inline_frame_sniffer (const struct frame_unwind *self,
      can be stepped into later).  */
   if (state != NULL && state->skipped_frames > 0 && next_frame == NULL)
     {
-      if (this_pc != state->saved_pc)
-	state->skipped_frames = 0;
-      else
-	{
-	  gdb_assert (depth >= state->skipped_frames);
-	  depth -= state->skipped_frames;
-	}
+      gdb_assert (depth >= state->skipped_frames);
+      depth -= state->skipped_frames;
     }
 
   /* If all the inlined functions here already have frames, then pass

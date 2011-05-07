@@ -1,6 +1,6 @@
 /* Definitions used by event-top.c, for GDB, the GNU debugger.
 
-   Copyright (C) 1999, 2001, 2003, 2007, 2008, 2009
+   Copyright (C) 1999, 2001, 2003, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Written by Elena Zannoni <ezannoni@cygnus.com> of Cygnus Solutions.

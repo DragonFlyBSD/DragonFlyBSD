@@ -1,6 +1,6 @@
 /* Multi-process/thread control defs for GDB, the GNU debugger.
    Copyright (C) 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1997, 1998, 1999,
-   2000, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2000, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
    Contributed by Lynx Real-Time Systems, Inc.  Los Gatos, CA.
    
 
@@ -187,6 +187,10 @@ struct thread_info
 
   /* Private data used by the target vector implementation.  */
   struct private_thread_info *private;
+
+  /* Function that is called to free PRIVATE.  If this is NULL, then
+     xfree will be called on PRIVATE.  */
+  void (*private_dtor) (struct private_thread_info *);
 };
 
 /* Create an empty thread list, or empty the existing one.  */
@@ -245,6 +249,10 @@ struct thread_info *first_thread_of_process (int pid);
 
 /* Returns any thread of process PID.  */
 extern struct thread_info *any_thread_of_process (int pid);
+
+/* Returns any non-exited thread of process PID, giving preference for
+   already stopped threads.  */
+extern struct thread_info *any_live_thread_of_process (int pid);
 
 /* Change the ptid of thread OLD_PTID to NEW_PTID.  */
 void thread_change_ptid (ptid_t old_ptid, ptid_t new_ptid);
@@ -341,5 +349,7 @@ extern struct cleanup *make_cleanup_restore_current_thread (void);
 /* Returns a pointer into the thread_info corresponding to
    INFERIOR_PTID.  INFERIOR_PTID *must* be in the thread list.  */
 extern struct thread_info* inferior_thread (void);
+
+extern void update_thread_list (void);
 
 #endif /* GDBTHREAD_H */

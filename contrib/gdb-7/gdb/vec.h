@@ -1,5 +1,5 @@
 /* Vector API for GDB.
-   Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009
+   Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
    Contributed by Nathan Sidwell <nathan@codesourcery.com>
 
@@ -183,6 +183,13 @@
    Free a vector and set it to NULL.  */
 
 #define VEC_free(T,V)	(VEC_OP(T,free)(&V))
+
+/* A cleanup function for a vector.
+   void VEC_T_cleanup(void *);
+   
+   Clean up a vector.  */
+
+#define VEC_cleanup(T)	(VEC_OP(T,cleanup))
 
 /* Use these to determine the required size and initialization of a
    vector embedded within another structure (as the final member).
@@ -461,6 +468,15 @@ static inline void VEC_OP (T,free)					  \
   *vec_ = NULL;								  \
 }									  \
 									  \
+static inline void VEC_OP (T,cleanup)					  \
+     (void *arg_)							  \
+{									  \
+  VEC(T) **vec_ = arg_;							  \
+  if (*vec_)								  \
+    vec_free_ (*vec_);							  \
+  *vec_ = NULL;								  \
+}									  \
+									  \
 static inline int VEC_OP (T,reserve)					  \
      (VEC(T) **vec_, int alloc_ VEC_ASSERT_DECL)			  \
 {									  \
@@ -694,6 +710,15 @@ static inline VEC(T) *VEC_OP (T,alloc)					  \
 static inline void VEC_OP (T,free)					  \
      (VEC(T) **vec_)							  \
 {									  \
+  if (*vec_)								  \
+    vec_free_ (*vec_);							  \
+  *vec_ = NULL;								  \
+}									  \
+									  \
+static inline void VEC_OP (T,cleanup)					  \
+     (void *arg_)							  \
+{									  \
+  VEC(T) **vec_ = arg_;							  \
   if (*vec_)								  \
     vec_free_ (*vec_);							  \
   *vec_ = NULL;								  \
@@ -952,6 +977,15 @@ static inline VEC(T) *VEC_OP (T,copy) (VEC(T) *vec_)			  \
 static inline void VEC_OP (T,free)					  \
      (VEC(T) **vec_)							  \
 {									  \
+  if (*vec_)								  \
+    vec_free_ (*vec_);							  \
+  *vec_ = NULL;								  \
+}									  \
+									  \
+static inline void VEC_OP (T,cleanup)					  \
+     (void *arg_)							  \
+{									  \
+  VEC(T) **vec_ = arg_;							  \
   if (*vec_)								  \
     vec_free_ (*vec_);							  \
   *vec_ = NULL;								  \

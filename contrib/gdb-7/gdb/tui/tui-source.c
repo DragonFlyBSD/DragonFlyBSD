@@ -1,7 +1,7 @@
 /* TUI display source window.
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009,
+   2010 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -64,6 +64,7 @@ tui_set_source_content (struct symtab *s,
 	      if (!noerror)
 		{
 		  char *name = alloca (strlen (s->filename) + 100);
+
 		  sprintf (name, "%s:%d", s->filename, line_no);
 		  print_sys_errmsg (name, errno);
 		}
@@ -116,7 +117,7 @@ tui_set_source_content (struct symtab *s,
 		  while (cur_line < nlines)
 		    {
 		      struct tui_win_element *element = (struct tui_win_element *)
-		      TUI_SRC_WIN->generic.content[cur_line];
+			TUI_SRC_WIN->generic.content[cur_line];
 
 		      /* Get the first character in the line.  */
 		      c = fgetc (stream);
@@ -263,6 +264,7 @@ tui_set_source_content_nil (struct tui_win_info *win_info,
 
       struct tui_win_element *element =
 	(struct tui_win_element *) win_info->generic.content[curr_line];
+
       element->which_element.source.line_or_addr.loa = LOA_LINE;
       element->which_element.source.line_or_addr.u.line_no = 0;
       element->which_element.source.is_exec_point = FALSE;

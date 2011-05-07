@@ -1,5 +1,5 @@
 /* Support for printing Pascal types for GDB, the GNU debugger.
-   Copyright (C) 2000, 2001, 2002, 2006, 2007, 2008, 2009
+   Copyright (C) 2000, 2001, 2002, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -46,8 +46,8 @@ void pascal_type_print_varspec_prefix (struct type *, struct ui_file *, int, int
 /* LEVEL is the depth to indent lines by.  */
 
 void
-pascal_print_type (struct type *type, char *varstring, struct ui_file *stream,
-		   int show, int level)
+pascal_print_type (struct type *type, const char *varstring,
+		   struct ui_file *stream, int show, int level)
 {
   enum type_code code;
   int demangled_args;
@@ -205,7 +205,6 @@ void
 pascal_type_print_varspec_prefix (struct type *type, struct ui_file *stream,
 				  int show, int passed_a_ptr)
 {
-  char *name;
   if (type == 0)
     return;
 
@@ -267,10 +266,9 @@ pascal_type_print_varspec_prefix (struct type *type, struct ui_file *stream,
       fprintf_filtered (stream, "array ");
       if (TYPE_LENGTH (TYPE_TARGET_TYPE (type)) > 0
 	&& !TYPE_ARRAY_UPPER_BOUND_IS_UNDEFINED (type))
-	fprintf_filtered (stream, "[%d..%d] ",
-			  TYPE_ARRAY_LOWER_BOUND_VALUE (type),
-			  TYPE_ARRAY_UPPER_BOUND_VALUE (type)
-	  );
+	fprintf_filtered (stream, "[%s..%s] ",
+			  plongest (TYPE_ARRAY_LOWER_BOUND_VALUE (type)),
+			  plongest (TYPE_ARRAY_UPPER_BOUND_VALUE (type)));
       fprintf_filtered (stream, "of ");
       break;
 
@@ -290,7 +288,6 @@ pascal_type_print_varspec_prefix (struct type *type, struct ui_file *stream,
     case TYPE_CODE_BITSTRING:
     case TYPE_CODE_COMPLEX:
     case TYPE_CODE_TYPEDEF:
-    case TYPE_CODE_TEMPLATE:
       /* These types need no prefix.  They are listed here so that
          gcc -Wall will reveal any types that haven't been handled.  */
       break;
@@ -304,6 +301,7 @@ static void
 pascal_print_func_args (struct type *type, struct ui_file *stream)
 {
   int i, len = TYPE_NFIELDS (type);
+
   if (len)
     {
       fprintf_filtered (stream, "(");
@@ -405,7 +403,6 @@ pascal_type_print_varspec_suffix (struct type *type, struct ui_file *stream,
     case TYPE_CODE_BITSTRING:
     case TYPE_CODE_COMPLEX:
     case TYPE_CODE_TYPEDEF:
-    case TYPE_CODE_TEMPLATE:
       /* These types do not need a suffix.  They are listed so that
          gcc -Wall will report types that may not have been considered.  */
       break;
@@ -443,8 +440,8 @@ pascal_type_print_base (struct type *type, struct ui_file *stream, int show,
       s_none, s_public, s_private, s_protected
     }
   section_type;
-  QUIT;
 
+  QUIT;
   wrap_here ("    ");
   if (type == NULL)
     {
@@ -621,7 +618,7 @@ pascal_type_print_base (struct type *type, struct ui_file *stream, int show,
 	      struct fn_field *f = TYPE_FN_FIELDLIST1 (type, i);
 	      int j, len2 = TYPE_FN_FIELDLIST_LENGTH (type, i);
 	      char *method_name = TYPE_FN_FIELDLIST_NAME (type, i);
-	      char *name = type_name_no_tag (type);
+
 	      /* this is GNU C++ specific
 	         how can we know constructor/destructor?
 	         It might work for GNU pascal */
@@ -761,13 +758,14 @@ pascal_type_print_base (struct type *type, struct ui_file *stream, int show,
       break;
 
     case TYPE_CODE_ERROR:
-      fprintf_filtered (stream, "<unknown type>");
+      fprintf_filtered (stream, "%s", TYPE_ERROR_NAME (type));
       break;
 
       /* this probably does not work for enums */
     case TYPE_CODE_RANGE:
       {
 	struct type *target = TYPE_TARGET_TYPE (type);
+
 	print_type_scalar (target, TYPE_LOW_BOUND (type), stream);
 	fputs_filtered ("..", stream);
 	print_type_scalar (target, TYPE_HIGH_BOUND (type), stream);

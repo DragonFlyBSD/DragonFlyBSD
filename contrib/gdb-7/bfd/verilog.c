@@ -1,5 +1,5 @@
 /* BFD back-end for verilog hex memory dump files.
-   Copyright 2009
+   Copyright 2009, 2010
    Free Software Foundation, Inc.
    Written by Anthony Green <green@moxielogic.com>
 
@@ -222,13 +222,10 @@ verilog_write_section (bfd *abfd,
   verilog_write_address (abfd, list->where);
   while (octets_written < list->size)
     {
-      bfd_vma address;
       unsigned int octets_this_chunk = list->size - octets_written;
 
       if (octets_this_chunk > 16)
 	octets_this_chunk = 16;
-
-      address = list->where + octets_written / bfd_octets_per_byte (abfd);
 
       if (! verilog_write_record (abfd,
 				  location,

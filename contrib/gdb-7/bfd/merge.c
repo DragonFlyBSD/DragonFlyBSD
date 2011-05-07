@@ -136,12 +136,12 @@ static struct sec_merge_hash_entry *
 sec_merge_hash_lookup (struct sec_merge_hash *table, const char *string,
 		       unsigned int alignment, bfd_boolean create)
 {
-  register const unsigned char *s;
-  register unsigned long hash;
-  register unsigned int c;
+  const unsigned char *s;
+  unsigned long hash;
+  unsigned int c;
   struct sec_merge_hash_entry *hashp;
   unsigned int len, i;
-  unsigned int index;
+  unsigned int _index;
 
   hash = 0;
   len = 0;
@@ -192,8 +192,8 @@ sec_merge_hash_lookup (struct sec_merge_hash *table, const char *string,
       len = table->entsize;
     }
 
-  index = hash % table->table.size;
-  for (hashp = (struct sec_merge_hash_entry *) table->table.table[index];
+  _index = hash % table->table.size;
+  for (hashp = (struct sec_merge_hash_entry *) table->table.table[_index];
        hashp != NULL;
        hashp = (struct sec_merge_hash_entry *) hashp->root.next)
     {
@@ -263,7 +263,7 @@ static struct sec_merge_hash_entry *
 sec_merge_add (struct sec_merge_hash *tab, const char *str,
 	       unsigned int alignment, struct sec_merge_sec_info *secinfo)
 {
-  register struct sec_merge_hash_entry *entry;
+  struct sec_merge_hash_entry *entry;
 
   entry = sec_merge_hash_lookup (tab, str, alignment, TRUE);
   if (entry == NULL)

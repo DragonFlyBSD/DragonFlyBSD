@@ -1,6 +1,6 @@
 /* Abstraction of GNU v2 abi.
 
-   Copyright (C) 2001, 2002, 2003, 2005, 2007, 2008, 2009
+   Copyright (C) 2001, 2002, 2003, 2005, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Contributed by Daniel Berlin <dberlin@redhat.com>
@@ -28,7 +28,6 @@
 #include "demangle.h"
 #include "cp-abi.h"
 #include "cp-support.h"
-#include "gnu-v2-abi.h"
 
 #include <ctype.h>
 
@@ -114,6 +113,7 @@ gnuv2_virtual_fn_field (struct value **arg1p, struct fn_field * f, int j,
   if (TYPE_TARGET_TYPE (context) != type1)
     {
       struct value *tmp = value_cast (context, value_addr (arg1));
+
       arg1 = value_ind (tmp);
       type1 = check_typedef (value_type (arg1));
     }
@@ -186,13 +186,8 @@ gnuv2_value_rtti_type (struct value *v, int *full, int *top, int *using_enc)
 {
   struct type *known_type;
   struct type *rtti_type;
-  CORE_ADDR coreptr;
-  struct value *vp;
-  long top_offset = 0;
-  char rtti_type_name[256];
   CORE_ADDR vtbl;
   struct minimal_symbol *minsym;
-  struct symbol *sym;
   char *demangled_name, *p;
   struct type *btype;
   struct type *known_type_vptr_basetype;
@@ -346,7 +341,7 @@ vb_match (struct type *type, int index, struct type *basetype)
 
    -1 is returned on error. */
 
-int
+static int
 gnuv2_baseclass_offset (struct type *type, int index,
 			const bfd_byte *valaddr, CORE_ADDR address)
 {
@@ -365,8 +360,8 @@ gnuv2_baseclass_offset (struct type *type, int index,
 	  if (vb_match (type, i, basetype))
 	    {
 	      CORE_ADDR addr
-	      = unpack_pointer (TYPE_FIELD_TYPE (type, i),
-				valaddr + (TYPE_FIELD_BITPOS (type, i) / 8));
+		= unpack_pointer (TYPE_FIELD_TYPE (type, i),
+				  valaddr + (TYPE_FIELD_BITPOS (type, i) / 8));
 
 	      return addr - (LONGEST) address;
 	    }
@@ -375,7 +370,8 @@ gnuv2_baseclass_offset (struct type *type, int index,
       for (i = index + 1; i < n_baseclasses; i++)
 	{
 	  int boffset =
-	  baseclass_offset (type, i, valaddr, address);
+	    baseclass_offset (type, i, valaddr, address);
+
 	  if (boffset)
 	    return boffset;
 	}

@@ -1,6 +1,6 @@
 /* Longjump free calls to GDB internal routines.
 
-   Copyright (C) 1999, 2000, 2005, 2007, 2008, 2009
+   Copyright (C) 1999, 2000, 2005, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify

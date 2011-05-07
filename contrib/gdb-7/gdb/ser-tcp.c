@@ -1,7 +1,7 @@
 /* Serial interface for raw TCP connections on Un*x like systems.
 
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2001, 2005, 2006,
-   2007, 2008, 2009 Free Software Foundation, Inc.
+   2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -119,6 +119,7 @@ wait_for_connect (struct serial *scb, int *polls)
   if (scb)
     {
       fd_set rset, wset, eset;
+
       FD_ZERO (&rset);
       FD_SET (scb->fd, &rset);
       wset = rset;
@@ -208,7 +209,7 @@ net_open (struct serial *scb, const char *name)
   else
     scb->fd = socket (PF_INET, SOCK_STREAM, 0);
 
-  if (scb->fd < 0)
+  if (scb->fd == -1)
     return -1;
   
   /* set socket nonblocking */
@@ -272,6 +273,7 @@ net_open (struct serial *scb, const char *name)
   {
     int res, err;
     socklen_t len;
+
     len = sizeof (err);
     /* On Windows, the fourth parameter to getsockopt is a "char *";
        on UNIX systems it is generally "void *".  The cast to "void *"
@@ -323,7 +325,7 @@ net_open (struct serial *scb, const char *name)
 void
 net_close (struct serial *scb)
 {
-  if (scb->fd < 0)
+  if (scb->fd == -1)
     return;
 
   close (scb->fd);
@@ -372,6 +374,7 @@ _initialize_ser_tcp (void)
      ser-mingw.c.  */
 #else
   struct serial_ops *ops;
+
   ops = XMALLOC (struct serial_ops);
   memset (ops, 0, sizeof (struct serial_ops));
   ops->name = "tcp";

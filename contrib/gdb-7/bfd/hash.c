@@ -425,7 +425,7 @@ bfd_hash_lookup (struct bfd_hash_table *table,
   unsigned int c;
   struct bfd_hash_entry *hashp;
   unsigned int len;
-  unsigned int index;
+  unsigned int _index;
 
   hash = 0;
   len = 0;
@@ -439,8 +439,8 @@ bfd_hash_lookup (struct bfd_hash_table *table,
   hash += len + (len << 17);
   hash ^= hash >> 2;
 
-  index = hash % table->size;
-  for (hashp = table->table[index];
+  _index = hash % table->size;
+  for (hashp = table->table[_index];
        hashp != NULL;
        hashp = hashp->next)
     {
@@ -478,16 +478,16 @@ bfd_hash_insert (struct bfd_hash_table *table,
 		 unsigned long hash)
 {
   struct bfd_hash_entry *hashp;
-  unsigned int index;
+  unsigned int _index;
 
   hashp = (*table->newfunc) (NULL, table, string);
   if (hashp == NULL)
     return NULL;
   hashp->string = string;
   hashp->hash = hash;
-  index = hash % table->size;
-  hashp->next = table->table[index];
-  table->table[index] = hashp;
+  _index = hash % table->size;
+  hashp->next = table->table[_index];
+  table->table[_index] = hashp;
   table->count++;
 
   if (!table->frozen && table->count > table->size * 3 / 4)
@@ -524,9 +524,9 @@ bfd_hash_insert (struct bfd_hash_table *table,
 	      chain_end = chain_end->next;
 
 	    table->table[hi] = chain_end->next;
-	    index = chain->hash % newsize;
-	    chain_end->next = newtable[index];
-	    newtable[index] = chain;
+	    _index = chain->hash % newsize;
+	    chain_end->next = newtable[_index];
+	    newtable[_index] = chain;
 	  }
       table->table = newtable;
       table->size = newsize;
@@ -542,11 +542,11 @@ bfd_hash_replace (struct bfd_hash_table *table,
 		  struct bfd_hash_entry *old,
 		  struct bfd_hash_entry *nw)
 {
-  unsigned int index;
+  unsigned int _index;
   struct bfd_hash_entry **pph;
 
-  index = old->hash % table->size;
-  for (pph = &table->table[index];
+  _index = old->hash % table->size;
+  for (pph = &table->table[_index];
        (*pph) != NULL;
        pph = &(*pph)->next)
     {
@@ -617,14 +617,14 @@ bfd_hash_set_default_size (bfd_size_type hash_size)
     {
       251, 509, 1021, 2039, 4051, 8599, 16699, 32749
     };
-  size_t index;
+  size_t _index;
 
   /* Work out best prime number near the hash_size.  */
-  for (index = 0; index < ARRAY_SIZE (hash_size_primes) - 1; ++index)
-    if (hash_size <= hash_size_primes[index])
+  for (_index = 0; _index < ARRAY_SIZE (hash_size_primes) - 1; ++_index)
+    if (hash_size <= hash_size_primes[_index])
       break;
 
-  bfd_default_hash_table_size = hash_size_primes[index];
+  bfd_default_hash_table_size = hash_size_primes[_index];
 }
 
 /* A few different object file formats (a.out, COFF, ELF) use a string

@@ -1,6 +1,6 @@
 /* ELF executable support for BFD.
    Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-   2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
+   2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Written by Fred Fish @ Cygnus Support, from information published
@@ -279,7 +279,10 @@ elf_swap_ehdr_out (bfd *abfd,
   H_PUT_32 (abfd, src->e_flags, dst->e_flags);
   H_PUT_16 (abfd, src->e_ehsize, dst->e_ehsize);
   H_PUT_16 (abfd, src->e_phentsize, dst->e_phentsize);
-  H_PUT_16 (abfd, src->e_phnum, dst->e_phnum);
+  tmp = src->e_phnum;
+  if (tmp > PN_XNUM)
+    tmp = PN_XNUM;
+  H_PUT_16 (abfd, tmp, dst->e_phnum);
   H_PUT_16 (abfd, src->e_shentsize, dst->e_shentsize);
   tmp = src->e_shnum;
   if (tmp >= (SHN_LORESERVE & 0xffff))
@@ -701,6 +704,14 @@ elf_object_p (bfd *abfd)
 	    goto got_wrong_format_error;
 	}
 
+      /* And program headers.  */
+      if (i_ehdrp->e_phnum == PN_XNUM && i_shdr.sh_info != 0)
+	{
+	  i_ehdrp->e_phnum = i_shdr.sh_info;
+	  if (i_ehdrp->e_phnum != i_shdr.sh_info)
+	    goto got_wrong_format_error;
+	}
+
       /* Sanity check that we can read all of the section headers.
 	 It ought to be good enough to just read the last one.  */
       if (i_ehdrp->e_shnum != 1)
@@ -761,10 +772,13 @@ elf_object_p (bfd *abfd)
 	  /* Sanity check sh_link and sh_info.  */
 	  if (i_shdrp[shindex].sh_link >= num_sec)
 	    {
-	      /* PR 10478: Accept sparc binaries with a sh_link
+	      /* PR 10478: Accept Solaris binaries with a sh_link
 		 field set to SHN_BEFORE or SHN_AFTER.  */
 	      switch (ebd->elf_machine_code)
 		{
+		case EM_386:
+		case EM_486:
+		case EM_X86_64:
 		case EM_OLD_SPARCV9:
 		case EM_SPARC32PLUS:
 		case EM_SPARCV9:
@@ -1069,6 +1083,8 @@ elf_write_shdrs_and_ehdr (bfd *abfd)
 
   /* Some fields in the first section header handle overflow of ehdr
      fields.  */
+  if (i_ehdrp->e_phnum >= PN_XNUM)
+    i_shdrp[0]->sh_info = i_ehdrp->e_phnum;
   if (i_ehdrp->e_shnum >= (SHN_LORESERVE & 0xffff))
     i_shdrp[0]->sh_size = i_ehdrp->e_shnum;
   if (i_ehdrp->e_shstrndx >= (SHN_LORESERVE & 0xffff))
@@ -1825,6 +1841,8 @@ NAME(_bfd_elf,bfd_from_remote_memory)
   bim->buffer = contents;
   nbfd->iostream = bim;
   nbfd->flags = BFD_IN_MEMORY;
+  nbfd->iovec = &_bfd_memory_iovec;
+  nbfd->origin = 0;
   nbfd->direction = read_direction;
   nbfd->mtime = time (NULL);
   nbfd->mtime_set = TRUE;

@@ -1,7 +1,7 @@
 /* List lines of source files for GDB, the GNU debugger.
    Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
    1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008,
-   2009 Free Software Foundation, Inc.
+   2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -45,6 +45,8 @@
 #include "completer.h"
 #include "ui-out.h"
 #include "readline/readline.h"
+
+#include "psymtab.h"
 
 
 #define OPEN_MODE (O_RDONLY | O_BINARY)
@@ -91,6 +93,8 @@ static struct symtab *current_source_symtab;
 /* Default next line to list.  */
 
 static int current_source_line;
+
+static struct program_space *current_source_pspace;
 
 /* Default number of lines to print with commands like "list".
    This is based on guessing how many long (i.e. more than chars_per_line
@@ -152,6 +156,7 @@ get_current_source_symtab_and_line (void)
 {
   struct symtab_and_line cursal = { 0 };
 
+  cursal.pspace = current_source_pspace;
   cursal.symtab = current_source_symtab;
   cursal.line = current_source_line;
   cursal.pc = 0;
@@ -171,8 +176,6 @@ get_current_source_symtab_and_line (void)
 void
 set_default_source_symtab_and_line (void)
 {
-  struct symtab_and_line cursal;
-
   if (!have_full_symbols () && !have_partial_symbols ())
     error (_("No symbol table is loaded.  Use the \"file\" command."));
 
@@ -190,15 +193,17 @@ struct symtab_and_line
 set_current_source_symtab_and_line (const struct symtab_and_line *sal)
 {
   struct symtab_and_line cursal = { 0 };
-  
+
+  cursal.pspace = current_source_pspace;
   cursal.symtab = current_source_symtab;
   cursal.line = current_source_line;
-
-  current_source_symtab = sal->symtab;
-  current_source_line = sal->line;
   cursal.pc = 0;
   cursal.end = 0;
-  
+
+  current_source_pspace = sal->pspace;
+  current_source_symtab = sal->symtab;
+  current_source_line = sal->line;
+
   return cursal;
 }
 
@@ -224,14 +229,13 @@ select_source_symtab (struct symtab *s)
 {
   struct symtabs_and_lines sals;
   struct symtab_and_line sal;
-  struct partial_symtab *ps;
-  struct partial_symtab *cs_pst = 0;
   struct objfile *ofp;
 
   if (s)
     {
       current_source_symtab = s;
       current_source_line = 1;
+      current_source_pspace = SYMTAB_PSPACE (s);
       return;
     }
 
@@ -245,6 +249,7 @@ select_source_symtab (struct symtab *s)
       sals = decode_line_spec (main_name (), 1);
       sal = sals.sals[0];
       xfree (sals.sals);
+      current_source_pspace = sal.pspace;
       current_source_symtab = sal.symtab;
       current_source_line = max (sal.line - (lines_to_list - 1), 1);
       if (current_source_symtab)
@@ -256,46 +261,32 @@ select_source_symtab (struct symtab *s)
 
   current_source_line = 1;
 
-  for (ofp = object_files; ofp != NULL; ofp = ofp->next)
+  ALL_OBJFILES (ofp)
     {
       for (s = ofp->symtabs; s; s = s->next)
 	{
 	  const char *name = s->filename;
 	  int len = strlen (name);
+
 	  if (!(len > 2 && (strcmp (&name[len - 2], ".h") == 0
 	      || strcmp (name, "<<C++-namespaces>>") == 0)))
-	    current_source_symtab = s;
+	    {
+	      current_source_pspace = current_program_space;
+	      current_source_symtab = s;
+	    }
 	}
     }
+
   if (current_source_symtab)
     return;
 
-  /* How about the partial symbol tables?  */
-
-  for (ofp = object_files; ofp != NULL; ofp = ofp->next)
-    {
-      for (ps = ofp->psymtabs; ps != NULL; ps = ps->next)
-	{
-	  const char *name = ps->filename;
-	  int len = strlen (name);
-	  if (!(len > 2 && (strcmp (&name[len - 2], ".h") == 0
-	      || strcmp (name, "<<C++-namespaces>>") == 0)))
-	    cs_pst = ps;
-	}
-    }
-  if (cs_pst)
-    {
-      if (cs_pst->readin)
-	{
-	  internal_error (__FILE__, __LINE__,
-			  _("select_source_symtab: "
-			  "readin pst found and no symtabs."));
-	}
-      else
-	{
-	  current_source_symtab = PSYMTAB_TO_SYMTAB (cs_pst);
-	}
-    }
+  ALL_OBJFILES (ofp)
+  {
+    if (ofp->sf)
+      s = ofp->sf->qf->find_last_source_symtab (ofp);
+    if (s)
+      current_source_symtab = s;
+  }
   if (current_source_symtab)
     return;
 
@@ -317,11 +308,12 @@ show_directories (char *ignore, int from_tty)
 void
 forget_cached_source_info (void)
 {
+  struct program_space *pspace;
   struct symtab *s;
   struct objfile *objfile;
-  struct partial_symtab *pst;
 
-  for (objfile = object_files; objfile != NULL; objfile = objfile->next)
+  ALL_PSPACES (pspace)
+    ALL_PSPACE_OBJFILES (pspace, objfile)
     {
       for (s = objfile->symtabs; s != NULL; s = s->next)
 	{
@@ -337,14 +329,8 @@ forget_cached_source_info (void)
 	    }
 	}
 
-      ALL_OBJFILE_PSYMTABS (objfile, pst)
-      {
-	if (pst->fullname != NULL)
-	  {
-	    xfree (pst->fullname);
-	    pst->fullname = NULL;
-	  }
-      }
+      if (objfile->sf)
+	objfile->sf->qf->forget_cached_source_info (objfile);
     }
 
   last_source_visited = NULL;
@@ -534,6 +520,7 @@ add_path (char *dirname, char **which_path, int parse_separators)
 	  if (stat (name, &st) < 0)
 	    {
 	      int save_errno = errno;
+
 	      fprintf_unfiltered (gdb_stderr, "Warning: ");
 	      print_sys_errmsg (name, save_errno);
 	    }
@@ -693,6 +680,20 @@ openp (const char *path, int opts, const char *string,
 
   /* The open syscall MODE parameter is not specified.  */
   gdb_assert ((mode & O_CREAT) == 0);
+  gdb_assert (string != NULL);
+
+  /* A file with an empty name cannot possibly exist.  Report a failure
+     without further checking.
+
+     This is an optimization which also defends us against buggy
+     implementations of the "stat" function.  For instance, we have
+     noticed that a MinGW debugger built on Windows XP 32bits crashes
+     when the debugger is started with an empty argument.  */
+  if (string[0] == '\0')
+    {
+      errno = ENOENT;
+      return -1;
+    }
 
   if (!path)
     path = ".";
@@ -722,6 +723,10 @@ openp (const char *path, int opts, const char *string,
 	  if (IS_DIR_SEPARATOR (string[i]))
 	    goto done;
     }
+
+  /* For dos paths, d:/foo -> /foo, and d:foo -> foo.  */
+  if (HAS_DRIVE_SPEC (string))
+    string = STRIP_DRIVE_SPEC (string);
 
   /* /foo => foo, to avoid multiple slashes that Emacs doesn't like. */
   while (IS_DIR_SEPARATOR(string[0]))
@@ -763,6 +768,16 @@ openp (const char *path, int opts, const char *string,
 	  /* Normal file name in path -- just use it.  */
 	  strncpy (filename, p, len);
 	  filename[len] = 0;
+
+	  /* Don't search $cdir.  It's also a magic path like $cwd, but we
+	     don't have enough information to expand it.  The user *could*
+	     have an actual directory named '$cdir' but handling that would
+	     be confusing, it would mean different things in different
+	     contexts.  If the user really has '$cdir' one can use './$cdir'.
+	     We can get $cdir when loading scripts.  When loading source files
+	     $cdir must have already been expanded to the correct value.  */
+	  if (strcmp (filename, "$cdir") == 0)
+	    continue;
 	}
 
       /* Remove trailing slashes */
@@ -800,6 +815,7 @@ done:
 			    IS_DIR_SEPARATOR (current_directory[strlen (current_directory) - 1])
 			    ? "" : SLASH_STRING,
 			    filename, (char *)NULL);
+
 	  *filename_opened = xfullpath (f);
 	  xfree (f);
 	}
@@ -936,7 +952,7 @@ rewrite_source_path (const char *path)
      An invalid file descriptor is returned. ( the return value is negative ) 
      FULLNAME is set to NULL.  */
 
-static int
+int
 find_and_open_source (const char *filename,
 		      const char *dirname,
 		      char **fullname)
@@ -1062,34 +1078,6 @@ symtab_to_fullname (struct symtab *s)
     {
       close (r);
       return s->fullname;
-    }
-
-  return NULL;
-}
-
-/* Finds the fullname that a partial_symtab represents.
-
-   If this functions finds the fullname, it will save it in ps->fullname
-   and it will also return the value.
-
-   If this function fails to find the file that this partial_symtab represents,
-   NULL will be returned and ps->fullname will be set to NULL.  */
-char *
-psymtab_to_fullname (struct partial_symtab *ps)
-{
-  int r;
-
-  if (!ps)
-    return NULL;
-
-  /* Don't check ps->fullname here, the file could have been
-     deleted/moved/..., look for it again */
-  r = find_and_open_source (ps->filename, ps->dirname, &ps->fullname);
-
-  if (r >= 0)
-    {
-      close (r);
-      return ps->fullname;
     }
 
   return NULL;
@@ -1305,6 +1293,7 @@ print_source_lines_base (struct symtab *s, int line, int stopline, int noerror)
 {
   int c;
   int desc;
+  int noprint = 0;
   FILE *stream;
   int nlines = stopline - line;
   struct cleanup *cleanup;
@@ -1331,11 +1320,12 @@ print_source_lines_base (struct symtab *s, int line, int stopline, int noerror)
     }
   else
     {
-      desc = -1;
+      desc = last_source_error;
       noerror = 1;
+      noprint = 1;
     }
 
-  if (desc < 0)
+  if (desc < 0 || noprint)
     {
       last_source_error = desc;
 
@@ -1887,7 +1877,6 @@ unset_substitute_path_command (char *args, int from_tty)
 static void
 set_substitute_path_command (char *args, int from_tty)
 {
-  char *from_path, *to_path;
   char **argv;
   struct substitute_path_rule *rule;
   
@@ -1926,6 +1915,7 @@ void
 _initialize_source (void)
 {
   struct cmd_list_element *c;
+
   current_source_symtab = 0;
   init_source_path ();
 
@@ -1987,6 +1977,7 @@ The matching line number is also stored as the value of \"$_\"."));
   add_com ("reverse-search", class_files, reverse_search_command, _("\
 Search backward for regular expression (see regex(3)) from last line listed.\n\
 The matching line number is also stored as the value of \"$_\"."));
+  add_com_alias ("rev", "reverse-search", class_files, 1);
 
   if (xdb_commands)
     {

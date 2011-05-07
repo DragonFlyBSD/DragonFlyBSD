@@ -1,6 +1,6 @@
 /* MI Interpreter Definitions and Commands for GDB, the GNU debugger.
 
-   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009
+   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -44,7 +44,7 @@ static void mi_command_loop (int mi_version);
    so we can report interesting things that happened "behind the mi's
    back" in this command */
 static int mi_interp_query_hook (const char *ctlstr, va_list ap)
-     ATTR_FORMAT (printf, 1, 0);
+     ATTRIBUTE_PRINTF (1, 0);
 
 static void mi3_command_loop (void);
 static void mi2_command_loop (void);
@@ -56,12 +56,16 @@ static void mi_on_normal_stop (struct bpstats *bs, int print_frame);
 
 static void mi_new_thread (struct thread_info *t);
 static void mi_thread_exit (struct thread_info *t, int silent);
-static void mi_new_inferior (int pid);
-static void mi_inferior_exit (int pid);
+static void mi_inferior_added (struct inferior *inf);
+static void mi_inferior_appeared (struct inferior *inf);
+static void mi_inferior_exit (struct inferior *inf);
+static void mi_inferior_removed (struct inferior *inf);
 static void mi_on_resume (ptid_t ptid);
 static void mi_solib_loaded (struct so_list *solib);
 static void mi_solib_unloaded (struct so_list *solib);
 static void mi_about_to_proceed (void);
+
+static int report_initial_inferior (struct inferior *inf, void *closure);
 
 static void *
 mi_interpreter_init (int top_level)
@@ -86,13 +90,20 @@ mi_interpreter_init (int top_level)
     {
       observer_attach_new_thread (mi_new_thread);
       observer_attach_thread_exit (mi_thread_exit);
-      observer_attach_new_inferior (mi_new_inferior);
+      observer_attach_inferior_added (mi_inferior_added);
+      observer_attach_inferior_appeared (mi_inferior_appeared);
       observer_attach_inferior_exit (mi_inferior_exit);
+      observer_attach_inferior_removed (mi_inferior_removed);
       observer_attach_normal_stop (mi_on_normal_stop);
       observer_attach_target_resumed (mi_on_resume);
       observer_attach_solib_loaded (mi_solib_loaded);
       observer_attach_solib_unloaded (mi_solib_unloaded);
       observer_attach_about_to_proceed (mi_about_to_proceed);
+
+      /* The initial inferior is created before this function is called, so we
+	 need to report it explicitly.  Use iteration in case future version
+	 of GDB creates more than one inferior up-front.  */
+      iterate_over_inferiors (report_initial_inferior, mi);
     }
 
   return mi;
@@ -102,8 +113,8 @@ static int
 mi_interpreter_resume (void *data)
 {
   struct mi_interp *mi = data;
-  /* As per hack note in mi_interpreter_init, swap in the output channels... */
 
+  /* As per hack note in mi_interpreter_init, swap in the output channels... */
   gdb_setup_readline ();
 
   /* These overwrite some of the initialization done in
@@ -158,8 +169,8 @@ mi_interpreter_suspend (void *data)
 static struct gdb_exception
 mi_interpreter_exec (void *data, const char *command)
 {
-  static struct gdb_exception ok;
   char *tmp = alloca (strlen (command) + 1);
+
   strcpy (tmp, command);
   mi_execute_command_wrapper (tmp);
   return exception_none;
@@ -177,7 +188,6 @@ mi_cmd_interpreter_exec (char *command, char **argv, int argc)
 {
   struct interp *interp_to_use;
   int i;
-  struct interp_procs *procs;
   char *mi_error_message = NULL;
   struct cleanup *old_chain;
 
@@ -204,6 +214,7 @@ mi_cmd_interpreter_exec (char *command, char **argv, int argc)
   for (i = 1; i < argc; i++)
     {
       struct gdb_exception e = interp_exec (interp_to_use, argv[i]);
+
       if (e.reason < 0)
 	{
 	  mi_error_message = xstrdup (e.message);
@@ -285,10 +296,13 @@ static void
 mi_new_thread (struct thread_info *t)
 {
   struct mi_interp *mi = top_level_interpreter_data ();
+  struct inferior *inf = find_inferior_pid (ptid_get_pid (t->ptid));
+
+  gdb_assert (inf);
 
   fprintf_unfiltered (mi->event_channel, 
-		      "thread-created,id=\"%d\",group-id=\"%d\"", 
-		      t->num, t->ptid.pid);
+		      "thread-created,id=\"%d\",group-id=\"i%d\"",
+		      t->num, inf->num);
   gdb_flush (mi->event_channel);
 }
 
@@ -296,36 +310,66 @@ static void
 mi_thread_exit (struct thread_info *t, int silent)
 {
   struct mi_interp *mi;
+  struct inferior *inf;
 
   if (silent)
     return;
 
+  inf = find_inferior_pid (ptid_get_pid (t->ptid));
+
   mi = top_level_interpreter_data ();
   target_terminal_ours ();
   fprintf_unfiltered (mi->event_channel, 
-		      "thread-exited,id=\"%d\",group-id=\"%d\"", 
-		      t->num,t->ptid.pid);
+		      "thread-exited,id=\"%d\",group-id=\"i%d\"",
+		      t->num, inf->num);
   gdb_flush (mi->event_channel);
 }
 
 static void
-mi_new_inferior (int pid)
+mi_inferior_added (struct inferior *inf)
 {
   struct mi_interp *mi = top_level_interpreter_data ();
+
   target_terminal_ours ();
-  fprintf_unfiltered (mi->event_channel, "thread-group-created,id=\"%d\"", 
-		      pid);
+  fprintf_unfiltered (mi->event_channel,
+		      "thread-group-added,id=\"i%d\"",
+		      inf->num);
   gdb_flush (mi->event_channel);
 }
 
 static void
-mi_inferior_exit (int pid)
+mi_inferior_appeared (struct inferior *inf)
 {
   struct mi_interp *mi = top_level_interpreter_data ();
+
   target_terminal_ours ();
-  fprintf_unfiltered (mi->event_channel, "thread-group-exited,id=\"%d\"", 
-		      pid);
+  fprintf_unfiltered (mi->event_channel,
+		      "thread-group-started,id=\"i%d\",pid=\"%d\"",
+		      inf->num, inf->pid);
+  gdb_flush (mi->event_channel);
+}
+
+static void
+mi_inferior_exit (struct inferior *inf)
+{
+  struct mi_interp *mi = top_level_interpreter_data ();
+
+  target_terminal_ours ();
+  fprintf_unfiltered (mi->event_channel, "thread-group-exited,id=\"i%d\"",
+		      inf->num);
   gdb_flush (mi->event_channel);  
+}
+
+static void
+mi_inferior_removed (struct inferior *inf)
+{
+  struct mi_interp *mi = top_level_interpreter_data ();
+
+  target_terminal_ours ();
+  fprintf_unfiltered (mi->event_channel,
+		      "thread-group-removed,id=\"i%d\"",
+		      inf->num);
+  gdb_flush (mi->event_channel);
 }
 
 static void
@@ -335,10 +379,11 @@ mi_on_normal_stop (struct bpstats *bs, int print_frame)
      using cli interpreter, be sure to use MI uiout for output,
      not the current one.  */
   struct ui_out *mi_uiout = interp_ui_out (top_level_interpreter ());
-  struct mi_interp *mi = top_level_interpreter_data ();
 
   if (print_frame)
     {
+      int core;
+
       if (uiout != mi_uiout)
 	{
 	  /* The normal_stop function has printed frame information into 
@@ -347,6 +392,7 @@ mi_on_normal_stop (struct bpstats *bs, int print_frame)
 	     the frame again.  In practice, this can only happen when running
 	     a CLI command in MI.  */
 	  struct ui_out *saved_uiout = uiout;
+
 	  uiout = mi_uiout;
 	  print_stack_frame (get_selected_frame (NULL), 0, SRC_AND_LOC);
 	  uiout = saved_uiout;
@@ -358,12 +404,17 @@ mi_on_normal_stop (struct bpstats *bs, int print_frame)
 	{
 	  struct cleanup *back_to = make_cleanup_ui_out_list_begin_end 
 	    (mi_uiout, "stopped-threads");
+
 	  ui_out_field_int (mi_uiout, NULL,
-			    pid_to_thread_id (inferior_ptid));		  		  
+			    pid_to_thread_id (inferior_ptid));
 	  do_cleanups (back_to);
 	}
       else
 	ui_out_field_string (mi_uiout, "stopped-threads", "all");
+
+      core = target_core_of_thread (inferior_ptid);
+      if (core != -1)
+	ui_out_field_int (mi_uiout, "core", core);
     }
   
   fputs_unfiltered ("*stopped", raw_stdout);
@@ -382,6 +433,7 @@ mi_about_to_proceed (void)
   if (!ptid_equal (inferior_ptid, null_ptid))
     {
       struct thread_info *tp = inferior_thread ();
+
       if (tp->in_infcall)
 	return;
     }
@@ -438,9 +490,8 @@ mi_on_resume (ptid_t ptid)
      In future (MI3), we'll be outputting "^done" here.  */
   if (!running_result_record_printed && mi_proceeded)
     {
-      if (current_token)
-	fputs_unfiltered (current_token, raw_stdout);
-      fputs_unfiltered ("^running\n", raw_stdout);
+      fprintf_unfiltered (raw_stdout, "%s^running\n",
+			  current_token ? current_token : "");
     }
 
   if (PIDGET (ptid) == -1)
@@ -462,6 +513,7 @@ mi_on_resume (ptid_t ptid)
   else
     {
       struct thread_info *ti = find_thread_ptid (ptid);
+
       gdb_assert (ti);
       fprintf_unfiltered (raw_stdout, "*running,thread-id=\"%d\"\n", ti->num);
     }
@@ -484,11 +536,23 @@ static void
 mi_solib_loaded (struct so_list *solib)
 {
   struct mi_interp *mi = top_level_interpreter_data ();
+
   target_terminal_ours ();
-  fprintf_unfiltered (mi->event_channel, 
-		      "library-loaded,id=\"%s\",target-name=\"%s\",host-name=\"%s\",symbols-loaded=\"%d\"", 
-		      solib->so_original_name, solib->so_original_name, 
-		      solib->so_name, solib->symbols_loaded);
+  if (gdbarch_has_global_solist (target_gdbarch))
+    fprintf_unfiltered (mi->event_channel,
+			"library-loaded,id=\"%s\",target-name=\"%s\","
+			"host-name=\"%s\",symbols-loaded=\"%d\"",
+			solib->so_original_name, solib->so_original_name,
+			solib->so_name, solib->symbols_loaded);
+  else
+    fprintf_unfiltered (mi->event_channel,
+			"library-loaded,id=\"%s\",target-name=\"%s\","
+			"host-name=\"%s\",symbols-loaded=\"%d\","
+			"thread-group=\"i%d\"",
+			solib->so_original_name, solib->so_original_name,
+			solib->so_name, solib->symbols_loaded,
+			current_inferior ()->num);
+
   gdb_flush (mi->event_channel);
 }
 
@@ -496,14 +560,40 @@ static void
 mi_solib_unloaded (struct so_list *solib)
 {
   struct mi_interp *mi = top_level_interpreter_data ();
+
   target_terminal_ours ();
-  fprintf_unfiltered (mi->event_channel, 
-		      "library-unloaded,id=\"%s\",target-name=\"%s\",host-name=\"%s\"", 
-		      solib->so_original_name, solib->so_original_name, 
-		      solib->so_name);
+  if (gdbarch_has_global_solist (target_gdbarch))
+    fprintf_unfiltered (mi->event_channel,
+			"library-unloaded,id=\"%s\",target-name=\"%s\","
+			"host-name=\"%s\"",
+			solib->so_original_name, solib->so_original_name,
+			solib->so_name);
+  else
+    fprintf_unfiltered (mi->event_channel,
+			"library-unloaded,id=\"%s\",target-name=\"%s\","
+			"host-name=\"%s\",thread-group=\"i%d\"",
+			solib->so_original_name, solib->so_original_name,
+			solib->so_name, current_inferior ()->num);
+
   gdb_flush (mi->event_channel);
 }
 
+static int
+report_initial_inferior (struct inferior *inf, void *closure)
+{
+  /* This function is called from mi_intepreter_init, and since
+     mi_inferior_added assumes that inferior is fully initialized
+     and top_level_interpreter_data is set, we cannot call
+     it here.  */
+  struct mi_interp *mi = closure;
+
+  target_terminal_ours ();
+  fprintf_unfiltered (mi->event_channel,
+		      "thread-group-added,id=\"i%d\"",
+		      inf->num);
+  gdb_flush (mi->event_channel);
+  return 0;
+}
 
 extern initialize_file_ftype _initialize_mi_interp; /* -Wmissing-prototypes */
 

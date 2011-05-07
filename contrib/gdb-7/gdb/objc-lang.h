@@ -1,6 +1,7 @@
 /* Objective-C language support definitions for GDB, the GNU debugger.
 
-   Copyright (C) 1992, 2005, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 1992, 2005, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
 
    Contributed by Apple Computer, Inc.
 

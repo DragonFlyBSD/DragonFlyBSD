@@ -1,7 +1,7 @@
 /* Caching code for GDB, the GNU debugger.
 
    Copyright (C) 1992, 1993, 1995, 1996, 1998, 1999, 2000, 2001, 2003, 2007,
-   2008, 2009 Free Software Foundation, Inc.
+   2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -41,9 +41,9 @@
    of data, such as when performing a backtrace.
 
    The cache is a splay tree along with a linked list for replacement.
-   Each block caches a LINE_SIZE area of memory.  Wtihin each line we remember
-   the address of the line (which must be a multiple of LINE_SIZE) and the
-   actual data block.
+   Each block caches a LINE_SIZE area of memory.  Within each line we
+   remember the address of the line (which must be a multiple of
+   LINE_SIZE) and the actual data block.
 
    Lines are only allocated as needed, so DCACHE_SIZE really specifies the
    *maximum* number of lines in the cache.
@@ -88,7 +88,10 @@
 
 struct dcache_block
 {
-  struct dcache_block *newer;	/* for LRU and free list */
+  /* for least-recently-allocated and free lists */
+  struct dcache_block *prev;
+  struct dcache_block *next;
+
   CORE_ADDR addr;		/* address of data */
   gdb_byte data[LINE_SIZE];	/* bytes at given address */
   int refs;			/* # hits */
@@ -97,9 +100,10 @@ struct dcache_block
 struct dcache_struct
 {
   splay_tree tree;
-  struct dcache_block *oldest;
-  struct dcache_block *newest;
+  struct dcache_block *oldest; /* least-recently-allocated list */
 
+  /* The free list is maintained identically to OLDEST to simplify
+     the code: we only need one set of accessors.  */
   struct dcache_block *freelist;
 
   /* The number of in-use lines in the cache.  */
@@ -109,9 +113,9 @@ struct dcache_struct
   ptid_t ptid;
 };
 
-static struct dcache_block *dcache_hit (DCACHE *dcache, CORE_ADDR addr);
+typedef void (block_func) (struct dcache_block *block, void *param);
 
-static int dcache_write_line (DCACHE *dcache, struct dcache_block *db);
+static struct dcache_block *dcache_hit (DCACHE *dcache, CORE_ADDR addr);
 
 static int dcache_read_line (DCACHE *dcache, struct dcache_block *db);
 
@@ -132,28 +136,98 @@ show_dcache_enabled_p (struct ui_file *file, int from_tty,
 
 static DCACHE *last_cache; /* Used by info dcache */
 
+/* Add BLOCK to circular block list BLIST, behind the block at *BLIST.
+   *BLIST is not updated (unless it was previously NULL of course).
+   This is for the least-recently-allocated list's sake:
+   BLIST points to the oldest block.
+   ??? This makes for poor cache usage of the free list,
+   but is it measurable?  */
+
+static void
+append_block (struct dcache_block **blist, struct dcache_block *block)
+{
+  if (*blist)
+    {
+      block->next = *blist;
+      block->prev = (*blist)->prev;
+      block->prev->next = block;
+      (*blist)->prev = block;
+      /* We don't update *BLIST here to maintain the invariant that for the
+	 least-recently-allocated list *BLIST points to the oldest block.  */
+    }
+  else
+    {
+      block->next = block;
+      block->prev = block;
+      *blist = block;
+    }
+}
+
+/* Remove BLOCK from circular block list BLIST.  */
+
+static void
+remove_block (struct dcache_block **blist, struct dcache_block *block)
+{
+  if (block->next == block)
+    {
+      *blist = NULL;
+    }
+  else
+    {
+      block->next->prev = block->prev;
+      block->prev->next = block->next;
+      /* If we removed the block *BLIST points to, shift it to the next block
+	 to maintain the invariant that for the least-recently-allocated list
+	 *BLIST points to the oldest block.  */
+      if (*blist == block)
+	*blist = block->next;
+    }
+}
+
+/* Iterate over all elements in BLIST, calling FUNC.
+   PARAM is passed to FUNC.
+   FUNC may remove the block it's passed, but only that block.  */
+
+static void
+for_each_block (struct dcache_block **blist, block_func *func, void *param)
+{
+  struct dcache_block *db;
+
+  if (*blist == NULL)
+    return;
+
+  db = *blist;
+  do
+    {
+      struct dcache_block *next = db->next;
+
+      func (db, param);
+      db = next;
+    }
+  while (*blist && db != *blist);
+}
+
+/* BLOCK_FUNC function for dcache_invalidate.
+   This doesn't remove the block from the oldest list on purpose.
+   dcache_invalidate will do it later.  */
+
+static void
+invalidate_block (struct dcache_block *block, void *param)
+{
+  DCACHE *dcache = (DCACHE *) param;
+
+  splay_tree_remove (dcache->tree, (splay_tree_key) block->addr);
+  append_block (&dcache->freelist, block);
+}
+
 /* Free all the data cache blocks, thus discarding all cached data.  */
 
 void
 dcache_invalidate (DCACHE *dcache)
 {
-  struct dcache_block *block, *next;
-
-  block = dcache->oldest;
-
-  while (block)
-    {
-      splay_tree_remove (dcache->tree, (splay_tree_key) block->addr);
-      next = block->newer;
-
-      block->newer = dcache->freelist;
-      dcache->freelist = block;
-
-      block = next;
-    }
+  for_each_block (&dcache->oldest, invalidate_block, dcache);
 
   dcache->oldest = NULL;
-  dcache->newest = NULL;
   dcache->size = 0;
   dcache->ptid = null_ptid;
 }
@@ -168,14 +242,14 @@ dcache_invalidate_line (DCACHE *dcache, CORE_ADDR addr)
   if (db)
     {
       splay_tree_remove (dcache->tree, (splay_tree_key) db->addr);
-      db->newer = dcache->freelist;
-      dcache->freelist = db;
+      remove_block (&dcache->oldest, db);
+      append_block (&dcache->freelist, db);
       --dcache->size;
     }
 }
 
 /* If addr is present in the dcache, return the address of the block
-   containing it.  */
+   containing it.  Otherwise return NULL.  */
 
 static struct dcache_block *
 dcache_hit (DCACHE *dcache, CORE_ADDR addr)
@@ -193,7 +267,9 @@ dcache_hit (DCACHE *dcache, CORE_ADDR addr)
   return db;
 }
 
-/* Fill a cache line from target memory.  */
+/* Fill a cache line from target memory.
+   The result is 1 for success, 0 if the (entire) cache line
+   wasn't readable.  */
 
 static int
 dcache_read_line (DCACHE *dcache, struct dcache_block *db)
@@ -251,9 +327,9 @@ dcache_alloc (DCACHE *dcache, CORE_ADDR addr)
 
   if (dcache->size >= DCACHE_SIZE)
     {
-      /* Evict the least recently used line.  */
+      /* Evict the least recently allocated line.  */
       db = dcache->oldest;
-      dcache->oldest = db->newer;
+      remove_block (&dcache->oldest, db);
 
       splay_tree_remove (dcache->tree, (splay_tree_key) db->addr);
     }
@@ -261,7 +337,7 @@ dcache_alloc (DCACHE *dcache, CORE_ADDR addr)
     {
       db = dcache->freelist;
       if (db)
-        dcache->freelist = db->newer;
+	remove_block (&dcache->freelist, db);
       else
 	db = xmalloc (sizeof (struct dcache_block));
 
@@ -269,16 +345,10 @@ dcache_alloc (DCACHE *dcache, CORE_ADDR addr)
     }
 
   db->addr = MASK (addr);
-  db->newer = NULL;
   db->refs = 0;
 
-  if (dcache->newest)
-    dcache->newest->newer = db;
-
-  dcache->newest = db;
-
-  if (!dcache->oldest)
-    dcache->oldest = db;
+  /* Put DB at the end of the list, it's the newest.  */
+  append_block (&dcache->oldest, db);
 
   splay_tree_insert (dcache->tree, (splay_tree_key) db->addr,
 		     (splay_tree_value) db);
@@ -286,7 +356,7 @@ dcache_alloc (DCACHE *dcache, CORE_ADDR addr)
   return db;
 }
 
-/* Using the data cache DCACHE return the contents of the byte at
+/* Using the data cache DCACHE, store in *PTR the contents of the byte at
    address ADDR in the remote machine.  
 
    Returns 1 for success, 0 for error.  */
@@ -341,13 +411,12 @@ dcache_splay_tree_compare (splay_tree_key a, splay_tree_key b)
     return -1;
 }
 
-/* Initialize the data cache.  */
+/* Allocate and initialize a data cache.  */
 
 DCACHE *
 dcache_init (void)
 {
   DCACHE *dcache;
-  int i;
 
   dcache = (DCACHE *) xmalloc (sizeof (*dcache));
 
@@ -356,7 +425,6 @@ dcache_init (void)
 				 NULL);
 
   dcache->oldest = NULL;
-  dcache->newest = NULL;
   dcache->freelist = NULL;
   dcache->size = 0;
   dcache->ptid = null_ptid;
@@ -365,22 +433,25 @@ dcache_init (void)
   return dcache;
 }
 
+/* BLOCK_FUNC routine for dcache_free.  */
+
+static void
+free_block (struct dcache_block *block, void *param)
+{
+  free (block);
+}
+
 /* Free a data cache.  */
 
 void
 dcache_free (DCACHE *dcache)
 {
-  struct dcache_block *db, *next;
-
   if (last_cache == dcache)
     last_cache = NULL;
 
   splay_tree_delete (dcache->tree);
-  for (db = dcache->freelist; db != NULL; db = next)
-    {
-      next = db->newer;
-      xfree (db);
-    }
+  for_each_block (&dcache->oldest, free_block, NULL);
+  for_each_block (&dcache->freelist, free_block, NULL);
   xfree (dcache);
 }
 
@@ -388,7 +459,11 @@ dcache_free (DCACHE *dcache)
    to or from debugger address MYADDR.  Write to inferior if SHOULD_WRITE is
    nonzero. 
 
-   The meaning of the result is the same as for target_write.  */
+   Return the number of bytes actually transfered, or -1 if the
+   transfer is not supported or otherwise fails.  Return of a non-negative
+   value less than LEN indicates that no further transfer is possible.
+   NOTE: This is different than the to_xfer_partial interface, in which
+   positive values less than LEN mean further transfers may be possible.  */
 
 int
 dcache_xfer_memory (struct target_ops *ops, DCACHE *dcache,
@@ -398,6 +473,7 @@ dcache_xfer_memory (struct target_ops *ops, DCACHE *dcache,
   int i;
   int res;
   int (*xfunc) (DCACHE *dcache, CORE_ADDR addr, gdb_byte *ptr);
+
   xfunc = should_write ? dcache_poke_byte : dcache_peek_byte;
 
   /* If this is a different inferior from what we've recorded,
@@ -457,6 +533,7 @@ void
 dcache_update (DCACHE *dcache, CORE_ADDR memaddr, gdb_byte *myaddr, int len)
 {
   int i;
+
   for (i = 0; i < len; i++)
     dcache_poke_byte (dcache, memaddr + i, myaddr + i);
 }
@@ -509,11 +586,12 @@ static void
 dcache_info (char *exp, int tty)
 {
   splay_tree_node n;
-  int i, refcount, lineno;
+  int i, refcount;
 
   if (exp)
     {
       char *linestart;
+
       i = strtol (exp, &linestart, 10);
       if (linestart == exp || i < 0)
 	{

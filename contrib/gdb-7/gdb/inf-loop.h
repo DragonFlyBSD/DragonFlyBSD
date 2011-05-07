@@ -1,5 +1,5 @@
 /* Interface to the inferior event handling code for GDB, the GNU debugger.
-   Copyright (C) 1999, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 1999, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
    Written by Elena Zannoni <ezannoni@cygnus.com> of Cygnus Solutions.
 
    This file is part of GDB.

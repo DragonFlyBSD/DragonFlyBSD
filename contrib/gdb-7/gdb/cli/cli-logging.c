@@ -1,6 +1,7 @@
 /* Command-line output logging for GDB, the GNU debugger.
 
-   Copyright (c) 2003, 2004, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (c) 2003, 2004, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -137,6 +138,7 @@ static void
 set_logging_on (char *args, int from_tty)
 {
   char *rest = args;
+
   if (rest && *rest)
     {
       xfree (logging_filename);
@@ -199,7 +201,6 @@ _initialize_cli_logging (void)
 {
   static struct cmd_list_element *set_logging_cmdlist, *show_logging_cmdlist;
 
-  
   add_prefix_cmd ("logging", class_support, set_logging_command,
 		  _("Set logging options"), &set_logging_cmdlist,
 		  "set logging ", 0, &setlist);

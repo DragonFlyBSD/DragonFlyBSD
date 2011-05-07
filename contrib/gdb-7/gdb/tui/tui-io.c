@@ -1,7 +1,7 @@
 /* TUI support I/O functions.
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009,
+   2010 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -303,7 +303,7 @@ tui_deprep_terminal (void)
 /* Read readline output pipe and feed the command window with it.
    Should be removed when readline is clean.  */
 static void
-tui_readline_output (int code, gdb_client_data data)
+tui_readline_output (int error, gdb_client_data data)
 {
   int size;
   char buf[256];
@@ -654,7 +654,7 @@ tui_getc (FILE *fp)
 
 #ifdef TUI_USE_PIPE_FOR_READLINE
   /* Flush readline output.  */
-  tui_readline_output (GDB_READABLE, 0);
+  tui_readline_output (0, 0);
 #endif
 
   ch = wgetch (w);

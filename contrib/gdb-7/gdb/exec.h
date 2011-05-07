@@ -1,6 +1,6 @@
 /* Work with executable files, for GDB, the GNU debugger.
 
-   Copyright (C) 2003, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2003, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -21,12 +21,16 @@
 #define EXEC_H
 
 #include "target.h"
+#include "progspace.h"
 
 struct target_section;
 struct target_ops;
 struct bfd;
 
 extern struct target_ops exec_ops;
+
+#define exec_bfd current_program_space->ebfd
+#define exec_bfd_mtime current_program_space->ebfd_mtime
 
 /* Builds a section table, given args BFD, SECTABLE_PTR, SECEND_PTR.
    Returns 0 if OK, 1 on error.  */
@@ -82,5 +86,6 @@ extern void add_target_sections (struct target_section *sections,
 extern void print_section_info (struct target_section_table *table,
 				bfd *abfd);
 
+extern void exec_close (void);
 
 #endif

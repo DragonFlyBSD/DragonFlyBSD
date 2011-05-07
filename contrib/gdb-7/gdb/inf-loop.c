@@ -1,5 +1,5 @@
 /* Handling of inferior events for the event loop for GDB, the GNU debugger.
-   Copyright (C) 1999, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 1999, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
    Written by Elena Zannoni <ezannoni@cygnus.com> of Cygnus Solutions.
 
    This file is part of GDB.
@@ -46,6 +46,7 @@ inferior_event_handler (enum inferior_event_type event_type,
 {
   struct gdb_exception e;
   int was_sync = 0;
+
   switch (event_type)
     {
     case INF_ERROR:

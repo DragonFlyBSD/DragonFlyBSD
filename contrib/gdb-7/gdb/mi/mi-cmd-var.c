@@ -1,6 +1,6 @@
 /* MI Command Set - varobj commands.
 
-   Copyright (C) 2000, 2002, 2004, 2005, 2007, 2008, 2009
+   Copyright (C) 2000, 2002, 2004, 2005, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions (a Red Hat company).
@@ -50,7 +50,6 @@ static void
 print_varobj (struct varobj *var, enum print_values print_values,
 	      int print_expression)
 {
-  struct type *gdb_type;
   char *type;
   int thread_id;
   char *display_hint;
@@ -63,6 +62,7 @@ print_varobj (struct varobj *var, enum print_values print_values,
   if (mi_print_value_p (var, print_values))
     {
       char *val = varobj_get_value (var);
+
       ui_out_field_string (uiout, "value", val);
       xfree (val);
     }
@@ -394,7 +394,6 @@ mi_cmd_var_list_children (char *command, char **argv, int argc)
   struct varobj *var;  
   VEC(varobj_p) *children;
   struct varobj *child;
-  int numchild;
   enum print_values print_values;
   int ix;
   int from, to;
@@ -437,6 +436,7 @@ mi_cmd_var_list_children (char *command, char **argv, int argc)
   if (from < to)
     {
       struct cleanup *cleanup_children;
+
       if (mi_version (uiout) == 1)
 	cleanup_children
 	  = make_cleanup_ui_out_tuple_begin_end (uiout, "children");
@@ -448,6 +448,7 @@ mi_cmd_var_list_children (char *command, char **argv, int argc)
 	   ++ix)
 	{
 	  struct cleanup *cleanup_child;
+
 	  cleanup_child = make_cleanup_ui_out_tuple_begin_end (uiout, "child");
 	  print_varobj (child, print_values, 1 /* print expression */);
 	  do_cleanups (cleanup_child);
@@ -556,7 +557,9 @@ mi_cmd_var_evaluate_expression (char *command, char **argv, int argc)
   optind = 0;
   while (1)
     {
-      int opt = mi_getopt ("-var-evaluate-expression", argc, argv, opts, &optind, &optarg);
+      int opt = mi_getopt ("-var-evaluate-expression", argc, argv,
+			   opts, &optind, &optarg);
+
       if (opt < 0)
 	break;
       switch ((enum opt) opt)
@@ -583,12 +586,14 @@ mi_cmd_var_evaluate_expression (char *command, char **argv, int argc)
   if (formatFound)
     {
       char *val = varobj_get_formatted_value (var, format);
+
       ui_out_field_string (uiout, "value", val);
       xfree (val);
     }
   else
     {
       char *val = varobj_get_value (var);
+
       ui_out_field_string (uiout, "value", val);
       xfree (val);
     }
@@ -712,7 +717,6 @@ static void
 varobj_update_one (struct varobj *var, enum print_values print_values,
 		   int explicit)
 {
-  struct varobj **cc;
   struct cleanup *cleanup = NULL;
   VEC (varobj_update_result) *changes;
   varobj_update_result *r;
@@ -735,6 +739,7 @@ varobj_update_one (struct varobj *var, enum print_values print_values,
 	  if (mi_print_value_p (r->varobj, print_values))
 	    {
 	      char *val = varobj_get_value (r->varobj);
+
 	      ui_out_field_string (uiout, "value", val);
 	      xfree (val);
 	    }
@@ -787,6 +792,7 @@ varobj_update_one (struct varobj *var, enum print_values print_values,
 	  for (j = 0; VEC_iterate (varobj_p, r->new, j, child); ++j)
 	    {
 	      struct cleanup *cleanup_child;
+
 	      cleanup_child = make_cleanup_ui_out_tuple_begin_end (uiout, NULL);
 	      print_varobj (child, print_values, 1 /* print_expression */);
 	      do_cleanups (cleanup_child);

@@ -1,5 +1,5 @@
 /* UI_FILE - a generic STDIO like output stream.
-   Copyright (C) 1999, 2000, 2001, 2007, 2008, 2009
+   Copyright (C) 1999, 2000, 2001, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -60,6 +60,7 @@ tui_file_new (void)
 {
   struct tui_stream *tui = XMALLOC (struct tui_stream);
   struct ui_file *file = ui_file_new ();
+
   set_ui_file_data (file, tui, tui_file_delete);
   set_ui_file_flush (file, tui_file_flush);
   set_ui_file_fputs (file, tui_file_fputs);
@@ -74,6 +75,7 @@ static void
 tui_file_delete (struct ui_file *file)
 {
   struct tui_stream *tmpstream = ui_file_data (file);
+
   if (tmpstream->ts_magic != &tui_file_magic)
     internal_error (__FILE__, __LINE__,
 		    _("tui_file_delete: bad magic number"));
@@ -90,6 +92,7 @@ tui_fileopen (FILE *stream)
 {
   struct ui_file *file = tui_file_new ();
   struct tui_stream *tmpstream = ui_file_data (file);
+
   tmpstream->ts_streamtype = afile;
   tmpstream->ts_filestream = stream;
   tmpstream->ts_strbuf = NULL;
@@ -102,6 +105,7 @@ tui_sfileopen (int n)
 {
   struct ui_file *file = tui_file_new ();
   struct tui_stream *tmpstream = ui_file_data (file);
+
   tmpstream->ts_streamtype = astring;
   tmpstream->ts_filestream = NULL;
   if (n > 0)
@@ -121,6 +125,7 @@ static int
 tui_file_isatty (struct ui_file *file)
 {
   struct tui_stream *stream = ui_file_data (file);
+
   if (stream->ts_magic != &tui_file_magic)
     internal_error (__FILE__, __LINE__,
 		    _("tui_file_isatty: bad magic number"));
@@ -134,6 +139,7 @@ static void
 tui_file_rewind (struct ui_file *file)
 {
   struct tui_stream *stream = ui_file_data (file);
+
   if (stream->ts_magic != &tui_file_magic)
     internal_error (__FILE__, __LINE__,
 		    _("tui_file_rewind: bad magic number"));
@@ -146,6 +152,7 @@ tui_file_put (struct ui_file *file,
 	      void *dest)
 {
   struct tui_stream *stream = ui_file_data (file);
+
   if (stream->ts_magic != &tui_file_magic)
     internal_error (__FILE__, __LINE__,
 		    _("tui_file_put: bad magic number"));
@@ -182,6 +189,7 @@ char *
 tui_file_get_strbuf (struct ui_file *file)
 {
   struct tui_stream *stream = ui_file_data (file);
+
   if (stream->ts_magic != &tui_file_magic)
     internal_error (__FILE__, __LINE__,
 		    _("tui_file_get_strbuf: bad magic number"));
@@ -196,6 +204,7 @@ tui_file_adjust_strbuf (int n, struct ui_file *file)
 {
   struct tui_stream *stream = ui_file_data (file);
   int non_null_chars;
+
   if (stream->ts_magic != &tui_file_magic)
     internal_error (__FILE__, __LINE__,
 		    _("tui_file_adjust_strbuf: bad magic number"));
@@ -223,6 +232,7 @@ static void
 tui_file_flush (struct ui_file *file)
 {
   struct tui_stream *stream = ui_file_data (file);
+
   if (stream->ts_magic != &tui_file_magic)
     internal_error (__FILE__, __LINE__,
 		    _("tui_file_flush: bad magic number"));

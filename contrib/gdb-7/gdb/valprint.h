@@ -1,7 +1,7 @@
 /* Declarations for value printing routines for GDB, the GNU debugger.
 
    Copyright (C) 1986, 1988, 1989, 1991, 1992, 1993, 1994, 2000, 2005, 2007,
-   2008, 2009 Free Software Foundation, Inc.
+   2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -109,8 +109,8 @@ extern void get_raw_print_options (struct value_print_options *opts);
 extern void get_formatted_print_options (struct value_print_options *opts,
 					 char format);
 
-extern int get_array_bounds (struct type *type, long *low_bound,
-			     long *high_bound);
+extern int get_array_bounds (struct type *type, LONGEST *low_bound,
+			     LONGEST *high_bound);
 
 extern void maybe_print_array_index (struct type *index_type, LONGEST index,
                                      struct ui_file *stream,
@@ -118,6 +118,7 @@ extern void maybe_print_array_index (struct type *index_type, LONGEST index,
 
 extern void val_print_array_elements (struct type *, const gdb_byte *,
 				      CORE_ADDR, struct ui_file *, int,
+				      const struct value *,
 				      const struct value_print_options *,
 				      unsigned int);
 

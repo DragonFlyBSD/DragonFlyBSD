@@ -1,6 +1,6 @@
 /* Helper routines for parsing XML using Expat.
 
-   Copyright (C) 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -560,6 +560,7 @@ gdb_xml_parse (struct gdb_xml_parser *parser, const char *buffer)
   else if (status == XML_STATUS_ERROR)
     {
       enum XML_Error err = XML_GetErrorCode (parser->expat_parser);
+
       error_string = XML_ErrorString (err);
     }
   else
@@ -720,7 +721,6 @@ xinclude_start_include (struct gdb_xml_parser *parser,
   char *href = VEC_index (gdb_xml_value_s, attributes, 0)->value;
   struct cleanup *back_to;
   char *text, *output;
-  int ret;
 
   gdb_xml_debug (parser, _("Processing XInclude of \"%s\""), href);
 
@@ -832,7 +832,6 @@ xml_process_xincludes (const char *name, const char *text,
 		       xml_fetch_another fetcher, void *fetcher_baton,
 		       int depth)
 {
-  enum XML_Error err;
   struct gdb_xml_parser *parser;
   struct xinclude_parsing_data *data;
   struct cleanup *back_to;
@@ -1018,6 +1017,7 @@ obstack_xml_printf (struct obstack *obstack, const char *format, ...)
              {
                char *p;
                char *a = va_arg (ap, char *);
+
                obstack_grow (obstack, prev, f - prev - 1);
                p = xml_escape_text (a);
                obstack_grow_str (obstack, p);
@@ -1048,6 +1048,7 @@ xml_fetch_content_from_file (const char *filename, void *baton)
   if (dirname && *dirname)
     {
       char *fullname = concat (dirname, "/", filename, (char *) NULL);
+
       if (fullname == NULL)
 	nomem (0);
       file = fopen (fullname, FOPEN_RT);

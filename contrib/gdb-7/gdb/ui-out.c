@@ -1,6 +1,6 @@
 /* Output generating routines for GDB.
 
-   Copyright (C) 1999, 2000, 2001, 2002, 2004, 2005, 2007, 2008, 2009
+   Copyright (C) 1999, 2000, 2001, 2002, 2004, 2005, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions.
@@ -44,7 +44,7 @@ struct ui_out_hdr
    is always available.  Stack/nested level 0 is reserved for the
    top-level result. */
 
-enum { MAX_UI_OUT_LEVELS = 6 };
+enum { MAX_UI_OUT_LEVELS = 8 };
 
 struct ui_out_level
   {
@@ -100,7 +100,7 @@ struct ui_out
     int flags;
     /* specific implementation of ui-out */
     struct ui_out_impl *impl;
-    struct ui_out_data *data;
+    void *data;
 
     /* Sub structure tracking the ui-out depth.  */
     int level;
@@ -124,6 +124,7 @@ push_level (struct ui_out *uiout,
 	    const char *id)
 {
   struct ui_out_level *current;
+
   /* We had better not overflow the buffer. */
   uiout->level++;
   gdb_assert (uiout->level >= 0 && uiout->level < MAX_UI_OUT_LEVELS);
@@ -177,12 +178,12 @@ static void default_field_fmt (struct ui_out *uiout, int fldno,
 			       int width, enum ui_align align,
 			       const char *fldname,
 			       const char *format,
-			       va_list args) ATTR_FORMAT (printf, 6, 0);
+			       va_list args) ATTRIBUTE_PRINTF (6, 0);
 static void default_spaces (struct ui_out *uiout, int numspaces);
 static void default_text (struct ui_out *uiout, const char *string);
 static void default_message (struct ui_out *uiout, int verbosity,
 			     const char *format,
-			     va_list args) ATTR_FORMAT (printf, 3, 0);
+			     va_list args) ATTRIBUTE_PRINTF (3, 0);
 static void default_wrap_hint (struct ui_out *uiout, char *identstring);
 static void default_flush (struct ui_out *uiout);
 
@@ -242,18 +243,15 @@ static void uo_field_int (struct ui_out *uiout, int fldno, int width,
 			  enum ui_align align, const char *fldname, int value);
 static void uo_field_skip (struct ui_out *uiout, int fldno, int width,
 			   enum ui_align align, const char *fldname);
-static void uo_field_string (struct ui_out *uiout, int fldno, int width,
-			     enum ui_align align, const char *fldname,
-			     const char *string);
 static void uo_field_fmt (struct ui_out *uiout, int fldno, int width,
 			  enum ui_align align, const char *fldname,
 			  const char *format, va_list args)
-     ATTR_FORMAT (printf, 6, 0);
+     ATTRIBUTE_PRINTF (6, 0);
 static void uo_spaces (struct ui_out *uiout, int numspaces);
 static void uo_text (struct ui_out *uiout, const char *string);
 static void uo_message (struct ui_out *uiout, int verbosity,
 			const char *format, va_list args)
-     ATTR_FORMAT (printf, 3, 0);
+     ATTRIBUTE_PRINTF (3, 0);
 static void uo_wrap_hint (struct ui_out *uiout, char *identstring);
 static void uo_flush (struct ui_out *uiout);
 static int uo_redirect (struct ui_out *uiout, struct ui_file *outstream);
@@ -374,6 +372,7 @@ ui_out_begin (struct ui_out *uiout,
 	      const char *id)
 {
   int new_level;
+
   if (uiout->table.flag && !uiout->table.body_flag)
     internal_error (__FILE__, __LINE__,
 		    _("table header or table_body expected; lists must be \
@@ -390,6 +389,7 @@ specified after table_body."));
     int fldno;
     int width;
     int align;
+
     verify_field (uiout, &fldno, &width, &align);
   }
 
@@ -409,6 +409,7 @@ ui_out_end (struct ui_out *uiout,
 	    enum ui_out_type type)
 {
   int old_level = pop_level (uiout, type);
+
   uo_end (uiout, type, old_level);
 }
 
@@ -422,6 +423,7 @@ static void
 do_cleanup_end (void *data)
 {
   struct ui_out_end_cleanup_data *end_cleanup_data = data;
+
   ui_out_end (end_cleanup_data->uiout, end_cleanup_data->type);
   xfree (end_cleanup_data);
 }
@@ -431,6 +433,7 @@ make_cleanup_ui_out_end (struct ui_out *uiout,
 			 enum ui_out_type type)
 {
   struct ui_out_end_cleanup_data *end_cleanup_data;
+
   end_cleanup_data = XMALLOC (struct ui_out_end_cleanup_data);
   end_cleanup_data->uiout = uiout;
   end_cleanup_data->type = type;
@@ -461,7 +464,6 @@ ui_out_field_int (struct ui_out *uiout,
   int fldno;
   int width;
   int align;
-  struct ui_out_level *current = current_level (uiout);
 
   verify_field (uiout, &fldno, &width, &align);
 
@@ -478,7 +480,6 @@ ui_out_field_fmt_int (struct ui_out *uiout,
   int fldno;
   int width;
   int align;
-  struct ui_out_level *current = current_level (uiout);
 
   verify_field (uiout, &fldno, &width, &align);
 
@@ -516,6 +517,7 @@ ui_out_field_stream (struct ui_out *uiout,
   long length;
   char *buffer = ui_file_xstrdup (buf->stream, &length);
   struct cleanup *old_cleanup = make_cleanup (xfree, buffer);
+
   if (length > 0)
     ui_out_field_string (uiout, fldname, buffer);
   else
@@ -594,9 +596,7 @@ ui_out_message (struct ui_out *uiout, int verbosity,
   va_list args;
 
   va_start (args, format);
-
   uo_message (uiout, verbosity, format, args);
-
   va_end (args);
 }
 
@@ -656,7 +656,6 @@ ui_out_set_flags (struct ui_out *uiout, int mask)
   int oldflags = uiout->flags;
 
   uiout->flags |= mask;
-
   return oldflags;
 }
 
@@ -667,7 +666,6 @@ ui_out_clear_flags (struct ui_out *uiout, int mask)
   int oldflags = uiout->flags;
 
   uiout->flags &= ~mask;
-
   return oldflags;
 }
 
@@ -1137,7 +1135,7 @@ ui_out_get_field_separator (struct ui_out *uiout)
 
 /* Access to ui-out members data */
 
-struct ui_out_data *
+void *
 ui_out_data (struct ui_out *uiout)
 {
   return uiout->data;
@@ -1146,11 +1144,11 @@ ui_out_data (struct ui_out *uiout)
 /* initalize private members at startup */
 
 struct ui_out *
-ui_out_new (struct ui_out_impl *impl,
-	    struct ui_out_data *data,
+ui_out_new (struct ui_out_impl *impl, void *data,
 	    int flags)
 {
   struct ui_out *uiout = XMALLOC (struct ui_out);
+
   uiout->data = data;
   uiout->impl = impl;
   uiout->flags = flags;

@@ -1,6 +1,6 @@
 /* Reverse execution and reverse debugging.
 
-   Copyright (C) 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -24,6 +24,7 @@
 #include "cli/cli-cmds.h"
 #include "cli/cli-decode.h"
 #include "inferior.h"
+#include "regcache.h"
 
 /* User interface:
    reverse-step, reverse-next etc.  */
@@ -101,6 +102,220 @@ reverse_finish (char *args, int from_tty)
   exec_reverse_once ("finish", args, from_tty);
 }
 
+/* Data structures for a bookmark list.  */
+
+struct bookmark {
+  struct bookmark *next;
+  int number;
+  CORE_ADDR pc;
+  struct symtab_and_line sal;
+  gdb_byte *opaque_data;
+};
+
+static struct bookmark *bookmark_chain;
+static int bookmark_count;
+
+#define ALL_BOOKMARKS(B) for ((B) = bookmark_chain; (B); (B) = (B)->next)
+
+#define ALL_BOOKMARKS_SAFE(B,TMP)           \
+     for ((B) = bookmark_chain;             \
+          (B) ? ((TMP) = (B)->next, 1) : 0; \
+          (B) = (TMP))
+
+/* save_bookmark_command -- implement "bookmark" command.
+   Call target method to get a bookmark identifier.
+   Insert bookmark identifier into list.
+
+   Identifier will be a malloc string (gdb_byte *).
+   Up to us to free it as required.  */
+
+static void
+save_bookmark_command (char *args, int from_tty)
+{
+  /* Get target's idea of a bookmark.  */
+  gdb_byte *bookmark_id = target_get_bookmark (args, from_tty);
+  struct bookmark *b, *b1;
+  struct gdbarch *gdbarch = get_regcache_arch (get_current_regcache ());
+
+  /* CR should not cause another identical bookmark.  */
+  dont_repeat ();
+
+  if (bookmark_id == NULL)
+    error (_("target_get_bookmark failed."));
+
+  /* Set up a bookmark struct.  */
+  b = xcalloc (1, sizeof (struct bookmark));
+  b->number = ++bookmark_count;
+  init_sal (&b->sal);
+  b->pc = regcache_read_pc (get_current_regcache ());
+  b->sal = find_pc_line (b->pc, 0);
+  b->sal.pspace = get_frame_program_space (get_current_frame ());
+  b->opaque_data = bookmark_id;
+  b->next = NULL;
+
+  /* Add this bookmark to the end of the chain, so that a list
+     of bookmarks will come out in order of increasing numbers.  */
+
+  b1 = bookmark_chain;
+  if (b1 == 0)
+    bookmark_chain = b;
+  else
+    {
+      while (b1->next)
+	b1 = b1->next;
+      b1->next = b;
+    }
+  printf_filtered (_("Saved bookmark %d at %s\n"), b->number,
+		     paddress (gdbarch, b->sal.pc));
+}
+
+/* Implement "delete bookmark" command.  */
+
+static int
+delete_one_bookmark (struct bookmark *b)
+{
+  struct bookmark *b1;
+
+  /* Special case, first item in list.  */
+  if (b == bookmark_chain)
+    bookmark_chain = b->next;
+
+  /* Find bookmark preceeding "marked" one, so we can unlink.  */
+  if (b)
+    {
+      ALL_BOOKMARKS (b1)
+	if (b1->next == b)
+	  {
+	    /* Found designated bookmark.  Unlink and delete.  */
+	    b1->next = b->next;
+	    break;
+	  }
+      xfree (b->opaque_data);
+      xfree (b);
+      return 1;		/* success */
+    }
+  return 0;		/* failure */
+}
+
+static void
+delete_all_bookmarks (void)
+{
+  struct bookmark *b, *b1;
+
+  ALL_BOOKMARKS_SAFE (b, b1)
+    {
+      xfree (b->opaque_data);
+      xfree (b);
+    }
+  bookmark_chain = NULL;
+}
+
+static void
+delete_bookmark_command (char *args, int from_tty)
+{
+  struct bookmark *b;
+  unsigned long num;
+
+  if (bookmark_chain == NULL)
+    {
+      warning (_("No bookmarks."));
+      return;
+    }
+
+  if (args == NULL || args[0] == '\0')
+    {
+      if (from_tty && !query (_("Delete all bookmarks? ")))
+	return;
+      delete_all_bookmarks ();
+      return;
+    }
+
+  num = strtoul (args, NULL, 0);
+  /* Find bookmark with corresponding number.  */
+  ALL_BOOKMARKS (b)
+    if (b->number == num)
+      break;
+
+  if (!delete_one_bookmark (b))
+    /* Not found.  */
+    error (_("delete bookmark: no bookmark found for '%s'."), args);
+}
+
+/* Implement "goto-bookmark" command.  */
+
+static void
+goto_bookmark_command (char *args, int from_tty)
+{
+  struct bookmark *b;
+  unsigned long num;
+
+  if (args == NULL || args[0] == '\0')
+    error (_("Command requires an argument."));
+
+  if (strncmp (args, "start", strlen ("start")) == 0
+      || strncmp (args, "begin", strlen ("begin")) == 0
+      || strncmp (args, "end",   strlen ("end")) == 0)
+    {
+      /* Special case.  Give target opportunity to handle.  */
+      target_goto_bookmark (args, from_tty);
+      return;
+    }
+
+  if (args[0] == '\'' || args[0] == '\"')
+    {
+      /* Special case -- quoted string.  Pass on to target.  */
+      if (args[strlen (args) - 1] != args[0])
+	error (_("Unbalanced quotes: %s"), args);
+      target_goto_bookmark (args, from_tty);
+      return;
+    }
+
+  /* General case.  Bookmark identified by bookmark number.  */
+  num = strtoul (args, NULL, 0);
+  ALL_BOOKMARKS (b)
+    if (b->number == num)
+      break;
+
+  if (b)
+    {
+      /* Found.  Send to target method.  */
+      target_goto_bookmark (b->opaque_data, from_tty);
+      return;
+    }
+  /* Not found.  */
+  error (_("goto-bookmark: no bookmark found for '%s'."), args);
+}
+
+/* Implement "info bookmarks" command.  */
+
+static void
+bookmarks_info (char *args, int from_tty)
+{
+  struct bookmark *b;
+  int bnum = -1;
+  struct gdbarch *gdbarch;
+
+  if (args)
+    bnum = parse_and_eval_long (args);
+
+  if (!bookmark_chain)
+    {
+      printf_filtered (_("No bookmarks.\n"));
+      return;
+    }
+
+  gdbarch = get_regcache_arch (get_current_regcache ());
+  printf_filtered (_("Bookmark    Address     Opaque\n"));
+  printf_filtered (_("   ID                    Data\n"));
+
+  ALL_BOOKMARKS (b)
+    printf_filtered ("   %d       %s    '%s'\n",
+		     b->number,
+		     paddress (gdbarch, b->pc),
+		     b->opaque_data);
+}
+
+
 /* Provide a prototype to silence -Wmissing-prototypes.  */
 extern initialize_file_ftype _initialize_reverse;
 
@@ -142,4 +357,24 @@ the breakpoint won't break until the Nth time it is reached)."));
 
   add_com ("reverse-finish", class_run, reverse_finish, _("\
 Execute backward until just before selected stack frame is called."));
+
+  add_com ("bookmark", class_bookmark, save_bookmark_command, _("\
+Set a bookmark in the program's execution history.\n\
+A bookmark represents a point in the execution history \n\
+that can be returned to at a later point in the debug session."));
+  add_info ("bookmarks", bookmarks_info, _("\
+Status of user-settable bookmarks.\n\
+Bookmarks are user-settable markers representing a point in the \n\
+execution history that can be returned to later in the same debug \n\
+session."));
+  add_cmd ("bookmark", class_bookmark, delete_bookmark_command, _("\
+Delete a bookmark from the bookmark list.\n\
+Argument is a bookmark number, or no argument to delete all bookmarks.\n"),
+	   &deletelist);
+  add_com ("goto-bookmark", class_bookmark, goto_bookmark_command, _("\
+Go to an earlier-bookmarked point in the program's execution history.\n\
+Argument is the bookmark number of a bookmark saved earlier by using \n\
+the 'bookmark' command, or the special arguments:\n\
+  start (beginning of recording)\n\
+  end   (end of recording)\n"));
 }
