@@ -27,6 +27,7 @@ SRCS=	config.h \
 	basename.c \
 	stripslash.c \
 	getnline.c  \
+	getdelim.c \
 	strnlen1.c \
 	xalloc-die.c \
 	xgethostname.c \

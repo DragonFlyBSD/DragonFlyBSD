@@ -212,7 +212,7 @@
 
 /* Define to 1 if you have the declaration of `getdelim', and to 0 if you
    don't. */
-#define HAVE_DECL_GETDELIM 1
+#define HAVE_DECL_GETDELIM 0
 
 /* Define to 1 if you have the declaration of `getenv', and to 0 if you don't.
    */
@@ -315,7 +315,7 @@
 #define HAVE_GETADDRINFO 1
 
 /* Define to 1 if you have the `getdelim' function. */
-#define HAVE_GETDELIM 1
+#define HAVE_GETDELIM 0
 
 /* Define to 1 if you have the `geteuid' function. */
 #define HAVE_GETEUID 1
