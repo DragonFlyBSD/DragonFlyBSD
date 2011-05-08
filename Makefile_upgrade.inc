@@ -1638,6 +1638,10 @@ TO_REMOVE+=/usr/share/man/man5/ipnat.5.gz
 TO_REMOVE+=/usr/share/man/cat5/ipsend.5.gz
 TO_REMOVE+=/usr/share/man/man5/ipsend.5.gz
 TO_REMOVE+=/var/db/ipf
+TO_REMOVE+=/usr/include/gnuregex.h
+TO_REMOVE+=/usr/lib/libgnuregex.a
+TO_REMOVE+=/usr/lib/profile/libgnuregex.a
+TO_REMOVE+=/usr/share/info/regex.info.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/sgsc
