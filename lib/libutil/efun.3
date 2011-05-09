@@ -39,7 +39,7 @@
 .Nm estrndup ,
 .Nm estrlcat ,
 .Nm estrlcpy ,
-.Nm evasprintf
+.Nm easprintf
 .Nd error-checked utility functions
 .Sh LIBRARY
 .Lb libutil
@@ -62,7 +62,7 @@
 .Ft size_t
 .Fn estrlcpy "char *dst" "const char *src" "size_t len"
 .Ft int
-.Fn evasprintf "char ** restrict str" "const char * restrict fmt" "..."
+.Fn easprintf "char ** restrict str" "const char * restrict fmt" "..."
 .Sh DESCRIPTION
 The
 .Fn ecalloc ,
@@ -73,7 +73,7 @@ The
 .Fn estrlcat ,
 .Fn estrlcpy ,
 and
-.Fn evasprintf
+.Fn easprintf
 functions
 operate exactly as the corresponding functions that do not start with an
 .Sq e
@@ -105,8 +105,8 @@ error handler will just call
 .Xr strdup 3 ,
 .Xr strlcat 3 ,
 .Xr strlcpy 3 ,
-.Xr strndup 3 ,
-.Xr vasprintf 3
+.Xr strndup 3
+.\".Xr vasprintf 3
 .Sh HISTORY
 The error functions first appeared in
 .Dx 2.11 .

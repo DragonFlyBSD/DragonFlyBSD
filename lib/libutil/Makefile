@@ -30,7 +30,7 @@ MAN+=	login.conf.5 auth.conf.5
 MLINKS+=auth.3 auth_getval.3
 MLINKS+=efun.3 ecalloc.3 efun.3 emalloc.3 efun.3 erealloc.3 efun.3 esetfun.3 \
 	efun.3 estrdup.3 efun.3 estrlcat.3 efun.3 estrlcpy.3 \
-	efun.3 estrndup.3 efun.3 evasprintf.3
+	efun.3 estrndup.3 efun.3 easprintf.3
 MLINKS+=humanize_number.3 dehumanize_number.3
 MLINKS+=humanize_unsigned.3 format_bytes.3
 MLINKS+=login_cap.3 login_getclassbyname.3 login_cap.3 login_close.3 \
