@@ -204,8 +204,7 @@ ip_portrange_last=5000
 # 10. network.  This can reduce the load on natd.  Also note that we
 # of course do not have to route internal<->internal traffic through
 # natd since those hosts know how to route our 10. internal network.
-# The natd command we run from /etc/rc.local is shown below.  See
-# also the in-kernel version of natd, ipnat.
+# The natd command we run from /etc/rc.local is shown below.
 #
 #	natd -s -u -a 208.161.114.67
 #
@@ -354,13 +353,11 @@ to indirectly bind services that do not otherwise give you the option.
 .Sh SEE ALSO
 .Xr dummynet 4 ,
 .Xr ipfw 4 ,
-.Xr ipnat 5 ,
 .Xr rc.conf 5 ,
 .Xr smb.conf 5 Pq Pa pkgsrc/net/samba ,
 .Xr samba 7 Pq Pa pkgsrc/net/samba ,
 .Xr config 8 ,
 .Xr ipfw 8 ,
-.Xr ipnat 8 ,
 .Xr jail 8 ,
 .Xr natd 8 ,
 .Xr nfsd 8

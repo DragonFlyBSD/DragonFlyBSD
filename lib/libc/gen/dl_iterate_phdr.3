@@ -21,6 +21,9 @@
 .Sh NAME
 .Nm dl_iterate_phdr
 .Nd iterate over program headers
+.Sh LIBRARY
+This function is not in a library.
+It is included in every dynamically linked program automatically.
 .Sh SYNOPSIS
 .In link.h
 .Ft int
@@ -106,7 +109,7 @@ The
 function returns whatever value was returned by the last call to callback.
 .Sh SEE ALSO
 .Xr ld 1 ,
-.Xr ld-elf.so 1 ,
+.Xr ld-elf.so.2 1 ,
 .Xr dlfcn 3 ,
 .Xr elf 5
 .Sh HISTORY

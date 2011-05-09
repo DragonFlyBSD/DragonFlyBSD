@@ -32,8 +32,8 @@
 .Nm dlinfo
 .Nd information about dynamically loaded object
 .Sh LIBRARY
-This function is not in a library.  It is included in every dynamically linked
-program automatically.
+This function is not in a library.
+It is included in every dynamically linked program automatically.
 .Sh SYNOPSIS
 .In link.h
 .In dlfcn.h
@@ -90,7 +90,7 @@ argument.
 The
 .Vt Link_map
 structures are maintained as a doubly linked list by
-.Xr ld.so 1 ,
+.Xr ld-elf.so.2 1 ,
 in the same order as
 .Xr dlopen 3
 and
