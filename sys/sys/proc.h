@@ -37,7 +37,6 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.121 2008/07/23 17:22:33 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -292,6 +291,7 @@ struct	proc {
 	char		p_pad3;		/* Process lock (prevent destruct) count. */
 	char		p_nice;		/* Process "nice" value. */
 	char		p_pad4;
+	int		p_osrel;	/* release date for binary ELF note */
 
 	struct pgrp	*p_pgrp;	/* Pointer to process group. */
 

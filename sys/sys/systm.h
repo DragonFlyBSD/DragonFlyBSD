@@ -62,6 +62,7 @@ extern int tsleep_now_works;	/* tsleep won't just return any more */
 extern const char *panicstr;	/* panic message */
 extern int dumping;		/* system is dumping */
 extern int safepri;		/* safe ipl when cold or panicing */
+extern int osreldate;		/* System release date */
 extern char version[];		/* system version */
 extern char copyright[];	/* system copyright */
 

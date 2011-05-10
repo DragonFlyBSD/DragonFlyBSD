@@ -255,6 +255,8 @@ interpret:
 	if (error)
 		goto exec_fail_dealloc;
 
+	imgp->proc->p_osrel = 0;
+
 	if (debug_execve_args && imgp->interpreted) {
 		kprintf("    target is interpreted -- recursive pass\n");
 		kprintf("    interpreter: %s\n", imgp->interpreter_name);

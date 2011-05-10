@@ -38,7 +38,6 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_mib.c,v 1.29.2.4 2001/07/30 23:28:00 peter Exp $
- * $DragonFly: src/sys/kern/kern_mib.c,v 1.16 2008/01/04 12:16:19 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -95,7 +94,6 @@ SYSCTL_STRING(_kern, KERN_VERSION, version, CTLFLAG_RD,
 SYSCTL_STRING(_kern, KERN_OSTYPE, ostype, CTLFLAG_RD, 
     ostype, 0, "Operating system type");
 
-extern int osreldate;
 SYSCTL_INT(_kern, KERN_OSRELDATE, osreldate, CTLFLAG_RD, 
     &osreldate, 0, "Operating system release date");
 

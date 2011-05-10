@@ -26,9 +26,52 @@
  */
 
 #include <sys/param.h>
+#include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/linker.h>
+#include <sys/sysent.h>
+#include <sys/imgact_elf.h>
+#include <sys/syscall.h>
+#include <sys/signalvar.h>
+#include <sys/vnode.h>
 #include <machine/elf.h>
+#include <machine/md_var.h>
+
+static struct sysentvec elf64_dragonfly_sysvec = {
+        .sv_size	= SYS_MAXSYSCALL,
+        .sv_table	= sysent,
+        .sv_mask	= -1,
+        .sv_sigsize	= 0,
+        .sv_sigtbl	= NULL,
+        .sv_errsize	= 0,
+        .sv_errtbl	= NULL,
+        .sv_transtrap	= NULL,
+        .sv_fixup	= __elfN(dragonfly_fixup),
+        .sv_sendsig	= sendsig,
+        .sv_sigcode	= sigcode,
+        .sv_szsigcode	= &szsigcode,
+        .sv_prepsyscall	= NULL,
+	.sv_name	= "DragonFly ELF64",
+	.sv_coredump	= __elfN(coredump),
+	.sv_imgact_try	= NULL,
+	.sv_minsigstksz	= MINSIGSTKSZ,
+};
+
+static Elf64_Brandinfo dragonfly_brand_info = {
+        .brand		= ELFOSABI_NONE,
+        .machine	= EM_X86_64,
+        .compat_3_brand	= "DragonFly",
+        .emul_path	= NULL,
+        .interp_path	= "/usr/libexec/ld-elf.so.2",
+        .sysvec		= &elf64_dragonfly_sysvec,
+        .interp_newpath	= NULL,
+        .flags		= BI_CAN_EXEC_DYN | BI_BRAND_NOTE,
+        .brand_note	= &elf64_dragonfly_brandnote,
+};
+
+SYSINIT(elf64, SI_SUB_EXEC, SI_ORDER_FIRST,
+        (sysinit_cfunc_t) elf64_insert_brand_entry,
+        &dragonfly_brand_info);
 
 /* Process one elf relocation with addend. */
 static int

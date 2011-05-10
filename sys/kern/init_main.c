@@ -40,7 +40,6 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.87 2008/06/07 11:37:23 mneumann Exp $
  */
 
 #include "opt_init_path.h"
@@ -100,7 +99,6 @@ int cmask = CMASK;
 u_int cpu_mi_feature;
 cpumask_t usched_global_cpumask;
 extern	struct user *proc0paddr;
-extern int fallback_elf_brand;
 
 int	boothowto = 0;		/* initialized so that it can be patched */
 SYSCTL_INT(_debug, OID_AUTO, boothowto, CTLFLAG_RD, &boothowto, 0,
@@ -358,6 +356,11 @@ proc0_init(void *dummy __unused)
 	lp = &lwp0;
 
 	/*
+	 * Initialize osrel
+	 */
+	p->p_osrel = osreldate;
+
+	/*
 	 * Initialize process and pgrp structures.
 	 */
 	procinit();
@@ -579,9 +582,7 @@ start_init(void *dummy, struct trapframe *frame)
 		strncpy(init_path, var, sizeof init_path);
 		init_path[sizeof init_path - 1] = 0;
 	}
-	if ((var = kgetenv("kern.fallback_elf_brand")) != NULL)
-		fallback_elf_brand = strtol(var, NULL, 0);
-	
+
 	for (path = init_path; *path != '\0'; path = next) {
 		while (*path == ':')
 			path++;

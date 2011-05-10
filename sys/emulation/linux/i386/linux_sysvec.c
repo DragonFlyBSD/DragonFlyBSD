@@ -222,9 +222,6 @@ elf_linux_fixup(register_t **stack_base, struct image_params *imgp)
              
 	pos = *stack_base + (imgp->args->argc + imgp->args->envc + 2);  
     
-	if (args->trace) {
-		AUXARGS_ENTRY(pos, AT_DEBUG, 1);
-	}
 	if (args->execfd != -1) {
 		AUXARGS_ENTRY(pos, AT_EXECFD, args->execfd);
 	}       
@@ -791,120 +788,108 @@ exec_linux_imgact_try(struct image_params *imgp)
     return(error);
 }
 
-struct sysentvec linux_sysvec = {
-	LINUX_SYS_MAXSYSCALL,
-	linux_sysent,
-	0xffffffff,
-	LINUX_SIGTBLSZ,
-	bsd_to_linux_signal,
-	ELAST + 1, 
-	bsd_to_linux_errno,
-	translate_traps,
-	linux_fixup,
-	linux_sendsig,
-	linux_sigcode,	
-	&linux_szsigcode,
-	linux_prepsyscall,
-	"Linux a.out",
-	NULL,
-	exec_linux_imgact_try,
-	LINUX_MINSIGSTKSZ
+struct sysentvec linux32_sysvec = {
+	.sv_size	= LINUX_SYS_MAXSYSCALL,
+	.sv_table	= linux_sysent,
+	.sv_mask	= 0xffffffff,
+	.sv_sigsize	= LINUX_SIGTBLSZ,
+	.sv_sigtbl	= bsd_to_linux_signal,
+	.sv_errsize	= ELAST + 1,
+	.sv_errtbl	= bsd_to_linux_errno,
+	.sv_transtrap	= translate_traps,
+	.sv_fixup	= linux_fixup,
+	.sv_sendsig	= linux_sendsig,
+	.sv_sigcode	= linux_sigcode,
+	.sv_szsigcode	= &linux_szsigcode,
+	.sv_prepsyscall	= linux_prepsyscall,
+	.sv_name	= "Linux a.out",
+	.sv_coredump	= NULL,
+	.sv_imgact_try	= exec_linux_imgact_try,
+	.sv_minsigstksz	= LINUX_MINSIGSTKSZ
 };
 
-struct sysentvec elf_linux_sysvec = {
-	LINUX_SYS_MAXSYSCALL,
-	linux_sysent,
-	0xffffffff,
-	LINUX_SIGTBLSZ,
-	bsd_to_linux_signal,
-	ELAST + 1,
-	bsd_to_linux_errno,
-	translate_traps,
-	elf_linux_fixup,
-	linux_sendsig,
-	linux_sigcode,
-	&linux_szsigcode,
-	linux_prepsyscall,
-#if defined(__x86_64__)
-	"Linux ELF64",
-#else
-	"Linux ELF32",
-#endif
-	elf_coredump,
-	exec_linux_imgact_try,
-	LINUX_MINSIGSTKSZ
+struct sysentvec elf32_linux_sysvec = {
+	.sv_size	= LINUX_SYS_MAXSYSCALL,
+	.sv_table	= linux_sysent,
+	.sv_mask	= 0xffffffff,
+	.sv_sigsize	= LINUX_SIGTBLSZ,
+	.sv_sigtbl	= bsd_to_linux_signal,
+	.sv_errsize	= ELAST + 1,
+	.sv_errtbl	= bsd_to_linux_errno,
+	.sv_transtrap	= translate_traps,
+	.sv_fixup	= elf_linux_fixup,
+	.sv_sendsig	= linux_sendsig,
+	.sv_sigcode	= linux_sigcode,
+	.sv_szsigcode	= &linux_szsigcode,
+	.sv_prepsyscall	= linux_prepsyscall,
+	.sv_name	= "Linux ELF32",
+	.sv_coredump	= elf32_coredump,
+	.sv_imgact_try	= exec_linux_imgact_try,
+	.sv_minsigstksz	= LINUX_MINSIGSTKSZ
 };
 
-static int	linux_match_abi_note(const Elf_Note *abi_note);
-static int	linux_match_suse_note(const Elf_Note *abi_note);
+static Elf_Brandinfo *linux_brand_list[MAX_BRANDS];
 
-static Elf32_Brandinfo linux_brand = {
-					ELFOSABI_LINUX,
-					"Linux",
-					linux_match_abi_note,
-					"/compat/linux",
-					"/lib/ld-linux.so.1",
-					&elf_linux_sysvec
-				 };
+static const char GNU_ABI_VENDOR[] = "GNU";
+static const char SUSE_ABI_VENDOR[] = "SuSE";
 
-static Elf32_Brandinfo linux_glibc2brand = {
-					ELFOSABI_LINUX,
-					"Linux",
-					linux_match_abi_note,
-					"/compat/linux",
-					"/lib/ld-linux.so.2",
-					&elf_linux_sysvec
-				 };
+static Elf_Brandnote linux32_generic_brandnote = {
+        .hdr.n_namesz	= sizeof(GNU_ABI_VENDOR),
+        .hdr.n_descsz	= sizeof(int32_t),
+        .hdr.n_type	= 1,
+        .vendor		= GNU_ABI_VENDOR,
+        .flags		= 0,
+};
 
-static Elf32_Brandinfo linux_suse_brand = {
-					ELFOSABI_LINUX,
-					"Linux",
-					linux_match_suse_note,
-					"/compat/linux",
-					"/lib/ld-linux.so.2",
-					&elf_linux_sysvec
-				 };
+static Elf_Brandnote linux32_suse_brandnote = {
+        .hdr.n_namesz	= sizeof(SUSE_ABI_VENDOR),
+        .hdr.n_descsz	= sizeof(int32_t),
+        .hdr.n_type	= 1,
+        .vendor		= SUSE_ABI_VENDOR,
+        .flags		= 0,
+};
+
+static Elf32_Brandinfo linux32_brand = {
+        .brand		= ELFOSABI_LINUX,
+        .machine	= EM_386,
+        .compat_3_brand	= "Linux",
+        .emul_path	= "/compat/linux",
+        .interp_path	= "/lib/ld-linux.so.1",
+        .sysvec		= &elf32_linux_sysvec,
+        .interp_newpath	= NULL,
+        .flags		= BI_CAN_EXEC_DYN,
+        .brand_note	= &linux32_generic_brandnote,
+};
+
+static Elf32_Brandinfo linux32_glibc2_brand = {
+        .brand		= ELFOSABI_LINUX,
+        .machine	= EM_386,
+        .compat_3_brand	= "Linux",
+        .emul_path	= "/compat/linux",
+        .interp_path	= "/lib/ld-linux.so.2",
+        .sysvec		= &elf32_linux_sysvec,
+        .interp_newpath	= NULL,
+        .flags		= BI_CAN_EXEC_DYN,
+        .brand_note	= &linux32_generic_brandnote,
+};
+
+static Elf32_Brandinfo linux32_suse_brand = {
+        .brand		= ELFOSABI_LINUX,
+        .machine	= EM_386,
+        .compat_3_brand	= "Linux",
+        .emul_path	= "/compat/linux",
+        .interp_path	= "/lib/ld-linux.so.2",
+        .sysvec		= &elf32_linux_sysvec,
+        .interp_newpath	= NULL,
+        .flags		= BI_CAN_EXEC_DYN,
+        .brand_note	= &linux32_suse_brandnote,
+};
 
 Elf32_Brandinfo *linux_brandlist[] = {
-					&linux_brand,
-					&linux_glibc2brand,
-					&linux_suse_brand,
-					NULL
-				};
-
-static int
-linux_match_abi_note(const Elf_Note *abi_note)
-{
-	const char *abi_name = (const char *)
-	    ((const uint8_t *)abi_note + sizeof(*abi_note));
-	const uint32_t *descr = (const uint32_t *)
-	    ((const uint8_t *)abi_name + abi_note->n_namesz);
-
-	if (abi_note->n_namesz != sizeof("GNU"))
-		return(FALSE);
-	if (memcmp(abi_name, "GNU", sizeof("GNU")))
-		return(FALSE);
-	if (abi_note->n_descsz < sizeof(uint32_t))
-		return(FALSE);
-
-	if (*descr != 0)
-		return(FALSE);
-	return(TRUE);
-}
-
-static int
-linux_match_suse_note(const Elf_Note *abi_note)
-{
-	const char *abi_name = (const char *)
-	    ((const uint8_t *)abi_note + sizeof(*abi_note));
-
-	if (abi_note->n_namesz != sizeof("SuSE"))
-		return(FALSE);
-	if (memcmp(abi_name, "SuSE", sizeof("SuSE")))
-		return(FALSE);
-
-	return(TRUE);
-}
+        &linux32_brand,
+        &linux32_glibc2_brand,
+        &linux32_suse_brand,
+};
 
 static int
 linux_elf_modevent(module_t mod, int type, void *data)
@@ -918,7 +903,7 @@ linux_elf_modevent(module_t mod, int type, void *data)
 	case MOD_LOAD:
 		for (brandinfo = &linux_brandlist[0]; *brandinfo != NULL;
 		     ++brandinfo)
-			if (elf_insert_brand_entry(*brandinfo) < 0)
+			if (elf32_insert_brand_entry(*brandinfo) < 0)
 				error = EINVAL;
 		if (error == 0) {
 			if (bootverbose)
@@ -936,12 +921,12 @@ linux_elf_modevent(module_t mod, int type, void *data)
 	case MOD_UNLOAD:
 		for (brandinfo = &linux_brandlist[0]; *brandinfo != NULL;
 		     ++brandinfo)
-			if (elf_brand_inuse(*brandinfo))
+			if (elf32_brand_inuse(*brandinfo))
 				error = EBUSY;
 		if (error == 0) {
 			for (brandinfo = &linux_brandlist[0];
 			     *brandinfo != NULL; ++brandinfo)
-				if (elf_remove_brand_entry(*brandinfo) < 0)
+				if (elf32_remove_brand_entry(*brandinfo) < 0)
 					error = EINVAL;
 		}
 		if (error == 0) {
