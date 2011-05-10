@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	 $FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.1.2.3 2003/09/10 00:40:39 ken Exp $
- *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.13 2008/06/07 11:44:04 mneumann Exp $
  */
 
 #include <sys/param.h>
@@ -349,7 +348,7 @@ taskqueue_start_threads(struct taskqueue **tqp, int count, int pri, int ncpu,
 					    "%s_%d", ktname, i);
 		}
 		if (error) {
-			kprintf("%s: kthread_add(%s): error %d", __func__,
+			kprintf("%s: lwkt_create(%s): error %d", __func__,
 			    ktname, error);
 			tq->tq_threads[i] = NULL;
 		} else {
