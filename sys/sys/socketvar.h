@@ -69,8 +69,7 @@ struct signalsockbuf {
 	struct sockbuf sb;
 	struct kqinfo ssb_kq;	/* process selecting read/write */
 	uint32_t ssb_flags;	/* flags, see below (use atomic ops) */
-	short	ssb_timeo;	/* timeout for read/write */
-	short	ssb_unused01;
+	u_int	ssb_timeo;	/* timeout for read/write */
 	long	ssb_lowat;	/* low water mark */
 	u_long	ssb_hiwat;	/* high water mark / max actual char count */
 	u_long	ssb_mbmax;	/* max chars of mbufs to use */
@@ -203,8 +202,8 @@ struct	xsocket {
 		u_long	sb_mbcnt;
 		u_long	sb_mbmax;
 		long	sb_lowat;
+		u_int	sb_timeo;
 		short	sb_flags;
-		short	sb_timeo;
 	} so_rcv, so_snd;
 	uid_t	so_uid;		/* XXX */
 };
