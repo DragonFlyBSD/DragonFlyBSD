@@ -158,6 +158,11 @@ __ElfType(Auxinfo);
 #define ELF_TARG_MACH	EM_386
 #define ELF_TARG_VER	1
 
+ /*
+  * i386 load base for PIE binaries
+  */
+#define	ET_DYN_LOAD_ADDR	0x01001000
+
 #ifdef _KERNEL
 
 /*

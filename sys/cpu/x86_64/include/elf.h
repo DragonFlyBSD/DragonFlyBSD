@@ -154,6 +154,11 @@ __ElfType(Auxinfo);
 #define	ELF_TARG_MACH	EM_X86_64
 #define	ELF_TARG_VER	1
 
+ /*
+  * x86_64 load base for PIE binaries
+  */
+#define	ET_DYN_LOAD_ADDR	0x01021000
+
 #ifdef _KERNEL
 /*
  * On the i386 we load the dynamic linker where a userland call
@@ -163,6 +168,6 @@ __ElfType(Auxinfo);
  */
 #define ELF_RTLD_ADDR(vmspace) \
 	(round_page((vm_offset_t)(vmspace)->vm_daddr + maxdsiz))
-#endif
 
+#endif /* _KERNEL */
 #endif /* !_CPU_ELF_H_ */

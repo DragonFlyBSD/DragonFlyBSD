@@ -445,6 +445,10 @@ __elfN(load_file)(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	}
 
 	phdr = (const Elf_Phdr *)(imgp->image_header + hdr->e_phoff);
+	if (!aligned(phdr, Elf_Addr)) {
+		error = ENOEXEC;
+		goto fail;
+	}
 
 	for (i = 0, numsegs = 0; i < hdr->e_phnum; i++) {
 		if (phdr[i].p_type == PT_LOAD && phdr[i].p_memsz != 0) {
@@ -563,20 +567,18 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 {
 	const Elf_Ehdr *hdr = (const Elf_Ehdr *) imgp->image_header;
 	const Elf_Phdr *phdr;
-	Elf_Auxargs *elf_auxargs = NULL;
+	Elf_Auxargs *elf_auxargs;
 	struct vmspace *vmspace;
 	vm_prot_t prot;
 	u_long text_size = 0, data_size = 0, total_size = 0;
 	u_long text_addr = 0, data_addr = 0;
 	u_long seg_size, seg_addr;
-	u_long addr, entry = 0, proghdr = 0;
+	u_long addr, baddr, et_dyn_addr, entry = 0, proghdr = 0;
 	int32_t osrel = 0;
-	int error, i;
+	int error = 0, i, n;
 	const char *interp = NULL, *newinterp = NULL;
 	Elf_Brandinfo *brand_info;
 	char *path;
-
-	error = 0;
 
 	/*
 	 * Do we have a valid ELF header ?
@@ -598,28 +600,47 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 		/* Only support headers in first page for now */
 		return (ENOEXEC);
 	}
-	phdr = (const Elf_Phdr*)(imgp->image_header + hdr->e_phoff);
+	phdr = (const Elf_Phdr *)(imgp->image_header + hdr->e_phoff);
+	if (!aligned(phdr, Elf_Addr))
+		return (ENOEXEC);
+	n = 0;
+	baddr = 0;
 	for (i = 0; i < hdr->e_phnum; i++) {
-	    if (phdr[i].p_type == PT_INTERP) {
-	        /* Path to interpreter */
-		if (phdr[i].p_filesz > MAXPATHLEN ||
-		    phdr[i].p_offset + phdr[i].p_filesz > PAGE_SIZE)
-			return (ENOEXEC);
-		interp = imgp->image_header + phdr[i].p_offset;
-		break;
-	    }
+		if (phdr[i].p_type == PT_LOAD) {
+			if (n == 0)
+				baddr = phdr[i].p_vaddr;
+			n++;
+			continue;
+		}
+		if (phdr[i].p_type == PT_INTERP) {
+			/* Path to interpreter */
+			if (phdr[i].p_filesz > MAXPATHLEN ||
+			    phdr[i].p_offset + phdr[i].p_filesz > PAGE_SIZE)
+				return (ENOEXEC);
+			interp = imgp->image_header + phdr[i].p_offset;
+			continue;
+		}
 	}
 	
 	brand_info = __elfN(get_brandinfo)(imgp, interp, &osrel);
 	if (brand_info == NULL) {
-	    uprintf("ELF binary type \"%u\" not known.\n",
-		hdr->e_ident[EI_OSABI]);
-	    return (ENOEXEC);
+		uprintf("ELF binary type \"%u\" not known.\n",
+		    hdr->e_ident[EI_OSABI]);
+		return (ENOEXEC);
 	}
-	if (hdr->e_type == ET_DYN &&
-	    (brand_info->flags & BI_CAN_EXEC_DYN) == 0) {
-	    return (ENOEXEC);
-	}
+	if (hdr->e_type == ET_DYN) {
+		if ((brand_info->flags & BI_CAN_EXEC_DYN) == 0)
+			return (ENOEXEC);
+		/*
+		 * Honour the base load address from the dso if it is
+		 * non-zero for some reason.
+		 */
+		if (baddr == 0)
+			et_dyn_addr = ET_DYN_LOAD_ADDR;
+		else
+			et_dyn_addr = 0;
+	} else
+		et_dyn_addr = 0;
 
 	if (interp != NULL && brand_info->interp_newpath != NULL)
 		newinterp = brand_info->interp_newpath;
@@ -652,11 +673,13 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 
 			if ((error = __elfN(load_section)(
 					imgp->proc,
-					vmspace, imgp->vp,
+					vmspace,
+					imgp->vp,
 					phdr[i].p_offset,
-					(caddr_t)phdr[i].p_vaddr,
+					(caddr_t)phdr[i].p_vaddr + et_dyn_addr,
 					phdr[i].p_memsz,
-					phdr[i].p_filesz, prot)) != 0)
+					phdr[i].p_filesz,
+					prot)) != 0)
 				return (error);
 
 			/*
@@ -668,11 +691,12 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 			if (phdr[i].p_offset == 0 &&
 			    hdr->e_phoff + hdr->e_phnum * hdr->e_phentsize
 				<= phdr[i].p_filesz)
-				proghdr = phdr[i].p_vaddr + hdr->e_phoff;
+				proghdr = phdr[i].p_vaddr + hdr->e_phoff +
+				    et_dyn_addr;
 
-			seg_addr = trunc_page(phdr[i].p_vaddr);
+			seg_addr = trunc_page(phdr[i].p_vaddr + et_dyn_addr);
 			seg_size = round_page(phdr[i].p_memsz +
-				phdr[i].p_vaddr - seg_addr);
+			    phdr[i].p_vaddr + et_dyn_addr - seg_addr);
 
 			/*
 			 * Is this .text or .data?  We can't use
@@ -694,7 +718,7 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 			    phdr[i].p_memsz)) {
 				text_size = seg_size;
 				text_addr = seg_addr;
-				entry = (u_long)hdr->e_entry;
+				entry = (u_long)hdr->e_entry + et_dyn_addr;
 			} else {
 				data_size = seg_size;
 				data_addr = seg_addr;
@@ -716,7 +740,7 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 			}
 			break;
 		case PT_PHDR: 	/* Program header table info */
-			proghdr = phdr[i].p_vaddr;
+			proghdr = phdr[i].p_vaddr + et_dyn_addr;
 			break;
 		default:
 			break;
@@ -746,13 +770,13 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 			    &imgp->entry_addr);
 			kfree(path, M_TEMP);
 			if (error == 0)
-			    have_interp = TRUE;
+				have_interp = TRUE;
 		}
 		if (!have_interp && newinterp != NULL) {
 			error = __elfN(load_file)(imgp->proc, newinterp,
 			    &addr, &imgp->entry_addr);
 			if (error == 0)
-			    have_interp = TRUE;
+				have_interp = TRUE;
 		}
 		if (!have_interp) {
 			error = __elfN(load_file)(imgp->proc, interp, &addr,
@@ -763,7 +787,7 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 			return (error);
 		}
 	} else
-		addr = 0;
+		addr = et_dyn_addr;
 
 	/*
 	 * Construct auxargs table (used by the fixup routine)
@@ -821,7 +845,7 @@ __elfN(dragonfly_fixup)(register_t **stack_base, struct image_params *imgp)
  * Code for generating ELF core dumps.
  */
 
-typedef int (*segment_callback) (vm_map_entry_t, void *);
+typedef int (*segment_callback)(vm_map_entry_t, void *);
 
 /* Closure for cb_put_phdr(). */
 struct phdr_closure {
