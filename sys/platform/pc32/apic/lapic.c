@@ -83,11 +83,10 @@ static const uint32_t	lapic_timer_divisors[] = {
 #define APIC_TIMER_NDIVISORS (int)(NELEM(lapic_timer_divisors))
 
 /*
- * APIC ID logical/physical mapping structures.
- * We oversize these to simplify boot-time config.
+ * APIC ID <-> CPU ID mapping structures.
  */
-int	cpu_num_to_apic_id[NAPICID];
-int	apic_id_to_logical[NAPICID];
+int	cpu_id_to_apic_id[NAPICID];
+int	apic_id_to_cpu_id[NAPICID];
 
 /*
  * Enable LAPIC, configure interrupts.
@@ -500,7 +499,7 @@ single_apic_ipi(int cpu, int vector, int delivery_mode)
 	    write_eflags(eflags);
 	}
 	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
-	icr_hi |= (CPU_TO_ID(cpu) << 24);
+	icr_hi |= (CPUID_TO_APICID(cpu) << 24);
 	lapic->icr_hi = icr_hi;
 
 	/* build ICR_LOW */
@@ -532,7 +531,7 @@ single_apic_ipi_passive(int cpu, int vector, int delivery_mode)
 	    return(0);
 	}
 	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
-	icr_hi |= (CPU_TO_ID(cpu) << 24);
+	icr_hi |= (CPUID_TO_APICID(cpu) << 24);
 	lapic->icr_hi = icr_hi;
 
 	/* build IRC_LOW */
@@ -631,7 +630,7 @@ lapic_unused_apic_id(int start)
 	int i;
 
 	for (i = start; i < NAPICID; ++i) {
-		if (ID_TO_CPU(i) == -1)
+		if (APICID_TO_CPUID(i) == -1)
 			return i;
 	}
 	return NAPICID;
@@ -655,7 +654,7 @@ lapic_config(void)
 	int error, i;
 
 	for (i = 0; i < NAPICID; ++i)
-		ID_TO_CPU(i) = -1;
+		APICID_TO_CPUID(i) = -1;
 
 	TAILQ_FOREACH(e, &lapic_enumerators, lapic_link) {
 		error = e->lapic_probe(e);
@@ -685,6 +684,6 @@ lapic_enumerator_register(struct lapic_enumerator *ne)
 void
 lapic_set_cpuid(int cpu_id, int apic_id)
 {
-	CPU_TO_ID(cpu_id) = apic_id;
-	ID_TO_CPU(apic_id) = cpu_id;
+	CPUID_TO_APICID(cpu_id) = apic_id;
+	APICID_TO_CPUID(apic_id) = cpu_id;
 }
