@@ -2520,6 +2520,7 @@ options 	SCSI_NCR_MAX_WIDE=1
 options 	SCSI_NCR_MYADDR=7
 options 	SHOW_BUSYBUFS	# List buffers that prevent root unmount
 options 	SI_DEBUG
+options		SLAB_DEBUG
 options 	SLIP_IFF_OPTS
 options 	SOCKBUF_DEBUG
 options		TDMA_BINTVAL_DEFAULT=5
@@ -2535,6 +2536,7 @@ options		TDMA_TXRATE_QUARTER_DEFAULT=2*6
 options		TDMA_TXRATE_TURBO_DEFAULT=2*24
 #options 	TIMER_FREQ="((14318182+6)/12)"
 options 	VFS_BIO_DEBUG
+options		VM_PAGE_DEBUG
 options 	XBONEHACK
 
 options	KTR
