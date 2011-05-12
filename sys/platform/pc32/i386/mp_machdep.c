@@ -330,13 +330,6 @@ mp_enable(u_int boot_addr)
 	MachIntrABI.finalize();
 }
 
-void
-mp_set_cpuids(int cpu_id, int apic_id)
-{
-	CPU_TO_ID(cpu_id) = apic_id;
-	ID_TO_CPU(apic_id) = cpu_id;
-}
-
 /*
  * start each AP in our list
  */

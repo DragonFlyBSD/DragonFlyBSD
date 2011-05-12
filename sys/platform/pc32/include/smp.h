@@ -87,7 +87,6 @@ extern struct pcb		stoppcbs[];
 u_int	mp_bootaddress		(u_int);
 void	mp_start		(void);
 void	mp_announce		(void);
-void	mp_set_cpuids		(int, int);
 void	init_secondary		(void);
 int	stop_cpus		(cpumask_t);
 void	ap_init			(void);
