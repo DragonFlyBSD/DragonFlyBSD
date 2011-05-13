@@ -598,6 +598,7 @@ MLINKS+=make_dev.9 destroy_dev.9 \
 	make_dev.9 dev_ops_remove_minor.9 \
 	make_dev.9 dev_ops_restore.9 \
 	make_dev.9 make_dev_alias.9 \
+	make_dev.9 make_dev_covering.9 \
 	make_dev.9 make_only_dev.9 \
 	make_dev.9 reference_dev.9 \
 	make_dev.9 release_dev.9
