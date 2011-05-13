@@ -788,7 +788,7 @@ exec_linux_imgact_try(struct image_params *imgp)
     return(error);
 }
 
-struct sysentvec linux32_sysvec = {
+struct sysentvec linux_sysvec = {
 	.sv_size	= LINUX_SYS_MAXSYSCALL,
 	.sv_table	= linux_sysent,
 	.sv_mask	= 0xffffffff,
@@ -808,7 +808,7 @@ struct sysentvec linux32_sysvec = {
 	.sv_minsigstksz	= LINUX_MINSIGSTKSZ
 };
 
-struct sysentvec elf32_linux_sysvec = {
+struct sysentvec elf_linux_sysvec = {
 	.sv_size	= LINUX_SYS_MAXSYSCALL,
 	.sv_table	= linux_sysent,
 	.sv_mask	= 0xffffffff,
@@ -827,8 +827,6 @@ struct sysentvec elf32_linux_sysvec = {
 	.sv_imgact_try	= exec_linux_imgact_try,
 	.sv_minsigstksz	= LINUX_MINSIGSTKSZ
 };
-
-static Elf_Brandinfo *linux_brand_list[MAX_BRANDS];
 
 static const char GNU_ABI_VENDOR[] = "GNU";
 static const char SUSE_ABI_VENDOR[] = "SuSE";
@@ -855,7 +853,7 @@ static Elf32_Brandinfo linux32_brand = {
         .compat_3_brand	= "Linux",
         .emul_path	= "/compat/linux",
         .interp_path	= "/lib/ld-linux.so.1",
-        .sysvec		= &elf32_linux_sysvec,
+        .sysvec		= &elf_linux_sysvec,
         .interp_newpath	= NULL,
         .flags		= BI_CAN_EXEC_DYN,
         .brand_note	= &linux32_generic_brandnote,
@@ -867,7 +865,7 @@ static Elf32_Brandinfo linux32_glibc2_brand = {
         .compat_3_brand	= "Linux",
         .emul_path	= "/compat/linux",
         .interp_path	= "/lib/ld-linux.so.2",
-        .sysvec		= &elf32_linux_sysvec,
+        .sysvec		= &elf_linux_sysvec,
         .interp_newpath	= NULL,
         .flags		= BI_CAN_EXEC_DYN,
         .brand_note	= &linux32_generic_brandnote,
@@ -879,7 +877,7 @@ static Elf32_Brandinfo linux32_suse_brand = {
         .compat_3_brand	= "Linux",
         .emul_path	= "/compat/linux",
         .interp_path	= "/lib/ld-linux.so.2",
-        .sysvec		= &elf32_linux_sysvec,
+        .sysvec		= &elf_linux_sysvec,
         .interp_newpath	= NULL,
         .flags		= BI_CAN_EXEC_DYN,
         .brand_note	= &linux32_suse_brandnote,
