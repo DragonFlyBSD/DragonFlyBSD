@@ -186,23 +186,10 @@ lapic_init(boolean_t bsp)
 	/*
 	 * Set the Task Priority Register as needed.   At the moment allow
 	 * interrupts on all cpus (the APs will remain CLId until they are
-	 * ready to deal).  We could disable all but IPIs by setting
-	 * temp |= TPR_IPI for cpu != 0.
+	 * ready to deal).
 	 */
 	temp = lapic->tpr;
 	temp &= ~APIC_TPR_PRIO;		/* clear priority field */
-#ifdef SMP /* APIC-IO */
-if (!apic_io_enable) {
-#endif
-	/*
-	 * If we are NOT running the IO APICs, the LAPIC will only be used
-	 * for IPIs.  Set the TPR to prevent any unintentional interrupts.
-	 */
-	temp |= TPR_IPI;
-#ifdef SMP /* APIC-IO */
-}
-#endif
-
 	lapic->tpr = temp;
 
 	/* 
