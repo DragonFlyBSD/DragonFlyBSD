@@ -59,8 +59,6 @@ static int __fmemopen_readfn(void *, char *, int);
 static fpos_t __fmemopen_seekfn (void *, fpos_t, int);
 static int __fmemopen_writefn(void *, const char *, int);
 
-FILE *fmemopen (void *, size_t, const char *);
-
 struct fmemopen_cookie {
 	char *buffer;
 	int mybuffer;
@@ -73,8 +71,8 @@ static int
 __fmemopen_readfn(void *cookie, char *buf, int len)
 {
 	struct fmemopen_cookie *c;
-	c = (struct fmemopen_cookie *) cookie;
 
+	c = (struct fmemopen_cookie *) cookie;
 	if (c == NULL) {
 		errno = EBADF;
 		return (-1);
@@ -108,7 +106,7 @@ __fmemopen_writefn (void *cookie, const char *buf, int len)
 		return (-1);
 	}
 
-	addnullc = ((len == 0) || (buf[len - 1] != '\0') ) ? 1 : 0;
+	addnullc = ((len == 0) || (buf[len - 1] != '\0')) ? 1 : 0;
 
 	if ((c->pos + len + addnullc) > c->size) {
 		if ((c->pos + addnullc) == c->size)
@@ -160,6 +158,7 @@ static int
 __fmemopen_closefn (void *cookie)
 {
 	struct fmemopen_cookie *c;
+
 	c = (struct fmemopen_cookie*) cookie;
 
 	if (c->mybuffer)
@@ -174,8 +173,8 @@ fmemopen(void *restrict buffer, size_t s, const char *restrict mode)
 {
 	FILE *f = NULL;
 	struct fmemopen_cookie *c;
-	c = malloc(sizeof (struct fmemopen_cookie));
 
+	c = malloc(sizeof (struct fmemopen_cookie));
 	if (c == NULL)
 		return NULL;
 
