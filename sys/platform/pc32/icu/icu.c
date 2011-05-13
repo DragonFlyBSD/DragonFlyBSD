@@ -50,6 +50,7 @@
 #include <sys/systm.h>
 #include <sys/machintr.h>
 #include <sys/interrupt.h>
+#include <sys/thread2.h>
 #include <bus/isa/isareg.h>
 #include <cpu/cpufunc.h>
 #include <machine/smp.h>
@@ -180,3 +181,32 @@ icu_ioapic_extint(int irq, int vec)
 
 	return 0;
 }
+
+#ifdef SMP
+
+void
+icu_reinit_noioapic(void)
+{
+	u_long ef;
+
+	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
+	KKASSERT(apic_io_enable == 0);
+
+	crit_enter();
+	ef = read_eflags();
+	cpu_disable_intr();
+
+	/* Leave interrupts masked */
+	outb(IO_ICU1 + ICU_IMR_OFFSET, 0xff);
+	outb(IO_ICU2 + ICU_IMR_OFFSET, 0xff);
+
+	icu_init();
+	MachIntrABI.stabilize();
+
+	write_eflags(ef);
+
+	MachIntrABI.cleanup();
+	crit_exit();
+}
+
+#endif

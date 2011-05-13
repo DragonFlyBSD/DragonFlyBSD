@@ -647,24 +647,34 @@ lapic_map(vm_offset_t lapic_addr)
 static TAILQ_HEAD(, lapic_enumerator) lapic_enumerators =
 	TAILQ_HEAD_INITIALIZER(lapic_enumerators);
 
-void
+int
 lapic_config(void)
 {
 	struct lapic_enumerator *e;
-	int error, i;
+	int error, i, enable;
 
 	for (i = 0; i < NAPICID; ++i)
 		APICID_TO_CPUID(i) = -1;
+
+	enable = 1;
+	TUNABLE_INT_FETCH("hw.lapic_enable", &enable);
+	if (!enable) {
+		kprintf("LAPIC: Warning LAPIC is disabled\n");
+		return ENXIO;
+	}
 
 	TAILQ_FOREACH(e, &lapic_enumerators, lapic_link) {
 		error = e->lapic_probe(e);
 		if (!error)
 			break;
 	}
-	if (e == NULL)
-		panic("can't config lapic\n");
+	if (e == NULL) {
+		kprintf("LAPIC: Can't find LAPIC\n");
+		return ENXIO;
+	}
 
 	e->lapic_enumerate(e);
+	return 0;
 }
 
 void

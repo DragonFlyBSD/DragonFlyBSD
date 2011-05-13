@@ -56,6 +56,7 @@
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
 #include <machine/cputypes.h>
+#include <machine_base/icu/icu_var.h>
 #include <machine_base/apic/ioapic_abi.h>
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
@@ -177,6 +178,7 @@ static int	start_all_aps(u_int boot_addr);
 static void	install_ap_tramp(u_int boot_addr);
 static int	start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest);
 static int	smitest(void);
+static void	cpu_simple_setup(void);
 
 static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
 static cpumask_t smp_lapic_mask = 1;	/* which cpus have lapic been inited */
@@ -313,9 +315,19 @@ init_secondary(void)
 static void
 mp_enable(u_int boot_addr)
 {
+	int error;
+
 	POSTCODE(MP_ENABLE_POST);
 
-	lapic_config();
+	error = lapic_config();
+	if (error) {
+		if (apic_io_enable) {
+			apic_io_enable = 0;
+			icu_reinit_noioapic();
+		}
+		cpu_simple_setup();
+		return;
+	}
 
 	/* Initialize BSP's local APIC */
 	lapic_init(TRUE);
@@ -1110,3 +1122,17 @@ cpu_send_ipiq_passive(int dcpu)
 	return(r);
 }
 #endif
+
+static void
+cpu_simple_setup(void)
+{
+	/* build our map of 'other' CPUs */
+	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
+	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * ncpus);
+	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
+
+	pmap_set_opt();
+
+	if (cpu_feature & CPUID_TSC)
+		tsc0_offset = rdtsc();
+}
