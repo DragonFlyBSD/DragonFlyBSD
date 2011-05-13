@@ -366,9 +366,11 @@ again:
 	 */
 	mp_start();			/* fire up the APs and APICs */
 	mp_announce();
-#else
-	MachIntrABI.finalize();
 #endif  /* SMP */
+
+	/* Finalize PIC */
+	MachIntrABI.finalize();
+
 	cpu_setregs();
 }
 
