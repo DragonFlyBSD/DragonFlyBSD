@@ -36,7 +36,7 @@
  * "THE BEER-WARE LICENSE" (Revision 42):
  * <hiten@uk.FreeBSD.ORG> wrote this file.  As long as you retain this notice
  * you can do whatever you want with this stuff. If we meet some day, and you
- * think this stuff is worth it, you can buy me a beer in return. Hiten Pandya. 
+ * think this stuff is worth it, you can buy me a beer in return. Hiten Pandya.
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
@@ -69,114 +69,118 @@ struct fmemopen_cookie {
 	size_t maxpos;
 };
 
-static int __fmemopen_readfn(void *cookie, char *buf, int len)
+static int
+__fmemopen_readfn(void *cookie, char *buf, int len)
 {
 	struct fmemopen_cookie *c;
 	c = (struct fmemopen_cookie *) cookie;
-	
+
 	if (c == NULL) {
 		errno = EBADF;
 		return (-1);
 	}
-	
+
 	if ((c->pos + len) > c->size) {
-		if (c->pos == c->size) 
+		if (c->pos == c->size)
 			return -1;
 		len = c->size - c->pos;
 	}
-	
+
 	memcpy(buf, &(c->buffer[c->pos]), len);
-	
+
 	c->pos += len;
-	
-	if (c->pos > c->maxpos) 
+
+	if (c->pos > c->maxpos)
 		c->maxpos = c->pos;
-	
+
 	return (len);
 }
 
-static int __fmemopen_writefn (void *cookie, const char *buf, int len)
+static int
+__fmemopen_writefn (void *cookie, const char *buf, int len)
 {
 	struct fmemopen_cookie *c;
 	int addnullc;
-	
+
 	c = (struct fmemopen_cookie *) cookie;
 	if (c == NULL) {
 		errno = EBADF;
 		return (-1);
 	}
-	
+
 	addnullc = ((len == 0) || (buf[len - 1] != '\0') ) ? 1 : 0;
-	
+
 	if ((c->pos + len + addnullc) > c->size) {
-		if ((c->pos + addnullc) == c->size) 
+		if ((c->pos + addnullc) == c->size)
 			return -1;
 		len = c->size - c->pos - addnullc;
 	}
-	
+
 	memcpy(&(c->buffer[c->pos]), buf, len);
-	
+
 	c->pos += len;
 	if (c->pos > c->maxpos) {
 		c->maxpos = c->pos;
-		if (addnullc) 
+		if (addnullc)
 			c->buffer[c->maxpos] = '\0';
 	}
-	
+
 	return (len);
 }
 
-static fpos_t __fmemopen_seekfn(void *cookie, fpos_t pos, int whence)
+static fpos_t
+__fmemopen_seekfn(void *cookie, fpos_t pos, int whence)
 {
 	fpos_t np = 0;
 	struct fmemopen_cookie *c;
-	
+
 	c = (struct fmemopen_cookie *) cookie;
-	
+
 	switch(whence) {
-	case (SEEK_SET): 
-		np = pos; 
+	case (SEEK_SET):
+		np = pos;
 		break;
-	case (SEEK_CUR): 
-		np = c->pos + pos; 
+	case (SEEK_CUR):
+		np = c->pos + pos;
 		break;
-	case (SEEK_END): 
-		np = c->size - pos; 
+	case (SEEK_END):
+		np = c->size - pos;
 		break;
 	}
-	
-	if ((np < 0) || (np > c->size)) 
+
+	if ((np < 0) || (np > c->size))
 		return (-1);
-	
+
 	c->pos = np;
-	
+
 	return (np);
 }
 
- 
-static int __fmemopen_closefn (void *cookie)
+static int
+__fmemopen_closefn (void *cookie)
 {
 	struct fmemopen_cookie *c;
 	c = (struct fmemopen_cookie*) cookie;
-	
-	if (c->mybuffer) 
+
+	if (c->mybuffer)
 		free(c->buffer);
 	free(c);
-	
+
 	return (0);
 }
 
-FILE *fmemopen(void *restrict buffer, size_t s, const char *restrict mode)
+FILE *
+fmemopen(void *restrict buffer, size_t s, const char *restrict mode)
 {
 	FILE *f = NULL;
 	struct fmemopen_cookie *c;
 	c = malloc(sizeof (struct fmemopen_cookie));
-	
+
 	if (c == NULL)
 		return NULL;
-	
+
 	c->mybuffer = (buffer == NULL);
-	
+
 	if (c->mybuffer) {
 		c->buffer = malloc(s);
 		if (c->buffer == NULL) {
@@ -191,21 +195,21 @@ FILE *fmemopen(void *restrict buffer, size_t s, const char *restrict mode)
 	if (mode[0] == 'w')
 		c->buffer[0] = '\0';
 	c->maxpos = strlen(c->buffer);
-	
+
 	if (mode[0] == 'a')
 		c->pos = c->maxpos;
 	else
 		c->pos = 0;
-	
+
 	f = funopen(c,
 		    __fmemopen_readfn, /* string stream read */
 		    __fmemopen_writefn, /* string stream write */
 		    __fmemopen_seekfn, /* string stream seek */
 		    __fmemopen_closefn /* string stream close */
 		    );
-	
+
 	if (f == NULL)
 		free(c);
-	
+
 	return (f);
 }
