@@ -372,7 +372,6 @@ madt_lapic_pass2(int bsp_apic_id)
 		panic("madt_iterate_entries(pass2) failed\n");
 
 	KKASSERT(arg.bsp_found);
-	KKASSERT(arg.cpu > 1);
 	mp_naps = arg.cpu - 1; /* exclude BSP */
 
 	sdt_sdth_unmap(&madt->madt_hdr);
@@ -430,9 +429,8 @@ madt_lapic_probe(struct lapic_enumerator *e)
 
 	error = madt_iterate_entries(madt, madt_lapic_probe_callback, &arg);
 	if (!error) {
-		if (arg.cpu_count <= 1) {
-			kprintf("madt_lapic_probe: "
-				"less than 2 CPUs is found\n");
+		if (arg.cpu_count == 0) {
+			kprintf("madt_lapic_probe: no CPU is found\n");
 			error = EOPNOTSUPP;
 		}
 		if (arg.lapic_addr == 0) {
