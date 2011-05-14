@@ -221,9 +221,9 @@ mp_announce(void)
 	POSTCODE(MP_ANNOUNCE_POST);
 
 	kprintf("DragonFly/MP: Multiprocessor motherboard\n");
-	kprintf(" cpu0 (BSP): apic id: %2d\n", CPU_TO_ID(0));
+	kprintf(" cpu0 (BSP): apic id: %2d\n", CPUID_TO_APICID(0));
 	for (x = 1; x <= mp_naps; ++x)
-		kprintf(" cpu%d (AP):  apic id: %2d\n", x, CPU_TO_ID(x));
+		kprintf(" cpu%d (AP):  apic id: %2d\n", x, CPUID_TO_APICID(x));
 
 	if (!apic_io_enable)
 		kprintf(" Warning: APIC I/O disabled\n");
@@ -478,7 +478,7 @@ start_all_aps(u_int boot_addr)
 		CHECK_INIT(99);	/* setup checkpoints */
 		if (!start_ap(gd, boot_addr, smibest)) {
 			kprintf("\nAP #%d (PHY# %d) failed!\n",
-				x, CPU_TO_ID(x));
+				x, CPUID_TO_APICID(x));
 			CHECK_PRINT("trace");	/* show checkpoints */
 			/* better panic as the AP may be running loose */
 			kprintf("panic y/n? [y] ");
@@ -627,7 +627,7 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 	POSTCODE(START_AP_POST);
 
 	/* get the PHYSICAL APIC ID# */
-	physical_cpu = CPU_TO_ID(gd->mi.gd_cpuid);
+	physical_cpu = CPUID_TO_APICID(gd->mi.gd_cpuid);
 
 	/* calculate the vector */
 	vector = (boot_addr >> 12) & 0xff;
@@ -960,7 +960,7 @@ restart_cpus(cpumask_t map)
 void
 ap_init(void)
 {
-	u_int	apic_id;
+	int	cpu_id;
 
 	/*
 	 * Adjust smp_startup_mask to signal the BSP that we have started
@@ -1006,11 +1006,11 @@ ap_init(void)
 	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
 
 	/* A quick check from sanity claus */
-	apic_id = (apic_id_to_logical[(lapic->id & 0xff000000) >> 24]);
-	if (mycpu->gd_cpuid != apic_id) {
-		kprintf("SMP: cpuid = %d\n", mycpu->gd_cpuid);
-		kprintf("SMP: apic_id = %d lapicid %d\n",
-			apic_id, (lapic->id & 0xff000000) >> 24);
+	cpu_id = APICID_TO_CPUID((lapic->id & 0xff000000) >> 24);
+	if (mycpu->gd_cpuid != cpu_id) {
+		kprintf("SMP: assigned cpuid = %d\n", mycpu->gd_cpuid);
+		kprintf("SMP: actual cpuid = %d lapicid %d\n",
+			cpu_id, (lapic->id & 0xff000000) >> 24);
 #if JGXXX
 		kprintf("PTD[MPPTDI] = %p\n", (void *)PTD[MPPTDI]);
 #endif

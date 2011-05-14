@@ -730,8 +730,7 @@ mptable_lapic_default(void)
 /*
  * Configure:
  *     mp_naps
- *     ID_TO_CPU(N), APIC ID to logical CPU table
- *     CPU_TO_ID(N), logical CPU to APIC ID table
+ *     APIC ID <-> CPU ID mappings
  */
 static void
 mptable_lapic_enumerate(struct lapic_enumerator *e)

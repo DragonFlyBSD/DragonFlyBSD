@@ -33,10 +33,10 @@
 #include <machine_base/apic/apicreg.h>
 
 /*
- * the physical/logical APIC ID management macros
+ * APIC ID <-> CPU ID mapping macros
  */
-#define CPU_TO_ID(CPU)	(cpu_num_to_apic_id[CPU])
-#define ID_TO_CPU(ID)	(apic_id_to_logical[ID])
+#define CPUID_TO_APICID(cpu_id)		(cpu_id_to_apic_id[(cpu_id)])
+#define APICID_TO_CPUID(apic_id)	(apic_id_to_cpu_id[(apic_id)])
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
@@ -55,8 +55,8 @@ struct lapic_enumerator {
 #ifdef SMP
 
 extern volatile lapic_t		*lapic;
-extern int			cpu_num_to_apic_id[];
-extern int			apic_id_to_logical[];
+extern int			cpu_id_to_apic_id[];
+extern int			apic_id_to_cpu_id[];
 
 void	apic_dump(char*);
 void	lapic_init(boolean_t);
