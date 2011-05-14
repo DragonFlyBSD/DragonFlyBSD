@@ -37,7 +37,6 @@
  * Author: Archie Cobbs <archie@whistle.com>
  *
  * $FreeBSD: src/lib/libnetgraph/debug.c,v 1.5.2.1 2000/05/01 18:09:54 archie Exp $
- * $DragonFly: src/lib/libnetgraph/debug.c,v 1.4 2007/06/17 20:33:14 swildner Exp $
  * $Whistle: debug.c,v 1.24 1999/01/24 01:15:33 archie Exp $
  */
 
@@ -78,7 +77,6 @@
 #include <netgraph/pppoe/ng_pppoe.h>
 #include <netgraph/pptpgre/ng_pptpgre.h>
 #include <netgraph/rfc1490/ng_rfc1490.h>
-#include <netgraph/socket/ng_socket.h>
 #include <netgraph/tee/ng_tee.h>
 #include <netgraph/tty/ng_tty.h>
 #include <netgraph/vjc/ng_vjc.h>

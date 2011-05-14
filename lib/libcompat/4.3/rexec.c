@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcompat/4.3/rexec.c,v 1.5.8.3 2000/11/22 13:36:00 ben Exp $
- * $DragonFly: src/lib/libcompat/4.3/rexec.c,v 1.6 2008/10/05 18:26:41 swildner Exp $
  *
  * @(#)rexec.c	8.1 (Berkeley) 6/4/93
  */
@@ -52,7 +51,6 @@
 #include <ctype.h>
 #include <err.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 int	rexecoptions;
 char	*getpass(), *getlogin();

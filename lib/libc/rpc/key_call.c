@@ -31,7 +31,6 @@
  *
  * @(#)key_call.c	1.25	94/04/24 SMI
  * $FreeBSD: src/lib/libc/rpc/key_call.c,v 1.16 2006/02/27 22:10:59 deischen Exp $
- * $DragonFly: src/lib/libc/rpc/key_call.c,v 1.6 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -56,7 +55,6 @@
 #include <string.h>
 #include <netconfig.h>
 #include <sys/utsname.h>
-#include <stdlib.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/fcntl.h>

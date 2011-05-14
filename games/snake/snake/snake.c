@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)snake.c	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/games/snake/snake/snake.c,v 1.11.2.1 2000/08/17 06:21:44 jhb Exp $
- * $DragonFly: src/games/snake/snake/snake.c,v 1.4 2006/09/03 23:47:56 pavalos Exp $
  */
 
 /*
@@ -56,7 +55,6 @@
 #include <math.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <termios.h>
 

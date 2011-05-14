@@ -30,7 +30,6 @@
  * @(#)bindresvport.c	2.2 88/07/29 4.0 RPCSRC
  * $NetBSD: bindresvport.c,v 1.19 2000/07/06 03:03:59 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/bindresvport.c,v 1.16 2004/10/16 06:11:34 obrien Exp $
- * $DragonFly: src/lib/libc/rpc/bindresvport.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -50,8 +49,6 @@
 #include <unistd.h>
 
 #include <rpc/rpc.h>
-
-#include <string.h>
 #include "un-namespace.h"
 
 /*

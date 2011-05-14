@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/lib/libipsec/pfkey_dump.c,v 1.1.2.4 2003/04/27 00:03:36 sumikawa Exp $	*/
-/*	$DragonFly: src/lib/libipsec/pfkey_dump.c,v 1.3 2003/11/12 20:21:30 eirikn Exp $	*/
 /*	$KAME: pfkey_dump.c,v 1.28 2001/06/27 10:46:51 sakane Exp $	*/
 
 /*
@@ -40,7 +39,6 @@
 #include <netkey/key_debug.h>
 
 #include <netinet/in.h>
-#include <netinet6/ipsec.h>
 #include <arpa/inet.h>
 
 #include <stdlib.h>

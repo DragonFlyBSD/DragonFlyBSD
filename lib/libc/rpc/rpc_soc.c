@@ -60,7 +60,6 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <errno.h>
-#include <syslog.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

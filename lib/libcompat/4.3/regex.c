@@ -34,8 +34,6 @@
  * SUCH DAMAGE.
  *
  * @(#)regex.c	5.1 (Berkeley) 3/29/92
- *
- * $DragonFly: src/lib/libcompat/4.3/regex.c,v 1.3 2008/09/30 16:57:04 swildner Exp $
  */
 
 /*
@@ -50,7 +48,6 @@
 #include <regexp.h>
 #include <string.h>
 #include <stdlib.h>
-#include <string.h>
 
 static regexp *re_regexp;
 static int re_goterr;

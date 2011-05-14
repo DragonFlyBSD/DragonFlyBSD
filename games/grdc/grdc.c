@@ -9,7 +9,6 @@
  * 03-23-04 added centering, scroll delay (cap)
  *
  * $FreeBSD: src/games/grdc/grdc.c,v 1.8.2.1 2001/10/02 11:51:49 ru Exp $
- * $DragonFly: src/games/grdc/grdc.c,v 1.6 2007/04/18 18:32:12 swildner Exp $
  */
 
 #include <err.h>
@@ -20,7 +19,6 @@
 #ifndef NONPOSIX
 #include <unistd.h>
 #endif
-#include <time.h>
 
 #define XLENGTH 58
 #define YDEPTH  7

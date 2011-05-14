@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_gc.c,v 1.11.2.5 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_gc.c,v 1.3 2005/04/28 18:16:47 joerg Exp $
  *
  * Garbage collector thread. Frees memory allocated for dead threads.
  *
@@ -39,7 +38,6 @@
 #include <time.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/types.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <pthread.h>

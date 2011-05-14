@@ -40,7 +40,6 @@
  * @(#) Copyright (c) 1983, 1990, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rcp.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/rcp/rcp.c,v 1.26.2.6 2004/09/16 12:16:10 delphij Exp $
- * $DragonFly: src/bin/rcp/rcp.c,v 1.6 2005/01/07 20:30:21 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -65,7 +64,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <string.h>
 #include <unistd.h>
 
