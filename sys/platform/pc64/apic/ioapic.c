@@ -39,6 +39,7 @@
 #include <machine_base/apic/ioapic_abi.h>
 #include <machine/segments.h>
 #include <sys/thread2.h>
+#include <vm/pmap.h>
 
 #include <machine/intr_machdep.h>
 
@@ -565,4 +566,16 @@ ioapic_alloc_apic_id(int start)
 		start = apic_id + 1;
 	}
 	panic("ioapic_unused_apic_id: never reached\n");
+}
+
+/*
+ * Map a physical memory address representing I/O into KVA.  The I/O
+ * block is assumed not to cross a page boundary.
+ */
+void *
+ioapic_map(vm_paddr_t pa)
+{
+	KKASSERT(pa < 0x100000000LL);
+
+	return pmap_mapdev_uncacheable(pa, PAGE_SIZE);
 }

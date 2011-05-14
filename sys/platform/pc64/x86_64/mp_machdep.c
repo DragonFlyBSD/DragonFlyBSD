@@ -374,18 +374,6 @@ mp_set_cpuids(int cpu_id, int apic_id)
 }
 
 /*
- * Map a physical memory address representing I/O into KVA.  The I/O
- * block is assumed not to cross a page boundary.
- */
-void *
-ioapic_map(vm_paddr_t pa)
-{
-	KKASSERT(pa < 0x100000000LL);
-
-	return pmap_mapdev_uncacheable(pa, PAGE_SIZE);
-}
-
-/*
  * start each AP in our list
  */
 static int
