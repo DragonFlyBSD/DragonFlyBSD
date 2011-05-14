@@ -57,6 +57,8 @@ MLINKS+=	udev_monitor.3	udev_monitor_enable_receiving.3
 MLINKS+=	udev_monitor.3	udev_monitor_filter_add_match_subsystem_devtype.3
 MLINKS+=	udev_monitor.3	udev_monitor_filter_add_match_expr.3
 MLINKS+=	udev_monitor.3	udev_monitor_filter_add_nomatch_expr.3
+MLINKS+=	udev_monitor.3	udev_monitor_filter_add_match_property.3
+MLINKS+=	udev_monitor.3	udev_monitor_filter_add_nomatch_property.3
 MLINKS+=	udev_monitor.3	udev_monitor_filter_add_match_regex.3
 MLINKS+=	udev_monitor.3	udev_monitor_filter_add_nomatch_regex.3
 
