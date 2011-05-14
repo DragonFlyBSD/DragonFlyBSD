@@ -32,8 +32,8 @@ SRCS+=	__fpending.c _flock_stub.c \
 
 .if ${LIB} == "c"
 MAN+=	fclose.3 ferror.3 fflush.3 fgetln.3 fgets.3 fgetwln.3 fgetws.3 \
-	flockfile.3 fopen.3 fputs.3 fputws.3 fread.3 fseek.3 funopen.3 \
-	fwide.3 getc.3 getline.3 \
+	flockfile.3 fmemopen.3 fopen.3 fputs.3 fputws.3 fread.3 fseek.3 \
+	funopen.3 fwide.3 getc.3 getline.3 \
 	getwc.3 mktemp.3 printf.3 putc.3 putwc.3 remove.3 \
 	scanf.3 setbuf.3 stdio.3 tmpnam.3 ungetc.3 ungetwc.3 wprintf.3 wscanf.3
 
