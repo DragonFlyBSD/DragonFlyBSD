@@ -353,9 +353,6 @@ mp_enable(u_int boot_addr)
 
 	if (apic_io_enable)
 		ioapic_config();
-
-	/* Finalize PIC */
-	MachIntrABI.finalize();
 }
 
 /*
