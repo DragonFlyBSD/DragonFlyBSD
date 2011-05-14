@@ -339,10 +339,10 @@ madt_lapic_pass2_callback(void *xarg, const struct acpi_madt_ent *ent)
 		MADT_VPRINTF("cpu id %d, apic id %d\n",
 			     lapic_ent->ml_cpu_id, lapic_ent->ml_apic_id);
 		if (lapic_ent->ml_apic_id == arg->bsp_apic_id) {
-			mp_set_cpuids(0, lapic_ent->ml_apic_id);
+			lapic_set_cpuid(0, lapic_ent->ml_apic_id);
 			arg->bsp_found = 1;
 		} else {
-			mp_set_cpuids(arg->cpu, lapic_ent->ml_apic_id);
+			lapic_set_cpuid(arg->cpu, lapic_ent->ml_apic_id);
 			arg->cpu++;
 		}
 	}

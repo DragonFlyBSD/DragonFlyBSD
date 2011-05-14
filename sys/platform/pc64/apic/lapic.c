@@ -747,3 +747,10 @@ lapic_enumerator_register(struct lapic_enumerator *ne)
 	}
 	TAILQ_INSERT_TAIL(&lapic_enumerators, ne, lapic_link);
 }
+
+void
+lapic_set_cpuid(int cpu_id, int apic_id)
+{
+	CPU_TO_ID(cpu_id) = apic_id;
+	ID_TO_CPU(apic_id) = cpu_id;
+}

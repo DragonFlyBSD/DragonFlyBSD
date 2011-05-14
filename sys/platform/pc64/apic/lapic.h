@@ -64,6 +64,7 @@ int	apic_ipi(int, int, int);
 void	selected_apic_ipi(cpumask_t, int, int);
 void	single_apic_ipi(int, int, int);
 int	single_apic_ipi_passive(int, int, int);
+void	lapic_set_cpuid(int, int);
 void	lapic_config(void);
 void	lapic_enumerator_register(struct lapic_enumerator *);
 void	set_apic_timer(int);

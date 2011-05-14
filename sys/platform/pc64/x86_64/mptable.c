@@ -560,13 +560,13 @@ processor_entry(const struct PROCENTRY *entry, int cpu)
 
 	/* check for BSP flag */
 	if (entry->cpu_flags & PROCENTRY_FLAG_BP) {
-		mp_set_cpuids(0, entry->apic_id);
+		lapic_set_cpuid(0, entry->apic_id);
 		return 0;	/* its already been counted */
 	}
 
 	/* add another AP to list, if less than max number of CPUs */
 	else if (cpu < MAXCPU) {
-		mp_set_cpuids(cpu, entry->apic_id);
+		lapic_set_cpuid(cpu, entry->apic_id);
 		return 1;
 	}
 
@@ -722,9 +722,9 @@ mptable_lapic_default(void)
 	ap_apicid = (bsp_apicid == 0) ? 1 : 0;
 
 	/* BSP */
-	mp_set_cpuids(0, bsp_apicid);
+	lapic_set_cpuid(0, bsp_apicid);
 	/* one and only AP */
-	mp_set_cpuids(1, ap_apicid);
+	lapic_set_cpuid(1, ap_apicid);
 }
 
 /*
