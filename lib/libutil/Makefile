@@ -28,7 +28,7 @@ MAN+=	flopen.3 login.3 loginx.3 login_auth.3 login_tty.3 logout.3 logwtmp.3 \
 MAN+=	login.conf.5 auth.conf.5
 
 MLINKS+=auth.3 auth_getval.3
-MLINKS+=efun.3 ecalloc.3 efun.3 emalloc.3 efun.3 erealloc.3 efun.3 esetfun.3 \
+MLINKS+=efun.3 ecalloc.3 efun.3 emalloc.3 efun.3 erealloc.3 efun.3 esetfunc.3 \
 	efun.3 estrdup.3 efun.3 estrlcat.3 efun.3 estrlcpy.3 \
 	efun.3 estrndup.3 efun.3 easprintf.3
 MLINKS+=humanize_number.3 dehumanize_number.3

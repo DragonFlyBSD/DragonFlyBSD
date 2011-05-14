@@ -1644,6 +1644,8 @@ TO_REMOVE+=/usr/lib/profile/libgnuregex.a
 TO_REMOVE+=/usr/share/info/regex.info.gz
 TO_REMOVE+=/usr/share/man/cat3/evasprintf.3.gz
 TO_REMOVE+=/usr/share/man/man3/evasprintf.3.gz
+TO_REMOVE+=/usr/share/man/cat3/esetfun.3.gz
+TO_REMOVE+=/usr/share/man/man3/esetfun.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/sgsc
