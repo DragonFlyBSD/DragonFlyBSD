@@ -705,7 +705,7 @@ int
 lapic_config(void)
 {
 	struct lapic_enumerator *e;
-	int error, i, enable;
+	int error, i, enable, ap_max;
 
 	for (i = 0; i < NAPICID; ++i)
 		APICID_TO_CPUID(i) = -1;
@@ -728,6 +728,19 @@ lapic_config(void)
 	}
 
 	e->lapic_enumerate(e);
+
+	ap_max = MAXCPU - 1;
+	TUNABLE_INT_FETCH("hw.ap_max", &ap_max);
+	if (ap_max > MAXCPU - 1)
+		ap_max = MAXCPU - 1;
+
+	if (mp_naps > ap_max) {
+		kprintf("LAPIC: Warning use only %d out of %d "
+			"available APs\n",
+			ap_max, mp_naps);
+		mp_naps = ap_max;
+	}
+
 	return 0;
 }
 

@@ -777,18 +777,8 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 		if (logical_cpus != 0)
 			arg1.cpu_count *= logical_cpus;
 	}
-	mp_naps = arg1.cpu_count;
+	mp_naps = arg1.cpu_count - 1;	/* subtract the BSP */
  
-	/* Qualify the numbers again, after possible HT fixup */
-	if (mp_naps > MAXCPU) {
-		kprintf("Warning: only using %d of %d available CPUs!\n",
-			MAXCPU, mp_naps);
-		DELAY(1000000);
-		mp_naps = MAXCPU;
- 	}
-
-	--mp_naps;	/* subtract the BSP */
-
 	/*
 	 * Link logical CPU id to local apic id
 	 */
