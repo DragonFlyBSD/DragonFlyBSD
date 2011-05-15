@@ -335,8 +335,14 @@ mp_enable(u_int boot_addr)
 	/* start each Application Processor */
 	start_all_aps(boot_addr);
 
-	if (apic_io_enable)
-		ioapic_config();
+	if (apic_io_enable) {
+		error = ioapic_config();
+		if (error) {
+			apic_io_enable = 0;
+			icu_reinit_noioapic();
+			lapic_fixup_noioapic();
+		}
+	}
 }
 
 /*

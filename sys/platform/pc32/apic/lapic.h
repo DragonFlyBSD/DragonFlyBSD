@@ -86,5 +86,6 @@ all_but_self_ipi(int vector)
 
 void	lapic_map(vm_offset_t /* XXX should be vm_paddr_t */);
 int	lapic_unused_apic_id(int);
+void	lapic_fixup_noioapic(void);
 
 #endif /* _ARCH_APIC_LAPIC_H_ */
