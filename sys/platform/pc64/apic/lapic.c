@@ -764,3 +764,21 @@ lapic_set_cpuid(int cpu_id, int apic_id)
 	CPUID_TO_APICID(cpu_id) = apic_id;
 	APICID_TO_CPUID(apic_id) = cpu_id;
 }
+
+void
+lapic_fixup_noioapic(void)
+{
+	u_int   temp;
+
+	/* Only allowed on BSP */
+	KKASSERT(mycpuid == 0);
+	KKASSERT(!apic_io_enable);
+
+	temp = lapic->lvt_lint0;
+	temp &= ~APIC_LVT_MASKED;
+	lapic->lvt_lint0 = temp;
+
+	temp = lapic->lvt_lint1;
+	temp |= APIC_LVT_MASKED;
+	lapic->lvt_lint1 = temp;
+}
