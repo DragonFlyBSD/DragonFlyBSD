@@ -216,13 +216,13 @@
 #define PACKAGE_NAME "file"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "file 5.06"
+#define PACKAGE_STRING "file 5.07"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "file"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "5.06"
+#define PACKAGE_VERSION "5.07"
 
 /* The size of `long long', as computed by sizeof. */
 #define SIZEOF_LONG_LONG 8
@@ -234,7 +234,7 @@
 /* #undef TM_IN_SYS_TIME */
 
 /* Version number of package */
-#define VERSION "5.06"
+#define VERSION "5.07"
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */
