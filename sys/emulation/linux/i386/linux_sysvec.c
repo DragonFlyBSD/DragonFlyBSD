@@ -833,7 +833,7 @@ static const char SUSE_ABI_VENDOR[] = "SuSE";
 
 static Elf_Brandnote linux32_generic_brandnote = {
         .hdr.n_namesz	= sizeof(GNU_ABI_VENDOR),
-        .hdr.n_descsz	= sizeof(int32_t),
+        .hdr.n_descsz	= 16,
         .hdr.n_type	= 1,
         .vendor		= GNU_ABI_VENDOR,
         .flags		= 0,
@@ -841,7 +841,7 @@ static Elf_Brandnote linux32_generic_brandnote = {
 
 static Elf_Brandnote linux32_suse_brandnote = {
         .hdr.n_namesz	= sizeof(SUSE_ABI_VENDOR),
-        .hdr.n_descsz	= sizeof(int32_t),
+        .hdr.n_descsz	= 16,
         .hdr.n_type	= 1,
         .vendor		= SUSE_ABI_VENDOR,
         .flags		= 0,
@@ -855,7 +855,7 @@ static Elf32_Brandinfo linux32_brand = {
         .interp_path	= "/lib/ld-linux.so.1",
         .sysvec		= &elf_linux_sysvec,
         .interp_newpath	= NULL,
-        .flags		= BI_CAN_EXEC_DYN,
+        .flags		= BI_CAN_EXEC_DYN | BI_BRAND_NOTE,
         .brand_note	= &linux32_generic_brandnote,
 };
 
@@ -867,7 +867,7 @@ static Elf32_Brandinfo linux32_glibc2_brand = {
         .interp_path	= "/lib/ld-linux.so.2",
         .sysvec		= &elf_linux_sysvec,
         .interp_newpath	= NULL,
-        .flags		= BI_CAN_EXEC_DYN,
+        .flags		= BI_CAN_EXEC_DYN | BI_BRAND_NOTE,
         .brand_note	= &linux32_generic_brandnote,
 };
 
@@ -879,7 +879,7 @@ static Elf32_Brandinfo linux32_suse_brand = {
         .interp_path	= "/lib/ld-linux.so.2",
         .sysvec		= &elf_linux_sysvec,
         .interp_newpath	= NULL,
-        .flags		= BI_CAN_EXEC_DYN,
+        .flags		= BI_CAN_EXEC_DYN | BI_BRAND_NOTE,
         .brand_note	= &linux32_suse_brandnote,
 };
 
@@ -887,6 +887,7 @@ Elf32_Brandinfo *linux_brandlist[] = {
         &linux32_brand,
         &linux32_glibc2_brand,
         &linux32_suse_brand,
+        NULL
 };
 
 static int
