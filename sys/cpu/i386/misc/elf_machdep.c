@@ -73,6 +73,22 @@ SYSINIT(elf32, SI_SUB_EXEC, SI_ORDER_FIRST,
         (sysinit_cfunc_t) elf32_insert_brand_entry,
         &dragonfly_brand_info);
 
+static Elf32_Brandinfo freebsd_brand_info = {
+        .brand		= ELFOSABI_FREEBSD,
+        .machine	= EM_386,
+        .compat_3_brand	= "FreeBSD",
+        .emul_path	= NULL,
+        .interp_path	= "/usr/libexec/ld-elf.so.1",
+        .sysvec		= &elf32_dragonfly_sysvec,
+        .interp_newpath	= NULL,
+        .flags		= BI_CAN_EXEC_DYN | BI_BRAND_NOTE,
+        .brand_note	= &elf32_freebsd_brandnote,
+};
+
+SYSINIT(elf32_fbsd, SI_SUB_EXEC, SI_ORDER_ANY,
+        (sysinit_cfunc_t) elf32_insert_brand_entry,
+        &freebsd_brand_info);
+
 /* Process one elf relocation with addend. */
 static int
 elf_reloc_internal(linker_file_t lf, Elf_Addr relocbase, const void *data,

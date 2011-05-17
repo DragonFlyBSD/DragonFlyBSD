@@ -107,12 +107,21 @@ TUNABLE_INT("kern.elf32.fallback_brand", &elf32_fallback_brand);
 static Elf_Brandinfo *elf_brand_list[MAX_BRANDS];
 
 static const char DRAGONFLY_ABI_VENDOR[] = "DragonFly";
+static const char FREEBSD_ABI_VENDOR[]   = "FreeBSD";
 
 Elf_Brandnote __elfN(dragonfly_brandnote) = {
 	.hdr.n_namesz	= sizeof(DRAGONFLY_ABI_VENDOR),
 	.hdr.n_descsz	= sizeof(int32_t),
 	.hdr.n_type	= 1,
 	.vendor		= DRAGONFLY_ABI_VENDOR,
+	.flags		= BN_CAN_FETCH_OSREL,
+};
+
+Elf_Brandnote __elfN(freebsd_brandnote) = {
+	.hdr.n_namesz	= sizeof(FREEBSD_ABI_VENDOR),
+	.hdr.n_descsz	= sizeof(int32_t),
+	.hdr.n_type	= 1,
+	.vendor		= FREEBSD_ABI_VENDOR,
 	.flags		= BN_CAN_FETCH_OSREL,
 };
 

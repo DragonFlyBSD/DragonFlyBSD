@@ -93,6 +93,7 @@ int	__elfN(coredump)           (struct lwp *, int, struct vnode *, off_t);
 int     generic_elf_coredump       (struct lwp *lp, int sig, struct file *fp,
 				    off_t limit);
 extern Elf_Brandnote 	__elfN(dragonfly_brandnote);
+extern Elf_Brandnote	__elfN(freebsd_brandnote);
 
 #endif /* _KERNEL */
 
