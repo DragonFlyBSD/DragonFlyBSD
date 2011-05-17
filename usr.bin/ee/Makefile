@@ -1,5 +1,4 @@
 # $FreeBSD: src/usr.bin/ee/Makefile,v 1.11.6.4 2002/02/18 15:03:35 ru Exp $
-# $DragonFly: src/usr.bin/ee/Makefile,v 1.4 2007/08/27 16:50:53 pavalos Exp $
 
 CFLAGS+= -DCAP -DHAS_NCURSES -DHAS_UNISTD -DHAS_STDARG -DHAS_STDLIB \
 	 -DHAS_CTYPE -DHAS_SYS_IOCTL -DHAS_SYS_WAIT -DSLCT_HDR
@@ -9,7 +8,7 @@ LINKS=	${BINDIR}/ee ${BINDIR}/ree ${BINDIR}/ee ${BINDIR}/edit
 MLINKS=	ee.1 ree.1 ee.1 edit.1
 DPADD=	${LIBNCURSES}
 LDADD=	-lncurses
-WARNS?=	1
+WARNS?=	2
 
 NLS=	en_US.US-ASCII fr_FR.ISO8859-1 de_DE.ISO8859-1 pl_PL.ISO8859-2 \
 	uk_UA.KOI8-U ru_RU.KOI8-R
