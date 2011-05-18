@@ -745,13 +745,16 @@ ship_msg(struct ngpcb *pcbp, struct ng_mesg *msg, struct sockaddr_ng *addr)
 	}
 
 	/* Send it up to the socket */
+	lwkt_gettoken(&so->so_rcv.ssb_token);
 	if (ssb_appendaddr(&so->so_rcv,
 	    (struct sockaddr *) addr, mdata, NULL) == 0) {
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 		TRAP_ERROR;
 		m_freem(mdata);
 		return (ENOBUFS);
 	}
 	sorwakeup(so);
+	lwkt_reltoken(&so->so_rcv.ssb_token);
 	return (0);
 }
 
@@ -864,12 +867,15 @@ ngs_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	NG_FREE_META(meta);
 
 	/* Try to tell the socket which hook it came in on */
+	lwkt_gettoken(&so->so_rcv.ssb_token);
 	if (ssb_appendaddr(&so->so_rcv, (struct sockaddr *) addr, m, NULL) == 0) {
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 		m_freem(m);
 		TRAP_ERROR;
 		return (ENOBUFS);
 	}
 	sorwakeup(so);
+	lwkt_reltoken(&so->so_rcv.ssb_token);
 	return (0);
 }
 
