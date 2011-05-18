@@ -756,9 +756,6 @@ class General_options
   DEFINE_string(soname, options::ONE_DASH, 'h', NULL,
                 N_("Set shared library name"), N_("FILENAME"));
 
-  DEFINE_bool(i, options::EXACTLY_ONE_DASH, '\0', false,
-	      N_("Ignored"), NULL);
-
   DEFINE_double(hash_bucket_empty_fraction, options::TWO_DASHES, '\0', 0.0,
 		N_("Min fraction of empty buckets in dynamic hash"),
 		N_("FRACTION"));
@@ -891,6 +888,8 @@ class General_options
 
   DEFINE_bool(relocatable, options::EXACTLY_ONE_DASH, 'r', false,
               N_("Generate relocatable output"), NULL);
+  DEFINE_bool_alias(i, relocatable, options::EXACTLY_ONE_DASH, '\0',
+		    N_("Synonym for -r"), NULL, false);
 
   DEFINE_bool(relax, options::TWO_DASHES, '\0', false,
 	      N_("Relax branches on certain targets"), NULL);
