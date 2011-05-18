@@ -85,6 +85,8 @@ static int __elfN(load_section)(struct proc *p,
 static int __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp);
 static boolean_t __elfN(check_note)(struct image_params *imgp,
     Elf_Brandnote *checknote, int32_t *osrel);
+static boolean_t check_PT_NOTE(struct image_params *imgp,
+    Elf_Brandnote *checknote, int32_t *osrel, const Elf_Phdr * pnote);
 
 static int elf_legacy_coredump = 0;
 static int __elfN(fallback_brand) = -1;
@@ -1599,68 +1601,119 @@ elf_puttextvp(struct proc *p, elf_buf_t target)
 
 /*
  * Try to find the appropriate ABI-note section for checknote,
- * fetch the osreldate for binary from the ELF OSABI-note. Only the
- * first page of the image is searched, the same as for headers.
+ * The entire image is searched if necessary, not only the first page.
  */
 static boolean_t
 __elfN(check_note)(struct image_params *imgp, Elf_Brandnote *checknote,
     int32_t *osrel)
 {
-	const Elf_Note *note, *note0, *note_end;
+	boolean_t valid_note_found;
 	const Elf_Phdr *phdr, *pnote;
 	const Elf_Ehdr *hdr;
-	const char *note_name;
 	int i;
 
-	pnote = NULL;
+	valid_note_found = FALSE;
 	hdr = (const Elf_Ehdr *)imgp->image_header;
 	phdr = (const Elf_Phdr *)(imgp->image_header + hdr->e_phoff);
 
 	for (i = 0; i < hdr->e_phnum; i++) {
 		if (phdr[i].p_type == PT_NOTE) {
 			pnote = &phdr[i];
-			break;
+			valid_note_found = check_PT_NOTE (imgp, checknote,
+				osrel, pnote);
+			if (valid_note_found)
+				break;
+		}
+	}
+	return valid_note_found;
+}
+
+static boolean_t
+check_PT_NOTE(struct image_params *imgp, Elf_Brandnote *checknote,
+    int32_t *osrel, const Elf_Phdr * pnote)
+{
+	boolean_t limited_to_first_page;
+	boolean_t found = FALSE;
+	const Elf_Note *note, *note0, *note_end;
+	const char *note_name;
+	__ElfN(Off) noteloc, firstloc;
+	__ElfN(Size) notesz, firstlen, endbyte;
+	struct lwbuf *lwb;
+	struct lwbuf lwb_cache;
+	const char *page;
+	char *data = NULL;
+	int n;
+
+	notesz = pnote->p_filesz;
+	noteloc = pnote->p_offset;
+	endbyte = noteloc + notesz;
+	limited_to_first_page = noteloc < PAGE_SIZE && endbyte < PAGE_SIZE;
+
+	if (limited_to_first_page) {
+		note = (const Elf_Note *)(imgp->image_header + noteloc);
+		note_end = (const Elf_Note *)(imgp->image_header + endbyte);
+		note0 = note;
+	} else {
+		firstloc = noteloc & PAGE_MASK;
+		firstlen = PAGE_SIZE - firstloc;
+		if (notesz < sizeof(Elf_Note) || notesz > PAGE_SIZE)
+			return (FALSE);
+
+		lwb = &lwb_cache;
+		if (exec_map_page(imgp, noteloc >> PAGE_SHIFT, &lwb, &page))
+			return (FALSE);
+		if (firstlen < notesz) {         /* crosses page boundary */
+			data = kmalloc(notesz, M_TEMP, M_WAITOK);
+			bcopy(page + firstloc, data, firstlen);
+
+			exec_unmap_page(lwb);
+			lwb = &lwb_cache;
+			if (exec_map_page(imgp, (noteloc >> PAGE_SHIFT) + 1,
+				&lwb, &page)) {
+				kfree(data, M_TEMP);
+			}
+			bcopy(page, data + firstlen, notesz - firstlen);
+			note = note0 = (const Elf_Note *)(data);
+			note_end = (const Elf_Note *)(data + notesz);
+		} else {
+			note = note0 = (const Elf_Note *)(page + firstloc);
+			note_end = (const Elf_Note *)(page + firstloc +
+				firstlen);
 		}
 	}
 
-	if (pnote == NULL || pnote->p_offset >= PAGE_SIZE ||
-	    pnote->p_offset + pnote->p_filesz >= PAGE_SIZE)
-		return (FALSE);
-
-	note = note0 = (const Elf_Note *)(imgp->image_header + pnote->p_offset);
-	note_end = (const Elf_Note *)(imgp->image_header +
-	    pnote->p_offset + pnote->p_filesz);
-	for (i = 0; i < 100 && note >= note0 && note < note_end; i++) {
+	for (n = 0; n < 100 && note >= note0 && note < note_end; n++) {
 		if (!aligned(note, Elf32_Addr))
-			return (FALSE);
-		if (note->n_namesz != checknote->hdr.n_namesz ||
-		    note->n_descsz != checknote->hdr.n_descsz ||
-		    note->n_type != checknote->hdr.n_type)
-			goto nextnote;
+			break;
 		note_name = (const char *)(note + 1);
-		if (strncmp(checknote->vendor, note_name,
-		    checknote->hdr.n_namesz) != 0)
-			goto nextnote;
 
-		/*
-		 * Fetch the osreldate for binary
-		 * from the ELF OSABI-note if necessary.
-		 */
-		if ((checknote->flags & BN_CAN_FETCH_OSREL) != 0 &&
-		    osrel != NULL)
-			*osrel = *(const int32_t *) (note_name +
-			    roundup2(checknote->hdr.n_namesz,
-			    sizeof(Elf32_Addr)));
-		return (TRUE);
-
-nextnote:
+		if (note->n_namesz == checknote->hdr.n_namesz
+		    && note->n_descsz == checknote->hdr.n_descsz
+		    && note->n_type == checknote->hdr.n_type
+		    && (strncmp(checknote->vendor, note_name,
+			checknote->hdr.n_namesz) == 0)) {
+			/* Fetch osreldata from ABI.note-tag */
+			if ((checknote->flags & BN_CAN_FETCH_OSREL) != 0 &&
+				osrel != NULL)
+				*osrel = *(const int32_t *) (note_name +
+					roundup2(checknote->hdr.n_namesz,
+					sizeof(Elf32_Addr)));
+			found = TRUE;
+			break;
+		}
 		note = (const Elf_Note *)((const char *)(note + 1) +
 		    roundup2(note->n_namesz, sizeof(Elf32_Addr)) +
 		    roundup2(note->n_descsz, sizeof(Elf32_Addr)));
 	}
 
-	return (FALSE);
+	if (!limited_to_first_page) {
+		if (data != NULL)
+			kfree(data, M_TEMP);
+		exec_unmap_page(lwb);
+	}
+	return (found);
 }
+
 
 /*
  * Tell kern_execve.c about it, with a little help from the linker.
