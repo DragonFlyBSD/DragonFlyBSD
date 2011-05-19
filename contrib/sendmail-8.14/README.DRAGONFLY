@@ -1,12 +1,12 @@
 
-		SENDMAIL-8.14.4 AS USED BY DRAGONFLY
+		SENDMAIL-8.14.5 AS USED BY DRAGONFLY
 
     This distribution was downloaded from the following site:
 
 	ftp://ftp.sendmail.org/pub/sendmail/
 
-	MD5 (sendmail.8.14.4.tar.gz) = 1b23d5000c8e7bfe82ec1a27f2f5fdc5
-	SHA1 (sendmail.8.14.4.tar.gz) = ba192f9a5114437aaec952f503fa2f09ee6dbe57
+	MD5 (sendmail.8.14.5.tar.gz) = 02ccfc331cc81ed00ec8bb5ecfc69018
+	SHA1 (sendmail.8.14.5.tar.gz) = 86dd2a8ad5eac892cd02cf67792a25efccacc100
 
     DO NOT CREATE OR EDIT ANY FILES IN THIS DIRECTORY HIERARCHY!  THIS
     HIERARCHY REPRESENTS AN EXACT COPY OF THE ORIGINAL ARCHIVE.  All
