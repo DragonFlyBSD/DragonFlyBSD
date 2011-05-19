@@ -40,14 +40,12 @@ openbsd-compat/bsd-poll.c
 openbsd-compat/bsd-snprintf.c
 openbsd-compat/bsd-statvfs.c
 openbsd-compat/bsd-waitpid.c
-openbsd-compat/charclass.h
 openbsd-compat/daemon.c
 openbsd-compat/dirname.c
 openbsd-compat/fake-rfc2553.c
 openbsd-compat/getcwd.c
 openbsd-compat/getgrouplist.c
 openbsd-compat/getopt.c
-openbsd-compat/glob.c
 openbsd-compat/inet_aton.c
 openbsd-compat/inet_ntoa.c
 openbsd-compat/inet_ntop.c
