@@ -1730,7 +1730,7 @@ check_PT_NOTE(struct image_params *imgp, Elf_Brandnote *checknote,
 			/* Fetch osreldata from ABI.note-tag */
 			if ((checknote->flags & BN_TRANSLATE_OSREL) != 0 &&
 			    checknote->trans_osrel != NULL)
-				return (checknote->trans_osrel(note, osrel));
+				checknote->trans_osrel(note, osrel);
 			found = TRUE;
 			break;
 		}
