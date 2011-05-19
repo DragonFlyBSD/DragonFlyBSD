@@ -61,6 +61,7 @@ typedef struct {
 	Elf_Note	hdr;
 	const char *	vendor;
 	int		flags;
+	boolean_t	(*trans_osrel)(const Elf_Note *, int32_t *);
 } Elf_Brandnote;
 
 typedef struct {
@@ -82,7 +83,8 @@ __ElfType(Brandinfo);
 #define	BI_CAN_EXEC_DYN		0x0001
 #define	BI_BRAND_NOTE		0x0002  /* May have note.ABI-tag section. */
 #define	BI_BRAND_NOTE_MANDATORY	0x0004  /* Must have note.ABI-tag section. */
-#define	BN_CAN_FETCH_OSREL	0x0001
+#define	BN_CAN_FETCH_OSREL	0x0001  /* No longer used */
+#define	BN_TRANSLATE_OSREL	0x0002  /* New osreldate function pointer */
 
 int	__elfN(brand_inuse)        (Elf_Brandinfo *entry);
 int	__elfN(insert_brand_entry) (Elf_Brandinfo *entry);

@@ -83,6 +83,8 @@ static int __elfN(load_section)(struct proc *p,
     vm_offset_t offset, caddr_t vmaddr, size_t memsz, size_t filsz,
     vm_prot_t prot);
 static int __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp);
+static boolean_t __elfN(bsd_trans_osrel)(const Elf_Note *note,
+    int32_t *osrel);
 static boolean_t __elfN(check_note)(struct image_params *imgp,
     Elf_Brandnote *checknote, int32_t *osrel);
 static boolean_t check_PT_NOTE(struct image_params *imgp,
@@ -118,7 +120,8 @@ Elf_Brandnote __elfN(dragonfly_brandnote) = {
 	.hdr.n_descsz	= sizeof(int32_t),
 	.hdr.n_type	= 1,
 	.vendor		= DRAGONFLY_ABI_VENDOR,
-	.flags		= BN_CAN_FETCH_OSREL,
+	.flags		= BN_TRANSLATE_OSREL,
+	.trans_osrel	= __elfN(bsd_trans_osrel),
 };
 
 Elf_Brandnote __elfN(freebsd_brandnote) = {
@@ -126,7 +129,8 @@ Elf_Brandnote __elfN(freebsd_brandnote) = {
 	.hdr.n_descsz	= sizeof(int32_t),
 	.hdr.n_type	= 1,
 	.vendor		= FREEBSD_ABI_VENDOR,
-	.flags		= BN_CAN_FETCH_OSREL,
+	.flags		= BN_TRANSLATE_OSREL,
+	.trans_osrel	= __elfN(bsd_trans_osrel),
 };
 
 int
@@ -1724,11 +1728,9 @@ check_PT_NOTE(struct image_params *imgp, Elf_Brandnote *checknote,
 		    && (strncmp(checknote->vendor, note_name,
 			checknote->hdr.n_namesz) == 0)) {
 			/* Fetch osreldata from ABI.note-tag */
-			if ((checknote->flags & BN_CAN_FETCH_OSREL) != 0 &&
-				osrel != NULL)
-				*osrel = *(const int32_t *) (note_name +
-					roundup2(checknote->hdr.n_namesz,
-					sizeof(Elf32_Addr)));
+			if ((checknote->flags & BN_TRANSLATE_OSREL) != 0 &&
+			    checknote->trans_osrel != NULL)
+				return (checknote->trans_osrel(note, osrel));
 			found = TRUE;
 			break;
 		}
@@ -1795,6 +1797,18 @@ extract_interpreter(struct image_params *imgp, const Elf_Phdr *pinterpreter,
 
 	exec_unmap_page(lwb);
 	return (result_success);
+}
+
+static boolean_t
+__elfN(bsd_trans_osrel)(const Elf_Note *note, int32_t *osrel)
+{
+	uintptr_t p;
+
+	p = (uintptr_t)(note + 1);
+	p += roundup2(note->n_namesz, sizeof(Elf32_Addr));
+	*osrel = *(const int32_t *)(p);
+
+	return (TRUE);
 }
 
 /*
