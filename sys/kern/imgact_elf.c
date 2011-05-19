@@ -1671,6 +1671,7 @@ check_PT_NOTE(struct image_params *imgp, Elf_Brandnote *checknote,
 			if (exec_map_page(imgp, (noteloc >> PAGE_SHIFT) + 1,
 				&lwb, &page)) {
 				kfree(data, M_TEMP);
+				return (FALSE);
 			}
 			bcopy(page, data + firstlen, notesz - firstlen);
 			note = note0 = (const Elf_Note *)(data);
