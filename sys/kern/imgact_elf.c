@@ -87,6 +87,8 @@ static boolean_t __elfN(check_note)(struct image_params *imgp,
     Elf_Brandnote *checknote, int32_t *osrel);
 static boolean_t check_PT_NOTE(struct image_params *imgp,
     Elf_Brandnote *checknote, int32_t *osrel, const Elf_Phdr * pnote);
+static boolean_t extract_interpreter(struct image_params *imgp,
+    const Elf_Phdr *pinterpreter, char *data);
 
 static int elf_legacy_coredump = 0;
 static int __elfN(fallback_brand) = -1;
@@ -587,7 +589,9 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 	u_long addr, baddr, et_dyn_addr, entry = 0, proghdr = 0;
 	int32_t osrel = 0;
 	int error = 0, i, n;
-	const char *interp = NULL, *newinterp = NULL;
+	boolean_t failure;
+	char *interp = NULL;
+	const char *newinterp = NULL;
 	Elf_Brandinfo *brand_info;
 	char *path;
 
@@ -624,11 +628,25 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 			continue;
 		}
 		if (phdr[i].p_type == PT_INTERP) {
-			/* Path to interpreter */
-			if (phdr[i].p_filesz > MAXPATHLEN ||
-			    phdr[i].p_offset + phdr[i].p_filesz > PAGE_SIZE)
+			/*
+			 * If interp is already defined there are more than
+			 * one PT_INTERP program headers present.  Take only
+			 * the first one and ignore the rest.
+			 */
+			if (interp != NULL)
+				continue;
+
+			if (phdr[i].p_filesz == 0 ||
+			    phdr[i].p_filesz > PAGE_SIZE ||
+			    phdr[i].p_filesz > MAXPATHLEN)
 				return (ENOEXEC);
-			interp = imgp->image_header + phdr[i].p_offset;
+
+			interp = kmalloc(phdr[i].p_filesz, M_TEMP, M_WAITOK);
+			failure = extract_interpreter(imgp, &phdr[i], interp);
+			if (failure) {
+				kfree(interp, M_TEMP);
+				return (ENOEXEC);
+			}
 			continue;
 		}
 	}
@@ -637,11 +655,16 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 	if (brand_info == NULL) {
 		uprintf("ELF binary type \"%u\" not known.\n",
 		    hdr->e_ident[EI_OSABI]);
+		if (interp != NULL)
+		        kfree(interp, M_TEMP);
 		return (ENOEXEC);
 	}
 	if (hdr->e_type == ET_DYN) {
-		if ((brand_info->flags & BI_CAN_EXEC_DYN) == 0)
+		if ((brand_info->flags & BI_CAN_EXEC_DYN) == 0) {
+		        if (interp != NULL)
+		                kfree(interp, M_TEMP);
 			return (ENOEXEC);
+                }
 		/*
 		 * Honour the base load address from the dso if it is
 		 * non-zero for some reason.
@@ -690,8 +713,11 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 					(caddr_t)phdr[i].p_vaddr + et_dyn_addr,
 					phdr[i].p_memsz,
 					phdr[i].p_filesz,
-					prot)) != 0)
+					prot)) != 0) {
+                                if (interp != NULL)
+                                        kfree (interp, M_TEMP);
 				return (error);
+                        }
 
 			/*
 			 * If this segment contains the program headers,
@@ -746,8 +772,10 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 			    text_size > maxtsiz ||
 			    total_size >
 			    imgp->proc->p_rlimit[RLIMIT_VMEM].rlim_cur) {
+				if (interp != NULL)
+					kfree(interp, M_TEMP);
 				error = ENOMEM;
-                                return (error);
+				return (error);
 			}
 			break;
 		case PT_PHDR: 	/* Program header table info */
@@ -795,8 +823,10 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 		}
 		if (error != 0) {
 			uprintf("ELF interpreter %s not found\n", interp);
+			kfree(interp, M_TEMP);
 			return (error);
 		}
+		kfree(interp, M_TEMP);
 	} else
 		addr = et_dyn_addr;
 
@@ -1715,6 +1745,57 @@ check_PT_NOTE(struct image_params *imgp, Elf_Brandnote *checknote,
 	return (found);
 }
 
+/*
+ * The interpreter program header may be located beyond the first page, so
+ * regardless of its location, a copy of the interpreter path is created so
+ * that it may be safely referenced by the calling function in all case.  The
+ * memory is allocated by calling function, and the copying is done here.
+ */
+static boolean_t
+extract_interpreter(struct image_params *imgp, const Elf_Phdr *pinterpreter,
+    char *data)
+{
+	boolean_t limited_to_first_page;
+	const boolean_t result_success = FALSE;
+	const boolean_t result_failure = TRUE;
+	__ElfN(Off) pathloc, firstloc;
+	__ElfN(Size) pathsz, firstlen, endbyte;
+	struct lwbuf *lwb;
+	struct lwbuf lwb_cache;
+	const char *page;
+
+	pathsz  = pinterpreter->p_filesz;
+	pathloc = pinterpreter->p_offset;
+	endbyte = pathloc + pathsz;
+
+	limited_to_first_page = pathloc < PAGE_SIZE && endbyte < PAGE_SIZE;
+	if (limited_to_first_page) {
+	        bcopy(imgp->image_header + pathloc, data, pathsz);
+	        return (result_success);
+	}
+
+	firstloc = pathloc & PAGE_MASK;
+	firstlen = PAGE_SIZE - firstloc;
+
+	lwb = &lwb_cache;
+	if (exec_map_page(imgp, pathloc >> PAGE_SHIFT, &lwb, &page))
+		return (result_failure);
+
+	if (firstlen < pathsz) {         /* crosses page boundary */
+		bcopy(page + firstloc, data, firstlen);
+
+		exec_unmap_page(lwb);
+		lwb = &lwb_cache;
+		if (exec_map_page(imgp, (pathloc >> PAGE_SHIFT) + 1, &lwb,
+			&page))
+			return (result_failure);
+		bcopy(page, data + firstlen, pathsz - firstlen);
+	} else
+		bcopy(page + firstloc, data, pathsz);
+
+	exec_unmap_page(lwb);
+	return (result_success);
+}
 
 /*
  * Tell kern_execve.c about it, with a little help from the linker.
