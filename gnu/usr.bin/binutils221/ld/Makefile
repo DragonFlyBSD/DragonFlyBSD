@@ -36,11 +36,7 @@ NOSHARED?= yes
 CLEANDIRS+=	ldscripts tmpdir
 CLEANFILES+=	ldemul-list.h stringify.sed
 
-#.if 1
-#LINKS= ${BINDIR}/ld.gold ${BINDIR}/ld
-#.else
 LINKS= ${BINDIR}/ld.bfd ${BINDIR}/ld
-#.endif
 
 EMXFR=
 EMLST=

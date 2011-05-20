@@ -96,7 +96,7 @@ __ElfType(Auxinfo);
 
 /*
  * The following non-standard values are used in Linux ELF binaries.
- * Types 16 - 23 are not implemented in the kernel
+ * Types 16-17 and 19-23 are not implemented in the kernel
  */
 #define	AT_NOTELF	10	/* Program is not ELF ?? */
 #define	AT_UID		11	/* Real uid. */

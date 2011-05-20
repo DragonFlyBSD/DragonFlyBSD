@@ -875,6 +875,7 @@ __elfN(dragonfly_fixup)(register_t **stack_base, struct image_params *imgp)
 	AUXARGS_ENTRY(pos, AT_BASE, args->base);
 	if (imgp->execpathp != 0)
 		AUXARGS_ENTRY(pos, AT_EXECPATH, imgp->execpathp);
+	AUXARGS_ENTRY(pos, AT_OSRELDATE, osreldate);
 	AUXARGS_ENTRY(pos, AT_NULL, 0);
 
 	kfree(imgp->auxargs, M_TEMP);
