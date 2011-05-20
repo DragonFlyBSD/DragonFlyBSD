@@ -27,8 +27,8 @@ extern "C" {
 #define dprintf(X,Y) fprintf(stderr, (X), (Y))
 /* #define	dprintf(X, Y)  */
 
-#define LDNS_VERSION "1.6.7"
-#define LDNS_REVISION ((1<<16)|(6<<8)|(7))
+#define LDNS_VERSION "1.6.9"
+#define LDNS_REVISION ((1<<16)|(6<<8)|(9))
 
 /**
  * splint static inline workaround

@@ -78,6 +78,9 @@
 /* if the function 'ioctlsocket' is available */
 /* #undef HAVE_IOCTLSOCKET */
 
+/* Define to 1 if you have the `isascii' function. */
+#define HAVE_ISASCII 1
+
 /* Define to 1 if you have the `isblank' function. */
 #define HAVE_ISBLANK 1
 
@@ -193,7 +196,7 @@
 #define PACKAGE_NAME "ldns"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "ldns 1.6.7"
+#define PACKAGE_STRING "ldns 1.6.9"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libdns"
@@ -202,7 +205,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.6.7"
+#define PACKAGE_VERSION "1.6.9"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -433,6 +436,9 @@ struct tm *gmtime_r(const time_t *timep, struct tm *result);
 #ifndef HAVE_ISBLANK
 int isblank(int c);
 #endif /* !HAVE_ISBLANK */
+#ifndef HAVE_ISASCII
+int isascii(int c);
+#endif /* !HAVE_ISASCII */
 #ifndef HAVE_SNPRINTF
 #include <stdarg.h>
 int snprintf (char *str, size_t count, const char *fmt, ...);
