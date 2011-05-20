@@ -626,7 +626,7 @@ void ldns_pkt_set_size(ldns_pkt *p, size_t s);
  * \param[in] p the packet
  * \param[in] timeval the timestamp
  */
-void ldns_pkt_set_timestamp(ldns_pkt *p, struct timeval);
+void ldns_pkt_set_timestamp(ldns_pkt *p, struct timeval timeval);
 /**
  * Set a packet's section count to x
  * \param[in] p the packet

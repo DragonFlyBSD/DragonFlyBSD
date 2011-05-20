@@ -38,6 +38,7 @@ ldns_str2rdf_int16(ldns_rdf **rd, const char *shortstr)
 	char *end = NULL;
 	uint16_t *r;
 	r = LDNS_MALLOC(uint16_t);
+        if(!r) return LDNS_STATUS_MEM_ERR;
 
 	*r = htons((uint16_t)strtol((char *)shortstr, &end, 10));
 
@@ -48,7 +49,7 @@ ldns_str2rdf_int16(ldns_rdf **rd, const char *shortstr)
 		*rd = ldns_rdf_new_frm_data(
 			LDNS_RDF_TYPE_INT16, sizeof(uint16_t), r);
 		LDNS_FREE(r);
-		return LDNS_STATUS_OK;
+		return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 	}
 }
 
@@ -63,6 +64,7 @@ ldns_str2rdf_time(ldns_rdf **rd, const char *time)
 
 	/* Try to scan the time... */
 	r = (uint16_t*)LDNS_MALLOC(uint32_t);
+        if(!r) return LDNS_STATUS_MEM_ERR;
 
 	memset(&tm, 0, sizeof(tm));
 
@@ -99,7 +101,7 @@ ldns_str2rdf_time(ldns_rdf **rd, const char *time)
 		*rd = ldns_rdf_new_frm_data(
 			LDNS_RDF_TYPE_TIME, sizeof(uint32_t), r);
 		LDNS_FREE(r);
-		return LDNS_STATUS_OK;
+		return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 	} else {
 		/* handle it as 32 bits timestamp */
 		l = htonl((uint32_t)strtol((char*)time, &end, 10));
@@ -111,7 +113,7 @@ ldns_str2rdf_time(ldns_rdf **rd, const char *time)
 			*rd = ldns_rdf_new_frm_data(
 				LDNS_RDF_TYPE_INT32, sizeof(uint32_t), r);
 			LDNS_FREE(r);
-			return LDNS_STATUS_OK;
+		        return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 		}
 	}
 
@@ -129,8 +131,11 @@ ldns_str2rdf_nsec3_salt(ldns_rdf **rd, const char *salt_str)
 
 	uint8_t *salt;
 	uint8_t *data;
+	if(rd == NULL) {
+		return LDNS_STATUS_NULL;
+	}
 
-	salt_length_str = strlen(salt_str);
+	salt_length_str = (int)strlen(salt_str);
 	if (salt_length_str == 1 && salt_str[0] == '-') {
 		salt_length_str = 0;
 	} else if (salt_length_str % 2 != 0) {
@@ -141,6 +146,9 @@ ldns_str2rdf_nsec3_salt(ldns_rdf **rd, const char *salt_str)
 	}
 
 	salt = LDNS_XMALLOC(uint8_t, salt_length_str / 2);
+        if(!salt) {
+                return LDNS_STATUS_MEM_ERR;
+        }
 	for (c = 0; c < salt_length_str; c += 2) {
 		if (isxdigit((int) salt_str[c]) && isxdigit((int) salt_str[c+1])) {
 			salt[c/2] = (uint8_t) ldns_hexdigit_to_int(salt_str[c]) * 16 +
@@ -153,13 +161,17 @@ ldns_str2rdf_nsec3_salt(ldns_rdf **rd, const char *salt_str)
 	salt_length = (uint8_t) (salt_length_str / 2);
 
 	data = LDNS_XMALLOC(uint8_t, 1 + salt_length);
+        if(!data) {
+	        LDNS_FREE(salt);
+                return LDNS_STATUS_MEM_ERR;
+        }
 	data[0] = salt_length;
 	memcpy(&data[1], salt, salt_length);
 	*rd = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_NSEC3_SALT, 1 + salt_length, data);
 	LDNS_FREE(data);
 	LDNS_FREE(salt);
 
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 ldns_status
@@ -178,7 +190,7 @@ ldns_str2rdf_period(ldns_rdf **rd,const char *period)
 		*rd = ldns_rdf_new_frm_data(
 			LDNS_RDF_TYPE_PERIOD, sizeof(uint32_t), &p);
         }
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 ldns_status
@@ -189,6 +201,7 @@ ldns_str2rdf_int32(ldns_rdf **rd, const char *longstr)
 	uint32_t l;
 
 	r = (uint16_t*)LDNS_MALLOC(uint32_t);
+        if(!r) return LDNS_STATUS_MEM_ERR;
 	errno = 0; /* must set to zero before call,
 			note race condition on errno */
 	if(*longstr == '-')
@@ -207,7 +220,7 @@ ldns_str2rdf_int32(ldns_rdf **rd, const char *longstr)
 		*rd = ldns_rdf_new_frm_data(
 			LDNS_RDF_TYPE_INT32, sizeof(uint32_t), r);
 		LDNS_FREE(r);
-		return LDNS_STATUS_OK;
+	        return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 	}
 }
 
@@ -218,6 +231,7 @@ ldns_str2rdf_int8(ldns_rdf **rd, const char *bytestr)
 	uint8_t *r = NULL;
 
 	r = LDNS_MALLOC(uint8_t);
+        if(!r) return LDNS_STATUS_MEM_ERR;
 
 	*r = (uint8_t)strtol((char*)bytestr, &end, 10);
 
@@ -228,7 +242,7 @@ ldns_str2rdf_int8(ldns_rdf **rd, const char *bytestr)
 		*rd = ldns_rdf_new_frm_data(
 			LDNS_RDF_TYPE_INT8, sizeof(uint8_t), r);
 		LDNS_FREE(r);
-		return LDNS_STATUS_OK;
+	        return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
         }
 }
 
@@ -375,7 +389,7 @@ ldns_str2rdf_a(ldns_rdf **rd, const char *str)
 		*rd = ldns_rdf_new_frm_data(
 			LDNS_RDF_TYPE_A, sizeof(address), &address);
         }
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 ldns_status
@@ -389,7 +403,7 @@ ldns_str2rdf_aaaa(ldns_rdf **rd, const char *str)
 		*rd = ldns_rdf_new_frm_data(
 			LDNS_RDF_TYPE_AAAA, sizeof(address) - 1, &address);
 	}
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 ldns_status
@@ -403,7 +417,9 @@ ldns_str2rdf_str(ldns_rdf **rd, const char *str)
 	}
 
 	data = LDNS_XMALLOC(uint8_t, strlen(str) + 1);
+        if(!data) return LDNS_STATUS_MEM_ERR;
 	i = 1;
+
 	for (str_i = 0; str_i < strlen(str); str_i++) {
 		if (str[str_i] == '\\') {
 			/* octet value or literal char */
@@ -420,8 +436,9 @@ ldns_str2rdf_str(ldns_rdf **rd, const char *str)
 	}
 	data[0] = i - 1;
 	*rd = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_STR, i, data);
+
 	LDNS_FREE(data);
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 ldns_status
@@ -461,13 +478,20 @@ ldns_str2rdf_apl(ldns_rdf **rd, const char *str)
 	/* need ip addr and only ip addr for inet_pton */
 	ip_str_len = (size_t) (strchr(my_str, '/') - my_str);
 	my_ip_str = LDNS_XMALLOC(char, ip_str_len + 1);
+        if(!my_ip_str) return LDNS_STATUS_MEM_ERR;
 	strncpy(my_ip_str, my_str, ip_str_len + 1);
 	my_ip_str[ip_str_len] = '\0';
 
 	if (family == 1) {
 		/* ipv4 */
 		afdpart = LDNS_XMALLOC(uint8_t, 4);
+                if(!afdpart) {
+                        LDNS_FREE(my_ip_str);
+                        return LDNS_STATUS_MEM_ERR;
+                }
 		if (inet_pton(AF_INET, my_ip_str, afdpart) == 0) {
+                        LDNS_FREE(my_ip_str);
+                        LDNS_FREE(afdpart);
 			return LDNS_STATUS_INVALID_STR;
 		}
 		for (i = 0; i < 4; i++) {
@@ -478,7 +502,13 @@ ldns_str2rdf_apl(ldns_rdf **rd, const char *str)
 	} else if (family == 2) {
 		/* ipv6 */
 		afdpart = LDNS_XMALLOC(uint8_t, 16);
+                if(!afdpart) {
+                        LDNS_FREE(my_ip_str);
+                        return LDNS_STATUS_MEM_ERR;
+                }
 		if (inet_pton(AF_INET6, my_ip_str, afdpart) == 0) {
+                        LDNS_FREE(my_ip_str);
+                        LDNS_FREE(afdpart);
 			return LDNS_STATUS_INVALID_STR;
 		}
 		for (i = 0; i < 16; i++) {
@@ -496,6 +526,10 @@ ldns_str2rdf_apl(ldns_rdf **rd, const char *str)
 	prefix = (uint8_t) atoi(my_str);
 
 	data = LDNS_XMALLOC(uint8_t, 4 + afdlength);
+        if(!data) {
+		LDNS_FREE(my_ip_str);
+		return LDNS_STATUS_INVALID_STR;
+        }
 	ldns_write_uint16(data, family);
 	data[2] = prefix;
 	data[3] = afdlength;
@@ -511,7 +545,7 @@ ldns_str2rdf_apl(ldns_rdf **rd, const char *str)
 	LDNS_FREE(data);
 	LDNS_FREE(my_ip_str);
 
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 ldns_status
@@ -521,6 +555,9 @@ ldns_str2rdf_b64(ldns_rdf **rd, const char *str)
 	int16_t i;
 
 	buffer = LDNS_XMALLOC(uint8_t, ldns_b64_ntop_calculate_size(strlen(str)));
+        if(!buffer) {
+                return LDNS_STATUS_MEM_ERR;
+        }
 
 	i = (uint16_t)ldns_b64_pton((const char*)str, buffer,
 						   ldns_b64_ntop_calculate_size(strlen(str)));
@@ -533,7 +570,7 @@ ldns_str2rdf_b64(ldns_rdf **rd, const char *str)
 	}
 	LDNS_FREE(buffer);
 
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 ldns_status
@@ -544,11 +581,15 @@ ldns_str2rdf_b32_ext(ldns_rdf **rd, const char *str)
 	/* first byte contains length of actual b32 data */
 	uint8_t len = ldns_b32_pton_calculate_size(strlen(str));
 	buffer = LDNS_XMALLOC(uint8_t, len + 1);
+        if(!buffer) {
+                return LDNS_STATUS_MEM_ERR;
+        }
 	buffer[0] = len;
 
 	i = ldns_b32_pton_extended_hex((const char*)str, strlen(str), buffer + 1,
 							 ldns_b32_ntop_calculate_size(strlen(str)));
 	if (i < 0) {
+                LDNS_FREE(buffer);
 		return LDNS_STATUS_INVALID_B32_EXT;
 	} else {
 		*rd = ldns_rdf_new_frm_data(
@@ -556,7 +597,7 @@ ldns_str2rdf_b32_ext(ldns_rdf **rd, const char *str)
 	}
 	LDNS_FREE(buffer);
 
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 ldns_status
@@ -572,6 +613,9 @@ ldns_str2rdf_hex(ldns_rdf **rd, const char *str)
 		return LDNS_STATUS_LABEL_OVERFLOW;
 	} else {
 		t = LDNS_XMALLOC(uint8_t, (len / 2) + 1);
+                if(!t) {
+                        return LDNS_STATUS_MEM_ERR;
+                }
 		t_orig = t;
 		/* Now process octet by octet... */
 		while (*str) {
@@ -585,6 +629,7 @@ ldns_str2rdf_hex(ldns_rdf **rd, const char *str)
 						if (isxdigit((int) *str)) {
 							*t += ldns_hexdigit_to_int(*str) * i;
 						} else {
+                                                        LDNS_FREE(t_orig);
 							return LDNS_STATUS_ERR;
 						}
 						++str;
@@ -598,7 +643,7 @@ ldns_str2rdf_hex(ldns_rdf **rd, const char *str)
 		                            t_orig);
 		LDNS_FREE(t_orig);
 	}
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 ldns_status
@@ -610,7 +655,7 @@ ldns_str2rdf_nsec(ldns_rdf **rd, const char *str)
 	ssize_t c;
 	uint16_t cur_type;
 	size_t type_count = 0;
-	ldns_rr_type type_list[1024];
+	ldns_rr_type type_list[65536];
 	if(!token) return LDNS_STATUS_MEM_ERR;
 	if(rd == NULL) {
 		LDNS_FREE(token);
@@ -630,6 +675,11 @@ ldns_str2rdf_nsec(ldns_rdf **rd, const char *str)
 	}
 
 	while ((c = ldns_bget_token(str_buf, token, delimiters, LDNS_MAX_RDFLEN)) != -1 && c != 0) {
+                if(type_count >= sizeof(type_list)) {
+		        LDNS_FREE(str_buf);
+		        LDNS_FREE(token);
+                        return LDNS_STATUS_ERR;
+                }
 		cur_type = ldns_get_rr_type_by_name(token);
 		type_list[type_count] = cur_type;
 		type_count++;
@@ -641,7 +691,7 @@ ldns_str2rdf_nsec(ldns_rdf **rd, const char *str)
 
 	LDNS_FREE(token);
 	ldns_buffer_free(str_buf);
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 ldns_status
@@ -652,7 +702,7 @@ ldns_str2rdf_type(ldns_rdf **rd, const char *str)
 	/* ldns_rr_type is a 16 bit value */
 	*rd = ldns_rdf_new_frm_data(
 		LDNS_RDF_TYPE_TYPE, sizeof(uint16_t), &type);
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 ldns_status
@@ -663,7 +713,7 @@ ldns_str2rdf_class(ldns_rdf **rd, const char *str)
 	/* class is 16 bit */
 	*rd = ldns_rdf_new_frm_data(
 		LDNS_RDF_TYPE_CLASS, sizeof(uint16_t), &klass);
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 /* An certificate alg field can either be specified as a 8 bits number
@@ -942,6 +992,9 @@ east:
 	}
 
 	data = LDNS_XMALLOC(uint8_t, 16);
+        if(!data) {
+                return LDNS_STATUS_MEM_ERR;
+        }
 	data[0] = 0;
 	data[1] = 0;
 	data[1] = ((size_b << 4) & 0xf0) | (size_e & 0x0f);
@@ -955,7 +1008,7 @@ east:
 		LDNS_RDF_TYPE_LOC, 16, data);
 
 	LDNS_FREE(data);
-	return LDNS_STATUS_OK;
+	return *rd?LDNS_STATUS_OK:LDNS_STATUS_MEM_ERR;
 }
 
 ldns_status
@@ -1140,13 +1193,13 @@ ldns_str2rdf_ipseckey(ldns_rdf **rd, const char *str)
 	while(ldns_bget_token(str_buf, token, "\t\n ", strlen(str)) > 0) {
 		switch (token_count) {
 				case 0:
-					precedence = atoi(token);
+					precedence = (uint8_t)atoi(token);
 					break;
 				case 1:
-					gateway_type = atoi(token);
+					gateway_type = (uint8_t)atoi(token);
 					break;
 				case 2:
-					algorithm = atoi(token);
+					algorithm = (uint8_t)atoi(token);
 					break;
 				case 3:
 					gateway = strdup(token);
@@ -1213,9 +1266,9 @@ ldns_str2rdf_ipseckey(ldns_rdf **rd, const char *str)
 
 	/* now copy all into one ipseckey rdf */
 	if (gateway_type)
-		ipseckey_len = 3 + ldns_rdf_size(gateway_rdf) + ldns_rdf_size(publickey_rdf);
+		ipseckey_len = 3 + (int)ldns_rdf_size(gateway_rdf) + (int)ldns_rdf_size(publickey_rdf);
 	else
-		ipseckey_len = 3 + ldns_rdf_size(publickey_rdf);
+		ipseckey_len = 3 + (int)ldns_rdf_size(publickey_rdf);
 
 	data = LDNS_XMALLOC(uint8_t, ipseckey_len);
 	if(!data) {

@@ -267,8 +267,10 @@ ldns_sock_wait(int sockfd, struct timeval timeout, int write)
 {
 	fd_set fds;
 	int ret;
+#ifndef S_SPLINT_S
 	FD_ZERO(&fds);
 	FD_SET(FD_SET_T sockfd, &fds);
+#endif
 	if(write)
 		ret = select(sockfd+1, NULL, &fds, NULL, &timeout);
 	else
@@ -304,6 +306,11 @@ ldns_udp_send(uint8_t **result, ldns_buffer *qbin, const struct sockaddr_storage
 #endif
 		return LDNS_STATUS_NETWORK_ERR;
 	}
+
+        /* set to nonblocking, so if the checksum is bad, it becomes
+         * an EGAIN error and the ldns_udp_send function does not block,
+         * but returns a 'NETWORK_ERROR' much like a timeout. */
+        ldns_sock_nonblock(sockfd);
 
 	answer = ldns_udp_read_wire(sockfd, answer_size, NULL, NULL);
 #ifndef USE_WINSOCK
@@ -546,6 +553,10 @@ ldns_tcp_read_wire_timeout(int sockfd, size_t *size, struct timeval timeout)
 	
 	LDNS_FREE(wire);
 	wire = LDNS_XMALLOC(uint8_t, wire_size);
+	if (!wire) {
+		*size = 0;
+		return NULL;
+	}
 	bytes = 0;
 
 	while (bytes < (ssize_t) wire_size) {
@@ -596,6 +607,10 @@ ldns_tcp_read_wire(int sockfd, size_t *size)
 	
 	LDNS_FREE(wire);
 	wire = LDNS_XMALLOC(uint8_t, wire_size);
+	if (!wire) {
+		*size = 0;
+		return NULL;
+	}
 	bytes = 0;
 
 	while (bytes < (ssize_t) wire_size) {
@@ -642,8 +657,11 @@ ldns_tcp_send(uint8_t **result,  ldns_buffer *qbin, const struct sockaddr_storag
 	}
 
 	/* resize accordingly */
-	answer = (uint8_t*)LDNS_XREALLOC(answer, uint8_t *, (size_t)*answer_size);
-	*result = answer;
+	*result = (uint8_t*)LDNS_XREALLOC(answer, uint8_t *, (size_t)*answer_size);
+        if(!*result) {
+                LDNS_FREE(answer);
+                return LDNS_STATUS_MEM_ERR;
+        }
 	return LDNS_STATUS_OK;
 }
 
@@ -805,6 +823,18 @@ ldns_axfr_start(ldns_resolver *resolver, ldns_rdf *domain, ldns_rr_class class)
          * Is this necessary?
          */
         query_wire = ldns_buffer_new(LDNS_MAX_PACKETLEN);
+        if(!query_wire) {
+                ldns_pkt_free(query);
+                LDNS_FREE(ns);
+#ifndef USE_WINSOCK
+		close(resolver->_socket);
+#else
+		closesocket(resolver->_socket);
+#endif
+		resolver->_socket = 0;
+
+                return LDNS_STATUS_MEM_ERR;
+        }
         status = ldns_pkt2buffer_wire(query_wire, query);
         if (status != LDNS_STATUS_OK) {
                 ldns_pkt_free(query);

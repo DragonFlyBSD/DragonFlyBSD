@@ -173,8 +173,8 @@ ldns_get_rr_list_hosts_frm_fp_l(FILE *fp, int *line_nr)
 		return NULL;
 	}
 
-	for(i = ldns_fget_token_l(fp, line, "\n", 0, line_nr);
-			i > 0; i = ldns_fget_token_l(fp, line, "\n", 0, line_nr)) {
+	for(i = ldns_fget_token_l(fp, line, "\n", LDNS_MAX_LINELEN, line_nr);
+			i > 0; i = ldns_fget_token_l(fp, line, "\n", LDNS_MAX_LINELEN, line_nr)) {
 		/* # is comment */
 		if (line[0] == '#') {
 			continue;
@@ -191,9 +191,9 @@ ldns_get_rr_list_hosts_frm_fp_l(FILE *fp, int *line_nr)
 		}
 
 		ldns_buffer_new_frm_data(linebuf, line, (size_t) i);
-		for(cnt = 0, j = ldns_bget_token(linebuf, word, LDNS_PARSE_NO_NL, 0);
+		for(cnt = 0, j = ldns_bget_token(linebuf, word, LDNS_PARSE_NO_NL, LDNS_MAX_LINELEN);
 				j > 0;
-				j = ldns_bget_token(linebuf, word, LDNS_PARSE_NO_NL, 0), cnt++) {
+				j = ldns_bget_token(linebuf, word, LDNS_PARSE_NO_NL, LDNS_MAX_LINELEN), cnt++) {
 			if (cnt == 0) {
 				/* the address */
 				if ((tmp = ldns_rdf_new_frm_str(LDNS_RDF_TYPE_AAAA, 
@@ -212,7 +212,7 @@ ldns_get_rr_list_hosts_frm_fp_l(FILE *fp, int *line_nr)
 						break;
 					}
 				}
-				strlcpy(addr, word, LDNS_MAX_LINELEN+1);
+				(void)strlcpy(addr, word, LDNS_MAX_LINELEN+1);
 			} else {
 				/* la al la la */
 				if (ip6) {

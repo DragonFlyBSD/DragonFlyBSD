@@ -629,7 +629,7 @@ ldns_rbtree_split(ldns_rbtree_t *tree,
 	cur_node = ldns_rbtree_first(tree);
 	while (count < elements && cur_node != LDNS_RBTREE_NULL) {
 		move_node = ldns_rbtree_delete(tree, cur_node->key);
-		ldns_rbtree_insert(new_tree, move_node);
+		(void)ldns_rbtree_insert(new_tree, move_node);
 		cur_node = ldns_rbtree_first(tree);
 		count++;
 	}

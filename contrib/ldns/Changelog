@@ -1,3 +1,32 @@
+1.6.9	2011-03-16
+	* Fix creating NSEC(3) bitmaps: make array size 65536,
+	  don't add doubles.
+	* Fix printout of escaped binary in TXT records.
+	* Parsing TXT records: don't skip starting whitespace that is quoted.
+	* bugfix #358: Check if memory was successfully allocated in
+	  ldns_rdf2str().
+	* Added more memory allocation checks in host2str.c
+	* python wrapper for ldns_fetch_valid_domain_keys by Bedrich Kosata.
+	* fix to compile python wrapper with swig 2.0.2.
+	* Don't fallback to SHA-1 when creating NSEC3 hash with another
+	  algorithm identifier, fail instead (no other algorithm identifiers
+	  are assigned yet).
+
+1.6.8	2011-01-24
+	* Fix ldns zone, so that $TTL definition match RFC 2308.
+	* Fix lots of missing checks on allocation failures and parse of 
+	  NSEC with many types and max parse length in hosts_frm_fp routine
+	  and off by one in read_anchor_file routine (thanks Dan Kaminsky and
+	  Justin Ferguson).
+	* bugfix #335: Drill: Print both SHA-1 and SHA-256 corresponding DS
+	  records.
+	* Print correct WHEN in query packet (is not always 1-1-1970)
+	* ldns-test-edns: new example tool that detects EDNS support.
+	* fix ldns_resolver_send without openssl.
+	* bugfix #342: patch for support for more CERT key types (RFC4398).
+	* bugfix #351: fix udp_send hang if UDP checksum error.
+	* fix set_bit (from NSEC3 sign) patch from Jan Komissar.
+
 1.6.7	2010-11-08
 	* EXPERIMENTAL ecdsa implementation, please do not enable on real
 	  servers.
@@ -18,7 +47,7 @@
 	* bugfix: read of RR in unknown syntax with missing fields.
 	* added ldns_pkt_tsig_sign_next() and ldns_pkt_tsig_verify_next()
 	  to sign and verify TSIG RRs on subsequent messages
-	  (section 4.4, RFC 2845).
+	  (section 4.4, RFC 2845, thanks to Michael Sheldon).
 	* bugfix: signer sigs nsecs with zsks only.
 	* bugfix #333: fix ldns_dname_absolute for name ending with backslash.
 

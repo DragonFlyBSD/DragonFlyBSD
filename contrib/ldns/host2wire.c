@@ -75,7 +75,7 @@ ldns_rr_list2buffer_wire(ldns_buffer *buffer,const ldns_rr_list *rr_list)
 
 	rr_count = ldns_rr_list_rr_count(rr_list);
 	for(i = 0; i < rr_count; i++) {
-		ldns_rr2buffer_wire(buffer, ldns_rr_list_rr(rr_list, i), 
+		(void)ldns_rr2buffer_wire(buffer, ldns_rr_list_rr(rr_list, i), 
 					  LDNS_SECTION_ANY);
 	}
 	return ldns_buffer_status(buffer);
@@ -323,7 +323,7 @@ ldns_pkt2buffer_wire(ldns_buffer *buffer, const ldns_pkt *packet)
 		(void)ldns_rr2buffer_wire(buffer, edns_rr, LDNS_SECTION_ADDITIONAL);
 		/* take the edns rdata back out of the rr before we free rr */
 		if (packet->_edns_data)
-			ldns_rr_pop_rdf (edns_rr);
+			(void)ldns_rr_pop_rdf (edns_rr);
 		ldns_rr_free(edns_rr);
 	}
 	

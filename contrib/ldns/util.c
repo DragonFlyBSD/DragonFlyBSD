@@ -111,7 +111,7 @@ ldns_set_bit(uint8_t *byte, int bit_nr, bool value)
 		if (value) {
 			*byte = *byte | (0x01 << bit_nr);
 		} else {
-			*byte = *byte & !(0x01 << bit_nr);
+			*byte = *byte & ~(0x01 << bit_nr);
 		}
 	}
 }
@@ -270,6 +270,9 @@ ldns_init_random(FILE *fd, unsigned int size)
 	}
 
 	seed = LDNS_XMALLOC(uint8_t, size);
+        if(!seed) {
+		return 1;
+        }
 
 	if (!fd) {
 		if ((rand_f = fopen("/dev/urandom", "r")) == NULL) {

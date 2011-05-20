@@ -866,8 +866,8 @@ main(int argc, char *argv[])
 						for(key_count = 0; key_count < ldns_rr_list_rr_count(key_verified);
 								key_count++) {
 							if (verbosity != -1) {
-								printf("; VALIDATED by id = %d, owner = ",
-										(int)ldns_calc_keytag(
+								printf("; VALIDATED by id = %u, owner = ",
+										(unsigned int)ldns_calc_keytag(
 												      ldns_rr_list_rr(key_verified, key_count)));
 								ldns_rdf_print(stdout, ldns_rr_owner(
 											ldns_rr_list_rr(key_list, key_count)));
@@ -878,9 +878,9 @@ main(int argc, char *argv[])
 						for(key_count = 0; key_count < ldns_rr_list_rr_count(key_list);
 								key_count++) {
 							if (verbosity != -1) {
-								printf("; %s for id = %d, owner = ",
+								printf("; %s for id = %u, owner = ",
 								       ldns_get_errorstr_by_id(result),
-								       (int)ldns_calc_keytag(
+								       (unsigned int)ldns_calc_keytag(
 												      ldns_rr_list_rr(key_list, key_count)));
 								ldns_rdf_print(stdout, ldns_rr_owner(
 
