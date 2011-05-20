@@ -135,9 +135,6 @@ main(int argc, char **argv)
 			break;
 		case OBJFORMAT:
 			break;
-		default:
-			errx(1, "unknown command type");
-			break;
 		}
 	}
 
