@@ -27,6 +27,8 @@
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
  */
 
+#include <sys/param.h>
+
 #include <err.h>
 #include <objformat.h>
 #include <stdio.h>
@@ -46,16 +48,11 @@
 #define OBJFORMAT_PATH_DEFAULT ""
 #endif
 
-#define OBJFORMAT	0
-#define COMPILER	1
-#define BINUTILS1	2
-#define BINUTILS2	3
-
-#define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
+enum cmd_type { OBJFORMAT, COMPILER, BINUTILS };
 
 struct command {
 	const char *cmd;
-	int type;
+	enum cmd_type type;
 };
 
 static struct command commands[] = {
@@ -67,22 +64,22 @@ static struct command commands[] = {
 	{"g++",		COMPILER},
 	{"gcc",		COMPILER},
 	{"gcov",	COMPILER},
-	{"addr2line",	BINUTILS2},
-	{"ar",		BINUTILS2},
-	{"as",		BINUTILS2},
+	{"addr2line",	BINUTILS},
+	{"ar",		BINUTILS},
+	{"as",		BINUTILS},
 #if 0
-	{"c++filt",	BINUTILS2},
+	{"c++filt",	BINUTILS},
 #endif
-	{"elfedit",	BINUTILS2},
-	{"ld",		BINUTILS2},
-	{"nm",		BINUTILS2},
-	{"objcopy",	BINUTILS2},
-	{"objdump",	BINUTILS2},
-	{"ranlib",	BINUTILS2},
-	{"readelf",	BINUTILS2},
-	{"size",	BINUTILS2},
-	{"strings",	BINUTILS2},
-	{"strip",	BINUTILS2},
+	{"elfedit",	BINUTILS},
+	{"ld",		BINUTILS},
+	{"nm",		BINUTILS},
+	{"objcopy",	BINUTILS},
+	{"objdump",	BINUTILS},
+	{"ranlib",	BINUTILS},
+	{"readelf",	BINUTILS},
+	{"size",	BINUTILS},
+	{"strings",	BINUTILS},
+	{"strip",	BINUTILS},
 	{"objformat",	OBJFORMAT},
 	{"",		-1}
 };
@@ -113,7 +110,7 @@ main(int argc, char **argv)
 	else
 		cmd = argv[0];
 
-	for (cmds = commands; cmds < &commands[arysize(commands) - 1]; ++cmds) {
+	for (cmds = commands; cmds < &commands[NELEM(commands) - 1]; ++cmds) {
 		if (strcmp(cmd, cmds->cmd) == 0)
 			break;
 	}
@@ -131,12 +128,10 @@ main(int argc, char **argv)
 			use_objformat = 0;
 			env_value = ccver;
 			break;
-		case BINUTILS2:
-			use_objformat = 1;
-			/* fall through */
-		case BINUTILS1:
-			env_value = buver;
+		case BINUTILS:
 			base_path = "/usr/libexec";
+			use_objformat = 1;
+			env_value = buver;
 			break;
 		case OBJFORMAT:
 			break;
