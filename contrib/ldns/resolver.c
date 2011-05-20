@@ -256,8 +256,10 @@ ldns_resolver_pop_nameserver(ldns_resolver *r)
 	nameservers = LDNS_XREALLOC(nameservers, ldns_rdf *, (ns_count - 1));
 	rtt = LDNS_XREALLOC(rtt, size_t, (ns_count - 1));
 
-	ldns_resolver_set_nameservers(r, nameservers);
-	ldns_resolver_set_rtt(r, rtt);
+        if(nameservers)
+	        ldns_resolver_set_nameservers(r, nameservers);
+        if(rtt)
+	        ldns_resolver_set_rtt(r, rtt);
 	/* decr the count */
 	ldns_resolver_dec_nameserver_count(r);
 	return pop;
@@ -280,12 +282,25 @@ ldns_resolver_push_nameserver(ldns_resolver *r, ldns_rdf *n)
 	rtt = ldns_resolver_rtt(r);
 
 	/* make room for the next one */
-	nameservers = LDNS_XREALLOC(nameservers, ldns_rdf *, (ns_count + 1));
-	/* don't forget the rtt */
-	rtt = LDNS_XREALLOC(rtt, size_t, (ns_count + 1));
+	if (ns_count == 0) {
+		nameservers = LDNS_XMALLOC(ldns_rdf *, 1);
+	} else {
+		nameservers = LDNS_XREALLOC(nameservers, ldns_rdf *, (ns_count + 1));
+	}
+        if(!nameservers)
+                return LDNS_STATUS_MEM_ERR;
 
 	/* set the new value in the resolver */
 	ldns_resolver_set_nameservers(r, nameservers);
+
+	/* don't forget the rtt */
+	if (ns_count == 0) {
+		rtt = LDNS_XMALLOC(size_t, 1);
+	} else {
+		rtt = LDNS_XREALLOC(rtt, size_t, (ns_count + 1));
+	}
+        if(!rtt)
+                return LDNS_STATUS_MEM_ERR;
 
 	/* slide n in its slot. */
 	/* we clone it here, because then we can free the original
@@ -326,6 +341,7 @@ ldns_resolver_push_nameserver_rr_list(ldns_resolver *r, ldns_rr_list *rrlist)
 			rr = ldns_rr_list_rr(rrlist, i);
 			if (ldns_resolver_push_nameserver_rr(r, rr) != LDNS_STATUS_OK) {
 				stat = LDNS_STATUS_ERR;
+				break;
 			}
 		}
 		return stat;
@@ -536,7 +552,7 @@ ldns_resolver_push_searchlist(ldns_resolver *r, ldns_rdf *d)
 
 		searchlist[list_count] = ldns_rdf_clone(d);
 		ldns_resolver_set_searchlist_count(r, list_count + 1);
-	}
+	} /* no way to report mem err */
 }
 
 void
@@ -1063,6 +1079,8 @@ ldns_resolver_prepare_query_pkt(ldns_pkt **query_pkt, ldns_resolver *r,
                                 const ldns_rdf *name, ldns_rr_type t,
                                 ldns_rr_class c, uint16_t flags)
 {
+	struct timeval now;
+
 	/* prepare a question pkt from the parameters
 	 * and then send this */
 	*query_pkt = ldns_pkt_query_new(ldns_rdf_clone(name), t, c, flags);
@@ -1085,6 +1103,12 @@ ldns_resolver_prepare_query_pkt(ldns_pkt **query_pkt, ldns_resolver *r,
 	if (ldns_resolver_edns_udp_size(r) != 0) {
 		ldns_pkt_set_edns_udp_size(*query_pkt, ldns_resolver_edns_udp_size(r));
 	}
+
+	/* set the timestamp */
+	now.tv_sec = time(NULL);
+	now.tv_usec = 0;
+	ldns_pkt_set_timestamp(*query_pkt, now);
+
 
 	if (ldns_resolver_debug(r)) {
 		ldns_pkt_print(stdout, *query_pkt);
@@ -1140,8 +1164,8 @@ ldns_resolver_send(ldns_pkt **answer, ldns_resolver *r, const ldns_rdf *name,
 	  Jelte
 	  should this go in pkt_prepare?
 	*/
-#ifdef HAVE_SSL
 	if (ldns_resolver_tsig_keyname(r) && ldns_resolver_tsig_keydata(r)) {
+#ifdef HAVE_SSL
 		status = ldns_pkt_tsig_sign(query_pkt,
 		                            ldns_resolver_tsig_keyname(r),
 		                            ldns_resolver_tsig_keydata(r),
@@ -1149,10 +1173,10 @@ ldns_resolver_send(ldns_pkt **answer, ldns_resolver *r, const ldns_rdf *name,
 		if (status != LDNS_STATUS_OK) {
 			return LDNS_STATUS_CRYPTO_TSIG_ERR;
 		}
-	}
 #else
-	return LDNS_STATUS_CRYPTO_TSIG_ERR;
+	        return LDNS_STATUS_CRYPTO_TSIG_ERR;
 #endif /* HAVE_SSL */
+	}
 
 	status = ldns_resolver_send_pkt(&answer_pkt, r, query_pkt);
 	ldns_pkt_free(query_pkt);

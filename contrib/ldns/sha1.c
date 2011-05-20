@@ -123,7 +123,7 @@ ldns_sha1_update(ldns_sha1_ctx *context, const unsigned char *data, unsigned int
     unsigned int i;
     unsigned int j;
 
-    j = (uint32_t)((context->count >> 3) & 63);
+    j = (unsigned)(uint32_t)((context->count >> 3) & 63);
     context->count += (len << 3);
     if ((j + len) > 63) {
         memmove(&context->buffer[j], data, (i = 64 - j));
@@ -156,7 +156,7 @@ ldns_sha1_final(unsigned char digest[LDNS_SHA1_DIGEST_LENGTH], ldns_sha1_ctx *co
     }
     ldns_sha1_update(context, finalcount, 8);  /* Should cause a SHA1Transform() */
 
-    if (digest)
+    if (digest != NULL)
         for (i = 0; i < LDNS_SHA1_DIGEST_LENGTH; i++) {
             digest[i] = (unsigned char)((context->state[i >> 2] >>
                 ((3 - (i & 3)) * 8)) & 255);

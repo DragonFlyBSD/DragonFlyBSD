@@ -483,7 +483,7 @@ ldns_rdf_address_reverse(ldns_rdf *rd)
 				LDNS_FREE(char_dname);
 				return NULL;
 			}
-		
+
 			/* convert rev to a string */
 			ret_dname = ldns_dname_new_frm_str(char_dname);
 			LDNS_FREE(char_dname);
@@ -497,7 +497,7 @@ ldns_rdf_address_reverse(ldns_rdf *rd)
 	}
 	/* add the suffix */
 	rev = ldns_dname_cat_clone(ret_dname, in_addr);
-	
+
 	ldns_rdf_deep_free(ret_dname);
 	ldns_rdf_deep_free(in_addr);
 	return rev;

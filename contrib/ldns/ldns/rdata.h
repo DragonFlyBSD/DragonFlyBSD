@@ -113,11 +113,16 @@ typedef enum ldns_enum_rdf_type ldns_rdf_type;
  */
 enum ldns_enum_cert_algorithm
 {
-	LDNS_CERT_PKIX		= 1,
-	LDNS_CERT_SPKI		= 2,
-	LDNS_CERT_PGP		= 3,
-	LDNS_CERT_URI		= 253,
-	LDNS_CERT_OID		= 254
+        LDNS_CERT_PKIX		= 1,
+        LDNS_CERT_SPKI		= 2,
+        LDNS_CERT_PGP		= 3,
+        LDNS_CERT_IPKIX         = 4,
+        LDNS_CERT_ISPKI         = 5,
+        LDNS_CERT_IPGP          = 6,
+        LDNS_CERT_ACPKIX        = 7,
+        LDNS_CERT_IACPKIX       = 8,
+        LDNS_CERT_URI		= 253,
+        LDNS_CERT_OID		= 254
 };
 typedef enum ldns_enum_cert_algorithm ldns_cert_algorithm;
 

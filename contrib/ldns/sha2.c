@@ -100,7 +100,11 @@
 
 typedef uint8_t  sha2_byte;	/* Exactly 1 byte */
 typedef uint32_t sha2_word32;	/* Exactly 4 bytes */
+#ifdef S_SPLINT_S
+typedef unsigned long long sha2_word64; /* lint 8 bytes */
+#else
 typedef uint64_t sha2_word64;	/* Exactly 8 bytes */
+#endif
 
 /*** SHA-256/384/512 Various Length Definitions ***********************/
 /* NOTE: Most of these are in sha2.h */
@@ -116,6 +120,7 @@ typedef uint64_t sha2_word64;	/* Exactly 8 bytes */
 	tmp = (tmp >> 16) | (tmp << 16); \
 	(x) = ((tmp & 0xff00ff00UL) >> 8) | ((tmp & 0x00ff00ffUL) << 8); \
 }
+#ifndef S_SPLINT_S
 #define REVERSE64(w,x)	{ \
 	sha2_word64 tmp = (w); \
 	tmp = (tmp >> 32) | (tmp << 32); \
@@ -124,6 +129,9 @@ typedef uint64_t sha2_word64;	/* Exactly 8 bytes */
 	(x) = ((tmp & 0xffff0000ffff0000ULL) >> 16) | \
 	      ((tmp & 0x0000ffff0000ffffULL) << 16); \
 }
+#else /* splint */
+#define REVERSE64(w,x) /* splint */
+#endif /* splint */
 #endif /* BYTE_ORDER == LITTLE_ENDIAN */
 
 /*
@@ -137,6 +145,10 @@ typedef uint64_t sha2_word64;	/* Exactly 8 bytes */
 		(w)[1]++; \
 	} \
 }
+#ifdef S_SPLINT_S
+#undef ADDINC128
+#define ADDINC128(w,n) /* splint */
+#endif
 
 /*
  * Macros for copying blocks of memory and for zeroing out ranges
@@ -487,7 +499,7 @@ static void ldns_sha256_Transform(ldns_sha256_CTX* context,
 #endif /* SHA2_UNROLL_TRANSFORM */
 
 void ldns_sha256_update(ldns_sha256_CTX* context, const sha2_byte *data, size_t len) {
-	unsigned int	freespace, usedspace;
+	size_t freespace, usedspace;
 
 	if (len == 0) {
 		/* Calling with no data is valid - we do nothing */
@@ -536,7 +548,7 @@ void ldns_sha256_update(ldns_sha256_CTX* context, const sha2_byte *data, size_t 
 
 void ldns_sha256_final(sha2_byte digest[], ldns_sha256_CTX* context) {
 	sha2_word32	*d = (sha2_word32*)digest;
-	unsigned int	usedspace;
+	size_t usedspace;
 
 	/* Sanity check: */
 	assert(context != (ldns_sha256_CTX*)0);
@@ -789,7 +801,7 @@ static void ldns_sha512_Transform(ldns_sha512_CTX* context,
 #endif /* SHA2_UNROLL_TRANSFORM */
 
 void ldns_sha512_update(ldns_sha512_CTX* context, const sha2_byte *data, size_t len) {
-	unsigned int	freespace, usedspace;
+	size_t freespace, usedspace;
 
 	if (len == 0) {
 		/* Calling with no data is valid - we do nothing */
@@ -837,7 +849,7 @@ void ldns_sha512_update(ldns_sha512_CTX* context, const sha2_byte *data, size_t 
 }
 
 static void ldns_sha512_Last(ldns_sha512_CTX* context) {
-	unsigned int	usedspace;
+	size_t usedspace;
 
 	usedspace = (context->bitcount[0] >> 3) % LDNS_SHA512_BLOCK_LENGTH;
 #if BYTE_ORDER == LITTLE_ENDIAN

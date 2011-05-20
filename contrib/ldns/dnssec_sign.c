@@ -120,7 +120,7 @@ ldns_sign_public_buffer(ldns_buffer *sign_buf, ldns_key *current_key)
 
 	switch(ldns_key_algorithm(current_key)) {
 	case LDNS_SIGN_DSA:
-	case LDNS_DSA_NSEC3:
+	case LDNS_SIGN_DSA_NSEC3:
 		b64rdf = ldns_sign_public_evp(
 				   sign_buf,
 				   ldns_key_evp_key(current_key),
@@ -319,10 +319,18 @@ ldns_sign_public_dsa(ldns_buffer *to_sign, DSA *key)
 		return NULL;
 	}
 
-
 	sig = DSA_do_sign(sha1_hash, SHA_DIGEST_LENGTH, key);
+        if(!sig) {
+		ldns_buffer_free(b64sig);
+		return NULL;
+        }
 
 	data = LDNS_XMALLOC(uint8_t, 1 + 2 * SHA_DIGEST_LENGTH);
+        if(!data) {
+		ldns_buffer_free(b64sig);
+                DSA_SIG_free(sig);
+		return NULL;
+        }
 
 	data[0] = 1;
 	pad = 20 - (size_t) BN_num_bytes(sig->r);
@@ -343,11 +351,13 @@ ldns_sign_public_dsa(ldns_buffer *to_sign, DSA *key)
 
 	ldns_buffer_free(b64sig);
 	LDNS_FREE(data);
+        DSA_SIG_free(sig);
 
 	return sigdata_rdf;
 }
 
 #ifdef USE_ECDSA
+#ifndef S_SPLINT_S
 static int
 ldns_pkey_is_ecdsa(EVP_PKEY* pkey)
 {
@@ -371,6 +381,7 @@ ldns_pkey_is_ecdsa(EVP_PKEY* pkey)
         EC_KEY_free(ec);
         return 0;
 }
+#endif /* splint */
 #endif /* USE_ECDSA */
 
 ldns_rdf *
@@ -422,6 +433,7 @@ ldns_sign_public_evp(ldns_buffer *to_sign,
 	}
 
 	/* unfortunately, OpenSSL output is differenct from DNS DSA format */
+#ifndef S_SPLINT_S
 	if (EVP_PKEY_type(key->type) == EVP_PKEY_DSA) {
 		sigdata_rdf = ldns_convert_dsa_rrsig_asn12rdf(b64sig, siglen);
 #ifdef USE_ECDSA
@@ -434,6 +446,7 @@ ldns_sign_public_evp(ldns_buffer *to_sign,
 		sigdata_rdf = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_B64, siglen,
 									 ldns_buffer_begin(b64sig));
 	}
+#endif /* splint */
 	ldns_buffer_free(b64sig);
 	EVP_MD_CTX_cleanup(&ctx);
 	return sigdata_rdf;
@@ -631,7 +644,10 @@ ldns_dnssec_zone_create_nsecs(ldns_dnssec_zone *zone,
 		                                  next_name,
 		                                  LDNS_RR_TYPE_NSEC);
 		ldns_rr_set_ttl(nsec_rr, nsec_ttl);
-		ldns_dnssec_name_add_rr(cur_name, nsec_rr);
+		if(ldns_dnssec_name_add_rr(cur_name, nsec_rr)!=LDNS_STATUS_OK){
+			ldns_rr_free(nsec_rr);
+			return LDNS_STATUS_ERR;
+		}
 		ldns_rr_list_push_rr(new_rrs, nsec_rr);
 		cur_node = next_node;
 		if (cur_node) {
@@ -647,7 +663,10 @@ ldns_dnssec_zone_create_nsecs(ldns_dnssec_zone *zone,
 		                                  next_name,
 		                                  LDNS_RR_TYPE_NSEC);
 		ldns_rr_set_ttl(nsec_rr, nsec_ttl);
-		ldns_dnssec_name_add_rr(cur_name, nsec_rr);
+		if(ldns_dnssec_name_add_rr(cur_name, nsec_rr)!=LDNS_STATUS_OK){
+			ldns_rr_free(nsec_rr);
+			return LDNS_STATUS_ERR;
+		}
 		ldns_rr_list_push_rr(new_rrs, nsec_rr);
 	} else {
 		printf("error\n");
@@ -718,15 +737,18 @@ ldns_dnssec_zone_create_nsec3s(ldns_dnssec_zone *zone,
 			ldns_rdf_deep_free(ldns_rr_pop_rdf(nsec_rr));
 		}
 		ldns_rr_set_ttl(nsec_rr, nsec_ttl);
-		ldns_dnssec_name_add_rr(current_name, nsec_rr);
+		result = ldns_dnssec_name_add_rr(current_name, nsec_rr);
 		ldns_rr_list_push_rr(new_rrs, nsec_rr);
 		ldns_rr_list_push_rr(nsec3_list, nsec_rr);
 		current_name_node = ldns_dnssec_name_node_next_nonglue(
 		                   ldns_rbtree_next(current_name_node));
 	}
+	if (result != LDNS_STATUS_OK) {
+		return result;
+	}
 
 	ldns_rr_list_sort_nsec3(nsec3_list);
-	ldns_dnssec_chain_nsec3_list(nsec3_list);
+	result = ldns_dnssec_chain_nsec3_list(nsec3_list);
 	if (result != LDNS_STATUS_OK) {
 		return result;
 	}
@@ -954,7 +976,7 @@ ldns_dnssec_zone_create_rrsigs_flg(ldns_dnssec_zone *zone,
 					siglist = ldns_sign_public(rr_list, key_list);
 					for (i = 0; i < ldns_rr_list_rr_count(siglist); i++) {
 						if (cur_rrset->signatures) {
-							ldns_dnssec_rrs_add_rr(cur_rrset->signatures,
+							result = ldns_dnssec_rrs_add_rr(cur_rrset->signatures,
 											   ldns_rr_list_rr(siglist,
 														    i));
 						} else {
@@ -989,7 +1011,7 @@ ldns_dnssec_zone_create_rrsigs_flg(ldns_dnssec_zone *zone,
 
 			for (i = 0; i < ldns_rr_list_rr_count(siglist); i++) {
 				if (cur_name->nsec_signatures) {
-					ldns_dnssec_rrs_add_rr(cur_name->nsec_signatures,
+					result = ldns_dnssec_rrs_add_rr(cur_name->nsec_signatures,
 									   ldns_rr_list_rr(siglist, i));
 				} else {
 					cur_name->nsec_signatures = ldns_dnssec_rrs_new();
@@ -1035,7 +1057,10 @@ ldns_dnssec_zone_sign_flg(ldns_dnssec_zone *zone,
 	}
 
 	/* zone is already sorted */
-	ldns_dnssec_zone_mark_glue(zone);
+	result = ldns_dnssec_zone_mark_glue(zone);
+	if (result != LDNS_STATUS_OK) {
+		return result;
+	}
 
 	/* check whether we need to add nsecs */
 	if (zone->names && !((ldns_dnssec_name *)zone->names->root->data)->nsec) {
@@ -1088,14 +1113,20 @@ ldns_dnssec_zone_sign_nsec3_flg(ldns_dnssec_zone *zone,
 	ldns_status result = LDNS_STATUS_OK;
 
 	/* zone is already sorted */
-	ldns_dnssec_zone_mark_glue(zone);
+	result = ldns_dnssec_zone_mark_glue(zone);
+	if (result != LDNS_STATUS_OK) {
+		return result;
+	}
 
 	/* TODO if there are already nsec3s presents and their
 	 * parameters are the same as these, we don't have to recreate
 	 */
 	if (zone->names) {
 		/* add empty nonterminals */
-		ldns_dnssec_zone_add_empty_nonterminals(zone);
+		result = ldns_dnssec_zone_add_empty_nonterminals(zone);
+		if (result != LDNS_STATUS_OK) {
+			return result;
+		}
 
 		nsec3 = ((ldns_dnssec_name *)zone->names->root->data)->nsec;
 		if (nsec3 && ldns_rr_get_type(nsec3) == LDNS_RR_TYPE_NSEC3) {
@@ -1118,7 +1149,10 @@ ldns_dnssec_zone_sign_nsec3_flg(ldns_dnssec_zone *zone,
 				/* always set bit 7 of the flags to zero, according to
 				 * rfc5155 section 11 */
 				ldns_set_bit(ldns_rdf_data(ldns_rr_rdf(nsec3params, 1)), 7, 0);
-				ldns_dnssec_zone_add_rr(zone, nsec3params);
+				result = ldns_dnssec_zone_add_rr(zone, nsec3params);
+				if (result != LDNS_STATUS_OK) {
+					return result;
+				}
 				ldns_rr_list_push_rr(new_rrs, nsec3params);
 			}
 			result = ldns_dnssec_zone_create_nsec3s(zone,

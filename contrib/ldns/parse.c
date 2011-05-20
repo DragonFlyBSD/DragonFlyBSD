@@ -183,6 +183,8 @@ ldns_fget_keyword_data_l(FILE *f, const char *keyword, const char *k_del, char *
        char *fkeyword;
        ssize_t i;
 
+       if(strlen(keyword) >= LDNS_MAX_KEYWORDLEN)
+               return -1;
        fkeyword = LDNS_XMALLOC(char, LDNS_MAX_KEYWORDLEN);
        if(!fkeyword)
                return -1;
@@ -416,6 +418,8 @@ ldns_bget_keyword_data(ldns_buffer *b, const char *keyword, const char *k_del, c
        char *fkeyword;
        ssize_t i;
 
+       if(strlen(keyword) >= LDNS_MAX_KEYWORDLEN)
+               return -1;
        fkeyword = LDNS_XMALLOC(char, LDNS_MAX_KEYWORDLEN);
        if(!fkeyword)
                return -1; /* out of memory */
