@@ -1300,27 +1300,18 @@ Verneed::write(const Stringpool* dynpool, bool is_last,
 Versions::Versions(const Version_script_info& version_script,
                    Stringpool* dynpool)
   : defs_(), needs_(), version_table_(),
-    is_finalized_(false), version_script_(version_script)
+    is_finalized_(false), version_script_(version_script),
+    needs_base_version_(parameters->options().shared())
 {
-  // We always need a base version, so define that first.  Nothing
-  // explicitly declares itself as part of base, so it doesn't need to
-  // be in version_table_.
-  if (parameters->options().shared())
-    {
-      const char* name = parameters->options().soname();
-      if (name == NULL)
-	name = parameters->options().output_file_name();
-      name = dynpool->add(name, false, NULL);
-      Verdef* vdbase = new Verdef(name, std::vector<std::string>(),
-                                  true, false, true);
-      this->defs_.push_back(vdbase);
-    }
-
   if (!this->version_script_.empty())
     {
       // Parse the version script, and insert each declared version into
       // defs_ and version_table_.
       std::vector<std::string> versions = this->version_script_.get_versions();
+
+      if (this->needs_base_version_ && !versions.empty())
+	this->define_base_version(dynpool);
+
       for (size_t k = 0; k < versions.size(); ++k)
         {
           Stringpool::Key version_key;
@@ -1348,6 +1339,28 @@ Versions::~Versions()
        p != this->needs_.end();
        ++p)
     delete *p;
+}
+
+// Define the base version of a shared library.  The base version definition
+// must be the first entry in defs_.  We insert it lazily so that defs_ is
+// empty if no symbol versioning is used.  Then layout can just drop the
+// version sections.
+
+void
+Versions::define_base_version(Stringpool* dynpool)
+{
+  // If we do any versioning at all,  we always need a base version, so
+  // define that first.  Nothing explicitly declares itself as part of base,
+  // so it doesn't need to be in version_table_.
+  gold_assert(this->defs_.empty());
+  const char* name = parameters->options().soname();
+  if (name == NULL)
+    name = parameters->options().output_file_name();
+  name = dynpool->add(name, false, NULL);
+  Verdef* vdbase = new Verdef(name, std::vector<std::string>(),
+                              true, false, true);
+  this->defs_.push_back(vdbase);
+  this->needs_base_version_ = false;
 }
 
 // Return the dynamic object which a symbol refers to.
@@ -1421,7 +1434,10 @@ Versions::add_def(const Symbol* sym, const char* version,
       if (parameters->options().shared())
 	gold_error(_("symbol %s has undefined version %s"),
 		   sym->demangled_name().c_str(), version);
-
+      else
+	// We only insert a base version for shared library.
+	gold_assert(!this->needs_base_version_);
+	
       // When creating a regular executable, automatically define
       // a new version.
       Verdef* vd = new Verdef(version, std::vector<std::string>(),
@@ -1468,6 +1484,10 @@ Versions::add_need(Stringpool* dynpool, const char* filename, const char* name,
 
   if (vn == NULL)
     {
+      // Create base version definition lazily for shared library.
+      if (this->needs_base_version_)
+	this->define_base_version(dynpool);
+
       // We have a new filename.
       vn = new Verneed(filename);
       this->needs_.push_back(vn);

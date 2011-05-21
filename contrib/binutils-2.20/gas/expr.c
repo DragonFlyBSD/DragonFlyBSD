@@ -1997,6 +1997,7 @@ resolve_expression (expressionS *expressionP)
   /* Help out with CSE.  */
   valueT final_val = expressionP->X_add_number;
   symbolS *add_symbol = expressionP->X_add_symbol;
+  symbolS *orig_add_symbol = add_symbol;
   symbolS *op_symbol = expressionP->X_op_symbol;
   operatorT op = expressionP->X_op;
   valueT left, right;
@@ -2078,6 +2079,7 @@ resolve_expression (expressionS *expressionP)
 	      left = right;
 	      seg_left = seg_right;
 	      add_symbol = op_symbol;
+	      orig_add_symbol = expressionP->X_op_symbol;
 	      op = O_symbol;
 	      break;
 	    }
@@ -2122,18 +2124,19 @@ resolve_expression (expressionS *expressionP)
 	    {
 	      if (op == O_bit_exclusive_or || op == O_bit_inclusive_or)
 		{
-		  if (seg_right != absolute_section || right != 0)
+		  if (!(seg_right == absolute_section && right == 0))
 		    {
 		      seg_left = seg_right;
 		      left = right;
 		      add_symbol = op_symbol;
+		      orig_add_symbol = expressionP->X_op_symbol;
 		    }
 		  op = O_symbol;
 		  break;
 		}
 	      else if (op == O_left_shift || op == O_right_shift)
 		{
-		  if (seg_left != absolute_section || left != 0)
+		  if (!(seg_left == absolute_section && left == 0))
 		    {
 		      op = O_symbol;
 		      break;
@@ -2149,6 +2152,7 @@ resolve_expression (expressionS *expressionP)
 	      seg_left = seg_right;
 	      left = right;
 	      add_symbol = op_symbol;
+	      orig_add_symbol = expressionP->X_op_symbol;
 	      op = O_symbol;
 	      break;
 	    }
@@ -2158,11 +2162,11 @@ resolve_expression (expressionS *expressionP)
 	      op = O_symbol;
 	      break;
 	    }
-	  else if (left != right
-		   || ((seg_left != reg_section || seg_right != reg_section)
-		       && (seg_left != undefined_section
-			   || seg_right != undefined_section
-			   || add_symbol != op_symbol)))
+	  else if (!(left == right
+		     && ((seg_left == reg_section && seg_right == reg_section)
+			 || (seg_left == undefined_section
+			     && seg_right == undefined_section
+			     && add_symbol == op_symbol))))
 	    return 0;
 	  else if (op == O_bit_and || op == O_bit_inclusive_or)
 	    {
@@ -2233,7 +2237,7 @@ resolve_expression (expressionS *expressionP)
 	op = O_constant;
       else if (seg_left == reg_section && final_val == 0)
 	op = O_register;
-      else if (add_symbol != expressionP->X_add_symbol)
+      else if (!symbol_same_p (add_symbol, orig_add_symbol))
 	final_val += left;
       expressionP->X_add_symbol = add_symbol;
     }

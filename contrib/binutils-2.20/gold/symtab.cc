@@ -2242,6 +2242,12 @@ Symbol_table::set_dynsym_indexes(unsigned int index,
 	  // Record any version information.
           if (sym->version() != NULL)
             versions->record_version(this, dynpool, sym);
+
+	  // If the symbol is defined in a dynamic object and is
+	  // referenced in a regular object, then mark the dynamic
+	  // object as needed.  This is used to implement --as-needed.
+	  if (sym->is_from_dynobj() && sym->in_reg())
+	    sym->object()->set_is_needed();
 	}
     }
 

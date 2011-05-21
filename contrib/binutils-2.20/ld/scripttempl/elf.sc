@@ -311,6 +311,7 @@ else
   COMBRELOCCAT="cat > $COMBRELOC"
 fi
 eval $COMBRELOCCAT <<EOF
+  ${INITIAL_RELOC_SECTIONS}
   .rel.init     ${RELOCATING-0} : { *(.rel.init) }
   .rela.init    ${RELOCATING-0} : { *(.rela.init) }
   .rel.text     ${RELOCATING-0} : { *(.rel.text${RELOCATING+ .rel.text.* .rel.gnu.linkonce.t.*}) }

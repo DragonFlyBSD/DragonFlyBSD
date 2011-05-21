@@ -1237,7 +1237,7 @@ add_redefine_syms_file (const char *filename)
 	   filename, strerror (errno));
 
   bufsize = 100;
-  buf = (char *) xmalloc (bufsize);
+  buf = (char *) xmalloc (bufsize + 1 /* For the terminating NUL.  */);
 
   lineno = 1;
   c = getc (file);
@@ -1254,7 +1254,7 @@ add_redefine_syms_file (const char *filename)
 	  if (len >= bufsize)
 	    {
 	      bufsize *= 2;
-	      buf = (char *) xrealloc (buf, bufsize);
+	      buf = (char *) xrealloc (buf, bufsize + 1);
 	    }
 	  c = getc (file);
 	}
@@ -1280,7 +1280,7 @@ add_redefine_syms_file (const char *filename)
 	  if (len >= bufsize)
 	    {
 	      bufsize *= 2;
-	      buf = (char *) xrealloc (buf, bufsize);
+	      buf = (char *) xrealloc (buf, bufsize + 1);
 	    }
 	  c = getc (file);
 	}

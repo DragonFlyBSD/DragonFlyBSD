@@ -1,6 +1,6 @@
 /* listing.c - maintain assembly listings
    Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-   2001, 2002, 2003, 2005, 2006, 2007, 2008, 2009
+   2001, 2002, 2003, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
@@ -1047,7 +1047,7 @@ print_source (file_info_type *  current_file,
 	  char *p;
 
 	  cache->file = current_file;
-	  cache->line = current_file->linenum;
+	  cache->line = current_file->linenum + 1;
 	  cache->buffer[0] = 0;
 	  p = buffer_line (current_file, cache->buffer, width);
 

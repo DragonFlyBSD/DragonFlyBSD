@@ -216,6 +216,9 @@ struct comp_unit
      by its reference.  */
   bfd_byte *info_ptr_unit;
 
+  /* Pointer to the start of the debug section, for DW_FORM_ref_addr.  */
+  bfd_byte *sec_info_ptr;
+
   /* The offset into .debug_line of the line number table.  */
   unsigned long line_offset;
 
@@ -1680,7 +1683,7 @@ find_abstract_instance_name (struct comp_unit *unit,
       if (!die_ref)
 	abort ();
 
-      info_ptr = unit->stash->sec_info_ptr + die_ref;
+      info_ptr = unit->sec_info_ptr + die_ref;
     }
   else 
     info_ptr = unit->info_ptr_unit + die_ref;
@@ -2088,6 +2091,7 @@ parse_comp_unit (struct dwarf2_debug *stash,
   unit->end_ptr = end_ptr;
   unit->stash = stash;
   unit->info_ptr_unit = info_ptr_unit;
+  unit->sec_info_ptr = stash->sec_info_ptr;
 
   for (i = 0; i < abbrev->num_attrs; ++i)
     {

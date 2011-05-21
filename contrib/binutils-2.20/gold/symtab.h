@@ -1488,6 +1488,11 @@ class Symbol_table
   static bool
   should_override(const Symbol*, unsigned int, Object*, bool*);
 
+  // Report a problem in symbol resolution.
+  static void
+  report_resolve_problem(bool is_error, const char* msg, const Symbol* to,
+			 Object* object);
+
   // Override a symbol.
   template<int size, bool big_endian>
   void

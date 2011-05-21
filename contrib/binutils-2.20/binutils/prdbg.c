@@ -2088,8 +2088,7 @@ tg_struct_field (void *p, const char *name, bfd_vma bitpos ATTRIBUTE_UNUSED,
 static bfd_boolean
 tg_end_struct_type (void *p ATTRIBUTE_UNUSED)
 {
-  struct pr_handle *info = (struct pr_handle *) p;
-  assert (info->stack != NULL);
+  assert (((struct pr_handle *) p)->stack != NULL);
 
   return TRUE;
 }

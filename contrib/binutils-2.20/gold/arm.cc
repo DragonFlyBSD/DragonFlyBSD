@@ -1075,7 +1075,7 @@ Target_arm<big_endian>::got_section(Symbol_table* symtab, Layout* layout)
       os = layout->add_output_section_data(".got", elfcpp::SHT_PROGBITS,
 					   (elfcpp::SHF_ALLOC
 					    | elfcpp::SHF_WRITE),
-					   this->got_);
+					   this->got_, false);
       os->set_is_relro();
 
       // The old GNU linker creates a .got.plt section.  We just
@@ -1086,7 +1086,7 @@ Target_arm<big_endian>::got_section(Symbol_table* symtab, Layout* layout)
       os = layout->add_output_section_data(".got", elfcpp::SHT_PROGBITS,
 					   (elfcpp::SHF_ALLOC
 					    | elfcpp::SHF_WRITE),
-					   this->got_plt_);
+					   this->got_plt_, false);
       os->set_is_relro();
 
       // The first three entries are reserved.
@@ -1114,7 +1114,7 @@ Target_arm<big_endian>::rel_dyn_section(Layout* layout)
       gold_assert(layout != NULL);
       this->rel_dyn_ = new Reloc_section(parameters->options().combreloc());
       layout->add_output_section_data(".rel.dyn", elfcpp::SHT_REL,
-				      elfcpp::SHF_ALLOC, this->rel_dyn_);
+				      elfcpp::SHF_ALLOC, this->rel_dyn_, true);
     }
   return this->rel_dyn_;
 }
@@ -1186,7 +1186,7 @@ Output_data_plt_arm<big_endian>::Output_data_plt_arm(Layout* layout,
 {
   this->rel_ = new Reloc_section(false);
   layout->add_output_section_data(".rel.plt", elfcpp::SHT_REL,
-				  elfcpp::SHF_ALLOC, this->rel_);
+				  elfcpp::SHF_ALLOC, this->rel_, true);
 }
 
 template<bool big_endian>
@@ -1348,7 +1348,7 @@ Target_arm<big_endian>::make_plt_entry(Symbol_table* symtab, Layout* layout,
       layout->add_output_section_data(".plt", elfcpp::SHT_PROGBITS,
 				      (elfcpp::SHF_ALLOC
 				       | elfcpp::SHF_EXECINSTR),
-				      this->plt_);
+				      this->plt_, false);
     }
   this->plt_->add_entry(gsym);
 }
@@ -1831,10 +1831,12 @@ Target_arm<big_endian>::do_finalize_sections(Layout* layout)
   Output_data_dynamic* const odyn = layout->dynamic_data();
   if (odyn != NULL)
     {
-      if (this->got_plt_ != NULL)
+      if (this->got_plt_ != NULL
+	  && this->got_plt_->output_section() != NULL)
 	odyn->add_section_address(elfcpp::DT_PLTGOT, this->got_plt_);
 
-      if (this->plt_ != NULL)
+      if (this->plt_ != NULL
+	  && this->plt_->output_section() != NULL)
 	{
 	  const Output_data* od = this->plt_->rel_plt();
 	  odyn->add_section_size(elfcpp::DT_PLTRELSZ, od);
@@ -1842,7 +1844,8 @@ Target_arm<big_endian>::do_finalize_sections(Layout* layout)
 	  odyn->add_constant(elfcpp::DT_PLTREL, elfcpp::DT_REL);
 	}
 
-      if (this->rel_dyn_ != NULL)
+      if (this->rel_dyn_ != NULL
+	  && this->rel_dyn_->output_section() != NULL)
 	{
 	  const Output_data* od = this->rel_dyn_;
 	  odyn->add_section_address(elfcpp::DT_REL, od);
@@ -1879,7 +1882,8 @@ Target_arm<big_endian>::do_finalize_sections(Layout* layout)
 		      == NULL);
 	  Output_segment*  exidx_segment =
 	    layout->make_output_segment(elfcpp::PT_ARM_EXIDX, elfcpp::PF_R);
-	  exidx_segment->add_output_section(exidx_section, elfcpp::PF_R);
+	  exidx_segment->add_output_section(exidx_section, elfcpp::PF_R,
+					    false);
 	}
     }
 }

@@ -150,7 +150,8 @@ fix_new_internal (fragS *frag,		/* Which frag?  */
 		  symbolS *sub_symbol,	/* X_op_symbol.  */
 		  offsetT offset,	/* X_add_number.  */
 		  int pcrel,		/* TRUE if PC-relative relocation.  */
-		  RELOC_ENUM r_type ATTRIBUTE_UNUSED /* Relocation type.  */)
+		  RELOC_ENUM r_type ATTRIBUTE_UNUSED /* Relocation type.  */,
+		  int at_beginning)	/* Add to the start of the list?  */
 {
   fixS *fixP;
 
@@ -194,10 +195,6 @@ fix_new_internal (fragS *frag,		/* Which frag?  */
 
   as_where (&fixP->fx_file, &fixP->fx_line);
 
-  /* Usually, we want relocs sorted numerically, but while
-     comparing to older versions of gas that have relocs
-     reverse sorted, it is convenient to have this compile
-     time option.  xoxorich.  */
   {
 
     fixS **seg_fix_rootP = (frags_chained
@@ -207,22 +204,22 @@ fix_new_internal (fragS *frag,		/* Which frag?  */
 			    ? &seg_info (now_seg)->fix_tail
 			    : &frchain_now->fix_tail);
 
-#ifdef REVERSE_SORT_RELOCS
-
-    fixP->fx_next = *seg_fix_rootP;
-    *seg_fix_rootP = fixP;
-
-#else /* REVERSE_SORT_RELOCS  */
-
-    fixP->fx_next = NULL;
-
-    if (*seg_fix_tailP)
-      (*seg_fix_tailP)->fx_next = fixP;
+    if (at_beginning)
+      {
+	fixP->fx_next = *seg_fix_rootP;
+	*seg_fix_rootP = fixP;
+	if (fixP->fx_next == NULL)
+	  *seg_fix_tailP = fixP;
+      }
     else
-      *seg_fix_rootP = fixP;
-    *seg_fix_tailP = fixP;
-
-#endif /* REVERSE_SORT_RELOCS  */
+      {
+	fixP->fx_next = NULL;
+	if (*seg_fix_tailP)
+	  (*seg_fix_tailP)->fx_next = fixP;
+	else
+	  *seg_fix_rootP = fixP;
+	*seg_fix_tailP = fixP;
+      }
   }
 
   return fixP;
@@ -240,7 +237,7 @@ fix_new (fragS *frag,		/* Which frag?  */
 	 RELOC_ENUM r_type		/* Relocation type.  */)
 {
   return fix_new_internal (frag, where, size, add_symbol,
-			   (symbolS *) NULL, offset, pcrel, r_type);
+			   (symbolS *) NULL, offset, pcrel, r_type, FALSE);
 }
 
 /* Create a fixup for an expression.  Currently we only support fixups
@@ -308,7 +305,19 @@ fix_new_exp (fragS *frag,		/* Which frag?  */
       break;
     }
 
-  return fix_new_internal (frag, where, size, add, sub, off, pcrel, r_type);
+  return fix_new_internal (frag, where, size, add, sub, off, pcrel,
+			   r_type, FALSE);
+}
+
+/* Create a fixup at the beginning of FRAG.  The arguments are the same
+   as for fix_new, except that WHERE is implicitly 0.  */
+
+fixS *
+fix_at_start (fragS *frag, int size, symbolS *add_symbol,
+	      offsetT offset, int pcrel, RELOC_ENUM r_type)
+{
+  return fix_new_internal (frag, 0, size, add_symbol,
+			   (symbolS *) NULL, offset, pcrel, r_type, TRUE);
 }
 
 /* Generic function to determine whether a fixup requires a relocation.  */
