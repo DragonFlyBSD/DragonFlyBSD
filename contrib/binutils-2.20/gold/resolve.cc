@@ -302,23 +302,39 @@ Symbol_table::resolve(Sized_symbol<size>* to,
                                          sym.get_st_type());
 
   bool adjust_common_sizes;
+  typename Sized_symbol<size>::Size_type tosize = to->symsize();
   if (Symbol_table::should_override(to, frombits, object,
 				    &adjust_common_sizes))
     {
-      typename Sized_symbol<size>::Size_type tosize = to->symsize();
-
       this->override(to, sym, st_shndx, is_ordinary, object, version);
-
       if (adjust_common_sizes && tosize > to->symsize())
         to->set_symsize(tosize);
     }
   else
     {
-      if (adjust_common_sizes && sym.get_st_size() > to->symsize())
+      if (adjust_common_sizes && sym.get_st_size() > tosize)
         to->set_symsize(sym.get_st_size());
       // The ELF ABI says that even for a reference to a symbol we
       // merge the visibility.
       to->override_visibility(sym.get_st_visibility());
+    }
+
+  if (adjust_common_sizes && parameters->options().warn_common())
+    {
+      if (tosize > sym.get_st_size())
+	Symbol_table::report_resolve_problem(false,
+					     _("common of '%s' overriding "
+					       "smaller common"),
+					     to, object);
+      else if (tosize < sym.get_st_size())
+	Symbol_table::report_resolve_problem(false,
+					     _("common of '%s' overidden by "
+					       "larger common"),
+					     to, object);
+      else
+	Symbol_table::report_resolve_problem(false,
+					     _("multiple common of '%s'"),
+					     to, object);
     }
 
   // A new weak undefined reference, merging with an old weak
@@ -422,14 +438,9 @@ Symbol_table::should_override(const Symbol* to, unsigned int frombits,
           || object->just_symbols())
         return false;
 
-      // FIXME: Do a better job of reporting locations.
-      gold_error(_("%s: multiple definition of %s"),
-		 object != NULL ? object->name().c_str() : _("command line"),
-		 to->demangled_name().c_str());
-      gold_error(_("%s: previous definition here"),
-		 (to->source() == Symbol::FROM_OBJECT
-		  ? to->object()->name().c_str()
-		  : _("command line")));
+      Symbol_table::report_resolve_problem(true,
+					   _("multiple definition of '%s'"),
+					   to, object);
       return false;
 
     case WEAK_DEF * 16 + DEF:
@@ -464,8 +475,12 @@ Symbol_table::should_override(const Symbol* to, unsigned int frombits,
     case DYN_COMMON * 16 + DEF:
     case DYN_WEAK_COMMON * 16 + DEF:
       // We've seen a common symbol and now we see a definition.  The
-      // definition overrides.  FIXME: We should optionally issue, version a
-      // warning.
+      // definition overrides.
+      if (parameters->options().warn_common())
+	Symbol_table::report_resolve_problem(false,
+					     _("definition of '%s' overriding "
+					       "common"),
+					     to, object);
       return true;
 
     case DEF * 16 + WEAK_DEF:
@@ -495,7 +510,12 @@ Symbol_table::should_override(const Symbol* to, unsigned int frombits,
     case DYN_COMMON * 16 + WEAK_DEF:
     case DYN_WEAK_COMMON * 16 + WEAK_DEF:
       // A weak definition does override a definition in a dynamic
-      // object.  FIXME: We should optionally issue a warning.
+      // object.
+      if (parameters->options().warn_common())
+	Symbol_table::report_resolve_problem(false,
+					     _("definition of '%s' overriding "
+					       "dynamic common definition"),
+					     to, object);
       return true;
 
     case DEF * 16 + DYN_DEF:
@@ -611,6 +631,11 @@ Symbol_table::should_override(const Symbol* to, unsigned int frombits,
 
     case DEF * 16 + COMMON:
       // A common symbol does not override a definition.
+      if (parameters->options().warn_common())
+	Symbol_table::report_resolve_problem(false,
+					     _("common '%s' overridden by "
+					       "previous definition"),
+					     to, object);
       return false;
 
     case WEAK_DEF * 16 + COMMON:
@@ -714,6 +739,44 @@ Symbol_table::should_override(const Symbol* to, unsigned int frombits,
     default:
       gold_unreachable();
     }
+}
+
+// Issue an error or warning due to symbol resolution.  IS_ERROR
+// indicates an error rather than a warning.  MSG is the error
+// message; it is expected to have a %s for the symbol name.  TO is
+// the existing symbol.  OBJECT is where the new symbol was found.
+
+// FIXME: We should have better location information here.  When the
+// symbol is defined, we should be able to pull the location from the
+// debug info if there is any.
+
+void
+Symbol_table::report_resolve_problem(bool is_error, const char* msg,
+				     const Symbol* to, Object* object)
+{
+  std::string demangled(to->demangled_name());
+  size_t len = strlen(msg) + demangled.length() + 10;
+  char* buf = new char[len];
+  snprintf(buf, len, msg, demangled.c_str());
+
+  const char* objname;
+  if (object != NULL)
+    objname = object->name().c_str();
+  else
+    objname = _("command line");
+
+  if (is_error)
+    gold_error("%s: %s", objname, buf);
+  else
+    gold_warning("%s: %s", objname, buf);
+
+  delete[] buf;
+
+  if (to->source() == Symbol::FROM_OBJECT)
+    objname = to->object()->name().c_str();
+  else
+    objname = _("command line");
+  gold_info("%s: %s: previous definition here", program_name, objname);
 }
 
 // A special case of should_override which is only called for a strong

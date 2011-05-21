@@ -5752,6 +5752,8 @@ shared section (meaningful for PE targets)
 ignored.  (For compatibility with the ELF version)
 @item y
 section is not readable (meaningful for PE targets)
+@item 0-9
+single-digit power-of-two section alignment (GNU extension)
 @end table
 
 If no flags are specified, the default flags depend upon the section name.  If

@@ -2385,6 +2385,20 @@ symbol_set_value_expression (symbolS *s, const expressionS *exp)
   S_CLEAR_WEAKREFR (s);
 }
 
+/* Return whether 2 symbols are the same.  */
+
+int
+symbol_same_p (symbolS *s1, symbolS *s2)
+{
+  if (s1->bsym == NULL
+      && local_symbol_converted_p ((struct local_symbol *) s1))
+    s1 = local_symbol_get_real_symbol ((struct local_symbol *) s1);
+  if (s2->bsym == NULL
+      && local_symbol_converted_p ((struct local_symbol *) s2))
+    s2 = local_symbol_get_real_symbol ((struct local_symbol *) s2);
+  return s1 == s2;
+}
+
 /* Return a pointer to the X_add_number component of a symbol.  */
 
 offsetT *

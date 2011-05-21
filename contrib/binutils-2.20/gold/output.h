@@ -2387,6 +2387,27 @@ class Output_section : public Output_data
   is_large_data_section()
   { return this->is_large_section_ && this->type_ != elfcpp::SHT_NOBITS; }
 
+  // True if this is the .interp section which goes into the PT_INTERP
+  // segment.
+  bool
+  is_interp() const
+  { return this->is_interp_; }
+
+  // Record that this is the interp section.
+  void
+  set_is_interp()
+  { this->is_interp_ = true; }
+
+  // True if this is a section used by the dynamic linker.
+  bool
+  is_dynamic_linker_section() const
+  { return this->is_dynamic_linker_section_; }
+
+  // Record that this is a section used by the dynamic linker.
+  void
+  set_is_dynamic_linker_section()
+  { this->is_dynamic_linker_section_ = true; }
+
   // Return whether this section should be written after all the input
   // sections are complete.
   bool
@@ -3327,6 +3348,13 @@ class Output_section : public Output_data
   bool is_small_section_ : 1;
   // True if this is a large section.
   bool is_large_section_ : 1;
+  // True if this is the .interp section going into the PT_INTERP
+  // segment.
+  bool is_interp_ : 1;
+  // True if this is section is read by the dynamic linker.
+  bool is_dynamic_linker_section_ : 1;
+  // Whether code-fills are generated at write.
+  bool generate_code_fills_at_write_ : 1;
   // For SHT_TLS sections, the offset of this section relative to the base
   // of the TLS segment.
   uint64_t tls_offset_;
@@ -3337,13 +3365,11 @@ class Output_section : public Output_data
   // Map from merge section properties to merge_sections;
   Merge_section_by_properties_map merge_section_by_properties_map_;
   // Map from input sections to relaxed input sections.  This is mutable
-  // beacause it is udpated lazily.  We may need to update it in a
+  // because it is updated lazily.  We may need to update it in a
   // const qualified method.
   mutable Output_section_data_by_input_section_map relaxed_input_section_map_;
   // Whether relaxed_input_section_map_ is valid.
   mutable bool is_relaxed_input_section_map_valid_;
-  // Whether code-fills are generated at write.
-  bool generate_code_fills_at_write_;
 };
 
 // An output segment.  PT_LOAD segments are built from collections of
@@ -3412,9 +3438,12 @@ class Output_segment
   uint64_t
   maximum_alignment();
 
-  // Add an Output_section to this segment.
+  // Add the Output_section OS to this segment.  SEG_FLAGS is the
+  // segment flags to use.  DO_SORT is true if we should sort the
+  // placement of the input section for more efficient generated code.
   void
-  add_output_section(Output_section* os, elfcpp::Elf_Word seg_flags);
+  add_output_section(Output_section* os, elfcpp::Elf_Word seg_flags,
+		     bool do_sort);
 
   // Remove an Output_section from this segment.  It is an error if it
   // is not present.

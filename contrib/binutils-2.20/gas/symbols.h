@@ -198,6 +198,7 @@ extern int symbol_constant_p (symbolS *);
 extern int symbol_shadow_p (symbolS *);
 extern asymbol *symbol_get_bfdsym (symbolS *);
 extern void symbol_set_bfdsym (symbolS *, asymbol *);
+extern int symbol_same_p (symbolS *, symbolS *);
 
 #ifdef OBJ_SYMFIELD_TYPE
 OBJ_SYMFIELD_TYPE *symbol_get_obj (symbolS *);

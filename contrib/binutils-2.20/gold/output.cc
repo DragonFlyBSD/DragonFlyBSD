@@ -1800,13 +1800,15 @@ Output_section::Output_section(const char* name, elfcpp::Elf_Word type,
     is_relro_local_(false),
     is_small_section_(false),
     is_large_section_(false),
+    is_interp_(false),
+    is_dynamic_linker_section_(false),
+    generate_code_fills_at_write_(false),
     tls_offset_(0),
     checkpoint_(NULL),
     merge_section_map_(),
     merge_section_by_properties_map_(),
     relaxed_input_section_map_(),
-    is_relaxed_input_section_map_valid_(true),
-    generate_code_fills_at_write_(false)
+    is_relaxed_input_section_map_valid_(true)
 {
   // An unallocated section has no address.  Forcing this means that
   // we don't need special treatment for symbols defined in debug
@@ -3045,11 +3047,13 @@ Output_segment::Output_segment(elfcpp::Elf_Word type, elfcpp::Elf_Word flags)
 
 void
 Output_segment::add_output_section(Output_section* os,
-				   elfcpp::Elf_Word seg_flags)
+				   elfcpp::Elf_Word seg_flags,
+				   bool do_sort)
 {
   gold_assert((os->flags() & elfcpp::SHF_ALLOC) != 0);
   gold_assert(!this->is_max_align_known_);
   gold_assert(os->is_large_data_section() == this->is_large_data_segment());
+  gold_assert(this->type() == elfcpp::PT_LOAD || !do_sort);
 
   // Update the segment flags.
   this->flags_ |= seg_flags;
@@ -3060,19 +3064,12 @@ Output_segment::add_output_section(Output_section* os,
   else
     pdl = &this->output_data_;
 
-  // So that PT_NOTE segments will work correctly, we need to ensure
-  // that all SHT_NOTE sections are adjacent.  This will normally
-  // happen automatically, because all the SHT_NOTE input sections
-  // will wind up in the same output section.  However, it is possible
-  // for multiple SHT_NOTE input sections to have different section
-  // flags, and thus be in different output sections, but for the
-  // different section flags to map into the same segment flags and
-  // thus the same output segment.
-
   // Note that while there may be many input sections in an output
   // section, there are normally only a few output sections in an
-  // output segment.  This loop is expected to be fast.
+  // output segment.  The loops below are expected to be fast.
 
+  // So that PT_NOTE segments will work correctly, we need to ensure
+  // that all SHT_NOTE sections are adjacent.
   if (os->type() == elfcpp::SHT_NOTE && !pdl->empty())
     {
       Output_segment::Output_data_list::iterator p = pdl->end();
@@ -3094,8 +3091,8 @@ Output_segment::add_output_section(Output_section* os,
   // case: we group the SHF_TLS/SHT_NOBITS sections right after the
   // SHF_TLS/SHT_PROGBITS sections.  This lets us set up PT_TLS
   // correctly.  SHF_TLS sections get added to both a PT_LOAD segment
-  // and the PT_TLS segment -- we do this grouping only for the
-  // PT_LOAD segment.
+  // and the PT_TLS segment; we do this grouping only for the PT_LOAD
+  // segment.
   if (this->type_ != elfcpp::PT_TLS
       && (os->flags() & elfcpp::SHF_TLS) != 0)
     {
@@ -3225,6 +3222,68 @@ Output_segment::add_output_section(Output_section* os,
       gold_unreachable();
     }
 
+  // We do some further output section sorting in order to make the
+  // generated program run more efficiently.  We should only do this
+  // when not using a linker script, so it is controled by the DO_SORT
+  // parameter.
+  if (do_sort)
+    {
+      // FreeBSD requires the .interp section to be in the first page
+      // of the executable.  That is a more efficient location anyhow
+      // for any OS, since it means that the kernel will have the data
+      // handy after it reads the program headers.
+      if (os->is_interp() && !pdl->empty())
+	{
+	  pdl->insert(pdl->begin(), os);
+	  return;
+	}
+
+      // Put loadable non-writable notes immediately after the .interp
+      // sections, so that the PT_NOTE segment is on the first page of
+      // the executable.
+      if (os->type() == elfcpp::SHT_NOTE
+	  && (os->flags() & elfcpp::SHF_WRITE) == 0
+	  && !pdl->empty())
+	{
+	  Output_segment::Output_data_list::iterator p = pdl->begin();
+	  if ((*p)->is_section() && (*p)->output_section()->is_interp())
+	    ++p;
+	  pdl->insert(p, os);
+	  return;
+	}
+
+      // If this section is used by the dynamic linker, and it is not
+      // writable, then put it first, after the .interp section and
+      // any loadable notes.  This makes it more likely that the
+      // dynamic linker will have to read less data from the disk.
+      if (os->is_dynamic_linker_section()
+	  && !pdl->empty()
+	  && (os->flags() & elfcpp::SHF_WRITE) == 0)
+	{
+	  bool is_reloc = (os->type() == elfcpp::SHT_REL
+			   || os->type() == elfcpp::SHT_RELA);
+	  Output_segment::Output_data_list::iterator p = pdl->begin();
+	  while (p != pdl->end()
+		 && (*p)->is_section()
+		 && ((*p)->output_section()->is_dynamic_linker_section()
+		     || (*p)->output_section()->type() == elfcpp::SHT_NOTE))
+	    {
+	      // Put reloc sections after the other ones.  Putting the
+	      // dynamic reloc sections first confuses BFD, notably
+	      // objcopy and strip.
+	      if (!is_reloc
+		  && ((*p)->output_section()->type() == elfcpp::SHT_REL
+		      || (*p)->output_section()->type() == elfcpp::SHT_RELA))
+		break;
+	      ++p;
+	    }
+	  pdl->insert(p, os);
+	  return;
+	}
+    }
+
+  // If there were no constraints on the output section, just add it
+  // to the end of the list.
   pdl->push_back(os);
 }
 
@@ -3503,15 +3562,20 @@ Output_segment::set_section_list_addresses(const Layout* layout, bool reset,
 	      else
 		{
 		  Output_section* os = (*p)->output_section();
+
+		  // Cast to unsigned long long to avoid format warnings.
+		  unsigned long long previous_dot =
+		    static_cast<unsigned long long>(addr + (off - startoff));
+		  unsigned long long dot =
+		    static_cast<unsigned long long>((*p)->address());
+
 		  if (os == NULL)
 		    gold_error(_("dot moves backward in linker script "
-				 "from 0x%llx to 0x%llx"),
-			       addr + (off - startoff), (*p)->address());
+				 "from 0x%llx to 0x%llx"), previous_dot, dot);
 		  else
 		    gold_error(_("address of section '%s' moves backward "
 				 "from 0x%llx to 0x%llx"),
-			       os->name(), addr + (off - startoff),
-			       (*p)->address());
+			       os->name(), previous_dot, dot);
 		}
 	    }
 	  (*p)->set_file_offset(off);

@@ -238,7 +238,7 @@ typedef addressT valueT;
 #define know(p) gas_assert(p)	/* Verify our assumptions!  */
 #endif /* not yet defined */
 #else
-#define know(p)			/* know() checks are no-op.ed  */
+#define know(p)	do {} while (0)	/* know() checks are no-op.ed  */
 #endif
 
 /* input_scrub.c */

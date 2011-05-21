@@ -1,6 +1,6 @@
 // layout.cc -- lay out output file sections for gold
 
-// Copyright 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+// Copyright 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 // Written by Ian Lance Taylor <iant@google.com>.
 
 // This file is part of gold.
@@ -349,6 +349,11 @@ Layout::include_section(Sized_relobj<size, big_endian>*, const char* name,
           if (is_prefix_of(".gnu.lto_", name))
             return false;
         }
+      // The GNU linker strips .gnu_debuglink sections, so we do too.
+      // This is a feature used to keep debugging information in
+      // separate files.
+      if (strcmp(name, ".gnu_debuglink") == 0)
+	return false;
       return true;
 
     default:
@@ -388,11 +393,14 @@ Layout::find_output_segment(elfcpp::PT type, elfcpp::Elf_Word set,
 
 // Return the output section to use for section NAME with type TYPE
 // and section flags FLAGS.  NAME must be canonicalized in the string
-// pool, and NAME_KEY is the key.
+// pool, and NAME_KEY is the key.  IS_INTERP is true if this is the
+// .interp section.  IS_DYNAMIC_LINKER_SECTION is true if this section
+// is used by the dynamic linker.
 
 Output_section*
 Layout::get_output_section(const char* name, Stringpool::Key name_key,
-			   elfcpp::Elf_Word type, elfcpp::Elf_Xword flags)
+			   elfcpp::Elf_Word type, elfcpp::Elf_Xword flags,
+			   bool is_interp, bool is_dynamic_linker_section)
 {
   elfcpp::Elf_Xword lookup_flags = flags;
 
@@ -441,7 +449,8 @@ Layout::get_output_section(const char* name, Stringpool::Key name_key,
 	}
 
       if (os == NULL)
-	os = this->make_output_section(name, type, flags);
+	os = this->make_output_section(name, type, flags, is_interp,
+				       is_dynamic_linker_section);
       ins.first->second = os;
       return os;
     }
@@ -451,13 +460,16 @@ Layout::get_output_section(const char* name, Stringpool::Key name_key,
 // RELOBJ, with type TYPE and flags FLAGS.  RELOBJ may be NULL for a
 // linker created section.  IS_INPUT_SECTION is true if we are
 // choosing an output section for an input section found in a input
-// file.  This will return NULL if the input section should be
-// discarded.
+// file.  IS_INTERP is true if this is the .interp section.
+// IS_DYNAMIC_LINKER_SECTION is true if this section is used by the
+// dynamic linker.  This will return NULL if the input section should
+// be discarded.
 
 Output_section*
 Layout::choose_output_section(const Relobj* relobj, const char* name,
 			      elfcpp::Elf_Word type, elfcpp::Elf_Xword flags,
-			      bool is_input_section)
+			      bool is_input_section, bool is_interp,
+			      bool is_dynamic_linker_section)
 {
   // We should not see any input sections after we have attached
   // sections to segments.
@@ -505,7 +517,9 @@ Layout::choose_output_section(const Relobj* relobj, const char* name,
 
 	  name = this->namepool_.add(name, false, NULL);
 
-	  Output_section* os = this->make_output_section(name, type, flags);
+	  Output_section* os =
+	    this->make_output_section(name, type, flags, is_interp,
+				      is_dynamic_linker_section);
 	  os->set_found_in_sections_clause();
 	  *output_section_slot = os;
 	  return os;
@@ -528,7 +542,8 @@ Layout::choose_output_section(const Relobj* relobj, const char* name,
 
   // Find or make the output section.  The output section is selected
   // based on the section name, type, and flags.
-  return this->get_output_section(name, name_key, type, flags);
+  return this->get_output_section(name, name_key, type, flags, is_interp,
+				  is_dynamic_linker_section);
 }
 
 // Return the output section to use for input section SHNDX, with name
@@ -561,12 +576,13 @@ Layout::layout(Sized_relobj<size, big_endian>* object, unsigned int shndx,
     {
       name = this->namepool_.add(name, true, NULL);
       os = this->make_output_section(name, shdr.get_sh_type(),
-				     shdr.get_sh_flags());
+				     shdr.get_sh_flags(), false, false);
     }
   else
     {
       os = this->choose_output_section(object, name, shdr.get_sh_type(),
-				       shdr.get_sh_flags(), true);
+				       shdr.get_sh_flags(), true, false,
+				       false);
       if (os == NULL)
 	return NULL;
     }
@@ -617,7 +633,7 @@ Layout::layout_reloc(Sized_relobj<size, big_endian>* object,
   Output_section* os = this->choose_output_section(object, name.c_str(),
 						   sh_type,
 						   shdr.get_sh_flags(),
-						   false);
+						   false, false, false);
 
   os->set_should_link_to_symtab();
   os->set_info_section(data_section);
@@ -664,7 +680,8 @@ Layout::layout_group(Symbol_table* symtab,
   group_section_name = this->namepool_.add(group_section_name, true, NULL);
   Output_section* os = this->make_output_section(group_section_name,
 						 elfcpp::SHT_GROUP,
-						 shdr.get_sh_flags());
+						 shdr.get_sh_flags(),
+						 false, false);
 
   // We need to find a symbol with the signature in the symbol table.
   // If we don't find one now, we need to look again later.
@@ -718,7 +735,7 @@ Layout::layout_eh_frame(Sized_relobj<size, big_endian>* object,
 						   name,
 						   elfcpp::SHT_PROGBITS,
 						   elfcpp::SHF_ALLOC,
-						   false);
+						   false, false, false);
   if (os == NULL)
     return NULL;
 
@@ -734,7 +751,7 @@ Layout::layout_eh_frame(Sized_relobj<size, big_endian>* object,
 					".eh_frame_hdr",
 					elfcpp::SHT_PROGBITS,
 					elfcpp::SHF_ALLOC,
-					false);
+					false, false, false);
 
 	  if (hdr_os != NULL)
 	    {
@@ -749,7 +766,7 @@ Layout::layout_eh_frame(Sized_relobj<size, big_endian>* object,
 		  Output_segment* hdr_oseg;
 		  hdr_oseg = this->make_output_segment(elfcpp::PT_GNU_EH_FRAME,
 						       elfcpp::PF_R);
-		  hdr_oseg->add_output_section(hdr_os, elfcpp::PF_R);
+		  hdr_oseg->add_output_section(hdr_os, elfcpp::PF_R, false);
 		}
 
 	      this->eh_frame_data_->set_eh_frame_hdr(hdr_posd);
@@ -800,10 +817,12 @@ Layout::layout_eh_frame(Sized_relobj<size, big_endian>* object,
 Output_section*
 Layout::add_output_section_data(const char* name, elfcpp::Elf_Word type,
 				elfcpp::Elf_Xword flags,
-				Output_section_data* posd)
+				Output_section_data* posd,
+				bool is_dynamic_linker_section)
 {
   Output_section* os = this->choose_output_section(NULL, name, type, flags,
-						   false);
+						   false, false,
+						   is_dynamic_linker_section);
   if (os != NULL)
     os->add_output_section_data(posd);
   return os;
@@ -838,11 +857,14 @@ is_compressible_debug_section(const char* secname)
 }
 
 // Make a new Output_section, and attach it to segments as
-// appropriate.
+// appropriate.  IS_INTERP is true if this is the .interp section.
+// IS_DYNAMIC_LINKER_SECTION is true if this section is used by the
+// dynamic linker.
 
 Output_section*
 Layout::make_output_section(const char* name, elfcpp::Elf_Word type,
-			    elfcpp::Elf_Xword flags)
+			    elfcpp::Elf_Xword flags, bool is_interp,
+			    bool is_dynamic_linker_section)
 {
   Output_section* os;
   if ((flags & elfcpp::SHF_ALLOC) == 0
@@ -850,7 +872,6 @@ Layout::make_output_section(const char* name, elfcpp::Elf_Word type,
       && is_compressible_debug_section(name))
     os = new Output_compressed_section(&parameters->options(), name, type,
 				       flags);
-
   else if ((flags & elfcpp::SHF_ALLOC) == 0
            && parameters->options().strip_debug_non_line()
            && strcmp(".debug_abbrev", name) == 0)
@@ -875,6 +896,11 @@ Layout::make_output_section(const char* name, elfcpp::Elf_Word type,
       Target* target = const_cast<Target*>(&parameters->target());
       os = target->make_output_section(name, type, flags);
     }
+
+  if (is_interp)
+    os->set_is_interp();
+  if (is_dynamic_linker_section)
+    os->set_is_dynamic_linker_section();
 
   parameters->target().new_output_section(os);
 
@@ -971,6 +997,8 @@ Layout::attach_allocated_section_to_segment(Output_section* os)
 
   elfcpp::Elf_Word seg_flags = Layout::section_flags_to_segment(flags);
 
+  bool sort_sections = !this->script_options_->saw_sections_clause();
+
   // In general the only thing we really care about for PT_LOAD
   // segments is whether or not they are writable, so that is how we
   // search for them.  Large data sections also go into their own
@@ -998,7 +1026,7 @@ Layout::attach_allocated_section_to_segment(Output_section* os)
       if (os->is_large_data_section() && !(*p)->is_large_data_segment())
 	continue;
 
-      (*p)->add_output_section(os, seg_flags);
+      (*p)->add_output_section(os, seg_flags, sort_sections);
       break;
     }
 
@@ -1008,7 +1036,7 @@ Layout::attach_allocated_section_to_segment(Output_section* os)
                                                        seg_flags);
       if (os->is_large_data_section())
 	oseg->set_is_large_data_segment();
-      oseg->add_output_section(os, seg_flags);
+      oseg->add_output_section(os, seg_flags, sort_sections);
     }
 
   // If we see a loadable SHT_NOTE section, we create a PT_NOTE
@@ -1024,7 +1052,7 @@ Layout::attach_allocated_section_to_segment(Output_section* os)
               && (((*p)->flags() & elfcpp::PF_W)
                   == (seg_flags & elfcpp::PF_W)))
             {
-              (*p)->add_output_section(os, seg_flags);
+              (*p)->add_output_section(os, seg_flags, false);
               break;
             }
         }
@@ -1033,7 +1061,7 @@ Layout::attach_allocated_section_to_segment(Output_section* os)
         {
           Output_segment* oseg = this->make_output_segment(elfcpp::PT_NOTE,
                                                            seg_flags);
-          oseg->add_output_section(os, seg_flags);
+          oseg->add_output_section(os, seg_flags, false);
         }
     }
 
@@ -1043,7 +1071,7 @@ Layout::attach_allocated_section_to_segment(Output_section* os)
     {
       if (this->tls_segment_ == NULL)
 	this->make_output_segment(elfcpp::PT_TLS, seg_flags);
-      this->tls_segment_->add_output_section(os, seg_flags);
+      this->tls_segment_->add_output_section(os, seg_flags, false);
     }
 
   // If -z relro is in effect, and we see a relro section, we create a
@@ -1053,7 +1081,7 @@ Layout::attach_allocated_section_to_segment(Output_section* os)
       gold_assert(seg_flags == (elfcpp::PF_R | elfcpp::PF_W));
       if (this->relro_segment_ == NULL)
 	this->make_output_segment(elfcpp::PT_GNU_RELRO, seg_flags);
-      this->relro_segment_->add_output_section(os, seg_flags);
+      this->relro_segment_->add_output_section(os, seg_flags, false);
     }
 }
 
@@ -1064,7 +1092,8 @@ Layout::make_output_section_for_script(const char* name)
 {
   name = this->namepool_.add(name, false, NULL);
   Output_section* os = this->make_output_section(name, elfcpp::SHT_PROGBITS,
-						 elfcpp::SHF_ALLOC);
+						 elfcpp::SHF_ALLOC, false,
+						 false);
   os->set_found_in_sections_clause();
   return os;
 }
@@ -1134,7 +1163,7 @@ Layout::create_initial_dynamic_sections(Symbol_table* symtab)
 						       elfcpp::SHT_DYNAMIC,
 						       (elfcpp::SHF_ALLOC
 							| elfcpp::SHF_WRITE),
-						       false);
+						       false, false, true);
   this->dynamic_section_->set_is_relro();
 
   symtab->define_in_output_data("_DYNAMIC", NULL, this->dynamic_section_, 0, 0,
@@ -1732,7 +1761,8 @@ Layout::create_note(const char* name, int note_type,
     flags = elfcpp::SHF_ALLOC;
   Output_section* os = this->choose_output_section(NULL, section_name,
 						   elfcpp::SHT_NOTE,
-						   flags, false);
+						   flags, false, false,
+						   false);
   if (os == NULL)
     return NULL;
 
@@ -1811,7 +1841,8 @@ Layout::create_executable_stack_info()
       elfcpp::Elf_Xword flags = 0;
       if (is_stack_executable)
 	flags |= elfcpp::SHF_EXECINSTR;
-      this->make_output_section(name, elfcpp::SHT_PROGBITS, flags);
+      this->make_output_section(name, elfcpp::SHT_PROGBITS, flags, false,
+				false);
     }
   else
     {
@@ -1971,7 +2002,8 @@ Layout::create_incremental_info_sections()
     this->namepool_.add(".gnu_incremental_inputs", false, NULL);
   Output_section* inputs_os =
     this->make_output_section(incremental_inputs_name,
-			      elfcpp::SHT_GNU_INCREMENTAL_INPUTS, 0);
+			      elfcpp::SHT_GNU_INCREMENTAL_INPUTS, 0,
+			      false, false);
   Output_section_data* posd =
       this->incremental_inputs_->create_incremental_inputs_section_data();
   inputs_os->add_output_section_data(posd);
@@ -1981,7 +2013,7 @@ Layout::create_incremental_info_sections()
     this->namepool_.add(".gnu_incremental_strtab", false, NULL);
   Output_section* strtab_os = this->make_output_section(incremental_strtab_name,
                                                         elfcpp::SHT_STRTAB,
-                                                        0);
+                                                        0, false, false);
   Output_data_strtab* strtab_data =
     new Output_data_strtab(this->incremental_inputs_->get_stringpool());
   strtab_os->add_output_section_data(strtab_data);
@@ -2593,7 +2625,7 @@ Layout::create_symtab_sections(const Input_objects* input_objects,
       const char* symtab_name = this->namepool_.add(".symtab", false, NULL);
       Output_section* osymtab = this->make_output_section(symtab_name,
 							  elfcpp::SHT_SYMTAB,
-							  0);
+							  0, false, false);
       this->symtab_section_ = osymtab;
 
       Output_section_data* pos = new Output_data_fixed_space(off - startoff,
@@ -2614,7 +2646,8 @@ Layout::create_symtab_sections(const Input_objects* input_objects,
 							       false, NULL);
 	  Output_section* osymtab_xindex =
 	    this->make_output_section(symtab_xindex_name,
-				      elfcpp::SHT_SYMTAB_SHNDX, 0);
+				      elfcpp::SHT_SYMTAB_SHNDX, 0, false,
+				      false);
 
 	  size_t symcount = (off - startoff) / symsize;
 	  this->symtab_xindex_ = new Output_symtab_xindex(symcount);
@@ -2636,7 +2669,7 @@ Layout::create_symtab_sections(const Input_objects* input_objects,
       const char* strtab_name = this->namepool_.add(".strtab", false, NULL);
       Output_section* ostrtab = this->make_output_section(strtab_name,
 							  elfcpp::SHT_STRTAB,
-							  0);
+							  0, false, false);
 
       Output_section_data* pstr = new Output_data_strtab(&this->sympool_);
       ostrtab->add_output_section_data(pstr);
@@ -2663,7 +2696,8 @@ Layout::create_shstrtab()
 
   const char* name = this->namepool_.add(".shstrtab", false, NULL);
 
-  Output_section* os = this->make_output_section(name, elfcpp::SHT_STRTAB, 0);
+  Output_section* os = this->make_output_section(name, elfcpp::SHT_STRTAB, 0,
+						 false, false);
 
   // We can't write out this section until we've set all the section
   // names, and we don't set the names of compressed output sections
@@ -2776,7 +2810,7 @@ Layout::create_dynamic_symtab(const Input_objects* input_objects,
   Output_section* dynsym = this->choose_output_section(NULL, ".dynsym",
 						       elfcpp::SHT_DYNSYM,
 						       elfcpp::SHF_ALLOC,
-						       false);
+						       false, false, true);
 
   Output_section_data* odata = new Output_data_fixed_space(index * symsize,
 							   align,
@@ -2806,7 +2840,7 @@ Layout::create_dynamic_symtab(const Input_objects* input_objects,
 	this->choose_output_section(NULL, ".dynsym_shndx",
 				    elfcpp::SHT_SYMTAB_SHNDX,
 				    elfcpp::SHF_ALLOC,
-				    false);
+				    false, false, true);
 
       this->dynsym_xindex_ = new Output_symtab_xindex(index);
 
@@ -2829,7 +2863,7 @@ Layout::create_dynamic_symtab(const Input_objects* input_objects,
   Output_section* dynstr = this->choose_output_section(NULL, ".dynstr",
 						       elfcpp::SHT_STRTAB,
 						       elfcpp::SHF_ALLOC,
-						       false);
+						       false, false, true);
 
   Output_section_data* strdata = new Output_data_strtab(&this->dynpool_);
   dynstr->add_output_section_data(strdata);
@@ -2855,7 +2889,7 @@ Layout::create_dynamic_symtab(const Input_objects* input_objects,
       Output_section* hashsec = this->choose_output_section(NULL, ".hash",
 							    elfcpp::SHT_HASH,
 							    elfcpp::SHF_ALLOC,
-							    false);
+							    false, false, true);
 
       Output_section_data* hashdata = new Output_data_const_buffer(phash,
 								   hashlen,
@@ -2880,7 +2914,7 @@ Layout::create_dynamic_symtab(const Input_objects* input_objects,
       Output_section* hashsec = this->choose_output_section(NULL, ".gnu.hash",
 							    elfcpp::SHT_GNU_HASH,
 							    elfcpp::SHF_ALLOC,
-							    false);
+							    false, false, true);
 
       Output_section_data* hashdata = new Output_data_const_buffer(phash,
 								   hashlen,
@@ -2978,7 +3012,7 @@ Layout::sized_create_version_sections(
   Output_section* vsec = this->choose_output_section(NULL, ".gnu.version",
 						     elfcpp::SHT_GNU_versym,
 						     elfcpp::SHF_ALLOC,
-						     false);
+						     false, false, true);
 
   unsigned char* vbuf;
   unsigned int vsize;
@@ -3003,7 +3037,7 @@ Layout::sized_create_version_sections(
       vdsec= this->choose_output_section(NULL, ".gnu.version_d",
 					 elfcpp::SHT_GNU_verdef,
 					 elfcpp::SHF_ALLOC,
-					 false);
+					 false, false, true);
 
       unsigned char* vdbuf;
       unsigned int vdsize;
@@ -3028,7 +3062,7 @@ Layout::sized_create_version_sections(
       vnsec = this->choose_output_section(NULL, ".gnu.version_r",
 					  elfcpp::SHT_GNU_verneed,
 					  elfcpp::SHF_ALLOC,
-					  false);
+					  false, false, true);
 
       unsigned char* vnbuf;
       unsigned int vnsize;
@@ -3068,14 +3102,14 @@ Layout::create_interp(const Target* target)
   Output_section* osec = this->choose_output_section(NULL, ".interp",
 						     elfcpp::SHT_PROGBITS,
 						     elfcpp::SHF_ALLOC,
-						     false);
+						     false, true, true);
   osec->add_output_section_data(odata);
 
   if (!this->script_options_->saw_phdrs_clause())
     {
       Output_segment* oseg = this->make_output_segment(elfcpp::PT_INTERP,
 						       elfcpp::PF_R);
-      oseg->add_output_section(osec, elfcpp::PF_R);
+      oseg->add_output_section(osec, elfcpp::PF_R, false);
     }
 }
 
@@ -3091,7 +3125,8 @@ Layout::finish_dynamic_section(const Input_objects* input_objects,
 						       (elfcpp::PF_R
 							| elfcpp::PF_W));
       oseg->add_output_section(this->dynamic_section_,
-			       elfcpp::PF_R | elfcpp::PF_W);
+			       elfcpp::PF_R | elfcpp::PF_W,
+			       false);
     }
 
   Output_data_dynamic* const odyn = this->dynamic_data_;
@@ -3100,7 +3135,14 @@ Layout::finish_dynamic_section(const Input_objects* input_objects,
        p != input_objects->dynobj_end();
        ++p)
     {
-      // FIXME: Handle --as-needed.
+      if (!(*p)->is_needed()
+	  && (*p)->input_file()->options().as_needed())
+	{
+	  // This dynamic object was linked with --as-needed, but it
+	  // is not needed.
+	  continue;
+	}
+
       odyn->add_string(elfcpp::DT_NEEDED, (*p)->soname());
     }
 

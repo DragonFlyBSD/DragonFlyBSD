@@ -584,6 +584,10 @@ class Versions
   version_index(const Symbol_table*, const Stringpool*,
 		const Symbol* sym) const;
 
+  // Define the base version of a shared library.
+  void
+  define_base_version(Stringpool* dynpool);
+
   // We keep a hash table mapping canonicalized name/version pairs to
   // a version base.
   typedef std::pair<Stringpool::Key, Stringpool::Key> Key;
@@ -616,6 +620,9 @@ class Versions
   bool is_finalized_;
   // Contents of --version-script, if passed, or NULL.
   const Version_script_info& version_script_;
+  // Whether we need to insert a base version.  This is only used for
+  // shared libaries and is cleared when the base version is defined.
+  bool needs_base_version_;
 };
 
 } // End namespace gold.

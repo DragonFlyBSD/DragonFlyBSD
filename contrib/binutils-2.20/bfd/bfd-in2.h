@@ -8,7 +8,7 @@
 /* Main header file for the bfd library -- portable access to object files.
 
    Copyright 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
-   1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
+   1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Support.
@@ -914,6 +914,13 @@ extern bfd_boolean elf32_arm_build_stubs
 /* ARM unwind section editing support.  */
 extern bfd_boolean elf32_arm_fix_exidx_coverage
   (struct bfd_section **, unsigned int, struct bfd_link_info *);
+
+/* PowerPC @tls opcode transform/validate.  */
+extern unsigned int _bfd_elf_ppc_at_tls_transform
+  (unsigned int, unsigned int);
+/* PowerPC @tprel opcode transform/validate.  */
+extern unsigned int _bfd_elf_ppc_at_tprel_transform
+  (unsigned int, unsigned int);
 
 /* TI COFF load page support.  */
 extern void bfd_ticoff_set_section_load_page

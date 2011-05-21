@@ -195,8 +195,8 @@ class Object
   Object(const std::string& name, Input_file* input_file, bool is_dynamic,
 	 off_t offset = 0)
     : name_(name), input_file_(input_file), offset_(offset), shnum_(-1U),
-      is_dynamic_(is_dynamic), uses_split_stack_(false),
-      has_no_split_stack_(false), xindex_(NULL), no_export_(false)
+      is_dynamic_(is_dynamic), is_needed_(false), uses_split_stack_(false),
+      has_no_split_stack_(false), no_export_(false), xindex_(NULL)
   { input_file->file().add_object(); }
 
   virtual ~Object()
@@ -216,6 +216,19 @@ class Object
   bool
   is_dynamic() const
   { return this->is_dynamic_; }
+
+  // Return whether this object is needed--true if it is a dynamic
+  // object which defines some symbol referenced by a regular object.
+  // We keep the flag here rather than in Dynobj for convenience when
+  // setting it.
+  bool
+  is_needed() const
+  { return this->is_needed_; }
+
+  // Record that this object is needed.
+  void
+  set_is_needed()
+  { this->is_needed_ = true; }
 
   // Return whether this object was compiled with -fsplit-stack.
   bool
@@ -589,17 +602,21 @@ class Object
   // Number of input sections.
   unsigned int shnum_;
   // Whether this is a dynamic object.
-  bool is_dynamic_;
+  bool is_dynamic_ : 1;
+  // Whether this object is needed.  This is only set for dynamic
+  // objects, and means that the object defined a symbol which was
+  // used by a reference from a regular object.
+  bool is_needed_ : 1;
   // Whether this object was compiled with -fsplit-stack.
-  bool uses_split_stack_;
+  bool uses_split_stack_ : 1;
   // Whether this object contains any functions compiled with the
   // no_split_stack attribute.
-  bool has_no_split_stack_;
-  // Many sections for objects with more than SHN_LORESERVE sections.
-  Xindex* xindex_;
+  bool has_no_split_stack_ : 1;
   // True if exclude this object from automatic symbol export.
   // This is used only for archive objects.
-  bool no_export_;
+  bool no_export_ : 1;
+  // Many sections for objects with more than SHN_LORESERVE sections.
+  Xindex* xindex_;
 };
 
 // A regular object (ET_REL).  This is an abstract base class itself.

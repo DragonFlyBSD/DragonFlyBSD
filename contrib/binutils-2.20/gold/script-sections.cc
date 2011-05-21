@@ -3051,7 +3051,7 @@ Script_sections::create_segments(Layout* layout)
 	  is_current_seg_readonly = true;
 	}
 
-      current_seg->add_output_section(*p, seg_flags);
+      current_seg->add_output_section(*p, seg_flags, false);
 
       if (((*p)->flags() & elfcpp::SHF_WRITE) != 0)
 	is_current_seg_readonly = false;
@@ -3130,7 +3130,7 @@ Script_sections::create_note_and_tls_segments(
 	    Layout::section_flags_to_segment((*p)->flags());
 	  Output_segment* oseg = layout->make_output_segment(elfcpp::PT_NOTE,
 							     seg_flags);
-	  oseg->add_output_section(*p, seg_flags);
+	  oseg->add_output_section(*p, seg_flags, false);
 
 	  // Incorporate any subsequent SHT_NOTE sections, in the
 	  // hopes that the script is sensible.
@@ -3139,7 +3139,7 @@ Script_sections::create_note_and_tls_segments(
 		 && (*pnext)->type() == elfcpp::SHT_NOTE)
 	    {
 	      seg_flags = Layout::section_flags_to_segment((*pnext)->flags());
-	      oseg->add_output_section(*pnext, seg_flags);
+	      oseg->add_output_section(*pnext, seg_flags, false);
 	      p = pnext;
 	      ++pnext;
 	    }
@@ -3154,14 +3154,14 @@ Script_sections::create_note_and_tls_segments(
 	    Layout::section_flags_to_segment((*p)->flags());
 	  Output_segment* oseg = layout->make_output_segment(elfcpp::PT_TLS,
 							     seg_flags);
-	  oseg->add_output_section(*p, seg_flags);
+	  oseg->add_output_section(*p, seg_flags, false);
 
 	  Layout::Section_list::const_iterator pnext = p + 1;
 	  while (pnext != sections->end()
 		 && ((*pnext)->flags() & elfcpp::SHF_TLS) != 0)
 	    {
 	      seg_flags = Layout::section_flags_to_segment((*pnext)->flags());
-	      oseg->add_output_section(*pnext, seg_flags);
+	      oseg->add_output_section(*pnext, seg_flags, false);
 	      p = pnext;
 	      ++pnext;
 	    }
@@ -3315,7 +3315,7 @@ Script_sections::attach_sections_using_phdrs_clause(Layout* layout)
 
 	      elfcpp::Elf_Word seg_flags =
 		Layout::section_flags_to_segment(os->flags());
-	      r->second->add_output_section(os, seg_flags);
+	      r->second->add_output_section(os, seg_flags, false);
 
 	      if (r->second->type() == elfcpp::PT_LOAD)
 		{
