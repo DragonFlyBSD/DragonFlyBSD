@@ -23,7 +23,7 @@ CFLAGS+=	-DOBJFORMAT_PATH_DEFAULT="\"${OBJFORMAT_BUILTIN_PATH_DEFAULT}\""
 LINKS+=	${BINDIR}/objformat ${BINDIR}/addr2line
 LINKS+=	${BINDIR}/objformat ${BINDIR}/ar
 LINKS+=	${BINDIR}/objformat ${BINDIR}/as
-LINKS+=	${BINDIR}/objformat ${BINDIR}/cxxfilt
+LINKS+=	${BINDIR}/objformat ${BINDIR}/c++filt
 LINKS+=	${BINDIR}/objformat ${BINDIR}/elfedit
 LINKS+=	${BINDIR}/objformat ${BINDIR}/ld
 LINKS+=	${BINDIR}/objformat ${BINDIR}/nm
@@ -40,7 +40,6 @@ LINKS+=	${BINDIR}/objformat ${BINDIR}/strip
 LINKS+=	${BINDIR}/objformat ${BINDIR}/CC
 LINKS+=	${BINDIR}/objformat ${BINDIR}/cpp
 LINKS+=	${BINDIR}/objformat ${BINDIR}/c++
-LINKS+=	${BINDIR}/objformat ${BINDIR}/c++filt
 LINKS+=	${BINDIR}/objformat ${BINDIR}/cc
 LINKS+=	${BINDIR}/objformat ${BINDIR}/g++
 LINKS+=	${BINDIR}/objformat ${BINDIR}/gcc

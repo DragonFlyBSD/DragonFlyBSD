@@ -1,8 +1,6 @@
-# notyet: cxxfilt
-
 SUBDIR=		libiberty libbfd libopcodes libbinutils \
 		addr2line ar as ld nm objcopy objdump ranlib readelf \
-		size strings strip doc
+		size strings strip doc cxxfilt
 
 TARGET_ARCH?=	${MACHINE_ARCH}
 

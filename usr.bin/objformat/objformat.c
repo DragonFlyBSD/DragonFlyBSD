@@ -58,7 +58,6 @@ struct command {
 static struct command commands[] = {
 	{"CC",		COMPILER},
 	{"c++",		COMPILER},
-	{"c++filt",	COMPILER},
 	{"cc",		COMPILER},
 	{"cpp",		COMPILER},
 	{"g++",		COMPILER},
@@ -67,9 +66,7 @@ static struct command commands[] = {
 	{"addr2line",	BINUTILS},
 	{"ar",		BINUTILS},
 	{"as",		BINUTILS},
-#if 0
 	{"c++filt",	BINUTILS},
-#endif
 	{"elfedit",	BINUTILS},
 	{"ld",		BINUTILS},
 	{"nm",		BINUTILS},

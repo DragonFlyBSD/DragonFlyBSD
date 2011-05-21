@@ -1646,6 +1646,9 @@ TO_REMOVE+=/usr/share/man/cat3/evasprintf.3.gz
 TO_REMOVE+=/usr/share/man/man3/evasprintf.3.gz
 TO_REMOVE+=/usr/share/man/cat3/esetfun.3.gz
 TO_REMOVE+=/usr/share/man/man3/esetfun.3.gz
+TO_REMOVE+=/usr/bin/cxxfilt
+TO_REMOVE+=/usr/libexec/gcc41/c++filt
+TO_REMOVE+=/usr/libexec/gcc44/c++filt
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/sgsc
