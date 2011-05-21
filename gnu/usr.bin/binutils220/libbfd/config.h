@@ -324,7 +324,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.20.0"
+#define VERSION "2.20.1"
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */

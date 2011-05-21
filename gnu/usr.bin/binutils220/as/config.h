@@ -278,7 +278,7 @@
 /* #undef USING_CGEN */
 
 /* Version number of package */
-#define VERSION "2.20.0"
+#define VERSION "2.20.1"
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */

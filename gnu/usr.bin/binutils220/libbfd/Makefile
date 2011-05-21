@@ -68,9 +68,9 @@ bfd.h: 	${CONTRIBDIR}/bfd-in2.h
 	mv -f bfd.h.new bfd.h
 
 bfdver.h: ${CONTRIBDIR}/version.h
-	sed -e "s/@bfd_version_string@/\"2.20.0\"/g" \
+	sed -e "s/@bfd_version_string@/\"2.20.1\"/g" \
 	    -e "s/@bfd_version_package@/\"(GNU Binutils) \"/g" \
-	    -e "s/@bfd_version@/220000000/g" \
+	    -e "s/@bfd_version@/220001000/g" \
 	    -e "s/@report_bugs_to@/\"\"/g" \
 	    < ${CONTRIBDIR}/version.h > bfdver.h.new
 	mv -f bfdver.h.new bfdver.h

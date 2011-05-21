@@ -97,7 +97,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.20.0"
+#define VERSION "2.20.1"
 
 /* Define to 1 if on MINIX. */
 /* #undef _MINIX */

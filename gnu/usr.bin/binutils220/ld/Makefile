@@ -4,8 +4,9 @@ ELF_SCR_EXT=	x xbn xc xd xdc xdw xn xr xs xsc xsw xu xw
 
 .PATH: ${SRCDIR}/ld
 
-PROG=	ld
+PROG=	ld.bfd
 MAN=	ld220.1
+#MLINKS+=ld220.1 ld.1
 LIBEXEC_BINUTILS= ${BINDIR}/..
 SCRIPTDIR= ${LIBEXEC_BINUTILS}/ldscripts
 SRCS+=	ldgram.y ldlex.l lexsup.c ldlang.c mri.c ldctor.c ldmain.c \
@@ -22,6 +23,8 @@ NOSHARED?= yes
 
 CLEANDIRS+=	ldscripts tmpdir
 CLEANFILES+=	ldemul-list.h stringify.sed
+
+LINKS= ${BINDIR}/ld.bfd ${BINDIR}/ld
 
 EMXFR=
 EMLST=
