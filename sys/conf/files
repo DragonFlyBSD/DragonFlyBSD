@@ -1184,7 +1184,7 @@ netproto/802_11/wlan_xauth/ieee80211_xauth.c optional wlan_xauth
 netproto/atalk/aarp.c		optional netatalk
 netproto/atalk/at_control.c	optional netatalk
 netproto/atalk/at_proto.c	optional netatalk
-netproto/atalk/at_rmx.c	optional netatalkdebug
+netproto/atalk/at_rmx.c		optional netatalk
 netproto/atalk/ddp_input.c	optional netatalk
 netproto/atalk/ddp_output.c	optional netatalk
 netproto/atalk/ddp_usrreq.c	optional netatalk
