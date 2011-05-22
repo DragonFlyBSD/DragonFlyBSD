@@ -153,7 +153,7 @@ lapic_init(boolean_t bsp)
 		  APIC_LVT_POLARITY_MASK | APIC_LVT_DM_MASK);
 	if (bsp) {
 		temp |= APIC_LVT_DM_EXTINT;
-		if (apic_io_enable)
+		if (ioapic_enable)
 			temp |= APIC_LVT_MASKED;
 	} else {
 		temp |= APIC_LVT_DM_FIXED | APIC_LVT_MASKED;
@@ -173,7 +173,7 @@ lapic_init(boolean_t bsp)
 	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
 		  APIC_LVT_POLARITY_MASK | APIC_LVT_DM_MASK);
 	temp |= APIC_LVT_MASKED | APIC_LVT_DM_NMI;
-	if (bsp && apic_io_enable)
+	if (bsp && ioapic_enable)
 		temp &= ~APIC_LVT_MASKED;
 	lapic->lvt_lint1 = temp;
 
@@ -785,7 +785,7 @@ lapic_fixup_noioapic(void)
 
 	/* Only allowed on BSP */
 	KKASSERT(mycpuid == 0);
-	KKASSERT(!apic_io_enable);
+	KKASSERT(!ioapic_enable);
 
 	temp = lapic->lvt_lint0;
 	temp &= ~APIC_LVT_MASKED;

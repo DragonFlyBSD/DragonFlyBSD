@@ -95,7 +95,7 @@ void	forward_signal		(struct proc *);
 int	mptable_pci_int_route(int, int, int, int);
 void	mptable_pci_int_dump(void);
 
-extern int apic_io_enable;
+extern int ioapic_enable;
 
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);

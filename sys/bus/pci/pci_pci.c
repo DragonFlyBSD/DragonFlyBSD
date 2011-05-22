@@ -126,9 +126,9 @@ pcib_probe(device_t dev)
     if ((pci_get_class(dev) == PCIC_BRIDGE) &&
 	(pci_get_subclass(dev) == PCIS_BRIDGE_PCI)) {
 	device_set_desc(dev, "PCI-PCI bridge");
-#ifdef SMP /* APIC-IO */
+#ifdef SMP
 	/* PCIBIOS PCI-PCI bridge is -2000 */
-	if (apic_io_enable)
+	if (ioapic_enable)
 		return (-1000);
 #endif
 	return (-10000);

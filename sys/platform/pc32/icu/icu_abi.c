@@ -166,7 +166,7 @@ icu_finalize(void)
 	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
 
 #ifdef SMP
-	KKASSERT(!apic_io_enable);
+	KKASSERT(!ioapic_enable);
 
 	/*
 	 * If an IMCR is present, programming bit 0 disconnects the 8259

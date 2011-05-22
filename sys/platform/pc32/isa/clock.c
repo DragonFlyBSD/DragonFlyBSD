@@ -1062,8 +1062,8 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 	rtc_statusb = RTCSB_24HR;
 
 	/* Finish initializing 8253 timer 0. */
-#ifdef SMP /* APIC-IO */
-	if (apic_io_enable) {
+#ifdef SMP
+	if (ioapic_enable) {
 		irq = ioapic_abi_find_irq(0, INTR_TRIGGER_EDGE,
 			INTR_POLARITY_HIGH);
 		if (irq < 0) {
@@ -1101,7 +1101,7 @@ mixed_mode_setup:
 		     INTR_NOPOLL | INTR_MPSAFE |
 		     INTR_NOENTROPY);
 	machintr_intren(0);
-#ifdef SMP /* APIC-IO */
+#ifdef SMP
 	}
 #endif
 
@@ -1109,8 +1109,8 @@ mixed_mode_setup:
 	writertc(RTC_STATUSA, rtc_statusa);
 	writertc(RTC_STATUSB, RTCSB_24HR);
 
-#ifdef SMP /* APIC-IO */
-	if (apic_io_enable) {
+#ifdef SMP
+	if (ioapic_enable) {
 		error = i8254_ioapic_trial(irq, cti);
 		if (error) {
 			if (mixed_mode) {

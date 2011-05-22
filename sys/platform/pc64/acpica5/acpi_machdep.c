@@ -337,8 +337,8 @@ static int
 acpi_GetDefaultIntrModel(void)
 {
 	if (intr_model == -1) {
-#ifdef SMP /* APIC-IO */
-		if (apic_io_enable)
+#ifdef SMP
+		if (ioapic_enable)
 			intr_model = ACPI_INTR_APIC;
 		else
 			intr_model = ACPI_INTR_PIC;

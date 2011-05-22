@@ -515,7 +515,7 @@ static void
 ioapic_finalize(void)
 {
 	KKASSERT(MachIntrABI.type == MACHINTR_IOAPIC);
-	KKASSERT(apic_io_enable);
+	KKASSERT(ioapic_enable);
 
 	/*
 	 * If an IMCR is present, program bit 0 to disconnect the 8259

@@ -1675,9 +1675,9 @@ do_next:
 
 #ifdef SMP
 #ifdef APIC_IO
-int apic_io_enable = 1; /* Enabled by default for kernels compiled w/APIC_IO */
+int ioapic_enable = 1; /* Enabled by default for kernels compiled w/APIC_IO */
 #else
-int apic_io_enable = 0; /* Disabled by default for kernels compiled without */
+int ioapic_enable = 0; /* Disabled by default for kernels compiled without */
 #endif
 #endif
 
@@ -1768,7 +1768,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 */
 	MachIntrABI = MachIntrABI_ICU;
 #ifdef SMP
-	TUNABLE_INT_FETCH("hw.apic_io_enable", &apic_io_enable);
+	TUNABLE_INT_FETCH("hw.apic_io_enable", &ioapic_enable);
 #endif
 
 	/*

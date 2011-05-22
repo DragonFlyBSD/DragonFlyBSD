@@ -227,7 +227,7 @@ mp_announce(void)
 	for (x = 1; x <= mp_naps; ++x)
 		kprintf(" cpu%d (AP):  apic id: %2d\n", x, CPUID_TO_APICID(x));
 
-	if (!apic_io_enable)
+	if (!ioapic_enable)
 		kprintf(" Warning: APIC I/O disabled\n");
 }
 
@@ -349,8 +349,8 @@ mp_enable(u_int boot_addr)
 
 	error = lapic_config();
 	if (error) {
-		if (apic_io_enable) {
-			apic_io_enable = 0;
+		if (ioapic_enable) {
+			ioapic_enable = 0;
 			icu_reinit_noioapic();
 		}
 		cpu_simple_setup();
@@ -363,10 +363,10 @@ mp_enable(u_int boot_addr)
 	/* start each Application Processor */
 	start_all_aps(boot_addr);
 
-	if (apic_io_enable) {
+	if (ioapic_enable) {
 		error = ioapic_config();
 		if (error) {
-			apic_io_enable = 0;
+			ioapic_enable = 0;
 			icu_reinit_noioapic();
 			lapic_fixup_noioapic();
 		}

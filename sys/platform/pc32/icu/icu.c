@@ -70,7 +70,7 @@ icu_init(void)
 #endif
 
 #ifdef SMP
-	if (apic_io_enable)
+	if (ioapic_enable)
 		auto_eoi = 2;		/* auto EOI, 8086 mode */
 #endif
 
@@ -190,7 +190,7 @@ icu_reinit_noioapic(void)
 	u_long ef;
 
 	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
-	KKASSERT(apic_io_enable == 0);
+	KKASSERT(ioapic_enable == 0);
 
 	crit_enter();
 	ef = read_eflags();

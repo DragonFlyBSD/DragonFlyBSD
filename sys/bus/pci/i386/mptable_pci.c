@@ -78,7 +78,7 @@ done:
 static int
 mptable_hostb_probe(device_t dev)
 {
-	if (!apic_io_enable)
+	if (!ioapic_enable)
 		return (ENXIO);
 
 	if (pci_cfgregopen() == 0)
@@ -179,7 +179,7 @@ mptable_pcib_probe(device_t dev)
 {
 	int bus;
 
-	if (!apic_io_enable)
+	if (!ioapic_enable)
 		return (ENXIO);
 
 	if ((pci_get_class(dev) != PCIC_BRIDGE) ||

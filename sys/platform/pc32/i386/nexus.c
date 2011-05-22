@@ -162,8 +162,8 @@ nexus_probe(device_t dev)
 	irq_rman.rm_type = RMAN_ARRAY;
 	irq_rman.rm_descr = "Interrupt request lines";
 
-#if SMP /* APIC-IO */
-if (apic_io_enable) {
+#if SMP
+if (ioapic_enable) {
 	irq_rman.rm_end = APIC_INTMAPSIZE - 1;
 	if (rman_init(&irq_rman)
 	    || rman_manage_region(&irq_rman,
@@ -176,7 +176,7 @@ if (apic_io_enable) {
 	    || rman_manage_region(&irq_rman, irq_rman.rm_start, 1)
 	    || rman_manage_region(&irq_rman, 3, irq_rman.rm_end))
 		panic("nexus_probe irq_rman");
-#if SMP /* APIC-IO */
+#if SMP
 }
 #endif
 	/*
