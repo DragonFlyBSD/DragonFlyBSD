@@ -1,11 +1,10 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/25/94
 # $FreeBSD: src/usr.bin/mail/Makefile,v 1.5.6.4 2002/08/07 16:32:01 ru Exp $
-# $DragonFly: src/usr.bin/mail/Makefile,v 1.3 2007/08/27 16:50:56 pavalos Exp $
 
 PROG=	mail
-SRCS=	version.c aux.c cmd1.c cmd2.c cmd3.c cmdtab.c collect.c edit.c fio.c \
+SRCS=	version.c cmd1.c cmd2.c cmd3.c cmdtab.c collect.c edit.c fio.c \
 	getname.c head.c v7.local.c lex.c list.c main.c names.c popen.c \
-	quit.c send.c strings.c temp.c tty.c vars.c
+	quit.c send.c strings.c temp.c tty.c util.c vars.c
 FILES=	mail.help mail.tildehelp
 FILESDIR=	${SHAREDIR}/misc
 EFILES=	mail.rc
