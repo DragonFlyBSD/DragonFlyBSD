@@ -87,6 +87,7 @@
 #include <machine/intr_machdep.h>
 
 #ifdef SMP
+#include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/ioapic_abi.h>
 #endif
 #include <machine_base/icu/icu.h>

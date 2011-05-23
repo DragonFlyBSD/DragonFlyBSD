@@ -57,6 +57,7 @@
 #include <machine/intr_machdep.h>
 #include <machine_base/icu/icu.h>
 #include <machine_base/icu/icu_var.h>
+#include <machine_base/apic/ioapic.h>
 
 static void	icu_init(void);
 

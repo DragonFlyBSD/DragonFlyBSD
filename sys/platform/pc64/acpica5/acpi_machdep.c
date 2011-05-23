@@ -50,6 +50,7 @@ static device_t	acpi_dev;
 #include <machine/apm_bios.h>
 #include <machine/pc/bios.h>
 #include <machine_base/apm/apm.h>
+#include <machine_base/apic/ioapic.h>
 #include <machine/smp.h>
 
 uint32_t acpi_reset_video = 1;

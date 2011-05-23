@@ -41,7 +41,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/sysctl.h>
-#include <machine/smp.h>
+#include <machine_base/apic/ioapic.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -126,10 +126,12 @@ pcib_probe(device_t dev)
     if ((pci_get_class(dev) == PCIC_BRIDGE) &&
 	(pci_get_subclass(dev) == PCIS_BRIDGE_PCI)) {
 	device_set_desc(dev, "PCI-PCI bridge");
+#if defined(__i386__) || defined(__x86_64__)
 #ifdef SMP
 	/* PCIBIOS PCI-PCI bridge is -2000 */
 	if (ioapic_enable)
 		return (-1000);
+#endif
 #endif
 	return (-10000);
     }

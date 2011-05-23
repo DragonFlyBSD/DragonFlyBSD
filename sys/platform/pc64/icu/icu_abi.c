@@ -58,6 +58,7 @@
 
 #include <machine_base/icu/icu.h>
 #include <machine_base/icu/icu_ipl.h>
+#include <machine_base/apic/ioapic.h>
 
 extern inthand_t
 	IDTVEC(icu_intr0),	IDTVEC(icu_intr1),

@@ -45,6 +45,7 @@
 #include <bus/pci/pcib_private.h>
 
 #include <machine/smp.h>
+#include <machine_base/apic/ioapic.h>
 
 #include "legacyvar.h"
 #include "pci_cfgreg.h"

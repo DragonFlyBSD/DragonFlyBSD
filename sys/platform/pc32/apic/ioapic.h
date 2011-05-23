@@ -63,4 +63,6 @@ int	ioapic_extpin_gsi(void);
 int	ioapic_gsi(int, int);
 void	*ioapic_map(vm_paddr_t);
 
+extern int	ioapic_enable;
+
 #endif	/* !_ARCH_APIC_IOAPIC_H_ */

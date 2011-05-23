@@ -84,6 +84,8 @@ static struct ioapic_conf	ioapic_conf;
 static TAILQ_HEAD(, ioapic_enumerator) ioapic_enumerators =
 	TAILQ_HEAD_INITIALIZER(ioapic_enumerators);
 
+int		ioapic_enable = 1; /* I/O APIC is enabled by default */
+
 int
 ioapic_config(void)
 {
