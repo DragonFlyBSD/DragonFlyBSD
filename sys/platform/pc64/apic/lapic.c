@@ -38,7 +38,6 @@
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/ioapic_abi.h>
 #include <machine/segments.h>
-#include <machine/specialreg.h>
 #include <sys/thread2.h>
 
 #include <machine/intr_machdep.h>
@@ -743,18 +742,6 @@ lapic_config(void)
 		mp_naps = ap_max;
 	}
 
-	if ((cpu_feature2 & CPUID2_VMM) && mp_naps == 0) {
-		/*
-		 * XXX
-		 * Special hack for vmware.  It looks like that
-		 * if only one CPU is configured (mp_naps == 0)
-		 * in vmware (cpu_feature2 & CPUID2_VMM),
-		 * then LAPIC will not work at all.
-		 */
-		kprintf("LAPIC: single CPU virtual machine detected, "
-			"disable LAPIC\n");
-		return ENXIO;
-	}
 	return 0;
 }
 
