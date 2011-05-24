@@ -65,12 +65,10 @@ options         ALTQ_FAIRQ      #fair queueing
 #options        ALTQ_NOPCC      #don't use processor cycle counter
 #options        ALTQ_DEBUG      #for debugging
 
-# SMP boxes should normally be build with SMP and APIC_IO.  If SMP has
-# interrupt routing problems in APIC_IO you can disable it with the
-# hw.apic_io_enable=0 tunable or by building without the APIC_IO option.
+# Kernels configured with 'options SMP' should generally boot on both
+# SMP and UP boxes.
 #
-#options 	SMP			# Symmetric MultiProcessor Kernel
-#options	APIC_IO			# hw.apic_io_enable = 1 by default
+options		SMP			# Symmetric MultiProcessor Kernel
 
 # Debugging for Development
 options 	DDB

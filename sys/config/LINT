@@ -111,7 +111,8 @@ options 	ROOTDEVNAME=\"ufs:da0s2e\"
 #####################################################################
 # SMP OPTIONS:
 #
-# SMP enables building of a Symmetric MultiProcessor Kernel.
+# SMP enables building of a Symmetric MultiProcessor Kernel. It will
+# boot on both SMP and UP boxes.
 #
 # Notes:
 #
@@ -122,23 +123,7 @@ options 	ROOTDEVNAME=\"ufs:da0s2e\"
 #  Check the 'Rogue SMP hardware' section to see if additional options
 #   are required by your hardware.
 #
-
-# SMP boxes with severely broken BIOSes which
-# boot fine for non-SMP builds *might* work in SMP mode
-# if you disable APIC_IO by setting the loader tunable
-# hw.apic_io_enable to 0.
-#
-options 	SMP			# Symmetric MultiProcessor Kernel
-
-#
-# Rogue SMP hardware:
-#
-
-# Bridged PCI cards:
-#
-# The MP tables of most of the current generation MP motherboards
-#  do NOT properly support bridged PCI cards.  To use one of these
-#  cards you should refer to ???
+#options 	SMP			# Symmetric MultiProcessor Kernel
 
 
 #####################################################################
