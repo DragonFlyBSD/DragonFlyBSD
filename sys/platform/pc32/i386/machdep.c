@@ -52,7 +52,6 @@
 #include "opt_perfmon.h"
 #include "opt_swap.h"
 #include "opt_userconfig.h"
-#include "opt_apic.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
