@@ -30,9 +30,9 @@ MACHINE_ARCH=	x86_64
 # XXX makeshift fix to build the right kernel for the (target) architecture
 # We should configure this in the platform files somehow
 .if ${MACHINE_ARCH} == "i386"
-KERNCONF ?= GENERIC GENERIC_SMP
+KERNCONF ?= GENERIC
 .else
-KERNCONF ?= X86_64_GENERIC X86_64_GENERIC_SMP
+KERNCONF ?= X86_64_GENERIC
 .endif
 
 PKGSRC_PREFIX?=		/usr/pkg
@@ -250,20 +250,10 @@ buildiso:
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	cd ${.CURDIR}/..; \
 	for kernconf in ${KERNCONF}; do \
-		make DESTDIR=${ISOROOT} installkernel \
-			KERNCONF=$${kernconf} \
-			DESTKERNDIR=/boot/kernel.$${kernconf} \
-			INSTALLSTRIPPEDMODULES=y; \
-		ln -s kernel ${ISOROOT}/boot/kernel.$${kernconf}/kernel.BOOTP; \
-		rm -rf ${ISOROOT}/boot/kernel.$${kernconf}.old; \
+		make DESTDIR=${ISOROOT} installkernel KERNCONF=$${kernconf}; \
 	done
-.if ${MACHINE_ARCH} == "i386"
-	mv ${ISOROOT}/boot/kernel.GENERIC ${ISOROOT}/boot/kernel.UP
-	mv ${ISOROOT}/boot/kernel.GENERIC_SMP ${ISOROOT}/boot/kernel.SMP
-.else
-	mv ${ISOROOT}/boot/kernel.X86_64_GENERIC ${ISOROOT}/boot/kernel.UP
-	mv ${ISOROOT}/boot/kernel.X86_64_GENERIC_SMP ${ISOROOT}/boot/kernel.SMP
-.endif
+	rm -rf ${ISOROOT}/boot/kernel.old
+	ln -s kernel ${ISOROOT}/boot/kernel/kernel.BOOTP
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev

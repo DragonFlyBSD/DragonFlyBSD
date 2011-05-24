@@ -28,17 +28,10 @@ acpi_load="YES"
 ahci_load="YES"
 ehci_load="YES"
 
-# Default boot /boot/kernel/ is the user-installed kernel and
-# is always checked first.  Otherwise fallback to generic kernels.
-#
 ifset default_kernel
     # already selected a kernel
 elseifexists kernel
     set default_kernel=kernel
-elseifexists kernel.UP
-    set default_kernel=kernel.UP
-elseifexists kernel.SMP
-    set default_kernel=kernel.SMP
 else
     set default_kernel=kernel
 endif
@@ -163,22 +156,6 @@ menuadd lunsetif ahci_load hint.ahci.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
-
-ifexists kernel.UP
-menuitem u "Select UP kernel"
-menuadd set default_kernel=kernel.UP
-menuadd include ${base}defaults/dloader.menu
-menuadd optinclude ${base}dloader.menu
-menuadd menu
-endif
-
-ifexists kernel.SMP
-menuitem m "Select SMP kernel"
-menuadd set default_kernel=kernel.SMP
-menuadd include ${base}defaults/dloader.menu
-menuadd optinclude ${base}dloader.menu
-menuadd menu
-endif
 
 menuitem R "Reboot"
 menuadd reboot
