@@ -1432,11 +1432,11 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 #ifdef SMP
 	/* make hole for AP bootstrap code */
 	physmap[1] = mp_bootaddress(physmap[1] / 1024);
+#endif
 
 	/* Save EBDA address, if any */
 	ebda_addr = (u_long)(*(u_short *)(KERNBASE + 0x40e));
 	ebda_addr <<= 4;
-#endif
 
 	/*
 	 * Maxmem isn't the "maximum memory", it's one larger than the
