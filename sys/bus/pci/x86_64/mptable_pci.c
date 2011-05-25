@@ -44,7 +44,7 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcib_private.h>
 
-#include <machine/smp.h>
+#include <machine/mptable.h>
 #include <machine_base/apic/ioapic.h>
 
 #include "legacyvar.h"

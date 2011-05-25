@@ -62,6 +62,7 @@
 #include <machine/specialreg.h>
 #include <machine/globaldata.h>
 #include <machine/pmap_inval.h>
+#include <machine/mptable.h>
 
 #include <machine/md_var.h>		/* setidt() */
 #include <machine_base/icu/icu.h>	/* IPIs */
