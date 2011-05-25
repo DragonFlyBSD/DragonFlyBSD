@@ -94,6 +94,8 @@ static struct icu_irqmap {
 extern void	ICU_INTREN(int);
 extern void	ICU_INTRDIS(int);
 
+extern int	imcr_present;
+
 static int	icu_vectorctl(int, int, int);
 static int	icu_setvar(int, const void *);
 static int	icu_getvar(int, void *);

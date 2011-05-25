@@ -179,7 +179,6 @@ SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 static u_int	bootMP_size;
 
 u_int			base_memory;
-int			imcr_present;
 
 /*
  * Calculate usable address in base memory for AP trampoline code.
