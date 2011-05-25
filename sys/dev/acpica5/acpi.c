@@ -515,6 +515,14 @@ acpi_attach(device_t dev)
     }
 
     /*
+     * Fix up the interrupt timer after enabling ACPI, so that the
+     * interrupt cputimer that choked by ACPI power management could
+     * be resurrected before probing various devices.
+     */
+    DELAY(5000);
+    cputimer_intr_pmfixup();
+
+    /*
      * Call the ECDT probe function to provide EC functionality before
      * the namespace has been evaluated.
      *
