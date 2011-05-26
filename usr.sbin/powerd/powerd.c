@@ -246,9 +246,9 @@ getcputime(void)
 
 	for (cpu = 0; cpu < ncpu; ++cpu) {
 		delta += (ncpu_time[cpu].cp_user + ncpu_time[cpu].cp_sys +
-			  ncpu_time[cpu].cp_intr) -
+			  ncpu_time[cpu].cp_nice + ncpu_time[cpu].cp_intr) -
 			 (ocpu_time[cpu].cp_user + ocpu_time[cpu].cp_sys +
-			  ocpu_time[cpu].cp_intr);
+			  ncpu_time[cpu].cp_nice + ocpu_time[cpu].cp_intr);
 	}
 	return((double)delta / 1000000.0);
 }
