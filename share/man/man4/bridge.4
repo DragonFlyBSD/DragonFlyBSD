@@ -81,7 +81,7 @@ will become confused.
 The bridge supports various special features via
 .Cm link
 options.
-.Pp
+.Bl -tag -width indent
 .It Cm link0
 The link0 option enables transparent bridging mode.
 The bridge will make every effort to retain the ethernet header
@@ -109,6 +109,7 @@ changed to the bonding state.
 Both sides of link the member represents must operate in bonding mode
 for this to work, otherwise the remote end may decide to throw away
 half your packets.
+.El
 .Pp
 If your network becomes glitchy, with long pauses in tcp sessions, then
 transparent bridging mode is likely the cause.  This mode should only be
