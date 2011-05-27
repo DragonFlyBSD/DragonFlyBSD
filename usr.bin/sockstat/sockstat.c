@@ -27,7 +27,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/sockstat/sockstat.c,v 1.12 2004/12/06 09:28:05 ru Exp $
- * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.7 2007/02/01 10:33:26 corecode Exp $
  */
 
 #include <sys/user.h>
@@ -470,7 +469,7 @@ display(void)
 	    "USER", "COMMAND", "PID", "FD", "PROTO",
 	    "LOCAL ADDRESS", "FOREIGN ADDRESS");
 	setpassent(1);
-	for (xf = xfiles, n = 0; n < nxfiles; ++n, ++xf) {
+	for (xf = xfiles, n = 0; n < (int)nxfiles; ++n, ++xf) {
 		if (xf->f_data == NULL)
 			continue;
 		hash = (int)((uintptr_t)xf->f_data % HASHSIZE);
