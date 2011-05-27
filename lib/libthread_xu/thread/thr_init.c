@@ -29,8 +29,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libthread_xu/thread/thr_init.c,v 1.8 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -66,7 +64,8 @@ STATIC_LIB_REQUIRE(_pthread_cancel);
 /* thr_clean.c */
 STATIC_LIB_REQUIRE(_pthread_cleanup_push);
 /* thr_concurrency.c */
-STATIC_LIB_REQUIRE(_pthread_get_concurrency);
+STATIC_LIB_REQUIRE(_pthread_getconcurrency);
+STATIC_LIB_REQUIRE(_pthread_setconcurrency);
 /* thr_cond.c */
 STATIC_LIB_REQUIRE(_pthread_cond_init);
 /* thr_condattr.c */
