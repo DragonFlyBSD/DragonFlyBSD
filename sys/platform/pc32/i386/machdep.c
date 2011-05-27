@@ -1672,11 +1672,11 @@ physmap_done:
 #ifdef SMP
 	/* make hole for AP bootstrap code YYY */
 	physmap[1] = mp_bootaddress(physmap[1]);
+#endif
 
 	/* Save EBDA address, if any */
 	ebda_addr = (u_long)(*(u_short *)(KERNBASE + 0x40e));
 	ebda_addr <<= 4;
-#endif
 
 	/*
 	 * Maxmem isn't the "maximum memory", it's one larger than the
