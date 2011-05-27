@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)xinstall.c	8.1 (Berkeley) 7/21/93
  * $FreeBSD: src/usr.bin/xinstall/xinstall.c,v 1.38.2.8 2002/08/07 16:29:48 ru Exp $
- * $DragonFly: src/usr.bin/xinstall/xinstall.c,v 1.7 2008/11/12 00:16:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,8 +80,8 @@ int dobackup, docompare, dodir, dopreserve, dostrip, nommap, safecopy, verbose;
 mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 const char *suffix = BACKUP_SUFFIX;
 
-static int file_getgroup(const char *etcdir, const char *group, gid_t *gid);
-static int file_getowner(const char *etcdir, const char *owner, uid_t *uid);
+static int file_getgroup(const char *etcdir, const char *group, gid_t *gidret);
+static int file_getowner(const char *etcdir, const char *owner, uid_t *uidret);
 
 void	copy(int, const char *, int, const char *, off_t);
 int	compare(int, const char *, size_t, int, const char *, size_t);
@@ -275,7 +274,7 @@ numeric_id(const char *name, const char *type)
 
 static
 int
-file_getgroup(const char *etcdir, const char *group, gid_t *gid)
+file_getgroup(const char *etcdir, const char *group, gid_t *gidret)
 {
 	FILE *fp;
 	size_t len;
@@ -293,24 +292,24 @@ file_getgroup(const char *etcdir, const char *group, gid_t *gid)
 			ptr[len - 1] = 0;
 			if ((scan = strchr(ptr, ':')) == NULL)
 				continue;
-			if (scan - ptr != grlen)
+			if ((size_t)(scan - ptr) != grlen)
 				continue;
 			if (strncmp(ptr, group, grlen) != 0)
 				continue;
 			if ((scan = strchr(scan + 1, ':')) == NULL)
 				continue;
-			*gid = strtoul(scan + 1, NULL, 10);
+			*gidret = strtoul(scan + 1, NULL, 10);
 			break;
 		}
 		fclose(fp);
 	}
 	free(path);
-	return((*gid == (gid_t)-1) ? 0 : 1);
+	return((*gidret == (gid_t)-1) ? 0 : 1);
 }
 
 static
 int
-file_getowner(const char *etcdir, const char *owner, uid_t *uid)
+file_getowner(const char *etcdir, const char *owner, uid_t *uidret)
 {
 	FILE *fp;
 	size_t len;
@@ -328,19 +327,19 @@ file_getowner(const char *etcdir, const char *owner, uid_t *uid)
 			ptr[len - 1] = 0;
 			if ((scan = strchr(ptr, ':')) == NULL)
 				continue;
-			if (scan - ptr != owner_len)
+			if ((size_t)(scan - ptr) != owner_len)
 				continue;
 			if (strncmp(ptr, owner, owner_len) != 0)
 				continue;
 			if ((scan = strchr(scan + 1, ':')) == NULL)
 				continue;
-			*uid = strtoul(scan + 1, NULL, 10);
+			*uidret = strtoul(scan + 1, NULL, 10);
 			break;
 		}
 		fclose(fp);
 	}
 	free(path);
-	return((*uid == (uid_t)-1) ? 0 : 1);
+	return((*uidret == (uid_t)-1) ? 0 : 1);
 }
 
 /*
@@ -359,6 +358,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	char backup[MAXPATHLEN], *p, pathbuf[MAXPATHLEN], tempfile[MAXPATHLEN];
 
 	files_match = 0;
+	from_fd = -1;
 
 	/* If try to install NULL file to a directory, fails. */
 	if (flags & DIRECTORY || strcmp(from_name, _PATH_DEVNULL)) {
@@ -575,7 +575,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	if (flags & SETFLAGS) {
 		nfset = (to_sb.st_flags | fset) & ~fclr;
 	} else {
-		nfset = from_sb.st_flags & ~(UF_NODUMP | UF_NOHISTORY) |
+		nfset = (from_sb.st_flags & ~(UF_NODUMP | UF_NOHISTORY)) |
 			(to_sb.st_flags & UF_NOHISTORY);
 	}
 
