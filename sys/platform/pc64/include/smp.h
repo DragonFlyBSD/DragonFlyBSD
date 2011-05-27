@@ -66,9 +66,6 @@ extern volatile cpumask_t	started_cpus;
 extern volatile u_int		checkstate_probed_cpus;
 extern void (*cpustop_restartfunc) (void);
 
-/* global data in mp_machdep.c */
-extern int			mp_naps;
-
 #define APIC_INTMAPSIZE 192
 /*
  * NOTE:

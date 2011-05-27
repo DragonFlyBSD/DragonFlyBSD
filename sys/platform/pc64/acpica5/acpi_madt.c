@@ -47,6 +47,8 @@
 #include "acpi_sdt.h"
 #include "acpi_sdt_var.h"
 
+extern int naps;
+
 #define MADT_VPRINTF(fmt, arg...) \
 do { \
 	if (bootverbose) \
@@ -372,7 +374,7 @@ madt_lapic_pass2(int bsp_apic_id)
 		panic("madt_iterate_entries(pass2) failed\n");
 
 	KKASSERT(arg.bsp_found);
-	mp_naps = arg.cpu - 1; /* exclude BSP */
+	naps = arg.cpu - 1; /* exclude BSP */
 
 	sdt_sdth_unmap(&madt->madt_hdr);
 

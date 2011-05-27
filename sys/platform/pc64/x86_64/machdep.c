@@ -176,6 +176,8 @@ u_long ebda_addr = 0;
 
 int imcr_present = 0;
 
+int naps = 0; /* # of Applications processors */
+
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
