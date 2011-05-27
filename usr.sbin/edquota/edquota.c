@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)edquota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/edquota/edquota.c,v 1.9.2.6 2002/10/31 22:38:43 iedowse Exp $
- * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.8 2006/04/03 01:58:49 dillon Exp $
  */
 
 /*
@@ -109,6 +108,8 @@ main(int argc, char **argv)
 		errx(1, "permission denied");
 	quotatype = USRQUOTA;
 	protoprivs = NULL;
+	curprivs = NULL;
+	protoname = NULL;
 	while ((ch = getopt(argc, argv, "ugtf:p:e:")) != -1) {
 		switch(ch) {
 		case 'f':
@@ -329,7 +330,7 @@ getprivs(long id, int quotatype, char *fspath)
 	static int warned = 0;
 
 	setfsent();
-	quphead = NULL;
+	quphead = quptail = NULL;
 	qcmd = QCMD(Q_GETQUOTA, quotatype);
 	while ((fs = getfsent())) {
 		if (fspath && *fspath && strcmp(fspath, fs->fs_spec) &&
