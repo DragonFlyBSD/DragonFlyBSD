@@ -3203,18 +3203,28 @@ re_get_eaddr(struct re_softc *sc, uint8_t *eaddr)
 {
 	int i;
 
-	if (sc->re_macver == RE_MACVER_11 || sc->re_macver == RE_MACVER_12) {
+	if (sc->re_macver == RE_MACVER_11 ||
+	    sc->re_macver == RE_MACVER_12 ||
+	    sc->re_macver == RE_MACVER_30 ||
+	    sc->re_macver == RE_MACVER_31) {
 		uint16_t re_did;
 
 		re_get_eewidth(sc);
 		re_read_eeprom(sc, (caddr_t)&re_did, 0, 1);
 		if (re_did == 0x8128) {
 			uint16_t as[ETHER_ADDR_LEN / 2];
+			int eaddr_off;
+
+			if (sc->re_macver == RE_MACVER_30 ||
+			    sc->re_macver == RE_MACVER_31)
+				eaddr_off = RE_EE_EADDR1;
+			else
+				eaddr_off = RE_EE_EADDR0;
 
 			/*
 			 * Get station address from the EEPROM.
 			 */
-			re_read_eeprom(sc, (caddr_t)as, RE_EE_EADDR, 3);
+			re_read_eeprom(sc, (caddr_t)as, eaddr_off, 3);
 			for (i = 0; i < ETHER_ADDR_LEN / 2; i++)
 				as[i] = le16toh(as[i]);
 			bcopy(as, eaddr, sizeof(eaddr));

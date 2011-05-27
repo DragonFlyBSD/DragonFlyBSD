@@ -327,7 +327,8 @@
 #define RE_EE_PCI_VID		0x01
 #define RE_EE_PCI_DID		0x02
 /* Location of station address inside EEPROM */
-#define RE_EE_EADDR		0x07
+#define RE_EE_EADDR0		0x07
+#define RE_EE_EADDR1		0x01
 
 /*
  * Config 0 register
