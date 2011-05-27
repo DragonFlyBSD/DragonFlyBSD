@@ -145,8 +145,6 @@ typedef void inthand_t(u_int cs, u_int ef, u_int esp, u_int ss);
 #if defined(SMP)
 inthand_t
 	Xinvltlb,	/* TLB shootdowns */
-	Xcpuast,	/* Additional software trap on other cpu */ 
-	Xforward_irq,	/* Forward irq to cpu holding ISR lock */
 	Xcpustop,	/* CPU stops & waits for another CPU to restart it */
 	Xspuriousint,	/* handle APIC "spurious INTs" */
 	Xtimer,		/* handle LAPIC timer INT */
