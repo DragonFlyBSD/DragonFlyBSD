@@ -43,6 +43,8 @@
 
 #include <machine/intr_machdep.h>
 
+extern int naps;
+
 volatile lapic_t	*lapic;
 
 static void	lapic_timer_calibrate(void);
@@ -668,11 +670,10 @@ lapic_config(void)
 	if (ap_max > MAXCPU - 1)
 		ap_max = MAXCPU - 1;
 
-	if (mp_naps > ap_max) {
+	if (naps > ap_max) {
 		kprintf("LAPIC: Warning use only %d out of %d "
-			"available APs\n",
-			ap_max, mp_naps);
-		mp_naps = ap_max;
+			"available APs\n", ap_max, naps);
+		naps = ap_max;
 	}
 
 	return 0;

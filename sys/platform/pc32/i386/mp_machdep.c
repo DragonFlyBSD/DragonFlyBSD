@@ -138,8 +138,8 @@ int	current_postcode;
 /** XXX FIXME: what system files declare these??? */
 extern struct region_descriptor r_gdt, r_idt;
 
-int	mp_naps;		/* # of Applications processors */
-extern	int nkpt;
+extern int nkpt;
+extern int naps;
 
 int64_t tsc0_offset;
 extern int64_t tsc_offsets[];
@@ -227,7 +227,7 @@ mp_announce(void)
 
 	kprintf("DragonFly/MP: Multiprocessor motherboard\n");
 	kprintf(" cpu0 (BSP): apic id: %2d\n", CPUID_TO_APICID(0));
-	for (x = 1; x <= mp_naps; ++x)
+	for (x = 1; x <= naps; ++x)
 		kprintf(" cpu%d (AP):  apic id: %2d\n", x, CPUID_TO_APICID(x));
 
 	if (!ioapic_enable)
@@ -416,7 +416,7 @@ start_all_aps(u_int boot_addr)
 	cpu_invltlb();
 
 	/* start each AP */
-	for (x = 1; x <= mp_naps; ++x) {
+	for (x = 1; x <= naps; ++x) {
 
 		/* This is a bit verbose, it will go away soon.  */
 
@@ -468,8 +468,8 @@ start_all_aps(u_int boot_addr)
 			kmem_alloc_nofault(&kernel_map, SEG_SIZE, SEG_SIZE);
 		gd->gd_GDMAP1 = &PTD[(vm_offset_t)gd->gd_GDADDR1 >> PDRSHIFT];
 
-		gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * (mp_naps + 1));
-		bzero(gd->mi.gd_ipiq, sizeof(lwkt_ipiq) * (mp_naps + 1));
+		gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * (naps + 1));
+		bzero(gd->mi.gd_ipiq, sizeof(lwkt_ipiq) * (naps + 1));
 
 		/*
 		 * Setup the AP boot stack
