@@ -186,7 +186,6 @@ cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 
 u_int			base_memory;
-int			imcr_present;
 
 /*
  * Calculate usable address in base memory for AP trampoline code.

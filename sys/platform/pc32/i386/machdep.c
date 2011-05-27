@@ -165,6 +165,8 @@ long physmem = 0;
 
 u_long ebda_addr = 0;
 
+int imcr_present = 0;
+
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {

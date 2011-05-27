@@ -472,6 +472,8 @@ static struct ioapic_irqmap {
 extern void	IOAPIC_INTREN(int);
 extern void	IOAPIC_INTRDIS(int);
 
+extern int	imcr_present;
+
 static int	ioapic_setvar(int, const void *);
 static int	ioapic_getvar(int, void *);
 static int	ioapic_vectorctl(int, int, int);
