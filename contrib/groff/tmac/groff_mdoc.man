@@ -563,8 +563,8 @@ The body of a man page is easily constructed from a basic template:
 .Bd -literal -offset indent
 \&.\e" The following commands are required for all man pages.
 \&.Dd Month day, year
-\&.Os [OPERATING_SYSTEM] [version/release]
 \&.Dt DOCUMENT_TITLE [section number] [architecture/volume]
+\&.Os [OPERATING_SYSTEM] [version/release]
 \&.Sh NAME
 \&.Nm name
 \&.Nd one line description of name
@@ -600,13 +600,13 @@ The body of a man page is easily constructed from a basic template:
 .
 The first items in the template are the commands
 .Ql .Dd ,
-.Ql .Os ,
+.Ql .Dt ,
 and
-.Ql .Dt ;
-the document date, the operating system the man page or subject source is
-developed or modified for, and the man page title (in
+.Ql .Os ;
+the document date, the man page title (in
 .Em upper case )
-along with the section of the manual the page belongs in.
+along with the section of the manual the page belongs in, and the
+operating system the man page or subject source is developed or modified for.
 These commands identify the page and are discussed below in
 .Sx TITLE MACROS .
 .Pp
@@ -824,6 +824,28 @@ macro.
 .Pp
 This macro is neither callable nor parsed.
 .
+.It Li .Dd Oo
+.Aq month
+.Aq day ,
+.Aq year
+.Oc
+If
+.Ql Dd
+has no arguments,
+.Ql Epoch
+is used for the date string.
+If it has exactly three arguments, they are concatenated, separated with
+unbreakable space:
+.Pp
+.Dl .Dd January 25, 2001
+.Pp
+The month's name shall not be abbreviated.
+.Pp
+With any other number of arguments, the current date is used, ignoring
+the parameters.
+.Pp
+This macro is neither callable nor parsed.
+.
 .It Li .Os Xo
 .Op Aq operating system
 .Op Aq release
@@ -904,28 +926,6 @@ If the
 .Ql .Os
 macro is not present, the bottom left corner of the manual page will be
 ugly.
-.Pp
-This macro is neither callable nor parsed.
-.
-.It Li .Dd Oo
-.Aq month
-.Aq day ,
-.Aq year
-.Oc
-If
-.Ql Dd
-has no arguments,
-.Ql Epoch
-is used for the date string.
-If it has exactly three arguments, they are concatenated, separated with
-unbreakable space:
-.Pp
-.Dl .Dd January 25, 2001
-.Pp
-The month's name shall not be abbreviated.
-.Pp
-With any other number of arguments, the current date is used, ignoring
-the parameters.
 .Pp
 This macro is neither callable nor parsed.
 .El

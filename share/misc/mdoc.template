@@ -1,10 +1,9 @@
 .\" $FreeBSD: src/share/misc/mdoc.template,v 1.5 2005/01/16 22:26:05 ru Exp $
-.\" $DragonFly: src/share/misc/mdoc.template,v 1.2 2003/06/17 04:37:01 dillon Exp $
 .\"
 .\" The following requests are required for all man pages.
 .Dd Month day, year
-.Os [OPERATING_SYSTEM] [version/release]
 .Dt DOCUMENT_TITLE [section number] [architecture/volume]
+.Os [OPERATING_SYSTEM] [version/release]
 .Sh NAME
 .Nm name
 .Nd one line description of name
