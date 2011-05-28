@@ -861,7 +861,7 @@ pseudo-device	ccd	4	#Concatenated disk driver
 # Can't get vinum config: Invalid argument
 #
 # see vinum(4) for more reasons not to use these options.
-#pseudo-device	vinum		#Vinum concat/mirror/raid driver
+pseudo-device	vinum		#Vinum concat/mirror/raid driver
 #options 	VINUMDEBUG	#enable Vinum debugging hooks
 
 # Kernel side iconv library
