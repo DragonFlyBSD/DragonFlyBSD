@@ -1215,6 +1215,7 @@ acpi_isa_get_logicalid(device_t dev)
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
+    devinfo = NULL;
     pnpid = 0;
 
     /* Fetch and validate the HID. */
