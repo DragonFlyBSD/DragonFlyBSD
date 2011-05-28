@@ -44,6 +44,10 @@
 #define	BINUTILSVER_DEFAULT "binutils221"
 #endif
 
+#ifndef LDVER_DEFAULT
+#define	LDVER_DEFAULT "bfd"
+#endif
+
 #ifndef OBJFORMAT_PATH_DEFAULT
 #define OBJFORMAT_PATH_DEFAULT ""
 #endif
@@ -91,6 +95,7 @@ main(int argc, char **argv)
 	const char *objformat_path;
 	const char *ccver;
 	const char *buver;
+	const char *ldver;
 	const char *env_value = NULL;
 	const char *base_path = NULL;
 	int use_objformat = 0;
@@ -114,9 +119,10 @@ main(int argc, char **argv)
 
 	if ((ccver = getenv("CCVER")) == NULL || ccver[0] == 0)
 		ccver = CCVER_DEFAULT;
-	if ((buver = getenv("BINUTILSVER")) == NULL) {
+	if ((buver = getenv("BINUTILSVER")) == NULL)
 		buver = BINUTILSVER_DEFAULT;
-	}
+	if ((ldver = getenv("LDVER")) == NULL)
+		ldver = LDVER_DEFAULT;
 
 	if (cmds) {
 		switch (cmds->type) {
@@ -173,8 +179,16 @@ again:
 			newcmd = NULL;
 		}
 		if (use_objformat) {
-			asprintf(&newcmd, "%s%s/%s/%s/%s",
-				chunk, base_path, env_value, objformat, cmd);
+			printf("GOLD!\n");
+			if (strcmp(cmd, "ld") == 0) {
+				asprintf(&newcmd, "%s%s/%s/%s/%s.%s",
+				    chunk, base_path, env_value, objformat,
+				    cmd, ldver);
+			} else {
+				asprintf(&newcmd, "%s%s/%s/%s/%s",
+				    chunk, base_path, env_value, objformat,
+				    cmd);
+			}
 		} else {
 			asprintf(&newcmd, "%s%s/%s/%s",
 				chunk, base_path, env_value, cmd);
