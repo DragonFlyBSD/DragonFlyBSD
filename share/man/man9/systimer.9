@@ -36,7 +36,6 @@
 .Ft void
 .Fn systimer_init_oneshot "systimer_t info" "void *func" "void *data" "int us"
 .Sh DESCRIPTION
-.Pp
 Systimers invoke callbacks at either fixed frequencies or after time delays.
 The callbacks are invoked in an interrupt thread and should only be used
 for limited work.

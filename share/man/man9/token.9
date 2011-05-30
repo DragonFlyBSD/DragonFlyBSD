@@ -60,7 +60,6 @@
 .Ft struct lwkt_token *
 .Fn lwkt_getpooltoken "void *ptr"
 .Sh DESCRIPTION
-.Pp
 A soft token is a lock which is only held while a thread is running.
 If a thread explicitly blocks, all its tokens are released, and reacquired
 when the thread resumes.
