@@ -66,9 +66,7 @@
 #include <vfs/nfs/nfs.h>
 #include <vfs/nfs/nfsdiskless.h>
 #include <machine_base/apic/apicreg.h>
-#ifdef SMP
-#include <machine/smp.h>
-#endif
+#include <machine_base/apic/ioapic_abi.h>
 #include <machine/segments.h>
 #include <machine/sigframe.h>
 #include <machine/vm86.h>
@@ -236,7 +234,6 @@ ASSYM(VM86_FRAMESIZE, sizeof(struct vm86frame));
 
 ASSYM(LA_EOI, offsetof(struct LAPIC, eoi));
 
-#ifdef SMP
 ASSYM(IOAPIC_IM_ADDR, offsetof(struct apic_intmapinfo, apic_address));
 ASSYM(IOAPIC_IM_ENTIDX, offsetof(struct apic_intmapinfo, redirindex));
 ASSYM(IOAPIC_IM_FLAGS, offsetof(struct apic_intmapinfo, flags));
@@ -244,4 +241,3 @@ ASSYM(IOAPIC_IM_SIZE, sizeof(struct apic_intmapinfo));
 ASSYM(IOAPIC_IM_SZSHIFT, IOAPIC_IM_SZSHIFT);
 ASSYM(IOAPIC_IM_FLAG_LEVEL, IOAPIC_IM_FLAG_LEVEL);
 ASSYM(IOAPIC_IM_FLAG_MASKED, IOAPIC_IM_FLAG_MASKED);
-#endif

@@ -483,11 +483,13 @@ static void	ioapic_setdefault(void);
 static void	ioapic_stabilize(void);
 static void	ioapic_initmap(void);
 static void	ioapic_intr_config(int, enum intr_trigger, enum intr_polarity);
+static void	ioapic_abi_intren(int);
+static void	ioapic_abi_intrdis(int);
 
 struct machintr_abi MachIntrABI_IOAPIC = {
 	MACHINTR_IOAPIC,
-	.intrdis	= IOAPIC_INTRDIS,
-	.intren		= IOAPIC_INTREN,
+	.intrdis	= ioapic_abi_intrdis,
+	.intren		= ioapic_abi_intren,
 	.vectorctl	= ioapic_vectorctl,
 	.setvar		= ioapic_setvar,
 	.getvar		= ioapic_getvar,
@@ -500,6 +502,28 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 };
 
 static int	ioapic_abi_extint_irq = -1;
+
+struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
+
+static void
+ioapic_abi_intren(int irq)
+{
+	if (irq < 0 || irq >= IOAPIC_HWI_VECTORS) {
+		kprintf("ioapic_abi_intren invalid irq %d\n", irq);
+		return;
+	}
+	IOAPIC_INTREN(irq);
+}
+
+static void
+ioapic_abi_intrdis(int irq)
+{
+	if (irq < 0 || irq >= IOAPIC_HWI_VECTORS) {
+		kprintf("ioapic_abi_intrdis invalid irq %d\n", irq);
+		return;
+	}
+	IOAPIC_INTRDIS(irq);
+}
 
 static int
 ioapic_setvar(int varid, const void *buf)

@@ -57,26 +57,6 @@ extern volatile cpumask_t	started_cpus;
 extern volatile u_int		checkstate_probed_cpus;
 extern void (*cpustop_restartfunc) (void);
 
-#define APIC_INTMAPSIZE 192
-/*
- * NOTE:
- * - Keep size of apic_intmapinfo power of 2
- * - Update IOAPIC_IM_SZSHIFT after changing apic_intmapinfo size
- */
-struct apic_intmapinfo {
-  	int ioapic;
-	int int_pin;
-	volatile void *apic_address;
-	int redirindex;
-	uint32_t flags;		/* IOAPIC_IM_FLAG_ */
-	uint32_t pad[3];
-};
-#define IOAPIC_IM_SZSHIFT	5
-
-#define IOAPIC_IM_FLAG_LEVEL	0x1	/* default to edge trigger */
-#define IOAPIC_IM_FLAG_MASKED	0x2
-
-extern struct apic_intmapinfo	int_to_apicintpin[];
 extern struct pcb		stoppcbs[];
 
 /* functions in mp_machdep.c */
