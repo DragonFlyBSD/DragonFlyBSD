@@ -295,6 +295,13 @@ acpi_pst_attach(device_t dev)
 	buf.Length = ACPI_ALLOCATE_BUFFER;
 	status = AcpiEvaluateObject(sc->pst_handle, "_PSD", NULL, &buf);
 	if (!ACPI_FAILURE(status)) {
+		if (acpi_pst_domain_id > 0) {
+			device_printf(dev, "Missing _PSD for certain CPUs\n");
+			AcpiOsFree(obj);
+			return ENXIO;
+		}
+		acpi_pst_domain_id = -1;
+
 		obj = (ACPI_OBJECT *)buf.Pointer;
 		if (ACPI_PKG_VALID_EQ(obj, 1)) {
 			dom = acpi_pst_domain_create_pkg(dev,
@@ -325,6 +332,12 @@ acpi_pst_attach(device_t dev)
 		/* Free _PSD */
 		AcpiOsFree(buf.Pointer);
 	} else {
+		if (acpi_pst_domain_id < 0) {
+			device_printf(dev, "Missing _PSD for cpu%d\n",
+			    sc->pst_cpuid);
+			return ENXIO;
+		}
+
 		/*
 		 * Create a stub one processor domain for each processor
 		 */
