@@ -142,10 +142,6 @@ extern int naps;
 int64_t tsc0_offset;
 extern int64_t tsc_offsets[];
 
-#ifdef SMP /* APIC-IO */
-struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
-#endif
-
 /* AP uses this during bootstrap.  Do not staticize.  */
 char *bootSTK;
 static int bootAP;

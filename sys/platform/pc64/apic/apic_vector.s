@@ -20,7 +20,6 @@
 
 #include "apicreg.h"
 #include <machine_base/apic/ioapic_ipl.h>
-#include <machine/smp.h>
 #include <machine/intr_machdep.h>
 
 #ifdef foo

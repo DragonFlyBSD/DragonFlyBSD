@@ -66,12 +66,12 @@
 #include <vfs/nfs/nfsdiskless.h>
 
 #include <machine_base/apic/apicreg.h>
+#include <machine_base/apic/ioapic_abi.h>
 #include <machine/segments.h>
 #include <machine/sigframe.h>
 #include <machine/globaldata.h>
 #include <machine/specialreg.h>
 #include <machine/pcb.h>
-#include <machine/smp.h>
 #include <machine/pmap.h>
 
 ASSYM(P_VMSPACE, offsetof(struct proc, p_vmspace));
@@ -239,7 +239,6 @@ ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);
 ASSYM(CPUMASK_BIT, CPUMASK_BIT);
 #endif
 
-#ifdef SMP
 ASSYM(IOAPIC_IM_ADDR, offsetof(struct apic_intmapinfo, apic_address));
 ASSYM(IOAPIC_IM_ENTIDX, offsetof(struct apic_intmapinfo, redirindex));
 ASSYM(IOAPIC_IM_FLAGS, offsetof(struct apic_intmapinfo, flags));
@@ -247,4 +246,3 @@ ASSYM(IOAPIC_IM_SIZE, sizeof(struct apic_intmapinfo));
 ASSYM(IOAPIC_IM_SZSHIFT, IOAPIC_IM_SZSHIFT);
 ASSYM(IOAPIC_IM_FLAG_LEVEL, IOAPIC_IM_FLAG_LEVEL);
 ASSYM(IOAPIC_IM_FLAG_MASKED, IOAPIC_IM_FLAG_MASKED);
-#endif
