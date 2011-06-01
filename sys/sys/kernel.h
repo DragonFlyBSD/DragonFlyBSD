@@ -128,8 +128,13 @@ enum sysinit_sub_id {
 	 * must occur before SMP.  Messy messy.
 	 */
 	SI_BOOT2_LEAVE_CRIT	= 0x1900000,
-	SI_BOOT2_PRESMP		= 0x1a00000,	/* register smp configs */
-	SI_BOOT2_SMP		= 0x1a80000,	/* SMP startup */
+	SI_BOOT2_PRESMP		= 0x1a00000,	/* register SMP configs */
+	SI_BOOT2_START_CPU	= 0x1a40000,	/* start CPU (BSP) */
+	SI_BOOT2_LAPIC		= 0x1a50000,	/* configure Local APIC */
+	SI_BOOT2_START_APS	= 0x1a60000,	/* start all APs */
+	SI_BOOT2_IOAPIC		= 0x1a70000,	/* configure I/O APIC */
+	SI_BOOT2_FINISH_PIC	= 0x1a80000,	/* finish PIC configure */
+	SI_BOOT2_FINISH_CPU	= 0x1a90000,	/* finish CPU startup */
 	SI_BOOT2_CLOCKREG	= 0x1ac0000,	/* register available clocks */
 	SI_BOOT2_OBJCACHE	= 0x1b00000,
 	SI_BOOT2_SOFTCLOCK	= 0x1b80000,

@@ -143,7 +143,7 @@ extern void ffs_rawread_setup(void);
 #endif /* DIRECTIO */
 static void init_locks(void);
 
-SYSINIT(cpu, SI_BOOT2_SMP, SI_ORDER_FIRST, cpu_startup, NULL)
+SYSINIT(cpu, SI_BOOT2_START_CPU, SI_ORDER_FIRST, cpu_startup, NULL)
 
 int	_udatasel, _ucodesel;
 u_int	atdevbase;
