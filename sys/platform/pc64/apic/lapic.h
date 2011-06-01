@@ -57,6 +57,7 @@ struct lapic_enumerator {
 extern volatile lapic_t		*lapic;
 extern int			cpu_id_to_apic_id[];
 extern int			apic_id_to_cpu_id[];
+extern int			lapic_enable;
 
 void	apic_dump(char*);
 void	lapic_init(boolean_t);
