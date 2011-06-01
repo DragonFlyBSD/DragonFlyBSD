@@ -40,6 +40,7 @@
 #include <machine/md_var.h>
 #include <machine/cpufunc.h>
 #include <machine/cpufreq.h>
+#include <machine/cputypes.h>
 #include <machine/specialreg.h>
 
 #include "acpi.h"
@@ -143,9 +144,9 @@ TUNABLE_INT("hw.acpi.cpu.pstate.strigent_check", &acpi_pst_stringent_check);
 const struct acpi_pst_md *
 acpi_pst_md_probe(void)
 {
-	if (strcmp(cpu_vendor, "AuthenticAMD") == 0)
+	if (cpu_vendor_id == CPU_VENDOR_AMD)
 		return acpi_pst_amd_probe();
-	else if (strcmp(cpu_vendor, "GenuineIntel") == 0)
+	else if (cpu_vendor_id == CPU_VENDOR_INTEL)
 		return acpi_pst_intel_probe();
 	return NULL;
 }

@@ -39,7 +39,6 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.19 2008/05/10 17:24:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -245,9 +244,9 @@ linprocfs_docpuinfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
         ps += ksprintf(ps,
                         "flags\t\t:");
 
-        if (!strcmp(cpu_vendor, "AuthenticAMD") && (class < 6)) {
+        if (cpu_vendor_id == CPU_VENDOR_AMD && (class < 6)) {
 		flags[16] = "fcmov";
-        } else if (!strcmp(cpu_vendor, "CyrixInstead")) {
+        } else if (cpu_vendor_id == CPU_VENDOR_CYRIX) {
 		flags[24] = "cxmmx";
         }
         

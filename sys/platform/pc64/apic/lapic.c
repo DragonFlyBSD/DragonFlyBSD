@@ -40,6 +40,7 @@
 #include <machine/segments.h>
 #include <sys/thread2.h>
 
+#include <machine/cputypes.h>
 #include <machine/intr_machdep.h>
 
 #include "apicvar.h"
@@ -413,7 +414,7 @@ lapic_timer_fixup_handler(void *arg)
 	if (started != NULL)
 		*started = 0;
 
-	if (strcmp(cpu_vendor, "AuthenticAMD") == 0) {
+	if (cpu_vendor_id == CPU_VENDOR_AMD) {
 		/*
 		 * Detect the presence of C1E capability mostly on latest
 		 * dual-cores (or future) k8 family.  This feature renders
