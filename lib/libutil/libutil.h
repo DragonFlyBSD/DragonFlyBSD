@@ -39,6 +39,8 @@
 #ifndef _LIBUTIL_H_
 #define	_LIBUTIL_H_
 
+#include <sys/types.h>
+
 #ifdef _PWD_H_
 #define	_PWSCAN_MASTER	0x01
 #define	_PWSCAN_WARN	0x02
