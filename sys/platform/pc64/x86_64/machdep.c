@@ -178,6 +178,8 @@ int imcr_present = 0;
 
 int naps = 0; /* # of Applications processors */
 
+u_int base_memory;
+
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
@@ -1433,9 +1435,10 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 		physmap[physmap_idx + 1] = smap->base + smap->length;
 	}
 
+	base_memory = physmap[1] / 1024;
 #ifdef SMP
 	/* make hole for AP bootstrap code */
-	physmap[1] = mp_bootaddress(physmap[1] / 1024);
+	physmap[1] = mp_bootaddress(base_memory);
 #endif
 
 	/* Save EBDA address, if any */

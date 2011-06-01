@@ -174,8 +174,6 @@ cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 static u_int	bootMP_size;
 
-u_int			base_memory;
-
 /*
  * Calculate usable address in base memory for AP trampoline code.
  */
@@ -183,8 +181,6 @@ u_int
 mp_bootaddress(u_int basemem)
 {
 	POSTCODE(MP_BOOTADDRESS_POST);
-
-	base_memory = basemem;
 
 	bootMP_size = mptramp_end - mptramp_start;
 	boot_address = trunc_page(basemem * 1024); /* round down to 4k boundary */
