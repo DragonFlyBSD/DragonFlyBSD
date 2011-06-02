@@ -898,7 +898,6 @@ loop:
 			 * inconsistent state for processes running down
 			 * the zombie list.
 			 */
-			KKASSERT(p->p_lock == 0);
 			proc_remove_zombie(p);
 			leavepgrp(p);
 
