@@ -1,4 +1,4 @@
-/*	$Id: man_macro.c,v 1.60 2011/03/23 15:33:57 kristaps Exp $ */
+/*	$Id: man_macro.c,v 1.62 2011/04/19 16:38:48 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010 Kristaps Dzonsons <kristaps@bsd.lv>
  *

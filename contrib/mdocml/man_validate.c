@@ -1,4 +1,4 @@
-/*	$Id: man_validate.c,v 1.67 2011/03/22 15:30:30 kristaps Exp $ */
+/*	$Id: man_validate.c,v 1.69 2011/04/13 09:57:08 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2010 Ingo Schwarze <schwarze@openbsd.org>
@@ -54,7 +54,7 @@ static	int	  check_par(CHKARGS);
 static	int	  check_part(CHKARGS);
 static	int	  check_root(CHKARGS);
 static	int	  check_sec(CHKARGS);
-static	int	  check_text(CHKARGS);
+static	void	  check_text(CHKARGS);
 
 static	int	  post_AT(CHKARGS);
 static	int	  post_fi(CHKARGS);
@@ -151,7 +151,8 @@ man_valid_post(struct man *m)
 
 	switch (m->last->type) {
 	case (MAN_TEXT): 
-		return(check_text(m, m->last));
+		check_text(m, m->last);
+		return(1);
 	case (MAN_ROOT):
 		return(check_root(m, m->last));
 	case (MAN_EQN):
@@ -204,43 +205,48 @@ check_root(CHKARGS)
 	return(1);
 }
 
-
-static int
+static void
 check_text(CHKARGS) 
 {
-	char		*p;
-	int		 pos, c;
+	char		*p, *pp, *cpp;
+	int		 pos;
 	size_t		 sz;
 
-	for (p = n->string, pos = n->pos + 1; *p; p++, pos++) {
+	p = n->string;
+	pos = n->pos + 1;
+
+	while ('\0' != *p) {
 		sz = strcspn(p, "\t\\");
+
 		p += (int)sz;
-
-		if ('\0' == *p)
-			break;
-
 		pos += (int)sz;
 
 		if ('\t' == *p) {
-			if (MAN_LITERAL & m->flags)
-				continue;
-			man_pmsg(m, n->line, pos, MANDOCERR_BADTAB);
+			if ( ! (MAN_LITERAL & m->flags))
+				man_pmsg(m, n->line, pos, MANDOCERR_BADTAB);
+			p++;
+			pos++;
 			continue;
+		} else if ('\0' == *p)
+			break;
+
+		pos++;
+		pp = ++p;
+
+		if (ESCAPE_ERROR == mandoc_escape
+				((const char **)&pp, NULL, NULL)) {
+			man_pmsg(m, n->line, pos, MANDOCERR_BADESCAPE);
+			break;
 		}
 
-		/* Check the special character. */
+		cpp = p;
+		while (NULL != (cpp = memchr(cpp, ASCII_HYPH, pp - cpp)))
+			*cpp = '-';
 
-		c = mandoc_special(p);
-		if (c) {
-			p += c - 1;
-			pos += c - 1;
-		} else
-			man_pmsg(m, n->line, pos, MANDOCERR_BADESCAPE);
+		pos += pp - p;
+		p = pp;
 	}
-
-	return(1);
 }
-
 
 #define	INEQ_DEFINE(x, ineq, name) \
 static int \
@@ -319,14 +325,11 @@ static int
 check_sec(CHKARGS)
 {
 
-	if (MAN_HEAD == n->type && 0 == n->nchild) {
-		man_nmsg(m, n, MANDOCERR_SYNTARGCOUNT);
-		return(0);
-	} else if (MAN_BODY == n->type && 0 == n->nchild)
-		mandoc_msg(MANDOCERR_ARGCWARN, m->parse, n->line, 
-				n->pos, "want children (have none)");
+	if ( ! (MAN_HEAD == n->type && 0 == n->nchild)) 
+		return(1);
 
-	return(1);
+	man_nmsg(m, n, MANDOCERR_SYNTARGCOUNT);
+	return(0);
 }
 
 

@@ -1,4 +1,4 @@
-/*	$Id: tbl_layout.c,v 1.17 2011/03/20 16:02:05 kristaps Exp $ */
+/*	$Id: tbl_layout.c,v 1.20 2011/05/17 13:11:40 kristaps Exp $ */
 /*
  * Copyright (c) 2009, 2010 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -14,6 +14,10 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -67,6 +71,23 @@ mods(struct tbl_node *tbl, struct tbl_cell *cp,
 {
 	char		 buf[5];
 	int		 i;
+
+	/* Not all types accept modifiers. */
+
+	switch (cp->pos) {
+	case (TBL_CELL_DOWN):
+		/* FALLTHROUGH */
+	case (TBL_CELL_HORIZ):
+		/* FALLTHROUGH */
+	case (TBL_CELL_DHORIZ):
+		/* FALLTHROUGH */
+	case (TBL_CELL_VERT):
+		/* FALLTHROUGH */
+	case (TBL_CELL_DVERT):
+		return(1);
+	default:
+		break;
+	}
 
 mod:
 	/* 
@@ -423,19 +444,19 @@ cell_alloc(struct tbl_node *tbl, struct tbl_row *rp, enum tbl_cellt pos)
 }
 
 static void
-head_adjust(const struct tbl_cell *cell, struct tbl_head *head)
+head_adjust(const struct tbl_cell *cellp, struct tbl_head *head)
 {
-	if (TBL_CELL_VERT != cell->pos &&
-			TBL_CELL_DVERT != cell->pos) {
+	if (TBL_CELL_VERT != cellp->pos &&
+			TBL_CELL_DVERT != cellp->pos) {
 		head->pos = TBL_HEAD_DATA;
 		return;
 	}
 
-	if (TBL_CELL_VERT == cell->pos)
+	if (TBL_CELL_VERT == cellp->pos)
 		if (TBL_HEAD_DVERT != head->pos)
 			head->pos = TBL_HEAD_VERT;
 
-	if (TBL_CELL_DVERT == cell->pos)
+	if (TBL_CELL_DVERT == cellp->pos)
 		head->pos = TBL_HEAD_DVERT;
 }
 
