@@ -183,7 +183,7 @@ initializecpu(void)
 #endif
 	}
 	if (cpu_vendor_id == CPU_VENDOR_CENTAUR &&
-	    X86_64_CPU_FAMILY(cpu_id) == 0x6 &&
-	    X86_64_CPU_MODEL(cpu_id) >= 0xf)
+	    CPUID_TO_FAMILY(cpu_id) == 0x6 &&
+	    CPUID_TO_MODEL(cpu_id) >= 0xf)
 		init_via();
 }
