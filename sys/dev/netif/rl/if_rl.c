@@ -1054,7 +1054,7 @@ rl_rxeof(struct rl_softc *sc)
 			 * the data.
 			 */
 			m = m_devget(rxbufpos - RL_ETHER_ALIGN,
-			    total_len + RL_ETHER_ALIGN, 0, ifp, NULL);
+			    wrap + RL_ETHER_ALIGN, 0, ifp, NULL);
 			if (m == NULL) {
 				ifp->if_ierrors++;
 			} else {
