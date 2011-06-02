@@ -88,6 +88,7 @@ SYSCTL_STRING(_hw, HW_MACHINE, machine, CTLFLAG_RD,
 	      machine, 0, "Machine class");
 
 char cpu_vendor[] = "DragonFly";	/* XXX */
+u_int cpu_vendor_id = 0;		/* XXX */
 u_int cpu_id = 0x80000000;		/* XXX */
 
 /*
