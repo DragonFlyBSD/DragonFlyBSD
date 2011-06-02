@@ -5,7 +5,7 @@ MAN=	mandoc.1 mandoc_char.7
 #MAN+=	mandoc.3 eqn.7 man.7 mdoc.7 roff.7 tbl.7
 WARNS?=	3
 
-VERSION=1.11.1
+VERSION=1.11.3
 CFLAGS+=-DVERSION=\"${VERSION}\"
 
 SRCS=	arch.c att.c chars.c compat.c eqn.c html.c lib.c main.c man.c \
