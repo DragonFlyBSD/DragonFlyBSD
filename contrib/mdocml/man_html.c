@@ -1,4 +1,4 @@
-/*	$Id: man_html.c,v 1.70 2011/03/07 01:35:51 schwarze Exp $ */
+/*	$Id: man_html.c,v 1.72 2011/05/17 11:34:31 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -157,9 +157,7 @@ print_man_head(MAN_ARGS)
 {
 
 	print_gen_head(h);
-	bufinit(h);
-	buffmt(h, "%s(%s)", m->title, m->msec);
-
+	bufcat_fmt(h, "%s(%s)", m->title, m->msec);
 	print_otag(h, TAG_TITLE, 0, NULL);
 	print_text(h, h->buf);
 }
@@ -184,7 +182,6 @@ print_man_node(MAN_ARGS)
 
 	child = 1;
 	t = h->tags.head;
-	bufinit(h);
 
 	switch (n->type) {
 	case (MAN_ROOT):
@@ -258,8 +255,6 @@ print_man_node(MAN_ARGS)
 
 	/* This will automatically close out any font scope. */
 	print_stagq(h, t);
-
-	bufinit(h);
 
 	switch (n->type) {
 	case (MAN_ROOT):
@@ -401,6 +396,7 @@ man_br_pre(MAN_ARGS)
 	} else
 		su.scale = 0;
 
+	bufinit(h);
 	bufcat_su(h, "height", &su);
 	PAIR_STYLE_INIT(&tag, h);
 	print_otag(h, TAG_DIV, 1, &tag);
@@ -569,6 +565,7 @@ man_IP_pre(MAN_ARGS)
 	if (MAN_BLOCK == n->type) {
 		print_otag(h, TAG_P, 0, NULL);
 		print_otag(h, TAG_TABLE, 0, NULL);
+		bufinit(h);
 		bufcat_su(h, "width", &su);
 		PAIR_STYLE_INIT(&tag, h);
 		print_otag(h, TAG_COL, 1, &tag);
@@ -603,6 +600,8 @@ man_HP_pre(MAN_ARGS)
 	struct htmlpair	 tag;
 	struct roffsu	 su;
 	const struct man_node *np;
+
+	bufinit(h);
 
 	np = MAN_BLOCK == n->type ? 
 		n->head->child : 
@@ -704,6 +703,7 @@ man_RS_pre(MAN_ARGS)
 	if (n->head->child)
 		a2width(n->head->child, &su);
 
+	bufinit(h);
 	bufcat_su(h, "margin-left", &su);
 	PAIR_STYLE_INIT(&tag, h);
 	print_otag(h, TAG_DIV, 1, &tag);

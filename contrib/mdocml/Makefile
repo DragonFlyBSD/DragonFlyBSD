@@ -11,9 +11,14 @@
 # in the lower-left hand corner of -mdoc manuals.
 # CFLAGS	+= -DOSNAME="\"OpenBSD 4.5\""
 
-VERSION		 = 1.11.1
-VDATE		 = 04 April 2011
-CFLAGS		+= -g -DHAVE_CONFIG_H -DVERSION="\"$(VERSION)\""
+VERSION		 = 1.11.3
+VDATE		 = 26 May 2011
+# IFF your system supports multi-byte functions (setlocale(), wcwidth(),
+# putwchar()) AND has __STDC_ISO_10646__ (that is, wchar_t is simply a
+# UCS-4 value) should you define USE_WCHAR.  If you define it and your
+# system DOESN'T support this, -Tlocale will produce garbage.
+# If you don't define it, -Tlocale is a synonym for -Tacsii.
+CFLAGS		+= -g -DUSE_WCHAR -DHAVE_CONFIG_H -DVERSION="\"$(VERSION)\""
 CFLAGS     	+= -W -Wall -Wstrict-prototypes -Wno-unused-parameter -Wwrite-strings
 PREFIX		 = /usr/local
 BINDIR		 = $(PREFIX)/bin
@@ -27,7 +32,7 @@ INSTALL_DATA	 = $(INSTALL) -m 0444
 INSTALL_LIB	 = $(INSTALL) -m 0644
 INSTALL_MAN	 = $(INSTALL_DATA)
 
-all: mandoc
+all: mandoc preconv
 
 SRCS		 = Makefile \
 		   arch.c \
@@ -67,8 +72,8 @@ SRCS		 = Makefile \
 		   mandoc.3 \
 		   mandoc.c \
 		   mandoc.h \
-		   mandoc-db.1 \
-		   mandoc-db.c \
+		   makewhatis.1 \
+		   makewhatis.c \
 		   mandoc_char.7 \
 		   mdoc.h \
 		   mdoc.7 \
@@ -83,6 +88,9 @@ SRCS		 = Makefile \
 		   msec.in \
 		   out.c \
 		   out.h \
+		   preconv.1 \
+		   preconv.c \
+		   predefs.in \
 		   read.c \
 		   roff.7 \
 		   roff.c \
@@ -100,6 +108,7 @@ SRCS		 = Makefile \
 		   term.h \
 		   term_ascii.c \
 		   term_ps.c \
+		   test-mmap.c \
 		   test-strlcat.c \
 		   test-strlcpy.c \
 		   tree.c \
@@ -154,18 +163,22 @@ LIBROFF_LNS	 = eqn.ln \
 LIBMANDOC_OBJS	 = $(LIBMAN_OBJS) \
 		   $(LIBMDOC_OBJS) \
 		   $(LIBROFF_OBJS) \
+		   chars.o \
 		   mandoc.o \
 		   read.o
 LIBMANDOC_LNS	 = $(LIBMAN_LNS) \
 		   $(LIBMDOC_LNS) \
 		   $(LIBROFF_LNS) \
+		   chars.ln \
 		   mandoc.ln \
 		   read.ln
 
 arch.o arch.ln: arch.in
 att.o att.ln: att.in
+chars.o chars.ln: chars.in
 lib.o lib.ln: lib.in
 msec.o msec.ln: msec.in
+roff.o roff.ln: predefs.in
 st.o st.ln: st.in
 vol.o vol.ln: vol.in
 
@@ -198,18 +211,14 @@ MANDOC_TERM_LNS	 = man_term.ln \
 
 MANDOC_OBJS	 = $(MANDOC_HTML_OBJS) \
 		   $(MANDOC_TERM_OBJS) \
-		   chars.o \
 		   main.o \
 		   out.o \
 		   tree.o
 MANDOC_LNS	 = $(MANDOC_HTML_LNS) \
 		   $(MANDOC_TERM_LNS) \
-		   chars.ln \
 		   main.ln \
 		   out.ln \
 		   tree.ln
-
-chars.o chars.ln: chars.in
 
 $(MANDOC_HTML_OBJS) $(MANDOC_HTML_LNS): html.h
 $(MANDOC_TERM_OBJS) $(MANDOC_TERM_LNS): term.h
@@ -217,12 +226,22 @@ $(MANDOC_OBJS) $(MANDOC_LNS): main.h mandoc.h mdoc.h man.h config.h out.h
 
 compat.o compat.ln: config.h
 
-MANDOCDB_OBJS	 = mandoc-db.o
-MANDOCDB_LNS	 = mandoc-db.ln
+MAKEWHATIS_OBJS	 = makewhatis.o
+MAKEWHATIS_LNS	 = makewhatis.ln
 
-$(MANDOCDB_OBJS) $(MANDOCDB_LNS): mandoc.h mdoc.h man.h config.h
+$(MAKEWHATIS_OBJS) $(MAKEWHATIS_LNS): mandoc.h mdoc.h man.h config.h
 
-INDEX_MANS	 = mandoc.1.html \
+PRECONV_OBJS	 = preconv.o
+PRECONV_LNS	 = preconv.ln
+
+$(PRECONV_OBJS) $(PRECONV_LNS): config.h
+
+INDEX_MANS	 = makewhatis.1.html \
+		   makewhatis.1.xhtml \
+		   makewhatis.1.ps \
+		   makewhatis.1.pdf \
+		   makewhatis.1.txt \
+		   mandoc.1.html \
 		   mandoc.1.xhtml \
 		   mandoc.1.ps \
 		   mandoc.1.pdf \
@@ -252,6 +271,11 @@ INDEX_MANS	 = mandoc.1.html \
 		   mdoc.7.ps \
 		   mdoc.7.pdf \
 		   mdoc.7.txt \
+		   preconv.1.html \
+		   preconv.1.xhtml \
+		   preconv.1.ps \
+		   preconv.1.pdf \
+		   preconv.1.txt \
 		   roff.7.html \
 		   roff.7.xhtml \
 		   roff.7.ps \
@@ -274,13 +298,15 @@ INDEX_OBJS	 = $(INDEX_MANS) \
 
 www: index.html
 
-lint: llib-llibmandoc.ln llib-lmandoc.ln
+lint: llib-llibmandoc.ln llib-lmandoc.ln llib-lpreconv.ln
 
 clean:
 	rm -f libmandoc.a $(LIBMANDOC_OBJS)
 	rm -f llib-llibmandoc.ln $(LIBMANDOC_LNS)
-	rm -f mandoc-db $(MANDOCDB_OBJS)
-	rm -f llib-lmandoc-db.ln $(MANDOCDB_LNS)
+	rm -f makewhatis $(MAKEWHATIS_OBJS)
+	rm -f llib-lmakewhatis.ln $(MAKEWHATIS_LNS)
+	rm -f preconv $(PRECONV_OBJS)
+	rm -f llib-lpreconv.ln $(PRECONV_LNS)
 	rm -f mandoc $(MANDOC_OBJS)
 	rm -f llib-lmandoc.ln $(MANDOC_LNS)
 	rm -f config.h config.log compat.o compat.ln
@@ -290,12 +316,15 @@ clean:
 install: all
 	mkdir -p $(DESTDIR)$(BINDIR)
 	mkdir -p $(DESTDIR)$(EXAMPLEDIR)
+	mkdir -p $(DESTDIR)$(LIBDIR)
+	mkdir -p $(DESTDIR)$(INCLUDEDIR)
 	mkdir -p $(DESTDIR)$(MANDIR)/man1
 	mkdir -p $(DESTDIR)$(MANDIR)/man3
 	mkdir -p $(DESTDIR)$(MANDIR)/man7
-	$(INSTALL_PROGRAM) mandoc $(DESTDIR)$(BINDIR)
+	$(INSTALL_PROGRAM) mandoc preconv $(DESTDIR)$(BINDIR)
 	$(INSTALL_LIB) libmandoc.a $(DESTDIR)$(LIBDIR)
-	$(INSTALL_MAN) mandoc.1 $(DESTDIR)$(MANDIR)/man1
+	$(INSTALL_LIB) mandoc.h $(DESTDIR)$(INCLUDEDIR)
+	$(INSTALL_MAN) mandoc.1 preconv.1 $(DESTDIR)$(MANDIR)/man1
 	$(INSTALL_MAN) mandoc.3 $(DESTDIR)$(MANDIR)/man3
 	$(INSTALL_MAN) man.7 mdoc.7 roff.7 eqn.7 tbl.7 mandoc_char.7 $(DESTDIR)$(MANDIR)/man7
 	$(INSTALL_DATA) example.style.css $(DESTDIR)$(EXAMPLEDIR)
@@ -319,15 +348,21 @@ llib-llibmandoc.ln: compat.ln $(LIBMANDOC_LNS)
 mandoc: $(MANDOC_OBJS) libmandoc.a
 	$(CC) -o $@ $(MANDOC_OBJS) libmandoc.a
 
-# You'll need -ldb for Linux.
-mandoc-db: $(MANDOCDB_OBJS) libmandoc.a
-	$(CC) -o $@ $(MANDOCDB_OBJS) libmandoc.a
-
 llib-lmandoc.ln: $(MANDOC_LNS)
 	$(LINT) $(LINTFLAGS) -Cmandoc $(MANDOC_LNS)
 
-llib-lmandoc-db.ln: $(MANDOCDB_LNS)
-	$(LINT) $(LINTFLAGS) -Cmandoc-db $(MANDOCDB_LNS)
+# You'll need -ldb for Linux.
+makewhatis: $(MAKEWHATIS_OBJS) libmandoc.a
+	$(CC) -o $@ $(MAKEWHATIS_OBJS) libmandoc.a
+
+llib-lmakewhatis.ln: $(MAKEWHATIS_LNS)
+	$(LINT) $(LINTFLAGS) -Cmakewhatis $(MAKEWHATIS_LNS)
+
+preconv: $(PRECONV_OBJS)
+	$(CC) -o $@ $(PRECONV_OBJS)
+
+llib-lpreconv.ln: $(PRECONV_LNS)
+	$(LINT) $(LINTFLAGS) -Cpreconv $(PRECONV_LNS)
 
 mdocml.md5: mdocml.tar.gz
 	md5 mdocml.tar.gz >$@
@@ -347,6 +382,10 @@ config.h: config.h.pre config.h.post
 	  if $(CC) $(CFLAGS) -Werror -o test-strlcat test-strlcat.c >> config.log 2>&1; then \
 		echo '#define HAVE_STRLCAT'; \
 		rm test-strlcat; \
+	  fi; \
+	  if $(CC) $(CFLAGS) -Werror -o test-mmap test-mmap.c >> config.log 2>&1; then \
+		echo '#define HAVE_MMAP'; \
+		rm test-mmap; \
 	  fi; \
 	  if $(CC) $(CFLAGS) -Werror -o test-strlcpy test-strlcpy.c >> config.log 2>&1; then \
 		echo '#define HAVE_STRLCPY'; \

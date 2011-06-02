@@ -2,408 +2,386 @@
 <HTML>
 	<HEAD>
 		<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=utf-8">
-		<META NAME="resource-type" CONTENT="document">
 		<LINK REL="stylesheet" HREF="index.css" TYPE="text/css" MEDIA="all">
 		<TITLE>mdocml | mdoc macro compiler</TITLE>
 	</HEAD>
 	<BODY>
-	<TABLE CLASS="frame" SUMMARY="[frame]">
-		<COL WIDTH="100%">
-		<TBODY>
-			<TR>
-				<TD>
-					<DIV CLASS="head">
-						<B>mdocml</B> &#8211; mdoc macro compiler
-					</DIV>
-				</TD>
-			</TR>
-			<TR>
-				<TD VALIGN="top">
-					<H1>
-					<A NAME="description">DESCRIPTION</A>
-					</H1>
+		<P CLASS="head">
+			<B>mdocml</B> &#8211; mdoc macro compiler
+		</P>
+		<H1>
+			<A NAME="description">Description</A>
+		</H1>
+		<P>
+			<SPAN CLASS="nm">mdocml</SPAN> is a suite of tools compiling <I><A HREF="mdoc.7.html">mdoc</A></I>, the roff macro
+			package of choice for BSD manual pages, and <I><A HREF="man.7.html">man</A></I>, the predominant historical package for
+			UNIX manuals.  The mission of <SPAN CLASS="nm">mdocml</SPAN> is to deprecate <A
+			HREF="http://www.gnu.org/software/groff/" CLASS="external">groff</A>, the GNU troff implementation, for displaying <I>mdoc</I>
+			pages whilst providing token support for <I>man</I>.
+		</P>
+		<P>
+			Why?  groff amounts to over 5 MB of source code, most of which is C++ and all of which is GPL.  It runs slowly, produces
+			uncertain output, and varies in operation from system to system.  mdocml strives to fix this (respectively small, C, <A
+			CLASS="external" HREF="http://www.isc.org/software/license">ISC</A>-licensed, fast and regular).
+		</P>
+		<P>
+			<SPAN CLASS="nm">mdocml</SPAN> consists of the <A HREF="mandoc.3.html">libmandoc</A> validating compiler and <A
+			HREF="mandoc.1.html">mandoc</A>, which interfaces with the compiler library to format output for UNIX terminals (with
+			support for wide-character locales), XHTML, HTML, PostScript, and PDF.  
+			It also includes <A HREF="preconv.1.html">preconv</A>, for recoding multibyte manuals; and <A
+			HREF="makewhatis.1.html">makewhatis</A>, for indexing manuals.
+			It is a <A CLASS="external" HREF="http://bsd.lv/">BSD.lv</A> project.  
+		</P>
+		<P>
+			<I>Disambiguation</I>: <SPAN CLASS="nm">mdocml</SPAN> is often referred to by its installed binary, <Q>mandoc</Q>.
+		</P>
+		<H1>
+			<A NAME="sources">Sources</A>
+		</H1>
+		<P>
+			<SPAN CLASS="nm">mdocml</SPAN> is in plain-old ANSI C and should build and run on any UNIX system, although <A
+			HREF="makewhatis.1.html">makewhatis</A> requires <A CLASS="external"
+			HREF="http://www.oracle.com/technetwork/database/berkeleydb/overview/index.html">Berkeley Database</A> (this is
+			installed by default on all BSD operating systems).  
+			To compile <SPAN CLASS="nm">mdocml</SPAN>, run <CODE>make</CODE>, then <CODE>make install</CODE> to install into
+			<I>/usr/local</I>.
+			Be aware: if you have an existing <A HREF="http://www.gnu.org/software/groff/" CLASS="external">groff</A> installation,
+			this may overwrite its <B>preconv</B> binary.
+			The <A HREF="makewhatis.1.html">makewhatis</A> utility is not yet linked to the build.  You must run <CODE>make
+			makewhatis</CODE> to build it (it does not install).
+		</P>
+		<P>
+			The most current version of <SPAN CLASS="nm">mdocml</SPAN> is <SPAN CLASS="attn">@VERSION@</SPAN>, dated <SPAN
+			class="attn">@VDATE@</SPAN>.  
+		</P>
 
-					<P>
-					<SPAN CLASS="nm">mdocml</SPAN> is a suite of tools compiling <Q>-<A HREF="mdoc.7.html">mdoc</A></Q>, the
-					roff macro package of choice for BSD manual pages, and <Q>-<A HREF="man.7.html">man</A></Q>, the
-					predominant historical package for UNIX manuals.  The mission of <SPAN CLASS="nm">mdocml</SPAN> is to
-					deprecate <A HREF="http://www.gnu.org/software/groff/" CLASS="external">groff</A>, the GNU troff
-					implementation, for displaying -mdoc pages whilst providing token support for -man.
-					</P>
+		<H2>
+			Current
+		</H2>
 
-					<P>
-					Why?  groff amounts to over 5 MB of source code, most of which is C++ and all of which is GPL.  It runs
-					slowly, produces uncertain output, and varies in operation from system to system.  mdocml strives to fix
-					this (respectively small, C, <A CLASS="external"
-					HREF="http://www.isc.org/software/license">ISC</A>-licensed, fast and regular).
-					</P>
+		<TABLE WIDTH="100%" SUMMARY="Current Sources">
+			<COL WIDTH="175">
+			<COL>
+			<TBODY>
+				<TR>
+					<TD>Source archive</TD>
+					<TD>
+					<A HREF="/snapshots/mdocml.tar.gz">/snapshots/mdocml.tar.gz</A> 
+					<SMALL>(<A HREF="/snapshots/mdocml.md5">md5</A>)</SMALL>
+					</TD>
+				</TR>
+				<TR>
+					<TD>Online source</TD>
+					<TD>
+					<A HREF="http://mdocml.bsd.lv/cgi-bin/cvsweb/?cvsroot=mdocml">cvsweb</A>
+					</TD>
+				</TR>
+			</TBODY>
+		</TABLE>
 
-					<P>
-					<SPAN CLASS="nm">mdocml</SPAN> consists of the <A HREF="mandoc.3.html">libmandoc</A> validating
-					compiler and <A HREF="mandoc.1.html">mandoc</A>, which interfaces with the compiler library to format
-					output for UNIX terminals, XHTML, HTML, PostScript, and PDF.  It is a <A CLASS="external"
-					HREF="http://bsd.lv/">BSD.lv</A> project.  
-					</P>
+		<H2>
+			Downstream
+		</H2>
 
-					<P>
-					<I>Disambiguation</I>: <SPAN CLASS="nm">mdocml</SPAN> is often referred to by its installed binary,
-					<Q>mandoc</Q>.
-					</P>
-				</TD>
-			</TR>
-			<TR>
-				<TD>
-					<H1>
-					<A NAME="sources">SOURCES</A>
-					</H1>
+		<TABLE WIDTH="100%" SUMMARY="Downstream Sources">
+			<COL WIDTH="175">
+			<COL>
+			<TBODY>
+				<TR>
+					<TD>DragonFly BSD</TD>
+					<TD>
+					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/usr.bin/mandoc"
+						CLASS="external">usr.bin/mandoc</A>
+					</TD>
+				</TR>
+				<TR>
+					<TD>FreeBSD</TD>
+					<TD>
+					<A HREF="http://www.freebsd.org/cgi/cvsweb.cgi/ports/textproc/mdocml/" 
+						CLASS="external">ports/textproc/mdocml</A>
+					</TD>
+				</TR>
+				<TR>
+					<TD>NetBSD</TD>
+					<TD>
+					<A HREF="http://cvsweb.netbsd.org/bsdweb.cgi/src/external/bsd/mdocml/"
+						CLASS="external">src/external/bsd/mdocml</A>
+					</TD>
+				</TR>
+				<TR>
+					<TD>OpenBSD</TD>
+					<TD>
+					<A HREF="http://www.openbsd.org/cgi-bin/cvsweb/src/usr.bin/mandoc/"
+						CLASS="external">src/usr.bin/mandoc</A> 
+					</TD>
+				</TR>
+			</TBODY>
+		</TABLE>
 
-					<P>
-					<SPAN CLASS="nm">mdocml</SPAN> is in plain-old ANSI C and should build and run on any UNIX system.
-					The most current version is <SPAN CLASS="attn">@VERSION@</SPAN>, dated <SPAN class="attn">@VDATE@</SPAN>.
-					</P>
+		<H2>
+			Historical
+		</H2>
 
-					<H2>
-					Current
-					</H2>
+		<TABLE WIDTH="100%" SUMMARY="Archived Sources">
+			<COL WIDTH="175">
+			<COL>
+			<TBODY>
+				<TR>
+					<TD>Source archive</TD>
+					<TD>
+					<A HREF="/snapshots/">/snapshots/</A> 
+					</TD>
+				</TR>
+			</TBODY>
+		</TABLE>
 
-					<TABLE WIDTH="100%" SUMMARY="Current Sources">
-					<COL WIDTH="175">
-					<COL>
-					<TBODY>
-						<TR>
-							<TD>Source archive</TD>
-							<TD>
-							<A HREF="/snapshots/mdocml.tar.gz">/snapshots/mdocml.tar.gz</A> 
-							(<A HREF="/snapshots/mdocml.md5">md5</A>)
-							</TD>
-						</TR>
-						<TR>
-							<TD>Online source</TD>
-							<TD>
-							<A HREF="http://mdocml.bsd.lv/cgi-bin/cvsweb/?cvsroot=mdocml">cvsweb</A>
-							</TD>
-						</TR>
-					</TBODY>
-					</TABLE>
+		<H1>
+			<A NAME="documentation">Documentation</A>
+		</H1>
 
-					<H2>
-					Downstream
-					</H2>
+		<P>
+			These manuals are generated automatically and refer to the current snapshot.
+		</P>
 
-					<TABLE WIDTH="100%" SUMMARY="Downstream Sources">
-					<COL WIDTH="175">
-					<COL>
-					<TBODY>
-						<TR>
-							<TD>DragonFly BSD</TD>
-							<TD>
-							<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/usr.bin/mandoc"
-								CLASS="external">usr.bin/mandoc</A>
-							</TD>
-						</TR>
-						<TR>
-							<TD>FreeBSD</TD>
-							<TD>
-							<A HREF="http://www.freebsd.org/cgi/cvsweb.cgi/ports/textproc/mdocml/" 
-								CLASS="external">ports/textproc/mdocml</A>
-							</TD>
-						</TR>
-						<TR>
-							<TD>NetBSD</TD>
-							<TD>
-							<A HREF="http://cvsweb.netbsd.org/bsdweb.cgi/src/external/bsd/mdocml/"
-								CLASS="external">src/external/bsd/mdocml</A>
-							</TD>
-						</TR>
-						<TR>
-							<TD>OpenBSD</TD>
-							<TD>
-							<A HREF="http://www.openbsd.org/cgi-bin/cvsweb/src/usr.bin/mandoc/"
-								CLASS="external">src/usr.bin/mandoc</A> 
-							</TD>
-						</TR>
-					</TBODY>
-					</TABLE>
+		<TABLE WIDTH="100%" SUMMARY="Documentation">
+			<COL WIDTH="175">
+			<COL>
+			<TBODY>
+				<TR>
+					<TD VALIGN="top"><A HREF="mandoc.1.html">mandoc(1)</A></TD>
+					<TD VALIGN="top">
+						format and display UNIX manuals
+						<SMALL>
+							(<A HREF="mandoc.1.txt">text</A> | 
+							<A HREF="mandoc.1.xhtml">xhtml</A> |
+							<A HREF="mandoc.1.pdf">pdf</A> |
+							<A HREF="mandoc.1.ps">postscript</A>)
+						</SMALL>
+					</TD>
+				</TR>
+				<TR>
+					<TD VALIGN="top"><A HREF="makewhatis.1.html">makewhatis(1)</A></TD>
+					<TD VALIGN="top">
+						index UNIX manuals
+						<SMALL>
+							(<A HREF="makewhatis.1.txt">text</A> | 
+							<A HREF="makewhatis.1.xhtml">xhtml</A> |
+							<A HREF="makewhatis.1.pdf">pdf</A> |
+							<A HREF="makewhatis.1.ps">postscript</A>)
+						</SMALL>
+					</TD>
+				</TR>
+				<TR>
+					<TD VALIGN="top"><A HREF="preconv.1.html">preconv(1)</A></TD>
+					<TD VALIGN="top">
+						recode multibyte UNIX manuals
+						<SMALL>
+							(<A HREF="preconv.1.txt">text</A> | 
+							<A HREF="preconv.1.xhtml">xhtml</A> |
+							<A HREF="preconv.1.pdf">pdf</A> |
+							<A HREF="preconv.1.ps">postscript</A>)
+						</SMALL>
+					</TD>
+				</TR>
+				<TR>
+					<TD VALIGN="top"><A HREF="mandoc.3.html">mandoc(3)</A></TD>
+					<TD VALIGN="top">
+						mandoc macro compiler library
+						<SMALL>
+							(<A HREF="mandoc.3.txt">text</A> | 
+							<A HREF="mandoc.3.xhtml">xhtml</A> |
+							<A HREF="mandoc.3.pdf">pdf</A> |
+							<A HREF="mandoc.3.ps">postscript</A>)
+						</SMALL>
+					</TD>
+				</TR>
+				<TR>
+					<TD VALIGN="top"><A HREF="man.7.html">man(7)</A></TD>
+					<TD VALIGN="top">
+						man language reference
+						<SMALL>
+							(<A HREF="man.7.txt">text</A> | 
+							<A HREF="man.7.xhtml">xhtml</A> |
+							<A HREF="man.7.pdf">pdf</A> |
+							<A HREF="man.7.ps">postscript</A>)
+						</SMALL>
+					</TD>
+				</TR>
+				<TR>
+					<TD VALIGN="top"><A HREF="eqn.7.html">eqn(7)</A></TD>
+					<TD VALIGN="top">
+						eqn-mandoc language reference
+						<SMALL>
+							(<A HREF="eqn.7.txt">text</A> | 
+							<A HREF="eqn.7.xhtml">xhtml</A> |
+							<A HREF="eqn.7.pdf">pdf</A> |
+							<A HREF="eqn.7.ps">postscript</A>)
+						</SMALL>
+					</TD>
+				</TR>
+				<TR>
+					<TD VALIGN="top"><A HREF="mandoc_char.7.html">mandoc_char(7)</A></TD>
+					<TD VALIGN="top">
+						mandoc special characters
+						<SMALL>
+							(<A HREF="mandoc_char.7.txt">text</A> | 
+							<A HREF="mandoc_char.7.xhtml">xhtml</A> |
+							<A HREF="mandoc_char.7.pdf">pdf</A> |
+							<A HREF="mandoc_char.7.ps">postscript</A>)
+						</SMALL>
+					</TD>
+				</TR>
+				<TR>
+					<TD VALIGN="top"><A HREF="mdoc.7.html">mdoc(7)</A></TD>
+					<TD VALIGN="top">
+						mdoc language reference
+						<SMALL>
+							(<A HREF="mdoc.7.txt">text</A> | 
+							<A HREF="mdoc.7.xhtml">xhtml</A> |
+							<A HREF="mdoc.7.pdf">pdf</A> |
+							<A HREF="mdoc.7.ps">postscript</A>)
+						</SMALL>
+					</TD>
+				</TR>
+				<TR>
+					<TD VALIGN="top"><A HREF="roff.7.html">roff(7)</A></TD>
+					<TD VALIGN="top">
+						roff-mandoc language reference
+						<SMALL>
+							(<A HREF="roff.7.txt">text</A> | 
+							<A HREF="roff.7.xhtml">xhtml</A> |
+							<A HREF="roff.7.pdf">pdf</A> |
+							<A HREF="roff.7.ps">postscript</A>)
+						</SMALL>
+					</TD>
+				</TR>
+				<TR>
+					<TD VALIGN="top"><A HREF="tbl.7.html">tbl(7)</A></TD>
+					<TD VALIGN="top">
+						tbl-mandoc language reference
+						<SMALL>
+							(<A HREF="tbl.7.txt">text</A> | 
+							<A HREF="tbl.7.xhtml">xhtml</A> |
+							<A HREF="tbl.7.pdf">pdf</A> |
+							<A HREF="tbl.7.ps">postscript</A>)
+						</SMALL>
+					</TD>
+				</TR>
+			</TBODY>
+		</TABLE>
 
-					<H2>
-					Historical
-					</H2>
+		<H1>
+			<A NAME="contact">Contact</A>
+		</H1>
 
-					<TABLE WIDTH="100%" SUMMARY="Archived Sources">
-					<COL WIDTH="175">
-					<COL>
-					<TBODY>
-						<TR>
-							<TD>Source archive</TD>
-							<TD>
-							<A HREF="/snapshots/">/snapshots/</A> 
-							</TD>
-						</TR>
-					</TBODY>
-					</TABLE>
-				</TD>
-			</TR>
-			<TR>
-				<TD>
-					<H1>
-					<A NAME="documentation">DOCUMENTATION</A>
-					</H1>
+		<P>
+			Use the mailing lists for bug-reports, patches, questions, etc. (these require subscription).  Please check the
+			<A HREF="http://mdocml.bsd.lv/cgi-bin/cvsweb/TODO?cvsroot=mdocml">TODO</A> for known issues
+			before posting.  Beyond that, contact Kristaps at <A
+			HREF="http://mailhide.recaptcha.net/d?k=01M6h_w7twDp58ZgH57eWC_w==&amp;c=Q2DBUt401ePlSeupJFrq_Q==" TITLE="Reveal
+			this e-mail address">kris...</A>@bsd.lv.
+		</P>
 
-					<P>
-						These manuals are generated automatically and refer to the current snapshot.
-					</P>
+		<TABLE WIDTH="100%" SUMMARY="Mailing Lists">
+			<COL WIDTH="175">
+			<COL>
+			<TBODY>
+				<TR>
+					<TD>
+						disc<A CLASS="external" TITLE="Reveal this e-mail address"
+						HREF="http://www.google.com/recaptcha/mailhide/d?k=01KQ80PFH5n3BBNpF5Gs4sRg==&amp;c=EV1QytpQqTHSItc2IXvZyocgYLPnG5K0JKw_gwMC9yc=">...</A>@mdocml.bsd.lv
+					</TD>
+					<TD>
+						bug-reports, general questions, and announcements 
+						<SMALL>(<A HREF="/archives/discuss/summary.html">archive</A>)</SMALL>
+					</TD>
+				</TR>
+				<TR>
+					<TD>
+						tec<A CLASS="external" TITLE="Reveal this e-mail address"
+						HREF="http://www.google.com/recaptcha/mailhide/d?k=01qDX_iV0RlUOarEvb6mR28g==&amp;c=gRXsTjza0NNCFPaYu-Taj2tF0pmYZSc90EZkFkhkxgo=">...</A>@mdocml.bsd.lv
+					</TD>
+					<TD>
+						patches and system discussions 
+						<SMALL>(<A HREF="/archives/tech/summary.html">archive</A>)</SMALL>
+					</TD>
+				</TR>
+				<TR>
+					<TD>
+						sou<A CLASS="external" TITLE="Reveal this e-mail address"
+						HREF="http://www.google.com/recaptcha/mailhide/d?k=01prQrAZhhl2EbIwVcRfABsQ==&amp;c=KtTW4Yic9xk-8g40KzJoca4fR3MYXv28g8NC6OQV-T8=">...</A>@mdocml.bsd.lv
+					</TD>
+					<TD>
+						source commit messages 
+						<SMALL>(<A HREF="/archives/source/summary.html">archive</A>)</SMALL>
+					</TD>
+				</TR>
+			</TBODY>
+		</TABLE>
 
-					<TABLE WIDTH="100%" SUMMARY="Documentation">
-					<COL WIDTH="175">
-					<COL>
-					<TBODY>
-						<TR>
-							<TD VALIGN="top"><A HREF="mandoc.1.html">mandoc(1)</A></TD>
-							<TD VALIGN="top">
-								format and display UNIX manuals
-								<SPAN STYLE="font-size: smaller;">
-									(<A HREF="mandoc.1.txt">text</A> | 
-									<A HREF="mandoc.1.xhtml">xhtml</A> |
-									<A HREF="mandoc.1.pdf">pdf</A> |
-									<A HREF="mandoc.1.ps">postscript</A>)
-								</SPAN>
-							</TD>
-						</TR>
-						<TR>
-							<TD VALIGN="top"><A HREF="mandoc.3.html">mandoc(3)</A></TD>
-							<TD VALIGN="top">
-								mandoc macro compiler library
-								<SPAN STYLE="font-size: smaller;">
-									(<A HREF="mandoc.3.txt">text</A> | 
-									<A HREF="mandoc.3.xhtml">xhtml</A> |
-									<A HREF="mandoc.3.pdf">pdf</A> |
-									<A HREF="mandoc.3.ps">postscript</A>)
-								</SPAN>
-							</TD>
-						</TR>
-						<TR>
-							<TD VALIGN="top"><A HREF="man.7.html">man(7)</A></TD>
-							<TD VALIGN="top">
-								man language reference
-								<SPAN STYLE="font-size: smaller;">
-									(<A HREF="man.7.txt">text</A> | 
-									<A HREF="man.7.xhtml">xhtml</A> |
-									<A HREF="man.7.pdf">pdf</A> |
-									<A HREF="man.7.ps">postscript</A>)
-								</SPAN>
-							</TD>
-						</TR>
-						<TR>
-							<TD VALIGN="top"><A HREF="eqn.7.html">eqn(7)</A></TD>
-							<TD VALIGN="top">
-								eqn-mandoc language reference
-								<SPAN STYLE="font-size: smaller;">
-									(<A HREF="eqn.7.txt">text</A> | 
-									<A HREF="eqn.7.xhtml">xhtml</A> |
-									<A HREF="eqn.7.pdf">pdf</A> |
-									<A HREF="eqn.7.ps">postscript</A>)
-								</SPAN>
-							</TD>
-						</TR>
-						<TR>
-							<TD VALIGN="top"><A HREF="mandoc_char.7.html">mandoc_char(7)</A></TD>
-							<TD VALIGN="top">
-								mandoc special characters
-								<SPAN STYLE="font-size: smaller;">
-									(<A HREF="mandoc_char.7.txt">text</A> | 
-									<A HREF="mandoc_char.7.xhtml">xhtml</A> |
-									<A HREF="mandoc_char.7.pdf">pdf</A> |
-									<A HREF="mandoc_char.7.ps">postscript</A>)
-								</SPAN>
-							</TD>
-						</TR>
-						<TR>
-							<TD VALIGN="top"><A HREF="mdoc.7.html">mdoc(7)</A></TD>
-							<TD VALIGN="top">
-								mdoc language reference
-								<SPAN STYLE="font-size: smaller;">
-									(<A HREF="mdoc.7.txt">text</A> | 
-									<A HREF="mdoc.7.xhtml">xhtml</A> |
-									<A HREF="mdoc.7.pdf">pdf</A> |
-									<A HREF="mdoc.7.ps">postscript</A>)
-								</SPAN>
-							</TD>
-						</TR>
-						<TR>
-							<TD VALIGN="top"><A HREF="roff.7.html">roff(7)</A></TD>
-							<TD VALIGN="top">
-								roff-mandoc language reference
-								<SPAN STYLE="font-size: smaller;">
-									(<A HREF="roff.7.txt">text</A> | 
-									<A HREF="roff.7.xhtml">xhtml</A> |
-									<A HREF="roff.7.pdf">pdf</A> |
-									<A HREF="roff.7.ps">postscript</A>)
-								</SPAN>
-							</TD>
-						</TR>
-						<TR>
-							<TD VALIGN="top"><A HREF="tbl.7.html">tbl(7)</A></TD>
-							<TD VALIGN="top">
-								tbl-mandoc language reference
-								<SPAN STYLE="font-size: smaller;">
-									(<A HREF="tbl.7.txt">text</A> | 
-									<A HREF="tbl.7.xhtml">xhtml</A> |
-									<A HREF="tbl.7.pdf">pdf</A> |
-									<A HREF="tbl.7.ps">postscript</A>)
-								</SPAN>
-							</TD>
-						</TR>
-					</TBODY>
-					</TABLE>
+		<H1>
+			<A NAME="news">News</A>
+		</H1>
 
-					<P>
-					See <Q><A CLASS="external" HREF="http://manpages.bsd.lv">Writing UNIX Manual Pages</A></Q> for a general
-					introduction to manpages and mdoc.
-					</P>
-				</TD>
-			</TR>
-			<TR>
-				<TD>
-					<H1>
-					<A NAME="contact">CONTACT</A>
-					</H1>
+		<P CLASS="news">
+			26-05-2011: version 1.11.3
+		</P>
+		<P>
+			Introduce locale-encoding of output with the <B>-Tlocale</B> output option and Unicode escaped-character input.
+			See <A HREF="mandoc.1.html">mandoc</A> and <A HREF="mandoc_char.7.html">mandoc_char</A>, respectively, for details.
+			This allows for non-ASCII characters (e.g., <I>\[u5000]</I>) to be rendered in the locale's encoding, if said
+			environment supports wide-character encoding (if it does not, <B>-Tascii</B> is used instead).
+			Locale support can be turned off at compile time by removing <I>-DUSE_WCHAR</I> in the <I>Makefile</I>, in which case
+			<B>-Tlocale</B> is always a synonym for <B>-Tascii</B>.
+		</P>
+		<P>
+			Furthermore, multibyte-encoded documents, such as those in UTF-8, may be on-the-fly recoded into <A
+			HREF="mandoc.1.html">mandoc</A> input by using the newly-added <A HREF="preconv.1.html">preconv</A> utility.
+			Note: in the future, this feature may be integrated into <A HREF="mandoc.1.html">mandoc</A>.
+		</P>
 
-					<P>
-						Use the mailing lists for bug-reports, patches, questions, etc. (these require
-						subscription).
-						Please check the
-						<A HREF="http://mdocml.bsd.lv/cgi-bin/cvsweb/TODO?cvsroot=mdocml">TODO</A> for known issues
-						before posting.
-						Beyond that, contact Kristaps at <A
-						HREF="http://mailhide.recaptcha.net/d?k=01M6h_w7twDp58ZgH57eWC_w==&amp;c=Q2DBUt401ePlSeupJFrq_Q=="
-						TITLE="Reveal this e-mail address">kris...</A>@bsd.lv.
-					</P>
+		<P CLASS="news">
+			12-05-2011: version 1.11.2
+		</P>
+		<P>
+			Corrected some installation issues in version 1.11.1.
+			Further migration to <A HREF="mandoc.3.html">libmandoc</A>.
+			Initial public release (this utility is very much under development) of <A HREF="makewhatis.1.html">makewhatis</A>,
+			initially named mandoc-db.
+			This utility produces keyword databases of manual content
+			<A HREF="http://mdocml.bsd.lv/mandoc-cgi/index.html">mandoc-cgi</A>, which features semantic querying of manual content.
+		</P>
 
-					<TABLE WIDTH="100%" SUMMARY="Mailing Lists">
-						<COL WIDTH="175">
-						<COL>
-						<TBODY>
-							<TR>
-								<TD>
-									disc<A CLASS="external" TITLE="Reveal this e-mail address"
-									HREF="http://www.google.com/recaptcha/mailhide/d?k=01KQ80PFH5n3BBNpF5Gs4sRg==&amp;c=EV1QytpQqTHSItc2IXvZyocgYLPnG5K0JKw_gwMC9yc=">...</A>@mdocml.bsd.lv
-								</TD>
-								<TD>
-									bug-reports, general questions, and announcements 
-									<SPAN STYLE="font-size: smaller;">(<A HREF="/archives/discuss/summary.html">archive</A>)</SPAN>
-								</TD>
-							</TR>
-							<TR>
-								<TD>
-									tec<A CLASS="external" TITLE="Reveal this e-mail address"
-									HREF="http://www.google.com/recaptcha/mailhide/d?k=01qDX_iV0RlUOarEvb6mR28g==&amp;c=gRXsTjza0NNCFPaYu-Taj2tF0pmYZSc90EZkFkhkxgo=">...</A>@mdocml.bsd.lv
-								</TD>
-								<TD>
-									patches and system discussions 
-									<SPAN STYLE="font-size: smaller;">(<A HREF="/archives/tech/summary.html">archive</A>)</SPAN>
-								</TD>
-							</TR>
-							<TR>
-								<TD>
-									sou<A CLASS="external" TITLE="Reveal this e-mail address"
-									HREF="http://www.google.com/recaptcha/mailhide/d?k=01prQrAZhhl2EbIwVcRfABsQ==&amp;c=KtTW4Yic9xk-8g40KzJoca4fR3MYXv28g8NC6OQV-T8=">...</A>@mdocml.bsd.lv
-								</TD>
-								<TD>
-									source commit messages 
-									<SPAN STYLE="font-size: smaller;">(<A HREF="/archives/source/summary.html">archive</A>)</SPAN>
-								</TD>
-							</TR>
-						</TBODY>
-					</TABLE>
-				</TD>
-			</TR>
-			<TR>
-				<TD>
-					<H1>
-					<A NAME="news">NEWS</A>
-					</H1>
-					<DIV CLASS="news">
-						<P>
-							<SPAN CLASS="date">04-04-2011</SPAN>:
-							version 1.11.1
-						</P>
-						<P>
-							The earlier <I>libroff</I>, <I>libmdoc</I>, and <I>libman</I> soup have been merged into
-							a single library, <A HREF="mandoc.3.html">libmandoc</A>, which manages all aspects of
-							parsing real manuals (from line-handling to <A HREF="tbl.7.html">tbl</A> parsing).
-						</P>
-						<P>
-							Beyond this structural change, initial <A HREF="eqn.7.html">eqn</A> functionality is in
-							place.  For the time being, this is limited to the recognition of equation blocks;
-							future version of <SPAN CLASS="nm">mdocml</SPAN> will expand upon this framework.
-						</P>
-						<P>
-							As usual, many general fixes and improvements have also occured.  In particular, a great
-							deal of redundancy and superfluous code has been removed with the merging of the backend
-							libraries.
-						</P>
-					</DIV>
-					<DIV CLASS="news">
-						<P>
-							<SPAN CLASS="date">07-01-2011</SPAN>:
-							version 1.10.9
-						</P>
-						<P>
-							Many back-end fixes have been implemented: argument handling (quoting), <A
-							HREF="man.7.html">man</A> improvements, error/warning classes, and many more.
-						</P>
-						<P>
-							Initial <A HREF="tbl.7.html">tbl</A> functionality (see the <Q>TS</Q>, <Q>TE</Q>, and
-							<Q>T&amp;</Q> macros in the <A HREF="roff.7.html#x5c265453">roff</A> manual) has been
-							merged from <A CLASS="external" HREF="http://tbl.bsd.lv">tbl.bsd.lv</A>.  Output is
-							still minimal, especially for <SPAN CLASS="flag">-Thtml</SPAN> and <SPAN
-							CLASS="flag">-Txhtml</SPAN>, but manages to at least display data.  This means that <A
-							HREF="mandoc.1.html">mandoc</A> now has built-in support for two troff preprocessors via
-							<DEL>libroff</DEL>: soelim and tbl.
-						</P>
-					</DIV>
-					<DIV CLASS="news">
-						<P>
-							<SPAN CLASS="date">24-12-2010</SPAN>:
-							version 1.10.8
-						</P>
-						<P>
-							Significant improvements merged from <A CLASS="external"
-							HREF="http://www.openbsd.org">OpenBSD</A> downstream, including
-						</P>
-						<UL>
-							<LI>many new <A HREF="roff.7.html">roff</A> components,</LI>
-							<LI>in-line implementation of troff's soelim,</LI>
-							<LI>broken-block handling,</LI>
-							<LI>overhauled error classifications, and</LI>
-							<LI>cleaned up handling of error conditions.</LI>
-						</UL>
-						<P>
-							Also overhauled the <SPAN CLASS="flag">-Thtml</SPAN> and <SPAN
-							CLASS="flag">-Txhtml</SPAN> output modes.  They now display readable output in arbitrary
-							browsers, including text-based ones like <A CLASS="external"
-							HREF="http://lynx.isc.org">lynx</A>.  See HTML and XHTML manuals in the <A
-							HREF="#documentation">DOCUMENTATION</A> section for examples.  <SPAN
-							CLASS="attn">Attention: available style-sheet classes have been considerably
-							changed!</SPAN> See the <SPAN CLASS="file">example.style.css</SPAN> file for details.
-							Lastly, <DEL>libmdoc</DEL> and <DEL>libman</DEL> have been
-							cleaned up and reduced in size and complexity.
-						</P>
-					</DIV>
-					<P>
-						See <A HREF="http://mdocml.bsd.lv/cgi-bin/cvsweb/index.sgml?cvsroot=mdocml">cvsweb</A> for
-						historical notes.
-					</P>
-				</TD>
-			</TR>
-			<TR>
-				<TD>
-					<DIV CLASS="foot">
-						Copyright &#169; 2008&#8211;2011 Kristaps Dzonsons, $Date: 2011/04/04 21:07:20 $
-					</DIV>
-				</TD>
-			</TR>
-		</TBODY>
-	</TABLE>
+		<P CLASS="news">
+			04-04-2011: version 1.11.1
+		</P>
+		<P>
+			The earlier <I>libroff</I>, <I>libmdoc</I>, and <I>libman</I> soup have been merged into
+			a single library, <A HREF="mandoc.3.html">libmandoc</A>, which manages all aspects of
+			parsing real manuals (from line-handling to <A HREF="tbl.7.html">tbl</A> parsing).
+		</P>
+		<P>
+			Beyond this structural change, initial <A HREF="eqn.7.html">eqn</A> functionality is in
+			place.  For the time being, this is limited to the recognition of equation blocks;
+			future version of <SPAN CLASS="nm">mdocml</SPAN> will expand upon this framework.
+		</P>
+		<P>
+			As usual, many general fixes and improvements have also occurred.  In particular, a great
+			deal of redundancy and superfluous code has been removed with the merging of the backend
+			libraries.
+		</P>
+
+		<P>
+			See <A HREF="http://mdocml.bsd.lv/cgi-bin/cvsweb/index.sgml?cvsroot=mdocml">cvsweb</A> for
+			historical notes.
+		</P>
+
+		<P CLASS="foot">
+			<SMALL>
+				Copyright &#169; 2008&#8211;2011 
+				<A CLASS="external" HREF="http://kristaps.bsd.lv">Kristaps Dzonsons</A>, 
+				$Date: 2011/05/26 21:23:50 $
+			</SMALL>
+		</P>
 	</BODY>
 </HTML>

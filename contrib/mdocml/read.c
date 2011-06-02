@@ -1,4 +1,4 @@
-/*	$Id: read.c,v 1.10 2011/04/03 10:11:25 kristaps Exp $ */
+/*	$Id: read.c,v 1.15 2011/05/26 20:36:21 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2010, 2011 Ingo Schwarze <schwarze@openbsd.org>
@@ -15,8 +15,14 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#include <sys/stat.h>
-#include <sys/mman.h>
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef HAVE_MMAP
+# include <sys/stat.h>
+# include <sys/mman.h>
+#endif
 
 #include <assert.h>
 #include <ctype.h>
@@ -138,7 +144,7 @@ static	const char * const	mandocerrs[MANDOCERR_MAX] = {
 	"tab in non-literal context",
 	"end of line whitespace",
 	"bad comment style",
-	"unknown escape sequence",
+	"bad escape sequence",
 	"unterminated quoted string",
 	
 	"generic error",
@@ -350,7 +356,7 @@ mparse_buf_r(struct mparse *curp, struct buf blk, int start)
 				continue;
 			}
 
-			if ('"' == blk.buf[i + 1]) {
+			if ('"' == blk.buf[i + 1] || '#' == blk.buf[i + 1]) {
 				i += 2;
 				/* Comment, skip to end of line */
 				for (; i < (int)blk.sz; ++i) {
@@ -441,7 +447,7 @@ rerun:
 
 		/*
 		 * If input parsers have not been allocated, do so now.
-		 * We keep these instanced betwen parsers, but set them
+		 * We keep these instanced between parsers, but set them
 		 * locally per parse routine since we can use different
 		 * parsers with each one.
 		 */
@@ -525,19 +531,22 @@ pdesc(struct mparse *curp, const char *file, int fd)
 
 	mparse_buf_r(curp, blk, 1);
 
+#ifdef	HAVE_MMAP
 	if (with_mmap)
 		munmap(blk.buf, blk.sz);
 	else
+#endif
 		free(blk.buf);
 }
 
 static int
 read_whole_file(const char *file, int fd, struct buf *fb, int *with_mmap)
 {
-	struct stat	 st;
 	size_t		 off;
 	ssize_t		 ssz;
 
+#ifdef	HAVE_MMAP
+	struct stat	 st;
 	if (-1 == fstat(fd, &st)) {
 		perror(file);
 		return(0);
@@ -562,6 +571,7 @@ read_whole_file(const char *file, int fd, struct buf *fb, int *with_mmap)
 		if (fb->buf != MAP_FAILED)
 			return(1);
 	}
+#endif
 
 	/*
 	 * If this isn't a regular file (like, say, stdin), then we must

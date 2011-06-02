@@ -1,4 +1,4 @@
-/*	$Id: mdoc_validate.c,v 1.166 2011/04/03 09:53:50 kristaps Exp $ */
+/*	$Id: mdoc_validate.c,v 1.169 2011/04/30 10:18:24 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2010, 2011 Ingo Schwarze <schwarze@openbsd.org>
@@ -155,9 +155,9 @@ static	v_post	 posts_notext[] = { ewarn_eq0, NULL };
 static	v_post	 posts_ns[] = { post_ns, NULL };
 static	v_post	 posts_os[] = { post_os, post_prol, NULL };
 static	v_post	 posts_rs[] = { post_rs, NULL };
-static	v_post	 posts_sh[] = { post_ignpar, hwarn_ge1, bwarn_ge1, post_sh, NULL };
+static	v_post	 posts_sh[] = { post_ignpar, hwarn_ge1, post_sh, NULL };
 static	v_post	 posts_sp[] = { ewarn_le1, NULL };
-static	v_post	 posts_ss[] = { post_ignpar, hwarn_ge1, bwarn_ge1, NULL };
+static	v_post	 posts_ss[] = { post_ignpar, hwarn_ge1, NULL };
 static	v_post	 posts_st[] = { post_st, NULL };
 static	v_post	 posts_std[] = { post_std, NULL };
 static	v_post	 posts_text[] = { ewarn_ge1, NULL };
@@ -545,31 +545,39 @@ check_argv(struct mdoc *m, struct mdoc_node *n, struct mdoc_argv *v)
 static void
 check_text(struct mdoc *m, int ln, int pos, char *p)
 {
-	int		 c;
+	char		*cpp, *pp;
 	size_t		 sz;
 
-	for ( ; *p; p++, pos++) {
+	while ('\0' != *p) {
 		sz = strcspn(p, "\t\\");
+
 		p += (int)sz;
-
-		if ('\0' == *p)
-			break;
-
 		pos += (int)sz;
 
 		if ('\t' == *p) {
 			if ( ! (MDOC_LITERAL & m->flags))
 				mdoc_pmsg(m, ln, pos, MANDOCERR_BADTAB);
+			p++;
+			pos++;
 			continue;
-		}
+		} else if ('\0' == *p)
+			break;
 
-		if (0 == (c = mandoc_special(p))) {
+		pos++;
+		pp = ++p;
+
+		if (ESCAPE_ERROR == mandoc_escape
+				((const char **)&pp, NULL, NULL)) {
 			mdoc_pmsg(m, ln, pos, MANDOCERR_BADESCAPE);
-			continue;
+			break;
 		}
 
-		p += c - 1;
-		pos += c - 1;
+		cpp = p;
+		while (NULL != (cpp = memchr(cpp, ASCII_HYPH, pp - cpp)))
+			*cpp = '-';
+
+		pos += pp - p;
+		p = pp;
 	}
 }
 
@@ -1527,7 +1535,7 @@ post_bl_head(POST_ARGS)
 	assert(0 == np->args->argv[j].sz);
 
 	/*
-	 * Accomodate for new-style groff column syntax.  Shuffle the
+	 * Accommodate for new-style groff column syntax.  Shuffle the
 	 * child nodes, all of which must be TEXT, as arguments for the
 	 * column field.  Then, delete the head children.
 	 */
