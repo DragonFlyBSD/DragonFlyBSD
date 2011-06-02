@@ -169,6 +169,8 @@ int imcr_present = 0;
 
 int naps = 0; /* # of Applications processors */
 
+u_int base_memory;
+
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
@@ -1673,9 +1675,10 @@ physmap_done:
 	 * Now, physmap contains a map of physical memory.
 	 */
 
+	base_memory = physmap[1];
 #ifdef SMP
 	/* make hole for AP bootstrap code YYY */
-	physmap[1] = mp_bootaddress(physmap[1]);
+	physmap[1] = mp_bootaddress(base_memory);
 #endif
 
 	/* Save EBDA address, if any */

@@ -181,8 +181,6 @@ static cpumask_t smp_lapic_mask = 1;	/* which cpus have lapic been inited */
 cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 
-u_int			base_memory;
-
 /*
  * Calculate usable address in base memory for AP trampoline code.
  */
@@ -191,10 +189,8 @@ mp_bootaddress(u_int basemem)
 {
 	POSTCODE(MP_BOOTADDRESS_POST);
 
-	base_memory = basemem;
-
-	boot_address = base_memory & ~0xfff;	/* round down to 4k boundary */
-	if ((base_memory - boot_address) < bootMP_size)
+	boot_address = basemem & ~0xfff;	/* round down to 4k boundary */
+	if ((basemem - boot_address) < bootMP_size)
 		boot_address -= 4096;	/* not enough, lower by 4k */
 
 	return boot_address;
