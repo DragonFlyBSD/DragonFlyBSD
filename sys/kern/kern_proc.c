@@ -949,11 +949,6 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 
 			if (!PRISON_CHECK(cr1, p->p_ucred))
 				continue;
-
-			/* let dying zombies reaped quietly */
-			if (doingzomb && p->p_nthreads == 0)
-				continue;
-
 			PHOLD(p);
 			error = sysctl_out_proc(p, req, flags);
 			PRELE(p);
