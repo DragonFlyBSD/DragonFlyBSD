@@ -1,10 +1,7 @@
-# $DragonFly: src/usr.bin/mkcsmapper/Makefile,v 1.2 2007/08/27 16:50:56 pavalos Exp $
-
 PROG=		mkcsmapper
 SRCS=		yacc.y lex.l
 SRCS+=		citrus_db_factory.c citrus_bcs.c citrus_db_hash.c
 SRCS+=		citrus_lookup_factory.c citrus_pivot_factory.c
-NOMAN=		1
 
 LIBCDIR=	${.CURDIR}/../../lib/libc
 CITRUSDIR=	${LIBCDIR}/citrus
