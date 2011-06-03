@@ -750,6 +750,7 @@ void	ltr		(u_short sel);
 u_int	rcr0		(void);
 u_int	rcr3		(void);
 u_int	rcr4		(void);
+int	rdmsr_safe	(u_int msr, uint64_t *val);
 void    reset_dbregs    (void);
 __END_DECLS
 

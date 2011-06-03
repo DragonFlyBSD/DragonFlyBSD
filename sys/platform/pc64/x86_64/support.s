@@ -700,6 +700,36 @@ ENTRY(longjmp)
 	ret
 
 /*
+ * Support for reading MSRs in the safe manner.
+ */
+ENTRY(rdmsr_safe)
+/* int rdmsr_safe(u_int msr, uint64_t *data) */
+	movq	PCPU(curthread),%r8
+	movq	TD_PCB(%r8), %r8
+	movq	$msr_onfault,PCB_ONFAULT(%r8)
+	movl	%edi,%ecx
+	rdmsr			/* Read MSR pointed by %ecx. Returns
+				   hi byte in edx, lo in %eax */
+	salq	$32,%rdx	/* sign-shift %rdx left */
+	movl	%eax,%eax	/* zero-extend %eax -> %rax */
+	orq	%rdx,%rax
+	movq	%rax,(%rsi)
+	xorq	%rax,%rax
+	movq	%rax,PCB_ONFAULT(%r8)
+	ret
+
+/*
+ * MSR operations fault handler
+ */
+	ALIGN_TEXT
+msr_onfault:
+	movq	PCPU(curthread),%r8
+	movq	TD_PCB(%r8), %r8
+	movq	$0,PCB_ONFAULT(%r8)
+	movl	$EFAULT,%eax
+	ret
+
+/*
  * Support for BB-profiling (gcc -a).  The kernbb program will extract
  * the data from the kernel.
  */
