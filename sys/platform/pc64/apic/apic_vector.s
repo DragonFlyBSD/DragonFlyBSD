@@ -104,8 +104,6 @@
 	IOAPIC_IMASK_UNLOCK ;						\
 8: ;									\
 
-#ifdef SMP /* APIC-IO */
-
 /*
  * Interrupt call handlers run in the following sequence:
  *
@@ -160,8 +158,6 @@ IDTVEC(ioapic_intr##irq_num) ;						\
 5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
-
-#endif
 
 /*
  * Handle "spurious INTerrupts".
@@ -337,8 +333,6 @@ Xtimer:
 	MEXITCOUNT
 	APIC_POP_FRAME
 	jmp	doreti_iret
-
-#ifdef SMP /* APIC-IO */
 
 MCOUNT_LABEL(bintr)
 	INTR_HANDLER(0)
@@ -534,8 +528,6 @@ MCOUNT_LABEL(bintr)
 	INTR_HANDLER(190)
 	INTR_HANDLER(191)
 MCOUNT_LABEL(eintr)
-
-#endif
 
 	.data
 

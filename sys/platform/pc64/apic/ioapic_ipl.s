@@ -66,8 +66,6 @@
 #include <machine_base/apic/ioapic_ipl.h>
 #include "assym.s"
 
-#ifdef SMP /* APIC-IO */
-
 	.text
 	SUPERALIGN_TEXT
 
@@ -128,4 +126,3 @@ ENTRY(ioapic_write)
 	movl	%esi, (%rdi)		/* write the target register index */
 	movl	%edx, IOAPIC_WINDOW(%rdi) /* write the IOAPIC register data */
 	ret				/* %eax = void */
-#endif

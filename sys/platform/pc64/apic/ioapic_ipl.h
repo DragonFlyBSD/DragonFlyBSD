@@ -30,11 +30,7 @@
 #ifndef _ARCH_APIC_IOAPIC_IPL_H_
 #define	_ARCH_APIC_IOAPIC_IPL_H_
 
-#ifdef SMP /* APIC-IO */
-
 #define IOAPIC_HWI_VECTORS 192
-
-#endif
 
 #ifdef LOCORE
 

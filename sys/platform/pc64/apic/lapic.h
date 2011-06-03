@@ -52,8 +52,6 @@ struct lapic_enumerator {
 #define LAPIC_ENUM_PRIO_MPTABLE		20
 #define LAPIC_ENUM_PRIO_MADT		40
 
-#ifdef SMP
-
 extern volatile lapic_t		*lapic;
 extern int			cpu_id_to_apic_id[];
 extern int			apic_id_to_cpu_id[];
@@ -83,8 +81,6 @@ all_but_self_ipi(int vector)
 		return 0;
 	return apic_ipi(APIC_DEST_ALLESELF, vector, APIC_DELMODE_FIXED);
 }
-
-#endif
 
 void	lapic_map(vm_offset_t /* XXX should be vm_paddr_t */);
 int	lapic_unused_apic_id(int);

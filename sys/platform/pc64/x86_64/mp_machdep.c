@@ -773,7 +773,6 @@ static cpumask_t smp_invltlb_req;
 void
 smp_invltlb(void)
 {
-#ifdef SMP
 	struct mdglobaldata *md = mdcpu;
 #ifdef SMP_INVLTLB_DEBUG
 	long count = 0;
@@ -834,10 +833,7 @@ again:
 	}
 	atomic_clear_cpumask(&smp_invltlb_req, md->mi.gd_cpumask);
 	crit_exit_gd(&md->mi);
-#endif
 }
-
-#ifdef SMP
 
 /*
  * Called from Xinvltlb assembly with interrupts disabled.  We didn't
@@ -862,8 +858,6 @@ smp_invltlb_intr(void)
 		atomic_set_cpumask(&omd->gd_invltlb_ret, md->mi.gd_cpumask);
 	}
 }
-
-#endif
 
 /*
  * When called the executing CPU will send an IPI to all other CPUs
