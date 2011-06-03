@@ -167,11 +167,11 @@ platform/pc64/x86_64/identcpu.c		standard
 platform/pc64/x86_64/amd64_mem.c	standard
 platform/pc64/x86_64/cpufreq_machdep.c    standard
 
-platform/pc64/apic/lapic.c		optional	smp
-platform/pc64/apic/ioapic.c		optional	smp
-platform/pc64/apic/ioapic_abi.c		optional	smp
-platform/pc64/apic/ioapic_ipl.s		optional	smp
-platform/pc64/apic/apic_vector.s	optional	smp
+platform/pc64/apic/lapic.c		standard
+platform/pc64/apic/ioapic.c		standard
+platform/pc64/apic/ioapic_abi.c		standard
+platform/pc64/apic/ioapic_ipl.s		standard
+platform/pc64/apic/apic_vector.s	standard
 
 bus/isa/x86_64/isa.c			optional	isa
 bus/isa/x86_64/isa_dma.c			optional	isa
@@ -187,7 +187,7 @@ platform/pc64/icu/elcr.c		standard
 bus/pci/x86_64/legacy.c			optional	pci
 bus/pci/x86_64/pci_bus.c			optional	pci
 bus/pci/x86_64/pci_cfgreg.c		optional	pci
-bus/pci/x86_64/mptable_pci.c		optional	pci smp
+bus/pci/x86_64/mptable_pci.c		optional	pci
 # notyet (BIOS struct and functions)
 #bus/pci/x86_64/pci_pir.c			optional	pci
 
@@ -201,10 +201,10 @@ platform/pc64/x86_64/console.c	standard
 platform/pc64/x86_64/ipl_funcs.c	standard
 kern/syscalls.c			standard
 platform/pc64/x86_64/mp_machdep.c		optional	smp
-platform/pc64/x86_64/mptable.c		optional	smp
+platform/pc64/x86_64/mptable.c		standard
 platform/pc64/acpica5/acpi_sdt.c	standard
 platform/pc64/acpica5/acpi_fadt.c	standard
-platform/pc64/acpica5/acpi_madt.c	optional	smp
+platform/pc64/acpica5/acpi_madt.c	standard
 dev/misc/atkbd/atkbd_isa.c		optional	atkbd
 dev/misc/atkbdc_layer/atkbdc_isa.c	optional	atkbdc
 dev/misc/ppc/ppc.c			optional	ppc

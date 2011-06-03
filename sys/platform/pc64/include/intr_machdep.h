@@ -54,8 +54,6 @@
 #define IDT_OFFSET_SYSCALL	0x80
 #define IDT_OFFSET_IPI		0xe0
 
-#if defined(SMP)
-
 /*
  * Local APIC TPR priority vector levels:
  *
@@ -132,8 +130,6 @@
 /* NOTE: this vector MUST be xxxx1111 */
 #define XSPURIOUSINT_OFFSET	(IDT_OFFSET_IPIG2 + 15)
 
-#endif /* SMP */
-
 #ifndef	LOCORE
 
 /*
@@ -146,14 +142,16 @@ typedef void inthand_t(u_int cs, u_int ef, u_int esp, u_int ss);
 
 #define	IDTVEC(name)	__CONCAT(X,name)
 
-#if defined(SMP)
+inthand_t
+	Xspuriousint,	/* handle APIC "spurious INTs" */
+	Xtimer;		/* handle LAPIC timer INT */
+
+#ifdef SMP
 inthand_t
 	Xinvltlb,	/* TLB shootdowns */
 	Xcpustop,	/* CPU stops & waits for another CPU to restart it */
-	Xspuriousint,	/* handle APIC "spurious INTs" */
-	Xtimer,		/* handle LAPIC timer INT */
 	Xipiq;		/* handle lwkt_send_ipiq() requests */
-#endif /* SMP */
+#endif
 
 #endif /* LOCORE */
 

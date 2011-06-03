@@ -175,6 +175,7 @@ Xspuriousint:
 
 	jmp	doreti_iret
 
+#ifdef SMP
 
 /*
  * Handle TLB shootdowns.
@@ -296,6 +297,8 @@ Xipiq:
 	MEXITCOUNT
 	APIC_POP_FRAME
 	jmp	doreti_iret
+
+#endif	/* SMP */
 
 	.text
 	SUPERALIGN_TEXT

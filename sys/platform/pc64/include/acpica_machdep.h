@@ -74,6 +74,4 @@ extern int	acpi_release_global_lock(uint32_t *lock);
 #define COMPILER_DEPENDENT_INT64       long
 #define COMPILER_DEPENDENT_UINT64      unsigned long
 
-void	acpi_SetDefaultIntrModel(int model);
-
 #endif /* _MACHINE_ACPICA_MACHDEP_H__ */

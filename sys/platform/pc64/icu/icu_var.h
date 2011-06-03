@@ -40,9 +40,7 @@
 
 void		icu_definit(void);
 void		icu_reinit(void);
-#ifdef SMP
 void		icu_reinit_noioapic(void);
-#endif
 
 intrmask_t	icu_irq_pending(void);
 

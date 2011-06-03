@@ -86,10 +86,8 @@
 #include <machine/specialreg.h>
 #include <machine/intr_machdep.h>
 
-#ifdef SMP
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/ioapic_abi.h>
-#endif
 #include <machine_base/icu/icu.h>
 #include <bus/isa/isa.h>
 #include <bus/isa/rtc.h>
@@ -1008,8 +1006,6 @@ resettodr(void)
 	crit_exit();
 }
 
-#ifdef SMP
-
 static int
 i8254_ioapic_trial(int irq, struct cputimer_intr *cti)
 {
@@ -1041,8 +1037,6 @@ i8254_ioapic_trial(int irq, struct cputimer_intr *cti)
 	return 0;
 }
 
-#endif	/* SMP */
-
 /*
  * Start both clocks running.  DragonFly note: the stat clock is no longer
  * used.  Instead, 8254 based systimers are used for all major clock
@@ -1051,10 +1045,8 @@ i8254_ioapic_trial(int irq, struct cputimer_intr *cti)
 static void
 i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 {
-#ifdef SMP /* APIC-IO */
 	void *clkdesc = NULL;
 	int irq = 0, mixed_mode = 0, error;
-#endif
 
 	callout_init(&sysbeepstop_ch);
 
@@ -1070,7 +1062,6 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 	rtc_statusb = RTCSB_24HR;
 
 	/* Finish initializing 8254 timer 0. */
-#ifdef SMP
 	if (ioapic_enable) {
 		irq = ioapic_abi_find_irq(0, INTR_TRIGGER_EDGE,
 			INTR_POLARITY_HIGH);
@@ -1103,21 +1094,17 @@ mixed_mode_setup:
 				       INTR_NOENTROPY);
 		machintr_intren(irq);
 	} else {
-#endif
-	register_int(0, clkintr, NULL, "clk", NULL,
-		     INTR_EXCL | INTR_CLOCK |
-		     INTR_NOPOLL | INTR_MPSAFE |
-		     INTR_NOENTROPY);
-	machintr_intren(0);
-#ifdef SMP /* APIC-IO */
+		register_int(0, clkintr, NULL, "clk", NULL,
+			     INTR_EXCL | INTR_CLOCK |
+			     INTR_NOPOLL | INTR_MPSAFE |
+			     INTR_NOENTROPY);
+		machintr_intren(0);
 	}
-#endif
 
 	/* Initialize RTC. */
 	writertc(RTC_STATUSA, rtc_statusa);
 	writertc(RTC_STATUSB, RTCSB_24HR);
 
-#ifdef SMP
 	if (ioapic_enable) {
 		error = i8254_ioapic_trial(irq, cti);
 		if (error) {
@@ -1140,7 +1127,6 @@ mixed_mode_setup:
 			}
 		}
 	}
-#endif
 	return;
 
 nointr:

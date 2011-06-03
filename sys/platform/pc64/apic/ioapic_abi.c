@@ -60,6 +60,7 @@
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/ioapic_abi.h>
 #include <machine_base/apic/ioapic_ipl.h>
+#include <machine_base/apic/apicreg.h>
 
 extern inthand_t
 	IDTVEC(ioapic_intr0),

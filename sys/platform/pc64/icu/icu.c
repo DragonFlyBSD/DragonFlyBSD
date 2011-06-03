@@ -70,10 +70,8 @@ icu_init(void)
 	int auto_eoi = 0;		/* 8086 mode */
 #endif
 
-#ifdef SMP
 	if (ioapic_enable)
 		auto_eoi = 2;		/* auto EOI, 8086 mode */
-#endif
 
 	/*
 	 * Program master
@@ -183,8 +181,6 @@ icu_ioapic_extint(int irq, int vec)
 	return 0;
 }
 
-#ifdef SMP
-
 void
 icu_reinit_noioapic(void)
 {
@@ -209,5 +205,3 @@ icu_reinit_noioapic(void)
 	MachIntrABI.cleanup();
 	crit_exit();
 }
-
-#endif
