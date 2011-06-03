@@ -659,7 +659,7 @@ snpfilter_detach(struct knote *kn)
 	struct klist *klist;
 
 	klist = &snp->snp_kq.ki_note;
-	knote_insert(klist, kn);
+	knote_remove(klist, kn);
 }
 
 static int
