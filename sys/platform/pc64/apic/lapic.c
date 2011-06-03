@@ -37,6 +37,7 @@
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/ioapic_abi.h>
+#include <machine_base/icu/icu_var.h>
 #include <machine/segments.h>
 #include <sys/thread2.h>
 
@@ -782,3 +783,24 @@ lapic_fixup_noioapic(void)
 	temp |= APIC_LVT_MASKED;
 	lapic->lvt_lint1 = temp;
 }
+
+static void
+lapic_sysinit(void *dummy __unused)
+{
+	if (lapic_enable) {
+		int error;
+
+		error = lapic_config();
+		if (error)
+			lapic_enable = 0;
+	}
+
+	if (lapic_enable) {
+		/* Initialize BSP's local APIC */
+		lapic_init(TRUE);
+	} else if (ioapic_enable) {
+		ioapic_enable = 0;
+		icu_reinit_noioapic();
+	}
+}
+SYSINIT(lapic, SI_BOOT2_LAPIC, SI_ORDER_FIRST, lapic_sysinit, NULL)

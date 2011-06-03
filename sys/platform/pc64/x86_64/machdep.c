@@ -389,14 +389,6 @@ again:
 	 */
 	bufinit();
 	vm_pager_bufferinit();
-
-#ifdef SMP
-	/*
-	 * OK, enough kmem_alloc/malloc state should be up, lets get on with it!
-	 */
-	mp_start();			/* fire up the APs and APICs */
-	mp_announce();
-#endif  /* SMP */
 }
 
 static void
