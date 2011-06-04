@@ -168,13 +168,11 @@ static u_int	boot_address;
 static int	mp_finish;
 static int	mp_finish_lapic;
 
-static void	mp_enable(u_int boot_addr);
-
 static int	start_all_aps(u_int boot_addr);
 static void	install_ap_tramp(u_int boot_addr);
 static int	start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest);
 static int	smitest(void);
-static void	cpu_simple_setup(void);
+static void	mp_bsp_simple_setup(void);
 
 static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
 static cpumask_t smp_lapic_mask = 1;	/* which cpus have lapic been inited */
@@ -195,17 +193,6 @@ mp_bootaddress(u_int basemem)
 
 	return boot_address;
 }
-
-/*
- * Startup the SMP processors.
- */
-void
-mp_start(void)
-{
-	POSTCODE(MP_START_POST);
-	mp_enable(boot_address);
-}
-
 
 /*
  * Print various information about the SMP system hardware and setup.
@@ -301,47 +288,19 @@ init_secondary(void)
  */
 
 /*
- * start the SMP system
+ * Start the SMP system
  */
 static void
-mp_enable(u_int boot_addr)
+mp_start_aps(void *dummy __unused)
 {
-	int error;
-
-	POSTCODE(MP_ENABLE_POST);
-
-	if (lapic_enable) {
-		error = lapic_config();
-		if (error)
-			lapic_enable = 0;
-	}
-
-	if (lapic_enable) {
-		/* Initialize BSP's local APIC */
-		lapic_init(TRUE);
-	} else if (ioapic_enable) {
-		ioapic_enable = 0;
-		icu_reinit_noioapic();
-	}
-
 	if (lapic_enable) {
 		/* start each Application Processor */
-		start_all_aps(boot_addr);
+		start_all_aps(boot_address);
 	} else {
-		cpu_simple_setup();
-	}
-
-	if (ioapic_enable) {
-		KASSERT(lapic_enable,
-		    ("I/O APIC is enabled, but LAPIC is disabled\n"));
-		error = ioapic_config();
-		if (error) {
-			ioapic_enable = 0;
-			icu_reinit_noioapic();
-			lapic_fixup_noioapic();
-		}
+		mp_bsp_simple_setup();
 	}
 }
+SYSINIT(startaps, SI_BOOT2_START_APS, SI_ORDER_FIRST, mp_start_aps, NULL)
 
 /*
  * start each AP in our list
@@ -1128,7 +1087,7 @@ cpu_send_ipiq_passive(int dcpu)
 #endif
 
 static void
-cpu_simple_setup(void)
+mp_bsp_simple_setup(void)
 {
 	/* build our map of 'other' CPUs */
 	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);

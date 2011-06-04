@@ -39,6 +39,7 @@
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/ioapic_abi.h>
+#include <machine_base/icu/icu_var.h>
 #include <machine/segments.h>
 #include <sys/thread2.h>
 
@@ -586,3 +587,21 @@ ioapic_map(vm_paddr_t pa)
 	KKASSERT(pa < 0x100000000LL);
 	return pmap_mapdev_uncacheable(pa, PAGE_SIZE);
 }
+
+static void
+ioapic_sysinit(void *dummy __unused)
+{
+	int error;
+
+	if (!ioapic_enable)
+		return;
+
+	KASSERT(lapic_enable, ("I/O APIC is enabled, but LAPIC is disabled\n"));
+	error = ioapic_config();
+	if (error) {
+		ioapic_enable = 0;
+		icu_reinit_noioapic();
+		lapic_fixup_noioapic();
+	}
+}
+SYSINIT(ioapic, SI_BOOT2_IOAPIC, SI_ORDER_FIRST, ioapic_sysinit, NULL)
