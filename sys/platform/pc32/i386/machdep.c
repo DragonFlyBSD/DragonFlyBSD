@@ -135,6 +135,8 @@ extern void panicifcpuunsupported(void);
 extern void initializecpu(void);
 
 static void cpu_startup(void *);
+static void pic_finish(void *);
+static void cpu_finish(void *);
 #ifndef CPU_DISABLE_SSE
 static void set_fpregs_xmm(struct save87 *, struct savexmm *);
 static void fill_fpregs_xmm(struct savexmm *, struct save87 *);
@@ -145,6 +147,8 @@ extern void ffs_rawread_setup(void);
 static void init_locks(void);
 
 SYSINIT(cpu, SI_BOOT2_START_CPU, SI_ORDER_FIRST, cpu_startup, NULL)
+SYSINIT(pic_finish, SI_BOOT2_FINISH_PIC, SI_ORDER_FIRST, pic_finish, NULL)
+SYSINIT(cpu_finish, SI_BOOT2_FINISH_CPU, SI_ORDER_FIRST, cpu_finish, NULL)
 
 int	_udatasel, _ucodesel;
 u_int	atdevbase;
@@ -364,9 +368,6 @@ again:
 	bufinit();
 	vm_pager_bufferinit();
 
-	/* Log ELCR information */
-	elcr_dump();
-
 #ifdef SMP
 	/*
 	 * OK, enough kmem_alloc/malloc state should be up, lets get on with it!
@@ -374,11 +375,22 @@ again:
 	mp_start();			/* fire up the APs and APICs */
 	mp_announce();
 #endif  /* SMP */
+}
+
+static void
+cpu_finish(void *dummy __unused)
+{
+	cpu_setregs();
+}
+
+static void
+pic_finish(void *dummy __unused)
+{
+	/* Log ELCR information */
+	elcr_dump();
 
 	/* Finalize PIC */
 	MachIntrABI.finalize();
-
-	cpu_setregs();
 }
 
 /*
