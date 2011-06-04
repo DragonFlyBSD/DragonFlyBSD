@@ -310,23 +310,30 @@ mp_enable(u_int boot_addr)
 
 	POSTCODE(MP_ENABLE_POST);
 
-	error = lapic_config();
-	if (error) {
-		if (ioapic_enable) {
-			ioapic_enable = 0;
-			icu_reinit_noioapic();
-		}
-		cpu_simple_setup();
-		return;
+	if (lapic_enable) {
+		error = lapic_config();
+		if (error)
+			lapic_enable = 0;
 	}
 
-	/* Initialize BSP's local APIC */
-	lapic_init(TRUE);
+	if (lapic_enable) {
+		/* Initialize BSP's local APIC */
+		lapic_init(TRUE);
+	} else if (ioapic_enable) {
+		ioapic_enable = 0;
+		icu_reinit_noioapic();
+	}
 
-	/* start each Application Processor */
-	start_all_aps(boot_addr);
+	if (lapic_enable) {
+		/* start each Application Processor */
+		start_all_aps(boot_addr);
+	} else {
+		cpu_simple_setup();
+	}
 
 	if (ioapic_enable) {
+		KASSERT(lapic_enable,
+		    ("I/O APIC is enabled, but LAPIC is disabled\n"));
 		error = ioapic_config();
 		if (error) {
 			ioapic_enable = 0;

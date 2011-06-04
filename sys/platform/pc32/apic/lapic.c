@@ -90,6 +90,7 @@ static const uint32_t	lapic_timer_divisors[] = {
  */
 int	cpu_id_to_apic_id[NAPICID];
 int	apic_id_to_cpu_id[NAPICID];
+int	lapic_enable = 1;
 
 /*
  * Enable LAPIC, configure interrupts.
@@ -641,17 +642,12 @@ int
 lapic_config(void)
 {
 	struct lapic_enumerator *e;
-	int error, i, enable, ap_max;
+	int error, i, ap_max;
+
+	KKASSERT(lapic_enable);
 
 	for (i = 0; i < NAPICID; ++i)
 		APICID_TO_CPUID(i) = -1;
-
-	enable = 1;
-	TUNABLE_INT_FETCH("hw.lapic_enable", &enable);
-	if (!enable) {
-		kprintf("LAPIC: Warning LAPIC is disabled\n");
-		return ENXIO;
-	}
 
 	TAILQ_FOREACH(e, &lapic_enumerators, lapic_link) {
 		error = e->lapic_probe(e);

@@ -120,6 +120,7 @@
 #include <sys/machintr.h>
 #include <machine_base/icu/icu_abi.h>
 #include <machine_base/icu/elcr_var.h>
+#include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/ioapic_abi.h>
 
@@ -1946,6 +1947,7 @@ init386(int first)
 #ifdef SMP
 	TUNABLE_INT_FETCH("hw.apic_io_enable", &ioapic_enable); /* for compat */
 	TUNABLE_INT_FETCH("hw.ioapic_enable", &ioapic_enable);
+	TUNABLE_INT_FETCH("hw.lapic_enable", &lapic_enable);
 #endif
 
 	/*
