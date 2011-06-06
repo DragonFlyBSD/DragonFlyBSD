@@ -164,23 +164,20 @@ nexus_probe(device_t dev)
 	irq_rman.rm_type = RMAN_ARRAY;
 	irq_rman.rm_descr = "Interrupt request lines";
 
-#if SMP
-if (ioapic_enable) {
-	irq_rman.rm_end = APIC_INTMAPSIZE - 1;
-	if (rman_init(&irq_rman)
-	    || rman_manage_region(&irq_rman,
-				  irq_rman.rm_start, irq_rman.rm_end))
-		panic("nexus_probe irq_rman");
-} else {
-#endif
-	irq_rman.rm_end = 15;
-	if (rman_init(&irq_rman)
-	    || rman_manage_region(&irq_rman, irq_rman.rm_start, 1)
-	    || rman_manage_region(&irq_rman, 3, irq_rman.rm_end))
-		panic("nexus_probe irq_rman");
-#if SMP
-}
-#endif
+	if (ioapic_enable) {
+		irq_rman.rm_end = APIC_INTMAPSIZE - 1;
+		if (rman_init(&irq_rman)
+		    || rman_manage_region(&irq_rman,
+					  irq_rman.rm_start, irq_rman.rm_end))
+			panic("nexus_probe irq_rman");
+	} else {
+		irq_rman.rm_end = 15;
+		if (rman_init(&irq_rman)
+		    || rman_manage_region(&irq_rman, irq_rman.rm_start, 1)
+		    || rman_manage_region(&irq_rman, 3, irq_rman.rm_end))
+			panic("nexus_probe irq_rman");
+	}
+
 	/*
 	 * ISA DMA on PCI systems is implemented in the ISA part of each
 	 * PCI->ISA bridge and the channels can be duplicated if there are

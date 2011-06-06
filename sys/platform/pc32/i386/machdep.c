@@ -1948,11 +1948,10 @@ init386(int first)
 	 * Default MachIntrABI to ICU
 	 */
 	MachIntrABI = MachIntrABI_ICU;
-#ifdef SMP
+
 	TUNABLE_INT_FETCH("hw.apic_io_enable", &ioapic_enable); /* for compat */
 	TUNABLE_INT_FETCH("hw.ioapic_enable", &ioapic_enable);
 	TUNABLE_INT_FETCH("hw.lapic_enable", &lapic_enable);
-#endif
 
 	/*
 	 * start with one cpu.  Note: with one cpu, ncpus2_shift, ncpus2_mask,

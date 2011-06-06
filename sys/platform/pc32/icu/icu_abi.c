@@ -167,8 +167,6 @@ static void
 icu_finalize(void)
 {
 	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
-
-#ifdef SMP
 	KKASSERT(!ioapic_enable);
 
 	/*
@@ -184,7 +182,6 @@ icu_finalize(void)
 		outb(0x22, 0x70);
 		outb(0x23, 0x01);
 	}
-#endif	/* SMP */
 }
 
 static int

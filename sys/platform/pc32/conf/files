@@ -193,19 +193,17 @@ platform/pc32/icu/icu_abi.c		standard
 platform/pc32/icu/icu_ipl.s		standard
 platform/pc32/icu/icu_vector.s		standard
 platform/pc32/icu/elcr.c		standard
-platform/pc32/apic/lapic.c		optional	smp
-platform/pc32/apic/ioapic.c		optional	smp
-platform/pc32/apic/ioapic_abi.c		optional	smp
-platform/pc32/apic/ioapic_ipl.s		optional	smp
-platform/pc32/apic/apic_vector.s	optional	smp
+platform/pc32/apic/lapic.c		standard
+platform/pc32/apic/ioapic.c		standard
+platform/pc32/apic/ioapic_abi.c		standard
+platform/pc32/apic/ioapic_ipl.s		standard
+platform/pc32/apic/apic_vector.s	standard
 platform/pc32/i386/est.c		optional	cpu_enable_est
 # temporarily not in build until we get the 'apic' option working on UP
-#arch/i386/i386/io_apic.c		optional	smp
-#arch/i386/i386/local_apic.c		optional	smp
 platform/pc32/i386/mpboot.s		optional	smp
 platform/pc32/i386/mp_clock.c		optional	smp
 platform/pc32/i386/mp_machdep.c		optional	smp
-platform/pc32/i386/mptable.c		optional	smp
+platform/pc32/i386/mptable.c		standard
 platform/pc32/i386/nexus.c		standard
 platform/pc32/i386/p4tcc.c		optional	cpu_enable_tcc
 platform/pc32/i386/perfmon.c		optional	perfmon
@@ -227,7 +225,7 @@ platform/pc32/i386/vm_machdep.c		standard
 platform/pc32/i386/cpufreq_machdep.c	standard
 platform/pc32/acpica5/acpi_sdt.c	standard
 platform/pc32/acpica5/acpi_fadt.c	standard
-platform/pc32/acpica5/acpi_madt.c	optional	smp
+platform/pc32/acpica5/acpi_madt.c	standard
 platform/pc32/isa/asc.c			optional	asc
 platform/pc32/isa/clock.c		standard nowerror
 dev/video/ctx/ctx.c			optional	ctx
@@ -255,7 +253,7 @@ bus/pci/i386/legacy.c			optional	pci
 bus/pci/i386/pci_bus.c			optional	pci
 bus/pci/i386/pci_cfgreg.c		optional	pci
 bus/pci/i386/pci_pir.c			optional	pci
-bus/pci/i386/mptable_pci.c		optional	pci smp
+bus/pci/i386/mptable_pci.c		optional	pci
 platform/pc32/isa/pmtimer.c		optional	pmtimer acpi
 # XXX drhodus
 platform/pc32/isa/prof_machdep.c	optional	profiling-routine

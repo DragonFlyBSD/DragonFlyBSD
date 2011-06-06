@@ -183,6 +183,7 @@ Xspuriousint:
 
 	iret
 
+#ifdef SMP
 
 /*
  * Handle TLB shootdowns.
@@ -322,6 +323,8 @@ Xipiq:
 	orl	$RQF_IPIQ,PCPU(reqflags)
 	MEXITCOUNT
 	jmp	doreti_syscall_ret
+
+#endif	/* SMP */
 
 	.text
 	SUPERALIGN_TEXT

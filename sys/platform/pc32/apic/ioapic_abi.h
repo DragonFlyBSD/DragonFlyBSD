@@ -66,8 +66,6 @@ struct apic_intmapinfo {
 
 extern struct apic_intmapinfo	int_to_apicintpin[];
 
-#ifdef SMP	/* APIC_IO */
-
 extern struct machintr_abi MachIntrABI_IOAPIC;
 
 int	ioapic_abi_extint_irqmap(int);
@@ -76,7 +74,5 @@ void	ioapic_abi_fixup_irqmap(void);
 
 int	ioapic_abi_find_gsi(int, enum intr_trigger, enum intr_polarity);
 int	ioapic_abi_find_irq(int, enum intr_trigger, enum intr_polarity);
-
-#endif	/* SMP */
 
 #endif	/* !_ARCH_APIC_IOAPIC_ABI_H_ */

@@ -51,8 +51,6 @@ struct lapic_enumerator {
 #define LAPIC_ENUM_PRIO_MPTABLE		20
 #define LAPIC_ENUM_PRIO_MADT		40
 
-#ifdef SMP
-
 extern volatile lapic_t		*lapic;
 extern int			cpu_id_to_apic_id[];
 extern int			apic_id_to_cpu_id[];
@@ -60,10 +58,6 @@ extern int			lapic_enable;
 
 void	apic_dump(char*);
 void	lapic_init(boolean_t);
-int	apic_ipi(int, int, int);
-void	selected_apic_ipi(cpumask_t, int, int);
-void	single_apic_ipi(int, int, int);
-int	single_apic_ipi_passive(int, int, int);
 void	lapic_set_cpuid(int, int);
 int	lapic_config(void);
 void	lapic_enumerator_register(struct lapic_enumerator *);
@@ -71,6 +65,17 @@ void	set_apic_timer(int);
 int	get_apic_timer_frequency(void);
 int	read_apic_timer(void);
 void	u_sleep(int);
+
+void	lapic_map(vm_offset_t /* XXX should be vm_paddr_t */);
+int	lapic_unused_apic_id(int);
+void	lapic_fixup_noioapic(void);
+
+#ifdef SMP
+
+int	apic_ipi(int, int, int);
+void	selected_apic_ipi(cpumask_t, int, int);
+void	single_apic_ipi(int, int, int);
+int	single_apic_ipi_passive(int, int, int);
 
 /*
  * Send an IPI INTerrupt containing 'vector' to all CPUs EXCEPT myself
@@ -83,10 +88,6 @@ all_but_self_ipi(int vector)
 	return apic_ipi(APIC_DEST_ALLESELF, vector, APIC_DELMODE_FIXED);
 }
 
-#endif
-
-void	lapic_map(vm_offset_t /* XXX should be vm_paddr_t */);
-int	lapic_unused_apic_id(int);
-void	lapic_fixup_noioapic(void);
+#endif	/* SMP */
 
 #endif /* _ARCH_APIC_LAPIC_H_ */

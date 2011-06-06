@@ -119,9 +119,9 @@ doreti_next:
 #ifdef SMP
 	testl	$RQF_IPIQ,PCPU(reqflags)
 	jnz	doreti_ipiq
+#endif
 	testl	$RQF_TIMER,PCPU(reqflags)
 	jnz	doreti_timer
-#endif
 	/*
 	 * check for an unmasked int (6 groups)
 	 */
@@ -318,6 +318,7 @@ doreti_ipiq:
 	decl	PCPU(intr_nesting_level)
 	movl	%esi,%eax		/* restore cpl for loop */
 	jmp	doreti_next
+#endif
 
 doreti_timer:
 	movl	%eax,%esi		/* save cpl (can't use stack) */
@@ -331,8 +332,6 @@ doreti_timer:
 	decl	PCPU(intr_nesting_level)
 	movl	%esi,%eax		/* restore cpl for loop */
 	jmp	doreti_next
-
-#endif
 
 	/*
 	 * SPLZ() a C callable procedure to dispatch any unmasked pending
@@ -358,9 +357,10 @@ splz_next:
 #ifdef SMP
 	testl	$RQF_IPIQ,PCPU(reqflags)
 	jnz	splz_ipiq
+#endif
 	testl	$RQF_TIMER,PCPU(reqflags)
 	jnz	splz_timer
-#endif
+
 	/*
 	 * check for an unmasked int (6 groups)
 	 */
@@ -460,6 +460,7 @@ splz_ipiq:
 	call	lwkt_process_ipiq
 	popl	%eax
 	jmp	splz_next
+#endif
 
 splz_timer:
 	andl	$~RQF_TIMER,PCPU(reqflags)
@@ -468,7 +469,6 @@ splz_timer:
 	call	lapic_timer_process
 	popl	%eax
 	jmp	splz_next
-#endif
 
 	/*
 	 * dofastunpend(%ecx:intr)

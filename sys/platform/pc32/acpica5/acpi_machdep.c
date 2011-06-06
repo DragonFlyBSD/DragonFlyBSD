@@ -56,15 +56,6 @@ static device_t	acpi_dev;
 uint32_t acpi_reset_video = 1;
 TUNABLE_INT("hw.acpi.reset_video", &acpi_reset_video);
 
-/*
- * -1 == unset. Use acpi_GetDefaultIntrModel()
- */
-#ifdef SMP /* APIC-IO */
-static int intr_model = -1;
-#else
-static int intr_model = ACPI_INTR_PIC;
-#endif
-
 static struct apm_softc	apm_softc;
 
 static d_open_t apmopen;
@@ -331,29 +322,11 @@ acpi_capm_init(struct acpi_softc *sc)
 	kprintf("Warning: ACPI is disabling APM's device.  You can't run both\n");
 }
 
-/*
- * Lazy initialize intr_model
- */
-static int
-acpi_GetDefaultIntrModel(void)
-{
-	if (intr_model == -1) {
-#ifdef SMP
-		if (ioapic_enable)
-			intr_model = ACPI_INTR_APIC;
-		else
-			intr_model = ACPI_INTR_PIC;
-#else
-		intr_model = ACPI_INTR_PIC;
-#endif
-	}
-	return intr_model;
-}
-
 int
 acpi_machdep_init(device_t dev)
 {
 	struct	acpi_softc *sc;
+	int intr_model;
 
 	acpi_dev = dev;
 	sc = device_get_softc(acpi_dev);
@@ -368,8 +341,13 @@ acpi_machdep_init(device_t dev)
 
 	acpi_install_wakeup_handler(sc);
 
-	if (acpi_GetDefaultIntrModel() != ACPI_INTR_PIC)
-		acpi_SetIntrModel(acpi_GetDefaultIntrModel());
+	if (ioapic_enable)
+		intr_model = ACPI_INTR_APIC;
+	else
+		intr_model = ACPI_INTR_PIC;
+
+	if (intr_model != ACPI_INTR_PIC)
+		acpi_SetIntrModel(intr_model);
 
 	SYSCTL_ADD_UINT(&sc->acpi_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->acpi_sysctl_tree), OID_AUTO,
@@ -377,11 +355,4 @@ acpi_machdep_init(device_t dev)
 	    "Call the VESA reset BIOS vector on the resume path");
 
 	return (0);
-}
-
-void
-acpi_SetDefaultIntrModel(int model)
-{
-
-	intr_model = model;
 }
