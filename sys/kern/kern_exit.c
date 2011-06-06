@@ -933,6 +933,16 @@ loop:
 			}
 
 			vm_waitproc(p);
+
+			/*
+			 * Temporary refs may still have been acquired while
+			 * we removed the process, make sure they are all
+			 * gone before kfree()ing.  Now that the process has
+			 * been removed from all lists and all references to
+			 * it have gone away, no new refs can occur.
+			 */
+			while (p->p_lock)
+				tsleep(p, 0, "reap4", hz);
 			kfree(p, M_PROC);
 			nprocs--;
 			error = 0;
