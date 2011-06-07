@@ -274,7 +274,9 @@ vm_object_pip_wait(vm_object_t object, char *waitid)
 		vm_object_pip_sleep(object, waitid);
 }
 
-static inline lwkt_token_t vm_object_token(vm_object_t obj) {
+static __inline lwkt_token_t
+vm_object_token(vm_object_t obj)
+{
 	return (lwkt_token_pool_lookup(obj));
 }
 
