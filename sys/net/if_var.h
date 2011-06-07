@@ -44,6 +44,9 @@
 #ifndef _NET_IF_H_
 #include <net/if.h>
 #endif
+#ifndef _SYS_MUTEX_H_
+#include <sys/mutex.h>
+#endif
 
 /*
  * Structures defining a network interface, providing a packet
@@ -234,7 +237,6 @@ struct ifnet {
 	int	(*if_start_cpuid)	/* cpuid to run if_start */
 		(struct ifnet *);
 	TAILQ_HEAD(, ifg_list) if_groups; /* linked list of groups per if */
-					/* protected by if_addr_mtx */
 #ifdef DEVICE_POLLING
 	void	(*if_poll)		/* IFF_POLLING support */
 		(struct ifnet *, enum poll_cmd, int);
@@ -272,6 +274,7 @@ struct ifnet {
 	struct ifaddr	*if_lladdr;
 	struct lwkt_serialize *if_serializer;	/* serializer or MP lock */
 	struct lwkt_serialize if_default_serializer; /* if not supplied */
+	struct mtx	if_ioctl_mtx;	/* high-level ioctl serializing mutex */
 	int	if_cpuid;
 	struct netmsg_base *if_start_nmsg; /* percpu msgs to sched if_start */
 	void	*if_pf_kif; /* pf interface abstraction */

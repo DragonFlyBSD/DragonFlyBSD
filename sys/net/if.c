@@ -53,15 +53,18 @@
 #include <sys/protosw.h>
 #include <sys/kernel.h>
 #include <sys/ktr.h>
+#include <sys/mutex.h>
 #include <sys/sockio.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
 #include <sys/domain.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
 #include <sys/serialize.h>
-#include <sys/msgport2.h>
 #include <sys/bus.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
+#include <sys/mutex2.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -525,6 +528,9 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		ifp->if_start_nmsg[i].lmsg.u.ms_resultp = ifp;
 	}
 
+	mtx_init(&ifp->if_ioctl_mtx);
+	mtx_lock(&ifp->if_ioctl_mtx);
+
 	TAILQ_INSERT_TAIL(&ifnet, ifp, if_link);
 	ifp->if_index = ++if_index;
 
@@ -612,6 +618,8 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 
 	/* Announce the interface. */
 	rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
+
+	mtx_unlock(&ifp->if_ioctl_mtx);
 }
 
 static void
@@ -1449,17 +1457,22 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	int error;
 	short oif_flags;
 	int new_flags;
+#ifdef COMPAT_43
+	int ocmd;
+#endif
 	size_t namelen, onamelen;
 	char new_name[IFNAMSIZ];
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
 
 	switch (cmd) {
-
 	case SIOCGIFCONF:
 	case OSIOCGIFCONF:
 		return (ifconf(cmd, data, cred));
+	default:
+		break;
 	}
+
 	ifr = (struct ifreq *)data;
 
 	switch (cmd) {
@@ -1473,16 +1486,23 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 			return (error);
 		return (if_clone_destroy(ifr->ifr_name));
-
 	case SIOCIFGCLONERS:
 		return (if_clone_list((struct if_clonereq *)data));
+	default:
+		break;
 	}
 
+	/*
+	 * Nominal ioctl through interface, lookup the ifp and obtain a
+	 * lock to serialize the ifconfig ioctl operation.
+	 */
 	ifp = ifunit(ifr->ifr_name);
-	if (ifp == 0)
+	if (ifp == NULL)
 		return (ENXIO);
-	switch (cmd) {
+	error = 0;
+	mtx_lock(&ifp->if_ioctl_mtx);
 
+	switch (cmd) {
 	case SIOCGIFINDEX:
 		ifr->ifr_index = ifp->if_index;
 		break;
@@ -1507,9 +1527,8 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 
 	case SIOCGIFDATA:
 		error = copyout((caddr_t)&ifp->if_data, ifr->ifr_data,
-		    sizeof(ifp->if_data));
+				sizeof(ifp->if_data));
 		break;
-
 
 	case SIOCGIFPHYS:
 		ifr->ifr_phys = ifp->if_physical;
@@ -1533,7 +1552,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	case SIOCSIFFLAGS:
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
-			return (error);
+			break;
 		new_flags = (ifr->ifr_flags & 0xffff) |
 		    (ifr->ifr_flagshigh << 16);
 		if (ifp->if_flags & IFF_SMART) {
@@ -1587,9 +1606,11 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	case SIOCSIFCAP:
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
-			return (error);
-		if (ifr->ifr_reqcap & ~ifp->if_capabilities)
-			return (EINVAL);
+			break;
+		if (ifr->ifr_reqcap & ~ifp->if_capabilities) {
+			error = EINVAL;
+			break;
+		}
 		ifnet_serialize_all(ifp);
 		ifp->if_ioctl(ifp, cmd, data, cred);
 		ifnet_deserialize_all(ifp);
@@ -1597,15 +1618,19 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 
 	case SIOCSIFNAME:
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
-		if (error != 0)
-			return (error);
+		if (error)
+			break;
 		error = copyinstr(ifr->ifr_data, new_name, IFNAMSIZ, NULL);
-		if (error != 0)
-			return (error);
-		if (new_name[0] == '\0')
-			return (EINVAL);
-		if (ifunit(new_name) != NULL)
-			return (EEXIST);
+		if (error)
+			break;
+		if (new_name[0] == '\0') {
+			error = EINVAL;
+			break;
+		}
+		if (ifunit(new_name) != NULL) {
+			error = EEXIST;
+			break;
+		}
 
 		EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
 
@@ -1644,7 +1669,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	case SIOCSIFMETRIC:
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
-			return (error);
+			break;
 		ifp->if_metric = ifr->ifr_metric;
 		getmicrotime(&ifp->if_lastchange);
 		break;
@@ -1652,15 +1677,17 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	case SIOCSIFPHYS:
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
-			return error;
-		if (!ifp->if_ioctl)
-		        return EOPNOTSUPP;
+			break;
+		if (ifp->if_ioctl == NULL) {
+		        error = EOPNOTSUPP;
+			break;
+		}
 		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, cred);
 		ifnet_deserialize_all(ifp);
 		if (error == 0)
 			getmicrotime(&ifp->if_lastchange);
-		return (error);
+		break;
 
 	case SIOCSIFMTU:
 	{
@@ -1668,11 +1695,15 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
-			return (error);
-		if (ifp->if_ioctl == NULL)
-			return (EOPNOTSUPP);
-		if (ifr->ifr_mtu < IF_MINMTU || ifr->ifr_mtu > IF_MAXMTU)
-			return (EINVAL);
+			break;
+		if (ifp->if_ioctl == NULL) {
+			error = EOPNOTSUPP;
+			break;
+		}
+		if (ifr->ifr_mtu < IF_MINMTU || ifr->ifr_mtu > IF_MAXMTU) {
+			error = EINVAL;
+			break;
+		}
 		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, cred);
 		ifnet_deserialize_all(ifp);
@@ -1688,22 +1719,26 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			nd6_setmtu(ifp);
 #endif
 		}
-		return (error);
+		break;
 	}
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
-			return (error);
+			break;
 
 		/* Don't allow group membership on non-multicast interfaces. */
-		if ((ifp->if_flags & IFF_MULTICAST) == 0)
-			return EOPNOTSUPP;
+		if ((ifp->if_flags & IFF_MULTICAST) == 0) {
+			error = EOPNOTSUPP;
+			break;
+		}
 
 		/* Don't let users screw up protocols' entries. */
-		if (ifr->ifr_addr.sa_family != AF_LINK)
-			return EINVAL;
+		if (ifr->ifr_addr.sa_family != AF_LINK) {
+			error = EINVAL;
+			break;
+		}
 
 		if (cmd == SIOCADDMULTI) {
 			struct ifmultiaddr *ifma;
@@ -1713,7 +1748,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		}
 		if (error == 0)
 			getmicrotime(&ifp->if_lastchange);
-		return error;
+		break;
 
 	case SIOCSIFPHYADDR:
 	case SIOCDIFPHYADDR:
@@ -1725,53 +1760,57 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	case SIOCSIFGENERIC:
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
-			return (error);
-		if (ifp->if_ioctl == 0)
-			return (EOPNOTSUPP);
+			break;
+		if (ifp->if_ioctl == 0) {
+			error = EOPNOTSUPP;
+			break;
+		}
 		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, cred);
 		ifnet_deserialize_all(ifp);
 		if (error == 0)
 			getmicrotime(&ifp->if_lastchange);
-		return error;
+		break;
 
 	case SIOCGIFSTATUS:
 		ifs = (struct ifstat *)data;
 		ifs->ascii[0] = '\0';
-
+		/* fall through */
 	case SIOCGIFPSRCADDR:
 	case SIOCGIFPDSTADDR:
 	case SIOCGLIFPHYADDR:
 	case SIOCGIFMEDIA:
 	case SIOCGIFGENERIC:
-		if (ifp->if_ioctl == NULL)
-			return (EOPNOTSUPP);
+		if (ifp->if_ioctl == NULL) {
+			error = EOPNOTSUPP;
+			break;
+		}
 		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, cred);
 		ifnet_deserialize_all(ifp);
-		return (error);
+		break;
 
 	case SIOCSIFLLADDR:
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
-			return (error);
-		error = if_setlladdr(ifp,
-		    ifr->ifr_addr.sa_data, ifr->ifr_addr.sa_len);
+			break;
+		error = if_setlladdr(ifp, ifr->ifr_addr.sa_data,
+				     ifr->ifr_addr.sa_len);
 		EVENTHANDLER_INVOKE(iflladdr_event, ifp);
-		return (error);
+		break;
 
 	default:
 		oif_flags = ifp->if_flags;
-		if (so->so_proto == 0)
-			return (EOPNOTSUPP);
+		if (so->so_proto == 0) {
+			error = EOPNOTSUPP;
+			break;
+		}
 #ifndef COMPAT_43
 		error = so_pru_control_direct(so, cmd, data, ifp);
 #else
-	    {
-		int ocmd = cmd;
+		ocmd = cmd;
 
 		switch (cmd) {
-
 		case SIOCSIFDSTADDR:
 		case SIOCSIFADDR:
 		case SIOCSIFBRDADDR:
@@ -1787,21 +1826,20 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 				ifr->ifr_addr.sa_len = 16;
 #endif
 			break;
-
 		case OSIOCGIFADDR:
 			cmd = SIOCGIFADDR;
 			break;
-
 		case OSIOCGIFDSTADDR:
 			cmd = SIOCGIFDSTADDR;
 			break;
-
 		case OSIOCGIFBRDADDR:
 			cmd = SIOCGIFBRDADDR;
 			break;
-
 		case OSIOCGIFNETMASK:
 			cmd = SIOCGIFNETMASK;
+			break;
+		default:
+			break;
 		}
 
 		error = so_pru_control_direct(so, cmd, data, ifp);
@@ -1814,7 +1852,6 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			*(u_short *)&ifr->ifr_addr = ifr->ifr_addr.sa_family;
 			break;
 		}
-	    }
 #endif /* COMPAT_43 */
 
 		if ((oif_flags ^ ifp->if_flags) & IFF_UP) {
@@ -1827,10 +1864,11 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			}
 #endif
 		}
-		return (error);
-
+		break;
 	}
-	return (0);
+
+	mtx_unlock(&ifp->if_ioctl_mtx);
+	return (error);
 }
 
 /*
