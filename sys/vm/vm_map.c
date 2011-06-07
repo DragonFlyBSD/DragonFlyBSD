@@ -2711,6 +2711,7 @@ again:
 		 */
 		lwkt_gettoken(&vm_token);
 		lwkt_gettoken(&vmobj_token);
+		vm_object_hold(object);
 
 		if (object == &kernel_object) {
 			vm_object_page_remove(object, offidxstart,
@@ -2738,6 +2739,8 @@ again:
 				}
 			}
 		}
+
+		vm_object_drop(object);
 		lwkt_reltoken(&vmobj_token);
 		lwkt_reltoken(&vm_token);
 

@@ -243,7 +243,9 @@ void
 vm_object_reference(vm_object_t object)
 {
 	lwkt_gettoken(&vmobj_token);
+	vm_object_hold(object);
 	vm_object_reference_locked(object);
+	vm_object_drop(object);
 	lwkt_reltoken(&vmobj_token);
 }
 
@@ -252,6 +254,8 @@ vm_object_reference_locked(vm_object_t object)
 {
 	if (object) {
 		ASSERT_LWKT_TOKEN_HELD(&vmobj_token);
+		/*NOTYET*/
+		/*ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));*/
 		object->ref_count++;
 		if (object->type == OBJT_VNODE) {
 			vref(object->handle);
@@ -1866,6 +1870,9 @@ vm_object_unlock(vm_object_t obj)
 void
 vm_object_hold(vm_object_t obj)
 {
+	if (obj == NULL)
+		return;
+
 	vm_object_lock(obj);
 
 	refcount_acquire(&obj->hold_count);
@@ -1888,6 +1895,9 @@ void
 vm_object_drop(vm_object_t obj)
 {
 	int rc;
+
+	if (obj == NULL)
+		return;
 
 #if defined(DEBUG_LOCKS)
 	int found = 0;

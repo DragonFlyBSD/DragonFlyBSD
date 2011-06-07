@@ -835,7 +835,7 @@ vnode_pager_lock(vm_object_t object)
 	struct thread *td = curthread;	/* XXX */
 	int error;
 
-	ASSERT_LWKT_TOKEN_HELD(&vm_token);
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 
 	for (; object != NULL; object = object->backing_object) {
 		if (object->type != OBJT_VNODE)

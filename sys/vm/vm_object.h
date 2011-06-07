@@ -274,6 +274,10 @@ vm_object_pip_wait(vm_object_t object, char *waitid)
 		vm_object_pip_sleep(object, waitid);
 }
 
+static inline lwkt_token_t vm_object_token(vm_object_t obj) {
+	return (lwkt_token_pool_lookup(obj));
+}
+
 vm_object_t vm_object_allocate (objtype_t, vm_pindex_t);
 void _vm_object_allocate (objtype_t, vm_pindex_t, vm_object_t);
 boolean_t vm_object_coalesce (vm_object_t, vm_pindex_t, vm_size_t, vm_size_t);
