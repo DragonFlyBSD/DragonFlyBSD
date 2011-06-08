@@ -67,7 +67,7 @@ int	get_apic_timer_frequency(void);
 int	read_apic_timer(void);
 void	u_sleep(int);
 
-void	lapic_map(vm_offset_t /* XXX should be vm_paddr_t */);
+void	lapic_map(vm_paddr_t);
 int	lapic_unused_apic_id(int);
 void	lapic_fixup_noioapic(void);
 

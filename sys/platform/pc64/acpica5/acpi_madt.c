@@ -127,7 +127,7 @@ static int			madt_check(vm_paddr_t);
 static int			madt_iterate_entries(struct acpi_madt *,
 				    madt_iter_t, void *);
 
-static vm_offset_t		madt_lapic_pass1(void);
+static vm_paddr_t		madt_lapic_pass1(void);
 static int			madt_lapic_pass2(int);
 
 static void			madt_lapic_enumerate(struct lapic_enumerator *);
@@ -283,11 +283,11 @@ madt_lapic_pass1_callback(void *xarg, const struct acpi_madt_ent *ent)
 	return 0;
 }
 
-static vm_offset_t
+static vm_paddr_t
 madt_lapic_pass1(void)
 {
 	struct acpi_madt *madt;
-	vm_offset_t lapic_addr;
+	vm_paddr_t lapic_addr;
 	uint64_t lapic_addr64;
 	int error;
 
@@ -296,7 +296,7 @@ madt_lapic_pass1(void)
 	madt = sdt_sdth_map(madt_phyaddr);
 	KKASSERT(madt != NULL);
 
-	MADT_VPRINTF("LAPIC address 0x%08x, flags %#x\n",
+	MADT_VPRINTF("LAPIC address 0x%x, flags %#x\n",
 		     madt->madt_lapic_addr, madt->madt_flags);
 	lapic_addr = madt->madt_lapic_addr;
 
@@ -379,7 +379,7 @@ madt_lapic_pass2(int bsp_apic_id)
 
 struct madt_lapic_probe_cbarg {
 	int		cpu_count;
-	vm_offset_t	lapic_addr;
+	vm_paddr_t	lapic_addr;
 };
 
 static int
@@ -444,7 +444,7 @@ madt_lapic_probe(struct lapic_enumerator *e)
 static void
 madt_lapic_enumerate(struct lapic_enumerator *e)
 {
-	vm_offset_t lapic_addr;
+	vm_paddr_t lapic_addr;
 	int bsp_apic_id;
 
 	KKASSERT(madt_phyaddr != 0);

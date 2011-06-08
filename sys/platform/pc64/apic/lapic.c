@@ -711,11 +711,9 @@ lapic_unused_apic_id(int start)
 }
 
 void
-lapic_map(vm_offset_t lapic_addr)
+lapic_map(vm_paddr_t lapic_addr)
 {
 	lapic = pmap_mapdev_uncacheable(lapic_addr, sizeof(struct LAPIC));
-
-	kprintf("lapic: at 0x%08lx\n", lapic_addr);
 }
 
 static TAILQ_HEAD(, lapic_enumerator) lapic_enumerators =
