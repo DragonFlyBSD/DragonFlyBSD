@@ -1389,6 +1389,9 @@ mptable_pci_int_dump(void)
 {
 	const struct mptable_pci_int *pci_int;
 
+	if (!bootverbose)
+		return;
+
 	TAILQ_FOREACH(pci_int, &mptable_pci_int_list, mpci_link) {
 		kprintf("MPTABLE: %d:%d INT%c -> IOAPIC %d.%d\n",
 			pci_int->mpci_bus,

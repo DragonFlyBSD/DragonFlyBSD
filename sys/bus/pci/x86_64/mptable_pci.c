@@ -89,9 +89,6 @@ mptable_hostb_probe(device_t dev)
 		return (ENXIO);
 #endif
 
-	if (bootverbose)
-		mptable_pci_int_dump();
-
 	device_set_desc(dev, "MPTABLE Host-PCI bridge");
 	return (0);
 }
