@@ -41,6 +41,8 @@
 
 #include <sys/callout.h>
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 /*
  * Definitions for SLIP interface data structures
  *
@@ -70,6 +72,8 @@ struct sl_softc {
 	struct	slcompress sc_comp;	/* tcp compression data */
 };
 
+#endif
+
 /* internal flags */
 #define	SC_ERROR	0x0001		/* had an input error */
 #define	SC_OUTWAIT	0x0002		/* waiting for output fill */
@@ -80,6 +84,5 @@ struct sl_softc {
 #define	SC_COMPRESS	IFF_LINK0	/* compress TCP traffic */
 #define	SC_NOICMP	IFF_LINK1	/* suppress ICMP traffic */
 #define	SC_AUTOCOMP	IFF_LINK2	/* auto-enable TCP compression */
-
 
 #endif

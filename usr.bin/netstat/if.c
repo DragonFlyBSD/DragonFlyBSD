@@ -35,6 +35,7 @@
  * $DragonFly: src/usr.bin/netstat/if.c,v 1.12 2008/03/07 11:34:21 sephe Exp $
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>

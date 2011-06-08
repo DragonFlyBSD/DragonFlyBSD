@@ -148,6 +148,8 @@ enum ifnet_serialize {
 #define IFNET_SERIALIZE_TX	IFNET_SERIALIZE_TX_BASE
 #define IFNET_SERIALIZE_RX(i)	(IFNET_SERIALIZE_RX_BASE + (i))
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 /*
  * Structure defining a network interface.
  *
@@ -315,6 +317,7 @@ typedef void if_init_f_t (void *);
 /* for compatibility with other BSDs */
 #define	if_list		if_link
 
+#endif
 
 /*
  * Output queues (ifp->if_snd) and slow device input queues (*ifp->if_slowq)
@@ -326,6 +329,7 @@ typedef void if_init_f_t (void *);
 #define	IF_DROP(ifq)		((ifq)->ifq_drops++)
 #define	IF_QLEN(ifq)		((ifq)->ifq_len)
 #define	IF_QEMPTY(ifq)		(IF_QLEN(ifq) == 0)
+
 #define	IF_ENQUEUE(ifq, m) do {						\
 	(m)->m_nextpkt = 0;						\
 	if ((ifq)->ifq_tail == 0)					\
@@ -335,6 +339,7 @@ typedef void if_init_f_t (void *);
 	(ifq)->ifq_tail = m;						\
 	(ifq)->ifq_len++;						\
 } while (0)
+
 #define	IF_PREPEND(ifq, m) do {						\
 	(m)->m_nextpkt = (ifq)->ifq_head;				\
 	if ((ifq)->ifq_tail == 0)					\
@@ -342,6 +347,7 @@ typedef void if_init_f_t (void *);
 	(ifq)->ifq_head = (m);						\
 	(ifq)->ifq_len++;						\
 } while (0)
+
 #define	IF_DEQUEUE(ifq, m) do {						\
 	(m) = (ifq)->ifq_head;						\
 	if (m) {							\

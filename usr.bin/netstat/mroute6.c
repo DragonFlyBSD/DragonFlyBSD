@@ -68,6 +68,7 @@
  *	$DragonFly: src/usr.bin/netstat/mroute6.c,v 1.3 2005/08/04 17:31:23 drhodus Exp $
  */
 
+#define _KERNEL_STRUCTURES
 #ifdef INET6
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -83,9 +84,7 @@
 
 #include <stdio.h>
 
-#define	KERNEL 1
 #include <netinet6/ip6_mroute.h>
-#undef KERNEL
 
 #include "netstat.h"
 

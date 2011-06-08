@@ -64,7 +64,7 @@
 /*
  * Multicast Routing set/getsockopt commands.
  */
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define MRT6_OINIT		100	/* initialize forwarder (omrt6msg) */
 #endif
 #define MRT6_DONE		101	/* shut down forwarder */
@@ -216,7 +216,7 @@ struct sioc_mif_req6 {
 	u_quad_t obytes;	/* Output byte count on mif		*/
 };
 
-#if defined(_KERNEL) || defined(KERNEL)
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES) || defined(KERNEL)
 /*
  * The kernel's multicast-interface structure.
  */

@@ -31,11 +31,15 @@
 
 #define	PFLOGIFS_MAX	16
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 struct pflog_softc {
 	struct ifnet		sc_if;  /* the interface */
 	int			sc_unit;
 	LIST_ENTRY(pflog_softc) sc_list;
 };
+
+#endif
 
 #define PFLOG_RULESET_NAME_SIZE	16
 

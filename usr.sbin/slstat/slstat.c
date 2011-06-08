@@ -24,6 +24,7 @@
  * $DragonFly: src/usr.sbin/slstat/slstat.c,v 1.5 2004/03/20 17:46:48 cpressey Exp $
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
@@ -54,6 +55,7 @@ static	void intpr(void);
 static	void catchalarm(int);
 
 #define INTERFACE_PREFIX        "sl%d"
+
 char    interface[IFNAMSIZ];
 
 int	rflag;
