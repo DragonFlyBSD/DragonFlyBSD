@@ -73,6 +73,10 @@ void	lapic_fixup_noioapic(void);
 
 #ifdef SMP
 
+#ifndef _MACHINE_SMP_H_
+#include <machine/smp.h>
+#endif
+
 int	apic_ipi(int, int, int);
 void	selected_apic_ipi(cpumask_t, int, int);
 void	single_apic_ipi(int, int, int);
