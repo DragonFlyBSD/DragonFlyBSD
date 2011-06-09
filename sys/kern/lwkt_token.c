@@ -800,6 +800,39 @@ lwkt_token_uninit(lwkt_token_t tok)
 	/* empty */
 }
 
+/*
+ * lwkt_token_swap:
+ *
+ *	Exchange the two most recent tokens on the tokref stack. Allows release
+ *	of tokens in non-stack order.
+ */
+void
+lwkt_token_swap(void)
+{
+	lwkt_tokref_t ref1, ref2;
+	lwkt_token_t tok1, tok2;
+	thread_t td = curthread;
+
+	ref1 = td->td_toks_stop - 1;
+	ref2 = td->td_toks_stop - 2;
+	KKASSERT(ref1 > &td->td_toks_base);
+	KKASSERT(ref2 > &td->td_toks_base);
+
+	tok1 = ref1->tr_tok;
+	tok2 = ref2->tr_tok;
+	ref1->tr_tok = tok2;
+	ref2->tr_tok = tok1;
+
+	/*
+	 * Recursive tokens will not point to the latter tokrefs; only repoint
+	 * tok->t_ref if it was to the first tokref
+	 */
+	if (tok1->t_ref == ref1)
+		tok1->t_ref = ref2;
+	if (tok2->t_ref == ref2)
+		tok2->t_ref = ref1;
+}
+
 #if 0
 int
 lwkt_token_is_stale(lwkt_tokref_t ref)
