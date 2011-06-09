@@ -164,7 +164,7 @@ vm_set_page_size(void)
  *
  * Must be called in a critical section.
  */
-vm_page_t
+static vm_page_t
 vm_add_new_page(vm_paddr_t pa)
 {
 	struct vpgqueues *vpq;
