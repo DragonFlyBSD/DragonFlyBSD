@@ -513,14 +513,20 @@ madt_ioapic_probe_callback(void *xarg, const struct acpi_madt_ent *ent)
 		       MADT_INT_TRIG_SHIFT;
 		if (trig == MADT_INT_TRIG_RSVD) {
 			kprintf("ACPI MADT: warning invalid intsrc irq %d "
-				"trig (%d)\n", intsrc_ent->mint_src, trig);
+				"trig, reserved\n", intsrc_ent->mint_src);
+		} else if (trig == MADT_INT_TRIG_LEVEL) {
+			MADT_VPRINTF("warning invalid intsrc irq %d "
+			    "trig, level\n", intsrc_ent->mint_src);
 		}
 
 		pola = (intsrc_ent->mint_flags & MADT_INT_POLA_MASK) >>
 		       MADT_INT_POLA_SHIFT;
 		if (pola == MADT_INT_POLA_RSVD) {
 			kprintf("ACPI MADT: warning invalid intsrc irq %d "
-				"pola (%d)\n", intsrc_ent->mint_src, pola);
+				"pola, reserved\n", intsrc_ent->mint_src);
+		} else if (pola == MADT_INT_POLA_LOW) {
+			MADT_VPRINTF("warning invalid intsrc irq %d "
+			    "pola, low\n", intsrc_ent->mint_src);
 		}
 	} else if (ent->me_type == MADT_ENT_IOAPIC) {
 		const struct acpi_madt_ioapic *ioapic_ent;
@@ -576,7 +582,9 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 		const struct acpi_madt_intsrc *intsrc_ent;
 		enum intr_trigger trig;
 		enum intr_polarity pola;
-		int ent_trig;
+#ifdef foo
+		int ent_trig, ent_pola;
+#endif
 
 		intsrc_ent = (const struct acpi_madt_intsrc *)ent;
 
@@ -584,25 +592,36 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 		if (intsrc_ent->mint_bus != MADT_INT_BUS_ISA)
 			return 0;
 
+#ifdef foo
 		ent_trig = (intsrc_ent->mint_flags & MADT_INT_TRIG_MASK) >>
-			   MADT_INT_TRIG_SHIFT;
-		if (ent_trig == MADT_INT_TRIG_RSVD) {
+		    MADT_INT_TRIG_SHIFT;
+		if (ent_trig == MADT_INT_TRIG_RSVD)
 			return 0;
-#ifdef notyet
-		} else if (ent_trig == MADT_INT_TRIG_LEVEL) {
+		else if (ent_trig == MADT_INT_TRIG_LEVEL)
 			trig = INTR_TRIGGER_LEVEL;
-			pola = INTR_POLARITY_LOW;
-#endif
-		} else {
+		else
 			trig = INTR_TRIGGER_EDGE;
-			pola = INTR_POLARITY_HIGH;
-		}
 
-		if (intsrc_ent->mint_src == intsrc_ent->mint_gsi &&
-		    trig == INTR_TRIGGER_EDGE) {
+		ent_pola = (intsrc_ent->mint_flags & MADT_INT_POLA_MASK) >>
+		    MADT_INT_POLA_SHIFT;
+		if (ent_pola == MADT_INT_POLA_RSVD)
+			return 0;
+		else if (ent_pola == MADT_INT_POLA_LOW)
+			pola = INTR_POLARITY_LOW;
+		else
+			pola = INTR_POLARITY_HIGH;
+#else
+		/*
+		 * We ignore the polarity and trigger changes, since
+		 * most of them are wrong or useless at best.
+		 */
+		if (intsrc_ent->mint_src == intsrc_ent->mint_gsi) {
 			/* Nothing changed */
 			return 0;
 		}
+		trig = INTR_TRIGGER_EDGE;
+		pola = INTR_POLARITY_HIGH;
+#endif
 
 		MADT_VPRINTF("INTSRC irq %d -> gsi %u %s/%s\n",
 			     intsrc_ent->mint_src, intsrc_ent->mint_gsi,
