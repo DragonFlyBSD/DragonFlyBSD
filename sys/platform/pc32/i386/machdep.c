@@ -123,6 +123,7 @@
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/ioapic_abi.h>
+#include <machine/mptable.h>
 
 #define PHYSMAP_ENTRIES		10
 
@@ -380,6 +381,9 @@ pic_finish(void *dummy __unused)
 {
 	/* Log ELCR information */
 	elcr_dump();
+
+	/* Log MPTABLE information */
+	mptable_pci_int_dump();
 
 	/* Finalize PIC */
 	MachIntrABI.finalize();
