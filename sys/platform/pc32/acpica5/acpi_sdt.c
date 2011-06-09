@@ -33,14 +33,10 @@
  */
 
 #include <sys/param.h>
-#include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
 
 #include <machine/pmap.h>
-#include <machine/smp.h>
-#include <machine/md_var.h>
-#include <machine/specialreg.h>
 
 #include "acpi_sdt.h"
 #include "acpi_sdt_var.h"
