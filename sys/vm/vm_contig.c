@@ -379,7 +379,7 @@ again:
  * Caller must ensure no races on the page range in question.
  * No other requirements.
  */
-void
+static void
 vm_contig_pg_free(int start, u_long size)
 {
 	vm_page_t pga = vm_page_array;
@@ -408,7 +408,7 @@ vm_contig_pg_free(int start, u_long size)
  *
  * No requirements.
  */
-vm_offset_t
+static vm_offset_t
 vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 {
 	vm_offset_t addr, tmp_addr;

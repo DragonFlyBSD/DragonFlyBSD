@@ -528,8 +528,6 @@ vm_page_t vm_page_list_find(int basequeue, int index, boolean_t prefer_zero);
 void vm_page_zero_invalid(vm_page_t m, boolean_t setvalid);
 void vm_page_free_toq(vm_page_t m);
 vm_page_t vm_page_free_fromq_fast(void);
-vm_offset_t vm_contig_pg_kmap(int, u_long, vm_map_t, int);
-void vm_contig_pg_free(int, u_long);
 void vm_page_event_internal(vm_page_t, vm_page_event_t);
 void vm_page_dirty(vm_page_t m);
 void vm_page_register_action(vm_page_action_t action, vm_page_event_t event);
