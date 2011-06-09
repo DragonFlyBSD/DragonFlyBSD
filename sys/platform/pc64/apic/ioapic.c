@@ -63,6 +63,7 @@ struct ioapic_conf {
 	struct ioapic_intsrc ioc_intsrc[16];	/* XXX magic number */
 };
 
+static int	ioapic_config(void);
 static void	ioapic_setup(const struct ioapic_info *);
 static int	ioapic_alloc_apic_id(int);
 static void	ioapic_set_apic_id(const struct ioapic_info *);
@@ -79,7 +80,7 @@ static TAILQ_HEAD(, ioapic_enumerator) ioapic_enumerators =
 
 int		ioapic_enable = 1; /* I/O APIC is enabled by default */
 
-int
+static int
 ioapic_config(void)
 {
 	struct ioapic_enumerator *e;

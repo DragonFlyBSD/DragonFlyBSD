@@ -51,7 +51,6 @@ struct ioapic_enumerator {
 #define IOAPIC_ENUM_PRIO_MPTABLE	20
 #define IOAPIC_ENUM_PRIO_MADT		40
 
-int	ioapic_config(void);
 void	ioapic_enumerator_register(struct ioapic_enumerator *);
 void	ioapic_add(void *, int, int);
 void	ioapic_intsrc(int, int, enum intr_trigger, enum intr_polarity);
