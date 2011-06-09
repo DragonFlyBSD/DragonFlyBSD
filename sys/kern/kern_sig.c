@@ -1080,6 +1080,11 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * and if it is set to SIG_IGN, action will be SIG_DFL here.
 		 */
 		if (SIGISMEMBER(p->p_sigignore, sig)) {
+			/*
+			 * Even if a signal is set SIG_IGN, it may still be
+			 * lurking in a kqueue.
+			 */
+			KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			return;
