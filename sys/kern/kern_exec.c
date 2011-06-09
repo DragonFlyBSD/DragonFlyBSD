@@ -670,6 +670,12 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 	return (0);
 }
 
+/*
+ * Map the first page of an executable image.
+ *
+ * NOTE: If the mapping fails we have to NULL-out firstpage which may
+ *	 still be pointing to our supplied lwp structure.
+ */
 int
 exec_map_first_page(struct image_params *imgp)
 {
@@ -681,8 +687,10 @@ exec_map_first_page(struct image_params *imgp)
 	imgp->firstpage = &imgp->firstpage_cache;
 	err = exec_map_page(imgp, 0, &imgp->firstpage, &imgp->image_header);
 
-	if (err)
+	if (err) {
+		imgp->firstpage = NULL;
 		return err;
+	}
 
 	return 0;
 }
