@@ -190,27 +190,13 @@ _lwkt_token_pool_lookup(void *ptr)
 /*
  * Initialize a tokref_t prior to making it visible in the thread's
  * token array.
- *
- * As an optimization we set the MPSAFE flag if the thread is already
- * holding the mp_token.  This bypasses unncessary calls to get_mplock() and
- * rel_mplock() on tokens which are not normally MPSAFE when the thread
- * is already holding the MP lock.
  */
 static __inline
-intptr_t
-_lwkt_tok_flags(lwkt_token_t tok, thread_t td)
-{
-	return(tok->t_flags);
-}
-
-static __inline
 void
-_lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td,
-		  intptr_t flags)
+_lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td)
 {
 	ref->tr_tok = tok;
 	ref->tr_owner = td;
-	ref->tr_flags = flags;
 }
 
 #ifdef SMP
@@ -514,14 +500,12 @@ lwkt_gettoken(lwkt_token_t tok)
 {
 	thread_t td = curthread;
 	lwkt_tokref_t ref;
-	intptr_t flags;
 
-	flags = _lwkt_tok_flags(tok, td);
 	ref = td->td_toks_stop;
 	KKASSERT(ref < &td->td_toks_end);
 	++td->td_toks_stop;
 	cpu_ccfence();
-	_lwkt_tokref_init(ref, tok, td, flags);
+	_lwkt_tokref_init(ref, tok, td);
 
 	if (_lwkt_trytokref2(ref, td, 1) == FALSE) {
 		/*
@@ -564,14 +548,12 @@ lwkt_gettoken_hard(lwkt_token_t tok)
 {
 	thread_t td = curthread;
 	lwkt_tokref_t ref;
-	intptr_t flags;
 
-	flags = _lwkt_tok_flags(tok, td);
 	ref = td->td_toks_stop;
 	KKASSERT(ref < &td->td_toks_end);
 	++td->td_toks_stop;
 	cpu_ccfence();
-	_lwkt_tokref_init(ref, tok, td, flags);
+	_lwkt_tokref_init(ref, tok, td);
 
 	if (_lwkt_trytokref2(ref, td, 1) == FALSE) {
 		/*
@@ -621,15 +603,13 @@ lwkt_getpooltoken(void *ptr)
 	thread_t td = curthread;
 	lwkt_token_t tok;
 	lwkt_tokref_t ref;
-	intptr_t flags;
 
 	tok = _lwkt_token_pool_lookup(ptr);
-	flags = _lwkt_tok_flags(tok, td);
 	ref = td->td_toks_stop;
 	KKASSERT(ref < &td->td_toks_end);
 	++td->td_toks_stop;
 	cpu_ccfence();
-	_lwkt_tokref_init(ref, tok, td, flags);
+	_lwkt_tokref_init(ref, tok, td);
 
 	if (_lwkt_trytokref2(ref, td, 1) == FALSE) {
 		/*
@@ -681,14 +661,12 @@ lwkt_trytoken(lwkt_token_t tok)
 {
 	thread_t td = curthread;
 	lwkt_tokref_t ref;
-	intptr_t flags;
 
-	flags = _lwkt_tok_flags(tok, td);
 	ref = td->td_toks_stop;
 	KKASSERT(ref < &td->td_toks_end);
 	++td->td_toks_stop;
 	cpu_ccfence();
-	_lwkt_tokref_init(ref, tok, td, flags);
+	_lwkt_tokref_init(ref, tok, td);
 
 	if (_lwkt_trytokref2(ref, td, 0) == FALSE) {
 		/*
@@ -811,7 +789,6 @@ void
 lwkt_token_init(lwkt_token_t tok, const char *desc)
 {
 	tok->t_ref = NULL;
-	tok->t_flags = 0;
 	tok->t_collisions = 0;
 	tok->t_collmask = 0;
 	tok->t_desc = desc;

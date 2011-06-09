@@ -101,7 +101,6 @@ struct intrframe;
 
 typedef struct lwkt_token {
     struct lwkt_tokref	*t_ref;		/* Owning ref or NULL */
-    intptr_t		t_flags;	/* MP lock required */
     long		t_collisions;	/* Collision counter */
     cpumask_t		t_collmask;	/* Collision cpu mask for resched */
     const char		*t_desc;	/* Descriptive name */
@@ -113,7 +112,6 @@ typedef struct lwkt_token {
 #define LWKT_TOKEN_INITIALIZER(name)	\
 {					\
 	.t_ref = NULL,			\
-	.t_flags = 0,			\
 	.t_collisions = 0,		\
 	.t_collmask = 0,		\
 	.t_desc = #name			\
@@ -161,8 +159,6 @@ typedef struct lwkt_token {
 struct lwkt_tokref {
     lwkt_token_t	tr_tok;		/* token in question */
     struct thread	*tr_owner;	/* me */
-    intptr_t		tr_flags;	/* copy of t_flags */
-    const void		*tr_stallpc;	/* stalled at pc */
 };
 
 #define MAXCPUFIFO      16	/* power of 2 */
