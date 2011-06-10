@@ -813,6 +813,8 @@ lwkt_token_swap(void)
 	lwkt_token_t tok1, tok2;
 	thread_t td = curthread;
 
+	crit_enter();
+
 	ref1 = td->td_toks_stop - 1;
 	ref2 = td->td_toks_stop - 2;
 	KKASSERT(ref1 > &td->td_toks_base);
@@ -831,6 +833,8 @@ lwkt_token_swap(void)
 		tok1->t_ref = ref2;
 	if (tok2->t_ref == ref2)
 		tok2->t_ref = ref1;
+
+	crit_exit();
 }
 
 #if 0

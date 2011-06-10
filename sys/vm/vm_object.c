@@ -101,7 +101,6 @@ static void	vm_object_qcollapse(vm_object_t object);
 static int	vm_object_page_collect_flush(vm_object_t object, vm_page_t p,
 					     int pagerflags);
 static void	vm_object_lock_init(vm_object_t);
-static void	vm_object_hold_wake(vm_object_t);
 static void	vm_object_hold_wait(vm_object_t);
 
 
@@ -144,6 +143,137 @@ static vm_zone_t obj_zone;
 static struct vm_zone obj_zone_store;
 #define VM_OBJECTS_INIT 256
 static struct vm_object vm_objects_init[VM_OBJECTS_INIT];
+
+/*
+ * Misc low level routines
+ */
+static void
+vm_object_lock_init(vm_object_t obj)
+{
+#if defined(DEBUG_LOCKS)
+	int i;
+
+	obj->debug_hold_bitmap = 0;
+	obj->debug_hold_ovfl = 0;
+	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
+		obj->debug_hold_thrs[i] = NULL;
+	}
+#endif
+}
+
+static void
+vm_object_lock_swap(void)
+{
+	lwkt_token_swap();
+}
+
+void
+vm_object_lock(vm_object_t obj)
+{
+	lwkt_getpooltoken(obj);
+}
+
+void
+vm_object_unlock(vm_object_t obj)
+{
+	lwkt_relpooltoken(obj);
+}
+
+static __inline void
+vm_object_assert_held(vm_object_t obj)
+{
+	ASSERT_LWKT_TOKEN_HELD(lwkt_token_pool_lookup(obj));
+}
+
+void
+vm_object_hold(vm_object_t obj)
+{
+	if (obj == NULL)
+		return;
+
+	/*
+	 * Object must be held (object allocation is stable due to callers
+	 * context, typically already holding the token on a parent object)
+	 * prior to potentially blocking on the lock, otherwise the object
+	 * can get ripped away from us.
+	 */
+	refcount_acquire(&obj->hold_count);
+	vm_object_lock(obj);
+
+#if defined(DEBUG_LOCKS)
+	int i;
+
+	i = ffs(~obj->debug_hold_bitmap) - 1;
+	if (i == -1) {
+		kprintf("vm_object hold count > VMOBJ_DEBUG_ARRAY_SIZE");
+		obj->debug_hold_ovfl = 1;
+	}
+
+	obj->debug_hold_bitmap |= (1 << i);
+	obj->debug_hold_thrs[i] = curthread;
+#endif
+}
+
+void
+vm_object_drop(vm_object_t obj)
+{
+	if (obj == NULL)
+		return;
+
+#if defined(DEBUG_LOCKS)
+	int found = 0;
+	int i;
+
+	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
+		if ((obj->debug_hold_bitmap & (1 << i)) &&
+		    (obj->debug_hold_thrs[i] == curthread)) {
+			obj->debug_hold_bitmap &= ~(1 << i);
+			obj->debug_hold_thrs[i] = NULL;
+			found = 1;
+			break;
+		}
+	}
+
+	if (found == 0 && obj->debug_hold_ovfl == 0)
+		panic("vm_object: attempt to drop hold on non-self-held obj");
+#endif
+
+	/*
+	 * The lock is a pool token, keep holding it across potential
+	 * wakeups to interlock the tsleep/wakeup.
+	 */
+	if (refcount_release(&obj->hold_count))
+		wakeup(obj);
+	vm_object_unlock(obj);
+}
+
+/*
+ * This can only be called while the caller holds the object
+ * with the OBJ_DEAD interlock.  Since there are no refs this
+ * is the only thing preventing an object destruction race.
+ */
+static void
+vm_object_hold_wait(vm_object_t obj)
+{
+	vm_object_lock(obj);
+
+#if defined(DEBUG_LOCKS)
+	int i;
+
+	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
+		if ((obj->debug_hold_bitmap & (1 << i)) &&
+		    (obj->debug_hold_thrs[i] == curthread))  {
+			panic("vm_object: self-hold in terminate or collapse");
+		}
+	}
+#endif
+
+	while (obj->hold_count)
+		tsleep(obj, 0, "vmobjhld", 0);
+
+	vm_object_unlock(obj);
+}
+
 
 /*
  * Initialize a freshly allocated object
@@ -268,6 +398,7 @@ vm_object_reference_locked(vm_object_t object)
  * Dereference an object and its underlying vnode.
  *
  * The caller must hold vmobj_token.
+ * The object must be locked but not held.  This function will eat the lock.
  */
 static void
 vm_object_vndeallocate(vm_object_t object)
@@ -288,6 +419,7 @@ vm_object_vndeallocate(vm_object_t object)
 	object->ref_count--;
 	if (object->ref_count == 0)
 		vclrflags(vp, VTEXT);
+	vm_object_unlock(object);
 	vrele(vp);
 }
 
@@ -295,6 +427,10 @@ vm_object_vndeallocate(vm_object_t object)
  * Release a reference to the specified object, gained either through a
  * vm_object_allocate or a vm_object_reference call.  When all references
  * are gone, storage associated with this object may be relinquished.
+ *
+ * The caller does not have to hold the object locked but must have control
+ * over the reference in question in order to guarantee that the object
+ * does not get ripped out from under us.
  */
 void
 vm_object_deallocate(vm_object_t object)
@@ -311,9 +447,13 @@ vm_object_deallocate_locked(vm_object_t object)
 
 	ASSERT_LWKT_TOKEN_HELD(&vmobj_token);
 
+	if (object)
+		vm_object_lock(object);
+
 	while (object != NULL) {
 		if (object->type == OBJT_VNODE) {
 			vm_object_vndeallocate(object);
+			/* vndeallocate ate the lock */
 			break;
 		}
 
@@ -323,6 +463,7 @@ vm_object_deallocate_locked(vm_object_t object)
 		}
 		if (object->ref_count > 2) {
 			object->ref_count--;
+			vm_object_unlock(object);
 			break;
 		}
 
@@ -335,60 +476,84 @@ vm_object_deallocate_locked(vm_object_t object)
 		if (object->ref_count > 2) {
 			object->ref_count--;
 			lwkt_reltoken(&vm_token);
+			vm_object_unlock(object);
 			break;
 		}
 
 		/*
 		 * Here on ref_count of one or two, which are special cases for
 		 * objects.
+		 *
+		 * Nominal ref_count > 1 case if the second ref is not from
+		 * a shadow.
 		 */
-		if ((object->ref_count == 2) && (object->shadow_count == 0)) {
+		if (object->ref_count == 2 && object->shadow_count == 0) {
 			vm_object_set_flag(object, OBJ_ONEMAPPING);
 			object->ref_count--;
 			lwkt_reltoken(&vm_token);
+			vm_object_unlock(object);
 			break;
 		}
-		if ((object->ref_count == 2) && (object->shadow_count == 1)) {
-			object->ref_count--;
-			if ((object->handle == NULL) &&
+
+		/*
+		 * If the second ref is from a shadow we chain along it
+		 * if object's handle is exhausted.
+		 */
+		if (object->ref_count == 2 && object->shadow_count == 1) {
+			if (object->handle == NULL &&
 			    (object->type == OBJT_DEFAULT ||
 			     object->type == OBJT_SWAP)) {
-				vm_object_t robject;
-
-				robject = LIST_FIRST(&object->shadow_head);
-				KASSERT(robject != NULL,
+				temp = LIST_FIRST(&object->shadow_head);
+				KASSERT(temp != NULL,
 					("vm_object_deallocate: ref_count: "
 					"%d, shadow_count: %d",
 					object->ref_count,
 					object->shadow_count));
+				lwkt_reltoken(&vm_token);
+				vm_object_lock(temp);
 
-				if ((robject->handle == NULL) &&
-				    (robject->type == OBJT_DEFAULT ||
-				     robject->type == OBJT_SWAP)) {
-
-					robject->ref_count++;
+				if ((temp->handle == NULL) &&
+				    (temp->type == OBJT_DEFAULT ||
+				     temp->type == OBJT_SWAP)) {
+					/*
+					 * Special case, must handle ref_count
+					 * manually to avoid recursion.
+					 */
+					temp->ref_count++;
+					vm_object_lock_swap();
 
 					while (
-						robject->paging_in_progress ||
+						temp->paging_in_progress ||
 						object->paging_in_progress
 					) {
-						vm_object_pip_sleep(robject, "objde1");
-						vm_object_pip_sleep(object, "objde2");
+						vm_object_pip_sleep(temp,
+								    "objde1");
+						vm_object_pip_sleep(object,
+								    "objde2");
 					}
 
-					if (robject->ref_count == 1) {
-						robject->ref_count--;
-						object = robject;
+					if (temp->ref_count == 1) {
+						object->ref_count--;
+						temp->ref_count--;
+						vm_object_unlock(object);
+						object = temp;
 						goto doterm;
 					}
 
-					object = robject;
-					vm_object_collapse(object);
+					lwkt_gettoken(&vm_token);
+					vm_object_collapse(temp);
 					lwkt_reltoken(&vm_token);
+					object->ref_count--;
+					vm_object_unlock(object);
+					object = temp;
 					continue;
 				}
+				vm_object_unlock(temp);
+			} else {
+				lwkt_reltoken(&vm_token);
 			}
-			lwkt_reltoken(&vm_token);
+			object->ref_count--;
+			vm_object_unlock(object);
 			break;
 		}
 
@@ -398,29 +563,45 @@ vm_object_deallocate_locked(vm_object_t object)
 		object->ref_count--;
 		if (object->ref_count != 0) {
 			lwkt_reltoken(&vm_token);
+			vm_object_unlock(object);
 			break;
 		}
 
 		/*
 		 * Termination path
+		 *
+		 * We may have to loop to resolve races if we block getting
+		 * temp's lock.  If temp is non NULL we have to swap the
+		 * lock order so the original object lock as at the top
+		 * of the lock heap.
 		 */
+		lwkt_reltoken(&vm_token);
 doterm:
-		temp = object->backing_object;
+		while ((temp = object->backing_object) != NULL) {
+			vm_object_lock(temp);
+			if (temp == object->backing_object)
+				break;
+			vm_object_unlock(temp);
+		}
 		if (temp) {
 			LIST_REMOVE(object, shadow_list);
 			temp->shadow_count--;
 			temp->generation++;
 			object->backing_object = NULL;
+			vm_object_lock_swap();
 		}
-		lwkt_reltoken(&vm_token);
 
 		/*
 		 * Don't double-terminate, we could be in a termination
 		 * recursion due to the terminate having to sync data
 		 * to disk.
 		 */
-		if ((object->flags & OBJ_DEAD) == 0)
+		if ((object->flags & OBJ_DEAD) == 0) {
 			vm_object_terminate(object);
+			/* termination ate the object lock */
+		} else {
+			vm_object_unlock(object);
+		}
 		object = temp;
 	}
 }
@@ -431,7 +612,10 @@ doterm:
  * The object must have zero references.
  *
  * The caller must be holding vmobj_token and properly interlock with
- * OBJ_DEAD.
+ * OBJ_DEAD (at the moment).
+ *
+ * The caller must have locked the object only, and not be holding it.
+ * This function will eat the caller's lock on the object.
  */
 static int vm_object_terminate_callback(vm_page_t p, void *data);
 
@@ -526,6 +710,7 @@ vm_object_terminate(vm_object_t object)
 	TAILQ_REMOVE(&vm_object_list, object, object_list);
 	vm_object_count--;
 	vm_object_dead_wakeup(object);
+	vm_object_unlock(object);
 
 	if (object->ref_count != 0) {
 		panic("vm_object_terminate2: object with references, "
@@ -1405,12 +1590,15 @@ vm_object_qcollapse(vm_object_t object)
 /*
  * Collapse an object with the object backing it.  Pages in the backing
  * object are moved into the parent, and the backing object is deallocated.
+ *
+ * The caller must hold (object).
  */
 void
 vm_object_collapse(vm_object_t object)
 {
 	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	ASSERT_LWKT_TOKEN_HELD(&vmobj_token);
+	vm_object_assert_held(object);
 
 	while (TRUE) {
 		vm_object_t backing_object;
@@ -1426,6 +1614,12 @@ vm_object_collapse(vm_object_t object)
 		if ((backing_object = object->backing_object) == NULL)
 			break;
 
+		vm_object_hold(backing_object);
+		if (backing_object != object->backing_object) {
+			vm_object_drop(backing_object);
+			continue;
+		}
+
 		/*
 		 * we check the backing object first, because it is most likely
 		 * not collapsable.
@@ -1438,6 +1632,7 @@ vm_object_collapse(vm_object_t object)
 		    (object->type != OBJT_DEFAULT &&
 		     object->type != OBJT_SWAP) ||
 		    (object->flags & OBJ_DEAD)) {
+			vm_object_drop(backing_object);
 			break;
 		}
 
@@ -1445,6 +1640,7 @@ vm_object_collapse(vm_object_t object)
 		    object->paging_in_progress != 0 ||
 		    backing_object->paging_in_progress != 0
 		) {
+			vm_object_drop(backing_object);
 			vm_object_qcollapse(object);
 			break;
 		}
@@ -1541,6 +1737,7 @@ vm_object_collapse(vm_object_t object)
 			/*
 			 * Wait for hold count to hit zero
 			 */
+			vm_object_drop(backing_object);
 			vm_object_hold_wait(backing_object);
 
 			/* (we are holding vmobj_token) */
@@ -1560,6 +1757,7 @@ vm_object_collapse(vm_object_t object)
 			 */
 
 			if (vm_object_backing_scan(object, OBSC_TEST_ALL_SHADOWED) == 0) {
+				vm_object_drop(backing_object);
 				break;
 			}
 
@@ -1593,6 +1791,7 @@ vm_object_collapse(vm_object_t object)
 			 * so we don't need to call vm_object_deallocate, but
 			 * we do anyway.
 			 */
+			vm_object_drop(backing_object);
 			vm_object_deallocate_locked(backing_object);
 			object_bypasses++;
 		}
@@ -1753,8 +1952,10 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
  *	prev_size	Size of reference to prev_object
  *	next_size	Size of reference to next_object
  *
- * The object must not be locked.
  * The caller must hold vm_token and vmobj_token.
+ *
+ * The caller does not need to hold (prev_object) but must have a stable
+ * pointer to it (typically by holding the vm_map locked).
  */
 boolean_t
 vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
@@ -1769,8 +1970,11 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 		return (TRUE);
 	}
 
+	vm_object_hold(prev_object);
+
 	if (prev_object->type != OBJT_DEFAULT &&
 	    prev_object->type != OBJT_SWAP) {
+		vm_object_drop(prev_object);
 		return (FALSE);
 	}
 
@@ -1786,6 +1990,7 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	 */
 
 	if (prev_object->backing_object != NULL) {
+		vm_object_drop(prev_object);
 		return (FALSE);
 	}
 
@@ -1795,6 +2000,7 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 
 	if ((prev_object->ref_count > 1) &&
 	    (prev_object->size != next_pindex)) {
+		vm_object_drop(prev_object);
 		return (FALSE);
 	}
 
@@ -1817,6 +2023,7 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	if (next_pindex + next_size > prev_object->size)
 		prev_object->size = next_pindex + next_size;
 
+	vm_object_drop(prev_object);
 	return (TRUE);
 }
 
@@ -1839,116 +2046,6 @@ vm_object_set_writeable_dirty(vm_object_t object)
 		}
 	}
 	lwkt_reltoken(&vm_token);
-}
-
-static void
-vm_object_lock_init(vm_object_t obj)
-{
-#if defined(DEBUG_LOCKS)
-	int i;
-
-	obj->debug_hold_bitmap = 0;
-	obj->debug_hold_ovfl = 0;
-	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
-		obj->debug_hold_thrs[i] = NULL;
-	}
-#endif
-}
-
-void
-vm_object_lock(vm_object_t obj)
-{
-	lwkt_getpooltoken(obj);
-}
-
-void
-vm_object_unlock(vm_object_t obj)
-{
-	lwkt_relpooltoken(obj);
-}
-
-void
-vm_object_hold(vm_object_t obj)
-{
-	if (obj == NULL)
-		return;
-
-	vm_object_lock(obj);
-
-	refcount_acquire(&obj->hold_count);
-
-#if defined(DEBUG_LOCKS)
-	int i;
-
-	i = ffs(~obj->debug_hold_bitmap) - 1;
-	if (i == -1) {
-		kprintf("vm_object hold count > VMOBJ_DEBUG_ARRAY_SIZE");
-		obj->debug_hold_ovfl = 1;
-	}
-
-	obj->debug_hold_bitmap |= (1 << i);
-	obj->debug_hold_thrs[i] = curthread;
-#endif
-}
-
-void
-vm_object_drop(vm_object_t obj)
-{
-	int rc;
-
-	if (obj == NULL)
-		return;
-
-#if defined(DEBUG_LOCKS)
-	int found = 0;
-	int i;
-
-	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
-		if ((obj->debug_hold_bitmap & (1 << i)) &&
-		    (obj->debug_hold_thrs[i] == curthread)) {
-			obj->debug_hold_bitmap &= ~(1 << i);
-			obj->debug_hold_thrs[i] = NULL;
-			found = 1;
-			break;
-		}
-	}
-
-	if (found == 0 && obj->debug_hold_ovfl == 0)
-		panic("vm_object: attempt to drop hold on non-self-held obj");
-#endif
-
-	rc = refcount_release(&obj->hold_count);
-	vm_object_unlock(obj);
-
-	if (rc) 
-		vm_object_hold_wake(obj);
-}
-
-static void
-vm_object_hold_wake(vm_object_t obj)
-{
-	wakeup(obj);
-}
-
-static void
-vm_object_hold_wait(vm_object_t obj)
-{
-	vm_object_lock(obj);
-
-#if defined(DEBUG_LOCKS)
-	int i;
-
-	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
-		if ((obj->debug_hold_bitmap & (1 << i)) &&
-		    (obj->debug_hold_thrs[i] == curthread)) 
-			panic("vm_object: self-hold in terminate or collapse");
-	}
-#endif
-
-	while (obj->hold_count)
-		tsleep(obj, 0, "vmobjhld", 0);
-
-	vm_object_unlock(obj);
 }
 
 #include "opt_ddb.h"

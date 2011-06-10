@@ -1250,17 +1250,24 @@ vclean_vxlocked(struct vnode *vp, int flags)
 		/*
 		 * Use vm_object_lock() rather than vm_object_hold to avoid
 		 * creating an extra (self-)hold on the object.
+		 *
+		 * NOTE: vm_object_terminate() eats the object lock.
 		 */
 		vm_object_lock(object);
 		KKASSERT(object == vp->v_object);
 		if (object->ref_count == 0) {
-			if ((object->flags & OBJ_DEAD) == 0)
+			if ((object->flags & OBJ_DEAD) == 0) {
+				/* eats object lock */
 				vm_object_terminate(object);
+			} else {
+				vm_object_unlock(object);
+			}
+			vclrflags(vp, VOBJBUF);
 		} else {
 			vm_pager_deallocate(object);
+			vclrflags(vp, VOBJBUF);
+			vm_object_unlock(object);
 		}
-		vclrflags(vp, VOBJBUF);
-		vm_object_unlock(object);
 	}
 	lwkt_reltoken(&vmobj_token);
 	KKASSERT((vp->v_flag & VOBJBUF) == 0);

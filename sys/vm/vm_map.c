@@ -2995,19 +2995,25 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 
 		/*
 		 * Make a copy of the object.
+		 *
+		 * The object must be held prior to checking the object type
+		 * and for the call to vm_object_collapse().
 		 */
 		if ((src_object = src_entry->object.vm_object) != NULL) {
+			vm_object_hold(src_object);
 			if ((src_object->handle == NULL) &&
 				(src_object->type == OBJT_DEFAULT ||
 				 src_object->type == OBJT_SWAP)) {
 				vm_object_collapse(src_object);
 				if ((src_object->flags & (OBJ_NOSPLIT|OBJ_ONEMAPPING)) == OBJ_ONEMAPPING) {
 					vm_map_split(src_entry);
+					vm_object_drop(src_object);
 					src_object = src_entry->object.vm_object;
+					vm_object_hold(src_object);
 				}
 			}
-
 			vm_object_reference_locked(src_object);
+			vm_object_drop(src_object);
 			vm_object_clear_flag(src_object, OBJ_ONEMAPPING);
 			dst_entry->object.vm_object = src_object;
 			src_entry->eflags |= (MAP_ENTRY_COW|MAP_ENTRY_NEEDS_COPY);
