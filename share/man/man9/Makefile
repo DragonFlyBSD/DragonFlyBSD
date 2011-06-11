@@ -855,6 +855,7 @@ MLINKS+=token.9 lwkt_getpooltoken.9 \
 	token.9 lwkt_reltoken.9 \
 	token.9 lwkt_token_init.9 \
 	token.9 lwkt_token_pool_lookup.9 \
+	token.9 lwkt_token_swap.9 \
 	token.9 lwkt_token_uninit.9 \
 	token.9 lwkt_trytoken.9
 MLINKS+=tvtohz.9 tvtohz_high.9 \
