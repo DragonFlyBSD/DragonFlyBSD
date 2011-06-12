@@ -562,7 +562,7 @@ Australian Computer Society, Hobart, August 1993.
 Peter H. Salus. Unix at 25. Byte Magazine, October 1994.
 URL: http://www.byte.com/art/9410/sec8/art3.htm
 
-Andreas Klemm, Lars Köller. If you're going to San Francisco ...
+Andreas Klemm, Lars KÃ¶ller. If you're going to San Francisco ...
 Die freien BSD-Varianten von Unix. c't April 1997, page 368ff.
 
 BSD Release Announcements collection.
@@ -594,4 +594,4 @@ Steven M. Schultz for providing 2.8BSD, 2.10BSD, 2.11BSD manual pages.
 Copyright (c) 1997-2007 Wolfram Schneider <wosch@FreeBSD.ORG>
 URL: http://cvsweb.freebsd.org/src/share/misc/bsd-family-tree
 
-$FreeBSD: src/share/misc/bsd-family-tree,v 1.146 2011/05/02 09:47:13 maxim Exp $
+$FreeBSD: src/share/misc/bsd-family-tree,v 1.147 2011/05/22 14:03:30 uqs Exp $
