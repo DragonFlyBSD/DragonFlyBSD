@@ -30,20 +30,13 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/machintr.h>
-#include <vm/pmap.h>
-#include <machine/globaldata.h>
-#include <machine/smp.h>
-#include <machine/cputypes.h>
-#include <machine/md_var.h>
+#include <sys/thread2.h>
+
 #include <machine/pmap.h>
+#include <machine_base/icu/icu_var.h>
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/ioapic_abi.h>
-#include <machine_base/icu/icu_var.h>
-#include <machine/segments.h>
-#include <sys/thread2.h>
-
-#include <machine/intr_machdep.h>
 
 #define IOAPIC_COUNT_MAX	16
 #define IOAPIC_ID_MASK		(IOAPIC_COUNT_MAX - 1)
