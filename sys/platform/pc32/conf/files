@@ -63,10 +63,6 @@ bf_enc.o			optional	ipsec ipsec_esp		\
 	dependency	"$S/crypto/blowfish/arch/i386/bf_enc.S $S/crypto/blowfish/arch/i386/bf_enc_586.S $S/crypto/blowfish/arch/i386/bf_enc_686.S"		\
 	compile-with	"${CC} -c -I$S/crypto/blowfish/arch/i386 ${ASM_CFLAGS} ${WERROR} ${.IMPSRC}"	\
 	no-implicit-rule
-crypto/aesni/aesencdec_i386.S	optional	aesni
-crypto/aesni/aeskeys_i386.S	optional	aesni
-crypto/aesni/aesni.c		optional	aesni
-crypto/aesni/aesni_wrap.c	optional	aesni
 crypto/des/arch/i386/des_enc.S		optional	ipsec ipsec_esp
 crypto/des/des_ecb.c			optional	netsmbcrypto
 crypto/des/arch/i386/des_enc.S		optional	netsmbcrypto
@@ -103,6 +99,10 @@ acpi_wakecode.h				optional        acpi		\
        no-obj no-implicit-rule before-depend				\
        clean           "acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin"
 #
+dev/crypto/aesni/aesencdec_i386.S	optional	aesni
+dev/crypto/aesni/aeskeys_i386.S		optional	aesni
+dev/crypto/aesni/aesni.c		optional	aesni
+dev/crypto/aesni/aesni_wrap.c		optional	aesni
 dev/crypto/glxsb/glxsb.c		optional	glxsb
 dev/crypto/glxsb/glxsb_hash.c		optional	glxsb
 dev/netif/ed/if_ed_isa.c		optional	ed isa

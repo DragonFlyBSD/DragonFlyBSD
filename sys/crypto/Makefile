@@ -19,6 +19,6 @@ SRCS	+= opt_param.h cryptodev_if.h bus_if.h device_if.h
 SRCS	+= opt_ddb.h
 SRCS	+= camellia.c camellia-api.c
 
-SUBDIR	= aesni rc4 via
+SUBDIR	= rc4
 
 .include <bsd.kmod.mk>

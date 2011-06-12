@@ -44,7 +44,7 @@
 
 #include <opencrypto/cryptodev.h>
 
-#include <crypto/via/padlock.h>
+#include <dev/crypto/padlock/padlock.h>
 
 #include <sys/kobj.h>
 #include <sys/bus.h>
