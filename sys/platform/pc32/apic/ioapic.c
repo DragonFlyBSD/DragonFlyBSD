@@ -41,9 +41,6 @@
 #define IOAPIC_COUNT_MAX	16
 #define IOAPIC_ID_MASK		(IOAPIC_COUNT_MAX - 1)
 
-/* XXX */
-extern pt_entry_t *SMPpt;
-
 struct ioapic_info {
 	int		io_idx;
 	int		io_apic_id;
