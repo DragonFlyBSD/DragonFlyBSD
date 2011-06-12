@@ -44,7 +44,7 @@
 #include <opencrypto/cryptosoft.h> /* for hmac_ipad_buffer and hmac_opad_buffer */
 #include <opencrypto/xform.h>
 
-#include <crypto/via/padlock.h>
+#include <dev/crypto/padlock/padlock.h>
 
 /*
  * Implementation notes.

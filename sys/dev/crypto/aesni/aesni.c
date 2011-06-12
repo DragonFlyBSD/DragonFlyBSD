@@ -39,7 +39,7 @@
 #include <sys/spinlock2.h>
 #include <sys/bus.h>
 #include <sys/uio.h>
-#include <crypto/aesni/aesni.h>
+#include <dev/crypto/aesni/aesni.h>
 #include "cryptodev_if.h"
 
 struct aesni_softc {

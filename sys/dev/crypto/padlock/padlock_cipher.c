@@ -56,7 +56,7 @@
 #include <opencrypto/cryptodev.h>
 #include <crypto/rijndael/rijndael.h>
 
-#include <crypto/via/padlock.h>
+#include <dev/crypto/padlock/padlock.h>
 
 #define	PADLOCK_ROUND_COUNT_AES128	10
 #define	PADLOCK_ROUND_COUNT_AES192	12

@@ -32,7 +32,7 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/systm.h>
-#include <crypto/aesni/aesni.h>
+#include <dev/crypto/aesni/aesni.h>
 
 MALLOC_DECLARE(M_AESNI);
 

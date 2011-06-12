@@ -54,10 +54,6 @@ emulation/linux/x86_64/linux32_sysvec.c	optional	compat_linux32
 
 # XXX use assembler versions of bf_enc and des_enc
 crypto/blowfish/bf_enc.c		optional	ipsec ipsec_esp
-crypto/aesni/aesencdec_x86_64.S	optional	aesni
-crypto/aesni/aeskeys_x86_64.S	optional	aesni
-crypto/aesni/aesni.c		optional	aesni
-crypto/aesni/aesni_wrap.c	optional	aesni
 crypto/des/des_enc.c			optional	ipsec ipsec_esp
 crypto/des/des_ecb.c			optional	netsmbcrypto
 crypto/des/des_enc.c			optional	netsmbcrypto
@@ -87,6 +83,10 @@ acpi_wakecode.h				optional        acpi		\
        no-obj no-implicit-rule before-depend				\
        clean           "acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin"
 #
+dev/crypto/aesni/aesencdec_x86_64.S	optional	aesni
+dev/crypto/aesni/aeskeys_x86_64.S	optional	aesni
+dev/crypto/aesni/aesni.c		optional	aesni
+dev/crypto/aesni/aesni_wrap.c		optional	aesni
 dev/video/fb/fb.c			optional	vga
 dev/video/fb/splash.c			optional	splash
 dev/video/fb/vga.c			optional	vga
