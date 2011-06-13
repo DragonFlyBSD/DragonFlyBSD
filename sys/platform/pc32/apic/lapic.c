@@ -38,6 +38,7 @@
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/ioapic_abi.h>
+#include <machine_base/apic/apicvar.h>
 #include <machine_base/icu/icu_var.h>
 #include <machine/segments.h>
 #include <sys/thread2.h>
