@@ -37,6 +37,7 @@
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/ioapic_abi.h>
+#include <machine_base/apic/apicvar.h>
 
 #define IOAPIC_COUNT_MAX	16
 #define IOAPIC_ID_MASK		(IOAPIC_COUNT_MAX - 1)
