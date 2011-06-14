@@ -157,6 +157,8 @@ vm_object_lock_init(vm_object_t obj)
 	obj->debug_hold_ovfl = 0;
 	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
 		obj->debug_hold_thrs[i] = NULL;
+		obj->debug_hold_file[i] = NULL;
+		obj->debug_hold_line[i] = 0;
 	}
 #endif
 }
@@ -186,7 +188,11 @@ vm_object_assert_held(vm_object_t obj)
 }
 
 void
+#ifndef DEBUG_LOCKS
 vm_object_hold(vm_object_t obj)
+#else
+debugvm_object_hold(vm_object_t obj, char *file, int line)
+#endif
 {
 	if (obj == NULL)
 		return;
@@ -211,6 +217,8 @@ vm_object_hold(vm_object_t obj)
 
 	obj->debug_hold_bitmap |= (1 << i);
 	obj->debug_hold_thrs[i] = curthread;
+	obj->debug_hold_file[i] = file;
+	obj->debug_hold_line[i] = line;
 #endif
 }
 
@@ -229,6 +237,8 @@ vm_object_drop(vm_object_t obj)
 		    (obj->debug_hold_thrs[i] == curthread)) {
 			obj->debug_hold_bitmap &= ~(1 << i);
 			obj->debug_hold_thrs[i] = NULL;
+			obj->debug_hold_file[i] = NULL;
+			obj->debug_hold_line[i] = 0;
 			found = 1;
 			break;
 		}
@@ -263,6 +273,8 @@ vm_object_hold_wait(vm_object_t obj)
 	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
 		if ((obj->debug_hold_bitmap & (1 << i)) &&
 		    (obj->debug_hold_thrs[i] == curthread))  {
+			kprintf("vm_object %p: self-hold in at %s:%d\n", obj,
+				obj->debug_hold_file[i], obj->debug_hold_line[i]);
 			panic("vm_object: self-hold in terminate or collapse");
 		}
 	}

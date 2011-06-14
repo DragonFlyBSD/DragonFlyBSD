@@ -155,6 +155,8 @@ struct vm_object {
 #define VMOBJ_DEBUG_ARRAY_SIZE		(32)
 	u_int debug_hold_bitmap;
 	thread_t debug_hold_thrs[VMOBJ_DEBUG_ARRAY_SIZE];
+	char *debug_hold_file[VMOBJ_DEBUG_ARRAY_SIZE];
+	int debug_hold_line[VMOBJ_DEBUG_ARRAY_SIZE];
 	u_int debug_hold_ovfl;
 #endif
 
@@ -304,7 +306,15 @@ void vm_object_dead_sleep(vm_object_t, const char *);
 void vm_object_dead_wakeup(vm_object_t);
 void vm_object_lock(vm_object_t);
 void vm_object_unlock(vm_object_t);
+
+#ifndef DEBUG_LOCKS
 void vm_object_hold(vm_object_t);
+#else
+#define vm_object_hold(obj)	\
+	debugvm_object_hold(obj, __FILE__, __LINE__)
+void debugvm_object_hold(vm_object_t, char *, int);
+#endif
+
 void vm_object_drop(vm_object_t);
 
 #endif				/* _KERNEL */
