@@ -100,9 +100,10 @@ static struct {
 	{ CENTAUR_VENDOR_ID,	CPU_VENDOR_CENTAUR },	/* CentaurHauls */
 };
 
-int cpu_cores;
-int cpu_logical;
-
+#ifdef foo
+static int cpu_cores;
+static int cpu_logical;
+#endif
 
 extern int pq_l2size;
 extern int pq_l2nways;
@@ -380,13 +381,22 @@ printcpuinfo(void)
 				if ((regs[0] & 0x1f) != 0)
 					cmp = ((regs[0] >> 26) & 0x3f) + 1;
 			}
+
+#ifdef foo
+			/*
+			 * XXX For Intel CPUs, this is max number of cores per
+			 * package, not the actual cores per package.
+			 */
 			cpu_cores = cmp;
 			cpu_logical = htt / cmp;
-			if (cmp > 1)
-				kprintf("\n  Cores per package: %d", cmp);
-			if ((htt / cmp) > 1)
+
+			if (cpu_cores > 1)
+				kprintf("\n  Cores per package: %d", cpu_cores);
+			if (cpu_logical > 1) {
 				kprintf("\n  Logical CPUs per core: %d",
 				    cpu_logical);
+			}
+#endif
 		}
 	}
 	/* Avoid ugly blank lines: only print newline when we have to. */

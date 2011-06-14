@@ -1744,7 +1744,8 @@ acpi_shutdown_final(void *arg, int howto)
 	/* Reboot using the reset register. */
 	status = AcpiReset();
 	if (ACPI_FAILURE(status)) {
-	    kprintf("ACPI reset failed - %s\n", AcpiFormatException(status));
+	    if (status != AE_NOT_EXIST)
+		    kprintf("ACPI reset failed - %s\n", AcpiFormatException(status));
 	} else {
 	    DELAY(1000000);
 	    kprintf("ACPI reset failed - timeout\n");

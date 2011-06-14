@@ -357,11 +357,13 @@ RetryFault:
 	 *
 	 * The vm_object must be held before manipulation.
 	 */
+	lwkt_gettoken(&vm_token);
 	vm_object_hold(fs.first_object);
 	vm_object_reference(fs.first_object);
 	fs.vp = vnode_pager_lock(fs.first_object);
 	vm_object_pip_add(fs.first_object, 1);
 	vm_object_drop(fs.first_object);
+	lwkt_reltoken(&vm_token);
 
 	fs.lookup_still_valid = TRUE;
 	fs.first_m = NULL;
@@ -587,11 +589,13 @@ RetryFault:
 	 *
 	 * The vm_object must be held before manipulation.
 	 */
+	lwkt_gettoken(&vm_token);
 	vm_object_hold(fs.first_object);
 	vm_object_reference(fs.first_object);
 	fs.vp = vnode_pager_lock(fs.first_object);
 	vm_object_pip_add(fs.first_object, 1);
 	vm_object_drop(fs.first_object);
+	lwkt_reltoken(&vm_token);
 
 	fs.lookup_still_valid = TRUE;
 	fs.first_m = NULL;
@@ -746,11 +750,13 @@ RetryFault:
 	 * truncation operations) during I/O.  This must be done after
 	 * obtaining the vnode lock in order to avoid possible deadlocks.
 	 */
+	lwkt_gettoken(&vm_token);
 	vm_object_hold(fs.first_object);
 	vm_object_reference(fs.first_object);
 	fs.vp = vnode_pager_lock(fs.first_object);
 	vm_object_pip_add(fs.first_object, 1);
 	vm_object_drop(fs.first_object);
+	lwkt_reltoken(&vm_token);
 
 	fs.lookup_still_valid = TRUE;
 	fs.first_m = NULL;
