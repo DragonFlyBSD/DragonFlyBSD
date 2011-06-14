@@ -158,8 +158,10 @@ static struct {
 #endif
 };
 
-int cpu_cores;
-int cpu_logical;
+#ifdef foo
+static int cpu_cores;
+static int cpu_logical;
+#endif
 
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 int has_f00f_bug = 0;		/* Initialized so that it can be patched. */
@@ -869,13 +871,23 @@ printcpuinfo(void)
 				if ((regs[0] & 0x1f) != 0)
 					cmp = ((regs[0] >> 26) & 0x3f) + 1;
 			}
+
+#ifdef foo
+			/*
+			 * XXX For Intel CPUs, this is max number of cores per
+			 * package, not the actual cores per package.
+			 */
 			cpu_cores = cmp;
 			cpu_logical = htt / cmp;
-			if (cmp > 1)
-				kprintf("\n  Cores per package: %d", cmp);
-			if ((htt / cmp) > 1)
+
+			if (cpu_cores > 1)
+				kprintf("\n  Cores per package: %d", cpu_cores);
+			if (cpu_logical > 1) {
 				kprintf("\n  Logical CPUs per core: %d",
 				    cpu_logical);
+			}
+#endif
+
 #if 0
 			/*
 			 * If this CPU supports P-state invariant TSC then
