@@ -40,23 +40,4 @@
  */
 #define NAPICID		256
 
-/*
- * Local && I/O APIC variable definitions.
- */
-
-#define	LVT_LINT0	0
-#define	LVT_LINT1	1
-#define	LVT_TIMER	2
-#define	LVT_ERROR	3
-#define	LVT_PMC		4
-#define	LVT_THERMAL	5
-#define	LVT_MAX		LVT_THERMAL
-
-#ifndef LOCORE
-
-#define	APIC_IPI_DEST_SELF	-1
-#define	APIC_IPI_DEST_ALL	-2
-#define	APIC_IPI_DEST_OTHERS	-3
-
-#endif /* !LOCORE */
 #endif /* _MACHINE_APICVAR_H_ */
