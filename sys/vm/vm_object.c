@@ -538,10 +538,10 @@ vm_object_deallocate_locked(vm_object_t object)
 						temp->paging_in_progress ||
 						object->paging_in_progress
 					) {
-						vm_object_pip_sleep(temp,
-								    "objde1");
-						vm_object_pip_sleep(object,
-								    "objde2");
+						vm_object_pip_wait(temp,
+								   "objde1");
+						vm_object_pip_wait(object,
+								   "objde2");
 					}
 
 					if (temp->ref_count == 1) {

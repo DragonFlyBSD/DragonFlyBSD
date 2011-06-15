@@ -1883,7 +1883,7 @@ swp_pager_async_iodone(struct bio *bio)
 	 */
 
 	if (object)
-		vm_object_pip_wakeupn(object, bp->b_xio.xio_npages);
+		vm_object_pip_wakeup_n(object, bp->b_xio.xio_npages);
 
 	/*
 	 * Release the physical I/O buffer.

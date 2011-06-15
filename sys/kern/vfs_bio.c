@@ -3891,8 +3891,10 @@ bpdone(struct buf *bp, int elseit)
 
 #if defined(VFS_BIO_DEBUG)
 		if (obj->paging_in_progress < bp->b_xio.xio_npages) {
-			kprintf("biodone: paging in progress(%d) < bp->b_xio.xio_npages(%d)\n",
-			    obj->paging_in_progress, bp->b_xio.xio_npages);
+			kprintf("biodone: paging in progress(%d) < "
+				"bp->b_xio.xio_npages(%d)\n",
+				obj->paging_in_progress,
+				bp->b_xio.xio_npages);
 		}
 #endif
 
@@ -3977,13 +3979,11 @@ bpdone(struct buf *bp, int elseit)
 				panic("biodone: page busy < 0");
 			}
 			vm_page_io_finish(m);
-			vm_object_pip_subtract(obj, 1);
+			vm_object_pip_wakeup(obj);
 			foff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
 			iosize -= resid;
 		}
 		bp->b_flags &= ~B_HASBOGUS;
-		if (obj)
-			vm_object_pip_wakeupn(obj, 0);
 		lwkt_reltoken(&vm_token);
 	}
 
@@ -4114,12 +4114,11 @@ vfs_unbusy_pages(struct buf *bp)
 				pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
 					bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 			}
-			vm_object_pip_subtract(obj, 1);
+			vm_object_pip_wakeup(obj);
 			vm_page_flag_clear(m, PG_ZERO);
 			vm_page_io_finish(m);
 		}
 		bp->b_flags &= ~B_HASBOGUS;
-		vm_object_pip_wakeupn(obj, 0);
 	}
 	lwkt_reltoken(&vm_token);
 }

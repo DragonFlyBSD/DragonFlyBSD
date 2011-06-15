@@ -347,8 +347,7 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 	do {
 		bio_track_wait(&vp->v_track_write, 0, 0);
 		if ((object = vp->v_object) != NULL) {
-			while (object->paging_in_progress)
-				vm_object_pip_sleep(object, "vnvlbx");
+			refcount_wait(&object->paging_in_progress, "vnvlbx");
 		}
 	} while (bio_track_active(&vp->v_track_write));
 

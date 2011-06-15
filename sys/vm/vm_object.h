@@ -92,12 +92,16 @@
 
 #ifdef _KERNEL
 
-#ifndef _SYS_THREAD_H
+#ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
 #endif
 
 #ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
+#endif
+
+#ifndef _SYS_REFCOUNT_H_
+#include <sys/refcount.h>
 #endif
 
 #endif
@@ -139,7 +143,7 @@ struct vm_object {
 	objtype_t type;			/* type of pager */
 	u_short flags;			/* see below */
 	u_short pg_color;		/* color of first page in obj */
-	int paging_in_progress;		/* Paging (in or out) so don't collapse or destroy */
+	u_int paging_in_progress;	/* Paging (in or out) so don't collapse or destroy */
 	int resident_page_count;	/* number of resident pages */
         u_int agg_pv_list_count;        /* aggregate pv list count */
 	struct vm_object *backing_object; /* object that I'm a shadow of */
@@ -186,7 +190,7 @@ struct vm_object {
 #define OBJ_ACTIVE	0x0004		/* active objects */
 #define OBJ_DEAD	0x0008		/* dead objects (during rundown) */
 #define	OBJ_NOSPLIT	0x0010		/* dont split this object */
-#define OBJ_PIPWNT	0x0040		/* paging in progress wanted */
+#define OBJ_UNUSED0040	0x0040
 #define	OBJ_WRITEABLE	0x0080		/* object has been made writable */
 #define OBJ_MIGHTBEDIRTY 0x0100		/* object might be dirty */
 #define OBJ_CLEANING	0x0200
@@ -228,52 +232,27 @@ vm_object_clear_flag(vm_object_t object, u_int bits)
 }
 
 static __inline void
-vm_object_pip_add(vm_object_t object, int i)
+vm_object_pip_add(vm_object_t object, u_int i)
 {
-	atomic_add_int(&object->paging_in_progress, i);
+	refcount_acquire_n(&object->paging_in_progress, (u_int)i);
 }
 
 static __inline void
-vm_object_pip_subtract(vm_object_t object, int i)
+vm_object_pip_wakeup_n(vm_object_t object, u_int i)
 {
-	atomic_subtract_int(&object->paging_in_progress, i);
-}
-
-static __inline void
-vm_object_pip_wakeupn(vm_object_t object, int i)
-{
-	if (i)
-		atomic_subtract_int(&object->paging_in_progress, i);
-	if ((object->flags & OBJ_PIPWNT) && object->paging_in_progress == 0) {
-		vm_object_clear_flag(object, OBJ_PIPWNT);
-		wakeup(object);
-	}
+	refcount_release_wakeup_n(&object->paging_in_progress, i);
 }
 
 static __inline void
 vm_object_pip_wakeup(vm_object_t object)
 {
-	vm_object_pip_wakeupn(object, 1);
-}
-
-static __inline void
-vm_object_pip_sleep(vm_object_t object, char *waitid)
-{
-	if (object->paging_in_progress) {
-		crit_enter();
-		if (object->paging_in_progress) {
-			vm_object_set_flag(object, OBJ_PIPWNT);
-			tsleep(object, 0, waitid, 0);
-		}
-		crit_exit();
-	}
+	vm_object_pip_wakeup_n(object, 1);
 }
 
 static __inline void
 vm_object_pip_wait(vm_object_t object, char *waitid)
 {
-	while (object->paging_in_progress)
-		vm_object_pip_sleep(object, waitid);
+	refcount_wait(&object->paging_in_progress, waitid);
 }
 
 static __inline lwkt_token_t
