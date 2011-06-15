@@ -38,7 +38,7 @@
 #define REFCNTF_WAITING	0x40000000
 
 void _refcount_wait(volatile u_int *countp, const char *wstr);
-int _refcount_release_wakeup(volatile u_int *countp);
+int _refcount_release_wakeup_n(volatile u_int *countp, u_int i);
 
 static __inline void
 refcount_init(volatile u_int *countp, u_int value)
@@ -52,10 +52,22 @@ refcount_acquire(volatile u_int *countp)
 	atomic_add_acq_int(countp, 1);
 }
 
+static __inline void
+refcount_acquire_n(volatile u_int *countp, u_int i)
+{
+	atomic_add_acq_int(countp, i);
+}
+
 static __inline int
 refcount_release(volatile u_int *countp)
 {
 	return (atomic_fetchadd_int(countp, -1) == 1);
+}
+
+static __inline int
+refcount_release_n(volatile u_int *countp, u_int i)
+{
+	return (atomic_fetchadd_int(countp, -i) == i);
 }
 
 /*
@@ -66,14 +78,25 @@ refcount_release(volatile u_int *countp)
  * function deals with all cases.
  *
  * This function returns TRUE(1) on the last release and FALSE(0) otherwise.
+ *
+ * NOTE: (i) must be non-zero.
  */
 static __inline int
 refcount_release_wakeup(volatile u_int *countp)
 {
 	u_int n = *countp & ~REFCNTF_WAITING;
 	if (!atomic_cmpset_int(countp, n, n - 1))
-		return(_refcount_release_wakeup(countp));
+		return(_refcount_release_wakeup_n(countp, 1));
 	return(n == 1);
+}
+
+static __inline int
+refcount_release_wakeup_n(volatile u_int *countp, u_int i)
+{
+	u_int n = *countp & ~REFCNTF_WAITING;
+	if (!atomic_cmpset_int(countp, n, n - i))
+		return(_refcount_release_wakeup_n(countp, i));
+	return(n == i);
 }
 
 /*

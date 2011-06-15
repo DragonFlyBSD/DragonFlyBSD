@@ -88,33 +88,35 @@ _refcount_wait(volatile u_int *countp, const char *wstr)
  * This helper function implements the release-with-wakeup API.  It is
  * executed for the non-trivial case or if the atomic op races.
  *
- * On the 1->0 transition is REFCNTF_WAITING is set it will be cleared
+ * On the i->0 transition is REFCNTF_WAITING is set it will be cleared
  * and a wakeup() will be issued.
  *
- * On any other transition we simply subtract 1 and leave the REFCNTF_WAITING
- * flag intact.
+ * On any other transition we simply subtract (i) and leave the
+ * REFCNTF_WAITING flag intact.
  *
  * This function returns TRUE(1) on the last release, whether a wakeup
  * occured or not, and FALSE(0) otherwise.
+ *
+ * NOTE!  (i) cannot be 0
  */
 int
-_refcount_release_wakeup(volatile u_int *countp)
+_refcount_release_wakeup_n(volatile u_int *countp, u_int i)
 {
 	u_int n;
 
 	for (;;) {
 		n = *countp;
-		if (n == (REFCNTF_WAITING | 1)) {
+		if (n == (REFCNTF_WAITING | i)) {
 			if (atomic_cmpset_int(countp, n, 0)) {
 				wakeup(countp);
-				n = 1;
+				n = i;
 				break;
 			}
 		} else {
 			KKASSERT(n != REFCNTF_WAITING); /* illegal state */
-			if (atomic_cmpset_int(countp, n, n - 1))
+			if (atomic_cmpset_int(countp, n, n - i))
 				break;
 		}
 	}
-	return (n == 1);
+	return (n == i);
 }
