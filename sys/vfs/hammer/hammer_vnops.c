@@ -476,6 +476,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	struct hammer_transaction trans;
 	struct hammer_inode *ip;
 	hammer_mount_t hmp;
+	thread_t td;
 	struct uio *uio;
 	int offset;
 	off_t base_offset;
@@ -526,6 +527,14 @@ hammer_vop_write(struct vop_write_args *ap)
 	if (uio->uio_resid > 0 && base_offset <= uio->uio_offset) {
 		hammer_done_transaction(&trans);
 		lwkt_reltoken(&hmp->fs_token);
+		return (EFBIG);
+	}
+
+	if (uio->uio_resid > 0 && (td = uio->uio_td) != NULL && td->td_proc &&
+	    base_offset > td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
+		hammer_done_transaction(&trans);
+		lwkt_reltoken(&hmp->fs_token);
+		lwpsignal(td->td_proc, td->td_lwp, SIGXFSZ);
 		return (EFBIG);
 	}
 
