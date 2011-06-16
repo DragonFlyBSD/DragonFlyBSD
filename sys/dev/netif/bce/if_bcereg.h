@@ -299,7 +299,7 @@ struct flash_spec {
  * running and there won't be any firmware-driver synchronization during a
  * driver reset. 
  */
-#define FW_ACK_TIME_OUT_MS		100
+#define FW_ACK_TIME_OUT_MS		1000
 
 
 #define BCE_DRV_RESET_SIGNATURE		0x00000000
