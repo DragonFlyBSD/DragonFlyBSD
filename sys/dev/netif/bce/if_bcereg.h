@@ -4529,6 +4529,7 @@ struct fw_info {
 
 #define BCE_MAX_SEGMENTS	32
 #define BCE_DMA_ALIGN		8
+#define BCE_DMA_RX_ALIGN	16
 #define BCE_DMA_BOUNDARY	0
 
 /* The BCM5708 has a problem with addresses greater that 40bits. */

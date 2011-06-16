@@ -2158,6 +2158,20 @@ bce_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 /* Allocates DMA memory needed for the various global structures needed by  */
 /* hardware.                                                                */
 /*                                                                          */
+/* Memory alignment requirements:                                           */
+/* -----------------+----------+----------+                                 */
+/* Data Structure   |   5706   |   5708   |                                 */
+/* -----------------+----------+----------+                                 */
+/* Status Block     | 8 bytes  | 8 bytes  |                                 */
+/* Statistics Block | 8 bytes  | 8 bytes  |                                 */
+/* RX Buffers       | 16 bytes | 16 bytes |                                 */
+/* PG Buffers       |   none   |   none   |                                 */
+/* TX Buffers       |   none   |   none   |                                 */
+/* Chain Pages(1)   |   4KiB   |   4KiB   |                                 */
+/* -----------------+----------+----------+                                 */
+/*                                                                          */
+/* (1) Must align with CPU page size (BCM_PAGE_SZIE).                       */
+/*                                                                          */
 /* Returns:                                                                 */
 /*   0 for success, positive value for failure.                             */
 /****************************************************************************/
@@ -2348,11 +2362,12 @@ bce_dma_alloc(struct bce_softc *sc)
 	}
 
 	/* Create a DMA tag for RX mbufs. */
-	rc = bus_dma_tag_create(sc->parent_tag, 1, 0,
+	rc = bus_dma_tag_create(sc->parent_tag, BCE_DMA_RX_ALIGN, 0,
 				BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				NULL, NULL,
 				MCLBYTES, 1, MCLBYTES,
-				BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
+				BUS_DMA_ALLOCNOW | BUS_DMA_ALIGNED |
+				BUS_DMA_WAITOK,
 				&sc->rx_mbuf_tag);
 	if (rc != 0) {
 		if_printf(ifp, "Could not allocate RX mbuf DMA tag!\n");
