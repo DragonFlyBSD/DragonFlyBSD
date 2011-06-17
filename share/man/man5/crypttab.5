@@ -69,10 +69,25 @@ sequence.
 .Pp
 The fourth field,
 .Pq Fa options ,
-is currently unused on
+can contain a comma separated list with the following options on
 .Dx
-and should be either omitted or set to
-.Pa none .
+or can be set to
+.Pa none.
+.Bl -tag -width keyscript=/script.sh
+.It Va tries=N
+Prompt for the passphrase at most 
+.Fa N
+times if the entered passphrase is incorrect.
+.It Va timeout=T
+Time out the interactive passphrase prompt after
+.Fa T
+seconds.
+.It Va keyscript=script
+Run the script pointed at by
+.Fa script
+to get the passphrase. The stdout output of the script will be used as the
+passphrase instead of showing an interactive prompt.
+.El
 .Pp
 Note that the
 .Nm
@@ -96,13 +111,18 @@ successful entry of the password the device
 .Pa /dev/mapper/vol1
 will be created.
 .Pp
-.Dl "vol1        /dev/da0s1b        none        none"
+.Dl "vol1        /dev/da0s1b    none               none"
 .Pp
 The next example is as the one before but using a keyfile on
 .Pa /boot
 instead of an interactive password prompt.
 .Pp
-.Dl "vol1        /dev/da0s1b        /boot/keyfile.0      none"
+.Dl "vol1        /dev/da0s1b    /boot/keyfile.0    none"
+.Pp
+The last example shows the use of the options. It will ask at most 2 times
+for a passphrase and time out after 10 seconds.
+.Pp
+.Dl "vol1        /dev/da0s1b    none               tries=2,timeout=10"
 .Sh SEE ALSO
 .Xr cryptsetup 8
 .Sh HISTORY
