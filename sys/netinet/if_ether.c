@@ -191,6 +191,9 @@ arptimer(void *ignored_arg)
 
 /*
  * Parallel to llc_rtrequest.
+ *
+ * Called after a route is successfully added to the tree to fix-up the
+ * route and initiate arp operations if required.
  */
 static void
 arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
@@ -285,20 +288,24 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 		}
 #endif
 
+		/*
+		 * This fixes up the routing interface for local addresses.
+		 * The route is adjusted to point at lo0 and the expiration
+		 * timer is disabled.
+		 *
+		 * NOTE: This prevents locally targetted traffic from going
+		 *	 out the hardware interface, which is inefficient
+		 *	 and might not work if the hardware cannot listen
+		 *	 to its own transmitted packets.   Setting
+		 *	 net.link.ether.inet.useloopback to 0 will force
+		 *	 packets for local addresses out the hardware (and
+		 *	 it is expected to receive its own packet).
+		 *
+		 * XXX We should just be able to test RTF_LOCAL here instead
+		 *     of having to compare IPs.
+		 */
 		if (SIN(rt_key(rt))->sin_addr.s_addr ==
 		    (IA_SIN(rt->rt_ifa))->sin_addr.s_addr) {
-			/*
-			 * This test used to be
-			 *	if (loif.if_flags & IFF_UP)
-			 * It allowed local traffic to be forced
-			 * through the hardware by configuring the
-			 * loopback down.  However, it causes problems
-			 * during network configuration for boards
-			 * that can't receive packets they send.  It
-			 * is now necessary to clear "useloopback" and
-			 * remove the route to force traffic out to
-			 * the hardware.
-			 */
 			rt->rt_expire = 0;
 			bcopy(IF_LLADDR(rt->rt_ifp), LLADDR(SDL(gate)),
 			      SDL(gate)->sdl_alen = rt->rt_ifp->if_addrlen);

@@ -55,6 +55,7 @@
 
 #include <net/if.h>
 #include <net/route.h>
+#include <net/if_var.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
@@ -74,8 +75,14 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 	struct rtentry *rt = (struct rtentry *)treenodes;
 	struct sockaddr_in *sin = (struct sockaddr_in *)rt_key(rt);
 	struct radix_node *ret;
+	struct in_ifaddr_container *iac;
+	struct in_ifaddr *ia;
 
 	/*
+	 * For IP, mark routes to multicast addresses as such, because
+	 * it's easy to do and might be useful (but this is much more
+	 * dubious since it's so easy to inspect the address).
+	 *
 	 * For IP, all unicast non-host routes are automatically cloning.
 	 */
 	if (IN_MULTICAST(ntohl(sin->sin_addr.s_addr)))
@@ -85,28 +92,39 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 		rt->rt_flags |= RTF_PRCLONING;
 
 	/*
-	 * A little bit of help for both IP output and input:
 	 *   For host routes, we make sure that RTF_BROADCAST
 	 *   is set for anything that looks like a broadcast address.
 	 *   This way, we can avoid an expensive call to in_broadcast()
 	 *   in ip_output() most of the time (because the route passed
 	 *   to ip_output() is almost always a host route).
 	 *
-	 *   We also do the same for local addresses, with the thought
-	 *   that this might one day be used to speed up ip_input().
+	 *   For local routes we set RTF_LOCAL allowing various shortcuts.
 	 *
-	 * We also mark routes to multicast addresses as such, because
-	 * it's easy to do and might be useful (but this is much more
-	 * dubious since it's so easy to inspect the address).  (This
-	 * is done above.)
+	 *   A cloned network route will point to one of several possible
+	 *   addresses if an interface has aliases and must be repointed
+	 *   back to the correct address or arp_rtrequest() will not properly
+	 *   detect the local ip.
 	 */
 	if (rt->rt_flags & RTF_HOST) {
 		if (in_broadcast(sin->sin_addr, rt->rt_ifp)) {
 			rt->rt_flags |= RTF_BROADCAST;
+		} else if (satosin(rt->rt_ifa->ifa_addr)->sin_addr.s_addr ==
+			   sin->sin_addr.s_addr) {
+			rt->rt_flags |= RTF_LOCAL;
 		} else {
-			if (satosin(rt->rt_ifa->ifa_addr)->sin_addr.s_addr
-			    == sin->sin_addr.s_addr)
-				rt->rt_flags |= RTF_LOCAL;
+			LIST_FOREACH(iac, INADDR_HASH(sin->sin_addr.s_addr),
+				     ia_hash) {
+				ia = iac->ia;
+				if (sin->sin_addr.s_addr ==
+				    ia->ia_addr.sin_addr.s_addr) {
+					rt->rt_flags |= RTF_LOCAL;
+					IFAREF(&ia->ia_ifa);
+					IFAFREE(rt->rt_ifa);
+					rt->rt_ifa = &ia->ia_ifa;
+					rt->rt_ifp = rt->rt_ifa->ifa_ifp;
+					break;
+				}
+			}
 		}
 	}
 
@@ -115,7 +133,7 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 		rt->rt_rmx.rmx_mtu = rt->rt_ifp->if_mtu;
 
 	ret = rn_addroute(key, mask, head, treenodes);
-	if (ret == NULL && rt->rt_flags & RTF_HOST) {
+	if (ret == NULL && (rt->rt_flags & RTF_HOST)) {
 		struct rtentry *oldrt;
 
 		/*
@@ -126,8 +144,8 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 		oldrt = rtpurelookup((struct sockaddr *)sin);
 		if (oldrt != NULL) {
 			--oldrt->rt_refcnt;
-			if (oldrt->rt_flags & RTF_LLINFO &&
-			    oldrt->rt_flags & RTF_HOST &&
+			if ((oldrt->rt_flags & RTF_LLINFO) &&
+			    (oldrt->rt_flags & RTF_HOST) &&
 			    oldrt->rt_gateway &&
 			    oldrt->rt_gateway->sa_family == AF_LINK) {
 				rtrequest(RTM_DELETE, rt_key(oldrt),
@@ -146,8 +164,9 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 	 */
 	if (ret != NULL &&
 	    (rt->rt_flags &
-	     (RTF_MULTICAST | RTF_BROADCAST | RTF_WASCLONED)) == 0)
+	     (RTF_MULTICAST | RTF_BROADCAST | RTF_WASCLONED)) == 0) {
 		ipflow_flush_oncpu();
+	}
 	return ret;
 }
 
