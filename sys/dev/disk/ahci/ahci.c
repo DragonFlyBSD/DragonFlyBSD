@@ -1358,6 +1358,7 @@ ahci_comreset(struct ahci_port *ap, int *pmdetectp)
 	u_int32_t r;
 	int error;
 	int loop;
+	int retries = 0;
 
 	/*
 	 * Idle the port,
@@ -1392,7 +1393,15 @@ ahci_comreset(struct ahci_port *ap, int *pmdetectp)
 	r = AHCI_PREG_SCTL_IPM_DISABLED |
 	    AHCI_PREG_SCTL_SPM_DISABLED;
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
-	ahci_os_sleep(10);
+
+retry:
+	/*
+	 * Give the new power management state time to settle, then clear
+	 * pending status.
+	 */
+	ahci_os_sleep(1000);
+	ahci_flush_tfd(ap);
+	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 
 	/*
 	 * Start transmitting COMRESET.  The spec says that COMRESET must
@@ -1423,14 +1432,14 @@ ahci_comreset(struct ahci_port *ap, int *pmdetectp)
 	}
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
 	ahci_os_sleep(1000);
-	r &= ~AHCI_PREG_SCTL_SPD;
 
 	ap->ap_flags &= ~AP_F_HARSH_REINIT;
 
 	/*
 	 * Only SERR_DIAG_X needs to be cleared for TFD updates, but
 	 * since we are hard-resetting the port we might as well clear
-	 * the whole enchillada.
+	 * the whole enchillada.  Also be sure to clear any spurious BSY
+	 * prior to clearing INIT.
 	 *
 	 * Wait 1 whole second after clearing INIT before checking
 	 * the device detection bits in an attempt to work around chipsets
@@ -1438,8 +1447,10 @@ ahci_comreset(struct ahci_port *ap, int *pmdetectp)
 	 */
 	ahci_flush_tfd(ap);
 	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
+/*	ahci_port_clo(ap);*/
 	ahci_os_sleep(10);
 
+	r &= ~AHCI_PREG_SCTL_SPD;
 	r &= ~AHCI_PREG_SCTL_DET_INIT;
 	r |= AHCI_PREG_SCTL_DET_NONE;
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
@@ -1494,10 +1505,25 @@ ahci_comreset(struct ahci_port *ap, int *pmdetectp)
 	 *
 	 * NOTE: A port multiplier may or may not clear BSY here,
 	 *	 depending on what is sitting in target 0 behind it.
+	 *
+	 * NOTE: Intel SSDs seem to have compatibility problems with Intel
+	 *	 mobo's on cold boots and may leave BSY set.  A single
+	 *	 retry works around the problem.  This is definitely a bug
+	 *	 with the mobo and/or the SSD and does not appear to occur
+	 *	 with other devices connected to the same port.
 	 */
 	ahci_flush_tfd(ap);
-	if (ahci_pwait_clr_to(ap, 3000, AHCI_PREG_TFD,
+	if (ahci_pwait_clr_to(ap, 8000, AHCI_PREG_TFD,
 			    AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
+		kprintf("%s: Device BUSY: %b\n",
+			PORTNAME(ap),
+			ahci_pread(ap, AHCI_PREG_TFD),
+				AHCI_PFMT_TFD_STS);
+		if (retries == 0) {
+			kprintf("%s: Retrying\n", PORTNAME(ap));
+			retries = 1;
+			goto retry;
+		}
 		error = EBUSY;
 	} else {
 		error = 0;
