@@ -222,8 +222,15 @@ parse_crypt_options(struct crypt_options *co, char *option)
 
 		/* Allocate safe key memory */
 		buf = alloc_safe_mem(8192);
+		if (buf == NULL)
+			err(1, "Could not allocate safe memory");
+			/* NOTREACHED */
 
 		fd = popen(parameter, "r");
+		if (fd == NULL)
+			syntax_error("The 'keyscript' file could not be run");
+			/* NOTREACHED */
+
 		if ((fread(buf, 1, sizeof(buf), fd)) == 0)
 			syntax_error("The 'keyscript' program failed");
 			/* NOTREACHED */
