@@ -56,13 +56,6 @@
  * http://www.via.com.tw/en/downloads/whitepapers/initiatives/padlock/programming_guide.pdf
  */
 
-struct padlock_softc {
-	int32_t		sc_cid;
-	uint32_t	sc_sid;
-	TAILQ_HEAD(padlock_sessions_head, padlock_session) sc_sessions;
-	struct spinlock	sc_sessions_lock;
-};
-
 static int padlock_newsession(device_t, uint32_t *sidp, struct cryptoini *cri);
 static int padlock_freesession(device_t, uint64_t tid);
 static void padlock_freesession_one(struct padlock_softc *sc,
@@ -108,6 +101,10 @@ padlock_probe(device_t dev)
 	if (via_feature_xcrypt & VIA_HAS_MM)
 		strlcat(capp, ",RSA", sizeof(capp));
 #endif
+
+	if (via_feature_rng & VIA_HAS_RNG)
+		strlcat(capp, ",RNG", sizeof(capp));
+
 	device_set_desc_copy(dev, capp);
 	return (0);
 #else
@@ -137,6 +134,10 @@ padlock_attach(device_t dev)
 	crypto_register(sc->sc_cid, CRYPTO_SHA2_256_HMAC, 0, 0);
 	crypto_register(sc->sc_cid, CRYPTO_SHA2_384_HMAC, 0, 0);
 	crypto_register(sc->sc_cid, CRYPTO_SHA2_512_HMAC, 0, 0);
+
+	if (via_feature_rng & VIA_HAS_RNG)
+		padlock_rng_init(sc);
+
 	return (0);
 }
 
@@ -162,6 +163,10 @@ padlock_detach(device_t dev)
 	spin_unlock(&sc->sc_sessions_lock);
 	spin_uninit(&sc->sc_sessions_lock);
 	crypto_unregister_all(sc->sc_cid);
+
+	if (via_feature_rng & VIA_HAS_RNG)
+		padlock_rng_uninit(sc);
+
 	return (0);
 }
 

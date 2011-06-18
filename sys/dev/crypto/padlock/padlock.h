@@ -29,8 +29,10 @@
 #ifndef _PADLOCK_H_
 #define _PADLOCK_H_
 
+#include <sys/spinlock.h>
 #include <opencrypto/cryptodev.h>
 #include <crypto/rijndael/rijndael.h>
+
 
 union padlock_cw {
 	uint64_t raw;
@@ -73,6 +75,15 @@ struct padlock_session {
 	void		*ses_freeaddr;
 } __aligned(16);
 
+struct padlock_softc {
+	int32_t		sc_cid;
+	uint32_t	sc_sid;
+	int32_t		sc_rng_ticks;
+	struct callout	sc_rng_co;
+	TAILQ_HEAD(padlock_sessions_head, padlock_session) sc_sessions;
+	struct spinlock	sc_sessions_lock;
+};
+
 #define	PADLOCK_ALIGN(p)	(void *)(roundup2((uintptr_t)(p), 16))
 
 int	padlock_cipher_setup(struct padlock_session *ses,
@@ -84,5 +95,7 @@ int	padlock_hash_setup(struct padlock_session *ses,
 int	padlock_hash_process(struct padlock_session *ses,
 	    struct cryptodesc *maccrd, struct cryptop *crp);
 void	padlock_hash_free(struct padlock_session *ses);
+void	padlock_rng_init(struct padlock_softc *sc);
+void	padlock_rng_uninit(struct padlock_softc *sc);
 
 #endif	/* !_PADLOCK_H_ */
