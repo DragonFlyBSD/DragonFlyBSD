@@ -1926,6 +1926,7 @@ dev/crypto/padlock/padlock.c		optional padlock
 dev/crypto/padlock/padlock_cipher.c	optional padlock
 dev/crypto/padlock/padlock_hash.c	optional padlock
 dev/crypto/padlock/padlock_rng.c	optional padlock
+dev/crypto/padlock/rng_harvest.S	optional padlock
 dev/crypto/ubsec/ubsec.c		optional ubsec
 dev/drm/ati_pcigart.c			optional drm
 dev/drm/drm_agpsupport.c		optional drm

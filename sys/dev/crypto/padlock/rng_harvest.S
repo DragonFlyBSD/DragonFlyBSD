@@ -26,54 +26,51 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/kernel.h>
-#include <sys/module.h>
-#include <sys/malloc.h>
-#include <sys/libkern.h>
-#include <sys/random.h>
 
-#include <dev/crypto/padlock/padlock.h>
+#include <machine/asmacros.h>
 
-int padlock_rng(uint8_t *out, int limit);
+	.text
 
-static int random_count = 32;
+/* int padlock_rng(uint8_t *out, int limit) */
+ENTRY(padlock_rng)
+	movl	4(%esp),%edi
+	movl	8(%esp),%ecx
 
-static void
-padlock_rng_harvest(void *arg)
-{
-	struct padlock_softc *sc = arg;
-	uint8_t randomness[128];
-	uint8_t *arandomness; /* randomness aligned */
-	int i, cnt;
+	movl	$3,	%edx
+	xorl	%ebx, 	%ebx
+loop:
+	/*
+	 * edx: (input)		quality factor of rng entropy
+	 * edi: (input)		buffer for random data
+	 * eax: (output)	rng status word
+	 */
+	.byte	0x0f, 0xa7, 0xc0 /* xstore-rng */
 
-	arandomness = PADLOCK_ALIGN(randomness);
-	cnt = padlock_rng(arandomness, random_count);
 
-	for (i = 0; i < cnt; i++)
-		add_true_randomness((int)arandomness[i]);
+	/*
+	 * The lower 5 bits of %eax contain the number of random
+	 * bytes stored.
+	 * If no bytes were stored, there is no more entropy
+	 * available, so we finish up.
+	 */
+	andl	$0x1f, 	%eax
+	jz	out
 
-	callout_reset(&sc->sc_rng_co, sc->sc_rng_ticks,
-	    padlock_rng_harvest, sc);
-}
+	/*
+	 * Increment the count of stored random bytes as
+	 * well as the base buffer pointer.
+	 */
+	addl	%eax, 	%ebx
+	addl	%eax, 	%edi
 
-void
-padlock_rng_init(struct padlock_softc *sc)
-{
-	if (hz > 100)
-		sc->sc_rng_ticks = hz/100;
-	else
-		sc->sc_rng_ticks = 1;
-
-	callout_init_mp(&sc->sc_rng_co);
-	callout_reset(&sc->sc_rng_co, sc->sc_rng_ticks,
-	    padlock_rng_harvest, sc);
-}
-
-void
-padlock_rng_uninit(struct padlock_softc *sc)
-{
-	callout_stop(&sc->sc_rng_co);
-}
+	/*
+	 * If we haven't already read enough random bytes,
+	 * loop again.
+	 */
+	cmpl	%ecx, 	%ebx
+	jl	loop
+out:
+	/* return the number of stored random bytes. */
+	movl	%ebx, 	%eax
+	ret
 
