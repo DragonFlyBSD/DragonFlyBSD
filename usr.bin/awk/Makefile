@@ -4,12 +4,8 @@
 AWKSRC=	${.CURDIR}/../../contrib/awk
 .PATH: ${AWKSRC}
 
-PATCHES!=	echo ${.CURDIR}/patches/*.patch
-CONTRIBDIR=	${AWKSRC}
-
 PROG=	awk
 SRCS=	awkgram.y b.c lex.c lib.c main.c parse.c proctab.c run.c tran.c ytab.h
-SRCS+=	${PATCHES}
 WARNS?=	2
 
 CFLAGS+= -I. -I${AWKSRC} -DHAS_ISBLANK
