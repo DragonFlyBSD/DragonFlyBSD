@@ -66,6 +66,7 @@ void tempfree(Cell *p) {
 
 jmp_buf env;
 extern	int	pairstack[];
+extern	Awkfloat	srand_seed;
 
 Node	*winner = NULL;	/* root of parse tree */
 Cell	*tmps;		/* free temporary cells for execution */
@@ -1466,6 +1467,7 @@ Cell *bltin(Node **a, int n)	/* builtin functions. a[0] is type, a[1] is arg lis
 	Cell *x, *y;
 	Awkfloat u;
 	int t;
+	Awkfloat tmp;
 	char *p, *buf;
 	Node *nextarg;
 	FILE *fp;
@@ -1517,7 +1519,10 @@ Cell *bltin(Node **a, int n)	/* builtin functions. a[0] is type, a[1] is arg lis
 			u = time((time_t *)0);
 		else
 			u = getfval(x);
+		tmp = u;
 		srand((unsigned int) u);
+		u = srand_seed;
+		srand_seed = tmp;
 		break;
 	case FTOUPPER:
 	case FTOLOWER:
