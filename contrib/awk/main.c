@@ -22,7 +22,7 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 ****************************************************************/
 
-const char	*version = "version 20100523";
+const char	*version = "version 20110506";
 
 #define DEBUG
 #include <stdio.h>
@@ -38,6 +38,7 @@ extern	char	**environ;
 extern	int	nfields;
 
 int	dbg	= 0;
+Awkfloat	srand_seed = 1;
 char	*cmdname;	/* gets argv[0] for error messages */
 extern	FILE	*yyin;	/* lex input file */
 char	*lexprog;	/* points to program argument if it exists */
@@ -67,6 +68,10 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	signal(SIGFPE, fpecatch);
+
+	srand_seed = 1;
+	srand(srand_seed);
+
 	yyin = NULL;
 	symtab = makesymtab(NSYMTAB/NSYMTAB);
 	while (argc > 1 && argv[1][0] == '-' && argv[1][1] != '\0') {
@@ -86,13 +91,18 @@ int main(int argc, char *argv[])
 				safe = 1;
 			break;
 		case 'f':	/* next argument is program filename */
-			argc--;
-			argv++;
-			if (argc <= 1)
-				FATAL("no program filename");
-			if (npfile >= MAX_PFILE - 1)
-				FATAL("too many -f options"); 
-			pfile[npfile++] = argv[1];
+			if (argv[1][2] != 0) {  /* arg is -fsomething */
+				if (npfile >= MAX_PFILE - 1)
+					FATAL("too many -f options"); 
+				pfile[npfile++] = &argv[1][2];
+			} else {		/* arg is -f something */
+				argc--; argv++;
+				if (argc <= 1)
+					FATAL("no program filename");
+				if (npfile >= MAX_PFILE - 1)
+					FATAL("too many -f options"); 
+				pfile[npfile++] = argv[1];
+			}
 			break;
 		case 'F':	/* set field separator */
 			if (argv[1][2] != 0) {	/* arg is -Fsomething */
