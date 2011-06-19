@@ -42,6 +42,7 @@ loop:
 	/*
 	 * edx: (input)		quality factor of rng entropy
 	 * edi: (input)		buffer for random data
+	 			autoincremented at end of instruction
 	 * eax: (output)	rng status word
 	 */
 	.byte	0x0f, 0xa7, 0xc0 /* xstore-rng */
@@ -57,11 +58,10 @@ loop:
 	jz	out
 
 	/*
-	 * Increment the count of stored random bytes as
-	 * well as the base buffer pointer.
+	 * Increment the count of stored random bytes. The buffer pointer
+	 * in edi is auto-incremented by the xstore-rng instruction.
 	 */
 	addl	%eax, 	%ebx
-	addl	%eax, 	%edi
 
 	/*
 	 * If we haven't already read enough random bytes,
