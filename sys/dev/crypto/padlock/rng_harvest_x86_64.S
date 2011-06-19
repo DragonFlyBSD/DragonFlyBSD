@@ -33,8 +33,7 @@
 
 /* int padlock_rng(uint8_t *out, int limit) */
 ENTRY(padlock_rng)
-	movq	%rcx,	%rdi
-	movl	%edx,	%ecx
+	movl	%esi,	%ecx
 
 	movq	$3,	%rdx
 	xorq	%rbx, 	%rbx
