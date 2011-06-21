@@ -348,9 +348,6 @@ dm_target_stripe_destroy(dm_table_entry_t *table_en)
 		dm_target_stripe_destroy_config(tsc);
 	}
 
-	/* Unbusy target so we can unload it */
-	dm_target_unbusy(table_en->target);
-
 	return 0;
 }
 

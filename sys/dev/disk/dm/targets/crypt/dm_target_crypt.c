@@ -788,8 +788,6 @@ dm_target_crypt_destroy(dm_table_entry_t * table_en)
 	table_en->target_config = NULL;
 	dm_pdev_decr(priv->pdev);
 
-	dm_target_unbusy(table_en->target);
-
 	/*
 	 * Clean up the crypt config
 	 *

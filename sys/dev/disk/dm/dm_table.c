@@ -151,6 +151,8 @@ dm_table_destroy(dm_table_head_t * head, uint8_t table_id)
 		 * call table_en->target_config must be set to NULL.
 		 */
 		table_en->target->destroy(table_en);
+		/* decrement the refcount for the target */
+		dm_target_unbusy(table_en->target);
 
 		SLIST_REMOVE_HEAD(tbl, next);
 

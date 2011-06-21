@@ -87,9 +87,6 @@ dm_target_zero_destroy(dm_table_entry_t * table_en)
 {
 	table_en->target_config = NULL;
 
-	/* Unbusy target so we can unload it */
-	dm_target_unbusy(table_en->target);
-
 	return 0;
 }
 

@@ -230,9 +230,6 @@ dm_target_snapshot_destroy(dm_table_entry_t * table_en)
 	if (tsc->tsc_persistent_dev)
 		dm_pdev_decr(tsc->tsc_cow_dev);
 
-	/* Unbusy target so we can unload it */
-	dm_target_unbusy(table_en->target);
-
 	kmem_free(table_en->target_config, sizeof(dm_target_snapshot_config_t));
 
 	table_en->target_config = NULL;

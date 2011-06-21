@@ -184,9 +184,6 @@ dm_target_linear_destroy(dm_table_entry_t * table_en)
 	/* Decrement pdev ref counter if 0 remove it */
 	dm_pdev_decr(tlc->pdev);
 
-	/* Unbusy target so we can unload it */
-	dm_target_unbusy(table_en->target);
-
 	kfree(table_en->target_config, M_DMLINEAR);
 
 	table_en->target_config = NULL;
