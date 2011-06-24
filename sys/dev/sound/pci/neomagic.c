@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/neomagic.c,v 1.34.2.1 2005/12/30 19:55:53 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.7 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -821,6 +820,6 @@ static driver_t nm_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_neomagic, pci, nm_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_neomagic, pci, nm_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_neomagic, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_neomagic, 1);

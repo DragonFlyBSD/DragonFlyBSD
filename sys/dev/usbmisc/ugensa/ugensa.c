@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.7 2008/08/22 06:57:33 hasso Exp $ */
 /* $OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $ */
 
 /*
@@ -160,7 +159,7 @@ static const struct usb_devno ugensa_devs[] = {
 	{ USB_DEVICE(0x413c, 0x8137) }, /* Dell Wireless 5520 */
 };
 
-DRIVER_MODULE(ugensa, uhub, ugensa_driver, ucom_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(ugensa, uhub, ugensa_driver, ucom_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(ugensa, usb, 1, 1, 1);
 MODULE_DEPEND(ugensa, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(ugensa, 1);

@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/bus/isa/pnpeat.c,v 1.5 2008/08/02 01:14:39 dillon Exp $
  */
 
 /*
@@ -98,4 +97,4 @@ static driver_t sysresource_driver = {
 
 static devclass_t sysresource_devclass;
 
-DRIVER_MODULE(sysresource, isa, sysresource_driver, sysresource_devclass, 0, 0);
+DRIVER_MODULE(sysresource, isa, sysresource_driver, sysresource_devclass, NULL, NULL);

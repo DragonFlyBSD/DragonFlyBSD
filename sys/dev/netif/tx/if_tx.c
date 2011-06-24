@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.43 2008/08/17 04:32:35 sephe Exp $
  */
 
 /*
@@ -149,8 +148,8 @@ static devclass_t epic_devclass;
 
 DECLARE_DUMMY_MODULE(if_tx);
 MODULE_DEPEND(if_tx, miibus, 1, 1, 1);
-DRIVER_MODULE(if_tx, pci, epic_driver, epic_devclass, 0, 0);
-DRIVER_MODULE(miibus, tx, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_tx, pci, epic_driver, epic_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, tx, miibus_driver, miibus_devclass, NULL, NULL);
 
 static struct epic_type epic_devs[] = {
 	{ PCI_VENDOR_SMC, PCI_PRODUCT_SMC_83C170,

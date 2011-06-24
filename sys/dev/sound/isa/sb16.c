@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sb16.c,v 1.90.2.1 2005/12/30 19:55:53 netchild Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb16.c,v 1.8 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -906,7 +905,7 @@ static driver_t sb16_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_sb16, sbc, sb16_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_sb16, sbc, sb16_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_sb16, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_DEPEND(snd_sb16, snd_sbc, 1, 1, 1);
 MODULE_VERSION(snd_sb16, 1);

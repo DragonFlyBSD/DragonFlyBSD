@@ -49,7 +49,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.19 2008/11/01 23:19:08 swildner Exp $
  */
 
 /*
@@ -3736,5 +3735,5 @@ static driver_t trm_driver = {
 };
 
 static devclass_t trm_devclass;
-DRIVER_MODULE(trm, pci, trm_driver, trm_devclass, 0, 0);
+DRIVER_MODULE(trm, pci, trm_driver, trm_devclass, NULL, NULL);
 MODULE_DEPEND(trm, cam, 1, 1, 1);

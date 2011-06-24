@@ -150,7 +150,7 @@ static driver_t twe_pci_driver = {
 	sizeof(struct twe_softc)
 };
 
-DRIVER_MODULE(twe, pci, twe_pci_driver, twe_devclass, 0, 0);
+DRIVER_MODULE(twe, pci, twe_pci_driver, twe_devclass, NULL, NULL);
 
 /********************************************************************************
  * Match a 3ware Escalade ATA RAID controller.
@@ -655,7 +655,7 @@ static driver_t twed_driver = {
 };
 
 static devclass_t	twed_devclass;
-DRIVER_MODULE(twed, twe, twed_driver, twed_devclass, 0, 0);
+DRIVER_MODULE(twed, twe, twed_driver, twed_devclass, NULL, NULL);
 
 /*
  * Disk device control interface.

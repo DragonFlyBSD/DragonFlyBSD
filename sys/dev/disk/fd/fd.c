@@ -853,8 +853,8 @@ static driver_t fdc_driver = {
 	sizeof(struct fdc_data)
 };
 
-DRIVER_MODULE(fdc, isa, fdc_driver, fdc_devclass, 0, 0);
-DRIVER_MODULE(fdc, acpi, fdc_driver, fdc_devclass, 0, 0);
+DRIVER_MODULE(fdc, isa, fdc_driver, fdc_devclass, NULL, NULL);
+DRIVER_MODULE(fdc, acpi, fdc_driver, fdc_devclass, NULL, NULL);
 
 /******************************************************************/
 /*
@@ -1102,7 +1102,7 @@ static driver_t fd_driver = {
 	sizeof(struct fd_data)
 };
 
-DRIVER_MODULE(fd, fdc, fd_driver, fd_devclass, 0, 0);
+DRIVER_MODULE(fd, fdc, fd_driver, fd_devclass, NULL, NULL);
 
 /****************************************************************************/
 /*                            motor control stuff                           */

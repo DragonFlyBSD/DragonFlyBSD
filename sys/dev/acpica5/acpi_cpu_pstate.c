@@ -192,7 +192,7 @@ static driver_t acpi_pst_driver = {
 };
 
 static devclass_t acpi_pst_devclass;
-DRIVER_MODULE(cpu_pst, cpu, acpi_pst_driver, acpi_pst_devclass, 0, 0);
+DRIVER_MODULE(cpu_pst, cpu, acpi_pst_driver, acpi_pst_devclass, NULL, NULL);
 MODULE_DEPEND(cpu_pst, acpi, 1, 1, 1);
 
 static __inline int

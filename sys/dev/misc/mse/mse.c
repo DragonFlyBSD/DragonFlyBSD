@@ -116,7 +116,7 @@ static	driver_t	mse_driver = {
 	sizeof(mse_softc_t),
 };
 
-DRIVER_MODULE(mse, isa, mse_driver, mse_devclass, 0, 0);
+DRIVER_MODULE(mse, isa, mse_driver, mse_devclass, NULL, NULL);
 
 static struct isa_pnp_id mse_ids[] = {
 	{ 0x000fd041, "Bus mouse" },			/* PNP0F00 */

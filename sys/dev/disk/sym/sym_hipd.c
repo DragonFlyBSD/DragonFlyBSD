@@ -8697,7 +8697,7 @@ static driver_t sym_pci_driver = {
 
 static devclass_t sym_devclass;
 
-DRIVER_MODULE(sym, pci, sym_pci_driver, sym_devclass, 0, 0);
+DRIVER_MODULE(sym, pci, sym_pci_driver, sym_devclass, NULL, NULL);
 
 #else	/* Pre-FreeBSD_Bus_Io_Abstraction */
 

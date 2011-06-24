@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt_isa.c,v 1.18 1999/10/12 21:35:43 dfr Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt_isa.c,v 1.5 2006/12/22 23:26:16 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -296,4 +295,4 @@ static driver_t bt_isa_driver = {
 
 static devclass_t bt_devclass;
 
-DRIVER_MODULE(bt, isa, bt_isa_driver, bt_devclass, 0, 0);
+DRIVER_MODULE(bt, isa, bt_isa_driver, bt_devclass, NULL, NULL);

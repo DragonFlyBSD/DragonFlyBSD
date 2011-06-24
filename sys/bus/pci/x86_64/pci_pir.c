@@ -740,4 +740,4 @@ static driver_t pir_driver = {
 
 static devclass_t pir_devclass;
 
-DRIVER_MODULE(pir, legacy, pir_driver, pir_devclass, 0, 0);
+DRIVER_MODULE(pir, legacy, pir_driver, pir_devclass, NULL, NULL);

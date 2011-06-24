@@ -78,7 +78,7 @@ static driver_t aac_pci_driver = {
 
 static devclass_t	aac_devclass;
 
-DRIVER_MODULE(aac, pci, aac_pci_driver, aac_devclass, 0, 0);
+DRIVER_MODULE(aac, pci, aac_pci_driver, aac_devclass, NULL, NULL);
 MODULE_DEPEND(aac, pci, 1, 1, 1);
 
 
@@ -484,7 +484,7 @@ static driver_t aacch_driver = {
 };
 
 static devclass_t	aacch_devclass;
-DRIVER_MODULE(aacch, pci, aacch_driver, aacch_devclass, 0, 0);
+DRIVER_MODULE(aacch, pci, aacch_driver, aacch_devclass, NULL, NULL);
 
 static int
 aacch_probe(device_t dev)

@@ -1,6 +1,5 @@
 /*	$NetBSD: uhub.c,v 1.68 2004/06/29 06:30:05 mycroft Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhub.c,v 1.69.2.1 2005/12/18 15:51:31 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.22 2008/05/26 12:37:44 mneumann Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -736,5 +735,5 @@ uhub_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 		usb_needs_explore(sc->sc_hub);
 }
 
-DRIVER_MODULE(uhub, usb, uhubroot_driver, uhubroot_devclass, 0, 0);
-DRIVER_MODULE(uhub, uhub, uhub_driver, uhub_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(uhub, usb, uhubroot_driver, uhubroot_devclass, NULL, NULL);
+DRIVER_MODULE(uhub, uhub, uhub_driver, uhub_devclass, usbd_driver_load, NULL);

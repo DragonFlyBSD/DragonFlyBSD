@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/umct.c,v 1.12 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.15 2007/11/06 07:37:01 hasso Exp $
  */
 
 /*
@@ -131,7 +130,7 @@ static driver_t umct_driver = {
 	sizeof(struct umct_softc)
 };
 
-DRIVER_MODULE(umct, uhub, umct_driver, ucom_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(umct, uhub, umct_driver, ucom_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(umct, usb, 1, 1, 1);
 MODULE_DEPEND(umct, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(umct, 1);

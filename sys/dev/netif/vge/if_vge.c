@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vge/if_vge.c,v 1.24 2006/02/14 12:44:56 glebius Exp $
- * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.9 2008/05/16 13:19:12 sephe Exp $
  */
 
 /*
@@ -224,9 +223,9 @@ static devclass_t vge_devclass;
 
 DECLARE_DUMMY_MODULE(if_vge);
 MODULE_DEPEND(if_vge, miibus, 1, 1, 1);
-DRIVER_MODULE(if_vge, pci, vge_driver, vge_devclass, 0, 0);
-DRIVER_MODULE(if_vge, cardbus, vge_driver, vge_devclass, 0, 0);
-DRIVER_MODULE(miibus, vge, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_vge, pci, vge_driver, vge_devclass, NULL, NULL);
+DRIVER_MODULE(if_vge, cardbus, vge_driver, vge_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, vge, miibus_driver, miibus_devclass, NULL, NULL);
 
 #ifdef VGE_EEPROM
 /*

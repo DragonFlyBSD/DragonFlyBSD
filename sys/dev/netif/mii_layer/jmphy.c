@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/jmphy.c,v 1.1 2008/05/27 01:16:40 yongari Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/jmphy.c,v 1.1 2008/07/22 11:28:49 sephe Exp $
  */
 
 /*
@@ -70,7 +69,7 @@ static driver_t jmphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(jmphy, miibus, jmphy_driver, jmphy_devclass, 0, 0);
+DRIVER_MODULE(jmphy, miibus, jmphy_driver, jmphy_devclass, NULL, NULL);
 
 static const struct mii_phydesc jmphys[] = {
 	MII_PHYDESC(JMICRON, JMP202),

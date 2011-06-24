@@ -24,8 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/ppc.c,v 1.26.2.5 2001/10/02 05:21:45 nsouch Exp $
- * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.15 2007/10/23 03:04:49 y0netan1 Exp $
- *
  */
 
 #include "opt_ppc.h"
@@ -2153,5 +2151,5 @@ ppc_teardown_intr(device_t bus, device_t child, struct resource *r, void *ih)
 	return (error);
 }
 
-DRIVER_MODULE(ppc, isa, ppc_driver, ppc_devclass, 0, 0);
-DRIVER_MODULE(ppc, acpi, ppc_driver, ppc_devclass, 0, 0);
+DRIVER_MODULE(ppc, isa, ppc_driver, ppc_devclass, NULL, NULL);
+DRIVER_MODULE(ppc, acpi, ppc_driver, ppc_devclass, NULL, NULL);

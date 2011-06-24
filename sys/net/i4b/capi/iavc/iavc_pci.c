@@ -26,7 +26,6 @@
  *		The AVM ISDN controllers' PCI bus attachment handling.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_pci.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_pci.c,v 1.10 2006/12/22 23:44:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -85,7 +84,7 @@ static driver_t iavc_pci_driver =
 
 static devclass_t iavc_pci_devclass;
 
-DRIVER_MODULE(iavc, pci, iavc_pci_driver, iavc_pci_devclass, 0, 0);
+DRIVER_MODULE(iavc, pci, iavc_pci_driver, iavc_pci_devclass, NULL, NULL);
 
 /* Driver soft contexts */
 

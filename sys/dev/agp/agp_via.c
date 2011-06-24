@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/agp/agp_via.c,v 1.26 2007/11/12 21:51:37 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agp_via.c,v 1.8 2008/01/07 01:34:58 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -362,6 +361,6 @@ static driver_t agp_via_driver = {
 
 static devclass_t agp_devclass;
 
-DRIVER_MODULE(agp_via, pci, agp_via_driver, agp_devclass, 0, 0);
+DRIVER_MODULE(agp_via, pci, agp_via_driver, agp_devclass, NULL, NULL);
 MODULE_DEPEND(agp_via, agp, 1, 1, 1);
 MODULE_DEPEND(agp_via, pci, 1, 1, 1);

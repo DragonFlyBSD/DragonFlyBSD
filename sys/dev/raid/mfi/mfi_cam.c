@@ -89,7 +89,7 @@ static driver_t mfip_driver = {
 	mfip_methods,
 	sizeof(struct mfip_softc)
 };
-DRIVER_MODULE(mfip, mfi, mfip_driver, mfip_devclass, 0, 0);
+DRIVER_MODULE(mfip, mfi, mfip_driver, mfip_devclass, NULL, NULL);
 MODULE_DEPEND(mfip, cam, 1, 1, 1);
 MODULE_DEPEND(mfip, mfi, 1, 1, 1);
 

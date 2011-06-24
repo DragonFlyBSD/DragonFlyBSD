@@ -270,7 +270,7 @@ static driver_t uplcom_driver = {
 	sizeof (struct uplcom_softc)
 };
 
-DRIVER_MODULE(uplcom, uhub, uplcom_driver, ucom_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(uplcom, uhub, uplcom_driver, ucom_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(uplcom, usb, 1, 1, 1);
 MODULE_DEPEND(uplcom, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(uplcom, UPLCOM_MODVER);

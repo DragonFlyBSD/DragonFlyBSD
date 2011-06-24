@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar_isa.c,v 1.54 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar_isa.c,v 1.6 2006/12/22 23:26:18 swildner Exp $
  */
 
 /*
@@ -86,7 +85,7 @@ static driver_t ar_isa_driver = {
 	sizeof (struct ar_hardc)
 };
 
-DRIVER_MODULE(if_ar, isa, ar_isa_driver, ar_devclass, 0, 0);
+DRIVER_MODULE(if_ar, isa, ar_isa_driver, ar_devclass, NULL, NULL);
 
 /*
  * Probe to see if it is there.

@@ -89,7 +89,7 @@ static driver_t idad_driver = {
 	sizeof(struct idad_softc)
 };
 
-DRIVER_MODULE(idad, ida, idad_driver, idad_devclass, 0, 0);
+DRIVER_MODULE(idad, ida, idad_driver, idad_devclass, NULL, NULL);
 
 static __inline struct idad_softc *
 idad_getsoftc(cdev_t dev)

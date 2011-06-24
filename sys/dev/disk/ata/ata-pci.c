@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.29 2007/05/01 00:05:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -941,7 +940,7 @@ static driver_t ata_pci_driver = {
 
 static devclass_t ata_pci_devclass;
 
-DRIVER_MODULE(atapci, pci, ata_pci_driver, ata_pci_devclass, 0, 0);
+DRIVER_MODULE(atapci, pci, ata_pci_driver, ata_pci_devclass, NULL, NULL);
 
 static int
 ata_pcisub_probe(device_t dev)
@@ -978,4 +977,4 @@ static driver_t ata_pcisub_driver = {
     sizeof(struct ata_channel),
 };
 
-DRIVER_MODULE(ata, atapci, ata_pcisub_driver, ata_devclass, 0, 0);
+DRIVER_MODULE(ata, atapci, ata_pcisub_driver, ata_devclass, NULL, NULL);

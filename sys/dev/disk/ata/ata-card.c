@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-card.c,v 1.4.2.1 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-card.c,v 1.7 2007/07/05 12:08:53 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -145,4 +144,4 @@ static driver_t ata_pccard_driver = {
     sizeof(struct ata_channel),
 };
 
-DRIVER_MODULE(ata, pccard, ata_pccard_driver, ata_devclass, 0, 0);
+DRIVER_MODULE(ata, pccard, ata_pccard_driver, ata_devclass, NULL, NULL);

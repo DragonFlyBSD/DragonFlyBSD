@@ -125,5 +125,5 @@ static driver_t r128_driver = {
 };
 
 extern devclass_t drm_devclass;
-DRIVER_MODULE(r128, vgapci, r128_driver, drm_devclass, 0, 0);
+DRIVER_MODULE(r128, vgapci, r128_driver, drm_devclass, NULL, NULL);
 MODULE_DEPEND(r128, drm, 1, 1, 1);

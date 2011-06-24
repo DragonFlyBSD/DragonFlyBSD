@@ -88,7 +88,7 @@ static driver_t mps_pci_driver = {
 };
 
 static devclass_t	mps_devclass;
-DRIVER_MODULE(mps, pci, mps_pci_driver, mps_devclass, 0, 0);
+DRIVER_MODULE(mps, pci, mps_pci_driver, mps_devclass, NULL, NULL);
 
 struct mps_ident {
 	uint16_t	vendor;

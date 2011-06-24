@@ -93,7 +93,6 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_msk.c,v 1.26 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.10 2008/11/23 04:28:27 sephe Exp $ */
 
 /*
  * Device driver for the Marvell Yukon II Ethernet controller.
@@ -319,9 +318,9 @@ static DEFINE_CLASS_0(msk, msk_driver, msk_methods, sizeof(struct msk_if_softc))
 static devclass_t msk_devclass;
 
 DECLARE_DUMMY_MODULE(if_msk);
-DRIVER_MODULE(if_msk, pci, mskc_driver, mskc_devclass, 0, 0);
-DRIVER_MODULE(if_msk, mskc, msk_driver, msk_devclass, 0, 0);
-DRIVER_MODULE(miibus, msk, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_msk, pci, mskc_driver, mskc_devclass, NULL, NULL);
+DRIVER_MODULE(if_msk, mskc, msk_driver, msk_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, msk, miibus_driver, miibus_devclass, NULL, NULL);
 
 static int	mskc_intr_rate = 0;
 static int	mskc_process_limit = MSK_PROC_DEFAULT;

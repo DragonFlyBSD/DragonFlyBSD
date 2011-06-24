@@ -1,4 +1,3 @@
-/*	$DragonFly: src/sys/dev/usbmisc/uark/uark.c,v 1.6 2007/11/06 07:37:01 hasso Exp $	*/
 /*	$OpenBSD: uark.c,v 1.9 2007/06/13 06:25:03 mbalmer Exp $	*/
 
 /*
@@ -106,7 +105,7 @@ static driver_t uark_driver = {
 	sizeof (struct uark_softc)
 };
 
-DRIVER_MODULE(uark, uhub, uark_driver, ucom_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(uark, uhub, uark_driver, ucom_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(uark, usb, 1, 1, 1);
 MODULE_DEPEND(uark, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(uark, 1);

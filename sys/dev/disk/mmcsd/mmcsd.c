@@ -587,4 +587,4 @@ static driver_t mmcsd_driver = {
 };
 static devclass_t mmcsd_devclass;
 
-DRIVER_MODULE(mmcsd, mmc, mmcsd_driver, mmcsd_devclass, 0, 0);
+DRIVER_MODULE(mmcsd, mmc, mmcsd_driver, mmcsd_devclass, NULL, NULL);

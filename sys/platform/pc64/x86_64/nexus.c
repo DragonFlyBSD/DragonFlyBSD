@@ -141,7 +141,7 @@ static driver_t nexus_driver = {
 };
 static devclass_t nexus_devclass;
 
-DRIVER_MODULE(nexus, root, nexus_driver, nexus_devclass, 0, 0);
+DRIVER_MODULE(nexus, root, nexus_driver, nexus_devclass, NULL, NULL);
 
 static int
 nexus_probe(device_t dev)

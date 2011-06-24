@@ -102,7 +102,7 @@ static driver_t acpi_hpet_driver = {
 };
 
 static devclass_t acpi_hpet_devclass;
-DRIVER_MODULE(acpi_hpet, acpi, acpi_hpet_driver, acpi_hpet_devclass, 0, 0);
+DRIVER_MODULE(acpi_hpet, acpi, acpi_hpet_driver, acpi_hpet_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_hpet, acpi, 1, 1, 1);
 
 static u_int

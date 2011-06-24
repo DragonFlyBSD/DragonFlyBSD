@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb_isa.c,v 1.4 2005/01/11 05:33:18 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb_isa.c,v 1.1 2007/07/05 12:08:54 sephe Exp $
  */
 
 /*
@@ -210,5 +209,5 @@ static driver_t cbb_isa_driver = {
 	sizeof(struct cbb_softc)
 };
 
-DRIVER_MODULE(cbb, isa, cbb_isa_driver, cbb_devclass, 0, 0);
+DRIVER_MODULE(cbb, isa, cbb_isa_driver, cbb_devclass, NULL, NULL);
 MODULE_DEPEND(cbb, exca, 1, 1, 1);

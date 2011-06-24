@@ -1218,7 +1218,7 @@ static driver_t hptiop_pci_driver = {
 	sizeof(struct hpt_iop_hba)
 };
 
-DRIVER_MODULE(hptiop, pci, hptiop_pci_driver, hptiop_devclass, 0, 0);
+DRIVER_MODULE(hptiop, pci, hptiop_pci_driver, hptiop_devclass, NULL, NULL);
 
 static int hptiop_probe(device_t dev)
 {

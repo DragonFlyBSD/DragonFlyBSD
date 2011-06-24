@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-isa.c,v 1.30 2006/01/05 21:27:19 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-isa.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
  */
 
 #include "opt_ata.h"
@@ -116,5 +115,5 @@ static driver_t ata_isa_driver = {
     sizeof(struct ata_channel),
 };
 
-DRIVER_MODULE(ata, isa, ata_isa_driver, ata_devclass, 0, 0);
+DRIVER_MODULE(ata, isa, ata_isa_driver, ata_devclass, NULL, NULL);
 MODULE_DEPEND(ata, ata, 1, 1, 1);

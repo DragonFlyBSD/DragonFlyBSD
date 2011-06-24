@@ -82,7 +82,7 @@ static driver_t acpi_acad_driver = {
 };
 
 static devclass_t acpi_acad_devclass;
-DRIVER_MODULE(acpi_acad, acpi, acpi_acad_driver, acpi_acad_devclass, 0, 0);
+DRIVER_MODULE(acpi_acad, acpi, acpi_acad_driver, acpi_acad_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_acad, acpi, 1, 1, 1);
 
 ACPI_SERIAL_DECL(acad, "ACPI AC adapter");

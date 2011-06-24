@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mlphy.c,v 1.2.2.3 2001/02/09 09:50:15 asmodai Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.12 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -96,7 +95,7 @@ static driver_t mlphy_driver = {
 	sizeof(struct mlphy_softc)
 };
 
-DRIVER_MODULE(mlphy, miibus, mlphy_driver, mlphy_devclass, 0, 0);
+DRIVER_MODULE(mlphy, miibus, mlphy_driver, mlphy_devclass, NULL, NULL);
 
 static int	mlphy_service (struct mii_softc *, struct mii_data *, int);
 static void	mlphy_reset (struct mii_softc *);

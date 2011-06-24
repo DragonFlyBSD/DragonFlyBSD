@@ -34,7 +34,6 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.12 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Fri Jan 12 17:05:28 2001]
  *
@@ -107,7 +106,7 @@ static driver_t avm_pnp_driver = {
 
 static devclass_t avm_pnp_devclass;
 
-DRIVER_MODULE(avm_pnp, isa, avm_pnp_driver, avm_pnp_devclass, 0, 0);
+DRIVER_MODULE(avm_pnp, isa, avm_pnp_driver, avm_pnp_devclass, NULL, NULL);
 
 /* jump table for multiplex routines */
 

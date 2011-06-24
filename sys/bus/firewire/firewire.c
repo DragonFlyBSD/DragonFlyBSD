@@ -32,8 +32,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.21 2008/01/06 16:55:49 swildner Exp $
- *
  */
 
 #include <sys/param.h>
@@ -2224,5 +2222,5 @@ fw_modevent(module_t mode, int type, void *data)
  * device in the system.
  */
 DECLARE_DUMMY_MODULE(firewire);
-DRIVER_MODULE(firewire,fwohci,firewire_driver,firewire_devclass,fw_modevent,0);
+DRIVER_MODULE(firewire,fwohci,firewire_driver,firewire_devclass,fw_modevent,NULL);
 MODULE_VERSION(firewire, 1);

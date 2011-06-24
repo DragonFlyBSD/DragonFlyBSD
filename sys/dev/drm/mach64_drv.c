@@ -126,5 +126,5 @@ static driver_t mach64_driver = {
 };
 
 extern devclass_t drm_devclass;
-DRIVER_MODULE(mach64, vgapci, mach64_driver, drm_devclass, 0, 0);
+DRIVER_MODULE(mach64, vgapci, mach64_driver, drm_devclass, NULL, NULL);
 MODULE_DEPEND(mach64, drm, 1, 1, 1);

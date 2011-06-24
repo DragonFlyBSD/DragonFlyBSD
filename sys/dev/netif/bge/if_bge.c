@@ -31,8 +31,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.111 2008/10/22 14:24:24 sephe Exp $
- *
  */
 
 /*
@@ -402,8 +400,8 @@ static DEFINE_CLASS_0(bge, bge_driver, bge_methods, sizeof(struct bge_softc));
 static devclass_t bge_devclass;
 
 DECLARE_DUMMY_MODULE(if_bge);
-DRIVER_MODULE(if_bge, pci, bge_driver, bge_devclass, 0, 0);
-DRIVER_MODULE(miibus, bge, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_bge, pci, bge_driver, bge_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, bge, miibus_driver, miibus_devclass, NULL, NULL);
 
 static uint32_t
 bge_readmem_ind(struct bge_softc *sc, uint32_t off)

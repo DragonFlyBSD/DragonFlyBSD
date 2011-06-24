@@ -75,7 +75,7 @@ static driver_t ipsd_driver = {
 };
 
 static devclass_t ipsd_devclass;
-DRIVER_MODULE(ipsd, ips, ipsd_driver, ipsd_devclass, 0, 0);
+DRIVER_MODULE(ipsd, ips, ipsd_driver, ipsd_devclass, NULL, NULL);
 
 /*
  * handle opening of disk device.  It must set up all information about

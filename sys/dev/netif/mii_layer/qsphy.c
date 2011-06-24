@@ -38,7 +38,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/qsphy.c,v 1.1.2.2 2002/10/21 21:21:42 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/qsphy.c,v 1.10 2006/12/22 23:26:20 swildner Exp $
  */
  
 /*
@@ -119,7 +118,7 @@ static driver_t qsphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(qsphy, miibus, qsphy_driver, qsphy_devclass, 0, 0);
+DRIVER_MODULE(qsphy, miibus, qsphy_driver, qsphy_devclass, NULL, NULL);
 
 static int	qsphy_service(struct mii_softc *, struct mii_data *, int);
 static void	qsphy_reset(struct mii_softc *);

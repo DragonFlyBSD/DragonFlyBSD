@@ -1437,5 +1437,5 @@ static driver_t mn_driver = {
 static devclass_t mn_devclass;
 
 DECLARE_DUMMY_MODULE(if_mn);
-DRIVER_MODULE(if_mn, pci, mn_driver, mn_devclass, 0, 0);
+DRIVER_MODULE(if_mn, pci, mn_driver, mn_devclass, NULL, NULL);
 

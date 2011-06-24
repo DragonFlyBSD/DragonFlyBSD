@@ -26,7 +26,6 @@
  * $FreeBSD: src/sys/dev/cardbus/cardbus.c,v 1.28 2002/11/27 17:30:41 imp Exp $
  * $FreeBSD @153896,@153900,@159532,@166104 merged
  * $FreeBSD @169620,@169633 merged
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.13 2008/01/11 10:53:46 sephe Exp $
  */
 
 /*
@@ -374,5 +373,5 @@ DEFINE_CLASS_1(cardbus, cardbus_driver, cardbus_methods, 0, pci_driver);
 
 static devclass_t cardbus_devclass;
 
-DRIVER_MODULE(cardbus, cbb, cardbus_driver, cardbus_devclass, 0, 0);
+DRIVER_MODULE(cardbus, cbb, cardbus_driver, cardbus_devclass, NULL, NULL);
 MODULE_VERSION(cardbus, 1);

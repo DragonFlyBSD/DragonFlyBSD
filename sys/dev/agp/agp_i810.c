@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/agp/agp_i810.c,v 1.43 2007/11/12 21:51:36 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.19 2008/10/03 08:56:58 hasso Exp $
  */
 
 /*
@@ -1143,6 +1142,6 @@ static driver_t agp_i810_driver = {
 
 static devclass_t agp_devclass;
 
-DRIVER_MODULE(agp_i810, vgapci, agp_i810_driver, agp_devclass, 0, 0);
+DRIVER_MODULE(agp_i810, vgapci, agp_i810_driver, agp_devclass, NULL, NULL);
 MODULE_DEPEND(agp_i810, agp, 1, 1, 1);
 MODULE_DEPEND(agp_i810, pci, 1, 1, 1);

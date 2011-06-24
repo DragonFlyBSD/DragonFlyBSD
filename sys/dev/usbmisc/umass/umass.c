@@ -26,7 +26,6 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.40 2008/08/16 21:42:19 thomas Exp $
  */
 
 /*
@@ -3552,7 +3551,7 @@ umass_atapi_transform(struct umass_softc *sc, unsigned char *cmd, int cmdlen,
 
 /* (even the comment is missing) */
 
-DRIVER_MODULE(umass, uhub, umass_driver, umass_devclass, umass_driver_load, 0);
+DRIVER_MODULE(umass, uhub, umass_driver, umass_devclass, umass_driver_load, NULL);
 
 
 

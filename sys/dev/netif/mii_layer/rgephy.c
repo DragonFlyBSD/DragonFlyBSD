@@ -32,7 +32,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/rgephy.c,v 1.7 2005/09/30 19:39:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/rgephy.c,v 1.7 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -87,7 +86,7 @@ static driver_t rgephy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(rgephy, miibus, rgephy_driver, rgephy_devclass, 0, 0);
+DRIVER_MODULE(rgephy, miibus, rgephy_driver, rgephy_devclass, NULL, NULL);
 
 static int	rgephy_service(struct mii_softc *, struct mii_data *, int);
 static void	rgephy_status(struct mii_softc *);

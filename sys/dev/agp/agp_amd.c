@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/agp/agp_amd.c,v 1.25 2007/11/12 21:51:36 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.11 2008/01/07 01:34:58 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -394,6 +393,6 @@ static driver_t agp_amd_driver = {
 
 static devclass_t agp_devclass;
 
-DRIVER_MODULE(agp_amd, pci, agp_amd_driver, agp_devclass, 0, 0);
+DRIVER_MODULE(agp_amd, pci, agp_amd_driver, agp_devclass, NULL, NULL);
 MODULE_DEPEND(agp_amd, agp, 1, 1, 1);
 MODULE_DEPEND(agp_amd, pci, 1, 1, 1);

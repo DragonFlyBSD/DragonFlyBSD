@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb_pci.c,v 1.15 2005/10/08 06:58:51 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb_pci.c,v 1.2 2007/08/14 14:58:44 sephe Exp $
  */
 
 /*-
@@ -660,5 +659,5 @@ static driver_t cbb_driver = {
 	sizeof(struct cbb_softc)
 };
 
-DRIVER_MODULE(cbb, pci, cbb_driver, cbb_devclass, 0, 0);
+DRIVER_MODULE(cbb, pci, cbb_driver, cbb_devclass, NULL, NULL);
 MODULE_DEPEND(cbb, exca, 1, 1, 1);

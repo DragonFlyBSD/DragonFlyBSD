@@ -28,7 +28,6 @@
  * muting.
  * 
  * $FreeBSD: src/sys/dev/sound/pci/vibes.c,v 1.19.2.1 2006/01/24 18:54:22 joel Exp $
- * $DragonFly: src/sys/dev/sound/pci/vibes.c,v 1.10 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -937,6 +936,6 @@ static driver_t sonicvibes_driver = {
         PCM_SOFTC_SIZE
 };
 
-DRIVER_MODULE(snd_vibes, pci, sonicvibes_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_vibes, pci, sonicvibes_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_vibes, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_vibes, 1);

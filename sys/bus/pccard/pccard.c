@@ -29,7 +29,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.108 2005/07/15 01:43:08 imp Exp $
- * $DragonFly: src/sys/bus/pccard/pccard.c,v 1.21 2007/08/14 15:32:32 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1359,6 +1358,6 @@ static driver_t pccard_driver = {
 devclass_t	pccard_devclass;
 
 /* Maybe we need to have a slot device? */
-DRIVER_MODULE(pccard, pcic, pccard_driver, pccard_devclass, 0, 0);
-DRIVER_MODULE(pccard, cbb, pccard_driver, pccard_devclass, 0, 0);
+DRIVER_MODULE(pccard, pcic, pccard_driver, pccard_devclass, NULL, NULL);
+DRIVER_MODULE(pccard, cbb, pccard_driver, pccard_devclass, NULL, NULL);
 MODULE_VERSION(pccard, 1);

@@ -37,7 +37,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/nsphy.c,v 1.2.2.5 2001/06/08 19:58:33 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/nsphy.c,v 1.10 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -118,7 +117,7 @@ static driver_t nsphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(nsphy, miibus, nsphy_driver, nsphy_devclass, 0, 0);
+DRIVER_MODULE(nsphy, miibus, nsphy_driver, nsphy_devclass, NULL, NULL);
 
 static int	nsphy_service(struct mii_softc *, struct mii_data *, int);
 static void	nsphy_status(struct mii_softc *);

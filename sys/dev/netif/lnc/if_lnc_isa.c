@@ -1,6 +1,5 @@
 /*	$NetBSD: if_le_isa.c,v 1.41 2005/12/24 20:27:41 perry Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/if_le_isa.c,v 1.1 2006/05/17 21:25:22 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.12 2008/08/17 04:32:33 sephe Exp $	*/
 
 /*-
  * Copyright (c) 1997, 1998 The NetBSD Foundation, Inc.
@@ -143,7 +142,7 @@ static device_method_t le_isa_methods[] = {
 };
 
 DEFINE_CLASS_0(lnc, le_isa_driver, le_isa_methods, sizeof(struct le_isa_softc));
-DRIVER_MODULE(lnc, isa, le_isa_driver, le_devclass, 0, 0);
+DRIVER_MODULE(lnc, isa, le_isa_driver, le_devclass, NULL, NULL);
 MODULE_DEPEND(lnc, ether, 1, 1, 1);
 
 struct le_isa_param {

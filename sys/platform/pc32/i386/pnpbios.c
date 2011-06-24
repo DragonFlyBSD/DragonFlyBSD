@@ -25,8 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/platform/pc32/i386/pnpbios.c,v 1.6 2006/12/23 00:27:03 swildner Exp $
  */
 
 /*
@@ -260,4 +258,4 @@ static driver_t pnpbios_driver = {
 
 static devclass_t pnpbios_devclass;
 
-DRIVER_MODULE(pnpbios, isa, pnpbios_driver, pnpbios_devclass, 0, 0);
+DRIVER_MODULE(pnpbios, isa, pnpbios_driver, pnpbios_devclass, NULL, NULL);

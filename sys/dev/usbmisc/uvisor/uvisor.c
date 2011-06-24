@@ -1,7 +1,6 @@
 /*
  * $NetBSD: uvisor.c,v 1.9 2001/01/23 14:04:14 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvisor.c,v 1.16 2003/11/08 11:23:07 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.17 2008/01/16 12:23:01 matthias Exp $
  */
 
 /*
@@ -193,7 +192,7 @@ static driver_t uvisor_driver = {
        sizeof (struct uvisor_softc)
 };
 
-DRIVER_MODULE(uvisor, uhub, uvisor_driver, ucom_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(uvisor, uhub, uvisor_driver, ucom_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(uvisor, usb, 1, 1, 1);
 MODULE_DEPEND(uvisor, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(uvisor, UVISOR_MODVER);

@@ -63,7 +63,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.80 2008/09/17 08:51:29 sephe Exp $
  */
 /*
  * SERIALIZATION API RULES:
@@ -349,7 +348,7 @@ static devclass_t em_devclass;
 
 DECLARE_DUMMY_MODULE(if_em);
 MODULE_DEPEND(em, ig_hal, 1, 1, 1);
-DRIVER_MODULE(if_em, pci, em_driver, em_devclass, 0, 0);
+DRIVER_MODULE(if_em, pci, em_driver, em_devclass, NULL, NULL);
 
 /*
  * Tunables

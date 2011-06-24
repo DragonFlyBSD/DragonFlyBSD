@@ -1734,6 +1734,6 @@ static driver_t m3_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_maestro3, pci, m3_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_maestro3, pci, m3_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_maestro3, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_maestro3, 1);

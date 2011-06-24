@@ -1560,5 +1560,5 @@ ugen_filt_write(struct knote *kn, long hint)
 	return (ready);
 }
 
-DRIVER_MODULE(ugen, uhub, ugen_driver, ugen_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(ugen, uhub, ugen_driver, ugen_devclass, usbd_driver_load, NULL);
 

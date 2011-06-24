@@ -35,7 +35,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/uhci_pci.c,v 1.57 2005/03/01 07:50:11 imp Exp $
- * $DragonFly: src/sys/bus/usb/uhci_pci.c,v 1.12 2008/05/25 17:48:33 mneumann Exp $
  */
 
 /* Universal Host Controller Interface
@@ -495,5 +494,5 @@ static driver_t uhci_driver = {
 
 static devclass_t uhci_devclass;
 
-DRIVER_MODULE(uhci, pci, uhci_driver, uhci_devclass, 0, 0);
-DRIVER_MODULE(uhci, cardbus, uhci_driver, uhci_devclass, 0, 0);
+DRIVER_MODULE(uhci, pci, uhci_driver, uhci_devclass, NULL, NULL);
+DRIVER_MODULE(uhci, cardbus, uhci_driver, uhci_devclass, NULL, NULL);

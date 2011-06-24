@@ -7,7 +7,6 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/musycc/musycc.c,v 1.17.2.3 2001/03/13 22:05:36 phk Exp $
- * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.11 2007/06/04 00:40:31 swildner Exp $
  *
  *
  *
@@ -1564,5 +1563,5 @@ static driver_t musycc_driver = {
 	0
 };
 
-DRIVER_MODULE(musycc, pci, musycc_driver, musycc_devclass, 0, 0);
+DRIVER_MODULE(musycc, pci, musycc_driver, musycc_devclass, NULL, NULL);
 

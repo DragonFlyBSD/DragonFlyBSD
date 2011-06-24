@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs_isa.c,v 1.1.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs_isa.c,v 1.9 2007/07/05 12:08:53 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -90,5 +89,5 @@ static driver_t cs_isa_driver = {
 
 extern devclass_t cs_devclass;
 
-DRIVER_MODULE(if_cs, isa, cs_isa_driver, cs_devclass, 0, 0);
+DRIVER_MODULE(if_cs, isa, cs_isa_driver, cs_devclass, NULL, NULL);
 MODULE_DEPEND(if_cs, isa, 1, 1, 1);

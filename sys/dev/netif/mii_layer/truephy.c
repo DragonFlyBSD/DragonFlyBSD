@@ -79,7 +79,7 @@ static driver_t truephy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(truephy, miibus, truephy_driver, truephy_devclass, 0, 0);
+DRIVER_MODULE(truephy, miibus, truephy_driver, truephy_devclass, NULL, NULL);
 
 static const struct truephy_dsp {
 	uint16_t	index;

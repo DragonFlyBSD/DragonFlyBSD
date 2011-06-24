@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_pci.c,v 1.7.2.7 2001/07/30 20:29:58 jlemon Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_pci.c,v 1.6 2006/10/25 20:56:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -297,4 +296,4 @@ ida_pci_attach(device_t dev)
 	return (0);
 }
 
-DRIVER_MODULE(ida, pci, ida_pci_driver, ida_devclass, 0, 0);
+DRIVER_MODULE(ida, pci, ida_pci_driver, ida_devclass, NULL, NULL);

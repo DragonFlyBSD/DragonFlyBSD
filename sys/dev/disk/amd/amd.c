@@ -31,7 +31,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************
  * $FreeBSD: src/sys/pci/amd.c,v 1.3.2.2 2001/06/02 04:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.16 2008/05/18 20:30:22 pavalos Exp $
  */
 
 /*
@@ -2478,4 +2477,4 @@ static driver_t amd_driver = {
 };
 
 static devclass_t amd_devclass;
-DRIVER_MODULE(amd, pci, amd_driver, amd_devclass, 0, 0);
+DRIVER_MODULE(amd, pci, amd_driver, amd_devclass, NULL, NULL);

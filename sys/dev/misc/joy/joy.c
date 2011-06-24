@@ -146,8 +146,8 @@ static driver_t joy_isa_driver = {
     sizeof (struct joy_softc)
 };
 
-DRIVER_MODULE(joy, isa, joy_isa_driver, joy_devclass, 0, 0);
-DRIVER_MODULE(joy, acpi, joy_isa_driver, joy_devclass, 0, 0);
+DRIVER_MODULE(joy, isa, joy_isa_driver, joy_devclass, NULL, NULL);
+DRIVER_MODULE(joy, acpi, joy_isa_driver, joy_devclass, NULL, NULL);
 
 static int
 joyopen(struct dev_open_args *ap)

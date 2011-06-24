@@ -31,7 +31,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.17 2008/09/17 08:51:29 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -177,8 +176,8 @@ static devclass_t et_devclass;
 
 DECLARE_DUMMY_MODULE(if_et);
 MODULE_DEPEND(if_et, miibus, 1, 1, 1);
-DRIVER_MODULE(if_et, pci, et_driver, et_devclass, 0, 0);
-DRIVER_MODULE(miibus, et, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_et, pci, et_driver, et_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, et, miibus_driver, miibus_devclass, NULL, NULL);
 
 static int	et_rx_intr_npkts = 129;
 static int	et_rx_intr_delay = 25;		/* x4 usec */

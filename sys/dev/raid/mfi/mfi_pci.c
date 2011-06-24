@@ -101,7 +101,7 @@ static driver_t mfi_pci_driver = {
 };
 
 static devclass_t	mfi_devclass;
-DRIVER_MODULE(mfi, pci, mfi_pci_driver, mfi_devclass, 0, 0);
+DRIVER_MODULE(mfi, pci, mfi_pci_driver, mfi_devclass, NULL, NULL);
 MODULE_VERSION(mfi, 1);
 
 struct mfi_ident {

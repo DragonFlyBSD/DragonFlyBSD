@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_isa.c,v 1.3.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.17 2008/08/22 08:33:59 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -74,7 +73,7 @@ static driver_t ex_driver = {
 
 devclass_t ex_devclass;
 
-DRIVER_MODULE(if_ex, isa, ex_driver, ex_devclass, 0, 0);
+DRIVER_MODULE(if_ex, isa, ex_driver, ex_devclass, NULL, NULL);
 
 static struct isa_pnp_id ex_ids[] = {
 	{ 0x3110d425,	NULL },	/* INT1031 */

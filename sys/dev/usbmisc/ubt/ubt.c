@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/dev/usbmisc/ubt/ubt.c,v 1.3 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: src/sys/dev/usb/ubt.c,v 1.11 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: ubt.c,v 1.30 2007/12/16 19:01:37 christos Exp $ */
 
@@ -286,7 +285,7 @@ static driver_t ubt_driver = {
 	sizeof(struct ubt_softc)
 };
 
-DRIVER_MODULE(ubt, uhub, ubt_driver, ubt_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(ubt, uhub, ubt_driver, ubt_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(ubt, netbt, 1, 1, 1);
 #if 0 /* not yet */
 MODULE_DEPEND(ubt, bthub, 1, 1, 1);

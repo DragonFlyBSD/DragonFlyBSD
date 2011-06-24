@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD-4.7: /usr/src/sys/pci/silan.c,v 1.0 2003/01/10 gaoyonghong $
- * $DragonFly: src/sys/dev/netif/sln/if_sln.c,v 1.3 2008/06/29 20:45:44 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -147,7 +146,7 @@ static driver_t sln_driver = {
 
 static devclass_t sln_devclass;
 
-DRIVER_MODULE(sln, pci, sln_driver, sln_devclass, 0, 0);
+DRIVER_MODULE(sln, pci, sln_driver, sln_devclass, NULL, NULL);
 
 static int
 sln_probe(struct device *dev)

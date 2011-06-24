@@ -20,7 +20,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_pccard.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.14 2007/08/14 15:32:32 sephe Exp $
  */
 
 #include "opt_fe.h"
@@ -111,7 +110,7 @@ static driver_t fe_pccard_driver = {
 	sizeof (struct fe_softc)
 };
 
-DRIVER_MODULE(if_fe, pccard, fe_pccard_driver, fe_devclass, 0, 0);
+DRIVER_MODULE(if_fe, pccard, fe_pccard_driver, fe_devclass, NULL, NULL);
 
 
 static int fe_probe_mbh(device_t);

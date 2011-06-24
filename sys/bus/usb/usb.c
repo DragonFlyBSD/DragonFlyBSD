@@ -991,6 +991,6 @@ usb_getbushandle(struct usb_softc *sc)
 SYSINIT(usb_cold_explore, SI_SUB_CONFIGURE, SI_ORDER_MIDDLE,
     usb_cold_explore, NULL);
 
-DRIVER_MODULE(usb, ohci, usb_driver, usb_devclass, 0, 0);
-DRIVER_MODULE(usb, uhci, usb_driver, usb_devclass, 0, 0);
-DRIVER_MODULE(usb, ehci, usb_driver, usb_devclass, 0, 0);
+DRIVER_MODULE(usb, ohci, usb_driver, usb_devclass, NULL, NULL);
+DRIVER_MODULE(usb, uhci, usb_driver, usb_devclass, NULL, NULL);
+DRIVER_MODULE(usb, ehci, usb_driver, usb_devclass, NULL, NULL);

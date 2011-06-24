@@ -266,7 +266,7 @@ static devclass_t emx_devclass;
 
 DECLARE_DUMMY_MODULE(if_emx);
 MODULE_DEPEND(emx, ig_hal, 1, 1, 1);
-DRIVER_MODULE(if_emx, pci, emx_driver, emx_devclass, 0, 0);
+DRIVER_MODULE(if_emx, pci, emx_driver, emx_devclass, NULL, NULL);
 
 /*
  * Tunables

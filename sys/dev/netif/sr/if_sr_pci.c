@@ -28,7 +28,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr_pci.c,v 1.15.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr_pci.c,v 1.7 2008/01/05 14:02:37 swildner Exp $
  */
 
 
@@ -66,7 +65,7 @@ static driver_t sr_pci_driver = {
 	sizeof(struct sr_hardc),
 };
 
-DRIVER_MODULE(if_sr, pci, sr_pci_driver, sr_devclass, 0, 0);
+DRIVER_MODULE(if_sr, pci, sr_pci_driver, sr_devclass, NULL, NULL);
 
 static u_int	src_get8_mem(u_int base, u_int off);
 static u_int	src_get16_mem(u_int base, u_int off);

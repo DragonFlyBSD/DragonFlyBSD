@@ -124,5 +124,5 @@ static driver_t radeon_driver = {
 };
 
 extern devclass_t drm_devclass;
-DRIVER_MODULE(radeon, vgapci, radeon_driver, drm_devclass, 0, 0);
+DRIVER_MODULE(radeon, vgapci, radeon_driver, drm_devclass, NULL, NULL);
 MODULE_DEPEND(radeon, drm, 1, 1, 1);

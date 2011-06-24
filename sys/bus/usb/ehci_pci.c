@@ -35,7 +35,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.18.2.1 2006/01/26 01:43:13 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.19 2008/05/21 19:56:46 mneumann Exp $
  */
 
 /*
@@ -568,5 +567,5 @@ static driver_t ehci_driver = {
 
 static devclass_t ehci_devclass;
 
-DRIVER_MODULE(ehci, pci, ehci_driver, ehci_devclass, 0, 0);
-DRIVER_MODULE(ehci, cardbus, ehci_driver, ehci_devclass, 0, 0);
+DRIVER_MODULE(ehci, pci, ehci_driver, ehci_devclass, NULL, NULL);
+DRIVER_MODULE(ehci, cardbus, ehci_driver, ehci_devclass, NULL, NULL);

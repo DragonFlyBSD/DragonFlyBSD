@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/dpt/dpt_pci.c,v 1.17.2.2 2000/08/26 22:21:21 peter Exp $
- *	$DragonFly: src/sys/dev/raid/dpt/dpt_pci.c,v 1.7 2006/10/25 20:56:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -197,4 +196,4 @@ static driver_t dpt_pci_driver = {
 
 static devclass_t dpt_devclass;
 
-DRIVER_MODULE(dpt, pci, dpt_pci_driver, dpt_devclass, 0, 0);
+DRIVER_MODULE(dpt, pci, dpt_pci_driver, dpt_devclass, NULL, NULL);

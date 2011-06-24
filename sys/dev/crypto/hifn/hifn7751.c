@@ -151,7 +151,7 @@ static driver_t hifn_driver = {
 static devclass_t hifn_devclass;
 
 DECLARE_DUMMY_MODULE(hifn);
-DRIVER_MODULE(hifn, pci, hifn_driver, hifn_devclass, 0, 0);
+DRIVER_MODULE(hifn, pci, hifn_driver, hifn_devclass, NULL, NULL);
 MODULE_DEPEND(hifn, crypto, 1, 1, 1);
 #ifdef HIFN_RNDTEST
 MODULE_DEPEND(hifn, rndtest, 1, 1, 1);

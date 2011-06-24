@@ -37,7 +37,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ukphy.c,v 1.2.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ukphy.c,v 1.12 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -111,7 +110,7 @@ static driver_t ukphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(ukphy, miibus, ukphy_driver, ukphy_devclass, 0, 0);
+DRIVER_MODULE(ukphy, miibus, ukphy_driver, ukphy_devclass, NULL, NULL);
 
 static int
 ukphy_probe(device_t dev)

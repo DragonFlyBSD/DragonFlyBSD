@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.15.2.2 2007/05/13 20:53:40 ariff Exp $ */
-/* $DragonFly: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.8 2007/06/16 19:48:05 hasso Exp $ */
 
 /*-
  * Copyright (c) 2000-2002 Hiroyuki Aizu <aizu@navi.org>
@@ -412,7 +411,7 @@ static driver_t ua_pcm_driver = {
 };
 
 
-DRIVER_MODULE(ua_pcm, uaudio, ua_pcm_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(ua_pcm, uaudio, ua_pcm_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(ua_pcm, uaudio, 1, 1, 1);
 MODULE_DEPEND(ua_pcm, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(ua_pcm, 1);

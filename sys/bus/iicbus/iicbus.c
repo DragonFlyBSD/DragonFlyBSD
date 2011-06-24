@@ -24,8 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iicbus.c,v 1.29 2009/02/10 22:50:23 imp Exp $
- * $DragonFly: src/sys/bus/iicbus/iicbus.c,v 1.5 2006/12/22 23:12:16 swildner Exp $
- *
  */
 
 /*
@@ -193,5 +191,5 @@ iicbus_null_repeated_start(device_t dev, u_char addr)
 	return (IIC_ENOTSUPP);
 }
 
-DRIVER_MODULE(iicbus, iicbb, iicbus_driver, iicbus_devclass, 0, 0);
+DRIVER_MODULE(iicbus, iicbb, iicbus_driver, iicbus_devclass, NULL, NULL);
 MODULE_VERSION(iicbus, IICBUS_MODVER);

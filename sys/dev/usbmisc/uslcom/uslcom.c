@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.10 2007/11/26 10:52:33 hasso Exp $ */
 /* $OpenBSD: uslcom.c,v 1.17 2007/11/24 10:52:12 jsg Exp $ */
 
 /*
@@ -153,7 +152,7 @@ static driver_t uslcom_driver = {
 	sizeof (struct uslcom_softc)
 };
 
-DRIVER_MODULE(uslcom, uhub, uslcom_driver, ucom_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(uslcom, uhub, uslcom_driver, ucom_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(uslcom, usb, 1, 1, 1);
 MODULE_DEPEND(uslcom, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(uslcom, 1);

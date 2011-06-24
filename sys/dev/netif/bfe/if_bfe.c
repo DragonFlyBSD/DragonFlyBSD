@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.40 2008/09/17 08:51:29 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -156,8 +155,8 @@ static driver_t bfe_driver = {
 
 static devclass_t bfe_devclass;
 
-DRIVER_MODULE(bfe, pci, bfe_driver, bfe_devclass, 0, 0);
-DRIVER_MODULE(miibus, bfe, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(bfe, pci, bfe_driver, bfe_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, bfe, miibus_driver, miibus_devclass, NULL, NULL);
 
 /*
  * Probe for a Broadcom 4401 chip. 

@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sb8.c,v 1.79.2.1 2005/12/30 19:55:53 netchild Exp $
- * $DragonFly: src/sys/dev/sound/isa/sb8.c,v 1.7 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -794,7 +793,7 @@ static driver_t sb_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_sb8, sbc, sb_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_sb8, sbc, sb_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_sb8, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_DEPEND(snd_sb8, snd_sbc, 1, 1, 1);
 MODULE_VERSION(snd_sb8, 1);

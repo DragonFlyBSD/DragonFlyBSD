@@ -640,4 +640,4 @@ error:
 	return (error);
 }
 
-DRIVER_MODULE(pcf, isa, pcf_driver, pcf_devclass, 0, 0);
+DRIVER_MODULE(pcf, isa, pcf_driver, pcf_devclass, NULL, NULL);

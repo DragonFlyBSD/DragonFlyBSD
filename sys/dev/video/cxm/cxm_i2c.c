@@ -100,7 +100,7 @@ static driver_t cxm_iic_driver = {
 
 static devclass_t cxm_iic_devclass;
 
-DRIVER_MODULE(cxm_iic, cxm, cxm_iic_driver, cxm_iic_devclass, 0, 0);
+DRIVER_MODULE(cxm_iic, cxm, cxm_iic_driver, cxm_iic_devclass, NULL, NULL);
 MODULE_VERSION(cxm_iic, 1);
 MODULE_DEPEND(cxm_iic, iicbb, IICBB_MINVER, IICBB_PREFVER, IICBB_MAXVER);
 

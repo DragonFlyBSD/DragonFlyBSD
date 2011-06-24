@@ -164,5 +164,5 @@ static driver_t mga_driver = {
 };
 
 extern devclass_t drm_devclass;
-DRIVER_MODULE(mga, vgapci, mga_driver, drm_devclass, 0, 0);
+DRIVER_MODULE(mga, vgapci, mga_driver, drm_devclass, NULL, NULL);
 MODULE_DEPEND(mga, drm, 1, 1, 1);

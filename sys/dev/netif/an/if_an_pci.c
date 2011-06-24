@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.22 2008/08/17 04:32:32 sephe Exp $
  */
 
 /*
@@ -258,4 +257,4 @@ static driver_t an_pci_driver = {
 
 static devclass_t an_devclass;
 
-DRIVER_MODULE(if_an, pci, an_pci_driver, an_devclass, 0, 0);
+DRIVER_MODULE(if_an, pci, an_pci_driver, an_devclass, NULL, NULL);

@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isahint.c,v 1.8.2.1 2001/03/21 11:18:25 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isahint.c,v 1.8 2007/05/01 00:05:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -147,4 +146,4 @@ static driver_t isahint_driver = {
  */
 static devclass_t hint_devclass;
 
-DRIVER_MODULE(isahint, isa, isahint_driver, hint_devclass, 0, 0);
+DRIVER_MODULE(isahint, isa, isahint_driver, hint_devclass, NULL, NULL);

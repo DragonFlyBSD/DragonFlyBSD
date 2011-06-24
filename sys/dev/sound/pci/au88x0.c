@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/au88x0.c,v 1.10 2005/03/01 08:58:05 imp Exp $
- * $DragonFly: src/sys/dev/sound/pci/au88x0.c,v 1.1 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -726,6 +725,6 @@ static driver_t au88x0_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_au88x0, pci, au88x0_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_au88x0, pci, au88x0_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_au88x0, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_au88x0, 1);

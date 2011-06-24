@@ -18,7 +18,6 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pci.c,v 1.34 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.16 2008/08/17 04:32:33 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -162,5 +161,5 @@ static driver_t ed_pci_driver = {
 	sizeof(struct ed_softc),
 };
 
-DRIVER_MODULE(ed, pci, ed_pci_driver, ed_devclass, 0, 0);
+DRIVER_MODULE(ed, pci, ed_pci_driver, ed_devclass, NULL, NULL);
 MODULE_DEPEND(ed, pci, 1, 1, 1);

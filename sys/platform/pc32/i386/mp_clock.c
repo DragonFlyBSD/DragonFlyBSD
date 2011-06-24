@@ -30,8 +30,6 @@
  * directions.  If we only cared about monosity two reads would be enough.
  *
  * $FreeBSD: src/sys/i386/i386/mp_clock.c,v 1.4.2.2 2000/09/30 02:49:32 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_clock.c,v 1.4 2004/01/30 05:42:16 dillon Exp $
- *
  */
 
 /* #include "opt_bus.h" */
@@ -140,7 +138,7 @@ static driver_t piix_driver = {
 
 static devclass_t piix_devclass;
 
-DRIVER_MODULE(piix, pci, piix_driver, piix_devclass, 0, 0);
+DRIVER_MODULE(piix, pci, piix_driver, piix_devclass, NULL, NULL);
 
 #endif
 

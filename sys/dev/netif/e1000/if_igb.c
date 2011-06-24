@@ -276,7 +276,7 @@ static driver_t igb_driver = {
 };
 
 static devclass_t igb_devclass;
-DRIVER_MODULE(igb, pci, igb_driver, igb_devclass, 0, 0);
+DRIVER_MODULE(igb, pci, igb_driver, igb_devclass, NULL, NULL);
 MODULE_DEPEND(igb, pci, 1, 1, 1);
 MODULE_DEPEND(igb, ether, 1, 1, 1);
 

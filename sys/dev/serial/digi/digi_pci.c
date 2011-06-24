@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi_pci.c,v 1.9 2003/08/24 17:46:03 obrien Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi_pci.c,v 1.4 2006/10/25 20:56:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -226,4 +225,4 @@ static driver_t digi_pci_drv = {
 	digi_pci_methods,
 	sizeof(struct digi_softc),
 };
-DRIVER_MODULE(digi, pci, digi_pci_drv, digi_devclass, 0, 0);
+DRIVER_MODULE(digi, pci, digi_pci_drv, digi_devclass, NULL, NULL);

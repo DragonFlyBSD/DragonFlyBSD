@@ -28,7 +28,6 @@
  *      ----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/iwic/i4b_iwic_pci.c,v 1.6.2.1 2001/08/10 14:08:40 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_pci.c,v 1.7 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Tue Jan 16 10:53:03 2001]
  *
@@ -92,7 +91,7 @@ static driver_t iwic_pci_driver =
 
 static devclass_t iwic_pci_devclass;
 
-DRIVER_MODULE(iwic, pci, iwic_pci_driver, iwic_pci_devclass, 0, 0);
+DRIVER_MODULE(iwic, pci, iwic_pci_driver, iwic_pci_devclass, NULL, NULL);
 
 #define IWIC_MAXUNIT 4
 

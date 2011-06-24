@@ -143,7 +143,7 @@ static driver_t itjc_pci_driver =
 
 static devclass_t itjc_pci_devclass;
 
-DRIVER_MODULE(netjet, pci, itjc_pci_driver, itjc_pci_devclass, 0, 0);
+DRIVER_MODULE(netjet, pci, itjc_pci_driver, itjc_pci_devclass, NULL, NULL);
 
 /*
  * Jump table for multiplex routines.

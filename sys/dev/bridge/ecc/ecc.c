@@ -120,7 +120,7 @@ static driver_t pci_ecc_driver = {
 	sizeof(struct pci_ecc_softc)
 };
 static devclass_t ecc_devclass;
-DRIVER_MODULE(ecc, pci, pci_ecc_driver, ecc_devclass, 0, 0);
+DRIVER_MODULE(ecc, pci, pci_ecc_driver, ecc_devclass, NULL, NULL);
 MODULE_DEPEND(ecc, pci, 1, 1, 1);
 
 /*

@@ -31,7 +31,6 @@
  *
  * $OpenBSD: if_sk.c,v 1.129 2006/10/16 12:30:08 tom Exp $
  * $FreeBSD: /c/ncvs/src/sys/pci/if_sk.c,v 1.20 2000/04/22 02:16:37 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.58 2008/10/12 11:17:08 sephe Exp $
  */
 
 /*
@@ -300,9 +299,9 @@ static DEFINE_CLASS_0(sk, sk_driver, sk_methods, sizeof(struct sk_if_softc));
 static devclass_t sk_devclass;
 
 DECLARE_DUMMY_MODULE(if_sk);
-DRIVER_MODULE(if_sk, pci, skc_driver, skc_devclass, 0, 0);
-DRIVER_MODULE(if_sk, skc, sk_driver, sk_devclass, 0, 0);
-DRIVER_MODULE(miibus, sk, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_sk, pci, skc_driver, skc_devclass, NULL, NULL);
+DRIVER_MODULE(if_sk, skc, sk_driver, sk_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, sk, miibus_driver, miibus_devclass, NULL, NULL);
 
 static __inline uint32_t
 sk_win_read_4(struct sk_softc *sc, uint32_t reg)

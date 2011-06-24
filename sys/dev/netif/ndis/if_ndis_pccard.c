@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pccard.c,v 1.6 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pccard.c,v 1.6 2006/10/25 20:55:58 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -126,10 +125,10 @@ static devclass_t ndis_devclass;
 
 #ifdef NDIS_MODNAME
 #define NDIS_MODNAME_OVERRIDE_PCMCIA(x)					\
-	DRIVER_MODULE(x, pccard, ndis_driver, ndis_devclass, 0, 0)
+	DRIVER_MODULE(x, pccard, ndis_driver, ndis_devclass, NULL, NULL)
 NDIS_MODNAME_OVERRIDE_PCMCIA(NDIS_MODNAME);
 #else
-DRIVER_MODULE(ndis, pccard, ndis_driver, ndis_devclass, 0, 0);
+DRIVER_MODULE(ndis, pccard, ndis_driver, ndis_devclass, NULL, NULL);
 #endif
 
 /*

@@ -32,7 +32,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.23 2006/12/22 23:12:16 swildner Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -512,5 +511,5 @@ static devclass_t fwohci_devclass;
 #ifdef FWOHCI_MODULE
 MODULE_DEPEND(fwohci, firewire, 1, 1, 1);
 #endif
-DRIVER_MODULE(fwohci, pci, fwohci_driver, fwohci_devclass, 0, 0);
-DRIVER_MODULE(fwohci, cardbus, fwohci_driver, fwohci_devclass, 0, 0);
+DRIVER_MODULE(fwohci, pci, fwohci_driver, fwohci_devclass, NULL, NULL);
+DRIVER_MODULE(fwohci, cardbus, fwohci_driver, fwohci_devclass, NULL, NULL);

@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-isa.c,v 1.4.2.1 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-isa.c,v 1.10 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -101,7 +100,7 @@ static driver_t ata_isa_driver = {
     sizeof(struct ata_channel),
 };
 
-DRIVER_MODULE(ata, isa, ata_isa_driver, ata_devclass, 0, 0);
+DRIVER_MODULE(ata, isa, ata_isa_driver, ata_devclass, NULL, NULL);
 
 /* 
  * the following is a bandaid to get ISA only setups to link,

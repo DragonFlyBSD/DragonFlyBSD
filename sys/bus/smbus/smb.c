@@ -308,6 +308,6 @@ smbioctl(struct dev_ioctl_args *ap)
 	return (error);
 }
 
-DRIVER_MODULE(smb, smbus, smb_driver, smb_devclass, 0, 0);
+DRIVER_MODULE(smb, smbus, smb_driver, smb_devclass, NULL, NULL);
 MODULE_DEPEND(smb, smbus, SMBUS_MINVER, SMBUS_PREFVER, SMBUS_MAXVER);
 MODULE_VERSION(smb, 1);

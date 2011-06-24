@@ -37,7 +37,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/exphy.c,v 1.4.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/exphy.c,v 1.10 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -109,7 +108,7 @@ static driver_t exphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(xlphy, miibus, exphy_driver, exphy_devclass, 0, 0);
+DRIVER_MODULE(xlphy, miibus, exphy_driver, exphy_devclass, NULL, NULL);
 
 int	exphy_service (struct mii_softc *, struct mii_data *, int);
 void	exphy_reset (struct mii_softc *);

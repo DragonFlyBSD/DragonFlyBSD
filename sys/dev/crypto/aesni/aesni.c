@@ -344,6 +344,6 @@ static driver_t aesni_driver = {
 };
 static devclass_t aesni_devclass;
 
-DRIVER_MODULE(aesni, nexus, aesni_driver, aesni_devclass, 0, 0);
+DRIVER_MODULE(aesni, nexus, aesni_driver, aesni_devclass, NULL, NULL);
 MODULE_VERSION(aesni, 1);
 MODULE_DEPEND(aesni, crypto, 1, 1, 1);

@@ -36,7 +36,6 @@
  *	$Id$
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.6.2.2 2002/05/15 08:12:42 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.14 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -123,7 +122,7 @@ static driver_t avma1pp2_pci_driver = {
 
 static devclass_t avma1pp2_pci_devclass;
 
-DRIVER_MODULE(avma1pp2, pci, avma1pp2_pci_driver, avma1pp2_pci_devclass, 0, 0);
+DRIVER_MODULE(avma1pp2, pci, avma1pp2_pci_driver, avma1pp2_pci_devclass, NULL, NULL);
 
 /* jump table for multiplex routines */
 

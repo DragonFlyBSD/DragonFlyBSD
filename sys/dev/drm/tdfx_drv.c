@@ -106,5 +106,5 @@ static driver_t tdfx_driver = {
 };
 
 extern devclass_t drm_devclass;
-DRIVER_MODULE(tdfx, vgapci, tdfx_driver, drm_devclass, 0, 0);
+DRIVER_MODULE(tdfx, vgapci, tdfx_driver, drm_devclass, NULL, NULL);
 MODULE_DEPEND(tdfx, drm, 1, 1, 1);

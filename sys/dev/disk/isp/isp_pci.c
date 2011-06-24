@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/dev/isp/isp_pci.c,v 1.78.2.4 2002/10/11 18:50:53 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.13 2008/01/06 16:55:49 swildner Exp $ */
 /*
  * PCI specific probe and attach routines for Qlogic ISP SCSI adapters.
  * FreeBSD Version.
@@ -279,7 +278,7 @@ static driver_t isp_pci_driver = {
 	"isp", isp_pci_methods, sizeof (struct isp_pcisoftc)
 };
 static devclass_t isp_devclass;
-DRIVER_MODULE(isp, pci, isp_pci_driver, isp_devclass, 0, 0);
+DRIVER_MODULE(isp, pci, isp_pci_driver, isp_devclass, NULL, NULL);
 MODULE_VERSION(isp, 1);
 
 static int

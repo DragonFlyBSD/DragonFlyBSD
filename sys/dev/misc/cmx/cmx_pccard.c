@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cmx/cmx_pccard.c,v 1.1 2008/03/06 08:09:45 rink Exp $
- * $DragonFly: src/sys/dev/misc/cmx/cmx_pccard.c,v 1.1 2008/04/23 08:57:10 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -107,5 +106,5 @@ static driver_t cmx_pccard_driver = {
 	sizeof(struct cmx_softc),
 };
 
-DRIVER_MODULE(cmx, pccard, cmx_pccard_driver, cmx_devclass, 0, 0);
+DRIVER_MODULE(cmx, pccard, cmx_pccard_driver, cmx_devclass, NULL, NULL);
 

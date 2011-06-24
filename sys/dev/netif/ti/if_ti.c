@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.53 2008/08/17 04:32:34 sephe Exp $
  */
 
 /*
@@ -224,7 +223,7 @@ static DEFINE_CLASS_0(ti, ti_driver, ti_methods, sizeof(struct ti_softc));
 static devclass_t ti_devclass;
 
 DECLARE_DUMMY_MODULE(if_ti);
-DRIVER_MODULE(if_ti, pci, ti_driver, ti_devclass, 0, 0);
+DRIVER_MODULE(if_ti, pci, ti_driver, ti_devclass, NULL, NULL);
 
 /*
  * Send an instruction or address to the EEPROM, check for ACK.

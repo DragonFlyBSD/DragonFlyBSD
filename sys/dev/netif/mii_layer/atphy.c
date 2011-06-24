@@ -76,7 +76,7 @@ static driver_t atphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(atphy, miibus, atphy_driver, atphy_devclass, 0, 0);
+DRIVER_MODULE(atphy, miibus, atphy_driver, atphy_devclass, NULL, NULL);
 
 static int
 atphy_probe(device_t dev)

@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/aureal.c,v 1.32 2005/03/01 08:58:05 imp Exp $
- * $DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.11 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -681,6 +680,6 @@ static driver_t au_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_aureal, pci, au_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_aureal, pci, au_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_aureal, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_aureal, 1);

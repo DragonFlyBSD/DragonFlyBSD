@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/gusc.c,v 1.16 2005/01/06 01:43:17 imp Exp $
- * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.11 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -649,8 +648,8 @@ static driver_t gusc_driver = {
 /*
  * gusc can be attached to an isa bus.
  */
-DRIVER_MODULE(snd_gusc, isa, gusc_driver, gusc_devclass, 0, 0);
-DRIVER_MODULE(snd_gusc, acpi, gusc_driver, gusc_devclass, 0, 0);
+DRIVER_MODULE(snd_gusc, isa, gusc_driver, gusc_devclass, NULL, NULL);
+DRIVER_MODULE(snd_gusc, acpi, gusc_driver, gusc_devclass, NULL, NULL);
 MODULE_DEPEND(snd_gusc, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_gusc, 1);
 

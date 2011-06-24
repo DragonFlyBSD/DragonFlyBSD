@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.25 2007/11/14 18:27:52 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -404,4 +403,4 @@ static driver_t pst_driver = {
 
 static devclass_t pst_devclass;
 
-DRIVER_MODULE(pst, pstpci, pst_driver, pst_devclass, 0, 0);
+DRIVER_MODULE(pst, pstpci, pst_driver, pst_devclass, NULL, NULL);

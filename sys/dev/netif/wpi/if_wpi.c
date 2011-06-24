@@ -277,7 +277,7 @@ static driver_t wpi_driver = {
 
 static devclass_t wpi_devclass;
 
-DRIVER_MODULE(wpi, pci, wpi_driver, wpi_devclass, 0, 0);
+DRIVER_MODULE(wpi, pci, wpi_driver, wpi_devclass, NULL, NULL);
 
 static const uint8_t wpi_ridx_to_plcp[] = {
 	/* OFDM: IEEE Std 802.11a-1999, pp. 14 Table 80 */

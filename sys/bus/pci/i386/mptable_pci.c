@@ -168,7 +168,7 @@ static device_method_t mptable_hostb_methods[] = {
 static devclass_t hostb_devclass;
 
 DEFINE_CLASS_0(pcib, mptable_hostb_driver, mptable_hostb_methods, 1);
-DRIVER_MODULE(mptable_pcib, legacy, mptable_hostb_driver, hostb_devclass, 0, 0);
+DRIVER_MODULE(mptable_pcib, legacy, mptable_hostb_driver, hostb_devclass, NULL, NULL);
 
 /* PCI to PCI bridge driver. */
 
@@ -231,4 +231,4 @@ static devclass_t pcib_devclass;
 
 DEFINE_CLASS_0(pcib, mptable_pcib_driver, mptable_pcib_pci_methods,
     sizeof(struct pcib_softc));
-DRIVER_MODULE(mptable_pcib, pci, mptable_pcib_driver, pcib_devclass, 0, 0);
+DRIVER_MODULE(mptable_pcib, pci, mptable_pcib_driver, pcib_devclass, NULL, NULL);

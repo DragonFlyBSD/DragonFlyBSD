@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.36 2008/06/05 18:06:31 swildner Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -427,7 +426,7 @@ STATIC driver_t asr_driver = {
 STATIC devclass_t asr_devclass;
 
 DECLARE_DUMMY_MODULE(asr);
-DRIVER_MODULE(asr, pci, asr_driver, asr_devclass, 0, 0);
+DRIVER_MODULE(asr, pci, asr_driver, asr_devclass, NULL, NULL);
 
 STATIC device_method_t domino_methods[] = {
         DEVMETHOD(device_probe,  domino_probe),
@@ -443,7 +442,7 @@ STATIC driver_t domino_driver = {
 
 STATIC devclass_t domino_devclass;
 
-DRIVER_MODULE(domino, pci, domino_driver, domino_devclass, 0, 0);
+DRIVER_MODULE(domino, pci, domino_driver, domino_devclass, NULL, NULL);
 
 STATIC device_method_t mode0_methods[] = {
         DEVMETHOD(device_probe,  mode0_probe),
@@ -459,7 +458,7 @@ STATIC driver_t mode0_driver = {
 
 STATIC devclass_t mode0_devclass;
 
-DRIVER_MODULE(mode0, pci, mode0_driver, mode0_devclass, 0, 0);
+DRIVER_MODULE(mode0, pci, mode0_driver, mode0_devclass, NULL, NULL);
 
 /*
  * devsw for asr hba driver

@@ -31,7 +31,6 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahc_pci.c#19 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahc_pci.c,v 1.64 2005/03/05 19:24:22 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.15 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -53,8 +52,8 @@ static driver_t ahc_pci_driver = {
 	sizeof(struct ahc_softc)
 };
 
-DRIVER_MODULE(ahc_pci, pci, ahc_pci_driver, ahc_devclass, 0, 0);
-DRIVER_MODULE(ahc_pci, cardbus, ahc_pci_driver, ahc_devclass, 0, 0);
+DRIVER_MODULE(ahc_pci, pci, ahc_pci_driver, ahc_devclass, NULL, NULL);
+DRIVER_MODULE(ahc_pci, cardbus, ahc_pci_driver, ahc_devclass, NULL, NULL);
 MODULE_DEPEND(ahc_pci, ahc, 1, 1, 1);
 MODULE_VERSION(ahc_pci, 1);
 

@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.26 2008/05/14 11:59:22 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -356,7 +355,7 @@ static driver_t ural_driver = {
 	sizeof(struct ural_softc)
 };
 
-DRIVER_MODULE(ural, uhub, ural_driver, ural_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(ural, uhub, ural_driver, ural_devclass, usbd_driver_load, NULL);
 
 MODULE_DEPEND(ural, usb, 1, 1, 1);
 MODULE_DEPEND(ural, wlan, 1, 1, 1);

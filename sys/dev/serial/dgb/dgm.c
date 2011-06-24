@@ -265,7 +265,7 @@ dgmmodhandler(module_t mod, int event, void *arg)
 	return res;
 }
 
-DRIVER_MODULE(dgm, isa, dgmdriver, dgmdevclass, dgmmodhandler, 0);
+DRIVER_MODULE(dgm, isa, dgmdriver, dgmdevclass, dgmmodhandler, NULL);
 
 static	speed_t	dgmdefaultrate = TTYDEF_SPEED;
 

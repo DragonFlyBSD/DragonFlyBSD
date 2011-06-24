@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.38 2008/08/17 04:32:34 sephe Exp $
  */
 
 /*
@@ -246,9 +245,9 @@ static DEFINE_CLASS_0(rl, rl_driver, rl_methods, sizeof(struct rl_softc));
 static devclass_t rl_devclass;
 
 DECLARE_DUMMY_MODULE(if_rl);
-DRIVER_MODULE(if_rl, pci, rl_driver, rl_devclass, 0, 0);
-DRIVER_MODULE(if_rl, cardbus, rl_driver, rl_devclass, 0, 0);
-DRIVER_MODULE(miibus, rl, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_rl, pci, rl_driver, rl_devclass, NULL, NULL);
+DRIVER_MODULE(if_rl, cardbus, rl_driver, rl_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, rl, miibus_driver, miibus_devclass, NULL, NULL);
 MODULE_DEPEND(if_rl, miibus, 1, 1, 1);
 
 #define EE_SET(x)					\

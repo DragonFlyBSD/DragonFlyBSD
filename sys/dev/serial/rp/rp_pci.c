@@ -349,4 +349,4 @@ static driver_t rp_pcidriver = {
 /*
  * rp can be attached to a pci bus.
  */
-DRIVER_MODULE(rp, pci, rp_pcidriver, rp_devclass, 0, 0);
+DRIVER_MODULE(rp, pci, rp_pcidriver, rp_devclass, NULL, NULL);

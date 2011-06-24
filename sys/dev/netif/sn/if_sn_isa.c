@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sn/if_sn_isa.c,v 1.3.2.1 2001/01/25 19:38:18 imp Exp $
- * $DragonFly: src/sys/dev/netif/sn/if_sn_isa.c,v 1.4 2006/10/25 20:55:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -83,4 +82,4 @@ static driver_t sn_isa_driver = {
 
 extern devclass_t sn_devclass;
 
-DRIVER_MODULE(if_sn, isa, sn_isa_driver, sn_devclass, 0, 0);
+DRIVER_MODULE(if_sn, isa, sn_isa_driver, sn_devclass, NULL, NULL);

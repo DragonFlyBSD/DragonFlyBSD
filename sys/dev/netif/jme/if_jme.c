@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jme.c,v 1.2 2008/07/18 04:20:48 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.12 2008/11/26 11:55:18 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -200,8 +199,8 @@ static devclass_t jme_devclass;
 
 DECLARE_DUMMY_MODULE(if_jme);
 MODULE_DEPEND(if_jme, miibus, 1, 1, 1);
-DRIVER_MODULE(if_jme, pci, jme_driver, jme_devclass, 0, 0);
-DRIVER_MODULE(miibus, jme, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_jme, pci, jme_driver, jme_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, jme, miibus_driver, miibus_devclass, NULL, NULL);
 
 static const struct {
 	uint32_t	jme_coal;

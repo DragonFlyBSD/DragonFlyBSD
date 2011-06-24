@@ -33,7 +33,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.99 2008/10/30 11:27:40 sephe Exp $
  */
 
 /*
@@ -378,9 +377,9 @@ static devclass_t re_devclass;
 
 DECLARE_DUMMY_MODULE(if_re);
 MODULE_DEPEND(if_re, miibus, 1, 1, 1);
-DRIVER_MODULE(if_re, pci, re_driver, re_devclass, 0, 0);
-DRIVER_MODULE(if_re, cardbus, re_driver, re_devclass, 0, 0);
-DRIVER_MODULE(miibus, re, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_re, pci, re_driver, re_devclass, NULL, NULL);
+DRIVER_MODULE(if_re, cardbus, re_driver, re_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, re, miibus_driver, miibus_devclass, NULL, NULL);
 
 static int	re_rx_desc_count = RE_RX_DESC_CNT_DEF;
 static int	re_tx_desc_count = RE_TX_DESC_CNT_DEF;

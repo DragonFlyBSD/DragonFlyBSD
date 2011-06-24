@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_pci.c,v 1.21 2000/05/28 15:59:52 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.17 2008/08/17 04:32:35 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -100,7 +99,7 @@ static driver_t vx_driver = {
 
 static devclass_t vx_devclass;
 
-DRIVER_MODULE(if_vx, pci, vx_driver, vx_devclass, 0, 0);
+DRIVER_MODULE(if_vx, pci, vx_driver, vx_devclass, NULL, NULL);
 
 static void
 vx_pci_shutdown(device_t dev)

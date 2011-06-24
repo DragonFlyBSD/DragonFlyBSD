@@ -81,7 +81,7 @@ static driver_t sili_driver = {
 };
 
 MODULE_DEPEND(sili, cam, 1, 1, 1);
-DRIVER_MODULE(sili, pci, sili_driver, sili_devclass, 0, 0);
+DRIVER_MODULE(sili, pci, sili_driver, sili_devclass, NULL, NULL);
 
 /*
  * Device bus method procedures

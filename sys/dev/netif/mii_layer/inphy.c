@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/inphy.c,v 1.14 2004/05/30 17:57:40 phk Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/inphy.c,v 1.8 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -82,7 +81,7 @@ static driver_t inphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(inphy, miibus, inphy_driver, inphy_devclass, 0, 0);
+DRIVER_MODULE(inphy, miibus, inphy_driver, inphy_devclass, NULL, NULL);
 
 static int
 inphy_probe(device_t dev)

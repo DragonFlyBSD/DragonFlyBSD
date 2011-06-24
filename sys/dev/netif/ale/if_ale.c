@@ -173,8 +173,8 @@ static devclass_t ale_devclass;
 
 DECLARE_DUMMY_MODULE(if_ale);
 MODULE_DEPEND(if_ale, miibus, 1, 1, 1);
-DRIVER_MODULE(if_ale, pci, ale_driver, ale_devclass, 0, 0);
-DRIVER_MODULE(miibus, ale, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_ale, pci, ale_driver, ale_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, ale, miibus_driver, miibus_devclass, NULL, NULL);
 
 static int
 ale_miibus_readreg(device_t dev, int phy, int reg)

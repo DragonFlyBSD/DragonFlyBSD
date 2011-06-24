@@ -39,7 +39,6 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/es137x.c,v 1.55.2.2 2006/01/16 02:08:56 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.10 2007/06/16 20:07:19 dillon Exp $
  */
 
 /*
@@ -1616,6 +1615,6 @@ static driver_t es_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_es137x, pci, es_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_es137x, pci, es_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_es137x, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_es137x, 1);

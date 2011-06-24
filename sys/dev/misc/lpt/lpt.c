@@ -975,5 +975,5 @@ static driver_t lpt_driver = {
 	sizeof(struct lpt_data),
 };
 
-DRIVER_MODULE(lpt, ppbus, lpt_driver, lpt_devclass, 0, 0);
+DRIVER_MODULE(lpt, ppbus, lpt_driver, lpt_devclass, NULL, NULL);
 

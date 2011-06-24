@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/agp/agp_nvidia.c,v 1.13 2007/11/12 21:51:37 jhb Exp $
- * $DragonFly: src/sys/dev/agp/agp_nvidia.c,v 1.8 2008/08/22 07:08:13 hasso Exp $
  */
 
 /*
@@ -450,6 +449,6 @@ static driver_t agp_nvidia_driver = {
 
 static devclass_t agp_devclass;
 
-DRIVER_MODULE(agp_nvidia, pci, agp_nvidia_driver, agp_devclass, 0, 0);
+DRIVER_MODULE(agp_nvidia, pci, agp_nvidia_driver, agp_devclass, NULL, NULL);
 MODULE_DEPEND(agp_nvidia, agp, 1, 1, 1);
 MODULE_DEPEND(agp_nvidia, pci, 1, 1, 1);

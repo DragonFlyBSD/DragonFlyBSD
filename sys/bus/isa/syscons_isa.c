@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/syscons_isa.c,v 1.11.2.2 2001/08/01 10:42:28 yokota Exp $
- * $DragonFly: src/sys/bus/isa/syscons_isa.c,v 1.9 2006/11/07 06:43:21 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -239,4 +238,4 @@ sc_tone(int hertz)
 #endif
 }
 
-DRIVER_MODULE(sc, isa, sc_driver, sc_devclass, 0, 0);
+DRIVER_MODULE(sc, isa, sc_driver, sc_devclass, NULL, NULL);

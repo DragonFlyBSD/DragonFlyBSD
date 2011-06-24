@@ -29,7 +29,6 @@
  *
  * $Id: ng_ubt.c,v 1.16 2003/10/10 19:15:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/drivers/ubt/ng_ubt.c,v 1.33 2007/06/23 04:34:38 imp Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/drivers/ubt/ng_ubt.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -226,7 +225,7 @@ static struct ng_type	typestruct = {
  * Module
  */
 
-DRIVER_MODULE(ubt, uhub, ubt_driver, ubt_devclass, ubt_modevent, 0);
+DRIVER_MODULE(ubt, uhub, ubt_driver, ubt_devclass, ubt_modevent, NULL);
 MODULE_VERSION(ng_ubt, NG_BLUETOOTH_VERSION);
 MODULE_DEPEND(ng_ubt, netgraph, NG_ABI_VERSION, NG_ABI_VERSION, NG_ABI_VERSION);
 MODULE_DEPEND(ubt, usb, 1, 1, 1);

@@ -28,7 +28,6 @@
  *	==================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic_isa.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_isa.c,v 1.5 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:30:19 2001]
  *
@@ -71,7 +70,7 @@ static driver_t isic_driver = {
 
 static devclass_t isic_devclass;
 
-DRIVER_MODULE(isic, isa, isic_driver, isic_devclass, 0, 0);
+DRIVER_MODULE(isic, isa, isic_driver, isic_devclass, NULL, NULL);
 
 /*---------------------------------------------------------------------------*
  *	probe for ISA non-PnP cards

@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_isa.c,v 1.8.2.1 2000/12/16 03:47:57 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.15 2008/08/17 04:32:33 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -354,4 +353,4 @@ static driver_t ep_isa_driver = {
 
 extern devclass_t ep_devclass;
 
-DRIVER_MODULE(if_ep, isa, ep_isa_driver, ep_devclass, 0, 0);
+DRIVER_MODULE(if_ep, isa, ep_isa_driver, ep_devclass, NULL, NULL);

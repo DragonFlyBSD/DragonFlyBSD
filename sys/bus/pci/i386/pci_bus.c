@@ -578,7 +578,7 @@ static device_method_t legacy_pcib_methods[] = {
 static devclass_t hostb_devclass;
 
 DEFINE_CLASS_0(pcib, legacy_pcib_driver, legacy_pcib_methods, 1);
-DRIVER_MODULE(pcib, legacy, legacy_pcib_driver, hostb_devclass, 0, 0);
+DRIVER_MODULE(pcib, legacy, legacy_pcib_driver, hostb_devclass, NULL, NULL);
 
 
 /*
@@ -626,7 +626,7 @@ static device_method_t pcibus_pnp_methods[] = {
 static devclass_t pcibus_pnp_devclass;
 
 DEFINE_CLASS_0(pcibus_pnp, pcibus_pnp_driver, pcibus_pnp_methods, 1);
-DRIVER_MODULE(pcibus_pnp, isa, pcibus_pnp_driver, pcibus_pnp_devclass, 0, 0);
+DRIVER_MODULE(pcibus_pnp, isa, pcibus_pnp_driver, pcibus_pnp_devclass, NULL, NULL);
 
 
 /*
@@ -673,7 +673,7 @@ static devclass_t pcib_devclass;
 
 DEFINE_CLASS_0(pcib, pcibios_pcib_driver, pcibios_pcib_pci_methods,
     sizeof(struct pcib_softc));
-DRIVER_MODULE(pcibios_pcib, pci, pcibios_pcib_driver, pcib_devclass, 0, 0);
+DRIVER_MODULE(pcibios_pcib, pci, pcibios_pcib_driver, pcib_devclass, NULL, NULL);
 
 static int
 pcibios_pcib_probe(device_t dev)

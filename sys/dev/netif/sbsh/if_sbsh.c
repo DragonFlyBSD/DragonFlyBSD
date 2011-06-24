@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.28 2008/08/17 04:32:34 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -202,7 +201,7 @@ static driver_t sbsh_driver = {
 static devclass_t sbsh_devclass;
 
 DECLARE_DUMMY_MODULE(if_sbsh);
-DRIVER_MODULE(if_sbsh, pci, sbsh_driver, sbsh_devclass, 0, 0);
+DRIVER_MODULE(if_sbsh, pci, sbsh_driver, sbsh_devclass, NULL, NULL);
 
 static int
 sbsh_probe(device_t dev)

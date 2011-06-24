@@ -211,8 +211,8 @@ static driver_t alc_driver = {
 
 static devclass_t alc_devclass;
 
-DRIVER_MODULE(alc, pci, alc_driver, alc_devclass, 0, 0);
-DRIVER_MODULE(miibus, alc, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(alc, pci, alc_driver, alc_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, alc, miibus_driver, miibus_devclass, NULL, NULL);
 
 static struct resource_spec alc_res_spec_mem[] = {
 	{ SYS_RES_MEMORY,	PCIR_BAR(0),	RF_ACTIVE },

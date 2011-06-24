@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/solo.c,v 1.35.2.4 2006/07/13 01:53:54 yongari Exp $
- * $DragonFly: src/sys/dev/sound/pci/solo.c,v 1.10 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -1102,7 +1101,7 @@ static driver_t ess_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_solo, pci, ess_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_solo, pci, ess_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_solo, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_solo, 1);
 

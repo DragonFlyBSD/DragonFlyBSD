@@ -31,7 +31,6 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahd_pci.c#17 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahd_pci.c,v 1.19 2005/09/22 04:56:59 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.13 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -55,8 +54,8 @@ static driver_t ahd_pci_driver = {
 
 static devclass_t ahd_devclass;
 
-DRIVER_MODULE(ahd, pci, ahd_pci_driver, ahd_devclass, 0, 0);
-DRIVER_MODULE(ahd, cardbus, ahd_pci_driver, ahd_devclass, 0, 0);
+DRIVER_MODULE(ahd, pci, ahd_pci_driver, ahd_devclass, NULL, NULL);
+DRIVER_MODULE(ahd, cardbus, ahd_pci_driver, ahd_devclass, NULL, NULL);
 MODULE_DEPEND(ahd_pci, ahd, 1, 1, 1);
 MODULE_VERSION(ahd_pci, 1);
 

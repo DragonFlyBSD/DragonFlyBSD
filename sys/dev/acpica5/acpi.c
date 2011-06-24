@@ -210,7 +210,7 @@ static driver_t acpi_driver = {
 };
 
 static devclass_t acpi_devclass;
-DRIVER_MODULE(acpi, nexus, acpi_driver, acpi_devclass, acpi_modevent, 0);
+DRIVER_MODULE(acpi, nexus, acpi_driver, acpi_devclass, acpi_modevent, NULL);
 MODULE_VERSION(acpi, 1);
 
 ACPI_SERIAL_DECL(acpi, "ACPI serializer")

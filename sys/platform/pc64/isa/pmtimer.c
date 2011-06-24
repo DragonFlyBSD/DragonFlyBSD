@@ -118,4 +118,4 @@ static driver_t pmtimer_driver = {
 	1,		/* no softc */
 };
 
-DRIVER_MODULE(pmtimer, isa, pmtimer_driver, pmtimer_devclass, 0, 0);
+DRIVER_MODULE(pmtimer, isa, pmtimer_driver, pmtimer_devclass, NULL, NULL);

@@ -31,7 +31,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.42 2008/08/17 04:32:33 sephe Exp $
  */
 
 /*
@@ -194,8 +193,8 @@ static DEFINE_CLASS_0(lge, lge_driver, lge_methods, sizeof(struct lge_softc));
 static devclass_t lge_devclass;
 
 DECLARE_DUMMY_MODULE(if_lge);
-DRIVER_MODULE(if_lge, pci, lge_driver, lge_devclass, 0, 0);
-DRIVER_MODULE(miibus, lge, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_lge, pci, lge_driver, lge_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, lge, miibus_driver, miibus_devclass, NULL, NULL);
 
 #define LGE_SETBIT(sc, reg, x)				\
 	CSR_WRITE_4(sc, reg, CSR_READ_4(sc, reg) | (x))

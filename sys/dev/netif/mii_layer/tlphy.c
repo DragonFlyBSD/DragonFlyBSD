@@ -37,7 +37,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/tlphy.c,v 1.2.2.2 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.13 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -125,7 +124,7 @@ static driver_t tlphy_driver = {
 	sizeof(struct tlphy_softc)
 };
 
-DRIVER_MODULE(tlphy, miibus, tlphy_driver, tlphy_devclass, 0, 0);
+DRIVER_MODULE(tlphy, miibus, tlphy_driver, tlphy_devclass, NULL, NULL);
 
 static int	tlphy_service(struct mii_softc *, struct mii_data *, int);
 static int	tlphy_auto(struct tlphy_softc *, int);

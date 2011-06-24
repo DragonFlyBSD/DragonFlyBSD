@@ -31,7 +31,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.35 2008/08/22 08:38:15 swildner Exp $
  */
 
 /*
@@ -183,8 +182,8 @@ static driver_t pcn_driver = {
 static devclass_t pcn_devclass;
 
 DECLARE_DUMMY_MODULE(if_pcn);
-DRIVER_MODULE(if_pcn, pci, pcn_driver, pcn_devclass, 0, 0);
-DRIVER_MODULE(miibus, pcn, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_pcn, pci, pcn_driver, pcn_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, pcn, miibus_driver, miibus_devclass, NULL, NULL);
 
 #define PCN_CSR_SETBIT(sc, reg, x)			\
 	pcn_csr_write(sc, reg, pcn_csr_read(sc, reg) | (x))

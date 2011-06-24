@@ -139,7 +139,7 @@ static driver_t ral_pci_driver = {
 
 static devclass_t ral_devclass;
 
-DRIVER_MODULE(ral, pci, ral_pci_driver, ral_devclass, 0, 0);
+DRIVER_MODULE(ral, pci, ral_pci_driver, ral_devclass, NULL, NULL);
 
 static int
 ral_pci_probe(device_t dev)

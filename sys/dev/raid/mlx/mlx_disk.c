@@ -81,7 +81,7 @@ static driver_t mlxd_driver = {
     sizeof(struct mlxd_softc)
 };
 
-DRIVER_MODULE(mlxd, mlx, mlxd_driver, mlxd_devclass, 0, 0);
+DRIVER_MODULE(mlxd, mlx, mlxd_driver, mlxd_devclass, NULL, NULL);
 
 static int
 mlxd_open(struct dev_open_args *ap)

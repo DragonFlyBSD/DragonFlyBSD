@@ -32,7 +32,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/amphy.c,v 1.2.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/amphy.c,v 1.11 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -86,7 +85,7 @@ static driver_t amphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(amphy, miibus, amphy_driver, amphy_devclass, 0, 0);
+DRIVER_MODULE(amphy, miibus, amphy_driver, amphy_devclass, NULL, NULL);
 
 static int	amphy_service(struct mii_softc *, struct mii_data *, int);
 static void	amphy_status(struct mii_softc *);

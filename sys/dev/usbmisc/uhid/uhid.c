@@ -743,5 +743,5 @@ uhidfilt_write(struct knote *kn, long hint)
 	return (1);
 }
 
-DRIVER_MODULE(uhid, uhub, uhid_driver, uhid_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(uhid, uhub, uhid_driver, uhid_devclass, usbd_driver_load, NULL);
 

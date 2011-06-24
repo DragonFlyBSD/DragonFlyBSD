@@ -135,7 +135,7 @@ static struct dev_ops cxm_ops = {
 };
 
 MODULE_DEPEND(cxm, cxm_iic, 1, 1, 1);
-DRIVER_MODULE(cxm, pci, cxm_driver, cxm_devclass, 0, 0);
+DRIVER_MODULE(cxm, pci, cxm_driver, cxm_devclass, NULL, NULL);
 
 
 static struct cxm_codec_audio_format codec_audio_formats[] = {

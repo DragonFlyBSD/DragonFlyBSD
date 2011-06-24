@@ -24,8 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/lpbb.c,v 1.18.8.1 2006/07/19 16:31:12 kib Exp $
- * $DragonFly: src/sys/dev/misc/lpbb/lpbb.c,v 1.4 2005/10/28 03:25:45 dillon Exp $
- *
  */
 
 /*
@@ -227,7 +225,7 @@ static driver_t lpbb_driver = {
 	1,
 };
 
-DRIVER_MODULE(lpbb, ppbus, lpbb_driver, lpbb_devclass, 0, 0);
+DRIVER_MODULE(lpbb, ppbus, lpbb_driver, lpbb_devclass, NULL, NULL);
 MODULE_DEPEND(lpbb, ppbus, 1, 1, 1);
 MODULE_DEPEND(lpbb, iicbb, IICBB_MINVER, IICBB_PREFVER, IICBB_MAXVER);
 MODULE_VERSION(lpbb, 1);

@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx_pci.c,v 1.4.2.5 2001/06/25 04:37:51 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx_pci.c,v 1.4 2006/10/25 20:56:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,7 +66,7 @@ static driver_t mlx_pci_driver = {
 	sizeof(struct mlx_softc)
 };
 
-DRIVER_MODULE(mlx, pci, mlx_pci_driver, mlx_devclass, 0, 0);
+DRIVER_MODULE(mlx, pci, mlx_pci_driver, mlx_devclass, NULL, NULL);
 
 struct mlx_ident
 {

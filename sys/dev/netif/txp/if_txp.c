@@ -1,6 +1,5 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.50 2008/08/17 04:32:35 sephe Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -179,7 +178,7 @@ static driver_t txp_driver = {
 static devclass_t txp_devclass;
 
 DECLARE_DUMMY_MODULE(if_txp);
-DRIVER_MODULE(if_txp, pci, txp_driver, txp_devclass, 0, 0);
+DRIVER_MODULE(if_txp, pci, txp_driver, txp_devclass, NULL, NULL);
 
 static int
 txp_probe(device_t dev)

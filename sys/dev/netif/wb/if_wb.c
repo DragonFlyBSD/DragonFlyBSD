@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.42 2008/08/17 04:32:35 sephe Exp $
  */
 
 /*
@@ -208,8 +207,8 @@ static DEFINE_CLASS_0(wb, wb_driver, wb_methods, sizeof(struct wb_softc));
 static devclass_t wb_devclass;
 
 DECLARE_DUMMY_MODULE(if_wb);
-DRIVER_MODULE(if_wb, pci, wb_driver, wb_devclass, 0, 0);
-DRIVER_MODULE(miibus, wb, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_wb, pci, wb_driver, wb_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, wb, miibus_driver, miibus_devclass, NULL, NULL);
 
 #define WB_SETBIT(sc, reg, x)				\
 	CSR_WRITE_4(sc, reg, CSR_READ_4(sc, reg) | (x))

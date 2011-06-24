@@ -100,7 +100,7 @@ static driver_t	aac_pass_driver = {
 	sizeof(struct aac_cam)
 };
 
-DRIVER_MODULE(aacp, aac, aac_pass_driver, aac_pass_devclass, 0, 0);
+DRIVER_MODULE(aacp, aac, aac_pass_driver, aac_pass_devclass, NULL, NULL);
 MODULE_DEPEND(aacp, cam, 1, 1, 1);
 
 MALLOC_DEFINE(M_AACCAM, "aaccam", "AAC CAM info");

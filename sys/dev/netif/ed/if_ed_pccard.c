@@ -534,8 +534,8 @@ static driver_t ed_pccard_driver = {
 	sizeof(struct ed_softc)
 };
 
-DRIVER_MODULE(if_ed, pccard, ed_pccard_driver, ed_devclass, 0, 0);
+DRIVER_MODULE(if_ed, pccard, ed_pccard_driver, ed_devclass, NULL, NULL);
 #ifndef ED_NO_MIIBUS
 MODULE_DEPEND(if_ed, miibus, 1, 1, 1);
-DRIVER_MODULE(miibus, ed, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(miibus, ed, miibus_driver, miibus_devclass, NULL, NULL);
 #endif

@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/emu10k1.c,v 1.55.2.1 2005/12/30 19:55:53 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.14 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -2035,8 +2034,8 @@ static driver_t emu_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_emu10k1, pci, emu_driver, pcm_devclass, 0, 0);
-DRIVER_MODULE(snd_emu10k1, cardbus, emu_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_emu10k1, pci, emu_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_emu10k1, cardbus, emu_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_emu10k1, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_emu10k1, 1);
 
@@ -2089,5 +2088,5 @@ static driver_t emujoy_driver = {
 
 static devclass_t emujoy_devclass;
 
-DRIVER_MODULE(emujoy, pci, emujoy_driver, emujoy_devclass, 0, 0);
+DRIVER_MODULE(emujoy, pci, emujoy_driver, emujoy_devclass, NULL, NULL);
 

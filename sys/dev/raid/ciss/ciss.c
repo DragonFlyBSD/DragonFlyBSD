@@ -220,7 +220,7 @@ static driver_t ciss_pci_driver = {
 static devclass_t	ciss_devclass;
 
 DECLARE_DUMMY_MODULE(ciss);
-DRIVER_MODULE(ciss, pci, ciss_pci_driver, ciss_devclass, 0, 0);
+DRIVER_MODULE(ciss, pci, ciss_pci_driver, ciss_devclass, NULL, NULL);
 
 /*
  * Control device interface.

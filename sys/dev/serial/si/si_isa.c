@@ -322,4 +322,4 @@ static driver_t si_isa_driver = {
 	sizeof(struct si_softc),
 };
 
-DRIVER_MODULE(si, isa, si_isa_driver, si_devclass, 0, 0);
+DRIVER_MODULE(si, isa, si_isa_driver, si_devclass, NULL, NULL);

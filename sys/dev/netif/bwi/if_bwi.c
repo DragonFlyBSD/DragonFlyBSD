@@ -242,8 +242,8 @@ static driver_t bwi_driver = {
 
 static devclass_t bwi_devclass;
 
-DRIVER_MODULE(bwi, pci, bwi_driver, bwi_devclass, 0, 0);
-DRIVER_MODULE(bwi, cardbus, bwi_driver, bwi_devclass, 0, 0);
+DRIVER_MODULE(bwi, pci, bwi_driver, bwi_devclass, NULL, NULL);
+DRIVER_MODULE(bwi, cardbus, bwi_driver, bwi_devclass, NULL, NULL);
 
 MODULE_DEPEND(bwi, wlan, 1, 1, 1);
 MODULE_DEPEND(bwi, wlan_ratectl_onoe, 1, 1, 1);

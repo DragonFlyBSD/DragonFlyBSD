@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnphy.c,v 1.1.2.1 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.13 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -90,7 +89,7 @@ static driver_t pnphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(pnphy, miibus, pnphy_driver, pnphy_devclass, 0, 0);
+DRIVER_MODULE(pnphy, miibus, pnphy_driver, pnphy_devclass, NULL, NULL);
 
 static int	pnphy_service(struct mii_softc *, struct mii_data *, int);
 static void	pnphy_status(struct mii_softc *);

@@ -112,7 +112,7 @@ static driver_t amrd_driver = {
     sizeof(struct amrd_softc)
 };
 
-DRIVER_MODULE(amrd, amr, amrd_driver, amrd_devclass, 0, 0);
+DRIVER_MODULE(amrd, amr, amrd_driver, amrd_devclass, NULL, NULL);
 
 static int
 amrd_open(struct dev_open_args *ap)

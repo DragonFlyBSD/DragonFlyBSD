@@ -229,7 +229,7 @@ static driver_t iwi_driver = {
 
 static devclass_t iwi_devclass;
 
-DRIVER_MODULE(iwi, pci, iwi_driver, iwi_devclass, 0, 0);
+DRIVER_MODULE(iwi, pci, iwi_driver, iwi_devclass, NULL, NULL);
 
 static __inline uint8_t
 MEM_READ_1(struct iwi_softc *sc, uint32_t addr)

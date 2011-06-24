@@ -1,5 +1,4 @@
 /* $NetBSD: uchcom.c,v 1.1 2007/09/03 17:57:37 tshiozak Exp $ */
-/* $DragonFly: src/sys/dev/usbmisc/uchcom/uchcom.c,v 1.1 2007/11/07 09:07:44 hasso Exp $ */
 
 /*
  * Copyright (c) 2007 The NetBSD Foundation, Inc.
@@ -199,7 +198,7 @@ static driver_t uchcom_driver = {
 	sizeof (struct uchcom_softc)
 };
 
-DRIVER_MODULE(uchcom, uhub, uchcom_driver, ucom_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(uchcom, uhub, uchcom_driver, ucom_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(uchcom, usb, 1, 1, 1);
 MODULE_DEPEND(uchcom, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(uchcom, 1);

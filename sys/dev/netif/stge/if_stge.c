@@ -1,6 +1,5 @@
 /*	$NetBSD: if_stge.c,v 1.32 2005/12/11 12:22:49 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/stge/if_stge.c,v 1.2 2006/08/12 01:21:36 yongari Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.7 2008/08/03 11:00:32 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -211,8 +210,8 @@ static devclass_t stge_devclass;
 
 DECLARE_DUMMY_MODULE(if_stge);
 MODULE_DEPEND(if_stge, miibus, 1, 1, 1);
-DRIVER_MODULE(if_stge, pci, stge_driver, stge_devclass, 0, 0);
-DRIVER_MODULE(miibus, stge, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_stge, pci, stge_driver, stge_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, stge, miibus_driver, miibus_devclass, NULL, NULL);
 
 #define	MII_SET(x)	\
 	CSR_WRITE_1(sc, STGE_PhyCtrl, CSR_READ_1(sc, STGE_PhyCtrl) | (x))

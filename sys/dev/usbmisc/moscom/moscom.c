@@ -1,5 +1,4 @@
 /* $OpenBSD: src/sys/dev/usb/moscom.c,v 1.11 2007/10/11 18:33:14 deraadt Exp $ */
-/* $DragonFly: src/sys/dev/usbmisc/moscom/moscom.c,v 1.1 2007/11/07 08:57:18 hasso Exp $ */
 
 /*
  * Copyright (c) 2006 Jonathan Gray <jsg@openbsd.org>
@@ -179,7 +178,7 @@ static driver_t moscom_driver = {
 	sizeof (struct moscom_softc)
 };
 
-DRIVER_MODULE(moscom, uhub, moscom_driver, ucom_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(moscom, uhub, moscom_driver, ucom_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(moscom, usb, 1, 1, 1);
 MODULE_DEPEND(moscom, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(moscom, 1);

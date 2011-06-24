@@ -28,7 +28,6 @@
  *	==================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_elsa_qs1p.c,v 1.6.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_qs1p.c,v 1.8 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:09:28 2001]
  *
@@ -104,7 +103,7 @@ static driver_t eqs1p_pci_driver = {
 
 static devclass_t eqs1p_pci_devclass;
 
-DRIVER_MODULE(eqs1p, pci, eqs1p_pci_driver, eqs1p_pci_devclass, 0, 0);
+DRIVER_MODULE(eqs1p, pci, eqs1p_pci_driver, eqs1p_pci_devclass, NULL, NULL);
 
 /*---------------------------------------------------------------------------*
  *      ELSA MicroLink ISDN/PCI fifo read routine

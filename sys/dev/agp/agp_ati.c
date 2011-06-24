@@ -383,6 +383,6 @@ static driver_t agp_ati_driver = {
 
 static devclass_t agp_devclass;
 
-DRIVER_MODULE(agp_ati, pci, agp_ati_driver, agp_devclass, 0, 0);
+DRIVER_MODULE(agp_ati, pci, agp_ati_driver, agp_devclass, NULL, NULL);
 MODULE_DEPEND(agp_ati, agp, 1, 1, 1);
 MODULE_DEPEND(agp_ati, pci, 1, 1, 1);

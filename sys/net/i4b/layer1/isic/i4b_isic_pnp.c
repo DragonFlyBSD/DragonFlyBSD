@@ -38,7 +38,6 @@
  *	--------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic_pnp.c,v 1.5.2.2 2001/12/10 12:18:11 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic_pnp.c,v 1.7 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Fri Jan 26 14:01:04 2001]
  *
@@ -131,7 +130,7 @@ static driver_t isic_pnp_driver = {
 
 static devclass_t isic_devclass;
 
-DRIVER_MODULE(isicpnp, isa, isic_pnp_driver, isic_devclass, 0, 0);
+DRIVER_MODULE(isicpnp, isa, isic_pnp_driver, isic_devclass, NULL, NULL);
 
 /*---------------------------------------------------------------------------*
  *      probe for ISA PnP cards

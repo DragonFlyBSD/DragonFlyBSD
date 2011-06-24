@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/ess.c,v 1.34.2.2 2006/01/19 01:17:00 ariff Exp $
- * $DragonFly: src/sys/dev/sound/isa/ess.c,v 1.7 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -937,7 +936,7 @@ static driver_t ess_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_ess, sbc, ess_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_ess, sbc, ess_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_ess, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_DEPEND(snd_ess, snd_sbc, 1, 1, 1);
 MODULE_VERSION(snd_ess, 1);
@@ -1009,5 +1008,5 @@ static driver_t esscontrol_driver = {
 	1,
 };
 
-DRIVER_MODULE(esscontrol, isa, esscontrol_driver, esscontrol_devclass, 0, 0);
-DRIVER_MODULE(esscontrol, acpi, esscontrol_driver, esscontrol_devclass, 0, 0);
+DRIVER_MODULE(esscontrol, isa, esscontrol_driver, esscontrol_devclass, NULL, NULL);
+DRIVER_MODULE(esscontrol, acpi, esscontrol_driver, esscontrol_devclass, NULL, NULL);

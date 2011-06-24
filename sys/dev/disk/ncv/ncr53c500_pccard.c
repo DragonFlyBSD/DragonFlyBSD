@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.15 2007/07/05 12:08:53 sephe Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -307,7 +306,7 @@ static driver_t ncv_pccard_driver = {
 static devclass_t ncv_devclass;
 
 MODULE_DEPEND(ncv, scsi_low, 1, 1, 1);
-DRIVER_MODULE(ncv, pccard, ncv_pccard_driver, ncv_devclass, 0, 0);
+DRIVER_MODULE(ncv, pccard, ncv_pccard_driver, ncv_devclass, NULL, NULL);
 
 static void
 ncv_card_unload(DEVPORT_PDEVICE devi)

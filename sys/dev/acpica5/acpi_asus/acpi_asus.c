@@ -543,7 +543,7 @@ static driver_t acpi_asus_driver = {
 
 static devclass_t acpi_asus_devclass;
 
-DRIVER_MODULE(acpi_asus, acpi, acpi_asus_driver, acpi_asus_devclass, 0, 0);
+DRIVER_MODULE(acpi_asus, acpi, acpi_asus_driver, acpi_asus_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_asus, acpi, 1, 1, 1);
 
 static int

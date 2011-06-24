@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.28 2008/05/14 11:59:18 sephe Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -167,8 +166,8 @@ static driver_t axe_driver = {
 
 static devclass_t axe_devclass;
 
-DRIVER_MODULE(axe, uhub, axe_driver, axe_devclass, usbd_driver_load, 0);
-DRIVER_MODULE(miibus, axe, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(axe, uhub, axe_driver, axe_devclass, usbd_driver_load, NULL);
+DRIVER_MODULE(miibus, axe, miibus_driver, miibus_devclass, NULL, NULL);
 MODULE_DEPEND(axe, usb, 1, 1, 1);
 MODULE_DEPEND(axe, miibus, 1, 1, 1);
 

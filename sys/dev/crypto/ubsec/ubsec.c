@@ -166,7 +166,7 @@ static driver_t ubsec_driver = {
 static devclass_t ubsec_devclass;
 
 DECLARE_DUMMY_MODULE(ubsec);
-DRIVER_MODULE(ubsec, pci, ubsec_driver, ubsec_devclass, 0, 0);
+DRIVER_MODULE(ubsec, pci, ubsec_driver, ubsec_devclass, NULL, NULL);
 MODULE_DEPEND(ubsec, crypto, 1, 1, 1);
 #ifdef UBSEC_RNDTEST
 MODULE_DEPEND(ubsec, rndtest, 1, 1, 1);

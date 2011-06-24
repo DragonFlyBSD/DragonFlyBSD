@@ -657,8 +657,8 @@ static driver_t amdpm_driver = {
 	sizeof(struct amdpm_softc),
 };
 
-DRIVER_MODULE(amdpm, pci, amdpm_driver, amdpm_devclass, 0, 0);
-DRIVER_MODULE(smbus, amdpm, smbus_driver, smbus_devclass, 0, 0);
+DRIVER_MODULE(amdpm, pci, amdpm_driver, amdpm_devclass, NULL, NULL);
+DRIVER_MODULE(smbus, amdpm, smbus_driver, smbus_devclass, NULL, NULL);
 
 MODULE_DEPEND(amdpm, pci, 1, 1, 1);
 MODULE_DEPEND(amdpm, smbus, SMBUS_MINVER, SMBUS_PREFVER, SMBUS_MAXVER);

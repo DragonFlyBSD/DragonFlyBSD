@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/via82c686.c,v 1.34.2.2 2007/04/26 08:21:44 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.10 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -651,6 +650,6 @@ static driver_t via_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_via82c686, pci, via_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_via82c686, pci, via_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_via82c686, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_via82c686, 1);

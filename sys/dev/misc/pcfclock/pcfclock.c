@@ -331,5 +331,5 @@ static driver_t pcfclock_driver = {
 	sizeof(struct pcfclock_data),
 };
 
-DRIVER_MODULE(pcfclock, ppbus, pcfclock_driver, pcfclock_devclass, 0, 0);
+DRIVER_MODULE(pcfclock, ppbus, pcfclock_driver, pcfclock_devclass, NULL, NULL);
 

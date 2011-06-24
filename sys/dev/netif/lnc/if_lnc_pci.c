@@ -1,6 +1,5 @@
 /*	$NetBSD: if_le_pci.c,v 1.43 2005/12/11 12:22:49 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/if_le_pci.c,v 1.4 2006/06/05 15:14:14 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.13 2008/08/17 04:32:33 sephe Exp $	*/
 
 
 /*-
@@ -145,7 +144,7 @@ static device_method_t le_pci_methods[] = {
 };
 
 DEFINE_CLASS_0(lnc, le_pci_driver, le_pci_methods, sizeof(struct le_pci_softc));
-DRIVER_MODULE(lnc, pci, le_pci_driver, le_devclass, 0, 0);
+DRIVER_MODULE(lnc, pci, le_pci_driver, le_devclass, NULL, NULL);
 MODULE_DEPEND(lnc, ether, 1, 1, 1);
 
 static const int le_home_supmedia[] = {

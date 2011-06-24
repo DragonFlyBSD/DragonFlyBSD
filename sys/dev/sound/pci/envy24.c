@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/envy24.c,v 1.11.2.2 2007/06/11 19:33:27 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/envy24.c,v 1.3 2008/01/05 14:02:38 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -2634,7 +2633,7 @@ static driver_t envy24_driver = {
 #endif
 };
 
-DRIVER_MODULE(snd_envy24, pci, envy24_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_envy24, pci, envy24_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_envy24, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_DEPEND(snd_envy24, snd_spicds, 1, 1, 1);
 MODULE_VERSION(snd_envy24, 1);

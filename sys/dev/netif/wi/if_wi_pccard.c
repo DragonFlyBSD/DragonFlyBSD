@@ -89,7 +89,7 @@ static driver_t wi_pccard_driver = {
 	sizeof(struct wi_softc)
 };
 
-DRIVER_MODULE(wi, pccard, wi_pccard_driver, wi_devclass, 0, 0);
+DRIVER_MODULE(wi, pccard, wi_pccard_driver, wi_devclass, NULL, NULL);
 MODULE_DEPEND(wi, wlan, 1, 1, 1);
 
 static const struct pccard_product wi_pccard_products[] = {

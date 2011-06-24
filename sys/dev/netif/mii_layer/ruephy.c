@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ruephy.c,v 1.1.4.1 2003/07/30 13:57:35 akiyama Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ruephy.c,v 1.7 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -67,7 +66,7 @@ static driver_t ruephy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(ruephy, miibus, ruephy_driver, ruephy_devclass, 0, 0);
+DRIVER_MODULE(ruephy, miibus, ruephy_driver, ruephy_devclass, NULL, NULL);
 
 static int ruephy_service(struct mii_softc *, struct mii_data *, int);
 static void ruephy_reset(struct mii_softc *);

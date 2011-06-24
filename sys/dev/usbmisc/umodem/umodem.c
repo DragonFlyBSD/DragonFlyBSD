@@ -1,7 +1,6 @@
 /*
  * $NetBSD: umodem.c,v 1.45 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/umodem.c,v 1.48 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.22 2007/11/06 07:37:01 hasso Exp $
  */
 
 /*-
@@ -204,7 +203,7 @@ static driver_t umodem_driver = {
 	sizeof (struct umodem_softc)
 };
 
-DRIVER_MODULE(umodem, uhub, umodem_driver, ucom_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(umodem, uhub, umodem_driver, ucom_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(umodem, usb, 1, 1, 1);
 MODULE_DEPEND(umodem, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(umodem, UMODEM_MODVER);

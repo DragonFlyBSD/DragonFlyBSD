@@ -29,8 +29,6 @@
  *
  * $Id: ng_bt3c_pccard.c,v 1.5 2003/04/01 18:15:21 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/drivers/bt3c/ng_bt3c_pccard.c,v 1.20 2007/02/23 12:19:02 piso Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/drivers/bt3c/ng_bt3c_pccard.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/drivers/bt3c/ng_bt3c_pccard.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  *
  * XXX XXX XX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX 
  *
@@ -1224,7 +1222,7 @@ bt3c_modevent(module_t mod, int event, void *data)
 	return (error);
 } /* bt3c_modevent */
 
-DRIVER_MODULE(bt3c, pccard, bt3c_pccard_driver, bt3c_devclass, bt3c_modevent,0);
+DRIVER_MODULE(bt3c, pccard, bt3c_pccard_driver, bt3c_devclass, bt3c_modevent,NULL);
 MODULE_VERSION(ng_bt3c, NG_BLUETOOTH_VERSION);
 MODULE_DEPEND(ng_bt3c, netgraph, NG_ABI_VERSION, NG_ABI_VERSION,NG_ABI_VERSION);
 

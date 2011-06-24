@@ -37,7 +37,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/acphy.c,v 1.2.2.2 2002/10/21 21:20:19 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/acphy.c,v 1.10 2006/12/22 23:26:20 swildner Exp $
  */
  
 /*
@@ -120,7 +119,7 @@ static driver_t acphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(acphy, miibus, acphy_driver, acphy_devclass, 0, 0);
+DRIVER_MODULE(acphy, miibus, acphy_driver, acphy_devclass, NULL, NULL);
 
 static int	acphy_service(struct mii_softc *, struct mii_data *, int);
 static void	acphy_reset(struct mii_softc *);

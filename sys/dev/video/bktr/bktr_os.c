@@ -176,7 +176,7 @@ static struct dev_ops bktr_ops = {
 	.d_mmap =	bktr_mmap,
 };
 
-DRIVER_MODULE(bktr, pci, bktr_driver, bktr_devclass, 0, 0);
+DRIVER_MODULE(bktr, pci, bktr_driver, bktr_devclass, NULL, NULL);
 MODULE_DEPEND(bktr, bktr_mem, 1,1,1);
 MODULE_VERSION(bktr, 1);
 

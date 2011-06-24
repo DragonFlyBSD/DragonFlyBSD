@@ -1,5 +1,4 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.28 2008/05/14 11:59:21 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -238,7 +237,7 @@ static driver_t rum_driver = {
 	sizeof(struct rum_softc)
 };
 
-DRIVER_MODULE(rum, uhub, rum_driver, rum_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(rum, uhub, rum_driver, rum_devclass, usbd_driver_load, NULL);
 
 MODULE_DEPEND(rum, usb, 1, 1, 1);
 MODULE_DEPEND(rum, wlan, 1, 1, 1);

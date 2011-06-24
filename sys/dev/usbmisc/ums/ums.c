@@ -836,4 +836,4 @@ ums_ioctl(struct dev_ioctl_args *ap)
 	return error;
 }
 
-DRIVER_MODULE(ums, uhub, ums_driver, ums_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(ums, uhub, ums_driver, ums_devclass, usbd_driver_load, NULL);

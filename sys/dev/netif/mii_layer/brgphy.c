@@ -32,7 +32,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.22 2008/10/22 14:24:24 sephe Exp $
  */
 
 /*
@@ -110,7 +109,7 @@ static driver_t brgphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(brgphy, miibus, brgphy_driver, brgphy_devclass, 0, 0);
+DRIVER_MODULE(brgphy, miibus, brgphy_driver, brgphy_devclass, NULL, NULL);
 
 static int	brgphy_service(struct mii_softc *, struct mii_data *, int);
 static void 	brgphy_status(struct mii_softc *);

@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.72 2008/04/12 12:06:00 rpaulo Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.21 2008/09/05 10:28:35 hasso Exp $
  */
 
 #include "opt_acpi.h"
@@ -92,7 +91,7 @@ static driver_t acpi_cpu_driver = {
 };
 
 static devclass_t acpi_cpu_devclass;
-DRIVER_MODULE(cpu, acpi, acpi_cpu_driver, acpi_cpu_devclass, 0, 0);
+DRIVER_MODULE(cpu, acpi, acpi_cpu_driver, acpi_cpu_devclass, NULL, NULL);
 MODULE_DEPEND(cpu, acpi, 1, 1, 1);
 
 static int

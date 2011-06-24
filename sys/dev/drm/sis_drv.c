@@ -104,5 +104,5 @@ static driver_t sis_driver = {
 };
 
 extern devclass_t drm_devclass;
-DRIVER_MODULE(sisdrm, vgapci, sis_driver, drm_devclass, 0, 0);
+DRIVER_MODULE(sisdrm, vgapci, sis_driver, drm_devclass, NULL, NULL);
 MODULE_DEPEND(sisdrm, drm, 1, 1, 1);

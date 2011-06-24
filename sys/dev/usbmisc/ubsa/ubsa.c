@@ -60,7 +60,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.11 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.19 2007/11/06 07:37:01 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -230,7 +229,7 @@ static driver_t ubsa_driver = {
 	sizeof (struct ubsa_softc)
 };
 
-DRIVER_MODULE(ubsa, uhub, ubsa_driver, ucom_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(ubsa, uhub, ubsa_driver, ucom_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(ubsa, usb, 1, 1, 1);
 MODULE_DEPEND(ubsa, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(ubsa, UBSA_MODVER);

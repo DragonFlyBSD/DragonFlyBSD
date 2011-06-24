@@ -134,7 +134,7 @@ static driver_t mxge_driver =
 static devclass_t mxge_devclass;
 
 /* Declare ourselves to be a child of the PCI bus.*/
-DRIVER_MODULE(mxge, pci, mxge_driver, mxge_devclass, 0, 0);
+DRIVER_MODULE(mxge, pci, mxge_driver, mxge_devclass, NULL, NULL);
 MODULE_DEPEND(mxge, firmware, 1, 1, 1);
 MODULE_DEPEND(mxge, zlib, 1, 1, 1);
 

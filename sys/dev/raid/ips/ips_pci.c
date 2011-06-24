@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_pci.c,v 1.10 2004/03/19 17:36:47 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.17 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -238,4 +237,4 @@ static driver_t ips_pci_driver = {
 };
 
 static devclass_t ips_devclass;
-DRIVER_MODULE(ips, pci, ips_pci_driver, ips_devclass, 0, 0);
+DRIVER_MODULE(ips, pci, ips_pci_driver, ips_devclass, NULL, NULL);

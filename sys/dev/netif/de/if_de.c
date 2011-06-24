@@ -4199,5 +4199,5 @@ static driver_t tulip_pci_driver = {
 static devclass_t tulip_devclass;
 
 DECLARE_DUMMY_MODULE(if_de);
-DRIVER_MODULE(if_de, pci, tulip_pci_driver, tulip_devclass, 0, 0);
+DRIVER_MODULE(if_de, pci, tulip_pci_driver, tulip_devclass, NULL, NULL);
 

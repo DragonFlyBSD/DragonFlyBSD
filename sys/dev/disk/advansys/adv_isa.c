@@ -45,7 +45,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_isa.c,v 1.14.2.5 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adv_isa.c,v 1.7 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -411,4 +410,4 @@ static driver_t adv_isa_driver = {
 };
 
 static devclass_t adv_isa_devclass;
-DRIVER_MODULE(adv, isa, adv_isa_driver, adv_isa_devclass, 0, 0);
+DRIVER_MODULE(adv, isa, adv_isa_driver, adv_isa_devclass, NULL, NULL);

@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.61 2008/09/17 08:51:29 sephe Exp $
  */
 
 /*
@@ -272,9 +271,9 @@ static devclass_t fxp_devclass;
 
 DECLARE_DUMMY_MODULE(if_fxp);
 MODULE_DEPEND(if_fxp, miibus, 1, 1, 1);
-DRIVER_MODULE(if_fxp, pci, fxp_driver, fxp_devclass, 0, 0);
-DRIVER_MODULE(if_fxp, cardbus, fxp_driver, fxp_devclass, 0, 0);
-DRIVER_MODULE(miibus, fxp, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_fxp, pci, fxp_driver, fxp_devclass, NULL, NULL);
+DRIVER_MODULE(if_fxp, cardbus, fxp_driver, fxp_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, fxp, miibus_driver, miibus_devclass, NULL, NULL);
 
 static int fxp_rnr;
 SYSCTL_INT(_hw, OID_AUTO, fxp_rnr, CTLFLAG_RW, &fxp_rnr, 0, "fxp rnr events");

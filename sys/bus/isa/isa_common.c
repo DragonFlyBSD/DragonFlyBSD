@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.c,v 1.16.2.1 2000/09/16 15:49:52 roger Exp $
- * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.14 2008/10/18 01:15:33 dillon Exp $
  */
 /*
  * Modifications for Intel architecture by Garrett A. Wollman.
@@ -1040,9 +1039,9 @@ static driver_t isa_driver = {
 /*
  * ISA can be attached to a PCI-ISA bridge or directly to the nexus.
  */
-DRIVER_MODULE(isa, isab, isa_driver, isa_devclass, 0, 0);
+DRIVER_MODULE(isa, isab, isa_driver, isa_devclass, NULL, NULL);
 #ifdef __i386__
-DRIVER_MODULE(isa, nexus, isa_driver, isa_devclass, 0, 0);
+DRIVER_MODULE(isa, nexus, isa_driver, isa_devclass, NULL, NULL);
 #endif
 MODULE_VERSION(isa, 1);
 

@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-usb.c,v 1.4 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.7 2007/07/02 23:52:04 hasso Exp $
  */
 
 #include "opt_ata.h"
@@ -162,7 +161,7 @@ static driver_t atausb_driver = {
 };
 
 MODULE_DEPEND(atausb, usb, 1, 1, 1);
-DRIVER_MODULE(atausb, uhub, atausb_driver, atausb_devclass, 0, 0);
+DRIVER_MODULE(atausb, uhub, atausb_driver, atausb_devclass, NULL, NULL);
 MODULE_VERSION(atausb, 1);
 
 static int
@@ -986,5 +985,5 @@ static driver_t ata_usbchannel_driver = {
     sizeof(struct ata_channel),
 };
 
-DRIVER_MODULE(ata, atausb, ata_usbchannel_driver, ata_devclass, 0, 0);
+DRIVER_MODULE(ata, atausb, ata_usbchannel_driver, ata_devclass, NULL, NULL);
 MODULE_DEPEND(atausb, ata, 1, 1, 1);

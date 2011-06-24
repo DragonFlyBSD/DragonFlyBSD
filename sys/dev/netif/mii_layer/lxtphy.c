@@ -38,7 +38,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/lxtphy.c,v 1.1.2.1 2001/06/08 19:58:33 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/lxtphy.c,v 1.10 2006/12/22 23:26:20 swildner Exp $
  */
  
 /*
@@ -126,7 +125,7 @@ static driver_t lxtphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(lxtphy, miibus, lxtphy_driver, lxtphy_devclass, 0, 0);
+DRIVER_MODULE(lxtphy, miibus, lxtphy_driver, lxtphy_devclass, NULL, NULL);
 
 static int
 lxtphy_probe(device_t dev)

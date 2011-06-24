@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pci.c,v 1.7 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pci.c,v 1.5 2006/10/25 20:55:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -119,14 +118,14 @@ static devclass_t ndis_devclass;
 
 #ifdef NDIS_MODNAME
 #define NDIS_MODNAME_OVERRIDE_PCI(x)					\
-	DRIVER_MODULE(x, pci, ndis_driver, ndis_devclass, 0, 0)
+	DRIVER_MODULE(x, pci, ndis_driver, ndis_devclass, NULL, NULL)
 #define NDIS_MODNAME_OVERRIDE_CARDBUS(x)				\
-	DRIVER_MODULE(x, cardbus, ndis_driver, ndis_devclass, 0, 0)
+	DRIVER_MODULE(x, cardbus, ndis_driver, ndis_devclass, NULL, NULL)
 NDIS_MODNAME_OVERRIDE_PCI(NDIS_MODNAME);
 NDIS_MODNAME_OVERRIDE_CARDBUS(NDIS_MODNAME);
 #else
-DRIVER_MODULE(ndis, pci, ndis_driver, ndis_devclass, 0, 0);
-DRIVER_MODULE(ndis, cardbus, ndis_driver, ndis_devclass, 0, 0);
+DRIVER_MODULE(ndis, pci, ndis_driver, ndis_devclass, NULL, NULL);
+DRIVER_MODULE(ndis, cardbus, ndis_driver, ndis_devclass, NULL, NULL);
 #endif
 
 /*

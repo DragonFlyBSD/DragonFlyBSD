@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpo.c,v 1.20.2.1 2000/05/07 21:08:18 n_hibma Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.12 2008/05/18 20:30:23 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -458,5 +457,5 @@ static driver_t vpo_driver = {
 	vpo_methods,
 	sizeof(struct vpo_data),
 };
-DRIVER_MODULE(vpo, ppbus, vpo_driver, vpo_devclass, 0, 0);
+DRIVER_MODULE(vpo, ppbus, vpo_driver, vpo_devclass, NULL, NULL);
 

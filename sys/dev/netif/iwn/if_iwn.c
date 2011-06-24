@@ -6521,7 +6521,7 @@ static driver_t iwn_driver = {
 };
 static devclass_t iwn_devclass;
 
-DRIVER_MODULE(iwn, pci, iwn_driver, iwn_devclass, 0, 0);
+DRIVER_MODULE(iwn, pci, iwn_driver, iwn_devclass, NULL, NULL);
 MODULE_DEPEND(iwn, pci, 1, 1, 1);
 MODULE_DEPEND(iwn, firmware, 1, 1, 1);
 MODULE_DEPEND(iwn, wlan, 1, 1, 1);

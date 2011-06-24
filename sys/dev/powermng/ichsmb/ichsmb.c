@@ -693,4 +693,4 @@ ichsmb_detach(device_t dev)
 	return 0;
 }
 
-DRIVER_MODULE(smbus, ichsmb, smbus_driver, smbus_devclass, 0, 0);
+DRIVER_MODULE(smbus, ichsmb, smbus_driver, smbus_devclass, NULL, NULL);

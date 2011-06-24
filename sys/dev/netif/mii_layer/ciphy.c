@@ -32,7 +32,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ciphy.c,v 1.3 2005/09/30 19:39:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ciphy.c,v 1.5 2007/09/17 11:29:36 hasso Exp $
  */
 
 /*
@@ -89,7 +88,7 @@ static driver_t ciphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(ciphy, miibus, ciphy_driver, ciphy_devclass, 0, 0);
+DRIVER_MODULE(ciphy, miibus, ciphy_driver, ciphy_devclass, NULL, NULL);
 
 static int	ciphy_service(struct mii_softc *, struct mii_data *, int);
 static void	ciphy_status(struct mii_softc *);

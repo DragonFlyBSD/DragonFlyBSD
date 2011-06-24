@@ -445,8 +445,8 @@ static devclass_t bce_devclass;
 
 DECLARE_DUMMY_MODULE(if_xl);
 MODULE_DEPEND(bce, miibus, 1, 1, 1);
-DRIVER_MODULE(if_bce, pci, bce_driver, bce_devclass, 0, 0);
-DRIVER_MODULE(miibus, bce, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_bce, pci, bce_driver, bce_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, bce, miibus_driver, miibus_devclass, NULL, NULL);
 
 
 /****************************************************************************/

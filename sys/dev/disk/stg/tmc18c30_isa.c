@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_isa.c,v 1.2.2.4 2001/09/04 04:45:23 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.12 2007/05/17 21:08:49 dillon Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -223,7 +222,7 @@ static driver_t stg_isa_driver = {
 
 static devclass_t stg_devclass;
 
-DRIVER_MODULE(stg, isa, stg_isa_driver, stg_devclass, 0, 0);
+DRIVER_MODULE(stg, isa, stg_isa_driver, stg_devclass, NULL, NULL);
 
 static	void
 stg_isa_unload(device_t devi)

@@ -173,8 +173,8 @@ static devclass_t age_devclass;
 
 DECLARE_DUMMY_MODULE(if_age);
 MODULE_DEPEND(if_age, miibus, 1, 1, 1);
-DRIVER_MODULE(if_age, pci, age_driver, age_devclass, 0, 0);
-DRIVER_MODULE(miibus, age, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_age, pci, age_driver, age_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, age, miibus_driver, miibus_devclass, NULL, NULL);
 
 /*
  *	Read a PHY register on the MII of the L1.

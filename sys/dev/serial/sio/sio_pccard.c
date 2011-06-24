@@ -29,9 +29,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.9 2007/08/07 13:14:11 hasso Exp $
  */
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/tty.h>
@@ -145,4 +144,4 @@ sio_pccard_detach(device_t dev)
 	return (0);
 }
 
-DRIVER_MODULE(sio, pccard, sio_pccard_driver, sio_devclass, 0, 0);
+DRIVER_MODULE(sio, pccard, sio_pccard_driver, sio_devclass, NULL, NULL);

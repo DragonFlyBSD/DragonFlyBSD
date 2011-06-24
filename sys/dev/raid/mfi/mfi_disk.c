@@ -82,7 +82,7 @@ static driver_t mfi_disk_driver = {
 	sizeof(struct mfi_disk)
 };
 
-DRIVER_MODULE(mfid, mfi, mfi_disk_driver, mfi_disk_devclass, 0, 0);
+DRIVER_MODULE(mfid, mfi, mfi_disk_driver, mfi_disk_devclass, NULL, NULL);
 
 static int
 mfi_disk_probe(device_t dev)

@@ -18,7 +18,6 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si_pci.c,v 1.2 2000/01/24 08:11:10 peter Exp $
- * $DragonFly: src/sys/dev/serial/si/si_pci.c,v 1.6 2006/10/25 20:56:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -136,4 +135,4 @@ static driver_t si_pci_driver = {
 	sizeof(struct si_softc),
 };
 
-DRIVER_MODULE(si, pci, si_pci_driver, si_devclass, 0, 0);
+DRIVER_MODULE(si, pci, si_pci_driver, si_devclass, NULL, NULL);

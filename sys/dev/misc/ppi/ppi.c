@@ -573,4 +573,4 @@ static driver_t ppi_driver = {
 	ppi_methods,
 	sizeof(struct ppi_data),
 };
-DRIVER_MODULE(ppi, ppbus, ppi_driver, ppi_devclass, 0, 0);
+DRIVER_MODULE(ppi, ppbus, ppi_driver, ppi_devclass, NULL, NULL);

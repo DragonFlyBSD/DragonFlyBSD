@@ -422,6 +422,6 @@ static driver_t padlock_driver = {
 static devclass_t padlock_devclass;
 
 /* XXX where to attach */
-DRIVER_MODULE(padlock, nexus, padlock_driver, padlock_devclass, 0, 0);
+DRIVER_MODULE(padlock, nexus, padlock_driver, padlock_devclass, NULL, NULL);
 MODULE_VERSION(padlock, 1);
 MODULE_DEPEND(padlock, crypto, 1, 1, 1);

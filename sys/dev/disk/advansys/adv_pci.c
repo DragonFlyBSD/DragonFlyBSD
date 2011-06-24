@@ -58,7 +58,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adv_pci.c,v 1.11.2.3 2001/06/02 04:38:10 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adv_pci.c,v 1.7 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -312,4 +311,4 @@ static driver_t adv_pci_driver = {
 };
 
 static devclass_t adv_pci_devclass;
-DRIVER_MODULE(adv, pci, adv_pci_driver, adv_pci_devclass, 0, 0);
+DRIVER_MODULE(adv, pci, adv_pci_driver, adv_pci_devclass, NULL, NULL);

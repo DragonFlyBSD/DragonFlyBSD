@@ -1,7 +1,6 @@
 /*
  * $NetBSD: puc.c,v 1.7 2000/07/29 17:43:38 jlam Exp $
  * $FreeBSD: src/sys/dev/puc/puc.c,v 1.3.2.5 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.12 2008/01/06 16:55:50 swildner Exp $
  */
 
 /*-
@@ -759,4 +758,4 @@ static driver_t puc_pci_driver = {
 
 static devclass_t puc_devclass;
 
-DRIVER_MODULE(puc, pci, puc_pci_driver, puc_devclass, 0, 0);
+DRIVER_MODULE(puc, pci, puc_pci_driver, puc_devclass, NULL, NULL);

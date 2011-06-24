@@ -26,7 +26,6 @@
  * xe pccard interface driver
  *
  * $FreeBSD: src/sys/dev/xe/if_xe_pccard.c,v 1.11 2003/10/14 22:51:35 rsm Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe_pccard.c,v 1.5 2007/08/14 15:32:32 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -155,7 +154,7 @@ static driver_t xe_pccard_driver = {
 };
 
 devclass_t xe_devclass;
-DRIVER_MODULE(xe, pccard, xe_pccard_driver, xe_devclass, 0, 0);
+DRIVER_MODULE(xe, pccard, xe_pccard_driver, xe_devclass, NULL, NULL);
 
 /*
  * Fixing for CEM2, CEM3 and CEM56/REM56 cards.  These need some magic to

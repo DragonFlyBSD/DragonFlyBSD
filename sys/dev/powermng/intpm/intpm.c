@@ -809,7 +809,7 @@ static driver_t intsmb_driver = {
 	sizeof(struct intsmb_softc),
 };
 
-DRIVER_MODULE(intsmb, pci, intsmb_driver, intsmb_devclass, 0, 0);
-DRIVER_MODULE(smbus, intsmb, smbus_driver, smbus_devclass, 0, 0);
+DRIVER_MODULE(intsmb, pci, intsmb_driver, intsmb_devclass, NULL, NULL);
+DRIVER_MODULE(smbus, intsmb, smbus_driver, smbus_devclass, NULL, NULL);
 MODULE_DEPEND(intsmb, smbus, SMBUS_MINVER, SMBUS_PREFVER, SMBUS_MAXVER);
 MODULE_VERSION(intsmb, 1);

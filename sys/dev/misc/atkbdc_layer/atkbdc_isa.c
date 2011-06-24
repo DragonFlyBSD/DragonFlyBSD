@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/atkbdc_isa.c,v 1.14.2.1 2000/03/31 12:52:05 yokota Exp $
- * $DragonFly: src/sys/dev/misc/atkbdc_layer/atkbdc_isa.c,v 1.10 2007/10/23 03:04:49 y0netan1 Exp $
  */
 
 #include "opt_kbd.h"
@@ -363,5 +362,5 @@ atkbdc_write_ivar(device_t bus, device_t dev, int index, u_long val)
 	return 0;
 }
 
-DRIVER_MODULE(atkbdc, isa, atkbdc_driver, atkbdc_devclass, 0, 0);
-DRIVER_MODULE(atkbdc, acpi, atkbdc_driver, atkbdc_devclass, 0, 0);
+DRIVER_MODULE(atkbdc, isa, atkbdc_driver, atkbdc_devclass, NULL, NULL);
+DRIVER_MODULE(atkbdc, acpi, atkbdc_driver, atkbdc_devclass, NULL, NULL);

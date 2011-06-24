@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.56 2008/09/17 08:51:29 sephe Exp $
  */
 
 /*
@@ -297,9 +296,9 @@ static devclass_t xl_devclass;
 
 DECLARE_DUMMY_MODULE(if_xl);
 MODULE_DEPEND(if_xl, miibus, 1, 1, 1);
-DRIVER_MODULE(if_xl, pci, xl_driver, xl_devclass, 0, 0);
-DRIVER_MODULE(if_xl, cardbus, xl_driver, xl_devclass, 0, 0);
-DRIVER_MODULE(miibus, xl, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_xl, pci, xl_driver, xl_devclass, NULL, NULL);
+DRIVER_MODULE(if_xl, cardbus, xl_driver, xl_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, xl, miibus_driver, miibus_devclass, NULL, NULL);
 
 static void
 xl_enable_intrs(struct xl_softc *sc, uint16_t intrs)

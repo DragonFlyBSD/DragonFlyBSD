@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnp.c,v 1.5.2.1 2002/10/14 09:31:09 nyan Exp $
- *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.14 2008/08/10 18:57:03 swildner Exp $
  *      from: pnp.c,v 1.11 1999/05/06 22:11:19 peter Exp
  */
 
@@ -815,4 +814,4 @@ static driver_t pnp_driver = {
 
 static devclass_t pnp_devclass;
 
-DRIVER_MODULE(pnp, isa, pnp_driver, pnp_devclass, 0, 0);
+DRIVER_MODULE(pnp, isa, pnp_driver, pnp_devclass, NULL, NULL);

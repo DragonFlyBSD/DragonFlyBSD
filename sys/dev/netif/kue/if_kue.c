@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.30 2008/05/14 11:59:20 sephe Exp $
  */
 
 /*
@@ -165,7 +164,7 @@ static driver_t kue_driver = {
 static devclass_t kue_devclass;
 
 DECLARE_DUMMY_MODULE(if_kue);
-DRIVER_MODULE(kue, uhub, kue_driver, kue_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(kue, uhub, kue_driver, kue_devclass, usbd_driver_load, NULL);
 
 /*
  * We have a custom do_request function which is almost like the

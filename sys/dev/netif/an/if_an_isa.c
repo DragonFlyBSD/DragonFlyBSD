@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.18 2008/08/17 04:32:32 sephe Exp $
  */
 
 /*
@@ -153,4 +152,4 @@ static driver_t an_isa_driver = {
 
 static devclass_t an_isa_devclass;
 
-DRIVER_MODULE(if_an, isa, an_isa_driver, an_isa_devclass, 0, 0);
+DRIVER_MODULE(if_an, isa, an_isa_driver, an_isa_devclass, NULL, NULL);

@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/ad1816.c,v 1.37.2.2 2006/04/04 17:23:24 ariff Exp $
- * $DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.8 2007/06/16 20:07:18 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -681,8 +680,8 @@ static driver_t ad1816_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_ad1816, isa, ad1816_driver, pcm_devclass, 0, 0);
-DRIVER_MODULE(snd_ad1816, acpi, ad1816_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_ad1816, isa, ad1816_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_ad1816, acpi, ad1816_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_ad1816, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_ad1816, 1);
 

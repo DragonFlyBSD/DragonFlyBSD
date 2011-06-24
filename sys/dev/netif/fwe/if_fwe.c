@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.31 2008/05/14 11:59:20 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -583,6 +582,6 @@ static driver_t fwe_driver = {
 
 
 DECLARE_DUMMY_MODULE(fwe);
-DRIVER_MODULE(fwe, firewire, fwe_driver, fwe_devclass, 0, 0);
+DRIVER_MODULE(fwe, firewire, fwe_driver, fwe_devclass, NULL, NULL);
 MODULE_VERSION(fwe, 1);
 MODULE_DEPEND(fwe, firewire, 1, 1, 1);

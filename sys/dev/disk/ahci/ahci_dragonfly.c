@@ -82,7 +82,7 @@ static driver_t ahci_driver = {
 };
 
 MODULE_DEPEND(ahci, cam, 1, 1, 1);
-DRIVER_MODULE(ahci, pci, ahci_driver, ahci_devclass, 0, 0);
+DRIVER_MODULE(ahci, pci, ahci_driver, ahci_devclass, NULL, NULL);
 
 /*
  * Device bus method procedures

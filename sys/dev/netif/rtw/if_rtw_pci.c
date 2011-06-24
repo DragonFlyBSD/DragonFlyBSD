@@ -148,8 +148,8 @@ static driver_t rtw_pci_driver = {
 	sizeof(struct rtw_softc)
 };
 
-DRIVER_MODULE(rtw, pci, rtw_pci_driver, rtw_devclass, 0, 0);
-DRIVER_MODULE(rtw, cardbus, rtw_pci_driver, rtw_devclass, 0, 0);
+DRIVER_MODULE(rtw, pci, rtw_pci_driver, rtw_devclass, NULL, NULL);
+DRIVER_MODULE(rtw, cardbus, rtw_pci_driver, rtw_devclass, NULL, NULL);
 
 MODULE_DEPEND(rtw, wlan, 1, 1, 1);
 MODULE_DEPEND(rtw, wlan_ratectl_onoe, 1, 1, 1);

@@ -28,7 +28,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/csa.c,v 1.33.2.1 2005/12/30 19:55:53 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pci/csa.c,v 1.8 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -1067,6 +1066,6 @@ static driver_t csa_driver = {
 /*
  * csa can be attached to a pci bus.
  */
-DRIVER_MODULE(snd_csa, pci, csa_driver, csa_devclass, 0, 0);
+DRIVER_MODULE(snd_csa, pci, csa_driver, csa_devclass, NULL, NULL);
 MODULE_DEPEND(snd_csa, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_csa, 1);

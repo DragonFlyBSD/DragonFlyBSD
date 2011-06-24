@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/fm801.c,v 1.27.2.1 2006/01/10 01:01:24 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.10 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -760,6 +759,6 @@ static driver_t fm801_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_fm801, pci, fm801_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_fm801, pci, fm801_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_fm801, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_fm801, 1);

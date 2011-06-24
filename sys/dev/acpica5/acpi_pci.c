@@ -101,7 +101,7 @@ static device_method_t acpi_pci_methods[] = {
 static devclass_t pci_devclass;
 
 DEFINE_CLASS_1(pci, acpi_pci_driver, acpi_pci_methods, 0, pci_driver);
-DRIVER_MODULE(acpi_pci, pcib, acpi_pci_driver, pci_devclass, 0, 0);
+DRIVER_MODULE(acpi_pci, pcib, acpi_pci_driver, pci_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_pci, acpi, 1, 1, 1);
 MODULE_DEPEND(acpi_pci, pci, 1, 1, 1);
 MODULE_VERSION(acpi_pci, 1);

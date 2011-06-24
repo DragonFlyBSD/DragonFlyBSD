@@ -256,7 +256,7 @@ static driver_t ath_pci_driver = {
 	sizeof (struct ath_pci_softc)
 };
 static	devclass_t ath_devclass;
-DRIVER_MODULE(ath, pci, ath_pci_driver, ath_devclass, 0, 0);
+DRIVER_MODULE(ath, pci, ath_pci_driver, ath_devclass, NULL, NULL);
 MODULE_VERSION(ath, 1);
 
 MODULE_DEPEND(ath, ath_hal, 1, 1, 1);	/* Atheros HAL */

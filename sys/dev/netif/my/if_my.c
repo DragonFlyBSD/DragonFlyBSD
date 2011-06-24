@@ -26,7 +26,6 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.31 2008/08/17 04:32:34 sephe Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -158,7 +157,7 @@ static driver_t my_driver = {
 static devclass_t my_devclass;
 
 DECLARE_DUMMY_MODULE(if_my);
-DRIVER_MODULE(if_my, pci, my_driver, my_devclass, 0, 0);
+DRIVER_MODULE(if_my, pci, my_driver, my_devclass, NULL, NULL);
 
 static long
 my_send_cmd_to_phy(struct my_softc * sc, int opcode, int regad)

@@ -181,7 +181,7 @@ static device_method_t pci_methods[] = {
 DEFINE_CLASS_0(pci, pci_driver, pci_methods, 0);
 
 static devclass_t pci_devclass;
-DRIVER_MODULE(pci, pcib, pci_driver, pci_devclass, pci_modevent, 0);
+DRIVER_MODULE(pci, pcib, pci_driver, pci_devclass, pci_modevent, NULL);
 MODULE_VERSION(pci, 1);
 
 static char	*pci_vendordata;

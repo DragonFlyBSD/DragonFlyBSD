@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_pccard.c,v 1.12.2.2 2000/08/08 23:55:02 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.13 2008/08/17 04:32:33 sephe Exp $
  */
 
 /*
@@ -298,4 +297,4 @@ static driver_t ep_pccard_driver = {
 
 extern devclass_t ep_devclass;
 
-DRIVER_MODULE(if_ep, pccard, ep_pccard_driver, ep_devclass, 0, 0);
+DRIVER_MODULE(if_ep, pccard, ep_pccard_driver, ep_devclass, NULL, NULL);

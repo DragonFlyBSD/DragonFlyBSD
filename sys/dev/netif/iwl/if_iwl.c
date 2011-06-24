@@ -31,7 +31,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/iwl/if_iwl.c,v 1.1 2008/03/05 14:10:39 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -126,7 +125,7 @@ static driver_t iwl_driver = {
 
 static devclass_t iwl_devclass;
 
-DRIVER_MODULE(iwl, pci, iwl_driver, iwl_devclass, 0, 0);
+DRIVER_MODULE(iwl, pci, iwl_driver, iwl_devclass, NULL, NULL);
 
 MODULE_DEPEND(iwl, wlan, 1, 1, 1);
 MODULE_DEPEND(iwl, pci, 1, 1, 1);

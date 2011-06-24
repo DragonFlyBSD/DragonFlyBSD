@@ -150,8 +150,8 @@ static driver_t ae_driver = {
 static devclass_t ae_devclass;
 DECLARE_DUMMY_MODULE(if_ae);
 MODULE_DEPEND(if_ae, miibus, 1, 1, 1);
-DRIVER_MODULE(if_ae, pci, ae_driver, ae_devclass, 0, 0);
-DRIVER_MODULE(miibus, ae, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_ae, pci, ae_driver, ae_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, ae, miibus_driver, miibus_devclass, NULL, NULL);
 
 /* Register access macros. */
 #define AE_WRITE_4(_sc, reg, val)	\

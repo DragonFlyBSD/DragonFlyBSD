@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/dcphy.c,v 1.2.2.2 2000/10/14 00:44:40 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/dcphy.c,v 1.12 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -100,7 +99,7 @@ static driver_t dcphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(dcphy, miibus, dcphy_driver, dcphy_devclass, 0, 0);
+DRIVER_MODULE(dcphy, miibus, dcphy_driver, dcphy_devclass, NULL, NULL);
 
 static int	dcphy_service(struct mii_softc *, struct mii_data *, int);
 static void	dcphy_status(struct mii_softc *);

@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/dev/mii/e1000phy.c,v 1.18 2006/12/11 11:09:48 yongari Exp $ */
-/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.12 2008/07/22 10:59:16 sephe Exp $ */
 /*	$OpenBSD: eephy.c,v 1.26 2006/06/08 00:27:12 brad Exp $	*/
 /*
  * Principal Author: Parag Patel
@@ -103,7 +102,7 @@ static driver_t e1000phy_driver = {
 	e1000phy_methods,
 	sizeof(struct mii_softc)
 };
-DRIVER_MODULE(e1000phy, miibus, e1000phy_driver, e1000phy_devclass, 0, 0);
+DRIVER_MODULE(e1000phy, miibus, e1000phy_driver, e1000phy_devclass, NULL, NULL);
 
 static int
 e1000phy_probe(device_t	dev)

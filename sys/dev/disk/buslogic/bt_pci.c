@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt_pci.c,v 1.11 2000/01/17 12:38:00 nyan Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt_pci.c,v 1.5 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -224,4 +223,4 @@ static driver_t bt_pci_driver = {
 
 static devclass_t bt_devclass;
 
-DRIVER_MODULE(bt, pci, bt_pci_driver, bt_devclass, 0, 0);
+DRIVER_MODULE(bt, pci, bt_pci_driver, bt_devclass, NULL, NULL);

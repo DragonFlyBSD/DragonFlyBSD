@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ds1.c,v 1.43.2.1 2006/01/18 01:05:34 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.11 2008/01/07 09:42:07 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -1098,6 +1097,6 @@ static driver_t ds1_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_ds1, pci, ds1_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_ds1, pci, ds1_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_ds1, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_ds1, 1);

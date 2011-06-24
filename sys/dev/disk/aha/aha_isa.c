@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha_isa.c,v 1.17.2.1 2000/08/02 22:24:40 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha_isa.c,v 1.10 2006/12/22 23:26:15 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -330,4 +329,4 @@ static driver_t aha_isa_driver = {
 
 static devclass_t aha_devclass;
 
-DRIVER_MODULE(aha, isa, aha_isa_driver, aha_devclass, 0, 0);
+DRIVER_MODULE(aha, isa, aha_isa_driver, aha_devclass, NULL, NULL);

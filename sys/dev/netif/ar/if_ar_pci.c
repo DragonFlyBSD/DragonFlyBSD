@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar_pci.c,v 1.11 2004/05/30 20:08:26 phk Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar_pci.c,v 1.7 2006/12/22 23:26:18 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -91,7 +90,7 @@ static driver_t ar_pci_driver = {
 	sizeof(struct ar_hardc),
 };
 
-DRIVER_MODULE(if_ar, pci, ar_pci_driver, ar_devclass, 0, 0);
+DRIVER_MODULE(if_ar, pci, ar_pci_driver, ar_devclass, NULL, NULL);
 
 static int
 ar_pci_probe(device_t device)

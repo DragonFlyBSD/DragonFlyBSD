@@ -49,7 +49,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/disk/fd/fd_pccard.c,v 1.3 2006/10/25 20:55:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -181,4 +180,4 @@ static driver_t fdc_pccard_driver = {
 	sizeof(struct fdc_data)
 };
 
-DRIVER_MODULE(fdc, pccard, fdc_pccard_driver, fdc_devclass, 0, 0);
+DRIVER_MODULE(fdc, pccard, fdc_pccard_driver, fdc_devclass, NULL, NULL);

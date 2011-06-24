@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.6 2002/09/28 20:59:59 phk Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.16 2008/08/17 04:32:34 sephe Exp $
  */
 
  
@@ -67,7 +66,7 @@ static driver_t sbni_pci_driver = {
 
 static devclass_t sbni_pci_devclass;
 
-DRIVER_MODULE(if_sbni, pci, sbni_pci_driver, sbni_pci_devclass, 0, 0);
+DRIVER_MODULE(if_sbni, pci, sbni_pci_driver, sbni_pci_devclass, NULL, NULL);
 
 
 static int

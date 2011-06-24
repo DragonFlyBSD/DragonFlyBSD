@@ -240,7 +240,7 @@ static driver_t glxsb_driver = {
 
 static devclass_t glxsb_devclass;
 
-DRIVER_MODULE(glxsb, pci, glxsb_driver, glxsb_devclass, 0, 0);
+DRIVER_MODULE(glxsb, pci, glxsb_driver, glxsb_devclass, NULL, NULL);
 MODULE_VERSION(glxsb, 1);
 MODULE_DEPEND(glxsb, crypto, 1, 1, 1);
 

@@ -24,8 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iicbb.c,v 1.21 2009/02/10 22:50:23 imp Exp $
- * $DragonFly: src/sys/bus/iicbus/iicbb.c,v 1.5 2006/12/22 23:12:16 swildner Exp $
- *
  */
 
 /*
@@ -413,10 +411,10 @@ iicbb_read(device_t dev, char * buf, int len, int *read, int last, int delay)
 	return (0);
 }
 
-DRIVER_MODULE(iicbb, bti2c, iicbb_driver, iicbb_devclass, 0, 0);
-DRIVER_MODULE(iicbb, cxm_iic, iicbb_driver, iicbb_devclass, 0, 0);
-DRIVER_MODULE(iicbb, lpbb, iicbb_driver, iicbb_devclass, 0, 0);
-DRIVER_MODULE(iicbb, viapm, iicbb_driver, iicbb_devclass, 0, 0);
+DRIVER_MODULE(iicbb, bti2c, iicbb_driver, iicbb_devclass, NULL, NULL);
+DRIVER_MODULE(iicbb, cxm_iic, iicbb_driver, iicbb_devclass, NULL, NULL);
+DRIVER_MODULE(iicbb, lpbb, iicbb_driver, iicbb_devclass, NULL, NULL);
+DRIVER_MODULE(iicbb, viapm, iicbb_driver, iicbb_devclass, NULL, NULL);
 
 MODULE_DEPEND(iicbb, iicbus, IICBUS_MINVER, IICBUS_PREFVER, IICBUS_MAXVER);
 MODULE_VERSION(iicbb, IICBB_MODVER);

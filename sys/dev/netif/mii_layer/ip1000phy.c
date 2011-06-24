@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ip1000phy.c,v 1.1 2006/07/25 00:16:09 yongari Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ip1000phy.c,v 1.4 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -77,7 +76,7 @@ static driver_t ip1000phy_driver = {
 	sizeof (struct mii_softc)
 };
 
-DRIVER_MODULE(ip1000phy, miibus, ip1000phy_driver, ip1000phy_devclass, 0, 0);
+DRIVER_MODULE(ip1000phy, miibus, ip1000phy_driver, ip1000phy_devclass, NULL, NULL);
 
 static const struct mii_phydesc ip1000phys[] = {
 	MII_PHYDESC(ICPLUS,	IP1000A),

@@ -501,4 +501,4 @@ static driver_t cs5536_driver = {
 
 static devclass_t cs5536_devclass;
 
-DRIVER_MODULE(cs5536, pci, cs5536_driver, cs5536_devclass, 0, 0);
+DRIVER_MODULE(cs5536, pci, cs5536_driver, cs5536_devclass, NULL, NULL);

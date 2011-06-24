@@ -31,7 +31,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnaphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnaphy.c,v 1.11 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -87,7 +86,7 @@ static driver_t pnaphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(pnaphy, miibus, pnaphy_driver, pnaphy_devclass, 0, 0);
+DRIVER_MODULE(pnaphy, miibus, pnaphy_driver, pnaphy_devclass, NULL, NULL);
 
 static int	pnaphy_service(struct mii_softc *, struct mii_data *, int);
 

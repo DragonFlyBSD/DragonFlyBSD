@@ -31,7 +31,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.49 2008/08/17 04:32:34 sephe Exp $
  */
 
 /*
@@ -225,8 +224,8 @@ static devclass_t nge_devclass;
 
 DECLARE_DUMMY_MODULE(if_nge);
 MODULE_DEPEND(if_nge, miibus, 1, 1, 1);
-DRIVER_MODULE(if_nge, pci, nge_driver, nge_devclass, 0, 0);
-DRIVER_MODULE(miibus, nge, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_nge, pci, nge_driver, nge_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, nge, miibus_driver, miibus_devclass, NULL, NULL);
 
 #define NGE_SETBIT(sc, reg, x)				\
 	CSR_WRITE_4(sc, reg, CSR_READ_4(sc, reg) | (x))

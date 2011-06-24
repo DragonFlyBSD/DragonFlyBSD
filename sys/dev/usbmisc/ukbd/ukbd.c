@@ -250,7 +250,7 @@ ukbd_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 	kbd_intr(kbd, (void *)status);
 }
 
-DRIVER_MODULE(ukbd, uhub, ukbd_driver, ukbd_devclass, ukbd_driver_load, 0);
+DRIVER_MODULE(ukbd, uhub, ukbd_driver, ukbd_devclass, ukbd_driver_load, NULL);
 
 
 #define UKBD_DEFAULT	0

@@ -3187,11 +3187,11 @@ siocnputc(void *private, int c)
 	com_unlock();
 }
 
-DRIVER_MODULE(sio, isa, sio_isa_driver, sio_devclass, 0, 0);
-DRIVER_MODULE(sio, acpi, sio_isa_driver, sio_devclass, 0, 0);
+DRIVER_MODULE(sio, isa, sio_isa_driver, sio_devclass, NULL, NULL);
+DRIVER_MODULE(sio, acpi, sio_isa_driver, sio_devclass, NULL, NULL);
 #if NPCI > 0
-DRIVER_MODULE(sio, pci, sio_pci_driver, sio_devclass, 0, 0);
+DRIVER_MODULE(sio, pci, sio_pci_driver, sio_devclass, NULL, NULL);
 #endif
 #if NPUC > 0
-DRIVER_MODULE(sio, puc, sio_puc_driver, sio_devclass, 0, 0);
+DRIVER_MODULE(sio, puc, sio_puc_driver, sio_devclass, NULL, NULL);
 #endif

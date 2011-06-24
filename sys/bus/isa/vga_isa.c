@@ -81,7 +81,7 @@ static driver_t isavga_driver = {
 	sizeof(vga_softc_t),
 };
 
-DRIVER_MODULE(vga, isa, isavga_driver, isavga_devclass, 0, 0);
+DRIVER_MODULE(vga, isa, isavga_driver, isavga_devclass, NULL, NULL);
 
 #ifdef FB_INSTALL_CDEV
 

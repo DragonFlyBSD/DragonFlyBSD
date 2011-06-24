@@ -55,7 +55,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_rue.c,v 1.14 2004/06/09 14:34:03 naddy Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.13 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -186,8 +185,8 @@ static driver_t rue_driver = {
 
 static devclass_t rue_devclass;
 
-DRIVER_MODULE(rue, uhub, rue_driver, rue_devclass, usbd_driver_load, 0);
-DRIVER_MODULE(miibus, rue, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(rue, uhub, rue_driver, rue_devclass, usbd_driver_load, NULL);
+DRIVER_MODULE(miibus, rue, miibus_driver, miibus_devclass, NULL, NULL);
 MODULE_DEPEND(rue, usb, 1, 1, 1);
 MODULE_DEPEND(rue, miibus, 1, 1, 1);
 

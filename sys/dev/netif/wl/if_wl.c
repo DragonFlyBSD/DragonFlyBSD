@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.34 2008/08/17 04:32:35 sephe Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -354,7 +353,7 @@ static driver_t wl_driver = {
 
 devclass_t wl_devclass;
 DECLARE_DUMMY_MODULE(if_wl);
-DRIVER_MODULE(wl, isa, wl_driver, wl_devclass, 0, 0);
+DRIVER_MODULE(wl, isa, wl_driver, wl_devclass, NULL, NULL);
 MODULE_DEPEND(wl, isa, 1, 1, 1);
 
 static struct isa_pnp_id wl_ids[] = {

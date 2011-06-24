@@ -32,7 +32,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/rlphy.c,v 1.2.2.4 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/rlphy.c,v 1.12 2006/12/22 23:26:20 swildner Exp $
  */
 
 /*
@@ -85,7 +84,7 @@ static driver_t rlphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(rlphy, miibus, rlphy_driver, rlphy_devclass, 0, 0);
+DRIVER_MODULE(rlphy, miibus, rlphy_driver, rlphy_devclass, NULL, NULL);
 
 static int
 rlphy_probe(device_t dev)

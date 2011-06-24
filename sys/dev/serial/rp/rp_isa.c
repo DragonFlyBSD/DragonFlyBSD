@@ -490,4 +490,4 @@ static driver_t rp_driver = {
 /*
  * rp can be attached to an isa bus.
  */
-DRIVER_MODULE(rp, isa, rp_driver, rp_devclass, 0, 0);
+DRIVER_MODULE(rp, isa, rp_driver, rp_devclass, NULL, NULL);

@@ -110,5 +110,5 @@ static driver_t savage_driver = {
 };
 
 extern devclass_t drm_devclass;
-DRIVER_MODULE(savage, vgapci, savage_driver, drm_devclass, 0, 0);
+DRIVER_MODULE(savage, vgapci, savage_driver, drm_devclass, NULL, NULL);
 MODULE_DEPEND(savage, drm, 1, 1, 1);

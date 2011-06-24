@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_isa.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_isa.c,v 1.10 2006/12/22 23:44:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -75,7 +74,7 @@ static driver_t iavc_isa_driver =
 
 static devclass_t iavc_isa_devclass;
 
-DRIVER_MODULE(iavc, isa, iavc_isa_driver, iavc_isa_devclass, 0, 0);
+DRIVER_MODULE(iavc, isa, iavc_isa_driver, iavc_isa_devclass, NULL, NULL);
 
 #define B1_IOLENGTH	0x20
 

@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/orm.c,v 1.1.2.1 2001/06/19 05:48:29 imp Exp $
- *	$DragonFly: src/sys/dev/misc/orm/orm.c,v 1.6 2006/10/25 20:55:54 dillon Exp $
  */
 
 /*
@@ -194,4 +193,4 @@ static driver_t orm_driver = {
 
 static devclass_t orm_devclass;
 
-DRIVER_MODULE(orm, isa, orm_driver, orm_devclass, 0, 0);
+DRIVER_MODULE(orm, isa, orm_driver, orm_devclass, NULL, NULL);

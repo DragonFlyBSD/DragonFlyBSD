@@ -261,7 +261,7 @@ static driver_t acpi_ec_driver = {
 };
 
 static devclass_t acpi_ec_devclass;
-DRIVER_MODULE(acpi_ec, acpi, acpi_ec_driver, acpi_ec_devclass, 0, 0);
+DRIVER_MODULE(acpi_ec, acpi, acpi_ec_driver, acpi_ec_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_ec, acpi, 1, 1, 1);
 
 /*

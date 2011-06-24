@@ -1,5 +1,4 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.46 2008/10/28 07:30:49 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -355,8 +354,8 @@ static devclass_t	nfe_devclass;
 
 DECLARE_DUMMY_MODULE(if_nfe);
 MODULE_DEPEND(if_nfe, miibus, 1, 1, 1);
-DRIVER_MODULE(if_nfe, pci, nfe_driver, nfe_devclass, 0, 0);
-DRIVER_MODULE(miibus, nfe, miibus_driver, miibus_devclass, 0, 0);
+DRIVER_MODULE(if_nfe, pci, nfe_driver, nfe_devclass, NULL, NULL);
+DRIVER_MODULE(miibus, nfe, miibus_driver, miibus_devclass, NULL, NULL);
 
 /*
  * NOTE: NFE_WORDALIGN support is guesswork right now.

@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_pccard.c,v 1.2.2.6 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_pccard.c,v 1.14 2007/07/05 12:08:53 sephe Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -259,7 +258,7 @@ static driver_t stg_pccard_driver = {
 static devclass_t stg_devclass;
 
 MODULE_DEPEND(stg, scsi_low, 1, 1, 1);
-DRIVER_MODULE(stg, pccard, stg_pccard_driver, stg_devclass, 0, 0);
+DRIVER_MODULE(stg, pccard, stg_pccard_driver, stg_devclass, NULL, NULL);
 
 static	void
 stg_card_unload(DEVPORT_PDEVICE devi)

@@ -24,8 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iicsmb.c,v 1.18 2009/02/10 22:50:23 imp Exp $
- * $DragonFly: src/sys/bus/iicbus/iicsmb.c,v 1.5 2006/12/22 23:12:16 swildner Exp $
- *
  */
 
 /*
@@ -508,8 +506,8 @@ error:
 	return (error);
 }
 
-DRIVER_MODULE(iicsmb, iicbus, iicsmb_driver, iicsmb_devclass, 0, 0);
-DRIVER_MODULE(smbus, iicsmb, smbus_driver, smbus_devclass, 0, 0);
+DRIVER_MODULE(iicsmb, iicbus, iicsmb_driver, iicsmb_devclass, NULL, NULL);
+DRIVER_MODULE(smbus, iicsmb, smbus_driver, smbus_devclass, NULL, NULL);
 MODULE_DEPEND(iicsmb, iicbus, IICBUS_MINVER, IICBUS_PREFVER, IICBUS_MAXVER);
 MODULE_DEPEND(iicsmb, smbus, SMBUS_MINVER, SMBUS_PREFVER, SMBUS_MAXVER);
 MODULE_VERSION(iicsmb, 1);

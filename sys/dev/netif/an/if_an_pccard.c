@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.17 2008/08/17 04:32:32 sephe Exp $
  */
 
 /*
@@ -100,7 +99,7 @@ static driver_t an_pccard_driver = {
 
 static devclass_t an_pccard_devclass;
 
-DRIVER_MODULE(if_an, pccard, an_pccard_driver, an_pccard_devclass, 0, 0);
+DRIVER_MODULE(if_an, pccard, an_pccard_driver, an_pccard_devclass, NULL, NULL);
 
 static const struct pccard_product an_pccard_products[] = {
 	PCMCIA_CARD(AIRONET, PC4500, 0),

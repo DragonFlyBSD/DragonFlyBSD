@@ -584,5 +584,5 @@ static driver_t spic_driver = {
 	sizeof(struct spic_softc),
 };
 
-DRIVER_MODULE(spic, isa, spic_driver, spic_devclass, 0, 0);
+DRIVER_MODULE(spic, isa, spic_driver, spic_devclass, NULL, NULL);
 

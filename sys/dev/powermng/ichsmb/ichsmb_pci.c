@@ -123,7 +123,7 @@ static driver_t ichsmb_pci_driver = {
 
 static devclass_t ichsmb_pci_devclass;
 
-DRIVER_MODULE(ichsmb, pci, ichsmb_pci_driver, ichsmb_pci_devclass, 0, 0);
+DRIVER_MODULE(ichsmb, pci, ichsmb_pci_driver, ichsmb_pci_devclass, NULL, NULL);
 
 static int
 ichsmb_pci_probe(device_t dev)

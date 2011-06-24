@@ -22,8 +22,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/dev/usbmisc/uticom/uticom.c,v 1.3 2008/08/10 20:05:54 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -200,7 +198,7 @@ static driver_t uticom_driver = {
 	sizeof (struct uticom_softc)
 };
 
-DRIVER_MODULE(uticom, uhub, uticom_driver, ucom_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(uticom, uhub, uticom_driver, ucom_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(uticom, usb, 1, 1, 1);
 MODULE_DEPEND(uticom, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(uticom, 1);

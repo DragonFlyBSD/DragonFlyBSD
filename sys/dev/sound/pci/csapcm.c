@@ -28,7 +28,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/csapcm.c,v 1.34.2.2 2006/04/04 17:32:48 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/csapcm.c,v 1.7 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <sys/soundcard.h>
@@ -1033,7 +1032,7 @@ static driver_t pcmcsa_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_csapcm, csa, pcmcsa_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_csapcm, csa, pcmcsa_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_csapcm, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_DEPEND(snd_csapcm, snd_csa, 1, 1, 1);
 MODULE_VERSION(snd_csapcm, 1);

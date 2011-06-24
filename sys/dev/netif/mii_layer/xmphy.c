@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/xmphy.c,v 1.1.2.5 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/xmphy.c,v 1.11 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -84,7 +83,7 @@ static driver_t xmphy_driver = {
 	sizeof(struct mii_softc)
 };
 
-DRIVER_MODULE(xmphy, miibus, xmphy_driver, xmphy_devclass, 0, 0);
+DRIVER_MODULE(xmphy, miibus, xmphy_driver, xmphy_devclass, NULL, NULL);
 
 static int	xmphy_service(struct mii_softc *, struct mii_data *, int);
 static void	xmphy_status(struct mii_softc *);

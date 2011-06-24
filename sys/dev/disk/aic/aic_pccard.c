@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic_pccard.c,v 1.1 2000/01/14 23:42:36 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic_pccard.c,v 1.9 2008/01/05 07:27:09 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -188,4 +187,4 @@ static driver_t aic_pccard_driver = {
 extern devclass_t aic_devclass;
 
 MODULE_DEPEND(aic, cam, 1,1,1);
-DRIVER_MODULE(aic, pccard, aic_pccard_driver, aic_devclass, 0, 0);
+DRIVER_MODULE(aic, pccard, aic_pccard_driver, aic_devclass, NULL, NULL);

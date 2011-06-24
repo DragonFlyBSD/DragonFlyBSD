@@ -4574,7 +4574,7 @@ psmresume(device_t dev)
 	return (err);
 }
 
-DRIVER_MODULE(psm, atkbdc, psm_driver, psm_devclass, 0, 0);
+DRIVER_MODULE(psm, atkbdc, psm_driver, psm_devclass, NULL, NULL);
 
 
 #if 0
@@ -4710,6 +4710,6 @@ psmcpnp_attach(device_t dev)
 	return (0);
 }
 
-DRIVER_MODULE(psmcpnp, isa, psmcpnp_driver, psmcpnp_devclass, 0, 0);
-DRIVER_MODULE(psmcpnp, acpi, psmcpnp_driver, psmcpnp_devclass, 0, 0);
+DRIVER_MODULE(psmcpnp, isa, psmcpnp_driver, psmcpnp_devclass, NULL, NULL);
+DRIVER_MODULE(psmcpnp, acpi, psmcpnp_driver, psmcpnp_devclass, NULL, NULL);
 #endif

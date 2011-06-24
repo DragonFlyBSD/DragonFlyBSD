@@ -91,7 +91,7 @@ static driver_t aac_disk_driver = {
 	sizeof(struct aac_disk)
 };
 
-DRIVER_MODULE(aacd, aac, aac_disk_driver, aac_disk_devclass, 0, 0);
+DRIVER_MODULE(aacd, aac, aac_disk_driver, aac_disk_devclass, NULL, NULL);
 
 /*
  * Handle open from generic layer.

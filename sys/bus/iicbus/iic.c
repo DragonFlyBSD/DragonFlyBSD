@@ -24,9 +24,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iic.c,v 1.43 2009/01/26 13:53:39 raj Exp $
- * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.10 2006/09/10 01:26:32 dillon Exp $
- *
  */
+
 #include <sys/param.h>
 #include <sys/buf.h>
 #include <sys/bus.h>
@@ -388,6 +387,6 @@ iicioctl(struct dev_ioctl_args *ap)
 	return (error);
 }
 
-DRIVER_MODULE(iic, iicbus, iic_driver, iic_devclass, 0, 0);
+DRIVER_MODULE(iic, iicbus, iic_driver, iic_devclass, NULL, NULL);
 MODULE_DEPEND(iic, iicbus, IICBUS_MINVER, IICBUS_PREFVER, IICBUS_MAXVER);
 MODULE_VERSION(iic, 1);

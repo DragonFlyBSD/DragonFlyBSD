@@ -1572,4 +1572,4 @@ static driver_t sdhci_driver = {
 static devclass_t sdhci_devclass;
 
 
-DRIVER_MODULE(sdhci, pci, sdhci_driver, sdhci_devclass, 0, 0);
+DRIVER_MODULE(sdhci, pci, sdhci_driver, sdhci_devclass, NULL, NULL);
