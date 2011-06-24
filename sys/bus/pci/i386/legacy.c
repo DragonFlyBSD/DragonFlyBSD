@@ -42,11 +42,6 @@
 #include <sys/module.h>
 #include <sys/rman.h>
 
-#undef DEV_MCA
-#ifdef DEV_MCA
-#include <i386/bios/mca_machdep.h>
-#endif
-
 #include "legacyvar.h"
 
 static MALLOC_DEFINE(M_LEGACYDEV, "legacydrv", "legacy system device");
@@ -151,23 +146,9 @@ legacy_attach(device_t dev)
 	bus_generic_attach(dev);
 
 	/*
-	 * If we didn't see EISA or ISA on a pci bridge, create some
-	 * connection points now so they show up "on motherboard".
+	 * If we didn't see ISA on a pci bridge, create a
+	 * connection point now so it shows up "on motherboard".
 	 */
-	if (!devclass_get_device(devclass_find("eisa"), 0)) {
-		child = BUS_ADD_CHILD(dev, dev, 0, "eisa", 0);
-		if (child == NULL)
-			panic("legacy_attach eisa");
-		device_probe_and_attach(child);
-	}
-#ifdef DEV_MCA
-	if (MCA_system && !devclass_get_device(devclass_find("mca"), 0)) {
-		child = BUS_ADD_CHILD(dev, dev, 0, "mca", 0);
-		if (child == 0)
-			panic("legacy_probe mca");
-		device_probe_and_attach(child);
-	}
-#endif
 	if (!devclass_get_device(devclass_find("isa"), 0)) {
 		child = BUS_ADD_CHILD(dev, dev, 0, "isa", 0);
 		if (child == NULL)

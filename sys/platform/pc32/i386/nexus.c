@@ -233,15 +233,9 @@ nexus_attach(device_t dev)
 	bus_generic_attach(dev);
 
 	/*
-	 * And if we didn't see EISA or ISA on a pci bridge, create some
-	 * connection points now so they show up "on motherboard".
+	 * And if we didn't see ISA on a pci bridge, create a
+	 * connection point now so it shows up "on motherboard".
 	 */
-	if (!devclass_get_device(devclass_find("eisa"), 0)) {
-		child = BUS_ADD_CHILD(dev, dev, 0, "eisa", 0);
-		if (child == NULL)
-			panic("nexus_attach eisa");
-		device_probe_and_attach(child);
-	}
 	if (!devclass_get_device(devclass_find("isa"), 0)) {
 		child = BUS_ADD_CHILD(dev, dev, 0, "isa", 0);
 		if (child == NULL)
