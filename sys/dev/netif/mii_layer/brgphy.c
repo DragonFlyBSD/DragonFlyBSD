@@ -57,6 +57,7 @@
 
 #include "brgphyreg.h"
 #include <dev/netif/bge/if_bgereg.h>
+#include <dev/netif/bce/if_bcereg.h>
 
 #include "miibus_if.h"
 
@@ -86,6 +87,8 @@ static const struct mii_phydesc brgphys[] = {
 
 	MII_PHYDESC(xxBROADCOM,	BCM5706C),
 	MII_PHYDESC(xxBROADCOM,	BCM5708C),
+	MII_PHYDESC(xxBROADCOM2, BCM5709CAX),
+	MII_PHYDESC(xxBROADCOM2, BCM5709C),
 
 	MII_PHYDESC(BROADCOM2, BCM5906),
 
@@ -127,6 +130,7 @@ static void	brgphy_5704_a0_bug(struct mii_softc *);
 static void	brgphy_ber_bug(struct mii_softc *);
 static void	brgphy_crc_bug(struct mii_softc *);
 
+static void	brgphy_disable_early_dac(struct mii_softc *);
 static void	brgphy_jumbo_settings(struct mii_softc *, u_long);
 static void	brgphy_eth_wirespeed(struct mii_softc *);
 
@@ -258,8 +262,8 @@ setit:
 			}
 
 			PHY_WRITE(sc, BRGPHY_MII_1000CTL, 0);
-			PHY_WRITE(sc, BRGPHY_MII_BMCR, speed);
 			PHY_WRITE(sc, BRGPHY_MII_ANAR, BRGPHY_SEL_TYPE);
+			PHY_WRITE(sc, BRGPHY_MII_BMCR, speed);
 
 			if (IFM_SUBTYPE(ife->ifm_media) != IFM_1000_T)
 				break;
@@ -528,9 +532,19 @@ brgphy_reset(struct mii_softc *sc)
 		if (bge_sc->bge_asicrev == BGE_ASICREV_BCM5906)
 			PHY_WRITE(sc, BRGPHY_MII_EPHY_PTEST, 0x12);
 	} else if (strncmp(ifp->if_xname, "bce", 3) == 0) {
-		brgphy_ber_bug(sc);
-		brgphy_jumbo_settings(sc, ifp->if_mtu);
-		brgphy_eth_wirespeed(sc);
+		struct bce_softc *bce_sc = ifp->if_softc;
+
+		if (BCE_CHIP_NUM(bce_sc) == BCE_CHIP_NUM_5709) {
+			if (BCE_CHIP_REV(bce_sc) == BCE_CHIP_REV_Ax ||
+			    BCE_CHIP_REV(bce_sc) == BCE_CHIP_REV_Bx)
+				brgphy_disable_early_dac(sc);
+			brgphy_jumbo_settings(sc, ifp->if_mtu);
+			brgphy_eth_wirespeed(sc);
+		} else {
+			brgphy_ber_bug(sc);
+			brgphy_jumbo_settings(sc, ifp->if_mtu);
+			brgphy_eth_wirespeed(sc);
+		}
 	}
 }
 
@@ -738,4 +752,15 @@ brgphy_eth_wirespeed(struct mii_softc *sc)
 	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x7007);
 	val = PHY_READ(sc, BRGPHY_MII_AUXCTL);
 	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, (val | (1 << 15) | (1 << 4)));
+}
+
+static void
+brgphy_disable_early_dac(struct mii_softc *sc)
+{
+	uint32_t val;
+
+	PHY_WRITE(sc, BRGPHY_MII_DSP_ADDR_REG, 0x0f08);
+	val = PHY_READ(sc, BRGPHY_MII_DSP_RW_PORT);
+	val &= ~(1 << 8);
+	PHY_WRITE(sc, BRGPHY_MII_DSP_RW_PORT, val);
 }

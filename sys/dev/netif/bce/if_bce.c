@@ -33,13 +33,19 @@
 /*
  * The following controllers are supported by this driver:
  *   BCM5706C A2, A3
+ *   BCM5706S A2, A3
  *   BCM5708C B1, B2
+ *   BCM5708S B1, B2
+ *   BCM5709C A1, C0
+ *   BCM5716  C0
  *
  * The following controllers are not supported by this driver:
  *   BCM5706C A0, A1
- *   BCM5706S A0, A1, A2, A3
+ *   BCM5706S A0, A1
  *   BCM5708C A0, B0
- *   BCM5708S A0, B0, B1, B2
+ *   BCM5708S A0, B0
+ *   BCM5709C A0, B0, B1
+ *   BCM5709S A0, A1, B0, B1, B2, C0
  */
 
 #include "opt_bce.h"
@@ -155,6 +161,19 @@ static struct bce_type bce_devs[] = {
 	/* BCM5708S controllers and OEM boards. */
 	{ BRCM_VENDORID, BRCM_DEVICEID_BCM5708S,  PCI_ANY_ID,  PCI_ANY_ID,
 		"Broadcom NetXtreme II BCM5708S 1000Base-T" },
+
+	/* BCM5709C controllers and OEM boards. */
+	{ BRCM_VENDORID, BRCM_DEVICEID_BCM5709,  PCI_ANY_ID,  PCI_ANY_ID,
+		"Broadcom NetXtreme II BCM5709 1000Base-T" },
+
+	/* BCM5709S controllers and OEM boards. */
+	{ BRCM_VENDORID, BRCM_DEVICEID_BCM5709S,  PCI_ANY_ID,  PCI_ANY_ID,
+		"Broadcom NetXtreme II BCM5709 1000Base-SX" },
+
+	/* BCM5716 controllers and OEM boards. */
+	{ BRCM_VENDORID, BRCM_DEVICEID_BCM5716,   PCI_ANY_ID,  PCI_ANY_ID,
+		"Broadcom NetXtreme II BCM5716 1000Base-T" },
+
 	{ 0, 0, 0, 0, NULL }
 };
 
@@ -164,89 +183,108 @@ static struct bce_type bce_devs[] = {
 /****************************************************************************/
 static const struct flash_spec flash_table[] =
 {
+#define BUFFERED_FLAGS		(BCE_NV_BUFFERED | BCE_NV_TRANSLATE)
+#define NONBUFFERED_FLAGS	(BCE_NV_WREN)
+
 	/* Slow EEPROM */
 	{0x00000000, 0x40830380, 0x009f0081, 0xa184a053, 0xaf000400,
-	 1, SEEPROM_PAGE_BITS, SEEPROM_PAGE_SIZE,
+	 BUFFERED_FLAGS, SEEPROM_PAGE_BITS, SEEPROM_PAGE_SIZE,
 	 SEEPROM_BYTE_ADDR_MASK, SEEPROM_TOTAL_SIZE,
 	 "EEPROM - slow"},
 	/* Expansion entry 0001 */
 	{0x08000002, 0x4b808201, 0x00050081, 0x03840253, 0xaf020406,
-	 0, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
+	 NONBUFFERED_FLAGS, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
 	 SAIFUN_FLASH_BYTE_ADDR_MASK, 0,
 	 "Entry 0001"},
 	/* Saifun SA25F010 (non-buffered flash) */
 	/* strap, cfg1, & write1 need updates */
 	{0x04000001, 0x47808201, 0x00050081, 0x03840253, 0xaf020406,
-	 0, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
+	 NONBUFFERED_FLAGS, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
 	 SAIFUN_FLASH_BYTE_ADDR_MASK, SAIFUN_FLASH_BASE_TOTAL_SIZE*2,
 	 "Non-buffered flash (128kB)"},
 	/* Saifun SA25F020 (non-buffered flash) */
 	/* strap, cfg1, & write1 need updates */
 	{0x0c000003, 0x4f808201, 0x00050081, 0x03840253, 0xaf020406,
-	 0, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
+	 NONBUFFERED_FLAGS, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
 	 SAIFUN_FLASH_BYTE_ADDR_MASK, SAIFUN_FLASH_BASE_TOTAL_SIZE*4,
 	 "Non-buffered flash (256kB)"},
 	/* Expansion entry 0100 */
 	{0x11000000, 0x53808201, 0x00050081, 0x03840253, 0xaf020406,
-	 0, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
+	 NONBUFFERED_FLAGS, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
 	 SAIFUN_FLASH_BYTE_ADDR_MASK, 0,
 	 "Entry 0100"},
 	/* Entry 0101: ST M45PE10 (non-buffered flash, TetonII B0) */
 	{0x19000002, 0x5b808201, 0x000500db, 0x03840253, 0xaf020406,
-	 0, ST_MICRO_FLASH_PAGE_BITS, ST_MICRO_FLASH_PAGE_SIZE,
+	 NONBUFFERED_FLAGS, ST_MICRO_FLASH_PAGE_BITS, ST_MICRO_FLASH_PAGE_SIZE,
 	 ST_MICRO_FLASH_BYTE_ADDR_MASK, ST_MICRO_FLASH_BASE_TOTAL_SIZE*2,
 	 "Entry 0101: ST M45PE10 (128kB non-bufferred)"},
 	/* Entry 0110: ST M45PE20 (non-buffered flash)*/
 	{0x15000001, 0x57808201, 0x000500db, 0x03840253, 0xaf020406,
-	 0, ST_MICRO_FLASH_PAGE_BITS, ST_MICRO_FLASH_PAGE_SIZE,
+	 NONBUFFERED_FLAGS, ST_MICRO_FLASH_PAGE_BITS, ST_MICRO_FLASH_PAGE_SIZE,
 	 ST_MICRO_FLASH_BYTE_ADDR_MASK, ST_MICRO_FLASH_BASE_TOTAL_SIZE*4,
 	 "Entry 0110: ST M45PE20 (256kB non-bufferred)"},
 	/* Saifun SA25F005 (non-buffered flash) */
 	/* strap, cfg1, & write1 need updates */
 	{0x1d000003, 0x5f808201, 0x00050081, 0x03840253, 0xaf020406,
-	 0, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
+	 NONBUFFERED_FLAGS, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
 	 SAIFUN_FLASH_BYTE_ADDR_MASK, SAIFUN_FLASH_BASE_TOTAL_SIZE,
 	 "Non-buffered flash (64kB)"},
 	/* Fast EEPROM */
 	{0x22000000, 0x62808380, 0x009f0081, 0xa184a053, 0xaf000400,
-	 1, SEEPROM_PAGE_BITS, SEEPROM_PAGE_SIZE,
+	 BUFFERED_FLAGS, SEEPROM_PAGE_BITS, SEEPROM_PAGE_SIZE,
 	 SEEPROM_BYTE_ADDR_MASK, SEEPROM_TOTAL_SIZE,
 	 "EEPROM - fast"},
 	/* Expansion entry 1001 */
 	{0x2a000002, 0x6b808201, 0x00050081, 0x03840253, 0xaf020406,
-	 0, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
+	 NONBUFFERED_FLAGS, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
 	 SAIFUN_FLASH_BYTE_ADDR_MASK, 0,
 	 "Entry 1001"},
 	/* Expansion entry 1010 */
 	{0x26000001, 0x67808201, 0x00050081, 0x03840253, 0xaf020406,
-	 0, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
+	 NONBUFFERED_FLAGS, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
 	 SAIFUN_FLASH_BYTE_ADDR_MASK, 0,
 	 "Entry 1010"},
 	/* ATMEL AT45DB011B (buffered flash) */
 	{0x2e000003, 0x6e808273, 0x00570081, 0x68848353, 0xaf000400,
-	 1, BUFFERED_FLASH_PAGE_BITS, BUFFERED_FLASH_PAGE_SIZE,
+	 BUFFERED_FLAGS, BUFFERED_FLASH_PAGE_BITS, BUFFERED_FLASH_PAGE_SIZE,
 	 BUFFERED_FLASH_BYTE_ADDR_MASK, BUFFERED_FLASH_TOTAL_SIZE,
 	 "Buffered flash (128kB)"},
 	/* Expansion entry 1100 */
 	{0x33000000, 0x73808201, 0x00050081, 0x03840253, 0xaf020406,
-	 0, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
+	 NONBUFFERED_FLAGS, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
 	 SAIFUN_FLASH_BYTE_ADDR_MASK, 0,
 	 "Entry 1100"},
 	/* Expansion entry 1101 */
 	{0x3b000002, 0x7b808201, 0x00050081, 0x03840253, 0xaf020406,
-	 0, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
+	 NONBUFFERED_FLAGS, SAIFUN_FLASH_PAGE_BITS, SAIFUN_FLASH_PAGE_SIZE,
 	 SAIFUN_FLASH_BYTE_ADDR_MASK, 0,
 	 "Entry 1101"},
 	/* Ateml Expansion entry 1110 */
 	{0x37000001, 0x76808273, 0x00570081, 0x68848353, 0xaf000400,
-	 1, BUFFERED_FLASH_PAGE_BITS, BUFFERED_FLASH_PAGE_SIZE,
+	 BUFFERED_FLAGS, BUFFERED_FLASH_PAGE_BITS, BUFFERED_FLASH_PAGE_SIZE,
 	 BUFFERED_FLASH_BYTE_ADDR_MASK, 0,
 	 "Entry 1110 (Atmel)"},
 	/* ATMEL AT45DB021B (buffered flash) */
 	{0x3f000003, 0x7e808273, 0x00570081, 0x68848353, 0xaf000400,
-	 1, BUFFERED_FLASH_PAGE_BITS, BUFFERED_FLASH_PAGE_SIZE,
+	 BUFFERED_FLAGS, BUFFERED_FLASH_PAGE_BITS, BUFFERED_FLASH_PAGE_SIZE,
 	 BUFFERED_FLASH_BYTE_ADDR_MASK, BUFFERED_FLASH_TOTAL_SIZE*2,
 	 "Buffered flash (256kB)"},
+};
+
+/*
+ * The BCM5709 controllers transparently handle the
+ * differences between Atmel 264 byte pages and all
+ * flash devices which use 256 byte pages, so no
+ * logical-to-physical mapping is required in the
+ * driver.
+ */
+static struct flash_spec flash_5709 = {
+	.flags		= BCE_NV_BUFFERED,
+	.page_bits	= BCM5709_FLASH_PAGE_BITS,
+	.page_size	= BCM5709_FLASH_PAGE_SIZE,
+	.addr_mask	= BCM5709_FLASH_BYTE_ADDR_MASK,
+	.total_size	= BUFFERED_FLASH_TOTAL_SIZE * 2,
+	.name		= "5709/5716 buffered flash (256kB)",
 };
 
 
@@ -307,15 +345,6 @@ static int	bce_nvram_read_dword(struct bce_softc *, uint32_t, uint8_t *,
 static int	bce_init_nvram(struct bce_softc *);
 static int	bce_nvram_read(struct bce_softc *, uint32_t, uint8_t *, int);
 static int	bce_nvram_test(struct bce_softc *);
-#ifdef BCE_NVRAM_WRITE_SUPPORT
-static int	bce_enable_nvram_write(struct bce_softc *);
-static void	bce_disable_nvram_write(struct bce_softc *);
-static int	bce_nvram_erase_page(struct bce_softc *, uint32_t);
-static int	bce_nvram_write_dword(struct bce_softc *, uint32_t, uint8_t *,
-				      uint32_t);
-static int	bce_nvram_write(struct bce_softc *, uint32_t, uint8_t *,
-				int) __unused;
-#endif
 
 /****************************************************************************/
 /* BCE DMA Allocate/Free Routines                                           */
@@ -332,6 +361,11 @@ static void	bce_load_rv2p_fw(struct bce_softc *, uint32_t *,
 				 uint32_t, uint32_t);
 static void	bce_load_cpu_fw(struct bce_softc *, struct cpu_reg *,
 				struct fw_info *);
+static void	bce_init_rxp_cpu(struct bce_softc *);
+static void	bce_init_txp_cpu(struct bce_softc *);
+static void	bce_init_tpat_cpu(struct bce_softc *);
+static void	bce_init_cp_cpu(struct bce_softc *);
+static void	bce_init_com_cpu(struct bce_softc *);
 static void	bce_init_cpus(struct bce_softc *);
 
 static void	bce_stop(struct bce_softc *);
@@ -341,8 +375,13 @@ static int	bce_blockinit(struct bce_softc *);
 static int	bce_newbuf_std(struct bce_softc *, uint16_t *, uint16_t *,
 			       uint32_t *, int);
 static void	bce_setup_rxdesc_std(struct bce_softc *, uint16_t, uint32_t *);
+static void	bce_probe_pci_caps(struct bce_softc *);
+static void	bce_print_adapter_info(struct bce_softc *);
+static void	bce_get_media(struct bce_softc *);
 
+static void	bce_init_tx_context(struct bce_softc *);
 static int	bce_init_tx_chain(struct bce_softc *);
+static void	bce_init_rx_context(struct bce_softc *);
 static int	bce_init_rx_chain(struct bce_softc *);
 static void	bce_free_rx_chain(struct bce_softc *);
 static void	bce_free_tx_chain(struct bce_softc *);
@@ -363,7 +402,7 @@ static void	bce_phy_intr(struct bce_softc *);
 static void	bce_rx_intr(struct bce_softc *, int);
 static void	bce_tx_intr(struct bce_softc *);
 static void	bce_disable_intr(struct bce_softc *);
-static void	bce_enable_intr(struct bce_softc *);
+static void	bce_enable_intr(struct bce_softc *, int);
 
 #ifdef DEVICE_POLLING
 static void	bce_poll(struct ifnet *, enum poll_cmd, int);
@@ -373,6 +412,7 @@ static void	bce_set_rx_mode(struct bce_softc *);
 static void	bce_stats_update(struct bce_softc *);
 static void	bce_tick(void *);
 static void	bce_tick_serialized(struct bce_softc *);
+static void	bce_pulse(void *);
 static void	bce_add_sysctls(struct bce_softc *);
 
 static void	bce_coal_change(struct bce_softc *);
@@ -443,7 +483,7 @@ static driver_t bce_driver = {
 static devclass_t bce_devclass;
 
 
-DECLARE_DUMMY_MODULE(if_xl);
+DECLARE_DUMMY_MODULE(if_bce);
 MODULE_DEPEND(bce, miibus, 1, 1, 1);
 DRIVER_MODULE(if_bce, pci, bce_driver, bce_devclass, NULL, NULL);
 DRIVER_MODULE(miibus, bce, miibus_driver, miibus_devclass, NULL, NULL);
@@ -495,6 +535,85 @@ bce_probe(device_t dev)
 
 
 /****************************************************************************/
+/* PCI Capabilities Probe Function.                                         */
+/*                                                                          */
+/* Walks the PCI capabiites list for the device to find what features are   */
+/* supported.                                                               */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   None.                                                                  */
+/****************************************************************************/
+static void
+bce_print_adapter_info(struct bce_softc *sc)
+{
+	device_printf(sc->bce_dev, "ASIC (0x%08X); ", sc->bce_chipid);
+
+	kprintf("Rev (%c%d); ", ((BCE_CHIP_ID(sc) & 0xf000) >> 12) + 'A',
+		((BCE_CHIP_ID(sc) & 0x0ff0) >> 4));
+
+	/* Bus info. */
+	if (sc->bce_flags & BCE_PCIE_FLAG) {
+		kprintf("Bus (PCIe x%d, ", sc->link_width);
+		switch (sc->link_speed) {
+		case 1:
+			kprintf("2.5Gbps); ");
+			break;
+		case 2:
+			kprintf("5Gbps); ");
+			break;
+		default:
+			kprintf("Unknown link speed); ");
+			break;
+		}
+	} else {
+		kprintf("Bus (PCI%s, %s, %dMHz); ",
+		    ((sc->bce_flags & BCE_PCIX_FLAG) ? "-X" : ""),
+		    ((sc->bce_flags & BCE_PCI_32BIT_FLAG) ? "32-bit" : "64-bit"),
+		    sc->bus_speed_mhz);
+	}
+
+	/* Firmware version and device features. */
+	kprintf("F/W (0x%08X); Flags( ", sc->bce_fw_ver);
+
+	if (sc->bce_flags & BCE_MFW_ENABLE_FLAG)
+		kprintf("MFW ");
+	if (sc->bce_phy_flags & BCE_PHY_2_5G_CAPABLE_FLAG)
+		kprintf("2.5G ");
+	kprintf(")\n");
+}
+
+
+/****************************************************************************/
+/* PCI Capabilities Probe Function.                                         */
+/*                                                                          */
+/* Walks the PCI capabiites list for the device to find what features are   */
+/* supported.                                                               */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   None.                                                                  */
+/****************************************************************************/
+static void
+bce_probe_pci_caps(struct bce_softc *sc)
+{
+	device_t dev = sc->bce_dev;
+	uint8_t ptr;
+
+	if (pci_is_pcix(dev))
+		sc->bce_cap_flags |= BCE_PCIX_CAPABLE_FLAG;
+
+	ptr = pci_get_pciecap_ptr(dev);
+	if (ptr) {
+		uint16_t link_status = pci_read_config(dev, ptr + 0x12, 2);
+
+		sc->link_speed = link_status & 0xf;
+		sc->link_width = (link_status >> 4) & 0x3f;
+		sc->bce_cap_flags |= BCE_PCIE_CAPABLE_FLAG;
+		sc->bce_flags |= BCE_PCIE_FLAG;
+	}
+}
+
+
+/****************************************************************************/
 /* Device attach function.                                                  */
 /*                                                                          */
 /* Allocates device resources, performs secondary chip identification,      */
@@ -519,6 +638,8 @@ bce_attach(device_t dev)
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
 	pci_enable_busmaster(dev);
+
+	bce_probe_pci_caps(sc);
 
 	/* Allocate PCI memory resources. */
 	rid = PCIR_BAR(0);
@@ -567,21 +688,18 @@ bce_attach(device_t dev)
 	case BCE_CHIP_ID_5706_A1:
 	case BCE_CHIP_ID_5708_A0:
 	case BCE_CHIP_ID_5708_B0:
+	case BCE_CHIP_ID_5709_A0:
+	case BCE_CHIP_ID_5709_B0:
+	case BCE_CHIP_ID_5709_B1:
+#ifdef foo
+	/* 5709C B2 seems to work fine */
+	case BCE_CHIP_ID_5709_B2:
+#endif
 		device_printf(dev, "Unsupported chip id 0x%08x!\n",
 			      BCE_CHIP_ID(sc));
 		rc = ENODEV;
 		goto fail;
 	}
-
-	/* 
-	 * The embedded PCIe to PCI-X bridge (EPB) 
-	 * in the 5708 cannot address memory above 
-	 * 40 bits (E7_5708CB1_23043 & E6_5708SB1_23043). 
-	 */
-	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5708)
-		sc->max_bus_addr = BCE_BUS_SPACE_MAXADDR;
-	else
-		sc->max_bus_addr = BUS_SPACE_MAXADDR;
 
 	/*
 	 * Find the base address for shared memory access.
@@ -589,12 +707,24 @@ bce_attach(device_t dev)
 	 * while older versions use a fixed address.
 	 */
 	val = REG_RD_IND(sc, BCE_SHM_HDR_SIGNATURE);
-	if ((val & BCE_SHM_HDR_SIGNATURE_SIG_MASK) == BCE_SHM_HDR_SIGNATURE_SIG)
-		sc->bce_shmem_base = REG_RD_IND(sc, BCE_SHM_HDR_ADDR_0);
-	else
+	if ((val & BCE_SHM_HDR_SIGNATURE_SIG_MASK) ==
+	    BCE_SHM_HDR_SIGNATURE_SIG) {
+		/* Multi-port devices use different offsets in shared memory. */
+		sc->bce_shmem_base = REG_RD_IND(sc,
+		    BCE_SHM_HDR_ADDR_0 + (pci_get_function(sc->bce_dev) << 2));
+	} else {
 		sc->bce_shmem_base = HOST_VIEW_SHMEM_BASE;
-
+	}
 	DBPRINT(sc, BCE_INFO, "bce_shmem_base = 0x%08X\n", sc->bce_shmem_base);
+
+	/* Fetch the bootcode revision. */
+	sc->bce_fw_ver = REG_RD_IND(sc, sc->bce_shmem_base +
+		BCE_DEV_INFO_BC_REV);
+
+	/* Check if any management firmware is running. */
+	val = REG_RD_IND(sc, sc->bce_shmem_base + BCE_PORT_FEATURE);
+	if (val & (BCE_PORT_FEATURE_ASF_ENABLED | BCE_PORT_FEATURE_IMD_ENABLED))
+		sc->bce_flags |= BCE_MFW_ENABLE_FLAG;
 
 	/* Get PCI bus information (speed and type). */
 	val = REG_RD(sc, BCE_PCICFG_MISC_STATUS);
@@ -639,14 +769,6 @@ bce_attach(device_t dev)
 
 	if (val & BCE_PCICFG_MISC_STATUS_32BIT_DET)
 		sc->bce_flags |= BCE_PCI_32BIT_FLAG;
-
-	device_printf(dev, "ASIC ID 0x%08X; Revision (%c%d); PCI%s %s %dMHz\n",
-		      sc->bce_chipid,
-		      ((BCE_CHIP_ID(sc) & 0xf000) >> 12) + 'A',
-		      (BCE_CHIP_ID(sc) & 0x0ff0) >> 4,
-		      (sc->bce_flags & BCE_PCIX_FLAG) ? "-X" : "",
-		      (sc->bce_flags & BCE_PCI_32BIT_FLAG) ?
-		      "32-bit" : "64-bit", sc->bus_speed_mhz);
 
 	/* Reset the controller. */
 	rc = bce_reset(sc, BCE_DRV_MSG_CODE_RESET);
@@ -705,25 +827,8 @@ bce_attach(device_t dev)
 	/* Update statistics once every second. */
 	sc->bce_stats_ticks = 1000000 & 0xffff00;
 
-	/*
-	 * The copper based NetXtreme II controllers
-	 * use an integrated PHY at address 1 while
-	 * the SerDes controllers use a PHY at
-	 * address 2.
-	 */
-	sc->bce_phy_addr = 1;
-
-	if (BCE_CHIP_BOND_ID(sc) & BCE_CHIP_BOND_ID_SERDES_BIT) {
-		sc->bce_phy_flags |= BCE_PHY_SERDES_FLAG;
-		sc->bce_flags |= BCE_NO_WOL_FLAG;
-		if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5708) {
-			sc->bce_phy_addr = 2;
-			val = REG_RD_IND(sc, sc->bce_shmem_base +
-					 BCE_SHARED_HW_CFG_CONFIG);
-			if (val & BCE_SHARED_HW_CFG_PHY_2_5G)
-				sc->bce_phy_flags |= BCE_PHY_2_5G_CAPABLE_FLAG;
-		}
-	}
+	/* Find the media type for the adapter. */
+	bce_get_media(sc);
 
 	/* Allocate DMA memory resources. */
 	rc = bce_dma_alloc(sc);
@@ -768,7 +873,8 @@ bce_attach(device_t dev)
 	/* Attach to the Ethernet interface list. */
 	ether_ifattach(ifp, sc->eaddr, NULL);
 
-	callout_init(&sc->bce_stat_ch);
+	callout_init(&sc->bce_tick_callout);
+	callout_init(&sc->bce_pulse_callout);
 
 	/* Hookup IRQ last. */
 	rc = bus_setup_intr(dev, sc->bce_res_irq, INTR_MPSAFE, bce_intr, sc,
@@ -788,8 +894,18 @@ bce_attach(device_t dev)
 	/* Add the supported sysctls to the kernel. */
 	bce_add_sysctls(sc);
 
+	/*
+	 * The chip reset earlier notified the bootcode that
+	 * a driver is present.  We now need to start our pulse
+	 * routine so that the bootcode is reminded that we're
+	 * still running.
+	 */
+	bce_pulse(sc);
+
 	/* Get the firmware running so IPMI still works */
 	bce_mgmt_init(sc);
+
+	bce_print_adapter_info(sc);
 
 	return 0;
 fail:
@@ -813,11 +929,17 @@ bce_detach(device_t dev)
 
 	if (device_is_attached(dev)) {
 		struct ifnet *ifp = &sc->arpcom.ac_if;
+		uint32_t msg;
 
 		/* Stop and reset the controller. */
 		lwkt_serialize_enter(ifp->if_serializer);
+		callout_stop(&sc->bce_pulse_callout);
 		bce_stop(sc);
-		bce_reset(sc, BCE_DRV_MSG_CODE_RESET);
+		if (sc->bce_flags & BCE_NO_WOL_FLAG)
+			msg = BCE_DRV_MSG_CODE_UNLOAD_LNK_DN;
+		else
+			msg = BCE_DRV_MSG_CODE_UNLOAD;
+		bce_reset(sc, msg);
 		bus_teardown_intr(dev, sc->bce_res_irq, sc->bce_intrhand);
 		lwkt_serialize_exit(ifp->if_serializer);
 
@@ -867,10 +989,15 @@ bce_shutdown(device_t dev)
 {
 	struct bce_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	uint32_t msg;
 
 	lwkt_serialize_enter(ifp->if_serializer);
 	bce_stop(sc);
-	bce_reset(sc, BCE_DRV_MSG_CODE_RESET);
+	if (sc->bce_flags & BCE_NO_WOL_FLAG)
+		msg = BCE_DRV_MSG_CODE_UNLOAD_LNK_DN;
+	else
+		msg = BCE_DRV_MSG_CODE_UNLOAD;
+	bce_reset(sc, msg);
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
@@ -939,15 +1066,34 @@ bce_reg_wr_ind(struct bce_softc *sc, uint32_t offset, uint32_t val)
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_ctx_wr(struct bce_softc *sc, uint32_t cid_addr, uint32_t offset,
-	   uint32_t val)
+bce_ctx_wr(struct bce_softc *sc, uint32_t cid_addr, uint32_t ctx_offset,
+    uint32_t ctx_val)
 {
-	DBPRINT(sc, BCE_EXCESSIVE, "%s(); cid_addr = 0x%08X, offset = 0x%08X, "
-		"val = 0x%08X\n", __func__, cid_addr, offset, val);
+	uint32_t idx, offset = ctx_offset + cid_addr;
+	uint32_t val, retry_cnt = 5;
 
-	offset += cid_addr;
-	REG_WR(sc, BCE_CTX_DATA_ADR, offset);
-	REG_WR(sc, BCE_CTX_DATA, val);
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		REG_WR(sc, BCE_CTX_CTX_DATA, ctx_val);
+		REG_WR(sc, BCE_CTX_CTX_CTRL, (offset | BCE_CTX_CTX_CTRL_WRITE_REQ));
+
+		for (idx = 0; idx < retry_cnt; idx++) {
+			val = REG_RD(sc, BCE_CTX_CTX_CTRL);
+			if ((val & BCE_CTX_CTX_CTRL_WRITE_REQ) == 0)
+				break;
+			DELAY(5);
+		}
+
+		if (val & BCE_CTX_CTX_CTRL_WRITE_REQ) {
+			device_printf(sc->bce_dev,
+			    "Unable to write CTX memory: "
+			    "cid_addr = 0x%08X, offset = 0x%08X!\n",
+			    cid_addr, ctx_offset);
+		}
+	} else {
+		REG_WR(sc, BCE_CTX_DATA_ADR, offset);
+		REG_WR(sc, BCE_CTX_DATA, ctx_val);
+	}
 }
 
 
@@ -1273,71 +1419,6 @@ bce_release_nvram_lock(struct bce_softc *sc)
 }
 
 
-#ifdef BCE_NVRAM_WRITE_SUPPORT
-/****************************************************************************/
-/* Enable NVRAM write access.                                               */
-/*                                                                          */
-/* Before writing to NVRAM the caller must enable NVRAM writes.             */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   0 on success, positive value on failure.                               */
-/****************************************************************************/
-static int
-bce_enable_nvram_write(struct bce_softc *sc)
-{
-	uint32_t val;
-
-	DBPRINT(sc, BCE_VERBOSE, "Enabling NVRAM write.\n");
-
-	val = REG_RD(sc, BCE_MISC_CFG);
-	REG_WR(sc, BCE_MISC_CFG, val | BCE_MISC_CFG_NVM_WR_EN_PCI);
-
-	if (!sc->bce_flash_info->buffered) {
-		int j;
-
-		REG_WR(sc, BCE_NVM_COMMAND, BCE_NVM_COMMAND_DONE);
-		REG_WR(sc, BCE_NVM_COMMAND,
-		       BCE_NVM_COMMAND_WREN | BCE_NVM_COMMAND_DOIT);
-
-		for (j = 0; j < NVRAM_TIMEOUT_COUNT; j++) {
-			DELAY(5);
-
-			val = REG_RD(sc, BCE_NVM_COMMAND);
-			if (val & BCE_NVM_COMMAND_DONE)
-				break;
-		}
-
-		if (j >= NVRAM_TIMEOUT_COUNT) {
-			DBPRINT(sc, BCE_WARN, "Timeout writing NVRAM!\n");
-			return EBUSY;
-		}
-	}
-	return 0;
-}
-
-
-/****************************************************************************/
-/* Disable NVRAM write access.                                              */
-/*                                                                          */
-/* When the caller is finished writing to NVRAM write access must be        */
-/* disabled.                                                                */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   Nothing.                                                               */
-/****************************************************************************/
-static void
-bce_disable_nvram_write(struct bce_softc *sc)
-{
-	uint32_t val;
-
-	DBPRINT(sc, BCE_VERBOSE, "Disabling NVRAM write.\n");
-
-	val = REG_RD(sc, BCE_MISC_CFG);
-	REG_WR(sc, BCE_MISC_CFG, val & ~BCE_MISC_CFG_NVM_WR_EN);
-}
-#endif	/* BCE_NVRAM_WRITE_SUPPORT */
-
-
 /****************************************************************************/
 /* Enable NVRAM access.                                                     */
 /*                                                                          */
@@ -1384,60 +1465,6 @@ bce_disable_nvram_access(struct bce_softc *sc)
 }
 
 
-#ifdef BCE_NVRAM_WRITE_SUPPORT
-/****************************************************************************/
-/* Erase NVRAM page before writing.                                         */
-/*                                                                          */
-/* Non-buffered flash parts require that a page be erased before it is      */
-/* written.                                                                 */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   0 on success, positive value on failure.                               */
-/****************************************************************************/
-static int
-bce_nvram_erase_page(struct bce_softc *sc, uint32_t offset)
-{
-	uint32_t cmd;
-	int j;
-
-	/* Buffered flash doesn't require an erase. */
-	if (sc->bce_flash_info->buffered)
-		return 0;
-
-	DBPRINT(sc, BCE_VERBOSE, "Erasing NVRAM page.\n");
-
-	/* Build an erase command. */
-	cmd = BCE_NVM_COMMAND_ERASE | BCE_NVM_COMMAND_WR |
-	      BCE_NVM_COMMAND_DOIT;
-
-	/*
-	 * Clear the DONE bit separately, set the NVRAM adress to erase,
-	 * and issue the erase command.
-	 */
-	REG_WR(sc, BCE_NVM_COMMAND, BCE_NVM_COMMAND_DONE);
-	REG_WR(sc, BCE_NVM_ADDR, offset & BCE_NVM_ADDR_NVM_ADDR_VALUE);
-	REG_WR(sc, BCE_NVM_COMMAND, cmd);
-
-	/* Wait for completion. */
-	for (j = 0; j < NVRAM_TIMEOUT_COUNT; j++) {
-		uint32_t val;
-
-		DELAY(5);
-
-		val = REG_RD(sc, BCE_NVM_COMMAND);
-		if (val & BCE_NVM_COMMAND_DONE)
-			break;
-	}
-
-	if (j >= NVRAM_TIMEOUT_COUNT) {
-		DBPRINT(sc, BCE_WARN, "Timeout erasing NVRAM.\n");
-		return EBUSY;
-	}
-	return 0;
-}
-#endif /* BCE_NVRAM_WRITE_SUPPORT */
-
-
 /****************************************************************************/
 /* Read a dword (32 bits) from NVRAM.                                       */
 /*                                                                          */
@@ -1458,7 +1485,7 @@ bce_nvram_read_dword(struct bce_softc *sc, uint32_t offset, uint8_t *ret_val,
 	cmd = BCE_NVM_COMMAND_DOIT | cmd_flags;
 
 	/* Calculate the offset for buffered flash. */
-	if (sc->bce_flash_info->buffered) {
+	if (sc->bce_flash_info->flags & BCE_NV_TRANSLATE) {
 		offset = ((offset / sc->bce_flash_info->page_size) <<
 			  sc->bce_flash_info->page_bits) +
 			 (offset % sc->bce_flash_info->page_size);
@@ -1499,63 +1526,6 @@ bce_nvram_read_dword(struct bce_softc *sc, uint32_t offset, uint8_t *ret_val,
 }
 
 
-#ifdef BCE_NVRAM_WRITE_SUPPORT
-/****************************************************************************/
-/* Write a dword (32 bits) to NVRAM.                                        */
-/*                                                                          */
-/* Write a 32 bit word to NVRAM.  The caller is assumed to have already     */
-/* obtained the NVRAM lock, enabled the controller for NVRAM access, and    */
-/* enabled NVRAM write access.                                              */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   0 on success, positive value on failure.                               */
-/****************************************************************************/
-static int
-bce_nvram_write_dword(struct bce_softc *sc, uint32_t offset, uint8_t *val,
-		      uint32_t cmd_flags)
-{
-	uint32_t cmd, val32;
-	int j;
-
-	/* Build the command word. */
-	cmd = BCE_NVM_COMMAND_DOIT | BCE_NVM_COMMAND_WR | cmd_flags;
-
-	/* Calculate the offset for buffered flash. */
-	if (sc->bce_flash_info->buffered) {
-		offset = ((offset / sc->bce_flash_info->page_size) <<
-			  sc->bce_flash_info->page_bits) +
-			 (offset % sc->bce_flash_info->page_size);
-	}
-
-	/*
-	 * Clear the DONE bit separately, convert NVRAM data to big-endian,
-	 * set the NVRAM address to write, and issue the write command
-	 */
-	REG_WR(sc, BCE_NVM_COMMAND, BCE_NVM_COMMAND_DONE);
-	memcpy(&val32, val, 4);
-	val32 = htobe32(val32);
-	REG_WR(sc, BCE_NVM_WRITE, val32);
-	REG_WR(sc, BCE_NVM_ADDR, offset & BCE_NVM_ADDR_NVM_ADDR_VALUE);
-	REG_WR(sc, BCE_NVM_COMMAND, cmd);
-
-	/* Wait for completion. */
-	for (j = 0; j < NVRAM_TIMEOUT_COUNT; j++) {
-		DELAY(5);
-
-		if (REG_RD(sc, BCE_NVM_COMMAND) & BCE_NVM_COMMAND_DONE)
-			break;
-	}
-	if (j >= NVRAM_TIMEOUT_COUNT) {
-		if_printf(&sc->arpcom.ac_if,
-			  "Timeout error writing NVRAM at offset 0x%08X\n",
-			  offset);
-		return EBUSY;
-	}
-	return 0;
-}
-#endif /* BCE_NVRAM_WRITE_SUPPORT */
-
-
 /****************************************************************************/
 /* Initialize NVRAM access.                                                 */
 /*                                                                          */
@@ -1573,6 +1543,12 @@ bce_init_nvram(struct bce_softc *sc)
 	const struct flash_spec *flash;
 
 	DBPRINT(sc, BCE_VERBOSE_RESET, "Entering %s()\n", __func__);
+
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		sc->bce_flash_info = &flash_5709;
+		goto bce_init_nvram_get_flash_size;
+	}
 
 	/* Determine the selected interface. */
 	val = REG_RD(sc, BCE_NVM_CFG1);
@@ -1645,6 +1621,7 @@ bce_init_nvram(struct bce_softc *sc)
 		rc = ENODEV;
 	}
 
+bce_init_nvram_get_flash_size:
 	/* Write the flash config data to the shared memory interface. */
 	val = REG_RD_IND(sc, sc->bce_shmem_base + BCE_SHARED_HW_CFG_CONFIG2) &
 	      BCE_SHARED_HW_CFG2_NVM_SIZE_MASK;
@@ -1764,7 +1741,7 @@ bce_nvram_read(struct bce_softc *sc, uint32_t offset, uint8_t *ret_buf,
 		}
 
 		if (rc)
-			return rc;
+			goto bce_nvram_read_locked_exit;
 
 		cmd_flags = BCE_NVM_COMMAND_LAST;
 		rc = bce_nvram_read_dword(sc, offset32, buf, cmd_flags);
@@ -1772,195 +1749,13 @@ bce_nvram_read(struct bce_softc *sc, uint32_t offset, uint8_t *ret_buf,
 		memcpy(ret_buf, buf, 4 - extra);
 	}
 
+bce_nvram_read_locked_exit:
 	/* Disable access to flash interface and release the lock. */
 	bce_disable_nvram_access(sc);
 	bce_release_nvram_lock(sc);
 
 	return rc;
 }
-
-
-#ifdef BCE_NVRAM_WRITE_SUPPORT
-/****************************************************************************/
-/* Write an arbitrary range of data from NVRAM.                             */
-/*                                                                          */
-/* Prepares the NVRAM interface for write access and writes the requested   */
-/* data from the supplied buffer.  The caller is responsible for            */
-/* calculating any appropriate CRCs.                                        */
-/*                                                                          */
-/* Returns:                                                                 */
-/*   0 on success, positive value on failure.                               */
-/****************************************************************************/
-static int
-bce_nvram_write(struct bce_softc *sc, uint32_t offset, uint8_t *data_buf,
-		int buf_size)
-{
-	uint32_t written, offset32, len32;
-	uint8_t *buf, start[4], end[4];
-	int rc = 0;
-	int align_start, align_end;
-
-	buf = data_buf;
-	offset32 = offset;
-	len32 = buf_size;
-	align_end = 0;
-	align_start = (offset32 & 3);
-
-	if (align_start) {
-		offset32 &= ~3;
-		len32 += align_start;
-		rc = bce_nvram_read(sc, offset32, start, 4);
-		if (rc)
-			return rc;
-	}
-
-	if (len32 & 3) {
-	       	if (len32 > 4 || !align_start) {
-			align_end = 4 - (len32 & 3);
-			len32 += align_end;
-			rc = bce_nvram_read(sc, offset32 + len32 - 4, end, 4);
-			if (rc)
-				return rc;
-		}
-	}
-
-	if (align_start || align_end) {
-		buf = kmalloc(len32, M_DEVBUF, M_NOWAIT);
-		if (buf == NULL)
-			return ENOMEM;
-		if (align_start)
-			memcpy(buf, start, 4);
-		if (align_end)
-			memcpy(buf + len32 - 4, end, 4);
-		memcpy(buf + align_start, data_buf, buf_size);
-	}
-
-	written = 0;
-	while (written < len32 && rc == 0) {
-		uint32_t page_start, page_end, data_start, data_end;
-		uint32_t addr, cmd_flags;
-		int i;
-		uint8_t flash_buffer[264];
-
-		/* Find the page_start addr */
-		page_start = offset32 + written;
-		page_start -= (page_start % sc->bce_flash_info->page_size);
-		/* Find the page_end addr */
-		page_end = page_start + sc->bce_flash_info->page_size;
-		/* Find the data_start addr */
-		data_start = (written == 0) ? offset32 : page_start;
-		/* Find the data_end addr */
-		data_end = (page_end > offset32 + len32) ? (offset32 + len32)
-							 : page_end;
-
-		/* Request access to the flash interface. */
-		rc = bce_acquire_nvram_lock(sc);
-		if (rc != 0)
-			goto nvram_write_end;
-
-		/* Enable access to flash interface */
-		bce_enable_nvram_access(sc);
-
-		cmd_flags = BCE_NVM_COMMAND_FIRST;
-		if (sc->bce_flash_info->buffered == 0) {
-			int j;
-
-			/*
-			 * Read the whole page into the buffer
-			 * (non-buffer flash only)
-			 */
-			for (j = 0; j < sc->bce_flash_info->page_size; j += 4) {
-				if (j == (sc->bce_flash_info->page_size - 4))
-					cmd_flags |= BCE_NVM_COMMAND_LAST;
-
-				rc = bce_nvram_read_dword(sc, page_start + j,
-							  &flash_buffer[j],
-							  cmd_flags);
-				if (rc)
-					goto nvram_write_end;
-
-				cmd_flags = 0;
-			}
-		}
-
-		/* Enable writes to flash interface (unlock write-protect) */
-		rc = bce_enable_nvram_write(sc);
-		if (rc != 0)
-			goto nvram_write_end;
-
-		/* Erase the page */
-		rc = bce_nvram_erase_page(sc, page_start);
-		if (rc != 0)
-			goto nvram_write_end;
-
-		/* Re-enable the write again for the actual write */
-		bce_enable_nvram_write(sc);
-
-		/* Loop to write back the buffer data from page_start to
-		 * data_start */
-		i = 0;
-		if (sc->bce_flash_info->buffered == 0) {
-			for (addr = page_start; addr < data_start;
-			     addr += 4, i += 4) {
-				rc = bce_nvram_write_dword(sc, addr,
-							   &flash_buffer[i],
-							   cmd_flags);
-				if (rc != 0)
-					goto nvram_write_end;
-
-				cmd_flags = 0;
-			}
-		}
-
-		/* Loop to write the new data from data_start to data_end */
-		for (addr = data_start; addr < data_end; addr += 4, i++) {
-			if (addr == page_end - 4 ||
-			    (sc->bce_flash_info->buffered &&
-			     addr == data_end - 4))
-				cmd_flags |= BCE_NVM_COMMAND_LAST;
-
-			rc = bce_nvram_write_dword(sc, addr, buf, cmd_flags);
-			if (rc != 0)
-				goto nvram_write_end;
-
-			cmd_flags = 0;
-			buf += 4;
-		}
-
-		/* Loop to write back the buffer data from data_end
-		 * to page_end */
-		if (sc->bce_flash_info->buffered == 0) {
-			for (addr = data_end; addr < page_end;
-			     addr += 4, i += 4) {
-				if (addr == page_end-4)
-					cmd_flags = BCE_NVM_COMMAND_LAST;
-
-				rc = bce_nvram_write_dword(sc, addr,
-					&flash_buffer[i], cmd_flags);
-				if (rc != 0)
-					goto nvram_write_end;
-
-				cmd_flags = 0;
-			}
-		}
-
-		/* Disable writes to flash interface (lock write-protect) */
-		bce_disable_nvram_write(sc);
-
-		/* Disable access to flash interface */
-		bce_disable_nvram_access(sc);
-		bce_release_nvram_lock(sc);
-
-		/* Increment written */
-		written += data_end - data_start;
-	}
-
-nvram_write_end:
-	if (align_start || align_end)
-		kfree(buf, M_DEVBUF);
-	return rc;
-}
-#endif /* BCE_NVRAM_WRITE_SUPPORT */
 
 
 /****************************************************************************/
@@ -2026,6 +1821,81 @@ bce_nvram_test(struct bce_softc *sc)
 
 
 /****************************************************************************/
+/* Identifies the current media type of the controller and sets the PHY     */
+/* address.                                                                 */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing.                                                               */
+/****************************************************************************/
+static void
+bce_get_media(struct bce_softc *sc)
+{
+	uint32_t val;
+
+	sc->bce_phy_addr = 1;
+
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+ 		uint32_t val = REG_RD(sc, BCE_MISC_DUAL_MEDIA_CTRL);
+		uint32_t bond_id = val & BCE_MISC_DUAL_MEDIA_CTRL_BOND_ID;
+		uint32_t strap;
+
+		/*
+		 * The BCM5709S is software configurable
+		 * for Copper or SerDes operation.
+		 */
+		if (bond_id == BCE_MISC_DUAL_MEDIA_CTRL_BOND_ID_C) {
+			return;
+		} else if (bond_id == BCE_MISC_DUAL_MEDIA_CTRL_BOND_ID_S) {
+			sc->bce_phy_flags |= BCE_PHY_SERDES_FLAG;
+			return;
+		}
+
+		if (val & BCE_MISC_DUAL_MEDIA_CTRL_STRAP_OVERRIDE) {
+			strap = (val & BCE_MISC_DUAL_MEDIA_CTRL_PHY_CTRL) >> 21;
+		} else {
+			strap =
+			(val & BCE_MISC_DUAL_MEDIA_CTRL_PHY_CTRL_STRAP) >> 8;
+		}
+
+		if (pci_get_function(sc->bce_dev) == 0) {
+			switch (strap) {
+			case 0x4:
+			case 0x5:
+			case 0x6:
+				sc->bce_phy_flags |= BCE_PHY_SERDES_FLAG;
+				break;
+			}
+		} else {
+			switch (strap) {
+			case 0x1:
+			case 0x2:
+			case 0x4:
+				sc->bce_phy_flags |= BCE_PHY_SERDES_FLAG;
+				break;
+			}
+		}
+	} else if (BCE_CHIP_BOND_ID(sc) & BCE_CHIP_BOND_ID_SERDES_BIT) {
+		sc->bce_phy_flags |= BCE_PHY_SERDES_FLAG;
+	}
+
+	if (sc->bce_phy_flags & BCE_PHY_SERDES_FLAG) {
+		sc->bce_flags |= BCE_NO_WOL_FLAG;
+		if (BCE_CHIP_NUM(sc) != BCE_CHIP_NUM_5706) {
+			sc->bce_phy_addr = 2;
+			val = REG_RD_IND(sc, sc->bce_shmem_base +
+			    BCE_SHARED_HW_CFG_CONFIG);
+			if (val & BCE_SHARED_HW_CFG_PHY_2_5G)
+				sc->bce_phy_flags |= BCE_PHY_2_5G_CAPABLE_FLAG;
+		}
+	} else if ((BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5706) ||
+	    (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5708)) {
+		sc->bce_phy_flags |= BCE_PHY_CRC_FIX_FLAG;
+	}
+}
+
+
+/****************************************************************************/
 /* Free any DMA memory owned by the driver.                                 */
 /*                                                                          */
 /* Scans through each data structre that requires DMA memory and frees      */
@@ -2058,6 +1928,18 @@ bce_dma_free(struct bce_softc *sc)
 					sc->stats_map);
 		}
 		bus_dma_tag_destroy(sc->stats_tag);
+	}
+
+	/* Destroy the CTX DMA stuffs. */
+	if (sc->ctx_tag != NULL) {
+		for (i = 0; i < sc->ctx_pages; i++) {
+			if (sc->ctx_block[i] != NULL) {
+				bus_dmamap_unload(sc->ctx_tag, sc->ctx_map[i]);
+				bus_dmamem_free(sc->ctx_tag, sc->ctx_block[i],
+						sc->ctx_map[i]);
+			}
+		}
+		bus_dma_tag_destroy(sc->ctx_tag);
 	}
 
 	/* Destroy the TX buffer descriptor DMA stuffs. */
@@ -2159,16 +2041,17 @@ bce_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 /* hardware.                                                                */
 /*                                                                          */
 /* Memory alignment requirements:                                           */
-/* -----------------+----------+----------+                                 */
-/* Data Structure   |   5706   |   5708   |                                 */
-/* -----------------+----------+----------+                                 */
-/* Status Block     | 8 bytes  | 8 bytes  |                                 */
-/* Statistics Block | 8 bytes  | 8 bytes  |                                 */
-/* RX Buffers       | 16 bytes | 16 bytes |                                 */
-/* PG Buffers       |   none   |   none   |                                 */
-/* TX Buffers       |   none   |   none   |                                 */
-/* Chain Pages(1)   |   4KiB   |   4KiB   |                                 */
-/* -----------------+----------+----------+                                 */
+/* -----------------+----------+----------+----------+----------+           */
+/*  Data Structure  |   5706   |   5708   |   5709   |   5716   |           */
+/* -----------------+----------+----------+----------+----------+           */
+/* Status Block     | 8 bytes  | 8 bytes  | 16 bytes | 16 bytes |           */
+/* Statistics Block | 8 bytes  | 8 bytes  | 16 bytes | 16 bytes |           */
+/* RX Buffers       | 16 bytes | 16 bytes | 16 bytes | 16 bytes |           */
+/* PG Buffers       |   none   |   none   |   none   |   none   |           */
+/* TX Buffers       |   none   |   none   |   none   |   none   |           */
+/* Chain Pages(1)   |   4KiB   |   4KiB   |   4KiB   |   4KiB   |           */
+/* Context Pages(1) |   N/A    |   N/A    |   4KiB   |   4KiB   |           */
+/* -----------------+----------+----------+----------+----------+           */
 /*                                                                          */
 /* (1) Must align with CPU page size (BCM_PAGE_SZIE).                       */
 /*                                                                          */
@@ -2180,13 +2063,44 @@ bce_dma_alloc(struct bce_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i, j, rc = 0;
-	bus_addr_t busaddr;
+	bus_addr_t busaddr, max_busaddr;
+	bus_size_t status_align, stats_align;
+
+	/* 
+	 * The embedded PCIe to PCI-X bridge (EPB) 
+	 * in the 5708 cannot address memory above 
+	 * 40 bits (E7_5708CB1_23043 & E6_5708SB1_23043). 
+	 */
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5708)
+		max_busaddr = BCE_BUS_SPACE_MAXADDR;
+	else
+		max_busaddr = BUS_SPACE_MAXADDR;
+
+	/*
+	 * BCM5709 and BCM5716 uses host memory as cache for context memory.
+	 */
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		sc->ctx_pages = BCE_CTX_BLK_SZ / BCM_PAGE_SIZE;
+		if (sc->ctx_pages == 0)
+			sc->ctx_pages = 1;
+		if (sc->ctx_pages > BCE_CTX_PAGES) {
+			device_printf(sc->bce_dev, "excessive ctx pages %d\n",
+			    sc->ctx_pages);
+			return ENOMEM;
+		}
+		status_align = 16;
+		stats_align = 16;
+	} else {
+		status_align = 8;
+		stats_align = 8;
+	}
 
 	/*
 	 * Allocate the parent bus DMA tag appropriate for PCI.
 	 */
 	rc = bus_dma_tag_create(NULL, 1, BCE_DMA_BOUNDARY,
-				sc->max_bus_addr, BUS_SPACE_MAXADDR,
+				max_busaddr, BUS_SPACE_MAXADDR,
 				NULL, NULL,
 				BUS_SPACE_MAXSIZE_32BIT, 0,
 				BUS_SPACE_MAXSIZE_32BIT,
@@ -2200,7 +2114,7 @@ bce_dma_alloc(struct bce_softc *sc)
 	 * Allocate status block.
 	 */
 	sc->status_block = bus_dmamem_coherent_any(sc->parent_tag,
-				BCE_DMA_ALIGN, BCE_STATUS_BLK_SZ,
+				status_align, BCE_STATUS_BLK_SZ,
 				BUS_DMA_WAITOK | BUS_DMA_ZERO,
 				&sc->status_tag, &sc->status_map,
 				&sc->status_block_paddr);
@@ -2213,13 +2127,60 @@ bce_dma_alloc(struct bce_softc *sc)
 	 * Allocate statistics block.
 	 */
 	sc->stats_block = bus_dmamem_coherent_any(sc->parent_tag,
-				BCE_DMA_ALIGN, BCE_STATS_BLK_SZ,
+				stats_align, BCE_STATS_BLK_SZ,
 				BUS_DMA_WAITOK | BUS_DMA_ZERO,
 				&sc->stats_tag, &sc->stats_map,
 				&sc->stats_block_paddr);
 	if (sc->stats_block == NULL) {
 		if_printf(ifp, "Could not allocate statistics block!\n");
 		return ENOMEM;
+	}
+
+	/*
+	 * Allocate context block, if needed
+	 */
+	if (sc->ctx_pages != 0) {
+		rc = bus_dma_tag_create(sc->parent_tag, BCM_PAGE_SIZE, 0,
+					BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+					NULL, NULL,
+					BCM_PAGE_SIZE, 1, BCM_PAGE_SIZE,
+					0, &sc->ctx_tag);
+		if (rc != 0) {
+			if_printf(ifp, "Could not allocate "
+				  "context block DMA tag!\n");
+			return rc;
+		}
+
+		for (i = 0; i < sc->ctx_pages; i++) {
+			rc = bus_dmamem_alloc(sc->ctx_tag,
+					      (void **)&sc->ctx_block[i],
+					      BUS_DMA_WAITOK | BUS_DMA_ZERO |
+					      BUS_DMA_COHERENT,
+					      &sc->ctx_map[i]);
+			if (rc != 0) {
+				if_printf(ifp, "Could not allocate %dth context "
+					  "DMA memory!\n", i);
+				return rc;
+			}
+
+			rc = bus_dmamap_load(sc->ctx_tag, sc->ctx_map[i],
+					     sc->ctx_block[i], BCM_PAGE_SIZE,
+					     bce_dma_map_addr, &busaddr,
+					     BUS_DMA_WAITOK);
+			if (rc != 0) {
+				if (rc == EINPROGRESS) {
+					panic("%s coherent memory loading "
+					      "is still in progress!", ifp->if_xname);
+				}
+				if_printf(ifp, "Could not map %dth context "
+					  "DMA memory!\n", i);
+				bus_dmamem_free(sc->ctx_tag, sc->ctx_block[i],
+						sc->ctx_map[i]);
+				sc->ctx_block[i] = NULL;
+				return rc;
+			}
+			sc->ctx_paddr[i] = busaddr;
+		}
 	}
 
 	/*
@@ -2569,24 +2530,17 @@ bce_load_cpu_fw(struct bce_softc *sc, struct cpu_reg *cpu_reg,
 
 
 /****************************************************************************/
-/* Initialize the RV2P, RX, TX, TPAT, and COM CPUs.                         */
-/*                                                                          */
-/* Loads the firmware for each CPU and starts the CPU.                      */
+/* Initialize the RX CPU.                                                   */
 /*                                                                          */
 /* Returns:                                                                 */
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_init_cpus(struct bce_softc *sc)
+bce_init_rxp_cpu(struct bce_softc *sc)
 {
 	struct cpu_reg cpu_reg;
 	struct fw_info fw;
 
-	/* Initialize the RV2P processor. */
-	bce_load_rv2p_fw(sc, bce_rv2p_proc1, sizeof(bce_rv2p_proc1), RV2P_PROC1);
-	bce_load_rv2p_fw(sc, bce_rv2p_proc2, sizeof(bce_rv2p_proc2), RV2P_PROC2);
-
-	/* Initialize the RX Processor. */
 	cpu_reg.mode = BCE_RXP_CPU_MODE;
 	cpu_reg.mode_value_halt = BCE_RXP_CPU_MODE_SOFT_HALT;
 	cpu_reg.mode_value_sstep = BCE_RXP_CPU_MODE_STEP_ENA;
@@ -2600,40 +2554,86 @@ bce_init_cpus(struct bce_softc *sc)
 	cpu_reg.spad_base = BCE_RXP_SCRATCH;
 	cpu_reg.mips_view_base = 0x8000000;
 
-	fw.ver_major = bce_RXP_b06FwReleaseMajor;
-	fw.ver_minor = bce_RXP_b06FwReleaseMinor;
-	fw.ver_fix = bce_RXP_b06FwReleaseFix;
-	fw.start_addr = bce_RXP_b06FwStartAddr;
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+ 		fw.ver_major = bce_RXP_b09FwReleaseMajor;
+		fw.ver_minor = bce_RXP_b09FwReleaseMinor;
+		fw.ver_fix = bce_RXP_b09FwReleaseFix;
+		fw.start_addr = bce_RXP_b09FwStartAddr;
 
-	fw.text_addr = bce_RXP_b06FwTextAddr;
-	fw.text_len = bce_RXP_b06FwTextLen;
-	fw.text_index = 0;
-	fw.text = bce_RXP_b06FwText;
+		fw.text_addr = bce_RXP_b09FwTextAddr;
+		fw.text_len = bce_RXP_b09FwTextLen;
+		fw.text_index = 0;
+		fw.text = bce_RXP_b09FwText;
 
-	fw.data_addr = bce_RXP_b06FwDataAddr;
-	fw.data_len = bce_RXP_b06FwDataLen;
-	fw.data_index = 0;
-	fw.data = bce_RXP_b06FwData;
+		fw.data_addr = bce_RXP_b09FwDataAddr;
+		fw.data_len = bce_RXP_b09FwDataLen;
+		fw.data_index = 0;
+		fw.data = bce_RXP_b09FwData;
 
-	fw.sbss_addr = bce_RXP_b06FwSbssAddr;
-	fw.sbss_len = bce_RXP_b06FwSbssLen;
-	fw.sbss_index = 0;
-	fw.sbss = bce_RXP_b06FwSbss;
+		fw.sbss_addr = bce_RXP_b09FwSbssAddr;
+		fw.sbss_len = bce_RXP_b09FwSbssLen;
+		fw.sbss_index = 0;
+		fw.sbss = bce_RXP_b09FwSbss;
 
-	fw.bss_addr = bce_RXP_b06FwBssAddr;
-	fw.bss_len = bce_RXP_b06FwBssLen;
-	fw.bss_index = 0;
-	fw.bss = bce_RXP_b06FwBss;
+		fw.bss_addr = bce_RXP_b09FwBssAddr;
+		fw.bss_len = bce_RXP_b09FwBssLen;
+		fw.bss_index = 0;
+		fw.bss = bce_RXP_b09FwBss;
 
-	fw.rodata_addr = bce_RXP_b06FwRodataAddr;
-	fw.rodata_len = bce_RXP_b06FwRodataLen;
-	fw.rodata_index = 0;
-	fw.rodata = bce_RXP_b06FwRodata;
+		fw.rodata_addr = bce_RXP_b09FwRodataAddr;
+		fw.rodata_len = bce_RXP_b09FwRodataLen;
+		fw.rodata_index = 0;
+		fw.rodata = bce_RXP_b09FwRodata;
+	} else {
+		fw.ver_major = bce_RXP_b06FwReleaseMajor;
+		fw.ver_minor = bce_RXP_b06FwReleaseMinor;
+		fw.ver_fix = bce_RXP_b06FwReleaseFix;
+		fw.start_addr = bce_RXP_b06FwStartAddr;
+
+		fw.text_addr = bce_RXP_b06FwTextAddr;
+		fw.text_len = bce_RXP_b06FwTextLen;
+		fw.text_index = 0;
+		fw.text = bce_RXP_b06FwText;
+
+		fw.data_addr = bce_RXP_b06FwDataAddr;
+		fw.data_len = bce_RXP_b06FwDataLen;
+		fw.data_index = 0;
+		fw.data = bce_RXP_b06FwData;
+
+		fw.sbss_addr = bce_RXP_b06FwSbssAddr;
+		fw.sbss_len = bce_RXP_b06FwSbssLen;
+		fw.sbss_index = 0;
+		fw.sbss = bce_RXP_b06FwSbss;
+
+		fw.bss_addr = bce_RXP_b06FwBssAddr;
+		fw.bss_len = bce_RXP_b06FwBssLen;
+		fw.bss_index = 0;
+		fw.bss = bce_RXP_b06FwBss;
+
+		fw.rodata_addr = bce_RXP_b06FwRodataAddr;
+		fw.rodata_len = bce_RXP_b06FwRodataLen;
+		fw.rodata_index = 0;
+		fw.rodata = bce_RXP_b06FwRodata;
+	}
 
 	DBPRINT(sc, BCE_INFO_RESET, "Loading RX firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
+}
 
-	/* Initialize the TX Processor. */
+
+/****************************************************************************/
+/* Initialize the TX CPU.                                                   */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing.                                                               */
+/****************************************************************************/
+static void
+bce_init_txp_cpu(struct bce_softc *sc)
+{
+	struct cpu_reg cpu_reg;
+	struct fw_info fw;
+
 	cpu_reg.mode = BCE_TXP_CPU_MODE;
 	cpu_reg.mode_value_halt = BCE_TXP_CPU_MODE_SOFT_HALT;
 	cpu_reg.mode_value_sstep = BCE_TXP_CPU_MODE_STEP_ENA;
@@ -2647,40 +2647,86 @@ bce_init_cpus(struct bce_softc *sc)
 	cpu_reg.spad_base = BCE_TXP_SCRATCH;
 	cpu_reg.mips_view_base = 0x8000000;
 
-	fw.ver_major = bce_TXP_b06FwReleaseMajor;
-	fw.ver_minor = bce_TXP_b06FwReleaseMinor;
-	fw.ver_fix = bce_TXP_b06FwReleaseFix;
-	fw.start_addr = bce_TXP_b06FwStartAddr;
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		fw.ver_major = bce_TXP_b09FwReleaseMajor;
+		fw.ver_minor = bce_TXP_b09FwReleaseMinor;
+		fw.ver_fix = bce_TXP_b09FwReleaseFix;
+		fw.start_addr = bce_TXP_b09FwStartAddr;
 
-	fw.text_addr = bce_TXP_b06FwTextAddr;
-	fw.text_len = bce_TXP_b06FwTextLen;
-	fw.text_index = 0;
-	fw.text = bce_TXP_b06FwText;
+		fw.text_addr = bce_TXP_b09FwTextAddr;
+		fw.text_len = bce_TXP_b09FwTextLen;
+		fw.text_index = 0;
+		fw.text = bce_TXP_b09FwText;
 
-	fw.data_addr = bce_TXP_b06FwDataAddr;
-	fw.data_len = bce_TXP_b06FwDataLen;
-	fw.data_index = 0;
-	fw.data = bce_TXP_b06FwData;
+		fw.data_addr = bce_TXP_b09FwDataAddr;
+		fw.data_len = bce_TXP_b09FwDataLen;
+		fw.data_index = 0;
+		fw.data = bce_TXP_b09FwData;
 
-	fw.sbss_addr = bce_TXP_b06FwSbssAddr;
-	fw.sbss_len = bce_TXP_b06FwSbssLen;
-	fw.sbss_index = 0;
-	fw.sbss = bce_TXP_b06FwSbss;
+		fw.sbss_addr = bce_TXP_b09FwSbssAddr;
+		fw.sbss_len = bce_TXP_b09FwSbssLen;
+		fw.sbss_index = 0;
+		fw.sbss = bce_TXP_b09FwSbss;
 
-	fw.bss_addr = bce_TXP_b06FwBssAddr;
-	fw.bss_len = bce_TXP_b06FwBssLen;
-	fw.bss_index = 0;
-	fw.bss = bce_TXP_b06FwBss;
+		fw.bss_addr = bce_TXP_b09FwBssAddr;
+		fw.bss_len = bce_TXP_b09FwBssLen;
+		fw.bss_index = 0;
+		fw.bss = bce_TXP_b09FwBss;
 
-	fw.rodata_addr = bce_TXP_b06FwRodataAddr;
-	fw.rodata_len = bce_TXP_b06FwRodataLen;
-	fw.rodata_index = 0;
-	fw.rodata = bce_TXP_b06FwRodata;
+		fw.rodata_addr = bce_TXP_b09FwRodataAddr;
+		fw.rodata_len = bce_TXP_b09FwRodataLen;
+		fw.rodata_index = 0;
+		fw.rodata = bce_TXP_b09FwRodata;
+	} else {
+		fw.ver_major = bce_TXP_b06FwReleaseMajor;
+		fw.ver_minor = bce_TXP_b06FwReleaseMinor;
+		fw.ver_fix = bce_TXP_b06FwReleaseFix;
+		fw.start_addr = bce_TXP_b06FwStartAddr;
+
+		fw.text_addr = bce_TXP_b06FwTextAddr;
+		fw.text_len = bce_TXP_b06FwTextLen;
+		fw.text_index = 0;
+		fw.text = bce_TXP_b06FwText;
+
+		fw.data_addr = bce_TXP_b06FwDataAddr;
+		fw.data_len = bce_TXP_b06FwDataLen;
+		fw.data_index = 0;
+		fw.data = bce_TXP_b06FwData;
+
+		fw.sbss_addr = bce_TXP_b06FwSbssAddr;
+		fw.sbss_len = bce_TXP_b06FwSbssLen;
+		fw.sbss_index = 0;
+		fw.sbss = bce_TXP_b06FwSbss;
+
+		fw.bss_addr = bce_TXP_b06FwBssAddr;
+		fw.bss_len = bce_TXP_b06FwBssLen;
+		fw.bss_index = 0;
+		fw.bss = bce_TXP_b06FwBss;
+
+		fw.rodata_addr = bce_TXP_b06FwRodataAddr;
+		fw.rodata_len = bce_TXP_b06FwRodataLen;
+		fw.rodata_index = 0;
+		fw.rodata = bce_TXP_b06FwRodata;
+	}
 
 	DBPRINT(sc, BCE_INFO_RESET, "Loading TX firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
+}
 
-	/* Initialize the TX Patch-up Processor. */
+
+/****************************************************************************/
+/* Initialize the TPAT CPU.                                                 */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing.                                                               */
+/****************************************************************************/
+static void
+bce_init_tpat_cpu(struct bce_softc *sc)
+{
+	struct cpu_reg cpu_reg;
+	struct fw_info fw;
+
 	cpu_reg.mode = BCE_TPAT_CPU_MODE;
 	cpu_reg.mode_value_halt = BCE_TPAT_CPU_MODE_SOFT_HALT;
 	cpu_reg.mode_value_sstep = BCE_TPAT_CPU_MODE_STEP_ENA;
@@ -2694,40 +2740,179 @@ bce_init_cpus(struct bce_softc *sc)
 	cpu_reg.spad_base = BCE_TPAT_SCRATCH;
 	cpu_reg.mips_view_base = 0x8000000;
 
-	fw.ver_major = bce_TPAT_b06FwReleaseMajor;
-	fw.ver_minor = bce_TPAT_b06FwReleaseMinor;
-	fw.ver_fix = bce_TPAT_b06FwReleaseFix;
-	fw.start_addr = bce_TPAT_b06FwStartAddr;
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		fw.ver_major = bce_TPAT_b09FwReleaseMajor;
+		fw.ver_minor = bce_TPAT_b09FwReleaseMinor;
+		fw.ver_fix = bce_TPAT_b09FwReleaseFix;
+		fw.start_addr = bce_TPAT_b09FwStartAddr;
 
-	fw.text_addr = bce_TPAT_b06FwTextAddr;
-	fw.text_len = bce_TPAT_b06FwTextLen;
-	fw.text_index = 0;
-	fw.text = bce_TPAT_b06FwText;
+		fw.text_addr = bce_TPAT_b09FwTextAddr;
+		fw.text_len = bce_TPAT_b09FwTextLen;
+		fw.text_index = 0;
+		fw.text = bce_TPAT_b09FwText;
 
-	fw.data_addr = bce_TPAT_b06FwDataAddr;
-	fw.data_len = bce_TPAT_b06FwDataLen;
-	fw.data_index = 0;
-	fw.data = bce_TPAT_b06FwData;
+		fw.data_addr = bce_TPAT_b09FwDataAddr;
+		fw.data_len = bce_TPAT_b09FwDataLen;
+		fw.data_index = 0;
+		fw.data = bce_TPAT_b09FwData;
 
-	fw.sbss_addr = bce_TPAT_b06FwSbssAddr;
-	fw.sbss_len = bce_TPAT_b06FwSbssLen;
-	fw.sbss_index = 0;
-	fw.sbss = bce_TPAT_b06FwSbss;
+		fw.sbss_addr = bce_TPAT_b09FwSbssAddr;
+		fw.sbss_len = bce_TPAT_b09FwSbssLen;
+		fw.sbss_index = 0;
+		fw.sbss = bce_TPAT_b09FwSbss;
 
-	fw.bss_addr = bce_TPAT_b06FwBssAddr;
-	fw.bss_len = bce_TPAT_b06FwBssLen;
-	fw.bss_index = 0;
-	fw.bss = bce_TPAT_b06FwBss;
+		fw.bss_addr = bce_TPAT_b09FwBssAddr;
+		fw.bss_len = bce_TPAT_b09FwBssLen;
+		fw.bss_index = 0;
+		fw.bss = bce_TPAT_b09FwBss;
 
-	fw.rodata_addr = bce_TPAT_b06FwRodataAddr;
-	fw.rodata_len = bce_TPAT_b06FwRodataLen;
-	fw.rodata_index = 0;
-	fw.rodata = bce_TPAT_b06FwRodata;
+		fw.rodata_addr = bce_TPAT_b09FwRodataAddr;
+		fw.rodata_len = bce_TPAT_b09FwRodataLen;
+		fw.rodata_index = 0;
+		fw.rodata = bce_TPAT_b09FwRodata;
+	} else {
+		fw.ver_major = bce_TPAT_b06FwReleaseMajor;
+		fw.ver_minor = bce_TPAT_b06FwReleaseMinor;
+		fw.ver_fix = bce_TPAT_b06FwReleaseFix;
+		fw.start_addr = bce_TPAT_b06FwStartAddr;
+
+		fw.text_addr = bce_TPAT_b06FwTextAddr;
+		fw.text_len = bce_TPAT_b06FwTextLen;
+		fw.text_index = 0;
+		fw.text = bce_TPAT_b06FwText;
+
+		fw.data_addr = bce_TPAT_b06FwDataAddr;
+		fw.data_len = bce_TPAT_b06FwDataLen;
+		fw.data_index = 0;
+		fw.data = bce_TPAT_b06FwData;
+
+		fw.sbss_addr = bce_TPAT_b06FwSbssAddr;
+		fw.sbss_len = bce_TPAT_b06FwSbssLen;
+		fw.sbss_index = 0;
+		fw.sbss = bce_TPAT_b06FwSbss;
+
+		fw.bss_addr = bce_TPAT_b06FwBssAddr;
+		fw.bss_len = bce_TPAT_b06FwBssLen;
+		fw.bss_index = 0;
+		fw.bss = bce_TPAT_b06FwBss;
+
+		fw.rodata_addr = bce_TPAT_b06FwRodataAddr;
+		fw.rodata_len = bce_TPAT_b06FwRodataLen;
+		fw.rodata_index = 0;
+		fw.rodata = bce_TPAT_b06FwRodata;
+	}
 
 	DBPRINT(sc, BCE_INFO_RESET, "Loading TPAT firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
+}
 
-	/* Initialize the Completion Processor. */
+
+/****************************************************************************/
+/* Initialize the CP CPU.                                                   */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing.                                                               */
+/****************************************************************************/
+static void
+bce_init_cp_cpu(struct bce_softc *sc)
+{
+	struct cpu_reg cpu_reg;
+	struct fw_info fw;
+
+	cpu_reg.mode = BCE_CP_CPU_MODE;
+	cpu_reg.mode_value_halt = BCE_CP_CPU_MODE_SOFT_HALT;
+	cpu_reg.mode_value_sstep = BCE_CP_CPU_MODE_STEP_ENA;
+	cpu_reg.state = BCE_CP_CPU_STATE;
+	cpu_reg.state_value_clear = 0xffffff;
+	cpu_reg.gpr0 = BCE_CP_CPU_REG_FILE;
+	cpu_reg.evmask = BCE_CP_CPU_EVENT_MASK;
+	cpu_reg.pc = BCE_CP_CPU_PROGRAM_COUNTER;
+	cpu_reg.inst = BCE_CP_CPU_INSTRUCTION;
+	cpu_reg.bp = BCE_CP_CPU_HW_BREAKPOINT;
+	cpu_reg.spad_base = BCE_CP_SCRATCH;
+	cpu_reg.mips_view_base = 0x8000000;
+
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		fw.ver_major = bce_CP_b09FwReleaseMajor;
+		fw.ver_minor = bce_CP_b09FwReleaseMinor;
+		fw.ver_fix = bce_CP_b09FwReleaseFix;
+		fw.start_addr = bce_CP_b09FwStartAddr;
+
+		fw.text_addr = bce_CP_b09FwTextAddr;
+		fw.text_len = bce_CP_b09FwTextLen;
+		fw.text_index = 0;
+		fw.text = bce_CP_b09FwText;
+
+		fw.data_addr = bce_CP_b09FwDataAddr;
+		fw.data_len = bce_CP_b09FwDataLen;
+		fw.data_index = 0;
+		fw.data = bce_CP_b09FwData;
+
+		fw.sbss_addr = bce_CP_b09FwSbssAddr;
+		fw.sbss_len = bce_CP_b09FwSbssLen;
+		fw.sbss_index = 0;
+		fw.sbss = bce_CP_b09FwSbss;
+
+		fw.bss_addr = bce_CP_b09FwBssAddr;
+		fw.bss_len = bce_CP_b09FwBssLen;
+		fw.bss_index = 0;
+		fw.bss = bce_CP_b09FwBss;
+
+		fw.rodata_addr = bce_CP_b09FwRodataAddr;
+		fw.rodata_len = bce_CP_b09FwRodataLen;
+		fw.rodata_index = 0;
+		fw.rodata = bce_CP_b09FwRodata;
+	} else {
+		fw.ver_major = bce_CP_b06FwReleaseMajor;
+		fw.ver_minor = bce_CP_b06FwReleaseMinor;
+		fw.ver_fix = bce_CP_b06FwReleaseFix;
+		fw.start_addr = bce_CP_b06FwStartAddr;
+
+		fw.text_addr = bce_CP_b06FwTextAddr;
+		fw.text_len = bce_CP_b06FwTextLen;
+		fw.text_index = 0;
+		fw.text = bce_CP_b06FwText;
+
+		fw.data_addr = bce_CP_b06FwDataAddr;
+		fw.data_len = bce_CP_b06FwDataLen;
+		fw.data_index = 0;
+		fw.data = bce_CP_b06FwData;
+
+		fw.sbss_addr = bce_CP_b06FwSbssAddr;
+		fw.sbss_len = bce_CP_b06FwSbssLen;
+		fw.sbss_index = 0;
+		fw.sbss = bce_CP_b06FwSbss;
+
+		fw.bss_addr = bce_CP_b06FwBssAddr;
+		fw.bss_len = bce_CP_b06FwBssLen;
+		fw.bss_index = 0;
+		fw.bss = bce_CP_b06FwBss;
+
+		fw.rodata_addr = bce_CP_b06FwRodataAddr;
+		fw.rodata_len = bce_CP_b06FwRodataLen;
+		fw.rodata_index = 0;
+		fw.rodata = bce_CP_b06FwRodata;
+	}
+
+	DBPRINT(sc, BCE_INFO_RESET, "Loading CP firmware.\n");
+	bce_load_cpu_fw(sc, &cpu_reg, &fw);
+}
+
+
+/****************************************************************************/
+/* Initialize the COM CPU.                                                 */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing.                                                               */
+/****************************************************************************/
+static void
+bce_init_com_cpu(struct bce_softc *sc)
+{
+	struct cpu_reg cpu_reg;
+	struct fw_info fw;
+
 	cpu_reg.mode = BCE_COM_CPU_MODE;
 	cpu_reg.mode_value_halt = BCE_COM_CPU_MODE_SOFT_HALT;
 	cpu_reg.mode_value_sstep = BCE_COM_CPU_MODE_STEP_ENA;
@@ -2741,38 +2926,103 @@ bce_init_cpus(struct bce_softc *sc)
 	cpu_reg.spad_base = BCE_COM_SCRATCH;
 	cpu_reg.mips_view_base = 0x8000000;
 
-	fw.ver_major = bce_COM_b06FwReleaseMajor;
-	fw.ver_minor = bce_COM_b06FwReleaseMinor;
-	fw.ver_fix = bce_COM_b06FwReleaseFix;
-	fw.start_addr = bce_COM_b06FwStartAddr;
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		fw.ver_major = bce_COM_b09FwReleaseMajor;
+		fw.ver_minor = bce_COM_b09FwReleaseMinor;
+		fw.ver_fix = bce_COM_b09FwReleaseFix;
+		fw.start_addr = bce_COM_b09FwStartAddr;
 
-	fw.text_addr = bce_COM_b06FwTextAddr;
-	fw.text_len = bce_COM_b06FwTextLen;
-	fw.text_index = 0;
-	fw.text = bce_COM_b06FwText;
+		fw.text_addr = bce_COM_b09FwTextAddr;
+		fw.text_len = bce_COM_b09FwTextLen;
+		fw.text_index = 0;
+		fw.text = bce_COM_b09FwText;
 
-	fw.data_addr = bce_COM_b06FwDataAddr;
-	fw.data_len = bce_COM_b06FwDataLen;
-	fw.data_index = 0;
-	fw.data = bce_COM_b06FwData;
+		fw.data_addr = bce_COM_b09FwDataAddr;
+		fw.data_len = bce_COM_b09FwDataLen;
+		fw.data_index = 0;
+		fw.data = bce_COM_b09FwData;
 
-	fw.sbss_addr = bce_COM_b06FwSbssAddr;
-	fw.sbss_len = bce_COM_b06FwSbssLen;
-	fw.sbss_index = 0;
-	fw.sbss = bce_COM_b06FwSbss;
+		fw.sbss_addr = bce_COM_b09FwSbssAddr;
+		fw.sbss_len = bce_COM_b09FwSbssLen;
+		fw.sbss_index = 0;
+		fw.sbss = bce_COM_b09FwSbss;
 
-	fw.bss_addr = bce_COM_b06FwBssAddr;
-	fw.bss_len = bce_COM_b06FwBssLen;
-	fw.bss_index = 0;
-	fw.bss = bce_COM_b06FwBss;
+		fw.bss_addr = bce_COM_b09FwBssAddr;
+		fw.bss_len = bce_COM_b09FwBssLen;
+		fw.bss_index = 0;
+		fw.bss = bce_COM_b09FwBss;
 
-	fw.rodata_addr = bce_COM_b06FwRodataAddr;
-	fw.rodata_len = bce_COM_b06FwRodataLen;
-	fw.rodata_index = 0;
-	fw.rodata = bce_COM_b06FwRodata;
+		fw.rodata_addr = bce_COM_b09FwRodataAddr;
+		fw.rodata_len = bce_COM_b09FwRodataLen;
+		fw.rodata_index = 0;
+		fw.rodata = bce_COM_b09FwRodata;
+	} else {
+		fw.ver_major = bce_COM_b06FwReleaseMajor;
+		fw.ver_minor = bce_COM_b06FwReleaseMinor;
+		fw.ver_fix = bce_COM_b06FwReleaseFix;
+		fw.start_addr = bce_COM_b06FwStartAddr;
+
+		fw.text_addr = bce_COM_b06FwTextAddr;
+		fw.text_len = bce_COM_b06FwTextLen;
+		fw.text_index = 0;
+		fw.text = bce_COM_b06FwText;
+
+		fw.data_addr = bce_COM_b06FwDataAddr;
+		fw.data_len = bce_COM_b06FwDataLen;
+		fw.data_index = 0;
+		fw.data = bce_COM_b06FwData;
+
+		fw.sbss_addr = bce_COM_b06FwSbssAddr;
+		fw.sbss_len = bce_COM_b06FwSbssLen;
+		fw.sbss_index = 0;
+		fw.sbss = bce_COM_b06FwSbss;
+
+		fw.bss_addr = bce_COM_b06FwBssAddr;
+		fw.bss_len = bce_COM_b06FwBssLen;
+		fw.bss_index = 0;
+		fw.bss = bce_COM_b06FwBss;
+
+		fw.rodata_addr = bce_COM_b06FwRodataAddr;
+		fw.rodata_len = bce_COM_b06FwRodataLen;
+		fw.rodata_index = 0;
+		fw.rodata = bce_COM_b06FwRodata;
+	}
 
 	DBPRINT(sc, BCE_INFO_RESET, "Loading COM firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
+}
+
+
+/****************************************************************************/
+/* Initialize the RV2P, RX, TX, TPAT, COM, and CP CPUs.                     */
+/*                                                                          */
+/* Loads the firmware for each CPU and starts the CPU.                      */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing.                                                               */
+/****************************************************************************/
+static void
+bce_init_cpus(struct bce_softc *sc)
+{
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		bce_load_rv2p_fw(sc, bce_xi_rv2p_proc1, sizeof(bce_xi_rv2p_proc1),
+			RV2P_PROC1);
+		bce_load_rv2p_fw(sc, bce_xi_rv2p_proc2, sizeof(bce_xi_rv2p_proc2),
+			RV2P_PROC2);
+	} else {
+		bce_load_rv2p_fw(sc, bce_rv2p_proc1, sizeof(bce_rv2p_proc1),
+			RV2P_PROC1);
+		bce_load_rv2p_fw(sc, bce_rv2p_proc2, sizeof(bce_rv2p_proc2),
+			RV2P_PROC2);
+	}
+
+	bce_init_rxp_cpu(sc);
+	bce_init_txp_cpu(sc);
+	bce_init_tpat_cpu(sc);
+	bce_init_com_cpu(sc);
+	bce_init_cp_cpu(sc);
 }
 
 
@@ -2787,27 +3037,77 @@ bce_init_cpus(struct bce_softc *sc)
 static void
 bce_init_ctx(struct bce_softc *sc)
 {
-	uint32_t vcid = 96;
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		/* DRC: Replace this constant value with a #define. */
+		int i, retry_cnt = 10;
+		uint32_t val;
 
-	while (vcid) {
-		uint32_t vcid_addr, pcid_addr, offset;
-		int i;
+		/*
+		 * BCM5709 context memory may be cached
+		 * in host memory so prepare the host memory
+		 * for access.
+		 */
+		val = BCE_CTX_COMMAND_ENABLED | BCE_CTX_COMMAND_MEM_INIT |
+		    (1 << 12);
+		val |= (BCM_PAGE_BITS - 8) << 16;
+		REG_WR(sc, BCE_CTX_COMMAND, val);
 
-		vcid--;
+		/* Wait for mem init command to complete. */
+		for (i = 0; i < retry_cnt; i++) {
+			val = REG_RD(sc, BCE_CTX_COMMAND);
+			if (!(val & BCE_CTX_COMMAND_MEM_INIT))
+				break;
+			DELAY(2);
+		}
 
-   		vcid_addr = GET_CID_ADDR(vcid);
-		pcid_addr = vcid_addr;
+		for (i = 0; i < sc->ctx_pages; i++) {
+			int j;
 
-		for (i = 0; i < (CTX_SIZE / PHY_CTX_SIZE); i++) {
-			vcid_addr += (i << PHY_CTX_SHIFT);
-			pcid_addr += (i << PHY_CTX_SHIFT);
+			/*
+			 * Set the physical address of the context
+			 * memory cache.
+			 */
+			REG_WR(sc, BCE_CTX_HOST_PAGE_TBL_DATA0,
+			    BCE_ADDR_LO(sc->ctx_paddr[i] & 0xfffffff0) |
+			    BCE_CTX_HOST_PAGE_TBL_DATA0_VALID);
+			REG_WR(sc, BCE_CTX_HOST_PAGE_TBL_DATA1,
+			    BCE_ADDR_HI(sc->ctx_paddr[i]));
+			REG_WR(sc, BCE_CTX_HOST_PAGE_TBL_CTRL,
+			    i | BCE_CTX_HOST_PAGE_TBL_CTRL_WRITE_REQ);
+
+			/*
+			 * Verify that the context memory write was successful.
+			 */
+			for (j = 0; j < retry_cnt; j++) {
+				val = REG_RD(sc, BCE_CTX_HOST_PAGE_TBL_CTRL);
+				if ((val &
+				    BCE_CTX_HOST_PAGE_TBL_CTRL_WRITE_REQ) == 0)
+					break;
+				DELAY(5);
+			}
+		}
+	} else {
+		uint32_t vcid_addr, offset;
+
+		/*
+		 * For the 5706/5708, context memory is local to
+		 * the controller, so initialize the controller
+		 * context memory.
+		 */
+
+		vcid_addr = GET_CID_ADDR(96);
+		while (vcid_addr) {
+			vcid_addr -= PHY_CTX_SIZE;
+
+			REG_WR(sc, BCE_CTX_VIRT_ADDR, 0);
+			REG_WR(sc, BCE_CTX_PAGE_TBL, vcid_addr);
+
+			for (offset = 0; offset < PHY_CTX_SIZE; offset += 4)
+				CTX_WR(sc, 0x00, offset, 0);
 
 			REG_WR(sc, BCE_CTX_VIRT_ADDR, vcid_addr);
-			REG_WR(sc, BCE_CTX_PAGE_TBL, pcid_addr);
-
-			/* Zero out the context. */
-			for (offset = 0; offset < PHY_CTX_SIZE; offset += 4)
-				CTX_WR(sc, vcid_addr, offset, 0);
+			REG_WR(sc, BCE_CTX_PAGE_TBL, vcid_addr);
 		}
 	}
 }
@@ -2893,17 +3193,14 @@ bce_stop(struct bce_softc *sc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	callout_stop(&sc->bce_stat_ch);
+	callout_stop(&sc->bce_tick_callout);
 
 	/* Disable the transmit/receive blocks. */
-	REG_WR(sc, BCE_MISC_ENABLE_CLR_BITS, 0x5ffffff);
+	REG_WR(sc, BCE_MISC_ENABLE_CLR_BITS, BCE_MISC_ENABLE_CLR_DEFAULT);
 	REG_RD(sc, BCE_MISC_ENABLE_CLR_BITS);
 	DELAY(20);
 
 	bce_disable_intr(sc);
-
-	/* Tell firmware that the driver is going away. */
-	bce_reset(sc, BCE_DRV_MSG_CODE_SUSPEND_NO_WOL);
 
 	/* Free the RX lists. */
 	bce_free_rx_chain(sc);
@@ -2934,8 +3231,6 @@ bce_stop(struct bce_softc *sc)
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 	ifp->if_timer = 0;
-
-	bce_mgmt_init(sc);
 }
 
 
@@ -2953,6 +3248,14 @@ bce_reset(struct bce_softc *sc, uint32_t reset_code)
 	       BCE_MISC_ENABLE_CLR_BITS_HOST_COALESCE_ENABLE);
 	val = REG_RD(sc, BCE_MISC_ENABLE_CLR_BITS);
 	DELAY(5);
+
+	/* Disable DMA */
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		val = REG_RD(sc, BCE_MISC_NEW_CORE_CTL);
+		val &= ~BCE_MISC_NEW_CORE_CTL_DMA_ENABLE;
+		REG_WR(sc, BCE_MISC_NEW_CORE_CTL, val);
+	}
 
 	/* Assume bootcode is running. */
 	sc->bce_fw_timed_out = 0;
@@ -2973,26 +3276,37 @@ bce_reset(struct bce_softc *sc, uint32_t reset_code)
 	val = REG_RD(sc, BCE_MISC_ID);
 
 	/* Chip reset. */
-	val = BCE_PCICFG_MISC_CONFIG_CORE_RST_REQ |
-	      BCE_PCICFG_MISC_CONFIG_REG_WINDOW_ENA |
-	      BCE_PCICFG_MISC_CONFIG_TARGET_MB_WORD_SWAP;
-	REG_WR(sc, BCE_PCICFG_MISC_CONFIG, val);
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		REG_WR(sc, BCE_MISC_COMMAND, BCE_MISC_COMMAND_SW_RESET);
+		REG_RD(sc, BCE_MISC_COMMAND);
+		DELAY(5);
 
-	/* Allow up to 30us for reset to complete. */
-	for (i = 0; i < 10; i++) {
-		val = REG_RD(sc, BCE_PCICFG_MISC_CONFIG);
-		if ((val & (BCE_PCICFG_MISC_CONFIG_CORE_RST_REQ |
-			    BCE_PCICFG_MISC_CONFIG_CORE_RST_BSY)) == 0) {
-			break;
+		val = BCE_PCICFG_MISC_CONFIG_REG_WINDOW_ENA |
+		    BCE_PCICFG_MISC_CONFIG_TARGET_MB_WORD_SWAP;
+
+		pci_write_config(sc->bce_dev, BCE_PCICFG_MISC_CONFIG, val, 4);
+	} else {
+		val = BCE_PCICFG_MISC_CONFIG_CORE_RST_REQ |
+		    BCE_PCICFG_MISC_CONFIG_REG_WINDOW_ENA |
+		    BCE_PCICFG_MISC_CONFIG_TARGET_MB_WORD_SWAP;
+		REG_WR(sc, BCE_PCICFG_MISC_CONFIG, val);
+
+		/* Allow up to 30us for reset to complete. */
+		for (i = 0; i < 10; i++) {
+			val = REG_RD(sc, BCE_PCICFG_MISC_CONFIG);
+			if ((val & (BCE_PCICFG_MISC_CONFIG_CORE_RST_REQ |
+			    BCE_PCICFG_MISC_CONFIG_CORE_RST_BSY)) == 0)
+				break;
+			DELAY(10);
 		}
-		DELAY(10);
-	}
 
-	/* Check that reset completed successfully. */
-	if (val & (BCE_PCICFG_MISC_CONFIG_CORE_RST_REQ |
-		   BCE_PCICFG_MISC_CONFIG_CORE_RST_BSY)) {
-		if_printf(&sc->arpcom.ac_if, "Reset failed!\n");
-		return EBUSY;
+		/* Check that reset completed successfully. */
+		if (val & (BCE_PCICFG_MISC_CONFIG_CORE_RST_REQ |
+		    BCE_PCICFG_MISC_CONFIG_CORE_RST_BSY)) {
+			if_printf(&sc->arpcom.ac_if, "Reset failed!\n");
+			return EBUSY;
+		}
 	}
 
 	/* Make sure byte swapping is properly configured. */
@@ -3023,6 +3337,7 @@ bce_chipinit(struct bce_softc *sc)
 
 	/* Make sure the interrupt is not active. */
 	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD, BCE_PCICFG_INT_ACK_CMD_MASK_INT);
+	REG_RD(sc, BCE_PCICFG_INT_ACK_CMD);
 
 	/*
 	 * Initialize DMA byte/word swapping, configure the number of DMA
@@ -3054,14 +3369,6 @@ bce_chipinit(struct bce_softc *sc)
 
 	REG_WR(sc, BCE_DMA_CONFIG, val);
 
-	/* Clear the PCI-X relaxed ordering bit. See errata E3_5708CA0_570. */
-	if (sc->bce_flags & BCE_PCIX_FLAG) {
-		uint16_t cmd;
-
-		cmd = pci_read_config(sc->bce_dev, BCE_PCI_PCIX_CMD, 2);
-		pci_write_config(sc->bce_dev, BCE_PCI_PCIX_CMD, cmd & ~0x2, 2);
-	}
-
 	/* Enable the RX_V2P and Context state machines before access. */
 	REG_WR(sc, BCE_MISC_ENABLE_SET_BITS,
 	       BCE_MISC_ENABLE_SET_BITS_HOST_COALESCE_ENABLE |
@@ -3083,6 +3390,15 @@ bce_chipinit(struct bce_softc *sc)
 	val = REG_RD(sc, BCE_MQ_CONFIG);
 	val &= ~BCE_MQ_CONFIG_KNL_BYP_BLK_SIZE;
 	val |= BCE_MQ_CONFIG_KNL_BYP_BLK_SIZE_256;
+
+	/* Enable bins used on the 5709/5716. */
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		val |= BCE_MQ_CONFIG_BIN_MQ_MODE;
+		if (BCE_CHIP_ID(sc) == BCE_CHIP_ID_5709_A1)
+			val |= BCE_MQ_CONFIG_HALT_DIS;
+	}
+
 	REG_WR(sc, BCE_MQ_CONFIG, val);
 
 	val = 0x10000 + (MAX_CID_CNT * MB_KERNEL_CTX_SIZE);
@@ -3098,6 +3414,9 @@ bce_chipinit(struct bce_softc *sc)
 	val &= ~BCE_TBDR_CONFIG_PAGE_SIZE;
 	val |= (BCM_PAGE_BITS - 8) << 24 | 0x40;
 	REG_WR(sc, BCE_TBDR_CONFIG, val);
+
+	/* Set the perfect match control register to default. */
+	REG_WR_IND(sc, BCE_RXP_PM_CTRL, 0);
 
 	return 0;
 }
@@ -3184,17 +3503,13 @@ bce_blockinit(struct bce_softc *sc)
 		return ENODEV;
 	}
 
-	/* Check if any management firmware is running. */
-	reg = REG_RD_IND(sc, sc->bce_shmem_base + BCE_PORT_FEATURE);
-	if (reg & (BCE_PORT_FEATURE_ASF_ENABLED |
-		   BCE_PORT_FEATURE_IMD_ENABLED)) {
-		DBPRINT(sc, BCE_INFO, "Management F/W Enabled.\n");
-		sc->bce_flags |= BCE_MFW_ENABLE_FLAG;
+	/* Enable DMA */
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		val = REG_RD(sc, BCE_MISC_NEW_CORE_CTL);
+		val |= BCE_MISC_NEW_CORE_CTL_DMA_ENABLE;
+		REG_WR(sc, BCE_MISC_NEW_CORE_CTL, val);
 	}
-
-	sc->bce_fw_ver =
-		REG_RD_IND(sc, sc->bce_shmem_base + BCE_DEV_INFO_BC_REV);
-	DBPRINT(sc, BCE_INFO, "bootcode rev = 0x%08X\n", sc->bce_fw_ver);
 
 	/* Allow bootcode to apply any additional fixes before enabling MAC. */
 	rc = bce_fw_sync(sc, BCE_DRV_MSG_DATA_WAIT2 | BCE_DRV_MSG_CODE_RESET);
@@ -3203,9 +3518,18 @@ bce_blockinit(struct bce_softc *sc)
 	REG_WR(sc, BCE_HC_ATTN_BITS_ENABLE, STATUS_ATTN_BITS_LINK_STATE);
 
 	/* Enable all remaining blocks in the MAC. */
-	REG_WR(sc, BCE_MISC_ENABLE_SET_BITS, 0x5ffffff);
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		REG_WR(sc, BCE_MISC_ENABLE_SET_BITS,
+		    BCE_MISC_ENABLE_DEFAULT_XI);
+	} else {
+		REG_WR(sc, BCE_MISC_ENABLE_SET_BITS, BCE_MISC_ENABLE_DEFAULT);
+	}
 	REG_RD(sc, BCE_MISC_ENABLE_SET_BITS);
 	DELAY(20);
+
+	/* Save the current host coalescing block settings. */
+	sc->hc_command = REG_RD(sc, BCE_HC_COMMAND);
 
 	return 0;
 }
@@ -3334,6 +3658,51 @@ bce_setup_rxdesc_std(struct bce_softc *sc, uint16_t chain_prod, uint32_t *prod_b
 
 
 /****************************************************************************/
+/* Initialize the TX context memory.                                        */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing                                                                */
+/****************************************************************************/
+static void
+bce_init_tx_context(struct bce_softc *sc)
+{
+	uint32_t val;
+
+	/* Initialize the context ID for an L2 TX chain. */
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		/* Set the CID type to support an L2 connection. */
+		val = BCE_L2CTX_TX_TYPE_TYPE_L2 | BCE_L2CTX_TX_TYPE_SIZE_L2;
+		CTX_WR(sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TX_TYPE_XI, val);
+		val = BCE_L2CTX_TX_CMD_TYPE_TYPE_L2 | (8 << 16);
+		CTX_WR(sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TX_CMD_TYPE_XI, val);
+
+		/* Point the hardware to the first page in the chain. */
+		val = BCE_ADDR_HI(sc->tx_bd_chain_paddr[0]);
+		CTX_WR(sc, GET_CID_ADDR(TX_CID),
+		    BCE_L2CTX_TX_TBDR_BHADDR_HI_XI, val);
+		val = BCE_ADDR_LO(sc->tx_bd_chain_paddr[0]);
+		CTX_WR(sc, GET_CID_ADDR(TX_CID),
+		    BCE_L2CTX_TX_TBDR_BHADDR_LO_XI, val);
+	} else {
+		/* Set the CID type to support an L2 connection. */
+		val = BCE_L2CTX_TX_TYPE_TYPE_L2 | BCE_L2CTX_TX_TYPE_SIZE_L2;
+		CTX_WR(sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TX_TYPE, val);
+		val = BCE_L2CTX_TX_CMD_TYPE_TYPE_L2 | (8 << 16);
+		CTX_WR(sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TX_CMD_TYPE, val);
+
+		/* Point the hardware to the first page in the chain. */
+		val = BCE_ADDR_HI(sc->tx_bd_chain_paddr[0]);
+		CTX_WR(sc, GET_CID_ADDR(TX_CID),
+		    BCE_L2CTX_TX_TBDR_BHADDR_HI, val);
+		val = BCE_ADDR_LO(sc->tx_bd_chain_paddr[0]);
+		CTX_WR(sc, GET_CID_ADDR(TX_CID),
+		    BCE_L2CTX_TX_TBDR_BHADDR_LO, val);
+	}
+}
+
+
+/****************************************************************************/
 /* Allocate memory and initialize the TX data structures.                   */
 /*                                                                          */
 /* Returns:                                                                 */
@@ -3343,7 +3712,6 @@ static int
 bce_init_tx_chain(struct bce_softc *sc)
 {
 	struct tx_bd *txbd;
-	uint32_t val;
 	int i, rc = 0;
 
 	DBPRINT(sc, BCE_VERBOSE_RESET, "Entering %s()\n", __func__);
@@ -3384,24 +3752,7 @@ bce_init_tx_chain(struct bce_softc *sc)
 		txbd->tx_bd_haddr_lo =
 			htole32(BCE_ADDR_LO(sc->tx_bd_chain_paddr[j]));
 	}
-
-	/* Initialize the context ID for an L2 TX chain. */
-	val = BCE_L2CTX_TYPE_TYPE_L2;
-	val |= BCE_L2CTX_TYPE_SIZE_L2;
-	CTX_WR(sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TYPE, val);
-
-	val = BCE_L2CTX_CMD_TYPE_TYPE_L2 | (8 << 16);
-	CTX_WR(sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_CMD_TYPE, val);
-
-	/* Point the hardware to the first page in the chain. */
-	val = BCE_ADDR_HI(sc->tx_bd_chain_paddr[0]);
-	CTX_WR(sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TBDR_BHADDR_HI, val);
-	val = BCE_ADDR_LO(sc->tx_bd_chain_paddr[0]);
-	CTX_WR(sc, GET_CID_ADDR(TX_CID), BCE_L2CTX_TBDR_BHADDR_LO, val);
-
-	DBRUN(BCE_VERBOSE_SEND, bce_dump_tx_chain(sc, 0, TOTAL_TX_BD));
-
-	DBPRINT(sc, BCE_VERBOSE_RESET, "Exiting %s()\n", __func__);
+	bce_init_tx_context(sc);
 
 	return(rc);
 }
@@ -3447,6 +3798,63 @@ bce_free_tx_chain(struct bce_softc *sc)
 
 
 /****************************************************************************/
+/* Initialize the RX context memory.                                        */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing                                                                */
+/****************************************************************************/
+static void
+bce_init_rx_context(struct bce_softc *sc)
+{
+	uint32_t val;
+
+	/* Initialize the context ID for an L2 RX chain. */
+	val = BCE_L2CTX_RX_CTX_TYPE_CTX_BD_CHN_TYPE_VALUE |
+	    BCE_L2CTX_RX_CTX_TYPE_SIZE_L2 | (0x02 << 8);
+
+	/*
+	 * Set the level for generating pause frames
+	 * when the number of available rx_bd's gets
+	 * too low (the low watermark) and the level
+	 * when pause frames can be stopped (the high
+	 * watermark).
+	 */
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		uint32_t lo_water, hi_water;
+
+		lo_water = BCE_L2CTX_RX_LO_WATER_MARK_DEFAULT;
+		hi_water = USABLE_RX_BD / 4;
+
+		lo_water /= BCE_L2CTX_RX_LO_WATER_MARK_SCALE;
+		hi_water /= BCE_L2CTX_RX_HI_WATER_MARK_SCALE;
+
+		if (hi_water > 0xf)
+			hi_water = 0xf;
+		else if (hi_water == 0)
+			lo_water = 0;
+		val |= lo_water |
+		    (hi_water << BCE_L2CTX_RX_HI_WATER_MARK_SHIFT);
+	}
+
+ 	CTX_WR(sc, GET_CID_ADDR(RX_CID), BCE_L2CTX_RX_CTX_TYPE, val);
+
+	/* Setup the MQ BIN mapping for l2_ctx_host_bseq. */
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		val = REG_RD(sc, BCE_MQ_MAP_L2_5);
+		REG_WR(sc, BCE_MQ_MAP_L2_5, val | BCE_MQ_MAP_L2_5_ARM);
+	}
+
+	/* Point the hardware to the first page in the chain. */
+	val = BCE_ADDR_HI(sc->rx_bd_chain_paddr[0]);
+	CTX_WR(sc, GET_CID_ADDR(RX_CID), BCE_L2CTX_RX_NX_BDHADDR_HI, val);
+	val = BCE_ADDR_LO(sc->rx_bd_chain_paddr[0]);
+	CTX_WR(sc, GET_CID_ADDR(RX_CID), BCE_L2CTX_RX_NX_BDHADDR_LO, val);
+}
+
+
+/****************************************************************************/
 /* Allocate memory and initialize the RX data structures.                   */
 /*                                                                          */
 /* Returns:                                                                 */
@@ -3458,7 +3866,7 @@ bce_init_rx_chain(struct bce_softc *sc)
 	struct rx_bd *rxbd;
 	int i, rc = 0;
 	uint16_t prod, chain_prod;
-	uint32_t prod_bseq, val;
+	uint32_t prod_bseq;
 
 	DBPRINT(sc, BCE_VERBOSE_RESET, "Entering %s()\n", __func__);
 
@@ -3490,19 +3898,6 @@ bce_init_rx_chain(struct bce_softc *sc)
 			htole32(BCE_ADDR_LO(sc->rx_bd_chain_paddr[j]));
 	}
 
-	/* Initialize the context ID for an L2 RX chain. */
-	val = BCE_L2CTX_CTX_TYPE_CTX_BD_CHN_TYPE_VALUE;
-	val |= BCE_L2CTX_CTX_TYPE_SIZE_L2;
-	val |= 0x02 << 8;
-	CTX_WR(sc, GET_CID_ADDR(RX_CID), BCE_L2CTX_CTX_TYPE, val);
-
-	/* Point the hardware to the first page in the chain. */
-	/* XXX shouldn't this after RX descriptor initialization? */
-	val = BCE_ADDR_HI(sc->rx_bd_chain_paddr[0]);
-	CTX_WR(sc, GET_CID_ADDR(RX_CID), BCE_L2CTX_NX_BDHADDR_HI, val);
-	val = BCE_ADDR_LO(sc->rx_bd_chain_paddr[0]);
-	CTX_WR(sc, GET_CID_ADDR(RX_CID), BCE_L2CTX_NX_BDHADDR_LO, val);
-
 	/* Allocate mbuf clusters for the rx_bd chain. */
 	prod = prod_bseq = 0;
 	while (prod < TOTAL_RX_BD) {
@@ -3522,12 +3917,12 @@ bce_init_rx_chain(struct bce_softc *sc)
 	sc->rx_prod_bseq = prod_bseq;
 
 	/* Tell the chip about the waiting rx_bd's. */
-	REG_WR16(sc, MB_RX_CID_ADDR + BCE_L2CTX_HOST_BDIDX, sc->rx_prod);
-	REG_WR(sc, MB_RX_CID_ADDR + BCE_L2CTX_HOST_BSEQ, sc->rx_prod_bseq);
+	REG_WR16(sc, MB_GET_CID_ADDR(RX_CID) + BCE_L2MQ_RX_HOST_BDIDX,
+	    sc->rx_prod);
+	REG_WR(sc, MB_GET_CID_ADDR(RX_CID) + BCE_L2MQ_RX_HOST_BSEQ,
+	    sc->rx_prod_bseq);
 
-	DBRUN(BCE_VERBOSE_RECV, bce_dump_rx_chain(sc, 0, TOTAL_RX_BD));
-
-	DBPRINT(sc, BCE_VERBOSE_RESET, "Exiting %s()\n", __func__);
+	bce_init_rx_context(sc);
 
 	return(rc);
 }
@@ -3643,10 +4038,6 @@ bce_phy_intr(struct bce_softc *sc)
 	if (new_link_state != old_link_state) {	/* XXX redundant? */
 		DBRUN(BCE_VERBOSE_INTR, bce_dump_status_block(sc));
 
-		sc->bce_link = 0;
-		callout_stop(&sc->bce_stat_ch);
-		bce_tick_serialized(sc);
-
 		/* Update the status_attn_bits_ack field in the status block. */
 		if (new_link_state) {
 			REG_WR(sc, BCE_PCICFG_STATUS_BIT_SET_CMD,
@@ -3659,6 +4050,14 @@ bce_phy_intr(struct bce_softc *sc)
 			if (bootverbose)
 				if_printf(ifp, "Link is now DOWN.\n");
 		}
+
+		/*
+		 * Assume link is down and allow tick routine to
+		 * update the state based on the actual media state.
+		 */
+		sc->bce_link = 0;
+		callout_stop(&sc->bce_tick_callout);
+		bce_tick_serialized(sc);
 	}
 
 	/* Acknowledge the link change interrupt. */
@@ -3962,8 +4361,10 @@ bce_rx_int_next_rx:
 	sc->rx_prod = sw_prod;
 	sc->rx_prod_bseq = sw_prod_bseq;
 
-	REG_WR16(sc, MB_RX_CID_ADDR + BCE_L2CTX_HOST_BDIDX, sc->rx_prod);
-	REG_WR(sc, MB_RX_CID_ADDR + BCE_L2CTX_HOST_BSEQ, sc->rx_prod_bseq);
+	REG_WR16(sc, MB_GET_CID_ADDR(RX_CID) + BCE_L2MQ_RX_HOST_BDIDX,
+	    sc->rx_prod);
+	REG_WR(sc, MB_GET_CID_ADDR(RX_CID) + BCE_L2MQ_RX_HOST_BSEQ,
+	    sc->rx_prod_bseq);
 
 	DBPRINT(sc, BCE_INFO_RECV, "%s(exit): rx_prod = 0x%04X, "
 		"rx_cons = 0x%04X, rx_prod_bseq = 0x%08X\n",
@@ -4131,10 +4532,8 @@ bce_disable_intr(struct bce_softc *sc)
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_enable_intr(struct bce_softc *sc)
+bce_enable_intr(struct bce_softc *sc, int coal_now)
 {
-	uint32_t val;
-
 	lwkt_serialize_handler_enable(sc->arpcom.ac_if.if_serializer);
 
 	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
@@ -4144,8 +4543,10 @@ bce_enable_intr(struct bce_softc *sc)
 	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
 	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | sc->last_status_idx);
 
-	val = REG_RD(sc, BCE_HC_COMMAND);
-	REG_WR(sc, BCE_HC_COMMAND, val | BCE_HC_COMMAND_COAL_NOW);
+	if (coal_now) {
+		REG_WR(sc, BCE_HC_COMMAND,
+		    sc->hc_command | BCE_HC_COMMAND_COAL_NOW);
+	}
 }
 
 
@@ -4247,14 +4648,14 @@ bce_init(void *xsc)
 	} else
 #endif
 	/* Enable host interrupts. */
-	bce_enable_intr(sc);
+	bce_enable_intr(sc, 1);
 
 	bce_ifmedia_upd(ifp);
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	callout_reset(&sc->bce_stat_ch, hz, bce_tick, sc);
+	callout_reset(&sc->bce_tick_callout, hz, bce_tick, sc);
 back:
 	if (error)
 		bce_stop(sc);
@@ -4272,24 +4673,19 @@ static void
 bce_mgmt_init(struct bce_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t val;
 
-	/* Check if the driver is still running and bail out if it is. */
-	if (ifp->if_flags & IFF_RUNNING)
+	/* Bail out if management firmware is not running. */
+	if (!(sc->bce_flags & BCE_MFW_ENABLE_FLAG))
 		return;
 
-	/* Initialize the on-boards CPUs */
-	bce_init_cpus(sc);
-
-	/* Set the page size and clear the RV2P processor stall bits. */
-	val = (BCM_PAGE_BITS - 8) << 24;
-	REG_WR(sc, BCE_RV2P_CONFIG, val);
-
 	/* Enable all critical blocks in the MAC. */
-	REG_WR(sc, BCE_MISC_ENABLE_SET_BITS,
-	       BCE_MISC_ENABLE_SET_BITS_RX_V2P_ENABLE |
-	       BCE_MISC_ENABLE_SET_BITS_RX_DMA_ENABLE |
-	       BCE_MISC_ENABLE_SET_BITS_COMPLETION_ENABLE);
+	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
+	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
+		REG_WR(sc, BCE_MISC_ENABLE_SET_BITS,
+		    BCE_MISC_ENABLE_DEFAULT_XI);
+	} else {
+		REG_WR(sc, BCE_MISC_ENABLE_SET_BITS, BCE_MISC_ENABLE_DEFAULT);
+	}
 	REG_RD(sc, BCE_MISC_ENABLE_SET_BITS);
 	DELAY(20);
 
@@ -4518,9 +4914,12 @@ bce_start(struct ifnet *ifp)
 		__func__,
 		sc->tx_prod, TX_CHAIN_IDX(sc->tx_prod), sc->tx_prod_bseq);
 
+	REG_WR(sc, BCE_MQ_COMMAND,
+	    REG_RD(sc, BCE_MQ_COMMAND) | BCE_MQ_COMMAND_NO_MAP_ERROR);
+
 	/* Start the transmit. */
-	REG_WR16(sc, MB_TX_CID_ADDR + BCE_L2CTX_TX_HOST_BIDX, sc->tx_prod);
-	REG_WR(sc, MB_TX_CID_ADDR + BCE_L2CTX_TX_HOST_BSEQ, sc->tx_prod_bseq);
+	REG_WR16(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BIDX, sc->tx_prod);
+	REG_WR(sc, MB_GET_CID_ADDR(TX_CID) + BCE_L2CTX_TX_HOST_BSEQ, sc->tx_prod_bseq);
 
 	/* Set the tx timeout. */
 	ifp->if_timer = BCE_TX_TIMEOUT;
@@ -4576,6 +4975,13 @@ bce_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			}
 		} else if (ifp->if_flags & IFF_RUNNING) {
 			bce_stop(sc);
+
+			/* If MFW is running, restart the controller a bit. */
+			if (sc->bce_flags & BCE_MFW_ENABLE_FLAG) {
+				bce_reset(sc, BCE_DRV_MSG_CODE_RESET);
+				bce_chipinit(sc);
+				bce_mgmt_init(sc);
+			}
 		}
 		sc->bce_if_flags = ifp->if_flags;
 		break;
@@ -4677,7 +5083,7 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		       (1 << 16) | sc->bce_tx_quick_cons_trip);
 		return;
 	case POLL_DEREGISTER:
-		bce_enable_intr(sc);
+		bce_enable_intr(sc, 1);
 
 		REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
 		       (sc->bce_tx_quick_cons_trip_int << 16) |
@@ -4704,6 +5110,11 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		if ((status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
 		    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE))
 			bce_phy_intr(sc);
+
+		/* Clear any transient status updates during link state change. */
+		REG_WR(sc, BCE_HC_COMMAND,
+		    sc->hc_command | BCE_HC_COMMAND_COAL_NOW_WO_INT);
+		REG_RD(sc, BCE_HC_COMMAND);
 
 		/*
 		 * If any other attention is asserted then
@@ -4803,8 +5214,17 @@ bce_intr(void *xsc)
 
 		/* Was it a link change interrupt? */
 		if ((status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
-		    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE))
+		    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE)) {
 			bce_phy_intr(sc);
+
+			/*
+			 * Clear any transient status updates during link state
+			 * change.
+			 */
+			REG_WR(sc, BCE_HC_COMMAND,
+			    sc->hc_command | BCE_HC_COMMAND_COAL_NOW_WO_INT);
+			REG_RD(sc, BCE_HC_COMMAND);
+		}
 
 		/*
 		 * If any other attention is asserted then
@@ -4858,11 +5278,7 @@ bce_intr(void *xsc)
 	}
 
 	/* Re-enable interrupts. */
-	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
-	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | sc->last_status_idx |
-	       BCE_PCICFG_INT_ACK_CMD_MASK_INT);
-	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
-	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | sc->last_status_idx);
+	bce_enable_intr(sc, 0);
 
 	if (sc->bce_coalchg_mask)
 		bce_coal_change(sc);
@@ -4975,22 +5391,6 @@ bce_stats_update(struct bce_softc *sc)
 	DBPRINT(sc, BCE_EXCESSIVE, "Entering %s()\n", __func__);
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	/* 
-	 * Update the interface statistics from the hardware statistics.
-	 */
-	ifp->if_collisions = (u_long)stats->stat_EtherStatsCollisions;
-
-	ifp->if_ierrors = (u_long)stats->stat_EtherStatsUndersizePkts +
-			  (u_long)stats->stat_EtherStatsOverrsizePkts +
-			  (u_long)stats->stat_IfInMBUFDiscards +
-			  (u_long)stats->stat_Dot3StatsAlignmentErrors +
-			  (u_long)stats->stat_Dot3StatsFCSErrors;
-
-	ifp->if_oerrors =
-	(u_long)stats->stat_emac_tx_stat_dot3statsinternalmactransmiterrors +
-	(u_long)stats->stat_Dot3StatsExcessiveCollisions +
-	(u_long)stats->stat_Dot3StatsLateCollisions;
 
 	/* 
 	 * Certain controllers don't report carrier sense errors correctly.
@@ -5179,7 +5579,55 @@ bce_stats_update(struct bce_softc *sc)
 
 	sc->com_no_buffers = REG_RD_IND(sc, 0x120084);
 
+	/*
+	 * Update the interface statistics from the
+	 * hardware statistics.
+	 */
+	ifp->if_collisions = (u_long)sc->stat_EtherStatsCollisions;
+
+	ifp->if_ierrors = (u_long)sc->stat_EtherStatsUndersizePkts +
+	    (u_long)sc->stat_EtherStatsOverrsizePkts +
+	    (u_long)sc->stat_IfInMBUFDiscards +
+	    (u_long)sc->stat_Dot3StatsAlignmentErrors +
+	    (u_long)sc->stat_Dot3StatsFCSErrors +
+	    (u_long)sc->stat_IfInFramesL2FilterDiscards +
+	    (u_long)sc->stat_IfInRuleCheckerDiscards +
+	    (u_long)sc->stat_IfInFTQDiscards +
+	    (u_long)sc->com_no_buffers;
+
+	ifp->if_oerrors =
+	    (u_long)sc->stat_emac_tx_stat_dot3statsinternalmactransmiterrors +
+	    (u_long)sc->stat_Dot3StatsExcessiveCollisions +
+	    (u_long)sc->stat_Dot3StatsLateCollisions;
+
 	DBPRINT(sc, BCE_EXCESSIVE, "Exiting %s()\n", __func__);
+}
+
+
+/****************************************************************************/
+/* Periodic function to notify the bootcode that the driver is still        */
+/* present.                                                                 */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing.                                                               */
+/****************************************************************************/
+static void
+bce_pulse(void *xsc)
+{
+	struct bce_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	uint32_t msg;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	/* Tell the firmware that the driver is still running. */
+	msg = (uint32_t)++sc->bce_fw_drv_pulse_wr_seq;
+	REG_WR_IND(sc, sc->bce_shmem_base + BCE_DRV_PULSE_MB, msg);
+
+	/* Schedule the next pulse. */
+	callout_reset(&sc->bce_pulse_callout, hz, bce_pulse, sc);
+
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 
@@ -5194,23 +5642,14 @@ bce_tick_serialized(struct bce_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
-	uint32_t msg;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	/* Tell the firmware that the driver is still running. */
-#ifdef BCE_DEBUG
-	msg = (uint32_t)BCE_DRV_MSG_DATA_PULSE_CODE_ALWAYS_ALIVE;
-#else
-	msg = (uint32_t)++sc->bce_fw_drv_pulse_wr_seq;
-#endif
-	REG_WR_IND(sc, sc->bce_shmem_base + BCE_DRV_PULSE_MB, msg);
 
 	/* Update the statistics from the hardware statistics block. */
 	bce_stats_update(sc);
 
 	/* Schedule the next tick. */
-	callout_reset(&sc->bce_stat_ch, hz, bce_tick, sc);
+	callout_reset(&sc->bce_tick_callout, hz, bce_tick, sc);
 
 	/* If link is up already up then we're done. */
 	if (sc->bce_link)
@@ -5220,7 +5659,7 @@ bce_tick_serialized(struct bce_softc *sc)
 	mii_tick(mii);
 
 	/* Check if the link has come up. */
-	if (!sc->bce_link && (mii->mii_media_status & IFM_ACTIVE) &&
+	if ((mii->mii_media_status & IFM_ACTIVE) &&
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 		sc->bce_link++;
 		/* Now that link is up, handle any outstanding TX traffic. */
