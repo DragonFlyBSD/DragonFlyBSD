@@ -107,22 +107,21 @@ define _infotok
 	set $token = ($arg0)
 	set $tokref = $token->t_ref
 	if ($tokref != 0)
-		printf "%-15s 0x%08x %10d 0x%08x 0x%08x\n", $token->t_desc, \
-			$token->t_flags, $token->t_collisions, $tokref->tr_owner, \
-			$tokref->tr_stallpc
+		printf "%-15s %10d 0x%08x\n", $token->t_desc, \
+			$token->t_collisions, $tokref->tr_owner
 	else
-		printf "%-15s 0x%08x %10d not held\n", $token->t_desc, \
-			$token->t_flags, $token->t_collisions
+		printf "%-15s %10d not held\n", $token->t_desc, \
+			$token->t_collisions
 	end
 end
 
 define infotok
-	printf "\nToken           flags      collisions owner      stallpc\n"
+	printf "\nToken           collisions owner\n"
 	_infotok ($arg0)
 end
 
 define lstok
-	printf "\nToken           flags      collisions owner      stallpc\n"
+	printf "\nToken           collisions owner\n"
 	_infotok &pmap_token
 	_infotok &dev_token
 	_infotok &vm_token
