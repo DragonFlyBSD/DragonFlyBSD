@@ -80,7 +80,7 @@ dm_dk_lookup(const char *dev_name, struct vnode **vpp)
 
 	error = vn_open(&nd, NULL, FREAD|FWRITE, 0);
 	if (error) {
-		nlookup_done(&hd);
+		nlookup_done(&nd);
 		return error;
 	}
 
