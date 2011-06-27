@@ -56,6 +56,7 @@
 #include <opencrypto/deflate.h>
 #include <opencrypto/rmd160.h>
 #include <opencrypto/skipjack.h>
+#include <opencrypto/gmac.h>
 
 #include <sys/md5.h>
 
@@ -106,6 +107,7 @@ static	void aes_ctr_crypt(caddr_t, u_int8_t *, u_int8_t *);
 
 static	void aes_ctr_reinit(caddr_t, u_int8_t *);
 static	void aes_xts_reinit(caddr_t, u_int8_t *);
+static	void aes_gcm_reinit(caddr_t, u_int8_t *);
 
 static	void null_init(void *);
 static	int null_update(void *, u_int8_t *, u_int16_t);
@@ -220,6 +222,26 @@ struct enc_xform enc_xform_aes_ctr = {
 	aes_ctr_reinit
 };
 
+struct enc_xform enc_xform_aes_gcm = {
+	CRYPTO_AES_GCM_16, "AES-GCM",
+	AESGCM_BLOCK_LEN, AESGCM_IV_LEN, 16+4, 32+4,
+	aes_ctr_crypt,
+	aes_ctr_crypt,
+	aes_ctr_setkey,
+	aes_ctr_zerokey,
+	aes_gcm_reinit
+};
+
+struct enc_xform enc_xform_aes_gmac = {
+	CRYPTO_AES_GMAC, "AES-GMAC",
+	AESGMAC_BLOCK_LEN, AESGMAC_IV_LEN, 16+4, 32+4,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL
+};
+
 struct enc_xform enc_xform_arc4 = {
 	CRYPTO_ARC4, "ARC4",
 	1, 1, 1, 32,
@@ -244,61 +266,99 @@ struct enc_xform enc_xform_camellia = {
 struct auth_hash auth_hash_null = {
 	CRYPTO_NULL_HMAC, "NULL-HMAC",
 	0, NULL_HASH_LEN, NULL_HMAC_BLOCK_LEN, sizeof(int),	/* NB: context isn't used */
-	null_init, null_update, null_final
+	null_init, NULL, NULL, null_update, null_final
 };
 
 struct auth_hash auth_hash_hmac_md5 = {
 	CRYPTO_MD5_HMAC, "HMAC-MD5",
 	16, MD5_HASH_LEN, MD5_HMAC_BLOCK_LEN, sizeof(MD5_CTX),
-	(void (*) (void *)) MD5Init, MD5Update_int,
+	(void (*) (void *)) MD5Init, NULL, NULL,
+	MD5Update_int,
 	(void (*) (u_int8_t *, void *)) MD5Final
 };
 
 struct auth_hash auth_hash_hmac_sha1 = {
 	CRYPTO_SHA1_HMAC, "HMAC-SHA1",
 	20, SHA1_HASH_LEN, SHA1_HMAC_BLOCK_LEN, sizeof(SHA1_CTX),
-	SHA1Init_int, SHA1Update_int, SHA1Final_int
+	SHA1Init_int, NULL, NULL,
+	SHA1Update_int, SHA1Final_int
 };
 
 struct auth_hash auth_hash_hmac_ripemd_160 = {
 	CRYPTO_RIPEMD160_HMAC, "HMAC-RIPEMD-160",
 	20, RIPEMD160_HASH_LEN, RIPEMD160_HMAC_BLOCK_LEN, sizeof(RMD160_CTX),
-	(void (*)(void *)) RMD160Init, RMD160Update_int,
+	(void (*)(void *)) RMD160Init, NULL, NULL,
+	RMD160Update_int,
 	(void (*)(u_int8_t *, void *)) RMD160Final
 };
 
 struct auth_hash auth_hash_key_md5 = {
 	CRYPTO_MD5_KPDK, "Keyed MD5", 
 	0, MD5_KPDK_HASH_LEN, 0, sizeof(MD5_CTX),
-	(void (*)(void *)) MD5Init, MD5Update_int,
+	(void (*)(void *)) MD5Init, NULL, NULL,
+	MD5Update_int,
 	(void (*)(u_int8_t *, void *)) MD5Final
 };
 
 struct auth_hash auth_hash_key_sha1 = {
 	CRYPTO_SHA1_KPDK, "Keyed SHA1",
 	0, SHA1_KPDK_HASH_LEN, 0, sizeof(SHA1_CTX),
-	SHA1Init_int, SHA1Update_int, SHA1Final_int
+	SHA1Init_int, NULL, NULL,
+	SHA1Update_int, SHA1Final_int
 };
 
 struct auth_hash auth_hash_hmac_sha2_256 = {
 	CRYPTO_SHA2_256_HMAC, "HMAC-SHA2-256",
 	32, SHA2_256_HASH_LEN, SHA2_256_HMAC_BLOCK_LEN, sizeof(SHA256_CTX),
-	(void (*)(void *)) SHA256_Init, SHA256Update_int,
+	(void (*)(void *)) SHA256_Init, NULL, NULL,
+	SHA256Update_int,
 	(void (*)(u_int8_t *, void *)) SHA256_Final
 };
 
 struct auth_hash auth_hash_hmac_sha2_384 = {
 	CRYPTO_SHA2_384_HMAC, "HMAC-SHA2-384",
 	48, SHA2_384_HASH_LEN, SHA2_384_HMAC_BLOCK_LEN, sizeof(SHA384_CTX),
-	(void (*)(void *)) SHA384_Init, SHA384Update_int,
+	(void (*)(void *)) SHA384_Init, NULL, NULL,
+	SHA384Update_int,
 	(void (*)(u_int8_t *, void *)) SHA384_Final
 };
 
 struct auth_hash auth_hash_hmac_sha2_512 = {
 	CRYPTO_SHA2_512_HMAC, "HMAC-SHA2-512",
 	64, SHA2_512_HASH_LEN, SHA2_512_HMAC_BLOCK_LEN, sizeof(SHA512_CTX),
-	(void (*)(void *)) SHA512_Init, SHA512Update_int,
+	(void (*)(void *)) SHA512_Init, NULL, NULL,
+	SHA512Update_int,
 	(void (*)(u_int8_t *, void *)) SHA512_Final
+};
+
+struct auth_hash auth_hash_gmac_aes_128 = {
+	CRYPTO_AES_128_GMAC, "GMAC-AES-128",
+	16+4, 16, 16, sizeof(AES_GMAC_CTX),
+	(void (*)(void *)) AES_GMAC_Init,
+	(void (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Setkey,
+	(void (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Reinit,
+	(int  (*)(void *, u_int8_t *, u_int16_t)) AES_GMAC_Update,
+	(void (*)(u_int8_t *, void *)) AES_GMAC_Final
+};
+
+struct auth_hash auth_hash_gmac_aes_192 = {
+	CRYPTO_AES_192_GMAC, "GMAC-AES-192",
+	24+4, 16, 16, sizeof(AES_GMAC_CTX),
+	(void (*)(void *)) AES_GMAC_Init,
+	(void (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Setkey,
+	(void (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Reinit,
+	(int  (*)(void *, u_int8_t *, u_int16_t)) AES_GMAC_Update,
+	(void (*)(u_int8_t *, void *)) AES_GMAC_Final
+};
+
+struct auth_hash auth_hash_gmac_aes_256 = {
+	CRYPTO_AES_256_GMAC, "GMAC-AES-256",
+	32+4, 16, 16, sizeof(AES_GMAC_CTX),
+	(void (*)(void *)) AES_GMAC_Init,
+	(void (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Setkey,
+	(void (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Reinit,
+	(int  (*)(void *, u_int8_t *, u_int16_t)) AES_GMAC_Update,
+	(void (*)(u_int8_t *, void *)) AES_GMAC_Final
 };
 
 /* Compression instance */
@@ -759,6 +819,19 @@ aes_ctr_zerokey(u_int8_t **sched)
 	bzero(*sched, sizeof(struct aes_ctr_ctx));
 	kfree(*sched, M_CRYPTO_DATA);
 	*sched = NULL;
+}
+
+static void
+aes_gcm_reinit(caddr_t key, u_int8_t *iv)
+{
+	struct aes_ctr_ctx *ctx;
+
+	ctx = (struct aes_ctr_ctx *)key;
+	bcopy(iv, ctx->ac_block + AESCTR_NONCESIZE, AESCTR_IV_LEN);
+
+	/* reset counter */
+	bzero(ctx->ac_block + AESCTR_NONCESIZE + AESCTR_IV_LEN, 4);
+	ctx->ac_block[AESCTR_BLOCK_LEN - 1] = 1; /* GCM starts with 1 */
 }
 
 static void

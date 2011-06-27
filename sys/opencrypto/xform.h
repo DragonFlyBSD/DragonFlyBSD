@@ -30,6 +30,7 @@
 #include <crypto/sha1.h>
 #include <crypto/sha2/sha2.h>
 #include <opencrypto/rmd160.h>
+#include <opencrypto/gmac.h>
 
 /* Declarations */
 struct auth_hash {
@@ -40,6 +41,8 @@ struct auth_hash {
 	u_int16_t blocksize;
 	u_int16_t ctxsize;
 	void (*Init) (void *);
+	void (*Setkey) (void *, const u_int8_t *, u_int16_t);
+	void (*Reinit) (void *, const u_int8_t *, u_int16_t);
 	int  (*Update) (void *, u_int8_t *, u_int16_t);
 	void (*Final) (u_int8_t *, void *);
 };
@@ -73,6 +76,7 @@ union authctx {
 	SHA256_CTX sha256ctx;
 	SHA384_CTX sha384ctx;
 	SHA512_CTX sha512ctx;
+	AES_GMAC_CTX	aes_gmac_ctx;
 };
 
 extern struct enc_xform enc_xform_null;
@@ -84,6 +88,8 @@ extern struct enc_xform enc_xform_skipjack;
 extern struct enc_xform enc_xform_rijndael128;
 extern struct enc_xform enc_xform_aes_xts;
 extern struct enc_xform enc_xform_aes_ctr;
+extern struct enc_xform enc_xform_aes_gcm;
+extern struct enc_xform enc_xform_aes_gmac;
 extern struct enc_xform enc_xform_arc4;
 extern struct enc_xform enc_xform_camellia;
 
@@ -96,6 +102,9 @@ extern struct auth_hash auth_hash_hmac_ripemd_160;
 extern struct auth_hash auth_hash_hmac_sha2_256;
 extern struct auth_hash auth_hash_hmac_sha2_384;
 extern struct auth_hash auth_hash_hmac_sha2_512;
+extern struct auth_hash auth_hash_gmac_aes_128;
+extern struct auth_hash auth_hash_gmac_aes_192;
+extern struct auth_hash auth_hash_gmac_aes_256;
 
 extern struct comp_algo comp_algo_deflate;
 
