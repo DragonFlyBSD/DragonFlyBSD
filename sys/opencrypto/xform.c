@@ -729,6 +729,7 @@ aes_ctr_crypt(caddr_t key, u_int8_t *data, u_int8_t *iv)
 	rijndaelEncrypt(ctx->ac_ek, ctx->ac_nr, iv, keystream);
 	for (i = 0; i < AESCTR_BLOCK_LEN; i++)
 		data[i] ^= keystream[i];
+	bzero(keystream, sizeof(keystream));
 }
 
 int
