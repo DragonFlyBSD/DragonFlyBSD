@@ -179,6 +179,13 @@ It is set to
 by default.
 This reduces instances where accidental commits or repository
 operations are made on the master repository.
+.Pp
+It is recommended to enable the MFC-detection commit hook, so that
+you are reminded of MFCing in case certain keywords are detected in
+the commit message. To do so, copy the hook into place:
+.Bd -literal -offset indent
+cp /usr/src/tools/commit-msg /usr/src/.git/hooks/commit-msg
+.Ed
 .Sh STRUCTURE OF COMMIT MESSAGES
 As many
 .Xr git 1
