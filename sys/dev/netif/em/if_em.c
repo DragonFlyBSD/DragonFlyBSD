@@ -1856,8 +1856,7 @@ em_set_multi(struct adapter *adapter)
 		reg_rctl |= E1000_RCTL_MPE;
 		E1000_WRITE_REG(&adapter->hw, E1000_RCTL, reg_rctl);
 	} else {
-		e1000_update_mc_addr_list(&adapter->hw, mta,
-		    mcnt, 1, adapter->hw.mac.rar_entry_count);
+		e1000_update_mc_addr_list(&adapter->hw, mta, mcnt);
 	}
 
 	if (adapter->hw.mac.type == e1000_82542 && 

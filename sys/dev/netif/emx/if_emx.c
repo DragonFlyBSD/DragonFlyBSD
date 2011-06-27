@@ -1511,8 +1511,7 @@ emx_set_multi(struct emx_softc *sc)
 		reg_rctl |= E1000_RCTL_MPE;
 		E1000_WRITE_REG(&sc->hw, E1000_RCTL, reg_rctl);
 	} else {
-		e1000_update_mc_addr_list(&sc->hw, mta,
-		    mcnt, 1, sc->hw.mac.rar_entry_count);
+		e1000_update_mc_addr_list(&sc->hw, mta, mcnt);
 	}
 }
 

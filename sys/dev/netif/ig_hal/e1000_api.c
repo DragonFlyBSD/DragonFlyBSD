@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2008, Intel Corporation 
+  Copyright (c) 2001-2009, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD$*/
+/*$FreeBSD: $*/
 
 #include "e1000_api.h"
 
@@ -112,6 +112,7 @@ out:
 	return ret_val;
 }
 
+
 /**
  *  e1000_set_mac_type - Sets MAC type
  *  @hw: pointer to the HW structure
@@ -129,9 +130,11 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	DEBUGFUNC("e1000_set_mac_type");
 
 	switch (hw->device_id) {
+#ifndef NO_82542_SUPPORT
 	case E1000_DEV_ID_82542:
 		mac->type = e1000_82542;
 		break;
+#endif
 	case E1000_DEV_ID_82543GC_FIBER:
 	case E1000_DEV_ID_82543GC_COPPER:
 		mac->type = e1000_82543;
@@ -198,7 +201,6 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_82571PT_QUAD_COPPER:
 	case E1000_DEV_ID_82571EB_QUAD_FIBER:
 	case E1000_DEV_ID_82571EB_QUAD_COPPER_LP:
-	case E1000_DEV_ID_82571EB_QUAD_COPPER_BP:
 		mac->type = e1000_82571;
 		break;
 	case E1000_DEV_ID_82572EI:
@@ -213,7 +215,11 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 		mac->type = e1000_82573;
 		break;
 	case E1000_DEV_ID_82574L:
+	case E1000_DEV_ID_82574LA:
 		mac->type = e1000_82574;
+		break;
+	case E1000_DEV_ID_82583V:
+		mac->type = e1000_82583;
 		break;
 	case E1000_DEV_ID_80003ES2LAN_COPPER_DPT:
 	case E1000_DEV_ID_80003ES2LAN_SERDES_DPT:
@@ -228,6 +234,7 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_ICH8_IGP_M_AMT:
 	case E1000_DEV_ID_ICH8_IGP_AMT:
 	case E1000_DEV_ID_ICH8_IGP_C:
+	case E1000_DEV_ID_ICH8_82567V_3:
 		mac->type = e1000_ich8lan;
 		break;
 	case E1000_DEV_ID_ICH9_IFE:
@@ -246,18 +253,19 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 		break;
 	case E1000_DEV_ID_ICH10_D_BM_LM:
 	case E1000_DEV_ID_ICH10_D_BM_LF:
+	case E1000_DEV_ID_ICH10_D_BM_V:
+	case E1000_DEV_ID_ICH10_HANKSVILLE:
 		mac->type = e1000_ich10lan;
 		break;
-	case E1000_DEV_ID_82575EB_COPPER:
-	case E1000_DEV_ID_82575EB_FIBER_SERDES:
-	case E1000_DEV_ID_82575GB_QUAD_COPPER:
-		mac->type = e1000_82575;
+	case E1000_DEV_ID_PCH_D_HV_DM:
+	case E1000_DEV_ID_PCH_D_HV_DC:
+	case E1000_DEV_ID_PCH_M_HV_LM:
+	case E1000_DEV_ID_PCH_M_HV_LC:
+		mac->type = e1000_pchlan;
 		break;
-	case E1000_DEV_ID_82576:
-	case E1000_DEV_ID_82576_FIBER:
-	case E1000_DEV_ID_82576_SERDES:
-	case E1000_DEV_ID_82576_QUAD_COPPER:
-		mac->type = e1000_82576;
+	case E1000_DEV_ID_PCH2_LV_LM:
+	case E1000_DEV_ID_PCH2_LV_V:
+		mac->type = e1000_pch2lan;
 		break;
 	default:
 		/* Should never have loaded on this device */
@@ -311,9 +319,11 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 	 * the functions in that family.
 	 */
 	switch (hw->mac.type) {
+#ifndef NO_82542_SUPPORT
 	case e1000_82542:
 		e1000_init_function_pointers_82542(hw);
 		break;
+#endif
 	case e1000_82543:
 	case e1000_82544:
 		e1000_init_function_pointers_82543(hw);
@@ -335,6 +345,7 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 	case e1000_82572:
 	case e1000_82573:
 	case e1000_82574:
+	case e1000_82583:
 		e1000_init_function_pointers_82571(hw);
 		break;
 	case e1000_80003es2lan:
@@ -343,11 +354,9 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 	case e1000_ich8lan:
 	case e1000_ich9lan:
 	case e1000_ich10lan:
+	case e1000_pchlan:
+	case e1000_pch2lan:
 		e1000_init_function_pointers_ich8lan(hw);
-		break;
-	case e1000_82575:
-	case e1000_82576:
-		e1000_init_function_pointers_82575(hw);
 		break;
 	default:
 		DEBUGOUT("Hardware not supported\n");
@@ -371,7 +380,6 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 		ret_val = e1000_init_phy_params(hw);
 		if (ret_val)
 			goto out;
-
 	}
 
 out:
@@ -427,26 +435,16 @@ void e1000_write_vfta(struct e1000_hw *hw, u32 offset, u32 value)
  *  @hw: pointer to the HW structure
  *  @mc_addr_list: array of multicast addresses to program
  *  @mc_addr_count: number of multicast addresses to program
- *  @rar_used_count: the first RAR register free to program
- *  @rar_count: total number of supported Receive Address Registers
  *
- *  Updates the Receive Address Registers and Multicast Table Array.
+ *  Updates the Multicast Table Array.
  *  The caller must have a packed mc_addr_list of multicast addresses.
- *  The parameter rar_count will usually be hw->mac.rar_entry_count
- *  unless there are workarounds that change this.  Currently no func pointer
- *  exists and all implementations are handled in the generic version of this
- *  function.
  **/
 void e1000_update_mc_addr_list(struct e1000_hw *hw, u8 *mc_addr_list,
-                               u32 mc_addr_count, u32 rar_used_count,
-                               u32 rar_count)
+                               u32 mc_addr_count)
 {
 	if (hw->mac.ops.update_mc_addr_list)
-		hw->mac.ops.update_mc_addr_list(hw,
-		                                mc_addr_list,
-		                                mc_addr_count,
-		                                rar_used_count,
-		                                rar_count);
+		hw->mac.ops.update_mc_addr_list(hw, mc_addr_list,
+		                                mc_addr_count);
 }
 
 /**
@@ -618,6 +616,21 @@ s32 e1000_blink_led(struct e1000_hw *hw)
 }
 
 /**
+ *  e1000_id_led_init - store LED configurations in SW
+ *  @hw: pointer to the HW structure
+ *
+ *  Initializes the LED config in SW. This is a function pointer entry point
+ *  called by drivers.
+ **/
+s32 e1000_id_led_init(struct e1000_hw *hw)
+{
+	if (hw->mac.ops.id_led_init)
+		return hw->mac.ops.id_led_init(hw);
+
+	return E1000_SUCCESS;
+}
+
+/**
  *  e1000_led_on - Turn on SW controllable LED
  *  @hw: pointer to the HW structure
  *
@@ -723,20 +736,6 @@ s32 e1000_validate_mdi_setting(struct e1000_hw *hw)
 		return hw->mac.ops.validate_mdi_setting(hw);
 
 	return E1000_SUCCESS;
-}
-
-/**
- *  e1000_mta_set - Sets multicast table bit
- *  @hw: pointer to the HW structure
- *  @hash_value: Multicast hash value.
- *
- *  This sets the bit in the multicast table corresponding to the
- *  hash value.  This is a function pointer entry point called by drivers.
- **/
-void e1000_mta_set(struct e1000_hw *hw, u32 hash_value)
-{
-	if (hw->mac.ops.mta_set)
-		hw->mac.ops.mta_set(hw, hash_value);
 }
 
 /**
@@ -1080,6 +1079,37 @@ s32 e1000_read_mac_addr(struct e1000_hw *hw)
 }
 
 /**
+ *  e1000_read_pba_string - Read device part number string
+ *  @hw: pointer to the HW structure
+ *  @pba_num: pointer to device part number
+ *  @pba_num_size: size of part number buffer
+ *
+ *  Reads the product board assembly (PBA) number from the EEPROM and stores
+ *  the value in pba_num.
+ *  Currently no func pointer exists and all implementations are handled in the
+ *  generic version of this function.
+ **/
+s32 e1000_read_pba_string(struct e1000_hw *hw, u8 *pba_num, u32 pba_num_size)
+{
+	return e1000_read_pba_string_generic(hw, pba_num, pba_num_size);
+}
+
+/**
+ *  e1000_read_pba_length - Read device part number string length
+ *  @hw: pointer to the HW structure
+ *  @pba_num_size: size of part number buffer
+ *
+ *  Reads the product board assembly (PBA) number length from the EEPROM and
+ *  stores the value in pba_num.
+ *  Currently no func pointer exists and all implementations are handled in the
+ *  generic version of this function.
+ **/
+s32 e1000_read_pba_length(struct e1000_hw *hw, u32 *pba_num_size)
+{
+	return e1000_read_pba_length_generic(hw, pba_num_size);
+}
+
+/**
  *  e1000_read_pba_num - Read device part number
  *  @hw: pointer to the HW structure
  *  @pba_num: pointer to device part number
@@ -1174,22 +1204,6 @@ s32 e1000_write_nvm(struct e1000_hw *hw, u16 offset, u16 words, u16 *data)
 }
 
 /**
- *  e1000_write_8bit_ctrl_reg - Writes 8bit Control register
- *  @hw: pointer to the HW structure
- *  @reg: 32bit register offset
- *  @offset: the register to write
- *  @data: the value to write.
- *
- *  Writes the PHY register at offset with the value in data.
- *  This is a function pointer entry point called by drivers.
- **/
-s32 e1000_write_8bit_ctrl_reg(struct e1000_hw *hw, u32 reg, u32 offset,
-                              u8 data)
-{
-	return e1000_write_8bit_ctrl_reg_generic(hw, reg, offset, data);
-}
-
-/**
  * e1000_power_up_phy - Restores link in case of PHY power down
  * @hw: pointer to the HW structure
  *
@@ -1215,17 +1229,5 @@ void e1000_power_down_phy(struct e1000_hw *hw)
 {
 	if (hw->phy.ops.power_down)
 		hw->phy.ops.power_down(hw);
-}
-
-/**
- *  e1000_shutdown_fiber_serdes_link - Remove link during power down
- *  @hw: pointer to the HW structure
- *
- *  Shutdown the optics and PCS on driver unload.
- **/
-void e1000_shutdown_fiber_serdes_link(struct e1000_hw *hw)
-{
-	if (hw->mac.ops.shutdown_serdes)
-		hw->mac.ops.shutdown_serdes(hw);
 }
 

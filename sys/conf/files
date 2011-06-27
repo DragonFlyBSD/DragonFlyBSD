@@ -324,7 +324,6 @@ dev/netif/ig_hal/e1000_82541.c	optional ig_hal
 dev/netif/ig_hal/e1000_82542.c	optional ig_hal
 dev/netif/ig_hal/e1000_82543.c	optional ig_hal
 dev/netif/ig_hal/e1000_82571.c	optional ig_hal
-dev/netif/ig_hal/e1000_82575.c	optional ig_hal
 dev/netif/ig_hal/e1000_api.c	optional ig_hal
 dev/netif/ig_hal/e1000_ich8lan.c	optional ig_hal
 dev/netif/ig_hal/e1000_mac.c	optional ig_hal

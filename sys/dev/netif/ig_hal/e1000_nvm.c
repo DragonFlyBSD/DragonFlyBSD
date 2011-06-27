@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2008, Intel Corporation 
+  Copyright (c) 2001-2009, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,9 +30,14 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD$*/
+/*$FreeBSD: $*/
 
 #include "e1000_api.h"
+
+#ifdef NO_82542_SUPPORT
+static void e1000_stop_nvm(struct e1000_hw *hw);
+#endif
+static void e1000_reload_nvm_generic(struct e1000_hw *hw);
 
 /**
  *  e1000_init_nvm_ops_generic - Initialize NVM function pointers
@@ -331,7 +336,11 @@ static void e1000_standby_nvm(struct e1000_hw *hw)
  *
  *  Terminates the current command by inverting the EEPROM's chip select pin.
  **/
+#ifdef NO_82542_SUPPORT
+static void e1000_stop_nvm(struct e1000_hw *hw)
+#else
 void e1000_stop_nvm(struct e1000_hw *hw)
+#endif
 {
 	u32 eecd;
 
@@ -773,6 +782,184 @@ out:
 }
 
 /**
+ *  e1000_read_pba_string_generic - Read device part number
+ *  @hw: pointer to the HW structure
+ *  @pba_num: pointer to device part number
+ *  @pba_num_size: size of part number buffer
+ *
+ *  Reads the product board assembly (PBA) number from the EEPROM and stores
+ *  the value in pba_num.
+ **/
+s32 e1000_read_pba_string_generic(struct e1000_hw *hw, u8 *pba_num, 
+                                  u32 pba_num_size)
+{
+	s32 ret_val;
+	u16 nvm_data;
+	u16 pba_ptr;
+	u16 offset;
+	u16 length;
+
+	DEBUGFUNC("e1000_read_pba_string_generic");
+
+	if (pba_num == NULL) {
+		DEBUGOUT("PBA string buffer was null\n");
+		ret_val = E1000_ERR_INVALID_ARGUMENT;
+		goto out;
+	}
+
+	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_0, 1, &nvm_data);
+	if (ret_val) {
+		DEBUGOUT("NVM Read Error\n");
+		goto out;
+	}
+
+	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_1, 1, &pba_ptr);
+	if (ret_val) {
+		DEBUGOUT("NVM Read Error\n");
+		goto out;
+	}
+
+	/*
+	 * if nvm_data is not ptr guard the PBA must be in legacy format which
+	 * means pba_ptr is actually our second data word for the PBA number
+	 * and we can decode it into an ascii string
+	 */
+	if (nvm_data != NVM_PBA_PTR_GUARD) {
+		DEBUGOUT("NVM PBA number is not stored as string\n");
+
+		/* we will need 11 characters to store the PBA */
+		if (pba_num_size < 11) {
+			DEBUGOUT("PBA string buffer too small\n");
+			return E1000_ERR_NO_SPACE;
+		}
+
+		/* extract hex string from data and pba_ptr */
+		pba_num[0] = (nvm_data >> 12) & 0xF;
+		pba_num[1] = (nvm_data >> 8) & 0xF;
+		pba_num[2] = (nvm_data >> 4) & 0xF;
+		pba_num[3] = nvm_data & 0xF;
+		pba_num[4] = (pba_ptr >> 12) & 0xF;
+		pba_num[5] = (pba_ptr >> 8) & 0xF;
+		pba_num[6] = '-';
+		pba_num[7] = 0;
+		pba_num[8] = (pba_ptr >> 4) & 0xF;
+		pba_num[9] = pba_ptr & 0xF;
+
+		/* put a null character on the end of our string */
+		pba_num[10] = '\0';
+
+		/* switch all the data but the '-' to hex char */
+		for (offset = 0; offset < 10; offset++) {
+			if (pba_num[offset] < 0xA)
+				pba_num[offset] += '0';
+			else if (pba_num[offset] < 0x10)
+				pba_num[offset] += 'A' - 0xA;
+		}
+
+		goto out;
+	}
+
+	ret_val = hw->nvm.ops.read(hw, pba_ptr, 1, &length);
+	if (ret_val) {
+		DEBUGOUT("NVM Read Error\n");
+		goto out;
+	}
+
+	if (length == 0xFFFF || length == 0) {
+		DEBUGOUT("NVM PBA number section invalid length\n");
+		ret_val = E1000_ERR_NVM_PBA_SECTION;
+		goto out;
+	}
+	/* check if pba_num buffer is big enough */
+	if (pba_num_size < (((u32)length * 2) - 1)) {
+		DEBUGOUT("PBA string buffer too small\n");
+		ret_val = E1000_ERR_NO_SPACE;
+		goto out;
+	}
+
+	/* trim pba length from start of string */
+	pba_ptr++;
+	length--;
+
+	for (offset = 0; offset < length; offset++) {
+		ret_val = hw->nvm.ops.read(hw, pba_ptr + offset, 1, &nvm_data);
+		if (ret_val) {
+			DEBUGOUT("NVM Read Error\n");
+			goto out;
+		}
+		pba_num[offset * 2] = (u8)(nvm_data >> 8);
+		pba_num[(offset * 2) + 1] = (u8)(nvm_data & 0xFF);
+	}
+	pba_num[offset * 2] = '\0';
+
+out:
+	return ret_val;
+}
+
+/**
+ *  e1000_read_pba_length_generic - Read device part number length
+ *  @hw: pointer to the HW structure
+ *  @pba_num_size: size of part number buffer
+ *
+ *  Reads the product board assembly (PBA) number length from the EEPROM and
+ *  stores the value in pba_num_size.
+ **/
+s32 e1000_read_pba_length_generic(struct e1000_hw *hw, u32 *pba_num_size)
+{
+	s32 ret_val;
+	u16 nvm_data;
+	u16 pba_ptr;
+	u16 length;
+
+	DEBUGFUNC("e1000_read_pba_length_generic");
+
+	if (pba_num_size == NULL) {
+		DEBUGOUT("PBA buffer size was null\n");
+		ret_val = E1000_ERR_INVALID_ARGUMENT;
+		goto out;
+	}
+
+	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_0, 1, &nvm_data);
+	if (ret_val) {
+		DEBUGOUT("NVM Read Error\n");
+		goto out;
+	}
+
+	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_1, 1, &pba_ptr);
+	if (ret_val) {
+		DEBUGOUT("NVM Read Error\n");
+		goto out;
+	}
+
+	 /* if data is not ptr guard the PBA must be in legacy format */
+	if (nvm_data != NVM_PBA_PTR_GUARD) {
+		*pba_num_size = 11;
+		goto out;
+	}
+
+	ret_val = hw->nvm.ops.read(hw, pba_ptr, 1, &length);
+	if (ret_val) {
+		DEBUGOUT("NVM Read Error\n");
+		goto out;
+	}
+
+	if (length == 0xFFFF || length == 0) {
+		DEBUGOUT("NVM PBA number section invalid length\n");
+		ret_val = E1000_ERR_NVM_PBA_SECTION;
+		goto out;
+	}
+
+	/*
+	 * Convert from length in u16 values to u8 chars, add 1 for NULL,
+	 * and subtract 2 because length field is included in length.
+	 */
+	*pba_num_size = ((u32)length * 2) - 1;
+
+out:
+	return ret_val;
+}
+
+/**
  *  e1000_read_pba_num_generic - Read device part number
  *  @hw: pointer to the HW structure
  *  @pba_num: pointer to device part number
@@ -790,6 +977,10 @@ s32 e1000_read_pba_num_generic(struct e1000_hw *hw, u32 *pba_num)
 	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_0, 1, &nvm_data);
 	if (ret_val) {
 		DEBUGOUT("NVM Read Error\n");
+		goto out;
+	} else if (nvm_data == NVM_PBA_PTR_GUARD) {
+		DEBUGOUT("NVM Not Supported\n");
+		ret_val = E1000_NOT_IMPLEMENTED;
 		goto out;
 	}
 	*pba_num = (u32)(nvm_data << 16);
@@ -815,6 +1006,25 @@ out:
  **/
 s32 e1000_read_mac_addr_generic(struct e1000_hw *hw)
 {
+#ifdef foo
+	u32 rar_high;
+	u32 rar_low;
+	u16 i;
+
+	rar_high = E1000_READ_REG(hw, E1000_RAH(0));
+	rar_low = E1000_READ_REG(hw, E1000_RAL(0));
+
+	for (i = 0; i < E1000_RAL_MAC_ADDR_LEN; i++)
+		hw->mac.perm_addr[i] = (u8)(rar_low >> (i*8));
+
+	for (i = 0; i < E1000_RAH_MAC_ADDR_LEN; i++)
+		hw->mac.perm_addr[i+4] = (u8)(rar_high >> (i*8));
+
+	for (i = 0; i < ETH_ADDR_LEN; i++)
+		hw->mac.addr[i] = hw->mac.perm_addr[i];
+
+	return E1000_SUCCESS;
+#else
 	s32  ret_val = E1000_SUCCESS;
 	u16 offset, nvm_data, i;
 
@@ -840,6 +1050,7 @@ s32 e1000_read_mac_addr_generic(struct e1000_hw *hw)
 
 out:
 	return ret_val;
+#endif
 }
 
 /**
@@ -886,7 +1097,7 @@ out:
  **/
 s32 e1000_update_nvm_checksum_generic(struct e1000_hw *hw)
 {
-	s32  ret_val;
+	s32 ret_val;
 	u16 checksum = 0;
 	u16 i, nvm_data;
 
@@ -916,7 +1127,7 @@ out:
  *  Reloads the EEPROM by setting the "Reinitialize from EEPROM" bit in the
  *  extended control register.
  **/
-void e1000_reload_nvm_generic(struct e1000_hw *hw)
+static void e1000_reload_nvm_generic(struct e1000_hw *hw)
 {
 	u32 ctrl_ext;
 
