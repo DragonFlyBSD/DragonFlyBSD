@@ -144,11 +144,13 @@ static ivgen_ctor_t	essiv_ivgen_ctor;
 static ivgen_dtor_t	essiv_ivgen_dtor;
 static ivgen_t		essiv_ivgen;
 static ivgen_t		plain_ivgen;
+static ivgen_t		plain64_ivgen;
 
 static struct iv_generator ivgens[] = {
 	{ .name = "essiv", .ctor = essiv_ivgen_ctor, .dtor = essiv_ivgen_dtor,
 	    .gen_iv = essiv_ivgen },
 	{ .name = "plain", .ctor = NULL, .dtor = NULL, .gen_iv = plain_ivgen },
+	{ .name = "plain64", .ctor = NULL, .dtor = NULL, .gen_iv = plain64_ivgen },
 	{ NULL, NULL, NULL, NULL }
 };
 
@@ -422,6 +424,14 @@ plain_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
 	dmtc_crypto_dispatch(opaque);
 }
 
+static void
+plain64_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
+    size_t iv_len, off_t sector, void *opaque)
+{
+	bzero(iv, iv_len);
+	*((uint64_t *)iv) = htole64((uint64_t)(sector + priv->iv_offset));
+	dmtc_crypto_dispatch(opaque);
+}
 
 #if 0
 static void
