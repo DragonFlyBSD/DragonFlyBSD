@@ -76,9 +76,14 @@ dm_dk_lookup(const char *dev_name, struct vnode **vpp)
 
 	error = nlookup_init(&nd, dev_name, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error)
-	    return error;
+		return error;
 
 	error = vn_open(&nd, NULL, FREAD|FWRITE, 0);
+	if (error) {
+		nlookup_done(&hd);
+		return error;
+	}
+
 	*vpp = nd.nl_open_vp;
 	nd.nl_open_vp = NULL;
 	nlookup_done(&nd);
