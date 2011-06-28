@@ -1006,7 +1006,6 @@ out:
  **/
 s32 e1000_read_mac_addr_generic(struct e1000_hw *hw)
 {
-#ifdef foo
 	u32 rar_high;
 	u32 rar_low;
 	u16 i;
@@ -1024,33 +1023,6 @@ s32 e1000_read_mac_addr_generic(struct e1000_hw *hw)
 		hw->mac.addr[i] = hw->mac.perm_addr[i];
 
 	return E1000_SUCCESS;
-#else
-	s32  ret_val = E1000_SUCCESS;
-	u16 offset, nvm_data, i;
-
-	DEBUGFUNC("e1000_read_mac_addr");
-
-	for (i = 0; i < ETH_ADDR_LEN; i += 2) {
-		offset = i >> 1;
-		ret_val = hw->nvm.ops.read(hw, offset, 1, &nvm_data);
-		if (ret_val) {
-			DEBUGOUT("NVM Read Error\n");
-			goto out;
-		}
-		hw->mac.perm_addr[i] = (u8)(nvm_data & 0xFF);
-		hw->mac.perm_addr[i+1] = (u8)(nvm_data >> 8);
-	}
-
-	/* Flip last bit of mac address if we're on second port */
-	if (hw->bus.func == E1000_FUNC_1)
-		hw->mac.perm_addr[5] ^= 1;
-
-	for (i = 0; i < ETH_ADDR_LEN; i++)
-		hw->mac.addr[i] = hw->mac.perm_addr[i];
-
-out:
-	return ret_val;
-#endif
 }
 
 /**

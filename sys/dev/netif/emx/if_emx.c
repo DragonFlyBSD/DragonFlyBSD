@@ -158,6 +158,7 @@ static const struct emx_device {
 	EMX_DEVICE(80003ES2LAN_SERDES_DPT),
 
 	EMX_DEVICE(82574L),
+	EMX_DEVICE(82574LA),
 
 	/* required last entry */
 	EMX_DEVICE_NULL
@@ -214,7 +215,7 @@ static int	emx_txcsum(struct emx_softc *, struct mbuf *,
 		    uint32_t *, uint32_t *);
 
 static int 	emx_is_valid_eaddr(const uint8_t *);
-static int	emx_hw_init(struct emx_softc *);
+static int	emx_reset(struct emx_softc *);
 static void	emx_setup_ifp(struct emx_softc *);
 static void	emx_init_tx_unit(struct emx_softc *);
 static void	emx_init_rx_unit(struct emx_softc *);
@@ -224,6 +225,7 @@ static void	emx_disable_promisc(struct emx_softc *);
 static void	emx_set_multi(struct emx_softc *);
 static void	emx_update_link_status(struct emx_softc *);
 static void	emx_smartspeed(struct emx_softc *);
+static void	emx_set_itr(struct emx_softc *, uint32_t);
 
 static void	emx_print_debug_info(struct emx_softc *);
 static void	emx_print_nvm_info(struct emx_softc *);
@@ -397,7 +399,7 @@ emx_attach(device_t dev)
 	struct emx_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error = 0, i;
-	uint16_t eeprom_data, device_id;
+	uint16_t eeprom_data, device_id, apme_mask;
 
 	lwkt_serialize_init(&sc->main_serialize);
 	lwkt_serialize_init(&sc->tx_serialize);
@@ -526,6 +528,22 @@ emx_attach(device_t dev)
 	if (error)
 		goto fail;
 
+	/* Allocate multicast array memory. */
+	sc->mta = kmalloc(ETH_ADDR_LEN * EMX_MCAST_ADDR_MAX,
+	    M_DEVBUF, M_WAITOK);
+
+	/* Indicate SOL/IDER usage */
+	if (e1000_check_reset_block(&sc->hw)) {
+		device_printf(dev,
+		    "PHY reset is blocked due to SOL/IDER session.\n");
+	}
+
+	/*
+	 * Start from a known state, this is important in reading the
+	 * nvm and mac from that.
+	 */
+	e1000_reset_hw(&sc->hw);
+
 	/* Make sure we have a good EEPROM before we read from it */
 	if (e1000_validate_nvm_checksum(&sc->hw) < 0) {
 		/*
@@ -541,13 +559,6 @@ emx_attach(device_t dev)
 		}
 	}
 
-	/* Initialize the hardware */
-	error = emx_hw_init(sc);
-	if (error) {
-		device_printf(dev, "Unable to initialize the hardware\n");
-		goto fail;
-	}
-
 	/* Copy the permanent MAC address out of the EEPROM */
 	if (e1000_read_mac_addr(&sc->hw) < 0) {
 		device_printf(dev, "EEPROM read error while reading MAC"
@@ -561,35 +572,21 @@ emx_attach(device_t dev)
 		goto fail;
 	}
 
-	/* Manually turn off all interrupts */
-	E1000_WRITE_REG(&sc->hw, E1000_IMC, 0xffffffff);
-
-	/* Setup OS specific network interface */
-	emx_setup_ifp(sc);
-
-	/* Add sysctl tree, must after emx_setup_ifp() */
-	emx_add_sysctl(sc);
-
-	/* Initialize statistics */
-	emx_update_stats(sc);
-
-	sc->hw.mac.get_link_status = 1;
-	emx_update_link_status(sc);
-
-	/* Indicate SOL/IDER usage */
-	if (e1000_check_reset_block(&sc->hw)) {
-		device_printf(dev,
-		    "PHY reset is blocked due to SOL/IDER session.\n");
-	}
-
 	/* Determine if we have to control management hardware */
 	sc->has_manage = e1000_enable_mng_pass_thru(&sc->hw);
 
 	/*
 	 * Setup Wake-on-Lan
 	 */
+	apme_mask = EMX_EEPROM_APME;
+	eeprom_data = 0;
 	switch (sc->hw.mac.type) {
+	case e1000_82573:
+		sc->has_amt = 1;
+		/* FALL THROUGH */
+
 	case e1000_82571:
+	case e1000_82572:
 	case e1000_80003es2lan:
 		if (sc->hw.bus.func == 1) {
 			e1000_read_nvm(&sc->hw,
@@ -598,17 +595,16 @@ emx_attach(device_t dev)
 			e1000_read_nvm(&sc->hw,
 			    NVM_INIT_CONTROL3_PORT_A, 1, &eeprom_data);
 		}
-		eeprom_data &= EMX_EEPROM_APME;
 		break;
 
 	default:
-		/* APME bit in EEPROM is mapped to WUC.APME */
-		eeprom_data =
-		    E1000_READ_REG(&sc->hw, E1000_WUC) & E1000_WUC_APME;
+		e1000_read_nvm(&sc->hw,
+		    NVM_INIT_CONTROL3_PORT_A, 1, &eeprom_data);
 		break;
 	}
-	if (eeprom_data)
-		sc->wol = E1000_WUFC_MAG;
+	if (eeprom_data & apme_mask)
+		sc->wol = E1000_WUFC_MAG | E1000_WUFC_MC;
+
 	/*
          * We have the eeprom settings, now apply the special cases
          * where the eeprom may be wrong or the board won't support
@@ -641,6 +637,25 @@ emx_attach(device_t dev)
 	/* XXX disable wol */
 	sc->wol = 0;
 
+	/* Setup OS specific network interface */
+	emx_setup_ifp(sc);
+
+	/* Add sysctl tree, must after em_setup_ifp() */
+	emx_add_sysctl(sc);
+
+	/* Reset the hardware */
+	error = emx_reset(sc);
+	if (error) {
+		device_printf(dev, "Unable to reset the hardware\n");
+		goto fail;
+	}
+
+	/* Initialize statistics */
+	emx_update_stats(sc);
+
+	sc->hw.mac.get_link_status = 1;
+	emx_update_link_status(sc);
+
 	sc->spare_tx_desc = EMX_TX_SPARE;
 
 	/*
@@ -658,6 +673,10 @@ emx_attach(device_t dev)
 	sc->tx_int_nsegs = sc->num_tx_desc / 16;
 	if (sc->tx_int_nsegs < sc->oact_tx_desc)
 		sc->tx_int_nsegs = sc->oact_tx_desc;
+
+	/* Non-AMT based hardware can now take control from firmware */
+	if (sc->has_manage && !sc->has_amt)
+		emx_get_hw_control(sc);
 
 	error = bus_setup_intr(dev, sc->intr_res, INTR_MPSAFE, emx_intr, sc,
 			       &sc->intr_tag, &sc->main_serialize);
@@ -690,10 +709,7 @@ emx_detach(device_t dev)
 		e1000_phy_hw_reset(&sc->hw);
 
 		emx_rel_mgmt(sc);
-
-		if (sc->hw.mac.type == e1000_82573 &&
-		    e1000_check_mng_mode(&sc->hw))
-			emx_rel_hw_control(sc);
+		emx_rel_hw_control(sc);
 
 		if (sc->wol) {
 			E1000_WRITE_REG(&sc->hw, E1000_WUC, E1000_WUC_PME_EN);
@@ -706,6 +722,8 @@ emx_detach(device_t dev)
 		ifnet_deserialize_all(ifp);
 
 		ether_ifdetach(ifp);
+	} else {
+		emx_rel_hw_control(sc);
 	}
 	bus_generic_detach(dev);
 
@@ -745,16 +763,13 @@ emx_suspend(device_t dev)
 	emx_stop(sc);
 
 	emx_rel_mgmt(sc);
+	emx_rel_hw_control(sc);
 
-        if (sc->hw.mac.type == e1000_82573 &&
-            e1000_check_mng_mode(&sc->hw))
-                emx_rel_hw_control(sc);
-
-        if (sc->wol) {
+	if (sc->wol) {
 		E1000_WRITE_REG(&sc->hw, E1000_WUC, E1000_WUC_PME_EN);
 		E1000_WRITE_REG(&sc->hw, E1000_WUFC, sc->wol);
 		emx_enable_wol(dev);
-        }
+	}
 
 	ifnet_deserialize_all(ifp);
 
@@ -1055,8 +1070,8 @@ emx_init(void *xsc)
 	}
 
 	/* Initialize the hardware */
-	if (emx_hw_init(sc)) {
-		device_printf(dev, "Unable to initialize the hardware\n");
+	if (emx_reset(sc)) {
+		device_printf(dev, "Unable to reset the hardware\n");
 		/* XXX emx_stop()? */
 		return;
 	}
@@ -1125,6 +1140,7 @@ emx_init(void *xsc)
 		tmp |= E1000_CTRL_EXT_PBA_CLR;
 		E1000_WRITE_REG(&sc->hw, E1000_CTRL_EXT, tmp);
 		/*
+		 * XXX MSIX
 		 * Set the IVAR - interrupt vector routing.
 		 * Each nibble represents a vector, high bit
 		 * is enable, other 3 bits are the MSIX table
@@ -1144,6 +1160,10 @@ emx_init(void *xsc)
 	else
 #endif /* IFPOLL_ENABLE */
 		emx_enable_intr(sc);
+
+	/* AMT based hardware can now take control from firmware */
+	if (sc->has_manage && sc->has_amt)
+		emx_get_hw_control(sc);
 
 	/* Don't reset the phy next time init gets called */
 	sc->hw.phy.reset_disable = TRUE;
@@ -1491,8 +1511,11 @@ emx_set_multi(struct emx_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ifmultiaddr *ifma;
 	uint32_t reg_rctl = 0;
-	uint8_t  mta[512]; /* Largest MTS is 4096 bits */
+	uint8_t *mta;
 	int mcnt = 0;
+
+	mta = sc->mta;
+	bzero(mta, ETH_ADDR_LEN * EMX_MCAST_ADDR_MAX);
 
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
@@ -1589,15 +1612,13 @@ emx_update_link_status(struct emx_softc *sc)
 		 * Check if we should enable/disable SPEED_MODE bit on
 		 * 82571EB/82572EI
 		 */
-		if (hw->mac.type == e1000_82571 ||
-		    hw->mac.type == e1000_82572) {
+		if (sc->link_speed != SPEED_1000 &&
+		    (hw->mac.type == e1000_82571 ||
+		     hw->mac.type == e1000_82572)) {
 			int tarc0;
 
 			tarc0 = E1000_READ_REG(hw, E1000_TARC(0));
-			if (sc->link_speed != SPEED_1000)
-				tarc0 &= ~EMX_TARC_SPEED_MODE;
-			else
-				tarc0 |= EMX_TARC_SPEED_MODE;
+			tarc0 &= ~EMX_TARC_SPEED_MODE;
 			E1000_WRITE_REG(hw, E1000_TARC(0), tarc0);
 		}
 		if (bootverbose) {
@@ -1676,18 +1697,10 @@ emx_stop(struct emx_softc *sc)
 }
 
 static int
-emx_hw_init(struct emx_softc *sc)
+emx_reset(struct emx_softc *sc)
 {
 	device_t dev = sc->dev;
 	uint16_t rx_buffer_size;
-
-	/* Issue a global reset */
-	e1000_reset_hw(&sc->hw);
-
-	/* Get control from any management/hw control */
-	if (sc->hw.mac.type == e1000_82573 &&
-	    e1000_check_mng_mode(&sc->hw))
-		emx_get_hw_control(sc);
 
 	/* Set up smart power down as default off on newer adapters. */
 	if (!emx_smart_pwr_down &&
@@ -1730,11 +1743,17 @@ emx_hw_init(struct emx_softc *sc)
 	sc->hw.fc.send_xon = TRUE;
 	sc->hw.fc.requested_mode = e1000_fc_full;
 
+	/* Issue a global reset */
+	e1000_reset_hw(&sc->hw);
+	E1000_WRITE_REG(&sc->hw, E1000_WUC, 0);
+
 	if (e1000_init_hw(&sc->hw) < 0) {
 		device_printf(dev, "Hardware Initialization Failed\n");
 		return (EIO);
 	}
 
+	E1000_WRITE_REG(&sc->hw, E1000_VET, ETHERTYPE_VLAN);
+	e1000_get_phy_info(&sc->hw);
 	e1000_check_for_link(&sc->hw);
 
 	return (0);
@@ -2593,7 +2612,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint64_t bus_addr;
-	uint32_t rctl, rxcsum, rfctl;
+	uint32_t rctl, itr, rfctl;
 	int i;
 
 	/*
@@ -2607,12 +2626,11 @@ emx_init_rx_unit(struct emx_softc *sc)
 	 * Set the interrupt throttling rate. Value is calculated
 	 * as ITR = 1 / (INT_THROTTLE_CEIL * 256ns)
 	 */
-	if (sc->int_throttle_ceil) {
-		E1000_WRITE_REG(&sc->hw, E1000_ITR,
-			1000000000 / 256 / sc->int_throttle_ceil);
-	} else {
-		E1000_WRITE_REG(&sc->hw, E1000_ITR, 0);
-	}
+	if (sc->int_throttle_ceil)
+		itr = 1000000000 / 256 / sc->int_throttle_ceil;
+	else
+		itr = 0;
+	emx_set_itr(sc, itr);
 
 	/* Use extended RX descriptor */
 	rfctl = E1000_RFCTL_EXTEN;
@@ -2623,39 +2641,6 @@ emx_init_rx_unit(struct emx_softc *sc)
 
 	E1000_WRITE_REG(&sc->hw, E1000_RFCTL, rfctl);
 
-	/* Setup the Base and Length of the Rx Descriptor Ring */
-	for (i = 0; i < sc->rx_ring_inuse; ++i) {
-		struct emx_rxdata *rdata = &sc->rx_data[i];
-
-		bus_addr = rdata->rx_desc_paddr;
-		E1000_WRITE_REG(&sc->hw, E1000_RDLEN(i),
-		    rdata->num_rx_desc * sizeof(emx_rxdesc_t));
-		E1000_WRITE_REG(&sc->hw, E1000_RDBAH(i),
-		    (uint32_t)(bus_addr >> 32));
-		E1000_WRITE_REG(&sc->hw, E1000_RDBAL(i),
-		    (uint32_t)bus_addr);
-	}
-
-	/* Setup the Receive Control Register */
-	rctl &= ~(3 << E1000_RCTL_MO_SHIFT);
-	rctl |= E1000_RCTL_EN | E1000_RCTL_BAM | E1000_RCTL_LBM_NO |
-		E1000_RCTL_RDMTS_HALF | E1000_RCTL_SECRC |
-		(sc->hw.mac.mc_filter_type << E1000_RCTL_MO_SHIFT);
-
-	/* Make sure VLAN Filters are off */
-	rctl &= ~E1000_RCTL_VFE;
-
-	/* Don't store bad paket */
-	rctl &= ~E1000_RCTL_SBP;
-
-	/* MCLBYTES */
-	rctl |= E1000_RCTL_SZ_2048;
-
-	if (ifp->if_mtu > ETHERMTU)
-		rctl |= E1000_RCTL_LPE;
-	else
-		rctl &= ~E1000_RCTL_LPE;
-
 	/*
 	 * Receive Checksum Offload for TCP and UDP
 	 *
@@ -2664,6 +2649,8 @@ emx_init_rx_unit(struct emx_softc *sc)
 	 * packet type.
 	 */
 	if (ifp->if_capenable & (IFCAP_RSS | IFCAP_RXCSUM)) {
+		uint32_t rxcsum;
+
 		rxcsum = E1000_READ_REG(&sc->hw, E1000_RXCSUM);
 
 		/*
@@ -2746,14 +2733,47 @@ emx_init_rx_unit(struct emx_softc *sc)
 		E1000_WRITE_REG(&sc->hw, E1000_RDTR, EMX_RDTR_82573);
 	}
 
-	/*
-	 * Setup the HW Rx Head and Tail Descriptor Pointers
-	 */
 	for (i = 0; i < sc->rx_ring_inuse; ++i) {
+		struct emx_rxdata *rdata = &sc->rx_data[i];
+
+		/*
+		 * Setup the Base and Length of the Rx Descriptor Ring
+		 */
+		bus_addr = rdata->rx_desc_paddr;
+		E1000_WRITE_REG(&sc->hw, E1000_RDLEN(i),
+		    rdata->num_rx_desc * sizeof(emx_rxdesc_t));
+		E1000_WRITE_REG(&sc->hw, E1000_RDBAH(i),
+		    (uint32_t)(bus_addr >> 32));
+		E1000_WRITE_REG(&sc->hw, E1000_RDBAL(i),
+		    (uint32_t)bus_addr);
+
+		/*
+		 * Setup the HW Rx Head and Tail Descriptor Pointers
+		 */
 		E1000_WRITE_REG(&sc->hw, E1000_RDH(i), 0);
 		E1000_WRITE_REG(&sc->hw, E1000_RDT(i),
 		    sc->rx_data[i].num_rx_desc - 1);
 	}
+
+	/* Setup the Receive Control Register */
+	rctl &= ~(3 << E1000_RCTL_MO_SHIFT);
+	rctl |= E1000_RCTL_EN | E1000_RCTL_BAM | E1000_RCTL_LBM_NO |
+		E1000_RCTL_RDMTS_HALF | E1000_RCTL_SECRC |
+		(sc->hw.mac.mc_filter_type << E1000_RCTL_MO_SHIFT);
+
+	/* Make sure VLAN Filters are off */
+	rctl &= ~E1000_RCTL_VFE;
+
+	/* Don't store bad paket */
+	rctl &= ~E1000_RCTL_SBP;
+
+	/* MCLBYTES */
+	rctl |= E1000_RCTL_SZ_2048;
+
+	if (ifp->if_mtu > ETHERMTU)
+		rctl |= E1000_RCTL_LPE;
+	else
+		rctl &= ~E1000_RCTL_LPE;
 
 	/* Enable Receives */
 	E1000_WRITE_REG(&sc->hw, E1000_RCTL, rctl);
@@ -2934,14 +2954,26 @@ discard:
 static void
 emx_enable_intr(struct emx_softc *sc)
 {
+	uint32_t ims_mask = IMS_ENABLE_MASK;
+
 	lwkt_serialize_handler_enable(&sc->main_serialize);
-	E1000_WRITE_REG(&sc->hw, E1000_IMS, IMS_ENABLE_MASK);
+
+#if 0
+	if (sc->hw.mac.type == e1000_82574) {
+		E1000_WRITE_REG(hw, EMX_EIAC, EM_MSIX_MASK);
+		ims_mask |= EM_MSIX_MASK;
+	}
+#endif
+	E1000_WRITE_REG(&sc->hw, E1000_IMS, ims_mask);
 }
 
 static void
 emx_disable_intr(struct emx_softc *sc)
 {
+	if (sc->hw.mac.type == e1000_82574)
+		E1000_WRITE_REG(&sc->hw, EMX_EIAC, 0);
 	E1000_WRITE_REG(&sc->hw, E1000_IMC, 0xffffffff);
+
 	lwkt_serialize_handler_disable(&sc->main_serialize);
 }
 
@@ -3000,27 +3032,21 @@ emx_rel_mgmt(struct emx_softc *sc)
 static void
 emx_get_hw_control(struct emx_softc *sc)
 {
-	uint32_t ctrl_ext, swsm;
-
 	/* Let firmware know the driver has taken over */
-	switch (sc->hw.mac.type) {
-	case e1000_82573:
+	if (sc->hw.mac.type == e1000_82573) {
+		uint32_t swsm;
+
 		swsm = E1000_READ_REG(&sc->hw, E1000_SWSM);
 		E1000_WRITE_REG(&sc->hw, E1000_SWSM,
 		    swsm | E1000_SWSM_DRV_LOAD);
-		break;
+	} else {
+		uint32_t ctrl_ext;
 
-	case e1000_82571:
-	case e1000_82572:
-	case e1000_80003es2lan:
 		ctrl_ext = E1000_READ_REG(&sc->hw, E1000_CTRL_EXT);
 		E1000_WRITE_REG(&sc->hw, E1000_CTRL_EXT,
 		    ctrl_ext | E1000_CTRL_EXT_DRV_LOAD);
-		break;
-
-	default:
-		break;
 	}
+	sc->control_hw = 1;
 }
 
 /*
@@ -3032,26 +3058,23 @@ emx_get_hw_control(struct emx_softc *sc)
 static void
 emx_rel_hw_control(struct emx_softc *sc)
 {
-	uint32_t ctrl_ext, swsm;
+	if (!sc->control_hw)
+		return;
+	sc->control_hw = 0;
 
 	/* Let firmware taken over control of h/w */
-	switch (sc->hw.mac.type) {
-	case e1000_82573:
+	if (sc->hw.mac.type == e1000_82573) {
+		uint32_t swsm;
+
 		swsm = E1000_READ_REG(&sc->hw, E1000_SWSM);
 		E1000_WRITE_REG(&sc->hw, E1000_SWSM,
 		    swsm & ~E1000_SWSM_DRV_LOAD);
-		break;
+	} else {
+		uint32_t ctrl_ext;
 
-	case e1000_82571:
-	case e1000_82572:
-	case e1000_80003es2lan:
 		ctrl_ext = E1000_READ_REG(&sc->hw, E1000_CTRL_EXT);
 		E1000_WRITE_REG(&sc->hw, E1000_CTRL_EXT,
 		    ctrl_ext & ~E1000_CTRL_EXT_DRV_LOAD);
-		break;
-
-	default:
-		break;
 	}
 }
 
@@ -3447,7 +3470,7 @@ emx_sysctl_int_throttle(SYSCTL_HANDLER_ARGS)
 		sc->int_throttle_ceil = 0;
 
 	if (ifp->if_flags & IFF_RUNNING)
-		E1000_WRITE_REG(&sc->hw, E1000_ITR, throttle);
+		emx_set_itr(sc, throttle);
 
 	ifnet_deserialize_all(ifp);
 
@@ -3787,3 +3810,19 @@ emx_qpoll(struct ifnet *ifp, struct ifpoll_info *info)
 }
 
 #endif	/* IFPOLL_ENABLE */
+
+static void
+emx_set_itr(struct emx_softc *sc, uint32_t itr)
+{
+	E1000_WRITE_REG(&sc->hw, E1000_ITR, itr);
+	if (sc->hw.mac.type == e1000_82574) {
+		int i;
+
+		/*
+		 * When using MSIX interrupts we need to
+		 * throttle using the EITR register
+		 */
+		for (i = 0; i < 4; ++i)
+			E1000_WRITE_REG(&sc->hw, E1000_EITR_82574(i), itr);
+	}
+}

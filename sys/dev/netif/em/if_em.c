@@ -135,7 +135,7 @@
 #include <dev/netif/em/if_em.h>
 
 #define EM_NAME	"Intel(R) PRO/1000 Network Connection "
-#define EM_VER	" 6.9.6"
+#define EM_VER	" 7.1.7"
 
 #define _EM_DEVICE(id, ret)	\
 	{ EM_VENDOR_ID, E1000_DEV_ID_##id, ret, EM_NAME #id EM_VER }
@@ -208,6 +208,8 @@ static const struct em_vendor_info em_vendor_info_array[] = {
 	EM_EMX_DEVICE(82573E_IAMT),
 	EM_EMX_DEVICE(82573L),
 
+	EM_DEVICE(82583V),
+
 	EM_EMX_DEVICE(80003ES2LAN_COPPER_SPT),
 	EM_EMX_DEVICE(80003ES2LAN_SERDES_SPT),
 	EM_EMX_DEVICE(80003ES2LAN_COPPER_DPT),
@@ -220,6 +222,7 @@ static const struct em_vendor_info em_vendor_info_array[] = {
 	EM_DEVICE(ICH8_IFE_GT),
 	EM_DEVICE(ICH8_IFE_G),
 	EM_DEVICE(ICH8_IGP_M),
+	EM_DEVICE(ICH8_82567V_3),
 
 	EM_DEVICE(ICH9_IGP_M_AMT),
 	EM_DEVICE(ICH9_IGP_AMT),
@@ -232,12 +235,22 @@ static const struct em_vendor_info em_vendor_info_array[] = {
 	EM_DEVICE(ICH9_BM),
 
 	EM_EMX_DEVICE(82574L),
+	EM_EMX_DEVICE(82574LA),
 
 	EM_DEVICE(ICH10_R_BM_LM),
 	EM_DEVICE(ICH10_R_BM_LF),
 	EM_DEVICE(ICH10_R_BM_V),
 	EM_DEVICE(ICH10_D_BM_LM),
 	EM_DEVICE(ICH10_D_BM_LF),
+	EM_DEVICE(ICH10_D_BM_V),
+
+	EM_DEVICE(PCH_M_HV_LM),
+	EM_DEVICE(PCH_M_HV_LC),
+	EM_DEVICE(PCH_D_HV_DM),
+	EM_DEVICE(PCH_D_HV_DC),
+
+	EM_DEVICE(PCH2_LV_LM),
+	EM_DEVICE(PCH2_LV_V),
 
 	/* required last entry */
 	EM_DEVICE_NULL
@@ -291,7 +304,7 @@ static int	em_get_hw_info(struct adapter *);
 static int 	em_is_valid_eaddr(const uint8_t *);
 static int	em_alloc_pci_res(struct adapter *);
 static void	em_free_pci_res(struct adapter *);
-static int	em_hw_init(struct adapter *);
+static int	em_reset(struct adapter *);
 static void	em_setup_ifp(struct adapter *);
 static void	em_init_tx_unit(struct adapter *);
 static void	em_init_rx_unit(struct adapter *);
@@ -301,6 +314,7 @@ static void	em_disable_promisc(struct adapter *);
 static void	em_set_multi(struct adapter *);
 static void	em_update_link_status(struct adapter *);
 static void	em_smartspeed(struct adapter *);
+static void	em_set_itr(struct adapter *, uint32_t);
 
 /* Hardware workarounds */
 static int	em_82547_fifo_workaround(struct adapter *, int);
@@ -413,7 +427,7 @@ em_attach(device_t dev)
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
 	int tsize, rsize;
 	int error = 0;
-	uint16_t eeprom_data, device_id;
+	uint16_t eeprom_data, device_id, apme_mask;
 
 	adapter->dev = adapter->osdep.dev = dev;
 
@@ -439,8 +453,10 @@ em_attach(device_t dev)
 	 * and this must happen after the MAC is identified.
 	 */
 	if (adapter->hw.mac.type == e1000_ich8lan ||
+	    adapter->hw.mac.type == e1000_ich9lan ||
 	    adapter->hw.mac.type == e1000_ich10lan ||
-	    adapter->hw.mac.type == e1000_ich9lan) {
+	    adapter->hw.mac.type == e1000_pchlan ||
+	    adapter->hw.mac.type == e1000_pch2lan) {
 		adapter->flash_rid = EM_BAR_FLASH;
 
 		adapter->flash = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
@@ -577,6 +593,22 @@ em_attach(device_t dev)
 	}
 	adapter->rx_desc_base = adapter->rxdma.dma_vaddr;
 
+	/* Allocate multicast array memory. */
+	adapter->mta = kmalloc(ETH_ADDR_LEN * MAX_NUM_MULTICAST_ADDRESSES,
+	    M_DEVBUF, M_WAITOK);
+
+	/* Indicate SOL/IDER usage */
+	if (e1000_check_reset_block(&adapter->hw)) {
+		device_printf(dev,
+		    "PHY reset is blocked due to SOL/IDER session.\n");
+	}
+
+	/*
+	 * Start from a known state, this is important in reading the
+	 * nvm and mac from that.
+	 */
+	e1000_reset_hw(&adapter->hw);
+
 	/* Make sure we have a good EEPROM before we read from it */
 	if (e1000_validate_nvm_checksum(&adapter->hw) < 0) {
 		/*
@@ -590,13 +622,6 @@ em_attach(device_t dev)
 			error = EIO;
 			goto fail;
 		}
-	}
-
-	/* Initialize the hardware */
-	error = em_hw_init(adapter);
-	if (error) {
-		device_printf(dev, "Unable to initialize the hardware\n");
-		goto fail;
 	}
 
 	/* Copy the permanent MAC address out of the EEPROM */
@@ -629,38 +654,28 @@ em_attach(device_t dev)
 	/* Manually turn off all interrupts */
 	E1000_WRITE_REG(&adapter->hw, E1000_IMC, 0xffffffff);
 
-	/* Setup OS specific network interface */
-	em_setup_ifp(adapter);
-
-	/* Add sysctl tree, must after em_setup_ifp() */
-	em_add_sysctl(adapter);
-
-	/* Initialize statistics */
-	em_update_stats(adapter);
-
-	adapter->hw.mac.get_link_status = 1;
-	em_update_link_status(adapter);
-
-	/* Indicate SOL/IDER usage */
-	if (e1000_check_reset_block(&adapter->hw)) {
-		device_printf(dev,
-		    "PHY reset is blocked due to SOL/IDER session.\n");
-	}
-
 	/* Determine if we have to control management hardware */
 	adapter->has_manage = e1000_enable_mng_pass_thru(&adapter->hw);
 
 	/*
 	 * Setup Wake-on-Lan
 	 */
+	apme_mask = EM_EEPROM_APME;
+	eeprom_data = 0;
 	switch (adapter->hw.mac.type) {
 	case e1000_82542:
 	case e1000_82543:
 		break;
 
+	case e1000_82573:
+	case e1000_82583:
+		adapter->has_amt = 1;
+		/* FALL THROUGH */
+
 	case e1000_82546:
 	case e1000_82546_rev_3:
 	case e1000_82571:
+	case e1000_82572:
 	case e1000_80003es2lan:
 		if (adapter->hw.bus.func == 1) {
 			e1000_read_nvm(&adapter->hw,
@@ -669,17 +684,26 @@ em_attach(device_t dev)
 			e1000_read_nvm(&adapter->hw,
 			    NVM_INIT_CONTROL3_PORT_A, 1, &eeprom_data);
 		}
-		eeprom_data &= EM_EEPROM_APME;
+		break;
+
+	case e1000_ich8lan:
+	case e1000_ich9lan:
+	case e1000_ich10lan:
+	case e1000_pchlan:
+	case e1000_pch2lan:
+		apme_mask = E1000_WUC_APME;
+		adapter->has_amt = TRUE;
+		eeprom_data = E1000_READ_REG(&adapter->hw, E1000_WUC);
 		break;
 
 	default:
-		/* APME bit in EEPROM is mapped to WUC.APME */
-		eeprom_data =
-		    E1000_READ_REG(&adapter->hw, E1000_WUC) & E1000_WUC_APME;
+		e1000_read_nvm(&adapter->hw,
+		    NVM_INIT_CONTROL3_PORT_A, 1, &eeprom_data);
 		break;
 	}
-	if (eeprom_data)
-		adapter->wol = E1000_WUFC_MAG;
+	if (eeprom_data & apme_mask)
+		adapter->wol = E1000_WUFC_MAG | E1000_WUFC_MC;
+
 	/*
          * We have the eeprom settings, now apply the special cases
          * where the eeprom may be wrong or the board won't support
@@ -719,6 +743,25 @@ em_attach(device_t dev)
 	/* XXX disable wol */
 	adapter->wol = 0;
 
+	/* Setup OS specific network interface */
+	em_setup_ifp(adapter);
+
+	/* Add sysctl tree, must after em_setup_ifp() */
+	em_add_sysctl(adapter);
+
+	/* Reset the hardware */
+	error = em_reset(adapter);
+	if (error) {
+		device_printf(dev, "Unable to reset the hardware\n");
+		goto fail;
+	}
+
+	/* Initialize statistics */
+	em_update_stats(adapter);
+
+	adapter->hw.mac.get_link_status = 1;
+	em_update_link_status(adapter);
+
 	/* Do we need workaround for 82544 PCI-X adapter? */
 	if (adapter->hw.bus.type == e1000_bus_type_pcix &&
 	    adapter->hw.mac.type == e1000_82544)
@@ -753,6 +796,11 @@ em_attach(device_t dev)
 	if (adapter->tx_int_nsegs < adapter->oact_tx_desc)
 		adapter->tx_int_nsegs = adapter->oact_tx_desc;
 
+	/* Non-AMT based hardware can now take control from firmware */
+	if (adapter->has_manage && !adapter->has_amt &&
+	    adapter->hw.mac.type >= e1000_82571)
+		em_get_hw_control(adapter);
+
 	error = bus_setup_intr(dev, adapter->intr_res, INTR_MPSAFE,
 			       em_intr, adapter, &adapter->intr_tag,
 			       ifp->if_serializer);
@@ -785,13 +833,7 @@ em_detach(device_t dev)
 		e1000_phy_hw_reset(&adapter->hw);
 
 		em_rel_mgmt(adapter);
-
-		if ((adapter->hw.mac.type == e1000_82573 ||
-		     adapter->hw.mac.type == e1000_ich8lan ||
-		     adapter->hw.mac.type == e1000_ich10lan ||
-		     adapter->hw.mac.type == e1000_ich9lan) &&
-		    e1000_check_mng_mode(&adapter->hw))
-			em_rel_hw_control(adapter);
+		em_rel_hw_control(adapter);
 
 		if (adapter->wol) {
 			E1000_WRITE_REG(&adapter->hw, E1000_WUC,
@@ -805,6 +847,8 @@ em_detach(device_t dev)
 		lwkt_serialize_exit(ifp->if_serializer);
 
 		ether_ifdetach(ifp);
+	} else {
+		em_rel_hw_control(adapter);
 	}
 	bus_generic_detach(dev);
 
@@ -849,19 +893,13 @@ em_suspend(device_t dev)
 	em_stop(adapter);
 
 	em_rel_mgmt(adapter);
+	em_rel_hw_control(adapter);
 
-        if ((adapter->hw.mac.type == e1000_82573 ||
-             adapter->hw.mac.type == e1000_ich8lan ||
-             adapter->hw.mac.type == e1000_ich10lan ||
-             adapter->hw.mac.type == e1000_ich9lan) &&
-            e1000_check_mng_mode(&adapter->hw))
-                em_rel_hw_control(adapter);
-
-        if (adapter->wol) {
+	if (adapter->wol) {
 		E1000_WRITE_REG(&adapter->hw, E1000_WUC, E1000_WUC_PME_EN);
 		E1000_WRITE_REG(&adapter->hw, E1000_WUFC, adapter->wol);
 		em_enable_wol(dev);
-        }
+	}
 
 	lwkt_serialize_exit(ifp->if_serializer);
 
@@ -963,13 +1001,19 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case e1000_82572:
 		case e1000_ich9lan:
 		case e1000_ich10lan:
+		case e1000_pch2lan:
 		case e1000_82574:
 		case e1000_80003es2lan:
 			max_frame_size = 9234;
 			break;
 
+		case e1000_pchlan:
+			max_frame_size = 4096;
+			break;
+
 		/* Adapters that do not support jumbo frames */
 		case e1000_82542:
+		case e1000_82583:
 		case e1000_ich8lan:
 			max_frame_size = ETHER_MAX_LEN;
 			break;
@@ -1156,7 +1200,12 @@ em_init(void *xsc)
 		break;
 
 	case e1000_82574:
+	case e1000_82583:
 		pba = E1000_PBA_20K; /* 20K for Rx, 20K for Tx */
+		break;
+
+	case e1000_ich8lan:
+		pba = E1000_PBA_8K;
 		break;
 
 	case e1000_ich9lan:
@@ -1165,8 +1214,9 @@ em_init(void *xsc)
 		pba = E1000_PBA_10K;
 		break;
 
-	case e1000_ich8lan:
-		pba = E1000_PBA_8K;
+	case e1000_pchlan:
+	case e1000_pch2lan:
+		pba = E1000_PBA_26K;
 		break;
 
 	default:
@@ -1196,9 +1246,9 @@ em_init(void *xsc)
 		    E1000_RAR_ENTRIES - 1);
 	}
 
-	/* Initialize the hardware */
-	if (em_hw_init(adapter)) {
-		device_printf(dev, "Unable to initialize the hardware\n");
+	/* Reset the hardware */
+	if (em_reset(adapter)) {
+		device_printf(dev, "Unable to reset the hardware\n");
 		/* XXX em_stop()? */
 		return;
 	}
@@ -1256,6 +1306,7 @@ em_init(void *xsc)
 		tmp |= E1000_CTRL_EXT_PBA_CLR;
 		E1000_WRITE_REG(&adapter->hw, E1000_CTRL_EXT, tmp);
 		/*
+		 * XXX MSIX
 		 * Set the IVAR - interrupt vector routing.
 		 * Each nibble represents a vector, high bit
 		 * is enable, other 3 bits are the MSIX table
@@ -1275,6 +1326,11 @@ em_init(void *xsc)
 	else
 #endif /* DEVICE_POLLING */
 		em_enable_intr(adapter);
+
+	/* AMT based hardware can now take control from firmware */
+	if (adapter->has_manage && adapter->has_amt &&
+	    adapter->hw.mac.type >= e1000_82571)
+		em_get_hw_control(adapter);
 
 	/* Don't reset the phy next time init gets called */
 	adapter->hw.phy.reset_disable = TRUE;
@@ -1826,8 +1882,11 @@ em_set_multi(struct adapter *adapter)
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
 	struct ifmultiaddr *ifma;
 	uint32_t reg_rctl = 0;
-	uint8_t  mta[512]; /* Largest MTS is 4096 bits */
+	uint8_t *mta;
 	int mcnt = 0;
+
+	mta = adapter->mta;
+	bzero(mta, ETH_ADDR_LEN * MAX_NUM_MULTICAST_ADDRESSES);
 
 	if (adapter->hw.mac.type == e1000_82542 && 
 	    adapter->hw.revision_id == E1000_REVISION_2) {
@@ -1945,15 +2004,13 @@ em_update_link_status(struct adapter *adapter)
 		 * Check if we should enable/disable SPEED_MODE bit on
 		 * 82571/82572
 		 */
-		if (hw->mac.type == e1000_82571 ||
-		    hw->mac.type == e1000_82572) {
+		if (adapter->link_speed != SPEED_1000 &&
+		    (hw->mac.type == e1000_82571 ||
+		     hw->mac.type == e1000_82572)) {
 			int tarc0;
 
 			tarc0 = E1000_READ_REG(hw, E1000_TARC(0));
-			if (adapter->link_speed != SPEED_1000)
-				tarc0 &= ~SPEED_MODE_BIT;
-			else
-				tarc0 |= SPEED_MODE_BIT;
+			tarc0 &= ~SPEED_MODE_BIT;
 			E1000_WRITE_REG(hw, E1000_TARC(0), tarc0);
 		}
 		if (bootverbose) {
@@ -2153,21 +2210,10 @@ em_free_pci_res(struct adapter *adapter)
 }
 
 static int
-em_hw_init(struct adapter *adapter)
+em_reset(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
 	uint16_t rx_buffer_size;
-
-	/* Issue a global reset */
-	e1000_reset_hw(&adapter->hw);
-
-	/* Get control from any management/hw control */
-	if ((adapter->hw.mac.type == e1000_82573 ||
-	     adapter->hw.mac.type == e1000_ich8lan ||
-	     adapter->hw.mac.type == e1000_ich10lan ||
-	     adapter->hw.mac.type == e1000_ich9lan) &&
-	    e1000_check_mng_mode(&adapter->hw))
-		em_get_hw_control(adapter);
 
 	/* When hardware is reset, fifo_head is also reset */
 	adapter->tx_fifo_head = 0;
@@ -2211,14 +2257,41 @@ em_hw_init(struct adapter *adapter)
 		adapter->hw.fc.pause_time = 0xFFFF;
 	else
 		adapter->hw.fc.pause_time = EM_FC_PAUSE_TIME;
+
 	adapter->hw.fc.send_xon = TRUE;
+
 	adapter->hw.fc.requested_mode = e1000_fc_full;
+
+	/* Workaround: no TX flow ctrl for PCH */
+	if (adapter->hw.mac.type == e1000_pchlan)
+		adapter->hw.fc.requested_mode = e1000_fc_rx_pause;
+
+	/* Override - settings for PCH2LAN, ya its magic :) */
+	if (adapter->hw.mac.type == e1000_pch2lan) {
+		adapter->hw.fc.high_water = 0x5C20;
+		adapter->hw.fc.low_water = 0x5048;
+		adapter->hw.fc.pause_time = 0x0650;
+		adapter->hw.fc.refresh_time = 0x0400;
+
+		/* Jumbos need adjusted PBA */
+		if (adapter->arpcom.ac_if.if_mtu > ETHERMTU)
+			E1000_WRITE_REG(&adapter->hw, E1000_PBA, 12);
+		else
+			E1000_WRITE_REG(&adapter->hw, E1000_PBA, 26);
+	}
+
+	/* Issue a global reset */
+	e1000_reset_hw(&adapter->hw);
+	if (adapter->hw.mac.type >= e1000_82544)
+		E1000_WRITE_REG(&adapter->hw, E1000_WUC, 0);
 
 	if (e1000_init_hw(&adapter->hw) < 0) {
 		device_printf(dev, "Hardware Initialization Failed\n");
 		return (EIO);
 	}
 
+	E1000_WRITE_REG(&adapter->hw, E1000_VET, ETHERTYPE_VLAN);
+	e1000_get_phy_info(&adapter->hw);
 	e1000_check_for_link(&adapter->hw);
 
 	return (0);
@@ -3030,7 +3103,7 @@ em_init_rx_unit(struct adapter *adapter)
 {
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
 	uint64_t bus_addr;
-	uint32_t rctl, rxcsum;
+	uint32_t rctl;
 
 	/*
 	 * Make sure receives are disabled while setting
@@ -3040,16 +3113,17 @@ em_init_rx_unit(struct adapter *adapter)
 	E1000_WRITE_REG(&adapter->hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
 
 	if (adapter->hw.mac.type >= e1000_82540) {
+		uint32_t itr;
+
 		/*
 		 * Set the interrupt throttling rate. Value is calculated
 		 * as ITR = 1 / (INT_THROTTLE_CEIL * 256ns)
 		 */
-		if (adapter->int_throttle_ceil) {
-			E1000_WRITE_REG(&adapter->hw, E1000_ITR,
-				1000000000 / 256 / adapter->int_throttle_ceil);
-		} else {
-			E1000_WRITE_REG(&adapter->hw, E1000_ITR, 0);
-		}
+		if (adapter->int_throttle_ceil)
+			itr = 1000000000 / 256 / adapter->int_throttle_ceil;
+		else
+			itr = 0;
+		em_set_itr(adapter, itr);
 	}
 
 	/* Disable accelerated ackknowledge */
@@ -3058,7 +3132,30 @@ em_init_rx_unit(struct adapter *adapter)
 		    E1000_RFCTL, E1000_RFCTL_ACK_DIS);
 	}
 
-	/* Setup the Base and Length of the Rx Descriptor Ring */
+	/* Receive Checksum Offload for TCP and UDP */
+	if (ifp->if_capenable & IFCAP_RXCSUM) {
+		uint32_t rxcsum;
+
+		rxcsum = E1000_READ_REG(&adapter->hw, E1000_RXCSUM);
+		rxcsum |= (E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL);
+		E1000_WRITE_REG(&adapter->hw, E1000_RXCSUM, rxcsum);
+	}
+
+	/*
+	 * XXX TEMPORARY WORKAROUND: on some systems with 82573
+	 * long latencies are observed, like Lenovo X60. This
+	 * change eliminates the problem, but since having positive
+	 * values in RDTR is a known source of problems on other
+	 * platforms another solution is being sought.
+	 */
+	if (em_82573_workaround && adapter->hw.mac.type == e1000_82573) {
+		E1000_WRITE_REG(&adapter->hw, E1000_RADV, EM_RADV_82573);
+		E1000_WRITE_REG(&adapter->hw, E1000_RDTR, EM_RDTR_82573);
+	}
+
+	/*
+	 * Setup the Base and Length of the Rx Descriptor Ring
+	 */
 	bus_addr = adapter->rxdma.dma_paddr;
 	E1000_WRITE_REG(&adapter->hw, E1000_RDLEN(0),
 	    adapter->num_rx_desc * sizeof(struct e1000_rx_desc));
@@ -3066,6 +3163,31 @@ em_init_rx_unit(struct adapter *adapter)
 	    (uint32_t)(bus_addr >> 32));
 	E1000_WRITE_REG(&adapter->hw, E1000_RDBAL(0),
 	    (uint32_t)bus_addr);
+
+	/*
+	 * Setup the HW Rx Head and Tail Descriptor Pointers
+	 */
+	E1000_WRITE_REG(&adapter->hw, E1000_RDH(0), 0);
+	E1000_WRITE_REG(&adapter->hw, E1000_RDT(0), adapter->num_rx_desc - 1);
+
+	/* Set early receive threshold on appropriate hw */
+	if (((adapter->hw.mac.type == e1000_ich9lan) ||
+	    (adapter->hw.mac.type == e1000_pch2lan) ||
+	    (adapter->hw.mac.type == e1000_ich10lan)) &&
+	    (ifp->if_mtu > ETHERMTU)) {
+		uint32_t rxdctl;
+
+		rxdctl = E1000_READ_REG(&adapter->hw, E1000_RXDCTL(0));
+		E1000_WRITE_REG(&adapter->hw, E1000_RXDCTL(0), rxdctl | 3);
+		E1000_WRITE_REG(&adapter->hw, E1000_ERT, 0x100 | (1 << 13));
+	}
+
+	if (adapter->hw.mac.type == e1000_pch2lan) {
+		if (ifp->if_mtu > ETHERMTU)
+			e1000_lv_jumbo_workaround_ich8lan(&adapter->hw, TRUE);
+		else
+			e1000_lv_jumbo_workaround_ich8lan(&adapter->hw, FALSE);
+	}
 
 	/* Setup the Receive Control Register */
 	rctl &= ~(3 << E1000_RCTL_MO_SHIFT);
@@ -3107,31 +3229,6 @@ em_init_rx_unit(struct adapter *adapter)
 		rctl |= E1000_RCTL_LPE;
 	else
 		rctl &= ~E1000_RCTL_LPE;
-
-	/* Receive Checksum Offload for TCP and UDP */
-	if (ifp->if_capenable & IFCAP_RXCSUM) {
-		rxcsum = E1000_READ_REG(&adapter->hw, E1000_RXCSUM);
-		rxcsum |= (E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL);
-		E1000_WRITE_REG(&adapter->hw, E1000_RXCSUM, rxcsum);
-	}
-
-	/*
-	 * XXX TEMPORARY WORKAROUND: on some systems with 82573
-	 * long latencies are observed, like Lenovo X60. This
-	 * change eliminates the problem, but since having positive
-	 * values in RDTR is a known source of problems on other
-	 * platforms another solution is being sought.
-	 */
-	if (em_82573_workaround && adapter->hw.mac.type == e1000_82573) {
-		E1000_WRITE_REG(&adapter->hw, E1000_RADV, EM_RADV_82573);
-		E1000_WRITE_REG(&adapter->hw, E1000_RDTR, EM_RDTR_82573);
-	}
-
-	/*
-	 * Setup the HW Rx Head and Tail Descriptor Pointers
-	 */
-	E1000_WRITE_REG(&adapter->hw, E1000_RDH(0), 0);
-	E1000_WRITE_REG(&adapter->hw, E1000_RDT(0), adapter->num_rx_desc - 1);
 
 	/* Enable Receives */
 	E1000_WRITE_REG(&adapter->hw, E1000_RCTL, rctl);
@@ -3353,8 +3450,18 @@ em_rxcsum(struct adapter *adapter, struct e1000_rx_desc *rx_desc,
 static void
 em_enable_intr(struct adapter *adapter)
 {
+	uint32_t ims_mask = IMS_ENABLE_MASK;
+
 	lwkt_serialize_handler_enable(adapter->arpcom.ac_if.if_serializer);
-	E1000_WRITE_REG(&adapter->hw, E1000_IMS, IMS_ENABLE_MASK);
+
+#if 0
+	/* XXX MSIX */
+	if (adapter->hw.mac.type == e1000_82574) {
+		E1000_WRITE_REG(&adapter->hw, EM_EIAC, EM_MSIX_MASK);
+		ims_mask |= EM_MSIX_MASK;
+        }
+#endif
+	E1000_WRITE_REG(&adapter->hw, E1000_IMS, ims_mask);
 }
 
 static void
@@ -3373,6 +3480,8 @@ em_disable_intr(struct adapter *adapter)
 	if (adapter->hw.mac.type == e1000_82542 &&
 	    adapter->hw.revision_id == E1000_REVISION_2)
 		clear &= ~E1000_IMC_RXSEQ;
+	else if (adapter->hw.mac.type == e1000_82574)
+		E1000_WRITE_REG(&adapter->hw, EM_EIAC, 0);
 
 	E1000_WRITE_REG(&adapter->hw, E1000_IMC, clear);
 
@@ -3439,28 +3548,21 @@ em_rel_mgmt(struct adapter *adapter)
 static void
 em_get_hw_control(struct adapter *adapter)
 {
-	uint32_t ctrl_ext, swsm;
-
 	/* Let firmware know the driver has taken over */
-	switch (adapter->hw.mac.type) {
-	case e1000_82573:
+	if (adapter->hw.mac.type == e1000_82573) {
+		uint32_t swsm;
+
 		swsm = E1000_READ_REG(&adapter->hw, E1000_SWSM);
 		E1000_WRITE_REG(&adapter->hw, E1000_SWSM,
 		    swsm | E1000_SWSM_DRV_LOAD);
-		break;
-	case e1000_82571:
-	case e1000_82572:
-	case e1000_80003es2lan:
-	case e1000_ich8lan:
-	case e1000_ich9lan:
-	case e1000_ich10lan:
+	} else {
+		uint32_t ctrl_ext;
+
 		ctrl_ext = E1000_READ_REG(&adapter->hw, E1000_CTRL_EXT);
 		E1000_WRITE_REG(&adapter->hw, E1000_CTRL_EXT,
 		    ctrl_ext | E1000_CTRL_EXT_DRV_LOAD);
-		break;
-	default:
-		break;
 	}
+	adapter->control_hw = 1;
 }
 
 /*
@@ -3472,29 +3574,23 @@ em_get_hw_control(struct adapter *adapter)
 static void
 em_rel_hw_control(struct adapter *adapter)
 {
-	uint32_t ctrl_ext, swsm;
+	if (!adapter->control_hw)
+		return;
+	adapter->control_hw = 0;
 
 	/* Let firmware taken over control of h/w */
-	switch (adapter->hw.mac.type) {
-	case e1000_82573:
+	if (adapter->hw.mac.type == e1000_82573) {
+		uint32_t swsm;
+
 		swsm = E1000_READ_REG(&adapter->hw, E1000_SWSM);
 		E1000_WRITE_REG(&adapter->hw, E1000_SWSM,
 		    swsm & ~E1000_SWSM_DRV_LOAD);
-		break;
+	} else {
+		uint32_t ctrl_ext;
 
-	case e1000_82571:
-	case e1000_82572:
-	case e1000_80003es2lan:
-	case e1000_ich8lan:
-	case e1000_ich9lan:
-	case e1000_ich10lan:
 		ctrl_ext = E1000_READ_REG(&adapter->hw, E1000_CTRL_EXT);
 		E1000_WRITE_REG(&adapter->hw, E1000_CTRL_EXT,
 		    ctrl_ext & ~E1000_CTRL_EXT_DRV_LOAD);
-		break;
-
-	default:
-		break;
 	}
 }
 
@@ -3948,7 +4044,7 @@ em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS)
 		adapter->int_throttle_ceil = 0;
 
 	if (ifp->if_flags & IFF_RUNNING)
-		E1000_WRITE_REG(&adapter->hw, E1000_ITR, throttle);
+		em_set_itr(adapter, throttle);
 
 	lwkt_serialize_exit(ifp->if_serializer);
 
@@ -3994,4 +4090,22 @@ em_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS)
 	lwkt_serialize_exit(ifp->if_serializer);
 
 	return error;
+}
+
+static void
+em_set_itr(struct adapter *adapter, uint32_t itr)
+{
+	E1000_WRITE_REG(&adapter->hw, E1000_ITR, itr);
+	if (adapter->hw.mac.type == e1000_82574) {
+		int i;
+
+		/*
+		 * When using MSIX interrupts we need to
+		 * throttle using the EITR register
+		 */
+		for (i = 0; i < 4; ++i) {
+			E1000_WRITE_REG(&adapter->hw,
+			    E1000_EITR_82574(i), itr);
+		}
+	}
 }

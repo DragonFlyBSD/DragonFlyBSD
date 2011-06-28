@@ -276,6 +276,11 @@ struct adapter {
 	/* Management and WOL features */
 	int			wol;
 	int			has_manage;
+	int			has_amt;
+	int			control_hw;
+
+	/* Multicast array memory */
+	uint8_t			*mta;
 
 	/* Info about the board itself */
 	uint8_t			link_active;
