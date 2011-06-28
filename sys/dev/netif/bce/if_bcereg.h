@@ -5687,6 +5687,7 @@ struct l2_fhdr {
 #define USABLE_RX_BD		(USABLE_RX_BD_PER_PAGE * RX_PAGES)
 #define MAX_RX_BD		(TOTAL_RX_BD - 1)
 
+/* Advance to the next tx_bd, skipping any next page pointers. */
 #define NEXT_TX_BD(x) \
 	(((x) & USABLE_TX_BD_PER_PAGE) == (USABLE_TX_BD_PER_PAGE - 1)) ? \
 	(x) + 2 : (x) + 1
@@ -5697,6 +5698,7 @@ struct l2_fhdr {
 	(((x) & ~USABLE_TX_BD_PER_PAGE) >> BCE_TX_BD_PAGE_SHIFT)
 #define TX_IDX(x)		((x) & USABLE_TX_BD_PER_PAGE)
 
+ /* Advance to the next rx_bd, skipping any next page pointers. */
 #define NEXT_RX_BD(x) \
 	(((x) & USABLE_RX_BD_PER_PAGE) == (USABLE_RX_BD_PER_PAGE - 1)) ? \
 	(x) + 2 : (x) + 1
@@ -5907,7 +5909,7 @@ struct bce_softc {
 	uint32_t		hc_command;	/* BCE_HC_COMMAND cache */
 
 	/* Tracks the version of bootcode firmware. */
-	uint32_t		bce_fw_ver;
+	uint32_t		bce_bc_ver;
 
 	/*
 	 * Tracks the state of the firmware.  0 = Running while any

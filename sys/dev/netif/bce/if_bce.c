@@ -597,13 +597,18 @@ bce_print_adapter_info(struct bce_softc *sc)
 	}
 
 	/* Firmware version and device features. */
-	kprintf("F/W (0x%08X); Flags( ", sc->bce_fw_ver);
+	kprintf("B/C (0x%08X)", sc->bce_bc_ver);
 
-	if (sc->bce_flags & BCE_MFW_ENABLE_FLAG)
-		kprintf("MFW ");
-	if (sc->bce_phy_flags & BCE_PHY_2_5G_CAPABLE_FLAG)
-		kprintf("2.5G ");
-	kprintf(")\n");
+	if ((sc->bce_flags & BCE_MFW_ENABLE_FLAG) ||
+	    (sc->bce_phy_flags & BCE_PHY_2_5G_CAPABLE_FLAG)) {
+		kprintf("; Flags(");
+		if (sc->bce_flags & BCE_MFW_ENABLE_FLAG)
+			kprintf("MFW");
+		if (sc->bce_phy_flags & BCE_PHY_2_5G_CAPABLE_FLAG)
+			kprintf(" 2.5G");
+		kprintf(")");
+	}
+	kprintf("\n");
 }
 
 
@@ -742,7 +747,7 @@ bce_attach(device_t dev)
 	DBPRINT(sc, BCE_INFO, "bce_shmem_base = 0x%08X\n", sc->bce_shmem_base);
 
 	/* Fetch the bootcode revision. */
-	sc->bce_fw_ver = REG_RD_IND(sc, sc->bce_shmem_base +
+	sc->bce_bc_ver = REG_RD_IND(sc, sc->bce_shmem_base +
 		BCE_DEV_INFO_BC_REV);
 
 	/* Check if any management firmware is running. */
@@ -3031,15 +3036,22 @@ bce_init_cpus(struct bce_softc *sc)
 {
 	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
 	    BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5716) {
-		bce_load_rv2p_fw(sc, bce_xi_rv2p_proc1, sizeof(bce_xi_rv2p_proc1),
-			RV2P_PROC1);
-		bce_load_rv2p_fw(sc, bce_xi_rv2p_proc2, sizeof(bce_xi_rv2p_proc2),
-			RV2P_PROC2);
+		if (BCE_CHIP_REV(sc) == BCE_CHIP_REV_Ax) {
+			bce_load_rv2p_fw(sc, bce_xi90_rv2p_proc1,
+			    sizeof(bce_xi90_rv2p_proc1), RV2P_PROC1);
+			bce_load_rv2p_fw(sc, bce_xi90_rv2p_proc2,
+			    sizeof(bce_xi90_rv2p_proc2), RV2P_PROC2);
+		} else {
+			bce_load_rv2p_fw(sc, bce_xi_rv2p_proc1,
+			    sizeof(bce_xi_rv2p_proc1), RV2P_PROC1);
+			bce_load_rv2p_fw(sc, bce_xi_rv2p_proc2,
+			    sizeof(bce_xi_rv2p_proc2), RV2P_PROC2);
+		}
 	} else {
-		bce_load_rv2p_fw(sc, bce_rv2p_proc1, sizeof(bce_rv2p_proc1),
-			RV2P_PROC1);
-		bce_load_rv2p_fw(sc, bce_rv2p_proc2, sizeof(bce_rv2p_proc2),
-			RV2P_PROC2);
+		bce_load_rv2p_fw(sc, bce_rv2p_proc1,
+		    sizeof(bce_rv2p_proc1), RV2P_PROC1);
+		bce_load_rv2p_fw(sc, bce_rv2p_proc2,
+		    sizeof(bce_rv2p_proc2), RV2P_PROC2);
 	}
 
 	bce_init_rxp_cpu(sc);
@@ -4215,7 +4227,16 @@ bce_rx_intr(struct bce_softc *sc, int count)
 			 * VLAN tags and checksum info).  The frames are also
 			 * automatically adjusted to align the IP header
 			 * (i.e. two null bytes are inserted before the 
-			 * Ethernet header).
+			 * Ethernet header).  As a result the data DMA'd by
+			 * the controller into the mbuf is as follows:
+			 *
+			 * +---------+-----+---------------------+-----+
+			 * | l2_fhdr | pad | packet data         | FCS |
+			 * +---------+-----+---------------------+-----+
+			 * 
+			 * The l2_fhdr needs to be checked and skipped and the
+			 * FCS needs to be stripped before sending the packet
+			 * up the stack.
 			 */
 			l2fhdr = mtod(m, struct l2_fhdr *);
 
