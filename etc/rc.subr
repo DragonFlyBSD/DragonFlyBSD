@@ -1196,3 +1196,45 @@ backup_file()
 		esac
 	fi
 }
+
+# devfs_mount_jail dir
+# Mounts a devfs file system appropriate for jails
+# on the directory dir.
+# This function returns non-zero if an error occurs.
+#
+devfs_mount_jail()
+{
+	local jdev _me
+	jdev="$1"
+	_me="devfs_mount_jail"
+
+	if ! devfs_domount "$jdev" $rs; then
+		warn "$_me: devfs was not mounted on $jdev"
+		return 1
+	fi
+	return 0
+}
+
+# devfs_domount dir
+# Mount devfs on dir.
+# Returns 0 on success.
+#
+devfs_domount()
+{
+	local devdir _me
+	devdir="$1"
+	_me="devfs_domount()"
+
+	if [ -z "$devdir" ]; then
+		warn "$_me: you must specify a mount-point"
+		return 1
+	fi
+
+	debug "$_me: mount-point is ($devdir)"
+	if ! mount -t devfs devfs "$devdir"; then
+		warn "$_me: Unable to mount devfs on $devdir"
+		return 1
+	fi
+
+return 0
+}

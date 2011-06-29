@@ -28,6 +28,7 @@ init_variables()
 	fi
 
 	eval _rootdir=\"\$jail_${_j}_rootdir\"
+	_devdir="${_rootdir}/dev"
 	_fdescdir="${_rootdir}/dev/fd"
 	_procdir="${_rootdir}/proc"
 	eval _hostname=\"\$jail_${_j}_hostname\"
@@ -50,6 +51,8 @@ init_variables()
 		fi
 	fi
 
+	eval _devfs=\"\${jail_${_j}_devfs_enable:-${jail_devfs_enable}}\"
+	[ -z "${_devfs}" ] && _devfs="NO"
 	eval _fdesc=\"\${jail_${_j}_fdesc_enable:-${jail_fdesc_enable}}\"
 	[ -z "${_fdesc}" ] && _fdesc="NO"
 	eval _procfs=\"\${jail_${_j}_procfs_enable:-${jail_procfs_enable}}\"
@@ -67,6 +70,7 @@ init_variables()
 
 	# Debugging aid
 	#
+	debug "$_j devfs enable: $_devfs"
 	debug "$_j fdesc enable: $_fdesc"
 	debug "$_j procfs enable: $_procfs"
 	debug "$_j mount enable: $_mount"
@@ -74,6 +78,7 @@ init_variables()
 	debug "$_j ip: $_ip"
 	debug "$_j interface: $_interface"
 	debug "$_j root: $_rootdir"
+	debug "$_j devdir: $_devdir"
 	debug "$_j fdescdir: $_fdescdir"
 	debug "$_j procdir: $_procdir"
 	debug "$_j fstab: $_fstab"
@@ -185,6 +190,11 @@ jail_umount_fs()
 			secure_umount ${_fdescdir}
 		fi
 	fi
+	if checkyesno _devfs; then
+	    if [ -d "${_devdir}" ] ; then
+		secure_umount ${_devdir}
+	    fi
+	fi
 	if checkyesno _procfs; then
 		if [ -d "${_procdir}" ] ; then
 			secure_umount ${_procdir}
@@ -262,6 +272,19 @@ jail_start()
 				err 3 "$name: ${_fstab} does not exist"
 			fi
 			jail_mount_fstab
+		fi
+		if checkyesno _devfs; then
+			# If devfs is already mounted here, skip it.
+			df -t devfs "${_devdir}" >/dev/null
+			if [ $? -ne 0 ]; then
+				if is_symlinked_mountpoint ${_devdir}; then
+					warn "${_devdir} has symlink as parent" \
+					"- not starting jail ${_jail}"
+					continue
+				fi
+				info "Mounting devfs on ${_devdir}"
+				devfs_mount_jail "${_devdir}"
+			fi
 		fi
 		if checkyesno _fdesc; then
 			if is_symlinked_mountpoint ${_fdescdir}; then

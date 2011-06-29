@@ -2362,6 +2362,19 @@ to
 .Dq Li YES
 by default for every jail in
 .Va jail_list .
+.It Va jail_devfs_enable
+.Pq Vt bool
+Set to
+.Dq Li NO
+by default.
+When set to
+.Dq Li YES ,
+sets
+.Va jail_ Ns Ao Ar jname Ac Ns Va _devfs_enable
+to
+.Dq Li YES
+by default for every jail in
+.Va jail_list .
 .It Va jail_exec_start
 .Pq Vt str
 Unset by default.
@@ -2437,6 +2450,16 @@ by default.
 When set to
 .Dq Li YES ,
 mount the process file system inside jail
+.Ar jname
+at jail startup.
+.It Va jail_ Ns Ao Ar jname Ac Ns Va _devfs_enable
+.Pq Vt bool
+Set to
+.Dq Li NO
+by default.
+When set to
+.Dq Li YES ,
+mount the device file system inside jail
 .Ar jname
 at jail startup.
 .It Va jail_ Ns Ao Ar jname Ac Ns Va _exec_start
