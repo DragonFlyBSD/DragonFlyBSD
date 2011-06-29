@@ -351,6 +351,8 @@ static void	bce_breakpoint(struct bce_softc *);
 /****************************************************************************/
 static uint32_t	bce_reg_rd_ind(struct bce_softc *, uint32_t);
 static void	bce_reg_wr_ind(struct bce_softc *, uint32_t, uint32_t);
+static void	bce_shmem_wr(struct bce_softc *, uint32_t, uint32_t);
+static uint32_t	bce_shmem_rd(struct bce_softc *, u32);
 static void	bce_ctx_wr(struct bce_softc *, uint32_t, uint32_t, uint32_t);
 static int	bce_miibus_read_reg(device_t, int, int);
 static int	bce_miibus_write_reg(device_t, int, int, int);
@@ -597,13 +599,13 @@ bce_print_adapter_info(struct bce_softc *sc)
 	}
 
 	/* Firmware version and device features. */
-	kprintf("B/C (0x%08X)", sc->bce_bc_ver);
+	kprintf("B/C (%s)", sc->bce_bc_ver);
 
 	if ((sc->bce_flags & BCE_MFW_ENABLE_FLAG) ||
 	    (sc->bce_phy_flags & BCE_PHY_2_5G_CAPABLE_FLAG)) {
 		kprintf("; Flags(");
 		if (sc->bce_flags & BCE_MFW_ENABLE_FLAG)
-			kprintf("MFW");
+			kprintf("MFW[%s]", sc->bce_mfw_ver);
 		if (sc->bce_phy_flags & BCE_PHY_2_5G_CAPABLE_FLAG)
 			kprintf(" 2.5G");
 		kprintf(")");
@@ -659,6 +661,7 @@ bce_attach(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t val;
 	int rid, rc = 0;
+	int i, j;
 #ifdef notyet
 	int count;
 #endif
@@ -712,7 +715,7 @@ bce_attach(device_t dev)
 	sc->bce_chipid =  REG_RD(sc, BCE_MISC_ID);
 
 	/* Weed out any non-production controller revisions. */
-	switch(BCE_CHIP_ID(sc)) {
+	switch (BCE_CHIP_ID(sc)) {
 	case BCE_CHIP_ID_5706_A0:
 	case BCE_CHIP_ID_5706_A1:
 	case BCE_CHIP_ID_5708_A0:
@@ -747,13 +750,50 @@ bce_attach(device_t dev)
 	DBPRINT(sc, BCE_INFO, "bce_shmem_base = 0x%08X\n", sc->bce_shmem_base);
 
 	/* Fetch the bootcode revision. */
-	sc->bce_bc_ver = REG_RD_IND(sc, sc->bce_shmem_base +
-		BCE_DEV_INFO_BC_REV);
+	val = bce_shmem_rd(sc, BCE_DEV_INFO_BC_REV);
+	for (i = 0, j = 0; i < 3; i++) {
+		uint8_t num;
+		int k, skip0;
 
-	/* Check if any management firmware is running. */
-	val = REG_RD_IND(sc, sc->bce_shmem_base + BCE_PORT_FEATURE);
-	if (val & (BCE_PORT_FEATURE_ASF_ENABLED | BCE_PORT_FEATURE_IMD_ENABLED))
+		num = (uint8_t)(val >> (24 - (i * 8)));
+		for (k = 100, skip0 = 1; k >= 1; num %= k, k /= 10) {
+			if (num >= k || !skip0 || k == 1) {
+				sc->bce_bc_ver[j++] = (num / k) + '0';
+				skip0 = 0;
+			}
+		}
+		if (i != 2)
+			sc->bce_bc_ver[j++] = '.';
+	}
+
+	/* Check if any management firwmare is running. */
+	val = bce_shmem_rd(sc, BCE_PORT_FEATURE);
+	if (val & BCE_PORT_FEATURE_ASF_ENABLED) {
 		sc->bce_flags |= BCE_MFW_ENABLE_FLAG;
+
+		/* Allow time for firmware to enter the running state. */
+		for (i = 0; i < 30; i++) {
+			val = bce_shmem_rd(sc, BCE_BC_STATE_CONDITION);
+			if (val & BCE_CONDITION_MFW_RUN_MASK)
+				break;
+			DELAY(10000);
+		}
+	}
+
+	/* Check the current bootcode state. */
+	val = bce_shmem_rd(sc, BCE_BC_STATE_CONDITION) &
+	    BCE_CONDITION_MFW_RUN_MASK;
+	if (val != BCE_CONDITION_MFW_RUN_UNKNOWN &&
+	    val != BCE_CONDITION_MFW_RUN_NONE) {
+		uint32_t addr = bce_shmem_rd(sc, BCE_MFW_VER_PTR);
+
+		for (i = 0, j = 0; j < 3; j++) {
+			val = bce_reg_rd_ind(sc, addr + j * 4);
+			val = bswap32(val);
+			memcpy(&sc->bce_mfw_ver[i], &val, 4);
+			i += 4;
+		}
+	}
 
 	/* Get PCI bus information (speed and type). */
 	val = REG_RD(sc, BCE_PCICFG_MISC_STATUS);
@@ -1082,6 +1122,36 @@ bce_reg_wr_ind(struct bce_softc *sc, uint32_t offset, uint32_t val)
 
 	pci_write_config(dev, BCE_PCICFG_REG_WINDOW_ADDRESS, offset, 4);
 	pci_write_config(dev, BCE_PCICFG_REG_WINDOW, val, 4);
+}
+
+
+/****************************************************************************/
+/* Shared memory write.                                                     */
+/*                                                                          */
+/* Writes NetXtreme II shared memory region.                                */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing.                                                               */
+/****************************************************************************/
+static void
+bce_shmem_wr(struct bce_softc *sc, uint32_t offset, uint32_t val)
+{
+	bce_reg_wr_ind(sc, sc->bce_shmem_base + offset, val);
+}
+
+
+/****************************************************************************/
+/* Shared memory read.                                                      */
+/*                                                                          */
+/* Reads NetXtreme II shared memory region.                                 */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   The 32 bit value read.                                                 */
+/****************************************************************************/
+static u32
+bce_shmem_rd(struct bce_softc *sc, uint32_t offset)
+{
+	return bce_reg_rd_ind(sc, sc->bce_shmem_base + offset);
 }
 
 
@@ -1652,8 +1722,8 @@ bce_init_nvram(struct bce_softc *sc)
 
 bce_init_nvram_get_flash_size:
 	/* Write the flash config data to the shared memory interface. */
-	val = REG_RD_IND(sc, sc->bce_shmem_base + BCE_SHARED_HW_CFG_CONFIG2) &
-	      BCE_SHARED_HW_CFG2_NVM_SIZE_MASK;
+	val = bce_shmem_rd(sc, BCE_SHARED_HW_CFG_CONFIG2) &
+	    BCE_SHARED_HW_CFG2_NVM_SIZE_MASK;
 	if (val)
 		sc->bce_flash_size = val;
 	else
@@ -1912,8 +1982,7 @@ bce_get_media(struct bce_softc *sc)
 		sc->bce_flags |= BCE_NO_WOL_FLAG;
 		if (BCE_CHIP_NUM(sc) != BCE_CHIP_NUM_5706) {
 			sc->bce_phy_addr = 2;
-			val = REG_RD_IND(sc, sc->bce_shmem_base +
-			    BCE_SHARED_HW_CFG_CONFIG);
+			val = bce_shmem_rd(sc, BCE_SHARED_HW_CFG_CONFIG);
 			if (val & BCE_SHARED_HW_CFG_PHY_2_5G)
 				sc->bce_phy_flags |= BCE_PHY_2_5G_CAPABLE_FLAG;
 		}
@@ -2422,12 +2491,12 @@ bce_fw_sync(struct bce_softc *sc, uint32_t msg_data)
  	DBPRINT(sc, BCE_VERBOSE, "bce_fw_sync(): msg_data = 0x%08X\n", msg_data);
 
 	/* Send the message to the bootcode driver mailbox. */
-	REG_WR_IND(sc, sc->bce_shmem_base + BCE_DRV_MB, msg_data);
+	bce_shmem_wr(sc, BCE_DRV_MB, msg_data);
 
 	/* Wait for the bootcode to acknowledge the message. */
 	for (i = 0; i < FW_ACK_TIME_OUT_MS; i++) {
 		/* Check for a response in the bootcode firmware mailbox. */
-		val = REG_RD_IND(sc, sc->bce_shmem_base + BCE_FW_MB);
+		val = bce_shmem_rd(sc, BCE_FW_MB);
 		if ((val & BCE_FW_MSG_ACK) == (msg_data & BCE_DRV_MSG_SEQ))
 			break;
 		DELAY(1000);
@@ -2443,7 +2512,7 @@ bce_fw_sync(struct bce_softc *sc, uint32_t msg_data)
 		msg_data &= ~BCE_DRV_MSG_CODE;
 		msg_data |= BCE_DRV_MSG_CODE_FW_TIMEOUT;
 
-		REG_WR_IND(sc, sc->bce_shmem_base + BCE_DRV_MB, msg_data);
+		bce_shmem_wr(sc, BCE_DRV_MB, msg_data);
 
 		sc->bce_fw_timed_out = 1;
 		rc = EBUSY;
@@ -3169,8 +3238,8 @@ bce_get_mac_addr(struct bce_softc *sc)
 	 * shared memory for speed.
 	 */
 
-	mac_hi = REG_RD_IND(sc, sc->bce_shmem_base + BCE_PORT_HW_CFG_MAC_UPPER);
-	mac_lo = REG_RD_IND(sc, sc->bce_shmem_base + BCE_PORT_HW_CFG_MAC_LOWER);
+	mac_hi = bce_shmem_rd(sc,  BCE_PORT_HW_CFG_MAC_UPPER);
+	mac_lo = bce_shmem_rd(sc, BCE_PORT_HW_CFG_MAC_LOWER);
 
 	if (mac_lo == 0 && mac_hi == 0) {
 		if_printf(&sc->arpcom.ac_if, "Invalid Ethernet address!\n");
@@ -3305,8 +3374,8 @@ bce_reset(struct bce_softc *sc, uint32_t reset_code)
 	}
 
 	/* Set a firmware reminder that this is a soft reset. */
-	REG_WR_IND(sc, sc->bce_shmem_base + BCE_DRV_RESET_SIGNATURE,
-		   BCE_DRV_RESET_SIGNATURE_MAGIC);
+	bce_shmem_wr(sc, BCE_DRV_RESET_SIGNATURE,
+	    BCE_DRV_RESET_SIGNATURE_MAGIC);
 
 	/* Dummy read to force the chip to complete all current transactions. */
 	val = REG_RD(sc, BCE_MISC_ID);
@@ -3521,7 +3590,7 @@ bce_blockinit(struct bce_softc *sc)
 	REG_WR(sc, BCE_HC_COMMAND, BCE_HC_COMMAND_CLR_STAT_NOW);
 
 	/* Verify that bootcode is running. */
-	reg = REG_RD_IND(sc, sc->bce_shmem_base + BCE_DEV_INFO_SIGNATURE);
+	reg = bce_shmem_rd(sc, BCE_DEV_INFO_SIGNATURE);
 
 	DBRUNIF(DB_RANDOMTRUE(bce_debug_bootcode_running_failure),
 		if_printf(&sc->arpcom.ac_if,
@@ -5666,7 +5735,7 @@ bce_pulse(void *xsc)
 
 	/* Tell the firmware that the driver is still running. */
 	msg = (uint32_t)++sc->bce_fw_drv_pulse_wr_seq;
-	REG_WR_IND(sc, sc->bce_shmem_base + BCE_DRV_PULSE_MB, msg);
+	bce_shmem_wr(sc, BCE_DRV_PULSE_MB, msg);
 
 	/* Schedule the next pulse. */
 	callout_reset(&sc->bce_pulse_callout, hz, bce_pulse, sc);
