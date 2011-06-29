@@ -260,8 +260,8 @@ main(int argc, char **argv)
 		 * we've been given (-l, -t, etc.).
 		 */
 		if (checkvfsname(statfsbuf.f_fstypename, vfslist)) {
-		  rv = 1;
-		  continue;
+			rv = 1;
+			continue;
 		}
 
 		if (argc == 1) {
