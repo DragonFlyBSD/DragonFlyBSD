@@ -606,7 +606,6 @@ AH_SUPPORT_AR5416	opt_ah.h
 
 # bce driver
 BCE_DEBUG		opt_bce.h
-BCE_NVRAM_WRITE_SUPPORT	opt_bce.h
 
 # ed driver
 ED_NO_MIIBUS		opt_ed.h
