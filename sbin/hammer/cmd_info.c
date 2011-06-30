@@ -38,8 +38,8 @@
 void	show_info(char *path);
 char	*find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster);
 double	percent(int64_t value, int64_t total);
-u_int32_t count_snapshots(int fd, u_int32_t version,
-    char *pfs_snapshots, char *mountedon);
+u_int32_t count_snapshots (u_int32_t version,
+    char *pfs_snapshots, char *mountedon, int *errorp);
 
 void
 hammer_cmd_info(void)
@@ -77,7 +77,7 @@ show_info(char *path)
 	int64_t	    usedbytes, rsvbytes;
 	int64_t	    totalbytes, freebytes;
 	struct	    hammer_ioc_info info;
-	int         fd, pfs_id, ismaster;
+	int         fd, pfs_id, ismaster, error;
 	char	    *fsid;
 	char	    *mountedon;
 	char	    buf[6];
@@ -87,7 +87,7 @@ show_info(char *path)
 	usedbigblocks = 0;
 	pfs_id = 0;	      /* Include PFS#0 */
 	usedbytes = totalbytes = rsvbytes = freebytes = 0;
-	sc = 0;
+	sc = error = 0;
 
 	bzero(&info, sizeof(struct hammer_ioc_info));
 
@@ -178,11 +178,15 @@ show_info(char *path)
 				mountedon = find_pfs_mount(pfs_id,
 				    info.vol_fsid, ismaster);
 
-			sc = count_snapshots(fd, info.version, pfs_od.snapshots,
-			    mountedon);
+			sc = count_snapshots(info.version, pfs_od.snapshots,
+			    mountedon, &error);
 
-			fprintf(stdout, "\t%6d  %-6s %6d  ",
-			    pfs_id, (ismaster ? "MASTER" : "SLAVE"), sc);
+			fprintf(stdout, "\t%6d  %-6s",
+			    pfs_id, (ismaster ? "MASTER" : "SLAVE"));
+
+			snprintf(buf, 6, "%d", sc);
+			fprintf(stdout, " %6s  ", (error && sc == 0) ? "-" : buf);
+
 			if (mountedon)
 				fprintf(stdout, "%s", mountedon);
 			else
@@ -283,7 +287,7 @@ percent(int64_t value, int64_t total)
 }
 
 u_int32_t
-count_snapshots(int fd, u_int32_t version, char *pfs_snapshots, char *mountedon)
+count_snapshots(u_int32_t version, char *pfs_snapshots, char *mountedon, int *errorp)
 {
 	struct hammer_ioc_snapshot snapinfo;
 	char *snapshots_path, *fpath;
@@ -291,8 +295,16 @@ count_snapshots(int fd, u_int32_t version, char *pfs_snapshots, char *mountedon)
 	struct stat st;
 	DIR *dir;
 	u_int32_t snapshot_count = 0;
+	int fd;
 
 	bzero(&snapinfo, sizeof(struct hammer_ioc_snapshot));
+
+        fd = open(mountedon, O_RDONLY);
+        if (fd < 0) {
+		*errorp = errno;
+		return 0;
+        }
+
 	if (version < 3) {
 		/*
 		 * old style: count the number of softlinks in the snapshots dir
@@ -320,8 +332,8 @@ count_snapshots(int fd, u_int32_t version, char *pfs_snapshots, char *mountedon)
 		 */
 		do {
 			if (ioctl(fd, HAMMERIOC_GET_SNAPSHOT, &snapinfo) < 0) {
-				perror("count_snapshots");
-				exit(EXIT_FAILURE);
+				*errorp = errno;
+				return 0;
 			}
 			snapshot_count += snapinfo.count;
 		} while (snapinfo.head.error == 0 && snapinfo.count);
