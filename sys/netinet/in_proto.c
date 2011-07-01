@@ -143,7 +143,7 @@ struct protosw inetsw[] = {
 	.pr_type = SOCK_STREAM,
 	.pr_domain = &inetdomain,
 	.pr_protocol = IPPROTO_TCP,
-	.pr_flags = PR_CONNREQUIRED|PR_IMPLOPCL|PR_WANTRCVD|PR_MPSAFE,
+	.pr_flags = PR_CONNREQUIRED|PR_WANTRCVD|PR_MPSAFE,
 
 	.pr_input = tcp_input,
 	.pr_output = NULL,
