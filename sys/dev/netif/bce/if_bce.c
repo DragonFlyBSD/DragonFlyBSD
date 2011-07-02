@@ -424,7 +424,7 @@ static void	bce_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 static void	bce_init(void *);
 static void	bce_mgmt_init(struct bce_softc *);
 
-static void	bce_init_ctx(struct bce_softc *);
+static int	bce_init_ctx(struct bce_softc *);
 static void	bce_get_mac_addr(struct bce_softc *);
 static void	bce_set_mac_addr(struct bce_softc *);
 static void	bce_phy_intr(struct bce_softc *);
@@ -3206,7 +3206,7 @@ bce_init_cpus(struct bce_softc *sc)
 /* Returns:                                                                 */
 /*   Nothing.                                                               */
 /****************************************************************************/
-static void
+static int
 bce_init_ctx(struct bce_softc *sc)
 {
 	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
@@ -3231,6 +3231,11 @@ bce_init_ctx(struct bce_softc *sc)
 			if (!(val & BCE_CTX_COMMAND_MEM_INIT))
 				break;
 			DELAY(2);
+		}
+		if (i == retry_cnt) {
+			device_printf(sc->bce_dev,
+			    "Context memory initialization failed!\n");
+			return ETIMEDOUT;
 		}
 
 		for (i = 0; i < sc->ctx_pages; i++) {
@@ -3258,6 +3263,11 @@ bce_init_ctx(struct bce_softc *sc)
 					break;
 				DELAY(5);
 			}
+			if (j == retry_cnt) {
+				device_printf(sc->bce_dev,
+				    "Failed to initialize context page!\n");
+				return ETIMEDOUT;
+			}
 		}
 	} else {
 		uint32_t vcid_addr, offset;
@@ -3282,6 +3292,7 @@ bce_init_ctx(struct bce_softc *sc)
 			REG_WR(sc, BCE_CTX_PAGE_TBL, vcid_addr);
 		}
 	}
+	return 0;
 }
 
 
@@ -3550,7 +3561,9 @@ bce_chipinit(struct bce_softc *sc)
 	       BCE_MISC_ENABLE_STATUS_BITS_CONTEXT_ENABLE);
 
 	/* Initialize context mapping and zero out the quick contexts. */
-	bce_init_ctx(sc);
+	rc = bce_init_ctx(sc);
+	if (rc != 0)
+		return rc;
 
 	/* Initialize the on-boards CPUs */
 	bce_init_cpus(sc);
