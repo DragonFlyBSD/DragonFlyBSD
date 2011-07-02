@@ -977,7 +977,8 @@ bce_attach(device_t dev)
 	/* Get the firmware running so IPMI still works */
 	bce_mgmt_init(sc);
 
-	bce_print_adapter_info(sc);
+	if (bootverbose)
+		bce_print_adapter_info(sc);
 
 	return 0;
 fail:
