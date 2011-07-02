@@ -94,6 +94,8 @@ extern struct enc_xform enc_xform_arc4;
 extern struct enc_xform enc_xform_camellia;
 extern struct enc_xform enc_xform_twofish;
 extern struct enc_xform enc_xform_serpent;
+extern struct enc_xform enc_xform_twofish_xts;
+extern struct enc_xform enc_xform_serpent_xts;
 
 extern struct auth_hash auth_hash_null;
 extern struct auth_hash auth_hash_key_md5;

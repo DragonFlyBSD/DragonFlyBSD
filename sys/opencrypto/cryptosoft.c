@@ -891,6 +891,12 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 		case CRYPTO_SERPENT_CBC:
 			txf = &enc_xform_serpent;
 			goto enccommon;
+		case CRYPTO_TWOFISH_XTS:
+			txf = &enc_xform_twofish_xts;
+			goto enccommon;
+		case CRYPTO_SERPENT_XTS:
+			txf = &enc_xform_serpent_xts;
+			goto enccommon;
 		case CRYPTO_NULL_CBC:
 			txf = &enc_xform_null;
 			goto enccommon;
@@ -1153,6 +1159,8 @@ swcr_freesession_slot(struct swcr_data **swdp, u_int32_t sid)
 		case CRYPTO_CAMELLIA_CBC:
 		case CRYPTO_TWOFISH_CBC:
 		case CRYPTO_SERPENT_CBC:
+		case CRYPTO_TWOFISH_XTS:
+		case CRYPTO_SERPENT_XTS:
 		case CRYPTO_NULL_CBC:
 			txf = swd->sw_exf;
 
@@ -1276,6 +1284,8 @@ swcr_process(device_t dev, struct cryptop *crp, int hint)
 		case CRYPTO_CAMELLIA_CBC:
 		case CRYPTO_TWOFISH_CBC:
 		case CRYPTO_SERPENT_CBC:
+		case CRYPTO_TWOFISH_XTS:
+		case CRYPTO_SERPENT_XTS:
 			if ((crp->crp_etype = swcr_encdec(crd, sw,
 			    crp->crp_buf, crp->crp_flags)) != 0)
 				goto done;
@@ -1388,6 +1398,8 @@ swcr_attach(device_t dev)
 	REGISTER(CRYPTO_CAMELLIA_CBC);
 	REGISTER(CRYPTO_TWOFISH_CBC);
 	REGISTER(CRYPTO_SERPENT_CBC);
+	REGISTER(CRYPTO_TWOFISH_XTS);
+	REGISTER(CRYPTO_SERPENT_XTS);
 	REGISTER(CRYPTO_DEFLATE_COMP);
 #undef REGISTER
 

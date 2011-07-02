@@ -109,6 +109,10 @@
 #define CAMELLIA_BLOCK_LEN	16
 #define TWOFISH_BLOCK_LEN	16
 #define SERPENT_BLOCK_LEN	16
+#define TWOFISH_XTS_BLOCK_LEN	16
+#define TWOFISH_XTS_IV_LEN	8
+#define SERPENT_XTS_BLOCK_LEN	16
+#define SERPENT_XTS_IV_LEN	8
 #define EALG_MAX_BLOCK_LEN	AES_BLOCK_LEN /* Keep this updated */
 
 #define	CRYPTO_ALGORITHM_MIN	1
@@ -143,7 +147,9 @@
 #define CRYPTO_AES_GMAC		28
 #define CRYPTO_TWOFISH_CBC	29
 #define CRYPTO_SERPENT_CBC	30
-#define	CRYPTO_ALGORITHM_MAX	30 /* Keep updated - see below */
+#define CRYPTO_TWOFISH_XTS	31
+#define CRYPTO_SERPENT_XTS	32
+#define	CRYPTO_ALGORITHM_MAX	32 /* Keep updated - see below */
 
 /* Algorithm flags */
 #define	CRYPTO_ALG_FLAG_SUPPORTED	0x01 /* Algorithm is supported */

@@ -206,6 +206,12 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 		case CRYPTO_SERPENT_CBC:
 			txform = &enc_xform_serpent;
 			break;
+		case CRYPTO_TWOFISH_XTS:
+			txform = &enc_xform_twofish_xts;
+			break;
+		case CRYPTO_SERPENT_XTS:
+			txform = &enc_xform_serpent_xts;
+			break;
 		default:
 			return (EINVAL);
 		}
