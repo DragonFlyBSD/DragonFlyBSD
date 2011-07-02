@@ -544,11 +544,24 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 		return ENOENT;
 	}
 
+	/*
+	 * This code checks for valid combinations of algorithm and mode.
+	 * Currently supported options are:
+	 *
+	 * *-cbc
+	 * aes-xts
+	 * twofish-xts
+	 * serpent-xts
+	 */
 	if ((strcmp(crypto_mode, "cbc") != 0) &&
-	    !((strcmp(crypto_mode, "xts") == 0) && (strcmp(crypto_alg, "aes") == 0)))
+	    !((strcmp(crypto_mode, "xts") == 0) &&
+	    ((strcmp(crypto_alg, "aes") == 0) ||
+	    (strcmp(crypto_alg, "twofish") == 0) ||
+	    (strcmp(crypto_alg, "serpent") == 0))))
 	{
-		kprintf("dm_target_crypt: only support 'cbc' chaining mode"
-		    " and aes-xts, invalid mode '%s-%s'\n",
+		kprintf("dm_target_crypt: only support 'cbc' chaining mode,"
+		    " aes-xts, twofish-xts and serpent-xts, "
+		    "invalid mode '%s-%s'\n",
 		    crypto_alg, crypto_mode);
 		goto notsup;
 	}
@@ -560,6 +573,32 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 				goto notsup;
 		} else if (!strcmp(crypto_mode, "cbc")) {
 			priv->crypto_alg = CRYPTO_AES_CBC;
+			if (klen != 128 && klen != 192 && klen != 256)
+				goto notsup;
+		} else {
+			goto notsup;
+		}
+		priv->crypto_klen = klen;
+	} else if (!strcmp(crypto_alg, "twofish")) {
+		if (!strcmp(crypto_mode, "xts")) {
+			priv->crypto_alg = CRYPTO_TWOFISH_XTS;
+			if (klen != 256 && klen != 512)
+				goto notsup;
+		} else if (!strcmp(crypto_mode, "cbc")) {
+			priv->crypto_alg = CRYPTO_TWOFISH_CBC;
+			if (klen != 128 && klen != 192 && klen != 256)
+				goto notsup;
+		} else {
+			goto notsup;
+		}
+		priv->crypto_klen = klen;
+	} else if (!strcmp(crypto_alg, "serpent")) {
+		if (!strcmp(crypto_mode, "xts")) {
+			priv->crypto_alg = CRYPTO_SERPENT_XTS;
+			if (klen != 256 && klen != 512)
+				goto notsup;
+		} else if (!strcmp(crypto_mode, "cbc")) {
+			priv->crypto_alg = CRYPTO_SERPENT_CBC;
 			if (klen != 128 && klen != 192 && klen != 256)
 				goto notsup;
 		} else {
