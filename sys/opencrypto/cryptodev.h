@@ -107,6 +107,7 @@
 #define AESGMAC_IV_LEN		8
 #define AESGMAC_BLOCK_LEN	1
 #define CAMELLIA_BLOCK_LEN	16
+#define TWOFISH_BLOCK_LEN	16
 #define EALG_MAX_BLOCK_LEN	AES_BLOCK_LEN /* Keep this updated */
 
 #define	CRYPTO_ALGORITHM_MIN	1
@@ -139,7 +140,8 @@
 #define CRYPTO_AES_192_GMAC	26
 #define CRYPTO_AES_256_GMAC	27
 #define CRYPTO_AES_GMAC		28
-#define	CRYPTO_ALGORITHM_MAX	28 /* Keep updated - see below */
+#define CRYPTO_TWOFISH_CBC	29
+#define	CRYPTO_ALGORITHM_MAX	29 /* Keep updated - see below */
 
 /* Algorithm flags */
 #define	CRYPTO_ALG_FLAG_SUPPORTED	0x01 /* Algorithm is supported */

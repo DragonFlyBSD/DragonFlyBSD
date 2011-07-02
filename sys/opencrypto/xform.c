@@ -50,6 +50,7 @@
 #include <crypto/des/des.h>
 #include <crypto/rijndael/rijndael.h>
 #include <crypto/camellia/camellia.h>
+#include <crypto/twofish/twofish.h>
 #include <crypto/sha1.h>
 
 #include <opencrypto/cast.h>
@@ -77,6 +78,7 @@ static	int rijndael128_setkey(u_int8_t **, u_int8_t *, int);
 static	int aes_xts_setkey(u_int8_t **, u_int8_t *, int);
 static	int aes_ctr_setkey(u_int8_t **, u_int8_t *, int);
 static	int cml_setkey(u_int8_t **, u_int8_t *, int);
+static	int twofish128_setkey(u_int8_t **, u_int8_t *, int);
 static	void des1_encrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void des3_encrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void blf_encrypt(caddr_t, u_int8_t *, u_int8_t *);
@@ -85,6 +87,7 @@ static	void skipjack_encrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void rijndael128_encrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void aes_xts_encrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void cml_encrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void twofish128_encrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void des1_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void des3_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void blf_decrypt(caddr_t, u_int8_t *, u_int8_t *);
@@ -93,6 +96,7 @@ static	void skipjack_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void rijndael128_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void aes_xts_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void cml_decrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void twofish128_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void des1_zerokey(u_int8_t **);
 static	void des3_zerokey(u_int8_t **);
 static	void blf_zerokey(u_int8_t **);
@@ -102,6 +106,7 @@ static	void rijndael128_zerokey(u_int8_t **);
 static	void aes_xts_zerokey(u_int8_t **);
 static	void aes_ctr_zerokey(u_int8_t **);
 static	void cml_zerokey(u_int8_t **);
+static	void twofish128_zerokey(u_int8_t **);
 
 static	void aes_ctr_crypt(caddr_t, u_int8_t *, u_int8_t *);
 
@@ -259,6 +264,16 @@ struct enc_xform enc_xform_camellia = {
 	cml_decrypt,
 	cml_setkey,
 	cml_zerokey,
+	NULL
+};
+
+struct enc_xform enc_xform_twofish = {
+	CRYPTO_TWOFISH_CBC, "Twofish",
+	TWOFISH_BLOCK_LEN, TWOFISH_BLOCK_LEN, 8, 32,
+	twofish128_encrypt,
+	twofish128_decrypt,
+	twofish128_setkey,
+	twofish128_zerokey,
 	NULL
 };
 
@@ -872,6 +887,47 @@ cml_zerokey(u_int8_t **sched)
 	kfree(*sched, M_CRYPTO_DATA);
 	*sched = NULL;
 }
+
+static void
+twofish128_encrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
+{
+	twofish_encrypt((twofish_ctx *) key, (u_int8_t *) blk,
+	    (u_int8_t *) blk);
+}
+
+static void
+twofish128_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
+{
+	twofish_decrypt(((twofish_ctx *) key), (u_int8_t *) blk,
+	    (u_int8_t *) blk);
+}
+
+static int
+twofish128_setkey(u_int8_t **sched, u_int8_t *key, int len)
+{
+	int err;
+
+	if (len != 16 && len != 24 && len != 32)
+		return (EINVAL);
+	*sched = kmalloc(sizeof(twofish_ctx), M_CRYPTO_DATA,
+			 M_INTWAIT | M_ZERO);
+	if (*sched != NULL) {
+		twofish_set_key((twofish_ctx *) *sched, (u_int8_t *) key,
+		    len * 8);
+		err = 0;
+	} else
+		err = ENOMEM;
+	return err;
+}
+
+static void
+twofish128_zerokey(u_int8_t **sched)
+{
+	bzero(*sched, sizeof(twofish_ctx));
+	kfree(*sched, M_CRYPTO_DATA);
+	*sched = NULL;
+}
+
 
 /*
  * And now for auth.

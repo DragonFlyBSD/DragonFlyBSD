@@ -885,6 +885,9 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 		case CRYPTO_CAMELLIA_CBC:
 			txf = &enc_xform_camellia;
 			goto enccommon;
+		case CRYPTO_TWOFISH_CBC:
+			txf = &enc_xform_twofish;
+			goto enccommon;
 		case CRYPTO_NULL_CBC:
 			txf = &enc_xform_null;
 			goto enccommon;
@@ -1145,6 +1148,7 @@ swcr_freesession_slot(struct swcr_data **swdp, u_int32_t sid)
 		case CRYPTO_AES_GCM_16:
 		case CRYPTO_AES_GMAC:
 		case CRYPTO_CAMELLIA_CBC:
+		case CRYPTO_TWOFISH_CBC:
 		case CRYPTO_NULL_CBC:
 			txf = swd->sw_exf;
 
@@ -1266,6 +1270,7 @@ swcr_process(device_t dev, struct cryptop *crp, int hint)
 		case CRYPTO_AES_XTS:
 		case CRYPTO_AES_CTR:
 		case CRYPTO_CAMELLIA_CBC:
+		case CRYPTO_TWOFISH_CBC:
 			if ((crp->crp_etype = swcr_encdec(crd, sw,
 			    crp->crp_buf, crp->crp_flags)) != 0)
 				goto done;
@@ -1376,6 +1381,7 @@ swcr_attach(device_t dev)
 	REGISTER(CRYPTO_AES_192_GMAC);
 	REGISTER(CRYPTO_AES_256_GMAC);
 	REGISTER(CRYPTO_CAMELLIA_CBC);
+	REGISTER(CRYPTO_TWOFISH_CBC);
 	REGISTER(CRYPTO_DEFLATE_COMP);
 #undef REGISTER
 

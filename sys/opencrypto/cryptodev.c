@@ -200,6 +200,9 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 		case CRYPTO_CAMELLIA_CBC:
 			txform = &enc_xform_camellia;
 			break;
+		case CRYPTO_TWOFISH_CBC:
+			txform = &enc_xform_twofish;
+			break;
 		default:
 			return (EINVAL);
 		}
