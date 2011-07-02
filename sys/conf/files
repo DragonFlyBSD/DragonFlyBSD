@@ -1910,6 +1910,7 @@ crypto/rijndael/rijndael-api.c		optional crypto
 crypto/sha1.c      			optional crypto
 crypto/sha2/sha2.c     			optional crypto
 crypto/twofish/twofish.c		optional crypto
+crypto/serpent/serpent.c		optional crypto
 net/zlib.c				optional crypto
 opencrypto/cast.c			optional crypto
 opencrypto/criov.c			optional crypto
