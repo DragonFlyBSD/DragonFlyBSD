@@ -3370,9 +3370,6 @@ static void
 bce_stop(struct bce_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct mii_data *mii = device_get_softc(sc->bce_miibus);
-	struct ifmedia_entry *ifm;
-	int mtmp, itmp;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -3390,24 +3387,6 @@ bce_stop(struct bce_softc *sc)
 
 	/* Free TX buffers. */
 	bce_free_tx_chain(sc);
-
-	/*
-	 * Isolate/power down the PHY, but leave the media selection
-	 * unchanged so that things will be put back to normal when
-	 * we bring the interface back up.
-	 *
-	 * 'mii' may be NULL if bce_stop() is called by bce_detach().
-	 */
-	if (mii != NULL) {
-		itmp = ifp->if_flags;
-		ifp->if_flags |= IFF_UP;
-		ifm = mii->mii_media.ifm_cur;
-		mtmp = ifm->ifm_media;
-		ifm->ifm_media = IFM_ETHER | IFM_NONE;
-		mii_mediachg(mii);
-		ifm->ifm_media = mtmp;
-		ifp->if_flags = itmp;
-	}
 
 	sc->bce_link = 0;
 	sc->bce_coalchg_mask = 0;
@@ -4181,6 +4160,7 @@ bce_ifmedia_upd(struct ifnet *ifp)
 {
 	struct bce_softc *sc = ifp->if_softc;
 	struct mii_data *mii = device_get_softc(sc->bce_miibus);
+	int error = 0;
 
 	/*
 	 * 'mii' will be NULL, when this function is called on following
@@ -4195,9 +4175,9 @@ bce_ifmedia_upd(struct ifnet *ifp)
 			LIST_FOREACH(miisc, &mii->mii_phys, mii_list)
 				mii_phy_reset(miisc);
 		}
-		mii_mediachg(mii);
+		error = mii_mediachg(mii);
 	}
-	return 0;
+	return error;
 }
 
 
