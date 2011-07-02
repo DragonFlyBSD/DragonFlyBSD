@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)options.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/options.c,v 1.33 2011/02/04 22:47:55 jilles Exp $
+ * $FreeBSD: src/bin/sh/options.c,v 1.35 2011/04/25 10:14:29 jilles Exp $
  */
 
 #include <signal.h>
@@ -199,13 +199,8 @@ options(int cmdline)
 				minus_o(*argptr, val);
 				if (*argptr)
 					argptr++;
-			} else {
-				if (c == 'p' && !val && privileged) {
-					setuid(getuid());
-					setgid(getgid());
-				}
+			} else
 				setoption(c, val);
-			}
 		}
 	}
 	return;
@@ -272,10 +267,6 @@ minus_o(char *name, int val)
 	} else {
 		for (i = 0; i < NOPTS; i++)
 			if (equal(name, optlist[i].name)) {
-				if (!val && privileged && equal(name, "privileged")) {
-					setuid(getuid());
-					setgid(getgid());
-				}
 				setoption(optlist[i].letter, val);
 				return;
 			}
@@ -289,6 +280,12 @@ setoption(int flag, int val)
 {
 	int i;
 
+	if (flag == 'p' && !val && privileged) {
+		if (setgid(getgid()) == -1)
+			error("setgid");
+		if (setuid(getuid()) == -1)
+			error("setuid");
+	}
 	for (i = 0; i < NOPTS; i++)
 		if (optlist[i].letter == flag) {
 			optlist[i].val = val;
