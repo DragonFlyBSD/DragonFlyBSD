@@ -1721,7 +1721,7 @@ bce_init_nvram(struct bce_softc *sc)
 	if (j == entry_count) {
 		sc->bce_flash_info = NULL;
 		if_printf(&sc->arpcom.ac_if, "Unknown Flash NVRAM found!\n");
-		rc = ENODEV;
+		return ENODEV;
 	}
 
 bce_init_nvram_get_flash_size:
