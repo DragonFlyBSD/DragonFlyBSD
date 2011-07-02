@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)error.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/error.h,v 1.21 2011/02/04 22:47:55 jilles Exp $
+ * $FreeBSD: src/bin/sh/error.h,v 1.22 2011/04/23 22:28:56 jilles Exp $
  */
 
 /*
@@ -61,6 +61,7 @@ extern volatile sig_atomic_t exception;
 #define EXINT 0		/* SIGINT received */
 #define EXERROR 1	/* a generic error */
 #define EXEXEC 2	/* command execution failed */
+#define EXEXIT 3	/* call exitshell(exitstatus) */
 
 
 /*

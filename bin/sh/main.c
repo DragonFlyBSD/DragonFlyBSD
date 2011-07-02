@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
- * $FreeBSD: src/bin/sh/main.c,v 1.44 2011/02/04 22:47:55 jilles Exp $
+ * $FreeBSD: src/bin/sh/main.c,v 1.45 2011/04/23 22:28:56 jilles Exp $
  */
 
 #include <stdio.h>
@@ -105,7 +105,8 @@ main(int argc, char *argv[])
 			break;
 		}
 
-		if (state == 0 || iflag == 0 || ! rootshell)
+		if (state == 0 || iflag == 0 || ! rootshell ||
+		    exception == EXEXIT)
 			exitshell(exitstatus);
 		reset();
 		if (exception == EXINT)
