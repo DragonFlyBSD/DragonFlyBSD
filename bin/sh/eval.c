@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.102 2011/04/23 22:28:56 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.103 2011/04/25 20:54:12 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -421,7 +421,8 @@ evalsubshell(union node *n, int flags)
 		INTOFF;
 		exitstatus = waitforjob(jp, NULL);
 		INTON;
-	}
+	} else
+		exitstatus = 0;
 }
 
 
@@ -561,7 +562,8 @@ evalpipe(union node *n)
 		exitstatus = waitforjob(jp, NULL);
 		TRACE(("evalpipe:  job done exit status %d\n", exitstatus));
 		INTON;
-	}
+	} else
+		exitstatus = 0;
 }
 
 
@@ -1059,7 +1061,8 @@ parent:	/* parent process gets here (if we forked) */
 		backcmd->fd = pip[0];
 		close(pip[1]);
 		backcmd->jp = jp;
-	}
+	} else
+		exitstatus = 0;
 
 out:
 	if (lastarg)

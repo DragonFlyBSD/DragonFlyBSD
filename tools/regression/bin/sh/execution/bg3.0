@@ -1,0 +1,5 @@
+# $FreeBSD: src/tools/regression/bin/sh/execution/bg3.0,v 1.1 2011/04/25 20:54:12 jilles Exp $
+
+f() { return 42; }
+f
+(:) &
