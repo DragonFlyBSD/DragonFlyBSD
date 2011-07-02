@@ -376,7 +376,7 @@ main(int argc, char **argv)
 	int allowed = 0, fail = 0, i;
 
 	if (argc < 2)
-		errx(1, "usage: aestest [test-vector-file]");
+		errx(1, "usage: serpent_test [test-vector-file]");
 
 	if (geteuid() == 0) {
 		allowed = getallowsoft();
