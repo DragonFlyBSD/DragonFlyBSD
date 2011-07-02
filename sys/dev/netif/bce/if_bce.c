@@ -3431,6 +3431,7 @@ bce_reset(struct bce_softc *sc, uint32_t reset_code)
 
 	/* Assume bootcode is running. */
 	sc->bce_fw_timed_out = 0;
+	sc->bce_drv_cardiac_arrest = 0;
 
 	/* Give the firmware a chance to prepare for the reset. */
 	rc = bce_fw_sync(sc, BCE_DRV_MSG_DATA_WAIT0 | reset_code);
@@ -3490,6 +3491,7 @@ bce_reset(struct bce_softc *sc, uint32_t reset_code)
 
 	/* Just completed a reset, assume that firmware is running again. */
 	sc->bce_fw_timed_out = 0;
+	sc->bce_drv_cardiac_arrest = 0;
 
 	/* Wait for the firmware to finish its initialization. */
 	rc = bce_fw_sync(sc, BCE_DRV_MSG_DATA_WAIT1 | reset_code);
@@ -5820,6 +5822,30 @@ bce_pulse(void *xsc)
 	/* Tell the firmware that the driver is still running. */
 	msg = (uint32_t)++sc->bce_fw_drv_pulse_wr_seq;
 	bce_shmem_wr(sc, BCE_DRV_PULSE_MB, msg);
+
+	/* Update the bootcode condition. */
+	sc->bc_state = bce_shmem_rd(sc, BCE_BC_STATE_CONDITION);
+
+	/* Report whether the bootcode still knows the driver is running. */
+	if (!sc->bce_drv_cardiac_arrest) {
+		if (!(sc->bc_state & BCE_CONDITION_DRV_PRESENT)) {
+			sc->bce_drv_cardiac_arrest = 1;
+			if_printf(ifp, "Bootcode lost the driver pulse! "
+			    "(bc_state = 0x%08X)\n", sc->bc_state);
+		}
+	} else {
+ 		/*
+ 		 * Not supported by all bootcode versions.
+ 		 * (v5.0.11+ and v5.2.1+)  Older bootcode
+ 		 * will require the driver to reset the
+ 		 * controller to clear this condition.
+		 */
+		if (sc->bc_state & BCE_CONDITION_DRV_PRESENT) {
+			sc->bce_drv_cardiac_arrest = 0;
+			if_printf(ifp, "Bootcode found the driver pulse! "
+			    "(bc_state = 0x%08X)\n", sc->bc_state);
+		}
+	}
 
 	/* Schedule the next pulse. */
 	callout_reset(&sc->bce_pulse_callout, hz, bce_pulse, sc);

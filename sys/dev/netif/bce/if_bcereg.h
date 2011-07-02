@@ -349,6 +349,8 @@ struct flash_spec {
 #define BCE_FW_MSG_ACK			 0x0000ffff
 #define BCE_FW_MSG_STATUS_MASK		 0x00ff0000
 #define BCE_FW_MSG_STATUS_OK		 0x00000000
+#define BCE_FW_MSG_STATUS_INVALID_ARGS	 0x00010000
+#define BCE_FW_MSG_STATUS_DRV_PRSNT	 0x00020000
 #define BCE_FW_MSG_STATUS_FAILURE	 0x00ff0000
 
 #define BCE_LINK_STATUS				0x0000000c
@@ -610,12 +612,37 @@ struct flash_spec {
 #define BCE_BC_STATE_ERR_TOO_MANY_RBUF		 (BCE_BC_STATE_SIGN | 0x0700)
 
 #define BCE_BC_STATE_CONDITION			0x000001c8
+#define BCE_CONDITION_INIT_POR			 0x00000001
+#define BCE_CONDITION_INIT_VAUX_AVAIL		 0x00000002
+#define BCE_CONDITION_INIT_PCI_AVAIL		 0x00000004
+#define BCE_CONDITION_INIT_PCI_RESET		 0x00000008
+#define BCE_CONDITION_INIT_HD_RESET		 0x00000010 /* 5709/16 only */
+#define BCE_CONDITION_DRV_PRESENT		 0x00000100
+#define BCE_CONDITION_LOW_POWER_LINK		 0x00000200
+#define BCE_CONDITION_CORE_RST_OCCURRED		 0x00000400 /* 5709/16 only */
+#define BCE_CONDITION_UNUSED			 0x00000800
+#define BCE_CONDITION_BUSY_EXPROM		 0x00001000 /* 5706/08 only */
+
 #define BCE_CONDITION_MFW_RUN_UNKNOWN		 0x00000000
 #define BCE_CONDITION_MFW_RUN_IPMI		 0x00002000
 #define BCE_CONDITION_MFW_RUN_UMP		 0x00004000
 #define BCE_CONDITION_MFW_RUN_NCSI		 0x00006000
 #define BCE_CONDITION_MFW_RUN_NONE		 0x0000e000
 #define BCE_CONDITION_MFW_RUN_MASK		 0x0000e000
+
+/* 5709/16 only */
+#define BCE_CONDITION_PM_STATE_MASK		 0x00030000
+#define BCE_CONDITION_PM_STATE_FULL		 0x00030000
+#define BCE_CONDITION_PM_STATE_PREP		 0x00020000
+#define BCE_CONDITION_PM_STATE_UNPREP		 0x00010000
+#define BCE_CONDITION_PM_RESERVED		 0x00000000
+
+/* 5709/16 only */
+#define BCE_CONDITION_RXMODE_KEEP_VLAN		 0x00040000
+#define BCE_CONDITION_DRV_WOL_ENABLED		 0x00080000
+#define BCE_CONDITION_PORT_DISABLED		 0x00100000
+#define BCE_CONDITION_DRV_MAYBE_OUT		 0x00200000
+#define BCE_CONDITION_DPFW_DEAD			 0x00400000
 
 #define BCE_BC_STATE_DEBUG_CMD			0x1dc
 #define BCE_BC_STATE_BC_DBG_CMD_SIGNATURE	 0x42440000
@@ -5617,61 +5644,6 @@ struct l2_fhdr {
 #define NUM_MC_HASH_REGISTERS			8
 
 
-/* PHY_ID1: bits 31-16; PHY_ID2: bits 15-0.  */
-#define PHY_BCM5706_PHY_ID			0x00206160
-
-#define PHY_ID(id)				((id) & 0xfffffff0)
-#define PHY_REV_ID(id)				((id) & 0xf)
-
-/* 5708 Serdes PHY registers */
-
-#define BCM5708S_UP1				0xb
-
-#define BCM5708S_UP1_2G5			0x1
-
-#define BCM5708S_BLK_ADDR			0x1f
-
-#define BCM5708S_BLK_ADDR_DIG			0x0000
-#define BCM5708S_BLK_ADDR_DIG3			0x0002
-#define BCM5708S_BLK_ADDR_TX_MISC		0x0005
-
-/* Digital Block */
-#define BCM5708S_1000X_CTL1			0x10
-
-#define BCM5708S_1000X_CTL1_FIBER_MODE		0x0001
-#define BCM5708S_1000X_CTL1_AUTODET_EN		0x0010
-
-#define BCM5708S_1000X_CTL2			0x11
-
-#define BCM5708S_1000X_CTL2_PLLEL_DET_EN	0x0001
-
-#define BCM5708S_1000X_STAT1			0x14
-
-#define BCM5708S_1000X_STAT1_SGMII		0x0001
-#define BCM5708S_1000X_STAT1_LINK		0x0002
-#define BCM5708S_1000X_STAT1_FD			0x0004
-#define BCM5708S_1000X_STAT1_SPEED_MASK		0x0018
-#define BCM5708S_1000X_STAT1_SPEED_10		0x0000
-#define BCM5708S_1000X_STAT1_SPEED_100		0x0008
-#define BCM5708S_1000X_STAT1_SPEED_1G		0x0010
-#define BCM5708S_1000X_STAT1_SPEED_2G5		0x0018
-#define BCM5708S_1000X_STAT1_TX_PAUSE		0x0020
-#define BCM5708S_1000X_STAT1_RX_PAUSE		0x0040
-
-/* Digital3 Block */
-#define BCM5708S_DIG_3_0			0x10
-
-#define BCM5708S_DIG_3_0_USE_IEEE		0x0001
-
-/* Tx/Misc Block */
-#define BCM5708S_TX_ACTL1			0x15
-
-#define BCM5708S_TX_ACTL1_DRIVER_VCM		0x30
-
-#define BCM5708S_TX_ACTL3			0x17
-
-#define RX_COPY_THRESH		92
-
 #define DMA_READ_CHANS		5
 #define DMA_WRITE_CHANS		3
 
@@ -5893,7 +5865,6 @@ struct bce_softc {
 	uint32_t		bce_flags;
 #define BCE_PCIX_FLAG		0x00000001
 #define BCE_PCI_32BIT_FLAG 	0x00000002
-#define BCE_ONE_TDMA_FLAG	0x00000004	/* Deprecated */
 #define BCE_NO_WOL_FLAG		0x00000008
 #define BCE_USING_DAC_FLAG	0x00000010
 #define BCE_USING_MSI_FLAG 	0x00000020
@@ -5921,6 +5892,7 @@ struct bce_softc {
 	uint32_t		bce_flash_size;	/* Flash NVRAM size */
 	uint32_t		bce_shmem_base;	/* Shared Memory base address */
 	uint32_t		hc_command;	/* BCE_HC_COMMAND cache */
+	uint32_t		bc_state;	/* Bootcode state */
 
 	/* Tracks the version of bootcode firmware. */
 	char			bce_bc_ver[32];
@@ -5930,7 +5902,10 @@ struct bce_softc {
 	 * Tracks the state of the firmware.  0 = Running while any
 	 * other value indicates that the firmware is not responding.
 	 */
-	uint16_t		bce_fw_timed_out;
+	int			bce_fw_timed_out;
+
+	/* Tracks whether firmware has lost the driver's pulse. */
+	int			bce_drv_cardiac_arrest;
 
 	/*
 	 * An incrementing sequence used to coordinate messages passed
