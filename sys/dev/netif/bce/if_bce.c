@@ -387,6 +387,9 @@ static void	bce_load_rv2p_fw(struct bce_softc *, uint32_t *,
 				 uint32_t, uint32_t);
 static void	bce_load_cpu_fw(struct bce_softc *, struct cpu_reg *,
 				struct fw_info *);
+static void	bce_start_cpu(struct bce_softc *, struct cpu_reg *);
+static void	bce_halt_cpu(struct bce_softc *, struct cpu_reg *);
+static void	bce_start_rxp_cpu(struct bce_softc *);
 static void	bce_init_rxp_cpu(struct bce_softc *);
 static void	bce_init_txp_cpu(struct bce_softc *);
 static void	bce_init_tpat_cpu(struct bce_softc *);
@@ -2570,14 +2573,10 @@ static void
 bce_load_cpu_fw(struct bce_softc *sc, struct cpu_reg *cpu_reg,
 		struct fw_info *fw)
 {
-	uint32_t offset, val;
+	uint32_t offset;
 	int j;
 
-	/* Halt the CPU. */
-	val = REG_RD_IND(sc, cpu_reg->mode);
-	val |= cpu_reg->mode_value_halt;
-	REG_WR_IND(sc, cpu_reg->mode, val);
-	REG_WR_IND(sc, cpu_reg->state, cpu_reg->state_value_clear);
+	bce_halt_cpu(sc, cpu_reg);
 
 	/* Load the Text area. */
 	offset = cpu_reg->spad_base + (fw->text_addr - cpu_reg->mips_view_base);
@@ -2615,15 +2614,77 @@ bce_load_cpu_fw(struct bce_softc *sc, struct cpu_reg *cpu_reg,
 			REG_WR_IND(sc, offset, fw->rodata[j]);
 	}
 
-	/* Clear the pre-fetch instruction. */
+	/* Clear the pre-fetch instruction and set the FW start address. */
 	REG_WR_IND(sc, cpu_reg->inst, 0);
 	REG_WR_IND(sc, cpu_reg->pc, fw->start_addr);
+}
+
+
+/****************************************************************************/
+/* Starts the RISC processor.                                               */
+/*                                                                          */
+/* Assumes the CPU starting address has already been set.                   */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing.                                                               */
+/****************************************************************************/
+static void
+bce_start_cpu(struct bce_softc *sc, struct cpu_reg *cpu_reg)
+{
+	uint32_t val;
 
 	/* Start the CPU. */
 	val = REG_RD_IND(sc, cpu_reg->mode);
 	val &= ~cpu_reg->mode_value_halt;
 	REG_WR_IND(sc, cpu_reg->state, cpu_reg->state_value_clear);
 	REG_WR_IND(sc, cpu_reg->mode, val);
+}
+
+
+/****************************************************************************/
+/* Halts the RISC processor.                                                */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing.                                                               */
+/****************************************************************************/
+static void
+bce_halt_cpu(struct bce_softc *sc, struct cpu_reg *cpu_reg)
+{
+	uint32_t val;
+
+	/* Halt the CPU. */
+	val = REG_RD_IND(sc, cpu_reg->mode);
+	val |= cpu_reg->mode_value_halt;
+	REG_WR_IND(sc, cpu_reg->mode, val);
+	REG_WR_IND(sc, cpu_reg->state, cpu_reg->state_value_clear);
+}
+
+
+/****************************************************************************/
+/* Start the RX CPU.                                                        */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   Nothing.                                                               */
+/****************************************************************************/
+static void
+bce_start_rxp_cpu(struct bce_softc *sc)
+{
+	struct cpu_reg cpu_reg;
+
+	cpu_reg.mode = BCE_RXP_CPU_MODE;
+	cpu_reg.mode_value_halt = BCE_RXP_CPU_MODE_SOFT_HALT;
+	cpu_reg.mode_value_sstep = BCE_RXP_CPU_MODE_STEP_ENA;
+	cpu_reg.state = BCE_RXP_CPU_STATE;
+	cpu_reg.state_value_clear = 0xffffff;
+	cpu_reg.gpr0 = BCE_RXP_CPU_REG_FILE;
+	cpu_reg.evmask = BCE_RXP_CPU_EVENT_MASK;
+	cpu_reg.pc = BCE_RXP_CPU_PROGRAM_COUNTER;
+	cpu_reg.inst = BCE_RXP_CPU_INSTRUCTION;
+	cpu_reg.bp = BCE_RXP_CPU_HW_BREAKPOINT;
+	cpu_reg.spad_base = BCE_RXP_SCRATCH;
+	cpu_reg.mips_view_base = 0x8000000;
+
+	bce_start_cpu(sc, &cpu_reg);
 }
 
 
@@ -2717,6 +2778,7 @@ bce_init_rxp_cpu(struct bce_softc *sc)
 
 	DBPRINT(sc, BCE_INFO_RESET, "Loading RX firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
+	/* Delay RXP start until initialization is complete. */
 }
 
 
@@ -2810,6 +2872,7 @@ bce_init_txp_cpu(struct bce_softc *sc)
 
 	DBPRINT(sc, BCE_INFO_RESET, "Loading TX firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
+	bce_start_cpu(sc, &cpu_reg);
 }
 
 
@@ -2903,6 +2966,7 @@ bce_init_tpat_cpu(struct bce_softc *sc)
 
 	DBPRINT(sc, BCE_INFO_RESET, "Loading TPAT firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
+	bce_start_cpu(sc, &cpu_reg);
 }
 
 
@@ -2996,6 +3060,7 @@ bce_init_cp_cpu(struct bce_softc *sc)
 
 	DBPRINT(sc, BCE_INFO_RESET, "Loading CP firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
+	bce_start_cpu(sc, &cpu_reg);
 }
 
 
@@ -3089,6 +3154,7 @@ bce_init_com_cpu(struct bce_softc *sc)
 
 	DBPRINT(sc, BCE_INFO_RESET, "Loading COM firmware.\n");
 	bce_load_cpu_fw(sc, &cpu_reg, &fw);
+	bce_start_cpu(sc, &cpu_reg);
 }
 
 
@@ -3486,6 +3552,13 @@ bce_chipinit(struct bce_softc *sc)
 	/* Initialize the on-boards CPUs */
 	bce_init_cpus(sc);
 
+	/* Enable management frames (NC-SI) to flow to the MCP. */
+	if (sc->bce_flags & BCE_MFW_ENABLE_FLAG) {
+		val = REG_RD(sc, BCE_RPM_MGMT_PKT_CTRL) |
+		    BCE_RPM_MGMT_PKT_CTRL_MGMT_EN;
+		REG_WR(sc, BCE_RPM_MGMT_PKT_CTRL, val);
+	}
+
 	/* Prepare NVRAM for access. */
 	rc = bce_init_nvram(sc);
 	if (rc != 0)
@@ -3621,6 +3694,16 @@ bce_blockinit(struct bce_softc *sc)
 
 	/* Enable link state change interrupt generation. */
 	REG_WR(sc, BCE_HC_ATTN_BITS_ENABLE, STATUS_ATTN_BITS_LINK_STATE);
+
+	/* Enable the RXP. */
+	bce_start_rxp_cpu(sc);
+
+	/* Disable management frames (NC-SI) from flowing to the MCP. */
+	if (sc->bce_flags & BCE_MFW_ENABLE_FLAG) {
+		val = REG_RD(sc, BCE_RPM_MGMT_PKT_CTRL) &
+		    ~BCE_RPM_MGMT_PKT_CTRL_MGMT_EN;
+		REG_WR(sc, BCE_RPM_MGMT_PKT_CTRL, val);
+	}
 
 	/* Enable all remaining blocks in the MAC. */
 	if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709 ||
