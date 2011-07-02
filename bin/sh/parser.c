@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
- * $FreeBSD: src/bin/sh/parser.c,v 1.106 2011/03/13 20:02:39 jilles Exp $
+ * $FreeBSD: src/bin/sh/parser.c,v 1.107 2011/04/20 22:24:54 jilles Exp $
  */
 
 #include <stdio.h>
@@ -1571,8 +1571,8 @@ varname:
 			pungetc();
 		}
 		STPUTC('=', out);
-		if (subtype != VSLENGTH && (state[level].syntax == DQSYNTAX ||
-		    state[level].syntax == ARISYNTAX))
+		if (state[level].syntax == DQSYNTAX ||
+		    state[level].syntax == ARISYNTAX)
 			flags |= VSQUOTE;
 		*(stackblock() + typeloc) = subtype | flags;
 		if (subtype != VSNORMAL) {
