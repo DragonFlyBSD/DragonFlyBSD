@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
- * $FreeBSD: src/bin/sh/expand.c,v 1.83 2011/02/21 09:01:34 brucec Exp $
+ * $FreeBSD: src/bin/sh/expand.c,v 1.84 2011/05/07 14:32:16 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -664,6 +664,7 @@ evalvar(char *p, int flag)
 	int special;
 	int startloc;
 	int varlen;
+	int varlenb;
 	int easy;
 	int quotes = flag & (EXP_FULL | EXP_CASE | EXP_REDIR);
 
@@ -711,8 +712,15 @@ again: /* jump here after setting a variable with ${var=text} */
 		if (special) {
 			varvalue(var, varflags & VSQUOTE, subtype, flag);
 			if (subtype == VSLENGTH) {
-				varlen = expdest - stackblock() - startloc;
-				STADJUST(-varlen, expdest);
+				varlenb = expdest - stackblock() - startloc;
+				varlen = varlenb;
+				if (localeisutf8) {
+					val = stackblock() + startloc;
+					for (;val != expdest; val++)
+						if ((*val & 0xC0) == 0x80)
+							varlen--;
+				}
+				STADJUST(-varlenb, expdest);
 			}
 		} else {
 			char const *syntax = (varflags & VSQUOTE) ? DQSYNTAX
@@ -720,7 +728,9 @@ again: /* jump here after setting a variable with ${var=text} */
 
 			if (subtype == VSLENGTH) {
 				for (;*val; val++)
-					varlen++;
+					if (!localeisutf8 ||
+					    (*val & 0xC0) != 0x80)
+						varlen++;
 			}
 			else {
 				if (quotes)
