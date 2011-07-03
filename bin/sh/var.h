@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)var.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/var.h,v 1.19 2011/01/01 13:26:18 jilles Exp $
+ * $FreeBSD: src/bin/sh/var.h,v 1.20 2011/05/06 22:31:27 jilles Exp $
  */
 
 /*
@@ -85,6 +85,8 @@ extern struct var vhistsize;
 extern struct var vterm;
 #endif
 
+extern int localeisutf8;
+
 /*
  * The following macros access the values of the above variables.
  * They have to skip over the name.  They return the null string
@@ -116,6 +118,7 @@ char *lookupvar(const char *);
 char *bltinlookup(const char *, int);
 void bltinsetlocale(void);
 void bltinunsetlocale(void);
+void updatecharset(void);
 char **environment(void);
 int showvarscmd(int, char **);
 int exportcmd(int, char **);

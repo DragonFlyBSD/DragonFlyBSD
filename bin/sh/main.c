@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
- * $FreeBSD: src/bin/sh/main.c,v 1.45 2011/04/23 22:28:56 jilles Exp $
+ * $FreeBSD: src/bin/sh/main.c,v 1.46 2011/05/06 22:31:27 jilles Exp $
  */
 
 #include <stdio.h>
@@ -70,6 +70,7 @@
 int rootpid;
 int rootshell;
 struct jmploc main_handler;
+int localeisutf8;
 
 static void read_profile(const char *);
 static const char *find_dot_file(const char *);
@@ -90,6 +91,7 @@ main(int argc, char *argv[])
 	char *shinit;
 
 	setlocale(LC_ALL, "");
+	updatecharset();
 	state = 0;
 	if (setjmp(main_handler.loc)) {
 		switch (exception) {
