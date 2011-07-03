@@ -3305,7 +3305,8 @@ done:
 }
 
 int
-vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf, int guess) 
+vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf,
+    int guess)
 {
 	struct namecache *ncp;
 	struct nchandle nch;
