@@ -319,7 +319,12 @@ dm_dev_remove_all(int gentle)
 
 	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
 
-	TAILQ_FOREACH_MUTABLE(dmv, &dm_dev_list, next_devlist, dmv2) {
+	/*
+	 * Process in reverse order so that it can deal with inter-depentent
+	 * devices.
+	 */
+	TAILQ_FOREACH_REVERSE_MUTABLE(dmv, &dm_dev_list, dm_dev_head,
+	    next_devlist, dmv2) {
 		if (gentle && dmv->is_open) {
 			r = EBUSY;
 			continue;
