@@ -1022,6 +1022,7 @@ TO_REMOVE+=/usr/share/man/cat1/keyinit.1.gz
 TO_REMOVE+=/usr/lib/libskey.a
 TO_REMOVE+=/usr/lib/profile/libskey.a
 TO_REMOVE+=/usr/include/skey.h
+TO_REMOVE+=/usr/share/examples/etc/skey.access
 TO_REMOVE+=/usr/share/man/man1/skey.1.gz
 TO_REMOVE+=/usr/share/man/cat1/skey.1.gz
 TO_REMOVE+=/usr/share/man/man3/skey.3.gz
