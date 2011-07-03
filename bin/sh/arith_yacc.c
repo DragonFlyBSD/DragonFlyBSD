@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/bin/sh/arith_yacc.c,v 1.3 2011/03/05 13:27:13 jilles Exp $
+ * $FreeBSD: src/bin/sh/arith_yacc.c,v 1.4 2011/05/04 22:12:22 jilles Exp $
  */
 
 #include <sys/limits.h>
@@ -98,6 +98,8 @@ arith_lookupvarint(char *varname)
 	arith_t result;
 
 	str = lookupvar(varname);
+	if (uflag && str == NULL)
+		yyerror("variable not set");
 	if (str == NULL || *str == '\0')
 		str = "0";
 	errno = 0;
