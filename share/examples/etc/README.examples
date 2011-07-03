@@ -76,7 +76,7 @@ usbd.conf	- configuration file for usbd(8)
 defaults/	- directory containing default configuration files
 defaults/compilers.conf	- default configuration for non-base compilers
 defaults/devfs.conf	- default rule file for devfs(5)
-defaults/rc.conf	- system configuration default info
 defaults/make.conf	- system build default information
 defaults/periodic.conf	- default configuration file for periodic(8)
+defaults/rc.conf	- system configuration default info
 defaults/uuids		- default list of UUIDs and names (see uuid(3))
