@@ -1,5 +1,4 @@
 $FreeBSD: src/share/examples/etc/README.examples,v 1.5.2.2 2001/07/25 16:00:55 dd Exp $
-$DragonFly: src/share/examples/etc/README.examples,v 1.3 2008/07/08 14:04:11 thomas Exp $
 
 The /usr/share/examples/etc directory contains the original
 distribution versions of the files which are shipped in /etc.  This is
@@ -15,11 +14,12 @@ This directory contains the following files:
 amd.map		- configuration file for amd(8)
 apmd.conf	- configuration file for apmd(8)
 auth.conf	- authentication capability database
-compilers.conf	- configuration for non-base compilers
 crontab		- system scheduled command table
 csh.cshrc	- system-wide .cshrc for csh(1)
 csh.login	- system-wide .login for csh(1)
 csh.logout	- system-wide .logout for csh(1)
+devd.conf	- configuration file for devd(8)
+devtab		- label conversion file for device paths
 dhclient.conf	- DHCP client configuration file
 disktab		- disk description file
 dm.conf		- configuration file for games (see dm(6))
@@ -40,9 +40,11 @@ mail.rc		- systemwide initialization files for mail(1)
 manpath.config	- configuration file for man(1)
 modems		- modem configuration database
 motd		- sample Message of the Day
+netconfig	- network configuration database
 network.subr	- subroutines for network rc(8) scripts
 networks	- network name database
 newsyslog.conf	- configuration for system log file rotator
+nscd.conf	- caching daemon configuration file (see nscd(8))
 nsmb.conf	- smbfs configuration file (see mount_smbfs(8))
 opieaccess	- OPIE(4) database of trusted networks
 pam.conf	- configuration file for pam(8)
@@ -61,6 +63,7 @@ rc.sendmail	- sendmail(8) rc script
 rc.shutdown	- system shutdown script
 rc.subr		- subroutines for rc(8) scripts
 rc.suspend	- run command for APM / ACPI suspend event
+regdomain.xml	- 802.11 regulatory definitions used by ifconfig(8)
 remote		- configuration file for tip(1)
 rpc		- rpc program number database
 sensorsd.conf	- configuration file for sensorsd(8)
@@ -71,6 +74,7 @@ syslog.conf	- configuration file for syslogd(8)
 ttys		- defines port configuration for init(8)
 usbd.conf	- configuration file for usbd(8)
 defaults/	- directory containing default configuration files
+defaults/compilers.conf	- default configuration for non-base compilers
 defaults/devfs.conf	- default rule file for devfs(5)
 defaults/rc.conf	- system configuration default info
 defaults/make.conf	- system build default information
