@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)var.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/var.h,v 1.21 2011/05/08 16:15:50 jilles Exp $
+ * $FreeBSD: src/bin/sh/var.h,v 1.22 2011/05/08 17:40:10 jilles Exp $
  */
 
 /*
@@ -87,6 +87,8 @@ extern struct var vterm;
 #endif
 
 extern int localeisutf8;
+/* The parser uses the locale that was in effect at startup. */
+extern int initial_localeisutf8;
 
 /*
  * The following macros access the values of the above variables.
@@ -120,6 +122,7 @@ char *bltinlookup(const char *, int);
 void bltinsetlocale(void);
 void bltinunsetlocale(void);
 void updatecharset(void);
+void initcharset(void);
 char **environment(void);
 int showvarscmd(int, char **);
 int exportcmd(int, char **);

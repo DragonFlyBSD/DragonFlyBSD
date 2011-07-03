@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/var.c,v 1.58 2011/05/08 16:15:50 jilles Exp $
+ * $FreeBSD: src/bin/sh/var.c,v 1.59 2011/05/08 17:40:10 jilles Exp $
  */
 
 #include <unistd.h>
@@ -512,6 +512,13 @@ updatecharset(void)
 
 	charset = nl_langinfo(CODESET);
 	localeisutf8 = !strcmp(charset, "UTF-8");
+}
+
+void
+initcharset(void)
+{
+	updatecharset();
+	initial_localeisutf8 = localeisutf8;
 }
 
 /*

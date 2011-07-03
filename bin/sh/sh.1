@@ -34,7 +34,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	from: @(#)sh.1	8.6 (Berkeley) 5/4/95
-.\" $FreeBSD: src/bin/sh/sh.1,v 1.162 2011/05/08 14:03:44 jilles Exp $
+.\" $FreeBSD: src/bin/sh/sh.1,v 1.163 2011/05/08 17:40:10 jilles Exp $
 .\"
 .Dd July 2, 2011
 .Dt SH 1
@@ -474,8 +474,8 @@ The Unicode code point
 (eight hexadecimal digits)
 .El
 .Pp
-The sequences for Unicode code points currently only provide useful results
-for values below 128.
+The sequences for Unicode code points are currently only useful with
+UTF-8 locales.
 They reject code point 0 and UTF-16 surrogates.
 .Pp
 If an escape sequence would produce a byte with value 0,

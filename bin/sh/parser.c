@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
- * $FreeBSD: src/bin/sh/parser.c,v 1.109 2011/05/05 20:55:55 jilles Exp $
+ * $FreeBSD: src/bin/sh/parser.c,v 1.110 2011/05/08 17:40:10 jilles Exp $
  */
 
 #include <stdio.h>
@@ -1218,6 +1218,29 @@ readcstyleesc(char *out)
 		  if (v == 0 || (v >= 0xd800 && v <= 0xdfff))
 			  synerror("Bad escape sequence");
 		  /* We really need iconv here. */
+		  if (initial_localeisutf8 && v > 127) {
+			  CHECKSTRSPACE(4, out);
+			  /*
+			   * We cannot use wctomb() as the locale may have
+			   * changed.
+			   */
+			  if (v <= 0x7ff) {
+				  USTPUTC(0xc0 | v >> 6, out);
+				  USTPUTC(0x80 | (v & 0x3f), out);
+				  return out;
+			  } else if (v <= 0xffff) {
+				  USTPUTC(0xe0 | v >> 12, out);
+				  USTPUTC(0x80 | ((v >> 6) & 0x3f), out);
+				  USTPUTC(0x80 | (v & 0x3f), out);
+				  return out;
+			  } else if (v <= 0x10ffff) {
+				  USTPUTC(0xf0 | v >> 18, out);
+				  USTPUTC(0x80 | ((v >> 12) & 0x3f), out);
+				  USTPUTC(0x80 | ((v >> 6) & 0x3f), out);
+				  USTPUTC(0x80 | (v & 0x3f), out);
+				  return out;
+			  }
+		  }
 		  if (v > 127)
 			  v = '?';
 		  break;
