@@ -112,7 +112,7 @@ static ino_t devfs_fetch_ino(void);
 static int devfs_create_all_dev_worker(struct devfs_node *);
 static int devfs_create_dev_worker(cdev_t, uid_t, gid_t, int);
 static int devfs_destroy_dev_worker(cdev_t);
-static int devfs_destroy_subnames_worker(char *);
+static int devfs_destroy_related_worker(cdev_t);
 static int devfs_destroy_dev_by_ops_worker(struct dev_ops *, int);
 static int devfs_propagate_dev(cdev_t, int);
 static int devfs_unlink_dev(cdev_t dev);
@@ -142,8 +142,8 @@ static int devfs_alias_propagate(struct devfs_alias *, int);
 static int devfs_alias_apply(struct devfs_node *, struct devfs_alias *);
 static int devfs_alias_check_create(struct devfs_node *);
 
-static int devfs_clr_subnames_flag_worker(char *, uint32_t);
-static int devfs_destroy_subnames_without_flag_worker(char *, uint32_t);
+static int devfs_clr_related_flag_worker(cdev_t, uint32_t);
+static int devfs_destroy_related_without_flag_worker(cdev_t, uint32_t);
 
 static void *devfs_reaperp_callback(struct devfs_node *, void *);
 static void *devfs_gc_dirs_callback(struct devfs_node *, void *);
@@ -629,45 +629,45 @@ devfs_mount_del(struct devfs_mnt_data *mnt)
 }
 
 /*
- * devfs_destroy_subnames() is the synchronous entry point for device
+ * devfs_destroy_related() is the synchronous entry point for device
  * destruction by subname. It just sends a message with the relevant details to
  * the devfs core.
  */
 int
-devfs_destroy_subnames(char *name)
+devfs_destroy_related(cdev_t dev)
 {
 	devfs_msg_t msg;
 
 	msg = devfs_msg_get();
-	msg->mdv_load = name;
-	msg = devfs_msg_send_sync(DEVFS_DESTROY_SUBNAMES, msg);
+	msg->mdv_load = dev;
+	msg = devfs_msg_send_sync(DEVFS_DESTROY_RELATED, msg);
 	devfs_msg_put(msg);
 	return 0;
 }
 
 int
-devfs_clr_subnames_flag(char *name, uint32_t flag)
+devfs_clr_related_flag(cdev_t dev, uint32_t flag)
 {
 	devfs_msg_t msg;
 
 	msg = devfs_msg_get();
-	msg->mdv_flags.name = name;
+	msg->mdv_flags.dev = dev;
 	msg->mdv_flags.flag = flag;
-	msg = devfs_msg_send_sync(DEVFS_CLR_SUBNAMES_FLAG, msg);
+	msg = devfs_msg_send_sync(DEVFS_CLR_RELATED_FLAG, msg);
 	devfs_msg_put(msg);
 
 	return 0;
 }
 
 int
-devfs_destroy_subnames_without_flag(char *name, uint32_t flag)
+devfs_destroy_related_without_flag(cdev_t dev, uint32_t flag)
 {
 	devfs_msg_t msg;
 
 	msg = devfs_msg_get();
-	msg->mdv_flags.name = name;
+	msg->mdv_flags.dev = dev;
 	msg->mdv_flags.flag = flag;
-	msg = devfs_msg_send_sync(DEVFS_DESTROY_SUBNAMES_WO_FLAG, msg);
+	msg = devfs_msg_send_sync(DEVFS_DESTROY_RELATED_WO_FLAG, msg);
 	devfs_msg_put(msg);
 
 	return 0;
@@ -1130,8 +1130,8 @@ devfs_msg_exec(devfs_msg_t msg)
 		dev = msg->mdv_dev.dev;
 		devfs_destroy_dev_worker(dev);
 		break;
-	case DEVFS_DESTROY_SUBNAMES:
-		devfs_destroy_subnames_worker(msg->mdv_load);
+	case DEVFS_DESTROY_RELATED:
+		devfs_destroy_related_worker(msg->mdv_load);
 		break;
 	case DEVFS_DESTROY_DEV_BY_OPS:
 		devfs_destroy_dev_by_ops_worker(msg->mdv_ops.ops,
@@ -1186,12 +1186,12 @@ devfs_msg_exec(devfs_msg_t msg)
 		devfs_scan_callback_worker((devfs_scan_t *)msg->mdv_load,
 			msg->mdv_load2);
 		break;
-	case DEVFS_CLR_SUBNAMES_FLAG:
-		devfs_clr_subnames_flag_worker(msg->mdv_flags.name,
+	case DEVFS_CLR_RELATED_FLAG:
+		devfs_clr_related_flag_worker(msg->mdv_flags.dev,
 				msg->mdv_flags.flag);
 		break;
-	case DEVFS_DESTROY_SUBNAMES_WO_FLAG:
-		devfs_destroy_subnames_without_flag_worker(msg->mdv_flags.name,
+	case DEVFS_DESTROY_RELATED_WO_FLAG:
+		devfs_destroy_related_without_flag_worker(msg->mdv_flags.dev,
 				msg->mdv_flags.flag);
 		break;
 	case DEVFS_INODE_TO_VNODE:
@@ -1270,29 +1270,31 @@ devfs_destroy_dev_worker(cdev_t dev)
  * Calls devfs_destroy_dev_worker for the actual destruction.
  */
 static int
-devfs_destroy_subnames_worker(char *name)
+devfs_destroy_related_worker(cdev_t needle)
 {
-	cdev_t dev, dev1;
-	size_t len = strlen(name);
+	cdev_t dev;
 
-	TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
-		if ((!strncmp(dev->si_name, name, len)) &&
-				(dev->si_name[len] != '\0')) {
+restart:
+	devfs_debug(DEVFS_DEBUG_DEBUG, "related worker: %s\n",
+	    needle->si_name);
+	TAILQ_FOREACH(dev, &devfs_dev_list, link) {
+		if (dev->si_parent == needle) {
+			devfs_destroy_related_worker(dev);
 			devfs_destroy_dev_worker(dev);
+			goto restart;
 		}
 	}
 	return 0;
 }
 
 static int
-devfs_clr_subnames_flag_worker(char *name, uint32_t flag)
+devfs_clr_related_flag_worker(cdev_t needle, uint32_t flag)
 {
 	cdev_t dev, dev1;
-	size_t len = strlen(name);
 
 	TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
-		if ((!strncmp(dev->si_name, name, len)) &&
-				(dev->si_name[len] != '\0')) {
+		if (dev->si_parent == needle) {
+			devfs_clr_related_flag_worker(dev, flag);
 			dev->si_flags &= ~flag;
 		}
 	}
@@ -1301,16 +1303,22 @@ devfs_clr_subnames_flag_worker(char *name, uint32_t flag)
 }
 
 static int
-devfs_destroy_subnames_without_flag_worker(char *name, uint32_t flag)
+devfs_destroy_related_without_flag_worker(cdev_t needle, uint32_t flag)
 {
-	cdev_t dev, dev1;
-	size_t len = strlen(name);
+	cdev_t dev;
 
-	TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
-		if ((!strncmp(dev->si_name, name, len)) &&
-				(dev->si_name[len] != '\0')) {
+restart:
+	devfs_debug(DEVFS_DEBUG_DEBUG, "related_wo_flag: %s\n",
+	    needle->si_name);
+
+	TAILQ_FOREACH(dev, &devfs_dev_list, link) {
+		if (dev->si_parent == needle) {
+			devfs_destroy_related_without_flag_worker(dev, flag);
 			if (!(dev->si_flags & flag)) {
 				devfs_destroy_dev_worker(dev);
+				devfs_debug(DEVFS_DEBUG_DEBUG,
+				    "related_wo_flag: %s restart\n", dev->si_name);
+				goto restart;
 			}
 		}
 	}
@@ -2223,6 +2231,7 @@ devfs_new_cdev(struct dev_ops *ops, int minor, struct dev_ops *bops)
 	dev->si_lastwrite = 0;		/* time_second */
 
 	dev->si_dict = NULL;
+	dev->si_parent = NULL;
 	dev->si_ops = ops;
 	dev->si_flags = 0;
 	dev->si_umajor = 0;

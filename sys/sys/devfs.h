@@ -205,7 +205,7 @@ typedef struct devfs_msg {
 			int	minor;
 		} __m_ops;
 		struct {
-			char	*name;
+			cdev_t		dev;
 			uint32_t	flag;
 		} __m_flags;
 		struct {
@@ -279,7 +279,7 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 #define DEVFS_MOUNT_ADD			0x04
 #define DEVFS_MOUNT_DEL			0x05
 #define DEVFS_CREATE_ALL_DEV		0x06
-#define DEVFS_DESTROY_SUBNAMES		0x07
+#define DEVFS_DESTROY_RELATED		0x07
 #define DEVFS_DESTROY_DEV_BY_OPS	0x08
 #define DEVFS_CHANDLER_ADD		0x09
 #define DEVFS_CHANDLER_DEL		0x0A
@@ -290,8 +290,8 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 #define DEVFS_APPLY_RULES		0x0F
 #define	DEVFS_RESET_RULES		0x10
 #define DEVFS_SCAN_CALLBACK		0x11
-#define DEVFS_CLR_SUBNAMES_FLAG		0x12
-#define DEVFS_DESTROY_SUBNAMES_WO_FLAG	0x13
+#define DEVFS_CLR_RELATED_FLAG		0x12
+#define DEVFS_DESTROY_RELATED_WO_FLAG	0x13
 #define DEVFS_INODE_TO_VNODE		0x14
 #define DEVFS_SYNC			0x99
 
@@ -390,7 +390,7 @@ struct devfs_node *devfs_create_device_node(struct devfs_node *, cdev_t,
 
 int devfs_destroy_device_node(struct devfs_node *, cdev_t);
 int devfs_destroy_node(struct devfs_node *, char *);
-int devfs_destroy_subnames(char *);
+int devfs_destroy_related(cdev_t);
 int devfs_destroy_dev_by_ops(struct dev_ops *, int);
 struct devfs_node *devfs_find_device_node_by_name(struct devfs_node *, char *);
 
@@ -418,8 +418,8 @@ int devfs_reset_rules(char *);
 
 int devfs_scan_callback(devfs_scan_t *, void *);
 
-int devfs_clr_subnames_flag(char *, uint32_t);
-int devfs_destroy_subnames_without_flag(char *, uint32_t);
+int devfs_clr_related_flag(cdev_t, uint32_t);
+int devfs_destroy_related_without_flag(cdev_t, uint32_t);
 int devfs_node_is_accessible(struct devfs_node *);
 
 int devfs_reference_ops(struct dev_ops *);

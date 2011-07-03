@@ -79,6 +79,7 @@ struct cdev {
 	TAILQ_ENTRY(cdev) link;
 	int		si_uminor;
 	int		si_umajor;
+	struct cdev	*si_parent;
 	LIST_ENTRY(cdev)	si_hash;
 	SLIST_HEAD(, vnode) si_hlist;
 	char		si_name[SPECNAMELEN + 1];

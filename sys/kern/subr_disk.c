@@ -237,6 +237,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 							    slice, i),
 						UID_ROOT, GID_OPERATOR, 0640,
 						"%s%c", dev->si_name, 'a'+ i);
+					ndev->si_parent = dev;
 					ndev->si_disk = dp;
 					udev_dict_set_cstr(ndev, "subsystem", "disk");
 					/* Inherit parent's disk type */
@@ -388,6 +389,7 @@ disk_probe(struct disk *dp, int reprobe)
 					UID_ROOT, GID_OPERATOR, 0640,
 					(info->d_dsflags & DSO_DEVICEMAPPER)?
 					"%s.s%d" : "%ss%d", dev->si_name, sno);
+			ndev->si_parent = dev;
 			udev_dict_set_cstr(ndev, "subsystem", "disk");
 			/* Inherit parent's disk type */
 			if (dp->d_disktype) {
@@ -467,7 +469,7 @@ disk_msg_core(void *arg)
 			disk_debug(1,
 				    "DISK_DISK_DESTROY: %s\n",
 					dp->d_cdev->si_name);
-			devfs_destroy_subnames(dp->d_cdev->si_name);
+			devfs_destroy_related(dp->d_cdev);
 			destroy_dev(dp->d_cdev);
 			destroy_only_dev(dp->d_rawdev);
 			lwkt_gettoken(&disklist_token);
@@ -483,30 +485,30 @@ disk_msg_core(void *arg)
 			disk_debug(1,
 				    "DISK_DISK_UNPROBE: %s\n",
 					dp->d_cdev->si_name);
-			devfs_destroy_subnames(dp->d_cdev->si_name);
+			devfs_destroy_related(dp->d_cdev);
 			break;
 		case DISK_SLICE_REPROBE:
 			dp = (struct disk *)msg->load;
 			sp = (struct diskslice *)msg->load2;
-			devfs_clr_subnames_flag(sp->ds_dev->si_name,
+			devfs_clr_related_flag(sp->ds_dev,
 						SI_REPROBE_TEST);
 			disk_debug(1,
 				    "DISK_SLICE_REPROBE: %s\n",
 				    sp->ds_dev->si_name);
 			disk_probe_slice(dp, sp->ds_dev,
 					 dkslice(sp->ds_dev), 1);
-			devfs_destroy_subnames_without_flag(
-					sp->ds_dev->si_name, SI_REPROBE_TEST);
+			devfs_destroy_related_without_flag(
+					sp->ds_dev, SI_REPROBE_TEST);
 			break;
 		case DISK_DISK_REPROBE:
 			dp = (struct disk *)msg->load;
-			devfs_clr_subnames_flag(dp->d_cdev->si_name, SI_REPROBE_TEST);
+			devfs_clr_related_flag(dp->d_cdev, SI_REPROBE_TEST);
 			disk_debug(1,
 				    "DISK_DISK_REPROBE: %s\n",
 				    dp->d_cdev->si_name);
 			disk_probe(dp, 1);
-			devfs_destroy_subnames_without_flag(
-					dp->d_cdev->si_name, SI_REPROBE_TEST);
+			devfs_destroy_related_without_flag(
+					dp->d_cdev, SI_REPROBE_TEST);
 			break;
 		case DISK_SYNC:
 			disk_debug(1, "DISK_SYNC\n");
