@@ -1,0 +1,12 @@
+# $FreeBSD: src/tools/regression/bin/sh/parser/dollar-quote1.0,v 1.2 2011/06/07 08:46:13 attilio Exp $
+
+set -e
+
+[ $'hi' = hi ]
+[ $'hi
+there' = 'hi
+there' ]
+[ $'\"\'\\\a\b\f\t\v' = "\"'\\$(printf "\a\b\f\t\v")" ]
+[ $'hi\nthere' = 'hi
+there' ]
+[ $'a\rb' = "$(printf "a\rb")" ]

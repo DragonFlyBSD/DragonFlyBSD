@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mksyntax.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mksyntax.c,v 1.34 2010/11/20 14:30:28 jilles Exp $
+ * $FreeBSD: src/bin/sh/mksyntax.c,v 1.35 2011/05/05 20:55:55 jilles Exp $
  */
 
 /*
@@ -58,6 +58,7 @@ struct synclass synclass[] = {
 	{ "CWORD",	"character is nothing special" },
 	{ "CNL",	"newline character" },
 	{ "CBACK",	"a backslash character" },
+	{ "CSBACK",	"a backslash character in single quotes" },
 	{ "CSQUOTE",	"single quote" },
 	{ "CDQUOTE",	"double quote" },
 	{ "CENDQUOTE",	"a terminating quote" },
@@ -218,6 +219,7 @@ main(int argc __unused, char **argv __unused)
 	init();
 	fputs("\n/* syntax table used when in single quotes */\n", cfile);
 	add("\n", "CNL");
+	add("\\", "CSBACK");
 	add("'", "CENDQUOTE");
 	/* ':/' for tilde expansion, '-' for [a\-x] pattern ranges */
 	add("!*?[=~:/-", "CCTL");
