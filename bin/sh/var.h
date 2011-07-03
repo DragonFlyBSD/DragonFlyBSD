@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)var.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/var.h,v 1.20 2011/05/06 22:31:27 jilles Exp $
+ * $FreeBSD: src/bin/sh/var.h,v 1.21 2011/05/08 16:15:50 jilles Exp $
  */
 
 /*
@@ -55,6 +55,7 @@
 struct var {
 	struct var *next;		/* next entry in hash list */
 	int flags;			/* flags are defined above */
+	int name_len;			/* length of name */
 	char *text;			/* name=value */
 	void (*func)(const char *);
 					/* function to be called when  */
