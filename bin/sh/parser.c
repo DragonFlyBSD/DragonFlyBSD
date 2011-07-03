@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
- * $FreeBSD: src/bin/sh/parser.c,v 1.107 2011/04/20 22:24:54 jilles Exp $
+ * $FreeBSD: src/bin/sh/parser.c,v 1.108 2011/05/04 21:49:34 jilles Exp $
  */
 
 #include <stdio.h>
@@ -1568,6 +1568,8 @@ varname:
 				}
 			}
 		} else if (subtype != VSERROR) {
+			if (subtype == VSLENGTH && c != '}')
+				subtype = VSERROR;
 			pungetc();
 		}
 		STPUTC('=', out);
