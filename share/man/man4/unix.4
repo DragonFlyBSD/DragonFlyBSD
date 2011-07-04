@@ -53,9 +53,10 @@ mechanisms.
 The
 .Ux Ns -domain
 family supports the
-.Dv SOCK_STREAM
-and
+.Dv SOCK_STREAM ,
 .Dv SOCK_DGRAM
+and
+.Dv SOCK_SEQPACKET
 socket types and uses
 filesystem pathnames for addressing.
 .Sh ADDRESSING
@@ -106,11 +107,15 @@ The
 .Ux Ns -domain
 protocol family is comprised of simple
 transport protocols that support the
-.Dv SOCK_STREAM
-and
+.Dv SOCK_STREAM ,
 .Dv SOCK_DGRAM
+and
+.Dv SOCK_SEQPACKET
 abstractions.
-.Dv SOCK_STREAM
+.Dv SOCK_STREAM ,
+.Dv SOCK_DGRAM
+and
+.Dv SOCK_SEQPACKET
 sockets also support the communication of
 .Ux
 file descriptors through the use of the
