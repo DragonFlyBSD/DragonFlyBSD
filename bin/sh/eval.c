@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.103 2011/04/25 20:54:12 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.104 2011/05/15 17:00:43 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -554,7 +554,8 @@ evalpipe(union node *n)
 		if (prevfd >= 0)
 			close(prevfd);
 		prevfd = pip[0];
-		close(pip[1]);
+		if (pip[1] != -1)
+			close(pip[1]);
 	}
 	INTON;
 	if (n->npipe.backgnd == 0) {
