@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
- * $FreeBSD: src/bin/sh/parser.c,v 1.110 2011/05/08 17:40:10 jilles Exp $
+ * $FreeBSD: src/bin/sh/parser.c,v 1.111 2011/05/20 16:03:36 jilles Exp $
  */
 
 #include <stdio.h>
@@ -1512,10 +1512,12 @@ checkend: {
 
 				p = line;
 				for (q = eofmark + 1 ; *q && *p == *q ; p++, q++);
-				if (*p == '\n' && *q == '\0') {
+				if ((*p == '\0' || *p == '\n') && *q == '\0') {
 					c = PEOF;
-					plinno++;
-					needprompt = doprompt;
+					if (*p == '\n') {
+						plinno++;
+						needprompt = doprompt;
+					}
 				} else {
 					pushstring(line, strlen(line), NULL);
 				}
