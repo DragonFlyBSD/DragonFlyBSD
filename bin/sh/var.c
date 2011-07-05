@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/var.c,v 1.59 2011/05/08 17:40:10 jilles Exp $
+ * $FreeBSD: src/bin/sh/var.c,v 1.60 2011/05/15 22:09:27 jilles Exp $
  */
 
 #include <unistd.h>
@@ -678,14 +678,13 @@ exportcmd(int argc, char **argv)
 						out1str(cmdname);
 						out1c(' ');
 					}
-					p = strchr(vp->text, '=');
 					if (values && !(vp->flags & VUNSET)) {
-						p++;
-						outbin(vp->text, p - vp->text,
-						    out1);
-						out1qstr(p);
+						outbin(vp->text,
+						    vp->name_len + 1, out1);
+						out1qstr(vp->text +
+						    vp->name_len + 1);
 					} else
-						outbin(vp->text, p - vp->text,
+						outbin(vp->text, vp->name_len,
 						    out1);
 					out1c('\n');
 				}

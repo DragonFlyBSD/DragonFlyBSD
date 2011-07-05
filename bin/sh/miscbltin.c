@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)miscbltin.c	8.4 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/miscbltin.c,v 1.44 2010/11/23 22:17:39 jilles Exp $
+ * $FreeBSD: src/bin/sh/miscbltin.c,v 1.45 2011/05/15 22:09:27 jilles Exp $
  */
 
 /*
@@ -464,7 +464,7 @@ ulimitcmd(int argc __unused, char **argv __unused)
 					"(-%c) ", l->option);
 			out1fmt("%-18s %18s ", l->name, optbuf);
 			if (val == RLIM_INFINITY)
-				out1fmt("unlimited\n");
+				out1str("unlimited\n");
 			else
 			{
 				val /= l->factor;
@@ -490,7 +490,7 @@ ulimitcmd(int argc __unused, char **argv __unused)
 			val = limit.rlim_max;
 
 		if (val == RLIM_INFINITY)
-			out1fmt("unlimited\n");
+			out1str("unlimited\n");
 		else
 		{
 			val /= l->factor;
