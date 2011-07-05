@@ -34,9 +34,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	from: @(#)sh.1	8.6 (Berkeley) 5/4/95
-.\" $FreeBSD: src/bin/sh/sh.1,v 1.163 2011/05/08 17:40:10 jilles Exp $
+.\" $FreeBSD: src/bin/sh/sh.1,v 1.164 2011/05/20 22:55:18 jilles Exp $
 .\"
-.Dd July 2, 2011
+.Dd July 4, 2011
 .Dt SH 1
 .Os
 .Sh NAME
@@ -1744,7 +1744,7 @@ Execute the specified built-in command,
 .Ar cmd .
 This is useful when the user wishes to override a shell function
 with the same name as a built-in command.
-.It Ic cd Oo Fl L | P Oc Op Ar directory
+.It Ic cd Oo Fl L | P Oc Oo Fl e Oc Op Ar directory
 Switch to the specified
 .Ar directory ,
 or to the directory specified in the
@@ -1793,6 +1793,15 @@ option is specified,
 .Pa ..
 is handled logically.
 This is the default.
+.Pp
+The
+.Fl e
+option causes
+.Ic cd
+to return exit status 1 if the full pathname of the new directory
+cannot be determined reliably or at all.
+Normally this is not considered an error,
+although a warning is printed.
 .It Ic chdir
 A synonym for the
 .Ic cd
