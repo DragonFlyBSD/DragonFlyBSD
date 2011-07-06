@@ -1897,7 +1897,7 @@ libprop/prop_object.c			standard
 libprop/prop_stack.c			standard
 libprop/prop_string.c			standard
 libprop/prop_rb.c			standard
-crypto/blowfish/bf_ecb.c		optional ipsec
+crypto/blowfish/bf_ecb.c		optional ipsec ipsec_esp
 crypto/blowfish/bf_skey.c		optional crypto
 crypto/camellia/camellia.c		optional crypto
 crypto/camellia/camellia-api.c		optional crypto
