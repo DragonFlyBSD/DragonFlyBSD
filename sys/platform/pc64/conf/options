@@ -14,6 +14,7 @@ APIC_IO			opt_apic.h
 
 # x86_64 SMP options
 CPU_AMD64X2_INTR_SPAM	opt_cpu.h
+CPU_ENABLE_EST		opt_cpu.h
 
 # The cpu type
 #

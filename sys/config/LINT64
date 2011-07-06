@@ -143,8 +143,12 @@ cpu		HAMMER_CPU
 #
 # CPU_DISABLE_SSE disables SSE/MMX2 instructions support.
 #
+# CPU_ENABLE_EST enables support for Enhanced SpeedStep technology
+# found in Pentium(tm) M processors.
+#
 options		CPU_AMD64X2_INTR_SPAM
 #options 	CPU_DISABLE_SSE
+options		CPU_ENABLE_EST
 
 #####################################################################
 # COMPATIBILITY OPTIONS
