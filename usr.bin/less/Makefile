@@ -1,5 +1,4 @@
 # $FreeBSD: src/usr.bin/less/Makefile,v 1.4.2.5 2003/02/02 10:04:50 johan Exp $
-# $DragonFly: src/usr.bin/less/Makefile,v 1.7 2006/10/08 14:52:37 pavalos Exp $
 
 PROG=	less
 SRCS=	main.c screen.c brac.c ch.c charset.c cmdbuf.c \
@@ -19,7 +18,7 @@ LINKS=	${BINDIR}/less ${BINDIR}/more
 MLINKS=	less.1 more.1
 CLEANFILES= less.1
 
-WARNS?=	0
+WARNS?=	2
 
 .include <Makefile.common>
 .include <bsd.prog.mk>
