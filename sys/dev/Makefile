@@ -1,6 +1,3 @@
-# $DragonFly: src/sys/dev/Makefile,v 1.12 2007/01/30 14:50:10 corecode Exp $
-#
-
 .include "../platform/${MACHINE_PLATFORM}/Makefile.inc"
 
 SUBDIR=	\
@@ -10,7 +7,6 @@ SUBDIR=	\
 	crypto \
 	disk \
 	drm \
-	est \
 	misc \
 	netif \
 	pccard \

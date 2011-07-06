@@ -682,7 +682,7 @@ est_init(void)
 	est_fqlist = findcpu(hwmodel, mv);
 	if (est_fqlist == NULL) {
 		kprintf(" - unknown CPU or operating point"
-		       "(cpu_id:%#x, msr:%#jx).\n", cpu_id, (intmax_t)msr);
+		       "(cpu_id:%#x, msr:%#jx).\n", cpu_id, (uintmax_t)msr);
 		return(EOPNOTSUPP);
 	}
 

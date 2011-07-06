@@ -115,6 +115,7 @@ dev/video/fb/fb.c			optional	fb
 dev/video/fb/fb.c			optional	vga
 dev/video/fb/splash.c			optional	splash
 dev/video/fb/vga.c			optional	vga
+dev/powermng/est/est.c			optional	cpu_enable_est
 dev/netif/fe/if_fe.c			optional	fe
 dev/netif/fe/if_fe_isa.c		optional	fe isa
 dev/netif/fe/if_fe_pccard.c		optional	fe pccard
@@ -203,7 +204,6 @@ platform/pc32/apic/ioapic.c		standard
 platform/pc32/apic/ioapic_abi.c		standard
 platform/pc32/apic/ioapic_ipl.s		standard
 platform/pc32/apic/apic_vector.s	standard
-platform/pc32/i386/est.c		optional	cpu_enable_est
 platform/pc32/i386/mpboot.s		optional	smp
 platform/pc32/i386/mp_clock.c		optional	smp
 platform/pc32/i386/mp_machdep.c		optional	smp
