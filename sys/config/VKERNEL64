@@ -1,4 +1,4 @@
-# VKERNEL - configuration for a virtual kernel
+# VKERNEL64 - configuration for a 64-bit virtual kernel
 
 platform	vkernel64	# platform architecture (i386, vkernel, etc)
 machine		x86_64
@@ -33,11 +33,12 @@ options		ALTQ_FAIRQ	#fair queue
 #options        ALTQ_NOPCC      #don't use processor cycle counter
 options         ALTQ_DEBUG      #for debugging
 
-##options		IPSEC			#IP security
-##options		IPSEC_ESP		#IP security (crypto; define w/ IPSEC)
-##options		IPSEC_DEBUG		#debug for IP security
+options 	IPSEC			#IP security
+options 	IPSEC_ESP		#IP security (crypto; define w/ IPSEC)
+options 	IPSEC_DEBUG		#debug for IP security
 
 options		HAMMER
+options 	NULLFS			#NULL filesystem
 options		EXT2FS
 options 	INET			#InterNETworking
 options 	INET6			#IPv6 communications protocols
@@ -46,6 +47,7 @@ options 	FFS_ROOT		#FFS usable as root device [keep this!]
 options 	SOFTUPDATES		#Enable FFS soft updates support
 options 	UFS_DIRHASH		#Improve performance on big directories
 options 	MFS			#Memory Filesystem
+options 	TMPFS			#Temporary Filesystem
 options 	MD_ROOT			#MD is a potential root device
 options 	NFS			#Network Filesystem
 options 	NFS_ROOT		#NFS usable as root device, NFS required
