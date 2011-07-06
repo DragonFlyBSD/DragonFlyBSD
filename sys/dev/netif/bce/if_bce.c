@@ -7524,7 +7524,7 @@ bce_dump_hw_state(struct bce_softc *sc)
 	" Hardware State "
 	"----------------------------\n");
 
-	if_printf(ifp, "0x%08X - bootcode version\n", sc->bce_bc_ver);
+	if_printf(ifp, "%s - bootcode version\n", sc->bce_bc_ver);
 
 	val1 = REG_RD(sc, BCE_MISC_ENABLE_STATUS_BITS);
 	if_printf(ifp, "0x%08X - (0x%06X) misc_enable_status_bits\n",
