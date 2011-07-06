@@ -848,7 +848,7 @@ ithread_handler(void *arg)
 	 * due to a device driver livelocking and then tearing down its
 	 * interrupt on close (the parallel bus being a good example).
 	 */
-	if (*list)
+	if (intr < FIRST_SOFTINT && *list)
 	    machintr_intren(intr);
 
 	/*
