@@ -3,6 +3,15 @@
 #
 # $DragonFly: src/sys/platform/vkernel/conf/files,v 1.21 2008/03/20 02:14:52 dillon Exp $
 #
+crypto/blowfish/bf_enc.c		optional	ipsec ipsec_esp
+crypto/des/des_enc.c			optional	ipsec ipsec_esp
+crypto/des/des_ecb.c			optional	netsmbcrypto
+crypto/des/des_enc.c			optional	netsmbcrypto
+crypto/des/des_setkey.c			optional	netsmbcrypto
+crypto/blowfish/bf_enc.c		optional	crypto
+crypto/des/des_enc.c			optional	crypto
+crypto/des/des_ecb.c			optional	crypto
+crypto/des/des_setkey.c			optional	crypto
 emulation/dragonfly12/dfbsd12_getdirentries.c	optional	compat_df12
 emulation/dragonfly12/dfbsd12_stat.c		optional	compat_df12
 kern/link_elf_obj.c		standard
