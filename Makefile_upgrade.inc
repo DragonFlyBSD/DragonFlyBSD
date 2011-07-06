@@ -1681,6 +1681,8 @@ TO_REMOVE+=/usr/share/man/cat1/strings217.1.gz
 TO_REMOVE+=/usr/share/man/man1/strings217.1.gz
 TO_REMOVE+=/usr/share/man/cat1/strip217.1.gz
 TO_REMOVE+=/usr/share/man/man1/strip217.1.gz
+TO_REMOVE+=/usr/share/man/cat4/i386/est.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/est.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/sgsc
