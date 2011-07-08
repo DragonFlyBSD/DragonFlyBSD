@@ -54,7 +54,7 @@
 .Op Fl l Ar cpulock
 .Op Fl m Ar size
 .Op Fl n Ar numcpus
-.Op Fl p Ar file
+.Op Fl p Ar pidfile
 .Op Fl r Ar file
 .Sh DESCRIPTION
 The
@@ -110,10 +110,13 @@ The
 .Ar interface
 argument is the name of a
 .Xr tap 4
-device node.
+device node or the path to a
+.Xr vknetd 8
+socket.
 The
 .Pa /dev/
-path prefix does not have to be specified and will be automatically prepended.
+path prefix does not have to be specified and will be automatically prepended
+for a device node.
 Specifying
 .Cm auto
 will pick the first unused
@@ -145,6 +148,12 @@ address is not assigned until the interface is brought up in the guest.
 The
 .Ar netmask
 argument applies to all interfaces for which an address is specified.
+.Pp
+When running multiple vkernels it is often more convenient to simply
+connect to a
+.Xr vknetd 8
+socket and let vknetd deal with the tap and/or bridge.  An example of
+this would be '/var/run/vknet:0.0.0.0:10.2.0.2/16'.
 .It Fl l Ar cpulock
 Specify which, if any, real CPUs to lock virtual CPUs to.
 .Ar cpulock
@@ -186,9 +195,21 @@ Up to 16 CPUs are supported.
 The virtual kernel must be built with
 .Cd options SMP
 to use this option and will default to 2 CPUs unless otherwise specified.
-.It Fl p Ar file
-Specify a file in which to store the process ID.
-A warning is issued if this file cannot be opened for writing.
+.It Fl p Ar pidfile
+Specify a pidfile in which to store the process ID.
+Scripts can use this file to locate the vkernel pid for the purpose of
+shutting down or killing it.
+.Pp
+The vkernel will hold a lock on the pidfile while running.
+Scripts may test for the lock to determine if the pidfile is valid or
+stale so as to avoid accidently killing a random process.
+Something like '/usr/bin/lockf -ks -t 0 pidfile echo -n' may be used
+to test the lock.
+A non-zero exit code indicates that the pidfile represents a running
+vkernel.
+.Pp
+An error is issued and the vkernel exits if this file cannot be opened for
+writing or if it is already locked by an active vkernel process.
 .It Fl r Ar file
 Specify a R/W disk image
 .Ar file

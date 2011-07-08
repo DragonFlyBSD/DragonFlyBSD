@@ -379,7 +379,6 @@ init_sys_memory(char *imageFile)
 	 * Figure out the system memory image size.  If an image file was
 	 * specified and -m was not specified, use the image file's size.
 	 */
-
 	if (imageFile && stat(imageFile, &st) == 0 && Maxmem_bytes == 0)
 		Maxmem_bytes = (vm_paddr_t)st.st_size;
 	if ((imageFile == NULL || stat(imageFile, &st) < 0) &&
@@ -404,13 +403,17 @@ init_sys_memory(char *imageFile)
 	 * Generate an image file name if necessary, then open/create the
 	 * file exclusively locked.  Do not allow multiple virtual kernels
 	 * to use the same image file.
+	 *
+	 * Don't iterate through a million files if we do not have write
+	 * access to the directory, stop if our open() failed on a
+	 * non-existant file.  Otherwise opens can fail for any number
 	 */
 	if (imageFile == NULL) {
 		for (i = 0; i < 1000000; ++i) {
 			asprintf(&imageFile, "/var/vkernel/memimg.%06d", i);
 			fd = open(imageFile,
 				  O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0644);
-			if (fd < 0 && errno == EWOULDBLOCK) {
+			if (fd < 0 && stat(imageFile, &st) == 0) {
 				free(imageFile);
 				continue;
 			}
@@ -1185,24 +1188,34 @@ init_netif(char *netifExp[], int netifExpNum)
 	close(s);
 }
 
+/*
+ * Create the pid file and leave it open and locked while the vkernel is
+ * running.  This allows a script to use /usr/bin/lockf to probe whether
+ * a vkernel is still running (so as not to accidently kill an unrelated
+ * process from a stale pid file).
+ */
 static
 void
-writepid( void )
+writepid(void)
 {
-	pid_t self;
-	FILE *fp;
+	char buf[32];
+	int fd;
 
 	if (pid_file != NULL) {
-		self = getpid();
-		fp = fopen(pid_file, "w");
-
-		if (fp != NULL) {
-			fprintf(fp, "%ld\n", (long)self);
-			fclose(fp);
+		snprintf(buf, sizeof(buf), "%ld\n", (long)getpid());
+		fd = open(pid_file, O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0666);
+		if (fd < 0) {
+			if (errno == EWOULDBLOCK) {
+				perror("Failed to lock pidfile, "
+				       "vkernel already running");
+			} else {
+				perror("Failed to create pidfile");
+			}
+			exit(EX_SOFTWARE);
 		}
-		else {
-			perror("Warning: couldn't open pidfile");
-		}
+		ftruncate(fd, 0);
+		write(fd, buf, strlen(buf));
+		/* leave the file open to maintain the lock */
 	}
 }
 
@@ -1211,7 +1224,7 @@ void
 cleanpid( void )
 {
 	if (pid_file != NULL) {
-		if ( unlink(pid_file) != 0 )
+		if (unlink(pid_file) < 0)
 			perror("Warning: couldn't remove pidfile");
 	}
 }
