@@ -373,7 +373,6 @@ dev/serial/sio/sio.c			optional	sio
 dev/serial/sio/sio_pccard.c		optional	sio pccard
 bus/isa/syscons_isa.c			optional	sc
 bus/isa/vga_isa.c			optional	vga
-kern/md4c.c				optional	netsmb
 kern/subr_diskmbr.c			standard
 kern/subr_diskgpt.c			standard
 libkern/flsl.c				standard
@@ -382,12 +381,3 @@ libkern/moddi3.c			standard
 libkern/qdivrem.c			standard
 libkern/udivdi3.c			standard
 libkern/umoddi3.c			standard
-netproto/smb/smb_conn.c			optional	netsmb
-netproto/smb/smb_crypt.c		optional	netsmb
-netproto/smb/smb_dev.c			optional	netsmb
-netproto/smb/smb_iod.c			optional	netsmb
-netproto/smb/smb_rq.c			optional	netsmb
-netproto/smb/smb_smb.c			optional	netsmb
-netproto/smb/smb_subr.c			optional	netsmb
-netproto/smb/smb_trantcp.c		optional	netsmb
-netproto/smb/smb_usr.c			optional 	netsmb

@@ -1,5 +1,4 @@
 # $FreeBSD: src/sys/modules/smbfs/Makefile,v 1.1.2.4 2002/03/26 10:12:29 ume Exp $
-# $DragonFly: src/sys/vfs/smbfs/Makefile,v 1.7 2008/01/06 16:15:29 nth Exp $
 
 .PATH:	${.CURDIR}/../../crypto/des \
 	${.CURDIR}/../../crypto/des/arch/${MACHINE_ARCH} \
@@ -10,7 +9,7 @@
 KMOD=	smbfs
 
 SRCS=	opt_inet.h opt_ipx.h \
-	opt_netsmb.h opt_smbfs.h opt_vmpage.h \
+	opt_netsmb.h opt_vmpage.h \
 	iconv_converter_if.h \
 	md4c.c \
 	smb_conn.c smb_dev.c smb_trantcp.c smb_smb.c smb_subr.c smb_rq.c \

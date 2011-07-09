@@ -1541,6 +1541,16 @@ netproto/ncp/ncp_nls.c		optional ncp
 netproto/ncp/ncp_rq.c		optional ncp
 netproto/ncp/ncp_sock.c		optional ncp
 netproto/ncp/ncp_subr.c		optional ncp
+kern/md4c.c			optional netsmb
+netproto/smb/smb_conn.c		optional netsmb
+netproto/smb/smb_crypt.c	optional netsmb
+netproto/smb/smb_dev.c		optional netsmb
+netproto/smb/smb_iod.c		optional netsmb
+netproto/smb/smb_rq.c		optional netsmb
+netproto/smb/smb_smb.c		optional netsmb
+netproto/smb/smb_subr.c		optional netsmb
+netproto/smb/smb_trantcp.c	optional netsmb
+netproto/smb/smb_usr.c		optional netsmb
 vfs/nfs/nfs_bio.c		optional nfs
 vfs/nfs/nfs_node.c		optional nfs
 vfs/nfs/nfs_serv.c		optional nfs
