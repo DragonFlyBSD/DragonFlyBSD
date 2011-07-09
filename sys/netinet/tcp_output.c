@@ -502,7 +502,7 @@ again:
 	 * If our state indicates that FIN should be sent
 	 * and we have not yet done so, then we need to send.
 	 */
-	if (flags & TH_FIN &&
+	if ((flags & TH_FIN) &&
 	    (!(tp->t_flags & TF_SENTFIN) || tp->snd_nxt == tp->snd_una))
 		goto send;
 
@@ -524,11 +524,17 @@ again:
 	 *
 	 * If send window is too small, there is data to transmit, and no
 	 * retransmit or persist is pending, then go to persist state.
+	 *
 	 * If nothing happens soon, send when timer expires:
-	 * if window is nonzero, transmit what we can,
-	 * otherwise force out a byte.
+	 * if window is nonzero, transmit what we can, otherwise force out
+	 * a byte.
+	 *
+	 * Don't try to set the persist state if we are in TCPS_SYN_RECEIVED
+	 * with data pending.  This situation can occur during a
+	 * simultanious connect.
 	 */
 	if (so->so_snd.ssb_cc > 0 &&
+	    tp->t_state != TCPS_SYN_RECEIVED &&
 	    !tcp_callout_active(tp, tp->tt_rexmt) &&
 	    !tcp_callout_active(tp, tp->tt_persist)) {
 		tp->t_rxtshift = 0;
