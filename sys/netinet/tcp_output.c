@@ -278,6 +278,10 @@ again:
 	 * acks after fast-retransmit because TCP will reset snd_nxt
 	 * to snd_max after the fast-retransmit.
 	 *
+	 * A negative length can also occur when we are in the
+	 * TCPS_SYN_RECEIVED state due to a simultanious connect where
+	 * our SYN has not been acked yet.
+	 *
 	 * In the normal retransmit-FIN-only case, however, snd_nxt will
 	 * be set to snd_una, the offset will be 0, and the length may
 	 * wind up 0.
@@ -309,17 +313,25 @@ again:
 
 	if (len < 0) {
 		/*
-		 * If FIN has been sent but not acked,
-		 * but we haven't been called to retransmit,
-		 * len will be < 0.  Otherwise, window shrank
-		 * after we sent into it.  If window shrank to 0,
-		 * cancel pending retransmit, pull snd_nxt back
-		 * to (closed) window, and set the persist timer
-		 * if it isn't already going.  If the window didn't
-		 * close completely, just wait for an ACK.
+		 * A negative len can occur if our FIN has been sent but not
+		 * acked, or if we are in a simultanious connect in the
+		 * TCPS_SYN_RECEIVED state with our SYN sent but not yet
+		 * acked.
+		 *
+		 * If our window has contracted to 0 in the FIN case
+		 * (which can only occur if we have NOT been called to
+		 * retransmit as per code a few paragraphs up) then we
+		 * want to shift the retransmit timer over to the
+		 * persist timer.
+		 *
+		 * However, if we are in the TCPS_SYN_RECEIVED state
+		 * (the SYN case) we will be in a simultanious connect and
+		 * the window may be zero degeneratively.  In this case we
+		 * do not want to shift to the persist timer after the SYN
+		 * or the SYN+ACK transmission.
 		 */
 		len = 0;
-		if (sendwin == 0) {
+		if (sendwin == 0 && tp->t_state != TCPS_SYN_RECEIVED) {
 			tcp_callout_stop(tp, tp->tt_rexmt);
 			tp->t_rxtshift = 0;
 			tp->snd_nxt = tp->snd_una;
