@@ -1635,6 +1635,47 @@ hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags)
 }
 
 /*
+ * Attempt to quickly update the atime for a hammer inode.  Return 0 on
+ * success, -1 on failure.
+ *
+ * We attempt to update the atime with only the ip lock and not the
+ * whole filesystem lock in order to improve concurrency.  We can only
+ * do this safely if the ATIME flag is already pending on the inode.
+ *
+ * This function is called via a vnops path (ip pointer is stable) without
+ * fs_token held.
+ */
+int
+hammer_update_atime_quick(hammer_inode_t ip)
+{
+	struct timeval tv;
+	int res = -1;
+
+	if ((ip->flags & HAMMER_INODE_RO) ||
+	    (ip->hmp->mp->mnt_flag & MNT_NOATIME)) {
+		/*
+		 * Silently indicate success on read-only mount/snap
+		 */
+		res = 0;
+	} else if (ip->flags & HAMMER_INODE_ATIME) {
+		/*
+		 * Double check with inode lock held against backend.  This
+		 * is only safe if all we need to do is update
+		 * ino_data.atime.
+		 */
+		getmicrotime(&tv);
+		hammer_lock_ex(&ip->lock);
+		if (ip->flags & HAMMER_INODE_ATIME) {
+			ip->ino_data.atime =
+			    (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
+			res = 0;
+		}
+		hammer_unlock(&ip->lock);
+	}
+	return res;
+}
+
+/*
  * Request that an inode be flushed.  This whole mess cannot block and may
  * recurse (if not synchronous).  Once requested HAMMER will attempt to
  * actively flush the inode until the flush can be done.

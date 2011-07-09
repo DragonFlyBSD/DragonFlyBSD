@@ -1382,6 +1382,7 @@ int hammer_destroy_inode_callback(hammer_inode_t ip, void *data __unused);
 int hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip);
 void hammer_test_inode(hammer_inode_t dip);
 void hammer_inode_unloadable_check(hammer_inode_t ip, int getvp);
+int hammer_update_atime_quick(hammer_inode_t ip);
 
 int  hammer_ip_add_directory(struct hammer_transaction *trans,
 			hammer_inode_t dip, const char *name, int bytes,

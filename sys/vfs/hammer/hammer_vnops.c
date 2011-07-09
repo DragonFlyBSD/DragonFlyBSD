@@ -451,9 +451,16 @@ skip:
 	}
 
 	/*
-	 * XXX only update the atime if we had to get the MP lock.
-	 * XXX hack hack hack, fixme.
+	 * Try to update the atime with just the inode lock for maximum
+	 * concurrency.  If we can't shortcut it we have to get the full
+	 * blown transaction.
 	 */
+	if (got_fstoken == 0 && hammer_update_atime_quick(ip) < 0) {
+		lwkt_gettoken(&hmp->fs_token);
+		got_fstoken = 1;
+		hammer_start_transaction(&trans, ip->hmp);
+	}
+
 	if (got_fstoken) {
 		if ((ip->flags & HAMMER_INODE_RO) == 0 &&
 		    (ip->hmp->mp->mnt_flag & MNT_NOATIME) == 0) {
