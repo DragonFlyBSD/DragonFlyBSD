@@ -568,14 +568,6 @@ getline(char *cp, int limit)
  * Convert a given name to the cdev_t of the disk-like device
  * it refers to.
  */
-struct kdbn_info {
-	const char *name;
-	int nlen;
-	int minor;
-	cdev_t dev;
-};
-
-
 cdev_t
 kgetdiskbyname(const char *name) 
 {
