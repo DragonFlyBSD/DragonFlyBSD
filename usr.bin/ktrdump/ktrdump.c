@@ -1054,6 +1054,9 @@ kvmfprintf(FILE *fp, const char *ctl, va_list va)
 					++n;
 					break;
 				case 'j':
+					is_long = 2;
+					break;
+				case 'z':
 					is_long = 3;
 					break;
 				case 'l':
