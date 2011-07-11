@@ -810,11 +810,12 @@ msk_mediachange(struct ifnet *ifp)
 {
 	struct msk_if_softc *sc_if = ifp->if_softc;
 	struct mii_data	*mii;
+	int error;
 
 	mii = device_get_softc(sc_if->msk_miibus);
-	mii_mediachg(mii);
+	error = mii_mediachg(mii);
 
-	return (0);
+	return (error);
 }
 
 /*
