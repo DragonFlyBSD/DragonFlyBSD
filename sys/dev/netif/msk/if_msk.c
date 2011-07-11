@@ -710,7 +710,8 @@ msk_newbuf(struct msk_if_softc *sc_if, int idx, int init)
 		return (ENOBUFS);
 
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
-	m_adj(m, ETHER_ALIGN);
+	if ((sc_if->msk_flags & MSK_FLAG_RAMBUF) == 0)
+		m_adj(m, ETHER_ALIGN);
 
 	error = bus_dmamap_load_mbuf_segment(sc_if->msk_cdata.msk_rx_tag,
 			sc_if->msk_cdata.msk_rx_sparemap,
@@ -953,15 +954,17 @@ mskc_setup_rambuffer(struct msk_softc *sc)
 {
 	int next;
 	int i;
-	uint8_t val;
 
 	/* Get adapter SRAM size. */
-	val = CSR_READ_1(sc, B2_E_0);
-	sc->msk_ramsize = (val == 0) ? 128 : val * 4;
+	sc->msk_ramsize = CSR_READ_1(sc, B2_E_0) * 4;
 	if (bootverbose) {
 		device_printf(sc->msk_dev,
 		    "RAM buffer size : %dKB\n", sc->msk_ramsize);
 	}
+	if (sc->msk_ramsize == 0)
+		return (0);
+	sc->msk_pflags |= MSK_FLAG_RAMBUF;
+
 	/*
 	 * Give receiver 2/3 of memory and round down to the multiple
 	 * of 1024. Tx/Rx RAM buffer size of Yukon II shoud be multiple
@@ -1325,6 +1328,7 @@ msk_attach(device_t dev)
 	sc_if->msk_port = port;
 	sc_if->msk_softc = sc;
 	sc_if->msk_ifp = ifp;
+	sc_if->msk_flags = sc->msk_pflags;
 	sc->msk_if[port] = sc_if;
 
 	/* Setup Tx/Rx queue register offsets. */
@@ -1800,6 +1804,7 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 	struct msk_jpool_entry *entry;
 	uint8_t *ptr;
 #endif
+	bus_size_t rxalign;
 
 	/* Create parent DMA tag. */
 	/*
@@ -1901,16 +1906,26 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 		}
 	}
 
+	/*
+	 * Workaround hardware hang which seems to happen when Rx buffer
+	 * is not aligned on multiple of FIFO word(8 bytes).
+	 */
+	if (sc_if->msk_flags & MSK_FLAG_RAMBUF)
+		rxalign = MSK_RX_BUF_ALIGN;
+	else
+		rxalign = 1;
+
 	/* Create tag for Rx buffers. */
 	error = bus_dma_tag_create(sc_if->msk_cdata.msk_parent_tag,/* parent */
-		    1, 0,			/* alignment, boundary */
+		    rxalign, 0,			/* alignment, boundary */
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
 		    NULL, NULL,			/* filter, filterarg */
 		    MCLBYTES,			/* maxsize */
 		    1,				/* nsegments */
 		    MCLBYTES,			/* maxsegsize */
-		    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,/* flags */
+		    BUS_DMA_ALLOCNOW | BUS_DMA_ALIGNED |
+		    BUS_DMA_WAITOK,		/* flags */
 		    &sc_if->msk_cdata.msk_rx_tag);
 	if (error) {
 		device_printf(sc_if->msk_if_dev,
@@ -3339,7 +3354,7 @@ msk_init(void *xsc)
 	/* Configure hardware VLAN tag insertion/stripping. */
 	msk_setvlan(sc_if, ifp);
 
-	if (sc->msk_hw_id == CHIP_ID_YUKON_EC_U) {
+	if ((sc_if->msk_flags & MSK_FLAG_RAMBUF) == 0) {
 		/* Set Rx Pause threshould. */
 		CSR_WRITE_1(sc, MR_ADDR(sc_if->msk_port, RX_GMF_LP_THR),
 		    MSK_ECU_LLPP);
@@ -3455,6 +3470,9 @@ msk_set_rambuffer(struct msk_if_softc *sc_if)
 {
 	struct msk_softc *sc;
 	int ltpp, utpp;
+
+	if ((sc_if->msk_flags & MSK_FLAG_RAMBUF) == 0)
+		return;
 
 	sc = sc_if->msk_softc;
 
