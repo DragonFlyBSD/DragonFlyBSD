@@ -3324,9 +3324,12 @@ msk_init(void *xsc)
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_FL_MSK),
 	    GMR_FS_ANY_ERR);
 
-	/* Set Rx FIFO flush threshold to 64 bytes. */
+	/*
+	 * Set Rx FIFO flush threshold to 64 bytes 1 FIFO word
+	 * due to hardware hang on receipt of pause frames.
+	 */
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_FL_THR),
-	    RX_GMF_FL_THR_DEF);
+	    RX_GMF_FL_THR_DEF + 1);
 
 	/* Configure Tx MAC FIFO. */
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, TX_GMF_CTRL_T), GMF_RST_SET);
