@@ -638,24 +638,6 @@ probe_adapters(void)
 	return 1;
     vga_init_done = TRUE;
 
-    /*
-     * Check BIOS data area.
-     * The VGA BIOS has more sophisticated mechanism and has this 
-     * information in BIOSDATA_DCCINDEX (40:8a), but it also maintains 
-     * compatibility with the EGA BIOS by updating BIOSDATA_VIDEOSWITCH.
-     */
-
-    /* 
-     * XXX: we don't use BIOSDATA_EQUIPMENT, since it is not a dead
-     * copy of RTC_EQUIPMENT.  Bits 4 and 5 of ETC_EQUIPMENT are
-     * zeros for VGA.  However, VGA BIOS sets these bits in
-     * BIOSDATA_EQUIPMENT according to the monitor type detected.
-     */
-#ifndef VGA_NO_BIOS
-    if ((readb(BIOS_PADDRTOVADDR(0x488)) & 0x0f) != 0x09)
-	    return 0;
-#endif /* VGA_NO_BIOS */
-
     if (verify_adapter(&biosadapter) != 0)
 	return 0;
 
