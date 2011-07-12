@@ -136,10 +136,8 @@ end
 define dmesg
 	set $bufp = msgbufp->msg_ptr
 	set $size = msgbufp->msg_size
-	set $rseq = msgbufp->msg_bufr
-	set $wseq = msgbufp->msg_bufx
-	set $rseq = $rseq % $size
-	set $wseq = $wseq % $size
+	set $rseq = msgbufp->msg_bufr % $size
+	set $wseq = msgbufp->msg_bufx % $size
 	if ( $bufp != 0 && $size != 0 && $rseq != $wseq )
 		while ( $rseq < $wseq )
 			set $c = $bufp + $rseq
