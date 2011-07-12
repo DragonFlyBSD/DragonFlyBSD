@@ -1,0 +1,14 @@
+{
+global:
+	tc_api_init;
+	tc_api_uninit;
+	tc_api_create_volume;
+	tc_api_map_volume;
+	tc_api_unmap_volume;
+	tc_api_check_cipher;
+	tc_api_check_prf_hash;
+	tc_api_get_error_msg;
+	tc_api_get_summary;
+local:
+	*;
+};

@@ -1,0 +1,227 @@
+.\"
+.\" Copyright (c) 2011
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd July 5, 2011
+.Dt TCPLAY 8
+.Os
+.Sh NAME
+.Nm tcplay
+.Nd tool to manage TrueCrypt volumes
+.Sh SYNOPSIS
+.Nm
+.Fl c
+.Fl d Ar device
+.Op Fl g
+.Op Fl a Ar pbkdf_hash
+.Op Fl b Ar cipher
+.Op Fl k Ar keyfile
+.Op Fl f Ar keyfile_hidden
+.Nm
+.Fl i
+.Fl d Ar device
+.Op Fl e
+.Op Fl s Ar system_device
+.Nm
+.Fl m Ar mapping
+.Fl d Ar device
+.Op Fl e
+.Op Fl s Ar system_device
+.Sh DESCRIPTION
+The
+.Nm
+utility provides full support for creating and opening/mapping
+TrueCrypt-compatible volumes.
+It supports the following commands, each with a set of options
+detailed further below:
+.Bl -tag -width indent
+.It Fl c , Fl -create
+Create a new encrypted TrueCrypt volume on the device
+specified by
+.Fl -device .
+.It Fl i , Fl -info
+Print out information about the encrypted device specified by
+.Fl -device .
+.It Fl m Ar mapping , Fl -map Ns = Ns Ar mapping
+Map the encrypted TrueCrypt volume on the device specified by
+.Fl -device
+as a
+.Xr dm 4
+mapping called
+.Ar mapping .
+.El
+.Pp
+Options common to all commands are:
+.Bl -tag -width indent
+.It Fl d Ar device , Fl -device Ns = Ns Ar device
+Specifies the disk
+.Ar device
+on which the TrueCrypt volume resides/will reside.
+This option is mandatory for all commands.
+.It Fl k Ar keyfile , Fl -keyfile Ns = Ns Ar keyfile
+Specifies a
+.Ar keyfile
+to use in addition to the passphrase.
+This option can appear multiple times; if so, multiple
+keyfiles will be used.
+.It Fl f Ar keyfile , Fl -keyfile-hidden Ns = Ns Ar keyfile
+Specifies a
+.Ar keyfile
+to use in addition to the passphrase when either creating a
+hidden volume or when protecting a hidden volume while mapping
+or querying the outer volume.
+If you only intend to map a hidden volume, the
+.Fl -keyfile
+option has to be used.
+This option can appear multiple times; if so, multiple
+keyfiles will be used.
+.El
+.Pp
+Additional options for the
+.Fl -create
+command are:
+.Bl -tag -width indent
+.It Fl a Ar pbkdf_hash , Fl -pbkdf-prf Ns = Ns Ar pbkdf_hash
+Specifies with hash algorithm to use for the PBKDF2 password
+derivation.
+To see which algorithms are supported, specify
+.Fl -pbkdf-prf Ns = Ns Ar help .
+.It Fl b Ar cipher , Fl -cipher Ns = Ns Ar cipher
+Specifies with cipher algorithm or cascade of ciphers to use
+to encrypt the new volume.
+To see which algorithms are supported, specify
+.Fl -cipher Ns = Ns Ar help .
+.It Fl x Ar pbkdf_hash , Fl -pbkdf-prf-hidden Ns = Ns Ar pbkdf_hash
+Specifies with hash algorithm to use for the PBKDF2 password
+derivation for the hidden volume.
+Only valid in conjunction with
+.Fl -hidden .
+If no algorithm is specified, the same as for the outer volume
+will be used.
+To see which algorithms are supported, specify
+.Fl -pbkdf-prf-hidden Ns = Ns Ar help .
+.It Fl y Ar cipher , Fl -cipher-hidden Ns = Ns Ar cipher
+Specifies with cipher algorithm or cascade of ciphers to use
+to encrypt the hidden volume on the new TrueCrypt volume.
+Only valid in conjunction with
+.Fl -hidden .
+If no cipher is specified, the same as for the outer volume
+will be used.
+To see which algorithms are supported, specify
+.Fl -cipher-hidden Ns = Ns Ar help .
+.It Fl g, Fl -hidden
+Specifies that the newly created volume will contain a hidden
+volume.
+The keyfiles applied to the passphrase for the hidden
+volume are those specified by
+.Fl -keyfile-hidden .
+The user will be prompted for the size of the hidden volume
+interactively.
+.El
+.Pp
+Additional options for the
+.Fl -info
+and
+.Fl -map
+commands are:
+.Bl -tag -width indent
+.It Fl e, Fl -protect-hidden
+Specifies that an outer volume will be queried or mapped, but
+its reported size will be adjusted accordingly to the size of
+the hidden volume contained in it.
+Both the hidden volume and outer volume passphrase and keyfiles
+will be required.
+.It Fl s Ar system_device , Fl -system-encryption Ns = Ns Ar 
+system_device
+This option is required if you are attempting to access a device
+that uses system encryption, for example an encrypted
+.Tn Windows
+system partition.
+The
+.Fl -device
+option will point at the actual encrypted partition, while the
+.Ar system_device
+argument will point to the parent device (i.e.\& underlying physical disk)
+of the encrypted partition.
+.El
+.Sh EXAMPLES
+Create a new TrueCrypt volume on
+.Pa /dev/vn0
+using the cipher cascade
+of AES and Twofish and the Whirlpool hash algorithm for
+PBKDF2 password derivation and two keyfiles,
+.Pa one.key
+and
+.Pa two.key :
+.Bd -ragged -offset indent
+.Nm Fl -create
+.Fl -device Ns = Ns Ar /dev/vn0
+.Fl -cipher Ns = Ns Ar AES-256-XTS,TWOFISH-256-XTS
+.Fl -pbkdf-prf Ns = Ns Ar whirlpool
+.Fl -keyfile Ns = Ns Ar one.key
+.Fl -keyfile Ns = Ns Ar two.key
+.Ed
+.Pp
+Map the outer volume on the TrueCrypt volume on
+.Pa /dev/vn0
+as
+.Sy truecrypt1 ,
+but protect the hidden volume, using the keyfile
+.Pa hidden.key ,
+from being overwritten:
+.Bd -ragged -offset indent
+.Nm Fl -map Ns = Ns Ar truecrypt1
+.Fl -device Ns = Ns Ar /dev/vn0
+.Fl -protect-hidden
+.Fl -keyfile-hidden Ns = Ns Ar hidden.key
+.Ed
+.Pp
+Map the hidden volume on the TrueCrypt volume on
+.Pa /dev/vn0
+as
+.Sy truecrypt2 ,
+using the keyfile
+.Pa hidden.key :
+.Bd -ragged -offset indent
+.Nm Fl -map Ns = Ns Ar truecrypt2
+.Fl -device Ns = Ns Ar /dev/vn0
+.Fl -keyfile Ns = Ns Ar hidden.key
+.Ed
+.Sh SEE ALSO
+.Xr crypttab 5 ,
+.Xr cryptsetup 8
+.Sh HISTORY
+The
+.Nm
+utility appeared in
+.Dx 2.11 .
+.Sh AUTHORS
+.An Alex Hornung
+
