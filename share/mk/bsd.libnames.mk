@@ -104,6 +104,7 @@ LIBSSL?=	${DESTDIR}${LIBDIR}/libssl.a	# XXX in secure dist, not base
 LIBSTDCPLUSPLUS?= ${DESTDIR}${GCCLIBDIR}/libstdc++.a
 LIBTACPLUS?=	${DESTDIR}${LIBDIR}/libtacplus.a
 LIBTCL?=	${DESTDIR}${LIBDIR}/libtcl.a
+LIBTCPLAY?=	${DESTDIR}${LIBDIR}/libtcplay.a
 LIBTERMCAP?=	${DESTDIR}${LIBDIR}/libtermcap.a
 LIBTERMLIB?=	"don't use LIBTERMLIB, use LIBTERMCAP"
 LIBUSBHID?=	${DESTDIR}${LIBDIR}/libusbhid.a
