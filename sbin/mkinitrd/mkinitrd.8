@@ -103,8 +103,9 @@ new root in the initrd is specified in its general form below:
 vfs.root.realroot="<type>:[arg1[:arg2[:argN]]]"
 .Ed
 .Pp
-Currently, two types of real root are supported,
-.Pa local
+Currently, three types of real root are supported,
+.Pa local ,
+.Pa tcplay
 and
 .Pa crypt .
 The
@@ -124,6 +125,16 @@ be set up by prompting the user for his key, and this volume will then
 be mounted as the new root.
 .Bd -literal -offset indent
 vfs.root.realroot="crypt:<FS TYPE>:<DEVICE PATH>:<VOLUME NAME>[:<OPTIONS>]"
+.Ed
+.Pp
+The
+.Pa tcplay
+type allows to mount volumes supported by
+.Xr tcplay 8 .
+The device will be set up by prompting the user for his key, and this
+volume will then be mounted as the new root.
+.Bd -literal -offset indent
+vfs.root.realroot="tcplay:<FS TYPE>:<DEVICE PATH>:<VOLUME NAME>[:<OPTIONS>]"
 .Ed
 .Sh EXAMPLES
 .Bd -literal -offset indent

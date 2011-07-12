@@ -34,7 +34,7 @@ TMP_DIR="/tmp"
 BOOT_DIR="/boot"
 INITRD_SIZE="15m"
 BIN_TOOLS="mkdir rm sh kill"
-SBIN_TOOLS="mount mount_devfs mount_hammer mount_nfs mount_null mount_procfs mount_tmpfs umount iscontrol cryptsetup lvm sysctl udevd"
+SBIN_TOOLS="mount mount_devfs mount_hammer mount_nfs mount_null mount_procfs mount_tmpfs umount iscontrol cryptsetup lvm sysctl udevd tcplay"
 INITRD_DIRS="bin boot dev etc mnt proc sbin tmp var new_root"
 CONTENT_DIRS="/usr/share/initrd"
 
