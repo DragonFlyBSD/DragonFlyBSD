@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2009-2011 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Alex Hornung <ahornung@gmail.com>
@@ -41,6 +41,7 @@
 #include <err.h>
 
 #include <libcryptsetup.h>
+#include <tcplay_api.h>
 
 #include "safe_mem.h"
 
@@ -48,6 +49,16 @@
 
 #define CRYPTDISKS_START	1
 #define CRYPTDISKS_STOP		2
+
+struct generic_opts {
+	char		*device;
+	char		*map_name;
+	char		*passphrase;
+	const char	*keyfiles[256];
+	int		nkeyfiles;
+	int		ntries;
+	unsigned long long	timeout;
+};
 
 static void syntax_error(const char *, ...) __printflike(1, 2);
 
@@ -174,7 +185,7 @@ line_tokenize(char *buffer, int (*is_sep)(char), char comment_char, char **token
 }
 
 static int
-parse_crypt_options(struct crypt_options *co, char *option)
+parse_crypt_options(struct generic_opts *go, char *option)
 {
 	char	*parameter, *endptr;
 	char	*buf;
@@ -202,7 +213,7 @@ parse_crypt_options(struct crypt_options *co, char *option)
 			    "parameter, not '%s'", parameter);
 			/* NOTREACHED */
 
-		co->tries = (int)lval;
+		go->ntries = (int)lval;
 	} else if (strcmp(option, "timeout") == 0) {
 		if (noparam)
 			syntax_error("The option 'timeout' needs a parameter");
@@ -214,7 +225,7 @@ parse_crypt_options(struct crypt_options *co, char *option)
 			    "parameter, not '%s'", parameter);
 			/* NOTREACHED */
 
-		co->timeout = ullval;
+		go->timeout = ullval;
 	} else if (strcmp(option, "keyscript") == 0) {
 		if (noparam)
 			syntax_error("The option 'keyscript' needs a parameter");
@@ -240,7 +251,7 @@ parse_crypt_options(struct crypt_options *co, char *option)
 		if ((endptr = strrchr(buf, '\n')) != NULL)
 			*endptr = '\0';
 
-		co->passphrase = buf;
+		go->passphrase = buf;
 	} else if (strcmp(option, "none") == 0) {
 		/* Valid option, does nothing */
 	} else {
@@ -251,53 +262,122 @@ parse_crypt_options(struct crypt_options *co, char *option)
 	return 0;
 }
 
+static void
+generic_opts_to_luks(struct crypt_options *co, struct generic_opts *go)
+{
+	if (go->nkeyfiles > 1)
+		fprintf(stderr, "crypttab: Warning: LUKS only supports one "
+		    "keyfile; on line %d\n", line_no);
+
+	co->icb = &cmd_icb;
+	co->tries = go->ntries;
+	co->name = go->map_name;
+	co->device = go->device;
+	co->key_file = (go->nkeyfiles == 1) ? go->keyfiles[0] : NULL;
+	co->passphrase = go->passphrase;
+	co->timeout = go->timeout;
+}
+
+static void
+generic_opts_to_tcplay(struct tc_api_opts *tco, struct generic_opts *go)
+{
+	/* Make sure keyfile array is NULL-terminated */
+	go->keyfiles[go->nkeyfiles] = NULL;
+
+	tco->tc_interactive_prompt = (go->passphrase != NULL) ? 0 : 1;
+	tco->tc_password_retries = go->ntries;
+	tco->tc_map_name = go->map_name;
+	tco->tc_device = go->device;
+	tco->tc_keyfiles = go->keyfiles;
+	tco->tc_passphrase = go->passphrase;
+	tco->tc_prompt_timeout = go->timeout;
+}
+
 static int
 entry_parser(char **tokens, char **options, int type)
 {
 	struct crypt_options co;
-	int r, i, error;
+	struct tc_api_opts tco;
+	struct generic_opts go;
+	int r, i, error, isluks;
 
 	if (entry_check_num_args(tokens, 2) != 0)
 		return 1;
 
+	bzero(&go, sizeof(go));
 	bzero(&co, sizeof(co));
+	bzero(&tco, sizeof(tco));
 
-	co.icb = &cmd_icb;
-	co.tries = 3;
-	co.name = tokens[0];
-	co.device = tokens[1];
+
+	go.ntries = 3;
+	go.map_name = tokens[0];
+	go.device = tokens[1];
 
 	/* (Try to) parse extra options */
 	for (i = 0; options[i] != NULL; i++)
-		parse_crypt_options(&co, options[i]);
+		parse_crypt_options(&go, options[i]);
 
-	/* Verify that the device is indeed a LUKS-formatted device */
-	error = crypt_isLuks(&co);
-	if (error) {
-		printf("crypttab: line %d: device %s is not a luks device\n",
-		    line_no, co.device);
-		return 1;
+	if ((tokens[2] != NULL) && (strcmp(tokens[2], "none") != 0)) {
+		/* We got a keyfile */
+		go.keyfiles[go.nkeyfiles++] = tokens[2];
+	}
+
+	generic_opts_to_luks(&co, &go);
+	generic_opts_to_tcplay(&tco, &go);
+
+	/*
+	 * Check whether the device is a LUKS-formatted device; otherwise
+	 * we assume its a TrueCrypt volume.
+	 */
+	isluks = !crypt_isLuks(&co);
+
+	if (!isluks) {
+		if ((error = tc_api_init(0)) != 0) {
+			fprintf(stderr, "crypttab: line %d: tc_api could not "
+			    "be initialized\n", line_no);
+			return 1;
+		}
 	}
 
 	if (type == CRYPTDISKS_STOP) {
-		/* Check if the device is active */
-		r = crypt_query_device(&co);
+		if (isluks) {
+			/* Check if the device is active */
+			r = crypt_query_device(&co);
 
-		/* If r > 0, then the device is active */
-		if (r <= 0)
-			return 0;
+			/* If r > 0, then the device is active */
+			if (r <= 0)
+				return 0;
 
-		/* Actually close the device */
-		crypt_remove_device(&co);
-	} else if (type == CRYPTDISKS_START) {
-		if ((tokens[2] != NULL) && (strcmp(tokens[2], "none") != 0)) {
-			/* We got a keyfile */
-			co.key_file = tokens[2];
+			/* Actually close the device */
+			crypt_remove_device(&co);
+		} else {
+			/* Assume tcplay volume */
+			tc_api_unmap_volume(&tco);
 		}
-
+	} else if (type == CRYPTDISKS_START) {
 		/* Open the device */
-		crypt_luksOpen(&co);
+		if (isluks) {
+			if ((error = crypt_luksOpen(&co)) != 0) {
+				fprintf(stderr, "crypttab: line %d: device %s "
+				    "could not be mapped / opened\n",
+				    line_no, tco.tc_device);
+				return 1;
+			}
+		} else {
+			/* Assume tcplay volume */
+			if ((error = tc_api_map_volume(&tco)) != 0) {
+				fprintf(stderr, "crypttab: line %d: device %s "
+				    "could not be mapped / opened: %s\n",
+				    line_no, tco.tc_device,
+				    tc_api_get_error_msg());
+				tc_api_uninit();
+				return 1;
+			}
+		}
 	}
+
+	if (!isluks)
+		tc_api_uninit();
 
 	return 0;
 }

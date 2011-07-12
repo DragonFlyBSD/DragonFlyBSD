@@ -50,6 +50,8 @@ file and sets up all crypto volumes when
 is specified and closes them when
 .Fl 0
 is specified.
+The device will be treated as a LUKS device if it has a LUKS header,
+otherwise it will be treated as a TrueCrypt/tcplay device.
 .Sh FILES
 .Bl -tag -width ".Pa /etc/crypttab" -compact
 .It Pa /etc/crypttab
@@ -57,6 +59,7 @@ configuration file of local crypto volumes
 .El
 .Sh SEE ALSO
 .Xr crypttab 5 ,
+.Xr tcplay 8 ,
 .Xr cryptsetup 8
 .Sh HISTORY
 The

@@ -12,6 +12,9 @@ DPADD+=		${.CURDIR}/../../gnu/lib/libluks/libluks.a
 LDADD+=		-L${.CURDIR}/../../gnu/lib/libdevmapper -ldevmapper
 DPADD+=		${.CURDIR}/../../gnu/lib/libdevmapper/libdevmapper.a
 
-LDADD+=		-lprop -lcrypto
+LDADD+=		-L${.CURDIR}/../../lib/tcplay -ltcplay
+DPADD+=		${.CURDIR}/../../lib/tcplay/tcplay.a
+
+LDADD+=		-lprop -lcrypto -lutil
 
 .include <bsd.prog.mk>
