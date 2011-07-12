@@ -45,7 +45,7 @@
 /* #define DEFAULT_BFD_ARCH bfd_i386_arch */
 
 /* Define to BFD's default target vector. */
-/* #define DEFAULT_BFD_VEC bfd_elf32_i386_freebsd_vec */
+/* #define DEFAULT_BFD_VEC bfd_elf64_x86_64_vec */
 
 /* Define to 1 if translation of program messages to the user's native
    language is requested. */
@@ -62,13 +62,13 @@
 #define GDB_DEFAULT_HOST_CHARSET "UTF-8"
 
 /* Host double floatformat */
-#define GDB_HOST_DOUBLE_FORMAT &floatformat_ieee_double_little
+#define GDB_HOST_DOUBLE_FORMAT 0
 
 /* Host float floatformat */
-#define GDB_HOST_FLOAT_FORMAT &floatformat_ieee_single_little
+#define GDB_HOST_FLOAT_FORMAT 0
 
 /* Host long double floatformat */
-#define GDB_HOST_LONG_DOUBLE_FORMAT &floatformat_i387_ext
+#define GDB_HOST_LONG_DOUBLE_FORMAT 0
 
 /* nativefile */
 /* #undef GDB_NM_FILE */
@@ -550,10 +550,10 @@
 #define HAVE_STRUCT_REG 1
 
 /* Define to 1 if `struct reg' is a member of `r_fs'. */
-#define HAVE_STRUCT_REG_R_FS 1
+/* #undef HAVE_STRUCT_REG_R_FS */
 
 /* Define to 1 if `struct reg' is a member of `r_gs'. */
-#define HAVE_STRUCT_REG_R_GS 1
+/* #undef HAVE_STRUCT_REG_R_GS */
 
 /* Define if <link.h> exists and defines a struct so_map which has members
    with an ``som_'' prefix. (Found on older *BSD systems.) */

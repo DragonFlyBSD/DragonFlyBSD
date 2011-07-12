@@ -223,8 +223,17 @@ kgdb_trgt_dblfault_prev_register(struct frame_info *next_frame,
 	return frame_unwind_got_memory(next_frame, regnum, addrp);
 }
 
+static enum unwind_stop_reason
+kgdb_trgt_dblfault_unwind_reason(struct frame_info *next_frame,
+    void **this_cache)
+{
+    /* XXX marino : populate logic to determine unwind stoppage */
+    return UNWIND_NO_REASON;
+}
+
 static const struct frame_unwind kgdb_trgt_dblfault_unwind = {
         NORMAL_FRAME,
+        &kgdb_trgt_dblfault_unwind_reason,
         &kgdb_trgt_dblfault_this_id,
         &kgdb_trgt_dblfault_prev_register,
 	.sniffer = kgdb_trgt_trapframe_sniffer
@@ -359,8 +368,17 @@ kgdb_trgt_trapframe_prev_register(struct frame_info *next_frame,
 	return frame_unwind_got_memory(next_frame, regnum, addrp);
 }
 
+static enum unwind_stop_reason
+kgdb_trgt_trapframe_unwind_reason(struct frame_info *next_frame,
+    void **this_cache)
+{
+    /* XXX marino : populate logic to determine unwind stoppage */
+    return UNWIND_NO_REASON;
+}
+
 const struct frame_unwind kgdb_trgt_trapframe_unwind = {
         NORMAL_FRAME,
+        &kgdb_trgt_trapframe_unwind_reason,
         &kgdb_trgt_trapframe_this_id,
         &kgdb_trgt_trapframe_prev_register,
 	.sniffer = kgdb_trgt_trapframe_sniffer

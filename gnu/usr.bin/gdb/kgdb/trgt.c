@@ -326,7 +326,7 @@ initialize_kgdb_target(void)
 	kgdb_trgt_ops.to_longname = "kernel core dump file";
 	kgdb_trgt_ops.to_doc = 
     "Use a vmcore file as a target.  Specify the filename of the vmcore file.";
-	kgdb_trgt_ops.to_stratum = core_stratum;
+	kgdb_trgt_ops.to_stratum = process_stratum;
 	kgdb_trgt_ops.to_has_registers = default_child_has_registers;
 	kgdb_trgt_ops.to_has_memory = default_child_has_memory;
 	kgdb_trgt_ops.to_has_stack = default_child_has_stack;

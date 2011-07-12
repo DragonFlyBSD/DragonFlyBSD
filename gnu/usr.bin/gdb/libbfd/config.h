@@ -1,6 +1,9 @@
 /* config.h.  Generated from config.in by configure.  */
 /* config.in.  Generated from configure.in by autoheader.  */
 
+/* Name of host specific core header file to include in elf.c. */
+/* #undef CORE_HEADER */
+
 /* Define to 1 if translation of program messages to the user's native
    language is requested. */
 /* #undef ENABLE_NLS */
@@ -114,6 +117,9 @@
 
 /* Define if <sys/procfs.h> has lwpstatus_t.pr_context. */
 /* #undef HAVE_LWPSTATUS_T_PR_CONTEXT */
+
+/* Define if <sys/procfs.h> has lwpstatus_t.pr_fpreg. */
+/* #undef HAVE_LWPSTATUS_T_PR_FPREG */
 
 /* Define if <sys/procfs.h> has lwpstatus_t.pr_reg. */
 /* #undef HAVE_LWPSTATUS_T_PR_REG */
@@ -299,10 +305,13 @@
 #define TIME_WITH_SYS_TIME 1
 
 /* Name of host specific header file to include in trad-core.c. */
-#define TRAD_HEADER "hosts/i386bsd.h"
+/* #undef TRAD_HEADER */
 
 /* Use b modifier when opening binary files? */
 /* #undef USE_BINARY_FOPEN */
+
+/* Define if we should use leading underscore on 64 bit mingw targets */
+/* #undef USE_MINGW64_LEADING_UNDERSCORES */
 
 /* Use mmap if it's available? */
 /* #undef USE_MMAP */
@@ -336,7 +345,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.20.51"
+#define VERSION "2.21.51"
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */

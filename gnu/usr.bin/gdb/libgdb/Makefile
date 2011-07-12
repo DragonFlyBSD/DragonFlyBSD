@@ -66,8 +66,7 @@ SRCS+=	\
 	ui-out.c cli-out.c \
 	varobj.c vec.c wrapper.c \
 	jv-lang.c jv-valprint.c jv-typeprint.c \
-	m2-lang.c p-lang.c p-typeprint.c p-valprint.c \
-	scm-exp.c scm-lang.c scm-valprint.c \
+	m2-lang.c opencl-lang.c p-lang.c p-typeprint.c p-valprint.c \
 	sentinel-frame.c \
 	complaints.c typeprint.c \
 	ada-typeprint.c c-typeprint.c f-typeprint.c m2-typeprint.c \
@@ -85,7 +84,7 @@ SRCS+=	\
 	trad-frame.c \
 	tramp-frame.c \
 	solib.c solib-target.c \
-	prologue-value.c memory-map.c xml-support.c xml-syscall.c \
+	prologue-value.c memory-map.c memrange.c xml-support.c xml-syscall.c \
 	target-descriptions.c target-memory.c xml-tdesc.c xml-builtin.c \
 	inferior.c osdata.c gdb_usleep.c record.c gcore.c \
 	jit.c progspace.c
@@ -103,7 +102,7 @@ SRCS+=	remote.c dcache.c tracepoint.c ax-general.c ax-gdb.c remote-fileio.c
 SRCS+=  cli-dump.c \
 	cli-decode.c cli-script.c cli-cmds.c cli-setshow.c \
 	cli-logging.c \
-	cli-interp.c
+	cli-interp.c cli-utils.c
 
 # SUBDIR_MI_OBS
 SRCS+=	mi-out.c mi-console.c \

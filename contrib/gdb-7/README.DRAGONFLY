@@ -1,13 +1,13 @@
-GNU GDB 7.2
+GNU GDB 7.3
 ===========
 
 Original source can be downloaded from:
 http://ftp.gnu.org/gnu/gdb
 
-file = gdb-7.2.tar.bz2
-date = 3 Sep 2010
-size = 18530613
-sha1 = cae138dee0c11778c471a1d5e4b09e0ae08f9e9d
+file = gdb-7.3a.tar.bz2
+date = 24 August 2011
+size = 19503041
+sha1 = d68061206a3485bab32da3fb751c6c3b913c2b9c
 
 A list of files and directories removed is in README.DELETED
 
@@ -18,7 +18,6 @@ The following files were added:
 	gdb/i386dfly-tdep.c
 
 Local modifications applied to following files:
-	bfd/config.bfd     (remove for gdb 7.3)
 	gdb/amd64-tdep.h
 	gdb/charset.c
 	gdb/configure.host
@@ -34,4 +33,3 @@ Local modifications applied to following files:
 	gdb/tui-io.c
 	include/elf/common.h
 	include/libiberty.h
- 
