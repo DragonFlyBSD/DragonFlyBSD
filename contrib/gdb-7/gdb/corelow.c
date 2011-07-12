@@ -264,7 +264,7 @@ add_to_thread_list (bfd *abfd, asection *asect, void *reg_sect_arg)
 
   lwpid = core_tid;
 
-  if (current_inferior ()->pid == 0)
+  if (current_inferior ()->pid == FAKE_PROCESS_ID)
     inferior_appeared (current_inferior (), pid);
 
   ptid = ptid_build (pid, lwpid, 0);

@@ -1103,7 +1103,7 @@ remove_displaced_stepping_state (int pid)
 {
   struct displaced_step_inferior_state *it, **prev_next_p;
 
-  gdb_assert (kernel_debugger || (pid != 0));
+  gdb_assert (pid != FAKE_PROCESS_ID);
 
   it = displaced_step_inferior_states;
   prev_next_p = &displaced_step_inferior_states;
