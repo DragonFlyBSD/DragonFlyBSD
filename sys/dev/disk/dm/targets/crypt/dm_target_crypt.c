@@ -54,8 +54,39 @@
 #include <opencrypto/rmd160.h>
 #include <machine/cpufunc.h>
 
+#include <sys/ktr.h>
+
 #include <dev/disk/dm/dm.h>
 MALLOC_DEFINE(M_DMCRYPT, "dm_crypt", "Device Mapper Target Crypt");
+
+KTR_INFO_MASTER(dmcrypt);
+
+#if !defined(KTR_DMCRYPT)
+#define KTR_DMCRYPT	KTR_ALL
+#endif
+
+KTR_INFO(KTR_DMCRYPT, dmcrypt, crypto_dispatch, 0,
+    "crypto_dispatch(%p)", sizeof(void *));
+KTR_INFO(KTR_DMCRYPT, dmcrypt, crypt_strategy, 0,
+    "crypt_strategy(b_cmd = %d, bp = %p)", sizeof(int) + sizeof(void *));
+KTR_INFO(KTR_DMCRYPT, dmcrypt, crypto_write_start, 1,
+    "crypto_write_start(crp = %p, bp = %p, sector = %d/%d)",
+    sizeof(void *) + sizeof(void *) + sizeof(int) + sizeof(int));
+KTR_INFO(KTR_DMCRYPT, dmcrypt, crypto_cb_write_done, 1,
+    "crypto_cb_write_done(crp = %p, bp = %p, n = %d)",
+    sizeof(void *) + sizeof(void *) + sizeof(int));
+KTR_INFO(KTR_DMCRYPT, dmcrypt, bio_write_done, 1,
+    "bio_write_done(bp = %p)", sizeof(void *));
+KTR_INFO(KTR_DMCRYPT, dmcrypt, crypto_write_retry, 1,
+    "crypto_write_retry(crp = %p)", sizeof(void *));
+KTR_INFO(KTR_DMCRYPT, dmcrypt, bio_read_done, 2,
+    "bio_read_done(bp = %p)", sizeof(void *));
+KTR_INFO(KTR_DMCRYPT, dmcrypt, crypto_read_start, 2,
+    "crypto_read_start(crp = %p, bp = %p, sector = %d/%d)",
+    sizeof(void *) + sizeof(void *) + sizeof(int) + sizeof(int));
+KTR_INFO(KTR_DMCRYPT, dmcrypt, crypto_cb_read_done, 2,
+    "crypto_cb_read_done(crp = %p, bp = %p, n = %d)",
+    sizeof(void *) + sizeof(void *) + sizeof(int));
 
 struct target_crypt_config;
 
@@ -98,9 +129,13 @@ typedef struct target_crypt_config {
 
 	struct iv_generator	*ivgen;
 	void	*ivgen_priv;
+
+	struct malloc_pipe	read_mpipe;
+	struct malloc_pipe	write_mpipe;
 } dm_target_crypt_config_t;
 
 struct dmtc_helper {
+	dm_target_crypt_config_t *priv;
 	caddr_t	free_addr;
 	caddr_t	orig_buf;
 	caddr_t data_buf;
@@ -158,32 +193,29 @@ struct objcache_malloc_args essiv_ivgen_malloc_args = {
 		2*sizeof(void *) + (sizeof(struct cryptodesc) +
 		sizeof(struct cryptop)), M_DMCRYPT };
 
-static struct malloc_pipe dmtc_read_mpipe;
-static struct malloc_pipe dmtc_write_mpipe;
-
 static void
-dmtc_init_mpipe(void)
+dmtc_init_mpipe(struct target_crypt_config *priv)
 {
 	int nmax;
 
-	nmax = (physmem*5/1000*PAGE_SIZE)/(DMTC_BUF_SIZE_WRITE + DMTC_BUF_SIZE_READ) + 1;
+	nmax = (physmem*2/1000*PAGE_SIZE)/(DMTC_BUF_SIZE_WRITE + DMTC_BUF_SIZE_READ) + 1;
 
 	if (nmax < 2)
 		nmax = 2;
 
 	kprintf("dm_target_crypt: Setting min/max mpipe buffers: %d/%d\n", 2, nmax);
 
-	mpipe_init(&dmtc_write_mpipe, M_DMCRYPT, DMTC_BUF_SIZE_WRITE,
+	mpipe_init(&priv->write_mpipe, M_DMCRYPT, DMTC_BUF_SIZE_WRITE,
 		   2, nmax, MPF_NOZERO | MPF_CALLBACK, NULL, NULL, NULL);
-	mpipe_init(&dmtc_read_mpipe, M_DMCRYPT, DMTC_BUF_SIZE_READ,
+	mpipe_init(&priv->read_mpipe, M_DMCRYPT, DMTC_BUF_SIZE_READ,
 		   2, nmax, MPF_NOZERO | MPF_CALLBACK, NULL, NULL, NULL);
 }
 
 static void
-dmtc_destroy_mpipe(void)
+dmtc_destroy_mpipe(struct target_crypt_config *priv)
 {
-	mpipe_done(&dmtc_write_mpipe);
-	mpipe_done(&dmtc_read_mpipe);
+	mpipe_done(&priv->write_mpipe);
+	mpipe_done(&priv->read_mpipe);
 }
 
 /*
@@ -713,6 +745,9 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 	}
 	priv->status_str = status_str;
 
+	/* Initialize mpipes */
+	dmtc_init_mpipe(priv);
+
 	return 0;
 
 notsup:
@@ -771,6 +806,9 @@ dm_target_crypt_destroy(dm_table_entry_t * table_en)
 		priv->ivgen->dtor(priv, priv->ivgen_priv);
 	}
 
+	/* Destroy mpipes */
+	dmtc_destroy_mpipe(priv);
+
 	dmtc_crypto_clear(priv, sizeof(dm_target_crypt_config_t));
 	kfree(priv, M_DMCRYPT);
 
@@ -824,9 +862,10 @@ dmtc_crypto_dispatch(void *arg)
 
 	crp = (struct cryptop *)arg;
 	KKASSERT(crp != NULL);
+	KTR_LOG(dmcrypt_crypto_dispatch, crp);
 	crypto_dispatch(crp);
 }
- 
+
 /*
  * Start IO operation, called from dmstrategy routine.
  */
@@ -850,6 +889,8 @@ dm_target_crypt_strategy(dm_table_entry_t *table_en, struct buf *bp)
 			return 0;
 		}
 	}
+
+	KTR_LOG(dmcrypt_crypt_strategy, bp->b_cmd, bp);
 
 	switch (bp->b_cmd) {
 	case BUF_CMD_READ:
@@ -883,6 +924,8 @@ dmtc_bio_read_done(struct bio *bio)
 	struct bio *obio;
 
 	dm_target_crypt_config_t *priv;
+
+	KTR_LOG(dmcrypt_bio_read_done, bio->bio_buf);
 
 	/*
 	 * If a read error occurs we shortcut the operation, otherwise
@@ -939,7 +982,7 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	 * read already completed and threw crypted data into the buffer
 	 * cache buffer.  Disable for now.
 	 */
-	space = mpipe_alloc_callback(&dmtc_read_mpipe,
+	space = mpipe_alloc_callback(&priv->read_mpipe,
 				     dmtc_crypto_read_retry, priv, bio);
 	if (space == NULL)
 		return;
@@ -949,6 +992,7 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	space += sizeof(struct dmtc_helper);
 	dmtc->orig_buf = NULL;
 	dmtc->data_buf = bio->bio_buf->b_data;
+	dmtc->priv = priv;
 	bio->bio_caller_info2.ptr = dmtc;
 	bio->bio_buf->b_error = 0;
 
@@ -996,6 +1040,9 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 
 		crd->crd_flags &= ~CRD_F_ENCRYPT;
 
+		KTR_LOG(dmcrypt_crypto_read_start, crp, bio->bio_buf, i,
+		    sectors);
+
 		/*
 		 * Note: last argument is used to generate salt(?) and is
 		 *	 a 64 bit value, but the original code passed an
@@ -1042,6 +1089,8 @@ dmtc_crypto_cb_read_done(struct cryptop *crp)
 	kprintf("dmtc_crypto_cb_read_done %p, n = %d\n", bio, n);
 #endif
 
+	KTR_LOG(dmcrypt_crypto_cb_read_done, crp, bio->bio_buf, n);
+
 	if (n == 1) {
 		/*
 		 * For the B_HASBOGUS case we didn't decrypt in place,
@@ -1059,7 +1108,7 @@ dmtc_crypto_cb_read_done(struct cryptop *crp)
 			       bio->bio_buf->b_bcount);
 		}
 #endif
-		mpipe_free(&dmtc_read_mpipe, dmtc->free_addr);
+		mpipe_free(&dmtc->priv->read_mpipe, dmtc->free_addr);
 		obio = pop_bio(bio);
 		biodone(obio);
 	}
@@ -1076,6 +1125,8 @@ dmtc_crypto_write_retry(void *arg1, void *arg2)
 {
 	dm_target_crypt_config_t *priv = arg1;
 	struct bio *bio = arg2;
+
+	KTR_LOG(dmcrypt_crypto_write_retry, bio->bio_buf);
 
 	dmtc_crypto_write_start(priv, bio);
 }
@@ -1105,7 +1156,7 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	/*
 	 * For writes and reads with bogus page don't decrypt in place.
 	 */
-	space = mpipe_alloc_callback(&dmtc_write_mpipe,
+	space = mpipe_alloc_callback(&priv->write_mpipe,
 				     dmtc_crypto_write_retry, priv, bio);
 	if (space == NULL)
 		return;
@@ -1120,6 +1171,7 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 
 	dmtc->orig_buf = bio->bio_buf->b_data;
 	dmtc->data_buf = space + sz;
+	dmtc->priv = priv;
 
 	/*
 	 * Load crypto descriptors (crp/crd loop)
@@ -1171,6 +1223,10 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 		 *	 int.  Changing it now will break pre-existing
 		 *	 crypt volumes.
 		 */
+
+		KTR_LOG(dmcrypt_crypto_write_start, crp, bio->bio_buf,
+		    i, sectors);
+
 		priv->ivgen->gen_iv(priv, crd->crd_iv, sizeof(crd->crd_iv),
 				    isector + i, crp);
 	}
@@ -1211,13 +1267,15 @@ dmtc_crypto_cb_write_done(struct cryptop *crp)
 	kprintf("dmtc_crypto_cb_write_done %p, n = %d\n", bio, n);
 #endif
 
+	KTR_LOG(dmcrypt_crypto_cb_write_done, crp, bio->bio_buf, n);
+
 	if (n == 1) {
 		dmtc = bio->bio_caller_info2.ptr;
 		priv = (dm_target_crypt_config_t *)bio->bio_caller_info1.ptr;
 
 		if (bio->bio_buf->b_error) {
 			bio->bio_buf->b_flags |= B_ERROR;
-			mpipe_free(&dmtc_write_mpipe, dmtc->free_addr);
+			mpipe_free(&dmtc->priv->write_mpipe, dmtc->free_addr);
 			obio = pop_bio(bio);
 			biodone(obio);
 		} else {
@@ -1241,7 +1299,10 @@ dmtc_bio_write_done(struct bio *bio)
 
 	dmtc = bio->bio_caller_info2.ptr;
 	bio->bio_buf->b_data = dmtc->orig_buf;
-	mpipe_free(&dmtc_write_mpipe, dmtc->free_addr);
+	mpipe_free(&dmtc->priv->write_mpipe, dmtc->free_addr);
+
+	KTR_LOG(dmcrypt_bio_write_done, bio->bio_buf);
+
 	obio = pop_bio(bio);
 	biodone(obio);
 }
@@ -1438,19 +1499,14 @@ dmtc_mod_handler(module_t mod, int type, void *unused)
 		dmt->upcall = &dm_target_crypt_upcall;
 		dmt->dump = &dm_target_crypt_dump;
 
-		dmtc_init_mpipe();
-
 		err = dm_target_insert(dmt);
-		if (err)
-			dmtc_destroy_mpipe();
-		else
+		if (!err)
 			kprintf("dm_target_crypt: Successfully initialized\n");
 		break;
 
 	case MOD_UNLOAD:
 		err = dm_target_rem("crypt");
 		if (err == 0) {
-			dmtc_destroy_mpipe();
 			kprintf("dm_target_crypt: unloaded\n");
 		}
 		break;

@@ -2554,6 +2554,7 @@ options	KTR
 #options KTR_TESTLOG
 #options KTR_TOKENS
 #options KTR_USB_MEMORY
+#options KTR_DMCRYPT
 options KTR_ALL
 options	KTR_ENTRIES=1024
 options	KTR_VERBOSE=1
