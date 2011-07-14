@@ -325,7 +325,7 @@ dm_dev_remove_ioctl(prop_dictionary_t dm_dict)
 {
 	dm_dev_t *dmv;
 	const char *name, *uuid;
-	uint32_t flags, minor;
+	uint32_t flags, minor, is_open;
 
 	flags = 0;
 	name = NULL;
@@ -348,9 +348,11 @@ dm_dev_remove_ioctl(prop_dictionary_t dm_dict)
 		return ENOENT;
 	}
 
+	is_open = dmv->is_open;
+
 	dm_dev_unbusy(dmv);
 
-	if (dmv->is_open)
+	if (is_open)
 		return EBUSY;
 
 	/*

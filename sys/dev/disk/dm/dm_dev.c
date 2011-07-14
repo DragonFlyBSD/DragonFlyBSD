@@ -249,6 +249,9 @@ dm_dev_create(dm_dev_t **dmvp, const char *name, const char *uuid, int flags)
 	dmv->devt = disk_create_named(name_buf, dm_minor, dmv->diskp, &dm_ops);
 	reference_dev(dmv->devt);
 
+	dmv->devt->si_drv1 = dmv;
+	dmv->devt->si_drv2 = dmv->diskp;
+
 	dmv->minor = minor(dmv->devt);
 	udev_dict_set_cstr(dmv->devt, "subsystem", "disk");
 
