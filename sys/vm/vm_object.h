@@ -283,6 +283,7 @@ void vm_object_init2 (void);
 vm_page_t vm_fault_object_page(vm_object_t, vm_ooffset_t, vm_prot_t, int, int *);
 void vm_object_dead_sleep(vm_object_t, const char *);
 void vm_object_dead_wakeup(vm_object_t);
+void vm_object_lock_swap(void);
 void vm_object_lock(vm_object_t);
 void vm_object_unlock(vm_object_t);
 

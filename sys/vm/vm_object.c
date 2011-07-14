@@ -163,7 +163,7 @@ vm_object_lock_init(vm_object_t obj)
 #endif
 }
 
-static void
+void
 vm_object_lock_swap(void)
 {
 	lwkt_token_swap();
