@@ -46,6 +46,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libdevattr \
 	libdevinfo \
 	libdevstat \
+	libdm \
 	libedit \
 	libevtr \
 	libexpat \
