@@ -179,7 +179,7 @@ Print command name of the given thread pointer (first argument).
 end
 
 document psx
-Output a list of processes with wait-channel (wchan) informaiton.
+Output a list of processes with wait-channel (wchan) information.
 end
 
 document running_threads
