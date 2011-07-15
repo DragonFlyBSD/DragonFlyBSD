@@ -1,6 +1,7 @@
 /*        $NetBSD: device-mapper.c,v 1.22 2010/03/26 15:46:04 jakllsch Exp $ */
 
 /*
+ * Copyright (c) 2010-2011 Alex Hornung <alex@alexhornung.com>
  * Copyright (c) 2010 The NetBSD Foundation, Inc.
  * All rights reserved.
  *

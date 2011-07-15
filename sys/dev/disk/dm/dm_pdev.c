@@ -1,6 +1,7 @@
 /*        $NetBSD: dm_pdev.c,v 1.6 2010/01/04 00:19:08 haad Exp $      */
 
 /*
+ * Copyright (c) 2010-2011 Alex Hornung <alex@alexhornung.com>
  * Copyright (c) 2008 The NetBSD Foundation, Inc.
  * All rights reserved.
  *

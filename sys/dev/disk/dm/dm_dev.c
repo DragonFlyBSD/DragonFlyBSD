@@ -1,6 +1,7 @@
 /*        $NetBSD: dm_dev.c,v 1.8 2010/01/04 00:19:08 haad Exp $      */
 
 /*
+ * Copyright (c) 2010-2011 Alex Hornung <alex@alexhornung.com>
  * Copyright (c) 2008 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
@@ -248,6 +249,9 @@ dm_dev_create(dm_dev_t **dmvp, const char *name, const char *uuid, int flags)
 
 	dmv->devt = disk_create_named(name_buf, dm_minor, dmv->diskp, &dm_ops);
 	reference_dev(dmv->devt);
+
+	/* Make sure the device are immediately available */
+	sync_devs();
 
 	dmv->devt->si_drv1 = dmv;
 	dmv->devt->si_drv2 = dmv->diskp;

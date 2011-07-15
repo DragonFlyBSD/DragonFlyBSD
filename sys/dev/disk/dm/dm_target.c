@@ -1,6 +1,7 @@
 /*        $NetBSD: dm_target.c,v 1.12 2010/01/04 00:14:41 haad Exp $      */
 
 /*
+ * Copyright (c) 2010-2011 Alex Hornung <alex@alexhornung.com>
  * Copyright (c) 2008 The NetBSD Foundation, Inc.
  * All rights reserved.
  *

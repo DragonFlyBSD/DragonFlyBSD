@@ -1,6 +1,7 @@
 /* $NetBSD: dm_ioctl.c,v 1.21 2010/02/25 20:48:58 jakllsch Exp $      */
 
 /*
+ * Copyright (c) 2010-2011 Alex Hornung <alex@alexhornung.com>
  * Copyright (c) 2008 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
