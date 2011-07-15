@@ -339,10 +339,6 @@ dm_dev_remove_ioctl(prop_dictionary_t dm_dict)
 
 	dm_dbg_print_flags(flags);
 
-	/*
-	 * This seems as hack to me, probably use routine dm_dev_get_devt to
-	 * atomicaly get devt from device.
-	 */
 	if ((dmv = dm_dev_lookup(name, uuid, minor)) == NULL) {
 		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
 		return ENOENT;
@@ -922,6 +918,73 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 	return 0;
 }
 
+int
+dm_message_ioctl(prop_dictionary_t dm_dict)
+{
+	dm_table_t  *tbl;
+	dm_table_entry_t *table_en;
+	dm_dev_t *dmv;
+	const char *name, *uuid;
+	uint32_t flags, minor;
+	uint64_t table_start, table_end, sector;
+	char *msg;
+	int ret, found = 0;
+
+	flags = 0;
+	name = NULL;
+	uuid = NULL;
+
+	/* Get needed values from dictionary. */
+	prop_dictionary_get_cstring_nocopy(dm_dict, DM_IOCTL_NAME, &name);
+	prop_dictionary_get_cstring_nocopy(dm_dict, DM_IOCTL_UUID, &uuid);
+	prop_dictionary_get_uint32(dm_dict, DM_IOCTL_FLAGS, &flags);
+	prop_dictionary_get_uint32(dm_dict, DM_IOCTL_MINOR, &minor);
+	prop_dictionary_get_uint64(dm_dict, DM_MESSAGE_SECTOR, &sector);
+
+	dm_dbg_print_flags(flags);
+
+	if ((dmv = dm_dev_lookup(name, uuid, minor)) == NULL) {
+		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
+		return ENOENT;
+	}
+
+	/* Get message string */
+	prop_dictionary_get_cstring(dm_dict, DM_MESSAGE_STR, &msg);
+
+	tbl = dm_table_get_entry(&dmv->table_head, DM_TABLE_ACTIVE);
+
+	ret = EINVAL;
+
+	if (sector == 0) {
+		if (!SLIST_EMPTY(tbl)) {
+			table_en = SLIST_FIRST(tbl);
+			found = 1;
+		}
+	} else {
+		SLIST_FOREACH(table_en, tbl, next) {
+			table_start = table_en->start;
+			table_end = table_start + (table_en->length);
+
+			if ((sector >= table_start) && (sector < table_end)) {
+				found = 1;
+				break;
+			}
+		}
+	}
+
+	if (found) {
+		if (table_en->target->message != NULL)
+			ret = table_en->target->message(table_en, msg);
+	}
+
+	dm_table_release(&dmv->table_head, DM_TABLE_ACTIVE);
+
+
+	kfree(msg, M_TEMP);
+	dm_dev_unbusy(dmv);
+
+	return ret;
+}
 
 /*
  * For every call I have to set kernel driver version.

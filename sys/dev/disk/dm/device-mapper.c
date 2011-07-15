@@ -128,6 +128,7 @@ static struct cmd_function cmd_fn[] = {
 		{ .cmd = "reload",  .fn = dm_table_load_ioctl},
 		{ .cmd = "status",  .fn = dm_table_status_ioctl},
 		{ .cmd = "table",   .fn = dm_table_status_ioctl},
+		{ .cmd = "message", .fn = dm_message_ioctl},
 		{NULL, NULL}
 };
 

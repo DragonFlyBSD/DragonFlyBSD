@@ -208,9 +208,10 @@
 #define DM_TABLE_STAT         "status"
 #define DM_TABLE_LENGTH       "length"
 #define DM_TABLE_PARAMS       "params"
-//#ifndef __LIB_DEVMAPPER__
-//#define DM_TABLE_DEPS         "deps"
-//#endif
+
+#define DM_MESSAGE_SECTOR     "sector"
+#define DM_MESSAGE_STR        "message"
+
 
 /* Status bits */
 /* IO mode of device */

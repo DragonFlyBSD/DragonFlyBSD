@@ -224,6 +224,9 @@ typedef struct dm_target {
 	/* Initialize target_config area */
 	int (*init)(dm_dev_t *, void **, char *);
 
+	/* Message interface */
+	int (*message)(dm_table_entry_t *, char *);
+
 	/* Destroy target_config area */
 	int (*destroy)(dm_table_entry_t *);
 	
@@ -279,6 +282,7 @@ int dm_table_clear_ioctl(prop_dictionary_t);
 int dm_table_deps_ioctl(prop_dictionary_t);
 int dm_table_load_ioctl(prop_dictionary_t);
 int dm_table_status_ioctl(prop_dictionary_t);
+int dm_message_ioctl(prop_dictionary_t);
 
 /* dm_target.c */
 int dm_target_init(void);
