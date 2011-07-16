@@ -783,12 +783,15 @@ exp_fold_tree_1 (etree_type *tree)
     case etree_provided:
       if (tree->assign.dst[0] == '.' && tree->assign.dst[1] == 0)
 	{
-	  /* Assignment to dot can only be done during allocation.  */
 	  if (tree->type.node_class != etree_assign)
 	    einfo (_("%F%S can not PROVIDE assignment to location counter\n"));
+	  /* After allocation, assignment to dot should not be done inside
+	     an output section since allocation adds a padding statement
+	     that effectively duplicates the assignment.  */
 	  if (expld.phase == lang_mark_phase_enum
 	      || expld.phase == lang_allocating_phase_enum
-	      || (expld.phase == lang_final_phase_enum
+	      || ((expld.phase == lang_assigning_phase_enum
+		   || expld.phase == lang_final_phase_enum)
 		  && expld.section == bfd_abs_section_ptr))
 	    {
 	      /* Notify the folder that this is an assignment to dot.  */
@@ -829,6 +832,8 @@ exp_fold_tree_1 (etree_type *tree)
 	}
       else
 	{
+	  etree_type *name;
+
 	  struct bfd_link_hash_entry *h = NULL;
 
 	  if (tree->type.node_class == etree_provide)
@@ -845,6 +850,23 @@ exp_fold_tree_1 (etree_type *tree)
 		  break;
 		}
 	    }
+
+	  name = tree->assign.src;
+	  if (name->type.node_class == etree_trinary)
+	    {
+	      exp_fold_tree_1 (name->trinary.cond);
+	      if (expld.result.valid_p)
+		name = (expld.result.value
+			? name->trinary.lhs : name->trinary.rhs);
+	    }
+
+	  if (name->type.node_class == etree_name
+	      && name->type.node_code == NAME
+	      && strcmp (tree->assign.dst, name->name.name) == 0)
+	    /* Leave it alone.  Do not replace a symbol with its own
+	       output address, in case there is another section sizing
+	       pass.  Folding does not preserve input sections.  */
+	    break;
 
 	  exp_fold_tree_1 (tree->assign.src);
 	  if (expld.result.valid_p
@@ -873,7 +895,8 @@ exp_fold_tree_1 (etree_type *tree)
 		tree->type.node_class = etree_provided;
 
 	      /* Copy the symbol type if this is a simple assignment of
-	         one symbol to annother.  */
+	         one symbol to another.  This could be more general
+		 (e.g. a ?: operator with NAMEs in each branch).  */
 	      if (tree->assign.src->type.node_class == etree_name)
 		{
 		  struct bfd_link_hash_entry *hsrc;

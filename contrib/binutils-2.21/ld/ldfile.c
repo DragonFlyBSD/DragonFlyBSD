@@ -313,41 +313,19 @@ success:
      will be needed when and if we want to bfd_create a new
      one using this one as a template.  */
   if (bfd_check_format (entry->the_bfd, bfd_object)
-      && plugin_active_plugins_p ())
+      && plugin_active_plugins_p ()
+      && !no_more_claiming)
     {
       int fd = open (attempt, O_RDONLY | O_BINARY);
       if (fd >= 0)
 	{
 	  struct ld_plugin_input_file file;
-	  int claimed = 0;
 
 	  file.name = attempt;
 	  file.offset = 0;
 	  file.filesize = lseek (fd, 0, SEEK_END);
 	  file.fd = fd;
-	  /* We create a dummy BFD, initially empty, to house
-	     whatever symbols the plugin may want to add.  */
-	  file.handle = plugin_get_ir_dummy_bfd (attempt, entry->the_bfd);
-	  if (plugin_call_claim_file (&file, &claimed))
-	    einfo (_("%P%F: %s: plugin reported error claiming file\n"),
-		   plugin_error_plugin ());
-	  /* fd belongs to us, not the plugin; but we don't need it.  */
-	  close (fd);
-	  if (claimed)
-	    {
-	      /* Discard the real file's BFD and substitute the dummy one.  */
-	      bfd_close (entry->the_bfd);
-	      entry->the_bfd = file.handle;
-	      entry->claimed = TRUE;
-	      bfd_make_readable (entry->the_bfd);
-	    }
-	  else
-	    {
-	      /* If plugin didn't claim the file, we don't need the dummy
-		 bfd.  Can't avoid speculatively creating it, alas.  */
-	      bfd_close_all_done (file.handle);
-	      entry->claimed = FALSE;
-	    }
+	  plugin_maybe_claim (&file, entry);
 	}
     }
 #endif /* ENABLE_PLUGINS */

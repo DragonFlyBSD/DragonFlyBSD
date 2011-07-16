@@ -1,7 +1,7 @@
 /* as.h - global header file
    Copyright 1987, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
-   1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
+   2011 Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -573,6 +573,16 @@ COMMON int flag_m68k_mri;
 COMMON int           warn_comment;
 COMMON unsigned int  found_comment;
 COMMON char *        found_comment_file;
+#endif
+
+#if defined OBJ_ELF || defined OBJ_MAYBE_ELF
+/* If .size directive failure should be error or warning.  */
+COMMON enum
+  {
+    size_check_error = 0,
+    size_check_warning
+  }
+flag_size_check;
 #endif
 
 #ifndef DOLLAR_AMBIGU

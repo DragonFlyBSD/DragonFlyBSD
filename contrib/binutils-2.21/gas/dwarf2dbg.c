@@ -1080,7 +1080,7 @@ emit_fixed_inc_line_addr (int line_delta, addressT addr_delta, fragS *frag,
       symbolS *to_sym;
       expressionS exp;
 
-      gas_assert (pexp->X_op = O_subtract);
+      gas_assert (pexp->X_op == O_subtract);
       to_sym = pexp->X_add_symbol;
 
       *p++ = DW_LNS_extended_op;

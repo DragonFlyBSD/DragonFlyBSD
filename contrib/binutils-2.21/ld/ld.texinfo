@@ -1851,13 +1851,14 @@ Normally the linker will generate an error message for each reported
 unresolved symbol but the option @option{--warn-unresolved-symbols}
 can change this to a warning.
 
-@kindex --verbose
-@cindex verbose
+@kindex --verbose[=@var{NUMBER}]
+@cindex verbose[=@var{NUMBER}]
 @item --dll-verbose
-@itemx --verbose
+@itemx --verbose[=@var{NUMBER}]
 Display the version number for @command{ld} and list the linker emulations
 supported.  Display which input files can and cannot be opened.  Display
-the linker script being used by the linker.
+the linker script being used by the linker. If the optional @var{NUMBER}
+argument > 1, plugin symbol status will also be displayed.
 
 @kindex --version-script=@var{version-scriptfile}
 @cindex version script, symbol versions

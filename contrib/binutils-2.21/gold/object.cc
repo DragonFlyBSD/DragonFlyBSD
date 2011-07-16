@@ -1214,7 +1214,7 @@ Sized_relobj<size, big_endian>::do_layout(Symbol_table* symtab,
         { 
           if (this->handle_gnu_warning_section(name, i, symtab))
             { 
-    	      if (!relocatable)
+    	      if (!relocatable && !parameters->options().shared())
 	        omit[i] = true;
 	    }
 
@@ -1233,8 +1233,7 @@ Sized_relobj<size, big_endian>::do_layout(Symbol_table* symtab,
 	  // -fsplit-stack.
 	  if (this->handle_split_stack_section(name))
 	    {
-	      if (!parameters->options().relocatable()
-		  && !parameters->options().shared())
+	      if (!relocatable && !parameters->options().shared())
 		omit[i] = true;
 	    }
 

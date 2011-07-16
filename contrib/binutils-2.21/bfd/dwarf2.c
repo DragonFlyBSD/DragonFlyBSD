@@ -2164,6 +2164,7 @@ scan_unit_for_symbols (struct comp_unit *unit)
 		  break;
 
 		case DW_AT_abstract_origin:
+		case DW_AT_specification:
 		  func->name = find_abstract_instance_name (unit, &attr);
 		  break;
 

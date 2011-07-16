@@ -2846,6 +2846,17 @@ Orphan_output_section::set_section_addresses(Symbol_table*, Layout*,
   uint64_t address = *dot_value;
   address = align_address(address, this->os_->addralign());
 
+  // For a relocatable link, all orphan sections are put at
+  // address 0.  In general we expect all sections to be at
+  // address 0 for a relocatable link, but we permit the linker
+  // script to override that for specific output sections.
+  if (parameters->options().relocatable())
+    {
+      address = 0;
+      *load_address = 0;
+      have_load_address = false;
+    }
+
   if ((this->os_->flags() & elfcpp::SHF_ALLOC) != 0)
     {
       this->os_->set_address(address);
@@ -3561,8 +3572,8 @@ class Sort_output_sections
   operator()(const Output_section* os1, const Output_section* os2) const;
 
  private:
-  bool
-  is_before(const Output_section* os1, const Output_section* os2) const;
+  int
+  script_compare(const Output_section* os1, const Output_section* os2) const;
 
  private:
   const Script_sections::Sections_elements* elements_;
@@ -3586,6 +3597,12 @@ Sort_output_sections::operator()(const Output_section* os1,
   if (os1->address() != os2->address())
     return os1->address() < os2->address();
 
+  // If the linker script says which of these sections is first, go
+  // with what it says.
+  int i = this->script_compare(os1, os2);
+  if (i != 0)
+    return i < 0;
+
   // Sort PROGBITS before NOBITS.
   bool nobits1 = os1->type() == elfcpp::SHT_NOBITS;
   bool nobits2 = os2->type() == elfcpp::SHT_NOBITS;
@@ -3604,38 +3621,46 @@ Sort_output_sections::operator()(const Output_section* os1,
     return true;
   if (!os1->is_noload() && os2->is_noload())
     return true;
-  
-  // The sections have the same address. Check the section positions 
-  // in accordance with the linker script.
-  return this->is_before(os1, os2);
+
+  // The sections seem practically identical.  Sort by name to get a
+  // stable sort.
+  return os1->name() < os2->name();
 }
 
-// Return true if OS1 comes before OS2 in ELEMENTS_.  This ensures
-// that we keep empty sections in the order in which they appear in a
-// linker script.
+// Return -1 if OS1 comes before OS2 in ELEMENTS_, 1 if comes after, 0
+// if either OS1 or OS2 is not mentioned.  This ensures that we keep
+// empty sections in the order in which they appear in a linker
+// script.
 
-bool
-Sort_output_sections::is_before(const Output_section* os1,
-				const Output_section* os2) const
+int
+Sort_output_sections::script_compare(const Output_section* os1,
+				     const Output_section* os2) const
 {
   if (this->elements_ == NULL)
-    return false;
+    return 0;
 
+  bool found_os1 = false;
+  bool found_os2 = false;
   for (Script_sections::Sections_elements::const_iterator
 	 p = this->elements_->begin();
        p != this->elements_->end();
        ++p)
     {
-      if (os1 == (*p)->get_output_section())
+      if (os2 == (*p)->get_output_section())
 	{
-	  for (++p; p != this->elements_->end(); ++p)
-	    if (os2 == (*p)->get_output_section())
-	      return true;
-	  break;
+	  if (found_os1)
+	    return -1;
+	  found_os2 = true;
+	}
+      else if (os1 == (*p)->get_output_section())
+	{
+	  if (found_os2)
+	    return 1;
+	  found_os1 = true;
 	}
     }
 
-  return false;
+  return 0;
 }
 
 // Return whether OS is a BSS section.  This is a SHT_NOBITS section.

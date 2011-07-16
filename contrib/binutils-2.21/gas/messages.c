@@ -1,6 +1,6 @@
 /* messages.c - error reporter -
    Copyright 1987, 1991, 1992, 1993, 1994, 1995, 1996, 1998, 2000, 2001,
-   2003, 2004, 2005, 2006, 2007, 2008
+   2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
    This file is part of GAS, the GNU Assembler.
 
@@ -113,7 +113,12 @@ as_show_where (void)
   as_where (&file, &line);
   identify (file);
   if (file)
-    fprintf (stderr, "%s:%u: ", file, line);
+    {
+      if (line != 0)
+	fprintf (stderr, "%s:%u: ", file, line);
+      else
+	fprintf (stderr, "%s: ", file);
+    }
 }
 
 /* Send to stderr a string as a warning, and locate warning
@@ -146,7 +151,12 @@ as_warn_internal (char *file, unsigned int line, char *buffer)
 
   identify (file);
   if (file)
-    fprintf (stderr, "%s:%u: ", file, line);
+    {
+      if (line != 0)
+	fprintf (stderr, "%s:%u: ", file, line);
+      else
+	fprintf (stderr, "%s: ", file);
+    }
   fprintf (stderr, _("Warning: "));
   fputs (buffer, stderr);
   (void) putc ('\n', stderr);
@@ -207,7 +217,12 @@ as_bad_internal (char *file, unsigned int line, char *buffer)
 
   identify (file);
   if (file)
-    fprintf (stderr, "%s:%u: ", file, line);
+    {
+      if (line != 0)
+	fprintf (stderr, "%s:%u: ", file, line);
+      else
+	fprintf (stderr, "%s: ", file);
+    }
   fprintf (stderr, _("Error: "));
   fputs (buffer, stderr);
   (void) putc ('\n', stderr);

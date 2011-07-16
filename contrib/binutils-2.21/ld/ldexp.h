@@ -97,6 +97,7 @@ typedef enum {
   lang_first_phase_enum,
   lang_mark_phase_enum,
   lang_allocating_phase_enum,
+  lang_assigning_phase_enum,
   lang_final_phase_enum
 } lang_phase_type;
 

@@ -661,10 +661,6 @@ _bfd_get_elt_at_filepos (bfd *archive, file_ptr filepos)
   if (_bfd_add_bfd_to_archive_cache (archive, filepos, n_nfd))
     return n_nfd;
 
-  /* Huh?  */
-  /* FIXME:  n_nfd isn't allocated in the archive's memory pool.
-     If we reach this point, I think bfd_release will abort.  */
-  bfd_release (archive, n_nfd);
   bfd_release (archive, new_areldata);
   return NULL;
 }

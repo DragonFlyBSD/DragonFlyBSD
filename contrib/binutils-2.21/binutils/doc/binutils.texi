@@ -724,7 +724,9 @@ hexadecimal by default.
 @item
 The symbol type.  At least the following types are used; others are, as
 well, depending on the object file format.  If lowercase, the symbol is
-local; if uppercase, the symbol is global (external).
+usually local; if uppercase, the symbol is global (external).  There
+are however a few lowercase symbols that are shown for special global
+symbols (@code{u}, @code{v} and @code{w}).
 
 @c Some more detail on exactly what these symbol types are used for
 @c would be nice.

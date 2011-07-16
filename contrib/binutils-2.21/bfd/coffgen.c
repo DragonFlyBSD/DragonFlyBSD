@@ -915,6 +915,9 @@ coff_write_symbol (bfd *abfd,
   unsigned int numaux = native->u.syment.n_numaux;
   int type = native->u.syment.n_type;
   int n_sclass = (int) native->u.syment.n_sclass;
+  asection *output_section = symbol->section->output_section
+			       ? symbol->section->output_section
+			       : symbol->section;
   void * buf;
   bfd_size_type symesz;
 
@@ -933,7 +936,7 @@ coff_write_symbol (bfd *abfd,
 
   else
     native->u.syment.n_scnum =
-      symbol->section->output_section->target_index;
+      output_section->target_index;
 
   coff_fix_symbol_name (abfd, symbol, native, string_size_p,
 			debug_string_section_p, debug_string_size_p);
@@ -990,6 +993,9 @@ coff_write_alien_symbol (bfd *abfd,
 {
   combined_entry_type *native;
   combined_entry_type dummy;
+  asection *output_section = symbol->section->output_section
+			       ? symbol->section->output_section
+			       : symbol->section;
 
   native = &dummy;
   native->u.syment.n_type = T_NULL;
@@ -1015,12 +1021,11 @@ coff_write_alien_symbol (bfd *abfd,
     }
   else
     {
-      native->u.syment.n_scnum =
-	symbol->section->output_section->target_index;
+      native->u.syment.n_scnum = output_section->target_index;
       native->u.syment.n_value = (symbol->value
 				  + symbol->section->output_offset);
       if (! obj_pe (abfd))
-	native->u.syment.n_value += symbol->section->output_section->vma;
+	native->u.syment.n_value += output_section->vma;
 
       /* Copy the any flags from the file header into the symbol.
          FIXME: Why?  */
