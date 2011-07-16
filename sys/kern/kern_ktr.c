@@ -61,9 +61,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-/*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.23 2008/02/12 23:33:23 corecode Exp $
- */
+
 /*
  * Kernel tracepoint facility.
  */
@@ -95,6 +93,8 @@
 
 #ifndef KTR_ENTRIES
 #define	KTR_ENTRIES		2048
+#elif (KTR_ENTRIES & KTR_ENTRIES - 1)
+#error KTR_ENTRIES must be a power of two
 #endif
 #define KTR_ENTRIES_MASK	(KTR_ENTRIES - 1)
 
