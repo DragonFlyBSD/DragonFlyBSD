@@ -23,9 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/ktr.9,v 1.8 2005/03/08 01:37:36 hmp Exp $
-.\" $DragonFly: src/share/man/man9/ktr.9,v 1.11 2008/01/08 17:45:43 swildner Exp $
 .\"
-.Dd January 8, 2008
+.Dd July 16, 2011
 .Dt KTR 9
 .Os
 .Sh NAME
@@ -77,15 +76,16 @@ style format string used to build the text of the event log message while
 specifies the size of the data to be logged, either the total size of the
 arguments required by the
 .Fa format
-string or the size of the data pointer
-.Fa ptr .
+string.
 For logging a fixed string with
 .Fn KTR_INFO ,
 .Fa datasize
 is 0.
 The
 .Fa maskbit
-is currently unused and can be set to 0.
+is a bit number that determines which of the corresponding
+.Va debug.ktr.*_enable
+sysctl's bits will enable logging of this event.
 .Pp
 Kernel events are logged via the
 .Fn KTR_LOG
