@@ -62,9 +62,6 @@
 /* Define to 1 if you have the `glob' function. */
 #define HAVE_GLOB 1
 
-/* Define .init_array/.fini_array sections are available and working. */
-/* #undef HAVE_INITFINI_ARRAY */
-
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
@@ -196,7 +193,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.21.0"
+#define VERSION "2.21.1"
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */

@@ -1,42 +1,18 @@
+GNU BINUTILS 2.21.1
+===================
 
-    BINUTILS-2.21 AS USED BY DRAGONFLY
-    ==================================
+Original source can be downloaded from:
+http://ftp.gnu.org/gnu/binutils
 
-    This directory contains a selected set of files from the GNU
-    binutils-2.21 distribution.  The entire distribution is 123MB but
-    we really only need around 14MB of it. No files have been moved
-    from their extracted position.
+file = binutils-2.21.1.tar.bz2
+date = 27 June 2011
+size = 18890094
+sha1 = f188490772cc902ec44a76545887bff60dbfa22d
 
-    ON THE VENDOR BRANCH (vendor/BINUTILS221), DO NOT CREATE OR EDIT ANY
-    FILES IN THIS DIRECTORY HIERARCHY!  THIS HIERARCHY REPRESENTS AN EXACT
-    COPY, MINUS UNNEEDED FILES, OF THE GNU BINUTILS DISTRIBUTION:
-    http://repo.or.cz/w/binutils.git/tree/c63d06a13f1254f18bb957e3dc40f7932b7e85d4
-    Committed: Sat, 5 Mar 2011 23:00:12 +0000 (23:00 +0000)
+A list of files and directories removed is in README.DELETED
 
-
-    The follow files were imported from a pre-built instance:
-
-	bfd/bfdver.h
-	bfd/doc/bfdver.texi
-	binutils/doc/addr2line.1
-	binutils/doc/ar.1
-	binutils/doc/c++filt.1
-	binutils/doc/elfedit.1
-	binutils/doc/nm.1
-	binutils/doc/objcopy.1
-	binutils/doc/objdump.1
-	binutils/doc/ranlib.1
-	binutils/doc/readelf.1
-	binutils/doc/size.1
-	binutils/doc/strings.1
-	binutils/doc/strip.1
-	gas/doc/as.1
-	ld/ld.1
-
-
-    The following files were patched:
-
-	bfd/config.bfd
-	binutils/arlex.l
-	gas/config/tc-i386.c
+Local modifications applied to following files:
+	binutils/arlex.1
+	bfd/bfdver.h (new)
+	gold/options.h
 	ld/ldlex.l

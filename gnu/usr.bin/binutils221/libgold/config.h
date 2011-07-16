@@ -21,7 +21,7 @@
 /* #define GOLD_DEFAULT_MACHINE EM_386 */
 
 /* Default OSABI code */
-#define GOLD_DEFAULT_OSABI ELFOSABI_FREEBSD
+#define GOLD_DEFAULT_OSABI ELFOSABI_NONE
 
 /* Default size (32 or 64) */
 /* #define GOLD_DEFAULT_SIZE 32 */

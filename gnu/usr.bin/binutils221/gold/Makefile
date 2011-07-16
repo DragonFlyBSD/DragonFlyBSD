@@ -23,6 +23,7 @@ CFLAGS+= -DBINDIR="\"${TOOLS_PREFIX}${BINDIR}\""
 CFLAGS+= -DTOOLBINDIR="\"${TOOLS_PREFIX}${BINDIR}\""
 CFLAGS+= -I. -I${.CURDIR}
 CFLAGS+= -I${SRCDIR}/include -I${SRCDIR}/elfcpp
+CFLAGS+= -I${.CURDIR}/../libgold
 
 DPADD= ${RELTOP}/libgold/libgold.a
 LDADD= ${RELTOP}/libgold/libgold.a
