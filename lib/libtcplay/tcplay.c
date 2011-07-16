@@ -26,7 +26,9 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#include <machine/inttypes.h>
 #include <sys/types.h>
+#include <sys/param.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -34,7 +36,7 @@
 #include <string.h>
 #include <err.h>
 #include <time.h>
-#include <libdevmapper.h>
+#include <libdm.h>
 #include <libutil.h>
 
 #include "crc32.h"
