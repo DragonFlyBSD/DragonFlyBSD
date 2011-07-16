@@ -51,7 +51,7 @@ prop_array_get_bool(prop_array_t array,
 	b = prop_array_get(array, indx);
 	if (prop_object_type(b) != PROP_TYPE_BOOL)
 		return (false);
-
+	
 	*valp = prop_bool_true(b);
 
 	return (true);
@@ -238,3 +238,14 @@ TEMPLATE(,)
 TEMPLATE(_nocopy,const)
 
 #undef TEMPLATE
+
+bool
+prop_array_add_and_rel(prop_array_t array, prop_object_t po)
+{
+	bool ret;
+	if (po == NULL)
+		return false;
+	ret = prop_array_add(array, po);
+	prop_object_release(po);
+	return ret;
+}

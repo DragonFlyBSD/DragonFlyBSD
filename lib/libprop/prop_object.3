@@ -65,14 +65,15 @@
 The
 .Nm prop_object
 family of functions operate on all property container object types.
-.Bl -tag -width 0n
+.Bl -tag -width ""
 .It Fn prop_object_retain "prop_object_t obj"
 Increment the reference count on an object.
 .It Fn prop_object_release "prop_object_t obj"
 Decrement the reference count on an object.
 If the last reference is dropped, the object is freed.
 .It Fn prop_object_type "prop_object_t obj"
-Determine the type of the object.  Objects are one of the following types:
+Determine the type of the object.
+Objects are one of the following types:
 .Pp
 .Bl -tag -width "PROP_TYPE_DICT_KEYSYM" -compact
 .It Dv PROP_TYPE_BOOL

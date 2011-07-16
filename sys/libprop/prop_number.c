@@ -61,10 +61,6 @@ struct _prop_number {
 	} pn_value;
 };
 
-#define	RBNODE_TO_PN(n)							\
-	((struct _prop_number *)					\
-	 ((uintptr_t)n - offsetof(struct _prop_number, pn_link)))
-
 _PROP_POOL_INIT(_prop_number_pool, sizeof(struct _prop_number), "propnmbr")
 
 static _prop_object_free_rv_t
@@ -85,8 +81,8 @@ static const struct _prop_object_type _prop_object_type_number = {
 	.pot_free	=	_prop_number_free,
 	.pot_extern	=	_prop_number_externalize,
 	.pot_equals	=	_prop_number_equals,
-	.pot_lock	=	_prop_number_lock,
-	.pot_unlock	=	_prop_number_unlock,
+	.pot_lock       =       _prop_number_lock,
+	.pot_unlock     =    	_prop_number_unlock,
 };
 
 #define	prop_object_is_number(x)	\
@@ -125,28 +121,31 @@ _prop_number_compare_values(const struct _prop_number_value *pnv1,
 }
 
 static int
-_prop_number_rb_compare_nodes(const struct rb_node *n1,
-			      const struct rb_node *n2)
+/*ARGSUSED*/
+_prop_number_rb_compare_nodes(void *ctx __unused,
+			      const void *n1, const void *n2)
 {
-	const prop_number_t pn1 = RBNODE_TO_PN(n1);
-	const prop_number_t pn2 = RBNODE_TO_PN(n2);
+	const struct _prop_number *pn1 = n1;
+	const struct _prop_number *pn2 = n2;
 
-	return (_prop_number_compare_values(&pn1->pn_value, &pn2->pn_value));
+	return _prop_number_compare_values(&pn1->pn_value, &pn2->pn_value);
 }
 
 static int
-_prop_number_rb_compare_key(const struct rb_node *n,
-			    const void *v)
+/*ARGSUSED*/
+_prop_number_rb_compare_key(void *ctx __unused, const void *n, const void *v)
 {
-	const prop_number_t pn = RBNODE_TO_PN(n);
+	const struct _prop_number *pn = n;
 	const struct _prop_number_value *pnv = v;
 
-	return (_prop_number_compare_values(&pn->pn_value, pnv));
+	return _prop_number_compare_values(&pn->pn_value, pnv);
 }
 
-static const struct rb_tree_ops _prop_number_rb_tree_ops = {
+static const rb_tree_ops_t _prop_number_rb_tree_ops = {
 	.rbto_compare_nodes = _prop_number_rb_compare_nodes,
-	.rbto_compare_key   = _prop_number_rb_compare_key,
+	.rbto_compare_key = _prop_number_rb_compare_key,
+	.rbto_node_offset = offsetof(struct _prop_number, pn_link),
+	.rbto_context = NULL
 };
 
 static struct rb_tree _prop_number_tree;
@@ -158,7 +157,7 @@ _prop_number_free(prop_stack_t stack, prop_object_t *obj)
 {
 	prop_number_t pn = *obj;
 
-	_prop_rb_tree_remove_node(&_prop_number_tree, &pn->pn_link);
+	_prop_rb_tree_remove_node(&_prop_number_tree, pn);
 
 	_PROP_POOL_PUT(_prop_number_pool, pn);
 
@@ -172,12 +171,11 @@ _prop_number_init(void)
 {
 
 	_PROP_MUTEX_INIT(_prop_number_tree_mutex);
-	_prop_rb_tree_init(&_prop_number_tree,
-	    &_prop_number_rb_tree_ops);
+	_prop_rb_tree_init(&_prop_number_tree, &_prop_number_rb_tree_ops);
 	return 0;
 }
 
-static void
+static void 
 _prop_number_lock(void)
 {
 	/* XXX: init necessary? */
@@ -190,7 +188,7 @@ _prop_number_unlock(void)
 {
 	_PROP_MUTEX_UNLOCK(_prop_number_tree_mutex);
 }
-
+	
 static bool
 _prop_number_externalize(struct _prop_object_externalize_context *ctx,
 			 void *v)
@@ -211,7 +209,7 @@ _prop_number_externalize(struct _prop_object_externalize_context *ctx,
 	    _prop_object_externalize_append_cstring(ctx, tmpstr) == false ||
 	    _prop_object_externalize_end_tag(ctx, "integer") == false)
 		return (false);
-
+	
 	return (true);
 }
 
@@ -274,9 +272,7 @@ _prop_number_equals(prop_object_t v1, prop_object_t v2,
 static prop_number_t
 _prop_number_alloc(const struct _prop_number_value *pnv)
 {
-	prop_number_t opn, pn;
-	struct rb_node *n;
-	bool rv;
+	prop_number_t opn, pn, rpn;
 
 	_PROP_ONCE_RUN(_prop_number_init_once, _prop_number_init);
 
@@ -285,9 +281,8 @@ _prop_number_alloc(const struct _prop_number_value *pnv)
 	 * we just retain it and return it.
 	 */
 	_PROP_MUTEX_LOCK(_prop_number_tree_mutex);
-	n = _prop_rb_tree_find(&_prop_number_tree, pnv);
-	if (n != NULL) {
-		opn = RBNODE_TO_PN(n);
+	opn = _prop_rb_tree_find(&_prop_number_tree, pnv);
+	if (opn != NULL) {
 		prop_object_retain(opn);
 		_PROP_MUTEX_UNLOCK(_prop_number_tree_mutex);
 		return (opn);
@@ -311,16 +306,15 @@ _prop_number_alloc(const struct _prop_number_value *pnv)
 	 * we have to check again if it is in the tree.
 	 */
 	_PROP_MUTEX_LOCK(_prop_number_tree_mutex);
-	n = _prop_rb_tree_find(&_prop_number_tree, pnv);
-	if (n != NULL) {
-		opn = RBNODE_TO_PN(n);
+	opn = _prop_rb_tree_find(&_prop_number_tree, pnv);
+	if (opn != NULL) {
 		prop_object_retain(opn);
 		_PROP_MUTEX_UNLOCK(_prop_number_tree_mutex);
 		_PROP_POOL_PUT(_prop_number_pool, pn);
 		return (opn);
 	}
-	rv = _prop_rb_tree_insert_node(&_prop_number_tree, &pn->pn_link);
-	_PROP_ASSERT(rv == true);
+	rpn = _prop_rb_tree_insert_node(&_prop_number_tree, pn);
+	_PROP_ASSERT(rpn == pn);
 	_PROP_MUTEX_UNLOCK(_prop_number_tree_mutex);
 	return (pn);
 }
@@ -415,7 +409,7 @@ prop_number_size(prop_number_t pn)
 	}
 
 	if (pnv->pnv_signed > INT32_MAX || pnv->pnv_signed < INT32_MIN)
-		return (64);
+	    	return (64);
 	if (pnv->pnv_signed > INT16_MAX || pnv->pnv_signed < INT16_MIN)
 		return (32);
 	if (pnv->pnv_signed > INT8_MAX  || pnv->pnv_signed < INT8_MIN)
@@ -486,7 +480,7 @@ prop_number_equals_integer(prop_number_t pn, int64_t val)
 	if (pn->pn_value.pnv_is_unsigned &&
 	    (pn->pn_value.pnv_unsigned > INT64_MAX || val < 0))
 		return (false);
-
+	
 	return (pn->pn_value.pnv_signed == val);
 }
 
@@ -501,11 +495,11 @@ prop_number_equals_unsigned_integer(prop_number_t pn, uint64_t val)
 
 	if (! prop_object_is_number(pn))
 		return (false);
-
+	
 	if (! pn->pn_value.pnv_is_unsigned &&
 	    (pn->pn_value.pnv_signed < 0 || val > INT64_MAX))
 		return (false);
-
+	
 	return (pn->pn_value.pnv_unsigned == val);
 }
 
@@ -547,7 +541,7 @@ _prop_number_internalize_signed(struct _prop_object_internalize_context *ctx,
 #ifndef _KERNEL		/* XXX can't check for ERANGE in the kernel */
 	if ((pnv->pnv_signed == INT64_MAX || pnv->pnv_signed == INT64_MIN) &&
 	    errno == ERANGE)
-		return (false);
+	    	return (false);
 #endif
 	pnv->pnv_is_unsigned = false;
 	ctx->poic_cp = cp;
@@ -589,7 +583,7 @@ _prop_number_internalize(prop_stack_t stack, prop_object_t *obj,
 	} else {
 		if (_prop_number_internalize_signed(ctx, &pnv) == false &&
 		    _prop_number_internalize_unsigned(ctx, &pnv) == false)
-			return (true);
+		    	return (true);
 	}
 
 	if (_prop_object_internalize_find_tag(ctx, "integer",

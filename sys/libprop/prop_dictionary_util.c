@@ -42,6 +42,18 @@
 #include "prop_object_impl.h"	/* only to hide kernel vs. not-kernel */
 
 bool
+prop_dictionary_get_dict(prop_dictionary_t dict, const char *key, prop_dictionary_t *dp)
+{
+	prop_object_t o;
+	o = prop_dictionary_get(dict, key);
+	if (o == NULL || prop_object_type(o) != PROP_TYPE_DICTIONARY)
+		return false;
+	*dp = o;
+	return true;
+
+}
+
+bool
 prop_dictionary_get_bool(prop_dictionary_t dict,
 			 const char *key,
 			 bool *valp)
@@ -51,7 +63,7 @@ prop_dictionary_get_bool(prop_dictionary_t dict,
 	b = prop_dictionary_get(dict, key);
 	if (prop_object_type(b) != PROP_TYPE_BOOL)
 		return (false);
-
+	
 	*valp = prop_bool_true(b);
 
 	return (true);
@@ -206,3 +218,15 @@ TEMPLATE(,)
 TEMPLATE(_nocopy,const)
 
 #undef TEMPLATE
+
+bool
+prop_dictionary_set_and_rel(prop_dictionary_t dict, const char *key,
+    prop_object_t po)
+{
+	bool ret;
+	if (po == NULL)
+		return false;
+	ret = prop_dictionary_set(dict, key, po);
+	prop_object_release(po);
+	return ret;
+}

@@ -30,6 +30,7 @@ MLINKS+= prop_send_ioctl.3 prop_dictionary_sendrecv_ioctl.3
 MAN+=	prop_dictionary_util.3
 MLINKS+= prop_dictionary_util.3 prop_dictionary_get_bool.3
 MLINKS+= prop_dictionary_util.3 prop_dictionary_set_bool.3
+MLINKS+= prop_dictionary_util.3	prop_dictionary_get_dict.3
 MLINKS+= prop_dictionary_util.3 prop_dictionary_get_int8.3
 MLINKS+= prop_dictionary_util.3 prop_dictionary_get_uint8.3
 MLINKS+= prop_dictionary_util.3 prop_dictionary_set_int8.3
@@ -50,6 +51,7 @@ MLINKS+= prop_dictionary_util.3 prop_dictionary_get_cstring.3
 MLINKS+= prop_dictionary_util.3 prop_dictionary_set_cstring.3
 MLINKS+= prop_dictionary_util.3 prop_dictionary_get_cstring_nocopy.3
 MLINKS+= prop_dictionary_util.3 prop_dictionary_set_cstring_nocopy.3
+MLINKS+= prop_dictionary_util.3 prop_dictionary_set_and_rel.3
 
 MLINKS+= prop_array.3 prop_array_add.3
 MLINKS+= prop_array.3 prop_array_capacity.3
@@ -103,6 +105,7 @@ MLINKS+= prop_array_util.3 prop_array_get_cstring.3
 MLINKS+= prop_array_util.3 prop_array_set_cstring.3
 MLINKS+= prop_array_util.3 prop_array_get_cstring_nocopy.3
 MLINKS+= prop_array_util.3 prop_array_set_cstring_nocopy.3
+MLINKS+= prop_array_util.3 prop_array_add_and_rel.3
 
 MLINKS+= prop_bool.3 prop_bool_copy.3
 MLINKS+= prop_bool.3 prop_bool_create.3
@@ -183,5 +186,11 @@ MLINKS+= prop_string.3 prop_string_equals.3
 MLINKS+= prop_string.3 prop_string_equals_cstring.3
 MLINKS+= prop_string.3 prop_string_mutable.3
 MLINKS+= prop_string.3 prop_string_size.3
+
+MAN+=	prop_send_syscall.3
+MLINKS+= prop_send_syscall.3 prop_array_send_syscall.3
+MLINKS+= prop_send_syscall.3 prop_array_recv_syscall.3
+MLINKS+= prop_send_syscall.3 prop_dictionary_send_syscall.3
+MLINKS+= prop_send_syscall.3 prop_dictionary_recv_syscall.3
 
 .include <bsd.lib.mk>

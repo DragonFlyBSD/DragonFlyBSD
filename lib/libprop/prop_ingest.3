@@ -1,4 +1,4 @@
-.\"	$NetBSD: prop_ingest.3,v 1.6 2010/02/18 14:00:39 wiz Exp $
+.\"	$NetBSD: prop_ingest.3,v 1.5 2008/04/30 13:10:46 martin Exp $
 .\"
 .\" Copyright (c) 2006 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -39,8 +39,6 @@
 .Nm prop_ingest_context_private ,
 .Nm prop_dictionary_ingest
 .Nd Ingest a dictionary into an arbitrary binary format
-.Sh LIBRARY
-.Lb libprop
 .Sh SYNOPSIS
 .In libprop/proplib.h
 .Ft prop_ingest_context_t
@@ -83,7 +81,7 @@ The expected property type of the object associated with the key
 to specify that any type is allowed).
 .It
 A callback function of type
-.Vt prop_ingest_handler_t
+.Dv prop_ingest_handler_t
 that will perform the translation for the application.
 .El
 .Pp
