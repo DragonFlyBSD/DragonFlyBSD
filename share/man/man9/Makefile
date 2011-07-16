@@ -567,6 +567,7 @@ MLINKS+=ksignal.9 gsignal.9 \
 	ksignal.9 pgsignal.9
 MLINKS+=ktr.9 KTR_INFO.9 \
 	ktr.9 KTR_INFO_MASTER.9 \
+	ktr.9 KTR_INFO_MASTER_EXTERN.9 \
 	ktr.9 KTR_LOG.9
 MLINKS+=lock.9 lockcount.9 \
 	lock.9 lockcountnb.9 \
