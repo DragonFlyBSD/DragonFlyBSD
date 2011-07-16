@@ -80,31 +80,36 @@ extern int	mcount_lock;
 
 #define	FUNCTION_ALIGNMENT	4
 
-#define	_MCOUNT_DECL static __inline void _mcount
+#define	_MCOUNT_DECL \
+static void _mcount(uintfptr_t frompc, uintfptr_t selfpc) __used; \
+static void _mcount
 
 #ifdef	__GNUC__
-#define	MCOUNT								\
-void									\
-mcount()								\
-{									\
-	uintfptr_t selfpc, frompc;					\
-	/*								\
-	 * Find the return address for mcount,				\
-	 * and the return address for mcount's caller.			\
-	 *								\
-	 * selfpc = pc pushed by call to mcount				\
-	 */								\
-	__asm("movq 8(%%rbp),%0" : "=r" (selfpc));			\
-	/*								\
-	 * frompc = pc pushed by call to mcount's caller.		\
-	 * The caller's stack frame has already been built, so %ebp is	\
-	 * the caller's frame pointer.  The caller's raddr is in the	\
-	 * caller's frame following the caller's caller's frame pointer.\
-	 */								\
-	__asm("movq (%%rbp),%0" : "=r" (frompc));				\
-	frompc = ((uintfptr_t *)frompc)[1];				\
-	_mcount(frompc, selfpc);					\
-}
+#define	MCOUNT __asm("			\n\
+	.text				\n\
+	.p2align 4,0x90			\n\
+	.globl	.mcount			\n\
+	.type	.mcount,@function	\n\
+.mcount:				\n\
+	pushq	%rdi			\n\
+	pushq	%rsi			\n\
+	pushq	%rdx			\n\
+	pushq	%rcx			\n\
+	pushq	%r8			\n\
+	pushq	%r9			\n\
+	pushq	%rax			\n\
+	movq	8(%rbp),%rdi		\n\
+	movq	7*8(%rsp),%rsi		\n\
+	call	_mcount			\n\
+	popq	%rax			\n\
+	popq	%r9			\n\
+	popq	%r8			\n\
+	popq	%rcx			\n\
+	popq	%rdx			\n\
+	popq	%rsi			\n\
+	popq	%rdi			\n\
+	ret				\n\
+	.size	.mcount, . - .mcount");
 #else	/* __GNUC__ */
 #define	MCOUNT		\
 void			\
