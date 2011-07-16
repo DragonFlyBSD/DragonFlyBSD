@@ -1,10 +1,13 @@
+#include <machine/inttypes.h>
 #include <sys/ioctl.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <dirent.h>
 #include <errno.h>
-#include <libdevmapper.h>
+#include <libdm.h>
 #include <fcntl.h>
 #include <uuid.h>
 

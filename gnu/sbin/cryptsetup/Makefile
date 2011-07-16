@@ -24,8 +24,8 @@ MAN=		cryptsetup.8
 CFLAGS+=	-I${CRYPTSETUP_SRCDIR} -I${CRYPTSETUP_LIBDIR} \
 		-I${CRYPTSETUP_LUKSDIR} -I. -I${CRYPTSETUP_DIR}
 
-LDADD+=		-L${.CURDIR}/../../lib/libdevmapper -ldevmapper
-DPADD+=		${.CURDIR}/../../lib/libdevmapper/libdevmapper.a
+LDADD+=		-L${.CURDIR}/../../../lib/libdm -ldm
+DPADD+=		${.CURDIR}/../../../lib/libdm/libdm.a
 
 LDADD+=		-lprop -lcrypto
 
