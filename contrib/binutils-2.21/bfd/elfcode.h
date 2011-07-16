@@ -1281,6 +1281,20 @@ elf_slurp_symbol_table (bfd *abfd, asymbol **symptrs, bfd_boolean dynamic)
 	  else if (isym->st_shndx == SHN_COMMON)
 	    {
 	      sym->symbol.section = bfd_com_section_ptr;
+	      if ((abfd->flags & BFD_PLUGIN) != 0)
+		{
+		  asection *xc = bfd_get_section_by_name (abfd, "COMMON");
+
+		  if (xc == NULL)
+		    {
+		      flagword flags = (SEC_ALLOC | SEC_IS_COMMON | SEC_KEEP
+					| SEC_EXCLUDE);
+		      xc = bfd_make_section_with_flags (abfd, "COMMON", flags);
+		      if (xc == NULL)
+			goto error_return;
+		    }
+		  sym->symbol.section = xc;
+		}
 	      /* Elf puts the alignment into the `value' field, and
 		 the size into the `size' field.  BFD wants to see the
 		 size in the value field, and doesn't care (at the

@@ -623,6 +623,10 @@ class General_options
   DEFINE_bool_alias(Bstatic, Bdynamic, options::ONE_DASH, '\0',
 		    N_("-l does not search for shared libraries"), NULL,
 		    true);
+  DEFINE_bool_alias(dy, Bdynamic, options::ONE_DASH, '\0',
+		    N_("alias for -Bdynamic"), NULL, false);
+  DEFINE_bool_alias(dn, Bdynamic, options::ONE_DASH, '\0',
+		    N_("alias for -Bstatic"), NULL, true);
 
   DEFINE_bool(Bsymbolic, options::ONE_DASH, '\0', false,
               N_("Bind defined symbols locally"), NULL);

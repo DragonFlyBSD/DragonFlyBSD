@@ -674,8 +674,21 @@ Layout::layout(Sized_relobj<size, big_endian>* object, unsigned int shndx,
 
   // FIXME: Handle SHF_LINK_ORDER somewhere.
 
+  elfcpp::Elf_Xword orig_flags = os->flags();
+
   *off = os->add_input_section(this, object, shndx, name, shdr, reloc_shndx,
 			       this->script_options_->saw_sections_clause());
+
+  // If the flags changed, we may have to change the order.
+  if ((orig_flags & elfcpp::SHF_ALLOC) != 0)
+    {
+      orig_flags &= (elfcpp::SHF_WRITE | elfcpp::SHF_EXECINSTR);
+      elfcpp::Elf_Xword new_flags =
+	os->flags() & (elfcpp::SHF_WRITE | elfcpp::SHF_EXECINSTR);
+      if (orig_flags != new_flags)
+	os->set_order(this->default_section_order(os, false));
+    }
+
   this->have_added_input_section_ = true;
 
   return os;

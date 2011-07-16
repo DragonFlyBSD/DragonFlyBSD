@@ -123,11 +123,11 @@ static char *get_emulation
 static bfd_boolean add_archive_element
   (struct bfd_link_info *, bfd *, const char *, bfd **);
 static bfd_boolean multiple_definition
-  (struct bfd_link_info *, const char *, bfd *, asection *, bfd_vma,
+  (struct bfd_link_info *, struct bfd_link_hash_entry *,
    bfd *, asection *, bfd_vma);
 static bfd_boolean multiple_common
-  (struct bfd_link_info *, const char *, bfd *, enum bfd_link_hash_type,
-   bfd_vma, bfd *, enum bfd_link_hash_type, bfd_vma);
+  (struct bfd_link_info *, struct bfd_link_hash_entry *,
+   bfd *, enum bfd_link_hash_type, bfd_vma);
 static bfd_boolean add_to_set
   (struct bfd_link_info *, struct bfd_link_hash_entry *,
    bfd_reloc_code_real_type, bfd *, asection *, bfd_vma);
@@ -150,7 +150,8 @@ static bfd_boolean reloc_dangerous
 static bfd_boolean unattached_reloc
   (struct bfd_link_info *, const char *, bfd *, asection *, bfd_vma);
 static bfd_boolean notice
-  (struct bfd_link_info *, const char *, bfd *, asection *, bfd_vma);
+  (struct bfd_link_info *, struct bfd_link_hash_entry *,
+   bfd *, asection *, bfd_vma, flagword, const char *);
 
 static struct bfd_link_callbacks link_callbacks =
 {
@@ -804,14 +805,16 @@ add_archive_element (struct bfd_link_info *info,
      BFD, but we still want to output the original BFD filename.  */
   orig_input = *input;
 #ifdef ENABLE_PLUGINS
-  if (bfd_my_archive (abfd) != NULL && plugin_active_plugins_p ())
+  if (bfd_my_archive (abfd) != NULL
+      && plugin_active_plugins_p ()
+      && !no_more_claiming)
     {
       /* We must offer this archive member to the plugins to claim.  */
       int fd = open (bfd_my_archive (abfd)->filename, O_RDONLY | O_BINARY);
       if (fd >= 0)
 	{
 	  struct ld_plugin_input_file file;
-	  int claimed = 0;
+
 	  /* Offset and filesize must refer to the individual archive
 	     member, not the whole file, and must exclude the header.
 	     Fortunately for us, that is how the data is stored in the
@@ -820,27 +823,11 @@ add_archive_element (struct bfd_link_info *info,
 	  file.offset = abfd->origin;
 	  file.filesize = arelt_size (abfd);
 	  file.fd = fd;
-	  /* We create a dummy BFD, initially empty, to house
-	     whatever symbols the plugin may want to add.  */
-	  file.handle = plugin_get_ir_dummy_bfd (abfd->filename, abfd);
-	  if (plugin_call_claim_file (&file, &claimed))
-	    einfo (_("%P%F: %s: plugin reported error claiming file\n"),
-		   plugin_error_plugin ());
-	  /* fd belongs to us, not the plugin; but we don't need it.  */
-	  close (fd);
-	  if (claimed)
+	  plugin_maybe_claim (&file, input);
+	  if (input->claimed)
 	    {
-	      /* Substitute the dummy BFD.  */
-	      input->the_bfd = file.handle;
-	      input->claimed = TRUE;
-	      bfd_make_readable (input->the_bfd);
+	      input->claim_archive = TRUE;
 	      *subsbfd = input->the_bfd;
-	    }
-	  else
-	    {
-	      /* Abandon the dummy BFD.  */
-	      bfd_close_all_done (file.handle);
-	      input->claimed = FALSE;
 	    }
 	}
     }
@@ -934,31 +921,49 @@ add_archive_element (struct bfd_link_info *info,
    multiple times.  */
 
 static bfd_boolean
-multiple_definition (struct bfd_link_info *info ATTRIBUTE_UNUSED,
-		     const char *name,
-		     bfd *obfd,
-		     asection *osec,
-		     bfd_vma oval,
+multiple_definition (struct bfd_link_info *info,
+		     struct bfd_link_hash_entry *h,
 		     bfd *nbfd,
 		     asection *nsec,
 		     bfd_vma nval)
 {
-#ifdef ENABLE_PLUGINS
-  /* We may get called back even when --allow-multiple-definition is in
-     effect, as the plugin infrastructure needs to use this hook in
-     order to swap out IR-only symbols for real ones.  In that case,
-     it will let us know not to continue by returning TRUE even if this
-     is not an IR-only vs. non-IR symbol conflict.  */
-  if (plugin_multiple_definition (info, name, obfd, osec, oval, nbfd,
-				  nsec, nval))
+  const char *name;
+  bfd *obfd;
+  asection *osec;
+  bfd_vma oval;
+
+  if (info->allow_multiple_definition)
     return TRUE;
-#endif /* ENABLE_PLUGINS */
+
+  switch (h->type)
+    {
+    case bfd_link_hash_defined:
+      osec = h->u.def.section;
+      oval = h->u.def.value;
+      obfd = h->u.def.section->owner;
+      break;
+    case bfd_link_hash_indirect:
+      osec = bfd_ind_section_ptr;
+      oval = 0;
+      obfd = NULL;
+      break;
+    default:
+      abort ();
+    }
+
+  /* Ignore a redefinition of an absolute symbol to the
+     same value; it's harmless.  */
+  if (h->type == bfd_link_hash_defined
+      && bfd_is_abs_section (osec)
+      && bfd_is_abs_section (nsec)
+      && nval == oval)
+    return TRUE;
 
   /* If either section has the output_section field set to
      bfd_abs_section_ptr, it means that the section is being
      discarded, and this is not really a multiple definition at all.
-FIXME: It would be cleaner to somehow ignore symbols defined in
-sections which are being discarded.  */
+     FIXME: It would be cleaner to somehow ignore symbols defined in
+     sections which are being discarded.  */
   if ((osec->output_section != NULL
        && ! bfd_is_abs_section (osec)
        && bfd_is_abs_section (osec->output_section))
@@ -967,6 +972,14 @@ sections which are being discarded.  */
 	  && bfd_is_abs_section (nsec->output_section)))
     return TRUE;
 
+  name = h->root.string;
+  if (nbfd == NULL)
+    {
+      nbfd = obfd;
+      nsec = osec;
+      nval = oval;
+      obfd = NULL;
+    }
   einfo (_("%X%C: multiple definition of `%T'\n"),
 	 nbfd, nsec, nval, name);
   if (obfd != NULL)
@@ -988,16 +1001,40 @@ sections which are being discarded.  */
 
 static bfd_boolean
 multiple_common (struct bfd_link_info *info ATTRIBUTE_UNUSED,
-		 const char *name,
-		 bfd *obfd,
-		 enum bfd_link_hash_type otype,
-		 bfd_vma osize,
+		 struct bfd_link_hash_entry *h,
 		 bfd *nbfd,
 		 enum bfd_link_hash_type ntype,
 		 bfd_vma nsize)
 {
-  if (! config.warn_common)
+  const char *name;
+  bfd *obfd;
+  enum bfd_link_hash_type otype;
+  bfd_vma osize;
+
+  if (!config.warn_common)
     return TRUE;
+
+  name = h->root.string;
+  otype = h->type;
+  if (otype == bfd_link_hash_common)
+    {
+      obfd = h->u.c.p->section->owner;
+      osize = h->u.c.size;
+    }
+  else if (otype == bfd_link_hash_defined
+	   || otype == bfd_link_hash_defweak)
+    {
+      obfd = h->u.def.section->owner;
+      osize = 0;
+    }
+  else
+    {
+      /* FIXME: It would nice if we could report the BFD which defined
+	 an indirect symbol, but we don't have anywhere to store the
+	 information.  */
+      obfd = NULL;
+      osize = 0;
+    }
 
   if (ntype == bfd_link_hash_defined
       || ntype == bfd_link_hash_defweak
@@ -1443,29 +1480,25 @@ unattached_reloc (struct bfd_link_info *info ATTRIBUTE_UNUSED,
 
 static bfd_boolean
 notice (struct bfd_link_info *info,
-	const char *name,
+	struct bfd_link_hash_entry *h,
 	bfd *abfd,
 	asection *section,
-	bfd_vma value)
+	bfd_vma value,
+	flagword flags ATTRIBUTE_UNUSED,
+	const char *string ATTRIBUTE_UNUSED)
 {
-  if (name == NULL)
+  const char *name;
+
+  if (h == NULL)
     {
       if (command_line.cref || nocrossref_list != NULL)
 	return handle_asneeded_cref (abfd, (enum notice_asneeded_action) value);
       return TRUE;
     }
 
-#ifdef ENABLE_PLUGINS
-  /* We should hide symbols in the dummy IR BFDs from the nocrossrefs list
-     and let the real object files that are generated and added later trip
-     the error instead.  Similarly would be better to trace the real symbol
-     from the real file than the temporary dummy.  */
-  if (!plugin_notice (info, name, abfd, section, value))
-    return TRUE;
-#endif /* ENABLE_PLUGINS */
-
+  name = h->root.string;
   if (info->notice_hash != NULL
-	&& bfd_hash_lookup (info->notice_hash, name, FALSE, FALSE) != NULL)
+      && bfd_hash_lookup (info->notice_hash, name, FALSE, FALSE) != NULL)
     {
       if (bfd_is_und_section (section))
 	einfo ("%B: reference to %s\n", abfd, name);

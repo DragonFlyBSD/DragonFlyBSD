@@ -1074,6 +1074,10 @@ new_afile (const char *name,
   p->whole_archive = whole_archive;
   p->loaded = FALSE;
   p->missing_file = FALSE;
+#ifdef ENABLE_PLUGINS
+  p->claimed = FALSE;
+  p->claim_archive = FALSE;
+#endif /* ENABLE_PLUGINS */
 
   lang_statement_append (&input_file_chain,
 			 (lang_statement_union_type *) p,
@@ -1522,8 +1526,14 @@ lang_output_section_find_by_flags (const asection *sec,
 	    }
 	  flags ^= sec->flags;
 	  if (!(flags & (SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD
-			 | SEC_READONLY))
-	      && !(look->flags & (SEC_SMALL_DATA | SEC_THREAD_LOCAL)))
+			 | SEC_READONLY | SEC_SMALL_DATA))
+	      || (!(flags & (SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD
+			     | SEC_READONLY))
+		  && !(look->flags & SEC_SMALL_DATA))
+	      || (!(flags & (SEC_THREAD_LOCAL | SEC_ALLOC))
+		  && (look->flags & SEC_THREAD_LOCAL)
+		  && (!(flags & SEC_LOAD)
+		      || (look->flags & SEC_LOAD))))
 	    found = look;
 	}
     }
@@ -3110,26 +3120,37 @@ init_opb (void)
 
 /* Open all the input files.  */
 
+enum open_bfd_mode
+  {
+    OPEN_BFD_NORMAL = 0,
+    OPEN_BFD_FORCE = 1,
+    OPEN_BFD_RESCAN = 2
+  };
+#ifdef ENABLE_PLUGINS
+static lang_input_statement_type *plugin_insert = NULL;
+#endif
+
 static void
-open_input_bfds (lang_statement_union_type *s, bfd_boolean force)
+open_input_bfds (lang_statement_union_type *s, enum open_bfd_mode mode)
 {
   for (; s != NULL; s = s->header.next)
     {
       switch (s->header.type)
 	{
 	case lang_constructors_statement_enum:
-	  open_input_bfds (constructor_list.head, force);
+	  open_input_bfds (constructor_list.head, mode);
 	  break;
 	case lang_output_section_statement_enum:
-	  open_input_bfds (s->output_section_statement.children.head, force);
+	  open_input_bfds (s->output_section_statement.children.head, mode);
 	  break;
 	case lang_wild_statement_enum:
 	  /* Maybe we should load the file's symbols.  */
-	  if (s->wild_statement.filename
+	  if ((mode & OPEN_BFD_RESCAN) == 0
+	      && s->wild_statement.filename
 	      && !wildcardp (s->wild_statement.filename)
 	      && !archive_path (s->wild_statement.filename))
 	    lookup_name (s->wild_statement.filename);
-	  open_input_bfds (s->wild_statement.children.head, force);
+	  open_input_bfds (s->wild_statement.children.head, mode);
 	  break;
 	case lang_group_statement_enum:
 	  {
@@ -3142,7 +3163,8 @@ open_input_bfds (lang_statement_union_type *s, bfd_boolean force)
 	    do
 	      {
 		undefs = link_info.hash->undefs_tail;
-		open_input_bfds (s->group_statement.children.head, TRUE);
+		open_input_bfds (s->group_statement.children.head,
+				 mode | OPEN_BFD_FORCE);
 	      }
 	    while (undefs != link_info.hash->undefs_tail);
 	  }
@@ -3161,8 +3183,12 @@ open_input_bfds (lang_statement_union_type *s, bfd_boolean force)
 	      /* If we are being called from within a group, and this
 		 is an archive which has already been searched, then
 		 force it to be researched unless the whole archive
-		 has been loaded already.  */
-	      if (force
+		 has been loaded already.  Do the same for a rescan.  */
+	      if (mode != OPEN_BFD_NORMAL
+#ifdef ENABLE_PLUGINS
+		  && ((mode & OPEN_BFD_RESCAN) == 0
+		      || plugin_insert == NULL)
+#endif
 		  && !s->input_statement.whole_archive
 		  && s->input_statement.loaded
 		  && bfd_check_format (s->input_statement.the_bfd,
@@ -3198,6 +3224,12 @@ open_input_bfds (lang_statement_union_type *s, bfd_boolean force)
 		    }
 		}
 	    }
+#ifdef ENABLE_PLUGINS
+	  /* If we have found the point at which a plugin added new
+	     files, clear plugin_insert to enable archive rescan.  */
+	  if (&s->input_statement == plugin_insert)
+	    plugin_insert = NULL;
+#endif
 	  break;
 	case lang_assignment_statement_enum:
 	  if (s->assignment_statement.exp->assign.hidden)
@@ -3969,9 +4001,8 @@ print_assignment (lang_assignment_statement_type *assignment,
 	  if (h)
 	    {
 	      value = h->u.def.value;
-
-	      if (expld.result.section != NULL)
-		value += expld.result.section->vma;
+	      value += h->u.def.section->output_section->vma;
+	      value += h->u.def.section->output_offset;
 
 	      minfo ("[0x%V]", value);
 	    }
@@ -5527,8 +5558,9 @@ lang_do_assignments_1 (lang_statement_union_type *s,
 }
 
 void
-lang_do_assignments (void)
+lang_do_assignments (lang_phase_type phase)
 {
+  expld.phase = phase;
   lang_statement_iteration++;
   lang_do_assignments_1 (statement_list.head, abs_output_section, NULL, 0);
 }
@@ -5690,6 +5722,11 @@ lang_check (void)
 
   for (file = file_chain.head; file != NULL; file = file->input_statement.next)
     {
+#ifdef ENABLE_PLUGINS
+      /* Don't check format of files claimed by plugin.  */
+      if (file->input_statement.claimed)
+	continue;
+#endif /* ENABLE_PLUGINS */
       input_bfd = file->input_statement.the_bfd;
       compatible
 	= bfd_arch_get_compatible (input_bfd, link_info.output_bfd,
@@ -6201,6 +6238,10 @@ lang_gc_sections (void)
       LANG_FOR_EACH_INPUT_STATEMENT (f)
 	{
 	  asection *sec;
+#ifdef ENABLE_PLUGINS
+	  if (f->claimed)
+	    continue;
+#endif
 	  for (sec = f->the_bfd->sections; sec != NULL; sec = sec->next)
 	    if ((sec->flags & SEC_DEBUGGING) == 0)
 	      sec->flags &= ~SEC_EXCLUDE;
@@ -6315,7 +6356,7 @@ lang_relax_sections (bfd_boolean need_layout)
 
 	      /* Do all the assignments with our current guesses as to
 		 section sizes.  */
-	      lang_do_assignments ();
+	      lang_do_assignments (lang_assigning_phase_enum);
 
 	      /* We must do this after lang_do_assignments, because it uses
 		 size.  */
@@ -6336,11 +6377,77 @@ lang_relax_sections (bfd_boolean need_layout)
   if (need_layout)
     {
       /* Final extra sizing to report errors.  */
-      lang_do_assignments ();
+      lang_do_assignments (lang_assigning_phase_enum);
       lang_reset_memory_regions ();
       lang_size_sections (NULL, TRUE);
     }
 }
+
+#ifdef ENABLE_PLUGINS
+/* Find the insert point for the plugin's replacement files.  We
+   place them after the first claimed real object file, or if the
+   first claimed object is an archive member, after the last real
+   object file immediately preceding the archive.  In the event
+   no objects have been claimed at all, we return the first dummy
+   object file on the list as the insert point; that works, but
+   the callee must be careful when relinking the file_chain as it
+   is not actually on that chain, only the statement_list and the
+   input_file list; in that case, the replacement files must be
+   inserted at the head of the file_chain.  */
+
+static lang_input_statement_type *
+find_replacements_insert_point (void)
+{
+  lang_input_statement_type *claim1, *lastobject;
+  lastobject = &input_file_chain.head->input_statement;
+  for (claim1 = &file_chain.head->input_statement;
+       claim1 != NULL;
+       claim1 = &claim1->next->input_statement)
+    {
+      if (claim1->claimed)
+	return claim1->claim_archive ? lastobject : claim1;
+      /* Update lastobject if this is a real object file.  */
+      if (claim1->the_bfd && (claim1->the_bfd->my_archive == NULL))
+	lastobject = claim1;
+    }
+  /* No files were claimed by the plugin.  Choose the last object
+     file found on the list (maybe the first, dummy entry) as the
+     insert point.  */
+  return lastobject;
+}
+
+/* Insert SRCLIST into DESTLIST after given element by chaining
+   on FIELD as the next-pointer.  (Counterintuitively does not need
+   a pointer to the actual after-node itself, just its chain field.)  */
+
+static void
+lang_list_insert_after (lang_statement_list_type *destlist,
+			lang_statement_list_type *srclist,
+			lang_statement_union_type **field)
+{
+  *(srclist->tail) = *field;
+  *field = srclist->head;
+  if (destlist->tail == field)
+    destlist->tail = srclist->tail;
+}
+
+/* Detach new nodes added to DESTLIST since the time ORIGLIST
+   was taken as a copy of it and leave them in ORIGLIST.  */
+
+static void
+lang_list_remove_tail (lang_statement_list_type *destlist,
+		       lang_statement_list_type *origlist)
+{
+  union lang_statement_union **savetail;
+  /* Check that ORIGLIST really is an earlier state of DESTLIST.  */
+  ASSERT (origlist->head == destlist->head);
+  savetail = origlist->tail;
+  origlist->head = *(savetail);
+  origlist->tail = destlist->tail;
+  destlist->tail = savetail;
+  *savetail = NULL;
+}
+#endif /* ENABLE_PLUGINS */
 
 void
 lang_process (void)
@@ -6365,24 +6472,62 @@ lang_process (void)
 
   /* Create a bfd for each input file.  */
   current_target = default_target;
-  open_input_bfds (statement_list.head, FALSE);
+  open_input_bfds (statement_list.head, OPEN_BFD_NORMAL);
 
 #ifdef ENABLE_PLUGINS
+  if (plugin_active_plugins_p ())
     {
-      union lang_statement_union **listend;
+      lang_statement_list_type added;
+      lang_statement_list_type files, inputfiles;
+
       /* Now all files are read, let the plugin(s) decide if there
 	 are any more to be added to the link before we call the
-	 emulation's after_open hook.  */
-      listend = statement_list.tail;
-      ASSERT (!*listend);
+	 emulation's after_open hook.  We create a private list of
+	 input statements for this purpose, which we will eventually
+	 insert into the global statment list after the first claimed
+	 file.  */
+      added = *stat_ptr;
+      /* We need to manipulate all three chains in synchrony.  */
+      files = file_chain;
+      inputfiles = input_file_chain;
       if (plugin_call_all_symbols_read ())
 	einfo (_("%P%F: %s: plugin reported error after all symbols read\n"),
 	       plugin_error_plugin ());
-      /* If any new files were added, they will be on the end of the
-	 statement list, and we can open them now by getting open_input_bfds
-	 to carry on from where it ended last time.  */
-      if (*listend)
-	open_input_bfds (*listend, FALSE);
+      /* Open any newly added files, updating the file chains.  */
+      open_input_bfds (added.head, OPEN_BFD_NORMAL);
+      /* Restore the global list pointer now they have all been added.  */
+      lang_list_remove_tail (stat_ptr, &added);
+      /* And detach the fresh ends of the file lists.  */
+      lang_list_remove_tail (&file_chain, &files);
+      lang_list_remove_tail (&input_file_chain, &inputfiles);
+      /* Were any new files added?  */
+      if (added.head != NULL)
+	{
+	  /* If so, we will insert them into the statement list immediately
+	     after the first input file that was claimed by the plugin.  */
+	  plugin_insert = find_replacements_insert_point ();
+	  /* If a plugin adds input files without having claimed any, we
+	     don't really have a good idea where to place them.  Just putting
+	     them at the start or end of the list is liable to leave them
+	     outside the crtbegin...crtend range.  */
+	  ASSERT (plugin_insert != NULL);
+	  /* Splice the new statement list into the old one.  */
+	  lang_list_insert_after (stat_ptr, &added,
+				  &plugin_insert->header.next);
+	  /* Likewise for the file chains.  */
+	  lang_list_insert_after (&input_file_chain, &inputfiles,
+				  &plugin_insert->next_real_file);
+	  /* We must be careful when relinking file_chain; we may need to
+	     insert the new files at the head of the list if the insert
+	     point chosen is the dummy first input file.  */
+	  if (plugin_insert->filename)
+	    lang_list_insert_after (&file_chain, &files, &plugin_insert->next);
+	  else
+	    lang_list_insert_after (&file_chain, &files, &file_chain.head);
+
+	  /* Rescan archives in case new undefined symbols have appeared.  */
+	  open_input_bfds (statement_list.head, OPEN_BFD_RESCAN);
+	}
     }
 #endif /* ENABLE_PLUGINS */
 
@@ -6474,8 +6619,7 @@ lang_process (void)
 
   /* Do all the assignments, now that we know the final resting places
      of all the symbols.  */
-  expld.phase = lang_final_phase_enum;
-  lang_do_assignments ();
+  lang_do_assignments (lang_final_phase_enum);
 
   ldemul_finish ();
 
@@ -6722,11 +6866,13 @@ lang_leave_output_section_statement (fill_type *fill, const char *memspec,
 		    current_section->load_base != NULL,
 		    current_section->addr_tree != NULL);
 
-  /* If this section has no load region or base, but has the same
+  /* If this section has no load region or base, but uses the same
      region as the previous section, then propagate the previous
      section's load region.  */
 
-  if (!current_section->lma_region && !current_section->load_base
+  if (current_section->lma_region == NULL
+      && current_section->load_base == NULL
+      && current_section->addr_tree == NULL
       && current_section->region == current_section->prev->region)
     current_section->lma_region = current_section->prev->lma_region;
 
@@ -7246,19 +7392,29 @@ lang_vers_match (struct bfd_elf_version_expr_head *head,
 		 struct bfd_elf_version_expr *prev,
 		 const char *sym)
 {
+  const char *c_sym;
   const char *cxx_sym = sym;
   const char *java_sym = sym;
   struct bfd_elf_version_expr *expr = NULL;
+  enum demangling_styles curr_style;
+
+  curr_style = CURRENT_DEMANGLING_STYLE;
+  cplus_demangle_set_style (no_demangling);
+  c_sym = bfd_demangle (link_info.output_bfd, sym, DMGL_NO_OPTS);
+  if (!c_sym)
+    c_sym = sym;
+  cplus_demangle_set_style (curr_style);
 
   if (head->mask & BFD_ELF_VERSION_CXX_TYPE)
     {
-      cxx_sym = cplus_demangle (sym, DMGL_PARAMS | DMGL_ANSI);
+      cxx_sym = bfd_demangle (link_info.output_bfd, sym,
+			      DMGL_PARAMS | DMGL_ANSI);
       if (!cxx_sym)
 	cxx_sym = sym;
     }
   if (head->mask & BFD_ELF_VERSION_JAVA_TYPE)
     {
-      java_sym = cplus_demangle (sym, DMGL_JAVA);
+      java_sym = bfd_demangle (link_info.output_bfd, sym, DMGL_JAVA);
       if (!java_sym)
 	java_sym = sym;
     }
@@ -7272,10 +7428,10 @@ lang_vers_match (struct bfd_elf_version_expr_head *head,
 	case 0:
 	  if (head->mask & BFD_ELF_VERSION_C_TYPE)
 	    {
-	      e.pattern = sym;
+	      e.pattern = c_sym;
 	      expr = (struct bfd_elf_version_expr *)
                   htab_find ((htab_t) head->htab, &e);
-	      while (expr && strcmp (expr->pattern, sym) == 0)
+	      while (expr && strcmp (expr->pattern, c_sym) == 0)
 		if (expr->mask == BFD_ELF_VERSION_C_TYPE)
 		  goto out_ret;
 		else
@@ -7333,12 +7489,14 @@ lang_vers_match (struct bfd_elf_version_expr_head *head,
       else if (expr->mask == BFD_ELF_VERSION_CXX_TYPE)
 	s = cxx_sym;
       else
-	s = sym;
+	s = c_sym;
       if (fnmatch (expr->pattern, s, 0) == 0)
 	break;
     }
 
  out_ret:
+  if (c_sym != sym)
+    free ((char *) c_sym);
   if (cxx_sym != sym)
     free ((char *) cxx_sym);
   if (java_sym != sym)

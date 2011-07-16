@@ -1919,7 +1919,7 @@ gld${EMULATION_NAME}_place_orphan (asection *s,
 	   && ((iself && sh_type == SHT_NOTE)
 	       || (!iself && CONST_STRNEQ (secname, ".note"))))
     place = &hold[orphan_interp];
-  else if ((s->flags & (SEC_LOAD | SEC_HAS_CONTENTS)) == 0)
+  else if ((s->flags & (SEC_LOAD | SEC_HAS_CONTENTS | SEC_THREAD_LOCAL)) == 0)
     place = &hold[orphan_bss];
   else if ((s->flags & SEC_SMALL_DATA) != 0)
     place = &hold[orphan_sdata];

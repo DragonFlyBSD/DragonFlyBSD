@@ -1,7 +1,7 @@
 /* read.c - read a source file -
    Copyright 1986, 1987, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
    1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009,
-   2010  Free Software Foundation, Inc.
+   2010, 2011  Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -1124,14 +1124,10 @@ read_a_source_file (char *name)
 	  /* Report unknown char as error.  */
 	  demand_empty_rest_of_line ();
 	}
-
-#ifdef md_after_pass_hook
-      md_after_pass_hook ();
-#endif
     }
-  symbol_set_value_now (&dot_symbol);
 
  quit:
+  symbol_set_value_now (&dot_symbol);
 
 #ifdef md_cleanup
   md_cleanup ();
@@ -2654,7 +2650,9 @@ s_mri (int ignore ATTRIBUTE_UNUSED)
 static void
 do_org (segT segment, expressionS *exp, int fill)
 {
-  if (segment != now_seg && segment != absolute_section)
+  if (segment != now_seg
+      && segment != absolute_section
+      && segment != expr_section)
     as_bad (_("invalid segment \"%s\""), segment_name (segment));
 
   if (now_seg == absolute_section)
@@ -5417,9 +5415,9 @@ get_segmented_expression (expressionS *expP)
 static segT
 get_known_segmented_expression (expressionS *expP)
 {
-  segT retval;
+  segT retval = get_segmented_expression (expP);
 
-  if ((retval = get_segmented_expression (expP)) == undefined_section)
+  if (retval == undefined_section)
     {
       /* There is no easy way to extract the undefined symbol from the
 	 expression.  */
@@ -5433,8 +5431,7 @@ get_known_segmented_expression (expressionS *expP)
       expP->X_op = O_constant;
       expP->X_add_number = 0;
     }
-  know (retval == absolute_section || SEG_NORMAL (retval));
-  return (retval);
+  return retval;
 }
 
 char				/* Return terminator.  */

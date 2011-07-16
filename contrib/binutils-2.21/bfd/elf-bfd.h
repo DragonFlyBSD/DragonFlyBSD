@@ -229,11 +229,7 @@ struct elf_link_hash_entry
 };
 
 /* Will references to this symbol always reference the symbol
-   in this object?  STV_PROTECTED is excluded from the visibility test
-   here so that function pointer comparisons work properly.  Since
-   function symbols not defined in an app are set to their .plt entry,
-   it's necessary for shared libs to also reference the .plt even
-   though the symbol is really local to the shared lib.  */
+   in this object?  */
 #define SYMBOL_REFERENCES_LOCAL(INFO, H) \
   _bfd_elf_symbol_refs_local_p (H, INFO, 0)
 
@@ -1631,9 +1627,9 @@ struct elf_obj_tdata
   bfd_byte *build_id;
 
   /* True if the bfd contains symbols that have the STT_GNU_IFUNC
-     symbol type.  Used to set the osabi field in the ELF header
-     structure.  */
-  bfd_boolean has_ifunc_symbols;
+     symbol type or STB_GNU_UNIQUE binding.  Used to set the osabi
+     field in the ELF header structure.  */
+  bfd_boolean has_gnu_symbols;
 
   /* An identifier used to distinguish different target
      specific extensions to this structure.  */
@@ -2380,7 +2376,7 @@ extern asection _bfd_elf_large_com_section;
 	    rel_hdr = _bfd_elf_single_rel_hdr (input_section);		\
 	    rel_hdr->sh_size -= rel_hdr->sh_entsize;			\
 									\
-	    memmove (rel, rel + 1, (relend - rel) * sizeof (*rel));	\
+	    memmove (rel, rel + 1, (relend - rel - 1) * sizeof (*rel));	\
 									\
 	    input_section->reloc_count--;				\
 	    relend--;							\

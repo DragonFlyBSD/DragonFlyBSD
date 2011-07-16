@@ -1,6 +1,6 @@
 /* input_scrub.c - Break up input buffers into whole numbers of lines.
    Copyright 1987, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
-   2000, 2001, 2003, 2005, 2006, 2007, 2008
+   2000, 2001, 2003, 2005, 2006, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
@@ -99,10 +99,9 @@ int macro_nest;
 static char *physical_input_file;
 static char *logical_input_file;
 
-typedef unsigned int line_numberT;	/* 1-origin line number in a source file.  */
+/* 1-origin line number in a source file.  */
 /* A line ends in '\n' or eof.  */
-
-static line_numberT physical_input_line;
+static unsigned int physical_input_line;
 static int logical_input_line;
 
 /* Struct used to save the state of the input handler during include files */
@@ -114,7 +113,7 @@ struct input_save {
   unsigned int        buffer_length;
   char *              physical_input_file;
   char *              logical_input_file;
-  line_numberT        physical_input_line;
+  unsigned int        physical_input_line;
   int                 logical_input_line;
   int                 sb_index;
   sb                  from_sb;
@@ -303,6 +302,8 @@ void
 input_scrub_close (void)
 {
   input_file_close ();
+  physical_input_line = 0;
+  logical_input_line = -1;
 }
 
 char *

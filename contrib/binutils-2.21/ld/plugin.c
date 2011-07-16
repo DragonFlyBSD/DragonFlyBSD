@@ -36,14 +36,13 @@
 #include <Windows.h>
 #endif
 
+/* Report plugin symbols.  */
+bfd_boolean report_plugin_symbols;
+
 /* The suffix to append to the name of the real (claimed) object file
    when generating a dummy BFD to hold the IR symbols sent from the
-   plugin.  */
-#define IRONLY_SUFFIX		".ironly\004"
-
-/* This is sizeof an array of chars, not sizeof a const char *.  We
-   also have to avoid inadvertently counting the trailing NUL.  */
-#define IRONLY_SUFFIX_LEN	(sizeof (IRONLY_SUFFIX) - 1)
+   plugin.  For cosmetic use only; appears in maps, crefs etc.  */
+#define IRONLY_SUFFIX " (symbol from plugin)"
 
 /* Stores a single argument passed to a plugin.  */
 typedef struct plugin_arg
@@ -91,22 +90,16 @@ static plugin_t *called_plugin = NULL;
 /* Last plugin to cause an error, if any.  */
 static const char *error_plugin = NULL;
 
-/* A hash table that records symbols referenced by non-IR files.  Used
-   at get_symbols time to determine whether any prevailing defs from
-   IR files are referenced only from other IR files, so tthat we can
-   we can distinguish the LDPR_PREVAILING_DEF and LDPR_PREVAILING_DEF_IRONLY
-   cases when establishing symbol resolutions.  */
-static struct bfd_hash_table *non_ironly_hash = NULL;
+/* State of linker "notice" interface before we poked at it.  */
+static bfd_boolean orig_notice_all;
+
+/* Original linker callbacks, and the plugin version.  */
+static const struct bfd_link_callbacks *orig_callbacks;
+static struct bfd_link_callbacks plugin_callbacks;
 
 /* Set at all symbols read time, to avoid recursively offering the plugin
    its own newly-added input files and libs to claim.  */
-static bfd_boolean no_more_claiming = FALSE;
-
-/* If the --allow-multiple-definition command-line option is active, we
-   have to disable it so that BFD always calls our hook, and simulate the
-   effect (when not resolving IR vs. real symbols) ourselves by ensuring
-   TRUE is returned from the hook.  */
-static bfd_boolean plugin_cached_allow_multiple_defs = FALSE;
+bfd_boolean no_more_claiming = FALSE;
 
 /* List of tags to set in the constant leading part of the tv array. */
 static const enum ld_plugin_tag tv_header_tags[] =
@@ -130,6 +123,11 @@ static const enum ld_plugin_tag tv_header_tags[] =
 
 /* How many entries in the constant leading part of the tv array.  */
 static const size_t tv_header_size = ARRAY_SIZE (tv_header_tags);
+
+/* Forward references.  */
+static bfd_boolean plugin_notice (struct bfd_link_info *,
+				  struct bfd_link_hash_entry *, bfd *,
+				  asection *, bfd_vma, flagword, const char *);
 
 #if !defined (HAVE_DLFCN_H) && defined (HAVE_WINDOWS_H)
 
@@ -226,38 +224,44 @@ plugin_opt_plugin_arg (const char *arg)
 bfd *
 plugin_get_ir_dummy_bfd (const char *name, bfd *srctemplate)
 {
-  asection *sec;
   bfd *abfd;
 
   bfd_use_reserved_id = 1;
-  abfd = bfd_create (concat (name, IRONLY_SUFFIX, (const char *)NULL),
+  abfd = bfd_create (concat (name, IRONLY_SUFFIX, (const char *) NULL),
 		     srctemplate);
-  bfd_set_arch_info (abfd, bfd_get_arch_info (srctemplate));
-  bfd_make_writable (abfd);
-  bfd_copy_private_bfd_data (srctemplate, abfd);
-  bfd_set_gp_size (abfd, bfd_get_gp_size (abfd));
-  /* Create a minimal set of sections to own the symbols.  */
-  sec = bfd_make_section_old_way (abfd, ".text");
-  bfd_set_section_flags (abfd, sec,
-			 (SEC_CODE | SEC_HAS_CONTENTS | SEC_READONLY
-			  | SEC_ALLOC | SEC_LOAD | SEC_KEEP));
-  sec->output_section = sec;
-  sec->output_offset = 0;
-  return abfd;
+  if (abfd != NULL)
+    {
+      abfd->flags |= BFD_LINKER_CREATED | BFD_PLUGIN;
+      bfd_set_arch_info (abfd, bfd_get_arch_info (srctemplate));
+      bfd_set_gp_size (abfd, bfd_get_gp_size (srctemplate));
+      if (bfd_make_writable (abfd)
+	  && bfd_copy_private_bfd_data (srctemplate, abfd))
+	{
+	  flagword flags;
+
+	  /* Create sections to own the symbols.  */
+	  flags = (SEC_CODE | SEC_HAS_CONTENTS | SEC_READONLY
+		   | SEC_ALLOC | SEC_LOAD | SEC_KEEP | SEC_EXCLUDE);
+	  if (bfd_make_section_anyway_with_flags (abfd, ".text", flags))
+	    return abfd;
+	}
+    }
+  einfo (_("could not create dummy IR bfd: %F%E\n"));
+  return NULL;
 }
 
 /* Check if the BFD passed in is an IR dummy object file.  */
 static bfd_boolean
 is_ir_dummy_bfd (const bfd *abfd)
 {
-  size_t namlen;
-
-  if (abfd == NULL)
-    return FALSE;
-  namlen = strlen (abfd->filename);
-  if (namlen < IRONLY_SUFFIX_LEN)
-    return FALSE;
-  return !strcmp (abfd->filename + namlen - IRONLY_SUFFIX_LEN, IRONLY_SUFFIX);
+  /* ABFD can sometimes legitimately be NULL, e.g. when called from one
+     of the linker callbacks for a symbol in the *ABS* or *UND* sections.
+     Likewise, the usrdata field may be NULL if ABFD was added by the
+     backend without a corresponding input statement, as happens e.g.
+     when processing DT_NEEDED dependencies.  */
+  return (abfd
+	  && abfd->usrdata
+	  && ((lang_input_statement_type *)(abfd->usrdata))->claimed);
 }
 
 /* Helpers to convert between BFD and GOLD symbol formats.  */
@@ -270,7 +274,7 @@ asymbol_from_plugin_symbol (bfd *abfd, asymbol *asym,
 
   asym->the_bfd = abfd;
   asym->name = (ldsym->version
-		? concat (ldsym->name, "@", ldsym->version, NULL)
+		? concat (ldsym->name, "@", ldsym->version, (const char *) NULL)
 		: ldsym->name);
   asym->value = 0;
   switch (ldsym->def)
@@ -296,7 +300,10 @@ asymbol_from_plugin_symbol (bfd *abfd, asymbol *asym,
       asym->value = ldsym->size;
       /* For ELF targets, set alignment of common symbol to 1.  */
       if (bfd_get_flavour (abfd) == bfd_target_elf_flavour)
-	((elf_symbol_type *) asym)->internal_elf_sym.st_value = 1;
+	{
+	  ((elf_symbol_type *) asym)->internal_elf_sym.st_shndx = SHN_COMMON;
+	  ((elf_symbol_type *) asym)->internal_elf_sym.st_value = 1;
+	}
       break;
 
     default:
@@ -414,6 +421,8 @@ static inline bfd_boolean
 is_visible_from_outside (struct ld_plugin_symbol *lsym, asection *section,
 			 struct bfd_link_hash_entry *blhe)
 {
+  struct bfd_sym_chain *sym;
+
   /* Section's owner may be NULL if it is the absolute
      section, fortunately is_ir_dummy_bfd handles that.  */
   if (!is_ir_dummy_bfd (section->owner))
@@ -442,6 +451,12 @@ is_visible_from_outside (struct ld_plugin_symbol *lsym, asection *section,
       return (lsym->visibility == LDPV_DEFAULT
 	      || lsym->visibility == LDPV_PROTECTED);
     }
+
+  for (sym = &entry_symbol; sym != NULL; sym = sym->next)
+    if (sym->name
+	&& strcmp (sym->name, blhe->root.string) == 0)
+      return TRUE;
+
   return FALSE;
 }
 
@@ -457,13 +472,16 @@ get_symbols (const void *handle, int nsyms, struct ld_plugin_symbol *syms)
       struct bfd_link_hash_entry *blhe;
       bfd_boolean ironly;
       asection *owner_sec;
-
-      blhe = bfd_link_hash_lookup (link_info.hash, syms[n].name,
-				   FALSE, FALSE, TRUE);
+      if (syms[n].def != LDPK_UNDEF)
+	blhe = bfd_link_hash_lookup (link_info.hash, syms[n].name,
+				     FALSE, FALSE, TRUE);
+      else
+	blhe = bfd_wrapped_link_hash_lookup (link_info.output_bfd, &link_info,
+					     syms[n].name, FALSE, FALSE, TRUE);
       if (!blhe)
 	{
 	  syms[n].resolution = LDPR_UNKNOWN;
-	  continue;
+	  goto report_symbol;
 	}
 
       /* Determine resolution from blhe type and symbol's original type.  */
@@ -471,7 +489,7 @@ get_symbols (const void *handle, int nsyms, struct ld_plugin_symbol *syms)
 	  || blhe->type == bfd_link_hash_undefweak)
 	{
 	  syms[n].resolution = LDPR_UNDEF;
-	  continue;
+	  goto report_symbol;
 	}
       if (blhe->type != bfd_link_hash_defined
 	  && blhe->type != bfd_link_hash_defweak
@@ -485,16 +503,16 @@ get_symbols (const void *handle, int nsyms, struct ld_plugin_symbol *syms)
       /* Find out which section owns the symbol.  Since it's not undef,
 	 it must have an owner; if it's not a common symbol, both defs
 	 and weakdefs keep it in the same place. */
-      owner_sec = (blhe->type == bfd_link_hash_common)
-	? blhe->u.c.p->section
-	: blhe->u.def.section;
+      owner_sec = (blhe->type == bfd_link_hash_common
+		   ? blhe->u.c.p->section
+		   : blhe->u.def.section);
 
       /* We need to know if the sym is referenced from non-IR files.  Or
 	 even potentially-referenced, perhaps in a future final link if
 	 this is a partial one, perhaps dynamically at load-time if the
 	 symbol is externally visible.  */
-      ironly = !is_visible_from_outside (&syms[n], owner_sec, blhe)
-	&& !bfd_hash_lookup (non_ironly_hash, syms[n].name, FALSE, FALSE);
+      ironly = !(blhe->non_ir_ref
+		 || is_visible_from_outside (&syms[n], owner_sec, blhe));
 
       /* If it was originally undefined or common, then it has been
 	 resolved; determine how.  */
@@ -515,7 +533,7 @@ get_symbols (const void *handle, int nsyms, struct ld_plugin_symbol *syms)
 	    syms[n].resolution =  LDPR_RESOLVED_DYN;
 	  else
 	    syms[n].resolution = LDPR_RESOLVED_EXEC;
-	  continue;
+	  goto report_symbol;
 	}
 
       /* Was originally def, or weakdef.  Does it prevail?  If the
@@ -528,13 +546,20 @@ get_symbols (const void *handle, int nsyms, struct ld_plugin_symbol *syms)
 	  syms[n].resolution = (ironly
 				? LDPR_PREVAILING_DEF_IRONLY
 				: LDPR_PREVAILING_DEF);
-	  continue;
+	  goto report_symbol;
 	}
 
       /* Was originally def, weakdef, or common, but has been pre-empted.  */
-      syms[n].resolution = is_ir_dummy_bfd (owner_sec->owner)
-	? LDPR_PREEMPTED_IR
-	: LDPR_PREEMPTED_REG;
+      syms[n].resolution = (is_ir_dummy_bfd (owner_sec->owner)
+			    ? LDPR_PREEMPTED_IR
+			    : LDPR_PREEMPTED_REG);
+
+    report_symbol:
+      if (report_plugin_symbols)
+	einfo (_("%P: %B: symbol `%s' "
+		 "definition: %d, visibility: %d, resolution: %d\n"),
+	       abfd, syms[n].name,
+	       syms[n].def, syms[n].visibility, syms[n].resolution);
     }
   return LDPS_OK;
 }
@@ -591,14 +616,13 @@ message (int level, const char *format, ...)
     case LDPL_FATAL:
     case LDPL_ERROR:
     default:
-	{
-	  char *newfmt = ACONCAT ((level == LDPL_FATAL
-				   ? "%P%F: " : "%P%X: ",
-				   format, "\n", NULL));
-	  fflush (stdout);
-	  vfinfo (stderr, newfmt, args, TRUE);
-	  fflush (stderr);
-	}
+      {
+	char *newfmt = ACONCAT ((level == LDPL_FATAL ? "%P%F: " : "%P%X: ",
+				 format, "\n", (const char *) NULL));
+	fflush (stdout);
+	vfinfo (stderr, newfmt, args, TRUE);
+	fflush (stderr);
+      }
       break;
     }
 
@@ -753,13 +777,18 @@ plugin_load_plugins (void)
   /* Since plugin(s) inited ok, assume they're going to want symbol
      resolutions, which needs us to track which symbols are referenced
      by non-IR files using the linker's notice callback.  */
+  orig_notice_all = link_info.notice_all;
+  orig_callbacks = link_info.callbacks;
+  plugin_callbacks = *orig_callbacks;
+  plugin_callbacks.notice = &plugin_notice;
   link_info.notice_all = TRUE;
+  link_info.callbacks = &plugin_callbacks;
 
   return 0;
 }
 
 /* Call 'claim file' hook for all plugins.  */
-int
+static int
 plugin_call_claim_file (const struct ld_plugin_input_file *file, int *claimed)
 {
   plugin_t *curplug = plugins_list;
@@ -782,6 +811,42 @@ plugin_call_claim_file (const struct ld_plugin_input_file *file, int *claimed)
   return plugin_error_p () ? -1 : 0;
 }
 
+void
+plugin_maybe_claim (struct ld_plugin_input_file *file,
+		    lang_input_statement_type *entry)
+{
+  int claimed = 0;
+
+  /* We create a dummy BFD, initially empty, to house whatever symbols
+     the plugin may want to add.  */
+  file->handle = plugin_get_ir_dummy_bfd (entry->the_bfd->filename,
+					  entry->the_bfd);
+  if (plugin_call_claim_file (file, &claimed))
+    einfo (_("%P%F: %s: plugin reported error claiming file\n"),
+	   plugin_error_plugin ());
+  /* fd belongs to us, not the plugin; but we don't need it.  */
+  close (file->fd);
+  if (claimed)
+    {
+      /* Discard the real file's BFD and substitute the dummy one.  */
+
+      /* BFD archive handling caches elements so we can't call
+	 bfd_close for archives.  */
+      if (entry->the_bfd->my_archive == NULL)
+	bfd_close (entry->the_bfd);
+      entry->the_bfd = file->handle;
+      entry->claimed = TRUE;
+      bfd_make_readable (entry->the_bfd);
+    }
+  else
+    {
+      /* If plugin didn't claim the file, we don't need the dummy bfd.
+	 Can't avoid speculatively creating it, alas.  */
+      bfd_close_all_done (file->handle);
+      entry->claimed = FALSE;
+    }
+}
+
 /* Call 'all symbols read' hook for all plugins.  */
 int
 plugin_call_all_symbols_read (void)
@@ -790,13 +855,6 @@ plugin_call_all_symbols_read (void)
 
   /* Disable any further file-claiming.  */
   no_more_claiming = TRUE;
-
-  /* If --allow-multiple-definition is in effect, we need to disable it,
-     as the plugin infrastructure relies on the multiple_definition
-     callback to swap out the dummy IR-only BFDs for new real ones
-     when it starts opening the files added during this callback.  */
-  plugin_cached_allow_multiple_defs = link_info.allow_multiple_definition;
-  link_info.allow_multiple_definition = FALSE;
 
   while (curplug)
     {
@@ -839,87 +897,82 @@ plugin_call_cleanup (void)
 	      plugin_error_plugin ());
 }
 
-/* Lazily init the non_ironly hash table.  */
-static void
-init_non_ironly_hash (void)
-{
-  if (non_ironly_hash == NULL)
-    {
-      non_ironly_hash =
-	(struct bfd_hash_table *) xmalloc (sizeof (struct bfd_hash_table));
-      if (!bfd_hash_table_init_n (non_ironly_hash,
-				  bfd_hash_newfunc,
-				  sizeof (struct bfd_hash_entry),
-				  61))
-	einfo (_("%P%F: bfd_hash_table_init failed: %E\n"));
-    }
-}
-
 /* To determine which symbols should be resolved LDPR_PREVAILING_DEF
    and which LDPR_PREVAILING_DEF_IRONLY, we notice all the symbols as
-   the linker adds them to the linker hash table.  If we see a symbol
-   being referenced from a non-IR file, we add it to the non_ironly hash
-   table.  If we can't find it there at get_symbols time, we know that
-   it was referenced only by IR files.  We have to notice_all symbols,
-   because we won't necessarily know until later which ones will be
-   contributed by IR files.  */
-bfd_boolean
-plugin_notice (struct bfd_link_info *info ATTRIBUTE_UNUSED,
-	       const char *name, bfd *abfd,
-	       asection *section, bfd_vma value ATTRIBUTE_UNUSED)
+   the linker adds them to the linker hash table.  Mark those
+   referenced from a non-IR file with non_ir_ref.  We have to
+   notice_all symbols, because we won't necessarily know until later
+   which ones will be contributed by IR files.  */
+static bfd_boolean
+plugin_notice (struct bfd_link_info *info,
+	       struct bfd_link_hash_entry *h,
+	       bfd *abfd,
+	       asection *section,
+	       bfd_vma value,
+	       flagword flags,
+	       const char *string)
 {
-  bfd_boolean is_ref = bfd_is_und_section (section);
-  bfd_boolean is_dummy = is_ir_dummy_bfd (abfd);
-  init_non_ironly_hash ();
-  /* We only care about refs, not defs, indicated by section pointing
-     to the undefined section (according to the bfd linker notice callback
-     interface definition).  */
-  if (is_ref && !is_dummy)
+  if (h != NULL)
     {
-      /* This is a ref from a non-IR file, so note the ref'd symbol
-	 in the non-IR-only hash.  */
-      if (!bfd_hash_lookup (non_ironly_hash, name, TRUE, TRUE))
-	einfo (_("%P%X: %s: hash table failure adding symbol %s\n"),
-	       abfd->filename, name);
-    }
-  else if (!is_ref && is_dummy)
-    {
-      /* No further processing since this is a def from an IR dummy BFD.  */
-      return FALSE;
+      bfd *sym_bfd;
+
+      /* No further processing if this def/ref is from an IR dummy BFD.  */
+      if (is_ir_dummy_bfd (abfd))
+	return TRUE;
+
+      /* Making an indirect symbol counts as a reference unless this
+	 is a brand new symbol.  */
+      if (bfd_is_ind_section (section)
+	  || (flags & BSF_INDIRECT) != 0)
+	{
+	  if (h->type != bfd_link_hash_new)
+	    {
+	      struct bfd_link_hash_entry *inh;
+
+	      h->non_ir_ref = TRUE;
+	      inh = bfd_wrapped_link_hash_lookup (abfd, info, string, FALSE,
+						  FALSE, FALSE);
+	      if (inh != NULL)
+		inh->non_ir_ref = TRUE;
+	    }
+	}
+
+      /* Nothing to do here for warning symbols.  */
+      else if ((flags & BSF_WARNING) != 0)
+	;
+
+      /* Nothing to do here for constructor symbols.  */
+      else if ((flags & BSF_CONSTRUCTOR) != 0)
+	;
+
+      /* If this is a ref, set non_ir_ref.  */
+      else if (bfd_is_und_section (section))
+	h->non_ir_ref = TRUE;
+
+      /* Otherwise, it must be a new def.  Ensure any symbol defined
+	 in an IR dummy BFD takes on a new value from a real BFD.
+	 Weak symbols are not normally overridden by a new weak
+	 definition, and strong symbols will normally cause multiple
+	 definition errors.  Avoid this by making the symbol appear
+	 to be undefined.  */
+      else if (((h->type == bfd_link_hash_defweak
+		 || h->type == bfd_link_hash_defined)
+		&& is_ir_dummy_bfd (sym_bfd = h->u.def.section->owner))
+	       || (h->type == bfd_link_hash_common
+		   && is_ir_dummy_bfd (sym_bfd = h->u.c.p->section->owner)))
+	{
+	  h->type = bfd_link_hash_undefweak;
+	  h->u.undef.abfd = sym_bfd;
+	}
     }
 
   /* Continue with cref/nocrossref/trace-sym processing.  */
+  if (h == NULL
+      || orig_notice_all
+      || (info->notice_hash != NULL
+	  && bfd_hash_lookup (info->notice_hash, h->root.string,
+			      FALSE, FALSE) != NULL))
+    return (*orig_callbacks->notice) (info, h,
+				      abfd, section, value, flags, string);
   return TRUE;
-}
-
-/* When we add new object files to the link at all symbols read time,
-   these contain the real code and symbols generated from the IR files,
-   and so duplicate all the definitions already supplied by the dummy
-   IR-only BFDs that we created at claim files time.  We use the linker's
-   multiple-definitions callback hook to fix up the clash, discarding
-   the symbol from the IR-only BFD in favour of the symbol from the
-   real BFD.  We return true if this was not-really-a-clash because
-   we've fixed it up, or anyway if --allow-multiple-definition was in
-   effect (before we disabled it to ensure we got called back).  */
-bfd_boolean
-plugin_multiple_definition (struct bfd_link_info *info, const char *name,
-			    bfd *obfd, asection *osec ATTRIBUTE_UNUSED,
-			    bfd_vma oval ATTRIBUTE_UNUSED,
-			    bfd *nbfd, asection *nsec, bfd_vma nval)
-{
-  if (is_ir_dummy_bfd (obfd))
-    {
-      struct bfd_link_hash_entry *blhe
-	= bfd_link_hash_lookup (info->hash, name, FALSE, FALSE, FALSE);
-      if (!blhe)
-	einfo (_("%P%X: %s: can't find IR symbol '%s'\n"), nbfd->filename,
-	       name);
-      else if (blhe->type != bfd_link_hash_defined)
-	einfo (_("%P%x: %s: bad IR symbol type %d\n"), name, blhe->type);
-      /* Replace it with new details.  */
-      blhe->u.def.section = nsec;
-      blhe->u.def.value = nval;
-      return TRUE;
-    }
-  return plugin_cached_allow_multiple_defs;
 }

@@ -1,6 +1,6 @@
 // fileread.cc -- read files for gold
 
-// Copyright 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+// Copyright 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 // Written by Ian Lance Taylor <iant@google.com>.
 
 // This file is part of gold.
@@ -24,6 +24,7 @@
 
 #include <cstring>
 #include <cerrno>
+#include <climits>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -598,11 +599,22 @@ File_read::do_readv(off_t base, const Read_multiple& rm, size_t start,
 	       got, want, static_cast<long long>(base + first_offset));
 }
 
+// Portable IOV_MAX.
+
+#if !defined(HAVE_READV)
+#define GOLD_IOV_MAX 1
+#elif defined(IOV_MAX)
+#define GOLD_IOV_MAX IOV_MAX
+#else
+#define GOLD_IOV_MAX (File_read::max_readv_entries * 2)
+#endif
+
 // Read several pieces of data from the file.
 
 void
 File_read::read_multiple(off_t base, const Read_multiple& rm)
 {
+  static size_t iov_max = GOLD_IOV_MAX;
   size_t count = rm.size();
   size_t i = 0;
   while (i < count)
@@ -615,7 +627,7 @@ File_read::read_multiple(off_t base, const Read_multiple& rm)
       size_t j;
       for (j = i + 1; j < count; ++j)
 	{
-	  if (j - i >= File_read::max_readv_entries)
+	  if (j - i >= File_read::max_readv_entries || j - i >= iov_max / 2)
 	    break;
 	  const Read_multiple_entry& j_entry(rm[j]);
 	  off_t j_off = j_entry.file_offset;

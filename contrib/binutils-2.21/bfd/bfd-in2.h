@@ -1029,9 +1029,9 @@ bfd_boolean bfd_fill_in_gnu_debuglink_section
 #define bfd_put_signed_8 \
   bfd_put_8
 #define bfd_get_8(abfd, ptr) \
-  (*(unsigned char *) (ptr) & 0xff)
+  (*(const unsigned char *) (ptr) & 0xff)
 #define bfd_get_signed_8(abfd, ptr) \
-  (((*(unsigned char *) (ptr) & 0xff) ^ 0x80) - 0x80)
+  (((*(const unsigned char *) (ptr) & 0xff) ^ 0x80) - 0x80)
 
 #define bfd_put_16(abfd, val, ptr) \
   BFD_SEND (abfd, bfd_putx16, ((val),(ptr)))
@@ -5084,14 +5084,17 @@ struct bfd
   /* Decompress sections in this BFD.  */
 #define BFD_DECOMPRESS 0x10000
 
+  /* BFD is a dummy, for plugins.  */
+#define BFD_PLUGIN 0x20000
+
   /* Flags bits to be saved in bfd_preserve_save.  */
 #define BFD_FLAGS_SAVED \
-  (BFD_IN_MEMORY | BFD_COMPRESS | BFD_DECOMPRESS)
+  (BFD_IN_MEMORY | BFD_COMPRESS | BFD_DECOMPRESS | BFD_PLUGIN)
 
   /* Flags bits which are for BFD use only.  */
 #define BFD_FLAGS_FOR_BFD_USE_MASK \
   (BFD_IN_MEMORY | BFD_COMPRESS | BFD_DECOMPRESS | BFD_LINKER_CREATED \
-   | BFD_TRADITIONAL_FORMAT | BFD_DETERMINISTIC_OUTPUT)
+   | BFD_PLUGIN | BFD_TRADITIONAL_FORMAT | BFD_DETERMINISTIC_OUTPUT)
 
   /* Currently my_archive is tested before adding origin to
      anything. I believe that this can become always an add of

@@ -689,7 +689,7 @@ lex_warn_invalid (char *where, char *what)
 
   if (! ISPRINT (*what))
     {
-      sprintf (buf, "\\%03o", (unsigned int) *what);
+      sprintf (buf, "\\%03o", *(unsigned char *) what);
       what = buf;
     }
 

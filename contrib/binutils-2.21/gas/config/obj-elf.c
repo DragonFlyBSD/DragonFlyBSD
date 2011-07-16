@@ -1893,7 +1893,14 @@ elf_frob_symbol (symbolS *symp, int *puntp)
 	  && sy_obj->size->X_op == O_constant)
 	S_SET_SIZE (symp, sy_obj->size->X_add_number);
       else
-	as_bad (_(".size expression does not evaluate to a constant"));
+	{
+	  if (flag_size_check == size_check_error)
+	    as_bad (_(".size expression for %s "
+		      "does not evaluate to a constant"), S_GET_NAME (symp));
+	  else
+	    as_warn (_(".size expression for %s "
+		       "does not evaluate to a constant"), S_GET_NAME (symp));
+	}
       free (sy_obj->size);
       sy_obj->size = NULL;
     }

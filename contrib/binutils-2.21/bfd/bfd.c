@@ -157,14 +157,17 @@ CODE_FRAGMENT
 .  {* Decompress sections in this BFD.  *}
 .#define BFD_DECOMPRESS 0x10000
 .
+.  {* BFD is a dummy, for plugins.  *}
+.#define BFD_PLUGIN 0x20000
+.
 .  {* Flags bits to be saved in bfd_preserve_save.  *}
 .#define BFD_FLAGS_SAVED \
-.  (BFD_IN_MEMORY | BFD_COMPRESS | BFD_DECOMPRESS)
+.  (BFD_IN_MEMORY | BFD_COMPRESS | BFD_DECOMPRESS | BFD_PLUGIN)
 .
 .  {* Flags bits which are for BFD use only.  *}
 .#define BFD_FLAGS_FOR_BFD_USE_MASK \
 .  (BFD_IN_MEMORY | BFD_COMPRESS | BFD_DECOMPRESS | BFD_LINKER_CREATED \
-.   | BFD_TRADITIONAL_FORMAT | BFD_DETERMINISTIC_OUTPUT)
+.   | BFD_PLUGIN | BFD_TRADITIONAL_FORMAT | BFD_DETERMINISTIC_OUTPUT)
 .
 .  {* Currently my_archive is tested before adding origin to
 .     anything. I believe that this can become always an add of
