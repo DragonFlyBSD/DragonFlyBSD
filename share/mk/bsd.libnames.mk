@@ -33,6 +33,7 @@ LIBDES?=	${DESTDIR}${LIBDIR}/libdes.a	# XXX in secure dist, not base
 LIBDEVSTAT?=	${DESTDIR}${LIBDIR}/libdevstat.a
 LIBDIALOG?=	${DESTDIR}${LIBDIR}/libdialog.a
 LIBDISK?=	${DESTDIR}${LIBDIR}/libdisk.a
+LIBDM?=		${DESTDIR}${LIBDIR}/libdm.a
 LIBEDIT?=	${DESTDIR}${LIBDIR}/libedit.a
 LIBF2C?=	${DESTDIR}${LIBDIR}/libf2c.a
 LIBFETCH?=	${DESTDIR}${LIBDIR}/libfetch.a
