@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/sys/ktr.h,v 1.12 2008/06/20 01:23:27 y0netan1 Exp $
  */
 /*
  * Generic Kernel trace buffer support.  
@@ -122,7 +120,8 @@ SYSCTL_DECL(_debug_ktr);
 	    SYSCTL_NODE(_debug_ktr, OID_AUTO, master, CTLFLAG_RW, 0, "");   \
 	    int ktr_ ## master ## _enable = KTR_AUTO_ENABLE;		    \
 	    SYSCTL_INT(_debug_ktr, OID_AUTO, master ## _enable, CTLFLAG_RW, \
-			&ktr_ ## master ## _enable, 0, "")
+		&ktr_ ## master ## _enable, 0,				    \
+		"Bit mask to control " __XSTRING(master) "'s event logging")
 
 #define KTR_INFO_MASTER_EXTERN(master)					\
 	    SYSCTL_DECL(_debug_ktr_ ## master);				\
@@ -143,7 +142,7 @@ SYSCTL_DECL(_debug_ktr);
 		1 << maskbit;						\
 	    SYSCTL_INT(_debug_ktr_ ## master, OID_AUTO, name ## _mask,	\
 		CTLFLAG_RD, &ktr_ ## master ## _ ## name ## _mask_ro,	\
-		0, "");							\
+		0, "Value of the " __XSTRING(name) " event in " __XSTRING(master) "'s mask"); \
 	    static struct ktr_info ktr_info_ ## master ## _ ## name = { \
 		#master "_" #name,					\
 		&ktr_ ## master ## _enable,				\

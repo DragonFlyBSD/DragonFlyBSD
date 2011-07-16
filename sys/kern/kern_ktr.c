@@ -131,7 +131,8 @@ MALLOC_DEFINE(M_KTR, "ktr", "ktr buffers");
 SYSCTL_NODE(_debug, OID_AUTO, ktr, CTLFLAG_RW, 0, "ktr");
 
 int		ktr_entries = KTR_ENTRIES;
-SYSCTL_INT(_debug_ktr, OID_AUTO, entries, CTLFLAG_RD, &ktr_entries, 0, "");
+SYSCTL_INT(_debug_ktr, OID_AUTO, entries, CTLFLAG_RD, &ktr_entries, 0,
+    "Size of the event buffer");
 
 int		ktr_version = KTR_VERSION;
 SYSCTL_INT(_debug_ktr, OID_AUTO, version, CTLFLAG_RD, &ktr_version, 0, "");
@@ -140,7 +141,8 @@ static int	ktr_stacktrace = 1;
 SYSCTL_INT(_debug_ktr, OID_AUTO, stacktrace, CTLFLAG_RD, &ktr_stacktrace, 0, "");
 
 static int	ktr_resynchronize = 0;
-SYSCTL_INT(_debug_ktr, OID_AUTO, resynchronize, CTLFLAG_RW, &ktr_resynchronize, 0, "");
+SYSCTL_INT(_debug_ktr, OID_AUTO, resynchronize, CTLFLAG_RW,
+    &ktr_resynchronize, 0, "Resynchronize TSC 10 times a second");
 
 #if KTR_TESTLOG
 static int	ktr_testlogcnt = 0;
@@ -174,7 +176,8 @@ struct callout	ktr_resync_callout;
 #ifdef KTR_VERBOSE
 int	ktr_verbose = KTR_VERBOSE;
 TUNABLE_INT("debug.ktr.verbose", &ktr_verbose);
-SYSCTL_INT(_debug_ktr, OID_AUTO, verbose, CTLFLAG_RW, &ktr_verbose, 0, "");
+SYSCTL_INT(_debug_ktr, OID_AUTO, verbose, CTLFLAG_RW, &ktr_verbose, 0,
+    "Log events to the console as well");
 #endif
 
 static void ktr_resync_callback(void *dummy __unused);
