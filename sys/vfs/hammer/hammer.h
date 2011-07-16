@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.130 2008/11/13 02:18:43 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -76,7 +74,7 @@ MALLOC_DECLARE(M_HAMMER);
 #if !defined(KTR_HAMMER)
 #define KTR_HAMMER	KTR_ALL
 #endif
-KTR_INFO_MASTER_EXTERN(hammer);
+/* KTR_INFO_MASTER_EXTERN(hammer); */
 
 /*
  * Misc structures

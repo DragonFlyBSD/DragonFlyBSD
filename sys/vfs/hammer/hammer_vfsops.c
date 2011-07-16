@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.74 2008/11/13 02:18:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -284,7 +282,7 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, yield_check, CTLFLAG_RW,
 SYSCTL_INT(_vfs_hammer, OID_AUTO, fsync_mode, CTLFLAG_RW,
 	   &hammer_fsync_mode, 0, "");
 
-KTR_INFO_MASTER(hammer);
+/* KTR_INFO_MASTER(hammer); */
 
 /*
  * VFS ABI

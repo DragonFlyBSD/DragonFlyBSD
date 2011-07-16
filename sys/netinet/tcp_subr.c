@@ -65,7 +65,6 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.63 2008/11/11 10:46:58 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -151,13 +150,13 @@
 #if !defined(KTR_TCP)
 #define KTR_TCP		KTR_ALL
 #endif
-KTR_INFO_MASTER(tcp);
 /*
+KTR_INFO_MASTER(tcp);
 KTR_INFO(KTR_TCP, tcp, rxmsg, 0, "tcp getmsg", 0);
 KTR_INFO(KTR_TCP, tcp, wait, 1, "tcp waitmsg", 0);
 KTR_INFO(KTR_TCP, tcp, delayed, 2, "tcp execute delayed ops", 0);
-*/
 #define logtcp(name)	KTR_LOG(tcp_ ## name)
+*/
 
 struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackqhead tcpcbackq[MAXCPU];
