@@ -9,8 +9,8 @@ DPADD+=		${.CURDIR}/../../gnu/lib/libcryptsetup/libcryptsetup.a
 LDADD+=		-L${.CURDIR}/../../gnu/lib/libluks -lluks
 DPADD+=		${.CURDIR}/../../gnu/lib/libluks/libluks.a
 
-LDADD+=		-L${.CURDIR}/../../gnu/lib/libdevmapper -ldevmapper
-DPADD+=		${.CURDIR}/../../gnu/lib/libdevmapper/libdevmapper.a
+LDADD+=		-L${.CURDIR}/../../gnu/lib/libdm -ldm
+DPADD+=		${.CURDIR}/../../gnu/lib/libdm/libdm.a
 
 LDADD+=		-L${.CURDIR}/../../lib/tcplay -ltcplay
 DPADD+=		${.CURDIR}/../../lib/tcplay/tcplay.a
