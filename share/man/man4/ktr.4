@@ -35,9 +35,12 @@
 .Cd options KTR_ENTRIES=8192
 .Cd options KTR_VERBOSE=1
 .Cd options KTR_ALL
+.Cd options KTR_CTXSW
 .Cd options KTR_ETHERNET
+.\".Cd options KTR_HAMMER
 .Cd options KTR_IF_BGE
 .Cd options KTR_IF_EM
+.Cd options KTR_IF_EMX
 .Cd options KTR_IF_START
 .Cd options KTR_IFQ
 .Cd options KTR_IPIQ
@@ -51,7 +54,6 @@
 .Cd options KTR_TOKENS
 .\".Cd options KTR_TSLEEP
 .Cd options KTR_USB_MEMORY
-.Cd options KTR_CTXSW
 .Sh DESCRIPTION
 The
 .Nm
@@ -77,6 +79,8 @@ related kernel options exist:
 .Bl -tag -width ".Dv KTR_SPIN_CONTENTION"
 .It Dv KTR_ALL
 turns on all options
+.It Dv KTR_CTXSW
+context switches
 .It Dv KTR_ETHERNET
 cost of
 .Fn ether_input_chain
@@ -87,7 +91,10 @@ and
 interrupts and sent/received packets
 .It Dv KTR_IF_EM
 .Xr em 4
-interrupts, polling and sent/received packets
+interrupts and sent/received packets
+.It Dv KTR_IF_EMX
+.Xr emx 4
+interrupts and sent/received packets
 .It Dv KTR_IFQ
 classic ifq dequeue/enqueue operation
 .It Dv KTR_IF_START
@@ -116,8 +123,6 @@ IPI performance testing
 LWKT token related events
 .It Dv KTR_USB_MEMORY
 USB memory allocation
-.It Dv KTR_CTXSW
-context switches
 .El
 .Ss Verbose Mode
 By default, events are only logged to the internal buffer for examination
