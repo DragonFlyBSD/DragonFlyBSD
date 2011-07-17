@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ktr.4,v 1.9 2003/09/08 19:57:19 ru Exp $
 .\"
-.Dd July 16, 2011
+.Dd July 17, 2011
 .Dt KTR 4
 .Os
 .Sh NAME
@@ -36,6 +36,7 @@
 .Cd options KTR_VERBOSE=1
 .Cd options KTR_ALL
 .Cd options KTR_CTXSW
+.Cd options KTR_DMCRYPT
 .Cd options KTR_ETHERNET
 .\".Cd options KTR_HAMMER
 .Cd options KTR_IF_BGE
@@ -81,6 +82,11 @@ related kernel options exist:
 turns on all options
 .It Dv KTR_CTXSW
 context switches
+.It Dv KTR_DMCRYPT
+read and write strategy paths of
+.Xr dm 4 Ap s
+.Pa crypt
+target
 .It Dv KTR_ETHERNET
 cost of
 .Fn ether_input_chain
