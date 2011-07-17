@@ -1,5 +1,4 @@
 # $FreeBSD: src/share/mk/bsd.libnames.mk,v 1.28.2.10 2002/08/08 09:33:28 ru Exp $
-# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.12 2007/12/23 02:46:40 sephe Exp $
 #
 # The include file <bsd.libnames.mk> define library names. 
 # Other include files (e.g. bsd.prog.mk, bsd.lib.mk) include this 
@@ -9,18 +8,13 @@
 .error bsd.libnames.mk cannot be included directly.
 .endif
 
-LIBCRT0?=	${DESTDIR}${LIBDIR}/crt0.o
-LIBKZHEAD?=	${DESTDIR}${LIBDIR}/kzhead.o
-LIBKZTAIL?=	${DESTDIR}${LIBDIR}/kztail.o
-
 LIBALIAS?=	${DESTDIR}${LIBDIR}/libalias.a
 LIBARCHIVE?=	${DESTDIR}${LIBDIR}/libarchive.a
-LIBASN1?=	${DESTDIR}${LIBDIR}/libasn1.a	# XXX in secure dist, not base
 LIBATM?=	${DESTDIR}${LIBDIR}/libatm.a
+LIBBLUETOOTH?=	${DESTDIR}${LIBDIR}/libbluetooth.a
 LIBBSDXML?=	${DESTDIR}${LIBDIR}/libbsdxml.a
 LIBBZ2?=	${DESTDIR}${LIBDIR}/libbz2.a
 LIBC?=		${DESTDIR}${LIBDIR}/libc.a
-LIBC_PIC?=	${DESTDIR}${LIBDIR}/libc_pic.a
 LIBCALENDAR?=	${DESTDIR}${LIBDIR}/libcalendar.a
 LIBCAM?=	${DESTDIR}${LIBDIR}/libcam.a
 LIBCIPHER?=	${DESTDIR}${LIBDIR}/libcipher.a	# XXX in secure dist, not base
@@ -28,36 +22,31 @@ LIBCOM_ERR?=	${DESTDIR}${LIBDIR}/libcom_err.a
 LIBCOMPAT?=	${DESTDIR}${LIBDIR}/libcompat.a
 LIBCRYPT?=	${DESTDIR}${LIBDIR}/libcrypt.a
 LIBCRYPTO?=	${DESTDIR}${LIBDIR}/libcrypto.a	# XXX in secure dist, not base
+LIBCRYPTSETUP?=	${DESTDIR}${LIBDIR}/libcryptsetup.a
 LIBCURSES?=	${DESTDIR}${LIBDIR}/libcurses.a
-LIBDES?=	${DESTDIR}${LIBDIR}/libdes.a	# XXX in secure dist, not base
+LIBDEVATTR?=	${DESTDIR}${LIBDIR}/libdevattr.a
+LIBDEVINFO?=	${DESTDIR}${LIBDIR}/libdevinfo.a
+LIBDEVMAPPER?=	${DESTDIR}${LIBDIR}/libdevmapper.a
 LIBDEVSTAT?=	${DESTDIR}${LIBDIR}/libdevstat.a
 LIBDIALOG?=	${DESTDIR}${LIBDIR}/libdialog.a
-LIBDISK?=	${DESTDIR}${LIBDIR}/libdisk.a
 LIBDM?=		${DESTDIR}${LIBDIR}/libdm.a
 LIBEDIT?=	${DESTDIR}${LIBDIR}/libedit.a
-LIBF2C?=	${DESTDIR}${LIBDIR}/libf2c.a
+LIBEVTR?=	${DESTDIR}${LIBDIR}/libevtr.a
 LIBFETCH?=	${DESTDIR}${LIBDIR}/libfetch.a
 LIBFL?=		"don't use LIBFL, use LIBL"
 LIBFORM?=	${DESTDIR}${LIBDIR}/libform.a
-LIBFORMS?=	${DESTDIR}${LIBDIR}/libforms.a
+LIBFSID?=	${DESTDIR}${LIBDIR}/libfsid.a
 LIBFTPIO?=	${DESTDIR}${LIBDIR}/libftpio.a
-LIBGPLUSPLUS?=	${DESTDIR}${GCCLIBDIR}/libg++.a
-LIBG2C?=	${DESTDIR}${LIBDIR}/libg2c.a
-LIBGCC?=	${DESTDIR}${GCCLIBDIR}/libgcc.a
-LIBGCC_PIC?=	${DESTDIR}${GCCLIBDIR}/libgcc_pic.a
-LIBGSSAPI?=	${DESTDIR}${LIBDIR}/libgssapi.a	# XXX in secure dist, not base
-LIBHISTORY?=	${DESTDIR}${LIBDIR}/libhistory.a
 LIBIPSEC?=	${DESTDIR}${LIBDIR}/libipsec.a
 LIBIPX?=	${DESTDIR}${LIBDIR}/libipx.a
-LIBISC?=	${DESTDIR}${LIBDIR}/libisc.a
 LIBKCORE?=	${DESTDIR}${LIBDIR}/libkcore.a
-LIBKDB?=	${DESTDIR}${LIBDIR}/libkdb.a	# XXX in secure dist, not base
-LIBKRB?=	${DESTDIR}${LIBDIR}/libkrb.a	# XXX in secure dist, not base
-LIBKRB5?=	${DESTDIR}${LIBDIR}/libkrb5.a	# XXX in secure dist, not base
 LIBKINFO?=	${DESTDIR}${LIBDIR}/libkinfo.a
 LIBKVM?=	${DESTDIR}${LIBDIR}/libkvm.a
 LIBL?=		${DESTDIR}${LIBDIR}/libl.a
+LIBLDNS?=	${DESTDIR}${LIBDIR}/libldns.a
 LIBLN?=		"don't use LIBLN, use LIBL"
+LIBLUKS?=	${DESTDIR}${LIBDIR}/libluks.a
+LIBLVM?=	${DESTDIR}${LIBDIR}/liblvm.a
 LIBLZMA?=	${DESTDIR}${LIBDIR}/liblzma.a
 LIBM?=		${DESTDIR}${LIBDIR}/libm.a
 LIBMAGIC?=	${DESTDIR}${LIBDIR}/libmagic.a
@@ -70,7 +59,6 @@ LIBMYTINFO?=	${DESTDIR}${LIBDIR}/libmytinfo.a
 LIBNCP?=	${DESTDIR}${LIBDIR}/libncp.a
 LIBNCURSES?=	${DESTDIR}${LIBDIR}/libncurses.a
 LIBNETGRAPH?=	${DESTDIR}${LIBDIR}/libnetgraph.a
-LIBOBJC?=	${DESTDIR}${GCCLIBDIR}/libobjc.a
 LIBOPIE?=	${DESTDIR}${LIBDIR}/libopie.a
 
 # The static PAM library doesn't know its secondary dependencies,
@@ -84,37 +72,40 @@ MINUSLPAM+=	-lradius -ltacplus -lopie -lcrypt -lmd -lutil
 .endif
 
 LIBPANEL?=	${DESTDIR}${LIBDIR}/libpanel.a
-LIBPC?=		${DESTDIR}${LIBDIR}/libpc.a	# XXX doesn't exist
 LIBPCAP?=	${DESTDIR}${LIBDIR}/libpcap.a
-LIBPERL?=	${DESTDIR}${LIBDIR}/libperl.a
-LIBPLOT?=	${DESTDIR}${LIBDIR}/libplot.a	# XXX doesn't exist
+LIBPOSIX1E?=	${DESTDIR}${LIBDIR}/libposix1e.a
 LIBPROP?=	${DESTDIR}${LIBDIR}/libprop.a
 LIBRADIUS?=	${DESTDIR}${LIBDIR}/libradius.a
-LIBREADLINE?=	${DESTDIR}${LIBDIR}/libreadline.a
-LIBRESOLV?=	${DESTDIR}${LIBDIR}/libresolv.a	# XXX doesn't exist
-LIBROKEN?=	${DESTDIR}${LIBDIR}/libroken.a	# XXX in secure dist, not base
 LIBRPCSVC?=	${DESTDIR}${LIBDIR}/librpcsvc.a
+LIBRT?=		${DESTDIR}${LIBDIR}/librt.a
 LIBSBUF?=	${DESTDIR}${LIBDIR}/libsbuf.a
-LIBSCRYPT?=	"don't use LIBSCRYPT, use LIBCRYPT"
+LIBSCTP?=	${DESTDIR}${LIBDIR}/libsctp.a
+LIBSDP?=	${DESTDIR}${LIBDIR}/libsdp.a
 LIBSMB?=	${DESTDIR}${LIBDIR}/libsmb.a
-LIBDESCRYPT?=	"don't use LIBDESCRYPT, use LIBCRYPT"
-LIBSCSI?=	${DESTDIR}${LIBDIR}/libscsi.a
-LIBSS?=		${DESTDIR}${LIBDIR}/libss.a
 LIBSSH?=	${DESTDIR}${LIBDIR}/libssh.a	# XXX in secure dist, not base
 LIBSSL?=	${DESTDIR}${LIBDIR}/libssl.a	# XXX in secure dist, not base
-LIBSTDCPLUSPLUS?= ${DESTDIR}${GCCLIBDIR}/libstdc++.a
+LIBSTAND?=	${DESTDIR}${LIBDIR}/libstand.a
 LIBTACPLUS?=	${DESTDIR}${LIBDIR}/libtacplus.a
-LIBTCL?=	${DESTDIR}${LIBDIR}/libtcl.a
 LIBTCPLAY?=	${DESTDIR}${LIBDIR}/libtcplay.a
 LIBTERMCAP?=	${DESTDIR}${LIBDIR}/libtermcap.a
 LIBTERMLIB?=	"don't use LIBTERMLIB, use LIBTERMCAP"
+LIBTINFO?=	"don't use LIBTINFO, use LIBNCURSES"
 LIBUSBHID?=	${DESTDIR}${LIBDIR}/libusbhid.a
 LIBUTIL?=	${DESTDIR}${LIBDIR}/libutil.a
+LIBVGL?=	${DESTDIR}${LIBDIR}/libvgl.a
 LIBWRAP?=	${DESTDIR}${LIBDIR}/libwrap.a
 LIBXPG4?=	${DESTDIR}${LIBDIR}/libxpg4.a
 LIBY?=		${DESTDIR}${LIBDIR}/liby.a
 LIBYPCLNT?=	${DESTDIR}${LIBDIR}/libypclnt.a
 LIBZ?=		${DESTDIR}${LIBDIR}/libz.a
 
+LIBGCC?=	${DESTDIR}${GCCLIBDIR}/libgcc.a
+LIBGCC_PIC?=	${DESTDIR}${GCCLIBDIR}/libgcc_pic.a
+LIBGCOV?=	${DESTDIR}${GCCLIBDIR}/libgcov.a
+LIBGCOV_PIC?=	${DESTDIR}${GCCLIBDIR}/libgcov_pic.a
+LIBOBJC?=	${DESTDIR}${GCCLIBDIR}/libobjc.a
+LIBSTDCPLUSPLUS?= ${DESTDIR}${GCCLIBDIR}/libstdc++.a
+LIBSUPCPLUSPLUS?= ${DESTDIR}${GCCLIBDIR}/libsupc++.a
+
 THREAD_LIB?=	thread_xu
-LIBTHREAD?=	${DESTDIR}${LIBDIR}/lib${THREAD_LIB}.a
+LIBPTHREAD?=	${DESTDIR}${LIBDIR}/lib${THREAD_LIB}.a
