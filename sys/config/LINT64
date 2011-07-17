@@ -2537,14 +2537,18 @@ options		VM_PAGE_DEBUG
 options 	XBONEHACK
 
 options	KTR
+options KTR_ALL
+options	KTR_ENTRIES=1024
+options	KTR_VERBOSE=1
 #options KTR_CTXSW
+#options KTR_DMCRYPT
 #options KTR_ETHERNET
 #options KTR_HAMMER
+#options KTR_IFQ
 #options KTR_IF_BGE
 #options KTR_IF_EM
 #options KTR_IF_EMX
 #options KTR_IF_START
-#options KTR_IFQ
 #options KTR_IPIQ
 #options KTR_KERNENTRY
 #options KTR_MEMORY
@@ -2554,10 +2558,6 @@ options	KTR
 #options KTR_TESTLOG
 #options KTR_TOKENS
 #options KTR_USB_MEMORY
-#options KTR_DMCRYPT
-options KTR_ALL
-options	KTR_ENTRIES=1024
-options	KTR_VERBOSE=1
 
 # ALTQ
 options 	ALTQ		#alternate queueing

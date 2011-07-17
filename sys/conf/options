@@ -578,28 +578,28 @@ HIFN_NO_RNG		opt_hifn.h
 
 # KTR options
 KTR				opt_global.h
-KTR_ALL				opt_ktr.h
-KTR_TOKENS			opt_ktr.h
-KTR_MEMORY			opt_ktr.h
-KTR_USB_MEMORY			opt_ktr.h
-KTR_IPIQ			opt_ktr.h
-KTR_MSGPORT			opt_ktr.h
 KTR_ENTRIES			opt_global.h
-KTR_VERBOSE			opt_ktr.h
-KTR_SPIN_CONTENTION		opt_ktr.h
+KTR_ALL				opt_ktr.h
+KTR_CTXSW			opt_ktr.h
+KTR_DMCRYPT			opt_ktr.h
+KTR_ETHERNET			opt_ktr.h
+KTR_HAMMER			opt_ktr.h
+KTR_IFQ				opt_ktr.h
 KTR_IF_BGE			opt_ktr.h
 KTR_IF_EM			opt_ktr.h
 KTR_IF_EMX			opt_ktr.h
-KTR_KERNENTRY			opt_ktr.h
-KTR_TESTLOG			opt_ktr.h
-KTR_SERIALIZER			opt_ktr.h
-KTR_POLLING			opt_ktr.h
-KTR_IFQ				opt_ktr.h
 KTR_IF_START			opt_ktr.h
-KTR_HAMMER			opt_ktr.h
-KTR_ETHERNET			opt_ktr.h
-KTR_CTXSW			opt_ktr.h
-KTR_DMCRYPT			opt_ktr.h
+KTR_IPIQ			opt_ktr.h
+KTR_KERNENTRY			opt_ktr.h
+KTR_MEMORY			opt_ktr.h
+KTR_MSGPORT			opt_ktr.h
+KTR_POLLING			opt_ktr.h
+KTR_SERIALIZER			opt_ktr.h
+KTR_SPIN_CONTENTION		opt_ktr.h
+KTR_TESTLOG			opt_ktr.h
+KTR_TOKENS			opt_ktr.h
+KTR_USB_MEMORY			opt_ktr.h
+KTR_VERBOSE			opt_ktr.h
 
 # options for the Atheros driver
 ATH_DEBUG		opt_ath.h
