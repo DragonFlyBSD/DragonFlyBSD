@@ -2,6 +2,7 @@
 PROG=	dumpvfscache
 
 LDADD=	-lkvm -lmd
+DPADD=	${LIBKVM} ${LIBMD}
 
 NOMAN=	1
 

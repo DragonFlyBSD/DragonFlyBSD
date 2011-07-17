@@ -1,7 +1,6 @@
 #---------------------------------------------------------------------------
 #
 # $FreeBSD: src/usr.sbin/i4b/dtmfdecode/Makefile,v 1.6.2.2 2001/08/01 17:29:17 obrien Exp $
-# $DragonFly: src/usr.sbin/i4b/dtmfdecode/Makefile,v 1.2 2003/06/17 04:29:53 dillon Exp $
 #
 #	last edit-date: [Tue Dec 14 21:17:46 1999]
 #
@@ -13,6 +12,7 @@ CFLAGS+= -DDEBUG
 
 # libm is only necessary if USE_COS is defined in the source
 #LDADD=	-lm
+#DPADD=	${LIBM}
 
 test:   ${PROG}
 	uudecode -p < dtmfsounds.al.uu | ./${PROG}

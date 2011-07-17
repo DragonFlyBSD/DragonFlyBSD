@@ -5,6 +5,7 @@ PROG=		info
 MAN=		info.1 info.5 texinfo.5
 
 LDADD+=		-lncurses
+DPADD+=		${LIBNCURSES}
 CFLAGS+=	-I${SRCDIR} -I${SRCDIR}/lib -I${SRCDIR}/gnulib/lib
 CFLAGS+=	-I${SRCDIR}/info -I${.CURDIR}/../libgnu
 CFLAGS+=	-DHAVE_CONFIG_H

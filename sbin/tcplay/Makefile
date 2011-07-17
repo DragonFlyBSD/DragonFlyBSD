@@ -8,6 +8,7 @@ SRCS=	main.c
 SRCS+=	tcplay.c crc32.c safe_mem.c io.c crypto-dev.c hdr.c
 
 LDADD=	-lcrypto -ldm -lprop -lutil
+DPADD=	${LIBCRYPTO} ${LIBDM} ${LIBPROP} ${LIBUTIL}
 
 CFLAGS+=	-I${TCPLAY_DIR}
 

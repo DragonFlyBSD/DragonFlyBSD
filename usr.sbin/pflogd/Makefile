@@ -1,8 +1,7 @@
 #	$OpenBSD: Makefile,v 1.6 2003/11/20 23:23:09 avsm Exp $
-#	$DragonFly: src/usr.sbin/pflogd/Makefile,v 1.2 2008/11/03 00:25:45 pavalos Exp $
 
 LDADD+= -lpcap -lutil
-DPAPP+=	${LIBPCAP} ${LIBUTIL}
+DPADD+=	${LIBPCAP} ${LIBUTIL}
 CFLAGS+= -DHAVE_SNPRINTF
 
 PROG=	pflogd
