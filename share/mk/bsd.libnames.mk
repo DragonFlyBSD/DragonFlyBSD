@@ -40,6 +40,7 @@ LIBFTPIO?=	${DESTDIR}${LIBDIR}/libftpio.a
 LIBIPSEC?=	${DESTDIR}${LIBDIR}/libipsec.a
 LIBIPX?=	${DESTDIR}${LIBDIR}/libipx.a
 LIBKCORE?=	${DESTDIR}${LIBDIR}/libkcore.a
+LIBKICONV?=	${DESTDIR}${LIBDIR}/libkiconv.a
 LIBKINFO?=	${DESTDIR}${LIBDIR}/libkinfo.a
 LIBKVM?=	${DESTDIR}${LIBDIR}/libkvm.a
 LIBL?=		${DESTDIR}${LIBDIR}/libl.a
