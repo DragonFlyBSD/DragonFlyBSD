@@ -179,6 +179,8 @@ static const struct bge_type bge_devs[] = {
 		"Broadcom BCM5721 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5722,
 		"Broadcom BCM5722 Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5723,
+		"Broadcom BCM5723 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5750,
 		"Broadcom BCM5750 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5750M,
@@ -209,6 +211,16 @@ static const struct bge_type bge_devs[] = {
 		"Broadcom BCM5755M Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5756,
 		"Broadcom BCM5756 Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5761,
+		"Broadcom BCM5761 Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5761E,
+		"Broadcom BCM5761E Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5761S,
+		"Broadcom BCM5761S Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5761SE,
+		"Broadcom BCM5761SE Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5764,
+		"Broadcom BCM5764 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5780,
 		"Broadcom BCM5780 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5780S,
@@ -217,6 +229,12 @@ static const struct bge_type bge_devs[] = {
 		"Broadcom BCM5781 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5782,
 		"Broadcom BCM5782 Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5784,
+		"Broadcom BCM5784 Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5785F,
+		"Broadcom BCM5785F Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5785G,
+		"Broadcom BCM5785G Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5786,
 		"Broadcom BCM5786 Gigabit Ethernet" },
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5787,
@@ -239,7 +257,14 @@ static const struct bge_type bge_devs[] = {
 		"Broadcom BCM5906 Fast Ethernet"},
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5906M,
 		"Broadcom BCM5906M Fast Ethernet"},
-
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57760,
+		"Broadcom BCM57760 Gigabit Ethernet"},
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57780,
+		"Broadcom BCM57780 Gigabit Ethernet"},
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57788,
+		"Broadcom BCM57788 Gigabit Ethernet"},
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57790,
+		"Broadcom BCM57790 Gigabit Ethernet"},
 	{ PCI_VENDOR_SCHNEIDERKOCH, PCI_PRODUCT_SCHNEIDERKOCH_SK_9DX1,
 		"SysKonnect Gigabit Ethernet" },
 
@@ -251,6 +276,7 @@ static const struct bge_type bge_devs[] = {
 #define BGE_IS_5705_PLUS(sc)		((sc)->bge_flags & BGE_FLAG_5705_PLUS)
 #define BGE_IS_5714_FAMILY(sc)		((sc)->bge_flags & BGE_FLAG_5714_FAMILY)
 #define BGE_IS_575X_PLUS(sc)		((sc)->bge_flags & BGE_FLAG_575X_PLUS)
+#define BGE_IS_5755_PLUS(sc)		((sc)->bge_flags & BGE_FLAG_5755_PLUS)
 
 typedef int	(*bge_eaddr_fcn_t)(struct bge_softc *, uint8_t[]);
 
@@ -1612,14 +1638,19 @@ bge_blockinit(struct bge_softc *sc)
 
 	/* Turn on write DMA state machine */
 	val = BGE_WDMAMODE_ENABLE|BGE_WDMAMODE_ALL_ATTNS;
-	if (sc->bge_asicrev == BGE_ASICREV_BCM5755 ||
-	    sc->bge_asicrev == BGE_ASICREV_BCM5787)
+	if (BGE_IS_5755_PLUS(sc))
 		val |= (1 << 29);	/* Enable host coalescing bug fix. */
 	CSR_WRITE_4(sc, BGE_WDMA_MODE, val);
 	DELAY(40);
 
 	/* Turn on read DMA state machine */
 	val = BGE_RDMAMODE_ENABLE | BGE_RDMAMODE_ALL_ATTNS;
+        if (sc->bge_asicrev == BGE_ASICREV_BCM5784 ||
+            sc->bge_asicrev == BGE_ASICREV_BCM5785 ||
+            sc->bge_asicrev == BGE_ASICREV_BCM57780)
+		val |= BGE_RDMAMODE_BD_SBD_CRPT_ATTN |
+                  BGE_RDMAMODE_MBUF_RBD_CRPT_ATTN |
+                  BGE_RDMAMODE_MBUF_SBD_CRPT_ATTN;
 	if (sc->bge_flags & BGE_FLAG_PCIE)
 		val |= BGE_RDMAMODE_FIFO_LONG_BURST;
 	CSR_WRITE_4(sc, BGE_RDMA_MODE, val);
@@ -1642,7 +1673,10 @@ bge_blockinit(struct bge_softc *sc)
 	CSR_WRITE_4(sc, BGE_SBDC_MODE, BGE_SBDCMODE_ENABLE);
 
 	/* Turn on send data completion state machine */
-	CSR_WRITE_4(sc, BGE_SDC_MODE, BGE_SDCMODE_ENABLE);
+	val = BGE_SDCMODE_ENABLE;
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5761)
+		val |= BGE_SDCMODE_CDELAY; 
+	CSR_WRITE_4(sc, BGE_SDC_MODE, val);
 
 	/* Turn on send data initiator state machine */
 	CSR_WRITE_4(sc, BGE_SDI_MODE, BGE_SDIMODE_ENABLE);
@@ -1774,13 +1808,25 @@ bge_attach(device_t dev)
 
 	/* Save various chip information */
 	sc->bge_chipid =
-	    pci_read_config(dev, BGE_PCI_MISC_CTL, 4) &
-	    BGE_PCIMISCCTL_ASICREV;
+	    pci_read_config(dev, BGE_PCI_MISC_CTL, 4) >>
+	    BGE_PCIMISCCTL_ASICREV_SHIFT;
+        if (BGE_ASICREV(sc->bge_chipid) == BGE_ASICREV_USE_PRODID_REG)
+		sc->bge_chipid = pci_read_config(dev, BGE_PCI_PRODID_ASICREV, 4);
 	sc->bge_asicrev = BGE_ASICREV(sc->bge_chipid);
 	sc->bge_chiprev = BGE_CHIPREV(sc->bge_chipid);
 
 	/* Save chipset family. */
 	switch (sc->bge_asicrev) {
+	case BGE_ASICREV_BCM5755:
+	case BGE_ASICREV_BCM5761:
+	case BGE_ASICREV_BCM5784:
+	case BGE_ASICREV_BCM5785:
+	case BGE_ASICREV_BCM5787:
+	case BGE_ASICREV_BCM57780:
+	    sc->bge_flags |= BGE_FLAG_5755_PLUS | BGE_FLAG_575X_PLUS |
+		BGE_FLAG_5705_PLUS;
+	    break;
+
 	case BGE_ASICREV_BCM5700:
 	case BGE_ASICREV_BCM5701:
 	case BGE_ASICREV_BCM5703:
@@ -1796,8 +1842,6 @@ bge_attach(device_t dev)
 
 	case BGE_ASICREV_BCM5750:
 	case BGE_ASICREV_BCM5752:
-	case BGE_ASICREV_BCM5755:
-	case BGE_ASICREV_BCM5787:
 	case BGE_ASICREV_BCM5906:
 		sc->bge_flags |= BGE_FLAG_575X_PLUS;
 		/* Fall through */
@@ -1833,16 +1877,14 @@ bge_attach(device_t dev)
 	if (sc->bge_chipid == BGE_CHIPID_BCM5704_A0)
 		sc->bge_flags |= BGE_FLAG_5704_A0_BUG;
 
-	if (BGE_IS_5705_PLUS(sc)) {
+	if (BGE_IS_5705_PLUS(sc) &&
+		!(sc->bge_flags & BGE_FLAG_ADJUST_TRIM)) {
 		if (sc->bge_asicrev == BGE_ASICREV_BCM5755 ||
+		    sc->bge_asicrev == BGE_ASICREV_BCM5761 ||
+		    sc->bge_asicrev == BGE_ASICREV_BCM5784 ||
 		    sc->bge_asicrev == BGE_ASICREV_BCM5787) {
-			uint32_t product = pci_get_device(dev);
-
-			if (product != PCI_PRODUCT_BROADCOM_BCM5722 &&
-			    product != PCI_PRODUCT_BROADCOM_BCM5756)
-				sc->bge_flags |= BGE_FLAG_JITTER_BUG;
-			if (product == PCI_PRODUCT_BROADCOM_BCM5755M)
-				sc->bge_flags |= BGE_FLAG_ADJUST_TRIM;
+		    	if (sc->bge_chipid != BGE_CHIPID_BCM5722_A0)
+			    sc->bge_flags |= BGE_FLAG_JITTER_BUG;
 		} else if (sc->bge_asicrev != BGE_ASICREV_BCM5906) {
 			sc->bge_flags |= BGE_FLAG_BER_BUG;
 		}

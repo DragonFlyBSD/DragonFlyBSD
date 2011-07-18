@@ -2484,6 +2484,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "BCM5722",
 	},
 	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5723,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5723",
+	},
+	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5705M,
 	    0,
 	    "Broadcom Corporation",
@@ -2598,6 +2604,36 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "BCM5751F",
 	},
 	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5761,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5761",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5761E,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5761E",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5761S,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5761S",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5761SE,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5761SE",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5764,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5764",
+	},
+	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5787F,
 	    0,
 	    "Broadcom Corporation",
@@ -2616,6 +2652,24 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "BCM5782 10/100/1000 Ethernet",
 	},
 	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5784,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5784",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5785F,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5785F",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5785G,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5785G",
+	},
+	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5786,
 	    0,
 	    "Broadcom Corporation",
@@ -2626,6 +2680,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Broadcom Corporation",
 	    "BCM5787",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5787F,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5787F",
 	},
 	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5788,
@@ -2740,6 +2800,30 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Broadcom Corporation",
 	    "BCM5906M",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57760,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM57760",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57780,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM57780",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57788,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM57788",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM57790,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM57790",
 	},
 	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4301,
