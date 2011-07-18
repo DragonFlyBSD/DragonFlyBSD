@@ -133,13 +133,9 @@ MKLINKS+=	lvchange.8 lvchange.1 \
                 vgscan.8 vgscan.1 \
                 vgsplit.8 vgsplit.1
 
-LDADD+=         -L${.CURDIR}/../../lib/liblvm -llvm
-DPADD+=         ${.CURDIR}/../../lib/liblvm/liblvm.a
-
-LDADD+=         -L${.CURDIR}/../../lib/libdevmapper -ldevmapper
-DPADD+=         ${.CURDIR}/../../lib/libdevmapper/libdevmapper.a
-
-LDADD+=		-lprop -ledit -ltermcap -ldevattr
+LDADD+=		-llvm -ldevmapper -lprop -ledit -ltermcap -ldevattr
+DPADD+=		${LIBLVM} ${LIBDEVMAPPER} ${LIBPROP} ${LIBEDIT} ${LIBTERMCAP}
+DPADD+=		${LIBDEVATTR}
 
 .PATH:	${LVM2_DISTDIR}/tools
 

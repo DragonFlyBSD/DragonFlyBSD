@@ -14,16 +14,14 @@ MAN=		dmsetup.8
 CSTD?=		gnu89
 
 CFLAGS+=	-D_XOPEN_SOURCE=600
-CFLAGS+=      -I${LIBDM_DISTDIR}/ -I${LIBDM_DISTDIR}/misc \
+CFLAGS+=	-I${LIBDM_DISTDIR}/ -I${LIBDM_DISTDIR}/misc \
 		-I. -I${LIBDM_DISTDIR}/ioctl -I${LVM2_DISTDIR}/include
 
 CFLAGS+=	-D__LIB_DEVMAPPER__ -DDM_DEVICE_UID=0 \
 		-DDM_DEVICE_GID=0 -DDM_DEVICE_MODE=0600
 
-LDADD+=		-L${.CURDIR}/../../lib/libdevmapper -ldevmapper
-DPADD+=		${.CURDIR}/../../lib/libdevmapper/libdevmapper.a
-
-LDADD+=		-lprop
+LDADD+=		-ldevmapper -lprop
+DPADD+=		${LIBDEVMAPPER} ${LIBPROP}
 
 .PATH:	${LVM2_DISTDIR}/tools
 
