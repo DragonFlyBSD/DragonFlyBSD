@@ -57,6 +57,9 @@
 #ifndef _NETINET6_IN6_VAR_H_
 #include <netinet6/in6_var.h>
 #endif
+#ifndef _SYS_MUTEX_H_
+#include <sys/mutex.h>
+#endif
 
 struct	llinfo_nd6 {
 	struct	llinfo_nd6 *ln_next;
@@ -323,6 +326,7 @@ extern struct llinfo_nd6 llinfo_nd6;
 extern struct nd_ifinfo *nd_ifinfo;
 extern struct nd_drhead nd_defrouter;
 extern struct nd_prhead nd_prefix;
+extern struct mtx nd6_mtx;
 extern int nd6_debug;
 
 #define nd6log(x)	do { if (nd6_debug) log x; } while (0)

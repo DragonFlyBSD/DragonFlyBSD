@@ -48,7 +48,10 @@
 #include <sys/syslog.h>
 #include <sys/queue.h>
 #include <sys/callout.h>
+#include <sys/mutex.h>
+
 #include <sys/thread2.h>
+#include <sys/mutex2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -787,11 +790,13 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 			 * is only called under the network software interrupt
 			 * context.  However, we keep it just for safety.
 			 */
-			crit_enter();
+			mtx_lock(&nd6_mtx);
 			dr = defrouter_lookup(in6, rt->rt_ifp);
 			if (dr)
 				defrtrlist_del(dr);
-			else if (!ip6_forwarding && ip6_accept_rtadv) {
+			mtx_unlock(&nd6_mtx);
+
+			if (dr == NULL && !ip6_forwarding && ip6_accept_rtadv) {
 				/*
 				 * Even if the neighbor is not in the default
 				 * router list, the neighbor may be used
@@ -801,7 +806,6 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 				 */
 				rt6_flush(&ip6->ip6_src, rt->rt_ifp);
 			}
-			crit_exit();
 		}
 		ln->ln_router = is_router;
 	}
@@ -1102,9 +1106,7 @@ nd6_dad_start(struct ifaddr *ifa,
 	 * (re)initialization.
 	 */
 	dp->dad_ifa = ifa;
-	crit_enter();	/* XXX MP not MP safe */
 	_IFAREF(ifa, 0);	/* just for safety */
-	crit_exit();
 	dp->dad_count = ip6_dad_count;
 	dp->dad_ns_icount = dp->dad_na_icount = 0;
 	dp->dad_ns_ocount = dp->dad_ns_tcount = 0;
@@ -1145,9 +1147,7 @@ nd6_dad_stop(struct ifaddr *ifa)
 	TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
 	kfree(dp, M_IP6NDP);
 	dp = NULL;
-	crit_enter();	/* XXX MP not MP safe */
 	_IFAFREE(ifa, 0);
-	crit_exit();
 }
 
 static void
@@ -1156,7 +1156,7 @@ nd6_dad_timer(struct ifaddr *ifa)
 	struct in6_ifaddr *ia = (struct in6_ifaddr *)ifa;
 	struct dadq *dp;
 
-	crit_enter();		/* XXX */
+	mtx_lock(&nd6_mtx);
 
 	/* Sanity check */
 	if (ia == NULL) {
@@ -1191,9 +1191,7 @@ nd6_dad_timer(struct ifaddr *ifa)
 		TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
 		kfree(dp, M_IP6NDP);
 		dp = NULL;
-		crit_enter();	/* XXX MP not MP safe */
 		_IFAFREE(ifa, 0);
-		crit_exit();
 		goto done;
 	}
 
@@ -1276,7 +1274,7 @@ nd6_dad_timer(struct ifaddr *ifa)
 	}
 
 done:
-	crit_exit();
+	mtx_unlock(&nd6_mtx);
 }
 
 void
@@ -1310,9 +1308,7 @@ nd6_dad_duplicated(struct ifaddr *ifa)
 	TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
 	kfree(dp, M_IP6NDP);
 	dp = NULL;
-	crit_enter();	/* XXX MP not MP safe */
 	_IFAFREE(ifa, 0);
-	crit_exit();
 }
 
 static void
