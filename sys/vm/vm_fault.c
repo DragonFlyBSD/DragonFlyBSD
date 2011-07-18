@@ -152,7 +152,22 @@ release_page(struct faultstate *fs)
 
 /*
  * The caller must hold vm_token.
+ *
+ * NOTE: Once unlocked any cached fs->entry becomes invalid, any reuse
+ *	 requires relocking and then checking the timestamp.
+ *
+ * NOTE: vm_map_lock_read() does not bump fs->map->timestamp so we do
+ *	 not have to update fs->map_generation here.
  */
+static __inline void
+relock_map(struct faultstate *fs)
+{
+	if (fs->lookup_still_valid == FALSE && fs->map) {
+		vm_map_lock_read(fs->map);
+		fs->lookup_still_valid = TRUE;
+	}
+}
+
 static __inline void
 unlock_map(struct faultstate *fs)
 {
@@ -1236,6 +1251,13 @@ skip:
 			/*
 			 * Avoid deadlocking against the map when doing I/O.
 			 * fs.object and the page is PG_BUSY'd.
+			 *
+			 * NOTE: Once unlocked, fs->entry can become stale
+			 *	 so this will NULL it out.
+			 *
+			 * NOTE: fs->entry is invalid until we relock the
+			 *	 map and verify that the timestamp has not
+			 *	 changed.
 			 */
 			unlock_map(fs);
 
@@ -1507,19 +1529,21 @@ skip:
 	}
 
 	/*
-	 * We may have had to unlock a map to do I/O.  If we did then
-	 * lookup_still_valid will be FALSE.  If the map generation count
-	 * also changed then all sorts of things could have happened while
-	 * we were doing the I/O and we need to retry.
+	 * Relock the map if necessary, then check the generation count.
+	 * relock_map() will update fs->timestamp to account for the
+	 * relocking if necessary.
+	 *
+	 * If the count has changed after relocking then all sorts of
+	 * crap may have happened and we have to retry.
 	 */
-
-	if (!fs->lookup_still_valid &&
-	    fs->map != NULL &&
-	    (fs->map->timestamp != fs->map_generation)) {
-		release_page(fs);
-		lwkt_reltoken(&vm_token);
-		unlock_and_deallocate(fs);
-		return (KERN_TRY_AGAIN);
+	if (fs->lookup_still_valid == FALSE && fs->map) {
+		relock_map(fs);
+		if (fs->map->timestamp != fs->map_generation) {
+			release_page(fs);
+			lwkt_reltoken(&vm_token);
+			unlock_and_deallocate(fs);
+			return (KERN_TRY_AGAIN);
+		}
 	}
 
 	/*
@@ -1597,8 +1621,8 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry, boolean_t user_wire)
 	if (entry->eflags & MAP_ENTRY_KSTACK)
 		start += PAGE_SIZE;
 	lwkt_gettoken(&vm_token);
-	vm_map_unlock(map);
 	map->timestamp++;
+	vm_map_unlock(map);
 
 	/*
 	 * We simulate a fault to get the page and enter it in the physical
