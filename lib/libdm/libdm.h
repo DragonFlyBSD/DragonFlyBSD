@@ -116,6 +116,7 @@ void *dm_get_next_target(struct dm_task *dmt, void *cur, uint64_t *startp,
 uint32_t dm_get_major(void);
 int dm_is_dm_major(uint32_t major);
 const char *dm_dir(void);
+void dm_udev_set_sync_support(int sync_udev);
 int dm_task_set_cookie(struct dm_task *dmt, uint32_t *cookie,
     uint16_t udev_flags);
 int dm_udev_wait(uint32_t cookie);

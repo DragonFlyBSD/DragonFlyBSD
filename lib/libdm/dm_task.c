@@ -799,6 +799,12 @@ dm_dir(void)
 	return "/dev/mapper";
 }
 
+void
+dm_udev_set_sync_support(int sync_udev __unused)
+{
+	return;
+}
+
 int
 dm_task_set_cookie(struct dm_task *dmt __unused, uint32_t *cookie __unused,
     uint16_t udev_flags __unused)
