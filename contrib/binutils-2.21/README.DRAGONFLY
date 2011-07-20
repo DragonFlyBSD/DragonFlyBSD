@@ -14,5 +14,6 @@ A list of files and directories removed is in README.DELETED
 Local modifications applied to following files:
 	binutils/arlex.1
 	bfd/bfdver.h (new)
+	gold/options.cc
 	gold/options.h
 	ld/ldlex.l

@@ -1105,10 +1105,7 @@ General_options::finalize()
     }
   else if (!this->nostdlib())
     {
-      // Even if they don't specify it, we add -L /lib and -L /usr/lib.
-      // FIXME: We should only do this when configured in native mode.
-      this->add_to_library_path_with_sysroot("/lib");
-      this->add_to_library_path_with_sysroot("/usr/lib");
+      this->add_to_library_path_with_sysroot(USRDATA_PREFIX "/usr/lib");
     }
 
   // Parse the contents of -retain-symbols-file into a set.
