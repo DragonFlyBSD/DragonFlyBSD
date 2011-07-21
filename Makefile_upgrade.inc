@@ -1730,6 +1730,7 @@ TO_REMOVE+=/usr/share/man/man4/i386/wl.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/wt.4.gz
 TO_REMOVE+=/usr/share/man/man8/wlconfig.8.gz
 TO_REMOVE+=/usr/share/man/man8/xten.8.gz
+TO_REMOVE+=/usr/bin/gprof4
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
