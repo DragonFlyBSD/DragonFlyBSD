@@ -68,7 +68,6 @@ SUBDIR=	alias \
 	getconf \
 	getent \
 	getopt \
-	gprof \
 	gzip \
 	head \
 	hexdump \
@@ -259,7 +258,6 @@ SUBDIR+=vacation
 # Things that don't compile on x86_64 or are i386 specific:
 SUBDIR+=doscmd \
 	gcore \
-	gprof4 \
 	ncplist \
 	ncplogin \
 	smbutil
