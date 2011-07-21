@@ -60,8 +60,6 @@ Note that not all architectures support all devices.
 .Bl -tag -width 12n -offset indent -compact
 .It Xr adv 4
 Advansys SCSI host adapter driver
-.It Xr aha 4
-Adaptec SCSI host adapter driver
 .It Xr aic 4
 Adaptec AIC-6260 and AIC-6360 SCSI driver
 .It Xr bt 4
@@ -75,8 +73,6 @@ Future Domain based SCSI controller driver
 PC architecture floppy disk controller driver
 .It Xr nata 4
 Generic ATA/ATAPI disk controller driver
-.It Xr wt 4
-Archive/Wangtek cartridge tape driver
 .It Xr ata 4
 Generic ATA/ATAPI disk controller driver (deprecated)
 .El
@@ -88,8 +84,6 @@ Cyclades Cyclom-Y serial driver
 DigiBoard intelligent serial cards driver
 .It Xr lpt 4
 Generic printer device driver
-.It Xr rc 4
-RISCom/8 multiport serial card driver
 .It Xr rp 4
 Comtrol RocketPort serial card driver
 .It Xr si 4
@@ -100,8 +94,6 @@ Generic serial controller driver
 Stallion Technologies multiport serial controller driver
 .It Xr stli 4
 Stallion Technologies multiport serial controller driver
-.It Xr dgb 4
-DigiBoard intelligent serial cards driver (deprecated)
 .El
 .Ss Network interfaces
 .Bl -tag -width 12n -offset indent -compact
@@ -113,28 +105,18 @@ Digi/Arnet SYNC/570i device driver
 Crystal Semiconductor CS8900 and CS8920 ethernet adapter driver
 .It Xr ed 4
 Novell NE1000/NE2000 and WD-80x3 ethenet adapter driver
-.It Xr el 4
-3Com Etherlink 3C501 ethernet adapter driver
 .It Xr ep 4
 3Com Etherlink III (3C5x9) ethernet adapter driver
 .It Xr ex 4
 Intel EtherExpress Pro/10 and Pro/10+ ethernet adapter driver
 .It Xr fe 4
 Fujitsu MB86960A and MB86965A ethernet adapter driver
-.It Xr ie 4
-Intel i82586 ethernet adapter driver
-.It Xr le 4
-DEC EtherWORKS II/III ethernet adapter driver
 .It Xr lnc 4
 AMD Am7900 LANCE and Am79C9xx PCnet ethernet adapter driver
-.It Xr rdp 4
-RealTek RTL 8002 pocket ethernet adapter driver
 .It Xr sn 4
 SMC91Cxx ethernet adapter driver
 .It Xr sr 4
 RISCom/N2 device driver
-.It Xr wl 4
-T1 speed radio lan card driver
 .El
 .Ss Sound cards
 .Bl -tag -width 12n -offset indent -compact
@@ -167,14 +149,8 @@ Winbond LPC Super I/O
 .Bl -tag -width 12n -offset indent -compact
 .It Xr atkbdc 4
 AT keyboard controller interface
-.\".It Xr gpib 4
-.\"No manpage.
 .It Xr joy 4
 Joystick device driver
-.It Xr labpc 4
-National Instruments LABPC and LABPC+ driver
-.It Xr mse 4
-Bus and InPort mice driver
 .It Xr npx 4
 Numeric Processing Extension coprocessor and emulator
 .It Xr orm 4
@@ -183,12 +159,8 @@ ISA I/O space option ROM(s) driver
 Parallel Port Chipset driver
 .It Xr spic 4
 Sony Programmable I/O Controller device driver
-.\".It Xr spigot 4
-.\"No manpage.
 .It Xr syscons 4
 System Console driver
-.It Xr tw 4
-TW-523 X-10 device driver
 .It Xr vga 4
 VGA graphics driver
 .El

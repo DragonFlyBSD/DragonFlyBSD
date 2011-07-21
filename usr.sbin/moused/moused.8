@@ -29,7 +29,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/moused/moused.8,v 1.47 2004/10/11 07:57:08 philip Exp $
-.\" $DragonFly: src/usr.sbin/moused/moused.8,v 1.9 2008/02/08 10:17:40 matthias Exp $
 .\"
 .Dd February 8, 2008
 .Dt MOUSED 8
@@ -189,8 +188,7 @@ information are:
 .Bl -tag -compact -width modelxxx
 .It Ar port
 Port (device file) name, i.e.\&
-.Pa /dev/cuaa0 ,
-.Pa /dev/mse0
+.Pa /dev/cuaa0
 and
 .Pa /dev/psm0 .
 .It Ar if
@@ -443,10 +441,8 @@ what matters.
 The USB mouse has a flat rectangular connector.
 .Pp
 The next thing to decide is a port to use for the given interface.
-For the bus, InPort and PS/2 mice, there is little choice:
-the bus and InPort mice always use
-.Pa /dev/mse0 ,
-and the PS/2 mouse is always at
+For the PS/2 mouse, there is little choice:
+it is always at
 .Pa /dev/psm0 .
 There may be more than one serial port to which the serial
 mouse can be attached.
@@ -587,8 +583,6 @@ the mice is combined all together.
 .Bl -tag -width /dev/consolectl -compact
 .It Pa /dev/consolectl
 device to control the console
-.It Pa /dev/mse%d
-bus and InPort mouse driver
 .It Pa /dev/psm%d
 PS/2 mouse driver
 .It Pa /dev/sysmouse
@@ -675,7 +669,6 @@ option to assign the physical right button to the logical middle button:
 .Xr kill 1 ,
 .Xr vidcontrol 1 ,
 .Xr keyboard 4 ,
-.Xr mse 4 ,
 .Xr psm 4 ,
 .Xr screen 4 ,
 .Xr sysmouse 4 ,

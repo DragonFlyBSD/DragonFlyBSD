@@ -46,7 +46,6 @@
 
 /*
  * $FreeBSD: src/usr.sbin/moused/moused.c,v 1.69 2005/01/06 08:38:29 philip Exp $
- * $DragonFly: src/usr.sbin/moused/moused.c,v 1.7 2008/11/12 21:44:59 swildner Exp $
  */
 #include <machine/console.h>
 #include <sys/mouse.h>
@@ -758,15 +757,6 @@ main(int argc, char *argv[])
 
     /* the default port name */
     switch(rodent.rtype) {
-
-    case MOUSE_PROTO_INPORT:
-	/* INPORT and BUS are the same... */
-	rodent.rtype = MOUSE_PROTO_BUS;
-	/* FALLTHROUGH */
-    case MOUSE_PROTO_BUS:
-	if (!rodent.portname)
-	    rodent.portname = "/dev/mse0";
-	break;
 
     case MOUSE_PROTO_PS2:
 	if (!rodent.portname)

@@ -32,7 +32,6 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.21 2008/08/30 16:07:59 hasso Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -368,7 +367,7 @@ struct if_laddrreq {
 #ifndef _KERNEL
 struct if_nameindex {
 	u_int	 if_index;	/* 1, 2, ... */
-	char	*if_name;	/* null terminated name: "le0", ... */
+	char	*if_name;	/* null terminated name: "lnc0", ... */
 };
 
 __BEGIN_DECLS

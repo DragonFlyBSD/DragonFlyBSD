@@ -1022,11 +1022,10 @@ options 	SC_TWOBUTTON_MOUSE
 #
 
 #
-# SCSI host adapters: `aha', `aic', `bt'
+# SCSI host adapters: `aic' and `bt'
 #
 # adv: All Narrow SCSI bus AdvanSys controllers.
 # adw: Second Generation AdvanSys controllers including the ADV940UW.
-# aha: Adaptec 154x
 # ahc: Adaptec 274x/284x/294x
 # aic: Adaptec 152x
 # bt: Most Buslogic controllers
@@ -1041,7 +1040,6 @@ options 	SC_TWOBUTTON_MOUSE
 device		bt0	at isa? port IO_BT0
 device		adv0	at isa?
 device		adw
-device		aha0	at isa?
 device		aic0	at isa?
 device		ncv
 device		nsp
@@ -1202,14 +1200,13 @@ options 	COM_MULTIPORT		#code for some cards with shared IRQs
 #		ST16650A-compatible UARTs.
 
 #
-# Network interfaces: `ed', `ep', `ie', `is', `lnc'
+# Network interfaces: `ed', `ep', `is', `lnc'
 #
 # cs: IBM Etherjet and other Crystal Semi CS89x0-based adapters
 # ed: Western Digital and SMC 80xx; Novell NE1000 and NE2000; 3Com 3C503
 # ep: 3Com 3C509
 # ex: Intel EtherExpress Pro/10 and other i82595-based adapters
 # fe: Fujitsu MB86960A/MB86965A Ethernet
-# ie: AT&T StarLAN 10 and EN100; 3Com 3C507; unknown NI5210; Intel EtherExpress
 # lnc: Lance/PCnet cards (Isolan, Novell NE2100, NE32-VL, AMD Am7990 & Am79C960)
 # sbsh: Granch SBNI16 SHDSL modem PCI adapters
 # wi: Lucent WaveLAN/IEEE 802.11 PCMCIA adapters. Note: this supports both
@@ -1223,8 +1220,6 @@ device cs0 at isa? port 0x300
 device ed0 at isa? port 0x280 irq 5 iomem 0xd8000
 device ep
 device ex
-device ie0 at isa? port 0x300 irq 5 iomem 0xd0000
-device ie1 at isa? port 0x360 irq 7 iomem 0xd0000
 device lnc0 at isa? port 0x280 irq 10 drq 0
 device sln
 device sn0 at isa? port 0x300 irq 10

@@ -25,7 +25,6 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/mouse.4,v 1.8.2.3 2001/12/17 11:30:12 ru Exp $
-.\" $DragonFly: src/share/man/man4/mouse.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
 .\"
 .Dd December 3, 1997
 .Dt MOUSE 4
@@ -37,7 +36,6 @@
 .In sys/mouse.h
 .Sh DESCRIPTION
 The mouse drivers
-.Xr mse 4 ,
 .Xr psm 4 ,
 .Xr ums 4
 and
@@ -379,8 +377,6 @@ command.
 .Bl -tag -width /dev/sysmouseXX -compact
 .It Pa /dev/cuaa%d
 serial ports
-.It Pa /dev/mse%d
-bus and InPort mouse device
 .It Pa /dev/psm%d
 PS/2 mouse device
 .It Pa /dev/sysmouse
@@ -390,7 +386,6 @@ USB mouse device
 .El
 .Sh SEE ALSO
 .Xr ioctl 2 ,
-.Xr mse 4 ,
 .Xr psm 4 ,
 .Xr sysmouse 4 ,
 .Xr ums 4 ,

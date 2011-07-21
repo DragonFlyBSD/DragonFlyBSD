@@ -1,7 +1,6 @@
 .\"COPYRIGHT 1989 by The Board of Trustees of Leland Stanford Junior University.
 .\"
 .\" $FreeBSD: src/usr.sbin/mrouted/mrouted.8,v 1.16.2.8 2003/03/11 22:31:29 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/mrouted/mrouted.8,v 1.6 2008/05/02 02:05:08 swildner Exp $
 .\"
 .Dd May 8, 1995
 .Dt MROUTED 8
@@ -408,11 +407,11 @@ school.
 name LOCAL 239.255.0.0/16
 name EE 239.254.0.0/16
 #
-# le1 is our gateway to compsci, don't forward our
+# lnc1 is our gateway to compsci, don't forward our
 #     local groups to them
-phyint le1 boundary EE
+phyint lnc1 boundary EE
 #
-# le2 is our interface on the classroom net, it has four
+# lnc2 is our interface on the classroom net, it has four
 #     different length subnets on it.
 # note that you can use either an ip address or an
 # interface name

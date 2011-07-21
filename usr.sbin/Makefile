@@ -175,10 +175,7 @@ SUBDIR+=apm \
 .endif
 
 .if ${MACHINE_ARCH} == "i386"
-SUBDIR+=sgsc \
-	stallion \
-	wlconfig \
-	xten
+SUBDIR+=stallion
 
 .if !defined(NO_I4B)
 SUBDIR+=i4b

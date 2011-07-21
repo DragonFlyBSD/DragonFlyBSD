@@ -188,8 +188,6 @@ dev/raid/amr/amr_cam.c			optional amrp amr
 dev/raid/amr/amr_disk.c			optional amr
 #dev/raid/amr/amr_linux.c		optional amr compat_linux
 dev/raid/amr/amr_pci.c			optional amr pci
-dev/disk/aha/aha.c			optional aha
-dev/disk/aha/aha_isa.c			optional aha isa
 dev/disk/aic/aic.c			optional aic
 dev/disk/aic/aic_pccard.c		optional aic pccard
 dev/disk/aic7xxx/ahc_pci.c		optional ahc pci
@@ -376,7 +374,6 @@ dev/raid/hptmv/mv.c		optional hptmv
 dev/raid/hptmv/gui_lib.c	optional hptmv
 dev/raid/hptmv/hptproc.c	optional hptmv
 dev/raid/hptmv/ioctl.c		optional hptmv
-dev/netif/ie/if_ie.c		optional nowerror ie isa
 dev/powermng/ichsmb/ichsmb.c	optional ichsmb
 dev/powermng/ichsmb/ichsmb_pci.c	optional ichsmb pci
 dev/powermng/coretemp/coretemp.c	optional coretemp

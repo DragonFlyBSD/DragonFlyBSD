@@ -1194,11 +1194,10 @@ device		npx0	at nexus? port IO_NPX flags 0x0 irq 13
 #
 
 #
-# SCSI host adapters: `aha', `aic', `bt'
+# SCSI host adapters: `aic' and `bt'
 #
 # adv: All Narrow SCSI bus AdvanSys controllers.
 # adw: Second Generation AdvanSys controllers including the ADV940UW.
-# aha: Adaptec 154x
 # ahc: Adaptec 274x/284x/294x
 # aic: Adaptec 152x
 # bt: Most Buslogic controllers
@@ -1213,7 +1212,6 @@ device		npx0	at nexus? port IO_NPX flags 0x0 irq 13
 device		bt0	at isa? port IO_BT0
 device		adv0	at isa?
 device		adw
-device		aha0	at isa?
 device		aic0	at isa?
 device		ncv
 device		nsp
@@ -1328,12 +1326,7 @@ device		fd0	at fdc0 drive 0
 device		fd1	at fdc0 drive 1
 
 #
-# Other standard PC hardware: `mse', `sio', etc.
-#
-# mse: Logitech and ATI InPort bus mouse ports
 # sio: serial ports (see sio(4))
-
-device		mse0	at isa? port 0x23c irq 5
 
 device		sio0	at isa? port IO_COM1 flags 0x10 irq 4
 
@@ -1383,24 +1376,18 @@ options 	COM_MULTIPORT		#code for some cards with shared IRQs
 device		puc
 
 #
-# Network interfaces: `ed', `el', `ep', `ie', `is', `le', `lnc'
+# Network interfaces: `ed', `ep', `is', `lnc'
 #
 # ar: Arnet SYNC/570i hdlc sync 2/4 port V.35/X.21 serial driver (requires sppp)
 # cs: IBM Etherjet and other Crystal Semi CS89x0-based adapters
 # ed: Western Digital and SMC 80xx; Novell NE1000 and NE2000; 3Com 3C503
-# el: 3Com 3C501 (slow!)
 # ep: 3Com 3C509
 # ex: Intel EtherExpress Pro/10 and other i82595-based adapters
 # fe: Fujitsu MB86960A/MB86965A Ethernet
-# ie: AT&T StarLAN 10 and EN100; 3Com 3C507; unknown NI5210; Intel EtherExpress
-# le: Digital Equipment EtherWorks 2 and EtherWorks 3 (DEPCA, DE100,
-#     DE101, DE200, DE201, DE202, DE203, DE204, DE205, DE422)
 # lnc: Lance/PCnet cards (Isolan, Novell NE2100, NE32-VL, AMD Am7990 & Am79C960)
-# rdp: RealTek RTL 8002-based pocket ethernet adapters
 # sbni: Granch SBNI12-xx adapters
 # sbsh: Granch SBNI16 SHDSL modem PCI adapters
 # sr: RISCom/N2 hdlc sync 1/2 port V.35/X.21 serial driver (requires sppp)
-# wl: Lucent Wavelan (ISA card only).
 # wi: Lucent WaveLAN/IEEE 802.11 PCMCIA adapters. Note: this supports both
 #     the PCMCIA and ISA cards: the ISA card is really a PCMCIA to ISA
 #     bridge with a PCMCIA adapter plugged into it.
@@ -1411,15 +1398,10 @@ device		puc
 device ar0 at isa? port 0x300 irq 10 iomem 0xd0000
 device cs0 at isa? port 0x300
 device ed0 at isa? port 0x280 irq 5 iomem 0xd8000
-device el0 at isa? port 0x300 irq 9
 device ep
 device ex
 device fe0 at isa? port 0x300
-device ie0 at isa? port 0x300 irq 5 iomem 0xd0000
-device ie1 at isa? port 0x360 irq 7 iomem 0xd0000
-device le0 at isa? port 0x300 irq 5 iomem 0xd0000
 device lnc0 at isa? port 0x280 irq 10 drq 0
-device rdp0 at isa? port 0x378 irq 7 flags 2
 device sbni0 at isa? port 0x210 irq 5 flags 0xefdead
 device sln
 device sr
@@ -1437,8 +1419,6 @@ device		wlan_tkip	# 802.11 TKIP support
 device		wlan_wep	# 802.11 WEP support
 device		wlan_xauth	# 802.11 WPA or 802.1x authentication for AP
 device		wlan_amrr	# 802.11 AMRR TX rate control algorithm
-options 	WLCACHE		# enables the signal-strength cache
-options 	WLDEBUG		# enables verbose debugging output
 device		an		# Aironet Communications 4500/4800
 device		ath		# Atheros AR521x
 options 	AH_SUPPORT_AR5416
@@ -1456,7 +1436,6 @@ device		iwn		# Intel WiFi Link 4965/1000/5000/5150/5300/6000/6050
 device		wi		# WaveLAN/IEEE, PRISM-II, Spectrum24 802.11DS
 #device		rtw		# RealTek 8180
 #device		acx		# TI ACX100/ACX111.
-device wl0 at isa? port 0x300	# T1 speed ISA/radio lan
 device		xe		# Xircom PCMCIA
 device		ral		# Ralink Technology 802.11 wireless NIC
 device		wpi
@@ -1551,22 +1530,11 @@ device		"snd_uaudio"
 #
 # Miscellaneous hardware:
 #
-# wt: Wangtek and Archive QIC-02/QIC-36 tape drives
-# ctx: Cortex-I frame grabber
 # apm: Laptop Advanced Power Management (experimental)
-# spigot: The Creative Labs Video Spigot video-acquisition board
 # bktr: Brooktree bt848/848a/849a/878/879 video capture and TV Tuner board
 # cy: Cyclades serial driver
-# dgb: Digiboard PC/Xi and PC/Xe series driver (ALPHA QUALITY!)
-# dgm: Digiboard PC/Xem driver
-# gp:  National Instruments AT-GPIB and AT-GPIB/TNT board
-# asc: GI1904-based hand scanners, e.g. the Trust Amiscan Grey
-# gsc: Genius GS-4500 hand scanner.
 # joy: joystick
-# labpc: National Instrument's Lab-PC and Lab-PC+
-# rc: RISCom/8 multiport card
 # rp: Comtrol Rocketport(ISA) - single card
-# tw: TW-523 power line interface for use with X-10 home control products
 # si: Specialix SI/XIO 4-32 port terminal multiplexor
 # spic: Sony Programmable I/O controller (VAIO notebooks)
 # stl: Stallion EasyIO and EasyConnection 8/32 (ISA and PCI), EasyConnection 8/64 PCI
@@ -1578,17 +1546,6 @@ device		"snd_uaudio"
 #    0x0020  Statclock is broken.
 #  If apm is omitted, some systems require sysctl -w kern.timecounter.method=1
 #  for correct timekeeping.
-
-# Notes on the spigot:
-#  The video spigot is at 0xad6.  This port address can not be changed.
-#  The irq values may only be 10, 11, or 15
-#  I/O memory is an 8kb region.  Possible values are:
-#    0a0000, 0a2000, ..., 0fffff, f00000, f02000, ..., ffffff
-#    The start address must be on an even boundary.
-#  Add the following option if you want to allow non-root users to be able
-#  to access the spigot.  This option is not secure because it allows users
-#  direct access to the I/O page.
-#  	options SPIGOT_UNSECURE
 
 # Notes on the Comtrol Rocketport driver:
 #
@@ -1616,12 +1573,6 @@ device		"snd_uaudio"
 #
 #               device rp
 
-# Notes on the Digiboard driver:
-#
-# The following flag values have special meanings:
-#	0x01 - alternate layout of pins (dgb & dgm)
-#	0x02 - use the windowed PC/Xe in 64K mode (dgb only)
-
 # Notes on the Specialix SI/XIO driver:
 #  **This is NOT a Specialix supported Driver!**
 #  The host card is memory, not IO mapped.
@@ -1641,26 +1592,11 @@ device		"snd_uaudio"
 #	Stallion:                    flags 1          iosiz 0x10000
 #  For the PCI cards, "device stl" will suffice.
 
-# for the SoundBlaster 16 multicd - up to 4 devices
-device		wt0	at isa? port 0x300 irq 5 drq 1
-device		ctx0	at isa? port 0x230 iomem 0xd0000
-device		spigot0 at isa? port 0xad6 irq 15 iomem 0xee000
 device		apm0
-device		gp0	at isa? port 0x2c0
-device		gsc0	at isa? port IO_GSC1 drq 3
 device		joy0	at isa? port IO_GAME
 device		cy0	at isa? irq 10 iomem 0xd4000 iosiz 0x2000
-#device		dgb0	at isa? port 0x220 iomem 0xfc000
-#options 	NDGBPORTS=16		# Defaults to 16*NDGB
-device		dgm0	at isa? port 0x104 iomem 0xd0000
-device		labpc0	at isa? port 0x260 irq 5
-device		rc0	at isa? port 0x220 irq 12
 device		nrp
-#device		rp0	at isa? port 0x280
-# the port and irq for tw0 are fictitious
-device		tw0	at isa? port 0x380 irq 11
 device		si0	at isa? iomem 0xd0000 irq 12
-device		asc0	at isa? port IO_ASC1 drq 3 irq 10
 device		spic0	at isa? irq 0 port 0x10a0
 device		stl0	at isa? port 0x2a0 irq 10
 device		stli0	at isa? port 0x2a0 iomem 0xcc000 flags 23 iosiz 0x1000

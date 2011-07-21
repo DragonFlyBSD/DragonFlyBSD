@@ -22,7 +22,7 @@ char	hostname[FNAME_SIZE];		/* our hostname */
 int	hostnamelen;
 char	domainname[FNAME_SIZE];		/* our DNS domain */
 int	domainnamelen;
-char	ifname[IFNAME_SIZE];		/* name of interface (e.g. "le0") */
+char	ifname[IFNAME_SIZE];		/* name of interface (e.g. "lnc0") */
 struct	in_addr myip;			/* my ip address */
 struct	in_addr nameip;			/* DNS server ip address */
 struct	in_addr rootip;			/* root ip address */

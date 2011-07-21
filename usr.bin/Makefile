@@ -262,7 +262,6 @@ SUBDIR+=doscmd \
 	gprof4 \
 	ncplist \
 	ncplogin \
-	sasc \
 	smbutil
 .endif
 

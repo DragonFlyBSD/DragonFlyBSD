@@ -77,7 +77,6 @@ crypto/des/des_setkey.c			optional	crypto
 dev/disk/advansys/adv_isa.c		optional	adv isa
 dev/disk/aic/aic_isa.c			optional	aic isa
 dev/netif/ar/if_ar_isa.c		optional	ar isa
-dev/serial/dgb/dgm.c			optional	dgm
 
 ${OSACPI_MD_DIR}/OsdEnvironment.c	optional        acpi
 ${OSACPI_MD_DIR}/acpi_machdep.c		optional        acpi
@@ -156,7 +155,6 @@ vfs/smbfs/smbfs_smb.c		optional	smbfs
 vfs/smbfs/smbfs_subr.c		optional	smbfs
 vfs/smbfs/smbfs_vfsops.c	optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
-platform/pc32/gnu/isa/dgb.c	optional	dgb
 platform/pc32/apm/apm.c		optional	apm
 cpu/i386/misc/atomic.c		standard				\
 	compile-with	"${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
@@ -230,28 +228,17 @@ platform/pc32/i386/cpufreq_machdep.c	standard
 platform/pc32/acpica5/acpi_sdt.c	standard
 platform/pc32/acpica5/acpi_fadt.c	standard
 platform/pc32/acpica5/acpi_madt.c	standard
-platform/pc32/isa/asc.c			optional	asc
 platform/pc32/isa/clock.c		standard nowerror
-dev/video/ctx/ctx.c			optional	ctx
 dev/serial/cy/cy.c			optional	cy
 dev/serial/cy/cy_pci.c			optional	cy pci
 dev/netif/elink_layer/elink.c		optional	ep
-dev/netif/elink_layer/elink.c		optional	ie
 dev/disk/fd/fd.c			optional	fd
 dev/disk/fd/fd_pccard.c			optional	fd pccard
-dev/misc/gpib/gpib.c			optional	gp
-dev/video/gsc/gsc.c			optional	gsc
-dev/netif/el/if_el.c			optional	el
-dev/netif/le/if_le.c			optional	le
-dev/netif/rdp/if_rdp.c			optional nowerror	rdp
-dev/netif/wl/if_wl.c			optional	wl
 platform/pc32/isa/isa_intr.c		standard
 bus/isa/i386/isa.c			optional	isa
 bus/isa/i386/isa_compat.c		optional nowerror	isa compat_oldisa
 bus/isa/i386/isa_dma.c			optional	isa
 dev/serial/stli/istallion.c		optional nowerror	stli
-dev/misc/labpc/labpc.c			optional	labpc
-dev/misc/mse/mse.c			optional	mse
 platform/pc32/isa/npx.c			mandatory	npx
 bus/pci/i386/legacy.c			optional	pci
 bus/pci/i386/pci_bus.c			optional	pci
@@ -261,13 +248,9 @@ bus/pci/i386/mptable_pci.c		optional	pci
 platform/pc32/isa/pmtimer.c		optional	pmtimer acpi
 # XXX drhodus
 platform/pc32/isa/prof_machdep.c	optional	profiling-routine
-dev/serial/rc/rc.c			optional nowerror	rc
 dev/misc/spic/spic.c			optional nowerror	spic
-dev/misc/spigot/spigot.c		optional	spigot
 dev/serial/stl/stallion.c		optional	stl
-dev/misc/tw/tw.c			optional	tw
 dev/video/i386/vesa/vesa.c		optional	vga vesa
-dev/disk/wt/wt.c			optional nowerror	wt
 emulation/linux/i386/imgact_linux.c	optional	compat_linux
 emulation/linux/i386/linux_dummy.c	optional	compat_linux
 emulation/linux/i386/linux_locore.s	optional	compat_linux	  \

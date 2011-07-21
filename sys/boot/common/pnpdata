@@ -1,6 +1,5 @@
 #
 # $FreeBSD: src/sys/boot/common/pnpdata,v 1.2 1999/08/28 00:39:51 peter Exp $
-# $DragonFly: src/sys/boot/common/pnpdata,v 1.4 2007/05/17 19:26:05 swildner Exp $
 #
 # This file contains the system default Plug-and-Play data.  It is
 # derived from a number of sources, including:
@@ -91,9 +90,6 @@ ident=PNP80d4 module=ed             # Novell/Anthem NE2000
 ident=PNP80d5 module=ed             # NE1000 Compatible
 ident=PNP80d6 module=ed             # NE2000 Compatible
 ident=PNP80d8 module=lnc            # Novell/Anthem NE2100
-ident=PNP80e9 module=le             # DEC (DE200) EtherWorks Turbo
-ident=PNP80eb module=le             # DEC (DE201) EtherWorks Turbo/TP
-ident=PNP80ec module=le             # DEC (DE202) EtherWorks Turbo/TP_BNC
 ident=PNP80f1 module=eg             # 3Com EtherLink Plus
 ident=PNP80f3 module=ed             # 3Com EtherLink II or IITP (8 or 16-bit)
 ident=PNP80f6 module=ed             # 3Com EtherLink 16
@@ -106,7 +102,6 @@ ident=PNP8126 module=ed             # SMC EtherCard PLUS With Boot ROM Socket (W
 ident=PNP8127 module=ed             # SMC EtherCard PLUS With Boot ROM Socket (WD/8003EB)
 ident=PNP8128 module=ed             # SMC EtherCard PLUS TP (WD/8003WT)
 ident=PNP812a module=ed             # SMC EtherCard PLUS 16 With Boot ROM Socket (WD/8013EBT)
-ident=PNP812d module=ie             # Intel EtherExpress 16 or 16TP
 ident=PNP8137 module=ed             # Artisoft AE-1
 ident=PNP8138 module=ed             # Artisoft AE-2 or AE-3
 ident=PNP8158 module=ed             # HP PC LAN Adapter/16 TP Plus (HP27247B)
