@@ -371,7 +371,12 @@ ioapic_gsi_setup(int gsi)
 				 * don't do the default configuration.
 				 * The configuration of the target GSI
 				 * will finally setup this IRQ.
+				 *
+				 * This GSI is not used, disable it.
 				 */
+				ioapic_pin_setup(ioapic_gsi_ioaddr(gsi),
+				    ioapic_gsi_pin(gsi), 0,
+				    INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH);
 				return;
 			}
 			trig = INTR_TRIGGER_EDGE;
