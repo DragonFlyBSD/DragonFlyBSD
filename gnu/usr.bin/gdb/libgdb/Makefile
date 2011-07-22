@@ -178,6 +178,7 @@ init.c: ${SRCS:Ninit.c} Makefile
 CLEANFILES+=	init.c
 
 xml-builtin.c: feature_to_c.sh ${XMLFILES}
+	rm -f ${.TARGET}
 	sh ${CONTRIBDIR}/features/feature_to_c.sh ${.TARGET} ${.ALLSRC:M*.dtd}
 
 CLEANFILES+=	xml-builtin.c
