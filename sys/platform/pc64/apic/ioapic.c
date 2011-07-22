@@ -359,14 +359,27 @@ ioapic_gsi_setup(int gsi)
 	}
 
 	if (irq == 16) {
-		if (gsi < 16) {
+		/*
+		 * No explicit IRQ to GSI mapping;
+		 * use the default 1:1 mapping
+		 */
+		irq = gsi;
+		if (irq < 16) {
+			if (ioapic_conf.ioc_intsrc[irq].int_gsi >= 0) {
+				/*
+				 * This IRQ is mapped to different GSI,
+				 * don't do the default configuration.
+				 * The configuration of the target GSI
+				 * will finally setup this IRQ.
+				 */
+				return;
+			}
 			trig = INTR_TRIGGER_EDGE;
 			pola = INTR_POLARITY_HIGH;
 		} else {
 			trig = INTR_TRIGGER_LEVEL;
 			pola = INTR_POLARITY_LOW;
 		}
-		irq = gsi;
 	}
 
 	ioapic_abi_set_irqmap(irq, gsi, trig, pola);
