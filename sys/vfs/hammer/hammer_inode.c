@@ -237,8 +237,8 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 		ip->vp = NULL;
 
 		if ((ip->flags & HAMMER_INODE_RECLAIM) == 0) {
-			++hammer_count_reclaiming;
-			++hmp->inode_reclaims;
+			++hammer_count_reclaims;
+			++hmp->count_reclaims;
 			ip->flags |= HAMMER_INODE_RECLAIM;
 		}
 		hammer_unlock(&ip->lock);
@@ -2182,7 +2182,7 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	 * inode reclaim wait pipeline continues to work.
 	 */
 	if (flg->total_count >= hammer_autoflush ||
-	    flg->total_count >= hammer_limit_reclaim / 4) {
+	    flg->total_count >= hammer_limit_reclaims / 4) {
 		if (hmp->fill_flush_group == flg)
 			hmp->fill_flush_group = TAILQ_NEXT(flg, flush_entry);
 		hammer_flusher_async(hmp, flg);
@@ -2621,6 +2621,8 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 		ip->flags &= ~HAMMER_INODE_RSV_INODES;
 		--hmp->rsv_inodes;
 	}
+
+	ip->flags &= ~HAMMER_INODE_SLAVEFLUSH;
 
 	if (dorel)
 		hammer_rel_inode(ip, 0);
@@ -3244,8 +3246,8 @@ hammer_inode_wakereclaims(hammer_inode_t ip)
 	if ((ip->flags & HAMMER_INODE_RECLAIM) == 0)
 		return;
 
-	--hammer_count_reclaiming;
-	--hmp->inode_reclaims;
+	--hammer_count_reclaims;
+	--hmp->count_reclaims;
 	ip->flags &= ~HAMMER_INODE_RECLAIM;
 
 	if ((reclaim = TAILQ_FIRST(&hmp->reclaim_list)) != NULL) {
@@ -3263,11 +3265,11 @@ hammer_inode_wakereclaims(hammer_inode_t ip)
  * if a new inode is created or an inode is loaded from media.
  *
  * When we block we don't care *which* inode has finished reclaiming,
- * as lone as one does.
+ * as long as one does.
  *
- * The reclaim pipeline is primary governed by the auto-flush which is
- * 1/4 hammer_limit_reclaim.  We don't want to block if the count is
- * less than 1/2 hammer_limit_reclaim.  From 1/2 to full count is
+ * The reclaim pipeline is primarily governed by the auto-flush which is
+ * 1/4 hammer_limit_reclaims.  We don't want to block if the count is
+ * less than 1/2 hammer_limit_reclaims.  From 1/2 to full count is
  * dynamically governed.
  */
 void
@@ -3279,7 +3281,7 @@ hammer_inode_waitreclaims(hammer_transaction_t trans)
 
 	/*
 	 * Track inode load, delay if the number of reclaiming inodes is
-	 * between 2/4 and 4/4 hammer_limit_reclaim, depending.
+	 * between 2/4 and 4/4 hammer_limit_reclaims, depending.
 	 */
 	if (curthread->td_proc) {
 		struct hammer_inostats *stats;
@@ -3287,17 +3289,17 @@ hammer_inode_waitreclaims(hammer_transaction_t trans)
 		stats = hammer_inode_inostats(hmp, curthread->td_proc->p_pid);
 		++stats->count;
 
-		if (stats->count > hammer_limit_reclaim / 2)
-			stats->count = hammer_limit_reclaim / 2;
-		lower_limit = hammer_limit_reclaim - stats->count;
+		if (stats->count > hammer_limit_reclaims / 2)
+			stats->count = hammer_limit_reclaims / 2;
+		lower_limit = hammer_limit_reclaims - stats->count;
 		if (hammer_debug_general & 0x10000) {
 			kprintf("pid %5d limit %d\n",
 				(int)curthread->td_proc->p_pid, lower_limit);
 		}
 	} else {
-		lower_limit = hammer_limit_reclaim * 3 / 4;
+		lower_limit = hammer_limit_reclaims * 3 / 4;
 	}
-	if (hmp->inode_reclaims >= lower_limit) {
+	if (hmp->count_reclaims >= lower_limit) {
 		reclaim.count = 1;
 		TAILQ_INSERT_TAIL(&hmp->reclaim_list, &reclaim, entry);
 		tsleep(&reclaim, 0, "hmrrcm", hz);
@@ -3384,13 +3386,13 @@ hammer_inode_waithard(hammer_mount_t hmp)
 	 * Hysteresis.
 	 */
 	if (hmp->flags & HAMMER_MOUNT_FLUSH_RECOVERY) {
-		if (hmp->inode_reclaims < hammer_limit_reclaim / 2 &&
+		if (hmp->count_reclaims < hammer_limit_reclaims / 2 &&
 		    hmp->count_iqueued < hmp->count_inodes / 20) {
 			hmp->flags &= ~HAMMER_MOUNT_FLUSH_RECOVERY;
 			return;
 		}
 	} else {
-		if (hmp->inode_reclaims < hammer_limit_reclaim ||
+		if (hmp->count_reclaims < hammer_limit_reclaims ||
 		    hmp->count_iqueued < hmp->count_inodes / 10) {
 			return;
 		}

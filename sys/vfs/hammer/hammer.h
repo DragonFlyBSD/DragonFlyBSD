@@ -370,6 +370,7 @@ struct hammer_inode {
 	int			flags;
 	int			error;		/* flush error */
 	int			cursor_ip_refs;	/* sanity */
+	int			cursor_exclreq_count;
 	int			rsv_recs;
 	struct vnode		*vp;
 	hammer_pseudofs_inmem_t	pfsm;
@@ -452,6 +453,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_SDIRTY	0x01000000 /* in-memory ino_data.size is dirty*/
 #define HAMMER_INODE_REDO	0x02000000 /* REDO logging active */
 #define HAMMER_INODE_RDIRTY	0x04000000 /* REDO records active in fifo */
+#define HAMMER_INODE_SLAVEFLUSH	0x08000000 /* being flushed by slave */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_SDIRTY|   \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	    \
@@ -736,6 +738,7 @@ struct hammer_node {
 	TAILQ_HEAD(, hammer_cursor) cursor_list;  /* deadlock recovery */
 	struct hammer_node_cache_list cache_list; /* passive caches */
 	int			flags;
+	int			cursor_exclreq_count;
 };
 
 #define HAMMER_NODE_DELETED	0x0001
@@ -894,9 +897,9 @@ struct hammer_mount {
 
 	int	volume_to_remove; /* volume that is currently being removed */
 
-	int	inode_reclaims; /* inodes pending reclaim by flusher */
 	int	count_inodes;	/* total number of inodes */
 	int	count_iqueued;	/* inodes queued to flusher */
+	int	count_reclaims; /* inodes pending reclaim by flusher */
 
 	struct hammer_flusher flusher;
 
@@ -1005,10 +1008,11 @@ extern int hammer_debug_recover_faults;
 extern int hammer_debug_critical;
 extern int hammer_cluster_enable;
 extern int hammer_live_dedup;
+extern int hammer_tdmux_ticks;
 extern int hammer_count_fsyncs;
 extern int hammer_count_inodes;
 extern int hammer_count_iqueued;
-extern int hammer_count_reclaiming;
+extern int hammer_count_reclaims;
 extern int hammer_count_records;
 extern int hammer_count_record_datas;
 extern int hammer_count_volumes;
@@ -1044,7 +1048,7 @@ extern int hammer_limit_dirtybufspace;
 extern int hammer_limit_running_io;
 extern int hammer_limit_recs;
 extern int hammer_limit_inode_recs;
-extern int hammer_limit_reclaim;
+extern int hammer_limit_reclaims;
 extern int hammer_live_dedup_cache_size;
 extern int hammer_limit_redo;
 extern int hammer_bio_count;
@@ -1487,6 +1491,7 @@ void hammer_flusher_destroy(hammer_mount_t hmp);
 void hammer_flusher_sync(hammer_mount_t hmp);
 int  hammer_flusher_async(hammer_mount_t hmp, hammer_flush_group_t flg);
 int  hammer_flusher_async_one(hammer_mount_t hmp);
+int hammer_flusher_running(hammer_mount_t hmp);
 void hammer_flusher_wait(hammer_mount_t hmp, int seq);
 void hammer_flusher_wait_next(hammer_mount_t hmp);
 int  hammer_flusher_meta_limit(hammer_mount_t hmp);

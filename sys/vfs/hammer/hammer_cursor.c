@@ -51,22 +51,84 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 {
 	hammer_volume_t volume;
 	hammer_node_t node;
+	hammer_mount_t hmp;
+	u_int tticks;
 	int error;
 
 	bzero(cursor, sizeof(*cursor));
 
 	cursor->trans = trans;
+	hmp = trans->hmp;
+
+	/*
+	 * As the number of inodes queued to the flusher increases we use
+	 * time-domain multiplexing to control read vs flush performance.
+	 * We have to do it here, before acquiring any ip or node locks,
+	 * to avoid deadlocking or excessively delaying the flusher.
+	 *
+	 * The full time period is hammer_tdmux_ticks, typically 1/5 of
+	 * a second.
+	 *
+	 * inode allocation begins to get restrained at 2/4 the limit
+	 * via the "hmrrcm" mechanism in hammer_inode.  We want to begin
+	 * limiting read activity before that to try to avoid processes
+	 * stalling out in "hmrrcm".
+	 */
+	tticks = hammer_tdmux_ticks;
+	if (trans->type != HAMMER_TRANS_FLS && tticks &&
+	    hmp->count_reclaims > hammer_limit_reclaims / tticks &&
+	    hmp->count_reclaims > hammer_autoflush * 2 &&
+	    hammer_flusher_running(hmp)) {
+		u_int rticks;
+		u_int xticks;
+		u_int dummy;
+
+		/*
+		 * 0 ... xticks ... tticks
+		 *
+		 * rticks is the calculated position, xticks is the demarc
+		 * where values below xticks are reserved for the flusher
+		 * and values >= to xticks may be used by the frontend.
+		 *
+		 * At least one tick is always made available for the
+		 * frontend.
+		 */
+		rticks = (u_int)ticks % tticks;
+		xticks = hmp->count_reclaims * tticks / hammer_limit_reclaims;
+
+		/*
+		 * Ensure rticks and xticks are stable
+		 */
+		cpu_ccfence();
+		if (rticks < xticks) {
+			if (hammer_debug_general & 0x0004)
+				kprintf("rt %3u, xt %3u, tt %3u\n",
+					rticks, xticks, tticks);
+			tsleep(&dummy, 0, "htdmux", xticks - rticks);
+		}
+	}
 
 	/*
 	 * If the cursor operation is on behalf of an inode, lock
 	 * the inode.
+	 *
+	 * When acquiring a shared lock on an inode on which the backend
+	 * flusher deadlocked, wait up to hammer_tdmux_ticks (1 second)
+	 * for the deadlock to clear.
 	 */
 	if ((cursor->ip = ip) != NULL) {
 		++ip->cursor_ip_refs;
-		if (trans->type == HAMMER_TRANS_FLS)
+		if (trans->type == HAMMER_TRANS_FLS) {
 			hammer_lock_ex(&ip->lock);
-		else
+		} else {
+#if 0
+			if (ip->cursor_exclreq_count) {
+				tsleep(&ip->cursor_exclreq_count, 0,
+				       "hstag1", hammer_tdmux_ticks);
+			}
+#endif
 			hammer_lock_sh(&ip->lock);
+		}
 	}
 
 	/*
@@ -94,7 +156,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 	 * the one from the root of the filesystem.
 	 */
 	while (node == NULL) {
-		volume = hammer_get_root_volume(trans->hmp, &error);
+		volume = hammer_get_root_volume(hmp, &error);
 		if (error)
 			break;
 		node = hammer_get_node(trans, volume->ondisk->vol0_btree_root,
@@ -102,6 +164,18 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 		hammer_rel_volume(volume, 0);
 		if (error)
 			break;
+		/*
+		 * When the frontend acquires the root b-tree node while the
+		 * backend is deadlocked on it, wait up to hammer_tdmux_ticks
+		 * (1 second) for the deadlock to clear.
+		 */
+#if 0
+		if (node->cursor_exclreq_count &&
+		    cursor->trans->type != HAMMER_TRANS_FLS) {
+			tsleep(&node->cursor_exclreq_count, 0,
+			       "hstag3", hammer_tdmux_ticks);
+		}
+#endif
 		hammer_lock_sh(&node->lock);
 
 		/*
@@ -184,10 +258,28 @@ hammer_done_cursor(hammer_cursor_t cursor)
 	/*
 	 * If we deadlocked this node will be referenced.  Do a quick
 	 * lock/unlock to wait for the deadlock condition to clear.
+	 *
+	 * Maintain exclreq_count / wakeup as necessary to notify new
+	 * entrants into ip.  We continue to hold the fs_token so our
+	 * EDEADLK retry loop should get its chance before another thread
+	 * steals the lock.
 	 */
 	if (cursor->deadlk_node) {
+#if 0
+		if (ip && cursor->trans->type == HAMMER_TRANS_FLS)
+			++ip->cursor_exclreq_count;
+		++cursor->deadlk_node->cursor_exclreq_count;
+#endif
 		hammer_lock_ex_ident(&cursor->deadlk_node->lock, "hmrdlk");
 		hammer_unlock(&cursor->deadlk_node->lock);
+#if 0
+		if (--cursor->deadlk_node->cursor_exclreq_count == 0)
+			wakeup(&cursor->deadlk_node->cursor_exclreq_count);
+		if (ip && cursor->trans->type == HAMMER_TRANS_FLS) {
+			if (--ip->cursor_exclreq_count == 0)
+				wakeup(&ip->cursor_exclreq_count);
+		}
+#endif
 		hammer_rel_node(cursor->deadlk_node);
 		cursor->deadlk_node = NULL;
 	}
@@ -211,6 +303,9 @@ hammer_done_cursor(hammer_cursor_t cursor)
  * The lock must already be either held shared or already held exclusively
  * by us.
  *
+ * We upgrade the parent first as it is the most likely to collide first
+ * with the downward traversal that the frontend typically does.
+ *
  * If we fail to upgrade the lock and cursor->deadlk_node is NULL, 
  * we add another reference to the node that failed and set
  * cursor->deadlk_node so hammer_done_cursor() can block on it.
@@ -220,6 +315,23 @@ hammer_cursor_upgrade(hammer_cursor_t cursor)
 {
 	int error;
 
+	if (cursor->parent) {
+		error = hammer_lock_upgrade(&cursor->parent->lock, 1);
+		if (error && cursor->deadlk_node == NULL) {
+			cursor->deadlk_node = cursor->parent;
+			hammer_ref_node(cursor->deadlk_node);
+		}
+	} else {
+		error = 0;
+	}
+	if (error == 0) {
+		error = hammer_lock_upgrade(&cursor->node->lock, 1);
+		if (error && cursor->deadlk_node == NULL) {
+			cursor->deadlk_node = cursor->node;
+			hammer_ref_node(cursor->deadlk_node);
+		}
+	}
+#if 0
 	error = hammer_lock_upgrade(&cursor->node->lock, 1);
 	if (error && cursor->deadlk_node == NULL) {
 		cursor->deadlk_node = cursor->node;
@@ -231,6 +343,7 @@ hammer_cursor_upgrade(hammer_cursor_t cursor)
 			hammer_ref_node(cursor->deadlk_node);
 		}
 	}
+#endif
 	return(error);
 }
 
@@ -555,7 +668,27 @@ hammer_cursor_down(hammer_cursor_t cursor)
 		      (elm->base.btype ? elm->base.btype : '?'));
 		break;
 	}
+
+	/*
+	 * If no error occured we can lock the new child node.  If the
+	 * node is deadlock flagged wait up to hammer_tdmux_ticks (1 second)
+	 * for the deadlock to clear.  Otherwise a large number of concurrent
+	 * readers can continuously stall the flusher.
+	 *
+	 * We specifically do this in the cursor_down() code in order to
+	 * deal with frontend top-down searches smashing against bottom-up
+	 * flusher-based mirror updates.  These collisions typically occur
+	 * above the inode in the B-Tree and are not covered by the
+	 * ip->cursor_exclreq_count logic.
+	 */
 	if (error == 0) {
+#if 0
+		if (node->cursor_exclreq_count &&
+		    cursor->trans->type != HAMMER_TRANS_FLS) {
+			tsleep(&node->cursor_exclreq_count, 0,
+			       "hstag2", hammer_tdmux_ticks);
+		}
+#endif
 		hammer_lock_sh(&node->lock);
 		KKASSERT ((node->flags & HAMMER_NODE_DELETED) == 0);
 		cursor->node = node;
@@ -669,17 +802,40 @@ hammer_lock_cursor(hammer_cursor_t cursor)
 int
 hammer_recover_cursor(hammer_cursor_t cursor)
 {
+	hammer_transaction_t trans;
+	hammer_inode_t ip;
 	int error;
 
 	hammer_unlock_cursor(cursor);
-	KKASSERT(cursor->trans->sync_lock_refs > 0);
+
+	ip = cursor->ip;
+	trans = cursor->trans;
+	KKASSERT(trans->sync_lock_refs > 0);
 
 	/*
-	 * Wait for the deadlock to clear
+	 * Wait for the deadlock to clear.
+	 *
+	 * Maintain exclreq_count / wakeup as necessary to notify new
+	 * entrants into ip.  We continue to hold the fs_token so our
+	 * EDEADLK retry loop should get its chance before another thread
+	 * steals the lock.
 	 */
 	if (cursor->deadlk_node) {
+#if 0
+		if (ip && trans->type == HAMMER_TRANS_FLS)
+			++ip->cursor_exclreq_count;
+		++cursor->deadlk_node->cursor_exclreq_count;
+#endif
 		hammer_lock_ex_ident(&cursor->deadlk_node->lock, "hmrdlk");
 		hammer_unlock(&cursor->deadlk_node->lock);
+#if 0
+		if (--cursor->deadlk_node->cursor_exclreq_count == 0)
+			wakeup(&cursor->deadlk_node->cursor_exclreq_count);
+		if (ip && trans->type == HAMMER_TRANS_FLS) {
+			if (--ip->cursor_exclreq_count == 0)
+				wakeup(&ip->cursor_exclreq_count);
+		}
+#endif
 		hammer_rel_node(cursor->deadlk_node);
 		cursor->deadlk_node = NULL;
 	}

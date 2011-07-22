@@ -45,19 +45,10 @@
 static void hammer_flusher_master_thread(void *arg);
 static void hammer_flusher_slave_thread(void *arg);
 static int hammer_flusher_flush(hammer_mount_t hmp, int *nomorep);
-static void hammer_flusher_flush_inode(hammer_inode_t ip,
-					hammer_transaction_t trans);
+static int hammer_flusher_flush_inode(hammer_inode_t ip, void *data);
 
 RB_GENERATE(hammer_fls_rb_tree, hammer_inode, rb_flsnode,
               hammer_ino_rb_compare);
-
-/*
- * Inodes are sorted and assigned to slave threads in groups of 128.
- * We want a flush group size large enough such that the slave threads
- * are not likely to interfere with each other when accessing the B-Tree,
- * but not so large that we lose concurrency.
- */
-#define HAMMER_FLUSH_GROUP_SIZE 128
 
 /*
  * Support structures for the flusher threads.
@@ -69,7 +60,7 @@ struct hammer_flusher_info {
 	int		runstate;
 	int		count;
 	hammer_flush_group_t flg;
-	hammer_inode_t	work_array[HAMMER_FLUSH_GROUP_SIZE];
+	struct hammer_transaction trans;        /* per-slave transaction */
 };
 
 typedef struct hammer_flusher_info *hammer_flusher_info_t;
@@ -177,6 +168,20 @@ hammer_flusher_wait(hammer_mount_t hmp, int seq)
 {
 	while ((int)(seq - hmp->flusher.done) > 0)
 		tsleep(&hmp->flusher.done, 0, "hmrfls", 0);
+}
+
+/*
+ * Returns non-zero if the flusher is currently running.  Used for
+ * time-domain multiplexing of frontend operations in order to avoid
+ * starving the backend flusher.
+ */
+int
+hammer_flusher_running(hammer_mount_t hmp)
+{
+	int seq = hmp->flusher.next - 1;
+	if ((int)(seq - hmp->flusher.done) > 0)
+		return(1);
+	return (0);
 }
 
 void
@@ -308,9 +313,6 @@ hammer_flusher_flush(hammer_mount_t hmp, int *nomorep)
 	hammer_flusher_info_t info;
 	hammer_flush_group_t flg;
 	hammer_reserve_t resv;
-	hammer_inode_t ip;
-	hammer_inode_t next_ip;
-	int slave_index;
 	int count;
 	int seq;
 
@@ -382,56 +384,18 @@ hammer_flusher_flush(hammer_mount_t hmp, int *nomorep)
 		KKASSERT(hmp->next_flush_group != flg);
 
 		/*
-		 * Iterate the inodes in the flg's flush_tree and assign
-		 * them to slaves.
+		 * Place the flg in the flusher structure and start the
+		 * slaves running.  The slaves will compete for inodes
+		 * to flush.
+		 *
+		 * Make a per-thread copy of the transaction.
 		 */
-		slave_index = 0;
-		info = TAILQ_FIRST(&hmp->flusher.ready_list);
-		next_ip = RB_FIRST(hammer_fls_rb_tree, &flg->flush_tree);
-
-		while ((ip = next_ip) != NULL) {
-			next_ip = RB_NEXT(hammer_fls_rb_tree,
-					  &flg->flush_tree, ip);
-
-			if (++hmp->check_yield > hammer_yield_check) {
-				hmp->check_yield = 0;
-				lwkt_yield();
-			}
-
-			/*
-			 * Add ip to the slave's work array.  The slave is
-			 * not currently running.
-			 */
-			info->work_array[info->count++] = ip;
-			if (info->count != HAMMER_FLUSH_GROUP_SIZE)
-				continue;
-
-			/*
-			 * Get the slave running
-			 */
+		while ((info = TAILQ_FIRST(&hmp->flusher.ready_list)) != NULL) {
 			TAILQ_REMOVE(&hmp->flusher.ready_list, info, entry);
-			TAILQ_INSERT_TAIL(&hmp->flusher.run_list, info, entry);
 			info->flg = flg;
 			info->runstate = 1;
-			wakeup(&info->runstate);
-
-			/*
-			 * Get a new slave.  We may have to wait for one to
-			 * finish running.
-			 */
-			while ((info = TAILQ_FIRST(&hmp->flusher.ready_list)) == NULL) {
-				tsleep(&hmp->flusher.ready_list, 0, "hmrfcc", 0);
-			}
-		}
-
-		/*
-		 * Run the current slave if necessary
-		 */
-		if (info->count) {
-			TAILQ_REMOVE(&hmp->flusher.ready_list, info, entry);
+			info->trans = hmp->flusher.trans;
 			TAILQ_INSERT_TAIL(&hmp->flusher.run_list, info, entry);
-			info->flg = flg;
-			info->runstate = 1;
 			wakeup(&info->runstate);
 		}
 
@@ -497,8 +461,6 @@ hammer_flusher_slave_thread(void *arg)
 	hammer_flush_group_t flg;
 	hammer_flusher_info_t info;
 	hammer_mount_t hmp;
-	hammer_inode_t ip;
-	int i;
 
 	info = arg;
 	hmp = info->hmp;
@@ -511,13 +473,12 @@ hammer_flusher_slave_thread(void *arg)
 			break;
 		flg = info->flg;
 
-		for (i = 0; i < info->count; ++i) {
-			ip = info->work_array[i];
-			hammer_flusher_flush_inode(ip, &hmp->flusher.trans);
-			++hammer_stats_inode_flushes;
-		}
+		RB_SCAN(hammer_fls_rb_tree, &flg->flush_tree, NULL,
+			hammer_flusher_flush_inode, info);
+
 		info->count = 0;
 		info->runstate = 0;
+		info->flg = NULL;
 		TAILQ_REMOVE(&hmp->flusher.run_list, info, entry);
 		TAILQ_INSERT_TAIL(&hmp->flusher.ready_list, info, entry);
 		wakeup(&hmp->flusher.ready_list);
@@ -563,11 +524,26 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
  * error other then EWOULDBLOCK will force the mount to be read-only.
  */
 static
-void
-hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
+int
+hammer_flusher_flush_inode(hammer_inode_t ip, void *data)
 {
-	hammer_mount_t hmp = ip->hmp;
+	hammer_flusher_info_t info = data;
+	hammer_mount_t hmp = info->hmp;
+	hammer_transaction_t trans = &info->trans;
 	int error;
+
+	/*
+	 * Several slaves are operating on the same flush group concurrently.
+	 * The SLAVEFLUSH flag prevents them from tripping over each other.
+	 *
+	 * NOTE: It is possible for a EWOULDBLOCK'd ip returned by one slave
+	 *	 to be resynced by another, but normally such inodes are not
+	 *	 revisited until the master loop gets to them.
+	 */
+	if (ip->flags & HAMMER_INODE_SLAVEFLUSH)
+		return(0);
+	ip->flags |= HAMMER_INODE_SLAVEFLUSH;
+	++hammer_stats_inode_flushes;
 
 	hammer_flusher_clean_loose_ios(hmp);
 	error = hammer_sync_inode(trans, ip);
@@ -584,6 +560,8 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 			error = 0;
 	}
 	hammer_flush_inode_done(ip, error);
+	/* ip invalid */
+
 	while (hmp->flusher.finalize_want)
 		tsleep(&hmp->flusher.finalize_want, 0, "hmrsxx", 0);
 	if (hammer_flusher_undo_exhausted(trans, 1)) {
@@ -592,6 +570,7 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 	} else if (hammer_flusher_meta_limit(trans->hmp)) {
 		hammer_flusher_finalize(trans, 0);
 	}
+	return (0);
 }
 
 /*

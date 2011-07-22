@@ -62,10 +62,11 @@ int hammer_debug_recover_faults;
 int hammer_debug_critical;		/* non-zero enter debugger on error */
 int hammer_cluster_enable = 1;		/* enable read clustering by default */
 int hammer_live_dedup = 0;
+int hammer_tdmux_ticks;
 int hammer_count_fsyncs;
 int hammer_count_inodes;
 int hammer_count_iqueued;
-int hammer_count_reclaiming;
+int hammer_count_reclaims;
 int hammer_count_records;
 int hammer_count_record_datas;
 int hammer_count_volumes;
@@ -103,7 +104,7 @@ int hammer_limit_dirtybufspace;		/* per-mount */
 int hammer_limit_running_io;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_inode_recs = 2048;	/* per inode */
-int hammer_limit_reclaim;
+int hammer_limit_reclaims;
 int hammer_live_dedup_cache_size = DEDUP_CACHE_SIZE;
 int hammer_limit_redo = 4096 * 1024;	/* per inode */
 int hammer_autoflush = 500;		/* auto flush (typ on reclaim) */
@@ -160,6 +161,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, cluster_enable, CTLFLAG_RW,
  */
 SYSCTL_INT(_vfs_hammer, OID_AUTO, live_dedup, CTLFLAG_RW,
 	   &hammer_live_dedup, 0, "Enable live dedup");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, tdmux_ticks, CTLFLAG_RW,
+	   &hammer_tdmux_ticks, 0, "Hammer tdmux ticks");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufspace, CTLFLAG_RW,
 	   &hammer_limit_dirtybufspace, 0, "");
@@ -169,8 +172,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_recs, CTLFLAG_RW,
 	   &hammer_limit_recs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_inode_recs, CTLFLAG_RW,
 	   &hammer_limit_inode_recs, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_reclaim, CTLFLAG_RW,
-	   &hammer_limit_reclaim, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_reclaims, CTLFLAG_RW,
+	   &hammer_limit_reclaims, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, live_dedup_cache_size, CTLFLAG_RW,
 	   &hammer_live_dedup_cache_size, 0,
 	   "Number of cache entries");
@@ -183,8 +186,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, count_inodes, CTLFLAG_RD,
 	   &hammer_count_inodes, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_iqueued, CTLFLAG_RD,
 	   &hammer_count_iqueued, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, count_reclaiming, CTLFLAG_RD,
-	   &hammer_count_reclaiming, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, count_reclaims, CTLFLAG_RD,
+	   &hammer_count_reclaims, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_records, CTLFLAG_RD,
 	   &hammer_count_records, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_record_datas, CTLFLAG_RD,
@@ -332,6 +335,17 @@ hammer_vfs_init(struct vfsconf *conf)
 {
 	int n;
 
+	/*
+	 * Wait up to this long for an exclusive deadlock to clear
+	 * before acquiring a new shared lock on the ip.  The deadlock
+	 * may have occured on a b-tree node related to the ip.
+	 */
+	if (hammer_tdmux_ticks == 0)
+		hammer_tdmux_ticks = hz / 5;
+
+	/*
+	 * Autosize
+	 */
 	if (hammer_limit_recs == 0) {
 		hammer_limit_recs = nbuf * 25;
 		n = kmalloc_limit(M_HAMMER) / 512;
@@ -354,6 +368,7 @@ hammer_vfs_init(struct vfsconf *conf)
 	 */
 	if (hammer_limit_running_io == 0)
 		hammer_limit_running_io = hammer_limit_dirtybufspace;
+
 	if (hammer_limit_running_io > 10 * 1024 * 1024)
 		hammer_limit_running_io = 10 * 1024 * 1024;
 
@@ -362,8 +377,8 @@ hammer_vfs_init(struct vfsconf *conf)
 	 * This limits the number of inodes in this state to prevent a
 	 * memory pool blowout.
 	 */
-	if (hammer_limit_reclaim == 0)
-		hammer_limit_reclaim = desiredvnodes / 10;
+	if (hammer_limit_reclaims == 0)
+		hammer_limit_reclaims = desiredvnodes / 10;
 
 	return(0);
 }
