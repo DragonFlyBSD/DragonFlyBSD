@@ -325,22 +325,19 @@ ip_cpufn_in(struct mbuf **mptr, int hoff)
 	ip_cpufn(mptr, hoff, IP_MPORT_IN);
 }
 
-#if 0
-
 /*
- * Map a packet to a protocol processing thread and return the thread's port.
+ * Verify and adjust the hash value of the packet.
+ *
  * Unlike ip_cpufn(), the packet content is not accessed.  The packet info
- * (pi) and the hash of the packet (m_pkthdr.hash) is used instead.  NULL is
- * returned if the packet info does not contain enough information.
+ * (pi) and the hash of the packet (m_pkthdr.hash) is used instead.
  *
  * Caller has already made sure that m_pkthdr.hash is valid, i.e. m_flags
  * has M_HASH set.
  */
-lwkt_port_t
-ip_mport_pktinfo(const struct pktinfo *pi, struct mbuf *m)
+void
+ip_hashcheck(struct mbuf *m, const struct pktinfo *pi)
 {
-	lwkt_port_t port;
-
+	KASSERT((m->m_flags & M_HASH), ("no valid packet hash\n"));
 	KASSERT(m->m_pkthdr.hash < ncpus2,
 		("invalid packet hash %#x\n", m->m_pkthdr.hash));
 
@@ -349,26 +346,20 @@ ip_mport_pktinfo(const struct pktinfo *pi, struct mbuf *m)
 	 */
 	if (pi->pi_flags & PKTINFO_FLAG_FRAG) {
 		m->m_pkthdr.hash = 0;
-		return cpu_portfn(0);
+		return;
 	}
 
 	switch (pi->pi_l3proto) {
 	case IPPROTO_TCP:
-		port = cpu_portfn(m->m_pkthdr.hash);
-		break;
-
 	case IPPROTO_UDP:
-		port = cpu_portfn(m->m_pkthdr.hash);
 		break;
 
 	default:
-		port = NULL;
+		/* Let software calculate the hash */
+		m->m_flags &= ~M_HASH;
 		break;
 	}
-	return port;
 }
-
-#endif
 
 /*
  * This is used to map a socket to a message port for sendmsg() and friends.

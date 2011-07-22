@@ -202,6 +202,7 @@ extern int	 (*ip_mforward)(struct ip *, struct ifnet *, struct mbuf *,
 
 void	ip_cpufn(struct mbuf **, int, int);
 void	ip_cpufn_in(struct mbuf **, int);
+void	ip_hashcheck(struct mbuf *, const struct pktinfo *);
 
 boolean_t
 	 ip_lengthcheck(struct mbuf **, int);

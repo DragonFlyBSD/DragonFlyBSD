@@ -1586,13 +1586,15 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 #ifdef RSS_DEBUG
 		ether_pktinfo_try++;
 #endif
-		ether_dispatch(pi->pi_netisr, m, chain);
-
+		netisr_hashcheck(pi->pi_netisr, m, pi);
+		if (m->m_flags & M_HASH) {
+			ether_dispatch(pi->pi_netisr, m, chain);
 #ifdef RSS_DEBUG
-		ether_pktinfo_hit++;
+			ether_pktinfo_hit++;
 #endif
-		logether(chain_end, ifp);
-		return;
+			logether(chain_end, ifp);
+			return;
+		}
 	}
 #ifdef RSS_DEBUG
 	else if (ifp->if_capenable & IFCAP_RSS) {

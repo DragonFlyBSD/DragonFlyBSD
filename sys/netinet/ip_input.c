@@ -379,6 +379,7 @@ ip_init(void)
 #endif
 
 	netisr_register(NETISR_IP, ip_input_handler, ip_cpufn_in);
+	netisr_register_hashcheck(NETISR_IP, ip_hashcheck);
 }
 
 /* Do transport protocol processing. */

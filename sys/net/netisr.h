@@ -151,7 +151,7 @@ struct pktinfo {
  */
 struct netisr {
 	netisr_fn_t	ni_handler;	/* packet handler function */
-	netisr_ru_t	ni_rufunc;	/* rollup function */
+	netisr_hashck_t	ni_hashck;	/* hash check function */
 	netisr_cpufn_t	ni_cpufn;	/* characterize pkt return cpu */
 	struct netmsg_base ni_netmsg;	/* for sched_netisr() (no-data) */
 };
@@ -173,9 +173,12 @@ lwkt_port_t	cpu_portfn(int cpu);
 lwkt_port_t	cur_netport(void);
 
 void		netisr_register(int, netisr_fn_t, netisr_cpufn_t);
+void		netisr_register_hashcheck(int, netisr_hashck_t);
 void		netisr_register_rollup(netisr_ru_t ru_func);
 
 void		netisr_characterize(int num, struct mbuf **mp, int hoff);
+void		netisr_hashcheck(int num, struct mbuf *m,
+		    const struct pktinfo *pi);
 int		netisr_queue(int, struct mbuf *);
 
 struct netisr_barrier *netisr_barrier_create(void);

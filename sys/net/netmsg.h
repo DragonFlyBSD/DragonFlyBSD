@@ -40,9 +40,12 @@
 #include <sys/protosw.h>
 #endif
 
+struct pktinfo;
+
 typedef void (*netisr_fn_t)(netmsg_t);
 typedef void (*netisr_ru_t)(void);
 typedef void (*netisr_cpufn_t)(struct mbuf **, int);
+typedef void (*netisr_hashck_t)(struct mbuf *, const struct pktinfo *);
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
