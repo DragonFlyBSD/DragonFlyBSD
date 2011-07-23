@@ -41,6 +41,7 @@
  * $DragonFly: src/sys/net/bpf_filter.c,v 1.10 2008/01/02 12:30:34 sephe Exp $
  */
 
+#include <sys/systm.h>
 #include <sys/param.h>
 
 #if defined(sparc) || defined(mips) || defined(ibm032)
@@ -180,6 +181,8 @@ bpf_filter(const struct bpf_insn *pc, u_char *p, u_int wirelen, u_int buflen)
 	u_int32_t A = 0, X = 0;
 	bpf_u_int32 k;
 	int32_t mem[BPF_MEMWORDS];
+
+	bzero(mem, sizeof(mem));
 
 	if (pc == 0) {
 		/*
