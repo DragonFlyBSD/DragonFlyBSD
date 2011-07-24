@@ -3362,7 +3362,6 @@ free_tls(struct tls_tcb *tcb)
     }
 
     free((void*) tls_start);
-    free((void*) dtv);
 }
 
 #else

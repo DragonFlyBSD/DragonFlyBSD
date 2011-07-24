@@ -381,18 +381,13 @@ reloc_jmpslots(Obj_Entry *obj)
 void *__tls_get_addr(tls_index *ti)
 {
     struct tls_tcb *tcb;
-    Elf_Addr* dtv;
 
     tcb = tls_get_tcb();
-    dtv = (Elf_Addr*)tcb->tcb_dtv;
-
-    return tls_get_addr_common(&dtv, ti->ti_module, ti->ti_offset);
+    return tls_get_addr_common((Elf_Addr **)&tcb->tcb_dtv, ti->ti_module, ti->ti_offset);
 }
 
 void *
 __tls_get_addr_tcb(struct tls_tcb *tcb, tls_index *ti)
 {
-    Elf_Addr* dtv = (Elf_Addr*)tcb->tcb_dtv;
-
-    return tls_get_addr_common(&dtv, ti->ti_module, ti->ti_offset);
+    return tls_get_addr_common((Elf_Addr **)&tcb->tcb_dtv, ti->ti_module, ti->ti_offset);
 }
