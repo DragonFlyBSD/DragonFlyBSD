@@ -127,6 +127,7 @@ static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 			struct rtentry *);
 static void ether_restore_header(struct mbuf **, const struct ether_header *,
 				 const struct ether_header *);
+static int ether_characterize(struct mbuf **);
 
 /*
  * if_bridge support
@@ -1538,8 +1539,6 @@ void
 ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 		  struct mbuf_chain *chain)
 {
-	struct ether_header *eh;
-	uint16_t ether_type;
 	int isr;
 
 	M_ASSERTPKTHDR(m);
@@ -1565,6 +1564,8 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 	ifp->if_ibytes += m->m_pkthdr.len;
 
 	if (ifp->if_flags & IFF_MONITOR) {
+		struct ether_header *eh;
+
 		eh = mtod(m, struct ether_header *);
 		if (ETHER_IS_MULTICAST(eh->ether_dhost))
 			ifp->if_imcasts++;
@@ -1618,6 +1619,29 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 		logether(chain_end, ifp);
 		return;
 	}
+
+	isr = ether_characterize(&m);
+	if (m == NULL) {
+		logether(chain_end, ifp);
+		return;
+	}
+
+	/*
+	 * Finally dispatch it
+	 */
+	ether_dispatch(isr, m, chain);
+
+	logether(chain_end, ifp);
+}
+
+static int
+ether_characterize(struct mbuf **m0)
+{
+	struct mbuf *m = *m0;
+	struct ether_header *eh;
+	uint16_t ether_type;
+	int isr;
+
 	eh = mtod(m, struct ether_header *);
 	ether_type = ntohs(eh->ether_type);
 
@@ -1667,6 +1691,8 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 	default:
 		/*
 		 * NETISR_MAX is an invalid value; it is chosen to let
+		 * netisr_characterize() know that we have no clear
+		 * idea where this packet should go.
 		 */
 		isr = NETISR_MAX;
 		break;
@@ -1678,17 +1704,9 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 	 * thread.
 	 */
 	netisr_characterize(isr, &m, sizeof(struct ether_header));
-	if (m == NULL) {
-		logether(chain_end, ifp);
-		return;
-	}
 
-	/*
-	 * Finally dispatch it
-	 */
-	ether_dispatch(isr, m, chain);
-
-	logether(chain_end, ifp);
+	*m0 = m;
+	return isr;
 }
 
 MODULE_VERSION(ether, 1);
