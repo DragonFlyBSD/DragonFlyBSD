@@ -180,6 +180,7 @@ void		netisr_characterize(int num, struct mbuf **mp, int hoff);
 void		netisr_hashcheck(int num, struct mbuf *m,
 		    const struct pktinfo *pi);
 int		netisr_queue(int, struct mbuf *);
+int		netisr_handle(int, struct mbuf *);
 
 struct netisr_barrier *netisr_barrier_create(void);
 void		netisr_barrier_set(struct netisr_barrier *);

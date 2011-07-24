@@ -154,6 +154,7 @@ static boolean_t ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst,
 static int ether_ipfw;
 static u_long ether_restore_hdr;
 static u_long ether_prepend_hdr;
+static u_long ether_input_wronghash;
 static int ether_debug;
 
 #ifdef RSS_DEBUG
@@ -161,6 +162,7 @@ static u_long ether_pktinfo_try;
 static u_long ether_pktinfo_hit;
 static u_long ether_rss_nopi;
 static u_long ether_rss_nohash;
+static u_long ether_input_requeue;
 #endif
 
 SYSCTL_DECL(_net_link);
@@ -174,6 +176,8 @@ SYSCTL_ULONG(_net_link_ether, OID_AUTO, restore_hdr, CTLFLAG_RW,
 SYSCTL_ULONG(_net_link_ether, OID_AUTO, prepend_hdr, CTLFLAG_RW,
     &ether_prepend_hdr, 0,
     "# of ether header restoration which prepends mbuf");
+SYSCTL_ULONG(_net_link_ether, OID_AUTO, input_wronghash, CTLFLAG_RW,
+    &ether_input_wronghash, 0, "# of input packets with wrong hash");
 #ifdef RSS_DEBUG
 SYSCTL_ULONG(_net_link_ether, OID_AUTO, rss_nopi, CTLFLAG_RW,
     &ether_rss_nopi, 0, "# of packets do not have pktinfo");
@@ -185,6 +189,8 @@ SYSCTL_ULONG(_net_link_ether, OID_AUTO, pktinfo_try, CTLFLAG_RW,
 SYSCTL_ULONG(_net_link_ether, OID_AUTO, pktinfo_hit, CTLFLAG_RW,
     &ether_pktinfo_hit, 0,
     "# of packets whose msgport are found using pktinfo");
+SYSCTL_ULONG(_net_link_ether, OID_AUTO, input_requeue, CTLFLAG_RW,
+    &ether_input_requeue, 0, "# of input packets gets requeued");
 #endif
 
 #define ETHER_KTR_STR		"ifp=%p"
@@ -1249,8 +1255,9 @@ post_stats:
 	default:
 		/*
 		 * The accurate msgport is not determined before
-		 * we reach here, so redo the dispatching
+		 * we reach here, so recharacterize packet.
 		 */
+		m->m_flags &= ~M_HASH;
 #ifdef IPX
 		if (ef_inputp) {
 			/*
@@ -1304,6 +1311,22 @@ dropanyway:
 		return;
 	}
 
+	if (m->m_flags & M_HASH) {
+		if (&curthread->td_msgport == cpu_portfn(m->m_pkthdr.hash)) {
+			netisr_handle(isr, m);
+			return;
+		} else {
+			/*
+			 * XXX Something is wrong,
+			 * we probably should panic here!
+			 */
+			m->m_flags &= ~M_HASH;
+			ether_input_wronghash++;
+		}
+	}
+#ifdef RSS_DEBUG
+	ether_input_requeue++;
+#endif
 	netisr_queue(isr, m);
 }
 

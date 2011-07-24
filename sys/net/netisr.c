@@ -380,6 +380,46 @@ netisr_queue(int num, struct mbuf *m)
 }
 
 /*
+ * Run a netisr service function on the packet.
+ *
+ * The packet must have been correctly characterized!
+ */
+int
+netisr_handle(int num, struct mbuf *m)
+{
+	struct netisr *ni;
+	struct netmsg_packet *pmsg;
+	lwkt_port_t port;
+
+	/*
+	 * Get the protocol port based on the packet hash
+	 */
+	KASSERT((m->m_flags & M_HASH), ("packet not characterized\n"));
+	port = cpu_portfn(m->m_pkthdr.hash);
+	KASSERT(&curthread->td_msgport == port, ("wrong msgport\n"));
+
+	KASSERT((num > 0 && num <= NELEM(netisrs)), ("bad isr %d", num));
+	ni = &netisrs[num];
+	if (ni->ni_handler == NULL) {
+		kprintf("unregistered isr %d\n", num);
+		m_freem(m);
+		return EIO;
+	}
+
+	/*
+	 * Initialize the netmsg, and run the handler directly.
+	 */
+	pmsg = &m->m_hdr.mh_netmsg;
+	netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
+		    0, ni->ni_handler);
+	pmsg->nm_packet = m;
+	pmsg->base.lmsg.u.ms_result = num;
+	ni->ni_handler((netmsg_t)&pmsg->base);
+
+	return 0;
+}
+
+/*
  * Pre-characterization of a deeper portion of the packet for the
  * requested isr.
  *
