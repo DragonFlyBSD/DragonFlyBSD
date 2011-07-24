@@ -1709,4 +1709,38 @@ ether_characterize(struct mbuf **m0)
 	return isr;
 }
 
+static void
+ether_demux_handler(netmsg_t nmsg)
+{
+	struct netmsg_packet *nmp = &nmsg->packet;	/* actual size */
+	struct ifnet *ifp;
+	struct mbuf *m;
+
+	m = nmp->nm_packet;
+	M_ASSERTPKTHDR(m);
+	ifp = m->m_pkthdr.rcvif;
+
+	ether_demux_oncpu(ifp, m);
+}
+
+void
+ether_demux(struct mbuf *m)
+{
+	struct netmsg_packet *pmsg;
+	int isr;
+
+	isr = ether_characterize(&m);
+	if (m == NULL)
+		return;
+
+	KKASSERT(m->m_flags & M_HASH);
+	pmsg = &m->m_hdr.mh_netmsg;
+	netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
+	    0, ether_demux_handler);
+	pmsg->nm_packet = m;
+	pmsg->base.lmsg.u.ms_result = isr;
+
+	lwkt_sendmsg(cpu_portfn(m->m_pkthdr.hash), &pmsg->base.lmsg);
+}
+
 MODULE_VERSION(ether, 1);

@@ -630,13 +630,8 @@ ng_ether_rcv_upper(node_p node, struct mbuf *m, meta_p meta)
 
 	m->m_pkthdr.rcvif = priv->ifp;
 
-	/*
-	 * XXX
-	 * Since frame processing is run in netisr0,
-	 * 'm' may _not_ even on its target CPU.
-	 */
 	/* Route packet back in */
-	ether_demux_oncpu(priv->ifp, m);
+	ether_demux(m);
 	return (0);
 }
 
