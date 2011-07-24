@@ -151,39 +151,39 @@ static boolean_t ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst,
 				const struct ether_header *eh);
 
 static int ether_ipfw;
-static u_int ether_restore_hdr;
-static u_int ether_prepend_hdr;
+static u_long ether_restore_hdr;
+static u_long ether_prepend_hdr;
 static int ether_debug;
 
 #ifdef RSS_DEBUG
-static u_int ether_pktinfo_try;
-static u_int ether_pktinfo_hit;
-static u_int ether_rss_nopi;
-static u_int ether_rss_nohash;
+static u_long ether_pktinfo_try;
+static u_long ether_pktinfo_hit;
+static u_long ether_rss_nopi;
+static u_long ether_rss_nohash;
 #endif
 
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_ETHER, ether, CTLFLAG_RW, 0, "Ethernet");
 SYSCTL_INT(_net_link_ether, OID_AUTO, debug, CTLFLAG_RW,
-	   &ether_debug, 0, "Ether debug");
+    &ether_debug, 0, "Ether debug");
 SYSCTL_INT(_net_link_ether, OID_AUTO, ipfw, CTLFLAG_RW,
-	   &ether_ipfw, 0, "Pass ether pkts through firewall");
-SYSCTL_UINT(_net_link_ether, OID_AUTO, restore_hdr, CTLFLAG_RW,
-	    &ether_restore_hdr, 0, "# of ether header restoration");
-SYSCTL_UINT(_net_link_ether, OID_AUTO, prepend_hdr, CTLFLAG_RW,
-	    &ether_prepend_hdr, 0,
-	    "# of ether header restoration which prepends mbuf");
+    &ether_ipfw, 0, "Pass ether pkts through firewall");
+SYSCTL_ULONG(_net_link_ether, OID_AUTO, restore_hdr, CTLFLAG_RW,
+    &ether_restore_hdr, 0, "# of ether header restoration");
+SYSCTL_ULONG(_net_link_ether, OID_AUTO, prepend_hdr, CTLFLAG_RW,
+    &ether_prepend_hdr, 0,
+    "# of ether header restoration which prepends mbuf");
 #ifdef RSS_DEBUG
-SYSCTL_UINT(_net_link_ether, OID_AUTO, rss_nopi, CTLFLAG_RW,
-	    &ether_rss_nopi, 0, "# of packets do not have pktinfo");
-SYSCTL_UINT(_net_link_ether, OID_AUTO, rss_nohash, CTLFLAG_RW,
-	    &ether_rss_nohash, 0, "# of packets do not have hash");
-SYSCTL_UINT(_net_link_ether, OID_AUTO, pktinfo_try, CTLFLAG_RW,
-	    &ether_pktinfo_try, 0,
-	    "# of tries to find packets' msgport using pktinfo");
-SYSCTL_UINT(_net_link_ether, OID_AUTO, pktinfo_hit, CTLFLAG_RW,
-	    &ether_pktinfo_hit, 0,
-	    "# of packets whose msgport are found using pktinfo");
+SYSCTL_ULONG(_net_link_ether, OID_AUTO, rss_nopi, CTLFLAG_RW,
+    &ether_rss_nopi, 0, "# of packets do not have pktinfo");
+SYSCTL_ULONG(_net_link_ether, OID_AUTO, rss_nohash, CTLFLAG_RW,
+    &ether_rss_nohash, 0, "# of packets do not have hash");
+SYSCTL_ULONG(_net_link_ether, OID_AUTO, pktinfo_try, CTLFLAG_RW,
+    &ether_pktinfo_try, 0,
+    "# of tries to find packets' msgport using pktinfo");
+SYSCTL_ULONG(_net_link_ether, OID_AUTO, pktinfo_hit, CTLFLAG_RW,
+    &ether_pktinfo_hit, 0,
+    "# of packets whose msgport are found using pktinfo");
 #endif
 
 #define ETHER_KTR_STR		"ifp=%p"
