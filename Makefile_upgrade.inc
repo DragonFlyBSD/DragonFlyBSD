@@ -1704,9 +1704,9 @@ TO_REMOVE+=/usr/share/man/cat4/i386/ie.4.gz
 TO_REMOVE+=/usr/share/man/cat4/i386/labpc.4.gz
 TO_REMOVE+=/usr/share/man/cat4/i386/le.4.gz
 TO_REMOVE+=/usr/share/man/cat4/i386/mse.4.gz
-TO_REMOVE+=/usr/share/man/cat4/i386.rc.4.gz
+TO_REMOVE+=/usr/share/man/cat4/i386/rc.4.gz
 TO_REMOVE+=/usr/share/man/cat4/i386/rdp.4.gz
-TO_REMOVE+=/usr/share/man/cat4/i386.tw.4.gz
+TO_REMOVE+=/usr/share/man/cat4/i386/tw.4.gz
 TO_REMOVE+=/usr/share/man/cat4/i386/wl.4.gz
 TO_REMOVE+=/usr/share/man/cat4/i386/wt.4.gz
 TO_REMOVE+=/usr/share/man/cat8/wlconfig.8.gz
@@ -1731,6 +1731,8 @@ TO_REMOVE+=/usr/share/man/man4/i386/wt.4.gz
 TO_REMOVE+=/usr/share/man/man8/wlconfig.8.gz
 TO_REMOVE+=/usr/share/man/man8/xten.8.gz
 TO_REMOVE+=/usr/bin/gprof4
+TO_REMOVE+=/usr/share/misc/gprof.callg
+TO_REMOVE+=/usr/share/misc/gprof.flat
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
