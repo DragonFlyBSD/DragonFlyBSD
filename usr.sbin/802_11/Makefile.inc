@@ -1,5 +1,3 @@
-# $DragonFly: src/usr.sbin/802_11/Makefile.inc,v 1.1 2006/06/24 07:29:44 sephe Exp $
-
 CONTRIBDIR= ${.CURDIR}/../../../contrib
 WPA_DISTDIR=${CONTRIBDIR}/wpa_supplicant
 HOSTAPD_DISTDIR=${CONTRIBDIR}/hostapd
@@ -22,6 +20,6 @@ CFLAGS+=-I${WPA_DISTDIR}/src/utils
 CFLAGS+= -DCONFIG_CTRL_IFACE
 CFLAGS+= -DCONFIG_CTRL_IFACE_UNIX
 
-WARNS?=	0
+WARNS?=	1
 
 .include "../Makefile.inc"
