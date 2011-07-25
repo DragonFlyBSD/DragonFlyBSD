@@ -1,7 +1,6 @@
 /*
  * $NetBSD: usbcdc.h,v 1.6 2000/04/27 15:26:50 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usbcdc.h,v 1.10 2003/01/09 04:24:28 imp Exp $
- * $DragonFly: src/sys/bus/usb/usbcdc.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
  */
 
 /*
@@ -54,6 +53,7 @@
 #define UDESCSUB_CDC_CS		7 /* Country Selection */
 #define UDESCSUB_CDC_TOM	8 /* Telephone Operational Modes */
 #define UDESCSUB_CDC_USBT	9 /* USB Terminal */
+#define UDESCSUB_CDC_ETHERNET 15 /* Ethernet Adapter */
 
 typedef struct {
 	uByte		bLength;
@@ -90,6 +90,17 @@ typedef struct {
 	uByte		bMasterInterface;
 	uByte		bSlaveInterface[1];
 } usb_cdc_union_descriptor_t;
+
+typedef struct {
+	uByte bLength;
+	uByte bDescriptorType;
+	uByte bDescriptorSubType;
+	uByte iMACAddress;
+	uDWord dwEthernetStatistics;
+	uWord wMaxSegmentSize;
+	uWord wNumberMCFilters;
+	uByte bNumberPowerFilters;
+} usb_cdc_ethernet_descriptor_t;
 
 #define UCDC_SEND_ENCAPSULATED_COMMAND	0x00
 #define UCDC_GET_ENCAPSULATED_RESPONSE	0x01

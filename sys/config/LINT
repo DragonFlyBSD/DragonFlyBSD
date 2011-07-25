@@ -2540,6 +2540,9 @@ device		cue
 # and 2104USB, and the Corega USB-T.
 device		kue
 #
+# USB CDC ethernet. Supports the LG P-500 smartphone.
+device		lgue
+#
 # RealTek 8150 based USB ethernet device:
 #   Melco LUA-KTX
 #   GREEN HOUSE GH-USB100B

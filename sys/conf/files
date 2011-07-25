@@ -1779,6 +1779,7 @@ dev/netif/aue/if_aue.c		optional aue
 dev/netif/axe/if_axe.c		optional axe
 dev/netif/cue/if_cue.c		optional cue
 dev/netif/kue/if_kue.c		optional kue
+dev/netif/lgue/if_lgue.c	optional lgue
 dev/netif/rue/if_rue.c		optional rue
 dev/netif/lnc/am7990.c		optional lnc
 dev/netif/lnc/am79900.c		optional lnc
