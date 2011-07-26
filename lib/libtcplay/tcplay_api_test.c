@@ -19,7 +19,7 @@ main(void)
 	api_opts.tc_passphrase = "apitest2";
 	api_opts.tc_keyfiles = NULL;
 	api_opts.tc_keyfiles_hidden = NULL;
-	api_opts.tc_size_hidden_in_blocks = 12000;
+	api_opts.tc_size_hidden_in_bytes = 12000*512;
 	api_opts.tc_passphrase_hidden = "apihidden";
 	api_opts.tc_cipher = "AES-256-XTS,TWOFISH-256-XTS,SERPENT-256-XTS";
 	api_opts.tc_cipher_hidden = "SERPENT-256-XTS,TWOFISH-256-XTS";

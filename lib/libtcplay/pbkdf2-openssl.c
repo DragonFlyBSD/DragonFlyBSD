@@ -27,38 +27,35 @@
  * SUCH DAMAGE.
  */
 
-#define TC_OK	0
-#define TC_ERR	-1
+#include <errno.h>
+#include <openssl/evp.h>
 
-typedef struct tc_api_opts {
-	/* Common fields */
-	char		*tc_device;
-	char		*tc_passphrase;
-	const char	**tc_keyfiles;
+#include "tcplay.h"
 
-	/* Fields for mapping */
-	char		*tc_map_name;
-	int		tc_password_retries;
-	int		tc_interactive_prompt;
-	unsigned long	tc_prompt_timeout;
 
-	/* Fields for creation */
-	char		*tc_cipher;
-	char		*tc_prf_hash;
-	char		*tc_cipher_hidden;
-	char		*tc_prf_hash_hidden;
-	size_t		tc_size_hidden_in_bytes;
-	char		*tc_passphrase_hidden;
-	const char	**tc_keyfiles_hidden;
-} tc_api_opts;
+int
+pbkdf2(struct pbkdf_prf_algo *hash, const char *pass, int passlen,
+    const unsigned char *salt, int saltlen,
+    int keylen, unsigned char *out)
+{
+	const EVP_MD *md;
+	int r;
 
-int tc_api_init(int verbose);
-int tc_api_uninit(void);
-int tc_api_create_volume(tc_api_opts *api_opts);
-int tc_api_map_volume(tc_api_opts *api_opts);
-int tc_api_unmap_volume(tc_api_opts *api_opts);
-int tc_api_check_cipher(tc_api_opts *api_opts);
-int tc_api_check_prf_hash(tc_api_opts *api_opts);
-const char *tc_api_get_error_msg(void);
-const char *tc_api_get_summary(void);
+	OpenSSL_add_all_algorithms();
+
+	md = EVP_get_digestbyname(hash->name);
+	if (md == NULL) {
+		tc_log(1, "Hash %s not found\n", hash->name);
+		return ENOENT;
+	}
+	r = PKCS5_PBKDF2_HMAC(pass, passlen, salt, saltlen,
+	    hash->iteration_count, md, keylen, out);
+
+	if (r == 0) {
+		tc_log(1, "Error in PBKDF2\n");
+		return EINVAL;
+	}
+
+	return 0;
+}
 

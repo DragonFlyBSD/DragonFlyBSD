@@ -26,21 +26,37 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include <machine/inttypes.h>
+
+#if defined(__linux__)
+#define _GNU_SOURCE /* for asprintf */
+#endif
+
 #include <sys/types.h>
+
+#if defined(__DragonFly__)
 #include <sys/param.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
+#include <inttypes.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <err.h>
 #include <time.h>
+#if defined(__linux__)
+#include <libdevmapper.h>
+#include <uuid/uuid.h>
+#elif defined(__DragonFly__)
 #include <libdm.h>
-#include <libutil.h>
+#include <uuid.h>
+#endif
 
 #include "crc32.h"
 #include "tcplay.h"
+#include "humanize.h"
 
 
 /* XXX TODO:
@@ -56,7 +72,7 @@ char tc_internal_log_buffer[LOG_BUFFER_SZ];
 void
 tc_log(int is_err, const char *fmt, ...)
 {
-	__va_list ap;
+	va_list ap;
 	FILE *fp;
 
 	if (is_err)
@@ -64,14 +80,14 @@ tc_log(int is_err, const char *fmt, ...)
 	else
 		fp = stdout;
 
-        __va_start(ap, fmt);
+        va_start(ap, fmt);
 
 	vsnprintf(tc_internal_log_buffer, LOG_BUFFER_SZ, fmt, ap);
 
-	if (tc_internal_verbose)
-                vfprintf(fp, fmt, ap);
+	va_end(ap);
 
-	__va_end(ap);
+	if (tc_internal_verbose)
+	    fprintf(fp, "%s", tc_internal_log_buffer);
 }
 
 /* Supported algorithms */
@@ -214,6 +230,12 @@ print_info(struct tcplay_info *info)
 	printf("CRC Key Data:\t\t%#x\n", info->hdr->crc_keys);
 	printf("Sector size:\t\t%d\n", info->hdr->sec_sz);
 	printf("Volume size:\t\t%zu sectors\n", info->size);
+#if 0
+	/* Don't print this; it's always 0 and is rather confusing */
+	printf("Volume offset:\t\t%"PRIu64"\n", (uint64_t)info->start);
+#endif
+	printf("IV offset:\t\t%"PRIu64"\n", (uint64_t)info->skip);
+	printf("Block offset:\t\t%"PRIu64"\n", (uint64_t)info->offset);
 }
 
 static
@@ -221,9 +243,12 @@ struct tcplay_info *
 new_info(const char *dev, struct tc_cipher_chain *cipher_chain,
     struct pbkdf_prf_algo *prf, struct tchdr_dec *hdr, off_t start)
 {
+	struct tc_cipher_chain *chain_start;
 	struct tcplay_info *info;
 	int i;
 	int error;
+
+	chain_start = cipher_chain;
 
 	if ((info = (struct tcplay_info *)alloc_safe_mem(sizeof(*info))) == NULL) {
 		tc_log(1, "could not allocate safe info memory\n");
@@ -251,6 +276,8 @@ new_info(const char *dev, struct tc_cipher_chain *cipher_chain,
 			sprintf(&cipher_chain->dm_key[i*2], "%02x",
 			    cipher_chain->key[i]);
 	}
+
+	tc_cipher_chain_free_keys(chain_start);
 
 	return info;
 }
@@ -290,14 +317,14 @@ process_hdr(const char *dev, unsigned char *pass, int passlen,
 		printf("Salt: ");
 		print_hex(ehdr->salt, 0, sizeof(ehdr->salt));
 #endif
-		error = pbkdf2(pass, passlen,
+		error = pbkdf2(&pbkdf_prf_algos[i], (char *)pass, passlen,
 		    ehdr->salt, sizeof(ehdr->salt),
-		    pbkdf_prf_algos[i].iteration_count,
-		    pbkdf_prf_algos[i].name, MAX_KEYSZ, key);
+		    MAX_KEYSZ, key);
 
 		if (error) {
 			tc_log(1, "pbkdf failed for algorithm %s\n",
 			    pbkdf_prf_algos[i].name);
+			free_safe_mem(key);
 			return EINVAL;
 		}
 
@@ -315,12 +342,13 @@ process_hdr(const char *dev, unsigned char *pass, int passlen,
 			if (dhdr == NULL) {
 				tc_log(1, "hdr decryption failed for cipher "
 				    "chain %d\n", j);
+				free_safe_mem(key);
 				return EINVAL;
 			}
 
 			if (verify_hdr(dhdr)) {
 #ifdef DEBUG
-				printf("tc_str: %.4s, tc_ver: %zd, tc_min_ver: %zd, "
+				printf("tc_str: %.4s, tc_ver: %d, tc_min_ver: %d, "
 				    "crc_keys: %d, sz_vol: %"PRIu64", "
 				    "off_mk_scope: %"PRIu64", sz_mk_scope: %"PRIu64", "
 				    "flags: %d, sec_sz: %d crc_dhdr: %d\n",
@@ -343,10 +371,12 @@ process_hdr(const char *dev, unsigned char *pass, int passlen,
 
 	if ((info = new_info(dev, tc_cipher_chains[j-1], &pbkdf_prf_algos[i-1],
 	    dhdr, 0)) == NULL) {
+		free_safe_mem(dhdr);
 		return ENOMEM;
 	}
 
 	*pinfo = info;
+
 	return 0;
 }
 
@@ -355,15 +385,21 @@ create_volume(const char *dev, int hidden, const char *keyfiles[], int nkeyfiles
     const char *h_keyfiles[], int n_hkeyfiles, struct pbkdf_prf_algo *prf_algo,
     struct tc_cipher_chain *cipher_chain, struct pbkdf_prf_algo *h_prf_algo,
     struct tc_cipher_chain *h_cipher_chain, char *passphrase,
-    char *h_passphrase, size_t hidden_blocks_in, int interactive)
+    char *h_passphrase, size_t size_hidden_bytes_in, int interactive)
 {
 	char *pass, *pass_again;
 	char *h_pass = NULL;
 	char buf[1024];
 	size_t blocks, blksz, hidden_blocks = 0;
-	struct tchdr_enc *ehdr, *hehdr = NULL;
-	int64_t tmp;
-	int error, r;
+	struct tchdr_enc *ehdr, *hehdr;
+	struct tchdr_enc *ehdr_backup, *hehdr_backup;
+	uint64_t tmp;
+	int error, r, ret;
+
+	pass = h_pass = pass_again = NULL;
+	ehdr = hehdr = NULL;
+	ehdr_backup = hehdr_backup = NULL;
+	ret = -1; /* Default to returning error */
 
 	if (cipher_chain == NULL)
 		cipher_chain = tc_cipher_chains[0];
@@ -379,9 +415,9 @@ create_volume(const char *dev, int hidden, const char *keyfiles[], int nkeyfiles
 		return -1;
 	}
 
-	if (blocks <= MIN_VOL_BLOCKS) {
+	if ((blocks*blksz) <= MIN_VOL_BYTES) {
 		tc_log(1, "Cannot create volumes on devices with less "
-		    "than %d blocks/sectors\n", MIN_VOL_BLOCKS);
+		    "than %d bytes\n", MIN_VOL_BYTES);
 		return -1;
 	}
 
@@ -389,28 +425,29 @@ create_volume(const char *dev, int hidden, const char *keyfiles[], int nkeyfiles
 		if (((pass = alloc_safe_mem(MAX_PASSSZ)) == NULL) ||
 		   ((pass_again = alloc_safe_mem(MAX_PASSSZ)) == NULL)) {
 			tc_log(1, "could not allocate safe passphrase memory\n");
-			return -1;
+			goto out;
 		}
 
 		if ((error = read_passphrase("Passphrase: ", pass, MAX_PASSSZ, 0) ||
 		   (read_passphrase("Repeat passphrase: ", pass_again,
 		   MAX_PASSSZ, 0)))) {
 			tc_log(1, "could not read passphrase\n");
-			return -1;
+			goto out;
 		}
 
 		if (strcmp(pass, pass_again) != 0) {
 			tc_log(1, "Passphrases don't match\n");
-			return -1;
+			goto out;
 		}
 
 		free_safe_mem(pass_again);
+		pass_again = NULL;
 	} else {
 		/* In batch mode, use provided passphrase */
 		if ((pass = alloc_safe_mem(MAX_PASSSZ)) == NULL) {
 			tc_log(1, "could not allocate safe "
 			    "passphrase memory");
-			return -1;
+			goto out;
 		}
 
 		if (passphrase != NULL)
@@ -419,9 +456,10 @@ create_volume(const char *dev, int hidden, const char *keyfiles[], int nkeyfiles
 
 	if (nkeyfiles > 0) {
 		/* Apply keyfiles to 'pass' */
-		if ((error = apply_keyfiles(pass, MAX_PASSSZ, keyfiles,
-		    nkeyfiles))) {
+		if ((error = apply_keyfiles((unsigned char *)pass, MAX_PASSSZ,
+		    keyfiles, nkeyfiles))) {
 			tc_log(1, "could not apply keyfiles\n");
+			goto out;
 		}
 	}
 
@@ -431,7 +469,7 @@ create_volume(const char *dev, int hidden, const char *keyfiles[], int nkeyfiles
 			   ((pass_again = alloc_safe_mem(MAX_PASSSZ)) == NULL)) {
 				tc_log(1, "could not allocate safe "
 				    "passphrase memory\n");
-				return -1;
+				goto out;
 			}
 
 			if ((error = read_passphrase("Passphrase for hidden volume: ",
@@ -439,22 +477,23 @@ create_volume(const char *dev, int hidden, const char *keyfiles[], int nkeyfiles
 			   (read_passphrase("Repeat passphrase: ", pass_again,
 			   MAX_PASSSZ, 0)))) {
 				tc_log(1, "could not read passphrase\n");
-				return -1;
+				goto out;
 			}
 
 			if (strcmp(h_pass, pass_again) != 0) {
 				tc_log(1, "Passphrases for hidden volume don't "
 				    "match\n");
-				return -1;
+				goto out;
 			}
 
 			free_safe_mem(pass_again);
+			pass_again = NULL;
 		} else {
 			/* In batch mode, use provided passphrase */
 			if ((h_pass = alloc_safe_mem(MAX_PASSSZ)) == NULL) {
 				tc_log(1, "could not allocate safe "
 				    "passphrase memory");
-				return -1;
+				goto out;
 			}
 
 			if (h_passphrase != NULL)
@@ -463,57 +502,65 @@ create_volume(const char *dev, int hidden, const char *keyfiles[], int nkeyfiles
 
 		if (n_hkeyfiles > 0) {
 			/* Apply keyfiles to 'h_pass' */
-			if ((error = apply_keyfiles(h_pass, MAX_PASSSZ, h_keyfiles,
-			n_hkeyfiles))) {
+			if ((error = apply_keyfiles((unsigned char *)h_pass,
+			    MAX_PASSSZ, h_keyfiles, n_hkeyfiles))) {
 				tc_log(1, "could not apply keyfiles\n");
-				return -1;
+				goto out;
 			}
 		}
 
 		if (interactive) {
 			hidden_blocks = 0;
 		} else {
-			hidden_blocks = hidden_blocks_in;
+			hidden_blocks = size_hidden_bytes_in/blksz;
 			if (hidden_blocks == 0) {
 				tc_log(1, "hidden_blocks to create volume "
 				    "cannot be zero!\n");
-				return -1;
+				goto out;
+			}
+
+			if (size_hidden_bytes_in >=
+			    (blocks*blksz) - MIN_VOL_BYTES) {
+				tc_log(1, "Hidden volume needs to be "
+				    "smaller than the outer volume\n");
+				goto out;
 			}
 		}
 
 		/* This only happens in interactive mode */
 		while (hidden_blocks == 0) {
-			if ((r = humanize_number(buf, strlen("XXX MB"),
-			    (int64_t)(blocks * blksz), "B", 0, 0)) < 0) {
+			if ((r = _humanize_number(buf, sizeof(buf),
+			    (uint64_t)(blocks * blksz))) < 0) {
 				sprintf(buf, "%zu bytes", (blocks * blksz));
 			}
 
 			printf("The total volume size of %s is %s (bytes)\n", dev, buf);
 			memset(buf, 0, sizeof(buf));
-			printf("Size of hidden volume (e.g. 127M): ");
+			printf("Size of hidden volume (e.g. 127M):  ");
 			fflush(stdout);
 
 			if ((fgets(buf, sizeof(buf), stdin)) == NULL) {
 				tc_log(1, "Could not read from stdin\n");
-				return -1;
+				goto out;
 			}
 
 			/* get rid of trailing newline */
 			buf[strlen(buf)-1] = '\0';
-			if ((error = dehumanize_number(buf,
+			if ((error = _dehumanize_number(buf,
 			    &tmp)) != 0) {
 				tc_log(1, "Could not interpret input: %s\n", buf);
-				return -1;
+				continue;
 			}
 
-			hidden_blocks = (size_t)tmp;
-			hidden_blocks /= blksz;
-			if (hidden_blocks >= blocks - MIN_VOL_BLOCKS) {
+			if (tmp >= (blocks*blksz) - MIN_VOL_BYTES) {
 				tc_log(1, "Hidden volume needs to be "
 				    "smaller than the outer volume\n");
 				hidden_blocks = 0;
 				continue;
 			}
+
+			hidden_blocks = (size_t)tmp;
+			hidden_blocks /= blksz;
 		}
 	}
 
@@ -532,56 +579,105 @@ create_volume(const char *dev, int hidden, const char *keyfiles[], int nkeyfiles
 		fflush(stdout);
 		if ((fgets(buf, sizeof(buf), stdin)) == NULL) {
 			tc_log(1, "Could not read from stdin\n");
-			return -1;
+			goto out;
 		}
 
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) {
 			tc_log(1, "User cancelled action(s)\n");
-			return -1;
+			goto out;
 		}
 	}
+
+	tc_log(0, "Securely erasing the volume...\nThis process may take "
+	    "some time depending on the size of the volume\n");
 
 	/* erase volume */
 	if ((error = secure_erase(dev, blocks * blksz, blksz)) != 0) {
 		tc_log(1, "could not securely erase device %s\n", dev);
-		return -1;
+		goto out;
 	}
 
+	tc_log(0, "Creating volume headers...\nDepending on your system, this "
+	    "process may take a few minutes as it uses true random data which "
+	    "might take a while to refill\n");
+
 	/* create encrypted headers */
-	ehdr = create_hdr(pass, (nkeyfiles > 0)?MAX_PASSSZ:strlen(pass),
-	    prf_algo, cipher_chain, blksz, blocks, MIN_VOL_BLOCKS,
-	    blocks-MIN_VOL_BLOCKS, 0);
+	ehdr = create_hdr((unsigned char *)pass,
+	    (nkeyfiles > 0)?MAX_PASSSZ:strlen(pass),
+	    prf_algo, cipher_chain, blksz, blocks, VOL_RSVD_BYTES_START/blksz,
+	    blocks - (MIN_VOL_BYTES/blksz), 0, &ehdr_backup);
 	if (ehdr == NULL) {
 		tc_log(1, "Could not create header\n");
-		return -1;
+		goto out;
 	}
 
 	if (hidden) {
-		hehdr = create_hdr(h_pass,
+		hehdr = create_hdr((unsigned char *)h_pass,
 		    (n_hkeyfiles > 0)?MAX_PASSSZ:strlen(h_pass), h_prf_algo,
 		    h_cipher_chain,
-		    blksz, blocks, blocks - hidden_blocks, hidden_blocks, 1);
+		    blksz, blocks,
+		    blocks - (VOL_RSVD_BYTES_END/blksz) - hidden_blocks,
+		    hidden_blocks, 1, &hehdr_backup);
 		if (hehdr == NULL) {
 			tc_log(1, "Could not create hidden volume header\n");
-			return -1;
+			goto out;
 		}
 	}
 
-	if ((error = write_mem(dev, 0, blksz, ehdr, sizeof(*ehdr))) != 0) {
+	tc_log(0, "Writing volume headers to disk...\n");
+
+	if ((error = write_to_disk(dev, 0, blksz, ehdr, sizeof(*ehdr))) != 0) {
 		tc_log(1, "Could not write volume header to device\n");
-		return -1;
+		goto out;
+	}
+
+	/* Write backup header; it's offset is relative to the end */
+	if ((error = write_to_disk(dev, (blocks*blksz - BACKUP_HDR_OFFSET_END),
+	    blksz, ehdr_backup, sizeof(*ehdr_backup))) != 0) {
+		tc_log(1, "Could not write backup volume header to device\n");
+		goto out;
 	}
 
 	if (hidden) {
-		if ((error = write_mem(dev, HDR_OFFSET_HIDDEN, blksz, hehdr,
+		if ((error = write_to_disk(dev, HDR_OFFSET_HIDDEN, blksz, hehdr,
 		    sizeof(*hehdr))) != 0) {
 			tc_log(1, "Could not write hidden volume header to "
 			    "device\n");
-			return -1;
+			goto out;
+		}
+
+		/* Write backup hidden header; offset is relative to end */
+		if ((error = write_to_disk(dev,
+		    (blocks*blksz - BACKUP_HDR_HIDDEN_OFFSET_END), blksz,
+		    hehdr_backup, sizeof(*hehdr_backup))) != 0) {
+			tc_log(1, "Could not write backup hidden volume "
+			    "header to device\n");
+			goto out;
 		}
 	}
 
-	return 0;
+	/* Everything went ok */
+	tc_log(0, "All done!\n");
+
+	ret = 0;
+
+out:
+	if (pass)
+		free_safe_mem(pass);
+	if (h_pass)
+		free_safe_mem(h_pass);
+	if (pass_again)
+		free_safe_mem(pass_again);
+	if (ehdr)
+		free_safe_mem(ehdr);
+	if (hehdr)
+		free_safe_mem(hehdr);
+	if (ehdr_backup)
+		free_safe_mem(ehdr_backup);
+	if (hehdr_backup)
+		free_safe_mem(hehdr_backup);
+
+	return ret;
 }
 
 static
@@ -597,27 +693,38 @@ info_map_common(const char *dev, int sflag, const char *sys_dev,
 	char *h_pass;
 	int error, error2 = 0;
 	size_t sz;
+	size_t blocks, blksz;
 
-	info = NULL;
+	if ((error = get_disk_info(dev, &blocks, &blksz)) != 0) {
+		tc_log(1, "could not get disk information\n");
+		return NULL;
+	}
+
 	if (retries < 1)
 		retries = 1;
 
+	info = NULL;
+
+	ehdr = NULL;
+	pass = h_pass = NULL;
+
 	while ((info == NULL) && retries-- > 0)
 	{
-		h_pass = NULL;
-		ehdr = NULL;
-		hehdr = NULL;
+		pass = h_pass = NULL;
+		ehdr = hehdr = NULL;
+		info = hinfo = NULL;
 
 		if ((pass = alloc_safe_mem(MAX_PASSSZ)) == NULL) {
 			tc_log(1, "could not allocate safe passphrase memory\n");
-			return NULL;
+			goto out;
 		}
 
 		if (interactive) {
 		        if ((error = read_passphrase("Passphrase: ", pass,
 			    MAX_PASSSZ, timeout))) {
 				tc_log(1, "could not read passphrase\n");
-				return NULL;
+				/* XXX: handle timeout differently? */
+				goto out;
 			}
 		} else {
 			/* In batch mode, use provided passphrase */
@@ -627,17 +734,17 @@ info_map_common(const char *dev, int sflag, const char *sys_dev,
 
 		if (nkeyfiles > 0) {
 			/* Apply keyfiles to 'pass' */
-			if ((error = apply_keyfiles(pass, MAX_PASSSZ, keyfiles,
-			    nkeyfiles))) {
+			if ((error = apply_keyfiles((unsigned char *)pass, MAX_PASSSZ,
+			    keyfiles, nkeyfiles))) {
 				tc_log(1, "could not apply keyfiles");
-				return NULL;
+				goto out;
 			}
 		}
 
 		if (protect_hidden) {
 			if ((h_pass = alloc_safe_mem(MAX_PASSSZ)) == NULL) {
 				tc_log(1, "could not allocate safe passphrase memory\n");
-				return NULL;
+				goto out;
 			}
 
 			if (interactive) {
@@ -645,7 +752,7 @@ info_map_common(const char *dev, int sflag, const char *sys_dev,
 				    "Passphrase for hidden volume: ", h_pass,
 				    MAX_PASSSZ, timeout))) {
 					tc_log(1, "could not read passphrase\n");
-					return NULL;
+					goto out;
 				}
 			} else {
 				/* In batch mode, use provided passphrase */
@@ -655,35 +762,40 @@ info_map_common(const char *dev, int sflag, const char *sys_dev,
 
 			if (n_hkeyfiles > 0) {
 				/* Apply keyfiles to 'pass' */
-				if ((error = apply_keyfiles(h_pass, MAX_PASSSZ, h_keyfiles,
-				    n_hkeyfiles))) {
+				if ((error = apply_keyfiles((unsigned char *)h_pass, MAX_PASSSZ,
+				    h_keyfiles, n_hkeyfiles))) {
 					tc_log(1, "could not apply keyfiles");
-					return NULL;
+					goto out;
 				}
 			}
 		}
 
-		sz = HDRSZ;
+		/* Always read blksz-sized chunks */
+		sz = blksz;
+
 		ehdr = (struct tchdr_enc *)read_to_safe_mem((sflag) ? sys_dev : dev,
 		    (sflag) ? HDR_OFFSET_SYS : 0, &sz);
 		if (ehdr == NULL) {
 			tc_log(1, "error read hdr_enc: %s", dev);
-			return NULL;
+			goto out;
 		}
 
 		if (!sflag) {
-			sz = HDRSZ;
+			/* Always read blksz-sized chunks */
+			sz = blksz;
+
 			hehdr = (struct tchdr_enc *)read_to_safe_mem(dev,
 			    HDR_OFFSET_HIDDEN, &sz);
 			if (hehdr == NULL) {
 				tc_log(1, "error read hdr_enc: %s", dev);
-				return NULL;
+				goto out;
 			}
 		} else {
 			hehdr = NULL;
 		}
 
-		error = process_hdr(dev, pass, (nkeyfiles > 0)?MAX_PASSSZ:strlen(pass),
+		error = process_hdr(dev, (unsigned char *)pass,
+		    (nkeyfiles > 0)?MAX_PASSSZ:strlen(pass),
 		    ehdr, &info);
 
 		/*
@@ -693,11 +805,11 @@ info_map_common(const char *dev, int sflag, const char *sys_dev,
 		 */
 		if (hehdr && (error || protect_hidden)) {
 			if (error) {
-				error2 = process_hdr(dev, pass,
+				error2 = process_hdr(dev, (unsigned char *)pass,
 				    (nkeyfiles > 0)?MAX_PASSSZ:strlen(pass), hehdr,
 				    &info);
 			} else if (protect_hidden) {
-				error2 = process_hdr(dev, h_pass,
+				error2 = process_hdr(dev, (unsigned char *)h_pass,
 				    (n_hkeyfiles > 0)?MAX_PASSSZ:strlen(h_pass), hehdr,
 				    &hinfo);
 			}
@@ -707,27 +819,74 @@ info_map_common(const char *dev, int sflag, const char *sys_dev,
 		if ((protect_hidden && (error || error2)) ||
 		    (error && error2)) {
 			tc_log(1, "Incorrect password or not a TrueCrypt volume\n");
-			info = NULL;
-			hinfo = NULL;
+
+			if (info) {
+				if (info->hdr)
+					free_safe_mem(info->hdr);
+				free_safe_mem(info);
+				info = NULL;
+			}
+			if (hinfo) {
+				if (hinfo->hdr)
+					free_safe_mem(hinfo->hdr);
+				free_safe_mem(hinfo);
+				hinfo = NULL;
+			}
 
 			/* Try again (or finish) */
 			free_safe_mem(pass);
-			if (h_pass)
+			pass = NULL;
+
+			if (h_pass) {
 				free_safe_mem(h_pass);
-			if (ehdr)
+				h_pass = NULL;
+			}
+			if (ehdr) {
 				free_safe_mem(ehdr);
-			if (hehdr)
+				ehdr = NULL;
+			}
+			if (hehdr) {
 				free_safe_mem(hehdr);
+				hehdr = NULL;
+			}
 			continue;
 		}
 
 		if (protect_hidden) {
 			if (adjust_info(info, hinfo) != 0) {
 				tc_log(1, "Could not protect hidden volume\n");
-				return NULL;
+				if (info) {
+					if (info->hdr)
+						free_safe_mem(info->hdr);
+					free_safe_mem(info);
+				}
+				info = NULL;
+
+				if (hinfo->hdr)
+					free_safe_mem(hinfo->hdr);
+				free_safe_mem(hinfo);
+				hinfo = NULL;
+				goto out;
 			}
+
+			if (hinfo->hdr)
+				free_safe_mem(hinfo->hdr);
+			free_safe_mem(hinfo);
+			hinfo = NULL;
 		}
         }
+
+out:
+	if (hinfo)
+		free_safe_mem(hinfo);
+	if (pass)
+		free_safe_mem(pass);
+	if (h_pass)
+		free_safe_mem(h_pass);
+	if (ehdr)
+		free_safe_mem(ehdr);
+	if (hehdr)
+		free_safe_mem(hehdr);
 
 	return info;
 }
@@ -748,9 +907,15 @@ info_volume(const char *device, int sflag, const char *sys_dev,
 	if (info != NULL) {
 		if (interactive)
 			print_info(info);
+		if (info->hdr)
+			free_safe_mem(info->hdr);
+		free_safe_mem(info);
+
+		return 0;
+		/* NOT REACHED */
 	}
 
-	return (info != NULL) ? 0 : -1;
+	return -1;
 }
 
 int
@@ -773,11 +938,16 @@ map_volume(const char *map_name, const char *device, int sflag,
 
 	if ((error = dm_setup(map_name, info)) != 0) {
 		tc_log(1, "Could not set up mapping %s\n", map_name);
+		if (info->hdr)
+			free_safe_mem(info->hdr);
+		free_safe_mem(info);
 		return -1;
 	}
 
 	if (interactive)
-		printf("All ok!");
+		printf("All ok!\n");
+
+	free_safe_mem(info);
 
 	return 0;
 }
@@ -816,12 +986,17 @@ dm_setup(const char *mapname, struct tcplay_info *info)
 	char *uu;
 	char *uu_stack[64];
 	int uu_stack_idx;
+#if defined(__DragonFly__)
 	uint32_t status;
-	int ret = 0;
+#endif
+	int r, ret = 0;
 	int j;
 	off_t start, offset;
 	char dev[PATH_MAX];
 	char map[PATH_MAX];
+	uint32_t cookie;
+
+	dm_udev_set_sync_support(1);
 
 	if ((params = alloc_safe_mem(512)) == NULL) {
 		tc_log(1, "could not allocate safe parameters memory");
@@ -840,11 +1015,14 @@ dm_setup(const char *mapname, struct tcplay_info *info)
 
 	for (j= 0; cipher_chain != NULL;
 	    cipher_chain = cipher_chain->prev, j++) {
+
+		cookie = 0;
+
 		/* aes-cbc-essiv:sha256 7997f8af... 0 /dev/ad0s0a 8 */
 		/*			   iv off---^  block off--^ */
 		snprintf(params, 512, "%s %s %"PRIu64 " %s %"PRIu64,
 		    cipher_chain->cipher->dm_crypt_str, cipher_chain->dm_key,
-		    info->skip, dev, offset);
+		    (uint64_t)info->skip, dev, (uint64_t)offset);
 #ifdef DEBUG
 		printf("Params: %s\n", params);
 #endif
@@ -870,6 +1048,15 @@ dm_setup(const char *mapname, struct tcplay_info *info)
 			goto out;
 		}
 
+#if defined(__linux__)
+		uuid_generate(info->uuid);
+		if ((uu = malloc(1024)) == NULL) {
+			tc_log(1, "uuid_unparse memory failed\n");
+			ret = -1;
+			goto out;
+		}
+		uuid_unparse(info->uuid, uu);
+#elif defined(__DragonFly__)
 		uuid_create(&info->uuid, &status);
 		if (status != uuid_s_ok) {
 			tc_log(1, "uuid_create failed\n");
@@ -883,6 +1070,7 @@ dm_setup(const char *mapname, struct tcplay_info *info)
 			ret = -1;
 			goto out;
 		}
+#endif
 
 		if ((dm_task_set_uuid(dmt, uu)) == 0) {
 			free(uu);
@@ -899,18 +1087,27 @@ dm_setup(const char *mapname, struct tcplay_info *info)
 			goto out;
 		}
 
+		if ((dm_task_set_cookie(dmt, &cookie, 0)) == 0) {
+			tc_log(1, "dm_task_set_cookie failed\n");
+			ret = -1;
+			goto out;
+		}
+
 		if ((dm_task_run(dmt)) == 0) {
+			dm_udev_wait(cookie);
 			tc_log(1, "dm_task_task_run failed\n");
 			ret = -1;
 			goto out;
 		}
 
 		if ((dm_task_get_info(dmt, &dmi)) == 0) {
+			dm_udev_wait(cookie);
 			tc_log(1, "dm_task_get info failed\n");
-			/* XXX: probably do more than just erroring out... */
 			ret = -1;
 			goto out;
 		}
+
+		dm_udev_wait(cookie);
 
 		asprintf(&uu_stack[uu_stack_idx++], "%s", map);
 
@@ -919,6 +1116,7 @@ dm_setup(const char *mapname, struct tcplay_info *info)
 		sprintf(dev, "/dev/mapper/%s.%d", mapname, j);
 
 		dm_task_destroy(dmt);
+		dm_task_update_nodes();
 	}
 
 out:
@@ -933,7 +1131,7 @@ out:
 			printf("Unrolling dm changes! j = %d (%s)\n", j-1,
 			    uu_stack[j-1]);
 #endif
-			if ((ret = dm_remove_device(uu_stack[--j])) != 0) {
+			if ((r = dm_remove_device(uu_stack[--j])) != 0) {
 				tc_log(1, "Tried to unroll dm changes, "
 				    "giving up.\n");
 				break;

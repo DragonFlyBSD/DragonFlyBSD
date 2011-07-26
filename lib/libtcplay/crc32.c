@@ -38,6 +38,7 @@
  */
 
 #include <stdlib.h>
+#include <stdint.h>
 #include "crc32.h"
 
 uint32_t crc32_tab[] = {

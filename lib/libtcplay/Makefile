@@ -15,6 +15,7 @@ MLINKS+=	tcplay.3	tc_api_get_summary.3
 
 
 SRCS+=		tcplay_api.c tcplay.c crc32.c safe_mem.c \
+		crypto.c generic_xts.c humanize.c pbkdf2-openssl.c \
 		io.c crypto-dev.c hdr.c
 INCS+=		tcplay_api.h
 

@@ -29,7 +29,7 @@
 
 /* Version of tcplay */
 #define MAJ_VER			0
-#define MIN_VER			8
+#define MIN_VER			9
 
 
 #define MAX_BLKSZ		4096
@@ -42,8 +42,13 @@
 #define MAX_KFILE_SZ		1048576	/* 1 MB */
 #define MAX_KEYFILES		256
 #define HDR_OFFSET_HIDDEN	65536
+#define BACKUP_HDR_HIDDEN_OFFSET_END	65536
+#define BACKUP_HDR_OFFSET_END	131072
 #define SALT_LEN		64
-#define MIN_VOL_BLOCKS		256
+#define VOL_RSVD_BYTES_START	(256*512) /* Reserved bytes at vol. start */
+#define VOL_RSVD_BYTES_END	(256*512) /* Reserved bytes at vol. end */
+#define MIN_VOL_BYTES		(VOL_RSVD_BYTES_START + VOL_RSVD_BYTES_END)
+
 #define MAX_CIPHER_CHAINS	64
 #define DEFAULT_RETRIES		3
 #define ERASE_BUFFER_SIZE	4*1024*1024 /* 4 MB */
@@ -57,7 +62,13 @@
 #define DEBUG 1
 #endif
 
+#include <inttypes.h>
+
+#if defined(__DragonFly__)
 #include <uuid.h>
+#elif defined(__linux__)
+#include <uuid/uuid.h>
+#endif
 
 struct pbkdf_prf_algo {
 	const char *name;
@@ -129,28 +140,38 @@ void *read_to_safe_mem(const char *file, off_t offset, size_t *sz);
 int get_random(unsigned char *buf, size_t len);
 int secure_erase(const char *dev, size_t bytes, size_t blksz);
 int get_disk_info(const char *dev, size_t *blocks, size_t *bsize);
-int write_mem(const char *dev, off_t offset, size_t blksz, void *mem, size_t bytes);
+int write_to_disk(const char *dev, off_t offset, size_t blksz, void *mem,
+    size_t bytes);
 int read_passphrase(const char *prompt, char *pass, size_t passlen,
     time_t timeout);
 
 int tc_crypto_init(void);
 int tc_cipher_chain_populate_keys(struct tc_cipher_chain *cipher_chain,
     unsigned char *key);
+int tc_cipher_chain_free_keys(struct tc_cipher_chain *cipher_chain);
 int tc_encrypt(struct tc_cipher_chain *cipher_chain, unsigned char *key,
     unsigned char *iv,
     unsigned char *in, int in_len, unsigned char *out);
 int tc_decrypt(struct tc_cipher_chain *cipher_chain, unsigned char *key,
     unsigned char *iv,
     unsigned char *in, int in_len, unsigned char *out);
-int pbkdf2(const char *pass, int passlen, const unsigned char *salt, int saltlen,
-    int iter, const char *hash_name, int keylen, unsigned char *out);
+
+/* The following two are platform dependent */
+int syscrypt(struct tc_crypto_algo *cipher, unsigned char *key, size_t klen,
+    unsigned char *iv, unsigned char *in, unsigned char *out, size_t len,
+    int do_encrypt);
+int pbkdf2(struct pbkdf_prf_algo *hash, const char *pass, int passlen,
+    const unsigned char *salt, int saltlen,
+    int keylen, unsigned char *out);
+
 int apply_keyfiles(unsigned char *pass, size_t pass_memsz, const char *keyfiles[],
     int nkeyfiles);
 
 struct tchdr_enc *create_hdr(unsigned char *pass, int passlen,
     struct pbkdf_prf_algo *prf_algo, struct tc_cipher_chain *cipher_chain,
     size_t sec_sz, size_t total_blocks,
-    off_t offset, size_t blocks, int hidden);
+    off_t offset, size_t blocks, int hidden,
+    struct tchdr_enc **backup_hdr);
 struct tchdr_dec *decrypt_hdr(struct tchdr_enc *ehdr,
     struct tc_cipher_chain *cipher_chain, unsigned char *key);
 int verify_hdr(struct tchdr_dec *hdr);
@@ -173,7 +194,7 @@ int create_volume(const char *dev, int hidden, const char *keyfiles[],
     int nkeyfiles, const char *h_keyfiles[], int n_hkeyfiles,
     struct pbkdf_prf_algo *prf_algo, struct tc_cipher_chain *cipher_chain,
     struct pbkdf_prf_algo *h_prf_algo, struct tc_cipher_chain *h_cipher_chain,
-    char *passphrase, char *h_passphrase, size_t hidden_blocks_in,
+    char *passphrase, char *h_passphrase, size_t hidden_bytes_in,
     int interactive);
 int info_volume(const char *device, int sflag, const char *sys_dev,
     int protect_hidden, const char *keyfiles[], int nkeyfiles,
@@ -199,3 +220,5 @@ extern summary_fn_t summary_fn;
 
 #define free_safe_mem(x) \
 	_free_safe_mem(x, __FILE__, __LINE__)
+
+#define __unused       __attribute__((__unused__))
