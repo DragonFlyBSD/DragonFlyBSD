@@ -2502,7 +2502,6 @@ options 	KBD_RESETDELAY=201
 options 	KEY
 #options 	LINPROCFS
 options 	LOCKF_DEBUG
-options 	LOUTB
 #options	MAXFILES=xxx
 options		MBUF_DEBUG
 options 	NETATALKDEBUG
