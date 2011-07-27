@@ -1042,13 +1042,20 @@ out:
 		if (error == ENOBUFS) {
 			/*
 			 * If we can't send, make sure there is something
-			 * to get us going again later.  Persist state
-			 * is not necessarily right, but it is close enough.
+			 * to get us going again later.
+			 *
+			 * The persist timer isn't necessarily allowed in all
+			 * states, use the rexmt timer.
 			 */
 			if (!tcp_callout_active(tp, tp->tt_rexmt) &&
 			    !tcp_callout_active(tp, tp->tt_persist)) {
+				tcp_callout_reset(tp, tp->tt_rexmt,
+						  tp->t_rxtcur,
+						  tcp_timer_rexmt);
+#if 0
 				tp->t_rxtshift = 0;
 				tcp_setpersist(tp);
+#endif
 			}
 			tcp_quench(inp, 0);
 			return (0);
