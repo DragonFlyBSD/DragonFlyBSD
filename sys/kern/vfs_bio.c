@@ -3774,8 +3774,11 @@ vn_cache_strategy(struct vnode *vp, struct bio *bio)
 
 	/*
 	 * If we are good then issue the I/O using swap_pager_strategy().
+	 *
+	 * We can only do this if the buffer actually supports object-backed
+	 * I/O.  If it doesn't npages will be 0.
 	 */
-	if (i == bp->b_xio.xio_npages) {
+	if (i && i == bp->b_xio.xio_npages) {
 		m = bp->b_xio.xio_pages[0];
 		nbio = push_bio(bio);
 		nbio->bio_done = vn_cache_strategy_callback;
