@@ -24,6 +24,8 @@
 .Nm crypto
 .Nd API for cryptographic services in the kernel
 .Sh SYNOPSIS
+.In sys/malloc.h
+.In sys/time.h
 .In opencrypto/cryptodev.h
 .Ft int32_t
 .Fn crypto_get_driverid "device_t dev" "int flags"
