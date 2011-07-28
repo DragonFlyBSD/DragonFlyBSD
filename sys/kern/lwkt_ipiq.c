@@ -179,6 +179,10 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
     /*
      * Do not allow the FIFO to become full.  Interrupts must be physically
      * enabled while we liveloop to avoid deadlocking the APIC.
+     *
+     * The target ipiq may have gotten filled up due to passive IPIs and thus
+     * not be aware that its queue is too full, so be sure to issue an
+     * ipiq interrupt to the target cpu.
      */
     if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
 #if defined(__i386__)
@@ -193,6 +197,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	}
 	cpu_enable_intr();
 	++ipiq_fifofull;
+	cpu_send_ipiq(target->gd_cpuid);
 	DEBUG_PUSH_INFO("send_ipiq3");
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
@@ -286,6 +291,7 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 	}
 	cpu_enable_intr();
 	++ipiq_fifofull;
+	cpu_send_ipiq(target->gd_cpuid);
 	DEBUG_PUSH_INFO("send_ipiq3_passive");
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
