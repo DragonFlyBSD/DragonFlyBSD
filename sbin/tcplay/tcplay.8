@@ -42,18 +42,26 @@
 .Op Fl g
 .Op Fl a Ar pbkdf_hash
 .Op Fl b Ar cipher
-.Op Fl k Ar keyfile
 .Op Fl f Ar keyfile_hidden
+.Op Fl k Ar keyfile
+.Op Fl x Ar pbkdf_hash
+.Op Fl y Ar cipher
 .Nm
 .Fl i
 .Fl d Ar device
 .Op Fl e
+.Op Fl f Ar keyfile_hidden
+.Op Fl k Ar keyfile
 .Op Fl s Ar system_device
 .Nm
 .Fl m Ar mapping
 .Fl d Ar device
 .Op Fl e
+.Op Fl f Ar keyfile_hidden
+.Op Fl k Ar keyfile
 .Op Fl s Ar system_device
+.Nm
+.Fl h | v
 .Sh DESCRIPTION
 The
 .Nm
@@ -66,6 +74,8 @@ detailed further below:
 Create a new encrypted TrueCrypt volume on the device
 specified by
 .Fl -device .
+.It Fl h, Fl -help
+Print help message and exit.
 .It Fl i , Fl -info
 Print out information about the encrypted device specified by
 .Fl -device .
@@ -76,6 +86,8 @@ as a
 .Xr dm 4
 mapping called
 .Ar mapping .
+.It Fl v, Fl -version
+Print version message and exit.
 .El
 .Pp
 Options common to all commands are:
@@ -85,21 +97,20 @@ Specifies the disk
 .Ar device
 on which the TrueCrypt volume resides/will reside.
 This option is mandatory for all commands.
-.It Fl k Ar keyfile , Fl -keyfile Ns = Ns Ar keyfile
-Specifies a
-.Ar keyfile
-to use in addition to the passphrase.
-This option can appear multiple times; if so, multiple
-keyfiles will be used.
-.It Fl f Ar keyfile , Fl -keyfile-hidden Ns = Ns Ar keyfile
-Specifies a
-.Ar keyfile
+.It Fl f Ar keyfile_hidden , Fl -keyfile-hidden Ns = Ns Ar keyfile_hidden
+Specifies a keyfile
 to use in addition to the passphrase when either creating a
 hidden volume or when protecting a hidden volume while mapping
 or querying the outer volume.
 If you only intend to map a hidden volume, the
 .Fl -keyfile
 option has to be used.
+This option can appear multiple times; if so, multiple
+keyfiles will be used.
+.It Fl k Ar keyfile , Fl -keyfile Ns = Ns Ar keyfile
+Specifies a
+.Ar keyfile
+to use in addition to the passphrase.
 This option can appear multiple times; if so, multiple
 keyfiles will be used.
 .El
@@ -109,33 +120,15 @@ Additional options for the
 command are:
 .Bl -tag -width indent
 .It Fl a Ar pbkdf_hash , Fl -pbkdf-prf Ns = Ns Ar pbkdf_hash
-Specifies with hash algorithm to use for the PBKDF2 password
+Specifies which hash algorithm to use for the PBKDF2 password
 derivation.
 To see which algorithms are supported, specify
-.Fl -pbkdf-prf Ns = Ns Ar help .
+.Fl -pbkdf-prf Ns = Ns Cm help .
 .It Fl b Ar cipher , Fl -cipher Ns = Ns Ar cipher
-Specifies with cipher algorithm or cascade of ciphers to use
+Specifies which cipher algorithm or cascade of ciphers to use
 to encrypt the new volume.
 To see which algorithms are supported, specify
-.Fl -cipher Ns = Ns Ar help .
-.It Fl x Ar pbkdf_hash , Fl -pbkdf-prf-hidden Ns = Ns Ar pbkdf_hash
-Specifies with hash algorithm to use for the PBKDF2 password
-derivation for the hidden volume.
-Only valid in conjunction with
-.Fl -hidden .
-If no algorithm is specified, the same as for the outer volume
-will be used.
-To see which algorithms are supported, specify
-.Fl -pbkdf-prf-hidden Ns = Ns Ar help .
-.It Fl y Ar cipher , Fl -cipher-hidden Ns = Ns Ar cipher
-Specifies with cipher algorithm or cascade of ciphers to use
-to encrypt the hidden volume on the new TrueCrypt volume.
-Only valid in conjunction with
-.Fl -hidden .
-If no cipher is specified, the same as for the outer volume
-will be used.
-To see which algorithms are supported, specify
-.Fl -cipher-hidden Ns = Ns Ar help .
+.Fl -cipher Ns = Ns Cm help .
 .It Fl g, Fl -hidden
 Specifies that the newly created volume will contain a hidden
 volume.
@@ -144,6 +137,24 @@ volume are those specified by
 .Fl -keyfile-hidden .
 The user will be prompted for the size of the hidden volume
 interactively.
+.It Fl x Ar pbkdf_hash , Fl -pbkdf-prf-hidden Ns = Ns Ar pbkdf_hash
+Specifies which hash algorithm to use for the PBKDF2 password
+derivation for the hidden volume.
+Only valid in conjunction with
+.Fl -hidden .
+If no algorithm is specified, the same as for the outer volume
+will be used.
+To see which algorithms are supported, specify
+.Fl -pbkdf-prf-hidden Ns = Ns Cm help .
+.It Fl y Ar cipher , Fl -cipher-hidden Ns = Ns Ar cipher
+Specifies which cipher algorithm or cascade of ciphers to use
+to encrypt the hidden volume on the new TrueCrypt volume.
+Only valid in conjunction with
+.Fl -hidden .
+If no cipher is specified, the same as for the outer volume
+will be used.
+To see which algorithms are supported, specify
+.Fl -cipher-hidden Ns = Ns Cm help .
 .El
 .Pp
 Additional options for the
@@ -181,11 +192,11 @@ and
 .Pa two.key :
 .Bd -ragged -offset indent
 .Nm Fl -create
-.Fl -device Ns = Ns Ar /dev/vn0
-.Fl -cipher Ns = Ns Ar AES-256-XTS,TWOFISH-256-XTS
-.Fl -pbkdf-prf Ns = Ns Ar whirlpool
-.Fl -keyfile Ns = Ns Ar one.key
-.Fl -keyfile Ns = Ns Ar two.key
+.Fl -device Ns = Ns Cm /dev/vn0
+.Fl -cipher Ns = Ns Cm AES-256-XTS,TWOFISH-256-XTS
+.Fl -pbkdf-prf Ns = Ns Cm whirlpool
+.Fl -keyfile Ns = Ns Cm one.key
+.Fl -keyfile Ns = Ns Cm two.key
 .Ed
 .Pp
 Map the outer volume on the TrueCrypt volume on
@@ -196,10 +207,10 @@ but protect the hidden volume, using the keyfile
 .Pa hidden.key ,
 from being overwritten:
 .Bd -ragged -offset indent
-.Nm Fl -map Ns = Ns Ar truecrypt1
-.Fl -device Ns = Ns Ar /dev/vn0
+.Nm Fl -map Ns = Ns Cm truecrypt1
+.Fl -device Ns = Ns Cm /dev/vn0
 .Fl -protect-hidden
-.Fl -keyfile-hidden Ns = Ns Ar hidden.key
+.Fl -keyfile-hidden Ns = Ns Cm hidden.key
 .Ed
 .Pp
 Map the hidden volume on the TrueCrypt volume on
@@ -209,9 +220,9 @@ as
 using the keyfile
 .Pa hidden.key :
 .Bd -ragged -offset indent
-.Nm Fl -map Ns = Ns Ar truecrypt2
-.Fl -device Ns = Ns Ar /dev/vn0
-.Fl -keyfile Ns = Ns Ar hidden.key
+.Nm Fl -map Ns = Ns Cm truecrypt2
+.Fl -device Ns = Ns Cm /dev/vn0
+.Fl -keyfile Ns = Ns Cm hidden.key
 .Ed
 .Sh SEE ALSO
 .Xr crypttab 5 ,
