@@ -54,6 +54,7 @@
 
 #include <err.h>
 #include <signal.h>
+#include <stdio.h>
 #include <unistd.h>
 
 int _ucodesel = LSEL(LUCODE_SEL, SEL_UPL);
@@ -140,6 +141,20 @@ iosig(int nada, siginfo_t *info, void *ctxp)
 
 #endif
 
+static
+void
+infosig(int nada, siginfo_t *info, void *ctxp)
+{
+       ucontext_t *ctx = ctxp;
+       char buf[256];
+
+       snprintf(buf, sizeof(buf), "lwp %d pc=%p sp=%p\n",
+               (int)lwp_gettid(),
+               (void *)(intptr_t)ctx->uc_mcontext.mc_eip,
+               (void *)(intptr_t)ctx->uc_mcontext.mc_esp);
+       write(2, buf, strlen(buf));
+}
+
 void
 init_exceptions(void)
 {
@@ -168,6 +183,8 @@ init_exceptions(void)
 	sa.sa_sigaction = iosig;
 	sigaction(SIGIO, &sa, NULL);
 #endif
+	sa.sa_sigaction = infosig;
+	sigaction(SIGINFO, &sa, NULL);
 }
 
 /*
