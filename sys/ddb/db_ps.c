@@ -135,11 +135,11 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 
 	    if (db_more(&nl) < 0)
 		return;
-	    db_printf("  tdq     thread pid    flags pri/cs/mp        sp    wmesg comm\n");
+	    db_printf("  tdq     thread pid    flags pri/cs/mp        sp    wmesg wchan comm\n");
 	    TAILQ_FOREACH(td, &gd->gd_tdrunq, td_threadq) {
 		if (db_more(&nl) < 0)
 		    return;
-		db_printf("  %p %3d %08x %2d/%02d %p %8.8s %s\n",
+		db_printf("  %p %3d %08x %2d/%02d %p %8.8s %p %s\n",
 		    td,
 		    (td->td_proc ? td->td_proc->p_pid : -1),
 		    td->td_flags,
@@ -147,6 +147,7 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		    td->td_critcount,
 		    td->td_sp,
 		    td->td_wmesg ? td->td_wmesg : "-",
+		    td->td_wchan,
 		    td->td_proc ? td->td_proc->p_comm : td->td_comm);
 		if (td->td_preempted)
 		    db_printf("  PREEMPTING THREAD %p\n", td->td_preempted);
@@ -157,11 +158,11 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 	    db_printf("\n");
 	    if (db_more(&nl) < 0)
 		return;
-	    db_printf("  tdq     thread pid    flags pri/cs/mp        sp    wmesg comm\n");
+	    db_printf("  tdq     thread pid    flags pri/cs/mp        sp    wmesg wchan comm\n");
 	    TAILQ_FOREACH(td, &gd->gd_tdallq, td_allq) {
 		if (db_more(&nl) < 0)
 		    return;
-		db_printf("  %3d %p %3d %08x %2d/%02d %p %8.8s %s\n",
+		db_printf("  %3d %p %3d %08x %2d/%02d %p %8.8s %p %s\n",
 		    np, td, 
 		    (td->td_proc ? td->td_proc->p_pid : -1),
 		    td->td_flags,
@@ -169,6 +170,7 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		    td->td_critcount,
 		    td->td_sp,
 		    td->td_wmesg ? td->td_wmesg : "-",
+		    td->td_wchan,
 		    td->td_proc ? td->td_proc->p_comm : td->td_comm);
 		db_dump_td_tokens(td);
 	    }
