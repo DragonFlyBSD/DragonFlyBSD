@@ -159,6 +159,8 @@ init_exceptions(void)
 	sigaction(SIGTRAP, &sa, NULL);
 	sigaction(SIGFPE, &sa, NULL);
 
+	sa.sa_flags &= ~SA_NODEFER;
+
 #ifdef DDB
 	sa.sa_sigaction = exc_debugger;
 	sigaction(SIGQUIT, &sa, NULL);
