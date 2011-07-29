@@ -120,7 +120,8 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
      * being woken up.
      */
     lwkt_gettoken(&vm_token);
-    m = vm_fault_page_quick((vm_offset_t)uap->ptr, VM_PROT_READ|VM_PROT_WRITE, &error);
+    m = vm_fault_page_quick((vm_offset_t)uap->ptr,
+			    VM_PROT_READ|VM_PROT_WRITE, &error);
     if (m == NULL) {
 	error = EFAULT;
 	goto done;
@@ -143,8 +144,12 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 	if (*(int *)(lwbuf_kva(lwb) + offset) == uap->value) {
 	    vm_page_init_action(m, &action, umtx_sleep_page_action_cow, waddr);
 	    vm_page_register_action(&action, VMEVENT_COW);
-	    error = tsleep(waddr, PCATCH | PINTERLOCKED | PDOMAIN_UMTX,
-			   "umtxsl", timeout);
+	    if (*(int *)(lwbuf_kva(lwb) + offset) == uap->value) {
+		    error = tsleep(waddr, PCATCH | PINTERLOCKED | PDOMAIN_UMTX,
+				   "umtxsl", timeout);
+	    } else {
+		    error = EBUSY;
+	    }
 	    vm_page_unregister_action(&action);
 	} else {
 	    error = EBUSY;
