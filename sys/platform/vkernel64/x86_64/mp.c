@@ -192,9 +192,10 @@ mp_announce(void)
 void
 cpu_send_ipiq(int dcpu)
 {
-	if (CPUMASK(dcpu) & smp_active_mask)
+	if (CPUMASK(dcpu) & smp_active_mask) {
 		if (pthread_kill(ap_tids[dcpu], SIGUSR1) != 0)
 			panic("pthread_kill failed in cpu_send_ipiq");
+	}
 #if 0
 	panic("XXX cpu_send_ipiq()");
 #endif

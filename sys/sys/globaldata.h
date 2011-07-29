@@ -159,7 +159,7 @@ struct globaldata {
 	sysid_t		gd_sysid_alloc;		/* allocate unique sysid */
 
 	struct tslpque	*gd_tsleep_hash;	/* tsleep/wakeup support */
-	void		*gd_unused08;
+	long		gd_processing_ipiq;
 	int		gd_spinlocks_wr;	/* Exclusive spinlocks held */
 	struct systimer	*gd_systimer_inprog;	/* in-progress systimer */
 	int		gd_timer_running;
