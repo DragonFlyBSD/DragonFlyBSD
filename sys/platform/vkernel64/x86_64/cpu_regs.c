@@ -712,6 +712,7 @@ cpu_idle(void)
 	crit_exit();
 	KKASSERT(td->td_critcount == 0);
 	cpu_enable_intr();
+
 	for (;;) {
 		/*
 		 * See if there are any LWKTs ready to go.
@@ -720,7 +721,9 @@ cpu_idle(void)
 
 		/*
 		 * The idle loop halts only if no threads are scheduleable
-		 * and no signals have occured.
+		 * and no signals have occured.  If we race a signal
+		 * RQF_WAKEUP and other gd_reqflags will cause umtx_sleep()
+		 * to return immediately.
 		 */
 		if (cpu_idle_hlt &&
 		    (td->td_gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
@@ -732,6 +735,7 @@ cpu_idle(void)
 #endif
 				reqflags = gd->mi.gd_reqflags &
 					   ~RQF_IDLECHECK_WK_MASK;
+				KKASSERT(gd->mi.gd_processing_ipiq == 0);
 				umtx_sleep(&gd->mi.gd_reqflags, reqflags,
 					   1000000);
 #ifdef DEBUGIDLE

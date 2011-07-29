@@ -518,6 +518,8 @@ lwkt_switch(void)
     int oseq;
     int fatal_count;
 
+    KKASSERT(gd->gd_processing_ipiq == 0);
+
     /*
      * Switching from within a 'fast' (non thread switched) interrupt or IPI
      * is illegal.  However, we may have to do it anyway if we hit a fatal
@@ -1083,6 +1085,7 @@ lwkt_preempt(thread_t ntd, int critcount)
 	need_lwkt_resched();
 	return;
     }
+    KKASSERT(gd->gd_processing_ipiq == 0);
 
     /*
      * Since we are able to preempt the current thread, there is no need to
