@@ -176,10 +176,13 @@ signalintr(int intr)
 	}
 }
 
+/*
+ * Must block any signal normally handled as maskable interrupt.
+ */
 void
 cpu_disable_intr(void)
 {
-	sigblock(sigmask(SIGALRM)|sigmask(SIGIO));
+	sigblock(sigmask(SIGALRM)|sigmask(SIGIO)|sigmask(SIGUSR1));
 }
 
 void

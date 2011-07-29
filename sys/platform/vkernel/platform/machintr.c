@@ -179,7 +179,7 @@ signalintr(int intr)
 void
 cpu_disable_intr(void)
 {
-	sigblock(sigmask(SIGALRM)|sigmask(SIGIO));
+	sigblock(sigmask(SIGALRM)|sigmask(SIGIO)|sigmask(SIGUSR1));
 }
 
 void
