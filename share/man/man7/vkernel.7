@@ -202,7 +202,7 @@ shutting down or killing it.
 .Pp
 The vkernel will hold a lock on the pidfile while running.
 Scripts may test for the lock to determine if the pidfile is valid or
-stale so as to avoid accidently killing a random process.
+stale so as to avoid accidentally killing a random process.
 Something like '/usr/bin/lockf -ks -t 0 pidfile echo -n' may be used
 to test the lock.
 A non-zero exit code indicates that the pidfile represents a running
