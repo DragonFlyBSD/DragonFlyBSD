@@ -1916,6 +1916,8 @@ issignal(struct lwp *lp, int maytrace)
 /*
  * Take the action for the specified signal
  * from the current set of pending signals.
+ *
+ * Caller must hold p->p_token
  */
 void
 postsig(int sig)

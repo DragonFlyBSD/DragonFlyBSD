@@ -238,10 +238,10 @@ recheck:
 	 * to restore the virtual kernel's vmspace before posting the upcall.
 	 */
 	if (p->p_flag & P_UPCALLPEND) {
+		lwkt_gettoken(&p->p_token);
 		p->p_flag &= ~P_UPCALLPEND;
-		get_mplock();
 		postupcall(lp);
-		rel_mplock();
+		lwkt_reltoken(&p->p_token);
 		goto recheck;
 	}
 
@@ -252,9 +252,9 @@ recheck:
 	 * WARNING!  postsig() can exit and not return.
 	 */
 	if ((sig = CURSIG_TRACE(lp)) != 0) {
-		get_mplock();
+		lwkt_gettoken(&p->p_token);
 		postsig(sig);
-		rel_mplock();
+		lwkt_reltoken(&p->p_token);
 		goto recheck;
 	}
 
