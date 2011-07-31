@@ -41,6 +41,12 @@
 #ifndef	_SYS_CDEFS_H_
 #define	_SYS_CDEFS_H_
 
+#if defined(__GNUC__)
+#define __exported __attribute__((__visibility__("default")))
+#else
+#define __exported
+#endif
+
 #if defined(__cplusplus)
 #define	__BEGIN_DECLS	extern "C" {
 #define	__END_DECLS	}
