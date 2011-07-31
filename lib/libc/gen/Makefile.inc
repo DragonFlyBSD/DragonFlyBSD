@@ -116,6 +116,7 @@ MLINKS+=getgrent.3 endgrent.3 getgrent.3 getgrent_r.3 getgrent.3 getgrgid.3 \
 MLINKS+=gethostname.3 sethostname.3
 MLINKS+=getlastlogx.3 updlastlogx.3 getlastlogx.3 getutmp.3 \
 	getlastlogx.3 getutmpx.3 getlastlogx.3 updwtmpx.3 \
+	getlastlogx.3 _updwtmpx.3 \
 	getlastlogx.3 utmpxname.3
 MLINKS+=getmntinfo.3 getmntvinfo.3
 MLINKS+=getnetgrent.3 endnetgrent.3 getnetgrent.3 innetgr.3 \
