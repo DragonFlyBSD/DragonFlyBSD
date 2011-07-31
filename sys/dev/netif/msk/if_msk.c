@@ -268,9 +268,8 @@ static void msk_jfree(void *, void *);
 static int	msk_phy_readreg(struct msk_if_softc *, int, int);
 static int	msk_phy_writereg(struct msk_if_softc *, int, int, int);
 
-static void	msk_setmulti(struct msk_if_softc *);
+static void	msk_rxfilter(struct msk_if_softc *);
 static void	msk_setvlan(struct msk_if_softc *, struct ifnet *);
-static void	msk_setpromisc(struct msk_if_softc *);
 
 static int	msk_dmamem_create(device_t, bus_size_t, bus_dma_tag_t *,
 				  void **, bus_addr_t *, bus_dmamap_t *);
@@ -491,7 +490,7 @@ msk_miibus_statchg(device_t dev)
 }
 
 static void
-msk_setmulti(struct msk_if_softc *sc_if)
+msk_rxfilter(struct msk_if_softc *sc_if)
 {
 	struct msk_softc *sc;
 	struct ifnet *ifp;
@@ -505,15 +504,14 @@ msk_setmulti(struct msk_if_softc *sc_if)
 
 	bzero(mchash, sizeof(mchash));
 	mode = GMAC_READ_2(sc, sc_if->msk_port, GM_RX_CTRL);
-	mode |= GM_RXCR_UCF_ENA;
-	if ((ifp->if_flags & (IFF_PROMISC | IFF_ALLMULTI)) != 0) {
-		if ((ifp->if_flags & IFF_PROMISC) != 0)
-			mode &= ~(GM_RXCR_UCF_ENA | GM_RXCR_MCF_ENA);
-		else if ((ifp->if_flags & IFF_ALLMULTI) != 0) {
-			mchash[0] = 0xffff;
-			mchash[1] = 0xffff;
-		}
+	if ((ifp->if_flags & IFF_PROMISC) != 0) {
+		mode &= ~(GM_RXCR_UCF_ENA | GM_RXCR_MCF_ENA);
+	} else if ((ifp->if_flags & IFF_ALLMULTI) != 0) {
+		mode |= (GM_RXCR_UCF_ENA | GM_RXCR_MCF_ENA);
+		mchash[0] = 0xffff;
+		mchash[1] = 0xffff;
 	} else {
+		mode |= GM_RXCR_UCF_ENA;
 		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
@@ -524,7 +522,8 @@ msk_setmulti(struct msk_if_softc *sc_if)
 			/* Set the corresponding bit in the hash table. */
 			mchash[crc >> 5] |= 1 << (crc & 0x1f);
 		}
-		mode |= GM_RXCR_MCF_ENA;
+		if (mchash[0] != 0 || mchash[1] != 0)
+			mode |= GM_RXCR_MCF_ENA;
 	}
 
 	GMAC_WRITE_2(sc, sc_if->msk_port, GM_MC_ADDR_H1,
@@ -555,24 +554,6 @@ msk_setvlan(struct msk_if_softc *sc_if, struct ifnet *ifp)
 		CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, TX_GMF_CTRL_T),
 		    TX_VLAN_TAG_OFF);
 	}
-}
-
-static void
-msk_setpromisc(struct msk_if_softc *sc_if)
-{
-	struct msk_softc *sc;
-	struct ifnet *ifp;
-	uint16_t mode;
-
-	sc = sc_if->msk_softc;
-	ifp = sc_if->msk_ifp;
-
-	mode = GMAC_READ_2(sc, sc_if->msk_port, GM_RX_CTRL);
-	if (ifp->if_flags & IFF_PROMISC)
-		mode &= ~(GM_RXCR_UCF_ENA | GM_RXCR_MCF_ENA);
-	else
-		mode |= (GM_RXCR_UCF_ENA | GM_RXCR_MCF_ENA);
-	GMAC_WRITE_2(sc, sc_if->msk_port, GM_RX_CTRL, mode);
 }
 
 static int
@@ -870,10 +851,8 @@ msk_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		if (ifp->if_flags & IFF_UP) {
 			if (ifp->if_flags & IFF_RUNNING) {
 				if (((ifp->if_flags ^ sc_if->msk_if_flags)
-				    & IFF_PROMISC) != 0) {
-					msk_setpromisc(sc_if);
-					msk_setmulti(sc_if);
-				}
+				    & (IFF_PROMISC | IFF_ALLMULTI)) != 0)
+					msk_rxfilter(sc_if);
 			} else {
 				if (sc_if->msk_detach == 0)
 					msk_init(sc_if);
@@ -888,7 +867,7 @@ msk_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
 		if (ifp->if_flags & IFF_RUNNING)
-			msk_setmulti(sc_if);
+			msk_rxfilter(sc_if);
 		break;
 
 	case SIOCGIFMEDIA:
@@ -3330,11 +3309,8 @@ msk_init(void *xsc)
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_CTRL_T),
 	    GMF_OPER_ON | GMF_RX_F_FL_ON);
 
-	/* Set promiscuous mode. */
-	msk_setpromisc(sc_if);
-
-	/* Set multicast filter. */
-	msk_setmulti(sc_if);
+	/* Set receive filter. */
+	msk_rxfilter(sc_if);
 
 	/* Flush Rx MAC FIFO on any flow control or error. */
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_FL_MSK),
