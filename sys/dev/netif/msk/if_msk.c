@@ -419,11 +419,23 @@ msk_miibus_statchg(device_t dev)
 	mii = device_get_softc(sc_if->msk_miibus);
 	ifp = sc_if->msk_ifp;
 
-	if (mii->mii_media_status & IFM_ACTIVE) {
-		if (IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE)
+	sc_if->msk_link = 0;
+	if ((mii->mii_media_status & (IFM_AVALID | IFM_ACTIVE)) ==
+	    (IFM_AVALID | IFM_ACTIVE)) {
+		switch (IFM_SUBTYPE(mii->mii_media_active)) {
+		case IFM_10_T:
+		case IFM_100_TX:
 			sc_if->msk_link = 1;
-	} else
-		sc_if->msk_link = 0;
+			break;
+		case IFM_1000_T:
+		case IFM_1000_SX:
+		case IFM_1000_LX:
+		case IFM_1000_CX:
+			if ((sc_if->msk_flags & MSK_FLAG_FASTETHER) == 0)
+				sc_if->msk_link = 1;
+			break;
+		}
+	}
 
 	if (sc_if->msk_link != 0) {
 		/* Enable Tx FIFO Underrun. */
