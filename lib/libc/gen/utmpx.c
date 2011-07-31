@@ -345,8 +345,14 @@ utmp_update(const struct utmpx *utx)
 /*
  * The following are extensions and not part of the X/Open spec.
  */
-int
+void
 updwtmpx(const char *file, const struct utmpx *utx)
+{
+	(void)_updwtmpx(file, utx);
+}
+
+int
+_updwtmpx(const char *file, const struct utmpx *utx)
 {
 	int fd;
 	int saved_errno;

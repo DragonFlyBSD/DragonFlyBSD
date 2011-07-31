@@ -36,6 +36,7 @@
 .Nm getutmpx ,
 .Nm updlastlogx ,
 .Nm updwtmpx ,
+.Nm _updwtmpx ,
 .Nm utmpxname
 .Nd user accounting database functions
 .Sh LIBRARY
@@ -50,8 +51,10 @@
 .Fn getutmpx "const struct utmp *u" "struct utmpx *ux"
 .Ft int
 .Fn updlastlogx "const char *fname" "uid_t uid" "struct lastlogx *ll"
-.Ft int
+.Ft void
 .Fn updwtmpx "const char *file" "const struct utmpx *utx"
+.Ft int
+.Fn _updwtmpx "const char *file" "const struct utmpx *utx"
 .Ft int
 .Fn utmpxname "const char *fname"
 .Sh DESCRIPTION
@@ -117,7 +120,9 @@ All the fields should be filled out by the caller.
 .Pp
 The
 .Fn updwtmpx
-function updates the
+and
+.Fn _updwtmpx
+functions update the
 .Xr wtmpx 5
 file
 .Fa file
@@ -150,7 +155,7 @@ did not end with
 .Pp
 .Fn updlastlogx
 and
-.Fn updwtmpx
+.Fn _updwtmpx
 return 0 on success, or \-1 in case the database or file respectively
 could not be opened or the data not written into it.
 .Sh SEE ALSO
@@ -162,6 +167,7 @@ The functions
 .Fn getutmp ,
 .Fn getutmpx ,
 .Fn updwtmpx ,
+.Fn _updwtmpx
 and
 .Fn utmpxname
 first appeared in

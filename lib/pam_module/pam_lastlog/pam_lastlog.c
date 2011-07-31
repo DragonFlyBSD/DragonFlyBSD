@@ -267,7 +267,7 @@ doutmpx(const char *username, const char *hostname, const char *tty,
 	if (pututxline(&utmpx) == NULL)
 		logit(LOG_NOTICE, "Cannot update utmpx %m");
 	endutxent();
-	if (updwtmpx(_PATH_WTMPX, &utmpx) != 0)
+	if (_updwtmpx(_PATH_WTMPX, &utmpx) != 0)
 		logit(LOG_NOTICE, "Cannot update wtmpx %m");
 }
 
