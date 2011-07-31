@@ -2363,6 +2363,7 @@ struct msk_if_softc {
 	int			msk_phyaddr;
 	int			msk_link;
 	uint32_t		msk_flags;
+#define MSK_FLAG_FASTETHER	0x0004
 #define MSK_FLAG_RAMBUF		0x0010
 	struct callout		msk_tick_ch;
 	uint32_t		msk_txq;	/* Tx. Async Queue offset */
