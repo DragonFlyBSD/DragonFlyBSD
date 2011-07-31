@@ -174,6 +174,14 @@ static const struct msk_product {
 	    "Marvell Yukon 88E8038 Gigabit Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_8039,
 	    "Marvell Yukon 88E8039 Gigabit Ethernet" },
+	{ VENDORID_MARVELL, DEVICEID_MRVL_8040,
+	    "Marvell Yukon 88E8040 Fast Ethernet" },
+	{ VENDORID_MARVELL, DEVICEID_MRVL_8040T,
+	    "Marvell Yukon 88E8040T Fast Ethernet" },
+	{ VENDORID_MARVELL, DEVICEID_MRVL_8048,
+	    "Marvell Yukon 88E8048 Fast Ethernet" },
+	{ VENDORID_MARVELL, DEVICEID_MRVL_8070,
+	    "Marvell Yukon 88E8070 Fast Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_4361,
 	    "Marvell Yukon 88E8050 Gigabit Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_4360,
@@ -195,10 +203,11 @@ static const struct msk_product {
 
 static const char *model_name[] = {
 	"Yukon XL",
-        "Yukon EC Ultra",
-        "Yukon Unknown",
-        "Yukon EC",
-        "Yukon FE"
+	"Yukon EC Ultra",
+	"Yukon Unknown",
+	"Yukon EC",
+	"Yukon FE",
+	"Yukon FE+"
 };
 
 static int	mskc_probe(device_t);
@@ -1027,6 +1036,7 @@ mskc_phy_power(struct msk_softc *sc, int mode)
 			}
 			break;
 		case CHIP_ID_YUKON_EC_U:
+		case CHIP_ID_YUKON_FE_P:
 			CSR_WRITE_2(sc, B0_CTST, Y2_HW_WOL_OFF);
 
 			/* Enable all clocks. */
@@ -1515,7 +1525,7 @@ mskc_attach(device_t dev)
 	sc->msk_hw_rev = (CSR_READ_1(sc, B2_MAC_CFG) >> 4) & 0x0f;
 	/* Bail out if chip is not recognized. */
 	if (sc->msk_hw_id < CHIP_ID_YUKON_XL ||
-	    sc->msk_hw_id > CHIP_ID_YUKON_FE) {
+	    sc->msk_hw_id > CHIP_ID_YUKON_FE_P) {
 		device_printf(dev, "unknown device: id=0x%02x, rev=0x%02x\n",
 		    sc->msk_hw_id, sc->msk_hw_rev);
 		error = ENXIO;
@@ -1592,6 +1602,24 @@ mskc_attach(device_t dev)
 	case CHIP_ID_YUKON_FE:
 		sc->msk_clock = 100;	/* 100 Mhz */
 		sc->msk_pflags |= MSK_FLAG_FASTETHER;
+		break;
+	case CHIP_ID_YUKON_FE_P:
+		sc->msk_clock = 50;	/* 50 Mhz */
+		/* DESCV2 */
+		sc->msk_pflags |= MSK_FLAG_FASTETHER;
+		if (sc->msk_hw_rev == CHIP_REV_YU_FE_P_A0) {
+			/*
+			 * XXX
+			 * FE+ A0 has status LE writeback bug so msk(4)
+			 * does not rely on status word of received frame
+			 * in msk_rxeof() which in turn disables all
+			 * hardware assistance bits reported by the status
+			 * word as well as validity of the recevied frame.
+			 * Just pass received frames to upper stack with
+			 * minimal test and let upper stack handle them.
+			 */
+			sc->msk_pflags |= MSK_FLAG_NORXCHK;
+		}
 		break;
 	case CHIP_ID_YUKON_XL:
 		sc->msk_clock = 156;	/* 156 Mhz */
@@ -2711,7 +2739,18 @@ msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len,
 		if ((status & GMR_FS_VLAN) != 0 &&
 		    (ifp->if_capenable & IFCAP_VLAN_HWTAGGING) != 0)
 			rxlen -= EVL_ENCAPLEN;
-		if (len > sc_if->msk_framesize ||
+		if (sc_if->msk_flags & MSK_FLAG_NORXCHK) {
+			/*
+			 * For controllers that returns bogus status code
+			 * just do minimal check and let upper stack
+			 * handle this frame.
+			 */
+			if (len > MSK_MAX_FRAMELEN || len < ETHER_HDR_LEN) {
+				ifp->if_ierrors++;
+				msk_discard_rxbuf(sc_if, cons);
+				break;
+			}
+		} else if (len > sc_if->msk_framesize ||
 		    ((status & GMR_FS_ANY_ERR) != 0) ||
 		    ((status & GMR_FS_RX_OK) == 0) || (rxlen != len)) {
 			/* Don't count flow-control packet as errors. */
@@ -3238,6 +3277,7 @@ msk_init(void *xsc)
 	struct mii_data	 *mii;
 	uint16_t eaddr[ETHER_ADDR_LEN / 2];
 	uint16_t gmac;
+	uint32_t reg;
 	int error, i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
@@ -3321,8 +3361,10 @@ msk_init(void *xsc)
 	/* Configure Rx MAC FIFO. */
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_CTRL_T), GMF_RST_SET);
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_CTRL_T), GMF_RST_CLR);
-	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_CTRL_T),
-	    GMF_OPER_ON | GMF_RX_F_FL_ON);
+	reg = GMF_OPER_ON | GMF_RX_F_FL_ON;
+	if (sc->msk_hw_id == CHIP_ID_YUKON_FE_P)
+		reg |= GMF_RX_OVER_ON;
+	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_CTRL_T), reg);
 
 	/* Set receive filter. */
 	msk_rxfilter(sc_if);
@@ -3335,8 +3377,13 @@ msk_init(void *xsc)
 	 * Set Rx FIFO flush threshold to 64 bytes 1 FIFO word
 	 * due to hardware hang on receipt of pause frames.
 	 */
-	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_FL_THR),
-	    RX_GMF_FL_THR_DEF + 1);
+	reg = RX_GMF_FL_THR_DEF + 1;
+	/* Another magic for Yukon FE+ - From Linux. */
+	if (sc->msk_hw_id == CHIP_ID_YUKON_FE_P &&
+	    sc->msk_hw_rev == CHIP_REV_YU_FE_P_A0)
+		reg = 0x178;
+	CSR_WRITE_2(sc, MR_ADDR(sc_if->msk_port, RX_GMF_FL_THR), reg);
+
 
 	/* Configure Tx MAC FIFO. */
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, TX_GMF_CTRL_T), GMF_RST_SET);
@@ -3366,6 +3413,14 @@ msk_init(void *xsc)
 			CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, TX_GMF_CTRL_T),
 			    TX_JUMBO_DIS | TX_STFW_ENA);
 		}
+	}
+
+	if (sc->msk_hw_id == CHIP_ID_YUKON_FE_P &&
+	    sc->msk_hw_rev == CHIP_REV_YU_FE_P_A0) {
+		/* Disable dynamic watermark - from Linux. */
+		reg = CSR_READ_4(sc, MR_ADDR(sc_if->msk_port, TX_GMF_EA));
+		reg &= ~0x03;
+		CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, TX_GMF_EA), reg);
 	}
 
 	/*
