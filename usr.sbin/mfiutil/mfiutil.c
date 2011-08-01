@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/mfiutil/mfiutil.c,v 1.2 2010/10/10 20:37:38 randi Exp $
+ * $FreeBSD: src/usr.sbin/mfiutil/mfiutil.c,v 1.5 2011/06/20 21:28:50 bz Exp $
  */
 
 #include <sys/errno.h>
@@ -45,11 +45,13 @@ MFI_TABLE(top, abort);
 
 int mfi_unit;
 
+u_int mfi_opts;
+
 static void
 usage(void)
 {
 
-	fprintf(stderr, "usage: mfiutil [-u unit] <command> ...\n\n");
+	fprintf(stderr, "usage: mfiutil [-de] [-u unit] <command> ...\n\n");
 	fprintf(stderr, "Commands include:\n");
 	fprintf(stderr, "    version\n");
 	fprintf(stderr, "    show adapter              - display controller information\n");
@@ -58,8 +60,10 @@ usage(void)
 	fprintf(stderr, "    show drives               - list physical drives\n");
 	fprintf(stderr, "    show events               - display event log\n");
 	fprintf(stderr, "    show firmware             - list firmware images\n");
+	fprintf(stderr, "    show logstate             - display event log sequence numbers\n");
 	fprintf(stderr, "    show volumes              - list logical volumes\n");
 	fprintf(stderr, "    show patrol               - display patrol read status\n");
+	fprintf(stderr, "    show progress             - display status of active operations\n");
 	fprintf(stderr, "    fail <drive>              - fail a physical drive\n");
 	fprintf(stderr, "    good <drive>              - mark a bad physical drive as good\n");
 	fprintf(stderr, "    rebuild <drive>           - mark failed drive ready for rebuild\n");
@@ -106,8 +110,14 @@ main(int ac, char **av)
 	struct mfiutil_command **cmd;
 	int ch;
 
-	while ((ch = getopt(ac, av, "u:")) != -1) {
+	while ((ch = getopt(ac, av, "deu:")) != -1) {
 		switch (ch) {
+		case 'd':
+			mfi_opts |= MFI_DNAME_DEVICE_ID;
+			break;
+		case 'e':
+			mfi_opts |= MFI_DNAME_ES;
+			break;
 		case 'u':
 			mfi_unit = atoi(optarg);
 			break;

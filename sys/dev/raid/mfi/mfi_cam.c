@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/mfi/mfi_cam.c,v 1.5 2010/12/06 17:02:56 jhb Exp $
+ * $FreeBSD: src/sys/dev/mfi/mfi_cam.c,v 1.6 2011/06/28 08:36:48 kevlo Exp $
  */
 
 #include "opt_mfi.h"
@@ -52,10 +52,7 @@
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
 
-#include <sys/bus.h>
-#include <sys/conf.h>
 #include <machine/md_var.h>
-#include <sys/rman.h>
 
 #include <dev/raid/mfi/mfireg.h>
 #include <dev/raid/mfi/mfi_ioctl.h>

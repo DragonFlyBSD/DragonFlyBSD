@@ -49,7 +49,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/mfi/mfireg.h,v 1.14 2010/10/21 10:38:52 pluknet Exp $
+ * $FreeBSD: src/sys/dev/mfi/mfireg.h,v 1.16 2011/07/14 20:20:33 jhb Exp $
  */
 
 #ifndef _MFIREG_H
@@ -111,6 +111,7 @@
 #define MFI_FWSTATE_WAIT_HANDSHAKE	0x60000000
 #define MFI_FWSTATE_FW_INIT_2		0x70000000
 #define MFI_FWSTATE_DEVICE_SCAN		0x80000000
+#define MFI_FWSTATE_BOOT_MESSAGE_PENDING	0x90000000
 #define MFI_FWSTATE_FLUSH_CACHE		0xa0000000
 #define MFI_FWSTATE_READY		0xb0000000
 #define MFI_FWSTATE_OPERATIONAL		0xc0000000
@@ -126,6 +127,7 @@
 #define MFI_FWINIT_READY	0x00000002 /* Move from operational to ready */
 #define MFI_FWINIT_MFIMODE	0x00000004 /* unknown */
 #define MFI_FWINIT_CLEAR_HANDSHAKE 0x00000008 /* Respond to WAIT_HANDSHAKE */
+#define MFI_FWINIT_HOTPLUG	0x00000010
 
 /* MFI Commands */
 typedef enum {
@@ -718,7 +720,7 @@ union mfi_evt {
 	struct {
 		uint16_t	locale;
 		uint8_t		reserved;
-		int8_t		class;
+		int8_t		evt_class;
 	} members;
 	uint32_t		word;
 } __packed;
@@ -754,7 +756,7 @@ struct mfi_evt_detail {
 	uint32_t		seq;
 	uint32_t		time;
 	uint32_t		code;
-	union mfi_evt		class;
+	union mfi_evt		evt_class;
 	uint8_t			arg_type;
 	uint8_t			reserved1[15];
 

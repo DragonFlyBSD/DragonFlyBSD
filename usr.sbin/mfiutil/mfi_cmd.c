@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/mfiutil/mfi_cmd.c,v 1.2 2010/11/04 10:47:19 bcr Exp $
+ * $FreeBSD: src/usr.sbin/mfiutil/mfi_cmd.c,v 1.3 2011/02/25 13:59:59 pluknet Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -318,7 +318,7 @@ mfi_display_progress(const char *label, struct mfi_progress *prog)
 
 	printf("%s: %.2f%% complete, after %ds", label,
 	    (float)prog->progress * 100 / 0xffff, prog->elapsed_seconds);
-	if (prog->elapsed_seconds > 10) {
+	if (prog->progress != 0 && prog->elapsed_seconds > 10) {
 		printf(" finished in ");
 		seconds = (0x10000 * (uint32_t)prog->elapsed_seconds) /
 		    prog->progress - prog->elapsed_seconds;

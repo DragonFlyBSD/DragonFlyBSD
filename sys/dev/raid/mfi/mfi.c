@@ -49,7 +49,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/mfi/mfi.c,v 1.54 2009/12/07 21:24:07 jkim Exp $
+ * $FreeBSD: src/sys/dev/mfi/mfi.c,v 1.57 2011/07/14 20:20:33 jhb Exp $
  */
 
 #include "opt_mfi.h"
@@ -261,8 +261,12 @@ mfi_transition_firmware(struct mfi_softc *sc)
 		case MFI_FWSTATE_FLUSH_CACHE:
 			max_wait = 20;
 			break;
+		case MFI_FWSTATE_BOOT_MESSAGE_PENDING:
+			MFI_WRITE4(sc, MFI_IDB, MFI_FWINIT_HOTPLUG);
+			max_wait = 10;
+			break;
 		default:
-			device_printf(sc->mfi_dev,"Unknown firmware state %d\n",
+			device_printf(sc->mfi_dev,"Unknown firmware state %#x\n",
 			    fw_state);
 			return (ENXIO);
 		}
@@ -274,7 +278,7 @@ mfi_transition_firmware(struct mfi_softc *sc)
 				break;
 		}
 		if (fw_state == cur_state) {
-			device_printf(sc->mfi_dev, "firmware stuck in state "
+			device_printf(sc->mfi_dev, "Firmware stuck in state "
 			    "%#x\n", fw_state);
 			return (ENXIO);
 		}
@@ -485,7 +489,7 @@ mfi_attach(struct mfi_softc *sc)
 		device_printf(sc->mfi_dev, "Cannot allocate interrupt\n");
 		return (EINVAL);
 	}
-	if (bus_setup_intr(sc->mfi_dev, sc->mfi_irq, 0,
+	if (bus_setup_intr(sc->mfi_dev, sc->mfi_irq, INTR_MPSAFE,
 	    mfi_intr, sc, &sc->mfi_intr, NULL)) {
 		device_printf(sc->mfi_dev, "Cannot set up interrupt\n");
 		return (EINVAL);
@@ -792,7 +796,7 @@ mfi_aen_setup(struct mfi_softc *sc, uint32_t seq_start)
 
 	class_locale.members.reserved = 0;
 	class_locale.members.locale = mfi_event_locale;
-	class_locale.members.class  = mfi_event_class;
+	class_locale.members.evt_class  = mfi_event_class;
 
 	if (seq_start == 0) {
 		error = mfi_get_log_state(sc, &log_state);
@@ -848,9 +852,7 @@ mfi_free(struct mfi_softc *sc)
 	struct mfi_command *cm;
 	int i;
 
-#if 0 /* XXX swildner */
-	callout_drain(&sc->mfi_watchdog_callout);
-#endif
+	callout_stop(&sc->mfi_watchdog_callout); /* XXX callout_drain() */
 
 	if (sc->mfi_cdev != NULL)
 		destroy_dev(sc->mfi_cdev);
@@ -1099,8 +1101,8 @@ mfi_decode_evt(struct mfi_softc *sc, struct mfi_evt_detail *detail)
 {
 
 	device_printf(sc->mfi_dev, "%d (%s/0x%04x/%s) - %s\n", detail->seq,
-	    format_timestamp(detail->time), detail->class.members.locale,
-	    format_class(detail->class.members.class), detail->description);
+	    format_timestamp(detail->time), detail->evt_class.members.locale,
+	    format_class(detail->evt_class.members.evt_class), detail->description);
 }
 
 static int
@@ -1116,16 +1118,16 @@ mfi_aen_register(struct mfi_softc *sc, int seq, int locale)
 	if (sc->mfi_aen_cm != NULL) {
 		prior_aen.word =
 		    ((uint32_t *)&sc->mfi_aen_cm->cm_frame->dcmd.mbox)[1];
-		if (prior_aen.members.class <= current_aen.members.class &&
+		if (prior_aen.members.evt_class <= current_aen.members.evt_class &&
 		    !((prior_aen.members.locale & current_aen.members.locale)
 		    ^current_aen.members.locale)) {
 			return (0);
 		} else {
 			prior_aen.members.locale |= current_aen.members.locale;
-			if (prior_aen.members.class
-			    < current_aen.members.class)
-				current_aen.members.class =
-				    prior_aen.members.class;
+			if (prior_aen.members.evt_class
+			    < current_aen.members.evt_class)
+				current_aen.members.evt_class =
+				    prior_aen.members.evt_class;
 			mfi_abort(sc, sc->mfi_aen_cm);
 		}
 	}
@@ -1166,7 +1168,8 @@ mfi_aen_complete(struct mfi_command *cm)
 	if (sc->mfi_aen_cm == NULL)
 		return;
 
-	if (sc->mfi_aen_cm->cm_aen_abort || hdr->cmd_status == 0xff) {
+	if (sc->mfi_aen_cm->cm_aen_abort ||
+	    hdr->cmd_status == MFI_STAT_INVALID_STATUS) {
 		sc->mfi_aen_cm->cm_aen_abort = 0;
 		aborted = 1;
 	} else {
@@ -1216,7 +1219,7 @@ mfi_parse_entries(struct mfi_softc *sc, int start_seq, int stop_seq)
 
 	class_locale.members.reserved = 0;
 	class_locale.members.locale = mfi_event_locale;
-	class_locale.members.class  = mfi_event_class;
+	class_locale.members.evt_class  = mfi_event_class;
 
 	size = sizeof(struct mfi_evt_list) + sizeof(struct mfi_evt_detail)
 		* (MAX_EVENTS - 1);
@@ -1428,7 +1431,7 @@ mfi_bio_complete(struct mfi_command *cm)
 	hdr = &cm->cm_frame->header;
 	sc = cm->cm_sc;
 
-	if ((hdr->cmd_status != 0) || (hdr->scsi_status != 0)) {
+	if ((hdr->cmd_status != MFI_STAT_OK) || (hdr->scsi_status != 0)) {
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
 		device_printf(sc->mfi_dev, "I/O error, status= %d "
@@ -1572,7 +1575,7 @@ mfi_send_frame(struct mfi_softc *sc, struct mfi_command *cm)
 		cm->cm_timestamp = time_second;
 		mfi_enqueue_busy(cm);
 	} else {
-		hdr->cmd_status = 0xff;
+		hdr->cmd_status = MFI_STAT_INVALID_STATUS;
 		hdr->flags |= MFI_FRAME_DONT_POST_IN_REPLY_QUEUE;
 	}
 
@@ -1597,14 +1600,14 @@ mfi_send_frame(struct mfi_softc *sc, struct mfi_command *cm)
 		return (0);
 
 	/* This is a polled command, so busy-wait for it to complete. */
-	while (hdr->cmd_status == 0xff) {
+	while (hdr->cmd_status == MFI_STAT_INVALID_STATUS) {
 		DELAY(1000);
 		tm -= 1;
 		if (tm <= 0)
 			break;
 	}
 
-	if (hdr->cmd_status == 0xff) {
+	if (hdr->cmd_status == MFI_STAT_INVALID_STATUS) {
 		device_printf(sc->mfi_dev, "Frame %p timed out "
 			      "command 0x%X\n", hdr, cm->cm_frame->dcmd.opcode);
 		return (ETIMEDOUT);

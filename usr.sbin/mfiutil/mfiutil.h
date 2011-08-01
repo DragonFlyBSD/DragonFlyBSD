@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/mfiutil/mfiutil.h,v 1.1 2009/08/13 23:18:45 scottl Exp $
+ * $FreeBSD: src/usr.sbin/mfiutil/mfiutil.h,v 1.2 2011/06/20 21:28:50 bz Exp $
  */
 
 #ifndef __MFIUTIL_H__
@@ -117,7 +117,13 @@ struct mfiutil_command {
 	}								\
 	MFI_COMMAND(set, name, mfiutil_ ## name ## _table_handler)
 
+/* Drive name printing options */
+#define	MFI_DNAME_ES		0x0001	/* E%u:S%u */
+#define	MFI_DNAME_DEVICE_ID	0x0002	/* %u */
+#define	MFI_DNAME_HONOR_OPTS	0x8000	/* Allow cmd line to override default */
+
 extern int mfi_unit;
+extern u_int mfi_opts;
 
 void	mbox_store_ldref(uint8_t *mbox, union mfi_ld_ref *ref);
 void	mbox_store_pdref(uint8_t *mbox, union mfi_pd_ref *ref);
@@ -145,5 +151,7 @@ int	mfi_pd_get_info(int fd, uint16_t device_id, struct mfi_pd_info *info,
 int	mfi_pd_get_list(int fd, struct mfi_pd_list **listp, uint8_t *statusp);
 int	mfi_reconfig_supported(void);
 const char *mfi_status(u_int status_code);
+const char *mfi_drive_name(struct mfi_pd_info *pinfo, uint16_t device_id,
+    uint32_t def);
 
 #endif /* !__MFIUTIL_H__ */
