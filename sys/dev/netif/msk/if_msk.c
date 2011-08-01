@@ -180,8 +180,6 @@ static const struct msk_product {
 	    "Marvell Yukon 88E8040T Fast Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_8048,
 	    "Marvell Yukon 88E8048 Fast Ethernet" },
-	{ VENDORID_MARVELL, DEVICEID_MRVL_8070,
-	    "Marvell Yukon 88E8070 Fast Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_4361,
 	    "Marvell Yukon 88E8050 Gigabit Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_4360,
@@ -192,8 +190,14 @@ static const struct msk_product {
 	    "Marvell Yukon 88E8055 Gigabit Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_4364,
 	    "Marvell Yukon 88E8056 Gigabit Ethernet" },
+	{ VENDORID_MARVELL, DEVICEID_MRVL_4365,
+	    "Marvell Yukon 88E8070 Gigabit Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_436A,
 	    "Marvell Yukon 88E8058 Gigabit Ethernet" },
+	{ VENDORID_MARVELL, DEVICEID_MRVL_436B,
+	    "Marvell Yukon 88E8071 Gigabit Ethernet" },
+	{ VENDORID_MARVELL, DEVICEID_MRVL_436C,
+	    "Marvell Yukon 88E8072 Gigabit Ethernet" },
 	{ VENDORID_DLINK, DEVICEID_DLINK_DGE550SX,
 	    "D-Link 550SX Gigabit Ethernet" },
 	{ VENDORID_DLINK, DEVICEID_DLINK_DGE560T,
@@ -204,7 +208,7 @@ static const struct msk_product {
 static const char *model_name[] = {
 	"Yukon XL",
 	"Yukon EC Ultra",
-	"Yukon Unknown",
+	"Yukon EX",
 	"Yukon EC",
 	"Yukon FE",
 	"Yukon FE+"
@@ -279,6 +283,7 @@ static int	msk_phy_writereg(struct msk_if_softc *, int, int, int);
 
 static void	msk_rxfilter(struct msk_if_softc *);
 static void	msk_setvlan(struct msk_if_softc *, struct ifnet *);
+static void	msk_set_tx_stfwd(struct msk_if_softc *);
 
 static int	msk_dmamem_create(device_t, bus_size_t, bus_dma_tag_t *,
 				  void **, bus_addr_t *, bus_dmamap_t *);
@@ -1026,16 +1031,19 @@ mskc_phy_power(struct msk_softc *sc, int mode)
 
 		val = pci_read_config(sc->msk_dev, PCI_OUR_REG_1, 4);
 		val &= ~(PCI_Y2_PHY1_POWD | PCI_Y2_PHY2_POWD);
-		switch (sc->msk_hw_id) {
-		case CHIP_ID_YUKON_XL:
+		if (sc->msk_hw_id == CHIP_ID_YUKON_XL) {
 			if (sc->msk_hw_rev > CHIP_REV_YU_XL_A1) {
 				/* Deassert Low Power for 1st PHY. */
 				val |= PCI_Y2_PHY1_COMA;
 				if (sc->msk_num_port > 1)
 					val |= PCI_Y2_PHY2_COMA;
 			}
-			break;
+		}
+		/* Release PHY from PowerDown/COMA mode. */
+		pci_write_config(sc->msk_dev, PCI_OUR_REG_1, val, 4);
+		switch (sc->msk_hw_id) {
 		case CHIP_ID_YUKON_EC_U:
+		case CHIP_ID_YUKON_EX:
 		case CHIP_ID_YUKON_FE_P:
 			CSR_WRITE_2(sc, B0_CTST, Y2_HW_WOL_OFF);
 
@@ -1046,12 +1054,20 @@ mskc_phy_power(struct msk_softc *sc, int mode)
 			    PCI_ASPM_INT_FIFO_EMPTY|PCI_ASPM_CLKRUN_REQUEST);
 			/* Set all bits to 0 except bits 15..12. */
 			pci_write_config(sc->msk_dev, PCI_OUR_REG_4, our, 4);
-			/* Set to default value. */
-			pci_write_config(sc->msk_dev, PCI_OUR_REG_5, 0, 4);
+			our = pci_read_config(sc->msk_dev, PCI_OUR_REG_5, 4);
+			our &= PCI_CTL_TIM_VMAIN_AV_MSK;
+			pci_write_config(sc->msk_dev, PCI_OUR_REG_5, our, 4);
+			pci_write_config(sc->msk_dev, PCI_CFG_REG_1, 0, 4);
+			/*
+			 * Disable status race, workaround for
+			 * Yukon EC Ultra & Yukon EX.
+			 */
+			val = CSR_READ_4(sc, B2_GP_IO);
+			val |= GLB_GPIO_STAT_RACE_DIS;
+			CSR_WRITE_4(sc, B2_GP_IO, val);
+			CSR_READ_4(sc, B2_GP_IO);
 			break;
 		}
-		/* Release PHY from PowerDown/COMA mode. */
-		pci_write_config(sc->msk_dev, PCI_OUR_REG_1, val, 4);
 		for (i = 0; i < sc->msk_num_port; i++) {
 			CSR_WRITE_2(sc, MR_ADDR(i, GMAC_LINK_CTRL),
 			    GMLC_RST_SET);
@@ -1102,10 +1118,19 @@ mskc_reset(struct msk_softc *sc)
 	CSR_WRITE_2(sc, B0_CTST, CS_RST_CLR);
 
 	/* Disable ASF. */
-	if (sc->msk_hw_id < CHIP_ID_YUKON_XL) {
-		CSR_WRITE_4(sc, B28_Y2_ASF_STAT_CMD, Y2_ASF_RESET);
-		CSR_WRITE_2(sc, B0_CTST, Y2_ASF_DISABLE);
+	if (sc->msk_hw_id == CHIP_ID_YUKON_EX) {
+		status = CSR_READ_2(sc, B28_Y2_ASF_HCU_CCSR);
+		/* Clear AHB bridge & microcontroller reset. */
+		status &= ~(Y2_ASF_HCU_CCSR_AHB_RST |
+		    Y2_ASF_HCU_CCSR_CPU_RST_MODE);
+		/* Clear ASF microcontroller state. */
+		status &= ~ Y2_ASF_HCU_CCSR_UC_STATE_MSK;
+		CSR_WRITE_2(sc, B28_Y2_ASF_HCU_CCSR, status);
+	} else {
+		CSR_WRITE_1(sc, B28_Y2_ASF_STAT_CMD, Y2_ASF_RESET);
 	}
+	CSR_WRITE_2(sc, B0_CTST, Y2_ASF_DISABLE);
+
 	/*
 	 * Since we disabled ASF, S/W reset is required for Power Management.
 	 */
@@ -1157,6 +1182,11 @@ mskc_reset(struct msk_softc *sc)
 		CSR_WRITE_4(sc, MR_ADDR(i, GMAC_CTRL), GMC_RST_SET);
 		CSR_WRITE_4(sc, MR_ADDR(i, GMAC_CTRL), GMC_RST_CLR);
 		CSR_WRITE_4(sc, MR_ADDR(i, GMAC_CTRL), GMC_F_LOOPB_OFF);
+		if (sc->msk_hw_id == CHIP_ID_YUKON_EX) {
+			CSR_WRITE_4(sc, MR_ADDR(i, GMAC_CTRL),
+			    GMC_BYP_MACSECRX_ON | GMC_BYP_MACSECTX_ON |
+			    GMC_BYP_RETR_ON);
+		}
 	}
 	CSR_WRITE_1(sc, B2_TST_CTRL1, TST_CFG_WRITE_OFF);
 
@@ -1597,6 +1627,9 @@ mskc_attach(device_t dev)
 	switch (sc->msk_hw_id) {
 	case CHIP_ID_YUKON_EC:
 	case CHIP_ID_YUKON_EC_U:
+		sc->msk_clock = 125;	/* 125 Mhz */
+		break;
+	case CHIP_ID_YUKON_EX:
 		sc->msk_clock = 125;	/* 125 Mhz */
 		break;
 	case CHIP_ID_YUKON_FE:
@@ -3269,6 +3302,47 @@ mskc_intr(void *xsc)
 }
 
 static void
+msk_set_tx_stfwd(struct msk_if_softc *sc_if)
+{
+	struct msk_softc *sc = sc_if->msk_softc;
+	struct ifnet *ifp = sc_if->msk_ifp;
+
+	switch (sc->msk_hw_id) {
+	case CHIP_ID_YUKON_EX:
+		if (sc->msk_hw_rev == CHIP_REV_YU_EX_A0)
+			goto yukon_ex_workaround;
+		if (ifp->if_mtu > ETHERMTU) {
+			CSR_WRITE_4(sc,
+			    MR_ADDR(sc_if->msk_port, TX_GMF_CTRL_T),
+			    TX_JUMBO_ENA | TX_STFW_ENA);
+		} else {
+			CSR_WRITE_4(sc,
+			    MR_ADDR(sc_if->msk_port, TX_GMF_CTRL_T),
+			    TX_JUMBO_DIS | TX_STFW_ENA);
+		}
+		break;
+	default:
+yukon_ex_workaround:
+		if (ifp->if_mtu > ETHERMTU) {
+			/* Set Tx GMAC FIFO Almost Empty Threshold. */
+			CSR_WRITE_4(sc,
+			    MR_ADDR(sc_if->msk_port, TX_GMF_AE_THR),
+			    MSK_ECU_JUMBO_WM << 16 | MSK_ECU_AE_THR);
+			/* Disable Store & Forward mode for Tx. */
+			CSR_WRITE_4(sc,
+			    MR_ADDR(sc_if->msk_port, TX_GMF_CTRL_T),
+			    TX_JUMBO_ENA | TX_STFW_DIS);
+		} else {
+			/* Enable Store & Forward mode for Tx. */
+			CSR_WRITE_4(sc,
+			    MR_ADDR(sc_if->msk_port, TX_GMF_CTRL_T),
+			    TX_JUMBO_DIS | TX_STFW_ENA);
+		}
+		break;
+	}
+}
+
+static void
 msk_init(void *xsc)
 {
 	struct msk_if_softc *sc_if = xsc;
@@ -3303,6 +3377,11 @@ msk_init(void *xsc)
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, GMAC_CTRL), GMC_RST_SET);
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, GMAC_CTRL), GMC_RST_CLR);
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, GMAC_CTRL), GMC_F_LOOPB_OFF);
+	if (sc->msk_hw_id == CHIP_ID_YUKON_EX) {
+		CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, GMAC_CTRL),
+		    GMC_BYP_MACSECRX_ON | GMC_BYP_MACSECTX_ON |
+		    GMC_BYP_RETR_ON);
+	}
 
 	/*
 	 * Initialize GMAC first such that speed/duplex/flow-control
@@ -3362,7 +3441,8 @@ msk_init(void *xsc)
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_CTRL_T), GMF_RST_SET);
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_CTRL_T), GMF_RST_CLR);
 	reg = GMF_OPER_ON | GMF_RX_F_FL_ON;
-	if (sc->msk_hw_id == CHIP_ID_YUKON_FE_P)
+	if (sc->msk_hw_id == CHIP_ID_YUKON_FE_P ||
+	    sc->msk_hw_id == CHIP_ID_YUKON_EX)
 		reg |= GMF_RX_OVER_ON;
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_CTRL_T), reg);
 
@@ -3399,20 +3479,8 @@ msk_init(void *xsc)
 		    MSK_ECU_LLPP);
 		CSR_WRITE_1(sc, MR_ADDR(sc_if->msk_port, RX_GMF_UP_THR),
 		    MSK_ECU_ULPP);
-		if (sc_if->msk_framesize > MSK_MAX_FRAMELEN) {
-			/*
-			 * Set Tx GMAC FIFO Almost Empty Threshold.
-			 */
-			CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, TX_GMF_AE_THR),
-			    MSK_ECU_JUMBO_WM << 16 | MSK_ECU_AE_THR);
-			/* Disable Store & Forward mode for Tx. */
-			CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, TX_GMF_CTRL_T),
-			    TX_JUMBO_ENA | TX_STFW_DIS);
-		} else {
-			/* Enable Store & Forward mode for Tx. */
-			CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, TX_GMF_CTRL_T),
-			    TX_JUMBO_DIS | TX_STFW_ENA);
-		}
+		/* Configure store-and-forward for Tx. */
+		msk_set_tx_stfwd(sc_if);
 	}
 
 	if (sc->msk_hw_id == CHIP_ID_YUKON_FE_P &&
@@ -3443,11 +3511,25 @@ msk_init(void *xsc)
 	CSR_WRITE_4(sc, Q_ADDR(sc_if->msk_txq, Q_CSR), BMU_OPER_INIT);
 	CSR_WRITE_4(sc, Q_ADDR(sc_if->msk_txq, Q_CSR), BMU_FIFO_OP_ON);
 	CSR_WRITE_2(sc, Q_ADDR(sc_if->msk_txq, Q_WM), MSK_BMU_TX_WM);
-	if (sc->msk_hw_id == CHIP_ID_YUKON_EC_U &&
-	    sc->msk_hw_rev == CHIP_REV_YU_EC_U_A0) {
-		/* Fix for Yukon-EC Ultra: set BMU FIFO level */
-		CSR_WRITE_2(sc, Q_ADDR(sc_if->msk_txq, Q_AL), MSK_ECU_TXFF_LEV);
-	}
+	switch (sc->msk_hw_id) {
+	case CHIP_ID_YUKON_EC_U:
+		if (sc->msk_hw_rev == CHIP_REV_YU_EC_U_A0) {
+			/* Fix for Yukon-EC Ultra: set BMU FIFO level */
+			CSR_WRITE_2(sc, Q_ADDR(sc_if->msk_txq, Q_AL),
+			    MSK_ECU_TXFF_LEV);
+		}
+		break;
+	case CHIP_ID_YUKON_EX:
+		/*
+		 * Yukon Extreme seems to have silicon bug for
+		 * automatic Tx checksum calculation capability.
+		 */
+		if (sc->msk_hw_rev == CHIP_REV_YU_EX_B0) {
+			CSR_WRITE_4(sc, Q_ADDR(sc_if->msk_txq, Q_F),
+			    F_TX_CHK_AUTO_OFF);
+		}
+		break;
+ 	}
 
 	/* Setup Rx Queue Bus Memory Interface. */
 	CSR_WRITE_4(sc, Q_ADDR(sc_if->msk_rxq, Q_CSR), BMU_CLR_RESET);
