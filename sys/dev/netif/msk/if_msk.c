@@ -2964,7 +2964,6 @@ msk_intr_gmac(struct msk_if_softc *sc_if)
 	if ((status & GM_IS_RX_FF_OR) != 0) {
 		CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_CTRL_T),
 		    GMF_CLI_RX_FO);
-		device_printf(sc_if->msk_if_dev, "Rx FIFO overrun!\n");
 	}
 	/* GMAC Tx FIFO underrun. */
 	if ((status & GM_IS_TX_FF_UR) != 0) {
