@@ -3449,9 +3449,14 @@ msk_init(void *xsc)
 	/* Set receive filter. */
 	msk_rxfilter(sc_if);
 
-	/* Flush Rx MAC FIFO on any flow control or error. */
-	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_FL_MSK),
-	    GMR_FS_ANY_ERR);
+	if (sc->msk_hw_id == CHIP_ID_YUKON_XL) {
+		/* Clear flush mask - HW bug. */
+		CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_FL_MSK), 0);
+	} else {
+		/* Flush Rx MAC FIFO on any flow control or error. */
+		CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_FL_MSK),
+		    GMR_FS_ANY_ERR);
+	}
 
 	/*
 	 * Set Rx FIFO flush threshold to 64 bytes 1 FIFO word
