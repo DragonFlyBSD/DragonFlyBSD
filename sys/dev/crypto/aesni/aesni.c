@@ -128,7 +128,7 @@ static int
 aesni_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 {
 	struct aesni_softc *sc;
-	struct aesni_session *ases, *ses;
+	struct aesni_session *ses;
 	struct cryptoini *encini;
 	int error;
 
