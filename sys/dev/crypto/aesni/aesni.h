@@ -47,6 +47,8 @@
 #include <machine/npx.h>
 #endif
 
+#define AESNI_ALIGN	16
+
 #define	AES128_ROUNDS	10
 #define	AES192_ROUNDS	12
 #define	AES256_ROUNDS	14
@@ -68,10 +70,7 @@ struct aesni_session {
 #if 0
 	struct fpu_kern_ctx fpu_ctx;
 #endif
-	void *freeaddr;
 };
-
-#define	AESNI_ALIGN(p)	(void *)(roundup2((uintptr_t)(p), 16))
 
 /*
  * Internal functions, implemented in assembler.

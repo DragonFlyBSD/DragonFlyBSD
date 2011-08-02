@@ -116,7 +116,7 @@ aesni_detach(device_t dev)
 	}
 	while ((ses = TAILQ_FIRST(&sc->sessions)) != NULL) {
 		TAILQ_REMOVE(&sc->sessions, ses, next);
-		kfree(ses->freeaddr, M_AESNI);
+		kfree(ses, M_AESNI);
 	}
 	spin_unlock(&sc->lock);
 	spin_uninit(&sc->lock);
@@ -160,19 +160,29 @@ aesni_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	 */
 	ses = TAILQ_FIRST(&sc->sessions);
 	if (ses == NULL || ses->used) {
-		ses = kmalloc(sizeof(*ses) + 16, M_AESNI, M_NOWAIT | M_ZERO);
-		if (ses == NULL) {
-			spin_unlock(&sc->lock);
-			return (ENOMEM);
+		size_t size;
+
+		/*
+		 * Release the spinlock here, since the following
+		 * kmalloc(M_WAITOK) may block.  kmalloc(M_NOWAIT)
+		 * is not acceptable on this code path.
+		 */
+		spin_unlock(&sc->lock);
+
+		/*
+		 * NOTE:
+		 * If the allocation size is 2^n, then the memory returned
+		 * by kmalloc(9) will be 2^n aligned.
+		 */
+		for (size = AESNI_ALIGN; size < sizeof(*ses); size <<= 1)
+			;
+		ses = kmalloc(size, M_AESNI, M_WAITOK | M_ZERO);
+		if ((uintptr_t)ses & (AESNI_ALIGN - 1)) {
+			panic("aesni: ses %p is not %d aligned\n",
+			    ses, AESNI_ALIGN);
 		}
-		/* Check if 'ses' is 16-byte aligned. If not, align it. */
-		if (((uintptr_t)ses & 0xf) != 0) {
-			ases = AESNI_ALIGN(ses);
-			ases->freeaddr = ses;
-			ses = ases;
-		} else {
-			ses->freeaddr = ses;
-		}
+
+		spin_lock(&sc->lock);
 		ses->id = sc->sid++;
 	} else {
 		TAILQ_REMOVE(&sc->sessions, ses, next);
@@ -198,13 +208,11 @@ static void
 aesni_freesession_locked(struct aesni_softc *sc, struct aesni_session *ses)
 {
 	uint32_t sid;
-	void *freeaddr;
 
 	sid = ses->id;
 	TAILQ_REMOVE(&sc->sessions, ses, next);
-	freeaddr = ses->freeaddr;
+
 	bzero(ses, sizeof(*ses));
-	ses->freeaddr = freeaddr;
 	ses->id = sid;
 	TAILQ_INSERT_HEAD(&sc->sessions, ses, next);
 }
