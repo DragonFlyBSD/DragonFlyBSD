@@ -178,6 +178,8 @@ static const struct msk_product {
 	    "Marvell Yukon 88E8040 Fast Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_8040T,
 	    "Marvell Yukon 88E8040T Fast Ethernet" },
+	{ VENDORID_MARVELL, DEVICEID_MRVL_8042,
+	    "Marvell Yukon 88E8042 Fast Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_8048,
 	    "Marvell Yukon 88E8048 Fast Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_4361,
