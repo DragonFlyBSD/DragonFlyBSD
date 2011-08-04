@@ -100,6 +100,11 @@ struct pass2_dedup_entry {
 
 #define DEDUP_PASS2	0x0001 /* process_btree_elm() mode */
 
+static int SigInfoFlag;
+static int64_t DedupDataReads;
+static int64_t DedupCurrentRecords;
+static int64_t DedupTotalRecords;
+
 /* PFS global ids - we deal with just one PFS at a run */
 int glob_fd;
 struct hammer_ioc_pseudofs_rw glob_pfs;
@@ -123,8 +128,9 @@ static int rb_dedup_entry_compare(struct dedup_entry *de1,
 static int rb_sha_dedup_entry_compare(struct sha_dedup_entry *sha_de1,
 				struct sha_dedup_entry *sha_de2);
 typedef int (*scan_pfs_cb_t)(hammer_btree_leaf_elm_t scan_leaf, int flags);
-static void scan_pfs(char *filesystem, scan_pfs_cb_t func);
+static void scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id);
 static int collect_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags);
+static int count_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags);
 static int process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags);
 static int upgrade_chksum(hammer_btree_leaf_elm_t leaf, u_int8_t *sha_hash);
 static void dump_simulated_dedup(void);
@@ -193,7 +199,7 @@ hammer_cmd_dedup_simulate(char **av, int ac)
 	glob_fd = getpfs(&glob_pfs, av[0]);
 
 	printf("Dedup-simulate ");
-	scan_pfs(av[0], &collect_btree_elm);
+	scan_pfs(av[0], collect_btree_elm, "main pass");
 	printf("Dedup-simulate %s succeeded\n", av[0]);
 
 	relpfs(glob_fd, &glob_pfs);
@@ -240,7 +246,9 @@ hammer_cmd_dedup(char **av, int ac)
 	glob_fd = getpfs(&glob_pfs, av[0]);
 
 	printf("Dedup ");
-	scan_pfs(av[0], &process_btree_elm);
+	scan_pfs(av[0], count_btree_elm, "pre-pass");
+	DedupTotalRecords = DedupCurrentRecords;
+	scan_pfs(av[0], process_btree_elm, "main-pass");
 
 	while ((pass2_de = STAILQ_FIRST(&pass2_dedup_queue)) != NULL) {
 		if (process_btree_elm(&pass2_de->leaf, DEDUP_PASS2))
@@ -305,11 +313,18 @@ hammer_cmd_dedup(char **av, int ac)
 }
 
 static int
+count_btree_elm(hammer_btree_leaf_elm_t scan_leaf __unused, int flags __unused)
+{
+	return(1);
+}
+
+static int
 collect_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags __unused)
 {
 	struct sim_dedup_entry *sim_de;
 
-	sim_de = RB_LOOKUP(sim_dedup_entry_rb_tree, &sim_dedup_tree, scan_leaf->data_crc);
+	sim_de = RB_LOOKUP(sim_dedup_entry_rb_tree, &sim_dedup_tree,
+			   scan_leaf->data_crc);
 
 	if (sim_de == NULL) {
 		sim_de = calloc(sizeof(*sim_de), 1);
@@ -634,6 +649,7 @@ upgrade_chksum(hammer_btree_leaf_elm_t leaf, u_int8_t *sha_hash)
 		error = 1;
 		goto done;
 	}
+	DedupDataReads += leaf->data_len;
 
 	if (data.leaf.data_len != leaf->data_len) {
 		error = 1;
@@ -653,13 +669,24 @@ done:
 }
 
 static void
-scan_pfs(char *filesystem, scan_pfs_cb_t func)
+sigInfo(int signo __unused)
+{
+	SigInfoFlag = 1;
+}
+
+static void
+scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 {
 	struct hammer_ioc_mirror_rw mirror;
 	hammer_ioc_mrecord_any_t mrec;
 	struct hammer_btree_leaf_elm elm;
 	char *buf = malloc(DEDUP_BUF);
 	int offset, bytes;
+
+	SigInfoFlag = 0;
+	DedupDataReads = 0;
+	DedupCurrentRecords = 0;
+	signal(SIGINFO, sigInfo);
 
 	bzero(&mirror, sizeof(mirror));
 	hammer_key_beg_init(&mirror.key_beg);
@@ -673,8 +700,8 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func)
 	mirror.pfs_id = glob_pfs.pfs_id;
 	mirror.shared_uuid = glob_pfs.ondisk->shared_uuid;
 
-	printf("%s: objspace %016jx:%04x %016jx:%04x pfs_id %d\n",
-		filesystem,
+	printf("%s %s: objspace %016jx:%04x %016jx:%04x pfs_id %d\n",
+		id, filesystem,
 		(uintmax_t)mirror.key_beg.obj_id,
 		mirror.key_beg.localization,
 		(uintmax_t)mirror.key_end.obj_id,
@@ -711,13 +738,41 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func)
 				elm = mrec->rec.leaf;
 				if (elm.base.btype == HAMMER_BTREE_TYPE_RECORD &&
 				    elm.base.rec_type == HAMMER_RECTYPE_DATA) {
+					++DedupCurrentRecords;
 					func(&elm, 0);
 				}
 				offset += bytes;
 			}
 		}
 		mirror.key_beg = mirror.key_cur;
+		if (DidInterrupt) {
+			fprintf(stderr, "Interrupted\n");
+			exit(1);
+		}
+		if (SigInfoFlag) {
+			if (DedupTotalRecords) {
+				fprintf(stderr, "%s data-records %7jd/%jd "
+						"(%02d.%02d%%) "
+						"data-read %-7jd\n",
+					id,
+					(intmax_t)DedupCurrentRecords,
+					(intmax_t)DedupTotalRecords,
+					(int)(DedupCurrentRecords * 100 /
+						DedupTotalRecords),
+					(int)(DedupCurrentRecords * 10000 /
+						DedupTotalRecords % 100),
+
+					(intmax_t)DedupDataReads);
+			} else {
+				fprintf(stderr, "%s data-records %-7jd\n",
+					id,
+					(intmax_t)DedupCurrentRecords);
+			}
+			SigInfoFlag = 0;
+		}
 	} while (mirror.count != 0);
+
+	signal(SIGINFO, SIG_IGN);
 
 	free(buf);
 }
