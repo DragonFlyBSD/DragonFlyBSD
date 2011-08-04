@@ -120,6 +120,8 @@ u_int64_t dedup_skipped_size = 0;
 u_int64_t dedup_crc_failures = 0;
 u_int64_t dedup_sha_failures = 0;
 u_int64_t dedup_underflows = 0;
+u_int64_t dedup_successes_count = 0;
+u_int64_t dedup_successes_bytes = 0;
 
 static int rb_sim_dedup_entry_compare(struct sim_dedup_entry *sim_de1,
 				struct sim_dedup_entry *sim_de2);
@@ -199,7 +201,7 @@ hammer_cmd_dedup_simulate(char **av, int ac)
 	glob_fd = getpfs(&glob_pfs, av[0]);
 
 	printf("Dedup-simulate ");
-	scan_pfs(av[0], collect_btree_elm, "main pass");
+	scan_pfs(av[0], collect_btree_elm, "simu-pass");
 	printf("Dedup-simulate %s succeeded\n", av[0]);
 
 	relpfs(glob_fd, &glob_pfs);
@@ -245,8 +247,7 @@ hammer_cmd_dedup(char **av, int ac)
 
 	glob_fd = getpfs(&glob_pfs, av[0]);
 
-	printf("Dedup ");
-	scan_pfs(av[0], count_btree_elm, "pre-pass");
+	scan_pfs(av[0], count_btree_elm, "pre-pass ");
 	DedupTotalRecords = DedupCurrentRecords;
 	scan_pfs(av[0], process_btree_elm, "main-pass");
 
@@ -305,10 +306,14 @@ hammer_cmd_dedup(char **av, int ac)
 	printf("    %8s skipped\n", buf);
 	printf("    %8jd CRC collisions\n"
 	       "    %8jd SHA collisions\n"
-	       "    %8jd bigblock underflows\n",
+	       "    %8jd bigblock underflows\n"
+	       "    %8jd new dedup records\n"
+	       "    %8jd new dedup bytes\n",
 	       (intmax_t)dedup_crc_failures,
 	       (intmax_t)dedup_sha_failures,
-               (intmax_t)dedup_underflows
+               (intmax_t)dedup_underflows,
+               (intmax_t)dedup_successes_count,
+               (intmax_t)dedup_successes_bytes
 	);
 }
 
@@ -393,7 +398,8 @@ deduplicate(hammer_btree_leaf_elm_t p, hammer_btree_leaf_elm_t q)
 		return (DEDUP_UNDERFLOW);
 	}
 	RunningIoctl = 0;
-
+	++dedup_successes_count;
+	dedup_successes_bytes += p->data_len;
 	return (0);
 }
 
@@ -421,24 +427,51 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 	 */
 	if (de->flags & HAMMER_DEDUP_ENTRY_FICTITIOUS) {
 		/*
+		 * Optimize the case where a CRC failure results in multiple
+		 * SHA entries.  If we unconditionally issue a data-read a
+		 * degenerate situation where a colliding CRC's second SHA
+		 * entry contains the lion's share of the deduplication
+		 * candidates will result in excessive data block reads.
+		 *
+		 * Deal with the degenerate case by looking for a matching
+		 * data_offset/data_len in the SHA elements we already have
+		 * before reading the data block and generating a new SHA.
+		 */
+		RB_FOREACH(sha_de, sha_dedup_entry_rb_tree, &de->u.fict_root) {
+			if (sha_de->leaf.data_offset ==
+						scan_leaf->data_offset &&
+			    sha_de->leaf.data_len == scan_leaf->data_len) {
+				memcpy(temp.sha_hash, sha_de->sha_hash,
+					SHA256_DIGEST_LENGTH);
+				break;
+			}
+		}
+
+		/*
 		 * Entry in CRC tree is fictitious, so we already had problems
 		 * with this CRC. Upgrade (compute SHA) the candidate and
 		 * dive into SHA subtree. If upgrade fails insert the candidate
 		 * into Pass2 list (it will be processed later).
 		 */
-		if (upgrade_chksum(scan_leaf, temp.sha_hash))
-			goto pass2_insert;
-
-		sha_de = RB_FIND(sha_dedup_entry_rb_tree, &de->u.fict_root, &temp);
 		if (sha_de == NULL) {
-			/*
-			 * Nothing in SHA subtree so far, so this is a new
-			 * 'dataset'. Insert new entry into SHA subtree.
-			 */
+			if (upgrade_chksum(scan_leaf, temp.sha_hash))
+				goto pass2_insert;
+
+			sha_de = RB_FIND(sha_dedup_entry_rb_tree,
+					 &de->u.fict_root, &temp);
+		}
+
+		/*
+		 * Nothing in SHA subtree so far, so this is a new
+		 * 'dataset'. Insert new entry into SHA subtree.
+		 */
+		if (sha_de == NULL) {
 			sha_de = calloc(sizeof(*sha_de), 1);
 			sha_de->leaf = *scan_leaf;
-			memcpy(sha_de->sha_hash, temp.sha_hash, SHA256_DIGEST_LENGTH);
-			RB_INSERT(sha_dedup_entry_rb_tree, &de->u.fict_root, sha_de);
+			memcpy(sha_de->sha_hash, temp.sha_hash,
+			       SHA256_DIGEST_LENGTH);
+			RB_INSERT(sha_dedup_entry_rb_tree, &de->u.fict_root,
+				  sha_de);
 			goto upgrade_stats_sha;
 		}
 
@@ -479,7 +512,8 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 		case DEDUP_UNDERFLOW:
 			++dedup_underflows;
 			sha_de->leaf = *scan_leaf;
-			memcpy(sha_de->sha_hash, temp.sha_hash, SHA256_DIGEST_LENGTH);
+			memcpy(sha_de->sha_hash, temp.sha_hash,
+				SHA256_DIGEST_LENGTH);
 			goto upgrade_stats_sha;
 		case DEDUP_VERS_FAILURE:
 			fprintf(stderr,
@@ -545,6 +579,7 @@ crc_failure:
 		 * through SHA subtree.
 		 */
 		++dedup_crc_failures;
+
 		/*
 		 * Insert block that was represented by now fictitious dedup
 		 * entry (create a new SHA entry and preserve stats of the
@@ -581,7 +616,8 @@ crc_failure:
 		if (upgrade_chksum(scan_leaf, temp.sha_hash)) {
 			goto pass2_insert;
 		}
-		sha_de = RB_FIND(sha_dedup_entry_rb_tree, &de->u.fict_root, &temp);
+		sha_de = RB_FIND(sha_dedup_entry_rb_tree, &de->u.fict_root,
+				 &temp);
 		if (sha_de != NULL)
 			/* There is an entry with this SHA already, but the only
 			 * RB-tree element at this point is that entry we just
@@ -751,9 +787,10 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 		}
 		if (SigInfoFlag) {
 			if (DedupTotalRecords) {
-				fprintf(stderr, "%s data-records %7jd/%jd "
+				fprintf(stderr, "%s count %7jd/%jd "
 						"(%02d.%02d%%) "
-						"data-read %-7jd\n",
+						"ioread %-7jd "
+						"newddup %-7jd\n",
 					id,
 					(intmax_t)DedupCurrentRecords,
 					(intmax_t)DedupTotalRecords,
@@ -761,10 +798,10 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 						DedupTotalRecords),
 					(int)(DedupCurrentRecords * 10000 /
 						DedupTotalRecords % 100),
-
-					(intmax_t)DedupDataReads);
+					(intmax_t)DedupDataReads,
+					(intmax_t)dedup_successes_bytes);
 			} else {
-				fprintf(stderr, "%s data-records %-7jd\n",
+				fprintf(stderr, "%s count %-7jd\n",
 					id,
 					(intmax_t)DedupCurrentRecords);
 			}
