@@ -50,6 +50,7 @@
 .Op Fl p Ar ssh-port
 .Op Fl S Ar splitsize
 .Op Fl t Ar seconds
+.Op Fl m Ar memlimit
 .Ar command
 .Op Ar argument ...
 .Sh DESCRIPTION
@@ -155,6 +156,17 @@ When maintaining a streaming mirroring this option specifies the
 minimum delay after a batch ends before the next batch is allowed
 to start.
 The default is five seconds.
+.It Fl m Ar memlimit
+Specify the maximum amount of memory
+.Nm
+will allocate during a dedup pass.
+Specify a suffix 'm', 'g', or 't' for megabytes, gigabytes, or terrabytes.
+By default
+.Nm
+will allocate up to 1G of ram to hold CRC/SHA tables while running dedup.
+When the limit is reached the dedup code restricts the range of CRCs to
+keep memory use within bounds and runs multiple passes as necessary until
+the entire filesystem has been deduped.
 .It Fl p Ar ssh-port
 Pass the
 .Fl p Ar ssh-port
@@ -958,6 +970,11 @@ file system have to be deduped separately.
 This also
 means that if you have duplicated data in two different PFSs that data
 won't be deduped, however the addition of such feature is planned.
+.Pp
+The
+.Fl m Ar memlimit
+option should be used to limit memory use during the dedup run if the
+default 1G limit is too much for the machine.
 .\" ==== dedup-simulate ====
 .It Cm dedup-simulate Ar filesystem
 Shows potential space savings (simulated dedup ratio) one can get after
@@ -978,6 +995,11 @@ or
 .Cm dedup
 commands on a PFS that contains metadata only (directory entries,
 softlinks) you will get a 0.00 dedup ratio.
+.Pp
+The
+.Fl m Ar memlimit
+option should be used to limit memory use during the dedup run if the
+default 1G limit is too much for the machine.
 .\" ==== reblock* ====
 .It Cm reblock Ar filesystem Op Ar fill_percentage
 .It Cm reblock-btree Ar filesystem Op Ar fill_percentage

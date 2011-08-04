@@ -60,6 +60,7 @@ int DidInterrupt;
 int BulkOpt;
 u_int64_t BandwidthOpt;
 u_int64_t SplitupOpt = 4ULL * 1024ULL * 1024ULL * 1024ULL;
+u_int64_t MemoryLimit = 1024LLU * 1024 * 1024;
 const char *CyclePath;
 const char *LinkPath;
 
@@ -72,7 +73,7 @@ main(int ac, char **av)
 	int ch;
 	int cacheSize = 0;
 
-	while ((ch = getopt(ac, av, "b:c:dhf:i:p:qrs:t:v2yBC:FS:X")) != -1) {
+	while ((ch = getopt(ac, av, "b:c:dhf:i:m:p:qrs:t:v2yBC:FS:X")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
@@ -135,6 +136,33 @@ main(int ac, char **av)
 			/* not reached */
 		case 'i':
 			DelayOpt = strtol(optarg, NULL, 0);
+			break;
+		case 'm':
+			MemoryLimit = strtouq(optarg, &ptr, 0);
+			switch(*ptr) {
+			case 't':
+			case 'T':
+				MemoryLimit *= 1024;
+				/* fall through */
+			case 'g':
+			case 'G':
+				MemoryLimit *= 1024;
+				/* fall through */
+			case 'm':
+			case 'M':
+				MemoryLimit *= 1024;
+				/* fall through */
+			case 'k':
+			case 'K':
+				MemoryLimit *= 1024;
+				/* fall through */
+			default:
+				break;
+			}
+
+			/* minimum limit */
+			if (MemoryLimit < 1024 * 1024)
+				MemoryLimit = 1024 * 1024;
 			break;
 		case 'p':
 			SshPort = optarg;

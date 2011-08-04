@@ -104,6 +104,9 @@ static int SigInfoFlag;
 static int64_t DedupDataReads;
 static int64_t DedupCurrentRecords;
 static int64_t DedupTotalRecords;
+static u_int32_t DedupCrcStart;
+static u_int32_t DedupCrcEnd;
+static u_int64_t MemoryUse;
 
 /* PFS global ids - we deal with just one PFS at a run */
 int glob_fd;
@@ -200,26 +203,42 @@ hammer_cmd_dedup_simulate(char **av, int ac)
 
 	glob_fd = getpfs(&glob_pfs, av[0]);
 
-	printf("Dedup-simulate ");
-	scan_pfs(av[0], collect_btree_elm, "simu-pass");
-	printf("Dedup-simulate %s succeeded\n", av[0]);
-
-	relpfs(glob_fd, &glob_pfs);
-
-	if (VerboseOpt >= 2)
-		dump_simulated_dedup();
-
 	/*
-	 * Calculate simulated dedup ratio and get rid of the tree
+	 * Collection passes (memory limited)
 	 */
-	while ((sim_de = RB_ROOT(&sim_dedup_tree)) != NULL) {
-		assert(sim_de->ref_blks != 0);
-		dedup_ref_size += sim_de->ref_size;
-		dedup_alloc_size += sim_de->ref_size / sim_de->ref_blks;
+	printf("Dedup-simulate running\n");
+	do {
+		DedupCrcStart = DedupCrcEnd;
+		DedupCrcEnd = 0;
+		MemoryUse = 0;
 
-		RB_REMOVE(sim_dedup_entry_rb_tree, &sim_dedup_tree, sim_de);
-		free(sim_de);
-	}
+		if (VerboseOpt) {
+			printf("b-tree pass  crc-range %08x-max\n",
+				DedupCrcStart);
+			fflush(stdout);
+		}
+		scan_pfs(av[0], collect_btree_elm, "simu-pass");
+
+		if (VerboseOpt >= 2)
+			dump_simulated_dedup();
+
+		/*
+		 * Calculate simulated dedup ratio and get rid of the tree
+		 */
+		while ((sim_de = RB_ROOT(&sim_dedup_tree)) != NULL) {
+			assert(sim_de->ref_blks != 0);
+			dedup_ref_size += sim_de->ref_size;
+			dedup_alloc_size += sim_de->ref_size / sim_de->ref_blks;
+
+			RB_REMOVE(sim_dedup_entry_rb_tree, &sim_dedup_tree, sim_de);
+			free(sim_de);
+		}
+		if (DedupCrcEnd && VerboseOpt == 0)
+			printf(".");
+	} while (DedupCrcEnd);
+
+	printf("Dedup-simulate %s succeeded\n", av[0]);
+	relpfs(glob_fd, &glob_pfs);
 
 	printf("Simulated dedup ratio = %.2f\n",
 	    (dedup_alloc_size != 0) ?
@@ -247,51 +266,71 @@ hammer_cmd_dedup(char **av, int ac)
 
 	glob_fd = getpfs(&glob_pfs, av[0]);
 
+	/*
+	 * Pre-pass to cache the btree
+	 */
 	scan_pfs(av[0], count_btree_elm, "pre-pass ");
 	DedupTotalRecords = DedupCurrentRecords;
-	scan_pfs(av[0], process_btree_elm, "main-pass");
-
-	while ((pass2_de = STAILQ_FIRST(&pass2_dedup_queue)) != NULL) {
-		if (process_btree_elm(&pass2_de->leaf, DEDUP_PASS2))
-			dedup_skipped_size -= pass2_de->leaf.data_len;
-
-		STAILQ_REMOVE_HEAD(&pass2_dedup_queue, sq_entry);
-		free(pass2_de);
-	}
-	assert(STAILQ_EMPTY(&pass2_dedup_queue));
-
-	printf("Dedup %s succeeded\n", av[0]);
-
-	relpfs(glob_fd, &glob_pfs);
-
-	if (VerboseOpt >= 2)
-		dump_real_dedup();
 
 	/*
-	 * Calculate dedup ratio and get rid of the trees
+	 * Collection passes (memory limited)
 	 */
-	while ((de = RB_ROOT(&dedup_tree)) != NULL) {
-		if (de->flags & HAMMER_DEDUP_ENTRY_FICTITIOUS) {
-			while ((sha_de = RB_ROOT(&de->u.fict_root)) != NULL) {
-				assert(sha_de->ref_blks != 0);
-				dedup_ref_size += sha_de->ref_size;
-				dedup_alloc_size += sha_de->ref_size / sha_de->ref_blks;
+	printf("Dedup-real running\n");
+	do {
+		DedupCrcStart = DedupCrcEnd;
+		DedupCrcEnd = 0;
+		MemoryUse = 0;
 
-				RB_REMOVE(sha_dedup_entry_rb_tree,
-						&de->u.fict_root, sha_de);
-				free(sha_de);
-			}
-			assert(RB_EMPTY(&de->u.fict_root));
-		} else {
-			assert(de->u.de.ref_blks != 0);
-			dedup_ref_size += de->u.de.ref_size;
-			dedup_alloc_size += de->u.de.ref_size / de->u.de.ref_blks;
+		if (VerboseOpt) {
+			printf("b-tree pass  crc-range %08x-max\n",
+				DedupCrcStart);
+			fflush(stdout);
 		}
+		scan_pfs(av[0], process_btree_elm, "main-pass");
 
-		RB_REMOVE(dedup_entry_rb_tree, &dedup_tree, de);
-		free(de);
-	}
-	assert(RB_EMPTY(&dedup_tree));
+		while ((pass2_de = STAILQ_FIRST(&pass2_dedup_queue)) != NULL) {
+			if (process_btree_elm(&pass2_de->leaf, DEDUP_PASS2))
+				dedup_skipped_size -= pass2_de->leaf.data_len;
+
+			STAILQ_REMOVE_HEAD(&pass2_dedup_queue, sq_entry);
+			free(pass2_de);
+		}
+		assert(STAILQ_EMPTY(&pass2_dedup_queue));
+
+		if (VerboseOpt >= 2)
+			dump_real_dedup();
+
+		/*
+		 * Calculate dedup ratio and get rid of the trees
+		 */
+		while ((de = RB_ROOT(&dedup_tree)) != NULL) {
+			if (de->flags & HAMMER_DEDUP_ENTRY_FICTITIOUS) {
+				while ((sha_de = RB_ROOT(&de->u.fict_root)) != NULL) {
+					assert(sha_de->ref_blks != 0);
+					dedup_ref_size += sha_de->ref_size;
+					dedup_alloc_size += sha_de->ref_size / sha_de->ref_blks;
+
+					RB_REMOVE(sha_dedup_entry_rb_tree,
+							&de->u.fict_root, sha_de);
+					free(sha_de);
+				}
+				assert(RB_EMPTY(&de->u.fict_root));
+			} else {
+				assert(de->u.de.ref_blks != 0);
+				dedup_ref_size += de->u.de.ref_size;
+				dedup_alloc_size += de->u.de.ref_size / de->u.de.ref_blks;
+			}
+
+			RB_REMOVE(dedup_entry_rb_tree, &dedup_tree, de);
+			free(de);
+		}
+		assert(RB_EMPTY(&dedup_tree));
+		if (DedupCrcEnd && VerboseOpt == 0)
+			printf(".");
+	} while (DedupCrcEnd);
+
+	printf("Dedup %s succeeded\n", av[0]);
+	relpfs(glob_fd, &glob_pfs);
 
 	humanize_unsigned(buf, sizeof(buf), dedup_ref_size, "B", 1024);
 	printf("Dedup ratio = %.2f\n"
@@ -328,6 +367,35 @@ collect_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags __unused)
 {
 	struct sim_dedup_entry *sim_de;
 
+	/*
+	 * If we are using too much memory we have to clean some out, which
+	 * will cause the run to use multiple passes.  Be careful of integer
+	 * overflows!
+	 */
+	if (MemoryUse > MemoryLimit) {
+		DedupCrcEnd = DedupCrcStart +
+			      (u_int32_t)(DedupCrcEnd - DedupCrcStart - 1) / 2;
+		if (VerboseOpt) {
+			printf("memory limit  crc-range %08x-%08x\n",
+				DedupCrcStart, DedupCrcEnd);
+			fflush(stdout);
+		}
+		for (;;) {
+			sim_de = RB_MAX(sim_dedup_entry_rb_tree,
+					&sim_dedup_tree);
+			if (sim_de == NULL || sim_de->crc < DedupCrcEnd)
+				break;
+			RB_REMOVE(sim_dedup_entry_rb_tree,
+				  &sim_dedup_tree, sim_de);
+			MemoryUse -= sizeof(*sim_de);
+			free(sim_de);
+		}
+	}
+
+	/*
+	 * Collect statistics based on the CRC only, do not try to read
+	 * any data blocks or run SHA hashes.
+	 */
 	sim_de = RB_LOOKUP(sim_dedup_entry_rb_tree, &sim_dedup_tree,
 			   scan_leaf->data_crc);
 
@@ -335,6 +403,7 @@ collect_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags __unused)
 		sim_de = calloc(sizeof(*sim_de), 1);
 		sim_de->crc = scan_leaf->data_crc;
 		RB_INSERT(sim_dedup_entry_rb_tree, &sim_dedup_tree, sim_de);
+		MemoryUse += sizeof(*sim_de);
 	}
 
 	sim_de->ref_blks += 1;
@@ -411,14 +480,51 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 	struct pass2_dedup_entry *pass2_de;
 	int error;
 
+	/*
+	 * If we are using too much memory we have to clean some out, which
+	 * will cause the run to use multiple passes.  Be careful of integer
+	 * overflows!
+	 */
+	while (MemoryUse > MemoryLimit) {
+		DedupCrcEnd = DedupCrcStart +
+			      (u_int32_t)(DedupCrcEnd - DedupCrcStart - 1) / 2;
+		if (VerboseOpt) {
+			printf("memory limit  crc-range %08x-%08x\n",
+				DedupCrcStart, DedupCrcEnd);
+			fflush(stdout);
+		}
+
+		for (;;) {
+			de = RB_MAX(dedup_entry_rb_tree, &dedup_tree);
+			if (de == NULL || de->leaf.data_crc < DedupCrcEnd)
+				break;
+			if (de->flags & HAMMER_DEDUP_ENTRY_FICTITIOUS) {
+				while ((sha_de = RB_ROOT(&de->u.fict_root)) !=
+				       NULL) {
+					RB_REMOVE(sha_dedup_entry_rb_tree,
+						  &de->u.fict_root, sha_de);
+					MemoryUse -= sizeof(*sha_de);
+					free(sha_de);
+				}
+			}
+			RB_REMOVE(dedup_entry_rb_tree, &dedup_tree, de);
+			MemoryUse -= sizeof(*de);
+			free(de);
+		}
+	}
+
+	/*
+	 * Collect statistics based on the CRC.  Colliding CRCs usually
+	 * cause a SHA sub-tree to be created under the de.
+	 *
+	 * Trivial case if de not found.
+	 */
 	de = RB_LOOKUP(dedup_entry_rb_tree, &dedup_tree, scan_leaf->data_crc);
 	if (de == NULL) {
-		/*
-		 * Insert new entry into CRC tree
-		 */
 		de = calloc(sizeof(*de), 1);
 		de->leaf = *scan_leaf;
 		RB_INSERT(dedup_entry_rb_tree, &dedup_tree, de);
+		MemoryUse += sizeof(*de);
 		goto upgrade_stats;
 	}
 
@@ -472,6 +578,7 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 			       SHA256_DIGEST_LENGTH);
 			RB_INSERT(sha_dedup_entry_rb_tree, &de->u.fict_root,
 				  sha_de);
+			MemoryUse += sizeof(*sha_de);
 			goto upgrade_stats_sha;
 		}
 
@@ -595,6 +702,7 @@ crc_failure:
 			free(sha_de);
 			goto pass2_insert;
 		}
+		MemoryUse += sizeof(*sha_de);
 
 		RB_INIT(&de->u.fict_root);
 		/*
@@ -631,6 +739,7 @@ crc_failure:
 		sha_de->leaf = *scan_leaf;
 		memcpy(sha_de->sha_hash, temp.sha_hash, SHA256_DIGEST_LENGTH);
 		RB_INSERT(sha_dedup_entry_rb_tree, &de->u.fict_root, sha_de);
+		MemoryUse += sizeof(*sha_de);
 		goto upgrade_stats_sha;
 	}
 
@@ -717,6 +826,8 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 	hammer_ioc_mrecord_any_t mrec;
 	struct hammer_btree_leaf_elm elm;
 	char *buf = malloc(DEDUP_BUF);
+	char buf1[8];
+	char buf2[8];
 	int offset, bytes;
 
 	SigInfoFlag = 0;
@@ -736,14 +847,18 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 	mirror.pfs_id = glob_pfs.pfs_id;
 	mirror.shared_uuid = glob_pfs.ondisk->shared_uuid;
 
-	printf("%s %s: objspace %016jx:%04x %016jx:%04x pfs_id %d\n",
-		id, filesystem,
-		(uintmax_t)mirror.key_beg.obj_id,
-		mirror.key_beg.localization,
-		(uintmax_t)mirror.key_end.obj_id,
-		mirror.key_end.localization,
-		glob_pfs.pfs_id);
+	if (VerboseOpt && DedupCrcStart == 0) {
+		printf("%s %s: objspace %016jx:%04x %016jx:%04x\n",
+			id, filesystem,
+			(uintmax_t)mirror.key_beg.obj_id,
+			mirror.key_beg.localization,
+			(uintmax_t)mirror.key_end.obj_id,
+			mirror.key_end.localization);
+		printf("%s %s: pfs_id %d\n",
+			id, filesystem, glob_pfs.pfs_id);
+	}
 	fflush(stdout);
+	fflush(stderr);
 
 	do {
 		mirror.count = 0;
@@ -769,15 +884,24 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 					exit(1);
 				}
 				assert((mrec->head.type &
-				    HAMMER_MRECF_TYPE_MASK) == HAMMER_MREC_TYPE_REC);
-
-				elm = mrec->rec.leaf;
-				if (elm.base.btype == HAMMER_BTREE_TYPE_RECORD &&
-				    elm.base.rec_type == HAMMER_RECTYPE_DATA) {
-					++DedupCurrentRecords;
-					func(&elm, 0);
-				}
+				       HAMMER_MRECF_TYPE_MASK) ==
+				       HAMMER_MREC_TYPE_REC);
 				offset += bytes;
+				elm = mrec->rec.leaf;
+				if (elm.base.btype != HAMMER_BTREE_TYPE_RECORD)
+					continue;
+				if (elm.base.rec_type != HAMMER_RECTYPE_DATA)
+					continue;
+				++DedupCurrentRecords;
+				if (DedupCrcStart != DedupCrcEnd) {
+					if (elm.data_crc < DedupCrcStart)
+						continue;
+					if (DedupCrcEnd &&
+					    elm.data_crc >= DedupCrcEnd) {
+						continue;
+					}
+				}
+				func(&elm, 0);
 			}
 		}
 		mirror.key_beg = mirror.key_cur;
@@ -787,10 +911,15 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 		}
 		if (SigInfoFlag) {
 			if (DedupTotalRecords) {
+				humanize_unsigned(buf1, sizeof(buf1),
+						  DedupDataReads,
+						  "B", 1024);
+				humanize_unsigned(buf2, sizeof(buf2),
+						  dedup_successes_bytes,
+						  "B", 1024);
 				fprintf(stderr, "%s count %7jd/%jd "
 						"(%02d.%02d%%) "
-						"ioread %-7jd "
-						"newddup %-7jd\n",
+						"ioread %s newddup %s\n",
 					id,
 					(intmax_t)DedupCurrentRecords,
 					(intmax_t)DedupTotalRecords,
@@ -798,8 +927,7 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 						DedupTotalRecords),
 					(int)(DedupCurrentRecords * 10000 /
 						DedupTotalRecords % 100),
-					(intmax_t)DedupDataReads,
-					(intmax_t)dedup_successes_bytes);
+					buf1, buf2);
 			} else {
 				fprintf(stderr, "%s count %-7jd\n",
 					id,
