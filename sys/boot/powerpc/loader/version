@@ -1,7 +1,0 @@
-$FreeBSD: src/sys/boot/powerpc/loader/version,v 1.1 2000/10/16 10:46:16 obrien Exp $
-$DragonFly: src/sys/boot/powerpc/loader/version,v 1.1 2003/11/10 06:08:40 dillon Exp $
-
-NOTE ANY CHANGES YOU MAKE TO THE BOOTBLOCKS HERE.  The format of this
-file is important.  Make sure the current version number is on line 6.
-
-0.1:	Initial OFW/PowerPC version.
