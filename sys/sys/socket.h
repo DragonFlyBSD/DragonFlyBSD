@@ -101,6 +101,7 @@ typedef __socklen_t	socklen_t;
 #define	SO_ERROR	0x1007		/* get error status and clear */
 #define	SO_TYPE		0x1008		/* get socket type */
 /*efine	SO_PRIVSTATE	0x1009		   get/deny privileged state */
+#define	SO_SNDSPACE	0x100a		/* get appr. send buffer free space */
 
 /*
  * Structure used for manipulating linger option.
