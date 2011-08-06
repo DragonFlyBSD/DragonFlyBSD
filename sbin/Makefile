@@ -96,7 +96,8 @@ SUBDIR=	adjkerntz \
 	tunefs \
 	udevd \
 	umount \
-	vinum
+	vinum \
+	vquota
 
 .if ${MACHINE_ARCH} == i386 || ${MACHINE_ARCH} == x86_64
 .if ${MACHINE_ARCH} == i386
