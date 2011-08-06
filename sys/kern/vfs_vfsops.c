@@ -106,6 +106,10 @@ vfs_start(struct mount *mp, int flags)
 
 	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_start)(mp, flags);
+	if (error == 0)
+		/* do not call vfs_acinit on mount updates */
+		if ((mp->mnt_flag & MNT_UPDATE) == 0)
+			error = (mp->mnt_op->vfs_acinit)(mp);
 	VFS_MPUNLOCK(mp);
 	return (error);
 }
@@ -120,7 +124,9 @@ vfs_unmount(struct mount *mp, int mntflags)
 	int error;
 
 	VFS_MPLOCK1(mp);
-	error = (mp->mnt_op->vfs_unmount)(mp, mntflags);
+	error = (mp->mnt_op->vfs_acdone)(mp); 
+	if (error == 0)
+		error = (mp->mnt_op->vfs_unmount)(mp, mntflags);
 	VFS_MPUNLOCK(mp);
 	return (error);
 }

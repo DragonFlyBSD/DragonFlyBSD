@@ -1008,6 +1008,7 @@ kern/vfs_subr.c		standard
 kern/vfs_vm.c		standard
 kern/vfs_lock.c		standard
 kern/vfs_mount.c	standard
+kern/vfs_quota.c	standard
 kern/vfs_sync.c		standard
 kern/vfs_synth.c	standard
 kern/vfs_syscalls.c	standard

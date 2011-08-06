@@ -62,6 +62,7 @@
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
 #endif
+#include <sys/vfs_quota.h>
 #endif
 
 struct thread;
@@ -501,6 +502,8 @@ typedef int vfs_uninit_t(struct vfsconf *);
 typedef int vfs_extattrctl_t(struct mount *mp, int cmd, struct vnode *vp,
 		    int attrnamespace, const char *attrname,
 		    struct ucred *cred);
+typedef int vfs_acinit_t(struct mount *mp);
+typedef int vfs_acdone_t(struct mount *mp);
 typedef int vfs_account_t(struct mount *mp,
 			uid_t uid, gid_t gid, int64_t delta);
 
@@ -543,6 +546,8 @@ struct vfsops {
 	vfs_uninit_t 	*vfs_uninit;
 	vfs_extattrctl_t *vfs_extattrctl;
 	vfs_statvfs_t 	*vfs_statvfs;
+	vfs_acinit_t	*vfs_acinit;
+	vfs_acdone_t	*vfs_acdone;
 	vfs_account_t	*vfs_account;
 };
 
@@ -676,7 +681,10 @@ vfs_vptofh_t 	vfs_stdvptofh;
 vfs_init_t  	vfs_stdinit;
 vfs_uninit_t 	vfs_stduninit;
 vfs_extattrctl_t vfs_stdextattrctl;
+vfs_acinit_t	vfs_stdac_init;
+vfs_acdone_t	vfs_stdac_done;
 vfs_account_t	vfs_stdaccount;
+vfs_account_t	vfs_noaccount;
 
 struct vop_access_args;
 int vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
