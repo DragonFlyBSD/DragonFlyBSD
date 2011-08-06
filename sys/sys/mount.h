@@ -500,6 +500,8 @@ typedef int vfs_uninit_t(struct vfsconf *);
 typedef int vfs_extattrctl_t(struct mount *mp, int cmd, struct vnode *vp,
 		    int attrnamespace, const char *attrname,
 		    struct ucred *cred);
+typedef int vfs_account_t(struct mount *mp,
+			uid_t uid, gid_t gid, int64_t delta);
 
 int vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred);
 int vfs_start(struct mount *mp, int flags);
@@ -540,6 +542,7 @@ struct vfsops {
 	vfs_uninit_t 	*vfs_uninit;
 	vfs_extattrctl_t *vfs_extattrctl;
 	vfs_statvfs_t 	*vfs_statvfs;
+	vfs_account_t	*vfs_account;
 };
 
 #define VFS_MOUNT(MP, PATH, DATA, CRED)		\
@@ -672,6 +675,7 @@ vfs_vptofh_t 	vfs_stdvptofh;
 vfs_init_t  	vfs_stdinit;
 vfs_uninit_t 	vfs_stduninit;
 vfs_extattrctl_t vfs_stdextattrctl;
+vfs_account_t	vfs_stdaccount;
 
 struct vop_access_args;
 int vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,

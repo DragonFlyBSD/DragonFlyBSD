@@ -1456,4 +1456,10 @@ vfs_stdextattrctl(struct mount *mp, int cmd, struct vnode *vp,
 	return(EOPNOTSUPP);
 }
 
+int
+vfs_stdaccount(struct mount *mp, uid_t uid, gid_t gid, int64_t delta)
+{
+	return(0);
+}
+
 /* end of vfs default ops */
