@@ -612,6 +612,9 @@ struct vfsops {
 	vfs_checkexp(MP, NAM, EXFLG, CRED)
 #define VFS_EXTATTRCTL(MP, C, FVP, NS, N, CRED)	\
 	vfs_extattrctl(MP, C, FVP, NS, N, CRED)
+#define VFS_ACCOUNT(MP, U, G, D) \
+	if (MP->mnt_op->vfs_account != NULL) \
+		MP->mnt_op->vfs_account(MP, U, G, D);
 
 #endif
 

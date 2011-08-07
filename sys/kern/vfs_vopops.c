@@ -414,7 +414,10 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 {
 	struct vop_write_args ap;
 	VFS_MPLOCK_DECLARE;
-	int error;
+	int error, do_accounting = 0;
+	struct vattr va;
+	uint64_t size_before=0, size_after=0;
+	struct mount *mountp = vp->v_mount;
 
 	ap.a_head.a_desc = &vop_write_desc;
 	ap.a_head.a_ops = ops;
@@ -423,8 +426,20 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	ap.a_ioflag = ioflag;
 	ap.a_cred = cred;
 
+	/* is this a regular vnode ? */
+	if (vp->v_type == VREG) {
+		do_accounting = 1;
+		if ((error = VOP_GETATTR(vp, &va)) != 0)
+			return (error);
+		size_before = va.va_size;
+	}
+
 	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_WR_MPSAFE);
 	DO_OPS(ops, error, &ap, vop_write);
+	if ((error == 0) && do_accounting) {
+		size_after = vp->v_filesize;
+		VFS_ACCOUNT(mountp, va.va_uid, va.va_gid, size_after - size_before);
+	}
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
@@ -1478,6 +1493,7 @@ vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  *
  * MPSAFE
  */
+/* FIXME: only substract the file size for its last link */
 int
 vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	    struct ucred *cred)
@@ -1485,6 +1501,7 @@ vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	struct vop_nremove_args ap;
 	VFS_MPLOCK_DECLARE;
 	int error;
+	struct vattr va;
 
 	ap.a_head.a_desc = &vop_nremove_desc;
 	ap.a_head.a_ops = ops;
@@ -1492,8 +1509,12 @@ vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_dvp = dvp;
 	ap.a_cred = cred;
 
+	if ((error = VOP_GETATTR(nch->ncp->nc_vp, &va)) != 0)
+		return (error);
+
 	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nremove);
+	VFS_ACCOUNT(nch->mount, va.va_uid, va.va_gid, -va.va_size);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }

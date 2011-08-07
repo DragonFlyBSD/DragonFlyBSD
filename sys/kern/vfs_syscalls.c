@@ -90,7 +90,7 @@ static void checkdirs (struct nchandle *old_nch, struct nchandle *new_nch);
 static int chroot_refuse_vdir_fds (struct filedesc *fdp);
 static int chroot_visible_mnt(struct mount *mp, struct proc *p);
 static int getutimes (const struct timeval *, struct timespec *);
-static int setfown (struct vnode *, uid_t, gid_t);
+static int setfown (struct mount *, struct vnode *, uid_t, gid_t);
 static int setfmode (struct vnode *, int);
 static int setfflags (struct vnode *, int);
 static int setutimes (struct vnode *, struct vattr *,
@@ -3069,23 +3069,42 @@ sys_fchmodat(struct fchmodat_args *uap)
 }
 
 static int
-setfown(struct vnode *vp, uid_t uid, gid_t gid)
+setfown(struct mount *mp, struct vnode *vp, uid_t uid, gid_t gid)
 {
 	struct thread *td = curthread;
 	int error;
 	struct vattr vattr;
+	uid_t o_uid;
+	gid_t o_gid;
+	uint64_t size;
 
 	/*
 	 * note: vget is required for any operation that might mod the vnode
 	 * so VINACTIVE is properly cleared.
 	 */
 	if ((error = vget(vp, LK_EXCLUSIVE)) == 0) {
+		if ((error = VOP_GETATTR(vp, &vattr)) != 0)
+			return error;
+		o_uid = vattr.va_uid;
+		o_gid = vattr.va_gid;
+		size = vattr.va_size;
+
 		VATTR_NULL(&vattr);
 		vattr.va_uid = uid;
 		vattr.va_gid = gid;
 		error = VOP_SETATTR(vp, &vattr, td->td_ucred);
 		vput(vp);
 	}
+
+	if (error == 0) {
+		if (uid == -1)
+			uid = o_uid;
+		if (gid == -1)
+			gid = o_gid;
+		VFS_ACCOUNT(mp, o_uid, o_gid, -size);
+		VFS_ACCOUNT(mp,   uid,   gid,  size);
+	}
+
 	return error;
 }
 
@@ -3100,7 +3119,7 @@ kern_chown(struct nlookupdata *nd, int uid, int gid)
 	if ((error = cache_vref(&nd->nl_nch, nd->nl_cred, &vp)) != 0)
 		return (error);
 	if ((error = ncp_writechk(&nd->nl_nch)) == 0)
-		error = setfown(vp, uid, gid);
+		error = setfown(nd->nl_nch.mount, vp, uid, gid);
 	vrele(vp);
 	return (error);
 }
@@ -3159,7 +3178,8 @@ sys_fchown(struct fchown_args *uap)
 	if (fp->f_nchandle.ncp)
 		error = ncp_writechk(&fp->f_nchandle);
 	if (error == 0)
-		error = setfown((struct vnode *)fp->f_data, uap->uid, uap->gid);
+		error = setfown(p->p_fd->fd_ncdir.mount,
+			(struct vnode *)fp->f_data, uap->uid, uap->gid);
 	fdrop(fp);
 	return (error);
 }
@@ -3380,6 +3400,9 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 	struct vnode *vp;
 	struct vattr vattr;
 	int error;
+	uid_t uid;
+	gid_t gid;
+	uint64_t old_size;
 
 	if (length < 0)
 		return(EINVAL);
@@ -3396,11 +3419,21 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 	}
 	if (vp->v_type == VDIR) {
 		error = EISDIR;
-	} else if ((error = vn_writechk(vp, &nd->nl_nch)) == 0) {
+		goto done;
+	}
+	error = VOP_GETATTR(vp, &vattr);
+	KASSERT(error == 0, ("kern_truncate(): VOP_GETATTR didn't return 0"));
+	uid = vattr.va_uid;
+	gid = vattr.va_gid;
+	old_size = vattr.va_size;
+
+	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
 		error = VOP_SETATTR(vp, &vattr, nd->nl_cred);
+		VFS_ACCOUNT(nd->nl_nch.mount, uid, gid, length - old_size);
 	}
+done:
 	vput(vp);
 	return (error);
 }
@@ -3432,6 +3465,9 @@ kern_ftruncate(int fd, off_t length)
 	struct vnode *vp;
 	struct file *fp;
 	int error;
+	uid_t uid;
+	gid_t gid;
+	uint64_t old_size;
 
 	if (length < 0)
 		return(EINVAL);
@@ -3454,10 +3490,20 @@ kern_ftruncate(int fd, off_t length)
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	if (vp->v_type == VDIR) {
 		error = EISDIR;
-	} else if ((error = vn_writechk(vp, NULL)) == 0) {
+		goto done;
+	}
+
+	error = VOP_GETATTR(vp, &vattr);
+	KASSERT(error == 0, ("kern_ftruncate(): VOP_GETATTR didn't return 0"));
+	uid = vattr.va_uid;
+	gid = vattr.va_gid;
+	old_size = vattr.va_size;
+
+	if ((error = vn_writechk(vp, NULL)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
 		error = VOP_SETATTR(vp, &vattr, fp->f_cred);
+		VFS_ACCOUNT(p->p_fd->fd_ncdir.mount, uid, gid, length - old_size);
 	}
 	vn_unlock(vp);
 done:
