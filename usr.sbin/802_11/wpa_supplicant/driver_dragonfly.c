@@ -666,7 +666,7 @@ getmaxrate(const uint8_t rates[15], uint8_t nrates)
 	  (((const u_int8_t *)(p))[2] << 16) |		\
 	  (((const u_int8_t *)(p))[3] << 24)))
 
-static int __inline
+static __inline int
 iswpaoui(const u_int8_t *frm)
 {
 	return frm[1] > 3 && LE_READ_4(frm+2) == ((WPA_OUI_TYPE<<24)|WPA_OUI);

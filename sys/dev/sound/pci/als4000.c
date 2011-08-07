@@ -310,12 +310,12 @@ als_set_speed(struct sc_chinfo *ch)
 #define ALS_8BIT_CMD(x, y)  { (x), (y), DSP_DMA8,  DSP_CMD_DMAPAUSE_8  }
 #define ALS_16BIT_CMD(x, y) { (x), (y),	DSP_DMA16, DSP_CMD_DMAPAUSE_16 }
 
-struct playback_command {
+static const struct playback_command {
 	u_int32_t pcm_format;	/* newpcm format */
 	u_int8_t  format_val;	/* sb16 format value */
 	u_int8_t  dma_prog;	/* sb16 dma program */
 	u_int8_t  dma_stop;	/* sb16 stop register */
-} static const playback_cmds[] = {
+} playback_cmds[] = {
 	ALS_8BIT_CMD(AFMT_U8, DSP_MODE_U8MONO),
 	ALS_8BIT_CMD(AFMT_U8 | AFMT_STEREO, DSP_MODE_U8STEREO),
 	ALS_16BIT_CMD(AFMT_S16_LE, DSP_MODE_S16MONO),
@@ -517,13 +517,13 @@ CHANNEL_DECLARE(alsrchan);
  * not yet a means to support.
  */
 
-struct sb16props {
+static const struct sb16props {
 	u_int8_t lreg;
 	u_int8_t rreg;
 	u_int8_t bits;
 	u_int8_t oselect;
 	u_int8_t iselect; /* left input mask */
-} static const amt[SOUND_MIXER_NRDEVICES] = {
+} amt[SOUND_MIXER_NRDEVICES] = {
 	[SOUND_MIXER_VOLUME]  = { 0x30, 0x31, 5, 0x00, 0x00 },
 	[SOUND_MIXER_PCM]     = { 0x32, 0x33, 5, 0x00, 0x00 },
 	[SOUND_MIXER_SYNTH]   = { 0x34, 0x35, 5, 0x60, 0x40 },

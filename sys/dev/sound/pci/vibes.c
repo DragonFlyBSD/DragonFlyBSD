@@ -452,14 +452,14 @@ CHANNEL_DECLARE(svpchan);
 /* ------------------------------------------------------------------------- */
 /* Mixer support */
 
-struct sv_mix_props {
+static const struct sv_mix_props {
 	u_int8_t	reg;		/* Register */
 	u_int8_t	stereo:1;	/* Supports 2 channels */
 	u_int8_t	mute:1;		/* Supports muting */
 	u_int8_t	neg:1;		/* Negative gain */
 	u_int8_t	max;		/* Max gain */
 	u_int8_t	iselect;	/* Input selector */
-} static const mt [SOUND_MIXER_NRDEVICES] = {
+} mt [SOUND_MIXER_NRDEVICES] = {
 	[SOUND_MIXER_LINE1]  = {SV_REG_AUX1,      1, 1, 1, SV_DEFAULT_MAX, SV_INPUT_AUX1},
 	[SOUND_MIXER_CD]     = {SV_REG_CD,        1, 1, 1, SV_DEFAULT_MAX, SV_INPUT_CD},
 	[SOUND_MIXER_LINE]   = {SV_REG_LINE,      1, 1, 1, SV_DEFAULT_MAX, SV_INPUT_LINE},

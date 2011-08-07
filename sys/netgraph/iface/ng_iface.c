@@ -37,7 +37,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.16 2008/05/14 11:59:24 sephe Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -91,7 +90,7 @@ struct iffam {
 typedef const struct iffam *iffam_p;
 
 /* List of address families supported by our interface */
-const static struct iffam gFamilies[] = {
+static const struct iffam gFamilies[] = {
 	{ AF_INET,	NG_IFACE_HOOK_INET	},
 	{ AF_INET6,	NG_IFACE_HOOK_INET6	},
 	{ AF_APPLETALK,	NG_IFACE_HOOK_ATALK	},

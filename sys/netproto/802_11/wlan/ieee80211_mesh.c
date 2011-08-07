@@ -2455,7 +2455,7 @@ mesh_airtime_calc(struct ieee80211_node *ni)
 #define S_FACTOR (2 * M_BITS)
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ifnet *ifp = ni->ni_vap->iv_ifp;
-	const static int nbits = 8192 << M_BITS;
+	static const int nbits = 8192 << M_BITS;
 	uint32_t overhead, rate, errrate;
 	uint64_t res;
 

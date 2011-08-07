@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libvgl/simple.c,v 1.4 1999/11/08 11:37:39 yokota Exp $
- * $DragonFly: src/lib/libvgl/simple.c,v 1.3 2008/09/30 16:57:06 swildner Exp $
  */
 
 #include <signal.h>
@@ -174,8 +173,8 @@ VGLFilledBox(VGLBitmap *object, int x1, int y1, int x2, int y2, byte color)
   for (y=y1; y<=y2; y++) VGLLine(object, x1, y, x2, y, color);
 }
 
-void
-inline set4pixels(VGLBitmap *object, int x, int y, int xc, int yc, byte color) 
+inline void
+set4pixels(VGLBitmap *object, int x, int y, int xc, int yc, byte color)
 {
   if (x!=0) { 
     VGLSetXY(object, xc+x, yc+y, color); 
@@ -215,8 +214,8 @@ VGLEllipse(VGLBitmap *object, int xc, int yc, int a, int b, byte color)
   }
 }
 
-void
-inline set2lines(VGLBitmap *object, int x, int y, int xc, int yc, byte color) 
+inline void
+set2lines(VGLBitmap *object, int x, int y, int xc, int yc, byte color)
 {
   if (x!=0) { 
     VGLLine(object, xc+x, yc+y, xc-x, yc+y, color); 

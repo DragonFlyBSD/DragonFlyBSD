@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.27 2008/07/27 10:06:57 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -227,7 +226,7 @@ ef_start(struct ifnet *ifp)
  * Inline functions do not put additional overhead to procedure call or
  * parameter passing but simplify the code
  */
-static int __inline
+static __inline int
 ef_inputEII(struct mbuf *m, struct llc* l, u_short ether_type)
 {
 	int isr;
@@ -257,7 +256,7 @@ ef_inputEII(struct mbuf *m, struct llc* l, u_short ether_type)
 	return (0);
 }
 
-static int __inline
+static __inline int
 ef_inputSNAP(struct mbuf *m, struct llc* l, u_short ether_type)
 {
 	int isr;
@@ -276,7 +275,7 @@ ef_inputSNAP(struct mbuf *m, struct llc* l, u_short ether_type)
 	return (0);
 }
 
-static int __inline
+static __inline int
 ef_input8022(struct mbuf *m, struct llc* l, u_short ether_type)
 {
 	int isr;

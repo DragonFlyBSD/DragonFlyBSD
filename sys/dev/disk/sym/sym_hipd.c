@@ -7874,7 +7874,7 @@ static int sym_setup_cdb(hcb_p np, struct ccb_scsiio *csio, ccb_p cp)
 /*
  *  Set up data pointers used by SCRIPTS.
  */
-static void __inline 
+static __inline void
 sym_setup_data_pointers(hcb_p np, ccb_p cp, int dir)
 {
 	u32 lastp, goalp;

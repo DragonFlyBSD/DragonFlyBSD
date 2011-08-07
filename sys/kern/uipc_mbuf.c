@@ -67,7 +67,6 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.70 2008/11/20 14:21:01 sephe Exp $
  */
 
 #include "opt_param.h"
@@ -410,7 +409,7 @@ SYSINIT(tunable_mbinit, SI_BOOT1_TUNABLES, SI_ORDER_ANY,
  * responsibility of the caller to initialize those fields before use.
  */
 
-static boolean_t __inline
+static __inline boolean_t
 mbuf_ctor(void *obj, void *private, int ocflags)
 {
 	struct mbuf *m = obj;
@@ -758,7 +757,7 @@ m_reclaim(void)
 	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_drain, 1);
 }
 
-static void __inline
+static __inline void
 updatestats(struct mbuf *m, int type)
 {
 	struct globaldata *gd = mycpu;

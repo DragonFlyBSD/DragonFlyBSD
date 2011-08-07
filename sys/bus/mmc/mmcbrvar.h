@@ -97,13 +97,13 @@ MMCBR_ACCESSOR(caps, CAPS, int)
 MMCBR_ACCESSOR(timing, TIMING, int)
 MMCBR_ACCESSOR(max_data, MAX_DATA, int)
 
-static int __inline
+static __inline int
 mmcbr_update_ios(device_t dev)
 {
 	return (MMCBR_UPDATE_IOS(device_get_parent(dev), dev));
 }
 
-static int __inline
+static __inline int
 mmcbr_get_ro(device_t dev)
 {
 	return (MMCBR_GET_RO(device_get_parent(dev), dev));

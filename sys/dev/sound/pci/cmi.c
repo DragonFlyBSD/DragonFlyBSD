@@ -590,14 +590,14 @@ cmimix_rd(struct sc_info *sc, u_int8_t port)
 	return (u_int8_t)cmi_rd(sc, CMPCI_REG_SBDATA, 1);
 }
 
-struct sb16props {
+static const struct sb16props {
 	u_int8_t  rreg;     /* right reg chan register */
 	u_int8_t  stereo:1; /* (no explanation needed, honest) */
 	u_int8_t  rec:1;    /* recording source */
 	u_int8_t  bits:3;   /* num bits to represent maximum gain rep */
 	u_int8_t  oselect;  /* output select mask */
 	u_int8_t  iselect;  /* right input select mask */
-} static const cmt[SOUND_MIXER_NRDEVICES] = {
+} cmt[SOUND_MIXER_NRDEVICES] = {
 	[SOUND_MIXER_SYNTH]   = {CMPCI_SB16_MIXER_FM_R,      1, 1, 5,
 				 CMPCI_SB16_SW_FM,   CMPCI_SB16_MIXER_FM_SRC_R},
 	[SOUND_MIXER_CD]      = {CMPCI_SB16_MIXER_CDDA_R,    1, 1, 5,

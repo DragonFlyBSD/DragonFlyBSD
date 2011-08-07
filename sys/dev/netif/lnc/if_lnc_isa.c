@@ -145,14 +145,14 @@ DEFINE_CLASS_0(lnc, le_isa_driver, le_isa_methods, sizeof(struct le_isa_softc));
 DRIVER_MODULE(lnc, isa, le_isa_driver, le_devclass, NULL, NULL);
 MODULE_DEPEND(lnc, ether, 1, 1, 1);
 
-struct le_isa_param {
+static const struct le_isa_param {
 	const char	*name;
 	u_long		iosize;
 	bus_size_t	rap;
 	bus_size_t	rdp;
 	bus_size_t	macstart;
 	int		macstride;
-} static const le_isa_params[] = {
+} le_isa_params[] = {
 	{ "BICC Isolan", 24, 0xe, 0xc, 0, 2 },
 	{ "Novell NE2100", 16, 0x12, 0x10, 0, 1 }
 };

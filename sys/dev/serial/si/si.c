@@ -217,7 +217,7 @@ static char *si_type[] = {
  * We have to make an 8 bit version of bcopy, since some cards can't
  * deal with 32 bit I/O
  */
-static void __inline
+static __inline void
 si_bcopy(const void *src, void *dst, size_t len)
 {
 	const uint8_t *src_byte = (const uint8_t *)src;
@@ -227,7 +227,7 @@ si_bcopy(const void *src, void *dst, size_t len)
 		*dst_byte++ = *src_byte++;
 }
 
-static void __inline
+static __inline void
 si_vbcopy(const volatile void *src, void *dst, size_t len)
 {
 	volatile const uint8_t *src_byte = (volatile const uint8_t *)src;
@@ -237,7 +237,7 @@ si_vbcopy(const volatile void *src, void *dst, size_t len)
 		*dst_byte++ = *src_byte++;
 }
 
-static void __inline
+static __inline void
 si_bcopyv(const void *src, volatile void *dst, size_t len)
 {
 	const uint8_t *src_byte = (const uint8_t *)src;

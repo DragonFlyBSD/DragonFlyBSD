@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/secure/lib/libcrypt/crypt-blowfish.c,v 1.1.2.1 2001/05/24 12:20:03 markm Exp $
- * $DragonFly: src/secure/lib/libcrypt/crypt-blowfish.c,v 1.3 2003/11/14 03:54:32 dillon Exp $
  */
 
 /* This password hashing algorithm was designed by David Mazieres
@@ -81,10 +80,10 @@ static char    encrypted[_PASSWORD_LEN];
 static char    gsalt[BCRYPT_MAXSALT * 4 / 3 + 1];
 static char    error[] = ":";
 
-const static u_int8_t Base64Code[] =
+static const u_int8_t Base64Code[] =
 "./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-const static u_int8_t index_64[128] =
+static const u_int8_t index_64[128] =
 {
 	255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
 	255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
