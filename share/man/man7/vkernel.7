@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd March 28, 2010
+.Dd August 9, 2011
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -83,6 +83,7 @@ option specified on the command line will be the boot disk.
 The CD9660 filesystem is assumed when booting from this media.
 .It Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 Specify an environment to be used by the kernel.
+This option can be specified more than once.
 .It Fl h
 Shows a list of available options, each with a short description.
 .It Fl i Ar file

@@ -147,6 +147,7 @@ main(int ac, char **av)
 	char *cdFile[VKDISK_MAX];
 	char *suffix;
 	char *endp;
+	char *tmp;
 	int netifFileNum = 0;
 	int diskFileNum = 0;
 	int cdFileNum = 0;
@@ -156,12 +157,19 @@ main(int ac, char **av)
 	int j;
 	int n;
 	int isq;
+	int pos;
+	int eflag;
 	int real_vkernel_enable;
 	int supports_sse;
 	size_t vsize;
+	size_t kenv_size;
+	size_t kenv_size2;
 
 	save_ac = ac;
 	save_av = av;
+	eflag = 0;
+	pos = 0;
+	kenv_size = 0;
 
 	/*
 	 * Process options
@@ -201,8 +209,22 @@ main(int ac, char **av)
 			 */
 			n = strlen(optarg);
 			isq = 0;
-			kern_envp = malloc(n + 2);
-			for (i = j = 0; i < n; ++i) {
+
+			if (eflag == 0) {
+				kenv_size = n + 2;
+				kern_envp = malloc(kenv_size);
+				if (kern_envp == NULL)
+					errx(1, "Couldn't allocate %zd bytes for kern_envp", kenv_size);
+			} else {
+				kenv_size2 = kenv_size + n + 1;
+				pos = kenv_size - 1;
+				if ((tmp = realloc(kern_envp, kenv_size2)) == NULL)
+					errx(1, "Couldn't reallocate %zd bytes for kern_envp", kenv_size2);
+				kern_envp = tmp;
+				kenv_size = kenv_size2;
+			}
+
+			for (i = 0, j = pos; i < n; ++i) {
 				if (optarg[i] == '"')
 					isq ^= 1;
 				else if (optarg[i] == '\'')
@@ -214,6 +236,7 @@ main(int ac, char **av)
 			}
 			kern_envp[j++] = 0;
 			kern_envp[j++] = 0;
+			eflag++;
 			break;
 		case 's':
 			boothowto |= RB_SINGLE;
