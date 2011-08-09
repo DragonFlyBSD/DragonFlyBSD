@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.21 2007/04/27 23:23:59 dillon Exp $
  */
 
 /*
@@ -565,30 +564,30 @@ wrmsr(u_int msr, u_int64_t newval)
 	__asm __volatile(".byte 0x0f, 0x30" : : "A" (newval), "c" (msr));
 }
 
-static __inline u_int
+static __inline u_short
 rfs(void)
 {
-	u_int sel;
+	u_short sel;
 	__asm __volatile("movw %%fs,%0" : "=rm" (sel));
 	return (sel);
 }
 
-static __inline u_int
+static __inline u_short
 rgs(void)
 {
-	u_int sel;
+	u_short sel;
 	__asm __volatile("movw %%gs,%0" : "=rm" (sel));
 	return (sel);
 }
 
 static __inline void
-load_fs(u_int sel)
+load_fs(u_short sel)
 {
 	__asm __volatile("movw %0,%%fs" : : "rm" (sel));
 }
 
 static __inline void
-load_gs(u_int sel)
+load_gs(u_short sel)
 {
 	__asm __volatile("movw %0,%%gs" : : "rm" (sel));
 }
@@ -736,10 +735,10 @@ u_int	read_eflags	(void);
 void	wbinvd		(void);
 void	write_eflags	(u_int ef);
 void	wrmsr		(u_int msr, u_int64_t newval);
-u_int	rfs		(void);
-u_int	rgs		(void);
-void	load_fs		(u_int sel);
-void	load_gs		(u_int sel);
+u_short	rfs		(void);
+u_short	rgs		(void);
+void	load_fs		(u_short sel);
+void	load_gs		(u_short sel);
 
 #endif	/* __GNUC__ */
 
