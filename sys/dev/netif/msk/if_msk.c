@@ -2934,6 +2934,8 @@ msk_tick(void *xsc_if)
 	mii = device_get_softc(sc_if->msk_miibus);
 
 	mii_tick(mii);
+	if (!sc_if->msk_link)
+		msk_miibus_statchg(sc_if->msk_if_dev);
 	callout_reset(&sc_if->msk_tick_ch, hz, msk_tick, sc_if);
 
 	lwkt_serialize_exit(ifp->if_serializer);
