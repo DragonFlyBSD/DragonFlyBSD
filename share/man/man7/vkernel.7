@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd August 9, 2011
+.Dd August 10, 2011
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -299,11 +299,13 @@ only).
 .Sh FILES
 .Bl -tag -width ".It Pa /sys/config/VKERNEL" -compact
 .It Pa /sys/config/VKERNEL
-default
-.Nm
-configuration file, for
-.Xr config 8 .
+.It Pa /sys/config/VKERNEL64
 .El
+.Pp
+Per architecture
+.Nm
+configuration files, for
+.Xr config 8 .
 .Sh CONFIGURATION FILES
 Your virtual kernel is a complete
 .Dx
@@ -319,6 +321,30 @@ sendmail_enable="NO"
 #syslog_enable="NO"
 blanktime="NO"
 .Ed
+.Sh DISKLESS OPERATION
+To boot a
+.Nm
+from a NFS root, a number of tunables need to be set:
+.Bl -tag -width indent
+.It Va boot.netif.ip
+IP address to be set in the vkernel interface.
+.It Va boot.netif.netmask
+Netmask for the IP to be set.
+.It Va boot.netif.name
+Network interface name inside the vkernel.
+.It Va boot.nfsroot.server
+Host running
+.Xr nfsd 8 .
+.It Va boot.nfsroot.path
+Host path where a world and distribution
+targets are properly installed.
+.El
+.Pp
+See an example on how to boot a diskless
+.Nm
+in the
+.Sx EXAMPLES
+section.
 .Sh EXAMPLES
 A couple of steps are necessary in order to prepare the system to build and
 run a virtual kernel.
@@ -431,6 +457,20 @@ After doing a clean shutdown the
 .Xr reboot 8
 command will re-exec the virtual kernel binary while the other two will
 cause the virtual kernel to exit.
+.Ss Diskless operation
+Booting a
+.Nm
+with a
+.Xr vknetd 8
+network configuration:
+.Bd -literal
+\&./boot/kernel/kernel -m 64m -m -i memimg.0000 -I /var/run/vknet
+	-e boot.netif.ip=172.1.0.4
+	-e boot.netif.netmask=255.255.0.0
+	-e boot.netif.name=vke0
+	-e boot.nfsroot.server=172.1.0.1
+	-e boot.nfsroot.path=/home/vkernel/vkdiskless
+.Ed
 .Sh BUILDING THE WORLD UNDER A VKERNEL
 The virtual kernel platform does not have all the header files expected
 by a world build, so the easiest thing to do right now is to specify a
