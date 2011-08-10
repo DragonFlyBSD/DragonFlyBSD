@@ -410,6 +410,7 @@ pci_is_vga_memory_range(u_long start, u_long end)
 
 int pcie_slot_implemented(device_t);
 void pcie_set_max_readrq(device_t, uint16_t);
+uint16_t pcie_get_max_readrq(device_t);
 
 /*
  * PCI power states are as defined by ACPI:

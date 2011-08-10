@@ -948,6 +948,20 @@ pcie_set_max_readrq(device_t dev, uint16_t rqsize)
 	}
 }
 
+uint16_t
+pcie_get_max_readrq(device_t dev)
+{
+	uint8_t expr_ptr;
+	uint16_t val;
+
+	expr_ptr = pci_get_pciecap_ptr(dev);
+	if (!expr_ptr)
+		panic("%s: not PCIe device\n", device_get_nameunit(dev));
+
+	val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
+	return (val & PCIEM_DEVCTL_MAX_READRQ_MASK);
+}
+
 static void
 pci_read_vpd(device_t pcib, pcicfgregs *cfg)
 {
