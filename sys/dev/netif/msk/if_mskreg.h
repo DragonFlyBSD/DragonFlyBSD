@@ -2443,6 +2443,8 @@ struct msk_softc {
 	uint8_t			msk_hw_rev;
 	uint8_t			msk_bustype;
 	uint8_t			msk_num_port;
+	uint8_t			msk_pciecap;
+	uint8_t			msk_pcixcap;
 	int			msk_ramsize;	/* amount of SRAM on NIC */
 	uint32_t		msk_pmd;	/* physical media type */
 	uint32_t		msk_coppertype;

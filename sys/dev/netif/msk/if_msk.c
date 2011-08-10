@@ -1254,35 +1254,24 @@ mskc_reset(struct msk_softc *sc)
          * On dual port PCI-X card, there is an problem where status
          * can be received out of order due to split transactions.
          */
-	if (sc->msk_bustype == MSK_PCIX_BUS && sc->msk_num_port > 1) {
+	if (sc->msk_pcixcap != 0 && sc->msk_num_port > 1) {
 		uint16_t pcix_cmd;
-		uint8_t pcix;
 
-		pcix = pci_get_pcixcap_ptr(sc->msk_dev);
-
-		pcix_cmd = pci_read_config(sc->msk_dev, pcix + 2, 2);
+		pcix_cmd = pci_read_config(sc->msk_dev,
+		    sc->msk_pcixcap + PCIXR_COMMAND, 2);
 		/* Clear Max Outstanding Split Transactions. */
-		pcix_cmd &= ~0x70;
+		pcix_cmd &= ~PCIXM_COMMAND_MAX_SPLITS;
 		CSR_WRITE_1(sc, B2_TST_CTRL1, TST_CFG_WRITE_ON);
-		pci_write_config(sc->msk_dev, pcix + 2, pcix_cmd, 2);
+		pci_write_config(sc->msk_dev,
+		    sc->msk_pcixcap + PCIXR_COMMAND, pcix_cmd, 2);
 		CSR_WRITE_1(sc, B2_TST_CTRL1, TST_CFG_WRITE_OFF);
-        }
-	if (sc->msk_bustype == MSK_PEX_BUS) {
-		uint16_t v, width;
-
-		v = pci_read_config(sc->msk_dev, PEX_DEV_CTRL, 2);
-		/* Change Max. Read Request Size to 4096 bytes. */
-		v &= ~PEX_DC_MAX_RRS_MSK;
-		v |= PEX_DC_MAX_RD_RQ_SIZE(5);
-		pci_write_config(sc->msk_dev, PEX_DEV_CTRL, v, 2);
-		width = pci_read_config(sc->msk_dev, PEX_LNK_STAT, 2);
-		width = (width & PEX_LS_LINK_WI_MSK) >> 4;
-		v = pci_read_config(sc->msk_dev, PEX_LNK_CAP, 2);
-		v = (v & PEX_LS_LINK_WI_MSK) >> 4;
-		if (v != width) {
-			device_printf(sc->msk_dev,
-			    "negotiated width of link(x%d) != "
-			    "max. width of link(x%d)\n", width, v); 
+	}
+	if (sc->msk_pciecap != 0) {
+		/* Change Max. Read Request Size to 2048 bytes. */
+		if (pcie_get_max_readrq(sc->msk_dev) ==
+		    PCIEM_DEVCTL_MAX_READRQ_512) {
+			pcie_set_max_readrq(sc->msk_dev,
+			    PCIEM_DEVCTL_MAX_READRQ_2048);
 		}
 	}
 
@@ -1625,12 +1614,15 @@ mskc_attach(device_t dev)
 	}
 
 	/* Check bus type. */
-	if (pci_is_pcie(sc->msk_dev) == 0)
+	if (pci_is_pcie(sc->msk_dev) == 0) {
 		sc->msk_bustype = MSK_PEX_BUS;
-	else if (pci_is_pcix(sc->msk_dev) == 0)
+		sc->msk_pciecap = pci_get_pciecap_ptr(sc->msk_dev);
+	} else if (pci_is_pcix(sc->msk_dev) == 0) {
 		sc->msk_bustype = MSK_PCIX_BUS;
-	else
+		sc->msk_pcixcap = pci_get_pcixcap_ptr(sc->msk_dev);
+	} else {
 		sc->msk_bustype = MSK_PCI_BUS;
+	}
 
 	switch (sc->msk_hw_id) {
 	case CHIP_ID_YUKON_EC:
