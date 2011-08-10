@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.25 2008/07/19 04:43:33 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -938,7 +936,7 @@ fail:
  *
  * The passed ncp must be referenced and locked.
  */
-int
+static int
 naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 {
     struct vnode *vp;
