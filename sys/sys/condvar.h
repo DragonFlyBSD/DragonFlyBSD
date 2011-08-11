@@ -32,7 +32,7 @@ int	cv_has_waiters(const struct cv *);
 		_cv_signal((cv), 0)
 #define	cv_broadcast(cv)			\
 		_cv_signal((cv), 1)
-#define	cv_broadcastpri(cv)			\
+#define	cv_broadcastpri(cv, pri)		\
 		cv_broadcast((cv))
 
 #endif	/* _SYS_CONDVAR_H_ */
