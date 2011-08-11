@@ -377,6 +377,18 @@ struct vmresident {
 	lockmgr(&(map)->lock, LK_SHARED | LK_NOWAIT)
 
 static __inline__ int
+vm_map_lock_read_to(vm_map_t map)
+{
+	int error;
+
+#if defined(MAP_LOCK_DIAGNOSTIC)
+	kprintf ("locking map LK_SHARED: 0x%x\n", map);
+#endif
+	error = lockmgr(&(map)->lock, LK_SHARED | LK_TIMELOCK);
+	return error;
+}
+
+static __inline__ int
 vm_map_lock_upgrade(vm_map_t map) {
 	int error;
 #if defined(MAP_LOCK_DIAGNOSTIC)

@@ -158,14 +158,23 @@ release_page(struct faultstate *fs)
  *
  * NOTE: vm_map_lock_read() does not bump fs->map->timestamp so we do
  *	 not have to update fs->map_generation here.
+ *
+ * NOTE: This function can fail due to a deadlock against the caller's
+ *	 holding of a vm_page BUSY.
  */
-static __inline void
+static __inline int
 relock_map(struct faultstate *fs)
 {
+	int error;
+
 	if (fs->lookup_still_valid == FALSE && fs->map) {
-		vm_map_lock_read(fs->map);
-		fs->lookup_still_valid = TRUE;
+		error = vm_map_lock_read_to(fs->map);
+		if (error == 0)
+			fs->lookup_still_valid = TRUE;
+	} else {
+		error = 0;
 	}
+	return error;
 }
 
 static __inline void
@@ -1535,10 +1544,13 @@ skip:
 	 *
 	 * If the count has changed after relocking then all sorts of
 	 * crap may have happened and we have to retry.
+	 *
+	 * NOTE: The relock_map() can fail due to a deadlock against
+	 *	 the vm_page we are holding BUSY.
 	 */
 	if (fs->lookup_still_valid == FALSE && fs->map) {
-		relock_map(fs);
-		if (fs->map->timestamp != fs->map_generation) {
+		if (relock_map(fs) ||
+		    fs->map->timestamp != fs->map_generation) {
 			release_page(fs);
 			lwkt_reltoken(&vm_token);
 			unlock_and_deallocate(fs);
