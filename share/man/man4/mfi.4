@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/mfi.4,v 1.13 2010/05/12 17:12:38 brueffer Exp $
 .\"
-.Dd November 30, 2010
+.Dd August 11, 2011
 .Dt MFI 4
 .Os
 .Sh NAME
@@ -49,6 +49,8 @@ mfi_load="YES"
 This driver is for LSI's next generation PCI Express SAS RAID controllers.
 Access to RAID arrays (logical disks) from this driver is provided via
 .Pa /dev/mfid?
+and access to JBOD disks is provided via
+.Pa /dev/mfisyspd?
 device nodes.
 A simple management interface is also provided on a per-controller basis via
 the
@@ -63,6 +65,18 @@ a new driver.
 Older SCSI and SATA MegaRAID cards are supported by
 .Xr amr 4
 and will not work with this driver.
+.Pp
+3 Gb/s and 6 Gb/s support both initiator target (IT) and integrated RAID (IR)
+firmware (see
+.Pa http://kb.lsi.com/KnowledgebaseArticle16266.aspx ) .
+The
+.Nm
+driver supports controllers with an IR image.
+At least some cards (such as the
+.Tn IBM ServeRAID M1015 )
+will attach to the
+.Xr mps 4
+driver when IT firmware is used.
 .Pp
 Two sysctls are provided to tune the
 .Nm
@@ -85,11 +99,35 @@ LSI MegaRAID SAS 8408E
 .It
 LSI MegaRAID SAS 8480E
 .It
-LSI MegaRAID SAS 9260
+LSI MegaRAID SAS 9240-4i
+.It
+LSI MegaRAID SAS 9240-8i
+.It
+LSI MegaRAID SAS 9260-4i
+.It
+LSI MegaRAID SAS 9260-8i
+.It
+LSI MegaRAID SAS 9260DE-8i
+.It
+LSI MegaRAID SAS 9260-16i
+.It
+LSI MegaRAID SAS 9261-8i
+.It
+LSI MegaRAID SAS 9280-4i4e
+.It
+LSI MegaRAID SAS 9280-8e
+.It
+LSI MegaRAID SAS 9280DE-8e
+.It
+LSI MegaRAID SAS 9280-16i4e
+.It
+LSI MegaRAID SAS 9280-24i4e
 .It
 Dell PERC5
 .It
 Dell PERC6
+.It
+IBM ServeRAID M1015 SAS/SATA
 .It
 IBM ServeRAID M5015 SAS/SATA
 .It
@@ -98,9 +136,11 @@ IBM ServeRAID-MR10i
 Intel RAID Controller SROMBSAS18E
 .El
 .Sh FILES
-.Bl -tag -width ".Pa /dev/mfid?" -compact
+.Bl -tag -width ".Pa /dev/mfisyspd?" -compact
 .It Pa /dev/mfid?
 array/logical disk interface
+.It Pa /dev/mfisyspd?
+JBOD disk interface
 .It Pa /dev/mfi?
 management interface
 .El
@@ -108,9 +148,12 @@ management interface
 .Bl -diag
 .It "mfid%d: Unable to delete busy device"
 An attempt was made to remove a mounted volume.
+.It "mfisyspd%d: Unable to delete busy device"
+dito for JBOD disks
 .El
 .Sh SEE ALSO
 .Xr amr 4 ,
+.Xr mps 4 ,
 .Xr pci 4 ,
 .Xr mfiutil 8
 .Sh HISTORY
@@ -123,5 +166,5 @@ The
 .Nm
 driver and this manual page were written by
 .An Scott Long Aq scottl@FreeBSD.org .
-.Sh BUGS
-The driver does not support big-endian architectures at this time.
+.\".Sh BUGS
+.\"The driver does not support big-endian architectures at this time.

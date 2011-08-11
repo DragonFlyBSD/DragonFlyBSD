@@ -22,6 +22,36 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ */
+/*-
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ *            Copyright 1994-2009 The FreeBSD Project.
+ *            All rights reserved.
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ *    THIS SOFTWARE IS PROVIDED BY THE FREEBSD PROJECT``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FREEBSD PROJECT OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY,OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION)HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation
+ * are those of the authors and should not be interpreted as representing
+ * official policies,either expressed or implied, of the FreeBSD Project.
  *
  * $FreeBSD: src/sys/dev/mfi/mfi_disk.c,v 1.8 2008/11/17 23:30:19 jhb Exp $
  */
@@ -176,9 +206,9 @@ mfi_disk_detach(device_t dev)
 	sc = device_get_softc(dev);
 
 	lockmgr(&sc->ld_controller->mfi_io_lock, LK_EXCLUSIVE);
-	if (((sc->ld_flags & MFI_DISK_FLAGS_OPEN)) &&
+	if ((sc->ld_flags & MFI_DISK_FLAGS_OPEN) &&
 	    (sc->ld_controller->mfi_keep_deleted_volumes ||
-	    sc->ld_controller->mfi_detaching)) {
+	     sc->ld_controller->mfi_detaching)) {
 		lockmgr(&sc->ld_controller->mfi_io_lock, LK_RELEASE);
 		return (EBUSY);
 	}
@@ -231,7 +261,7 @@ mfi_disk_disable(struct mfi_disk *sc)
 	if (sc->ld_flags & MFI_DISK_FLAGS_OPEN) {
 		if (sc->ld_controller->mfi_delete_busy_volumes)
 			return (0);
-		device_printf(sc->ld_dev, "Unable to delete busy device\n");
+		device_printf(sc->ld_dev, "Unable to delete busy ld device\n");
 		return (EBUSY);
 	}
 	sc->ld_flags |= MFI_DISK_FLAGS_DISABLED;

@@ -592,6 +592,7 @@ dev/raid/mfi/mfi.c		optional mfi
 dev/raid/mfi/mfi_debug.c	optional mfi
 dev/raid/mfi/mfi_pci.c		optional mfi pci
 dev/raid/mfi/mfi_disk.c		optional mfi
+dev/raid/mfi/mfi_syspd.c	optional mfi
 dev/raid/mfi/mfi_linux.c	optional mfi compat_linux
 dev/raid/mfi/mfi_cam.c		optional mfip scbus
 dev/netif/mii_layer/mii.c		optional miibus

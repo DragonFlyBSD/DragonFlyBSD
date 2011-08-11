@@ -48,6 +48,36 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ */
+/*-
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ *            Copyright 1994-2009 The FreeBSD Project.
+ *            All rights reserved.
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ *    THIS SOFTWARE IS PROVIDED BY THE FREEBSD PROJECT``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FREEBSD PROJECT OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY,OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION)HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation
+ * are those of the authors and should not be interpreted as representing
+ * official policies,either expressed or implied, of the FreeBSD Project.
  *
  * $FreeBSD: src/sys/dev/mfi/mfi_pci.c,v 1.16 2010/03/02 17:34:11 kib Exp $
  */
@@ -114,12 +144,15 @@ struct mfi_ident {
 } mfi_identifiers[] = {
 	{0x1000, 0x0060, 0x1028, 0xffff, MFI_FLAGS_1078,  "Dell PERC 6"},
 	{0x1000, 0x0060, 0xffff, 0xffff, MFI_FLAGS_1078,  "LSI MegaSAS 1078"},
+	{0x1000, 0x0071, 0xffff, 0xffff, MFI_FLAGS_SKINNY, "Drake Skinny"},
+	{0x1000, 0x0073, 0xffff, 0xffff, MFI_FLAGS_SKINNY, "Drake Skinny"},
 	{0x1000, 0x0078, 0xffff, 0xffff, MFI_FLAGS_GEN2,  "LSI MegaSAS Gen2"},
 	{0x1000, 0x0079, 0x1028, 0x1f15, MFI_FLAGS_GEN2,  "Dell PERC H800 Adapter"},
 	{0x1000, 0x0079, 0x1028, 0x1f16, MFI_FLAGS_GEN2,  "Dell PERC H700 Adapter"},
 	{0x1000, 0x0079, 0x1028, 0x1f17, MFI_FLAGS_GEN2,  "Dell PERC H700 Integrated"},
 	{0x1000, 0x0079, 0x1028, 0x1f18, MFI_FLAGS_GEN2,  "Dell PERC H700 Modular"},
 	{0x1000, 0x0079, 0x1028, 0x1f19, MFI_FLAGS_GEN2,  "Dell PERC H700"},
+	{0x1000, 0x0079, 0x1028, 0x1f1a, MFI_FLAGS_GEN2,  "Dell PERC H800 Proto Adapter"},
 	{0x1000, 0x0079, 0x1028, 0x1f1b, MFI_FLAGS_GEN2,  "Dell PERC H800"},
 	{0x1000, 0x0079, 0x1028, 0xffff, MFI_FLAGS_GEN2,  "Dell PERC Gen2"},
 	{0x1000, 0x0079, 0xffff, 0xffff, MFI_FLAGS_GEN2,  "LSI MegaSAS Gen2"},
@@ -193,8 +226,9 @@ mfi_pci_attach(device_t dev)
 	    (sc->mfi_flags & MFI_FLAGS_1078)) {
 		/* 1068/1078: Memory mapped BAR is at offset 0x10 */
 		sc->mfi_regs_rid = PCIR_BAR(0);
-	} else if (sc->mfi_flags & MFI_FLAGS_GEN2) {
-		/* GEN2: Memory mapped BAR is at offset 0x14 */
+	} else if ((sc->mfi_flags & MFI_FLAGS_GEN2) ||
+		   (sc->mfi_flags & MFI_FLAGS_SKINNY)) {
+		/* GEN2/Skinny: Memory mapped BAR is at offset 0x14 */
 		sc->mfi_regs_rid = PCIR_BAR(1);
 	}
 	if ((sc->mfi_regs_resource = bus_alloc_resource_any(sc->mfi_dev,
@@ -237,6 +271,7 @@ mfi_pci_detach(device_t dev)
 {
 	struct mfi_softc *sc;
 	struct mfi_disk *ld;
+	struct mfi_system_pd *syspd = NULL;
 	int error;
 
 	sc = device_get_softc(dev);
@@ -253,6 +288,13 @@ mfi_pci_detach(device_t dev)
 
 	while ((ld = TAILQ_FIRST(&sc->mfi_ld_tqh)) != NULL) {
 		if ((error = device_delete_child(dev, ld->ld_dev)) != 0) {
+			sc->mfi_detaching = 0;
+			lockmgr(&sc->mfi_config_lock, LK_RELEASE);
+			return (error);
+		}
+	}
+	while ((syspd = TAILQ_FIRST(&sc->mfi_syspd_tqh)) != NULL) {
+		if ((error = device_delete_child(dev,syspd->pd_dev)) != 0) {
 			sc->mfi_detaching = 0;
 			lockmgr(&sc->mfi_config_lock, LK_RELEASE);
 			return (error);

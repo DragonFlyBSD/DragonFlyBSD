@@ -48,6 +48,36 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ */
+/*-
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ *            Copyright 1994-2009 The FreeBSD Project.
+ *            All rights reserved.
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ *    THIS SOFTWARE IS PROVIDED BY THE FREEBSD PROJECT``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FREEBSD PROJECT OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY,OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION)HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation
+ * are those of the authors and should not be interpreted as representing
+ * official policies,either expressed or implied, of the FreeBSD Project.
  *
  * $FreeBSD: src/sys/dev/mfi/mfivar.h,v 1.13 2009/07/10 08:18:08 scottl Exp $
  */
@@ -82,9 +112,17 @@ struct mfi_command {
 	time_t			cm_timestamp;
 	struct mfi_softc	*cm_sc;
 	union mfi_frame		*cm_frame;
+#if defined(__x86_64__)
+	uint64_t		cm_frame_busaddr;
+#else
 	uint32_t		cm_frame_busaddr;
+#endif
 	struct mfi_sense	*cm_sense;
+#if defined(__x86_64__)
+	uint64_t		cm_sense_busaddr;
+#else
 	uint32_t		cm_sense_busaddr;
+#endif
 	bus_dmamap_t		cm_dmamap;
 	union mfi_sgl		*cm_sg;
 	void			*cm_data;
@@ -108,6 +146,12 @@ struct mfi_command {
 	int			cm_error;
 };
 
+/*
+ * XXX swildner
+ *
+ * At the moment we rely on mfi_disk and mfi_system_pd having the same size.
+ * A future cleanup should merge them.
+ */
 struct mfi_disk {
 	TAILQ_ENTRY(mfi_disk)	ld_link;
 	device_t	ld_dev;
@@ -120,6 +164,19 @@ struct mfi_disk {
 	int		ld_flags;
 #define MFI_DISK_FLAGS_OPEN	0x01
 #define	MFI_DISK_FLAGS_DISABLED	0x02
+#define	MFI_DISK_FLAGS_SYSPD	0x04
+};
+
+struct mfi_system_pd {
+	TAILQ_ENTRY(mfi_system_pd)	pd_link;
+	device_t	pd_dev;
+	int		pd_id;
+	int		pd_unit;
+	struct mfi_softc *pd_controller;
+	struct mfi_pd_info	*pd_info;
+	struct disk	pd_disk;
+	struct devstat	pd_devstat;
+	int		pd_flags;
 };
 
 struct mfi_aen {
@@ -137,6 +194,7 @@ struct mfi_softc {
 #define MFI_FLAGS_1064R		(1<<4)
 #define MFI_FLAGS_1078		(1<<5)
 #define MFI_FLAGS_GEN2		(1<<6)
+#define MFI_FLAGS_SKINNY	(1<<7)
 
 	struct mfi_hwcomms		*mfi_comms;
 	TAILQ_HEAD(,mfi_command)	mfi_free;
@@ -164,6 +222,7 @@ struct mfi_softc {
 
 	TAILQ_HEAD(,mfi_aen)		mfi_aen_pids;
 	struct mfi_command		*mfi_aen_cm;
+	struct mfi_command		*mfi_skinny_cm;
 	uint32_t			mfi_aen_triggered;
 	uint32_t			mfi_poll_waiting;
 	struct kqinfo			mfi_kq;
@@ -217,6 +276,7 @@ struct mfi_softc {
 	uint32_t			mfi_max_io;
 
 	TAILQ_HEAD(,mfi_disk)		mfi_ld_tqh;
+	TAILQ_HEAD(,mfi_system_pd)	mfi_syspd_tqh;
 	eventhandler_tag		mfi_eh;
 	struct cdev			*mfi_cdev;
 
@@ -244,6 +304,9 @@ extern void mfi_disk_complete(struct bio *);
 extern int mfi_disk_disable(struct mfi_disk *);
 extern void mfi_disk_enable(struct mfi_disk *);
 extern int mfi_dump_blocks(struct mfi_softc *, int id, uint64_t, void *, int);
+extern int mfi_syspd_disable(struct mfi_system_pd *);
+extern void mfi_syspd_enable(struct mfi_system_pd *);
+extern int mfi_dump_syspd_blocks(struct mfi_softc *, int id, uint64_t, void *, int);
 
 #define MFIQ_ADD(sc, qname)					\
 	do {							\
@@ -386,6 +449,7 @@ MALLOC_DECLARE(M_MFIBUF);
 
 #define MFI_CMD_TIMEOUT 30
 #define MFI_MAXPHYS (128 * 1024)
+#define SKINNY_MEMORY 0x02000000
 
 #ifdef MFI_DEBUG
 extern void mfi_print_cmd(struct mfi_command *cm);

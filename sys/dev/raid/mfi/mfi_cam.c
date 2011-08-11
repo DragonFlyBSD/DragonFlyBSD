@@ -22,6 +22,36 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ */
+/*-
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ *            Copyright 1994-2009 The FreeBSD Project.
+ *            All rights reserved.
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ *    THIS SOFTWARE IS PROVIDED BY THE FREEBSD PROJECT``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FREEBSD PROJECT OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY,OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION)HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation
+ * are those of the authors and should not be interpreted as representing
+ * official policies,either expressed or implied, of the FreeBSD Project.
  *
  * $FreeBSD: src/sys/dev/mfi/mfi_cam.c,v 1.6 2011/06/28 08:36:48 kevlo Exp $
  */
@@ -260,11 +290,17 @@ mfip_start(void *data)
 	struct mfip_softc *sc;
 	struct mfi_pass_frame *pt;
 	struct mfi_command *cm;
+	uint32_t context = 0;
 
 	sc = ccbh->ccb_mfip_ptr;
 
 	if ((cm = mfi_dequeue_free(sc->mfi_sc)) == NULL)
 		return (NULL);
+
+	/* Zero out the MFI frame */
+	context = cm->cm_frame->header.context;
+	bzero(cm->cm_frame, sizeof(union mfi_frame));
+	cm->cm_frame->header.context = context;
 
 	pt = &cm->cm_frame->pass;
 	pt->header.cmd = MFI_CMD_PD_SCSI_IO;
@@ -314,10 +350,8 @@ mfip_done(struct mfi_command *cm)
 	union ccb *ccb = cm->cm_private;
 	struct ccb_hdr *ccbh = &ccb->ccb_h;
 	struct ccb_scsiio *csio = &ccb->csio;
-	struct mfip_softc *sc;
 	struct mfi_pass_frame *pt;
 
-	sc = ccbh->ccb_mfip_ptr;
 	pt = &cm->cm_frame->pass;
 
 	switch (pt->header.cmd_status) {
