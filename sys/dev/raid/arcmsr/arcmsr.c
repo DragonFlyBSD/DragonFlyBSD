@@ -3526,7 +3526,7 @@ static int arcmsr_attach(device_t dev)
 	rid=0;
 	irqres=bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0ul, ~0ul, 1, RF_SHAREABLE | RF_ACTIVE);
 	if(irqres == NULL ||
-		bus_setup_intr(dev, irqres, 0, arcmsr_intr_handler, acb, &acb->ih, NULL)) {
+		bus_setup_intr(dev, irqres, INTR_MPSAFE, arcmsr_intr_handler, acb, &acb->ih, NULL)) {
 		arcmsr_free_resource(acb);
 		ARCMSR_LOCK_DESTROY(&acb->qbuffer_lock);
 		kprintf("arcmsr%d: unable to register interrupt handler!\n", unit);
