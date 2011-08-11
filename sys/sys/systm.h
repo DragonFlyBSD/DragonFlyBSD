@@ -105,9 +105,10 @@ extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */
 #ifdef	INVARIANTS		/* The option is always available */
 #define	KASSERT(exp,msg)	do { if (__predict_false(!(exp)))	\
 					panic msg; } while (0)
-#define KKASSERT(exp)		do { if (__predict_false(!(exp)))	\
-					panic("assertion: %s in %s",	\
-					      #exp, __func__); } while (0)
+#define KKASSERT(exp)		do { if (__predict_false(!(exp)))	  \
+					panic("assertion \"%s\" failed "  \
+					"in %s at %s:%u", #exp, __func__, \
+					__FILE__, __LINE__); } while (0)
 #define __debugvar
 #else
 #define	KASSERT(exp,msg)
