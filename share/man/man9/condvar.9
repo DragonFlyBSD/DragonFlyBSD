@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/condvar.9,v 1.11 2004/11/08 18:15:11 jhb Exp $
 .\"
-.Dd April 16, 2010
+.Dd August 11, 2011
 .Dt CONDVAR 9
 .Os
 .Sh NAME
@@ -96,7 +96,10 @@ to unblock all waiters.
 is a synonym for
 .Fn cv_broadcast
 in
-.Dx .
+.Dx
+and discards the
+.Fa pri
+parameter.
 .Pp
 A thread must hold
 .Fa l
