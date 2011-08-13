@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ktr.4,v 1.9 2003/09/08 19:57:19 ru Exp $
 .\"
-.Dd July 17, 2011
+.Dd August 13, 2011
 .Dt KTR 4
 .Os
 .Sh NAME
@@ -53,7 +53,7 @@
 .\".Cd options KTR_TCP
 .Cd options KTR_TESTLOG
 .Cd options KTR_TOKENS
-.\".Cd options KTR_TSLEEP
+.Cd options KTR_TSLEEP
 .Cd options KTR_USB_MEMORY
 .Sh DESCRIPTION
 The
@@ -127,6 +127,10 @@ contention
 IPI performance testing
 .It Dv KTR_TOKENS
 LWKT token related events
+.It Dv KTR_TSLEEP
+.Xr tsleep 9
+and
+.Xr wakeup 9
 .It Dv KTR_USB_MEMORY
 USB memory allocation
 .El
