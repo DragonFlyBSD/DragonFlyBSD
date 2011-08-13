@@ -1484,8 +1484,6 @@ vfs_stdac_init(struct mount *mp)
 	if (fstype_ok == 0)
 		return (0);
 
-	kprintf("vfs_quota: enabling accounting for %s\n",
-					mp->mnt_stat.f_mntonname);
 	vq_init(mp);
 	return (0);
 }
@@ -1514,18 +1512,6 @@ vfs_stdac_done(struct mount *mp)
 
 	vq_done(mp);
 	return (0);
-}
-
-int
-vfs_stdaccount(struct mount *mp, uid_t uid, gid_t gid, int64_t delta)
-{
-	return(0);
-}
-
-int
-vfs_noaccount(struct mount *mp, uid_t uid, gid_t gid, int64_t delta)
-{
-	return(0);
 }
 
 /* end of vfs default ops */

@@ -428,9 +428,6 @@ vfs_register(struct vfsconf *vfc)
 	if (vfsops->vfs_acdone == NULL) {
 		vfsops->vfs_acdone = vfs_stdac_done;
 	}
-	if (vfsops->vfs_account == NULL) {
-		vfsops->vfs_account = vfs_stdaccount;
-	}
 
 	/*
 	 * Call init function for this VFS...
