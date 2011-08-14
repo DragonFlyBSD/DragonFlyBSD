@@ -3186,6 +3186,8 @@ mskc_handle_events(struct msk_softc *sc)
 			sc_if->msk_vtag = ntohs(len);
 			break;
 		case OP_RXSTAT:
+			if ((sc_if->msk_ifp->if_flags & IFF_RUNNING) == 0)
+				break;
 #ifdef MSK_JUMBO
 			if (sc_if->msk_framesize > (MCLBYTES - ETHER_HDR_LEN))
 				msk_jumbo_rxeof(sc_if, status, len);
