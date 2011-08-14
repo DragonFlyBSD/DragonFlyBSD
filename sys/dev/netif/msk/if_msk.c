@@ -2703,12 +2703,6 @@ mskc_shutdown(device_t dev)
 			msk_stop(sc->msk_if[i]);
 	}
 
-	/* Disable all interrupts. */
-	CSR_WRITE_4(sc, B0_IMSK, 0);
-	CSR_READ_4(sc, B0_IMSK);
-	CSR_WRITE_4(sc, B0_HWE_IMSK, 0);
-	CSR_READ_4(sc, B0_HWE_IMSK);
-
 	/* Put hardware reset. */
 	CSR_WRITE_2(sc, B0_CTST, CS_RST_SET);
 
