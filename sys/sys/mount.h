@@ -283,6 +283,7 @@ struct mount {
 #define	MNT_QUOTA	0x00002000	/* quotas are enabled on filesystem */
 #define	MNT_ROOTFS	0x00004000	/* identifies the root filesystem */
 #define	MNT_USER	0x00008000	/* mounted by a user */
+#define	MNT_ACCOUNTING	0x00020000	/* accounting is enabled on filesystem */
 #define	MNT_IGNORE	0x00800000	/* do not show entry in df */
 
 /*
@@ -297,7 +298,8 @@ struct mount {
 			MNT_LOCAL	| MNT_USER	| MNT_QUOTA	| \
 			MNT_ROOTFS	| MNT_NOATIME	| MNT_NOCLUSTERR| \
 			MNT_NOCLUSTERW	| MNT_SUIDDIR	| MNT_SOFTDEP	| \
-			MNT_IGNORE	| MNT_NOSYMFOLLOW | MNT_EXPUBLIC | MNT_TRIM)
+			MNT_IGNORE	| MNT_NOSYMFOLLOW | MNT_EXPUBLIC| \
+			MNT_ACCOUNTING  | MNT_TRIM)
 /*
  * External filesystem command modifier flags.
  * Unmount can use the MNT_FORCE flag.
