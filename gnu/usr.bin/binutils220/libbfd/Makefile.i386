@@ -5,6 +5,9 @@ SRCS+=	cpu-i386.c
 
 SRCS+=	elf32-target.h
 
+# for crossbuilding i386 on x86_64
+SRCS+=	archive64.c
+
 VECTORS=	bfd_elf32_i386_vec \
 		bfd_elf32_little_generic_vec \
 		bfd_elf32_big_generic_vec
