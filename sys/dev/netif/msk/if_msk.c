@@ -1220,34 +1220,40 @@ mskc_reset(struct msk_softc *sc)
 	CSR_WRITE_1(sc, GMAC_TI_ST_CTRL, GMT_ST_STOP);
 	CSR_WRITE_1(sc, GMAC_TI_ST_CTRL, GMT_ST_CLR_IRQ);
 
-	/* Configure timeout values. */
-	for (i = 0; i < sc->msk_num_port; i++) {
-		CSR_WRITE_2(sc, SELECT_RAM_BUFFER(i, B3_RI_CTRL), RI_RST_SET);
-		CSR_WRITE_2(sc, SELECT_RAM_BUFFER(i, B3_RI_CTRL), RI_RST_CLR);
-		CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_WTO_R1),
-		    MSK_RI_TO_53);
-		CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_WTO_XA1),
-		    MSK_RI_TO_53);
-		CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_WTO_XS1),
-		    MSK_RI_TO_53);
-		CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_RTO_R1),
-		    MSK_RI_TO_53);
-		CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_RTO_XA1),
-		    MSK_RI_TO_53);
-		CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_RTO_XS1),
-		    MSK_RI_TO_53);
-		CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_WTO_R2),
-		    MSK_RI_TO_53);
-		CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_WTO_XA2),
-		    MSK_RI_TO_53);
-		CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_WTO_XS2),
-		    MSK_RI_TO_53);
-		CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_RTO_R2),
-		    MSK_RI_TO_53);
-		CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_RTO_XA2),
-		    MSK_RI_TO_53);
-		CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_RTO_XS2),
-		    MSK_RI_TO_53);
+	if (sc->msk_hw_id == CHIP_ID_YUKON_XL ||
+	    sc->msk_hw_id == CHIP_ID_YUKON_EC ||
+	    sc->msk_hw_id == CHIP_ID_YUKON_FE) {
+		/* Configure timeout values. */
+		for (i = 0; i < sc->msk_num_port; i++) {
+			CSR_WRITE_2(sc, SELECT_RAM_BUFFER(i, B3_RI_CTRL),
+			    RI_RST_SET);
+			CSR_WRITE_2(sc, SELECT_RAM_BUFFER(i, B3_RI_CTRL),
+			    RI_RST_CLR);
+			CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_WTO_R1),
+			    MSK_RI_TO_53);
+			CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_WTO_XA1),
+			    MSK_RI_TO_53);
+			CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_WTO_XS1),
+			    MSK_RI_TO_53);
+			CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_RTO_R1),
+			    MSK_RI_TO_53);
+			CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_RTO_XA1),
+			    MSK_RI_TO_53);
+			CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_RTO_XS1),
+			    MSK_RI_TO_53);
+			CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_WTO_R2),
+			    MSK_RI_TO_53);
+			CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_WTO_XA2),
+			    MSK_RI_TO_53);
+			CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_WTO_XS2),
+			    MSK_RI_TO_53);
+			CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_RTO_R2),
+			    MSK_RI_TO_53);
+			CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_RTO_XA2),
+			    MSK_RI_TO_53);
+			CSR_WRITE_1(sc, SELECT_RAM_BUFFER(i, B3_RI_RTO_XS2),
+			    MSK_RI_TO_53);
+		}
 	}
 
 	/* Disable all interrupts. */
