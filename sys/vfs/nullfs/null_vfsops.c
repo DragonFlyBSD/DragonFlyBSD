@@ -194,6 +194,12 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	NULLFSDEBUG("nullfs_mount: lower %s, alias at %s\n",
 		mp->mnt_stat.f_mntfromname, mp->mnt_stat.f_mntfromname);
 
+	bzero(mp->mnt_stat.f_mntonname, MNAMELEN);
+	if (path != NULL) {
+		(void) copyinstr(path, mp->mnt_stat.f_mntonname, MNAMELEN - 1,
+			&size);
+	}
+
 	/*
 	 * Set NCALIASED so unmount won't complain about namecache refs
 	 * still existing.
@@ -286,6 +292,7 @@ nullfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	if (sbp != &mp->mnt_stat) {
 		bcopy(&mp->mnt_stat.f_fsid, &sbp->f_fsid, sizeof(sbp->f_fsid));
 		bcopy(mp->mnt_stat.f_mntfromname, sbp->f_mntfromname, MNAMELEN);
+		bcopy(mp->mnt_stat.f_mntonname, sbp->f_mntonname, MNAMELEN);
 	}
 	return (0);
 }
