@@ -200,6 +200,10 @@ static const struct msk_product {
 	    "Marvell Yukon 88E8071 Gigabit Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_436C,
 	    "Marvell Yukon 88E8072 Gigabit Ethernet" },
+	{ VENDORID_MARVELL, DEVICEID_MRVL_436D,
+	    "Marvell Yukon 88E8055 Gigabit Ethernet" },
+	{ VENDORID_MARVELL, DEVICEID_MRVL_4370,
+	    "Marvell Yukon 88E8075 Gigabit Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_4380,
 	    "Marvell Yukon 88E8057 Gigabit Ethernet" },
 	{ VENDORID_MARVELL, DEVICEID_MRVL_4381,
@@ -1191,12 +1195,17 @@ mskc_reset(struct msk_softc *sc)
 		CSR_WRITE_4(sc, MR_ADDR(i, GMAC_CTRL), GMC_RST_SET);
 		CSR_WRITE_4(sc, MR_ADDR(i, GMAC_CTRL), GMC_RST_CLR);
 		CSR_WRITE_4(sc, MR_ADDR(i, GMAC_CTRL), GMC_F_LOOPB_OFF);
-		if (sc->msk_hw_id == CHIP_ID_YUKON_EX) {
+		if (sc->msk_hw_id == CHIP_ID_YUKON_EX ||
+		    sc->msk_hw_id == CHIP_ID_YUKON_SUPR) {
 			CSR_WRITE_4(sc, MR_ADDR(i, GMAC_CTRL),
 			    GMC_BYP_MACSECRX_ON | GMC_BYP_MACSECTX_ON |
 			    GMC_BYP_RETR_ON);
 		}
 	}
+
+	if (sc->msk_hw_id == CHIP_ID_YUKON_SUPR &&
+	    sc->msk_hw_rev > CHIP_REV_YU_SU_B0)
+		CSR_PCI_WRITE_4(sc, PCI_OUR_REG_3, PCI_CLK_MACSEC_DIS);
 	if (sc->msk_hw_id == CHIP_ID_YUKON_OPT && sc->msk_hw_rev == 0) {
 		/* Disable PCIe PHY powerdown(reg 0x80, bit7). */
 		CSR_WRITE_4(sc, Y2_PEX_PHY_DATA, (0x0080 << 16) | 0x0080);
@@ -1567,7 +1576,6 @@ mskc_attach(device_t dev)
 	/* Bail out if chip is not recognized. */
 	if (sc->msk_hw_id < CHIP_ID_YUKON_XL ||
 	    sc->msk_hw_id > CHIP_ID_YUKON_OPT ||
-	    sc->msk_hw_id == CHIP_ID_YUKON_SUPR ||
 	    sc->msk_hw_id == CHIP_ID_YUKON_UNKNOWN) {
 		device_printf(dev, "unknown device: id=0x%02x, rev=0x%02x\n",
 		    sc->msk_hw_id, sc->msk_hw_rev);
@@ -1669,6 +1677,9 @@ mskc_attach(device_t dev)
 		break;
 	case CHIP_ID_YUKON_XL:
 		sc->msk_clock = 156;	/* 156 Mhz */
+		break;
+	case CHIP_ID_YUKON_SUPR:
+		sc->msk_clock = 125;	/* 125 MHz */
 		break;
 	case CHIP_ID_YUKON_UL_2:
 		sc->msk_clock = 125;	/* 125 Mhz */
@@ -3381,7 +3392,8 @@ msk_init(void *xsc)
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, GMAC_CTRL), GMC_RST_SET);
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, GMAC_CTRL), GMC_RST_CLR);
 	CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, GMAC_CTRL), GMC_F_LOOPB_OFF);
-	if (sc->msk_hw_id == CHIP_ID_YUKON_EX) {
+	if (sc->msk_hw_id == CHIP_ID_YUKON_EX ||
+	    sc->msk_hw_id == CHIP_ID_YUKON_SUPR) {
 		CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, GMAC_CTRL),
 		    GMC_BYP_MACSECRX_ON | GMC_BYP_MACSECTX_ON |
 		    GMC_BYP_RETR_ON);
@@ -3578,7 +3590,8 @@ msk_init(void *xsc)
 		msk_stop(sc_if);
 		return;
 	}
-	if (sc->msk_hw_id == CHIP_ID_YUKON_EX) {
+	if (sc->msk_hw_id == CHIP_ID_YUKON_EX ||
+	    sc->msk_hw_id == CHIP_ID_YUKON_SUPR) {
 		/* Disable flushing of non-ASF packets. */
 		CSR_WRITE_4(sc, MR_ADDR(sc_if->msk_port, RX_GMF_CTRL_T),
 		    GMF_RX_MACSEC_FLUSH_OFF);
