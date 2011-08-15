@@ -792,6 +792,20 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		vflush(mp, 0, 0);
 
 done:
+	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
+		/* New mount */
+
+		/* Populate info for mount point (NULL pad)*/
+		bzero(mp->mnt_stat.f_mntonname, MNAMELEN);
+		size_t size;
+		if (mntpt) {
+			copyinstr(mntpt, mp->mnt_stat.f_mntonname,
+							MNAMELEN -1, &size);
+		} else { /* Root mount */
+			mp->mnt_stat.f_mntonname[0] = '/';
+		}
+	}
+	(void)VFS_STATFS(mp, &mp->mnt_stat, cred);
 	hammer_rel_volume(rootvol, 0);
 failed:
 	/*
