@@ -323,10 +323,11 @@ setit:
 
 		/*
 		 * Check to see if we have link.  If we do, we don't
-		 * need to restart the autonegotiation process.
+		 * need to restart the autonegotiation process.  Read
+		 * the BMSR twice in case it's latched.
 		 */
-		reg = PHY_READ(sc, BRGPHY_MII_AUXSTS);
-		if (reg & BRGPHY_AUXSTS_LINK) {
+		reg = PHY_READ(sc, MII_BMSR) | PHY_READ(sc, MII_BMSR);
+		if (reg & BMSR_LINK) {
 			sc->mii_ticks = 0;
 			break;
 		}
@@ -336,7 +337,7 @@ setit:
 		 */
 		if (++sc->mii_ticks <= sc->mii_anegticks)
 			break;
-		
+
 		sc->mii_ticks = 0;
 		brgphy_mii_phy_auto(sc);
 		break;
@@ -373,13 +374,13 @@ static void
 brgphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
-	int bmcr, aux;
+	int bmcr, bmsr;
 
 	mii->mii_media_status = IFM_AVALID;
 	mii->mii_media_active = IFM_ETHER;
 
-	aux = PHY_READ(sc, BRGPHY_MII_AUXSTS);
-	if (aux & BRGPHY_AUXSTS_LINK)
+	bmsr = PHY_READ(sc, BRGPHY_MII_BMSR) | PHY_READ(sc, BRGPHY_MII_BMSR);
+	if (bmsr & BRGPHY_BMSR_LINK)
 		mii->mii_media_status |= IFM_ACTIVE;
 
 	bmcr = PHY_READ(sc, BRGPHY_MII_BMCR);
@@ -387,13 +388,17 @@ brgphy_status(struct mii_softc *sc)
 		mii->mii_media_active |= IFM_LOOP;
 
 	if (bmcr & BRGPHY_BMCR_AUTOEN) {
-		if ((PHY_READ(sc, BRGPHY_MII_BMSR) & BRGPHY_BMSR_ACOMP) == 0) {
+		int auxsts;
+
+		if ((bmsr & BRGPHY_BMSR_ACOMP) == 0) {
 			/* Erg, still trying, I guess... */
 			mii->mii_media_active |= IFM_NONE;
 			return;
 		}
 
-		switch (aux & BRGPHY_AUXSTS_AN_RES) {
+		auxsts = PHY_READ(sc, BRGPHY_MII_AUXSTS);
+
+		switch (auxsts & BRGPHY_AUXSTS_AN_RES) {
 		case BRGPHY_RES_1000FD:
 			mii->mii_media_active |= IFM_1000_T | IFM_FDX;
 			break;
@@ -416,6 +421,13 @@ brgphy_status(struct mii_softc *sc)
 			mii->mii_media_active |= IFM_10_T | IFM_HDX;
 			break;
 		default:
+			if (sc->mii_model == MII_MODEL_BROADCOM2_BCM5906) {
+				mii->mii_media_active |= (auxsts &
+				    BRGPHY_RES_100) ? IFM_100_TX : IFM_10_T;
+				mii->mii_media_active |= (auxsts &
+				    BRGPHY_RES_FULL) ? IFM_FDX : IFM_HDX;
+				break;
+			}
 			mii->mii_media_active |= IFM_NONE;
 			break;
 		}
@@ -428,19 +440,21 @@ brgphy_status(struct mii_softc *sc)
 static void
 brgphy_mii_phy_auto(struct mii_softc *sc)
 {
-	int ktcr = 0;
+	int ktcr;
 
-	brgphy_loop(sc);
 	brgphy_reset(sc);
+
+	PHY_WRITE(sc, BRGPHY_MII_ANAR,
+	    BMSR_MEDIA_TO_ANAR(sc->mii_capabilities) | ANAR_CSMA);
+	DELAY(1000);
+
 	ktcr = BRGPHY_1000CTL_AFD|BRGPHY_1000CTL_AHD;
 	if (sc->mii_model == MII_MODEL_xxBROADCOM_BCM5701)
 		ktcr |= BRGPHY_1000CTL_MSE|BRGPHY_1000CTL_MSC;
 	PHY_WRITE(sc, BRGPHY_MII_1000CTL, ktcr);
 	ktcr = PHY_READ(sc, BRGPHY_MII_1000CTL);
 	DELAY(1000);
-	PHY_WRITE(sc, BRGPHY_MII_ANAR,
-	    BMSR_MEDIA_TO_ANAR(sc->mii_capabilities) | ANAR_CSMA);
-	DELAY(1000);
+
 	PHY_WRITE(sc, BRGPHY_MII_BMCR,
 	    BRGPHY_BMCR_AUTOEN | BRGPHY_BMCR_STARTNEG);
 	PHY_WRITE(sc, BRGPHY_MII_IMR, 0xFF00);
@@ -517,6 +531,10 @@ brgphy_reset(struct mii_softc *sc)
 		/* Set Jumbo frame settings in the PHY. */
 		brgphy_jumbo_settings(sc, ifp->if_mtu);
 
+		/* Adjust output voltage */
+		if (bge_sc->bge_asicrev == BGE_ASICREV_BCM5906)
+			PHY_WRITE(sc, BRGPHY_MII_EPHY_PTEST, 0x12);
+
 		/* Enable Ethernet@Wirespeed */
 		if (bge_sc->bge_flags & BGE_FLAG_ETH_WIRESPEED)
 			brgphy_eth_wirespeed(sc);
@@ -527,10 +545,6 @@ brgphy_reset(struct mii_softc *sc)
 			PHY_READ(sc, BRGPHY_MII_PHY_EXTCTL)
 				& ~BRGPHY_PHY_EXTCTL_3_LED);
 		}
-
-		/* Adjust output voltage (From Linux driver) */
-		if (bge_sc->bge_asicrev == BGE_ASICREV_BCM5906)
-			PHY_WRITE(sc, BRGPHY_MII_EPHY_PTEST, 0x12);
 	} else if (strncmp(ifp->if_xname, "bce", 3) == 0) {
 		struct bce_softc *bce_sc = ifp->if_softc;
 
