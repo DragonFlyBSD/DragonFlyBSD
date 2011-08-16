@@ -308,4 +308,5 @@ MIASM =  \
 	mknodat.o \
 	readlinkat.o \
 	symlinkat.o \
-	swapoff.o
+	swapoff.o \
+	vquotactl.o

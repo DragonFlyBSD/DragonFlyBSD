@@ -34,9 +34,12 @@
 #define _SYS_VFSQUOTA_H_
 
 #include <sys/mount.h>
+#include <libprop/proplib.h>
 
 extern void vq_init(struct mount*);
 extern void vq_done(struct mount*);
+
+int vquotactl(const char *path, struct plistref *pref);
 
 #endif
 

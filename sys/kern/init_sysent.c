@@ -563,4 +563,5 @@ struct sysent sysent[] = {
 	{ AS(readlinkat_args), (sy_call_t *)sys_readlinkat },	/* 527 = readlinkat */
 	{ AS(symlinkat_args), (sy_call_t *)sys_symlinkat },	/* 528 = symlinkat */
 	{ AS(swapoff_args), (sy_call_t *)sys_swapoff },	/* 529 = swapoff */
+	{ AS(vquotactl_args), (sy_call_t *)sys_vquotactl },	/* 530 = vquotactl */
 };

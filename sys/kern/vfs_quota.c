@@ -39,9 +39,13 @@
 #include <sys/vfs_quota.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
+#include <inttypes.h>
+
+#include <sys/sysproto.h>
+#include <libprop/proplib.h>
+#include <libprop/prop_dictionary.h>
 
 /* in-memory accounting, red-black tree based */
-
 /* FIXME: code duplication caused by uid_t / gid_t differences */
 RB_PROTOTYPE(ac_utree, ac_unode, rb_entry, rb_ac_unode_cmp);
 RB_PROTOTYPE(ac_gtree, ac_gnode, rb_entry, rb_ac_gnode_cmp);
@@ -155,4 +159,105 @@ vfs_stdaccount(struct mount *mp, uid_t uid, gid_t gid, int64_t delta)
 	gnp->gid_chunk[(gid & ACCT_CHUNK_MASK)] += delta;
 
 	spin_unlock(&mp->mnt_acct.ac_spin);
+}
+
+static void
+cmd_get_usage_all(struct mount *mp, prop_array_t dict_out) {
+	struct ac_unode *unp;
+	struct ac_gnode *gnp;
+	int i;
+	prop_dictionary_t item;
+
+	item = prop_dictionary_create();
+	(void) prop_dictionary_set_uint64(item, "space used", mp->mnt_acct.ac_bytes);
+	prop_array_add_and_rel(dict_out, item);
+
+	RB_FOREACH(unp, ac_utree, &mp->mnt_acct.ac_uroot) {
+		for (i=0; i<ACCT_CHUNK_NIDS; i++) {
+			if (unp->uid_chunk[i] != 0) {
+				item = prop_dictionary_create();
+				(void) prop_dictionary_set_uint32(item, "uid",
+					(unp->left_bits << ACCT_CHUNK_BITS) + i);
+				(void) prop_dictionary_set_uint64(item, "space used",
+					unp->uid_chunk[i]);
+				prop_array_add_and_rel(dict_out, item);
+			}
+		}
+	}
+
+	RB_FOREACH(gnp, ac_gtree, &mp->mnt_acct.ac_groot) {
+		for (i=0; i<ACCT_CHUNK_NIDS; i++) {
+			if (gnp->gid_chunk[i] != 0) {
+				item = prop_dictionary_create();
+				(void) prop_dictionary_set_uint32(item, "gid",
+					(gnp->left_bits << ACCT_CHUNK_BITS) + i);
+				(void) prop_dictionary_set_uint64(item, "space used",
+					gnp->gid_chunk[i]);
+				prop_array_add_and_rel(dict_out, item);
+			}
+		}
+	}
+}
+
+int
+sys_vquotactl(struct vquotactl_args *vqa)
+/* const char *path, struct plistref *pref */
+{
+	const char *path;
+	struct plistref pref;
+	prop_dictionary_t dict, args;
+	char *cmd;
+
+	prop_array_t pa_out;
+
+	struct nlookupdata nd;
+	struct mount *mp;
+	int error;
+
+	path = vqa->path;
+	error = copyin(vqa->pref, &pref, sizeof(pref));
+	error = prop_dictionary_copyin(&pref, &dict);
+	if (error != 0)
+		return(error);
+
+	/* we have a path, get its mount point */
+	error = nlookup_init(&nd, path, UIO_USERSPACE, 0);
+	if (error != 0)
+		return (error);
+	error = nlookup(&nd);
+	if (error != 0)
+		return (error);
+	mp = nd.nl_nch.mount;
+	nlookup_done(&nd);
+
+	/* get the command */
+	if (prop_dictionary_get_cstring(dict, "command", &cmd) == 0) {
+		kprintf("sys_vquotactl(): couldn't get command\n");
+		return EINVAL;
+	}
+	args = prop_dictionary_get(dict, "arguments");
+	if (args == NULL) {
+		kprintf("couldn't get arguments\n");
+		return EINVAL;
+	}
+
+	pa_out = prop_array_create();
+	if (pa_out == NULL)
+		return ENOMEM;
+
+	if (strcmp(cmd, "get usage all") == 0) {
+		cmd_get_usage_all(mp, pa_out);
+		goto done;
+	}
+	return EINVAL;
+
+done:
+	/* kernel to userland */
+	dict = prop_dictionary_create();
+	error = prop_dictionary_set(dict, "get usage all", pa_out);
+
+	error = prop_dictionary_copyout(&pref, dict);
+	error = copyout(&pref, vqa->pref, sizeof(pref));
+
+	return error;
 }

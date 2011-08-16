@@ -743,3 +743,5 @@
 				  size_t bufsize); }
 528	STD	POSIX	{ int symlinkat(char *path1, int fd, char *path2); }
 529	STD	BSD	{ int swapoff(char *name); }
+530	STD	BSD	{ int vquotactl(const char *path, \
+			    struct plistref *pref); }

@@ -537,4 +537,5 @@ const char *syscallnames[] = {
 	"readlinkat",			/* 527 = readlinkat */
 	"symlinkat",			/* 528 = symlinkat */
 	"swapoff",			/* 529 = swapoff */
+	"vquotactl",			/* 530 = vquotactl */
 };
