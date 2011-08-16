@@ -218,7 +218,11 @@
 
 /* Define to the widest efficient host integer type at least as wide as the
    target's size_t type. */
+#ifdef CROSS_COMPILE
+#define HOST_WIDE_INT long long
+#else
 #define HOST_WIDE_INT long
+#endif
 
 /* Define as const if the declaration of iconv() needs const. */
 #define ICONV_CONST 

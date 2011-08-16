@@ -1394,7 +1394,7 @@
 
 /* Define to 1 if HOST_WIDE_INT must be 64 bits wide (see hwint.h). */
 #ifndef USED_FOR_TARGET
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(CROSS_COMPILE)
 #define NEED_64BIT_HOST_WIDE_INT 1
 #endif
 #endif
