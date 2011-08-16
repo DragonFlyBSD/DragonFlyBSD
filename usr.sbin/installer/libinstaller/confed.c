@@ -119,14 +119,12 @@ config_var_set(struct config_vars *cvs, const char *name, const char *value)
  * Write a set of configuration variable settings to a file.
  */
 int
-config_vars_write(const struct config_vars *cvs, int config_type, const char *fmt, ...)
+config_vars_write(const struct config_vars *cvs, int config_type,
+    const char *fmt, ...)
 {
 	FILE *f;
 	va_list args;
 	char *filename;
-	char tstr[256];
-	int conf_written = 0;
-	time_t t;
 	void *rk, *rv;
 	size_t rk_len, rv_len;
 
@@ -137,34 +135,16 @@ config_vars_write(const struct config_vars *cvs, int config_type, const char *fm
 	if ((f = fopen(filename, "a")) == NULL)
 		return(0);
 
-	time(&t);
-	strlcpy(tstr, ctime(&t), 256);
-	if (strlen(tstr) > 0)
-		tstr[strlen(tstr) - 1] = '\0';
-
 	switch (config_type) {
 	case CONFIG_TYPE_SH:
 
 		aura_dict_rewind(cvs->d);
 		while (!aura_dict_eof(cvs->d)) {
-			if (! conf_written) {
-				conf_written = 1;
-				fprintf(f, "\n");
-				fprintf(f, "# -- BEGIN %s "
-				    "Installer automatically generated "
-				    "configuration  -- #\n",
-				    OPERATING_SYSTEM_NAME);
-				fprintf(f, "# -- Written on %s -- #\n", tstr);
-			}
 			aura_dict_get_current_key(cvs->d, &rk, &rk_len),
 			aura_dict_fetch(cvs->d, rk, rk_len, &rv, &rv_len);
-			fprintf(f, "%s=\"%s\"\n", (char *)rk, (char *)rv);
+			fprintf(f, "%s=\"%s\"\t# via installer configuration\n",
+			    (char *)rk, (char *)rv);
 			aura_dict_next(cvs->d);
-		}
-		if (conf_written) {
-			fprintf(f, "# -- END of %s Installer "
-			    "automatically generated configuration -- #\n",
-			    OPERATING_SYSTEM_NAME);
 		}
 		break;
 	case CONFIG_TYPE_RESOLV:
