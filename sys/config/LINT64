@@ -2554,6 +2554,7 @@ options	KTR_VERBOSE=1
 #options KTR_SPIN_CONTENTION
 #options KTR_TESTLOG
 #options KTR_TOKENS
+#options KTR_TSLEEP
 #options KTR_USB_MEMORY
 
 # ALTQ
