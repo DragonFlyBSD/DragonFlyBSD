@@ -53,6 +53,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libfetch \
 	libfsid \
 	libftpio \
+	libhammer \
 	libipsec \
 	libipx \
 	libkcore \

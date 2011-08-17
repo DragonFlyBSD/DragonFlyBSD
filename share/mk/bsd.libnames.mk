@@ -37,6 +37,7 @@ LIBFL?=		"don't use LIBFL, use LIBL"
 LIBFORM?=	${DESTDIR}${LIBDIR}/libform.a
 LIBFSID?=	${DESTDIR}${LIBDIR}/libfsid.a
 LIBFTPIO?=	${DESTDIR}${LIBDIR}/libftpio.a
+LIBHAMMER?=	${DESTDIR}${LIBDIR}/libhammer.a
 LIBIPSEC?=	${DESTDIR}${LIBDIR}/libipsec.a
 LIBIPX?=	${DESTDIR}${LIBDIR}/libipx.a
 LIBKCORE?=	${DESTDIR}${LIBDIR}/libkcore.a
