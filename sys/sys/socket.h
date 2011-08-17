@@ -407,17 +407,24 @@ struct cmsgcred {
 	gid_t	cmcred_groups[CMGROUP_MAX];	/* groups */
 };
 
+/* Alignment requirement for CMSG struct manipulation */
+#define _CMSG_ALIGN(n)		(((n) + 3) & ~3)
+
+#ifdef _KERNEL
+#define CMSG_ALIGN(n)		_CMSG_ALIGN(n)
+#endif
+
 /* given pointer to struct cmsghdr, return pointer to data */
 #define	CMSG_DATA(cmsg)		((unsigned char *)(cmsg) + \
-				 _ALIGN(sizeof(struct cmsghdr)))
+				 _CMSG_ALIGN(sizeof(struct cmsghdr)))
 
 /* given pointer to struct cmsghdr, return pointer to next cmsghdr */
 #define	CMSG_NXTHDR(mhdr, cmsg)	\
-	(((caddr_t)(cmsg) + _ALIGN((cmsg)->cmsg_len) + \
-	  _ALIGN(sizeof(struct cmsghdr)) > \
+	(((caddr_t)(cmsg) + _CMSG_ALIGN((cmsg)->cmsg_len) + \
+	  _CMSG_ALIGN(sizeof(struct cmsghdr)) > \
 	    (caddr_t)(mhdr)->msg_control + (mhdr)->msg_controllen) ? \
 	    NULL : \
-	    (struct cmsghdr *)((caddr_t)(cmsg) + _ALIGN((cmsg)->cmsg_len)))
+	    (struct cmsghdr *)((caddr_t)(cmsg) + _CMSG_ALIGN((cmsg)->cmsg_len)))
 
 /*
  * RFC 2292 requires to check msg_controllen, in case that the kernel returns
@@ -430,12 +437,8 @@ struct cmsgcred {
 
 /* RFC 2292 additions */
 	
-#define	CMSG_SPACE(l)		(_ALIGN(sizeof(struct cmsghdr)) + _ALIGN(l))
-#define	CMSG_LEN(l)		(_ALIGN(sizeof(struct cmsghdr)) + (l))
-
-#ifdef _KERNEL
-#define	CMSG_ALIGN(n)	_ALIGN(n)
-#endif
+#define	CMSG_SPACE(l)		(_CMSG_ALIGN(sizeof(struct cmsghdr)) + _CMSG_ALIGN(l))
+#define	CMSG_LEN(l)		(_CMSG_ALIGN(sizeof(struct cmsghdr)) + (l))
 
 /* "Socket"-level control message types: */
 #define	SCM_RIGHTS	0x01		/* access rights (array of int) */
