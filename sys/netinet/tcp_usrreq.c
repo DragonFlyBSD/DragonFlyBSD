@@ -159,7 +159,7 @@ static struct tcpcb *
 #define	TCPDEBUG2(req)
 #endif
 
-static int	tcp_lport_extension = 0;
+static int	tcp_lport_extension = 1;
 
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, lportext, CTLFLAG_RW,
     &tcp_lport_extension, 0, "");
