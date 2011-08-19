@@ -585,7 +585,7 @@ in_pcbconn_bind(struct inpcb *inp, const struct sockaddr *nam,
 	struct ucred *cred = NULL;
 	u_short lport = 0;
 	ushort first, last;
-	int count, error;
+	int count, error, dup = 0;
 
 	if (TAILQ_EMPTY(&in_ifaddrheads[mycpuid])) /* XXX broken! */
 		return (EADDRNOTAVAIL);
@@ -633,6 +633,8 @@ in_pcbconn_bind(struct inpcb *inp, const struct sockaddr *nam,
 		last  = ipport_lastauto;
 		lastport = &pcbinfo->lastport;
 	}
+
+again:
 	/*
 	 * Simple check to ensure all ports are not used up causing
 	 * a deadlock here.
@@ -676,6 +678,21 @@ in_pcbconn_bind(struct inpcb *inp, const struct sockaddr *nam,
 			lport = htons(*lastport);
 		} while (in_pcblookup_addrport(pcbinfo, inp->inp_laddr, lport,
 				sin->sin_addr, sin->sin_port, cred));
+	}
+
+	/* This could happen on loopback interface */
+	if (sin->sin_port == lport &&
+	    sin->sin_addr.s_addr == inp->inp_laddr.s_addr) {
+		if (dup) {
+			/*
+			 * Duplicate again; give up
+			 */
+			inp->inp_laddr.s_addr = INADDR_ANY;
+			error = EADDRNOTAVAIL;
+			goto done;
+		}
+		dup = 1;
+		goto again;
 	}
 	inp->inp_lport = lport;
 
