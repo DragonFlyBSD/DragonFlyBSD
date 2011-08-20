@@ -510,8 +510,13 @@ vm_object_deallocate_locked(vm_object_t object)
 		/*
 		 * If the second ref is from a shadow we chain along it
 		 * if object's handle is exhausted.
+		 *
+		 * We have to decrement object->ref_count before potentially
+		 * collapsing the first shadow object or the collapse code
+		 * will not be able to handle the degenerate case.
 		 */
 		if (object->ref_count == 2 && object->shadow_count == 1) {
+			object->ref_count--;
 			if (object->handle == NULL &&
 			    (object->type == OBJT_DEFAULT ||
 			     object->type == OBJT_SWAP)) {
@@ -545,7 +550,6 @@ vm_object_deallocate_locked(vm_object_t object)
 					}
 
 					if (temp->ref_count == 1) {
-						object->ref_count--;
 						temp->ref_count--;
 						vm_object_unlock(object);
 						object = temp;
@@ -555,7 +559,6 @@ vm_object_deallocate_locked(vm_object_t object)
 					lwkt_gettoken(&vm_token);
 					vm_object_collapse(temp);
 					lwkt_reltoken(&vm_token);
-					object->ref_count--;
 					vm_object_unlock(object);
 					object = temp;
 					continue;
@@ -564,7 +567,6 @@ vm_object_deallocate_locked(vm_object_t object)
 			} else {
 				lwkt_reltoken(&vm_token);
 			}
-			object->ref_count--;
 			vm_object_unlock(object);
 			break;
 		}
@@ -1755,6 +1757,7 @@ vm_object_collapse(vm_object_t object)
 			/* (we are holding vmobj_token) */
 			TAILQ_REMOVE(&vm_object_list, backing_object,
 				     object_list);
+			--backing_object->ref_count;	/* safety/debug */
 			vm_object_count--;
 
 			zfree(obj_zone, backing_object);
