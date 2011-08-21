@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)cd.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/cd.c,v 1.46 2011/05/20 22:55:18 jilles Exp $
+ * $FreeBSD: src/bin/sh/cd.c,v 1.47 2011/05/25 21:38:16 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -85,6 +85,7 @@ cdcmd(int argc, char **argv)
 	struct stat statb;
 	int ch, phys, print = 0, getcwderr = 0;
 	int rc;
+	int errno1 = ENOENT;
 
 	optreset = 1; optind = 1; opterr = 0; /* initialize getopt */
 	phys = Pflag;
@@ -137,9 +138,11 @@ cdcmd(int argc, char **argv)
 			rc = docd(p, print, phys);
 			if (rc >= 0)
 				return getcwderr ? rc : 0;
+			if (errno != ENOENT)
+				errno1 = errno;
 		}
 	}
-	error("can't cd to %s", dest);
+	error("%s: %s", dest, strerror(errno1));
 	/*NOTREACHED*/
 	return 0;
 }
