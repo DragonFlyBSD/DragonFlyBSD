@@ -36,7 +36,7 @@
 # SUCH DAMAGE.
 #
 #	@(#)mktokens	8.1 (Berkeley) 5/31/93
-# $FreeBSD: src/bin/sh/mktokens,v 1.10 2005/01/10 08:39:25 imp Exp $
+# $FreeBSD: src/bin/sh/mktokens,v 1.11 2011/05/22 15:24:56 jilles Exp $
 
 # The following is a list of tokens.  The second column is nonzero if the
 # token marks the end of a list.  The third column is the name to print in
@@ -54,7 +54,6 @@ TPIPE	0	"|"
 TLP	0	"("
 TRP	1	")"
 TENDCASE 1	";;"
-TENDBQUOTE 1	"`"
 TREDIR	0	redirection
 TWORD	0	word
 TIF	0	"if"
