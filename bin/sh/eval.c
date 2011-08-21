@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.105 2011/05/21 22:03:06 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.106 2011/06/04 11:28:42 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -166,7 +166,7 @@ evalstring(char *s, int flags)
 	setstackmark(&smark);
 	setinputstring(s, 1);
 	while ((n = parsecmd(0)) != NEOF) {
-		if (n != NULL) {
+		if (n != NULL && !nflag) {
 			if (flags_exit && preadateof())
 				evaltree(n, flags | EV_EXIT);
 			else
