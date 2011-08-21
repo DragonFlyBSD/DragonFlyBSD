@@ -31,10 +31,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/bin/sh/arith_yacc.c,v 1.5 2011/05/27 20:53:07 jilles Exp $
+ * $FreeBSD: src/bin/sh/arith_yacc.c,v 1.6 2011/06/26 20:12:05 jilles Exp $
  */
 
-#include <sys/limits.h>
+#include <limits.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
