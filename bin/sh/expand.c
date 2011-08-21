@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
- * $FreeBSD: src/bin/sh/expand.c,v 1.85 2011/05/08 11:32:20 jilles Exp $
+ * $FreeBSD: src/bin/sh/expand.c,v 1.86 2011/05/27 15:56:13 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -760,7 +760,8 @@ again: /* jump here after setting a variable with ${var=text} */
 			break;
 record:
 		recordregion(startloc, expdest - stackblock(),
-			     varflags & VSQUOTE);
+		    varflags & VSQUOTE || (ifsset() && ifsval()[0] == '\0' &&
+		    (*var == '@' || *var == '*')));
 		break;
 
 	case VSPLUS:
@@ -946,7 +947,9 @@ numvar:
 			sep = ' ';
 		for (ap = shellparam.p ; (p = *ap++) != NULL ; ) {
 			strtodest(p, flag, subtype, quoted);
-			if (*ap && sep)
+			if (!*ap)
+				break;
+			if (sep || (flag & EXP_FULL && !quoted && **ap != '\0'))
 				STPUTC(sep, expdest);
 		}
 		break;
