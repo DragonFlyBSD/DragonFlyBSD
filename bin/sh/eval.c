@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.104 2011/05/15 17:00:43 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.105 2011/05/21 22:03:06 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -717,15 +717,9 @@ evalcommand(union node *cmd, int flgs, struct backcmd *backcmd)
 	oexitstatus = exitstatus;
 	exitstatus = 0;
 	for (argp = cmd->ncmd.args ; argp ; argp = argp->narg.next) {
-		char *p = argp->narg.text;
-		if (varflag && is_name(*p)) {
-			do {
-				p++;
-			} while (is_in_name(*p));
-			if (*p == '=') {
-				expandarg(argp, &varlist, EXP_VARTILDE);
-				continue;
-			}
+		if (varflag && isassignment(argp->narg.text)) {
+			expandarg(argp, &varlist, EXP_VARTILDE);
+			continue;
 		}
 		expandarg(argp, &arglist, EXP_FULL | EXP_TILDE);
 		varflag = 0;

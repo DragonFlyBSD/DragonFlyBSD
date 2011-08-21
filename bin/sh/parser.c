@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
- * $FreeBSD: src/bin/sh/parser.c,v 1.111 2011/05/20 16:03:36 jilles Exp $
+ * $FreeBSD: src/bin/sh/parser.c,v 1.112 2011/05/21 22:03:06 jilles Exp $
  */
 
 #include <stdio.h>
@@ -618,6 +618,7 @@ simplecmd(union node **rpp, union node *redir)
 	union node **orig_rpp = rpp;
 	union node *n = NULL;
 	int special;
+	int savecheckkwd;
 
 	/* If we don't have any redirections already, then we must reset */
 	/* rpp to be the address of the local redir variable.  */
@@ -633,7 +634,10 @@ simplecmd(union node **rpp, union node *redir)
 	 */
 	orig_rpp = rpp;
 
+	savecheckkwd = CHKALIAS;
+
 	for (;;) {
+		checkkwd = savecheckkwd;
 		if (readtoken() == TWORD) {
 			n = (union node *)stalloc(sizeof (struct narg));
 			n->type = NARG;
@@ -641,6 +645,8 @@ simplecmd(union node **rpp, union node *redir)
 			n->narg.backquote = backquotelist;
 			*app = n;
 			app = &n->narg.next;
+			if (savecheckkwd != 0 && !isassignment(wordtext))
+				savecheckkwd = 0;
 		} else if (lasttoken == TREDIR) {
 			*rpp = n = redirnode;
 			rpp = &n->nfile.next;
@@ -1855,6 +1861,22 @@ goodname(const char *name)
 			return 0;
 	}
 	return 1;
+}
+
+
+int
+isassignment(const char *p)
+{
+	if (!is_name(*p))
+		return 0;
+	p++;
+	for (;;) {
+		if (*p == '=')
+			return 1;
+		else if (!is_in_name(*p))
+			return 0;
+		p++;
+	}
 }
 
 

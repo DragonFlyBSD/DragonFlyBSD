@@ -1,0 +1,5 @@
+# $FreeBSD: src/tools/regression/bin/sh/parser/alias5.0,v 1.1 2011/05/21 22:03:06 jilles Exp $
+
+alias alias0=exit
+eval '</dev/null alias0 0'
+exit 1
