@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)alias.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/alias.c,v 1.30 2011/02/04 22:47:55 jilles Exp $
+ * $FreeBSD: src/bin/sh/alias.c,v 1.31 2011/06/04 15:05:52 jilles Exp $
  */
 
 #include <stdlib.h>
@@ -237,7 +237,7 @@ aliascmd(int argc, char **argv)
 	while ((n = *++argv) != NULL) {
 		if ((v = strchr(n+1, '=')) == NULL) /* n+1: funny ksh stuff */
 			if ((ap = lookupalias(n, 0)) == NULL) {
-				warning("%s not found", n);
+				warning("%s: not found", n);
 				ret = 1;
 			} else
 				printalias(ap);

@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
- * $FreeBSD: src/bin/sh/main.c,v 1.48 2011/05/22 12:12:28 jilles Exp $
+ * $FreeBSD: src/bin/sh/main.c,v 1.49 2011/06/04 15:05:52 jilles Exp $
  */
 
 #include <stdio.h>
@@ -258,7 +258,7 @@ readcmdfile(const char *name)
 	if ((fd = open(name, O_RDONLY)) >= 0)
 		setinputfd(fd, 1);
 	else
-		error("Can't open %s: %s", name, strerror(errno));
+		error("cannot open %s: %s", name, strerror(errno));
 	INTON;
 	cmdloop(0);
 	popfile();

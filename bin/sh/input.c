@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)input.c	8.3 (Berkeley) 6/9/95
- * $FreeBSD: src/bin/sh/input.c,v 1.29 2009/12/27 18:04:05 jilles Exp $
+ * $FreeBSD: src/bin/sh/input.c,v 1.33 2011/06/04 15:05:52 jilles Exp $
  */
 
 #include <stdio.h>	/* defines BUFSIZ */
@@ -401,7 +401,7 @@ setinputfile(const char *fname, int push)
 
 	INTOFF;
 	if ((fd = open(fname, O_RDONLY)) < 0)
-		error("Can't open %s: %s", fname, strerror(errno));
+		error("cannot open %s: %s", fname, strerror(errno));
 	if (fd < 10) {
 		fd2 = fcntl(fd, F_DUPFD, 10);
 		close(fd);
