@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/hptiop/hptiop.c,v 1.8 2010/06/19 13:41:17 mav Exp $
+ * $FreeBSD: src/sys/dev/hptiop/hptiop.c,v 1.9 2011/08/01 21:12:41 delphij Exp $
  */
 
 #include <sys/param.h>
@@ -1234,6 +1234,8 @@ static int hptiop_probe(device_t dev)
 	id = pci_get_device(dev);
 
 	switch (id) {
+		case 0x4322:
+		case 0x4321:
 		case 0x4320:
 			sas = 1;
 		case 0x3220:

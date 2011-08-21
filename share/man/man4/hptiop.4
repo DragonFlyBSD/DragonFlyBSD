@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/hptiop.4,v 1.2 2008/02/03 16:16:38 scottl Exp $
+.\" $FreeBSD: src/share/man/man4/hptiop.4,v 1.3 2011/08/01 21:12:41 delphij Exp $
 .\"
-.Dd December 8, 2010
+.Dd August 21, 2011
 .Dt HPTIOP 4
 .Os
 .Sh NAME
@@ -60,6 +60,10 @@ driver supports the following SAS and SATA RAID controllers:
 .It
 HighPoint RocketRAID 4320
 .It
+HighPoint RocketRAID 4321
+.It
+HighPoint RocketRAID 4322
+.It
 HighPoint RocketRAID 3220
 .It
 HighPoint RocketRAID 3320
@@ -84,10 +88,10 @@ HighPoint RocketRAID 3122
 .It
 HighPoint RocketRAID 3020
 .El
-.Sh NOTES
-The
-.Nm
-driver has only been tested on the i386 and amd64 platforms.
+.\".Sh NOTES
+.\"The
+.\".Nm
+.\"driver has only been tested on the i386 and amd64 platforms.
 .Sh SEE ALSO
 .Xr cam 4 ,
 .Xr hptmv 4
