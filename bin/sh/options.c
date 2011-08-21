@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)options.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/options.c,v 1.35 2011/04/25 10:14:29 jilles Exp $
+ * $FreeBSD: src/bin/sh/options.c,v 1.36 2011/06/04 22:19:00 jilles Exp $
  */
 
 #include <signal.h>
@@ -82,6 +82,7 @@ void
 procargs(int argc, char **argv)
 {
 	int i;
+	char *scriptname;
 
 	argptr = argv;
 	if (argc > 0)
@@ -106,8 +107,9 @@ procargs(int argc, char **argv)
 			optlist[i].val = 0;
 	arg0 = argv[0];
 	if (sflag == 0 && minusc == NULL) {
-		commandname = arg0 = *argptr++;
-		setinputfile(commandname, 0);
+		scriptname = *argptr++;
+		setinputfile(scriptname, 0);
+		commandname = arg0 = scriptname;
 	}
 	/* POSIX 1003.2: first arg after -c cmd is $0, remainder $1... */
 	if (argptr && minusc && *argptr)
