@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
- * $FreeBSD: src/bin/sh/main.c,v 1.50 2011/06/10 22:42:00 jilles Exp $
+ * $FreeBSD: src/bin/sh/main.c,v 1.51 2011/06/12 10:13:48 jilles Exp $
  */
 
 #include <stdio.h>
@@ -144,7 +144,7 @@ main(int argc, char *argv[])
 state1:
 		state = 2;
 		if (privileged == 0)
-			read_profile(".profile");
+			read_profile("${HOME-}/.profile");
 		else
 			read_profile("/etc/suid_profile");
 	}
