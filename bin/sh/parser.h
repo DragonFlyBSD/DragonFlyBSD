@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)parser.h	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/parser.h,v 1.17 2011/05/21 22:03:06 jilles Exp $
+ * $FreeBSD: src/bin/sh/parser.h,v 1.18 2011/06/09 23:12:23 jilles Exp $
  */
 
 /* control characters in argument strings */
@@ -86,3 +86,4 @@ void fixredir(union node *, const char *, int);
 int goodname(const char *);
 int isassignment(const char *);
 const char *getprompt(void *);
+const char *expandstr(char *);

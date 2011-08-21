@@ -34,7 +34,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	from: @(#)sh.1	8.6 (Berkeley) 5/4/95
-.\" $FreeBSD: src/bin/sh/sh.1,v 1.165 2011/05/21 22:03:06 jilles Exp $
+.\" $FreeBSD: src/bin/sh/sh.1,v 1.166 2011/06/09 23:12:23 jilles Exp $
 .\"
 .Dd August 21, 2011
 .Dt SH 1
@@ -328,7 +328,7 @@ Useful for debugging.
 Write each command
 (preceded by the value of the
 .Va PS4
-variable)
+variable subjected to parameter expansion and arithmetic expansion)
 to standard error before it is executed.
 Useful for debugging.
 .It "\ \ " Em tabcomplete

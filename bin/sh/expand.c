@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
- * $FreeBSD: src/bin/sh/expand.c,v 1.86 2011/05/27 15:56:13 jilles Exp $
+ * $FreeBSD: src/bin/sh/expand.c,v 1.87 2011/06/09 23:12:23 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -173,6 +173,7 @@ expandarg(union node *arg, struct arglist *arglist, int flag)
 	ifslastp = NULL;
 	argstr(arg->narg.text, flag);
 	if (arglist == NULL) {
+		STACKSTRNUL(expdest);
 		return;			/* here document expanded */
 	}
 	STPUTC('\0', expdest);

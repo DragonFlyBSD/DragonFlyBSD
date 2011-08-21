@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.107 2011/06/05 14:13:15 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.108 2011/06/09 23:12:23 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -748,8 +748,9 @@ evalcommand(union node *cmd, int flgs, struct backcmd *backcmd)
 	/* Print the command if xflag is set. */
 	if (xflag) {
 		char sep = 0;
-		const char *p;
-		out2str(ps4val());
+		const char *p, *ps4;
+		ps4 = expandstr(ps4val());
+		out2str(ps4 != NULL ? ps4 : ps4val());
 		for (sp = varlist.list ; sp ; sp = sp->next) {
 			if (sep != 0)
 				out2c(' ');
