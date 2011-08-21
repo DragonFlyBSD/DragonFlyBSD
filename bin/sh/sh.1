@@ -34,7 +34,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	from: @(#)sh.1	8.6 (Berkeley) 5/4/95
-.\" $FreeBSD: src/bin/sh/sh.1,v 1.170 2011/06/17 13:03:49 jilles Exp $
+.\" $FreeBSD: src/bin/sh/sh.1,v 1.171 2011/06/18 23:43:28 jilles Exp $
 .\"
 .Dd August 21, 2011
 .Dt SH 1
@@ -245,6 +245,10 @@ tested, all commands of the function are considered to be tested as
 well.
 .It Fl f Li noglob
 Disable pathname expansion.
+.It Fl h Li trackall
+A do-nothing option for
+.Tn POSIX
+compliance.
 .It Fl I Li ignoreeof
 Ignore
 .Dv EOF Ap s
