@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/bin/sh/arith_yacc.c,v 1.4 2011/05/04 22:12:22 jilles Exp $
+ * $FreeBSD: src/bin/sh/arith_yacc.c,v 1.5 2011/05/27 20:53:07 jilles Exp $
  */
 
 #include <sys/limits.h>
@@ -356,7 +356,7 @@ arith(const char *s)
  *  The exp(1) builtin.
  */
 int
-expcmd(int argc, char **argv)
+letcmd(int argc, char **argv)
 {
 	const char *p;
 	char *concat;

@@ -40,4 +40,4 @@
 
 arith_t	arith(const char *);
 void	arith_lex_reset(void);
-int	expcmd(int, char **);
+int	letcmd(int, char **);
