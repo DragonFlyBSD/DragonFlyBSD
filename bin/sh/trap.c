@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)trap.c	8.5 (Berkeley) 6/5/95
- * $FreeBSD: src/bin/sh/trap.c,v 1.45 2011/02/04 22:47:55 jilles Exp $
+ * $FreeBSD: src/bin/sh/trap.c,v 1.46 2011/06/13 21:03:27 jilles Exp $
  */
 
 #include <signal.h>
@@ -54,6 +54,7 @@
 #include "error.h"
 #include "trap.h"
 #include "mystring.h"
+#include "builtins.h"
 #include "myhistedit.h"
 
 

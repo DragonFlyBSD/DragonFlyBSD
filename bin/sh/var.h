@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)var.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/var.h,v 1.23 2011/06/12 23:06:04 jilles Exp $
+ * $FreeBSD: src/bin/sh/var.h,v 1.24 2011/06/13 21:03:27 jilles Exp $
  */
 
 /*
@@ -127,11 +127,7 @@ void updatecharset(void);
 void initcharset(void);
 char **environment(void);
 int showvarscmd(int, char **);
-int exportcmd(int, char **);
-int localcmd(int, char **);
 void mklocal(char *);
 void poplocalvars(void);
-int setvarcmd(int, char **);
-int unsetcmd(int, char **);
 int unsetvar(const char *);
 int setvarsafe(const char *, const char *, int);

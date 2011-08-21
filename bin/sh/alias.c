@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)alias.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/alias.c,v 1.31 2011/06/04 15:05:52 jilles Exp $
+ * $FreeBSD: src/bin/sh/alias.c,v 1.32 2011/06/13 21:03:27 jilles Exp $
  */
 
 #include <stdlib.h>
@@ -45,6 +45,7 @@
 #include "mystring.h"
 #include "alias.h"
 #include "options.h"	/* XXX for argptr (should remove?) */
+#include "builtins.h"
 
 #define ATABSIZE 39
 

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)options.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/options.c,v 1.36 2011/06/04 22:19:00 jilles Exp $
+ * $FreeBSD: src/bin/sh/options.c,v 1.37 2011/06/13 21:03:27 jilles Exp $
  */
 
 #include <signal.h>
@@ -55,6 +55,7 @@
 #include "memalloc.h"
 #include "error.h"
 #include "mystring.h"
+#include "builtins.h"
 #ifndef NO_HISTORY
 #include "myhistedit.h"
 #endif

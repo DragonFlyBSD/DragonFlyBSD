@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include "arith.h"
 #include "arith_yacc.h"
+#include "builtins.h"
 #include "expand.h"
 #include "shell.h"
 #include "error.h"

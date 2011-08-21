@@ -30,9 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/bin/sh/cd.h,v 1.8 2010/04/17 14:35:46 jilles Exp $
+ * $FreeBSD: src/bin/sh/cd.h,v 1.9 2011/06/13 21:03:27 jilles Exp $
  */
 
 void	 pwd_init(int);
-int	 cdcmd (int, char **);
-int	 pwdcmd(int, char **);

@@ -36,7 +36,7 @@
 # SUCH DAMAGE.
 #
 #	@(#)mkbuiltins	8.2 (Berkeley) 5/4/95
-# $FreeBSD: src/bin/sh/mkbuiltins,v 1.17 2009/12/27 18:04:05 jilles Exp $
+# $FreeBSD: src/bin/sh/mkbuiltins,v 1.18 2011/06/13 21:03:27 jilles Exp $
 
 temp=`/usr/bin/mktemp -t ka`
 havejobs=0
@@ -62,9 +62,7 @@ cat <<\!
 !
 awk '/^[^#]/ {if(('$havejobs' || $2 != "-j") && ('$havehist' || $2 != "-h")) \
     print $0}' builtins.def | sed 's/-[hj]//' > $temp
-awk '{	printf "int %s(int, char *[]);\n", $1}' $temp
-echo '
-int (*const builtinfunc[])(int, char *[]) = {'
+echo 'int (*const builtinfunc[])(int, char *[]) = {'
 awk '/^[^#]/ {	printf "\t%s,\n", $1}' $temp
 echo '};
 
@@ -98,5 +96,7 @@ struct builtincmd {
 };
 
 extern int (*const builtinfunc[])(int, char *[]);
-extern const struct builtincmd builtincmd[];'
+extern const struct builtincmd builtincmd[];
+'
+awk '{	printf "int %s(int, char *[]);\n", $1}' $temp
 rm -f $temp

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)jobs.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/jobs.h,v 1.20 2010/06/29 22:37:45 jilles Exp $
+ * $FreeBSD: src/bin/sh/jobs.h,v 1.21 2011/06/13 21:03:27 jilles Exp $
  */
 
 /* Mode argument to forkshell.  Don't change FORK_FG or FORK_BG. */
@@ -92,12 +92,7 @@ extern int in_dowait;		/* are we in dowait()? */
 extern volatile sig_atomic_t breakwaitcmd; /* break wait to process traps? */
 
 void setjobctl(int);
-int fgcmd(int, char **);
-int bgcmd(int, char **);
-int jobscmd(int, char **);
 void showjobs(int, int);
-int waitcmd(int, char **);
-int jobidcmd(int, char **);
 pid_t getjobpgrp(char *);
 struct job *makejob(union node *, int);
 pid_t forkshell(struct job *, union node *, int);

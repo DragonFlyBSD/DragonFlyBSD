@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/var.c,v 1.61 2011/06/12 23:06:04 jilles Exp $
+ * $FreeBSD: src/bin/sh/var.c,v 1.62 2011/06/13 21:03:27 jilles Exp $
  */
 
 #include <unistd.h>
@@ -62,6 +62,7 @@
 #include "error.h"
 #include "mystring.h"
 #include "parser.h"
+#include "builtins.h"
 #ifndef NO_HISTORY
 #include "myhistedit.h"
 #endif

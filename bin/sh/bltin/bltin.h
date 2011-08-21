@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)bltin.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/bltin/bltin.h,v 1.18 2010/12/21 22:47:34 jilles Exp $
+ * $FreeBSD: src/bin/sh/bltin/bltin.h,v 1.19 2011/06/13 21:03:27 jilles Exp $
  */
 
 /*
@@ -47,6 +47,7 @@
 #include "../mystring.h"
 #ifdef SHELL
 #include "../output.h"
+#include "builtins.h"
 #define FILE struct output
 #undef stdout
 #define stdout out1
@@ -65,9 +66,6 @@
 #define warnx warning
 #define warn(fmt, ...) warning(fmt ": %s", __VA_ARGS__, strerror(errno))
 #define errx(exitstatus, ...) error(__VA_ARGS__)
-
-int main(int, char *[]);
-
 #else
 #undef NULL
 #include <stdio.h>
@@ -78,6 +76,5 @@ int main(int, char *[]);
 #include <unistd.h>
 
 pid_t getjobpgrp(char *);
-
 
 extern char *commandname;

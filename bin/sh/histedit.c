@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)histedit.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/histedit.c,v 1.42 2010/12/29 19:39:51 jilles Exp $
+ * $FreeBSD: src/bin/sh/histedit.c,v 1.43 2011/06/13 21:03:27 jilles Exp $
  */
 
 #include <sys/param.h>
@@ -58,6 +58,7 @@
 #include "error.h"
 #include "eval.h"
 #include "memalloc.h"
+#include "builtins.h"
 
 #define MAXHISTLOOPS	4	/* max recursions through fc */
 #define DEFEDITOR	"ed"	/* default editor *should* be $EDITOR */

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
- * $FreeBSD: src/bin/sh/expand.c,v 1.89 2011/06/12 23:06:04 jilles Exp $
+ * $FreeBSD: src/bin/sh/expand.c,v 1.90 2011/06/13 21:03:27 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -75,6 +75,7 @@
 #include "mystring.h"
 #include "arith.h"
 #include "show.h"
+#include "builtins.h"
 
 /*
  * Structure specifying which parts of the string should be searched

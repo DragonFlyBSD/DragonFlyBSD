@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)exec.h	8.3 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/exec.h,v 1.22 2011/02/05 14:08:51 jilles Exp $
+ * $FreeBSD: src/bin/sh/exec.h,v 1.23 2011/06/13 21:03:27 jilles Exp $
  */
 
 /* values of cmdtype */
@@ -70,7 +70,6 @@ extern int exerrno;		/* last exec error */
 
 void shellexec(char **, char **, const char *, int) __dead2;
 char *padvance(const char **, const char *);
-int hashcmd(int, char **);
 void find_command(const char *, struct cmdentry *, int, const char *);
 int find_builtin(const char *, int *);
 void hashcd(void);
@@ -79,5 +78,4 @@ void addcmdentry(const char *, struct cmdentry *);
 void defun(const char *, union node *);
 int unsetfunc(const char *);
 int typecmd_impl(int, char **, int, const char *);
-int typecmd(int, char **);
 void clearcmdentry(void);

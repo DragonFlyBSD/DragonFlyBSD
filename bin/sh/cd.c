@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)cd.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/cd.c,v 1.48 2011/05/27 20:01:46 jilles Exp $
+ * $FreeBSD: src/bin/sh/cd.c,v 1.49 2011/06/13 21:03:27 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -62,6 +62,7 @@
 #include "mystring.h"
 #include "show.h"
 #include "cd.h"
+#include "builtins.h"
 
 static int cdlogical(char *);
 static int cdphysical(char *);

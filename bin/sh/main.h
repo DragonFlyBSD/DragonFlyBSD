@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)main.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/main.h,v 1.10 2009/12/25 20:21:35 jilles Exp $
+ * $FreeBSD: src/bin/sh/main.h,v 1.11 2011/06/13 21:03:27 jilles Exp $
  */
 
 extern int rootpid;	/* pid of main shell */
@@ -43,5 +43,3 @@ extern struct jmploc main_handler;	/* top level exception handler */
 
 void readcmdfile(const char *);
 void cmdloop(int);
-int dotcmd(int, char **);
-int exitcmd(int, char **);

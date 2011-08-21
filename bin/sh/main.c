@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
- * $FreeBSD: src/bin/sh/main.c,v 1.51 2011/06/12 10:13:48 jilles Exp $
+ * $FreeBSD: src/bin/sh/main.c,v 1.52 2011/06/13 21:03:27 jilles Exp $
  */
 
 #include <stdio.h>
@@ -66,6 +66,7 @@
 #include "mystring.h"
 #include "exec.h"
 #include "cd.h"
+#include "builtins.h"
 
 int rootpid;
 int rootshell;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)arith.h	1.1 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/arith.h,v 1.14 2011/02/08 23:18:06 jilles Exp $
+ * $FreeBSD: src/bin/sh/arith.h,v 1.15 2011/06/13 21:03:27 jilles Exp $
  */
 
 #include "shell.h"
@@ -40,4 +40,3 @@
 
 arith_t	arith(const char *);
 void	arith_lex_reset(void);
-int	letcmd(int, char **);

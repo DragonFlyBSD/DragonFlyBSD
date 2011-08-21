@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)options.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/options.h,v 1.15 2009/12/27 18:04:05 jilles Exp $
+ * $FreeBSD: src/bin/sh/options.h,v 1.16 2011/06/13 21:03:27 jilles Exp $
  */
 
 struct shparam {
@@ -114,8 +114,5 @@ void procargs(int, char **);
 void optschanged(void);
 void setparam(char **);
 void freeparam(volatile struct shparam *);
-int shiftcmd(int, char **);
-int setcmd(int, char **);
-int getoptscmd(int, char **);
 int nextopt(const char *);
 void getoptsreset(const char *);

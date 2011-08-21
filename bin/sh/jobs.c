@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)jobs.c	8.5 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/jobs.c,v 1.94 2011/06/12 23:06:04 jilles Exp $
+ * $FreeBSD: src/bin/sh/jobs.c,v 1.95 2011/06/13 21:03:27 jilles Exp $
  */
 
 #include <sys/ioctl.h>
@@ -70,6 +70,7 @@
 #include "error.h"
 #include "mystring.h"
 #include "var.h"
+#include "builtins.h"
 
 
 static struct job *jobtab;	/* array of jobs */
