@@ -34,7 +34,7 @@
 # SUCH DAMAGE.
 #
 #	@(#)nodetypes	8.2 (Berkeley) 5/4/95
-# $FreeBSD: src/bin/sh/nodetypes,v 1.10 2005/01/10 08:39:25 imp Exp $
+# $FreeBSD: src/bin/sh/nodetypes,v 1.11 2011/06/17 13:03:49 jilles Exp $
 
 # This file describes the nodes used in parse trees.  Unindented lines
 # contain a node type followed by a structure tag.  Subsequent indented
@@ -100,12 +100,13 @@ NCASE ncase			# a case statement
 	expr	  nodeptr		# the word to switch on
 	cases	  nodeptr		# the list of cases (NCLIST nodes)
 
-NCLIST nclist			# a case
+NCLIST nclist			# a case ending with ;;
 	type	  int
 	next	  nodeptr		# the next case in list
 	pattern	  nodeptr		# list of patterns for this case
 	body	  nodeptr		# code to execute for this case
 
+NCLISTFALLTHRU nclist		# a case ending with ;&
 
 NDEFUN narg			# define a function.  The "next" field contains
 				# the body of the function.

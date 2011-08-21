@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
- * $FreeBSD: src/bin/sh/parser.c,v 1.113 2011/06/09 23:12:23 jilles Exp $
+ * $FreeBSD: src/bin/sh/parser.c,v 1.114 2011/06/17 13:03:49 jilles Exp $
  */
 
 #include <stdio.h>
@@ -541,10 +541,13 @@ TRACE(("expecting DO got %s %s\n", tokname[got], got == TWORD ? wordtext : ""));
 
 			checkkwd = CHKNL | CHKKWD | CHKALIAS;
 			if ((t = readtoken()) != TESAC) {
-				if (t != TENDCASE)
-					synexpect(TENDCASE);
+				if (t == TENDCASE)
+					;
+				else if (t == TFALLTHRU)
+					cp->type = NCLISTFALLTHRU;
 				else
-					checkkwd = CHKNL | CHKKWD, readtoken();
+					synexpect(TENDCASE);
+				checkkwd = CHKNL | CHKKWD, readtoken();
 			}
 			cpp = &cp->nclist.next;
 		}
@@ -930,8 +933,11 @@ xxreadtoken(void)
 			pungetc();
 			RETURN(TPIPE);
 		case ';':
-			if (pgetc() == ';')
+			c = pgetc();
+			if (c == ';')
 				RETURN(TENDCASE);
+			else if (c == '&')
+				RETURN(TFALLTHRU);
 			pungetc();
 			RETURN(TSEMI);
 		case '(':

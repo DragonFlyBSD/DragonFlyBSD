@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.110 2011/06/16 21:50:28 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.111 2011/06/17 13:03:49 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -387,6 +387,14 @@ evalcase(union node *n, int flags)
 	for (cp = n->ncase.cases ; cp && evalskip == 0 ; cp = cp->nclist.next) {
 		for (patp = cp->nclist.pattern ; patp ; patp = patp->narg.next) {
 			if (casematch(patp, arglist.list->text)) {
+				while (cp->nclist.next &&
+				    cp->type == NCLISTFALLTHRU) {
+					if (evalskip != 0)
+						break;
+					evaltree(cp->nclist.body,
+					    flags & ~EV_EXIT);
+					cp = cp->nclist.next;
+				}
 				if (evalskip == 0) {
 					evaltree(cp->nclist.body, flags);
 				}
