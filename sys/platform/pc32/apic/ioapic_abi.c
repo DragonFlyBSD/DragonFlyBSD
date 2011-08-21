@@ -62,6 +62,8 @@
 #include <machine_base/apic/ioapic_ipl.h>
 #include <machine_base/apic/apicreg.h>
 
+#define IOAPIC_HWI_VECTORS	IDT_HWI_VECTORS
+
 extern inthand_t
 	IDTVEC(ioapic_intr0),
 	IDTVEC(ioapic_intr1),
@@ -459,7 +461,7 @@ static struct ioapic_irqmap {
 	enum intr_polarity	im_pola;
 	int			im_gsi;
 	uint32_t		im_flags;	/* IOAPIC_IMF_ */
-} ioapic_irqmaps[MAX_HARDINTS];	/* XXX MAX_HARDINTS may not be correct */
+} ioapic_irqmaps[IOAPIC_HWI_VECTORS];
 
 #define IOAPIC_IMT_UNUSED	0
 #define IOAPIC_IMT_RESERVED	1
@@ -502,7 +504,7 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 
 static int	ioapic_abi_extint_irq = -1;
 
-struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
+struct apic_intmapinfo	int_to_apicintpin[IOAPIC_HWI_VECTORS];
 
 static void
 ioapic_abi_intren(int irq)

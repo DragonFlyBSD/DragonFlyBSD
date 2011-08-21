@@ -53,6 +53,8 @@
 #define IDT_OFFSET_SYSCALL	0x80
 #define IDT_OFFSET_IPI		0xe0
 
+#define IDT_HWI_VECTORS		(IDT_OFFSET_IPI - IDT_OFFSET)
+
 /*
  * Local APIC TPR priority vector levels:
  *

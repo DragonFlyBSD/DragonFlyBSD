@@ -84,7 +84,7 @@ static inthand_t *icu_intr[ICU_HWI_VECTORS] = {
 static struct icu_irqmap {
 	int			im_type;	/* ICU_IMT_ */
 	enum intr_trigger	im_trig;
-} icu_irqmaps[MAX_HARDINTS];	/* XXX MAX_HARDINTS may not be correct */
+} icu_irqmaps[IDT_HWI_VECTORS];
 
 #define ICU_IMT_UNUSED		0	/* KEEP THIS */
 #define ICU_IMT_RESERVED	1
@@ -261,7 +261,7 @@ icu_intr_config(int irq, enum intr_trigger trig,
 
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 
-	KKASSERT(irq >= 0 && irq < MAX_HARDINTS);
+	KKASSERT(irq >= 0 && irq < IDT_HWI_VECTORS);
 	map = &icu_irqmaps[irq];
 
 	KKASSERT(map->im_type == ICU_IMT_LINE);
