@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkinit.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mkinit.c,v 1.21 2011/02/04 22:47:55 jilles Exp $
+ * $FreeBSD: src/bin/sh/mkinit.c,v 1.22 2011/05/22 14:03:46 uqs Exp $
  */
 
 /*
@@ -69,7 +69,7 @@
 
 
 /*
- * A text structure is basicly just a string that grows as more characters
+ * A text structure is basically just a string that grows as more characters
  * are added onto the end of it.  It is implemented as a linked list of
  * blocks of characters.  The routines addstr and addchar append a string
  * or a single character, respectively, to a text structure.  Writetext
