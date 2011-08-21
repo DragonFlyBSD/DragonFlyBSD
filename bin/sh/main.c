@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
- * $FreeBSD: src/bin/sh/main.c,v 1.47 2011/05/08 17:40:10 jilles Exp $
+ * $FreeBSD: src/bin/sh/main.c,v 1.48 2011/05/22 12:12:28 jilles Exp $
  */
 
 #include <stdio.h>
@@ -275,7 +275,6 @@ readcmdfile(const char *name)
 static const char *
 find_dot_file(const char *basename)
 {
-	static char localname[FILENAME_MAX+1];
 	char *fullname;
 	const char *path = pathval();
 	struct stat statb;
@@ -285,10 +284,14 @@ find_dot_file(const char *basename)
 		return basename;
 
 	while ((fullname = padvance(&path, basename)) != NULL) {
-		strcpy(localname, fullname);
+		if ((stat(fullname, &statb) == 0) && S_ISREG(statb.st_mode)) {
+			/*
+			 * Don't bother freeing here, since it will
+			 * be freed by the caller.
+			 */
+			return fullname;
+		}
 		stunalloc(fullname);
-		if ((stat(fullname, &statb) == 0) && S_ISREG(statb.st_mode))
-			return localname;
 	}
 	return basename;
 }
