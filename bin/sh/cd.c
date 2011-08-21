@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)cd.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/cd.c,v 1.47 2011/05/25 21:38:16 jilles Exp $
+ * $FreeBSD: src/bin/sh/cd.c,v 1.48 2011/05/27 20:01:46 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -122,7 +122,10 @@ cdcmd(int argc, char **argv)
 		else
 			dest = ".";
 	}
-	if (*dest == '/' || (path = bltinlookup("CDPATH", 1)) == NULL)
+	if (dest[0] == '/' ||
+	    (dest[0] == '.' && (dest[1] == '/' || dest[1] == '\0')) ||
+	    (dest[0] == '.' && dest[1] == '.' && (dest[2] == '/' || dest[2] == '\0')) ||
+	    (path = bltinlookup("CDPATH", 1)) == NULL)
 		path = nullstr;
 	while ((p = padvance(&path, dest)) != NULL) {
 		if (stat(p, &statb) >= 0 && S_ISDIR(statb.st_mode)) {
