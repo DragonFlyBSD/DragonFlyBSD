@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.109 2011/06/12 23:06:04 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.110 2011/06/16 21:50:28 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -141,7 +141,7 @@ evalcmd(int argc, char **argv)
                         STPUTC('\0', concat);
                         p = grabstackstr(concat);
                 }
-                evalstring(p, builtin_flags & EV_TESTED);
+                evalstring(p, builtin_flags);
         } else
                 exitstatus = 0;
         return exitstatus;
@@ -911,6 +911,7 @@ evalcommand(union node *cmd, int flgs, struct backcmd *backcmd)
 				dup2(pip[1], 1);
 				close(pip[1]);
 			}
+			flags &= ~EV_BACKCMD;
 		}
 		flags |= EV_EXIT;
 	}
