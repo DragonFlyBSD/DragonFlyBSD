@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)jobs.c	8.5 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/jobs.c,v 1.93 2011/06/04 15:05:52 jilles Exp $
+ * $FreeBSD: src/bin/sh/jobs.c,v 1.94 2011/06/12 23:06:04 jilles Exp $
  */
 
 #include <sys/ioctl.h>
@@ -69,6 +69,7 @@
 #include "memalloc.h"
 #include "error.h"
 #include "mystring.h"
+#include "var.h"
 
 
 static struct job *jobtab;	/* array of jobs */
@@ -797,6 +798,7 @@ forkshell(struct job *jp, union node *n, int mode)
 		handler = &main_handler;
 		closescript();
 		INTON;
+		forcelocal = 0;
 		clear_traps();
 #if JOBS
 		jobctl = 0;		/* do job control only in root shell */
@@ -1124,7 +1126,7 @@ backgndpidset(void)
 pid_t
 backgndpidval(void)
 {
-	if (bgjob != NULL)
+	if (bgjob != NULL && !forcelocal)
 		bgjob->remembered = 1;
 	return backgndpid;
 }
