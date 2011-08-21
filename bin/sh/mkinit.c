@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkinit.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mkinit.c,v 1.22 2011/05/22 14:03:46 uqs Exp $
+ * $FreeBSD: src/bin/sh/mkinit.c,v 1.23 2011/06/24 07:29:04 kevlo Exp $
  */
 
 /*
@@ -49,7 +49,6 @@
  */
 
 
-#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
