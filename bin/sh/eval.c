@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.106 2011/06/04 11:28:42 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.107 2011/06/05 14:13:15 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -410,6 +410,7 @@ evalsubshell(union node *n, int flags)
 	struct job *jp;
 	int backgnd = (n->type == NBACKGND);
 
+	oexitstatus = exitstatus;
 	expredir(n->nredir.redirect);
 	if ((!backgnd && flags & EV_EXIT && !have_traps()) ||
 	    forkshell(jp = makejob(n, 1), n, backgnd) == 0) {
@@ -437,6 +438,7 @@ evalredir(union node *n, int flags)
 	struct jmploc *savehandler;
 	volatile int in_redirect = 1;
 
+	oexitstatus = exitstatus;
 	expredir(n->nredir.redirect);
 	savehandler = handler;
 	if (setjmp(jmploc.loc)) {
@@ -479,7 +481,6 @@ expredir(union node *n)
 	for (redir = n ; redir ; redir = redir->nfile.next) {
 		struct arglist fn;
 		fn.lastp = &fn.list;
-		oexitstatus = exitstatus;
 		switch (redir->type) {
 		case NFROM:
 		case NTO:
