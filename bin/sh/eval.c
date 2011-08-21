@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.111 2011/06/17 13:03:49 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.112 2011/06/18 23:58:59 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -897,14 +897,13 @@ evalcommand(union node *cmd, int flgs, struct backcmd *backcmd)
 	}
 
 	/* Fork off a child process if necessary. */
-	if (cmd->ncmd.backgnd
-	 || ((cmdentry.cmdtype == CMDNORMAL || cmdentry.cmdtype == CMDUNKNOWN)
+	if (((cmdentry.cmdtype == CMDNORMAL || cmdentry.cmdtype == CMDUNKNOWN)
 	    && ((flags & EV_EXIT) == 0 || have_traps()))
 	 || ((flags & EV_BACKCMD) != 0
 	    && (cmdentry.cmdtype != CMDBUILTIN ||
 		 !safe_builtin(cmdentry.u.index, argc, argv)))) {
 		jp = makejob(cmd, 1);
-		mode = cmd->ncmd.backgnd;
+		mode = FORK_FG;
 		if (flags & EV_BACKCMD) {
 			mode = FORK_NOJOB;
 			if (pipe(pip) < 0)
@@ -1071,8 +1070,7 @@ parent:	/* parent process gets here (if we forked) */
 		backcmd->fd = pip[0];
 		close(pip[1]);
 		backcmd->jp = jp;
-	} else
-		exitstatus = 0;
+	}
 
 out:
 	if (lastarg)

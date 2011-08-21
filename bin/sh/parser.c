@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
- * $FreeBSD: src/bin/sh/parser.c,v 1.114 2011/06/17 13:03:49 jilles Exp $
+ * $FreeBSD: src/bin/sh/parser.c,v 1.115 2011/06/18 23:58:59 jilles Exp $
  */
 
 #include <stdio.h>
@@ -239,8 +239,8 @@ list(int nlflag, int erflag)
 		n2 = andor();
 		tok = readtoken();
 		if (tok == TBACKGND) {
-			if (n2->type == NCMD || n2->type == NPIPE) {
-				n2->ncmd.backgnd = 1;
+			if (n2->type == NPIPE) {
+				n2->npipe.backgnd = 1;
 			} else if (n2->type == NREDIR) {
 				n2->type = NBACKGND;
 			} else {
@@ -688,7 +688,6 @@ simplecmd(union node **rpp, union node *redir)
 	*rpp = NULL;
 	n = (union node *)stalloc(sizeof (struct ncmd));
 	n->type = NCMD;
-	n->ncmd.backgnd = 0;
 	n->ncmd.args = args;
 	n->ncmd.redirect = redir;
 	return n;
