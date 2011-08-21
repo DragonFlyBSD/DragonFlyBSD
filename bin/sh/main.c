@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
- * $FreeBSD: src/bin/sh/main.c,v 1.49 2011/06/04 15:05:52 jilles Exp $
+ * $FreeBSD: src/bin/sh/main.c,v 1.50 2011/06/10 22:42:00 jilles Exp $
  */
 
 #include <stdio.h>
@@ -86,7 +86,7 @@ static const char *find_dot_file(const char *);
 int
 main(int argc, char *argv[])
 {
-	struct stackmark smark;
+	struct stackmark smark, smark2;
 	volatile int state;
 	char *shinit;
 
@@ -133,6 +133,7 @@ main(int argc, char *argv[])
 	rootshell = 1;
 	init();
 	setstackmark(&smark);
+	setstackmark(&smark2);
 	procargs(argc, argv);
 	pwd_init(iflag);
 	if (iflag)
@@ -157,6 +158,7 @@ state2:
 	}
 state3:
 	state = 4;
+	popstackmark(&smark2);
 	if (minusc) {
 		evalstring(minusc, sflag ? 0 : EV_EXIT);
 	}
@@ -232,9 +234,13 @@ static void
 read_profile(const char *name)
 {
 	int fd;
+	const char *expandedname;
 
+	expandedname = expandstr(__DECONST(char *, name));
+	if (expandedname == NULL)
+		return;
 	INTOFF;
-	if ((fd = open(name, O_RDONLY)) >= 0)
+	if ((fd = open(expandedname, O_RDONLY)) >= 0)
 		setinputfd(fd, 1);
 	INTON;
 	if (fd < 0)

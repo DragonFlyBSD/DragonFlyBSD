@@ -34,7 +34,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	from: @(#)sh.1	8.6 (Berkeley) 5/4/95
-.\" $FreeBSD: src/bin/sh/sh.1,v 1.166 2011/06/09 23:12:23 jilles Exp $
+.\" $FreeBSD: src/bin/sh/sh.1,v 1.167 2011/06/10 22:42:00 jilles Exp $
 .\"
 .Dd August 21, 2011
 .Dt SH 1
@@ -128,8 +128,8 @@ If the environment variable
 .Ev ENV
 is set on entry to a shell, or is set in the
 .Pa .profile
-of a login shell, the shell then reads commands from the file named in
-.Ev ENV .
+of a login shell, the shell then subjects its value to parameter expansion
+and arithmetic expansion and reads commands from the named file.
 Therefore, a user should place commands that are to be executed only
 at login time in the
 .Pa .profile
