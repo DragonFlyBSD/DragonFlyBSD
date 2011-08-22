@@ -282,7 +282,7 @@ static struct mly_code_lookup mly_table_device_type[] = {
     {"MLYRAID3",	MLY_DEVICE_TYPE_RAID3L},	/* left symmetric parity */
     {"MLY SPAN",	MLY_DEVICE_TYPE_SPAN},		/* current spanning implementation */
     {"MLYRAID5",	MLY_DEVICE_TYPE_RAID5L},	/* left symmetric parity */
-    {"MLYRAIDE",		MLY_DEVICE_TYPE_RAIDE},		/* concatenation */
+    {"MLYRAIDE",	MLY_DEVICE_TYPE_RAIDE},		/* concatenation */
     {"MLY PHYS",	MLY_DEVICE_TYPE_PHYSICAL},	/* physical device */
     {NULL, 0},
     {"MLY UNKN",	0}
