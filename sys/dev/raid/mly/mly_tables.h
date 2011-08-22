@@ -24,8 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/mly/mly_tables.h,v 1.1.2.1 2000/10/27 10:06:56 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly_tables.h,v 1.3 2008/01/21 02:27:37 pavalos Exp $
+ *	$FreeBSD: src/sys/dev/mly/mly_tables.h,v 1.3 2002/02/27 23:57:18 peter Exp $
  */
 
 /*

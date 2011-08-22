@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/mly/mlyvar.h,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
+ *	$FreeBSD: src/sys/dev/mly/mlyvar.h,v 1.7 2005/08/08 12:23:27 scottl Exp $
  */
 
 #include <sys/thread2.h>
@@ -226,7 +226,6 @@ struct mly_softc {
     /* CAM connection */
     struct cam_devq		*mly_cam_devq;			/* CAM device queue */
     struct cam_sim		*mly_cam_sim[MLY_MAX_CHANNELS];	/* CAM SIMs */
-    struct cam_path		*mly_cam_path;			/* rescan path */
     int				mly_cam_channels;		/* total channel count */
 
     /* command-completion task */

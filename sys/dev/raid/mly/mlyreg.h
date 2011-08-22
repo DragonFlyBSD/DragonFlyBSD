@@ -24,8 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/mly/mlyreg.h,v 1.1.2.1 2000/10/27 10:06:56 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mlyreg.h,v 1.3 2008/01/21 02:27:37 pavalos Exp $
+ *	$FreeBSD: src/sys/dev/mly/mlyreg.h,v 1.2 2002/09/23 18:54:30 alfred Exp $
  */
 
 /*

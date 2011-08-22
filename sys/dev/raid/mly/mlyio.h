@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/mly/mlyio.h,v 1.1.2.1 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mlyio.h,v 1.3 2008/01/21 02:27:37 pavalos Exp $
+ *	$FreeBSD: src/sys/dev/mly/mlyio.h,v 1.2 2001/07/14 00:12:22 msmith Exp $
  */
 
 #include <sys/ioccom.h>
