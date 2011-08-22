@@ -145,6 +145,8 @@ static driver_t mly_pci_driver = {
 
 static devclass_t	mly_devclass;
 DRIVER_MODULE(mly, pci, mly_pci_driver, mly_devclass, NULL, NULL);
+MODULE_DEPEND(mly, pci, 1, 1, 1);
+MODULE_DEPEND(mly, cam, 1, 1, 1);
 
 static struct dev_ops mly_ops = {
     { "mly", 0, 0 },
@@ -2506,7 +2508,7 @@ mly_describe_controller(struct mly_softc *sc)
 		   mly_describe_code(mly_table_memorytype, mi->memory_type),
 		   mi->memory_parity ? "+parity": "",mi->memory_ecc ? "+ECC": "",
 		   mi->cache_size);
-	mly_printf(sc, "CPU: %s @ %dMHZ\n", 
+	mly_printf(sc, "CPU: %s @ %dMHz\n",
 		   mly_describe_code(mly_table_cputype, mi->cpu[0].type), mi->cpu[0].speed);
 	if (mi->l2cache_size != 0)
 	    mly_printf(sc, "%dKB L2 cache\n", mi->l2cache_size);
