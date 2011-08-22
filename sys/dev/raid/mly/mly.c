@@ -2345,7 +2345,7 @@ mly_cam_complete(struct mly_command *mc)
 		btl = &sc->mly_btl[bus][target];
 		padstr(inq->vendor, mly_describe_code(mly_table_device_type, btl->mb_type), 8);
 		padstr(inq->product, mly_describe_code(mly_table_device_state, btl->mb_state), 16);
-		padstr(inq->revision, "", 4);
+		padstr(inq->revision, "MYLX", 4);
 	    }
 	}
 

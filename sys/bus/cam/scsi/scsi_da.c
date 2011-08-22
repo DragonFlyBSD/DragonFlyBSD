@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.59 2008/08/29 20:08:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -263,6 +262,13 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * The CISS RAID controllers do not support SYNC_CACHE
 		 */
 		{T_DIRECT, SIP_MEDIA_FIXED, "COMPAQ", "RAID*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * The same goes for the mly(4) controllers
+		 */
+		{T_DIRECT, SIP_MEDIA_FIXED, "MLY*", "*", "MYLX"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	/*
