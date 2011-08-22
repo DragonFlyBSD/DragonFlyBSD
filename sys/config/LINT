@@ -176,12 +176,12 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 #
 # CPU_DISABLE_SSE disables SSE/MMX2 instructions support.
 #
+# CPU_ENABLE_EST enables support for Enhanced SpeedStep technology
+# found in Pentium(tm) M processors.
+#
 # CPU_ENABLE_LONGRUN enables support for Transmeta Crusoe LongRun
 # technology which allows to restrict power consumption of the CPU by
 # using group of hw.crusoe.* sysctls.
-#
-# CPU_ENABLE_EST enables support for Enhanced SpeedStep technology
-# found in Pentium(tm) M processors.
 #
 # CPU_ENABLE_TCC enables Thermal Control Circuitry (TCC) found in some
 # Pentium(tm) 4 and (possibly) later CPUs.  When enabled and detected,
