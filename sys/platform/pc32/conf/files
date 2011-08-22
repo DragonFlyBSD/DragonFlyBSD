@@ -115,6 +115,7 @@ dev/video/fb/fb.c			optional	vga
 dev/video/fb/splash.c			optional	splash
 dev/video/fb/vga.c			optional	vga
 dev/powermng/est/est.c			optional	cpu_enable_est
+dev/powermng/longrun/longrun.c		optional	cpu_enable_longrun
 dev/netif/fe/if_fe.c			optional	fe
 dev/netif/fe/if_fe_isa.c		optional	fe isa
 dev/netif/fe/if_fe_pccard.c		optional	fe pccard
