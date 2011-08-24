@@ -417,7 +417,7 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	int error, do_accounting = 0;
 	struct vattr va;
 	uint64_t size_before=0, size_after=0;
-	struct mount *mountp = vp->v_mount;
+	struct mount *mp;
 
 	ap.a_head.a_desc = &vop_write_desc;
 	ap.a_head.a_ops = ops;
@@ -438,7 +438,12 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	DO_OPS(ops, error, &ap, vop_write);
 	if ((error == 0) && do_accounting) {
 		size_after = vp->v_filesize;
-		VFS_ACCOUNT(mountp, va.va_uid, va.va_gid, size_after - size_before);
+		if (vp->v_pfsmp != NULL) {
+			mp = vp->v_pfsmp;
+		} else {
+			mp = vp->v_mount;
+		}
+		VFS_ACCOUNT(mp, va.va_uid, va.va_gid, size_after - size_before);
 	}
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);

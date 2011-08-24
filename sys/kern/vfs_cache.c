@@ -901,6 +901,10 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 		}
 		atomic_add_int(&numcache, 1);
 		ncp->nc_error = 0;
+		/* XXX: this is a hack to work-around the lack of a real pfs vfs
+		 * implementation*/
+		if (mp != NULL)
+			vp->v_pfsmp = mp;
 	} else {
 		/*
 		 * When creating a negative cache hit we set the
