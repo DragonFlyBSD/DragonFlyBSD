@@ -1,4 +1,4 @@
-/*	$NetBSD: zuncompress.c,v 1.7 2009/04/12 10:31:14 lukem Exp $ */
+/*	$NetBSD: zuncompress.c,v 1.10 2011/08/16 03:25:34 christos Exp $ */
 /*	$DragonFly: src/usr.bin/gzip/zuncompress.c,v 1.1 2004/10/26 11:19:31 joerg Exp $ */
 
 /*-
@@ -289,8 +289,10 @@ zread(void *cookie, char *rbp, int num)
 
 		/* Generate output characters in reverse order. */
 		while (zs->u.r.zs_code >= 256) {
-			if (zs->u.r.zs_stackp - de_stack >= HSIZE - 1)
+			if (zs->u.r.zs_stackp - de_stack >= HSIZE - 1) {
+				errno = EOVERFLOW;
 				return -1;
+			}
 			*zs->u.r.zs_stackp++ = tab_suffixof(zs->u.r.zs_code);
 			zs->u.r.zs_code = tab_prefixof(zs->u.r.zs_code);
 		}
