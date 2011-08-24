@@ -208,6 +208,8 @@ mfi_enable_intr_ppc(struct mfi_softc *sc)
 		MFI_WRITE4(sc, MFI_OMSK, ~MFI_GEN2_EIM);
 	} else if (sc->mfi_flags & MFI_FLAGS_SKINNY) {
 		MFI_WRITE4(sc, MFI_OMSK, ~0x00000001);
+	} else
+		panic("unknown adapter type");
 	}
 }
 
