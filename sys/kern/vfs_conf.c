@@ -376,6 +376,8 @@ vfs_mountroot_try(const char *mountfrom)
 	char		patt[32];
 	const char	*cp, *ep;
 	char		*mf;
+	struct proc	*p;
+	struct vnode	*vp;
 
 	vfsname = NULL;
 	devname = NULL;
@@ -449,6 +451,25 @@ end:
 
 		/* sanity check system clock against root fs timestamp */
 		inittodr(mp->mnt_time);
+
+		/* Get the vnode for '/'.  Set p->p_fd->fd_cdir to reference it. */
+		mp = mountlist_boot_getfirst();
+		if (VFS_ROOT(mp, &vp))
+			panic("cannot find root vnode");
+		if (mp->mnt_ncmountpt.ncp == NULL) {
+			cache_allocroot(&mp->mnt_ncmountpt, mp, vp);
+			cache_unlock(&mp->mnt_ncmountpt);	/* leave ref intact */
+		}
+		p = curproc;
+		p->p_fd->fd_cdir = vp;
+		vref(p->p_fd->fd_cdir);
+		p->p_fd->fd_rdir = vp;
+		vref(p->p_fd->fd_rdir);
+		vfs_cache_setroot(vp, cache_hold(&mp->mnt_ncmountpt));
+		vn_unlock(vp);			/* leave ref intact */
+		cache_copy(&mp->mnt_ncmountpt, &p->p_fd->fd_ncdir);
+		cache_copy(&mp->mnt_ncmountpt, &p->p_fd->fd_nrdir);
+
 		vfs_unbusy(mp);
 		if (mp->mnt_syncer == NULL) {
 			error = vfs_allocate_syncvnode(mp);
@@ -456,6 +477,7 @@ end:
 				kprintf("Warning: no syncer vp for root!\n");
 			error = 0;
 		}
+		VFS_START( mp, 0 );
 	} else {
 		if (mp != NULL) {
 			vfs_unbusy(mp);
