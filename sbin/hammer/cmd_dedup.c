@@ -275,7 +275,7 @@ hammer_cmd_dedup(char **av, int ac)
 	/*
 	 * Collection passes (memory limited)
 	 */
-	printf("Dedup-real running\n");
+	printf("Dedup running\n");
 	do {
 		DedupCrcStart = DedupCrcEnd;
 		DedupCrcEnd = 0;
