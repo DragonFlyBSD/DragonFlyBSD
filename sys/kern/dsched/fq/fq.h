@@ -55,6 +55,9 @@
 #define FQ_PRIO_IDLE		-1
 #define	FQ_BUCKET_ACTIVE	0x01
 
+#define FQ_DISPATCH_SML_ARRAY_SZ	128
+#define FQ_DISPATCH_ARRAY_SZ	512
+
 #define	FQ_DRAIN_CANCEL	0x1
 #define	FQ_DRAIN_FLUSH	0x2
 
@@ -95,6 +98,10 @@ struct fq_thread_io {
 	int	rebalance;	/* thread needs to rebalance w/ fq_balance_self */
 };
 
+struct dispatch_prep {
+	struct fq_thread_io	*tdio;
+	struct bio		*bio;
+};
 
 
 void	fq_balance_thread(struct fq_disk_ctx *diskctx);

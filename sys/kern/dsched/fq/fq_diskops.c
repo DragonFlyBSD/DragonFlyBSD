@@ -160,10 +160,12 @@ fq_cancel(struct dsched_disk_ctx *ds_diskctx)
 static int
 fq_queue(struct dsched_disk_ctx *ds_diskctx, struct dsched_thread_io *ds_tdio, struct bio *obio)
 {
+	struct bio *b_dispatch_ary[FQ_DISPATCH_SML_ARRAY_SZ];
 	struct bio *bio, *bio2;
 	struct fq_thread_io	*tdio;
 	struct fq_disk_ctx	*diskctx;
 	int max_tp, transactions;
+	int i;
 
 	/* We don't handle flushes, let dsched dispatch them */
 	if (__predict_false(obio->bio_buf->b_cmd == BUF_CMD_FLUSH))
@@ -187,24 +189,43 @@ fq_queue(struct dsched_disk_ctx *ds_diskctx, struct dsched_thread_io *ds_tdio, s
 		KKASSERT(tdio->head.qlength >= 0);
 
 		if (tdio->head.qlength > 0) {
+			i = 0;
+
 			DSCHED_THREAD_IO_LOCK(&tdio->head);
 
 			TAILQ_FOREACH_MUTABLE(bio, &tdio->head.queue, link, bio2) {
 				/* Rebalance ourselves if required */
 				if (atomic_cmpset_int(&tdio->rebalance, 1, 0))
 					fq_balance_self(tdio);
-				if ((tdio->max_tp > 0) && (tdio->issued >= tdio->max_tp))
+				if ((tdio->max_tp > 0) &&
+				    (tdio->issued + i >= tdio->max_tp))
 					break;
+				if (i == FQ_DISPATCH_SML_ARRAY_SZ)
+					break;
+
 				TAILQ_REMOVE(&tdio->head.queue, bio, link);
 				--tdio->head.qlength;
 
 				/*
 				 * beware that we do have an tdio reference from the
 				 * queueing
+				 *
+				 * XXX: note that here we don't dispatch the BIOs yet
+				 *	but just prepare them for dispatch so that
+				 *	later they are pushed down to the driver
+				 *	without holding locks.
 				 */
-				fq_dispatch(diskctx, bio, tdio);
+				b_dispatch_ary[i++] = bio;
 			}
+
 			DSCHED_THREAD_IO_UNLOCK(&tdio->head);
+
+			/*
+			 * Now dispatch all the prepared BIOs without holding
+			 * the thread_io lock.
+			 */
+			for (--i; i >= 0; i--)
+				fq_dispatch(diskctx, b_dispatch_ary[i], tdio);
 		}
 
 		/* Nothing is pending from previous IO, so just pass it down */
