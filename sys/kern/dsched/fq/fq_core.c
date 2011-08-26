@@ -52,7 +52,7 @@
 #include <kern/dsched/fq/fq.h>
 
 static int	dsched_fq_version_maj = 1;
-static int	dsched_fq_version_min = 0;
+static int	dsched_fq_version_min = 1;
 
 /* Make sure our structs fit */
 CTASSERT(sizeof(struct fq_thread_io) <= DSCHED_THREAD_IO_MAX_SZ);
@@ -65,10 +65,12 @@ extern struct dsched_policy dsched_fq_policy;
 void
 fq_dispatcher(struct fq_disk_ctx *diskctx)
 {
+	struct dispatch_prep dispatch_ary[FQ_DISPATCH_ARRAY_SZ];
 	struct dsched_thread_io	*ds_tdio, *ds_tdio2;
 	struct fq_thread_io	*tdio;
 	struct bio *bio, *bio2;
 	int idle;
+	int i, prepd_io;
 
 	/*
 	 * We need to manually assign an tdio to the tdctx of this thread
@@ -110,6 +112,9 @@ fq_dispatcher(struct fq_disk_ctx *diskctx)
 		if (idle == 0)
 			idle = diskctx->idle;
 
+		/* Set the number of prepared requests to 0 */
+		i = 0;
+
 		/*
 		 * XXX: further room for improvements here. It would be better
 		 *	to dispatch a few requests from each tdio as to ensure
@@ -132,11 +137,13 @@ fq_dispatcher(struct fq_disk_ctx *diskctx)
 				tdio->max_tp += 5;
 			}
 
+			prepd_io = 0;
 			TAILQ_FOREACH_MUTABLE(bio, &tdio->head.queue, link, bio2) {
 				if (atomic_cmpset_int(&tdio->rebalance, 1, 0))
 					fq_balance_self(tdio);
-				if ((tdio->max_tp > 0) &&
-				    ((tdio->issued >= tdio->max_tp)))
+				if (((tdio->max_tp > 0) &&
+				    (tdio->issued + prepd_io >= tdio->max_tp)) ||
+				    (i == FQ_DISPATCH_ARRAY_SZ))
 					break;
 
 				TAILQ_REMOVE(&tdio->head.queue, bio, link);
@@ -145,12 +152,36 @@ fq_dispatcher(struct fq_disk_ctx *diskctx)
 				/*
 				 * beware that we do have an tdio reference
 				 * from the queueing
+				 *
+				 * XXX: note that here we don't dispatch it yet
+				 *	but just prepare it for dispatch so
+				 *	that no locks are held when calling
+				 *	into the drivers.
 				 */
-				fq_dispatch(diskctx, bio, tdio);
+				dispatch_ary[i].bio = bio;
+				dispatch_ary[i].tdio = tdio;
+				++i;
+				++prepd_io;
 			}
 			DSCHED_THREAD_IO_UNLOCK(&tdio->head);
 
 		}
+
+		dsched_disk_ctx_ref(&diskctx->head);
+		DSCHED_DISK_CTX_UNLOCK(&diskctx->head);
+
+		/*
+		 * Dispatch all the previously prepared bios, now without
+		 * holding any locks.
+		 */
+		for (--i; i >= 0; i--) {
+			bio = dispatch_ary[i].bio;
+			tdio = dispatch_ary[i].tdio;
+			fq_dispatch(diskctx, bio, tdio);
+		}
+
+		DSCHED_DISK_CTX_LOCK(&diskctx->head);
+		dsched_disk_ctx_unref(&diskctx->head);
 	}
 }
 
