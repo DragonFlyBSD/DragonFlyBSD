@@ -2773,6 +2773,7 @@ options	KTR_ENTRIES=1024
 options	KTR_VERBOSE=1
 #options KTR_CTXSW
 #options KTR_DMCRYPT
+#options KTR_DSCHED_BFQ
 #options KTR_ETHERNET
 #options KTR_HAMMER
 #options KTR_IFQ
@@ -2819,6 +2820,7 @@ options		SCTP_MAP_LOGGING
 
 # DSCHED stuff
 options		DSCHED_FQ
+options		DSCHED_BFQ
 
 # WATCHDOG
 options		WATCHDOG_ENABLE		# Enable watchdog support framework
