@@ -70,7 +70,7 @@ get_tbl_ptr(const u_long size, const u_int scale)
 		 * index as the array index into the conversion table.
 		 */
 		for (tmp = size, index = SC_KILOBYTE;
-		     tmp >= MEGA && index <= SC_GIGABYTE;
+		     tmp >= MEGA && index < SC_GIGABYTE;
 		     tmp >>= 10, index++);
 
 	tbl_ptr = &convtbl[index];
