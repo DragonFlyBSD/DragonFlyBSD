@@ -52,6 +52,8 @@
 #include <sys/fcntl.h>
 #include <machine/varargs.h>
 
+TAILQ_HEAD(tdio_list_head, dsched_thread_io);
+
 MALLOC_DEFINE(M_DSCHED, "dsched", "dsched allocs");
 
 static dsched_prepare_t		noop_prepare;
@@ -272,7 +274,13 @@ dsched_queue(struct disk *dp, struct bio *bio)
 	DSCHED_THREAD_CTX_LOCK(tdctx);
 
 	KKASSERT(!TAILQ_EMPTY(&tdctx->tdio_list));
-	TAILQ_FOREACH(tdio, &tdctx->tdio_list, link) {
+	/*
+	 * XXX:
+	 * iterate in reverse to make sure we find the most up-to-date
+	 * tdio for a given disk. After a switch it may take some time
+	 * for everything to clean up.
+	 */
+	TAILQ_FOREACH_REVERSE(tdio, &tdctx->tdio_list, tdio_list_head, link) {
 		if (tdio->dp == dp) {
 			dsched_thread_io_ref(tdio);
 			found = 1;
@@ -287,6 +295,12 @@ dsched_queue(struct disk *dp, struct bio *bio)
 	KKASSERT(found == 1);
 	diskctx = dsched_get_disk_priv(dp);
 	dsched_disk_ctx_ref(diskctx);
+
+	if (dp->d_sched_policy != &dsched_noop_policy)
+		KKASSERT(tdio->debug_policy == dp->d_sched_policy);
+
+	KKASSERT(tdio->debug_inited == 0xF00F1234);
+
 	error = dp->d_sched_policy->bio_queue(diskctx, tdio, bio);
 
 	if (error) {
@@ -346,6 +360,7 @@ dsched_unregister(struct dsched_policy *d_policy)
 		KKASSERT(policy->ref_count == 0);
 	}
 	lockmgr(&dsched_lock, LK_RELEASE);
+
 	return 0;
 }
 
@@ -377,6 +392,7 @@ dsched_switch(struct disk *dp, struct dsched_policy *new_policy)
 	/* Bring everything back to life */
 	dsched_set_policy(dp, new_policy);
 	lockmgr(&dsched_lock, LK_RELEASE);
+
 	return 0;
 }
 
@@ -396,9 +412,14 @@ dsched_set_policy(struct disk *dp, struct dsched_policy *new_policy)
 		locked = 1;
 	}
 
+	DSCHED_GLOBAL_THREAD_CTX_LOCK();
+
 	policy_new(dp, new_policy);
 	new_policy->prepare(dsched_get_disk_priv(dp));
 	dp->d_sched_policy = new_policy;
+
+	DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
+
 	atomic_add_int(&new_policy->ref_count, 1);
 	kprintf("disk scheduler: set policy of %s to %s\n", dp->d_cdev->si_name,
 	    new_policy->name);
@@ -779,6 +800,8 @@ dsched_thread_ctx_destroy(struct dsched_thread_ctx *tdctx)
 #endif
 	DSCHED_GLOBAL_THREAD_CTX_LOCK();
 
+	lockmgr(&tdctx->lock, LK_EXCLUSIVE);
+
 	while ((tdio = TAILQ_FIRST(&tdctx->tdio_list)) != NULL) {
 		KKASSERT(tdio->flags & DSCHED_LINKED_THREAD_CTX);
 		TAILQ_REMOVE(&tdctx->tdio_list, tdio, link);
@@ -788,6 +811,8 @@ dsched_thread_ctx_destroy(struct dsched_thread_ctx *tdctx)
 	}
 	KKASSERT(tdctx->refcount == 0x80000000);
 	TAILQ_REMOVE(&dsched_tdctx_list, tdctx, link);
+
+	lockmgr(&tdctx->lock, LK_RELEASE);
 
 	DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
 
@@ -833,6 +858,9 @@ dsched_thread_io_alloc(struct disk *dp, struct dsched_thread_ctx *tdctx,
 		DSCHED_THREAD_CTX_UNLOCK(tdctx);
 		atomic_set_int(&tdio->flags, DSCHED_LINKED_THREAD_CTX);
 	}
+
+	tdio->debug_policy = pol;
+	tdio->debug_inited = 0xF00F1234;
 
 	atomic_add_int(&dsched_stats.tdio_allocations, 1);
 	return tdio;
@@ -898,12 +926,9 @@ policy_new(struct disk *dp, struct dsched_policy *pol) {
 	dsched_disk_ctx_ref(diskctx);
 	dsched_set_disk_priv(dp, diskctx);
 
-	DSCHED_GLOBAL_THREAD_CTX_LOCK();
 	TAILQ_FOREACH(tdctx, &dsched_tdctx_list, link) {
 		tdio = dsched_thread_io_alloc(dp, tdctx, pol);
 	}
-	DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
-
 }
 
 void

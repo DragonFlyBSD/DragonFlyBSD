@@ -83,6 +83,8 @@
 #define	dsched_get_bio_priv(bio)	((bio)?((bio)->bio_caller_info2.ptr):NULL)
 #define	dsched_set_bio_stime(bio, x)	((bio)->bio_caller_info3.lvalue = (x))
 #define	dsched_get_bio_stime(bio)	((bio)?((bio)->bio_caller_info3.lvalue):0)
+#define	dsched_set_bio_tdio(bio, x)	((bio)->bio_caller_info3.ptr = (x))
+#define	dsched_get_bio_tdio(bio)	((bio)?((bio)->bio_caller_info3.ptr):0)
 
 
 struct dsched_thread_ctx {
@@ -112,6 +114,8 @@ struct dsched_disk_ctx {
 	struct sysctl_ctx_list sysctl_ctx;
 };
 
+struct dsched_policy;
+
 struct dsched_thread_io {
 	TAILQ_ENTRY(dsched_thread_io)	link;
 	TAILQ_ENTRY(dsched_thread_io)	dlink;
@@ -128,6 +132,9 @@ struct dsched_thread_io {
 	struct dsched_disk_ctx	*diskctx;
 	struct dsched_thread_ctx	*tdctx;
 	struct proc		*p;
+	struct dsched_policy	*debug_policy;
+	int			debug_inited;
+	int			debug_priv;
 };
 
 typedef int	dsched_prepare_t(struct dsched_disk_ctx *diskctx);
