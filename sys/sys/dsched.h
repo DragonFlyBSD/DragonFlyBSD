@@ -109,6 +109,9 @@ struct dsched_disk_ctx {
 	int32_t		refcount;
 	int32_t		flags;
 
+	int		max_tag_queue_depth;		/* estimated max tag queue depth */
+	int		current_tag_queue_depth;	/* estimated current tag queue depth */
+
 	struct disk	*dp;		/* back pointer to disk struct */
 
 	struct sysctl_ctx_list sysctl_ctx;
@@ -142,12 +145,14 @@ typedef void	dsched_teardown_t(struct dsched_disk_ctx *diskctx);
 typedef void	dsched_cancel_t(struct dsched_disk_ctx *diskctx);
 typedef int	dsched_queue_t(struct dsched_disk_ctx *diskctx,
 		    struct dsched_thread_io *tdio, struct bio *bio);
+typedef void dsched_dequeue_t(struct dsched_disk_ctx *diskctx);
 
 typedef	void	dsched_new_tdio_t(struct dsched_thread_io *tdio);
 typedef	void	dsched_new_diskctx_t(struct dsched_disk_ctx *diskctx);
 typedef	void	dsched_destroy_tdio_t(struct dsched_thread_io *tdio);
 typedef	void	dsched_destroy_diskctx_t(struct dsched_disk_ctx *diskctx);
-
+typedef void	dsched_bio_done_t(struct bio *bio);
+typedef void	dsched_polling_func_t(struct dsched_disk_ctx *diskctx);
 
 struct dsched_policy {
 	char			name[DSCHED_POLICY_NAME_LENGTH];
@@ -165,6 +170,9 @@ struct dsched_policy {
 	dsched_new_diskctx_t	*new_diskctx;
 	dsched_destroy_tdio_t	*destroy_tdio;
 	dsched_destroy_diskctx_t	*destroy_diskctx;
+
+	dsched_bio_done_t	*bio_done;	/* call back when a bio dispatched by dsched_strategy_request_polling() is done */
+	dsched_polling_func_t	*polling_func; /* it gets called when the disk is idle or about to idle */
 };
 
 TAILQ_HEAD(dsched_policy_head, dsched_policy);
@@ -253,6 +261,7 @@ void	dsched_cancel_bio(struct bio *bp);
 void	dsched_strategy_raw(struct disk *dp, struct bio *bp);
 void	dsched_strategy_sync(struct disk *dp, struct bio *bp);
 void	dsched_strategy_async(struct disk *dp, struct bio *bp, biodone_t *done, void *priv);
+void	dsched_strategy_request_polling(struct disk *bp, struct bio *bio, struct dsched_disk_ctx *diskctx);
 int	dsched_debug(int level, char *fmt, ...) __printflike(2, 3);
 
 void	policy_new(struct disk *dp, struct dsched_policy *pol);

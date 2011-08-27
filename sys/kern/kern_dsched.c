@@ -581,6 +581,68 @@ dsched_strategy_async(struct disk *dp, struct bio *bio, biodone_t *done, void *p
 }
 
 /*
+ * A special bio done call back function
+ * used by policy having request polling implemented.
+ */
+static void
+request_polling_biodone(struct bio *bp)
+{
+	struct dsched_disk_ctx *diskctx = NULL;
+	struct disk *dp = NULL;
+	struct bio *obio;
+	struct dsched_policy *policy;
+
+	dp = dsched_get_bio_dp(bp);
+	policy = dp->d_sched_policy;
+	diskctx = dsched_get_disk_priv(dp);
+	KKASSERT(diskctx && policy);
+	dsched_disk_ctx_ref(diskctx);
+
+	/*
+	 * XXX:
+	 * the bio_done function should not be blocked !
+	 */
+	if (diskctx->dp->d_sched_policy->bio_done)
+		diskctx->dp->d_sched_policy->bio_done(bp);
+
+	obio = pop_bio(bp);
+	biodone(obio);
+
+	atomic_subtract_int(&diskctx->current_tag_queue_depth, 1);
+
+	/* call the polling function,
+	 * XXX:
+	 * the polling function should not be blocked!
+	 */
+	if (policy->polling_func)
+		policy->polling_func(diskctx);
+	else
+		dsched_debug(0, "dsched: the policy uses request polling without a polling function!\n");
+	dsched_disk_ctx_unref(diskctx);
+}
+
+/*
+ * A special dsched strategy used by policy having request polling
+ * (polling function) implemented.
+ *
+ * The strategy is the just like dsched_strategy_async(), but
+ * the biodone call back is set to a preset one.
+ *
+ * If the policy needs its own biodone callback, it should
+ * register it in the policy structure. (bio_done field)
+ *
+ * The current_tag_queue_depth is maintained by this function
+ * and the request_polling_biodone() function
+ */
+
+void
+dsched_strategy_request_polling(struct disk *dp, struct bio *bio, struct dsched_disk_ctx *diskctx)
+{
+	atomic_add_int(&diskctx->current_tag_queue_depth, 1);
+	dsched_strategy_async(dp, bio, request_polling_biodone, dsched_get_bio_priv(bio));
+}
+
+/*
  * Ref and deref various structures.  The 1->0 transition of the reference
  * count actually transitions 1->0x80000000 and causes the object to be
  * destroyed.  It is possible for transitory references to occur on the
@@ -878,6 +940,13 @@ dsched_disk_ctx_alloc(struct disk *dp, struct dsched_policy *pol)
 	diskctx->dp = dp;
 	DSCHED_DISK_CTX_LOCKINIT(diskctx);
 	TAILQ_INIT(&diskctx->tdio_list);
+	/*
+	 * XXX: magic number 32: most device has a tag queue
+	 * of depth 32.
+	 * Better to retrive more precise value from the driver
+	 */
+	diskctx->max_tag_queue_depth = 32;
+	diskctx->current_tag_queue_depth = 0;
 
 	atomic_add_int(&dsched_stats.diskctx_allocations, 1);
 	if (pol->new_diskctx)
