@@ -808,6 +808,13 @@ loop:
 
 	nfound = 0;
 
+	/*
+	 * Loop on children.
+	 *
+	 * NOTE: We don't want to break q's p_token in the loop for the
+	 *	 case where no children are found or we risk breaking the
+	 *	 interlock between child and parent.
+	 */
 	LIST_FOREACH(p, &q->p_children, p_sibling) {
 		if (pid != WAIT_ANY &&
 		    p->p_pid != pid && p->p_pgid != -pid) {
@@ -949,7 +956,8 @@ loop:
 			goto done;
 		}
 		if (p->p_stat == SSTOP && (p->p_flag & P_WAITED) == 0 &&
-		    (p->p_flag & P_TRACED || options & WUNTRACED)) {
+		    ((p->p_flag & P_TRACED) || (options & WUNTRACED))) {
+			lwkt_gettoken(&p->p_token);
 			p->p_flag |= P_WAITED;
 
 			*res = p->p_pid;
@@ -960,9 +968,11 @@ loop:
 			if (rusage)
 				bzero(rusage, sizeof(rusage));
 			error = 0;
+			lwkt_reltoken(&p->p_token);
 			goto done;
 		}
-		if (options & WCONTINUED && (p->p_flag & P_CONTINUED)) {
+		if ((options & WCONTINUED) && (p->p_flag & P_CONTINUED)) {
+			lwkt_gettoken(&p->p_token);
 			*res = p->p_pid;
 			p->p_usched->heuristic_exiting(td->td_lwp, p);
 			p->p_flag &= ~P_CONTINUED;
@@ -970,6 +980,7 @@ loop:
 			if (status)
 				*status = SIGCONT;
 			error = 0;
+			lwkt_reltoken(&p->p_token);
 			goto done;
 		}
 	}

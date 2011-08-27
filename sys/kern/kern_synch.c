@@ -1121,6 +1121,7 @@ tstop(void)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = lp->lwp_proc;
+	struct proc *q;
 
 	crit_enter();
 	/*
@@ -1137,10 +1138,18 @@ tstop(void)
 		lp->lwp_flag |= LWP_WSTOP;
 		wakeup(&p->p_nstopped);
 		if (p->p_nstopped == p->p_nthreads) {
+			/*
+			 * Token required to interlock kern_wait()
+			 */
+			q = p->p_pptr;
+			PHOLD(q);
+			lwkt_gettoken(&q->p_token);
 			p->p_flag &= ~P_WAITED;
 			wakeup(p->p_pptr);
-			if ((p->p_pptr->p_sigacts->ps_flag & PS_NOCLDSTOP) == 0)
-				ksignal(p->p_pptr, SIGCHLD);
+			if ((q->p_sigacts->ps_flag & PS_NOCLDSTOP) == 0)
+				ksignal(q, SIGCHLD);
+			lwkt_reltoken(&q->p_token);
+			PRELE(q);
 		}
 	}
 	while (p->p_stat == SSTOP) {
