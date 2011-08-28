@@ -33,19 +33,13 @@
 #include <string.h>
 #include "convtbl.h"
 
-#define BIT		(8)
-#define BITS		(1)
-#define KILOBIT		(1000LL)
-#define MEGABIT		(KILOBIT * 1000)
-#define GIGABIT		(MEGABIT * 1000)
-#define TERABIT		(GIGABIT * 1000)
+#define KILO		(1000LL)
+#define MEGA		(KILO * 1000)
+#define GIGA		(MEGA * 1000)
+#define TERA		(GIGA * 1000)
 
 #define BYTE		(1)
-#define BYTES		(1)
-#define KILOBYTE	(1024LL)
-#define MEGABYTE	(KILOBYTE * 1024)
-#define GIGABYTE	(MEGABYTE * 1024)
-#define TERABYTE	(GIGABYTE * 1024)
+#define BIT		(8)
 
 struct convtbl {
 	uintmax_t	 mul;
@@ -56,17 +50,19 @@ struct convtbl {
 
 static struct convtbl convtbl[] = {
 	/* mul, scale, str, name */
-	[SC_BYTE] =	{ BYTE, BYTES, "B", "byte" },
-	[SC_KILOBYTE] =	{ BYTE, KILOBYTE, "KB", "kbyte" },
-	[SC_MEGABYTE] =	{ BYTE, MEGABYTE, "MB", "mbyte" },
-	[SC_GIGABYTE] =	{ BYTE, GIGABYTE, "GB", "gbyte" },
-	[SC_TERABYTE] =	{ BYTE, TERABYTE, "TB", "tbyte" },
+	[SC_BYTE] =	{ BYTE, 1, "B", "byte" },
+	[SC_KILOBYTE] =	{ BYTE, KILO, "KB", "kbyte" },
+	[SC_MEGABYTE] =	{ BYTE, MEGA, "MB", "mbyte" },
+	[SC_GIGABYTE] =	{ BYTE, GIGA, "GB", "gbyte" },
+	[SC_TERABYTE] =	{ BYTE, TERA, "TB", "tbyte" },
+	[SC_AUTOBYTE] =	{ BYTE, 0, "", "autobyte" },
 
-	[SC_BIT] =	{ BIT, BITS, "b", "bit" },
-	[SC_KILOBIT] =	{ BIT, KILOBIT, "Kb", "kbit" },
-	[SC_MEGABIT] =	{ BIT, MEGABIT, "Mb", "mbit" },
-	[SC_GIGABIT] =	{ BIT, GIGABIT, "Gb", "gbit" },
-	[SC_TERABIT] =	{ BIT, TERABIT, "Tb", "tbit" },
+	[SC_BIT] =	{ BIT, 1, "b", "bit" },
+	[SC_KILOBIT] =	{ BIT, KILO, "Kb", "kbit" },
+	[SC_MEGABIT] =	{ BIT, MEGA, "Mb", "mbit" },
+	[SC_GIGABIT] =	{ BIT, GIGA, "Gb", "gbit" },
+	[SC_TERABIT] =	{ BIT, TERA, "Tb", "tbit" },
+	[SC_AUTOBIT] =	{ BIT, 0, "", "autobit" },
 
 	[SC_AUTO] =	{ 0, 0, "", "auto" }
 };
@@ -76,21 +72,23 @@ struct convtbl *
 get_tbl_ptr(const uintmax_t size, const int scale)
 {
 	uintmax_t	 tmp;
-	int		 idx;
+	int		 disp_bits, idx;
 
-	/* If our index is out of range, default to auto-scaling. */
-	idx = scale < SC_AUTO ? scale : SC_AUTO;
+	/* If our index is out of range, default to auto-scaling in bits. */
+	idx = scale < SC_AUTOBIT ? scale : SC_AUTOBIT;
+	disp_bits = idx > SC_AUTOBYTE;
 
-	if (idx == SC_AUTO)
+	if (idx == SC_AUTOBYTE || idx == SC_AUTOBIT)
 		/*
 		 * Simple but elegant algorithm.  Count how many times
-		 * we can shift our size value right by a factor of ten,
+		 * we can divide our size value by 1000,
 		 * incrementing an index each time.  We then use the
 		 * index as the array index into the conversion table.
 		 */
-		for (tmp = size, idx = SC_KILOBYTE;
-		     tmp >= MEGABYTE && idx < SC_BIT - 1;
-		     tmp >>= 10, idx++);
+		for (tmp = size, idx = disp_bits ? SC_BIT : SC_BYTE;
+		     tmp >= 1000 / (disp_bits ? BIT : BYTE) &&
+		     idx < (disp_bits ? SC_AUTOBIT : SC_AUTOBYTE) - 1;
+		     tmp /= 1000, idx++);
 
 	return (&convtbl[idx]);
 }

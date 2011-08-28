@@ -123,8 +123,8 @@ static	 u_int getifnum(void);
 #define DOPUTTOTAL(c, r, d)	do {					\
  	CLEAR_COLUMN((r), (c));						\
  	mvprintw((r), (c), "%12.3f %s  ",				\
- 		 convert(d##_##c, SC_AUTO),				\
-		 get_string(d##_##c, SC_AUTO));				\
+		 convert(d##_##c, SC_AUTOBYTE),				\
+		 get_string(d##_##c, SC_AUTOBYTE));			\
 } while (0)
 
 #define PUTRATE(c, r)	do {						\
