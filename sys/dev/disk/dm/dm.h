@@ -165,6 +165,7 @@ typedef struct dm_dev {
 /* Set this device type only during dev remove ioctl. */
 #define DM_DELETING_DEV        (1 << 8) 
 #define DM_CRYPTO_DEV		(1 << 9)
+#define DM_RAID1_DEV		(1 << 10)
 
 /* for zero, error : dm_target->target_config == NULL */
 				
