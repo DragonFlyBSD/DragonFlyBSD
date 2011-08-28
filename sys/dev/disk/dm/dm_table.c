@@ -162,10 +162,10 @@ dm_table_destroy(dm_table_head_t * head, uint8_t table_id)
 	return 0;
 }
 /*
- * Return length of active table in device.
+ * Return length of active or inactive table in device.
  */
-uint64_t
-dm_table_size(dm_table_head_t * head)
+static uint64_t
+_dm_table_size(dm_table_head_t * head, int table)
 {
 	dm_table_t *tbl;
 	dm_table_entry_t *table_en;
@@ -174,7 +174,7 @@ dm_table_size(dm_table_head_t * head)
 
 	length = 0;
 
-	id = dm_table_busy(head, DM_TABLE_ACTIVE);
+	id = dm_table_busy(head, table);
 
 	/* Select active table */
 	tbl = &head->tables[id];
@@ -191,6 +191,19 @@ dm_table_size(dm_table_head_t * head)
 
 	return length;
 }
+
+uint64_t
+dm_table_size(dm_table_head_t *head)
+{
+	return _dm_table_size(head, DM_TABLE_ACTIVE);
+}
+
+uint64_t
+dm_inactive_table_size(dm_table_head_t *head)
+{
+	return _dm_table_size(head, DM_TABLE_INACTIVE);
+}
+
 /*
  * Return > 0 if table is at least one table entry (returns number of entries)
  * and return 0 if there is not. Target count returned from this function
