@@ -25,41 +25,33 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/systat/ifstat.c,v 1.1 2003/01/04 22:07:24 phk Exp $
- * $DragonFly: src/usr.bin/systat/ifstat.c,v 1.5 2008/11/10 04:59:45 swildner Exp $
+ * $FreeBSD: src/usr.bin/systat/ifstat.c,v 1.7 2008/01/12 00:11:26 delphij Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
-#include <sys/time.h>
-#include <sys/queue.h>
 #include <net/if.h>
 #include <net/if_mib.h>
-#include <net/if_types.h>	/* For IFT_ETHER */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <float.h>
 #include <err.h>
 #include <errno.h>
 
 #include "systat.h"
 #include "extern.h"
-#include "mode.h"
 #include "convtbl.h"
 
                                 /* Column numbers */
 
 #define C1	0		/*  0-19 */
-#define C2	20		/* 20-39 */ 
+#define C2	20		/* 20-39 */
 #define C3	40		/* 40-59 */
 #define C4	60		/* 60-80 */
 #define C5	80		/* Used for label positioning. */
 
+static const int col0 = 0;
 static const int col1 = C1;
 static const int col2 = C2;
 static const int col3 = C3;
@@ -67,7 +59,7 @@ static const int col4 = C4;
 static const int col5 = C5;
 
 
-SLIST_HEAD(, if_stat)		curlist;	
+SLIST_HEAD(, if_stat)		curlist;
 SLIST_HEAD(, if_stat_disp)	displist;
 
 struct if_stat {
@@ -87,7 +79,7 @@ struct if_stat {
 
 extern	 u_int curscale;
 
-static	 void  right_align_string(const struct if_stat *);
+static	 void  right_align_string(struct if_stat *);
 static	 void  getifmibdata(const int, struct ifmibdata *);
 static	 void  sort_interface_list(void);
 static	 u_int getifnum(void);
@@ -206,7 +198,7 @@ showifstat(void)
 	return;
 }
 
-int 
+int
 initifstat(void)
 {
 	struct   if_stat *p = NULL;
@@ -219,16 +211,15 @@ initifstat(void)
 	SLIST_INIT(&curlist);
 
 	for (i = 0; i < n; i++) {
-		p = (struct if_stat *)malloc(sizeof(struct if_stat));
+		p = (struct if_stat *)calloc(1, sizeof(struct if_stat));
 		if (p == NULL)
 			IFSTAT_ERR(1, "out of memory");
-		memset((void *)p, 0, sizeof(struct if_stat));
 		SLIST_INSERT_HEAD(&curlist, p, link);
 		p->if_row = i+1;
 		getifmibdata(p->if_row, &p->if_mib);
 		right_align_string(p);
 
-		/* 
+		/*
 		 * Initially, we only display interfaces that have
 		 * received some traffic.
 		 */
@@ -251,11 +242,11 @@ fetchifstat(void)
 	u_int	we_need_to_sort_interface_list = 0;
 
 	SLIST_FOREACH(ifp, &curlist, link) {
-		/* 
+		/*
 		 * Grab a copy of the old input/output values before we
 		 * call getifmibdata().
 		 */
-		old_inb = ifp->if_mib.ifmd_data.ifi_ibytes;		
+		old_inb = ifp->if_mib.ifmd_data.ifi_ibytes;
 		old_outb = ifp->if_mib.ifmd_data.ifi_obytes;
 		ifp->tv_lastchanged = ifp->if_mib.ifmd_data.ifi_lastchange;
 
@@ -271,7 +262,7 @@ fetchifstat(void)
 		if (new_inb > 0 && old_inb == 0) {
 			ifp->display = 1;
 			we_need_to_sort_interface_list++;
-		} 
+		}
 
 		/*
 		 * The rest is pretty trivial.  Calculate the new values
@@ -310,12 +301,12 @@ fetchifstat(void)
 	return;
 }
 
-/* 
+/*
  * We want to right justify our interface names against the first column
  * (first sixteen or so characters), so we need to do some alignment.
  */
 static void
-right_align_string(const struct if_stat *ifp)
+right_align_string(struct if_stat *ifp)
 {
 	int	 str_len = 0, pad_len = 0;
 	char	*newstr = NULL, *ptr = NULL;
@@ -327,7 +318,7 @@ right_align_string(const struct if_stat *ifp)
 		str_len = strlen(ifp->if_mib.ifmd_name)+1;
 		pad_len = IF_NAMESIZE-(str_len);
 
-		newstr = __DECONST(char *, ifp->if_name);
+		newstr = ifp->if_name;
 		ptr = newstr + pad_len;
 		(void)memset((void *)newstr, (int)' ', IF_NAMESIZE);
 		(void)strncpy(ptr, (const char *)&ifp->if_mib.ifmd_name,
@@ -350,7 +341,7 @@ void
 sort_interface_list(void)
 {
 	struct	if_stat	*ifp = NULL;
-	u_int	y = 0;	
+	u_int	y = 0;
 
 	y = STARTING_ROW;
 	SLIST_FOREACH(ifp, &curlist, link) {
@@ -380,7 +371,7 @@ getifnum(void)
 	return data;
 }
 
-static void 
+static void
 getifmibdata(int row, struct ifmibdata *data)
 {
 	size_t	datalen = 0;

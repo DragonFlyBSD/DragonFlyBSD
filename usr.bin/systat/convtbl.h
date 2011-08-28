@@ -25,43 +25,35 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/systat/convtbl.h,v 1.1 2003/01/04 22:07:24 phk Exp $
- * $DragonFly: src/usr.bin/systat/convtbl.h,v 1.2 2008/11/10 04:59:45 swildner Exp $
+ * $FreeBSD: src/usr.bin/systat/convtbl.h,v 1.8 2006/11/27 16:33:44 yar Exp $
  */
 
 #ifndef _CONVTBL_H_
 #define _CONVTBL_H_
 
 #include <sys/types.h>
+#include <stdint.h>
 
-#define BITS	(1)
-#define BYTES	(1)
-#define KILO	(1024)
-#define	MEGA	(KILO * 1024)
-#define GIGA	(MEGA * 1024)
-
-#define SC_BYTE		(0)
-#define SC_KILOBYTE	(1)
-#define SC_MEGABYTE	(2)
-#define SC_GIGABYTE	(3)
-#define SC_BIT		(4)
-#define	SC_KILOBIT	(5)
-#define	SC_MEGABIT	(6)
-#define SC_GIGABIT	(7)
-#define SC_AUTO		(8)
-
-#define BIT	(8)
-#define BYTE	(1)
-
-struct convtbl {
-	u_int	 mul;
-	u_int	 scale;
-	const char *str;
+/*
+ * Keep the order in the enum.
+ */
+enum scale {
+	SC_BYTE,
+	SC_KILOBYTE,
+	SC_MEGABYTE,
+	SC_GIGABYTE,
+	SC_TERABYTE,
+	SC_BIT,
+	SC_KILOBIT,
+	SC_MEGABIT,
+	SC_GIGABIT,
+	SC_TERABIT,
+	SC_AUTO		/* KEEP THIS LAST */
 };
 
-extern	struct convtbl convtbl[];
-
-extern	double 	 convert(const u_long, const u_int);
-extern	const char *get_string(const u_long, const u_int);
+extern	double		 convert(const uintmax_t, const int);
+extern	const char	*get_helplist(void);
+extern	int		 get_scale(const char *);
+extern	const char	*get_string(const uintmax_t, const int);
 
 #endif		/* ! _CONVTBL_H_ */
