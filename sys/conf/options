@@ -575,6 +575,11 @@ HIFN_DEBUG		opt_hifn.h
 HIFN_RNDTEST		opt_hifn.h
 HIFN_NO_RNG		opt_hifn.h
 
+# options for safenet driver
+SAFE_DEBUG		opt_safe.h
+SAFE_NO_RNG		opt_safe.h
+SAFE_RNDTEST		opt_safe.h
+
 # KTR options
 KTR				opt_global.h
 KTR_ENTRIES			opt_global.h
