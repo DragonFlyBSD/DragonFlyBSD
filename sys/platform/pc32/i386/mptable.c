@@ -52,6 +52,7 @@
 #include <sys/mplock2.h>
 
 #include <machine/smp.h>
+#include <machine_base/isa/isa_intr.h>
 #include <machine_base/apic/apicreg.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
@@ -1173,7 +1174,7 @@ mptable_ioapic_probe_callback(void *xarg, const void *pos, int type)
 	}
 
 	/* XXX magic number */
-	if (ent->src_bus_irq >= 16) {
+	if (ent->src_bus_irq >= ISA_IRQ_CNT) {
 		kprintf("mptable_ioapic_probe: invalid ISA irq (%d)\n",
 			ent->src_bus_irq);
 		return EINVAL;

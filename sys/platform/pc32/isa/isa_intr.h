@@ -37,7 +37,11 @@
 #ifndef _ARCH_ISA_ISA_INTR_H_
 #define	_ARCH_ISA_ISA_INTR_H_
 
+#define ISA_IRQ_CNT	16
+
+#ifndef LOCORE
 void	isa_defaultirq(void);
 int	isa_nmi(int);
+#endif
 
 #endif	/* !_ARCH_ISA_ISA_INTR_H_ */

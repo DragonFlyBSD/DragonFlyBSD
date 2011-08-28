@@ -37,6 +37,7 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 
+#include <machine_base/isa/isa_intr.h>
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 
@@ -495,8 +496,7 @@ madt_ioapic_probe_callback(void *xarg, const struct acpi_madt_ent *ent)
 
 		intsrc_ent = (const struct acpi_madt_intsrc *)ent;
 
-		/* XXX magic number */
-		if (intsrc_ent->mint_src >= 16) {
+		if (intsrc_ent->mint_src >= ISA_IRQ_CNT) {
 			kprintf("madt_ioapic_probe: invalid intsrc irq (%d)\n",
 				intsrc_ent->mint_src);
 			return EINVAL;
@@ -587,7 +587,7 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 
 		intsrc_ent = (const struct acpi_madt_intsrc *)ent;
 
-		KKASSERT(intsrc_ent->mint_src < 16);
+		KKASSERT(intsrc_ent->mint_src < ISA_IRQ_CNT);
 		if (intsrc_ent->mint_bus != MADT_INT_BUS_ISA)
 			return 0;
 
