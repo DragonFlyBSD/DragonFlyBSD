@@ -47,23 +47,21 @@
 
 /*
  * NOTE:
- * - Keep size of apic_intmapinfo power of 2
- * - Update IOAPIC_IM_SZSHIFT after changing apic_intmapinfo size
+ * - Keep size of ioapic_irqinfo power of 2
+ * - Update IOAPIC_IRQI_SZSHIFT after changing ioapic_irqinfo size
  */
-struct apic_intmapinfo {
-  	int ioapic;
-	int int_pin;
-	volatile void *apic_address;
-	int redirindex;
-	uint32_t flags;		/* IOAPIC_IM_FLAG_ */
-	uint32_t pad[3];
+struct ioapic_irqinfo {
+	uint32_t	io_flags;	/* IOAPIC_IRQI_FLAG_ */
+	volatile void	*io_addr;
+	int		io_idx;
+	uint32_t 	io_pad;
 };
-#define IOAPIC_IM_SZSHIFT	5
+#define IOAPIC_IRQI_SZSHIFT	4
 
-#define IOAPIC_IM_FLAG_LEVEL	0x1	/* default to edge trigger */
-#define IOAPIC_IM_FLAG_MASKED	0x2
+#define IOAPIC_IRQI_FLAG_LEVEL	0x1	/* default to edge trigger */
+#define IOAPIC_IRQI_FLAG_MASKED	0x2
 
-extern struct apic_intmapinfo	int_to_apicintpin[];
+extern struct ioapic_irqinfo	ioapic_irqs[];
 
 extern struct machintr_abi MachIntrABI_IOAPIC;
 

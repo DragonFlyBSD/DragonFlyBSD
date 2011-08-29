@@ -77,10 +77,10 @@ ENTRY(IOAPIC_INTRDIS)
 	IOAPIC_IMASK_LOCK		/* enter critical reg */
 	movl	4(%esp),%eax
 1:
-	shll	$IOAPIC_IM_SZSHIFT, %eax
-	orl	$IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%eax)
-	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%eax), %edx
-	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%eax), %ecx
+	shll	$IOAPIC_IRQI_SZSHIFT, %eax
+	orl	$IOAPIC_IRQI_FLAG_MASKED, CNAME(ioapic_irqs) + IOAPIC_IRQI_FLAGS(%eax)
+	movl	CNAME(ioapic_irqs) + IOAPIC_IRQI_ADDR(%eax), %edx
+	movl	CNAME(ioapic_irqs) + IOAPIC_IRQI_IDX(%eax), %ecx
 	testl	%edx, %edx
 	jz	2f
 	movl	%ecx, (%edx)		/* target register index */
@@ -94,10 +94,10 @@ ENTRY(IOAPIC_INTREN)
 	IOAPIC_IMASK_LOCK		/* enter critical reg */
 	movl	4(%esp), %eax		/* mask into %eax */
 1:
-	shll	$IOAPIC_IM_SZSHIFT, %eax
-	andl	$~IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%eax)
-	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%eax), %edx
-	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%eax), %ecx
+	shll	$IOAPIC_IRQI_SZSHIFT, %eax
+	andl	$~IOAPIC_IRQI_FLAG_MASKED, CNAME(ioapic_irqs) + IOAPIC_IRQI_FLAGS(%eax)
+	movl	CNAME(ioapic_irqs) + IOAPIC_IRQI_ADDR(%eax), %edx
+	movl	CNAME(ioapic_irqs) + IOAPIC_IRQI_IDX(%eax), %ecx
 	testl	%edx, %edx
 	jz	2f
 	movl	%ecx, (%edx)		/* write the target register index */
