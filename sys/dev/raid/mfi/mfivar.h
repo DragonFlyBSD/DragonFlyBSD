@@ -111,6 +111,7 @@ struct mfi_command {
 struct mfi_disk {
 	TAILQ_ENTRY(mfi_disk)	ld_link;
 	device_t	ld_dev;
+	cdev_t		ld_dev_t;
 	int		ld_id;
 	int		ld_unit;
 	struct mfi_softc *ld_controller;
