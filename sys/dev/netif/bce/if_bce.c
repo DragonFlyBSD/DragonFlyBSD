@@ -5390,6 +5390,12 @@ bce_intr(void *xsc)
 	       BCE_PCICFG_INT_ACK_CMD_USE_INT_HC_PARAM |
 	       BCE_PCICFG_INT_ACK_CMD_MASK_INT);
 
+	/*
+	 * Read back to deassert IRQ immediately to avoid too
+	 * many spurious interrupts.
+	 */
+	REG_RD(sc, BCE_PCICFG_INT_ACK_CMD);
+
 	/* Check if the hardware has finished any work. */
 	hw_rx_cons = bce_get_hw_rx_cons(sc);
 	hw_tx_cons = bce_get_hw_tx_cons(sc);
