@@ -129,10 +129,9 @@ mfi_syspd_attach(device_t dev)
 	    DEVSTAT_TYPE_STORARRAY | DEVSTAT_TYPE_IF_OTHER,
 	    DEVSTAT_PRIORITY_ARRAY);
 
-	sc->pd_disk.d_cdev = disk_create(sc->pd_unit, &sc->pd_disk,
-	    &mfi_syspd_ops);
-	sc->pd_disk.d_cdev->si_drv1 = sc;
-	sc->pd_disk.d_cdev->si_iosize_max = sc->pd_controller->mfi_max_io *
+	sc->pd_dev_t = disk_create(sc->pd_unit, &sc->pd_disk, &mfi_syspd_ops);
+	sc->pd_dev_t->si_drv1 = sc;
+	sc->pd_dev_t->si_iosize_max = sc->pd_controller->mfi_max_io *
 	    secsize;
 
 	bzero(&info, sizeof(info));

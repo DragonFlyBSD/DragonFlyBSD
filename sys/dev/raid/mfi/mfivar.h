@@ -155,6 +155,7 @@ struct mfi_command {
 struct mfi_disk {
 	TAILQ_ENTRY(mfi_disk)	ld_link;
 	device_t	ld_dev;
+	cdev_t		ld_dev_t;
 	int		ld_id;
 	int		ld_unit;
 	struct mfi_softc *ld_controller;
@@ -170,6 +171,7 @@ struct mfi_disk {
 struct mfi_system_pd {
 	TAILQ_ENTRY(mfi_system_pd)	pd_link;
 	device_t	pd_dev;
+	cdev_t		pd_dev_t;
 	int		pd_id;
 	int		pd_unit;
 	struct mfi_softc *pd_controller;

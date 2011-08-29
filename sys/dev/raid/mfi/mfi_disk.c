@@ -174,10 +174,9 @@ mfi_disk_attach(device_t dev)
 	    DEVSTAT_TYPE_STORARRAY | DEVSTAT_TYPE_IF_OTHER,
 	    DEVSTAT_PRIORITY_ARRAY);
 
-	sc->ld_disk.d_cdev = disk_create(sc->ld_unit, &sc->ld_disk,
-	    &mfi_disk_ops);
-	sc->ld_disk.d_cdev->si_drv1 = sc;
-	sc->ld_disk.d_cdev->si_iosize_max =
+	sc->ld_dev_t = disk_create(sc->ld_unit, &sc->ld_disk, &mfi_disk_ops);
+	sc->ld_dev_t->si_drv1 = sc;
+	sc->ld_dev_t->si_iosize_max =
 	    min(sc->ld_controller->mfi_max_io * secsize,
 		(sc->ld_controller->mfi_max_sge - 1) * PAGE_SIZE);
 
