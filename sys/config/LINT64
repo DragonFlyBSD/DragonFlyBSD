@@ -2375,6 +2375,7 @@ options		HIFN_RNDTEST	# enable rndtest support
 
 device		safe		# SafeNet 1141
 options 	SAFE_DEBUG	# enable debugging support: hw.safe.debug
+#options	SAFE_NO_RNG	# for devices without RNG
 options 	SAFE_RNDTEST	# enable rndtest support
 
 device		ubsec		# Broadcom 5501, 5601, 58xx
