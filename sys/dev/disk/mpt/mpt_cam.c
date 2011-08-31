@@ -1239,7 +1239,7 @@ mpt_timeout(void *arg)
 	ccb = (union ccb *)arg;
 	mpt = ccb->ccb_h.ccb_mpt_ptr;
 
-	MPT_LOCK_ASSERT(mpt);
+	MPT_LOCK(mpt);
 	req = ccb->ccb_h.ccb_req_ptr;
 	mpt_prt(mpt, "request %p:%u timed out for ccb %p (req->ccb %p)\n", req,
 	    req->serno, ccb, req->ccb);
@@ -1250,6 +1250,7 @@ mpt_timeout(void *arg)
 		req->state |= REQ_STATE_TIMEDOUT;
 		mpt_wakeup_recovery_thread(mpt);
 	}
+	MPT_UNLOCK(mpt);
 }
 
 /*
