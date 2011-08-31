@@ -45,7 +45,6 @@
 #include <sys/bus.h>
 #endif
 
-#define APIC_INTMAPSIZE 192
 /*
  * NOTE:
  * - Keep size of apic_intmapinfo power of 2

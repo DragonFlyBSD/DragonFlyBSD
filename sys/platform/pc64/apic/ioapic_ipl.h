@@ -30,8 +30,6 @@
 #ifndef _ARCH_APIC_IOAPIC_IPL_H_
 #define	_ARCH_APIC_IOAPIC_IPL_H_
 
-#define IOAPIC_HWI_VECTORS 192
-
 #ifdef LOCORE
 
 /*

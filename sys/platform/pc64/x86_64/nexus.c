@@ -58,8 +58,8 @@
 
 #include <machine/nexusvar.h>
 #include <machine/smp.h>
+#include <machine/intr_machdep.h>
 #include <machine_base/apic/ioapic.h>
-#include <machine_base/apic/ioapic_abi.h>
 
 #define I386_BUS_SPACE_IO       0       /* space is i/o space */
 #define I386_BUS_SPACE_MEM      1       /* space is mem space */
@@ -160,8 +160,11 @@ nexus_probe(device_t dev)
 	irq_rman.rm_type = RMAN_ARRAY;
 	irq_rman.rm_descr = "Interrupt request lines";
 
+	/*
+	 * XXX should use MachIntrABI.rman_setup
+	 */
 	if (ioapic_enable) {
-		irq_rman.rm_end = APIC_INTMAPSIZE - 1;
+		irq_rman.rm_end = IDT_HWI_VECTORS - 1;
 		if (rman_init(&irq_rman)
 		    || rman_manage_region(&irq_rman,
 					  irq_rman.rm_start, irq_rman.rm_end))
