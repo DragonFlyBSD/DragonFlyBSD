@@ -55,6 +55,7 @@
 
 #include <sys/thread2.h>
 
+#include <machine_base/isa/isa_intr.h>
 #include <machine_base/icu/icu.h>
 #include <machine_base/icu/icu_var.h>
 #include <machine_base/apic/ioapic.h>
@@ -739,7 +740,7 @@ ioapic_abi_fixup_irqmap(void)
 {
 	int i;
 
-	for (i = 0; i < 16; ++i) {
+	for (i = 0; i < ISA_IRQ_CNT; ++i) {
 		struct ioapic_irqmap *map = &ioapic_irqmaps[i];
 
 		if (map->im_type == IOAPIC_IMT_UNUSED) {

@@ -31,7 +31,9 @@
 #ifndef _ARCH_ICU_ICU_IPL_H_
 #define	_ARCH_ICU_ICU_IPL_H_
 
-#define ICU_HWI_VECTORS	16
+#include <machine_base/isa/isa_intr.h>
+
+#define ICU_HWI_VECTORS	ISA_IRQ_CNT
 #define ICU_HWI_MASK	((1 << ICU_HWI_VECTORS) - 1)
 
 #ifdef LOCORE

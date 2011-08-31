@@ -33,6 +33,7 @@
 #include <sys/thread2.h>
 
 #include <machine/pmap.h>
+#include <machine_base/isa/isa_intr.h>
 #include <machine_base/icu/icu_var.h>
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
@@ -61,7 +62,7 @@ struct ioapic_intsrc {
 
 struct ioapic_conf {
 	struct ioapic_info_list ioc_list;
-	struct ioapic_intsrc ioc_intsrc[16];	/* XXX magic number */
+	struct ioapic_intsrc ioc_intsrc[ISA_IRQ_CNT];
 };
 
 static int	ioapic_config(void);
@@ -91,8 +92,7 @@ ioapic_config(void)
 	register_t ef = 0;
 
 	TAILQ_INIT(&ioapic_conf.ioc_list);
-	/* XXX magic number */
-	for (i = 0; i < 16; ++i)
+	for (i = 0; i < ISA_IRQ_CNT; ++i)
 		ioapic_conf.ioc_intsrc[i].int_gsi = -1;
 
 	probe = 1;
@@ -133,7 +133,7 @@ ioapic_config(void)
 	TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
 		info->io_idx = i++;
 
-	if (i > IOAPIC_COUNT_MAX) /* XXX magic number */
+	if (i > IOAPIC_COUNT_MAX)
 		panic("ioapic_config: more than 16 I/O APIC\n");
 
 	/*
@@ -270,7 +270,7 @@ ioapic_intsrc(int irq, int gsi, enum intr_trigger trig, enum intr_polarity pola)
 {
 	struct ioapic_intsrc *int_src;
 
-	KKASSERT(irq < 16);
+	KKASSERT(irq < ISA_IRQ_CNT);
 	int_src = &ioapic_conf.ioc_intsrc[irq];
 
 	if (gsi == 0) {
@@ -347,7 +347,7 @@ ioapic_gsi_setup(int gsi)
 		return;
 	}
 
-	for (irq = 0; irq < 16; ++irq) {
+	for (irq = 0; irq < ISA_IRQ_CNT; ++irq) {
 		const struct ioapic_intsrc *int_src =
 		    &ioapic_conf.ioc_intsrc[irq];
 
@@ -358,13 +358,13 @@ ioapic_gsi_setup(int gsi)
 		}
 	}
 
-	if (irq == 16) {
+	if (irq == ISA_IRQ_CNT) {
 		/*
 		 * No explicit IRQ to GSI mapping;
 		 * use the default 1:1 mapping
 		 */
 		irq = gsi;
-		if (irq < 16) {
+		if (irq < ISA_IRQ_CNT) {
 			if (ioapic_conf.ioc_intsrc[irq].int_gsi >= 0) {
 				/*
 				 * This IRQ is mapped to different GSI,

@@ -51,6 +51,7 @@
 #include <sys/kernel.h>
 
 #include <machine_base/icu/elcr_var.h>
+#include <machine_base/isa/isa_intr.h>
 
 #define	ELCR_PORT	0x4d0
 #define	ELCR_MASK(irq)	(1 << (irq))
@@ -85,7 +86,7 @@ enum intr_trigger
 elcr_read_trigger(int irq)
 {
 	KASSERT(elcr_found, ("%s: no ELCR was found!", __func__));
-	KASSERT(irq <= 15, ("%s: invalid IRQ %u", __func__, irq));
+	KASSERT(irq < ISA_IRQ_CNT, ("%s: invalid IRQ %u", __func__, irq));
 	if (elcr_status & ELCR_MASK(irq))
 		return (INTR_TRIGGER_LEVEL);
 	else
@@ -102,7 +103,7 @@ elcr_write_trigger(int irq, enum intr_trigger trigger)
 	int new_status;
 
 	KASSERT(elcr_found, ("%s: no ELCR was found!", __func__));
-	KASSERT(irq <= 15, ("%s: invalid IRQ %u", __func__, irq));
+	KASSERT(irq < ISA_IRQ_CNT, ("%s: invalid IRQ %u", __func__, irq));
 	if (trigger == INTR_TRIGGER_LEVEL)
 		new_status = elcr_status | ELCR_MASK(irq);
 	else
@@ -134,10 +135,10 @@ elcr_dump(void)
 		int i;
 
 		kprintf("ELCR Found.  ISA IRQs programmed as:\n");
-		for (i = 0; i < 16; i++)
+		for (i = 0; i < ISA_IRQ_CNT; i++)
 			kprintf(" %2d", i);
 		kprintf("\n");
-		for (i = 0; i < 16; i++)
+		for (i = 0; i < ISA_IRQ_CNT; i++)
 			if (elcr_status & ELCR_MASK(i))
 				kprintf("  L");
 			else
