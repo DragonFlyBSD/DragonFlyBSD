@@ -239,10 +239,10 @@ ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);
 ASSYM(CPUMASK_BIT, CPUMASK_BIT);
 #endif
 
-ASSYM(IOAPIC_IM_ADDR, offsetof(struct apic_intmapinfo, apic_address));
-ASSYM(IOAPIC_IM_ENTIDX, offsetof(struct apic_intmapinfo, redirindex));
-ASSYM(IOAPIC_IM_FLAGS, offsetof(struct apic_intmapinfo, flags));
-ASSYM(IOAPIC_IM_SIZE, sizeof(struct apic_intmapinfo));
-ASSYM(IOAPIC_IM_SZSHIFT, IOAPIC_IM_SZSHIFT);
-ASSYM(IOAPIC_IM_FLAG_LEVEL, IOAPIC_IM_FLAG_LEVEL);
-ASSYM(IOAPIC_IM_FLAG_MASKED, IOAPIC_IM_FLAG_MASKED);
+ASSYM(IOAPIC_IRQI_ADDR, offsetof(struct ioapic_irqinfo, io_addr));
+ASSYM(IOAPIC_IRQI_IDX, offsetof(struct ioapic_irqinfo, io_idx));
+ASSYM(IOAPIC_IRQI_FLAGS, offsetof(struct ioapic_irqinfo, io_flags));
+ASSYM(IOAPIC_IRQI_SIZE, sizeof(struct ioapic_irqinfo));
+ASSYM(IOAPIC_IRQI_SZSHIFT, IOAPIC_IRQI_SZSHIFT);
+ASSYM(IOAPIC_IRQI_FLAG_LEVEL, IOAPIC_IRQI_FLAG_LEVEL);
+ASSYM(IOAPIC_IRQI_FLAG_MASKED, IOAPIC_IRQI_FLAG_MASKED);
