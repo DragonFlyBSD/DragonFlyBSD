@@ -1,5 +1,6 @@
 /* Interface for common GDB/MI data
-   Copyright (C) 2005, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2005, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -19,8 +20,9 @@
 #ifndef MI_COMMON_H
 #define MI_COMMON_H
 
-/* Represents the reason why GDB is sending an asynchronous command to the
-   front end.  NOTE: When modifing this, don't forget to update gdb.texinfo!  */
+/* Represents the reason why GDB is sending an asynchronous command to
+   the front end.  NOTE: When modifing this, don't forget to update
+   gdb.texinfo!  */
 enum async_reply_reason
 {
   EXEC_ASYNC_BREAKPOINT_HIT = 0,

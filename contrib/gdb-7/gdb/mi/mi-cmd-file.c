@@ -1,5 +1,5 @@
 /* MI Command Set - breakpoint and watchpoint commands.
-   Copyright (C) 2000, 2001, 2002, 2007, 2008, 2009, 2010
+   Copyright (C) 2000, 2001, 2002, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
    Contributed by Cygnus Solutions (a Red Hat company).
 
@@ -35,8 +35,8 @@ mi_cmd_file_list_exec_source_file (char *command, char **argv, int argc)
 {
   struct symtab_and_line st;
   
-  if (!mi_valid_noargs ("mi_cmd_file_list_exec_source_file", argc, argv))
-    error (_("mi_cmd_file_list_exec_source_file: Usage: No args"));
+  if (!mi_valid_noargs ("-file-list-exec-source-file", argc, argv))
+    error (_("-file-list-exec-source-file: Usage: No args"));
 
   /* Set the default file and line, also get them */
   set_default_source_symtab_and_line ();
@@ -46,7 +46,7 @@ mi_cmd_file_list_exec_source_file (char *command, char **argv, int argc)
      Apparently, filename does not need to be tested for NULL.
      The documentation in symtab.h suggests it will always be correct */
   if (!st.symtab)
-    error (_("mi_cmd_file_list_exec_source_file: No symtab"));
+    error (_("-file-list-exec-source-file: No symtab"));
 
   /* Extract the fullname if it is not known yet */
   symtab_to_fullname (st.symtab);
@@ -83,8 +83,8 @@ mi_cmd_file_list_exec_source_files (char *command, char **argv, int argc)
   struct symtab *s;
   struct objfile *objfile;
 
-  if (!mi_valid_noargs ("mi_cmd_file_list_exec_source_files", argc, argv))
-    error (_("mi_cmd_file_list_exec_source_files: Usage: No args"));
+  if (!mi_valid_noargs ("-file-list-exec-source-files", argc, argv))
+    error (_("-file-list-exec-source-files: Usage: No args"));
 
   /* Print the table header */
   ui_out_begin (uiout, ui_out_type_list, "files");

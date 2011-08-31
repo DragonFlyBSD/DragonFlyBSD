@@ -1,6 +1,6 @@
 /* BFD support for the Intel 386 architecture.
    Copyright 1992, 1994, 1995, 1996, 1998, 2000, 2001, 2002, 2004, 2005,
-   2007, 2009
+   2007, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -24,6 +24,35 @@
 #include "bfd.h"
 #include "libbfd.h"
 
+static const bfd_arch_info_type *
+bfd_i386_compatible (const bfd_arch_info_type *a,
+		     const bfd_arch_info_type *b)
+{
+  const bfd_arch_info_type *compat = bfd_default_compatible (a, b);
+
+  /* Don't allow mixing x64_32 with x86_64.  */
+  if (compat && a->bits_per_address != b->bits_per_address)
+    compat = NULL;
+
+  return compat;
+}
+
+static const bfd_arch_info_type bfd_x64_32_arch_intel_syntax =
+{
+  64, /* 64 bits in a word */
+  32, /* 32 bits in an address */
+  8,  /* 8 bits in a byte */
+  bfd_arch_i386,
+  bfd_mach_x64_32_intel_syntax,
+  "i386:intel",
+  "i386:x64-32:intel",
+  3,
+  FALSE,
+  bfd_i386_compatible,
+  bfd_default_scan,
+  0
+};
+
 static const bfd_arch_info_type bfd_x86_64_arch_intel_syntax =
 {
   64, /* 64 bits in a word */
@@ -35,9 +64,9 @@ static const bfd_arch_info_type bfd_x86_64_arch_intel_syntax =
   "i386:x86-64:intel",
   3,
   FALSE,
-  bfd_default_compatible,
+  bfd_i386_compatible,
   bfd_default_scan,
-  0
+  &bfd_x64_32_arch_intel_syntax,
 };
 
 static const bfd_arch_info_type bfd_i386_arch_intel_syntax =
@@ -51,7 +80,7 @@ static const bfd_arch_info_type bfd_i386_arch_intel_syntax =
   "i386:intel",
   3,
   TRUE,
-  bfd_default_compatible,
+  bfd_i386_compatible,
   bfd_default_scan,
   &bfd_x86_64_arch_intel_syntax
 };
@@ -67,9 +96,25 @@ static const bfd_arch_info_type i8086_arch =
   "i8086",
   3,
   FALSE,
-  bfd_default_compatible,
+  bfd_i386_compatible,
   bfd_default_scan,
   &bfd_i386_arch_intel_syntax
+};
+
+static const bfd_arch_info_type bfd_x64_32_arch =
+{
+  64, /* 64 bits in a word */
+  32, /* 32 bits in an address */
+  8,  /* 8 bits in a byte */
+  bfd_arch_i386,
+  bfd_mach_x64_32,
+  "i386",
+  "i386:x64-32",
+  3,
+  FALSE,
+  bfd_i386_compatible,
+  bfd_default_scan,
+  &i8086_arch
 };
 
 static const bfd_arch_info_type bfd_x86_64_arch =
@@ -83,9 +128,9 @@ static const bfd_arch_info_type bfd_x86_64_arch =
   "i386:x86-64",
   3,
   FALSE,
-  bfd_default_compatible,
+  bfd_i386_compatible,
   bfd_default_scan,
-  &i8086_arch
+  &bfd_x64_32_arch
 };
 
 const bfd_arch_info_type bfd_i386_arch =
@@ -99,7 +144,7 @@ const bfd_arch_info_type bfd_i386_arch =
   "i386",
   3,
   TRUE,
-  bfd_default_compatible,
+  bfd_i386_compatible,
   bfd_default_scan,
   &bfd_x86_64_arch
 };

@@ -1,6 +1,6 @@
 /* Shared library declarations for GDB, the GNU Debugger.
    Copyright (C) 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000,
-   2001, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   2001, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -39,7 +39,7 @@ struct so_list
     /* A pointer to target specific link map information.  Often this
        will be a copy of struct link_map from the user process, but
        it need not be; it can be any collection of data needed to
-       traverse the dynamic linker's data structures. */
+       traverse the dynamic linker's data structures.  */
     struct lm_info *lm_info;
 
     /* Shared object file name, exactly as it appears in the
@@ -49,7 +49,7 @@ struct so_list
        map we've already loaded.  */
     char so_original_name[SO_NAME_MAX_PATH_SIZE];
 
-    /* shared object file name, expanded to something GDB can open */
+    /* Shared object file name, expanded to something GDB can open.  */
     char so_name[SO_NAME_MAX_PATH_SIZE];
 
     /* Program space this shared library belongs to.  */
@@ -62,7 +62,7 @@ struct so_list
        current_sos must initialize these fields to 0.  */
 
     bfd *abfd;
-    char symbols_loaded;	/* flag: symbols read in yet? */
+    char symbols_loaded;	/* flag: symbols read in yet?  */
 
     /* objfile with symbols for a loaded library.  Target memory is read from
        ABFD.  OBJFILE may be NULL either before symbols have been loaded, if
@@ -85,8 +85,8 @@ struct target_so_ops
     void (*relocate_section_addresses) (struct so_list *so,
                                         struct target_section *);
 
-    /* Free the the link map info and any other private data
-       structures associated with a so_list entry.  */
+    /* Free the link map info and any other private data structures
+       associated with a so_list entry.  */
     void (*free_so) (struct so_list *so);
 
     /* Reset or free private data structures not associated with
@@ -107,13 +107,13 @@ struct target_so_ops
     int (*open_symbol_file_object) (void *from_ttyp);
 
     /* Determine if PC lies in the dynamic symbol resolution code of
-       the run time loader */
+       the run time loader.  */
     int (*in_dynsym_resolve_code) (CORE_ADDR pc);
 
     /* Find and open shared library binary file.  */
     bfd *(*bfd_open) (char *pathname);
 
-    /* Extra hook for finding and opening a solib.  
+    /* Extra hook for finding and opening a solib.
        Convenience function for remote debuggers finding host libs.  */
     int (*find_and_open_solib) (char *soname,
         unsigned o_flags, char **temp_pathname);
@@ -154,7 +154,7 @@ extern bfd *solib_bfd_fopen (char *pathname, int fd);
 /* Find solib binary file and open it.  */
 extern bfd *solib_bfd_open (char *in_pathname);
 
-/* FIXME: gdbarch needs to control this variable */
+/* FIXME: gdbarch needs to control this variable.  */
 extern struct target_so_ops *current_target_so_ops;
 
 /* Handler for library-specific global symbol lookup in solib.c.  */

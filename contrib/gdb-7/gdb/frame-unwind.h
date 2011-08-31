@@ -1,6 +1,6 @@
 /* Definitions for a frame unwinder, for GDB, the GNU debugger.
 
-   Copyright (C) 2003, 2004, 2007, 2008, 2009, 2010
+   Copyright (C) 2003, 2004, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -33,8 +33,8 @@ struct value;
 
 /* The following unwind functions assume a chain of frames forming the
    sequence: (outer) prev <-> this <-> next (inner).  All the
-   functions are called with the next frame's `struct frame_info'
-   and this frame's prologue cache.
+   functions are called with this frame's `struct frame_info' and
+   prologue cache.
 
    THIS frame's register values can be obtained by unwinding NEXT
    frame's registers (a recursive operation).
@@ -51,12 +51,22 @@ typedef int (frame_sniffer_ftype) (const struct frame_unwind *self,
 				   struct frame_info *this_frame,
 				   void **this_prologue_cache);
 
+typedef enum unwind_stop_reason (frame_unwind_stop_reason_ftype)
+  (struct frame_info *this_frame, void **this_prologue_cache);
+
 /* A default frame sniffer which always accepts the frame.  Used by
    fallback prologue unwinders.  */
 
 int default_frame_sniffer (const struct frame_unwind *self,
 			   struct frame_info *this_frame,
 			   void **this_prologue_cache);
+
+/* A default stop_reason callback which always claims the frame is
+   unwindable.  */
+
+enum unwind_stop_reason
+  default_frame_unwind_stop_reason (struct frame_info *this_frame,
+				    void **this_cache);
 
 /* Assuming the frame chain: (outer) prev <-> this <-> next (inner);
    use THIS frame, and through it the NEXT frame's register unwind
@@ -136,6 +146,7 @@ struct frame_unwind
   enum frame_type type;
   /* Should an attribute indicating the frame's address-in-block go
      here?  */
+  frame_unwind_stop_reason_ftype *stop_reason;
   frame_this_id_ftype *this_id;
   frame_prev_register_ftype *prev_register;
   const struct frame_data *unwind_data;
@@ -148,10 +159,10 @@ struct frame_unwind
    search list (so it is sniffed before previously registered
    unwinders).  By using a prepend, later calls can install unwinders
    that override earlier calls.  This allows, for instance, an OSABI
-   to install a a more specific sigtramp unwinder that overrides the
+   to install a more specific sigtramp unwinder that overrides the
    traditional brute-force unwinder.  */
-extern void frame_unwind_prepend_unwinder (struct gdbarch *gdbarch,
-					   const struct frame_unwind *unwinder);
+extern void frame_unwind_prepend_unwinder (struct gdbarch *,
+					   const struct frame_unwind *);
 
 /* Add a frame sniffer to the list.  The predicates are polled in the
    order that they are appended.  The initial list contains the dummy
@@ -160,11 +171,12 @@ extern void frame_unwind_prepend_unwinder (struct gdbarch *gdbarch,
 extern void frame_unwind_append_unwinder (struct gdbarch *gdbarch,
 					  const struct frame_unwind *unwinder);
 
-/* Iterate through sniffers for THIS frame until one returns with an
-   unwinder implementation.  Possibly initialize THIS_CACHE.  */
+/* Iterate through sniffers for THIS_FRAME frame until one returns with an
+   unwinder implementation.  THIS_FRAME->UNWIND must be NULL, it will get set
+   by this function.  Possibly initialize THIS_CACHE.  */
 
-extern const struct frame_unwind *frame_unwind_find_by_frame (struct frame_info *this_frame,
-							      void **this_cache);
+extern void frame_unwind_find_by_frame (struct frame_info *this_frame,
+					void **this_cache);
 
 /* Helper functions for value-based register unwinding.  These return
    a (possibly lazy) value of the appropriate type.  */

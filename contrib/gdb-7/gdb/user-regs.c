@@ -1,6 +1,6 @@
 /* User visible, per-frame registers, for GDB, the GNU debugger.
 
-   Copyright (C) 2002, 2003, 2004, 2007, 2008, 2009, 2010
+   Copyright (C) 2002, 2003, 2004, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    Contributed by Red Hat.
@@ -77,7 +77,9 @@ append_user_reg (struct gdb_user_regs *regs, const char *name,
 
 /* An array of the builtin user registers.  */
 
-static struct gdb_user_regs builtin_user_regs = { NULL, &builtin_user_regs.first };
+static struct gdb_user_regs builtin_user_regs = {
+  NULL, &builtin_user_regs.first
+};
 
 void
 user_reg_add_builtin (const char *name, user_reg_read_ftype *read,

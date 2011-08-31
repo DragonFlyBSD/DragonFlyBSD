@@ -118,6 +118,10 @@
    */
 #undef HAVE_DECL_GETOPT
 
+/* Define to 1 if you have the declaration of `getthrds', and to 0 if you
+   don't. */
+#undef HAVE_DECL_GETTHRDS
+
 /* Define to 1 if you have the declaration of `malloc', and to 0 if you don't.
    */
 #undef HAVE_DECL_MALLOC
@@ -189,9 +193,6 @@
 
 /* Define if <sys/procfs.h> has gregset_t. */
 #undef HAVE_GREGSET_T
-
-/* Define if you have HPUX threads */
-#undef HAVE_HPUX_THREAD_SUPPORT
 
 /* Define if you have the iconv() function. */
 #undef HAVE_ICONV
@@ -461,6 +462,9 @@
 /* Define to 1 if you have the `realpath' function. */
 #undef HAVE_REALPATH
 
+/* Define to 1 if you have the `resize_term' function. */
+#undef HAVE_RESIZE_TERM
+
 /* Define to 1 if you have the `sbrk' function. */
 #undef HAVE_SBRK
 
@@ -673,6 +677,9 @@
 /* Define to 1 if you have the <vfork.h> header file. */
 #undef HAVE_VFORK_H
 
+/* Define to 1 if you have the `waitpid' function. */
+#undef HAVE_WAITPID
+
 /* Define to 1 if you have the <wait.h> header file. */
 #undef HAVE_WAIT_H
 
@@ -693,6 +700,9 @@
 
 /* Define to 1 if `vfork' works. */
 #undef HAVE_WORKING_VFORK
+
+/* Define to 1 if you have the `wresize' function. */
+#undef HAVE_WRESIZE
 
 /* Define to 1 if you have the `XML_StopParser' function. */
 #undef HAVE_XML_STOPPARSER

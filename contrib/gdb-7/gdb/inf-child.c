@@ -2,7 +2,7 @@
    Unix.
 
    Copyright (C) 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1998,
-   1999, 2000, 2001, 2002, 2004, 2005, 2007, 2008, 2009, 2010
+   1999, 2000, 2001, 2002, 2004, 2005, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -87,71 +87,10 @@ inf_child_post_startup_inferior (ptid_t ptid)
      inferior" operation by a debugger.  */
 }
 
-static void
-inf_child_acknowledge_created_inferior (int pid)
-{
-  /* This version of Unix doesn't require a meaningful "acknowledge
-     created inferior" operation by a debugger.  */
-}
-
-static void
-inf_child_insert_fork_catchpoint (int pid)
-{
-  /* This version of Unix doesn't support notification of fork
-     events.  */
-}
-
-static int
-inf_child_remove_fork_catchpoint (int pid)
-{
-  /* This version of Unix doesn't support notification of fork
-     events.  */
-  return 0;
-}
-
-static void
-inf_child_insert_vfork_catchpoint (int pid)
-{
-  /* This version of Unix doesn't support notification of vfork
-     events.  */
-}
-
-static int
-inf_child_remove_vfork_catchpoint (int pid)
-{
-  /* This version of Unix doesn't support notification of vfork
-     events.  */
-  return 0;
-}
-
 static int
 inf_child_follow_fork (struct target_ops *ops, int follow_child)
 {
   /* This version of Unix doesn't support following fork or vfork
-     events.  */
-  return 0;
-}
-
-static void
-inf_child_insert_exec_catchpoint (int pid)
-{
-  /* This version of Unix doesn't support notification of exec
-     events.  */
-}
-
-static int
-inf_child_remove_exec_catchpoint (int pid)
-{
-  /* This version of Unix doesn't support notification of exec
-     events.  */
-  return 0;
-}
-
-static int
-inf_child_set_syscall_catchpoint (int pid, int needed, int any_count,
-				  int table_size, int *table)
-{
-  /* This version of Unix doesn't support notification of syscall
      events.  */
   return 0;
 }
@@ -192,15 +131,7 @@ inf_child_target (void)
   t->to_terminal_ours = terminal_ours;
   t->to_terminal_info = child_terminal_info;
   t->to_post_startup_inferior = inf_child_post_startup_inferior;
-  t->to_acknowledge_created_inferior = inf_child_acknowledge_created_inferior;
-  t->to_insert_fork_catchpoint = inf_child_insert_fork_catchpoint;
-  t->to_remove_fork_catchpoint = inf_child_remove_fork_catchpoint;
-  t->to_insert_vfork_catchpoint = inf_child_insert_vfork_catchpoint;
-  t->to_remove_vfork_catchpoint = inf_child_remove_vfork_catchpoint;
   t->to_follow_fork = inf_child_follow_fork;
-  t->to_insert_exec_catchpoint = inf_child_insert_exec_catchpoint;
-  t->to_remove_exec_catchpoint = inf_child_remove_exec_catchpoint;
-  t->to_set_syscall_catchpoint = inf_child_set_syscall_catchpoint;
   t->to_can_run = inf_child_can_run;
   t->to_pid_to_exec_file = inf_child_pid_to_exec_file;
   t->to_stratum = process_stratum;

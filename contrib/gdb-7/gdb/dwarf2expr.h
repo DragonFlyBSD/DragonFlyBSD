@@ -1,6 +1,6 @@
 /* DWARF 2 Expression Evaluator.
 
-   Copyright (C) 2001, 2002, 2003, 2005, 2007, 2008, 2009, 2010
+   Copyright (C) 2001, 2002, 2003, 2005, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    Contributed by Daniel Berlin <dan@dberlin.org>.
@@ -41,7 +41,10 @@ enum dwarf_value_location
   DWARF_VALUE_LITERAL,
 
   /* The piece was optimized out.  */
-  DWARF_VALUE_OPTIMIZED_OUT
+  DWARF_VALUE_OPTIMIZED_OUT,
+
+  /* The piece is an implicit pointer.  */
+  DWARF_VALUE_IMPLICIT_POINTER
 };
 
 /* The dwarf expression stack.  */
@@ -96,6 +99,9 @@ struct dwarf_expr_context
   /* Return the CFA for the frame.  */
   CORE_ADDR (*get_frame_cfa) (void *baton);
 
+  /* Return the PC for the frame.  */
+  CORE_ADDR (*get_frame_pc) (void *baton);
+
   /* Return the thread-local storage address for
      DW_OP_GNU_push_tls_address.  */
   CORE_ADDR (*get_tls_address) (void *baton, CORE_ADDR offset);
@@ -120,8 +126,9 @@ struct dwarf_expr_context
   /* Location of the value.  */
   enum dwarf_value_location location;
 
-  /* For VALUE_LITERAL, a the current literal value's length and
-     data.  */
+  /* For DWARF_VALUE_LITERAL, the current literal value's length and
+     data.  For DWARF_VALUE_IMPLICIT_POINTER, LEN is the offset of the
+     target DIE.  */
   ULONGEST len;
   const gdb_byte *data;
 
@@ -185,6 +192,15 @@ struct dwarf_expr_piece
       /* The length of the available data.  */
       ULONGEST length;
     } literal;
+
+    /* Used for DWARF_VALUE_IMPLICIT_POINTER.  */
+    struct
+    {
+      /* The referent DIE from DW_OP_GNU_implicit_pointer.  */
+      ULONGEST die;
+      /* The byte offset into the resulting data.  */
+      LONGEST offset;
+    } ptr;
   } v;
 
   /* The length of the piece, in bits.  */
@@ -213,7 +229,7 @@ const gdb_byte *read_uleb128 (const gdb_byte *buf, const gdb_byte *buf_end,
 const gdb_byte *read_sleb128 (const gdb_byte *buf, const gdb_byte *buf_end,
 			      LONGEST * r);
 
-const char *dwarf_stack_op_name (unsigned int, int);
+const char *dwarf_stack_op_name (unsigned int);
 
 void dwarf_expr_require_composition (const gdb_byte *, const gdb_byte *,
 				     const char *);

@@ -1,6 +1,7 @@
 /* Signal trampoline unwinder, for GDB the GNU Debugger.
 
-   Copyright (C) 2004, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2004, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -162,6 +163,7 @@ tramp_frame_prepend_unwinder (struct gdbarch *gdbarch,
   unwinder->type = tramp_frame->frame_type;
   unwinder->unwind_data = data;
   unwinder->sniffer = tramp_frame_sniffer;
+  unwinder->stop_reason = default_frame_unwind_stop_reason;
   unwinder->this_id = tramp_frame_this_id;
   unwinder->prev_register = tramp_frame_prev_register;
   frame_unwind_prepend_unwinder (gdbarch, unwinder);

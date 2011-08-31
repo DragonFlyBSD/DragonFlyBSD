@@ -1,6 +1,6 @@
 /* Definitions for symbol-reading containing "stabs", for GDB.
    Copyright (C) 1992, 1993, 1995, 1996, 1997, 1999, 2000, 2007, 2008, 2009,
-   2010 Free Software Foundation, Inc.
+   2010, 2011 Free Software Foundation, Inc.
    Contributed by Cygnus Support.  Written by John Gilmore.
 
    This file is part of GDB.
@@ -36,7 +36,7 @@ struct stab_section_info
   {
     char *filename;
     struct stab_section_info *next;
-    int found;			/* Count of times it's found in searching */
+    int found;			/* Count of times it's found in searching.  */
     size_t num_sections;
     CORE_ADDR sections[1];
   };
@@ -54,10 +54,11 @@ struct dbx_symfile_info
     int stringtab_size;		/* Its size */
     file_ptr symtab_offset;	/* Offset in file to symbol table */
     int symbol_size;		/* Bytes in a single symbol */
-    struct stab_section_info *stab_section_info;	/* section starting points
-							   of the original .o files before linking. */
+    struct stab_section_info *stab_section_info;    /* Section starting points
+						       of the original .o files
+						       before linking.  */
 
-    /* See stabsread.h for the use of the following. */
+    /* See stabsread.h for the use of the following.  */
     struct header_file *header_files;
     int n_header_files;
     int n_allocated_header_files;

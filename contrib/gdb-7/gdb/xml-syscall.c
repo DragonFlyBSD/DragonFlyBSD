@@ -1,7 +1,7 @@
 /* Functions that provide the mechanism to parse a syscall XML file
    and get its values.
 
-   Copyright (C) 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -195,6 +195,7 @@ syscall_start_syscall (struct gdb_xml_parser *parser,
                         _("Unknown attribute name '%s'."), attrs[i].name);
     }
 
+  gdb_assert (name);
   syscall_create_syscall_desc (data->sysinfo, name, number);
 }
 
@@ -224,17 +225,13 @@ syscall_parse_xml (const char *document, xml_fetch_another fetcher,
                    void *fetcher_baton)
 {
   struct cleanup *result_cleanup;
-  struct gdb_xml_parser *parser;
   struct syscall_parsing_data data;
 
-  parser = gdb_xml_create_parser_and_cleanup (_("syscalls info"),
-					      syselements, &data);
-
-  memset (&data, 0, sizeof (struct syscall_parsing_data));
   data.sysinfo = allocate_syscalls_info ();
   result_cleanup = make_cleanup_free_syscalls_info (data.sysinfo);
 
-  if (gdb_xml_parse (parser, document) == 0)
+  if (gdb_xml_parse_quick (_("syscalls info"), NULL,
+			   syselements, document, &data) == 0)
     {
       /* Parsed successfully.  */
       discard_cleanups (result_cleanup);
@@ -271,7 +268,8 @@ xml_init_syscalls_info (const char *filename)
   if (dirname != NULL)
     make_cleanup (xfree, dirname);
 
-  sysinfo = syscall_parse_xml (full_file, xml_fetch_content_from_file, dirname);
+  sysinfo = syscall_parse_xml (full_file,
+			       xml_fetch_content_from_file, dirname);
   do_cleanups (back_to);
 
   return sysinfo;
@@ -283,7 +281,7 @@ static void
 init_sysinfo (void)
 {
   /* Should we re-read the XML info for this target?  */
-  if (my_gdb_datadir && strcmp (my_gdb_datadir, gdb_datadir) != 0)
+  if (my_gdb_datadir && filename_cmp (my_gdb_datadir, gdb_datadir) != 0)
     {
       /* The data-directory changed from the last time we used it.
 	 It means that we have to re-read the XML info.  */
@@ -305,16 +303,14 @@ init_sysinfo (void)
   if (sysinfo == NULL)
     {
       if (xml_syscall_file)
-	warning (_("\
-Could not load the syscall XML file `%s/%s'."),
+	warning (_("Could not load the syscall XML file `%s/%s'."),
 		 gdb_datadir, xml_syscall_file);
       else
-	warning (_("\
-There is no XML file to open."));
+	warning (_("There is no XML file to open."));
 
-      warning (_("\
-GDB will not be able to display syscall names nor to verify if\n\
-any provided syscall numbers are valid."));
+      warning (_("GDB will not be able to display "
+		 "syscall names nor to verify if\n"
+		 "any provided syscall numbers are valid."));
     }
 
   /* Saving the data-directory used to read this XML info.  */

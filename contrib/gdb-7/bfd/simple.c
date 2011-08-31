@@ -167,17 +167,9 @@ bfd_simple_get_relocated_section_contents (bfd *abfd,
   if ((abfd->flags & (HAS_RELOC | EXEC_P | DYNAMIC)) != HAS_RELOC
       || ! (sec->flags & SEC_RELOC))
     {
-      bfd_size_type amt = sec->rawsize > sec->size ? sec->rawsize : sec->size;
-      bfd_size_type size = sec->rawsize ? sec->rawsize : sec->size;
-
-      if (outbuf == NULL)
-	contents = (bfd_byte *) bfd_malloc (amt);
-      else
-	contents = outbuf;
-
-      if (contents)
-	bfd_get_section_contents (abfd, sec, contents, 0, size);
-
+      contents = outbuf;
+      if (!bfd_get_full_section_contents (abfd, sec, &contents))
+	return NULL;
       return contents;
     }
 

@@ -586,3 +586,114 @@ _bfd_elf_merge_object_attributes (bfd *ibfd, bfd *obfd)
 
   return TRUE;
 }
+
+/* Merge an unknown processor-specific attribute TAG, within the range
+   of known attributes, from IBFD into OBFD; return TRUE if the link
+   is OK, FALSE if it must fail.  */
+
+bfd_boolean
+_bfd_elf_merge_unknown_attribute_low (bfd *ibfd, bfd *obfd, int tag)
+{
+  obj_attribute *in_attr;
+  obj_attribute *out_attr;
+  bfd *err_bfd = NULL;
+  bfd_boolean result = TRUE;
+
+  in_attr = elf_known_obj_attributes_proc (ibfd);
+  out_attr = elf_known_obj_attributes_proc (obfd);
+
+  if (out_attr[tag].i != 0 || out_attr[tag].s != NULL)
+    err_bfd = obfd;
+  else if (in_attr[tag].i != 0 || in_attr[tag].s != NULL)
+    err_bfd = ibfd;
+
+  if (err_bfd != NULL)
+    result
+      = get_elf_backend_data (err_bfd)->obj_attrs_handle_unknown (err_bfd, tag);
+
+  /* Only pass on attributes that match in both inputs.  */
+  if (in_attr[tag].i != out_attr[tag].i
+      || (in_attr[tag].s == NULL) != (out_attr[tag].s == NULL)
+      || (in_attr[tag].s != NULL && out_attr[tag].s != NULL
+	  && strcmp (in_attr[tag].s, out_attr[tag].s) != 0))
+    {
+      out_attr[tag].i = 0;
+      out_attr[tag].s = NULL;
+    }
+
+  return result;
+}
+
+/* Merge the lists of unknown processor-specific attributes, outside
+   the known range, from IBFD into OBFD; return TRUE if the link is
+   OK, FALSE if it must fail.  */
+
+bfd_boolean
+_bfd_elf_merge_unknown_attribute_list (bfd *ibfd, bfd *obfd)
+{
+  obj_attribute_list *in_list;
+  obj_attribute_list *out_list;
+  obj_attribute_list **out_listp;
+  bfd_boolean result = TRUE;
+
+  in_list = elf_other_obj_attributes_proc (ibfd);
+  out_listp = &elf_other_obj_attributes_proc (obfd);
+  out_list = *out_listp;
+
+  for (; in_list || out_list; )
+    {
+      bfd *err_bfd = NULL;
+      int err_tag = 0;
+
+      /* The tags for each list are in numerical order.  */
+      /* If the tags are equal, then merge.  */
+      if (out_list && (!in_list || in_list->tag > out_list->tag))
+	{
+	  /* This attribute only exists in obfd.  We can't merge, and we don't
+	     know what the tag means, so delete it.  */
+	  err_bfd = obfd;
+	  err_tag = out_list->tag;
+	  *out_listp = out_list->next;
+	  out_list = *out_listp;
+	}
+      else if (in_list && (!out_list || in_list->tag < out_list->tag))
+	{
+	  /* This attribute only exists in ibfd. We can't merge, and we don't
+	     know what the tag means, so ignore it.  */
+	  err_bfd = ibfd;
+	  err_tag = in_list->tag;
+	  in_list = in_list->next;
+	}
+      else /* The tags are equal.  */
+	{
+	  /* As present, all attributes in the list are unknown, and
+	     therefore can't be merged meaningfully.  */
+	  err_bfd = obfd;
+	  err_tag = out_list->tag;
+
+	  /*  Only pass on attributes that match in both inputs.  */
+	  if (in_list->attr.i != out_list->attr.i
+	      || (in_list->attr.s == NULL) != (out_list->attr.s == NULL)
+	      || (in_list->attr.s && out_list->attr.s
+		  && strcmp (in_list->attr.s, out_list->attr.s) != 0))
+	    {
+	      /* No match.  Delete the attribute.  */
+	      *out_listp = out_list->next;
+	      out_list = *out_listp;
+	    }
+	  else
+	    {
+	      /* Matched.  Keep the attribute and move to the next.  */
+	      out_list = out_list->next;
+	      in_list = in_list->next;
+	    }
+	}
+
+      if (err_bfd)
+	result = result
+	  && get_elf_backend_data (err_bfd)->obj_attrs_handle_unknown (err_bfd,
+								       err_tag);
+    }
+
+  return result;
+}

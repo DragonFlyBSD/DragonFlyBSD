@@ -1,6 +1,6 @@
 /* MI Command Set for GDB, the GNU debugger.
 
-   Copyright (C) 2000, 2001, 2003, 2007, 2008, 2009, 2010
+   Copyright (C) 2000, 2001, 2003, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions (a Red Hat company).
@@ -47,12 +47,17 @@ struct mi_cmd mi_cmds[] =
   { "break-watch", { NULL, 0 }, mi_cmd_break_watch},
   { "data-disassemble", { NULL, 0 }, mi_cmd_disassemble},
   { "data-evaluate-expression", { NULL, 0 }, mi_cmd_data_evaluate_expression},
-  { "data-list-changed-registers", { NULL, 0 }, mi_cmd_data_list_changed_registers},
+  { "data-list-changed-registers", { NULL, 0 },
+    mi_cmd_data_list_changed_registers},
   { "data-list-register-names", { NULL, 0 }, mi_cmd_data_list_register_names},
-  { "data-list-register-values", { NULL, 0 }, mi_cmd_data_list_register_values},
+  { "data-list-register-values", { NULL, 0 },
+    mi_cmd_data_list_register_values},
   { "data-read-memory", { NULL, 0 }, mi_cmd_data_read_memory},
+  { "data-read-memory-bytes", { NULL, 0 }, mi_cmd_data_read_memory_bytes},
   { "data-write-memory", { NULL, 0 }, mi_cmd_data_write_memory},
-  { "data-write-register-values", { NULL, 0 }, mi_cmd_data_write_register_values},
+  { "data-write-memory-bytes", {NULL, 0}, mi_cmd_data_write_memory_bytes},
+  { "data-write-register-values", { NULL, 0 },
+    mi_cmd_data_write_register_values},
   { "enable-timings", { NULL, 0 }, mi_cmd_enable_timings},
   { "enable-pretty-printing", { NULL, 0 }, mi_cmd_enable_pretty_printing},
   { "environment-cd", { NULL, 0 }, mi_cmd_env_cd},
@@ -73,8 +78,10 @@ struct mi_cmd mi_cmds[] =
   { "exec-until", { "until", 1 }, NULL},
   { "file-exec-and-symbols", { "file", 1 }, NULL },
   { "file-exec-file", { "exec-file", 1 }, NULL },
-  { "file-list-exec-source-file", { NULL, 0 }, mi_cmd_file_list_exec_source_file},
-  { "file-list-exec-source-files", { NULL, 0 }, mi_cmd_file_list_exec_source_files },
+  { "file-list-exec-source-file", { NULL, 0 },
+    mi_cmd_file_list_exec_source_file},
+  { "file-list-exec-source-files", { NULL, 0 },
+    mi_cmd_file_list_exec_source_files },
   { "file-symbol-file", { "symbol-file", 1 }, NULL },
   { "gdb-exit", { NULL, 0 }, mi_cmd_gdb_exit},
   { "gdb-set", { "set", 1 }, NULL },

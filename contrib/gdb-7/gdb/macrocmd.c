@@ -1,5 +1,6 @@
 /* C preprocessor macro expansion commands for GDB.
-   Copyright (C) 2002, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2002, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
    Contributed by Red Hat, Inc.
 
    This file is part of GDB.
@@ -298,7 +299,7 @@ macro_define_command (char *exp, int from_tty)
 	    {
 	      alloced *= 2;
 	      argv = (char **) xrealloc (argv, alloced * sizeof (char *));
-	      /* Must update new_macro as well... */
+	      /* Must update new_macro as well...  */
 	      new_macro.argv = (const char * const *) argv;
 	    }
 	  argv[new_macro.argc] = extract_identifier (&exp, 1);

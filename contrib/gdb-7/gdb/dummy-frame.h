@@ -1,6 +1,6 @@
 /* Code dealing with dummy stack frames, for GDB, the GNU debugger.
 
-   Copyright (C) 2002, 2004, 2007, 2008, 2009, 2010
+   Copyright (C) 2002, 2004, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -23,7 +23,7 @@
 
 #include "frame.h"
 
-struct inferior_thread_state;
+struct infcall_suspend_state;
 struct frame_unwind;
 
 /* Push the information needed to identify, and unwind from, a dummy
@@ -39,7 +39,7 @@ struct frame_unwind;
    be expanded so that it knowns the lower/upper extent of the dummy
    frame's code.  */
 
-extern void dummy_frame_push (struct inferior_thread_state *caller_state,
+extern void dummy_frame_push (struct infcall_suspend_state *caller_state,
                               const struct frame_id *dummy_id);
 
 /* Pop the dummy frame DUMMY_ID, restoring program state to that before the
@@ -56,6 +56,6 @@ extern void dummy_frame_pop (struct frame_id dummy_id);
 /* If the PC falls in a dummy frame, return a dummy frame
    unwinder.  */
 
-extern const struct frame_unwind *const dummy_frame_unwind;
+extern const struct frame_unwind dummy_frame_unwind;
 
 #endif /* !defined (DUMMY_FRAME_H)  */

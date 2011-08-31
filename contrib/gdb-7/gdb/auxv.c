@@ -1,6 +1,6 @@
 /* Auxiliary vector support for GDB, the GNU debugger.
 
-   Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010
+   Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -34,8 +34,8 @@
 #include <fcntl.h>
 
 
-/* This function handles access via /proc/PID/auxv, which is a common method
-   for native targets.  */
+/* This function handles access via /proc/PID/auxv, which is a common
+   method for native targets.  */
 
 static LONGEST
 procfs_xfer_auxv (gdb_byte *readbuf,
@@ -90,35 +90,39 @@ ld_so_xfer_auxv (gdb_byte *readbuf,
   if (MSYMBOL_SIZE (msym) != ptr_size)
     return -1;
 
-  /* POINTER_ADDRESS is a location where the `_dl_auxv' variable resides.
-     DATA_ADDRESS is the inferior value present in `_dl_auxv', therefore the
-     real inferior AUXV address.  */
+  /* POINTER_ADDRESS is a location where the `_dl_auxv' variable
+     resides.  DATA_ADDRESS is the inferior value present in
+     `_dl_auxv', therefore the real inferior AUXV address.  */
 
   pointer_address = SYMBOL_VALUE_ADDRESS (msym);
 
   /* The location of the _dl_auxv symbol may no longer be correct if
-     ld.so runs at a different address than the one present in the file.
-     This is very common case - for unprelinked ld.so or with a PIE executable.
-     PIE executable forces random address even for libraries already being
-     prelinked to some address.  PIE executables themselves are never prelinked
-     even on prelinked systems.  Prelinking of a PIE executable would block
-     their purpose of randomizing load of everything including the executable.
+     ld.so runs at a different address than the one present in the
+     file.  This is very common case - for unprelinked ld.so or with a
+     PIE executable.  PIE executable forces random address even for
+     libraries already being prelinked to some address.  PIE
+     executables themselves are never prelinked even on prelinked
+     systems.  Prelinking of a PIE executable would block their
+     purpose of randomizing load of everything including the
+     executable.
 
-     If the memory read fails, return -1 to fallback on another mechanism for
-     retrieving the AUXV.
+     If the memory read fails, return -1 to fallback on another
+     mechanism for retrieving the AUXV.
 
-     In most cases of a PIE running under valgrind there is no way to find
-     out the base addresses of any of ld.so, executable or AUXV as everything
-     is randomized and /proc information is not relevant for the virtual
-     executable running under valgrind.  We think that we might need a valgrind
-     extension to make it work.  This is PR 11440.  */
+     In most cases of a PIE running under valgrind there is no way to
+     find out the base addresses of any of ld.so, executable or AUXV
+     as everything is randomized and /proc information is not relevant
+     for the virtual executable running under valgrind.  We think that
+     we might need a valgrind extension to make it work.  This is PR
+     11440.  */
 
   if (target_read_memory (pointer_address, ptr_buf, ptr_size) != 0)
     return -1;
 
   data_address = extract_typed_address (ptr_buf, ptr_type);
 
-  /* Possibly still not initialized such as during an inferior startup.  */
+  /* Possibly still not initialized such as during an inferior
+     startup.  */
   if (data_address == 0)
     return -1;
 
@@ -132,8 +136,8 @@ ld_so_xfer_auxv (gdb_byte *readbuf,
 	return -1;
     }
 
-  /* Stop if trying to read past the existing AUXV block.  The final AT_NULL
-     was already returned before.  */
+  /* Stop if trying to read past the existing AUXV block.  The final
+     AT_NULL was already returned before.  */
 
   if (offset >= auxv_pair_size)
     {
@@ -154,9 +158,10 @@ ld_so_xfer_auxv (gdb_byte *readbuf,
       if (block > len)
 	block = len;
 
-      /* Reading sizes smaller than AUXV_PAIR_SIZE is not supported.  Tails
-	 unaligned to AUXV_PAIR_SIZE will not be read during a call (they
-	 should be completed during next read with new/extended buffer).  */
+      /* Reading sizes smaller than AUXV_PAIR_SIZE is not supported.
+	 Tails unaligned to AUXV_PAIR_SIZE will not be read during a
+	 call (they should be completed during next read with
+	 new/extended buffer).  */
 
       block &= -auxv_pair_size;
       if (block == 0)
@@ -174,8 +179,9 @@ ld_so_xfer_auxv (gdb_byte *readbuf,
       data_address += block;
       len -= block;
 
-      /* Check terminal AT_NULL.  This function is being called indefinitely
-         being extended its READBUF until it returns EOF (0).  */
+      /* Check terminal AT_NULL.  This function is being called
+         indefinitely being extended its READBUF until it returns EOF
+         (0).  */
 
       while (block >= auxv_pair_size)
 	{
@@ -207,10 +213,11 @@ memory_xfer_auxv (struct target_ops *ops,
   gdb_assert (object == TARGET_OBJECT_AUXV);
   gdb_assert (readbuf || writebuf);
 
-   /* ld_so_xfer_auxv is the only function safe for virtual executables being
-      executed by valgrind's memcheck.  Using ld_so_xfer_auxv during inferior
-      startup is problematic, because ld.so symbol tables have not yet been
-      relocated.  So GDB uses this function only when attaching to a process.
+   /* ld_so_xfer_auxv is the only function safe for virtual
+      executables being executed by valgrind's memcheck.  Using
+      ld_so_xfer_auxv during inferior startup is problematic, because
+      ld.so symbol tables have not yet been relocated.  So GDB uses
+      this function only when attaching to a process.
       */
 
   if (current_inferior ()->attach_flag != 0)
@@ -308,7 +315,7 @@ target_auxv_search (struct target_ops *ops, CORE_ADDR match, CORE_ADDR *valp)
 }
 
 
-/* Print the contents of the target's AUXV on the specified file. */
+/* Print the contents of the target's AUXV on the specified file.  */
 int
 fprint_target_auxv (struct ui_file *file, struct target_ops *ops)
 {
@@ -401,7 +408,7 @@ fprint_target_auxv (struct ui_file *file, struct target_ops *ops)
 	    if (opts.addressprint)
 	      fprintf_filtered (file, "%s", paddress (target_gdbarch, val));
 	    val_print_string (builtin_type (target_gdbarch)->builtin_char,
-			      val, -1, file, &opts);
+			      NULL, val, -1, file, &opts);
 	    fprintf_filtered (file, "\n");
 	  }
 	  break;

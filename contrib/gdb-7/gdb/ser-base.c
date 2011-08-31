@@ -1,7 +1,8 @@
 /* Generic serial interface functions.
 
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001, 2003,
-   2004, 2005, 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -41,27 +42,27 @@ static handler_func fd_event;
    is constantly scheduling timer events.
 
    ASYNC only stops pestering its client when it is de-async'ed or it
-   is told to go away. */
+   is told to go away.  */
 
 /* Value of scb->async_state: */
 enum {
   /* >= 0 (TIMER_SCHEDULED) */
-  /* The ID of the currently scheduled timer event. This state is
+  /* The ID of the currently scheduled timer event.  This state is
      rarely encountered.  Timer events are one-off so as soon as the
-     event is delivered the state is shanged to NOTHING_SCHEDULED. */
+     event is delivered the state is shanged to NOTHING_SCHEDULED.  */
   FD_SCHEDULED = -1,
   /* The fd_event() handler is scheduled.  It is called when ever the
-     file descriptor becomes ready. */
+     file descriptor becomes ready.  */
   NOTHING_SCHEDULED = -2
   /* Either no task is scheduled (just going into ASYNC mode) or a
      timer event has just gone off and the current state has been
-     forced into nothing scheduled. */
+     forced into nothing scheduled.  */
 };
 
 /* Identify and schedule the next ASYNC task based on scb->async_state
    and scb->buf* (the input FIFO).  A state machine is used to avoid
    the need to make redundant calls into the event-loop - the next
-   scheduled task is only changed when needed. */
+   scheduled task is only changed when needed.  */
 
 static void
 reschedule (struct serial *scb)
@@ -127,7 +128,7 @@ reschedule (struct serial *scb)
    is no pending error).  As soon as data arrives, it is read into the
    input FIFO and the client notified.  The client should then drain
    the FIFO using readchar().  If the FIFO isn't immediatly emptied,
-   push_event() is used to nag the client until it is. */
+   push_event() is used to nag the client until it is.  */
 
 static void
 fd_event (int error, void *context)
@@ -141,7 +142,7 @@ fd_event (int error, void *context)
     {
       /* Prime the input FIFO.  The readchar() function is used to
          pull characters out of the buffer.  See also
-         generic_readchar(). */
+         generic_readchar().  */
       int nr;
       nr = scb->ops->read_prim (scb, BUFSIZ);
       if (nr == 0)
@@ -165,7 +166,7 @@ fd_event (int error, void *context)
 /* PUSH_EVENT: The input FIFO is non-empty (or there is a pending
    error).  Nag the client until all the data has been read.  In the
    case of errors, the client will need to close or de-async the
-   device before naging stops. */
+   device before naging stops.  */
 
 static void
 push_event (void *context)
@@ -179,7 +180,7 @@ push_event (void *context)
 }
 
 /* Wait for input on scb, with timeout seconds.  Returns 0 on success,
-   otherwise SERIAL_TIMEOUT or SERIAL_ERROR. */
+   otherwise SERIAL_TIMEOUT or SERIAL_ERROR.  */
 
 static int
 ser_base_wait_for (struct serial *scb, int timeout)
@@ -192,7 +193,7 @@ ser_base_wait_for (struct serial *scb, int timeout)
 
       /* NOTE: Some OS's can scramble the READFDS when the select()
          call fails (ex the kernel with Red Hat 5.2).  Initialize all
-         arguments before each call. */
+         arguments before each call.  */
 
       tv.tv_sec = timeout;
       tv.tv_usec = 0;
@@ -214,7 +215,8 @@ ser_base_wait_for (struct serial *scb, int timeout)
 	  else if (errno == EINTR)
 	    continue;
 	  else
-	    return SERIAL_ERROR;	/* Got an error from select or poll */
+	    return SERIAL_ERROR;	/* Got an error from select or
+					   poll.  */
 	}
 
       return 0;
@@ -224,7 +226,7 @@ ser_base_wait_for (struct serial *scb, int timeout)
 /* Read a character with user-specified timeout.  TIMEOUT is number of seconds
    to wait, or -1 to wait forever.  Use timeout of 0 to effect a poll.  Returns
    char if successful.  Returns -2 if timeout expired, EOF if line dropped
-   dead, or -3 for any other error (see errno in that case). */
+   dead, or -3 for any other error (see errno in that case).  */
 
 static int
 do_ser_base_readchar (struct serial *scb, int timeout)
@@ -260,12 +262,12 @@ do_ser_base_readchar (struct serial *scb, int timeout)
         timeout -= delta;
 
       /* If we got a character or an error back from wait_for, then we can 
-         break from the loop before the timeout is completed. */
+         break from the loop before the timeout is completed.  */
       if (status != SERIAL_TIMEOUT)
 	break;
 
       /* If we have exhausted the original timeout, then generate
-         a SERIAL_TIMEOUT, and pass it out of the loop. */
+         a SERIAL_TIMEOUT, and pass it out of the loop.  */
       else if (timeout == 0)
 	{
 	  status = SERIAL_TIMEOUT;
@@ -293,7 +295,7 @@ do_ser_base_readchar (struct serial *scb, int timeout)
   return *scb->bufp++;
 }
 
-/* Perform operations common to both old and new readchar. */
+/* Perform operations common to both old and new readchar.  */
 
 /* Return the next character from the input FIFO.  If the FIFO is
    empty, call the SERIAL specific routine to try and read in more
@@ -305,7 +307,7 @@ do_ser_base_readchar (struct serial *scb, int timeout)
    specific readchar() function.  Note: reschedule() is called after
    every read.  This is because there is no guarentee that the lower
    level fd_event() poll_event() code (which also calls reschedule())
-   will be called. */
+   will be called.  */
 
 int
 generic_readchar (struct serial *scb, int timeout,
@@ -320,7 +322,7 @@ generic_readchar (struct serial *scb, int timeout,
     }
   else if (scb->bufcnt < 0)
     {
-      /* Some errors/eof are are sticky. */
+      /* Some errors/eof are are sticky.  */
       ch = scb->bufcnt;
     }
   else
@@ -332,7 +334,7 @@ generic_readchar (struct serial *scb, int timeout,
 	    {
 	    case SERIAL_EOF:
 	    case SERIAL_ERROR:
-	      /* Make the error/eof stick. */
+	      /* Make the error/eof stick.  */
 	      scb->bufcnt = ch;
 	      break;
 	    case SERIAL_TIMEOUT:
@@ -451,13 +453,20 @@ ser_base_drain_output (struct serial *scb)
 void
 ser_base_raw (struct serial *scb)
 {
-  return;			/* Always in raw mode */
+  return;			/* Always in raw mode.  */
 }
 
 serial_ttystate
 ser_base_get_tty_state (struct serial *scb)
 {
-  /* allocate a dummy */
+  /* Allocate a dummy.  */
+  return (serial_ttystate) XMALLOC (int);
+}
+
+serial_ttystate
+ser_base_copy_tty_state (struct serial *scb, serial_ttystate ttystate)
+{
+  /* Allocate another dummy.  */
   return (serial_ttystate) XMALLOC (int);
 }
 
@@ -487,13 +496,13 @@ ser_base_print_tty_state (struct serial *scb,
 int
 ser_base_setbaudrate (struct serial *scb, int rate)
 {
-  return 0;			/* Never fails! */
+  return 0;			/* Never fails!  */
 }
 
 int
 ser_base_setstopbits (struct serial *scb, int num)
 {
-  return 0;			/* Never fails! */
+  return 0;			/* Never fails!  */
 }
 
 /* Put the SERIAL device into/out-of ASYNC mode.  */
@@ -504,7 +513,7 @@ ser_base_async (struct serial *scb,
 {
   if (async_p)
     {
-      /* Force a re-schedule. */
+      /* Force a re-schedule.  */
       scb->async_state = NOTHING_SCHEDULED;
       if (serial_debug_p (scb))
 	fprintf_unfiltered (gdb_stdlog, "[fd%d->asynchronous]\n",
@@ -516,7 +525,7 @@ ser_base_async (struct serial *scb,
       if (serial_debug_p (scb))
 	fprintf_unfiltered (gdb_stdlog, "[fd%d->synchronous]\n",
 			    scb->fd);
-      /* De-schedule whatever tasks are currently scheduled. */
+      /* De-schedule whatever tasks are currently scheduled.  */
       switch (scb->async_state)
 	{
 	case FD_SCHEDULED:

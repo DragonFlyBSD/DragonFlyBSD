@@ -1,5 +1,5 @@
 /* Library interface into GDB.
-   Copyright (C) 1999, 2001, 2007, 2008, 2009, 2010
+   Copyright (C) 1999, 2001, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -32,27 +32,27 @@ enum gdb_rc {
      set to a freshly allocated copy of the error message.  */
   /* NOTE: Since ``defs.h:catch_errors()'' does not return an error /
      internal / quit indication it is not possible to return that
-     here. */
+     here.  */
   GDB_RC_FAIL = 0,
-  /* No error occured but nothing happened. Due to the catch_errors()
-     interface, this must be non-zero. */
+  /* No error occured but nothing happened.  Due to the catch_errors()
+     interface, this must be non-zero.  */
   GDB_RC_NONE = 1,
-  /* The operation was successful. Due to the catch_errors()
-     interface, this must be non-zero. */
+  /* The operation was successful.  Due to the catch_errors()
+     interface, this must be non-zero.  */
   GDB_RC_OK = 2
 };
 
 
-/* Print the specified breakpoint on GDB_STDOUT. (Eventually this
-   function will ``print'' the object on ``output''). */
+/* Print the specified breakpoint on GDB_STDOUT.  (Eventually this
+   function will ``print'' the object on ``output'').  */
 enum gdb_rc gdb_breakpoint_query (struct ui_out *uiout, int bnum,
 				  char **error_message);
 
-/* Switch thread and print notification. */
+/* Switch thread and print notification.  */
 enum gdb_rc gdb_thread_select (struct ui_out *uiout, char *tidstr,
 			       char **error_message);
 
-/* Print a list of known thread ids. */
+/* Print a list of known thread ids.  */
 enum gdb_rc gdb_list_thread_ids (struct ui_out *uiout,
 				 char **error_message);
 

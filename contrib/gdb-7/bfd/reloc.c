@@ -1,6 +1,6 @@
 /* BFD support for handling relocation entries.
    Copyright 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
-   2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
+   2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
    Written by Cygnus Support.
 
@@ -1544,14 +1544,15 @@ _bfd_relocate_contents (reloc_howto_type *howto,
   return flag;
 }
 
-/* Clear a given location using a given howto, by applying a relocation value
-   of zero and discarding any in-place addend.  This is used for fixed-up
+/* Clear a given location using a given howto, by applying a fixed relocation
+   value and discarding any in-place addend.  This is used for fixed-up
    relocations against discarded symbols, to make ignorable debug or unwind
    information more obvious.  */
 
 void
 _bfd_clear_contents (reloc_howto_type *howto,
 		     bfd *input_bfd,
+		     asection *input_section,
 		     bfd_byte *location)
 {
   int size;
@@ -1584,6 +1585,13 @@ _bfd_clear_contents (reloc_howto_type *howto,
 
   /* Zero out the unwanted bits of X.  */
   x &= ~howto->dst_mask;
+
+  /* For a range list, use 1 instead of 0 as placeholder.  0
+     would terminate the list, hiding any later entries.  */
+  if (strcmp (bfd_get_section_name (input_bfd, input_section),
+	      ".debug_ranges") == 0
+      && (howto->dst_mask & 1) != 0)
+    x |= 1;
 
   /* Put the relocated value back in the object file.  */
   switch (size)
@@ -2954,6 +2962,18 @@ ENUMX
   BFD_RELOC_ARM_TLS_IE32
 ENUMX
   BFD_RELOC_ARM_TLS_LE32
+ENUMX
+  BFD_RELOC_ARM_TLS_GOTDESC
+ENUMX
+  BFD_RELOC_ARM_TLS_CALL
+ENUMX
+  BFD_RELOC_ARM_THM_TLS_CALL
+ENUMX
+  BFD_RELOC_ARM_TLS_DESCSEQ
+ENUMX
+  BFD_RELOC_ARM_THM_TLS_DESCSEQ
+ENUMX
+  BFD_RELOC_ARM_TLS_DESC
 ENUMDOC
   ARM thread-local storage relocations.
 
@@ -3022,6 +3042,11 @@ ENUMDOC
   Annotation of BX instructions.
 
 ENUM
+  BFD_RELOC_ARM_IRELATIVE
+ENUMDOC
+  ARM support for STT_GNU_IFUNC.
+
+ENUM
   BFD_RELOC_ARM_IMMEDIATE
 ENUMX
   BFD_RELOC_ARM_ADRL_IMMEDIATE
@@ -3037,6 +3062,8 @@ ENUMX
   BFD_RELOC_ARM_SHIFT_IMM
 ENUMX
   BFD_RELOC_ARM_SMC
+ENUMX
+  BFD_RELOC_ARM_HVC
 ENUMX
   BFD_RELOC_ARM_SWI
 ENUMX
@@ -3723,6 +3750,94 @@ ENUMDOC
   This is a variation of BFD_RELOC_LO16 that can be used in v850e ld.bu
   instructions.
 ENUM
+  BFD_RELOC_V850_16_PCREL
+ENUMDOC
+  This is a 16-bit reloc.
+ENUM     
+  BFD_RELOC_V850_17_PCREL
+ENUMDOC
+  This is a 17-bit reloc.
+ENUM     
+  BFD_RELOC_V850_23
+ENUMDOC
+  This is a 23-bit reloc.
+ENUM     
+  BFD_RELOC_V850_32_PCREL
+ENUMDOC
+  This is a 32-bit reloc.
+ENUM     
+  BFD_RELOC_V850_32_ABS
+ENUMDOC
+  This is a 32-bit reloc.
+ENUM     
+  BFD_RELOC_V850_16_SPLIT_OFFSET
+ENUMDOC
+  This is a 16-bit reloc.
+ENUM     
+  BFD_RELOC_V850_16_S1
+ENUMDOC
+  This is a 16-bit reloc.
+ENUM     
+  BFD_RELOC_V850_LO16_S1
+ENUMDOC
+  Low 16 bits. 16 bit shifted by 1.
+ENUM     
+  BFD_RELOC_V850_CALLT_15_16_OFFSET
+ENUMDOC
+  This is a 16 bit offset from the call table base pointer.
+ENUM     
+  BFD_RELOC_V850_32_GOTPCREL
+ENUMDOC
+  DSO relocations.
+ENUM     
+  BFD_RELOC_V850_16_GOT
+ENUMDOC
+  DSO relocations.
+ENUM     
+  BFD_RELOC_V850_32_GOT
+ENUMDOC
+  DSO relocations.
+ENUM     
+  BFD_RELOC_V850_22_PLT_PCREL
+ENUMDOC
+  DSO relocations.
+ENUM     
+  BFD_RELOC_V850_32_PLT_PCREL
+ENUMDOC
+  DSO relocations.
+ENUM     
+  BFD_RELOC_V850_COPY
+ENUMDOC
+  DSO relocations.
+ENUM     
+  BFD_RELOC_V850_GLOB_DAT
+ENUMDOC
+  DSO relocations.
+ENUM     
+  BFD_RELOC_V850_JMP_SLOT
+ENUMDOC
+  DSO relocations.
+ENUM     
+  BFD_RELOC_V850_RELATIVE
+ENUMDOC
+  DSO relocations.
+ENUM     
+  BFD_RELOC_V850_16_GOTOFF
+ENUMDOC
+  DSO relocations.
+ENUM     
+  BFD_RELOC_V850_32_GOTOFF
+ENUMDOC
+  DSO relocations.
+ENUM     
+  BFD_RELOC_V850_CODE
+ENUMDOC
+  start code.
+ENUM     
+  BFD_RELOC_V850_DATA
+ENUMDOC
+  start data in text.
+ENUM
   BFD_RELOC_MN10300_32_PCREL
 ENUMDOC
   This is a 32bit pcrel reloc for the mn10300, offset by two bytes in the
@@ -3819,6 +3934,14 @@ ENUMX
   BFD_RELOC_C6000_PREL31
 ENUMX
   BFD_RELOC_C6000_COPY
+ENUMX
+  BFD_RELOC_C6000_JUMP_SLOT
+ENUMX
+  BFD_RELOC_C6000_EHTYPE
+ENUMX
+  BFD_RELOC_C6000_PCR_H16
+ENUMX
+  BFD_RELOC_C6000_PCR_L16
 ENUMX
   BFD_RELOC_C6000_ALIGN
 ENUMX
@@ -4160,11 +4283,17 @@ ENUMX
 ENUMX
   BFD_RELOC_RX_OP_SUBTRACT
 ENUMX
+  BFD_RELOC_RX_OP_NEG
+ENUMX
   BFD_RELOC_RX_ABS8
 ENUMX
   BFD_RELOC_RX_ABS16
 ENUMX
+  BFD_RELOC_RX_ABS16_REV
+ENUMX
   BFD_RELOC_RX_ABS32
+ENUMX
+  BFD_RELOC_RX_ABS32_REV
 ENUMX
   BFD_RELOC_RX_ABS16U
 ENUMX
@@ -5484,7 +5613,7 @@ bfd_default_reloc_type_lookup (bfd *abfd, bfd_reloc_code_real_type code)
     case BFD_RELOC_CTOR:
       /* The type of reloc used in a ctor, which will be as wide as the
 	 address - so either a 64, 32, or 16 bitter.  */
-      switch (bfd_get_arch_info (abfd)->bits_per_address)
+      switch (bfd_arch_bits_per_address (abfd))
 	{
 	case 64:
 	  BFD_FAIL ();
@@ -5623,15 +5752,13 @@ bfd_generic_get_relocated_section_contents (bfd *abfd,
   long reloc_size;
   arelent **reloc_vector;
   long reloc_count;
-  bfd_size_type sz;
 
   reloc_size = bfd_get_reloc_upper_bound (input_bfd, input_section);
   if (reloc_size < 0)
     return NULL;
 
   /* Read in the section.  */
-  sz = input_section->rawsize ? input_section->rawsize : input_section->size;
-  if (!bfd_get_section_contents (input_bfd, input_section, data, 0, sz))
+  if (!bfd_get_full_section_contents (input_bfd, input_section, &data))
     return NULL;
 
   if (reloc_size == 0)
@@ -5666,7 +5793,8 @@ bfd_generic_get_relocated_section_contents (bfd *abfd,
 			 "unused", FALSE, 0, 0, FALSE);
 
 	      p = data + (*parent)->address * bfd_octets_per_byte (input_bfd);
-	      _bfd_clear_contents ((*parent)->howto, input_bfd, p);
+	      _bfd_clear_contents ((*parent)->howto, input_bfd, input_section,
+				   p);
 	      (*parent)->sym_ptr_ptr = bfd_abs_section.symbol_ptr_ptr;
 	      (*parent)->addend = 0;
 	      (*parent)->howto = &none_howto;

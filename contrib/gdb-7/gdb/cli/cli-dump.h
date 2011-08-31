@@ -1,6 +1,6 @@
 /* Dump-to-file commands, for GDB, the GNU debugger.
 
-   Copyright (c) 2001, 2005, 2007, 2008, 2009, 2010
+   Copyright (c) 2001, 2005, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -31,7 +31,5 @@ extern char *scan_filename_with_cleanup (char **cmd, const char *defname);
 extern char *scan_expression_with_cleanup (char **cmd, const char *defname);
 
 extern FILE *fopen_with_cleanup (const char *filename, const char *mode);
-
-extern char *skip_spaces (char *inp);
 
 #endif

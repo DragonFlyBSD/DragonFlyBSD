@@ -1,7 +1,7 @@
 /* Cache and manage the values of registers for GDB, the GNU debugger.
 
    Copyright (C) 1986, 1987, 1989, 1991, 1994, 1995, 1996, 1998, 2000, 2001,
-   2002, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   2002, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -40,54 +40,77 @@ extern struct gdbarch *get_regcache_arch (const struct regcache *regcache);
 
 /* Return REGCACHE's address space.  */
 
-extern struct address_space *get_regcache_aspace (const struct regcache *regcache);
+extern struct address_space *get_regcache_aspace (const struct regcache *);
+
+enum register_status
+  {
+    /* The register value is not in the cache, and we don't know yet
+       whether it's available in the target (or traceframe).  */
+    REG_UNKNOWN = 0,
+
+    /* The register value is valid and cached.  */
+    REG_VALID = 1,
+
+    /* The register value is unavailable.  E.g., we're inspecting a
+       traceframe, and this register wasn't collected.  Note that this
+       is different a different "unavailable" from saying the register
+       does not exist in the target's architecture --- in that case,
+       the target should have given us a target description that does
+       not include the register in the first place.  */
+    REG_UNAVAILABLE = -1
+  };
+
+enum register_status regcache_register_status (const struct regcache *regcache,
+					       int regnum);
 
 /* Transfer a raw register [0..NUM_REGS) between core-gdb and the
-   regcache. */
+   regcache.  The read variants return the status of the register.  */
 
-void regcache_raw_read (struct regcache *regcache, int rawnum, gdb_byte *buf);
+enum register_status regcache_raw_read (struct regcache *regcache,
+					int rawnum, gdb_byte *buf);
 void regcache_raw_write (struct regcache *regcache, int rawnum,
 			 const gdb_byte *buf);
-extern void regcache_raw_read_signed (struct regcache *regcache,
-				      int regnum, LONGEST *val);
-extern void regcache_raw_read_unsigned (struct regcache *regcache,
-					int regnum, ULONGEST *val);
+extern enum register_status
+  regcache_raw_read_signed (struct regcache *regcache,
+			    int regnum, LONGEST *val);
+extern enum register_status
+  regcache_raw_read_unsigned (struct regcache *regcache,
+			      int regnum, ULONGEST *val);
 extern void regcache_raw_write_signed (struct regcache *regcache,
 				       int regnum, LONGEST val);
 extern void regcache_raw_write_unsigned (struct regcache *regcache,
 					 int regnum, ULONGEST val);
 
-/* Partial transfer of a raw registers.  These perform read, modify,
-   write style operations.  */
+/* Partial transfer of raw registers.  These perform read, modify,
+   write style operations.  The read variant returns the status of the
+   register.  */
 
-void regcache_raw_read_part (struct regcache *regcache, int regnum,
-			     int offset, int len, gdb_byte *buf);
+extern enum register_status
+  regcache_raw_read_part (struct regcache *regcache, int regnum,
+			  int offset, int len, gdb_byte *buf);
 void regcache_raw_write_part (struct regcache *regcache, int regnum,
 			      int offset, int len, const gdb_byte *buf);
 
-int regcache_valid_p (const struct regcache *regcache, int regnum);
-
 void regcache_invalidate (struct regcache *regcache, int regnum);
 
+/* Transfer of pseudo-registers.  The read variants return a register
+   status, as an indication of when a ``cooked'' register was
+   constructed from valid, invalid or unavailable ``raw''
+   registers.  */
+
 /* Transfer a cooked register [0..NUM_REGS+NUM_PSEUDO_REGS).  */
-void regcache_cooked_read (struct regcache *regcache, int rawnum,
-			   gdb_byte *buf);
+enum register_status regcache_cooked_read (struct regcache *regcache,
+					   int rawnum, gdb_byte *buf);
 void regcache_cooked_write (struct regcache *regcache, int rawnum,
 			    const gdb_byte *buf);
 
-/* NOTE: cagney/2002-08-13: At present GDB has no reliable mechanism
-   for indicating when a ``cooked'' register was constructed from
-   invalid or unavailable ``raw'' registers.  One fairly easy way of
-   adding such a mechanism would be for the cooked functions to return
-   a register valid indication.  Given the possibility of such a
-   change, the extract functions below use a reference parameter,
-   rather than a function result.  */
-
 /* Read a register as a signed/unsigned quantity.  */
-extern void regcache_cooked_read_signed (struct regcache *regcache,
-					 int regnum, LONGEST *val);
-extern void regcache_cooked_read_unsigned (struct regcache *regcache,
-					   int regnum, ULONGEST *val);
+extern enum register_status
+  regcache_cooked_read_signed (struct regcache *regcache,
+			       int regnum, LONGEST *val);
+extern enum register_status
+  regcache_cooked_read_unsigned (struct regcache *regcache,
+				 int regnum, ULONGEST *val);
 extern void regcache_cooked_write_signed (struct regcache *regcache,
 					  int regnum, LONGEST val);
 extern void regcache_cooked_write_unsigned (struct regcache *regcache,
@@ -96,8 +119,9 @@ extern void regcache_cooked_write_unsigned (struct regcache *regcache,
 /* Partial transfer of a cooked register.  These perform read, modify,
    write style operations.  */
 
-void regcache_cooked_read_part (struct regcache *regcache, int regnum,
-				int offset, int len, gdb_byte *buf);
+enum register_status regcache_cooked_read_part (struct regcache *regcache,
+						int regnum, int offset,
+						int len, gdb_byte *buf);
 void regcache_cooked_write_part (struct regcache *regcache, int regnum,
 				 int offset, int len, const gdb_byte *buf);
 
@@ -134,8 +158,9 @@ extern int register_size (struct gdbarch *gdbarch, int regnum);
    restore_reggroup respectively.  COOKED_READ returns zero iff the
    register's value can't be returned.  */
 
-typedef int (regcache_cooked_read_ftype) (void *src, int regnum,
-					  gdb_byte *buf);
+typedef enum register_status (regcache_cooked_read_ftype) (void *src,
+							   int regnum,
+							   gdb_byte *buf);
 
 extern void regcache_save (struct regcache *dst,
 			   regcache_cooked_read_ftype *cooked_read,
@@ -154,9 +179,9 @@ extern void regcache_restore (struct regcache *dst,
    only transfer values already in the cache.  */
 
 extern struct regcache *regcache_dup (struct regcache *regcache);
-extern struct regcache *regcache_dup_no_passthrough (struct regcache *regcache);
 extern void regcache_cpy (struct regcache *dest, struct regcache *src);
-extern void regcache_cpy_no_passthrough (struct regcache *dest, struct regcache *src);
+extern void regcache_cpy_no_passthrough (struct regcache *dest,
+					 struct regcache *src);
 
 extern void registers_changed (void);
 extern void registers_changed_ptid (ptid_t);

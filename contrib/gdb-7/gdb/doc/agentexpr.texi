@@ -7,8 +7,8 @@
 
 @c This file is part of the GDB manual.
 @c
-@c Copyright (C) 2003, 2004, 2005, 2006, 2009, 2010
-@c               Free Software Foundation, Inc.
+@c Copyright (C) 2003, 2004, 2005, 2006, 2009, 2010, 2011
+@c Free Software Foundation, Inc.
 @c
 @c See the file gdb.texinfo for copying conditions.
 
@@ -390,6 +390,16 @@ Exchange the top two items on the stack.
 
 @item @code{pop} (0x29): @var{a} =>
 Discard the top value on the stack.
+
+@item @code{pick} (0x32) @var{n}: @var{a} @dots{} @var{b} => @var{a} @dots{} @var{b} @var{a}
+Duplicate an item from the stack and push it on the top of the stack.
+@var{n}, a single byte, indicates the stack item to copy.  If @var{n}
+is zero, this is the same as @code{dup}; if @var{n} is one, it copies
+the item under the top item, etc.  If @var{n} exceeds the number of
+items on the stack, terminate with an error.
+
+@item @code{rot} (0x33): @var{a} @var{b} @var{c} => @var{c} @var{b} @var{a}
+Rotate the top three items on the stack.
 
 @item @code{if_goto} (0x20) @var{offset}: @var{a} @result{}
 Pop an integer off the stack; if it is non-zero, branch to the given

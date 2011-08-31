@@ -1,6 +1,6 @@
 /* Public partial symbol table definitions.
 
-   Copyright (C) 2009 Free Software Foundation, Inc.
+   Copyright (C) 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,12 +20,31 @@
 #ifndef PSYMTAB_H
 #define PSYMTAB_H
 
-void map_partial_symbol_names (void (*) (const char *, void *), void *);
+/* A bcache for partial symbols.  */
+
+struct psymbol_bcache;
+
+extern struct psymbol_bcache *psymbol_bcache_init (void);
+extern void psymbol_bcache_free (struct psymbol_bcache *);
+extern struct bcache *psymbol_bcache_get_bcache (struct psymbol_bcache *);
+
+void expand_partial_symbol_names (int (*fun) (const char *, void *),
+				  void *data);
 
 void map_partial_symbol_filenames (void (*) (const char *, const char *,
 					     void *),
 				   void *);
 
 extern const struct quick_symbol_functions psym_functions;
+
+extern const struct quick_symbol_functions dwarf2_gdb_index_functions;
+
+/* Ensure that the partial symbols for OBJFILE have been loaded.  If
+   VERBOSE is non-zero, then this will print a message when symbols
+   are loaded.  This function always returns its argument, as a
+   convenience.  */
+
+extern struct objfile *require_partial_symbols (struct objfile *objfile,
+						int verbose);
 
 #endif /* PSYMTAB_H */

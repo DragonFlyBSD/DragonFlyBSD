@@ -1,6 +1,7 @@
 /* Block-related functions for the GNU debugger, GDB.
 
-   Copyright (C) 2003, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2003, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -40,7 +41,7 @@ static void block_initialize_namespace (struct block *block,
 
 /* Return Nonzero if block a is lexically nested within block b,
    or if a and b have the same pc range.
-   Return zero otherwise. */
+   Return zero otherwise.  */
 
 int
 contained_in (const struct block *a, const struct block *b)

@@ -1,7 +1,7 @@
 /* Data/register window display.
 
    Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009,
-   2010 Free Software Foundation, Inc.
+   2010, 2011 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -251,7 +251,7 @@ tui_check_data_values (struct frame_info *frame)
 	  data_item_ptr = &TUI_DATA_WIN->detail.data_display_info.
 	    data_content[i]->which_element.data_window;
 	  data_element_ptr = &((tui_win_content)
-			     data_item_win_ptr->content)[0]->which_element.data;
+			       data_item_win_ptr->content)[0]->which_element.data;
 	  if value
 	    has changed (data_element_ptr, frame, &new_value)
 	    {
@@ -273,7 +273,8 @@ tui_vertical_data_scroll (enum tui_scroll_direction scroll_direction,
   int first_line = (-1);
 
   first_element_no = tui_first_data_item_displayed ();
-  if (first_element_no < TUI_DATA_WIN->detail.data_display_info.regs_content_count)
+  if (first_element_no 
+      < TUI_DATA_WIN->detail.data_display_info.regs_content_count)
     first_line = tui_line_from_reg_element_no (first_element_no);
   else
     { /* Calculate the first line from the element number which is in

@@ -2,7 +2,7 @@
 
    Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
    1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007,
-   2008, 2009, 2010 Free Software Foundation, Inc.
+   2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -49,9 +49,10 @@
 #include "parser-defs.h"
 #include "charset.h"
 #include "arch-utils.h"
+#include "cli/cli-utils.h"
 
 #ifdef TUI
-#include "tui/tui.h"		/* For tui_active et.al.   */
+#include "tui/tui.h"		/* For tui_active et al.   */
 #endif
 
 #if defined(__MINGW32__) && !defined(PRINTF_HAS_LONG_LONG)
@@ -61,7 +62,8 @@
 # define USE_PRINTF_I64 0
 #endif
 
-extern int asm_demangle;	/* Whether to demangle syms in asm printouts */
+extern int asm_demangle;	/* Whether to demangle syms in asm
+				   printouts.  */
 
 struct format_data
   {
@@ -108,8 +110,9 @@ static void
 show_max_symbolic_offset (struct ui_file *file, int from_tty,
 			  struct cmd_list_element *c, const char *value)
 {
-  fprintf_filtered (file, _("\
-The largest offset that will be printed in <symbol+1234> form is %s.\n"),
+  fprintf_filtered (file,
+		    _("The largest offset that will be "
+		      "printed in <symbol+1234> form is %s.\n"),
 		    value);
 }
 
@@ -120,8 +123,8 @@ static void
 show_print_symbol_filename (struct ui_file *file, int from_tty,
 			    struct cmd_list_element *c, const char *value)
 {
-  fprintf_filtered (file, _("\
-Printing of source filename and line number with <symbol> is %s.\n"),
+  fprintf_filtered (file, _("Printing of source filename and "
+			    "line number with <symbol> is %s.\n"),
 		    value);
 }
 
@@ -151,10 +154,10 @@ struct display
     /* Program space associated with `block'.  */
     struct program_space *pspace;
 
-    /* Innermost block required by this expression when evaluated */
+    /* Innermost block required by this expression when evaluated.  */
     struct block *block;
 
-    /* Status of this display (enabled or disabled) */
+    /* Status of this display (enabled or disabled).  */
     int enabled_p;
   };
 
@@ -165,13 +168,25 @@ static struct display *display_chain;
 
 static int display_number;
 
-/* Prototypes for exported functions. */
+/* Walk the following statement or block through all displays.
+   ALL_DISPLAYS_SAFE does so even if the statement deletes the current
+   display.  */
+
+#define ALL_DISPLAYS(B)				\
+  for (B = display_chain; B; B = B->next)
+
+#define ALL_DISPLAYS_SAFE(B,TMP)		\
+  for (B = display_chain;			\
+       B ? (TMP = B->next, 1): 0;		\
+       B = TMP)
+
+/* Prototypes for exported functions.  */
 
 void output_command (char *, int);
 
 void _initialize_printcmd (void);
 
-/* Prototypes for local functions. */
+/* Prototypes for local functions.  */
 
 static void do_one_display (struct display *);
 
@@ -260,7 +275,8 @@ decode_format (char **string_ptr, int oformat, int osize)
 	val.size = osize ? 'b' : osize;
 	break;
       case 's':
-	/* Display strings with byte size chars unless explicitly specified.  */
+	/* Display strings with byte size chars unless explicitly
+	   specified.  */
 	val.size = '\0';
 	break;
 
@@ -298,7 +314,7 @@ print_formatted (struct value *val, int size,
 	    struct type *elttype = value_type (val);
 
 	    next_address = (value_address (val)
-			    + val_print_string (elttype,
+			    + val_print_string (elttype, NULL,
 						value_address (val), -1,
 						stream, options) * len);
 	  }
@@ -324,10 +340,13 @@ print_formatted (struct value *val, int size,
       || TYPE_CODE (type) == TYPE_CODE_NAMESPACE)
     value_print (val, stream, options);
   else
-    /* User specified format, so don't look to the the type to
-       tell us what to do.  */
-    print_scalar_formatted (value_contents (val), type,
-			    options, size, stream);
+    /* User specified format, so don't look to the type to tell us
+       what to do.  */
+    val_print_scalar_formatted (type,
+				value_contents_for_printing (val),
+				value_embedded_offset (val),
+				val,
+				options, size, stream);
 }
 
 /* Return builtin floating point type of same length as TYPE.
@@ -350,11 +369,8 @@ float_type_from_length (struct type *type)
 }
 
 /* Print a scalar of data of type TYPE, pointed to in GDB by VALADDR,
-   according to OPTIONS and SIZE on STREAM.
-   Formats s and i are not supported at this level.
-
-   This is how the elements of an array or structure are printed
-   with a format.  */
+   according to OPTIONS and SIZE on STREAM.  Formats s and i are not
+   supported at this level.  */
 
 void
 print_scalar_formatted (const void *valaddr, struct type *type,
@@ -366,18 +382,8 @@ print_scalar_formatted (const void *valaddr, struct type *type,
   unsigned int len = TYPE_LENGTH (type);
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
 
-  /* If we get here with a string format, try again without it.  Go
-     all the way back to the language printers, which may call us
-     again.  */
-  if (options->format == 's')
-    {
-      struct value_print_options opts = *options;
-      opts.format = 0;
-      opts.deref_ref = 0;
-      val_print (type, valaddr, 0, 0, stream, 0, NULL, &opts,
-		 current_language);
-      return;
-    }
+  /* String printing should go through val_print_scalar_formatted.  */
+  gdb_assert (options->format != 's');
 
   if (len > sizeof(LONGEST) &&
       (TYPE_CODE (type) == TYPE_CODE_INT
@@ -534,7 +540,7 @@ print_scalar_formatted (const void *valaddr, struct type *type,
 	    if (*cp == '\0')
 	      cp--;
 	  }
-	strcpy (buf, cp);
+	strncpy (buf, cp, sizeof (bits));
 	fputs_filtered (buf, stream);
       }
       break;
@@ -617,11 +623,11 @@ print_address_symbolic (struct gdbarch *gdbarch, CORE_ADDR addr,
 }
 
 /* Given an address ADDR return all the elements needed to print the
-   address in a symbolic form. NAME can be mangled or not depending
+   address in a symbolic form.  NAME can be mangled or not depending
    on DO_DEMANGLE (and also on the asm_demangle global variable,
-   manipulated via ''set print asm-demangle''). Return 0 in case of
-   success, when all the info in the OUT paramters is valid. Return 1
-   otherwise. */
+   manipulated via ''set print asm-demangle'').  Return 0 in case of
+   success, when all the info in the OUT paramters is valid.  Return 1
+   otherwise.  */
 int
 build_address_symbolic (struct gdbarch *gdbarch,
 			CORE_ADDR addr,  /* IN */
@@ -753,9 +759,7 @@ pc_prefix (CORE_ADDR addr)
       CORE_ADDR pc;
 
       frame = get_selected_frame (NULL);
-      pc = get_frame_pc (frame);
-
-      if (pc == addr)
+      if (get_frame_pc_if_available (frame, &pc) && pc == addr)
 	return "=> ";
     }
   return "   ";
@@ -855,8 +859,8 @@ do_examine (struct format_data fmt, struct gdbarch *gdbarch, CORE_ADDR addr)
       else
         {
 	  if (size != '\0' && size != 'b')
-	    warning (_("Unable to display strings with size '%c', using 'b' \
-instead."), size);
+	    warning (_("Unable to display strings with "
+		       "size '%c', using 'b' instead."), size);
 	  size = 'b';
 	  val_type = builtin_type (next_gdbarch)->builtin_int8;
         }
@@ -902,7 +906,7 @@ instead."), size);
 	     the address stored in LAST_EXAMINE_VALUE.  FIXME: Should
 	     the disassembler be modified so that LAST_EXAMINE_VALUE
 	     is left with the byte sequence from the last complete
-	     instruction fetched from memory? */
+	     instruction fetched from memory?  */
 	  last_examine_value = value_at_lazy (val_type, next_address);
 
 	  if (last_examine_value)
@@ -1187,7 +1191,7 @@ address_info (char *exp, int from_tty)
   struct obj_section *section;
   CORE_ADDR load_addr, context_pc = 0;
   int is_a_field_of_this;	/* C++: lookup_symbol sets this to nonzero
-				   if exp is a field of `this'. */
+				   if exp is a field of `this'.  */
 
   if (exp == 0)
     error (_("Argument required."));
@@ -1273,7 +1277,8 @@ address_info (char *exp, int from_tty)
 	 Unfortunately DWARF 2 stores the frame-base (instead of the
 	 function) location in a function's symbol.  Oops!  For the
 	 moment enable this when/where applicable.  */
-      SYMBOL_COMPUTED_OPS (sym)->describe_location (sym, context_pc, gdb_stdout);
+      SYMBOL_COMPUTED_OPS (sym)->describe_location (sym, context_pc,
+						    gdb_stdout);
       break;
 
     case LOC_REGISTER:
@@ -1450,7 +1455,7 @@ x_command (char *exp, int from_tty)
     last_size = fmt.size;
   last_format = fmt.format;
 
-  /* Set a couple of internal variables if appropriate. */
+  /* Set a couple of internal variables if appropriate.  */
   if (last_examine_value)
     {
       /* Make last address examined available to the user as $_.  Use
@@ -1561,48 +1566,85 @@ clear_displays (void)
     }
 }
 
-/* Delete the auto-display number NUM.  */
+/* Delete the auto-display DISPLAY.  */
 
 static void
-delete_display (int num)
+delete_display (struct display *display)
 {
-  struct display *d1, *d;
+  struct display *d;
 
-  if (!display_chain)
-    error (_("No display number %d."), num);
+  gdb_assert (display != NULL);
 
-  if (display_chain->number == num)
-    {
-      d1 = display_chain;
-      display_chain = d1->next;
-      free_display (d1);
-    }
-  else
-    for (d = display_chain;; d = d->next)
+  if (display_chain == display)
+    display_chain = display->next;
+
+  ALL_DISPLAYS (d)
+    if (d->next == display)
       {
-	if (d->next == 0)
-	  error (_("No display number %d."), num);
-	if (d->next->number == num)
-	  {
-	    d1 = d->next;
-	    d->next = d1->next;
-	    free_display (d1);
-	    break;
-	  }
+	d->next = display->next;
+	break;
       }
+
+  free_display (display);
 }
 
-/* Delete some values from the auto-display chain.
-   Specify the element numbers.  */
+/* Call FUNCTION on each of the displays whose numbers are given in
+   ARGS.  DATA is passed unmodified to FUNCTION.  */
+
+static void
+map_display_numbers (char *args,
+		     void (*function) (struct display *,
+				       void *),
+		     void *data)
+{
+  struct get_number_or_range_state state;
+  struct display *b, *tmp;
+  int num;
+
+  if (args == NULL)
+    error_no_arg (_("one or more display numbers"));
+
+  init_number_or_range (&state, args);
+
+  while (!state.finished)
+    {
+      char *p = state.string;
+
+      num = get_number_or_range (&state);
+      if (num == 0)
+	warning (_("bad display number at or near '%s'"), p);
+      else
+	{
+	  struct display *d, *tmp;
+
+	  ALL_DISPLAYS_SAFE (d, tmp)
+	    if (d->number == num)
+	      break;
+	  if (d == NULL)
+	    printf_unfiltered (_("No display number %d.\n"), num);
+	  else
+	    function (d, data);
+	}
+    }
+}
+
+/* Callback for map_display_numbers, that deletes a display.  */
+
+static void
+do_delete_display (struct display *d, void *data)
+{
+  delete_display (d);
+}
+
+/* "undisplay" command.  */
 
 static void
 undisplay_command (char *args, int from_tty)
 {
-  char *p = args;
-  char *p1;
   int num;
+  struct get_number_or_range_state state;
 
-  if (args == 0)
+  if (args == NULL)
     {
       if (query (_("Delete all auto-display expressions? ")))
 	clear_displays ();
@@ -1610,28 +1652,13 @@ undisplay_command (char *args, int from_tty)
       return;
     }
 
-  while (*p)
-    {
-      p1 = p;
-      while (*p1 >= '0' && *p1 <= '9')
-	p1++;
-      if (*p1 && *p1 != ' ' && *p1 != '\t')
-	error (_("Arguments must be display numbers."));
-
-      num = atoi (p);
-
-      delete_display (num);
-
-      p = p1;
-      while (*p == ' ' || *p == '\t')
-	p++;
-    }
+  map_display_numbers (args, do_delete_display, NULL);
   dont_repeat ();
 }
 
 /* Display a single auto-display.  
    Do nothing if the display cannot be printed in the current context,
-   or if the display is disabled. */
+   or if the display is disabled.  */
 
 static void
 do_one_display (struct display *d)
@@ -1793,8 +1820,9 @@ disable_current_display (void)
   if (current_display_number >= 0)
     {
       disable_display (current_display_number);
-      fprintf_unfiltered (gdb_stderr, _("\
-Disabling display %d to avoid infinite recursion.\n"),
+      fprintf_unfiltered (gdb_stderr,
+			  _("Disabling display %d to "
+			    "avoid infinite recursion.\n"),
 			  current_display_number);
     }
   current_display_number = -1;
@@ -1827,71 +1855,47 @@ Num Enb Expression\n"));
     }
 }
 
+/* Callback fo map_display_numbers, that enables or disables the
+   passed in display D.  */
+
 static void
-enable_display (char *args, int from_tty)
+do_enable_disable_display (struct display *d, void *data)
 {
-  char *p = args;
-  char *p1;
-  int num;
-  struct display *d;
-
-  if (p == 0)
-    {
-      for (d = display_chain; d; d = d->next)
-	d->enabled_p = 1;
-    }
-  else
-    while (*p)
-      {
-	p1 = p;
-	while (*p1 >= '0' && *p1 <= '9')
-	  p1++;
-	if (*p1 && *p1 != ' ' && *p1 != '\t')
-	  error (_("Arguments must be display numbers."));
-
-	num = atoi (p);
-
-	for (d = display_chain; d; d = d->next)
-	  if (d->number == num)
-	    {
-	      d->enabled_p = 1;
-	      goto win;
-	    }
-	printf_unfiltered (_("No display number %d.\n"), num);
-      win:
-	p = p1;
-	while (*p == ' ' || *p == '\t')
-	  p++;
-      }
+  d->enabled_p = *(int *) data;
 }
+
+/* Implamentation of both the "disable display" and "enable display"
+   commands.  ENABLE decides what to do.  */
+
+static void
+enable_disable_display_command (char *args, int from_tty, int enable)
+{
+  if (args == NULL)
+    {
+      struct display *d;
+
+      ALL_DISPLAYS (d)
+	d->enabled_p = enable;
+      return;
+    }
+
+  map_display_numbers (args, do_enable_disable_display, &enable);
+}
+
+/* The "enable display" command.  */
+
+static void
+enable_display_command (char *args, int from_tty)
+{
+  enable_disable_display_command (args, from_tty, 1);
+}
+
+/* The "disable display" command.  */
 
 static void
 disable_display_command (char *args, int from_tty)
 {
-  char *p = args;
-  char *p1;
-  struct display *d;
-
-  if (p == 0)
-    {
-      for (d = display_chain; d; d = d->next)
-	d->enabled_p = 0;
-    }
-  else
-    while (*p)
-      {
-	p1 = p;
-	while (*p1 >= '0' && *p1 <= '9')
-	  p1++;
-	if (*p1 && *p1 != ' ' && *p1 != '\t')
-	  error (_("Arguments must be display numbers."));
-
-	disable_display (atoi (p));
-
-	p = p1;
-	while (*p == ' ' || *p == '\t')
-	  p++;
-      }
+  enable_disable_display_command (args, from_tty, 0);
 }
 
 /* display_chain items point to blocks and expressions.  Some expressions in
@@ -1984,9 +1988,7 @@ ui_printf (char *arg, struct ui_file *stream)
   if (s == 0)
     error_no_arg (_("format-control string and values to print"));
 
-  /* Skip white space before format string */
-  while (*s == ' ' || *s == '\t')
-    s++;
+  s = skip_spaces (s);
 
   /* A format string should follow, enveloped in double quotes.  */
   if (*s++ != '"')
@@ -2036,7 +2038,7 @@ ui_printf (char *arg, struct ui_file *stream)
 	      *f++ = '"';
 	      break;
 	    default:
-	      /* ??? TODO: handle other escape sequences */
+	      /* ??? TODO: handle other escape sequences.  */
 	      error (_("Unrecognized escape character \\%c in format string."),
 		     c);
 	    }
@@ -2050,16 +2052,14 @@ ui_printf (char *arg, struct ui_file *stream)
   /* Skip over " and following space and comma.  */
   s++;
   *f++ = '\0';
-  while (*s == ' ' || *s == '\t')
-    s++;
+  s = skip_spaces (s);
 
   if (*s != ',' && *s != 0)
     error (_("Invalid argument syntax"));
 
   if (*s == ',')
     s++;
-  while (*s == ' ' || *s == '\t')
-    s++;
+  s = skip_spaces (s);
 
   /* Need extra space for the '\0's.  Doubling the size is sufficient.  */
   substrings = alloca (strlen (string) * 2);
@@ -2258,7 +2258,8 @@ ui_printf (char *arg, struct ui_file *stream)
 	    }
 
 	  if (bad)
-	    error (_("Inappropriate modifiers to format specifier '%c' in printf"),
+	    error (_("Inappropriate modifiers to "
+		     "format specifier '%c' in printf"),
 		   *f);
 
 	  f++;
@@ -2756,7 +2757,7 @@ and examining is done as in the \"x\" command.\n\n\
 With no argument, display all currently requested auto-display expressions.\n\
 Use \"undisplay\" to cancel display requests previously made."));
 
-  add_cmd ("display", class_vars, enable_display, _("\
+  add_cmd ("display", class_vars, enable_display_command, _("\
 Enable some expressions to be displayed when program stops.\n\
 Arguments are the code numbers of the expressions to resume displaying.\n\
 No argument means enable all automatic-display expressions.\n\
@@ -2804,7 +2805,7 @@ Use \"set variable\" for variables with names identical to set subcommands.\n\
 \nWith a subcommand, this command modifies parts of the gdb environment.\n\
 You can see these environment settings with the \"show\" command."));
 
-  /* "call" is the same as "set", but handy for dbx users to call fns. */
+  /* "call" is the same as "set", but handy for dbx users to call fns.  */
   c = add_com ("call", class_vars, call_command, _("\
 Call a function in the program.\n\
 The argument is the function name and arguments, in the notation of the\n\

@@ -1,7 +1,7 @@
 /* Dynamic architecture support for GDB, the GNU debugger.
 
-   Copyright (C) 1998, 1999, 2000, 2002, 2003, 2004, 2007, 2008, 2009, 2010
-   Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2002, 2003, 2004, 2007, 2008, 2009, 2010,
+   2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -51,15 +51,15 @@ extern void
 
 /* Default implementation of gdbarch_displaced_hw_singlestep.  */
 extern int
-  default_displaced_step_hw_singlestep (struct gdbarch *gdbarch,
-					struct displaced_step_closure *closure);
+  default_displaced_step_hw_singlestep (struct gdbarch *,
+					struct displaced_step_closure *);
 
 /* Possible value for gdbarch_displaced_step_location:
    Place displaced instructions at the program's entry point,
    leaving space for inferior function call return breakpoints.  */
 extern CORE_ADDR displaced_step_at_entry_point (struct gdbarch *gdbarch);
 
-/* The only possible cases for inner_than. */
+/* The only possible cases for inner_than.  */
 extern int core_addr_lessthan (CORE_ADDR lhs, CORE_ADDR rhs);
 extern int core_addr_greaterthan (CORE_ADDR lhs, CORE_ADDR rhs);
 
@@ -68,20 +68,21 @@ extern int core_addr_greaterthan (CORE_ADDR lhs, CORE_ADDR rhs);
 extern CORE_ADDR core_addr_identity (struct gdbarch *gdbarch, CORE_ADDR addr);
 extern gdbarch_convert_from_func_ptr_addr_ftype convert_from_func_ptr_addr_identity;
 
-/* No-op conversion of reg to regnum. */
+/* No-op conversion of reg to regnum.  */
 
 extern int no_op_reg_to_regnum (struct gdbarch *gdbarch, int reg);
 
-/* Do nothing version of elf_make_msymbol_special. */
+/* Do nothing version of elf_make_msymbol_special.  */
 
-void default_elf_make_msymbol_special (asymbol *sym, struct minimal_symbol *msym);
+void default_elf_make_msymbol_special (asymbol *sym,
+				       struct minimal_symbol *msym);
 
-/* Do nothing version of coff_make_msymbol_special. */
+/* Do nothing version of coff_make_msymbol_special.  */
 
 void default_coff_make_msymbol_special (int val, struct minimal_symbol *msym);
 
 /* Version of cannot_fetch_register() / cannot_store_register() that
-   always fails. */
+   always fails.  */
 
 int cannot_register_not (struct gdbarch *gdbarch, int regnum);
 
@@ -100,7 +101,8 @@ extern CORE_ADDR generic_skip_solib_resolver (struct gdbarch *gdbarch,
 extern int generic_in_solib_return_trampoline (struct gdbarch *gdbarch,
 					       CORE_ADDR pc, char *name);
 
-extern int generic_in_function_epilogue_p (struct gdbarch *gdbarch, CORE_ADDR pc);
+extern int generic_in_function_epilogue_p (struct gdbarch *gdbarch,
+					   CORE_ADDR pc);
 
 /* By default, registers are not convertible.  */
 extern int generic_convert_register_p (struct gdbarch *gdbarch, int regnum,

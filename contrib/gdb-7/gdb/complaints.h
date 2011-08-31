@@ -1,7 +1,7 @@
 /* Definitions for complaint handling during symbol reading in GDB.
 
    Copyright (C) 1990, 1991, 1992, 1995, 1998, 2000, 2002, 2007, 2008, 2009,
-   2010 Free Software Foundation, Inc.
+   2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -30,10 +30,12 @@ struct complaints;
 extern struct complaints *symfile_complaints;
 
 /* Register a complaint.  */
-extern void complaint (struct complaints **complaints, const char *fmt,
+extern void complaint (struct complaints **complaints,
+		       const char *fmt,
 		       ...) ATTRIBUTE_PRINTF (2, 3);
 extern void internal_complaint (struct complaints **complaints,
-				const char *file, int line, const char *fmt,
+				const char *file, int line,
+				const char *fmt,
 				...) ATTRIBUTE_PRINTF (4, 5);
 
 /* Clear out / initialize all complaint counters that have ever been

@@ -2,7 +2,7 @@
 
    Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
    1996, 1997, 1998, 1999, 2000, 2001, 2003, 2004, 2005, 2007, 2008, 2009,
-   2010 Free Software Foundation, Inc.
+   2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -265,6 +265,7 @@ value_of_register (int regnum, struct frame_info *frame)
   struct gdbarch *gdbarch = get_frame_arch (frame);
   CORE_ADDR addr;
   int optim;
+  int unavail;
   struct value *reg_val;
   int realnum;
   gdb_byte raw_buffer[MAX_REGISTER_SIZE];
@@ -276,16 +277,24 @@ value_of_register (int regnum, struct frame_info *frame)
 		+ gdbarch_num_pseudo_regs (gdbarch))
     return value_of_user_reg (regnum, frame);
 
-  frame_register (frame, regnum, &optim, &lval, &addr, &realnum, raw_buffer);
+  frame_register (frame, regnum, &optim, &unavail,
+		  &lval, &addr, &realnum, raw_buffer);
 
   reg_val = allocate_value (register_type (gdbarch, regnum));
 
-  memcpy (value_contents_raw (reg_val), raw_buffer,
-	  register_size (gdbarch, regnum));
+  if (!optim && !unavail)
+    memcpy (value_contents_raw (reg_val), raw_buffer,
+	    register_size (gdbarch, regnum));
+  else
+    memset (value_contents_raw (reg_val), 0,
+	    register_size (gdbarch, regnum));
+
   VALUE_LVAL (reg_val) = lval;
   set_value_address (reg_val, addr);
   VALUE_REGNUM (reg_val) = regnum;
   set_value_optimized_out (reg_val, optim);
+  if (unavail)
+    mark_value_bytes_unavailable (reg_val, 0, register_size (gdbarch, regnum));
   VALUE_FRAME_ID (reg_val) = get_frame_id (frame);
   return reg_val;
 }
@@ -306,11 +315,10 @@ value_of_register_lazy (struct frame_info *frame, int regnum)
   /* We should have a valid (i.e. non-sentinel) frame.  */
   gdb_assert (frame_id_p (get_frame_id (frame)));
 
-  reg_val = allocate_value (register_type (gdbarch, regnum));
+  reg_val = allocate_value_lazy (register_type (gdbarch, regnum));
   VALUE_LVAL (reg_val) = lval_register;
   VALUE_REGNUM (reg_val) = regnum;
   VALUE_FRAME_ID (reg_val) = get_frame_id (frame);
-  set_value_lazy (reg_val, 1);
   return reg_val;
 }
 
@@ -400,7 +408,7 @@ symbol_read_needs_frame (struct symbol *sym)
 
 /* Given a struct symbol for a variable,
    and a stack frame id, read the value of the variable
-   and return a (pointer to a) struct value containing the value. 
+   and return a (pointer to a) struct value containing the value.
    If the variable cannot be found, return a zero pointer.  */
 
 struct value *
@@ -411,15 +419,12 @@ read_var_value (struct symbol *var, struct frame_info *frame)
   CORE_ADDR addr;
   int len;
 
-  if (SYMBOL_CLASS (var) == LOC_COMPUTED
-      || SYMBOL_CLASS (var) == LOC_REGISTER)
-    /* These cases do not use V.  */
-    v = NULL;
-  else
-    {
-      v = allocate_value (type);
-      VALUE_LVAL (v) = lval_memory;	/* The most likely possibility.  */
-    }
+  /* Call check_typedef on our type to make sure that, if TYPE is
+     a TYPE_CODE_TYPEDEF, its length is set to the length of the target type
+     instead of zero.  However, we do not replace the typedef type by the
+     target type, because we want to keep the typedef in order to be able to
+     set the returned value type description correctly.  */
+  check_typedef (type);
 
   len = TYPE_LENGTH (type);
 
@@ -430,6 +435,7 @@ read_var_value (struct symbol *var, struct frame_info *frame)
     {
     case LOC_CONST:
       /* Put the constant back in target format.  */
+      v = allocate_value (type);
       store_signed_integer (value_contents_raw (v), len,
 			    gdbarch_byte_order (get_type_arch (type)),
 			    (LONGEST) SYMBOL_VALUE (var));
@@ -438,6 +444,7 @@ read_var_value (struct symbol *var, struct frame_info *frame)
 
     case LOC_LABEL:
       /* Put the constant back in target format.  */
+      v = allocate_value (type);
       if (overlay_debugging)
 	{
 	  CORE_ADDR addr
@@ -453,11 +460,13 @@ read_var_value (struct symbol *var, struct frame_info *frame)
       return v;
 
     case LOC_CONST_BYTES:
+      v = allocate_value (type);
       memcpy (value_contents_raw (v), SYMBOL_VALUE_BYTES (var), len);
       VALUE_LVAL (v) = not_lval;
       return v;
 
     case LOC_STATIC:
+      v = allocate_value_lazy (type);
       if (overlay_debugging)
 	addr = symbol_overlayed_address (SYMBOL_VALUE_ADDRESS (var),
 					 SYMBOL_OBJ_SECTION (var));
@@ -470,6 +479,7 @@ read_var_value (struct symbol *var, struct frame_info *frame)
       if (!addr)
 	return 0;
       addr += SYMBOL_VALUE (var);
+      v = allocate_value_lazy (type);
       break;
 
     case LOC_REF_ARG:
@@ -483,12 +493,14 @@ read_var_value (struct symbol *var, struct frame_info *frame)
 	argref += SYMBOL_VALUE (var);
 	ref = value_at (lookup_pointer_type (type), argref);
 	addr = value_as_address (ref);
+	v = allocate_value_lazy (type);
 	break;
       }
 
     case LOC_LOCAL:
       addr = get_frame_locals_address (frame);
       addr += SYMBOL_VALUE (var);
+      v = allocate_value_lazy (type);
       break;
 
     case LOC_TYPEDEF:
@@ -496,12 +508,13 @@ read_var_value (struct symbol *var, struct frame_info *frame)
       break;
 
     case LOC_BLOCK:
+      v = allocate_value_lazy (type);
       if (overlay_debugging)
-	set_value_address (v, symbol_overlayed_address
-	  (BLOCK_START (SYMBOL_BLOCK_VALUE (var)), SYMBOL_OBJ_SECTION (var)));
+	addr = symbol_overlayed_address
+	  (BLOCK_START (SYMBOL_BLOCK_VALUE (var)), SYMBOL_OBJ_SECTION (var));
       else
-	set_value_address (v, BLOCK_START (SYMBOL_BLOCK_VALUE (var)));
-      return v;
+	addr = BLOCK_START (SYMBOL_BLOCK_VALUE (var));
+      break;
 
     case LOC_REGISTER:
     case LOC_REGPARM_ADDR:
@@ -520,7 +533,7 @@ read_var_value (struct symbol *var, struct frame_info *frame)
 	      error (_("Value of register variable not available."));
 
 	    addr = value_as_address (regval);
-	    VALUE_LVAL (v) = lval_memory;
+	    v = allocate_value_lazy (type);
 	  }
 	else
 	  {
@@ -559,10 +572,12 @@ read_var_value (struct symbol *var, struct frame_info *frame)
 	if (obj_section
 	    && (obj_section->the_bfd_section->flags & SEC_THREAD_LOCAL) != 0)
 	  addr = target_translate_tls_address (obj_section->objfile, addr);
+	v = allocate_value_lazy (type);
       }
       break;
 
     case LOC_OPTIMIZED_OUT:
+      v = allocate_value_lazy (type);
       VALUE_LVAL (v) = not_lval;
       set_value_optimized_out (v, 1);
       return v;
@@ -572,8 +587,8 @@ read_var_value (struct symbol *var, struct frame_info *frame)
       break;
     }
 
+  VALUE_LVAL (v) = lval_memory;
   set_value_address (v, addr);
-  set_value_lazy (v, 1);
   return v;
 }
 
@@ -613,6 +628,7 @@ value_from_register (struct type *type, int regnum, struct frame_info *frame)
   struct gdbarch *gdbarch = get_frame_arch (frame);
   struct type *type1 = check_typedef (type);
   struct value *v;
+  int optim, unavail, ok;
 
   if (gdbarch_convert_register_p (gdbarch, regnum, type1))
     {
@@ -627,8 +643,9 @@ value_from_register (struct type *type, int regnum, struct frame_info *frame)
       VALUE_LVAL (v) = lval_register;
       VALUE_FRAME_ID (v) = get_frame_id (frame);
       VALUE_REGNUM (v) = regnum;
-      gdbarch_register_to_value (gdbarch,
-				 frame, regnum, type1, value_contents_raw (v));
+      ok = gdbarch_register_to_value (gdbarch, frame, regnum, type1,
+				      value_contents_raw (v), &optim,
+				      &unavail);
     }
   else
     {
@@ -638,10 +655,19 @@ value_from_register (struct type *type, int regnum, struct frame_info *frame)
       v = gdbarch_value_from_register (gdbarch, type, regnum, frame);
 
       /* Get the data.  */
-      if (!get_frame_register_bytes (frame, regnum, value_offset (v), len,
-				     value_contents_raw (v)))
-	set_value_optimized_out (v, 1);
+      ok = get_frame_register_bytes (frame, regnum, value_offset (v), len,
+				     value_contents_raw (v),
+				     &optim, &unavail);
     }
+
+  if (!ok)
+    {
+      if (optim)
+	set_value_optimized_out (v, 1);
+      if (unavail)
+	mark_value_bytes_unavailable (v, 0, TYPE_LENGTH (type));
+    }
+
   return v;
 }
 

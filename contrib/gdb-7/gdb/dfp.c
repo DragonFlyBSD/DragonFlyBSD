@@ -1,6 +1,6 @@
 /* Decimal floating point support for GDB.
 
-   Copyright 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -89,7 +89,8 @@ decimal_check_errors (decContext *ctx)
     {
       /* Leave only the error bits in the status flags.  */
       ctx->status &= DEC_IEEE_854_Invalid_operation;
-      error (_("Cannot perform operation: %s"), decContextStatusToString (ctx));
+      error (_("Cannot perform operation: %s"),
+	     decContextStatusToString (ctx));
     }
 }
 
@@ -133,7 +134,7 @@ decimal_to_number (const gdb_byte *from, int len, decNumber *to)
 	decimal128ToNumber ((decimal128 *) from, to);
 	break;
       default:
-	error (_("Unknown decimal floating point type.\n"));
+	error (_("Unknown decimal floating point type."));
 	break;
     }
 }
@@ -217,7 +218,8 @@ decimal_from_integral (struct value *from,
 
   if (TYPE_LENGTH (type) > 4)
     /* libdecnumber can convert only 32-bit integers.  */
-    error (_("Conversion of large integer to a decimal floating type is not supported."));
+    error (_("Conversion of large integer to a "
+	     "decimal floating type is not supported."));
 
   l = value_as_long (from);
 

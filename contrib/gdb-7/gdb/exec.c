@@ -1,7 +1,7 @@
 /* Work with executable files, for GDB. 
 
    Copyright (C) 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-   1998, 1999, 2000, 2001, 2002, 2003, 2007, 2008, 2009, 2010
+   1998, 1999, 2000, 2001, 2002, 2003, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -25,6 +25,7 @@
 #include "target.h"
 #include "gdbcmd.h"
 #include "language.h"
+#include "filenames.h"
 #include "symfile.h"
 #include "objfiles.h"
 #include "completer.h"
@@ -130,7 +131,7 @@ exec_close_1 (int quitting)
       nxt = vp->nxt;
 
       /* if there is an objfile associated with this bfd,
-         free_objfile() will do proper cleanup of objfile *and* bfd. */
+         free_objfile() will do proper cleanup of objfile *and* bfd.  */
 
       if (vp->objfile)
 	{
@@ -247,7 +248,7 @@ exec_file_attach (char *filename, int from_tty)
       /* At this point, scratch_pathname and exec_bfd->name both point to the
          same malloc'd string.  However exec_close() will attempt to free it
          via the exec_bfd->name pointer, so we need to make another copy and
-         leave exec_bfd as the new owner of the original copy. */
+         leave exec_bfd as the new owner of the original copy.  */
       scratch_pathname = xstrdup (scratch_pathname);
       cleanups = make_cleanup (xfree, scratch_pathname);
 
@@ -264,7 +265,7 @@ exec_file_attach (char *filename, int from_tty)
       /* FIXME - This should only be run for RS6000, but the ifdef is a poor
          way to accomplish.  */
 #ifdef DEPRECATED_IBM6000_TARGET
-      /* Setup initial vmap. */
+      /* Setup initial vmap.  */
 
       map_vmap (exec_bfd, 0);
       if (vmap == NULL)
@@ -314,7 +315,7 @@ exec_file_attach (char *filename, int from_tty)
    be called from file_command(), which also calls symbol_file_command()
    which can take multiple args.
    
-   If ARGS is NULL, we just want to close the exec file. */
+   If ARGS is NULL, we just want to close the exec file.  */
 
 static void
 exec_file_command (char *args, int from_tty)
@@ -353,7 +354,7 @@ exec_file_command (char *args, int from_tty)
     exec_file_attach (NULL, from_tty);
 }
 
-/* Set both the exec file and the symbol file, in one command.  
+/* Set both the exec file and the symbol file, in one command.
    What a novelty.  Why did GDB go through four major releases before this
    command was added?  */
 
@@ -369,7 +370,7 @@ file_command (char *arg, int from_tty)
 }
 
 
-/* Locate all mappable sections of a BFD file. 
+/* Locate all mappable sections of a BFD file.
    table_pp_char is a char * to get it through bfd_map_over_sections;
    we cast it back to its proper type.  */
 
@@ -439,7 +440,8 @@ build_section_table (struct bfd *some_bfd, struct target_section **start,
   *end = *start;
   bfd_map_over_sections (some_bfd, add_to_section_table, (char *) end);
   if (*end > *start + count)
-    internal_error (__FILE__, __LINE__, _("failed internal consistency check"));
+    internal_error (__FILE__, __LINE__,
+		    _("failed internal consistency check"));
   /* We could realloc the table, but it probably loses for most files.  */
   return 0;
 }
@@ -539,7 +541,7 @@ bfdsec_to_vmap (struct bfd *abfd, struct bfd_section *sect, void *arg3)
       vp->dend = vp->dstart + bfd_section_size (abfd, sect);
       vp->dvma = bfd_section_vma (abfd, sect);
     }
-  /* Silently ignore other types of sections. (FIXME?)  */
+  /* Silently ignore other types of sections.  (FIXME?)  */
 }
 
 /* Make a vmap for ABFD which might be a member of the archive ARCH.
@@ -562,7 +564,7 @@ map_vmap (bfd *abfd, bfd *arch)
   vmap_bfd.pvmap = vp;
   bfd_map_over_sections (abfd, bfdsec_to_vmap, &vmap_bfd);
 
-  /* Find the end of the list and append. */
+  /* Find the end of the list and append.  */
   for (vpp = &vmap; *vpp; vpp = &(*vpp)->nxt)
     ;
   *vpp = vp;
@@ -570,6 +572,42 @@ map_vmap (bfd *abfd, bfd *arch)
   return vp;
 }
 
+
+VEC(mem_range_s) *
+section_table_available_memory (VEC(mem_range_s) *memory,
+				CORE_ADDR memaddr, ULONGEST len,
+				struct target_section *sections,
+				struct target_section *sections_end)
+{
+  struct target_section *p;
+
+  for (p = sections; p < sections_end; p++)
+    {
+      if ((bfd_get_section_flags (p->bfd, p->the_bfd_section)
+	   & SEC_READONLY) == 0)
+	continue;
+
+      /* Copy the meta-data, adjusted.  */
+      if (mem_ranges_overlap (p->addr, p->endaddr - p->addr, memaddr, len))
+	{
+	  ULONGEST lo1, hi1, lo2, hi2;
+	  struct mem_range *r;
+
+	  lo1 = memaddr;
+	  hi1 = memaddr + len;
+
+	  lo2 = p->addr;
+	  hi2 = p->endaddr;
+
+	  r = VEC_safe_push (mem_range_s, memory, NULL);
+
+	  r->start = max (lo1, lo2);
+	  r->length = min (hi1, hi2) - r->start;
+	}
+    }
+
+  return memory;
+}
 
 int
 section_table_xfer_memory_partial (gdb_byte *readbuf, const gdb_byte *writebuf,
@@ -584,12 +622,13 @@ section_table_xfer_memory_partial (gdb_byte *readbuf, const gdb_byte *writebuf,
   ULONGEST memend = memaddr + len;
 
   if (len <= 0)
-    internal_error (__FILE__, __LINE__, _("failed internal consistency check"));
+    internal_error (__FILE__, __LINE__,
+		    _("failed internal consistency check"));
 
   for (p = sections; p < sections_end; p++)
     {
       if (section_name && strcmp (section_name, p->the_bfd_section->name) != 0)
-	continue;		/* not the section we need */
+	continue;		/* not the section we need.  */
       if (memaddr >= p->addr)
         {
 	  if (memend <= p->endaddr)
@@ -627,7 +666,7 @@ section_table_xfer_memory_partial (gdb_byte *readbuf, const gdb_byte *writebuf,
         }
     }
 
-  return 0;			/* We can't help */
+  return 0;			/* We can't help.  */
 }
 
 struct target_section_table *
@@ -668,7 +707,8 @@ print_section_info (struct target_section_table *t, bfd *abfd)
   printf_filtered (_("file type %s.\n"), bfd_get_target (abfd));
   if (abfd == exec_bfd)
     {
-      /* gcc-3.4 does not like the initialization in <p == t->sections_end>.  */
+      /* gcc-3.4 does not like the initialization in
+	 <p == t->sections_end>.  */
       bfd_vma displacement = 0;
       bfd_vma entry_point;
 
@@ -689,7 +729,7 @@ print_section_info (struct target_section_table *t, bfd *abfd)
 	    }
 	}
       if (p == t->sections_end)
-	warning (_("Cannot find section for the entry point of %s.\n"),
+	warning (_("Cannot find section for the entry point of %s."),
 		 bfd_get_filename (abfd));
 
       entry_point = gdbarch_addr_bits_remove (gdbarch, 
@@ -712,7 +752,8 @@ print_section_info (struct target_section_table *t, bfd *abfd)
       if (info_verbose)
 	printf_filtered (" @ %s",
 			 hex_string_custom (p->the_bfd_section->filepos, 8));
-      printf_filtered (" is %s", bfd_section_name (p->bfd, p->the_bfd_section));
+      printf_filtered (" is %s", bfd_section_name (p->bfd,
+						   p->the_bfd_section));
       if (p->bfd != abfd)
 	printf_filtered (" in %s", bfd_get_filename (p->bfd));
       printf_filtered ("\n");
@@ -764,17 +805,18 @@ set_section_command (char *args, int from_tty)
   if (args == 0)
     error (_("Must specify section name and its virtual address"));
 
-  /* Parse out section name */
+  /* Parse out section name.  */
   for (secname = args; !isspace (*args); args++);
   seclen = args - secname;
 
-  /* Parse out new virtual address */
+  /* Parse out new virtual address.  */
   secaddr = parse_and_eval_address (args);
 
   table = current_target_sections;
   for (p = table->sections; p < table->sections_end; p++)
     {
-      if (!strncmp (secname, bfd_section_name (exec_bfd, p->the_bfd_section), seclen)
+      if (!strncmp (secname, bfd_section_name (exec_bfd,
+					       p->the_bfd_section), seclen)
 	  && bfd_section_name (exec_bfd, p->the_bfd_section)[seclen] == '\0')
 	{
 	  offset = secaddr - p->addr;
@@ -804,7 +846,7 @@ exec_set_section_address (const char *filename, int index, CORE_ADDR address)
   table = current_target_sections;
   for (p = table->sections; p < table->sections_end; p++)
     {
-      if (strcmp (filename, p->bfd->filename) == 0
+      if (filename_cmp (filename, p->bfd->filename) == 0
 	  && index == p->the_bfd_section->index)
 	{
 	  p->endaddr += address - p->addr;
@@ -832,14 +874,10 @@ exec_has_memory (struct target_ops *ops)
 	  != current_target_sections->sections_end);
 }
 
-/* Find mapped memory. */
+/* Find mapped memory.  */
 
 extern void
-exec_set_find_memory_regions (int (*func) (int (*) (CORE_ADDR, 
-						    unsigned long, 
-						    int, int, int, 
-						    void *),
-					   void *))
+exec_set_find_memory_regions (int (*func) (find_memory_region_ftype, void *))
 {
   exec_ops.to_find_memory_regions = func;
 }

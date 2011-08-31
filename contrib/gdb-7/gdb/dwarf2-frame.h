@@ -1,6 +1,6 @@
 /* Frame unwinder for frames with DWARF Call Frame Information.
 
-   Copyright (C) 2003, 2004, 2005, 2007, 2008, 2009, 2010
+   Copyright (C) 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    Contributed by Mark Kettenis.
@@ -26,6 +26,9 @@
 struct gdbarch;
 struct objfile;
 struct frame_info;
+struct dwarf2_per_cu_data;
+struct agent_expr;
+struct axs_value;
 
 /* Register rule.  */
 
@@ -114,12 +117,19 @@ void dwarf2_append_unwinders (struct gdbarch *gdbarch);
 extern const struct frame_base *
   dwarf2_frame_base_sniffer (struct frame_info *this_frame);
 
-/* Register the DWARF CFI for OBJFILE.  */
-
-void dwarf2_frame_build_info (struct objfile *objfile);
-
 /* Compute the DWARF CFA for a frame.  */
 
 CORE_ADDR dwarf2_frame_cfa (struct frame_info *this_frame);
+
+/* Update the agent expression EXPR with code to compute the CFA for a
+   frame at PC.  GDBARCH is the architecture of the function at PC.
+   This function may call dwarf2_compile_expr_to_ax; DATA is passed
+   through to that function if needed.  */
+
+extern void dwarf2_compile_cfa_to_ax (struct agent_expr *expr,
+				      struct axs_value *loc,
+				      struct gdbarch *gdbarch,
+				      CORE_ADDR pc,
+				      struct dwarf2_per_cu_data *data);
 
 #endif /* dwarf2-frame.h */

@@ -1,6 +1,7 @@
 /* Routines for handling XML memory maps provided by target.
 
-   Copyright (C) 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -25,7 +26,8 @@
 
 /* Parses XML memory map passed as argument and returns the memory
    regions it describes.  On any error, emits error message and
-   returns 0. Does not throw.  Ownership of result is passed to the caller.  */
+   returns 0.  Does not throw.  Ownership of result is passed to the
+   caller.  */
 VEC(mem_region_s) *parse_memory_map (const char *memory_map);
 
 #endif

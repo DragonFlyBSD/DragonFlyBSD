@@ -1,7 +1,7 @@
 /* TUI display source window.
 
    Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009,
-   2010 Free Software Foundation, Inc.
+   2010, 2011 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -28,6 +28,7 @@
 #include "source.h"
 #include "symtab.h"
 #include "objfiles.h"
+#include "filenames.h"
 
 #include "tui/tui.h"
 #include "tui/tui-data.h"
@@ -90,8 +91,10 @@ tui_set_source_content (struct symtab *s,
 	      else
 		{
 		  int offset, cur_line_no, cur_line, cur_len, threshold;
-		  struct tui_gen_win_info *locator = tui_locator_win_info_ptr ();
-                  struct tui_source_info *src = &TUI_SRC_WIN->detail.source_info;
+		  struct tui_gen_win_info *locator
+		    = tui_locator_win_info_ptr ();
+                  struct tui_source_info *src
+		    = &TUI_SRC_WIN->detail.source_info;
 
                   if (TUI_SRC_WIN->generic.title)
                     xfree (TUI_SRC_WIN->generic.title);
@@ -116,7 +119,8 @@ tui_set_source_content (struct symtab *s,
 					   (threshold + 1) * sizeof (char));
 		  while (cur_line < nlines)
 		    {
-		      struct tui_win_element *element = (struct tui_win_element *)
+		      struct tui_win_element *element
+			= (struct tui_win_element *)
 			TUI_SRC_WIN->generic.content[cur_line];
 
 		      /* Get the first character in the line.  */
@@ -129,8 +133,8 @@ tui_set_source_content (struct symtab *s,
 		      /* Init the line with the line number.  */
 		      sprintf (src_line, "%-6d", cur_line_no);
 		      cur_len = strlen (src_line);
-		      i = cur_len -
-			((cur_len / tui_default_tab_len ()) * tui_default_tab_len ());
+		      i = cur_len - ((cur_len / tui_default_tab_len ())
+				     * tui_default_tab_len ());
 		      while (i < tui_default_tab_len ())
 			{
 			  src_line[cur_len] = ' ';
@@ -146,9 +150,9 @@ tui_set_source_content (struct symtab *s,
 		      element->which_element.source.line_or_addr.u.line_no =
 			cur_line_no;
 		      element->which_element.source.is_exec_point =
-			(strcmp (((struct tui_win_element *)
-				  locator->content[0])->which_element.locator.file_name,
-				 s->filename) == 0
+			(filename_cmp (((struct tui_win_element *)
+				       locator->content[0])->which_element.locator.file_name,
+				       s->filename) == 0
 			 && cur_line_no == ((struct tui_win_element *)
 					    locator->content[0])->which_element.locator.line_no);
 		      if (c != EOF)
@@ -177,9 +181,11 @@ tui_set_source_content (struct symtab *s,
 					 overwrite our buffer.  */
 				      if (c == '\t')
 					{
-					  int j, max_tab_len = tui_default_tab_len ();
+					  int j, max_tab_len
+					    = tui_default_tab_len ();
 
-					  for (j = i - ((i / max_tab_len) * max_tab_len);
+					  for (j = i - ((i / max_tab_len)
+							* max_tab_len);
 					       j < max_tab_len
 						 && i < threshold;
 					       i++, j++)
@@ -214,8 +220,8 @@ tui_set_source_content (struct symtab *s,
 		      /* Now copy the line taking the offset into
 			 account.  */
 		      if (strlen (src_line) > offset)
-			strcpy (((struct tui_win_element *) TUI_SRC_WIN->generic.content[
-					cur_line])->which_element.source.line,
+			strcpy (((struct tui_win_element *)
+				 TUI_SRC_WIN->generic.content[cur_line])->which_element.source.line,
 				&src_line[offset]);
 		      else
 			((struct tui_win_element *)
@@ -330,8 +336,10 @@ int
 tui_source_is_displayed (char *fname)
 {
   return (TUI_SRC_WIN->generic.content_in_use 
-	  && (strcmp (((struct tui_win_element *) (tui_locator_win_info_ptr ())->
-		       content[0])->which_element.locator.file_name, fname) == 0));
+	  && (filename_cmp (((struct tui_win_element *)
+			     (tui_locator_win_info_ptr ())->
+			     content[0])->which_element.locator.file_name,
+			    fname) == 0));
 }
 
 
@@ -360,7 +368,8 @@ tui_vertical_source_scroll (enum tui_scroll_direction scroll_direction,
 	  if (l.u.line_no > s->nlines)
 	    /* line = s->nlines - win_info->generic.content_size + 1; */
 	    /* elz: fix for dts 23398.  */
-	    l.u.line_no = content[0]->which_element.source.line_or_addr.u.line_no;
+	    l.u.line_no
+	      = content[0]->which_element.source.line_or_addr.u.line_no;
 	}
       else
 	{

@@ -1,6 +1,7 @@
 /* Code dealing with register stack frames, for GDB, the GNU debugger.
 
-   Copyright (C) 2003, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2003, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -34,6 +35,6 @@ extern void *sentinel_frame_cache (struct regcache *regcache);
 
 /* At present there is only one type of sentinel frame.  */
 
-extern const struct frame_unwind *const sentinel_frame_unwind;
+extern const struct frame_unwind sentinel_frame_unwind;
 
 #endif /* !defined (SENTINEL_FRAME_H)  */

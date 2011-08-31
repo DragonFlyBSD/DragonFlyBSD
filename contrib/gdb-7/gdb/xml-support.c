@@ -1,6 +1,7 @@
 /* Helper routines for parsing XML using Expat.
 
-   Copyright (C) 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -135,6 +136,22 @@ gdb_xml_error (struct gdb_xml_parser *parser, const char *format, ...)
   parser->last_line = line;
   va_start (ap, format);
   throw_verror (XML_PARSE_ERROR, format, ap);
+}
+
+/* Find the attribute named NAME in the set of parsed attributes
+   ATTRIBUTES.  Returns NULL if not found.  */
+
+struct gdb_xml_value *
+xml_find_attribute (VEC(gdb_xml_value_s) *attributes, const char *name)
+{
+  struct gdb_xml_value *value;
+  int ix;
+
+  for (ix = 0; VEC_iterate (gdb_xml_value_s, attributes, ix, value); ix++)
+    if (strcmp (value->name, name) == 0)
+      return value;
+
+  return NULL;
 }
 
 /* Clean up a vector of parsed attribute values.  */
@@ -338,7 +355,7 @@ gdb_xml_end_element (void *data, const XML_Char *name)
       gdb_xml_error (parser, _("Required element <%s> is missing"),
 		     element->name);
 
-  /* Call the element processor. */
+  /* Call the element processor.  */
   if (scope->element != NULL && scope->element->end_handler)
     {
       char *body;
@@ -426,13 +443,14 @@ gdb_xml_cleanup (void *arg)
 /* Initialize and return a parser.  Register a cleanup to destroy the
    parser.  */
 
-struct gdb_xml_parser *
-gdb_xml_create_parser_and_cleanup (const char *name,
-				   const struct gdb_xml_element *elements,
-				   void *user_data)
+static struct gdb_xml_parser *
+gdb_xml_create_parser_and_cleanup_1 (const char *name,
+				     const struct gdb_xml_element *elements,
+				     void *user_data, struct cleanup **old_chain)
 {
   struct gdb_xml_parser *parser;
   struct scope_level start_scope;
+  struct cleanup *dummy;
 
   /* Initialize the parser.  */
   parser = XZALLOC (struct gdb_xml_parser);
@@ -458,9 +476,25 @@ gdb_xml_create_parser_and_cleanup (const char *name,
   start_scope.elements = elements;
   VEC_safe_push (scope_level_s, parser->scopes, &start_scope);
 
-  make_cleanup (gdb_xml_cleanup, parser);
+  if (old_chain == NULL)
+    old_chain = &dummy;
 
+  *old_chain = make_cleanup (gdb_xml_cleanup, parser);
   return parser;
+}
+
+/* Initialize and return a parser.  Register a cleanup to destroy the
+   parser.  */
+
+struct gdb_xml_parser *
+gdb_xml_create_parser_and_cleanup (const char *name,
+				   const struct gdb_xml_element *elements,
+				   void *user_data)
+{
+  struct cleanup *old_chain;
+
+  return gdb_xml_create_parser_and_cleanup_1 (name, elements, user_data,
+					      &old_chain);
 }
 
 /* External entity handler.  The only external entities we support
@@ -483,7 +517,8 @@ gdb_xml_fetch_external_entity (XML_Parser expat_parser,
     {
       text = fetch_xml_builtin (parser->dtd_name);
       if (text == NULL)
-	internal_error (__FILE__, __LINE__, "could not locate built-in DTD %s",
+	internal_error (__FILE__, __LINE__,
+			_("could not locate built-in DTD %s"),
 			parser->dtd_name);
     }
   else
@@ -528,7 +563,8 @@ gdb_xml_use_dtd (struct gdb_xml_parser *parser, const char *dtd_name)
   err = XML_UseForeignDTD (parser->expat_parser, XML_TRUE);
   if (err != XML_ERROR_NONE)
     internal_error (__FILE__, __LINE__,
-		    "XML_UseForeignDTD failed: %s", XML_ErrorString (err));
+		    _("XML_UseForeignDTD failed: %s"),
+		    XML_ErrorString (err));
 }
 
 /* Invoke PARSER on BUFFER.  BUFFER is the data to parse, which
@@ -576,6 +612,26 @@ gdb_xml_parse (struct gdb_xml_parser *parser, const char *buffer)
     warning (_("while parsing %s: %s"), parser->name, error_string);
 
   return -1;
+}
+
+int
+gdb_xml_parse_quick (const char *name, const char *dtd_name,
+		     const struct gdb_xml_element *elements,
+		     const char *document, void *user_data)
+{
+  struct gdb_xml_parser *parser;
+  struct cleanup *back_to;
+  int result;
+
+  parser = gdb_xml_create_parser_and_cleanup_1 (name, elements,
+						user_data, &back_to);
+  if (dtd_name != NULL)
+    gdb_xml_use_dtd (parser, dtd_name);
+  result = gdb_xml_parse (parser, document);
+
+  do_cleanups (back_to);
+
+  return result;
 }
 
 /* Parse a field VALSTR that we expect to contain an integer value.
@@ -718,7 +774,7 @@ xinclude_start_include (struct gdb_xml_parser *parser,
 			void *user_data, VEC(gdb_xml_value_s) *attributes)
 {
   struct xinclude_parsing_data *data = user_data;
-  char *href = VEC_index (gdb_xml_value_s, attributes, 0)->value;
+  char *href = xml_find_attribute (attributes, "href")->value;
   struct cleanup *back_to;
   char *text, *output;
 

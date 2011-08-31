@@ -11,7 +11,7 @@
 
 #else
 
-/* Copyright (C) 1999, 2000, 2007, 2008, 2009, 2010
+/* Copyright (C) 1999, 2000, 2007, 2008, 2009, 2010, 2011
 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
@@ -111,17 +111,18 @@ typedef struct td_thrhandle
 
 
 #define TD_EVENTSIZE	2
-#define BT_UISHIFT	5 /* log base 2 of BT_NBIPUI, to extract word index */
-#define BT_NBIPUI	(1 << BT_UISHIFT)       /* n bits per uint */
-#define BT_UIMASK	(BT_NBIPUI - 1)         /* to extract bit index */
+#define BT_UISHIFT	5 		/* log base 2 of BT_NBIPUI, to
+					   extract word index.  */
+#define BT_NBIPUI	(1 << BT_UISHIFT)       /* n bits per uint.  */
+#define BT_UIMASK	(BT_NBIPUI - 1)         /* to extract bit index.  */
 
-/* Bitmask of enabled events. */
+/* Bitmask of enabled events.  */
 typedef struct td_thr_events
 {
   uint32_t event_bits[TD_EVENTSIZE];
 } td_thr_events_t;
 
-/* Event set manipulation macros. */
+/* Event set manipulation macros.  */
 #define __td_eventmask(n) \
   (UINT32_C (1) << (((n) - 1) & BT_UIMASK))
 #define __td_eventword(n) \
@@ -159,7 +160,7 @@ typedef enum
 {
   TD_ALL_EVENTS,		 /* Pseudo-event number.  */
   TD_EVENT_NONE = TD_ALL_EVENTS, /* Depends on context.  */
-  TD_READY,			 /* Is executable now. */
+  TD_READY,			 /* Is executable now.  */
   TD_SLEEP,			 /* Blocked in a synchronization obj.  */
   TD_SWITCHTO,			 /* Now assigned to a process.  */
   TD_SWITCHFROM,		 /* Not anymore assigned to a process.  */
@@ -181,7 +182,8 @@ typedef enum
 /* Values representing the different ways events are reported.  */
 typedef enum
 {
-  NOTIFY_BPT,			/* User must insert breakpoint at u.bptaddr. */
+  NOTIFY_BPT,			/* User must insert breakpoint at
+				   u.bptaddr.  */
   NOTIFY_AUTOBPT,		/* Breakpoint at u.bptaddr is automatically
 				   inserted.  */
   NOTIFY_SYSCALL		/* System call u.syscallno will be invoked.  */
@@ -284,7 +286,8 @@ typedef struct td_thrinfo
   psaddr_t ti_ro_area;			/* Unused.  */
   int ti_ro_size;			/* Unused.  */
   td_thr_state_e ti_state;		/* Thread state.  */
-  unsigned char ti_db_suspended;	/* Nonzero if suspended by debugger. */
+  unsigned char ti_db_suspended;	/* Nonzero if suspended by
+					   debugger.  */
   td_thr_type_e ti_type;		/* Type of the thread (system vs
 					   user thread).  */
   intptr_t ti_pc;			/* Unused.  */

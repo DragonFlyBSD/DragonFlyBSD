@@ -1,7 +1,7 @@
 /* Parser definitions for GDB.
 
    Copyright (C) 1986, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-   1998, 1999, 2000, 2002, 2007, 2008, 2009, 2010
+   1998, 1999, 2000, 2002, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    Modified from expread.y by the Department of Computer Science at the
@@ -50,7 +50,7 @@ extern struct block *expression_context_block;
 extern CORE_ADDR expression_context_pc;
 
 /* The innermost context required by the stack and register variables
-   we've encountered so far. */
+   we've encountered so far.  */
 extern struct block *innermost_block;
 
 /* The block in which the most recently discovered symbol was found.
@@ -62,13 +62,13 @@ extern struct block *block_found;
 extern int arglist_len;
 
 /* A string token, either a char-string or bit-string.  Char-strings are
-   used, for example, for the names of symbols. */
+   used, for example, for the names of symbols.  */
 
 struct stoken
   {
-    /* Pointer to first byte of char-string or first bit of bit-string */
+    /* Pointer to first byte of char-string or first bit of bit-string.  */
     char *ptr;
-    /* Length of string in bytes for char-string or bits for bit-string */
+    /* Length of string in bytes for char-string or bits for bit-string.  */
     int length;
   };
 
@@ -76,9 +76,9 @@ struct typed_stoken
   {
     /* A language-specific type field.  */
     int type;
-    /* Pointer to first byte of char-string or first bit of bit-string */
+    /* Pointer to first byte of char-string or first bit of bit-string.  */
     char *ptr;
-    /* Length of string in bytes for char-string or bits for bit-string */
+    /* Length of string in bytes for char-string or bits for bit-string.  */
     int length;
   };
 
@@ -204,12 +204,18 @@ extern struct type *follow_types (struct type *);
 
 extern void null_post_parser (struct expression **, int);
 
+extern int parse_float (const char *p, int len, DOUBLEST *d,
+			const char **suffix);
+
+extern int parse_c_float (struct gdbarch *gdbarch, const char *p, int len,
+			  DOUBLEST *d, struct type **t);
+
 /* During parsing of a C expression, the pointer to the next character
    is in this variable.  */
 
 extern char *lexptr;
 
-/* After a token has been recognized, this variable points to it.  
+/* After a token has been recognized, this variable points to it.
    Currently used only for error reporting.  */
 extern char *prev_lexptr;
 
@@ -259,7 +265,7 @@ struct op_print
     enum precedence precedence;
 
     /* For a binary operator:  1 iff right associate.
-       For a unary operator:  1 iff postfix. */
+       For a unary operator:  1 iff postfix.  */
     int right_assoc;
   };
 

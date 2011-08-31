@@ -1,6 +1,7 @@
 /* Work with executable files, for GDB, the GNU debugger.
 
-   Copyright (C) 2003, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2003, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -22,6 +23,7 @@
 
 #include "target.h"
 #include "progspace.h"
+#include "memrange.h"
 
 struct target_section;
 struct target_ops;
@@ -42,6 +44,17 @@ extern int build_section_table (struct bfd *, struct target_section **,
    old size.  */
 
 extern int resize_section_table (struct target_section_table *, int);
+
+/* Appends all read-only memory ranges found in the target section
+   table defined by SECTIONS and SECTIONS_END, starting at (and
+   intersected with) MEMADDR for LEN bytes.  Returns the augmented
+   VEC.  */
+
+extern VEC(mem_range_s) *
+  section_table_available_memory (VEC(mem_range_s) *ranges,
+				  CORE_ADDR memaddr, ULONGEST len,
+				  struct target_section *sections,
+				  struct target_section *sections_end);
 
 /* Read or write from mappable sections of BFD executable files.
 

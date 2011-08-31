@@ -3,7 +3,7 @@
    Low level functions to implement Oeprating System specific
    code to manipulate I386 debug registers.
 
-   Copyright (C) 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -42,7 +42,7 @@ extern void i386_use_watchpoints (struct target_ops *);
    whether a given region can be watched, etc.
 
    In addition, each target should provide several low-level functions
-   regrouped into i386_dr_low_type struct below. These functions
+   regrouped into i386_dr_low_type struct below.  These functions
    that will be called to insert watchpoints and hardware breakpoints
    into the inferior, remove them, and check their status.  These
    functions are:

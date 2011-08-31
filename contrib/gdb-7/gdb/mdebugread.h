@@ -1,6 +1,7 @@
 /* Read a symbol table in ECOFF format (Third-Eye).
 
-   Copyright (C) 2004, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2004, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -28,8 +29,8 @@
 
 struct mdebug_extra_func_info
 {
-  long numargs;		/* number of args to procedure (was iopt) */
-  PDR pdr;			/* Procedure descriptor record */
+  long numargs;		/* Number of args to procedure (was iopt).  */
+  PDR pdr;		/* Procedure descriptor record.  */
 };
 
 /* Special symbol found in blocks associated with routines.  We can

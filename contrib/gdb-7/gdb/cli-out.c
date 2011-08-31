@@ -1,6 +1,6 @@
 /* Output generating routines for GDB CLI.
 
-   Copyright (C) 1999, 2000, 2002, 2003, 2005, 2007, 2008, 2009, 2010
+   Copyright (C) 1999, 2000, 2002, 2003, 2005, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions.
@@ -26,6 +26,7 @@
 #include "cli-out.h"
 #include "gdb_string.h"
 #include "gdb_assert.h"
+#include "vec.h"
 
 typedef struct cli_ui_out_data cli_out_data;
 
@@ -224,11 +225,13 @@ cli_field_fmt (struct ui_out *uiout, int fldno,
 	       va_list args)
 {
   cli_out_data *data = ui_out_data (uiout);
+  struct ui_file *stream;
 
   if (data->suppress_output)
     return;
 
-  vfprintf_filtered (data->stream, format, args);
+  stream = VEC_last (ui_filep, data->streams);
+  vfprintf_filtered (stream, format, args);
 
   if (align != ui_noalign)
     field_separator ();
@@ -238,20 +241,26 @@ static void
 cli_spaces (struct ui_out *uiout, int numspaces)
 {
   cli_out_data *data = ui_out_data (uiout);
+  struct ui_file *stream;
 
   if (data->suppress_output)
     return;
-  print_spaces_filtered (numspaces, data->stream);
+
+  stream = VEC_last (ui_filep, data->streams);
+  print_spaces_filtered (numspaces, stream);
 }
 
 static void
 cli_text (struct ui_out *uiout, const char *string)
 {
   cli_out_data *data = ui_out_data (uiout);
+  struct ui_file *stream;
 
   if (data->suppress_output)
     return;
-  fputs_filtered (string, data->stream);
+
+  stream = VEC_last (ui_filep, data->streams);
+  fputs_filtered (string, stream);
 }
 
 static void ATTRIBUTE_PRINTF (3, 0)
@@ -262,8 +271,13 @@ cli_message (struct ui_out *uiout, int verbosity,
 
   if (data->suppress_output)
     return;
+
   if (ui_out_get_verblvl (uiout) >= verbosity)
-    vfprintf_unfiltered (data->stream, format, args);
+    {
+      struct ui_file *stream = VEC_last (ui_filep, data->streams);
+
+      vfprintf_unfiltered (stream, format, args);
+    }
 }
 
 static void
@@ -280,9 +294,14 @@ static void
 cli_flush (struct ui_out *uiout)
 {
   cli_out_data *data = ui_out_data (uiout);
+  struct ui_file *stream = VEC_last (ui_filep, data->streams);
 
-  gdb_flush (data->stream);
+  gdb_flush (stream);
 }
+
+/* OUTSTREAM as non-NULL will push OUTSTREAM on the stack of output streams
+   and make it therefore active.  OUTSTREAM as NULL will pop the last pushed
+   output stream; it is an internal error if it does not exist.  */
 
 static int
 cli_redirect (struct ui_out *uiout, struct ui_file *outstream)
@@ -290,15 +309,9 @@ cli_redirect (struct ui_out *uiout, struct ui_file *outstream)
   cli_out_data *data = ui_out_data (uiout);
 
   if (outstream != NULL)
-    {
-      data->original_stream = data->stream;
-      data->stream = outstream;
-    }
-  else if (data->original_stream != NULL)
-    {
-      data->stream = data->original_stream;
-      data->original_stream = NULL;
-    }
+    VEC_safe_push (ui_filep, data->streams, outstream);
+  else
+    VEC_pop (ui_filep, data->streams);
 
   return 0;
 }
@@ -315,10 +328,11 @@ out_field_fmt (struct ui_out *uiout, int fldno,
 	       const char *format,...)
 {
   cli_out_data *data = ui_out_data (uiout);
+  struct ui_file *stream = VEC_last (ui_filep, data->streams);
   va_list args;
 
   va_start (args, format);
-  vfprintf_filtered (data->stream, format, args);
+  vfprintf_filtered (stream, format, args);
 
   va_end (args);
 }
@@ -329,8 +343,9 @@ static void
 field_separator (void)
 {
   cli_out_data *data = ui_out_data (uiout);
+  struct ui_file *stream = VEC_last (ui_filep, data->streams);
 
-  fputc_filtered (' ', data->stream);
+  fputc_filtered (' ', stream);
 }
 
 /* This is the CLI ui-out implementation functions vector */
@@ -364,8 +379,11 @@ struct ui_out_impl cli_ui_out_impl =
 void
 cli_out_data_ctor (cli_out_data *self, struct ui_file *stream)
 {
-  self->stream = stream;
-  self->original_stream = NULL;
+  gdb_assert (stream != NULL);
+
+  self->streams = NULL;
+  VEC_safe_push (ui_filep, self->streams, stream);
+
   self->suppress_output = 0;
 }
 
@@ -385,8 +403,10 @@ struct ui_file *
 cli_out_set_stream (struct ui_out *uiout, struct ui_file *stream)
 {
   cli_out_data *data = ui_out_data (uiout);
-  struct ui_file *old = data->stream;
+  struct ui_file *old;
+  
+  old = VEC_pop (ui_filep, data->streams);
+  VEC_quick_push (ui_filep, data->streams, stream);
 
-  data->stream = stream;
   return old;
 }

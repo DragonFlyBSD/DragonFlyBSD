@@ -1,7 +1,7 @@
 /* Fork a Unix child process, and set up to debug it, for GDB.
 
    Copyright (C) 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000,
-   2001, 2004, 2005, 2006, 2007, 2008, 2009, 2010
+   2001, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Support.
@@ -52,7 +52,7 @@ static char *exec_wrapper;
 static void
 breakup_args (char *scratch, char **argv)
 {
-  char *cp = scratch;
+  char *cp = scratch, *tmp;
 
   for (;;)
     {
@@ -68,15 +68,16 @@ breakup_args (char *scratch, char **argv)
       *argv++ = cp;
 
       /* Scan for next arg separator.  */
-      cp = strchr (cp, ' ');
-      if (cp == NULL)
-	cp = strchr (cp, '\t');
-      if (cp == NULL)
-	cp = strchr (cp, '\n');
+      tmp = strchr (cp, ' ');
+      if (tmp == NULL)
+	tmp = strchr (cp, '\t');
+      if (tmp == NULL)
+	tmp = strchr (cp, '\n');
 
       /* No separators => end of string => break.  */
-      if (cp == NULL)
+      if (tmp == NULL)
 	break;
+      cp = tmp;
 
       /* Replace the separator with a terminator.  */
       *cp++ = '\0';
@@ -128,7 +129,7 @@ fork_inferior (char *exec_file_arg, char *allargs, char **env,
   char *shell_command;
   static char default_shell_file[] = SHELL_FILE;
   int len;
-  /* Set debug_fork then attach to the child while it sleeps, to debug. */
+  /* Set debug_fork then attach to the child while it sleeps, to debug.  */
   static int debug_fork = 0;
   /* This is set to the result of setpgrp, which if vforked, will be visible
      to you in the parent process.  It's only used by humans for debugging.  */
@@ -272,7 +273,7 @@ fork_inferior (char *exec_file_arg, char *allargs, char **env,
 
   /* It is generally good practice to flush any possible pending stdio
      output prior to doing a fork, to avoid the possibility of both
-     the parent and child flushing the same data after the fork. */
+     the parent and child flushing the same data after the fork.  */
   gdb_flush (gdb_stdout);
   gdb_flush (gdb_stderr);
 
@@ -314,7 +315,7 @@ fork_inferior (char *exec_file_arg, char *allargs, char **env,
 	     in a separate process group.  */
 	  debug_setpgrp = gdb_setpgid ();
 	  if (debug_setpgrp == -1)
-	    perror ("setpgrp failed in child");
+	    perror (_("setpgrp failed in child"));
 	}
 
       /* Ask the tty subsystem to switch to the one we specified
@@ -328,7 +329,7 @@ fork_inferior (char *exec_file_arg, char *allargs, char **env,
          initialize_signals for how we get the right signal handlers
          for the inferior.  */
 
-      /* "Trace me, Dr. Memory!" */
+      /* "Trace me, Dr. Memory!"  */
       (*traceme_fun) ();
 
       /* The call above set this process (the "child") as debuggable
@@ -366,12 +367,11 @@ fork_inferior (char *exec_file_arg, char *allargs, char **env,
 	  /* Otherwise, we directly exec the target program with
 	     execvp.  */
 	  int i;
-	  char *errstring;
 
 	  execvp (exec_file, argv);
 
 	  /* If we get here, it's an error.  */
-	  errstring = safe_strerror (errno);
+	  safe_strerror (errno);
 	  fprintf_unfiltered (gdb_stderr, "Cannot exec %s ", exec_file);
 
 	  i = 1;
@@ -383,10 +383,6 @@ fork_inferior (char *exec_file_arg, char *allargs, char **env,
 	      i++;
 	    }
 	  fprintf_unfiltered (gdb_stderr, ".\n");
-#if 0
-	  /* This extra info seems to be useless.  */
-	  fprintf_unfiltered (gdb_stderr, "Got error %s.\n", errstring);
-#endif
 	  gdb_flush (gdb_stderr);
 	  _exit (0177);
 	}
@@ -448,7 +444,7 @@ startup_inferior (int ntraps)
 
   while (1)
     {
-      int resume_signal = TARGET_SIGNAL_0;
+      enum target_signal resume_signal = TARGET_SIGNAL_0;
       ptid_t event_ptid;
 
       struct target_waitstatus ws;

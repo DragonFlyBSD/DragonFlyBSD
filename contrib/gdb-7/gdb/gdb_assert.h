@@ -1,5 +1,5 @@
 /* GDB-friendly replacement for <assert.h>.
-   Copyright (C) 2000, 2001, 2007, 2008, 2009, 2010
+   Copyright (C) 2000, 2001, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -23,7 +23,7 @@
 /* PRAGMATICS: "gdb_assert.h":gdb_assert() is a lower case (rather
    than upper case) macro since that provides the closest fit to the
    existing lower case macro <assert.h>:assert() that it is
-   replacing. */
+   replacing.  */
 
 #define gdb_assert(expr)                                                      \
   ((void) ((expr) ? 0 :                                                       \
@@ -42,16 +42,27 @@
 #endif
 #endif
 
-/* This prints an "Assertion failed" message, aksing the user if they
+/* This prints an "Assertion failed" message, asking the user if they
    want to continue, dump core, or just exit.  */
 #if defined (ASSERT_FUNCTION)
 #define gdb_assert_fail(assertion, file, line, function)                      \
-  internal_error (file, line, _("%s: Assertion `%s' failed."),                   \
+  internal_error (file, line, _("%s: Assertion `%s' failed."),                \
 		  function, assertion)
 #else
 #define gdb_assert_fail(assertion, file, line, function)                      \
-  internal_error (file, line, _("Assertion `%s' failed."),                       \
+  internal_error (file, line, _("Assertion `%s' failed."),                    \
 		  assertion)
+#endif
+
+/* The canonical form of gdb_assert (0).
+   MESSAGE is a string to include in the error message.  */
+
+#if defined (ASSERT_FUNCTION)
+#define gdb_assert_not_reached(message) \
+  internal_error (__FILE__, __LINE__, "%s: %s", ASSERT_FUNCTION, _(message))
+#else
+#define gdb_assert_not_reached(message) \
+  internal_error (__FILE__, __LINE__, _(message))
 #endif
 
 #endif /* gdb_assert.h */

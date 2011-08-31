@@ -10,7 +10,7 @@
 
 @copying
 Copyright @copyright{} 1990, 1991, 1992, 1993, 1994, 1996, 1998, 1999,
-2000, 2001, 2002, 2003, 2004, 2005, 2006, 2008, 2009, 2010
+2000, 2001, 2002, 2003, 2004, 2005, 2006, 2008, 2009, 2010, 2011
 Free Software Foundation, Inc.
 Contributed by Cygnus Solutions.  Written by John Gilmore.
 Second Edition by Stan Shebs.
@@ -83,7 +83,8 @@ as the mechanisms that adapt @value{GDBN} to specific hosts and targets.
 * Target Vector Definition::
 * Native Debugging::
 * Support Libraries::
-* Coding::
+* Coding Standards::
+* Misc Guidelines::
 * Porting GDB::
 * Versions and Branches::
 * Start of New Year Procedure::
@@ -1322,9 +1323,9 @@ be signaled.
 
 @deftypefun {struct cleanup *} make_cleanup_ui_out_tuple_begin_end (struct ui_out *@var{uiout}, const char *@var{id})
 This function first opens the tuple and then establishes a cleanup
-(@pxref{Coding, Cleanups}) to close the tuple.  It provides a convenient
-and correct implementation of the non-portable@footnote{The function
-cast is not portable ISO C.} code sequence:
+(@pxref{Misc Guidelines, Cleanups}) to close the tuple.
+It provides a convenient and correct implementation of the
+non-portable@footnote{The function cast is not portable ISO C.} code sequence:
 @smallexample
 struct cleanup *old_cleanup;
 ui_out_tuple_begin (uiout, "...");
@@ -1349,7 +1350,8 @@ be signaled.
 
 @deftypefun {struct cleanup *} make_cleanup_ui_out_list_begin_end (struct ui_out *@var{uiout}, const char *@var{id})
 Similar to @code{make_cleanup_ui_out_tuple_begin_end}, this function
-opens a list and then establishes cleanup (@pxref{Coding, Cleanups})
+opens a list and then establishes cleanup
+(@pxref{Misc Guidelines, Cleanups})
 that will close the list.
 @end deftypefun
 
@@ -5756,9 +5758,257 @@ Binary search the array.
 
 @section include
 
-@node Coding
+@node Coding Standards
 
-@chapter Coding
+@chapter Coding Standards
+@cindex coding standards
+
+@section @value{GDBN} C Coding Standards
+
+@value{GDBN} follows the GNU coding standards, as described in
+@file{etc/standards.texi}.  This file is also available for anonymous
+FTP from GNU archive sites.  @value{GDBN} takes a strict interpretation
+of the standard; in general, when the GNU standard recommends a practice
+but does not require it, @value{GDBN} requires it.
+
+@value{GDBN} follows an additional set of coding standards specific to
+@value{GDBN}, as described in the following sections.
+
+@subsection ISO C
+
+@value{GDBN} assumes an ISO/IEC 9899:1990 (a.k.a.@: ISO C90) compliant
+compiler.
+
+@value{GDBN} does not assume an ISO C or POSIX compliant C library.
+
+@subsection Formatting
+
+@cindex source code formatting
+The standard GNU recommendations for formatting must be followed
+strictly.  Any @value{GDBN}-specific deviation from GNU
+recomendations is described below.
+
+A function declaration should not have its name in column zero.  A
+function definition should have its name in column zero.
+
+@smallexample
+/* Declaration */
+static void foo (void);
+/* Definition */
+void
+foo (void)
+@{
+@}
+@end smallexample
+
+@emph{Pragmatics: This simplifies scripting.  Function definitions can
+be found using @samp{^function-name}.}
+
+There must be a space between a function or macro name and the opening
+parenthesis of its argument list (except for macro definitions, as
+required by C).  There must not be a space after an open paren/bracket
+or before a close paren/bracket.
+
+While additional whitespace is generally helpful for reading, do not use
+more than one blank line to separate blocks, and avoid adding whitespace
+after the end of a program line (as of 1/99, some 600 lines had
+whitespace after the semicolon).  Excess whitespace causes difficulties
+for @code{diff} and @code{patch} utilities.
+
+Pointers are declared using the traditional K&R C style:
+
+@smallexample
+void *foo;
+@end smallexample
+
+@noindent
+and not:
+
+@smallexample
+void * foo;
+void* foo;
+@end smallexample
+
+In addition, whitespace around casts and unary operators should follow
+the following guidelines:
+
+@multitable @columnfractions .2 .2 .8
+@item Use... @tab ...instead of @tab
+
+@item @code{!x}
+@tab @code{! x}
+@item @code{~x}
+@tab @code{~ x}
+@item @code{-x}
+@tab @code{- x}
+@tab (unary minus)
+@item @code{(foo) x}
+@tab @code{(foo)x}
+@tab (cast)
+@item @code{*x}
+@tab @code{* x}
+@tab (pointer dereference)
+@end multitable
+
+@subsection Comments
+
+@cindex comment formatting
+The standard GNU requirements on comments must be followed strictly.
+
+Block comments must appear in the following form, with no @code{/*}- or
+@code{*/}-only lines, and no leading @code{*}:
+
+@smallexample
+/* Wait for control to return from inferior to debugger.  If inferior
+   gets a signal, we may decide to start it up again instead of
+   returning.  That is why there is a loop in this function.  When
+   this function actually returns it means the inferior should be left
+   stopped and @value{GDBN} should read more commands.  */
+@end smallexample
+
+(Note that this format is encouraged by Emacs; tabbing for a multi-line
+comment works correctly, and @kbd{M-q} fills the block consistently.)
+
+Put a blank line between the block comments preceding function or
+variable definitions, and the definition itself.
+
+In general, put function-body comments on lines by themselves, rather
+than trying to fit them into the 20 characters left at the end of a
+line, since either the comment or the code will inevitably get longer
+than will fit, and then somebody will have to move it anyhow.
+
+@subsection C Usage
+
+@cindex C data types
+Code must not depend on the sizes of C data types, the format of the
+host's floating point numbers, the alignment of anything, or the order
+of evaluation of expressions.
+
+@cindex function usage
+Use functions freely.  There are only a handful of compute-bound areas
+in @value{GDBN} that might be affected by the overhead of a function
+call, mainly in symbol reading.  Most of @value{GDBN}'s performance is
+limited by the target interface (whether serial line or system call).
+
+However, use functions with moderation.  A thousand one-line functions
+are just as hard to understand as a single thousand-line function.
+
+@emph{Macros are bad, M'kay.}
+(But if you have to use a macro, make sure that the macro arguments are
+protected with parentheses.)
+
+@cindex types
+
+Declarations like @samp{struct foo *} should be used in preference to
+declarations like @samp{typedef struct foo @{ @dots{} @} *foo_ptr}.
+
+@subsection Function Prototypes
+@cindex function prototypes
+
+Prototypes must be used when both @emph{declaring} and @emph{defining}
+a function.  Prototypes for @value{GDBN} functions must include both the
+argument type and name, with the name matching that used in the actual
+function definition.
+
+All external functions should have a declaration in a header file that
+callers include, except for @code{_initialize_*} functions, which must
+be external so that @file{init.c} construction works, but shouldn't be
+visible to random source files.
+
+Where a source file needs a forward declaration of a static function,
+that declaration must appear in a block near the top of the source file.
+
+@subsection File Names
+
+Any file used when building the core of @value{GDBN} must be in lower
+case.  Any file used when building the core of @value{GDBN} must be 8.3
+unique.  These requirements apply to both source and generated files.
+
+@emph{Pragmatics: The core of @value{GDBN} must be buildable on many
+platforms including DJGPP and MacOS/HFS.  Every time an unfriendly file
+is introduced to the build process both @file{Makefile.in} and
+@file{configure.in} need to be modified accordingly.  Compare the
+convoluted conversion process needed to transform @file{COPYING} into
+@file{copying.c} with the conversion needed to transform
+@file{version.in} into @file{version.c}.}
+
+Any file non 8.3 compliant file (that is not used when building the core
+of @value{GDBN}) must be added to @file{gdb/config/djgpp/fnchange.lst}.
+
+@emph{Pragmatics: This is clearly a compromise.}
+
+When @value{GDBN} has a local version of a system header file (ex
+@file{string.h}) the file name based on the POSIX header prefixed with
+@file{gdb_} (@file{gdb_string.h}).  These headers should be relatively
+independent: they should use only macros defined by @file{configure},
+the compiler, or the host; they should include only system headers; they
+should refer only to system types.  They may be shared between multiple
+programs, e.g.@: @value{GDBN} and @sc{gdbserver}.
+
+For other files @samp{-} is used as the separator.
+
+@subsection Include Files
+
+A @file{.c} file should include @file{defs.h} first.
+
+A @file{.c} file should directly include the @code{.h} file of every
+declaration and/or definition it directly refers to.  It cannot rely on
+indirect inclusion.
+
+A @file{.h} file should directly include the @code{.h} file of every
+declaration and/or definition it directly refers to.  It cannot rely on
+indirect inclusion.  Exception: The file @file{defs.h} does not need to
+be directly included.
+
+An external declaration should only appear in one include file.
+
+An external declaration should never appear in a @code{.c} file.
+Exception: a declaration for the @code{_initialize} function that
+pacifies @option{-Wmissing-declaration}.
+
+A @code{typedef} definition should only appear in one include file.
+
+An opaque @code{struct} declaration can appear in multiple @file{.h}
+files.  Where possible, a @file{.h} file should use an opaque
+@code{struct} declaration instead of an include.
+
+All @file{.h} files should be wrapped in:
+
+@smallexample
+#ifndef INCLUDE_FILE_NAME_H
+#define INCLUDE_FILE_NAME_H
+header body
+#endif
+@end smallexample
+
+@section @value{GDBN} Python Coding Standards
+
+@value{GDBN} follows the published @code{Python} coding standards in
+@uref{http://www.python.org/dev/peps/pep-0008/, @code{PEP008}}.
+
+In addition, the guidelines in the
+@uref{http://google-styleguide.googlecode.com/svn/trunk/pyguide.html,
+Google Python Style Guide} are also followed where they do not
+conflict with @code{PEP008}.
+
+@subsection @value{GDBN}-specific exceptions
+
+There are a few exceptions to the published standards.
+They exist mainly for consistency with the @code{C} standards.
+
+@c It is expected that there are a few more exceptions,
+@c so we use itemize here.
+
+@itemize @bullet
+
+@item
+Use @code{FIXME} instead of @code{TODO}.
+
+@end itemize
+
+@node Misc Guidelines
+
+@chapter Misc Guidelines
 
 This chapter covers topics that are lower-level than the major
 algorithms of @value{GDBN}.
@@ -5995,28 +6245,7 @@ finish by printing a newline, to flush the wrap buffer, before switching
 to unfiltered (@code{printf}) output.  Symbol reading routines that
 print warnings are a good example.
 
-@section @value{GDBN} Coding Standards
-@cindex coding standards
-
-@value{GDBN} follows the GNU coding standards, as described in
-@file{etc/standards.texi}.  This file is also available for anonymous
-FTP from GNU archive sites.  @value{GDBN} takes a strict interpretation
-of the standard; in general, when the GNU standard recommends a practice
-but does not require it, @value{GDBN} requires it.
-
-@value{GDBN} follows an additional set of coding standards specific to
-@value{GDBN}, as described in the following sections.
-
-
-@subsection ISO C
-
-@value{GDBN} assumes an ISO/IEC 9899:1990 (a.k.a.@: ISO C90) compliant
-compiler.
-
-@value{GDBN} does not assume an ISO C or POSIX compliant C library.
-
-
-@subsection Memory Management
+@section Memory Management
 
 @value{GDBN} does not use the functions @code{malloc}, @code{realloc},
 @code{calloc}, @code{free} and @code{asprintf}.
@@ -6054,7 +6283,7 @@ functions such as @code{sprintf} are very prone to buffer overflow
 errors.}
 
 
-@subsection Compiler Warnings
+@section Compiler Warnings
 @cindex compiler warnings
 
 With few exceptions, developers should avoid the configuration option
@@ -6109,124 +6338,7 @@ currently too noisy to enable with @samp{-Werror}.
 
 @end table
 
-@subsection Formatting
-
-@cindex source code formatting
-The standard GNU recommendations for formatting must be followed
-strictly.
-
-A function declaration should not have its name in column zero.  A
-function definition should have its name in column zero.
-
-@smallexample
-/* Declaration */
-static void foo (void);
-/* Definition */
-void
-foo (void)
-@{
-@}
-@end smallexample
-
-@emph{Pragmatics: This simplifies scripting.  Function definitions can
-be found using @samp{^function-name}.}
-
-There must be a space between a function or macro name and the opening
-parenthesis of its argument list (except for macro definitions, as
-required by C).  There must not be a space after an open paren/bracket
-or before a close paren/bracket.
-
-While additional whitespace is generally helpful for reading, do not use
-more than one blank line to separate blocks, and avoid adding whitespace
-after the end of a program line (as of 1/99, some 600 lines had
-whitespace after the semicolon).  Excess whitespace causes difficulties
-for @code{diff} and @code{patch} utilities.
-
-Pointers are declared using the traditional K&R C style:
-
-@smallexample
-void *foo;
-@end smallexample
-
-@noindent
-and not:
-
-@smallexample
-void * foo;
-void* foo;
-@end smallexample
-
-@subsection Comments
-
-@cindex comment formatting
-The standard GNU requirements on comments must be followed strictly.
-
-Block comments must appear in the following form, with no @code{/*}- or
-@code{*/}-only lines, and no leading @code{*}:
-
-@smallexample
-/* Wait for control to return from inferior to debugger.  If inferior
-   gets a signal, we may decide to start it up again instead of
-   returning.  That is why there is a loop in this function.  When
-   this function actually returns it means the inferior should be left
-   stopped and @value{GDBN} should read more commands.  */
-@end smallexample
-
-(Note that this format is encouraged by Emacs; tabbing for a multi-line
-comment works correctly, and @kbd{M-q} fills the block consistently.)
-
-Put a blank line between the block comments preceding function or
-variable definitions, and the definition itself.
-
-In general, put function-body comments on lines by themselves, rather
-than trying to fit them into the 20 characters left at the end of a
-line, since either the comment or the code will inevitably get longer
-than will fit, and then somebody will have to move it anyhow.
-
-@subsection C Usage
-
-@cindex C data types
-Code must not depend on the sizes of C data types, the format of the
-host's floating point numbers, the alignment of anything, or the order
-of evaluation of expressions.
-
-@cindex function usage
-Use functions freely.  There are only a handful of compute-bound areas
-in @value{GDBN} that might be affected by the overhead of a function
-call, mainly in symbol reading.  Most of @value{GDBN}'s performance is
-limited by the target interface (whether serial line or system call).
-
-However, use functions with moderation.  A thousand one-line functions
-are just as hard to understand as a single thousand-line function.
-
-@emph{Macros are bad, M'kay.}
-(But if you have to use a macro, make sure that the macro arguments are
-protected with parentheses.)
-
-@cindex types
-
-Declarations like @samp{struct foo *} should be used in preference to
-declarations like @samp{typedef struct foo @{ @dots{} @} *foo_ptr}.
-
-
-@subsection Function Prototypes
-@cindex function prototypes
-
-Prototypes must be used when both @emph{declaring} and @emph{defining}
-a function.  Prototypes for @value{GDBN} functions must include both the
-argument type and name, with the name matching that used in the actual
-function definition.
-
-All external functions should have a declaration in a header file that
-callers include, except for @code{_initialize_*} functions, which must
-be external so that @file{init.c} construction works, but shouldn't be
-visible to random source files.
-
-Where a source file needs a forward declaration of a static function,
-that declaration must appear in a block near the top of the source file.
-
-
-@subsection Internal Error Recovery
+@section Internal Error Recovery
 
 During its execution, @value{GDBN} can encounter two types of errors.
 User errors and internal errors.  User errors include not only a user
@@ -6245,76 +6357,11 @@ the code detected a user error, recovered from it and issued a
 @code{warning} or the code failed to correctly recover from the user
 error and issued an @code{internal_error}.}
 
-@subsection Command Names
+@section Command Names
 
 GDB U/I commands are written @samp{foo-bar}, not @samp{foo_bar}.
 
-@subsection File Names
-
-Any file used when building the core of @value{GDBN} must be in lower
-case.  Any file used when building the core of @value{GDBN} must be 8.3
-unique.  These requirements apply to both source and generated files.
-
-@emph{Pragmatics: The core of @value{GDBN} must be buildable on many
-platforms including DJGPP and MacOS/HFS.  Every time an unfriendly file
-is introduced to the build process both @file{Makefile.in} and
-@file{configure.in} need to be modified accordingly.  Compare the
-convoluted conversion process needed to transform @file{COPYING} into
-@file{copying.c} with the conversion needed to transform
-@file{version.in} into @file{version.c}.}
-
-Any file non 8.3 compliant file (that is not used when building the core
-of @value{GDBN}) must be added to @file{gdb/config/djgpp/fnchange.lst}.
-
-@emph{Pragmatics: This is clearly a compromise.}
-
-When @value{GDBN} has a local version of a system header file (ex
-@file{string.h}) the file name based on the POSIX header prefixed with
-@file{gdb_} (@file{gdb_string.h}).  These headers should be relatively
-independent: they should use only macros defined by @file{configure},
-the compiler, or the host; they should include only system headers; they
-should refer only to system types.  They may be shared between multiple
-programs, e.g.@: @value{GDBN} and @sc{gdbserver}.
-
-For other files @samp{-} is used as the separator.
-
-
-@subsection Include Files
-
-A @file{.c} file should include @file{defs.h} first.
-
-A @file{.c} file should directly include the @code{.h} file of every
-declaration and/or definition it directly refers to.  It cannot rely on
-indirect inclusion.
-
-A @file{.h} file should directly include the @code{.h} file of every
-declaration and/or definition it directly refers to.  It cannot rely on
-indirect inclusion.  Exception: The file @file{defs.h} does not need to
-be directly included.
-
-An external declaration should only appear in one include file.
-
-An external declaration should never appear in a @code{.c} file.
-Exception: a declaration for the @code{_initialize} function that
-pacifies @option{-Wmissing-declaration}.
-
-A @code{typedef} definition should only appear in one include file.
-
-An opaque @code{struct} declaration can appear in multiple @file{.h}
-files.  Where possible, a @file{.h} file should use an opaque
-@code{struct} declaration instead of an include.
-
-All @file{.h} files should be wrapped in:
-
-@smallexample
-#ifndef INCLUDE_FILE_NAME_H
-#define INCLUDE_FILE_NAME_H
-header body
-#endif
-@end smallexample
-
-
-@subsection Clean Design and Portable Implementation
+@section Clean Design and Portable Implementation
 
 @cindex design
 In addition to getting the syntax right, there's the little question of
@@ -6447,7 +6494,6 @@ All debugging code must be controllable using the @samp{set debug
 @var{module}} command.  Do not use @code{printf} to print trace
 messages.  Use @code{fprintf_unfiltered(gdb_stdlog, ...}.  Do not use
 @code{#ifdef DEBUG}.
-
 
 @node Porting GDB
 

@@ -1,7 +1,7 @@
 /* GDB hooks for TUI.
 
-   Copyright (C) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
-   Free Software Foundation, Inc.
+   Copyright (C) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
+   2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -190,6 +190,7 @@ static void
 tui_selected_frame_level_changed_hook (int level)
 {
   struct frame_info *fi;
+  CORE_ADDR pc;
 
   /* Negative level means that the selected frame was cleared.  */
   if (level < 0)
@@ -199,28 +200,29 @@ tui_selected_frame_level_changed_hook (int level)
   /* Ensure that symbols for this frame are read in.  Also, determine
      the source language of this frame, and switch to it if
      desired.  */
-  if (fi)
+  if (get_frame_pc_if_available (fi, &pc))
     {
       struct symtab *s;
-      
-      s = find_pc_symtab (get_frame_pc (fi));
+
+      s = find_pc_symtab (pc);
       /* elz: This if here fixes the problem with the pc not being
-         displayed in the tui asm layout, with no debug symbols.  The
-         value of s would be 0 here, and select_source_symtab would
-         abort the command by calling the 'error' function.  */
+	 displayed in the tui asm layout, with no debug symbols.  The
+	 value of s would be 0 here, and select_source_symtab would
+	 abort the command by calling the 'error' function.  */
       if (s)
-        select_source_symtab (s);
+	select_source_symtab (s);
+    }
 
-      /* Display the frame position (even if there is no symbols).  */
-      tui_show_frame_info (fi);
+  /* Display the frame position (even if there is no symbols or the PC
+     is not known).  */
+  tui_show_frame_info (fi);
 
-      /* Refresh the register window if it's visible.  */
-      if (tui_is_window_visible (DATA_WIN))
-        {
-          tui_refreshing_registers = 1;
-          tui_check_data_values (fi);
-          tui_refreshing_registers = 0;
-        }
+  /* Refresh the register window if it's visible.  */
+  if (tui_is_window_visible (DATA_WIN))
+    {
+      tui_refreshing_registers = 1;
+      tui_check_data_values (fi);
+      tui_refreshing_registers = 0;
     }
 }
 
@@ -254,8 +256,10 @@ void
 tui_install_hooks (void)
 {
   deprecated_target_wait_hook = tui_target_wait_hook;
-  deprecated_selected_frame_level_changed_hook = tui_selected_frame_level_changed_hook;
-  deprecated_print_frame_info_listing_hook = tui_print_frame_info_listing_hook;
+  deprecated_selected_frame_level_changed_hook
+    = tui_selected_frame_level_changed_hook;
+  deprecated_print_frame_info_listing_hook
+    = tui_print_frame_info_listing_hook;
 
   deprecated_query_hook = tui_query_hook;
 

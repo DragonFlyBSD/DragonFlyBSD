@@ -1,7 +1,7 @@
 /* Top level stuff for GDB, the GNU debugger.
 
    Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1996,
-   1997, 1998, 1999, 2000, 2005, 2006, 2007, 2008, 2009, 2010
+   1997, 1998, 1999, 2000, 2005, 2006, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -52,21 +52,21 @@ extern void execute_command (char *, int);
 extern void prepare_execute_command (void);
 
 /* This function returns a pointer to the string that is used
-   by gdb for its command prompt. */
+   by gdb for its command prompt.  */
 extern char *get_prompt (void);
 
 /* This function copies the specified string into the string that
-   is used by gdb for its command prompt. */
+   is used by gdb for its command prompt.  */
 extern void set_prompt (char *);
 
 /* From random places.  */
 extern int readnow_symbol_files;
 
-/* Perform _initialize initialization */
+/* Perform _initialize initialization.  */
 extern void gdb_init (char *);
 
-/* For use by event-top.c */
-/* Variables from top.c. */
+/* For use by event-top.c.  */
+/* Variables from top.c.  */
 extern int source_line_number;
 extern const char *source_file_name;
 extern int history_expansion_p;

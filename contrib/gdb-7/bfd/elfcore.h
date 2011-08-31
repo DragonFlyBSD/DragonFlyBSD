@@ -31,6 +31,12 @@ elf_core_file_failing_signal (bfd *abfd)
   return elf_tdata (abfd)->core_signal;
 }
 
+int
+elf_core_file_pid (bfd *abfd)
+{
+  return elf_tdata (abfd)->core_pid;
+}
+
 bfd_boolean
 elf_core_file_matches_executable_p (bfd *core_bfd, bfd *exec_bfd)
 {

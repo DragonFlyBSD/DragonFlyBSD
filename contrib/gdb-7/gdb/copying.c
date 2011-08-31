@@ -649,10 +649,10 @@ show_warranty_command (char *ignore, int from_tty)
 void
 _initialize_copying (void)
 {
-  add_cmd ("copying", no_class, show_copying_command,
+  add_cmd ("copying", no_set_class, show_copying_command,
 	   _("Conditions for redistributing copies of GDB."),
 	   &showlist);
-  add_cmd ("warranty", no_class, show_warranty_command,
+  add_cmd ("warranty", no_set_class, show_warranty_command,
 	   _("Various kinds of warranty you do not have."),
 	   &showlist);
 
