@@ -148,7 +148,6 @@ mfi_syspd_attach(device_t dev)
 
 	disk_setdiskinfo(&sc->pd_disk, &info);
 
-	device_printf(dev, " SYSPD volume attached\n");
 	return (0);
 }
 
@@ -158,13 +157,11 @@ mfi_syspd_detach(device_t dev)
 	struct mfi_system_pd *sc;
 
 	sc = device_get_softc(dev);
-	device_printf(dev, "Detaching syspd\n");
 	lockmgr(&sc->pd_controller->mfi_io_lock, LK_EXCLUSIVE);
 	if ((sc->pd_flags & MFI_DISK_FLAGS_OPEN) &&
 	    (sc->pd_controller->mfi_keep_deleted_volumes ||
 	    sc->pd_controller->mfi_detaching)) {
 		lockmgr(&sc->pd_controller->mfi_io_lock, LK_RELEASE);
-		device_printf(dev,"Cant detach syspd\n");
 		return (EBUSY);
 	}
 	lockmgr(&sc->pd_controller->mfi_io_lock, LK_RELEASE);
@@ -227,7 +224,6 @@ void
 mfi_syspd_enable(struct mfi_system_pd *sc)
 {
 
-	device_printf(sc->pd_dev,"syspd enable \n");
 	KKASSERT(lockstatus(&sc->pd_controller->mfi_io_lock, curthread) != 0);
 	sc->pd_flags &= ~MFI_DISK_FLAGS_DISABLED;
 }
