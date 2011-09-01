@@ -1,5 +1,6 @@
 /* C preprocessor macro expansion for GDB.
-   Copyright (C) 2002, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2002, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
    Contributed by Red Hat, Inc.
 
    This file is part of GDB.
@@ -205,7 +206,7 @@ set_token (struct macro_buffer *tok, char *start, char *end)
   init_shared_buffer (tok, start, end - start);
   tok->last_token = 0;
 
-  /* Presumed; get_identifier may overwrite this. */
+  /* Presumed; get_identifier may overwrite this.  */
   tok->is_identifier = 0;
 }
 
@@ -334,7 +335,7 @@ get_character_constant (struct macro_buffer *tok, char *p, char *end)
       else if (*p == 'L' || *p == 'u' || *p == 'U')
         p += 2;
       else
-        gdb_assert (0);
+        gdb_assert_not_reached ("unexpected character constant");
 
       body_start = p;
       for (;;)
@@ -389,7 +390,7 @@ get_string_literal (struct macro_buffer *tok, char *p, char *end)
       else if (*p == 'L' || *p == 'u' || *p == 'U')
         p += 2;
       else
-        gdb_assert (0);
+        gdb_assert_not_reached ("unexpected string literal");
 
       for (;;)
         {
@@ -703,7 +704,7 @@ struct macro_name_list {
    particular macro, and otherwise delegates the decision to another
    function/baton pair.  But that makes the linked list of excluded
    macros chained through untyped baton pointers, which will make it
-   harder to debug.  :( */
+   harder to debug.  :(  */
 static int
 currently_rescanning (struct macro_name_list *list, const char *name)
 {
@@ -901,7 +902,8 @@ find_parameter (const struct macro_buffer *tok,
     return -1;
 
   for (i = 0; i < argc; ++i)
-    if (tok->len == strlen (argv[i]) && ! memcmp (tok->text, argv[i], tok->len))
+    if (tok->len == strlen (argv[i]) 
+	&& !memcmp (tok->text, argv[i], tok->len))
       return i;
 
   if (is_varargs && tok->len == va_arg_name->len
@@ -1139,7 +1141,7 @@ substitute_args (struct macro_buffer *dest,
    its expansion to DEST.  SRC is the input text following the ID
    token.  We are currently rescanning the expansions of the macros
    named in NO_LOOP; don't re-expand them.  Use LOOKUP_FUNC and
-   LOOKUP_BATON to find definitions for any nested macro references.  
+   LOOKUP_BATON to find definitions for any nested macro references.
 
    Return 1 if we decided to expand it, zero otherwise.  (If it's a
    function-like macro name that isn't followed by an argument list,
@@ -1181,7 +1183,7 @@ expand (const char *id,
       struct macro_buffer *argv = NULL;
       struct macro_buffer substituted;
       struct macro_buffer substituted_src;
-      struct macro_buffer va_arg_name;
+      struct macro_buffer va_arg_name = {0};
       int is_varargs = 0;
 
       if (def->argc >= 1)

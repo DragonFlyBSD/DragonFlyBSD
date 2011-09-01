@@ -1,7 +1,7 @@
 /* TUI support I/O functions.
 
    Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009,
-   2010 Free Software Foundation, Inc.
+   2010, 2011 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -186,7 +186,8 @@ tui_puts (const char *string)
     }
   getyx (w, TUI_CMD_WIN->detail.command_info.cur_line,
          TUI_CMD_WIN->detail.command_info.curch);
-  TUI_CMD_WIN->detail.command_info.start_line = TUI_CMD_WIN->detail.command_info.cur_line;
+  TUI_CMD_WIN->detail.command_info.start_line
+    = TUI_CMD_WIN->detail.command_info.cur_line;
 
   /* We could defer the following.  */
   wrefresh (w);
@@ -323,19 +324,10 @@ tui_readline_output (int error, gdb_client_data data)
    final slash.  Otherwise, we return what we were passed.
 
    Comes from readline/complete.c.  */
-static char *
-printable_part (char *pathname)
+static const char *
+printable_part (const char *pathname)
 {
-  char *temp;
-
-  temp = rl_filename_completion_desired ? strrchr (pathname, '/') : (char *)NULL;
-#if defined (__MSDOS__)
-  if (rl_filename_completion_desired 
-      && temp == 0 && isalpha (pathname[0]) 
-      && pathname[1] == ':')
-    temp = pathname + 1;
-#endif
-  return (temp ? ++temp : pathname);
+  return rl_filename_completion_desired ? lbasename (pathname) : pathname;
 }
 
 /* Output TO_PRINT to rl_outstream.  If VISIBLE_STATS is defined and
@@ -364,10 +356,10 @@ printable_part (char *pathname)
     } while (0)
 
 static int
-print_filename (char *to_print, char *full_pathname)
+print_filename (const char *to_print, const char *full_pathname)
 {
   int printed_len = 0;
-  char *s;
+  const char *s;
 
   for (s = to_print; *s; s++)
     {
@@ -411,7 +403,7 @@ tui_rl_display_match_list (char **matches, int len, int max)
   
   int count, limit, printed_len;
   int i, j, k, l;
-  char *temp;
+  const char *temp;
 
   /* Screen dimension correspond to the TUI command window.  */
   int screenwidth = TUI_CMD_WIN->generic.width;
@@ -542,6 +534,7 @@ tui_setup_io (int mode)
       gdb_stderr = tui_stderr;
       gdb_stdlog = gdb_stdout;	/* for moment */
       gdb_stdtarg = gdb_stderr;	/* for moment */
+      gdb_stdtargerr = gdb_stderr;	/* for moment */
       uiout = tui_out;
 
       /* Save tty for SIGCONT.  */
@@ -554,6 +547,7 @@ tui_setup_io (int mode)
       gdb_stderr = tui_old_stderr;
       gdb_stdlog = gdb_stdout;	/* for moment */
       gdb_stdtarg = gdb_stderr;	/* for moment */
+      gdb_stdtargerr = gdb_stderr;	/* for moment */
       uiout = tui_old_uiout;
 
       /* Restore readline.  */
@@ -708,6 +702,7 @@ tui_handle_resize_during_io (unsigned int original_ch)
 {
   if (tui_win_resized ())
     {
+      tui_resize_all ();
       tui_refresh_all_win ();
       dont_repeat ();
       tui_set_win_resized_to (FALSE);

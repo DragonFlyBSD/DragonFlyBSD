@@ -1,7 +1,7 @@
 /* Handle lists of commands, their decoding and documentation, for GDB.
 
    Copyright (c) 1986, 1989, 1990, 1991, 1998, 2000, 2001, 2002, 2004, 2007,
-   2008, 2009, 2010 Free Software Foundation, Inc.
+   2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -28,12 +28,12 @@
 #include "cli/cli-decode.h"
 
 #ifdef TUI
-#include "tui/tui.h"		/* For tui_active et.al.   */
+#include "tui/tui.h"		/* For tui_active et al.  */
 #endif
 
 #include "gdb_assert.h"
 
-/* Prototypes for local functions */
+/* Prototypes for local functions.  */
 
 static void undef_cmd_error (char *, char *);
 
@@ -139,10 +139,10 @@ set_cmd_completer (struct cmd_list_element *cmd,
    It should start with ? for a command that is an abbreviation
    or with * for a command that most users don't need to know about.
 
-   Add this command to command list *LIST.  
+   Add this command to command list *LIST.
 
    Returns a pointer to the added command (not necessarily the head 
-   of *LIST). */
+   of *LIST).  */
 
 struct cmd_list_element *
 add_cmd (char *name, enum command_class class, void (*fun) (char *, int),
@@ -210,12 +210,12 @@ add_cmd (char *name, enum command_class class, void (*fun) (char *, int),
 }
 
 /* Deprecates a command CMD.
-   REPLACEMENT is the name of the command which should be used in place
-   of this command, or NULL if no such command exists.
+   REPLACEMENT is the name of the command which should be used in
+   place of this command, or NULL if no such command exists.
 
    This function does not check to see if command REPLACEMENT exists
-   since gdb may not have gotten around to adding REPLACEMENT when this
-   function is called.
+   since gdb may not have gotten around to adding REPLACEMENT when
+   this function is called.
 
    Returns a pointer to the deprecated command.  */
 
@@ -236,7 +236,8 @@ struct cmd_list_element *
 add_alias_cmd (char *name, char *oldname, enum command_class class,
 	       int abbrev_flag, struct cmd_list_element **list)
 {
-  /* Must do this since lookup_cmd tries to side-effect its first arg */
+  /* Must do this since lookup_cmd tries to side-effect its first
+     arg.  */
   char *copied_name;
   struct cmd_list_element *old;
   struct cmd_list_element *c;
@@ -272,13 +273,14 @@ add_alias_cmd (char *name, char *oldname, enum command_class class,
   return c;
 }
 
-/* Like add_cmd but adds an element for a command prefix:
-   a name that should be followed by a subcommand to be looked up
-   in another command list.  PREFIXLIST should be the address
-   of the variable containing that list.  */
+/* Like add_cmd but adds an element for a command prefix: a name that
+   should be followed by a subcommand to be looked up in another
+   command list.  PREFIXLIST should be the address of the variable
+   containing that list.  */
 
 struct cmd_list_element *
-add_prefix_cmd (char *name, enum command_class class, void (*fun) (char *, int),
+add_prefix_cmd (char *name, enum command_class class,
+		void (*fun) (char *, int),
 		char *doc, struct cmd_list_element **prefixlist,
 		char *prefixname, int allow_unknown,
 		struct cmd_list_element **list)
@@ -291,7 +293,7 @@ add_prefix_cmd (char *name, enum command_class class, void (*fun) (char *, int),
   return c;
 }
 
-/* Like add_prefix_cmd but sets the abbrev_flag on the new command. */
+/* Like add_prefix_cmd but sets the abbrev_flag on the new command.  */
 
 struct cmd_list_element *
 add_abbrev_prefix_cmd (char *name, enum command_class class,
@@ -719,7 +721,7 @@ delete_cmd (char *name, struct cmd_list_element **list,
   return aliases;
 }
 
-/* Shorthands to the commands above. */
+/* Shorthands to the commands above.  */
 
 /* Add an element to the list of info subcommands.  */
 
@@ -760,19 +762,20 @@ add_com_alias (char *name, char *oldname, enum command_class class,
    name, or their documentation.
 */
 void 
-apropos_cmd (struct ui_file *stream, struct cmd_list_element *commandlist,
+apropos_cmd (struct ui_file *stream, 
+	     struct cmd_list_element *commandlist,
 	     struct re_pattern_buffer *regex, char *prefix)
 {
   struct cmd_list_element *c;
   int returnvalue;
 
-  /* Walk through the commands */
+  /* Walk through the commands.  */
   for (c=commandlist;c;c=c->next)
     {
-      returnvalue = -1; /*Needed to avoid double printing*/
+      returnvalue = -1; /* Needed to avoid double printing.  */
       if (c->name != NULL)
 	{
-	  /* Try to match against the name*/
+	  /* Try to match against the name.  */
 	  returnvalue = re_search (regex, c->name, strlen(c->name),
 				   0, strlen (c->name), NULL);
 	  if (returnvalue >= 0)
@@ -783,37 +786,35 @@ apropos_cmd (struct ui_file *stream, struct cmd_list_element *commandlist,
 	}
       if (c->doc != NULL && returnvalue < 0)
 	{
-	  /* Try to match against documentation */
+	  /* Try to match against documentation.  */
 	  if (re_search(regex,c->doc,strlen(c->doc),0,strlen(c->doc),NULL) >=0)
 	    {
 	      print_help_for_command (c, prefix, 
 				      0 /* don't recurse */, stream);
 	    }
 	}
-      /* Check if this command has subcommands and is not an abbreviation.
-	 We skip listing subcommands of abbreviations in order to avoid
-	 duplicates in the output.
-       */
+      /* Check if this command has subcommands and is not an
+	 abbreviation.  We skip listing subcommands of abbreviations
+	 in order to avoid duplicates in the output.  */
       if (c->prefixlist != NULL && !c->abbrev_flag)
 	{
 	  /* Recursively call ourselves on the subcommand list,
-	     passing the right prefix in.
-	  */
+	     passing the right prefix in.  */
 	  apropos_cmd (stream,*c->prefixlist,regex,c->prefixname);
 	}
     }
 }
 
 /* This command really has to deal with two things:
- *     1) I want documentation on *this string* (usually called by
- * "help commandname").
- *     2) I want documentation on *this list* (usually called by
- * giving a command that requires subcommands.  Also called by saying
- * just "help".)
- *
- *   I am going to split this into two seperate comamnds, help_cmd and
- * help_list. 
- */
+   1) I want documentation on *this string* (usually called by
+      "help commandname").
+
+   2) I want documentation on *this list* (usually called by giving a
+      command that requires subcommands.  Also called by saying just
+      "help".)
+
+   I am going to split this into two seperate comamnds, help_cmd and
+   help_list.  */
 
 void
 help_cmd (char *command, struct ui_file *stream)
@@ -857,11 +858,11 @@ help_cmd (char *command, struct ui_file *stream)
     return;
   fprintf_filtered (stream, "\n");
 
-  /* If this is a prefix command, print it's subcommands */
+  /* If this is a prefix command, print it's subcommands.  */
   if (c->prefixlist)
     help_list (*c->prefixlist, c->prefixname, all_commands, stream);
 
-  /* If this is a class name, print all of the commands in the class */
+  /* If this is a class name, print all of the commands in the class.  */
   if (c->func == NULL)
     help_list (cmdlist, "", c->class, stream);
 
@@ -898,7 +899,8 @@ help_list (struct cmd_list_element *list, char *cmdtype,
   int len;
   char *cmdtype1, *cmdtype2;
 
-  /* If CMDTYPE is "foo ", CMDTYPE1 gets " foo" and CMDTYPE2 gets "foo sub"  */
+  /* If CMDTYPE is "foo ", CMDTYPE1 gets " foo" and CMDTYPE2 gets "foo sub".
+   */
   len = strlen (cmdtype);
   cmdtype1 = (char *) alloca (len + 1);
   cmdtype1[0] = 0;
@@ -941,7 +943,7 @@ Type \"help all\" for the list of all commands.");
   wrap_here ("");
   fputs_filtered ("documentation.\n", stream);
   fputs_filtered ("Type \"apropos word\" to search "
-		  "for commands related to \"word\".\n", stream);		    
+		  "for commands related to \"word\".\n", stream);
   fputs_filtered ("Command name abbreviations are allowed if unambiguous.\n",
 		  stream);
 }
@@ -957,7 +959,8 @@ help_all (struct ui_file *stream)
     {
       if (c->abbrev_flag)
         continue;
-      /* If this is a class name, print all of the commands in the class */
+      /* If this is a class name, print all of the commands in the
+	 class.  */
 
       if (c->func == NULL)
 	{
@@ -1020,7 +1023,7 @@ print_doc_line (struct ui_file *stream, char *str)
 
 /* Print one-line help for command C.
    If RECURSE is non-zero, also print one-line descriptions
-   of all prefixed subcommands. */
+   of all prefixed subcommands.  */
 static void
 print_help_for_command (struct cmd_list_element *c, char *prefix, int recurse,
 			struct ui_file *stream)
@@ -1034,7 +1037,7 @@ print_help_for_command (struct cmd_list_element *c, char *prefix, int recurse,
       && c->abbrev_flag == 0)
     /* Subcommands of a prefix command typically have 'all_commands'
        as class.  If we pass CLASS to recursive invocation,
-       most often we won't see anything. */
+       most often we won't see anything.  */
     help_cmd_list (*c->prefixlist, all_commands, c->prefixname, 1, stream);
 }
 
@@ -1072,14 +1075,15 @@ help_cmd_list (struct cmd_list_element *list, enum command_class class,
       else if (c->abbrev_flag == 0 && recurse
 	       && class == class_user && c->prefixlist != NULL)
 	/* User-defined commands may be subcommands.  */
-	help_cmd_list (*c->prefixlist, class, c->prefixname, recurse, stream);
+	help_cmd_list (*c->prefixlist, class, c->prefixname, 
+		       recurse, stream);
     }
 }
 
 
 /* Search the input clist for 'command'.  Return the command if
    found (or NULL if not), and return the number of commands
-   found in nfound */
+   found in nfound.  */
 
 static struct cmd_list_element *
 find_cmd (char *command, int len, struct cmd_list_element *clist,
@@ -1112,13 +1116,17 @@ find_command_name_length (const char *text)
   /* Treating underscores as part of command words is important
      so that "set args_foo()" doesn't get interpreted as
      "set args _foo()".  */
-  /* Some characters are only used for TUI specific commands. However, they
-     are always allowed for the sake of consistency.
-     The XDB compatibility characters are only allowed when using the right
-     mode because they clash with other GDB commands - specifically '/' is
-     used as a suffix for print, examine and display.
-     Note that this is larger than the character set allowed when creating
-     user-defined commands.  */
+  /* Some characters are only used for TUI specific commands.
+     However, they are always allowed for the sake of consistency.
+
+     The XDB compatibility characters are only allowed when using the
+     right mode because they clash with other GDB commands -
+     specifically '/' is used as a suffix for print, examine and
+     display.
+
+     Note that this is larger than the character set allowed when
+     creating user-defined commands.  */
+
   while (isalnum (*p) || *p == '-' || *p == '_'
 	 /* Characters used by TUI specific commands.  */
 	 || *p == '+' || *p == '<' || *p == '>' || *p == '$'
@@ -1185,7 +1193,7 @@ lookup_cmd_1 (char **text, struct cmd_list_element *clist,
     return 0;
 
   /* *text and p now bracket the first command word to lookup (and
-     it's length is len).  We copy this into a local temporary */
+     it's length is len).  We copy this into a local temporary.  */
 
 
   command = (char *) alloca (len + 1);
@@ -1197,10 +1205,8 @@ lookup_cmd_1 (char **text, struct cmd_list_element *clist,
   nfound = 0;
   found = find_cmd (command, len, clist, ignore_help_classes, &nfound);
 
-  /* 
-     ** We didn't find the command in the entered case, so lower case it
-     ** and search again.
-   */
+  /* We didn't find the command in the entered case, so lower case it
+     and search again.  */
   if (!found || nfound == 0)
     {
       for (tmp = 0; tmp < len; tmp++)
@@ -1222,21 +1228,21 @@ lookup_cmd_1 (char **text, struct cmd_list_element *clist,
 	/* Will be modified in calling routine
 	   if we know what the prefix command is.  */
 	*result_list = 0;
-      return (struct cmd_list_element *) -1;	/* Ambiguous.  */
+      return CMD_LIST_AMBIGUOUS;	/* Ambiguous.  */
     }
 
-  /* We've matched something on this list.  Move text pointer forward. */
+  /* We've matched something on this list.  Move text pointer forward.  */
 
   *text += len;
 
   if (found->cmd_pointer)
     {
-      /* We drop the alias (abbreviation) in favor of the command it is
-       pointing to.  If the alias is deprecated, though, we need to
+      /* We drop the alias (abbreviation) in favor of the command it
+       is pointing to.  If the alias is deprecated, though, we need to
        warn the user about it before we drop it.  Note that while we
        are warning about the alias, we may also warn about the command
        itself and we will adjust the appropriate DEPRECATED_WARN_USER
-       flags */
+       flags.  */
       
       if (found->flags & DEPRECATED_WARN_USER)
 	deprecated_cmd_warning (&line);
@@ -1255,17 +1261,17 @@ lookup_cmd_1 (char **text, struct cmd_list_element *clist,
 	    *result_list = clist;
 	  return found;
 	}
-      else if (c == (struct cmd_list_element *) -1)
+      else if (c == CMD_LIST_AMBIGUOUS)
 	{
-	  /* We've gotten this far properly, but the next step
-	     is ambiguous.  We need to set the result list to the best
+	  /* We've gotten this far properly, but the next step is
+	     ambiguous.  We need to set the result list to the best
 	     we've found (if an inferior hasn't already set it).  */
 	  if (result_list != NULL)
 	    if (!*result_list)
-	      /* This used to say *result_list = *found->prefixlist
+	      /* This used to say *result_list = *found->prefixlist.
 	         If that was correct, need to modify the documentation
-	         at the top of this function to clarify what is supposed
-	         to be going on.  */
+	         at the top of this function to clarify what is
+	         supposed to be going on.  */
 	      *result_list = found;
 	  return c;
 	}
@@ -1340,7 +1346,7 @@ lookup_cmd (char **line, struct cmd_list_element *list, char *cmdtype,
       else
 	return 0;
     }
-  else if (c == (struct cmd_list_element *) -1)
+  else if (c == CMD_LIST_AMBIGUOUS)
     {
       /* Ambigous.  Local values should be off prefixlist or called
          values.  */
@@ -1373,7 +1379,8 @@ lookup_cmd (char **line, struct cmd_list_element *list, char *cmdtype,
 	  for (c = local_list; c; c = c->next)
 	    if (!strncmp (*line, c->name, amb_len))
 	      {
-		if (strlen (ambbuf) + strlen (c->name) + 6 < (int) sizeof ambbuf)
+		if (strlen (ambbuf) + strlen (c->name) + 6
+		    < (int) sizeof ambbuf)
 		  {
 		    if (strlen (ambbuf))
 		      strcat (ambbuf, ", ");
@@ -1406,10 +1413,10 @@ lookup_cmd (char **line, struct cmd_list_element *list, char *cmdtype,
   return 0;
 }
 
-/* We are here presumably because an alias or command in *TEXT is 
-   deprecated and a warning message should be generated.  This function
-   decodes *TEXT and potentially generates a warning message as outlined
-   below.
+/* We are here presumably because an alias or command in *TEXT is
+   deprecated and a warning message should be generated.  This
+   function decodes *TEXT and potentially generates a warning message
+   as outlined below.
    
    Example for 'set endian big' which has a fictitious alias 'seb'.
    
@@ -1419,8 +1426,8 @@ lookup_cmd (char **line, struct cmd_list_element *list, char *cmdtype,
    If alias was used, and only the alias is deprecated:
    "warning: 'seb' an alias for the command 'set endian big' is deprecated."
    
-   If alias was used and command is deprecated (regardless of whether the
-   alias itself is deprecated:
+   If alias was used and command is deprecated (regardless of whether
+   the alias itself is deprecated:
    
    "warning: 'set endian big' (seb) is deprecated."
 
@@ -1436,12 +1443,12 @@ deprecated_cmd_warning (char **text)
   struct cmd_list_element *cmd = NULL;
 
   if (!lookup_cmd_composition (*text, &alias, &prefix_cmd, &cmd))
-    /* return if text doesn't evaluate to a command */
+    /* Return if text doesn't evaluate to a command.  */
     return;
 
   if (!((alias ? (alias->flags & DEPRECATED_WARN_USER) : 0)
       || (cmd->flags & DEPRECATED_WARN_USER) ) ) 
-    /* return if nothing is deprecated */
+    /* Return if nothing is deprecated.  */
     return;
   
   printf_filtered ("Warning:");
@@ -1462,8 +1469,8 @@ deprecated_cmd_warning (char **text)
     printf_filtered ("' is deprecated.\n"); 
   
 
-  /* If it is only the alias that is deprecated, we want to indicate the
-     new alias, otherwise we'll indicate the new command.  */
+  /* If it is only the alias that is deprecated, we want to indicate
+     the new alias, otherwise we'll indicate the new command.  */
 
   if (alias && !(cmd->flags & CMD_DEPRECATED))
     {
@@ -1480,7 +1487,7 @@ deprecated_cmd_warning (char **text)
 	printf_filtered ("No alternative known.\n\n");
     }
 
-  /* We've warned you, now we'll keep quiet */
+  /* We've warned you, now we'll keep quiet.  */
   if (alias)
     alias->flags &= ~DEPRECATED_WARN_USER;
   
@@ -1488,8 +1495,7 @@ deprecated_cmd_warning (char **text)
 }
 
 
-
-/* Look up the contents of LINE as a command in the command list 'cmdlist'. 
+/* Look up the contents of LINE as a command in the command list 'cmdlist'.
    Return 1 on success, 0 on failure.
    
    If LINE refers to an alias, *alias will point to that alias.
@@ -1523,7 +1529,7 @@ lookup_cmd_composition (char *text,
   while (1)
     { 
       /* Go through as many command lists as we need to 
-	 to find the command TEXT refers to. */
+	 to find the command TEXT refers to.  */
       
       prev_cmd = *cmd;
       
@@ -1549,8 +1555,8 @@ lookup_cmd_composition (char *text,
       nfound = 0;
       *cmd = find_cmd (command, len, cur_list, 1, &nfound);
       
-      /* We didn't find the command in the entered case, so lower case it
-	 and search again.
+      /* We didn't find the command in the entered case, so lower case
+	 it and search again.
       */
       if (!*cmd || nfound == 0)
 	{
@@ -1563,7 +1569,7 @@ lookup_cmd_composition (char *text,
 	  *cmd = find_cmd (command, len, cur_list, 1, &nfound);
 	}
       
-      if (*cmd == (struct cmd_list_element *) -1)
+      if (*cmd == CMD_LIST_AMBIGUOUS)
 	{
 	  return 0;              /* ambiguous */
 	}
@@ -1574,8 +1580,8 @@ lookup_cmd_composition (char *text,
 	{
 	  if ((*cmd)->cmd_pointer)
 	    {
-	      /* cmd was actually an alias, we note that an alias was used 
-		 (by assigning *alais) and we set *cmd.  */
+	      /* cmd was actually an alias, we note that an alias was
+		 used (by assigning *alais) and we set *cmd.  */
 	      *alias = *cmd;
 	      *cmd = (*cmd)->cmd_pointer;
 	    }
@@ -1593,11 +1599,11 @@ lookup_cmd_composition (char *text,
 /* Helper function for SYMBOL_COMPLETION_FUNCTION.  */
 
 /* Return a vector of char pointers which point to the different
-   possible completions in LIST of TEXT.  
+   possible completions in LIST of TEXT.
 
    WORD points in the same buffer as TEXT, and completions should be
-   returned relative to this position.  For example, suppose TEXT is "foo"
-   and we want to complete to "foobar".  If WORD is "oo", return
+   returned relative to this position.  For example, suppose TEXT is
+   "foo" and we want to complete to "foobar".  If WORD is "oo", return
    "oobar"; if WORD is "baz/foo", return "baz/foobar".  */
 
 char **
@@ -1686,7 +1692,7 @@ complete_on_cmdlist (struct cmd_list_element *list, char *text, char *word)
 /* Helper function for SYMBOL_COMPLETION_FUNCTION.  */
 
 /* Return a vector of char pointers which point to the different
-   possible completions in CMD of TEXT.  
+   possible completions in CMD of TEXT.
 
    WORD points in the same buffer as TEXT, and completions should be
    returned relative to this position.  For example, suppose TEXT is "foo"
@@ -1747,7 +1753,7 @@ complete_on_enum (const char *enumlist[],
   else
     {
       matchlist = (char **) xrealloc ((char *) matchlist, ((matches + 1)
-							* sizeof (char *)));
+							   * sizeof (char *)));
       matchlist[matches] = (char *) 0;
     }
 
@@ -1755,7 +1761,7 @@ complete_on_enum (const char *enumlist[],
 }
 
 
-/* check function pointer */
+/* Check function pointer.  */
 int
 cmd_func_p (struct cmd_list_element *cmd)
 {
@@ -1763,7 +1769,7 @@ cmd_func_p (struct cmd_list_element *cmd)
 }
 
 
-/* call the command function */
+/* Call the command function.  */
 void
 cmd_func (struct cmd_list_element *cmd, char *args, int from_tty)
 {

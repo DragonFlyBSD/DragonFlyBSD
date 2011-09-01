@@ -1,6 +1,6 @@
 /* Python/gdb header for generic use in gdb
 
-   Copyright (C) 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -22,7 +22,11 @@
 
 #include "value.h"
 
+struct breakpoint_object;
+
 extern int gdbpy_global_auto_load;
+
+extern void finish_python_initialization (void);
 
 void eval_python_from_control_command (struct command_line *);
 
@@ -38,5 +42,9 @@ int apply_val_pretty_printer (struct type *type, const gdb_byte *valaddr,
 void preserve_python_values (struct objfile *objfile, htab_t copied_types);
 
 void load_auto_scripts_for_objfile (struct objfile *objfile);
+
+int gdbpy_should_stop (struct breakpoint_object *bp_obj);
+
+int gdbpy_breakpoint_has_py_cond (struct breakpoint_object *bp_obj);
 
 #endif /* GDB_PYTHON_H */

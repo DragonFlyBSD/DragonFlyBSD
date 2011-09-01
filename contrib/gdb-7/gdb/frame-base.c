@@ -1,6 +1,6 @@
 /* Definitions for frame address handler, for GDB, the GNU debugger.
 
-   Copyright (C) 2003, 2004, 2007, 2008, 2009, 2010
+   Copyright (C) 2003, 2004, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -85,7 +85,8 @@ frame_base_append_sniffer (struct gdbarch *gdbarch,
 {
   struct frame_base_table *table = gdbarch_data (gdbarch, frame_base_data);
 
-  (*table->tail) = GDBARCH_OBSTACK_ZALLOC (gdbarch, struct frame_base_table_entry);
+  (*table->tail)
+    = GDBARCH_OBSTACK_ZALLOC (gdbarch, struct frame_base_table_entry);
   (*table->tail)->sniffer = sniffer;
   table->tail = &(*table->tail)->next;
 }

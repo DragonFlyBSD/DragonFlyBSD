@@ -1,6 +1,6 @@
 /* Java language support definitions for GDB, the GNU debugger.
 
-   Copyright (C) 1997, 1998, 1999, 2000, 2005, 2007, 2008, 2009, 2010
+   Copyright (C) 1997, 1998, 1999, 2000, 2005, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -23,7 +23,7 @@
 
 struct value;
 
-extern int java_parse (void);	/* Defined in jv-exp.y */
+extern int java_parse (void);		/* Defined in jv-exp.y */
 
 extern void java_error (char *);	/* Defined in jv-exp.y */
 
@@ -69,8 +69,8 @@ extern struct type *java_lookup_class (char *);
 extern int is_object_type (struct type *);
 
 /* Defined in jv-typeprint.c */
-extern void java_print_type (struct type *, const char *, struct ui_file *, int,
-			     int);
+extern void java_print_type (struct type *, const char *,
+			     struct ui_file *, int, int);
 
 extern char *java_demangle_type_signature (char *);
 

@@ -1,6 +1,6 @@
 /* MI Command Set for GDB, the GNU debugger.
 
-   Copyright (C) 2000, 2003, 2004, 2005, 2007, 2008, 2009, 2010
+   Copyright (C) 2000, 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions (a Red Hat company).
@@ -47,7 +47,9 @@ extern mi_cmd_argv_ftype mi_cmd_data_list_register_names;
 extern mi_cmd_argv_ftype mi_cmd_data_list_register_values;
 extern mi_cmd_argv_ftype mi_cmd_data_list_changed_registers;
 extern mi_cmd_argv_ftype mi_cmd_data_read_memory;
+extern mi_cmd_argv_ftype mi_cmd_data_read_memory_bytes;
 extern mi_cmd_argv_ftype mi_cmd_data_write_memory;
+extern mi_cmd_argv_ftype mi_cmd_data_write_memory_bytes;
 extern mi_cmd_argv_ftype mi_cmd_data_write_register_values;
 extern mi_cmd_argv_ftype mi_cmd_enable_timings;
 extern mi_cmd_argv_ftype mi_cmd_env_cd;

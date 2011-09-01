@@ -1,6 +1,6 @@
 /* Builtin frame register, for GDB, the GNU debugger.
 
-   Copyright (C) 2002, 2005, 2007, 2008, 2009, 2010
+   Copyright (C) 2002, 2005, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    Contributed by Red Hat.
@@ -48,11 +48,8 @@ value_of_builtin_frame_fp_reg (struct frame_info *frame, const void *baton)
       struct value *val = allocate_value (data_ptr_type);
       gdb_byte *buf = value_contents_raw (val);
 
-      if (frame == NULL)
-	memset (buf, 0, TYPE_LENGTH (value_type (val)));
-      else
-	gdbarch_address_to_pointer (gdbarch, data_ptr_type,
-				    buf, get_frame_base_address (frame));
+      gdbarch_address_to_pointer (gdbarch, data_ptr_type,
+				  buf, get_frame_base_address (frame));
       return val;
     }
 }
@@ -70,11 +67,8 @@ value_of_builtin_frame_pc_reg (struct frame_info *frame, const void *baton)
       struct value *val = allocate_value (func_ptr_type);
       gdb_byte *buf = value_contents_raw (val);
 
-      if (frame == NULL)
-	memset (buf, 0, TYPE_LENGTH (value_type (val)));
-      else
-	gdbarch_address_to_pointer (gdbarch, func_ptr_type,
-				    buf, get_frame_pc (frame));
+      gdbarch_address_to_pointer (gdbarch, func_ptr_type,
+				  buf, get_frame_pc (frame));
       return val;
     }
 }

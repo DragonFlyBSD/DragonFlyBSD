@@ -30,7 +30,6 @@
 /* Object file tdata; access macros.  */
 
 #define coff_data(bfd)		      ((bfd)->tdata.coff_obj_data)
-#define exec_hdr(bfd)		      (coff_data (bfd)->hdr)
 #define obj_pe(bfd)                   (coff_data (bfd)->pe)
 #define obj_symbols(bfd)	      (coff_data (bfd)->symbols)
 #define	obj_sym_filepos(bfd)	      (coff_data (bfd)->sym_filepos)

@@ -1,5 +1,5 @@
 /* GDB variable objects API.
-   Copyright (C) 1999, 2000, 2001, 2005, 2007, 2008, 2009, 2010
+   Copyright (C) 1999, 2000, 2001, 2005, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
@@ -34,34 +34,35 @@ enum varobj_display_formats
 
 enum varobj_type
   {
-    USE_SPECIFIED_FRAME,        /* Use the frame passed to varobj_create */
-    USE_CURRENT_FRAME,          /* Use the current frame */
-    USE_SELECTED_FRAME          /* Always reevaluate in selected frame */
+    USE_SPECIFIED_FRAME,        /* Use the frame passed to varobj_create.  */
+    USE_CURRENT_FRAME,          /* Use the current frame.  */
+    USE_SELECTED_FRAME          /* Always reevaluate in selected frame.  */
   };
 
 /* Enumerator describing if a variable object is in scope.  */
 enum varobj_scope_status
   {
     VAROBJ_IN_SCOPE = 0,        /* Varobj is scope, value available.  */
-    VAROBJ_NOT_IN_SCOPE = 1,    /* Varobj is not in scope, value not available, 
-				   but varobj can become in scope later.  */
+    VAROBJ_NOT_IN_SCOPE = 1,    /* Varobj is not in scope, value not
+				   available, but varobj can become in
+				   scope later.  */
     VAROBJ_INVALID = 2,         /* Varobj no longer has any value, and never
 				   will.  */
   };
 
-/* String representations of gdb's format codes (defined in varobj.c) */
+/* String representations of gdb's format codes (defined in varobj.c).  */
 extern char *varobj_format_string[];
 
-/* Languages supported by this variable objects system. */
+/* Languages supported by this variable objects system.  */
 enum varobj_languages
   {
     vlang_unknown = 0, vlang_c, vlang_cplus, vlang_java, vlang_end
   };
 
-/* String representations of gdb's known languages (defined in varobj.c) */
+/* String representations of gdb's known languages (defined in varobj.c).  */
 extern char *varobj_language_string[];
 
-/* Struct thar describes a variable object instance */
+/* Struct thar describes a variable object instance.  */
 struct varobj;
 
 typedef struct varobj *varobj_p;
@@ -76,7 +77,7 @@ typedef struct varobj_update_result_t
   enum varobj_scope_status status;
   /* This variable is used internally by varobj_update to indicate if the
      new value of varobj is already computed and installed, or has to
-     be yet installed.  Don't use this outside varobj.c */
+     be yet installed.  Don't use this outside varobj.c.  */
   int value_installed;  
 
   /* This will be non-NULL when new children were added to the varobj.
@@ -166,8 +167,8 @@ extern int varobj_editable_p (struct varobj *var);
 
 extern int varobj_floating_p (struct varobj *var);
 
-extern void 
-varobj_set_visualizer (struct varobj *var, const char *visualizer);
+extern void varobj_set_visualizer (struct varobj *var,
+				   const char *visualizer);
 
 extern void varobj_enable_pretty_printing (void);
 

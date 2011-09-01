@@ -1,6 +1,6 @@
 /* Assorted BFD support routines, only used internally.
    Copyright 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
-   2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008, 2009
+   2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
    Written by Cygnus Support.
 
@@ -145,6 +145,16 @@ _bfd_nocore_core_file_failing_command (bfd *ignore_abfd ATTRIBUTE_UNUSED)
 
 int
 _bfd_nocore_core_file_failing_signal (bfd *ignore_abfd ATTRIBUTE_UNUSED)
+{
+  bfd_set_error (bfd_error_invalid_operation);
+  return 0;
+}
+
+/* Routine to handle the core_file_pid entry point for targets without
+   core file support.  */
+
+int
+_bfd_nocore_core_file_pid (bfd *ignore_abfd ATTRIBUTE_UNUSED)
 {
   bfd_set_error (bfd_error_invalid_operation);
   return 0;
@@ -847,6 +857,15 @@ _bfd_generic_get_section_contents (bfd *abfd,
   if (count == 0)
     return TRUE;
 
+  if (section->compress_status != COMPRESS_SECTION_NONE)
+    {
+      (*_bfd_error_handler)
+	(_("%B: unable to get decompressed section %A"),
+	 abfd, section);
+      bfd_set_error (bfd_error_invalid_operation);
+      return FALSE;
+    }
+
   sz = section->rawsize ? section->rawsize : section->size;
   if (offset + count < count
       || offset + count > sz)
@@ -1002,6 +1021,7 @@ warn_deprecated (const char *what,
 
   if (~(size_t) func & ~mask)
     {
+      fflush (stdout);
       /* Note: separate sentences in order to allow
 	 for translation into other languages.  */
       if (func)
@@ -1009,6 +1029,7 @@ warn_deprecated (const char *what,
 		 what, file, line, func);
       else
 	fprintf (stderr, _("Deprecated %s called\n"), what);
+      fflush (stderr);
       mask |= ~(size_t) func;
     }
 }

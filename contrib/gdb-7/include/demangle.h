@@ -1,6 +1,6 @@
 /* Defs for interface to demanglers.
    Copyright 1992, 1993, 1994, 1995, 1996, 1997, 1998, 2000, 2001, 2002,
-   2003, 2004, 2005, 2007, 2008, 2009 Free Software Foundation, Inc.
+   2003, 2004, 2005, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
    
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License
@@ -45,7 +45,13 @@ extern "C" {
 #define DMGL_VERBOSE	 (1 << 3)	/* Include implementation details.  */
 #define DMGL_TYPES	 (1 << 4)	/* Also try to demangle type encodings.  */
 #define DMGL_RET_POSTFIX (1 << 5)       /* Print function return types (when
-                                           present) after function signature */
+					   present) after function signature.
+					   It applies only to the toplevel
+					   function type.  */
+#define DMGL_RET_DROP	 (1 << 6)       /* Suppress printing function return
+					   types, even if present.  It applies
+					   only to the toplevel function type.
+					   */
 
 #define DMGL_AUTO	 (1 << 8)
 #define DMGL_GNU	 (1 << 9)

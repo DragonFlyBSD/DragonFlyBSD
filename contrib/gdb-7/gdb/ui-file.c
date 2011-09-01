@@ -1,6 +1,6 @@
 /* UI_FILE - a generic STDIO like output stream.
 
-   Copyright (C) 1999, 2000, 2001, 2002, 2007, 2008, 2009, 2010
+   Copyright (C) 1999, 2000, 2001, 2002, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -18,7 +18,7 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-/* Implement the ``struct ui_file'' object. */
+/* Implement the ``struct ui_file'' object.  */
 
 #include "defs.h"
 #include "ui-file.h"
@@ -108,8 +108,8 @@ null_file_write (struct ui_file *file,
 		 long sizeof_buf)
 {
   if (file->to_fputs == null_file_fputs)
-    /* Both the write and fputs methods are null. Discard the
-       request. */
+    /* Both the write and fputs methods are null.  Discard the
+       request.  */
     return;
   else
     {
@@ -144,12 +144,12 @@ static void
 null_file_fputs (const char *buf, struct ui_file *file)
 {
   if (file->to_write == null_file_write)
-    /* Both the write and fputs methods are null. Discard the
-       request. */
+    /* Both the write and fputs methods are null.  Discard the
+       request.  */
     return;
   else
     {
-      /* The write method was implemented, use that. */
+      /* The write method was implemented, use that.  */
       file->to_write (file, buf, strlen (buf));
     }
 }
@@ -267,7 +267,7 @@ set_ui_file_data (struct ui_file *file, void *data,
 }
 
 /* ui_file utility function for converting a ``struct ui_file'' into
-   a memory buffer. */
+   a memory buffer.  */
 
 struct accumulated_ui_file
 {
@@ -323,8 +323,8 @@ ui_file_obsavestring (struct ui_file *file, struct obstack *obstack,
 }
 
 /* A pure memory based ``struct ui_file'' that can be used an output
-   buffer. The buffers accumulated contents are available via
-   ui_file_put(). */
+   buffer.  The buffers accumulated contents are available via
+   ui_file_put().  */
 
 struct mem_file
   {
@@ -434,14 +434,14 @@ mem_file_write (struct ui_file *file,
 }
 
 /* ``struct ui_file'' implementation that maps directly onto
-   <stdio.h>'s FILE. */
+   <stdio.h>'s FILE.  */
 
 static ui_file_write_ftype stdio_file_write;
 static ui_file_fputs_ftype stdio_file_fputs;
 static ui_file_read_ftype stdio_file_read;
 static ui_file_isatty_ftype stdio_file_isatty;
 static ui_file_delete_ftype stdio_file_delete;
-static struct ui_file *stdio_file_new (FILE * file, int close_p);
+static struct ui_file *stdio_file_new (FILE *file, int close_p);
 static ui_file_flush_ftype stdio_file_flush;
 
 static int stdio_file_magic;
@@ -559,7 +559,7 @@ stdio_file_isatty (struct ui_file *file)
   return (isatty (fileno (stdio->file)));
 }
 
-/* Like fdopen().  Create a ui_file from a previously opened FILE. */
+/* Like fdopen().  Create a ui_file from a previously opened FILE.  */
 
 struct ui_file *
 stdio_fileopen (FILE *file)

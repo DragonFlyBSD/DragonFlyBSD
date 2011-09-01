@@ -1,6 +1,7 @@
 /* Target description support for GDB.
 
-   Copyright (C) 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
 
    Contributed by CodeSourcery.
 
@@ -176,7 +177,7 @@ const char *tdesc_register_name (struct gdbarch *gdbarch, int regno);
 
 struct type *tdesc_register_type (struct gdbarch *gdbarch, int regno);
 
-/* Return the type associated with ID, from the target description. */
+/* Return the type associated with ID, from the target description.  */
 
 struct type *tdesc_find_type (struct gdbarch *gdbarch, const char *id);
 

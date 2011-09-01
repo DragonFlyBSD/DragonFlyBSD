@@ -173,6 +173,7 @@ DESCRIPTION
 .#define bfd_mach_mips5                 5
 .#define bfd_mach_mips_loongson_2e      3001
 .#define bfd_mach_mips_loongson_2f      3002
+.#define bfd_mach_mips_loongson_3a      3003
 .#define bfd_mach_mips_sb1              12310201 {* octal 'SB', 01 *}
 .#define bfd_mach_mips_octeon		6501
 .#define bfd_mach_mips_xlr              887682   {* decimal 'XLR'  *}
@@ -184,6 +185,8 @@ DESCRIPTION
 .#define bfd_mach_i386_i386 1
 .#define bfd_mach_i386_i8086 2
 .#define bfd_mach_i386_i386_intel_syntax 3
+.#define bfd_mach_x64_32 32
+.#define bfd_mach_x64_32_intel_syntax 33
 .#define bfd_mach_x86_64 64
 .#define bfd_mach_x86_64_intel_syntax 65
 .  bfd_arch_l1om,   {* Intel L1OM *}
@@ -310,7 +313,9 @@ DESCRIPTION
 .  bfd_arch_v850,      {* NEC V850 *}
 .#define bfd_mach_v850          1
 .#define bfd_mach_v850e 	'E'
-.#define bfd_mach_v850e1	'1'
+.#define bfd_mach_v850e1        '1'
+.#define bfd_mach_v850e2        0x4532
+.#define bfd_mach_v850e2v3      0x45325633
 .  bfd_arch_arc,       {* ARC Cores *}
 .#define bfd_mach_arc_5         5
 .#define bfd_mach_arc_6         6
@@ -371,6 +376,13 @@ DESCRIPTION
 .#define bfd_mach_avr5		5
 .#define bfd_mach_avr51		51
 .#define bfd_mach_avr6		6
+.#define bfd_mach_avrxmega1 101
+.#define bfd_mach_avrxmega2 102
+.#define bfd_mach_avrxmega3 103
+.#define bfd_mach_avrxmega4 104
+.#define bfd_mach_avrxmega5 105
+.#define bfd_mach_avrxmega6 106
+.#define bfd_mach_avrxmega7 107
 .  bfd_arch_bfin,        {* ADI Blackfin *}
 .#define bfd_mach_bfin          1
 .  bfd_arch_cr16,       {* National Semiconductor CompactRISC (ie CR16). *}

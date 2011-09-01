@@ -1,5 +1,5 @@
 /* Line completion stuff for GDB, the GNU debugger.
-   Copyright (C) 2000, 2001, 2007, 2008, 2009, 2010
+   Copyright (C) 2000, 2001, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -24,6 +24,7 @@
 #include "filenames.h"		/* For DOSish file names.  */
 #include "language.h"
 #include "gdb_assert.h"
+#include "exceptions.h"
 
 #include "cli/cli-decode.h"
 
@@ -49,21 +50,22 @@ char *line_completion_function (const char *text, int matches,
 /* readline uses the word breaks for two things:
    (1) In figuring out where to point the TEXT parameter to the
    rl_completion_entry_function.  Since we don't use TEXT for much,
-   it doesn't matter a lot what the word breaks are for this purpose, but
-   it does affect how much stuff M-? lists.
+   it doesn't matter a lot what the word breaks are for this purpose,
+   but it does affect how much stuff M-? lists.
    (2) If one of the matches contains a word break character, readline
    will quote it.  That's why we switch between
    current_language->la_word_break_characters() and
    gdb_completer_command_word_break_characters.  I'm not sure when
-   we need this behavior (perhaps for funky characters in C++ symbols?).  */
+   we need this behavior (perhaps for funky characters in C++ 
+   symbols?).  */
 
 /* Variables which are necessary for fancy command line editing.  */
 
 /* When completing on command names, we remove '-' from the list of
    word break characters, since we use it in command names.  If the
    readline library sees one in any of the current completion strings,
-   it thinks that the string needs to be quoted and automatically supplies
-   a leading quote.  */
+   it thinks that the string needs to be quoted and automatically
+   supplies a leading quote.  */
 static char *gdb_completer_command_word_break_characters =
 " \t\n!@#$%^&*()+=|~`}{[]\"';:?/>.<,";
 
@@ -79,9 +81,9 @@ static char *gdb_completer_file_name_break_characters = " \t\n*|\"';?><@";
 static char *gdb_completer_file_name_break_characters = " \t\n*|\"';:?><";
 #endif
 
-/* Characters that can be used to quote completion strings.  Note that we
-   can't include '"' because the gdb C parser treats such quoted sequences
-   as strings.  */
+/* Characters that can be used to quote completion strings.  Note that
+   we can't include '"' because the gdb C parser treats such quoted
+   sequences as strings.  */
 static char *gdb_completer_quote_characters = "'";
 
 /* Accessor for some completer data that may interest other files.  */
@@ -97,20 +99,23 @@ get_gdb_completer_quote_characters (void)
 char *
 readline_line_completion_function (const char *text, int matches)
 {
-  return line_completion_function (text, matches, rl_line_buffer, rl_point);
+  return line_completion_function (text, matches, 
+				   rl_line_buffer, rl_point);
 }
 
-/* This can be used for functions which don't want to complete on symbols
-   but don't want to complete on anything else either.  */
+/* This can be used for functions which don't want to complete on
+   symbols but don't want to complete on anything else either.  */
 char **
-noop_completer (struct cmd_list_element *ignore, char *text, char *prefix)
+noop_completer (struct cmd_list_element *ignore, 
+		char *text, char *prefix)
 {
   return NULL;
 }
 
 /* Complete on filenames.  */
 char **
-filename_completer (struct cmd_list_element *ignore, char *text, char *word)
+filename_completer (struct cmd_list_element *ignore, 
+		    char *text, char *word)
 {
   int subsequent_name;
   char **return_val;
@@ -141,12 +146,12 @@ filename_completer (struct cmd_list_element *ignore, char *text, char *word)
 	  break;
 	}
       /* We need to set subsequent_name to a non-zero value before the
-	 continue line below, because otherwise, if the first file seen
-	 by GDB is a backup file whose name ends in a `~', we will loop
-	 indefinitely.  */
+	 continue line below, because otherwise, if the first file
+	 seen by GDB is a backup file whose name ends in a `~', we
+	 will loop indefinitely.  */
       subsequent_name = 1;
-      /* Like emacs, don't complete on old versions.  Especially useful
-         in the "source" command.  */
+      /* Like emacs, don't complete on old versions.  Especially
+         useful in the "source" command.  */
       if (p[strlen (p) - 1] == '~')
 	{
 	  xfree (p);
@@ -176,9 +181,9 @@ filename_completer (struct cmd_list_element *ignore, char *text, char *word)
 	}
     }
 #if 0
-  /* There is no way to do this just long enough to affect quote inserting
-     without also affecting the next completion.  This should be fixed in
-     readline.  FIXME.  */
+  /* There is no way to do this just long enough to affect quote
+     inserting without also affecting the next completion.  This
+     should be fixed in readline.  FIXME.  */
   /* Ensure that readline does the right thing
      with respect to inserting quotes.  */
   rl_completer_word_break_characters = "";
@@ -192,9 +197,12 @@ filename_completer (struct cmd_list_element *ignore, char *text, char *word)
    or
        symbol+offset
 
-   This is intended to be used in commands that set breakpoints etc.  */
+   This is intended to be used in commands that set breakpoints
+   etc.  */
+
 char **
-location_completer (struct cmd_list_element *ignore, char *text, char *word)
+location_completer (struct cmd_list_element *ignore, 
+		    char *text, char *word)
 {
   int n_syms = 0, n_files = 0;
   char ** fn_list = NULL;
@@ -350,7 +358,15 @@ count_struct_fields (struct type *type)
       if (i < TYPE_N_BASECLASSES (type))
 	result += count_struct_fields (TYPE_BASECLASS (type, i));
       else if (TYPE_FIELD_NAME (type, i))
-	++result;
+	{
+	  if (TYPE_FIELD_NAME (type, i)[0] != '\0')
+	    ++result;
+	  else if (TYPE_CODE (TYPE_FIELD_TYPE (type, i)) == TYPE_CODE_UNION)
+	    {
+	      /* Recurse into anonymous unions.  */
+	      result += count_struct_fields (TYPE_FIELD_TYPE (type, i));
+	    }
+	}
     }
 
   for (i = TYPE_NFN_FIELDS (type) - 1; i >= 0; --i)
@@ -377,13 +393,25 @@ add_struct_fields (struct type *type, int *nextp, char **output,
   for (i = 0; i < TYPE_NFIELDS (type); ++i)
     {
       if (i < TYPE_N_BASECLASSES (type))
-	add_struct_fields (TYPE_BASECLASS (type, i), nextp, output,
-			   fieldname, namelen);
-      else if (TYPE_FIELD_NAME (type, i)
-	       && ! strncmp (TYPE_FIELD_NAME (type, i), fieldname, namelen))
+	add_struct_fields (TYPE_BASECLASS (type, i), nextp,
+			   output, fieldname, namelen);
+      else if (TYPE_FIELD_NAME (type, i))
 	{
-	  output[*nextp] = xstrdup (TYPE_FIELD_NAME (type, i));
-	  ++*nextp;
+	  if (TYPE_FIELD_NAME (type, i)[0] != '\0')
+	    {
+	      if (! strncmp (TYPE_FIELD_NAME (type, i), 
+			     fieldname, namelen))
+		{
+		  output[*nextp] = xstrdup (TYPE_FIELD_NAME (type, i));
+		  ++*nextp;
+		}
+	    }
+	  else if (TYPE_CODE (TYPE_FIELD_TYPE (type, i)) == TYPE_CODE_UNION)
+	    {
+	      /* Recurse into anonymous unions.  */
+	      add_struct_fields (TYPE_FIELD_TYPE (type, i), nextp, 
+				 output, fieldname, namelen);
+	    }
 	}
     }
 
@@ -412,15 +440,22 @@ add_struct_fields (struct type *type, int *nextp, char **output,
    names, but some language parsers also have support for completing
    field names.  */
 char **
-expression_completer (struct cmd_list_element *ignore, char *text, char *word)
+expression_completer (struct cmd_list_element *ignore, 
+		      char *text, char *word)
 {
-  struct type *type;
+  struct type *type = NULL;
   char *fieldname, *p;
+  volatile struct gdb_exception except;
 
   /* Perform a tentative parse of the expression, to see whether a
      field completion is required.  */
   fieldname = NULL;
-  type = parse_field_expression (text, &fieldname);
+  TRY_CATCH (except, RETURN_MASK_ERROR)
+    {
+      type = parse_field_expression (text, &fieldname);
+    }
+  if (except.reason < 0)
+    return NULL;
   if (fieldname && type)
     {
       for (;;)
@@ -455,12 +490,13 @@ expression_completer (struct cmd_list_element *ignore, char *text, char *word)
        p--)
     ;
 
-  /* Not ideal but it is what we used to do before... */
+  /* Not ideal but it is what we used to do before...  */
   return location_completer (ignore, p, word);
 }
 
-/* Here are some useful test cases for completion.  FIXME: These should
-   be put in the test suite.  They should be tested with both M-? and TAB.
+/* Here are some useful test cases for completion.  FIXME: These
+   should be put in the test suite.  They should be tested with both
+   M-? and TAB.
 
    "show output-" "radix"
    "show output" "-radix"
@@ -495,18 +531,18 @@ complete_line_internal_reason;
 
    TEXT is the caller's idea of the "word" we are looking at.
 
-   LINE_BUFFER is available to be looked at; it contains the entire text
-   of the line.  POINT is the offset in that line of the cursor.  You
-   should pretend that the line ends at POINT.
+   LINE_BUFFER is available to be looked at; it contains the entire
+   text of the line.  POINT is the offset in that line of the cursor.
+   You should pretend that the line ends at POINT.
 
    REASON is of type complete_line_internal_reason.
 
    If REASON is handle_brkchars:
-   Preliminary phase, called by gdb_completion_word_break_characters function,
-   is used to determine the correct set of chars that are word delimiters
-   depending on the current command in line_buffer.
-   No completion list should be generated; the return value should be NULL.
-   This is checked by an assertion in that function.
+   Preliminary phase, called by gdb_completion_word_break_characters
+   function, is used to determine the correct set of chars that are
+   word delimiters depending on the current command in line_buffer.
+   No completion list should be generated; the return value should be
+   NULL.  This is checked by an assertion in that function.
 
    If REASON is handle_completions:
    Main phase, called by complete_line function, is used to get the list
@@ -518,7 +554,8 @@ complete_line_internal_reason;
  */
 
 static char **
-complete_line_internal (const char *text, char *line_buffer, int point,
+complete_line_internal (const char *text, 
+			char *line_buffer, int point,
 			complete_line_internal_reason reason)
 {
   char **list = NULL;
@@ -527,16 +564,18 @@ complete_line_internal (const char *text, char *line_buffer, int point,
   char *word;
   struct cmd_list_element *c, *result_list;
 
-  /* Choose the default set of word break characters to break completions.
-     If we later find out that we are doing completions on command strings
-     (as opposed to strings supplied by the individual command completer
-     functions, which can be any string) then we will switch to the
-     special word break set for command strings, which leaves out the
-     '-' character used in some commands.  */
+  /* Choose the default set of word break characters to break
+     completions.  If we later find out that we are doing completions
+     on command strings (as opposed to strings supplied by the
+     individual command completer functions, which can be any string)
+     then we will switch to the special word break set for command
+     strings, which leaves out the '-' character used in some
+     commands.  */
   rl_completer_word_break_characters =
     current_language->la_word_break_characters();
 
-  /* Decide whether to complete on a list of gdb commands or on symbols. */
+  /* Decide whether to complete on a list of gdb commands or on
+     symbols.  */
   tmp_command = (char *) alloca (point + 1);
   p = tmp_command;
 
@@ -551,7 +590,7 @@ complete_line_internal (const char *text, char *line_buffer, int point,
     {
       /* An empty line we want to consider ambiguous; that is, it
 	 could be any command.  */
-      c = (struct cmd_list_element *) -1;
+      c = CMD_LIST_AMBIGUOUS;
       result_list = 0;
     }
   else
@@ -571,7 +610,7 @@ complete_line_internal (const char *text, char *line_buffer, int point,
 	 possible completions.  */
       list = NULL;
     }
-  else if (c == (struct cmd_list_element *) -1)
+  else if (c == CMD_LIST_AMBIGUOUS)
     {
       char *q;
 
@@ -616,12 +655,13 @@ complete_line_internal (const char *text, char *line_buffer, int point,
 
       if (p == tmp_command + point)
 	{
-	  /* There is no non-whitespace in the line beyond the command.  */
+	  /* There is no non-whitespace in the line beyond the
+	     command.  */
 
 	  if (p[-1] == ' ' || p[-1] == '\t')
 	    {
-	      /* The command is followed by whitespace; we need to complete
-		 on whatever comes after command.  */
+	      /* The command is followed by whitespace; we need to
+		 complete on whatever comes after command.  */
 	      if (c->prefixlist)
 		{
 		  /* It is a prefix command; what comes after it is
@@ -682,7 +722,7 @@ complete_line_internal (const char *text, char *line_buffer, int point,
 	  else
 	    {
 	      /* The command is not followed by whitespace; we need to
-		 complete on the command itself.  e.g. "p" which is a
+		 complete on the command itself, e.g. "p" which is a
 		 command itself but also can complete to "print", "ptype"
 		 etc.  */
 	      char *q;
@@ -732,7 +772,8 @@ complete_line_internal (const char *text, char *line_buffer, int point,
 		     of file-name completion.  */
 		  for (p = word;
 		       p > tmp_command
-			 && strchr (gdb_completer_file_name_break_characters, p[-1]) == NULL;
+			 && strchr (gdb_completer_file_name_break_characters, 
+				    p[-1]) == NULL;
 		       p--)
 		    ;
 		  rl_completer_word_break_characters =
@@ -760,8 +801,8 @@ complete_line_internal (const char *text, char *line_buffer, int point,
 
    TEXT is the caller's idea of the "word" we are looking at.
 
-   LINE_BUFFER is available to be looked at; it contains the entire text
-   of the line.
+   LINE_BUFFER is available to be looked at; it contains the entire
+   text of the line.
 
    POINT is the offset in that line of the cursor.  You
    should pretend that the line ends at POINT.  */
@@ -769,14 +810,17 @@ complete_line_internal (const char *text, char *line_buffer, int point,
 char **
 complete_line (const char *text, char *line_buffer, int point)
 {
-  return complete_line_internal (text, line_buffer, point, handle_completions);
+  return complete_line_internal (text, line_buffer, 
+				 point, handle_completions);
 }
 
 /* Complete on command names.  Used by "help".  */
 char **
-command_completer (struct cmd_list_element *ignore, char *text, char *word)
+command_completer (struct cmd_list_element *ignore, 
+		   char *text, char *word)
 {
-  return complete_line_internal (word, text, strlen (text), handle_help);
+  return complete_line_internal (word, text, 
+				 strlen (text), handle_help);
 }
 
 /* Get the list of chars that are considered as word breaks
@@ -793,26 +837,26 @@ gdb_completion_word_break_characters (void)
   return rl_completer_word_break_characters;
 }
 
-/* Generate completions one by one for the completer.  Each time we are
-   called return another potential completion to the caller.
-   line_completion just completes on commands or passes the buck to the
-   command's completer function, the stuff specific to symbol completion
-   is in make_symbol_completion_list.
+/* Generate completions one by one for the completer.  Each time we
+   are called return another potential completion to the caller.
+   line_completion just completes on commands or passes the buck to
+   the command's completer function, the stuff specific to symbol
+   completion is in make_symbol_completion_list.
 
    TEXT is the caller's idea of the "word" we are looking at.
 
-   MATCHES is the number of matches that have currently been collected from
-   calling this completion function.  When zero, then we need to initialize,
-   otherwise the initialization has already taken place and we can just
-   return the next potential completion string.
+   MATCHES is the number of matches that have currently been collected
+   from calling this completion function.  When zero, then we need to
+   initialize, otherwise the initialization has already taken place
+   and we can just return the next potential completion string.
 
-   LINE_BUFFER is available to be looked at; it contains the entire text
-   of the line.  POINT is the offset in that line of the cursor.  You
-   should pretend that the line ends at POINT.
+   LINE_BUFFER is available to be looked at; it contains the entire
+   text of the line.  POINT is the offset in that line of the cursor.
+   You should pretend that the line ends at POINT.
 
-   Returns NULL if there are no more completions, else a pointer to a string
-   which is a possible completion, it is the caller's responsibility to
-   free the string.  */
+   Returns NULL if there are no more completions, else a pointer to a
+   string which is a possible completion, it is the caller's
+   responsibility to free the string.  */
 
 static char *
 line_completion_function (const char *text, int matches, 
@@ -824,15 +868,16 @@ line_completion_function (const char *text, int matches,
 
   if (matches == 0)
     {
-      /* The caller is beginning to accumulate a new set of completions, so
-         we need to find all of them now, and cache them for returning one at
-         a time on future calls.  */
+      /* The caller is beginning to accumulate a new set of
+         completions, so we need to find all of them now, and cache
+         them for returning one at a time on future calls.  */
 
       if (list)
 	{
-	  /* Free the storage used by LIST, but not by the strings inside.
-	     This is because rl_complete_internal () frees the strings.
-	     As complete_line may abort by calling `error' clear LIST now.  */
+	  /* Free the storage used by LIST, but not by the strings
+	     inside.  This is because rl_complete_internal () frees
+	     the strings.  As complete_line may abort by calling
+	     `error' clear LIST now.  */
 	  xfree (list);
 	  list = NULL;
 	}
@@ -840,11 +885,11 @@ line_completion_function (const char *text, int matches,
       list = complete_line (text, line_buffer, point);
     }
 
-  /* If we found a list of potential completions during initialization then
-     dole them out one at a time.  The vector of completions is NULL
-     terminated, so after returning the last one, return NULL (and continue
-     to do so) each time we are called after that, until a new list is
-     available.  */
+  /* If we found a list of potential completions during initialization
+     then dole them out one at a time.  The vector of completions is
+     NULL terminated, so after returning the last one, return NULL
+     (and continue to do so) each time we are called after that, until
+     a new list is available.  */
 
   if (list)
     {
@@ -859,8 +904,8 @@ line_completion_function (const char *text, int matches,
   /* Can't do this because readline hasn't yet checked the word breaks
      for figuring out whether to insert a quote.  */
   if (output == NULL)
-    /* Make sure the word break characters are set back to normal for the
-       next time that readline tries to complete something.  */
+    /* Make sure the word break characters are set back to normal for
+       the next time that readline tries to complete something.  */
     rl_completer_word_break_characters =
       current_language->la_word_break_characters();
 #endif
@@ -869,10 +914,10 @@ line_completion_function (const char *text, int matches,
 }
 
 /* Skip over the possibly quoted word STR (as defined by the quote
-   characters QUOTECHARS and the the word break characters
-   BREAKCHARS).  Returns pointer to the location after the "word".  If
-   either QUOTECHARS or BREAKCHARS is NULL, use the same values used
-   by the completer.  */
+   characters QUOTECHARS and the word break characters BREAKCHARS).
+   Returns pointer to the location after the "word".  If either
+   QUOTECHARS or BREAKCHARS is NULL, use the same values used by the
+   completer.  */
 
 char *
 skip_quoted_chars (char *str, char *quotechars, char *breakchars)
@@ -900,7 +945,7 @@ skip_quoted_chars (char *str, char *quotechars, char *breakchars)
 	}
       else if (strchr (quotechars, *scan))
 	{
-	  /* Found start of a quoted string. */
+	  /* Found start of a quoted string.  */
 	  quote_char = *scan;
 	}
       else if (strchr (breakchars, *scan))

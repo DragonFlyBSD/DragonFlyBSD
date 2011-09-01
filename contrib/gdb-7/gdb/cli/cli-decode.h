@@ -1,6 +1,6 @@
 /* Header file for GDB command decoding library.
 
-   Copyright (c) 2000, 2003, 2007, 2008, 2009, 2010
+   Copyright (c) 2000, 2003, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
@@ -41,9 +41,9 @@ cmd_types;
 /* This structure records one command'd definition.  */
 
 
-/* This flag is used by the code executing commands to warn the user 
-   the first time a deprecated command is used, see the 'flags' field in
-   the following struct.
+/* This flag is used by the code executing commands to warn the user
+   the first time a deprecated command is used, see the 'flags' field
+   in the following struct.
 */
 #define CMD_DEPRECATED            0x1
 #define DEPRECATED_WARN_USER      0x2
@@ -94,7 +94,7 @@ struct cmd_list_element
     /* flags : a bitfield 
        
        bit 0: (LSB) CMD_DEPRECATED, when 1 indicated that this command
-       is deprecated. It may be removed from gdb's command set in the
+       is deprecated.  It may be removed from gdb's command set in the
        future.
 
        bit 1: DEPRECATED_WARN_USER, the user needs to be warned that
@@ -109,8 +109,8 @@ struct cmd_list_element
        memory for replacement is malloc'ed.  When a command is
        undeprecated or re-deprecated at runtime we don't want to risk
        calling free on statically allocated memory, so we check this
-       flag.  
-     */
+       flag.  */
+
     int flags;
 
     /* If this command is deprecated, this is the replacement name.  */
@@ -157,14 +157,16 @@ struct cmd_list_element
        skipped).  It stops where we are supposed to stop completing
        (rl_point) and is '\0' terminated.
 
-       Return value is a malloc'd vector of pointers to possible completions
-       terminated with NULL.  If there are no completions, returning a pointer
-       to a NULL would work but returning NULL itself is also valid.
-       WORD points in the same buffer as TEXT, and completions should be
-       returned relative to this position.  For example, suppose TEXT is "foo"
-       and we want to complete to "foobar".  If WORD is "oo", return
-       "oobar"; if WORD is "baz/foo", return "baz/foobar".  */
-    char **(*completer) (struct cmd_list_element *cmd, char *text, char *word);
+       Return value is a malloc'd vector of pointers to possible
+       completions terminated with NULL.  If there are no completions,
+       returning a pointer to a NULL would work but returning NULL
+       itself is also valid.  WORD points in the same buffer as TEXT,
+       and completions should be returned relative to this position.
+       For example, suppose TEXT is "foo" and we want to complete to
+       "foobar".  If WORD is "oo", return "oobar"; if WORD is
+       "baz/foo", return "baz/foobar".  */
+    char **(*completer) (struct cmd_list_element *cmd, 
+			 char *text, char *word);
 
     /* Destruction routine for this command.  If non-NULL, this is
        called when this command instance is destroyed.  This may be
@@ -175,14 +177,15 @@ struct cmd_list_element
        or "show").  */
     cmd_types type;
 
-    /* Pointer to variable affected by "set" and "show".  Doesn't matter
-       if type is not_set.  */
+    /* Pointer to variable affected by "set" and "show".  Doesn't
+       matter if type is not_set.  */
     void *var;
 
     /* What kind of variable is *VAR?  */
     var_types var_type;
 
-    /* Pointer to NULL terminated list of enumerated values (like argv).  */
+    /* Pointer to NULL terminated list of enumerated values (like
+       argv).  */
     const char **enums;
 
     /* Pointer to command strings of user-defined commands */
@@ -206,6 +209,9 @@ struct cmd_list_element
     /* Link pointer for aliases on an alias list.  */
     struct cmd_list_element *alias_chain;
   };
+
+/* Flag for an ambiguous cmd_list result.  */
+#define CMD_LIST_AMBIGUOUS ((struct cmd_list_element *) -1)
 
 /* API to the manipulation of command lists.  */
 
@@ -295,7 +301,7 @@ extern char **complete_on_enum (const char *enumlist[], char *, char *);
 extern void help_cmd_list (struct cmd_list_element *, enum command_class,
 			   char *, int, struct ui_file *);
 
-/* Functions that implement commands about CLI commands. */
+/* Functions that implement commands about CLI commands.  */
 
 extern void help_cmd (char *, struct ui_file *);
 

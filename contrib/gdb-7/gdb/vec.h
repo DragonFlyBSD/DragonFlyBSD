@@ -1,5 +1,5 @@
 /* Vector API for GDB.
-   Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010
+   Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
    Contributed by Nathan Sidwell <nathan@codesourcery.com>
 
@@ -73,7 +73,7 @@
    specific size from the get go.
 
    You should prefer the push and pop operations, as they append and
-   remove from the end of the vector. If you need to remove several
+   remove from the end of the vector.  If you need to remove several
    items in one go, use the truncate operation.  The insert and remove
    operations allow you to change elements in the middle of the
    vector.  There are two remove operations, one which preserves the
@@ -240,7 +240,7 @@
    T *VEC_T_quick_push (VEC(T) *v, T *obj); // Object
 
    Push a new element onto the end, returns a pointer to the slot
-   filled in. For object vectors, the new value can be NULL, in which
+   filled in.  For object vectors, the new value can be NULL, in which
    case NO initialization is performed.  There must
    be sufficient space in the vector.  */
 
@@ -252,7 +252,7 @@
    T *VEC_T_safe_push (VEC(T,A) *&v, T *obj); // Object
 
    Push a new element onto the end, returns a pointer to the slot
-   filled in. For object vectors, the new value can be NULL, in which
+   filled in.  For object vectors, the new value can be NULL, in which
    case NO initialization is performed.  Reallocates V, if needed.  */
 
 #define VEC_safe_push(T,V,O) (VEC_OP(T,safe_push)(&(V),O VEC_ASSERT_INFO))
@@ -262,7 +262,7 @@
    T VEC_T_pop (VEC(T) *v);		// Pointer
    void VEC_T_pop (VEC(T) *v);		// Object
 
-   Pop the last element off the end. Returns the element popped, for
+   Pop the last element off the end.  Returns the element popped, for
    pointer vectors.  */
 
 #define VEC_pop(T,V)	(VEC_OP(T,pop)(V VEC_ASSERT_INFO))
@@ -292,7 +292,7 @@
    T *VEC_T_replace (VEC(T) *v, unsigned ix, T *val);  // Object
 
    Replace the IXth element of V with a new value, VAL.  For pointer
-   vectors returns the original value. For object vectors returns a
+   vectors returns the original value.  For object vectors returns a
    pointer to the new value.  For object vectors the new value can be
    NULL, in which case no overwriting of the slot is actually
    performed.  */
@@ -304,10 +304,10 @@
    T *VEC_T_quick_insert (VEC(T) *v, unsigned ix, T val); // Pointer
    T *VEC_T_quick_insert (VEC(T) *v, unsigned ix, T *val); // Object
 
-   Insert an element, VAL, at the IXth position of V. Return a pointer
+   Insert an element, VAL, at the IXth position of V.  Return a pointer
    to the slot created.  For vectors of object, the new value can be
    NULL, in which case no initialization of the inserted slot takes
-   place. There must be sufficient space.  */
+   place.  There must be sufficient space.  */
 
 #define VEC_quick_insert(T,V,I,O) \
 	(VEC_OP(T,quick_insert)(V,I,O VEC_ASSERT_INFO))
@@ -317,10 +317,10 @@
    T *VEC_T_safe_insert (VEC(T,A) *&v, unsigned ix, T val); // Pointer
    T *VEC_T_safe_insert (VEC(T,A) *&v, unsigned ix, T *val); // Object
 
-   Insert an element, VAL, at the IXth position of V. Return a pointer
+   Insert an element, VAL, at the IXth position of V.  Return a pointer
    to the slot created.  For vectors of object, the new value can be
    NULL, in which case no initialization of the inserted slot takes
-   place. Reallocate V, if necessary.  */
+   place.  Reallocate V, if necessary.  */
 
 #define VEC_safe_insert(T,V,I,O)	\
 	(VEC_OP(T,safe_insert)(&(V),I,O VEC_ASSERT_INFO))
@@ -330,7 +330,7 @@
    T VEC_T_ordered_remove (VEC(T) *v, unsigned ix); // Pointer
    void VEC_T_ordered_remove (VEC(T) *v, unsigned ix); // Object
 
-   Remove an element from the IXth position of V. Ordering of
+   Remove an element from the IXth position of V.  Ordering of
    remaining elements is preserved.  For pointer vectors returns the
    removed object.  This is an O(N) operation due to a memmove.  */
 
@@ -342,7 +342,7 @@
    T VEC_T_unordered_remove (VEC(T) *v, unsigned ix); // Pointer
    void VEC_T_unordered_remove (VEC(T) *v, unsigned ix); // Object
 
-   Remove an element from the IXth position of V. Ordering of
+   Remove an element from the IXth position of V.  Ordering of
    remaining elements is destroyed.  For pointer vectors returns the
    removed object.  This is an O(1) operation.  */
 
@@ -353,10 +353,10 @@
    void VEC_T_block_remove (VEC(T) *v, unsigned ix, unsigned len);
 
    Remove LEN elements starting at the IXth.  Ordering is retained.
-   This is an O(1) operation.  */
+   This is an O(N) operation due to memmove.  */
 
 #define VEC_block_remove(T,V,I,L)	\
-	(VEC_OP(T,block_remove)(V,I,L) VEC_ASSERT_INFO)
+	(VEC_OP(T,block_remove)(V,I,L VEC_ASSERT_INFO))
 
 /* Get the address of the array of elements
    T *VEC_T_address (VEC(T) v)
@@ -390,7 +390,8 @@ extern void *vec_o_reserve (void *, int, size_t, size_t);
 #define VEC_ASSERT_DECL ,const char *file_,unsigned line_
 #define VEC_ASSERT_PASS ,file_,line_
 #define vec_assert(expr, op) \
-  ((void)((expr) ? 0 : (gdb_assert_fail (op, file_, line_, ASSERT_FUNCTION), 0)))
+  ((void)((expr) ? 0 : (gdb_assert_fail (op, file_, line_, \
+					 ASSERT_FUNCTION), 0)))
 
 #define VEC(T) VEC_##T
 #define VEC_OP(T,OP) VEC_##T##_##OP
@@ -450,7 +451,7 @@ static inline VEC(T) *VEC_OP (T,copy) (VEC(T) *vec_)			  \
 									  \
   if (len_)								  \
     {									  \
-      /* We must request exact size allocation, hence the negation. */	  \
+      /* We must request exact size allocation, hence the negation.  */	  \
       new_vec_ = (VEC (T) *)						  \
 	vec_o_reserve (NULL, -len_, offsetof (VEC(T),vec), sizeof (T));	  \
 									  \
@@ -731,7 +732,7 @@ static inline VEC(T) *VEC_OP (T,copy) (VEC(T) *vec_)			  \
 									  \
   if (len_)								  \
     {									  \
-      /* We must request exact size allocation, hence the negation. */	  \
+      /* We must request exact size allocation, hence the negation.  */	  \
       new_vec_ = (VEC (T) *)(vec_p_reserve (NULL, -len_));		  \
 									  \
       new_vec_->num = len_;						  \
@@ -964,7 +965,7 @@ static inline VEC(T) *VEC_OP (T,copy) (VEC(T) *vec_)			  \
 									  \
   if (len_)								  \
     {									  \
-      /* We must request exact size allocation, hence the negation. */	  \
+      /* We must request exact size allocation, hence the negation.  */	  \
       new_vec_ = (VEC (T) *)						  \
 	vec_o_reserve  (NULL, -len_, offsetof (VEC(T),vec), sizeof (T));  \
 									  \

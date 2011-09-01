@@ -1,6 +1,6 @@
 /* Inline frame unwinder for GDB.
 
-   Copyright (C) 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -126,7 +126,9 @@ clear_inline_frame_state (ptid_t ptid)
       VEC (inline_state_s) *new_states = NULL;
       int pid = ptid_get_pid (ptid);
 
-      for (ix = 0; VEC_iterate (inline_state_s, inline_states, ix, state); ix++)
+      for (ix = 0;
+	   VEC_iterate (inline_state_s, inline_states, ix, state);
+	   ix++)
 	if (pid != ptid_get_pid (state->ptid))
 	  VEC_safe_push (inline_state_s, new_states, state);
       VEC_free (inline_state_s, inline_states);
@@ -256,15 +258,14 @@ inline_frame_sniffer (const struct frame_unwind *self,
   return 1;
 }
 
-const struct frame_unwind inline_frame_unwinder = {
+const struct frame_unwind inline_frame_unwind = {
   INLINE_FRAME,
+  default_frame_unwind_stop_reason,
   inline_frame_this_id,
   inline_frame_prev_register,
   NULL,
   inline_frame_sniffer
 };
-
-const struct frame_unwind *const inline_frame_unwind = &inline_frame_unwinder;
 
 /* Return non-zero if BLOCK, an inlined function block containing PC,
    has a group of contiguous instructions starting at PC (but not

@@ -1,7 +1,7 @@
 /* environ.c -- library for manipulating environments for GNU.
 
    Copyright (C) 1986, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 2000, 2005
-   2003, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   2003, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -175,7 +175,7 @@ unset_in_environ (struct gdb_environ *e, char *var)
 	  xfree (s);
 	  /* Walk through the vector, shuffling args down by one, including
 	     the NULL terminator.  Can't use memcpy() here since the regions
-	     overlap, and memmove() might not be available. */
+	     overlap, and memmove() might not be available.  */
 	  while ((vector[0] = vector[1]) != NULL)
 	    {
 	      vector++;

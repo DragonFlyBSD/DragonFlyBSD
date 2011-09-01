@@ -1,7 +1,7 @@
 /* Basic C++ demangling support for GDB.
 
    Copyright (C) 1991, 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001,
-   2003, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   2003, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    Written by Fred Fish at Cygnus Support.
 
@@ -22,7 +22,7 @@
 
 
 /*  This file contains support code for C++ demangling that is common
-   to a styles of demangling, and GDB specific. */
+   to a styles of demangling, and GDB specific.  */
 
 #include "defs.h"
 #include "command.h"
@@ -36,7 +36,7 @@
    "lucid", "arm", "hp", etc.) in which case gdb will never attempt to do auto
    selection of the style unless you do an explicit "set demangle auto".
    To select one of these as the default, set DEFAULT_DEMANGLING_STYLE in
-   the appropriate target configuration file. */
+   the appropriate target configuration file.  */
 
 #ifndef DEFAULT_DEMANGLING_STYLE
 #define DEFAULT_DEMANGLING_STYLE AUTO_DEMANGLING_STYLE_STRING
@@ -46,7 +46,7 @@ extern void _initialize_demangler (void);
 
 /* String name for the current demangling style.  Set by the
    "set demangle-style" command, printed as part of the output by the
-   "show demangle-style" command. */
+   "show demangle-style" command.  */
 
 static char *current_demangling_style_string;
 
@@ -79,7 +79,7 @@ static void set_demangling_command (char *, int, struct cmd_list_element *);
    enum value.
 
    Note:  Assumes that current_demangling_style_string always points to
-   a malloc'd string, even if it is a null-string. */
+   a malloc'd string, even if it is a null-string.  */
 
 static void
 set_demangling_command (char *ignore, int from_tty, struct cmd_list_element *c)
@@ -89,7 +89,7 @@ set_demangling_command (char *ignore, int from_tty, struct cmd_list_element *c)
   /*  First just try to match whatever style name the user supplied with
      one of the known ones.  Don't bother special casing for an empty
      name, we just treat it as any other style name that doesn't match.
-     If we match, update the current demangling style enum. */
+     If we match, update the current demangling style enum.  */
 
   for (dem = libiberty_demanglers; 
        dem->demangling_style != unknown_demangling; 
@@ -104,8 +104,8 @@ set_demangling_command (char *ignore, int from_tty, struct cmd_list_element *c)
     }
 
   /* Check to see if we found a match.  If not, gripe about any non-empty
-     style name and supply a list of valid ones.  FIXME:  This should
-     probably be done with some sort of completion and with help. */
+     style name and supply a list of valid ones.  FIXME: This should
+     probably be done with some sort of completion and with help.  */
 
   if (dem->demangling_style == unknown_demangling)
     {
@@ -132,7 +132,7 @@ set_demangling_command (char *ignore, int from_tty, struct cmd_list_element *c)
 	{
 	  /* This can happen during initialization if gdb is compiled with
 	     a DEMANGLING_STYLE value that is unknown, so pick the first
-	     one as the default. */
+	     one as the default.  */
 	  current_demangling_style = libiberty_demanglers[0].demangling_style;
 	  current_demangling_style_string =
 	    xstrdup (libiberty_demanglers[0].demangling_style_name);
@@ -142,7 +142,7 @@ set_demangling_command (char *ignore, int from_tty, struct cmd_list_element *c)
     }
 }
 
-/* Fake a "set demangle-style" command. */
+/* Fake a "set demangle-style" command.  */
 
 void
 set_demangling_style (char *style)
@@ -205,6 +205,6 @@ Use `set demangle-style' without arguments for a list of demangling styles."),
 			show_demangling_style_names,
 			&setlist, &showlist);
 
-  /* Set the default demangling style chosen at compilation time. */
+  /* Set the default demangling style chosen at compilation time.  */
   set_demangling_style (DEFAULT_DEMANGLING_STYLE);
 }

@@ -1,6 +1,6 @@
 /* JIT declarations for GDB, the GNU Debugger.
 
-   Copyright (C) 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,9 +20,9 @@
 #ifndef JIT_H
 #define JIT_H
 
-/* When the JIT breakpoint fires, the inferior wants us to take one of these
-   actions.  These values are used by the inferior, so the values of these enums
-   cannot be changed.  */
+/* When the JIT breakpoint fires, the inferior wants us to take one of
+   these actions.  These values are used by the inferior, so the
+   values of these enums cannot be changed.  */
 
 typedef enum
 {
@@ -31,26 +31,28 @@ typedef enum
   JIT_UNREGISTER
 } jit_actions_t;
 
-/* This struct describes a single symbol file in a linked list of symbol files
-   describing generated code.  As the inferior generates code, it adds these
-   entries to the list, and when we attach to the inferior, we read them all.
-   For the first element prev_entry should be NULL, and for the last element
-   next_entry should be NULL.  */
+/* This struct describes a single symbol file in a linked list of
+   symbol files describing generated code.  As the inferior generates
+   code, it adds these entries to the list, and when we attach to the
+   inferior, we read them all.  For the first element prev_entry
+   should be NULL, and for the last element next_entry should be
+   NULL.  */
 
 struct jit_code_entry
 {
   CORE_ADDR next_entry;
   CORE_ADDR prev_entry;
   CORE_ADDR symfile_addr;
-  uint64_t symfile_size;
+  ULONGEST symfile_size;
 };
 
 /* This is the global descriptor that the inferior uses to communicate
-   information to the debugger.  To alert the debugger to take an action, the
-   inferior sets the action_flag to the appropriate enum value, updates
-   relevant_entry to point to the relevant code entry, and calls the function at
-   the well-known symbol with our breakpoint.  We then read this descriptor from
-   another global well-known symbol.  */
+   information to the debugger.  To alert the debugger to take an
+   action, the inferior sets the action_flag to the appropriate enum
+   value, updates relevant_entry to point to the relevant code entry,
+   and calls the function at the well-known symbol with our
+   breakpoint.  We then read this descriptor from another global
+   well-known symbol.  */
 
 struct jit_descriptor
 {
@@ -62,9 +64,10 @@ struct jit_descriptor
   CORE_ADDR first_entry;
 };
 
-/* Looks for the descriptor and registration symbols and breakpoints the
-   registration function.  If it finds both, it registers all the already JITed
-   code.  If it has already found the symbols, then it doesn't try again.  */
+/* Looks for the descriptor and registration symbols and breakpoints
+   the registration function.  If it finds both, it registers all the
+   already JITed code.  If it has already found the symbols, then it
+   doesn't try again.  */
 
 extern void jit_inferior_created_hook (void);
 
@@ -72,8 +75,8 @@ extern void jit_inferior_created_hook (void);
 
 extern void jit_breakpoint_re_set (void);
 
-/* This function is called by handle_inferior_event when it decides that the JIT
-   event breakpoint has fired.  */
+/* This function is called by handle_inferior_event when it decides
+   that the JIT event breakpoint has fired.  */
 
 extern void jit_event_handler (struct gdbarch *gdbarch);
 

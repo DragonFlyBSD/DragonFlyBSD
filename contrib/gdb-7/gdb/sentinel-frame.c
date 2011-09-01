@@ -1,7 +1,7 @@
 /* Code dealing with register stack frames, for GDB, the GNU debugger.
 
    Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
-   1996, 1997, 1998, 1999, 2000, 2001, 2002, 2007, 2008, 2009, 2010
+   1996, 1997, 1998, 1999, 2000, 2001, 2002, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -51,9 +51,10 @@ sentinel_frame_prev_register (struct frame_info *this_frame,
   struct gdbarch *gdbarch = get_frame_arch (this_frame);
   struct frame_unwind_cache *cache = *this_prologue_cache;
   struct value *value;
+  struct type *regtype = register_type (gdbarch, regnum);
 
   /* Return the actual value.  */
-  value = allocate_value (register_type (gdbarch, regnum));
+  value = allocate_value (regtype);
   VALUE_LVAL (value) = lval_register;
   VALUE_REGNUM (value) = regnum;
   VALUE_FRAME_ID (value) = get_frame_id (this_frame);
@@ -61,7 +62,10 @@ sentinel_frame_prev_register (struct frame_info *this_frame,
   /* Use the regcache_cooked_read() method so that it, on the fly,
      constructs either a raw or pseudo register from the raw
      register cache.  */
-  regcache_cooked_read (cache->regcache, regnum, value_contents_raw (value));
+  if (regcache_cooked_read (cache->regcache,
+			    regnum,
+			    value_contents_raw (value)) == REG_UNAVAILABLE)
+    mark_value_bytes_unavailable (value, 0, TYPE_LENGTH (regtype));
 
   return value;
 }
@@ -86,9 +90,10 @@ sentinel_frame_prev_arch (struct frame_info *this_frame,
   return get_regcache_arch (cache->regcache);
 }
 
-const struct frame_unwind sentinel_frame_unwinder =
+const struct frame_unwind sentinel_frame_unwind =
 {
   SENTINEL_FRAME,
+  default_frame_unwind_stop_reason,
   sentinel_frame_this_id,
   sentinel_frame_prev_register,
   NULL,
@@ -96,5 +101,3 @@ const struct frame_unwind sentinel_frame_unwinder =
   NULL,
   sentinel_frame_prev_arch,
 };
-
-const struct frame_unwind *const sentinel_frame_unwind = &sentinel_frame_unwinder;

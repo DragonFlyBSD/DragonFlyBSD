@@ -1,6 +1,6 @@
 /* MI Console code.
 
-   Copyright (C) 2000, 2001, 2002, 2007, 2008, 2009, 2010
+   Copyright (C) 2000, 2001, 2002, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions (a Red Hat company).
@@ -104,7 +104,8 @@ mi_console_raw_packet (void *data,
       if (mi_console->quote)
 	{
 	  fputs_unfiltered ("\"", mi_console->raw);
-	  fputstrn_unfiltered (buf, length_buf, mi_console->quote, mi_console->raw);
+	  fputstrn_unfiltered (buf, length_buf,
+			       mi_console->quote, mi_console->raw);
 	  fputs_unfiltered ("\"\n", mi_console->raw);
 	}
       else

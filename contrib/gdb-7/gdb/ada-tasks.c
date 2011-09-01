@@ -1,5 +1,5 @@
 /* Copyright (C) 1992, 1993, 1994, 1997, 1998, 1999, 2000, 2003, 2004, 2005,
-   2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -29,7 +29,7 @@
    Block of each task is stored.  */
 #define KNOWN_TASKS_NAME "system__tasking__debug__known_tasks"
 
-/* The maximum number of tasks known to the Ada runtime */
+/* The maximum number of tasks known to the Ada runtime.  */
 static const int MAX_NUMBER_OF_KNOWN_TASKS = 1000;
 
 enum task_states
@@ -126,7 +126,7 @@ struct tcb_fieldnos
 };
 
 /* The type description for the ATCB record and subrecords, and
-   the associated tcb_fieldnos. For efficiency reasons, these are made
+   the associated tcb_fieldnos.  For efficiency reasons, these are made
    static globals so that we can compute them only once the first time
    and reuse them later.  Set to NULL if the types haven't been computed
    yet, or if they may be obsolete (for instance after having loaded
@@ -212,6 +212,27 @@ ada_task_is_alive (struct ada_task_info *task_info)
   return (task_info->state != Terminated);
 }
 
+/* Call the ITERATOR function once for each Ada task that hasn't been
+   terminated yet.  */
+
+void
+iterate_over_live_ada_tasks (ada_task_list_iterator_ftype *iterator)
+{
+  int i, nb_tasks;
+  struct ada_task_info *task;
+
+  ada_build_task_list (0);
+  nb_tasks = VEC_length (ada_task_info_s, task_list);
+
+  for (i = 0; i < nb_tasks; i++)
+    {
+      task = VEC_index (ada_task_info_s, task_list, i);
+      if (!ada_task_is_alive (task))
+        continue;
+      iterator (task);
+    }
+}
+
 /* Extract the contents of the value as a string whose length is LENGTH,
    and store the result in DEST.  */
 
@@ -279,12 +300,12 @@ read_fat_string_value (char *dest, struct value *val, int max_len)
 }
 
 /* Return the address of the Known_Tasks array maintained in
-   the Ada Runtime.  Return NULL if the array could not be found,
+   the Ada Runtime.  Return zero if the array could not be found,
    meaning that the inferior program probably does not use tasking.
 
    In order to provide a fast response time, this function caches
    the Known_Tasks array address after the lookup during the first
-   call. Subsequent calls will simply return this cached address.  */
+   call.  Subsequent calls will simply return this cached address.  */
 
 static CORE_ADDR
 get_known_tasks_addr (void)
@@ -296,31 +317,27 @@ get_known_tasks_addr (void)
       struct minimal_symbol *msym;
 
       msym = lookup_minimal_symbol (KNOWN_TASKS_NAME, NULL, NULL);
-      if (msym != NULL)
-        known_tasks_addr = SYMBOL_VALUE_ADDRESS (msym);
-      else
-        {
-          if (target_lookup_symbol (KNOWN_TASKS_NAME, &known_tasks_addr) != 0)
-            return 0;
-        }
+      if (msym == NULL)
+        return 0;
+      known_tasks_addr = SYMBOL_VALUE_ADDRESS (msym);
 
       /* FIXME: brobecker 2003-03-05: Here would be a much better place
          to attach the ada-tasks observers, instead of doing this
-         unconditionaly in _initialize_tasks. This would avoid an
+         unconditionaly in _initialize_tasks.  This would avoid an
          unecessary notification when the inferior does not use tasking
          or as long as the user does not use the ada-tasks commands.
          Unfortunately, this is not possible for the moment: the current
          code resets ada__tasks_check_symbol_table back to 1 whenever
-         symbols for a new program are being loaded. If we place the
+         symbols for a new program are being loaded.  If we place the
          observers intialization here, we will end up adding new observers
          everytime we do the check for Ada tasking-related symbols
-         above. This would currently have benign effects, but is still
-         undesirable. The cleanest approach is probably to create a new
+         above.  This would currently have benign effects, but is still
+         undesirable.  The cleanest approach is probably to create a new
          observer to notify us when the user is debugging a new program.
          We would then reset ada__tasks_check_symbol_table back to 1
          during the notification, but also detach all observers.
          BTW: observers are probably not reentrant, so detaching during
-         a notification may not be the safest thing to do... Sigh...
+         a notification may not be the safest thing to do...  Sigh...
          But creating the new observer would be a good idea in any case,
          since this allow us to make ada__tasks_check_symbol_table
          static, which is a good bonus.  */
@@ -359,20 +376,29 @@ get_tcb_types_info (struct type **atcb_type,
   const char *private_data_name = "system__task_primitives__private_data";
   const char *entry_call_record_name = "system__tasking__entry_call_record";
 
+  /* ATCB symbols may be found in several compilation units.  As we
+     are only interested in one instance, use standard (literal,
+     C-like) lookups to get the first match.  */
+
   struct symbol *atcb_sym =
-    lookup_symbol (atcb_name, NULL, VAR_DOMAIN, NULL);
+    lookup_symbol_in_language (atcb_name, NULL, VAR_DOMAIN,
+			       language_c, NULL);
   const struct symbol *common_atcb_sym =
-    lookup_symbol (common_atcb_name, NULL, VAR_DOMAIN, NULL);
+    lookup_symbol_in_language (common_atcb_name, NULL, VAR_DOMAIN,
+			       language_c, NULL);
   const struct symbol *private_data_sym =
-    lookup_symbol (private_data_name, NULL, VAR_DOMAIN, NULL);
+    lookup_symbol_in_language (private_data_name, NULL, VAR_DOMAIN,
+			       language_c, NULL);
   const struct symbol *entry_call_record_sym =
-    lookup_symbol (entry_call_record_name, NULL, VAR_DOMAIN, NULL);
+    lookup_symbol_in_language (entry_call_record_name, NULL, VAR_DOMAIN,
+			       language_c, NULL);
 
   if (atcb_sym == NULL || atcb_sym->type == NULL)
     {
       /* In Ravenscar run-time libs, the  ATCB does not have a dynamic
          size, so the symbol name differs.  */
-      atcb_sym = lookup_symbol (atcb_name_fixed, NULL, VAR_DOMAIN, NULL);
+      atcb_sym = lookup_symbol_in_language (atcb_name_fixed, NULL, VAR_DOMAIN,
+					    language_c, NULL);
 
       if (atcb_sym == NULL || atcb_sym->type == NULL)
         error (_("Cannot find Ada_Task_Control_Block type. Aborting"));
@@ -491,14 +517,14 @@ read_atcb (CORE_ADDR task_id, struct ada_task_info *task_info)
      Depending on the GNAT version used, the task image is either a fat
      string, or a thin array of characters.  Older versions of GNAT used
      to use fat strings, and therefore did not need an extra field in
-     the ATCB to store the string length. For efficiency reasons, newer
+     the ATCB to store the string length.  For efficiency reasons, newer
      versions of GNAT replaced the fat string by a static buffer, but this
      also required the addition of a new field named "Image_Len" containing
-     the length of the task name. The method used to extract the task name
+     the length of the task name.  The method used to extract the task name
      is selected depending on the existence of this field.
 
      In some run-time libs (e.g. Ravenscar), the name is not in the ATCB;
-     we may want to get it from the first user frame of the stack. For now,
+     we may want to get it from the first user frame of the stack.  For now,
      we just give a dummy name.  */
 
   if (fieldno.image_len == -1)
@@ -583,9 +609,18 @@ read_atcb (CORE_ADDR task_id, struct ada_task_info *task_info)
         }
     }
 
-  /* And finally, compute the task ptid.  */
+  /* And finally, compute the task ptid.  Note that there are situations
+     where this cannot be determined:
+       - The task is no longer alive - the ptid is irrelevant;
+       - We are debugging a core file - the thread is not always
+         completely preserved for us to link back a task to its
+         underlying thread.  Since we do not support task switching
+         when debugging core files anyway, we don't need to compute
+         that task ptid.
+     In either case, we don't need that ptid, and it is just good enough
+     to set it to null_ptid.  */
 
-  if (ada_task_is_alive (task_info))
+  if (target_has_execution && ada_task_is_alive (task_info))
     task_info->ptid = ptid_from_atcb_common (common_value);
   else
     task_info->ptid = null_ptid;
@@ -723,7 +758,7 @@ short_task_info (int taskno)
 }
 
 /* Print a list containing a short description of all Ada tasks.  */
-/* FIXME: Shouldn't we be using ui_out??? */
+/* FIXME: Shouldn't we be using ui_out???  */
 
 static void
 info_tasks (int from_tty)

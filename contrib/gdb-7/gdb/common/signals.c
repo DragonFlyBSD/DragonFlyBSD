@@ -1,6 +1,6 @@
 /* Target signal translation functions for GDB.
    Copyright (C) 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
-   2000, 2001, 2002, 2003, 2006, 2007, 2008, 2009, 2010
+   2000, 2001, 2002, 2003, 2006, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
    Contributed by Cygnus Support.
 
@@ -48,175 +48,18 @@ struct gdbarch;
 # endif
 #endif
 
-/* This table must match in order and size the signals in enum target_signal
-   in src/include/gdb/signals.h.  */
-/* *INDENT-OFF* */
+/* This table must match in order and size the signals in enum
+   target_signal.  */
+
 static const struct {
   const char *name;
   const char *string;
   } signals [] =
 {
-  {"0", "Signal 0"},
-  {"SIGHUP", "Hangup"},
-  {"SIGINT", "Interrupt"},
-  {"SIGQUIT", "Quit"},
-  {"SIGILL", "Illegal instruction"},
-  {"SIGTRAP", "Trace/breakpoint trap"},
-  {"SIGABRT", "Aborted"},
-  {"SIGEMT", "Emulation trap"},
-  {"SIGFPE", "Arithmetic exception"},
-  {"SIGKILL", "Killed"},
-  {"SIGBUS", "Bus error"},
-  {"SIGSEGV", "Segmentation fault"},
-  {"SIGSYS", "Bad system call"},
-  {"SIGPIPE", "Broken pipe"},
-  {"SIGALRM", "Alarm clock"},
-  {"SIGTERM", "Terminated"},
-  {"SIGURG", "Urgent I/O condition"},
-  {"SIGSTOP", "Stopped (signal)"},
-  {"SIGTSTP", "Stopped (user)"},
-  {"SIGCONT", "Continued"},
-  {"SIGCHLD", "Child status changed"},
-  {"SIGTTIN", "Stopped (tty input)"},
-  {"SIGTTOU", "Stopped (tty output)"},
-  {"SIGIO", "I/O possible"},
-  {"SIGXCPU", "CPU time limit exceeded"},
-  {"SIGXFSZ", "File size limit exceeded"},
-  {"SIGVTALRM", "Virtual timer expired"},
-  {"SIGPROF", "Profiling timer expired"},
-  {"SIGWINCH", "Window size changed"},
-  {"SIGLOST", "Resource lost"},
-  {"SIGUSR1", "User defined signal 1"},
-  {"SIGUSR2", "User defined signal 2"},
-  {"SIGPWR", "Power fail/restart"},
-  {"SIGPOLL", "Pollable event occurred"},
-  {"SIGWIND", "SIGWIND"},
-  {"SIGPHONE", "SIGPHONE"},
-  {"SIGWAITING", "Process's LWPs are blocked"},
-  {"SIGLWP", "Signal LWP"},
-  {"SIGDANGER", "Swap space dangerously low"},
-  {"SIGGRANT", "Monitor mode granted"},
-  {"SIGRETRACT", "Need to relinquish monitor mode"},
-  {"SIGMSG", "Monitor mode data available"},
-  {"SIGSOUND", "Sound completed"},
-  {"SIGSAK", "Secure attention"},
-  {"SIGPRIO", "SIGPRIO"},
-  {"SIG33", "Real-time event 33"},
-  {"SIG34", "Real-time event 34"},
-  {"SIG35", "Real-time event 35"},
-  {"SIG36", "Real-time event 36"},
-  {"SIG37", "Real-time event 37"},
-  {"SIG38", "Real-time event 38"},
-  {"SIG39", "Real-time event 39"},
-  {"SIG40", "Real-time event 40"},
-  {"SIG41", "Real-time event 41"},
-  {"SIG42", "Real-time event 42"},
-  {"SIG43", "Real-time event 43"},
-  {"SIG44", "Real-time event 44"},
-  {"SIG45", "Real-time event 45"},
-  {"SIG46", "Real-time event 46"},
-  {"SIG47", "Real-time event 47"},
-  {"SIG48", "Real-time event 48"},
-  {"SIG49", "Real-time event 49"},
-  {"SIG50", "Real-time event 50"},
-  {"SIG51", "Real-time event 51"},
-  {"SIG52", "Real-time event 52"},
-  {"SIG53", "Real-time event 53"},
-  {"SIG54", "Real-time event 54"},
-  {"SIG55", "Real-time event 55"},
-  {"SIG56", "Real-time event 56"},
-  {"SIG57", "Real-time event 57"},
-  {"SIG58", "Real-time event 58"},
-  {"SIG59", "Real-time event 59"},
-  {"SIG60", "Real-time event 60"},
-  {"SIG61", "Real-time event 61"},
-  {"SIG62", "Real-time event 62"},
-  {"SIG63", "Real-time event 63"},
-  {"SIGCANCEL", "LWP internal signal"},
-  {"SIG32", "Real-time event 32"},
-  {"SIG64", "Real-time event 64"},
-  {"SIG65", "Real-time event 65"},
-  {"SIG66", "Real-time event 66"},
-  {"SIG67", "Real-time event 67"},
-  {"SIG68", "Real-time event 68"},
-  {"SIG69", "Real-time event 69"},
-  {"SIG70", "Real-time event 70"},
-  {"SIG71", "Real-time event 71"},
-  {"SIG72", "Real-time event 72"},
-  {"SIG73", "Real-time event 73"},
-  {"SIG74", "Real-time event 74"},
-  {"SIG75", "Real-time event 75"},
-  {"SIG76", "Real-time event 76"},
-  {"SIG77", "Real-time event 77"},
-  {"SIG78", "Real-time event 78"},
-  {"SIG79", "Real-time event 79"},
-  {"SIG80", "Real-time event 80"},
-  {"SIG81", "Real-time event 81"},
-  {"SIG82", "Real-time event 82"},
-  {"SIG83", "Real-time event 83"},
-  {"SIG84", "Real-time event 84"},
-  {"SIG85", "Real-time event 85"},
-  {"SIG86", "Real-time event 86"},
-  {"SIG87", "Real-time event 87"},
-  {"SIG88", "Real-time event 88"},
-  {"SIG89", "Real-time event 89"},
-  {"SIG90", "Real-time event 90"},
-  {"SIG91", "Real-time event 91"},
-  {"SIG92", "Real-time event 92"},
-  {"SIG93", "Real-time event 93"},
-  {"SIG94", "Real-time event 94"},
-  {"SIG95", "Real-time event 95"},
-  {"SIG96", "Real-time event 96"},
-  {"SIG97", "Real-time event 97"},
-  {"SIG98", "Real-time event 98"},
-  {"SIG99", "Real-time event 99"},
-  {"SIG100", "Real-time event 100"},
-  {"SIG101", "Real-time event 101"},
-  {"SIG102", "Real-time event 102"},
-  {"SIG103", "Real-time event 103"},
-  {"SIG104", "Real-time event 104"},
-  {"SIG105", "Real-time event 105"},
-  {"SIG106", "Real-time event 106"},
-  {"SIG107", "Real-time event 107"},
-  {"SIG108", "Real-time event 108"},
-  {"SIG109", "Real-time event 109"},
-  {"SIG110", "Real-time event 110"},
-  {"SIG111", "Real-time event 111"},
-  {"SIG112", "Real-time event 112"},
-  {"SIG113", "Real-time event 113"},
-  {"SIG114", "Real-time event 114"},
-  {"SIG115", "Real-time event 115"},
-  {"SIG116", "Real-time event 116"},
-  {"SIG117", "Real-time event 117"},
-  {"SIG118", "Real-time event 118"},
-  {"SIG119", "Real-time event 119"},
-  {"SIG120", "Real-time event 120"},
-  {"SIG121", "Real-time event 121"},
-  {"SIG122", "Real-time event 122"},
-  {"SIG123", "Real-time event 123"},
-  {"SIG124", "Real-time event 124"},
-  {"SIG125", "Real-time event 125"},
-  {"SIG126", "Real-time event 126"},
-  {"SIG127", "Real-time event 127"},
-
-  {"SIGINFO", "Information request"},
-
-  {NULL, "Unknown signal"},
-  {NULL, "Internal error: printing TARGET_SIGNAL_DEFAULT"},
-
-  /* Mach exceptions */
-  {"EXC_BAD_ACCESS", "Could not access memory"},
-  {"EXC_BAD_INSTRUCTION", "Illegal instruction/operand"},
-  {"EXC_ARITHMETIC", "Arithmetic exception"},
-  {"EXC_EMULATION", "Emulation instruction"},
-  {"EXC_SOFTWARE", "Software generated exception"},
-  {"EXC_BREAKPOINT", "Breakpoint"},
-
-  /* Last entry, used to check whether the table is the right size.  */
-  {NULL, "TARGET_SIGNAL_MAGIC"}
+#define SET(symbol, constant, name, string) { name, string },
+#include "gdb/signals.def"
+#undef SET
 };
-/* *INDENT-ON* */
-
 
 
 /* Return the string for a signal.  */
@@ -506,7 +349,8 @@ target_signal_from_host (int hostsig)
 	return (enum target_signal)
 	  (hostsig - 64 + (int) TARGET_SIGNAL_REALTIME_64);
       else
-	error ("GDB bug: target.c (target_signal_from_host): unrecognized real-time signal");
+	error (_("GDB bug: target.c (target_signal_from_host): "
+	       "unrecognized real-time signal"));
     }
 #endif
 
@@ -800,7 +644,7 @@ target_signal_to_host (enum target_signal oursig)
     {
       /* The user might be trying to do "signal SIGSAK" where this system
          doesn't have SIGSAK.  */
-      warning ("Signal %s does not exist on this system.\n",
+      warning (_("Signal %s does not exist on this system."),
 	       target_signal_to_name (oursig));
       return 0;
     }
@@ -823,8 +667,8 @@ target_signal_from_command (int num)
 {
   if (num >= 1 && num <= 15)
     return (enum target_signal) num;
-  error ("Only signals 1-15 are valid as numeric signals.\n\
-Use \"info signals\" for a list of symbolic signals.");
+  error (_("Only signals 1-15 are valid as numeric signals.\n\
+Use \"info signals\" for a list of symbolic signals."));
 }
 
 extern initialize_file_ftype _initialize_signals; /* -Wmissing-prototype */

@@ -1,7 +1,7 @@
 /* YACC parser for C expressions, for GDB.
 
    Copyright (C) 1986, 1989, 1990, 1991, 1993, 1994, 2002, 2006, 2007, 2008,
-   2009, 2010 Free Software Foundation, Inc.
+   2009, 2010, 2011 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -107,14 +107,11 @@
 #define	YYDEBUG	0		/* Default to no yydebug support.  */
 #endif
 
-int
-yyparse (void);
+int yyparse (void);
 
-static int
-yylex (void);
+static int yylex (void);
 
-void
-yyerror (char *);
+void yyerror (char *);
 
 %}
 
@@ -150,8 +147,7 @@ yyerror (char *);
 
 %{
 /* YYSTYPE gets defined by %union.  */
-static int
-parse_number (char *, int, int, YYSTYPE *);
+static int parse_number (char *, int, int, YYSTYPE *);
 %}
 
 %type <voidval> exp exp1 type_exp start variable qualified_name lcurly
@@ -178,7 +174,7 @@ parse_number (char *, int, int, YYSTYPE *);
 %token <sval> STRING
 %token <sval> NSSTRING		/* ObjC Foundation "NSString" literal */
 %token <sval> SELECTOR		/* ObjC "@selector" pseudo-operator   */
-%token <ssym> NAME /* BLOCKNAME defined below to give it higher precedence. */
+%token <ssym> NAME /* BLOCKNAME defined below to give it higher precedence.  */
 %token <tsym> TYPENAME
 %token <class> CLASSNAME	/* ObjC Class name */
 %type <sval> name
@@ -336,7 +332,7 @@ exp	: 	'[' TYPENAME
 			  class = lookup_objc_class (parse_gdbarch,
 						     copy_name ($2.stoken));
 			  if (class == 0)
-			    error ("%s is not an ObjC Class", 
+			    error (_("%s is not an ObjC Class"), 
 				   copy_name ($2.stoken));
 			  write_exp_elt_opcode (OP_LONG);
 			  write_exp_elt_type (parse_type->builtin_int);
@@ -544,10 +540,12 @@ exp	:	INT
 
 exp	:	NAME_OR_INT
 			{ YYSTYPE val;
-			  parse_number ($1.stoken.ptr, $1.stoken.length, 0, &val);
+			  parse_number ($1.stoken.ptr,
+					$1.stoken.length, 0, &val);
 			  write_exp_elt_opcode (OP_LONG);
 			  write_exp_elt_type (val.typed_val_int.type);
-			  write_exp_elt_longcst ((LONGEST)val.typed_val_int.val);
+			  write_exp_elt_longcst ((LONGEST) 
+						 val.typed_val_int.val);
 			  write_exp_elt_opcode (OP_LONG);
 			}
 	;
@@ -624,9 +622,10 @@ block	:	BLOCKNAME
 			      struct symtab *tem =
 				  lookup_symtab (copy_name ($1.stoken));
 			      if (tem)
-				$$ = BLOCKVECTOR_BLOCK (BLOCKVECTOR (tem), STATIC_BLOCK);
+				$$ = BLOCKVECTOR_BLOCK (BLOCKVECTOR (tem),
+							STATIC_BLOCK);
 			      else
-				error ("No file or function \"%s\".",
+				error (_("No file or function \"%s\"."),
 				       copy_name ($1.stoken));
 			    }
 			}
@@ -637,7 +636,7 @@ block	:	block COLONCOLON name
 			    = lookup_symbol (copy_name ($3), $1,
 					     VAR_DOMAIN, (int *) NULL);
 			  if (!tem || SYMBOL_CLASS (tem) != LOC_BLOCK)
-			    error ("No function \"%s\" in specified context.",
+			    error (_("No function \"%s\" in specified context."),
 				   copy_name ($3));
 			  $$ = SYMBOL_BLOCK_VALUE (tem); }
 	;
@@ -647,7 +646,7 @@ variable:	block COLONCOLON name
 			  sym = lookup_symbol (copy_name ($3), $1,
 					       VAR_DOMAIN, (int *) NULL);
 			  if (sym == 0)
-			    error ("No symbol \"%s\" in specified context.",
+			    error (_("No symbol \"%s\" in specified context."),
 				   copy_name ($3));
 
 			  write_exp_elt_opcode (OP_VAR_VALUE);
@@ -662,7 +661,7 @@ qualified_name:	typebase COLONCOLON name
 			  struct type *type = $1;
 			  if (TYPE_CODE (type) != TYPE_CODE_STRUCT
 			      && TYPE_CODE (type) != TYPE_CODE_UNION)
-			    error ("`%s' is not defined as an aggregate type.",
+			    error (_("`%s' is not defined as an aggregate type."),
 				   TYPE_NAME (type));
 
 			  write_exp_elt_opcode (OP_SCOPE);
@@ -676,11 +675,11 @@ qualified_name:	typebase COLONCOLON name
 			  struct stoken tmp_token;
 			  if (TYPE_CODE (type) != TYPE_CODE_STRUCT
 			      && TYPE_CODE (type) != TYPE_CODE_UNION)
-			    error ("`%s' is not defined as an aggregate type.",
+			    error (_("`%s' is not defined as an aggregate type."),
 				   TYPE_NAME (type));
 
 			  if (strcmp (type_name_no_tag (type), $4.ptr) != 0)
-			    error ("invalid destructor `%s::~%s'",
+			    error (_("invalid destructor `%s::~%s'"),
 				   type_name_no_tag (type), $4.ptr);
 
 			  tmp_token.ptr = (char*) alloca ($4.length + 2);
@@ -717,10 +716,13 @@ variable:	qualified_name
 			  msymbol = lookup_minimal_symbol (name, NULL, NULL);
 			  if (msymbol != NULL)
 			    write_exp_msymbol (msymbol);
-			  else if (!have_full_symbols () && !have_partial_symbols ())
-			    error ("No symbol table is loaded.  Use the \"file\" command.");
+			  else if (!have_full_symbols ()
+				   && !have_partial_symbols ())
+			    error (_("No symbol table is loaded.  "
+				   "Use the \"file\" command."));
 			  else
-			    error ("No symbol \"%s\" in current context.", name);
+			    error (_("No symbol \"%s\" in current context."),
+				   name);
 			}
 	;
 
@@ -770,9 +772,10 @@ variable:	name_not_typename
 				write_exp_msymbol (msymbol);
 			      else if (!have_full_symbols () && 
 				       !have_partial_symbols ())
-				error ("No symbol table is loaded.  Use the \"file\" command.");
+				error (_("No symbol table is loaded.  "
+				       "Use the \"file\" command."));
 			      else
-				error ("No symbol \"%s\" in current context.",
+				error (_("No symbol \"%s\" in current context."),
 				       copy_name ($1.stoken));
 			    }
 			}
@@ -855,7 +858,7 @@ typebase  /* Implements (approximately): (type-qualifier)* type-specifier.  */
 	|	CLASSNAME
 			{
 			  if ($1.type == NULL)
-			    error ("No symbol \"%s\" in current context.", 
+			    error (_("No symbol \"%s\" in current context."), 
 				   copy_name($1.stoken));
 			  else
 			    $$ = $1.type;
@@ -1012,26 +1015,10 @@ parse_number (p, len, parsed_float, putithere)
 
   if (parsed_float)
     {
-      char c;
-
-      /* It's a float since it contains a point or an exponent.  */
-
-      sscanf (p, "%" DOUBLEST_SCAN_FORMAT "%c",
-	      &putithere->typed_val_float.dval, &c);
-
-      /* See if it has `f' or `l' suffix (float or long double).  */
-
-      c = tolower (p[len - 1]);
-
-      if (c == 'f')
-	putithere->typed_val_float.type = parse_type->builtin_float;
-      else if (c == 'l')
-	putithere->typed_val_float.type = parse_type->builtin_long_double;
-      else if (isdigit (c) || c == '.')
-	putithere->typed_val_float.type = parse_type->builtin_double;
-      else
+      if (! parse_c_float (parse_gdbarch, p, len,
+			   &putithere->typed_val_float.dval,
+			   &putithere->typed_val_float.type))
 	return ERROR;
-
       return FLOAT;
     }
 
@@ -1115,7 +1102,7 @@ parse_number (p, len, parsed_float, putithere)
       if (c != 'l' && c != 'u' && n != 0)
 	{	
 	  if ((unsigned_p && (unsigned LONGEST) prevn >= (unsigned LONGEST) n))
-	    error ("Numeric constant too large.");
+	    error (_("Numeric constant too large."));
 	}
       prevn = n;
     }
@@ -1136,7 +1123,8 @@ parse_number (p, len, parsed_float, putithere)
   if (long_p == 0
       && (un >> (gdbarch_int_bit (parse_gdbarch) - 2)) == 0)
     {
-      high_bit = ((unsigned LONGEST)1) << (gdbarch_int_bit (parse_gdbarch) - 1);
+      high_bit
+	= ((unsigned LONGEST)1) << (gdbarch_int_bit (parse_gdbarch) - 1);
 
       /* A large decimal (not hex or octal) constant (between INT_MAX
 	 and UINT_MAX) is a long or unsigned long, according to ANSI,
@@ -1150,7 +1138,8 @@ parse_number (p, len, parsed_float, putithere)
   else if (long_p <= 1
 	   && (un >> (gdbarch_long_bit (parse_gdbarch) - 2)) == 0)
     {
-      high_bit = ((unsigned LONGEST)1) << (gdbarch_long_bit (parse_gdbarch) - 1);
+      high_bit
+	= ((unsigned LONGEST)1) << (gdbarch_long_bit (parse_gdbarch) - 1);
       unsigned_type = parse_type->builtin_unsigned_long;
       signed_type = parse_type->builtin_long;
     }
@@ -1225,7 +1214,7 @@ static const struct token tokentab2[] =
 /* Read one token, getting characters through lexptr.  */
 
 static int
-yylex ()
+yylex (void)
 {
   int c, tokchr;
   int namelen;
@@ -1278,7 +1267,7 @@ yylex ()
       if (c == '\\')
 	c = parse_escape (parse_gdbarch, &lexptr);
       else if (c == '\'')
-	error ("Empty character constant.");
+	error (_("Empty character constant."));
 
       yylval.typed_val_int.val = c;
       yylval.typed_val_int.type = parse_type->builtin_char;
@@ -1291,12 +1280,12 @@ yylex ()
 	    {
 	      lexptr = tokstart + namelen;
 	      if (lexptr[-1] != '\'')
-		error ("Unmatched single quote.");
+		error (_("Unmatched single quote."));
 	      namelen -= 2;
 	      tokstart++;
 	      goto tryname;
 	    }
-	  error ("Invalid character constant.");
+	  error (_("Invalid character constant."));
 	}
       return INT;
 
@@ -1347,7 +1336,8 @@ yylex ()
 	    hex = 1;
 	    local_radix = 16;
 	  }
-	else if (tokchr == '0' && (p[1]=='t' || p[1]=='T' || p[1]=='d' || p[1]=='D'))
+	else if (tokchr == '0' && (p[1]=='t' || p[1]=='T'
+				   || p[1]=='d' || p[1]=='D'))
 	  {
 	    p += 2;
 	    hex = 0;
@@ -1406,7 +1396,7 @@ yylex ()
 
 	    memcpy (err_copy, tokstart, p - tokstart);
 	    err_copy[p - tokstart] = 0;
-	    error ("Invalid number \"%s\".", err_copy);
+	    error (_("Invalid number \"%s\"."), err_copy);
 	  }
 	lexptr = p;
 	return toktype;
@@ -1444,7 +1434,7 @@ yylex ()
 	  tokptr = strchr(tokstart, '(');
 	  if (tokptr == NULL)
 	    {
-	      error ("Missing '(' in @selector(...)");
+	      error (_("Missing '(' in @selector(...)"));
 	    }
 	  tempbufindex = 0;
 	  tokptr++;	/* Skip the '('.  */
@@ -1459,7 +1449,7 @@ yylex ()
 	  } while ((*tokptr != ')') && (*tokptr != '\0'));
 	  if (*tokptr++ != ')')
 	    {
-	      error ("Missing ')' in @selector(...)");
+	      error (_("Missing ')' in @selector(...)"));
 	    }
 	  tempbuf[tempbufindex] = '\0';
 	  yylval.sval.ptr = tempbuf;
@@ -1520,7 +1510,7 @@ yylex ()
       } while ((*tokptr != '"') && (*tokptr != '\0'));
       if (*tokptr++ != '"')
 	{
-	  error ("Unterminated string in expression.");
+	  error (_("Unterminated string in expression."));
 	}
       tempbuf[tempbufindex] = '\0';	/* See note above.  */
       yylval.sval.ptr = tempbuf;
@@ -1532,7 +1522,7 @@ yylex ()
   if (!(tokchr == '_' || tokchr == '$' || 
        (tokchr >= 'a' && tokchr <= 'z') || (tokchr >= 'A' && tokchr <= 'Z')))
     /* We must have come across a bad character (e.g. ';').  */
-    error ("Invalid character '%c' in expression.", c);
+    error (_("Invalid character '%c' in expression."), c);
 
   /* It's a name.  See how long it is.  */
   namelen = 0;
@@ -1790,8 +1780,8 @@ yyerror (msg)
      char *msg;
 {
   if (*lexptr == '\0')
-    error("A %s near end of expression.",  (msg ? msg : "error"));
+    error(_("A %s near end of expression."),  (msg ? msg : "error"));
   else
-    error ("A %s in expression, near `%s'.", (msg ? msg : "error"), 
+    error (_("A %s in expression, near `%s'."), (msg ? msg : "error"),
 	   lexptr);
 }

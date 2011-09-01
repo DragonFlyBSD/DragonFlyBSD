@@ -39,7 +39,7 @@ alpha*-*-osf*)
 alpha*-*-linux*)
 	# Target: Little-endian Alpha running Linux
 	gdb_target_obs="alpha-tdep.o alpha-mdebug-tdep.o alpha-linux-tdep.o \
-			solib.o solib-svr4.o"
+			linux-tdep.o solib.o solib-svr4.o"
 	;;
 alpha*-*-freebsd* | alpha*-*-kfreebsd*-gnu)
 	# Target: FreeBSD/alpha
@@ -65,8 +65,8 @@ alpha*-*-*)
 
 am33_2.0*-*-linux*)
 	# Target: Matsushita mn10300 (AM33) running Linux
-	gdb_target_obs="mn10300-tdep.o mn10300-linux-tdep.o corelow.o \
-			solib.o solib-svr4.o"
+	gdb_target_obs="mn10300-tdep.o mn10300-linux-tdep.o linux-tdep.o \
+			corelow.o solib.o solib-svr4.o"
 	;;
 
 arm*-wince-pe | arm*-*-mingw32ce*)
@@ -106,6 +106,18 @@ avr-*-*)
 	gdb_sim=../sim/avr/libsim.a
 	;;
 
+bfin-*-*linux*)
+	# Target: Blackfin Linux
+	gdb_target_obs="bfin-tdep.o bfin-linux-tdep.o linux-tdep.o"
+	gdb_sim=../sim/bfin/libsim.a
+	build_gdbserver=yes
+	;;
+bfin-*-*)
+	# Target: Blackfin processor
+	gdb_target_obs="bfin-tdep.o"
+	gdb_sim=../sim/bfin/libsim.a
+	;;
+
 cris*)
 	# Target: CRIS
 	gdb_target_obs="cris-tdep.o corelow.o solib.o solib-svr4.o"
@@ -113,7 +125,7 @@ cris*)
 
 frv-*-*)
 	# Target: Fujitsu FRV processor
-	gdb_target_obs="frv-tdep.o frv-linux-tdep.o \
+	gdb_target_obs="frv-tdep.o frv-linux-tdep.o linux-tdep.o \
 			solib.o solib-frv.o corelow.o"
 	gdb_sim=../sim/frv/libsim.a
 	;;
@@ -137,7 +149,7 @@ hppa*-*-hpux*)
 hppa*-*-linux*)
 	# Target: HP PA-RISC running Linux
 	gdb_target_obs="hppa-tdep.o hppa-linux-tdep.o glibc-tdep.o \
-			solib.o solib-svr4.o symfile-mem.o"
+			linux-tdep.o solib.o solib-svr4.o symfile-mem.o"
 	;;
 hppa*-*-netbsd*)
 	# Target: NetBSD/hppa
@@ -239,9 +251,13 @@ i[34567]86-*-*)
 	gdb_target_obs="i386-tdep.o i387-tdep.o"
 	;;
 
+ia64-*-hpux*)
+	# Target: Intel IA-64 running HP-UX
+	gdb_target_obs="ia64-tdep.o ia64-hpux-tdep.o"
+	;;
 ia64-*-linux*)
 	# Target: Intel IA-64 running GNU/Linux
-	gdb_target_obs="ia64-tdep.o ia64-linux-tdep.o \
+	gdb_target_obs="ia64-tdep.o ia64-linux-tdep.o linux-tdep.o \
 			solib.o solib-svr4.o symfile-mem.o"
 	build_gdbserver=yes
 	;;
@@ -271,7 +287,8 @@ m32c-*-*)
 m32r*-*-linux*)
 	# Target: Renesas M32R running GNU/Linux
 	gdb_target_obs="m32r-tdep.o m32r-linux-tdep.o remote-m32r-sdi.o \
-			glibc-tdep.o solib.o solib-svr4.o symfile-mem.o"
+			glibc-tdep.o solib.o solib-svr4.o symfile-mem.o \
+			linux-tdep.o"
 	gdb_sim=../sim/m32r/libsim.a
 	build_gdbserver=yes
 	;;
@@ -296,7 +313,7 @@ fido-*-elf*)
 m68*-*-linux*)
 	# Target: Motorola m68k with a.out and ELF
 	gdb_target_obs="m68k-tdep.o m68klinux-tdep.o solib.o solib-svr4.o \
-			glibc-tdep.o symfile-mem.o"
+			linux-tdep.o glibc-tdep.o symfile-mem.o"
 	build_gdbserver=yes
 	;;
 m68*-*-netbsd* | m68*-*-knetbsd*-gnu)
@@ -321,14 +338,14 @@ mep-*-*)
 	# No sim needed. Target uses SID.
 	;;
 
-microblaze*-linux-*)
+microblaze*-linux-*|microblaze*-*-linux*)
 	# Target: Xilinx MicroBlaze running Linux
 	gdb_target_obs="microblaze-tdep.o microblaze-linux-tdep.o microblaze-rom.o \
 			monitor.o dsrec.o solib.o solib-svr4.o corelow.o \
-			symfile-mem.o"
+			symfile-mem.o linux-tdep.o"
 	gdb_sim=../sim/microblaze/libsim.a
 	;;
-microblaze*-xilinx-*)
+microblaze*-*-*)
 	# Target: Xilinx MicroBlaze running standalone
 	gdb_target_obs="microblaze-tdep.o microblaze-rom.o monitor.o dsrec.o"
 	gdb_sim=../sim/microblaze/libsim.a
@@ -345,7 +362,8 @@ mips*-sgi-irix6*)
 mips*-*-linux*)
 	# Target: Linux/MIPS
 	gdb_target_obs="mips-tdep.o mips-linux-tdep.o glibc-tdep.o \
-			corelow.o solib.o solib-svr4.o symfile-mem.o"
+			corelow.o solib.o solib-svr4.o symfile-mem.o \
+			linux-tdep.o"
 	gdb_sim=../sim/mips/libsim.a
 	build_gdbserver=yes
 	;;
@@ -359,6 +377,11 @@ mips64*-*-openbsd*)
 	# Target: OpenBSD/mips64
 	gdb_target_obs="mips-tdep.o mips64obsd-tdep.o \
 			corelow.o solib.o solib-svr4.o"
+	;;
+mips*-*-elf)
+	# Target: MIPS ELF
+	gdb_target_obs="mips-tdep.o remote-mips.o"
+	gdb_sim=../sim/mips/libsim.a
 	;;
 mips*-*-*)
 	# Target: MIPS
@@ -435,7 +458,7 @@ sh*-*-linux*)
 	# Target: GNU/Linux Super-H
 	gdb_target_obs="sh-tdep.o sh64-tdep.o sh-linux-tdep.o monitor.o \
 			dsrec.o solib.o solib-svr4.o symfile-mem.o \
-			glibc-tdep.o corelow.o"
+			glibc-tdep.o corelow.o linux-tdep.o"
 	gdb_sim=../sim/sh/libsim.a
 	build_gdbserver=yes
 	;;
@@ -463,7 +486,8 @@ sh*)
 sparc-*-linux*)
 	# Target: GNU/Linux SPARC
 	gdb_target_obs="sparc-tdep.o sparc-sol2-tdep.o sol2-tdep.o \
-			sparc-linux-tdep.o solib.o solib-svr4.o symfile-mem.o"
+			sparc-linux-tdep.o solib.o solib-svr4.o symfile-mem.o \
+			linux-tdep.o"
 	if test "x$enable_64_bit_bfd" = "xyes"; then
 	    # Target: GNU/Linux UltraSPARC
 	    gdb_target_obs="sparc64-tdep.o sparc64-sol2-tdep.o \
@@ -474,7 +498,7 @@ sparc64-*-linux*)
 	# Target: GNU/Linux UltraSPARC
 	gdb_target_obs="sparc64-tdep.o sparc64-sol2-tdep.o sol2-tdep.o \
 			sparc64-linux-tdep.o sparc-tdep.o sparc-sol2-tdep.o \
-			sparc-linux-tdep.o solib.o solib-svr4.o"
+			sparc-linux-tdep.o solib.o solib-svr4.o linux-tdep.o"
 	build_gdbserver=yes
 	;;
 sparc*-*-freebsd* | sparc*-*-kfreebsd*-gnu)
@@ -516,14 +540,11 @@ sparc-*-solaris2* | sparcv9-*-solaris2* | sparc64-*-solaris2*)
 	gdb_target_obs="sparc64-tdep.o sparc64-sol2-tdep.o sparc-tdep.o \
 			sparc-sol2-tdep.o sol2-tdep.o solib.o solib-svr4.o"
 	;;
-sparc-*-rtems*)
-	# Target: SPARC embedded with simulator
-	gdb_target_obs="sparc-tdep.o"
-	gdb_sim=../sim/erc32/libsim.a
-	;;
 sparc-*-*)
 	# Target: SPARC
-	gdb_target_obs="sparc-tdep.o"
+	gdb_target_obs="sparc-tdep.o ravenscar-thread.o \
+			ravenscar-sparc-thread.o"
+	gdb_sim=../sim/erc32/libsim.a
 	;;
 sparc64-*-*)
 	# Target: UltraSPARC
@@ -616,7 +637,8 @@ x86_64-*-dragonfly*)
 xtensa*-*-linux*)	gdb_target=linux
 	# Target: GNU/Linux Xtensa
 	gdb_target_obs="xtensa-tdep.o xtensa-config.o xtensa-linux-tdep.o \
-			solib.o solib-svr4.o corelow.o symfile-mem.o"
+			solib.o solib-svr4.o corelow.o symfile-mem.o \
+			linux-tdep.o"
 	build_gdbserver=yes
 	;;
 xtensa*)
@@ -629,8 +651,10 @@ esac
 # map target onto default OS ABI
 
 case "${targ}" in
-*-*-freebsd*)	gdb_osabi=GDB_OSABI_FREEBSD_ELF ;;
-*-*-linux*)	gdb_osabi=GDB_OSABI_LINUX ;;
+*-*-freebsd* | *-*-kfreebsd*-gnu)
+		gdb_osabi=GDB_OSABI_FREEBSD_ELF ;;
+*-*-linux* | *-*-uclinux*)
+		gdb_osabi=GDB_OSABI_LINUX ;;
 *-*-nto*)	gdb_osabi=GDB_OSABI_QNXNTO ;;
 m68*-*-openbsd* | m88*-*-openbsd* | vax-*-openbsd*) ;;
 *-*-openbsd*)	gdb_osabi=GDB_OSABI_OPENBSD_ELF ;;

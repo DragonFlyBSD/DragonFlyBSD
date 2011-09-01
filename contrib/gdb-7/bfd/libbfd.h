@@ -123,10 +123,6 @@ extern bfd_error_handler_type _bfd_error_handler;
 
 /* These routines allocate and free things on the BFD's objalloc.  */
 
-extern void *bfd_alloc
-  (bfd *, bfd_size_type);
-extern void *bfd_zalloc
-  (bfd *, bfd_size_type);
 extern void *bfd_alloc2
   (bfd *, bfd_size_type, bfd_size_type);
 extern void *bfd_zalloc2
@@ -275,6 +271,8 @@ extern int _bfd_nocore_core_file_failing_signal
   (bfd *);
 extern bfd_boolean _bfd_nocore_core_file_matches_executable_p
   (bfd *, bfd *);
+extern int _bfd_nocore_core_file_pid
+  (bfd *);
 
 /* Routines to use for BFD_JUMP_TABLE_ARCHIVE when there is no archive
    file support.  Use BFD_JUMP_TABLE_ARCHIVE (_bfd_noarchive).  */
@@ -631,7 +629,7 @@ extern bfd_reloc_status_type _bfd_relocate_contents
 
 /* Clear a given location using a given howto.  */
 extern void _bfd_clear_contents (reloc_howto_type *howto, bfd *input_bfd,
-				 bfd_byte *location);
+				 asection *input_section, bfd_byte *location);
 
 /* Link stabs in sections in the first pass.  */
 
@@ -815,6 +813,16 @@ extern void bfd_section_already_linked_table_traverse
 extern bfd_vma read_unsigned_leb128 (bfd *, bfd_byte *, unsigned int *);
 extern bfd_signed_vma read_signed_leb128 (bfd *, bfd_byte *, unsigned int *);
 
+struct dwarf_debug_section
+{
+  const char *uncompressed_name;
+  const char *compressed_name;
+};
+
+/* Map of uncompressed DWARF debug section name to compressed one.  It
+   is terminated by NULL uncompressed_name.  */
+
+extern struct dwarf_debug_section dwarf_debug_sections[];
 /* Extracted from init.c.  */
 /* Extracted from libbfd.c.  */
 bfd_boolean bfd_write_bigendian_4byte_int (bfd *, unsigned int);
@@ -1369,6 +1377,12 @@ static const char *const bfd_reloc_code_real_names[] = { "@@uninitialized@@",
   "BFD_RELOC_ARM_TLS_TPOFF32",
   "BFD_RELOC_ARM_TLS_IE32",
   "BFD_RELOC_ARM_TLS_LE32",
+  "BFD_RELOC_ARM_TLS_GOTDESC",
+  "BFD_RELOC_ARM_TLS_CALL",
+  "BFD_RELOC_ARM_THM_TLS_CALL",
+  "BFD_RELOC_ARM_TLS_DESCSEQ",
+  "BFD_RELOC_ARM_THM_TLS_DESCSEQ",
+  "BFD_RELOC_ARM_TLS_DESC",
   "BFD_RELOC_ARM_ALU_PC_G0_NC",
   "BFD_RELOC_ARM_ALU_PC_G0",
   "BFD_RELOC_ARM_ALU_PC_G1_NC",
@@ -1398,6 +1412,7 @@ static const char *const bfd_reloc_code_real_names[] = { "@@uninitialized@@",
   "BFD_RELOC_ARM_LDC_SB_G1",
   "BFD_RELOC_ARM_LDC_SB_G2",
   "BFD_RELOC_ARM_V4BX",
+  "BFD_RELOC_ARM_IRELATIVE",
   "BFD_RELOC_ARM_IMMEDIATE",
   "BFD_RELOC_ARM_ADRL_IMMEDIATE",
   "BFD_RELOC_ARM_T32_IMMEDIATE",
@@ -1406,6 +1421,7 @@ static const char *const bfd_reloc_code_real_names[] = { "@@uninitialized@@",
   "BFD_RELOC_ARM_T32_ADD_PC12",
   "BFD_RELOC_ARM_SHIFT_IMM",
   "BFD_RELOC_ARM_SMC",
+  "BFD_RELOC_ARM_HVC",
   "BFD_RELOC_ARM_SWI",
   "BFD_RELOC_ARM_MULTI",
   "BFD_RELOC_ARM_CP_OFF_IMM",
@@ -1636,6 +1652,28 @@ static const char *const bfd_reloc_code_real_names[] = { "@@uninitialized@@",
   "BFD_RELOC_V850_LONGJUMP",
   "BFD_RELOC_V850_ALIGN",
   "BFD_RELOC_V850_LO16_SPLIT_OFFSET",
+  "BFD_RELOC_V850_16_PCREL",
+  "BFD_RELOC_V850_17_PCREL",
+  "BFD_RELOC_V850_23",
+  "BFD_RELOC_V850_32_PCREL",
+  "BFD_RELOC_V850_32_ABS",
+  "BFD_RELOC_V850_16_SPLIT_OFFSET",
+  "BFD_RELOC_V850_16_S1",
+  "BFD_RELOC_V850_LO16_S1",
+  "BFD_RELOC_V850_CALLT_15_16_OFFSET",
+  "BFD_RELOC_V850_32_GOTPCREL",
+  "BFD_RELOC_V850_16_GOT",
+  "BFD_RELOC_V850_32_GOT",
+  "BFD_RELOC_V850_22_PLT_PCREL",
+  "BFD_RELOC_V850_32_PLT_PCREL",
+  "BFD_RELOC_V850_COPY",
+  "BFD_RELOC_V850_GLOB_DAT",
+  "BFD_RELOC_V850_JMP_SLOT",
+  "BFD_RELOC_V850_RELATIVE",
+  "BFD_RELOC_V850_16_GOTOFF",
+  "BFD_RELOC_V850_32_GOTOFF",
+  "BFD_RELOC_V850_CODE",
+  "BFD_RELOC_V850_DATA",
   "BFD_RELOC_MN10300_32_PCREL",
   "BFD_RELOC_MN10300_16_PCREL",
   "BFD_RELOC_TIC30_LDP",
@@ -1667,6 +1705,10 @@ static const char *const bfd_reloc_code_real_names[] = { "@@uninitialized@@",
   "BFD_RELOC_C6000_DSBT_INDEX",
   "BFD_RELOC_C6000_PREL31",
   "BFD_RELOC_C6000_COPY",
+  "BFD_RELOC_C6000_JUMP_SLOT",
+  "BFD_RELOC_C6000_EHTYPE",
+  "BFD_RELOC_C6000_PCR_H16",
+  "BFD_RELOC_C6000_PCR_L16",
   "BFD_RELOC_C6000_ALIGN",
   "BFD_RELOC_C6000_FPHEAD",
   "BFD_RELOC_C6000_NOCMP",
@@ -1769,9 +1811,12 @@ static const char *const bfd_reloc_code_real_names[] = { "@@uninitialized@@",
   "BFD_RELOC_RX_GPRELL",
   "BFD_RELOC_RX_SYM",
   "BFD_RELOC_RX_OP_SUBTRACT",
+  "BFD_RELOC_RX_OP_NEG",
   "BFD_RELOC_RX_ABS8",
   "BFD_RELOC_RX_ABS16",
+  "BFD_RELOC_RX_ABS16_REV",
   "BFD_RELOC_RX_ABS32",
+  "BFD_RELOC_RX_ABS32_REV",
   "BFD_RELOC_RX_ABS16U",
   "BFD_RELOC_RX_ABS16UW",
   "BFD_RELOC_RX_ABS16UL",

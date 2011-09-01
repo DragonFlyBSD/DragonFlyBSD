@@ -1,8 +1,8 @@
 /* Floating point routines for GDB, the GNU debugger.
 
    Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
-   1997, 1998, 1999, 2000, 2001, 2003, 2004, 2005, 2007, 2008, 2009, 2010
-   Free Software Foundation, Inc.
+   1997, 1998, 1999, 2000, 2001, 2003, 2004, 2005, 2007, 2008, 2009, 2010,
+   2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -60,11 +60,11 @@ get_field (const bfd_byte *data, enum floatformat_byteorders order,
     {
       /* We start counting from the other end (i.e, from the high bytes
 	 rather than the low bytes).  As such, we need to be concerned
-	 with what happens if bit 0 doesn't start on a byte boundary. 
+	 with what happens if bit 0 doesn't start on a byte boundary.
 	 I.e, we need to properly handle the case where total_len is
 	 not evenly divisible by 8.  So we compute ``excess'' which
 	 represents the number of bits from the end of our starting
-	 byte needed to get to bit 0. */
+	 byte needed to get to bit 0.  */
       int excess = FLOATFORMAT_CHAR_BIT - (total_len % FLOATFORMAT_CHAR_BIT);
 
       cur_byte = (total_len / FLOATFORMAT_CHAR_BIT) 
@@ -104,7 +104,7 @@ get_field (const bfd_byte *data, enum floatformat_byteorders order,
 	}
     }
   if (len < sizeof(result) * FLOATFORMAT_CHAR_BIT)
-    /* Mask out bits which are not part of the field */
+    /* Mask out bits which are not part of the field.  */
     result &= ((1UL << len) - 1);
   return result;
 }
@@ -176,7 +176,7 @@ convert_floatformat_to_doublest (const struct floatformat *fmt,
   unsigned long mant;
   unsigned int mant_bits, mant_off;
   int mant_bits_left;
-  int special_exponent;		/* It's a NaN, denorm or zero */
+  int special_exponent;		/* It's a NaN, denorm or zero.  */
   enum floatformat_byteorders order;
   unsigned char newfrom[FLOATFORMAT_LARGEST_BYTES];
   enum float_kind kind;
@@ -233,17 +233,17 @@ convert_floatformat_to_doublest (const struct floatformat *fmt,
 
   special_exponent = exponent == 0 || exponent == fmt->exp_nan;
 
-  /* Don't bias NaNs. Use minimum exponent for denorms. For simplicity,
-     we don't check for zero as the exponent doesn't matter.  Note the cast
-     to int; exp_bias is unsigned, so it's important to make sure the
-     operation is done in signed arithmetic.  */
+  /* Don't bias NaNs.  Use minimum exponent for denorms.  For
+     simplicity, we don't check for zero as the exponent doesn't matter.
+     Note the cast to int; exp_bias is unsigned, so it's important to
+     make sure the operation is done in signed arithmetic.  */
   if (!special_exponent)
     exponent -= fmt->exp_bias;
   else if (exponent == 0)
     exponent = 1 - fmt->exp_bias;
 
   /* Build the result algebraically.  Might go infinite, underflow, etc;
-     who cares. */
+     who cares.  */
 
 /* If this format uses a hidden bit, explicitly add it in now.  Otherwise,
    increment the exponent by one to account for the integer bit.  */
@@ -355,9 +355,10 @@ ldfrexp (long double value, int *eptr)
   long double tmp;
   int exp;
 
-  /* Unfortunately, there are no portable functions for extracting the exponent
-     of a long double, so we have to do it iteratively by multiplying or dividing
-     by two until the fraction is between 0.5 and 1.0.  */
+  /* Unfortunately, there are no portable functions for extracting the
+     exponent of a long double, so we have to do it iteratively by
+     multiplying or dividing by two until the fraction is between 0.5
+     and 1.0.  */
 
   if (value < 0.0l)
     value = -value;
@@ -446,7 +447,7 @@ convert_doublest_to_floatformat (CONST struct floatformat *fmt,
       /* From is NaN */
       put_field (uto, order, fmt->totalsize, fmt->exp_start,
 		 fmt->exp_len, fmt->exp_nan);
-      /* Be sure it's not infinity, but NaN value is irrel */
+      /* Be sure it's not infinity, but NaN value is irrel.  */
       put_field (uto, order, fmt->totalsize, fmt->man_start,
 		 32, 1);
       goto finalize_byteorder;
@@ -459,7 +460,7 @@ convert_doublest_to_floatformat (CONST struct floatformat *fmt,
       dfrom = -dfrom;
     }
 
-  if (dfrom + dfrom == dfrom && dfrom != 0.0)	/* Result is Infinity */
+  if (dfrom + dfrom == dfrom && dfrom != 0.0)	/* Result is Infinity.  */
     {
       /* Infinity exponent is same as NaN's.  */
       put_field (uto, order, fmt->totalsize, fmt->exp_start,
@@ -699,7 +700,8 @@ floatformat_mantissa (const struct floatformat *fmt,
 
 static const struct floatformat *host_float_format = GDB_HOST_FLOAT_FORMAT;
 static const struct floatformat *host_double_format = GDB_HOST_DOUBLE_FORMAT;
-static const struct floatformat *host_long_double_format = GDB_HOST_LONG_DOUBLE_FORMAT;
+static const struct floatformat *host_long_double_format
+  = GDB_HOST_LONG_DOUBLE_FORMAT;
 
 void
 floatformat_to_doublest (const struct floatformat *fmt,
@@ -791,7 +793,7 @@ floatformat_from_length (struct gdbarch *gdbarch, int len)
 	       [gdbarch_byte_order (gdbarch)];
   /* On i386 the 'long double' type takes 96 bits,
      while the real number of used bits is only 80,
-     both in processor and in memory.  
+     both in processor and in memory.
      The code below accepts the real bit size.  */ 
   else if ((gdbarch_long_double_format (gdbarch) != NULL)
 	   && (len * TARGET_CHAR_BIT
@@ -924,7 +926,8 @@ _initialize_doublest (void)
   floatformat_ieee_single[BFD_ENDIAN_BIG] = &floatformat_ieee_single_big;
   floatformat_ieee_double[BFD_ENDIAN_LITTLE] = &floatformat_ieee_double_little;
   floatformat_ieee_double[BFD_ENDIAN_BIG] = &floatformat_ieee_double_big;
-  floatformat_arm_ext[BFD_ENDIAN_LITTLE] = &floatformat_arm_ext_littlebyte_bigword;
+  floatformat_arm_ext[BFD_ENDIAN_LITTLE]
+    = &floatformat_arm_ext_littlebyte_bigword;
   floatformat_arm_ext[BFD_ENDIAN_BIG] = &floatformat_arm_ext_big;
   floatformat_ia64_spill[BFD_ENDIAN_LITTLE] = &floatformat_ia64_spill_little;
   floatformat_ia64_spill[BFD_ENDIAN_BIG] = &floatformat_ia64_spill_big;

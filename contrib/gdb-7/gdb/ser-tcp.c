@@ -1,7 +1,7 @@
 /* Serial interface for raw TCP connections on Un*x like systems.
 
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2001, 2005, 2006,
-   2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -29,10 +29,10 @@
 #include <sys/types.h>
 
 #ifdef HAVE_SYS_FILIO_H
-#include <sys/filio.h>  /* For FIONBIO. */
+#include <sys/filio.h>  /* For FIONBIO.  */
 #endif
 #ifdef HAVE_SYS_IOCTL_H
-#include <sys/ioctl.h>  /* For FIONBIO. */
+#include <sys/ioctl.h>  /* For FIONBIO.  */
 #endif
 
 #include <sys/time.h>
@@ -73,7 +73,7 @@ static int tcp_auto_retry = 1;
 
 static int tcp_retry_limit = 15;
 
-/* how many times per second to poll deprecated_ui_loop_hook */
+/* How many times per second to poll deprecated_ui_loop_hook.  */
 
 #define POLL_INTERVAL 5
 
@@ -149,7 +149,7 @@ wait_for_connect (struct serial *scb, int *polls)
   return n;
 }
 
-/* Open a tcp socket */
+/* Open a tcp socket.  */
 
 int
 net_open (struct serial *scb, const char *name)
@@ -178,14 +178,15 @@ net_open (struct serial *scb, const char *name)
   port_str = strchr (name, ':');
 
   if (!port_str)
-    error (_("net_open: No colon in host name!"));	   /* Shouldn't ever happen */
+    error (_("net_open: No colon in host name!"));  /* Shouldn't ever
+						       happen.  */
 
   tmp = min (port_str - name, (int) sizeof hostname - 1);
-  strncpy (hostname, name, tmp);	/* Don't want colon */
-  hostname[tmp] = '\000';	/* Tie off host name */
+  strncpy (hostname, name, tmp);	/* Don't want colon.  */
+  hostname[tmp] = '\000';	/* Tie off host name.  */
   port = atoi (port_str + 1);
 
-  /* default hostname is localhost */
+  /* Default hostname is localhost.  */
   if (!hostname[0])
     strcpy (hostname, "localhost");
 
@@ -212,11 +213,12 @@ net_open (struct serial *scb, const char *name)
   if (scb->fd == -1)
     return -1;
   
-  /* set socket nonblocking */
+  /* Set socket nonblocking.  */
   ioarg = 1;
   ioctl (scb->fd, FIONBIO, &ioarg);
 
-  /* Use Non-blocking connect.  connect() will return 0 if connected already. */
+  /* Use Non-blocking connect.  connect() will return 0 if connected
+     already.  */
   n = connect (scb->fd, (struct sockaddr *) &sockaddr, sizeof (sockaddr));
 
   if (n < 0)
@@ -256,7 +258,7 @@ net_open (struct serial *scb, const char *name)
 	  return -1;
 	}
 
-      /* looks like we need to wait for the connect */
+      /* Looks like we need to wait for the connect.  */
       do 
 	{
 	  n = wait_for_connect (scb, &polls);
@@ -269,7 +271,7 @@ net_open (struct serial *scb, const char *name)
 	}
     }
 
-  /* Got something.  Is it an error? */
+  /* Got something.  Is it an error?  */
   {
     int res, err;
     socklen_t len;
@@ -301,13 +303,13 @@ net_open (struct serial *scb, const char *name)
       }
   } 
 
-  /* turn off nonblocking */
+  /* Turn off nonblocking.  */
   ioarg = 0;
   ioctl (scb->fd, FIONBIO, &ioarg);
 
   if (use_udp == 0)
     {
-      /* Disable Nagle algorithm. Needed in some cases. */
+      /* Disable Nagle algorithm.  Needed in some cases.  */
       tmp = 1;
       setsockopt (scb->fd, IPPROTO_TCP, TCP_NODELAY,
 		  (char *)&tmp, sizeof (tmp));
@@ -347,7 +349,7 @@ net_write_prim (struct serial *scb, const void *buf, size_t count)
 int
 ser_tcp_send_break (struct serial *scb)
 {
-  /* Send telnet IAC and BREAK characters. */
+  /* Send telnet IAC and BREAK characters.  */
   return (serial_write (scb, "\377\363", 2));
 }
 
@@ -388,6 +390,7 @@ _initialize_ser_tcp (void)
   ops->send_break = ser_tcp_send_break;
   ops->go_raw = ser_base_raw;
   ops->get_tty_state = ser_base_get_tty_state;
+  ops->copy_tty_state = ser_base_copy_tty_state;
   ops->set_tty_state = ser_base_set_tty_state;
   ops->print_tty_state = ser_base_print_tty_state;
   ops->noflush_set_tty_state = ser_base_noflush_set_tty_state;

@@ -1,6 +1,6 @@
 /* addrmap.c --- implementation of address map data structure.
 
-   Copyright (C) 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -41,6 +41,7 @@ struct addrmap_funcs
   struct addrmap *(*create_fixed) (struct addrmap *this,
                                    struct obstack *obstack);
   void (*relocate) (struct addrmap *this, CORE_ADDR offset);
+  int (*foreach) (struct addrmap *this, addrmap_foreach_fn fn, void *data);
 };
 
 
@@ -82,6 +83,11 @@ addrmap_relocate (struct addrmap *map, CORE_ADDR offset)
 }
 
 
+int
+addrmap_foreach (struct addrmap *map, addrmap_foreach_fn fn, void *data)
+{
+  return map->funcs->foreach (map, fn, data);
+}
 
 /* Fixed address maps.  */
 
@@ -175,12 +181,32 @@ addrmap_fixed_relocate (struct addrmap *this, CORE_ADDR offset)
 }
 
 
+static int
+addrmap_fixed_foreach (struct addrmap *this, addrmap_foreach_fn fn,
+		       void *data)
+{
+  struct addrmap_fixed *map = (struct addrmap_fixed *) this;
+  size_t i;
+
+  for (i = 0; i < map->num_transitions; i++)
+    {
+      int res = fn (data, map->transitions[i].addr, map->transitions[i].value);
+
+      if (res != 0)
+	return res;
+    }
+
+  return 0;
+}
+
+
 static const struct addrmap_funcs addrmap_fixed_funcs =
 {
   addrmap_fixed_set_empty,
   addrmap_fixed_find,
   addrmap_fixed_create_fixed,
-  addrmap_fixed_relocate
+  addrmap_fixed_relocate,
+  addrmap_fixed_foreach
 };
 
 
@@ -281,7 +307,8 @@ addrmap_node_set_value (splay_tree_node node, void *value)
 
 
 static void
-addrmap_splay_tree_insert (struct addrmap_mutable *map, CORE_ADDR key, void *value)
+addrmap_splay_tree_insert (struct addrmap_mutable *map,
+			   CORE_ADDR key, void *value)
 {
   splay_tree_insert (map->tree,
                      allocate_key (map, key),
@@ -444,12 +471,48 @@ addrmap_mutable_relocate (struct addrmap *this, CORE_ADDR offset)
 }
 
 
+/* Struct to map addrmap's foreach function to splay_tree's version.  */
+struct mutable_foreach_data
+{
+  addrmap_foreach_fn fn;
+  void *data;
+};
+
+
+/* This is a splay_tree_foreach_fn.  */
+
+static int
+addrmap_mutable_foreach_worker (splay_tree_node node, void *data)
+{
+  struct mutable_foreach_data *foreach_data = data;
+
+  return foreach_data->fn (foreach_data->data,
+			   addrmap_node_key (node),
+			   addrmap_node_value (node));
+}
+
+
+static int
+addrmap_mutable_foreach (struct addrmap *this, addrmap_foreach_fn fn,
+			 void *data)
+{
+  struct addrmap_mutable *mutable = (struct addrmap_mutable *) this;
+  struct mutable_foreach_data foreach_data;
+
+  foreach_data.fn = fn;
+  foreach_data.data = data;
+  return splay_tree_foreach (mutable->tree, addrmap_mutable_foreach_worker,
+			     &foreach_data);
+}
+
+
 static const struct addrmap_funcs addrmap_mutable_funcs =
 {
   addrmap_mutable_set_empty,
   addrmap_mutable_find,
   addrmap_mutable_create_fixed,
-  addrmap_mutable_relocate
+  addrmap_mutable_relocate,
+  addrmap_mutable_foreach
 };
 
 

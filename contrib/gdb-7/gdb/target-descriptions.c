@@ -1,6 +1,7 @@
 /* Target description support for GDB.
 
-   Copyright (C) 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
 
    Contributed by CodeSourcery.
 
@@ -705,7 +706,7 @@ tdesc_gdb_type (struct gdbarch *gdbarch, struct tdesc_type *tdesc_type)
 	struct tdesc_type_flag *f;
 	int ix;
 
-	type = arch_flags_type (gdbarch, xstrdup (tdesc_type->name),
+	type = arch_flags_type (gdbarch, tdesc_type->name,
 				tdesc_type->u.f.size);
 	for (ix = 0;
 	     VEC_iterate (tdesc_type_flag, tdesc_type->u.f.flags, ix, f);
@@ -947,7 +948,7 @@ tdesc_register_type (struct gdbarch *gdbarch, int regno)
 	  else if (reg->bitsize == gdbarch_long_long_bit (gdbarch))
 	    arch_reg->type = builtin_type (gdbarch)->builtin_long_long;
 	  else if (reg->bitsize == gdbarch_ptr_bit (gdbarch))
-	  /* A bit desperate by this point... */
+	  /* A bit desperate by this point...  */
 	    arch_reg->type = builtin_type (gdbarch)->builtin_data_ptr;
 	  else
 	    {
@@ -1520,12 +1521,11 @@ show_tdesc_filename_cmd (struct ui_file *file, int from_tty,
 			 const char *value)
 {
   if (value != NULL && *value != '\0')
-    printf_filtered (_("\
-The target description will be read from \"%s\".\n"),
+    printf_filtered (_("The target description will be read from \"%s\".\n"),
 		     value);
   else
-    printf_filtered (_("\
-The target description will be read from the target.\n"));
+    printf_filtered (_("The target description will be "
+		       "read from the target.\n"));
 }
 
 static void
@@ -1630,7 +1630,8 @@ maint_print_c_tdesc_cmd (char *args, int from_tty)
        VEC_iterate (tdesc_feature_p, tdesc->features, ix, feature);
        ix++)
     {
-      printf_unfiltered ("  feature = tdesc_create_feature (result, \"%s\");\n",
+      printf_unfiltered ("  \
+feature = tdesc_create_feature (result, \"%s\");\n",
 			 feature->name);
 
       for (ix2 = 0;

@@ -1572,10 +1572,31 @@ _bfd_elf_write_section_eh_frame (bfd *abfd,
 		  break;
 		case DW_EH_PE_datarel:
 		  {
-		    asection *got = bfd_get_section_by_name (abfd, ".got");
-
-		    BFD_ASSERT (got != NULL);
-		    address += got->vma;
+		    switch (abfd->arch_info->arch)
+		      {
+		      case bfd_arch_ia64:
+			BFD_ASSERT (elf_gp (abfd) != 0);
+			address += elf_gp (abfd);
+			break;
+		      default:
+			(*info->callbacks->einfo)
+			  (_("%P: DW_EH_PE_datarel unspecified"
+			     " for this architecture.\n"));
+			/* Fall thru */
+		      case bfd_arch_frv:
+		      case bfd_arch_i386:
+			BFD_ASSERT (htab->hgot != NULL
+				    && ((htab->hgot->root.type
+					 == bfd_link_hash_defined)
+					|| (htab->hgot->root.type
+					    == bfd_link_hash_defweak)));
+			address
+			  += (htab->hgot->root.u.def.value
+			      + htab->hgot->root.u.def.section->output_offset
+			      + (htab->hgot->root.u.def.section->output_section
+				 ->vma));
+			break;
+		      }
 		  }
 		  break;
 		case DW_EH_PE_pcrel:
@@ -1596,6 +1617,11 @@ _bfd_elf_write_section_eh_frame (bfd *abfd,
 
 	  if (hdr_info)
 	    {
+	      /* The address calculation may overflow, giving us a
+		 value greater than 4G on a 32-bit target when
+		 dwarf_vma is 64-bit.  */
+	      if (sizeof (address) > 4 && ptr_size == 4)
+		address &= 0xffffffff;
 	      hdr_info->array[hdr_info->array_count].initial_loc = address;
 	      hdr_info->array[hdr_info->array_count++].fde
 		= (sec->output_section->vma

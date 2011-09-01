@@ -1,6 +1,7 @@
 /* Native-dependent code for FreeBSD.
 
-   Copyright (C) 2004, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2004, 2007, 2008, 2009, 2010, 2011
+   Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,7 +21,7 @@
 #ifndef FBSD_NAT_H
 #define FBSD_NAT_H
 
-/* Return a the name of file that can be opened to get the symbols for
+/* Return the name of a file that can be opened to get the symbols for
    the child process identified by PID.  */
 
 extern char *fbsd_pid_to_exec_file (int pid);

@@ -404,6 +404,10 @@ extern struct bfd_hash_entry *bfd_hash_lookup
 extern struct bfd_hash_entry *bfd_hash_insert
   (struct bfd_hash_table *, const char *, unsigned long);
 
+/* Rename an entry in a hash table.  */
+extern void bfd_hash_rename
+  (struct bfd_hash_table *, const char *, struct bfd_hash_entry *);
+
 /* Replace an entry in a hash table.  */
 extern void bfd_hash_replace
   (struct bfd_hash_table *, struct bfd_hash_entry *old,

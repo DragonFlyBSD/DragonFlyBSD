@@ -1,5 +1,5 @@
 /* GDB-specific functions for operating on agent expressions
-   Copyright (C) 1998, 1999, 2000, 2007, 2008, 2009, 2010
+   Copyright (C) 1998, 1999, 2000, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -78,7 +78,7 @@ struct axs_value
 
     /* The type of the subexpression.  Even if lvalue == axs_lvalue_memory,
        this is the type of the value itself; the value on the stack is a
-       "pointer to" an object of this type. */
+       "pointer to" an object of this type.  */
     struct type *type;
 
     /* If nonzero, this is a variable which does not actually exist in

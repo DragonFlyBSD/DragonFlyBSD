@@ -1,6 +1,6 @@
 /* Definitions for frame unwinder, for GDB, the GNU debugger.
 
-   Copyright (C) 2003, 2004, 2007, 2008, 2009, 2010
+   Copyright (C) 2003, 2004, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -25,7 +25,7 @@
 #include "inline-frame.h"
 #include "value.h"
 #include "regcache.h"
-
+#include "exceptions.h"
 #include "gdb_assert.h"
 #include "gdb_obstack.h"
 
@@ -53,9 +53,10 @@ frame_unwind_init (struct obstack *obstack)
   /* Start the table out with a few default sniffers.  OSABI code
      can't override this.  */
   table->list = OBSTACK_ZALLOC (obstack, struct frame_unwind_table_entry);
-  table->list->unwinder = dummy_frame_unwind;
-  table->list->next = OBSTACK_ZALLOC (obstack, struct frame_unwind_table_entry);
-  table->list->next->unwinder = inline_frame_unwind;
+  table->list->unwinder = &dummy_frame_unwind;
+  table->list->next = OBSTACK_ZALLOC (obstack,
+				      struct frame_unwind_table_entry);
+  table->list->next->unwinder = &inline_frame_unwind;
   /* The insertion point for OSABI sniffers.  */
   table->osabi_head = &table->list->next->next;
   return table;
@@ -88,7 +89,11 @@ frame_unwind_append_unwinder (struct gdbarch *gdbarch,
   (*ip)->unwinder = unwinder;
 }
 
-const struct frame_unwind *
+/* Iterate through sniffers for THIS_FRAME frame until one returns with an
+   unwinder implementation.  THIS_FRAME->UNWIND must be NULL, it will get set
+   by this function.  Possibly initialize THIS_CACHE.  */
+
+void
 frame_unwind_find_by_frame (struct frame_info *this_frame, void **this_cache)
 {
   struct gdbarch *gdbarch = get_frame_arch (this_frame);
@@ -98,14 +103,31 @@ frame_unwind_find_by_frame (struct frame_info *this_frame, void **this_cache)
   for (entry = table->list; entry != NULL; entry = entry->next)
     {
       struct cleanup *old_cleanup;
+      volatile struct gdb_exception ex;
+      int res = 0;
 
       old_cleanup = frame_prepare_for_sniffer (this_frame, entry->unwinder);
-      if (entry->unwinder->sniffer (entry->unwinder, this_frame,
-				    this_cache))
+
+      TRY_CATCH (ex, RETURN_MASK_ERROR)
 	{
-	  discard_cleanups (old_cleanup);
-	  return entry->unwinder;
+	  res = entry->unwinder->sniffer (entry->unwinder, this_frame,
+					  this_cache);
 	}
+      if (ex.reason < 0 && ex.error == NOT_AVAILABLE_ERROR)
+	{
+	  /* This usually means that not even the PC is available,
+	     thus most unwinders aren't able to determine if they're
+	     the best fit.  Keep trying.  Fallback prologue unwinders
+	     should always accept the frame.  */
+	}
+      else if (ex.reason < 0)
+	throw_exception (ex);
+      else if (res)
+        {
+          discard_cleanups (old_cleanup);
+          return;
+        }
+
       do_cleanups (old_cleanup);
     }
   internal_error (__FILE__, __LINE__, _("frame_unwind_find_by_frame failed"));
@@ -120,6 +142,16 @@ default_frame_sniffer (const struct frame_unwind *self,
 		       void **this_prologue_cache)
 {
   return 1;
+}
+
+/* A default frame unwinder stop_reason callback that always claims
+   the frame is unwindable.  */
+
+enum unwind_stop_reason
+default_frame_unwind_stop_reason (struct frame_info *this_frame,
+				  void **this_cache)
+{
+  return UNWIND_NO_REASON;
 }
 
 /* Helper functions for value-based register unwinding.  These return
@@ -142,7 +174,8 @@ frame_unwind_got_optimized (struct frame_info *frame, int regnum)
    register NEW_REGNUM.  */
 
 struct value *
-frame_unwind_got_register (struct frame_info *frame, int regnum, int new_regnum)
+frame_unwind_got_register (struct frame_info *frame,
+			   int regnum, int new_regnum)
 {
   return value_of_register_lazy (frame, new_regnum);
 }
@@ -205,7 +238,8 @@ frame_unwind_got_address (struct frame_info *frame, int regnum,
   return reg_val;
 }
 
-extern initialize_file_ftype _initialize_frame_unwind; /* -Wmissing-prototypes */
+/* -Wmissing-prototypes */
+extern initialize_file_ftype _initialize_frame_unwind;
 
 void
 _initialize_frame_unwind (void)

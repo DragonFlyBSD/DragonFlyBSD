@@ -1,6 +1,6 @@
 /* Program and address space management, for GDB, the GNU debugger.
 
-   Copyright (C) 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -174,7 +174,7 @@ struct program_space
     struct objfile *symfile_object_file;
 
     /* All known objfiles are kept in a linked list.  This points to
-       the head of this list. */
+       the head of this list.  */
     struct objfile *objfiles;
 
     /* The set of target sections matching the sections mapped into
@@ -196,7 +196,7 @@ struct program_space
 #define symfile_objfile current_program_space->symfile_object_file
 
 /* All known objfiles are kept in a linked list.  This points to the
-   root of this list. */
+   root of this list.  */
 #define object_files current_program_space->objfiles
 
 /* The set of target sections matching the sections mapped into the
@@ -283,7 +283,8 @@ extern const struct program_space_data *register_program_space_data_with_cleanup
   (void (*cleanup) (struct program_space *, void *));
 extern void clear_program_space_data (struct program_space *pspace);
 extern void set_program_space_data (struct program_space *pspace,
-			      const struct program_space_data *data, void *value);
+				    const struct program_space_data *data,
+				    void *value);
 extern void *program_space_data (struct program_space *pspace,
 			   const struct program_space_data *data);
 

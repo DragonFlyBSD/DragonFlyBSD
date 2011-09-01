@@ -1,6 +1,6 @@
 /* ELF support for BFD.
    Copyright 1991, 1992, 1993, 1994, 1995, 1997, 1998, 2000, 2001, 2002,
-   2003, 2006, 2007, 2008, 2010 Free Software Foundation, Inc.
+   2003, 2006, 2007, 2008, 2010, 2011 Free Software Foundation, Inc.
 
    Written by Fred Fish @ Cygnus Support, from information published
    in "UNIX System V Release 4, Programmers Guide: ANSI C and
@@ -124,6 +124,7 @@ struct elf_internal_sym {
   unsigned long	st_name;		/* Symbol name, index in string tbl */
   unsigned char	st_info;		/* Type and binding attributes */
   unsigned char	st_other;		/* Visibilty, and target specific */
+  unsigned char st_target_internal;	/* Internal-only information */
   unsigned int  st_shndx;		/* Associated section index */
 };
 
@@ -291,37 +292,69 @@ struct elf_segment_map
 
 /* .tbss is special.  It doesn't contribute memory space to normal
    segments and it doesn't take file space in normal segments.  */
-#define ELF_SECTION_SIZE(sec_hdr, segment)			\
-  ((!(((sec_hdr)->sh_flags & SHF_TLS) != 0			\
-      && (sec_hdr)->sh_type == SHT_NOBITS)			\
-    || (segment)->p_type == PT_TLS) ? (sec_hdr)->sh_size : 0)
+#define ELF_TBSS_SPECIAL(sec_hdr, segment)			\
+  (((sec_hdr)->sh_flags & SHF_TLS) != 0				\
+   && (sec_hdr)->sh_type == SHT_NOBITS				\
+   && (segment)->p_type != PT_TLS)
 
-/* Decide if the given sec_hdr is in the given segment.  PT_TLS segment
-   contains only SHF_TLS sections.  Only PT_LOAD, PT_GNU_RELRO and
-   and PT_TLS segments can contain SHF_TLS sections.  */
-#define ELF_SECTION_IN_SEGMENT_1(sec_hdr, segment, check_vma)		\
-  ((((((sec_hdr)->sh_flags & SHF_TLS) != 0)				\
+#define ELF_SECTION_SIZE(sec_hdr, segment)			\
+  (ELF_TBSS_SPECIAL(sec_hdr, segment) ? 0 : (sec_hdr)->sh_size)
+
+/* Decide if the section SEC_HDR is in SEGMENT.  If CHECK_VMA, then
+   VMAs are checked for alloc sections.  If STRICT, then a zero size
+   section won't match at the end of a segment, unless the segment
+   is also zero size.  Regardless of STRICT and CHECK_VMA, zero size
+   sections won't match at the start or end of PT_DYNAMIC, unless
+   PT_DYNAMIC is itself zero sized.  */
+#define ELF_SECTION_IN_SEGMENT_1(sec_hdr, segment, check_vma, strict)	\
+  ((/* Only PT_LOAD, PT_GNU_RELRO and PT_TLS segments can contain	\
+       SHF_TLS sections.  */						\
+    ((((sec_hdr)->sh_flags & SHF_TLS) != 0)				\
      && ((segment)->p_type == PT_TLS					\
 	 || (segment)->p_type == PT_GNU_RELRO				\
 	 || (segment)->p_type == PT_LOAD))				\
+    /* PT_TLS segment contains only SHF_TLS sections, PT_PHDR no	\
+       sections at all.  */						\
     || (((sec_hdr)->sh_flags & SHF_TLS) == 0				\
 	&& (segment)->p_type != PT_TLS					\
 	&& (segment)->p_type != PT_PHDR))				\
-   /* Any section besides one of type SHT_NOBITS must have a file	\
-      offset within the segment.  */					\
+   /* Any section besides one of type SHT_NOBITS must have file		\
+      offsets within the segment.  */					\
    && ((sec_hdr)->sh_type == SHT_NOBITS					\
        || ((bfd_vma) (sec_hdr)->sh_offset >= (segment)->p_offset	\
-	   && ((sec_hdr)->sh_offset + ELF_SECTION_SIZE(sec_hdr, segment) \
-	       <= (segment)->p_offset + (segment)->p_filesz)))		\
-   /* SHF_ALLOC sections must have VMAs within the segment.  Be		\
-      careful about segments right at the end of memory.  */		\
+	   && (!(strict)						\
+	       || ((sec_hdr)->sh_offset - (segment)->p_offset		\
+		   <= (segment)->p_filesz - 1))				\
+	   && (((sec_hdr)->sh_offset - (segment)->p_offset		\
+		+ ELF_SECTION_SIZE(sec_hdr, segment))			\
+	       <= (segment)->p_filesz)))				\
+   /* SHF_ALLOC sections must have VMAs within the segment.  */		\
    && (!(check_vma)							\
        || ((sec_hdr)->sh_flags & SHF_ALLOC) == 0			\
        || ((sec_hdr)->sh_addr >= (segment)->p_vaddr			\
-	   && ((sec_hdr)->sh_addr - (segment)->p_vaddr			\
-	       + ELF_SECTION_SIZE(sec_hdr, segment) <= (segment)->p_memsz))))
+	   && (!(strict)						\
+	       || ((sec_hdr)->sh_addr - (segment)->p_vaddr		\
+		   <= (segment)->p_memsz - 1))				\
+	   && (((sec_hdr)->sh_addr - (segment)->p_vaddr			\
+		+ ELF_SECTION_SIZE(sec_hdr, segment))			\
+	       <= (segment)->p_memsz)))					\
+   /* No zero size sections at start or end of PT_DYNAMIC.  */		\
+   && ((segment)->p_type != PT_DYNAMIC					\
+       || (sec_hdr)->sh_size != 0					\
+       || (segment)->p_memsz == 0					\
+       || (((sec_hdr)->sh_type == SHT_NOBITS				\
+	    || ((bfd_vma) (sec_hdr)->sh_offset > (segment)->p_offset	\
+	        && ((sec_hdr)->sh_offset - (segment)->p_offset		\
+		    < (segment)->p_filesz)))				\
+	   && (((sec_hdr)->sh_flags & SHF_ALLOC) == 0			\
+	       || ((sec_hdr)->sh_addr > (segment)->p_vaddr		\
+		   && ((sec_hdr)->sh_addr - (segment)->p_vaddr		\
+		       < (segment)->p_memsz))))))
 
 #define ELF_SECTION_IN_SEGMENT(sec_hdr, segment)			\
-  (ELF_SECTION_IN_SEGMENT_1 (sec_hdr, segment, 1))
+  (ELF_SECTION_IN_SEGMENT_1 (sec_hdr, segment, 1, 0))
+
+#define ELF_SECTION_IN_SEGMENT_STRICT(sec_hdr, segment)			\
+  (ELF_SECTION_IN_SEGMENT_1 (sec_hdr, segment, 1, 1))
 
 #endif /* _ELF_INTERNAL_H */

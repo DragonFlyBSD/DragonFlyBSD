@@ -7,7 +7,7 @@
 
 /* Header file for GDB-specific command-line stuff.
    Copyright (C) 1986, 1989, 1990, 1991, 1992, 1993, 1994, 1998, 1999, 2000,
-   2002, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   2002, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -123,6 +123,10 @@ extern struct cmd_list_element *showdebuglist;
 extern struct cmd_list_element *setchecklist;
 
 extern struct cmd_list_element *showchecklist;
+
+/* Chain containing all defined "save" subcommands.  */
+
+extern struct cmd_list_element *save_cmdlist;
 
 extern void execute_command (char *, int);
 extern char *execute_command_to_string (char *p, int from_tty);

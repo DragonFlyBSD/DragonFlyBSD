@@ -1,6 +1,6 @@
 /* MI Command Set - environment commands.
 
-   Copyright (C) 2002, 2003, 2004, 2007, 2008, 2009, 2010
+   Copyright (C) 2002, 2003, 2004, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    Contributed by Red Hat Inc.
@@ -70,7 +70,7 @@ void
 mi_cmd_env_pwd (char *command, char **argv, int argc)
 {
   if (argc > 0)
-    error (_("mi_cmd_env_pwd: No arguments required"));
+    error (_("-environment-pwd: No arguments required"));
           
   if (mi_version (uiout) < 2)
     {
@@ -81,7 +81,7 @@ mi_cmd_env_pwd (char *command, char **argv, int argc)
   /* Otherwise the mi level is 2 or higher.  */
 
   if (! getcwd (gdb_dirbuf, sizeof (gdb_dirbuf)))
-    error (_("mi_cmd_env_pwd: error finding name of working directory: %s"),
+    error (_("-environment-pwd: error finding name of working directory: %s"),
            safe_strerror (errno));
     
   ui_out_field_string (uiout, "cwd", gdb_dirbuf);
@@ -92,7 +92,7 @@ void
 mi_cmd_env_cd (char *command, char **argv, int argc)
 {
   if (argc == 0 || argc > 1)
-    error (_("mi_cmd_env_cd: Usage DIRECTORY"));
+    error (_("-environment-cd: Usage DIRECTORY"));
           
   env_execute_cli_command ("cd", argv[0]);
 }
@@ -140,7 +140,7 @@ mi_cmd_env_path (char *command, char **argv, int argc)
   /* Otherwise the mi level is 2 or higher.  */
   while (1)
     {
-      int opt = mi_getopt ("mi_cmd_env_path", argc, argv, opts,
+      int opt = mi_getopt ("-environment-path", argc, argv, opts,
                            &optind, &optarg);
 
       if (opt < 0)
@@ -211,7 +211,7 @@ mi_cmd_env_dir (char *command, char **argv, int argc)
   /* Otherwise mi level is 2 or higher.  */
   while (1)
     {
-      int opt = mi_getopt ("mi_cmd_env_dir", argc, argv, opts,
+      int opt = mi_getopt ("-environment-directory", argc, argv, opts,
                            &optind, &optarg);
 
       if (opt < 0)
@@ -253,8 +253,8 @@ mi_cmd_inferior_tty_show (char *command, char **argv, int argc)
 {
   const char *inferior_io_terminal = get_inferior_io_terminal ();
   
-  if ( !mi_valid_noargs ("mi_cmd_inferior_tty_show", argc, argv))
-    error (_("mi_cmd_inferior_tty_show: Usage: No args"));
+  if ( !mi_valid_noargs ("-inferior-tty-show", argc, argv))
+    error (_("-inferior-tty-show: Usage: No args"));
 
   if (inferior_io_terminal)
     ui_out_field_string (uiout, "inferior_tty_terminal", inferior_io_terminal);
@@ -279,4 +279,5 @@ _initialize_mi_cmd_env (void)
   if (!env)
     env = "";
   orig_path = xstrdup (env);
+  free_environ (environment);
 }

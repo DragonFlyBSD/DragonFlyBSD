@@ -1,7 +1,7 @@
 /* Language independent support for printing types for GDB, the GNU debugger.
 
    Copyright (C) 1986, 1988, 1989, 1991, 1992, 1993, 1994, 1995, 1998, 1999,
-   2000, 2001, 2003, 2006, 2007, 2008, 2009, 2010
+   2000, 2001, 2003, 2006, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -49,7 +49,7 @@ static void whatis_exp (char *, int);
 
 /* Print a description of a type in the format of a 
    typedef for the current language.
-   NEW is the new name for a type TYPE. */
+   NEW is the new name for a type TYPE.  */
 
 void
 typedef_print (struct type *type, struct symbol *new, struct ui_file *stream)
@@ -290,13 +290,13 @@ maintenance_print_type (char *typename, int from_tty)
       old_chain = make_cleanup (free_current_contents, &expr);
       if (expr->elts[0].opcode == OP_TYPE)
 	{
-	  /* The user expression names a type directly, just use that type. */
+	  /* The user expression names a type directly, just use that type.  */
 	  type = expr->elts[1].type;
 	}
       else
 	{
 	  /* The user expression may name a type indirectly by naming an
-	     object of that type.  Find that indirectly named type. */
+	     object of that type.  Find that indirectly named type.  */
 	  val = evaluate_type (expr);
 	  type = value_type (val);
 	}

@@ -1,6 +1,6 @@
 /* Modula 2 language support definitions for GDB, the GNU debugger.
 
-   Copyright (C) 1992, 1998, 2000, 2005, 2007, 2008, 2009, 2010
+   Copyright (C) 1992, 1998, 2000, 2005, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.

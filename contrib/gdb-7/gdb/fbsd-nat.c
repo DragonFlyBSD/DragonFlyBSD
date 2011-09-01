@@ -1,6 +1,6 @@
 /* Native-dependent code for FreeBSD.
 
-   Copyright (C) 2002, 2003, 2004, 2007, 2008, 2009, 2010
+   Copyright (C) 2002, 2003, 2004, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -34,7 +34,7 @@
 #include "elf-bfd.h"
 #include "fbsd-nat.h"
 
-/* Return a the name of file that can be opened to get the symbols for
+/* Return the name of a file that can be opened to get the symbols for
    the child process identified by PID.  */
 
 char *
@@ -92,9 +92,7 @@ fbsd_read_mapping (FILE *mapfile, unsigned long *start, unsigned long *end,
    argument to FUNC.  */
 
 int
-fbsd_find_memory_regions (int (*func) (CORE_ADDR, unsigned long,
-				       int, int, int, void *),
-			  void *obfd)
+fbsd_find_memory_regions (find_memory_region_ftype func, void *obfd)
 {
   pid_t pid = ptid_get_pid (inferior_ptid);
   char *mapfilename;
@@ -134,7 +132,7 @@ fbsd_find_memory_regions (int (*func) (CORE_ADDR, unsigned long,
 			    exec ? 'x' : '-');
 	}
 
-      /* Invoke the callback function to create the corefile segment. */
+      /* Invoke the callback function to create the corefile segment.  */
       func (start, size, read, write, exec, obfd);
     }
 
@@ -145,7 +143,7 @@ fbsd_find_memory_regions (int (*func) (CORE_ADDR, unsigned long,
 static int
 find_signalled_thread (struct thread_info *info, void *data)
 {
-  if (info->stop_signal != TARGET_SIGNAL_0
+  if (info->suspend.stop_signal != TARGET_SIGNAL_0
       && ptid_get_pid (info->ptid) == ptid_get_pid (inferior_ptid))
     return 1;
 
@@ -159,7 +157,7 @@ find_stop_signal (void)
     iterate_over_threads (find_signalled_thread, NULL);
 
   if (info)
-    return info->stop_signal;
+    return info->suspend.stop_signal;
   else
     return TARGET_SIGNAL_0;
 }
@@ -204,7 +202,7 @@ fbsd_make_corefile_notes (bfd *obfd, int *note_size)
 
   if (get_exec_file (0))
     {
-      char *fname = strrchr (get_exec_file (0), '/') + 1;
+      const char *fname = lbasename (get_exec_file (0));
       char *psargs = xstrdup (fname);
 
       if (get_inferior_args ())

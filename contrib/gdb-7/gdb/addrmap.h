@@ -1,6 +1,6 @@
 /* addrmap.h --- interface to address map data structure.
 
-   Copyright (C) 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -90,5 +90,16 @@ struct addrmap *addrmap_create_fixed (struct addrmap *original,
 /* Relocate all the addresses in MAP by OFFSET.  (This can be applied
    to either mutable or immutable maps.)  */
 void addrmap_relocate (struct addrmap *map, CORE_ADDR offset);
+
+/* The type of a function used to iterate over the map.
+   OBJ is NULL for unmapped regions.  */
+typedef int (*addrmap_foreach_fn) (void *data, CORE_ADDR start_addr,
+				   void *obj);
+
+/* Call FN, passing it DATA, for every address in MAP, following an
+   in-order traversal.  If FN ever returns a non-zero value, the
+   iteration ceases immediately, and the value is returned.
+   Otherwise, this function returns 0.  */
+int addrmap_foreach (struct addrmap *map, addrmap_foreach_fn fn, void *data);
 
 #endif /* ADDRMAP_H */

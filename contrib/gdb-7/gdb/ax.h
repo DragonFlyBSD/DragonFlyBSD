@@ -1,5 +1,5 @@
 /* Definitions for expressions designed to be executed on the agent
-   Copyright (C) 1998, 1999, 2000, 2007, 2008, 2009, 2010
+   Copyright (C) 1998, 1999, 2000, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -145,65 +145,14 @@ struct agent_expr
     unsigned char *reg_mask;
   };
 
-/* The actual values of the various bytecode operations.
-
-   Other independent implementations of the agent bytecode engine will
-   rely on the exact values of these enums, and may not be recompiled
-   when we change this table.  The numeric values should remain fixed
-   whenever possible.  Thus, we assign them values explicitly here (to
-   allow gaps to form safely), and the disassembly table in
-   agentexpr.h behaves like an opcode map.  If you want to see them
-   grouped logically, see doc/agentexpr.texi.  */
+/* The actual values of the various bytecode operations.  */
 
 enum agent_op
   {
-    aop_float = 0x01,
-    aop_add = 0x02,
-    aop_sub = 0x03,
-    aop_mul = 0x04,
-    aop_div_signed = 0x05,
-    aop_div_unsigned = 0x06,
-    aop_rem_signed = 0x07,
-    aop_rem_unsigned = 0x08,
-    aop_lsh = 0x09,
-    aop_rsh_signed = 0x0a,
-    aop_rsh_unsigned = 0x0b,
-    aop_trace = 0x0c,
-    aop_trace_quick = 0x0d,
-    aop_log_not = 0x0e,
-    aop_bit_and = 0x0f,
-    aop_bit_or = 0x10,
-    aop_bit_xor = 0x11,
-    aop_bit_not = 0x12,
-    aop_equal = 0x13,
-    aop_less_signed = 0x14,
-    aop_less_unsigned = 0x15,
-    aop_ext = 0x16,
-    aop_ref8 = 0x17,
-    aop_ref16 = 0x18,
-    aop_ref32 = 0x19,
-    aop_ref64 = 0x1a,
-    aop_ref_float = 0x1b,
-    aop_ref_double = 0x1c,
-    aop_ref_long_double = 0x1d,
-    aop_l_to_d = 0x1e,
-    aop_d_to_l = 0x1f,
-    aop_if_goto = 0x20,
-    aop_goto = 0x21,
-    aop_const8 = 0x22,
-    aop_const16 = 0x23,
-    aop_const32 = 0x24,
-    aop_const64 = 0x25,
-    aop_reg = 0x26,
-    aop_end = 0x27,
-    aop_dup = 0x28,
-    aop_pop = 0x29,
-    aop_zero_ext = 0x2a,
-    aop_swap = 0x2b,
-    aop_getv = 0x2c,
-    aop_setv = 0x2d,
-    aop_tracev = 0x2e,
-    aop_trace16 = 0x30,
+#define DEFOP(NAME, SIZE, DATA_SIZE, CONSUMED, PRODUCED, VALUE)  \
+    aop_ ## NAME = VALUE,
+#include "ax.def"
+#undef DEFOP
     aop_last
   };
 
@@ -220,6 +169,10 @@ extern struct cleanup *make_cleanup_free_agent_expr (struct agent_expr *);
 
 /* Append a simple operator OP to EXPR.  */
 extern void ax_simple (struct agent_expr *EXPR, enum agent_op OP);
+
+/* Append a pick operator to EXPR.  DEPTH is the stack item to pick,
+   with 0 being top of stack.  */
+extern void ax_pick (struct agent_expr *EXPR, int DEPTH);
 
 /* Append the floating-point prefix, for the next bytecode.  */
 #define ax_float(EXPR) (ax_simple ((EXPR), aop_float))
@@ -274,7 +227,7 @@ struct aop_map
 
     /* The name of the opcode.  Null means that this entry is not a
        valid opcode --- a hole in the opcode space.  */
-    char *name;
+    const char *name;
 
     /* All opcodes take no operands from the bytecode stream, or take
        unsigned integers of various sizes.  If this is a positive number

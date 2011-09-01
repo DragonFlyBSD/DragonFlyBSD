@@ -1,6 +1,6 @@
 /* Definitions for inline frame support.
 
-   Copyright (C) 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -25,7 +25,7 @@ struct frame_unwind;
 
 /* The inline frame unwinder.  */
 
-extern const struct frame_unwind *const inline_frame_unwind;
+extern const struct frame_unwind inline_frame_unwind;
 
 /* Skip all inlined functions whose call sites are at the current PC.
    Frames for the hidden functions will not appear in the backtrace until the

@@ -2,7 +2,7 @@
 
    Copyright (C) 1986, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
    1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008,
-   2009, 2010 Free Software Foundation, Inc.
+   2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -49,9 +49,12 @@ typedef int return_mask;
 
 enum errors {
   GDB_NO_ERROR,
+
   /* Any generic error, the corresponding text is in
      exception.message.  */
   GENERIC_ERROR,
+
+  /* Something requested was not found.  */
   NOT_FOUND_ERROR,
 
   /* Thread library lacks support necessary for finding thread local
@@ -77,6 +80,10 @@ enum errors {
 
   /* Feature is not supported in this copy of GDB.  */
   UNSUPPORTED_ERROR,
+
+  /* Value not available.  E.g., a register was not collected in a
+     traceframe.  */
+  NOT_AVAILABLE_ERROR,
 
   /* Add more errors here.  */
   NR_ERRORS
@@ -108,8 +115,8 @@ extern const struct gdb_exception exception_none;
 /* Functions to drive the exceptions state m/c (internal to
    exceptions).  */
 EXCEPTIONS_SIGJMP_BUF *exceptions_state_mc_init (struct ui_out *func_uiout,
-						 volatile struct gdb_exception *
-						 exception,
+						 volatile struct
+						 gdb_exception *exception,
 						 return_mask mask);
 int exceptions_state_mc_action_iter (void);
 int exceptions_state_mc_action_iter_1 (void);
@@ -149,7 +156,7 @@ int exceptions_state_mc_action_iter_1 (void);
 
 
 /* If E is an exception, print it's error message on the specified
-   stream. for _fprintf, prefix the message with PREFIX...  */
+   stream.  For _fprintf, prefix the message with PREFIX...  */
 extern void exception_print (struct ui_file *file, struct gdb_exception e);
 extern void exception_fprintf (struct ui_file *file, struct gdb_exception e,
 			       const char *prefix,
@@ -166,7 +173,8 @@ extern void exception_fprintf (struct ui_file *file, struct gdb_exception e,
    be a good thing or a dangerous thing.'' -- the Existential
    Wombat.  */
 
-extern void throw_exception (struct gdb_exception exception) ATTRIBUTE_NORETURN;
+extern void throw_exception (struct gdb_exception exception)
+     ATTRIBUTE_NORETURN;
 extern void throw_verror (enum errors, const char *fmt, va_list ap)
      ATTRIBUTE_NORETURN ATTRIBUTE_PRINTF (2, 0);
 extern void throw_vfatal (const char *fmt, va_list ap)
@@ -235,9 +243,9 @@ extern struct gdb_exception catch_exception (struct ui_out *uiout,
 					     return_mask mask);
 
 /* If CATCH_ERRORS_FTYPE throws an error, catch_errors() returns zero
-   otherwize the result from CATCH_ERRORS_FTYPE is returned. It is
+   otherwize the result from CATCH_ERRORS_FTYPE is returned.  It is
    probably useful for CATCH_ERRORS_FTYPE to always return a non-zero
-   value. It's unfortunate that, catch_errors() does not return an
+   value.  It's unfortunate that, catch_errors() does not return an
    indication of the exact exception that it caught - quit_flag might
    help.
 
@@ -247,9 +255,10 @@ typedef int (catch_errors_ftype) (void *);
 extern int catch_errors (catch_errors_ftype *, void *, char *, return_mask);
 
 /* Template to catch_errors() that wraps calls to command
-   functions. */
+   functions.  */
 
 typedef void (catch_command_errors_ftype) (char *, int);
-extern int catch_command_errors (catch_command_errors_ftype *func, char *command, int from_tty, return_mask);
+extern int catch_command_errors (catch_command_errors_ftype *func,
+				 char *command, int from_tty, return_mask);
 
 #endif

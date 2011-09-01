@@ -223,7 +223,10 @@ SUBSUBSECTION
 	archive and decide which elements of the archive should be
 	included in the link.  For each such element it must call the
 	<<add_archive_element>> linker callback, and it must add the
-	symbols from the object file to the linker hash table.
+	symbols from the object file to the linker hash table.  (The
+	callback may in fact indicate that a replacement BFD should be
+	used, in which case the symbols from that BFD should be added
+	to the linker hash table instead.)
 
 @findex _bfd_generic_link_add_archive_symbols
 	In most cases the work of looking through the symbols in the
@@ -243,9 +246,13 @@ SUBSUBSECTION
 	element should be included in the link.  If the element is to
 	be included, the <<add_archive_element>> linker callback
 	routine must be called with the element as an argument, and
-	the elements symbols must be added to the linker hash table
+	the element's symbols must be added to the linker hash table
 	just as though the element had itself been passed to the
-	<<_bfd_link_add_symbols>> function.
+	<<_bfd_link_add_symbols>> function.  The <<add_archive_element>>
+	callback has the option to indicate that it would like to
+	replace the element archive with a substitute BFD, in which
+	case it is the symbols of that substitute BFD that must be
+	added to the linker hash table instead.
 
 	When the a.out <<_bfd_link_add_symbols>> function receives an
 	archive, it calls <<_bfd_generic_link_add_archive_symbols>>
@@ -257,7 +264,8 @@ SUBSUBSECTION
 	symbol) it calls the <<add_archive_element>> callback and then
 	<<aout_link_check_archive_element>> calls
 	<<aout_link_add_symbols>> to actually add the symbols to the
-	linker hash table.
+	linker hash table - possibly those of a substitute BFD, if the
+	<<add_archive_element>> callback avails itself of that option.
 
 	The ECOFF back end is unusual in that it does not normally
 	call <<_bfd_generic_link_add_archive_symbols>>, because ECOFF
@@ -957,8 +965,10 @@ archive_hash_table_init
    included.  CHECKFN should set *PNEEDED to TRUE if the object file
    should be included, and must also call the bfd_link_info
    add_archive_element callback function and handle adding the symbols
-   to the global hash table.  CHECKFN should only return FALSE if some
-   sort of error occurs.
+   to the global hash table.  CHECKFN must notice if the callback
+   indicates a substitute BFD, and arrange to add those symbols instead
+   if it does so.  CHECKFN should only return FALSE if some sort of
+   error occurs.
 
    For some formats, such as a.out, it is possible to look through an
    object file but not actually include it in the link.  The
@@ -1213,10 +1223,17 @@ generic_link_check_archive_element (bfd *abfd,
 	{
 	  bfd_size_type symcount;
 	  asymbol **symbols;
+	  bfd *oldbfd = abfd;
 
 	  /* This object file defines this symbol, so pull it in.  */
-	  if (! (*info->callbacks->add_archive_element) (info, abfd,
-							 bfd_asymbol_name (p)))
+	  if (!(*info->callbacks
+		->add_archive_element) (info, abfd, bfd_asymbol_name (p),
+					&abfd))
+	    return FALSE;
+	  /* Potentially, the add_archive_element hook may have set a
+	     substitute BFD for us.  */
+	  if (abfd != oldbfd
+	      && !bfd_generic_link_read_symbols (abfd))
 	    return FALSE;
 	  symcount = _bfd_generic_link_get_symcount (abfd);
 	  symbols = _bfd_generic_link_get_symbols (abfd);
@@ -1241,9 +1258,13 @@ generic_link_check_archive_element (bfd *abfd,
 	      /* This symbol was created as undefined from outside
 		 BFD.  We assume that we should link in the object
 		 file.  This is for the -u option in the linker.  */
-	      if (! (*info->callbacks->add_archive_element)
-		  (info, abfd, bfd_asymbol_name (p)))
+	      if (!(*info->callbacks
+		    ->add_archive_element) (info, abfd, bfd_asymbol_name (p),
+					    &abfd))
 		return FALSE;
+	      /* Potentially, the add_archive_element hook may have set a
+		 substitute BFD for us.  But no symbols are going to get
+		 registered by anything we're returning to from here.  */
 	      *pneeded = TRUE;
 	      return TRUE;
 	    }

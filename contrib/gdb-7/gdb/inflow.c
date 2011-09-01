@@ -1,7 +1,7 @@
 /* Low level interface to ptrace, for GDB when running under Unix.
    Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995,
    1996, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008,
-   2009, 2010 Free Software Foundation, Inc.
+   2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -34,6 +34,7 @@
 #include "gdb_select.h"
 
 #include "inflow.h"
+#include "gdbcmd.h"
 
 #ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
@@ -141,10 +142,31 @@ enum
   }
 gdb_has_a_terminal_flag = have_not_checked;
 
+/* The value of the "interactive-mode" setting.  */
+static enum auto_boolean interactive_mode = AUTO_BOOLEAN_AUTO;
+
+/* Implement the "show interactive-mode" option.  */
+
+static void
+show_interactive_mode (struct ui_file *file, int from_tty,
+                       struct cmd_list_element *c,
+                       const char *value)
+{
+  if (interactive_mode == AUTO_BOOLEAN_AUTO)
+    fprintf_filtered (file, "Debugger's interactive mode "
+		            "is %s (currently %s).\n",
+                      value, gdb_has_a_terminal () ? "on" : "off");
+  else
+    fprintf_filtered (file, "Debugger's interactive mode is %s.\n", value);
+}
+
 /* Does GDB have a terminal (on stdin)?  */
 int
 gdb_has_a_terminal (void)
 {
+  if (interactive_mode != AUTO_BOOLEAN_AUTO)
+    return interactive_mode == AUTO_BOOLEAN_TRUE;
+
   switch (gdb_has_a_terminal_flag)
     {
     case yes:
@@ -202,10 +224,9 @@ terminal_init_inferior_with_pgrp (int pgrp)
       struct inferior *inf = current_inferior ();
       struct terminal_info *tinfo = get_inflow_inferior_data (inf);
 
-      /* We could just as well copy our_ttystate (if we felt like
-         adding a new function serial_copy_tty_state()).  */
       xfree (tinfo->ttystate);
-      tinfo->ttystate = serial_get_tty_state (stdin_serial);
+      tinfo->ttystate = serial_copy_tty_state (stdin_serial,
+					       our_terminal_info.ttystate);
 
 #ifdef PROCESS_GROUP_TYPE
       tinfo->process_group = pgrp;
@@ -227,8 +248,6 @@ terminal_save_ours (void)
 {
   if (gdb_has_a_terminal ())
     {
-      /* We could just as well copy our_ttystate (if we felt like adding
-         a new function serial_copy_tty_state).  */
       xfree (our_terminal_info.ttystate);
       our_terminal_info.ttystate = serial_get_tty_state (stdin_serial);
     }
@@ -409,8 +428,8 @@ terminal_ours_1 (int output_only)
          mode, to avoid flushing input.  We need to do the same thing
          regardless of output_only, because we don't have separate
          terminal_is_ours and terminal_is_ours_for_output flags.  It's OK,
-         though, since readline will deal with raw mode when/if it needs to.
-       */
+         though, since readline will deal with raw mode when/if it needs
+         to.  */
 
       serial_noflush_set_tty_state (stdin_serial, our_terminal_info.ttystate,
 				    tinfo->ttystate);
@@ -425,7 +444,8 @@ terminal_ours_1 (int output_only)
 	     used to check for an error here, so perhaps there are other
 	     such situations as well.  */
 	  if (result == -1)
-	    fprintf_unfiltered (gdb_stderr, "[tcsetpgrp failed in terminal_ours: %s]\n",
+	    fprintf_unfiltered (gdb_stderr,
+				"[tcsetpgrp failed in terminal_ours: %s]\n",
 				safe_strerror (errno));
 #endif
 #endif /* termios */
@@ -472,6 +492,7 @@ inflow_inferior_data_cleanup (struct inferior *inf, void *arg)
   if (info != NULL)
     {
       xfree (info->run_terminal);
+      xfree (info->ttystate);
       xfree (info);
     }
 }
@@ -509,6 +530,7 @@ inflow_inferior_exit (struct inferior *inf)
   if (info != NULL)
     {
       xfree (info->run_terminal);
+      xfree (info->ttystate);
       xfree (info);
       set_inferior_data (inf, inflow_inferior_data, NULL);
     }
@@ -521,10 +543,19 @@ copy_terminal_info (struct inferior *to, struct inferior *from)
 
   tinfo_to = get_inflow_inferior_data (to);
   tinfo_from = get_inflow_inferior_data (from);
+
+  xfree (tinfo_to->run_terminal);
+  xfree (tinfo_to->ttystate);
+
   *tinfo_to = *tinfo_from;
+
   if (tinfo_from->run_terminal)
     tinfo_to->run_terminal
       = xstrdup (tinfo_from->run_terminal);
+
+  if (tinfo_from->ttystate)
+    tinfo_to->ttystate
+      = serial_copy_tty_state (stdin_serial, tinfo_from->ttystate);
 }
 
 void
@@ -551,7 +582,8 @@ child_terminal_info (char *args, int from_tty)
   inf = current_inferior ();
   tinfo = get_inflow_inferior_data (inf);
 
-  printf_filtered (_("Inferior's terminal status (currently saved by GDB):\n"));
+  printf_filtered (_("Inferior's terminal status "
+		     "(currently saved by GDB):\n"));
 
   /* First the fcntl flags.  */
   {
@@ -564,7 +596,7 @@ child_terminal_info (char *args, int from_tty)
 #ifndef O_ACCMODE
 #define O_ACCMODE (O_RDONLY | O_WRONLY | O_RDWR)
 #endif
-    /* (O_ACCMODE) parens are to avoid Ultrix header file bug */
+    /* (O_ACCMODE) parens are to avoid Ultrix header file bug.  */
     switch (flags & (O_ACCMODE))
       {
       case O_RDONLY:
@@ -659,7 +691,7 @@ new_tty (void)
 #ifdef TIOCNOTTY
   /* Disconnect the child process from our controlling terminal.  On some
      systems (SVR4 for example), this may cause a SIGTTOU, so temporarily
-     ignore SIGTTOU. */
+     ignore SIGTTOU.  */
   tty = open ("/dev/tty", O_RDWR);
   if (tty > 0)
     {
@@ -698,7 +730,7 @@ new_tty (void)
   if (ioctl (tty, TIOCSCTTY, 0) == -1)
     /* Mention GDB in warning because it will appear in the inferior's
        terminal instead of GDB's.  */
-    warning ("GDB: Failed to set controlling terminal: %s",
+    warning (_("GDB: Failed to set controlling terminal: %s"),
 	     safe_strerror (errno));
 #endif
 
@@ -730,7 +762,7 @@ new_tty_postfork (void)
 
 
 /* Call set_sigint_trap when you need to pass a signal on to an attached
-   process when handling SIGINT */
+   process when handling SIGINT.  */
 
 static void
 pass_signal (int signo)
@@ -787,7 +819,7 @@ create_tty_session (void)
 
   ret = setsid ();
   if (ret == -1)
-    warning ("Failed to create new terminal session: setsid: %s",
+    warning (_("Failed to create new terminal session: setsid: %s"),
 	     safe_strerror (errno));
 
   return ret;
@@ -851,6 +883,20 @@ _initialize_inflow (void)
   add_info ("terminal", term_info,
 	    _("Print inferior's saved terminal status."));
 
+  add_setshow_auto_boolean_cmd ("interactive-mode", class_support,
+                                &interactive_mode, _("\
+Set whether GDB's standard input is a terminal."), _("\
+Show whether GDB's standard input is a terminal."), _("\
+If on, GDB assumes that standard input is a terminal.  In practice, it\n\
+means that GDB should wait for the user to answer queries associated to\n\
+commands entered at the command prompt.  If off, GDB assumes that standard\n\
+input is not a terminal, and uses the default answer to all queries.\n\
+If auto (the default), determine which mode to use based on the standard\n\
+input settings."),
+                        NULL,
+                        show_interactive_mode,
+                        &setlist, &showlist);
+
   terminal_is_ours = 1;
 
   /* OK, figure out whether we have job control.  If neither termios nor
@@ -865,7 +911,7 @@ _initialize_inflow (void)
 #ifdef _SC_JOB_CONTROL
   job_control = sysconf (_SC_JOB_CONTROL);
 #else
-  job_control = 0;		/* have to assume the worst */
+  job_control = 0;		/* Have to assume the worst.  */
 #endif /* _SC_JOB_CONTROL */
 #endif /* _POSIX_JOB_CONTROL */
 #endif /* HAVE_TERMIOS */

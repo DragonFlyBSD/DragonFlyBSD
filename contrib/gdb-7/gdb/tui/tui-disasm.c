@@ -1,7 +1,7 @@
 /* Disassembly display.
 
    Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009,
-   2010 Free Software Foundation, Inc.
+   2010, 2011 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -193,8 +193,8 @@ tui_set_disassem_content (struct gdbarch *gdbarch, CORE_ADDR pc)
   TUI_DISASM_WIN->detail.source_info.gdbarch = gdbarch;
   TUI_DISASM_WIN->detail.source_info.start_line_or_addr.loa = LOA_ADDRESS;
   TUI_DISASM_WIN->detail.source_info.start_line_or_addr.u.addr = pc;
-  cur_pc = (CORE_ADDR)
-    (((struct tui_win_element *) locator->content[0])->which_element.locator.addr);
+  cur_pc = (CORE_ADDR) (((struct tui_win_element *)
+			 locator->content[0])->which_element.locator.addr);
 
   max_lines = TUI_DISASM_WIN->generic.height - 2;	/* Account for
 							   hilite.  */
@@ -262,7 +262,8 @@ tui_set_disassem_content (struct gdbarch *gdbarch, CORE_ADDR pc)
 
       /* See whether there is a breakpoint installed.  */
       src->has_break = (!src->is_exec_point
-			&& breakpoint_here_p (current_program_space->aspace, pc)
+			&& breakpoint_here_p (current_program_space->aspace,
+					      pc)
 			!= no_breakpoint_here);
 
       xfree (asm_lines[i].addr_string);
@@ -336,7 +337,8 @@ tui_get_begin_asm_address (struct gdbarch **gdbarch_p, CORE_ADDR *addr_p)
   CORE_ADDR addr;
 
   locator = tui_locator_win_info_ptr ();
-  element = &((struct tui_win_element *) locator->content[0])->which_element.locator;
+  element = &((struct tui_win_element *)
+	      locator->content[0])->which_element.locator;
 
   if (element->addr == 0)
     {
@@ -400,10 +402,12 @@ tui_vertical_disassem_scroll (enum tui_scroll_direction scroll_direction,
 
       pc = content[0]->which_element.source.line_or_addr.u.addr;
       num_to_scroll++;
-      dir = (scroll_direction == FORWARD_SCROLL) ? num_to_scroll : -num_to_scroll;
+      dir = (scroll_direction == FORWARD_SCROLL)
+	? num_to_scroll : -num_to_scroll;
 
       val.loa = LOA_ADDRESS;
       val.u.addr = tui_find_disassembly_address (gdbarch, pc, dir);
-      tui_update_source_window_as_is (TUI_DISASM_WIN, gdbarch, NULL, val, FALSE);
+      tui_update_source_window_as_is (TUI_DISASM_WIN, gdbarch,
+				      NULL, val, FALSE);
     }
 }

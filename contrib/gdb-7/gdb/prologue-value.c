@@ -1,5 +1,5 @@
 /* Prologue value handling for GDB.
-   Copyright 2003, 2004, 2005, 2007, 2008, 2009, 2010
+   Copyright 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -15,7 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>. */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "defs.h"
 #include "gdb_string.h"
@@ -203,7 +203,7 @@ pv_is_identical (pv_t a, pv_t b)
     case pvk_register:
       return (a.reg == b.reg && a.k == b.k);
     default:
-      gdb_assert (0);
+      gdb_assert_not_reached ("unexpected prologue value kind");
     }
 }
 

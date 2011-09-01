@@ -1386,8 +1386,8 @@ _bfd_stab_section_find_nearest_line (bfd *abfd,
 
       dirlen = strlen (directory_name);
       if (info->filename == NULL
-	  || strncmp (info->filename, directory_name, dirlen) != 0
-	  || strcmp (info->filename + dirlen, file_name) != 0)
+	  || filename_ncmp (info->filename, directory_name, dirlen) != 0
+	  || filename_cmp (info->filename + dirlen, file_name) != 0)
 	{
 	  size_t len;
 

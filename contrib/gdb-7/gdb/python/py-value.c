@@ -1,6 +1,6 @@
 /* Python interface to values.
 
-   Copyright (C) 2008, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -25,13 +25,16 @@
 #include "language.h"
 #include "dfp.h"
 #include "valprint.h"
+#include "infcall.h"
+#include "expression.h"
+#include "cp-abi.h"
 
 #ifdef HAVE_PYTHON
 
 #include "python-internal.h"
 
 /* Even though Python scalar types directly map to host types, we use
-   target types here to remain consistent with the the values system in
+   target types here to remain consistent with the values system in
    GDB (which uses target arithmetic).  */
 
 /* Python's integer type corresponds to C's long type.  */
@@ -60,6 +63,7 @@ typedef struct value_object {
   struct value *value;
   PyObject *address;
   PyObject *type;
+  PyObject *dynamic_type;
 } value_object;
 
 /* List of all values which are currently exposed to Python. It is
@@ -99,6 +103,8 @@ valpy_dealloc (PyObject *obj)
       Py_DECREF (self->type);
     }
 
+  Py_XDECREF (self->dynamic_type);
+
   self->ob_type->tp_free (self);
 }
 
@@ -113,7 +119,8 @@ note_value (value_object *value_obj)
   values_in_python = value_obj;
 }
 
-/* Called when a new gdb.Value object needs to be allocated.  */
+/* Called when a new gdb.Value object needs to be allocated.  Returns NULL on
+   error, with a python exception set.  */
 static PyObject *
 valpy_new (PyTypeObject *subtype, PyObject *args, PyObject *keywords)
 {
@@ -146,6 +153,7 @@ valpy_new (PyTypeObject *subtype, PyObject *args, PyObject *keywords)
   value_incref (value);
   value_obj->address = NULL;
   value_obj->type = NULL;
+  value_obj->dynamic_type = NULL;
   note_value (value_obj);
 
   return (PyObject *) value_obj;
@@ -216,13 +224,76 @@ valpy_get_type (PyObject *self, void *closure)
     {
       obj->type = type_to_type_object (value_type (obj->value));
       if (!obj->type)
-	{
-	  obj->type = Py_None;
-	  Py_INCREF (obj->type);
-	}
+	return NULL;
     }
   Py_INCREF (obj->type);
   return obj->type;
+}
+
+/* Return dynamic type of the value.  */
+
+static PyObject *
+valpy_get_dynamic_type (PyObject *self, void *closure)
+{
+  value_object *obj = (value_object *) self;
+  volatile struct gdb_exception except;
+  struct type *type = NULL;
+
+  if (obj->dynamic_type != NULL)
+    {
+      Py_INCREF (obj->dynamic_type);
+      return obj->dynamic_type;
+    }
+
+  TRY_CATCH (except, RETURN_MASK_ALL)
+    {
+      struct value *val = obj->value;
+
+      type = value_type (val);
+      CHECK_TYPEDEF (type);
+
+      if (((TYPE_CODE (type) == TYPE_CODE_PTR)
+	   || (TYPE_CODE (type) == TYPE_CODE_REF))
+	  && (TYPE_CODE (TYPE_TARGET_TYPE (type)) == TYPE_CODE_CLASS))
+	{
+	  struct value *target;
+	  int was_pointer = TYPE_CODE (type) == TYPE_CODE_PTR;
+
+	  target = value_ind (val);
+	  type = value_rtti_type (target, NULL, NULL, NULL);
+
+	  if (type)
+	    {
+	      if (was_pointer)
+		type = lookup_pointer_type (type);
+	      else
+		type = lookup_reference_type (type);
+	    }
+	}
+      else if (TYPE_CODE (type) == TYPE_CODE_CLASS)
+	type = value_rtti_type (val, NULL, NULL, NULL);
+      else
+	{
+	  /* Re-use object's static type.  */
+	  type = NULL;
+	}
+    }
+  GDB_PY_HANDLE_EXCEPTION (except);
+
+  if (type == NULL)
+    {
+      /* Ensure that the TYPE field is ready.  */
+      if (!valpy_get_type (self, NULL))
+	return NULL;
+      /* We don't need to incref here, because valpy_get_type already
+	 did it for us.  */
+      obj->dynamic_type = obj->type;
+    }
+  else
+    obj->dynamic_type = type_to_type_object (type);
+
+  Py_INCREF (obj->dynamic_type);
+  return obj->dynamic_type;
 }
 
 /* Implementation of gdb.Value.lazy_string ([encoding] [, length]) ->
@@ -236,13 +307,13 @@ valpy_get_type (PyObject *self, void *closure)
 static PyObject *
 valpy_lazy_string (PyObject *self, PyObject *args, PyObject *kw)
 {
-  int length = -1;
+  gdb_py_longest length = -1;
   struct value *value = ((value_object *) self)->value;
   const char *user_encoding = NULL;
   static char *keywords[] = { "encoding", "length", NULL };
   PyObject *str_obj;
 
-  if (!PyArg_ParseTupleAndKeywords (args, kw, "|si", keywords,
+  if (!PyArg_ParseTupleAndKeywords (args, kw, "|s" GDB_PY_LL_ARG, keywords,
 				    &user_encoding, &length))
     return NULL;
 
@@ -250,7 +321,8 @@ valpy_lazy_string (PyObject *self, PyObject *args, PyObject *kw)
     value = value_ind (value);
 
   str_obj = gdbpy_create_lazy_string_object (value_address (value), length,
-					     user_encoding, value_type (value));
+					     user_encoding,
+					     value_type (value));
 
   return (PyObject *) str_obj;
 }
@@ -294,9 +366,10 @@ valpy_string (PyObject *self, PyObject *args, PyObject *kw)
   return unicode;
 }
 
-/* Cast a value to a given type.  */
+/* A helper function that implements the various cast operators.  */
+
 static PyObject *
-valpy_cast (PyObject *self, PyObject *args)
+valpy_do_cast (PyObject *self, PyObject *args, enum exp_opcode op)
 {
   PyObject *type_obj;
   struct type *type;
@@ -316,11 +389,45 @@ valpy_cast (PyObject *self, PyObject *args)
 
   TRY_CATCH (except, RETURN_MASK_ALL)
     {
-      res_val = value_cast (type, ((value_object *) self)->value);
+      struct value *val = ((value_object *) self)->value;
+
+      if (op == UNOP_DYNAMIC_CAST)
+	res_val = value_dynamic_cast (type, val);
+      else if (op == UNOP_REINTERPRET_CAST)
+	res_val = value_reinterpret_cast (type, val);
+      else
+	{
+	  gdb_assert (op == UNOP_CAST);
+	  res_val = value_cast (type, val);
+	}
     }
   GDB_PY_HANDLE_EXCEPTION (except);
 
   return value_to_value_object (res_val);
+}
+
+/* Implementation of the "cast" method.  */
+
+static PyObject *
+valpy_cast (PyObject *self, PyObject *args)
+{
+  return valpy_do_cast (self, args, UNOP_CAST);
+}
+
+/* Implementation of the "dynamic_cast" method.  */
+
+static PyObject *
+valpy_dynamic_cast (PyObject *self, PyObject *args)
+{
+  return valpy_do_cast (self, args, UNOP_DYNAMIC_CAST);
+}
+
+/* Implementation of the "reinterpret_cast" method.  */
+
+static PyObject *
+valpy_reinterpret_cast (PyObject *self, PyObject *args)
+{
+  return valpy_do_cast (self, args, UNOP_REINTERPRET_CAST);
 }
 
 static Py_ssize_t
@@ -333,7 +440,7 @@ valpy_length (PyObject *self)
 }
 
 /* Given string name of an element inside structure, return its value
-   object.  */
+   object.  Returns NULL on error, with a python exception set.  */
 static PyObject *
 valpy_getitem (PyObject *self, PyObject *key)
 {
@@ -372,7 +479,7 @@ valpy_getitem (PyObject *self, PyObject *key)
 	      type = check_typedef (value_type (tmp));
 	      if (TYPE_CODE (type) != TYPE_CODE_ARRAY
 		  && TYPE_CODE (type) != TYPE_CODE_PTR)
-		  error( _("Cannot subscript requested type."));
+		  error (_("Cannot subscript requested type."));
 	      else
 		res_val = value_subscript (tmp, value_as_long (idx));
 	    }
@@ -391,6 +498,53 @@ valpy_setitem (PyObject *self, PyObject *key, PyObject *value)
   PyErr_Format (PyExc_NotImplementedError,
 		_("Setting of struct elements is not currently supported."));
   return -1;
+}
+
+/* Called by the Python interpreter to perform an inferior function
+   call on the value.  Returns NULL on error, with a python exception set.  */
+static PyObject *
+valpy_call (PyObject *self, PyObject *args, PyObject *keywords)
+{
+  struct value *return_value = NULL;
+  Py_ssize_t args_count;
+  volatile struct gdb_exception except;
+  struct value *function = ((value_object *) self)->value;
+  struct value **vargs = NULL;
+  struct type *ftype = check_typedef (value_type (function));
+
+  if (TYPE_CODE (ftype) != TYPE_CODE_FUNC)
+    {
+      PyErr_SetString (PyExc_RuntimeError,
+		       _("Value is not callable (not TYPE_CODE_FUNC)."));
+      return NULL;
+    }
+
+  args_count = PyTuple_Size (args);
+  if (args_count > 0)
+    {
+      int i;
+
+      vargs = alloca (sizeof (struct value *) * args_count);
+      for (i = 0; i < args_count; i++)
+	{
+	  PyObject *item = PyTuple_GetItem (args, i);
+
+	  if (item == NULL)
+	    return NULL;
+
+	  vargs[i] = convert_value_from_python (item);
+	  if (vargs[i] == NULL)
+	    return NULL;
+	}
+    }
+
+  TRY_CATCH (except, RETURN_MASK_ALL)
+    {
+      return_value = call_function_by_hand (function, args_count, vargs);
+    }
+  GDB_PY_HANDLE_EXCEPTION (except);
+
+  return value_to_value_object (return_value);
 }
 
 /* Called by the Python interpreter to obtain string representation
@@ -467,7 +621,8 @@ enum valpy_opcode
   ((TYPE_CODE (TYPE) == TYPE_CODE_REF) ? (TYPE_TARGET_TYPE (TYPE)) : (TYPE))
 
 /* Returns a value object which is the result of applying the operation
-   specified by OPCODE to the given arguments.  */
+   specified by OPCODE to the given arguments.  Returns NULL on error, with
+   a python exception set.  */
 static PyObject *
 valpy_binop (enum valpy_opcode opcode, PyObject *self, PyObject *other)
 {
@@ -664,11 +819,8 @@ valpy_nonzero (PyObject *self)
 			     TYPE_LENGTH (type),
 			     gdbarch_byte_order (get_type_arch (type)));
   else
-    {
-      PyErr_SetString (PyExc_TypeError, _("Attempted truth testing on invalid "
-					  "gdb.Value type."));
-      return 0;
-    }
+    /* All other values are True.  */
+    return 1;
 }
 
 /* Implements ~ for value objects.  */
@@ -722,7 +874,8 @@ valpy_xor (PyObject *self, PyObject *other)
   return valpy_binop (VALPY_BITXOR, self, other);
 }
 
-/* Implements comparison operations for value objects.  */
+/* Implements comparison operations for value objects.  Returns NULL on error,
+   with a python exception set.  */
 static PyObject *
 valpy_richcompare (PyObject *self, PyObject *other, int op)
 {
@@ -834,14 +987,7 @@ valpy_int (PyObject *self)
     }
   GDB_PY_HANDLE_EXCEPTION (except);
 
-#ifdef HAVE_LONG_LONG		/* Defined by Python.  */
-  /* If we have 'long long', and the value overflows a 'long', use a
-     Python Long; otherwise use a Python Int.  */
-  if (sizeof (l) > sizeof (long) && (l > PyInt_GetMax ()
-				     || l < (- (LONGEST) PyInt_GetMax ()) - 1))
-    return PyLong_FromLongLong (l);
-#endif
-  return PyInt_FromLong (l);
+  return gdb_py_object_from_longest (l);
 }
 
 /* Implements conversion to long.  */
@@ -866,11 +1012,7 @@ valpy_long (PyObject *self)
     }
   GDB_PY_HANDLE_EXCEPTION (except);
 
-#ifdef HAVE_LONG_LONG		/* Defined by Python.  */
-  return PyLong_FromLongLong (l);
-#else
-  return PyLong_FromLong (l);
-#endif
+  return gdb_py_long_from_longest (l);
 }
 
 /* Implements conversion to float.  */
@@ -913,6 +1055,7 @@ value_to_value_object (struct value *val)
       value_incref (val);
       val_obj->address = NULL;
       val_obj->type = NULL;
+      val_obj->dynamic_type = NULL;
       note_value (val_obj);
     }
 
@@ -1019,13 +1162,13 @@ convert_value_from_python (PyObject *obj)
       else if (gdbpy_is_lazy_string (obj))
 	{
 	  PyObject *result;
-	  PyObject *function = PyString_FromString ("value");
 
-	  result = PyObject_CallMethodObjArgs (obj, function,  NULL);
+	  result = PyObject_CallMethodObjArgs (obj, gdbpy_value_cst,  NULL);
 	  value = value_copy (((value_object *) result)->value);
 	}
       else
-	PyErr_Format (PyExc_TypeError, _("Could not convert Python object: %s."),
+	PyErr_Format (PyExc_TypeError,
+		      _("Could not convert Python object: %s."),
 		      PyString_AsString (PyObject_Str (obj)));
     }
   if (except.reason < 0)
@@ -1085,16 +1228,29 @@ static PyGetSetDef value_object_getset[] = {
   { "address", valpy_get_address, NULL, "The address of the value.",
     NULL },
   { "is_optimized_out", valpy_get_is_optimized_out, NULL,
-    "Boolean telling whether the value is optimized out (i.e., not available).",
+    "Boolean telling whether the value is optimized "
+    "out (i.e., not available).",
     NULL },
   { "type", valpy_get_type, NULL, "Type of the value.", NULL },
+  { "dynamic_type", valpy_get_dynamic_type, NULL,
+    "Dynamic type of the value.", NULL },
   {NULL}  /* Sentinel */
 };
 
 static PyMethodDef value_object_methods[] = {
   { "cast", valpy_cast, METH_VARARGS, "Cast the value to the supplied type." },
+  { "dynamic_cast", valpy_dynamic_cast, METH_VARARGS,
+    "dynamic_cast (gdb.Type) -> gdb.Value\n\
+Cast the value to the supplied type, as if by the C++ dynamic_cast operator."
+  },
+  { "reinterpret_cast", valpy_reinterpret_cast, METH_VARARGS,
+    "reinterpret_cast (gdb.Type) -> gdb.Value\n\
+Cast the value to the supplied type, as if by the C++\n\
+reinterpret_cast operator."
+  },
   { "dereference", valpy_dereference, METH_NOARGS, "Dereferences the value." },
-  { "lazy_string", (PyCFunction) valpy_lazy_string, METH_VARARGS | METH_KEYWORDS,
+  { "lazy_string", (PyCFunction) valpy_lazy_string,
+    METH_VARARGS | METH_KEYWORDS,
     "lazy_string ([encoding]  [, length]) -> lazy_string\n\
 Return a lazy string representation of the value." },
   { "string", (PyCFunction) valpy_string, METH_VARARGS | METH_KEYWORDS,
@@ -1151,12 +1307,13 @@ PyTypeObject value_object_type = {
   0,				  /*tp_as_sequence*/
   &value_object_as_mapping,	  /*tp_as_mapping*/
   valpy_hash,		          /*tp_hash*/
-  0,				  /*tp_call*/
+  valpy_call,	                  /*tp_call*/
   valpy_str,			  /*tp_str*/
   0,				  /*tp_getattro*/
   0,				  /*tp_setattro*/
   0,				  /*tp_as_buffer*/
-  Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES,	/*tp_flags*/
+  Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES
+  | Py_TPFLAGS_BASETYPE,	  /*tp_flags*/
   "GDB value object",		  /* tp_doc */
   0,				  /* tp_traverse */
   0,				  /* tp_clear */

@@ -1,6 +1,6 @@
 /* Memory attributes support, for GDB.
 
-   Copyright (C) 2001, 2006, 2007, 2008, 2009, 2010
+   Copyright (C) 2001, 2006, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -25,7 +25,7 @@
 
 enum mem_access_mode
 {
-  MEM_NONE,                     /* Memory that is not physically present. */
+  MEM_NONE,                     /* Memory that is not physically present.  */
   MEM_RW,			/* read/write */
   MEM_RO,			/* read only */
   MEM_WO,			/* write only */
@@ -51,7 +51,7 @@ enum mem_access_width
    the mem_region structure.
 
    FIXME: It would be useful if there was a mechanism for targets to
-   add their own attributes.  For example, the number of wait states. */
+   add their own attributes.  For example, the number of wait states.  */
  
 struct mem_attrib 
 {
@@ -66,9 +66,9 @@ struct mem_attrib
   /* enables host-side caching of memory region data */
   int cache;
   
-  /* enables memory verification.  after a write, memory is re-read
-     to verify that the write was successful. */
-  int verify; 
+  /* Enables memory verification.  After a write, memory is re-read
+     to verify that the write was successful.  */
+  int verify;
 
   /* Block size.  Only valid if mode == MEM_FLASH.  */
   int blocksize;
@@ -82,13 +82,14 @@ struct mem_region
      If 0, upper bound is "infinity".  */
   CORE_ADDR hi;
 
-  /* Item number of this memory region. */
+  /* Item number of this memory region.  */
   int number;
 
-  /* Status of this memory region (enabled if non-zero, otherwise disabled) */
+  /* Status of this memory region (enabled if non-zero, otherwise
+     disabled).  */
   int enabled_p;
 
-  /* Attributes for this region */
+  /* Attributes for this region.  */
   struct mem_attrib attrib;
 };
 

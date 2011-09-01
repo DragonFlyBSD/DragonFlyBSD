@@ -1,6 +1,6 @@
 /* Traditional frame unwind support, for GDB the GNU Debugger.
 
-   Copyright (C) 2003, 2004, 2007, 2008, 2009, 2010
+   Copyright (C) 2003, 2004, 2007, 2008, 2009, 2010, 2011
    Free Software Foundation, Inc.
 
    This file is part of GDB.
@@ -66,12 +66,12 @@ trad_frame_alloc_saved_regs (struct frame_info *this_frame)
   return this_saved_regs;
 }
 
-enum { REG_VALUE = -1, REG_UNKNOWN = -2 };
+enum { TF_REG_VALUE = -1, TF_REG_UNKNOWN = -2 };
 
 int
 trad_frame_value_p (struct trad_frame_saved_reg this_saved_regs[], int regnum)
 {
-  return (this_saved_regs[regnum].realreg == REG_VALUE);
+  return (this_saved_regs[regnum].realreg == TF_REG_VALUE);
 }
 
 int
@@ -95,7 +95,7 @@ trad_frame_set_value (struct trad_frame_saved_reg this_saved_regs[],
 {
   /* Make the REALREG invalid, indicating that the ADDR contains the
      register's value.  */
-  this_saved_regs[regnum].realreg = REG_VALUE;
+  this_saved_regs[regnum].realreg = TF_REG_VALUE;
   this_saved_regs[regnum].addr = val;
 }
 
@@ -128,7 +128,7 @@ trad_frame_set_unknown (struct trad_frame_saved_reg this_saved_regs[],
 			int regnum)
 {
   /* Make the REALREG invalid, indicating that the value is not known.  */
-  this_saved_regs[regnum].realreg = REG_UNKNOWN;
+  this_saved_regs[regnum].realreg = TF_REG_UNKNOWN;
   this_saved_regs[regnum].addr = -1;
 }
 

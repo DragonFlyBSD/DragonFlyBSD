@@ -1,6 +1,6 @@
 /* GDB routines for supporting auto-loaded scripts.
 
-   Copyright (C) 2010 Free Software Foundation, Inc.
+   Copyright (C) 2010, 2011 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -34,7 +34,7 @@
    This is true if we should auto-load python code when an objfile is opened,
    false otherwise.
 
-   Both gdbpy_auto_load && gdbpy_global_auto_load must be true to enable
+   Both auto_load_scripts && gdbpy_global_auto_load must be true to enable
    auto-loading.
 
    This flag exists to facilitate deferring auto-loading during start-up
@@ -82,10 +82,15 @@ struct loaded_script_entry
 };
 
 /* User-settable option to enable/disable auto-loading:
-   maint set python auto-load on|off
-   This is true if we should auto-load python code when an objfile is opened,
-   false otherwise.  */
-static int gdbpy_auto_load = 1;
+   set auto-load-scripts on|off
+   This is true if we should auto-load associated scripts when an objfile
+   is opened, false otherwise.
+   At the moment, this only affects python scripts, but there's no reason
+   one couldn't also have other kinds of auto-loaded scripts, and there's
+   no reason to have them each controlled by a separate flag.
+   So we elide "python" from the name here and in the option.
+   The fact that it lives here is just an implementation detail.  */
+static int auto_load_scripts = 1;
 
 /* Per-program-space data key.  */
 static const struct program_space_data *auto_load_pspace_data;
@@ -395,8 +400,6 @@ auto_load_new_objfile (struct objfile *objfile)
       clear_section_scripts ();
       return;
     }
-  if (!objfile->name)
-    return;
 
   load_auto_scripts_for_objfile (objfile);
 }
@@ -406,7 +409,7 @@ auto_load_new_objfile (struct objfile *objfile)
 void
 load_auto_scripts_for_objfile (struct objfile *objfile)
 {
-  if (gdbpy_auto_load && gdbpy_global_auto_load)
+  if (auto_load_scripts && gdbpy_global_auto_load)
     {
       auto_load_objfile_script (objfile, GDBPY_AUTO_FILE_NAME);
       auto_load_section_scripts (objfile, GDBPY_AUTO_SECTION_NAME);
@@ -473,16 +476,18 @@ gdbpy_initialize_auto_load (void)
 
   observer_attach_new_objfile (auto_load_new_objfile);
 
-  add_setshow_boolean_cmd ("auto-load", class_maintenance,
-			   &gdbpy_auto_load, _("\
-Enable or disable auto-loading of Python code when an object is opened."), _("\
-Show whether Python code will be auto-loaded when an object is opened."), _("\
-Enables or disables auto-loading of Python code when an object is opened."),
+  add_setshow_boolean_cmd ("auto-load-scripts", class_support,
+			   &auto_load_scripts, _("\
+Set the debugger's behaviour regarding auto-loaded scripts."), _("\
+Show the debugger's behaviour regarding auto-loaded scripts."), _("\
+If enabled, auto-loaded scripts are loaded when the debugger reads\n\
+an executable or shared library."),
 			   NULL, NULL,
-			   &set_python_list,
-			   &show_python_list);
+			   &setlist,
+			   &showlist);
 
-  add_cmd ("section-scripts", class_maintenance, maintenance_print_section_scripts,
+  add_cmd ("section-scripts", class_maintenance,
+	   maintenance_print_section_scripts,
 	   _("Print dump of auto-loaded section scripts matching REGEXP."),
 	   &maintenanceprintlist);
 }

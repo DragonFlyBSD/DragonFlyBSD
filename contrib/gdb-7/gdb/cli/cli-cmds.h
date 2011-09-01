@@ -1,5 +1,6 @@
 /* Header file for GDB CLI command implementation library.
-   Copyright (c) 2000,2006,2007,2008,2009,2010 Free Software Foundation, Inc.
+   Copyright (c) 2000,2006,2007,2008,2009,2010,2011
+   Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -25,19 +26,19 @@ extern struct cmd_list_element *cmdlist;
 
 extern struct cmd_list_element *infolist;
 
-/* Chain containing all defined enable subcommands. */
+/* Chain containing all defined enable subcommands.  */
 
 extern struct cmd_list_element *enablelist;
 
-/* Chain containing all defined disable subcommands. */
+/* Chain containing all defined disable subcommands.  */
 
 extern struct cmd_list_element *disablelist;
 
-/* Chain containing all defined delete subcommands. */
+/* Chain containing all defined delete subcommands.  */
 
 extern struct cmd_list_element *deletelist;
 
-/* Chain containing all defined detach subcommands. */
+/* Chain containing all defined detach subcommands.  */
 
 extern struct cmd_list_element *detachlist;
 
@@ -45,15 +46,15 @@ extern struct cmd_list_element *detachlist;
 
 extern struct cmd_list_element *killlist;
 
-/* Chain containing all defined toggle subcommands. */
+/* Chain containing all defined toggle subcommands.  */
 
 extern struct cmd_list_element *togglelist;
 
-/* Chain containing all defined stop subcommands. */
+/* Chain containing all defined stop subcommands.  */
 
 extern struct cmd_list_element *stoplist;
 
-/* Chain containing all defined "enable breakpoint" subcommands. */
+/* Chain containing all defined "enable breakpoint" subcommands.  */
 
 extern struct cmd_list_element *enablebreaklist;
 
@@ -81,15 +82,15 @@ extern struct cmd_list_element *showhistlist;
 
 extern struct cmd_list_element *unsethistlist;
 
-/* Chain containing all defined maintenance subcommands. */
+/* Chain containing all defined maintenance subcommands.  */
 
 extern struct cmd_list_element *maintenancelist;
 
-/* Chain containing all defined "maintenance info" subcommands. */
+/* Chain containing all defined "maintenance info" subcommands.  */
 
 extern struct cmd_list_element *maintenanceinfolist;
 
-/* Chain containing all defined "maintenance print" subcommands. */
+/* Chain containing all defined "maintenance print" subcommands.  */
 
 extern struct cmd_list_element *maintenanceprintlist;
 
