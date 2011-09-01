@@ -590,11 +590,6 @@ case "${targ}" in
     targ_defvec=bfd_elf32_i386_vec
     targ_selvecs=i386netbsd_vec
     ;;
-  i[3-7]86-*-dragonfly*)
-    targ_defvec=bfd_elf32_i386_vec
-    targ_selvecs="bfd_elf32_i386_vec"
-    targ64_selvecs="bfd_elf64_x86_64_vec bfd_elf64_l1om_vec"
-    ;;
   i[3-7]86-*-netware*)
     targ_defvec=bfd_elf32_i386_vec
     targ_selvecs="nlm32_i386_vec i386coff_vec i386aout_vec"
@@ -639,11 +634,6 @@ case "${targ}" in
   x86_64-*-netbsd* | x86_64-*-openbsd*)
     targ_defvec=bfd_elf64_x86_64_vec
     targ_selvecs="bfd_elf32_i386_vec i386netbsd_vec i386coff_vec i386pei_vec x86_64pei_vec bfd_elf64_l1om_vec"
-    want64=true
-    ;;
-  x86_64-*-dragonfly*)
-    targ_defvec=bfd_elf64_x86_64_vec
-    targ_selvecs="bfd_elf32_i386_vec bfd_elf64_x86_64_vec bfd_elf64_l1om_vec"
     want64=true
     ;;
   x86_64-*-linux-*)
