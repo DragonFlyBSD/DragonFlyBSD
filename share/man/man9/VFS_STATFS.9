@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/VFS_STATFS.9,v 1.5.2.1 2001/12/17 11:30:18 ru Exp $
 .\"
-.Dd July 24, 1996
+.Dd September 1, 2011
 .Dt VFS_STATFS 9
 .Os
 .Sh NAME
@@ -37,7 +37,7 @@
 .In sys/mount.h
 .In sys/vnode.h
 .Ft int
-.Fn VFS_STATFS "struct mount *mp" "struct statfs *sbp" "struct proc *p"
+.Fn VFS_STATFS "struct mount *mp" "struct statfs *sbp" "struct ucred *cred"
 .Sh DESCRIPTION
 This call returns various pieces of information about the filesystem,
 including recommended I/O sizes, free space, free inodes, etc.
@@ -48,8 +48,8 @@ Its arguments are:
 The filesystem.
 .It Ar sbp
 Return parameter for the filesystem's status.
-.It Ar p
-The process which is querying the filesystem.
+.It Ar cred
+Credentials for the process which is querying the filesystem.
 .El
 .Sh SEE ALSO
 .Xr VFS 9 ,
