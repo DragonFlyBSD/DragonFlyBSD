@@ -93,7 +93,7 @@ static driver_t lgue_driver = {
 static devclass_t lgue_devclass;
 
 DECLARE_DUMMY_MODULE(if_lgue);
-DRIVER_MODULE(lgue, uhub, lgue_driver, lgue_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(lgue, uhub, lgue_driver, lgue_devclass, usbd_driver_load, NULL);
 MODULE_DEPEND(lgue, usb, 1, 1, 1);
 
 /*

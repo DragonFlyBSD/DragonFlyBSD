@@ -88,7 +88,7 @@ static driver_t mfi_syspd_driver = {
 	sizeof(struct mfi_system_pd)
 };
 
-DRIVER_MODULE(mfisyspd, mfi, mfi_syspd_driver, mfi_syspd_devclass, 0, 0);
+DRIVER_MODULE(mfisyspd, mfi, mfi_syspd_driver, mfi_syspd_devclass, NULL, NULL);
 
 static int
 mfi_syspd_probe(device_t dev)

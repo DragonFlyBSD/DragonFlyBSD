@@ -113,7 +113,7 @@ static driver_t safe_driver = {
 };
 static devclass_t safe_devclass;
 
-DRIVER_MODULE(safe, pci, safe_driver, safe_devclass, 0, 0);
+DRIVER_MODULE(safe, pci, safe_driver, safe_devclass, NULL, NULL);
 MODULE_DEPEND(safe, crypto, 1, 1, 1);
 #ifdef SAFE_RNDTEST
 MODULE_DEPEND(safe, rndtest, 1, 1, 1);
