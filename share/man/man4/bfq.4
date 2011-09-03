@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2010
+.\" Copyright (c) 2011
 .\"	The DragonFly Project.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -35,135 +35,120 @@
 .Sh NAME
 .Nm BFQ
 .Nd Budget Fair Queueing disk scheduling policy
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "options dsched_bfq"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+dsched_bfq_load="YES"
+.Ed
 .Sh DESCRIPTION
-
-.P 
-The 
-.Nm 
-disk scheduler is invented by Paolo Valente. The current version of 
+The
+.Nm
+disk scheduler is invented by Paolo Valente.
+The current version of
 .Nm
 in
-.Dx is implemented according to his technique report. Also, some additional
-features are added into the current version, they are inspired by the Linux
-version, but are totally written from scratch.
-
-.P 
+.Dx
+is implemented according to his technique report.
+Also, some additional features are added into the current version;
+they are inspired by the Linux version, but are totally written from scratch.
+.Pp
 Like the CFQ (Complete Fair Queue) disk scheduler under Linux,
 .Nm
 is a fair queueing scheduler that aims to improve the interactivity and
-lower the latency of the system. Maximizing throughput, however, is not the
-major design goal of it.  So it is better to switch to
-.Nm 
+lower the latency of the system.
+Maximizing throughput, however, is not the major design goal of it.
+So it is better to switch to
+.Nm
 if the computer is for desktop usage, in which interactivity eclipses
 throughput in general.
 .Ss Switching To BFQ
-.P
-.Nm
-is compiled as a loadable kernel module by default. It should be loaded by
-the kernel before you switching to it. You may use the
-.Xr kldload 8 
-command
-to do so:
-.Bd -literal -offset indent
-kldload dsched_bfq
-.Ed
-
-Alternatively, you can compile BFQ into the kernel by adding the following
-line into your 
-.Xr kernconf 5
-:
-.Bd -literal -offset indent
-options DSCHED_BFQ
-.Ed
-
-.P
-Then you may use
+You may use
 .Xr sysctl 8
-to switch to 
+to switch to
 .Nm
-:
-
+(where
+.Dq ad0
+is the name of your hard drive):
 .Bd -literal -offset indent
 sysctl dsched.policy.ad0=bfq
 .Ed
-
-Where "ad0" is the name of your hard drive.
-
+.Pp
+A loader tunable of the same name is available for setting it permanently.
 .Ss Tuning BFQ
-.P
-Currently 
+Currently
 .Nm
 has two tunable parameters: the global AS switch and the maximum budget.
 They can be tuned by the
-.Xr sysctl 8 command, for example:
-
+.Xr sysctl 8
+command, for example:
 .Bd -literal -offset indent
 #enable the global AS feature:
-sysctl dsched.bfq.ad0.as_switch=1 
+sysctl dsched.bfq.ad0.as_switch=1
 
 #set the max budget to 512KB:
-sysctl dsched.bfq.ad0.max_budget=524288 
+sysctl dsched.bfq.ad0.max_budget=524288
 
 #enable automatic max budget adapting:
 sysctl dsched.bfq.ad0.auto_max_budget=0
 .Ed
-
 .Bl -tag -width indent
 .It The AS feature
-
 It is reported that turning AS on may affect the interactivity and increase
-max latency greatly. It is probably due to the over-serialized
-implementation of BFQ. However, the blogbench shows that turning AS
+max latency greatly.
+It is probably due to the over-serialized implementation of BFQ.
+However, the blogbench shows that turning AS
 on will also increase the throughput greatly.
-
+.Pp
 Suggestion: turn on the AS feature, for it effects little on average
 latency.
-
 .It The max budget
-
-One thread could be assigned a budget no more than the max budget. Generally,
+One thread could be assigned a budget no more than the max budget.
+Generally,
 a higher budget means higher throughput because of less operations on
 WF2Q+ augtree, while a lower budget force the scheduler cost more on
 those operations.
-
+.Pp
 However, the real world experiments show that a too high budget affects
-interactivity heavily. A too low budget will also cause higher latency, and
+interactivity heavily.
+A too low budget will also cause higher latency, and
 if the budget is less than 64KB (65536), which is smaller than the size of
-some bios , the scheduler will retrograde to a round-robin scheduler, which
+some bios, the scheduler will retrograde to a round-robin scheduler, which
 is not a good form for a disk scheduler.
-
-Suggestions: Do not use automatic max budget, it is usually too high. A
-budget of 1/10 of the automatic max budget may be proper. In general,
-512K(default), 256K, 192K can be good. It is better to determine the
-best max budget by binary selecting by the result of some
-benchmarks.
+.Pp
+Suggestions: Do not use automatic max budget, it is usually too high.
+A budget of 1/10 of the automatic max budget may be proper.
+In general, 512K(default), 256K, 192K can be good.
+It is better to determine the
+best max budget by binary selecting by the result of some benchmarks.
 .El
-
 .Sh SEE ALSO
-.Xr dsched 4
+.Xr dsched 4 ,
+.Xr kldload 8 ,
 .Xr sysctl 8
-.Xr kldload 8
-
 .Pp
 .Pa http://leaf.dragonflybsd.org/~brillsp/bfq_doc/bfq.html
-
 .Sh HISTORY
 The
 .Nm
 scheduler first appeared in
-.Dx 2.10 .
-
-.Sh BUGS
-.P
-When switching to another dsched policy from BFQ, the system may deadlock.
-
-.P
-Currently, the overall performance is not very good and it is not tested on
-large number of machines. It is not recommended to use this version in a
-productivity environment.
-
+.Dx 2.11 .
 .Sh AUTHORS
 The
 .Nm
 scheduling policy was written by
 .An Brills Peng.
+.Sh BUGS
+When switching to another dsched policy from BFQ, the system may deadlock.
+.Pp
+Currently, the overall performance is not very good and it is not tested on
+large number of machines.
+It is not recommended to use this version in a productivity environment.
