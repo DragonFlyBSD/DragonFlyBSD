@@ -1,0 +1,61 @@
+.\" Copyright (c) 2011 François Tigeot
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+
+.\" Note: The date here should be updated whenever a non-trivial
+.\" change is made to the manual page.
+.Dd December 2, 2011
+.Dt VQUOTA 8
+.Os
+.Sh NAME
+.Nm vquota
+.Nd VFS quota system utility
+
+.Sh SYNOPSIS
+.Nm
+.Ar command
+.Ar argument
+.Sh DESCRIPTION
+This manual page documents the
+.Nm
+utility which provides functions for managing virtual file system
+accounting and quotas.
+.Pp
+The commands are as follows:
+.Bl -tag -width indent
+.\" ==== check ====
+.It Cm check Ar directory
+Reports the space occupied by files names located in the
+directory hierarchy present under
+.Ar directory
+
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Dx 2.13 .
+.Sh AUTHORS
+.An Francois Tigeot Aq ftigeot@wolfpond.org
+.Sh BUGS
+This manual page is just a skeleton and should be updated.
