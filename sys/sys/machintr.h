@@ -41,9 +41,6 @@
 #ifndef _SYS_BUS_H_
 #include <sys/bus.h>
 #endif
-#ifndef _SYS_QUEUE_H_
-#include <sys/queue.h>
-#endif
 
 enum machintr_type { MACHINTR_GENERIC, MACHINTR_ICU, MACHINTR_IOAPIC };
 
