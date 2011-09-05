@@ -476,8 +476,6 @@ extern void	IOAPIC_INTRDIS(int);
 
 extern int	imcr_present;
 
-static int	ioapic_setvar(int, const void *);
-static int	ioapic_getvar(int, void *);
 static int	ioapic_vectorctl(int, int, int);
 static void	ioapic_finalize(void);
 static void	ioapic_cleanup(void);
@@ -493,8 +491,6 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 	.intrdis	= ioapic_abi_intrdis,
 	.intren		= ioapic_abi_intren,
 	.vectorctl	= ioapic_vectorctl,
-	.setvar		= ioapic_setvar,
-	.getvar		= ioapic_getvar,
 	.finalize	= ioapic_finalize,
 	.cleanup	= ioapic_cleanup,
 	.setdefault	= ioapic_setdefault,
@@ -525,18 +521,6 @@ ioapic_abi_intrdis(int irq)
 		return;
 	}
 	IOAPIC_INTRDIS(irq);
-}
-
-static int
-ioapic_setvar(int varid, const void *buf)
-{
-	return ENOENT;
-}
-
-static int
-ioapic_getvar(int varid, void *buf)
-{
-	return ENOENT;
 }
 
 static void

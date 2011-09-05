@@ -97,8 +97,6 @@ extern void	ICU_INTRDIS(int);
 extern int	imcr_present;
 
 static int	icu_vectorctl(int, int, int);
-static int	icu_setvar(int, const void *);
-static int	icu_getvar(int, void *);
 static void	icu_finalize(void);
 static void	icu_cleanup(void);
 static void	icu_setdefault(void);
@@ -111,8 +109,6 @@ struct machintr_abi MachIntrABI_ICU = {
 	.intrdis	= ICU_INTRDIS,
 	.intren		= ICU_INTREN,
 	.vectorctl	= icu_vectorctl,
-	.setvar		= icu_setvar,
-	.getvar		= icu_getvar,
 	.finalize	= icu_finalize,
 	.cleanup	= icu_cleanup,
 	.setdefault	= icu_setdefault,
@@ -124,17 +120,6 @@ struct machintr_abi MachIntrABI_ICU = {
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
  */
-static int
-icu_setvar(int varid, const void *buf)
-{
-	return ENOENT;
-}
-
-static int
-icu_getvar(int varid, void *buf)
-{
-	return ENOENT;
-}
 
 /*
  * Called before interrupts are physically enabled

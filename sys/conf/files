@@ -865,7 +865,6 @@ kern/kern_checkpoint.c	standard
 kern/kern_sysref.c	standard
 kern/kern_ccms.c	standard
 kern/kern_intr.c	standard
-kern/kern_machintr.c	standard
 kern/kern_varsym.c	standard
 kern/kern_module.c	standard
 kern/kern_linker.c	standard

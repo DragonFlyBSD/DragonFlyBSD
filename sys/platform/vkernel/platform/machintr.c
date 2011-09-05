@@ -55,8 +55,6 @@
 static void dummy_intrdis(int);
 static void dummy_intren(int);
 static int dummy_vectorctl(int, int, int);
-static int dummy_setvar(int, const void *);
-static int dummy_getvar(int, void *);
 static void dummy_finalize(void);
 static void dummy_intrcleanup(void);
 static void dummy_stabilize(void);
@@ -66,8 +64,6 @@ struct machintr_abi MachIntrABI = {
 	.intrdis =	dummy_intrdis,
 	.intren =	dummy_intren,
 	.vectorctl =	dummy_vectorctl,
-	.setvar =	dummy_setvar,
-	.getvar =	dummy_getvar,
 	.finalize =	dummy_finalize,
 	.cleanup =	dummy_intrcleanup,
 	.stabilize =	dummy_stabilize
@@ -88,18 +84,6 @@ dummy_vectorctl(int op, int intr, int flags)
 {
 	return (0);
 	/* return (EOPNOTSUPP); */
-}
-
-static int
-dummy_setvar(int varid, const void *buf)
-{
-	return (ENOENT);
-}
-
-static int
-dummy_getvar(int varid, void *buf)
-{
-	return (ENOENT);
 }
 
 static void

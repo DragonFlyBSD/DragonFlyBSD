@@ -44,10 +44,6 @@
 
 enum machintr_type { MACHINTR_GENERIC, MACHINTR_ICU, MACHINTR_IOAPIC };
 
-#define MACHINTR_VAR_SIZEMASK	0xFFFF
-
-#define MACHINTR_VAR_IMCR_PRESENT	(0x00010000|sizeof(int))
-
 #define MACHINTR_VECTOR_SETUP		1
 #define MACHINTR_VECTOR_TEARDOWN	2
 
@@ -59,8 +55,6 @@ struct machintr_abi {
     void	(*intrdis)(int);		/* hardware disable irq */
     void	(*intren)(int);			/* hardware enable irq */
     int		(*vectorctl)(int, int, int);	/* hardware intr vector ctl */
-    int		(*setvar)(int, const void *);	/* set miscellanious info */
-    int		(*getvar)(int, void *);		/* get miscellanious info */
     void	(*finalize)(void);		/* final before ints enabled */
     void	(*cleanup)(void);		/* cleanup */
     void	(*setdefault)(void);		/* set default vectors */
@@ -83,6 +77,5 @@ struct machintr_abi {
 #ifdef _KERNEL
 
 extern struct machintr_abi MachIntrABI;
-extern int machintr_setvar_simple(int, int);
 
 #endif
