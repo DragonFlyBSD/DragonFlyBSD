@@ -38,6 +38,11 @@
  * vector and masking layer.
  */
 
+#ifndef _SYS_MACHINTR_H_
+#define _SYS_MACHINTR_H_
+
+#ifdef _KERNEL
+
 #ifndef _SYS_BUS_H_
 #include <sys/bus.h>
 #endif
@@ -74,8 +79,8 @@ struct machintr_abi {
 #define machintr_intr_config(intr, trig, pola)	\
 	    MachIntrABI.intr_config((intr), (trig), (pola))
 
-#ifdef _KERNEL
-
 extern struct machintr_abi MachIntrABI;
 
-#endif
+#endif	/* _KERNEL */
+
+#endif	/* _SYS_MACHINTR_H_ */
