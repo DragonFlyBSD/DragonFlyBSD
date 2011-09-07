@@ -52,4 +52,8 @@ struct mdproc {
 	struct trapframe *md_regs;	/* registers on current frame */
 };
 
+#ifdef _KERNEL
+extern struct mtx dt_lock;
+#endif
+
 #endif /* !_MACHINE_PROC_H_ */

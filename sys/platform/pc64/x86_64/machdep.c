@@ -85,6 +85,7 @@
 
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
+#include <sys/mutex2.h>
 
 #include <sys/user.h>
 #include <sys/exec.h>
@@ -186,6 +187,7 @@ int imcr_present = 0;
 int naps = 0; /* # of Applications processors */
 
 u_int base_memory;
+struct mtx dt_lock;		/* lock for GDT and LDT */
 
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)

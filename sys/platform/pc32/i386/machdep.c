@@ -86,6 +86,7 @@
 
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
+#include <sys/mutex2.h>
 
 #include <sys/user.h>
 #include <sys/exec.h>
@@ -174,6 +175,7 @@ u_long ebda_addr = 0;
 int imcr_present = 0;
 
 int naps = 0; /* # of Applications processors */
+struct mtx dt_lock;		/* lock for GDT and LDT */
 
 u_int base_memory;
 
