@@ -117,6 +117,7 @@
 struct softclock_pcpu {
 	struct callout_tailq *callwheel;
 	struct callout * volatile next;
+	struct callout *running;/* currently running callout */
 	int softticks;		/* softticks index */
 	int curticks;		/* per-cpu ticks counter */
 	int isrunning;
@@ -291,6 +292,7 @@ loop:
 			sc->next = TAILQ_NEXT(c, c_links.tqe);
 			TAILQ_REMOVE(bucket, c, c_links.tqe);
 
+			sc->running = c;
 			c_func = c->c_func;
 			c_arg = c->c_arg;
 			c->c_func = NULL;
@@ -299,6 +301,7 @@ loop:
 			crit_exit();
 			c_func(c_arg);
 			crit_enter();
+			sc->running = NULL;
 			/* NOTE: list may have changed */
 		}
 		++sc->softticks;
@@ -359,7 +362,7 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *),
 	sc = &softclock_pcpu_ary[gd->gd_cpuid];
 	crit_enter_gd(gd);
 
-	if (c->c_flags & CALLOUT_PENDING)
+	if (c->c_flags & CALLOUT_ACTIVE)
 		callout_stop(c);
 
 	if (to_ticks <= 0)
@@ -389,6 +392,9 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *),
  * structure regardless of cpu.
  *
  * WARNING! This routine may be called from an IPI
+ *
+ * WARNING! This function can return while it's c_func is still running
+ *	    in the callout thread, a secondary check may be needed.
  */
 int
 callout_stop(struct callout *c)
@@ -475,6 +481,38 @@ callout_stop(struct callout *c)
 	}
 	crit_exit_gd(gd);
 	return (1);
+}
+
+/*
+ * Terminate a callout
+ *
+ * This function will stop any pending callout and also block while the
+ * callout's function is running.  It should only be used in cases where
+ * no deadlock is possible (due to the callout function acquiring locks
+ * that the current caller of callout_terminate() already holds), when
+ * the caller is ready to destroy the callout structure.
+ *
+ * This function clears the CALLOUT_DID_INIT flag.
+ *
+ * lwkt_token locks are ok.
+ */
+void
+callout_terminate(struct callout *c)
+{
+	softclock_pcpu_t sc;
+
+	if (c->c_flags & CALLOUT_DID_INIT) {
+		callout_stop(c);
+		sc = &softclock_pcpu_ary[c->c_gd->gd_cpuid];
+		if (sc->running == c) {
+			kprintf("callout_terminate: race averted func %p\n",
+				c->c_func);
+			while (sc->running == c)
+				tsleep(&sc->running, 0, "crace", 1);
+		}
+		KKASSERT((c->c_flags & (CALLOUT_PENDING|CALLOUT_ACTIVE)) == 0);
+		c->c_flags &= ~CALLOUT_DID_INIT;
+	}
 }
 
 /*

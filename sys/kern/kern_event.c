@@ -331,9 +331,8 @@ filt_proc(struct knote *kn, long hint)
 }
 
 /*
- * The callout interlocks with callout_stop() (or should), so the
- * knote should still be a valid structure.  However the timeout
- * can race a deletion so if KN_DELETING is set we just don't touch
+ * The callout interlocks with callout_terminate() but can still
+ * race a deletion so if KN_DELETING is set we just don't touch
  * the knote.
  */
 static void
@@ -390,13 +389,19 @@ filt_timerattach(struct knote *kn)
 	return (0);
 }
 
+/*
+ * This function is called with the knote flagged locked but it is
+ * still possible to race a callout event due to the callback blocking.
+ * We must call callout_terminate() instead of callout_stop() to deal
+ * with the race.
+ */
 static void
 filt_timerdetach(struct knote *kn)
 {
 	struct callout *calloutp;
 
 	calloutp = (struct callout *)kn->kn_hook;
-	callout_stop(calloutp);
+	callout_terminate(calloutp);
 	FREE(calloutp, M_KQUEUE);
 	kq_ncallouts--;
 }
