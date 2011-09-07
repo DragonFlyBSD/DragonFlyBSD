@@ -79,6 +79,7 @@ uid_t uid;
 int dobackup, docompare, dodir, dopreserve, dostrip, nommap, safecopy, verbose;
 mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 const char *suffix = BACKUP_SUFFIX;
+char  *destdir;
 
 static int file_getgroup(const char *etcdir, const char *group, gid_t *gidret);
 static int file_getowner(const char *etcdir, const char *owner, uid_t *uidret);
@@ -114,7 +115,7 @@ main(int argc, char **argv)
 	owner = NULL;
 	etcdir = NULL;
 
-	while ((ch = getopt(argc, argv, "L:B:bCcdf:g:lMm:o:pSsv")) != -1)
+	while ((ch = getopt(argc, argv, "L:B:bCcdf:g:lMm:o:pSsv:D:")) != -1)
 		switch((char)ch) {
 		case 'L':
 			etcdir = optarg;
@@ -133,6 +134,9 @@ main(int argc, char **argv)
 			break;
 		case 'd':
 			dodir = 1;
+			break;
+		case 'D':
+			destdir = optarg;
 			break;
 		case 'f':
 			flags = optarg;
@@ -850,11 +854,11 @@ void
 usage(void)
 {
 	fprintf(stderr, "\
-usage: install [-bCcpSsv] [-B suffix] [-f flags] [-g group] [-m mode]\n\
+usage: install [-bCcpSsv] [-B suffix] [-D dest] [-f flags] [-g group] [-m mode]\n\
                [-o owner] file1 file2\n\
-       install [-bCcpSsv] [-B suffix] [-f flags] [-g group] [-m mode]\n\
+       install [-bCcpSsv] [-B suffix] [-D dest] [-f flags] [-g group] [-m mode]\n\
                [-o owner] file1 ... fileN directory\n\
-       install -d [-v] [-g group] [-m mode] [-o owner] directory ...\n");
+       install -d [-v] [-D dest] [-g group] [-m mode] [-o owner] directory ...\n");
 	exit(EX_USAGE);
 	/* NOTREACHED */
 }
