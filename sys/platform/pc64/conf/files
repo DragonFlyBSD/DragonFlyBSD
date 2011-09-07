@@ -51,6 +51,14 @@ emulation/linux/x86_64/linux32_locore.s	optional	compat_linux32	  \
 emulation/linux/x86_64/linux32_machdep.c	optional	compat_linux32
 emulation/linux/x86_64/linux32_sysent.c	optional	compat_linux32
 emulation/linux/x86_64/linux32_sysvec.c	optional	compat_linux32
+emulation/ndis/kern_ndis.c	optional	ndisapi pci
+emulation/ndis/kern_windrv.c	optional	ndisapi pci
+emulation/ndis/subr_hal.c	optional	ndisapi pci
+emulation/ndis/subr_ndis.c	optional	ndisapi pci
+emulation/ndis/subr_ntoskrnl.c	optional	ndisapi pci
+emulation/ndis/subr_pe.c	optional	ndisapi pci
+emulation/ndis/subr_usbd.c	optional	ndisapi pci
+emulation/ndis/winx64_wrap.S	optional	ndisapi pci
 
 # XXX use assembler versions of bf_enc and des_enc
 crypto/blowfish/bf_enc.c		optional	ipsec ipsec_esp
@@ -96,6 +104,11 @@ dev/video/fb/fb.c			optional	vga
 dev/video/fb/splash.c			optional	splash
 dev/video/fb/vga.c			optional	vga
 dev/powermng/est/est.c			optional	cpu_enable_est
+dev/netif/ndis/if_ndis.c		optional	ndis
+dev/netif/ndis/if_ndis_pccard.c		optional	ndis pccard
+dev/netif/ndis/if_ndis_pci.c		optional	ndis cardbus
+dev/netif/ndis/if_ndis_pci.c		optional	ndis pci
+dev/netif/ndis/if_ndis_usb.c		optional	ndis usb
 dev/misc/kbd/atkbd.c			optional	atkbd
 dev/misc/kbd/atkbdc.c			optional	atkbdc
 dev/misc/kbd/kbd.c			optional	atkbd

@@ -10,9 +10,6 @@ MAN=	aic.4 apm.4 ar.4 asr.4 \
 	spkr.4 sr.4 stl.4 \
 	tx.4 viapm.4 vx.4
 
-# XXX re-add when adjusted to the new 802.11 framework
-#MAN+=	ndis.4 \
-
 MLINKS=	spkr.4 speaker.4 \
 	stl.4 stli.4
 

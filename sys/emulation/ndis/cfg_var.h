@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2003
  *	Bill Paul <wpaul@windriver.com>.  All rights reserved.
  *
@@ -29,8 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/compat/ndis/cfg_var.h,v 1.2 2003/12/18 03:51:21 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/cfg_var.h,v 1.1 2004/07/29 20:51:33 dillon Exp $
+ * $FreeBSD: src/sys/compat/ndis/cfg_var.h,v 1.3 2005/01/05 22:34:36 imp Exp $
  */
 
 #ifndef _CFG_VAR_H_

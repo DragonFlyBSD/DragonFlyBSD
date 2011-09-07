@@ -228,12 +228,13 @@ struct region_descriptor {
 #define GBIOSARGS_SEL	14	/* BIOS interface (Arguments) */
 #define	GTLS_START	15	/* Thread TLS Descriptor */
 #define	GTLS_END	17	/* Thread TLS Descriptor */
+#define	GNDIS_SEL	18	/* For the NDIS layer */
 
 #define NGTLS		(GTLS_END - GTLS_START + 1)
 #ifdef BDE_DEBUGGER
 #define	NGDT		21	/* some of 11-17 are reserved for debugger */
 #else
-#define NGDT 		18
+#define NGDT 		19
 #endif
 
 /*

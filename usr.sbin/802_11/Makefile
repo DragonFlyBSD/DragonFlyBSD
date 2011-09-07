@@ -1,5 +1,3 @@
-# $DragonFly: src/usr.sbin/802_11/Makefile,v 1.3 2006/09/02 05:40:35 sephe Exp $
-
-SUBDIR= wpa_passphrase wpa_supplicant wpa_cli hostapd hostapd_cli
+SUBDIR=	hostapd hostapd_cli ndis_events wpa_cli wpa_passphrase wpa_supplicant
 
 .include <bsd.subdir.mk>

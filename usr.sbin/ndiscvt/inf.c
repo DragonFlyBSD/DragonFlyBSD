@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/ndiscvt/inf.c,v 1.2 2005/12/05 02:40:27 swildner Exp $
+ * $FreeBSD: src/usr.sbin/ndiscvt/inf.c,v 1.19 2008/12/27 08:03:32 weongyo Exp $
  */
 
 #include <stdio.h>
@@ -54,12 +54,17 @@ static struct assign_head ah;
 static char	*sstrdup	(const char *);
 static struct assign
 		*find_assign	(const char *, const char *);
+static struct assign
+		*find_next_assign
+				(struct assign *);
 static struct section
 		*find_section	(const char *);
 static void	dump_deviceids_pci	(void);
 static void	dump_deviceids_pcmcia	(void);
+static void	dump_deviceids_usb	(void);
 static void	dump_pci_id	(const char *);
 static void	dump_pcmcia_id	(const char *);
+static void	dump_usb_id	(const char *);
 static void	dump_regvals	(void);
 static void	dump_paramreg	(const struct section *,
 				const struct reg *, int);
@@ -79,6 +84,7 @@ inf_parse(FILE *fp, FILE *outfp)
 
 	dump_deviceids_pci();
 	dump_deviceids_pcmcia();
+	dump_deviceids_usb();
 	fprintf(outfp, "#ifdef NDIS_REGVALS\n");
 	dump_regvals();
 	fprintf(outfp, "#endif /* NDIS_REGVALS */\n");
@@ -123,6 +129,24 @@ find_assign(const char *s, const char *k)
 		}
 	}
 	return(NULL);
+}
+
+static struct assign *
+find_next_assign(struct assign *a)
+{
+	struct assign *assign;
+
+	TAILQ_FOREACH(assign, &ah, link) {
+		if (assign == a)
+			break;
+	}
+
+	assign = assign->link.tqe_next;
+
+	if (assign == NULL || assign->section != a->section)
+		return(NULL);
+
+	return (assign);
 }
 
 static const char *
@@ -230,22 +254,49 @@ dump_pci_id(const char *s)
 }
 
 static void
+dump_usb_id(const char *s)
+{
+	char *p;
+	char vidstr[7], pidstr[7];
+
+	p = strcasestr(s, "VID_");
+	if (p == NULL)
+		return;
+	p += 4;
+	strcpy(vidstr, "0x");
+	strncat(vidstr, p, 4);
+	p = strcasestr(s, "PID_");
+	if (p == NULL)
+		return;
+	p += 4;
+	strcpy(pidstr, "0x");
+	strncat(pidstr, p, 4);
+	if (p == NULL)
+		return;
+
+	fprintf(ofp, "\t\\\n\t{ %s, %s, ", vidstr, pidstr);
+}
+
+static void
 dump_deviceids_pci(void)
 {
 	struct assign *manf, *dev;
 	struct section *sec;
 	struct assign *assign;
 	char xpsec[256];
-	int found = 0;
+	int first = 1, found = 0;
 
 	/* Find manufacturer name */
 	manf = find_assign("Manufacturer", NULL);
+
+nextmanf:
 
 	/* Find manufacturer section */
 	if (manf->vals[1] != NULL &&
 	    (strcasecmp(manf->vals[1], "NT.5.1") == 0 ||
 	    strcasecmp(manf->vals[1], "NTx86") == 0 ||
-	    strcasecmp(manf->vals[1], "NTx86.5.1") == 0)) {
+	    strcasecmp(manf->vals[1], "NTx86.5.1") == 0 ||
+	    strcasecmp(manf->vals[1], "NTamd64") == 0)) {
 		/* Handle Windows XP INF files. */
 		snprintf(xpsec, sizeof(xpsec), "%s.%s",
 		    manf->vals[0], manf->vals[1]);
@@ -266,12 +317,15 @@ dump_deviceids_pci(void)
 	}
 
 	if (found == 0)
-		return;
+		goto done;
 
 	found = 0;
 
-	/* Emit start of PCI device table */
-	fprintf (ofp, "#define NDIS_PCI_DEV_TABLE");
+	if (first == 1) {
+		/* Emit start of PCI device table */
+		fprintf (ofp, "#define NDIS_PCI_DEV_TABLE");
+		first = 0;
+	}
 
 retry:
 
@@ -302,10 +356,18 @@ retry:
 		goto retry;
 	}
 
+	/* Handle Manufacturer sections with multiple entries. */
+	manf = find_next_assign(manf);
+
+	if (manf != NULL)
+		goto nextmanf;
+
+done:
 	/* Emit end of table */
 
 	fprintf(ofp, "\n\n");
 
+	return;
 }
 
 static void
@@ -315,16 +377,19 @@ dump_deviceids_pcmcia(void)
 	struct section *sec;
 	struct assign *assign;
 	char xpsec[256];
-	int found = 0;
+	int first = 1, found = 0;
 
 	/* Find manufacturer name */
 	manf = find_assign("Manufacturer", NULL);
+
+nextmanf:
 
 	/* Find manufacturer section */
 	if (manf->vals[1] != NULL &&
 	    (strcasecmp(manf->vals[1], "NT.5.1") == 0 ||
 	    strcasecmp(manf->vals[1], "NTx86") == 0 ||
-	    strcasecmp(manf->vals[1], "NTx86.5.1") == 0)) {
+	    strcasecmp(manf->vals[1], "NTx86.5.1") == 0 ||
+	    strcasecmp(manf->vals[1], "NTamd64") == 0)) {
 		/* Handle Windows XP INF files. */
 		snprintf(xpsec, sizeof(xpsec), "%s.%s",
 		    manf->vals[0], manf->vals[1]);
@@ -345,12 +410,15 @@ dump_deviceids_pcmcia(void)
 	}
 
 	if (found == 0)
-		return;
+		goto done;
 
 	found = 0;
 
-	/* Emit start of PCMCIA device table */
-	fprintf (ofp, "#define NDIS_PCMCIA_DEV_TABLE");
+	if (first == 1) {
+		/* Emit start of PCMCIA device table */
+		fprintf (ofp, "#define NDIS_PCMCIA_DEV_TABLE");
+		first = 0;
+	}
 
 retry:
 
@@ -381,10 +449,111 @@ retry:
 		goto retry;
 	}
 
+	/* Handle Manufacturer sections with multiple entries. */
+	manf = find_next_assign(manf);
+
+	if (manf != NULL)
+		goto nextmanf;
+
+done:
 	/* Emit end of table */
 
 	fprintf(ofp, "\n\n");
 
+	return;
+}
+
+static void
+dump_deviceids_usb(void)
+{
+	struct assign *manf, *dev;
+	struct section *sec;
+	struct assign *assign;
+	char xpsec[256];
+	int first = 1, found = 0;
+
+	/* Find manufacturer name */
+	manf = find_assign("Manufacturer", NULL);
+
+nextmanf:
+
+	/* Find manufacturer section */
+	if (manf->vals[1] != NULL &&
+	    (strcasecmp(manf->vals[1], "NT.5.1") == 0 ||
+	    strcasecmp(manf->vals[1], "NTx86") == 0 ||
+	    strcasecmp(manf->vals[1], "NTx86.5.1") == 0 ||
+	    strcasecmp(manf->vals[1], "NTamd64") == 0)) {
+		/* Handle Windows XP INF files. */
+		snprintf(xpsec, sizeof(xpsec), "%s.%s",
+		    manf->vals[0], manf->vals[1]);
+		sec = find_section(xpsec);
+	} else
+		sec = find_section(manf->vals[0]);
+
+	/* See if there are any USB device definitions. */
+
+	TAILQ_FOREACH(assign, &ah, link) {
+		if (assign->section == sec) {
+			dev = find_assign("strings", assign->key);
+			if (strcasestr(assign->vals[1], "USB") != NULL) {
+				found++;
+				break;
+			}
+		}
+	}
+
+	if (found == 0)
+		goto done;
+
+	found = 0;
+
+	if (first == 1) {
+		/* Emit start of USB device table */
+		fprintf (ofp, "#define NDIS_USB_DEV_TABLE");
+		first = 0;
+	}
+
+retry:
+
+	/*
+	 * Now run through all the device names listed
+	 * in the manufacturer section and dump out the
+	 * device descriptions and vendor/device IDs.
+	 */
+
+	TAILQ_FOREACH(assign, &ah, link) {
+		if (assign->section == sec) {
+			dev = find_assign("strings", assign->key);
+			/* Emit device IDs. */
+			if (strcasestr(assign->vals[1], "USB") != NULL)
+				dump_usb_id(assign->vals[1]);
+			else
+				continue;
+			/* Emit device description */
+			fprintf (ofp, "\t\\\n\t\"%s\" },", dev->vals[0]);
+			found++;
+		}
+	}
+
+	/* Someone tried to fool us. Shame on them. */
+	if (!found) {
+		found++;
+		sec = find_section(manf->vals[0]);
+		goto retry;
+	}
+
+	/* Handle Manufacturer sections with multiple entries. */
+	manf = find_next_assign(manf);
+
+	if (manf != NULL)
+		goto nextmanf;
+
+done:
+	/* Emit end of table */
+
+	fprintf(ofp, "\n\n");
+
+	return;
 }
 
 static void
@@ -495,8 +664,10 @@ dump_defaultinfo(const struct section *s, const struct reg *r, int devidx)
 			continue;
 		fprintf(ofp, "\n\t{ \"%s\" }, %d },", reg->value == NULL ? "" :
 		    stringcvt(reg->value), devidx);
-			break;
+		return;
 	}
+	/* Default registry entry missing */
+	fprintf(ofp, "\n\t{ \"\" }, %d },", devidx);
 	return;
 }
 
@@ -570,14 +741,20 @@ dump_regvals(void)
 	if (strcasecmp(assign->vals[0], "$windows nt$") == 0)
 		is_winnt++;
 
+	/* Emit start of block */
+	fprintf (ofp, "ndis_cfg ndis_regvals[] = {");
+
 	/* Find manufacturer name */
 	manf = find_assign("Manufacturer", NULL);
+
+nextmanf:
 
 	/* Find manufacturer section */
 	if (manf->vals[1] != NULL &&
 	    (strcasecmp(manf->vals[1], "NT.5.1") == 0 ||
 	    strcasecmp(manf->vals[1], "NTx86") == 0 ||
-	    strcasecmp(manf->vals[1], "NTx86.5.1") == 0)) {
+	    strcasecmp(manf->vals[1], "NTx86.5.1") == 0 ||
+	    strcasecmp(manf->vals[1], "NTamd64") == 0)) {
 		is_winxp++;
 		/* Handle Windows XP INF files. */
 		snprintf(sname, sizeof(sname), "%s.%s",
@@ -585,9 +762,6 @@ dump_regvals(void)
 		sec = find_section(sname);
 	} else
 		sec = find_section(manf->vals[0]);
-
-	/* Emit start of block */
-	fprintf (ofp, "ndis_cfg ndis_regvals[] = {");
 
 retry:
 
@@ -599,9 +773,15 @@ retry:
 			 * Look for section names with .NT, unless
 			 * this is a WinXP .INF file.
 			 */
+
 			if (is_winxp) {
 				sprintf(sname, "%s.NTx86", assign->vals[0]);
 				dev = find_assign(sname, "AddReg");
+				if (dev == NULL) {
+					sprintf(sname, "%s.NT",
+					    assign->vals[0]);
+					dev = find_assign(sname, "AddReg");
+				}
 				if (dev == NULL)
 					dev = find_assign(assign->vals[0],
 					    "AddReg");
@@ -629,6 +809,11 @@ retry:
 		found++;
 		goto retry;
 	}
+
+	manf = find_next_assign(manf);
+
+	if (manf != NULL)
+		goto nextmanf;
 
 	fprintf(ofp, "\n\t{ NULL, NULL, { 0 }, 0 }\n};\n\n");
 

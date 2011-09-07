@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2003
  *	Bill Paul <wpaul@windriver.com>.  All rights reserved.
  *
@@ -29,8 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/compat/ndis/subr_hal.c,v 1.12 2004/04/19 22:39:04 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_hal.c,v 1.4 2006/12/23 00:27:02 swildner Exp $
+ * $FreeBSD: src/sys/compat/ndis/subr_hal.c,v 1.32 2009/11/02 11:07:42 rpaulo Exp $
  */
 
 #include <sys/param.h>
@@ -40,140 +39,171 @@
 #include <sys/callout.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
+#include <sys/mutex.h>
 #include <sys/proc.h>
+#include <sys/sched.h>
+#include <sys/module.h>
 
 #include <sys/systm.h>
+
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
 
-#include <machine/clock.h>
+#include <emulation/ndis/pe_var.h>
+#include <emulation/ndis/resource_var.h>
+#include <emulation/ndis/cfg_var.h>
+#include <emulation/ndis/ntoskrnl_var.h>
+#include <emulation/ndis/hal_var.h>
 
-#include "regcall.h"
-#include "pe_var.h"
-#include "resource_var.h"
-#include "ntoskrnl_var.h"
-#include "ndis_var.h"
-#include "hal_var.h"
-
-#define FUNC void(*)(void)
-
-__stdcall static void hal_stall_exec_cpu(uint32_t);
-__stdcall static void hal_writeport_buf_ulong(uint32_t *,
+static void KeStallExecutionProcessor(uint32_t);
+static void WRITE_PORT_BUFFER_ULONG(uint32_t *,
 	uint32_t *, uint32_t);
-__stdcall static void hal_writeport_buf_ushort(uint16_t *,
+static void WRITE_PORT_BUFFER_USHORT(uint16_t *,
 	uint16_t *, uint32_t);
-__stdcall static void hal_writeport_buf_uchar(uint8_t *,
+static void WRITE_PORT_BUFFER_UCHAR(uint8_t *,
 	uint8_t *, uint32_t);
-__stdcall static void hal_writeport_ulong(uint32_t *, uint32_t);
-__stdcall static void hal_writeport_ushort(uint16_t *, uint16_t);
-__stdcall static void hal_writeport_uchar(uint8_t *, uint8_t);
-__stdcall static uint32_t hal_readport_ulong(uint32_t *);
-__stdcall static uint16_t hal_readport_ushort(uint16_t *);
-__stdcall static uint8_t hal_readport_uchar(uint8_t *);
-__stdcall static void hal_readport_buf_ulong(uint32_t *,
+static void WRITE_PORT_ULONG(uint32_t *, uint32_t);
+static void WRITE_PORT_USHORT(uint16_t *, uint16_t);
+static void WRITE_PORT_UCHAR(uint8_t *, uint8_t);
+static uint32_t READ_PORT_ULONG(uint32_t *);
+static uint16_t READ_PORT_USHORT(uint16_t *);
+static uint8_t READ_PORT_UCHAR(uint8_t *);
+static void READ_PORT_BUFFER_ULONG(uint32_t *,
 	uint32_t *, uint32_t);
-__stdcall static void hal_readport_buf_ushort(uint16_t *,
+static void READ_PORT_BUFFER_USHORT(uint16_t *,
 	uint16_t *, uint32_t);
-__stdcall static void hal_readport_buf_uchar(uint8_t *,
+static void READ_PORT_BUFFER_UCHAR(uint8_t *,
 	uint8_t *, uint32_t);
-__stdcall static uint64_t hal_perfcount(uint64_t *);
-__stdcall static void dummy (void);
+static uint64_t KeQueryPerformanceCounter(uint64_t *);
+static void _KeLowerIrql(uint8_t);
+static uint8_t KeRaiseIrqlToDpcLevel(void);
+static void dummy (void);
 
-extern struct mtx_pool *ndis_mtxpool;
+#define NDIS_MAXCPUS 64
+static struct lock disp_lock[NDIS_MAXCPUS];
 
-__stdcall static void
-hal_stall_exec_cpu(uint32_t usecs)
+int
+hal_libinit(void)
+{
+	image_patch_table	*patch;
+	int			i;
+
+	for (i = 0; i < NDIS_MAXCPUS; i++)
+		lockinit(&disp_lock[i], "HAL preemption lock", 0,
+		    LK_CANRECURSE);
+
+	patch = hal_functbl;
+	while (patch->ipt_func != NULL) {
+		windrv_wrap((funcptr)patch->ipt_func,
+		    (funcptr *)&patch->ipt_wrap,
+		    patch->ipt_argcnt, patch->ipt_ftype);
+		patch++;
+	}
+
+	return (0);
+}
+
+int
+hal_libfini(void)
+{
+	image_patch_table	*patch;
+	int			i;
+
+	for (i = 0; i < NDIS_MAXCPUS; i++)
+		lockuninit(&disp_lock[i]);
+
+	patch = hal_functbl;
+	while (patch->ipt_func != NULL) {
+		windrv_unwrap(patch->ipt_wrap);
+		patch++;
+	}
+
+	return (0);
+}
+
+static void
+KeStallExecutionProcessor(uint32_t usecs)
 {
 	DELAY(usecs);
-	return;
 }
 
-__stdcall static void
-hal_writeport_ulong(uint32_t *port, uint32_t val)
+static void
+WRITE_PORT_ULONG(uint32_t *port, uint32_t val)
 {
 	bus_space_write_4(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port, val);
-	return;
 }
 
-__stdcall static void
-hal_writeport_ushort(uint16_t *port, uint16_t val)
+static void
+WRITE_PORT_USHORT(uint16_t *port, uint16_t val)
 {
 	bus_space_write_2(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port, val);
-	return;
 }
 
-__stdcall static void
-hal_writeport_uchar(uint8_t *port, uint8_t val)
+static void
+WRITE_PORT_UCHAR(uint8_t *port, uint8_t val)
 {
 	bus_space_write_1(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port, val);
-	return;
 }
 
-__stdcall static void
-hal_writeport_buf_ulong(uint32_t *port, uint32_t *val, uint32_t cnt)
+static void
+WRITE_PORT_BUFFER_ULONG(uint32_t *port, uint32_t *val, uint32_t cnt)
 {
 	bus_space_write_multi_4(NDIS_BUS_SPACE_IO, 0x0,
 	    (bus_size_t)port, val, cnt);
-	return;
 }
 
-__stdcall static void
-hal_writeport_buf_ushort(uint16_t *port, uint16_t *val, uint32_t cnt)
+static void
+WRITE_PORT_BUFFER_USHORT(uint16_t *port, uint16_t *val, uint32_t cnt)
 {
 	bus_space_write_multi_2(NDIS_BUS_SPACE_IO, 0x0,
 	    (bus_size_t)port, val, cnt);
-	return;
 }
 
-__stdcall static void
-hal_writeport_buf_uchar(uint8_t *port, uint8_t *val, uint32_t cnt)
+static void
+WRITE_PORT_BUFFER_UCHAR(uint8_t *port, uint8_t *val, uint32_t cnt)
 {
 	bus_space_write_multi_1(NDIS_BUS_SPACE_IO, 0x0,
 	    (bus_size_t)port, val, cnt);
-	return;
 }
 
-__stdcall static uint16_t
-hal_readport_ushort(uint16_t *port)
+static uint16_t
+READ_PORT_USHORT(uint16_t *port)
 {
-	return(bus_space_read_2(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port));
+	return (bus_space_read_2(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port));
 }
 
-__stdcall static uint32_t
-hal_readport_ulong(uint32_t *port)
+static uint32_t
+READ_PORT_ULONG(uint32_t *port)
 {
-	return(bus_space_read_4(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port));
+	return (bus_space_read_4(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port));
 }
 
-__stdcall static uint8_t
-hal_readport_uchar(uint8_t *port)
+static uint8_t
+READ_PORT_UCHAR(uint8_t *port)
 {
-	return(bus_space_read_1(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port));
+	return (bus_space_read_1(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port));
 }
 
-__stdcall static void
-hal_readport_buf_ulong(uint32_t *port, uint32_t *val, uint32_t cnt)
+static void
+READ_PORT_BUFFER_ULONG(uint32_t *port, uint32_t *val, uint32_t cnt)
 {
 	bus_space_read_multi_4(NDIS_BUS_SPACE_IO, 0x0,
 	    (bus_size_t)port, val, cnt);
-	return;
 }
 
-__stdcall static void
-hal_readport_buf_ushort(uint16_t *port, uint16_t *val, uint32_t cnt)
+static void
+READ_PORT_BUFFER_USHORT(uint16_t *port, uint16_t *val, uint32_t cnt)
 {
 	bus_space_read_multi_2(NDIS_BUS_SPACE_IO, 0x0,
 	    (bus_size_t)port, val, cnt);
-	return;
 }
 
-__stdcall static void
-hal_readport_buf_uchar(uint8_t *port, uint8_t *val, uint32_t cnt)
+static void
+READ_PORT_BUFFER_UCHAR(uint8_t *port, uint8_t *val, uint32_t cnt)
 {
 	bus_space_read_multi_1(NDIS_BUS_SPACE_IO, 0x0,
 	    (bus_size_t)port, val, cnt);
-	return;
 }
 
 /*
@@ -196,13 +226,19 @@ hal_readport_buf_uchar(uint8_t *port, uint8_t *val, uint32_t cnt)
  * until the current thread lowers the IRQL to something less than
  * DISPATCH_LEVEL.
  *
- * In FreeBSD, ISRs run in interrupt threads, so to duplicate the
- * Windows notion of IRQLs, we use the following rules:
+ * There's another commonly used IRQL in Windows, which is APC_LEVEL.
+ * An APC is an Asynchronous Procedure Call, which differs from a DPC
+ * (Defered Procedure Call) in that a DPC is queued up to run in
+ * another thread, while an APC runs in the thread that scheduled
+ * it (similar to a signal handler in a UNIX process). We don't
+ * actually support the notion of APCs in FreeBSD, so for now, the
+ * only IRQLs we're interested in are DISPATCH_LEVEL and PASSIVE_LEVEL.
  *
- * PASSIVE_LEVEL == normal kernel thread priority
- * DISPATCH_LEVEL == lowest interrupt thread priotity (PI_SOFT)
- * DEVICE_LEVEL == highest interrupt thread priority  (PI_REALTIME)
- * HIGH_LEVEL == interrupts disabled (critical_enter())
+ * To simulate DISPATCH_LEVEL, we raise the current thread's priority
+ * to TDPRI_INT_HIGH, which is the highest we can give it. This should,
+ * if I understand things correctly, prevent anything except for an
+ * interrupt thread from preempting us. PASSIVE_LEVEL is basically
+ * everything else.
  *
  * Be aware that, at least on the x86 arch, the Windows spinlock
  * functions are divided up in peculiar ways. The actual spinlock
@@ -221,105 +257,189 @@ hal_readport_buf_uchar(uint8_t *port, uint8_t *val, uint32_t cnt)
  * KeAcquireSpinLock() must be running at IRQL <= DISPATCH_LEVEL. If
  * we detect someone trying to acquire a spinlock from DEVICE_LEVEL
  * or HIGH_LEVEL, we panic.
+ *
+ * Alternate sleep-lock-based spinlock implementation
+ * --------------------------------------------------
+ *
+ * The earlier spinlock implementation was arguably a bit of a hack
+ * and presented several problems. It was basically designed to provide
+ * the functionality of spinlocks without incurring the wrath of
+ * WITNESS. We could get away with using both our spinlock implementation
+ * and FreeBSD sleep locks at the same time, but if WITNESS knew what
+ * we were really up to, it would have spanked us rather severely.
+ *
+ * There's another method we can use based entirely on sleep locks.
+ * First, it's important to realize that everything we're locking
+ * resides inside Project Evil itself: any critical data being locked
+ * by drivers belongs to the drivers, and should not be referenced
+ * by any other OS code outside of the NDISulator. The priority-based
+ * locking scheme has system-wide effects, just like real spinlocks
+ * (blocking preemption affects the whole CPU), but since we keep all
+ * our critical data private, we can use a simpler mechanism that
+ * affects only code/threads directly related to Project Evil.
+ *
+ * The idea is to create a sleep lock mutex for each CPU in the system.
+ * When a CPU running in the NDISulator wants to acquire a spinlock, it
+ * does the following:
+ * - Pin ourselves to the current CPU
+ * - Acquire the mutex for the current CPU
+ * - Spin on the spinlock variable using atomic test and set, just like
+ *   a real spinlock.
+ * - Once we have the lock, we execute our critical code
+ *
+ * To give up the lock, we do:
+ * - Clear the spinlock variable with an atomic op
+ * - Release the per-CPU mutex
+ * - Unpin ourselves from the current CPU.
+ *
+ * On a uniprocessor system, this means all threads that access protected
+ * data are serialized through the per-CPU mutex. After one thread
+ * acquires the 'spinlock,' any other thread that uses a spinlock on the
+ * current CPU will block on the per-CPU mutex, which has the same general
+ * effect of blocking pre-emption, but _only_ for those threads that are
+ * running NDISulator code.
+ *
+ * On a multiprocessor system, threads on different CPUs all block on
+ * their respective per-CPU mutex, and the atomic test/set operation
+ * on the spinlock variable provides inter-CPU synchronization, though
+ * only for threads running NDISulator code.
+ *
+ * This method solves an important problem. In Windows, you're allowed
+ * to do an ExAllocatePoolWithTag() with a spinlock held, provided you
+ * allocate from NonPagedPool. This implies an atomic heap allocation
+ * that will not cause the current thread to sleep. (You can't sleep
+ * while holding real spinlock: clowns will eat you.) But in FreeBSD,
+ * malloc(9) _always_ triggers the acquisition of a sleep lock, even
+ * when you use M_NOWAIT. This is not a problem for FreeBSD native
+ * code: you're allowed to sleep in things like interrupt threads. But
+ * it is a problem with the old priority-based spinlock implementation:
+ * even though we get away with it most of the time, we really can't
+ * do a malloc(9) after doing a KeAcquireSpinLock() or KeRaiseIrql().
+ * With the new implementation, it's not a problem: you're allowed to
+ * acquire more than one sleep lock (as long as you avoid lock order
+ * reversals).
+ *
+ * The one drawback to this approach is that now we have a lot of
+ * contention on one per-CPU mutex within the NDISulator code. Whether
+ * or not this is preferable to the expected Windows spinlock behavior
+ * of blocking pre-emption is debatable.
  */
 
-__stdcall __regcall uint8_t
-hal_lock(REGARGS1(kspin_lock *lock))
+uint8_t
+KfAcquireSpinLock(kspin_lock *lock)
 {
 	uint8_t			oldirql;
 
-	/* I am so going to hell for this. */
-	if (hal_irql() > DISPATCH_LEVEL)
-		panic("IRQL_NOT_LESS_THAN_OR_EQUAL");
+	KeRaiseIrql(DISPATCH_LEVEL, &oldirql);
+	KeAcquireSpinLockAtDpcLevel(lock);
 
-	oldirql = FASTCALL1(hal_raise_irql, DISPATCH_LEVEL);
-	FASTCALL1(ntoskrnl_lock_dpc, lock);
-
-	return(oldirql);
+	return (oldirql);
 }
 
-__stdcall __regcall void
-hal_unlock(REGARGS2(kspin_lock *lock, uint8_t newirql))
+void
+KfReleaseSpinLock(kspin_lock *lock, uint8_t newirql)
 {
-	FASTCALL1(ntoskrnl_unlock_dpc, lock);
-	FASTCALL1(hal_lower_irql, newirql);
-
-	return;
+	KeReleaseSpinLockFromDpcLevel(lock);
+	KeLowerIrql(newirql);
 }
 
-__stdcall uint8_t
-hal_irql(void)
+uint8_t
+KeGetCurrentIrql(void)
 {
-	if (AT_DISPATCH_LEVEL(curthread))
-		return(DISPATCH_LEVEL);
-	return(PASSIVE_LEVEL);
+	if (lockstatus(&disp_lock[curthread->td_gd->gd_cpuid], curthread))
+		return (DISPATCH_LEVEL);
+	return (PASSIVE_LEVEL);
 }
 
-__stdcall static uint64_t
-hal_perfcount(uint64_t *freq)
+static uint64_t
+KeQueryPerformanceCounter(uint64_t *freq)
 {
 	if (freq != NULL)
 		*freq = hz;
 
-	return((uint64_t)ticks);
+	return ((uint64_t)ticks);
 }
 
-__stdcall __regcall uint8_t
-hal_raise_irql(REGARGS1(uint8_t irql))
+uint8_t
+KfRaiseIrql(uint8_t irql)
 {
 	uint8_t			oldirql;
 
-	if (irql < hal_irql())
+	oldirql = KeGetCurrentIrql();
+
+	/* I am so going to hell for this. */
+	if (oldirql > irql)
 		panic("IRQL_NOT_LESS_THAN");
 
-	if (hal_irql() == DISPATCH_LEVEL)
-		return(DISPATCH_LEVEL);
+	if (oldirql != DISPATCH_LEVEL) {
+#if 0 /* XXX swildner */
+		sched_pin();
+#endif
+		lockmgr(&disp_lock[curthread->td_gd->gd_cpuid], LK_EXCLUSIVE);
+	}
+/*kprintf("RAISE IRQL: %d %d\n", irql, oldirql);*/
 
-	oldirql = lwkt_getpri_self();
-	lwkt_setpri_self(TDPRI_INT_HIGH);
-
-	return(oldirql);
+	return (oldirql);
 }
 
-__stdcall __regcall void 
-hal_lower_irql(REGARGS1(uint8_t oldirql))
+void
+KfLowerIrql(uint8_t oldirql)
 {
 	if (oldirql == DISPATCH_LEVEL)
 		return;
 
-	if (hal_irql() != DISPATCH_LEVEL)
+	if (KeGetCurrentIrql() != DISPATCH_LEVEL)
 		panic("IRQL_NOT_GREATER_THAN");
 
-	lwkt_setpri_self(oldirql);
+	lockmgr(&disp_lock[curthread->td_gd->gd_cpuid], LK_RELEASE);
+#if 0 /* XXX swildner */
+	sched_unpin();
+#endif
 }
 
-__stdcall
+static uint8_t
+KeRaiseIrqlToDpcLevel(void)
+{
+	uint8_t			irql;
+
+	KeRaiseIrql(DISPATCH_LEVEL, &irql);
+	return (irql);
+}
+
+static void
+_KeLowerIrql(uint8_t oldirql)
+{
+	KeLowerIrql(oldirql);
+}
+
 static void dummy(void)
 {
-	kprintf ("hal dummy called...\n");
-	return;
+	kprintf("hal dummy called...\n");
 }
 
 image_patch_table hal_functbl[] = {
-	{ "KeStallExecutionProcessor",	(FUNC)hal_stall_exec_cpu },
-	{ "WRITE_PORT_ULONG",		(FUNC)hal_writeport_ulong },
-	{ "WRITE_PORT_USHORT",		(FUNC)hal_writeport_ushort },
-	{ "WRITE_PORT_UCHAR",		(FUNC)hal_writeport_uchar },
-	{ "WRITE_PORT_BUFFER_ULONG",	(FUNC)hal_writeport_buf_ulong },
-	{ "WRITE_PORT_BUFFER_USHORT",	(FUNC)hal_writeport_buf_ushort },
-	{ "WRITE_PORT_BUFFER_UCHAR",	(FUNC)hal_writeport_buf_uchar },
-	{ "READ_PORT_ULONG",		(FUNC)hal_readport_ulong },
-	{ "READ_PORT_USHORT",		(FUNC)hal_readport_ushort },
-	{ "READ_PORT_UCHAR",		(FUNC)hal_readport_uchar },
-	{ "READ_PORT_BUFFER_ULONG",	(FUNC)hal_readport_buf_ulong },
-	{ "READ_PORT_BUFFER_USHORT",	(FUNC)hal_readport_buf_ushort },
-	{ "READ_PORT_BUFFER_UCHAR",	(FUNC)hal_readport_buf_uchar },
-	{ "KfAcquireSpinLock",		(FUNC)hal_lock },
-	{ "KfReleaseSpinLock",		(FUNC)hal_unlock },
-	{ "KeGetCurrentIrql",		(FUNC)hal_irql },
-	{ "KeQueryPerformanceCounter",	(FUNC)hal_perfcount },
-	{ "KfLowerIrql",		(FUNC)hal_lower_irql },
-	{ "KfRaiseIrql",		(FUNC)hal_raise_irql },
+	IMPORT_SFUNC(KeStallExecutionProcessor, 1),
+	IMPORT_SFUNC(WRITE_PORT_ULONG, 2),
+	IMPORT_SFUNC(WRITE_PORT_USHORT, 2),
+	IMPORT_SFUNC(WRITE_PORT_UCHAR, 2),
+	IMPORT_SFUNC(WRITE_PORT_BUFFER_ULONG, 3),
+	IMPORT_SFUNC(WRITE_PORT_BUFFER_USHORT, 3),
+	IMPORT_SFUNC(WRITE_PORT_BUFFER_UCHAR, 3),
+	IMPORT_SFUNC(READ_PORT_ULONG, 1),
+	IMPORT_SFUNC(READ_PORT_USHORT, 1),
+	IMPORT_SFUNC(READ_PORT_UCHAR, 1),
+	IMPORT_SFUNC(READ_PORT_BUFFER_ULONG, 3),
+	IMPORT_SFUNC(READ_PORT_BUFFER_USHORT, 3),
+	IMPORT_SFUNC(READ_PORT_BUFFER_UCHAR, 3),
+	IMPORT_FFUNC(KfAcquireSpinLock, 1),
+	IMPORT_FFUNC(KfReleaseSpinLock, 1),
+	IMPORT_SFUNC(KeGetCurrentIrql, 0),
+	IMPORT_SFUNC(KeQueryPerformanceCounter, 1),
+	IMPORT_FFUNC(KfLowerIrql, 1),
+	IMPORT_FFUNC(KfRaiseIrql, 1),
+	IMPORT_SFUNC(KeRaiseIrqlToDpcLevel, 0),
+#undef KeLowerIrql
+	IMPORT_SFUNC_MAP(KeLowerIrql, _KeLowerIrql, 1),
 
 	/*
 	 * This last entry is a catch-all for any function we haven't
@@ -328,9 +448,9 @@ image_patch_table hal_functbl[] = {
 	 * in this table.
 	 */
 
-	{ NULL, (FUNC)dummy },
+	{ NULL, (FUNC)dummy, NULL, 0, WINDRV_WRAP_STDCALL },
 
 	/* End of list. */
 
-	{ NULL, NULL },
+	{ NULL, NULL, NULL }
 };

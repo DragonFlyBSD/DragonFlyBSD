@@ -296,6 +296,10 @@ options 	COMPAT_43
 #
 options		COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
 
+# Enable NDIS binary driver support
+options 	NDISAPI
+device		ndis
+
 #
 # These three options provide support for System V Interface
 # Definition-style interprocess communication, in the form of shared

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2003
  *	Bill Paul <wpaul@windriver.com>.  All rights reserved.
  *
@@ -29,72 +29,64 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pccard.c,v 1.6 2004/07/11 00:19:30 wpaul Exp $
+ * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pccard.c,v 1.19 2010/12/16 15:19:32 jhb Exp $
  */
 
 #include <sys/ctype.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/proc.h>
 #include <sys/module.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
+#include <sys/lock.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <net/if_media.h>
 
+#include <sys/bus.h>
+#include <sys/rman.h>
+
 #include <netproto/802_11/ieee80211_var.h>
 
-#include <emulation/ndis/regcall.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+
 #include <emulation/ndis/pe_var.h>
+#include <emulation/ndis/cfg_var.h>
 #include <emulation/ndis/resource_var.h>
 #include <emulation/ndis/ntoskrnl_var.h>
 #include <emulation/ndis/ndis_var.h>
-#include <emulation/ndis/cfg_var.h>
-#include "if_ndisvar.h"
+#include <dev/netif/ndis/if_ndisvar.h>
 
 #include <bus/pccard/pccardvar.h>
 #include "card_if.h"
 
-#include "ndis_driver_data.h"
-
-#ifdef NDIS_PCMCIA_DEV_TABLE 
-
-MODULE_DEPEND(ndis, pccard, 1, 1, 1);
-MODULE_DEPEND(ndis, wlan, 1, 1, 1);
-MODULE_DEPEND(ndis, ndisapi, 1, 1, 1);
-
-/*
- * Various supported device vendors/types and their names.
- * These are defined in the ndis_driver_data.h file.
- */
-static struct ndis_pccard_type ndis_devs[] = {
-#ifdef NDIS_PCMCIA_DEV_TABLE
-	NDIS_PCMCIA_DEV_TABLE
-#endif
-	{ NULL, NULL, NULL }
-};
+MODULE_DEPEND(if_ndis, pccard, 1, 1, 1);
 
 static int ndis_probe_pccard	(device_t);
 static int ndis_attach_pccard	(device_t);
+static int ndis_detach_pccard	(device_t);
 static struct resource_list *ndis_get_resource_list
 				(device_t, device_t);
+static int ndis_devcompare	(interface_type,
+				 struct ndis_pccard_type *, device_t);
+extern int ndisdrv_modevent	(module_t, int, void *);
 extern int ndis_attach		(device_t);
 extern int ndis_shutdown	(device_t);
 extern int ndis_detach		(device_t);
 extern int ndis_suspend		(device_t);
 extern int ndis_resume		(device_t);
 
+extern unsigned char drv_data[];
+
 static device_method_t ndis_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		ndis_probe_pccard),
 	DEVMETHOD(device_attach,	ndis_attach_pccard),
-	DEVMETHOD(device_detach,	ndis_detach),
+	DEVMETHOD(device_detach,	ndis_detach_pccard),
 	DEVMETHOD(device_shutdown,	ndis_shutdown),
 	DEVMETHOD(device_suspend,	ndis_suspend),
 	DEVMETHOD(device_resume,	ndis_resume),
@@ -112,24 +104,38 @@ static device_method_t ndis_methods[] = {
 };
 
 static driver_t ndis_driver = {
-#ifdef NDIS_DEVNAME
-	NDIS_DEVNAME,
-#else
 	"ndis",
-#endif
 	ndis_methods,
 	sizeof(struct ndis_softc)
 };
 
 static devclass_t ndis_devclass;
 
-#ifdef NDIS_MODNAME
-#define NDIS_MODNAME_OVERRIDE_PCMCIA(x)					\
-	DRIVER_MODULE(x, pccard, ndis_driver, ndis_devclass, NULL, NULL)
-NDIS_MODNAME_OVERRIDE_PCMCIA(NDIS_MODNAME);
-#else
-DRIVER_MODULE(ndis, pccard, ndis_driver, ndis_devclass, NULL, NULL);
-#endif
+DRIVER_MODULE(if_ndis, pccard, ndis_driver, ndis_devclass, ndisdrv_modevent, NULL);
+
+static int
+ndis_devcompare(interface_type bustype, struct ndis_pccard_type *t,
+    device_t dev)
+{
+	const char		*prodstr, *vendstr;
+
+	if (bustype != PCMCIABus)
+		return(FALSE);
+
+	prodstr = pccard_get_product_str(dev);
+	vendstr = pccard_get_vendor_str(dev);
+
+	while(t->ndis_name != NULL) {
+		if (strcasecmp(vendstr, t->ndis_vid) == 0 &&
+		    strcasecmp(prodstr, t->ndis_did) == 0) {
+			device_set_desc(dev, t->ndis_name);
+			return(TRUE);
+		}
+		t++;
+	}
+
+	return(FALSE);
+}
 
 /*
  * Probe for an NDIS device. Check the PCI vendor and device
@@ -138,22 +144,19 @@ DRIVER_MODULE(ndis, pccard, ndis_driver, ndis_devclass, NULL, NULL);
 static int
 ndis_probe_pccard(device_t dev)
 {
-	struct ndis_pccard_type	*t;
-	const char		*prodstr, *vendstr;
-	int			error;
+	driver_object		*drv;
+	struct drvdb_ent	*db;
 
-	t = ndis_devs;
+	drv = windrv_lookup(0, "PCCARD Bus");
+	if (drv == NULL)
+		return(ENXIO);
 
-	prodstr = pccard_get_product_str(dev);
-	vendstr = pccard_get_vendor_str(dev);
+	db = windrv_match((matchfuncptr)ndis_devcompare, dev);
 
-	while(t->ndis_name != NULL) {
-		if (ndis_strcasecmp(vendstr, t->ndis_vid) == 0 &&
-		    ndis_strcasecmp(prodstr, t->ndis_did) == 0) {
-			device_set_desc(dev, t->ndis_name);
-			return(0);
-		}
-		t++;
+	if (db != NULL) {
+		/* Create PDO for this device instance */
+		windrv_create_pdo(drv, dev);
+		return(0);
 	}
 
 	return(ENXIO);
@@ -171,10 +174,20 @@ ndis_attach_pccard(device_t dev)
 	struct ndis_pccard_type	*t;
 	int			devidx = 0;
 	const char		*prodstr, *vendstr;
+	struct drvdb_ent	*db;
 
+	wlan_serialize_enter();
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
 	sc->ndis_dev = dev;
+
+	db = windrv_match((matchfuncptr)ndis_devcompare, dev);
+	if (db == NULL) {
+		wlan_serialize_exit();
+		return (ENXIO);
+	}
+	sc->ndis_dobj = db->windrv_object;
+	sc->ndis_regvals = db->windrv_regvals;
 	resource_list_init(&sc->ndis_rl);
 
 	sc->ndis_io_rid = 0;
@@ -208,18 +221,14 @@ ndis_attach_pccard(device_t dev)
 
 	/* Figure out exactly which device we matched. */
 
-	t = ndis_devs;
+	t = db->windrv_devlist;
 
-	error = pccard_get_product_str(dev, &prodstr);
-	if (error)
-		return(error);
-	error = pccard_get_vendor_str(dev, &vendstr);
-	if (error)
-		return(error);
+	prodstr = pccard_get_product_str(dev);
+	vendstr = pccard_get_vendor_str(dev);
 
 	while(t->ndis_name != NULL) {
-		if (ndis_strcasecmp(vendstr, t->ndis_vid) == 0 &&
-		    ndis_strcasecmp(prodstr, t->ndis_did) == 0)
+		if (strcasecmp(vendstr, t->ndis_vid) == 0 &&
+		    strcasecmp(prodstr, t->ndis_did) == 0)
 			break;
 		t++;
 		devidx++;
@@ -230,6 +239,18 @@ ndis_attach_pccard(device_t dev)
 	error = ndis_attach(dev);
 
 fail:
+	wlan_serialize_exit();
+	return(error);
+}
+
+static int
+ndis_detach_pccard(device_t dev)
+{
+	int error = 0;
+
+	wlan_serialize_enter();
+	error = ndis_detach(dev);
+	wlan_serialize_exit();
 	return(error);
 }
 
@@ -241,8 +262,6 @@ ndis_get_resource_list(device_t dev, device_t child)
 	sc = device_get_softc(dev);
 	return (&sc->ndis_rl);
 }
-
-#endif /* NDIS_PCI_DEV_TABLE */
 
 #define NDIS_AM_RID 3
 

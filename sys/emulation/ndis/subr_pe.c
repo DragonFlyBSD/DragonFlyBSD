@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2003
  *	Bill Paul <wpaul@windriver.com>.  All rights reserved.
  *
@@ -29,8 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/ndis/subr_pe.c,v 1.3 2006/12/23 00:27:02 swildner Exp $
- * $FreeBSD: src/sys/compat/ndis/subr_pe.c,v 1.7 2004/01/13 22:49:45 obrien Exp $
+ * $FreeBSD: src/sys/compat/ndis/subr_pe.c,v 1.15 2009/11/02 11:07:42 rpaulo Exp $
  */
 
 /*
@@ -55,14 +54,14 @@
 #include <sys/systm.h>
 #else
 #include <stdio.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #define kprintf		printf	/* ndiscvt(8) uses this file */
 #endif
 
-#include "regcall.h"
-#include "pe_var.h"
+#include <emulation/ndis/pe_var.h>
 
 static vm_offset_t pe_functbl_match(image_patch_table *, char *);
 
@@ -88,7 +87,7 @@ pe_get_dos_header(vm_offset_t imgbase, image_dos_header *hdr)
 
 	bcopy ((char *)imgbase, (char *)hdr, sizeof(image_dos_header));
 
-	return(0);
+	return (0);
 }
 
 /*
@@ -109,10 +108,10 @@ pe_is_nt_image(vm_offset_t imgbase)
 		dos_hdr = (image_dos_header *)imgbase;
 		signature = *(uint32_t *)(imgbase + dos_hdr->idh_lfanew);
 		if (signature == IMAGE_NT_SIGNATURE)
-			return(0);
+			return (0);
 	}
 
-	return(ENOEXEC);
+	return (ENOEXEC);
 }
 
 /*
@@ -128,7 +127,7 @@ pe_get_optional_header(vm_offset_t imgbase, image_optional_header *hdr)
 	image_nt_header		*nt_hdr;
 
 	if (imgbase == 0 || hdr == NULL)
-		return(EINVAL);
+		return (EINVAL);
 
 	if (pe_is_nt_image(imgbase))
 		return (EINVAL);
@@ -137,9 +136,9 @@ pe_get_optional_header(vm_offset_t imgbase, image_optional_header *hdr)
 	nt_hdr = (image_nt_header *)(imgbase + dos_hdr->idh_lfanew);
 
 	bcopy ((char *)&nt_hdr->inh_optionalhdr, (char *)hdr,
-	    sizeof(image_optional_header));
+	    nt_hdr->inh_filehdr.ifh_optionalhdrlen);
 
-	return(0);
+	return (0);
 }
 
 /*
@@ -154,7 +153,7 @@ pe_get_file_header(vm_offset_t imgbase, image_file_header *hdr)
 	image_nt_header		*nt_hdr;
 
 	if (imgbase == 0 || hdr == NULL)
-		return(EINVAL);
+		return (EINVAL);
 
 	if (pe_is_nt_image(imgbase))
 		return (EINVAL);
@@ -162,10 +161,18 @@ pe_get_file_header(vm_offset_t imgbase, image_file_header *hdr)
 	dos_hdr = (image_dos_header *)imgbase;
 	nt_hdr = (image_nt_header *)(imgbase + dos_hdr->idh_lfanew);
 
+	/*
+	 * Note: the size of the nt_header is variable since it
+	 * can contain optional fields, as indicated by ifh_optionalhdrlen.
+	 * However it happens we're only interested in fields in the
+	 * non-variant portion of the nt_header structure, so we don't
+	 * bother copying the optional parts here.
+	 */
+
 	bcopy ((char *)&nt_hdr->inh_filehdr, (char *)hdr,
 	    sizeof(image_file_header));
 
-	return(0);
+	return (0);
 }
 
 /*
@@ -181,19 +188,18 @@ pe_get_section_header(vm_offset_t imgbase, image_section_header *hdr)
 	image_section_header	*sect_hdr;
 
 	if (imgbase == 0 || hdr == NULL)
-		return(EINVAL);
+		return (EINVAL);
 
 	if (pe_is_nt_image(imgbase))
 		return (EINVAL);
 
 	dos_hdr = (image_dos_header *)imgbase;
 	nt_hdr = (image_nt_header *)(imgbase + dos_hdr->idh_lfanew);
-	sect_hdr = (image_section_header *)((vm_offset_t)nt_hdr +
-	    sizeof(image_nt_header));
+	sect_hdr = IMAGE_FIRST_SECTION(nt_hdr);
 
 	bcopy ((char *)sect_hdr, (char *)hdr, sizeof(image_section_header));
 
-	return(0);
+	return (0);
 }
 
 /*
@@ -206,7 +212,7 @@ pe_numsections(vm_offset_t imgbase)
 	image_file_header	file_hdr;
 
 	if (pe_get_file_header(imgbase, &file_hdr))
-		return(0);
+		return (0);
 
 	return (file_hdr.ifh_numsections);
 }
@@ -222,7 +228,7 @@ pe_imagebase(vm_offset_t imgbase)
 	image_optional_header	optional_hdr;
 
 	if (pe_get_optional_header(imgbase, &optional_hdr))
-		return(0);
+		return (0);
 
 	return (optional_hdr.ioh_imagebase);
 }
@@ -239,18 +245,18 @@ pe_directory_offset(vm_offset_t imgbase, uint32_t diridx)
 	vm_offset_t		dir;
 
 	if (pe_get_optional_header(imgbase, &opt_hdr))
-		return(0);
+		return (0);
 
 	if (diridx >= opt_hdr.ioh_rva_size_cnt)
-		return(0);
+		return (0);
 
 	dir = opt_hdr.ioh_datadir[diridx].idd_vaddr;
 
-	return(pe_translate_addr(imgbase, dir));
+	return (pe_translate_addr(imgbase, dir));
 }
 
 vm_offset_t
-pe_translate_addr(vm_offset_t imgbase, uint32_t rva)
+pe_translate_addr(vm_offset_t imgbase, vm_offset_t rva)
 {
 	image_optional_header	opt_hdr;
 	image_section_header	*sect_hdr;
@@ -259,14 +265,13 @@ pe_translate_addr(vm_offset_t imgbase, uint32_t rva)
 	int			i = 0, sections, fixedlen;
 
 	if (pe_get_optional_header(imgbase, &opt_hdr))
-		return(0);
+		return (0);
 
 	sections = pe_numsections(imgbase);
 
 	dos_hdr = (image_dos_header *)imgbase;
 	nt_hdr = (image_nt_header *)(imgbase + dos_hdr->idh_lfanew);
-	sect_hdr = (image_section_header *)((vm_offset_t)nt_hdr +
-	    sizeof(image_nt_header));
+	sect_hdr = IMAGE_FIRST_SECTION(nt_hdr);
 
 	/*
 	 * The test here is to see if the RVA falls somewhere
@@ -282,17 +287,17 @@ pe_translate_addr(vm_offset_t imgbase, uint32_t rva)
 		fixedlen += ((opt_hdr.ioh_sectalign - 1) -
 		    sect_hdr->ish_misc.ish_vsize) &
 		    (opt_hdr.ioh_sectalign - 1);
-		if (sect_hdr->ish_vaddr <= (u_int32_t)rva &&
+		if (sect_hdr->ish_vaddr <= (uint32_t)rva &&
 		    (sect_hdr->ish_vaddr + fixedlen) >
-		    (u_int32_t)rva)
+		    (uint32_t)rva)
 			break;
 		sect_hdr++;
 	}
 
 	if (i > sections)
-		return(0);
+		return (0);
 
-	return((vm_offset_t)(imgbase + rva - sect_hdr->ish_vaddr +
+	return ((vm_offset_t)(imgbase + rva - sect_hdr->ish_vaddr +
 	    sect_hdr->ish_rawdataaddr));
 }
 
@@ -304,7 +309,7 @@ pe_translate_addr(vm_offset_t imgbase, uint32_t rva)
 
 int
 pe_get_section(vm_offset_t imgbase, image_section_header *hdr,
-	       const char *name)
+    const char *name)
 {
 	image_dos_header	*dos_hdr;
 	image_nt_header		*nt_hdr;
@@ -313,7 +318,7 @@ pe_get_section(vm_offset_t imgbase, image_section_header *hdr,
 	int			i, sections;
 
 	if (imgbase == 0 || hdr == NULL)
-		return(EINVAL);
+		return (EINVAL);
 
 	if (pe_is_nt_image(imgbase))
 		return (EINVAL);
@@ -322,14 +327,13 @@ pe_get_section(vm_offset_t imgbase, image_section_header *hdr,
 
 	dos_hdr = (image_dos_header *)imgbase;
 	nt_hdr = (image_nt_header *)(imgbase + dos_hdr->idh_lfanew);
-	sect_hdr = (image_section_header *)((vm_offset_t)nt_hdr +
-	    sizeof(image_nt_header));
+	sect_hdr = IMAGE_FIRST_SECTION(nt_hdr);
 
 	for (i = 0; i < sections; i++) {
 		if (!strcmp ((char *)&sect_hdr->ish_name, name)) {
 			bcopy((char *)sect_hdr, (char *)hdr,
 			    sizeof(image_section_header));
-			return(0);
+			return (0);
 		} else
 			sect_hdr++;
 	}
@@ -350,7 +354,10 @@ pe_relocate(vm_offset_t imgbase)
 	image_section_header	sect;
 	image_base_reloc	*relhdr;
 	uint16_t		rel, *sloc;
-	uint32_t		base, delta, *lloc;
+	vm_offset_t		base;
+	vm_size_t		delta;
+	uint32_t		*lloc;
+	uint64_t		*qloc;
 	int			i, count;
 	vm_offset_t		txt;
 
@@ -387,8 +394,15 @@ pe_relocate(vm_offset_t imgbase)
 				    relhdr->ibr_vaddr + IMR_RELOFFSET(rel));
 				*sloc += (delta & 0xFFFF);
 				break;
+			case IMAGE_REL_BASED_DIR64:
+				qloc = (uint64_t *)pe_translate_addr(imgbase,
+				    relhdr->ibr_vaddr + IMR_RELOFFSET(rel));
+				*qloc = pe_translate_addr(imgbase,
+				    (*qloc - base));
+                                break;
+
 			default:
-				kprintf ("[%d]reloc type: %d\n",i,
+				kprintf("[%d]reloc type: %d\n", i,
 				    IMR_RELTYPE(rel));
 				break;
 			}
@@ -397,7 +411,7 @@ pe_relocate(vm_offset_t imgbase)
 		    relhdr->ibr_blocksize);
 	} while (relhdr->ibr_blocksize);
 
-	return(0);
+	return (0);
 }
 
 /*
@@ -405,18 +419,20 @@ pe_relocate(vm_offset_t imgbase)
  * may be linked against several modules, typically HAL.dll, ntoskrnl.exe
  * and NDIS.SYS. For each module, there is a list of imported function
  * names and their addresses.
+ *
+ * Note: module names are case insensitive!
  */
 
 int
 pe_get_import_descriptor(vm_offset_t imgbase, image_import_descriptor *desc,
-			 char *module)
+    char *module)
 {	
 	vm_offset_t		offset;
 	image_import_descriptor	*imp_desc;
 	char			*modname;
 
 	if (imgbase == 0 || module == NULL || desc == NULL)
-		return(EINVAL);
+		return (EINVAL);
 
 	offset = pe_directory_offset(imgbase, IMAGE_DIRECTORY_ENTRY_IMPORT);
 	if (offset == 0)
@@ -427,10 +443,10 @@ pe_get_import_descriptor(vm_offset_t imgbase, image_import_descriptor *desc,
 	while (imp_desc->iid_nameaddr) {
 		modname = (char *)pe_translate_addr(imgbase,
 		    imp_desc->iid_nameaddr);
-		if (!strncmp(module, modname, strlen(module))) {
+		if (!strncasecmp(module, modname, strlen(module))) {
 			bcopy((char *)imp_desc, (char *)desc,
 			    sizeof(image_import_descriptor));
-			return(0);
+			return (0);
 		}
 		imp_desc++;
 	}
@@ -448,7 +464,7 @@ pe_get_messagetable(vm_offset_t imgbase, message_resource_data **md)
 	int			i;
 
 	if (imgbase == 0)
-		return(EINVAL);
+		return (EINVAL);
 
 	offset = pe_directory_offset(imgbase, IMAGE_DIRECTORY_ENTRY_RESOURCE);
 	if (offset == 0)
@@ -476,15 +492,15 @@ pe_get_messagetable(vm_offset_t imgbase, message_resource_data **md)
 		    dent2->irde_dataoff);
 		*md = (message_resource_data *)pe_translate_addr(imgbase,
 		    rent->irde_offset);
-		return(0);
+		return (0);
 	}
 
-	return(ENOENT);
+	return (ENOENT);
 }
 
 int
 pe_get_message(vm_offset_t imgbase, uint32_t id, char **str, int *len,
-	       uint16_t *flags)
+    uint16_t *flags)
 {
 	message_resource_data	*md = NULL;
 	message_resource_block	*mb;
@@ -494,7 +510,7 @@ pe_get_message(vm_offset_t imgbase, uint32_t id, char **str, int *len,
 	pe_get_messagetable(imgbase, &md);
 
 	if (md == NULL)
-		return(ENOENT);
+		return (ENOENT);
 
 	mb = (message_resource_block *)((uintptr_t)md +
 	    sizeof(message_resource_data));
@@ -509,12 +525,12 @@ pe_get_message(vm_offset_t imgbase, uint32_t id, char **str, int *len,
 			*str = me->mre_text;
 			*len = me->mre_len;
 			*flags = me->mre_flags;
-			return(0);
+			return (0);
 		}
 		mb++;
 	}
 
-	return(ENOENT);
+	return (ENOENT);
 }
 
 /*
@@ -529,17 +545,25 @@ pe_functbl_match(image_patch_table *functbl, char *name)
 	image_patch_table	*p;
 
 	if (functbl == NULL || name == NULL)
-		return(0);
+		return (0);
 
 	p = functbl;
 
 	while (p->ipt_name != NULL) {
 		if (!strcmp(p->ipt_name, name))
-			return((vm_offset_t)p->ipt_func);
+			return ((vm_offset_t)p->ipt_wrap);
 		p++;
 	}
-	kprintf ("no match for %s\n", name);
-	return((vm_offset_t)p->ipt_func);
+	kprintf("no match for %s\n", name);
+
+	/*
+	 * Return the wrapper pointer for this routine.
+	 * For x86, this is the same as the funcptr.
+	 * For amd64, this points to a wrapper routine
+	 * that does calling convention translation and
+	 * then invokes the underlying routine.
+	 */
+	return ((vm_offset_t)p->ipt_wrap);
 }
 
 /*
@@ -552,8 +576,7 @@ pe_functbl_match(image_patch_table *functbl, char *name)
  */
 
 int
-pe_patch_imports(vm_offset_t imgbase, char *module,
-		 image_patch_table *functbl)
+pe_patch_imports(vm_offset_t imgbase, char *module, image_patch_table *functbl)
 {
 	image_import_descriptor	imp_desc;
 	char			*fname;
@@ -561,10 +584,10 @@ pe_patch_imports(vm_offset_t imgbase, char *module,
 	vm_offset_t		func;
 
 	if (imgbase == 0 || module == NULL || functbl == NULL)
-		return(EINVAL);
+		return (EINVAL);
 
 	if (pe_get_import_descriptor(imgbase, &imp_desc, module))
-		return(ENOEXEC);
+		return (ENOEXEC);
 
 	nptr = (vm_offset_t *)pe_translate_addr(imgbase,
 	    imp_desc.iid_import_name_table_addr);
@@ -578,11 +601,11 @@ pe_patch_imports(vm_offset_t imgbase, char *module,
 			*fptr = func;
 #ifdef notdef
 		if (*fptr == 0)
-			return(ENOENT);
+			return (ENOENT);
 #endif
 		nptr++;
 		fptr++;
 	}
 
-	return(0);
+	return (0);
 }

@@ -1336,6 +1336,15 @@ struct soft_segment_descriptor gdt_segs[] = {
 	0, 0,
 	0,			/* default 32 vs 16 bit size */
 	0  			/* limit granularity (byte/page units)*/ },
+/* GNDIS_SEL	18 NDIS Descriptor */
+{	0x0,			/* segment base address  */
+	0x0,			/* length */
+	0,			/* segment type */
+	0,			/* segment descriptor priority level */
+	0,			/* segment descriptor present */
+	0, 0,
+	0,			/* default 32 vs 16 bit size */
+	0  			/* limit granularity (byte/page units)*/ },
 };
 
 static struct soft_segment_descriptor ldt_segs[] = {

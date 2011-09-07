@@ -22,6 +22,7 @@ COMPAT_OLDISA		opt_compat_oldisa.h
 # (see src/sys/conf/options), except for broken debugging options.
 COMPAT_LINUX		opt_dontuse.h
 LINPROCFS		opt_dontuse.h	#Linux compatible procfs
+NDISAPI			opt_dontuse.h
 
 # i386 SMP options
 

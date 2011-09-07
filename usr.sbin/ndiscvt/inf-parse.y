@@ -30,7 +30,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/ndiscvt/inf-parse.y,v 1.1 2004/07/30 00:24:24 dillon Exp $
+ * $FreeBSD: src/usr.sbin/ndiscvt/inf-parse.y,v 1.2 2004/01/02 04:31:06 wpaul Exp $
  */
 
 #include <stdio.h>

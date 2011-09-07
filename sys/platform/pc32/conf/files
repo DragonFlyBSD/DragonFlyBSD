@@ -58,6 +58,14 @@ emulation/linux/linux_sysctl.c  optional        compat_linux
 emulation/linux/linux_time.c	optional	compat_linux
 emulation/linux/linux_uid16.c   optional        compat_linux
 emulation/linux/linux_util.c	optional	compat_linux
+emulation/ndis/kern_ndis.c	optional ndisapi pci
+emulation/ndis/kern_windrv.c	optional ndisapi pci
+emulation/ndis/subr_hal.c	optional ndisapi pci
+emulation/ndis/subr_ndis.c	optional ndisapi pci
+emulation/ndis/subr_ntoskrnl.c	optional ndisapi pci
+emulation/ndis/subr_pe.c	optional ndisapi pci
+emulation/ndis/subr_usbd.c	optional ndisapi pci
+emulation/ndis/winx32_wrap.S	optional ndisapi pci
 #
 bf_enc.o			optional	ipsec ipsec_esp		\
 	dependency	"$S/crypto/blowfish/arch/i386/bf_enc.S $S/crypto/blowfish/arch/i386/bf_enc_586.S $S/crypto/blowfish/arch/i386/bf_enc_686.S"		\
@@ -119,6 +127,11 @@ dev/powermng/longrun/longrun.c		optional	cpu_enable_longrun
 dev/netif/fe/if_fe.c			optional	fe
 dev/netif/fe/if_fe_isa.c		optional	fe isa
 dev/netif/fe/if_fe_pccard.c		optional	fe pccard
+dev/netif/ndis/if_ndis.c		optional 	ndis
+dev/netif/ndis/if_ndis_pccard.c		optional 	ndis pccard
+dev/netif/ndis/if_ndis_pci.c		optional 	ndis cardbus
+dev/netif/ndis/if_ndis_pci.c		optional 	ndis pci
+dev/netif/ndis/if_ndis_usb.c		optional 	ndis usb
 dev/misc/kbd/atkbd.c			optional	atkbd
 dev/misc/kbd/atkbdc.c			optional	atkbdc
 dev/misc/kbd/kbd.c			optional	atkbd

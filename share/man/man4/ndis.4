@@ -28,17 +28,16 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/man4.i386/ndis.4,v 1.9 2004/12/21 01:09:34 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/ndis.4,v 1.6 2008/07/26 16:25:41 swildner Exp $
+.\" $FreeBSD: src/share/man/man4/ndis.4,v 1.5 2010/03/14 15:49:04 gavin Exp $
 .\"
-.Dd December 10, 2003
-.Dt NDIS 4 i386
+.Dd May 10, 2011
+.Dt NDIS 4
 .Os
 .Sh NAME
 .Nm ndis
 .Nd NDIS miniport driver wrapper
 .Sh SYNOPSIS
-.\".Cd "options NDISAPI"
+.Cd "options NDISAPI"
 .Cd "device ndis"
 .Cd "device wlan"
 .Sh DESCRIPTION
@@ -90,10 +89,8 @@ file, which contains the
 definitions for driver-specific registry keys and other installation
 data such as device identifiers.
 These two files can be converted
-into a
-.Pa ndis_driver_data.h
-file using the
-.Xr ndiscvt 8
+into a kernel module file using the
+.Xr ndisgen 8
 utility.
 This file contains a binary image of the driver plus
 registry key data.
@@ -108,7 +105,7 @@ file.
 The
 .Nm
 driver is designed to support mainly Ethernet and wireless
-network devices with PCI and PCMCIA bus attachments.
+network devices with PCI, PCMCIA and USB bus attachments.
 (Cardbus
 devices are also supported as a subset of PCI.)
 It can
@@ -123,11 +120,11 @@ driver-specific registry keys to control the media setting
 which can be configured via the
 .Xr sysctl 8
 command.
-.Sh EXAMPLES
-Refer to the
-.Sx EXAMPLES
-section of
-.Xr wlan 4 .
+.\".Sh EXAMPLES
+.\"Refer to the
+.\".Sx EXAMPLES
+.\"section of
+.\".Xr wlan 4 .
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "ndis%d: watchdog timeout"
@@ -136,13 +133,17 @@ issued, however the device failed to acknowledge the transmission
 before a timeout expired.
 .El
 .Sh SEE ALSO
+.Xr altq 4 ,
 .Xr arp 4 ,
 .Xr ifmedia 4 ,
 .Xr netintro 4 ,
 .Xr ng_ether 4 ,
 .Xr wlan 4 ,
 .Xr ifconfig 8 ,
-.Xr ndiscvt 8
+.Xr ndis_events 8 ,
+.Xr ndiscvt 8 ,
+.Xr ndisgen 8 ,
+.Xr wpa_supplicant 8
 .Rs
 .%T "NDIS 5.1 specification"
 .%O http://www.microsoft.com
@@ -151,16 +152,9 @@ before a timeout expired.
 The
 .Nm
 device driver first appeared in
-.Fx 5.3
-and was imported into
-.Dx 1.0 .
+.Fx 5.3 .
 .Sh AUTHORS
-.An -nosplit
 The
 .Nm
 driver was written by
 .An Bill Paul Aq wpaul@windriver.com .
-Porting to
-.Dx
-was done by
-.An Matthew Dillon .

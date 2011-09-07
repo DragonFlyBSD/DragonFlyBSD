@@ -30,16 +30,15 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/ndiscvt/inf-token.l,v 1.1 2004/07/30 00:24:24 dillon Exp $
+ * $FreeBSD: src/usr.sbin/ndiscvt/inf-token.l,v 1.3 2004/01/11 21:10:35 mdodd Exp $
  */
 
-#include <sys/types.h>
+#include <regex.h>
 #include <ctype.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <regex.h>
 #include "y.tab.h"
 
 int lineno = 1;

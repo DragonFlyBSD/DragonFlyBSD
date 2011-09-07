@@ -1733,6 +1733,8 @@ TO_REMOVE+=/usr/share/man/man8/xten.8.gz
 TO_REMOVE+=/usr/bin/gprof4
 TO_REMOVE+=/usr/share/misc/gprof.callg
 TO_REMOVE+=/usr/share/misc/gprof.flat
+TO_REMOVE+=/usr/share/man/cat4/i386/ndis.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/ndis.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
@@ -1775,9 +1777,3 @@ TO_REMOVE+=/usr/share/man/man4/rum.4.gz
 TO_REMOVE+=/boot/modules/if_ural.ko
 TO_REMOVE+=/usr/share/man/cat4/ural.4.gz
 TO_REMOVE+=/usr/share/man/man4/ural.4.gz
-TO_REMOVE+=/boot/modules/ndis.ko
-TO_REMOVE+=/usr/share/man/cat4/i386/ndis.4.gz
-TO_REMOVE+=/usr/share/man/man4/i386/ndis.4.gz
-TO_REMOVE+=/usr/sbin/ndiscvt
-TO_REMOVE+=/usr/share/man/cat8/ndiscvt.8.gz
-TO_REMOVE+=/usr/share/man/man8/ndiscvt.8.gz
