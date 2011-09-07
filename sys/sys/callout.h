@@ -69,6 +69,7 @@ struct callout {
 #define CALLOUT_PENDING		0x0004 /* callout is waiting for timeout */
 #define CALLOUT_MPSAFE		0x0008 /* callout does not need the BGL */
 #define CALLOUT_DID_INIT	0x0010 /* safety check */
+#define CALLOUT_RUNNING		0x0020 /* function execution in progress */
 
 struct callout_handle {
 	struct callout *callout;
@@ -93,6 +94,7 @@ void	callout_init (struct callout *);
 void	callout_init_mp (struct callout *);
 void	callout_reset (struct callout *, int, void (*)(void *), void *);
 int	callout_stop (struct callout *);
+void	callout_terminate (struct callout *);
 
 #endif
 
