@@ -31,7 +31,6 @@
 .\"
 .\"	From: @(#)install.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/xinstall/install.1,v 1.16.2.9 2002/07/01 21:01:23 des Exp $
-.\" $DragonFly: src/usr.bin/xinstall/install.1,v 1.6 2007/05/17 08:19:02 swildner Exp $
 .\"
 .Dd September 7, 2011
 .Dt INSTALL 1
@@ -42,9 +41,9 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl bCclMpSsv
-.Op Fl L Ar etcdir
 .Op Fl B Ar suffix
 .Op Fl D Ar destdir
+.Op Fl L Ar etcdir
 .Op Fl f Ar flags
 .Op Fl g Ar group
 .Op Fl m Ar mode
@@ -52,9 +51,9 @@
 .Ar file1 file2
 .Nm
 .Op Fl bCclMpSsv
-.Op Fl L Ar etcdir
 .Op Fl B Ar suffix
 .Op Fl D Ar destdir
+.Op Fl L Ar etcdir
 .Op Fl f Ar flags
 .Op Fl g Ar group
 .Op Fl m Ar mode
@@ -62,8 +61,8 @@
 .Ar file1 ... fileN directory
 .Nm
 .Fl d
-.Op Fl D Ar destdir
 .Op Fl vl
+.Op Fl D Ar destdir
 .Op Fl L Ar etcdir
 .Op Fl g Ar group
 .Op Fl m Ar mode
@@ -128,7 +127,7 @@ Specify the
 (top of the file hierarchy) that the items are installed in to.
 This option is implemented for compatibility with the NetBSD version
 of
-.Nm install
+.Nm
 and does nothing.
 .It Fl f
 Specify the target's file flags; see
