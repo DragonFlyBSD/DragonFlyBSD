@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/wpa_supplicant,v 1.2 2005/10/19 22:26:47 jkim Exp $
-# $DragonFly: src/etc/rc.d/wpa_supplicant,v 1.2 2008/07/07 00:00:56 thomas Exp $
 #
 
 # PROVIDE: wpa_supplicant
@@ -34,14 +33,19 @@ if [ -z "$ifn" ]; then
 	return 1
 fi
 
-case ${ifn} in
-ndis*)
+is_ndis_interface()
+{
+	case `sysctl -n net.wlan.${1#wlan}.%parent 2>/dev/null` in
+		ndis*) true ;;
+		*) false ;;
+	esac
+}
+
+if is_ndis_interface ${ifn}; then
 	driver="ndis"
-	;;
-*)
+else
 	driver="bsd"
-	;;
-esac
+fi
 
 load_rc_config $name
 
