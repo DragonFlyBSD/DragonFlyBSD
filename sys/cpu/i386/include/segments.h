@@ -36,7 +36,6 @@
  *
  *	from: @(#)segments.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/segments.h,v 1.24 1999/12/29 04:33:07 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/segments.h,v 1.13 2007/01/08 03:33:37 dillon Exp $
  */
 
 #ifndef _CPU_SEGMENTS_H_
@@ -270,6 +269,7 @@ extern union descriptor gdt[];
 extern struct soft_segment_descriptor gdt_segs[];
 extern struct gate_descriptor *idt;
 extern union descriptor ldt[NLDT];
+extern struct mtx dt_lock;
 
 void	lgdt		(struct region_descriptor *rdp);
 void	lidt		(struct region_descriptor *rdp);

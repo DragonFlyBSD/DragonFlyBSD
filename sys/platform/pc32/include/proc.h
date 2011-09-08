@@ -34,7 +34,6 @@
  *
  *	from: @(#)proc.h	7.1 (Berkeley) 5/15/91
  * $FreeBSD: src/sys/i386/include/proc.h,v 1.10 1999/08/28 00:44:21 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/proc.h,v 1.4 2003/06/28 04:16:03 dillon Exp $
  */
 
 #ifndef _MACHINE_PROC_H_
@@ -51,9 +50,5 @@ struct trapframe;
 struct mdproc {
 	struct trapframe *md_regs;	/* registers on current frame */
 };
-
-#ifdef _KERNEL
-extern struct mtx dt_lock;
-#endif
 
 #endif /* !_MACHINE_PROC_H_ */
