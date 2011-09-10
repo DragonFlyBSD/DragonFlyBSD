@@ -104,9 +104,6 @@ static struct nd_head ndis_devhead;
 
 /*
  * This allows us to export our symbols to other modules.
- * Note that we call ourselves 'ndisapi' to avoid a namespace
- * collision with if_ndis.ko, which internally calls itself
- * 'ndis.'
  *
  * Note: some of the subsystems depend on each other, so the
  * order in which they're started is important. The order of
