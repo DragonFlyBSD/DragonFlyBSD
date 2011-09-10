@@ -37,7 +37,7 @@
 .Nm ndiscvt
 .Nd convert
 .Tn Windows\[rg]
-NDIS drivers for use with FreeBSD
+NDIS drivers for use with DragonFly
 .Sh SYNOPSIS
 .Nm
 .Op Fl O
@@ -224,7 +224,7 @@ at runtime using the
 command.
 .Pp
 When an NDIS driver tries to open an external file, the
-.Xr ndisapi 9
+.Nm ndisapi
 code will first search for a loaded kernel module that matches the
 name specified in the open request, and if that fails, it will then
 try to open the file from the
