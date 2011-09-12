@@ -180,6 +180,9 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	if (((flags & MAP_ANON) && (fd != -1 || pos != 0)))
 		return (EINVAL);
 
+	if (size == 0)
+		return (EINVAL);
+
 	if (flags & MAP_STACK) {
 		if ((fd != -1) ||
 		    ((prot & (PROT_READ | PROT_WRITE)) != (PROT_READ | PROT_WRITE)))
