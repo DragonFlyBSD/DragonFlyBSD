@@ -96,7 +96,8 @@ extern void	ICU_INTRDIS(int);
 
 extern int	imcr_present;
 
-static int	icu_vectorctl(int, int, int);
+static void	icu_abi_intr_setup(int, int);
+static void	icu_abi_intr_teardown(int);
 static void	icu_finalize(void);
 static void	icu_cleanup(void);
 static void	icu_setdefault(void);
@@ -108,7 +109,8 @@ struct machintr_abi MachIntrABI_ICU = {
 	MACHINTR_ICU,
 	.intrdis	= ICU_INTRDIS,
 	.intren		= ICU_INTREN,
-	.vectorctl	= icu_vectorctl,
+	.intr_setup	= icu_abi_intr_setup,
+	.intr_teardown	= icu_abi_intr_teardown,
 	.finalize	= icu_finalize,
 	.cleanup	= icu_cleanup,
 	.setdefault	= icu_setdefault,
@@ -169,38 +171,36 @@ icu_finalize(void)
 	}
 }
 
-static int
-icu_vectorctl(int op, int intr, int flags)
+static void
+icu_abi_intr_setup(int intr, int flags)
 {
-	int error;
 	register_t ef;
 
-	if (intr < 0 || intr >= ICU_HWI_VECTORS || intr == ICU_IRQ_SLAVE)
-		return EINVAL;
+	KKASSERT(intr >= 0 && intr < ICU_HWI_VECTORS && intr != ICU_IRQ_SLAVE);
 
 	ef = read_rflags();
 	cpu_disable_intr();
-	error = 0;
 
-	switch(op) {
-	case MACHINTR_VECTOR_SETUP:
-		setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYSIGT,
-		       SEL_KPL, 0);
-		machintr_intren(intr);
-		break;
+	setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYSIGT, SEL_KPL, 0);
+	machintr_intren(intr);
 
-	case MACHINTR_VECTOR_TEARDOWN:
-		machintr_intrdis(intr);
-		setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYSIGT,
-		       SEL_KPL, 0);
-		break;
-
-	default:
-		error = EOPNOTSUPP;
-		break;
-	}
 	write_rflags(ef);
-	return error;
+}
+
+static void
+icu_abi_intr_teardown(int intr)
+{
+	register_t ef;
+
+	KKASSERT(intr >= 0 && intr < ICU_HWI_VECTORS && intr != ICU_IRQ_SLAVE);
+
+	ef = read_rflags();
+	cpu_disable_intr();
+
+	machintr_intrdis(intr);
+	setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYSIGT, SEL_KPL, 0);
+
+	write_rflags(ef);
 }
 
 static void

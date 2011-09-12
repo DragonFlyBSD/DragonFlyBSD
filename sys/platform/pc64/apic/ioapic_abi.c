@@ -476,7 +476,8 @@ extern void	IOAPIC_INTRDIS(int);
 
 extern int	imcr_present;
 
-static int	ioapic_vectorctl(int, int, int);
+static void	ioapic_abi_intr_setup(int, int);
+static void	ioapic_abi_intr_teardown(int);
 static void	ioapic_finalize(void);
 static void	ioapic_cleanup(void);
 static void	ioapic_setdefault(void);
@@ -490,7 +491,8 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 	MACHINTR_IOAPIC,
 	.intrdis	= ioapic_abi_intrdis,
 	.intren		= ioapic_abi_intren,
-	.vectorctl	= ioapic_vectorctl,
+	.intr_setup	= ioapic_abi_intr_setup,
+	.intr_teardown	= ioapic_abi_intr_teardown,
 	.finalize	= ioapic_finalize,
 	.cleanup	= ioapic_cleanup,
 	.setdefault	= ioapic_setdefault,
@@ -557,91 +559,90 @@ ioapic_stabilize(void)
 	panic("ioapic_stabilize is called\n");
 }
 
-static int
-ioapic_vectorctl(int op, int intr, int flags)
+static void
+ioapic_abi_intr_setup(int intr, int flags)
 {
-	int error;
-	int vector;
-	int select;
+	int vector, select;
 	uint32_t value;
 	register_t ef;
 
-	if (intr < 0 || intr >= IOAPIC_HWI_VECTORS ||
-	    intr == IOAPIC_HWI_SYSCALL)
-		return EINVAL;
-
-	if (ioapic_irqs[intr].io_addr == NULL)
-		return EINVAL;
+	KKASSERT(intr >= 0 && intr < IOAPIC_HWI_VECTORS &&
+	    intr != IOAPIC_HWI_SYSCALL);
+	KKASSERT(ioapic_irqs[intr].io_addr != NULL);
 
 	ef = read_rflags();
 	cpu_disable_intr();
-	error = 0;
 
-	switch(op) {
-	case MACHINTR_VECTOR_SETUP:
-		vector = IDT_OFFSET + intr;
-		setidt(vector, ioapic_intr[intr], SDT_SYSIGT, SEL_KPL, 0);
+	vector = IDT_OFFSET + intr;
+	setidt(vector, ioapic_intr[intr], SDT_SYSIGT, SEL_KPL, 0);
 
-		/*
-		 * Now reprogram the vector in the IO APIC.  In order to avoid
-		 * losing an EOI for a level interrupt, which is vector based,
-		 * make sure that the IO APIC is programmed for edge-triggering
-		 * first, then reprogrammed with the new vector.  This should
-		 * clear the IRR bit.
-		 */
-		imen_lock();
+	/*
+	 * Now reprogram the vector in the IO APIC.  In order to avoid
+	 * losing an EOI for a level interrupt, which is vector based,
+	 * make sure that the IO APIC is programmed for edge-triggering
+	 * first, then reprogrammed with the new vector.  This should
+	 * clear the IRR bit.
+	 */
+	imen_lock();
 
-		select = ioapic_irqs[intr].io_idx;
-		value = ioapic_read(ioapic_irqs[intr].io_addr, select);
-		value |= IOART_INTMSET;
+	select = ioapic_irqs[intr].io_idx;
+	value = ioapic_read(ioapic_irqs[intr].io_addr, select);
+	value |= IOART_INTMSET;
 
-		ioapic_write(ioapic_irqs[intr].io_addr, select,
-		    (value & ~APIC_TRIGMOD_MASK));
-		ioapic_write(ioapic_irqs[intr].io_addr, select,
-		    (value & ~IOART_INTVEC) | vector);
+	ioapic_write(ioapic_irqs[intr].io_addr, select,
+	    (value & ~APIC_TRIGMOD_MASK));
+	ioapic_write(ioapic_irqs[intr].io_addr, select,
+	    (value & ~IOART_INTVEC) | vector);
 
-		imen_unlock();
+	imen_unlock();
 
-		machintr_intren(intr);
-		break;
-
-	case MACHINTR_VECTOR_TEARDOWN:
-		/*
-		 * Teardown an interrupt vector.  The vector should already be
-		 * installed in the cpu's IDT, but make sure.
-		 */
-		machintr_intrdis(intr);
-
-		vector = IDT_OFFSET + intr;
-		setidt(vector, ioapic_intr[intr], SDT_SYSIGT, SEL_KPL, 0);
-
-		/*
-		 * In order to avoid losing an EOI for a level interrupt, which
-		 * is vector based, make sure that the IO APIC is programmed for
-		 * edge-triggering first, then reprogrammed with the new vector.
-		 * This should clear the IRR bit.
-		 */
-		imen_lock();
-
-		select = ioapic_irqs[intr].io_idx;
-		value = ioapic_read(ioapic_irqs[intr].io_addr, select);
-
-		ioapic_write(ioapic_irqs[intr].io_addr, select,
-		    (value & ~APIC_TRIGMOD_MASK));
-		ioapic_write(ioapic_irqs[intr].io_addr, select,
-		    (value & ~IOART_INTVEC) | vector);
-
-		imen_unlock();
-
-		break;
-
-	default:
-		error = EOPNOTSUPP;
-		break;
-	}
+	machintr_intren(intr);
 
 	write_rflags(ef);
-	return error;
+}
+
+static void
+ioapic_abi_intr_teardown(int intr)
+{
+	int vector, select;
+	uint32_t value;
+	register_t ef;
+
+	KKASSERT(intr >= 0 && intr < IOAPIC_HWI_VECTORS &&
+	    intr != IOAPIC_HWI_SYSCALL);
+	KKASSERT(ioapic_irqs[intr].io_addr != NULL);
+
+	ef = read_rflags();
+	cpu_disable_intr();
+
+	/*
+	 * Teardown an interrupt vector.  The vector should already be
+	 * installed in the cpu's IDT, but make sure.
+	 */
+	machintr_intrdis(intr);
+
+	vector = IDT_OFFSET + intr;
+	setidt(vector, ioapic_intr[intr], SDT_SYSIGT, SEL_KPL, 0);
+
+	/*
+	 * In order to avoid losing an EOI for a level interrupt, which
+	 * is vector based, make sure that the IO APIC is programmed for
+	 * edge-triggering first, then reprogrammed with the new vector.
+	 * This should clear the IRR bit.
+	 */
+	imen_lock();
+
+	select = ioapic_irqs[intr].io_idx;
+	value = ioapic_read(ioapic_irqs[intr].io_addr, select);
+
+	ioapic_write(ioapic_irqs[intr].io_addr, select,
+	    (value & ~APIC_TRIGMOD_MASK));
+	ioapic_write(ioapic_irqs[intr].io_addr, select,
+	    (value & ~IOART_INTVEC) | vector);
+
+	imen_unlock();
+
+	write_rflags(ef);
 }
 
 static void

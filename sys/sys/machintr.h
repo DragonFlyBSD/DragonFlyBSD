@@ -59,7 +59,8 @@ struct machintr_abi {
     enum machintr_type type;
     void	(*intrdis)(int);		/* hardware disable irq */
     void	(*intren)(int);			/* hardware enable irq */
-    int		(*vectorctl)(int, int, int);	/* hardware intr vector ctl */
+    void	(*intr_setup)(int, int);	/* setup intr */
+    void	(*intr_teardown)(int);		/* tear down intr */
     void	(*finalize)(void);		/* final before ints enabled */
     void	(*cleanup)(void);		/* cleanup */
     void	(*setdefault)(void);		/* set default vectors */
@@ -71,10 +72,10 @@ struct machintr_abi {
 
 #define machintr_intren(intr)	MachIntrABI.intren(intr)
 #define machintr_intrdis(intr)	MachIntrABI.intrdis(intr)
-#define machintr_vector_setup(intr, flags)	\
-	    MachIntrABI.vectorctl(MACHINTR_VECTOR_SETUP, intr, flags)
-#define machintr_vector_teardown(intr)		\
-	    MachIntrABI.vectorctl(MACHINTR_VECTOR_TEARDOWN, intr, 0)
+#define machintr_intr_setup(intr, flags) \
+	    MachIntrABI.intr_setup((intr), (flags))
+#define machintr_intr_teardown(intr) \
+	    MachIntrABI.intr_teardown((intr))
 
 #define machintr_intr_config(intr, trig, pola)	\
 	    MachIntrABI.intr_config((intr), (trig), (pola))
