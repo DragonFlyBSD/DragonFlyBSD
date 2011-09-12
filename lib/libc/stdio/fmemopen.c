@@ -1,214 +1,219 @@
-/*
- * Copyright (c) 2011 The DragonFly Project.  All rights reserved.
- *
- * This code is derived from software contributed to The DragonFly Project
- * by Venkatesh Srinivas <me@endeavour.zapto.org>.
+/* $NetBSD: fmemopen.c,v 1.4 2010/09/27 16:50:13 tnozaki Exp $ */
+
+/*-
+ * Copyright (c)2007, 2010 Takehiko NOZAKI,
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name of The DragonFly Project nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific, prior written permission.
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
- * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- */
-/*
- * ----------------------------------------------------------------------------
- * "THE BEER-WARE LICENSE" (Revision 42):
- * <hiten@uk.FreeBSD.ORG> wrote this file.  As long as you retain this notice
- * you can do whatever you want with this stuff. If we meet some day, and you
- * think this stuff is worth it, you can buy me a beer in return. Hiten Pandya.
- * ----------------------------------------------------------------------------
  *
- * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
  */
 
-/*
- * fmemopen -- Open a memory buffer stream
- *
- * POSIX 1003.1-2008
- */
-
+#include <sys/cdefs.h>
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <errno.h>
 
-static int __fmemopen_closefn (void *);
-static int __fmemopen_readfn(void *, char *, int);
-static fpos_t __fmemopen_seekfn (void *, fpos_t, int);
-static int __fmemopen_writefn(void *, const char *, int);
+#include "local.h"
+#include "priv_stdio.h"
 
 struct fmemopen_cookie {
-	char *buffer;
-	int mybuffer;
-	size_t size;
-	size_t pos;
-	size_t maxpos;
+	char *head, *tail, *cur, *eob;
 };
 
-static int
-__fmemopen_readfn(void *cookie, char *buf, int len)
-{
-	struct fmemopen_cookie *c;
-
-	c = (struct fmemopen_cookie *) cookie;
-	if (c == NULL) {
-		errno = EBADF;
-		return (-1);
-	}
-
-	if ((c->pos + len) > c->size) {
-		if (c->pos == c->size)
-			return -1;
-		len = c->size - c->pos;
-	}
-
-	memcpy(buf, &(c->buffer[c->pos]), len);
-
-	c->pos += len;
-
-	if (c->pos > c->maxpos)
-		c->maxpos = c->pos;
-
-	return (len);
+static int min(int x, int y) {
+	return (x > y) ? (y) : (x);
 }
 
 static int
-__fmemopen_writefn (void *cookie, const char *buf, int len)
+fmemopen_read(void *cookie, char *buf, int nbytes)
 {
-	struct fmemopen_cookie *c;
-	int addnullc;
+	struct fmemopen_cookie *p;
+	char *s;
+	int len;
 
-	c = (struct fmemopen_cookie *) cookie;
-	if (c == NULL) {
-		errno = EBADF;
-		return (-1);
-	}
+	assert(cookie != NULL);
+	assert(buf != NULL && nbytes > 0);
 
-	addnullc = ((len == 0) || (buf[len - 1] != '\0')) ? 1 : 0;
+	p = (struct fmemopen_cookie *)cookie;
+	s = p->cur;
+	len = min(p->tail - p->cur, nbytes);
+	bcopy(p->cur, buf, len);
+	p->cur += len;
 
-	if ((c->pos + len + addnullc) > c->size) {
-		if ((c->pos + addnullc) == c->size)
-			return -1;
-		len = c->size - c->pos - addnullc;
-	}
+	return (int)(p->cur - s);
+}
 
-	memcpy(&(c->buffer[c->pos]), buf, len);
+static int
+fmemopen_write(void *cookie, const char *buf, int nbytes)
+{
+	struct fmemopen_cookie *p;
+	char *s;
 
-	c->pos += len;
-	if (c->pos > c->maxpos) {
-		c->maxpos = c->pos;
-		if (addnullc)
-			c->buffer[c->maxpos] = '\0';
-	}
+	assert(cookie != NULL);
+	assert(buf != NULL && nbytes > 0);
 
-	return (len);
+	p = (struct fmemopen_cookie *)cookie;
+	if (p->cur >= p->tail)
+		return 0;
+	s = p->cur;
+	do {
+		if (p->cur == p->tail - 1) {
+			if (*buf == '\0') {
+				*p->cur++ = '\0';
+				goto ok;
+			}
+			break;
+		}
+		*p->cur++ = *buf++;
+	} while (--nbytes > 0);
+	*p->cur = '\0';
+ok:
+	if (p->cur > p->eob)
+		p->eob = p->cur;
+
+	return (int)(p->cur - s);
 }
 
 static fpos_t
-__fmemopen_seekfn(void *cookie, fpos_t pos, int whence)
+fmemopen_seek(void *cookie, fpos_t offset, int whence)
 {
-	fpos_t np = 0;
-	struct fmemopen_cookie *c;
+	struct fmemopen_cookie *p;
+ 
+	assert(cookie != NULL);
 
-	c = (struct fmemopen_cookie *) cookie;
-
-	switch(whence) {
-	case (SEEK_SET):
-		np = pos;
+	p = (struct fmemopen_cookie *)cookie;
+	switch (whence) {
+	case SEEK_SET:
 		break;
-	case (SEEK_CUR):
-		np = c->pos + pos;
+	case SEEK_CUR:
+		offset += p->cur - p->head;
 		break;
-	case (SEEK_END):
-		np = c->size - pos;
+	case SEEK_END:
+		offset += p->eob - p->head;
 		break;
+	default:
+		errno = EINVAL;
+		goto error;
 	}
-
-	if ((np < 0) || (np > c->size))
-		return (-1);
-
-	c->pos = np;
-
-	return (np);
+	if (offset >= (fpos_t)0 && offset <= p->tail - p->head) {
+		p->cur = p->head + (ptrdiff_t)offset;
+		return (fpos_t)(p->cur - p->head);
+	}
+error:
+	return (fpos_t)-1;
 }
 
 static int
-__fmemopen_closefn (void *cookie)
+fmemopen_close0(void *cookie)
 {
-	struct fmemopen_cookie *c;
+	assert(cookie != NULL);
 
-	c = (struct fmemopen_cookie*) cookie;
+	free(cookie);
 
-	if (c->mybuffer)
-		free(c->buffer);
-	free(c);
-
-	return (0);
+	return 0;
 }
+
+static int
+fmemopen_close1(void *cookie)
+{
+	struct fmemopen_cookie *p;
+
+	assert(cookie != NULL);
+
+	p = (struct fmemopen_cookie *)cookie;
+	free(p->head);
+	free(p);
+
+	return 0;
+}
+
 
 FILE *
-fmemopen(void *restrict buffer, size_t s, const char *restrict mode)
+fmemopen(void * __restrict buf, size_t size, const char * __restrict mode)
 {
-	FILE *f = NULL;
-	struct fmemopen_cookie *c;
+	int flags, oflags;
+	FILE *fp;
+	struct fmemopen_cookie *cookie;
 
-	c = malloc(sizeof (struct fmemopen_cookie));
-	if (c == NULL)
+	if (size < (size_t)1)
+		goto invalid;
+
+	flags = __sflags(mode, &oflags);
+	if (flags == 0)
 		return NULL;
 
-	c->mybuffer = (buffer == NULL);
+	if ((oflags & O_RDWR) == 0 && buf == NULL)
+		goto invalid;
 
-	if (c->mybuffer) {
-		c->buffer = malloc(s);
-		if (c->buffer == NULL) {
-			free(c);
-			return NULL;
+	fp = __sfp();
+	if (fp == NULL)
+		return NULL;
+
+	cookie = malloc(sizeof(*cookie));
+	if (cookie == NULL)
+		goto release;
+
+	if (buf == NULL) {
+		cookie->head = malloc(size);
+		if (cookie->head == NULL) {
+			free(cookie);
+			goto release;
 		}
-		c->buffer[0] = '\0';
+		*cookie->head = '\0';
+		fp->_close = &fmemopen_close1;
 	} else {
-		c->buffer = buffer;
+		cookie->head = (char *)buf;
+		if (oflags & O_TRUNC)
+			*cookie->head = '\0';
+		fp->_close = &fmemopen_close0;
 	}
-	c->size = s;
-	if (mode[0] == 'w')
-		c->buffer[0] = '\0';
-	c->maxpos = strlen(c->buffer);
 
-	if (mode[0] == 'a')
-		c->pos = c->maxpos;
-	else
-		c->pos = 0;
+	cookie->tail = cookie->head + size;
+	cookie->eob  = cookie->head;
+	do {
+		if (*cookie->eob == '\0')
+			break;
+		++cookie->eob;
+	} while (--size > 0);
 
-	f = funopen(c,
-		    __fmemopen_readfn, /* string stream read */
-		    __fmemopen_writefn, /* string stream write */
-		    __fmemopen_seekfn, /* string stream seek */
-		    __fmemopen_closefn /* string stream close */
-		    );
+	cookie->cur = (oflags & O_APPEND) ? cookie->eob : cookie->head;
 
-	if (f == NULL)
-		free(c);
+	fp->pub._flags  = flags;
+	fp->_write  = (flags & __SRD) ? NULL : &fmemopen_write;
+	fp->_read   = (flags & __SWR) ? NULL : &fmemopen_read;
+	fp->_seek   = &fmemopen_seek;
+	fp->_cookie = (void *)cookie;
 
-	return (f);
+	return fp;
+
+invalid:
+	errno = EINVAL;
+	return NULL;
+
+release:
+	fp->pub._flags = 0;
+	return NULL;
 }
+
