@@ -15,7 +15,7 @@ SRCS+=	__fpending.c _flock_stub.c \
 	fseek.c fsetpos.c ftell.c funopen.c fvwrite.c fwalk.c fwide.c \
 	fwprintf.c fwrite.c fwscanf.c getc.c getchar.c \
 	getdelim.c getline.c gets.c getw.c \
-	getwc.c getwchar.c makebuf.c mktemp.c perror.c \
+	getwc.c getwchar.c makebuf.c mktemp.c open_memstream.c perror.c \
 	printf-pos.c printf.c putc.c \
 	putchar.c puts.c putw.c putwc.c putwchar.c refill.c remove.c rewind.c \
 	rget.c scanf.c setbuf.c setbuffer.c setvbuf.c snprintf.c sprintf.c \
