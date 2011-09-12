@@ -9,6 +9,41 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 2.10 to later versions               +
++-----------------------------------------------------------------------+
+
+SEVERAL ISA DRIVERS REMOVED
+---------------------------
+
+The following ISA only drivers have been removed along with a couple of
+associated userland tools:
+
+aha(4)
+asc(4) & sasc(1)
+ctx
+dgb(4)
+el(4)
+gpib
+gsc(4) & sgsc(1)
+ie(4)
+labpc(4)
+le(4)
+mse(4)
+rc(4)
+rdp(4)
+spigot
+tw(4) & xten(1) & xtend(8)
+wl(4) & wlconfig(8)
+wt(4)
+
+Note that two of these drivers (aha(4) and ie(4)) are in our GENERIC
+config and one (aha(4)) is in our X86_64_GENERIC kernel configuration
+file.
+
+If buildkernel complains about any of these drivers, just remove them
+from your kernel configuration.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 2.8 to later versions                +
 +-----------------------------------------------------------------------+
 
