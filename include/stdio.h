@@ -300,6 +300,7 @@ ssize_t	 getdelim(char ** __restrict, size_t * __restrict, int,
 int	 renameat(int, const char *, int, const char *);
 int	 vdprintf(int, const char * __restrict, __va_list);
 FILE 	*fmemopen(void *__restrict, size_t, const char *__restrict);
+FILE	*open_memstream(char **, size_t *);
 
 /*
  * Every programmer and his dog wrote functions called getline() and dprintf()
