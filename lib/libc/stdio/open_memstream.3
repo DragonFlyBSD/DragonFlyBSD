@@ -23,7 +23,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd Sept 12, 2011
+.Dd September 12, 2011
 .Dt OPEN_MEMSTREAM 3
 .Os
 .Sh NAME
@@ -34,28 +34,31 @@
 .Sh SYNOPSIS
 .In stdio.h
 .Ft FILE *
-.Fn open_memstream "char **bufp" "size_t *sizep" 
+.Fn open_memstream "char **bufp" "size_t *sizep"
 .Sh DESCRIPTION
 The
 .Fn open_memstream
-function
-creates a FILE stream with a dynamically expanding buffer. A pointer to the
-buffer is stored at the
+function creates a
+.Vt FILE
+stream with a dynamically expanding buffer.
+A pointer to the buffer is stored at the
 .Fa bufp
 argument and the length of the data in the buffer is stored at the
 .Fa sizep
-argument. The pointer and length values may be updated by writes to the buffer.
+argument.
+The pointer and length values may be updated by writes to the buffer.
 .Pp
-Writes append to the buffer and may reallocate it, invalidating the 
-.Fa bufp 
-argument. Writes may fail if the buffer cannot be resized.
+Writes append to the buffer and may reallocate it, invalidating the
+.Fa bufp
+argument.
+Writes may fail if the buffer cannot be resized.
 .Pp
 The stream is seekable and opened for writing.
 .Sh RETURN VALUES
 Upon successful completion,
 .Fn open_memstream
 returns a
-.Dv FILE
+.Vt FILE
 pointer.
 Otherwise,
 .Dv NULL
@@ -75,10 +78,10 @@ argument were
 Memory for the stream buffer or cookie could not be allocated.
 .El
 .Sh SEE ALSO
-.Xr fmemopen 3 ,
 .Xr fclose 3 ,
 .Xr fflush 3 ,
-.Xr fopen 3 
+.Xr fmemopen 3 ,
+.Xr fopen 3
 .Sh HISTORY
 The
 .Fn open_memstream
