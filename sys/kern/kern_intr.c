@@ -847,7 +847,7 @@ ithread_handler(void *arg)
 	 * interrupt on close (the parallel bus being a good example).
 	 */
 	if (intr < FIRST_SOFTINT && *list)
-	    machintr_intren(intr);
+	    machintr_intr_enable(intr);
 
 	/*
 	 * Do a quick exit/enter to catch any higher-priority interrupt

@@ -107,16 +107,18 @@ static void	icu_intr_config(int, enum intr_trigger, enum intr_polarity);
 
 struct machintr_abi MachIntrABI_ICU = {
 	MACHINTR_ICU,
-	.intrdis	= ICU_INTRDIS,
-	.intren		= ICU_INTREN,
+
+	.intr_disable	= ICU_INTRDIS,
+	.intr_enable	= ICU_INTREN,
 	.intr_setup	= icu_abi_intr_setup,
 	.intr_teardown	= icu_abi_intr_teardown,
+	.intr_config	= icu_intr_config,
+
 	.finalize	= icu_finalize,
 	.cleanup	= icu_cleanup,
 	.setdefault	= icu_setdefault,
 	.stabilize	= icu_stabilize,
-	.initmap	= icu_initmap,
-	.intr_config	= icu_intr_config
+	.initmap	= icu_initmap
 };
 
 /*
@@ -132,8 +134,8 @@ icu_stabilize(void)
 	int intr;
 
 	for (intr = 0; intr < ICU_HWI_VECTORS; ++intr)
-		machintr_intrdis(intr);
-	machintr_intren(ICU_IRQ_SLAVE);
+		machintr_intr_disable(intr);
+	machintr_intr_enable(ICU_IRQ_SLAVE);
 }
 
 /*
@@ -183,7 +185,7 @@ icu_abi_intr_setup(int intr, int flags __unused)
 
 	setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYS386IGT,
 	    SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	machintr_intren(intr);
+	machintr_intr_enable(intr);
 
 	write_eflags(ef);
 }
@@ -198,7 +200,7 @@ icu_abi_intr_teardown(int intr)
 	ef = read_eflags();
 	cpu_disable_intr();
 
-	machintr_intrdis(intr);
+	machintr_intr_disable(intr);
 	setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYS386IGT,
 	    SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 

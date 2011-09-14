@@ -231,7 +231,7 @@ ASSYM(MSR_GSBASE, MSR_GSBASE);
 ASSYM(MSR_KGSBASE, MSR_KGSBASE);
 ASSYM(MSR_FSBASE, MSR_FSBASE);
 
-ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intren));
+ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intr_enable));
 
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
 #ifdef SMP

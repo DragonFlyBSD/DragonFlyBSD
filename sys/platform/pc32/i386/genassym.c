@@ -92,7 +92,7 @@ ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
 ASSYM(TDF_RUNNING, TDF_RUNNING);
 ASSYM(TDF_USINGFP, TDF_USINGFP);
 ASSYM(TDF_KERNELFP, TDF_KERNELFP);
-ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intren));
+ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intr_enable));
 
 ASSYM(TD_SAVEFPU, offsetof(struct thread, td_mach) + offsetof(struct md_thread, mtd_savefpu));
 

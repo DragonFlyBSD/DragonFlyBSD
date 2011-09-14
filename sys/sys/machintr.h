@@ -57,21 +57,23 @@ enum machintr_type { MACHINTR_GENERIC, MACHINTR_ICU, MACHINTR_IOAPIC };
  */
 struct machintr_abi {
     enum machintr_type type;
-    void	(*intrdis)(int);		/* hardware disable irq */
-    void	(*intren)(int);			/* hardware enable irq */
+
+    void	(*intr_disable)(int);		/* hardware disable intr */
+    void	(*intr_enable)(int);		/* hardware enable intr */
     void	(*intr_setup)(int, int);	/* setup intr */
     void	(*intr_teardown)(int);		/* tear down intr */
+    void	(*intr_config)			/* config intr */
+    		(int, enum intr_trigger, enum intr_polarity);
+
     void	(*finalize)(void);		/* final before ints enabled */
     void	(*cleanup)(void);		/* cleanup */
     void	(*setdefault)(void);		/* set default vectors */
     void	(*stabilize)(void);		/* stable before ints enabled */
     void	(*initmap)(void);		/* init irq mapping */
-    void	(*intr_config)			/* config intr */
-    		(int, enum intr_trigger, enum intr_polarity);
 };
 
-#define machintr_intren(intr)	MachIntrABI.intren(intr)
-#define machintr_intrdis(intr)	MachIntrABI.intrdis(intr)
+#define machintr_intr_enable(intr)	MachIntrABI.intr_enable(intr)
+#define machintr_intr_disable(intr)	MachIntrABI.intr_disable(intr)
 #define machintr_intr_setup(intr, flags) \
 	    MachIntrABI.intr_setup((intr), (flags))
 #define machintr_intr_teardown(intr) \

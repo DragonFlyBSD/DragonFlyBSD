@@ -136,7 +136,7 @@ icu_reinit(void)
 	icu_init();
 	for (i = 0; i < MAX_HARDINTS; ++i) {
 		if (count_registered_ints(i))
-			machintr_intren(i);
+			machintr_intr_enable(i);
 	}
 }
 

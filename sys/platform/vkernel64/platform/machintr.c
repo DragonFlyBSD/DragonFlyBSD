@@ -52,8 +52,8 @@
  * Interrupt Subsystem ABI
  */
 
-static void dummy_intrdis(int);
-static void dummy_intren(int);
+static void dummy_intr_disable(int);
+static void dummy_intr_enable(int);
 static void dummy_intr_setup(int, int);
 static void dummy_intr_teardown(int);
 static void dummy_finalize(void);
@@ -62,22 +62,23 @@ static void dummy_stabilize(void);
 
 struct machintr_abi MachIntrABI = {
 	MACHINTR_GENERIC,
-	.intrdis =	dummy_intrdis,
-	.intren =	dummy_intren,
+	.intr_disable =	dummy_intr_disable,
+	.intr_enable =	dummy_intr_enable,
 	.intr_setup =	dummy_intr_setup,
 	.intr_teardown = dummy_intr_teardown,
+
 	.finalize =	dummy_finalize,
 	.cleanup =	dummy_intrcleanup,
 	.stabilize =	dummy_stabilize
 };
 
 static void
-dummy_intrdis(int intr)
+dummy_intr_disable(int intr)
 {
 }
 
 static void
-dummy_intren(int intr)
+dummy_intr_enable(int intr)
 {
 }
 
