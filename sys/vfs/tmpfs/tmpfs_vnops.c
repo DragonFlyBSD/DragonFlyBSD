@@ -725,13 +725,17 @@ tmpfs_nremove(struct vop_nremove_args *v)
 	struct tmpfs_node *node;
 
 	/*
-	 * We have to acquire the vp from v->a_nch because
-	 * we will likely unresolve the namecache entry, and
-	 * a vrele is needed to trigger the tmpfs_inactive/tmpfs_reclaim
-	 * sequence to recover space from the file.
+	 * We have to acquire the vp from v->a_nch because we will likely
+	 * unresolve the namecache entry, and a vrele/vput is needed to
+	 * trigger the tmpfs_inactive/tmpfs_reclaim sequence.
+	 *
+	 * We have to use vget to clear any inactive state on the vnode,
+	 * otherwise the vnode may remain inactive and thus tmpfs_inactive
+	 * will not get called when we release it.
 	 */
-	error = cache_vref(v->a_nch, v->a_cred, &vp);
+	error = cache_vget(v->a_nch, v->a_cred, LK_SHARED, &vp);
 	KKASSERT(error == 0);
+	vn_unlock(vp);
 
 	if (vp->v_type == VDIR) {
 		error = EISDIR;
@@ -865,7 +869,7 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	struct vnode *fvp = fncp->nc_vp;
 	struct vnode *tdvp = v->a_tdvp;
 	struct namecache *tncp = v->a_tnch->ncp;
-	struct vnode *tvp = tncp->nc_vp;
+	struct vnode *tvp;
 	struct tmpfs_dirent *de;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *fdnode;
@@ -876,7 +880,18 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	char *oldname;
 	int error;
 
-	tnode = (tvp == NULL) ? NULL : VP_TO_TMPFS_NODE(tvp);
+	/*
+	 * Because tvp can get overwritten we have to vget it instead of
+	 * just vref or use it, otherwise it's VINACTIVE flag may not get
+	 * cleared and the node won't get destroyed.
+	 */
+	error = cache_vget(v->a_tnch, v->a_cred, LK_SHARED, &tvp);
+	if (error == 0) {
+		tnode = VP_TO_TMPFS_NODE(tvp);
+		vn_unlock(tvp);
+	} else {
+		tnode = NULL;
+	}
 
 	/* Disallow cross-device renames.
 	 * XXX Why isn't this done by the caller? */
@@ -1055,11 +1070,8 @@ out_locked:
 	;
 
 out:
-	/* Release target nodes. */
-	/* XXX: I don't understand when tdvp can be the same as tvp, but
-	 * other code takes care of this... */
-	if (tdvp == tvp)
-		vrele(tdvp);
+	if (tvp)
+		vrele(tvp);
 
 	return error;
 }
@@ -1103,13 +1115,17 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	int error;
 
 	/*
-	 * We have to acquire the vp from v->a_nch because
-	 * we will likely unresolve the namecache entry, and
-	 * a vrele is needed to trigger the tmpfs_inactive/tmpfs_reclaim
-	 * sequence.
+	 * We have to acquire the vp from v->a_nch because we will likely
+	 * unresolve the namecache entry, and a vrele/vput is needed to
+	 * trigger the tmpfs_inactive/tmpfs_reclaim sequence.
+	 *
+	 * We have to use vget to clear any inactive state on the vnode,
+	 * otherwise the vnode may remain inactive and thus tmpfs_inactive
+	 * will not get called when we release it.
 	 */
-	error = cache_vref(v->a_nch, v->a_cred, &vp);
+	error = cache_vget(v->a_nch, v->a_cred, LK_SHARED, &vp);
 	KKASSERT(error == 0);
+	vn_unlock(vp);
 
 	/*
 	 * Prevalidate so we don't hit an assertion later
@@ -1352,10 +1368,17 @@ static int
 tmpfs_inactive(struct vop_inactive_args *v)
 {
 	struct vnode *vp = v->a_vp;
-
 	struct tmpfs_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
+
+	/*
+	 * Degenerate case
+	 */
+	if (node == NULL) {
+		vrecycle(vp);
+		return(0);
+	}
 
 	/*
 	 * Get rid of unreferenced deleted vnodes sooner rather than
