@@ -181,6 +181,77 @@ If an SADB entry cannot be found for the destination, the outgoing traffic
 will have an invalid digest option prepended, and the following error message
 will be visible on the system console:
 .Em "tcpsignature_compute: SADB lookup failed for %d.%d.%d.%d" .
+.It Dv TCP_KEEPINIT
+If a
+.Tn TCP
+connection cannot be established within a period of time,
+.Tn TCP
+will time out the connection attempt.
+The
+.Dv TCP_KEEPINIT
+option specifies the number of milliseconds to wait
+before the connection attempt times out.
+The default value for
+.Dv TCP_KEEPINIT
+is tcp.keepinit milliseconds.
+For the accepted sockets, the
+.Dv TCP_KEEPINIT
+option value is inherited from the listening socket.
+.It Dv TCP_KEEPIDLE
+When the
+.Dv SO_KEEPALIVE
+option is enabled,
+.Tn TCP
+sends a keepalive probe to the remote system of a connection
+that has been idle for a period of time.
+The
+.Dv TCP_KEEPIDLE
+specifies the number of milliseconds before
+.Tn TCP
+will send the initial keepalive probe.
+The default value for
+.Dv TCP_KEEPIDLE
+is tcp.keepidle milliseconds.
+For the accepted sockets,
+the
+.Dv TCP_KEEPIDLE
+option value is inherited from the listening socket.
+.It Dv TCP_KEEPINTVL
+When the
+.Dv SO_KEEPALIVE
+option is enabled,
+.Tn TCP
+sends a keepalive probe to the remote system of a connection
+that has been idle for a period of time.
+The
+.Dv TCP_KEEPINTVL
+option specifies the number of milliseconds to wait
+before retransmitting a keepalive probe.
+The default value for
+.Dv TCP_KEEPINTVL
+is tcp.keepintvl milliseconds.
+For the accepted sockets,
+the
+.Dv TCP_KEEPINTVL
+option value is inherited from the listening socket.
+.It Dv TCP_KEEPCNT
+When the
+.Dv SO_KEEPALIVE
+option is enabled,
+.Tn TCP
+sends a keepalive probe to the remote system of a connection
+that has been idle for a period of time.
+The
+.Dv TCP_KEEPCNT
+option specifies the maximum number of keepalive
+probes to be sent before dropping the connection.
+The default value for
+.Dv TCP_KEEPCNT
+is tcp.keepcnt milliseconds.
+For the accepted sockets,
+the
+.Dv TCP_KEEPCNT
+option value is inherited from the listening socket.
 .El
 .Pp
 The option level for the
