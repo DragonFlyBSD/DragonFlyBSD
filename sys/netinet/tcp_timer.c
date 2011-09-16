@@ -186,10 +186,14 @@ static int	always_keepalive = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, always_keepalive, CTLFLAG_RW,
     &always_keepalive , 0, "Assume SO_KEEPALIVE on all TCP connections");
 
+/* max idle probes */
 static int	tcp_keepcnt = TCPTV_KEEPCNT;
-	/* max idle probes */
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, keepcnt, CTLFLAG_RW,
+    &tcp_keepcnt, 0, "Maximum number of keepalive probes to be sent");
+
+/* max idle time in persist */
 int	tcp_maxpersistidle;
-	/* max idle time in persist */
+
 int	tcp_maxidle;
 
 /*
