@@ -864,6 +864,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	 */
 	ltp = intotcpcb(linp);
 	tp->t_keepinit = ltp->t_keepinit;
+	tp->t_keepidle = ltp->t_keepidle;
 
 	tcp_create_timermsg(tp, port);
 	tcp_callout_reset(tp, tp->tt_keep, tp->t_keepinit, tcp_timer_keep);

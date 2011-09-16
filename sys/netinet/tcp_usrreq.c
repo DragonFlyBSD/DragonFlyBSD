@@ -1429,6 +1429,14 @@ tcp_ctloutput(netmsg_t msg)
 				error = EINVAL;
 			break;
 
+		case TCP_KEEPIDLE:
+			opthz = ((int64_t)optval * hz) / 1000;
+			if (opthz >= 1)
+				tp->t_keepidle = opthz;
+			else
+				error = EINVAL;
+			break;
+
 		default:
 			error = ENOPROTOOPT;
 			break;
@@ -1456,6 +1464,9 @@ tcp_ctloutput(netmsg_t msg)
 			break;
 		case TCP_KEEPINIT:
 			optval = ((int64_t)tp->t_keepinit * 1000) / hz;
+			break;
+		case TCP_KEEPIDLE:
+			optval = ((int64_t)tp->t_keepidle * 1000) / hz;
 			break;
 		default:
 			error = ENOPROTOOPT;

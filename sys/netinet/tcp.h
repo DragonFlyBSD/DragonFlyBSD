@@ -163,5 +163,6 @@ struct tcphdr {
 #define TCP_KEEPINIT	0x20
 /* 0x40 unused */
 #define TCP_FASTKEEP	0x80
+#define TCP_KEEPIDLE	0x100
 
 #endif
