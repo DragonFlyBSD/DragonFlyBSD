@@ -187,14 +187,12 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, always_keepalive, CTLFLAG_RW,
     &always_keepalive , 0, "Assume SO_KEEPALIVE on all TCP connections");
 
 /* max idle probes */
-static int	tcp_keepcnt = TCPTV_KEEPCNT;
+int	tcp_keepcnt = TCPTV_KEEPCNT;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, keepcnt, CTLFLAG_RW,
     &tcp_keepcnt, 0, "Maximum number of keepalive probes to be sent");
 
 /* max idle time in persist */
 int	tcp_maxpersistidle;
-
-int	tcp_maxidle;
 
 /*
  * Tcp protocol timeout routine called every 500 ms.
@@ -204,9 +202,6 @@ int	tcp_maxidle;
 void
 tcp_slowtimo(void)
 {
-	crit_enter();
-	tcp_maxidle = tcp_keepcnt * tcp_keepintvl;
-	crit_exit();
 }
 
 /*
@@ -292,8 +287,8 @@ tcp_timer_2msl_handler(struct tcpcb *tp)
 	 * control block.  Otherwise, check again in a bit.
 	 */
 	if (tp->t_state != TCPS_TIME_WAIT &&
-	    (ticks - tp->t_rcvtime) <= tcp_maxidle) {
-		tcp_callout_reset(tp, tp->tt_2msl, tcp_keepintvl,
+	    (ticks - tp->t_rcvtime) <= tp->t_maxidle) {
+		tcp_callout_reset(tp, tp->tt_2msl, tp->t_keepintvl,
 				  tcp_timer_2msl);
 	} else {
 		tp = tcp_close(tp);
@@ -345,7 +340,7 @@ tcp_timer_keep_handler(struct tcpcb *tp)
 	if ((always_keepalive || (tp->t_flags & TF_KEEPALIVE) ||
 	     (tp->t_inpcb->inp_socket->so_options & SO_KEEPALIVE)) &&
 	    tp->t_state <= TCPS_CLOSING) {
-		if ((ticks - tp->t_rcvtime) >= keepidle + tcp_maxidle)
+		if ((ticks - tp->t_rcvtime) >= keepidle + tp->t_maxidle)
 			goto dropit;
 		/*
 		 * Send a packet designed to force a response
@@ -367,7 +362,7 @@ tcp_timer_keep_handler(struct tcpcb *tp)
 				    tp->rcv_nxt, tp->snd_una - 1, 0);
 			tcp_freetemplate(t_template);
 		}
-		tcp_callout_reset(tp, tp->tt_keep, tcp_keepintvl,
+		tcp_callout_reset(tp, tp->tt_keep, tp->t_keepintvl,
 				  tcp_timer_keep);
 	} else {
 		tcp_callout_reset(tp, tp->tt_keep, keepidle,

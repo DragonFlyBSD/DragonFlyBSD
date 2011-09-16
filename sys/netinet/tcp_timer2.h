@@ -72,7 +72,7 @@ static __inline int
 tcp_getkeepidle(struct tcpcb *_tp)
 {
 	if (_tp->t_flags & TF_FASTKEEP)
-		return (tcp_keepintvl);
+		return (_tp->t_keepintvl);
 	else
 		return (_tp->t_keepidle);
 }

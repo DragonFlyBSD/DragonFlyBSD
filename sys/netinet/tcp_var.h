@@ -273,6 +273,9 @@ struct tcpcb {
 	int	t_keepinit;
 
 	int	t_keepidle;
+	int	t_keepintvl;
+	int	t_keepcnt;
+	int	t_maxidle;
 };
 
 #define	IN_FASTRECOVERY(tp)	(tp->t_flags & TF_FASTRECOVERY)

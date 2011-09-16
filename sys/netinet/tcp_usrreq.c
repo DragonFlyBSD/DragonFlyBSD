@@ -1437,6 +1437,25 @@ tcp_ctloutput(netmsg_t msg)
 				error = EINVAL;
 			break;
 
+		case TCP_KEEPINTVL:
+			opthz = ((int64_t)optval * hz) / 1000;
+			if (opthz >= 1) {
+				tp->t_keepintvl = opthz;
+				tp->t_maxidle = tp->t_keepintvl * tp->t_keepcnt;
+			} else {
+				error = EINVAL;
+			}
+			break;
+
+		case TCP_KEEPCNT:
+			if (optval > 0) {
+				tp->t_keepcnt = optval;
+				tp->t_maxidle = tp->t_keepintvl * tp->t_keepcnt;
+			} else {
+				error = EINVAL;
+			}
+			break;
+
 		default:
 			error = ENOPROTOOPT;
 			break;
@@ -1467,6 +1486,12 @@ tcp_ctloutput(netmsg_t msg)
 			break;
 		case TCP_KEEPIDLE:
 			optval = ((int64_t)tp->t_keepidle * 1000) / hz;
+			break;
+		case TCP_KEEPINTVL:
+			optval = ((int64_t)tp->t_keepintvl * 1000) / hz;
+			break;
+		case TCP_KEEPCNT:
+			optval = tp->t_keepcnt;
 			break;
 		default:
 			error = ENOPROTOOPT;
@@ -1626,7 +1651,7 @@ tcp_usrclosed(struct tcpcb *tp)
 		soisdisconnected(tp->t_inpcb->inp_socket);
 		/* To prevent the connection hanging in FIN_WAIT_2 forever. */
 		if (tp->t_state == TCPS_FIN_WAIT_2) {
-			tcp_callout_reset(tp, tp->tt_2msl, tcp_maxidle,
+			tcp_callout_reset(tp, tp->tt_2msl, tp->t_maxidle,
 			    tcp_timer_2msl);
 		}
 	}

@@ -2285,7 +2285,7 @@ process_ACK:
 				if (so->so_state & SS_CANTRCVMORE) {
 					soisdisconnected(so);
 					tcp_callout_reset(tp, tp->tt_2msl,
-					    tcp_maxidle, tcp_timer_2msl);
+					    tp->t_maxidle, tcp_timer_2msl);
 				}
 				tp->t_state = TCPS_FIN_WAIT_2;
 			}
