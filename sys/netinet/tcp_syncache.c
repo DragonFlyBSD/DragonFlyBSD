@@ -679,7 +679,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 {
 	struct inpcb *inp = NULL, *linp;
 	struct socket *so;
-	struct tcpcb *tp;
+	struct tcpcb *tp, *ltp;
 	lwkt_port_t port;
 #ifdef INET6
 	const boolean_t isipv6 = sc->sc_inc.inc_isipv6;
@@ -858,8 +858,15 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	 */
 	if (sc->sc_rxtslot != 0)
 		tp->snd_cwnd = tp->t_maxseg;
+
+	/*
+	 * Inherit some properties from the listen socket
+	 */
+	ltp = intotcpcb(linp);
+	tp->t_keepinit = ltp->t_keepinit;
+
 	tcp_create_timermsg(tp, port);
-	tcp_callout_reset(tp, tp->tt_keep, tcp_keepinit, tcp_timer_keep);
+	tcp_callout_reset(tp, tp->tt_keep, tp->t_keepinit, tcp_timer_keep);
 
 	tcpstat.tcps_accepts++;
 	return (so);

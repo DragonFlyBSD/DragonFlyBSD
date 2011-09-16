@@ -269,6 +269,8 @@ struct tcpcb {
 
 	u_int32_t	rfbuf_ts;	/* recv buffer autoscaling timestamp */
 	int	rfbuf_cnt;		/* recv buffer autoscaling byte count */
+
+	int	t_keepinit;
 };
 
 #define	IN_FASTRECOVERY(tp)	(tp->t_flags & TF_FASTRECOVERY)

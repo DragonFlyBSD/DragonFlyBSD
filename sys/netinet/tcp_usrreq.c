@@ -1007,7 +1007,7 @@ tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 	soisconnecting(so);
 	tcpstat.tcps_connattempt++;
 	tp->t_state = TCPS_SYN_SENT;
-	tcp_callout_reset(tp, tp->tt_keep, tcp_keepinit, tcp_timer_keep);
+	tcp_callout_reset(tp, tp->tt_keep, tp->t_keepinit, tcp_timer_keep);
 	tp->iss = tcp_new_isn(tp);
 	tcp_sendseqinit(tp);
 	if (m) {
@@ -1289,7 +1289,7 @@ tcp6_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf **mp,
 	soisconnecting(so);
 	tcpstat.tcps_connattempt++;
 	tp->t_state = TCPS_SYN_SENT;
-	tcp_callout_reset(tp, tp->tt_keep, tcp_keepinit, tcp_timer_keep);
+	tcp_callout_reset(tp, tp->tt_keep, tp->t_keepinit, tcp_timer_keep);
 	tp->iss = tcp_new_isn(tp);
 	tcp_sendseqinit(tp);
 	if (m) {
@@ -1324,7 +1324,7 @@ tcp_ctloutput(netmsg_t msg)
 {
 	struct socket *so = msg->base.nm_so;
 	struct sockopt *sopt = msg->ctloutput.nm_sopt;
-	int	error, opt, optval;
+	int	error, opt, optval, opthz;
 	struct	inpcb *inp;
 	struct	tcpcb *tp;
 
@@ -1421,6 +1421,14 @@ tcp_ctloutput(netmsg_t msg)
 			}
 			break;
 
+		case TCP_KEEPINIT:
+			opthz = ((int64_t)optval * hz) / 1000;
+			if (opthz >= 1)
+				tp->t_keepinit = opthz;
+			else
+				error = EINVAL;
+			break;
+
 		default:
 			error = ENOPROTOOPT;
 			break;
@@ -1445,6 +1453,9 @@ tcp_ctloutput(netmsg_t msg)
 			break;
 		case TCP_NOPUSH:
 			optval = tp->t_flags & TF_NOPUSH;
+			break;
+		case TCP_KEEPINIT:
+			optval = ((int64_t)tp->t_keepinit * 1000) / hz;
 			break;
 		default:
 			error = ENOPROTOOPT;
