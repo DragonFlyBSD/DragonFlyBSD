@@ -244,8 +244,11 @@ probes (if enabled) are sent.
 .It tcp.keepintvl
 The interval between keepalive probes sent to remote machines.
 After
-.Dv TCPTV_KEEPCNT
+tcp.keepcnt
 (default 8) probes are sent, with no response, the connection is dropped.
+.It tcp.keepcnt
+The maximum number of keepalive probes to be sent
+before dropping the connection.
 .It tcp.always_keepalive
 Assume that
 .Dv SO_KEEPALIVE
