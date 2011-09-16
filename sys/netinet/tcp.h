@@ -160,11 +160,11 @@ struct tcphdr {
 #define TCP_NOPUSH	0x04	/* don't push last block of write */
 #define TCP_NOOPT	0x08	/* don't use TCP options */
 #define TCP_SIGNATURE_ENABLE    0x10    /* use MD5 digests (RFC2385) */
-#define TCP_KEEPINIT	0x20
+#define TCP_KEEPINIT	0x20	/* set max time to establish connection */
 /* 0x40 unused */
 #define TCP_FASTKEEP	0x80
-#define TCP_KEEPIDLE	0x100
-#define TCP_KEEPINTVL	0x200
-#define TCP_KEEPCNT	0x400
+#define TCP_KEEPIDLE	0x100	/* set time before keepalive probes begin */
+#define TCP_KEEPINTVL	0x200	/* set time between keepalive probes */
+#define TCP_KEEPCNT	0x400	/* set max number of keepalive probes */
 
 #endif

@@ -270,12 +270,12 @@ struct tcpcb {
 	u_int32_t	rfbuf_ts;	/* recv buffer autoscaling timestamp */
 	int	rfbuf_cnt;		/* recv buffer autoscaling byte count */
 
-	int	t_keepinit;
+	int	t_keepinit;		/* time to establish connection */
 
-	int	t_keepidle;
-	int	t_keepintvl;
-	int	t_keepcnt;
-	int	t_maxidle;
+	int	t_keepidle;		/* time before keepalive probes begin */
+	int	t_keepintvl;		/* time between keepalive probes */
+	int	t_keepcnt;		/* maximum number of keepalive probes */
+	int	t_maxidle;		/* time to drop after starting probes */
 };
 
 #define	IN_FASTRECOVERY(tp)	(tp->t_flags & TF_FASTRECOVERY)
