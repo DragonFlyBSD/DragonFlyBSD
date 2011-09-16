@@ -195,16 +195,6 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, keepcnt, CTLFLAG_RW,
 int	tcp_maxpersistidle;
 
 /*
- * Tcp protocol timeout routine called every 500 ms.
- * Updates timestamps used for TCP
- * causes finite state machine actions if timers expire.
- */
-void
-tcp_slowtimo(void)
-{
-}
-
-/*
  * Cancel all timers for TCP tp.
  */
 void

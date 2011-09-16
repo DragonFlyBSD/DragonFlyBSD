@@ -153,7 +153,7 @@ struct protosw inetsw[] = {
 	.pr_ctlport = tcp_ctlport,
 	.pr_init = tcp_init,
 	.pr_fasttimo = NULL,
-	.pr_slowtimo = tcp_slowtimo,
+	.pr_slowtimo = NULL,
 	.pr_drain = tcp_drain,
 	.pr_usrreqs = &tcp_usrreqs
     },

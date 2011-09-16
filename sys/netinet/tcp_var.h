@@ -627,7 +627,6 @@ void	 tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to);
 void	 tcp_save_congestion_state(struct tcpcb *tp);
 void	 tcp_revert_congestion_state(struct tcpcb *tp);
 void	 tcp_setpersist (struct tcpcb *);
-void	 tcp_slowtimo (void);
 struct tcptemp *tcp_maketemplate (struct tcpcb *);
 void	 tcp_freetemplate (struct tcptemp *);
 void	 tcp_fillheaders (struct tcpcb *, void *, void *);
