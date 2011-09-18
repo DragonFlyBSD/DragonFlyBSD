@@ -1085,13 +1085,11 @@ mixed_mode_setup:
 				       INTR_EXCL | INTR_CLOCK |
 				       INTR_NOPOLL | INTR_MPSAFE |
 				       INTR_NOENTROPY);
-		machintr_intr_enable(irq);
 	} else {
 		register_int(0, clkintr, NULL, "clk", NULL,
 			     INTR_EXCL | INTR_CLOCK |
 			     INTR_NOPOLL | INTR_MPSAFE |
 			     INTR_NOENTROPY);
-		machintr_intr_enable(0);
 	}
 
 	/* Initialize RTC. */
@@ -1114,7 +1112,6 @@ mixed_mode_setup:
 			} else {
 				kprintf("IOAPIC: warning 8254 is not connected "
 					"to the correct pin, try mixed mode\n");
-				machintr_intr_disable(irq);
 				unregister_int(clkdesc);
 				goto mixed_mode_setup;
 			}
