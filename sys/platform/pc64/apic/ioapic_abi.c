@@ -480,13 +480,14 @@ static void	ioapic_abi_intr_enable(int);
 static void	ioapic_abi_intr_disable(int);
 static void	ioapic_abi_intr_setup(int, int);
 static void	ioapic_abi_intr_teardown(int);
-static void	ioapic_intr_config(int, enum intr_trigger, enum intr_polarity);
+static void	ioapic_abi_intr_config(int,
+		    enum intr_trigger, enum intr_polarity);
 
-static void	ioapic_finalize(void);
-static void	ioapic_cleanup(void);
-static void	ioapic_setdefault(void);
-static void	ioapic_stabilize(void);
-static void	ioapic_initmap(void);
+static void	ioapic_abi_finalize(void);
+static void	ioapic_abi_cleanup(void);
+static void	ioapic_abi_setdefault(void);
+static void	ioapic_abi_stabilize(void);
+static void	ioapic_abi_initmap(void);
 
 struct machintr_abi MachIntrABI_IOAPIC = {
 	MACHINTR_IOAPIC,
@@ -494,13 +495,13 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 	.intr_enable	= ioapic_abi_intr_enable,
 	.intr_setup	= ioapic_abi_intr_setup,
 	.intr_teardown	= ioapic_abi_intr_teardown,
-	.intr_config	= ioapic_intr_config,
+	.intr_config	= ioapic_abi_intr_config,
 
-	.finalize	= ioapic_finalize,
-	.cleanup	= ioapic_cleanup,
-	.setdefault	= ioapic_setdefault,
-	.stabilize	= ioapic_stabilize,
-	.initmap	= ioapic_initmap
+	.finalize	= ioapic_abi_finalize,
+	.cleanup	= ioapic_abi_cleanup,
+	.setdefault	= ioapic_abi_setdefault,
+	.stabilize	= ioapic_abi_stabilize,
+	.initmap	= ioapic_abi_initmap
 };
 
 static int	ioapic_abi_extint_irq = -1;
@@ -528,7 +529,7 @@ ioapic_abi_intr_disable(int irq)
 }
 
 static void
-ioapic_finalize(void)
+ioapic_abi_finalize(void)
 {
 	KKASSERT(MachIntrABI.type == MACHINTR_IOAPIC);
 	KKASSERT(ioapic_enable);
@@ -549,14 +550,14 @@ ioapic_finalize(void)
  * that had already been posted to the cpu.
  */
 static void
-ioapic_cleanup(void)
+ioapic_abi_cleanup(void)
 {
 	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
 }
 
 /* Must never be called */
 static void
-ioapic_stabilize(void)
+ioapic_abi_stabilize(void)
 {
 	panic("ioapic_stabilize is called\n");
 }
@@ -648,7 +649,7 @@ ioapic_abi_intr_teardown(int intr)
 }
 
 static void
-ioapic_setdefault(void)
+ioapic_abi_setdefault(void)
 {
 	int intr;
 
@@ -661,7 +662,7 @@ ioapic_setdefault(void)
 }
 
 static void
-ioapic_initmap(void)
+ioapic_abi_initmap(void)
 {
 	int i;
 
@@ -782,7 +783,7 @@ ioapic_abi_find_irq(int irq, enum intr_trigger trig, enum intr_polarity pola)
 }
 
 static void
-ioapic_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
+ioapic_abi_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 {
 	struct ioapic_irqinfo *info;
 	struct ioapic_irqmap *map;
