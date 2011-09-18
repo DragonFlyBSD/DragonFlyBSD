@@ -98,12 +98,13 @@ extern int	imcr_present;
 
 static void	icu_abi_intr_setup(int, int);
 static void	icu_abi_intr_teardown(int);
-static void	icu_finalize(void);
-static void	icu_cleanup(void);
-static void	icu_setdefault(void);
-static void	icu_stabilize(void);
-static void	icu_initmap(void);
-static void	icu_intr_config(int, enum intr_trigger, enum intr_polarity);
+static void	icu_abi_intr_config(int, enum intr_trigger, enum intr_polarity);
+
+static void	icu_abi_finalize(void);
+static void	icu_abi_cleanup(void);
+static void	icu_abi_setdefault(void);
+static void	icu_abi_stabilize(void);
+static void	icu_abi_initmap(void);
 
 struct machintr_abi MachIntrABI_ICU = {
 	MACHINTR_ICU,
@@ -112,13 +113,13 @@ struct machintr_abi MachIntrABI_ICU = {
 	.intr_enable	= ICU_INTREN,
 	.intr_setup	= icu_abi_intr_setup,
 	.intr_teardown	= icu_abi_intr_teardown,
-	.intr_config	= icu_intr_config,
+	.intr_config	= icu_abi_intr_config,
 
-	.finalize	= icu_finalize,
-	.cleanup	= icu_cleanup,
-	.setdefault	= icu_setdefault,
-	.stabilize	= icu_stabilize,
-	.initmap	= icu_initmap
+	.finalize	= icu_abi_finalize,
+	.cleanup	= icu_abi_cleanup,
+	.setdefault	= icu_abi_setdefault,
+	.stabilize	= icu_abi_stabilize,
+	.initmap	= icu_abi_initmap
 };
 
 /*
@@ -129,7 +130,7 @@ struct machintr_abi MachIntrABI_ICU = {
  * Called before interrupts are physically enabled
  */
 static void
-icu_stabilize(void)
+icu_abi_stabilize(void)
 {
 	int intr;
 
@@ -143,7 +144,7 @@ icu_stabilize(void)
  * critical section is released.
  */
 static void
-icu_cleanup(void)
+icu_abi_cleanup(void)
 {
 	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
 }
@@ -153,7 +154,7 @@ icu_cleanup(void)
  * held and interrupts are not physically disabled.
  */
 static void
-icu_finalize(void)
+icu_abi_finalize(void)
 {
 	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
 	KKASSERT(!ioapic_enable);
@@ -208,7 +209,7 @@ icu_abi_intr_teardown(int intr)
 }
 
 static void
-icu_setdefault(void)
+icu_abi_setdefault(void)
 {
 	int intr;
 
@@ -221,7 +222,7 @@ icu_setdefault(void)
 }
 
 static void
-icu_initmap(void)
+icu_abi_initmap(void)
 {
 	int i;
 
@@ -243,7 +244,7 @@ icu_initmap(void)
 }
 
 static void
-icu_intr_config(int irq, enum intr_trigger trig,
+icu_abi_intr_config(int irq, enum intr_trigger trig,
     enum intr_polarity pola __unused)
 {
 	struct icu_irqmap *map;
