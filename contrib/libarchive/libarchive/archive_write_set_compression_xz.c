@@ -132,9 +132,10 @@ static int
 archive_compressor_xz_init_stream(struct archive_write *a,
     struct private_data *state)
 {
+	static const lzma_stream lzma_stream_init_data = LZMA_STREAM_INIT;
 	int ret;
 
-	state->stream = (lzma_stream)LZMA_STREAM_INIT;
+	state->stream = lzma_stream_init_data;
 	state->stream.next_out = state->compressed;
 	state->stream.avail_out = state->compressed_buffer_size;
 	if (a->archive.compression_code == ARCHIVE_COMPRESSION_XZ)
@@ -421,8 +422,8 @@ drive_compressor(struct archive_write *a, struct private_data *state, int finish
 			archive_set_error(&a->archive, ENOMEM,
 			    "lzma compression error: "
 			    "%ju MiB would have been needed",
-			    (lzma_memusage(&(state->stream)) + 1024 * 1024 -1)
-			    / (1024 * 1024));
+			    (uintmax_t)((lzma_memusage(&(state->stream)) + 1024 * 1024 -1)
+				/ (1024 * 1024)));
 			return (ARCHIVE_FATAL);
 		default:
 			/* Any other return value indicates an error. */
