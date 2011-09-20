@@ -5,8 +5,8 @@
 
 #define	SSH_VERSION		(ssh_version_get())
 #define	SSH_RELEASE		(ssh_version_get())
-#define	SSH_VERSION_BASE	"OpenSSH_5.8p1-hpn13v11"
-#define	SSH_VERSION_ADDENDUM	"DragonFly-20110408"
+#define	SSH_VERSION_BASE	"OpenSSH_5.9p1-hpn13v11"
+#define	SSH_VERSION_ADDENDUM	"DragonFly-20110920"
 
 const char *ssh_version_get(void);
 void ssh_version_set_addendum(const char *add);

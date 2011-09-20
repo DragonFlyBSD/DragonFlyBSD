@@ -15,7 +15,8 @@ SRCS=	sshd.c auth-rhosts.c auth-passwd.c auth-rsa.c auth-rh-rsa.c \
 	auth2-gss.c gss-serv.c gss-serv-krb5.c \
 	loginrec.c auth-pam.c auth-shadow.c auth-sia.c md5crypt.c \
 	sftp-server.c sftp-common.c \
-	roaming_common.c roaming_serv.c
+	roaming_common.c roaming_serv.c \
+	sandbox-rlimit.c
 
 WARNS?=	0
 

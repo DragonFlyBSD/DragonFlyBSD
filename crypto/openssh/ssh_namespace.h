@@ -211,6 +211,7 @@
 #define dispatch_run				ssh_dispatch_run
 #define dispatch_set				ssh_dispatch_set
 #define do_log					ssh_do_log
+#define do_log2					ssh_do_log2
 #define dump_base64				ssh_dump_base64
 #define enable_compat13				ssh_enable_compat13
 #define enable_compat20				ssh_enable_compat20
@@ -252,6 +253,7 @@
 #define incoming_stream				ssh_incoming_stream
 #define init_hostkeys				ssh_init_hostkeys
 #define init_rng				ssh_init_rng
+#define iptos2str				ssh_iptos2str
 #define ipv64_normalise_mapped			ssh_ipv64_normalise_mapped
 #define key_curve_name_to_nid			ssh_key_curve_name_to_nid
 #define key_curve_nid_to_bits			ssh_key_curve_nid_to_bits
@@ -301,6 +303,7 @@
 #define key_in_file				ssh_key_in_file
 #define key_is_cert				ssh_key_is_cert
 #define key_load_cert				ssh_key_load_cert
+#define key_load_file				ssh_key_load_file
 #define key_load_private			ssh_key_load_private
 #define key_load_private_cert			ssh_key_load_private_cert
 #define key_load_private_pem			ssh_key_load_private_pem
@@ -310,6 +313,7 @@
 #define key_names_valid2			ssh_key_names_valid2
 #define key_new					ssh_key_new
 #define key_new_private				ssh_key_new_private
+#define key_parse_private			ssh_key_parse_private
 #define key_perm_ok				ssh_key_perm_ok
 #define key_read				ssh_key_read
 #define key_save_private			ssh_key_save_private
@@ -461,6 +465,7 @@
 #define schnorr_verify				ssh_schnorr_verify
 #define schnorr_verify_buf			ssh_schnorr_verify_buf
 #define seed_rng				ssh_seed_rng
+#define set_log_handler				ssh_set_log_handler
 #define set_newkeys				ssh_set_newkeys
 #define set_nodelay				ssh_set_nodelay
 #define set_nonblock				ssh_set_nonblock

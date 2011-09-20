@@ -15,7 +15,8 @@ SRCS=	acss.c authfd.c authfile.c bufaux.c bufbn.c buffer.c \
 	msg.c progressmeter.c dns.c entropy.c gss-genr.c umac.c jpake.c \
 	schnorr.c ssh-pkcs11.c
 # Portability layer
-SRCS+=	bsd-misc.c getrrsetbyname.c glob.c port-tun.c timingsafe_bcmp.c
+SRCS+=	bsd-misc.c getrrsetbyname.c glob.c openssl-compat.c \
+	port-tun.c timingsafe_bcmp.c
 # FreeBSD additions
 SRCS+=	version.c
 

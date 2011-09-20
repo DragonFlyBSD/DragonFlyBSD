@@ -1,6 +1,9 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Define if building universal (internal helper macro) */
+/* #undef AC_APPLE_UNIVERSAL_BUILD */
+
 /* Define if you have a getaddrinfo that fails for the all-zeros IPv6 address
    */
 /* #undef AIX_GETNAMEINFO_HACK */
@@ -121,10 +124,7 @@
 #define DISABLE_WTMPX 1
 
 /* Enable for PKCS#11 support */
-#define ENABLE_PKCS11 
-
-/* Builtin PRNG command timeout */
-#define ENTROPY_TIMEOUT_MSEC 200
+#define ENABLE_PKCS11 /**/
 
 /* File names may not contain backslash characters */
 /* #undef FILESYSTEM_NO_BACKSLASH */
@@ -751,6 +751,9 @@
 /* Define to 1 if you have the `recvmsg' function. */
 #define HAVE_RECVMSG 1
 
+/* sys/resource.h has RLIMIT_NPROC */
+#define HAVE_RLIMIT_NPROC /**/
+
 /* Define to 1 if you have the <rpc/types.h> header file. */
 #define HAVE_RPC_TYPES_H 1
 
@@ -762,6 +765,12 @@
 
 /* Define to 1 if you have the `RSA_get_default_method' function. */
 #define HAVE_RSA_GET_DEFAULT_METHOD 1
+
+/* Define to 1 if you have the <sandbox.h> header file. */
+/* #undef HAVE_SANDBOX_H */
+
+/* Define to 1 if you have the `sandbox_init' function. */
+/* #undef HAVE_SANDBOX_INIT */
 
 /* define if you have sa_family_t data type */
 #define HAVE_SA_FAMILY_T 1
@@ -949,13 +958,13 @@
 /* define if you have struct sockaddr_in6 data type */
 #define HAVE_STRUCT_SOCKADDR_IN6 1
 
-/* Define to 1 if `sin6_scope_id' is member of `struct sockaddr_in6'. */
+/* Define to 1 if `sin6_scope_id' is a member of `struct sockaddr_in6'. */
 #define HAVE_STRUCT_SOCKADDR_IN6_SIN6_SCOPE_ID 1
 
 /* define if you have struct sockaddr_storage data type */
 #define HAVE_STRUCT_SOCKADDR_STORAGE 1
 
-/* Define to 1 if `st_blksize' is member of `struct stat'. */
+/* Define to 1 if `st_blksize' is a member of `struct stat'. */
 #define HAVE_STRUCT_STAT_ST_BLKSIZE 1
 
 /* Define to 1 if the system has the type `struct timespec'. */
@@ -1121,7 +1130,7 @@
 #define HAVE_USER_FROM_UID 1
 
 /* Define to 1 if you have the <util.h> header file. */
-/* #undef HAVE_UTIL_H */
+#define HAVE_UTIL_H 1
 
 /* Define to 1 if you have the `utimes' function. */
 #define HAVE_UTIMES 1
@@ -1260,7 +1269,7 @@
    from environment and PATH */
 #define LOGIN_PROGRAM_FALLBACK "/usr/bin/login"
 
-/* Set this to your mail directory if you don't have maillock.h */
+/* Set this to your mail directory if you do not have _PATH_MAILDIR */
 /* #undef MAIL_DIRECTORY */
 
 /* Define on *nto-qnx systems */
@@ -1330,6 +1339,18 @@
 /* read(1) can return 0 for a non-closed fd */
 /* #undef PTY_ZEROREAD */
 
+/* Sandbox using Darwin sandbox_init(3) */
+/* #undef SANDBOX_DARWIN */
+
+/* no privsep sandboxing */
+/* #undef SANDBOX_NULL */
+
+/* Sandbox using setrlimit(2) */
+#define SANDBOX_RLIMIT 1
+
+/* Sandbox using systrace(4) */
+/* #undef SANDBOX_SYSTRACE */
+
 /* Define if your platform breaks doing a seteuid before a setuid */
 /* #undef SETEUID_BREAKS_SETUID */
 
@@ -1340,6 +1361,7 @@
 #define SIZEOF_INT 4
 
 /* The size of `long int', as computed by sizeof. */
+/* This doesn't matter since we have int64_t */
 #define SIZEOF_LONG_INT 4
 
 /* The size of `long long int', as computed by sizeof. */
@@ -1461,9 +1483,17 @@
 /* Define if you want SELinux support. */
 /* #undef WITH_SELINUX */
 
-/* Define to 1 if your processor stores words with the most significant byte
-   first (like Motorola and SPARC, unlike Intel and VAX). */
-/* #undef WORDS_BIGENDIAN */
+/* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
+   significant byte first (like Motorola and SPARC, unlike Intel). */
+#if defined AC_APPLE_UNIVERSAL_BUILD
+# if defined __BIG_ENDIAN__
+#  define WORDS_BIGENDIAN 1
+# endif
+#else
+# ifndef WORDS_BIGENDIAN
+/* #  undef WORDS_BIGENDIAN */
+# endif
+#endif
 
 /* Define if xauth is found in your path */
 /* #undef XAUTH_PATH */

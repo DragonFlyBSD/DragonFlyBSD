@@ -9,6 +9,7 @@ Upgrading notes:
 
 Update config.h and version.h in secure/lib/libssh.
 Update ssh{,d}_config and ssh{,d}_config.5.
+Update ssh_namespace.h
 
 Used in:
 lib/pam_module/pam_ssh/
