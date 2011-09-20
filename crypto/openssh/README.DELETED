@@ -5,7 +5,6 @@ OVERVIEW
 README.platform
 README.privsep
 TODO
-WARNING.RNG
 aclocal.m4
 audit-linux.c
 buildpkg.sh.in
@@ -79,6 +78,9 @@ openbsd-compat/xcrypt.c
 openssh.xml.in
 opensshd.init.in
 regress/
+sandbox-darwin.c
+sandbox-null.c
+sandbox-systrace.c
 scard/
 scp.0
 sftp-server.0
@@ -89,12 +91,8 @@ ssh-keygen.0
 ssh-keyscan.0
 ssh-keysign.0
 ssh-pkcs11-helper.0
-ssh-rand-helper.0
-ssh-rand-helper.8
-ssh-rand-helper.c
 ssh.0
 ssh_config.0
-ssh_prng_cmds.in
 sshd.0
 sshd_config.0
 survey.sh.in
