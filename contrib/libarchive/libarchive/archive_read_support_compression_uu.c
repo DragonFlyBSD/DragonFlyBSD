@@ -381,7 +381,17 @@ ensure_in_buff_size(struct archive_read_filter *self,
 		unsigned char *ptr;
 		size_t newsize;
 
-		newsize = uudecode->in_allocated << 1;
+		/*
+		 * Calculate a new buffer size for in_buff.
+		 * Increase its value until it has enough size we need.
+		 */
+		newsize = uudecode->in_allocated;
+		do {
+			if (newsize < IN_BUFF_SIZE*32)
+				newsize <<= 1;
+			else
+				newsize += IN_BUFF_SIZE;
+		} while (size > newsize);
 		ptr = malloc(newsize);
 		if (ptr == NULL ||
 		    newsize < uudecode->in_allocated) {
@@ -478,9 +488,9 @@ read_more:
 		switch (uudecode->state) {
 		default:
 		case ST_FIND_HEAD:
-			if (len - nl > 13 && memcmp(b, "begin ", 6) == 0)
+			if (len - nl >= 11 && memcmp(b, "begin ", 6) == 0)
 				l = 6;
-			else if (len - nl > 18 &&
+			else if (len - nl >= 18 &&
 			    memcmp(b, "begin-base64 ", 13) == 0)
 				l = 13;
 			else

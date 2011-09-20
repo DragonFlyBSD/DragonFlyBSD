@@ -9,7 +9,6 @@ build/bump-version.sh
 build/clean.sh
 build/cmake/
 build/pkgconfig/
-build/windows/
 config.h.in
 configure
 configure.ac
