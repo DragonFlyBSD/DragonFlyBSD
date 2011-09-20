@@ -49,7 +49,6 @@ openbsd-compat/inet_aton.c
 openbsd-compat/inet_ntoa.c
 openbsd-compat/inet_ntop.c
 openbsd-compat/mktemp.c
-openbsd-compat/openssl-compat.c
 openbsd-compat/port-aix.c
 openbsd-compat/port-irix.c
 openbsd-compat/port-linux.c
