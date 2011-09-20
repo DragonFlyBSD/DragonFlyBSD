@@ -5,6 +5,6 @@ SRCS+=	_setjmp.S rfork_thread.S setjmp.S sigsetjmp.S \
 	fabs.S modf.S mcontext.S\
 	fpclassifyl.c nanf.c signbitl.c flt_rounds.c \
 	infinityl.c isinfl.c isfinitel.c isnanl.c \
-	ldexp.c fpclassifyl.c \
+	ldexp.c \
 	fpgetmask.S fpsetmask.S fpgetround.S fpsetround.S \
 	fpgetsticky.S fpsetsticky.S
