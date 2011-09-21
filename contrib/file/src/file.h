@@ -27,7 +27,7 @@
  */
 /*
  * file.h - definitions for file(1) program
- * @(#)$File: file.h,v 1.132 2011/03/20 20:36:52 christos Exp $
+ * @(#)$File: file.h,v 1.134 2011/09/16 21:23:59 christos Exp $
  */
 
 #ifndef __file_h__
@@ -85,6 +85,10 @@
 #define protected
 #endif
 #define public
+
+#ifndef __arraycount
+#define __arraycount(a) (sizeof(a) / sizeof(a[0]))
+#endif
 
 #ifndef __GNUC_PREREQ__
 #ifdef __GNUC__
@@ -333,8 +337,10 @@ struct mlist {
 
 #ifdef __cplusplus
 #define CAST(T, b)	static_cast<T>(b)
+#define RCAST(T, b)	reinterpret_cast<T>(b)
 #else
 #define CAST(T, b)	(T)(b)
+#define RCAST(T, b)	(T)(b)
 #endif
 
 struct level_info {
