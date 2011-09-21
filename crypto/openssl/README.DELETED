@@ -12,6 +12,7 @@ INSTALL.W64
 INSTALL.WCE
 MacOS/
 Makefile
+Makefile.bak
 Makefile.org
 Makefile.shared
 Netware/
@@ -34,7 +35,7 @@ apps/dsa-pca.pem
 apps/dsa1024.pem
 apps/dsa512.pem
 apps/dsap.pem
-apps/install.com
+apps/install-apps.com
 apps/makeapps.com
 apps/md4.c
 apps/oid.cnf
@@ -56,6 +57,7 @@ apps/server2.pem
 apps/set/
 apps/testCA.pem
 apps/tsget
+apps/vms_decc_init.c
 apps/winrand.c
 bugs/
 certs/
@@ -198,7 +200,7 @@ crypto/ia64cpuid.S
 crypto/idea/Makefile
 crypto/idea/idea_spd.c
 crypto/idea/ideatest.c
-crypto/install.com
+crypto/install-crypto.com
 crypto/jpake/
 crypto/krb5/
 crypto/lhash/Makefile
@@ -320,6 +322,7 @@ crypto/threads/win32.bat
 crypto/ts/Makefile
 crypto/txt_db/Makefile
 crypto/ui/Makefile
+crypto/vms_rms.h
 crypto/whrlpool/Makefile
 crypto/whrlpool/wp_test.c
 crypto/x509/Makefile
@@ -370,7 +373,7 @@ os2/
 perl/
 shlib/
 ssl/Makefile
-ssl/install.com
+ssl/install-ssl.com
 ssl/ssl-lib.com
 ssl/ssl_task.c
 ssl/ssltest.c
