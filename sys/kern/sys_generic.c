@@ -1021,16 +1021,18 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		 * Handle errors
 		 */
 		if (kevp[i].flags & EV_ERROR) {
-			switch(kevp[i].data) {
+			int error = kevp[i].data;
+
+			switch (error) {
 			case EBADF:
 				/*
 				 * A bad file descriptor is considered a
 				 * fatal error for select, bail out.
 				 */
-				skap->error = EBADF;
-				*res = 0;
-				return (1);
-				break;
+				skap->error = error;
+				*res = -1;
+				return error;
+
 			default:
 				/*
 				 * Select silently swallows any unknown errors
@@ -1042,18 +1044,17 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 				 */
 				if (kevp[i].filter != EVFILT_READ &&
 				    kevp[i].filter != EVFILT_WRITE &&
-				    kevp[i].data != EOPNOTSUPP) {
-					skap->error = kevp[i].data;
-					*res = 0;
-					return (1);
+				    error != EOPNOTSUPP) {
+					skap->error = error;
+					*res = -1;
+					return error;
 				}
 				break;
 			}
 			if (nseldebug)
-				kprintf("select fd %ju filter %d error %jd\n",
+				kprintf("select fd %ju filter %d error %d\n",
 					(uintmax_t)kevp[i].ident,
-					kevp[i].filter,
-					(intmax_t)kevp[i].data);
+					kevp[i].filter, error);
 			continue;
 		}
 
