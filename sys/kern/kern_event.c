@@ -625,7 +625,9 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 				kevp->data = error;
 				lres = *res;
 				kevent_copyoutfn(uap, kevp, 1, res);
-				if (lres != *res) {
+				if (*res < 0) {
+					goto done;
+				} else if (lres != *res) {
 					nevents--;
 					nerrors++;
 				}
