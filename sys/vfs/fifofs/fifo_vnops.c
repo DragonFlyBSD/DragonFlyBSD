@@ -422,12 +422,14 @@ filt_fiforead(struct knote *kn, long hint)
 
 	lwkt_gettoken(&vp->v_token);
 	kn->kn_data = so->so_rcv.ssb_cc;
-	if ((so->so_state & SS_ISDISCONNECTED) && kn->kn_data == 0) {
+	if (so->so_state & SS_ISDISCONNECTED) {
+		if (kn->kn_data == 0)
+			kn->kn_flags |= EV_NODATA;
 		kn->kn_flags |= EV_EOF;
 		lwkt_reltoken(&vp->v_token);
 		return (1);
 	}
-	kn->kn_flags &= ~EV_EOF;
+	kn->kn_flags &= ~(EV_EOF | EV_NODATA);
 	lwkt_reltoken(&vp->v_token);
 	return (kn->kn_data > 0);
 }
@@ -452,11 +454,11 @@ filt_fifowrite(struct knote *kn, long hint)
 	lwkt_gettoken(&vp->v_token);
 	kn->kn_data = ssb_space(&so->so_snd);
 	if (so->so_state & SS_ISDISCONNECTED) {
-		kn->kn_flags |= EV_EOF;
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		lwkt_reltoken(&vp->v_token);
 		return (1);
 	}
-	kn->kn_flags &= ~EV_EOF;
+	kn->kn_flags &= ~(EV_EOF | EV_NODATA);
 	lwkt_reltoken(&vp->v_token);
 	return (kn->kn_data >= so->so_snd.ssb_lowat);
 }

@@ -1354,7 +1354,7 @@ filt_ttyread(struct knote *kn, long hint)
 	lwkt_gettoken(&tty_token);
 	kn->kn_data = ttnread(tp);
 	if (ISSET(tp->t_state, TS_ZOMBIE)) {
-		kn->kn_flags |= EV_EOF;
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		lwkt_reltoken(&tty_token);
 		return (1);
 	}

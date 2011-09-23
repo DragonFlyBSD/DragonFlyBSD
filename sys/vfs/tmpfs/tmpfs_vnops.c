@@ -1579,7 +1579,7 @@ filt_tmpfsread(struct knote *kn, long hint)
 	off_t off;
 
 	if (hint == NOTE_REVOKE) {
-		kn->kn_flags |= (EV_EOF | EV_ONESHOT);
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
 		return(1);
 	}
 
@@ -1605,7 +1605,7 @@ static int
 filt_tmpfswrite(struct knote *kn, long hint)
 {
 	if (hint == NOTE_REVOKE)
-		kn->kn_flags |= (EV_EOF | EV_ONESHOT);
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
 	kn->kn_data = 0;
 	return (1);
 }
@@ -1616,7 +1616,7 @@ filt_tmpfsvnode(struct knote *kn, long hint)
 	if (kn->kn_sfflags & hint)
 		kn->kn_fflags |= hint;
 	if (hint == NOTE_REVOKE) {
-		kn->kn_flags |= EV_EOF;
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		return (1);
 	}
 	return (kn->kn_fflags != 0);

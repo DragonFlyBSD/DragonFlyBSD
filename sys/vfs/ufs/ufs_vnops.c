@@ -2181,7 +2181,7 @@ filt_ufsread(struct knote *kn, long hint)
 	 * the knote for deletion.
 	 */
 	if (hint == NOTE_REVOKE) {
-		kn->kn_flags |= (EV_EOF | EV_ONESHOT);
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
 		return (1);
 	}
 
@@ -2201,7 +2201,7 @@ filt_ufswrite(struct knote *kn, long hint)
 	 * the knote for deletion.
 	 */
 	if (hint == NOTE_REVOKE)
-		kn->kn_flags |= (EV_EOF | EV_ONESHOT);
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
 
         kn->kn_data = 0;
         return (1);
@@ -2213,7 +2213,7 @@ filt_ufsvnode(struct knote *kn, long hint)
 	if (kn->kn_sfflags & hint)
 		kn->kn_fflags |= hint;
 	if (hint == NOTE_REVOKE) {
-		kn->kn_flags |= EV_EOF;
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		return (1);
 	}
 	return (kn->kn_fflags != 0);

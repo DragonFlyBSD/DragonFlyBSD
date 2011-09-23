@@ -2954,7 +2954,7 @@ cxm_filter(struct knote *kn, long hint)
 
 	if (sc == NULL) {
 		/* the device is no longer valid/functioning */
-		kn->kn_flags |= EV_EOF;
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		return (1);
 	}
 

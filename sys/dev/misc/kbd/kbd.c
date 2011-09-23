@@ -924,7 +924,8 @@ genkbdfilter(struct knote *kn, long hint)
 	sc = dev->si_drv1;
         kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
-		kn->kn_flags |= EV_EOF;	/* the keyboard has gone */
+		/* The keyboard has gone */
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		ready = 1;
 	} else {
 		if (sc->gkb_q_length > 0)

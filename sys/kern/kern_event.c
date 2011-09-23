@@ -300,7 +300,7 @@ filt_proc(struct knote *kn, long hint)
 			kn->kn_data = p->p_xstat;
 			kn->kn_ptr.p_proc = NULL;
 		}
-		kn->kn_flags |= (EV_EOF | EV_ONESHOT); 
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT); 
 		return (1);
 	}
 

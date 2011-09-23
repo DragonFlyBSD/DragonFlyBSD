@@ -3661,7 +3661,7 @@ filt_hammerread(struct knote *kn, long hint)
 	off_t off;
 
 	if (hint == NOTE_REVOKE) {
-		kn->kn_flags |= (EV_EOF | EV_ONESHOT);
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
 		return(1);
 	}
 	lwkt_gettoken(&hmp->fs_token);	/* XXX use per-ip-token */
@@ -3677,7 +3677,7 @@ static int
 filt_hammerwrite(struct knote *kn, long hint)
 {
 	if (hint == NOTE_REVOKE)
-		kn->kn_flags |= (EV_EOF | EV_ONESHOT);
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
 	kn->kn_data = 0;
 	return (1);
 }
@@ -3688,7 +3688,7 @@ filt_hammervnode(struct knote *kn, long hint)
 	if (kn->kn_sfflags & hint)
 		kn->kn_fflags |= hint;
 	if (hint == NOTE_REVOKE) {
-		kn->kn_flags |= EV_EOF;
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		return (1);
 	}
 	return (kn->kn_fflags != 0);

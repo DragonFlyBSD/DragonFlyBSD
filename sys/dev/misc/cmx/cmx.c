@@ -702,7 +702,7 @@ cmx_filter_read(struct knote *kn, long hint)
         uint8_t bsr = 0;
 
         if (sc == NULL || sc->dying) {
-		kn->kn_flags |= EV_EOF;
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
                 return (1);
 	}
 

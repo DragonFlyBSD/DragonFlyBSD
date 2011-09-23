@@ -1243,10 +1243,12 @@ filt_piperead(struct knote *kn, long hint)
 
 	kn->kn_data = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;
 
-	/*
-	 * Only set EOF if all data has been exhausted
-	 */
-	if ((rpipe->pipe_state & PIPE_REOF) && kn->kn_data == 0) {
+	if (rpipe->pipe_state & PIPE_REOF) {
+		/*
+		 * Only set NODATA if all data has been exhausted
+		 */
+		if (kn->kn_data == 0)
+			kn->kn_flags |= EV_NODATA;
 		kn->kn_flags |= EV_EOF; 
 		ready = 1;
 	}
@@ -1270,7 +1272,7 @@ filt_pipewrite(struct knote *kn, long hint)
 
 	kn->kn_data = 0;
 	if (wpipe == NULL) {
-		kn->kn_flags |= EV_EOF;
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		return (1);
 	}
 
@@ -1278,7 +1280,7 @@ filt_pipewrite(struct knote *kn, long hint)
 	lwkt_gettoken(&wpipe->pipe_wlock);
 
 	if (wpipe->pipe_state & PIPE_WEOF) {
-		kn->kn_flags |= EV_EOF; 
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		ready = 1;
 	}
 

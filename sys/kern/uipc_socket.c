@@ -1811,10 +1811,12 @@ filt_soread(struct knote *kn, long hint)
 	}
 	kn->kn_data = so->so_rcv.ssb_cc;
 
-	/*
-	 * Only set EOF if all data has been exhausted.
-	 */
-	if ((so->so_state & SS_CANTRCVMORE) && kn->kn_data == 0) {
+	if (so->so_state & SS_CANTRCVMORE) {
+		/*
+		 * Only set NODATA if all data has been exhausted.
+		 */
+		if (kn->kn_data == 0)
+			kn->kn_flags |= EV_NODATA;
 		kn->kn_flags |= EV_EOF; 
 		kn->kn_fflags = so->so_error;
 		return (1);
@@ -1845,7 +1847,7 @@ filt_sowrite(struct knote *kn, long hint)
 
 	kn->kn_data = ssb_space(&so->so_snd);
 	if (so->so_state & SS_CANTSENDMORE) {
-		kn->kn_flags |= EV_EOF; 
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		kn->kn_fflags = so->so_error;
 		return (1);
 	}

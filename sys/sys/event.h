@@ -88,6 +88,7 @@ struct kevent {
 /* returned values */
 #define EV_EOF		0x8000		/* EOF detected */
 #define EV_ERROR	0x4000		/* error, data contains errno */
+#define EV_NODATA	0x1000		/* EOF and no more data */
 
 /*
  * data/hint flags for EVFILT_{READ|WRITE}, shared with userspace

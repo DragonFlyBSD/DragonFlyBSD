@@ -1375,12 +1375,12 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 			case EVFILT_READ:
 #if 0
 				/*
-				 * EOF on the read side can indicate a
+				 * NODATA on the read side can indicate a
 				 * half-closed situation and not necessarily
 				 * a disconnect, so depend on the user
 				 * issuing a read() and getting 0 bytes back.
 				 */
-				if (kevp[i].flags & EV_EOF)
+				if (kevp[i].flags & EV_NODATA)
 					pfd->revents |= POLLHUP;
 #endif
 				if (pfd->events & POLLIN)
@@ -1397,7 +1397,7 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 				 * In this case a disconnect is implied even
 				 * for a half-closed (write side) situation.
 				 */
-				if (kevp[i].flags & EV_EOF) {
+				if (kevp[i].flags & EV_NODATA) {
 					pfd->revents |= POLLHUP;
 				} else {
 					if (pfd->events & POLLOUT)
@@ -1408,7 +1408,7 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 				break;
 			case EVFILT_EXCEPT:
 				/*
-				 * EV_EOF should never be tagged for this
+				 * EV_NODATA should never be tagged for this
 				 * filter.
 				 */
 				if (pfd->events & POLLPRI)

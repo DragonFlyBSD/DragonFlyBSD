@@ -2305,7 +2305,7 @@ devfs_cdev_unlock(cdev_t dev)
 static int
 devfs_detached_filter_eof(struct knote *kn, long hint)
 {
-	kn->kn_flags |= EV_EOF;
+	kn->kn_flags |= (EV_EOF | EV_NODATA);
 	return (1);
 }
 

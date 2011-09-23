@@ -890,7 +890,7 @@ filt_ptcread (struct knote *kn, long hint)
 
 	lwkt_gettoken(&tty_token);
 	if ((tp->t_state & TS_ZOMBIE) || (pti->pt_flags & PF_SCLOSED)) {
-		kn->kn_flags |= EV_EOF;
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		lwkt_reltoken(&tty_token);
 		return (1);
 	}
@@ -916,7 +916,7 @@ filt_ptcwrite (struct knote *kn, long hint)
 
 	lwkt_gettoken(&tty_token);
 	if (tp->t_state & TS_ZOMBIE) {
-		kn->kn_flags |= EV_EOF;
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		lwkt_reltoken(&tty_token);
 		return (1);
 	}
