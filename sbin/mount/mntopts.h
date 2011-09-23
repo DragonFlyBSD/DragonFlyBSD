@@ -35,6 +35,9 @@
  * $DragonFly: src/sbin/mount/mntopts.h,v 1.4 2005/01/06 03:21:00 cpressey Exp $
  */
 
+#ifndef _MOUNT_MNTOPTS_H_
+#define _MOUNT_MNTOPTS_H_
+
 struct mntopt {
 	const char *m_option;	/* option name */
 	int m_inverse;		/* if a negative option, e.g. "dev" */
@@ -97,3 +100,5 @@ void getmntopts(const char *, const struct mntopt *, int *, int *);
 void rmslashes(char *, char *);
 void checkpath(const char *, char resolved_path[]);
 extern int getmnt_silent;
+
+#endif
