@@ -620,8 +620,6 @@ free1:
 
 /*
  * socketpair(int domain, int type, int protocol, int *rsv)
- *
- * MPALMOSTSAFE
  */
 int
 sys_socketpair(struct socketpair_args *uap)
@@ -630,8 +628,15 @@ sys_socketpair(struct socketpair_args *uap)
 
 	error = kern_socketpair(uap->domain, uap->type, uap->protocol, sockv);
 
-	if (error == 0)
+	if (error == 0) {
 		error = copyout(sockv, uap->rsv, sizeof(sockv));
+
+		if (error != 0) {
+			kern_close(sockv[0]);
+			kern_close(sockv[1]);
+		}
+	}
+
 	return (error);
 }
 
