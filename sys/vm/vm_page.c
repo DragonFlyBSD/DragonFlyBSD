@@ -1529,6 +1529,15 @@ vm_page_dontneed(vm_page_t m)
 		return;
 	}
 
+	/*
+	 * If vm_page_dontneed() is inactivating a page, it must clear
+	 * the referenced flag; otherwise the pagedaemon will see references
+	 * on the page in the inactive queue and reactivate it. Until the 
+	 * page can move to the cache queue, madvise's job is not done.
+	 */
+	vm_page_flag_clear(m, PG_REFERENCED);
+	pmap_clear_reference(m);
+
 	if (m->dirty == 0)
 		vm_page_test_dirty(m);
 
