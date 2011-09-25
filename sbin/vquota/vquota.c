@@ -41,6 +41,8 @@
 #include <fts.h>
 #include <libprop/proplib.h>
 #include <unistd.h>
+#include <sys/tree.h>
+#include <errno.h>
 #include <inttypes.h>
 
 static bool flag_debug = 0;
@@ -58,20 +60,127 @@ usage(int retcode)
 	exit(retcode);
 }
 
+/*
+ * Inode numbers with more than one hard link often come in groups;
+ * use linear arrays of 1024 ones as the basic unit of allocation.
+ * We only need to check if the inodes have been previously processed,
+ * bit arrays are perfect for that purpose.
+ */
+#define HL_CHUNK_BITS		10
+#define HL_CHUNK_ENTRIES	(1<<HL_CHUNK_BITS)
+#define HL_CHUNK_MASK		(HL_CHUNK_ENTRIES - 1)
+#define BA_UINT64_BITS		6
+#define BA_UINT64_ENTRIES	(1<<BA_UINT64_BITS)
+#define BA_UINT64_MASK		(BA_UINT64_ENTRIES - 1)
+
+struct hl_node {
+	RB_ENTRY(hl_node)	rb_entry;
+	ino_t			ino_left_bits;
+	uint64_t		hl_chunk[HL_CHUNK_ENTRIES/64];
+};
+
+RB_HEAD(hl_tree,hl_node)	hl_root;
+
+RB_PROTOTYPE(hl_tree, hl_node, rb_entry, rb_hl_node_cmp);
+
+static int
+rb_hl_node_cmp(struct hl_node *a, struct hl_node *b);
+
+RB_GENERATE(hl_tree, hl_node, rb_entry, rb_hl_node_cmp);
+
+struct hl_node* hl_node_insert(ino_t);
+
+
+static int
+rb_hl_node_cmp(struct hl_node *a, struct hl_node *b)
+{
+	if (a->ino_left_bits < b->ino_left_bits)
+		return(-1);
+	else if (a->ino_left_bits > b->ino_left_bits)
+		return(1);
+	return(0);
+}
+
+struct hl_node* hl_node_insert(ino_t inode)
+{
+	struct hl_node *hlp, *res;
+
+	hlp = malloc(sizeof(struct hl_node));
+	if (hlp == NULL) {
+		/* shouldn't happen */
+		printf("hl_node_insert(): malloc failed\n");
+		exit(ENOMEM);
+	}
+	bzero(hlp, sizeof(struct hl_node));
+
+	hlp->ino_left_bits = (inode >> HL_CHUNK_BITS);
+	res = RB_INSERT(hl_tree, &hl_root, hlp);
+
+	if (res != NULL)	/* shouldn't happen */
+		printf("hl_node_insert(): RB_INSERT didn't return NULL\n");
+
+	return hlp;
+}
+
+/*
+ * hl_register: register an inode number in a rb-tree of bit arrays
+ * returns:
+ * - true if the inode was already processed
+ * - false otherwise
+ */
+static bool
+hl_register(ino_t inode)
+{
+	struct hl_node hl_find, *hlp;
+	uint64_t ino_right_bits, ba_index, ba_offset;
+	uint64_t bitmask, bitval;
+	bool retval = false;
+
+	/* calculate the different addresses of the wanted bit */
+	hl_find.ino_left_bits = (inode >> HL_CHUNK_BITS);
+
+	ino_right_bits = inode & HL_CHUNK_MASK;
+	ba_index  = ino_right_bits >> BA_UINT64_BITS;
+	ba_offset = ino_right_bits & BA_UINT64_MASK;
+
+	/* no existing node? create and initialize it */
+	if ((hlp = RB_FIND(hl_tree, &hl_root, &hl_find)) == NULL) {
+		hlp = hl_node_insert(inode);
+	}
+
+	/* node was found, check the bit value */
+	bitmask = 1 << ba_offset;
+	bitval = hlp->hl_chunk[ba_index] & bitmask;
+	if (bitval != 0) {
+		retval = true;
+	}
+
+	/* set the bit */
+	hlp->hl_chunk[ba_index] |= bitmask;
+
+	return retval;
+}
+
 static int
 get_dirsize(char* dirname)
 {
 	FTS		*fts;
 	FTSENT		*p;
 	char*		fts_args[2];
-	uint64_t	size_of_files = 0;
+	uint64_t	global_size = 0;
 	int		retval = 0;
+
+	/* what we need */
+	ino_t		file_inode;
+	off_t		file_size;
+	uid_t		file_uid;
+	gid_t		file_gid;
 
 	/* TODO: check directory name sanity */
 	fts_args[0] = dirname;
 	fts_args[1] = NULL;
 
-	if ((fts = fts_open(fts_args, FTS_PHYSICAL, NULL)) == NULL)
+	if ((fts = fts_open(fts_args, FTS_PHYSICAL|FTS_XDEV, NULL)) == NULL)
 		err(1, "fts_open() failed");
 
 	while ((p = fts_read(fts)) != NULL) {
@@ -89,12 +198,25 @@ get_dirsize(char* dirname)
 			retval = 1;
 			break;
 		default:
-			size_of_files += p->fts_statp->st_size;
+			file_inode = p->fts_statp->st_ino;
+			file_size = p->fts_statp->st_size;
+			file_uid = p->fts_statp->st_uid;
+			file_gid = p->fts_statp->st_gid;
+
+			/* files with more than one link */
+			if (p->fts_statp->st_nlink > 1) {
+				if (hl_register(file_inode)) {
+					/* only process them once */
+					global_size += file_size;
+				}
+			} else {
+				global_size += file_size;
+			}
 		}
 	}
 	fts_close(fts);
 
-	printf("%"PRIu64"\n", size_of_files);
+	printf("%"PRIu64"\n", global_size);
 	return retval;
 }
 
@@ -157,7 +279,7 @@ send_command(const char *path, const char *cmd,
 	}
 
 	if (flag_debug)
-		printf("message to kernel:\n%s\n", prop_dictionary_externalize(dict));
+		printf("Message to kernel:\n%s\n", prop_dictionary_externalize(dict));
 
 	error = vquotactl(path, &pref);
 	if (error != 0) {
