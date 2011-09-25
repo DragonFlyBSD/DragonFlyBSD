@@ -29,8 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/main.c,v 1.15.2.3 2002/05/16 23:41:23 peter Exp $
- * $DragonFly: src/usr.bin/truss/main.c,v 1.5 2005/05/28 00:22:04 swildner Exp $
- */
+a */
 
 /*
  * The main module for truss.  Suprisingly simple, but, then, the other
@@ -72,22 +71,17 @@ usage(void)
   exit(1);
 }
 
-/*
- * WARNING! "FreeBSD a.out" must be first, or set_etype will not
- * work correctly.
- */
 struct ex_types {
   const char *type;
   void (*enter_syscall)(struct trussinfo *, int);
   int (*exit_syscall)(struct trussinfo *, int);
 } ex_types[] = {
 #ifdef __i386__
-  { "FreeBSD a.out", i386_syscall_entry, i386_syscall_exit },
-  { "FreeBSD ELF32", i386_syscall_entry, i386_syscall_exit },
+  { "DragonFly ELF32", i386_syscall_entry, i386_syscall_exit },
   { "Linux ELF32", i386_linux_syscall_entry, i386_linux_syscall_exit },
 #endif
 #ifdef __x86_64__
-  { "FreeBSD ELF64", x86_64_syscall_entry, x86_64_syscall_exit },
+  { "DragonFly ELF64", x86_64_syscall_entry, x86_64_syscall_exit },
 #endif
   { 0, 0, 0 },
 };
