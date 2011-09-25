@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/main.c,v 1.15.2.3 2002/05/16 23:41:23 peter Exp $
-a */
+ */
 
 /*
  * The main module for truss.  Suprisingly simple, but, then, the other
