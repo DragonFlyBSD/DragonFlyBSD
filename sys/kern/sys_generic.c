@@ -1383,6 +1383,9 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 				if (kevp[i].flags & EV_NODATA)
 					pfd->revents |= POLLHUP;
 #endif
+				if ((kevp[i].flags & EV_EOF) &&
+				    kevp[i].fflags != 0)
+					pfd->revents |= POLLERR;
 				if (pfd->events & POLLIN)
 					pfd->revents |= POLLIN;
 				if (pfd->events & POLLRDNORM)
@@ -1397,8 +1400,10 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 				 * In this case a disconnect is implied even
 				 * for a half-closed (write side) situation.
 				 */
-				if (kevp[i].flags & EV_NODATA) {
+				if (kevp[i].flags & EV_EOF) {
 					pfd->revents |= POLLHUP;
+					if (kevp[i].fflags != 0)
+						pfd->revents |= POLLERR;
 				} else {
 					if (pfd->events & POLLOUT)
 						pfd->revents |= POLLOUT;
