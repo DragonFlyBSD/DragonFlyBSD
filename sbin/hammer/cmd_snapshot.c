@@ -212,8 +212,15 @@ hammer_cmd_snaprm(char **av, int ac)
 	intmax_t tid;
 	int fsfd = -1;
 	int i;
+	int delete;
+	enum snaprm_mode { none_m, path_m, tid_m } mode = none_m;
 	char *dirpath;
-	char *ptr;
+	char *ptr, *ptr2;
+
+	if (ac == 0) {
+		snapshot_usage(1);
+		/* not reached */
+	}
 
 	for (i = 0; i < ac; ++i) {
 		if (lstat(av[i], &st) < 0) {
@@ -223,10 +230,19 @@ hammer_cmd_snaprm(char **av, int ac)
 				    av[i]);
 				/* not reached */
 			}
+			if (mode == path_m) {
+				snapshot_usage(1);
+				/* not reached */
+			}
+			mode = tid_m;
 			if (fsfd < 0)
 				fsfd = open(".", O_RDONLY);
 			snapshot_del(fsfd, tid);
 		} else if (S_ISDIR(st.st_mode)) {
+			if (i != 0 || ac < 2) {
+				snapshot_usage(1);
+				/* not reached */
+			}
 			if (fsfd >= 0)
 				close(fsfd);
 			fsfd = open(av[i], O_RDONLY);
@@ -235,6 +251,7 @@ hammer_cmd_snaprm(char **av, int ac)
 				    av[i]);
 				/* not reached */
 			}
+			mode = tid_m;
 		} else if (S_ISLNK(st.st_mode)) {
 			dirpath = dirpart(av[i]);
 			bzero(linkbuf, sizeof(linkbuf));
@@ -261,12 +278,32 @@ hammer_cmd_snaprm(char **av, int ac)
 				/* not reached */
 			}
 
-			if ((ptr = strrchr(linkbuf, '@')) &&
-			    ptr > linkbuf && ptr[-1] == '@') {
-				tid = strtoull(ptr + 1, NULL, 16);
-				snapshot_del(fsfd, tid);
+			delete = 1;
+			if (i == 0 && ac > 1) {
+				mode = path_m;
+				if (lstat(av[1], &st) < 0) {
+					tid = strtoull(av[1], &ptr, 16);
+					if (*ptr == '\0') {
+						delete = 0;
+						mode = tid_m;
+					}
+				}
+			} else {
+				if (mode == tid_m) {
+					snapshot_usage(1);
+					/* not reached */
+				}
+				mode = path_m;
 			}
-			remove(av[i]);
+			if (delete && (ptr = strrchr(linkbuf, '@')) &&
+			    ptr > linkbuf && ptr[-1] == '@' &&
+			    ptr + 1 < linkbuf + sizeof(linkbuf) - 1) {
+				tid = strtoull(ptr + 1, &ptr2, 16);
+				if (*ptr2 == '\0') {
+					snapshot_del(fsfd, tid);
+					remove(av[i]);
+				}
+			}
 			free(dirpath);
 		} else {
 			err(2, "hammer snaprm: not directory or snapshot "
