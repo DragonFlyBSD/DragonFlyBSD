@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.16 2008/11/09 05:22:56 dillon Exp $
  */
 
@@ -354,7 +354,7 @@ done:
 	 */
 	if (TwoWayPipeOpt) {
 		mrec = read_mrecord(0, &error, &pickup);
-		if (mrec == NULL || 
+		if (mrec == NULL ||
 		    mrec->head.type != HAMMER_MREC_TYPE_UPDATE ||
 		    mrec->head.rec_size != sizeof(mrec->update)) {
 			fprintf(stderr, "mirror_read: Did not get final "
@@ -676,7 +676,7 @@ create_pfs(const char *filesystem, uuid_t *s_uuid)
 
 	char *cmd = NULL;
 	asprintf(&cmd, "/sbin/hammer pfs-slave '%s' shared-uuid=%s 1>&2",
-		 filesystem, shared_uuid); 
+		 filesystem, shared_uuid);
 	free(shared_uuid);
 
 	if (cmd == NULL) {
@@ -856,7 +856,7 @@ again:
 		return;
 	}
 
-	if (mrec == NULL || 
+	if (mrec == NULL ||
 	    (mrec->head.type != HAMMER_MREC_TYPE_SYNC &&
 	     mrec->head.type != HAMMER_MREC_TYPE_IDLE) ||
 	    mrec->head.rec_size != sizeof(mrec->sync)) {
@@ -913,7 +913,7 @@ hammer_cmd_mirror_dump(void)
 	int bytes;
 
 	/*
-	 * Read and process the PFS header 
+	 * Read and process the PFS header
 	 */
 	pickup.signature = 0;
 	pickup.type = 0;
@@ -988,7 +988,7 @@ again:
 	 * Read and process the termination sync record.
 	 */
 	mrec = read_mrecord(0, &error, &pickup);
-	if (mrec == NULL || 
+	if (mrec == NULL ||
 	    (mrec->head.type != HAMMER_MREC_TYPE_SYNC &&
 	     mrec->head.type != HAMMER_MREC_TYPE_IDLE)
 	 ) {
@@ -1266,7 +1266,7 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 		if (type == HAMMER_MREC_TYPE_REC) {
 			if (mrec->head.rec_size <
 			    sizeof(mrec->rec) + mrec->rec.leaf.data_len) {
-				fprintf(stderr, 
+				fprintf(stderr,
 					"read_mrecords: malformed record on "
 					"pipe, illegal element data_len\n");
 				exit(1);
@@ -1346,7 +1346,7 @@ read_mrecord(int fdin, int *errorp, hammer_ioc_mrecord_head_t pickup)
 		*errorp = EPIPE;
 		return(NULL);
 	}
-	if (mrec->head.rec_crc != 
+	if (mrec->head.rec_crc !=
 	    crc32((char *)mrec + HAMMER_MREC_CRCOFF,
 		  mrec->head.rec_size - HAMMER_MREC_CRCOFF)) {
 		fprintf(stderr, "read_mrecord: bad CRC\n");
@@ -1479,7 +1479,7 @@ validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 	 */
 	if (bcmp(&mrec->pfs.pfsd.shared_uuid, &pfsd.shared_uuid,
 		 sizeof(pfsd.shared_uuid)) != 0) {
-		fprintf(stderr, 
+		fprintf(stderr,
 			"mirror-write: source and target have "
 			"different shared-uuid's!\n");
 		exit(1);
@@ -1608,7 +1608,7 @@ getyn(void)
 static void
 mirror_usage(int code)
 {
-	fprintf(stderr, 
+	fprintf(stderr,
 		"hammer mirror-read <filesystem> [begin-tid]\n"
 		"hammer mirror-read-stream <filesystem> [begin-tid]\n"
 		"hammer mirror-write <filesystem>\n"
