@@ -879,27 +879,11 @@ bremfree_locked(struct buf *bp)
  *	is set, the buffer is valid and we do not have to do anything ( see
  *	getblk() ).
  *
- * MPALMOSTSAFE
  */
 int
 bread(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
 {
-	struct buf *bp;
-
-	bp = getblk(vp, loffset, size, 0, 0);
-	*bpp = bp;
-
-	/* if not found in cache, do some I/O */
-	if ((bp->b_flags & B_CACHE) == 0) {
-		bp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL);
-		bp->b_cmd = BUF_CMD_READ;
-		bp->b_bio1.bio_done = biodone_sync;
-		bp->b_bio1.bio_flags |= BIO_SYNC;
-		vfs_busy_pages(vp, bp);
-		vn_strategy(vp, &bp->b_bio1);
-		return (biowait(&bp->b_bio1, "biord"));
-	}
-	return (0);
+	return (breadn(vp, loffset, size, NULL, NULL, 0, bpp));
 }
 
 /*
@@ -949,7 +933,6 @@ breadcb(struct vnode *vp, off_t loffset, int size,
  *	to initiating I/O . If B_CACHE is set, the buffer is valid 
  *	and we do not have to do anything.
  *
- * MPALMOSTSAFE
  */
 int
 breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
