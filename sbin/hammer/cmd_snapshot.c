@@ -296,8 +296,7 @@ hammer_cmd_snaprm(char **av, int ac)
 				mode = path_m;
 			}
 			if (delete && (ptr = strrchr(linkbuf, '@')) &&
-			    ptr > linkbuf && ptr[-1] == '@' &&
-			    ptr + 1 < linkbuf + sizeof(linkbuf) - 1) {
+			    ptr > linkbuf && ptr[-1] == '@' && ptr[1]) {
 				tid = strtoull(ptr + 1, &ptr2, 16);
 				if (*ptr2 == '\0') {
 					snapshot_del(fsfd, tid);
