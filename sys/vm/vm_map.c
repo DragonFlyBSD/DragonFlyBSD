@@ -603,6 +603,8 @@ vm_map_entry_reserve(int count)
 	/*
 	 * Make sure we have enough structures in gd_vme_base to handle
 	 * the reservation request.
+	 *
+	 * The critical section protects access to the per-cpu gd.
 	 */
 	crit_enter();
 	while (gd->gd_vme_avail < count) {

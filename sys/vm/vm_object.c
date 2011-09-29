@@ -835,7 +835,6 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 * Interlock other major object operations.  This allows us to 
 	 * temporarily clear OBJ_WRITEABLE and OBJ_MIGHTBEDIRTY.
 	 */
-	crit_enter();
 	vm_object_set_flag(object, OBJ_CLEANING);
 
 	/*
@@ -887,7 +886,6 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	} while (info.error || curgeneration != object->generation);
 
 	vm_object_clear_flag(object, OBJ_CLEANING);
-	crit_exit();
 	vm_object_drop(object);
 }
 
@@ -1108,7 +1106,6 @@ vm_object_pmap_copy_1(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 	 * spl protection needed to prevent races between the lookup,
 	 * an interrupt unbusy/free, and our protect call.
 	 */
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	for (idx = start; idx < end; idx++) {
 		p = vm_page_lookup(object, idx);
@@ -1117,7 +1114,6 @@ vm_object_pmap_copy_1(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 		vm_page_protect(p, VM_PROT_READ);
 	}
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
@@ -1139,14 +1135,12 @@ vm_object_pmap_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 	info.start_pindex = start;
 	info.end_pindex = end - 1;
 
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
 				vm_object_pmap_remove_callback, &info);
 	if (start == 0 && end == object->size)
 		vm_object_clear_flag(object, OBJ_WRITEABLE);
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
@@ -1218,7 +1212,6 @@ shadowlookup:
 		 * lookup, an interrupt unbusy/free, and our busy check.
 		 */
 
-		crit_enter();
 		m = vm_page_lookup(tobject, tpindex);
 
 		if (m == NULL) {
@@ -1231,7 +1224,6 @@ shadowlookup:
 			/*
 			 * next object
 			 */
-			crit_exit();
 			if (tobject->backing_object == NULL)
 				continue;
 			tpindex += OFF_TO_IDX(tobject->backing_object_offset);
@@ -1251,16 +1243,13 @@ shadowlookup:
 		    (m->flags & PG_UNMANAGED) ||
 		    m->valid != VM_PAGE_BITS_ALL
 		) {
-			crit_exit();
 			continue;
 		}
 
  		if (vm_page_sleep_busy(m, TRUE, "madvpo")) {
-			crit_exit();
   			goto relookup;
 		}
 		vm_page_busy(m);
-		crit_exit();
 
 		/*
 		 * Theoretically once a page is known not to be busy, an
@@ -1384,8 +1373,6 @@ vm_object_backing_scan(vm_object_t object, int op)
 	struct rb_vm_page_scan_info info;
 	vm_object_t backing_object;
 
-	crit_enter();
-
 	backing_object = object->backing_object;
 	info.backing_offset_index = OFF_TO_IDX(object->backing_object_offset);
 
@@ -1404,7 +1391,6 @@ vm_object_backing_scan(vm_object_t object, int op)
 		 * shadow test may succeed! XXX
 		 */
 		if (backing_object->type != OBJT_DEFAULT) {
-			crit_exit();
 			return(0);
 		}
 	}
@@ -1428,7 +1414,7 @@ vm_object_backing_scan(vm_object_t object, int op)
 					vm_object_backing_scan_callback,
 					&info);
 	} while (info.error < 0);
-	crit_exit();
+
 	return(info.error);
 }
 
@@ -1680,7 +1666,6 @@ vm_object_collapse(vm_object_t object)
 			/*
 			 * Move the pager from backing_object to object.
 			 */
-
 			if (backing_object->type == OBJT_SWAP) {
 				vm_object_pip_add(backing_object, 1);
 
@@ -1847,7 +1832,6 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	/*
 	 * Indicate that paging is occuring on the object
 	 */
-	crit_enter();
 	vm_object_pip_add(object, 1);
 
 	/*
@@ -1889,7 +1873,6 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 * Cleanup
 	 */
 	vm_object_pip_wakeup(object);
-	crit_exit();
 	lwkt_reltoken(&vm_token);
 }
 

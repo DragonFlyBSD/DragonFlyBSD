@@ -233,7 +233,6 @@ vm_contig_pg_alloc(unsigned long size, vm_paddr_t low, vm_paddr_t high,
 		panic("vm_contig_pg_alloc: boundary must be a power of 2");
 
 	start = 0;
-	crit_enter();
 
 	/*
 	 * Three passes (0, 1, 2).  Each pass scans the VM page list for
@@ -280,9 +279,6 @@ again:
 			vm_contig_pg_flush(PQ_INACTIVE, 
 					    vmstats.v_inactive_count);
 
-			crit_exit(); /* give interrupts a chance */
-			crit_enter();
-
 			/*
 			 * Best effort flush of active pages.
 			 *
@@ -303,8 +299,6 @@ again:
 			 * to succeed, reset to 0 for the next iteration.
 			 */
 			start = 0;
-			crit_exit(); /* give interrupts a chance */
-			crit_enter();
 			continue;	/* next pass */
 		}
 		start = i;
@@ -358,14 +352,12 @@ again:
 		/*
 		 * Our job is done, return the index page of vm_page_array.
 		 */
-		crit_exit();
 		return (start); /* aka &pga[start] */
 	}
 
 	/*
 	 * Failed.
 	 */
-	crit_exit();
 	return (-1);
 }
 
@@ -419,7 +411,6 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 	if (size == 0)
 		panic("vm_contig_pg_kmap: size must not be 0");
 
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 
 	/*
@@ -439,7 +430,6 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 		return (0);
 	}
 
@@ -471,7 +461,6 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 	vm_object_drop(&kernel_object);
 
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 	return (addr);
 }
 

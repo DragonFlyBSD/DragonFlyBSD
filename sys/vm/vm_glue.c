@@ -326,16 +326,14 @@ faultin(struct proc *p)
 		 * The process is waiting in the kernel to return to user
 		 * mode but cannot until P_SWAPPEDOUT gets cleared.
 		 */
-		crit_enter();
-		lwkt_gettoken(&proc_token);
+		lwkt_gettoken(&p->p_token);
 		p->p_flag &= ~(P_SWAPPEDOUT | P_SWAPWAIT);
 #ifdef INVARIANTS
 		if (swap_debug)
 			kprintf("swapping in %d (%s)\n", p->p_pid, p->p_comm);
 #endif
 		wakeup(p);
-		lwkt_reltoken(&proc_token);
-		crit_exit();
+		lwkt_reltoken(&p->p_token);
 	}
 }
 
@@ -529,26 +527,33 @@ swapout_procs_callback(struct proc *p, void *data)
 	if (!swappable(p))
 		return(0);
 
+	lwkt_gettoken(&p->p_token);
 	vm = p->p_vmspace;
 
 	/*
 	 * We only consider active processes.
 	 */
-	if (p->p_stat != SACTIVE && p->p_stat != SSTOP)
+	if (p->p_stat != SACTIVE && p->p_stat != SSTOP) {
+		lwkt_reltoken(&p->p_token);
 		return(0);
+	}
 
 	FOREACH_LWP_IN_PROC(lp, p) {
 		/*
 		 * do not swap out a realtime process
 		 */
-		if (RTP_PRIO_IS_REALTIME(lp->lwp_rtprio.type))
+		if (RTP_PRIO_IS_REALTIME(lp->lwp_rtprio.type)) {
+			lwkt_reltoken(&p->p_token);
 			return(0);
+		}
 
 		/*
 		 * Guarentee swap_idle_threshold time in memory
 		 */
-		if (lp->lwp_slptime < swap_idle_threshold1)
+		if (lp->lwp_slptime < swap_idle_threshold1) {
+			lwkt_reltoken(&p->p_token);
 			return(0);
+		}
 
 		/*
 		 * If the system is under memory stress, or if we
@@ -558,6 +563,7 @@ swapout_procs_callback(struct proc *p, void *data)
 		if (((action & VM_SWAP_NORMAL) == 0) &&
 		    (((action & VM_SWAP_IDLE) == 0) ||
 		     (lp->lwp_slptime < swap_idle_threshold2))) {
+			lwkt_reltoken(&p->p_token);
 			return(0);
 		}
 
@@ -581,12 +587,13 @@ swapout_procs_callback(struct proc *p, void *data)
 	 * cleanup our reference
 	 */
 	sysref_put(&vm->vm_sysref);
+	lwkt_reltoken(&p->p_token);
 
 	return(0);
 }
 
 /*
- * The caller must hold proc_token and vmspace_token.
+ * The caller must hold proc_token and vmspace_token and p->p_token
  */
 static void
 swapout(struct proc *p)

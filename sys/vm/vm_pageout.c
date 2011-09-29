@@ -519,11 +519,9 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 			remove_mode = 1;
 
 		/*
-		 * scan the objects entire memory queue.  spl protection is
-		 * required to avoid an interrupt unbusy/free race against
-		 * our busy check.
+		 * scan the objects entire memory queue.  We hold the
+		 * object's token so the scan should not race anything.
 		 */
-		crit_enter();
 		info.limit = remove_mode;
 		info.map = map;
 		info.desired = desired;
@@ -531,7 +529,6 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 				vm_pageout_object_deactivate_pages_callback,
 				&info
 		);
-		crit_exit();
 		tmp = object->backing_object;
 		vm_object_drop(object);
 		object = tmp;
@@ -678,27 +675,23 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 #endif
 
 /*
- * Don't try to be fancy - being fancy can lead to vnode deadlocks.   We
- * only do it for OBJT_DEFAULT and OBJT_SWAP objects which we know can
- * be trivially freed.
+ * Called when the pageout scan wants to free a page.  We no longer
+ * try to cycle the vm_object here with a reference & dealloc, which can
+ * cause a non-trivial object collapse in a critical path.
+ *
+ * It is unclear why we cycled the ref_count in the past, perhaps to try
+ * to optimize shadow chain collapses but I don't quite see why it would
+ * be necessary.  An OBJ_DEAD object should terminate any and all vm_pages
+ * synchronously and not have to be kicked-start.
  *
  * The caller must hold vm_token.
- *
- * WARNING: vm_object_reference() can block.
  */
 static void
 vm_pageout_page_free(vm_page_t m) 
 {
-	vm_object_t object = m->object;
-	int type = object->type;
-
 	vm_page_busy(m);
-	if (type == OBJT_SWAP || type == OBJT_DEFAULT)
-		vm_object_reference(object);
 	vm_page_protect(m, VM_PROT_NONE);
 	vm_page_free(m);
-	if (type == OBJT_SWAP || type == OBJT_DEFAULT)
-		vm_object_deallocate(object);
 }
 
 /*
@@ -783,7 +776,6 @@ vm_pageout_scan(int pass)
 	 * check, leaving us on the wrong queue or checking the wrong
 	 * page.
 	 */
-	crit_enter();
 rescan0:
 	vpfailed = NULL;
 	maxscan = vmstats.v_inactive_count;
@@ -792,12 +784,6 @@ rescan0:
 	     m = next
 	 ) {
 		mycpu->gd_cnt.v_pdpages++;
-
-		/*
-		 * Give interrupts a chance
-		 */
-		crit_exit();
-		crit_enter();
 
 		/*
 		 * It's easier for some of the conditions below to just loop
@@ -1101,12 +1087,6 @@ rescan0:
 	       (inactive_shortage > 0 || active_shortage > 0)
 	) {
 		/*
-		 * Give interrupts a chance.
-		 */
-		crit_exit();
-		crit_enter();
-
-		/*
 		 * If the page was ripped out from under us, just stop.
 		 */
 		if (m->queue != PQ_ACTIVE)
@@ -1251,8 +1231,6 @@ rescan0:
 		vm_pageout_page_free(m);
 		mycpu->gd_cnt.v_dfree++;
 	}
-
-	crit_exit();
 
 #if !defined(NO_SWAPPING)
 	/*
@@ -1402,8 +1380,6 @@ vm_pageout_page_stats(void)
 	if (page_shortage <= 0)
 		return;
 
-	crit_enter();
-
 	pcount = vmstats.v_active_count;
 	fullintervalcount += vm_pageout_stats_interval;
 	if (fullintervalcount < vm_pageout_full_stats_interval) {
@@ -1472,7 +1448,6 @@ vm_pageout_page_stats(void)
 
 		m = next;
 	}
-	crit_exit();
 }
 
 /*

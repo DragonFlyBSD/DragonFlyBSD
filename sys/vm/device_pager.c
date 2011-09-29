@@ -212,10 +212,8 @@ dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 				  page, pageq);
 		lwkt_gettoken(&vm_token);
 		vm_object_hold(object);
-		crit_enter();
 		vm_page_free(*mpp);
 		vm_page_insert(page, object, offset);
-		crit_exit();
 		vm_object_drop(object);
 		lwkt_reltoken(&vm_token);
 	}

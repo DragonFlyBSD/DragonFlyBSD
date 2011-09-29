@@ -82,7 +82,6 @@ phys_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	vm_page_t m = *mpp;
 
 	lwkt_gettoken(&vm_token);
-	crit_enter();
 	if ((m->flags & PG_ZERO) == 0)
 		vm_page_zero_fill(m);
 	vm_page_flag_set(m, PG_ZERO);
@@ -90,7 +89,6 @@ phys_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	vm_page_unmanage(m);
 	m->valid = VM_PAGE_BITS_ALL;
 	m->dirty = 0;
-	crit_exit();
 	lwkt_reltoken(&vm_token);
 
 	return (VM_PAGER_OK);

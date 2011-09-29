@@ -172,7 +172,6 @@ vm_swapcached_thread(void)
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_swapcache,
 			      NULL, SHUTDOWN_PRI_SECOND);
 	lwkt_gettoken(&vm_token);
-	crit_enter();
 
 	/*
 	 * Initialize our marker for the inactive scan (SWAPC_WRITING)
@@ -266,7 +265,6 @@ vm_swapcached_thread(void)
 	 * Cleanup (NOT REACHED)
 	 */
 	TAILQ_REMOVE(INACTIVE_LIST, &page_marker, pageq);
-	crit_exit();
 	lwkt_reltoken(&vm_token);
 
 	lwkt_gettoken(&vmobj_token);
