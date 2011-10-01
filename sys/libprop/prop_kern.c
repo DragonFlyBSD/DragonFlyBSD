@@ -1,4 +1,4 @@
-/*	$NetBSD: prop_kern.c,v 1.15 2011/01/19 20:34:23 bouyer Exp $	*/
+/*	$NetBSD: prop_kern.c,v 1.17 2011/09/30 22:08:18 jym Exp $	*/
 
 /*-
  * Copyright (c) 2006, 2009 The NetBSD Foundation, Inc.
@@ -42,7 +42,8 @@
 #include <sys/ioctl.h>
 
 static int
-_prop_object_externalize_to_pref(prop_object_t obj, struct plistref *pref, char **bufp)
+_prop_object_externalize_to_pref(prop_object_t obj, struct plistref *pref,
+	       			 char **bufp)
 {
 	char *buf;
 
@@ -68,10 +69,6 @@ _prop_object_externalize_to_pref(prop_object_t obj, struct plistref *pref, char 
 	return (0);
 }
 
-/*
- * prop_array_externalize_to_pref --
- *	Externalize an array into a plistref for sending to the kernel.
- */
 bool
 prop_array_externalize_to_pref(prop_array_t array, struct plistref *prefp)
 {
@@ -83,14 +80,23 @@ prop_array_externalize_to_pref(prop_array_t array, struct plistref *prefp)
 		errno = rv;	/* pass up error value in errno */
 	return (rv == 0);
 }
-__strong_reference(prop_array_externalize_to_pref, prop_array_send_syscall)
 
 /*
- * prop_dictionary_externalize_to_pref --
- *	Externalize an dictionary into a plistref for sending to the kernel.
+ * prop_array_externalize_to_pref --
+ *	Externalize an array into a plistref for sending to the kernel.
  */
+int
+prop_array_send_syscall(prop_array_t array, struct plistref *prefp)
+{
+	if (prop_array_externalize_to_pref(array, prefp))
+		return 0;
+	else
+		return errno;
+}
+
 bool
-prop_dictionary_externalize_to_pref(prop_dictionary_t dict, struct plistref *prefp)
+prop_dictionary_externalize_to_pref(prop_dictionary_t dict,
+				    struct plistref *prefp)
 {
 	char *buf;
 	int rv;
@@ -100,8 +106,20 @@ prop_dictionary_externalize_to_pref(prop_dictionary_t dict, struct plistref *pre
 		errno = rv;	/* pass up error value in errno */
 	return (rv == 0);
 }
-__strong_reference(prop_dictionary_externalize_to_pref,
-    prop_dictionary_send_syscall)
+
+/*
+ * prop_dictionary_externalize_to_pref --
+ *	Externalize an dictionary into a plistref for sending to the kernel.
+ */
+int
+prop_dictionary_send_syscall(prop_dictionary_t dict,
+			     struct plistref *prefp)
+{
+	if (prop_dictionary_externalize_to_pref(dict, prefp))
+		return 0;
+	else
+		return errno;
+}
 
 static int
 _prop_object_send_ioctl(prop_object_t obj, int fd, unsigned long cmd)
@@ -131,8 +149,14 @@ _prop_object_send_ioctl(prop_object_t obj, int fd, unsigned long cmd)
 int
 prop_array_send_ioctl(prop_array_t array, int fd, unsigned long cmd)
 {
+	int rv;
 
-	return (_prop_object_send_ioctl(array, fd, cmd));
+	rv = _prop_object_send_ioctl(array, fd, cmd);
+	if (rv != 0) {
+		errno = rv;	/* pass up error value in errno */
+		return rv;
+	} else 
+		return 0;
 }
 
 /*
@@ -142,13 +166,19 @@ prop_array_send_ioctl(prop_array_t array, int fd, unsigned long cmd)
 int
 prop_dictionary_send_ioctl(prop_dictionary_t dict, int fd, unsigned long cmd)
 {
+	int rv;
 
-	return (_prop_object_send_ioctl(dict, fd, cmd));
+	rv = _prop_object_send_ioctl(dict, fd, cmd);
+	if (rv != 0) {
+		errno = rv;	/* pass up error value in errno */
+		return rv;
+	} else 
+		return 0;
 }
 
 static int
-_prop_object_internalize_from_pref(const struct plistref *pref, prop_type_t type,
-			 prop_object_t *objp)
+_prop_object_internalize_from_pref(const struct plistref *pref,
+				   prop_type_t type, prop_object_t *objp)
 {
 	prop_object_t obj = NULL;
 	char *buf;
@@ -186,19 +216,89 @@ _prop_object_internalize_from_pref(const struct plistref *pref, prop_type_t type
 }
 
 /*
+ * prop_array_internalize_from_pref --
+ * 	Internalize a pref into a prop_array_t object.
+ */
+bool
+prop_array_internalize_from_pref(const struct plistref *prefp,
+				 prop_array_t *arrayp)
+{
+	int rv;
+
+	rv = _prop_object_internalize_from_pref(prefp, PROP_TYPE_ARRAY,
+	    (prop_object_t *)arrayp);
+	if (rv != 0)
+		errno = rv;     /* pass up error value in errno */
+	return (rv == 0);
+}
+
+/*
+ * prop_array_recv_syscall --
+ * 	Internalize an array received from the kernel as pref.
+ */
+int
+prop_array_recv_syscall(const struct plistref *prefp,
+			prop_array_t *arrayp)
+{
+	if (prop_array_internalize_from_pref(prefp, arrayp))
+		return 0;
+	else
+		return errno;
+}
+
+/*
+ * prop_dictionary_internalize_from_pref --
+ * 	Internalize a pref into a prop_dictionary_t object.
+ */
+bool
+prop_dictionary_internalize_from_pref(const struct plistref *prefp,
+				      prop_dictionary_t *dictp)
+{
+	int rv;
+
+	rv = _prop_object_internalize_from_pref(prefp, PROP_TYPE_DICTIONARY,
+	    (prop_object_t *)dictp);
+	if (rv != 0)
+		errno = rv;     /* pass up error value in errno */
+	return (rv == 0);
+}
+
+/*
+ * prop_dictionary_recv_syscall --
+ *	Internalize a dictionary received from the kernel as pref.
+ */
+int
+prop_dictionary_recv_syscall(const struct plistref *prefp,
+			     prop_dictionary_t *dictp)
+{
+	if (prop_dictionary_internalize_from_pref(prefp, dictp))
+		return 0;
+	else
+		return errno;
+}
+
+
+/*
  * prop_array_recv_ioctl --
  *	Receive an array from the kernel using the specified ioctl.
  */
 int
 prop_array_recv_ioctl(int fd, unsigned long cmd, prop_array_t *arrayp)
 {
+	int rv;
 	struct plistref pref;
 
-	if (ioctl(fd, cmd, &pref) == -1)
-		return (errno);
-	
-	return (_prop_object_internalize_from_pref(&pref, PROP_TYPE_ARRAY,
-					 (prop_object_t *)arrayp));
+	rv = ioctl(fd, cmd, &pref);
+	if (rv == -1)
+		return errno;
+
+	rv = _prop_object_internalize_from_pref(&pref, PROP_TYPE_ARRAY,
+			    (prop_object_t *)arrayp);
+	if (rv != 0) {
+		errno = rv;     /* pass up error value in errno */
+		return rv;
+	} else
+		return 0;
 }
 
 /*
@@ -208,38 +308,20 @@ prop_array_recv_ioctl(int fd, unsigned long cmd, prop_array_t *arrayp)
 int
 prop_dictionary_recv_ioctl(int fd, unsigned long cmd, prop_dictionary_t *dictp)
 {
+	int rv;
 	struct plistref pref;
 
-	if (ioctl(fd, cmd, &pref) == -1)
-		return (errno);
+	rv = ioctl(fd, cmd, &pref);
+	if (rv == -1)
+		return errno;
 
-	return (_prop_object_internalize_from_pref(&pref, PROP_TYPE_DICTIONARY,
-					 (prop_object_t *)dictp));
-}
-
-/*
- * prop_array_recv_syscall --
- *	Receive an array from the kernel as pref.
- *	Pref's buf is freed on exit
- */
-bool
-prop_array_recv_syscall(const struct plistref *pref, prop_array_t *arrayp)
-{
-	return (_prop_object_internalize_from_pref(pref, PROP_TYPE_ARRAY,
-					 (prop_object_t *)arrayp));
-}
-
-/*
- * prop_dictionary_recv_syscall --
- *	Receive a dictionary from the kernel as pref.
- *	Pref's buf is freed on exit
- */
-bool
-prop_dictionary_recv_syscall(const struct plistref *pref,
-    prop_dictionary_t *dictp)
-{
-	return (_prop_object_internalize_from_pref(pref, PROP_TYPE_DICTIONARY,
-					 (prop_object_t *)dictp));
+	rv = _prop_object_internalize_from_pref(&pref, PROP_TYPE_DICTIONARY,
+			    (prop_object_t *)dictp);
+	if (rv != 0) {
+		errno = rv;     /* pass up error value in errno */
+		return rv;
+	} else
+		return 0;
 }
 
 /*
@@ -256,8 +338,10 @@ prop_dictionary_sendrecv_ioctl(prop_dictionary_t dict, int fd,
 	int error;
 
 	error = _prop_object_externalize_to_pref(dict, &pref, &buf);
-	if (error)
-		return (error);
+	if (error != 0) {
+		errno = error;
+		return error;
+	}
 
 	if (ioctl(fd, cmd, &pref) == -1)
 		error = errno;
@@ -266,11 +350,16 @@ prop_dictionary_sendrecv_ioctl(prop_dictionary_t dict, int fd,
 	
 	free(buf);
 
-	if (error)
-		return (error);
+	if (error != 0)
+		return error;
 
-	return (_prop_object_internalize_from_pref(&pref, PROP_TYPE_DICTIONARY,
-			    (prop_object_t *)dictp));
+	error = _prop_object_internalize_from_pref(&pref, PROP_TYPE_DICTIONARY,
+			    (prop_object_t *)dictp);
+	if (error != 0) {
+		errno = error;     /* pass up error value in errno */
+		return error;
+	} else
+		return 0;
 }
 #endif /* !_KERNEL && !_STANDALONE */
 

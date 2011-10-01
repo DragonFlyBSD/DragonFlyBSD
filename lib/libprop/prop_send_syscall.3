@@ -1,4 +1,4 @@
-.\"	$NetBSD: prop_send_syscall.3,v 1.3 2011/01/20 10:48:37 wiz Exp $
+.\"	$NetBSD: prop_send_syscall.3,v 1.5 2011/09/30 22:08:18 jym Exp $
 .\"
 .\" Copyright (c) 2006 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -40,15 +40,15 @@
 .Lb libprop
 .Sh SYNOPSIS
 .In libprop/proplib.h
-.Ft bool
+.Ft int
 .Fn prop_array_send_syscall "prop_array_t array" "struct plistref *prefp"
-.Ft bool
+.Ft int
 .Fn prop_array_recv_syscall "const struct plistref *prefp" \
     "prop_array_t *arrayp"
-.Ft bool
+.Ft int
 .Fn prop_dictionary_send_syscall "prop_dictionary_t dict" \
     "struct plistref *prefp"
-.Ft bool
+.Ft int
 .Fn prop_dictionary_recv_syscall "const struct plistref *prefp" \
     "prop_dictionary_t *dictp"
 .Sh DESCRIPTION
@@ -62,7 +62,8 @@ functions implement the user space side of a protocol for sending property
 lists to and from the kernel using
 .Xr syscall 2 .
 .Sh RETURN VALUES
-If successful, the functions return true, false otherwise.
+If successful, functions return zero.
+Otherwise, an error number is returned to indicate the error.
 .Sh EXAMPLES
 The following
 .Pq simplified
@@ -89,12 +90,34 @@ foo_getprops(void)
     struct pref pref;
 
     (void) my_syscall_get(\*[Am]pref);
-    if (!prop_dictionary_recv_syscall(\*[Am]pref, \*[Am]dict))
+    if (prop_dictionary_recv_syscall(\*[Am]pref, \*[Am]dict) != 0)
         return (NULL);
 
     return (dict);
 }
 .Ed
+.Sh ERRORS
+.Fn prop_array_send_syscall
+and
+.Fn prop_dictionary_send_syscall
+will fail if:
+.Bl -tag -width Er
+.It Bq Er ENOMEM
+Cannot allocate memory
+.It Bq Er ENOTSUP
+Not supported
+.El
+.Pp
+.Fn prop_array_recv_syscall
+and
+.Fn prop_dictionary_recv_syscall
+will fail if:
+.Bl -tag -width Er
+.It Bq Er EIO
+Input/output error
+.It Bq Er ENOTSUP
+Not supported
+.El
 .Sh SEE ALSO
 .Xr prop_array 3 ,
 .Xr prop_dictionary 3 ,
