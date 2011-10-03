@@ -537,7 +537,7 @@ nexus_set_resource(device_t dev, device_t child, int type, int rid, u_long start
 	struct resource_list	*rl = &ndev->nx_resources;
 
 	/* XXX this should return a success/failure indicator */
-	resource_list_add(rl, type, rid, start, start + count - 1, count);
+	resource_list_add(rl, type, rid, start, start + count - 1, count, -1);
 	return(0);
 }
 

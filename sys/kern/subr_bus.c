@@ -2156,9 +2156,8 @@ resource_list_free(struct resource_list *rl)
 }
 
 void
-resource_list_add(struct resource_list *rl,
-		  int type, int rid,
-		  u_long start, u_long end, u_long count)
+resource_list_add(struct resource_list *rl, int type, int rid,
+    u_long start, u_long end, u_long count, int cpuid)
 {
 	struct resource_list_entry *rle;
 
@@ -2172,6 +2171,7 @@ resource_list_add(struct resource_list *rl,
 		rle->type = type;
 		rle->rid = rid;
 		rle->res = NULL;
+		rle->cpuid = -1;
 	}
 
 	if (rle->res)
@@ -2180,6 +2180,14 @@ resource_list_add(struct resource_list *rl,
 	rle->start = start;
 	rle->end = end;
 	rle->count = count;
+
+	if (cpuid != -1) {
+		if (rle->cpuid != -1 && rle->cpuid != cpuid) {
+			panic("resource_list_add: moving from cpu%d -> cpu%d\n",
+			    rle->cpuid, cpuid);
+		}
+		rle->cpuid = cpuid;
+	}
 }
 
 struct resource_list_entry*
@@ -2705,7 +2713,7 @@ bus_generic_rl_set_resource(device_t dev, device_t child, int type, int rid,
 	if (!rl)
 		return(EINVAL);
 
-	resource_list_add(rl, type, rid, start, (start + count - 1), count);
+	resource_list_add(rl, type, rid, start, (start + count - 1), count, -1);
 
 	return(0);
 }

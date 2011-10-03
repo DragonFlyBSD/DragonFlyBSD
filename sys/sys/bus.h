@@ -140,6 +140,7 @@ struct resource_list_entry {
     u_long		start;		/* start of resource range */
     u_long		end;		/* end of resource range */
     u_long		count;		/* count within range */
+    int			cpuid;		/* owner cpuid */
 };
 SLIST_HEAD(resource_list, resource_list_entry);
 
@@ -173,9 +174,8 @@ void	resource_list_free(struct resource_list *rl);
  * Add a resource entry or modify an existing entry if one exists with 
  * the same type and rid.
  */
-void	resource_list_add(struct resource_list *rl,
-			  int type, int rid,
-			  u_long start, u_long end, u_long count);
+void	resource_list_add(struct resource_list *rl, int type, int rid,
+	    u_long start, u_long end, u_long count, int cpuid);
 
 /*
  * Find a resource entry by type and rid.

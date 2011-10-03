@@ -905,7 +905,7 @@ isa_set_resource(device_t dev, device_t child, int type, int rid,
 	if (type == SYS_RES_DRQ && rid >= ISA_NDRQ)
 		return EINVAL;
 
-	resource_list_add(rl, type, rid, start, start + count - 1, count);
+	resource_list_add(rl, type, rid, start, start + count - 1, count, -1);
 
 	return 0;
 }

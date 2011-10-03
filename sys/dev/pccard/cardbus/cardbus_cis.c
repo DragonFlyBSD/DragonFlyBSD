@@ -374,7 +374,7 @@ decode_tuple_bar(device_t cbdev, device_t child, int id,
 	    " (Prefetchable)" : "", type == SYS_RES_MEMORY ?
 	    ((dinfo->mbelow1mb & BARBIT(bar)) ? " (Below 1Mb)" : "") : ""));
 
-	resource_list_add(&dinfo->pci.resources, type, bar, 0UL, ~0UL, len);
+	resource_list_add(&dinfo->pci.resources, type, bar, 0UL, ~0UL, len, -1);
 
 	/*
 	 * Mark the appropriate bit in the PCI command register so that

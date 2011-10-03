@@ -292,7 +292,8 @@ puc_pci_attach(device_t dev)
 		/* First fake up an IRQ resource. */
 		resource_list_add(&pdev->resources, SYS_RES_IRQ, 0,
 		    rman_get_start(sc->irqres), rman_get_end(sc->irqres),
-		    rman_get_end(sc->irqres) - rman_get_start(sc->irqres) + 1);
+		    rman_get_end(sc->irqres) - rman_get_start(sc->irqres) + 1,
+		    -1);
 		rle = resource_list_find(&pdev->resources, SYS_RES_IRQ, 0);
 		rle->res = sc->irqres;
 
