@@ -482,6 +482,7 @@ static void	ioapic_abi_intr_setup(int, int);
 static void	ioapic_abi_intr_teardown(int);
 static void	ioapic_abi_intr_config(int,
 		    enum intr_trigger, enum intr_polarity);
+static int	ioapic_abi_intr_cpuid(int);
 
 static void	ioapic_abi_finalize(void);
 static void	ioapic_abi_cleanup(void);
@@ -496,6 +497,7 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 	.intr_setup	= ioapic_abi_intr_setup,
 	.intr_teardown	= ioapic_abi_intr_teardown,
 	.intr_config	= ioapic_abi_intr_config,
+	.intr_cpuid	= ioapic_abi_intr_cpuid,
 
 	.finalize	= ioapic_abi_finalize,
 	.cleanup	= ioapic_abi_cleanup,
@@ -905,5 +907,12 @@ ioapic_abi_extint_irqmap(int irq)
 
 	imen_unlock();
 
+	return 0;
+}
+
+static int
+ioapic_abi_intr_cpuid(int irq __unused)
+{
+	/* TODO */
 	return 0;
 }

@@ -64,6 +64,7 @@ struct machintr_abi {
     void	(*intr_teardown)(int);		/* tear down intr */
     void	(*intr_config)			/* config intr */
     		(int, enum intr_trigger, enum intr_polarity);
+    int		(*intr_cpuid)(int);		/* intr target cpu */
 
     void	(*finalize)(void);		/* final before ints enabled */
     void	(*cleanup)(void);		/* cleanup */
@@ -81,6 +82,7 @@ struct machintr_abi {
 
 #define machintr_intr_config(intr, trig, pola)	\
 	    MachIntrABI.intr_config((intr), (trig), (pola))
+#define machintr_intr_cpuid(intr)	MachIntrABI.intr_cpuid((intr))
 
 extern struct machintr_abi MachIntrABI;
 
