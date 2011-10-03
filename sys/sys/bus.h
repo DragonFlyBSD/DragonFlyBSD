@@ -203,7 +203,7 @@ struct resource *
 			    device_t bus, device_t child,
 			    int type, int *rid,
 			    u_long start, u_long end,
-			    u_long count, u_int flags);
+			    u_long count, u_int flags, int cpuid);
 
 /*
  * Implement BUS_RELEASE_RESOURCE.

@@ -2221,7 +2221,7 @@ resource_list_alloc(struct resource_list *rl,
 		    device_t bus, device_t child,
 		    int type, int *rid,
 		    u_long start, u_long end,
-		    u_long count, u_int flags)
+		    u_long count, u_int flags, int cpuid)
 {
 	struct resource_list_entry *rle = 0;
 	int passthrough = (device_get_parent(child) != bus);
@@ -2246,6 +2246,7 @@ resource_list_alloc(struct resource_list *rl,
 		count = max(count, rle->count);
 		end = max(rle->end, start + count - 1);
 	}
+	cpuid = rle->cpuid;
 
 	rle->res = BUS_ALLOC_RESOURCE(device_get_parent(bus), child,
 				      type, rid, start, end, count, flags);
@@ -2754,7 +2755,7 @@ bus_generic_rl_alloc_resource(device_t dev, device_t child, int type,
 		return(NULL);
 
 	return(resource_list_alloc(rl, dev, child, type, rid,
-	    start, end, count, flags));
+	    start, end, count, flags, -1));
 }
 
 int

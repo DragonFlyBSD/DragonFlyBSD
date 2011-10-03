@@ -2721,7 +2721,7 @@ pci_add_map(device_t pcib, device_t bus, device_t dev,
 	 * pci_alloc_resource().
 	 */
 	res = resource_list_alloc(rl, bus, dev, type, &reg, start, end, count,
-	    prefetch ? RF_PREFETCHABLE : 0);
+	    prefetch ? RF_PREFETCHABLE : 0, -1);
 	if (res == NULL) {
 		/*
 		 * If the allocation fails, delete the resource list
@@ -2788,11 +2788,11 @@ pci_ata_maps(device_t pcib, device_t bus, device_t dev, int b,
 		rid = PCIR_BAR(0);
 		resource_list_add(rl, type, rid, 0x1f0, 0x1f7, 8, -1);
 		resource_list_alloc(rl, bus, dev, type, &rid, 0x1f0, 0x1f7, 8,
-		    0);
+		    0, -1);
 		rid = PCIR_BAR(1);
 		resource_list_add(rl, type, rid, 0x3f6, 0x3f6, 1, -1);
 		resource_list_alloc(rl, bus, dev, type, &rid, 0x3f6, 0x3f6, 1,
-		    0);
+		    0, -1);
 	}
 	if (progif & PCIP_STORAGE_IDE_MODESEC) {
 		pci_add_map(pcib, bus, dev, b, s, f, PCIR_BAR(2), rl, force,
@@ -2803,11 +2803,11 @@ pci_ata_maps(device_t pcib, device_t bus, device_t dev, int b,
 		rid = PCIR_BAR(2);
 		resource_list_add(rl, type, rid, 0x170, 0x177, 8, -1);
 		resource_list_alloc(rl, bus, dev, type, &rid, 0x170, 0x177, 8,
-		    0);
+		    0, -1);
 		rid = PCIR_BAR(3);
 		resource_list_add(rl, type, rid, 0x376, 0x376, 1, -1);
 		resource_list_alloc(rl, bus, dev, type, &rid, 0x376, 0x376, 1,
-		    0);
+		    0, -1);
 	}
 	pci_add_map(pcib, bus, dev, b, s, f, PCIR_BAR(4), rl, force,
 	    prefetchmask & (1 << 4));
@@ -3930,7 +3930,7 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		}
 	}
 	return (resource_list_alloc(rl, dev, child, type, rid,
-	    start, end, count, flags));
+	    start, end, count, flags, -1));
 }
 
 void

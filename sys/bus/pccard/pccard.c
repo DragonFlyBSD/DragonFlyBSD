@@ -904,7 +904,7 @@ pccard_set_resource(device_t dev, device_t child, int type, int rid,
 
 	resource_list_add(rl, type, rid, start, start + count - 1, count, -1);
 	if (NULL != resource_list_alloc(rl, device_get_parent(dev), dev,
-	    type, &rid, start, start + count - 1, count, 0))
+	    type, &rid, start, start + count - 1, count, 0, -1))
 		return 0;
 	else
 		return ENOMEM;

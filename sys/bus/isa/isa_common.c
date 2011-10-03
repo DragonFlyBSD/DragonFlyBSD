@@ -503,10 +503,8 @@ isa_probe_children(device_t dev)
 				if (!rle->res) {
 					int rid = rle->rid;
 					resource_list_alloc(rl, dev, child,
-							    rle->type,
-							    &rid,
-							    0, ~0, 1,
-							    0 /* !RF_ACTIVE */);
+					    rle->type, &rid, 0, ~0, 1,
+					    0 /* !RF_ACTIVE */, -1);
 				}
 			}
 		}
@@ -808,8 +806,8 @@ isa_child_detached(device_t dev, device_t child)
 			if (!rle->res) {
 				int rid = rle->rid;
 				resource_list_alloc(rl, dev, child,
-						    rle->type,
-						    &rid, 0, ~0, 1, 0);
+				    rle->type, &rid, 0, ~0, 1,
+				    0 /* !RF_ACTIVE */, -1);
 			}
 		}
 	}
@@ -872,10 +870,8 @@ isa_driver_added(device_t dev, driver_t *driver)
 				if (!rle->res) {
 					int rid = rle->rid;
 					resource_list_alloc(rl, dev, child,
-							    rle->type,
-							    &rid,
-							    0, ~0, 1,
-							    0 /* !RF_ACTIVE */);
+					    rle->type, &rid, 0, ~0, 1,
+					    0 /* !RF_ACTIVE */, -1);
 				}
 			}
 		}
