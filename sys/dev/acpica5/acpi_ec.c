@@ -309,9 +309,9 @@ acpi_ec_ecdt_probe(device_t parent)
 
     /* Set the data and CSR register addresses. */
     bus_set_resource(child, SYS_RES_IOPORT, 0, ecdt->Data.Address,
-	/*count*/1);
+	/*count*/1, -1);
     bus_set_resource(child, SYS_RES_IOPORT, 1, ecdt->Control.Address,
-	/*count*/1);
+	/*count*/1, -1);
 
     /*
      * Store values for the probe/attach routines to use.  Store the

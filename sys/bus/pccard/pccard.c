@@ -98,7 +98,7 @@ static void	pccard_print_resources(struct resource_list *rl,
 		    const char *name, int type, int count, const char *format);
 static int	pccard_print_child(device_t dev, device_t child);
 static int	pccard_set_resource(device_t dev, device_t child, int type,
-		    int rid, u_long start, u_long count);
+		    int rid, u_long start, u_long count, int cpuid);
 static int	pccard_get_resource(device_t dev, device_t child, int type,
 		    int rid, u_long *startp, u_long *countp);
 static void	pccard_delete_resource(device_t dev, device_t child, int type,
@@ -883,7 +883,7 @@ pccard_print_child(device_t dev, device_t child)
 
 static int
 pccard_set_resource(device_t dev, device_t child, int type, int rid,
-    u_long start, u_long count)
+    u_long start, u_long count, int cpuid)
 {
 	struct pccard_ivar *devi = PCCARD_IVAR(child);
 	struct resource_list *rl = &devi->resources;
@@ -902,7 +902,8 @@ pccard_set_resource(device_t dev, device_t child, int type, int rid,
 	if (type == SYS_RES_DRQ && rid >= PCCARD_NDRQ)
 		return (EINVAL);
 
-	resource_list_add(rl, type, rid, start, start + count - 1, count, -1);
+	resource_list_add(rl, type, rid, start, start + count - 1, count,
+	    cpuid);
 	if (NULL != resource_list_alloc(rl, device_get_parent(dev), dev,
 	    type, &rid, start, start + count - 1, count, 0, -1))
 		return 0;

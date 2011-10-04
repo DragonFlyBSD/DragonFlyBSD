@@ -32,6 +32,7 @@
 #include <sys/socket.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/machintr.h>
 
 #include <machine/clock.h>
 
@@ -303,8 +304,11 @@ fe_probe_fmv(device_t dev)
 	irq = 0;
 	bus_get_resource(dev, SYS_RES_IRQ, 0, &irq, NULL);
 	if (irq == NO_IRQ) {
+		int intr = irqmap[n];
+
 		/* Just use the probed value.  */
-		bus_set_resource(dev, SYS_RES_IRQ, 0, irqmap[n], 1);
+		bus_set_resource(dev, SYS_RES_IRQ, 0, intr, 1,
+		    machintr_intr_cpuid(intr));
 	} else if (irq != irqmap[n]) {
 		/* Don't match.  */
 		sc->stability |= UNSTABLE_IRQ;
@@ -784,7 +788,8 @@ fe_probe_jli(device_t dev)
 		return ENXIO;
 	} else if (error && xirq != NO_IRQ) {
 		/* Just use the probed IRQ value.  */
-		bus_set_resource(dev, SYS_RES_IRQ, 0, xirq, 1);
+		bus_set_resource(dev, SYS_RES_IRQ, 0, xirq, 1,
+		    machintr_intr_cpuid(xirq));
 	} else if (!error && xirq == NO_IRQ) {
 		/* No problem.  Go ahead.  */
 	} else if (irq == xirq) {

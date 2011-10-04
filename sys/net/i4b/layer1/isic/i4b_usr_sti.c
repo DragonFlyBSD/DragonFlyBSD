@@ -221,7 +221,7 @@ usrtai_alloc_port(device_t dev)
 		return 1;
 	sc->sc_resources.io_rid[num] = num;
 
-	bus_set_resource(dev, SYS_RES_IOPORT, num, base, 1);
+	bus_set_resource(dev, SYS_RES_IOPORT, num, base, 1, -1);
 
 	if(!(sc->sc_resources.io_base[num] =
 		bus_alloc_resource(dev, SYS_RES_IOPORT,
@@ -241,7 +241,7 @@ usrtai_alloc_port(device_t dev)
 			return 1;
 		sc->sc_resources.io_rid[num] = num;
 
-		bus_set_resource(dev, SYS_RES_IOPORT, num, base+i*1024, 8);
+		bus_set_resource(dev, SYS_RES_IOPORT, num, base+i*1024, 8, -1);
 
 		if(!(sc->sc_resources.io_base[num] =
 			bus_alloc_resource(dev, SYS_RES_IOPORT,
@@ -262,7 +262,7 @@ usrtai_alloc_port(device_t dev)
 			return 1;
 		sc->sc_resources.io_rid[num] = num;
 
-		bus_set_resource(dev, SYS_RES_IOPORT, num, base+i*1024, 8);
+		bus_set_resource(dev, SYS_RES_IOPORT, num, base+i*1024, 8, -1);
 
 		if(!(sc->sc_resources.io_base[num] =
 			bus_alloc_resource(dev, SYS_RES_IOPORT,
@@ -283,7 +283,7 @@ usrtai_alloc_port(device_t dev)
 			return 1;
 		sc->sc_resources.io_rid[num] = num;
 
-		bus_set_resource(dev, SYS_RES_IOPORT, num, base+i*1024, 8);
+		bus_set_resource(dev, SYS_RES_IOPORT, num, base+i*1024, 8, -1);
 
 		if(!(sc->sc_resources.io_base[num] =
 			bus_alloc_resource(dev, SYS_RES_IOPORT,

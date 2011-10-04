@@ -2662,14 +2662,14 @@ bus_generic_get_resource(device_t dev, device_t child, int type, int rid,
 
 int
 bus_generic_set_resource(device_t dev, device_t child, int type, int rid,
-			u_long start, u_long count)
+			u_long start, u_long count, int cpuid)
 {
 	int error;
 
 	error = EINVAL;
 	if (dev->parent) {
 		error = BUS_SET_RESOURCE(dev->parent, child, type, rid, 
-					 start, count);
+					 start, count, cpuid);
 	}
 	return (error);
 }
@@ -2706,7 +2706,7 @@ bus_generic_rl_get_resource(device_t dev, device_t child, int type, int rid,
 
 int
 bus_generic_rl_set_resource(device_t dev, device_t child, int type, int rid,
-    u_long start, u_long count)
+    u_long start, u_long count, int cpuid)
 {
 	struct resource_list *rl = NULL;
 
@@ -2714,7 +2714,8 @@ bus_generic_rl_set_resource(device_t dev, device_t child, int type, int rid,
 	if (!rl)
 		return(EINVAL);
 
-	resource_list_add(rl, type, rid, start, (start + count - 1), count, -1);
+	resource_list_add(rl, type, rid, start, (start + count - 1), count,
+	    cpuid);
 
 	return(0);
 }
@@ -2876,10 +2877,10 @@ bus_disable_intr(device_t dev, void *cookie)
 
 int
 bus_set_resource(device_t dev, int type, int rid,
-		 u_long start, u_long count)
+		 u_long start, u_long count, int cpuid)
 {
 	return(BUS_SET_RESOURCE(device_get_parent(dev), dev, type, rid,
-				start, count));
+				start, count, cpuid));
 }
 
 int

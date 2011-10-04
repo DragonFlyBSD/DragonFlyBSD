@@ -265,8 +265,8 @@ int	bus_generic_release_resource(device_t bus, device_t child,
 				     int type, int rid, struct resource *r);
 int	bus_generic_get_resource(device_t dev, device_t child, int type, 
 				     int rid, u_long *startp, u_long *countp);
-int	bus_generic_set_resource(device_t dev, device_t child, int type,
-				     int rid, u_long start, u_long count);
+int	bus_generic_set_resource(device_t dev, device_t child,
+	    int type, int rid, u_long start, u_long count, int cpuid);
 void	bus_generic_delete_resource(device_t dev, device_t child, 
 				     int type, int rid);
 int	bus_generic_resume(device_t dev);
@@ -288,7 +288,7 @@ void	bus_generic_rl_delete_resource (device_t, device_t, int, int);
 int	bus_generic_rl_get_resource (device_t, device_t, int, int, u_long *,
 				    u_long *);
 int	bus_generic_rl_set_resource (device_t, device_t, int, int, u_long,
-				    u_long);
+				    u_long, int);
 int	bus_generic_rl_release_resource (device_t, device_t, int, int,
 				    struct resource *);
 
@@ -323,7 +323,7 @@ int	bus_setup_intr(device_t dev, struct resource *r, int flags,
 		       void **cookiep, lwkt_serialize_t serializer);
 int	bus_teardown_intr(device_t dev, struct resource *r, void *cookie);
 int	bus_set_resource(device_t dev, int type, int rid,
-			 u_long start, u_long count);
+			 u_long start, u_long count, int cpuid);
 int	bus_get_resource(device_t dev, int type, int rid,
 			 u_long *startp, u_long *countp);
 u_long	bus_get_resource_start(device_t dev, int type, int rid);

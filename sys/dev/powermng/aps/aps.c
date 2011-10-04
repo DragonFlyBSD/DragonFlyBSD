@@ -282,7 +282,7 @@ aps_identify(driver_t *driver, struct device *parent)
 		}
 	}
 	if (bus_set_resource(child, SYS_RES_IOPORT, 0,
-		APS_ADDR_BASE, APS_ADDR_SIZE))
+		APS_ADDR_BASE, APS_ADDR_SIZE, -1))
 		kprintf("%s: cannot set resource\n", __func__);
 }
 

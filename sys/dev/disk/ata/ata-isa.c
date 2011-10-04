@@ -76,7 +76,7 @@ ata_isa_probe(device_t dev)
     /* set the altport range */
     if (bus_get_resource(dev, SYS_RES_IOPORT, ATA_ALTADDR_RID, &tmp, &tmp)) {
 	bus_set_resource(dev, SYS_RES_IOPORT, ATA_ALTADDR_RID,
-			 rman_get_start(io) + ATA_ALTOFFSET, ATA_ALTIOSIZE);
+			 rman_get_start(io) + ATA_ALTOFFSET, ATA_ALTIOSIZE, -1);
     }
 
     bus_release_resource(dev, SYS_RES_IOPORT, rid, io);

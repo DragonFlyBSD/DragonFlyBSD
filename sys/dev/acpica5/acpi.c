@@ -1193,7 +1193,7 @@ acpi_bus_alloc_gas(device_t dev, int *type, int *rid, ACPI_GENERIC_ADDRESS *gas,
 	return (EINVAL);
 
     bus_set_resource(dev, res_type, *rid, gas->Address,
-	gas->BitWidth / 8);
+	gas->BitWidth / 8, -1);
     *res = bus_alloc_resource_any(dev, res_type, rid, RF_ACTIVE | flags);
     if (*res != NULL) {
 	*type = res_type;

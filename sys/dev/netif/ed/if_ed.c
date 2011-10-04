@@ -50,6 +50,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/machintr.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -415,8 +416,10 @@ ed_probe_WD80x3_generic(device_t dev, int flags, u_short *intr_vals[])
 		error = bus_get_resource(dev, SYS_RES_IRQ, 0,
 					 &irq, &junk);
 		if (error && intr_vals[0] != NULL) {
+			int intr_val = intr_vals[0][iptr];
+
 			error = bus_set_resource(dev, SYS_RES_IRQ, 0,
-						 intr_vals[0][iptr], 1);
+			    intr_val, 1, machintr_intr_cpuid(intr_val));
 		}
 		if (error)
 			return (error);
@@ -442,8 +445,10 @@ ed_probe_WD80x3_generic(device_t dev, int flags, u_short *intr_vals[])
 		error = bus_get_resource(dev, SYS_RES_IRQ, 0,
 					 &irq, &junk);
 		if (error && intr_vals[1] != NULL) {
+			int intr_val = intr_vals[1][iptr];
+
 			error = bus_set_resource(dev, SYS_RES_IRQ, 0,
-						 intr_vals[1][iptr], 1);
+			    intr_val, 1, machintr_intr_cpuid(intr_val));
 		}
 		if (error)
 			return (error);
@@ -1372,8 +1377,10 @@ ed_probe_HP_pclanp(device_t dev, int port_rid, int flags)
 	error = bus_get_resource(dev, SYS_RES_IRQ, 0,
 				 &conf_irq, &junk);
 	if (error) {
-		bus_set_resource(dev, SYS_RES_IRQ, 0,
-				 ed_hpp_intr_val[irq], 1);
+		int intr_val = ed_hpp_intr_val[irq];
+
+		bus_set_resource(dev, SYS_RES_IRQ, 0, intr_val, 1,
+		    machintr_intr_cpuid(intr_val));
 	} else {
 		if (conf_irq != ed_hpp_intr_val[irq])
 			return (ENXIO);

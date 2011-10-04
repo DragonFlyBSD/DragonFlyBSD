@@ -52,6 +52,7 @@
 #include <sys/kernel.h> 
 #include <sys/bus.h> 
 #include <sys/rman.h> 
+#include <sys/machintr.h>
 
 #include <bus/isa/isavar.h>
 
@@ -147,7 +148,7 @@ adv_isa_probe(device_t dev)
 			/* Already been attached */
 			continue;
 		
-		if (bus_set_resource(dev, SYS_RES_IOPORT, 0, port_addr, 1))
+		if (bus_set_resource(dev, SYS_RES_IOPORT, 0, port_addr, 1, -1))
 			continue;
 
 		/* XXX what is the real portsize? */
@@ -204,7 +205,7 @@ adv_isa_probe(device_t dev)
 			adv->isa_dma_speed = ADV_DEF_ISA_DMA_SPEED;
 			adv->isa_dma_channel = adv_get_isa_dma_channel(adv);
 			bus_set_resource(dev, SYS_RES_DRQ, 0,
-					 adv->isa_dma_channel, 1);
+					 adv->isa_dma_channel, 1, -1);
 		} else {
 			panic("advisaprobe: Unknown card revision\n");
 		}
@@ -308,11 +309,14 @@ adv_isa_probe(device_t dev)
 		}
 			
 		/* Determine our IRQ */
-		if (bus_get_resource(dev, SYS_RES_IRQ, 0, &irq, NULL))
-			bus_set_resource(dev, SYS_RES_IRQ, 0,
-					 adv_get_chip_irq(adv), 1);
-		else
+		if (bus_get_resource(dev, SYS_RES_IRQ, 0, &irq, NULL)) {
+			int chip_irq = adv_get_chip_irq(adv);
+
+			bus_set_resource(dev, SYS_RES_IRQ, 0, chip_irq, 1,
+			    machintr_intr_cpuid(chip_irq));
+		} else {
 			adv_set_chip_irq(adv, irq);
+		}
 
 		irqres = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
 					    RF_ACTIVE);
@@ -334,7 +338,7 @@ adv_isa_probe(device_t dev)
 	}
 
 	if (user_iobase)
-		bus_set_resource(dev, SYS_RES_IOPORT, 0, iobase, iocount);
+		bus_set_resource(dev, SYS_RES_IOPORT, 0, iobase, iocount, -1);
 	else
 		bus_delete_resource(dev, SYS_RES_IOPORT, 0);
 

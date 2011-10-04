@@ -39,6 +39,7 @@
 #include <sys/devicestat.h>
 #include <sys/sysctl.h>
 #include <sys/rman.h>
+#include <sys/machintr.h>
 
 #include <machine/stdarg.h>
 #include <machine/clock.h>
@@ -339,7 +340,8 @@ ata_pci_match(device_t dev)
 		return "Promise TX4 ATA100 controller (channel 0+1)";
 	    }
 	    else if (pci_get_slot(dev) == 2 && start && end) {
-		bus_set_resource(dev, SYS_RES_IRQ, 0, start, end);
+		bus_set_resource(dev, SYS_RES_IRQ, 0, start, end,
+		    machintr_intr_cpuid(start));
 		start = end = 0;
 		return "Promise TX4 ATA100 controller (channel 2+3)";
 	    }

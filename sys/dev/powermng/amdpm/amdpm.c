@@ -162,7 +162,7 @@ amdpm_probe(device_t dev)
 		base = pci_read_config(dev, AMDPCI_PMBASE, 4);
 		base &= 0xff00;
 		bus_set_resource(dev, SYS_RES_IOPORT, AMDPCI_PMBASE,
-				 base+0xe0, 32);
+				 base+0xe0, 32, -1);
 		return (BUS_PROBE_DEFAULT);
 	}
 
@@ -177,7 +177,7 @@ amdpm_probe(device_t dev)
 		base = pci_read_config(dev, NFPCI_PMBASE, 4);
 		base &= 0xff00;
 		bus_set_resource(dev, SYS_RES_IOPORT, NFPCI_PMBASE,
-				 base, 32);
+				 base, 32, -1);
 
 		return (BUS_PROBE_DEFAULT);
 	}

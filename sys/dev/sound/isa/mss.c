@@ -29,6 +29,7 @@
  * $FreeBSD: src/sys/dev/sound/isa/mss.c,v 1.95.2.3 2006/04/04 17:30:59 ariff Exp $
  */
 
+#include <sys/machintr.h>
 #include <dev/sound/pcm/sound.h>
 
 SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.11 2007/06/16 20:07:18 dillon Exp $");
@@ -1290,7 +1291,7 @@ mss_probe(device_t dev)
 		/* XXX verify this */
 		setres = 1;
 		bus_set_resource(dev, SYS_RES_IOPORT, mss->io_rid,
-    		         	0x530, 8);
+    		         	0x530, 8, -1);
 		mss->io_base = bus_alloc_resource(dev, SYS_RES_IOPORT, &mss->io_rid,
 					  	0, ~0, 8, RF_ACTIVE);
     	}
@@ -1782,7 +1783,7 @@ mss_attach(device_t dev)
     	mss->drq2_rid = -1;
     	if (flags & DV_F_DUAL_DMA) {
         	bus_set_resource(dev, SYS_RES_DRQ, 1,
-    		         	 flags & DV_F_DRQ_MASK, 1);
+    		         	 flags & DV_F_DRQ_MASK, 1, -1);
 		mss->drq2_rid = 1;
     	}
     	mss->bd_id = (device_get_flags(dev) & DV_F_DEV_MASK) >> DV_F_DEV_SHIFT;
@@ -2050,7 +2051,7 @@ opti_init(device_t dev, struct mss_info *mss)
 
 	if (!mss->conf_base) {
 		bus_set_resource(dev, SYS_RES_IOPORT, mss->conf_rid,
-			mss->optibase, 0x9);
+			mss->optibase, 0x9, -1);
 
 		mss->conf_base = bus_alloc_resource(dev, SYS_RES_IOPORT,
 			&mss->conf_rid, mss->optibase, mss->optibase+0x9,
@@ -2112,11 +2113,12 @@ opti_init(device_t dev, struct mss_info *mss)
 	if (mss->bd_flags & BD_F_924PNP) {
 		u_int32_t irq = isa_get_irq(dev);
 		u_int32_t drq = isa_get_drq(dev);
-		bus_set_resource(dev, SYS_RES_IRQ, 0, irq, 1);
-		bus_set_resource(dev, SYS_RES_DRQ, mss->drq1_rid, drq, 1);
+		bus_set_resource(dev, SYS_RES_IRQ, 0, irq, 1,
+		    machintr_intr_cpuid(irq));
+		bus_set_resource(dev, SYS_RES_DRQ, mss->drq1_rid, drq, 1, -1);
 		if (flags & DV_F_DUAL_DMA) {
 			bus_set_resource(dev, SYS_RES_DRQ, 1,
-				flags & DV_F_DRQ_MASK, 1);
+				flags & DV_F_DRQ_MASK, 1, -1);
 			mss->drq2_rid = 1;
 		}
 	}

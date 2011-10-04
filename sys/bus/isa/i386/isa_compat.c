@@ -34,6 +34,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/rman.h>
+#include <sys/machintr.h>
 
 #include <machine/vmparam.h>
 #include <vm/vm.h>
@@ -209,28 +210,30 @@ isa_compat_probe(device_t dev)
 		portsize = dvp->id_driver->probe(dvp);
 		isa_compat_release_resources(dev, &res);
 		if (portsize != 0) {
-			if (portsize > 0 || dvp->id_iobase != old.id_iobase)
-				bus_set_resource(dev, SYS_RES_IOPORT,
-						 0, dvp->id_iobase, portsize);
-			if (dvp->id_irq != old.id_irq)
-				bus_set_resource(dev, SYS_RES_IRQ, 0,
-						 ffs(dvp->id_irq) - 1, 1);
-			if (dvp->id_drq != old.id_drq)
+			if (portsize > 0 || dvp->id_iobase != old.id_iobase) {
+				bus_set_resource(dev, SYS_RES_IOPORT, 0,
+				    dvp->id_iobase, portsize, -1);
+			}
+			if (dvp->id_irq != old.id_irq) {
+				int intr = ffs(dvp->id_irq) - 1;
+
+				bus_set_resource(dev, SYS_RES_IRQ, 0, intr, 1,
+				    machintr_intr_cpuid(intr));
+			}
+			if (dvp->id_drq != old.id_drq) {
 				bus_set_resource(dev, SYS_RES_DRQ, 0,
-						 dvp->id_drq, 1);
+				    dvp->id_drq, 1, -1);
+			}
 			if (dvp->id_maddr != old.id_maddr
 			    || dvp->id_msize != old.id_msize) {
 				maddr = dvp->id_maddr;
-				if (maddr != NULL)
-					bus_set_resource(dev,
-							 SYS_RES_MEMORY,
-							 0,
-							 kvtop(maddr),
-							 dvp->id_msize);
-				else
+				if (maddr != NULL) {
+					bus_set_resource(dev, SYS_RES_MEMORY, 0,
+					    kvtop(maddr), dvp->id_msize, -1);
+				} else {
 					bus_delete_resource(dev,
-							    SYS_RES_MEMORY,
-							    0);
+					    SYS_RES_MEMORY, 0);
+				}
 			}
 			return 0;
 		}

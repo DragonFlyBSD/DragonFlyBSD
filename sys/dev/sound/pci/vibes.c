@@ -821,8 +821,10 @@ sv_attach(device_t dev) {
 
 	/* Add resources to list of pci resources for this device - from here on
 	 * they look like normal pci resources. */
-	bus_set_resource(dev, SYS_RES_IOPORT, SV_PCI_DMAA, sdmaa, SV_PCI_DMAA_SIZE);
-	bus_set_resource(dev, SYS_RES_IOPORT, SV_PCI_DMAC, sdmac, SV_PCI_DMAC_SIZE);
+	bus_set_resource(dev, SYS_RES_IOPORT, SV_PCI_DMAA,
+	    sdmaa, SV_PCI_DMAA_SIZE, -1);
+	bus_set_resource(dev, SYS_RES_IOPORT, SV_PCI_DMAC,
+	    sdmac, SV_PCI_DMAC_SIZE, -1);
 
 	/* Cache resource short-cuts for dma_a */
 	sc->dmaa_rid = SV_PCI_DMAA;

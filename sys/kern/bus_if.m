@@ -242,6 +242,7 @@ METHOD int set_resource {
 	int		rid;
 	u_long		start;
 	u_long		count;
+	int		cpuid;
 };
 
 #

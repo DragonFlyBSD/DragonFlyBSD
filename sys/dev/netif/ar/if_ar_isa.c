@@ -124,7 +124,8 @@ ar_isa_probe(device_t device)
 	memsize = ar_inb(hc, AR_REV);
 	memsize = 1 << ((memsize & AR_WSIZ_MSK) >> AR_WSIZ_SHFT);
 	memsize *= ARC_WIN_SIZ;
-	error = bus_set_resource(device, SYS_RES_MEMORY, 0, membase, memsize);
+	error = bus_set_resource(device, SYS_RES_MEMORY, 0, membase, memsize,
+	    -1);
 	ar_deallocate_resources(device);
 
 	return (error);

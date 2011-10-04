@@ -38,6 +38,7 @@
 #include <sys/interrupt.h>
 #include <sys/bus.h>
 #include <sys/rman.h> 
+#include <sys/machintr.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -258,8 +259,9 @@ ep_isa_identify(driver_t *driver, device_t parent)
 				      ISA_ORDER_SPECULATIVE, "ep", -1);
 		device_set_desc_copy(child, desc);
 		device_set_driver(child, driver);
-		bus_set_resource(child, SYS_RES_IRQ, 0, irq, 1);
-		bus_set_resource(child, SYS_RES_IOPORT, 0, ioport, EP_IOSIZE);
+		bus_set_resource(child, SYS_RES_IRQ, 0, irq, 1,
+		    machintr_intr_cpuid(irq));
+		bus_set_resource(child, SYS_RES_IOPORT, 0, ioport, EP_IOSIZE, -1);
 
 		if (bootverbose) {
 			device_printf(parent, "if_ep: <%s> at port 0x%03x-0x%03x irq %d\n",

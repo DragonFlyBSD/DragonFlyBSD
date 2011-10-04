@@ -109,11 +109,11 @@ ata_pccard_probe(device_t dev)
     if (bus_get_resource(dev, SYS_RES_IOPORT, ATA_ALTADDR_RID, &tmp, &tmp)) {
 	if (len > ATA_IOSIZE) {
 	    bus_set_resource(dev, SYS_RES_IOPORT, ATA_ALTADDR_RID,
-			     start + ATA_PCCARD_ALTOFFSET, ATA_ALTIOSIZE);
+			     start + ATA_PCCARD_ALTOFFSET, ATA_ALTIOSIZE, -1);
 	}
 	else {
 	    bus_set_resource(dev, SYS_RES_IOPORT, ATA_ALTADDR_RID, 
-			     start + ATA_ALTOFFSET, ATA_ALTIOSIZE);
+			     start + ATA_ALTOFFSET, ATA_ALTIOSIZE, -1);
 	}
     }
     else

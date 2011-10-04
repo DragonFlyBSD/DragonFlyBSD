@@ -256,11 +256,11 @@ gusisa_probe(device_t dev)
 
 		/* Looks like a GUS MAX.  Set the rest of the resources.  */
 
-		bus_set_resource(dev, SYS_RES_IOPORT, 2, base + 0x10c, 8);
+		bus_set_resource(dev, SYS_RES_IOPORT, 2, base + 0x10c, 8, -1);
 
 		if (flags & DV_F_DUAL_DMA)
 			bus_set_resource(dev, SYS_RES_DRQ, 1,
-					 flags & DV_F_DRQ_MASK, 1);
+					 flags & DV_F_DRQ_MASK, 1, -1);
 
 		/* We can support the CS4231 and MIDI devices.  */
 

@@ -184,7 +184,7 @@ isic_probe_s0163(device_t dev)
 	/* set io port resources */
 
 	sc->sc_resources.io_rid[0] = 0;	
-	bus_set_resource(dev, SYS_RES_IOPORT, 0, sc->sc_port, 0x20);
+	bus_set_resource(dev, SYS_RES_IOPORT, 0, sc->sc_port, 0x20, -1);
 	sc->sc_resources.io_base[0] =
 		bus_alloc_resource(dev, SYS_RES_IOPORT,
 				   &sc->sc_resources.io_rid[0],
@@ -198,7 +198,7 @@ isic_probe_s0163(device_t dev)
 	}
 	sc->sc_resources.io_rid[1] = 1;	
 	bus_set_resource(dev, SYS_RES_IOPORT, 1,
-		sc->sc_port-ISAC_OFFS, 0x20);
+		sc->sc_port-ISAC_OFFS, 0x20, -1);
 	sc->sc_resources.io_base[1] =
 		bus_alloc_resource(dev, SYS_RES_IOPORT,
 				   &sc->sc_resources.io_rid[1],
@@ -213,7 +213,7 @@ isic_probe_s0163(device_t dev)
 	
 	sc->sc_resources.io_rid[2] = 2;
 	bus_set_resource(dev, SYS_RES_IOPORT, 2,
-		sc->sc_port-HSCXA_OFFS, 0x20);
+		sc->sc_port-HSCXA_OFFS, 0x20, -1);
 	sc->sc_resources.io_base[2] =
 		bus_alloc_resource(dev, SYS_RES_IOPORT,
 				   &sc->sc_resources.io_rid[2],
@@ -228,7 +228,7 @@ isic_probe_s0163(device_t dev)
 
 	sc->sc_resources.io_rid[3] = 3;
 	bus_set_resource(dev, SYS_RES_IOPORT, 3,
-		sc->sc_port-HSCXB_OFFS, 0x20);
+		sc->sc_port-HSCXB_OFFS, 0x20, -1);
 	sc->sc_resources.io_base[3] =
 		bus_alloc_resource(dev, SYS_RES_IOPORT,
 				   &sc->sc_resources.io_rid[3],

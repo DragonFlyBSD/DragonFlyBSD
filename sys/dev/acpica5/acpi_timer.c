@@ -145,7 +145,7 @@ acpi_timer_identify(driver_t *driver, device_t parent)
 	SYS_RES_IOPORT : SYS_RES_MEMORY;
     rlen = AcpiGbl_FADT.PmTimerLength;
     rstart = AcpiGbl_FADT.XPmTimerBlock.Address;
-    if (bus_set_resource(dev, rtype, rid, rstart, rlen)) {
+    if (bus_set_resource(dev, rtype, rid, rstart, rlen, -1)) {
 	device_printf(dev, "couldn't set resource (%s 0x%lx+0x%lx)\n",
 	    (rtype == SYS_RES_IOPORT) ? "port" : "mem", rstart, rlen);
 	return (ENXIO);

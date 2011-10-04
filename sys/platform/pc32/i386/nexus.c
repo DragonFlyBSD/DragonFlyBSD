@@ -101,7 +101,8 @@ static	int nexus_setup_intr(device_t, device_t, struct resource *, int flags,
 			     void **, lwkt_serialize_t);
 static	int nexus_teardown_intr(device_t, device_t, struct resource *,
 				void *);
-static	int nexus_set_resource(device_t, device_t, int, int, u_long, u_long);
+static	int nexus_set_resource(device_t, device_t, int, int, u_long, u_long,
+			       int);
 static	int nexus_get_resource(device_t, device_t, int, int, u_long *, u_long *);
 static void nexus_delete_resource(device_t, device_t, int, int);
 
@@ -531,13 +532,15 @@ nexus_teardown_intr(device_t dev, device_t child, struct resource *r, void *ih)
 }
 
 static int
-nexus_set_resource(device_t dev, device_t child, int type, int rid, u_long start, u_long count)
+nexus_set_resource(device_t dev, device_t child, int type, int rid,
+    u_long start, u_long count, int cpuid)
 {
 	struct nexus_device	*ndev = DEVTONX(child);
 	struct resource_list	*rl = &ndev->nx_resources;
 
 	/* XXX this should return a success/failure indicator */
-	resource_list_add(rl, type, rid, start, start + count - 1, count, -1);
+	resource_list_add(rl, type, rid, start, start + count - 1, count,
+	    cpuid);
 	return(0);
 }
 

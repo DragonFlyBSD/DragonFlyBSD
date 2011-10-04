@@ -681,7 +681,7 @@ uguru_identify(driver_t *driver, struct device *parent)
 	if (child == NULL)
 		child = BUS_ADD_CHILD(parent, parent, ISA_ORDER_PNP,
 		    driver->name, 0);
-	if (bus_set_resource(child, SYS_RES_IOPORT, 0, port, UGURU_IOSIZE))
+	if (bus_set_resource(child, SYS_RES_IOPORT, 0, port, UGURU_IOSIZE, -1))
 		kprintf("%s: cannot set resource for child\n", __func__);
 #endif
 }

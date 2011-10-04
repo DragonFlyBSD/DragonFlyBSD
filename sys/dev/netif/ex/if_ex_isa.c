@@ -35,6 +35,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/serialize.h>
+#include <sys/machintr.h>
 
 #include <machine/clock.h>
 
@@ -147,8 +148,9 @@ ex_isa_identify (driver_t *driver, device_t parent)
 				      ISA_ORDER_SPECULATIVE, "ex", -1);
 		device_set_desc_copy(child, desc);
 		device_set_driver(child, driver);
-		bus_set_resource(child, SYS_RES_IRQ, 0, irq, 1);
-		bus_set_resource(child, SYS_RES_IOPORT, 0, ioport, EX_IOSIZE);
+		bus_set_resource(child, SYS_RES_IRQ, 0, irq, 1,
+		    machintr_intr_cpuid(irq));
+		bus_set_resource(child, SYS_RES_IOPORT, 0, ioport, EX_IOSIZE, -1);
 		++count;
 
 		if (bootverbose)
@@ -220,7 +222,8 @@ ex_isa_probe(device_t dev)
 		}
 	} else {
 		irq = ee2irq[tmp];
-		bus_set_resource(dev, SYS_RES_IRQ, 0, irq, 1);
+		bus_set_resource(dev, SYS_RES_IRQ, 0, irq, 1,
+		    machintr_intr_cpuid(irq));
 	}
 
 	if (irq == 0) {
