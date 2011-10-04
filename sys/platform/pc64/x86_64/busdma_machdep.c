@@ -1259,8 +1259,10 @@ free_bounce_pages_all(bus_dma_tag_t dmat)
 		KKASSERT(bz->free_bpages > 0);
 		bz->free_bpages--;
 
+		BZ_UNLOCK(bz);
 		contigfree((void *)bpage->vaddr, PAGE_SIZE, M_DEVBUF);
 		kfree(bpage, M_DEVBUF);
+		BZ_LOCK(bz);
 	}
 	if (bz->total_bpages) {
 		kprintf("#%d bounce pages are still in use\n",
