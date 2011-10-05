@@ -59,15 +59,14 @@ pkgsrc-create-repo:
 		git remote add origin git://${GITHOST}/pkgsrcv2.git
 	cd ${.CURDIR}/pkgsrc && git fetch origin
 	cd ${.CURDIR}/pkgsrc && git branch master origin/master
-	cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2010Q4 origin/pkgsrc-2010Q4
-	cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2011Q1 origin/pkgsrc-2011Q1
+	cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2011Q3 origin/pkgsrc-2011Q3
 
 pkgsrc-create: pkgsrc-create-repo
-	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2011Q1
+	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2011Q3
 	cd ${.CURDIR}/pkgsrc && git pull
 
 pkgsrc-checkout:
-	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2011Q1
+	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2011Q3
 
 pkgsrc-update:
 	cd ${.CURDIR}/pkgsrc && git pull
