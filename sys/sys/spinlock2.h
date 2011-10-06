@@ -191,6 +191,9 @@ spin_uninit(struct spinlock *mtx)
 	/* unused */
 }
 
+struct spinlock *spin_pool_lock(void *);
+void spin_pool_unlock(void *);
+
 #endif	/* _KERNEL */
 #endif	/* _SYS_SPINLOCK2_H_ */
 

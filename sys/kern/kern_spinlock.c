@@ -96,6 +96,9 @@ SYSCTL_INT(_debug, OID_AUTO, spinlocks_bolim, CTLFLAG_RW,
     &spinlocks_backoff_limit, 0,
     "Contested spinlock backoff limit");
 
+#define SPINLOCK_NUM_POOL	(1024)
+static struct spinlock pool_spinlocks[SPINLOCK_NUM_POOL];
+
 struct exponential_backoff {
 	int backoff;
 	int nsec;
@@ -153,6 +156,35 @@ spin_lock_wr_contested2(struct spinlock *mtx)
 		value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE);
 	} while (value & SPINLOCK_EXCLUSIVE);
 	logspin(end, mtx, 'w');
+}
+
+static __inline int
+_spin_pool_hash(void *ptr)
+{
+	int i;
+	i = ((int) (uintptr_t) ptr >> 2) ^ ((int) (uintptr_t) ptr >> 12);
+	i &= (SPINLOCK_NUM_POOL - 1);
+	return (i);
+}
+
+struct spinlock *
+spin_pool_lock(void *chan)
+{
+	struct spinlock *sp;
+
+	sp = &pool_spinlocks[_spin_pool_hash(chan)];
+	spin_lock(sp);
+
+	return (sp);
+}
+
+void
+spin_pool_unlock(void *chan)
+{
+	struct spinlock *sp;
+
+	sp = &pool_spinlocks[_spin_pool_hash(chan)];
+	spin_unlock(sp);
 }
 
 /*
