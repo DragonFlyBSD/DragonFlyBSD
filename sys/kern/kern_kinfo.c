@@ -124,7 +124,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 		bcopy(sess->s_login, kp->kp_login, MAXLOGNAME);
 		if (sess->s_ttyvp != NULL)
 			kp->kp_auxflags |= KI_CTTY;
-		if (SESS_LEADER(p))
+		if ((p->p_session != NULL) && SESS_LEADER(p))
 			kp->kp_auxflags |= KI_SLEADER;
 	}
 	if (sess && (p->p_flag & P_CONTROLT) != 0 && sess->s_ttyp != NULL) {
