@@ -801,10 +801,14 @@ lwkt_token_uninit(lwkt_token_t tok)
 }
 
 /*
- * lwkt_token_swap:
+ * Exchange the two most recent tokens on the tokref stack.  This allows
+ * you to release a token out of order.
  *
- *	Exchange the two most recent tokens on the tokref stack. Allows release
- *	of tokens in non-stack order.
+ * We have to be careful about the case where the top two tokens are
+ * the same token.  In this case tok->t_ref will point to the deeper
+ * ref and must remain pointing to the deeper ref.  If we were to swap
+ * it the first release would clear the token even though a second
+ * ref is still present.
  */
 void
 lwkt_token_swap(void)
@@ -822,17 +826,14 @@ lwkt_token_swap(void)
 
 	tok1 = ref1->tr_tok;
 	tok2 = ref2->tr_tok;
-	ref1->tr_tok = tok2;
-	ref2->tr_tok = tok1;
-
-	/*
-	 * Recursive tokens will not point to the latter tokrefs; only repoint
-	 * tok->t_ref if it was to the first tokref
-	 */
-	if (tok1->t_ref == ref1)
-		tok1->t_ref = ref2;
-	if (tok2->t_ref == ref2)
-		tok2->t_ref = ref1;
+	if (tok1 != tok2) {
+		ref1->tr_tok = tok2;
+		ref2->tr_tok = tok1;
+		if (tok1->t_ref == ref1)
+			tok1->t_ref = ref2;
+		if (tok2->t_ref == ref2)
+			tok2->t_ref = ref1;
+	}
 
 	crit_exit();
 }
