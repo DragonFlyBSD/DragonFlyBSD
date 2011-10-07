@@ -38,11 +38,13 @@
 
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/sysctl.h>
 
 #include <err.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include <vfs/ufs/ufsmount.h>
@@ -59,6 +61,7 @@ static struct mntopt mopts[] = {
 	MOPT_SYNC,
 	MOPT_UPDATE,
 	MOPT_IGNORE,
+	MOPT_TRIM,
 	MOPT_NULL
 };
 
@@ -97,6 +100,26 @@ mount_ufs(int argc, const char **argv)
 		args.export.ex_flags = MNT_EXRDONLY;
 	else
 		args.export.ex_flags = 0;
+
+	if (mntflags & MNT_TRIM){
+		char sysctl_name[64];
+		int trim_enabled = 0;
+		size_t olen = sizeof(trim_enabled);
+		char *dev_name = strdup(args.fspec);
+		dev_name = strtok(dev_name + strlen("/dev/da"),"s");
+		sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled", dev_name);
+		sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0);
+		if(errno == ENOENT) {
+			printf("Device:%s does not support the TRIM command\n",
+			    args.fspec);
+			ufs_usage();
+		}
+		if(!trim_enabled) {
+			printf("Online TRIM selected, but sysctl (%s) "
+			    "is not enabled\n",sysctl_name);
+			ufs_usage();
+		}
+	}
 
 	error = getvfsbyname("ufs", &vfc);
 	if (error && vfsisloadable("ufs")) {

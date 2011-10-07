@@ -958,6 +958,17 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 			break;
 		}
 		break;
+	case XPT_TRIM:
+	{
+		scsi_cdb_t cdb;
+		struct ccb_scsiio *csio;
+		csio = &ccb->csio;
+		cdb = (void *)((ccbh->flags & CAM_CDB_POINTER) ?
+		    csio->cdb_io.cdb_ptr : csio->cdb_io.cdb_bytes);
+		cdb->generic.opcode = TRIM;
+		ahci_xpt_scsi_disk_io(ap, atx, ccb);
+		break;
+	}
 	default:
 		ccbh->status = CAM_REQ_INVALID;
 		xpt_done(ccb);
@@ -1067,6 +1078,17 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 			      sizeof(rdata->inquiry_data.revision));
 			ccbh->status = CAM_REQ_CMP;
 		}
+		
+		/*
+		 * Use the vendor specific area to set the TRIM status
+		 * for scsi_da
+		 */
+		if (at->at_identify.support_dsm) {
+			rdata->inquiry_data.vendor_specific1[0] =
+			    at->at_identify.support_dsm &ATA_SUPPORT_DSM_TRIM;
+			rdata->inquiry_data.vendor_specific1[1] = 
+			    at->at_identify.max_dsm_blocks;
+		}
 		break;
 	case READ_CAPACITY_16:
 		if (cdb->read_capacity_16.service_action != SRC16_SERVICE_ACTION) {
@@ -1118,6 +1140,36 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 		xa->datalen = 0;
 		xa->flags = 0;
 		xa->complete = ahci_ata_complete_disk_synchronize_cache;
+		break;
+	case TRIM:
+		fis = xa->fis;
+		fis->command = ATA_C_DATA_SET_MANAGEMENT;
+		fis->features = (u_int8_t)ATA_SF_DSM_TRIM;
+		fis->features_exp = (u_int8_t)(ATA_SF_DSM_TRIM>> 8);
+
+		xa->flags = ATA_F_WRITE;
+		fis->flags = ATA_H2D_FLAGS_CMD;
+
+		xa->data = csio->data_ptr;
+		xa->datalen = csio->dxfer_len;
+		xa->timeout = ccbh->timeout*50;	/* milliseconds */
+
+		fis->sector_count =(u_int8_t)(xa->datalen/512);
+		fis->sector_count_exp =(u_int8_t)((xa->datalen/512)>>8);
+
+		lba = 0;
+		fis->lba_low = (u_int8_t)lba;
+		fis->lba_mid = (u_int8_t)(lba >> 8);
+		fis->lba_high = (u_int8_t)(lba >> 16);
+		fis->lba_low_exp = (u_int8_t)(lba >> 24);
+		fis->lba_mid_exp = (u_int8_t)(lba >> 32);
+		fis->lba_high_exp = (u_int8_t)(lba >> 40);
+		   
+		fis->device = ATA_H2D_DEVICE_LBA;
+		xa->data = csio->data_ptr;
+
+		xa->complete = ahci_ata_complete_disk_rw;
+		ccbh->status = CAM_REQ_INPROG;
 		break;
 	case TEST_UNIT_READY:
 	case START_STOP_UNIT:

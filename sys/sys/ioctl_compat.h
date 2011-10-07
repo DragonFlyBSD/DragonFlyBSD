@@ -166,5 +166,6 @@ struct sgttyb {
 #define	OTTYDISC	0
 #define	NETLDISC	1
 #define	NTTYDISC	2
+#define IOCTLTRIM	_IOW('t', 128, off_t[2])
 
 #endif /* !_SYS_IOCTL_COMPAT_H_ */

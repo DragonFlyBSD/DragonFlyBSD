@@ -47,6 +47,7 @@
 #include <sys/malloc.h>
 #include <sys/cons.h>
 #include <sys/proc.h>
+#include <sys/ioctl_compat.h>
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
@@ -96,7 +97,8 @@ typedef enum {
 	DA_FLAG_OPEN		= 0x100,
 	DA_FLAG_SCTX_INIT	= 0x200,
 	DA_FLAG_RD_LIMIT	= 0x400,
-	DA_FLAG_WR_LIMIT	= 0x800
+	DA_FLAG_WR_LIMIT	= 0x800,
+	DA_FLAG_CAN_TRIM	= 0x1000
 } da_flags;
 
 typedef enum {
@@ -112,6 +114,7 @@ typedef enum {
 	DA_CCB_BUFFER_IO	= 0x03,
 	DA_CCB_WAITING		= 0x04,
 	DA_CCB_DUMP		= 0x05,
+	DA_CCB_TRIM		= 0x06,
 	DA_CCB_TYPE_MASK	= 0x0F,
 	DA_CCB_RETRY_UA		= 0x10
 } da_ccb_state;
@@ -128,9 +131,17 @@ struct disk_params {
 	u_int64_t sectors;	/* total number sectors */
 };
 
+#define TRIM_MAX_BLOCKS 8
+#define TRIM_MAX_RANGES TRIM_MAX_BLOCKS * 64
+struct trim_request {
+        uint8_t         data[TRIM_MAX_RANGES * 8];
+        struct bio      *bios[TRIM_MAX_RANGES];
+};
+
 struct da_softc {
 	struct	 bio_queue_head bio_queue_rd;
 	struct	 bio_queue_head bio_queue_wr;
+	struct	 bio_queue_head bio_queue_trim;
 	struct	 devstat device_stats;
 	SLIST_ENTRY(da_softc) links;
 	LIST_HEAD(, ccb_hdr) pending_ccbs;
@@ -141,6 +152,9 @@ struct da_softc {
 	int	 ordered_tag_count;
 	int	 outstanding_cmds_rd;
 	int	 outstanding_cmds_wr;
+	int      trim_max_ranges;
+	int      trim_running;
+	int      trim_enabled;
 	struct	 disk_params params;
 	struct	 disk disk;
 	union	 ccb saved_ccb;
@@ -148,6 +162,7 @@ struct da_softc {
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_tree;
 	struct callout		sendordered_c;
+	struct trim_request     trim_req;
 };
 
 struct da_quirk_entry {
@@ -323,6 +338,7 @@ static	d_open_t	daopen;
 static	d_close_t	daclose;
 static	d_strategy_t	dastrategy;
 static	d_dump_t	dadump;
+static	d_ioctl_t	daioctl;
 static	periph_init_t	dainit;
 static	void		daasync(void *callback_arg, u_int32_t code,
 				struct cam_path *path, void *arg);
@@ -404,12 +420,92 @@ static struct dev_ops da_ops = {
 	.d_read =	physread,
 	.d_write =	physwrite,
 	.d_strategy =	dastrategy,
-	.d_dump =	dadump
+	.d_dump =	dadump,
+	.d_ioctl =	daioctl
 };
 
 static struct extend_array *daperiphs;
 
 MALLOC_DEFINE(M_SCSIDA, "scsi_da", "scsi_da buffers");
+
+static int
+daioctl(struct dev_ioctl_args *ap)
+{	
+	int unit;
+	int error = 0;	
+	struct buf *bp;		
+	struct cam_periph *periph;
+	int byte_count;
+	struct da_softc * softc;
+
+	off_t *del_num = (off_t*)ap->a_data;
+	off_t bytes_left;
+	off_t bytes_start;		
+
+	cdev_t dev = ap->a_head.a_dev;
+
+
+	unit = dkunit(dev);
+	periph = cam_extend_get(daperiphs, unit);
+	if (periph == NULL)
+		return(ENXIO);
+	softc = (struct da_softc *)periph->softc;
+	
+	switch (ap->a_cmd) {
+	case IOCTLTRIM:
+	{
+
+		bytes_left = del_num[1];
+		bytes_start = del_num[0];
+
+		/* TRIM occurs on 512-byte sectors. */
+		KKASSERT((bytes_left % 512) == 0);
+		KKASSERT((bytes_start% 512) == 0);
+
+		
+		/* Break TRIM up into int-sized commands because of b_bcount */
+		while(bytes_left) {
+
+			/* 
+			 * Rather than than squezing out more blocks in b_bcount 
+			 * and having to break up the TRIM request in da_start(),
+			 * we ensure we can always TRIM this many bytes with one 
+			 * TRIM command (this happens if the device only 
+			 * supports one TRIM block). 
+			 *  
+			 * With min TRIM blksize of 1, TRIM command free
+			 * 4194240 blks(64*65535): each LBA range can address 
+			 * 65535 blks and there 64 such ranges in a 512-byte 
+			 * block. And, 4194240 * 512 = 0x7FFF8000
+			 * 
+			 */
+			byte_count = MIN(bytes_left,0x7FFF8000);
+			bp = getnewbuf(0,0,0,1);
+		
+			bp->b_cmd = BUF_CMD_FREEBLKS;
+			bp->b_bio1.bio_offset = bytes_start;
+			bp->b_bcount = byte_count;
+			bp->b_bio1.bio_flags |= BIO_SYNC;
+			bp->b_bio1.bio_done = biodone_sync;
+		
+			dev_dstrategy(ap->a_head.a_dev, &bp->b_bio1);
+		
+			if (biowait(&bp->b_bio1, "TRIM")) {
+				kprintf("Error:%d\n", bp->b_error);
+				return(bp->b_error ? bp->b_error : EIO);
+			}
+			brelse(bp);
+			bytes_left -= byte_count;
+			bytes_start += byte_count;	
+		}
+		break;
+	}
+	default:
+		return(EINVAL);
+	}	
+	
+	return(error);
+}
 
 static int
 daopen(struct dev_open_args *ap)
@@ -643,6 +739,8 @@ dastrategy(struct dev_strategy_args *ap)
 	 */
 	if (bp->b_cmd == BUF_CMD_WRITE || bp->b_cmd == BUF_CMD_FLUSH)
 		bioqdisksort(&softc->bio_queue_wr, bio);
+	else if (bp->b_cmd == BUF_CMD_FREEBLKS) 
+		bioqdisksort(&softc->bio_queue_trim, bio);
 	else
 		bioqdisksort(&softc->bio_queue_rd, bio);
 	
@@ -819,6 +917,7 @@ daoninvalidate(struct cam_periph *periph)
 	 * XXX Handle any transactions queued to the card
 	 *     with XPT_ABORT_CCB.
 	 */
+	daflushbioq(&softc->bio_queue_trim, ENXIO);
 	daflushbioq(&softc->bio_queue_wr, ENXIO);
 	daflushbioq(&softc->bio_queue_rd, ENXIO);
 	xpt_print(periph->path, "lost device\n");
@@ -978,6 +1077,18 @@ dasysctlinit(void *context, int pending)
 		&softc->minimum_cmd_size, 0, dacmdsizesysctl, "I",
 		"Minimum CDB size");
 
+	/* Only create the option if the device supports TRIM */
+	if (softc->disk.d_info.d_trimflag) {
+		SYSCTL_ADD_INT(&softc->sysctl_ctx, 
+		    SYSCTL_CHILDREN(softc->sysctl_tree),
+		    OID_AUTO,
+		    "trim_enabled",
+		    CTLFLAG_RW,
+		    &softc->trim_enabled,
+		    0,
+		    "Enable TRIM for this device (SSD))");
+	}
+
 	cam_periph_release(periph);
 	rel_mplock();
 }
@@ -1037,12 +1148,24 @@ daregister(struct cam_periph *periph, void *arg)
 	softc = kmalloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	LIST_INIT(&softc->pending_ccbs);
 	softc->state = DA_STATE_PROBE;
+	bioq_init(&softc->bio_queue_trim);
 	bioq_init(&softc->bio_queue_rd);
 	bioq_init(&softc->bio_queue_wr);
 	if (SID_IS_REMOVABLE(&cgd->inq_data))
 		softc->flags |= DA_FLAG_PACK_REMOVABLE;
 	if ((cgd->inq_data.flags & SID_CmdQue) != 0)
 		softc->flags |= DA_FLAG_TAGGED_QUEUING;
+
+	/* Used to get TRIM status from AHCI driver */
+	if (cgd->inq_data.vendor_specific1[0] == 1) {
+		/*
+		 * max number of lba ranges an SSD can handle in a single
+		 * TRIM command. vendor_specific1[1] is the num of 512-byte 
+		 * blocks the SSD reports that can be passed in a TRIM cmd. 
+		 */
+		softc->trim_max_ranges =
+		   min(cgd->inq_data.vendor_specific1[1] * 64, TRIM_MAX_RANGES);
+	}
 
 	periph->softc = softc;
 	
@@ -1159,6 +1282,8 @@ daregister(struct cam_periph *periph, void *arg)
 	    (DA_DEFAULT_TIMEOUT * hz) / DA_ORDEREDTAG_INTERVAL,
 	    dasendorderedtag, softc);
 
+	
+
 	return(CAM_REQ_CMP);
 }
 
@@ -1201,6 +1326,79 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 				 */
 				xpt_schedule(periph, /* XXX priority */1);
 			}
+			break;
+		}
+
+		/* Run the trim command if not already running */
+		if (!softc->trim_running &&
+		   (bio = bioq_first(&softc->bio_queue_trim)) != 0) {
+			struct trim_request *req = &softc->trim_req;
+			struct bio *bio1;
+			int bps = 0, ranges = 0;
+
+			softc->trim_running = 1;
+			bzero(req, sizeof(*req));
+			bio1 = bio;
+			while (1) {
+				uint64_t lba;
+				int count;
+
+				bp = bio1->bio_buf;
+				count = bp->b_bcount / softc->params.secsize;
+				lba = bio1->bio_offset/softc->params.secsize;
+
+				kprintf("trim lba:%llu boff:%llu count:%d\n",
+				    (unsigned long long) lba,
+				    (unsigned long long) bio1->bio_offset,
+				    count);
+
+				bioq_remove(&softc->bio_queue_trim, bio1);
+				while (count > 0) {
+					int c = min(count, 0xffff);
+					int off = ranges * 8;
+
+					req->data[off + 0] = lba & 0xff;
+					req->data[off + 1] = (lba >> 8) & 0xff;
+					req->data[off + 2] = (lba >> 16) & 0xff;
+					req->data[off + 3] = (lba >> 24) & 0xff;
+					req->data[off + 4] = (lba >> 32) & 0xff;
+					req->data[off + 5] = (lba >> 40) & 0xff;
+					req->data[off + 6] = c & 0xff;
+					req->data[off + 7] = (c >> 8) & 0xff;
+					lba += c;
+					count -= c;
+					ranges++;
+				}
+
+				/* Try to merge multiple TRIM requests */
+				req->bios[bps++] = bio1;
+				bio1 = bioq_first(&softc->bio_queue_trim);
+				if (bio1 == NULL ||
+				    bio1->bio_buf->b_bcount / softc->params.secsize >
+				    (softc->trim_max_ranges - ranges) * 0xffff)
+					break;
+			}
+
+
+			cam_fill_csio(&start_ccb->csio,
+			    1/*retries*/,
+			    dadone,
+			    CAM_DIR_OUT,
+			    MSG_SIMPLE_Q_TAG,
+			    req->data,
+			    ((ranges +63)/64)*512,
+			    SSD_FULL_SIZE,
+			    sizeof(struct scsi_rw_6),
+			    da_default_timeout*2);
+
+			start_ccb->ccb_h.ccb_state = DA_CCB_TRIM;
+			LIST_INSERT_HEAD(&softc->pending_ccbs,
+			    &start_ccb->ccb_h, periph_links.le);
+			start_ccb->csio.ccb_h.func_code = XPT_TRIM;
+			start_ccb->ccb_h.ccb_bio = bio;
+			devstat_start_transaction(&softc->device_stats);
+			xpt_action(start_ccb);
+			xpt_schedule(periph, 1);
 			break;
 		}
 
@@ -1314,6 +1512,11 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 				);
 			}
 			break;
+		case BUF_CMD_FREEBLKS:
+			if (softc->disk.d_info.d_trimflag & DA_FLAG_CAN_TRIM){
+				start_ccb->csio.ccb_h.func_code = XPT_TRIM;
+				break;
+			}
 		default:
 			xpt_release_ccb(start_ccb);
 			start_ccb = NULL;
@@ -1461,6 +1664,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 	csio = &done_ccb->csio;
 	switch (csio->ccb_h.ccb_state & DA_CCB_TYPE_MASK) {
 	case DA_CCB_BUFFER_IO:
+	case DA_CCB_TRIM:
 	{
 		struct buf *bp;
 		struct bio *bio;
@@ -1555,7 +1759,28 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 		}
 
 		devstat_end_transaction_buf(&softc->device_stats, bp);
-		biodone(bio);
+		if ((csio->ccb_h.ccb_state & DA_CCB_TYPE_MASK) ==
+		    DA_CCB_TRIM) {
+			struct trim_request *req =
+			    (struct trim_request *) csio->data_ptr;
+			int i;
+
+			for (i = 1; i < softc->trim_max_ranges &&
+			    req->bios[i]; i++) {
+				struct bio *bp1 = req->bios[i];
+
+				bp1->bio_buf->b_resid = bp->b_resid;
+				bp1->bio_buf->b_error = bp->b_error;
+				if (bp->b_flags & B_ERROR)
+					bp1->bio_buf->b_flags |= B_ERROR;
+				biodone(bp1);
+			}
+			softc->trim_running = 0;
+			biodone(bio);
+			xpt_schedule(periph,1);
+		} else
+			biodone(bio);
+
 
 		if (mustsched)
 			xpt_schedule(periph, /*priority*/1);
@@ -1618,6 +1843,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				(uintmax_t)dp->sectors,
 				dp->secsize, dp->heads, dp->secs_per_track,
 				dp->cylinders);
+			
 			CAM_SIM_UNLOCK(periph->sim);
 			info.d_media_blksize = softc->params.secsize;
 			info.d_media_blocks = softc->params.sectors;
@@ -1736,6 +1962,13 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			 */
 			taskqueue_enqueue(taskqueue_thread[mycpuid],
 			    &softc->sysctl_task);
+		}
+
+		if (softc->trim_max_ranges) {
+			softc->disk.d_info.d_trimflag |= DA_FLAG_CAN_TRIM;
+			kprintf("%s%d: supports TRIM\n",
+		   	    periph->periph_name,
+		   	    periph->unit_number);
 		}
 		softc->state = DA_STATE_NORMAL;
 		/*

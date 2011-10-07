@@ -40,7 +40,7 @@
 .Sh SYNOPSIS
 .Nm
 .Fl L Ar label
-.Op Fl f
+.Op Fl fE
 .Op Fl b Ar bootsize
 .Op Fl m Ar savesize
 .Op Fl u Ar undosize
@@ -119,6 +119,10 @@ This is needed for the creation of a
 file system less than 10GB size or
 with less than 500MB UNDO/REDO FIFO.
 This should not be used under normal circumstances.
+.It Fl E
+Use TRIM to erase the device's data before creating the file system. The
+underlying device must have the Trim sysctl enabled. Only devices that support
+TRIM will have such a sysctl option (kern.cam.da.X.trim_enabled).
 .It Fl m Ar savesize
 Specify a fixed area which
 .Nm HAMMER

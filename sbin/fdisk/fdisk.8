@@ -89,6 +89,15 @@ would otherwise wrap.
 This typically causes BIOSes to properly detect
 that the disk should be put in Large mode.
 This option may be needed on very old PCs.
+.It Fl E
+Use TRIM to erase the device/partition before creating the file system.  The
+underlying device must have the Trim sysctl enabled.  Only devices that
+support TRIM will have such a sysctl option (kern.cam.da.X.trim_enabled).  For
+use with the 
+.Fl I
+or
+.Fl u
+option.
 .It Fl f Ar configfile
 Set slice values using the file
 .Ar configfile .

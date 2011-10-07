@@ -2962,6 +2962,7 @@ xpt_action(union ccb *start_ccb)
 
 	switch (start_ccb->ccb_h.func_code) {
 	case XPT_SCSI_IO:
+	case XPT_TRIM:
 	{
 		struct cam_ed *device;
 #ifdef CAMDEBUG

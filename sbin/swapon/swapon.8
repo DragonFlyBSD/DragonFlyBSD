@@ -40,10 +40,10 @@
 .Nm swapon , swapoff , swapctl
 .Nd "specify devices for paging and swapping"
 .Sh SYNOPSIS
-.Nm swapon Fl aq | Ar
+.Nm swapon Fl aeq | Ar
 .Nm swapoff Fl aq | Ar
 .Nm swapctl
-.Op Fl AghklmsU
+.Op Fl AeghklmsU
 .Oo
 .Fl a Ar
 |
@@ -78,6 +78,10 @@ If the
 .Fl q
 option is used informational messages will not be
 written to standard output when a swap device is added.
+If the
+.Fl e
+option is used, the device will be trimmed if
+it supports trim and the trim_enabled sysctl is on.
 .Pp
 The
 .Nm swapoff
@@ -154,6 +158,8 @@ Output values in megabytes.
 List the devices making up system swap.
 .It Fl s
 Print a summary line for system swap.
+.It Fl e
+Attempts to Trim the device if -[Aa] is used.
 .Pp
 The
 .Ev BLOCKSIZE

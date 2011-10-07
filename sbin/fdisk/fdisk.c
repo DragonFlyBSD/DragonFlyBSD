@@ -30,6 +30,8 @@
 #include <sys/types.h>
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
+#include <sys/ioctl_compat.h>
+#include <sys/sysctl.h>
 #include <sys/stat.h>
 #include <ctype.h>
 #include <fcntl.h>
@@ -120,6 +122,7 @@ typedef struct cmd {
 
 static int B_flag  = 0;		/* replace boot code */
 static int C_flag  = 0;		/* use wrapped values for CHS */
+static int E_flag  = 0;		/* Erase through TRIM */
 static int I_flag  = 0;		/* use entire disk for DragonFly */
 static int a_flag  = 0;		/* set active partition */
 static char *b_flag = NULL;	/* path to boot code */
@@ -235,6 +238,7 @@ static void change_code();
 static void get_params_to_use();
 static void dos(struct dos_partition *partp);
 static int open_disk(int u_flag);
+static void erase_partition(int i);
 static ssize_t read_disk(off_t sector, void *buf);
 static ssize_t write_disk(off_t sector, void *buf);
 static int get_params();
@@ -258,13 +262,16 @@ main(int argc, char *argv[])
 {
 	int	c, i;
 
-	while ((c = getopt(argc, argv, "BCIab:f:p:istuv1234")) != -1)
+	while ((c = getopt(argc, argv, "BCEIab:f:p:istuv1234")) != -1)
 		switch (c) {
 		case 'B':
 			B_flag = 1;
 			break;
 		case 'C':
 			C_flag = 1;
+			break;
+		case 'E':
+			E_flag = 1;
 			break;
 		case 'I':
 			I_flag = 1;
@@ -384,6 +391,12 @@ main(int argc, char *argv[])
 		dos(partp);
 		if (v_flag)
 			print_s0(-1);
+
+		if (E_flag) {
+			/* Trim now if we're using the entire device */
+			erase_partition(0);
+		}
+
 		if (!t_flag)
 			write_s0();
 		exit(0);
@@ -444,8 +457,20 @@ main(int argc, char *argv[])
 		}
 		print_s0(-1);
 		if (!t_flag)	{
-		    if (ok("Should we write new partition table?"))
+		    if (ok("Should we write new partition table?")) {
+			if (E_flag && u_flag) {
+			    /* 
+			     * Trim now because we've committed to 
+			     * updating the partition. 
+			     */
+			    if (partition == -1)
+			        for (i = 0; i < NDOSPART; i++)
+			            erase_partition(i);
+				else
+			            erase_partition(partition);
+			}
 			write_s0();
+		    }
 		}
 		else
 		{
@@ -761,6 +786,46 @@ dos(struct dos_partition *partp)
 }
 
 int fd;
+
+static void
+erase_partition(int i)
+{
+	struct	  dos_partition *partp;
+	off_t ioarg[2];
+
+	char sysctl_name[64];
+	int trim_enabled = 0;
+	size_t olen = sizeof(trim_enabled);
+	char *dev_name = strdup(disk);
+
+	dev_name = strtok(dev_name + strlen("/dev/da"),"s");
+	sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled", dev_name);
+	sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0);
+	if(errno == ENOENT) {
+		printf("Device:%s does not support the TRIM command\n", disk);
+		usage();
+	}
+	if(!trim_enabled) {
+		printf("Erase device option selected, but sysctl (%s) "
+		    "is not enabled\n",sysctl_name);
+		usage();
+	}
+	partp = ((struct dos_partition *) &mboot.parts) + i;
+	printf("erase sectors:%u %u\n",
+	    partp->dp_start,
+	    partp->dp_size);
+	
+	/* Trim the Device */	
+	ioarg[0] = partp->dp_start;
+	ioarg[0] *=secsize;
+	ioarg[1] = partp->dp_size;
+	ioarg[1] *=secsize;
+	
+	if (ioctl(fd, IOCTLTRIM, ioarg) < 0) {
+		printf("Device trim failed\n");
+		usage ();
+	}
+}
 
 	/* Getting device status */
 

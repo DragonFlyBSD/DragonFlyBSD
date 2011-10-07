@@ -23,6 +23,7 @@ struct scsi_link;
  * ATA commands
  */
 
+#define ATA_C_DATA_SET_MANAGEMENT 0x06 /* Data Set Management command */
 #define ATA_C_SATA_FEATURE_ENA	0x10
 #define ATA_C_READDMA_EXT	0x25
 #define ATA_C_READ_LOG_EXT	0x2f
@@ -54,6 +55,7 @@ struct scsi_link;
 /*
  * ATA SET FEATURES subcommands
  */
+#define ATA_SF_DSM_TRIM          0x01 /* TRIM DSM feature */
 #define ATA_SF_WRITECACHE_EN	0x02
 #define ATA_SF_SETXFER		0x03
 #define ATA_SF_LOOKAHEAD_EN	0xaa
@@ -93,7 +95,10 @@ struct ata_identify {
 	u_int16_t	recmwdma;	/*  66 */
 	u_int16_t	minpio;		/*  67 */
 	u_int16_t	minpioflow;	/*  68 */
-	u_int16_t	reserved4[2];	/*  69 */
+	u_int16_t       support3;	/*  69 */
+#define ATA_SUPPORT_RZAT                0x0020
+#define ATA_SUPPORT_DRAT                0x4000
+	u_int16_t	reserved4;	/*  70 */
 	u_int16_t	typtime[2];	/*  71 */
 	u_int16_t	reserved5[2];	/*  73 */
 	u_int16_t	qdepth;		/*  75 */
@@ -123,7 +128,7 @@ struct ata_identify {
 	u_int16_t	streamperf[2];	/*  98 */
 	u_int16_t	addrsecxt[4];	/* 100 */
 	u_int16_t	stream_xfer_p;	/* 104 */
-	u_int16_t	padding1;	/* 105 */
+	u_int16_t	max_dsm_blocks;	/* 105 */
 	u_int16_t	phys_sect_sz;	/* 106 */
 	u_int16_t	seek_delay;	/* 107 */
 	u_int16_t	naa_ieee_oui;	/* 108 */
@@ -141,7 +146,10 @@ struct ata_identify {
 #define ATA_SECURE_LOCKED		(1<<2)
 #define ATA_SECURE_FROZEN		(1<<3)
 	u_int16_t	vendor[31];	/* 129 */
-	u_int16_t	padding3[16];	/* 160 */
+	u_int16_t	padding3[9];	/* 160 */
+	u_int16_t	support_dsm;	/* 169 */	
+#define ATA_SUPPORT_DSM_TRIM            0x0001
+	u_int16_t	padding5[6];	/* 170 */
 	u_int16_t	curmedser[30];	/* 176 */
 	u_int16_t	sctsupport;	/* 206 */
 	u_int16_t	padding4[48];	/* 207 */

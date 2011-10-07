@@ -426,6 +426,7 @@ struct buf *findblk (struct vnode *, off_t, int);
 struct buf *getblk (struct vnode *, off_t, int, int, int);
 struct buf *getcacheblk (struct vnode *, off_t, int);
 struct buf *geteblk (int);
+struct buf *getnewbuf(int, int, int, int);
 void	bqhold(struct buf *bp);
 void	bqdrop(struct buf *bp);
 void	regetblk(struct buf *bp);

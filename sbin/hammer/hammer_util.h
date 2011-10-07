@@ -80,6 +80,7 @@ struct volume_info {
 	char			*name;
 	int			fd;
 	off_t			size;
+	off_t			device_offset;
 	const char		*type;
 
 	struct hammer_volume_ondisk *ondisk;

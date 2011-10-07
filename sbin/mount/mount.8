@@ -193,6 +193,10 @@ mount the file system read-only (even the super-user may not write it).
 All
 .Tn I/O
 to the file system should be done synchronously.
+.It Cm trim
+If the device supports trim (kern.cam.da.X.trim_enabled exists) and is set,
+the file system will perform online trim for corresponding block deletions.
+Currently UFS only supports this feature.
 .It Cm suiddir
 A directory on the mounted filesystem will respond to the SUID bit
 being set, by setting the owner of any new files to be the same

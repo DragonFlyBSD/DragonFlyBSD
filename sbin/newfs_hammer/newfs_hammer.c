@@ -38,6 +38,7 @@
 
 static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
 static const char *sizetostr(off_t size);
+static void trim_volume(struct volume_info *vol);
 static void check_volume(struct volume_info *vol);
 static void format_volume(struct volume_info *vol, int nvols,const char *label,
 			off_t total_size);
@@ -47,6 +48,7 @@ static void usage(void);
 
 static int ForceOpt = 0;
 static int HammerVersion = -1;
+static int Eflag = 0;
 
 #define GIG	(1024LL*1024*1024)
 
@@ -82,10 +84,13 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "fL:b:m:u:V:")) != -1) {
+	while ((ch = getopt(ac, av, "fEL:b:m:u:V:")) != -1) {
 		switch(ch) {
 		case 'f':
 			ForceOpt = 1;
+			break;
+		case 'E':
+			Eflag = 1;
 			break;
 		case 'L':
 			label = optarg;
@@ -189,6 +194,30 @@ main(int ac, char **av)
 		 * its remaining fields.
 		 */
 		check_volume(vol);
+		if (Eflag) {
+			char sysctl_name[64];
+			int trim_enabled = 0;
+			size_t olen = sizeof(trim_enabled);
+			char *dev_name = strdup(vol->name);
+			dev_name = strtok(dev_name + strlen("/dev/da"),"s");
+
+			sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled",
+			    dev_name);
+			errno=0;
+			sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0);
+			if(errno == ENOENT) {
+				printf("Device:%s (%s) does not support the "
+				    "TRIM command\n", vol->name,sysctl_name);
+				usage();
+			}
+			if(!trim_enabled) {
+				printf("Erase device option selected, but "
+				    "sysctl (%s) is not enabled\n", sysctl_name);
+				usage();
+
+			}
+			trim_volume(vol);
+		}
 		total += vol->size;
 	}
 
@@ -273,7 +302,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-		"usage: newfs_hammer -L label [-f] [-b bootsize] [-m savesize] [-u undosize]\n"
+		"usage: newfs_hammer -L label [-fE] [-b bootsize] [-m savesize] [-u undosize]\n"
 		"                    [-V version] special ...\n"
 	);
 	exit(1);
@@ -392,6 +421,29 @@ nowtime(void)
 }
 
 /*
+ * TRIM the volume, but only if the backing store is a DEVICE
+ */
+static
+void
+trim_volume(struct volume_info *vol)
+{
+	if (strncmp(vol->type, "DEVICE", sizeof(vol->type)) == 0) {
+		off_t ioarg[2];
+		
+		/* 1MB offset to prevent destroying disk-reserved area */
+		ioarg[0] = vol->device_offset;
+		ioarg[1] = vol->size;
+		printf("Trimming Device:%s, sectors (%llu -%llu)\n",vol->name,
+		    (unsigned long long)ioarg[0]/512,
+		    (unsigned long long)ioarg[1]/512);
+		if (ioctl(vol->fd, IOCTLTRIM, ioarg) < 0) {
+			printf("Device trim failed\n");
+			usage ();
+		}
+	}
+}
+
+/*
  * Check basic volume characteristics.  HAMMER filesystems use a minimum
  * of a 16KB filesystem buffer size.
  */
@@ -416,6 +468,10 @@ check_volume(struct volume_info *vol)
 			err(1, "Unable to stat %s", vol->name);
 		vol->size = st.st_size;
 		vol->type = "REGFILE";
+
+		if (Eflag)
+			errx(1,"Cannot TRIM regular file %s\n", vol->name);
+
 	} else {
 		/*
 		 * When formatting a block device as a HAMMER volume the
@@ -433,6 +489,7 @@ check_volume(struct volume_info *vol)
 		}
 
 		vol->size = pinfo.media_size;
+		vol->device_offset = pinfo.media_offset;
 		vol->type = "DEVICE";
 	}
 	printf("Volume %d %s %-15s size %s\n",

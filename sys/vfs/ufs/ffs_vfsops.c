@@ -37,6 +37,7 @@
 
 #include "opt_quota.h"
 
+#include <sys/disk.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>

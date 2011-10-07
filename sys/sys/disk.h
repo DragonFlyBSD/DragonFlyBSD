@@ -92,6 +92,7 @@ struct disk_info {
 	u_int			d_ncylinders;
 	u_int			d_secpertrack;
 	u_int			d_secpercyl;
+	u_int			d_trimflag;
 	char			*d_serialno;
 };
 

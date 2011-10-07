@@ -40,6 +40,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/buf.h>
+#include <sys/buf2.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
@@ -48,6 +49,7 @@
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
 
+#include <sys/taskqueue.h>
 #include <machine/inttypes.h>
 
 #include "quota.h"
@@ -64,6 +66,8 @@ typedef ufs_daddr_t allocfcn_t (struct inode *ip, int cg, ufs_daddr_t bpref,
 static ufs_daddr_t ffs_alloccg (struct inode *, int, ufs_daddr_t, int);
 static ufs_daddr_t
 	      ffs_alloccgblk (struct inode *, struct buf *, ufs_daddr_t);
+static void ffs_blkfree_cg(struct fs *, struct vnode *, cdev_t , ino_t,
+			   uint32_t , ufs_daddr_t, long );
 #ifdef DIAGNOSTIC
 static int	ffs_checkblk (struct inode *, ufs_daddr_t, long);
 #endif
@@ -1475,36 +1479,35 @@ gotit:
  * block reassembly is checked.
  */
 void
-ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
+ffs_blkfree_cg(struct fs * fs, struct vnode * i_devvp, cdev_t i_dev, ino_t i_number,
+	        uint32_t i_din_uid, ufs_daddr_t bno, long size)
 {
-	struct fs *fs;
 	struct cg *cgp;
 	struct buf *bp;
 	ufs_daddr_t blkno;
 	int i, error, cg, blk, frags, bbase;
 	uint8_t *blksfree;
 
-	fs = ip->i_fs;
-	VOP_FREEBLKS(ip->i_devvp, fsbtodoff(fs, bno), size);
+	VOP_FREEBLKS(i_devvp, fsbtodoff(fs, bno), size);
 	if ((uint)size > fs->fs_bsize || fragoff(fs, size) != 0 ||
 	    fragnum(fs, bno) + numfrags(fs, size) > fs->fs_frag) {
 		kprintf("dev=%s, bno = %ld, bsize = %ld, size = %ld, fs = %s\n",
-		    devtoname(ip->i_dev), (long)bno, (long)fs->fs_bsize, size,
+		    devtoname(i_dev), (long)bno, (long)fs->fs_bsize, size,
 		    fs->fs_fsmnt);
 		panic("ffs_blkfree: bad size");
 	}
 	cg = dtog(fs, bno);
 	if ((uint)bno >= fs->fs_size) {
 		kprintf("bad block %ld, ino %lu\n",
-		    (long)bno, (u_long)ip->i_number);
-		ffs_fserr(fs, ip->i_uid, "bad block");
+		    (long)bno, (u_long)i_number);
+		ffs_fserr(fs, i_din_uid, "bad block");
 		return;
 	}
 
 	/*
 	 * Load the cylinder group
 	 */
-	error = bread(ip->i_devvp, fsbtodoff(fs, cgtod(fs, cg)),
+	error = bread(i_devvp, fsbtodoff(fs, cgtod(fs, cg)),
 		      (int)fs->fs_cgsize, &bp);
 	if (error) {
 		brelse(bp);
@@ -1526,7 +1529,7 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 		blkno = fragstoblks(fs, bno);
 		if (!ffs_isfreeblock(fs, blksfree, blkno)) {
 			kprintf("dev = %s, block = %ld, fs = %s\n",
-			    devtoname(ip->i_dev), (long)bno, fs->fs_fsmnt);
+			    devtoname(i_dev), (long)bno, fs->fs_fsmnt);
 			panic("ffs_blkfree: freeing free block");
 		}
 		ffs_setblock(fs, blksfree, blkno);
@@ -1564,7 +1567,7 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 		for (i = 0; i < frags; i++) {
 			if (isset(blksfree, bno + i)) {
 				kprintf("dev = %s, block = %ld, fs = %s\n",
-				    devtoname(ip->i_dev), (long)(bno + i),
+				    devtoname(i_dev), (long)(bno + i),
 				    fs->fs_fsmnt);
 				panic("ffs_blkfree: freeing free frag");
 			}
@@ -1599,6 +1602,90 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 	}
 	fs->fs_fmod = 1;
 	bdwrite(bp);
+}
+
+struct ffs_blkfree_trim_params {
+	struct task task;
+	ufs_daddr_t bno;
+	long size;
+
+	/* 
+	 * With TRIM,  inode pointer is gone in the callback but we still need 
+	 * the following fields for  ffs_blkfree_cg() 
+	 */
+	struct vnode *i_devvp;
+	struct fs *i_fs;
+	cdev_t i_dev; 
+	ino_t i_number;
+	uint32_t i_din_uid;
+};
+
+        
+static void
+ffs_blkfree_trim_task(void *ctx, int pending)
+{
+	struct ffs_blkfree_trim_params *tp;
+
+	tp = ctx;
+	ffs_blkfree_cg(tp->i_fs, tp->i_devvp, tp->i_dev, tp->i_number,
+	    tp->i_din_uid, tp->bno, tp->size);
+	kfree(tp, M_TEMP);
+}
+
+
+
+static void
+ffs_blkfree_trim_completed(struct bio *biop)
+{
+	struct buf *bp = biop->bio_buf;
+	struct ffs_blkfree_trim_params *tp;
+
+	tp = bp->b_bio1.bio_caller_info1.ptr;
+	TASK_INIT(&tp->task, 0, ffs_blkfree_trim_task, tp);
+	tp = biop->bio_caller_info1.ptr;
+	taskqueue_enqueue(taskqueue_swi, &tp->task);
+	biodone(biop);
+}
+
+
+/*
+ * If TRIM is enabled, we TRIM the blocks first then free them. We do this 
+ * after TRIM is finished and the callback handler is called. The logic here
+ * is that we free the blocks before updating the bitmap so that we don't
+ * reuse a block before we actually trim it, which would result in trimming
+ * a valid block.
+ */
+void
+ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size) 
+{
+	struct ufsmount *ump = VFSTOUFS(ITOV(ip)->v_mount);;
+	struct ffs_blkfree_trim_params *tp;
+
+	if (!(ump->um_mountp->mnt_flag & MNT_TRIM)) {
+		ffs_blkfree_cg(ip->i_fs, ip->i_devvp,ip->i_dev,ip->i_number,
+		    ip->i_uid, bno, size);
+		return;
+	}
+
+	struct buf *bp;	
+
+	tp = kmalloc(sizeof(struct ffs_blkfree_trim_params), M_TEMP, M_WAITOK);
+	tp->bno = bno;
+	tp->i_fs= ip->i_fs;
+	tp->i_devvp = ip->i_devvp;
+	tp->i_dev = ip->i_dev;
+	tp->i_din_uid = ip->i_uid;
+	tp->i_number = ip->i_number;
+	tp->size = size;
+
+	bp = getnewbuf(0,0,0,1);
+	BUF_KERNPROC(bp);
+	bp->b_cmd = BUF_CMD_FREEBLKS;
+	bp->b_bio1.bio_offset =  fsbtodoff(ip->i_fs, bno);
+	bp->b_bcount = size;
+	bp->b_bio1.bio_caller_info1.ptr = tp;
+	bp->b_bio1.bio_done = ffs_blkfree_trim_completed;
+	vn_strategy(ip->i_devvp, &bp->b_bio1);	
 }
 
 #ifdef DIAGNOSTIC

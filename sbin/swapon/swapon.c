@@ -38,6 +38,8 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
+#include <sys/diskslice.h>
+#include <sys/ioctl_compat.h>
 #include <vm/vm_param.h>
 
 #include <err.h>
@@ -51,7 +53,7 @@
 #include <libutil.h>
 
 static void usage(void);
-static int swap_on_off(char *name, int doingall);
+static int swap_on_off(char *name, int doingall, int trim);
 static void swaplist(int lflag, int sflag, int hflag);
 
 enum { SWAPON, SWAPOFF, SWAPCTL } orig_prog, which_prog = SWAPCTL;
@@ -63,7 +65,7 @@ main(int argc, char **argv)
 	char *ptr;
 	int ret;
 	int ch;
-	int doall, sflag, lflag, hflag, qflag;
+	int doall, sflag, lflag, hflag, qflag, eflag;
 
 	if ((ptr = strrchr(argv[0], '/')) == NULL)
 		ptr = argv[0];
@@ -73,8 +75,8 @@ main(int argc, char **argv)
 		which_prog = SWAPOFF;
 	orig_prog = which_prog;
 
-	sflag = lflag = hflag = qflag = doall = 0;
-	while ((ch = getopt(argc, argv, "AadghklmqsU")) != -1) {
+	sflag = lflag = hflag = qflag = doall = eflag = 0;
+	while ((ch = getopt(argc, argv, "AadeghklmqsU")) != -1) {
 		switch((char)ch) {
 		case 'A':
 			if (which_prog == SWAPCTL) {
@@ -95,6 +97,9 @@ main(int argc, char **argv)
 				which_prog = SWAPOFF;
 			else
 				usage();
+			break;
+		case 'e':
+			eflag = 1;
 			break;
 		case 'g':
 			hflag = 'G';
@@ -141,7 +146,7 @@ main(int argc, char **argv)
 					continue;
 				if (strstr(fsp->fs_mntops, "noauto"))
 					continue;
-				if (swap_on_off(fsp->fs_spec, 1)) {
+				if (swap_on_off(fsp->fs_spec, 1, eflag)) {
 					ret = 1;
 				} else {
 					if (!qflag) {
@@ -156,7 +161,7 @@ main(int argc, char **argv)
 			usage();
 		}
 		for (; *argv; ++argv) {
-			if (swap_on_off(getdevpath(*argv, 0), 0)) {
+			if (swap_on_off(getdevpath(*argv, 0), 0, eflag)) {
 				ret = 1;
 			} else if (orig_prog == SWAPCTL) {
 				printf("%s: %sing %s as swap device\n",
@@ -174,9 +179,100 @@ main(int argc, char **argv)
 	exit(ret);
 }
 
+/*
+ * TRIM the device
+ */
+static
+void
+trim_volume(char * name)
+{	
+	struct partinfo pinfo;
+	int fd,i,n;
+	size_t bytes = 0,ksize;
+	char *xswbuf;
+	struct xswdev *xsw;
+
+
+	/*
+	* Determine if this device is already being used by swap without 
+	* calling swapon(). 
+	*/
+	if ((sysctlbyname("vm.swap_info_array", NULL, &bytes, NULL, 0) < 0) ||
+	    bytes == 0) {
+		err(1, "sysctlbyname()");
+	}
+
+	xswbuf = malloc(bytes);
+	if ((sysctlbyname("vm.swap_info_array", xswbuf, &bytes, NULL, 0) < 0) ||
+	    bytes == 0) {
+			free(xswbuf);
+			err(1, "sysctlbyname()");
+	}
+
+	ksize = ((struct xswdev *)xswbuf)->xsw_size;
+	n = (int)(bytes / ksize);
+	for (i = 0; i < n; ++i) {
+		xsw = (void *)((char *)xswbuf + i * ksize);
+
+		if (xsw->xsw_dev == NODEV )
+			continue;
+		if(!strcmp(devname(xsw->xsw_dev, S_IFCHR),
+		    name + strlen("/dev/"))) {
+			warnx("%s: device already a swap device", name);
+			exit(1);
+		}
+	}
+	
+	/*
+	 * Get the size and offset of this parititon/device
+	 */
+	fd = open(name, O_RDWR);
+	if (fd < 0)
+		err(1, "Unable to open %s R+W", name);
+	if (ioctl(fd, DIOCGPART, &pinfo) < 0) {
+		printf("Cannot trim regular file\n");
+		usage ();
+	}
+	off_t ioarg[2];
+	
+	/*Trim the Device*/	
+	ioarg[0] = pinfo.media_offset;
+	ioarg[1] = pinfo.media_size;
+	printf("Trimming Device:%s, sectors (%llu -%llu)\n",name,
+	     (unsigned long long)ioarg[0]/512,
+	     (unsigned long long)ioarg[1]/512);
+	if (ioctl(fd, IOCTLTRIM, ioarg) < 0) {
+		printf("Device trim failed\n");
+		usage ();
+	}
+	close(fd);
+}
+
 static int
-swap_on_off(char *name, int doingall)
+swap_on_off(char *name, int doingall, int trim)
 {
+	if (which_prog == SWAPON && trim){
+		char sysctl_name[64];
+		int trim_enabled = 0;
+		size_t olen = sizeof(trim_enabled);
+		char *dev_name = strdup(name);
+		dev_name = strtok(dev_name + strlen("/dev/da"),"s");
+		sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled", dev_name);
+		sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0);
+		if(errno == ENOENT) {
+			printf("Device:%s does not support the TRIM command\n",
+			    name);
+			usage();
+		}
+		if(!trim_enabled) {
+			printf("Erase device option selected, but sysctl (%s) "
+			    "is not enabled\n",sysctl_name);
+			usage();
+		}
+
+		trim_volume(name);
+
+	}
 	if ((which_prog == SWAPOFF ? swapoff(name) : swapon(name)) == -1) {
 		switch(errno) {
 		case EBUSY:
@@ -205,10 +301,10 @@ usage(void)
 	switch (orig_prog) {
 	case SWAPON:
 	case SWAPOFF:
-		fprintf(stderr, "-aq | file ...\n");
+		fprintf(stderr, "-aeq | file ...\n");
 		break;
 	case SWAPCTL:
-		fprintf(stderr, "[-AghklmsU] [-a file ... | -d file ...]\n");
+		fprintf(stderr, "[-AeghklmsU] [-a file ... | -d file ...]\n");
 		break;
 	}
 	exit(1);

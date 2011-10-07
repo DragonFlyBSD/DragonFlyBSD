@@ -43,7 +43,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl L Ar volname
-.Op Fl NCOU
+.Op Fl NCOURE
 .Op Fl S Ar sector-size
 .Op Fl T Ar disktype
 .Op Fl a Ar maxcontig
@@ -172,6 +172,10 @@ instead of trying to get geometry information from the
 storage device.
 .It Fl U
 Enables soft updates on the new filesystem.
+.It Fl E
+Use TRIM to erase the device's data before creating the file system. The
+underlying device must have the Trim sysctl enabled. Only devices that support
+TRIM will have such a sysctl option (kern.cam.da.X.trim_enabled).
 .It Fl a Ar maxcontig
 Specify the maximum number of contiguous blocks that will be
 laid out before forcing a rotational delay (see the

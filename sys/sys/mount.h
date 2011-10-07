@@ -225,6 +225,7 @@ struct mount {
 #define	MNT_SUIDDIR	0x00100000	/* special handling of SUID on dirs */
 #define	MNT_SOFTDEP	0x00200000	/* soft updates being done */
 #define	MNT_NOSYMFOLLOW	0x00400000	/* do not follow symlinks */
+#define	MNT_TRIM	0x01000000	/* Enable online FS trimming */
 #define	MNT_NOATIME	0x10000000	/* disable update of file access time */
 #define	MNT_NOCLUSTERR	0x40000000	/* disable cluster read */
 #define	MNT_NOCLUSTERW	0x80000000	/* disable cluster write */
@@ -262,7 +263,7 @@ struct mount {
 			MNT_LOCAL	| MNT_USER	| MNT_QUOTA	| \
 			MNT_ROOTFS	| MNT_NOATIME	| MNT_NOCLUSTERR| \
 			MNT_NOCLUSTERW	| MNT_SUIDDIR	| MNT_SOFTDEP	| \
-			MNT_IGNORE	| MNT_NOSYMFOLLOW | MNT_EXPUBLIC )
+			MNT_IGNORE	| MNT_NOSYMFOLLOW | MNT_EXPUBLIC | MNT_TRIM)
 /*
  * External filesystem command modifier flags.
  * Unmount can use the MNT_FORCE flag.

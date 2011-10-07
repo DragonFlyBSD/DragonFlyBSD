@@ -6,7 +6,8 @@
 #
 
 # PROVIDE: localswap
-# REQUIRE: disks
+# REQUIRE: savecore
+# BEFORE:  SERVERS
 # KEYWORD: shutdown
 
 . /etc/rc.subr

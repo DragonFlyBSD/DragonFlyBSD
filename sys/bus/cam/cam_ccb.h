@@ -188,6 +188,8 @@ typedef enum {
 				/* Notify Host Target driver of event */
 	XPT_NOTIFY_ACK		= 0x35,
 				/* Acknowledgement of event */
+	XPT_TRIM		= 0x36 | XPT_FC_DEV_QUEUED,
+				/* TRIM */
 
 /* Vendor Unique codes: 0x80->0x8F */
 	XPT_VUNIQUE		= 0x80

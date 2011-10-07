@@ -600,6 +600,7 @@ struct ata_pass_16 {
 #define	WRITE_BUFFER            0x3b
 #define	READ_BUFFER             0x3c
 #define	CHANGE_DEFINITION	0x40
+#define	TRIM			0x42
 #define	LOG_SELECT		0x4c
 #define	LOG_SENSE		0x4d
 #define	MODE_SELECT_10		0x55

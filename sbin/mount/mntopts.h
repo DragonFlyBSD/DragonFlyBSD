@@ -52,6 +52,7 @@ struct mntopt {
 #define MOPT_NOEXEC		{ "exec",	1, MNT_NOEXEC, 0 }
 #define MOPT_NOSUID		{ "suid",	1, MNT_NOSUID, 0 }
 #define MOPT_NOSYMFOLLOW	{ "symfollow",  1, MNT_NOSYMFOLLOW, 0 }
+#define MOPT_TRIM		{ "trim",	0, MNT_TRIM, 0 }   
 #define MOPT_RDONLY		{ "rdonly",	0, MNT_RDONLY, 0 }
 #define MOPT_SYNC		{ "sync",	0, MNT_SYNCHRONOUS, 0 }
 #define MOPT_UNION		{ "union",	0, MNT_UNION, 0 }

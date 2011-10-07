@@ -38,6 +38,7 @@
 #include "defs.h"
 
 #include <stdlib.h>
+#include <sys/ioctl_compat.h>
 
 /*
  * make file system for cylinder-group style file systems
@@ -70,6 +71,8 @@ extern int	Lflag;		/* add a volume label */
 extern int	Nflag;		/* run mkfs without writing file system */
 extern int	Oflag;		/* format as an 4.3BSD file system */
 extern int	Uflag;		/* enable soft updates for file system */
+extern int	Eflag;		/* erase contents using TRIM */
+extern uint64_t	slice_offset;	/* Pysical device slice offset */
 extern u_long	fssize;		/* file system size */
 extern int	ntracks;	/* # tracks/cylinder */
 extern int	nsectors;	/* # sectors/track */
@@ -136,6 +139,7 @@ void parentready(int);
 void rdfs(daddr_t, int, char *);
 void setblock(struct fs *, unsigned char *, int);
 void started(int);
+void erfs(off_t, off_t);
 void wtfs(daddr_t, int, char *);
 void wtfsflush(void);
 
@@ -236,6 +240,7 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 		sblock.fs_flags |= FS_DOSOFTDEP;
 	if (Lflag)
 		strlcpy(sblock.fs_volname, volumelabel, MAXVOLLEN);
+
 	/*
 	 * Validate the given file system size.
 	 * Verify that its last block can actually be accessed.
@@ -676,6 +681,16 @@ next:
 		    sblock.fs_ipg,
 			sblock.fs_flags & FS_DOSOFTDEP ? " SOFTUPDATES" : "");
 #undef B2MBFACTOR
+	}
+	
+	if (Eflag && !Nflag) {
+		printf("Erasing sectors [%ld --- %ld]\n",
+		    (SBOFF+ slice_offset)/sectorsize,
+		    fsbtodb(&sblock,sblock.fs_size) -
+		    ((SBOFF + slice_offset)/ sectorsize) - 1);
+		erfs(SBOFF+ slice_offset, (fsbtodb(&sblock,sblock.fs_size) -
+		    ((SBOFF + slice_offset)/ sectorsize) - 1) *
+		    (unsigned long long)sectorsize);
 	}
 	/*
 	 * Now build the cylinders group blocks and
@@ -1242,6 +1257,20 @@ wtfsflush(void)
 			err(36, "wtfs - writecombine");
 		}
 		wc_end = 0;
+	}
+}
+
+/*
+ * Issue ioctl to erase range of sectors using TRIM
+ */
+void
+erfs(off_t byte_start, off_t size)
+{
+	off_t ioarg[2];
+	ioarg[0] = byte_start;
+	ioarg[1] = size;
+	if (ioctl(fsi, IOCTLTRIM, ioarg) < 0) {
+		err(37, "Device trim failed\n");
 	}
 }
 

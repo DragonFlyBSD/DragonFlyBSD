@@ -1995,7 +1995,7 @@ vfs_bio_awrite(struct buf *bp)
  *
  * MPALMOSTSAFE
  */
-static struct buf *
+struct buf *
 getnewbuf(int blkflags, int slptimeo, int size, int maxsize)
 {
 	struct buf *bp;
