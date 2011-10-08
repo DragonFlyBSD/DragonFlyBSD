@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/sys/ptrace.S,v 1.6 1999/08/27 23:59:43 peter Exp $
- * $DragonFly: src/lib/libc/i386/sys/ptrace.S,v 1.5 2008/01/19 13:27:02 corecode Exp $
  */
 
 #include "SYS.h"
