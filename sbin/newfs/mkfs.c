@@ -37,6 +37,7 @@
 
 #include "defs.h"
 
+#include <inttypes.h>
 #include <stdlib.h>
 #include <sys/ioctl_compat.h>
 
@@ -684,11 +685,11 @@ next:
 	}
 	
 	if (Eflag && !Nflag) {
-		printf("Erasing sectors [%ld --- %ld]\n",
-		    (SBOFF+ slice_offset)/sectorsize,
+		printf("Erasing sectors [%"PRIu64" --- %"PRIu64"]\n",
+		    (SBOFF + slice_offset) / sectorsize,
 		    fsbtodb(&sblock,sblock.fs_size) -
-		    ((SBOFF + slice_offset)/ sectorsize) - 1);
-		erfs(SBOFF+ slice_offset, (fsbtodb(&sblock,sblock.fs_size) -
+		    ((SBOFF + slice_offset) / sectorsize) - 1);
+		erfs(SBOFF + slice_offset, (fsbtodb(&sblock,sblock.fs_size) -
 		    ((SBOFF + slice_offset)/ sectorsize) - 1) *
 		    (unsigned long long)sectorsize);
 	}
