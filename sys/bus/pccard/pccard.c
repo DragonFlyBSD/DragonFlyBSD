@@ -482,7 +482,8 @@ pccard_function_init(struct pccard_function *pf)
 			if (r == NULL)
 				goto not_this_one;
 			resource_list_add(rl, SYS_RES_IRQ, rid,
-			    rman_get_start(r), rman_get_end(r), 1, -1);
+			    rman_get_start(r), rman_get_end(r), 1,
+			    rman_get_cpuid(r));
 			rle = resource_list_find(rl, SYS_RES_IRQ, rid);
 			if (rle == NULL)
 				panic("Cannot add resource rid %d IRQ", rid);

@@ -293,7 +293,7 @@ puc_pci_attach(device_t dev)
 		resource_list_add(&pdev->resources, SYS_RES_IRQ, 0,
 		    rman_get_start(sc->irqres), rman_get_end(sc->irqres),
 		    rman_get_end(sc->irqres) - rman_get_start(sc->irqres) + 1,
-		    -1);
+		    rman_get_cpuid(sc->irqres));
 		rle = resource_list_find(&pdev->resources, SYS_RES_IRQ, 0);
 		rle->res = sc->irqres;
 
@@ -302,7 +302,7 @@ puc_pci_attach(device_t dev)
 		resource_list_add(&pdev->resources, SYS_RES_IOPORT, 0,
 		    rman_get_start(res) + sc->sc_desc->ports[i].offset,
 		    rman_get_end(res) + sc->sc_desc->ports[i].offset + 8 - 1,
-		    8);
+		    8, -1);
 		rle = resource_list_find(&pdev->resources, SYS_RES_IOPORT, 0);
 
 		if (sc->barmuxed == 0) {

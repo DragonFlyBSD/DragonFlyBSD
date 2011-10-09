@@ -215,7 +215,8 @@ ndis_attach_pccard(device_t dev)
 	}
 	sc->ndis_rescnt++;
 	resource_list_add(&sc->ndis_rl, SYS_RES_IRQ, rid,
-	    rman_get_start(sc->ndis_irq), rman_get_start(sc->ndis_irq), 1, -1);
+	    rman_get_start(sc->ndis_irq), rman_get_start(sc->ndis_irq), 1,
+	    rman_get_cpuid(sc->ndis_irq));
 
 	sc->ndis_iftype = PCMCIABus;
 

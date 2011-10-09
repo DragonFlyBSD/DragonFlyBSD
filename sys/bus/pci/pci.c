@@ -43,6 +43,7 @@
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 #include <sys/endian.h>
+#include <sys/machintr.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -2860,7 +2861,8 @@ pci_assign_interrupt(device_t bus, device_t dev, int force_route)
 	}
 
 	/* Add this IRQ as rid 0 interrupt resource. */
-	resource_list_add(&dinfo->resources, SYS_RES_IRQ, 0, irq, irq, 1, -1);
+	resource_list_add(&dinfo->resources, SYS_RES_IRQ, 0, irq, irq, 1,
+	    machintr_intr_cpuid(irq));
 }
 
 void
