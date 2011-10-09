@@ -166,13 +166,13 @@ nexus_probe(device_t dev)
 	 */
 	if (ioapic_enable) {
 		irq_rman.rm_end = IDT_HWI_VECTORS - 1;
-		if (rman_init(&irq_rman)
+		if (rman_init(&irq_rman, 0 /* TODO */)
 		    || rman_manage_region(&irq_rman,
 					  irq_rman.rm_start, irq_rman.rm_end))
 			panic("nexus_probe irq_rman");
 	} else {
 		irq_rman.rm_end = 15;
-		if (rman_init(&irq_rman)
+		if (rman_init(&irq_rman, 0 /* TODO */)
 		    || rman_manage_region(&irq_rman, irq_rman.rm_start, 1)
 		    || rman_manage_region(&irq_rman, 3, irq_rman.rm_end))
 			panic("nexus_probe irq_rman");
@@ -188,7 +188,7 @@ nexus_probe(device_t dev)
 	drq_rman.rm_type = RMAN_ARRAY;
 	drq_rman.rm_descr = "DMA request lines";
 	/* XXX drq 0 not available on some machines */
-	if (rman_init(&drq_rman)
+	if (rman_init(&drq_rman, -1)
 	    || rman_manage_region(&drq_rman,
 				  drq_rman.rm_start, drq_rman.rm_end))
 		panic("nexus_probe drq_rman");
@@ -202,7 +202,7 @@ nexus_probe(device_t dev)
 	port_rman.rm_end = 0xffff;
 	port_rman.rm_type = RMAN_ARRAY;
 	port_rman.rm_descr = "I/O ports";
-	if (rman_init(&port_rman)
+	if (rman_init(&port_rman, -1)
 	    || rman_manage_region(&port_rman, 0, 0xffff))
 		panic("nexus_probe port_rman");
 
@@ -210,7 +210,7 @@ nexus_probe(device_t dev)
 	mem_rman.rm_end = ~0u;
 	mem_rman.rm_type = RMAN_ARRAY;
 	mem_rman.rm_descr = "I/O memory addresses";
-	if (rman_init(&mem_rman)
+	if (rman_init(&mem_rman, -1)
 	    || rman_manage_region(&mem_rman, 0, ~0))
 		panic("nexus_probe mem_rman");
 

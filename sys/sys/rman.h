@@ -121,6 +121,7 @@ struct	rman {
 	u_long	rm_end;		/* index of globally last entry */
 	enum	rman_type rm_type; /* what type of resource this is */
 	const	char *rm_descr;	/* text descripion of this resource */
+	int	rm_cpuid;	/* owner cpuid */
 };
 TAILQ_HEAD(rman_head, rman);
 
@@ -130,7 +131,7 @@ int	rman_await_resource(struct resource *r, int slpflags, int timo);
 #endif
 int	rman_deactivate_resource(struct resource *r);
 int	rman_fini(struct rman *rm);
-int	rman_init(struct rman *rm);
+int	rman_init(struct rman *rm, int cpuid);
 int	rman_manage_region(struct rman *rm, u_long start, u_long end);
 int	rman_release_resource(struct resource *r);
 struct	resource *rman_reserve_resource(struct rman *rm, u_long start,
