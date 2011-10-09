@@ -3,7 +3,6 @@
  * Public domain.
  *
  * $NetBSD: s_log1p.S,v 1.13 2003/09/16 18:17:11 wennmach Exp $
- * $DragonFly: src/lib/libm/arch/i386/s_log1p.S,v 1.1 2005/07/26 21:15:19 joerg Exp $
  */
 
 /*
@@ -75,3 +74,4 @@ use_fyl2xp1:
 	fyl2xp1
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(log1p)

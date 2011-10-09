@@ -3,7 +3,6 @@
  * Public domain.
  *
  * $NetBSD: s_rintf.S,v 1.5 2003/07/26 19:25:03 salo Exp $
- * $DragonFly: src/lib/libm/arch/i386/s_rintf.S,v 1.1 2005/07/26 21:15:19 joerg Exp $
  */
 
 #include <machine/asm.h>
@@ -16,3 +15,4 @@ ENTRY(rintf)
 	frndint
 	XMM_FLOAT_EPILOGUE
 	ret
+END(rintf)

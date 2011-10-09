@@ -3,7 +3,6 @@
  * Public domain.
  *
  * $NetBSD: e_atan2f.S,v 1.3 2003/07/26 19:24:58 salo Exp $
- * $DragonFly: src/lib/libm/arch/i386/e_atan2f.S,v 1.1 2005/07/26 21:15:19 joerg Exp $
  */
 
 #include <machine/asm.h>
@@ -17,3 +16,4 @@ ENTRY(atan2f)
 	fpatan
 	XMM_FLOAT_EPILOGUE
 	ret
+END(atan2f)

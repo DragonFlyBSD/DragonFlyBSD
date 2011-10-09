@@ -3,7 +3,6 @@
  * Public domain.
  *
  * $NetBSD: s_cosf.S,v 1.6 2003/07/26 19:25:01 salo Exp $
- * $DragonFly: src/lib/libm/arch/i386/s_cosf.S,v 1.1 2005/07/26 21:15:19 joerg Exp $
  */
 
 #include <machine/asm.h>
@@ -17,3 +16,4 @@ ENTRY(cosf)
 	fcos
 	XMM_FLOAT_EPILOGUE
 	ret
+END(cosf)

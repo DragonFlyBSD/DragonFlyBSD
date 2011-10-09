@@ -3,7 +3,6 @@
  * Public domain.
  *
  * $NetBSD: lrint.S,v 1.2 2004/10/13 15:18:32 drochner Exp $
- * $DragonFly: src/lib/libm/arch/i386/lrint.S,v 1.1 2005/07/26 21:15:19 joerg Exp $
  */
 
 #include <machine/asm.h>
@@ -22,3 +21,4 @@ ENTRY(lrint)
 	cvtsd2siq %xmm0,%rax
 	ret
 #endif
+END(lrint)

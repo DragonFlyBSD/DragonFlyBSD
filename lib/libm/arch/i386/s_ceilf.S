@@ -3,7 +3,6 @@
  * Public domain.
  *
  * $NetBSD: s_ceilf.S,v 1.8 2004/07/16 18:40:24 drochner Exp $
- * $DragonFly: src/lib/libm/arch/i386/s_ceilf.S,v 1.1 2005/07/26 21:15:19 joerg Exp $
  */
 
 #include <machine/asm.h>
@@ -42,3 +41,4 @@ ENTRY(ceilf)
 	movss	-4(%rsp),%xmm0
 #endif
 	ret
+END(ceilf)

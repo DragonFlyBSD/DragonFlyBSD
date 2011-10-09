@@ -3,7 +3,6 @@
  * Public domain.
  *
  * $NetBSD: e_remainderf.S,v 1.5 2003/07/26 19:24:59 salo Exp $
- * $DragonFly: src/lib/libm/arch/i386/e_remainderf.S,v 1.1 2005/07/26 21:15:19 joerg Exp $
  */
 
 #include <machine/asm.h>
@@ -21,3 +20,4 @@ ENTRY(remainderf)
 	fstp	%st(1)
 	XMM_FLOAT_EPILOGUE
 	ret
+END(remainderf)

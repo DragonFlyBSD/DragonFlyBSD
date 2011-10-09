@@ -3,7 +3,6 @@
  * Public domain.
  *
  * $NetBSD: e_asin.S,v 1.7 2003/07/26 19:24:58 salo Exp $
- * $DragonFly: src/lib/libm/arch/i386/e_asin.S,v 1.1 2005/07/26 21:15:19 joerg Exp $
  */
 
 #include <machine/asm.h>
@@ -22,3 +21,4 @@ ENTRY(asin)
 	fpatan
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(asin)

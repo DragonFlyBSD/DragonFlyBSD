@@ -29,7 +29,6 @@
  *
  * $NetBSD: e_exp.S,v 1.12 2002/02/27 16:32:46 christos Exp $
  * $FreeBSD: src/lib/msun/i387/e_exp.S,v 1.8.2.1 2000/07/10 09:16:28 obrien Exp $
- * $DragonFly: src/lib/libm/arch/i386/e_exp.S,v 1.1 2005/07/26 21:15:19 joerg Exp $
  */
 
 /*
@@ -129,3 +128,4 @@ x_not_minus_Inf:
 	fldl	4(%esp)
 	ret
 #endif
+END(exp)

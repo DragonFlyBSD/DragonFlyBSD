@@ -3,7 +3,6 @@
  * Public domain.
  *
  * $NetBSD: s_copysign.S,v 1.6 2003/07/26 19:25:01 salo Exp $
- * $DragonFly: src/lib/libm/arch/i386/s_copysign.S,v 1.1 2005/07/26 21:15:19 joerg Exp $
  */
 
 /*
@@ -52,3 +51,4 @@ ENTRY(copysign)
 #endif
 #endif
 	ret
+END(copysign)
