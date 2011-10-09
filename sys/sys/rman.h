@@ -154,6 +154,7 @@ uint32_t rman_make_alignment_flags(uint32_t size);
 #define rman_set_rid(r,i)       ((r)->r_rid = (i))
 #define rman_get_rid(r,i)       ((r)->r_rid)
 #define rman_is_region_manager(r,rm) ((r)->r_rm == rm)
+#define rman_get_cpuid(r)	((r)->r_rm->rm_cpuid)
 
 extern	struct rman_head rman_head;
 #endif /* _KERNEL */

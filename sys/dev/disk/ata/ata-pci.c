@@ -746,7 +746,7 @@ ata_pci_print_child(device_t dev, device_t child)
 
 static struct resource *
 ata_pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
-		       u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
     struct ata_pci_controller *controller = device_get_softc(dev);
     struct resource *res = NULL;
@@ -763,13 +763,13 @@ ata_pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		count = ATA_IOSIZE;
 		res = BUS_ALLOC_RESOURCE(device_get_parent(dev), child,
 					 SYS_RES_IOPORT, &myrid,
-					 start, end, count, flags);
+					 start, end, count, flags, cpuid);
 	    }
 	    else {
 		myrid = 0x10 + 8 * unit;
 		res = BUS_ALLOC_RESOURCE(device_get_parent(dev), dev,
 					 SYS_RES_IOPORT, &myrid,
-					 start, end, count, flags);
+					 start, end, count, flags, cpuid);
 	    }
 	    break;
 
@@ -781,13 +781,13 @@ ata_pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		count = ATA_ALTIOSIZE;
 		res = BUS_ALLOC_RESOURCE(device_get_parent(dev), child,
 					 SYS_RES_IOPORT, &myrid,
-					 start, end, count, flags);
+					 start, end, count, flags, cpuid);
 	    }
 	    else {
 		myrid = 0x14 + 8 * unit;
 		res = BUS_ALLOC_RESOURCE(device_get_parent(dev), dev,
 					 SYS_RES_IOPORT, &myrid,
-					 start, end, count, flags);
+					 start, end, count, flags, cpuid);
 		if (res) {
 			start = rman_get_start(res) + 2;
 			end = start + ATA_ALTIOSIZE - 1;
@@ -796,7 +796,8 @@ ata_pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 					     SYS_RES_IOPORT, myrid, res);
 			res = BUS_ALLOC_RESOURCE(device_get_parent(dev), dev,
 						 SYS_RES_IOPORT, &myrid,
-						 start, end, count, flags);
+						 start, end, count, flags,
+						 cpuid);
 		}
 	    }
 	    break;
@@ -810,7 +811,7 @@ ata_pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		count = ATA_BMIOSIZE;
 		res = BUS_ALLOC_RESOURCE(device_get_parent(dev), child,
 					 SYS_RES_IOPORT, &myrid,
-					 start, end, count, flags);
+					 start, end, count, flags, cpuid);
 	    }
 	}
 	return res;
@@ -820,15 +821,19 @@ ata_pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	if (ATA_MASTERDEV(dev)) {
 	    int irq = (unit == 0 ? 14 : 15);
 
+	    cpuid = machintr_intr_cpuid(irq);
 	    return BUS_ALLOC_RESOURCE(device_get_parent(dev), child,
-				      SYS_RES_IRQ, rid, irq, irq, 1, flags);
+				      SYS_RES_IRQ, rid, irq, irq, 1, flags,
+				      cpuid);
 	}
 	else {
 	    /* primary and secondary channels share interrupt, keep track */
-	    if (!controller->irq)
+	    if (!controller->irq) {
 		controller->irq = BUS_ALLOC_RESOURCE(device_get_parent(dev), 
 						     dev, SYS_RES_IRQ,
-						     rid, 0, ~0, 1, flags);
+						     rid, 0, ~0, 1, flags,
+						     cpuid);
+	    }
 	    controller->irqcnt++;
 	    return controller->irq;
 	}

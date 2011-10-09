@@ -71,8 +71,8 @@ int		pcib_attach(device_t dev);
 void		pcib_attach_common(device_t dev);
 int		pcib_read_ivar(device_t dev, device_t child, int which, uintptr_t *result);
 int		pcib_write_ivar(device_t dev, device_t child, int which, uintptr_t value);
-struct resource *pcib_alloc_resource(device_t dev, device_t child, int type, int *rid, 
-					    u_long start, u_long end, u_long count, u_int flags);
+struct resource *pcib_alloc_resource(device_t dev, device_t child, int type, int *rid,
+		    u_long start, u_long end, u_long count, u_int flags, int cpuid);
 int		pcib_maxslots(device_t dev);
 uint32_t	pcib_read_config(device_t dev, int b, int s, int f, int reg, int width);
 void		pcib_write_config(device_t dev, int b, int s, int f, int reg, uint32_t val, int width);

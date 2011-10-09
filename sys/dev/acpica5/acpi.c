@@ -112,7 +112,7 @@ static struct resource_list *acpi_get_rlist(device_t dev, device_t child);
 static int	acpi_sysres_alloc(device_t dev);
 static struct resource *acpi_alloc_resource(device_t bus, device_t child,
 			int type, int *rid, u_long start, u_long end,
-			u_long count, u_int flags);
+			u_long count, u_int flags, int cpuid);
 static int	acpi_release_resource(device_t bus, device_t child, int type,
 			int rid, struct resource *r);
 static void	acpi_delete_resource(device_t bus, device_t child, int type,
@@ -1010,7 +1010,8 @@ acpi_sysres_alloc(device_t dev)
 
 	/* Pre-allocate resource and add to our rman pool. */
 	res = BUS_ALLOC_RESOURCE(device_get_parent(dev), dev, rle->type,
-	    &rle->rid, rle->start, rle->start + rle->count - 1, rle->count, 0);
+	    &rle->rid, rle->start, rle->start + rle->count - 1, rle->count,
+	    0, -1);
 	if (res != NULL) {
 	    rman_manage_region(rm, rman_get_start(res), rman_get_end(res));
 	    rle->res = res;
@@ -1023,7 +1024,7 @@ acpi_sysres_alloc(device_t dev)
 
 static struct resource *
 acpi_alloc_resource(device_t bus, device_t child, int type, int *rid,
-    u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
     ACPI_RESOURCE ares;
     struct acpi_device *ad = device_get_ivars(child);
@@ -1060,6 +1061,7 @@ acpi_alloc_resource(device_t bus, device_t child, int type, int *rid,
 	start = rle->start;
 	end = rle->end;
 	count = rle->count;
+	cpuid = rle->cpuid;
     }
 
     /*
@@ -1072,7 +1074,7 @@ acpi_alloc_resource(device_t bus, device_t child, int type, int *rid,
 	    child);
     if (res == NULL) {
 	res = BUS_ALLOC_RESOURCE(device_get_parent(bus), child, type, rid,
-	    start, end, count, flags);
+	    start, end, count, flags, cpuid);
     } else {
 	rman_set_rid(res, *rid);
 

@@ -81,7 +81,7 @@ static	int nexus_print_child(device_t, device_t);
 static device_t nexus_add_child(device_t bus, device_t parent, int order,
 				const char *name, int unit);
 static	struct resource *nexus_alloc_resource(device_t, device_t, int, int *,
-					      u_long, u_long, u_long, u_int);
+    u_long, u_long, u_long, u_int, int);
 static	int nexus_read_ivar(device_t, device_t, int, uintptr_t *);
 static	int nexus_write_ivar(device_t, device_t, int, uintptr_t);
 static	int nexus_activate_resource(device_t, device_t, int, int,
@@ -336,7 +336,7 @@ nexus_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
  */
 static struct resource *
 nexus_alloc_resource(device_t bus, device_t child, int type, int *rid,
-		     u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	struct nexus_device *ndev = DEVTONX(child);
 	struct	resource *rv;
@@ -358,6 +358,7 @@ nexus_alloc_resource(device_t bus, device_t child, int type, int *rid,
 		start = rle->start;
 		end = rle->end;
 		count = rle->count;
+		cpuid = rle->cpuid;
 	}
 
 	flags &= ~RF_ACTIVE;

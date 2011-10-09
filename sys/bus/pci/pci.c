@@ -3826,7 +3826,7 @@ pci_alloc_map(device_t dev, device_t child, int type, int *rid,
 	 * appropriate bar for that resource.
 	 */
 	res = BUS_ALLOC_RESOURCE(device_get_parent(dev), child, type, rid,
-	    start, end, count, flags);
+	    start, end, count, flags, -1);
 	if (res == NULL) {
 		device_printf(child,
 		    "%#lx bytes of rid %#x res %d failed (%#lx, %#lx).\n",
@@ -3856,7 +3856,7 @@ out:;
 
 struct resource *
 pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
-		   u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	struct resource_list *rl = &dinfo->resources;
@@ -3930,7 +3930,7 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		}
 	}
 	return (resource_list_alloc(rl, dev, child, type, rid,
-	    start, end, count, flags, -1));
+	    start, end, count, flags, cpuid));
 }
 
 void

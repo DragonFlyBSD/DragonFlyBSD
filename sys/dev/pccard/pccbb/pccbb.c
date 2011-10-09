@@ -169,7 +169,7 @@ static int	cbb_cardbus_deactivate_resource(device_t brdev,
 		    device_t child, int type, int rid, struct resource *res);
 static struct resource	*cbb_cardbus_alloc_resource(device_t brdev,
 		    device_t child, int type, int *rid, u_long start,
-		    u_long end, u_long count, u_int flags);
+		    u_long end, u_long count, u_int flags, int cpuid);
 static int	cbb_cardbus_release_resource(device_t brdev, device_t child,
 		    int type, int rid, struct resource *res);
 static int	cbb_cardbus_power_enable_socket(device_t brdev,
@@ -1151,7 +1151,7 @@ cbb_cardbus_deactivate_resource(device_t brdev, device_t child, int type,
 
 static struct resource *
 cbb_cardbus_alloc_resource(device_t brdev, device_t child, int type,
-    int *rid, u_long start, u_long end, u_long count, u_int flags)
+    int *rid, u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	struct cbb_softc *sc = device_get_softc(brdev);
 	int tmp;
@@ -1168,6 +1168,7 @@ cbb_cardbus_alloc_resource(device_t brdev, device_t child, int type,
 			return (NULL);
 		}
 		start = end = tmp;
+		cpuid = rman_get_cpuid(sc->irq_res);
 		flags |= RF_SHAREABLE;
 		break;
 	case SYS_RES_IOPORT:
@@ -1192,7 +1193,7 @@ cbb_cardbus_alloc_resource(device_t brdev, device_t child, int type,
 	}
 
 	res = BUS_ALLOC_RESOURCE(device_get_parent(brdev), child, type, rid,
-	    start, end, count, flags & ~RF_ACTIVE);
+	    start, end, count, flags & ~RF_ACTIVE, cpuid);
 	if (res == NULL) {
 		kprintf("cbb alloc res fail\n");
 		return (NULL);
@@ -1307,7 +1308,7 @@ cbb_pcic_deactivate_resource(device_t brdev, device_t child, int type,
 
 static struct resource *
 cbb_pcic_alloc_resource(device_t brdev, device_t child, int type, int *rid,
-    u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	struct resource *res = NULL;
 	struct cbb_softc *sc = device_get_softc(brdev);
@@ -1344,10 +1345,11 @@ cbb_pcic_alloc_resource(device_t brdev, device_t child, int type, int *rid,
 		}
 		flags |= RF_SHAREABLE;
 		start = end = rman_get_start(sc->irq_res);
+		cpuid = rman_get_cpuid(sc->irq_res);
 		break;
 	}
 	res = BUS_ALLOC_RESOURCE(device_get_parent(brdev), child, type, rid,
-	    start, end, count, flags & ~RF_ACTIVE);
+	    start, end, count, flags & ~RF_ACTIVE, cpuid);
 	if (res == NULL)
 		return (NULL);
 	cbb_insert_res(sc, res, type, *rid);
@@ -1450,16 +1452,16 @@ cbb_deactivate_resource(device_t brdev, device_t child, int type,
 
 struct resource *
 cbb_alloc_resource(device_t brdev, device_t child, int type, int *rid,
-    u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	struct cbb_softc *sc = device_get_softc(brdev);
 
 	if (sc->flags & CBB_16BIT_CARD)
 		return (cbb_pcic_alloc_resource(brdev, child, type, rid,
-		    start, end, count, flags));
+		    start, end, count, flags, cpuid));
 	else
 		return (cbb_cardbus_alloc_resource(brdev, child, type, rid,
-		    start, end, count, flags));
+		    start, end, count, flags, cpuid));
 }
 
 int

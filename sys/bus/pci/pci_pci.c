@@ -380,7 +380,7 @@ pcib_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
  */
 struct resource *
 pcib_alloc_resource(device_t dev, device_t child, int type, int *rid, 
-    u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	struct pcib_softc	*sc = device_get_softc(dev);
 	const char *name, *suffix;
@@ -529,7 +529,7 @@ pcib_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	 * Bridge is OK decoding this resource, so pass it up.
 	 */
 	return (bus_generic_alloc_resource(dev, child, type, rid, start, end,
-	    count, flags));
+	    count, flags, cpuid));
 }
 
 /*

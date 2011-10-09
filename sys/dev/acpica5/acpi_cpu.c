@@ -49,7 +49,7 @@ static struct resource_list *
 		acpi_cpu_get_rlist(device_t, device_t);
 static struct resource *
 		acpi_cpu_alloc_resource(device_t, device_t,
-			int, int *, u_long, u_long, u_long, u_int);
+			int, int *, u_long, u_long, u_long, u_int, int);
 static int	acpi_cpu_release_resource(device_t, device_t,
 			int, int, struct resource *);
 
@@ -210,10 +210,10 @@ acpi_cpu_get_rlist(device_t dev, device_t child __unused)
 static struct resource *
 acpi_cpu_alloc_resource(device_t dev, device_t child __unused,
 			int type, int *rid, u_long start, u_long end,
-			u_long count, u_int flags)
+			u_long count, u_int flags, int cpuid)
 {
     return BUS_ALLOC_RESOURCE(device_get_parent(dev), dev, type, rid,
-			      start, end, count, flags);
+			      start, end, count, flags, cpuid);
 }
 
 static int

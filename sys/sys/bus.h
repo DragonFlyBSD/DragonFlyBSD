@@ -237,7 +237,7 @@ struct resource *
 	bus_generic_alloc_resource(device_t bus, device_t child,
 				    int type, int *rid,
 				    u_long start, u_long end,
-				    u_long count, u_int flags);
+				    u_long count, u_int flags, int cpuid);
 struct resource_list *
 	bus_generic_get_resource_list (device_t, device_t);
 
@@ -283,7 +283,7 @@ int	bus_generic_write_ivar(device_t dev, device_t child, int which,
 
 struct resource *
 	bus_generic_rl_alloc_resource (device_t, device_t, int, int *,
-				    u_long, u_long, u_long, u_int);
+				    u_long, u_long, u_long, u_int, int);
 void	bus_generic_rl_delete_resource (device_t, device_t, int, int);
 int	bus_generic_rl_get_resource (device_t, device_t, int, int, u_long *,
 				    u_long *);

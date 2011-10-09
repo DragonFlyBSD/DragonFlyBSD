@@ -113,7 +113,7 @@ static int	pccard_read_ivar(device_t bus, device_t child, int which,
 static void	pccard_driver_added(device_t dev, driver_t *driver);
 static struct resource *pccard_alloc_resource(device_t dev,
 		    device_t child, int type, int *rid, u_long start,
-		    u_long end, u_long count, u_int flags);
+		    u_long end, u_long count, u_int flags, int cpuid);
 static int	pccard_release_resource(device_t dev, device_t child, int type,
 		    int rid, struct resource *r);
 static void	pccard_child_detached(device_t parent, device_t dev);
@@ -1102,7 +1102,7 @@ pccard_driver_added(device_t dev, driver_t *driver)
 
 static struct resource *
 pccard_alloc_resource(device_t dev, device_t child, int type, int *rid,
-    u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	struct pccard_ivar *dinfo;
 	struct resource_list_entry *rle = 0;
@@ -1113,7 +1113,7 @@ pccard_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	/* XXX I'm no longer sure this is right */
 	if (passthrough) {
 		return (BUS_ALLOC_RESOURCE(device_get_parent(dev), child,
-		    type, rid, start, end, count, flags));
+		    type, rid, start, end, count, flags, cpuid));
 	}
 
 	dinfo = device_get_ivars(child);
@@ -1128,7 +1128,8 @@ pccard_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		if (r == NULL)
 		    goto bad;
 		resource_list_add(&dinfo->resources, type, *rid,
-		  rman_get_start(r), rman_get_end(r), count, -1);
+		  rman_get_start(r), rman_get_end(r), count, 
+		  rman_get_cpuid(r));
 		rle = resource_list_find(&dinfo->resources, type, *rid);
 		if (!rle)
 		    goto bad;

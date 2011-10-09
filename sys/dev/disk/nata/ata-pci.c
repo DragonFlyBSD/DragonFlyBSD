@@ -36,6 +36,7 @@
 #include <sys/nata.h>
 #include <sys/rman.h>
 #include <sys/systm.h>
+#include <sys/machintr.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -291,7 +292,7 @@ ata_pci_detach(device_t dev)
 
 struct resource *
 ata_pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
-		       u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
     struct ata_pci_controller *controller = device_get_softc(dev);
     int unit = ((struct ata_channel *)device_get_softc(child))->unit;
@@ -309,7 +310,7 @@ ata_pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	    myrid = PCIR_BAR(0) + (unit << 3);
 	    res = BUS_ALLOC_RESOURCE(device_get_parent(dev), dev,
 				     SYS_RES_IOPORT, &myrid,
-				     start, end, count, flags);
+				     start, end, count, flags, cpuid);
 	    break;
 
 	case ATA_CTLADDR_RID:
@@ -321,16 +322,18 @@ ata_pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	    myrid = PCIR_BAR(1) + (unit << 3);
 	    res = BUS_ALLOC_RESOURCE(device_get_parent(dev), dev,
 				     SYS_RES_IOPORT, &myrid,
-				     start, end, count, flags);
+				     start, end, count, flags, cpuid);
 	    break;
 	}
     }
     if (type == SYS_RES_IRQ && *rid == ATA_IRQ_RID) {
 	if (controller->legacy) {
 	    int irq = (unit == 0 ? 14 : 15);
-	    
+
+	    cpuid = machintr_intr_cpuid(irq);
 	    res = BUS_ALLOC_RESOURCE(device_get_parent(dev), child,
-				     SYS_RES_IRQ, rid, irq, irq, 1, flags);
+				     SYS_RES_IRQ, rid, irq, irq, 1, flags,
+				     cpuid);
 	}
 	else
 	    res = controller->r_irq;

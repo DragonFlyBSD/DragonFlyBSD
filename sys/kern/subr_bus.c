@@ -2230,7 +2230,7 @@ resource_list_alloc(struct resource_list *rl,
 	if (passthrough) {
 		return(BUS_ALLOC_RESOURCE(device_get_parent(bus), child,
 					  type, rid,
-					  start, end, count, flags));
+					  start, end, count, flags, cpuid));
 	}
 
 	rle = resource_list_find(rl, type, *rid);
@@ -2249,7 +2249,8 @@ resource_list_alloc(struct resource_list *rl,
 	cpuid = rle->cpuid;
 
 	rle->res = BUS_ALLOC_RESOURCE(device_get_parent(bus), child,
-				      type, rid, start, end, count, flags);
+				      type, rid, start, end, count,
+				      flags, cpuid);
 
 	/*
 	 * Record the new range.
@@ -2602,12 +2603,12 @@ bus_generic_config_intr(device_t dev, device_t child, int irq, enum intr_trigger
 
 struct resource *
 bus_generic_alloc_resource(device_t dev, device_t child, int type, int *rid,
-			   u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	/* Propagate up the bus hierarchy until someone handles it. */
 	if (dev->parent)
 		return(BUS_ALLOC_RESOURCE(dev->parent, child, type, rid, 
-					   start, end, count, flags));
+					   start, end, count, flags, cpuid));
 	else
 		return(NULL);
 }
@@ -2747,7 +2748,7 @@ bus_generic_rl_release_resource(device_t dev, device_t child, int type,
 
 struct resource *
 bus_generic_rl_alloc_resource(device_t dev, device_t child, int type,
-    int *rid, u_long start, u_long end, u_long count, u_int flags)
+    int *rid, u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	struct resource_list *rl = NULL;
 
@@ -2756,7 +2757,7 @@ bus_generic_rl_alloc_resource(device_t dev, device_t child, int type,
 		return(NULL);
 
 	return(resource_list_alloc(rl, dev, child, type, rid,
-	    start, end, count, flags, -1));
+	    start, end, count, flags, cpuid));
 }
 
 int
@@ -2813,7 +2814,7 @@ bus_alloc_resource(device_t dev, int type, int *rid, u_long start, u_long end,
 	if (dev->parent == 0)
 		return(0);
 	return(BUS_ALLOC_RESOURCE(dev->parent, dev, type, rid, start, end,
-				  count, flags));
+				  count, flags, -1));
 }
 
 int

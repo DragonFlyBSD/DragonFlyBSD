@@ -128,7 +128,7 @@ static int puc_pci_attach(device_t dev);
 static void puc_intr(void *arg);
 
 static struct resource *puc_alloc_resource(device_t, device_t, int, int *,
-    u_long, u_long, u_long, u_int);
+    u_long, u_long, u_long, u_int, int);
 static int puc_release_resource(device_t, device_t, int, int,
     struct resource *);
 static int puc_get_resource(device_t, device_t, int, int, u_long *, u_long *);
@@ -603,7 +603,7 @@ puc_print_resource_list(struct resource_list *rl)
 
 static struct resource *
 puc_alloc_resource(device_t dev, device_t child, int type, int *rid,
-    u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid __unused)
 {
 	struct puc_device *pdev;
 	struct resource *retval;
