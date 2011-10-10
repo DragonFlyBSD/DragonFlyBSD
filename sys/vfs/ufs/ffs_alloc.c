@@ -1658,10 +1658,10 @@ ffs_blkfree_trim_completed(struct bio *biop)
 void
 ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size) 
 {
-	struct ufsmount *ump = VFSTOUFS(ITOV(ip)->v_mount);;
+	struct mount *mp = ip->i_devvp->v_mount;
 	struct ffs_blkfree_trim_params *tp;
 
-	if (!(ump->um_mountp->mnt_flag & MNT_TRIM)) {
+	if (!(mp->mnt_flag & MNT_TRIM)) {
 		ffs_blkfree_cg(ip->i_fs, ip->i_devvp,ip->i_dev,ip->i_number,
 		    ip->i_uid, bno, size);
 		return;
