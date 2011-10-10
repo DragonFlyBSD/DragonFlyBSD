@@ -72,4 +72,4 @@ out:
 	/* return the number of stored random bytes. */
 	movl	%ebx, 	%eax
 	ret
-
+END(padlock_rng)
