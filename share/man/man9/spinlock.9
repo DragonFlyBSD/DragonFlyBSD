@@ -38,7 +38,9 @@
 .Nm spin_trylock ,
 .Nm spin_uninit ,
 .Nm spin_unlock ,
-.Nm spin_unlock_quick
+.Nm spin_unlock_quick ,
+.Nm spin_pool_lock ,
+.Nm spin_pool_unlock
 .Nd core spinlocks
 .Sh SYNOPSIS
 .In sys/spinlock.h
@@ -101,6 +103,15 @@ A previously obtained exclusive spinlock is released by calling either
 .Fn spin_unlock
 or
 .Fn spin_unlock_quick .
+.Pp
+The
+.Fn spin_pool_lock
+function locks a pool spinlock associated with a given address. The spinlock's 
+lifetime is not tied to any objects at the address. The function returns the
+locked spinlock. The 
+.Fn spin_pool_unlock
+function unlocks a pool spinlock associated with an address. Pool spinlocks
+need not be initialized.
 .Sh IMPLEMENTATION NOTES
 A thread may not hold any spinlock across a blocking condition or
 thread switch.

@@ -796,7 +796,9 @@ MLINKS+=spinlock.9 spin_init.9 \
 	spinlock.9 spin_trylock.9 \
 	spinlock.9 spin_uninit.9 \
 	spinlock.9 spin_unlock.9 \
-	spinlock.9 spin_unlock_quick.9
+	spinlock.9 spin_unlock_quick.9 \
+	spinlock.9 spin_pool_lock.9 \
+	spinlock.9 spin_pool_unlock.9
 MLINKS+=store.9 casuword.9 \
 	store.9 subyte.9 \
 	store.9 susword.9 \
