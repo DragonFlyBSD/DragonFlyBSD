@@ -161,6 +161,84 @@ hl_register(ino_t inode)
 	return retval;
 }
 
+/* storage for collected uid numbers */
+/* FIXME: same data structures used in kernel, should find a way to
+ * deduplicate this code */
+
+static int
+rb_ac_unode_cmp(struct ac_unode*, struct ac_unode*);
+static int
+rb_ac_gnode_cmp(struct ac_gnode*, struct ac_gnode*);
+
+RB_HEAD(ac_utree,ac_unode) ac_uroot;
+RB_HEAD(ac_gtree,ac_gnode) ac_groot;
+RB_PROTOTYPE(ac_utree, ac_unode, rb_entry, rb_ac_unode_cmp);
+RB_PROTOTYPE(ac_gtree, ac_gnode, rb_entry, rb_ac_gnode_cmp);
+RB_GENERATE(ac_utree, ac_unode, rb_entry, rb_ac_unode_cmp);
+RB_GENERATE(ac_gtree, ac_gnode, rb_entry, rb_ac_gnode_cmp);
+
+static int
+rb_ac_unode_cmp(struct ac_unode *a, struct ac_unode *b)
+{
+	if (a->left_bits < b->left_bits)
+		return(-1);
+	else if (a->left_bits > b->left_bits)
+		return(1);
+	return(0);
+}
+
+static int
+rb_ac_gnode_cmp(struct ac_gnode *a, struct ac_gnode *b)
+{
+	if (a->left_bits < b->left_bits)
+		return(-1);
+	else if (a->left_bits > b->left_bits)
+		return(1);
+	return(0);
+}
+
+static struct ac_unode*
+unode_insert(uid_t uid)
+{
+	struct ac_unode *unp, *res;
+
+	unp = malloc(sizeof(struct ac_unode));
+	if (unp == NULL) {
+		printf("unode_insert(): malloc failed\n");
+		exit (ENOMEM);
+	}
+	bzero(unp, sizeof(struct ac_unode));
+
+	unp->left_bits = (uid >> ACCT_CHUNK_BITS);
+	res = RB_INSERT(ac_utree, &ac_uroot, unp);
+
+	if (res != NULL)	/* shouldn't happen */
+		printf("unode_insert(): RB_INSERT didn't return NULL\n");
+
+	return unp;
+}
+
+static struct ac_gnode*
+gnode_insert(gid_t gid)
+{
+	struct ac_gnode *gnp, *res;
+
+	gnp = malloc(sizeof(struct ac_gnode));
+	if (gnp == NULL) {
+		printf("gnode_insert(): malloc failed\n");
+		exit (ENOMEM);
+	}
+	bzero(gnp, sizeof(struct ac_gnode));
+
+	gnp->left_bits = (gid >> ACCT_CHUNK_BITS);
+	res = RB_INSERT(ac_gtree, &ac_groot, gnp);
+
+	if (res != NULL)	/* shouldn't happen */
+		printf("gnode_insert(): RB_INSERT didn't return NULL\n");
+
+	return gnp;
+}
+
 static int
 get_dirsize(char* dirname)
 {
@@ -175,6 +253,10 @@ get_dirsize(char* dirname)
 	off_t		file_size;
 	uid_t		file_uid;
 	gid_t		file_gid;
+
+	struct ac_unode *unp, ufind;
+	struct ac_gnode *gnp, gfind;
+	int		i;
 
 	/* TODO: check directory name sanity */
 	fts_args[0] = dirname;
@@ -203,20 +285,44 @@ get_dirsize(char* dirname)
 			file_uid = p->fts_statp->st_uid;
 			file_gid = p->fts_statp->st_gid;
 
-			/* files with more than one link */
-			if (p->fts_statp->st_nlink > 1) {
-				if (hl_register(file_inode)) {
-					/* only process them once */
-					global_size += file_size;
-				}
-			} else {
-				global_size += file_size;
-			}
+			/* files with more than one hard link: */
+			/* process them only once */
+			if (p->fts_statp->st_nlink > 1)
+				if (hl_register(file_inode) == false)
+					break;
+
+			global_size += file_size;
+			ufind.left_bits = (file_uid >> ACCT_CHUNK_BITS);
+			gfind.left_bits = (file_gid >> ACCT_CHUNK_BITS);
+			if ((unp = RB_FIND(ac_utree, &ac_uroot, &ufind)) == NULL)
+				unp = unode_insert(file_uid);
+			if ((gnp = RB_FIND(ac_gtree, &ac_groot, &gfind)) == NULL)
+				gnp = gnode_insert(file_gid);
+			unp->uid_chunk[(file_uid & ACCT_CHUNK_MASK)] += file_size;
+			gnp->gid_chunk[(file_gid & ACCT_CHUNK_MASK)] += file_size;
 		}
 	}
 	fts_close(fts);
 
-	printf("%"PRIu64"\n", global_size);
+	printf("total: %"PRIu64"\n", global_size);
+	RB_FOREACH(unp, ac_utree, &ac_uroot) {
+		for (i=0; i<ACCT_CHUNK_NIDS; i++) {
+			if (unp->uid_chunk[i] != 0) {
+				printf("uid %"PRIu32": %"PRIu64"\n",
+					(unp->left_bits << ACCT_CHUNK_BITS) + i, unp->uid_chunk[i]);
+			}
+
+		}
+	}
+	RB_FOREACH(gnp, ac_gtree, &ac_groot) {
+		for (i=0; i<ACCT_CHUNK_NIDS; i++) {
+			if (gnp->gid_chunk[i] != 0) {
+				printf("gid %"PRIu32": %"PRIu64"\n",
+					(gnp->left_bits << ACCT_CHUNK_BITS) + i, gnp->gid_chunk[i]);
+			}
+		}
+	}
+
 	return retval;
 }
 

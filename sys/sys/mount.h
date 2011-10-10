@@ -144,6 +144,8 @@ struct bio_ops {
 	int	(*io_checkwrite) (struct buf *);
 };
 
+#endif
+
 /*
  * storage accounting
  *
@@ -165,6 +167,8 @@ struct ac_gnode {
 	gid_t			left_bits;
 	uint64_t		gid_chunk[ACCT_CHUNK_NIDS];
 };
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 struct vfs_acct {
 	RB_HEAD(ac_utree,ac_unode)	ac_uroot;
