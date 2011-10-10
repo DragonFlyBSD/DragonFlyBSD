@@ -6,7 +6,8 @@
 
 #define SYSCALL_ERR(x)						\
 			ENTRY(__CONCAT(x, _err));		\
-			lea __CONCAT(SYS,x),%eax; KERNCALL; ret
+			lea __CONCAT(SYS,x),%eax; KERNCALL; ret; \
+			END(__CONCAT(x, _err))
 
 
 SYSCALL_ERR(_umtx_sleep)

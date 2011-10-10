@@ -35,4 +35,4 @@ ENTRY(_atomic_lock)
 	movq	$1,%rax
 	xchgq	%rax,(%rdi)
 	ret
-
+END(_atomic_lock)

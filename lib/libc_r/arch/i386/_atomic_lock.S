@@ -20,9 +20,6 @@
  * SUCH DAMAGE.    
  *
  * $FreeBSD: src/lib/libc_r/arch/i386/_atomic_lock.S,v 1.3 1999/08/28 00:03:01 peter Exp $
- * $DragonFly: src/lib/libc_r/arch/i386/_atomic_lock.S,v 1.2 2003/06/17 04:26:47 dillon Exp $
- *
- * $FreeBSD: src/lib/libc_r/arch/i386/_atomic_lock.S,v 1.3 1999/08/28 00:03:01 peter Exp $
  */
 
 #include "DEFS.h"
@@ -39,4 +36,4 @@ ENTRY(_atomic_lock)
 	movl	$1, %eax
 	xchg	%eax, (%ecx)
 	ret
-
+END(_atomic_lock)
