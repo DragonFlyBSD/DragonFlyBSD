@@ -310,6 +310,8 @@ void bus_release_resources(device_t dev, const struct resource_spec *rs,
 struct	resource *bus_alloc_resource(device_t dev, int type, int *rid,
 				     u_long start, u_long end, u_long count,
 				     u_int flags);
+struct	resource *bus_alloc_legacy_irq_resource(device_t dev, int *rid,
+				     u_long irq, u_int flags);
 int	bus_activate_resource(device_t dev, int type, int rid, 
 			      struct resource *r);
 int	bus_deactivate_resource(device_t dev, int type, int rid,

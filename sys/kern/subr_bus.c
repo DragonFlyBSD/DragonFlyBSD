@@ -46,6 +46,7 @@
 #include <sys/filio.h>
 #include <sys/event.h>
 #include <sys/signalvar.h>
+#include <sys/machintr.h>
 
 #include <machine/stdarg.h>	/* for device_printf() */
 
@@ -2815,6 +2816,15 @@ bus_alloc_resource(device_t dev, int type, int *rid, u_long start, u_long end,
 		return(0);
 	return(BUS_ALLOC_RESOURCE(dev->parent, dev, type, rid, start, end,
 				  count, flags, -1));
+}
+
+struct resource *
+bus_alloc_legacy_irq_resource(device_t dev, int *rid, u_long irq, u_int flags)
+{
+	if (dev->parent == 0)
+		return(0);
+	return BUS_ALLOC_RESOURCE(dev->parent, dev, SYS_RES_IRQ, rid,
+	    irq, irq, 1, flags, machintr_intr_cpuid(irq));
 }
 
 int
