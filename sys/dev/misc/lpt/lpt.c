@@ -384,8 +384,8 @@ lpt_attach(device_t dev)
 
 	if (irq > 0) {
 		/* declare our interrupt handler */
-		sc->intr_resource = bus_alloc_resource(dev, SYS_RES_IRQ,
-						       &zero, irq, irq, 1, RF_SHAREABLE);
+		sc->intr_resource = bus_alloc_legacy_irq_resource(dev, &zero,
+		    irq, RF_SHAREABLE);
 	}
 	if (sc->intr_resource) {
 		sc->sc_irq = LP_HAS_IRQ | LP_USE_IRQ | LP_ENABLE_IRQ;

@@ -260,9 +260,8 @@ ihfc_isa_probe(device_t dev)
 
   j0:	while(*irq) 	/* get supported IRQ */
 	{
-		if ((S_IRQ = bus_alloc_resource(
-			dev, SYS_RES_IRQ, &S_IRQRID,
-			*irq, *irq, 1, RF_ACTIVE
+		if ((S_IRQ = bus_alloc_legacy_irq_resource(
+			dev, &S_IRQRID, *irq, RF_ACTIVE
 			)
 		   ))
 				break;

@@ -204,8 +204,8 @@ lp_probe(device_t dev)
 	}
 
 	/* reserve the interrupt resource, expecting irq is available to continue */
-	lp->res_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &zero, irq, irq, 1, 
-					 RF_SHAREABLE);
+	lp->res_irq = bus_alloc_legacy_irq_resource(dev, &zero, irq,
+	    RF_SHAREABLE);
 	if (lp->res_irq == 0) {
 		device_printf(dev, "cannot reserve interrupt, failed.\n");
 		return (ENXIO);

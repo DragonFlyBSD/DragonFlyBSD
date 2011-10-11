@@ -379,9 +379,8 @@ npx_probe1(device_t dev)
 				if (r == 0)
 					panic("npx: can't get ports");
 				rid = 0;
-				r = bus_alloc_resource(dev, SYS_RES_IRQ,
-						       &rid, npx_irq, npx_irq,
-						       1, RF_ACTIVE);
+				r = bus_alloc_legacy_irq_resource(dev, &rid,
+				    npx_irq, RF_ACTIVE);
 				if (r == 0)
 					panic("npx: can't get IRQ");
 				BUS_SETUP_INTR(device_get_parent(dev),
