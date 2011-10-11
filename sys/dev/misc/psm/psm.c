@@ -1433,8 +1433,7 @@ psmattach(device_t dev)
 	/* Setup our interrupt handler */
 	rid = KBDC_RID_AUX;
 	BUS_READ_IVAR(device_get_parent(dev), dev, KBDC_IVAR_IRQ, &irq);
-	sc->intr = BUS_ALLOC_RESOURCE(device_get_parent(dev), dev, SYS_RES_IRQ,
-	    &rid, irq, irq, 1, RF_ACTIVE, machintr_intr_cpuid(irq));
+	sc->intr = bus_alloc_legacy_irq_resource(dev, &rid, irq, RF_ACTIVE);
 
 	if (sc->intr == NULL)
 		return (ENXIO);
