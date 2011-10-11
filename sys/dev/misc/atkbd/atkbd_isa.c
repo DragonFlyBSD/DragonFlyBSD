@@ -117,8 +117,7 @@ atkbdattach(device_t dev)
 
 	/* declare our interrupt handler */
 	rid = 0;
-	sc->intr = BUS_ALLOC_RESOURCE(device_get_parent(dev), dev, SYS_RES_IRQ,
-	    &rid, irq, irq, 1, RF_ACTIVE, machintr_intr_cpuid(irq));
+	sc->intr = bus_alloc_legacy_irq_resource(dev, &rid, irq, RF_ACTIVE);
 	BUS_SETUP_INTR(device_get_parent(dev), dev, sc->intr, INTR_MPSAFE,
 		       atkbd_isa_intr, kbd, &sc->ih, NULL);
 
