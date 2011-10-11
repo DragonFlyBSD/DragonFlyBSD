@@ -84,7 +84,7 @@ static int		acpi_pcib_alloc_msix(device_t pcib, device_t dev,
 static struct resource *acpi_pcib_acpi_alloc_resource(device_t dev,
 			    device_t child, int type, int *rid,
 			    u_long start, u_long end, u_long count,
-			    u_int flags);
+			    u_int flags, int cpuid);
 
 static device_method_t acpi_pcib_acpi_methods[] = {
     /* Device interface */
@@ -366,7 +366,7 @@ TUNABLE_ULONG("hw.acpi.host_mem_start", &acpi_host_mem_start);
 
 struct resource *
 acpi_pcib_acpi_alloc_resource(device_t dev, device_t child, int type, int *rid,
-    u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
     /*
      * If no memory preference is given, use upper 32MB slot most
@@ -382,5 +382,5 @@ acpi_pcib_acpi_alloc_resource(device_t dev, device_t child, int type, int *rid,
     if (type == SYS_RES_IOPORT && start == 0UL && end == ~0UL)
 	start = 0x1000;
     return (bus_generic_alloc_resource(dev, child, type, rid, start, end,
-	count, flags));
+	count, flags, cpuid));
 }

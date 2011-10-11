@@ -43,6 +43,7 @@
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 #include <sys/endian.h>
+#include <sys/machintr.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -1494,7 +1495,7 @@ pci_alloc_msix_method(device_t dev, device_t child, int *count)
 		if (error)
 			break;
 		resource_list_add(&dinfo->resources, SYS_RES_IRQ, i + 1, irq,
-		    irq, 1);
+		    irq, 1, -1);
 	}
 	actual = i;
 
@@ -1715,7 +1716,7 @@ pci_remap_msix_method(device_t dev, device_t child, int count,
 			continue;
 		irq = msix->msix_vectors[vectors[i]].mv_irq;
 		resource_list_add(&dinfo->resources, SYS_RES_IRQ, i + 1, irq,
-		    irq, 1);
+		    irq, 1, -1);
 	}
 
 	if (bootverbose) {
@@ -2094,7 +2095,7 @@ pci_alloc_msi_method(device_t dev, device_t child, int *count)
 	 */
 	for (i = 0; i < actual; i++)
 		resource_list_add(&dinfo->resources, SYS_RES_IRQ, i + 1,
-		    irqs[i], irqs[i], 1);
+		    irqs[i], irqs[i], 1, -1);
 
 	if (bootverbose) {
 		if (actual == 1)
@@ -2712,7 +2713,7 @@ pci_add_map(device_t pcib, device_t bus, device_t dev,
 		start = base;
 		end = base + (1 << ln2size) - 1;
 	}
-	resource_list_add(rl, type, reg, start, end, count);
+	resource_list_add(rl, type, reg, start, end, count, -1);
 
 	/*
 	 * Try to allocate the resource for this BAR from our parent
@@ -2721,7 +2722,7 @@ pci_add_map(device_t pcib, device_t bus, device_t dev,
 	 * pci_alloc_resource().
 	 */
 	res = resource_list_alloc(rl, bus, dev, type, &reg, start, end, count,
-	    prefetch ? RF_PREFETCHABLE : 0);
+	    prefetch ? RF_PREFETCHABLE : 0, -1);
 	if (res == NULL) {
 		/*
 		 * If the allocation fails, delete the resource list
@@ -2786,13 +2787,13 @@ pci_ata_maps(device_t pcib, device_t bus, device_t dev, int b,
 		    prefetchmask & (1 << 1));
 	} else {
 		rid = PCIR_BAR(0);
-		resource_list_add(rl, type, rid, 0x1f0, 0x1f7, 8);
+		resource_list_add(rl, type, rid, 0x1f0, 0x1f7, 8, -1);
 		resource_list_alloc(rl, bus, dev, type, &rid, 0x1f0, 0x1f7, 8,
-		    0);
+		    0, -1);
 		rid = PCIR_BAR(1);
-		resource_list_add(rl, type, rid, 0x3f6, 0x3f6, 1);
+		resource_list_add(rl, type, rid, 0x3f6, 0x3f6, 1, -1);
 		resource_list_alloc(rl, bus, dev, type, &rid, 0x3f6, 0x3f6, 1,
-		    0);
+		    0, -1);
 	}
 	if (progif & PCIP_STORAGE_IDE_MODESEC) {
 		pci_add_map(pcib, bus, dev, b, s, f, PCIR_BAR(2), rl, force,
@@ -2801,13 +2802,13 @@ pci_ata_maps(device_t pcib, device_t bus, device_t dev, int b,
 		    prefetchmask & (1 << 3));
 	} else {
 		rid = PCIR_BAR(2);
-		resource_list_add(rl, type, rid, 0x170, 0x177, 8);
+		resource_list_add(rl, type, rid, 0x170, 0x177, 8, -1);
 		resource_list_alloc(rl, bus, dev, type, &rid, 0x170, 0x177, 8,
-		    0);
+		    0, -1);
 		rid = PCIR_BAR(3);
-		resource_list_add(rl, type, rid, 0x376, 0x376, 1);
+		resource_list_add(rl, type, rid, 0x376, 0x376, 1, -1);
 		resource_list_alloc(rl, bus, dev, type, &rid, 0x376, 0x376, 1,
-		    0);
+		    0, -1);
 	}
 	pci_add_map(pcib, bus, dev, b, s, f, PCIR_BAR(4), rl, force,
 	    prefetchmask & (1 << 4));
@@ -2860,7 +2861,8 @@ pci_assign_interrupt(device_t bus, device_t dev, int force_route)
 	}
 
 	/* Add this IRQ as rid 0 interrupt resource. */
-	resource_list_add(&dinfo->resources, SYS_RES_IRQ, 0, irq, irq, 1);
+	resource_list_add(&dinfo->resources, SYS_RES_IRQ, 0, irq, irq, 1,
+	    machintr_intr_cpuid(irq));
 }
 
 void
@@ -3826,14 +3828,14 @@ pci_alloc_map(device_t dev, device_t child, int type, int *rid,
 	 * appropriate bar for that resource.
 	 */
 	res = BUS_ALLOC_RESOURCE(device_get_parent(dev), child, type, rid,
-	    start, end, count, flags);
+	    start, end, count, flags, -1);
 	if (res == NULL) {
 		device_printf(child,
 		    "%#lx bytes of rid %#x res %d failed (%#lx, %#lx).\n",
 		    count, *rid, type, start, end);
 		goto out;
 	}
-	resource_list_add(rl, type, *rid, start, end, count);
+	resource_list_add(rl, type, *rid, start, end, count, -1);
 	rle = resource_list_find(rl, type, *rid);
 	if (rle == NULL)
 		panic("pci_alloc_map: unexpectedly can't find resource.");
@@ -3856,7 +3858,7 @@ out:;
 
 struct resource *
 pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
-		   u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	struct resource_list *rl = &dinfo->resources;
@@ -3930,7 +3932,7 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		}
 	}
 	return (resource_list_alloc(rl, dev, child, type, rid,
-	    start, end, count, flags));
+	    start, end, count, flags, cpuid));
 }
 
 void

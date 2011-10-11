@@ -37,6 +37,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/machintr.h>
  
 #include "acpi.h"
 #include "accommon.h"
@@ -93,7 +94,8 @@ AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
 
     /* Set up the interrupt resource. */
     sc->acpi_irq_rid = 0;
-    bus_set_resource(sc->acpi_dev, SYS_RES_IRQ, 0, InterruptNumber, 1);
+    bus_set_resource(sc->acpi_dev, SYS_RES_IRQ, 0, InterruptNumber, 1,
+        machintr_intr_cpuid(InterruptNumber));
     sc->acpi_irq = bus_alloc_resource_any(sc->acpi_dev, SYS_RES_IRQ,
 	&sc->acpi_irq_rid, flags);
     if (sc->acpi_irq == NULL) {

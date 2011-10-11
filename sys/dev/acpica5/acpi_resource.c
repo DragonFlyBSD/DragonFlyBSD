@@ -34,6 +34,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/resource.h>
+#include <sys/machintr.h>
 
 #include <sys/rman.h>
 
@@ -545,7 +546,7 @@ acpi_res_set_ioport(device_t dev, void *context, u_int32_t base,
 
     if (cp == NULL)
 	return;
-    bus_set_resource(dev, SYS_RES_IOPORT, cp->ar_nio++, base, length);
+    bus_set_resource(dev, SYS_RES_IOPORT, cp->ar_nio++, base, length, -1);
 }
 
 static void
@@ -568,7 +569,7 @@ acpi_res_set_memory(device_t dev, void *context, u_int32_t base,
     if (cp == NULL)
 	return;
 
-    bus_set_resource(dev, SYS_RES_MEMORY, cp->ar_nmem++, base, length);
+    bus_set_resource(dev, SYS_RES_MEMORY, cp->ar_nmem++, base, length, -1);
 }
 
 static void
@@ -595,7 +596,8 @@ acpi_res_set_irq(device_t dev, void *context, u_int8_t *irq, int count,
     if (count != 1)
 	return;
 
-    bus_set_resource(dev, SYS_RES_IRQ, cp->ar_nirq++, *irq, 1);
+    bus_set_resource(dev, SYS_RES_IRQ, cp->ar_nirq++, *irq, 1,
+        machintr_intr_cpuid(*irq));
 }
 
 static void
@@ -611,7 +613,8 @@ acpi_res_set_ext_irq(device_t dev, void *context, u_int32_t *irq, int count,
     if (count != 1)
 	return;
 
-    bus_set_resource(dev, SYS_RES_IRQ, cp->ar_nirq++, *irq, 1);
+    bus_set_resource(dev, SYS_RES_IRQ, cp->ar_nirq++, *irq, 1,
+        machintr_intr_cpuid(*irq));
 }
 
 static void
@@ -626,7 +629,7 @@ acpi_res_set_drq(device_t dev, void *context, u_int8_t *drq, int count)
     if (count != 1)
 	return;
 
-    bus_set_resource(dev, SYS_RES_DRQ, cp->ar_ndrq++, *drq, 1);
+    bus_set_resource(dev, SYS_RES_DRQ, cp->ar_ndrq++, *drq, 1, -1);
 }
 
 static void
@@ -754,7 +757,7 @@ acpi_sysres_attach(device_t dev)
 	} else bus_rle = NULL;
 	/* If we didn't merge with anything, add this resource. */
 	if (bus_rle == NULL) {
-	    bus_set_resource(bus, type, acpi_sysres_rid++, start, count);
+	    bus_set_resource(bus, type, acpi_sysres_rid++, start, count, -1);
 	}
     }
 

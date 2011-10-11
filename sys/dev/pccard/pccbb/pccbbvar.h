@@ -117,7 +117,7 @@ int	cbb_activate_resource(device_t brdev, device_t child,
 	    int type, int rid, struct resource *r);
 struct resource	*cbb_alloc_resource(device_t brdev, device_t child,
 	    int type, int *rid, u_long start, u_long end, u_long count,
-	    u_int flags);
+	    u_int flags, int cpuid);
 void	cbb_child_detached(device_t brdev, device_t child);
 int	cbb_child_present(device_t self);
 int	cbb_deactivate_resource(device_t brdev, device_t child,

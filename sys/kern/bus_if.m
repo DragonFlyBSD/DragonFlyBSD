@@ -39,7 +39,7 @@ CODE {
 	null_alloc_resource(device_t dev, device_t child,
 			    int type, int *rid,
 			    u_long start, u_long end,
-			    u_long count, u_int flags)
+			    u_long count, u_int flags, int cpuid)
 	{
 	    return 0;
 	}
@@ -157,6 +157,7 @@ METHOD struct resource * alloc_resource {
 	u_long		end;
 	u_long		count;
 	u_int		flags;
+	int		cpuid;
 } DEFAULT null_alloc_resource;
 
 METHOD int activate_resource {
@@ -242,6 +243,7 @@ METHOD int set_resource {
 	int		rid;
 	u_long		start;
 	u_long		count;
+	int		cpuid;
 };
 
 #

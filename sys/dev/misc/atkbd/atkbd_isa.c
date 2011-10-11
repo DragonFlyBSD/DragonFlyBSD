@@ -36,6 +36,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread.h>
+#include <sys/machintr.h>
 
 #include <sys/kbio.h>
 #include <dev/misc/kbd/kbdreg.h>
@@ -116,8 +117,7 @@ atkbdattach(device_t dev)
 
 	/* declare our interrupt handler */
 	rid = 0;
-	sc->intr = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, irq, irq, 1,
-				      RF_SHAREABLE | RF_ACTIVE);
+	sc->intr = bus_alloc_legacy_irq_resource(dev, &rid, irq, RF_ACTIVE);
 	BUS_SETUP_INTR(device_get_parent(dev), dev, sc->intr, INTR_MPSAFE,
 		       atkbd_isa_intr, kbd, &sc->ih, NULL);
 

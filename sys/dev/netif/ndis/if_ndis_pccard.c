@@ -202,7 +202,7 @@ ndis_attach_pccard(device_t dev)
 	sc->ndis_rescnt++;
 	resource_list_add(&sc->ndis_rl, SYS_RES_IOPORT, rid,
 	    rman_get_start(sc->ndis_res_io), rman_get_end(sc->ndis_res_io),
-	    rman_get_size(sc->ndis_res_io));
+	    rman_get_size(sc->ndis_res_io), -1);
 
 	rid = 0;
 	sc->ndis_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
@@ -215,7 +215,8 @@ ndis_attach_pccard(device_t dev)
 	}
 	sc->ndis_rescnt++;
 	resource_list_add(&sc->ndis_rl, SYS_RES_IRQ, rid,
-	    rman_get_start(sc->ndis_irq), rman_get_start(sc->ndis_irq), 1);
+	    rman_get_start(sc->ndis_irq), rman_get_start(sc->ndis_irq), 1,
+	    rman_get_cpuid(sc->ndis_irq));
 
 	sc->ndis_iftype = PCMCIABus;
 
@@ -287,7 +288,7 @@ ndis_alloc_amem(void *arg)
 	sc->ndis_rescnt++;
 	resource_list_add(&sc->ndis_rl, SYS_RES_MEMORY, rid,
 	    rman_get_start(sc->ndis_res_am), rman_get_end(sc->ndis_res_am),
-	    rman_get_size(sc->ndis_res_am));
+	    rman_get_size(sc->ndis_res_am), -1);
 
 	error = CARD_SET_MEMORY_OFFSET(device_get_parent(sc->ndis_dev),
 	    sc->ndis_dev, rid, 0, NULL);

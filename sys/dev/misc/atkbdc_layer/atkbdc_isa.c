@@ -128,7 +128,7 @@ atkbdc_probe(device_t dev)
 	/* XXX */
 	if (bus_get_resource_start(dev, SYS_RES_IOPORT, 1) <= 0) {
 		bus_set_resource(dev, SYS_RES_IOPORT, 1,
-				 rman_get_start(port0) + KBD_STATUS_PORT, 1);
+		    rman_get_start(port0) + KBD_STATUS_PORT, 1, -1);
 	}
 	rid = 1;
 	port1 = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid, 0, ~0, 1,

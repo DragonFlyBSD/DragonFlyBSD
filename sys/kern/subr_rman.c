@@ -84,7 +84,7 @@ static	int int_rman_deactivate_resource(struct resource *r);
 static	int int_rman_release_resource(struct rman *rm, struct resource *r);
 
 int
-rman_init(struct rman *rm)
+rman_init(struct rman *rm, int cpuid)
 {
 	static int once;
 
@@ -104,6 +104,8 @@ rman_init(struct rman *rm)
 	if (rm->rm_slock == NULL)
 		return ENOMEM;
 	lwkt_token_init(rm->rm_slock, "rmanslock");
+
+	rm->rm_cpuid = cpuid;
 
 	lwkt_gettoken(&rman_tok);
 	TAILQ_INSERT_TAIL(&rman_head, rm, rm_link);

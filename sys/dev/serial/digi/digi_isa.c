@@ -303,8 +303,8 @@ digi_isa_probe(device_t dev)
 	bus_release_resource(dev, SYS_RES_IOPORT, sc->res.iorid, sc->res.io);
 
 	/* Let digi_isa_attach() know what we've found */
-	bus_set_resource(dev, SYS_RES_IOPORT, 0, sc->port, IO_SIZE);
-	bus_set_resource(dev, SYS_RES_MEMORY, 0, sc->pmem, sc->win_size);
+	bus_set_resource(dev, SYS_RES_IOPORT, 0, sc->port, IO_SIZE, -1);
+	bus_set_resource(dev, SYS_RES_MEMORY, 0, sc->pmem, sc->win_size, -1);
 
 	DLOG(DIGIDB_INIT, (sc->dev, "Probe returns -10\n"));
 

@@ -583,7 +583,8 @@ fdc_alloc_resources(struct fdc_data *fdc)
 			ctlstart = rman_get_start(fdc->res_ioport) +
 				fdc->port_off + 7;
 
-			bus_set_resource(dev, SYS_RES_IOPORT, 1, ctlstart, 1);
+			bus_set_resource(dev, SYS_RES_IOPORT, 1, ctlstart, 1,
+			    -1);
 		}
 
 		/*

@@ -92,8 +92,8 @@ ppsattach(device_t ppsdev)
 
 	if (irq > 0) {
 		/* declare our interrupt handler */
-		sc->intr_resource = bus_alloc_resource(ppsdev, SYS_RES_IRQ,
-				       &zero, irq, irq, 1, RF_SHAREABLE);
+		sc->intr_resource = bus_alloc_legacy_irq_resource(ppsdev,
+		    &zero, irq, RF_SHAREABLE);
 	}
 	/* interrupts seem mandatory */
 	if (sc->intr_resource == 0)

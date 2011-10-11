@@ -52,6 +52,7 @@ void	legacy_pcib_write_config(device_t dev, int bus, int slot, int func,
 int	legacy_pcib_write_ivar(device_t dev, device_t child, int which,
     uintptr_t value);
 struct resource *legacy_pcib_alloc_resource(device_t dev, device_t child,
-    int type, int *rid, u_long start, u_long end, u_long count, u_int flags);
+    int type, int *rid, u_long start, u_long end, u_long count, u_int flags,
+    int cpuid);
 
 #endif /* !_MACHINE_LEGACYVAR_H_ */

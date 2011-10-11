@@ -44,6 +44,7 @@
 #include <sys/spinlock.h>
 #include <sys/systm.h>
 #include <sys/taskqueue.h>
+#include <sys/machintr.h>
 
 #include <sys/spinlock2.h>
 #include <sys/mplock2.h>
@@ -3465,7 +3466,8 @@ ata_promise_ident(device_t dev)
 	    strcat(buffer, " (channel 0+1)");
 	}
 	else if (pci_get_slot(dev) == 2 && start && end) {
-	    bus_set_resource(dev, SYS_RES_IRQ, 0, start, end);
+	    bus_set_resource(dev, SYS_RES_IRQ, 0, start, end,
+	        machintr_intr_cpuid(start));
 	    strcat(buffer, " (channel 2+3)");
 	}
 	else {

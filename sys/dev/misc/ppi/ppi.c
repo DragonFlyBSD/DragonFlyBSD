@@ -157,8 +157,8 @@ ppi_attach(device_t dev)
 	BUS_READ_IVAR(device_get_parent(dev), dev, PPBUS_IVAR_IRQ, &irq);
 
 	/* declare our interrupt handler */
-	ppi->intr_resource = bus_alloc_resource(dev, SYS_RES_IRQ,
-						&zero, irq, irq, 1, RF_ACTIVE);
+	ppi->intr_resource = bus_alloc_legacy_irq_resource(dev, &zero, irq,
+	    RF_ACTIVE);
 #endif /* PERIPH_1284 */
 
 	make_dev(&ppi_ops, device_get_unit(dev),	/* XXX cleanup */

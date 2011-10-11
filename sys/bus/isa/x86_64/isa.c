@@ -60,6 +60,7 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/rman.h>
+#include <sys/machintr.h>
 
 #include "../isavar.h"
 #include "../isa_common.h"
@@ -79,7 +80,7 @@ isa_init(void)
  */
 struct resource *
 isa_alloc_resource(device_t bus, device_t child, int type, int *rid,
-		   u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	/*
 	 * Consider adding a resource definition. We allow rid 0-1 for
@@ -101,6 +102,7 @@ isa_alloc_resource(device_t bus, device_t child, int type, int *rid,
 			case SYS_RES_IRQ:
 				if (*rid >= ISA_NIRQ)
 					return 0;
+				cpuid = machintr_intr_cpuid(start);
 				break;
 			case SYS_RES_DRQ:
 				if (*rid >= ISA_NDRQ)
@@ -117,12 +119,13 @@ isa_alloc_resource(device_t bus, device_t child, int type, int *rid,
 			default:
 				return 0;
 			}
-			resource_list_add(rl, type, *rid, start, end, count);
+			resource_list_add(rl, type, *rid, start, end,
+			    count, cpuid);
 		}
 	}
 
 	return resource_list_alloc(rl, bus, child, type, rid,
-				   start, end, count, flags);
+				   start, end, count, flags, cpuid);
 }
 
 int

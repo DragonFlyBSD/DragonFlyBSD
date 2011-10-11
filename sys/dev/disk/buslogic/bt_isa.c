@@ -35,6 +35,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/machintr.h>
 
 #include <bus/isa/isavar.h>
 #include "btreg.h"
@@ -167,8 +168,9 @@ bt_isa_probe(device_t dev)
 
 		bt_isa_release_resources(dev);
 
-		bus_set_resource(dev, SYS_RES_DRQ, 0, info.drq, 1);
-		bus_set_resource(dev, SYS_RES_IRQ, 0, info.irq, 1);
+		bus_set_resource(dev, SYS_RES_DRQ, 0, info.drq, 1, -1);
+		bus_set_resource(dev, SYS_RES_IRQ, 0, info.irq, 1,
+		    machintr_intr_cpuid(info.irq));
 
 		return (0);
 	}

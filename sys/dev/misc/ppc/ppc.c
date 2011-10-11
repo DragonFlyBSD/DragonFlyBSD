@@ -1870,7 +1870,7 @@ ppc_probe(device_t dev)
 			return ENXIO;
 		}
 		bus_set_resource(dev, SYS_RES_IOPORT, 0, port,
-				 IO_LPTSIZE_EXTENDED);
+				 IO_LPTSIZE_EXTENDED, -1);
 	}
 #endif
 

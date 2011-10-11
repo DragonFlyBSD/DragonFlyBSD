@@ -146,7 +146,7 @@ wbsio_identify(driver_t *driver, struct device *parent)
 		} else
 			continue;
 		if (bus_set_resource(child[i], SYS_RES_IOPORT, 0,
-			port[i], WBSIO_IOSIZE))
+			port[i], WBSIO_IOSIZE, -1))
 			kprintf("%s: cannot set resource for child[%i]\n",
 			    __func__, i);
 	}
@@ -319,7 +319,7 @@ wbsio_attach(struct device *dev)
 		device_printf(dev, "cannot add child\n");
 		return ENXIO;
 	}
-	if (bus_set_resource(child, SYS_RES_IOPORT, 0, iobase, 8)) {
+	if (bus_set_resource(child, SYS_RES_IOPORT, 0, iobase, 8, -1)) {
 		device_printf(dev, "cannot set resource\n");
 		return ENXIO;
 	}

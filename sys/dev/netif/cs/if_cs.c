@@ -51,6 +51,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/machintr.h>
 
 #include <machine/clock.h>
 
@@ -425,9 +426,10 @@ cs_cs89x0_probe(device_t dev)
 						}
 					}
 
-					if (!error)
+					if (!error) {
 						bus_set_resource(dev, SYS_RES_IRQ, 0,
-								irq, 1);
+						    irq, 1, machintr_intr_cpuid(irq));
+					}
 				}
 			}
                 }

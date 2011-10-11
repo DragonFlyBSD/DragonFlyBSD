@@ -66,6 +66,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/rman.h>
+#include <sys/machintr.h>
 
 #include "isavar.h"
 #include "isa_common.h"
@@ -134,7 +135,7 @@ isa_find_memory(device_t child,
 		     start + size - 1 <= end;
 		     start += MAX(align, 1)) {
 			bus_set_resource(child, SYS_RES_MEMORY, i,
-					 start, size);
+					 start, size, -1);
 			res[i] = bus_alloc_resource(child,
 						    SYS_RES_MEMORY, &i,
 						    0, ~0, 1, 0 /* !RF_ACTIVE */);
@@ -198,7 +199,7 @@ isa_find_port(device_t child,
 		     start + size - 1 <= end;
 		     start += align) {
 			bus_set_resource(child, SYS_RES_IOPORT, i,
-					 start, size);
+					 start, size, -1);
 			res[i] = bus_alloc_resource(child,
 						    SYS_RES_IOPORT, &i,
 						    0, ~0, 1, 0 /* !RF_ACTIVE */);
@@ -283,7 +284,7 @@ isa_find_irq(device_t child,
 		     irq != -1;
 		     irq = find_next_bit(mask, irq)) {
 			bus_set_resource(child, SYS_RES_IRQ, i,
-					 irq, 1);
+			    irq, 1, machintr_intr_cpuid(irq));
 			res[i] = bus_alloc_resource(child,
 						    SYS_RES_IRQ, &i,
 						    0, ~0, 1, 0 /* !RF_ACTIVE */ );
@@ -342,7 +343,7 @@ isa_find_drq(device_t child,
 		     drq != -1;
 		     drq = find_next_bit(mask, drq)) {
 			bus_set_resource(child, SYS_RES_DRQ, i,
-					 drq, 1);
+					 drq, 1, -1);
 			res[i] = bus_alloc_resource(child,
 						    SYS_RES_DRQ, &i,
 						    0, ~0, 1, 0 /* !RF_ACTIVE */);
@@ -503,10 +504,8 @@ isa_probe_children(device_t dev)
 				if (!rle->res) {
 					int rid = rle->rid;
 					resource_list_alloc(rl, dev, child,
-							    rle->type,
-							    &rid,
-							    0, ~0, 1,
-							    0 /* !RF_ACTIVE */);
+					    rle->type, &rid, 0, ~0, 1,
+					    0 /* !RF_ACTIVE */, -1);
 				}
 			}
 		}
@@ -808,8 +807,8 @@ isa_child_detached(device_t dev, device_t child)
 			if (!rle->res) {
 				int rid = rle->rid;
 				resource_list_alloc(rl, dev, child,
-						    rle->type,
-						    &rid, 0, ~0, 1, 0);
+				    rle->type, &rid, 0, ~0, 1,
+				    0 /* !RF_ACTIVE */, -1);
 			}
 		}
 	}
@@ -872,10 +871,8 @@ isa_driver_added(device_t dev, driver_t *driver)
 				if (!rle->res) {
 					int rid = rle->rid;
 					resource_list_alloc(rl, dev, child,
-							    rle->type,
-							    &rid,
-							    0, ~0, 1,
-							    0 /* !RF_ACTIVE */);
+					    rle->type, &rid, 0, ~0, 1,
+					    0 /* !RF_ACTIVE */, -1);
 				}
 			}
 		}
@@ -886,7 +883,7 @@ isa_driver_added(device_t dev, driver_t *driver)
 
 static int
 isa_set_resource(device_t dev, device_t child, int type, int rid,
-		 u_long start, u_long count)
+		 u_long start, u_long count, int cpuid)
 {
 	struct isa_device* idev = DEVTOISA(child);
 	struct resource_list *rl = &idev->id_resources;
@@ -905,7 +902,8 @@ isa_set_resource(device_t dev, device_t child, int type, int rid,
 	if (type == SYS_RES_DRQ && rid >= ISA_NDRQ)
 		return EINVAL;
 
-	resource_list_add(rl, type, rid, start, start + count - 1, count);
+	resource_list_add(rl, type, rid, start, start + count - 1, count,
+	    cpuid);
 
 	return 0;
 }

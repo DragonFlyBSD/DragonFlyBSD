@@ -520,7 +520,7 @@ set at boot via a tunable.");
 
 struct resource *
 legacy_pcib_alloc_resource(device_t dev, device_t child, int type, int *rid,
-    u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
     /*
      * If no memory preference is given, use upper 32MB slot most
@@ -539,7 +539,7 @@ legacy_pcib_alloc_resource(device_t dev, device_t child, int type, int *rid,
     if (type == SYS_RES_IOPORT && start == 0UL && end == ~0UL)
 	start = 0x1000;
     return (bus_generic_alloc_resource(dev, child, type, rid, start, end,
-	count, flags));
+	count, flags, cpuid));
 }
 
 static device_method_t legacy_pcib_methods[] = {

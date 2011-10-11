@@ -186,7 +186,7 @@ isic_attach_Cs0P(device_t dev)
 	
 	sc->sc_resources.io_rid[2] = 2;
 	
-	bus_set_resource(dev, SYS_RES_IOPORT, 2, iobase1-0x20, 0x40);
+	bus_set_resource(dev, SYS_RES_IOPORT, 2, iobase1-0x20, 0x40, -1);
 
 	if(!(sc->sc_resources.io_base[2] =
 		bus_alloc_resource(dev, SYS_RES_IOPORT,
@@ -211,9 +211,9 @@ isic_attach_Cs0P(device_t dev)
 	 */
 
 #if 0
-	bus_set_resource(dev, SYS_RES_IOPORT, 3, iobase2-0x20, 0x20);
+	bus_set_resource(dev, SYS_RES_IOPORT, 3, iobase2-0x20, 0x20, -1);
 #else
-	bus_set_resource(dev, SYS_RES_IOPORT, 3, iobase2-0x20, 0x10);
+	bus_set_resource(dev, SYS_RES_IOPORT, 3, iobase2-0x20, 0x10, -1);
 #endif
 
 	if(!(sc->sc_resources.io_base[3] =
@@ -230,7 +230,7 @@ isic_attach_Cs0P(device_t dev)
 	
 	sc->sc_resources.io_rid[4] = 4;
 	
-	bus_set_resource(dev, SYS_RES_IOPORT, 4, iobase2, 0x40);
+	bus_set_resource(dev, SYS_RES_IOPORT, 4, iobase2, 0x40, -1);
 
 	if(!(sc->sc_resources.io_base[4] =
 		bus_alloc_resource(dev,SYS_RES_IOPORT,
@@ -251,7 +251,7 @@ isic_attach_Cs0P(device_t dev)
 	{
 		sc->sc_resources.io_rid[5] = 5;
 
-		bus_set_resource(dev, SYS_RES_IOPORT, 5, iocfg, 0x01);
+		bus_set_resource(dev, SYS_RES_IOPORT, 5, iocfg, 0x01, -1);
 
 		if(!(sc->sc_resources.io_base[5] =
 			bus_alloc_resource(dev,SYS_RES_IOPORT,

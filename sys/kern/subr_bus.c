@@ -46,6 +46,7 @@
 #include <sys/filio.h>
 #include <sys/event.h>
 #include <sys/signalvar.h>
+#include <sys/machintr.h>
 
 #include <machine/stdarg.h>	/* for device_printf() */
 
@@ -2156,9 +2157,8 @@ resource_list_free(struct resource_list *rl)
 }
 
 void
-resource_list_add(struct resource_list *rl,
-		  int type, int rid,
-		  u_long start, u_long end, u_long count)
+resource_list_add(struct resource_list *rl, int type, int rid,
+    u_long start, u_long end, u_long count, int cpuid)
 {
 	struct resource_list_entry *rle;
 
@@ -2172,6 +2172,7 @@ resource_list_add(struct resource_list *rl,
 		rle->type = type;
 		rle->rid = rid;
 		rle->res = NULL;
+		rle->cpuid = -1;
 	}
 
 	if (rle->res)
@@ -2180,6 +2181,14 @@ resource_list_add(struct resource_list *rl,
 	rle->start = start;
 	rle->end = end;
 	rle->count = count;
+
+	if (cpuid != -1) {
+		if (rle->cpuid != -1 && rle->cpuid != cpuid) {
+			panic("resource_list_add: moving from cpu%d -> cpu%d\n",
+			    rle->cpuid, cpuid);
+		}
+		rle->cpuid = cpuid;
+	}
 }
 
 struct resource_list_entry*
@@ -2213,7 +2222,7 @@ resource_list_alloc(struct resource_list *rl,
 		    device_t bus, device_t child,
 		    int type, int *rid,
 		    u_long start, u_long end,
-		    u_long count, u_int flags)
+		    u_long count, u_int flags, int cpuid)
 {
 	struct resource_list_entry *rle = 0;
 	int passthrough = (device_get_parent(child) != bus);
@@ -2222,7 +2231,7 @@ resource_list_alloc(struct resource_list *rl,
 	if (passthrough) {
 		return(BUS_ALLOC_RESOURCE(device_get_parent(bus), child,
 					  type, rid,
-					  start, end, count, flags));
+					  start, end, count, flags, cpuid));
 	}
 
 	rle = resource_list_find(rl, type, *rid);
@@ -2238,9 +2247,11 @@ resource_list_alloc(struct resource_list *rl,
 		count = max(count, rle->count);
 		end = max(rle->end, start + count - 1);
 	}
+	cpuid = rle->cpuid;
 
 	rle->res = BUS_ALLOC_RESOURCE(device_get_parent(bus), child,
-				      type, rid, start, end, count, flags);
+				      type, rid, start, end, count,
+				      flags, cpuid);
 
 	/*
 	 * Record the new range.
@@ -2593,12 +2604,12 @@ bus_generic_config_intr(device_t dev, device_t child, int irq, enum intr_trigger
 
 struct resource *
 bus_generic_alloc_resource(device_t dev, device_t child, int type, int *rid,
-			   u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	/* Propagate up the bus hierarchy until someone handles it. */
 	if (dev->parent)
 		return(BUS_ALLOC_RESOURCE(dev->parent, child, type, rid, 
-					   start, end, count, flags));
+					   start, end, count, flags, cpuid));
 	else
 		return(NULL);
 }
@@ -2653,14 +2664,14 @@ bus_generic_get_resource(device_t dev, device_t child, int type, int rid,
 
 int
 bus_generic_set_resource(device_t dev, device_t child, int type, int rid,
-			u_long start, u_long count)
+			u_long start, u_long count, int cpuid)
 {
 	int error;
 
 	error = EINVAL;
 	if (dev->parent) {
 		error = BUS_SET_RESOURCE(dev->parent, child, type, rid, 
-					 start, count);
+					 start, count, cpuid);
 	}
 	return (error);
 }
@@ -2697,7 +2708,7 @@ bus_generic_rl_get_resource(device_t dev, device_t child, int type, int rid,
 
 int
 bus_generic_rl_set_resource(device_t dev, device_t child, int type, int rid,
-    u_long start, u_long count)
+    u_long start, u_long count, int cpuid)
 {
 	struct resource_list *rl = NULL;
 
@@ -2705,7 +2716,8 @@ bus_generic_rl_set_resource(device_t dev, device_t child, int type, int rid,
 	if (!rl)
 		return(EINVAL);
 
-	resource_list_add(rl, type, rid, start, (start + count - 1), count);
+	resource_list_add(rl, type, rid, start, (start + count - 1), count,
+	    cpuid);
 
 	return(0);
 }
@@ -2737,7 +2749,7 @@ bus_generic_rl_release_resource(device_t dev, device_t child, int type,
 
 struct resource *
 bus_generic_rl_alloc_resource(device_t dev, device_t child, int type,
-    int *rid, u_long start, u_long end, u_long count, u_int flags)
+    int *rid, u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	struct resource_list *rl = NULL;
 
@@ -2746,7 +2758,7 @@ bus_generic_rl_alloc_resource(device_t dev, device_t child, int type,
 		return(NULL);
 
 	return(resource_list_alloc(rl, dev, child, type, rid,
-	    start, end, count, flags));
+	    start, end, count, flags, cpuid));
 }
 
 int
@@ -2803,7 +2815,16 @@ bus_alloc_resource(device_t dev, int type, int *rid, u_long start, u_long end,
 	if (dev->parent == 0)
 		return(0);
 	return(BUS_ALLOC_RESOURCE(dev->parent, dev, type, rid, start, end,
-				  count, flags));
+				  count, flags, -1));
+}
+
+struct resource *
+bus_alloc_legacy_irq_resource(device_t dev, int *rid, u_long irq, u_int flags)
+{
+	if (dev->parent == 0)
+		return(0);
+	return BUS_ALLOC_RESOURCE(dev->parent, dev, SYS_RES_IRQ, rid,
+	    irq, irq, 1, flags, machintr_intr_cpuid(irq));
 }
 
 int
@@ -2867,10 +2888,10 @@ bus_disable_intr(device_t dev, void *cookie)
 
 int
 bus_set_resource(device_t dev, int type, int rid,
-		 u_long start, u_long count)
+		 u_long start, u_long count, int cpuid)
 {
 	return(BUS_SET_RESOURCE(device_get_parent(dev), dev, type, rid,
-				start, count));
+				start, count, cpuid));
 }
 
 int

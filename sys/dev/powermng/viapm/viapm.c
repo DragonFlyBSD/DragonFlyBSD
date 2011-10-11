@@ -216,7 +216,7 @@ viapm_586b_probe(device_t dev)
 		 * described outside the viapmope of the traditional maps
 		 */
 		if (bus_set_resource(dev, SYS_RES_IOPORT, viapm->iorid,
-							viapm->base, 256)) {
+		    viapm->base, 256, -1)) {
 			device_printf(dev, "could not set bus resource\n");
 			return ENXIO;
 		}
@@ -295,7 +295,7 @@ viapm_pro_probe(device_t dev)
 		 */
 		viapm->iorid = base_cfgreg;
 		if (bus_set_resource(dev, SYS_RES_IOPORT, viapm->iorid,
-				     viapm->base, 16)) {
+				     viapm->base, 16, -1)) {
 			device_printf(dev, "could not set bus resource 0x%x\n",
 					viapm->base);
 			return ENXIO;

@@ -716,7 +716,7 @@ fm801_pci_probe( device_t dev )
 
 static struct resource *
 fm801_alloc_resource(device_t bus, device_t child, int type, int *rid,
-		     u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid __unused)
 {
 	struct fm801_info *fm801;
 

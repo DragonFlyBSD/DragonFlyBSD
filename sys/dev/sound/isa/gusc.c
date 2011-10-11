@@ -88,7 +88,7 @@ static int gusc_attach(device_t dev);
 static int gusisa_probe(device_t dev);
 static void gusc_intr(void *);
 static struct resource *gusc_alloc_resource(device_t bus, device_t child, int type, int *rid,
-					      u_long start, u_long end, u_long count, u_int flags);
+    u_long start, u_long end, u_long count, u_int flags, int cpuid);
 static int gusc_release_resource(device_t bus, device_t child, int type, int rid,
 				   struct resource *r);
 
@@ -256,11 +256,11 @@ gusisa_probe(device_t dev)
 
 		/* Looks like a GUS MAX.  Set the rest of the resources.  */
 
-		bus_set_resource(dev, SYS_RES_IOPORT, 2, base + 0x10c, 8);
+		bus_set_resource(dev, SYS_RES_IOPORT, 2, base + 0x10c, 8, -1);
 
 		if (flags & DV_F_DUAL_DMA)
 			bus_set_resource(dev, SYS_RES_DRQ, 1,
-					 flags & DV_F_DRQ_MASK, 1);
+					 flags & DV_F_DRQ_MASK, 1, -1);
 
 		/* We can support the CS4231 and MIDI devices.  */
 
@@ -344,7 +344,7 @@ gusc_intr(void *arg)
 
 static struct resource *
 gusc_alloc_resource(device_t bus, device_t child, int type, int *rid,
-		      u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid __unused)
 {
 	sc_p scp;
 	int *alloced, rid_max, alloced_max;
@@ -551,7 +551,7 @@ alloc_resource(sc_p scp)
 				return (1);
 			scp->irq_rid = 0;
 			scp->irq = BUS_ALLOC_RESOURCE(dev, NULL, SYS_RES_IRQ, &scp->irq_rid,
-						      0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
+						      0, ~0, 1, RF_ACTIVE | RF_SHAREABLE, -1);
 			if (scp->irq == NULL)
 				return (1);
 			scp->irq_alloced = 0;

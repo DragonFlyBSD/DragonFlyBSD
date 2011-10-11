@@ -31,6 +31,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/machintr.h>
 
 #include <bus/isa/isavar.h>
 #include "aic6360reg.h"
@@ -140,7 +141,7 @@ aic_isa_probe(device_t dev)
 
 	for (i = 0; i < numports; i++) {
 		if (bus_set_resource(dev, SYS_RES_IOPORT, 0, ports[i],
-				     AIC_ISA_PORTSIZE))
+				     AIC_ISA_PORTSIZE, -1))
 			continue;
 		if (aic_isa_alloc_resources(dev))
 			continue;
@@ -155,10 +156,14 @@ aic_isa_probe(device_t dev)
 		return (ENXIO);
 
 	porta = aic_inb(aic, PORTA);
-	if (isa_get_irq(dev) == -1)
-		bus_set_resource(dev, SYS_RES_IRQ, 0, PORTA_IRQ(porta), 1);
+	if (isa_get_irq(dev) == -1) {
+		int irq = PORTA_IRQ(porta);
+
+		bus_set_resource(dev, SYS_RES_IRQ, 0, irq, 1,
+		    machintr_intr_cpuid(irq));
+	}
 	if ((aic->flags & AIC_DMA_ENABLE) && isa_get_drq(dev) == -1)
-		bus_set_resource(dev, SYS_RES_DRQ, 0, PORTA_DRQ(porta), 1);
+		bus_set_resource(dev, SYS_RES_DRQ, 0, PORTA_DRQ(porta), 1, -1);
 	device_set_desc(dev, "Adaptec 6260/6360 SCSI controller");
 	return (0);
 }

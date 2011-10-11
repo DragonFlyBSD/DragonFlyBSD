@@ -142,7 +142,7 @@ isic_alloc_port(device_t dev, int rid, u_int base, u_int len)
 
 	sc->sc_resources.io_rid[rid] = rid;
 
-	bus_set_resource(dev, SYS_RES_IOPORT, rid, base, len);
+	bus_set_resource(dev, SYS_RES_IOPORT, rid, base, len, -1);
 
 	if(!(sc->sc_resources.io_base[rid] =
 		bus_alloc_resource(dev, SYS_RES_IOPORT,

@@ -31,6 +31,7 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/module.h>
+#include <sys/machintr.h>
 
 #include "isavar.h"
 
@@ -60,20 +61,22 @@ isahint_add_device(device_t parent, const char *name, int unit)
 	resource_int_value(name, unit, "port", &start);
 	resource_int_value(name, unit, "portsize", &count);
 	if (start > 0 || count > 0)
-		bus_set_resource(child, SYS_RES_IOPORT, 0, start, count);
+		bus_set_resource(child, SYS_RES_IOPORT, 0, start, count, -1);
 
 	start = 0;
 	count = 0;
 	resource_int_value(name, unit, "maddr", &start);
 	resource_int_value(name, unit, "msize", &count);
 	if (start > 0 || count > 0)
-		bus_set_resource(child, SYS_RES_MEMORY, 0, start, count);
+		bus_set_resource(child, SYS_RES_MEMORY, 0, start, count, -1);
 
-	if (resource_int_value(name, unit, "irq", &start) == 0 && start > 0)
-		bus_set_resource(child, SYS_RES_IRQ, 0, start, 1);
+	if (resource_int_value(name, unit, "irq", &start) == 0 && start > 0) {
+		bus_set_resource(child, SYS_RES_IRQ, 0, start, 1,
+		    machintr_intr_cpuid(start));
+	}
 
 	if (resource_int_value(name, unit, "drq", &start) == 0 && start >= 0)
-		bus_set_resource(child, SYS_RES_DRQ, 0, start, 1);
+		bus_set_resource(child, SYS_RES_DRQ, 0, start, 1, -1);
 
 	if (resource_int_value(name, unit, "flags", &t) == 0)
 		device_set_flags(child, t);

@@ -76,6 +76,7 @@
 #include <sys/thread2.h>
 #include <sys/time.h>
 #include <sys/uio.h>
+#include <sys/machintr.h>
 
 #include <machine/clock.h>
 #include <machine/limits.h>
@@ -1102,7 +1103,8 @@ psmidentify(driver_t *driver, device_t parent)
 	irq = bus_get_resource_start(psmc, SYS_RES_IRQ, 0);
 	if (irq <= 0)
 		return;
-	bus_set_resource(psm, SYS_RES_IRQ, KBDC_RID_AUX, irq, 1);
+	bus_set_resource(psm, SYS_RES_IRQ, KBDC_RID_AUX, irq, 1,
+	    machintr_intr_cpuid(irq));
 }
 
 #define	endprobe(v)	do {			\
@@ -1431,8 +1433,7 @@ psmattach(device_t dev)
 	/* Setup our interrupt handler */
 	rid = KBDC_RID_AUX;
 	BUS_READ_IVAR(device_get_parent(dev), dev, KBDC_IVAR_IRQ, &irq);
-	sc->intr = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, irq, irq, 1,
-			RF_ACTIVE);
+	sc->intr = bus_alloc_legacy_irq_resource(dev, &rid, irq, RF_ACTIVE);
 
 	if (sc->intr == NULL)
 		return (ENXIO);
@@ -4643,7 +4644,8 @@ create_a_copy(device_t atkbdc, device_t me)
 
 	/* move our resource to the found device */
 	irq = bus_get_resource_start(me, SYS_RES_IRQ, 0);
-	bus_set_resource(psm, SYS_RES_IRQ, KBDC_RID_AUX, irq, 1);
+	bus_set_resource(psm, SYS_RES_IRQ, KBDC_RID_AUX, irq, 1,
+	    machintr_intr_cpuid(irq));
 
 	/* ...then probe and attach it */
 	return (device_probe_and_attach(psm));
@@ -4674,7 +4676,8 @@ psmcpnp_probe(device_t dev)
 			irq = 12;	/* XXX */
 		device_printf(dev, "irq resource info is missing; "
 		    "assuming irq %ld\n", irq);
-		bus_set_resource(dev, SYS_RES_IRQ, rid, irq, 1);
+		bus_set_resource(dev, SYS_RES_IRQ, rid, irq, 1,
+		    machintr_intr_cpuid(irq));
 	}
 	res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_SHAREABLE);
 	bus_release_resource(dev, SYS_RES_IRQ, rid, res);

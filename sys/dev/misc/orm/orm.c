@@ -103,7 +103,7 @@ orm_identify(driver_t* driver, device_t parent)
 	sc->rnum = 0;
 	while (chunk < IOMEM_END) {
 		bus_set_resource(child, SYS_RES_MEMORY, sc->rnum, chunk,
-		    IOMEM_STEP);
+		    IOMEM_STEP, -1);
 		rid = sc->rnum;
 		res = bus_alloc_resource(child, SYS_RES_MEMORY, &rid, 0ul, 
 		    ~0ul, IOMEM_STEP, RF_ACTIVE);
@@ -135,7 +135,7 @@ orm_identify(driver_t* driver, device_t parent)
 		}
 		rom_size = buf[2] << 9;
 		bus_set_resource(child, SYS_RES_MEMORY, sc->rnum, chunk,
-		    rom_size);
+		    rom_size, -1);
 		rid = sc->rnum;
 		res = bus_alloc_resource(child, SYS_RES_MEMORY, &rid, 0ul,
 		    ~0ul, rom_size, 0);

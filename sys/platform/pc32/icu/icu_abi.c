@@ -99,6 +99,7 @@ extern int	imcr_present;
 static void	icu_abi_intr_setup(int, int);
 static void	icu_abi_intr_teardown(int);
 static void	icu_abi_intr_config(int, enum intr_trigger, enum intr_polarity);
+static int	icu_abi_intr_cpuid(int);
 
 static void	icu_abi_finalize(void);
 static void	icu_abi_cleanup(void);
@@ -114,6 +115,7 @@ struct machintr_abi MachIntrABI_ICU = {
 	.intr_setup	= icu_abi_intr_setup,
 	.intr_teardown	= icu_abi_intr_teardown,
 	.intr_config	= icu_abi_intr_config,
+	.intr_cpuid	= icu_abi_intr_cpuid,
 
 	.finalize	= icu_abi_finalize,
 	.cleanup	= icu_abi_cleanup,
@@ -274,4 +276,10 @@ icu_abi_intr_config(int irq, enum intr_trigger trig,
 		return;
 	}
 	elcr_write_trigger(irq, map->im_trig);
+}
+
+static int
+icu_abi_intr_cpuid(int irq __unused)
+{
+	return 0;
 }

@@ -98,7 +98,7 @@ static void	pccard_print_resources(struct resource_list *rl,
 		    const char *name, int type, int count, const char *format);
 static int	pccard_print_child(device_t dev, device_t child);
 static int	pccard_set_resource(device_t dev, device_t child, int type,
-		    int rid, u_long start, u_long count);
+		    int rid, u_long start, u_long count, int cpuid);
 static int	pccard_get_resource(device_t dev, device_t child, int type,
 		    int rid, u_long *startp, u_long *countp);
 static void	pccard_delete_resource(device_t dev, device_t child, int type,
@@ -113,7 +113,7 @@ static int	pccard_read_ivar(device_t bus, device_t child, int which,
 static void	pccard_driver_added(device_t dev, driver_t *driver);
 static struct resource *pccard_alloc_resource(device_t dev,
 		    device_t child, int type, int *rid, u_long start,
-		    u_long end, u_long count, u_int flags);
+		    u_long end, u_long count, u_int flags, int cpuid);
 static int	pccard_release_resource(device_t dev, device_t child, int type,
 		    int rid, struct resource *r);
 static void	pccard_child_detached(device_t parent, device_t dev);
@@ -441,7 +441,7 @@ pccard_function_init(struct pccard_function *pf)
 				goto not_this_one;
 			resource_list_add(rl, SYS_RES_IOPORT,
 			    rid, rman_get_start(r), rman_get_end(r),
-			    cfe->iospace[i].length);
+			    cfe->iospace[i].length, -1);
 			rle = resource_list_find(rl, SYS_RES_IOPORT, rid);
 			if (rle == NULL)
 				panic("Cannot add resource rid %d IOPORT", rid);
@@ -464,7 +464,7 @@ pccard_function_init(struct pccard_function *pf)
 				goto not_this_one;
 			resource_list_add(rl, SYS_RES_MEMORY,
 			    rid, rman_get_start(r), rman_get_end(r),
-			    cfe->memspace[i].length);
+			    cfe->memspace[i].length, -1);
 			rle = resource_list_find(rl, SYS_RES_MEMORY, rid);
 			if (rle == NULL)
 				panic("Cannot add resource rid %d MEM", rid);
@@ -482,7 +482,8 @@ pccard_function_init(struct pccard_function *pf)
 			if (r == NULL)
 				goto not_this_one;
 			resource_list_add(rl, SYS_RES_IRQ, rid,
-			    rman_get_start(r), rman_get_end(r), 1);
+			    rman_get_start(r), rman_get_end(r), 1,
+			    rman_get_cpuid(r));
 			rle = resource_list_find(rl, SYS_RES_IRQ, rid);
 			if (rle == NULL)
 				panic("Cannot add resource rid %d IRQ", rid);
@@ -883,7 +884,7 @@ pccard_print_child(device_t dev, device_t child)
 
 static int
 pccard_set_resource(device_t dev, device_t child, int type, int rid,
-    u_long start, u_long count)
+    u_long start, u_long count, int cpuid)
 {
 	struct pccard_ivar *devi = PCCARD_IVAR(child);
 	struct resource_list *rl = &devi->resources;
@@ -902,9 +903,10 @@ pccard_set_resource(device_t dev, device_t child, int type, int rid,
 	if (type == SYS_RES_DRQ && rid >= PCCARD_NDRQ)
 		return (EINVAL);
 
-	resource_list_add(rl, type, rid, start, start + count - 1, count);
+	resource_list_add(rl, type, rid, start, start + count - 1, count,
+	    cpuid);
 	if (NULL != resource_list_alloc(rl, device_get_parent(dev), dev,
-	    type, &rid, start, start + count - 1, count, 0))
+	    type, &rid, start, start + count - 1, count, 0, -1))
 		return 0;
 	else
 		return ENOMEM;
@@ -1101,7 +1103,7 @@ pccard_driver_added(device_t dev, driver_t *driver)
 
 static struct resource *
 pccard_alloc_resource(device_t dev, device_t child, int type, int *rid,
-    u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	struct pccard_ivar *dinfo;
 	struct resource_list_entry *rle = 0;
@@ -1112,7 +1114,7 @@ pccard_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	/* XXX I'm no longer sure this is right */
 	if (passthrough) {
 		return (BUS_ALLOC_RESOURCE(device_get_parent(dev), child,
-		    type, rid, start, end, count, flags));
+		    type, rid, start, end, count, flags, cpuid));
 	}
 
 	dinfo = device_get_ivars(child);
@@ -1127,7 +1129,8 @@ pccard_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		if (r == NULL)
 		    goto bad;
 		resource_list_add(&dinfo->resources, type, *rid,
-		  rman_get_start(r), rman_get_end(r), count);
+		  rman_get_start(r), rman_get_end(r), count, 
+		  rman_get_cpuid(r));
 		rle = resource_list_find(&dinfo->resources, type, *rid);
 		if (!rle)
 		    goto bad;
