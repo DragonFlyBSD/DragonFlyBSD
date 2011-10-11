@@ -1,8 +1,5 @@
-# $DragonFly: src/sys/dev/drm/mach64/Makefile,v 1.1 2008/04/05 18:12:29 hasso Exp $
-
 .PATH:	${.CURDIR}/..
 KMOD	= mach64
-NO_MAN	= YES
 SRCS    = mach64_dma.c mach64_drv.c mach64_irq.c mach64_state.c
 SRCS   += device_if.h bus_if.h pci_if.h opt_drm.h
 CFLAGS += ${DEBUG_FLAGS} -I. -I..

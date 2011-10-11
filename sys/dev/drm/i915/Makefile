@@ -1,8 +1,5 @@
-# $DragonFly: src/sys/dev/drm/i915/Makefile,v 1.1 2008/04/05 18:12:29 hasso Exp $
-
 .PATH:	${.CURDIR}/..
 KMOD	= i915
-NO_MAN	= YES
 SRCS    = i915_dma.c i915_drv.c i915_irq.c i915_mem.c i915_suspend.c
 SRCS   += device_if.h bus_if.h pci_if.h opt_drm.h
 CFLAGS += ${DEBUG_FLAGS} -I. -I..

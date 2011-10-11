@@ -1,8 +1,5 @@
-# $DragonFly: src/sys/dev/drm/mga/Makefile,v 1.3 2008/04/05 18:12:29 hasso Exp $
-
 .PATH:	${.CURDIR}/..
 KMOD= 	mga
-NO_MAN=	YES
 SRCS=		mga_drv.c mga_state.c mga_warp.c mga_dma.c mga_irq.c
 SRCS+=	device_if.h bus_if.h pci_if.h opt_drm.h
 CFLAGS+=	${DEBUG_FLAGS} -I. -I..

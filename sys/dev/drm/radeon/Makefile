@@ -1,8 +1,5 @@
-# $DragonFly: src/sys/dev/drm/radeon/Makefile,v 1.3 2008/04/05 18:12:30 hasso Exp $
-
 .PATH:	${.CURDIR}/..
 KMOD	= radeon
-NO_MAN	= YES
 SRCS    = r300_cmdbuf.c r600_cp.c radeon_cp.c radeon_drv.c radeon_state.c \
 	  radeon_irq.c radeon_mem.c
 SRCS   += device_if.h bus_if.h pci_if.h opt_drm.h

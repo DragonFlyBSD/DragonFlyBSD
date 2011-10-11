@@ -1,8 +1,5 @@
-# $DragonFly: src/sys/dev/drm/r128/Makefile,v 1.3 2008/04/05 18:12:30 hasso Exp $
-
 .PATH:	${.CURDIR}/..
 KMOD	= r128
-NO_MAN	= YES
 SRCS    = r128_cce.c r128_drv.c r128_state.c r128_irq.c
 SRCS   += device_if.h bus_if.h pci_if.h opt_drm.h
 CFLAGS += ${DEBUG_FLAGS} -I. -I..

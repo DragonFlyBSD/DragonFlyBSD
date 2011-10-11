@@ -1,8 +1,5 @@
-# $DragonFly: src/sys/dev/drm/tdfx/Makefile,v 1.3 2008/04/05 18:12:30 hasso Exp $
-
 .PATH:	${.CURDIR}/..
 KMOD=	tdfx
-NO_MAN=	YES
 SRCS=	tdfx_drv.c
 SRCS+=	device_if.h bus_if.h pci_if.h opt_drm.h
 CFLAGS+=	${DEBUG_FLAGS} -I. -I.. 

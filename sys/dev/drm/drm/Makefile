@@ -1,8 +1,5 @@
-# $DragonFly: src/sys/dev/drm/drm/Makefile,v 1.1 2008/04/05 18:12:29 hasso Exp $
-
 .PATH:	${.CURDIR}/..
 KMOD	= drm
-NO_MAN	= YES
 SRCS    = \
 	ati_pcigart.c \
 	drm_agpsupport.c \
