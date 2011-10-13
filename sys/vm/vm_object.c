@@ -550,7 +550,6 @@ vm_object_deallocate_locked(vm_object_t object)
 					}
 
 					if (temp->ref_count == 1) {
-						temp->ref_count--;
 						vm_object_unlock(object);
 						object = temp;
 						goto doterm;
@@ -574,8 +573,8 @@ vm_object_deallocate_locked(vm_object_t object)
 		/*
 		 * Normal dereferencing path
 		 */
-		object->ref_count--;
-		if (object->ref_count != 0) {
+		if (object->ref_count >= 2) {
+			object->ref_count--;
 			lwkt_reltoken(&vm_token);
 			vm_object_unlock(object);
 			break;
@@ -588,6 +587,9 @@ vm_object_deallocate_locked(vm_object_t object)
 		 * temp's lock.  If temp is non NULL we have to swap the
 		 * lock order so the original object lock as at the top
 		 * of the lock heap.
+		 *
+		 * object has 1 ref which we can't reduce until after we have
+		 * locked temp.
 		 */
 		lwkt_reltoken(&vm_token);
 doterm:
@@ -597,6 +599,20 @@ doterm:
 				break;
 			vm_object_unlock(temp);
 		}
+
+		/*
+		 * re-check
+		 */
+		if (object->ref_count >= 2) {
+			object->ref_count--;
+			if (temp)
+				vm_object_unlock(temp);
+			vm_object_unlock(object);
+			break;
+		}
+		KKASSERT(object->ref_count == 1);
+		object->ref_count = 0;
+
 		if (temp) {
 			LIST_REMOVE(object, shadow_list);
 			temp->shadow_count--;
@@ -1305,6 +1321,9 @@ vm_object_shadow(vm_object_t *object, vm_ooffset_t *offset, vm_size_t length)
 
 	source = *object;
 
+	if (source)
+		vm_object_hold(source);
+
 	/*
 	 * Don't create the new object if the old object isn't shared.
 	 */
@@ -1316,6 +1335,7 @@ vm_object_shadow(vm_object_t *object, vm_ooffset_t *offset, vm_size_t length)
 	    (source->type == OBJT_DEFAULT ||
 	     source->type == OBJT_SWAP)) {
 		lwkt_reltoken(&vm_token);
+		vm_object_drop(source);
 		return;
 	}
 
@@ -1350,6 +1370,9 @@ vm_object_shadow(vm_object_t *object, vm_ooffset_t *offset, vm_size_t length)
 	 */
 	result->backing_object_offset = *offset;
 	lwkt_reltoken(&vm_token);
+
+	if (source)
+		vm_object_drop(source);
 
 	/*
 	 * Return the new things
