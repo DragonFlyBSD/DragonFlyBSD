@@ -45,7 +45,6 @@
 
 #include <vfs/fifofs/fifo.h>
 #include <vfs/tmpfs/tmpfs.h>
-#include <vfs/tmpfs/tmpfs_fifoops.h>
 #include <vfs/tmpfs/tmpfs_vnops.h>
 
 /* --------------------------------------------------------------------- */

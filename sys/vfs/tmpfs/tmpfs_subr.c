@@ -52,7 +52,6 @@
 #include <vm/vm_extern.h>
 
 #include <vfs/tmpfs/tmpfs.h>
-#include <vfs/tmpfs/tmpfs_fifoops.h>
 #include <vfs/tmpfs/tmpfs_vnops.h>
 
 static ino_t t_ino = 2;
