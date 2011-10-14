@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.27 2008/05/18 20:57:56 nth Exp $
  */
 
 /*
@@ -659,7 +657,7 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
      * caller must loop or otherwise ensure that a loop will occur prior to
      * blocking.
      */
-    if (ip->ip_rindex == ip->ip_windex);
+    if (ip->ip_rindex == ip->ip_windex)
 	    atomic_poll_release_int(&ip->ip_npoll);
     cpu_lfence();
     return (ip->ip_rindex != ip->ip_windex);
