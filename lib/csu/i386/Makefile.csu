@@ -7,7 +7,8 @@ CLEANFILES+=	crt1.o crti.o crtn.o gcrt1.o Scrt1.o \
 		crt1_c.o crt1_s.o gcrtl_c.o Scrt1_c.o
 WARNS?=		2
 
-CFLAGS+=	-I${CSUDIR}/../common
+CFLAGS+=	-I${CSUDIR}/../common \
+		-I${CSUDIR}/../../libc/include
 
 .PATH:		${CSUDIR} ${CSUDIR}/../common
 

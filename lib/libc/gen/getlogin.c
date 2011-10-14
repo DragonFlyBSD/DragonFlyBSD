@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getlogin.c,v 1.4.2.1 2001/03/05 09:06:50 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getlogin.c,v 1.4 2005/04/26 06:08:42 joerg Exp $
  *
  * @(#)getlogin.c	8.1 (Berkeley) 6/4/93
  */
@@ -47,7 +46,7 @@
 #include <pthread.h>
 #include "un-namespace.h"
 
-#include <libc_private.h>
+#include "libc_private.h"
 
 #define	THREAD_LOCK()	if (__isthreaded) _pthread_mutex_lock(&logname_mutex)
 #define	THREAD_UNLOCK()	if (__isthreaded) _pthread_mutex_unlock(&logname_mutex)

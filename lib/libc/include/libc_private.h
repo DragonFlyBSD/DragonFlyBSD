@@ -80,7 +80,7 @@ int _yp_check(char **);
  * This is a pointer in the C run-time startup code. It is used
  * by getprogname() and setprogname().
  */
-extern const char *__progname;
+const char *__progname;
 
 /*
  * Function to clean up streams, called from abort() and exit().
