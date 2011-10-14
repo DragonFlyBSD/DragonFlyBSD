@@ -570,10 +570,6 @@ scclose(struct dev_close_args *ap)
 	DPRINTF(5, ("sc%d: scclose(), ", scp->sc->unit));
 	if ((scp == scp->sc->cur_scp) && (scp->sc->unit == sc_console_unit))
 	    cons_unavail = FALSE;
-	/* 
-	 * note: must be called from a critical section because finish_vt_rel
-	 * will call do_switch_scr which releases it temporarily 
-	 */
 	if (finish_vt_rel(scp, TRUE) == 0)	/* force release */
 	    DPRINTF(5, ("reset WAIT_REL, "));
 	if (finish_vt_acq(scp) == 0)		/* force acknowledge */
@@ -981,11 +977,6 @@ scioctl(struct dev_ioctl_args *ap)
 	    DPRINTF(5, ("VT_AUTO, "));
 	    if ((scp == sc->cur_scp) && (sc->unit == sc_console_unit))
 		cons_unavail = FALSE;
-	    /* 
-	     * note: must be called from a critical section because 
-	     * finish_vt_rel will call do_switch_scr which releases it
-	     * temporarily.
-	     */
 	    if (finish_vt_rel(scp, TRUE) == 0)
 		DPRINTF(5, ("reset WAIT_REL, "));
 	    if (finish_vt_acq(scp) == 0)
@@ -1040,20 +1031,10 @@ scioctl(struct dev_ioctl_args *ap)
 	error = EINVAL;
 	switch(*(int *)data) {
 	case VT_FALSE:  	/* user refuses to release screen, abort */
-	    /* 
-	     * note: must be called from a critical section because 
-	     * finish_vt_rel will call do_switch_scr which releases it
-	     * temporarily.
-	     */
 	    if ((error = finish_vt_rel(scp, FALSE)) == 0)
 		DPRINTF(5, ("sc%d: VT_FALSE\n", sc->unit));
 	    break;
 	case VT_TRUE:   	/* user has released screen, go on */
-	    /* 
-	     * note: must be called from a critical section because 
-	     * finish_vt_rel will call do_switch_scr which releases it
-	     * temporarily.
-	     */
 	    if ((error = finish_vt_rel(scp, TRUE)) == 0)
 		DPRINTF(5, ("sc%d: VT_TRUE\n", sc->unit));
 	    break;
@@ -2368,9 +2349,6 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 		 * Force the previous switch to finish, but return now 
 		 * with error.
 		 *
-		 * note: must be called from a critical section because 
-		 * finish_vt_rel will call do_switch_scr which releases it
-		 * temporarily.
 		 */
 		DPRINTF(5, ("reset WAIT_REL, "));
 		finish_vt_rel(cur_scp, TRUE);
@@ -2412,9 +2390,6 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 		     * Act as if the controlling program returned
 		     * VT_FALSE.
 		     *
-		     * note: must be called from a critical section because 
-		     * finish_vt_rel will call do_switch_scr which releases it
-		     * temporarily.
 		     */
 		    DPRINTF(5, ("force reset WAIT_REL, "));
 		    finish_vt_rel(cur_scp, FALSE);
@@ -2529,10 +2504,6 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
     return 0;
 }
 
-/*
- * NOTE: must be called from a critical section because do_switch_scr
- * will release it temporarily.
- */
 static void
 do_switch_scr(sc_softc_t *sc)
 {
@@ -2608,10 +2579,6 @@ signal_vt_acq(scr_stat *scp)
     return TRUE;
 }
 
-/*
- * NOTE: must be called from a critical section because do_switch_scr
- * will release it temporarily.
- */
 static int
 finish_vt_rel(scr_stat *scp, int release)
 {
