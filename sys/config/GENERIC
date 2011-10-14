@@ -351,3 +351,8 @@ device		rue		# RealTek 8150 based USB ethernet
 device		firewire	# FireWire bus code
 device		sbp		# SCSI over FireWire (Requires scbus and da)
 device		fwe		# Ethernet over FireWire (non-standard!)
+
+# MMC/SD
+device		mmc
+device		mmcsd
+device		sdhci
