@@ -192,7 +192,7 @@ static int sc_allocate_keyboard(sc_softc_t *sc, int unit);
  * Console locking support functions.
  *
  * We use mutex spinlocks here in order to allow reentrancy which should
- * issues during panics.
+ * avoid issues during panics.
  */
 static void
 syscons_lock(void)
