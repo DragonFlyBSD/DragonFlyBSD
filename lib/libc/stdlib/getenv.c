@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/getenv.c,v 1.15 2008/08/03 22:47:23 scf Exp $
- * $DragonFly: src/lib/libc/stdlib/getenv.c,v 1.5 2005/04/28 13:51:55 joerg Exp $
  */
 
 #include "namespace.h"
@@ -53,7 +52,7 @@ static const char CorruptEnvValueMsg[] =
  *	intEnviron:	Internally-built environ.  Exposed via environ during
  *			(re)builds of the environment.
  */
-extern char **environ;
+char **environ;
 static char **origEnviron;
 static char **intEnviron = NULL;
 static int environSize = 0;
