@@ -40,7 +40,7 @@
  * Supported device vendors/products
  */
 static struct usb_devno lgue_devs[] = {
-	{ USB_DEVICE(0x01004, 0x61a2) } /* LG P500 */
+	{ USB_DEVICE(0x1004, 0x61a2) }	/* LG P500 */
 };
 
 static int lgue_match(device_t);
@@ -302,15 +302,18 @@ lgue_getmtu(struct lgue_softc *sc)
 	usb_interface_descriptor_t *id;
 
 	id = usbd_get_interface_descriptor(sc->lgue_ctl_iface);
-	if (id == NULL) goto bad;
+	if (id == NULL) {
+		kprintf("usbd_get_interface_descriptor() returned NULL\n");
+		return(ETHERMTU);
+	}
+
 	ced = (const usb_cdc_ethernet_descriptor_t *)usb_find_desc_if(sc->lgue_udev,
 	    UDESC_CS_INTERFACE, UDESCSUB_CDC_ETHERNET, id);
-	if (ced == NULL)
-		goto bad;
+	if (ced == NULL) {
+		kprintf("usb_find_desc_if() returned NULL\n");
+		return(ETHERMTU);
+	}
 	return(UGETW(ced->wMaxSegmentSize));
-bad:
-	kprintf("Bad mtu:%d\n", UGETW(ced->wMaxSegmentSize));
-	return(ETHERMTU);
 }
 
 /*
@@ -882,9 +885,6 @@ lgue_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 static void
 lgue_watchdog(struct ifnet *ifp)
 {
-	struct lgue_softc *sc;
-
-	sc = ifp->if_softc;
 	ifp->if_oerrors++;
 
 	if (!ifq_is_empty(&ifp->if_snd))
