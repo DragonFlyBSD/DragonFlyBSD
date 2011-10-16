@@ -50,11 +50,11 @@ dloader_init_cmds(void)
 }
 
 /*
- * This intercepts lines of the form 'a=b'
+ * "local" intercepts assignments: lines of the form 'a=b'
  */
 COMMAND_SET(local, "local", "List local variables", command_local);
 COMMAND_SET(lunset, "lunset", "Unset local variable", command_lunset);
-COMMAND_SET(lunsetif, "lunsetif", "Unset local if envvar set to 1 or YES", command_lunsetif);
+COMMAND_SET(lunsetif, "lunsetif", "Unset local variable if kenv variable is true", command_lunsetif);
 COMMAND_SET(loadall, "loadall", "Load kernel + modules", command_loadall);
 COMMAND_SET(menuclear, "menuclear", "Clear all menus", command_menuclear);
 COMMAND_SET(menuitem, "menuitem", "Add menu bullet", command_menuitem);
@@ -66,6 +66,7 @@ static int curadd;
 
 static char *kenv_vars[] = {
 	"LINES",
+	"acpi_load",
 	"autoboot_delay",
 	"boot_askname",
 	"boot_cdrom",
@@ -79,13 +80,19 @@ static char *kenv_vars[] = {
 	"bootfile",
 	"console",
 	"currdev",
-	"dumpdev",
 	"default_kernel",
+	"dumpdev",
+	"ehci_load",
+	"interpret",
+	"init_chroot",
 	"init_path",
 	"kernel_options",
 	"kernelname",
 	"loaddev",
 	"module_path",
+	"num_ide_disks",
+	"prompt",
+	"rootdev",
 	"root_disk_unit",
 	NULL
 };

@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
 .\"
-.Dd October 6, 2010
+.Dd October 16, 2011
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -130,19 +130,40 @@ If
 is in the list of known kernel environment variables or is a kernel tunable,
 the value is also assigned to the kernel environment variable of the
 given name.
+If the variable name contains a
+.Ql .\&
+it is considered a kernel tunable.
 Local variables are unset if
 .Ar value
 is empty.
-Kernel environment variables may have empty values.
+Kernel environment variable will have empty value.
 .Pp
 In other words, the assignment above will set a local variable and
-if it is applicable, also assign
+if applicable, also assign
 .Ar value
 to the kernel environment variable, even if
 .Ar value
 is empty.
 See also
-.Sx ENVIRONMENT VARIABLES AND LOCAL VARIABLES .
+.Sx KERNEL ENVIRONMENT VARIABLES AND LOCAL VARIABLES .
+.Pp
+.Ar Value
+can be a string or a string expression containing literal text and
+kernel environment variables, like
+.Dq $VAR
+or
+.Dq ${VAR} .
+Escape sequences like
+.Ql \en
+(newline),
+.Ql \et
+(TAB) and
+.Ql \eOOO
+(character with number given in octal)
+can also be used.
+This is actually a general facility of
+.Nm
+which can be used for arguments of all commands.
 .Pp
 .It Ic autoboot Op Ar delay Op Ar prompt
 Proceeds to bootstrap the system after a number of seconds, if not
@@ -180,6 +201,11 @@ Displays text on the screen.
 A new line will be printed unless
 .Fl n
 is specified.
+See description of assignment
+.Pq Ar variable Ns = Ns Ar value
+.Ar value
+for use of kernel environment variables and escape sequences in
+.Ar message .
 .Pp
 .It Ic else
 Conditional if/else/endif.
@@ -206,12 +232,12 @@ will list all topics available.
 .Pp
 .It Ic ifexists Ar path
 Conditional
-Ar path
+.Ar path
 exists, i.e.\& file/dir present.
 .Pp
-.It Ic ifset Ar env_variable
-Conditional
-.Ar env_variable
+.It Ic ifset Ar kenv_variable
+Conditional kernel environment variable
+.Ar kenv_variable
 exists.
 .Pp
 .It Ic include Ar
@@ -231,7 +257,6 @@ Kernel and modules can be either in a.out or
 format.
 Any arguments passed after the name of the file to be loaded
 will be passed as arguments to that file.
-Currently, argument passing does not work for the kernel.
 .Pp
 .It Ic loadall
 Load the kernel and all modules specified by MODULE_load variables.
@@ -245,7 +270,7 @@ is not specified.
 .It Ic ls Oo Fl l Oc Op Ar path
 Displays a listing of files in the directory
 .Ar path ,
-or the root directory if
+or the current directory if
 .Ar path
 is not specified.
 If
@@ -273,11 +298,11 @@ is specified, more details are shown.
 Unset a local variable.
 Discards the value and removes the variable.
 .Pp
-.It Ic lunsetif Ar local_variable env_variable
-Unset
+.It Ic lunsetif Ar local_variable kenv_variable
+Unset local variable
 .Ar local_variable
-if
-.Ar env_variable
+if kernel environment variable
+.Ar kenv_variable
 is true, i.e.\& set to 1 or
 .Ql YES .
 .Pp
@@ -327,65 +352,95 @@ This is not functional at present.
 .It Ic pwd
 Prints the working directory.
 .Pp
-.It Ic read Oo Fl t Ar seconds Oc Oo Fl p Ar prompt Oc Op Ar env_variable
-Reads a line of input from the terminal, storing it in
-.Ar env_variable
+.It Ic read Oo Fl p Ar prompt Oc Oo Fl t Ar seconds Oc Op Ar kenv_variable
+Reads a line of input from the terminal,
+storing it in kernel environment variable
+.Ar kenv_variable
 if specified.
+A prompt may be displayed through the
+.Fl p
+flag.
 A timeout can be specified with
 .Fl t ,
 though it will be canceled at the first key pressed.
-A prompt may also be displayed through the
-.Fl p
-flag.
 .Pp
 .It Ic reboot
 Immediately reboots the system.
 .Pp
-.It Ic set Ar env_variable
-.It Ic set Ar env_variable Ns = Ns Ar value
-Set
-.Nm Ns 's
-environment variables.
+.It Ic set Ar kenv_variable
+.It Ic set Ar kenv_variable Ns = Ns Ar value
+Set kernel environment variable
+.Ar kenv_variable
+to the given value,
+if no
+.Ar value
+is given, the empty string is the value.
 .Pp
-.It Ic show Op Ar env_variable
+.It Ic show Op Ar kenv_variable
 Displays the specified kernel environment variable's value,
 or all variables and their values if
-.Ar env_variable
+.Ar kenv_variable
 is not specified.
 .Pp
 .It Ic unload
 Removes all modules from memory.
 .Pp
-.It Ic unset Ar env_variable
+.It Ic unset Ar kenv_variable
 Removes
-.Ar env_variable
-from the environment.
+.Ar kenv_variable
+from the kernel environment.
 .Pp
 .It Ic \&?
 Lists most available commands with a short help text for each.
 .El
-.Ss ENVIRONMENT VARIABLES AND LOCAL VARIABLES
+.Ss KERNEL ENVIRONMENT VARIABLES AND LOCAL VARIABLES
 The
 .Nm
-has actually two different kinds of variables.
-There are
-kernel environment variables, which are visible to the kernel when it is run,
+actually has two different kinds of variables.
+These are
+kernel environment variables,
+which are visible to the kernel when it is started,
 and a separate space of local variables used by
 .Nm ,
 which are not available to the kernel.
 .Pp
-Environment variables can be set and unset through the
+Both local variable and kernel environment variable
+of the same name are changed by assignment
+.Pq Ar variable Ns = Ns Ar value .
+.Pp
+Kernel environment variables can be set and unset through the
 .Ic set
 and
 .Ic unset
-builtins, and can have their values interactively examined through the
-use of the
+builtins, and can have their values examined through the
 .Ic show
+and
+.Ic ifset
+builtins.
+Variables in command arguments or
+.Ar value
+in assignments
+.Dq ( $VAR
+and
+.Dq ${VAR} )
+refers to kernel environment variables.
+.Pp
+Local variables can be unset with
+.Ic lunset
+and
+.Ic lunsetif
+builtin, and can have their values examined through the
+.Ic local
 builtin.
 .Pp
 Notice that these environment variables are not inherited by any shell
 after the system has been booted, but can be examined by
 .Xr kenv 1 .
+.Pp
+Note that a variable can have two instances with differnet values:
+both a local variable instance and a kernel environment variable instance
+can exist for the same name and with different values.
+This can cause confusion and is seldom done on purpose.
 .Pp
 A few variables are set automatically by
 .Nm .
@@ -397,7 +452,13 @@ while others define behavior just by being set.
 Both types of variables are described below.
 .Bl -tag -width indent
 .It Va acpi_load
-Unset this to disable automatic loading of the ACPI module.
+Used for handling automatic loading of the
+.Xr acpi 4
+module.
+To disable automatic loading of the ACPI module use:
+.Pp
+.Dl lunset acpi_load
+.Dl set hint.acpi.0.disabled=1
 .It Va autoboot_delay
 Number of seconds
 .Ic autoboot
@@ -445,8 +506,33 @@ Syntax for devices is odd.
 Selects default kernel loaded by
 .Ic menu
 command.
+Defaults to
+.Pa kernel .
+.It Va dumpdev
+The name of a device where the kernel can save a crash dump in case
+of a panic.
+This automatically sets the
+.Va kern.dumpdev
+.Xr sysctl 3
+.Tn MIB
+variable.
 .It Va ehci_load
-Unset this to disable automatic loading of the EHCI module.
+Used for handling automatic loading of the
+.Xr ehci.4
+module.
+To disable automatic loading of the EHCI module use:
+.Pp
+.Dl lunset ehci_load
+.Dl set hint.ehci.0.disabled=1
+.It Va init_chroot
+Directory
+.Xr init 8
+will
+.Fn chroot
+to on startup.
+By setting this variable
+.Dx
+can be run from a subdirectory of the root file system.
 .It Va init_path
 Sets the list of binaries which the kernel will try to run as the initial
 process.
@@ -479,6 +565,18 @@ Value of
 prompt.
 Defaults to
 .Dq Li OK .
+Kernel environment variables can be used in
+.Va prompt
+by including
+.Dq Li ${VAR} .
+E.g. (note that
+.Ql $
+must be escaped with
+.Ql \e
+to be included in
+.Va prompt ) :
+.Pp
+.Dl "set prompt=\*q\e${currdev} OK\*q"
 .It Va root_disk_unit
 If the code which detects the disk unit number for the root disk is
 confused, e.g.\& by a mix of
@@ -490,6 +588,10 @@ disks, or
 disks with
 gaps in the sequence (e.g.\& no primary slave), the unit number can
 be forced by setting this variable.
+.Pp
+See also
+.Va vfs.root.mountfrom
+variable.
 .It Va rootdev
 By default the value of
 .Va currdev
@@ -498,13 +600,9 @@ when the kernel is booted.
 This can be overridden by setting
 .Va rootdev
 explicitly.
-.It Va dumpdev
-The name of a device where the kernel can save a crash dump in case
-of a panic.
-This automatically sets the
-.Va kern.dumpdev
-.Xr sysctl 3
-.Tn MIB
+.Pp
+See also
+.Va vfs.root.mountfrom
 variable.
 .El
 .Pp
@@ -513,6 +611,11 @@ The following
 .Nm
 tunables are available:
 .Bl -tag -width indent
+.It Va hw.ioapic_enable
+Control use of
+.Tn I/O APIC .
+Set to 1 to enable, 0 to disable.
+Default is 1.
 .It Va hw.irq.X.dest
 Set irqX's destination to the given
 .Tn CPUID ,
@@ -523,8 +626,8 @@ then the first
 .Tn CPUID
 will be used.
 This variable should not be used if
-.Tn IO/APIC
-support is not compiled into kernel.
+.Tn I/O APIC
+use is disabled.
 .It Va hw.physmem
 Limit the amount of physical memory the system will use.
 By default the size is in bytes, but the
@@ -651,39 +754,44 @@ You may not specify devtab labels here but you can specify paths available to
 .Xr devfs 5
 such as:
 .Dl hammer:serno/L41JYE0G.s1d
+.It Va vfs.root.realroot
+Root file system and extra options for
+.Nm initrd .
+See
+.Xr mkinitrd 8 .
 .El
 .Sh FILES
 .Bl -tag -width /boot/defaults/dloader.menu -compact
 .It Pa /boot/boot.conf
 .Nm
 bootstrapping script.
-Deprecated.
-.It Pa /boot/loader
-.Nm
-itself.
+Deprecated
 .It Pa /boot/defaults/dloader.menu
 .Nm
-menu setup commands -- do not change this file.
+menu setup commands -- do not change this file
 .It Pa /boot/defaults/loader.conf
 .Nm
 configuration file, see
 .Xr loader.conf 5
--- do not change this file.
+-- do not change this file
 .It Pa /boot/dloader.menu
 .Nm
-menu setup commands.
+menu setup commands
 .It Pa /boot/dloader.rc
 .Nm
-bootstrapping script.
+bootstrapping script
+.It Pa /boot/loader
+.Nm
+itself
 .It Pa /boot/loader.conf
 .It Pa /boot/loader.conf.local
 .Nm
 configuration files, see
-.Xr loader.conf 5 .
+.Xr loader.conf 5
 .It Pa /boot/loader.help
 help messages, used by the
 .Ic help
-command.
+command
 .El
 .Sh EXAMPLES
 Boot in single user mode:
@@ -719,11 +827,16 @@ set root_disk_unit=2
 boot kernel
 .Ed
 .Sh SEE ALSO
+.Xr kenv 1 ,
 .Xr libstand 3 ,
+.Xr acpi 4,
+.Xr ehci 4,
 .Xr loader.conf 5 ,
 .Xr tuning 7 ,
 .Xr boot 8 ,
 .Xr btxld 8 ,
+.Xr cryptsetup 8 ,
+.Xr lvm 8 ,
 .Xr pxeboot 8 ,
 .Xr pxeboot_tftp 8 ,
 .Xr sysctl 8
@@ -747,3 +860,6 @@ was written by
 .Nm dloader
 was written by
 .An Matthew Dillon Aq dillon@backplane.com .
+.Sh BUGS
+A variable can have two instances: local & kernel environment,
+this can cause confusion.

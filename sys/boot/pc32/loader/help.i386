@@ -6,10 +6,12 @@
 	The ACPI driver provides support for the Advanced Configuration and
 	Power Management standard.
 
+	The ACPI kernel module is by default loaded automatically.
+
 	If the acpi_load variable is set, the ACPI module will be loaded.
 	The ACPI driver can be disabled with:
 
-		unset acpi_load
+		lunset acpi_load
 		set hint.acpi.0.disabled=1
 
 	Note that the ACPI autodetection sets a number of hints to
@@ -69,5 +71,7 @@
 	confused, e.g. by a mix of SCSI and IDE disks, or IDE disks with
 	gaps in the sequence (i.e. no primary slave), the unit number can be
 	forced by setting this variable.
+
+	See also vfs.root.mountfrom variable, under `set tunables' help item.
 
 ################################################################################
