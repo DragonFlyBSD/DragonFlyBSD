@@ -25,17 +25,17 @@
 
 	If needed, disable the ACPI driver with:
 
-		unset acpi_load
+		lunset acpi_load
 		set hint.acpi.0.disabled=1
 
 	If needed, disable the AHCI driver with:
 
-		unset ahci_load
+		lunset ahci_load
 		set hint.ahci.0.disabled=1
 
 	If needed, disable the EHCI driver with:
 
-		unset ehci_load
+		lunset ehci_load
 		set hint.ehci.0.disabled=1
 
 	For more information on ACPI, AHCI and EHCI use `help' on these topics.
@@ -47,16 +47,26 @@
 
 	Assign value to variable.  The value is always assigned to local
 	variable <variable>.  If <variable> is in the list of known kernel
-	environment variables or is a kernel tunable, the value is also
+	environment (kenv) variables or is a kernel tunable, the value is also
 	assigned to the kernel environment variable of the given name.
+	If the variable name contains a `.' it is considered a kernel tunable.
 	Local variables are unset if <value> is empty.  Kernel environment
-	variables may have empty values.
+	variables will have empty value.
 
-	Two kinds of variables are maintained by this program (loader(8)):
+	Two kinds of variables are maintained by loader(8) (this program):
 	local variables, that is for loader(8) use only, and kernel
 	environment variables, that kernel will have access to when it starts.
-	The assignment described above, will assign to a local variable and, if
-	it is applicable, also snoop assignment to kernel environment variable.
+	The assignment described above, will assign to a local variable and,
+	if applicable, also snoop assignment to kernel environment variable.
+
+	<value> can be a string or a string expressions containing literal
+	text and kernel environment variables, like `$VAR' or `${VAR}'.  E.g.:
+
+		VAR="Current device is $currdev"
+
+	Escape sequences like `\n' (newline) and `\OOO' (character with number
+	given in octal) can also be used.  This is actually a general facility
+	of loader(8) which can be used for arguments of all commands.
 
 ################################################################################
 # TAHCI DControl AHCI module behaviour
@@ -73,7 +83,7 @@
 	If the ahci_load variable is set, the AHCI module will be loaded.
 	The AHCI driver can be disabled with:
 
-		unset ahci_load
+		lunset ahci_load
 		set hint.ahci.0.disabled=1
 
 	A link speed of 1.5Gb/s can be enforced with:
@@ -105,6 +115,7 @@
 	arguments for the kernel.  If <kernelname> is specified, and a kernel
 	has not already been loaded, it will be booted instead of the default
 	kernel.  <flag> values include:
+
 	-a  Same as `set boot_askname'
 	-C  Same as `set boot_cdrom'
 	-c  Same as `set boot_userconfig'
@@ -126,10 +137,10 @@
 
 	echo [-n] [<message>]
 
-	Emits <message>, with no trailing newline if -n is specified.  This is
-	most useful in conjunction with scripts and the '@' line prefix.
+	Emits <message>, with no trailing newline if -n is specified.
 
-	Variables are substituted by prefixing them with $, e.g.
+	Kernel environment variables are substituted by prefixing them with
+	`$', like `$VAR'; another variant is `${VAR}'.  E.g.:
 
 		echo Current device is $currdev
 
@@ -143,10 +154,12 @@
 	The EHCI driver provides support for the USB Enhanched Host Controller
 	Interface, which is used by USB 2.0 controllers.
 
+	The EHCI kernel module is by default loaded automatically.
+
 	If the ehci_load variable is set, the EHCI module will be loaded.
 	The EHCI driver can be disabled with:
 
-		unset ehci_load
+		lunset ehci_load
 		set hint.ehci.0.disabled=1
 
 	See ehci.4 man page (on booted system) for full description.
@@ -217,8 +230,8 @@
 ################################################################################
 # Tset DSet a kernel environment variable
 
-	set <env_variable>
-	set <env_variable>=<value>
+	set <kenv_variable>
+	set <kenv_variable>=<value>
 
 	The set command is used to set kernel environment variables.
 
@@ -339,13 +352,21 @@
 	Selects the default device.  See `lsdev' for available devices.
 
 ################################################################################
-# Tset Sinit_path DSet the list of init candidates
+# Tset Sinit_chroot DSet directory that init(8) will chroot() to
+
+	set init_chroot=<path>
+
+	If set, init(8) will chroot() to <path> on startup.  By setting this
+	variable DragonFly can be run from a subdirectory of the root file
+	system.
+
+################################################################################
+# Tset Sinit_path DSet the list of init(8) candidates
 
 	set init_path=<path>[:<path>...]
 
 	Sets the list of binaries which the kernel will try to run as initial
 	process.
-
 
 ################################################################################
 # Tset Smodule_path DSet the module search path
@@ -375,25 +396,36 @@
 	when the kernel is booted.  This can be overridden by setting
 	$rootdev explicitly.
 
+	See also vfs.root.mountfrom variable, under `set tunables' help item.
+
 ################################################################################
 # Tset Stunables DSet kernel tunable values
 
 	Various kernel tunable parameters can be overridden by specifying new
 	values in the environment.
 
+	set hw.ioapic_enable=<value>
+
+		Set to 0 to disable use of I/O APIC.  Default value is 1.
+
+	set hw.irq.X.dest=<value>
+
+		Set irqX's destination to the given CPUID, which starts from 0.
+		This variable should not be used if I/O APIC use is disabled.
+
 	set hw.pci.allow_unsupported_io_range=<value>
 
 		Allow the PCI Bridge to pass through an unsupported
 		memory range assigned by the BIOS.
 
-		value is 0 (default) or non-zero to enable.
+		Value is 0 (default) or non-zero to enable.
 
 	set hw.pci.enable_io_modes=<value>
 
 		Enable PCI resources which are left off by some BIOSes
 		or are not enabled correctly by the device driver.
 
-		value is 1 (default), but this may cause problems with
+		Value is 1 (default), but this may cause problems with
 		some peripherals.  Set to 0 to disable.
 
 	set hw.physmem=<value>			MAXMEM
@@ -412,9 +444,14 @@
 
 		Disable VT switching on suspend.
 
-		value is 0 (default) or non-zero to enable.
+		Value is 0 (default) or non-zero to enable.
 
-	set kern.emergence_intr_enable=<value>
+	set hw.usb.hack_defer_exploration=<value>
+
+		The USB keyboard will sometimes not attach properly unless
+		you set this variable to 0.
+
+	set kern.emergency_intr_enable=<value>
 
 		Setting this to 1 enables emergency interrupt polling.  All
 		interrupt handlers are executed periodically.  This mode is
@@ -422,7 +459,7 @@
 		accessible when interrupt routing is otherwise broken.  It
 		is primarily used by kernel developers to debug new systems.
 
-	set kern.emergence_intr_freq=<value>
+	set kern.emergency_intr_freq=<value>
 
 		Set the polling rate for the emergency interrupt polling
 		code.  The default is 10 (hz) to dissuade causual use.  If
@@ -454,18 +491,22 @@
 
 		Specify root file system.  <value> is a semicolon separated
 		list of file systems.  File system format is file system type
-		and disk store, separated by colon.  This variable needs to be
-		set when using boot-only partition, which is typically mounted
-		on root file system as /boot.
+		and disk store, separated by colon.
+
+		This variable needs to be set when using boot-only partition,
+		which is typically mounted on root file system as /boot.
 
 		One file system example:
-			hammer:da8se1a
+
+			"hammer:da8se1a"
 
 		One file system HAMMER multi volume examples:
-			hammer:da8s1a:da9s1a
+
+			"hammer:da8s1a:da9s1a"
 
 		Several file systems, boot list, example:
-			ufs:da0s1a;hammer:ad1s1d
+
+			"ufs:da0s1a;hammer:ad1s1d"
 
 		Each file system in the list will be tried in the order
 		specified until the mount succeeds.  If all fail, the
@@ -473,14 +514,38 @@
 
 		You may not specify devtab labels here but you can specify
 		paths available to devfs such as:
-			hammer:serno/L41JYE0G.s1d
+
+			"hammer:serno/L41JYE0G.s1d"
+
+	set vfs.root.realroot=<value>
+
+		Specify root file system and extra options for initrd.
+
+		Format of <value> is below, TYPE is `local' or `crypt',
+		arg's depend on TYPE:
+
+			"TYPE:arg1:arg2:...:argN"
+
+		Examples of <value>:
+
+		Use UFS file system on lvm(8) volume group `vg00' logical
+		volume `lv0' as real root:
+
+			"local:ufs:/dev/vg00/lv0"
+
+		Use UFS file system on encrypted volume `secvolume', managed by
+		cryptsetup(8), on device `/dev/ad0s0a' as real root:
+
+			"crypt:ufs:/dev/ad0s0a:secvolume"
+
+		See mkinitrd.8 man page (on booted system) for full description.
 
 ################################################################################
 # Tshow DShow values of kernel environment variable
 
-	show [<env_variable>]
+	show [<kenv_variable>]
 
-	Displays the value of <env_variable>, or all kernel environment
+	Displays the value of <kenv_variable>, or all kernel environment
 	variables if not specified.
 
 	See also `<variable>=<value>' command for distinction on local and
@@ -547,11 +612,12 @@
 	kernel environment variables.
 
 ################################################################################
-# Tlunsetif DUnset local variables if envvar true
+# Tlunsetif DUnset local variable if kenv variable true
 
-	lunsetif <local_variable> <env_variable>
+	lunsetif <local_variable> <kenv_variable>
 
-	Unset <local_variable> if <env_variable> is true, i.e. set to 1 or YES.
+	Unset local variable <local_variable> if kernel environment variable
+	<kenv_variable> is true, i.e. set to 1 or YES.
 
 	See also `<variable>=<value>' command for distinction on local and
 	kernel environment variables.
@@ -573,9 +639,9 @@
 ################################################################################
 # Tifset DConditional kenv variable present
 
-	ifset <env_variable>
+	ifset <kenv_variable>
 
-	Conditional <env_variable> exists.
+	Conditional kernel environment variable <kenv_variable> exists.
 
 ################################################################################
 # Telseifexists DConditional file/dir present
@@ -632,20 +698,20 @@
 	Run menu system.
 
 ################################################################################
-# Tread DRead input from the terminal
+# Tread DRead input from terminal to kenv variable
 
-	read [-t <value>] [-p <prompt>] [<env_variable>]
+	read [-p <prompt>] [-t <value>] [<kenv_variable>]
 
-	The read command reads a line of input from the terminal.  If the
-	-t argument is specified, it will return nothing if no input has been
-	received after <value> seconds.  (Any keypress will cancel the
-	timeout).
+	The read command reads a line of input from the terminal.
 
 	If -p is specified, <prompt> is printed before reading input.  No
 	newline is emitted after the prompt.
 
-	If a variable name is supplied, the variable is set to the value read,
-	less any terminating newline.
+	If -t is specified, it will return nothing if no input has been
+	received after <value> seconds.  Any keypress will cancel the timeout.
+
+	If <kenv_variable> is supplied, the kernel environment variable is set
+	to the value read, less any terminating newline.
 
 ################################################################################
 # Tunload DRemove all modules from memory
@@ -657,7 +723,7 @@
 ################################################################################
 # Tunset DUnset a kernel environment variable
 
-	unset <env_variable>
+	unset <kenv_variable>
 
 	If allowed, the named kernel environment variable's value is discarded
 	and the variable is removed.

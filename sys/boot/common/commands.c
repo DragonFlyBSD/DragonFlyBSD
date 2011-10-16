@@ -73,7 +73,7 @@ help_getnext(int fd, char **topic, char **subtopic, char **desc)
 
 	*topic = *subtopic = *desc = NULL;
 	cp = line + 2;
-	while((cp != NULL) && (*cp != 0)) {
+	while ((cp != NULL) && (*cp != 0)) {
 	    ep = strchr(cp, ' ');
 	    if ((*cp == 'T') && (*topic == NULL)) {
 		if (ep != NULL)
@@ -163,14 +163,14 @@ command_help(int argc, char *argv[])
     
     /* Scan the helpfile looking for help matching the request */
     pager_open();
-    while(help_getnext(hfd, &t, &s, &d)) {
+    while (help_getnext(hfd, &t, &s, &d)) {
 
 	if (doindex) {		/* dink around formatting */
 	    help_emitsummary(t, s, d);
 
 	} else if (strcmp(topic, t)) {
 	    /* topic mismatch */
-	    if(matched)		/* nothing more on this topic, stop scanning */
+	    if (matched)	/* nothing more on this topic, stop scanning */
 		break;
 
 	} else {
@@ -179,7 +179,7 @@ command_help(int argc, char *argv[])
 	    if (((subtopic == NULL) && (s == NULL)) ||
 		((subtopic != NULL) && (s != NULL) && !strcmp(subtopic, s))) {
 		/* exact match, print text */
-		while((fgetstr(buf, 80, hfd) >= 0) && (buf[0] != '#')) {
+		while ((fgetstr(buf, 80, hfd) >= 0) && (buf[0] != '#')) {
 		    if (pager_output(buf))
 			break;
 		    if (pager_output("\n"))
@@ -236,7 +236,7 @@ command_commandlist(int argc, char *argv[])
  * substitution happening.
  */
 
-COMMAND_SET(show, "show", "show variable(s)", command_show);
+COMMAND_SET(show, "show", "show kenv variable(s)", command_show);
 
 static int
 command_show(int argc, char *argv[])
@@ -271,7 +271,7 @@ command_show(int argc, char *argv[])
     return(CMD_OK);
 }
 
-COMMAND_SET(set, "set", "set a variable", command_set);
+COMMAND_SET(set, "set", "set a kenv variable", command_set);
 
 static int
 command_set(int argc, char *argv[])
@@ -290,7 +290,7 @@ command_set(int argc, char *argv[])
     return(CMD_OK);
 }
 
-COMMAND_SET(unset, "unset", "unset a variable", command_unset);
+COMMAND_SET(unset, "unset", "unset a kenv variable", command_unset);
 
 static int
 command_unset(int argc, char *argv[]) 
@@ -305,7 +305,7 @@ command_unset(int argc, char *argv[])
     return(CMD_OK);
 }
 
-COMMAND_SET(echo, "echo", NULL, command_echo);
+COMMAND_SET(echo, "echo", "print text ($VAR is kenv variable)", command_echo);
 
 static int
 command_echo(int argc, char *argv[])
@@ -344,7 +344,7 @@ command_echo(int argc, char *argv[])
  * A passable emulation of the sh(1) command of the same name.
  */
 
-COMMAND_SET(read, "read", NULL, command_read);
+COMMAND_SET(read, "read", "read to kenv variable", command_read);
 
 static int
 command_read(int argc, char *argv[])
@@ -381,6 +381,10 @@ command_read(int argc, char *argv[])
 
     argv += (optind);
     argc -= (optind);
+    if (argc > 1) {
+	command_errmsg = "wrong number of arguments";
+	return(CMD_ERROR);
+    }
     name = (argc > 0) ? argv[0]: NULL;
 	
     if (prompt != NULL)
