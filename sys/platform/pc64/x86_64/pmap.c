@@ -3876,7 +3876,13 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 #ifdef SMP
 
 /*
- * Called when switching to a locked pmap
+ * Called when switching to a locked pmap, used to interlock against pmaps
+ * undergoing modifications to prevent us from activating the MMU for the
+ * target pmap until all such modifications have completed.  We have to do
+ * this because the thread making the modifications has already set up its
+ * SMP synchronization mask.
+ *
+ * No requirements.
  */
 void
 pmap_interlock_wait(struct vmspace *vm)
@@ -3885,11 +3891,12 @@ pmap_interlock_wait(struct vmspace *vm)
 
 	if (pmap->pm_active & CPUMASK_LOCK) {
 		DEBUG_PUSH_INFO("pmap_interlock_wait");
+		crit_enter();
 		while (pmap->pm_active & CPUMASK_LOCK) {
-			cpu_pause();
 			cpu_ccfence();
 			lwkt_process_ipiq();
 		}
+		crit_exit();
 		DEBUG_POP_INFO();
 	}
 }
