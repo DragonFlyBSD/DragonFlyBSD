@@ -160,7 +160,7 @@ static int randomize_mmap;
 SYSCTL_INT(_vm, OID_AUTO, randomize_mmap, CTLFLAG_RW, &randomize_mmap, 0,
     "Randomize mmap offsets");
 
-static void vm_map_entry_shadow(vm_map_entry_t entry);
+static void vm_map_entry_shadow(vm_map_entry_t entry, int addref);
 static vm_map_entry_t vm_map_entry_create(vm_map_t map, int *);
 static void vm_map_entry_dispose (vm_map_t map, vm_map_entry_t entry, int *);
 static void _vm_map_clip_end (vm_map_t, vm_map_entry_t, vm_offset_t, int *);
@@ -169,7 +169,6 @@ static void vm_map_entry_delete (vm_map_t, vm_map_entry_t, int *);
 static void vm_map_entry_unwire (vm_map_t, vm_map_entry_t);
 static void vm_map_copy_entry (vm_map_t, vm_map_t, vm_map_entry_t,
 		vm_map_entry_t);
-static void vm_map_split (vm_map_entry_t);
 static void vm_map_unclip_range (vm_map_t map, vm_map_entry_t start_entry, vm_offset_t start, vm_offset_t end, int *count, int flags);
 
 /*
@@ -248,18 +247,18 @@ vmspace_alloc(vm_offset_t min, vm_offset_t max)
 {
 	struct vmspace *vm;
 
-	lwkt_gettoken(&vmspace_token);
 	vm = sysref_alloc(&vmspace_sysref_class);
 	bzero(&vm->vm_startcopy,
 	      (char *)&vm->vm_endcopy - (char *)&vm->vm_startcopy);
 	vm_map_init(&vm->vm_map, min, max, NULL);
 	pmap_pinit(vmspace_pmap(vm));		/* (some fields reused) */
+	lwkt_gettoken(&vm->vm_map.token);
 	vm->vm_map.pmap = vmspace_pmap(vm);		/* XXX */
 	vm->vm_shm = NULL;
 	vm->vm_exitingcnt = 0;
 	cpu_vmspace_alloc(vm);
 	sysref_activate(&vm->vm_sysref);
-	lwkt_reltoken(&vmspace_token);
+	lwkt_reltoken(&vm->vm_map.token);
 
 	return (vm);
 }
@@ -302,14 +301,14 @@ vmspace_terminate(struct vmspace *vm)
 	 * If exitingcnt is non-zero we can't get rid of the entire vmspace
 	 * yet, but we can scrap user memory.
 	 */
-	lwkt_gettoken(&vmspace_token);
+	lwkt_gettoken(&vm->vm_map.token);
 	if (vm->vm_exitingcnt) {
 		shmexit(vm);
 		pmap_remove_pages(vmspace_pmap(vm), VM_MIN_USER_ADDRESS,
 				  VM_MAX_USER_ADDRESS);
 		vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
 			      VM_MAX_USER_ADDRESS);
-		lwkt_reltoken(&vmspace_token);
+		lwkt_reltoken(&vm->vm_map.token);
 		return;
 	}
 	cpu_vmspace_free(vm);
@@ -334,9 +333,11 @@ vmspace_terminate(struct vmspace *vm)
 	vm_map_unlock(&vm->vm_map);
 	vm_map_entry_release(count);
 
+	lwkt_gettoken(&vmspace_pmap(vm)->pm_token);
 	pmap_release(vmspace_pmap(vm));
+	lwkt_reltoken(&vmspace_pmap(vm)->pm_token);
+	lwkt_reltoken(&vm->vm_map.token);
 	sysref_put(&vm->vm_sysref);
-	lwkt_reltoken(&vmspace_token);
 }
 
 /*
@@ -362,9 +363,9 @@ vmspace_unlock(struct vmspace *vm __unused)
 void
 vmspace_exitbump(struct vmspace *vm)
 {
-	lwkt_gettoken(&vmspace_token);
+	lwkt_gettoken(&vm->vm_map.token);
 	++vm->vm_exitingcnt;
-	lwkt_reltoken(&vmspace_token);
+	lwkt_reltoken(&vm->vm_map.token);
 }
 
 /*
@@ -378,13 +379,16 @@ vmspace_exitfree(struct proc *p)
 {
 	struct vmspace *vm;
 
-	lwkt_gettoken(&vmspace_token);
 	vm = p->p_vmspace;
+	lwkt_gettoken(&vm->vm_map.token);
 	p->p_vmspace = NULL;
 
-	if (--vm->vm_exitingcnt == 0 && sysref_isinactive(&vm->vm_sysref))
+	if (--vm->vm_exitingcnt == 0 && sysref_isinactive(&vm->vm_sysref)) {
+		lwkt_reltoken(&vm->vm_map.token);
 		vmspace_terminate(vm);
-	lwkt_reltoken(&vmspace_token);
+	} else {
+		lwkt_reltoken(&vm->vm_map.token);
+	}
 }
 
 /*
@@ -396,15 +400,15 @@ vmspace_exitfree(struct proc *p)
  * No requirements.
  */
 int
-vmspace_swap_count(struct vmspace *vmspace)
+vmspace_swap_count(struct vmspace *vm)
 {
-	vm_map_t map = &vmspace->vm_map;
+	vm_map_t map = &vm->vm_map;
 	vm_map_entry_t cur;
 	vm_object_t object;
 	int count = 0;
 	int n;
 
-	lwkt_gettoken(&vmspace_token);
+	lwkt_gettoken(&vm->vm_map.token);
 	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
 		switch(cur->maptype) {
 		case VM_MAPTYPE_NORMAL:
@@ -421,7 +425,7 @@ vmspace_swap_count(struct vmspace *vmspace)
 			break;
 		}
 	}
-	lwkt_reltoken(&vmspace_token);
+	lwkt_reltoken(&vm->vm_map.token);
 	return(count);
 }
 
@@ -433,14 +437,14 @@ vmspace_swap_count(struct vmspace *vmspace)
  * No requirements.
  */
 int
-vmspace_anonymous_count(struct vmspace *vmspace)
+vmspace_anonymous_count(struct vmspace *vm)
 {
-	vm_map_t map = &vmspace->vm_map;
+	vm_map_t map = &vm->vm_map;
 	vm_map_entry_t cur;
 	vm_object_t object;
 	int count = 0;
 
-	lwkt_gettoken(&vmspace_token);
+	lwkt_gettoken(&vm->vm_map.token);
 	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
 		switch(cur->maptype) {
 		case VM_MAPTYPE_NORMAL:
@@ -457,7 +461,7 @@ vmspace_anonymous_count(struct vmspace *vmspace)
 			break;
 		}
 	}
-	lwkt_reltoken(&vmspace_token);
+	lwkt_reltoken(&vm->vm_map.token);
 	return(count);
 }
 
@@ -497,6 +501,7 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max, pmap_t pmap)
 	map->hint = &map->header;
 	map->timestamp = 0;
 	map->flags = 0;
+	lwkt_token_init(&map->token, "vm_map");
 	lockinit(&map->lock, "thrd_sleep", (hz + 9) / 10, 0);
 	TUNABLE_INT("vm.cache_vmspaces", &vmspace_sysref_class.nom_cache);
 }
@@ -520,14 +525,14 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max, pmap_t pmap)
  */
 static
 void
-vm_map_entry_shadow(vm_map_entry_t entry)
+vm_map_entry_shadow(vm_map_entry_t entry, int addref)
 {
 	if (entry->maptype == VM_MAPTYPE_VPAGETABLE) {
 		vm_object_shadow(&entry->object.vm_object, &entry->offset,
-				 0x7FFFFFFF);	/* XXX */
+				 0x7FFFFFFF, addref);	/* XXX */
 	} else {
 		vm_object_shadow(&entry->object.vm_object, &entry->offset,
-				 atop(entry->end - entry->start));
+				 atop(entry->end - entry->start), addref);
 	}
 	entry->eflags &= ~MAP_ENTRY_NEEDS_COPY;
 }
@@ -743,12 +748,8 @@ vm_map_entry_dispose(vm_map_t map, vm_map_entry_t entry, int *countp)
  * Insert/remove entries from maps.
  *
  * The related map must be exclusively locked.
+ * The caller must hold map->token
  * No other requirements.
- *
- * NOTE! We currently acquire the vmspace_token only to avoid races
- *	 against the pageout daemon's calls to vmspace_*_count(), which
- *	 are unable to safely lock the vm_map without potentially
- *	 deadlocking.
  */
 static __inline void
 vm_map_entry_link(vm_map_t map,
@@ -757,7 +758,6 @@ vm_map_entry_link(vm_map_t map,
 {
 	ASSERT_VM_MAP_LOCKED(map);
 
-	lwkt_gettoken(&vmspace_token);
 	map->nentries++;
 	entry->prev = after_where;
 	entry->next = after_where->next;
@@ -765,7 +765,6 @@ vm_map_entry_link(vm_map_t map,
 	after_where->next = entry;
 	if (vm_map_rb_tree_RB_INSERT(&map->rb_root, entry))
 		panic("vm_map_entry_link: dup addr map %p ent %p", map, entry);
-	lwkt_reltoken(&vmspace_token);
 }
 
 static __inline void
@@ -781,14 +780,12 @@ vm_map_entry_unlink(vm_map_t map,
 		panic("vm_map_entry_unlink: attempt to mess with "
 		      "locked entry! %p", entry);
 	}
-	lwkt_gettoken(&vmspace_token);
 	prev = entry->prev;
 	next = entry->next;
 	next->prev = prev;
 	prev->next = next;
 	vm_map_rb_tree_RB_REMOVE(&map->rb_root, entry);
 	map->nentries--;
-	lwkt_reltoken(&vmspace_token);
 }
 
 /*
@@ -861,10 +858,11 @@ vm_map_lookup_entry(vm_map_t map, vm_offset_t address, vm_map_entry_t *entry)
  * address range.  The object's size should match that of the address range.
  *
  * The map must be exclusively locked.
+ * The object must be held.
  * The caller must have reserved sufficient vm_map_entry structures.
  *
- * If object is non-NULL, ref count must be bumped by caller
- * prior to making call to account for the new entry.
+ * If object is non-NULL, ref count must be bumped by caller prior to
+ * making call to account for the new entry.
  */
 int
 vm_map_insert(vm_map_t map, int *countp,
@@ -878,8 +876,11 @@ vm_map_insert(vm_map_t map, int *countp,
 	vm_map_entry_t prev_entry;
 	vm_map_entry_t temp_entry;
 	vm_eflags_t protoeflags;
+	int must_drop = 0;
 
 	ASSERT_VM_MAP_LOCKED(map);
+	if (object)
+		ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 
 	/*
 	 * Check that the start and end points are not bogus.
@@ -925,8 +926,7 @@ vm_map_insert(vm_map_t map, int *countp,
 	if (cow & MAP_IS_KSTACK)
 		protoeflags |= MAP_ENTRY_KSTACK;
 
-	lwkt_gettoken(&vm_token);
-	lwkt_gettoken(&vmobj_token);
+	lwkt_gettoken(&map->token);
 
 	if (object) {
 		/*
@@ -934,7 +934,6 @@ vm_map_insert(vm_map_t map, int *countp,
 		 * process.  We have to set or clear OBJ_ONEMAPPING 
 		 * appropriately.
 		 */
-
 		if ((object->ref_count > 1) || (object->shadow_count != 0)) {
 			vm_object_clear_flag(object, OBJ_ONEMAPPING);
 		}
@@ -957,11 +956,10 @@ vm_map_insert(vm_map_t map, int *countp,
 		if ((prev_entry->inheritance == VM_INHERIT_DEFAULT) &&
 		    (prev_entry->protection == prot) &&
 		    (prev_entry->max_protection == max)) {
-			lwkt_reltoken(&vmobj_token);
-			lwkt_reltoken(&vm_token);
 			map->size += (end - prev_entry->end);
 			prev_entry->end = end;
 			vm_map_simplify_entry(map, prev_entry, countp);
+			lwkt_reltoken(&map->token);
 			return (KERN_SUCCESS);
 		}
 
@@ -974,11 +972,13 @@ vm_map_insert(vm_map_t map, int *countp,
 		object = prev_entry->object.vm_object;
 		offset = prev_entry->offset +
 			(prev_entry->end - prev_entry->start);
-		vm_object_reference_locked(object);
+		if (object) {
+			vm_object_hold(object);
+			vm_object_chain_wait(object);
+			vm_object_reference_locked(object);
+			must_drop = 1;
+		}
 	}
-
-	lwkt_reltoken(&vmobj_token);
-	lwkt_reltoken(&vm_token);
 
 	/*
 	 * NOTE: if conditionals fail, object can be NULL here.  This occurs
@@ -1045,7 +1045,10 @@ vm_map_insert(vm_map_t map, int *countp,
 				    object, OFF_TO_IDX(offset), end - start,
 				    cow & MAP_PREFAULT_PARTIAL);
 	}
+	if (must_drop)
+		vm_object_drop(object);
 
+	lwkt_reltoken(&map->token);
 	return (KERN_SUCCESS);
 }
 
@@ -1178,8 +1181,9 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 
 /*
  * vm_map_find finds an unallocated region in the target address map with
- * the given length.  The search is defined to be first-fit from the
- * specified address; the region found is returned in the same parameter.
+ * the given length and allocates it.  The search is defined to be first-fit
+ * from the specified address; the region found is returned in the same
+ * parameter.
  *
  * If object is non-NULL, ref count must be bumped by caller
  * prior to making call to account for the new entry.
@@ -1202,6 +1206,8 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
+	if (object)
+		vm_object_hold(object);
 	if (fitit) {
 		if (vm_map_findspace(map, start, length, align, 0, addr)) {
 			vm_map_unlock(map);
@@ -1215,6 +1221,8 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 			       maptype,
 			       prot, max,
 			       cow);
+	if (object)
+		vm_object_drop(object);
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
 
@@ -1350,7 +1358,12 @@ _vm_map_clip_start(vm_map_t map, vm_map_entry_t entry, vm_offset_t start,
 	switch(entry->maptype) {
 	case VM_MAPTYPE_NORMAL:
 	case VM_MAPTYPE_VPAGETABLE:
-		vm_object_reference(new_entry->object.vm_object);
+		if (new_entry->object.vm_object) {
+			vm_object_hold(new_entry->object.vm_object);
+			vm_object_chain_wait(new_entry->object.vm_object);
+			vm_object_reference_locked(new_entry->object.vm_object);
+			vm_object_drop(new_entry->object.vm_object);
+		}
 		break;
 	default:
 		break;
@@ -1407,7 +1420,12 @@ _vm_map_clip_end(vm_map_t map, vm_map_entry_t entry, vm_offset_t end,
 	switch(entry->maptype) {
 	case VM_MAPTYPE_NORMAL:
 	case VM_MAPTYPE_VPAGETABLE:
-		vm_object_reference(new_entry->object.vm_object);
+		if (new_entry->object.vm_object) {
+			vm_object_hold(new_entry->object.vm_object);
+			vm_object_chain_wait(new_entry->object.vm_object);
+			vm_object_reference_locked(new_entry->object.vm_object);
+			vm_object_drop(new_entry->object.vm_object);
+		}
 		break;
 	default:
 		break;
@@ -2075,7 +2093,7 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 					       MAP_ENTRY_NEEDS_COPY;
 				if (copyflag && ((entry->protection &
 						  VM_PROT_WRITE) != 0)) {
-					vm_map_entry_shadow(entry);
+					vm_map_entry_shadow(entry, 0);
 				} else if (entry->object.vm_object == NULL &&
 					   !map->system_map) {
 					vm_map_entry_allocate_object(entry);
@@ -2272,7 +2290,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 					       MAP_ENTRY_NEEDS_COPY;
 				if (copyflag && ((entry->protection &
 						  VM_PROT_WRITE) != 0)) {
-					vm_map_entry_shadow(entry);
+					vm_map_entry_shadow(entry, 0);
 				} else if (entry->object.vm_object == NULL &&
 					   !map->system_map) {
 					vm_map_entry_allocate_object(entry);
@@ -2438,6 +2456,7 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	vm_map_entry_t entry;
 	vm_size_t size;
 	vm_object_t object;
+	vm_object_t tobj;
 	vm_ooffset_t offset;
 
 	vm_map_lock_read(map);
@@ -2446,6 +2465,8 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		vm_map_unlock_read(map);
 		return (KERN_INVALID_ADDRESS);
 	}
+	lwkt_gettoken(&map->token);
+
 	/*
 	 * Make a first pass to check for holes.
 	 */
@@ -2468,12 +2489,7 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	/*
 	 * Make a second pass, cleaning/uncaching pages from the indicated
 	 * objects as we go.
-	 *
-	 * Hold vm_token to avoid blocking in vm_object_reference()
 	 */
-	lwkt_gettoken(&vm_token);
-	lwkt_gettoken(&vmobj_token);
-
 	for (current = entry; current->start < end; current = current->next) {
 		offset = current->offset + (start - current->start);
 		size = (end <= current->end ? end : current->end) - start;
@@ -2494,6 +2510,10 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		} else {
 			object = current->object.vm_object;
 		}
+
+		if (object)
+			vm_object_hold(object);
+
 		/*
 		 * Note that there is absolutely no sense in writing out
 		 * anonymous objects, so we track down the vnode object
@@ -2504,11 +2524,19 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		 * note: certain anonymous maps, such as MAP_NOSYNC maps,
 		 * may start out with a NULL object.
 		 */
-		while (object && object->backing_object) {
-			offset += object->backing_object_offset;
-			object = object->backing_object;
-			if (object->size < OFF_TO_IDX( offset + size))
-				size = IDX_TO_OFF(object->size) - offset;
+		while (object && (tobj = object->backing_object) != NULL) {
+			vm_object_hold(tobj);
+			if (tobj == object->backing_object) {
+				vm_object_lock_swap();
+				offset += object->backing_object_offset;
+				vm_object_drop(object);
+				object = tobj;
+				if (object->size < OFF_TO_IDX(offset + size))
+					size = IDX_TO_OFF(object->size) -
+					       offset;
+				break;
+			}
+			vm_object_drop(tobj);
 		}
 		if (object && (object->type == OBJT_VNODE) && 
 		    (current->protection & VM_PROT_WRITE) &&
@@ -2527,6 +2555,7 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 			 */
 			int flags;
 
+			/* no chain wait needed for vnode objects */
 			vm_object_reference_locked(object);
 			vn_lock(object->handle, LK_EXCLUSIVE | LK_RETRY);
 			flags = (syncio || invalidate) ? OBJPC_SYNC : 0;
@@ -2556,6 +2585,7 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		    (object->type == OBJT_DEVICE))) {
 			int clean_only = 
 				(object->type == OBJT_DEVICE) ? FALSE : TRUE;
+			/* no chain wait needed for vnode/device objects */
 			vm_object_reference_locked(object);
 			switch(current->maptype) {
 			case VM_MAPTYPE_NORMAL:
@@ -2571,10 +2601,11 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 			vm_object_deallocate_locked(object);
 		}
 		start += size;
+		if (object)
+			vm_object_drop(object);
 	}
 
-	lwkt_reltoken(&vmobj_token);
-	lwkt_reltoken(&vm_token);
+	lwkt_reltoken(&map->token);
 	vm_map_unlock_read(map);
 
 	return (KERN_SUCCESS);
@@ -2629,6 +2660,7 @@ vm_map_delete(vm_map_t map, vm_offset_t start, vm_offset_t end, int *countp)
 	vm_map_entry_t first_entry;
 
 	ASSERT_VM_MAP_LOCKED(map);
+	lwkt_gettoken(&map->token);
 again:
 	/*
 	 * Find the start of the region, and clip it.  Set entry to point
@@ -2705,20 +2737,22 @@ again:
 
 		offidxend = offidxstart + count;
 
-		/*
-		 * Hold vm_token when manipulating vm_objects,
-		 *
-		 * Hold vmobj_token when potentially adding or removing
-		 * objects (collapse requires both).
-		 */
-		lwkt_gettoken(&vm_token);
-		lwkt_gettoken(&vmobj_token);
-		vm_object_hold(object);
-
 		if (object == &kernel_object) {
+			vm_object_hold(object);
 			vm_object_page_remove(object, offidxstart,
 					      offidxend, FALSE);
-		} else {
+			vm_object_drop(object);
+		} else if (object && object->type != OBJT_DEFAULT &&
+			   object->type != OBJT_SWAP) {
+			/*
+			 * vnode object routines cannot be chain-locked
+			 */
+			vm_object_hold(object);
+			pmap_remove(map->pmap, s, e);
+			vm_object_drop(object);
+		} else if (object) {
+			vm_object_hold(object);
+			vm_object_chain_acquire(object);
 			pmap_remove(map->pmap, s, e);
 
 			if (object != NULL &&
@@ -2740,11 +2774,9 @@ again:
 					object->size = offidxstart;
 				}
 			}
+			vm_object_chain_release(object);
+			vm_object_drop(object);
 		}
-
-		vm_object_drop(object);
-		lwkt_reltoken(&vmobj_token);
-		lwkt_reltoken(&vm_token);
 
 		/*
 		 * Delete the entry (which may delete the object) only after
@@ -2755,6 +2787,7 @@ again:
 		vm_map_entry_delete(map, entry, countp);
 		entry = next;
 	}
+	lwkt_reltoken(&map->token);
 	return (KERN_SUCCESS);
 }
 
@@ -2837,29 +2870,109 @@ vm_map_check_protection(vm_map_t map, vm_offset_t start, vm_offset_t end,
 }
 
 /*
- * Split the pages in a map entry into a new object.  This affords
- * easier removal of unused pages, and keeps object inheritance from
- * being a negative impact on memory usage.
+ * If appropriate this function shadows the original object with a new object
+ * and moves the VM pages from the original object to the new object.
+ * The original object will also be collapsed, if possible.
  *
- * The vm_map must be exclusively locked.
- * The orig_object should be held.
+ * We can only do this for normal memory objects with a single mapping, and
+ * it only makes sense to do it if there are 2 or more refs on the original
+ * object.  i.e. typically a memory object that has been extended into
+ * multiple vm_map_entry's with non-overlapping ranges.
+ *
+ * This makes it easier to remove unused pages and keeps object inheritance
+ * from being a negative impact on memory usage.
+ *
+ * On return the (possibly new) entry->object.vm_object will have an
+ * additional ref on it for the caller to dispose of (usually by cloning
+ * the vm_map_entry).  The additional ref had to be done in this routine
+ * to avoid racing a collapse.  The object's ONEMAPPING flag will also be
+ * cleared.
+ *
+ * The vm_map must be locked and its token held.
  */
 static void
 vm_map_split(vm_map_entry_t entry)
 {
-	vm_page_t m;
-	vm_object_t orig_object, new_object, source;
+#if 0
+	/* UNOPTIMIZED */
+	vm_object_t oobject;
+
+	oobject = entry->object.vm_object;
+	vm_object_hold(oobject);
+	vm_object_chain_wait(oobject);
+	vm_object_reference_locked(oobject);
+	vm_object_clear_flag(oobject, OBJ_ONEMAPPING);
+	vm_object_drop(oobject);
+#else
+	/* OPTIMIZED */
+	vm_object_t oobject, nobject, bobject;
 	vm_offset_t s, e;
+	vm_page_t m;
 	vm_pindex_t offidxstart, offidxend, idx;
 	vm_size_t size;
 	vm_ooffset_t offset;
 
-	orig_object = entry->object.vm_object;
-	if (orig_object->type != OBJT_DEFAULT && orig_object->type != OBJT_SWAP)
-		return;
-	if (orig_object->ref_count <= 1)
-		return;
+	/*
+	 * Setup.  Chain lock the original object throughout the entire
+	 * routine to prevent new page faults from occuring.
+	 *
+	 * XXX can madvise WILLNEED interfere with us too?
+	 */
+	oobject = entry->object.vm_object;
+	vm_object_hold(oobject);
+	vm_object_chain_acquire(oobject);
 
+	/*
+	 * Original object cannot be split?
+	 */
+	if (oobject->handle == NULL || (oobject->type != OBJT_DEFAULT &&
+					oobject->type != OBJT_SWAP)) {
+		vm_object_chain_release(oobject);
+		vm_object_reference_locked(oobject);
+		vm_object_clear_flag(oobject, OBJ_ONEMAPPING);
+		vm_object_drop(oobject);
+		return;
+	}
+
+	/*
+	 * Collapse original object with its backing store as an
+	 * optimization to reduce chain lengths when possible.
+	 *
+	 * If ref_count <= 1 there aren't other non-overlapping vm_map_entry's
+	 * for oobject, so there's no point collapsing it.
+	 *
+	 * Then re-check whether the object can be split.
+	 */
+	vm_object_collapse(oobject);
+
+	if (oobject->ref_count <= 1 ||
+	    (oobject->type != OBJT_DEFAULT && oobject->type != OBJT_SWAP) ||
+	    (oobject->flags & (OBJ_NOSPLIT|OBJ_ONEMAPPING)) != OBJ_ONEMAPPING) {
+		vm_object_chain_release(oobject);
+		vm_object_reference_locked(oobject);
+		vm_object_clear_flag(oobject, OBJ_ONEMAPPING);
+		vm_object_drop(oobject);
+		return;
+	}
+
+	/*
+	 * Acquire the chain lock on the backing object.
+	 *
+	 * Give bobject an additional ref count for when it will be shadowed
+	 * by nobject.
+	 */
+	if ((bobject = oobject->backing_object) != NULL) {
+		vm_object_hold(bobject);
+		vm_object_chain_wait(bobject);
+		vm_object_reference_locked(bobject);
+		vm_object_chain_acquire(bobject);
+		KKASSERT(bobject->backing_object == bobject);
+		KKASSERT((bobject->flags & OBJ_DEAD) == 0);
+	}
+
+	/*
+	 * Calculate the object page range and allocate the new object.
+	 */
 	offset = entry->offset;
 	s = entry->start;
 	e = entry->end;
@@ -2868,53 +2981,65 @@ vm_map_split(vm_map_entry_t entry)
 	offidxend = offidxstart + OFF_TO_IDX(e - s);
 	size = offidxend - offidxstart;
 
-	switch(orig_object->type) {
+	switch(oobject->type) {
 	case OBJT_DEFAULT:
-		new_object = default_pager_alloc(NULL, IDX_TO_OFF(size),
-						 VM_PROT_ALL, 0);
+		nobject = default_pager_alloc(NULL, IDX_TO_OFF(size),
+					      VM_PROT_ALL, 0);
 		break;
 	case OBJT_SWAP:
-		new_object = swap_pager_alloc(NULL, IDX_TO_OFF(size),
-					      VM_PROT_ALL, 0);
+		nobject = swap_pager_alloc(NULL, IDX_TO_OFF(size),
+					   VM_PROT_ALL, 0);
 		break;
 	default:
 		/* not reached */
-		new_object = NULL;
+		nobject = NULL;
 		KKASSERT(0);
 	}
-	if (new_object == NULL)
+
+	if (nobject == NULL) {
+		if (bobject) {
+			vm_object_chain_release(bobject);
+			vm_object_deallocate(bobject);
+			vm_object_drop(bobject);
+		}
+		vm_object_chain_release(oobject);
+		vm_object_reference_locked(oobject);
+		vm_object_clear_flag(oobject, OBJ_ONEMAPPING);
+		vm_object_drop(oobject);
 		return;
-
-	/*
-	 * vm_token required when manipulating vm_objects.
-	 */
-	lwkt_gettoken(&vm_token);
-	lwkt_gettoken(&vmobj_token);
-
-	vm_object_hold(new_object);
-
-	source = orig_object->backing_object;
-	if (source != NULL) {
-		vm_object_hold(source);
-		/* Referenced by new_object */
-		vm_object_reference_locked(source);
-		LIST_INSERT_HEAD(&source->shadow_head,
-				 new_object, shadow_list);
-		vm_object_clear_flag(source, OBJ_ONEMAPPING);
-		new_object->backing_object_offset = 
-			orig_object->backing_object_offset +
-			IDX_TO_OFF(offidxstart);
-		new_object->backing_object = source;
-		source->shadow_count++;
-		source->generation++;
-		vm_object_drop(source);
 	}
 
+	/*
+	 * The new object will replace entry->object.vm_object so it needs
+	 * a second reference (the caller expects an additional ref).
+	 */
+	vm_object_hold(nobject);
+	vm_object_reference_locked(nobject);
+	vm_object_chain_acquire(nobject);
+
+	/*
+	 * nobject shadows bobject (oobject already shadows bobject).
+	 */
+	if (bobject) {
+		nobject->backing_object_offset =
+		    oobject->backing_object_offset + IDX_TO_OFF(offidxstart);
+		nobject->backing_object = bobject;
+		bobject->shadow_count++;
+		bobject->generation++;
+		LIST_INSERT_HEAD(&bobject->shadow_head, nobject, shadow_list);
+		vm_object_clear_flag(bobject, OBJ_ONEMAPPING); /* XXX? */
+		vm_object_chain_release(bobject);
+		vm_object_drop(bobject);
+	}
+
+	/*
+	 * Move the VM pages from oobject to nobject
+	 */
 	for (idx = 0; idx < size; idx++) {
 		vm_page_t m;
 
-	retry:
-		m = vm_page_lookup(orig_object, offidxstart + idx);
+		m = vm_page_lookup_busy_wait(oobject, offidxstart + idx,
+					     TRUE, "vmpg");
 		if (m == NULL)
 			continue;
 
@@ -2924,24 +3049,23 @@ vm_map_split(vm_map_entry_t entry)
 		 *
 		 * We do not have to VM_PROT_NONE the page as mappings should
 		 * not be changed by this operation.
+		 *
+		 * NOTE: The act of renaming a page updates chaingen for both
+		 *	 objects.
 		 */
-		if (vm_page_sleep_busy(m, TRUE, "spltwt"))
-			goto retry;
-		vm_page_busy(m);
-		vm_page_rename(m, new_object, idx);
+		vm_page_rename(m, nobject, idx);
 		/* page automatically made dirty by rename and cache handled */
-		vm_page_busy(m);
+		/* page remains busy */
 	}
 
-	if (orig_object->type == OBJT_SWAP) {
-		vm_object_pip_add(orig_object, 1);
+	if (oobject->type == OBJT_SWAP) {
+		vm_object_pip_add(oobject, 1);
 		/*
-		 * copy orig_object pages into new_object
-		 * and destroy unneeded pages in
-		 * shadow object.
+		 * copy oobject pages into nobject and destroy unneeded
+		 * pages in shadow object.
 		 */
-		swap_pager_copy(orig_object, new_object, offidxstart, 0);
-		vm_object_pip_wakeup(orig_object);
+		swap_pager_copy(oobject, nobject, offidxstart, 0);
+		vm_object_pip_wakeup(oobject);
 	}
 
 	/*
@@ -2949,17 +3073,36 @@ vm_map_split(vm_map_entry_t entry)
 	 * for a simple wakeup.
 	 */
 	for (idx = 0; idx < size; idx++) {
-		m = vm_page_lookup(new_object, idx);
-		if (m)
+		m = vm_page_lookup(nobject, idx);
+		if (m) {
+			KKASSERT(m->flags & PG_BUSY);
 			vm_page_wakeup(m);
+		}
 	}
-
-	entry->object.vm_object = new_object;
+	entry->object.vm_object = nobject;
 	entry->offset = 0LL;
-	vm_object_deallocate_locked(orig_object);
-	vm_object_drop(new_object);
-	lwkt_reltoken(&vmobj_token);
-	lwkt_reltoken(&vm_token);
+
+	/*
+	 * Cleanup
+	 *
+	 * NOTE: There is no need to remove OBJ_ONEMAPPING from oobject, the
+	 *	 related pages were moved and are no longer applicable to the
+	 *	 original object.
+	 *
+	 * NOTE: Deallocate oobject (due to its entry->object.vm_object being
+	 *	 replaced by nobject).
+	 */
+	vm_object_chain_release(nobject);
+	vm_object_drop(nobject);
+	if (bobject) {
+		vm_object_chain_release(bobject);
+		vm_object_drop(bobject);
+	}
+	vm_object_chain_release(oobject);
+	/*vm_object_clear_flag(oobject, OBJ_ONEMAPPING);*/
+	vm_object_deallocate_locked(oobject);
+	vm_object_drop(oobject);
+#endif
 }
 
 /*
@@ -2967,11 +3110,11 @@ vm_map_split(vm_map_entry_t entry)
  * entry.  The entries *must* be aligned properly.
  *
  * The vm_map must be exclusively locked.
- * vm_token must be held
+ * The vm_map's token must be held.
  */
 static void
 vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
-	vm_map_entry_t src_entry, vm_map_entry_t dst_entry)
+		  vm_map_entry_t src_entry, vm_map_entry_t dst_entry)
 {
 	vm_object_t src_object;
 
@@ -2979,9 +3122,6 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		return;
 	if (src_entry->maptype == VM_MAPTYPE_SUBMAP)
 		return;
-
-	ASSERT_LWKT_TOKEN_HELD(&vm_token);
-	lwkt_gettoken(&vmobj_token);		/* required for collapse */
 
 	if (src_entry->wired_count == 0) {
 		/*
@@ -3004,25 +3144,14 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		 * probably try to destroy the object.  The lock is a pool
 		 * token and doesn't care.
 		 */
-		if ((src_object = src_entry->object.vm_object) != NULL) {
-			vm_object_lock(src_object);
-			if ((src_object->handle == NULL) &&
-				(src_object->type == OBJT_DEFAULT ||
-				 src_object->type == OBJT_SWAP)) {
-				vm_object_collapse(src_object);
-				if ((src_object->flags & (OBJ_NOSPLIT|OBJ_ONEMAPPING)) == OBJ_ONEMAPPING) {
-					vm_map_split(src_entry);
-					vm_object_unlock(src_object);
-					src_object = src_entry->object.vm_object;
-					vm_object_lock(src_object);
-				}
-			}
-			vm_object_reference_locked(src_object);
-			vm_object_unlock(src_object);
-			vm_object_clear_flag(src_object, OBJ_ONEMAPPING);
+		if (src_entry->object.vm_object != NULL) {
+			vm_map_split(src_entry);
+			src_object = src_entry->object.vm_object;
 			dst_entry->object.vm_object = src_object;
-			src_entry->eflags |= (MAP_ENTRY_COW|MAP_ENTRY_NEEDS_COPY);
-			dst_entry->eflags |= (MAP_ENTRY_COW|MAP_ENTRY_NEEDS_COPY);
+			src_entry->eflags |= (MAP_ENTRY_COW |
+					      MAP_ENTRY_NEEDS_COPY);
+			dst_entry->eflags |= (MAP_ENTRY_COW |
+					      MAP_ENTRY_NEEDS_COPY);
 			dst_entry->offset = src_entry->offset;
 		} else {
 			dst_entry->object.vm_object = NULL;
@@ -3039,7 +3168,6 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		 */
 		vm_fault_copy_entry(dst_map, src_map, dst_entry, src_entry);
 	}
-	lwkt_reltoken(&vmobj_token);
 }
 
 /*
@@ -3063,15 +3191,14 @@ vmspace_fork(struct vmspace *vm1)
 	vm_object_t object;
 	int count;
 
-	lwkt_gettoken(&vm_token);
-	lwkt_gettoken(&vmspace_token);
-	lwkt_gettoken(&vmobj_token);
+	lwkt_gettoken(&vm1->vm_map.token);
 	vm_map_lock(old_map);
 
 	/*
 	 * XXX Note: upcalls are not copied.
 	 */
 	vm2 = vmspace_alloc(old_map->min_offset, old_map->max_offset);
+	lwkt_gettoken(&vm2->vm_map.token);
 	bcopy(&vm1->vm_startcopy, &vm2->vm_startcopy,
 	    (caddr_t)&vm1->vm_endcopy - (caddr_t)&vm1->vm_startcopy);
 	new_map = &vm2->vm_map;	/* XXX */
@@ -3101,29 +3228,31 @@ vmspace_fork(struct vmspace *vm1)
 			 * Clone the entry, creating the shared object if
 			 * necessary.
 			 */
-			object = old_entry->object.vm_object;
-			if (object == NULL) {
+			if (old_entry->object.vm_object == NULL)
 				vm_map_entry_allocate_object(old_entry);
-				object = old_entry->object.vm_object;
-			}
 
 			/*
-			 * Add the reference before calling vm_map_entry_shadow
-			 * to insure that a shadow object is created.
+			 * Shadow a map_entry which needs a copy, replacing
+			 * its object with a new object that points to the
+			 * old one.  Ask the shadow code to automatically add
+			 * an additional ref.  We can't do it afterwords
+			 * because we might race a collapse
 			 */
-			vm_object_reference_locked(object);
 			if (old_entry->eflags & MAP_ENTRY_NEEDS_COPY) {
-				vm_map_entry_shadow(old_entry);
-				/* Transfer the second reference too. */
-				vm_object_reference_locked(
-				    old_entry->object.vm_object);
-				vm_object_deallocate_locked(object);
-				object = old_entry->object.vm_object;
+				vm_map_entry_shadow(old_entry, 1);
+			} else {
+				if (old_entry->object.vm_object) {
+					object = old_entry->object.vm_object;
+					vm_object_hold(object);
+					vm_object_chain_wait(object);
+					vm_object_reference_locked(object);
+					vm_object_drop(object);
+				}
 			}
-			vm_object_clear_flag(object, OBJ_ONEMAPPING);
 
 			/*
-			 * Clone the entry, referencing the shared object.
+			 * Clone the entry.  We've already bumped the ref on
+			 * any vm_object.
 			 */
 			new_entry = vm_map_entry_create(new_map, &count);
 			*new_entry = *old_entry;
@@ -3169,9 +3298,8 @@ vmspace_fork(struct vmspace *vm1)
 	vm_map_unlock(new_map);
 	vm_map_entry_release(count);
 
-	lwkt_reltoken(&vmobj_token);
-	lwkt_reltoken(&vmspace_token);
-	lwkt_reltoken(&vm_token);
+	lwkt_reltoken(&vm2->vm_map.token);
+	lwkt_reltoken(&vm1->vm_map.token);
 
 	return (vm2);
 }
@@ -3467,11 +3595,13 @@ vmspace_exec(struct proc *p, struct vmspace *vmcopy)
 	 * we create a new vmspace.  Note that exitingcnt and upcalls
 	 * are not copied to the new vmspace.
 	 */
-	lwkt_gettoken(&vmspace_token);
+	lwkt_gettoken(&oldvmspace->vm_map.token);
 	if (vmcopy)  {
 		newvmspace = vmspace_fork(vmcopy);
+		lwkt_gettoken(&newvmspace->vm_map.token);
 	} else {
 		newvmspace = vmspace_alloc(map->min_offset, map->max_offset);
+		lwkt_gettoken(&newvmspace->vm_map.token);
 		bcopy(&oldvmspace->vm_startcopy, &newvmspace->vm_startcopy,
 		      (caddr_t)&oldvmspace->vm_endcopy -
 		       (caddr_t)&oldvmspace->vm_startcopy);
@@ -3484,8 +3614,9 @@ vmspace_exec(struct proc *p, struct vmspace *vmcopy)
 	 */
 	pmap_pinit2(vmspace_pmap(newvmspace));
 	pmap_replacevm(p, newvmspace, 0);
+	lwkt_reltoken(&newvmspace->vm_map.token);
+	lwkt_reltoken(&oldvmspace->vm_map.token);
 	sysref_put(&oldvmspace->vm_sysref);
-	lwkt_reltoken(&vmspace_token);
 }
 
 /*
@@ -3501,14 +3632,18 @@ vmspace_unshare(struct proc *p)
 	struct vmspace *oldvmspace = p->p_vmspace;
 	struct vmspace *newvmspace;
 
-	lwkt_gettoken(&vmspace_token);
-	if (oldvmspace->vm_sysref.refcnt == 1 && oldvmspace->vm_exitingcnt == 0)
+	lwkt_gettoken(&oldvmspace->vm_map.token);
+	if (oldvmspace->vm_sysref.refcnt == 1 && oldvmspace->vm_exitingcnt == 0) {
+		lwkt_reltoken(&oldvmspace->vm_map.token);
 		return;
+	}
 	newvmspace = vmspace_fork(oldvmspace);
+	lwkt_gettoken(&newvmspace->vm_map.token);
 	pmap_pinit2(vmspace_pmap(newvmspace));
 	pmap_replacevm(p, newvmspace, 0);
+	lwkt_reltoken(&newvmspace->vm_map.token);
+	lwkt_reltoken(&oldvmspace->vm_map.token);
 	sysref_put(&oldvmspace->vm_sysref);
-	lwkt_reltoken(&vmspace_token);
 }
 
 /*
@@ -3607,6 +3742,7 @@ RetryLookup:
 	 */
 	entry = map->hint;
 	*out_entry = entry;
+	*object = NULL;
 
 	if ((entry == &map->header) ||
 	    (vaddr < entry->start) || (vaddr >= entry->end)) {
@@ -3711,7 +3847,7 @@ RetryLookup:
 			}
 			use_read_lock = 0;
 
-			vm_map_entry_shadow(entry);
+			vm_map_entry_shadow(entry, 0);
 		} else {
 			/*
 			 * We're attempting to read a copy-on-write page --

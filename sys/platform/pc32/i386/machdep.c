@@ -901,10 +901,6 @@ cpu_halt(void)
  * critical section.
  *
  * NOTE: On an SMP system we rely on a scheduler IPI to wake a HLTed cpu up.
- *	 However, there are cases where the idlethread will be entered with
- *	 the possibility that no IPI will occur and in such cases
- *	 lwkt_switch() sets RQF_WAKEUP. We usually check
- *	 RQF_IDLECHECK_WK_MASK.
  *
  * NOTE: cpu_idle_hlt again defaults to 2 (use ACPI sleep states).  Set to
  *	 1 to just use hlt and for debugging purposes.

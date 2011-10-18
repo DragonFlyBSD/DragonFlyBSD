@@ -72,12 +72,9 @@
  *
  * We now have to use a locked bus cycle due to LWKT_RESCHED/WAKEUP
  * signalling by other cpus.
- *
- * NOTE: need_lwkt_resched() sets RQF_WAKEUP but clear_lwkt_resched() does
- *	 not clear it.  Only the scheduler will clear RQF_WAKEUP.
  */
 #define	need_lwkt_resched()	\
-    atomic_set_int(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED | RQF_WAKEUP)
+    atomic_set_int(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
 #define	need_user_resched()	\
     atomic_set_int(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
 #define	need_proftick()		\

@@ -174,6 +174,7 @@ MALLOC_DECLARE(M_IP6NDP); /* for INET6 */
 MALLOC_DECLARE(M_IOV);
 
 /* XXX struct malloc_type is unused for contig*(). */
+size_t  kmem_lim_size(void);
 void	contigfree (void *addr, unsigned long size,
 			struct malloc_type *type);
 void	*contigmalloc (unsigned long size, struct malloc_type *type,

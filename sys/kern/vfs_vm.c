@@ -219,10 +219,10 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
 	/*
 	 * Debugging only
 	 */
-	spin_lock(&vp->v_spinlock);
+	spin_lock(&vp->v_spin);
 	filename = TAILQ_FIRST(&vp->v_namecache) ?
 		   TAILQ_FIRST(&vp->v_namecache)->nc_name : "?";
-	spin_unlock(&vp->v_spinlock);
+	spin_unlock(&vp->v_spin);
 
 	/*
 	 * Make sure no buffers were instantiated while we were trying
@@ -417,8 +417,11 @@ nvnode_pager_setsize(struct vnode *vp, off_t length, int blksize, int boff)
 	 */
 	if ((object = vp->v_object) == NULL)
 		return;
-	if (length == vp->v_filesize)
+	vm_object_hold(object);
+	if (length == vp->v_filesize) {
+		vm_object_drop(object);
 		return;
+	}
 
 	/*
 	 * Calculate the size of the VM object, coverage includes
@@ -456,23 +459,19 @@ nvnode_pager_setsize(struct vnode *vp, off_t length, int blksize, int boff)
 		 * invalidated.
 		 */
 		pi = OFF_TO_IDX(length + PAGE_MASK);
-		lwkt_gettoken(&vm_token);
 		while (pi < nobjsize) {
-			do {
-				m = vm_page_lookup(object, pi);
-			} while (m && vm_page_sleep_busy(m, TRUE, "vsetsz"));
+			m = vm_page_lookup_busy_wait(object, pi, FALSE, "vmpg");
 			if (m) {
-				vm_page_busy(m);
 				vm_page_protect(m, VM_PROT_NONE);
 				vm_page_wakeup(m);
 			}
 			++pi;
 		}
-		lwkt_reltoken(&vm_token);
 	} else {
 		/*
 		 * File has expanded.
 		 */
 		vp->v_filesize = length;
 	}
+	vm_object_drop(object);
 }

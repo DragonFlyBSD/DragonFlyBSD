@@ -121,7 +121,7 @@ ap_finish(void)
         while (try_mplock() == 0)
 		DELAY(100000);
         if (bootverbose)
-                kprintf("Active CPU Mask: %08x\n", smp_active_mask);
+                kprintf("Active CPU Mask: %08lx\n", (long)smp_active_mask);
 }
 
 SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)
@@ -392,6 +392,7 @@ start_all_aps(u_int boot_addr)
 	 */
 	ap_tids[0] = pthread_self();
 
+	vm_object_hold(&kernel_object);
 	for (x = 1; x <= mp_naps; x++)
 	{
 		/* Allocate space for the CPU's private space. */
@@ -452,6 +453,7 @@ start_all_aps(u_int boot_addr)
 			DELAY(1000);
 		}
 	}
+	vm_object_drop(&kernel_object);
 
 	return(ncpus - 1);
 }

@@ -94,6 +94,7 @@
 #include <vm/vm_extern.h>
 
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 #include <vm/vm_page2.h>
 
 /*
@@ -235,8 +236,6 @@ vm_fault_ratecheck(void)
  * We set the busy bit to cause potential page faults on this page to
  * block.  Note the careful timing, however, the busy bit isn't set till
  * late and we cannot do anything that will mess with the page.
- *
- * The caller must hold vm_token.
  */
 static int
 vm_pageout_clean(vm_page_t m)
@@ -244,6 +243,7 @@ vm_pageout_clean(vm_page_t m)
 	vm_object_t object;
 	vm_page_t mc[2*vm_pageout_page_count];
 	int pageout_count;
+	int error;
 	int ib, is, page_base;
 	vm_pindex_t pindex = m->pindex;
 
@@ -260,9 +260,13 @@ vm_pageout_clean(vm_page_t m)
 
 	/*
 	 * Don't mess with the page if it's busy, held, or special
+	 *
+	 * XXX do we really need to check hold_count here?  hold_count
+	 * isn't supposed to mess with vm_page ops except prevent the
+	 * page from being reused.
 	 */
-	if ((m->hold_count != 0) ||
-	    ((m->busy != 0) || (m->flags & (PG_BUSY|PG_UNMANAGED)))) {
+	if (m->hold_count != 0 || (m->flags & PG_UNMANAGED)) {
+		vm_page_wakeup(m);
 		return 0;
 	}
 
@@ -302,12 +306,14 @@ more:
 			break;
 		}
 
-		if ((p = vm_page_lookup(object, pindex - ib)) == NULL) {
+		p = vm_page_lookup_busy_try(object, pindex - ib, TRUE, &error);
+		if (error || p == NULL) {
 			ib = 0;
 			break;
 		}
-		if (((p->queue - p->pc) == PQ_CACHE) ||
-		    (p->flags & (PG_BUSY|PG_UNMANAGED)) || p->busy) {
+		if ((p->queue - p->pc) == PQ_CACHE ||
+		    (p->flags & PG_UNMANAGED)) {
+			vm_page_wakeup(p);
 			ib = 0;
 			break;
 		}
@@ -316,6 +322,7 @@ more:
 		    p->queue != PQ_INACTIVE ||
 		    p->wire_count != 0 ||	/* may be held by buf cache */
 		    p->hold_count != 0) {	/* may be undergoing I/O */
+			vm_page_wakeup(p);
 			ib = 0;
 			break;
 		}
@@ -334,10 +341,12 @@ more:
 	    pindex + is < object->size) {
 		vm_page_t p;
 
-		if ((p = vm_page_lookup(object, pindex + is)) == NULL)
+		p = vm_page_lookup_busy_try(object, pindex + is, TRUE, &error);
+		if (error || p == NULL)
 			break;
 		if (((p->queue - p->pc) == PQ_CACHE) ||
 		    (p->flags & (PG_BUSY|PG_UNMANAGED)) || p->busy) {
+			vm_page_wakeup(p);
 			break;
 		}
 		vm_page_test_dirty(p);
@@ -345,6 +354,7 @@ more:
 		    p->queue != PQ_INACTIVE ||
 		    p->wire_count != 0 ||	/* may be held by buf cache */
 		    p->hold_count != 0) {	/* may be undergoing I/O */
+			vm_page_wakeup(p);
 			break;
 		}
 		mc[page_base + pageout_count] = p;
@@ -377,7 +387,8 @@ more:
  *	the parent to do more sophisticated things we may have to change
  *	the ordering.
  *
- * The caller must hold vm_token.
+ *	The pages in the array must be busied by the caller and will be
+ *	unbusied by this function.
  */
 int
 vm_pageout_flush(vm_page_t *mc, int count, int flags)
@@ -387,13 +398,13 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 	int numpagedout = 0;
 	int i;
 
-	ASSERT_LWKT_TOKEN_HELD(&vm_token);
-
 	/*
 	 * Initiate I/O.  Bump the vm_page_t->busy counter.
 	 */
 	for (i = 0; i < count; i++) {
-		KASSERT(mc[i]->valid == VM_PAGE_BITS_ALL, ("vm_pageout_flush page %p index %d/%d: partially invalid page", mc[i], i, count));
+		KASSERT(mc[i]->valid == VM_PAGE_BITS_ALL,
+			("vm_pageout_flush page %p index %d/%d: partially "
+			 "invalid page", mc[i], i, count));
 		vm_page_io_start(mc[i]);
 	}
 
@@ -403,9 +414,13 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 	 * cannot clear the bit for us since the I/O completion code
 	 * typically runs from an interrupt.  The act of making the page
 	 * read-only handles the case for us.
+	 *
+	 * Then we can unbusy the pages, we still hold a reference by virtue
+	 * of our soft-busy.
 	 */
 	for (i = 0; i < count; i++) {
 		vm_page_protect(mc[i], VM_PROT_READ);
+		vm_page_wakeup(mc[i]);
 	}
 
 	object = mc[0]->object;
@@ -431,8 +446,10 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 			 * essentially lose the changes by pretending it
 			 * worked.
 			 */
+			vm_page_busy_wait(mt, FALSE, "pgbad");
 			pmap_clear_modify(mt);
 			vm_page_undirty(mt);
+			vm_page_wakeup(mt);
 			break;
 		case VM_PAGER_ERROR:
 		case VM_PAGER_FAIL:
@@ -463,6 +480,7 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 		 * might still be read-heavy.
 		 */
 		if (pageout_status[i] != VM_PAGER_PEND) {
+			vm_page_busy_wait(mt, FALSE, "pgouw");
 			if (vm_page_count_severe())
 				vm_page_deactivate(mt);
 #if 0
@@ -470,6 +488,7 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 				vm_page_protect(mt, VM_PROT_READ);
 #endif
 			vm_page_io_finish(mt);
+			vm_page_wakeup(mt);
 			vm_object_pip_wakeup(object);
 		}
 	}
@@ -478,15 +497,12 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 
 #if !defined(NO_SWAPPING)
 /*
- *	vm_pageout_object_deactivate_pages
- *
- *	deactivate enough pages to satisfy the inactive target
- *	requirements or if vm_page_proc_limit is set, then
- *	deactivate all of the pages in the object and its
- *	backing_objects.
+ * deactivate enough pages to satisfy the inactive target
+ * requirements or if vm_page_proc_limit is set, then
+ * deactivate all of the pages in the object and its
+ * backing_objects.
  *
  * The map must be locked.
- * The caller must hold vm_token.
  * The caller must hold the vm_object.
  */
 static int vm_pageout_object_deactivate_pages_callback(vm_page_t, void *);
@@ -496,26 +512,22 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 				   vm_pindex_t desired, int map_remove_only)
 {
 	struct rb_vm_page_scan_info info;
-	vm_object_t tmp;
+	vm_object_t lobject;
+	vm_object_t tobject;
 	int remove_mode;
 
-	while (object) {
+	lobject = object;
+
+	while (lobject) {
 		if (pmap_resident_count(vm_map_pmap(map)) <= desired)
-			return;
-
-		vm_object_hold(object);
-
-		if (object->type == OBJT_DEVICE || object->type == OBJT_PHYS) {
-			vm_object_drop(object);
-			return;
-		}
-		if (object->paging_in_progress) {
-			vm_object_drop(object);
-			return;
-		}
+			break;
+		if (lobject->type == OBJT_DEVICE || lobject->type == OBJT_PHYS)
+			break;
+		if (lobject->paging_in_progress)
+			break;
 
 		remove_mode = map_remove_only;
-		if (object->shadow_count > 1)
+		if (lobject->shadow_count > 1)
 			remove_mode = 1;
 
 		/*
@@ -525,18 +537,26 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 		info.limit = remove_mode;
 		info.map = map;
 		info.desired = desired;
-		vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL,
+		vm_page_rb_tree_RB_SCAN(&lobject->rb_memq, NULL,
 				vm_pageout_object_deactivate_pages_callback,
 				&info
 		);
-		tmp = object->backing_object;
-		vm_object_drop(object);
-		object = tmp;
+		while ((tobject = lobject->backing_object) != NULL) {
+			KKASSERT(tobject != object);
+			vm_object_hold(tobject);
+			if (tobject == lobject->backing_object)
+				break;
+			vm_object_drop(tobject);
+		}
+		if (lobject != object)
+			vm_object_drop(lobject);
+		lobject = tobject;
 	}
+	if (lobject != object)
+		vm_object_drop(lobject);
 }
 
 /*
- * The caller must hold vm_token.
  * The caller must hold the vm_object.
  */
 static int
@@ -549,9 +569,15 @@ vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
 		return(-1);
 	}
 	mycpu->gd_cnt.v_pdpages++;
-	if (p->wire_count != 0 || p->hold_count != 0 || p->busy != 0 ||
-	    (p->flags & (PG_BUSY|PG_UNMANAGED)) ||
-	    !pmap_page_exists_quick(vm_map_pmap(info->map), p)) {
+
+	if (vm_page_busy_try(p, TRUE))
+		return(0);
+	if (p->wire_count || p->hold_count || (p->flags & PG_UNMANAGED)) {
+		vm_page_wakeup(p);
+		return(0);
+	}
+	if (!pmap_page_exists_quick(vm_map_pmap(info->map), p)) {
+		vm_page_wakeup(p);
 		return(0);
 	}
 
@@ -562,44 +588,52 @@ vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
 		actcount = 1;
 	}
 
-	if ((p->queue != PQ_ACTIVE) &&
-		(p->flags & PG_REFERENCED)) {
+	vm_page_and_queue_spin_lock(p);
+	if (p->queue != PQ_ACTIVE && (p->flags & PG_REFERENCED)) {
+		vm_page_and_queue_spin_unlock(p);
 		vm_page_activate(p);
 		p->act_count += actcount;
 		vm_page_flag_clear(p, PG_REFERENCED);
 	} else if (p->queue == PQ_ACTIVE) {
 		if ((p->flags & PG_REFERENCED) == 0) {
 			p->act_count -= min(p->act_count, ACT_DECLINE);
-			if (!info->limit && (vm_pageout_algorithm || (p->act_count == 0))) {
-				vm_page_busy(p);
+			if (!info->limit &&
+			    (vm_pageout_algorithm || (p->act_count == 0))) {
+				vm_page_and_queue_spin_unlock(p);
 				vm_page_protect(p, VM_PROT_NONE);
 				vm_page_deactivate(p);
-				vm_page_wakeup(p);
 			} else {
 				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
 				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
+				vm_page_and_queue_spin_unlock(p);
 			}
 		} else {
+			vm_page_and_queue_spin_unlock(p);
 			vm_page_activate(p);
 			vm_page_flag_clear(p, PG_REFERENCED);
-			if (p->act_count < (ACT_MAX - ACT_ADVANCE))
-				p->act_count += ACT_ADVANCE;
-			TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
-			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
+
+			vm_page_and_queue_spin_lock(p);
+			if (p->queue == PQ_ACTIVE) {
+				if (p->act_count < (ACT_MAX - ACT_ADVANCE))
+					p->act_count += ACT_ADVANCE;
+				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
+				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
+			}
+			vm_page_and_queue_spin_unlock(p);
 		}
 	} else if (p->queue == PQ_INACTIVE) {
-		vm_page_busy(p);
+		vm_page_and_queue_spin_unlock(p);
 		vm_page_protect(p, VM_PROT_NONE);
-		vm_page_wakeup(p);
+	} else {
+		vm_page_and_queue_spin_unlock(p);
 	}
+	vm_page_wakeup(p);
 	return(0);
 }
 
 /*
  * Deactivate some number of pages in a map, try to do it fairly, but
  * that is really hard to do.
- *
- * The caller must hold vm_token.
  */
 static void
 vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
@@ -683,13 +717,10 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
  * to optimize shadow chain collapses but I don't quite see why it would
  * be necessary.  An OBJ_DEAD object should terminate any and all vm_pages
  * synchronously and not have to be kicked-start.
- *
- * The caller must hold vm_token.
  */
 static void
 vm_pageout_page_free(vm_page_t m) 
 {
-	vm_page_busy(m);
 	vm_page_protect(m, VM_PROT_NONE);
 	vm_page_free(m);
 }
@@ -704,14 +735,11 @@ struct vm_pageout_scan_info {
 
 static int vm_pageout_scan_callback(struct proc *p, void *data);
 
-/*
- * The caller must hold vm_token.
- */
 static int
 vm_pageout_scan(int pass)
 {
 	struct vm_pageout_scan_info info;
-	vm_page_t m, next;
+	vm_page_t m;
 	struct vm_page marker;
 	struct vnode *vpfailed;		/* warning, allowed to be stale */
 	int maxscan, pcount;
@@ -740,14 +768,6 @@ vm_pageout_scan(int pass)
 	vm_pageout_deficit = 0;
 
 	/*
-	 * Initialize our marker
-	 */
-	bzero(&marker, sizeof(marker));
-	marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
-	marker.queue = PQ_INACTIVE;
-	marker.wire_count = 1;
-
-	/*
 	 * Start scanning the inactive queue for pages we can move to the
 	 * cache or free.  The scan will stop when the target is reached or
 	 * we have scanned the entire inactive queue.  Note that m->act_count
@@ -769,52 +789,82 @@ vm_pageout_scan(int pass)
 		maxlaunder = 10000;
 
 	/*
-	 * We will generally be in a critical section throughout the 
-	 * scan, but we can release it temporarily when we are sitting on a
-	 * non-busy page without fear.  this is required to prevent an
-	 * interrupt from unbusying or freeing a page prior to our busy
-	 * check, leaving us on the wrong queue or checking the wrong
-	 * page.
+	 * Initialize our marker
 	 */
-rescan0:
+	bzero(&marker, sizeof(marker));
+	marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
+	marker.queue = PQ_INACTIVE;
+	marker.wire_count = 1;
+
+	/*
+	 * Inactive queue scan.
+	 *
+	 * NOTE: The vm_page must be spinlocked before the queue to avoid
+	 *	 deadlocks, so it is easiest to simply iterate the loop
+	 *	 with the queue unlocked at the top.
+	 */
 	vpfailed = NULL;
+
+	vm_page_queues_spin_lock(PQ_INACTIVE);
+	TAILQ_INSERT_HEAD(&vm_page_queues[PQ_INACTIVE].pl, &marker, pageq);
 	maxscan = vmstats.v_inactive_count;
-	for (m = TAILQ_FIRST(&vm_page_queues[PQ_INACTIVE].pl);
-	     m != NULL && maxscan-- > 0 && inactive_shortage > 0;
-	     m = next
-	 ) {
+	vm_page_queues_spin_unlock(PQ_INACTIVE);
+
+	while ((m = TAILQ_NEXT(&marker, pageq)) != NULL &&
+	       maxscan-- > 0 && inactive_shortage > 0)
+	{
+		vm_page_and_queue_spin_lock(m);
+		if (m != TAILQ_NEXT(&marker, pageq)) {
+			vm_page_and_queue_spin_unlock(m);
+			++maxscan;
+			continue;
+		}
+		KKASSERT(m->queue == PQ_INACTIVE);
+		TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl,
+			     &marker, pageq);
+		TAILQ_INSERT_AFTER(&vm_page_queues[PQ_INACTIVE].pl, m,
+				   &marker, pageq);
 		mycpu->gd_cnt.v_pdpages++;
 
 		/*
-		 * It's easier for some of the conditions below to just loop
-		 * and catch queue changes here rather then check everywhere
-		 * else.
+		 * Skip marker pages
 		 */
-		if (m->queue != PQ_INACTIVE)
-			goto rescan0;
-		next = TAILQ_NEXT(m, pageq);
+		if (m->flags & PG_MARKER) {
+			vm_page_and_queue_spin_unlock(m);
+			continue;
+		}
 
 		/*
-		 * skip marker pages
+		 * Try to busy the page.  Don't mess with pages which are
+		 * already busy or reorder them in the queue.
 		 */
-		if (m->flags & PG_MARKER)
+		if (vm_page_busy_try(m, TRUE)) {
+			vm_page_and_queue_spin_unlock(m);
 			continue;
+		}
+		vm_page_and_queue_spin_unlock(m);
+		KKASSERT(m->queue == PQ_INACTIVE);
+
+		/*
+		 * The page has been successfully busied and is now no
+		 * longer spinlocked.  The queue is no longer spinlocked
+		 * either.
+		 */
 
 		/*
 		 * A held page may be undergoing I/O, so skip it.
 		 */
 		if (m->hold_count) {
-			TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
-			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+			vm_page_and_queue_spin_lock(m);
+			if (m->queue == PQ_INACTIVE) {
+				TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl,
+					     m, pageq);
+				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl,
+						  m, pageq);
+			}
+			vm_page_and_queue_spin_unlock(m);
 			++vm_swapcache_inactive_heuristic;
-			continue;
-		}
-
-		/*
-		 * Dont mess with busy pages, keep in the front of the
-		 * queue, most likely are being paged out.
-		 */
-		if (m->busy || (m->flags & PG_BUSY)) {
+			vm_page_wakeup(m);
 			continue;
 		}
 
@@ -825,7 +875,7 @@ rescan0:
 			 */
 			vm_page_flag_clear(m, PG_REFERENCED);
 			pmap_clear_reference(m);
-
+			/* fall through to end */
 		} else if (((m->flags & PG_REFERENCED) == 0) &&
 			    (actcount = pmap_ts_referenced(m))) {
 			/*
@@ -840,10 +890,13 @@ rescan0:
 			 */
 			vm_page_activate(m);
 			m->act_count += (actcount + ACT_ADVANCE);
+			vm_page_wakeup(m);
 			continue;
 		}
 
 		/*
+		 * (m) is still busied.
+		 *
 		 * If the upper level VM system knows about any page 
 		 * references, we activate the page.  We also set the 
 		 * "activation count" higher than normal so that we will less 
@@ -854,6 +907,7 @@ rescan0:
 			actcount = pmap_ts_referenced(m);
 			vm_page_activate(m);
 			m->act_count += (actcount + ACT_ADVANCE + 1);
+			vm_page_wakeup(m);
 			continue;
 		}
 
@@ -888,7 +942,6 @@ rescan0:
 			 * Clean pages can be placed onto the cache queue.
 			 * This effectively frees them.
 			 */
-			vm_page_busy(m);
 			vm_page_cache(m);
 			--inactive_shortage;
 		} else if ((m->flags & PG_WINATCFLS) == 0 && pass == 0) {
@@ -905,9 +958,14 @@ rescan0:
 			 * the thrash point for a heavily loaded machine.
 			 */
 			vm_page_flag_set(m, PG_WINATCFLS);
-			TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
-			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+			vm_page_and_queue_spin_lock(m);
+			if (m->queue == PQ_INACTIVE) {
+				TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+			}
+			vm_page_and_queue_spin_unlock(m);
 			++vm_swapcache_inactive_heuristic;
+			vm_page_wakeup(m);
 		} else if (maxlaunder > 0) {
 			/*
 			 * We always want to try to flush some dirty pages if
@@ -935,13 +993,20 @@ rescan0:
 			 * Those objects are in a "rundown" state.
 			 */
 			if (!swap_pageouts_ok || (object->flags & OBJ_DEAD)) {
-				TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
-				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+				vm_page_and_queue_spin_lock(m);
+				if (m->queue == PQ_INACTIVE) {
+					TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+					TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+				}
+				vm_page_and_queue_spin_unlock(m);
 				++vm_swapcache_inactive_heuristic;
+				vm_page_wakeup(m);
 				continue;
 			}
 
 			/*
+			 * (m) is still busied.
+			 *
 			 * The object is already known NOT to be dead.   It
 			 * is possible for the vget() to block the whole
 			 * pageout daemon, but the new low-memory handling
@@ -974,11 +1039,20 @@ rescan0:
 					flags |= LK_NOWAIT;
 				else
 					flags |= LK_TIMELOCK;
+				vm_page_hold(m);
+				vm_page_wakeup(m);
+
+				/*
+				 * We have unbusied (m) temporarily so we can
+				 * acquire the vp lock without deadlocking.
+				 * (m) is held to prevent destruction.
+				 */
 				if (vget(vp, flags) != 0) {
 					vpfailed = vp;
 					++pageout_lock_miss;
 					if (object->flags & OBJ_MIGHTBEDIRTY)
 						    vnodes_skipped++;
+					vm_page_unhold(m);
 					continue;
 				}
 
@@ -995,6 +1069,7 @@ rescan0:
 					if (object->flags & OBJ_MIGHTBEDIRTY)
 						vnodes_skipped++;
 					vput(vp);
+					vm_page_unhold(m);
 					continue;
 				}
 	
@@ -1004,52 +1079,64 @@ rescan0:
 				 * page back onto the end of the queue so that
 				 * statistics are more correct if we don't.
 				 */
-				if (m->busy || (m->flags & PG_BUSY)) {
+				if (vm_page_busy_try(m, TRUE)) {
 					vput(vp);
+					vm_page_unhold(m);
 					continue;
 				}
+				vm_page_unhold(m);
 
 				/*
-				 * If the page has become held it might
-				 * be undergoing I/O, so skip it
+				 * (m) is busied again
+				 *
+				 * We own the busy bit and remove our hold
+				 * bit.  If the page is still held it
+				 * might be undergoing I/O, so skip it.
 				 */
 				if (m->hold_count) {
-					TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
-					TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+					vm_page_and_queue_spin_lock(m);
+					if (m->queue == PQ_INACTIVE) {
+						TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+						TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+					}
+					vm_page_and_queue_spin_unlock(m);
 					++vm_swapcache_inactive_heuristic;
 					if (object->flags & OBJ_MIGHTBEDIRTY)
 						vnodes_skipped++;
+					vm_page_wakeup(m);
 					vput(vp);
 					continue;
 				}
+				/* (m) is left busied as we fall through */
 			}
 
 			/*
+			 * page is busy and not held here.
+			 *
 			 * If a page is dirty, then it is either being washed
 			 * (but not yet cleaned) or it is still in the
 			 * laundry.  If it is still in the laundry, then we
 			 * start the cleaning operation. 
-			 *
-			 * This operation may cluster, invalidating the 'next'
-			 * pointer.  To prevent an inordinate number of
-			 * restarts we use our marker to remember our place.
 			 *
 			 * decrement inactive_shortage on success to account
 			 * for the (future) cleaned page.  Otherwise we
 			 * could wind up laundering or cleaning too many
 			 * pages.
 			 */
-			TAILQ_INSERT_AFTER(&vm_page_queues[PQ_INACTIVE].pl, m, &marker, pageq);
 			if (vm_pageout_clean(m) != 0) {
 				--inactive_shortage;
 				--maxlaunder;
 			}
-			next = TAILQ_NEXT(&marker, pageq);
-			TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, &marker, pageq);
+			/* clean ate busy, page no longer accessible */
 			if (vp != NULL)
 				vput(vp);
+		} else {
+			vm_page_wakeup(m);
 		}
 	}
+	vm_page_queues_spin_lock(PQ_INACTIVE);
+	TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, &marker, pageq);
+	vm_page_queues_spin_unlock(PQ_INACTIVE);
 
 	/*
 	 * We want to move pages from the active queue to the inactive
@@ -1079,31 +1166,65 @@ rescan0:
 		active_shortage = inactive_original_shortage * 2;
 	}
 
-	pcount = vmstats.v_active_count;
 	recycle_count = 0;
-	m = TAILQ_FIRST(&vm_page_queues[PQ_ACTIVE].pl);
+	marker.queue = PQ_ACTIVE;
 
-	while ((m != NULL) && (pcount-- > 0) &&
-	       (inactive_shortage > 0 || active_shortage > 0)
-	) {
-		/*
-		 * If the page was ripped out from under us, just stop.
-		 */
-		if (m->queue != PQ_ACTIVE)
-			break;
-		next = TAILQ_NEXT(m, pageq);
+	vm_page_queues_spin_lock(PQ_ACTIVE);
+	TAILQ_INSERT_HEAD(&vm_page_queues[PQ_ACTIVE].pl, &marker, pageq);
+	vm_page_queues_spin_unlock(PQ_ACTIVE);
+	pcount = vmstats.v_active_count;
 
-		/*
-		 * Don't deactivate pages that are busy.
-		 */
-		if ((m->busy != 0) ||
-		    (m->flags & PG_BUSY) ||
-		    (m->hold_count != 0)) {
-			TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-			m = next;
+	while ((m = TAILQ_NEXT(&marker, pageq)) != NULL &&
+	       pcount-- > 0 && (inactive_shortage > 0 || active_shortage > 0))
+	{
+		vm_page_and_queue_spin_lock(m);
+		if (m != TAILQ_NEXT(&marker, pageq)) {
+			vm_page_and_queue_spin_unlock(m);
+			++pcount;
 			continue;
 		}
+		KKASSERT(m->queue == PQ_ACTIVE);
+		TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl,
+			     &marker, pageq);
+		TAILQ_INSERT_AFTER(&vm_page_queues[PQ_ACTIVE].pl, m,
+				   &marker, pageq);
+
+		/*
+		 * Skip marker pages
+		 */
+		if (m->flags & PG_MARKER) {
+			vm_page_and_queue_spin_unlock(m);
+			continue;
+		}
+
+		/*
+		 * Try to busy the page.  Don't mess with pages which are
+		 * already busy or reorder them in the queue.
+		 */
+		if (vm_page_busy_try(m, TRUE)) {
+			vm_page_and_queue_spin_unlock(m);
+			continue;
+		}
+
+		/*
+		 * Don't deactivate pages that are held, even if we can
+		 * busy them.  (XXX why not?)
+		 */
+		if (m->hold_count != 0) {
+			TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl,
+				     m, pageq);
+			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl,
+					  m, pageq);
+			vm_page_and_queue_spin_unlock(m);
+			vm_page_wakeup(m);
+			continue;
+		}
+		vm_page_and_queue_spin_unlock(m);
+
+		/*
+		 * The page has been successfully busied and the page and
+		 * queue are no longer locked.
+		 */
 
 		/*
 		 * The count for pagedaemon pages is done after checking the
@@ -1133,8 +1254,15 @@ rescan0:
 		 * actcount is only valid if the object ref_count is non-zero.
 		 */
 		if (actcount && m->object->ref_count != 0) {
-			TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
+			vm_page_and_queue_spin_lock(m);
+			if (m->queue == PQ_ACTIVE) {
+				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl,
+					     m, pageq);
+				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl,
+						  m, pageq);
+			}
+			vm_page_and_queue_spin_unlock(m);
+			vm_page_wakeup(m);
 		} else {
 			m->act_count -= min(m->act_count, ACT_DECLINE);
 			if (vm_pageout_algorithm ||
@@ -1156,7 +1284,6 @@ rescan0:
 				    m->object->ref_count == 0) {
 					if (inactive_shortage > 0)
 						++recycle_count;
-					vm_page_busy(m);
 					vm_page_protect(m, VM_PROT_NONE);
 					if (m->dirty == 0 &&
 					    inactive_shortage > 0) {
@@ -1168,14 +1295,30 @@ rescan0:
 					}
 				} else {
 					vm_page_deactivate(m);
+					vm_page_wakeup(m);
 				}
 			} else {
-				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
+				vm_page_and_queue_spin_lock(m);
+				if (m->queue == PQ_ACTIVE) {
+					TAILQ_REMOVE(
+						&vm_page_queues[PQ_ACTIVE].pl,
+						m, pageq);
+					TAILQ_INSERT_TAIL(
+						&vm_page_queues[PQ_ACTIVE].pl,
+						m, pageq);
+				}
+				vm_page_and_queue_spin_unlock(m);
+				vm_page_wakeup(m);
 			}
 		}
-		m = next;
 	}
+
+	/*
+	 * Clean out our local marker.
+	 */
+	vm_page_queues_spin_lock(PQ_ACTIVE);
+	TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, &marker, pageq);
+	vm_page_queues_spin_unlock(PQ_ACTIVE);
 
 	/*
 	 * The number of actually free pages can drop down to v_free_reserved,
@@ -1209,25 +1352,39 @@ rescan0:
 	while (vmstats.v_free_count <
 	       (vmstats.v_free_min + vmstats.v_free_target) / 2) {
 		/*
-		 *
+		 * This steals some code from vm/vm_page.c
 		 */
 		static int cache_rover = 0;
-		m = vm_page_list_find(PQ_CACHE, cache_rover, FALSE);
+
+		m = vm_page_list_find(PQ_CACHE, cache_rover & PQ_L2_MASK, FALSE);
 		if (m == NULL)
 			break;
-		if ((m->flags & (PG_BUSY|PG_UNMANAGED)) || 
-		    m->busy || 
-		    m->hold_count || 
-		    m->wire_count) {
+		/* page is returned removed from its queue and spinlocked */
+		if (vm_page_busy_try(m, TRUE)) {
+			vm_page_deactivate_locked(m);
+			vm_page_spin_unlock(m);
 #ifdef INVARIANTS
 			kprintf("Warning: busy page %p found in cache\n", m);
 #endif
+			continue;
+		}
+		vm_page_spin_unlock(m);
+		pagedaemon_wakeup();
+
+		/*
+		 * Page has been successfully busied and it and its queue
+		 * is no longer spinlocked.
+		 */
+		if ((m->flags & PG_UNMANAGED) ||
+		    m->hold_count ||
+		    m->wire_count) {
 			vm_page_deactivate(m);
+			vm_page_wakeup(m);
 			continue;
 		}
 		KKASSERT((m->flags & PG_MAPPED) == 0);
 		KKASSERT(m->dirty == 0);
-		cache_rover = (cache_rover + PQ_PRIME2) & PQ_L2_MASK;
+		cache_rover += PQ_PRIME2;
 		vm_pageout_page_free(m);
 		mycpu->gd_cnt.v_dfree++;
 	}
@@ -1310,7 +1467,7 @@ rescan0:
 }
 
 /*
- * The caller must hold vm_token and proc_token.
+ * The caller must hold proc_token.
  */
 static int
 vm_pageout_scan_callback(struct proc *p, void *data)
@@ -1362,20 +1519,20 @@ vm_pageout_scan_callback(struct proc *p, void *data)
  * so that during long periods of time where there is no paging,
  * that some statistic accumulation still occurs.  This code
  * helps the situation where paging just starts to occur.
- *
- * The caller must hold vm_token.
  */
 static void
 vm_pageout_page_stats(void)
 {
-	vm_page_t m,next;
-	int pcount,tpcount;		/* Number of pages to check */
 	static int fullintervalcount = 0;
+	struct vm_page marker;
+	vm_page_t m;
+	int pcount, tpcount;		/* Number of pages to check */
 	int page_shortage;
 
-	page_shortage = 
-	    (vmstats.v_inactive_target + vmstats.v_cache_max + vmstats.v_free_min) -
-	    (vmstats.v_free_count + vmstats.v_inactive_count + vmstats.v_cache_count);
+	page_shortage = (vmstats.v_inactive_target + vmstats.v_cache_max +
+			 vmstats.v_free_min) -
+			(vmstats.v_free_count + vmstats.v_inactive_count +
+			 vmstats.v_cache_count);
 
 	if (page_shortage <= 0)
 		return;
@@ -1383,76 +1540,136 @@ vm_pageout_page_stats(void)
 	pcount = vmstats.v_active_count;
 	fullintervalcount += vm_pageout_stats_interval;
 	if (fullintervalcount < vm_pageout_full_stats_interval) {
-		tpcount = (vm_pageout_stats_max * vmstats.v_active_count) / vmstats.v_page_count;
+		tpcount = (vm_pageout_stats_max * vmstats.v_active_count) /
+			  vmstats.v_page_count;
 		if (pcount > tpcount)
 			pcount = tpcount;
 	} else {
 		fullintervalcount = 0;
 	}
 
-	m = TAILQ_FIRST(&vm_page_queues[PQ_ACTIVE].pl);
-	while ((m != NULL) && (pcount-- > 0)) {
+	bzero(&marker, sizeof(marker));
+	marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
+	marker.queue = PQ_ACTIVE;
+	marker.wire_count = 1;
+
+	vm_page_queues_spin_lock(PQ_ACTIVE);
+	TAILQ_INSERT_HEAD(&vm_page_queues[PQ_ACTIVE].pl, &marker, pageq);
+	vm_page_queues_spin_unlock(PQ_ACTIVE);
+
+	while ((m = TAILQ_NEXT(&marker, pageq)) != NULL &&
+	       pcount-- > 0)
+	{
 		int actcount;
 
-		if (m->queue != PQ_ACTIVE) {
-			break;
+		vm_page_and_queue_spin_lock(m);
+		if (m != TAILQ_NEXT(&marker, pageq)) {
+			vm_page_and_queue_spin_unlock(m);
+			++pcount;
+			continue;
 		}
+		KKASSERT(m->queue == PQ_ACTIVE);
+		TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, &marker, pageq);
+		TAILQ_INSERT_AFTER(&vm_page_queues[PQ_ACTIVE].pl, m,
+				   &marker, pageq);
 
-		next = TAILQ_NEXT(m, pageq);
 		/*
-		 * Don't deactivate pages that are busy.
+		 * Ignore markers
 		 */
-		if ((m->busy != 0) ||
-		    (m->flags & PG_BUSY) ||
-		    (m->hold_count != 0)) {
-			TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-			m = next;
+		if (m->flags & PG_MARKER) {
+			vm_page_and_queue_spin_unlock(m);
 			continue;
 		}
 
+		/*
+		 * Ignore pages we can't busy
+		 */
+		if (vm_page_busy_try(m, TRUE)) {
+			vm_page_and_queue_spin_unlock(m);
+			continue;
+		}
+		vm_page_and_queue_spin_unlock(m);
+		KKASSERT(m->queue == PQ_ACTIVE);
+
+		/*
+		 * We now have a safely busied page, the page and queue
+		 * spinlocks have been released.
+		 *
+		 * Ignore held pages
+		 */
+		if (m->hold_count) {
+			vm_page_wakeup(m);
+			continue;
+		}
+
+		/*
+		 * Calculate activity
+		 */
 		actcount = 0;
 		if (m->flags & PG_REFERENCED) {
 			vm_page_flag_clear(m, PG_REFERENCED);
 			actcount += 1;
 		}
-
 		actcount += pmap_ts_referenced(m);
+
+		/*
+		 * Update act_count and move page to end of queue.
+		 */
 		if (actcount) {
 			m->act_count += ACT_ADVANCE + actcount;
 			if (m->act_count > ACT_MAX)
 				m->act_count = ACT_MAX;
-			TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-		} else {
-			if (m->act_count == 0) {
-				/*
-				 * We turn off page access, so that we have
-				 * more accurate RSS stats.  We don't do this
-				 * in the normal page deactivation when the
-				 * system is loaded VM wise, because the
-				 * cost of the large number of page protect
-				 * operations would be higher than the value
-				 * of doing the operation.
-				 */
-				vm_page_busy(m);
-				vm_page_protect(m, VM_PROT_NONE);
-				vm_page_deactivate(m);
-				vm_page_wakeup(m);
-			} else {
-				m->act_count -= min(m->act_count, ACT_DECLINE);
-				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
+			vm_page_and_queue_spin_lock(m);
+			if (m->queue == PQ_ACTIVE) {
+				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl,
+					     m, pageq);
+				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl,
+						  m, pageq);
 			}
+			vm_page_and_queue_spin_unlock(m);
+			vm_page_wakeup(m);
+			continue;
 		}
 
-		m = next;
+		if (m->act_count == 0) {
+			/*
+			 * We turn off page access, so that we have
+			 * more accurate RSS stats.  We don't do this
+			 * in the normal page deactivation when the
+			 * system is loaded VM wise, because the
+			 * cost of the large number of page protect
+			 * operations would be higher than the value
+			 * of doing the operation.
+			 *
+			 * We use the marker to save our place so
+			 * we can release the spin lock.  both (m)
+			 * and (next) will be invalid.
+			 */
+			vm_page_protect(m, VM_PROT_NONE);
+			vm_page_deactivate(m);
+		} else {
+			m->act_count -= min(m->act_count, ACT_DECLINE);
+			vm_page_and_queue_spin_lock(m);
+			if (m->queue == PQ_ACTIVE) {
+				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl,
+					     m, pageq);
+				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl,
+						  m, pageq);
+			}
+			vm_page_and_queue_spin_unlock(m);
+		}
+		vm_page_wakeup(m);
 	}
+
+	/*
+	 * Remove our local marker
+	 */
+	vm_page_queues_spin_lock(PQ_ACTIVE);
+	TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, &marker, pageq);
+	vm_page_queues_spin_unlock(PQ_ACTIVE);
+
 }
 
-/*
- * The caller must hold vm_token.
- */
 static int
 vm_pageout_free_page_calc(vm_size_t count)
 {
@@ -1487,11 +1704,6 @@ vm_pageout_thread(void)
 {
 	int pass;
 	int inactive_shortage;
-
-	/*
-	 * Permanently hold vm_token.
-	 */
-	lwkt_gettoken(&vm_token);
 
 	/*
 	 * Initialize some paging parameters.
@@ -1714,10 +1926,8 @@ static void
 vm_daemon(void)
 {
 	/*
-	 * Permanently hold vm_token.
+	 * XXX vm_daemon_needed specific token?
 	 */
-	lwkt_gettoken(&vm_token);
-
 	while (TRUE) {
 		tsleep(&vm_daemon_needed, 0, "psleep", 0);
 		if (vm_pageout_req_swapout) {
@@ -1733,7 +1943,7 @@ vm_daemon(void)
 }
 
 /*
- * Caller must hold vm_token and proc_token.
+ * Caller must hold proc_token.
  */
 static int
 vm_daemon_callback(struct proc *p, void *data __unused)
@@ -1768,11 +1978,12 @@ vm_daemon_callback(struct proc *p, void *data __unused)
 	if (p->p_flag & P_SWAPPEDOUT)
 		limit = 0;
 
+	lwkt_gettoken(&p->p_vmspace->vm_map.token);
 	size = vmspace_resident_count(p->p_vmspace);
 	if (limit >= 0 && size >= limit) {
-		vm_pageout_map_deactivate_pages(
-		    &p->p_vmspace->vm_map, limit);
+		vm_pageout_map_deactivate_pages(&p->p_vmspace->vm_map, limit);
 	}
+	lwkt_reltoken(&p->p_vmspace->vm_map.token);
 	return (0);
 }
 

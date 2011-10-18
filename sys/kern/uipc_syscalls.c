@@ -1379,7 +1379,9 @@ sf_buf_mfree(void *arg)
 	m = sf_buf_page(sf);
 	if (sf_buf_free(sf)) {
 		/* sf invalid now */
+		vm_page_busy_wait(m, FALSE, "sockpgf");
 		vm_page_unwire(m, 0);
+		vm_page_wakeup(m);
 		if (m->wire_count == 0 && m->object == NULL)
 			vm_page_try_to_free(m);
 	}
@@ -1601,24 +1603,23 @@ retry_lookup:
 		 *	interrupt can free the page) through to the
 		 *	vm_page_wire() call.
 		 */
-		lwkt_gettoken(&vm_token);
-		pg = vm_page_lookup(obj, pindex);
+		vm_object_hold(obj);
+		pg = vm_page_lookup_busy_try(obj, pindex, TRUE, &error);
+		if (error) {
+			vm_page_sleep_busy(pg, TRUE, "sfpbsy");
+			vm_object_drop(obj);
+			goto retry_lookup;
+		}
 		if (pg == NULL) {
 			pg = vm_page_alloc(obj, pindex, VM_ALLOC_NORMAL);
 			if (pg == NULL) {
 				vm_wait(0);
-				lwkt_reltoken(&vm_token);
+				vm_object_drop(obj);
 				goto retry_lookup;
 			}
-			vm_page_wire(pg);
-			vm_page_wakeup(pg);
-		} else if (vm_page_sleep_busy(pg, TRUE, "sfpbsy")) {
-			lwkt_reltoken(&vm_token);
-			goto retry_lookup;
-		} else {
-			vm_page_wire(pg);
 		}
-		lwkt_reltoken(&vm_token);
+		vm_page_wire(pg);
+		vm_object_drop(obj);
 
 		/*
 		 * If page is not valid for what we need, initiate I/O
@@ -1634,6 +1635,7 @@ retry_lookup:
 			 * completes.
 			 */
 			vm_page_io_start(pg);
+			vm_page_wakeup(pg);
 
 			/*
 			 * Get the page from backing store.
@@ -1654,12 +1656,12 @@ retry_lookup:
 				    td->td_ucred);
 			vn_unlock(vp);
 			vm_page_flag_clear(pg, PG_ZERO);
+			vm_page_busy_wait(pg, FALSE, "sockpg");
 			vm_page_io_finish(pg);
 			if (error) {
-				crit_enter();
 				vm_page_unwire(pg, 0);
+				vm_page_wakeup(pg);
 				vm_page_try_to_free(pg);
-				crit_exit();
 				ssb_unlock(&so->so_snd);
 				goto done;
 			}
@@ -1671,14 +1673,14 @@ retry_lookup:
 		 * but this wait can be interrupted.
 		 */
 		if ((sf = sf_buf_alloc(pg)) == NULL) {
-			crit_enter();
 			vm_page_unwire(pg, 0);
+			vm_page_wakeup(pg);
 			vm_page_try_to_free(pg);
-			crit_exit();
 			ssb_unlock(&so->so_snd);
 			error = EINTR;
 			goto done;
 		}
+		vm_page_wakeup(pg);
 
 		/*
 		 * Get an mbuf header and set it up as having external storage.

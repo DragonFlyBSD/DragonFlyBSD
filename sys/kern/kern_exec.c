@@ -576,8 +576,6 @@ exec_fail:
 
 /*
  * execve() system call.
- *
- * MPALMOSTSAFE
  */
 int
 sys_execve(struct execve_args *uap)
@@ -588,7 +586,6 @@ sys_execve(struct execve_args *uap)
 
 	bzero(&args, sizeof(args));
 
-	get_mplock();
 	error = nlookup_init(&nd, uap->fname, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = exec_copyin_args(&args, uap->fname, PATH_USERSPACE,
@@ -604,7 +601,6 @@ sys_execve(struct execve_args *uap)
 		exit1(W_EXITCODE(0, SIGABRT));
 		/* NOTREACHED */
 	}
-	rel_mplock();
 
 	/*
 	 * The syscall result is returned in registers to the new program.
@@ -635,9 +631,8 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 	if (pageno >= object->size)
 		return (EIO);
 
+	vm_object_hold(object);
 	m = vm_page_grab(object, pageno, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
-
-	lwkt_gettoken(&vm_token);
 	while ((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) {
 		ma = m;
 
@@ -656,13 +651,12 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 				vm_page_protect(m, VM_PROT_NONE);
 				vnode_pager_freepage(m);
 			}
-			lwkt_reltoken(&vm_token);
 			return EIO;
 		}
 	}
-	vm_page_hold(m);	/* requires vm_token to be held */
+	vm_page_hold(m);
 	vm_page_wakeup(m);	/* unbusy the page */
-	lwkt_reltoken(&vm_token);
+	vm_object_drop(object);
 
 	*plwb = lwbuf_alloc(m, *plwb);
 	*pdata = (void *)lwbuf_kva(*plwb);

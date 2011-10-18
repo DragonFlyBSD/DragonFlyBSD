@@ -129,7 +129,7 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 	 * Serialize potential vnode/object teardowns and interlocks
 	 */
 	vp = (struct vnode *)handle;
-	lwkt_gettoken(&vmobj_token);
+	lwkt_gettoken(&vp->v_token);
 
 	/*
 	 * Prevent race condition when allocating the object. This
@@ -140,14 +140,18 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 		tsleep(vp, 0, "vnpobj", 0);
 	}
 	vsetflags(vp, VOLOCK);
+	lwkt_reltoken(&vp->v_token);
 
 	/*
 	 * If the object is being terminated, wait for it to
 	 * go away.
 	 */
-	while (((object = vp->v_object) != NULL) &&
-		(object->flags & OBJ_DEAD)) {
+	while ((object = vp->v_object) != NULL) {
+		vm_object_hold(object);
+		if ((object->flags & OBJ_DEAD) == 0)
+			break;
 		vm_object_dead_sleep(object, "vadead");
+		vm_object_drop(object);
 	}
 
 	if (vp->v_sysref.refcnt <= 0)
@@ -173,6 +177,7 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 		 * And an object of the appropriate size
 		 */
 		object = vm_object_allocate(OBJT_VNODE, lsize);
+		vm_object_hold(object);
 		object->flags = 0;
 		object->handle = handle;
 		vp->v_object = object;
@@ -180,7 +185,7 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 		if (vp->v_mount && (vp->v_mount->mnt_kern_flag & MNTK_NOMSYNC))
 			vm_object_set_flag(object, OBJ_NOMSYNC);
 	} else {
-		object->ref_count++;	/* protected  by vmobj_token */
+		object->ref_count++;
 		if (object->size != lsize) {
 			kprintf("vnode_pager_alloc: Warning, objsize "
 				"mismatch %jd/%jd vp=%p obj=%p\n",
@@ -198,12 +203,15 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 	}
 
 	vref(vp);
+	lwkt_gettoken(&vp->v_token);
 	vclrflags(vp, VOLOCK);
 	if (vp->v_flag & VOWANT) {
 		vclrflags(vp, VOWANT);
 		wakeup(vp);
 	}
-	lwkt_reltoken(&vmobj_token);
+	lwkt_reltoken(&vp->v_token);
+
+	vm_object_drop(object);
 
 	return (object);
 }
@@ -220,27 +228,29 @@ vnode_pager_reference(struct vnode *vp)
 	vm_object_t object;
 
 	/*
-	 * Serialize potential vnode/object teardowns and interlocks
-	 */
-	lwkt_gettoken(&vmobj_token);
-
-	/*
 	 * Prevent race condition when allocating the object. This
 	 * can happen with NFS vnodes since the nfsnode isn't locked.
+	 *
+	 * Serialize potential vnode/object teardowns and interlocks
 	 */
+	lwkt_gettoken(&vp->v_token);
 	while (vp->v_flag & VOLOCK) {
 		vsetflags(vp, VOWANT);
 		tsleep(vp, 0, "vnpobj", 0);
 	}
 	vsetflags(vp, VOLOCK);
+	lwkt_reltoken(&vp->v_token);
 
 	/*
 	 * Prevent race conditions against deallocation of the VM
 	 * object.
 	 */
-	while (((object = vp->v_object) != NULL) &&
-		(object->flags & OBJ_DEAD)) {
+	while ((object = vp->v_object) != NULL) {
+		vm_object_hold(object);
+		if ((object->flags & OBJ_DEAD) == 0)
+			break;
 		vm_object_dead_sleep(object, "vadead");
+		vm_object_drop(object);
 	}
 
 	/*
@@ -248,17 +258,20 @@ vnode_pager_reference(struct vnode *vp)
 	 * NULL returns if it does not.
 	 */
 	if (object) {
-		object->ref_count++;	/* protected by vmobj_token */
+		object->ref_count++;
 		vref(vp);
 	}
 
+	lwkt_gettoken(&vp->v_token);
 	vclrflags(vp, VOLOCK);
 	if (vp->v_flag & VOWANT) {
 		vclrflags(vp, VOWANT);
 		wakeup(vp);
 	}
+	lwkt_reltoken(&vp->v_token);
+	if (object)
+		vm_object_drop(object);
 
-	lwkt_reltoken(&vmobj_token);
 	return (object);
 }
 
@@ -350,18 +363,24 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 {
 	vm_pindex_t nobjsize;
 	vm_pindex_t oobjsize;
-	vm_object_t object = vp->v_object;
+	vm_object_t object;
 
+	while ((object = vp->v_object) != NULL) {
+		vm_object_hold(object);
+		if (vp->v_object == object)
+			break;
+		vm_object_drop(object);
+	}
 	if (object == NULL)
 		return;
 
 	/*
 	 * Hasn't changed size
 	 */
-	if (nsize == vp->v_filesize)
+	if (nsize == vp->v_filesize) {
+		vm_object_drop(object);
 		return;
-
-	lwkt_gettoken(&vm_token);
+	}
 
 	/*
 	 * Has changed size.  Adjust the VM object's size and v_filesize
@@ -393,9 +412,8 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 			vm_offset_t kva;
 			vm_page_t m;
 
-			do {
-				m = vm_page_lookup(object, OFF_TO_IDX(nsize));
-			} while (m && vm_page_sleep_busy(m, TRUE, "vsetsz"));
+			m = vm_page_lookup_busy_wait(object, OFF_TO_IDX(nsize),
+						     TRUE, "vsetsz");
 
 			if (m && m->valid) {
 				int base = (int)nsize & PAGE_MASK;
@@ -409,7 +427,6 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				 *
 				 * This is byte aligned.
 				 */
-				vm_page_busy(m);
 				lwb = lwbuf_alloc(m, &lwb_cache);
 				kva = lwbuf_kva(lwb);
 				bzero((caddr_t)kva + base, size);
@@ -450,12 +467,14 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				if (m->dirty != 0)
 					m->dirty = VM_PAGE_BITS_ALL;
 				vm_page_wakeup(m);
+			} else if (m) {
+				vm_page_wakeup(m);
 			}
 		}
 	} else {
 		vp->v_filesize = nsize;
 	}
-	lwkt_reltoken(&vm_token);
+	vm_object_drop(object);
 }
 
 /*
@@ -616,16 +635,10 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
 	/*
 	 * Severe hack to avoid deadlocks with the buffer cache
 	 */
-	lwkt_gettoken(&vm_token);
 	for (i = 0; i < count; ++i) {
-		vm_page_t mt = mpp[i];
-
-		while (vm_page_sleep_busy(mt, FALSE, "getpgs"))
-			;
-		vm_page_busy(mt);
-		vm_page_io_finish(mt);
+		vm_page_busy_wait(mpp[i], FALSE, "getpgs");
+		vm_page_io_finish(mpp[i]);
 	}
-	lwkt_reltoken(&vm_token);
 
 	/*
 	 * Calculate the actual number of bytes read and clean up the
@@ -638,7 +651,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
 
 		if (i != reqpage) {
 			if (error == 0 && mt->valid) {
-				if (mt->flags & PG_WANTED)
+				if (mt->flags & PG_REFERENCED)
 					vm_page_activate(mt);
 				else
 					vm_page_deactivate(mt);
@@ -829,37 +842,62 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	return rtvals[0];
 }
 
+/*
+ * Run the chain and if the bottom-most object is a vnode-type lock the
+ * underlying vnode.  A locked vnode or NULL is returned.
+ */
 struct vnode *
 vnode_pager_lock(vm_object_t object)
 {
-	struct thread *td = curthread;	/* XXX */
+	struct vnode *vp = NULL;
+	vm_object_t lobject;
+	vm_object_t tobject;
 	int error;
 
+	if (object == NULL)
+		return(NULL);
+
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
+	lobject = object;
 
-	for (; object != NULL; object = object->backing_object) {
-		if (object->type != OBJT_VNODE)
-			continue;
-		if (object->flags & OBJ_DEAD)
-			return NULL;
-
-		for (;;) {
-			struct vnode *vp = object->handle;
-			error = vget(vp, LK_SHARED | LK_RETRY | LK_CANRECURSE);
-			if (error == 0) {
-				if (object->handle != vp) {
-					vput(vp);
-					continue;
-				}
-				return (vp);
+	while (lobject->type != OBJT_VNODE) {
+		if (lobject->flags & OBJ_DEAD)
+			break;
+		tobject = lobject->backing_object;
+		if (tobject == NULL)
+			break;
+		vm_object_hold(tobject);
+		if (tobject == lobject->backing_object) {
+			if (lobject != object) {
+				vm_object_lock_swap();
+				vm_object_drop(lobject);
 			}
-			if ((object->flags & OBJ_DEAD) ||
-			    (object->type != OBJT_VNODE)) {
-				return NULL;
-			}
-			kprintf("vnode_pager_lock: vp %p error %d lockstatus %d, retrying\n", vp, error, lockstatus(&vp->v_lock, td));
-			tsleep(object->handle, 0, "vnpgrl", hz);
+			lobject = tobject;
+		} else {
+			vm_object_drop(tobject);
 		}
 	}
-	return NULL;
+	while (lobject->type == OBJT_VNODE &&
+	       (lobject->flags & OBJ_DEAD) == 0) {
+		/*
+		 * Extract the vp
+		 */
+		vp = lobject->handle;
+		error = vget(vp, LK_SHARED | LK_RETRY | LK_CANRECURSE);
+		if (error == 0) {
+			if (lobject->handle == vp)
+				break;
+			vput(vp);
+		} else {
+			kprintf("vnode_pager_lock: vp %p error %d "
+				"lockstatus %d, retrying\n",
+				vp, error,
+				lockstatus(&vp->v_lock, curthread));
+			tsleep(object->handle, 0, "vnpgrl", hz);
+		}
+		vp = NULL;
+	}
+	if (lobject != object)
+		vm_object_drop(lobject);
+	return (vp);
 }

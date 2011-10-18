@@ -145,7 +145,7 @@ sys_sstk(struct sstk_args *uap)
  * is maintained as long as you do not write directly to the underlying
  * character device.
  *
- * No requirements; sys_mmap path holds the vm_token
+ * No requirements
  */
 int
 kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
@@ -382,8 +382,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 		}
 	}
 
-	/* Token serializes access to vm_map.nentries against vm_mmap */
-	lwkt_gettoken(&vm_token);
+	lwkt_gettoken(&vms->vm_map.token);
 
 	/*
 	 * Do not allow more then a certain number of vm_map_entry structures
@@ -393,7 +392,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	if (max_proc_mmap && 
 	    vms->vm_map.nentries >= max_proc_mmap * vms->vm_sysref.refcnt) {
 		error = ENOMEM;
-		lwkt_reltoken(&vm_token);
+		lwkt_reltoken(&vms->vm_map.token);
 		goto done;
 	}
 
@@ -402,7 +401,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	if (error == 0)
 		*res = (void *)(addr + pageoff);
 
-	lwkt_reltoken(&vm_token);
+	lwkt_reltoken(&vms->vm_map.token);
 done:
 	if (fp)
 		fdrop(fp);
@@ -465,12 +464,12 @@ sys_msync(struct msync_args *uap)
 	map = &p->p_vmspace->vm_map;
 
 	/*
-	 * vm_token serializes extracting the address range for size == 0
+	 * map->token serializes extracting the address range for size == 0
 	 * msyncs with the vm_map_clean call; if the token were not held
 	 * across the two calls, an intervening munmap/mmap pair, for example,
 	 * could cause msync to occur on a wrong region.
 	 */
-	lwkt_gettoken(&vm_token);
+	lwkt_gettoken(&map->token);
 
 	/*
 	 * XXX Gak!  If size is zero we are supposed to sync "all modified
@@ -500,7 +499,7 @@ sys_msync(struct msync_args *uap)
 	rv = vm_map_clean(map, addr, addr + size, (flags & MS_ASYNC) == 0,
 			  (flags & MS_INVALIDATE) != 0);
 done:
-	lwkt_reltoken(&vm_token);
+	lwkt_reltoken(&map->token);
 
 	switch (rv) {
 	case KERN_SUCCESS:
@@ -559,20 +558,20 @@ sys_munmap(struct munmap_args *uap)
 
 	map = &p->p_vmspace->vm_map;
 
-	/* vm_token serializes between the map check and the actual unmap */
-	lwkt_gettoken(&vm_token);
+	/* map->token serializes between the map check and the actual unmap */
+	lwkt_gettoken(&map->token);
 
 	/*
 	 * Make sure entire range is allocated.
 	 */
 	if (!vm_map_check_protection(map, addr, addr + size,
 				     VM_PROT_NONE, FALSE)) {
-		lwkt_reltoken(&vm_token);
+		lwkt_reltoken(&map->token);
 		return (EINVAL);
 	}
 	/* returns nothing but KERN_SUCCESS anyway */
 	vm_map_remove(map, addr, addr + size);
-	lwkt_reltoken(&vm_token);
+	lwkt_reltoken(&map->token);
 	return (0);
 }
 
@@ -799,7 +798,7 @@ sys_mincore(struct mincore_args *uap)
 	map = &p->p_vmspace->vm_map;
 	pmap = vmspace_pmap(p->p_vmspace);
 
-	lwkt_gettoken(&vm_token);
+	lwkt_gettoken(&map->token);
 	vm_map_lock_read(map);
 RestartScan:
 	timestamp = map->timestamp;
@@ -869,8 +868,12 @@ RestartScan:
 				 * required to maintain the object 
 				 * association.  And XXX what if the page is
 				 * busy?  What's the deal with that?
+				 *
+				 * XXX vm_token - legacy for pmap_ts_referenced
+				 *     in i386 and vkernel pmap code.
 				 */
-				crit_enter();
+				lwkt_gettoken(&vm_token);
+				vm_object_hold(current->object.vm_object);
 				m = vm_page_lookup(current->object.vm_object,
 						    pindex);
 				if (m && m->valid) {
@@ -884,7 +887,8 @@ RestartScan:
 						mincoreinfo |= MINCORE_REFERENCED_OTHER;
 					}
 				}
-				crit_exit();
+				vm_object_drop(current->object.vm_object);
+				lwkt_reltoken(&vm_token);
 			}
 
 			/*
@@ -963,7 +967,7 @@ RestartScan:
 
 	error = 0;
 done:
-	lwkt_reltoken(&vm_token);
+	lwkt_reltoken(&map->token);
 	return (error);
 }
 
@@ -1173,7 +1177,7 @@ sys_munlock(struct munlock_args *uap)
  * Currently used by mmap, exec, and sys5 shared memory.
  * Handle is either a vnode pointer or NULL for MAP_ANON.
  * 
- * No requirements; kern_mmap path holds the vm_token
+ * No requirements
  */
 int
 vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
@@ -1198,7 +1202,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		return (EINVAL);
 	size = objsize;
 
-	lwkt_gettoken(&vm_token);
+	lwkt_gettoken(&map->token);
 	
 	/*
 	 * XXX messy code, fixme
@@ -1210,7 +1214,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		esize = map->size + size;	/* workaround gcc4 opt */
 		if (esize < map->size ||
 		    esize > p->p_rlimit[RLIMIT_VMEM].rlim_cur) {
-			lwkt_reltoken(&vm_token);
+			lwkt_reltoken(&map->token);
 			return(ENOMEM);
 		}
 	}
@@ -1227,7 +1231,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	 * will optimize it out.
 	 */
 	if (foff & PAGE_MASK) {
-		lwkt_reltoken(&vm_token);
+		lwkt_reltoken(&map->token);
 		return (EINVAL);
 	}
 
@@ -1236,12 +1240,12 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		*addr = round_page(*addr);
 	} else {
 		if (*addr != trunc_page(*addr)) {
-			lwkt_reltoken(&vm_token);
+			lwkt_reltoken(&map->token);
 			return (EINVAL);
 		}
 		eaddr = *addr + size;
 		if (eaddr < *addr) {
-			lwkt_reltoken(&vm_token);
+			lwkt_reltoken(&map->token);
 			return (EINVAL);
 		}
 		fitit = FALSE;
@@ -1263,7 +1267,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			object = default_pager_alloc(handle, objsize,
 						     prot, foff);
 			if (object == NULL) {
-				lwkt_reltoken(&vm_token);
+				lwkt_reltoken(&map->token);
 				return(ENOMEM);
 			}
 			docow = MAP_PREFAULT_PARTIAL;
@@ -1287,7 +1291,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			handle = (void *)(intptr_t)vp->v_rdev;
 			object = dev_pager_alloc(handle, objsize, prot, foff);
 			if (object == NULL) {
-				lwkt_reltoken(&vm_token);
+				lwkt_reltoken(&map->token);
 				return(EINVAL);
 			}
 			docow = MAP_PREFAULT_PARTIAL;
@@ -1304,13 +1308,13 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 
 			error = VOP_GETATTR(vp, &vat);
 			if (error) {
-				lwkt_reltoken(&vm_token);
+				lwkt_reltoken(&map->token);
 				return (error);
 			}
 			docow = MAP_PREFAULT_PARTIAL;
 			object = vnode_pager_reference(vp);
 			if (object == NULL && vp->v_type == VREG) {
-				lwkt_reltoken(&vm_token);
+				lwkt_reltoken(&map->token);
 				kprintf("Warning: cannot mmap vnode %p, no "
 					"object\n", vp);
 				return(EINVAL);
@@ -1402,7 +1406,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	if (vp != NULL)
 		vn_mark_atime(vp, td);
 out:
-	lwkt_reltoken(&vm_token);
+	lwkt_reltoken(&map->token);
 	
 	switch (rv) {
 	case KERN_SUCCESS:

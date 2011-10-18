@@ -332,7 +332,8 @@ again:
 	}
 
 	shm_handle = shmseg->shm_internal;
-	vm_object_reference(shm_handle->shm_object);
+	vm_object_hold(shm_handle->shm_object);
+	vm_object_reference_locked(shm_handle->shm_object);
 	rv = vm_map_find(&p->p_vmspace->vm_map, 
 			 shm_handle->shm_object, 0,
 			 &attach_va,
@@ -341,6 +342,7 @@ again:
 			 VM_MAPTYPE_NORMAL,
 			 prot, prot,
 			 0);
+	vm_object_drop(shm_handle->shm_object);
 	if (rv != KERN_SUCCESS) {
                 vm_object_deallocate(shm_handle->shm_object);
 		error = ENOMEM;

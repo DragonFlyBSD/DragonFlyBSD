@@ -213,7 +213,7 @@ mi_startup(void)
 		 */
 		if ((long)sysinit % 8 != 0) {
 			kprintf("Fixing sysinit value...\n");
-			sysinit = (long)sysinit + 4;
+			sysinit = (void *)((long)(intptr_t)sysinit + 4);
 		}
 #endif
 		sysinit_end = SET_LIMIT(sysinit_set);

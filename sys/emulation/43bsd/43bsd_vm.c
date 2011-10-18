@@ -113,11 +113,9 @@ sys_ommap(struct ommap_args *uap)
 	if (uap->flags & OMAP_INHERIT)
 		flags |= MAP_INHERIT;
 
-	lwkt_gettoken(&vm_token);
 	error = kern_mmap(curproc->p_vmspace, uap->addr, uap->len,
 			  prot, flags, uap->fd, uap->pos,
 			  &uap->sysmsg_resultp);
-	lwkt_reltoken(&vm_token);
 
 	return (error);
 }

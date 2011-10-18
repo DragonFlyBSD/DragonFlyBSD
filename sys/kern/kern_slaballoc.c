@@ -227,6 +227,24 @@ SYSCTL_INT(_kern, OID_AUTO, zone_big_alloc, CTLFLAG_RD, &ZoneBigAlloc, 0, "");
 SYSCTL_INT(_kern, OID_AUTO, zone_gen_alloc, CTLFLAG_RD, &ZoneGenAlloc, 0, "");
 SYSCTL_INT(_kern, OID_AUTO, zone_cache, CTLFLAG_RW, &ZoneRelsThresh, 0, "");
 
+/*
+ * Returns the kernel memory size limit for the purposes of initializing
+ * various subsystem caches.  The smaller of available memory and the KVM
+ * memory space is returned.
+ *
+ * The size in megabytes is returned.
+ */
+size_t
+kmem_lim_size(void)
+{
+    size_t limsize;
+
+    limsize = (size_t)vmstats.v_page_count * PAGE_SIZE;
+    if (limsize > KvaSize)
+	limsize = KvaSize;
+    return (limsize / (1024 * 1024));
+}
+
 static void
 kmeminit(void *dummy)
 {
@@ -234,12 +252,28 @@ kmeminit(void *dummy)
     int usesize;
     int i;
 
-    limsize = (size_t)vmstats.v_page_count * PAGE_SIZE;
-    if (limsize > KvaSize)
-	limsize = KvaSize;
+    limsize = kmem_lim_size();
+    usesize = (int)(limsize * 1024);	/* convert to KB */
 
-    usesize = (int)(limsize / 1024);	/* convert to KB */
+    /*
+     * If the machine has a large KVM space and more than 8G of ram,
+     * double the zone release threshold to reduce SMP invalidations.
+     * If more than 16G of ram, do it again.
+     *
+     * The BIOS eats a little ram so add some slop.  We want 8G worth of
+     * memory sticks to trigger the first adjustment.
+     */
+    if (ZoneRelsThresh == ZONE_RELS_THRESH) {
+	    if (limsize >= 7 * 1024)
+		    ZoneRelsThresh *= 2;
+	    if (limsize >= 15 * 1024)
+		    ZoneRelsThresh *= 2;
+    }
 
+    /*
+     * Calculate the zone size.  This typically calculates to
+     * ZALLOC_MAX_ZONE_SIZE
+     */
     ZoneSize = ZALLOC_MIN_ZONE_SIZE;
     while (ZoneSize < ZALLOC_MAX_ZONE_SIZE && (ZoneSize << 1) < usesize)
 	ZoneSize <<= 1;
@@ -276,9 +310,7 @@ malloc_init(void *data)
     if (vmstats.v_page_count == 0)
 	panic("malloc_init not allowed before vm init");
 
-    limsize = (size_t)vmstats.v_page_count * PAGE_SIZE;
-    if (limsize > KvaSize)
-	limsize = KvaSize;
+    limsize = kmem_lim_size() * (1024 * 1024);
     type->ks_limit = limsize / 10;
 
     type->ks_next = kmemstatistics;
@@ -1363,7 +1395,7 @@ chunk_mark_free(SLZone *z, void *chunk)
  *	Interrupt code which has preempted other code is not allowed to
  *	use PQ_CACHE pages.  However, if an interrupt thread is run
  *	non-preemptively or blocks and then runs non-preemptively, then
- *	it is free to use PQ_CACHE pages.
+ *	it is free to use PQ_CACHE pages.  <--- may not apply any longer XXX
  */
 static void *
 kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
@@ -1371,22 +1403,13 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     vm_size_t i;
     vm_offset_t addr;
     int count, vmflags, base_vmflags;
-    vm_page_t mp[ZALLOC_MAX_ZONE_SIZE / PAGE_SIZE];
+    vm_page_t mbase = NULL;
+    vm_page_t m;
     thread_t td;
 
     size = round_page(size);
     addr = vm_map_min(&kernel_map);
 
-    /*
-     * Reserve properly aligned space from kernel_map.  RNOWAIT allocations
-     * cannot block.
-     */
-    if (flags & M_RNOWAIT) {
-	if (lwkt_trytoken(&vm_token) == 0)
-	    return(NULL);
-    } else {
-	lwkt_gettoken(&vm_token);
-    }
     count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
     crit_enter();
     vm_map_lock(&kernel_map);
@@ -1396,19 +1419,22 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
 	vm_map_entry_release(count);
 	crit_exit();
-	lwkt_reltoken(&vm_token);
 	return(NULL);
     }
 
     /*
      * kernel_object maps 1:1 to kernel_map.
      */
-    vm_object_reference(&kernel_object);
+    vm_object_hold(&kernel_object);
+    vm_object_reference_locked(&kernel_object);
     vm_map_insert(&kernel_map, &count, 
 		    &kernel_object, addr, addr, addr + size,
 		    VM_MAPTYPE_NORMAL,
 		    VM_PROT_ALL, VM_PROT_ALL,
 		    0);
+    vm_object_drop(&kernel_object);
+    vm_map_set_wired_quick(&kernel_map, addr, size, &count);
+    vm_map_unlock(&kernel_map);
 
     td = curthread;
 
@@ -1424,32 +1450,28 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	      flags, ((int **)&size)[-1]);
     }
 
-
     /*
-     * Allocate the pages.  Do not mess with the PG_ZERO flag yet.
+     * Allocate the pages.  Do not mess with the PG_ZERO flag or map
+     * them yet.  VM_ALLOC_NORMAL can only be set if we are not preempting.
+     *
+     * VM_ALLOC_SYSTEM is automatically set if we are preempting and
+     * M_WAITOK was specified as an alternative (i.e. M_USE_RESERVE is
+     * implied in this case), though I'm not sure if we really need to
+     * do that.
      */
+    vmflags = base_vmflags;
+    if (flags & M_WAITOK) {
+	if (td->td_preempted)
+	    vmflags |= VM_ALLOC_SYSTEM;
+	else
+	    vmflags |= VM_ALLOC_NORMAL;
+    }
+
+    vm_object_hold(&kernel_object);
     for (i = 0; i < size; i += PAGE_SIZE) {
-	vm_page_t m;
-
-	/*
-	 * VM_ALLOC_NORMAL can only be set if we are not preempting.
-	 *
-	 * VM_ALLOC_SYSTEM is automatically set if we are preempting and
-	 * M_WAITOK was specified as an alternative (i.e. M_USE_RESERVE is
-	 * implied in this case), though I'm not sure if we really need to
-	 * do that.
-	 */
-	vmflags = base_vmflags;
-	if (flags & M_WAITOK) {
-	    if (td->td_preempted)
-		vmflags |= VM_ALLOC_SYSTEM;
-	    else
-		vmflags |= VM_ALLOC_NORMAL;
-	}
-
 	m = vm_page_alloc(&kernel_object, OFF_TO_IDX(addr + i), vmflags);
-	if (i / PAGE_SIZE < NELEM(mp))
-		mp[i / PAGE_SIZE] = m;
+	if (i == 0)
+		mbase = m;
 
 	/*
 	 * If the allocation failed we either return NULL or we retry.
@@ -1463,73 +1485,73 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	if (m == NULL) {
 	    if (flags & M_WAITOK) {
 		if (td->td_preempted) {
-		    vm_map_unlock(&kernel_map);
 		    lwkt_switch();
-		    vm_map_lock(&kernel_map);
 		} else {
-		    vm_map_unlock(&kernel_map);
 		    vm_wait(0);
-		    vm_map_lock(&kernel_map);
 		}
 		i -= PAGE_SIZE;	/* retry */
 		continue;
 	    }
-
-	    /*
-	     * We were unable to recover, cleanup and return NULL
-	     *
-	     * (vm_token already held)
-	     */
-	    while (i != 0) {
-		i -= PAGE_SIZE;
-		m = vm_page_lookup(&kernel_object, OFF_TO_IDX(addr + i));
-		/* page should already be busy */
-		vm_page_free(m);
-	    }
-	    vm_map_delete(&kernel_map, addr, addr + size, &count);
-	    vm_map_unlock(&kernel_map);
-	    vm_map_entry_release(count);
-	    crit_exit();
-	    lwkt_reltoken(&vm_token);
-	    return(NULL);
+	    break;
 	}
+    }
+
+    /*
+     * Check and deal with an allocation failure
+     */
+    if (i != size) {
+	while (i != 0) {
+	    i -= PAGE_SIZE;
+	    m = vm_page_lookup(&kernel_object, OFF_TO_IDX(addr + i));
+	    /* page should already be busy */
+	    vm_page_free(m);
+	}
+	vm_map_lock(&kernel_map);
+	vm_map_delete(&kernel_map, addr, addr + size, &count);
+	vm_map_unlock(&kernel_map);
+	vm_object_drop(&kernel_object);
+
+	vm_map_entry_release(count);
+	crit_exit();
+	return(NULL);
     }
 
     /*
      * Success!
      *
-     * Mark the map entry as non-pageable using a routine that allows us to
-     * populate the underlying pages.
-     *
-     * The pages were busied by the allocations above.
+     * NOTE: The VM pages are still busied.  mbase points to the first one
+     *	     but we have to iterate via vm_page_next()
      */
-    vm_map_set_wired_quick(&kernel_map, addr, size, &count);
+    vm_object_drop(&kernel_object);
     crit_exit();
 
     /*
      * Enter the pages into the pmap and deal with PG_ZERO and M_ZERO.
      */
-    for (i = 0; i < size; i += PAGE_SIZE) {
-	vm_page_t m;
+    m = mbase;
+    i = 0;
 
-	if (i / PAGE_SIZE < NELEM(mp))
-	   m = mp[i / PAGE_SIZE];
-	else 
-	   m = vm_page_lookup(&kernel_object, OFF_TO_IDX(addr + i));
+    while (i < size) {
+	/*
+	 * page should already be busy
+	 */
 	m->valid = VM_PAGE_BITS_ALL;
-	/* page should already be busy */
 	vm_page_wire(m);
-	pmap_enter(&kernel_pmap, addr + i, m, VM_PROT_ALL, 1);
+	pmap_enter(&kernel_pmap, addr + i, m, VM_PROT_ALL | VM_PROT_NOSYNC, 1);
 	if ((m->flags & PG_ZERO) == 0 && (flags & M_ZERO))
 	    bzero((char *)addr + i, PAGE_SIZE);
 	vm_page_flag_clear(m, PG_ZERO);
 	KKASSERT(m->flags & (PG_WRITEABLE | PG_MAPPED));
 	vm_page_flag_set(m, PG_REFERENCED);
 	vm_page_wakeup(m);
+
+	i += PAGE_SIZE;
+	vm_object_hold(&kernel_object);
+	m = vm_page_next(m);
+	vm_object_drop(&kernel_object);
     }
-    vm_map_unlock(&kernel_map);
+    smp_invltlb();
     vm_map_entry_release(count);
-    lwkt_reltoken(&vm_token);
     return((void *)addr);
 }
 
@@ -1540,9 +1562,7 @@ static void
 kmem_slab_free(void *ptr, vm_size_t size)
 {
     crit_enter();
-    lwkt_gettoken(&vm_token);
     vm_map_remove(&kernel_map, (vm_offset_t)ptr, (vm_offset_t)ptr + size);
-    lwkt_reltoken(&vm_token);
     crit_exit();
 }
 

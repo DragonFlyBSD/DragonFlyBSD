@@ -431,11 +431,13 @@ scheduler_callback(struct proc *p, void *data)
 		 *
 		 * Each second of sleep time is worth ~1MB
 		 */
+		lwkt_gettoken(&p->p_vmspace->vm_map.token);
 		pgs = vmspace_resident_count(p->p_vmspace);
 		if (pgs < p->p_vmspace->vm_swrss) {
 			pri -= (p->p_vmspace->vm_swrss - pgs) /
 				(1024 * 1024 / PAGE_SIZE);
 		}
+		lwkt_reltoken(&p->p_vmspace->vm_map.token);
 
 		/*
 		 * If this process is higher priority and there is
@@ -508,13 +510,11 @@ static int swapout_procs_callback(struct proc *p, void *data);
 void
 swapout_procs(int action)
 {
-	lwkt_gettoken(&vmspace_token);
 	allproc_scan(swapout_procs_callback, &action);
-	lwkt_reltoken(&vmspace_token);
 }
 
 /*
- * The caller must hold proc_token and vmspace_token.
+ * The caller must hold proc_token
  */
 static int
 swapout_procs_callback(struct proc *p, void *data)
@@ -593,7 +593,7 @@ swapout_procs_callback(struct proc *p, void *data)
 }
 
 /*
- * The caller must hold proc_token and vmspace_token and p->p_token
+ * The caller must hold proc_token and p->p_token
  */
 static void
 swapout(struct proc *p)
@@ -606,7 +606,9 @@ swapout(struct proc *p)
 	/*
 	 * remember the process resident count
 	 */
+	lwkt_gettoken(&p->p_vmspace->vm_map.token);
 	p->p_vmspace->vm_swrss = vmspace_resident_count(p->p_vmspace);
+	lwkt_reltoken(&p->p_vmspace->vm_map.token);
 	p->p_flag |= P_SWAPPEDOUT;
 	p->p_swtime = 0;
 }

@@ -216,7 +216,7 @@ do_vmtotal_callback(struct proc *p, void *data)
 	 * Note active objects.
 	 */
 	paging = 0;
-	lwkt_gettoken(&vm_token);
+	lwkt_gettoken(&p->p_token);
 	if (p->p_vmspace) {
 		map = &p->p_vmspace->vm_map;
 		vm_map_lock_read(map);
@@ -233,7 +233,7 @@ do_vmtotal_callback(struct proc *p, void *data)
 		}
 		vm_map_unlock_read(map);
 	}
-	lwkt_reltoken(&vm_token);
+	lwkt_reltoken(&p->p_token);
 	if (paging)
 		totalp->t_pw++;
 	return(0);

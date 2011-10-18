@@ -251,6 +251,8 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 	object = vp->v_object;
 	error = 0;
 
+	vm_object_hold(object);
+
 	/*
 	 * It's necessary to fail if the filsz + offset taken from the
 	 * header is greater than the actual file pager object's size.
@@ -262,6 +264,7 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 	 */
 	if ((off_t)filsz + offset > vp->v_filesize || filsz > memsz) {
 		uprintf("elf_load_section: truncated ELF file\n");
+		vm_object_drop(object);
 		return (ENOEXEC);
 	}
 
@@ -280,7 +283,7 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 		map_len = round_page(offset+filsz) - file_addr;
 
 	if (map_len != 0) {
-		vm_object_reference(object);
+		vm_object_reference_locked(object);
 
 		/* cow flags: don't dump readonly sections in core */
 		cow = MAP_COPY_ON_WRITE | MAP_PREFAULT |
@@ -300,11 +303,13 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 		vm_map_entry_release(count);
 		if (rv != KERN_SUCCESS) {
 			vm_object_deallocate(object);
+			vm_object_drop(object);
 			return (EINVAL);
 		}
 
 		/* we can stop now if we've covered it all */
 		if (memsz == filsz) {
+			vm_object_drop(object);
 			return (0);
 		}
 	}
@@ -333,6 +338,7 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 		vm_map_unlock(&vmspace->vm_map);
 		vm_map_entry_release(count);
 		if (rv != KERN_SUCCESS) {
+			vm_object_drop(object);
 			return (EINVAL);
 		}
 	}
@@ -352,15 +358,17 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 			vm_page_unhold(m);
 		}
 		if (error) {
+			vm_object_drop(object);
 			return (error);
 		}
 	}
 
+	vm_object_drop(object);
 	/*
 	 * set it to the specified protection
 	 */
-	vm_map_protect(&vmspace->vm_map, map_addr, map_addr + map_len,  prot,
-		       FALSE);
+	vm_map_protect(&vmspace->vm_map, map_addr, map_addr + map_len,
+		       prot, FALSE);
 
 	return (error);
 }
@@ -1180,6 +1188,8 @@ each_segment(struct proc *p, segment_callback func, void *closure, int writable)
 	for (entry = map->header.next; error == 0 && entry != &map->header;
 	    entry = entry->next) {
 		vm_object_t obj;
+		vm_object_t lobj;
+		vm_object_t tobj;
 
 		/*
 		 * Don't dump inaccessible mappings, deal with legacy
@@ -1212,17 +1222,40 @@ each_segment(struct proc *p, segment_callback func, void *closure, int writable)
 		if ((obj = entry->object.vm_object) == NULL)
 			continue;
 
-		/* Find the deepest backing object. */
-		while (obj->backing_object != NULL)
-			obj = obj->backing_object;
+		/*
+		 * Find the bottom-most object, leaving the base object
+		 * and the bottom-most object held (but only one hold
+		 * if they happen to be the same).
+		 */
+		vm_object_hold(obj);
 
-		/* Ignore memory-mapped devices and such things. */
-		if (obj->type != OBJT_DEFAULT &&
-		    obj->type != OBJT_SWAP &&
-		    obj->type != OBJT_VNODE)
-			continue;
+		lobj = obj;
+		while (lobj && (tobj = lobj->backing_object) != NULL) {
+			KKASSERT(tobj != obj);
+			vm_object_hold(tobj);
+			if (tobj == lobj->backing_object) {
+				if (lobj != obj) {
+					vm_object_lock_swap();
+					vm_object_drop(lobj);
+				}
+				lobj = tobj;
+			} else {
+				vm_object_drop(tobj);
+			}
+		}
 
-		error = (*func)(entry, closure);
+		/*
+		 * The callback only applies to default, swap, or vnode
+		 * objects.  Other types of objects such as memory-mapped
+		 * devices are ignored.
+		 */
+		if (lobj->type == OBJT_DEFAULT || lobj->type == OBJT_SWAP ||
+		    lobj->type == OBJT_VNODE) {
+			error = (*func)(entry, closure);
+		}
+		if (lobj != obj)
+			vm_object_drop(lobj);
+		vm_object_drop(obj);
 	}
 	return (error);
 }

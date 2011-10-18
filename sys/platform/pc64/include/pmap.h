@@ -131,6 +131,12 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
+#endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif
@@ -172,7 +178,6 @@ extern u_int64_t KPML4phys;	/* physical address of kernel level 4 */
 static __inline void
 pte_store(pt_entry_t *ptep, pt_entry_t pte)
 {
-
 	*ptep = pte;
 }
 
@@ -188,6 +193,7 @@ struct vmspace;
 
 struct md_page {
 	int pv_list_count;
+	int pv_generation;
 	TAILQ_HEAD(,pv_entry)	pv_list;
 };
 
@@ -212,12 +218,16 @@ struct pmap {
 	struct vm_object	*pm_pteobj;	/* Container for pte's */
 	TAILQ_ENTRY(pmap)	pm_pmnode;	/* list of pmaps */
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
+	TAILQ_HEAD(,pv_entry)	pm_pvlist_free;	/* free mappings */
 	int			pm_count;	/* reference count */
 	cpumask_t		pm_active;	/* active on cpus */
 	int			pm_filler02;	/* (filler sync w/vkernel) */
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct	vm_page		*pm_ptphint;	/* pmap ptp hint */
 	int			pm_generation;	/* detect pvlist deletions */
+	int			pm_hold;
+	struct spinlock		pm_spin;
+	struct lwkt_token	pm_token;
 };
 
 #define CPUMASK_LOCK		CPUMASK(SMP_MAXCPU)
@@ -241,6 +251,7 @@ typedef struct pv_entry {
 	TAILQ_ENTRY(pv_entry)	pv_list;
 	TAILQ_ENTRY(pv_entry)	pv_plist;
 	struct vm_page	*pv_ptem;	/* VM page for pte */
+	u_int		pv_hold;	/* hold on destruction count */
 } *pv_entry_t;
 
 #ifdef	_KERNEL
@@ -262,6 +273,7 @@ extern vm_offset_t clean_eva;
 extern vm_offset_t clean_sva;
 extern char *ptvmmap;		/* poor name! */
 
+void	pmap_release(struct pmap *pmap);
 void	pmap_interlock_wait (struct vmspace *);
 void	pmap_bootstrap (vm_paddr_t *);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);

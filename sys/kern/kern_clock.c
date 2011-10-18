@@ -790,9 +790,12 @@ schedclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 			ru->ru_ixrss += pgtok(vm->vm_tsize);
 			ru->ru_idrss += pgtok(vm->vm_dsize);
 			ru->ru_isrss += pgtok(vm->vm_ssize);
-			rss = pgtok(vmspace_resident_count(vm));
-			if (ru->ru_maxrss < rss)
-				ru->ru_maxrss = rss;
+			if (lwkt_trytoken(&vm->vm_map.token)) {
+				rss = pgtok(vmspace_resident_count(vm));
+				if (ru->ru_maxrss < rss)
+					ru->ru_maxrss = rss;
+				lwkt_reltoken(&vm->vm_map.token);
+			}
 		}
 	}
 }
@@ -1420,4 +1423,20 @@ tsc_test_target(int64_t target)
 	}
 #endif
 	return(-1);
+}
+
+/*
+ * Delay the specified number of nanoseconds using the tsc.  This function
+ * returns immediately if the TSC is not supported.  At least one cpu_pause()
+ * will be issued.
+ */
+void
+tsc_delay(int ns)
+{
+	int64_t clk;
+
+	clk = tsc_get_target(ns);
+	cpu_pause();
+	while (tsc_test_target(clk) == 0)
+		cpu_pause();
 }

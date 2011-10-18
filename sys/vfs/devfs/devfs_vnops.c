@@ -2029,7 +2029,7 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 			 */
 			if (!error || (m->valid == VM_PAGE_BITS_ALL)) {
 				if (m->valid) {
-					if (m->flags & PG_WANTED) {
+					if (m->flags & PG_REFERENCED) {
 						vm_page_activate(m);
 					} else {
 						vm_page_deactivate(m);

@@ -47,6 +47,12 @@
 #ifndef _VM_PAGE_H_
 #include <vm/vm_page.h>
 #endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
+#endif
+#ifndef _SYS_SPINLOCK2_H_
+#include <sys/spinlock2.h>
+#endif
 
 #ifdef _KERNEL
 
@@ -193,6 +199,55 @@ vm_page_clear_dirty_beg_nonincl(vm_page_t m, int base, int size)
     base = (base + DEV_BMASK) & ~DEV_BMASK;
     if (base < size)
 	vm_page_clear_dirty(m, base, size - base);
+}
+
+static __inline
+void
+vm_page_spin_lock(vm_page_t m)
+{
+    spin_pool_lock(m);
+}
+
+static __inline
+void
+vm_page_spin_unlock(vm_page_t m)
+{
+    spin_pool_unlock(m);
+}
+
+/*
+ * Wire a vm_page that is already wired.  Does not require a busied
+ * page.
+ */
+static __inline
+void
+vm_page_wire_quick(vm_page_t m)
+{
+    if (atomic_fetchadd_int(&m->wire_count, 1) == 0)
+	panic("vm_page_wire_quick: wire_count was 0");
+}
+
+/*
+ * Unwire a vm_page quickly, does not require a busied page.
+ *
+ * This routine refuses to drop the wire_count to 0 and will return
+ * TRUE if it would have had to (instead of decrementing it to 0).
+ * The caller can then busy the page and deal with it.
+ */
+static __inline
+int
+vm_page_unwire_quick(vm_page_t m)
+{
+    KKASSERT(m->wire_count > 0);
+    for (;;) {
+	u_int wire_count = m->wire_count;
+
+	cpu_ccfence();
+	if (wire_count == 1)
+		return TRUE;
+	if (atomic_cmpset_int(&m->wire_count, wire_count, wire_count - 1))
+		return FALSE;
+    }
 }
 
 #endif	/* _KERNEL */

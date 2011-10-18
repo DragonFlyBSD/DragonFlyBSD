@@ -741,10 +741,29 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		 */
 		map->hint = entry;
 		ostart = entry->start;
-		obj = entry->object.vm_object;
 
-		for( lobj = tobj = obj; tobj; tobj = tobj->backing_object)
-			lobj = tobj;
+		/*
+		 * Find the bottom-most object, leaving the base object
+		 * and the bottom-most object held (but only one hold
+		 * if they happen to be the same).
+		 */
+		obj = entry->object.vm_object;
+                vm_object_hold(obj);
+
+                lobj = obj;
+                while (lobj && (tobj = lobj->backing_object) != NULL) {
+			KKASSERT(tobj != obj);
+                        vm_object_hold(tobj);
+                        if (tobj == lobj->backing_object) {
+				if (lobj != obj) {
+					vm_object_lock_swap();
+					vm_object_drop(lobj);
+				}
+                                lobj = tobj;
+                        } else {
+                                vm_object_drop(tobj);
+                        }
+                }
 
 		if (lobj) {
 			off = IDX_TO_OFF(lobj->size);
@@ -770,6 +789,10 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 			if (entry->eflags & MAP_ENTRY_STACK)
 				name = "[stack]";
 		}
+
+		if (lobj != obj)
+			vm_object_drop(lobj);
+		vm_object_drop(obj);
 
 		/*
 		 * We cannot safely hold the map locked while accessing

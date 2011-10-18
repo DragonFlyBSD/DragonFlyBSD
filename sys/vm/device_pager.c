@@ -136,9 +136,11 @@ dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 		/*
 		 * Gain a reference to the object.
 		 */
-		vm_object_reference(object);
+		vm_object_hold(object);
+		vm_object_reference_locked(object);
 		if (OFF_TO_IDX(foff + size) > object->size)
 			object->size = OFF_TO_IDX(foff + size);
+		vm_object_drop(object);
 	}
 	mtx_unlock(&dev_pager_mtx);
 
@@ -210,12 +212,10 @@ dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 		page = dev_pager_getfake(paddr);
 		TAILQ_INSERT_TAIL(&object->un_pager.devp.devp_pglist,
 				  page, pageq);
-		lwkt_gettoken(&vm_token);
 		vm_object_hold(object);
 		vm_page_free(*mpp);
 		vm_page_insert(page, object, offset);
 		vm_object_drop(object);
-		lwkt_reltoken(&vm_token);
 	}
 	mtx_unlock(&dev_pager_mtx);
 	return (VM_PAGER_OK);

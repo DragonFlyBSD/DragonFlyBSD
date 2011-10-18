@@ -131,7 +131,7 @@ struct lock {
 #define LK_SLEEPFAIL	0x00000020	/* sleep, then return failure */
 #define LK_CANRECURSE	0x00000040	/* allow recursive exclusive lock */
 #define LK_UNUSED0080	0x00000080
-#define	LK_NOSPINWAIT	0x01000000	/* don't wait for spinlock */
+#define	LK_UNUSED0100x	0x01000000
 #define LK_TIMELOCK	0x02000000
 #define LK_PCATCH	0x04000000	/* timelocked with signal catching */
 /*

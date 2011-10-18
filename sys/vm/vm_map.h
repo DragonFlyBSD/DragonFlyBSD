@@ -207,17 +207,19 @@ vm_map_entry_set_behavior(struct vm_map_entry *entry, u_char behavior)
 }                       
 
 /*
- *	Maps are doubly-linked lists of map entries, kept sorted
- *	by address.  A single hint is provided to start
- *	searches again from the last successful search,
- *	insertion, or removal.
+ * Maps are doubly-linked lists of map entries, kept sorted by address.
+ * A single hint is provided to start searches again from the last
+ * successful search, insertion, or removal.
  *
- *	Note: the lock structure cannot be the first element of vm_map
- *	because this can result in a running lockup between two or more
- *	system processes trying to kmem_alloc_wait() due to kmem_alloc_wait()
- *	and free tsleep/waking up 'map' and the underlying lockmgr also
- *	sleeping and waking up on 'map'.  The lockup occurs when the map fills
- *	up.  The 'exec' map, for example.
+ * NOTE: The lock structure cannot be the first element of vm_map
+ *	 because this can result in a running lockup between two or more
+ *	 system processes trying to kmem_alloc_wait() due to kmem_alloc_wait()
+ *	 and free tsleep/waking up 'map' and the underlying lockmgr also
+ *	 sleeping and waking up on 'map'.  The lockup occurs when the map fills
+ *	 up.  The 'exec' map, for example.
+ *
+ * NOTE: The vm_map structure can be hard-locked with the lockmgr lock
+ *	 or soft-serialized with the token, or both.
  */
 struct vm_map {
 	struct vm_map_entry header;	/* List of entries */
@@ -233,6 +235,7 @@ struct vm_map {
 	struct pmap *pmap;		/* Physical map */
 	u_int president_cache;		/* Remember president count */
 	u_int president_ticks;		/* Save ticks for cache */
+	struct lwkt_token token;	/* Soft serializer */
 #define	min_offset		header.start
 #define max_offset		header.end
 };
@@ -429,6 +432,9 @@ vmspace_pmap(struct vmspace *vmspace)
 	return &vmspace->vm_pmap;
 }
 
+/*
+ * Caller must hold the vmspace->vm_map.token
+ */
 static __inline long
 vmspace_resident_count(struct vmspace *vmspace)
 {
@@ -450,6 +456,7 @@ vmspace_president_count(struct vmspace *vmspace)
 	vm_map_entry_t cur;
 	vm_object_t object;
 	u_int count = 0;
+	u_int n;
 
 #ifdef _KERNEL
 	if (map->president_ticks == ticks / hz || vm_map_lock_read_try(map))
@@ -466,9 +473,15 @@ vmspace_president_count(struct vmspace *vmspace)
 			    object->type != OBJT_SWAP) {
 				break;
 			}
-			if (object->agg_pv_list_count != 0) {
-				count += object->resident_page_count /
-					 object->agg_pv_list_count;
+			/*
+			 * synchronize non-zero case, contents of field
+			 * can change at any time due to pmap ops.
+			 */
+			if ((n = object->agg_pv_list_count) != 0) {
+#ifdef _KERNEL
+				cpu_ccfence();
+#endif
+				count += object->resident_page_count / n;
 			}
 			break;
 		default:

@@ -313,8 +313,8 @@ updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
  * tsleep/wakeup hash table parameters.  Try to find the sweet spot for
  * like addresses being slept on.
  */
-#define TABLESIZE	1024
-#define LOOKUP(x)	(((intptr_t)(x) >> 6) & (TABLESIZE - 1))
+#define TABLESIZE	4001
+#define LOOKUP(x)	(((u_int)(uintptr_t)(x)) % TABLESIZE)
 
 static cpumask_t slpque_cpumasks[TABLESIZE];
 
@@ -371,8 +371,10 @@ _tsleep_interlock(globaldata_t gd, const volatile void *ident, int flags)
 	if (td->td_flags & TDF_TSLEEPQ) {
 		id = LOOKUP(td->td_wchan);
 		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_sleepq);
-		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL)
-			atomic_clear_cpumask(&slpque_cpumasks[id], gd->gd_cpumask);
+		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL) {
+			atomic_clear_cpumask(&slpque_cpumasks[id],
+					     gd->gd_cpumask);
+		}
 	} else {
 		td->td_flags |= TDF_TSLEEPQ;
 	}

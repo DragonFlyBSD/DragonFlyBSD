@@ -507,10 +507,10 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	/*
 	 * Debugging only
 	 */
-	spin_lock(&vp->v_spinlock);
+	spin_lock(&vp->v_spin);
 	filename = TAILQ_FIRST(&vp->v_namecache) ?
 		   TAILQ_FIRST(&vp->v_namecache)->nc_name : "?";
-	spin_unlock(&vp->v_spinlock);
+	spin_unlock(&vp->v_spin);
 
 	/*
 	 * Make sure no buffers were instantiated while we were trying
@@ -1243,32 +1243,29 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	/*
 	 * If the vnode has an object, destroy it.
 	 */
-	lwkt_gettoken(&vmobj_token);
-	object = vp->v_object;
+	while ((object = vp->v_object) != NULL) {
+		vm_object_hold(object);
+		if (object == vp->v_object)
+			break;
+		vm_object_drop(object);
+	}
+
 	if (object != NULL) {
 		/*
 		 * Use vm_object_lock() rather than vm_object_hold to avoid
 		 * creating an extra (self-)hold on the object.
-		 *
-		 * NOTE: vm_object_terminate() eats the object lock.
 		 */
-		vm_object_lock(object);
-		KKASSERT(object == vp->v_object);
 		if (object->ref_count == 0) {
-			if ((object->flags & OBJ_DEAD) == 0) {
-				/* eats object lock */
+			if ((object->flags & OBJ_DEAD) == 0)
 				vm_object_terminate(object);
-			} else {
-				vm_object_unlock(object);
-			}
+			vm_object_drop(object);
 			vclrflags(vp, VOBJBUF);
 		} else {
 			vm_pager_deallocate(object);
 			vclrflags(vp, VOBJBUF);
-			vm_object_unlock(object);
+			vm_object_drop(object);
 		}
 	}
-	lwkt_reltoken(&vmobj_token);
 	KKASSERT((vp->v_flag & VOBJBUF) == 0);
 
 	/*
@@ -1512,14 +1509,22 @@ vinitvmio(struct vnode *vp, off_t filesize, int blksize, int boff)
 	vm_object_t object;
 	int error = 0;
 
-	lwkt_gettoken(&vmobj_token);
 retry:
-	if ((object = vp->v_object) == NULL) {
+	while ((object = vp->v_object) != NULL) {
+		vm_object_hold(object);
+		if (object == vp->v_object)
+			break;
+		vm_object_drop(object);
+	}
+
+	if (object == NULL) {
 		object = vnode_pager_alloc(vp, filesize, 0, 0, blksize, boff);
+
 		/*
 		 * Dereference the reference we just created.  This assumes
 		 * that the object is associated with the vp.
 		 */
+		vm_object_hold(object);
 		object->ref_count--;
 		vrele(vp);
 	} else {
@@ -1528,12 +1533,13 @@ retry:
 			if (vp->v_object == object)
 				vm_object_dead_sleep(object, "vodead");
 			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+			vm_object_drop(object);
 			goto retry;
 		}
 	}
 	KASSERT(vp->v_object != NULL, ("vinitvmio: NULL object"));
 	vsetflags(vp, VOBJBUF);
-	lwkt_reltoken(&vmobj_token);
+	vm_object_drop(object);
 
 	return (error);
 }

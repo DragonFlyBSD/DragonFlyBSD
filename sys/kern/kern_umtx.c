@@ -119,7 +119,6 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
      * Otherwise the physical page we sleep on my not match the page
      * being woken up.
      */
-    lwkt_gettoken(&vm_token);
     m = vm_fault_page_quick((vm_offset_t)uap->ptr,
 			    VM_PROT_READ|VM_PROT_WRITE, &error);
     if (m == NULL) {
@@ -166,7 +165,6 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
     /*vm_page_dirty(m); we don't actually dirty the page */
     vm_page_unhold(m);
 done:
-    lwkt_reltoken(&vm_token);
     return(error);
 }
 
@@ -178,9 +176,7 @@ done:
 static void
 umtx_sleep_page_action_cow(vm_page_t m, vm_page_action_t action)
 {
-    lwkt_gettoken(&vm_token);
     wakeup_domain(action->data, PDOMAIN_UMTX);
-    lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -203,7 +199,6 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
     cpu_mfence();
     if ((vm_offset_t)uap->ptr & (sizeof(int) - 1))
 	return (EFAULT);
-    lwkt_gettoken(&vm_token);
     m = vm_fault_page_quick((vm_offset_t)uap->ptr, VM_PROT_READ, &error);
     if (m == NULL) {
 	error = EFAULT;
@@ -221,7 +216,6 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
     vm_page_unhold(m);
     error = 0;
 done:
-    lwkt_reltoken(&vm_token);
     return(error);
 }
 

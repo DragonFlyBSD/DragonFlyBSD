@@ -28,8 +28,11 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.16 2008/09/11 01:11:42 y0netan1 Exp $
+ */
+/*
+ * The spinlock code utilizes two counters to form a virtual FIFO, allowing
+ * a spinlock to allocate a slot and then only issue memory read operations
+ * until it is handed the lock (if it is not the next owner for the lock).
  */
 
 #include <sys/param.h>
@@ -42,6 +45,7 @@
 #endif
 #include <sys/priv.h>
 #include <machine/atomic.h>
+#include <machine/cpu.h>
 #include <machine/cpufunc.h>
 #include <machine/specialreg.h>
 #include <machine/clock.h>
@@ -49,10 +53,12 @@
 #include <sys/spinlock2.h>
 #include <sys/ktr.h>
 
-#define	BACKOFF_INITIAL	1
-#define	BACKOFF_LIMIT	256
-
 #ifdef SMP
+
+struct indefinite_info {
+	sysclock_t	base;
+	int		secs;
+};
 
 /*
  * Kernal Trace
@@ -66,20 +72,14 @@
 KTR_INFO_MASTER(spin);
 KTR_INFO(KTR_SPIN_CONTENTION, spin, beg, 0, SPIN_STRING, SPIN_ARG_SIZE);
 KTR_INFO(KTR_SPIN_CONTENTION, spin, end, 1, SPIN_STRING, SPIN_ARG_SIZE);
-KTR_INFO(KTR_SPIN_CONTENTION, spin, backoff, 2,
-	 "spin=%p bo1=%d thr=%p bo=%d",
-	 ((2 * sizeof(void *)) + (2 * sizeof(int))));
-KTR_INFO(KTR_SPIN_CONTENTION, spin, bofail, 3, SPIN_STRING, SPIN_ARG_SIZE);
 
-#define logspin(name, mtx, type)			\
-	KTR_LOG(spin_ ## name, mtx, type)
-
-#define logspin_backoff(mtx, bo1, thr, bo)		\
-	KTR_LOG(spin_backoff, mtx, bo1, thr, bo)
+#define logspin(name, spin, type)			\
+	KTR_LOG(spin_ ## name, spin, type)
 
 #ifdef INVARIANTS
 static int spin_lock_test_mode;
 #endif
+struct spinlock pmap_spin = SPINLOCK_INITIALIZER(pmap_spin);
 
 static int64_t spinlocks_contested1;
 SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested1, CTLFLAG_RD,
@@ -91,71 +91,67 @@ SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested2, CTLFLAG_RD,
     &spinlocks_contested2, 0,
     "Serious spinlock contention count");
 
-static int spinlocks_backoff_limit = BACKOFF_LIMIT;
-SYSCTL_INT(_debug, OID_AUTO, spinlocks_bolim, CTLFLAG_RW,
-    &spinlocks_backoff_limit, 0,
-    "Contested spinlock backoff limit");
+static int spinlocks_hardloops = 40;
+SYSCTL_INT(_debug, OID_AUTO, spinlocks_hardloops, CTLFLAG_RW,
+    &spinlocks_hardloops, 0,
+    "Hard loops waiting for spinlock");
 
 #define SPINLOCK_NUM_POOL	(1024)
 static struct spinlock pool_spinlocks[SPINLOCK_NUM_POOL];
 
-struct exponential_backoff {
-	int backoff;
-	int nsec;
-	struct spinlock *mtx;
-	sysclock_t base;
-};
-static int exponential_backoff(struct exponential_backoff *bo);
-
-static __inline
-void
-exponential_init(struct exponential_backoff *bo, struct spinlock *mtx)
-{
-	bo->backoff = BACKOFF_INITIAL;
-	bo->nsec = 0;
-	bo->mtx = mtx;
-	bo->base = 0;	/* silence gcc */
-}
+static int spin_indefinite_check(struct spinlock *spin,
+				  struct indefinite_info *info);
 
 /*
  * We contested due to another exclusive lock holder.  We lose.
+ *
+ * We have to unwind the attempt and may acquire the spinlock
+ * anyway while doing so.  countb was incremented on our behalf.
  */
 int
-spin_trylock_wr_contested2(globaldata_t gd)
+spin_trylock_contested(struct spinlock *spin)
 {
-	++spinlocks_contested1;
+	globaldata_t gd = mycpu;
+
+	/*++spinlocks_contested1;*/
 	--gd->gd_spinlocks_wr;
 	--gd->gd_curthread->td_critcount;
 	return (FALSE);
 }
 
 /*
- * We were either contested due to another exclusive lock holder,
- * or due to the presence of shared locks
+ * The spin_lock() inline was unable to acquire the lock.
  *
- * NOTE: If value indicates an exclusively held mutex, no shared bits
- * would have been set and we can throw away value. 
+ * atomic_swap_int() is the absolute fastest spinlock instruction, at
+ * least on multi-socket systems.  All instructions seem to be about
+ * the same on single-socket multi-core systems.
  */
 void
-spin_lock_wr_contested2(struct spinlock *mtx)
+spin_lock_contested(struct spinlock *spin)
 {
-	struct exponential_backoff backoff;
-	int value;
+	int i;
 
-	/*
-	 * Wait until we can gain exclusive access vs another exclusive
-	 * holder.
-	 */
-	++spinlocks_contested1;
-	exponential_init(&backoff, mtx);
+	i = 0;
+	while (atomic_swap_int(&spin->counta, 1)) {
+		cpu_pause();
+		if (i == spinlocks_hardloops) {
+			struct indefinite_info info = { 0, 0 };
 
-	logspin(beg, mtx, 'w');
-	do {
-		if (exponential_backoff(&backoff))
-			break;
-		value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE);
-	} while (value & SPINLOCK_EXCLUSIVE);
-	logspin(end, mtx, 'w');
+			logspin(beg, spin, 'w');
+			while (atomic_swap_int(&spin->counta, 1)) {
+				cpu_pause();
+				++spin->countb;
+				if ((++i & 0x7F) == 0x7F) {
+					if (spin_indefinite_check(spin, &info))
+						break;
+				}
+			}
+			logspin(end, spin, 'w');
+			return;
+		}
+		++spin->countb;
+		++i;
+	}
 }
 
 static __inline int
@@ -167,19 +163,17 @@ _spin_pool_hash(void *ptr)
 	return (i);
 }
 
-struct spinlock *
-spin_pool_lock(void *chan)
+void
+_spin_pool_lock(void *chan)
 {
 	struct spinlock *sp;
 
 	sp = &pool_spinlocks[_spin_pool_hash(chan)];
 	spin_lock(sp);
-
-	return (sp);
 }
 
 void
-spin_pool_unlock(void *chan)
+_spin_pool_unlock(void *chan)
 {
 	struct spinlock *sp;
 
@@ -187,58 +181,24 @@ spin_pool_unlock(void *chan)
 	spin_unlock(sp);
 }
 
-/*
- * Handle exponential backoff and indefinite waits.
- *
- * If the system is handling a panic we hand the spinlock over to the caller
- * after 1 second.  After 10 seconds we attempt to print a debugger
- * backtrace.  We also run pending interrupts in order to allow a console
- * break into DDB.
- */
+
 static
 int
-exponential_backoff(struct exponential_backoff *bo)
+spin_indefinite_check(struct spinlock *spin, struct indefinite_info *info)
 {
 	sysclock_t count;
-	int backoff;
 
-#ifdef _RDTSC_SUPPORTED_
-	if (cpu_feature & CPUID_TSC) {
-		backoff =
-		(((u_long)rdtsc() ^ (((u_long)curthread) >> 5)) &
-		 (bo->backoff - 1)) + BACKOFF_INITIAL;
-	} else
-#endif
-		backoff = bo->backoff;
-	logspin_backoff(bo->mtx, bo->backoff, curthread, backoff);
-
-	/*
-	 * Quick backoff
-	 */
-	for (; backoff; --backoff)
-		cpu_pause();
-	if (bo->backoff < spinlocks_backoff_limit) {
-		bo->backoff <<= 1;
-		return (FALSE);
-	} else {
-		bo->backoff = BACKOFF_INITIAL;
-	}
-
-	logspin(bofail, bo->mtx, 'u');
-
-	/*
-	 * Indefinite
-	 */
-	++spinlocks_contested2;
 	cpu_spinlock_contested();
-	if (bo->nsec == 0) {
-		bo->base = sys_cputimer->count();
-		bo->nsec = 1;
-	}
 
 	count = sys_cputimer->count();
-	if (count - bo->base > sys_cputimer->freq) {
-		kprintf("spin_lock: %p, indefinite wait!\n", bo->mtx);
+	if (info->secs == 0) {
+		info->base = count;
+		++info->secs;
+	} else if (count - info->base > sys_cputimer->freq) {
+		kprintf("spin_lock: %p, indefinite wait (%d secs)!\n",
+			spin, info->secs);
+		info->base = count;
+		++info->secs;
 		if (panicstr)
 			return (TRUE);
 #if defined(INVARIANTS)
@@ -247,14 +207,12 @@ exponential_backoff(struct exponential_backoff *bo)
 			return (TRUE);
 		}
 #endif
-		++bo->nsec;
 #if defined(INVARIANTS)
-		if (bo->nsec == 11)
+		if (info->secs == 11)
 			print_backtrace(-1);
 #endif
-		if (bo->nsec == 60)
-			panic("spin_lock: %p, indefinite wait!\n", bo->mtx);
-		bo->base = count;
+		if (info->secs == 60)
+			panic("spin_lock: %p, indefinite wait!\n", spin);
 	}
 	return (FALSE);
 }
@@ -277,7 +235,7 @@ SYSCTL_INT(_debug, OID_AUTO, spin_test_count, CTLFLAG_RW, &spin_test_count, 0,
 static int
 sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 {
-        struct spinlock mtx;
+        struct spinlock spin;
 	int error;
 	int value = 0;
 	int i;
@@ -291,12 +249,12 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 	 * Indefinite wait test
 	 */
 	if (value == 1) {
-		spin_init(&mtx);
-		spin_lock(&mtx);	/* force an indefinite wait */
+		spin_init(&spin);
+		spin_lock(&spin);	/* force an indefinite wait */
 		spin_lock_test_mode = 1;
-		spin_lock(&mtx);
-		spin_unlock(&mtx);	/* Clean up the spinlock count */
-		spin_unlock(&mtx);
+		spin_lock(&spin);
+		spin_unlock(&spin);	/* Clean up the spinlock count */
+		spin_unlock(&spin);
 		spin_lock_test_mode = 0;
 	}
 
@@ -306,10 +264,10 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 	if (value == 2) {
 		globaldata_t gd = mycpu;
 
-		spin_init(&mtx);
+		spin_init(&spin);
 		for (i = spin_test_count; i > 0; --i) {
-		    spin_lock_quick(gd, &mtx);
-		    spin_unlock_quick(gd, &mtx);
+		    spin_lock_quick(gd, &spin);
+		    spin_unlock_quick(gd, &spin);
 		}
 	}
 

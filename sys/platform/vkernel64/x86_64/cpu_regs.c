@@ -687,10 +687,7 @@ fetchupcall(struct vmupcall *vu, int morepending, void *rsp)
  * critical section.
  *
  * Note on cpu_idle_hlt:  On an SMP system we rely on a scheduler IPI
- * to wake a HLTed cpu up.  However, there are cases where the idlethread
- * will be entered with the possibility that no IPI will occur and in such
- * cases lwkt_switch() sets RQF_WAKEUP and we nominally check
- * RQF_IDLECHECK_WK_MASK.
+ * to wake a HLTed cpu up.
  */
 static int	cpu_idle_hlt = 1;
 static int	cpu_idle_hltcnt;
@@ -721,9 +718,7 @@ cpu_idle(void)
 
 		/*
 		 * The idle loop halts only if no threads are scheduleable
-		 * and no signals have occured.  If we race a signal
-		 * RQF_WAKEUP and other gd_reqflags will cause umtx_sleep()
-		 * to return immediately.
+		 * and no signals have occured.
 		 */
 		if (cpu_idle_hlt &&
 		    (td->td_gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {

@@ -39,14 +39,20 @@
  * Note that the spinlock structure is retained whether we are SMP or not,
  * so structures using embedded spinlocks do not change size for SMP vs UP
  * builds.
+ *
+ * DragonFly spinlocks use a chasing counter.  A core desiring a spinlock
+ * does a atomic_fetchadd_int() on countb and then waits for counta to
+ * reach its value using MWAIT.  Releasing the spinlock involves an
+ * atomic_add_int() on counta.  If no MWAIT is available the core can spin
+ * waiting for the value to change which is still represented by a shared+ro
+ * cache entry.
  */
 struct spinlock {
-	volatile int lock;	/* 0 = unlocked, 1 = locked */
+	int counta;
+	int countb;
 };
 
-#define SPINLOCK_EXCLUSIVE	0x80000000
-
-#define SPINLOCK_INITIALIZER(head)	{ 0 }
+#define SPINLOCK_INITIALIZER(head)	{ 0, 0 }
 
 #endif
 

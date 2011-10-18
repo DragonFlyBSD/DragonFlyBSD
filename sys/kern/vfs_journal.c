@@ -1354,18 +1354,18 @@ jrecord_write_vnode_ref(struct jrecord *jrec, struct vnode *vp)
     struct nchandle nch;
 
     nch.mount = vp->v_mount;
-    spin_lock(&vp->v_spinlock);
+    spin_lock(&vp->v_spin);
     TAILQ_FOREACH(nch.ncp, &vp->v_namecache, nc_vnode) {
 	if ((nch.ncp->nc_flag & (NCF_UNRESOLVED|NCF_DESTROYED)) == 0)
 	    break;
     }
     if (nch.ncp) {
 	cache_hold(&nch);
-	spin_unlock(&vp->v_spinlock);
+	spin_unlock(&vp->v_spin);
 	jrecord_write_path(jrec, JLEAF_PATH_REF, nch.ncp);
 	cache_drop(&nch);
     } else {
-	spin_unlock(&vp->v_spinlock);
+	spin_unlock(&vp->v_spin);
     }
 }
 
@@ -1376,7 +1376,7 @@ jrecord_write_vnode_link(struct jrecord *jrec, struct vnode *vp,
     struct nchandle nch;
 
     nch.mount = vp->v_mount;
-    spin_lock(&vp->v_spinlock);
+    spin_lock(&vp->v_spin);
     TAILQ_FOREACH(nch.ncp, &vp->v_namecache, nc_vnode) {
 	if (nch.ncp == notncp)
 	    continue;
@@ -1385,11 +1385,11 @@ jrecord_write_vnode_link(struct jrecord *jrec, struct vnode *vp,
     }
     if (nch.ncp) {
 	cache_hold(&nch);
-	spin_unlock(&vp->v_spinlock);
+	spin_unlock(&vp->v_spin);
 	jrecord_write_path(jrec, JLEAF_PATH_REF, nch.ncp);
 	cache_drop(&nch);
     } else {
-	spin_unlock(&vp->v_spinlock);
+	spin_unlock(&vp->v_spin);
     }
 }
 

@@ -180,7 +180,8 @@ exec_aout_imgact(struct image_params *imgp)
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
 	object = vp->v_object;
-	vm_object_reference(object);
+	vm_object_hold(object);
+	vm_object_reference_locked(object);
 
 	text_end = virtual_offset + a_out->a_text;
 	error = vm_map_insert(map, &count, object,
@@ -189,14 +190,16 @@ exec_aout_imgact(struct image_params *imgp)
 		VM_MAPTYPE_NORMAL,
 		VM_PROT_READ | VM_PROT_EXECUTE, VM_PROT_ALL,
 		MAP_COPY_ON_WRITE | MAP_PREFAULT);
+
 	if (error) {
+		vm_object_drop(object);
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
 		return (error);
 	}
 	data_end = text_end + a_out->a_data;
 	if (a_out->a_data) {
-		vm_object_reference(object);
+		vm_object_reference_locked(object);
 		error = vm_map_insert(map, &count, object,
 			file_offset + a_out->a_text,
 			text_end, data_end,
@@ -204,11 +207,13 @@ exec_aout_imgact(struct image_params *imgp)
 			VM_PROT_ALL, VM_PROT_ALL,
 			MAP_COPY_ON_WRITE | MAP_PREFAULT);
 		if (error) {
+			vm_object_drop(object);
 			vm_map_unlock(map);
 			vm_map_entry_release(count);
 			return (error);
 		}
 	}
+	vm_object_drop(object);
 
 	if (bss_size) {
 		error = vm_map_insert(map, &count, NULL, 0,

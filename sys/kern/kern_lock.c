@@ -196,14 +196,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 	}
 #endif
 
-	/*
-	 * So sue me, I'm too tired.
-	 */
-	if (spin_trylock(&lkp->lk_spinlock) == FALSE) {
-		if (flags & LK_NOSPINWAIT)
-			return(EBUSY);
-		spin_lock(&lkp->lk_spinlock);
-	}
+	spin_lock(&lkp->lk_spinlock);
 
 	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
 	td = curthread;

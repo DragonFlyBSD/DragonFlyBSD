@@ -534,8 +534,11 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
 		cluster_append(&bp->b_bio1, tbp);
 		for (j = 0; j < tbp->b_xio.xio_npages; ++j) {
 			vm_page_t m;
+
 			m = tbp->b_xio.xio_pages[j];
+			vm_page_busy_wait(m, FALSE, "clurpg");
 			vm_page_io_start(m);
+			vm_page_wakeup(m);
 			vm_object_pip_add(m->object, 1);
 			if ((bp->b_xio.xio_npages == 0) ||
 				(bp->b_xio.xio_pages[bp->b_xio.xio_npages-1] != m)) {
@@ -978,7 +981,9 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 					
 				for (j = 0; j < tbp->b_xio.xio_npages; ++j) {
 					m = tbp->b_xio.xio_pages[j];
+					vm_page_busy_wait(m, FALSE, "clurpg");
 					vm_page_io_start(m);
+					vm_page_wakeup(m);
 					vm_object_pip_add(m->object, 1);
 					if ((bp->b_xio.xio_npages == 0) ||
 					  (bp->b_xio.xio_pages[bp->b_xio.xio_npages - 1] != m)) {

@@ -53,6 +53,8 @@
 #include <sys/globaldata.h>
 #ifdef _KERNEL
 #include <sys/systm.h>
+#include <sys/sysref.h>
+#include <sys/sysref2.h>
 #else
 #include <string.h>
 
@@ -72,6 +74,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 {
 	struct session *sess;
 	struct pgrp *pgrp;
+	struct vmspace *vm;
 
 	pgrp = p->p_pgrp;
 	sess = pgrp ? pgrp->pg_session : NULL;
@@ -145,14 +148,22 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	kp->kp_nice = p->p_nice;
 	kp->kp_swtime = p->p_swtime;
 
-	if (p->p_vmspace) {
-		kp->kp_vm_map_size = p->p_vmspace->vm_map.size;
-		kp->kp_vm_rssize = vmspace_resident_count(p->p_vmspace);
-		kp->kp_vm_prssize = vmspace_president_count(p->p_vmspace);
-		kp->kp_vm_swrss = p->p_vmspace->vm_swrss;
-		kp->kp_vm_tsize = p->p_vmspace->vm_tsize;
-		kp->kp_vm_dsize = p->p_vmspace->vm_dsize;
-		kp->kp_vm_ssize = p->p_vmspace->vm_ssize;
+	if ((vm = p->p_vmspace) != NULL) {
+#ifdef _KERNEL
+		sysref_get(&vm->vm_sysref);
+		lwkt_gettoken(&vm->vm_map.token);
+#endif
+		kp->kp_vm_map_size = vm->vm_map.size;
+		kp->kp_vm_rssize = vmspace_resident_count(vm);
+		kp->kp_vm_prssize = vmspace_president_count(vm);
+		kp->kp_vm_swrss = vm->vm_swrss;
+		kp->kp_vm_tsize = vm->vm_tsize;
+		kp->kp_vm_dsize = vm->vm_dsize;
+		kp->kp_vm_ssize = vm->vm_ssize;
+#ifdef _KERNEL
+		lwkt_reltoken(&vm->vm_map.token);
+		sysref_put(&vm->vm_sysref);
+#endif
 	}
 
 	if (p->p_ucred && jailed(p->p_ucred))

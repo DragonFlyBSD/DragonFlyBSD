@@ -177,8 +177,6 @@ xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)
     xio->xio_error = 0;
     if ((n = PAGE_SIZE - xio->xio_offset) > kbytes)
 	n = kbytes;
-    lwkt_gettoken(&vm_token);
-    crit_enter();
     for (i = 0; n && i < XIO_INTERNAL_PAGES; ++i) {
 	if ((paddr = pmap_kextract(addr)) == 0)
 	    break;
@@ -191,8 +189,6 @@ xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)
 	    n = PAGE_SIZE;
 	addr += PAGE_SIZE;
     }
-    crit_exit();
-    lwkt_reltoken(&vm_token);
     xio->xio_npages = i;
 
     /*
@@ -223,14 +219,10 @@ xio_init_pages(xio_t xio, struct vm_page **mbase, int npages, int xflags)
     xio->xio_pages = xio->xio_internal_pages;
     xio->xio_npages = npages;
     xio->xio_error = 0;
-    lwkt_gettoken(&vm_token);
-    crit_enter();
     for (i = 0; i < npages; ++i) {
 	vm_page_hold(mbase[i]);
 	xio->xio_pages[i] = mbase[i];
     }
-    crit_exit();
-    lwkt_reltoken(&vm_token);
     return(0);
 }
 
@@ -244,16 +236,12 @@ xio_release(xio_t xio)
     int i;
     vm_page_t m;
 
-    lwkt_gettoken(&vm_token);
-    crit_enter();
     for (i = 0; i < xio->xio_npages; ++i) {
 	m = xio->xio_pages[i];
 	if (xio->xio_flags & XIOF_WRITE)
 		vm_page_dirty(m);
 	vm_page_unhold(m);
     }
-    crit_exit();
-    lwkt_reltoken(&vm_token);
     xio->xio_offset = 0;
     xio->xio_npages = 0;
     xio->xio_bytes = 0;

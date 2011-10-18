@@ -144,16 +144,17 @@ struct mountctl_opt {
  *	 associated with the vnode.  Otherwise it will be set to NOOFFSET.
  *
  * NOTE: The following fields require a spin or token lock.  Note that
- *	 additional subsystems may use v_token or v_spinlock for other
+ *	 additional subsystems may use v_token or v_spin for other
  *	 purposes, e.g. vfs/fifofs/fifo_vnops.c
  *
- *	 v_namecache	v_spinlock
+ *	 v_namecache	v_spin
  *	 v_rb*		v_token
  */
 RB_HEAD(buf_rb_tree, buf);
 RB_HEAD(buf_rb_hash, buf);
 
 struct vnode {
+	struct spinlock v_spin;
 	int	v_flag;				/* vnode flags (see below) */
 	int	v_writecount;
 	int	v_opencount;			/* number of explicit opens */
@@ -208,7 +209,6 @@ struct vnode {
 #define	v_rdev		v_un.vu_cdev.vu_cdevinfo
 #define	v_cdevnext	v_un.vu_cdev.vu_cdevnext
 #define	v_fifoinfo	v_un.vu_fifoinfo
-#define	v_spinlock	v_lock.lk_spinlock
 
 /*
  * Vnode flags.

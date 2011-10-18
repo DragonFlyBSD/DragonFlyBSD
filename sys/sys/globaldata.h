@@ -136,8 +136,10 @@ struct globaldata {
 	struct timeval	gd_stattv;
 	int		gd_intr_nesting_level;	/* hard code, intrs, ipis */
 	struct vmmeter	gd_cnt;
+	cpumask_t	gd_ipimask;		/* pending ipis from cpus */
 	struct lwkt_ipiq *gd_ipiq;		/* array[ncpu] of ipiq's */
 	struct lwkt_ipiq gd_cpusyncq;		/* ipiq for cpu synchro */
+	u_int		gd_npoll;		/* ipiq synchronization */
 	int		gd_fairq_total_pri;
 	struct thread	gd_unused02B;
 	struct thread	gd_idlethread;
@@ -166,7 +168,8 @@ struct globaldata {
 	u_int		gd_idle_repeat;		/* repeated switches to idle */
 	int		gd_ireserved[7];
 	const char	*gd_infomsg;		/* debugging */
-	void		*gd_preserved[10];	/* future fields */
+	struct lwkt_tokref gd_handoff;		/* hand-off tokref */
+	void		*gd_preserved[8];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 
@@ -181,7 +184,7 @@ typedef struct globaldata *globaldata_t;
 #define RQB_AST_UPCALL		6
 #define RQB_TIMER		7
 #define RQB_RUNNING		8
-#define RQB_WAKEUP		9
+#define RQB_SPINNING		9
 
 #define RQF_IPIQ		(1 << RQB_IPIQ)
 #define RQF_INTPEND		(1 << RQB_INTPEND)
@@ -192,13 +195,13 @@ typedef struct globaldata *globaldata_t;
 #define RQF_AST_LWKT_RESCHED	(1 << RQB_AST_LWKT_RESCHED)
 #define RQF_AST_UPCALL		(1 << RQB_AST_UPCALL)
 #define RQF_RUNNING		(1 << RQB_RUNNING)
-#define RQF_WAKEUP		(1 << RQB_WAKEUP)
+#define RQF_SPINNING		(1 << RQB_SPINNING)
 
 #define RQF_AST_MASK		(RQF_AST_OWEUPC|RQF_AST_SIGNAL|\
 				RQF_AST_USER_RESCHED|RQF_AST_LWKT_RESCHED|\
 				RQF_AST_UPCALL)
 #define RQF_IDLECHECK_MASK	(RQF_IPIQ|RQF_INTPEND|RQF_TIMER)
-#define RQF_IDLECHECK_WK_MASK	(RQF_IDLECHECK_MASK|RQF_WAKEUP)
+#define RQF_IDLECHECK_WK_MASK	(RQF_IDLECHECK_MASK|RQF_AST_LWKT_RESCHED)
 
 /*
  * globaldata flags

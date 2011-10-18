@@ -128,18 +128,22 @@ typedef u_char objtype_t;
  * vm_object		A VM object which represents an arbitrarily sized
  *			data store.
  *
- * Locking requirements: vmobj_token for ref_count and object_list, and
- * vm_token for everything else.
+ * Locking requirements:
+ *	vmobj_token for object_list
+ *
+ *	vm_object_hold/drop() for most vm_object related operations.
+ *
+ *	OBJ_CHAINLOCK to avoid chain/shadow object collisions
  */
 struct vm_object {
 	TAILQ_ENTRY(vm_object) object_list; /* vmobj_token */
-	LIST_HEAD(, vm_object) shadow_head; /* objects that this is a shadow for */
-	LIST_ENTRY(vm_object) shadow_list; /* chain of shadow objects */
+	LIST_HEAD(, vm_object) shadow_head; /* objects we are a shadow for */
+	LIST_ENTRY(vm_object) shadow_list;  /* chain of shadow objects */
 	RB_HEAD(vm_page_rb_tree, vm_page) rb_memq;	/* resident pages */
 	int generation;			/* generation ID */
 	vm_pindex_t size;		/* Object size */
-	int ref_count;			/* vmobj_token */
-	int shadow_count;		/* how many objects that this is a shadow for */
+	int ref_count;
+	int shadow_count;		/* count of objs we are a shadow for */
 	objtype_t type;			/* type of pager */
 	u_short flags;			/* see below */
 	u_short pg_color;		/* color of first page in obj */
@@ -148,8 +152,8 @@ struct vm_object {
         u_int agg_pv_list_count;        /* aggregate pv list count */
 	struct vm_object *backing_object; /* object that I'm a shadow of */
 	vm_ooffset_t backing_object_offset;/* Offset in backing object */
-	void *handle;
-	int hold_count;			/* refcount for object liveness */
+	void *handle;			/* control handle: vp, etc */
+	int hold_count;			/* count prevents destruction */
 	
 #if defined(DEBUG_LOCKS)
 	/* 
@@ -187,6 +191,8 @@ struct vm_object {
 /*
  * Flags
  */
+#define OBJ_CHAINLOCK	0x0001		/* backing_object/shadow changing */
+#define OBJ_CHAINWANT	0x0002
 #define OBJ_ACTIVE	0x0004		/* active objects */
 #define OBJ_DEAD	0x0008		/* dead objects (during rundown) */
 #define	OBJ_NOSPLIT	0x0010		/* dont split this object */
@@ -195,7 +201,7 @@ struct vm_object {
 #define OBJ_MIGHTBEDIRTY 0x0100		/* object might be dirty */
 #define OBJ_CLEANING	0x0200
 #define OBJ_DEADWNT	0x1000		/* waiting because object is dead */
-#define	OBJ_ONEMAPPING	0x2000		/* One USE (a single, non-forked) mapping flag */
+#define	OBJ_ONEMAPPING	0x2000		/* flag single vm_map_entry mapping */
 #define OBJ_NOMSYNC	0x4000		/* disable msync() system call */
 
 #define IDX_TO_OFF(idx) (((vm_ooffset_t)(idx)) << PAGE_SHIFT)
@@ -275,12 +281,16 @@ void vm_object_page_remove (vm_object_t, vm_pindex_t, vm_pindex_t, boolean_t);
 void vm_object_pmap_copy (vm_object_t, vm_pindex_t, vm_pindex_t);
 void vm_object_pmap_copy_1 (vm_object_t, vm_pindex_t, vm_pindex_t);
 void vm_object_pmap_remove (vm_object_t, vm_pindex_t, vm_pindex_t);
-void vm_object_reference (vm_object_t);
 void vm_object_reference_locked (vm_object_t);
-void vm_object_shadow (vm_object_t *, vm_ooffset_t *, vm_size_t);
+void vm_object_chain_wait (vm_object_t);
+void vm_object_chain_acquire(vm_object_t object);
+void vm_object_chain_release(vm_object_t object);
+void vm_object_chain_release_all(vm_object_t object, vm_object_t stopobj);
+void vm_object_shadow (vm_object_t *, vm_ooffset_t *, vm_size_t, int);
 void vm_object_madvise (vm_object_t, vm_pindex_t, int, int);
 void vm_object_init2 (void);
-vm_page_t vm_fault_object_page(vm_object_t, vm_ooffset_t, vm_prot_t, int, int *);
+vm_page_t vm_fault_object_page(vm_object_t, vm_ooffset_t,
+				vm_prot_t, int, int *);
 void vm_object_dead_sleep(vm_object_t, const char *);
 void vm_object_dead_wakeup(vm_object_t);
 void vm_object_lock_swap(void);

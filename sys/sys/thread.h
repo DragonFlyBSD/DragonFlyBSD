@@ -102,7 +102,7 @@ struct intrframe;
 typedef struct lwkt_token {
     struct lwkt_tokref	*t_ref;		/* Owning ref or NULL */
     long		t_collisions;	/* Collision counter */
-    cpumask_t		t_collmask;	/* Collision cpu mask for resched */
+    cpumask_t		t_collmask;	/* Collision resolve mask */
     const char		*t_desc;	/* Descriptive name */
 } lwkt_token;
 
@@ -161,7 +161,7 @@ struct lwkt_tokref {
     struct thread	*tr_owner;	/* me */
 };
 
-#define MAXCPUFIFO      16	/* power of 2 */
+#define MAXCPUFIFO      32	/* power of 2 */
 #define MAXCPUFIFO_MASK	(MAXCPUFIFO - 1)
 #define LWKT_MAXTOKENS	32	/* max tokens beneficially held by thread */
 
@@ -178,10 +178,12 @@ typedef struct lwkt_ipiq {
     int		ip_rindex;      /* only written by target cpu */
     int		ip_xindex;      /* written by target, indicates completion */
     int		ip_windex;      /* only written by source cpu */
-    ipifunc3_t	ip_func[MAXCPUFIFO];
-    void	*ip_arg1[MAXCPUFIFO];
-    int		ip_arg2[MAXCPUFIFO];
-    u_int	ip_npoll;	/* synchronization to avoid excess IPIs */
+    struct {
+	ipifunc3_t	func;
+	void		*arg1;
+	int		arg2;
+	char		filler[32 - sizeof(int) - sizeof(void *) * 2];
+    } ip_info[MAXCPUFIFO];
 } lwkt_ipiq;
 
 /*
@@ -439,7 +441,7 @@ extern int  lwkt_trytoken(lwkt_token_t);
 extern void lwkt_reltoken(lwkt_token_t);
 extern void lwkt_reltoken_hard(lwkt_token_t);
 extern int  lwkt_cnttoken(lwkt_token_t, thread_t);
-extern int  lwkt_getalltokens(thread_t);
+extern int  lwkt_getalltokens(thread_t, int);
 extern void lwkt_relalltokens(thread_t);
 extern void lwkt_drain_token_requests(void);
 extern void lwkt_token_init(lwkt_token_t, const char *);

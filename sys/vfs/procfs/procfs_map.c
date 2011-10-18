@@ -100,6 +100,9 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		}
 
 		obj = entry->object.vm_object;
+		if (obj)
+			vm_object_hold(obj);
+
 		if (obj && (obj->shadow_count == 1))
 			privateresident = obj->resident_page_count;
 		else
@@ -117,13 +120,28 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		resident = 0;
 		addr = entry->start;
 		while (addr < entry->end) {
-			if (pmap_extract( pmap, addr))
+			if (pmap_extract(pmap, addr))
 				resident++;
 			addr += PAGE_SIZE;
 		}
-
-		for( lobj = tobj = obj; tobj; tobj = tobj->backing_object)
-			lobj = tobj;
+		if (obj) {
+			lobj = obj;
+			while ((tobj = lobj->backing_object) != NULL) {
+				KKASSERT(tobj != obj);
+				vm_object_hold(tobj);
+				if (tobj == lobj->backing_object) {
+					if (lobj != obj) {
+						vm_object_lock_swap();
+						vm_object_drop(lobj);
+					}
+					lobj = tobj;
+				} else {
+					vm_object_drop(tobj);
+				}
+			}
+		} else {
+			lobj = NULL;
+		}
 
 		freepath = NULL;
 		fullpath = "-";
@@ -156,6 +174,8 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 				vn_fullpath(p, vp, &fullpath, &freepath, 1);
 				vrele(vp);
 			}
+			if (lobj != obj)
+				vm_object_drop(lobj);
 		} else {
 			type = "none";
 			flags = 0;
@@ -178,6 +198,9 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 			(entry->eflags & MAP_ENTRY_COW)?"COW":"NCOW",
 			(entry->eflags & MAP_ENTRY_NEEDS_COPY)?"NC":"NNC",
 			type, fullpath);
+
+		if (obj)
+			vm_object_drop(obj);
 
 		if (freepath != NULL) {
 			kfree(freepath, M_TEMP);

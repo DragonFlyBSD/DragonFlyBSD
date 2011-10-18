@@ -423,11 +423,11 @@ swap_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 	vm_object_t object;
 
 	KKASSERT(handle == NULL);
-	lwkt_gettoken(&vm_token);
 	object = vm_object_allocate(OBJT_DEFAULT,
 				    OFF_TO_IDX(offset + PAGE_MASK + size));
+	vm_object_hold(object);
 	swp_pager_meta_convert(object);
-	lwkt_reltoken(&vm_token);
+	vm_object_drop(object);
 
 	return (object);
 }
@@ -446,7 +446,7 @@ swap_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 static void
 swap_pager_dealloc(vm_object_t object)
 {
-	lwkt_gettoken(&vm_token);
+	vm_object_hold(object);
 	vm_object_pip_wait(object, "swpdea");
 
 	/*
@@ -456,7 +456,7 @@ swap_pager_dealloc(vm_object_t object)
 	 * if paging is still in progress on some objects.
 	 */
 	swp_pager_meta_free_all(object);
-	lwkt_reltoken(&vm_token);
+	vm_object_drop(object);
 }
 
 /************************************************************************
@@ -473,19 +473,15 @@ swap_pager_dealloc(vm_object_t object)
  *	Also has the side effect of advising that somebody made a mistake
  *	when they configured swap and didn't configure enough.
  *
- * The caller must hold vm_token.
+ * The caller must hold the object.
  * This routine may not block.
- *
- * NOTE: vm_token must be held to avoid races with bitmap frees from
- *	 vm_page_remove() via swap_pager_page_removed().
  */
 static __inline swblk_t
 swp_pager_getswapspace(vm_object_t object, int npages)
 {
 	swblk_t blk;
 
-	ASSERT_LWKT_TOKEN_HELD(&vm_token);
-
+	lwkt_gettoken(&vm_token);
 	if ((blk = blist_alloc(swapblist, npages)) == SWAPBLK_NONE) {
 		if (swap_pager_full != 2) {
 			kprintf("swap_pager_getswapspace: failed\n");
@@ -500,6 +496,7 @@ swp_pager_getswapspace(vm_object_t object, int npages)
 			vm_swap_cache_use += npages;
 		swp_sizecheck();
 	}
+	lwkt_reltoken(&vm_token);
 	return(blk);
 }
 
@@ -514,7 +511,6 @@ swp_pager_getswapspace(vm_object_t object, int npages)
  *	We must be called at splvm() to avoid races with bitmap frees from
  *	vm_page_remove() aka swap_pager_page_removed().
  *
- * The caller must hold vm_token.
  * This routine may not block.
  */
 
@@ -523,18 +519,22 @@ swp_pager_freeswapspace(vm_object_t object, swblk_t blk, int npages)
 {
 	struct swdevt *sp = &swdevt[BLK2DEVIDX(blk)];
 
+	lwkt_gettoken(&vm_token);
 	sp->sw_nused -= npages;
 	if (object->type == OBJT_SWAP)
 		vm_swap_anon_use -= npages;
 	else
 		vm_swap_cache_use -= npages;
 
-	if (sp->sw_flags & SW_CLOSING)
+	if (sp->sw_flags & SW_CLOSING) {
+		lwkt_reltoken(&vm_token);
 		return;
+	}
 
 	blist_free(swapblist, blk, npages);
 	vm_swap_size += npages;
 	swp_sizecheck();
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -554,9 +554,9 @@ swp_pager_freeswapspace(vm_object_t object, swblk_t blk, int npages)
 void
 swap_pager_freespace(vm_object_t object, vm_pindex_t start, vm_pindex_t size)
 {
-	lwkt_gettoken(&vm_token);
+	vm_object_hold(object);
 	swp_pager_meta_free(object, start, size);
-	lwkt_reltoken(&vm_token);
+	vm_object_drop(object);
 }
 
 /*
@@ -565,9 +565,9 @@ swap_pager_freespace(vm_object_t object, vm_pindex_t start, vm_pindex_t size)
 void
 swap_pager_freespace_all(vm_object_t object)
 {
-	lwkt_gettoken(&vm_token);
+	vm_object_hold(object);
 	swp_pager_meta_free_all(object);
-	lwkt_reltoken(&vm_token);
+	vm_object_drop(object);
 }
 
 /*
@@ -584,7 +584,7 @@ swap_pager_freespace_all(vm_object_t object)
  *
  * If we exhaust the object we will return a value n <= count.
  *
- * The caller must hold vm_token.
+ * The caller must hold the object.
  *
  * WARNING!  If count == 0 then -1 can be returned as a degenerate case,
  *	     callers should always pass a count value > 0.
@@ -596,7 +596,7 @@ swap_pager_condfree(vm_object_t object, vm_pindex_t *basei, int count)
 {
 	struct swfreeinfo info;
 
-	ASSERT_LWKT_TOKEN_HELD(&vm_token);
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 
 	info.object = object;
 	info.basei = *basei;	/* skip up to this page index */
@@ -619,7 +619,7 @@ swap_pager_condfree(vm_object_t object, vm_pindex_t *basei, int count)
  * We do not have to deal with clearing PG_SWAPPED in related VM
  * pages because there are no related VM pages.
  *
- * The caller must hold vm_token.
+ * The caller must hold the object.
  */
 static int
 swap_pager_condfree_callback(struct swblock *swap, void *data)
@@ -654,10 +654,10 @@ void
 swap_pager_page_inserted(vm_page_t m)
 {
 	if (m->object->swblock_count) {
-		lwkt_gettoken(&vm_token);
+		vm_object_hold(m->object);
 		if (swp_pager_meta_ctl(m->object, m->pindex, 0) != SWAPBLK_NONE)
 			vm_page_flag_set(m, PG_SWAPPED);
-		lwkt_reltoken(&vm_token);
+		vm_object_drop(m->object);
 	}
 }
 
@@ -679,7 +679,8 @@ swap_pager_reserve(vm_object_t object, vm_pindex_t start, vm_size_t size)
 	swblk_t blk = SWAPBLK_NONE;
 	vm_pindex_t beg = start;	/* save start index */
 
-	lwkt_gettoken(&vm_token);
+	vm_object_hold(object);
+
 	while (size) {
 		if (n == 0) {
 			n = BLIST_MAX_ALLOC;
@@ -690,7 +691,7 @@ swap_pager_reserve(vm_object_t object, vm_pindex_t start, vm_size_t size)
 				if (n == 0) {
 					swp_pager_meta_free(object, beg,
 							    start - beg);
-					lwkt_reltoken(&vm_token);
+					vm_object_drop(object);
 					return(-1);
 				}
 			}
@@ -702,7 +703,7 @@ swap_pager_reserve(vm_object_t object, vm_pindex_t start, vm_size_t size)
 		--n;
 	}
 	swp_pager_meta_free(object, start, n);
-	lwkt_reltoken(&vm_token);
+	vm_object_drop(object);
 	return(0);
 }
 
@@ -718,21 +719,15 @@ swap_pager_reserve(vm_object_t object, vm_pindex_t start, vm_size_t size)
  *	indirectly through swp_pager_meta_build() or if paging is still in
  *	progress on the source. 
  *
- *	This routine can be called at any spl
- *
  *	XXX vm_page_collapse() kinda expects us not to block because we 
  *	supposedly do not need to allocate memory, but for the moment we
  *	*may* have to get a little memory from the zone allocator, but
  *	it is taken from the interrupt memory.  We should be ok. 
  *
  *	The source object contains no vm_page_t's (which is just as well)
- *
  *	The source object is of type OBJT_SWAP.
  *
- *	The source and destination objects must be locked or 
- *	inaccessible (XXX are they ?)
- *
- * The caller must hold vm_token.
+ *	The source and destination objects must be held by the caller.
  */
 void
 swap_pager_copy(vm_object_t srcobject, vm_object_t dstobject,
@@ -740,7 +735,8 @@ swap_pager_copy(vm_object_t srcobject, vm_object_t dstobject,
 {
 	vm_pindex_t i;
 
-	ASSERT_LWKT_TOKEN_HELD(&vm_token);
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(srcobject));
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(dstobject));
 
 	/*
 	 * transfer source to destination.
@@ -819,15 +815,14 @@ swap_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 	/*
 	 * do we have good backing store at the requested index ?
 	 */
-
-	lwkt_gettoken(&vm_token);
+	vm_object_hold(object);
 	blk0 = swp_pager_meta_ctl(object, pindex, 0);
 
 	if (blk0 == SWAPBLK_NONE) {
-		lwkt_reltoken(&vm_token);
+		vm_object_drop(object);
 		return (FALSE);
 	}
-	lwkt_reltoken(&vm_token);
+	vm_object_drop(object);
 	return (TRUE);
 }
 
@@ -848,18 +843,18 @@ swap_pager_haspage(vm_object_t object, vm_pindex_t pindex)
  * depends on it.
  *
  * The page must be busied or soft-busied.
- * The caller must hold vm_token if the caller does not wish to block here.
+ * The caller can hold the object to avoid blocking, else we might block.
  * No other requirements.
  */
 void
 swap_pager_unswapped(vm_page_t m)
 {
 	if (m->flags & PG_SWAPPED) {
-		lwkt_gettoken(&vm_token);
+		vm_object_hold(m->object);
 		KKASSERT(m->flags & PG_SWAPPED);
 		swp_pager_meta_ctl(m->object, m->pindex, SWM_FREE);
 		vm_page_flag_clear(m, PG_SWAPPED);
-		lwkt_reltoken(&vm_token);
+		vm_object_drop(m->object);
 	}
 }
 
@@ -933,9 +928,9 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		 * FREE PAGE(s) - destroy underlying swap that is no longer
 		 *		  needed.
 		 */
-		lwkt_gettoken(&vm_token);
+		vm_object_hold(object);
 		swp_pager_meta_free(object, start, count);
-		lwkt_reltoken(&vm_token);
+		vm_object_drop(object);
 		bp->b_resid = 0;
 		biodone(bio);
 		return;
@@ -960,7 +955,8 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	/*
 	 * Execute read or write
 	 */
-	lwkt_gettoken(&vm_token);
+	vm_object_hold(object);
+
 	while (count > 0) {
 		swblk_t blk;
 
@@ -1045,7 +1041,8 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		++start;
 		data += PAGE_SIZE;
 	}
-	lwkt_reltoken(&vm_token);
+
+	vm_object_drop(object);
 
 	/*
 	 *  Flush out last buffer
@@ -1189,10 +1186,13 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	int i;
 	int j;
 	int raonly;
+	int error;
+	u_int32_t flags;
 	vm_page_t marray[XIO_INTERNAL_PAGES];
 
 	mreq = *mpp;
 
+	vm_object_hold(object);
 	if (mreq->object != object) {
 		panic("swap_pager_getpages: object mismatch %p/%p", 
 		    object, 
@@ -1210,33 +1210,38 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	 * set on the last page of the read-ahead to continue the pipeline.
 	 */
 	if (mreq->valid == VM_PAGE_BITS_ALL) {
-		if (swap_burst_read == 0 || mreq->pindex + 1 >= object->size)
-			return(VM_PAGER_OK);
-		lwkt_gettoken(&vm_token);
-		blk = swp_pager_meta_ctl(object, mreq->pindex + 1, 0);
-		if (blk == SWAPBLK_NONE) {
-			lwkt_reltoken(&vm_token);
+		if (swap_burst_read == 0 || mreq->pindex + 1 >= object->size) {
+			vm_object_drop(object);
 			return(VM_PAGER_OK);
 		}
-		m = vm_page_lookup(object, mreq->pindex + 1);
-		if (m == NULL) {
+		blk = swp_pager_meta_ctl(object, mreq->pindex + 1, 0);
+		if (blk == SWAPBLK_NONE) {
+			vm_object_drop(object);
+			return(VM_PAGER_OK);
+		}
+		m = vm_page_lookup_busy_try(object, mreq->pindex + 1,
+					    TRUE, &error);
+		if (error) {
+			vm_object_drop(object);
+			return(VM_PAGER_OK);
+		} else if (m == NULL) {
 			m = vm_page_alloc(object, mreq->pindex + 1,
 					  VM_ALLOC_QUICK);
 			if (m == NULL) {
-				lwkt_reltoken(&vm_token);
+				vm_object_drop(object);
 				return(VM_PAGER_OK);
 			}
 		} else {
-			if ((m->flags & PG_BUSY) || m->busy || m->valid) {
-				lwkt_reltoken(&vm_token);
+			if (m->valid) {
+				vm_page_wakeup(m);
+				vm_object_drop(object);
 				return(VM_PAGER_OK);
 			}
 			vm_page_unqueue_nowakeup(m);
-			vm_page_busy(m);
 		}
+		/* page is busy */
 		mreq = m;
 		raonly = 1;
-		lwkt_reltoken(&vm_token);
 	} else {
 		raonly = 0;
 	}
@@ -1250,7 +1255,6 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	 * Note that blk and iblk can be SWAPBLK_NONE but the loop is
 	 * set up such that the case(s) are handled implicitly.
 	 */
-	lwkt_gettoken(&vm_token);
 	blk = swp_pager_meta_ctl(mreq->object, mreq->pindex, 0);
 	marray[0] = mreq;
 
@@ -1264,24 +1268,27 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 			break;
 		if ((blk ^ iblk) & dmmax_mask)
 			break;
-		m = vm_page_lookup(object, mreq->pindex + i);
-		if (m == NULL) {
+		m = vm_page_lookup_busy_try(object, mreq->pindex + i,
+					    TRUE, &error);
+		if (error) {
+			break;
+		} else if (m == NULL) {
 			m = vm_page_alloc(object, mreq->pindex + i,
 					  VM_ALLOC_QUICK);
 			if (m == NULL)
 				break;
 		} else {
-			if ((m->flags & PG_BUSY) || m->busy || m->valid)
+			if (m->valid) {
+				vm_page_wakeup(m);
 				break;
+			}
 			vm_page_unqueue_nowakeup(m);
-			vm_page_busy(m);
 		}
+		/* page is busy */
 		marray[i] = m;
 	}
 	if (i > 1)
 		vm_page_flag_set(marray[i - 1], PG_RAM);
-
-	lwkt_reltoken(&vm_token);
 
 	/*
 	 * If mreq is the requested page and we have nothing to do return
@@ -1292,8 +1299,10 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 		KKASSERT(i == 1);
 		if (raonly) {
 			vnode_pager_freepage(mreq);
+			vm_object_drop(object);
 			return(VM_PAGER_OK);
 		} else {
+			vm_object_drop(object);
 			return(VM_PAGER_FAIL);
 		}
 	}
@@ -1357,17 +1366,26 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	 * If this is a read-ahead only we return immediately without
 	 * waiting for I/O.
 	 */
-	if (raonly)
+	if (raonly) {
+		vm_object_drop(object);
 		return(VM_PAGER_OK);
+	}
 
 	/*
 	 * Read-ahead includes originally requested page case.
 	 */
-	lwkt_gettoken(&vm_token);
-	while ((mreq->flags & PG_SWAPINPROG) != 0) {
-		vm_page_flag_set(mreq, PG_WANTED | PG_REFERENCED);
+	for (;;) {
+		flags = mreq->flags;
+		cpu_ccfence();
+		if ((flags & PG_SWAPINPROG) == 0)
+			break;
+		tsleep_interlock(mreq, 0);
+		if (!atomic_cmpset_int(&mreq->flags, flags,
+				       flags | PG_WANTED | PG_REFERENCED)) {
+			continue;
+		}
 		mycpu->gd_cnt.v_intrans++;
-		if (tsleep(mreq, 0, "swread", hz*20)) {
+		if (tsleep(mreq, PINTERLOCKED, "swread", hz*20)) {
 			kprintf(
 			    "swap_pager: indefinite wait buffer: "
 				" offset: %lld, size: %ld\n",
@@ -1376,13 +1394,13 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 			);
 		}
 	}
-	lwkt_reltoken(&vm_token);
 
 	/*
 	 * mreq is left bussied after completion, but all the other pages
 	 * are freed.  If we had an unrecoverable read error the page will
 	 * not be valid.
 	 */
+	vm_object_drop(object);
 	if (mreq->valid != VM_PAGE_BITS_ALL)
 		return(VM_PAGER_ERROR);
 	else
@@ -1427,6 +1445,8 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 	int i;
 	int n = 0;
 
+	vm_object_hold(object);
+
 	if (count && m[0]->object != object) {
 		panic("swap_pager_getpages: object mismatch %p/%p", 
 		    object, 
@@ -1442,10 +1462,8 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 	 * force sync if not pageout process
 	 */
 	if (object->type == OBJT_DEFAULT) {
-		lwkt_gettoken(&vm_token);
 		if (object->type == OBJT_DEFAULT)
 			swp_pager_meta_convert(object);
-		lwkt_reltoken(&vm_token);
 	}
 
 	if (curthread != pagethread)
@@ -1474,6 +1492,8 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		 * Adjust difference ( if possible ).  If the current async
 		 * count is too low, we may not be able to make the adjustment
 		 * at this time.
+		 *
+		 * vm_token needed for nsw_wcount sleep interlock
 		 */
 		lwkt_gettoken(&vm_token);
 		n -= nsw_wcount_async_max;
@@ -1548,6 +1568,8 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 			bp = getpbuf_kva(&nsw_wcount_async);
 		bio = &bp->b_bio1;
 
+		lwkt_reltoken(&vm_token);
+
 		pmap_qenter((vm_offset_t)bp->b_data, &m[i], n);
 
 		bp->b_bcount = PAGE_SIZE * n;
@@ -1569,8 +1591,6 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 
 		mycpu->gd_cnt.v_swapout++;
 		mycpu->gd_cnt.v_swappgsout += bp->b_xio.xio_npages;
-
-		lwkt_reltoken(&vm_token);
 
 		bp->b_dirtyoff = 0;		/* req'd for NFS */
 		bp->b_dirtyend = bp->b_bcount;	/* req'd for NFS */
@@ -1613,6 +1633,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		 */
 		swp_pager_async_iodone(bio);
 	}
+	vm_object_drop(object);
 }
 
 /*
@@ -1668,7 +1689,6 @@ swp_pager_async_iodone(struct bio *bio)
 	 */
 	if (bp->b_xio.xio_npages)
 		object = bp->b_xio.xio_pages[0]->object;
-	lwkt_gettoken(&vm_token);
 
 	/*
 	 * remove the mapping for kernel virtual
@@ -1751,6 +1771,7 @@ swp_pager_async_iodone(struct bio *bio)
 				 * been dirty in the first place, and they
 				 * do have backing store (the vnode).
 				 */
+				vm_page_busy_wait(m, FALSE, "swadpg");
 				swp_pager_meta_ctl(m->object, m->pindex,
 						   SWM_FREE);
 				vm_page_flag_clear(m, PG_SWAPPED);
@@ -1760,6 +1781,7 @@ swp_pager_async_iodone(struct bio *bio)
 				}
 				vm_page_flag_clear(m, PG_SWAPINPROG);
 				vm_page_io_finish(m);
+				vm_page_wakeup(m);
 			}
 		} else if (bio->bio_caller_info1.index & SWBIO_READ) {
 			/*
@@ -1826,6 +1848,7 @@ swp_pager_async_iodone(struct bio *bio)
 			 * When using the swap to cache clean vnode pages
 			 * we do not mess with the page dirty bits.
 			 */
+			vm_page_busy_wait(m, FALSE, "swadpg");
 			if (m->object->type == OBJT_SWAP)
 				vm_page_undirty(m);
 			vm_page_flag_clear(m, PG_SWAPINPROG);
@@ -1837,6 +1860,7 @@ swp_pager_async_iodone(struct bio *bio)
 				vm_page_protect(m, VM_PROT_READ);
 #endif
 			vm_page_io_finish(m);
+			vm_page_wakeup(m);
 		}
 	}
 
@@ -1854,7 +1878,10 @@ swp_pager_async_iodone(struct bio *bio)
 	 * NOTE: Due to synchronous operations in the write case b_cmd may
 	 *	 already be set to BUF_CMD_DONE and BIO_SYNC may have already
 	 *	 been cleared.
+	 *
+	 * Use vm_token to interlock nsw_rcount/wcount wakeup?
 	 */
+	lwkt_gettoken(&vm_token);
 	if (bio->bio_caller_info1.index & SWBIO_READ)
 		nswptr = &nsw_rcount;
 	else if (bio->bio_caller_info1.index & SWBIO_SYNC)
@@ -1868,6 +1895,8 @@ swp_pager_async_iodone(struct bio *bio)
 
 /*
  * Fault-in a potentially swapped page and remove the swap reference.
+ *
+ * object must be held.
  */
 static __inline void
 swp_pager_fault_page(vm_object_t object, vm_pindex_t pindex)
@@ -1875,6 +1904,8 @@ swp_pager_fault_page(vm_object_t object, vm_pindex_t pindex)
 	struct vnode *vp;
 	vm_page_t m;
 	int error;
+
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 
 	if (object->type == OBJT_VNODE) {
 		/*
@@ -1913,12 +1944,15 @@ swap_pager_swapoff(int devidx)
 	swblk_t v;
 	int i;
 
-	lwkt_gettoken(&vm_token);
 	lwkt_gettoken(&vmobj_token);
 rescan:
 	TAILQ_FOREACH(object, &vm_object_list, object_list) {
+		if (object->type != OBJT_SWAP && object->type != OBJT_VNODE)
+			continue;
+		vm_object_hold(object);
 		if (object->type == OBJT_SWAP || object->type == OBJT_VNODE) {
-			RB_FOREACH(swap, swblock_rb_tree, &object->swblock_root) {
+			RB_FOREACH(swap,
+				   swblock_rb_tree, &object->swblock_root) {
 				for (i = 0; i < SWAP_META_PAGES; ++i) {
 					v = swap->swb_pages[i];
 					if (v != SWAPBLK_NONE &&
@@ -1926,14 +1960,15 @@ rescan:
 						swp_pager_fault_page(
 						    object,
 						    swap->swb_index + i);
+						vm_object_drop(object);
 						goto rescan;
 					}
 				}
 			}
 		}
+		vm_object_drop(object);
 	}
 	lwkt_reltoken(&vmobj_token);
-	lwkt_reltoken(&vm_token);
 
 	/*
 	 * If we fail to locate all swblocks we just fail gracefully and
@@ -1963,12 +1998,13 @@ rescan:
 /*
  * Lookup the swblock containing the specified swap block index.
  *
- * The caller must hold vm_token.
+ * The caller must hold the object.
  */
 static __inline
 struct swblock *
 swp_pager_lookup(vm_object_t object, vm_pindex_t index)
 {
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 	index &= ~SWAP_META_MASK;
 	return (RB_LOOKUP(swblock_rb_tree, &object->swblock_root, index));
 }
@@ -1976,19 +2012,20 @@ swp_pager_lookup(vm_object_t object, vm_pindex_t index)
 /*
  * Remove a swblock from the RB tree.
  *
- * The caller must hold vm_token.
+ * The caller must hold the object.
  */
 static __inline
 void
 swp_pager_remove(vm_object_t object, struct swblock *swap)
 {
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 	RB_REMOVE(swblock_rb_tree, &object->swblock_root, swap);
 }
 
 /*
  * Convert default object to swap object if necessary
  *
- * The caller must hold vm_token.
+ * The caller must hold the object.
  */
 static void
 swp_pager_meta_convert(vm_object_t object)
@@ -2009,7 +2046,7 @@ swp_pager_meta_convert(vm_object_t object)
  *	the swapblk is not valid, it is freed instead.  Any previously
  *	assigned swapblk is freed.
  *
- * The caller must hold vm_token.
+ * The caller must hold the object.
  */
 static void
 swp_pager_meta_build(vm_object_t object, vm_pindex_t index, swblk_t swapblk)
@@ -2018,6 +2055,7 @@ swp_pager_meta_build(vm_object_t object, vm_pindex_t index, swblk_t swapblk)
 	struct swblock *oswap;
 
 	KKASSERT(swapblk != SWAPBLK_NONE);
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 
 	/*
 	 * Convert object if necessary
@@ -2081,7 +2119,7 @@ retry:
  *	out.  This routine does *NOT* operate on swap metadata associated
  *	with resident pages.
  *
- * The caller must hold vm_token.
+ * The caller must hold the object.
  */
 static int swp_pager_meta_free_callback(struct swblock *swb, void *data);
 
@@ -2089,6 +2127,8 @@ static void
 swp_pager_meta_free(vm_object_t object, vm_pindex_t index, vm_pindex_t count)
 {
 	struct swfreeinfo info;
+
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 
 	/*
 	 * Nothing to do
@@ -2113,7 +2153,7 @@ swp_pager_meta_free(vm_object_t object, vm_pindex_t index, vm_pindex_t count)
 }
 
 /*
- * The caller must hold vm_token.
+ * The caller must hold the object.
  */
 static
 int
@@ -2147,7 +2187,6 @@ swp_pager_meta_free_callback(struct swblock *swap, void *data)
 		swblk_t v = swap->swb_pages[index];
 
 		if (v != SWAPBLK_NONE) {
-			swp_pager_freeswapspace(object, v, 1);
 			swap->swb_pages[index] = SWAPBLK_NONE;
 			if (--swap->swb_count == 0) {
 				swp_pager_remove(object, swap);
@@ -2155,6 +2194,7 @@ swp_pager_meta_free_callback(struct swblock *swap, void *data)
 				--object->swblock_count;
 				break;
 			}
+			swp_pager_freeswapspace(object, v, 1); /* can block */
 		}
 		++index;
 	}
@@ -2168,13 +2208,15 @@ swp_pager_meta_free_callback(struct swblock *swap, void *data)
  *	This routine locates and destroys all swap metadata associated with
  *	an object.
  *
- * The caller must hold vm_token.
+ * The caller must hold the object.
  */
 static void
 swp_pager_meta_free_all(vm_object_t object)
 {
 	struct swblock *swap;
 	int i;
+
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 
 	while ((swap = RB_ROOT(&object->swblock_root)) != NULL) {
 		swp_pager_remove(object, swap);
@@ -2213,7 +2255,7 @@ swp_pager_meta_free_all(vm_object_t object)
  *	SWM_FREE	remove and free swap block from metadata
  *	SWM_POP		remove from meta data but do not free.. pop it out
  *
- * The caller must hold vm_token.
+ * The caller must hold the object.
  */
 static swblk_t
 swp_pager_meta_ctl(vm_object_t object, vm_pindex_t index, int flags)
@@ -2232,10 +2274,6 @@ swp_pager_meta_ctl(vm_object_t object, vm_pindex_t index, int flags)
 		r1 = swap->swb_pages[index];
 
 		if (r1 != SWAPBLK_NONE) {
-			if (flags & SWM_FREE) {
-				swp_pager_freeswapspace(object, r1, 1);
-				r1 = SWAPBLK_NONE;
-			}
 			if (flags & (SWM_FREE|SWM_POP)) {
 				swap->swb_pages[index] = SWAPBLK_NONE;
 				if (--swap->swb_count == 0) {
@@ -2244,6 +2282,10 @@ swp_pager_meta_ctl(vm_object_t object, vm_pindex_t index, int flags)
 					--object->swblock_count;
 				}
 			} 
+			if (flags & SWM_FREE) {
+				swp_pager_freeswapspace(object, r1, 1);
+				r1 = SWAPBLK_NONE;
+			}
 		}
 	}
 	return(r1);

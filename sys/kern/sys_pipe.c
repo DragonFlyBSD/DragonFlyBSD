@@ -148,6 +148,30 @@ SYSCTL_INT(_kern_pipe, OID_AUTO, bkmem_alloc,
         CTLFLAG_RW, &pipe_bkmem_alloc, 0, "pipe buffer from kmem");
 #endif
 
+/*
+ * Auto-size pipe cache to reduce kmem allocations and frees.
+ */
+static
+void
+pipeinit(void *dummy)
+{
+	size_t mbytes = kmem_lim_size();
+
+	if (pipe_maxbig == LIMITBIGPIPES) {
+		if (mbytes >= 7 * 1024)
+			pipe_maxbig *= 2;
+		if (mbytes >= 15 * 1024)
+			pipe_maxbig *= 2;
+	}
+	if (pipe_maxcache == PIPEQ_MAX_CACHE) {
+		if (mbytes >= 7 * 1024)
+			pipe_maxcache *= 2;
+		if (mbytes >= 15 * 1024)
+			pipe_maxcache *= 2;
+	}
+}
+SYSINIT(kmem, SI_BOOT2_MACHDEP, SI_ORDER_ANY, pipeinit, NULL)
+
 static void pipeclose (struct pipe *cpipe);
 static void pipe_free_kmem (struct pipe *cpipe);
 static int pipe_create (struct pipe **cpipep);

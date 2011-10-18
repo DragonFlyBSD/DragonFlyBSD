@@ -2640,10 +2640,13 @@ ttyinfo(struct tty *tp)
 
 		pctcpu = (lp->lwp_pctcpu * 10000 + FSCALE / 2) >> FSHIFT;
 
-		if (pick->p_stat == SIDL || pick->p_stat == SZOMB)
+		if (pick->p_stat == SIDL || pick->p_stat == SZOMB) {
 		    vmsz = 0;
-		else
+		} else {
+		    lwkt_gettoken(&pick->p_vmspace->vm_map.token);
 		    vmsz = pgtok(vmspace_resident_count(pick->p_vmspace));
+		    lwkt_reltoken(&pick->p_vmspace->vm_map.token);
+		}
 
 		crit_exit();
 

@@ -187,6 +187,14 @@ struct vm_page {
 #endif
 };
 
+#ifdef VM_PAGE_DEBUG
+#define VM_PAGE_DEBUG_EXT(name)	name ## _debug
+#define VM_PAGE_DEBUG_ARGS	, const char *func, int lineno
+#else
+#define VM_PAGE_DEBUG_EXT(name)	name
+#define VM_PAGE_DEBUG_ARGS
+#endif
+
 #ifndef __VM_PAGE_T_DEFINED__
 #define __VM_PAGE_T_DEFINED__
 typedef struct vm_page *vm_page_t;
@@ -285,6 +293,9 @@ struct vpgqueues {
 	int	*cnt;
 	int	lcnt;
 	int	flipflop;	/* probably not the best place */
+	struct spinlock spin;
+	char	unused[64 - sizeof(struct pglist) -
+			sizeof(int *) - sizeof(int) * 2];
 };
 
 extern struct vpgqueues vm_page_queues[PQ_COUNT];
@@ -312,6 +323,9 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
  *
  *  PG_SWAPPED indicates that the page is backed by a swap block.  Any
  *  VM object type other than OBJT_DEFAULT can have swap-backed pages now.
+ *
+ *  PG_SBUSY is set when m->busy != 0.  PG_SBUSY and m->busy are only modified
+ *  when the page is PG_BUSY.
  */
 #define	PG_BUSY		0x00000001	/* page is in transit (O) */
 #define	PG_WANTED	0x00000002	/* someone is waiting for page (O) */
@@ -330,7 +344,7 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define PG_SWAPPED	0x00004000	/* backed by swap */
 #define PG_NOTMETA	0x00008000	/* do not back with swap */
 #define PG_ACTIONLIST	0x00010000	/* lookaside action list present */
-	/* u_short, only 16 flag bits */
+#define PG_SBUSY	0x00020000	/* soft-busy also set */
 
 /*
  * Misc constants.
@@ -396,84 +410,22 @@ vm_page_flag_clear(vm_page_t m, unsigned int bits)
 	atomic_clear_int(&(m)->flags, bits);
 }
 
-#ifdef VM_PAGE_DEBUG
-
-static __inline void
-_vm_page_busy(vm_page_t m, const char *func, int lineno)
-{
-	ASSERT_LWKT_TOKEN_HELD(&vm_token);
-	KASSERT((m->flags & PG_BUSY) == 0,
-		("vm_page_busy: page already busy!!!"));
-	vm_page_flag_set(m, PG_BUSY);
-	m->busy_func = func;
-	m->busy_line = lineno;
-}
-
-#define vm_page_busy(m)	_vm_page_busy(m, __func__, __LINE__)
-
-#else
-
-static __inline void
-vm_page_busy(vm_page_t m)
-{
-	ASSERT_LWKT_TOKEN_HELD(&vm_token);
-	KASSERT((m->flags & PG_BUSY) == 0, 
-		("vm_page_busy: page already busy!!!"));
-	vm_page_flag_set(m, PG_BUSY);
-}
-
-#endif
-
 /*
- *	vm_page_flash:
- *
- *	wakeup anyone waiting for the page.
+ * Wakeup anyone waiting for the page after potentially unbusying
+ * (hard or soft) or doing other work on a page that might make a
+ * waiter ready.  The setting of PG_WANTED is integrated into the
+ * related flags and it can't be set once the flags are already
+ * clear, so there should be no races here.
  */
 
 static __inline void
 vm_page_flash(vm_page_t m)
 {
-	lwkt_gettoken(&vm_token);
 	if (m->flags & PG_WANTED) {
 		vm_page_flag_clear(m, PG_WANTED);
 		wakeup(m);
 	}
-	lwkt_reltoken(&vm_token);
 }
-
-/*
- * Clear the PG_BUSY flag and wakeup anyone waiting for the page.  This
- * is typically the last call you make on a page before moving onto
- * other things.
- */
-static __inline void
-vm_page_wakeup(vm_page_t m)
-{
-	KASSERT(m->flags & PG_BUSY, ("vm_page_wakeup: page not busy!!!"));
-	vm_page_flag_clear(m, PG_BUSY);
-	vm_page_flash(m);
-}
-
-/*
- * These routines manipulate the 'soft busy' count for a page.  A soft busy
- * is almost like PG_BUSY except that it allows certain compatible operations
- * to occur on the page while it is busy.  For example, a page undergoing a
- * write can still be mapped read-only.
- */
-static __inline void
-vm_page_io_start(vm_page_t m)
-{
-	atomic_add_char(&(m)->busy, 1);
-}
-
-static __inline void
-vm_page_io_finish(vm_page_t m)
-{
-	atomic_subtract_char(&m->busy, 1);
-	if (m->busy == 0)
-		vm_page_flash(m);
-}
-
 
 #if PAGE_SIZE == 4096
 #define VM_PAGE_BITS_ALL 0xff
@@ -494,6 +446,17 @@ vm_page_io_finish(vm_page_t m)
 #define	VM_ALLOC_QUICK		0x10	/* like NORMAL but do not use cache */
 #define	VM_ALLOC_RETRY		0x80	/* indefinite block (vm_page_grab()) */
 
+void vm_page_queue_spin_lock(vm_page_t);
+void vm_page_queues_spin_lock(u_short);
+void vm_page_and_queue_spin_lock(vm_page_t);
+
+void vm_page_queue_spin_unlock(vm_page_t);
+void vm_page_queues_spin_unlock(u_short);
+void vm_page_and_queue_spin_unlock(vm_page_t m);
+
+void vm_page_io_finish(vm_page_t m);
+void vm_page_io_start(vm_page_t m);
+void vm_page_wakeup(vm_page_t m);
 void vm_page_hold(vm_page_t);
 void vm_page_unhold(vm_page_t);
 void vm_page_activate (vm_page_t);
@@ -504,8 +467,12 @@ int vm_page_try_to_cache (vm_page_t);
 int vm_page_try_to_free (vm_page_t);
 void vm_page_dontneed (vm_page_t);
 void vm_page_deactivate (vm_page_t);
+void vm_page_deactivate_locked (vm_page_t);
 void vm_page_insert (vm_page_t, struct vm_object *, vm_pindex_t);
 vm_page_t vm_page_lookup (struct vm_object *, vm_pindex_t);
+vm_page_t VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_wait)(struct vm_object *, vm_pindex_t,
+				int, const char * VM_PAGE_DEBUG_ARGS);
+vm_page_t VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_try)(struct vm_object *, vm_pindex_t, int, int * VM_PAGE_DEBUG_ARGS);
 void vm_page_remove (vm_page_t);
 void vm_page_rename (vm_page_t, struct vm_object *, vm_pindex_t);
 void vm_page_startup (void);
@@ -514,6 +481,7 @@ void vm_page_unwire (vm_page_t, int);
 void vm_page_wire (vm_page_t);
 void vm_page_unqueue (vm_page_t);
 void vm_page_unqueue_nowakeup (vm_page_t);
+vm_page_t vm_page_next (vm_page_t);
 void vm_page_set_validclean (vm_page_t, int, int);
 void vm_page_set_validdirty (vm_page_t, int, int);
 void vm_page_set_valid (vm_page_t, int, int);
@@ -531,6 +499,27 @@ void vm_page_event_internal(vm_page_t, vm_page_event_t);
 void vm_page_dirty(vm_page_t m);
 void vm_page_register_action(vm_page_action_t action, vm_page_event_t event);
 void vm_page_unregister_action(vm_page_action_t action);
+void vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg);
+void VM_PAGE_DEBUG_EXT(vm_page_busy_wait)(vm_page_t m, int also_m_busy, const char *wmsg VM_PAGE_DEBUG_ARGS);
+int VM_PAGE_DEBUG_EXT(vm_page_busy_try)(vm_page_t m, int also_m_busy VM_PAGE_DEBUG_ARGS);
+
+#ifdef VM_PAGE_DEBUG
+
+#define vm_page_lookup_busy_wait(object, pindex, alsob, msg)		\
+	vm_page_lookup_busy_wait_debug(object, pindex, alsob, msg,	\
+					__func__, __LINE__)
+
+#define vm_page_lookup_busy_try(object, pindex, alsob, errorp)		\
+	vm_page_lookup_busy_try_debug(object, pindex, alsob, errorp,	\
+					__func__, __LINE__)
+
+#define vm_page_busy_wait(m, alsob, msg)				\
+	vm_page_busy_wait_debug(m, alsob, msg, __func__, __LINE__)
+
+#define vm_page_busy_try(m, alsob)					\
+	vm_page_busy_try_debug(m, alsob, __func__, __LINE__)
+
+#endif
 
 /*
  * Reduce the protection of a page.  This routine never raises the 
@@ -551,15 +540,16 @@ void vm_page_unregister_action(vm_page_action_t action);
  * might have changed, however.
  */
 static __inline void
-vm_page_protect(vm_page_t mem, int prot)
+vm_page_protect(vm_page_t m, int prot)
 {
+	KKASSERT(m->flags & PG_BUSY);
 	if (prot == VM_PROT_NONE) {
-		if (mem->flags & (PG_WRITEABLE|PG_MAPPED)) {
-			pmap_page_protect(mem, VM_PROT_NONE);
+		if (m->flags & (PG_WRITEABLE|PG_MAPPED)) {
+			pmap_page_protect(m, VM_PROT_NONE);
 			/* PG_WRITEABLE & PG_MAPPED cleared by call */
 		}
-	} else if ((prot == VM_PROT_READ) && (mem->flags & PG_WRITEABLE)) {
-		pmap_page_protect(mem, VM_PROT_READ);
+	} else if ((prot == VM_PROT_READ) && (m->flags & PG_WRITEABLE)) {
+		pmap_page_protect(m, VM_PROT_READ);
 		/* PG_WRITEABLE cleared by call */
 	}
 }
@@ -622,39 +612,6 @@ vm_page_free_zero(vm_page_t m)
 #endif
 	vm_page_flag_set(m, PG_ZERO);
 	vm_page_free_toq(m);
-}
-
-/*
- * Wait until page is no longer PG_BUSY or (if also_m_busy is TRUE)
- * m->busy is zero.  Returns TRUE if it had to sleep ( including if 
- * it almost had to sleep and made temporary spl*() mods), FALSE 
- * otherwise.
- *
- * This routine assumes that interrupts can only remove the busy
- * status from a page, not set the busy status or change it from
- * PG_BUSY to m->busy or vise versa (which would create a timing
- * window).
- *
- * Note: as an inline, 'also_m_busy' is usually a constant and well
- * optimized.
- */
-static __inline int
-vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
-{
-	if ((m->flags & PG_BUSY) || (also_m_busy && m->busy))  {
-		lwkt_gettoken(&vm_token);
-		if ((m->flags & PG_BUSY) || (also_m_busy && m->busy)) {
-			/*
-			 * Page is busy. Wait and retry.
-			 */
-			vm_page_flag_set(m, PG_WANTED | PG_REFERENCED);
-			tsleep(m, 0, msg, 0);
-		}
-		lwkt_reltoken(&vm_token);
-		return(TRUE);
-		/* not reached */
-	}
-	return(FALSE);
 }
 
 /*

@@ -625,8 +625,7 @@ linux_mmap_common(caddr_t linux_addr, size_t linux_len, int linux_prot,
 		flags |= MAP_NOSYNC;
 	}
 
-	lwkt_gettoken(&vm_token);
-	lwkt_gettoken(&vmspace_token);
+	lwkt_gettoken(&curproc->p_vmspace->vm_map.token);
 
 	if (linux_flags & LINUX_MAP_GROWSDOWN) {
 		flags |= MAP_STACK;
@@ -711,8 +710,7 @@ linux_mmap_common(caddr_t linux_addr, size_t linux_len, int linux_prot,
 	error = kern_mmap(curproc->p_vmspace, addr, len,
 			  prot, flags, fd, pos, &new);
 
-	lwkt_reltoken(&vmspace_token);
-	lwkt_reltoken(&vm_token);
+	lwkt_reltoken(&curproc->p_vmspace->vm_map.token);
 
 	if (error == 0)
 		*res = new;

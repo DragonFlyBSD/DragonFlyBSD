@@ -279,10 +279,8 @@ sys_vmspace_mmap(struct vmspace_mmap_args *uap)
 	int error;
 
 	/*
-	 * We hold the vmspace token to serialize calls to vkernel_find_vmspace
-	 * and the vm token to serialize calls to kern_mmap.
+	 * We hold the vmspace token to serialize calls to vkernel_find_vmspace.
 	 */
-	lwkt_gettoken(&vm_token);
 	lwkt_gettoken(&vmspace_token);
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
@@ -305,7 +303,6 @@ sys_vmspace_mmap(struct vmspace_mmap_args *uap)
 	lwkt_reltoken(&vkp->token);
 done3:
 	lwkt_reltoken(&vmspace_token);
-	lwkt_reltoken(&vm_token);
 	return (error);
 }
 

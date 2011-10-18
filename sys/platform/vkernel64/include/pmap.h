@@ -96,6 +96,12 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
+#endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 #ifndef _SYS_VKERNEL_H_
 #include <sys/vkernel.h>
 #endif
@@ -151,12 +157,15 @@ struct pmap {
 	struct vm_object	*pm_pteobj;	/* Container for pte's */
 	TAILQ_ENTRY(pmap)	pm_pmnode;	/* list of pmaps */
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
+	TAILQ_HEAD(,pv_entry)	pm_pvlist_free;	/* free mappings */
 	int			pm_count;	/* reference count */
 	cpumask_t		pm_active;	/* active on cpus */
 	vm_pindex_t		pm_pdindex;	/* page dir page in obj */
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct	vm_page		*pm_ptphint;	/* pmap ptp hint */
 	int			pm_generation;	/* detect pvlist deletions */
+	struct spinlock		pm_spin;
+	struct lwkt_token	pm_token;
 };
 
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
@@ -193,6 +202,7 @@ extern vm_offset_t clean_eva;
 void	pmap_bootstrap(vm_paddr_t *, int64_t);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
+void	pmap_release(struct pmap *pmap);
 struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
 
 #endif /* _KERNEL */

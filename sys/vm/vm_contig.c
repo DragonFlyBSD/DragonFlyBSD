@@ -1,6 +1,4 @@
 /*
- * (MPSAFE)
- *
  * Copyright (c) 2003, 2004 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -120,7 +118,10 @@
 #include <vm/vm_extern.h>
 
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 #include <vm/vm_page2.h>
+
+static void vm_contig_pg_free(int start, u_long size);
 
 /*
  * vm_contig_pg_clean:
@@ -137,71 +138,98 @@
  *
  * 	Otherwise if the object is of any other type, the generic
  * 	pageout (daemon) flush routine is invoked.
- *
- * The caller must hold vm_token.
  */
-static int
-vm_contig_pg_clean(int queue)
+static void
+vm_contig_pg_clean(int queue, int count)
 {
 	vm_object_t object;
-	vm_page_t m, m_tmp, next;
+	vm_page_t m, m_tmp;
+	struct vm_page marker;
+	struct vpgqueues *pq = &vm_page_queues[queue];
 
-	ASSERT_LWKT_TOKEN_HELD(&vm_token);
+	/*
+	 * Setup a local marker
+	 */
+	bzero(&marker, sizeof(marker));
+	marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
+	marker.queue = queue;
+	marker.wire_count = 1;
 
-	for (m = TAILQ_FIRST(&vm_page_queues[queue].pl); m != NULL; m = next) {
-		KASSERT(m->queue == queue,
-			("vm_contig_clean: page %p's queue is not %d", 
-			m, queue));
-		next = TAILQ_NEXT(m, pageq);
+	vm_page_queues_spin_lock(queue);
+	TAILQ_INSERT_HEAD(&pq->pl, &marker, pageq);
+	vm_page_queues_spin_unlock(queue);
 
-		if (m->flags & PG_MARKER)
+	/*
+	 * Iterate the queue.  Note that the vm_page spinlock must be
+	 * acquired before the pageq spinlock so it's easiest to simply
+	 * not hold it in the loop iteration.
+	 */
+	while (count-- > 0 && (m = TAILQ_NEXT(&marker, pageq)) != NULL) {
+		vm_page_and_queue_spin_lock(m);
+		if (m != TAILQ_NEXT(&marker, pageq)) {
+			vm_page_and_queue_spin_unlock(m);
+			++count;
 			continue;
-		
-		if (vm_page_sleep_busy(m, TRUE, "vpctw0"))
-			return (TRUE);
-		
+		}
+		KKASSERT(m->queue == queue);
+
+		TAILQ_REMOVE(&pq->pl, &marker, pageq);
+		TAILQ_INSERT_AFTER(&pq->pl, m, &marker, pageq);
+
+		if (m->flags & PG_MARKER) {
+			vm_page_and_queue_spin_unlock(m);
+			continue;
+		}
+		if (vm_page_busy_try(m, TRUE)) {
+			vm_page_and_queue_spin_unlock(m);
+			continue;
+		}
+		vm_page_and_queue_spin_unlock(m);
+
+		/*
+		 * We've successfully busied the page
+		 */
+		if (m->queue - m->pc != queue) {
+			vm_page_wakeup(m);
+			continue;
+		}
+		if ((object = m->object) == NULL) {
+			vm_page_wakeup(m);
+			continue;
+		}
 		vm_page_test_dirty(m);
 		if (m->dirty) {
-			object = m->object;
+			vm_object_hold(object);
+			KKASSERT(m->object == object);
+
 			if (object->type == OBJT_VNODE) {
+				vm_page_wakeup(m);
 				vn_lock(object->handle, LK_EXCLUSIVE|LK_RETRY);
 				vm_object_page_clean(object, 0, 0, OBJPC_SYNC);
 				vn_unlock(((struct vnode *)object->handle));
-				return (TRUE);
 			} else if (object->type == OBJT_SWAP ||
 					object->type == OBJT_DEFAULT) {
 				m_tmp = m;
 				vm_pageout_flush(&m_tmp, 1, 0);
-				return (TRUE);
+			} else {
+				vm_page_wakeup(m);
 			}
-		}
-		KKASSERT(m->busy == 0);
-		if (m->dirty == 0 && m->hold_count == 0) {
-			vm_page_busy(m);
+			vm_object_drop(object);
+		} else if (m->hold_count == 0) {
 			vm_page_cache(m);
+		} else {
+			vm_page_wakeup(m);
 		}
 	}
-	return (FALSE);
+
+	/*
+	 * Scrap our local marker
+	 */
+	vm_page_queues_spin_lock(queue);
+	TAILQ_REMOVE(&pq->pl, &marker, pageq);
+	vm_page_queues_spin_unlock(queue);
 }
 
-/*
- * vm_contig_pg_flush:
- * 
- * Attempt to flush (count) pages from the given page queue.   This may or
- * may not succeed.  Take up to <count> passes and delay 1/20 of a second
- * between each pass.
- *
- * The caller must hold vm_token.
- */
-static void
-vm_contig_pg_flush(int queue, int count) 
-{
-	while (count > 0) {
-		if (!vm_contig_pg_clean(queue))
-			break;
-		--count;
-	}
-}
 /*
  * vm_contig_pg_alloc:
  *
@@ -211,8 +239,6 @@ vm_contig_pg_flush(int queue, int count)
  *
  * Malloc()'s data structures have been used for collection of
  * statistics and for allocations of less than a page.
- *
- * The caller must hold vm_token.
  */
 static int
 vm_contig_pg_alloc(unsigned long size, vm_paddr_t low, vm_paddr_t high,
@@ -269,15 +295,15 @@ again:
 		 * normal state.
 		 */
 		if ((i == vmstats.v_page_count) ||
-			((VM_PAGE_TO_PHYS(&pga[i]) + size) > high)) {
+		    ((VM_PAGE_TO_PHYS(&pga[i]) + size) > high)) {
 
 			/*
 			 * Best effort flush of all inactive pages.
 			 * This is quite quick, for now stall all
 			 * callers, even if they've specified M_NOWAIT.
 			 */
-			vm_contig_pg_flush(PQ_INACTIVE, 
-					    vmstats.v_inactive_count);
+			vm_contig_pg_clean(PQ_INACTIVE,
+					   vmstats.v_inactive_count);
 
 			/*
 			 * Best effort flush of active pages.
@@ -290,8 +316,8 @@ again:
 			 * will fail in the index < 0 case.
 			 */
 			if (pass > 0 && (mflags & M_WAITOK)) {
-				vm_contig_pg_flush (PQ_ACTIVE,
-						    vmstats.v_active_count);
+				vm_contig_pg_clean(PQ_ACTIVE,
+						   vmstats.v_active_count);
 			}
 
 			/*
@@ -323,14 +349,31 @@ again:
 		}
 
 		/*
+		 * Try to allocate the pages.
+		 *
 		 * (still in critical section)
 		 */
 		for (i = start; i < (start + size / PAGE_SIZE); i++) {
 			m = &pga[i];
+
+			if (vm_page_busy_try(m, TRUE)) {
+				vm_contig_pg_free(start,
+						  (i - start) * PAGE_SIZE);
+				start++;
+				goto again;
+			}
 			pqtype = m->queue - m->pc;
 			if (pqtype == PQ_CACHE) {
-				vm_page_busy(m);
 				vm_page_free(m);
+				--i;
+				continue;	/* retry the page */
+			}
+			if (pqtype != PQ_FREE) {
+				vm_page_wakeup(m);
+				vm_contig_pg_free(start,
+						  (i - start) * PAGE_SIZE);
+				start++;
+				goto again;
 			}
 			KKASSERT(m->object == NULL);
 			vm_page_unqueue_nowakeup(m);
@@ -339,14 +382,15 @@ again:
 				vm_page_zero_count--;
 			KASSERT(m->dirty == 0,
 				("vm_contig_pg_alloc: page %p was dirty", m));
-			m->wire_count = 0;
-			m->busy = 0;
+			KKASSERT(m->wire_count == 0);
+			KKASSERT(m->busy == 0);
 
 			/*
-			 * Clear all flags except PG_ZERO and PG_WANTED.  This
-			 * also clears PG_BUSY.
+			 * Clear all flags except PG_BUSY, PG_ZERO, and
+			 * PG_WANTED, then unbusy the now allocated page.
 			 */
-			vm_page_flag_clear(m, ~(PG_ZERO|PG_WANTED));
+			vm_page_flag_clear(m, ~(PG_BUSY|PG_ZERO|PG_WANTED));
+			vm_page_wakeup(m);
 		}
 
 		/*
@@ -382,13 +426,11 @@ vm_contig_pg_free(int start, u_long size)
 	if (size == 0)
 		panic("vm_contig_pg_free: size must not be 0");
 
-	lwkt_gettoken(&vm_token);
 	for (i = start; i < (start + size / PAGE_SIZE); i++) {
 		m = &pga[i];
-		vm_page_busy(m);
+		vm_page_busy_wait(m, FALSE, "cpgfr");
 		vm_page_free(m);
 	}
-	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -411,8 +453,6 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 	if (size == 0)
 		panic("vm_contig_pg_kmap: size must not be 0");
 
-	lwkt_gettoken(&vm_token);
-
 	/*
 	 * We've found a contiguous chunk that meets our requirements.
 	 * Allocate KVM, and assign phys pages and return a kernel VM
@@ -429,7 +469,6 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 		 */
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
-		lwkt_reltoken(&vm_token);
 		return (0);
 	}
 
@@ -437,7 +476,7 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 	 * kernel_object maps 1:1 to kernel_map.
 	 */
 	vm_object_hold(&kernel_object);
-	vm_object_reference(&kernel_object);
+	vm_object_reference_locked(&kernel_object);
 	vm_map_insert(map, &count, 
 		      &kernel_object, addr,
 		      addr, addr + size,
@@ -460,7 +499,6 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 
 	vm_object_drop(&kernel_object);
 
-	lwkt_reltoken(&vm_token);
 	return (addr);
 }
 
@@ -498,21 +536,18 @@ contigmalloc_map(
 	int index;
 	void *rv;
 
-	lwkt_gettoken(&vm_token);
 	index = vm_contig_pg_alloc(size, low, high, alignment, boundary, flags);
 	if (index < 0) {
 		kprintf("contigmalloc_map: failed size %lu low=%llx "
 			"high=%llx align=%lu boundary=%lu flags=%08x\n",
 			size, (long long)low, (long long)high,
 			alignment, boundary, flags);
-		lwkt_reltoken(&vm_token);
 		return NULL;
 	}
 
 	rv = (void *)vm_contig_pg_kmap(index, size, map, flags);
 	if (rv == NULL)
 		vm_contig_pg_free(index, size);
-	lwkt_reltoken(&vm_token);
 	
 	return rv;
 }

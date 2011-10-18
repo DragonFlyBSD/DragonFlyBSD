@@ -701,9 +701,11 @@ bufinit(void)
 	 */
 
 	bogus_offset = kmem_alloc_pageable(&kernel_map, PAGE_SIZE);
+	vm_object_hold(&kernel_object);
 	bogus_page = vm_page_alloc(&kernel_object,
 				   (bogus_offset >> PAGE_SHIFT),
 				   VM_ALLOC_NORMAL);
+	vm_object_drop(&kernel_object);
 	vmstats.v_wire_count++;
 
 }
@@ -1172,15 +1174,11 @@ buwrite(struct buf *bp)
 
 	/*
 	 * Set valid & dirty.
-	 *
-	 * WARNING! vfs_dirty_one_page() assumes vm_token is held for now.
 	 */
-	lwkt_gettoken(&vm_token);
 	for (i = 0; i < bp->b_xio.xio_npages; i++) {
 		m = bp->b_xio.xio_pages[i];
 		vfs_dirty_one_page(bp, i, m);
 	}
-	lwkt_reltoken(&vm_token);
 	bqrelse(bp);
 }
 
@@ -1455,7 +1453,6 @@ brelse(struct buf *bp)
 		resid = bp->b_bufsize;
 		foff = bp->b_loffset;
 
-		lwkt_gettoken(&vm_token);
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			m = bp->b_xio.xio_pages[i];
 			vm_page_flag_clear(m, PG_ZERO);
@@ -1470,6 +1467,7 @@ brelse(struct buf *bp)
 				obj = vp->v_object;
 				poff = OFF_TO_IDX(bp->b_loffset);
 
+				vm_object_hold(obj);
 				for (j = i; j < bp->b_xio.xio_npages; j++) {
 					vm_page_t mtmp;
 
@@ -1483,6 +1481,7 @@ brelse(struct buf *bp)
 					}
 				}
 				bp->b_flags &= ~B_HASBOGUS;
+				vm_object_drop(obj);
 
 				if ((bp->b_flags & B_INVAL) == 0) {
 					pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
@@ -1544,7 +1543,6 @@ brelse(struct buf *bp)
 		}
 		if (bp->b_flags & (B_INVAL | B_RELBUF))
 			vfs_vmio_release(bp);
-		lwkt_reltoken(&vm_token);
 	} else {
 		/*
 		 * Rundown for non-VMIO buffers.
@@ -1790,10 +1788,11 @@ vfs_vmio_release(struct buf *bp)
 	int i;
 	vm_page_t m;
 
-	lwkt_gettoken(&vm_token);
 	for (i = 0; i < bp->b_xio.xio_npages; i++) {
 		m = bp->b_xio.xio_pages[i];
 		bp->b_xio.xio_pages[i] = NULL;
+
+		vm_page_busy_wait(m, FALSE, "vmiopg");
 
 		/*
 		 * The VFS is telling us this is not a meta-data buffer
@@ -1828,6 +1827,7 @@ vfs_vmio_release(struct buf *bp)
 		 */
 		if ((m->flags & PG_BUSY) || (m->busy != 0)) {
 			vm_page_protect(m, VM_PROT_NONE);
+			vm_page_wakeup(m);
 			continue;
 		}
 			
@@ -1841,7 +1841,6 @@ vfs_vmio_release(struct buf *bp)
 #if 0
 			if ((bp->b_flags & B_ASYNC) == 0 && !m->valid &&
 					m->hold_count == 0) {
-				vm_page_busy(m);
 				vm_page_protect(m, VM_PROT_NONE);
 				vm_page_free(m);
 			} else
@@ -1859,17 +1858,21 @@ vfs_vmio_release(struct buf *bp)
 			 * being cached for long periods of time.
 			 */
 			if (bp->b_flags & B_DIRECT) {
+				vm_page_wakeup(m);
 				vm_page_try_to_free(m);
 			} else if ((bp->b_flags & B_NOTMETA) ||
 				   vm_page_count_severe()) {
 				m->act_count = bp->b_act_count;
+				vm_page_wakeup(m);
 				vm_page_try_to_cache(m);
 			} else {
 				m->act_count = bp->b_act_count;
+				vm_page_wakeup(m);
 			}
+		} else {
+			vm_page_wakeup(m);
 		}
 	}
-	lwkt_reltoken(&vm_token);
 
 	pmap_qremove(trunc_page((vm_offset_t) bp->b_data),
 		     bp->b_xio.xio_npages);
@@ -2753,6 +2756,7 @@ inmem(struct vnode *vp, off_t loffset)
 	vm_object_t obj;
 	vm_offset_t toff, tinc, size;
 	vm_page_t m;
+	int res = 1;
 
 	if (findblk(vp, loffset, FINDBLK_TEST))
 		return 1;
@@ -2765,20 +2769,24 @@ inmem(struct vnode *vp, off_t loffset)
 	if (size > vp->v_mount->mnt_stat.f_iosize)
 		size = vp->v_mount->mnt_stat.f_iosize;
 
+	vm_object_hold(obj);
 	for (toff = 0; toff < vp->v_mount->mnt_stat.f_iosize; toff += tinc) {
-		lwkt_gettoken(&vm_token);
 		m = vm_page_lookup(obj, OFF_TO_IDX(loffset + toff));
-		lwkt_reltoken(&vm_token);
-		if (m == NULL)
-			return 0;
+		if (m == NULL) {
+			res = 0;
+			break;
+		}
 		tinc = size;
 		if (tinc > PAGE_SIZE - ((toff + loffset) & PAGE_MASK))
 			tinc = PAGE_SIZE - ((toff + loffset) & PAGE_MASK);
 		if (vm_page_is_valid(m,
-		    (vm_offset_t) ((toff + loffset) & PAGE_MASK), tinc) == 0)
-			return 0;
+		    (vm_offset_t) ((toff + loffset) & PAGE_MASK), tinc) == 0) {
+			res = 0;
+			break;
+		}
 	}
-	return 1;
+	vm_object_drop(obj);
+	return (res);
 }
 
 /*
@@ -3404,11 +3412,10 @@ allocbuf(struct buf *bp, int size)
 					m = bp->b_xio.xio_pages[i];
 					KASSERT(m != bogus_page,
 					    ("allocbuf: bogus page found"));
-					while (vm_page_sleep_busy(m, TRUE, "biodep"))
-						;
-
+					vm_page_busy_wait(m, TRUE, "biodep");
 					bp->b_xio.xio_pages[i] = NULL;
 					vm_page_unwire(m, 0);
+					vm_page_wakeup(m);
 				}
 				pmap_qremove((vm_offset_t) trunc_page((vm_offset_t)bp->b_data) +
 				    (desiredpages << PAGE_SHIFT), (bp->b_xio.xio_npages - desiredpages));
@@ -3438,13 +3445,28 @@ allocbuf(struct buf *bp, int size)
 			vp = bp->b_vp;
 			obj = vp->v_object;
 
-			lwkt_gettoken(&vm_token);
+			vm_object_hold(obj);
 			while (bp->b_xio.xio_npages < desiredpages) {
 				vm_page_t m;
 				vm_pindex_t pi;
+				int error;
 
-				pi = OFF_TO_IDX(bp->b_loffset) + bp->b_xio.xio_npages;
-				if ((m = vm_page_lookup(obj, pi)) == NULL) {
+				pi = OFF_TO_IDX(bp->b_loffset) +
+				     bp->b_xio.xio_npages;
+
+				/*
+				 * Blocking on m->busy might lead to a
+				 * deadlock:
+				 *
+				 *  vm_fault->getpages->cluster_read->allocbuf
+				 */
+				m = vm_page_lookup_busy_try(obj, pi, FALSE,
+							    &error);
+				if (error) {
+					vm_page_sleep_busy(m, FALSE, "pgtblk");
+					continue;
+				}
+				if (m == NULL) {
 					/*
 					 * note: must allocate system pages
 					 * since blocking here could intefere
@@ -3464,27 +3486,17 @@ allocbuf(struct buf *bp, int size)
 				}
 
 				/*
-				 * We found a page.  If we have to sleep on it,
-				 * retry because it might have gotten freed out
-				 * from under us.
-				 *
-				 * We can only test PG_BUSY here.  Blocking on
-				 * m->busy might lead to a deadlock:
-				 *
-				 *  vm_fault->getpages->cluster_read->allocbuf
-				 *
+				 * We found a page and were able to busy it.
 				 */
-
-				if (vm_page_sleep_busy(m, FALSE, "pgtblk"))
-					continue;
 				vm_page_flag_clear(m, PG_ZERO);
 				vm_page_wire(m);
+				vm_page_wakeup(m);
 				bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
 				++bp->b_xio.xio_npages;
 				if (bp->b_act_count < m->act_count)
 					bp->b_act_count = m->act_count;
 			}
-			lwkt_reltoken(&vm_token);
+			vm_object_drop(obj);
 
 			/*
 			 * Step 2.  We've loaded the pages into the buffer,
@@ -3895,7 +3907,7 @@ bpdone(struct buf *bp, int elseit)
 			bp->b_flags |= B_CACHE;
 		}
 
-		lwkt_gettoken(&vm_token);
+		vm_object_hold(obj);
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			int bogusflag = 0;
 			int resid;
@@ -3933,6 +3945,7 @@ bpdone(struct buf *bp, int elseit)
 			 * already changed correctly (see bdwrite()), so we
 			 * only need to do this here in the read case.
 			 */
+			vm_page_busy_wait(m, FALSE, "bpdpgw");
 			if (cmd == BUF_CMD_READ && !bogusflag && resid > 0) {
 				vfs_clean_one_page(bp, i, m);
 			}
@@ -3965,12 +3978,13 @@ bpdone(struct buf *bp, int elseit)
 				panic("biodone: page busy < 0");
 			}
 			vm_page_io_finish(m);
+			vm_page_wakeup(m);
 			vm_object_pip_wakeup(obj);
 			foff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
 			iosize -= resid;
 		}
 		bp->b_flags &= ~B_HASBOGUS;
-		lwkt_reltoken(&vm_token);
+		vm_object_drop(obj);
 	}
 
 	/*
@@ -4075,12 +4089,12 @@ vfs_unbusy_pages(struct buf *bp)
 
 	runningbufwakeup(bp);
 
-	lwkt_gettoken(&vm_token);
 	if (bp->b_flags & B_VMIO) {
 		struct vnode *vp = bp->b_vp;
 		vm_object_t obj;
 
 		obj = vp->v_object;
+		vm_object_hold(obj);
 
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			vm_page_t m = bp->b_xio.xio_pages[i];
@@ -4100,13 +4114,15 @@ vfs_unbusy_pages(struct buf *bp)
 				pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
 					bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 			}
+			vm_page_busy_wait(m, FALSE, "bpdpgw");
 			vm_object_pip_wakeup(obj);
 			vm_page_flag_clear(m, PG_ZERO);
 			vm_page_io_finish(m);
+			vm_page_wakeup(m);
 		}
 		bp->b_flags &= ~B_HASBOGUS;
+		vm_object_drop(obj);
 	}
-	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -4142,21 +4158,24 @@ vfs_busy_pages(struct vnode *vp, struct buf *bp)
 	if (bp->b_flags & B_VMIO) {
 		vm_object_t obj;
 
-		lwkt_gettoken(&vm_token);
-
 		obj = vp->v_object;
 		KASSERT(bp->b_loffset != NOOFFSET,
 			("vfs_busy_pages: no buffer offset"));
 
 		/*
-		 * Loop until none of the pages are busy.
+		 * Busy all the pages.  We have to busy them all at once
+		 * to avoid deadlocks.
 		 */
 retry:
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			vm_page_t m = bp->b_xio.xio_pages[i];
 
-			if (vm_page_sleep_busy(m, FALSE, "vbpage"))
+			if (vm_page_busy_try(m, FALSE)) {
+				vm_page_sleep_busy(m, FALSE, "vbpage");
+				while (--i >= 0)
+					vm_page_wakeup(bp->b_xio.xio_pages[i]);
 				goto retry;
+			}
 		}
 
 		/*
@@ -4254,12 +4273,12 @@ retry:
 				 */
 				vm_page_protect(m, VM_PROT_NONE);
 			}
+			vm_page_wakeup(m);
 		}
 		if (bogus) {
 			pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
 				bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 		}
-		lwkt_reltoken(&vm_token);
 	}
 
 	/*
@@ -4294,15 +4313,10 @@ vfs_clean_pages(struct buf *bp)
 	KASSERT(bp->b_loffset != NOOFFSET,
 		("vfs_clean_pages: no buffer offset"));
 
-	/*
-	 * vm_token must be held for vfs_clean_one_page() calls.
-	 */
-	lwkt_gettoken(&vm_token);
 	for (i = 0; i < bp->b_xio.xio_npages; i++) {
 		m = bp->b_xio.xio_pages[i];
 		vfs_clean_one_page(bp, i, m);
 	}
-	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -4321,9 +4335,6 @@ vfs_clean_pages(struct buf *bp)
  *	This routine is typically called after a read completes (dirty should
  *	be zero in that case as we are not called on bogus-replace pages),
  *	or before a write is initiated.
- *
- * NOTE: vm_token must be held by the caller, and vm_page_set_validclean()
- *	 currently assumes the vm_token is held.
  */
 static void
 vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
@@ -4418,6 +4429,8 @@ vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
 	 *
 	 * WARNING!  vm_page_set_validclean() currently assumes vm_token
 	 *	     is held.  The page might not be busied (bdwrite() case).
+	 *	     XXX remove this comment once we've validated that this
+	 *	     is no longer an issue.
 	 */
 	vm_page_set_validclean(m, soff & PAGE_MASK, eoff - soff);
 }
@@ -4548,8 +4561,10 @@ vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 		 * could intefere with paging I/O, no matter which
 		 * process we are.
 		 */
+		vm_object_hold(&kernel_object);
 		p = bio_page_alloc(&kernel_object, pg >> PAGE_SHIFT,
 				   (vm_pindex_t)((to - pg) >> PAGE_SHIFT));
+		vm_object_drop(&kernel_object);
 		if (p) {
 			vm_page_wire(p);
 			p->valid = VM_PAGE_BITS_ALL;
@@ -4584,15 +4599,14 @@ bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit)
 {
 	vm_page_t p;
 
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(obj));
+
 	/*
 	 * Try a normal allocation, allow use of system reserve.
 	 */
-	lwkt_gettoken(&vm_token);
 	p = vm_page_alloc(obj, pg, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
-	if (p) {
-		lwkt_reltoken(&vm_token);
+	if (p)
 		return(p);
-	}
 
 	/*
 	 * The normal allocation failed and we clearly have a page
@@ -4607,7 +4621,6 @@ bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit)
 	 * page now exists.
 	 */
 	if (vm_page_lookup(obj, pg)) {
-		lwkt_reltoken(&vm_token);
 		return(NULL);
 	}
 
@@ -4631,7 +4644,6 @@ bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit)
 		++lowmempgfails;
 		vm_wait(hz);
 	}
-	lwkt_reltoken(&vm_token);
 	return(p);
 }
 
@@ -4657,7 +4669,6 @@ vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 	index = (from - trunc_page((vm_offset_t)bp->b_data)) >> PAGE_SHIFT;
 	newnpages = index;
 
-	lwkt_gettoken(&vm_token);
 	for (pg = from; pg < to; pg += PAGE_SIZE, index++) {
 		p = bp->b_xio.xio_pages[index];
 		if (p && (index < bp->b_xio.xio_npages)) {
@@ -4669,13 +4680,12 @@ vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 			}
 			bp->b_xio.xio_pages[index] = NULL;
 			pmap_kremove(pg);
-			vm_page_busy(p);
+			vm_page_busy_wait(p, FALSE, "vmhldpg");
 			vm_page_unwire(p, 0);
 			vm_page_free(p);
 		}
 	}
 	bp->b_xio.xio_npages = newnpages;
-	lwkt_reltoken(&vm_token);
 }
 
 /*

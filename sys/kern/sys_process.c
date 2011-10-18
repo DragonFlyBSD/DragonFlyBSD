@@ -93,7 +93,7 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 			  0);
 
 	if (!rv) {
-		vm_object_reference (object);
+		vm_object_reference XXX (object);
 
 		rv = vm_map_wire (&kernel_map, kva, kva + PAGE_SIZE, 0);
 		if (!rv) {
@@ -156,20 +156,17 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 	tmap = map;
 	rv = vm_map_lookup (&tmap, pageno, VM_PROT_WRITE, &out_entry,
 		&object, &pindex, &out_prot, &wired);
-	if (rv != KERN_SUCCESS) {
+	if (rv != KERN_SUCCESS)
 		return EINVAL;
-	}
 
 	/*
 	 * Okay, we've got the page.  Let's release tmap.
 	 */
-
 	vm_map_lookup_done (tmap, out_entry, 0);
 
 	/*
 	 * Fault the page in...
 	 */
-
 	rv = vm_fault(map, pageno, VM_PROT_WRITE|VM_PROT_READ, FALSE);
 	if (rv != KERN_SUCCESS)
 		return EFAULT;
@@ -182,7 +179,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 			  VM_PROT_ALL, VM_PROT_ALL,
 			  0);
 	if (!rv) {
-		vm_object_reference (object);
+		vm_object_reference XXX (object);
 
 		rv = vm_map_wire (&kernel_map, kva, kva + PAGE_SIZE, 0);
 		if (!rv) {

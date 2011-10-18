@@ -316,9 +316,9 @@ struct adapter {
 	int		if_flags;
 	int		max_frame_size;
 	int		min_frame_size;
-	struct spinlock	core_spin;
-	struct spinlock	tx_spin;
-	struct spinlock	rx_spin;
+	struct lock	core_spin;
+	struct lock	tx_spin;
+	struct lock	rx_spin;
 	int		em_insert_vlan_header;
 
 	/* Task for FAST handling */
@@ -469,21 +469,21 @@ typedef struct _DESCRIPTOR_PAIR
 } DESC_ARRAY, *PDESC_ARRAY;
 
 #define	EM_CORE_LOCK_INIT(_sc, _name) \
-	spin_init(&(_sc)->core_spin)
+	lockinit(&(_sc)->core_spin, "emcore", 0, 0)
 #define	EM_TX_LOCK_INIT(_sc, _name) \
-	spin_init(&(_sc)->tx_spin)
+	lockinit(&(_sc)->tx_spin, "emtx", 0, 0)
 #define	EM_RX_LOCK_INIT(_sc, _name) \
-	spin_init(&(_sc)->rx_spin)
-#define	EM_CORE_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->core_spin)
-#define	EM_TX_LOCK_DESTROY(_sc)		spin_uninit(&(_sc)->tx_spin)
-#define	EM_RX_LOCK_DESTROY(_sc)		spin_uninit(&(_sc)->rx_spin)
-#define	EM_CORE_LOCK(_sc)		spin_lock(&(_sc)->core_spin)
-#define	EM_TX_LOCK(_sc)			spin_lock(&(_sc)->tx_spin)
-#define	EM_TX_TRYLOCK(_sc)		spin_trylock(&(_sc)->tx_spin)
-#define	EM_RX_LOCK(_sc)			spin_lock(&(_sc)->rx_spin)
-#define	EM_CORE_UNLOCK(_sc)		spin_unlock(&(_sc)->core_spin)
-#define	EM_TX_UNLOCK(_sc)		spin_unlock(&(_sc)->tx_spin)
-#define	EM_RX_UNLOCK(_sc)		spin_unlock(&(_sc)->rx_spin)
+	lockinit(&(_sc)->rx_spi, "emrx", 0, 0n)
+#define	EM_CORE_LOCK_DESTROY(_sc)	lockuninit(&(_sc)->core_spin)
+#define	EM_TX_LOCK_DESTROY(_sc)		lockuninit(&(_sc)->tx_spin)
+#define	EM_RX_LOCK_DESTROY(_sc)		lockuninit(&(_sc)->rx_spin)
+#define	EM_CORE_LOCK(_sc)		lockmgr(&(_sc)->core_spin, LK_EXCLUSIVE)
+#define	EM_TX_LOCK(_sc)			lockmgr(&(_sc)->tx_spin, LK_EXCLUSIVE)
+#define	EM_TX_TRYLOCK(_sc)		(lockmgr(&(_sc)->tx_spin, LK_EXCLUSIVE | LK_NOWAIT) == 0)
+#define	EM_RX_LOCK(_sc)			lockmgr(&(_sc)->rx_spin, LK_EXCLUSIVE)
+#define	EM_CORE_UNLOCK(_sc)		lockmgr(&(_sc)->core_spin, LK_RELEASE)
+#define	EM_TX_UNLOCK(_sc)		lockmgr(&(_sc)->tx_spin, LK_RELEASE)
+#define	EM_RX_UNLOCK(_sc)		lockmgr(&(_sc)->rx_spin, LK_RELEASE)
 #define	EM_CORE_LOCK_ASSERT(_sc)
 #define	EM_TX_LOCK_ASSERT(_sc)
 

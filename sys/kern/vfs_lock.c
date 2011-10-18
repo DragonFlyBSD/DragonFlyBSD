@@ -247,7 +247,7 @@ __vfreetail(struct vnode *vp)
  * This routine is only valid if the vnode is already either VFREE or
  * VCACHED, or if it can become VFREE or VCACHED via vnode_terminate().
  *
- * WARNING!  This functions is typically called with v_spinlock held.
+ * WARNING!  This functions is typically called with v_spin held.
  *
  * MPSAFE
  */
@@ -296,7 +296,7 @@ vrele(struct vnode *vp)
  * An auxiliary reference DOES NOT move a vnode out of the VFREE state
  * once it has entered it.
  *
- * WARNING!  vhold() and vhold_interlocked() must not acquire v_spinlock.
+ * WARNING!  vhold() and vhold_interlocked() must not acquire v_spin.
  *	     The spinlock may or may not already be held by the caller.
  *	     vdrop() will clean up the free list state.
  *
@@ -319,7 +319,7 @@ vhold_interlocked(struct vnode *vp)
  * Remove an auxiliary reference from the vnode.
  *
  * vdrop needs to check for a VCACHE->VFREE transition to catch cases
- * where a vnode is held past its reclamation.  We use v_spinlock to
+ * where a vnode is held past its reclamation.  We use v_spin to
  * interlock VCACHED -> !VCACHED transitions.
  *
  * MPSAFE
@@ -328,13 +328,13 @@ void
 vdrop(struct vnode *vp)
 {
 	KKASSERT(vp->v_sysref.refcnt != 0 && vp->v_auxrefs > 0);
-	spin_lock(&vp->v_spinlock);
+	spin_lock(&vp->v_spin);
 	atomic_subtract_int(&vp->v_auxrefs, 1);
 	if ((vp->v_flag & VCACHED) && vshouldfree(vp)) {
 		_vclrflags(vp, VCACHED);
 		__vfree(vp);
 	}
-	spin_unlock(&vp->v_spinlock);
+	spin_unlock(&vp->v_spin);
 }
 
 /*
@@ -393,13 +393,13 @@ vnode_terminate(struct vnode *vp)
 		if (vp->v_mount)
 			VOP_INACTIVE(vp);
 	}
-	spin_lock(&vp->v_spinlock);
+	spin_lock(&vp->v_spin);
 	KKASSERT((vp->v_flag & (VFREE|VCACHED)) == 0);
 	if (vshouldfree(vp))
 		__vfree(vp);
 	else
 		_vsetflags(vp, VCACHED); /* inactive but not yet free*/
-	spin_unlock(&vp->v_spinlock);
+	spin_unlock(&vp->v_spin);
 	vx_unlock(vp);
 }
 
@@ -422,6 +422,7 @@ vnode_ctor(void *obj, void *private, int ocflags)
 	RB_INIT(&vp->v_rbclean_tree);
 	RB_INIT(&vp->v_rbdirty_tree);
 	RB_INIT(&vp->v_rbhash_tree);
+	spin_init(&vp->v_spin);
 	return(TRUE);
 }
 
@@ -471,7 +472,7 @@ vx_lock_nonblock(struct vnode *vp)
 {
 	if (lockcountnb(&vp->v_lock))
 		return(EBUSY);
-	return(lockmgr(&vp->v_lock, LK_EXCLUSIVE | LK_NOWAIT | LK_NOSPINWAIT));
+	return(lockmgr(&vp->v_lock, LK_EXCLUSIVE | LK_NOWAIT));
 }
 
 void
@@ -546,16 +547,16 @@ vget(struct vnode *vp, int flags)
 		 * We are allowed to reactivate the vnode while we hold
 		 * the VX lock, assuming it can be reactivated.
 		 */
-		spin_lock(&vp->v_spinlock);
+		spin_lock(&vp->v_spin);
 		if (vp->v_flag & VFREE) {
 			__vbusy(vp);
 			sysref_activate(&vp->v_sysref);
-			spin_unlock(&vp->v_spinlock);
+			spin_unlock(&vp->v_spin);
 			sysref_put(&vp->v_sysref);
 		} else if (vp->v_flag & VCACHED) {
 			_vclrflags(vp, VCACHED);
 			sysref_activate(&vp->v_sysref);
-			spin_unlock(&vp->v_spinlock);
+			spin_unlock(&vp->v_spin);
 			sysref_put(&vp->v_sysref);
 		} else {
 			if (sysref_isinactive(&vp->v_sysref)) {
@@ -563,7 +564,7 @@ vget(struct vnode *vp, int flags)
 				kprintf("Warning vp %p reactivation race\n",
 					vp);
 			}
-			spin_unlock(&vp->v_spinlock);
+			spin_unlock(&vp->v_spin);
 		}
 		_vclrflags(vp, VINACTIVE);
 		error = 0;
@@ -619,12 +620,12 @@ vx_get_nonblock(struct vnode *vp)
 void
 vx_put(struct vnode *vp)
 {
-	spin_lock(&vp->v_spinlock);
+	spin_lock(&vp->v_spin);
 	if ((vp->v_flag & VCACHED) && vshouldfree(vp)) {
 		_vclrflags(vp, VCACHED);
 		__vfree(vp);
 	}
-	spin_unlock(&vp->v_spinlock);
+	spin_unlock(&vp->v_spin);
 	lockmgr(&vp->v_lock, LK_RELEASE);
 	sysref_put(&vp->v_sysref);
 }
@@ -715,7 +716,7 @@ allocfreevnode(void)
 		 * Cycle if we can't.
 		 *
 		 * We use a bad hack in vx_lock_nonblock() which avoids
-		 * the lock order reversal between vfs_spin and v_spinlock.
+		 * the lock order reversal between vfs_spin and v_spin.
 		 * This is very fragile code and I don't want to use
 		 * vhold here.
 		 */

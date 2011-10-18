@@ -77,9 +77,10 @@ sys_obreak(struct obreak_args *uap)
 	int error;
 
 	error = 0;
-	lwkt_gettoken(&vm_token);
 
-	base = round_page((vm_offset_t) vm->vm_daddr);
+	lwkt_gettoken(&vm->vm_map.token);
+
+	base = round_page((vm_offset_t)vm->vm_daddr);
 	new = round_page((vm_offset_t)uap->nsize);
 	old = base + ctob(vm->vm_dsize);
 
@@ -137,6 +138,7 @@ sys_obreak(struct obreak_args *uap)
 		vm->vm_dsize -= btoc(old - new);
 	}
 done:
-	lwkt_reltoken(&vm_token);
+	lwkt_reltoken(&vm->vm_map.token);
+
 	return (error);
 }

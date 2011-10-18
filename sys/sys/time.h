@@ -215,6 +215,7 @@ int	tstohz_high (struct timespec *);
 int	tstohz_low (struct timespec *);
 int64_t	tsc_get_target(int ns);
 int	tsc_test_target(int64_t target);
+void	tsc_delay(int ns);
 
 #else /* !_KERNEL */
 

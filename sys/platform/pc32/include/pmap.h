@@ -136,6 +136,12 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
+#endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif
@@ -227,6 +233,7 @@ struct pmap {
 	struct vm_object	*pm_pteobj;	/* Container for pte's */
 	TAILQ_ENTRY(pmap)	pm_pmnode;	/* list of pmaps */
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
+	TAILQ_HEAD(,pv_entry)	pm_pvlist_free;	/* free mappings */
 	int			pm_count;	/* reference count */
 	cpumask_t		pm_active;	/* active on cpus */
 	cpumask_t		pm_cached;	/* cached on cpus */
@@ -234,6 +241,8 @@ struct pmap {
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct	vm_page		*pm_ptphint;	/* pmap ptp hint */
 	int			pm_generation;	/* detect pvlist deletions */
+	struct spinlock		pm_spin;
+	struct lwkt_token	pm_token;
 };
 
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
@@ -283,6 +292,7 @@ extern vm_offset_t clean_eva;
 extern vm_offset_t clean_sva;
 extern char *ptvmmap;		/* poor name! */
 
+void	pmap_release(struct pmap *pmap);
 void	pmap_interlock_wait (struct vmspace *);
 void	pmap_bootstrap (vm_paddr_t, vm_paddr_t);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);

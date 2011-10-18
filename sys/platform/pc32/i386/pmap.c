@@ -48,14 +48,7 @@
 /*
  * Manages physical address maps.
  *
- * In most cases the vm_token must be held when manipulating a user pmap
- * or elements within a vm_page, and the kvm_token must be held when
- * manipulating the kernel pmap.  Operations on user pmaps may require
- * additional synchronization.
- *
- * In some cases the caller may hold the required tokens to prevent pmap
- * functions from blocking on those same tokens.  This typically only works
- * for lookup-style operations.
+ * In most cases we hold page table pages busy in order to manipulate them.
  */
 /*
  * PMAP_DEBUG - see platform/pc32/include/pmap.h
@@ -72,6 +65,7 @@
 #include <sys/msgbuf.h>
 #include <sys/vmmeter.h>
 #include <sys/mman.h>
+#include <sys/thread.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -89,6 +83,7 @@
 #include <sys/user.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
@@ -369,11 +364,18 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 	 * The kernel's pmap is statically allocated so we don't have to use
 	 * pmap_create, which is unlikely to work correctly at this part of
 	 * the boot sequence (XXX and which no longer exists).
+	 *
+	 * The kernel_pmap's pm_pteobj is used only for locking and not
+	 * for mmu pages.
 	 */
 	kernel_pmap.pm_pdir = (pd_entry_t *)(KERNBASE + (u_int)IdlePTD);
 	kernel_pmap.pm_count = 1;
 	kernel_pmap.pm_active = (cpumask_t)-1 & ~CPUMASK_LOCK;
+	kernel_pmap.pm_pteobj = &kernel_object;
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
+	TAILQ_INIT(&kernel_pmap.pm_pvlist_free);
+	spin_init(&kernel_pmap.pm_spin);
+	lwkt_token_init(&kernel_pmap.pm_token, "kpmap_tok");
 	nkpt = NKPT;
 
 	/*
@@ -977,17 +979,15 @@ pmap_qremove(vm_offset_t va, int count)
  * This routine works like vm_page_lookup() but also blocks as long as the
  * page is busy.  This routine does not busy the page it returns.
  *
- * The caller must hold vm_token.
+ * The caller must hold the object.
  */
 static vm_page_t
 pmap_page_lookup(vm_object_t object, vm_pindex_t pindex)
 {
 	vm_page_t m;
 
-	ASSERT_LWKT_TOKEN_HELD(&vm_token);
-	do {
-		m = vm_page_lookup(object, pindex);
-	} while (m && vm_page_sleep_busy(m, FALSE, "pplookp"));
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
+	m = vm_page_lookup_busy_wait(object, pindex, FALSE, "pplookp");
 
 	return(m);
 }
@@ -1041,10 +1041,7 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 	 * Wait until we can busy the page ourselves.  We cannot have
 	 * any active flushes if we block.
 	 */
-	if (m->flags & PG_BUSY) {
-		while (vm_page_sleep_busy(m, FALSE, "pmuwpt"))
-			;
-	}
+	vm_page_busy_wait(m, FALSE, "pmuwpt");
 	KASSERT(m->queue == PQ_NONE,
 		("_pmap_unwire_pte_hold: %p->queue != PQ_NONE", m));
 
@@ -1056,7 +1053,6 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 		 *	 the current one, when clearing a page directory
 		 *	 entry.
 		 */
-		vm_page_busy(m);
 		pmap_inval_interlock(info, pmap, -1);
 		KKASSERT(pmap->pm_pdir[m->pindex]);
 		pmap->pm_pdir[m->pindex] = 0;
@@ -1079,7 +1075,7 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 		vm_page_unhold(m);
 		--m->wire_count;
 		KKASSERT(m->wire_count == 0);
-		--vmstats.v_wire_count;
+		atomic_add_int(&vmstats.v_wire_count, -1);
 		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 		vm_page_flash(m);
 		vm_page_free_zero(m);
@@ -1087,6 +1083,7 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 	} else {
 		KKASSERT(m->hold_count > 1);
 		vm_page_unhold(m);
+		vm_page_wakeup(m);
 		return 0;
 	}
 }
@@ -1120,6 +1117,8 @@ pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 {
 	unsigned ptepindex;
 
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(pmap->pm_pteobj));
+
 	if (va >= UPT_MIN_ADDRESS)
 		return 0;
 
@@ -1129,8 +1128,9 @@ pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 			(pmap->pm_ptphint->pindex == ptepindex)) {
 			mpte = pmap->pm_ptphint;
 		} else {
-			mpte = pmap_page_lookup( pmap->pm_pteobj, ptepindex);
+			mpte = pmap_page_lookup(pmap->pm_pteobj, ptepindex);
 			pmap->pm_ptphint = mpte;
+			vm_page_wakeup(mpte);
 		}
 	}
 
@@ -1158,6 +1158,9 @@ pmap_pinit0(struct pmap *pmap)
 	pmap->pm_cached = 0;
 	pmap->pm_ptphint = NULL;
 	TAILQ_INIT(&pmap->pm_pvlist);
+	TAILQ_INIT(&pmap->pm_pvlist_free);
+	spin_init(&pmap->pm_spin);
+	lwkt_token_init(&pmap->pm_token, "pmap_tok");
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
 }
 
@@ -1196,11 +1199,11 @@ pmap_pinit(struct pmap *pmap)
 		ptdpg = vm_page_grab(pmap->pm_pteobj, PTDPTDI,
 				     VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 		pmap->pm_pdirm = ptdpg;
-		vm_page_flag_clear(ptdpg, PG_MAPPED | PG_BUSY);
+		vm_page_flag_clear(ptdpg, PG_MAPPED);
+		vm_page_wire(ptdpg);
 		ptdpg->valid = VM_PAGE_BITS_ALL;
-		ptdpg->wire_count = 1;
-		++vmstats.v_wire_count;
 		pmap_kenter((vm_offset_t)pmap->pm_pdir, VM_PAGE_TO_PHYS(ptdpg));
+		vm_page_wakeup(ptdpg);
 	}
 	if ((ptdpg->flags & PG_ZERO) == 0)
 		bzero(pmap->pm_pdir, PAGE_SIZE);
@@ -1220,6 +1223,9 @@ pmap_pinit(struct pmap *pmap)
 	pmap->pm_cached = 0;
 	pmap->pm_ptphint = NULL;
 	TAILQ_INIT(&pmap->pm_pvlist);
+	TAILQ_INIT(&pmap->pm_pvlist_free);
+	spin_init(&pmap->pm_spin);
+	lwkt_token_init(&pmap->pm_token, "pmap_tok");
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
 	pmap->pm_stats.resident_count = 1;
 }
@@ -1238,18 +1244,15 @@ pmap_puninit(pmap_t pmap)
 	vm_page_t p;
 
 	KKASSERT(pmap->pm_active == 0);
-	lwkt_gettoken(&vm_token);
 	if ((p = pmap->pm_pdirm) != NULL) {
 		KKASSERT(pmap->pm_pdir != NULL);
 		pmap_kremove((vm_offset_t)pmap->pm_pdir);
+		vm_page_busy_wait(p, FALSE, "pgpun");
 		p->wire_count--;
-		vmstats.v_wire_count--;
-		KKASSERT((p->flags & PG_BUSY) == 0);
-		vm_page_busy(p);
+		atomic_add_int(&vmstats.v_wire_count, -1);
 		vm_page_free_zero(p);
 		pmap->pm_pdirm = NULL;
 	}
-	lwkt_reltoken(&vm_token);
 	if (pmap->pm_pdir) {
 		kmem_free(&kernel_map, (vm_offset_t)pmap->pm_pdir, PAGE_SIZE);
 		pmap->pm_pdir = NULL;
@@ -1271,11 +1274,13 @@ pmap_puninit(pmap_t pmap)
 void
 pmap_pinit2(struct pmap *pmap)
 {
-	lwkt_gettoken(&vm_token);
+	/*
+	 * XXX copies current process, does not fill in MPPTDI
+	 */
+	spin_lock(&pmap_spin);
 	TAILQ_INSERT_TAIL(&pmap_list, pmap, pm_pmnode);
-	/* XXX copies current process, does not fill in MPPTDI */
 	bcopy(PTD + KPTDI, pmap->pm_pdir + KPTDI, nkpt * PTESIZE);
-	lwkt_reltoken(&vm_token);
+	spin_unlock(&pmap_spin);
 }
 
 /*
@@ -1299,10 +1304,10 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 	 * page-table pages.  Those pages are zero now, and
 	 * might as well be placed directly into the zero queue.
 	 */
-	if (vm_page_sleep_busy(p, FALSE, "pmaprl"))
+	if (vm_page_busy_try(p, FALSE)) {
+		vm_page_sleep_busy(p, FALSE, "pmaprl");
 		return 0;
-
-	vm_page_busy(p);
+	}
 
 	/*
 	 * Remove the page table page from the processes address space.
@@ -1334,7 +1339,7 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		vm_page_wakeup(p);
 	} else {
 		p->wire_count--;
-		vmstats.v_wire_count--;
+		atomic_add_int(&vmstats.v_wire_count, -1);
 		vm_page_free_zero(p);
 	}
 	return 1;
@@ -1378,7 +1383,7 @@ _pmap_allocpte(pmap_t pmap, unsigned ptepindex)
 	}
 
 	if (m->wire_count == 0)
-		vmstats.v_wire_count++;
+		atomic_add_int(&vmstats.v_wire_count, 1);
 	m->wire_count++;
 
 
@@ -1415,11 +1420,9 @@ _pmap_allocpte(pmap_t pmap, unsigned ptepindex)
 				pmap_zero_page(ptepa);
 			}
 		}
-	
 		m->valid = VM_PAGE_BITS_ALL;
 		vm_page_flag_clear(m, PG_ZERO);
-	} 
-	else {
+	} else {
 		KKASSERT((m->flags & PG_ZERO) == 0);
 	}
 
@@ -1440,6 +1443,8 @@ pmap_allocpte(pmap_t pmap, vm_offset_t va)
 	unsigned ptepindex;
 	vm_offset_t ptepa;
 	vm_page_t m;
+
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(pmap->pm_pteobj));
 
 	/*
 	 * Calculate pagetable page index
@@ -1475,8 +1480,9 @@ pmap_allocpte(pmap_t pmap, vm_offset_t va)
 			(pmap->pm_ptphint->pindex == ptepindex)) {
 			m = pmap->pm_ptphint;
 		} else {
-			m = pmap_page_lookup( pmap->pm_pteobj, ptepindex);
+			m = pmap_page_lookup(pmap->pm_pteobj, ptepindex);
 			pmap->pm_ptphint = m;
+			vm_page_wakeup(m);
 		}
 		m->hold_count++;
 		return m;
@@ -1497,7 +1503,7 @@ pmap_allocpte(pmap_t pmap, vm_offset_t va)
  * Called when a pmap initialized by pmap_pinit is being released.
  * Should only be called if the map contains no valid mappings.
  *
- * No requirements.
+ * Caller must hold pmap->pm_token
  */
 static int pmap_release_callback(struct vm_page *p, void *data);
 
@@ -1516,10 +1522,12 @@ pmap_release(struct pmap *pmap)
 	
 	info.pmap = pmap;
 	info.object = object;
-	vm_object_hold(object);
-	lwkt_gettoken(&vm_token);
-	TAILQ_REMOVE(&pmap_list, pmap, pm_pmnode);
 
+	spin_lock(&pmap_spin);
+	TAILQ_REMOVE(&pmap_list, pmap, pm_pmnode);
+	spin_unlock(&pmap_spin);
+
+	vm_object_hold(object);
 	do {
 		info.error = 0;
 		info.mpte = NULL;
@@ -1532,9 +1540,9 @@ pmap_release(struct pmap *pmap)
 				info.error = 1;
 		}
 	} while (info.error);
-	pmap->pm_cached = 0;
-	lwkt_reltoken(&vm_token);
 	vm_object_drop(object);
+
+	pmap->pm_cached = 0;
 }
 
 /*
@@ -1574,7 +1582,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 	vm_page_t nkpg;
 	pd_entry_t newpdir;
 
-	lwkt_gettoken(&vm_token);
+	vm_object_hold(kptobj);
 	if (kernel_vm_end == 0) {
 		kernel_vm_end = KERNBASE;
 		nkpt = 0;
@@ -1612,13 +1620,15 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		/*
 		 * This update must be interlocked with pmap_pinit2.
 		 */
+		spin_lock(&pmap_spin);
 		TAILQ_FOREACH(pmap, &pmap_list, pm_pmnode) {
 			*pmap_pde(pmap, kernel_vm_end) = newpdir;
 		}
+		spin_unlock(&pmap_spin);
 		kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
 				~(PAGE_SIZE * NPTEPG - 1);
 	}
-	lwkt_reltoken(&vm_token);
+	vm_object_drop(kptobj);
 }
 
 /*
@@ -1721,13 +1731,16 @@ pmap_collect(void)
 		warningdone++;
 	}
 
-	for(i = 0; i < vm_page_array_size; i++) {
+	for (i = 0; i < vm_page_array_size; i++) {
 		m = &vm_page_array[i];
-		if (m->wire_count || m->hold_count || m->busy ||
-		    (m->flags & PG_BUSY)) {
+		if (m->wire_count || m->hold_count)
 			continue;
+		if (vm_page_busy_try(m, TRUE) == 0) {
+			if (m->wire_count == 0 && m->hold_count == 0) {
+				pmap_remove_all(m);
+			}
+			vm_page_wakeup(m);
 		}
-		pmap_remove_all(m);
 	}
 	lwkt_reltoken(&vm_token);
 }
@@ -1769,13 +1782,16 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 	test_m_maps_pv(m, pv);
 	TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 	m->md.pv_list_count--;
-        m->object->agg_pv_list_count--;
+	atomic_add_int(&m->object->agg_pv_list_count, -1);
 	if (TAILQ_EMPTY(&m->md.pv_list))
 		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 	TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
 	++pmap->pm_generation;
+	vm_object_hold(pmap->pm_pteobj);
 	rtval = pmap_unuse_pt(pmap, va, pv->pv_ptem, info);
+	vm_object_drop(pmap->pm_pteobj);
 	free_pv_entry(pv);
+
 	return rtval;
 }
 
@@ -1802,7 +1818,7 @@ pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m)
 	TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
 	++pmap->pm_generation;
 	m->md.pv_list_count++;
-        m->object->agg_pv_list_count++;
+	atomic_add_int(&m->object->agg_pv_list_count, 1);
 }
 
 /*
@@ -1904,9 +1920,11 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 	if (pmap == NULL)
 		return;
 
+	vm_object_hold(pmap->pm_pteobj);
 	lwkt_gettoken(&vm_token);
 	if (pmap->pm_stats.resident_count == 0) {
 		lwkt_reltoken(&vm_token);
+		vm_object_drop(pmap->pm_pteobj);
 		return;
 	}
 
@@ -1922,6 +1940,7 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 		pmap_remove_page(pmap, sva, &info);
 		pmap_inval_done(&info);
 		lwkt_reltoken(&vm_token);
+		vm_object_drop(pmap->pm_pteobj);
 		return;
 	}
 
@@ -1985,6 +2004,7 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 	}
 	pmap_inval_done(&info);
 	lwkt_reltoken(&vm_token);
+	vm_object_drop(pmap->pm_pteobj);
 }
 
 /*
@@ -2003,7 +2023,6 @@ pmap_remove_all(vm_page_t m)
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return;
 
-	lwkt_gettoken(&vm_token);
 	pmap_inval_init(&info);
 	while ((pv = TAILQ_FIRST(&m->md.pv_list)) != NULL) {
 		KKASSERT(pv->pv_pmap->pm_stats.resident_count > 0);
@@ -2042,15 +2061,16 @@ pmap_remove_all(vm_page_t m)
 		TAILQ_REMOVE(&pv->pv_pmap->pm_pvlist, pv, pv_plist);
 		++pv->pv_pmap->pm_generation;
 		m->md.pv_list_count--;
-		m->object->agg_pv_list_count--;
+		atomic_add_int(&m->object->agg_pv_list_count, -1);
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+		vm_object_hold(pv->pv_pmap->pm_pteobj);
 		pmap_unuse_pt(pv->pv_pmap, pv->pv_va, pv->pv_ptem, &info);
+		vm_object_drop(pv->pv_pmap->pm_pteobj);
 		free_pv_entry(pv);
 	}
 	KKASSERT((m->flags & (PG_MAPPED|PG_WRITEABLE)) == 0);
 	pmap_inval_done(&info);
-	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -2193,6 +2213,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		print_backtrace(-1);
 	}
 
+	vm_object_hold(pmap->pm_pteobj);
 	lwkt_gettoken(&vm_token);
 
 	/*
@@ -2204,7 +2225,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	else
 		mpte = NULL;
 
-	pmap_inval_init(&info);
+	if ((prot & VM_PROT_NOSYNC) == 0)
+		pmap_inval_init(&info);
 	pte = pmap_pte(pmap, va);
 
 	/*
@@ -2338,18 +2360,24 @@ validate:
 	 * to update the pte.
 	 */
 	if ((origpte & ~(PG_M|PG_A)) != newpte) {
-		pmap_inval_interlock(&info, pmap, va);
+		if (prot & VM_PROT_NOSYNC)
+			cpu_invlpg((void *)va);
+		else
+			pmap_inval_interlock(&info, pmap, va);
 		ptbase_assert(pmap);
 		KKASSERT(*pte == 0 ||
 			 (*pte & PG_FRAME) == (newpte & PG_FRAME));
 		*pte = newpte | PG_A;
-		pmap_inval_deinterlock(&info, pmap);
+		if ((prot & VM_PROT_NOSYNC) == 0)
+			pmap_inval_deinterlock(&info, pmap);
 		if (newpte & PG_RW)
 			vm_page_flag_set(m, PG_WRITEABLE);
 	}
 	KKASSERT((newpte & PG_MANAGED) == 0 || (m->flags & PG_MAPPED));
-	pmap_inval_done(&info);
+	if ((prot & VM_PROT_NOSYNC) == 0)
+		pmap_inval_done(&info);
 	lwkt_reltoken(&vm_token);
+	vm_object_drop(pmap->pm_pteobj);
 }
 
 /*
@@ -2371,6 +2399,7 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 	vm_offset_t ptepa;
 	pmap_inval_info info;
 
+	vm_object_hold(pmap->pm_pteobj);
 	lwkt_gettoken(&vm_token);
 	pmap_inval_init(&info);
 
@@ -2414,8 +2443,9 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 				    (pmap->pm_ptphint->pindex == ptepindex)) {
 					mpte = pmap->pm_ptphint;
 				} else {
-					mpte = pmap_page_lookup( pmap->pm_pteobj, ptepindex);
+					mpte = pmap_page_lookup(pmap->pm_pteobj, ptepindex);
 					pmap->pm_ptphint = mpte;
+					vm_page_wakeup(mpte);
 				}
 				if (mpte)
 					mpte->hold_count++;
@@ -2441,6 +2471,7 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 		KKASSERT(((*pte ^ pa) & PG_FRAME) == 0);
 		pmap_inval_done(&info);
 		lwkt_reltoken(&vm_token);
+		vm_object_drop(pmap->pm_pteobj);
 		return;
 	}
 
@@ -2469,6 +2500,7 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 /*	pmap_inval_add(&info, pmap, va); shouldn't be needed inval->valid */
 	pmap_inval_done(&info);
 	lwkt_reltoken(&vm_token);
+	vm_object_drop(pmap->pm_pteobj);
 }
 
 /*
@@ -2552,10 +2584,8 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	info.pmap = pmap;
 
 	vm_object_hold(object);
-	lwkt_gettoken(&vm_token);
 	vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
 				pmap_object_init_pt_callback, &info);
-	lwkt_reltoken(&vm_token);
 	vm_object_drop(object);
 }
 
@@ -2576,16 +2606,17 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
 		vmstats.v_free_count < vmstats.v_free_reserved) {
 		    return(-1);
 	}
+	if (vm_page_busy_try(p, TRUE))
+		return 0;
 	if (((p->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
-	    (p->busy == 0) && (p->flags & (PG_BUSY | PG_FICTITIOUS)) == 0) {
-		vm_page_busy(p);
+	    (p->flags & PG_FICTITIOUS) == 0) {
 		if ((p->queue - p->pc) == PQ_CACHE)
 			vm_page_deactivate(p);
 		rel_index = p->pindex - info->start_pindex;
 		pmap_enter_quick(info->pmap,
 				 info->addr + i386_ptob(rel_index), p);
-		vm_page_wakeup(p);
 	}
+	vm_page_wakeup(p);
 	return(0);
 }
 
@@ -2880,8 +2911,11 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 	else
 		iscurrentpmap = 0;
 
+	if (pmap->pm_pteobj)
+		vm_object_hold(pmap->pm_pteobj);
 	lwkt_gettoken(&vm_token);
 	pmap_inval_init(&info);
+
 	for (pv = TAILQ_FIRST(&pmap->pm_pvlist); pv; pv = npv) {
 		if (pv->pv_va >= eva || pv->pv_va < sva) {
 			npv = TAILQ_NEXT(pv, pv_plist);
@@ -2935,7 +2969,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		save_generation = ++pmap->pm_generation;
 
 		m->md.pv_list_count--;
-		m->object->agg_pv_list_count--;
+		atomic_add_int(&m->object->agg_pv_list_count, -1);
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
@@ -2954,6 +2988,8 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 	}
 	pmap_inval_done(&info);
 	lwkt_reltoken(&vm_token);
+	if (pmap->pm_pteobj)
+		vm_object_drop(pmap->pm_pteobj);
 }
 
 /*
@@ -3126,10 +3162,6 @@ pmap_phys_address(vm_pindex_t ppn)
  * It is not necessary for every reference bit to be cleared, but it
  * is necessary that 0 only be returned when there are truly no
  * reference bits set.
- *
- * XXX: The exact number of bits to check and clear is a matter that
- * should be tested and standardized at some point in the future for
- * optimal aging of shared pages.
  *
  * No requirements.
  */
@@ -3406,6 +3438,7 @@ done:
  *
  * Only called with new VM spaces.
  * The process must have only a single thread.
+ * The process must hold the vmspace->vm_map.token for oldvm and newvm
  * No other requirements.
  */
 void
@@ -3488,14 +3521,14 @@ pmap_interlock_wait(struct vmspace *vm)
 	struct pmap *pmap = &vm->vm_pmap;
 
 	if (pmap->pm_active & CPUMASK_LOCK) {
-		DEBUG_PUSH_INFO("pmap_interlock_wait");
 		crit_enter();
+		DEBUG_PUSH_INFO("pmap_interlock_wait");
 		while (pmap->pm_active & CPUMASK_LOCK) {
 			cpu_ccfence();
 			lwkt_process_ipiq();
 		}
-		crit_exit();
 		DEBUG_POP_INFO();
+		crit_exit();
 	}
 }
 

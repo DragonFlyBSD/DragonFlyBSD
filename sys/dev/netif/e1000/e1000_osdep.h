@@ -37,8 +37,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/spinlock.h>
-#include <sys/spinlock2.h>
+#include <sys/lock.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <bus/pci/pcivar.h>
@@ -68,12 +67,12 @@
 #define PCI_COMMAND_REGISTER	PCIR_COMMAND
 
 /* Mutex used in the shared code */
-#define E1000_MUTEX                     struct spinlock
-#define E1000_MUTEX_INIT(spin)          spin_init(spin)
-#define E1000_MUTEX_DESTROY(spin)       spin_uninit(spin)
-#define E1000_MUTEX_LOCK(spin)          spin_lock(spin)
-#define E1000_MUTEX_TRYLOCK(spin)       spin_trylock(spin)
-#define E1000_MUTEX_UNLOCK(spin)        spin_unlock(spin)
+#define E1000_MUTEX                     struct lock
+#define E1000_MUTEX_INIT(spin)          lockinit(spin, "emtx", 0, 0)
+#define E1000_MUTEX_DESTROY(spin)       lockuninit(spin)
+#define E1000_MUTEX_LOCK(spin)          lockmgr(spin, LK_EXCLUSIVE)
+#define E1000_MUTEX_TRYLOCK(spin)       (lockmgr(spin, LK_EXCLUSIVE | LK_NOWAIT) == 0)
+#define E1000_MUTEX_UNLOCK(spin)        lockmgr(spin, LK_RELEASE)
 
 typedef uint64_t	u64;
 typedef uint32_t	u32;

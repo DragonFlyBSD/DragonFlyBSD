@@ -390,6 +390,7 @@ start_all_aps(u_int boot_addr)
 	 */
 	ap_tids[0] = pthread_self();
 
+	vm_object_hold(&kernel_object);
 	for (x = 1; x <= mp_naps; x++)
 	{
 		/* Allocate space for the CPU's private space. */
@@ -450,6 +451,7 @@ start_all_aps(u_int boot_addr)
 			DELAY(1000);
 		}
 	}
+	vm_object_drop(&kernel_object);
 
 	return(ncpus - 1);
 }
