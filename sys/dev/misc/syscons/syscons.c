@@ -76,6 +76,16 @@
 #define MAX_BLANKTIME		(7*24*60*60)	/* 7 days!? */
 
 #define KEYCODE_BS		0x0e		/* "<-- Backspace" key, XXX */
+#define WANT_UNLOCK(m) do {	  \
+	if (m)			  \
+		syscons_unlock(); \
+} while (0)
+
+#define WANT_LOCK(m) do { 	  \
+	if (m)			  \
+		syscons_lock();	  \
+} while(0)
+
 
 MALLOC_DEFINE(M_SYSCONS, "syscons", "Syscons");
 
@@ -183,8 +193,8 @@ static int finish_vt_rel(scr_stat *scp, int release);
 static int finish_vt_acq(scr_stat *scp);
 static void exchange_scr(sc_softc_t *sc);
 static void update_cursor_image(scr_stat *scp);
-static int save_kbd_state(scr_stat *scp);
-static int update_kbd_state(scr_stat *scp, int state, int mask);
+static int save_kbd_state(scr_stat *scp, int unlock);
+static int update_kbd_state(scr_stat *scp, int state, int mask, int unlock);
 static int update_kbd_leds(scr_stat *scp, int which);
 static int sc_allocate_keyboard(sc_softc_t *sc, int unit);
 
@@ -401,7 +411,7 @@ sc_attach_unit(int unit, int flags)
 
     /* set up the keyboard */
     kbd_ioctl(sc->kbd, KDSKBMODE, (caddr_t)&scp->kbd_mode);
-    update_kbd_state(scp, scp->status, LOCK_MASK);
+    update_kbd_state(scp, scp->status, LOCK_MASK, FALSE);
 
     kprintf("sc%d: %s <%d virtual consoles, flags=0x%x>\n",
 	   unit, adapter_name(sc->adp), sc->vtys, sc->config);
@@ -852,7 +862,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    ptr->mv_grfc.back = 0;      /* not supported */
 	    ptr->mv_ovscan = scp->border;
 	    if (scp == sc->cur_scp)
-		save_kbd_state(scp);
+	        save_kbd_state(scp, FALSE);
 	    ptr->mk_keylock = scp->status & LOCK_MASK;
 	    lwkt_reltoken(&tty_token);
 	    return 0;
@@ -1154,13 +1164,13 @@ scioctl(struct dev_ioctl_args *ap)
 	scp->status |= *(int *)data;
 	syscons_unlock();
 	if (scp == sc->cur_scp)
-	    update_kbd_state(scp, scp->status, LOCK_MASK);
+	    update_kbd_state(scp, scp->status, LOCK_MASK, FALSE);
 	lwkt_reltoken(&tty_token);
 	return 0;
 
     case KDGKBSTATE:    	/* get keyboard state (locks) */
 	if (scp == sc->cur_scp)
-	    save_kbd_state(scp);
+	    save_kbd_state(scp, FALSE);
 	*(int *)data = scp->status & LOCK_MASK;
 	lwkt_reltoken(&tty_token);
 	return 0;
@@ -1263,7 +1273,7 @@ scioctl(struct dev_ioctl_args *ap)
 
     case KDGETLED:      	/* get keyboard LED status */
 	if (scp == sc->cur_scp)
-	    save_kbd_state(scp);
+	    save_kbd_state(scp, FALSE);
 	*(int *)data = scp->status & LED_MASK;
 	lwkt_reltoken(&tty_token);
 	return 0;
@@ -1292,7 +1302,7 @@ scioctl(struct dev_ioctl_args *ap)
 		/* i == newkbd->kb_index */
 		if (i >= 0) {
 		    if (sc->kbd != NULL) {
-			save_kbd_state(sc->cur_scp);
+			save_kbd_state(sc->cur_scp, FALSE);
 			kbd_release(sc->kbd, (void *)&sc->keyboard);
 		    }
 		    syscons_lock();
@@ -1302,7 +1312,7 @@ scioctl(struct dev_ioctl_args *ap)
 		    kbd_ioctl(sc->kbd, KDSKBMODE,
 			      (caddr_t)&sc->cur_scp->kbd_mode);
 		    update_kbd_state(sc->cur_scp, sc->cur_scp->status,
-				     LOCK_MASK);
+			LOCK_MASK, FALSE);
 		} else {
 		    error = EPERM;	/* XXX */
 		}
@@ -1314,7 +1324,7 @@ scioctl(struct dev_ioctl_args *ap)
     case CONS_RELKBD: 		/* release the current keyboard */
 	error = 0;
 	if (sc->kbd != NULL) {
-	    save_kbd_state(sc->cur_scp);
+	    save_kbd_state(sc->cur_scp, FALSE);
 	    error = kbd_release(sc->kbd, (void *)&sc->keyboard);
 	    if (error == 0) {
 		syscons_lock();
@@ -1627,7 +1637,7 @@ sccnputc(void *private, int c)
 	scp->status &= ~SLKED;
 #if 0
 	/* This can block, illegal in the console path */
-	update_kbd_state(scp, scp->status, SLKED);
+	update_kbd_state(scp, scp->status, SLKED, TRUE);
 #endif
 	if (scp->status & BUFFER_SAVED) {
 	    if (!sc_hist_restore(scp))
@@ -1859,7 +1869,7 @@ scrn_timer(void *arg)
 		kbd_ioctl(sc->kbd, KDSKBMODE,
 			  (caddr_t)&sc->cur_scp->kbd_mode);
 		update_kbd_state(sc->cur_scp, sc->cur_scp->status,
-				 LOCK_MASK);
+		    LOCK_MASK, FALSE);
 	    }
 	    kbd_interval = 0;
 	}
@@ -2621,7 +2631,7 @@ exchange_scr(sc_softc_t *sc)
     if (!ISGRAPHSC(sc->old_scp))
 	sc_remove_cursor_image(sc->old_scp);
     if (sc->old_scp->kbd_mode == K_XLATE)
-	save_kbd_state(sc->old_scp);
+	save_kbd_state(sc->old_scp, TRUE);
 
     /* set up the video for the new screen */
     scp = sc->cur_scp = sc->new_scp;
@@ -2643,7 +2653,7 @@ exchange_scr(sc_softc_t *sc)
     /* set up the keyboard for the new screen */
     if (sc->old_scp->kbd_mode != scp->kbd_mode)
 	kbd_ioctl(sc->kbd, KDSKBMODE, (caddr_t)&scp->kbd_mode);
-    update_kbd_state(scp, scp->status, LOCK_MASK);
+    update_kbd_state(scp, scp->status, LOCK_MASK, TRUE);
 
     mark_all(scp);
     lwkt_reltoken(&tty_token);
@@ -3555,12 +3565,15 @@ scmmap(struct dev_mmap_args *ap)
 }
 
 static int
-save_kbd_state(scr_stat *scp)
+save_kbd_state(scr_stat *scp, int unlock)
 {
     int state;
     int error;
 
+    WANT_UNLOCK(unlock);
     error = kbd_ioctl(scp->sc->kbd, KDGKBSTATE, (caddr_t)&state);
+    WANT_LOCK(unlock);
+
     if (error == ENOIOCTL)
 	error = ENODEV;
     if (error == 0) {
@@ -3571,13 +3584,16 @@ save_kbd_state(scr_stat *scp)
 }
 
 static int
-update_kbd_state(scr_stat *scp, int new_bits, int mask)
+update_kbd_state(scr_stat *scp, int new_bits, int mask, int unlock)
 {
     int state;
     int error;
 
     if (mask != LOCK_MASK) {
+	WANT_UNLOCK(unlock);
 	error = kbd_ioctl(scp->sc->kbd, KDGKBSTATE, (caddr_t)&state);
+	WANT_LOCK(unlock);
+
 	if (error == ENOIOCTL)
 	    error = ENODEV;
 	if (error) {
@@ -3588,7 +3604,9 @@ update_kbd_state(scr_stat *scp, int new_bits, int mask)
     } else {
 	state = new_bits & LOCK_MASK;
     }
+    WANT_UNLOCK(unlock);
     error = kbd_ioctl(scp->sc->kbd, KDSKBSTATE, (caddr_t)&state);
+    WANT_LOCK(unlock);
     if (error == ENOIOCTL)
 	error = ENODEV;
     return error;
