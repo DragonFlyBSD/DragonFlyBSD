@@ -589,6 +589,7 @@ options 	NFS			#Network filesystem
 #options 	NFS_NOSERVER		#Disable the NFS-server code.
 options 	CD9660			#ISO 9660 filesystem
 options 	FDESC			#File descriptor filesystem
+options		HAMMER			#HAMMER filesystem
 options 	HPFS			#OS/2 File system
 options 	MSDOSFS			#MS DOS filesystem
 options 	NTFS			#NT filesystem
@@ -597,9 +598,8 @@ options 	NWFS			#NetWare filesystem
 options 	PORTAL			#Portal filesystem
 options 	PROCFS			#Process filesystem
 options 	SMBFS			#SMB/CIFS filesystem
-options		UDF			#UDF filesystem
-options		HAMMER			#HAMMER filesystem
 options 	TMPFS			#Temporary filesystem
+options		UDF			#UDF filesystem
 
 # YYY-DR Till we rework the VOP methods for this filesystem
 #options 	UNION			#Union filesystem
