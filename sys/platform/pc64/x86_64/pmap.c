@@ -1174,28 +1174,22 @@ pmap_dispose_proc(struct proc *p)
 /*
  * After removing a page table entry, this routine is used to
  * conditionally free the page, and manage the hold/wire counts.
- */
-static __inline
-int
-pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
-	      pmap_inval_info_t info)
-{
-	if (mpte)
-		return (pmap_unwire_pte_hold(pmap, va, mpte, info));
-	return 0;
-}
-
-/*
+ *
  * This routine reduces the wire_count on a page.  If the wire_count
  * would drop to zero we remove the PT, PD, or PDP from its parent page
  * table.  Under normal operation this only occurs with PT pages.
+ *
+ * mpte is never NULL for a user va, even for unmanaged pages.  mpte should
+ * always be NULL for a kernel va.
  */
 static __inline
 int
-pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
+pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 		     pmap_inval_info_t info)
 {
-	if (!vm_page_unwire_quick(m))
+	if (mpte == NULL)
+		return 0;
+	if (!vm_page_unwire_quick(mpte))
 		return 0;
 
 	/* 
@@ -1203,32 +1197,32 @@ pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	 * any active flushes if we block.  We own one hold count on the
 	 * page so it cannot be freed out from under us.
 	 */
-	vm_page_busy_wait(m, FALSE, "pmuwpt");
-	KASSERT(m->queue == PQ_NONE,
-		("_pmap_unwire_pte_hold: %p->queue != PQ_NONE", m));
+	vm_page_busy_wait(mpte, FALSE, "pmuwpt");
+	KASSERT(mpte->queue == PQ_NONE,
+		("_pmap_unwire_pte_hold: %p->queue != PQ_NONE", mpte));
 
 	/*
 	 * New references can bump the wire_count while we were blocked,
 	 * try to unwire quickly again (e.g. 2->1).
 	 */
-	if (vm_page_unwire_quick(m) == 0) {
-		vm_page_wakeup(m);
+	if (vm_page_unwire_quick(mpte) == 0) {
+		vm_page_wakeup(mpte);
 		return 0;
 	}
 
 	/*
 	 * Unmap the page table page
 	 */
-	KKASSERT(m->wire_count == 1);
+	KKASSERT(mpte->wire_count == 1);
 	pmap_inval_interlock(info, pmap, -1);
 
-	if (m->pindex >= (NUPDE + NUPDPE)) {
+	if (mpte->pindex >= (NUPDE + NUPDPE)) {
 		/* PDP page */
 		pml4_entry_t *pml4;
 		pml4 = pmap_pml4e(pmap, va);
 		KKASSERT(*pml4);
 		*pml4 = 0;
-	} else if (m->pindex >= NUPDE) {
+	} else if (mpte->pindex >= NUPDE) {
 		/* PD page */
 		pdp_entry_t *pdp;
 		pdp = pmap_pdpe(pmap, va);
@@ -1245,18 +1239,18 @@ pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	KKASSERT(pmap->pm_stats.resident_count > 0);
 	--pmap->pm_stats.resident_count;
 
-	if (pmap->pm_ptphint == m)
+	if (pmap->pm_ptphint == mpte)
 		pmap->pm_ptphint = NULL;
 	pmap_inval_deinterlock(info, pmap);
 
-	if (m->pindex < NUPDE) {
+	if (mpte->pindex < NUPDE) {
 		/* We just released a PT, unhold the matching PD */
 		vm_page_t pdpg;
 
 		pdpg = PHYS_TO_VM_PAGE(*pmap_pdpe(pmap, va) & PG_FRAME);
 		pmap_unwire_pte_hold(pmap, va, pdpg, info);
 	}
-	if (m->pindex >= NUPDE && m->pindex < (NUPDE + NUPDPE)) {
+	if (mpte->pindex >= NUPDE && mpte->pindex < (NUPDE + NUPDPE)) {
 		/* We just released a PD, unhold the matching PDP */
 		vm_page_t pdppg;
 
@@ -1267,12 +1261,12 @@ pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	/*
 	 * This was our wiring.
 	 */
-	KKASSERT(m->flags & PG_UNMANAGED);
-	vm_page_unwire(m, 0);
-	KKASSERT(m->wire_count == 0);
-	vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
-	vm_page_flash(m);
-	vm_page_free_zero(m);
+	KKASSERT(mpte->flags & PG_UNMANAGED);
+	vm_page_unwire(mpte, 0);
+	KKASSERT(mpte->wire_count == 0);
+	vm_page_flag_clear(mpte, PG_MAPPED | PG_WRITEABLE);
+	vm_page_flash(mpte);
+	vm_page_free_zero(mpte);
 
 	return 1;
 }
@@ -2174,7 +2168,7 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 	++pmap->pm_generation;
 	spin_unlock(&pmap_spin);
 
-	rtval = pmap_unuse_pt(pmap, va, pv->pv_ptem, info);
+	rtval = pmap_unwire_pte_hold(pmap, va, pv->pv_ptem, info);
 	free_pv_entry(pv);
 
 	return rtval;
@@ -2213,6 +2207,7 @@ pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m)
  * pmap_remove_pte: do the things to unmap a page in a process
  *
  * Caller must hold pmap token
+ * Caller must hold pmap object
  */
 static
 int
@@ -2221,6 +2216,8 @@ pmap_remove_pte(struct pmap *pmap, pt_entry_t *ptq, vm_offset_t va,
 {
 	pt_entry_t oldpte;
 	vm_page_t m;
+	vm_page_t mpte;
+	vm_pindex_t ptepindex;
 
 	ASSERT_LWKT_TOKEN_HELD(&pmap->pm_token);
 
@@ -2239,7 +2236,7 @@ pmap_remove_pte(struct pmap *pmap, pt_entry_t *ptq, vm_offset_t va,
 	KKASSERT(pmap->pm_stats.resident_count > 0);
 	--pmap->pm_stats.resident_count;
 	if (oldpte & PG_MANAGED) {
-		m = PHYS_TO_VM_PAGE(oldpte);
+		m = PHYS_TO_VM_PAGE(oldpte & PG_FRAME);
 		if (oldpte & PG_M) {
 #if defined(PMAP_DIAGNOSTIC)
 			if (pmap_nw_modified((pt_entry_t) oldpte)) {
@@ -2255,13 +2252,19 @@ pmap_remove_pte(struct pmap *pmap, pt_entry_t *ptq, vm_offset_t va,
 			vm_page_flag_set(m, PG_REFERENCED);
 		return pmap_remove_entry(pmap, m, va, info);
 	}
-/*
-	else {
-		return pmap_unuse_pt(pmap, va, NULL, info);
-	}
-*/
 
-	return 0;
+	/*
+	 * Unmanaged pages in userspace still wire the PT page, we have
+	 * to look up the mpte for the PDE page and pass it in.
+	 */
+	if (va < VM_MAX_USER_ADDRESS) {
+		ptepindex = pmap_pde_pindex(va);
+		mpte = vm_page_lookup(pmap->pm_pteobj, ptepindex);
+		KKASSERT(mpte);
+	} else {
+		mpte = NULL;
+	}
+	return pmap_unwire_pte_hold(pmap, va, mpte, info);
 }
 
 /*
@@ -2271,6 +2274,7 @@ pmap_remove_pte(struct pmap *pmap, pt_entry_t *ptq, vm_offset_t va,
  * not kernel_pmap.
  *
  * Caller must hold pmap->pm_token
+ * Caller must hold pmap object
  */
 static
 void
@@ -2492,7 +2496,8 @@ pmap_remove_all(vm_page_t m)
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 		spin_unlock(&pmap_spin);
 
-		pmap_unuse_pt(pv->pv_pmap, pv->pv_va, pv->pv_ptem, &info);
+		pmap_unwire_pte_hold(pv->pv_pmap, pv->pv_va,
+				     pv->pv_ptem, &info);
 		lwkt_reltoken(&pv->pv_pmap->pm_token);
 
 		free_pv_entry(pv);
@@ -3499,7 +3504,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 			vm_page_dirty(m);
 		}
 
-		pmap_unuse_pt(pmap, pv->pv_va, pv->pv_ptem, &info);
+		pmap_unwire_pte_hold(pmap, pv->pv_va, pv->pv_ptem, &info);
 		free_pv_entry(pv);
 
 		/*

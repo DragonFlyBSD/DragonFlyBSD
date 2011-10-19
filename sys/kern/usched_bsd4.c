@@ -254,6 +254,7 @@ bsd4_acquire_curproc(struct lwp *lp)
 		/*clear_lwkt_resched();*/
 		gd = mycpu;
 		dd = &bsd4_pcpu[gd->gd_cpuid];
+		cpu_pause();
 
 		/*
 		 * Become the currently scheduled user thread for this cpu
@@ -296,6 +297,12 @@ bsd4_acquire_curproc(struct lwp *lp)
 		}
 
 		/*
+		 * Because we are in a critical section interrupts may wind
+		 * up pending and prevent an interrupt thread from being
+		 * scheduled, we have to run splz() unconditionally to
+		 * ensure that these folks are properly scheduled so we can
+		 * then test the LWKT thread reschedule flag.
+		 *
 		 * Other threads at our current user priority have already
 		 * put in their bids, but we must run any kernel threads
 		 * at higher priorities, and we could lose our bid to
@@ -306,10 +313,9 @@ bsd4_acquire_curproc(struct lwp *lp)
 		 * the run queue.  When we are reactivated we will have
 		 * another chance.
 		 */
-		if (lwkt_resched_wanted() ||
-		    lp->lwp_thread->td_fairq_accum < 0) {
+		splz();
+		if (lwkt_resched_wanted())
 			lwkt_switch();
-		}
 	} while (dd->uschedcp != lp);
 
 	crit_exit();
