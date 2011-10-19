@@ -4115,10 +4115,10 @@ vfs_unbusy_pages(struct buf *bp)
 					bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 			}
 			vm_page_busy_wait(m, FALSE, "bpdpgw");
-			vm_object_pip_wakeup(obj);
 			vm_page_flag_clear(m, PG_ZERO);
 			vm_page_io_finish(m);
 			vm_page_wakeup(m);
+			vm_object_pip_wakeup(obj);
 		}
 		bp->b_flags &= ~B_HASBOGUS;
 		vm_object_drop(obj);
