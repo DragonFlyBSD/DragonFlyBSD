@@ -112,8 +112,20 @@ void
 exec_objcache_init(void *arg __unused)
 {
 	int cluster_limit;
+	size_t limsize;
 
-	cluster_limit = 16;	/* up to this many objects */
+	/*
+	 * Maximum number of concurrent execs.  This can be limiting on
+	 * systems with a lot of cpu cores but it also eats a significant
+	 * amount of memory.
+	 */
+	cluster_limit = 16;
+	limsize = kmem_lim_size();
+	if (limsize > 7 * 1024)
+		cluster_limit *= 2;
+	if (limsize > 15 * 1024)
+		cluster_limit *= 2;
+
 	exec_objcache = objcache_create_mbacked(
 					M_EXECARGS, PATH_MAX + ARG_MAX,
 					&cluster_limit, 8,
