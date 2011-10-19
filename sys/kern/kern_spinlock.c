@@ -53,6 +53,8 @@
 #include <sys/spinlock2.h>
 #include <sys/ktr.h>
 
+struct spinlock pmap_spin = SPINLOCK_INITIALIZER(pmap_spin);
+
 #ifdef SMP
 
 struct indefinite_info {
@@ -79,7 +81,6 @@ KTR_INFO(KTR_SPIN_CONTENTION, spin, end, 1, SPIN_STRING, SPIN_ARG_SIZE);
 #ifdef INVARIANTS
 static int spin_lock_test_mode;
 #endif
-struct spinlock pmap_spin = SPINLOCK_INITIALIZER(pmap_spin);
 
 static int64_t spinlocks_contested1;
 SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested1, CTLFLAG_RD,
