@@ -729,6 +729,7 @@ options 	NFS			#Network filesystem
 # The rest are optional:
 #options 	NFS_NOSERVER		#Disable the NFS-server code.
 options 	CD9660			#ISO 9660 filesystem
+options		EXT2FS			#Linux ext2
 options 	FDESC			#File descriptor filesystem
 options		HAMMER			#HAMMER filesystem
 options 	HPFS			#OS/2 File system
