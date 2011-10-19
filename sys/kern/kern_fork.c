@@ -745,8 +745,12 @@ start_forked_proc(struct lwp *lp1, struct proc *p2)
 	/*
 	 * Preserve synchronization semantics of vfork.  If waiting for
 	 * child to exec or exit, set P_PPWAIT on child, and sleep on our
-	 * proc (in case of exit).
+	 * proc (in case of exec or exit).
+	 *
+	 * We must hold our p_token to interlock the flag/tsleep
 	 */
+	lwkt_gettoken(&p2->p_token);
 	while (p2->p_flag & P_PPWAIT)
 		tsleep(lp1->lwp_proc, 0, "ppwait", 0);
+	lwkt_reltoken(&p2->p_token);
 }
