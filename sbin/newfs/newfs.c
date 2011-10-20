@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.17 2007/06/19 19:18:20 dillon Exp $
  */
 
 /*
@@ -240,7 +239,7 @@ main(int argc, char **argv)
 
 	opstring = mfs ?
 	    "L:NCF:T:Ua:b:c:d:e:f:g:h:i:m:o:s:v" :
-	    "L:NREOS:T:Ua:b:c:d:e:f:g:h:i:k:l:m:n:o:p:r:s:t:u:vx:";
+	    "L:NEOS:T:Ua:b:c:d:e:f:g:h:i:k:l:m:n:o:p:r:s:t:u:vx:";
 	while ((ch = getopt(argc, argv, opstring)) != -1) {
 		switch (ch) {
 		case 'E':
@@ -752,7 +751,6 @@ usage(void)
 	fprintf(stderr,
 	    "\t-N do not create file system, just print out parameters\n");
 	fprintf(stderr, "\t-O create a 4.3BSD format filesystem\n");
-	fprintf(stderr, "\t-R enable TRIM\n");
 	fprintf(stderr, "\t-S sector size\n");
 #ifdef COMPAT
 	fprintf(stderr, "\t-T disktype\n");

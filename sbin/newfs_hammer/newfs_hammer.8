@@ -30,8 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.10 2008/07/27 16:47:19 thomas Exp $
-.Dd April 10, 2011
+.Dd October 7, 2011
 .Dt NEWFS_HAMMER 8
 .Os
 .Sh NAME
@@ -40,7 +39,7 @@
 .Sh SYNOPSIS
 .Nm
 .Fl L Ar label
-.Op Fl fE
+.Op Fl Ef
 .Op Fl b Ar bootsize
 .Op Fl m Ar savesize
 .Op Fl u Ar undosize
@@ -120,9 +119,10 @@ file system less than 10GB size or
 with less than 500MB UNDO/REDO FIFO.
 This should not be used under normal circumstances.
 .It Fl E
-Use TRIM to erase the device's data before creating the file system. The
-underlying device must have the Trim sysctl enabled. Only devices that support
-TRIM will have such a sysctl option (kern.cam.da.X.trim_enabled).
+Use TRIM to erase the device's data before creating the file system.
+The underlying device must have the TRIM sysctl enabled.
+Only devices that support TRIM will have such a sysctl option
+.Va ( kern.cam.da.X.trim_enabled ) .
 .It Fl m Ar savesize
 Specify a fixed area which
 .Nm HAMMER

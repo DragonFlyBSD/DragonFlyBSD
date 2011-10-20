@@ -1,7 +1,6 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
-.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.17 2008/09/01 20:13:32 thomas Exp $
 .\"
-.Dd September 1, 2008
+.Dd October 7, 2011
 .Dt FDISK 8
 .Os
 .Sh NAME
@@ -9,7 +8,7 @@
 .Nd PC slice table (MBR) maintenance program
 .Sh SYNOPSIS
 .Nm
-.Op Fl BCIaistu
+.Op Fl BCEIaistu
 .Op Fl b Ar bootcode
 .Op Fl p Ar diskimage
 .Op Fl 1234
@@ -90,10 +89,11 @@ This typically causes BIOSes to properly detect
 that the disk should be put in Large mode.
 This option may be needed on very old PCs.
 .It Fl E
-Use TRIM to erase the device/partition before creating the file system.  The
-underlying device must have the Trim sysctl enabled.  Only devices that
-support TRIM will have such a sysctl option (kern.cam.da.X.trim_enabled).  For
-use with the 
+Use TRIM to erase the device/partition before creating the file system.
+The underlying device must have the TRIM sysctl enabled.
+Only devices that support TRIM will have such a sysctl option
+.Va ( kern.cam.da.X.trim_enabled ) .
+For use with the
 .Fl I
 or
 .Fl u

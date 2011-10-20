@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.44 2008/08/21 23:32:27 thomas Exp $
  */
 
 #include "newfs_hammer.h"
@@ -302,7 +300,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-		"usage: newfs_hammer -L label [-fE] [-b bootsize] [-m savesize] [-u undosize]\n"
+		"usage: newfs_hammer -L label [-Ef] [-b bootsize] [-m savesize] [-u undosize]\n"
 		"                    [-V version] special ...\n"
 	);
 	exit(1);
