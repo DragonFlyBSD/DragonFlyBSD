@@ -97,6 +97,12 @@
         linux
         ..
     ..
+    gnu
+        vfs
+            ext2fs
+            ..
+        ..
+    ..
     i4b_machine
     ..
     libmilter
@@ -269,10 +275,6 @@
         mfs
         ..
         smbfs
-        ..
-        gnu
-            ext2fs
-            ..
         ..
         isofs
             cd9660

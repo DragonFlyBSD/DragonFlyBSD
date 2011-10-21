@@ -60,8 +60,8 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#include <dev/sound/pci/gnu/maestro3_reg.h>
-#include <dev/sound/pci/gnu/maestro3_dsp.h>
+#include <gnu/dev/sound/pci/maestro3_reg.h>
+#include <gnu/dev/sound/pci/maestro3_dsp.h>
 
 /* -------------------------------------------------------------------- */
 

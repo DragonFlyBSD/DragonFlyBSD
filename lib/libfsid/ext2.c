@@ -32,8 +32,8 @@
  * SUCH DAMAGE.
  */
 
-#include <vfs/gnu/ext2fs/ext2_fs.h>
-#include <vfs/gnu/ext2fs/fs.h>
+#include <gnu/vfs/ext2fs/ext2_fs.h>
+#include <gnu/vfs/ext2fs/fs.h>
 
 #include "libfsid.h"
 

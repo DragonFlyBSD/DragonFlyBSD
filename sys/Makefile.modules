@@ -7,7 +7,7 @@ SUBDIR=${MODULES_OVERRIDE}
 .if ${MACHINE_PLATFORM} != "vkernel" && ${MACHINE_PLATFORM} != "vkernel64"
 SUBDIR=bus
 .endif
-SUBDIR+=crypto emulation dev kern net netbt netgraph netproto vfs
+SUBDIR+=crypto emulation dev gnu kern net netbt netgraph netproto vfs
 SUBDIR+=libiconv
 .endif
 

@@ -47,7 +47,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#include <dev/sound/pci/gnu/csaimg.h>
+#include <gnu/dev/sound/pci/csaimg.h>
 
 SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/csa.c,v 1.8 2007/01/04 21:47:02 corecode Exp $");
 

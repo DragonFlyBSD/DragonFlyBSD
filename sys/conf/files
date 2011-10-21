@@ -31,8 +31,8 @@ aic79xx_reg_print.o		optional ahd pci ahd_reg_pretty_print	\
 	compile-with	"${NORMAL_C} ${WERROR}"			\
 	no-implicit-rule local
 emu10k1-alsa%diked.h		optional snd_emu10k1 pci			   \
-	dependency	"$S/tools/emu10k1-mkalsa.sh $S/dev/sound/pci/gnu/emu10k1-alsa.h" \
-	compile-with	"CC=${CC} AWK=${AWK} sh $S/tools/emu10k1-mkalsa.sh $S/dev/sound/pci/gnu/emu10k1-alsa.h emu10k1-alsa%diked.h" \
+	dependency	"$S/tools/emu10k1-mkalsa.sh $S/gnu/dev/sound/pci/emu10k1-alsa.h" \
+	compile-with	"CC=${CC} AWK=${AWK} sh $S/tools/emu10k1-mkalsa.sh $S/gnu/dev/sound/pci/emu10k1-alsa.h emu10k1-alsa%diked.h" \
 	no-obj no-implicit-rule before-depend				   \
 	clean		"emu10k1-alsa%diked.h"
 kern/device_if.m			standard
@@ -773,19 +773,19 @@ dev/netif/rtw/smc93cx6.c		optional rtw
 dev/netif/rtw/if_rtw_pci.c		optional rtw pci
 dev/netif/xe/if_xe.c			optional xe
 dev/netif/xe/if_xe_pccard.c		optional xe pccard
-vfs/gnu/ext2fs/ext2_alloc.c		optional ext2fs
-vfs/gnu/ext2fs/ext2_balloc.c		optional ext2fs
-vfs/gnu/ext2fs/ext2_bmap.c		optional ext2fs
-vfs/gnu/ext2fs/ext2_inode.c		optional ext2fs
-vfs/gnu/ext2fs/ext2_inode_cnv.c		optional ext2fs
-vfs/gnu/ext2fs/ext2_linux_balloc.c	optional ext2fs
-vfs/gnu/ext2fs/ext2_linux_ialloc.c	optional ext2fs
-vfs/gnu/ext2fs/ext2_lookup.c		optional ext2fs
-vfs/gnu/ext2fs/ext2_subr.c		optional ext2fs
-vfs/gnu/ext2fs/ext2_vfsops.c		optional ext2fs
-vfs/gnu/ext2fs/ext2_vnops.c		optional ext2fs
-vfs/gnu/ext2fs/ext2_ihash.c		optional ext2fs
-vfs/gnu/ext2fs/ext2_quota.c		optional ext2fs
+gnu/vfs/ext2fs/ext2_alloc.c		optional ext2fs
+gnu/vfs/ext2fs/ext2_balloc.c		optional ext2fs
+gnu/vfs/ext2fs/ext2_bmap.c		optional ext2fs
+gnu/vfs/ext2fs/ext2_inode.c		optional ext2fs
+gnu/vfs/ext2fs/ext2_inode_cnv.c		optional ext2fs
+gnu/vfs/ext2fs/ext2_linux_balloc.c	optional ext2fs
+gnu/vfs/ext2fs/ext2_linux_ialloc.c	optional ext2fs
+gnu/vfs/ext2fs/ext2_lookup.c		optional ext2fs
+gnu/vfs/ext2fs/ext2_subr.c		optional ext2fs
+gnu/vfs/ext2fs/ext2_vfsops.c		optional ext2fs
+gnu/vfs/ext2fs/ext2_vnops.c		optional ext2fs
+gnu/vfs/ext2fs/ext2_ihash.c		optional ext2fs
+gnu/vfs/ext2fs/ext2_quota.c		optional ext2fs
 #
 # isdn4bsd device drivers
 #
