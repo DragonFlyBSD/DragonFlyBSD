@@ -122,6 +122,10 @@ hash32_strne(const void *buf, size_t len, int end, const char **ep,
 /* Added to act as private header files for hash function */
 
 void *
+drm_hashinit_flags(int elements, struct malloc_type *type, u_long *hashmask,
+    int flags);
+
+void *
 drm_hashinit(int elements, struct malloc_type *type, u_long *hashmask);
 
 void

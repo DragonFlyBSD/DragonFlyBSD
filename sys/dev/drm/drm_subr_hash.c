@@ -113,6 +113,7 @@ static const int primes[] = { 1, 13, 31, 61, 127, 251, 509, 761, 1021, 1531,
 /*
  * General routine to allocate a prime number sized hash table.
  */
+#if 0
 void *
 drm_phashinit(int elements, struct malloc_type *type, u_long *nentries)
 {
@@ -135,3 +136,4 @@ drm_phashinit(int elements, struct malloc_type *type, u_long *nentries)
 	*nentries = hashsize;
 	return (hashtbl);
 }
+#endif
