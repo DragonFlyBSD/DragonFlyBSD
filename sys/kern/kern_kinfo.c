@@ -155,7 +155,9 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 #endif
 		kp->kp_vm_map_size = vm->vm_map.size;
 		kp->kp_vm_rssize = vmspace_resident_count(vm);
+#ifdef _KERNEL
 		kp->kp_vm_prssize = vmspace_president_count(vm);
+#endif
 		kp->kp_vm_swrss = vm->vm_swrss;
 		kp->kp_vm_tsize = vm->vm_tsize;
 		kp->kp_vm_dsize = vm->vm_dsize;
