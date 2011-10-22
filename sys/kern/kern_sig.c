@@ -52,7 +52,6 @@
 #include <sys/proc.h>
 #include <sys/nlookup.h>
 #include <sys/pioctl.h>
-#include <sys/systm.h>
 #include <sys/acct.h>
 #include <sys/fcntl.h>
 #include <sys/lock.h>

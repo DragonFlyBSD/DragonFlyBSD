@@ -26,14 +26,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.27 2007/07/23 18:59:50 dillon Exp $
  */
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
-#include <sys/systm.h>
 #include <sys/module.h>
 #include <sys/malloc.h>
 #include <sys/conf.h>
@@ -45,7 +43,6 @@
 #include <sys/tree.h>
 #include <sys/syslink_rpc.h>
 #include <sys/proc.h>
-#include <sys/sysctl.h>
 #include <machine/stdarg.h>
 #include <sys/devfs.h>
 #include <sys/dsched.h>

@@ -86,7 +86,6 @@
 #include <sys/vnode.h>
 #include <sys/proc.h>
 #include <sys/nlookup.h>
-#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/filio.h>
 #include <sys/fcntl.h>

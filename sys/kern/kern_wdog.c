@@ -45,7 +45,6 @@
 #include <sys/sysctl.h>
 #include <sys/unistd.h>
 #include <sys/event.h>
-#include <sys/sysctl.h>
 #include <sys/queue.h>
 #include <sys/wdog.h>
 #include <machine/limits.h>

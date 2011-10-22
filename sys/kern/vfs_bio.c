@@ -12,7 +12,6 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.115 2008/08/13 11:02:31 swildner Exp $
  */
 
 /*
@@ -46,7 +45,6 @@
 #include <sys/vmmeter.h>
 #include <sys/vnode.h>
 #include <sys/dsched.h>
-#include <sys/proc.h>
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <vm/vm_kern.h>

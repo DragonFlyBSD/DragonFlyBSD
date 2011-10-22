@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/kern_upcall.c,v 1.11 2006/09/10 21:35:10 dillon Exp $
  */
 
 /*
@@ -44,7 +42,6 @@
 #include <sys/proc.h>
 #include <sys/upcall.h>
 #include <sys/thread2.h>
-#include <sys/upcall.h>
 #include <sys/malloc.h>
 #include <sys/sysproto.h>
 #include <sys/lock.h>

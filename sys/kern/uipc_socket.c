@@ -65,7 +65,6 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.55 2008/09/02 16:17:52 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -79,7 +78,6 @@
 #include <sys/domain.h>
 #include <sys/file.h>			/* for struct knote */
 #include <sys/kernel.h>
-#include <sys/malloc.h>
 #include <sys/event.h>
 #include <sys/proc.h>
 #include <sys/protosw.h>

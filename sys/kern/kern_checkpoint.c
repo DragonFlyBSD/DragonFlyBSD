@@ -46,7 +46,6 @@
 #include <vm/vm_map.h>
 #include <vm/vm_extern.h>
 #include <sys/mman.h>
-#include <sys/sysent.h>
 #include <sys/sysproto.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>

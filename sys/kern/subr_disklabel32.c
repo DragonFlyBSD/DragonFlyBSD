@@ -89,7 +89,6 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disklabel32.c,v 1.4 2007/06/19 06:07:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -104,7 +103,6 @@
 #include <sys/diskslice.h>
 #include <sys/disk.h>
 #include <sys/dtype.h>		/* DTYPE_* constants */
-#include <sys/sysctl.h>
 #include <machine/md_var.h>
 #include <sys/ctype.h>
 #include <sys/syslog.h>

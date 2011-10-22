@@ -32,7 +32,6 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.40 2008/04/02 14:16:16 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -42,7 +41,6 @@
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
 #include <sys/kernel.h>
-#include <sys/systm.h>
 #include <sys/sysent.h>
 #include <sys/sysunion.h>
 #include <sys/proc.h>

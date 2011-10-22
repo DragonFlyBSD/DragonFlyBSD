@@ -32,8 +32,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/kern_umtx.c,v 1.9 2008/05/09 07:24:45 dillon Exp $
  */
 
 /*
@@ -63,7 +61,6 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_pageout.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_page.h>
 #include <vm/vm_kern.h>
 
 #include <vm/vm_page2.h>

@@ -37,7 +37,6 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.62 2008/01/05 13:23:48 corecode Exp $
  */
 
 #include "opt_ddb.h"
@@ -72,7 +71,6 @@
 #include <sys/device.h>
 #include <sys/cons.h>
 #include <sys/shm.h>
-#include <sys/kerneldump.h>
 #include <sys/kern_syscall.h>
 #include <vm/vm_map.h>
 #include <vm/pmap.h>

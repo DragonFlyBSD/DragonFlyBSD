@@ -42,8 +42,6 @@
 
 #include <machine/frame.h>
 
-#include <sys/interrupt.h>
-
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 

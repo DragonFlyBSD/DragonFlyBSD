@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_environment.c,v 1.10.2.7 2002/05/07 09:57:16 bde Exp $
- * $DragonFly: src/sys/kern/kern_environment.c,v 1.7 2008/07/23 16:39:28 dillon Exp $
  */
 
 /*
@@ -50,7 +49,6 @@
 #include <sys/spinlock2.h>
 #include <sys/systm.h>
 #include <sys/sysctl.h>
-#include <sys/libkern.h>
 
 /* exported variables */
 char		*kern_envp;		/* <sys/systm.h> */
