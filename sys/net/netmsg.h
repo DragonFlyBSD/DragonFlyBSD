@@ -185,12 +185,6 @@ struct netmsg_pru_send {
 	struct sockaddr		*nm_addr;
 	struct mbuf		*nm_control;
 	struct thread		*nm_td;
-	/*
-	 * XXX hack to be 100% certain netmsg_pru_send can be overwritten
-	 * by netmsg_pru_connect
-	 */
-	char			nm_dummy[sizeof(struct netmsg_pru_connect) -
-					 sizeof(struct netmsg_base)];
 };
 
 #define PRUS_OOB		0x1
