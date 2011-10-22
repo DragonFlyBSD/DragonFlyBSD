@@ -729,15 +729,10 @@ tcp_usr_send(netmsg_t msg)
 	struct socket *so = msg->send.base.nm_so;
 	int flags = msg->send.nm_flags;
 	struct mbuf *m = msg->send.nm_m;
-	struct sockaddr *nam = msg->send.nm_addr;
 	struct mbuf *control = msg->send.nm_control;
-	struct thread *td = msg->send.nm_td;
 	int error = 0;
 	struct inpcb *inp;
 	struct tcpcb *tp;
-#ifdef INET6
-	int isipv6;
-#endif
 	TCPDEBUG0;
 
 	inp = so->so_pcb;
@@ -756,9 +751,6 @@ tcp_usr_send(netmsg_t msg)
 		TCPDEBUG1();
 		goto out;
 	}
-#ifdef INET6
-	isipv6 = nam && nam->sa_family == AF_INET6;
-#endif /* INET6 */
 	tp = intotcpcb(inp);
 	TCPDEBUG1();
 	if (control) {
@@ -781,29 +773,6 @@ tcp_usr_send(netmsg_t msg)
 			error = ENOBUFS;
 			goto out;
 		}
-	}
-
-	/*
-	 * Do implied connect if not yet connected.  Any data sent
-	 * with the connect is handled by tcp_connect() and friends.
-	 *
-	 * NOTE!  PROTOCOL THREAD MAY BE CHANGED BY THE CONNECT!
-	 */
-	if (nam && tp->t_state < TCPS_SYN_SENT) {
-		kprintf("implied fallback\n");
-		msg->connect.nm_nam = nam;
-		msg->connect.nm_td = td;
-		msg->connect.nm_m = m;
-		msg->connect.nm_flags = flags;
-		msg->connect.nm_reconnect = NMSG_RECONNECT_FALLBACK;
-#ifdef INET6
-		if (isipv6)
-			tcp6_connect(msg);
-		else
-#endif /* INET6 */
-			tcp_connect(msg);
-		/* msg invalid now */
-		return;
 	}
 
 	/*
