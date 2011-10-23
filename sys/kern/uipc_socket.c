@@ -956,7 +956,15 @@ restart:
 		     * here, but there are probably other places that this
 		     * also happens.  We must rethink this.
 		     */
-		    error = so_pru_send(so, pru_flags, top, NULL, NULL, td);
+		    if ((pru_flags & PRUS_OOB) ||
+		        (pru_flags & PRUS_MORETOCOME) == 0) {
+			    error = so_pru_send(so, pru_flags, top,
+			        NULL, NULL, td);
+		    } else {
+			    so_pru_send_async(so, pru_flags, top,
+			        NULL, NULL, td);
+			    error = 0;
+		    }
 
 		    top = NULL;
 		    mp = &top;

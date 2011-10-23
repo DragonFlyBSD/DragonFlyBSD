@@ -257,12 +257,15 @@ tcp_usr_detach(netmsg_t msg)
 		 TCPDEBUG1();					\
 	} while(0)
 
-#define COMMON_END(req)						\
+#define COMMON_END1(req, noreply)				\
 	out: do {						\
 		TCPDEBUG2(req);					\
-		lwkt_replymsg(&msg->lmsg, error);		\
+		if (!(noreply))					\
+			lwkt_replymsg(&msg->lmsg, error);	\
 		return;						\
 	} while(0)
+
+#define COMMON_END(req)		COMMON_END1((req), 0)
 
 /*
  * Give the socket an address.
@@ -800,8 +803,9 @@ tcp_usr_send(netmsg_t msg)
 				tp->t_flags &= ~TF_MORETOCOME;
 		}
 	}
-	COMMON_END((flags & PRUS_OOB) ? PRU_SENDOOB :
-		   ((flags & PRUS_EOF) ? PRU_SEND_EOF : PRU_SEND));
+	COMMON_END1((flags & PRUS_OOB) ? PRU_SENDOOB :
+		   ((flags & PRUS_EOF) ? PRU_SEND_EOF : PRU_SEND),
+		   (flags & PRUS_NOREPLY));
 }
 
 /*

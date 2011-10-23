@@ -95,6 +95,9 @@ int so_pru_rcvoob (struct socket *so, struct mbuf *m, int flags);
 int so_pru_send (struct socket *so, int flags, struct mbuf *m,
 		struct sockaddr *addr, struct mbuf *control,
 		struct thread *td);
+void so_pru_send_async (struct socket *so, int flags, struct mbuf *m,
+		struct sockaddr *addr, struct mbuf *control,
+		struct thread *td);
 int so_pru_sense (struct socket *so, struct stat *sb);
 int so_pru_shutdown (struct socket *so);
 int so_pru_sockaddr (struct socket *so, struct sockaddr **nam);

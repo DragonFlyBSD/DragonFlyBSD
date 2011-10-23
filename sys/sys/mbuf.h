@@ -93,8 +93,13 @@ struct m_hdr {
 #ifdef MBUF_DEBUG
 	const char *mh_lastfunc;
 #endif
-	struct netmsg_packet mh_netmsg;	/* hardware->proto stack msg */
+	union {
+		struct netmsg_packet mhm_pkt;	/* hardware->proto stack msg */
+		struct netmsg_pru_send mhm_snd;	/* usrspace->proto stack msg */
+	} mh_msgu;
 };
+#define mh_netmsg	mh_msgu.mhm_pkt
+#define mh_sndmsg	mh_msgu.mhm_snd
 
 /* pf stuff */
 struct pkthdr_pf {

@@ -191,6 +191,7 @@ struct netmsg_pru_send {
 #define PRUS_EOF		0x2
 #define PRUS_MORETOCOME		0x4
 #define PRUS_NAMALLOC		0x8
+#define PRUS_NOREPLY		0x10
 
 struct netmsg_pru_sense {
 	struct netmsg_base	base;
