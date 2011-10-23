@@ -28,15 +28,11 @@
 .Os
 .Sh NAME
 .Nm adv
-.Nd Advansys ISA/VL/EISA/PCI 8bit SCSI Host adapter driver
+.Nd Advansys ISA/VL/PCI 8bit SCSI Host adapter driver
 .Sh SYNOPSIS
 For one or more ISA or VL cards:
 .Cd device isa
 .Cd device "adv0 at isa? port ? irq ? drq ?"
-.Pp
-For one or more EISA cards:
-.Cd device eisa
-.Cd device adv
 .Pp
 For one or more PCI cards:
 .Cd device pci
@@ -101,7 +97,6 @@ Single Channel Products:
 .Bl -column "ABP510/5150 " "ISA PnP " "Floppy " "MaxSync " "Commands "
 .It Em Adapter Ta Em Bus Ta Em Floppy Ta Em MaxSync Ta Em Commands
 .It ABP542 Ta ISA Ta Yes Ta 10MHz Ta 240
-.It ABP742 Ta EISA Ta Yes Ta 10MHz Ta 240
 .It ABP842 Ta VL Ta Yes Ta 10MHz Ta 240
 .It ABP940 Ta PCI Ta \&No Ta 10MHz Ta 240
 .It ABP[3]940UA Ta PCI Ta \&No Ta 20MHz Ta 240
@@ -115,7 +110,6 @@ Single Channel Products:
 Multi Channel Products (Commands are per-channel):
 .Bl -column "ABP510/5150 " "ISA PnP " "Floppy " "MaxSync " "Commands " "Channels "
 .It Em Adapter Ta Em Bus Ta Em Floppy Ta Em MaxSync Ta Em Commands Ta Em Channels
-.It ABP752 Ta EISA Ta Yes Ta 10MHz Ta 240 Ta 2
 .It ABP852 Ta VL Ta Yes Ta 10MHz Ta 240 Ta 2
 .It ABP950 Ta PCI Ta \&No Ta 10MHz Ta 240 Ta 2
 .It ABP980 Ta PCI Ta \&No Ta 10MHz Ta 240 Ta 4

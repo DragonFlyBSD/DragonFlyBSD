@@ -12,11 +12,11 @@
 The Specialix SI/XIO and SX hardware makes up an 8 to 32 port RS-232 serial
 multiplexor.
 .Pp
-The first instance of the device lines above is for EISA and PCI host cards,
+The first instance of the device lines above is for PCI host cards,
 the second is for ISA host cards.
 .Pp
 The system uses two components:  A "Host adapter", which is plugged into
-an ISA, EISA or PCI slot and provides intelligence and buffering/processing
+an ISA or PCI slot and provides intelligence and buffering/processing
 capabilities, as well as an external bus in the form of a 37 pin cable.
 .Pp
 On this cable, "modules" are connected.  The "SI" module comes in a 4 and 8
@@ -153,7 +153,7 @@ and threw the man page together.
 .An Bruce Evans Aq bde@zeta.org.au
 provided a large amount of assistance during porting.
 .An Nick Sayer Aq nick@specialix.com
-wrote the EISA, PCI and SX portions.
+wrote the PCI and SX portions.
 .Sh BUGS
 The interrupt tuning rate is not believed to be optimal at this time for
 maximum efficiency.
