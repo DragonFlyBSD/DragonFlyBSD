@@ -257,12 +257,15 @@ tcp_usr_detach(netmsg_t msg)
 		 TCPDEBUG1();					\
 	} while(0)
 
-#define COMMON_END(req)						\
+#define COMMON_END1(req, noreply)				\
 	out: do {						\
 		TCPDEBUG2(req);					\
-		lwkt_replymsg(&msg->lmsg, error);		\
+		if (!(noreply))					\
+			lwkt_replymsg(&msg->lmsg, error);	\
 		return;						\
 	} while(0)
+
+#define COMMON_END(req)		COMMON_END1((req), 0)
 
 /*
  * Give the socket an address.
@@ -735,6 +738,8 @@ tcp_usr_send(netmsg_t msg)
 	struct tcpcb *tp;
 	TCPDEBUG0;
 
+	KKASSERT(control == NULL);
+
 	inp = so->so_pcb;
 
 	if (inp == NULL) {
@@ -744,8 +749,6 @@ tcp_usr_send(netmsg_t msg)
 		 * network interrupt in the non-critical section of sosend().
 		 */
 		m_freem(m);
-		if (control)
-			m_freem(control);
 		error = ECONNRESET;	/* XXX EPIPE? */
 		tp = NULL;
 		TCPDEBUG1();
@@ -753,16 +756,6 @@ tcp_usr_send(netmsg_t msg)
 	}
 	tp = intotcpcb(inp);
 	TCPDEBUG1();
-	if (control) {
-		/* TCP doesn't do control messages (rights, creds, etc) */
-		if (control->m_len) {
-			m_freem(control);
-			m_freem(m);
-			error = EINVAL;
-			goto out;
-		}
-		m_freem(control);	/* empty control, just free it */
-	}
 
 	/*
 	 * Don't let too much OOB data build up
@@ -810,8 +803,9 @@ tcp_usr_send(netmsg_t msg)
 				tp->t_flags &= ~TF_MORETOCOME;
 		}
 	}
-	COMMON_END((flags & PRUS_OOB) ? PRU_SENDOOB :
-		   ((flags & PRUS_EOF) ? PRU_SEND_EOF : PRU_SEND));
+	COMMON_END1((flags & PRUS_OOB) ? PRU_SENDOOB :
+		   ((flags & PRUS_EOF) ? PRU_SEND_EOF : PRU_SEND),
+		   (flags & PRUS_NOREPLY));
 }
 
 /*
@@ -882,7 +876,7 @@ struct pr_usrreqs tcp_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = tcp_usr_shutdown,
 	.pru_sockaddr = in_setsockaddr_dispatch,
-	.pru_sosend = sosend,
+	.pru_sosend = sosendtcp,
 	.pru_soreceive = soreceive
 };
 
@@ -905,7 +899,7 @@ struct pr_usrreqs tcp6_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = tcp_usr_shutdown,
 	.pru_sockaddr = in6_mapped_sockaddr_dispatch,
-	.pru_sosend = sosend,
+	.pru_sosend = sosendtcp,
 	.pru_soreceive = soreceive
 };
 #endif /* INET6 */

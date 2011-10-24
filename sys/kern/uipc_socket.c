@@ -97,6 +97,8 @@
 
 #include <machine/limits.h>
 
+extern int tcp_sosnd_agglim;
+
 #ifdef INET
 static int	 do_setopt_accept_filter(struct socket *so, struct sockopt *sopt);
 #endif /* INET */
@@ -817,6 +819,170 @@ release:
 out:
 	if (top)
 		m_freem(top);
+	return (error);
+}
+
+int
+sosendtcp(struct socket *so, struct sockaddr *addr, struct uio *uio,
+	struct mbuf *top, struct mbuf *control, int flags,
+	struct thread *td)
+{
+	struct mbuf **mp;
+	struct mbuf *m;
+	size_t resid;
+	int space, len;
+	int error, mlen;
+	int allatonce;
+	int pru_flags;
+
+	if (uio) {
+		KKASSERT(top == NULL);
+		allatonce = 0;
+		resid = uio->uio_resid;
+	} else {
+		allatonce = 1;
+		resid = (size_t)top->m_pkthdr.len;
+#ifdef INVARIANTS
+		len = 0;
+		for (m = top; m; m = m->m_next)
+			len += m->m_len;
+		KKASSERT(top->m_pkthdr.len == len);
+#endif
+	}
+
+	/*
+	 * WARNING!  resid is unsigned, space and len are signed.  space
+	 * 	     can wind up negative if the sockbuf is overcommitted.
+	 *
+	 * Also check to make sure that MSG_EOR isn't used on TCP
+	 */
+	if (flags & MSG_EOR) {
+		error = EINVAL;
+		goto out;
+	}
+
+	if (control) {
+		/* TCP doesn't do control messages (rights, creds, etc) */
+		if (control->m_len) {
+			error = EINVAL;
+			goto out;
+		}
+		m_freem(control);	/* empty control, just free it */
+		control = NULL;
+	}
+
+	if (td->td_lwp != NULL)
+		td->td_lwp->lwp_ru.ru_msgsnd++;
+
+#define	gotoerr(errcode)	{ error = errcode; goto release; }
+
+restart:
+	error = ssb_lock(&so->so_snd, SBLOCKWAIT(flags));
+	if (error)
+		goto out;
+
+	do {
+		if (so->so_state & SS_CANTSENDMORE)
+			gotoerr(EPIPE);
+		if (so->so_error) {
+			error = so->so_error;
+			so->so_error = 0;
+			goto release;
+		}
+		if ((so->so_state & SS_ISCONNECTED) == 0 &&
+		    (so->so_state & SS_ISCONFIRMING) == 0)
+			gotoerr(ENOTCONN);
+		if (allatonce && resid > so->so_snd.ssb_hiwat)
+			gotoerr(EMSGSIZE);
+
+		space = ssb_space(&so->so_snd);
+		if (flags & MSG_OOB)
+			space += 1024;
+		if ((space < 0 || (size_t)space < resid) && !allatonce &&
+		    space < so->so_snd.ssb_lowat) {
+			if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT))
+				gotoerr(EWOULDBLOCK);
+			ssb_unlock(&so->so_snd);
+			error = ssb_wait(&so->so_snd);
+			if (error)
+				goto out;
+			goto restart;
+		}
+		mp = &top;
+		do {
+		    int cnt = 0;
+
+		    if (uio == NULL) {
+			/*
+			 * Data is prepackaged in "top".
+			 */
+			resid = 0;
+		    } else do {
+			if (resid > INT_MAX)
+				resid = INT_MAX;
+			m = m_getl((int)resid, MB_WAIT, MT_DATA,
+				   top == NULL ? M_PKTHDR : 0, &mlen);
+			if (top == NULL) {
+				m->m_pkthdr.len = 0;
+				m->m_pkthdr.rcvif = NULL;
+			}
+			len = imin((int)szmin(mlen, resid), space);
+			space -= len;
+			error = uiomove(mtod(m, caddr_t), (size_t)len, uio);
+			resid = uio->uio_resid;
+			m->m_len = len;
+			*mp = m;
+			top->m_pkthdr.len += len;
+			if (error)
+				goto release;
+			mp = &m->m_next;
+			if (resid == 0)
+				break;
+			++cnt;
+		    } while (space > 0 && cnt < tcp_sosnd_agglim);
+
+		    if (flags & MSG_OOB) {
+		    	    pru_flags = PRUS_OOB;
+		    } else if (resid > 0 && space > 0) {
+			    /* If there is more to send, set PRUS_MORETOCOME */
+		    	    pru_flags = PRUS_MORETOCOME;
+		    } else {
+		    	    pru_flags = 0;
+		    }
+
+		    /*
+		     * XXX all the SS_CANTSENDMORE checks previously
+		     * done could be out of date.  We could have recieved
+		     * a reset packet in an interrupt or maybe we slept
+		     * while doing page faults in uiomove() etc. We could
+		     * probably recheck again inside the splnet() protection
+		     * here, but there are probably other places that this
+		     * also happens.  We must rethink this.
+		     */
+		    if ((pru_flags & PRUS_OOB) ||
+		        (pru_flags & PRUS_MORETOCOME) == 0) {
+			    error = so_pru_send(so, pru_flags, top,
+			        NULL, NULL, td);
+		    } else {
+			    so_pru_send_async(so, pru_flags, top,
+			        NULL, NULL, td);
+			    error = 0;
+		    }
+
+		    top = NULL;
+		    mp = &top;
+		    if (error)
+			    goto release;
+		} while (resid && space > 0);
+	} while (resid);
+
+release:
+	ssb_unlock(&so->so_snd);
+out:
+	if (top)
+		m_freem(top);
+	if (control)
+		m_freem(control);
 	return (error);
 }
 

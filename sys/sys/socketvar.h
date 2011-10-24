@@ -437,6 +437,9 @@ int	sosend (struct socket *so, struct sockaddr *addr, struct uio *uio,
 int	sosendudp (struct socket *so, struct sockaddr *addr, struct uio *uio,
 		    struct mbuf *top, struct mbuf *control, int flags,
 		    struct thread *td);
+int	sosendtcp (struct socket *so, struct sockaddr *addr, struct uio *uio,
+		    struct mbuf *top, struct mbuf *control, int flags,
+		    struct thread *td);
 int	sosetopt (struct socket *so, struct sockopt *sopt);
 int	soshutdown (struct socket *so, int how);
 void	sotoxsocket (struct socket *so, struct xsocket *xso);

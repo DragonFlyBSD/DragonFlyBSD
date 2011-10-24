@@ -44,6 +44,7 @@
 #include <sys/thread.h>
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/mbuf.h>
 #include <vm/pmap.h>
 #include <net/netmsg2.h>
 
@@ -314,6 +315,23 @@ so_pru_send(struct socket *so, int flags, struct mbuf *m,
 	msg.nm_td = td;
 	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
+}
+
+void
+so_pru_send_async(struct socket *so, int flags, struct mbuf *m,
+	    struct sockaddr *addr, struct mbuf *control, struct thread *td)
+{
+	struct netmsg_pru_send *msg;
+
+	msg = &m->m_hdr.mh_sndmsg;
+	netmsg_init(&msg->base, so, &netisr_apanic_rport,
+		    0, so->so_proto->pr_usrreqs->pru_send);
+	msg->nm_flags = flags | PRUS_NOREPLY;
+	msg->nm_m = m;
+	msg->nm_addr = addr;
+	msg->nm_control = control;
+	msg->nm_td = td;
+	lwkt_sendmsg(so->so_port, &msg->base.lmsg);
 }
 
 int
