@@ -99,6 +99,8 @@
 
 #include <machine/limits.h>
 
+extern int tcp_sosnd_agglim;
+
 #ifdef INET
 static int	 do_setopt_accept_filter(struct socket *so, struct sockopt *sopt);
 #endif /* INET */
@@ -910,6 +912,8 @@ restart:
 		}
 		mp = &top;
 		do {
+		    int cnt = 0;
+
 		    if (uio == NULL) {
 			/*
 			 * Data is prepackaged in "top".
@@ -936,7 +940,8 @@ restart:
 			mp = &m->m_next;
 			if (resid == 0)
 				break;
-		    } while (space > 0 && 0 /* XXX */);
+			++cnt;
+		    } while (space > 0 && cnt < tcp_sosnd_agglim);
 
 		    if (flags & MSG_OOB) {
 		    	    pru_flags = PRUS_OOB;
