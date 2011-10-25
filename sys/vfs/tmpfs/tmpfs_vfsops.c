@@ -500,6 +500,22 @@ tmpfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	return 0;
 }
 
+/* --------------------------------------------------------------------- */ 
+
+static int
+tmpfs_vptofh(struct vnode *vp, struct fid *fhp)
+{
+	struct tmpfs_node *node;
+	struct tmpfs_fid tfh;
+	node = VP_TO_TMPFS_NODE(vp);
+	memset(&tfh, 0, sizeof(tfh));
+	tfh.tf_len = sizeof(struct tmpfs_fid);
+	tfh.tf_gen = node->tn_gen;
+	tfh.tf_id = node->tn_id;
+	memcpy(fhp, &tfh, sizeof(tfh));
+	return (0);
+}
+
 /* --------------------------------------------------------------------- */
 
 /*
@@ -512,6 +528,7 @@ static struct vfsops tmpfs_vfsops = {
 	.vfs_root =			tmpfs_root,
 	.vfs_statfs =			tmpfs_statfs,
 	.vfs_fhtovp =			tmpfs_fhtovp,
+	.vfs_vptofh =			tmpfs_vptofh, 
 	.vfs_sync =			vfs_stdsync
 };
 
