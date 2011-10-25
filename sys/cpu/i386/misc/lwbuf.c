@@ -157,14 +157,9 @@ lwbuf_set_global(struct lwbuf *lwb)
 static vm_offset_t
 _lwbuf_kva(struct lwbuf *lwb, struct mdglobaldata *gd)
 {
-    cpumask_t old, new;
-
     pmap_kenter_sync_quick(lwb->kva);
 
-    do {
-        old = lwb->cpumask;
-        new = old | gd->mi.gd_cpumask;
-    } while (atomic_cmpset_int(&lwb->cpumask, old, new) == 0);
+    atomic_set_int(&lwb->cpumask, gd->mi.gd_cpumask);
 
     return (lwb->kva);
 }
