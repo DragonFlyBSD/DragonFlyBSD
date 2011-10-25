@@ -709,8 +709,10 @@ vnode_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 	 * daemon up.  This should be probably be addressed XXX.
 	 */
 
-	if ((vmstats.v_free_count + vmstats.v_cache_count) < vmstats.v_pageout_free_min)
+	if ((vmstats.v_free_count + vmstats.v_cache_count) <
+	    vmstats.v_pageout_free_min) {
 		sync |= OBJPC_SYNC;
+	}
 
 	/*
 	 * Call device-specific putpages function

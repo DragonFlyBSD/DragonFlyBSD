@@ -1678,18 +1678,21 @@ vm_pageout_free_page_calc(vm_size_t count)
 	/*
 	 * free_reserved needs to include enough for the largest swap pager
 	 * structures plus enough for any pv_entry structs when paging.
+	 *
+	 * v_free_min		normal allocations
+	 * v_free_reserved	system allocations
+	 * v_pageout_free_min	allocations by pageout daemon
+	 * v_interrupt_free_min	low level allocations (e.g swap structures)
 	 */
 	if (vmstats.v_page_count > 1024)
-		vmstats.v_free_min = 4 + (vmstats.v_page_count - 1024) / 200;
+		vmstats.v_free_min = 64 + (vmstats.v_page_count - 1024) / 200;
 	else
-		vmstats.v_free_min = 4;
-	vmstats.v_pageout_free_min = (2*MAXBSIZE)/PAGE_SIZE +
-		vmstats.v_interrupt_free_min;
-	vmstats.v_free_reserved = vm_pageout_page_count +
-		vmstats.v_pageout_free_min + (count / 768) + PQ_L2_SIZE;
-	vmstats.v_free_severe = vmstats.v_free_min / 2;
-	vmstats.v_free_min += vmstats.v_free_reserved;
-	vmstats.v_free_severe += vmstats.v_free_reserved;
+		vmstats.v_free_min = 64;
+	vmstats.v_free_reserved = vmstats.v_free_min * 4 / 8 + 7;
+	vmstats.v_free_severe = vmstats.v_free_min * 4 / 8 + 0;
+	vmstats.v_pageout_free_min = vmstats.v_free_min * 2 / 8 + 7;
+	vmstats.v_interrupt_free_min = vmstats.v_free_min * 1 / 8 + 7;
+
 	return 1;
 }
 
@@ -1710,7 +1713,6 @@ vm_pageout_thread(void)
 	 */
 	curthread->td_flags |= TDF_SYSTHREAD;
 
-	vmstats.v_interrupt_free_min = 2;
 	if (vmstats.v_page_count < 2000)
 		vm_pageout_page_count = 8;
 
