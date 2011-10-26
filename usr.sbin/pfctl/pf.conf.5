@@ -901,7 +901,7 @@ The queues are scanned from highest priority to lowest priority.
 If a queue has pending packets and is under its bandwidth minimum the
 scan stops and a packet is selected from that queue.
 If all queues have reached their bandwidth minimum a scale factor based
-on each queue's bandwidth minimum verses that queue's current bandwidth
+on each queue's bandwidth minimum versus that queue's current bandwidth
 usage is calculated and the queue with the lowest scale factor is selected.
 This effectively uses the minimum bandwidth specification as a relative
 weighting for apportioning any remaining bandwidth on the link.
