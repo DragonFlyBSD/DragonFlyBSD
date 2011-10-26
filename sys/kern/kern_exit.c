@@ -588,6 +588,7 @@ lwp_exit(int masterexit)
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
 	struct proc *p = lp->lwp_proc;
+	int dowake = 0;
 
 	/*
 	 * lwp_exit() may be called without setting LWP_WEXIT, so
@@ -652,7 +653,7 @@ lwp_exit(int masterexit)
 		lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
 		--p->p_nthreads;
 		if (p->p_nthreads <= 1)
-			wakeup(&p->p_nthreads);
+			dowake = 1;
 		lwkt_gettoken(&deadlwp_token);
 		LIST_INSERT_HEAD(&deadlwp_list[mycpuid], lp, u.lwp_reap_entry);
 		taskqueue_enqueue(taskqueue_thread[mycpuid],
@@ -661,14 +662,17 @@ lwp_exit(int masterexit)
 	} else {
 		--p->p_nthreads;
 		if (p->p_nthreads <= 1)
-			wakeup(&p->p_nthreads);
+			dowake = 1;
 	}
 
 	/*
-	 * Release p_token.  The mp_token may also be held and we depend on
-	 * the lwkt_switch() code to clean it up.
+	 * Release p_token.  Issue the wakeup() on p_nthreads if necessary,
+	 * as late as possible to give us a chance to actually deschedule and
+	 * switch away before another cpu core hits reaplwp().
 	 */
 	lwkt_reltoken(&p->p_token);
+	if (dowake)
+		wakeup(&p->p_nthreads);
 	cpu_lwp_exit();
 }
 
@@ -951,7 +955,7 @@ loop:
 			while (p->p_lock)
 				tsleep(p, 0, "reap4", hz);
 			kfree(p, M_PROC);
-			nprocs--;
+			atomic_add_int(&nprocs, -1);
 			error = 0;
 			goto done;
 		}
@@ -1104,8 +1108,11 @@ reaplwps(void *context, int dummy)
 static void
 reaplwp(struct lwp *lp)
 {
-	while (lwp_wait(lp) == 0)
-		tsleep(lp, 0, "lwpreap", 1);
+	if (lwp_wait(lp) == 0) {
+		tsleep_interlock(lp, 0);
+		while (lwp_wait(lp) == 0)
+			tsleep(lp, PINTERLOCKED, "lwpreap", 1);
+	}
 	lwp_dispose(lp);
 }
 

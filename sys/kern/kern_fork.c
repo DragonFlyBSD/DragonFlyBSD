@@ -332,11 +332,12 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		error = EAGAIN;
 		goto done;
 	}
+
 	/*
 	 * Increment the nprocs resource before blocking can occur.  There
 	 * are hard-limits as to the number of processes that can run.
 	 */
-	nprocs++;
+	atomic_add_int(&nprocs, 1);
 
 	/*
 	 * Increment the count of procs running with this uid. Don't allow
@@ -348,7 +349,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		/*
 		 * Back out the process count
 		 */
-		nprocs--;
+		atomic_add_int(&nprocs, -1);
 		if (ppsratecheck(&lastfail, &curfail, 1))
 			kprintf("maxproc limit exceeded by uid %d, please "
 			       "see tuning(7) and login.conf(5).\n", uid);
@@ -373,7 +374,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 
 	RB_INIT(&p2->p_lwp_tree);
 	spin_init(&p2->p_spin);
-	lwkt_token_init(&p2->p_token, "iproc");
+	lwkt_token_init(&p2->p_token, "proc");
 	p2->p_lasttid = -1;	/* first tid will be 0 */
 
 	/*
@@ -522,7 +523,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	lwkt_reltoken(&pptr->p_token);
 
 	varsymset_init(&p2->p_varsymset, &p1->p_varsymset);
-	callout_init(&p2->p_ithandle);
+	callout_init_mp(&p2->p_ithandle);
 
 #ifdef KTRACE
 	/*
