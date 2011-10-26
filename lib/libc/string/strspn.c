@@ -54,7 +54,7 @@ strspn(const char *str, const char *chars)
         if(*str == '\0')
                 return 0;
         if(*chars == '\0')
-                return strlen(str);
+                return 0;
 
         memset(charset, false, sizeof(charset));
         for( ; *chars != '\0'; chars++)
