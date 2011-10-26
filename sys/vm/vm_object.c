@@ -1442,8 +1442,8 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 		     source->type == OBJT_SWAP)) {
 			vm_object_drop(source);
 			if (addref) {
-				vm_object_clear_flag(source, OBJ_ONEMAPPING);
 				vm_object_reference_locked(source);
+				vm_object_clear_flag(source, OBJ_ONEMAPPING);
 			}
 			return;
 		}

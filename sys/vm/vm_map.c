@@ -3231,21 +3231,33 @@ vmspace_fork(struct vmspace *vm1)
 			if (old_entry->object.vm_object == NULL)
 				vm_map_entry_allocate_object(old_entry);
 
-			/*
-			 * Shadow a map_entry which needs a copy, replacing
-			 * its object with a new object that points to the
-			 * old one.  Ask the shadow code to automatically add
-			 * an additional ref.  We can't do it afterwords
-			 * because we might race a collapse
-			 */
 			if (old_entry->eflags & MAP_ENTRY_NEEDS_COPY) {
+				/*
+				 * Shadow a map_entry which needs a copy,
+				 * replacing its object with a new object
+				 * that points to the old one.  Ask the
+				 * shadow code to automatically add an
+				 * additional ref.  We can't do it afterwords
+				 * because we might race a collapse.  The call
+				 * to vm_map_entry_shadow() will also clear
+				 * OBJ_ONEMAPPING.
+				 */
 				vm_map_entry_shadow(old_entry, 1);
 			} else {
+				/*
+				 * We will make a shared copy of the object,
+				 * and must clear OBJ_ONEMAPPING.
+				 *
+				 * XXX assert that object.vm_object != NULL
+				 *     since we allocate it above.
+				 */
 				if (old_entry->object.vm_object) {
 					object = old_entry->object.vm_object;
 					vm_object_hold(object);
 					vm_object_chain_wait(object);
 					vm_object_reference_locked(object);
+					vm_object_clear_flag(object,
+							     OBJ_ONEMAPPING);
 					vm_object_drop(object);
 				}
 			}
