@@ -3166,6 +3166,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		vm_page_flag_set(m, PG_MAPPED);
 		vm_page_spin_unlock(m);
 		pa |= PG_MANAGED;
+	} else if (pt_pv && opa == 0) {
+		vm_page_wire_quick(pt_pv->pv_m);
 	}
 
 	/*
@@ -3212,6 +3214,7 @@ validate:
 		if (pte_pv == NULL)
 			atomic_add_long(&pmap->pm_stats.resident_count, 1);
 	}
+
 	KKASSERT((newpte & PG_MANAGED) == 0 || (m->flags & PG_MAPPED));
 	if ((prot & VM_PROT_NOSYNC) == 0)
 		pmap_inval_done(&info);
