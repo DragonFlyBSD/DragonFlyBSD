@@ -67,13 +67,13 @@ ENTRY(pagezero)
 	subq	%rdx,%rdi
 	xorl	%eax,%eax
 1:
-	movnti	%rax,(%rdi,%rdx)
-	movnti	%rax,8(%rdi,%rdx)
-	movnti	%rax,16(%rdi,%rdx)
-	movnti	%rax,24(%rdi,%rdx)
+	movq	%rax,(%rdi,%rdx)	/* movnti */
+	movq	%rax,8(%rdi,%rdx)	/* movnti */
+	movq	%rax,16(%rdi,%rdx)	/* movnti */
+	movq	%rax,24(%rdi,%rdx)	/* movnti */
 	addq	$32,%rdx
 	jne	1b
-	sfence
+	/*sfence*/
 	ret
 
 ENTRY(bcmp)
@@ -172,21 +172,21 @@ ENTRY(pagecopy)
 	subq	%rax,%rdi
 	subq	%rax,%rsi
 1:
-	prefetchnta (%rdi,%rax)
-	addq	$64,%rax
-	jne	1b
+	/*prefetchnta (%rdi,%rax)*/
+	/*addq	$64,%rax*/
+	/*jne	1b*/
 2:
 	movq	(%rdi,%rdx),%rax
-	movnti	%rax,(%rsi,%rdx)
+	movq	%rax,(%rsi,%rdx)	/* movnti */
 	movq	8(%rdi,%rdx),%rax
-	movnti	%rax,8(%rsi,%rdx)
+	movq	%rax,8(%rsi,%rdx)	/* movnti */
 	movq	16(%rdi,%rdx),%rax
-	movnti	%rax,16(%rsi,%rdx)
+	movq	%rax,16(%rsi,%rdx)	/* movnti */
 	movq	24(%rdi,%rdx),%rax
-	movnti	%rax,24(%rsi,%rdx)
+	movq	%rax,24(%rsi,%rdx)	/* movnti */
 	addq	$32,%rdx
 	jne	2b
-	sfence
+	/*sfence*/
 	ret
 
 /* fillw(pat, base, cnt) */  

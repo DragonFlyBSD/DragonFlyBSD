@@ -1153,18 +1153,13 @@ vm_fault_object(struct faultstate *fs,
 
 			/*
 			 * Allocate a new page for this object/offset pair.
-			 *
-			 * XXX for now don't use the VM_ALLOC_ZERO flag
-			 *     because this will continuously cycle pages
-			 *     through the cpu caches.  Try to use a recently
-			 *     freed page.
 			 */
 			fs->m = NULL;
 			if (!vm_page_count_severe()) {
 				fs->m = vm_page_alloc(fs->object, pindex,
 				    ((fs->vp || fs->object->backing_object) ?
 					VM_ALLOC_NORMAL :
-					VM_ALLOC_NORMAL /*| VM_ALLOC_ZERO*/));
+					VM_ALLOC_NORMAL | VM_ALLOC_ZERO));
 			}
 			if (fs->m == NULL) {
 				vm_object_pip_wakeup(fs->first_object);
@@ -2240,14 +2235,9 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 
 				/*
 				 * NOTE: Allocated from base object
-				 *
-				 * XXX for now don't use the VM_ALLOC_ZERO
-				 *     flag because this will continuously
-				 *     cycle pages through the cpu caches.
-				 *     Try to use a recently freed page.
 				 */
 				m = vm_page_alloc(object, index,
-					      VM_ALLOC_NORMAL /*| VM_ALLOC_ZERO*/);
+						  VM_ALLOC_NORMAL | VM_ALLOC_ZERO);
 
 				if ((m->flags & PG_ZERO) == 0) {
 					vm_page_zero_fill(m);
