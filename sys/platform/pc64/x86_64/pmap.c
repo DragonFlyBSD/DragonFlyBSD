@@ -2572,6 +2572,12 @@ pmap_scan(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva,
 			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(sva));
 		}
 		if (*ptep == 0) {
+			/*
+			 * Unlike the pv_find() case below we actually
+			 * acquired a locked pv in this case so any
+			 * race should have been resolved.  It is expected
+			 * to not exist.
+			 */
 			KKASSERT(pte_pv == NULL);
 		} else if (pte_pv) {
 			KKASSERT((*ptep & (PG_MANAGED|PG_V)) ==
@@ -2652,6 +2658,7 @@ fast_skip:
 			continue;
 		}
 
+retry_pt_pv:
 		/*
 		 * PT cache
 		 */
@@ -2713,35 +2720,65 @@ kernel_skip:
 		if (va_next > eva)
 			va_next = eva;
 
+		/*
+		 * At this point a non-NULL pt_pv means a UVA, and a NULL
+		 * pt_pv means a KVA.
+		 */
 		if (pt_pv)
 			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(sva));
 		else
 			ptep = vtopte(sva);
 
 		while (sva < va_next) {
+			/*
+			 * NOTE: It is possible for an empty ptep to
+			 *	 race a pv removal by some other means
+			 *	 (typically via the vm_page_t).
+			 *
+			 *	 For now debug the situation by locking
+			 *	 the potentially conflicting pv and
+			 *	 re-checking.
+			 */
 			if (*ptep == 0) {
-				/* XXX remove me */
 				pte_pv = pv_find(pmap, pmap_pte_pindex(sva));
-				KKASSERT(pte_pv == NULL);
-				sva += PAGE_SIZE;
-				++ptep;
-				continue;
+				if (pte_pv == NULL) {
+					sva += PAGE_SIZE;
+					++ptep;
+					continue;
+				}
+
+				/*
+				 * Possible race against another thread
+				 * removing the pte.
+				 */
+				kprintf("pmap_scan: caught race func %p", func);
+				if (pt_pv) {
+					pv_put(pt_pv);	 /* must be non-NULL */
+					pt_pv = NULL;
+				}
+				pv_lock(pte_pv);	/* safe to block now */
+				if (pte_pv->pv_pmap) {
+					kprintf(", uh oh, pte_pv still good\n");
+					panic("unexpected non-NULL pte_pv %p",
+					      pte_pv);
+				} else {
+					kprintf(", resolved ok\n");
+				}
+				pv_put(pte_pv);
+				pte_pv = NULL;
+				goto retry_pt_pv;
 			}
 
 			/*
-			 * We need a locked pte_pv as well and may have to
-			 * loop to retry if we can't get it non-blocking
-			 * while pt_pv is held locked.
-			 *
-			 * This is a bit complicated because once we release
-			 * the pt_pv our ptep is no longer valid, so we have
-			 * to cycle the whole thing.
+			 * We need a locked pte_pv as well but just like the
+			 * above, the lock order is all wrong so if we
+			 * cannot acquire it non-blocking we will have to
+			 * undo a bunch of stuff and retry.
 			 */
 			if (pt_pv) {
 				pte_pv = pv_get_try(pmap, pmap_pte_pindex(sva),
 						    &error);
 				if (error) {
-					kprintf("x");
 					if (pdp_pv) {
 						pv_put(pdp_pv);
 						pdp_pv = NULL;
@@ -2764,7 +2801,8 @@ kernel_skip:
 			}
 
 			/*
-			 * Ready for the callback
+			 * Ready for the callback.  The locked pte_pv (if
+			 * not NULL) is consumed by the callback.
 			 */
 			if (pte_pv) {
 				KKASSERT((*ptep & (PG_MANAGED|PG_V)) ==
@@ -2777,7 +2815,7 @@ kernel_skip:
 				func(pmap, &info, pte_pv, pt_pv, sva,
 				     ptep, arg);
 			}
-			pte_pv = NULL;	/* eaten by callback */
+			pte_pv = NULL;
 			sva += PAGE_SIZE;
 			++ptep;
 		}
