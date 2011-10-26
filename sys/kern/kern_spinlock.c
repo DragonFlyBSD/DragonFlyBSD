@@ -72,8 +72,10 @@ struct indefinite_info {
 #define SPIN_ARG_SIZE	(sizeof(void *) + sizeof(int))
 
 KTR_INFO_MASTER(spin);
+#if 0
 KTR_INFO(KTR_SPIN_CONTENTION, spin, beg, 0, SPIN_STRING, SPIN_ARG_SIZE);
 KTR_INFO(KTR_SPIN_CONTENTION, spin, end, 1, SPIN_STRING, SPIN_ARG_SIZE);
+#endif
 
 #define logspin(name, spin, type)			\
 	KTR_LOG(spin_ ## name, spin, type)
@@ -92,13 +94,18 @@ SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested2, CTLFLAG_RD,
     &spinlocks_contested2, 0,
     "Serious spinlock contention count");
 
-static int spinlocks_hardloops = 40;
-SYSCTL_INT(_debug, OID_AUTO, spinlocks_hardloops, CTLFLAG_RW,
-    &spinlocks_hardloops, 0,
-    "Hard loops waiting for spinlock");
+/*
+ * We need a fairly large pool to avoid contention on large SMP systems,
+ * particularly multi-chip systems.
+ */
+/*#define SPINLOCK_NUM_POOL	8101*/
+#define SPINLOCK_NUM_POOL	8192
+#define SPINLOCK_NUM_POOL_MASK	(SPINLOCK_NUM_POOL - 1)
 
-#define SPINLOCK_NUM_POOL	(1024)
-static struct spinlock pool_spinlocks[SPINLOCK_NUM_POOL];
+static __cachealign struct {
+	struct spinlock	spin;
+	char filler[32 - sizeof(struct spinlock)];
+} pool_spinlocks[SPINLOCK_NUM_POOL];
 
 static int spin_indefinite_check(struct spinlock *spin,
 				  struct indefinite_info *info);
@@ -125,42 +132,74 @@ spin_trylock_contested(struct spinlock *spin)
  *
  * atomic_swap_int() is the absolute fastest spinlock instruction, at
  * least on multi-socket systems.  All instructions seem to be about
- * the same on single-socket multi-core systems.
+ * the same on single-socket multi-core systems.  However, atomic_swap_int()
+ * does not result in an even distribution of successful acquisitions.
+ *
+ * Another problem we have is that (at least on the 48-core opteron we test
+ * with) having all 48 cores contesting the same spin lock reduces
+ * performance to around 600,000 ops/sec, verses millions when fewer cores
+ * are going after the same lock.
+ *
+ * Backoff algorithms can create even worse starvation problems, and don't
+ * really improve performance when a lot of cores are contending.
+ *
+ * Our solution is to allow the data cache to lazy-update by reading it
+ * non-atomically and only attempting to acquire the lock if the lazy read
+ * looks good.  This effectively limits cache bus bandwidth.  A cpu_pause()
+ * (for intel/amd anyhow) is not strictly needed as cache bus resource use
+ * is governed by the lazy update.
+ *
+ * WARNING!!!!  Performance matters here, by a huge margin.  There are still
+ * 		a few bottlenecks in the kernel (e.g. the PQ_INACTIVE
+ *		vm_page_queue) where things like parallel compiles hit up
+ *		against full all-cores contention right here.
+ *
+ *		48-core test with pre-read / -j 48 no-modules kernel compile
+ *		came in at 75 seconds.  Without pre-read it came in at 170 seconds.
+ *
+ *		4-core test with pre-read / -j 48 no-modules kernel compile
+ *		came in at 83 seconds.  Without pre-read it came in at 83 seconds
+ *		as well (no difference).
  */
 void
 spin_lock_contested(struct spinlock *spin)
 {
+	struct indefinite_info info = { 0, 0 };
 	int i;
 
 	i = 0;
-	while (atomic_swap_int(&spin->counta, 1)) {
-		cpu_pause();
-		if (i == spinlocks_hardloops) {
-			struct indefinite_info info = { 0, 0 };
+	++spin->countb;
 
-			logspin(beg, spin, 'w');
-			while (atomic_swap_int(&spin->counta, 1)) {
-				cpu_pause();
-				++spin->countb;
-				if ((++i & 0x7F) == 0x7F) {
-					if (spin_indefinite_check(spin, &info))
-						break;
-				}
-			}
-			logspin(end, spin, 'w');
-			return;
+	/*logspin(beg, spin, 'w');*/
+	for (;;) {
+		/*
+		 * NOTE: Reading spin->counta prior to the swap is extremely
+		 *	 important on multi-chip/many-core boxes.  On 48-core
+		 *	 this one change improves fully concurrent all-cores
+		 *	 compiles by 100% or better.
+		 *
+		 *	 I can't emphasize enough how important the pre-read is in
+		 *	 preventing hw cache bus armageddon on multi-chip systems.
+		 *	 And on single-chip/multi-core systems it just doesn't hurt.
+		 */
+		if (spin->counta == 0 && atomic_swap_int(&spin->counta, 1) == 0)
+			break;
+		if ((++i & 0x7F) == 0x7F) {
+			++spin->countb;
+			if (spin_indefinite_check(spin, &info))
+				break;
 		}
-		++spin->countb;
-		++i;
 	}
+	/*logspin(end, spin, 'w');*/
 }
 
 static __inline int
 _spin_pool_hash(void *ptr)
 {
 	int i;
-	i = ((int) (uintptr_t) ptr >> 2) ^ ((int) (uintptr_t) ptr >> 12);
-	i &= (SPINLOCK_NUM_POOL - 1);
+
+	i = ((int)(uintptr_t) ptr >> 5) ^ ((int)(uintptr_t)ptr >> 12);
+	i &= SPINLOCK_NUM_POOL_MASK;
 	return (i);
 }
 
@@ -169,7 +208,7 @@ _spin_pool_lock(void *chan)
 {
 	struct spinlock *sp;
 
-	sp = &pool_spinlocks[_spin_pool_hash(chan)];
+	sp = &pool_spinlocks[_spin_pool_hash(chan)].spin;
 	spin_lock(sp);
 }
 
@@ -178,7 +217,7 @@ _spin_pool_unlock(void *chan)
 {
 	struct spinlock *sp;
 
-	sp = &pool_spinlocks[_spin_pool_hash(chan)];
+	sp = &pool_spinlocks[_spin_pool_hash(chan)].spin;
 	spin_unlock(sp);
 }
 
