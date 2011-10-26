@@ -689,8 +689,7 @@ sys_getitimer(struct getitimer_args *uap)
 
 	if (uap->which > ITIMER_PROF)
 		return (EINVAL);
-	get_mplock();
-	crit_enter();
+	lwkt_gettoken(&p->p_token);
 	if (uap->which == ITIMER_REAL) {
 		/*
 		 * Convert from absolute to relative time in .it_value
@@ -709,8 +708,7 @@ sys_getitimer(struct getitimer_args *uap)
 	} else {
 		aitv = p->p_timer[uap->which];
 	}
-	crit_exit();
-	rel_mplock();
+	lwkt_reltoken(&p->p_token);
 	return (copyout(&aitv, uap->itv, sizeof (struct itimerval)));
 }
 
@@ -743,8 +741,7 @@ sys_setitimer(struct setitimer_args *uap)
 		timevalclear(&aitv.it_interval);
 	else if (itimerfix(&aitv.it_interval))
 		return (EINVAL);
-	get_mplock();
-	crit_enter();
+	lwkt_gettoken(&p->p_token);
 	if (uap->which == ITIMER_REAL) {
 		if (timevalisset(&p->p_realtimer.it_value))
 			callout_stop(&p->p_ithandle);
@@ -757,8 +754,7 @@ sys_setitimer(struct setitimer_args *uap)
 	} else {
 		p->p_timer[uap->which] = aitv;
 	}
-	crit_exit();
-	rel_mplock();
+	lwkt_reltoken(&p->p_token);
 	return (0);
 }
 
@@ -781,26 +777,27 @@ realitexpire(void *arg)
 	struct timeval ctv, ntv;
 
 	p = (struct proc *)arg;
+	lwkt_gettoken(&p->p_token);
 	ksignal(p, SIGALRM);
 	if (!timevalisset(&p->p_realtimer.it_interval)) {
 		timevalclear(&p->p_realtimer.it_value);
+		lwkt_reltoken(&p->p_token);
 		return;
 	}
 	for (;;) {
-		crit_enter();
 		timevaladd(&p->p_realtimer.it_value,
-		    &p->p_realtimer.it_interval);
+			   &p->p_realtimer.it_interval);
 		getmicrouptime(&ctv);
 		if (timevalcmp(&p->p_realtimer.it_value, &ctv, >)) {
 			ntv = p->p_realtimer.it_value;
 			timevalsub(&ntv, &ctv);
 			callout_reset(&p->p_ithandle, tvtohz_low(&ntv),
 				      realitexpire, p);
-			crit_exit();
+			lwkt_reltoken(&p->p_token);
 			return;
 		}
-		crit_exit();
 	}
+	lwkt_reltoken(&p->p_token);
 }
 
 /*
