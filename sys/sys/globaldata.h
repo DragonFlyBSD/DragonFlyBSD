@@ -140,7 +140,7 @@ struct globaldata {
 	struct lwkt_ipiq *gd_ipiq;		/* array[ncpu] of ipiq's */
 	struct lwkt_ipiq gd_cpusyncq;		/* ipiq for cpu synchro */
 	u_int		gd_npoll;		/* ipiq synchronization */
-	int		gd_fairq_total_pri;
+	int		gd_unused01;
 	struct thread	gd_unused02B;
 	struct thread	gd_idlethread;
 	SLGlobalData	gd_slab;		/* slab allocator */
@@ -175,16 +175,16 @@ struct globaldata {
 
 typedef struct globaldata *globaldata_t;
 
-#define RQB_IPIQ		0
-#define RQB_INTPEND		1
-#define RQB_AST_OWEUPC		2
-#define RQB_AST_SIGNAL		3
-#define RQB_AST_USER_RESCHED	4
-#define RQB_AST_LWKT_RESCHED	5
-#define RQB_AST_UPCALL		6
-#define RQB_TIMER		7
-#define RQB_RUNNING		8
-#define RQB_SPINNING		9
+#define RQB_IPIQ		0	/* 0001 */
+#define RQB_INTPEND		1	/* 0002 */
+#define RQB_AST_OWEUPC		2	/* 0004 */
+#define RQB_AST_SIGNAL		3	/* 0008 */
+#define RQB_AST_USER_RESCHED	4	/* 0010 */
+#define RQB_AST_LWKT_RESCHED	5	/* 0020 */
+#define RQB_AST_UPCALL		6	/* 0040 */
+#define RQB_TIMER		7	/* 0080 */
+#define RQB_RUNNING		8	/* 0100 */
+#define RQB_SPINNING		9	/* 0200 */
 
 #define RQF_IPIQ		(1 << RQB_IPIQ)
 #define RQF_INTPEND		(1 << RQB_INTPEND)

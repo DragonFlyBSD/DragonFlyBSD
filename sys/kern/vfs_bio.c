@@ -4623,6 +4623,15 @@ bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit)
 	}
 
 	/*
+	 * Only system threads can use the interrupt reserve
+	 */
+	if ((curthread->td_flags & TDF_SYSTHREAD) == 0) {
+		vm_wait(hz);
+		return(NULL);
+	}
+
+
+	/*
 	 * Allocate and allow use of the interrupt reserve.
 	 *
 	 * If after all that we still can't allocate a VM page we are

@@ -212,7 +212,10 @@ schedcpu_stats(struct proc *p, void *data __unused)
 		return(0);
 
 	PHOLD(p);
-	lwkt_gettoken(&p->p_token);
+	if (lwkt_trytoken(&p->p_token) == FALSE) {
+		PRELE(p);
+		return(0);
+	}
 
 	p->p_swtime++;
 	FOREACH_LWP_IN_PROC(lp, p) {
@@ -249,7 +252,10 @@ schedcpu_resource(struct proc *p, void *data __unused)
 		return(0);
 
 	PHOLD(p);
-	lwkt_gettoken(&p->p_token);
+	if (lwkt_trytoken(&p->p_token) == FALSE) {
+		PRELE(p);
+		return(0);
+	}
 
 	if (p->p_stat == SZOMB || p->p_limit == NULL) {
 		lwkt_reltoken(&p->p_token);

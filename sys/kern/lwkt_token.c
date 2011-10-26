@@ -206,6 +206,12 @@ _lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td)
 	ref->tr_owner = td;
 }
 
+/*
+ * See kern/kern_spinlock.c for the discussion on cache-friendly contention
+ * resolution.  We currently do not use cpu_lfence() (expensive!!) and, more
+ * importantly, we do a read-test of t_ref before attempting an atomic op,
+ * which greatly reduces hw cache bus contention.
+ */
 static
 int
 _lwkt_trytoken_spin(lwkt_token_t tok, lwkt_tokref_t ref)
@@ -220,7 +226,6 @@ _lwkt_trytoken_spin(lwkt_token_t tok, lwkt_tokref_t ref)
 		if (lwkt_token_delay) {
 			tsc_delay(lwkt_token_delay);
 		} else {
-			cpu_lfence();
 			cpu_pause();
 		}
 	}
@@ -416,8 +421,11 @@ lwkt_getalltokens(thread_t td, int spinning)
 			 */
 			if (_lwkt_trytoken_spin(tok, scan))
 				break;
-			if (lwkt_sched_debug)
-				kprintf("toka %p %s\n", tok, tok->t_desc);
+			if (lwkt_sched_debug > 0) {
+				--lwkt_sched_debug;
+				kprintf("toka %p %s %s\n",
+					tok, tok->t_desc, td->td_comm);
+			}
 
 			/*
 			 * Otherwise we failed to acquire all the tokens.
@@ -553,8 +561,11 @@ _lwkt_getalltokens_sorted(thread_t td)
 			 */
 			if (_lwkt_trytoken_spin(tok, scan))
 				break;
-			if (lwkt_sched_debug)
-				kprintf("tokb %p %s\n", tok, tok->t_desc);
+			if (lwkt_sched_debug > 0) {
+				--lwkt_sched_debug;
+				kprintf("tokb %p %s %s\n",
+					tok, tok->t_desc, td->td_comm);
+			}
 
 			/*
 			 * Tokens are released in reverse order to reduce

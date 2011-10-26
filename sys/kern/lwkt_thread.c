@@ -93,7 +93,7 @@ static __int64_t switch_count = 0;
 static __int64_t preempt_hit = 0;
 static __int64_t preempt_miss = 0;
 static __int64_t preempt_weird = 0;
-static __int64_t token_contention_count __debugvar = 0;
+static __int64_t token_contention_count[TDPRI_MAX+1] __debugvar;
 static int lwkt_use_spin_port;
 static struct objcache *thread_cache;
 
@@ -101,8 +101,6 @@ static struct objcache *thread_cache;
 static void lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame);
 static void lwkt_setcpu_remote(void *arg);
 #endif
-static void lwkt_fairq_accumulate(globaldata_t gd, thread_t td);
-static int lwkt_fairq_tick(globaldata_t gd, thread_t td);
 
 extern void cpu_heavy_restore(void);
 extern void cpu_lwkt_restore(void);
@@ -128,13 +126,75 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0,
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0,
     "Number of preempted threads.");
 #ifdef	INVARIANTS
-SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count, CTLFLAG_RW,
-	&token_contention_count, 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_00, CTLFLAG_RW,
+	&token_contention_count[0], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_01, CTLFLAG_RW,
+	&token_contention_count[1], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_02, CTLFLAG_RW,
+	&token_contention_count[2], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_03, CTLFLAG_RW,
+	&token_contention_count[3], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_04, CTLFLAG_RW,
+	&token_contention_count[4], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_05, CTLFLAG_RW,
+	&token_contention_count[5], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_06, CTLFLAG_RW,
+	&token_contention_count[6], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_07, CTLFLAG_RW,
+	&token_contention_count[7], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_08, CTLFLAG_RW,
+	&token_contention_count[8], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_09, CTLFLAG_RW,
+	&token_contention_count[9], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_10, CTLFLAG_RW,
+	&token_contention_count[10], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_11, CTLFLAG_RW,
+	&token_contention_count[11], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_12, CTLFLAG_RW,
+	&token_contention_count[12], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_13, CTLFLAG_RW,
+	&token_contention_count[13], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_14, CTLFLAG_RW,
+	&token_contention_count[14], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_15, CTLFLAG_RW,
+	&token_contention_count[15], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_16, CTLFLAG_RW,
+	&token_contention_count[16], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_17, CTLFLAG_RW,
+	&token_contention_count[17], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_18, CTLFLAG_RW,
+	&token_contention_count[18], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_19, CTLFLAG_RW,
+	&token_contention_count[19], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_20, CTLFLAG_RW,
+	&token_contention_count[20], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_21, CTLFLAG_RW,
+	&token_contention_count[21], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_22, CTLFLAG_RW,
+	&token_contention_count[22], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_23, CTLFLAG_RW,
+	&token_contention_count[23], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_24, CTLFLAG_RW,
+	&token_contention_count[24], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_25, CTLFLAG_RW,
+	&token_contention_count[25], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_26, CTLFLAG_RW,
+	&token_contention_count[26], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_27, CTLFLAG_RW,
+	&token_contention_count[27], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_28, CTLFLAG_RW,
+	&token_contention_count[28], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_29, CTLFLAG_RW,
+	&token_contention_count[29], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_30, CTLFLAG_RW,
+	&token_contention_count[30], 0, "spinning due to token contention");
+SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count_31, CTLFLAG_RW,
+	&token_contention_count[31], 0, "spinning due to token contention");
 #endif
 static int fairq_enable = 0;
 SYSCTL_INT(_lwkt, OID_AUTO, fairq_enable, CTLFLAG_RW,
 	&fairq_enable, 0, "Turn on fairq priority accumulators");
-static int fairq_bypass = 1;
+static int fairq_bypass = -1;
 SYSCTL_INT(_lwkt, OID_AUTO, fairq_bypass, CTLFLAG_RW,
 	&fairq_bypass, 0, "Allow fairq to bypass td on token failure");
 extern int lwkt_sched_debug;
@@ -181,12 +241,8 @@ _lwkt_dequeue(thread_t td)
 
 	td->td_flags &= ~TDF_RUNQ;
 	TAILQ_REMOVE(&gd->gd_tdrunq, td, td_threadq);
-
-	gd->gd_fairq_total_pri -= td->td_pri;
 	if (TAILQ_FIRST(&gd->gd_tdrunq) == NULL)
 		atomic_clear_int(&gd->gd_reqflags, RQF_RUNNING);
-
-	/*td->td_fairq_lticks = ticks;*/
     }
 }
 
@@ -208,26 +264,22 @@ _lwkt_enqueue(thread_t td)
 	td->td_flags |= TDF_RUNQ;
 	xtd = TAILQ_FIRST(&gd->gd_tdrunq);
 	if (xtd == NULL) {
-		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
-		atomic_set_int(&gd->gd_reqflags, RQF_RUNNING);
+	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
+	    atomic_set_int(&gd->gd_reqflags, RQF_RUNNING);
 	} else {
-		while (xtd && xtd->td_pri >= td->td_pri)
-			xtd = TAILQ_NEXT(xtd, td_threadq);
-		if (xtd)
-			TAILQ_INSERT_BEFORE(xtd, td, td_threadq);
-		else
-			TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
+	    while (xtd && xtd->td_pri >= td->td_pri)
+		xtd = TAILQ_NEXT(xtd, td_threadq);
+	    if (xtd)
+		TAILQ_INSERT_BEFORE(xtd, td, td_threadq);
+	    else
+		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
 	}
-	gd->gd_fairq_total_pri += td->td_pri;
 
 	/*
-	 * The thread might have been dequeued for a while, bump it's
-	 * fairq.
+	 * Request a LWKT reschedule if we are now at the head of the queue.
 	 */
-	if (td->td_fairq_lticks != ticks) {
-		td->td_fairq_lticks = ticks;
-		lwkt_fairq_accumulate(gd, td);
-	}
+	if (TAILQ_FIRST(&gd->gd_tdrunq) == td)
+	    need_lwkt_resched();
     }
 }
 
@@ -572,17 +624,29 @@ lwkt_switch(void)
     }
 
     /*
-     * Passive release (used to transition from user to kernel mode
-     * when we block or switch rather then when we enter the kernel).
-     * This function is NOT called if we are switching into a preemption
-     * or returning from a preemption.  Typically this causes us to lose
-     * our current process designation (if we have one) and become a true
-     * LWKT thread, and may also hand the current process designation to
-     * another process and schedule thread.
+     * Release our current user process designation if we are blocking
+     * or if a user reschedule was requested.
+     *
+     * NOTE: This function is NOT called if we are switching into or
+     *	     returning from a preemption.
+     *
+     * NOTE: Releasing our current user process designation may cause
+     *	     it to be assigned to another thread, which in turn will
+     *	     cause us to block in the usched acquire code when we attempt
+     *	     to return to userland.
+     *
+     * NOTE: On SMP systems this can be very nasty when heavy token
+     *	     contention is present so we want to be careful not to
+     *	     release the designation gratuitously.
      */
-    if (td->td_release)
+    if (td->td_release &&
+	(user_resched_wanted() || (td->td_flags & TDF_RUNQ) == 0)) {
 	    td->td_release(td);
+    }
 
+    /*
+     * Release all tokens
+     */
     crit_enter_gd(gd);
     if (TD_TOKS_HELD(td))
 	    lwkt_relalltokens(td);
@@ -625,25 +689,15 @@ lwkt_switch(void)
 	 * The interrupt may have woken a thread up, we need to properly
 	 * set the reschedule flag if the originally interrupted thread is
 	 * at a lower priority.
+	 *
+	 * The interrupt may not have descheduled.
 	 */
-	if (TAILQ_FIRST(&gd->gd_tdrunq) &&
-	    TAILQ_FIRST(&gd->gd_tdrunq)->td_pri > ntd->td_pri) {
+	if (TAILQ_FIRST(&gd->gd_tdrunq) != ntd)
 	    need_lwkt_resched();
-	}
-	/* YYY release mp lock on switchback if original doesn't need it */
 	goto havethread_preempted;
     }
 
     /*
-     * Update the fairq accumulator if we are switching away in a
-     * different tick.
-     */
-    lwkt_fairq_tick(gd, td);
-
-    /*
-     * Implement round-robin fairq with priority insertion.  The priority
-     * insertion is handled by _lwkt_enqueue()
-     *
      * If we cannot obtain ownership of the tokens we cannot immediately
      * schedule the target thread.
      *
@@ -651,20 +705,11 @@ lwkt_switch(void)
      * the current thread has been descheduled.
      */
     for (;;) {
-	/*
-	 * We have already docked the current thread.  If we get stuck in a
-	 * scheduler switching loop we do not want to dock it over and over
-	 * again.  Reset lticks.
-	 */
-	if (td != &gd->gd_idlethread)
-		td->td_fairq_lticks = ticks;
-
 	clear_lwkt_resched();
 
 	/*
 	 * Hotpath - pull the head of the run queue and attempt to schedule
-	 * it.  Fairq exhaustion moves the task to the end of the list.  If
-	 * no threads are runnable we switch to the idle thread.
+	 * it.
 	 */
 	for (;;) {
 	    ntd = TAILQ_FIRST(&gd->gd_tdrunq);
@@ -683,16 +728,6 @@ lwkt_switch(void)
 		goto haveidle;
 	    }
 	    break;
-
-#if 0
-	    if (ntd->td_fairq_accum >= 0)
-		    break;
-
-	    /*splz_check(); cannot do this here, see above */
-	    lwkt_fairq_accumulate(gd, ntd);
-	    TAILQ_REMOVE(&gd->gd_tdrunq, ntd, td_threadq);
-	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq, ntd, td_threadq);
-#endif
 	}
 
 	/*
@@ -714,90 +749,42 @@ lwkt_switch(void)
 	 * What we do now is try to find a thread that we can schedule
 	 * in its stead.
 	 *
-	 * The coldpath scan does NOT rearrange threads in the run list
-	 * and it also ignores the accumulator.  We locate the thread with
-	 * the highest accumulator value (positive or negative), then the
-	 * next highest, and so forth.  This isn't the most efficient but
-	 * will theoretically try to schedule one thread per pass which
-	 * is not horrible.
-	 *
-	 * If the accumulator for the selected thread happens to be negative
-	 * the timer interrupt will come along and ask for another reschedule
-	 * within 1 tick.
-	 *
-	 * NOTE: This scan will also include threads whos fairq's were
-	 *	 accumulated in the first loop.
+	 * The coldpath scan does NOT rearrange threads in the run list.
+	 * The lwkt_schedulerclock() will assert need_lwkt_resched() on
+	 * the next tick whenever the current head is not the current thread.
 	 */
 #ifdef	INVARIANTS
-	++token_contention_count;
+	++token_contention_count[ntd->td_pri];
+	++ntd->td_contended;
 #endif
 
-	if (fairq_bypass)
+	if (fairq_bypass > 0)
 		goto skip;
 
-	need_lwkt_resched();
 	xtd = NULL;
 	while ((ntd = TAILQ_NEXT(ntd, td_threadq)) != NULL) {
-#if 0
-		if (ntd->td_fairq_accum < 0)
-			continue;
-		if (xtd == NULL || ntd->td_pri > xtd->td_pri)
-			xtd = ntd;
-#endif
+		/*
+		 * Never schedule threads returning to userland or the
+		 * user thread scheduler helper thread when higher priority
+		 * threads are present.
+		 */
+		if (ntd->td_pri < TDPRI_KERN_LPSCHED) {
+			ntd = NULL;
+			break;
+		}
+
+		/*
+		 * Try this one.
+		 */
 		if (TD_TOKS_NOT_HELD(ntd) ||
 		    lwkt_getalltokens(ntd, (spinning >= lwkt_spin_loops))) {
 			goto havethread;
 		}
-	}
-#if 0
-	if (xtd) {
-	    if (TD_TOKS_NOT_HELD(xtd) ||
-		lwkt_getalltokens(xtd, (spinning >= lwkt_spin_loops)))
-	    {
-		ntd = xtd;
-		goto havethread;
-	    }
-	}
+#ifdef	INVARIANTS
+		++token_contention_count[ntd->td_pri];
+		++ntd->td_contended;
 #endif
-
-#if 0
-	if (fairq_bypass)
-		goto skip;
-
-	xtd = NULL;
-	while ((ntd = TAILQ_NEXT(ntd, td_threadq)) != NULL) {
-	    /*
-	     * Try to switch to this thread.  Kernel threads have priority
-	     * over user threads in this case.
-	     */
-	    if (ntd->td_pri < TDPRI_KERN_LPSCHED) {
-		if (xtd == NULL)
-		    xtd = ntd;
-		continue;
-	    }
-
-	    if (TD_TOKS_NOT_HELD(ntd) ||
-		lwkt_getalltokens(ntd, (spinning >= lwkt_spin_loops)))
-	    {
-		goto havethread;
-	    }
-	    /* thread contested, try another */
 	}
-
-	/*
-	 * We exhausted the run list but we may have recorded a user
-	 * thread to try.
-	 */
-	if (xtd) {
-	    ntd = xtd;
-	    if ((gd->gd_reqflags & RQF_AST_LWKT_RESCHED) == 0 &&
-		(TD_TOKS_NOT_HELD(ntd) ||
-		 lwkt_getalltokens(ntd, (spinning >= lwkt_spin_loops)))
-	    ) {
-		goto havethread;
-	    }
-	}
-#endif
 
 skip:
 	/*
@@ -823,7 +810,7 @@ skip:
 	 *	 ordering the tokens by address.
 	 */
 	if ((td->td_flags & TDF_RUNQ) == 0) {
-	    need_lwkt_resched();
+	    need_lwkt_resched();	/* prevent hlt */
 	    goto haveidle;
 	}
 #if defined(INVARIANTS) && defined(__amd64__)
@@ -901,20 +888,6 @@ skip:
 
 havethread:
     /*
-     * The thread may have been sitting in the runq for a while, be sure
-     * to reset td_fairq_lticks to avoid an improper scheduling tick against
-     * the thread if it gets dequeued again quickly.
-     *
-     * We must always decrement td_fairq_accum on non-idle threads just
-     * in case a thread never gets a tick due to being in a continuous
-     * critical section.  The page-zeroing code does this, for example.
-     */
-    /* ntd->td_fairq_lticks = ticks; */
-    --ntd->td_fairq_accum;
-    if (ntd->td_fairq_accum < -TDFAIRQ_MAX(gd))
-	ntd->td_fairq_accum = -TDFAIRQ_MAX(gd);
-
-    /*
      * If the thread we came up with is a higher or equal priority verses
      * the thread at the head of the queue we move our thread to the
      * front.  This way we can always check the front of the queue.
@@ -924,11 +897,13 @@ havethread:
      */
     ntd->td_wmesg = NULL;
     ++gd->gd_cnt.v_swtch;
+#if 0
     xtd = TAILQ_FIRST(&gd->gd_tdrunq);
     if (ntd != xtd && ntd->td_pri >= xtd->td_pri) {
 	TAILQ_REMOVE(&gd->gd_tdrunq, ntd, td_threadq);
 	TAILQ_INSERT_HEAD(&gd->gd_tdrunq, ntd, td_threadq);
     }
+#endif
     gd->gd_idle_repeat = 0;
 
 havethread_preempted:
@@ -964,7 +939,6 @@ haveidle:
      */
     splz_check();
 #endif
-
     /* NOTE: current cpu may have changed after switch */
     crit_exit_quick(td);
 }
@@ -1049,15 +1023,15 @@ lwkt_preempt(thread_t ntd, int critcount)
      *
      * YYY The target thread must be in a critical section (else it must
      * inherit our critical section?  I dunno yet).
-     *
-     * Set need_lwkt_resched() unconditionally for now YYY.
      */
     KASSERT(ntd->td_critcount, ("BADCRIT0 %d", ntd->td_pri));
 
     td = gd->gd_curthread;
     if (preempt_enable == 0) {
+#if 0
 	if (ntd->td_pri > td->td_pri)
 	    need_lwkt_resched();
+#endif
 	++preempt_miss;
 	return;
     }
@@ -1067,13 +1041,17 @@ lwkt_preempt(thread_t ntd, int critcount)
     }
     if (td->td_critcount > critcount) {
 	++preempt_miss;
+#if 0
 	need_lwkt_resched();
+#endif
 	return;
     }
 #ifdef SMP
     if (ntd->td_gd != gd) {
 	++preempt_miss;
+#if 0
 	need_lwkt_resched();
+#endif
 	return;
     }
 #endif
@@ -1089,17 +1067,23 @@ lwkt_preempt(thread_t ntd, int critcount)
 
     if (TD_TOKS_HELD(ntd)) {
 	++preempt_miss;
+#if 0
 	need_lwkt_resched();
+#endif
 	return;
     }
     if (td == ntd || ((td->td_flags | ntd->td_flags) & TDF_PREEMPT_LOCK)) {
 	++preempt_weird;
+#if 0
 	need_lwkt_resched();
+#endif
 	return;
     }
     if (ntd->td_preempted) {
 	++preempt_hit;
+#if 0
 	need_lwkt_resched();
+#endif
 	return;
     }
     KKASSERT(gd->gd_processing_ipiq == 0);
@@ -1210,19 +1194,12 @@ lwkt_yield(void)
 {
     globaldata_t gd = mycpu;
     thread_t td = gd->gd_curthread;
-    thread_t xtd;
 
     if ((gd->gd_reqflags & RQF_IDLECHECK_MASK) && td->td_nest_count < 2)
 	splz();
-    if (td->td_fairq_accum < 0) {
+    if (lwkt_resched_wanted()) {
 	lwkt_schedule_self(curthread);
 	lwkt_switch();
-    } else {
-	xtd = TAILQ_FIRST(&gd->gd_tdrunq);
-	if (xtd && xtd->td_pri > td->td_pri) {
-	    lwkt_schedule_self(curthread);
-	    lwkt_switch();
-	}
     }
 }
 
@@ -1255,8 +1232,7 @@ lwkt_user_yield(void)
      * quantum has run out.
      */
     if (lwkt_resched_wanted() ||
-	user_resched_wanted() ||
-	td->td_fairq_accum < 0)
+	user_resched_wanted())
     {
 	lwkt_switch();
     }
@@ -1288,41 +1264,21 @@ lwkt_user_yield(void)
  * It is possible for this routine to be called after a failed _enqueue
  * (due to the target thread migrating, sleeping, or otherwise blocked).
  * We have to check that the thread is actually on the run queue!
- *
- * reschedok is an optimized constant propagated from lwkt_schedule() or
- * lwkt_schedule_noresched().  By default it is non-zero, causing a
- * reschedule to be requested if the target thread has a higher priority.
- * The port messaging code will set MSG_NORESCHED and cause reschedok to
- * be 0, prevented undesired reschedules.
  */
 static __inline
 void
-_lwkt_schedule_post(globaldata_t gd, thread_t ntd, int ccount, int reschedok)
+_lwkt_schedule_post(globaldata_t gd, thread_t ntd, int ccount)
 {
-    thread_t otd;
-
     if (ntd->td_flags & TDF_RUNQ) {
-	if (ntd->td_preemptable && reschedok) {
+	if (ntd->td_preemptable) {
 	    ntd->td_preemptable(ntd, ccount);	/* YYY +token */
-	} else if (reschedok) {
-	    otd = curthread;
-	    if (ntd->td_pri > otd->td_pri)
-		need_lwkt_resched();
 	}
-
-	/*
-	 * If we are in a different tick give the thread a cycle advantage.
-	 * This is primarily to avoid a degenerate case for interrupt threads
-	 * where accumulator crosses into negative territory unnecessarily.
-	 */
-	if (ntd->td_fairq_lticks != ticks)
-		lwkt_fairq_accumulate(gd, ntd);
     }
 }
 
 static __inline
 void
-_lwkt_schedule(thread_t td, int reschedok)
+_lwkt_schedule(thread_t td)
 {
     globaldata_t mygd = mycpu;
 
@@ -1342,13 +1298,13 @@ _lwkt_schedule(thread_t td, int reschedok)
 #ifdef SMP
 	if (td->td_gd == mygd) {
 	    _lwkt_enqueue(td);
-	    _lwkt_schedule_post(mygd, td, 1, reschedok);
+	    _lwkt_schedule_post(mygd, td, 1);
 	} else {
 	    lwkt_send_ipiq3(td->td_gd, lwkt_schedule_remote, td, 0);
 	}
 #else
 	_lwkt_enqueue(td);
-	_lwkt_schedule_post(mygd, td, 1, reschedok);
+	_lwkt_schedule_post(mygd, td, 1);
 #endif
     }
     crit_exit_gd(mygd);
@@ -1357,13 +1313,13 @@ _lwkt_schedule(thread_t td, int reschedok)
 void
 lwkt_schedule(thread_t td)
 {
-    _lwkt_schedule(td, 1);
+    _lwkt_schedule(td);
 }
 
 void
-lwkt_schedule_noresched(thread_t td)
+lwkt_schedule_noresched(thread_t td)	/* XXX not impl */
 {
-    _lwkt_schedule(td, 0);
+    _lwkt_schedule(td);
 }
 
 #ifdef SMP
@@ -1383,10 +1339,10 @@ lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame)
 
     if (frame && ntd->td_preemptable) {
 	crit_exit_noyield(td);
-	_lwkt_schedule(ntd, 1);
+	_lwkt_schedule(ntd);
 	crit_enter_quick(td);
     } else {
-	_lwkt_schedule(ntd, 1);
+	_lwkt_schedule(ntd);
     }
 }
 
@@ -1544,46 +1500,38 @@ lwkt_setpri_self(int pri)
 }
 
 /*
- * 1/hz tick (typically 10ms) x TDFAIRQ_SCALE (typ 8) = 80ms full cycle.
- *
- * Example: two competing threads, same priority N.  decrement by (2*N)
- * increment by N*8, each thread will get 4 ticks.
+ * hz tick scheduler clock for LWKT threads
  */
 void
-lwkt_fairq_schedulerclock(thread_t td)
+lwkt_schedulerclock(thread_t td)
 {
-    globaldata_t gd;
+    globaldata_t gd = td->td_gd;
+    thread_t xtd;
 
-    if (fairq_enable) {
-	while (td) {
-	    gd = td->td_gd;
-	    lwkt_fairq_tick(gd, td);
-	    if (td->td_fairq_accum < 0)
-		    need_lwkt_resched();
-	    td = td->td_preempted;
+    if (TAILQ_FIRST(&gd->gd_tdrunq) == td) {
+	/*
+	 * If the current thread is at the head of the runq shift it to the
+	 * end of any equal-priority threads and request a LWKT reschedule
+	 * if it moved.
+	 */
+	xtd = TAILQ_NEXT(td, td_threadq);
+	if (xtd && xtd->td_pri == td->td_pri) {
+	    TAILQ_REMOVE(&gd->gd_tdrunq, td, td_threadq);
+	    while (xtd && xtd->td_pri == td->td_pri)
+		xtd = TAILQ_NEXT(xtd, td_threadq);
+	    if (xtd)
+		TAILQ_INSERT_BEFORE(xtd, td, td_threadq);
+	    else
+		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
+	    need_lwkt_resched();
 	}
+    } else {
+	/*
+	 * If we scheduled a thread other than the one at the head of the
+	 * queue always request a reschedule every tick.
+	 */
+	need_lwkt_resched();
     }
-}
-
-static void
-lwkt_fairq_accumulate(globaldata_t gd, thread_t td)
-{
-	td->td_fairq_accum += td->td_pri * TDFAIRQ_SCALE;
-	if (td->td_fairq_accum > TDFAIRQ_MAX(td->td_gd))
-		td->td_fairq_accum = TDFAIRQ_MAX(td->td_gd);
-}
-
-static int
-lwkt_fairq_tick(globaldata_t gd, thread_t td)
-{
-	if (td->td_fairq_lticks != ticks && td != &gd->gd_idlethread) {
-		td->td_fairq_lticks = ticks;
-		td->td_fairq_accum -= gd->gd_fairq_total_pri;
-		if (td->td_fairq_accum < -TDFAIRQ_MAX(gd))
-			td->td_fairq_accum = -TDFAIRQ_MAX(gd);
-		return TRUE;
-	}
-	return FALSE;
 }
 
 /*

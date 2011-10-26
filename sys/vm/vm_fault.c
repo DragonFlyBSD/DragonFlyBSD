@@ -123,9 +123,6 @@ struct faultstate {
 	struct vnode *vp;
 };
 
-static int vm_fast_fault = 1;
-SYSCTL_INT(_vm, OID_AUTO, fast_fault, CTLFLAG_RW, &vm_fast_fault, 0, 
-	   "Burst fault zero-fill regions");
 static int debug_cluster = 0;
 SYSCTL_INT(_vm, OID_AUTO, debug_cluster, CTLFLAG_RW, &debug_cluster, 0, "");
 
@@ -1156,13 +1153,18 @@ vm_fault_object(struct faultstate *fs,
 
 			/*
 			 * Allocate a new page for this object/offset pair.
+			 *
+			 * XXX for now don't use the VM_ALLOC_ZERO flag
+			 *     because this will continuously cycle pages
+			 *     through the cpu caches.  Try to use a recently
+			 *     freed page.
 			 */
 			fs->m = NULL;
 			if (!vm_page_count_severe()) {
 				fs->m = vm_page_alloc(fs->object, pindex,
 				    ((fs->vp || fs->object->backing_object) ?
 					VM_ALLOC_NORMAL :
-					VM_ALLOC_NORMAL | VM_ALLOC_ZERO));
+					VM_ALLOC_NORMAL /*| VM_ALLOC_ZERO*/));
 			}
 			if (fs->m == NULL) {
 				vm_object_pip_wakeup(fs->first_object);
@@ -2059,6 +2061,12 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
  * processes address space.  It is a "cousin" of pmap_object_init_pt,
  * except it runs at page fault time instead of mmap time.
  *
+ * vm.fast_fault	Enables pre-faulting zero-fill pages
+ *
+ * vm.prefault_pages	Number of pages (1/2 negative, 1/2 positive) to
+ *			prefault.  Scan stops in either direction when
+ *			a page is found to already exist.
+ *
  * This code used to be per-platform pmap_prefault().  It is now
  * machine-independent and enhanced to also pre-fault zero-fill pages
  * (see vm.fast_fault) as well as make them writable, which greatly
@@ -2080,16 +2088,12 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
  *
  * No other requirements.
  */
-#define PFBAK 4
-#define PFFOR 4
-#define PAGEORDER_SIZE (PFBAK+PFFOR)
-
-static int vm_prefault_pageorder[] = {
-	-PAGE_SIZE, PAGE_SIZE,
-	-2 * PAGE_SIZE, 2 * PAGE_SIZE,
-	-3 * PAGE_SIZE, 3 * PAGE_SIZE,
-	-4 * PAGE_SIZE, 4 * PAGE_SIZE
-};
+static int vm_prefault_pages = 8;
+SYSCTL_INT(_vm, OID_AUTO, prefault_pages, CTLFLAG_RW, &vm_prefault_pages, 0,
+	   "Maximum number of pages to pre-fault");
+static int vm_fast_fault = 1;
+SYSCTL_INT(_vm, OID_AUTO, fast_fault, CTLFLAG_RW, &vm_fast_fault, 0,
+	   "Burst fault zero-fill regions");
 
 /*
  * Set PG_NOSYNC if the map entry indicates so, but only if the page
@@ -2112,13 +2116,23 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 {
 	struct lwp *lp;
 	vm_page_t m;
-	vm_offset_t starta;
 	vm_offset_t addr;
 	vm_pindex_t index;
 	vm_pindex_t pindex;
 	vm_object_t object;
 	int pprot;
 	int i;
+	int noneg;
+	int nopos;
+	int maxpages;
+
+	/*
+	 * Get stable max count value, disabled if set to 0
+	 */
+	maxpages = vm_prefault_pages;
+	cpu_ccfence();
+	if (maxpages <= 0)
+		return;
 
 	/*
 	 * We do not currently prefault mappings that use virtual page
@@ -2130,11 +2144,11 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 	if (lp == NULL || (pmap != vmspace_pmap(lp->lwp_vmspace)))
 		return;
 
-	starta = addra - PFBAK * PAGE_SIZE;
-	if (starta < entry->start)
-		starta = entry->start;
-	else if (starta > addra)
-		starta = 0;
+	/*
+	 * Limit pre-fault count to 1024 pages.
+	 */
+	if (maxpages > 1024)
+		maxpages = 1024;
 
 	object = entry->object.vm_object;
 	KKASSERT(object != NULL);
@@ -2142,21 +2156,54 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 	KKASSERT(object == entry->object.vm_object);
 	vm_object_chain_acquire(object);
 
-	for (i = 0; i < PAGEORDER_SIZE; i++) {
+	noneg = 0;
+	nopos = 0;
+	for (i = 0; i < maxpages; ++i) {
 		vm_object_t lobject;
 		vm_object_t nobject;
 		int allocated = 0;
 		int error;
 
-		addr = addra + vm_prefault_pageorder[i];
-		if (addr > addra + (PFFOR * PAGE_SIZE))
-			addr = 0;
-
-		if (addr < starta || addr >= entry->end)
+		/*
+		 * Calculate the page to pre-fault, stopping the scan in
+		 * each direction separately if the limit is reached.
+		 */
+		if (i & 1) {
+			if (noneg)
+				continue;
+			addr = addra - ((i + 1) >> 1) * PAGE_SIZE;
+		} else {
+			if (nopos)
+				continue;
+			addr = addra + ((i + 2) >> 1) * PAGE_SIZE;
+		}
+		if (addr < entry->start) {
+			noneg = 1;
+			if (noneg && nopos)
+				break;
 			continue;
-
-		if (pmap_prefault_ok(pmap, addr) == 0)
+		}
+		if (addr >= entry->end) {
+			nopos = 1;
+			if (noneg && nopos)
+				break;
 			continue;
+		}
+
+		/*
+		 * Skip pages already mapped, and stop scanning in that
+		 * direction.  When the scan terminates in both directions
+		 * we are done.
+		 */
+		if (pmap_prefault_ok(pmap, addr) == 0) {
+			if (i & 1)
+				noneg = 1;
+			else
+				nopos = 1;
+			if (noneg && nopos)
+				break;
+			continue;
+		}
 
 		/*
 		 * Follow the VM object chain to obtain the page to be mapped
@@ -2186,17 +2233,21 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 			if (lobject->backing_object == NULL) {
 				if (vm_fast_fault == 0)
 					break;
-				if (vm_prefault_pageorder[i] < 0 ||
-				    (prot & VM_PROT_WRITE) == 0 ||
+				if ((prot & VM_PROT_WRITE) == 0 ||
 				    vm_page_count_min(0)) {
 					break;
 				}
 
 				/*
 				 * NOTE: Allocated from base object
+				 *
+				 * XXX for now don't use the VM_ALLOC_ZERO
+				 *     flag because this will continuously
+				 *     cycle pages through the cpu caches.
+				 *     Try to use a recently freed page.
 				 */
 				m = vm_page_alloc(object, index,
-					      VM_ALLOC_NORMAL | VM_ALLOC_ZERO);
+					      VM_ALLOC_NORMAL /*| VM_ALLOC_ZERO*/);
 
 				if ((m->flags & PG_ZERO) == 0) {
 					vm_page_zero_fill(m);

@@ -97,7 +97,7 @@
 
 static void vm_page_queue_init(void);
 static void vm_page_free_wakeup(void);
-static vm_page_t vm_page_select_cache(vm_object_t, vm_pindex_t);
+static vm_page_t vm_page_select_cache(u_short pg_color);
 static vm_page_t _vm_page_list_find2(int basequeue, int index);
 static void _vm_page_deactivate_locked(vm_page_t m, int athead);
 
@@ -181,6 +181,13 @@ vm_add_new_page(vm_paddr_t pa)
 	m->phys_addr = pa;
 	m->flags = 0;
 	m->pc = (pa >> PAGE_SHIFT) & PQ_L2_MASK;
+#ifdef SMP
+	/*
+	 * Twist for cpu localization instead of page coloring.
+	 */
+	m->pc ^= ((pa >> PAGE_SHIFT) / PQ_L2_SIZE) & PQ_L2_MASK;
+	m->pc ^= ((pa >> PAGE_SHIFT) / (PQ_L2_SIZE * PQ_L2_SIZE)) & PQ_L2_MASK;
+#endif
 	m->queue = m->pc + PQ_FREE;
 	KKASSERT(m->dirty == 0);
 
@@ -497,9 +504,9 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 		atomic_add_int(pq->cnt, -1);
 		pq->lcnt--;
 		m->queue = PQ_NONE;
+		vm_page_queues_spin_unlock(queue);
 		if ((queue - m->pc) == PQ_FREE && (m->flags & PG_ZERO))
 			atomic_subtract_int(&vm_page_zero_count, 1);
-		vm_page_queues_spin_unlock(queue);
 		if ((queue - m->pc) == PQ_CACHE || (queue - m->pc) == PQ_FREE)
 			return (queue - m->pc);
 	}
@@ -769,7 +776,7 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	m->object = object;
 	m->pindex = pindex;
 	vm_page_rb_tree_RB_INSERT(&object->rb_memq, m);
-	atomic_add_int(&object->agg_pv_list_count, m->md.pv_list_count);
+	/* atomic_add_int(&object->agg_pv_list_count, m->md.pv_list_count); */
 	vm_page_spin_unlock(m);
 
 	/*
@@ -821,7 +828,7 @@ vm_page_remove(vm_page_t m)
 	vm_page_spin_lock(m);
 	vm_page_rb_tree_RB_REMOVE(&object->rb_memq, m);
 	object->resident_page_count--;
-	atomic_add_int(&object->agg_pv_list_count, -m->md.pv_list_count);
+	/* atomic_add_int(&object->agg_pv_list_count, -m->md.pv_list_count); */
 	m->object = NULL;
 	vm_page_spin_unlock(m);
 
@@ -1033,8 +1040,11 @@ vm_page_unqueue(vm_page_t m)
  * The page coloring optimization attempts to locate a page that does
  * not overload other nearby pages in the object in the cpu's L1 or L2
  * caches.  We need this optimization because cpu caches tend to be
- * physical caches, while object spaces tend to be virtual.  This optimization
- * also gives us multiple queues and spinlocks to worth with on SMP systems.
+ * physical caches, while object spaces tend to be virtual.
+ *
+ * On MP systems each PQ_FREE and PQ_CACHE color queue has its own spinlock
+ * and the algorithm is adjusted to localize allocations on a per-core basis.
+ * This is done by 'twisting' the colors.
  *
  * The page is returned spinlocked and removed from its queue (it will
  * be on PQ_NONE), or NULL. The page is not PG_BUSY'd.  The caller
@@ -1143,14 +1153,12 @@ vm_page_list_find(int basequeue, int index, boolean_t prefer_zero)
  *
  */
 static vm_page_t
-vm_page_select_cache(vm_object_t object, vm_pindex_t pindex)
+vm_page_select_cache(u_short pg_color)
 {
 	vm_page_t m;
 
 	for (;;) {
-		m = _vm_page_list_find(PQ_CACHE,
-				       (pindex + object->pg_color) & PQ_L2_MASK,
-				       FALSE);
+		m = _vm_page_list_find(PQ_CACHE, pg_color & PQ_L2_MASK, FALSE);
 		if (m == NULL)
 			break;
 		/*
@@ -1193,14 +1201,12 @@ vm_page_select_cache(vm_object_t object, vm_pindex_t pindex)
  * This routine may not block.
  */
 static __inline vm_page_t
-vm_page_select_free(vm_object_t object, vm_pindex_t pindex,
-		    boolean_t prefer_zero)
+vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
 {
 	vm_page_t m;
 
 	for (;;) {
-		m = _vm_page_list_find(PQ_FREE,
-				       (pindex + object->pg_color) & PQ_L2_MASK,
+		m = _vm_page_list_find(PQ_FREE, pg_color & PQ_L2_MASK,
 				       prefer_zero);
 		if (m == NULL)
 			break;
@@ -1228,7 +1234,7 @@ vm_page_select_free(vm_object_t object, vm_pindex_t pindex,
  * vm_page_alloc()
  *
  * Allocate and return a memory cell associated with this VM object/offset
- * pair.
+ * pair.  If object is NULL an unassociated page will be allocated.
  *
  *	page_req classes:
  *
@@ -1238,8 +1244,8 @@ vm_page_select_free(vm_object_t object, vm_pindex_t pindex,
  *	VM_ALLOC_INTERRUPT	allow free list to be completely drained
  *	VM_ALLOC_ZERO		advisory request for pre-zero'd page
  *
- * The object must be locked.
- * This routine may not block.
+ * The object must be locked if not NULL
+ * This routine may not block
  * The returned page will be marked PG_BUSY
  *
  * Additional special handling is required when called from an interrupt
@@ -1250,10 +1256,32 @@ vm_page_t
 vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 {
 	vm_page_t m = NULL;
+	u_short pg_color;
 
-	KKASSERT(object != NULL);
-	KASSERT(!vm_page_lookup(object, pindex),
-		("vm_page_alloc: page already allocated"));
+#ifdef SMP
+	/*
+	 * Cpu twist - cpu localization algorithm
+	 */
+	if (object) {
+		pg_color = mycpu->gd_cpuid + (pindex & ~ncpus_fit_mask) +
+			   (object->pg_color & ~ncpus_fit_mask);
+		KASSERT(vm_page_lookup(object, pindex) == NULL,
+			("vm_page_alloc: page already allocated"));
+	} else {
+		pg_color = mycpu->gd_cpuid + (pindex & ~ncpus_fit_mask);
+	}
+#else
+	/*
+	 * Normal page coloring algorithm
+	 */
+	if (object) {
+		pg_color = object->pg_color + pindex;
+		KASSERT(vm_page_lookup(object, pindex) == NULL,
+			("vm_page_alloc: page already allocated"));
+	} else {
+		pg_color = pindex;
+	}
+#endif
 	KKASSERT(page_req & 
 		(VM_ALLOC_NORMAL|VM_ALLOC_QUICK|
 		 VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
@@ -1275,9 +1303,9 @@ loop:
 		 * The free queue has sufficient free pages to take one out.
 		 */
 		if (page_req & VM_ALLOC_ZERO)
-			m = vm_page_select_free(object, pindex, TRUE);
+			m = vm_page_select_free(pg_color, TRUE);
 		else
-			m = vm_page_select_free(object, pindex, FALSE);
+			m = vm_page_select_free(pg_color, FALSE);
 	} else if (page_req & VM_ALLOC_NORMAL) {
 		/*
 		 * Allocatable from the cache (non-interrupt only).  On
@@ -1290,10 +1318,10 @@ loop:
 				" cache page from preempting interrupt\n");
 			m = NULL;
 		} else {
-			m = vm_page_select_cache(object, pindex);
+			m = vm_page_select_cache(pg_color);
 		}
 #else
-		m = vm_page_select_cache(object, pindex);
+		m = vm_page_select_cache(pg_color);
 #endif
 		/*
 		 * On success move the page into the free queue and loop.
@@ -1357,8 +1385,14 @@ loop:
 	 *
 	 * NOTE: Inserting a page here does not insert it into any pmaps
 	 *	 (which could cause us to block allocating memory).
+	 *
+	 * NOTE: If no object an unassociated page is allocated, m->pindex
+	 *	 can be used by the caller for any purpose.
 	 */
-	vm_page_insert(m, object, pindex);
+	if (object)
+		vm_page_insert(m, object, pindex);
+	else
+		m->pindex = pindex;
 
 	/*
 	 * Don't wakeup too often - wakeup the pageout daemon when

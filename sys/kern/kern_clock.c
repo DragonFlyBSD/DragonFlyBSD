@@ -543,21 +543,12 @@ hardclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 	/*
 	 * lwkt thread scheduler fair queueing
 	 */
-	lwkt_fairq_schedulerclock(curthread);
+	lwkt_schedulerclock(curthread);
 
 	/*
 	 * softticks are handled for all cpus
 	 */
 	hardclock_softtick(gd);
-
-	/*
-	 * The LWKT scheduler will generally allow the current process to
-	 * return to user mode even if there are other runnable LWKT threads
-	 * running in kernel mode on behalf of a user process.  This will
-	 * ensure that those other threads have an opportunity to run in
-	 * fairly short order (but not instantly).
-	 */
-	need_lwkt_resched();
 
 	/*
 	 * ITimer handling is per-tick, per-cpu.

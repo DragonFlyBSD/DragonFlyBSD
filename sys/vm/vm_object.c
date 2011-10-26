@@ -251,13 +251,13 @@ vm_object_drop(vm_object_t obj)
 #endif
 
 	/*
-	 * The lock is a pool token, keep holding it across potential
-	 * wakeups to interlock the tsleep/wakeup.
+	 * The lock is a pool token, no new holders should be possible once
+	 * we drop hold_count 1->0 as there is no longer any way to reference
+	 * the object.
 	 */
 	if (refcount_release(&obj->hold_count)) {
 		if (obj->ref_count == 0 && (obj->flags & OBJ_DEAD))
 			zfree(obj_zone, obj);
-		wakeup(obj);
 	}
 	vm_object_unlock(obj);	/* uses pool token, ok to call on freed obj */
 }
@@ -288,7 +288,12 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	object->resident_page_count = 0;
 	object->agg_pv_list_count = 0;
 	object->shadow_count = 0;
+#ifdef SMP
+	/* cpu localization twist */
+	object->pg_color = (int)(intptr_t)curthread;
+#else
 	object->pg_color = next_index;
+#endif
 	if ( size > (PQ_L2_SIZE / 3 + PQ_PRIME1))
 		incr = PQ_L2_SIZE / 3 + PQ_PRIME1;
 	else
@@ -803,8 +808,8 @@ vm_object_terminate(vm_object_t object)
 	lwkt_gettoken(&vmobj_token);
 	TAILQ_REMOVE(&vm_object_list, object, object_list);
 	vm_object_count--;
-	vm_object_dead_wakeup(object);
 	lwkt_reltoken(&vmobj_token);
+	vm_object_dead_wakeup(object);
 
 	if (object->ref_count != 0) {
 		panic("vm_object_terminate2: object with references, "
@@ -1479,8 +1484,13 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 		LIST_INSERT_HEAD(&source->shadow_head, result, shadow_list);
 		source->shadow_count++;
 		source->generation++;
+#ifdef SMP
+		/* cpu localization twist */
+		result->pg_color = (int)(intptr_t)curthread;
+#else
 		result->pg_color = (source->pg_color + OFF_TO_IDX(*offset)) &
 				   PQ_L2_MASK;
+#endif
 	}
 
 	/*
@@ -1543,8 +1553,8 @@ vm_object_backing_scan(vm_object_t object, vm_object_t backing_object, int op)
 		lwkt_gettoken(&vmobj_token);
 		TAILQ_REMOVE(&vm_object_list, backing_object, object_list);
 		vm_object_count--;
-		vm_object_dead_wakeup(backing_object);
 		lwkt_reltoken(&vmobj_token);
+		vm_object_dead_wakeup(backing_object);
 	}
 
 	/*

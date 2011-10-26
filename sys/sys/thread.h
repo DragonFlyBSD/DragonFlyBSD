@@ -255,7 +255,8 @@ struct thread {
     void	*td_dsched_priv1;	/* priv data for I/O schedulers */
     int		td_refs;	/* hold position in gd_tdallq / hold free */
     int		td_nest_count;	/* prevent splz nesting */
-    int		td_unused01[2];	/* for future fields */
+    int		td_contended;	/* token contention count */
+    int		td_unused01[1];	/* for future fields */
 #ifdef SMP
     int		td_cscount;	/* cpu synchronization master */
 #else
@@ -271,8 +272,8 @@ struct thread {
     struct caps_kinfo *td_caps;	/* list of client and server registrations */
     lwkt_tokref_t td_toks_stop;
     struct lwkt_tokref td_toks_array[LWKT_MAXTOKENS];
-    int		td_fairq_lticks;	/* fairq wakeup accumulator reset */
-    int		td_fairq_accum;		/* fairq priority accumulator */
+    int		td_fairq_load;		/* fairq */
+    int		td_fairq_count;		/* fairq */
     struct globaldata *td_migrate_gd;	/* target gd for thread migration */
     const void	*td_mplock_stallpc;	/* last mplock stall address */
 #ifdef DEBUG_CRIT_SECTIONS
@@ -349,7 +350,6 @@ struct thread {
 #define TDF_KERNELFP		0x01000000	/* kernel using fp coproc */
 #define TDF_UNUSED02000000	0x02000000
 #define TDF_CRYPTO		0x04000000	/* crypto thread */
-#define TDF_MARKER		0x80000000	/* fairq marker thread */
 
 /*
  * Thread priorities.  Typically only one thread from any given
@@ -377,16 +377,6 @@ struct thread {
 #define TDPRI_INT_MED		28	/* medium priority interrupt */
 #define TDPRI_INT_HIGH		29	/* high priority interrupt */
 #define TDPRI_MAX		31
-
-/*
- * Scale is the approximate number of ticks for which we desire the
- * entire gd_tdrunq to get service.  With hz = 100 a scale of 8 is 80ms.
- *
- * Setting this value too small will result in inefficient switching
- * rates.
- */
-#define TDFAIRQ_SCALE		8
-#define TDFAIRQ_MAX(gd)		((gd)->gd_fairq_total_pri * TDFAIRQ_SCALE)
 
 #define LWKT_THREAD_STACK	(UPAGES * PAGE_SIZE)
 
@@ -457,11 +447,7 @@ extern void lwkt_token_swap(void);
 extern void lwkt_setpri(thread_t, int);
 extern void lwkt_setpri_initial(thread_t, int);
 extern void lwkt_setpri_self(int);
-extern void lwkt_fairq_schedulerclock(thread_t td);
-extern void lwkt_fairq_setpri_self(int pri);
-extern int lwkt_fairq_push(int pri);
-extern void lwkt_fairq_pop(int pri);
-extern void lwkt_fairq_yield(void);
+extern void lwkt_schedulerclock(thread_t td);
 extern void lwkt_setcpu_self(struct globaldata *);
 extern void lwkt_migratecpu(int);
 

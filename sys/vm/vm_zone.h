@@ -36,6 +36,8 @@
  */
 typedef struct vm_zone {
 	struct spinlock zlock;		/* lock for data structure */
+	void		*zitems_pcpu[SMP_MAXCPU];
+	int		zfreecnt_pcpu[SMP_MAXCPU];
 	void		*zitems;	/* linked list of items */
 	int		zfreecnt;	/* free entries */
 	int		zfreemin;	/* minimum number of free entries */

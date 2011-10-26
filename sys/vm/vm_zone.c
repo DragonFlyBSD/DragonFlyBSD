@@ -57,22 +57,49 @@ static void *zget(vm_zone_t z);
 void *
 zalloc(vm_zone_t z)
 {
+	globaldata_t gd = mycpu;
 	void *item;
 
 #ifdef INVARIANTS
 	if (z == NULL)
 		zerror(ZONE_ERROR_INVALID);
 #endif
+	/*
+	 * Avoid spinlock contention by allocating from a per-cpu queue
+	 */
+	if (z->zfreecnt_pcpu[gd->gd_cpuid] > 0) {
+		crit_enter_gd(gd);
+		if (z->zfreecnt_pcpu[gd->gd_cpuid] > 0) {
+			item = z->zitems_pcpu[gd->gd_cpuid];
+#ifdef INVARIANTS
+			KASSERT(item != NULL,
+				("zitems_pcpu unexpectedly NULL"));
+			if (((void **)item)[1] != (void *)ZENTRY_FREE)
+				zerror(ZONE_ERROR_NOTFREE);
+			((void **)item)[1] = 0;
+#endif
+			z->zitems_pcpu[gd->gd_cpuid] = ((void **) item)[0];
+			--z->zfreecnt_pcpu[gd->gd_cpuid];
+			z->znalloc++;
+			crit_exit_gd(gd);
+			return item;
+		}
+		crit_exit_gd(gd);
+	}
+
+	/*
+	 * Per-zone spinlock for the remainder.
+	 */
 	spin_lock(&z->zlock);
 	if (z->zfreecnt > z->zfreemin) {
 		item = z->zitems;
 #ifdef INVARIANTS
 		KASSERT(item != NULL, ("zitems unexpectedly NULL"));
-		if (((void **) item)[1] != (void *) ZENTRY_FREE)
+		if (((void **)item)[1] != (void *)ZENTRY_FREE)
 			zerror(ZONE_ERROR_NOTFREE);
-		((void **) item)[1] = 0;
+		((void **)item)[1] = 0;
 #endif
-		z->zitems = ((void **) item)[0];
+		z->zitems = ((void **)item)[0];
 		z->zfreecnt--;
 		z->znalloc++;
 		spin_unlock(&z->zlock);
@@ -97,12 +124,40 @@ zalloc(vm_zone_t z)
 void
 zfree(vm_zone_t z, void *item)
 {
-	spin_lock(&z->zlock);
-	((void **) item)[0] = z->zitems;
+	globaldata_t gd = mycpu;
+	int zmax;
+
+	/*
+	 * Avoid spinlock contention by freeing into a per-cpu queue
+	 */
+	if ((zmax = z->zmax) != 0)
+		zmax = zmax / ncpus / 16;
+	if (zmax < 64)
+		zmax = 64;
+
+	if (z->zfreecnt_pcpu[gd->gd_cpuid] < zmax) {
+		crit_enter_gd(gd);
+		((void **)item)[0] = z->zitems_pcpu[gd->gd_cpuid];
 #ifdef INVARIANTS
-	if (((void **) item)[1] == (void *) ZENTRY_FREE)
+		if (((void **)item)[1] == (void *)ZENTRY_FREE)
+			zerror(ZONE_ERROR_ALREADYFREE);
+		((void **)item)[1] = (void *)ZENTRY_FREE;
+#endif
+		z->zitems_pcpu[gd->gd_cpuid] = item;
+		++z->zfreecnt_pcpu[gd->gd_cpuid];
+		crit_exit_gd(gd);
+		return;
+	}
+
+	/*
+	 * Per-zone spinlock for the remainder.
+	 */
+	spin_lock(&z->zlock);
+	((void **)item)[0] = z->zitems;
+#ifdef INVARIANTS
+	if (((void **)item)[1] == (void *)ZENTRY_FREE)
 		zerror(ZONE_ERROR_ALREADYFREE);
-	((void **) item)[1] = (void *) ZENTRY_FREE;
+	((void **)item)[1] = (void *)ZENTRY_FREE;
 #endif
 	z->zitems = item;
 	z->zfreecnt++;
@@ -182,6 +237,9 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 		lwkt_gettoken(&vm_token);
 		LIST_INSERT_HEAD(&zlist, z, zlink);
 		lwkt_reltoken(&vm_token);
+
+		bzero(z->zitems_pcpu, sizeof(z->zitems_pcpu));
+		bzero(z->zfreecnt_pcpu, sizeof(z->zfreecnt_pcpu));
 	}
 
 	z->zkmvec = NULL;
@@ -287,6 +345,9 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 {
 	int i;
 
+	bzero(z->zitems_pcpu, sizeof(z->zitems_pcpu));
+	bzero(z->zfreecnt_pcpu, sizeof(z->zfreecnt_pcpu));
+
 	z->zname = name;
 	z->zsize = size;
 	z->zpagemax = 0;
@@ -302,9 +363,9 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 	bzero(item, nitems * z->zsize);
 	z->zitems = NULL;
 	for (i = 0; i < nitems; i++) {
-		((void **) item)[0] = z->zitems;
+		((void **)item)[0] = z->zitems;
 #ifdef INVARIANTS
-		((void **) item)[1] = (void *) ZENTRY_FREE;
+		((void **)item)[1] = (void *)ZENTRY_FREE;
 #endif
 		z->zitems = item;
 		item = (uint8_t *)item + z->zsize;
@@ -497,9 +558,9 @@ zget(vm_zone_t z)
 	if (nitems != 0) {
 		nitems -= 1;
 		for (i = 0; i < nitems; i++) {
-			((void **) item)[0] = z->zitems;
+			((void **)item)[0] = z->zitems;
 #ifdef INVARIANTS
-			((void **) item)[1] = (void *) ZENTRY_FREE;
+			((void **)item)[1] = (void *)ZENTRY_FREE;
 #endif
 			z->zitems = item;
 			item = (uint8_t *)item + z->zsize;
@@ -508,9 +569,9 @@ zget(vm_zone_t z)
 		z->znalloc++;
 	} else if (z->zfreecnt > 0) {
 		item = z->zitems;
-		z->zitems = ((void **) item)[0];
+		z->zitems = ((void **)item)[0];
 #ifdef INVARIANTS
-		if (((void **) item)[1] != (void *) ZENTRY_FREE)
+		if (((void **)item)[1] != (void *)ZENTRY_FREE)
 			zerror(ZONE_ERROR_NOTFREE);
 		((void **) item)[1] = 0;
 #endif

@@ -238,18 +238,13 @@ _lwkt_initport(lwkt_port_t port,
  * Schedule the target thread.  If the message flags contains MSGF_NORESCHED
  * we tell the scheduler not to reschedule if td is at a higher priority.
  *
- * This routine is called even if the thread is already scheduled so messages
- * without NORESCHED will cause the target thread to be rescheduled even if
- * prior messages did not.
+ * This routine is called even if the thread is already scheduled.
  */
 static __inline
 void
 _lwkt_schedule_msg(thread_t td, int flags)
 {
-    if (flags & MSGF_NORESCHED)
-	lwkt_schedule_noresched(td);
-    else
-	lwkt_schedule(td);
+    lwkt_schedule(td);
 }
 
 /*
