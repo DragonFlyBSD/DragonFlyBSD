@@ -431,8 +431,8 @@ em_attach(device_t dev)
 
 	adapter->dev = adapter->osdep.dev = dev;
 
-	callout_init(&adapter->timer);
-	callout_init(&adapter->tx_fifo_timer);
+	callout_init_mp(&adapter->timer);
+	callout_init_mp(&adapter->tx_fifo_timer);
 
 	/* Determine hardware and mac info */
 	error = em_get_hw_info(adapter);

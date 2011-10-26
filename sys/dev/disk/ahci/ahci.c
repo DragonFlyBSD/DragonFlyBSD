@@ -399,7 +399,7 @@ nomem:
 			goto freeport;
 		}
 
-		callout_init(&ccb->ccb_timeout);
+		callout_init_mp(&ccb->ccb_timeout);
 		ccb->ccb_slot = i;
 		ccb->ccb_port = ap;
 		ccb->ccb_cmd_hdr = &hdr[i];

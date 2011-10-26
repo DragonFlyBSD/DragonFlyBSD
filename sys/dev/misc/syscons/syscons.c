@@ -379,7 +379,7 @@ sc_attach_unit(int unit, int flags)
      * Finish up the standard attach
      */
     sc->config = flags;
-    callout_init(&sc->scrn_timer_ch);
+    callout_init_mp(&sc->scrn_timer_ch);
     scp = SC_STAT(sc->dev[0]);
     if (sc_console == NULL)	/* sc_console_unit < 0 */
 	sc_console = scp;
@@ -3114,7 +3114,7 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     scp->sc = sc;
     scp->status = 0;
     scp->mode = sc->initial_mode;
-    callout_init(&scp->blink_screen_ch);
+    callout_init_mp(&scp->blink_screen_ch);
     lwkt_gettoken(&tty_token);
     (*vidsw[sc->adapter]->get_info)(sc->adp, scp->mode, &info);
     lwkt_reltoken(&tty_token);

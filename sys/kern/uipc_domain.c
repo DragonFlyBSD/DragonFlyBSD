@@ -158,8 +158,8 @@ domaininit(void *dummy)
 	if (max_linkhdr < 16)		/* XXX */
 		max_linkhdr = 16;
 
-	callout_init(&pffasttimo_ch);
-	callout_init(&pfslowtimo_ch);
+	callout_init_mp(&pffasttimo_ch);
+	callout_init_mp(&pfslowtimo_ch);
 	callout_reset(&pffasttimo_ch, 1, pffasttimo, NULL);
 	callout_reset(&pfslowtimo_ch, 1, pfslowtimo, NULL);
 }
@@ -249,10 +249,11 @@ pfslowtimo(void *arg)
 	struct domain *dp;
 	struct protosw *pr;
 
-	SLIST_FOREACH(dp, &domains, dom_next)
+	SLIST_FOREACH(dp, &domains, dom_next) {
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
 			if (pr->pr_slowtimo)
 				(*pr->pr_slowtimo)();
+	}
 	callout_reset(&pfslowtimo_ch, hz / 2, pfslowtimo, NULL);
 }
 
@@ -262,9 +263,10 @@ pffasttimo(void *arg)
 	struct domain *dp;
 	struct protosw *pr;
 
-	SLIST_FOREACH(dp, &domains, dom_next)
+	SLIST_FOREACH(dp, &domains, dom_next) {
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
 			if (pr->pr_fasttimo)
 				(*pr->pr_fasttimo)();
+	}
 	callout_reset(&pffasttimo_ch, hz / 5, pffasttimo, NULL);
 }

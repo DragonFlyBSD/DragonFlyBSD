@@ -980,7 +980,7 @@ objcache_init(void)
 {
 	spin_init(&objcachelist_spin);
 #if 0
-	callout_init(&objcache_callout);
+	callout_init_mp(&objcache_callout);
 	objcache_rebalance_period = 60 * hz;
 	callout_reset(&objcache_callout, objcache_rebalance_period,
 		      objcache_timer, NULL);

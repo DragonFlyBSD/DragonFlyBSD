@@ -1048,7 +1048,7 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 	void *clkdesc = NULL;
 	int irq = 0, mixed_mode = 0, error;
 
-	callout_init(&sysbeepstop_ch);
+	callout_init_mp(&sysbeepstop_ch);
 
 	if (!selected && i8254_intr_disable)
 		goto nointr;

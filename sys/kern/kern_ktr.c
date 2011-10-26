@@ -195,7 +195,7 @@ ktr_sysinit(void *dummy)
 		kcpu->ktr_buf = kmalloc(KTR_ENTRIES * sizeof(struct ktr_entry),
 					M_KTR, M_WAITOK | M_ZERO);
 	}
-	callout_init(&ktr_resync_callout);
+	callout_init_mp(&ktr_resync_callout);
 	callout_reset(&ktr_resync_callout, hz / 10, ktr_resync_callback, NULL);
 }
 SYSINIT(ktr_sysinit, SI_BOOT2_KLD, SI_ORDER_ANY, ktr_sysinit, NULL);

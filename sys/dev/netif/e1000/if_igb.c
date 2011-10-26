@@ -445,7 +445,7 @@ igb_attach(device_t dev)
 	    OID_AUTO, "enable_aim", CTLTYPE_INT|CTLFLAG_RW,
 	    &igb_enable_aim, 1, "Interrupt Moderation");
 
-	callout_init(&adapter->timer);
+	callout_init_mp(&adapter->timer);
 
 	/* Determine hardware and mac info */
 	igb_identify_hardware(adapter);

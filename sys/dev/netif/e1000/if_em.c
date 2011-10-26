@@ -522,8 +522,8 @@ em_attach(device_t dev)
 	    OID_AUTO, "stats", CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
 	    em_sysctl_stats, "I", "Statistics");
 
-	callout_init(&adapter->timer);
-	callout_init(&adapter->tx_fifo_timer);
+	callout_init_mp(&adapter->timer);
+	callout_init_mp(&adapter->tx_fifo_timer);
 
 	/* Determine hardware and mac info */
 	em_identify_hardware(adapter);

@@ -101,10 +101,10 @@ logopen(struct dev_open_args *ap)
 	if (log_open)
 		return (EBUSY);
 	log_open = 1;
-	callout_init(&logsoftc.sc_callout);
+	callout_init_mp(&logsoftc.sc_callout);
 	fsetown(p->p_pid, &logsoftc.sc_sigio);	/* signal process only */
 	callout_reset(&logsoftc.sc_callout, hz / log_wakeups_per_second,
-	    logtimeout, NULL);
+		      logtimeout, NULL);
 	return (0);
 }
 
@@ -209,12 +209,11 @@ logfiltread(struct knote *kn, long hint)
 static void
 logtimeout(void *arg)
 {
-
 	if (!log_open)
 		return;
 	if (msgbuftrigger == 0) {
 		callout_reset(&logsoftc.sc_callout,
-		    hz / log_wakeups_per_second, logtimeout, NULL);
+			      hz / log_wakeups_per_second, logtimeout, NULL);
 		return;
 	}
 	msgbuftrigger = 0;
@@ -226,7 +225,7 @@ logtimeout(void *arg)
 		logsoftc.sc_state &= ~LOG_RDWAIT;
 	}
 	callout_reset(&logsoftc.sc_callout, hz / log_wakeups_per_second,
-	    logtimeout, NULL);
+		      logtimeout, NULL);
 }
 
 /*ARGSUSED*/
