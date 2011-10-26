@@ -672,14 +672,21 @@ proc_remove_zombie(struct proc *p)
  * Scan all processes on the allproc list.  The process is automatically
  * held for the callback.  A return value of -1 terminates the loop.
  *
- * No requirements.
  * The callback is made with the process held and proc_token held.
+ *
+ * We limit the scan to the number of processes as-of the start of
+ * the scan so as not to get caught up in an endless loop if new processes
+ * are created more quickly than we can scan the old ones.  Add a little
+ * slop to try to catch edge cases since nprocs can race.
+ *
+ * No requirements.
  */
 void
 allproc_scan(int (*callback)(struct proc *, void *), void *data)
 {
 	struct proc *p;
 	int r;
+	int limit = nprocs + ncpus;
 
 	lwkt_gettoken(&proc_token);
 	LIST_FOREACH(p, &allproc, p_list) {
@@ -687,6 +694,8 @@ allproc_scan(int (*callback)(struct proc *, void *), void *data)
 		r = callback(p, data);
 		PRELE(p);
 		if (r < 0)
+			break;
+		if (--limit < 0)
 			break;
 	}
 	lwkt_reltoken(&proc_token);
