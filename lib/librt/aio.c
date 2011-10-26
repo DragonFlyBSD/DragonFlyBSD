@@ -157,7 +157,8 @@ lio_listio(int mode, struct aiocb *const apv[], int nent,
 	int i;
 
 #ifndef notyet
-	if ((sigevp->sigev_notify != SIGEV_NONE) &&
+	if (sigevp &&
+	    (sigevp->sigev_notify != SIGEV_NONE) &&
 	    (sigevp->sigev_notify != SIGEV_THREAD))
 		return (ENOSYS);
 #endif
