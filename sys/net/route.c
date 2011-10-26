@@ -90,7 +90,6 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
-#include <sys/mplock2.h>
 #include <net/netmsg2.h>
 
 #ifdef MPLS
@@ -195,8 +194,6 @@ rtable_service_loop(void *dummy __unused)
 {
 	netmsg_base_t msg;
 	thread_t td = curthread;
-
-	get_mplock();	/* XXX is this mpsafe yet? */
 
 	while ((msg = lwkt_waitport(&td->td_msgport, 0)) != NULL) {
 		msg->nm_dispatch((netmsg_t)msg);

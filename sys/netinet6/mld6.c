@@ -112,6 +112,9 @@ static struct in6_addr mld6_all_routers_linklocal = IN6ADDR_LINKLOCAL_ALLROUTERS
 
 static void mld6_sendpkt (struct in6_multi *, int, const struct in6_addr *);
 
+static struct lwkt_token mld6_token = LWKT_TOKEN_INITIALIZER(mp_token);
+
+
 void
 mld6_init(void)
 {
@@ -138,7 +141,6 @@ mld6_init(void)
 void
 mld6_start_listening(struct in6_multi *in6m)
 {
-	crit_enter();
 	/*
 	 * RFC2710 page 10:
 	 * The node never sends a Report or Done for the link-scope all-nodes
@@ -146,6 +148,7 @@ mld6_start_listening(struct in6_multi *in6m)
 	 * MLD messages are never sent for multicast addresses whose scope is 0
 	 * (reserved) or 1 (node-local).
 	 */
+	lwkt_gettoken(&mld6_token);
 	mld6_all_nodes_linklocal.s6_addr16[1] =
 		htons(in6m->in6m_ifp->if_index); /* XXX */
 	if (IN6_ARE_ADDR_EQUAL(&in6m->in6m_addr, &mld6_all_nodes_linklocal) ||
@@ -159,7 +162,7 @@ mld6_start_listening(struct in6_multi *in6m)
 		in6m->in6m_state = MLD6_IREPORTEDLAST;
 		mld6_timers_are_running = 1;
 	}
-	crit_exit();
+	lwkt_reltoken(&mld6_token);
 }
 
 void
@@ -199,6 +202,7 @@ mld6_input(struct mbuf *m, int off)
 	}
 #endif
 
+	lwkt_gettoken(&mld6_token);
 	/* source address validation */
 	ip6 = mtod(m, struct ip6_hdr *);/* in case mpullup */
 	if (!IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_src)) {
@@ -213,6 +217,7 @@ mld6_input(struct mbuf *m, int off)
 		 * XXX: do we have to allow :: as source?
 		 */
 		m_freem(m);
+		lwkt_reltoken(&mld6_token);
 		return;
 	}
 
@@ -337,6 +342,7 @@ mld6_input(struct mbuf *m, int off)
 	}
 
 	m_freem(m);
+	lwkt_reltoken(&mld6_token);
 }
 
 void
@@ -349,10 +355,12 @@ mld6_fasttimeo(void)
 	 * Quick check to see if any work needs to be done, in order
 	 * to minimize the overhead of fasttimo processing.
 	 */
-	if (!mld6_timers_are_running)
+	lwkt_gettoken(&mld6_token);
+	if (!mld6_timers_are_running) {
+		lwkt_reltoken(&mld6_token);
 		return;
+	}
 
-	crit_enter();
 	mld6_timers_are_running = 0;
 	IN6_FIRST_MULTI(step, in6m);
 	while (in6m != NULL) {
@@ -366,7 +374,7 @@ mld6_fasttimeo(void)
 		}
 		IN6_NEXT_MULTI(step, in6m);
 	}
-	crit_exit();
+	lwkt_reltoken(&mld6_token);
 }
 
 static void

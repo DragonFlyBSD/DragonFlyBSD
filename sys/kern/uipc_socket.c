@@ -110,13 +110,13 @@ static int	filt_sowrite(struct knote *kn, long hint);
 static int	filt_solisten(struct knote *kn, long hint);
 
 static struct filterops solisten_filtops = 
-	{ FILTEROP_ISFD, NULL, filt_sordetach, filt_solisten };
+	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_sordetach, filt_solisten };
 static struct filterops soread_filtops =
-	{ FILTEROP_ISFD, NULL, filt_sordetach, filt_soread };
+	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_sordetach, filt_soread };
 static struct filterops sowrite_filtops = 
-	{ FILTEROP_ISFD, NULL, filt_sowdetach, filt_sowrite };
+	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_sowdetach, filt_sowrite };
 static struct filterops soexcept_filtops =
-	{ FILTEROP_ISFD, NULL, filt_sordetach, filt_soread };
+	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_sordetach, filt_soread };
 
 MALLOC_DEFINE(M_SOCKET, "socket", "socket struct");
 MALLOC_DEFINE(M_SONAME, "soname", "socket name");
