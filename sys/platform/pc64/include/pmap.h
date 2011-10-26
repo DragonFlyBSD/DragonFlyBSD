@@ -85,9 +85,21 @@
 #define NKPML4E		1		/* number of kernel PML4 slots */
 /* NKPDPE defined in vmparam.h */
 
-#define	NUPML4E		(NPML4EPG/2)	/* number of userland PML4 pages */
-#define	NUPDPE		(NUPML4E*NPDPEPG)/* number of userland PDP pages */
-#define	NUPDE		(NUPDPE*NPDEPG)	/* number of userland PD entries */
+/*
+ * NUPDPs	512 (256 user)		number of PDPs in user page table
+ * NUPDs	512 * 512		number of PDs in user page table
+ * NUPTs	512 * 512 * 512		number of PTs in user page table
+ * NUPTEs	512 * 512 * 512 * 512	number of PTEs in user page table
+ *
+ * NUPDP_USER 	number of PDPs reserved for userland
+ * NUPTE_USER	number of PTEs reserved for userland (big number)
+ */
+#define	NUPDP_USER	(NPML4EPG/2)
+#define	NUPDP_TOTAL	(NPML4EPG)
+#define	NUPD_TOTAL	(NPDPEPG * NUPDP_TOTAL)
+#define	NUPT_TOTAL	(NPDEPG * NUPD_TOTAL)
+#define NUPTE_TOTAL	((vm_pindex_t)NPTEPG * NUPT_TOTAL)
+#define NUPTE_USER	((vm_pindex_t)NPTEPG * NPDEPG * NPDPEPG * NUPDP_USER)
 
 #define	NDMPML4E	1		/* number of dmap PML4 slots */
 
@@ -130,6 +142,9 @@
 #endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _SYS_TREE_H_
+#include <sys/tree.h>
 #endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
@@ -192,8 +207,6 @@ struct vm_object;
 struct vmspace;
 
 struct md_page {
-	int pv_list_count;
-	int pv_generation;
 	TAILQ_HEAD(,pv_entry)	pv_list;
 };
 
@@ -212,20 +225,21 @@ struct pmap_statistics {
 };
 typedef struct pmap_statistics *pmap_statistics_t;
 
+struct pv_entry_rb_tree;
+RB_PROTOTYPE2(pv_entry_rb_tree, pv_entry, pv_entry,
+	      pv_entry_compare, vm_pindex_t);
+
 struct pmap {
 	pml4_entry_t		*pm_pml4;	/* KVA of level 4 page table */
-	struct vm_page		*pm_pdirm;	/* VM page for pg directory */
-	struct vm_object	*pm_pteobj;	/* Container for pte's */
+	struct pv_entry		*pm_pmlpv;	/* PV entry for pml4 */
 	TAILQ_ENTRY(pmap)	pm_pmnode;	/* list of pmaps */
-	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
-	TAILQ_HEAD(,pv_entry)	pm_pvlist_free;	/* free mappings */
+	RB_HEAD(pv_entry_rb_tree, pv_entry) pm_pvroot;
 	int			pm_count;	/* reference count */
 	cpumask_t		pm_active;	/* active on cpus */
 	int			pm_filler02;	/* (filler sync w/vkernel) */
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
-	struct	vm_page		*pm_ptphint;	/* pmap ptp hint */
+	struct pv_entry		*pm_pvhint;	/* pv_entry lookup hint */
 	int			pm_generation;	/* detect pvlist deletions */
-	int			pm_hold;
 	struct spinlock		pm_spin;
 	struct lwkt_token	pm_token;
 };
@@ -247,12 +261,22 @@ extern struct pmap	kernel_pmap;
  */
 typedef struct pv_entry {
 	pmap_t		pv_pmap;	/* pmap where mapping lies */
-	vm_offset_t	pv_va;		/* virtual address for mapping */
+	vm_pindex_t	pv_pindex;	/* PTE, PT, PD, PDP, or PML4 */
 	TAILQ_ENTRY(pv_entry)	pv_list;
-	TAILQ_ENTRY(pv_entry)	pv_plist;
-	struct vm_page	*pv_ptem;	/* VM page for pte */
-	u_int		pv_hold;	/* hold on destruction count */
+	RB_ENTRY(pv_entry)	pv_entry;
+	struct vm_page	*pv_m;		/* page being mapped */
+	u_int		pv_hold;	/* interlock action */
+	u_int		pv_unused01;
+#ifdef PMAP_DEBUG
+	const char	*pv_func;
+	int		pv_line;
+#endif
 } *pv_entry_t;
+
+#define PV_HOLD_LOCKED	0x80000000U
+#define PV_HOLD_WAITING	0x40000000U
+#define PV_HOLD_DELETED	0x20000000U
+#define PV_HOLD_MASK	0x1FFFFFFFU
 
 #ifdef	_KERNEL
 

@@ -1010,6 +1010,7 @@ cpu_idle(void)
 
 		if (quick && (cpu_mi_feature & CPU_MI_MONITOR) &&
 		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+			splz(); /* XXX */
 			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags);
 			++cpu_idle_hltcnt;
 		} else if (cpu_idle_hlt) {
