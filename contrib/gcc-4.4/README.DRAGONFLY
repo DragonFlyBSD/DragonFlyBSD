@@ -1,8 +1,8 @@
-
-			GCC-4.4.6 AS USED BY DRAGONFLY
+    GCC-4.4.7 PRE-RELEASE
+    =====================
 
     This directory contains a selected set of files from the GNU
-    gcc-4.4.6 distribution; the subset occupies about 53MB.
+    gcc-4.4.7 snapshot distribution.
 
     ON THE VENDOR BRANCH (vendor/GCC44), DO NOT CREATE OR EDIT ANY FILES
     IN THIS DIRECTORY HIERARCHY!  THIS HIERARCHY REPRESENTS AN EXACT COPY,
@@ -11,10 +11,10 @@
     All modifications are made in the master or release branches!
     The file README.DELETED contains a list of deleted files.
 
-    file = gcc-4.4.6.tar.bz2
-    date = 16 April 2011
-    size = 63135296
-    sha1 = fc5e6c60b03650f6508470c088440d3d9360adf9
+    file = gcc-4.4-20111025.tar.bz2
+    date = 26 October 2011
+    size = 59618628
+    sha1 = b480c0066d41b74d3c65e863f585ab09eee4697a
 
 
     The following files have been added or patched:

@@ -6,7 +6,7 @@ CONTRIBDIR=	${GCCDIR}/gcc
 version.c: ${CONTRIBDIR}/version.c Makefile ../Makefile.inc
 	> ${.TARGET}
 	echo '#define BASEVER "${GCCCOMPLETEVER}"' >> ${.TARGET}
-	echo '#define DATESTAMP ""' >> ${.TARGET}
+	echo '#define DATESTAMP " ${GCCDATESTAMP}"' >> ${.TARGET}
 	echo '#define DEVPHASE ""' >> ${.TARGET}
 	echo '#define REVISION ""' >> ${.TARGET}
 	echo '#define PKGVERSION "(DragonFly) "' >> ${.TARGET}

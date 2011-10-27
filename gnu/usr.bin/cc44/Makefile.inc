@@ -1,7 +1,8 @@
 .if !target(__<cc.Makefile.inc>__)
 __<cc.Makefile.inc>__:
 
-GCCCOMPLETEVER=	4.4.6
+GCCCOMPLETEVER=	4.4.7
+GCCDATESTAMP=	2011.10.25
 GCCPOINTVER=	${GCCCOMPLETEVER:R}
 GCCSHORTVER=	${GCCPOINTVER:S/.//}
 
