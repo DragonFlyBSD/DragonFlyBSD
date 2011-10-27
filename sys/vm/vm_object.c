@@ -509,9 +509,17 @@ vm_object_deallocate(vm_object_t object)
 void
 vm_object_deallocate_locked(vm_object_t object)
 {
+	struct vm_object_dealloc_list *dlist = NULL;
+	struct vm_object_dealloc_list *dtmp;
 	vm_object_t temp;
 	int must_drop = 0;
 
+	/*
+	 * We may chain deallocate object, but additional objects may
+	 * collect on the dlist which also have to be deallocated.  We
+	 * must avoid a recursion, vm_object chains can get deep.
+	 */
+again:
 	while (object != NULL) {
 #if 0
 		/*
@@ -640,7 +648,7 @@ vm_object_deallocate_locked(vm_object_t object)
 			 * Collapse temp, then deallocate the extra ref
 			 * formally.
 			 */
-			vm_object_collapse(temp);
+			vm_object_collapse(temp, &dlist);
 			vm_object_chain_release(temp);
 			if (must_drop) {
 				vm_object_lock_swap();
@@ -710,6 +718,20 @@ skip:
 	}
 	if (must_drop && object)
 		vm_object_drop(object);
+
+	/*
+	 * Additional tail recursion on dlist.  Avoid a recursion.  Objects
+	 * on the dlist have a hold count but are not locked.
+	 */
+	if ((dtmp = dlist) != NULL) {
+		dlist = dtmp->next;
+		object = dtmp->object;
+		kfree(dtmp, M_TEMP);
+
+		vm_object_lock(object);	/* already held, add lock */
+		must_drop = 1;		/* and we're responsible for it */
+		goto again;
+	}
 }
 
 /*
@@ -1743,6 +1765,7 @@ vm_object_qcollapse(vm_object_t object, vm_object_t backing_object)
 /*
  * Collapse an object with the object backing it.  Pages in the backing
  * object are moved into the parent, and the backing object is deallocated.
+ * Any conflict is resolved in favor of the parent's existing pages.
  *
  * object must be held and chain-locked on call.
  *
@@ -1750,8 +1773,9 @@ vm_object_qcollapse(vm_object_t object, vm_object_t backing_object)
  * destroying it during the collapse.
  */
 void
-vm_object_collapse(vm_object_t object)
+vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 {
+	struct vm_object_dealloc_list *dlist = NULL;
 	vm_object_t backing_object;
 
 	/*
@@ -1877,15 +1901,16 @@ vm_object_collapse(vm_object_t object)
 			/*
 			 * Object now shadows whatever backing_object did.
 			 * Remove object from backing_object's shadow_list.
-			 *
-			 * NOTE: backing_object->backing_object moves from
-			 *	 within backing_object to within object.
 			 */
 			LIST_REMOVE(object, shadow_list);
 			KKASSERT(object->backing_object == backing_object);
 			backing_object->shadow_count--;
 			backing_object->generation++;
 
+			/*
+			 * backing_object->backing_object moves from within
+			 * backing_object to within object.
+			 */
 			while ((bbobj = backing_object->backing_object) != NULL) {
 				vm_object_hold(bbobj);
 				if (bbobj == backing_object->backing_object)
@@ -1896,6 +1921,7 @@ vm_object_collapse(vm_object_t object)
 				LIST_REMOVE(backing_object, shadow_list);
 				bbobj->shadow_count--;
 				bbobj->generation++;
+				backing_object->backing_object = NULL;
 			}
 			object->backing_object = bbobj;
 			if (bbobj) {
@@ -1940,7 +1966,6 @@ vm_object_collapse(vm_object_t object)
 			if ((backing_object->flags & OBJ_DEAD) == 0)
 				vm_object_terminate(backing_object);
 			object_collapses++;
-			dodealloc = 1;
 			dodealloc = 0;
 		} else {
 			/*
@@ -1952,16 +1977,21 @@ vm_object_collapse(vm_object_t object)
 				break;
 			}
 
+			/*
+			 * bbobj is backing_object->backing_object.  Since
+			 * object completely shadows backing_object we can
+			 * bypass it and become backed by bbobj instead.
+			 */
 			while ((bbobj = backing_object->backing_object) != NULL) {
 				vm_object_hold(bbobj);
 				if (bbobj == backing_object->backing_object)
 					break;
 				vm_object_drop(bbobj);
 			}
+
 			/*
-			 * Make the parent shadow the next object in the
-			 * chain.  Remove object from backing_object's
-			 * shadow list.
+			 * Make object shadow bbobj instead of backing_object.
+			 * Remove object from backing_object's shadow list.
 			 *
 			 * Deallocating backing_object will not remove
 			 * it, since its reference count is at least 2.
@@ -1972,7 +2002,14 @@ vm_object_collapse(vm_object_t object)
 			backing_object->generation++;
 
 			/*
-			 * Add a ref to bbobj
+			 * Add a ref to bbobj, bbobj now shadows object.
+			 *
+			 * NOTE: backing_object->backing_object still points
+			 *	 to bbobj.  That relationship remains intact
+			 *	 because backing_object has > 1 ref, so
+			 *	 someone else is pointing to it (hence why
+			 *	 we can't collapse it into object and can
+			 *	 only handle the all-shadowed bypass case).
 			 */
 			if (bbobj) {
 				vm_object_chain_wait(bbobj);
@@ -2001,19 +2038,52 @@ vm_object_collapse(vm_object_t object)
 		}
 
 		/*
-		 * Clean up the original backing_object and try again with
-		 * this object's new backing object (loop).
+		 * Ok, we want to loop on the new object->bbobj association,
+		 * possibly collapsing it further.  However if dodealloc is
+		 * non-zero we have to deallocate the backing_object which
+		 * itself can potentially undergo a collapse, creating a
+		 * recursion depth issue with the LWKT token subsystem.
+		 *
+		 * In the case where we must deallocate the backing_object
+		 * it is possible now that the backing_object has a single
+		 * shadow count on some other object (not represented here
+		 * as yet), since it no longer shadows us.  Thus when we
+		 * call vm_object_deallocate() it may attempt to collapse
+		 * itself into its remaining parent.
 		 */
-		vm_object_chain_release(backing_object);
+		if (dodealloc) {
+			struct vm_object_dealloc_list *dtmp;
 
-		/*
-		 * The backing_object was
-		 */
-		if (dodealloc)
-			vm_object_deallocate_locked(backing_object);
-		vm_object_drop(backing_object);
+			vm_object_chain_release(backing_object);
+			vm_object_unlock(backing_object);
+			/* backing_object remains held */
+
+			/*
+			 * Auto-deallocation list for caller convenience.
+			 */
+			if (dlistp == NULL)
+				dlistp = &dlist;
+
+			dtmp = kmalloc(sizeof(*dtmp), M_TEMP, M_WAITOK);
+			dtmp->object = backing_object;
+			dtmp->next = *dlistp;
+			*dlistp = dtmp;
+		} else {
+			vm_object_chain_release(backing_object);
+			vm_object_drop(backing_object);
+		}
+		/* backing_object = NULL; not needed */
 		/* loop */
 	}
+
+	/*
+	 * Clean up any auto-deallocation list.  This is a convenience
+	 * for top-level callers so they don't have to pass &dlist.
+	 * Do not clean up any caller-passed dlistp, the caller will
+	 * do that.
+	 */
+	if (dlist)
+		vm_object_deallocate_list(&dlist);
 
 	/*
 	 * Clean up any left over backing_object
@@ -2023,6 +2093,28 @@ vm_object_collapse(vm_object_t object)
 		vm_object_chain_release(backing_object);
 #endif
 		vm_object_drop(backing_object);
+	}
+}
+
+/*
+ * vm_object_collapse() may collect additional objects in need of
+ * deallocation.  This routine deallocates these objects.  The
+ * deallocation itself can trigger additional collapses (which the
+ * deallocate function takes care of).  This procedure is used to
+ * reduce procedural recursion since these vm_object shadow chains
+ * can become quite long.
+ */
+void
+vm_object_deallocate_list(struct vm_object_dealloc_list **dlistp)
+{
+	struct vm_object_dealloc_list *dlist;
+
+	while ((dlist = *dlistp) != NULL) {
+		*dlistp = dlist->next;
+		vm_object_lock(dlist->object);
+		vm_object_deallocate_locked(dlist->object);
+		vm_object_drop(dlist->object);
+		kfree(dlist, M_TEMP);
 	}
 }
 
@@ -2200,7 +2292,7 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	 * Try to collapse the object first
 	 */
 	vm_object_chain_acquire(prev_object);
-	vm_object_collapse(prev_object);
+	vm_object_collapse(prev_object, NULL);
 
 	/*
 	 * Can't coalesce if: . more than one reference . paged out . shadows

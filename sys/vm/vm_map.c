@@ -2761,7 +2761,7 @@ again:
 			     OBJ_ONEMAPPING &&
 			    (object->type == OBJT_DEFAULT ||
 			     object->type == OBJT_SWAP)) {
-				vm_object_collapse(object);
+				vm_object_collapse(object, NULL);
 				vm_object_page_remove(object, offidxstart,
 						      offidxend, FALSE);
 				if (object->type == OBJT_SWAP) {
@@ -2943,7 +2943,7 @@ vm_map_split(vm_map_entry_t entry)
 	 *
 	 * Then re-check whether the object can be split.
 	 */
-	vm_object_collapse(oobject);
+	vm_object_collapse(oobject, NULL);
 
 	if (oobject->ref_count <= 1 ||
 	    (oobject->type != OBJT_DEFAULT && oobject->type != OBJT_SWAP) ||

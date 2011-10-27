@@ -213,6 +213,14 @@ struct vm_object {
 #define OBJPC_INVAL	0x2			/* invalidate */
 #define OBJPC_NOSYNC	0x4			/* skip if PG_NOSYNC */
 
+/*
+ * Used to chain vm_object deallocations
+ */
+struct vm_object_dealloc_list {
+	struct vm_object_dealloc_list *next;
+	vm_object_t	object;
+};
+
 TAILQ_HEAD(object_q, vm_object);
 
 extern struct object_q vm_object_list;	/* list of allocated objects */
@@ -270,9 +278,10 @@ vm_object_token(vm_object_t obj)
 vm_object_t vm_object_allocate (objtype_t, vm_pindex_t);
 void _vm_object_allocate (objtype_t, vm_pindex_t, vm_object_t);
 boolean_t vm_object_coalesce (vm_object_t, vm_pindex_t, vm_size_t, vm_size_t);
-void vm_object_collapse (vm_object_t);
+void vm_object_collapse (vm_object_t, struct vm_object_dealloc_list **);
 void vm_object_deallocate (vm_object_t);
 void vm_object_deallocate_locked (vm_object_t);
+void vm_object_deallocate_list(struct vm_object_dealloc_list **);
 void vm_object_terminate (vm_object_t);
 void vm_object_set_writeable_dirty (vm_object_t);
 void vm_object_init (void);
