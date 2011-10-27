@@ -554,14 +554,14 @@ exec_fail_dealloc:
 		imgp->vp = NULL;
 	}
 
+	if (imgp->freepath)
+		kfree(imgp->freepath, M_TEMP);
+
 	if (error == 0) {
 		++mycpu->gd_cnt.v_exec;
 		lwkt_reltoken(&p->p_token);
 		return (0);
 	}
-
-	if (imgp->freepath)
-		kfree(imgp->freepath, M_TEMP);
 
 exec_fail:
 	/*
