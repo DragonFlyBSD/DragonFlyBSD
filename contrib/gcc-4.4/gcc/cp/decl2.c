@@ -3725,9 +3725,12 @@ build_offset_ref_call_from_tree (tree fn, tree args)
 	 because we depend on the form of FN.  */
       args = build_non_dependent_args (args);
       object = build_non_dependent_expr (object);
-      if (TREE_CODE (fn) == DOTSTAR_EXPR)
-	object = cp_build_unary_op (ADDR_EXPR, object, 0, tf_warning_or_error);
-      args = tree_cons (NULL_TREE, object, args);
+      if (TREE_CODE (TREE_TYPE (fn)) == METHOD_TYPE)
+	{
+	  if (TREE_CODE (fn) == DOTSTAR_EXPR)
+	    object = cp_build_unary_op (ADDR_EXPR, object, 0, tf_warning_or_error);
+	  args = tree_cons (NULL_TREE, object, args);
+	}
       /* Now that the arguments are done, transform FN.  */
       fn = build_non_dependent_expr (fn);
     }
@@ -3747,7 +3750,10 @@ build_offset_ref_call_from_tree (tree fn, tree args)
       args = tree_cons (NULL_TREE, object_addr, args);
     }
 
-  expr = cp_build_function_call (fn, args, tf_warning_or_error);
+  if (CLASS_TYPE_P (TREE_TYPE (fn)))
+    expr = build_object_call (fn, args, tf_warning_or_error);
+  else
+    expr = cp_build_function_call (fn, args, tf_warning_or_error);
   if (processing_template_decl && expr != error_mark_node)
     return build_min_non_dep_call_list (expr, orig_fn, orig_args);
   return expr;
@@ -3795,8 +3801,6 @@ possibly_inlined_p (tree decl)
 void
 mark_used (tree decl)
 {
-  HOST_WIDE_INT saved_processing_template_decl = 0;
-
   /* If DECL is a BASELINK for a single function, then treat it just
      like the DECL for the function.  Otherwise, if the BASELINK is
      for an overloaded function, we don't know which function was
@@ -3819,9 +3823,6 @@ mark_used (tree decl)
       error ("used here");
       return;
     }
-  /* If we don't need a value, then we don't need to synthesize DECL.  */
-  if (skip_evaluation)
-    return;
 
   /* If within finish_function, defer the rest until that function
      finishes, otherwise it might recurse.  */
@@ -3835,9 +3836,10 @@ mark_used (tree decl)
      DECL.  However, if DECL is a static data member initialized with
      a constant, we need the value right now because a reference to
      such a data member is not value-dependent.  */
-  if (TREE_CODE (decl) == VAR_DECL
-      && DECL_INITIALIZED_BY_CONSTANT_EXPRESSION_P (decl)
-      && DECL_CLASS_SCOPE_P (decl))
+  if (DECL_INTEGRAL_CONSTANT_VAR_P (decl)
+      && !DECL_INITIAL (decl)
+      && DECL_LANG_SPECIFIC (decl)
+      && DECL_TEMPLATE_INSTANTIATION (decl))
     {
       /* Don't try to instantiate members of dependent types.  We
 	 cannot just use dependent_type_p here because this function
@@ -3847,11 +3849,13 @@ mark_used (tree decl)
       if (CLASSTYPE_TEMPLATE_INFO ((DECL_CONTEXT (decl)))
 	  && uses_template_parms (CLASSTYPE_TI_ARGS (DECL_CONTEXT (decl))))
 	return;
-      /* Pretend that we are not in a template, even if we are, so
-	 that the static data member initializer will be processed.  */
-      saved_processing_template_decl = processing_template_decl;
-      processing_template_decl = 0;
+      instantiate_decl (decl, /*defer_ok=*/false,
+			/*expl_inst_class_mem_p=*/false);
     }
+
+  /* If we don't need a value, then we don't need to synthesize DECL.  */
+  if (skip_evaluation)
+    return;
 
   if (processing_template_decl)
     return;
@@ -3912,8 +3916,6 @@ mark_used (tree decl)
        need.  Therefore, we always try to defer instantiation.  */
     instantiate_decl (decl, /*defer_ok=*/true,
 		      /*expl_inst_class_mem_p=*/false);
-
-  processing_template_decl = saved_processing_template_decl;
 }
 
 /* Given function PARM_DECL PARM, return its index in the function's list
