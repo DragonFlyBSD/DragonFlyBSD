@@ -2077,6 +2077,14 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 	}
 
 	/*
+	 * Clean up any left over backing_object
+	 */
+	if (backing_object) {
+		vm_object_chain_release(backing_object);
+		vm_object_drop(backing_object);
+	}
+
+	/*
 	 * Clean up any auto-deallocation list.  This is a convenience
 	 * for top-level callers so they don't have to pass &dlist.
 	 * Do not clean up any caller-passed dlistp, the caller will
@@ -2085,15 +2093,6 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 	if (dlist)
 		vm_object_deallocate_list(&dlist);
 
-	/*
-	 * Clean up any left over backing_object
-	 */
-	if (backing_object) {
-#if 1
-		vm_object_chain_release(backing_object);
-#endif
-		vm_object_drop(backing_object);
-	}
 }
 
 /*
