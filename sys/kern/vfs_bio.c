@@ -2694,6 +2694,7 @@ flushbufqueues(bufq_type_t q)
 		}
 
 		spin_unlock(&bufqspin);
+		lwkt_yield();
 		spun = 0;
 
 		if (LIST_FIRST(&bp->b_dep) != NULL &&

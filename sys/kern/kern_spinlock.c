@@ -149,17 +149,17 @@ spin_trylock_contested(struct spinlock *spin)
  * (for intel/amd anyhow) is not strictly needed as cache bus resource use
  * is governed by the lazy update.
  *
- * WARNING!!!!  Performance matters here, by a huge margin.  There are still
- * 		a few bottlenecks in the kernel (e.g. the PQ_INACTIVE
- *		vm_page_queue) where things like parallel compiles hit up
- *		against full all-cores contention right here.
+ * WARNING!!!!  Performance matters here, by a huge margin.
  *
- *		48-core test with pre-read / -j 48 no-modules kernel compile
- *		came in at 75 seconds.  Without pre-read it came in at 170 seconds.
+ *	48-core test with pre-read / -j 48 no-modules kernel compile
+ *	with fanned-out inactive and active queues came in at 55 seconds.
  *
- *		4-core test with pre-read / -j 48 no-modules kernel compile
- *		came in at 83 seconds.  Without pre-read it came in at 83 seconds
- *		as well (no difference).
+ *	48-core test with pre-read / -j 48 no-modules kernel compile
+ *	came in at 75 seconds.  Without pre-read it came in at 170 seconds.
+ *
+ *	4-core test with pre-read / -j 48 no-modules kernel compile
+ *	came in at 83 seconds.  Without pre-read it came in at 83 seconds
+ *	as well (no difference).
  */
 void
 spin_lock_contested(struct spinlock *spin)

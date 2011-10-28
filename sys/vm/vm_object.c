@@ -1013,6 +1013,7 @@ vm_object_page_clean_pass1(struct vm_page *p, void *data)
 	} else {
 		info->error = 1;
 	}
+	lwkt_yield();
 	return(0);
 }
 
@@ -1031,7 +1032,7 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	 * the cleaning pass.
 	 */
 	if ((p->flags & PG_CLEANCHK) == 0)
-		return(0);
+		goto done;
 
 	generation = info->object->generation;
 	vm_page_busy_wait(p, TRUE, "vpcwai");
@@ -1039,7 +1040,7 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	    info->object->generation != generation) {
 		info->error = 1;
 		vm_page_wakeup(p);
-		return(0);
+		goto done;
 	}
 
 	/*
@@ -1049,7 +1050,7 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	if (p->valid == 0 || (p->queue - p->pc) == PQ_CACHE) {
 		KKASSERT((p->dirty & p->valid) == 0);
 		vm_page_wakeup(p);
-		return(0);
+		goto done;
 	}
 
 	/*
@@ -1061,7 +1062,7 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	if ((p->dirty & p->valid) == 0) {
 		vm_page_flag_clear(p, PG_CLEANCHK);
 		vm_page_wakeup(p);
-		return(0);
+		goto done;
 	}
 
 	/*
@@ -1073,7 +1074,7 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	if ((info->limit & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC)) {
 		vm_page_flag_clear(p, PG_CLEANCHK);
 		vm_page_wakeup(p);
-		return(0);
+		goto done;
 	}
 
 	/*
@@ -1082,6 +1083,8 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	 * we raced an object modification.
 	 */
 	vm_object_page_collect_flush(info->object, p, info->pagerflags);
+done:
+	lwkt_yield();
 	return(0);
 }
 

@@ -172,18 +172,24 @@ spin_unlock_quick(globaldata_t gd, struct spinlock *spin)
 	}
 #endif
 	/*
-	 * Don't use a locked instruction here.
+	 * Don't use a locked instruction here.  To reduce latency we avoid
+	 * reading spin->counta prior to writing to it.
 	 */
+#ifdef DEBUG_LOCKS
 	KKASSERT(spin->counta != 0);
+#endif
 	cpu_sfence();
 	spin->counta = 0;
 	cpu_sfence();
 #endif
+#ifdef DEBUG_LOCKS
 	KKASSERT(gd->gd_spinlocks_wr > 0);
+#endif
 	--gd->gd_spinlocks_wr;
 	cpu_ccfence();
 	--gd->gd_curthread->td_critcount;
 #if 0
+	/* FUTURE */
 	if (__predict_false(gd->gd_reqflags & RQF_IDLECHECK_MASK))
 		lwkt_maybe_splz(gd->gd_curthread);
 #endif

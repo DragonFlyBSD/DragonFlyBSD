@@ -2739,6 +2739,7 @@ kernel_skip:
 			 *	 the potentially conflicting pv and
 			 *	 re-checking.
 			 */
+			lwkt_yield();
 			if (*ptep == 0) {
 				pte_pv = pv_find(pmap, pmap_pte_pindex(sva));
 				if (pte_pv == NULL) {
@@ -3349,6 +3350,7 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
 				 info->addr + x86_64_ptob(rel_index), p);
 	}
 	vm_page_wakeup(p);
+	lwkt_yield();
 	return(0);
 }
 

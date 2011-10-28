@@ -661,7 +661,9 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
 			}
 		} else if (mt->valid == 0) {
 			if (error == 0) {
-				kprintf("page failed but no I/O error page %p object %p pindex %d\n", mt, mt->object, (int) mt->pindex);
+				kprintf("page failed but no I/O error page "
+					"%p object %p pindex %d\n",
+					mt, mt->object, (int) mt->pindex);
 				/* whoops, something happened */
 				error = EINVAL;
 			}
