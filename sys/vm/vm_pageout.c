@@ -845,6 +845,8 @@ vm_pageout_scan(int pass)
 		vm_page_and_queue_spin_unlock(m);
 		KKASSERT(m->queue == PQ_INACTIVE);
 
+		lwkt_yield();
+
 		/*
 		 * The page has been successfully busied and is now no
 		 * longer spinlocked.  The queue is no longer spinlocked
@@ -1220,6 +1222,7 @@ vm_pageout_scan(int pass)
 			continue;
 		}
 		vm_page_and_queue_spin_unlock(m);
+		lwkt_yield();
 
 		/*
 		 * The page has been successfully busied and the page and
@@ -1370,6 +1373,7 @@ vm_pageout_scan(int pass)
 		}
 		vm_page_spin_unlock(m);
 		pagedaemon_wakeup();
+		lwkt_yield();
 
 		/*
 		 * Page has been successfully busied and it and its queue
@@ -1511,6 +1515,7 @@ vm_pageout_scan_callback(struct proc *p, void *data)
 		info->bigproc = p;
 		info->bigsize = size;
 	}
+	lwkt_yield();
 	return(0);
 }
 

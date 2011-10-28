@@ -220,21 +220,17 @@ pmap_pinit(struct pmap *pmap)
 	 * allocate the page directory page
 	 */
 	ptdpg = vm_page_grab(pmap->pm_pteobj, pmap->pm_pdindex,
-			     VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
+			     VM_ALLOC_NORMAL | VM_ALLOC_RETRY | VM_ALLOC_ZERO);
 
 	ptdpg->wire_count = 1;
 	atomic_add_int(&vmstats.v_wire_count, 1);
 
 	/* not usually mapped */
-	ptdpg->valid = VM_PAGE_BITS_ALL;
 	vm_page_flag_clear(ptdpg, PG_MAPPED);
 	vm_page_wakeup(ptdpg);
 
 	pmap_kenter((vm_offset_t)pmap->pm_pdir, VM_PAGE_TO_PHYS(ptdpg));
 	pmap->pm_pdirpte = KernelPTA[(vm_offset_t)pmap->pm_pdir >> PAGE_SHIFT];
-	if ((ptdpg->flags & PG_ZERO) == 0)
-		bzero(pmap->pm_pdir, PAGE_SIZE);
-	vm_page_flag_clear(ptdpg, PG_ZERO);
 
 	pmap->pm_count = 1;
 	pmap->pm_active = 0;
@@ -1146,15 +1142,6 @@ _pmap_allocpte(pmap_t pmap, unsigned ptepindex)
 	 */
 	m = vm_page_grab(pmap->pm_pteobj, ptepindex,
 			 VM_ALLOC_NORMAL | VM_ALLOC_ZERO | VM_ALLOC_RETRY);
-
-	if (m->valid == 0) {
-		if ((m->flags & PG_ZERO) == 0)
-			pmap_zero_page(VM_PAGE_TO_PHYS(m));
-		m->valid = VM_PAGE_BITS_ALL;
-		vm_page_flag_clear(m, PG_ZERO);
-	} else {
-		KKASSERT((m->flags & PG_ZERO) == 0);
-	}
 	vm_page_flag_set(m, PG_MAPPED);
 
 	KASSERT(m->queue == PQ_NONE,

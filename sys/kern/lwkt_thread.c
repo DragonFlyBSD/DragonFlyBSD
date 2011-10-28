@@ -377,6 +377,7 @@ lwkt_gdinit(struct globaldata *gd)
 thread_t
 lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
 {
+    static int cpu_rotator;
     globaldata_t gd = mycpu;
     void *stack;
 
@@ -416,10 +417,12 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
 	stack = (void *)kmem_alloc_stack(&kernel_map, stksize);
 	flags |= TDF_ALLOCATED_STACK;
     }
-    if (cpu < 0)
-	lwkt_init_thread(td, stack, stksize, flags, gd);
-    else
-	lwkt_init_thread(td, stack, stksize, flags, globaldata_find(cpu));
+    if (cpu < 0) {
+	cpu = ++cpu_rotator;
+	cpu_ccfence();
+	cpu %= ncpus;
+    }
+    lwkt_init_thread(td, stack, stksize, flags, globaldata_find(cpu));
     return(td);
 }
 
@@ -1181,11 +1184,12 @@ lwkt_passive_release(struct thread *td)
 
 
 /*
- * This implements a normal yield.  This routine is virtually a nop if
- * there is nothing to yield to but it will always run any pending interrupts
- * if called from a critical section.
+ * This implements a LWKT yield, allowing a kernel thread to yield to other
+ * kernel threads at the same or higher priority.  This function can be
+ * called in a tight loop and will typically only yield once per tick.
  *
- * This yield is designed for kernel threads without a user context.
+ * Most kernel threads run at the same priority in order to allow equal
+ * sharing.
  *
  * (self contained on a per cpu basis)
  */
@@ -1450,11 +1454,11 @@ lwkt_deschedule(thread_t td)
 void
 lwkt_setpri(thread_t td, int pri)
 {
-    KKASSERT(td->td_gd == mycpu);
     if (td->td_pri != pri) {
 	KKASSERT(pri >= 0);
 	crit_enter();
 	if (td->td_flags & TDF_RUNQ) {
+	    KKASSERT(td->td_gd == mycpu);
 	    _lwkt_dequeue(td);
 	    td->td_pri = pri;
 	    _lwkt_enqueue(td);
@@ -1640,9 +1644,9 @@ lwkt_preempted_proc(void)
  * Create a kernel process/thread/whatever.  It shares it's address space
  * with proc0 - ie: kernel only.
  *
- * NOTE!  By default new threads are created with the MP lock held.  A 
- * thread which does not require the MP lock should release it by calling
- * rel_mplock() at the start of the new thread.
+ * If the cpu is not specified one will be selected.  In the future
+ * specifying a cpu of -1 will enable kernel thread migration between
+ * cpus.
  */
 int
 lwkt_create(void (*func)(void *), void *arg, struct thread **tdp,

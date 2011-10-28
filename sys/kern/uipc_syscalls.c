@@ -1611,7 +1611,8 @@ retry_lookup:
 			goto retry_lookup;
 		}
 		if (pg == NULL) {
-			pg = vm_page_alloc(obj, pindex, VM_ALLOC_NORMAL);
+			pg = vm_page_alloc(obj, pindex, VM_ALLOC_NORMAL |
+							VM_ALLOC_NULL_OK);
 			if (pg == NULL) {
 				vm_wait(0);
 				vm_object_drop(obj);

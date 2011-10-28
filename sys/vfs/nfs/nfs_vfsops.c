@@ -1157,8 +1157,8 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		txcpu = 1;
 		break;
 	default:
-		rxcpu = 1;
-		txcpu = 2;
+		rxcpu = -1;
+		txcpu = -1;
 		break;
 	}
 #else

@@ -104,6 +104,7 @@ kthread_create_cpu(void (*func)(void *), void *arg,
     return 0;
 }
 
+#if 0
 /*
  * Same as kthread_create() but you can specify a custom stack size.
  */
@@ -126,6 +127,7 @@ kthread_create_stk(void (*func)(void *), void *arg,
     lwkt_schedule(td);
     return 0;
 }
+#endif
 
 /*
  * Destroy an LWKT thread.   Warning!  This function is not called when

@@ -214,7 +214,10 @@ dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 				  page, pageq);
 		vm_object_hold(object);
 		vm_page_free(*mpp);
-		vm_page_insert(page, object, offset);
+		if (vm_page_insert(page, object, offset) == FALSE) {
+			panic("dev_pager_getpage: page (%p,%ld) exists",
+			      object, offset);
+		}
 		vm_object_drop(object);
 	}
 	mtx_unlock(&dev_pager_mtx);

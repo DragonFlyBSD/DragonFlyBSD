@@ -79,6 +79,7 @@
 #include <machine/pcb.h>
 #include <machine/smp.h>
 #include <machine/thread.h>
+#include <machine/clock.h>
 #include <machine/vmparam.h>
 #include <machine/md_var.h>
 #include <machine_base/isa/isa_intr.h>
@@ -151,6 +152,9 @@ SYSCTL_INT(_machdep, OID_AUTO, ddb_on_nmi, CTLFLAG_RW,
 static int ddb_on_seg_fault = 0;
 SYSCTL_INT(_machdep, OID_AUTO, ddb_on_seg_fault, CTLFLAG_RW,
 	&ddb_on_seg_fault, 0, "Go to DDB on user seg-fault");
+static int freeze_on_seg_fault = 0;
+SYSCTL_INT(_machdep, OID_AUTO, freeze_on_seg_fault, CTLFLAG_RW,
+	&freeze_on_seg_fault, 0, "Go to DDB on user seg-fault");
 #endif
 static int panic_on_nmi = 1;
 SYSCTL_INT(_machdep, OID_AUTO, panic_on_nmi, CTLFLAG_RW,
@@ -161,6 +165,15 @@ SYSCTL_INT(_machdep, OID_AUTO, fast_release, CTLFLAG_RW,
 static int slow_release;
 SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
 	&slow_release, 0, "Passive Release was nonoptimal");
+
+/*
+ * System call debugging records the worst-case system call
+ * overhead (inclusive of blocking), but may be inaccurate.
+ */
+/*#define SYSCALL_DEBUG*/
+#ifdef SYSCALL_DEBUG
+uint64_t SysCallsWorstCase[SYS_MAXSYSCALL];
+#endif
 
 /*
  * Passively intercepts the thread switch function to increase
@@ -490,8 +503,12 @@ trap(struct trapframe *frame)
 
 		case T_PAGEFLT:		/* page fault */
 			i = trap_pfault(frame, TRUE);
-			if (frame->tf_rip == 0)
+			if (frame->tf_rip == 0) {
 				kprintf("T_PAGEFLT: Warning %%rip == 0!\n");
+				while (freeze_on_seg_fault) {
+					tsleep(p, 0, "freeze", hz * 20);
+				}
+			}
 			if (i == -1)
 				goto out;
 			if (i == 0)
@@ -883,14 +900,18 @@ nogo:
 	 */
 	p = td->td_proc;
 	if (td->td_lwp->lwp_vkernel == NULL) {
-		if (bootverbose)
+		if (bootverbose || freeze_on_seg_fault || ddb_on_seg_fault) {
 			kprintf("seg-fault ft=%04x ff=%04x addr=%p rip=%p "
 			    "pid=%d p_comm=%s\n",
 			    ftype, fault_flags,
 			    (void *)frame->tf_addr,
 			    (void *)frame->tf_rip,
 			    p->p_pid, p->p_comm);
+		}
 #ifdef DDB
+		while (freeze_on_seg_fault) {
+			tsleep(p, 0, "freeze", hz * 20);
+		}
 		if (ddb_on_seg_fault)
 			Debugger("ddb_on_seg_fault");
 #endif
@@ -1185,7 +1206,16 @@ syscall2(struct trapframe *frame)
 	 * NOTE: All system calls run MPSAFE now.  The system call itself
 	 *	 is responsible for getting the MP lock.
 	 */
+#ifdef SYSCALL_DEBUG
+	uint64_t tscval = rdtsc();
+#endif
 	error = (*callp->sy_call)(&args);
+#ifdef SYSCALL_DEBUG
+	tscval = rdtsc() - tscval;
+	tscval = tscval * 1000000 / tsc_frequency;
+	if (SysCallsWorstCase[code] < tscval)
+		SysCallsWorstCase[code] = tscval;
+#endif
 
 out:
 	/*

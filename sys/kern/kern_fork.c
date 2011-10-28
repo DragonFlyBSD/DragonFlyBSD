@@ -607,6 +607,7 @@ done:
 static struct lwp *
 lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 {
+	globaldata_t gd = mycpu;
 	struct lwp *lp;
 	struct thread *td;
 
@@ -627,13 +628,16 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	 * scheduler specific data.
 	 */
 	crit_enter();
-	lp->lwp_cpbase = mycpu->gd_schedclock.time -
-			mycpu->gd_schedclock.periodic;
+	lp->lwp_cpbase = gd->gd_schedclock.time - gd->gd_schedclock.periodic;
 	destproc->p_usched->heuristic_forking(origlp, lp);
 	crit_exit();
 	lp->lwp_cpumask &= usched_mastermask;
 
-	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, 0);
+	/*
+	 * Assign the thread to the current cpu to begin with so we
+	 * can manipulate it.
+	 */
+	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, gd->gd_cpuid, 0);
 	lp->lwp_thread = td;
 	td->td_proc = destproc;
 	td->td_lwp = lp;
@@ -660,7 +664,6 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	} while (lwp_rb_tree_RB_INSERT(&destproc->p_lwp_tree, lp) != NULL);
 	destproc->p_lasttid = lp->lwp_tid;
 	destproc->p_nthreads++;
-
 
 	return (lp);
 }

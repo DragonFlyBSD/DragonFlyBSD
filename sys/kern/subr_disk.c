@@ -1395,7 +1395,7 @@ disk_init(void)
 
 	lwkt_gettoken(&disklist_token);
 	lwkt_create(disk_msg_core, /*args*/NULL, &td_core, NULL,
-		    0, 0, "disk_msg_core");
+		    0, -1, "disk_msg_core");
 	tsleep(td_core, 0, "diskcore", 0);
 	lwkt_reltoken(&disklist_token);
 }

@@ -657,8 +657,17 @@ RetryFault:
 	}
 
 	/*
+	 * Update the pmap.  We really only have to do this if a COW
+	 * occured to replace the read-only page with the new page.  For
+	 * now just do it unconditionally. XXX
+	 */
+	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
+	vm_page_flag_set(fs.m, PG_REFERENCED);
+
+	/*
 	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
-	 * will contain a busied page.
+	 * will contain a busied page.  So we must unlock here after having
+	 * messed with the pmap.
 	 */
 	unlock_things(&fs);
 
@@ -672,14 +681,6 @@ RetryFault:
 	vm_page_hold(fs.m);
 	if (fault_type & VM_PROT_WRITE)
 		vm_page_dirty(fs.m);
-
-	/*
-	 * Update the pmap.  We really only have to do this if a COW
-	 * occured to replace the read-only page with the new page.  For
-	 * now just do it unconditionally. XXX
-	 */
-	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
-	vm_page_flag_set(fs.m, PG_REFERENCED);
 
 	/*
 	 * Unbusy the page by activating it.  It remains held and will not
@@ -807,8 +808,8 @@ RetryFault:
 	}
 
 	/*
-	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
-	 * will contain a busied page.
+	 * On success vm_fault_object() does not unlock or deallocate, so we
+	 * do it here.  Note that the returned fs.m will be busied.
 	 */
 	unlock_things(&fs);
 
@@ -1023,6 +1024,9 @@ vm_fault_object(struct faultstate *fs,
 
 	for (;;) {
 		/*
+		 * The entire backing chain from first_object to object
+		 * inclusive is chainlocked.
+		 *
 		 * If the object is dead, we stop here
 		 */
 		if (fs->object->flags & OBJ_DEAD) {
@@ -1153,13 +1157,17 @@ vm_fault_object(struct faultstate *fs,
 
 			/*
 			 * Allocate a new page for this object/offset pair.
+			 *
+			 * It is possible for the allocation to race, so
+			 * handle the case.
 			 */
 			fs->m = NULL;
 			if (!vm_page_count_severe()) {
 				fs->m = vm_page_alloc(fs->object, pindex,
 				    ((fs->vp || fs->object->backing_object) ?
-					VM_ALLOC_NORMAL :
-					VM_ALLOC_NORMAL | VM_ALLOC_ZERO));
+					VM_ALLOC_NULL_OK | VM_ALLOC_NORMAL :
+					VM_ALLOC_NULL_OK | VM_ALLOC_NORMAL |
+					VM_ALLOC_ZERO));
 			}
 			if (fs->m == NULL) {
 				vm_object_pip_wakeup(fs->first_object);
@@ -1189,8 +1197,8 @@ readrest:
 		 * pager has it, and potentially fault in additional pages
 		 * at the same time.
 		 *
-		 * We are NOT in splvm here and if TRYPAGER is true then
-		 * fs.m will be non-NULL and will be PG_BUSY for us.
+		 * If TRYPAGER is true then fs.m will be non-NULL and busied
+		 * for us.
 		 */
 		if (TRYPAGER(fs)) {
 			int rv;
@@ -1870,7 +1878,8 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 		 */
 		do {
 			dst_m = vm_page_alloc(dst_object,
-				OFF_TO_IDX(dst_offset), VM_ALLOC_NORMAL);
+					      OFF_TO_IDX(dst_offset),
+					      VM_ALLOC_NORMAL);
 			if (dst_m == NULL) {
 				vm_wait(0);
 			}
@@ -1999,7 +2008,8 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 
 		i = 0;
 		while (tpindex < pindex) {
-			rtm = vm_page_alloc(object, tpindex, VM_ALLOC_SYSTEM);
+			rtm = vm_page_alloc(object, tpindex, VM_ALLOC_SYSTEM |
+							     VM_ALLOC_NULL_OK);
 			if (rtm == NULL) {
 				for (j = 0; j < i; j++) {
 					vm_page_free(marray[j]);
@@ -2037,7 +2047,8 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 	while (tpindex < endpindex) {
 		if (vm_page_lookup(object, tpindex))
 			break;
-		rtm = vm_page_alloc(object, tpindex, VM_ALLOC_SYSTEM);
+		rtm = vm_page_alloc(object, tpindex, VM_ALLOC_SYSTEM |
+						     VM_ALLOC_NULL_OK);
 		if (rtm == NULL)
 			break;
 		marray[i] = rtm;
@@ -2081,6 +2092,7 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
  *	  vm_map_entry via the normal fault code.  Do NOT call this
  *	  shortcut unless the normal fault code has run on this entry.
  *
+ * The related map must be locked.
  * No other requirements.
  */
 static int vm_prefault_pages = 8;
@@ -2160,6 +2172,13 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 		int error;
 
 		/*
+		 * This can eat a lot of time on a heavily contended
+		 * machine so yield on the tick if needed.
+		 */
+		if ((i & 7) == 7)
+			lwkt_yield();
+
+		/*
 		 * Calculate the page to pre-fault, stopping the scan in
 		 * each direction separately if the limit is reached.
 		 */
@@ -2237,7 +2256,11 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 				 * NOTE: Allocated from base object
 				 */
 				m = vm_page_alloc(object, index,
-						  VM_ALLOC_NORMAL | VM_ALLOC_ZERO);
+						  VM_ALLOC_NORMAL |
+						  VM_ALLOC_ZERO |
+						  VM_ALLOC_NULL_OK);
+				if (m == NULL)
+					break;
 
 				if ((m->flags & PG_ZERO) == 0) {
 					vm_page_zero_fill(m);

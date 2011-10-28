@@ -489,7 +489,11 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 	tmp_addr = addr;
 	for (i = start; i < (start + size / PAGE_SIZE); i++) {
 		vm_page_t m = &pga[i];
-		vm_page_insert(m, &kernel_object, OFF_TO_IDX(tmp_addr));
+		if (vm_page_insert(m, &kernel_object, OFF_TO_IDX(tmp_addr)) ==
+		    FALSE) {
+			panic("vm_contig_pg_kmap: page already exists @%p",
+			      (void *)(intptr_t)tmp_addr);
+		}
 		if ((flags & M_ZERO) && !(m->flags & PG_ZERO))
 			pmap_zero_page(VM_PAGE_TO_PHYS(m));
 		m->flags = 0;

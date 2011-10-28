@@ -233,6 +233,7 @@ schedcpu_stats(struct proc *p, void *data __unused)
 		}
 	}
 	lwkt_reltoken(&p->p_token);
+	lwkt_yield();
 	PRELE(p);
 	return(0);
 }
@@ -289,6 +290,7 @@ schedcpu_resource(struct proc *p, void *data __unused)
 		break;
 	}
 	lwkt_reltoken(&p->p_token);
+	lwkt_yield();
 	PRELE(p);
 	return(0);
 }
@@ -1216,6 +1218,7 @@ loadav_count_runnable(struct lwp *lp, void *data)
 	default:
 		break;
 	}
+	lwkt_yield();
 	return(0);
 }
 

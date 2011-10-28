@@ -1084,21 +1084,18 @@ pmap_pinit(struct pmap *pmap)
 	 * already be set appropriately.
 	 */
 	if ((ptdpg = pmap->pm_pdirm) == NULL) {
-		ptdpg = vm_page_grab(pmap->pm_pteobj, NUPDE + NUPDPE + PML4PML4I,
-				     VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
+		ptdpg = vm_page_grab(pmap->pm_pteobj,
+				     NUPDE + NUPDPE + PML4PML4I,
+				     VM_ALLOC_NORMAL | VM_ALLOC_RETRY |
+				     VM_ALLOC_ZERO);
 		pmap->pm_pdirm = ptdpg;
 		vm_page_flag_clear(ptdpg, PG_MAPPED);
-		ptdpg->valid = VM_PAGE_BITS_ALL;
 		if (ptdpg->wire_count == 0)
 			atomic_add_int(&vmstats.v_wire_count, 1);
 		ptdpg->wire_count = 1;
 		vm_page_wakeup(ptdpg);
 		pmap_kenter((vm_offset_t)pmap->pm_pml4, VM_PAGE_TO_PHYS(ptdpg));
 	}
-	if ((ptdpg->flags & PG_ZERO) == 0)
-		bzero(pmap->pm_pml4, PAGE_SIZE);
-	vm_page_flag_clear(ptdpg, PG_ZERO);
-
 	pmap->pm_count = 1;
 	pmap->pm_active = 0;
 	pmap->pm_ptphint = NULL;
@@ -1270,17 +1267,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	 * races by checking m->valid.
 	 */
 	m = vm_page_grab(pmap->pm_pteobj, ptepindex,
-			VM_ALLOC_NORMAL | VM_ALLOC_ZERO | VM_ALLOC_RETRY);
-
-	if (m->valid == 0) {
-		if ((m->flags & PG_ZERO) == 0) {
-			pmap_zero_page(VM_PAGE_TO_PHYS(m));
-		}
-		m->valid = VM_PAGE_BITS_ALL;
-		vm_page_flag_clear(m, PG_ZERO);
-	} else {
-		KKASSERT((m->flags & PG_ZERO) == 0);
-	}
+			 VM_ALLOC_NORMAL | VM_ALLOC_ZERO | VM_ALLOC_RETRY);
 
 	KASSERT(m->queue == PQ_NONE,
 		("_pmap_allocpte: %p->queue != PQ_NONE", m));

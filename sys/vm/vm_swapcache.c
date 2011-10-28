@@ -621,9 +621,9 @@ vm_swapcache_cleaning(vm_object_t marker)
 	lwkt_gettoken(&vmobj_token);
 
 	while ((object = TAILQ_NEXT(object, object_list)) != NULL) {
+		lwkt_yield();
 		if (--count <= 0)
 			break;
-
 		vm_object_hold(object);
 
 		/* 

@@ -63,8 +63,6 @@ int	kthread_create (void (*)(void *), void *, struct thread **,
 	    const char *, ...) __printflike(4, 5);
 int	kthread_create_cpu (void (*)(void *), void *, struct thread **,
 	    int, const char *, ...) __printflike(5, 6);
-int	kthread_create_stk (void (*)(void *), void *, struct thread **,
-	    int, const char *, ...) __printflike(5, 6);
 void	kthread_exit (void) __dead2;
 #endif /* _KERNEL */
 

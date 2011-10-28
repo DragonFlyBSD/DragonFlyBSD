@@ -3109,8 +3109,11 @@ vm_map_split(vm_map_entry_t entry)
  * Copies the contents of the source entry to the destination
  * entry.  The entries *must* be aligned properly.
  *
- * The vm_map must be exclusively locked.
+ * The vm_maps must be exclusively locked.
  * The vm_map's token must be held.
+ *
+ * Because the maps are locked no faults can be in progress during the
+ * operation.
  */
 static void
 vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,

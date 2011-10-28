@@ -755,8 +755,11 @@ vm_page_unhold(vm_page_t m)
  * This routine may not block.
  * This routine must be called with the vm_object held.
  * This routine must be called with a critical section held.
+ *
+ * This routine returns TRUE if the page was inserted into the object
+ * successfully, and FALSE if the page already exists in the object.
  */
-void
+int
 vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 {
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
@@ -764,7 +767,6 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 		panic("vm_page_insert: already inserted");
 
 	object->generation++;
-	object->resident_page_count++;
 
 	/*
 	 * Record the object/offset pair in this page and add the
@@ -775,7 +777,13 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	vm_page_spin_lock(m);
 	m->object = object;
 	m->pindex = pindex;
-	vm_page_rb_tree_RB_INSERT(&object->rb_memq, m);
+	if (vm_page_rb_tree_RB_INSERT(&object->rb_memq, m)) {
+		m->object = NULL;
+		m->pindex = 0;
+		vm_page_spin_unlock(m);
+		return FALSE;
+	}
+	object->resident_page_count++;
 	/* atomic_add_int(&object->agg_pv_list_count, m->md.pv_list_count); */
 	vm_page_spin_unlock(m);
 
@@ -790,6 +798,7 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	 * Checks for a swap assignment and sets PG_SWAPPED if appropriate.
 	 */
 	swap_pager_page_inserted(m);
+	return TRUE;
 }
 
 /*
@@ -990,7 +999,10 @@ vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 		ASSERT_LWKT_TOKEN_HELD(vm_object_token(m->object));
 		vm_page_remove(m);
 	}
-	vm_page_insert(m, new_object, new_pindex);
+	if (vm_page_insert(m, new_object, new_pindex) == FALSE) {
+		panic("vm_page_rename: target exists (%p,%ld)",
+		      new_object, new_pindex);
+	}
 	if (m->queue - m->pc == PQ_CACHE)
 		vm_page_deactivate(m);
 	vm_page_dirty(m);
@@ -1236,17 +1248,20 @@ vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
  * Allocate and return a memory cell associated with this VM object/offset
  * pair.  If object is NULL an unassociated page will be allocated.
  *
- *	page_req classes:
+ * The returned page will be busied and removed from its queues.  This
+ * routine can block and may return NULL if a race occurs and the page
+ * is found to already exist at the specified (object, pindex).
  *
  *	VM_ALLOC_NORMAL		allow use of cache pages, nominal free drain
  *	VM_ALLOC_QUICK		like normal but cannot use cache
  *	VM_ALLOC_SYSTEM		greater free drain
  *	VM_ALLOC_INTERRUPT	allow free list to be completely drained
- *	VM_ALLOC_ZERO		advisory request for pre-zero'd page
- *
- * The object must be locked if not NULL
+ *	VM_ALLOC_ZERO		advisory request for pre-zero'd page only
+ *	VM_ALLOC_FORCE_ZERO	advisory request for pre-zero'd page only
+ *	VM_ALLOC_NULL_OK	ok to return NULL on insertion collision
+ *				(see vm_page_grab())
+ * The object must be held if not NULL
  * This routine may not block
- * The returned page will be marked PG_BUSY
  *
  * Additional special handling is required when called from an interrupt
  * (VM_ALLOC_INTERRUPT).  We are not allowed to mess with the page cache
@@ -1265,8 +1280,6 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	if (object) {
 		pg_color = mycpu->gd_cpuid + (pindex & ~ncpus_fit_mask) +
 			   (object->pg_color & ~ncpus_fit_mask);
-		KASSERT(vm_page_lookup(object, pindex) == NULL,
-			("vm_page_alloc: page already allocated"));
 	} else {
 		pg_color = mycpu->gd_cpuid + (pindex & ~ncpus_fit_mask);
 	}
@@ -1276,8 +1289,6 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	 */
 	if (object) {
 		pg_color = object->pg_color + pindex;
-		KASSERT(vm_page_lookup(object, pindex) == NULL,
-			("vm_page_alloc: page already allocated"));
 	} else {
 		pg_color = pindex;
 	}
@@ -1302,7 +1313,7 @@ loop:
 		/*
 		 * The free queue has sufficient free pages to take one out.
 		 */
-		if (page_req & VM_ALLOC_ZERO)
+		if (page_req & (VM_ALLOC_ZERO | VM_ALLOC_FORCE_ZERO))
 			m = vm_page_select_free(pg_color, TRUE);
 		else
 			m = vm_page_select_free(pg_color, FALSE);
@@ -1328,7 +1339,7 @@ loop:
 		 */
 		if (m != NULL) {
 			KASSERT(m->dirty == 0,
-			    ("Found dirty cache page %p", m));
+				("Found dirty cache page %p", m));
 			vm_page_protect(m, VM_PROT_NONE);
 			vm_page_free(m);
 			goto loop;
@@ -1354,26 +1365,25 @@ loop:
 	}
 
 	/*
-	 * Good page found.  The page has already been busied for us.
-	 *
 	 * v_free_count can race so loop if we don't find the expected
 	 * page.
 	 */
 	if (m == NULL)
 		goto loop;
-	KASSERT(m->dirty == 0, 
-		("vm_page_alloc: free/cache page %p was dirty", m));
 
 	/*
-	 * NOTE: page has already been removed from its queue and busied.
+	 * Good page found.  The page has already been busied for us and
+	 * removed from its queues.
 	 */
+	KASSERT(m->dirty == 0,
+		("vm_page_alloc: free/cache page %p was dirty", m));
 	KKASSERT(m->queue == PQ_NONE);
 
 	/*
-	 * Initialize structure.  Only the PG_ZERO flag is inherited.  Set
-	 * the page PG_BUSY
+	 * Initialize the structure, inheriting some flags but clearing
+	 * all the rest.  The page has already been busied for us.
 	 */
-	vm_page_flag_clear(m, ~(PG_ZERO | PG_BUSY));
+	vm_page_flag_clear(m, ~(PG_ZERO | PG_BUSY | PG_SBUSY));
 	KKASSERT(m->wire_count == 0);
 	KKASSERT(m->busy == 0);
 	m->act_count = 0;
@@ -1389,10 +1399,18 @@ loop:
 	 * NOTE: If no object an unassociated page is allocated, m->pindex
 	 *	 can be used by the caller for any purpose.
 	 */
-	if (object)
-		vm_page_insert(m, object, pindex);
-	else
+	if (object) {
+		if (vm_page_insert(m, object, pindex) == FALSE) {
+			kprintf("PAGE RACE (%p:%d,%ld)\n",
+				object, object->type, pindex);
+			vm_page_free(m);
+			m = NULL;
+			if ((page_req & VM_ALLOC_NULL_OK) == 0)
+				panic("PAGE RACE");
+		}
+	} else {
 		m->pindex = pindex;
+	}
 
 	/*
 	 * Don't wakeup too often - wakeup the pageout daemon when
@@ -2142,24 +2160,27 @@ vm_page_io_finish(vm_page_t m)
 
 /*
  * Grab a page, blocking if it is busy and allocating a page if necessary.
- * A busy page is returned or NULL.
+ * A busy page is returned or NULL.  The page may or may not be valid and
+ * might not be on a queue (the caller is responsible for the disposition of
+ * the page).
  *
- * The page is not removed from its queues. XXX?
+ * If VM_ALLOC_ZERO is specified and the grab must allocate a new page, the
+ * page will be zero'd and marked valid.
  *
- * If VM_ALLOC_RETRY is specified VM_ALLOC_NORMAL must also be specified.
- * If VM_ALLOC_RETRY is not specified
+ * If VM_ALLOC_FORCE_ZERO is specified the page will be zero'd and marked
+ * valid even if it already exists.
+ *
+ * If VM_ALLOC_RETRY is specified this routine will never return NULL.  Also
+ * note that VM_ALLOC_NORMAL must be specified if VM_ALLOC_RETRY is specified.
  *
  * This routine may block, but if VM_ALLOC_RETRY is not set then NULL is
  * always returned if we had blocked.  
- * This routine will never return NULL if VM_ALLOC_RETRY is set.
+ *
  * This routine may not be called from an interrupt.
- * The returned page may not be entirely valid.
  *
- * This routine may be called from mainline code without spl protection and
- * be guarenteed a busied page associated with the object at the specified
- * index.
+ * PG_ZERO is *ALWAYS* cleared by this routine.
  *
- * No requirements.
+ * No other requirements.
  */
 vm_page_t
 vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
@@ -2178,6 +2199,7 @@ vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 				m = NULL;
 				break;
 			}
+			/* retry */
 		} else if (m == NULL) {
 			m = vm_page_alloc(object, pindex,
 					  allocflags & ~VM_ALLOC_RETRY);
@@ -2185,12 +2207,31 @@ vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 				break;
 			vm_wait(0);
 			if ((allocflags & VM_ALLOC_RETRY) == 0)
-				break;
+				goto failed;
 		} else {
 			/* m found */
 			break;
 		}
 	}
+
+	/*
+	 * If VM_ALLOC_ZERO an invalid page will be zero'd and set valid.
+	 *
+	 * If VM_ALLOC_FORCE_ZERO the page is unconditionally zero'd and set
+	 * valid even if already valid.
+	 */
+	if (m->valid == 0) {
+		if (allocflags & (VM_ALLOC_ZERO | VM_ALLOC_FORCE_ZERO)) {
+			if ((m->flags & PG_ZERO) == 0)
+				pmap_zero_page(VM_PAGE_TO_PHYS(m));
+			m->valid = VM_PAGE_BITS_ALL;
+		}
+	} else if (allocflags & VM_ALLOC_FORCE_ZERO) {
+		pmap_zero_page(VM_PAGE_TO_PHYS(m));
+		m->valid = VM_PAGE_BITS_ALL;
+	}
+	vm_page_flag_clear(m, PG_ZERO);
+failed:
 	vm_object_drop(object);
 	return(m);
 }

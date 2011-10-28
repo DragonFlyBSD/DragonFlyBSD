@@ -640,6 +640,7 @@ swap_pager_condfree_callback(struct swblock *swap, void *data)
 	--info->endi;
 	if ((int)info->begi < 0 || (int)info->endi < 0)
 		return(-1);
+	lwkt_yield();
 	return(0);
 }
 
@@ -1225,6 +1226,10 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 			vm_object_drop(object);
 			return(VM_PAGER_OK);
 		} else if (m == NULL) {
+			/*
+			 * Use VM_ALLOC_QUICK to avoid blocking on cache
+			 * page reuse.
+			 */
 			m = vm_page_alloc(object, mreq->pindex + 1,
 					  VM_ALLOC_QUICK);
 			if (m == NULL) {
@@ -1273,6 +1278,10 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 		if (error) {
 			break;
 		} else if (m == NULL) {
+			/*
+			 * Use VM_ALLOC_QUICK to avoid blocking on cache
+			 * page reuse.
+			 */
 			m = vm_page_alloc(object, mreq->pindex + i,
 					  VM_ALLOC_QUICK);
 			if (m == NULL)

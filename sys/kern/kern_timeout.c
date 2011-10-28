@@ -254,7 +254,11 @@ softclock_handler(void *arg)
 	int mpsafe = 1;
 #endif
 
-	lwkt_setpri_self(TDPRI_SOFT_NORM);
+	/*
+	 * Run the callout thread at the same priority as other kernel
+	 * threads so it can be round-robined.
+	 */
+	/*lwkt_setpri_self(TDPRI_SOFT_NORM);*/
 
 	sc = arg;
 	crit_enter();

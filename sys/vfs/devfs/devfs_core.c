@@ -2500,7 +2500,7 @@ devfs_init(void)
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 	lwkt_create(devfs_msg_core, /*args*/NULL, &td_core, NULL,
-		    0, 0, "devfs_msg_core");
+		    0, -1, "devfs_msg_core");
 	while (devfs_run == 0)
 		lksleep(td_core, &devfs_lock, 0, "devfsc", 0);
 	lockmgr(&devfs_lock, LK_RELEASE);

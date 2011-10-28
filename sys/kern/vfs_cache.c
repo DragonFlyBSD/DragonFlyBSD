@@ -3312,6 +3312,7 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf,
 	struct nchandle nch;
 	int error;
 
+	*freebuf = NULL;
 	atomic_add_int(&numfullpathcalls, 1);
 	if (disablefullpath)
 		return (ENODEV);

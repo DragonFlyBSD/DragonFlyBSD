@@ -431,14 +431,11 @@ vm_object_chain_release(vm_object_t object)
 }
 
 /*
- * This releases the entire chain starting with object and recursing
- * through backing_object until stopobj is encountered.  stopobj is
- * not released.  The caller will typically release stopobj manually
- * before making this call (as the deepest object is the most likely
- * to collide with other threads).
+ * This releases the entire chain of objects from first_object to and
+ * including stopobj, flowing through object->backing_object.
  *
- * object and stopobj must be held by the caller.  This code looks a
- * bit odd but has been optimized fairly heavily.
+ * We release stopobj first as an optimization as this object is most
+ * likely to be shared across multiple processes.
  */
 void
 vm_object_chain_release_all(vm_object_t first_object, vm_object_t stopobj)
@@ -868,6 +865,7 @@ vm_object_terminate_callback(vm_page_t p, void *data __unused)
 		vm_page_remove(p);
 		vm_page_wakeup(p);
 	}
+	lwkt_yield();
 	return(0);
 }
 

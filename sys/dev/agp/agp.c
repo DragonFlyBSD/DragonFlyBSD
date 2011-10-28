@@ -533,16 +533,15 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 	 */
 	for (i = 0; i < mem->am_size; i += PAGE_SIZE) {
 		/*
-		 * Find a page from the object and wire it
-		 * down. This page will be mapped using one or more
-		 * entries in the GATT (assuming that PAGE_SIZE >=
-		 * AGP_PAGE_SIZE. If this is the first call to bind,
-		 * the pages will be allocated and zeroed.
+		 * Find a page from the object and wire it down. This page
+		 * will be mapped using one or more entries in the GATT
+		 * (assuming that PAGE_SIZE >= AGP_PAGE_SIZE. If this is
+		 * the first call to bind, the pages will be allocated
+		 * and zeroed.
 		 */
 		m = vm_page_grab(mem->am_obj, OFF_TO_IDX(i),
-			 VM_ALLOC_NORMAL | VM_ALLOC_ZERO | VM_ALLOC_RETRY);
-		if ((m->flags & PG_ZERO) == 0)
-			vm_page_zero_fill(m);
+				 VM_ALLOC_NORMAL | VM_ALLOC_ZERO |
+				 VM_ALLOC_RETRY);
 		AGP_DPF("found page pa=%#x\n", VM_PAGE_TO_PHYS(m));
 		vm_page_wire(m);
 

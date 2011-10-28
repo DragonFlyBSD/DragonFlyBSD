@@ -444,6 +444,8 @@ vm_page_flash(vm_page_t m)
 #define VM_ALLOC_INTERRUPT	0x04	/* ok to exhaust entire free list */
 #define	VM_ALLOC_ZERO		0x08	/* req pre-zero'd memory if avail */
 #define	VM_ALLOC_QUICK		0x10	/* like NORMAL but do not use cache */
+#define VM_ALLOC_FORCE_ZERO	0x20	/* zero page even if already valid */
+#define VM_ALLOC_NULL_OK	0x40	/* ok to return NULL on collision */
 #define	VM_ALLOC_RETRY		0x80	/* indefinite block (vm_page_grab()) */
 
 void vm_page_queue_spin_lock(vm_page_t);
@@ -468,7 +470,7 @@ int vm_page_try_to_free (vm_page_t);
 void vm_page_dontneed (vm_page_t);
 void vm_page_deactivate (vm_page_t);
 void vm_page_deactivate_locked (vm_page_t);
-void vm_page_insert (vm_page_t, struct vm_object *, vm_pindex_t);
+int vm_page_insert (vm_page_t, struct vm_object *, vm_pindex_t);
 vm_page_t vm_page_lookup (struct vm_object *, vm_pindex_t);
 vm_page_t VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_wait)(struct vm_object *, vm_pindex_t,
 				int, const char * VM_PAGE_DEBUG_ARGS);
@@ -580,10 +582,10 @@ vm_page_copy(vm_page_t src_m, vm_page_t dest_m)
 /*
  * Free a page.  The page must be marked BUSY.
  *
- * The clearing of PG_ZERO is a temporary safety until the code can be
- * reviewed to determine that PG_ZERO is being properly cleared on
- * write faults or maps.  PG_ZERO was previously cleared in 
- * vm_page_alloc().
+ * Always clear PG_ZERO when freeing a page, which ensures the flag is not
+ * set unless we are absolutely certain the page is zerod.  This is
+ * particularly important when the vm_page_alloc*() code moves pages from
+ * PQ_CACHE to PQ_FREE.
  */
 static __inline void
 vm_page_free(vm_page_t m)
@@ -593,7 +595,8 @@ vm_page_free(vm_page_t m)
 }
 
 /*
- * Free a page to the zerod-pages queue
+ * Free a page to the zerod-pages queue.  The caller must ensure that the
+ * page has been zerod.
  */
 static __inline void
 vm_page_free_zero(vm_page_t m)

@@ -1197,21 +1197,15 @@ pmap_pinit(struct pmap *pmap)
 	 */
 	if ((ptdpg = pmap->pm_pdirm) == NULL) {
 		ptdpg = vm_page_grab(pmap->pm_pteobj, PTDPTDI,
-				     VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
+				     VM_ALLOC_NORMAL | VM_ALLOC_RETRY |
+				     VM_ALLOC_ZERO);
 		pmap->pm_pdirm = ptdpg;
 		vm_page_flag_clear(ptdpg, PG_MAPPED);
 		vm_page_wire(ptdpg);
-		ptdpg->valid = VM_PAGE_BITS_ALL;
+		KKASSERT(ptdpg->valid == VM_PAGE_BITS_ALL);
 		pmap_kenter((vm_offset_t)pmap->pm_pdir, VM_PAGE_TO_PHYS(ptdpg));
 		vm_page_wakeup(ptdpg);
 	}
-	if ((ptdpg->flags & PG_ZERO) == 0)
-		bzero(pmap->pm_pdir, PAGE_SIZE);
-#ifdef PMAP_DEBUG
-	else
-		pmap_page_assertzero(VM_PAGE_TO_PHYS(ptdpg));
-#endif
-
 	pmap->pm_pdir[MPPTDI] = PTD[MPPTDI];
 
 	/* install self-referential address mapping entry */
@@ -1357,10 +1351,11 @@ _pmap_allocpte(pmap_t pmap, unsigned ptepindex)
 	vm_page_t m;
 
 	/*
-	 * Find or fabricate a new pagetable page
+	 * Find or fabricate a new pagetable page.  Setting VM_ALLOC_ZERO
+	 * will zero any new page and mark it valid.
 	 */
 	m = vm_page_grab(pmap->pm_pteobj, ptepindex,
-			VM_ALLOC_NORMAL | VM_ALLOC_ZERO | VM_ALLOC_RETRY);
+			 VM_ALLOC_NORMAL | VM_ALLOC_ZERO | VM_ALLOC_RETRY);
 
 	KASSERT(m->queue == PQ_NONE,
 		("_pmap_allocpte: %p->queue != PQ_NONE", m));
@@ -1405,27 +1400,6 @@ _pmap_allocpte(pmap_t pmap, unsigned ptepindex)
 	 * Set the page table hint
 	 */
 	pmap->pm_ptphint = m;
-
-	/*
-	 * Try to use the new mapping, but if we cannot, then
-	 * do it with the routine that maps the page explicitly.
-	 */
-	if (m->valid == 0) {
-		if ((m->flags & PG_ZERO) == 0) {
-			if ((((unsigned)pmap->pm_pdir[PTDPTDI]) & PG_FRAME) ==
-				(((unsigned) PTDpde) & PG_FRAME)) {
-				pteva = UPT_MIN_ADDRESS + i386_ptob(ptepindex);
-				bzero((caddr_t) pteva, PAGE_SIZE);
-			} else {
-				pmap_zero_page(ptepa);
-			}
-		}
-		m->valid = VM_PAGE_BITS_ALL;
-		vm_page_flag_clear(m, PG_ZERO);
-	} else {
-		KKASSERT((m->flags & PG_ZERO) == 0);
-	}
-
 	vm_page_flag_set(m, PG_MAPPED);
 	vm_page_wakeup(m);
 
