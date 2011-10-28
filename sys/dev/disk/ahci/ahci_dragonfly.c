@@ -368,6 +368,12 @@ ahci_port_thread(void *arg)
 	int mask;
 
 	/*
+	 * Sets us up as an interrupt support thread, meaning we are
+	 * given a higher priority and we can preempt normal threads.
+	 */
+	lwkt_set_interrupt_support_thread();
+
+	/*
 	 * The helper thread is responsible for the initial port init,
 	 * so all the ports can be inited in parallel.
 	 *

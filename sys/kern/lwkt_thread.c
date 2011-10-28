@@ -1117,12 +1117,6 @@ lwkt_preempt(thread_t ntd, int critcount)
     KKASSERT(ntd->td_preempted && (td->td_flags & TDF_PREEMPT_DONE));
     ntd->td_preempted = NULL;
     td->td_flags &= ~(TDF_PREEMPT_LOCK|TDF_PREEMPT_DONE);
-#if 1
-    /*
-     * catch-all
-     */
-    splz_check();
-#endif
 }
 
 /*
@@ -1165,6 +1159,22 @@ lwkt_maybe_splz(thread_t td)
 	splz();
     }
 }
+
+/*
+ * Drivers which set up processing co-threads can call this function to
+ * run the co-thread at a higher priority and to allow it to preempt
+ * normal threads.
+ */
+void
+lwkt_set_interrupt_support_thread(void)
+{
+	thread_t td = curthread;
+
+        lwkt_setpri_self(TDPRI_INT_SUPPORT);
+	td->td_flags |= TDF_INTTHREAD;
+	td->td_preemptable = lwkt_preempt;
+}
+
 
 /*
  * This function is used to negotiate a passive release of the current

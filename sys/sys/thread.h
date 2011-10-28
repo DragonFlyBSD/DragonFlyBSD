@@ -405,6 +405,7 @@ extern void lwkt_init(void);
 extern struct thread *lwkt_alloc_thread(struct thread *, int, int, int);
 extern void lwkt_init_thread(struct thread *, void *, int, int,
 			     struct globaldata *);
+extern void lwkt_set_interrupt_support_thread(void);
 extern void lwkt_set_comm(thread_t, const char *, ...) __printflike(2, 3);
 extern void lwkt_wait_free(struct thread *);
 extern void lwkt_free_thread(struct thread *);
