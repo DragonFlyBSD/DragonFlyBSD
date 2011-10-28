@@ -82,7 +82,7 @@ int nswdev = NSWAPDEV;				/* exported to pstat/systat */
 int vm_swap_size;
 int vm_swap_max;
 
-static int swapoff_one (int index);
+static int swapoff_one(int index);
 struct vnode *swapdev_vp;
 
 /*
@@ -445,6 +445,7 @@ swapoff_one(int index)
 	struct swdevt *sp;
 	struct vm_page marker;
 	vm_page_t m;
+	int q;
 
 	mtx_lock(&swap_mtx);
 
@@ -458,61 +459,70 @@ swapoff_one(int index)
 	 * of data we will have to page back in, plus an epsilon so
 	 * the system doesn't become critically low on swap space.
 	 */
-	bzero(&marker, sizeof(marker));
-	marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
-	marker.queue = PQ_ACTIVE;
-	marker.wire_count = 1;
+	for (q = 0; q < PQ_MAXL2_SIZE; ++q) {
+		bzero(&marker, sizeof(marker));
+		marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
+		marker.queue = PQ_ACTIVE + q;
+		marker.pc = q;
+		marker.wire_count = 1;
 
-	vm_page_queues_spin_lock(PQ_ACTIVE);
-	TAILQ_INSERT_HEAD(&vm_page_queues[PQ_ACTIVE].pl, &marker, pageq);
+		vm_page_queues_spin_lock(marker.queue);
+		TAILQ_INSERT_HEAD(&vm_page_queues[marker.queue].pl,
+				  &marker, pageq);
 
-	while ((m = TAILQ_NEXT(&marker, pageq)) != NULL) {
-		TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl,
-			     &marker, pageq);
-		TAILQ_INSERT_AFTER(&vm_page_queues[PQ_ACTIVE].pl, m,
-				   &marker, pageq);
-		if (m->flags & (PG_MARKER | PG_FICTITIOUS))
-			continue;
+		while ((m = TAILQ_NEXT(&marker, pageq)) != NULL) {
+			TAILQ_REMOVE(&vm_page_queues[marker.queue].pl,
+				     &marker, pageq);
+			TAILQ_INSERT_AFTER(&vm_page_queues[marker.queue].pl, m,
+					   &marker, pageq);
+			if (m->flags & (PG_MARKER | PG_FICTITIOUS))
+				continue;
 
-		if (vm_page_busy_try(m, FALSE) == 0) {
-			vm_page_queues_spin_unlock(PQ_ACTIVE);
-			if (m->dirty == 0) {
-				vm_page_test_dirty(m);
-				if (m->dirty == 0)
-					++pq_active_clean;
+			if (vm_page_busy_try(m, FALSE) == 0) {
+				vm_page_queues_spin_unlock(marker.queue);
+				if (m->dirty == 0) {
+					vm_page_test_dirty(m);
+					if (m->dirty == 0)
+						++pq_active_clean;
+				}
+				vm_page_wakeup(m);
+				vm_page_queues_spin_lock(marker.queue);
 			}
-			vm_page_wakeup(m);
-			vm_page_queues_spin_lock(PQ_ACTIVE);
 		}
-	}
-	TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, &marker, pageq);
-	vm_page_queues_spin_unlock(PQ_ACTIVE);
+		TAILQ_REMOVE(&vm_page_queues[marker.queue].pl, &marker, pageq);
+		vm_page_queues_spin_unlock(marker.queue);
 
-	marker.queue = PQ_INACTIVE;
-	vm_page_queues_spin_lock(PQ_INACTIVE);
-	TAILQ_INSERT_HEAD(&vm_page_queues[PQ_INACTIVE].pl, &marker, pageq);
+		marker.queue = PQ_INACTIVE + q;
+		marker.pc = q;
+		vm_page_queues_spin_lock(marker.queue);
+		TAILQ_INSERT_HEAD(&vm_page_queues[marker.queue].pl,
+				  &marker, pageq);
 
-	while ((m = TAILQ_NEXT(&marker, pageq)) != NULL) {
-		TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl,
-			     &marker, pageq);
-		TAILQ_INSERT_AFTER(&vm_page_queues[PQ_INACTIVE].pl, m,
-				   &marker, pageq);
-		if (m->flags & (PG_MARKER | PG_FICTITIOUS))
-			continue;
+		while ((m = TAILQ_NEXT(&marker, pageq)) != NULL) {
+			TAILQ_REMOVE(
+				&vm_page_queues[marker.queue].pl,
+				&marker, pageq);
+			TAILQ_INSERT_AFTER(
+				&vm_page_queues[marker.queue].pl,
+				m, &marker, pageq);
+			if (m->flags & (PG_MARKER | PG_FICTITIOUS))
+				continue;
 
-		if (vm_page_busy_try(m, FALSE) == 0) {
-			vm_page_queues_spin_unlock(PQ_INACTIVE);
-			if (m->dirty == 0) {
-				vm_page_test_dirty(m);
-				if (m->dirty == 0)
-					++pq_inactive_clean;
+			if (vm_page_busy_try(m, FALSE) == 0) {
+				vm_page_queues_spin_unlock(marker.queue);
+				if (m->dirty == 0) {
+					vm_page_test_dirty(m);
+					if (m->dirty == 0)
+						++pq_inactive_clean;
+				}
+				vm_page_wakeup(m);
+				vm_page_queues_spin_lock(marker.queue);
 			}
-			vm_page_wakeup(m);
-			vm_page_queues_spin_lock(PQ_INACTIVE);
 		}
+		TAILQ_REMOVE(&vm_page_queues[marker.queue].pl,
+			     &marker, pageq);
+		vm_page_queues_spin_unlock(marker.queue);
 	}
-	TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, &marker, pageq);
-	vm_page_queues_spin_unlock(PQ_INACTIVE);
 
 	if (vmstats.v_free_count + vmstats.v_cache_count + pq_active_clean +
 	    pq_inactive_clean + vm_swap_size < aligned_nblks + nswap_lowat) {

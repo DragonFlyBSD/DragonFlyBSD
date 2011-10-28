@@ -124,10 +124,12 @@ vm_page_queue_init(void)
 		vm_page_queues[PQ_FREE+i].cnt = &vmstats.v_free_count;
 	for (i = 0; i < PQ_L2_SIZE; i++)
 		vm_page_queues[PQ_CACHE+i].cnt = &vmstats.v_cache_count;
-
-	vm_page_queues[PQ_INACTIVE].cnt = &vmstats.v_inactive_count;
-	vm_page_queues[PQ_ACTIVE].cnt = &vmstats.v_active_count;
-	vm_page_queues[PQ_HOLD].cnt = &vmstats.v_active_count;
+	for (i = 0; i < PQ_L2_SIZE; i++)
+		vm_page_queues[PQ_INACTIVE+i].cnt = &vmstats.v_inactive_count;
+	for (i = 0; i < PQ_L2_SIZE; i++)
+		vm_page_queues[PQ_ACTIVE+i].cnt = &vmstats.v_active_count;
+	for (i = 0; i < PQ_L2_SIZE; i++)
+		vm_page_queues[PQ_HOLD+i].cnt = &vmstats.v_active_count;
 	/* PQ_NONE has no queue */
 
 	for (i = 0; i < PQ_COUNT; i++) {
@@ -719,7 +721,7 @@ vm_page_hold(vm_page_t m)
 	if (m->queue - m->pc == PQ_FREE) {
 		_vm_page_queue_spin_lock(m);
 		_vm_page_rem_queue_spinlocked(m);
-		_vm_page_add_queue_spinlocked(m, PQ_HOLD, 0);
+		_vm_page_add_queue_spinlocked(m, PQ_HOLD + m->pc, 0);
 		_vm_page_queue_spin_unlock(m);
 	}
 	vm_page_spin_unlock(m);
@@ -736,7 +738,7 @@ vm_page_unhold(vm_page_t m)
 {
 	vm_page_spin_lock(m);
 	atomic_add_int(&m->hold_count, -1);
-	if (m->hold_count == 0 && m->queue == PQ_HOLD) {
+	if (m->hold_count == 0 && m->queue - m->pc == PQ_HOLD) {
 		_vm_page_queue_spin_lock(m);
 		_vm_page_rem_queue_spinlocked(m);
 		_vm_page_add_queue_spinlocked(m, PQ_FREE + m->pc, 0);
@@ -1527,7 +1529,7 @@ vm_page_activate(vm_page_t m)
 	u_short oqueue;
 
 	vm_page_spin_lock(m);
-	if (m->queue != PQ_ACTIVE) {
+	if (m->queue - m->pc != PQ_ACTIVE) {
 		_vm_page_queue_spin_lock(m);
 		oqueue = _vm_page_rem_queue_spinlocked(m);
 		/* page is left spinlocked, queue is unlocked */
@@ -1537,7 +1539,7 @@ vm_page_activate(vm_page_t m)
 		if (m->wire_count == 0 && (m->flags & PG_UNMANAGED) == 0) {
 			if (m->act_count < ACT_INIT)
 				m->act_count = ACT_INIT;
-			_vm_page_add_queue_spinlocked(m, PQ_ACTIVE, 0);
+			_vm_page_add_queue_spinlocked(m, PQ_ACTIVE + m->pc, 0);
 		}
 		_vm_page_and_queue_spin_unlock(m);
 		if (oqueue == PQ_CACHE || oqueue == PQ_FREE)
@@ -1667,7 +1669,7 @@ vm_page_free_toq(vm_page_t m)
 
 	if (m->hold_count != 0) {
 		vm_page_flag_clear(m, PG_ZERO);
-		_vm_page_add_queue_spinlocked(m, PQ_HOLD, 0);
+		_vm_page_add_queue_spinlocked(m, PQ_HOLD + m->pc, 0);
 	} else {
 		_vm_page_add_queue_spinlocked(m, PQ_FREE + m->pc, 0);
 	}
@@ -1838,13 +1840,14 @@ vm_page_unwire(vm_page_t m, int activate)
 				;
 			} else if (activate) {
 				vm_page_spin_lock(m);
-				_vm_page_add_queue_spinlocked(m, PQ_ACTIVE, 0);
+				_vm_page_add_queue_spinlocked(m,
+							PQ_ACTIVE + m->pc, 0);
 				_vm_page_and_queue_spin_unlock(m);
 			} else {
 				vm_page_spin_lock(m);
 				vm_page_flag_clear(m, PG_WINATCFLS);
-				_vm_page_add_queue_spinlocked(m, PQ_INACTIVE,
-							      0);
+				_vm_page_add_queue_spinlocked(m,
+							PQ_INACTIVE + m->pc, 0);
 				++vm_swapcache_inactive_heuristic;
 				_vm_page_and_queue_spin_unlock(m);
 			}
@@ -1871,7 +1874,7 @@ _vm_page_deactivate_locked(vm_page_t m, int athead)
 	/*
 	 * Ignore if already inactive.
 	 */
-	if (m->queue == PQ_INACTIVE)
+	if (m->queue - m->pc == PQ_INACTIVE)
 		return;
 	_vm_page_queue_spin_lock(m);
 	oqueue = _vm_page_rem_queue_spinlocked(m);
@@ -1880,7 +1883,7 @@ _vm_page_deactivate_locked(vm_page_t m, int athead)
 		if (oqueue == PQ_CACHE)
 			mycpu->gd_cnt.v_reactivated++;
 		vm_page_flag_clear(m, PG_WINATCFLS);
-		_vm_page_add_queue_spinlocked(m, PQ_INACTIVE, athead);
+		_vm_page_add_queue_spinlocked(m, PQ_INACTIVE + m->pc, athead);
 		if (athead == 0)
 			++vm_swapcache_inactive_heuristic;
 	}
@@ -2094,7 +2097,7 @@ vm_page_dontneed(vm_page_t m)
 	 * occassionally leave the page alone
 	 */
 	if ((dnw & 0x01F0) == 0 ||
-	    m->queue == PQ_INACTIVE || 
+	    m->queue - m->pc == PQ_INACTIVE ||
 	    m->queue - m->pc == PQ_CACHE
 	) {
 		if (m->act_count >= ACT_INIT)
@@ -2653,8 +2656,16 @@ DB_SHOW_COMMAND(pageq, vm_page_print_pageq_info)
 	}
 	db_printf("\n");
 
-	db_printf("PQ_ACTIVE: %d, PQ_INACTIVE: %d\n",
-		vm_page_queues[PQ_ACTIVE].lcnt,
-		vm_page_queues[PQ_INACTIVE].lcnt);
+	db_printf("PQ_ACTIVE:");
+	for(i=0;i<PQ_L2_SIZE;i++) {
+		db_printf(" %d", vm_page_queues[PQ_ACTIVE + i].lcnt);
+	}
+	db_printf("\n");
+
+	db_printf("PQ_INACTIVE:");
+	for(i=0;i<PQ_L2_SIZE;i++) {
+		db_printf(" %d", vm_page_queues[PQ_INACTIVE + i].lcnt);
+	}
+	db_printf("\n");
 }
 #endif /* DDB */

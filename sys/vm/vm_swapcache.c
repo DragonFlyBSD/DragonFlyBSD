@@ -79,8 +79,6 @@
 #include <sys/spinlock2.h>
 #include <vm/vm_page2.h>
 
-#define INACTIVE_LIST	(&vm_page_queues[PQ_INACTIVE].pl)
-
 /* the kernel process "vm_pageout"*/
 static int vm_swapcached_flush (vm_page_t m, int isblkdev);
 static int vm_swapcache_test(vm_page_t m);
@@ -161,8 +159,9 @@ vm_swapcached_thread(void)
 {
 	enum { SWAPC_WRITING, SWAPC_CLEANING } state = SWAPC_WRITING;
 	enum { SWAPB_BURSTING, SWAPB_RECOVERING } burst = SWAPB_BURSTING;
-	struct vm_page page_marker;
-	struct vm_object object_marker;
+	static struct vm_page page_marker[PQ_MAXL2_SIZE];
+	static struct vm_object object_marker;
+	int q;
 
 	/*
 	 * Thread setup
@@ -177,13 +176,17 @@ vm_swapcached_thread(void)
 	 * Initialize our marker for the inactive scan (SWAPC_WRITING)
 	 */
 	bzero(&page_marker, sizeof(page_marker));
-	page_marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
-	page_marker.queue = PQ_INACTIVE;
-	page_marker.wire_count = 1;
-
-	vm_page_queues_spin_lock(PQ_INACTIVE);
-	TAILQ_INSERT_HEAD(INACTIVE_LIST, &page_marker, pageq);
-	vm_page_queues_spin_unlock(PQ_INACTIVE);
+	for (q = 0; q < PQ_MAXL2_SIZE; ++q) {
+		page_marker[q].flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
+		page_marker[q].queue = PQ_INACTIVE + q;
+		page_marker[q].pc = q;
+		page_marker[q].wire_count = 1;
+		vm_page_queues_spin_lock(PQ_INACTIVE + q);
+		TAILQ_INSERT_HEAD(
+			&vm_page_queues[PQ_INACTIVE + q].pl,
+			&page_marker[q], pageq);
+		vm_page_queues_spin_unlock(PQ_INACTIVE + q);
+	}
 
 	vm_swapcache_hysteresis = vmstats.v_inactive_target / 2;
 	vm_swapcache_inactive_heuristic = -vm_swapcache_hysteresis;
@@ -251,12 +254,18 @@ vm_swapcached_thread(void)
 		if (state == SWAPC_WRITING) {
 			if (vm_swapcache_curburst >= vm_swapcache_accrate) {
 				if (burst == SWAPB_BURSTING) {
-					vm_swapcache_writing(&page_marker);
+					for (q = 0; q < PQ_MAXL2_SIZE; ++q) {
+						vm_swapcache_writing(
+							&page_marker[q]);
+					}
 					if (vm_swapcache_curburst <= 0)
 						burst = SWAPB_RECOVERING;
 				} else if (vm_swapcache_curburst >
 					   vm_swapcache_minburst) {
-					vm_swapcache_writing(&page_marker);
+					for (q = 0; q < PQ_MAXL2_SIZE; ++q) {
+						vm_swapcache_writing(
+							&page_marker[q]);
+					}
 					burst = SWAPB_BURSTING;
 				}
 			}
@@ -268,9 +277,13 @@ vm_swapcached_thread(void)
 	/*
 	 * Cleanup (NOT REACHED)
 	 */
-	vm_page_queues_spin_lock(PQ_INACTIVE);
-	TAILQ_REMOVE(INACTIVE_LIST, &page_marker, pageq);
-	vm_page_queues_spin_unlock(PQ_INACTIVE);
+	for (q = 0; q < PQ_MAXL2_SIZE; ++q) {
+		vm_page_queues_spin_lock(PQ_INACTIVE + q);
+		TAILQ_REMOVE(
+			&vm_page_queues[PQ_INACTIVE + q].pl,
+			&page_marker[q], pageq);
+		vm_page_queues_spin_unlock(PQ_INACTIVE + q);
+	}
 
 	lwkt_gettoken(&vmobj_token);
 	TAILQ_REMOVE(&vm_object_list, &object_marker, object_list);
@@ -320,38 +333,40 @@ vm_swapcache_writing(vm_page_t marker)
 	 */
 	count = vm_swapcache_maxlaunder;
 
-	vm_page_queues_spin_lock(PQ_INACTIVE);
+	vm_page_queues_spin_lock(marker->queue);
 	while ((m = TAILQ_NEXT(marker, pageq)) != NULL && count-- > 0) {
-		KKASSERT(m->queue == PQ_INACTIVE);
+		KKASSERT(m->queue == marker->queue);
 
 		if (vm_swapcache_curburst < 0)
 			break;
-		TAILQ_REMOVE(INACTIVE_LIST, marker, pageq);
-		TAILQ_INSERT_AFTER(INACTIVE_LIST, m, marker, pageq);
+		TAILQ_REMOVE(
+			&vm_page_queues[marker->queue].pl, marker, pageq);
+		TAILQ_INSERT_AFTER(
+			&vm_page_queues[marker->queue].pl, m, marker, pageq);
 		if (m->flags & (PG_MARKER | PG_SWAPPED)) {
 			++count;
 			continue;
 		}
 		if (vm_page_busy_try(m, TRUE))
 			continue;
-		vm_page_queues_spin_unlock(PQ_INACTIVE);
+		vm_page_queues_spin_unlock(marker->queue);
 
 		if ((object = m->object) == NULL) {
 			vm_page_wakeup(m);
-			vm_page_queues_spin_lock(PQ_INACTIVE);
+			vm_page_queues_spin_lock(marker->queue);
 			continue;
 		}
 		vm_object_hold(object);
 		if (m->object != object) {
 			vm_object_drop(object);
 			vm_page_wakeup(m);
-			vm_page_queues_spin_lock(PQ_INACTIVE);
+			vm_page_queues_spin_lock(marker->queue);
 			continue;
 		}
 		if (vm_swapcache_test(m)) {
 			vm_object_drop(object);
 			vm_page_wakeup(m);
-			vm_page_queues_spin_lock(PQ_INACTIVE);
+			vm_page_queues_spin_lock(marker->queue);
 			continue;
 		}
 
@@ -359,7 +374,7 @@ vm_swapcache_writing(vm_page_t marker)
 		if (vp == NULL) {
 			vm_object_drop(object);
 			vm_page_wakeup(m);
-			vm_page_queues_spin_lock(PQ_INACTIVE);
+			vm_page_queues_spin_lock(marker->queue);
 			continue;
 		}
 
@@ -374,7 +389,7 @@ vm_swapcache_writing(vm_page_t marker)
 			if (m->flags & PG_NOTMETA) {
 				vm_object_drop(object);
 				vm_page_wakeup(m);
-				vm_page_queues_spin_lock(PQ_INACTIVE);
+				vm_page_queues_spin_lock(marker->queue);
 				continue;
 			}
 
@@ -388,7 +403,7 @@ vm_swapcache_writing(vm_page_t marker)
 			     vm_swapcache_use_chflags)) {
 				vm_object_drop(object);
 				vm_page_wakeup(m);
-				vm_page_queues_spin_lock(PQ_INACTIVE);
+				vm_page_queues_spin_lock(marker->queue);
 				continue;
 			}
 			if (vm_swapcache_maxfilesize &&
@@ -396,7 +411,7 @@ vm_swapcache_writing(vm_page_t marker)
 			    (vm_swapcache_maxfilesize >> PAGE_SHIFT)) {
 				vm_object_drop(object);
 				vm_page_wakeup(m);
-				vm_page_queues_spin_lock(PQ_INACTIVE);
+				vm_page_queues_spin_lock(marker->queue);
 				continue;
 			}
 			isblkdev = 0;
@@ -411,13 +426,13 @@ vm_swapcache_writing(vm_page_t marker)
 			if (m->flags & PG_NOTMETA) {
 				vm_object_drop(object);
 				vm_page_wakeup(m);
-				vm_page_queues_spin_lock(PQ_INACTIVE);
+				vm_page_queues_spin_lock(marker->queue);
 				continue;
 			}
 			if (vm_swapcache_meta_enable == 0) {
 				vm_object_drop(object);
 				vm_page_wakeup(m);
-				vm_page_queues_spin_lock(PQ_INACTIVE);
+				vm_page_queues_spin_lock(marker->queue);
 				continue;
 			}
 			isblkdev = 1;
@@ -425,7 +440,7 @@ vm_swapcache_writing(vm_page_t marker)
 		default:
 			vm_object_drop(object);
 			vm_page_wakeup(m);
-			vm_page_queues_spin_lock(PQ_INACTIVE);
+			vm_page_queues_spin_lock(marker->queue);
 			continue;
 		}
 
@@ -441,7 +456,7 @@ vm_swapcache_writing(vm_page_t marker)
 		 * Setup for next loop using marker.
 		 */
 		vm_object_drop(object);
-		vm_page_queues_spin_lock(PQ_INACTIVE);
+		vm_page_queues_spin_lock(marker->queue);
 	}
 
 	/*
@@ -455,7 +470,7 @@ vm_swapcache_writing(vm_page_t marker)
 	 */
 	if (m == NULL)
 		vm_swapcache_inactive_heuristic = -vm_swapcache_hysteresis;
-	vm_page_queues_spin_unlock(PQ_INACTIVE);
+	vm_page_queues_spin_unlock(marker->queue);
 }
 
 /*

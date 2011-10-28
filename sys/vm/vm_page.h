@@ -258,12 +258,12 @@ typedef struct vm_page *vm_page_t;
 #endif
 
 #define PQ_NONE		0
-#define PQ_FREE		1
+#define PQ_FREE		(1 + 0*PQ_MAXL2_SIZE)
 #define PQ_INACTIVE	(1 + 1*PQ_MAXL2_SIZE)
-#define PQ_ACTIVE	(2 + 1*PQ_MAXL2_SIZE)
-#define PQ_CACHE	(3 + 1*PQ_MAXL2_SIZE)
-#define PQ_HOLD		(3 + 2*PQ_MAXL2_SIZE)
-#define PQ_COUNT	(4 + 2*PQ_MAXL2_SIZE)
+#define PQ_ACTIVE	(1 + 2*PQ_MAXL2_SIZE)
+#define PQ_CACHE	(1 + 3*PQ_MAXL2_SIZE)
+#define PQ_HOLD		(1 + 4*PQ_MAXL2_SIZE)
+#define PQ_COUNT	(1 + 5*PQ_MAXL2_SIZE)
 
 /*
  * Scan support

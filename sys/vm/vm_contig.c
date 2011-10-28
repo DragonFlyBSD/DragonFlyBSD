@@ -244,7 +244,7 @@ static int
 vm_contig_pg_alloc(unsigned long size, vm_paddr_t low, vm_paddr_t high,
 		   unsigned long alignment, unsigned long boundary, int mflags)
 {
-	int i, start, pass;
+	int i, q, start, pass;
 	vm_offset_t phys;
 	vm_page_t pga = vm_page_array;
 	vm_page_t m;
@@ -302,8 +302,11 @@ again:
 			 * This is quite quick, for now stall all
 			 * callers, even if they've specified M_NOWAIT.
 			 */
-			vm_contig_pg_clean(PQ_INACTIVE,
-					   vmstats.v_inactive_count);
+			for (q = 0; q < PQ_L2_SIZE; ++q) {
+				vm_contig_pg_clean(PQ_INACTIVE + q,
+						   vmstats.v_inactive_count);
+				lwkt_yield();
+			}
 
 			/*
 			 * Best effort flush of active pages.
@@ -316,8 +319,11 @@ again:
 			 * will fail in the index < 0 case.
 			 */
 			if (pass > 0 && (mflags & M_WAITOK)) {
-				vm_contig_pg_clean(PQ_ACTIVE,
-						   vmstats.v_active_count);
+				for (q = 0; q < PQ_L2_SIZE; ++q) {
+					vm_contig_pg_clean(PQ_ACTIVE + q,
+						       vmstats.v_active_count);
+				}
+				lwkt_yield();
 			}
 
 			/*
