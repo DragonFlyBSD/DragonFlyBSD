@@ -87,6 +87,7 @@
 #include <vm/vm_extern.h>
 #include <vm/swap_pager.h>
 
+#include <machine/inttypes.h>
 #include <machine/md_var.h>
 
 #include <vm/vm_page2.h>
@@ -1000,7 +1001,7 @@ vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 		vm_page_remove(m);
 	}
 	if (vm_page_insert(m, new_object, new_pindex) == FALSE) {
-		panic("vm_page_rename: target exists (%p,%ld)",
+		panic("vm_page_rename: target exists (%p,%"PRIu64")",
 		      new_object, new_pindex);
 	}
 	if (m->queue - m->pc == PQ_CACHE)
@@ -1401,7 +1402,7 @@ loop:
 	 */
 	if (object) {
 		if (vm_page_insert(m, object, pindex) == FALSE) {
-			kprintf("PAGE RACE (%p:%d,%ld)\n",
+			kprintf("PAGE RACE (%p:%d,%"PRIu64")\n",
 				object, object->type, pindex);
 			vm_page_free(m);
 			m = NULL;
