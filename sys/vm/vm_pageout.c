@@ -515,6 +515,7 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 	vm_object_t tobject;
 	int remove_mode;
 
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 	lobject = object;
 
 	while (lobject) {
@@ -547,8 +548,10 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 				break;
 			vm_object_drop(tobject);
 		}
-		if (lobject != object)
+		if (lobject != object) {
+			vm_object_lock_swap();
 			vm_object_drop(lobject);
+		}
 		lobject = tobject;
 	}
 	if (lobject != object)
@@ -676,8 +679,11 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 		tmpe = tmpe->next;
 	}
 
-	if (bigobj) 
+	if (bigobj)  {
+		vm_object_hold(bigobj);
 		vm_pageout_object_deactivate_pages(map, bigobj, desired, 0);
+		vm_object_drop(bigobj);
+	}
 
 	/*
 	 * Next, hunt around for other pages to deactivate.  We actually
@@ -691,8 +697,11 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 		case VM_MAPTYPE_NORMAL:
 		case VM_MAPTYPE_VPAGETABLE:
 			obj = tmpe->object.vm_object;
-			if (obj) 
+			if (obj) {
+				vm_object_hold(obj);
 				vm_pageout_object_deactivate_pages(map, obj, desired, 0);
+				vm_object_drop(obj);
+			}
 			break;
 		default:
 			break;
