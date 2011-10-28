@@ -93,7 +93,7 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 	cotd->pintr = pthread_self();
 
 	cotd->intr_id = register_int(1, (void *)thr_intr, cotd, name, NULL,
-				     INTR_MPSAFE);
+				     INTR_MPSAFE, 0);
 
 	/*
 	 * The vkernel's cpu_disable_intr() masks signals.  We don't want
@@ -117,7 +117,7 @@ cothread_delete(cothread_t *cotdp)
 	cothread_t cotd;
 
 	if ((cotd = *cotdp) != NULL) {
-		unregister_int(cotd->intr_id);
+		unregister_int(cotd->intr_id, 0);
 		crit_enter();
 		pthread_join(cotd->pthr, NULL);
 		crit_exit();

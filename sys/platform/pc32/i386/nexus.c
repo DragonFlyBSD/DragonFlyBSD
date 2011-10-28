@@ -521,7 +521,7 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 	 */
 	*cookiep = register_int(irq->r_start, (inthand2_t *)ihand, arg,
 				device_get_nameunit(child), serializer,
-				icflags);
+				icflags, rman_get_cpuid(irq));
 	if (*cookiep == NULL)
 		error = EINVAL;
 	return (error);
@@ -531,7 +531,7 @@ static int
 nexus_teardown_intr(device_t dev, device_t child, struct resource *r, void *ih)
 {
 	if (ih) {
-		unregister_int(ih);
+		unregister_int(ih, rman_get_cpuid(r));
 		return (0);
 	}
 	return(-1);

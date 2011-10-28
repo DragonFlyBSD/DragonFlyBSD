@@ -1048,6 +1048,7 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 	void *clkdesc = NULL;
 	int irq = 0, mixed_mode = 0, error;
 
+	KKASSERT(mycpuid == 0);
 	callout_init_mp(&sysbeepstop_ch);
 
 	if (!selected && i8254_intr_disable)
@@ -1091,12 +1092,12 @@ mixed_mode_setup:
 				       NULL,
 				       INTR_EXCL | INTR_CLOCK |
 				       INTR_NOPOLL | INTR_MPSAFE |
-				       INTR_NOENTROPY);
+				       INTR_NOENTROPY, 0);
 	} else {
 		register_int(0, clkintr, NULL, "clk", NULL,
 			     INTR_EXCL | INTR_CLOCK |
 			     INTR_NOPOLL | INTR_MPSAFE |
-			     INTR_NOENTROPY);
+			     INTR_NOENTROPY, 0);
 	}
 
 	/* Initialize RTC. */
@@ -1119,7 +1120,7 @@ mixed_mode_setup:
 			} else {
 				kprintf("IOAPIC: warning 8254 is not connected "
 					"to the correct pin, try mixed mode\n");
-				unregister_int(clkdesc);
+				unregister_int(clkdesc, 0);
 				goto mixed_mode_setup;
 			}
 		}

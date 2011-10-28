@@ -113,9 +113,10 @@ kqueue_add(int fd, void (*func)(void *, struct intrframe *), void *data)
 	struct kqueue_info *info;
 	struct kevent kev;
 
-	if (VIntr1 == NULL)
+	if (VIntr1 == NULL) {
 		VIntr1 = register_int(1, kqueue_intr, NULL, "kqueue", NULL,
-				      INTR_MPSAFE);
+				      INTR_MPSAFE, 0);
+	}
 
 	info = kmalloc(sizeof(*info), M_DEVBUF, M_ZERO|M_INTWAIT);
 	info->func = func;
@@ -135,8 +136,10 @@ kqueue_add_timer(void (*func)(void *, struct intrframe *), void *data)
 {
 	struct kqueue_info *info;
 
-	if (VIntr1 == NULL)
-		VIntr1 = register_int(1, kqueue_intr, NULL, "kqueue", NULL, 0);
+	if (VIntr1 == NULL) {
+		VIntr1 = register_int(1, kqueue_intr, NULL, "kqueue", NULL,
+		    0, 0);
+	}
 
 	info = kmalloc(sizeof(*info), M_DEVBUF, M_ZERO|M_INTWAIT);
 	info->func = func;

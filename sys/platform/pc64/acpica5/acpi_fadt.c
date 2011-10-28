@@ -38,6 +38,7 @@
 #include <sys/kernel.h>
 #include <sys/machintr.h>
 #include <sys/systm.h>
+#include <sys/thread2.h>
 
 #include "acpi_sdt.h"
 #include "acpi_sdt_var.h"
@@ -181,6 +182,8 @@ acpi_sci_config(void)
 {
 	const struct acpi_sci_mode *mode;
 
+	KKASSERT(mycpuid == 0);
+
 	if (acpi_sci_irq < 0)
 		return;
 
@@ -209,11 +212,11 @@ acpi_sci_config(void)
 		sci_desc = register_int(acpi_sci_irq,
 		    acpi_sci_dummy_intr, NULL, "sci", NULL,
 		    INTR_EXCL | INTR_CLOCK |
-		    INTR_NOPOLL | INTR_MPSAFE | INTR_NOENTROPY);
+		    INTR_NOPOLL | INTR_MPSAFE | INTR_NOENTROPY, 0);
 
 		DELAY(100 * 1000);
 
-		unregister_int(sci_desc);
+		unregister_int(sci_desc, 0);
 
 		if (get_interrupt_counter(acpi_sci_irq) - last_cnt < 20) {
 			acpi_sci_trig = mode->sci_trig;

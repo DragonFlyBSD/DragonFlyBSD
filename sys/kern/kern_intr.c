@@ -119,7 +119,7 @@ static void emergency_intr_timer_callback(systimer_t, int, struct intrframe *);
 static void ithread_handler(void *arg);
 static void ithread_emergency(void *arg);
 static void report_stray_interrupt(int intr, struct intr_info *info);
-static void int_moveto_destcpu(int *, int *, int);
+static void int_moveto_destcpu(int *, int);
 static void int_moveto_origcpu(int, int);
 
 int intr_info_size = NELEM(intr_info_ary);
@@ -206,7 +206,7 @@ register_swi(int intr, inthand2_t *handler, void *arg, const char *name,
 {
     if (intr < FIRST_SOFTINT || intr >= MAX_INTS)
 	panic("register_swi: bad intr %d", intr);
-    return(register_int(intr, handler, arg, name, serializer, 0));
+    return(register_int(intr, handler, arg, name, serializer, 0, 0));
 }
 
 void *
@@ -215,17 +215,19 @@ register_swi_mp(int intr, inthand2_t *handler, void *arg, const char *name,
 {
     if (intr < FIRST_SOFTINT || intr >= MAX_INTS)
 	panic("register_swi: bad intr %d", intr);
-    return(register_int(intr, handler, arg, name, serializer, INTR_MPSAFE));
+    return(register_int(intr, handler, arg, name, serializer, INTR_MPSAFE, 0));
 }
 
 void *
 register_int(int intr, inthand2_t *handler, void *arg, const char *name,
-		struct lwkt_serialize *serializer, int intr_flags)
+		struct lwkt_serialize *serializer, int intr_flags, int cpuid)
 {
     struct intr_info *info;
     struct intrec **list;
     intrec_t rec;
-    int orig_cpuid, cpuid;
+    int orig_cpuid;
+
+    KKASSERT(cpuid >= 0 && cpuid < ncpus);
 
     if (intr < 0 || intr >= MAX_INTS)
 	panic("register_int: bad intr %d", intr);
@@ -260,18 +262,16 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 		    (emergency_intr_enable ? emergency_intr_freq : 1));
     }
 
-    int_moveto_destcpu(&orig_cpuid, &cpuid, intr);
+    int_moveto_destcpu(&orig_cpuid, cpuid);
 
     /*
      * Create an interrupt thread if necessary, leave it in an unscheduled
      * state.
-     *
-     * Put it on cpu 0 for now, other work is pending related to this.
      */
     if (info->i_state == ISTATE_NOTHREAD) {
 	info->i_state = ISTATE_NORMAL;
 	lwkt_create(ithread_handler, (void *)(intptr_t)intr, NULL,
-		    &info->i_thread, TDF_STOPREQ | TDF_INTTHREAD, 0,
+		    &info->i_thread, TDF_STOPREQ | TDF_INTTHREAD, cpuid,
 		    "ithread %d", intr);
 	if (intr >= FIRST_SOFTINT)
 	    lwkt_setpri(&info->i_thread, TDPRI_SOFT_NORM);
@@ -337,16 +337,18 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 void
 unregister_swi(void *id)
 {
-    unregister_int(id);
+    unregister_int(id, 0);
 }
 
 void
-unregister_int(void *id)
+unregister_int(void *id, int cpuid)
 {
     struct intr_info *info;
     struct intrec **list;
     intrec_t rec;
-    int intr, orig_cpuid, cpuid;
+    int intr, orig_cpuid;
+
+    KKASSERT(cpuid >= 0 && cpuid < ncpus);
 
     intr = ((intrec_t)id)->intr;
 
@@ -355,7 +357,7 @@ unregister_int(void *id)
 
     info = &intr_info_ary[intr];
 
-    int_moveto_destcpu(&orig_cpuid, &cpuid, intr);
+    int_moveto_destcpu(&orig_cpuid, cpuid);
 
     /*
      * Remove the interrupt descriptor, adjust the descriptor count,
@@ -1099,22 +1101,14 @@ SYSCTL_PROC(_hw, OID_AUTO, intrcnt_all, CTLTYPE_OPAQUE | CTLFLAG_RD,
 	NULL, 0, sysctl_intrcnt_all, "", "Interrupt Counts");
 
 static void
-int_moveto_destcpu(int *orig_cpuid0, int *cpuid0, int intr)
+int_moveto_destcpu(int *orig_cpuid0, int cpuid)
 {
-    int orig_cpuid = mycpuid, cpuid;
-    char envpath[32];
-
-    cpuid = orig_cpuid;
-    ksnprintf(envpath, sizeof(envpath), "hw.irq.%d.dest", intr);
-    kgetenv_int(envpath, &cpuid);
-    if (cpuid >= ncpus)
-	cpuid = orig_cpuid;
+    int orig_cpuid = mycpuid;
 
     if (cpuid != orig_cpuid)
 	lwkt_migratecpu(cpuid);
 
     *orig_cpuid0 = orig_cpuid;
-    *cpuid0 = cpuid;
 }
 
 static void
