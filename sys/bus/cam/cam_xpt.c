@@ -1534,7 +1534,7 @@ xpt_init(void *dummy)
 		kprintf("xpt_init: failed to create rescan thread\n");
 	}
 	/* Install our software interrupt handlers */
-	register_swi(SWI_CAMBIO, swi_cambio, NULL, "swi_cambio", NULL);
+	register_swi(SWI_CAMBIO, swi_cambio, NULL, "swi_cambio", NULL, -1);
 
 	return (0);
 }

@@ -617,7 +617,7 @@ cyattach_common(cy_addr cy_iobase, int cy_align)
 
 	if (!sio_registered) {
 		callout_init_mp(&sio_timeout_handle);
-		register_swi_mp(SWI_TTY, siopoll, NULL, "cy", NULL);
+		register_swi_mp(SWI_TTY, siopoll, NULL, "cy", NULL, -1);
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);

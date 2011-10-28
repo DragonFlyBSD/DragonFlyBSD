@@ -108,10 +108,10 @@ struct thread;
 struct lwkt_serialize;
 void *register_swi(int intr, inthand2_t *handler, void *arg,
 			    const char *name,
-			    struct lwkt_serialize *serializer);
+			    struct lwkt_serialize *serializer, int cpuid);
 void *register_swi_mp(int intr, inthand2_t *handler, void *arg,
 			    const char *name,
-			    struct lwkt_serialize *serializer);
+			    struct lwkt_serialize *serializer, int cpuid);
 void *register_int(int intr, inthand2_t *handler, void *arg,
 			    const char *name,
 			    struct lwkt_serialize *serializer, int flags,
@@ -121,7 +121,7 @@ int count_registered_ints(int intr);
 const char *get_registered_name(int intr);
 
 void swi_setpriority(int intr, int pri);
-void unregister_swi(void *id);
+void unregister_swi(void *id, int intr, int cpuid);
 void unregister_int(void *id, int cpuid);
 void register_randintr(int intr);
 void unregister_randintr(int intr);

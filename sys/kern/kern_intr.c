@@ -202,20 +202,27 @@ sysctl_emergency_freq(SYSCTL_HANDLER_ARGS)
  */
 void *
 register_swi(int intr, inthand2_t *handler, void *arg, const char *name,
-		struct lwkt_serialize *serializer)
+		struct lwkt_serialize *serializer, int cpuid)
 {
     if (intr < FIRST_SOFTINT || intr >= MAX_INTS)
 	panic("register_swi: bad intr %d", intr);
-    return(register_int(intr, handler, arg, name, serializer, 0, 0));
+
+    if (cpuid < 0)
+	cpuid = intr % ncpus;
+    return(register_int(intr, handler, arg, name, serializer, 0, cpuid));
 }
 
 void *
 register_swi_mp(int intr, inthand2_t *handler, void *arg, const char *name,
-		struct lwkt_serialize *serializer)
+		struct lwkt_serialize *serializer, int cpuid)
 {
     if (intr < FIRST_SOFTINT || intr >= MAX_INTS)
 	panic("register_swi: bad intr %d", intr);
-    return(register_int(intr, handler, arg, name, serializer, INTR_MPSAFE, 0));
+
+    if (cpuid < 0)
+	cpuid = intr % ncpus;
+    return(register_int(intr, handler, arg, name, serializer,
+        INTR_MPSAFE, cpuid));
 }
 
 void *
@@ -335,9 +342,12 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 }
 
 void
-unregister_swi(void *id)
+unregister_swi(void *id, int intr, int cpuid)
 {
-    unregister_int(id, 0);
+    if (cpuid < 0)
+	cpuid = intr % ncpus;
+
+    unregister_int(id, cpuid);
 }
 
 void

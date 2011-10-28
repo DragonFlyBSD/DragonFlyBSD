@@ -394,14 +394,14 @@ taskqueue_thread_enqueue(void *context)
 }
 
 TASKQUEUE_DEFINE(swi, taskqueue_swi_enqueue, 0,
-	 register_swi(SWI_TQ, taskqueue_swi_run, NULL, "swi_taskq", NULL));
+	 register_swi(SWI_TQ, taskqueue_swi_run, NULL, "swi_taskq", NULL, -1));
 /*
  * XXX: possibly use a different SWI_TQ_MP or so.
  * related: sys/interrupt.h
  * related: platform/XXX/isa/ipl_funcs.c
  */
 TASKQUEUE_DEFINE(swi_mp, taskqueue_swi_enqueue, 0,
-	 register_swi(SWI_TQ, taskqueue_swi_mp_run, NULL, "swi_mp_taskq", NULL));
+    register_swi(SWI_TQ, taskqueue_swi_mp_run, NULL, "swi_mp_taskq", NULL, -1));
 
 struct taskqueue *taskqueue_thread[MAXCPU];
 
