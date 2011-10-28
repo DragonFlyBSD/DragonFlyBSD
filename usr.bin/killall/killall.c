@@ -51,8 +51,11 @@ static void __dead2
 usage(void)
 {
 
-	fprintf(stderr, "usage: %s [-l] [-v] [-m] [-sig] [-u user] [-j jail] [-t tty] [-c cmd] [cmd]...\n", prog);
-	fprintf(stderr, "At least one option or argument to specify processes must be given.\n");
+	fprintf(stderr, "usage: %s [-l] [-v] [-m] [-sig] "
+			"[-u user] [-j jail] [-t tty] "
+			"[-c cmd] [cmd]...\n", prog);
+	fprintf(stderr, "At least one option or argument to specify "
+			"processes must be given.\n");
 	exit(1);
 }
 
@@ -232,6 +235,8 @@ main(int ac, char **av)
 			snprintf(buf, sizeof(buf), "%s", tty);
 		else if (strncmp(tty, "tty", 3) == 0)
 			snprintf(buf, sizeof(buf), "/dev/%s", tty);
+		else if (isdigit(tty[0]))
+			snprintf(buf, sizeof(buf), "/dev/pts/%s", tty);
 		else
 			snprintf(buf, sizeof(buf), "/dev/tty%s", tty);
 		if (stat(buf, &sb) < 0)
