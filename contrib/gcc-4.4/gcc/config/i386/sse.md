@@ -3655,7 +3655,16 @@
 		      (match_operand:SI 3 "const_0_to_255_operand" "n")]
 		     UNSPEC_INSERTPS))]
   "TARGET_AVX"
-  "vinsertps\t{%3, %2, %1, %0|%0, %1, %2, %3}";
+{
+  if (MEM_P (operands[2]))
+    {
+      unsigned count_s = INTVAL (operands[3]) >> 6;
+      if (count_s)
+	operands[3] = GEN_INT (INTVAL (operands[3]) & 0x3f);
+      operands[2] = adjust_address_nv (operands[2], SFmode, count_s * 4);
+    }
+  return "vinsertps\t{%3, %2, %1, %0|%0, %1, %2, %3}";
+}
   [(set_attr "type" "sselog")
    (set_attr "prefix" "vex")
    (set_attr "mode" "V4SF")])
@@ -3667,7 +3676,16 @@
 		      (match_operand:SI 3 "const_0_to_255_operand" "n")]
 		     UNSPEC_INSERTPS))]
   "TARGET_SSE4_1"
-  "insertps\t{%3, %2, %0|%0, %2, %3}";
+{
+  if (MEM_P (operands[2]))
+    {
+      unsigned count_s = INTVAL (operands[3]) >> 6;
+      if (count_s)
+	operands[3] = GEN_INT (INTVAL (operands[3]) & 0x3f);
+      operands[2] = adjust_address_nv (operands[2], SFmode, count_s * 4);
+    }
+  return "insertps\t{%3, %2, %0|%0, %2, %3}";
+}
   [(set_attr "type" "sselog")
    (set_attr "prefix_extra" "1")
    (set_attr "mode" "V4SF")])
@@ -4384,22 +4402,21 @@
    (set_attr "mode" "V1DF,V2DF,DF,DF,DF")])
 
 (define_insn "sse2_loadhpd"
-  [(set (match_operand:V2DF 0 "nonimmediate_operand"     "=x,x,x,o,o,o")
+  [(set (match_operand:V2DF 0 "nonimmediate_operand"     "=x,x,o,o,o")
 	(vec_concat:V2DF
 	  (vec_select:DF
-	    (match_operand:V2DF 1 "nonimmediate_operand" " 0,0,x,0,0,0")
+	    (match_operand:V2DF 1 "nonimmediate_operand" " 0,0,0,0,0")
 	    (parallel [(const_int 0)]))
-	  (match_operand:DF 2 "nonimmediate_operand"     " m,x,0,x,*f,r")))]
+	  (match_operand:DF 2 "nonimmediate_operand"     " m,x,x,*f,r")))]
   "TARGET_SSE2 && !(MEM_P (operands[1]) && MEM_P (operands[2]))"
   "@
    movhpd\t{%2, %0|%0, %2}
    unpcklpd\t{%2, %0|%0, %2}
-   shufpd\t{$1, %1, %0|%0, %1, 1}
    #
    #
    #"
-  [(set_attr "type" "ssemov,sselog,sselog,ssemov,fmov,imov")
-   (set_attr "mode" "V1DF,V2DF,V2DF,DF,DF,DF")])
+  [(set_attr "type" "ssemov,sselog,ssemov,fmov,imov")
+   (set_attr "mode" "V1DF,V2DF,DF,DF,DF")])
 
 (define_split
   [(set (match_operand:V2DF 0 "memory_operand" "")
@@ -11657,8 +11674,7 @@
   [(set (match_operand:AVXMODEF2P 0 "register_operand" "=x")
 	(unspec:AVXMODEF2P
 	  [(match_operand:AVXMODEF2P 1 "memory_operand" "m")
-	   (match_operand:<avxpermvecmode> 2 "register_operand" "x")
-	   (match_dup 0)]
+	   (match_operand:<avxpermvecmode> 2 "register_operand" "x")]
 	  UNSPEC_MASKLOAD))]
   "TARGET_AVX"
   "vmaskmovp<avxmodesuffixf2c>\t{%1, %2, %0|%0, %2, %1}"
