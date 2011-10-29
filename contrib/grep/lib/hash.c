@@ -1,6 +1,6 @@
 /* hash - hashing table processing.
 
-   Copyright (C) 1998-2004, 2006-2007, 2009-2010 Free Software Foundation, Inc.
+   Copyright (C) 1998-2004, 2006-2007, 2009-2011 Free Software Foundation, Inc.
 
    Written by Jim Meyering, 1992.
 
@@ -27,7 +27,7 @@
 #include "hash.h"
 
 #include "bitrotate.h"
-#include "xalloc.h"
+#include "xalloc-oversized.h"
 
 #include <stdint.h>
 #include <stdio.h>

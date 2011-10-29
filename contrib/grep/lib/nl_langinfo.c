@@ -1,6 +1,6 @@
 /* nl_langinfo() replacement: query locale dependent information.
 
-   Copyright (C) 2007-2010 Free Software Foundation, Inc.
+   Copyright (C) 2007-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -97,7 +97,7 @@ rpl_nl_langinfo (nl_item item)
          strings, appended in memory.  */
       return "\0\0\0\0\0\0\0\0\0\0";
 # endif
-# if GNULIB_defined_YESEXPR
+# if GNULIB_defined_YESEXPR || !FUNC_NL_LANGINFO_YESEXPR_WORKS
     case YESEXPR:
       return "^[yY]";
     case NOEXPR:
