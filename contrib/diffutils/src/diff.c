@@ -282,7 +282,7 @@ main (int argc, char **argv)
   c_stack_action (0);
   function_regexp_list.buf = &function_regexp;
   ignore_regexp_list.buf = &ignore_regexp;
-  re_set_syntax (RE_SYNTAX_GREP);
+  re_set_syntax (RE_SYNTAX_GREP | RE_NO_POSIX_BACKTRACKING);
   excluded = new_exclude ();
 
   /* Decode the options.  */
