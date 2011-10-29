@@ -4,7 +4,7 @@ LIB=		greputils
 INTERNALLIB=	true
 
 CONTRIBDIR=	${BASEDIR}/lib
-.PATH:		${CONTRIBDIR} ${CONTRIBDIR}/uniwidth
+.PATH:		${CONTRIBDIR} ${CONTRIBDIR}/uniwidth ${CONTRIBDIR}/unistr
 
 CFLAGS+=	-I${CONTRIBDIR} -I${.CURDIR} -I${.OBJDIR}
 CFLAGS+=	-DHAVE_CONFIG_H
@@ -56,6 +56,13 @@ SRCS=		c-ctype.c \
 		xmalloc.c \
 		xstrtol.c \
 		xstrtol-error.c \
-		xstrtoul.c
+		xstrtoul.c \
+		close-stream.c \
+		closeout.c \
+		u8-mbtoucr.c \
+		u8-uctomb.c \
+		u8-uctomb-aux.c \
+		xmalloc.c \
+		strerror.c
 
 .include <bsd.lib.mk>

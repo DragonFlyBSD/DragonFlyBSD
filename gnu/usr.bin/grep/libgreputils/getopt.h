@@ -1,6 +1,6 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Declarations for getopt.
-   Copyright (C) 1989-1994, 1996-1999, 2001, 2003-2007, 2009-2010 Free Software
+   Copyright (C) 1989-1994, 1996-1999, 2001, 2003-2007, 2009-2011 Free Software
    Foundation, Inc.
    This file is part of the GNU C Library.
 
@@ -22,6 +22,7 @@
 #if __GNUC__ >= 3
 #pragma GCC system_header
 #endif
+
 
 /* The include_next requires a split double-inclusion guard.  We must
    also inform the replacement unistd.h to not recursively use
@@ -191,6 +192,7 @@ extern int optopt;
    one).  For long options that have a zero `flag' field, `getopt'
    returns the contents of the `val' field.  */
 
+# if !GNULIB_defined_struct_option
 struct option
 {
   const char *name;
@@ -200,6 +202,8 @@ struct option
   int *flag;
   int val;
 };
+#  define GNULIB_defined_struct_option 1
+# endif
 
 /* Names for the values of the `has_arg' field of `struct option'.  */
 
@@ -256,5 +260,5 @@ extern int getopt_long_only (int ___argc, char *__getopt_argv_const *___argv,
 /* Make sure we later can get all the definitions and declarations.  */
 #undef __need_getopt
 
-#endif /* getopt.h */
-#endif /* getopt.h */
+#endif /* _GL_GETOPT_H */
+#endif /* _GL_GETOPT_H */
