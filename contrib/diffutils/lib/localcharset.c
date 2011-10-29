@@ -2,7 +2,7 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Determine a canonical name for the current locale's character encoding.
 
-   Copyright (C) 2000-2006, 2008-2010 Free Software Foundation, Inc.
+   Copyright (C) 2000-2006, 2008-2011 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -230,8 +230,7 @@ get_charset_aliases (void)
                         {
                           /* Out of memory. */
                           res_size = 0;
-                          if (old_res_ptr != NULL)
-                            free (old_res_ptr);
+                          free (old_res_ptr);
                           break;
                         }
                       strcpy (res_ptr + res_size - (l2 + 1) - (l1 + 1), buf1);
@@ -371,10 +370,9 @@ locale_charset (void)
   codeset = nl_langinfo (CODESET);
 
 #  ifdef __CYGWIN__
-  /* Cygwin 1.5.x does not have locales.  nl_langinfo (CODESET) always
-     returns "US-ASCII".  As long as this is not fixed, return the suffix
-     of the locale name from the environment variables (if present) or
-     the codepage as a number.  */
+  /* Cygwin < 1.7 does not have locales.  nl_langinfo (CODESET) always
+     returns "US-ASCII".  Return the suffix of the locale name from the
+     environment variables (if present) or the codepage as a number.  */
   if (codeset != NULL && strcmp (codeset, "US-ASCII") == 0)
     {
       const char *locale;

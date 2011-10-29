@@ -1,6 +1,6 @@
 /* stat-related time functions.
 
-   Copyright (C) 2005, 2007, 2009-2010 Free Software Foundation, Inc.
+   Copyright (C) 2005, 2007, 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -142,7 +142,7 @@ get_stat_mtime (struct stat const *st)
 }
 
 /* Return *ST's birth time, if available; otherwise return a value
-   with negative tv_nsec.  */
+   with tv_sec and tv_nsec both equal to -1.  */
 static inline struct timespec
 get_stat_birthtime (struct stat const *st)
 {
@@ -161,7 +161,7 @@ get_stat_birthtime (struct stat const *st)
   t.tv_sec = st->st_ctime;
   t.tv_nsec = 0;
 #else
-  /* Birth time is not supported.  Set tv_sec to avoid undefined behavior.  */
+  /* Birth time is not supported.  */
   t.tv_sec = -1;
   t.tv_nsec = -1;
   /* Avoid a "parameter unused" warning.  */
@@ -175,10 +175,12 @@ get_stat_birthtime (struct stat const *st)
      using zero.  Attempt to work around this problem.  Alas, this can
      report failure even for valid time stamps.  Also, NetBSD
      sometimes returns junk in the birth time fields; work around this
-     bug if it it is detected.  There's no need to detect negative
-     tv_nsec junk as negative tv_nsec already indicates an error.  */
-  if (t.tv_sec == 0 || 1000000000 <= t.tv_nsec)
-    t.tv_nsec = -1;
+     bug if it is detected.  */
+  if (! (t.tv_sec && 0 <= t.tv_nsec && t.tv_nsec < 1000000000))
+    {
+      t.tv_sec = -1;
+      t.tv_nsec = -1;
+    }
 #endif
 
   return t;

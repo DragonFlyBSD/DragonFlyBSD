@@ -1,6 +1,6 @@
 /* sdiff - side-by-side merge of file differences
 
-   Copyright (C) 1992-1996, 1998, 2001-2002, 2004, 2006-2007, 2009-2010 Free
+   Copyright (C) 1992-1996, 1998, 2001-2002, 2004, 2006-2007, 2009-2011 Free
    Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -50,7 +50,7 @@ static char const **diffargv;
 static char * volatile tmpname;
 static FILE *tmp;
 
-#if HAVE_WORKING_FORK || HAVE_WORKING_VFORK
+#if HAVE_WORKING_FORK
 static pid_t volatile diffpid;
 #endif
 
@@ -85,7 +85,6 @@ static int const sigs[] = {
 #endif
 #ifdef SIGPIPE
        SIGPIPE,
-# define handler_index_of_SIGPIPE (NUM_SIGS - 2)
 #endif
        SIGINT
 #define handler_index_of_SIGINT (NUM_SIGS - 1)
@@ -100,29 +99,6 @@ static int const sigs[] = {
   static void (*initial_action[NUM_SIGS]) ();
 # define initial_handler(i) (initial_action[i])
 # define signal_handler(sig, handler) signal (sig, handler)
-#endif
-
-#if ! HAVE_SIGPROCMASK
-# define sigset_t int
-# define sigemptyset(s) (*(s) = 0)
-# ifndef sigmask
-#  define sigmask(sig) (1 << ((sig) - 1))
-# endif
-# define sigaddset(s, sig) (*(s) |= sigmask (sig))
-# ifndef SIG_BLOCK
-#  define SIG_BLOCK 0
-# endif
-# ifndef SIG_SETMASK
-#  define SIG_SETMASK (! SIG_BLOCK)
-# endif
-# if ! HAVE_SIGBLOCK
-#  define sigblock(mask) (mask)
-#  define sigsetmask(mask) (mask)
-# endif
-# define sigprocmask(how, n, o) \
-    ((how) == SIG_BLOCK \
-     ? ((o) ? (*(sigset_t *) (o) = sigblock (*(n))) : sigblock (*(n))) \
-     : sigsetmask (*(n)))
 #endif
 
 static bool diraccess (char const *);
@@ -156,6 +132,7 @@ static struct option const longopts[] =
   {"ignore-matching-lines", 1, 0, 'I'},
   {"ignore-space-change", 0, 0, 'b'},
   {"ignore-tab-expansion", 0, 0, 'E'},
+  {"ignore-trailing-space", 0, 0, 'Z'},
   {"left-column", 0, 0, 'l'},
   {"minimal", 0, 0, 'd'},
   {"output", 1, 0, 'o'},
@@ -190,30 +167,31 @@ check_stdout (void)
 }
 
 static char const * const option_help_msgid[] = {
-  N_("-o FILE  --output=FILE  Operate interactively, sending output to FILE."),
+  N_("-o, --output=FILE            operate interactively, sending output to FILE"),
   "",
-  N_("-i  --ignore-case  Consider upper- and lower-case to be the same."),
-  N_("-E  --ignore-tab-expansion  Ignore changes due to tab expansion."),
-  N_("-b  --ignore-space-change  Ignore changes in the amount of white space."),
-  N_("-W  --ignore-all-space  Ignore all white space."),
-  N_("-B  --ignore-blank-lines  Ignore changes whose lines are all blank."),
-  N_("-I RE  --ignore-matching-lines=RE  Ignore changes whose lines all match RE."),
-  N_("--strip-trailing-cr  Strip trailing carriage return on input."),
-  N_("-a  --text  Treat all files as text."),
+  N_("-i, --ignore-case            consider upper- and lower-case to be the same"),
+  N_("-E, --ignore-tab-expansion   ignore changes due to tab expansion"),
+  N_("-Z, --ignore-trailing-space  ignore white space at line end"),
+  N_("-b, --ignore-space-change    ignore changes in the amount of white space"),
+  N_("-W, --ignore-all-space       ignore all white space"),
+  N_("-B, --ignore-blank-lines     ignore changes whose lines are all blank"),
+  N_("-I, --ignore-matching-lines=RE  ignore changes whose lines all match RE"),
+  N_("    --strip-trailing-cr      strip trailing carriage return on input"),
+  N_("-a, --text                   treat all files as text"),
   "",
-  N_("-w NUM  --width=NUM  Output at most NUM (default 130) print columns."),
-  N_("-l  --left-column  Output only the left column of common lines."),
-  N_("-s  --suppress-common-lines  Do not output common lines."),
+  N_("-w, --width=NUM              output at most NUM (default 130) print columns"),
+  N_("-l, --left-column            output only the left column of common lines"),
+  N_("-s, --suppress-common-lines  do not output common lines"),
   "",
-  N_("-t  --expand-tabs  Expand tabs to spaces in output."),
-  N_("--tabsize=NUM  Tab stops are every NUM (default 8) print columns."),
+  N_("-t, --expand-tabs            expand tabs to spaces in output"),
+  N_("    --tabsize=NUM            tab stops at every NUM (default 8) print columns"),
   "",
-  N_("-d  --minimal  Try hard to find a smaller set of changes."),
-  N_("-H  --speed-large-files  Assume large files and many scattered small changes."),
-  N_("--diff-program=PROGRAM  Use PROGRAM to compare files."),
+  N_("-d, --minimal                try hard to find a smaller set of changes"),
+  N_("-H, --speed-large-files      assume large files, many scattered small changes"),
+  N_("    --diff-program=PROGRAM   use PROGRAM to compare files"),
   "",
-  N_("-v  --version  Output version info."),
-  N_("--help  Output this help."),
+  N_("    --help                   display this help and exit"),
+  N_("-v, --version                output version information and exit"),
   0
 };
 
@@ -223,7 +201,12 @@ usage (void)
   char const * const *p;
 
   printf (_("Usage: %s [OPTION]... FILE1 FILE2\n"), program_name);
-  printf ("%s\n\n", _("Side-by-side merge of file differences."));
+  printf ("%s\n\n",
+          _("Side-by-side merge of differences between FILE1 and FILE2."));
+
+  fputs (_("\
+Mandatory arguments to long options are mandatory for short options too.\n\
+"), stdout);
   for (p = option_help_msgid;  *p;  p++)
     if (**p)
       printf ("  %s\n", _(*p));
@@ -240,7 +223,7 @@ usage (void)
 static void
 cleanup (int signo __attribute__((unused)))
 {
-#if HAVE_WORKING_FORK || HAVE_WORKING_VFORK
+#if HAVE_WORKING_FORK
   if (0 < diffpid)
     kill (diffpid, SIGPIPE);
 #endif
@@ -476,7 +459,7 @@ main (int argc, char *argv[])
   diffarg (DEFAULT_DIFF_PROGRAM);
 
   /* parse command line args */
-  while ((opt = getopt_long (argc, argv, "abBdEHiI:lo:stvw:W", longopts, 0))
+  while ((opt = getopt_long (argc, argv, "abBdEHiI:lo:stvw:WZ", longopts, 0))
 	 != -1)
     {
       switch (opt)
@@ -531,7 +514,7 @@ main (int argc, char *argv[])
 	  break;
 
 	case 'v':
-	  version_etc (stdout, PROGRAM_NAME, PACKAGE_NAME, PACKAGE_VERSION,
+	  version_etc (stdout, PROGRAM_NAME, PACKAGE_NAME, Version,
 		       AUTHORS, (char *) NULL);
 	  check_stdout ();
 	  return EXIT_SUCCESS;
@@ -543,6 +526,10 @@ main (int argc, char *argv[])
 
 	case 'W':
 	  diffarg ("-w");
+	  break;
+
+	case 'Z':
+	  diffarg ("-Z");
 	  break;
 
 	case DIFF_PROGRAM_OPTION:
@@ -617,7 +604,7 @@ main (int argc, char *argv[])
 
       trapsigs ();
 
-#if ! (HAVE_WORKING_FORK || HAVE_WORKING_VFORK)
+#if ! HAVE_WORKING_FORK
       {
 	size_t cmdsize = 1;
 	char *p, *command;
@@ -641,22 +628,11 @@ main (int argc, char *argv[])
 #else
       {
 	int diff_fds[2];
-# if HAVE_WORKING_VFORK
-	sigset_t procmask;
-	sigset_t blocked;
-# endif
 
 	if (pipe (diff_fds) != 0)
 	  perror_fatal ("pipe");
 
-# if HAVE_WORKING_VFORK
-	/* Block SIGINT and SIGPIPE.  */
-	sigemptyset (&blocked);
-	sigaddset (&blocked, SIGINT);
-	sigaddset (&blocked, SIGPIPE);
-	sigprocmask (SIG_BLOCK, &blocked, &procmask);
-# endif
-	diffpid = vfork ();
+	diffpid = fork ();
 	if (diffpid < 0)
 	  perror_fatal ("fork");
 	if (! diffpid)
@@ -668,10 +644,6 @@ main (int argc, char *argv[])
 	    if (initial_handler (handler_index_of_SIGINT) != SIG_IGN)
 	      signal_handler (SIGINT, SIG_IGN);
 	    signal_handler (SIGPIPE, SIG_DFL);
-# if HAVE_WORKING_VFORK
-	    /* Stop blocking SIGINT and SIGPIPE in the child.  */
-	    sigprocmask (SIG_SETMASK, &procmask, 0);
-# endif
 	    close (diff_fds[0]);
 	    if (diff_fds[1] != STDOUT_FILENO)
 	      {
@@ -682,19 +654,6 @@ main (int argc, char *argv[])
 	    execvp (diffargv[0], (char **) diffargv);
 	    _exit (errno == ENOENT ? 127 : 126);
 	  }
-
-# if HAVE_WORKING_VFORK
-	/* Restore the parent's SIGINT and SIGPIPE behavior.  */
-	if (initial_handler (handler_index_of_SIGINT) != SIG_IGN)
-	  signal_handler (SIGINT, catchsig);
-	if (initial_handler (handler_index_of_SIGPIPE) != SIG_IGN)
-	  signal_handler (SIGPIPE, catchsig);
-	else
-	  signal_handler (SIGPIPE, SIG_IGN);
-
-	/* Stop blocking SIGINT and SIGPIPE in the parent.  */
-	sigprocmask (SIG_SETMASK, &procmask, 0);
-# endif
 
 	close (diff_fds[1]);
 	diffout = fdopen (diff_fds[0], "r");
@@ -717,7 +676,7 @@ main (int argc, char *argv[])
 	int wstatus;
 	int werrno = 0;
 
-#if ! (HAVE_WORKING_FORK || HAVE_WORKING_VFORK)
+#if ! HAVE_WORKING_FORK
 	wstatus = pclose (diffout);
 	if (wstatus == -1)
 	  werrno = errno;
@@ -1064,7 +1023,7 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 	      checksigs ();
 
 	      {
-#if ! (HAVE_WORKING_FORK || HAVE_WORKING_VFORK)
+#if ! HAVE_WORKING_FORK
 		char *command =
 		  xmalloc (shell_quote_length (editor_program)
 			   + 1 + strlen (tmpname) + 1);
@@ -1077,7 +1036,7 @@ edit (struct line_filter *left, char const *lname, lin lline, lin llen,
 #else
 		pid_t pid;
 
-		pid = vfork ();
+		pid = fork ();
 		if (pid == 0)
 		  {
 		    char const *argv[3];

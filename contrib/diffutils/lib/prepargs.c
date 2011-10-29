@@ -1,6 +1,6 @@
 /* Parse arguments from a string and prepend them to an argv.
 
-   Copyright (C) 1999-2002, 2006, 2009-2010 Free Software Foundation, Inc.
+   Copyright (C) 1999-2002, 2006, 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by

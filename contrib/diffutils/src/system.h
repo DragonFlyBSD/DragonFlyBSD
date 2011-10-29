@@ -1,6 +1,6 @@
 /* System dependent declarations.
 
-   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2010
+   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2011
    Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -54,12 +54,6 @@
 #include <time.h>
 
 #include <sys/wait.h>
-#ifndef WEXITSTATUS
-# define WEXITSTATUS(stat_val) ((unsigned int) (stat_val) >> 8)
-#endif
-#ifndef WIFEXITED
-# define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
-#endif
 
 #include <dirent.h>
 #ifndef _D_EXACT_NAMLEN
@@ -111,13 +105,6 @@ int strcasecmp (char const *, char const *);
 #include <errno.h>
 
 #include <signal.h>
-#ifndef SA_RESTART
-# ifdef SA_INTERRUPT /* e.g. SunOS 4.1.x */
-#  define SA_RESTART SA_INTERRUPT
-# else
-#  define SA_RESTART 0
-# endif
-#endif
 #if !defined SIGCHLD && defined SIGCLD
 # define SIGCHLD SIGCLD
 #endif
@@ -128,17 +115,9 @@ int strcasecmp (char const *, char const *);
 #define MAX(a, b) ((a) >= (b) ? (a) : (b))
 
 #include <stdbool.h>
-
-#if HAVE_VFORK_H
-# include <vfork.h>
-#endif
-
-#if ! HAVE_WORKING_VFORK
-# define vfork fork
-#endif
-
 #include <intprops.h>
 #include "propername.h"
+#include "version.h"
 
 /* Type used for fast comparison of several bytes at a time.  */
 

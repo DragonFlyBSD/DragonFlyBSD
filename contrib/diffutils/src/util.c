@@ -1,6 +1,6 @@
 /* Support routines for GNU DIFF.
 
-   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2010
+   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2011
    Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -162,7 +162,7 @@ setup_output (char const *name0, char const *name1, bool recursive)
   outfile = 0;
 }
 
-#if HAVE_WORKING_FORK || HAVE_WORKING_VFORK
+#if HAVE_WORKING_FORK
 static pid_t pr_pid;
 #endif
 
@@ -192,13 +192,13 @@ begin_output (void)
 
       /* Make OUTFILE a pipe to a subsidiary `pr'.  */
       {
-#if HAVE_WORKING_FORK || HAVE_WORKING_VFORK
+#if HAVE_WORKING_FORK
 	int pipes[2];
 
 	if (pipe (pipes) != 0)
 	  pfatal_with_name ("pipe");
 
-	pr_pid = vfork ();
+	pr_pid = fork ();
 	if (pr_pid < 0)
 	  pfatal_with_name ("fork");
 
@@ -282,7 +282,7 @@ finish_output (void)
       int werrno = 0;
       if (ferror (outfile))
 	fatal ("write failed");
-#if ! (HAVE_WORKING_FORK || HAVE_WORKING_VFORK)
+#if ! HAVE_WORKING_FORK
       wstatus = pclose (outfile);
       if (wstatus == -1)
 	werrno = errno;
@@ -395,6 +395,33 @@ lines_differ (char const *s1, char const *s2)
 
 	      break;
 
+	    case IGNORE_TRAILING_SPACE:
+	    case IGNORE_TAB_EXPANSION_AND_TRAILING_SPACE:
+	      if (isspace (c1) && isspace (c2))
+		{
+		  unsigned char c;
+		  if (c1 != '\n')
+		    {
+		      char const *p = t1;
+		      while ((c = *p) != '\n' && isspace (c))
+			++p;
+		      if (c != '\n')
+			break;
+		    }
+		  if (c2 != '\n')
+		    {
+		      char const *p = t2;
+		      while ((c = *p) != '\n' && isspace (c))
+			++p;
+		      if (c != '\n')
+			break;
+		    }
+		  /* Both lines have nothing but whitespace left.  */
+		  return false;
+		}
+	      if (ignore_white_space == IGNORE_TRAILING_SPACE)
+		break;
+	      /* Fall through.  */
 	    case IGNORE_TAB_EXPANSION:
 	      if ((c1 == ' ' && c2 == '\t')
 		  || (c1 == '\t' && c2 == ' '))
@@ -674,8 +701,11 @@ analyze_hunk (struct change *hunk,
   size_t trivial_length = ignore_blank_lines - 1;
     /* If 0, ignore zero-length lines;
        if SIZE_MAX, do not ignore lines just because of their length.  */
+
+  bool skip_white_space =
+    ignore_blank_lines && IGNORE_TRAILING_SPACE <= ignore_white_space;
   bool skip_leading_white_space =
-    (ignore_blank_lines && IGNORE_SPACE_CHANGE <= ignore_white_space);
+    skip_white_space && IGNORE_SPACE_CHANGE <= ignore_white_space;
 
   char const * const *linbuf0 = files[0].linbuf;  /* Help the compiler.  */
   char const * const *linbuf1 = files[1].linbuf;
@@ -699,9 +729,14 @@ analyze_hunk (struct change *hunk,
 	  char const *newline = linbuf0[i + 1] - 1;
 	  size_t len = newline - line;
 	  char const *p = line;
-	  if (skip_leading_white_space)
-	    while (isspace ((unsigned char) *p) && *p != '\n')
-	      p++;
+	  if (skip_white_space)
+	    for (; *p != '\n'; p++)
+	      if (! isspace ((unsigned char) *p))
+		{
+		  if (! skip_leading_white_space)
+		    p = line;
+		  break;
+		}
 	  if (newline - p != trivial_length
 	      && (! ignore_regexp.fastmap
 		  || re_search (&ignore_regexp, line, len, 0, len, 0) < 0))
@@ -714,9 +749,14 @@ analyze_hunk (struct change *hunk,
 	  char const *newline = linbuf1[i + 1] - 1;
 	  size_t len = newline - line;
 	  char const *p = line;
-	  if (skip_leading_white_space)
-	    while (isspace ((unsigned char) *p) && *p != '\n')
-	      p++;
+	  if (skip_white_space)
+	    for (; *p != '\n'; p++)
+	      if (! isspace ((unsigned char) *p))
+		{
+		  if (! skip_leading_white_space)
+		    p = line;
+		  break;
+		}
 	  if (newline - p != trivial_length
 	      && (! ignore_regexp.fastmap
 		  || re_search (&ignore_regexp, line, len, 0, len, 0) < 0))
@@ -755,18 +795,6 @@ zalloc (size_t size)
   void *p = xmalloc (size);
   memset (p, 0, size);
   return p;
-}
-
-/* Yield the newly malloc'd pathname
-   of the file in DIR whose filename is FILE.  */
-
-char *
-dir_file_pathname (char const *dir, char const *file)
-{
-  char const *base = last_component (dir);
-  size_t baselen = base_len (base);
-  bool omit_slash = baselen == 0 || base[baselen - 1] == '/';
-  return concat (dir, "/" + omit_slash, file);
 }
 
 void

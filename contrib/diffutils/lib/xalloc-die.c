@@ -1,7 +1,7 @@
 /* Report a memory allocation failure and exit.
 
-   Copyright (C) 1997, 1998, 1999, 2000, 2002, 2003, 2004, 2006, 2009, 2010
-   Free Software Foundation, Inc.
+   Copyright (C) 1997-2000, 2002-2004, 2006, 2009-2011 Free Software
+   Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ xalloc_die (void)
 {
   error (exit_failure, 0, "%s", _("memory exhausted"));
 
-  /* The `noreturn' cannot be given to error, since it may return if
+  /* _Noreturn cannot be given to error, since it may return if
      its first argument is 0.  To help compilers understand the
      xalloc_die does not return, call abort.  Also, the abort is a
      safety feature if exit_failure is 0 (which shouldn't happen).  */

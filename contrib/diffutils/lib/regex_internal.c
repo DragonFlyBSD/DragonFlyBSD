@@ -1,8 +1,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Extended regular expression matching and search library.
-   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010 Free
-   Software Foundation, Inc.
+   Copyright (C) 2002-2011 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
    Contributed by Isamu Hasegawa <isamu@yamato.ibm.com>.
 
@@ -737,15 +736,17 @@ re_string_reconstruct (re_string_t *pstr, Idx idx, int eflags)
 			  mbstate_t cur_state;
 			  wchar_t wc2;
 			  Idx mlen = raw + pstr->len - p;
-			  unsigned char buf[6];
 			  size_t mbclen;
 
+#if 0 /* dead code: buf is set but never used */
+			  unsigned char buf[6];
 			  if (BE (pstr->trans != NULL, 0))
 			    {
 			      int i = mlen < 6 ? mlen : 6;
 			      while (--i >= 0)
 				buf[i] = pstr->trans[p[i]];
 			    }
+#endif
 			  /* XXX Don't use mbrtowc, we know which conversion
 			     to use (UTF-8 -> UCS4).  */
 			  memset (&cur_state, 0, sizeof (cur_state));

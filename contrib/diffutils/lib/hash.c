@@ -1,6 +1,6 @@
 /* hash - hashing table processing.
 
-   Copyright (C) 1998-2004, 2006-2007, 2009-2010 Free Software Foundation, Inc.
+   Copyright (C) 1998-2004, 2006-2007, 2009-2011 Free Software Foundation, Inc.
 
    Written by Jim Meyering, 1992.
 
@@ -27,7 +27,7 @@
 #include "hash.h"
 
 #include "bitrotate.h"
-#include "xalloc.h"
+#include "xalloc-oversized.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -243,18 +243,25 @@ hash_print_statistics (const Hash_table *table, FILE *stream)
            (unsigned long int) max_bucket_length);
 }
 
+/* Hash KEY and return a pointer to the selected bucket.
+   If TABLE->hasher misbehaves, abort.  */
+static struct hash_entry *
+safe_hasher (const Hash_table *table, const void *key)
+{
+  size_t n = table->hasher (key, table->n_buckets);
+  if (! (n < table->n_buckets))
+    abort ();
+  return table->bucket + n;
+}
+
 /* If ENTRY matches an entry already in the hash table, return the
    entry from the table.  Otherwise, return NULL.  */
 
 void *
 hash_lookup (const Hash_table *table, const void *entry)
 {
-  struct hash_entry const *bucket
-    = table->bucket + table->hasher (entry, table->n_buckets);
+  struct hash_entry const *bucket = safe_hasher (table, entry);
   struct hash_entry const *cursor;
-
-  if (! (bucket < table->bucket_limit))
-    abort ();
 
   if (bucket->data == NULL)
     return NULL;
@@ -299,17 +306,18 @@ hash_get_first (const Hash_table *table)
 void *
 hash_get_next (const Hash_table *table, const void *entry)
 {
-  struct hash_entry const *bucket
-    = table->bucket + table->hasher (entry, table->n_buckets);
+  struct hash_entry const *bucket = safe_hasher (table, entry);
   struct hash_entry const *cursor;
 
-  if (! (bucket < table->bucket_limit))
-    abort ();
-
   /* Find next entry in the same bucket.  */
-  for (cursor = bucket; cursor; cursor = cursor->next)
-    if (cursor->data == entry && cursor->next)
-      return cursor->next->data;
+  cursor = bucket;
+  do
+    {
+      if (cursor->data == entry && cursor->next)
+        return cursor->next->data;
+      cursor = cursor->next;
+    }
+  while (cursor != NULL);
 
   /* Find first entry in any subsequent bucket.  */
   while (++bucket < table->bucket_limit)
@@ -782,12 +790,8 @@ static void *
 hash_find_entry (Hash_table *table, const void *entry,
                  struct hash_entry **bucket_head, bool delete)
 {
-  struct hash_entry *bucket
-    = table->bucket + table->hasher (entry, table->n_buckets);
+  struct hash_entry *bucket = safe_hasher (table, entry);
   struct hash_entry *cursor;
-
-  if (! (bucket < table->bucket_limit))
-    abort ();
 
   *bucket_head = bucket;
 
@@ -873,10 +877,7 @@ transfer_entries (Hash_table *dst, Hash_table *src, bool safe)
         for (cursor = bucket->next; cursor; cursor = next)
           {
             data = cursor->data;
-            new_bucket = (dst->bucket + dst->hasher (data, dst->n_buckets));
-
-            if (! (new_bucket < dst->bucket_limit))
-              abort ();
+            new_bucket = safe_hasher (dst, data);
 
             next = cursor->next;
 
@@ -903,10 +904,7 @@ transfer_entries (Hash_table *dst, Hash_table *src, bool safe)
         bucket->next = NULL;
         if (safe)
           continue;
-        new_bucket = (dst->bucket + dst->hasher (data, dst->n_buckets));
-
-        if (! (new_bucket < dst->bucket_limit))
-          abort ();
+        new_bucket = safe_hasher (dst, data);
 
         if (new_bucket->data)
           {
@@ -1020,25 +1018,39 @@ hash_rehash (Hash_table *table, size_t candidate)
   return false;
 }
 
-/* If ENTRY matches an entry already in the hash table, return the pointer
-   to the entry from the table.  Otherwise, insert ENTRY and return ENTRY.
-   Return NULL if the storage required for insertion cannot be allocated.
-   This implementation does not support duplicate entries or insertion of
-   NULL.  */
+/* Return -1 upon memory allocation failure.
+   Return 1 if insertion succeeded.
+   Return 0 if there is already a matching entry in the table,
+   and in that case, if MATCHED_ENT is non-NULL, set *MATCHED_ENT
+   to that entry.
 
-void *
-hash_insert (Hash_table *table, const void *entry)
+   This interface is easier to use than hash_insert when you must
+   distinguish between the latter two cases.  More importantly,
+   hash_insert is unusable for some types of ENTRY values.  When using
+   hash_insert, the only way to distinguish those cases is to compare
+   the return value and ENTRY.  That works only when you can have two
+   different ENTRY values that point to data that compares "equal".  Thus,
+   when the ENTRY value is a simple scalar, you must use hash_insert0.
+   ENTRY must not be NULL.  */
+int
+hash_insert0 (Hash_table *table, void const *entry, void const **matched_ent)
 {
   void *data;
   struct hash_entry *bucket;
 
-  /* The caller cannot insert a NULL entry.  */
+  /* The caller cannot insert a NULL entry, since hash_lookup returns NULL
+     to indicate "not found", and hash_find_entry uses "bucket->data == NULL"
+     to indicate an empty bucket.  */
   if (! entry)
     abort ();
 
   /* If there's a matching entry already in the table, return that.  */
   if ((data = hash_find_entry (table, entry, &bucket, false)) != NULL)
-    return data;
+    {
+      if (matched_ent)
+        *matched_ent = data;
+      return 0;
+    }
 
   /* If the growth threshold of the buckets in use has been reached, increase
      the table size and rehash.  There's no point in checking the number of
@@ -1062,11 +1074,11 @@ hash_insert (Hash_table *table, const void *entry)
                 * tuning->growth_threshold));
 
           if (SIZE_MAX <= candidate)
-            return NULL;
+            return -1;
 
           /* If the rehash fails, arrange to return NULL.  */
           if (!hash_rehash (table, candidate))
-            return NULL;
+            return -1;
 
           /* Update the bucket we are interested in.  */
           if (hash_find_entry (table, entry, &bucket, false) != NULL)
@@ -1081,7 +1093,7 @@ hash_insert (Hash_table *table, const void *entry)
       struct hash_entry *new_entry = allocate_entry (table);
 
       if (new_entry == NULL)
-        return NULL;
+        return -1;
 
       /* Add ENTRY in the overflow of the bucket.  */
 
@@ -1089,7 +1101,7 @@ hash_insert (Hash_table *table, const void *entry)
       new_entry->next = bucket->next;
       bucket->next = new_entry;
       table->n_entries++;
-      return (void *) entry;
+      return 1;
     }
 
   /* Add ENTRY right in the bucket head.  */
@@ -1098,7 +1110,23 @@ hash_insert (Hash_table *table, const void *entry)
   table->n_entries++;
   table->n_buckets_used++;
 
-  return (void *) entry;
+  return 1;
+}
+
+/* If ENTRY matches an entry already in the hash table, return the pointer
+   to the entry from the table.  Otherwise, insert ENTRY and return ENTRY.
+   Return NULL if the storage required for insertion cannot be allocated.
+   This implementation does not support duplicate entries or insertion of
+   NULL.  */
+
+void *
+hash_insert (Hash_table *table, void const *entry)
+{
+  void const *matched_ent;
+  int err = hash_insert0 (table, entry, &matched_ent);
+  return (err == -1
+          ? NULL
+          : (void *) (err == 0 ? matched_ent : entry));
 }
 
 /* If ENTRY is already in the table, remove it and return the just-deleted

@@ -1,6 +1,6 @@
 /* diff3 - compare three files line by line
 
-   Copyright (C) 1988-1989, 1992-1996, 1998, 2001-2002, 2004, 2006, 2009-2010
+   Copyright (C) 1988-1989, 1992-1996, 1998, 2001-2002, 2004, 2006, 2009-2011
    Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,6 @@
 #include <exitfail.h>
 #include <file-type.h>
 #include <getopt.h>
-#include <inttostr.h>
 #include <progname.h>
 #include <sh-quote.h>
 #include <version-etc.h>
@@ -279,7 +278,7 @@ main (int argc, char **argv)
 	  strip_trailing_cr = true;
 	  break;
 	case 'v':
-	  version_etc (stdout, PROGRAM_NAME, PACKAGE_NAME, PACKAGE_VERSION,
+	  version_etc (stdout, PROGRAM_NAME, PACKAGE_NAME, Version,
 		       AUTHORS, (char *) NULL);
 	  check_stdout ();
 	  return EXIT_SUCCESS;
@@ -361,7 +360,7 @@ main (int argc, char **argv)
     rev_mapping[mapping[i]] = i;
 
   for (i = 0; i < 3; i++)
-    if (strcmp (file[i], "-") != 0)
+    if (! STREQ (file[i], "-"))
       {
 	if (stat (file[i], &statb) < 0)
 	  perror_with_exit (file[i]);
@@ -425,23 +424,28 @@ check_stdout (void)
 }
 
 static char const * const option_help_msgid[] = {
-  N_("-e  --ed  Output unmerged changes from OLDFILE to YOURFILE into MYFILE."),
-  N_("-E  --show-overlap  Output unmerged changes, bracketing conflicts."),
-  N_("-A  --show-all  Output all changes, bracketing conflicts."),
-  N_("-x  --overlap-only  Output overlapping changes."),
-  N_("-X  Output overlapping changes, bracketing them."),
-  N_("-3  --easy-only  Output unmerged nonoverlapping changes."),
+  N_("-A, --show-all              output all changes, bracketing conflicts"),
   "",
-  N_("-m  --merge  Output merged file instead of ed script (default -A)."),
-  N_("-L LABEL  --label=LABEL  Use LABEL instead of file name."),
-  N_("-i  Append `w' and `q' commands to ed scripts."),
-  N_("-a  --text  Treat all files as text."),
-  N_("--strip-trailing-cr  Strip trailing carriage return on input."),
-  N_("-T  --initial-tab  Make tabs line up by prepending a tab."),
-  N_("--diff-program=PROGRAM  Use PROGRAM to compare files."),
+  N_("-e, --ed                    output ed script incorporating changes\n"
+     "                                from OLDFILE to YOURFILE into MYFILE"),
+  N_("-E, --show-overlap          like -e, but bracket conflicts"),
+  N_("-3, --easy-only             like -e, but incorporate only nonoverlapping changes"),
+  N_("-x, --overlap-only          like -e, but incorporate only overlapping changes"),
+  N_("-X                          like -x, but bracket conflicts"),
+  N_("-i                          append `w' and `q' commands to ed scripts"),
   "",
-  N_("-v  --version  Output version info."),
-  N_("--help  Output this help."),
+  N_("-m, --merge                 output actual merged file, according to\n"
+     "                                -A if no other options are given"),
+  "",
+  N_("-a, --text                  treat all files as text"),
+  N_("    --strip-trailing-cr     strip trailing carriage return on input"),
+  N_("-T, --initial-tab           make tabs line up by prepending a tab"),
+  N_("    --diff-program=PROGRAM  use PROGRAM to compare files"),
+  N_("-L, --label=LABEL           use LABEL instead of file name\n"
+     "                                (can be repeated up to three times)"),
+  "",
+  N_("    --help                  display this help and exit"),
+  N_("-v, --version               output version information and exit"),
   0
 };
 
@@ -453,11 +457,25 @@ usage (void)
   printf (_("Usage: %s [OPTION]... MYFILE OLDFILE YOURFILE\n"),
 	  program_name);
   printf ("%s\n\n", _("Compare three files line by line."));
+
+  fputs (_("\
+Mandatory arguments to long options are mandatory for short options too.\n\
+"), stdout);
   for (p = option_help_msgid;  *p;  p++)
     if (**p)
       printf ("  %s\n", _(*p));
     else
       putchar ('\n');
+  fputs (_("\n\
+The default output format is a somewhat human-readable representation of\n\
+the changes.\n\
+\n\
+The -e, -E, -x, -X (and corresponding long) options cause an ed script\n\
+to be output instead of the default.\n\
+\n\
+Finally, the -m (--merge) option causes diff3 to do the merge internally\n\
+and output the actual merged file.  For unusual input, this is more\n\
+robust than using ed.\n"), stdout);
   printf ("\n%s\n%s\n",
 	  _("If a FILE is `-', read standard input."),
 	  _("Exit status is 0 if successful, 1 if conflicts, 2 if trouble."));
@@ -1143,7 +1161,7 @@ read_diff (char const *filea,
   int werrno = 0;
   struct stat pipestat;
 
-#if HAVE_WORKING_FORK || HAVE_WORKING_VFORK
+#if HAVE_WORKING_FORK
 
   char const *argv[9];
   char const **ap;
@@ -1165,7 +1183,7 @@ read_diff (char const *filea,
   if (pipe (fds) != 0)
     perror_with_exit ("pipe");
 
-  pid = vfork ();
+  pid = fork ();
   if (pid == 0)
     {
       /* Child */
@@ -1254,7 +1272,7 @@ read_diff (char const *filea,
 
   *output_placement = diff_result;
 
-#if ! (HAVE_WORKING_FORK || HAVE_WORKING_VFORK)
+#if ! HAVE_WORKING_FORK
 
   wstatus = pclose (fpipe);
   if (wstatus == -1)

@@ -1,6 +1,6 @@
 /* Output routines for ed-script format.
 
-   Copyright (C) 1988-1989, 1991-1993, 1995, 1998, 2001, 2004, 2006, 2009-2010
+   Copyright (C) 1988-1989, 1991-1993, 1995, 1998, 2001, 2004, 2006, 2009-2011
    Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
