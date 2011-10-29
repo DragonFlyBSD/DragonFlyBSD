@@ -97,7 +97,7 @@ void	shmfork (struct proc *, struct proc *);
 __BEGIN_DECLS
 int shmsys (int, ...);
 void *shmat  (int, void *, int);
-int shmget (key_t, int, int);
+int shmget (key_t, size_t, int);
 int shmctl (int, int, struct shmid_ds *);
 int shmdt  (void *);
 __END_DECLS
