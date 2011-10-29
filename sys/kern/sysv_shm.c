@@ -102,31 +102,22 @@ static void shminit (void *);
 /*
  * Tuneable values
  */
-#ifndef SHMMAXPGS
-#define	SHMMAXPGS	8192	/* note: sysv shared memory is swap backed */
-#endif
-#ifndef SHMMAX
-#define	SHMMAX	(SHMMAXPGS*PAGE_SIZE)
-#endif
 #ifndef SHMMIN
 #define	SHMMIN	1
 #endif
 #ifndef SHMMNI
-#define	SHMMNI	192
+#define	SHMMNI	512
 #endif
 #ifndef SHMSEG
-#define	SHMSEG	128
-#endif
-#ifndef SHMALL
-#define	SHMALL	(SHMMAXPGS)
+#define	SHMSEG	1024
 #endif
 
 struct	shminfo shminfo = {
-	SHMMAX,
+	0,
 	SHMMIN,
 	SHMMNI,
 	SHMSEG,
-	SHMALL
+	0
 };
 
 static int shm_use_phys;
@@ -155,10 +146,11 @@ shm_find_segment_by_key(key_t key)
 {
 	int i;
 
-	for (i = 0; i < shmalloced; i++)
+	for (i = 0; i < shmalloced; i++) {
 		if ((shmsegs[i].shm_perm.mode & SHMSEG_ALLOCATED) &&
 		    shmsegs[i].shm_perm.key == key)
 			return i;
+	}
 	return -1;
 }
 
@@ -174,8 +166,9 @@ shm_find_segment_by_shmid(int shmid)
 	shmseg = &shmsegs[segnum];
 	if ((shmseg->shm_perm.mode & (SHMSEG_ALLOCATED | SHMSEG_REMOVED))
 	    != SHMSEG_ALLOCATED ||
-	    shmseg->shm_perm.seq != IPCID_TO_SEQ(shmid))
+	    shmseg->shm_perm.seq != IPCID_TO_SEQ(shmid)) {
 		return NULL;
+	}
 	return shmseg;
 }
 
@@ -547,9 +540,10 @@ shmget_allocate_segment(struct proc *p, struct shmget_args *uap, int mode)
 		return ENOMEM;
 	if (shm_last_free < 0) {
 		shmrealloc();	/* maybe expand the shmsegs[] array */
-		for (i = 0; i < shmalloced; i++)
+		for (i = 0; i < shmalloced; i++) {
 			if (shmsegs[i].shm_perm.mode & SHMSEG_FREE)
 				break;
+		}
 		if (i == shmalloced)
 			return ENOSPC;
 		segnum = i;
@@ -725,6 +719,13 @@ static void
 shminit(void *dummy)
 {
 	int i;
+
+	/*
+	 * If not overridden by a tunable set the maximum shm to
+	 * 2/3 of main memory.
+	 */
+	if (shminfo.shmall == 0)
+		shminfo.shmall = (size_t)vmstats.v_page_count * 2 / 3;
 
 	shminfo.shmmax = shminfo.shmall * PAGE_SIZE;
 	shmalloced = shminfo.shmmni;
