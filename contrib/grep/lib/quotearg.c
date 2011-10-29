@@ -1,7 +1,6 @@
 /* quotearg.c - quote arguments for output
 
-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2004, 2005, 2006, 2007, 2008,
-   2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 1998-2002, 2004-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -169,10 +168,10 @@ set_custom_quoting (struct quoting_options *o,
 static struct quoting_options
 quoting_options_from_style (enum quoting_style style)
 {
-  struct quoting_options o;
+  struct quoting_options o = { 0 };
+  if (style == custom_quoting_style)
+    abort ();
   o.style = style;
-  o.flags = 0;
-  memset (o.quote_these_too, 0, sizeof o.quote_these_too);
   return o;
 }
 

@@ -1,5 +1,5 @@
 /* grep.c - main driver file for grep.
-   Copyright (C) 1992, 1997-2002, 2004-2010 Free Software Foundation, Inc.
+   Copyright (C) 1992, 1997-2002, 2004-2011 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -1708,10 +1708,7 @@ parse_grep_colors (void)
     return;
 
   /* Work off a writable copy.  */
-  q = xmalloc(strlen(p) + 1);
-  if (q == NULL)
-    return;
-  strcpy(q, p);
+  q = xstrdup(p);
 
   name = q;
   val = NULL;
@@ -1786,6 +1783,7 @@ main (int argc, char **argv)
   int default_context;
   FILE *fp;
 
+  exit_failure = EXIT_TROUBLE;
   initialize_main (&argc, &argv);
   set_program_name (argv[0]);
   program_name = argv[0];

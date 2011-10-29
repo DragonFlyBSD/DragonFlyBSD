@@ -1,5 +1,5 @@
 /* dfasearch.c - searching subroutines using dfa and regex for grep.
-   Copyright 1992, 1998, 2000, 2007, 2009-2010 Free Software Foundation, Inc.
+   Copyright 1992, 1998, 2000, 2007, 2009-2011 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -61,10 +61,10 @@ dfaerror (char const *mesg)
 void
 dfawarn (char const *mesg)
 {
-  static enum { NONE = 0, POSIX, GNU } mode;
-  if (mode == NONE)
-    mode = (getenv ("POSIXLY_CORRECT") ? POSIX : GNU);
-  if (mode == GNU)
+  static enum { DW_NONE = 0, DW_POSIX, DW_GNU } mode;
+  if (mode == DW_NONE)
+    mode = (getenv ("POSIXLY_CORRECT") ? DW_POSIX : DW_GNU);
+  if (mode == DW_GNU)
     dfaerror (mesg);
 }
 
@@ -162,9 +162,7 @@ GEAcompile (char const *pattern, size_t size, reg_syntax_t syntax_bits)
           total = 0;
         }
 
-      patterns = realloc (patterns, (pcount + 1) * sizeof (*patterns));
-      if (patterns == NULL)
-        error (EXIT_TROUBLE, errno, _("memory exhausted"));
+      patterns = xnrealloc (patterns, pcount + 1, sizeof *patterns);
       patterns[pcount] = patterns0;
 
       if ((err = re_compile_pattern (p, len,

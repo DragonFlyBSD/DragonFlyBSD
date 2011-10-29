@@ -16,8 +16,7 @@
 @copying
 This manual is for @command{grep}, a pattern matching engine.
 
-Copyright @copyright{} 1999-2002, 2005, 2008-2010 Free Software Foundation,
-Inc.
+Copyright @copyright{} 1999-2002, 2005, 2008-2011 Free Software Foundation, Inc.
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -678,7 +677,7 @@ This can cause a performance penalty.
 @cindex memory mapped input
 This option is ignored for backwards compatibility.  It used to read
 input with the @code{mmap} system call, instead of the default @code{read}
-system call.  On modern systems, @samp{--mmap} rarely if ever yields
+system call.  On modern systems, @code{mmap} would rarely if ever yield
 better performance.
 
 @item -U

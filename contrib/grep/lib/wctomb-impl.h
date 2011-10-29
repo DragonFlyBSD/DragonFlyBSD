@@ -1,7 +1,6 @@
-/* Function to parse a `long long int' from text.
-   Copyright (C) 1995, 1996, 1997, 1999, 2001, 2009, 2010 Free Software
-   Foundation, Inc.
-   This file is part of the GNU C Library.
+/* Convert wide character to multibyte character.
+   Copyright (C) 2011 Free Software Foundation, Inc.
+   Written by Bruno Haible <bruno@clisp.org>, 2011.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,18 +15,20 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#define QUAD    1
+int
+wctomb (char *s, wchar_t wc)
+{
+  if (s == NULL)
+    return 0;
+  else
+    {
+      mbstate_t state;
+      size_t result;
 
-#include <strtol.c>
-
-#ifdef _LIBC
-# ifdef SHARED
-#  include <shlib-compat.h>
-
-#  if SHLIB_COMPAT (libc, GLIBC_2_0, GLIBC_2_2)
-compat_symbol (libc, __strtoll_internal, __strtoq_internal, GLIBC_2_0);
-#  endif
-
-# endif
-weak_alias (strtoll, strtoq)
-#endif
+      memset (&state, 0, sizeof (mbstate_t));
+      result = wcrtomb (s, wc, &state);
+      if (result == (size_t)-1)
+        return -1;
+      return result;
+    }
+}

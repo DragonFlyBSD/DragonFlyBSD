@@ -1,5 +1,5 @@
 /* kwset.c - search for any of a set of keywords.
-   Copyright (C) 1989, 1998, 2000, 2005, 2007, 2009-2010 Free Software
+   Copyright (C) 1989, 1998, 2000, 2005, 2007, 2009-2011 Free Software
    Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify

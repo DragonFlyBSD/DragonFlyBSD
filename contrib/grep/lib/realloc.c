@@ -1,6 +1,6 @@
 /* realloc() function that is glibc compatible.
 
-   Copyright (C) 1997, 2003-2004, 2006-2007, 2009-2010 Free Software
+   Copyright (C) 1997, 2003-2004, 2006-2007, 2009-2011 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,7 @@
 
 /* written by Jim Meyering and Bruno Haible */
 
+#define _GL_USE_STDLIB_ALLOC 1
 #include <config.h>
 
 /* Only the AC_FUNC_REALLOC macro defines 'realloc' already in config.h.  */
@@ -34,22 +35,9 @@
 # define SYSTEM_MALLOC_GLIBC_COMPATIBLE 1
 #endif
 
-/* Below we want to call the system's malloc and realloc.
-   Undefine the symbols here so that including <stdlib.h> provides a
-   declaration of malloc(), not of rpl_malloc(), and likewise for realloc.  */
-#undef malloc
-#undef realloc
-
-/* Specification.  */
 #include <stdlib.h>
 
 #include <errno.h>
-
-/* Below we want to call the system's malloc and realloc.
-   Undefine the symbols, if they were defined by gnulib's <stdlib.h>
-   replacement.  */
-#undef malloc
-#undef realloc
 
 /* Change the size of an allocated block of memory P to N bytes,
    with error checking.  If N is zero, change it to 1.  If P is NULL,

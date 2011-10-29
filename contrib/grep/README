@@ -1,4 +1,4 @@
-  Copyright (C) 1992, 1997-2002, 2004-2010 Free Software Foundation, Inc.
+  Copyright (C) 1992, 1997-2002, 2004-2011 Free Software Foundation, Inc.
 
   Copying and distribution of this file, with or without modification,
   are permitted in any medium without royalty provided the copyright
@@ -52,3 +52,6 @@ Additional bug reports can be found at:
 You can also browse the bug-grep mailing list archive at:
 
         http://lists.gnu.org/archive/html/bug-grep/
+
+For any copyright year range specified as YYYY-ZZZZ in this package
+note that the range specifies every single year in that closed interval.

@@ -1,7 +1,7 @@
 /* Convert string representation of a number into an integer value.
 
-   Copyright (C) 1991, 1992, 1994, 1995, 1996, 1997, 1998, 1999, 2003, 2005,
-   2006, 2007, 2009, 2010 Free Software Foundation, Inc.
+   Copyright (C) 1991-1992, 1994-1999, 2003, 2005-2007, 2009-2011 Free Software
+   Foundation, Inc.
 
    NOTE: The canonical source of this file is maintained with the GNU C
    Library.  Bugs can be reported to bug-glibc@gnu.org.
@@ -141,11 +141,11 @@
          ? (t) 0 \
          : TYPE_SIGNED_MAGNITUDE (t) \
          ? ~ (t) 0 \
-         : ~ (t) 0 << (sizeof (t) * CHAR_BIT - 1)))
+         : ~ TYPE_MAXIMUM (t)))
 # define TYPE_MAXIMUM(t) \
    ((t) (! TYPE_SIGNED (t) \
          ? (t) -1 \
-         : ~ (~ (t) 0 << (sizeof (t) * CHAR_BIT - 1))))
+         : ((((t) 1 << (sizeof (t) * CHAR_BIT - 2)) - 1) * 2 + 1)))
 
 # ifndef ULLONG_MAX
 #  define ULLONG_MAX TYPE_MAXIMUM (unsigned long long)
@@ -186,9 +186,8 @@
 # define LOCALE_PARAM_PROTO
 #endif
 
-#include <wchar.h>
-
 #ifdef USE_WIDE_CHAR
+# include <wchar.h>
 # include <wctype.h>
 # define L_(Ch) L##Ch
 # define UCHAR_TYPE wint_t

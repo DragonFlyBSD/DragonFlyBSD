@@ -1,5 +1,5 @@
 /* Error handler for noninteractive utilities
-   Copyright (C) 1990-1998, 2000-2007, 2009-2010 Free Software Foundation, Inc.
+   Copyright (C) 1990-1998, 2000-2007, 2009-2011 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    This program is free software: you can redistribute it and/or modify
@@ -97,11 +97,15 @@ extern void __error_at_line (int status, int errnum, const char *file_name,
 /* The gnulib override of fcntl is not needed in this file.  */
 # undef fcntl
 
-# if !HAVE_DECL_STRERROR_R && STRERROR_R_CHAR_P
+# if !HAVE_DECL_STRERROR_R
 #  ifndef HAVE_DECL_STRERROR_R
 "this configure-time declaration test was not run"
 #  endif
+#  if STRERROR_R_CHAR_P
 char *strerror_r ();
+#  else
+int strerror_r ();
+#  endif
 # endif
 
 /* The calling program should define program_name and set it to the
