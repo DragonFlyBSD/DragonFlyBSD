@@ -101,6 +101,7 @@ typedef struct libhammer_volinfo {
 	uuid_t   vol_fsid;          /* Filesystem UUID */
 	int      version;           /* HAMMER version */
 	int      nvolumes;          /* Number of volumes */
+	int64_t  inodes;            /* no. of inodes */
 	int64_t  bigblocks;         /* Total big blocks */
 	int64_t  freebigblocks;     /* Free big blocks */
 	int64_t  rsvbigblocks;      /* Reserved big blocks */
