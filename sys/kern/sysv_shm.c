@@ -532,7 +532,8 @@ shmget_existing(struct proc *p, struct shmget_args *uap, int mode, int segnum)
 static int
 shmget_allocate_segment(struct proc *p, struct shmget_args *uap, int mode)
 {
-	int i, segnum, shmid, size;
+	int i, segnum, shmid;
+	size_t size;
 	struct ucred *cred = p->p_ucred;
 	struct shmid_ds *shmseg;
 	struct shm_handle *shm_handle;
