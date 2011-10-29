@@ -1134,7 +1134,7 @@ struct	shmget_args {
 	struct sysmsg sysmsg;
 #endif
 	key_t	key;	char key_[PAD_(key_t)];
-	int	size;	char size_[PAD_(int)];
+	size_t	size;	char size_[PAD_(size_t)];
 	int	shmflg;	char shmflg_[PAD_(int)];
 };
 struct	clock_gettime_args {
