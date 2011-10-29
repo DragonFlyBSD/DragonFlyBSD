@@ -430,18 +430,6 @@ RetryFault:
 	vm_page_flag_set(fs.m, PG_REFERENCED);
 	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
 
-	/*
-	 * Burst in a few more pages if possible.  The fs.map should still
-	 * be locked.
-	 */
-	if (fault_flags & VM_FAULT_BURST) {
-		if ((fs.fault_flags & VM_FAULT_WIRE_MASK) == 0 &&
-		    fs.wired == 0) {
-			vm_prefault(fs.map->pmap, vaddr, fs.entry, fs.prot);
-		}
-	}
-	unlock_things(&fs);
-
 	/*KKASSERT(fs.m->queue == PQ_NONE); page-in op may deactivate page */
 	KKASSERT(fs.m->flags & PG_BUSY);
 
@@ -449,7 +437,6 @@ RetryFault:
 	 * If the page is not wired down, then put it where the pageout daemon
 	 * can find it.
 	 */
-
 	if (fs.fault_flags & VM_FAULT_WIRE_MASK) {
 		if (fs.wired)
 			vm_page_wire(fs.m);
@@ -458,6 +445,25 @@ RetryFault:
 	} else {
 		vm_page_activate(fs.m);
 	}
+	vm_page_wakeup(fs.m);
+
+	/*
+	 * Burst in a few more pages if possible.  The fs.map should still
+	 * be locked.  To avoid interlocking against a vnode->getblk
+	 * operation we had to be sure to unbusy our primary vm_page above
+	 * first.
+	 */
+	if (fault_flags & VM_FAULT_BURST) {
+		if ((fs.fault_flags & VM_FAULT_WIRE_MASK) == 0 &&
+		    fs.wired == 0) {
+			vm_prefault(fs.map->pmap, vaddr, fs.entry, fs.prot);
+		}
+	}
+
+	/*
+	 * Unlock everything, and return
+	 */
+	unlock_things(&fs);
 
 	if (curthread->td_lwp) {
 		if (fs.hardfault) {
@@ -467,10 +473,6 @@ RetryFault:
 		}
 	}
 
-	/*
-	 * Unlock everything, and return
-	 */
-	vm_page_wakeup(fs.m);
 	/*vm_object_deallocate(fs.first_object);*/
 	/*fs.m = NULL; */
 	/*fs.first_object = NULL; must still drop later */
