@@ -131,21 +131,21 @@ struct	shminfo shminfo = {
 
 static int shm_use_phys;
 
-TUNABLE_INT("kern.ipc.shmmin", &shminfo.shmmin);
-TUNABLE_INT("kern.ipc.shmmni", &shminfo.shmmni);
-TUNABLE_INT("kern.ipc.shmseg", &shminfo.shmseg);
-TUNABLE_INT("kern.ipc.shmmaxpgs", &shminfo.shmall);
+TUNABLE_LONG("kern.ipc.shmmin", &shminfo.shmmin);
+TUNABLE_LONG("kern.ipc.shmmni", &shminfo.shmmni);
+TUNABLE_LONG("kern.ipc.shmseg", &shminfo.shmseg);
+TUNABLE_LONG("kern.ipc.shmmaxpgs", &shminfo.shmall);
 TUNABLE_INT("kern.ipc.shm_use_phys", &shm_use_phys);
 
-SYSCTL_INT(_kern_ipc, OID_AUTO, shmmax, CTLFLAG_RW, &shminfo.shmmax, 0,
+SYSCTL_LONG(_kern_ipc, OID_AUTO, shmmax, CTLFLAG_RW, &shminfo.shmmax, 0,
     "Max shared memory segment size");
-SYSCTL_INT(_kern_ipc, OID_AUTO, shmmin, CTLFLAG_RW, &shminfo.shmmin, 0,
+SYSCTL_LONG(_kern_ipc, OID_AUTO, shmmin, CTLFLAG_RW, &shminfo.shmmin, 0,
     "Min shared memory segment size");
-SYSCTL_INT(_kern_ipc, OID_AUTO, shmmni, CTLFLAG_RD, &shminfo.shmmni, 0,
+SYSCTL_LONG(_kern_ipc, OID_AUTO, shmmni, CTLFLAG_RD, &shminfo.shmmni, 0,
     "Max number of shared memory identifiers");
-SYSCTL_INT(_kern_ipc, OID_AUTO, shmseg, CTLFLAG_RW, &shminfo.shmseg, 0,
+SYSCTL_LONG(_kern_ipc, OID_AUTO, shmseg, CTLFLAG_RW, &shminfo.shmseg, 0,
     "Max shared memory segments per process");
-SYSCTL_INT(_kern_ipc, OID_AUTO, shmall, CTLFLAG_RW, &shminfo.shmall, 0,
+SYSCTL_LONG(_kern_ipc, OID_AUTO, shmall, CTLFLAG_RW, &shminfo.shmall, 0,
     "Max pages of shared memory");
 SYSCTL_INT(_kern_ipc, OID_AUTO, shm_use_phys, CTLFLAG_RW, &shm_use_phys, 0,
     "Use phys pager allocation instead of swap pager allocation");
@@ -227,7 +227,7 @@ sys_shmdt(struct shmdt_args *uap)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct shmmap_state *shmmap_s;
-	int i;
+	long i;
 	int error;
 
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
@@ -261,7 +261,8 @@ sys_shmat(struct shmat_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	int error, i, flags;
+	int error, flags;
+	long i;
 	struct shmid_ds *shmseg;
 	struct shmmap_state *shmmap_s = NULL;
 	struct shm_handle *shm_handle;
