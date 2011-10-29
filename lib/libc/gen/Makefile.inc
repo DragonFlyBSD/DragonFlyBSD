@@ -29,7 +29,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	scandir.c seed48.c seekdir.c semconfig.c semctl.c semget.c semop.c \
 	setdomainname.c sethostname.c setjmperr.c setmode.c setprogname.c \
 	setproctitle.c \
-	shmat.c shmctl.c shmdt.c shmget.c siginterrupt.c siglist.c signal.c \
+	siginterrupt.c siglist.c signal.c \
 	signbitd.c signbitf.c sigsetops.c sigwait.c sleep.c srand48.c \
 	stringlist.c strtofflags.c sysconf.c sysctl.c sysctlbyname.c \
 	sysctlnametomib.c syslog.c telldir.c termios.c time.c times.c \
