@@ -109,6 +109,8 @@ static struct vfsops ext2fs_vfsops = {
 };
 
 VFS_SET(ext2fs_vfsops, ext2fs, 0);
+MODULE_VERSION(ext2fs, 1);
+
 #define bsd_malloc kmalloc
 #define bsd_free kfree
 

@@ -533,3 +533,4 @@ static struct vfsops tmpfs_vfsops = {
 };
 
 VFS_SET(tmpfs_vfsops, tmpfs, 0);
+MODULE_VERSION(tmpfs, 1);

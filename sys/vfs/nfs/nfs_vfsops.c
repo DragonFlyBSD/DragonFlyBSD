@@ -141,6 +141,7 @@ static struct vfsops nfs_vfsops = {
 	.vfs_uninit =    	nfs_uninit
 };
 VFS_SET(nfs_vfsops, nfs, VFCF_NETWORK);
+MODULE_VERSION(nfs, 1);
 
 /*
  * This structure must be filled in by a primary bootstrap or bootstrap

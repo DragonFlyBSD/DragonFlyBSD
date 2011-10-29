@@ -117,6 +117,7 @@ static struct vfsops mfs_vfsops = {
 };
 
 VFS_SET(mfs_vfsops, mfs, 0);
+MODULE_VERSION(mfs, 1);
 
 /*
  * We allow the underlying MFS block device to be opened and read.

@@ -380,3 +380,4 @@ static struct vfsops null_vfsops = {
 };
 
 VFS_SET(null_vfsops, null, VFCF_LOOPBACK);
+MODULE_VERSION(null, 1);

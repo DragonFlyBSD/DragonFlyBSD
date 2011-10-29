@@ -237,3 +237,4 @@ static struct vfsops portal_vfsops = {
 };
 
 VFS_SET(portal_vfsops, portal, VFCF_SYNTHETIC);
+MODULE_VERSION(portal, 1);

@@ -89,6 +89,7 @@ static struct vfsops nwfs_vfsops = {
 
 
 VFS_SET(nwfs_vfsops, nwfs, VFCF_NETWORK);
+MODULE_VERSION(nwfs, 1);
 
 int nwfs_pbuf_freecnt = -1;	/* start out unlimited */
 static int nwfsid = 1;

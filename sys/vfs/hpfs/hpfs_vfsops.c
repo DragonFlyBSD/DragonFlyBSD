@@ -564,4 +564,4 @@ static struct vfsops hpfs_vfsops = {
 };
 
 VFS_SET(hpfs_vfsops, hpfs, 0);
-
+MODULE_VERSION(hpfs, 1);

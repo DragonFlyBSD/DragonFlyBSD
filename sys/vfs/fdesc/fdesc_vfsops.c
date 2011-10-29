@@ -183,3 +183,4 @@ static struct vfsops fdesc_vfsops = {
 };
 
 VFS_SET(fdesc_vfsops, fdesc, VFCF_SYNTHETIC);
+MODULE_VERSION(fdesc, 1);
