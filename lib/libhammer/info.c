@@ -73,6 +73,7 @@ libhammer_get_volinfo(const char *path)
 	hvi->version = info.version;
 	hvi->nvolumes = info.nvolumes;
 	hvi->bigblocks = info.bigblocks;
+	hvi->freebigblocks = info.freebigblocks;
 	hvi->rsvbigblocks = info.rsvbigblocks;
 
 	/*

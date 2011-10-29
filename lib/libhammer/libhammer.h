@@ -102,6 +102,7 @@ typedef struct libhammer_volinfo {
 	int      version;           /* HAMMER version */
 	int      nvolumes;          /* Number of volumes */
 	int64_t  bigblocks;         /* Total big blocks */
+	int64_t  freebigblocks;     /* Free big blocks */
 	int64_t  rsvbigblocks;      /* Reserved big blocks */
 	int32_t  rsv[8];
 	TAILQ_HEAD(pfslist, libhammer_pfsinfo) list_pseudo;
