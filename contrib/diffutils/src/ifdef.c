@@ -1,6 +1,6 @@
 /* #ifdef-format output routines for GNU DIFF.
 
-   Copyright (C) 1989, 1991-1994, 2001-2002, 2004, 2006, 2009-2010 Free
+   Copyright (C) 1989, 1991-1994, 2001-2002, 2004, 2006, 2009-2011 Free
    Software Foundation, Inc.
 
    This file is part of GNU DIFF.

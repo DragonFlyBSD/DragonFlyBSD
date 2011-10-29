@@ -1,5 +1,5 @@
 /* Internal declarations for getopt.
-   Copyright (C) 1989-1994, 1996-1999, 2001, 2003-2004, 2009-2010 Free Software
+   Copyright (C) 1989-1994, 1996-1999, 2001, 2003-2004, 2009-2011 Free Software
    Foundation, Inc.
    This file is part of the GNU C Library.
 
@@ -108,7 +108,7 @@ struct _getopt_data
 #if defined _LIBC && defined USE_NONOPTION_FLAGS
   int __nonoption_flags_max_len;
   int __nonoption_flags_len;
-# endif
+#endif
 };
 
 /* The initializer is necessary to set OPTIND and OPTERR to their

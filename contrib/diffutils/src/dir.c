@@ -1,7 +1,7 @@
 /* Read, sort and compare two directories.  Used for GNU DIFF.
 
    Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006-2007,
-   2009-2010 Free Software Foundation, Inc.
+   2009-2011 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -21,6 +21,7 @@
 #include "diff.h"
 #include <error.h>
 #include <exclude.h>
+#include <filenamecat.h>
 #include <setjmp.h>
 #include <xalloc.h>
 
@@ -161,19 +162,19 @@ compare_names (char const *name1, char const *name2)
       return r;
     }
 
-  return (ignore_file_name_case
-	  ? strcasecmp (name1, name2)
-	  : file_name_cmp (name1, name2));
+  return file_name_cmp (name1, name2);
 }
 
-/* A wrapper for compare_names suitable as an argument for qsort.  */
+/* Compare names FILE1 and FILE2 when sorting a directory.
+   Prefer filtered comparison, breaking ties with file_name_cmp.  */
 
 static int
 compare_names_for_qsort (void const *file1, void const *file2)
 {
   char const *const *f1 = file1;
   char const *const *f2 = file2;
-  return compare_names (*f1, *f2);
+  int diff = compare_names (*f1, *f2);
+  return diff ? diff : file_name_cmp (*f1, *f2);
 }
 
 /* Compare the contents of two directories named in CMP.
@@ -253,6 +254,41 @@ diff_dirs (struct comparison const *cmp,
 	     pretend the "next name" in that dir is very large.  */
 	  int nameorder = (!*names[0] ? 1 : !*names[1] ? -1
 			   : compare_names (*names[0], *names[1]));
+
+	  /* Prefer a file_name_cmp match if available.  This algorithm is
+	     O(N**2), where N is the number of names in a directory
+	     that compare_names says are all equal, but in practice N
+	     is so small it's not worth tuning.  */
+	  if (nameorder == 0)
+	    {
+	      int raw_order = file_name_cmp (*names[0], *names[1]);
+	      if (raw_order != 0)
+		{
+		  int greater_side = raw_order < 0;
+		  int lesser_side = 1 - greater_side;
+		  char const **lesser = names[lesser_side];
+		  char const *greater_name = *names[greater_side];
+		  char const **p;
+
+		  for (p = lesser + 1;
+		       *p && compare_names (*p, greater_name) == 0;
+		       p++)
+		    {
+		      int c = file_name_cmp (*p, greater_name);
+		      if (0 <= c)
+			{
+			  if (c == 0)
+			    {
+			      memmove (lesser + 1, lesser,
+				       (char *) p - (char *) lesser);
+			      *lesser = greater_name;
+			    }
+			  break;
+			}
+		    }
+		}
+	    }
+
 	  int v1 = (*handle_file) (cmp,
 				   0 < nameorder ? 0 : *names[0]++,
 				   nameorder < 0 ? 0 : *names[1]++);
@@ -280,4 +316,49 @@ dir_loop (struct comparison const *cmp, int i)
     if (0 < same_file (&p->file[i].stat, &cmp->file[i].stat))
       return true;
   return false;
+}
+
+/* Find a matching filename in a directory.  */
+
+char *
+find_dir_file_pathname (char const *dir, char const *file)
+{
+  char *val;
+  char const *match = file;
+  struct dirdata dirdata;
+  dirdata.names = NULL;
+  dirdata.data = NULL;
+
+  if (ignore_file_name_case)
+    {
+      struct file_data filedata;
+      filedata.name = dir;
+      filedata.desc = 0;
+
+      if (dir_read (&filedata, &dirdata))
+	{
+	  locale_specific_sorting = true;
+	  if (setjmp (failed_locale_specific_sorting))
+	    match = file; /* longjmp may mess up MATCH.  */
+	  else
+	    {
+	      for (char const **p = dirdata.names; *p; p++)
+		if (compare_names (*p, file) == 0)
+		  {
+		    if (file_name_cmp (*p, file) == 0)
+		      {
+			match = *p;
+			break;
+		      }
+		    if (match == file)
+		      match = *p;
+		  }
+	    }
+	}
+    }
+
+  val = file_name_concat (dir, match, NULL);
+  free (dirdata.names);
+  free (dirdata.data);
+  return val;
 }

@@ -1,5 +1,5 @@
 /* Localization of proper names.
-   Copyright (C) 2006-2010 Free Software Foundation, Inc.
+   Copyright (C) 2006-2011 Free Software Foundation, Inc.
    Written by Bruno Haible <bruno@clisp.org>, 2006.
 
    This program is free software: you can redistribute it and/or modify
@@ -198,7 +198,8 @@ proper_name_utf8 (const char *name_ascii, const char *name_utf8)
       name_converted = alloc_name_converted =
         xstr_iconv (name_utf8, "UTF-8", locale_code);
 
-# if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 2) || __GLIBC__ > 2 \
+# if (((__GLIBC__ == 2 && __GLIBC_MINOR__ >= 2) || __GLIBC__ > 2) \
+      && !defined __UCLIBC__) \
      || _LIBICONV_VERSION >= 0x0105
       {
         char *converted_translit;

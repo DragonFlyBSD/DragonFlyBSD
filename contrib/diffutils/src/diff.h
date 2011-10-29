@@ -1,6 +1,6 @@
 /* Shared definitions for GNU DIFF
 
-   Copyright (C) 1988-1989, 1991-1995, 1998, 2001-2002, 2004, 2009-2010 Free
+   Copyright (C) 1988-1989, 1991-1995, 1998, 2001-2002, 2004, 2009-2011 Free
    Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -98,7 +98,7 @@ XTERN bool text;
 XTERN lin horizon_lines;
 
 /* The significance of white space during comparisons.  */
-XTERN enum
+enum DIFF_white_space
 {
   /* All white space is significant (the default).  */
   IGNORE_NO_WHITE_SPACE,
@@ -106,12 +106,21 @@ XTERN enum
   /* Ignore changes due to tab expansion (-E).  */
   IGNORE_TAB_EXPANSION,
 
+  /* Ignore changes in trailing horizontal white space (-Z).  */
+  IGNORE_TRAILING_SPACE,
+
+  /* IGNORE_TAB_EXPANSION and IGNORE_TRAILING_SPACE are a special case
+     because they are independent and can be ORed together, yielding
+     IGNORE_TAB_EXPANSION_AND_TRAILING_SPACE.  */
+  IGNORE_TAB_EXPANSION_AND_TRAILING_SPACE,
+
   /* Ignore changes in horizontal white space (-b).  */
   IGNORE_SPACE_CHANGE,
 
   /* Ignore all horizontal white space (-w).  */
   IGNORE_ALL_SPACE
-} ignore_white_space;
+};
+XTERN enum DIFF_white_space ignore_white_space;
 
 /* Ignore changes that affect only blank lines (-B).  */
 XTERN bool ignore_blank_lines;
@@ -316,58 +325,64 @@ XTERN FILE *outfile;
 /* Declare various functions.  */
 
 /* analyze.c */
-int diff_2_files (struct comparison *);
+extern int diff_2_files (struct comparison *);
 
 /* context.c */
-void print_context_header (struct file_data[], bool);
-void print_context_script (struct change *, bool);
+extern void print_context_header (struct file_data[], bool);
+extern void print_context_script (struct change *, bool);
 
 /* dir.c */
-int diff_dirs (struct comparison const *, int (*) (struct comparison const *, char const *, char const *));
+extern int diff_dirs (struct comparison const *,
+                      int (*) (struct comparison const *,
+                               char const *, char const *));
+extern char *find_dir_file_pathname (char const *, char const *);
 
 /* ed.c */
-void print_ed_script (struct change *);
-void pr_forward_ed_script (struct change *);
+extern void print_ed_script (struct change *);
+extern void pr_forward_ed_script (struct change *);
 
 /* ifdef.c */
-void print_ifdef_script (struct change *);
+extern void print_ifdef_script (struct change *);
 
 /* io.c */
-void file_block_read (struct file_data *, size_t);
-bool read_files (struct file_data[], bool);
+extern void file_block_read (struct file_data *, size_t);
+extern bool read_files (struct file_data[], bool);
 
 /* normal.c */
-void print_normal_script (struct change *);
+extern void print_normal_script (struct change *);
 
 /* rcs.c */
-void print_rcs_script (struct change *);
+extern void print_rcs_script (struct change *);
 
 /* side.c */
-void print_sdiff_script (struct change *);
+extern void print_sdiff_script (struct change *);
 
 /* util.c */
 extern char const change_letter[4];
 extern char const pr_program[];
-char *concat (char const *, char const *, char const *);
-char *dir_file_pathname (char const *, char const *);
-bool lines_differ (char const *, char const *);
-lin translate_line_number (struct file_data const *, lin);
-struct change *find_change (struct change *);
-struct change *find_reverse_change (struct change *);
-void *zalloc (size_t);
-enum changes analyze_hunk (struct change *, lin *, lin *, lin *, lin *);
-void begin_output (void);
-void debug_script (struct change *);
-void fatal (char const *) __attribute__((noreturn));
-void finish_output (void);
-void message (char const *, char const *, char const *);
-void message5 (char const *, char const *, char const *, char const *, char const *);
-void output_1_line (char const *, char const *, char const *, char const *);
-void perror_with_name (char const *);
-void pfatal_with_name (char const *) __attribute__((noreturn));
-void print_1_line (char const *, char const * const *);
-void print_message_queue (void);
-void print_number_range (char, struct file_data *, lin, lin);
-void print_script (struct change *, struct change * (*) (struct change *), void (*) (struct change *));
-void setup_output (char const *, char const *, bool);
-void translate_range (struct file_data const *, lin, lin, long int *, long int *);
+extern char *concat (char const *, char const *, char const *);
+extern bool lines_differ (char const *, char const *);
+extern lin translate_line_number (struct file_data const *, lin);
+extern struct change *find_change (struct change *);
+extern struct change *find_reverse_change (struct change *);
+extern void *zalloc (size_t);
+extern enum changes analyze_hunk (struct change *, lin *, lin *, lin *, lin *);
+extern void begin_output (void);
+extern void debug_script (struct change *);
+extern void fatal (char const *) __attribute__((noreturn));
+extern void finish_output (void);
+extern void message (char const *, char const *, char const *);
+extern void message5 (char const *, char const *, char const *,
+                      char const *, char const *);
+extern void output_1_line (char const *, char const *, char const *,
+                           char const *);
+extern void perror_with_name (char const *);
+extern void pfatal_with_name (char const *) __attribute__((noreturn));
+extern void print_1_line (char const *, char const * const *);
+extern void print_message_queue (void);
+extern void print_number_range (char, struct file_data *, lin, lin);
+extern void print_script (struct change *, struct change * (*) (struct change *),
+                          void (*) (struct change *));
+extern void setup_output (char const *, char const *, bool);
+extern void translate_range (struct file_data const *, lin, lin,
+                             long int *, long int *);

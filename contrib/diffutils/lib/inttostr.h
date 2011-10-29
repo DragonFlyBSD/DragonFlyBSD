@@ -1,6 +1,6 @@
 /* inttostr.h -- convert integers to printable strings
 
-   Copyright (C) 2001-2006, 2009-2010 Free Software Foundation, Inc.
+   Copyright (C) 2001-2006, 2009-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -39,7 +39,8 @@
 # define __attribute_warn_unused_result__ /* empty */
 #endif
 
-char *offtostr (off_t, char *) __attribute_warn_unused_result__;
 char *imaxtostr (intmax_t, char *) __attribute_warn_unused_result__;
-char *umaxtostr (uintmax_t, char *) __attribute_warn_unused_result__;
+char *inttostr (int, char *) __attribute_warn_unused_result__;
+char *offtostr (off_t, char *) __attribute_warn_unused_result__;
 char *uinttostr (unsigned int, char *) __attribute_warn_unused_result__;
+char *umaxtostr (uintmax_t, char *) __attribute_warn_unused_result__;

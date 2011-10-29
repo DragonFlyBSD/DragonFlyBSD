@@ -1,7 +1,7 @@
 /* diff - compare files line by line
 
    Copyright (C) 1988-1989, 1992-1994, 1996, 1998, 2001-2002, 2004, 2006-2007,
-   2009-2010 Free Software Foundation, Inc.
+   2009-2011 Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
 
@@ -27,6 +27,7 @@
 #include <error.h>
 #include <exclude.h>
 #include <exitfail.h>
+#include <filenamecat.h>
 #include <file-type.h>
 #include <fnmatch.h>
 #include <getopt.h>
@@ -106,7 +107,7 @@ static bool unidirectional_new_file;
 static bool report_identical_files;
 
 static char const shortopts[] =
-"0123456789abBcC:dD:eEfF:hHiI:lL:nNpPqrsS:tTuU:vwW:x:X:y";
+"0123456789abBcC:dD:eEfF:hHiI:lL:nNpPqrsS:tTuU:vwW:x:X:yZ";
 
 /* Values for long options that do not have single-letter equivalents.  */
 enum
@@ -177,6 +178,7 @@ static struct option const longopts[] =
   {"ignore-matching-lines", 1, 0, 'I'},
   {"ignore-space-change", 0, 0, 'b'},
   {"ignore-tab-expansion", 0, 0, 'E'},
+  {"ignore-trailing-space", 0, 0, 'Z'},
   {"inhibit-hunk-merge", 0, 0, INHIBIT_HUNK_MERGE_OPTION},
   {"initial-tab", 0, 0, 'T'},
   {"label", 1, 0, 'L'},
@@ -319,6 +321,11 @@ main (int argc, char **argv)
 	    ignore_white_space = IGNORE_SPACE_CHANGE;
 	  break;
 
+	case 'Z':
+	  if (ignore_white_space < IGNORE_SPACE_CHANGE)
+	    ignore_white_space |= IGNORE_TRAILING_SPACE;
+	  break;
+
 	case 'B':
 	  ignore_blank_lines = true;
 	  break;
@@ -380,8 +387,8 @@ main (int argc, char **argv)
 	  break;
 
 	case 'E':
-	  if (ignore_white_space < IGNORE_TAB_EXPANSION)
-	    ignore_white_space = IGNORE_TAB_EXPANSION;
+	  if (ignore_white_space < IGNORE_SPACE_CHANGE)
+	    ignore_white_space |= IGNORE_TAB_EXPANSION;
 	  break;
 
 	case 'f':
@@ -479,7 +486,7 @@ main (int argc, char **argv)
 	  break;
 
 	case 'v':
-	  version_etc (stdout, PROGRAM_NAME, PACKAGE_NAME, PACKAGE_VERSION,
+	  version_etc (stdout, PROGRAM_NAME, PACKAGE_NAME, Version,
 		       AUTHORS, (char *) NULL);
 	  check_stdout ();
 	  return EXIT_SUCCESS;
@@ -841,41 +848,64 @@ check_stdout (void)
 }
 
 static char const * const option_help_msgid[] = {
-  N_("Compare files line by line."),
+  N_("    --normal                  output a normal diff (the default)"),
+  N_("-q, --brief                   report only when files differ"),
+  N_("-s, --report-identical-files  report when two files are the same"),
+  N_("-c, -C NUM, --context[=NUM]   output NUM (default 3) lines of copied context"),
+  N_("-u, -U NUM, --unified[=NUM]   output NUM (default 3) lines of unified context"),
+  N_("-e, --ed                      output an ed script"),
+  N_("-n, --rcs                     output an RCS format diff"),
+  N_("-y, --side-by-side            output in two columns"),
+  N_("-W, --width=NUM               output at most NUM (default 130) print columns"),
+  N_("    --left-column             output only the left column of common lines"),
+  N_("    --suppress-common-lines   do not output common lines"),
   "",
-  N_("-i  --ignore-case  Ignore case differences in file contents."),
-  N_("--ignore-file-name-case  Ignore case when comparing file names."),
-  N_("--no-ignore-file-name-case  Consider case when comparing file names."),
-  N_("-E  --ignore-tab-expansion  Ignore changes due to tab expansion."),
-  N_("-b  --ignore-space-change  Ignore changes in the amount of white space."),
-  N_("-w  --ignore-all-space  Ignore all white space."),
-  N_("-B  --ignore-blank-lines  Ignore changes whose lines are all blank."),
-  N_("-I RE  --ignore-matching-lines=RE  Ignore changes whose lines all match RE."),
-  N_("--strip-trailing-cr  Strip trailing carriage return on input."),
+  N_("-p, --show-c-function         show which C function each change is in"),
+  N_("-F, --show-function-line=RE   show the most recent line matching RE"),
+  N_("    --label LABEL             use LABEL instead of file name\n"
+     "                                (can be repeated)"),
+  "",
+  N_("-t, --expand-tabs             expand tabs to spaces in output"),
+  N_("-T, --initial-tab             make tabs line up by prepending a tab"),
+  N_("    --tabsize=NUM             tab stops every NUM (default 8) print columns"),
+  N_("    --suppress-blank-empty    suppress space or tab before empty output lines"),
+  N_("-l, --paginate                pass output through `pr' to paginate it"),
+  "",
+  N_("-r, --recursive                 recursively compare any subdirectories found"),
+  N_("-N, --new-file                  treat absent files as empty"),
+  N_("    --unidirectional-new-file   treat absent first files as empty"),
+  N_("    --ignore-file-name-case     ignore case when comparing file names"),
+  N_("    --no-ignore-file-name-case  consider case when comparing file names"),
+  N_("-x, --exclude=PAT               exclude files that match PAT"),
+  N_("-X, --exclude-from=FILE         exclude files that match any pattern in FILE"),
+  N_("-S, --starting-file=FILE        start with FILE when comparing directories"),
+  N_("    --from-file=FILE1           compare FILE1 to all operands;\n"
+     "                                  FILE1 can be a directory"),
+  N_("    --to-file=FILE2             compare all operands to FILE2;\n"
+     "                                  FILE2 can be a directory"),
+  "",
+  N_("-i, --ignore-case               ignore case differences in file contents"),
+  N_("-E, --ignore-tab-expansion      ignore changes due to tab expansion"),
+  N_("-Z, --ignore-trailing-space     ignore white space at line end"),
+  N_("-b, --ignore-space-change       ignore changes in the amount of white space"),
+  N_("-w, --ignore-all-space          ignore all white space"),
+  N_("-B, --ignore-blank-lines        ignore changes whose lines are all blank"),
+  N_("-I, --ignore-matching-lines=RE  ignore changes whose lines all match RE"),
+  "",
+  N_("-a, --text                      treat all files as text"),
+  N_("    --strip-trailing-cr         strip trailing carriage return on input"),
 #if O_BINARY
-  N_("--binary  Read and write data in binary mode."),
+  N_("    --binary                    read and write data in binary mode"),
 #endif
-  N_("-a  --text  Treat all files as text."),
   "",
-  N_("-c  -C NUM  --context[=NUM]  Output NUM (default 3) lines of copied context.\n\
--u  -U NUM  --unified[=NUM]  Output NUM (default 3) lines of unified context.\n\
-  --label LABEL  Use LABEL instead of file name.\n\
-  -p  --show-c-function  Show which C function each change is in.\n\
-  -F RE  --show-function-line=RE  Show the most recent line matching RE."),
-  N_("-q  --brief  Output only whether files differ."),
-  N_("-e  --ed  Output an ed script."),
-  N_("--normal  Output a normal diff."),
-  N_("-n  --rcs  Output an RCS format diff."),
-  N_("-y  --side-by-side  Output in two columns.\n\
-  -W NUM  --width=NUM  Output at most NUM (default 130) print columns.\n\
-  --left-column  Output only the left column of common lines.\n\
-  --suppress-common-lines  Do not output common lines."),
-  N_("-D NAME  --ifdef=NAME  Output merged file to show `#ifdef NAME' diffs."),
-  N_("--GTYPE-group-format=GFMT  Similar, but format GTYPE input groups with GFMT."),
-  N_("--line-format=LFMT  Similar, but format all input lines with LFMT."),
-  N_("--LTYPE-line-format=LFMT  Similar, but format LTYPE input lines with LFMT."),
+  N_("-D, --ifdef=NAME                output merged file with `#ifdef NAME' diffs"),
+  N_("    --GTYPE-group-format=GFMT   format GTYPE input groups with GFMT"),
+  N_("    --line-format=LFMT          format all input lines with LFMT"),
+  N_("    --LTYPE-line-format=LFMT    format LTYPE input lines with LFMT"),
+  N_("  These format options provide fine-grained control over the output\n"
+     "    of diff, generalizing -D/--ifdef."),
   N_("  LTYPE is `old', `new', or `unchanged'.  GTYPE is LTYPE or `changed'."),
-  N_("  GFMT may contain:\n\
+  N_("  GFMT (only) may contain:\n\
     %<  lines from FILE1\n\
     %>  lines from FILE2\n\
     %=  lines common to FILE1 and FILE2\n\
@@ -885,41 +915,27 @@ static char const * const option_help_msgid[] = {
         L  last line number\n\
         N  number of lines = L-F+1\n\
         E  F-1\n\
-        M  L+1"),
-  N_("  LFMT may contain:\n\
+        M  L+1\n\
+    %(A=B?T:E)  if A equals B then T else E"),
+  N_("  LFMT (only) may contain:\n\
     %L  contents of line\n\
     %l  contents of line, excluding any trailing newline\n\
     %[-][WIDTH][.[PREC]]{doxX}n  printf-style spec for input line number"),
-  N_("  Either GFMT or LFMT may contain:\n\
+  N_("  Both GFMT and LFMT may contain:\n\
     %%  %\n\
     %c'C'  the single character C\n\
-    %c'\\OOO'  the character with octal code OOO"),
+    %c'\\OOO'  the character with octal code OOO\n\
+    C    the character C (other characters represent themselves)"),
   "",
-  N_("-l  --paginate  Pass the output through `pr' to paginate it."),
-  N_("-t  --expand-tabs  Expand tabs to spaces in output."),
-  N_("-T  --initial-tab  Make tabs line up by prepending a tab."),
-  N_("--tabsize=NUM  Tab stops are every NUM (default 8) print columns."),
-  N_("--suppress-blank-empty  Suppress space or tab before empty output lines."),
+  N_("-d, --minimal            try hard to find a smaller set of changes"),
+  N_("    --horizon-lines=NUM  keep NUM lines of the common prefix and suffix"),
+  N_("    --speed-large-files  assume large files and many scattered small changes"),
   "",
-  N_("-r  --recursive  Recursively compare any subdirectories found."),
-  N_("-N  --new-file  Treat absent files as empty."),
-  N_("--unidirectional-new-file  Treat absent first files as empty."),
-  N_("-s  --report-identical-files  Report when two files are the same."),
-  N_("-x PAT  --exclude=PAT  Exclude files that match PAT."),
-  N_("-X FILE  --exclude-from=FILE  Exclude files that match any pattern in FILE."),
-  N_("-S FILE  --starting-file=FILE  Start with FILE when comparing directories."),
-  N_("--from-file=FILE1  Compare FILE1 to all operands.  FILE1 can be a directory."),
-  N_("--to-file=FILE2  Compare all operands to FILE2.  FILE2 can be a directory."),
-  "",
-  N_("--horizon-lines=NUM  Keep NUM lines of the common prefix and suffix."),
-  N_("-d  --minimal  Try hard to find a smaller set of changes."),
-  N_("--speed-large-files  Assume large files and many scattered small changes."),
-  "",
-  N_("-v  --version  Output version info."),
-  N_("--help  Output this help."),
+  N_("    --help               display this help and exit"),
+  N_("-v, --version            output version information and exit"),
   "",
   N_("FILES are `FILE1 FILE2' or `DIR1 DIR2' or `DIR FILE...' or `FILE... DIR'."),
-  N_("If --from-file or --to-file is given, there are no restrictions on FILES."),
+  N_("If --from-file or --to-file is given, there are no restrictions on FILE(s)."),
   N_("If a FILE is `-', read standard input."),
   N_("Exit status is 0 if inputs are the same, 1 if different, 2 if trouble."),
   0
@@ -931,6 +947,11 @@ usage (void)
   char const * const *p;
 
   printf (_("Usage: %s [OPTION]... FILES\n"), program_name);
+  printf ("%s\n\n", _("Compare FILES line by line."));
+
+  fputs (_("\
+Mandatory arguments to long options are mandatory for short options too.\n\
+"), stdout);
 
   for (p = option_help_msgid;  *p;  p++)
     {
@@ -958,7 +979,7 @@ usage (void)
 static void
 specify_value (char const **var, char const *value, char const *option)
 {
-  if (*var && strcmp (*var, value) != 0)
+  if (*var && ! STREQ (*var, value))
     {
       error (0, 0, _("conflicting %s option value `%s'"), option, value);
       try_help (NULL, NULL);
@@ -1067,9 +1088,9 @@ compare_files (struct comparison const *parent,
   else
     {
       cmp.file[0].name = free0
-	= dir_file_pathname (parent->file[0].name, name0);
+	= file_name_concat (parent->file[0].name, name0, NULL);
       cmp.file[1].name = free1
-	= dir_file_pathname (parent->file[1].name, name1);
+	= file_name_concat (parent->file[1].name, name1, NULL);
     }
 
   /* Stat the files.  */
@@ -1156,7 +1177,7 @@ compare_files (struct comparison const *parent,
       char const *fnm = cmp.file[fnm_arg].name;
       char const *dir = cmp.file[dir_arg].name;
       char const *filename = cmp.file[dir_arg].name = free0
-	= dir_file_pathname (dir, last_component (fnm));
+	= find_dir_file_pathname (dir, last_component (fnm));
 
       if (STREQ (fnm, "-"))
 	fatal ("cannot compare `-' to a directory");

@@ -1,6 +1,6 @@
 /* Buffer primitives for comparison operations.
 
-   Copyright (C) 1993, 1995, 1998, 2001-2002, 2006, 2009-2010 Free Software
+   Copyright (C) 1993, 1995, 1998, 2001-2002, 2006, 2009-2011 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -20,28 +20,14 @@
 
 #include <errno.h>
 #include <limits.h>
-
 #include <signal.h>
-#ifndef SA_RESTART
-# ifdef SA_INTERRUPT /* e.g. SunOS 4.1.x */
-#  define SA_RESTART SA_INTERRUPT
-# else
-#  define SA_RESTART 0
-# endif
-#endif
-
 #include <unistd.h>
+#include <stdint.h>
 #include <inttypes.h>
 #include <sys/types.h>
 #include "cmpbuf.h"
 #include "intprops.h"
 
-#ifndef PTRDIFF_MAX
-# define PTRDIFF_MAX TYPE_MAXIMUM (ptrdiff_t)
-#endif
-#ifndef SIZE_MAX
-# define SIZE_MAX TYPE_MAXIMUM (size_t)
-#endif
 #ifndef SSIZE_MAX
 # define SSIZE_MAX TYPE_MAXIMUM (ssize_t)
 #endif

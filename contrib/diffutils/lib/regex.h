@@ -2,9 +2,8 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Definitions for data structures and routines for the regular
    expression library.
-   Copyright (C) 1985, 1989, 1990, 1991, 1992, 1993, 1995, 1996, 1997, 1998,
-   2000, 2001, 2002, 2003, 2005, 2006, 2009, 2010 Free Software Foundation,
-   Inc.
+   Copyright (C) 1985, 1989-1993, 1995-1998, 2000-2003, 2005-2006, 2009-2011
+   Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    This program is free software; you can redistribute it and/or modify
@@ -116,10 +115,10 @@ typedef unsigned long int reg_syntax_t;
 /* If this bit is set, then ^ and $ are always anchors (outside bracket
      expressions, of course).
    If this bit is not set, then it depends:
-        ^  is an anchor if it is at the beginning of a regular
-           expression or after an open-group or an alternation operator;
-        $  is an anchor if it is at the end of a regular expression, or
-           before a close-group or an alternation operator.
+	^  is an anchor if it is at the beginning of a regular
+	   expression or after an open-group or an alternation operator;
+	$  is an anchor if it is at the end of a regular expression, or
+	   before a close-group or an alternation operator.
 
    This bit could be (re)combined with RE_CONTEXT_INDEP_OPS, because
    POSIX draft 11.2 says that * etc. in leading positions is undefined.
@@ -221,8 +220,8 @@ typedef unsigned long int reg_syntax_t;
    whether ^ should be special.  */
 # define RE_CARET_ANCHORS_HERE (RE_ICASE << 1)
 
-/* If this bit is set, then \{ cannot be first in an bre or
-   immediately after an alternation or begin-group operator.  */
+/* If this bit is set, then \{ cannot be first in a regex or
+   immediately after an alternation, open-group or \} operator.  */
 # define RE_CONTEXT_INVALID_DUP (RE_CARET_ANCHORS_HERE << 1)
 
 /* If this bit is set, then no_sub will be set to 1 during
@@ -497,8 +496,8 @@ struct re_pattern_buffer
 #endif
   unsigned int _REG_RE_NAME (regs_allocated) : 2;
 
-  /* Set to zero when `regex_compile' compiles a pattern; set to one
-     by `re_compile_fastmap' if it updates the fastmap.  */
+  /* Set to zero when `re_compile_pattern' compiles a pattern; set to
+     one by `re_compile_fastmap' if it updates the fastmap.  */
   unsigned int _REG_RE_NAME (fastmap_accurate) : 1;
 
   /* If set, `re_match_2' does not return information about
@@ -612,8 +611,8 @@ extern regoff_t re_match_2 (struct re_pattern_buffer *__buffer,
    register data.
 
    Unless this function is called, the first search or match using
-   PATTERN_BUFFER will allocate its own register data, without
-   freeing the old data.  */
+   BUFFER will allocate its own register data, without freeing the old
+   data.  */
 extern void re_set_registers (struct re_pattern_buffer *__buffer,
 			      struct re_registers *__regs,
 			      __re_size_t __num_regs,

@@ -1,6 +1,6 @@
 /* File I/O for GNU DIFF.
 
-   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2010
+   Copyright (C) 1988-1989, 1992-1995, 1998, 2001-2002, 2004, 2006, 2009-2011
    Free Software Foundation, Inc.
 
    This file is part of GNU DIFF.
@@ -198,9 +198,7 @@ slurp (struct file_data *current)
 static void
 find_and_hash_each_line (struct file_data *current)
 {
-  hash_value h;
   char const *p = current->prefix_end;
-  unsigned char c;
   lin i, *bucket;
   size_t length;
 
@@ -215,52 +213,70 @@ find_and_hash_each_line (struct file_data *current)
   lin eqs_alloc = equivs_alloc;
   char const *suffix_begin = current->suffix_begin;
   char const *bufend = FILE_BUFFER (current) + current->buffered;
+  bool ig_case = ignore_case;
+  enum DIFF_white_space ig_white_space = ignore_white_space;
   bool diff_length_compare_anyway =
-    ignore_white_space != IGNORE_NO_WHITE_SPACE;
+    ig_white_space != IGNORE_NO_WHITE_SPACE;
   bool same_length_diff_contents_compare_anyway =
-    diff_length_compare_anyway | ignore_case;
+    diff_length_compare_anyway | ig_case;
 
   while (p < suffix_begin)
     {
       char const *ip = p;
-
-      h = 0;
+      hash_value h = 0;
+      unsigned char c;
 
       /* Hash this line until we find a newline.  */
-      if (ignore_case)
-	switch (ignore_white_space)
-	  {
-	  case IGNORE_ALL_SPACE:
-	    while ((c = *p++) != '\n')
-	      if (! isspace (c))
-		h = HASH (h, tolower (c));
-	    break;
+      switch (ig_white_space)
+	{
+	case IGNORE_ALL_SPACE:
+	  while ((c = *p++) != '\n')
+	    if (! isspace (c))
+	      h = HASH (h, ig_case ? tolower (c) : c);
+	  break;
 
-	  case IGNORE_SPACE_CHANGE:
+	case IGNORE_SPACE_CHANGE:
+	  while ((c = *p++) != '\n')
+	    {
+	      if (isspace (c))
+		{
+		  do
+		    if ((c = *p++) == '\n')
+		      goto hashing_done;
+		  while (isspace (c));
+
+		  h = HASH (h, ' ');
+		}
+
+	      /* C is now the first non-space.  */
+	      h = HASH (h, ig_case ? tolower (c) : c);
+	    }
+	  break;
+
+	case IGNORE_TAB_EXPANSION:
+	case IGNORE_TAB_EXPANSION_AND_TRAILING_SPACE:
+	case IGNORE_TRAILING_SPACE:
+	  {
+	    size_t column = 0;
 	    while ((c = *p++) != '\n')
 	      {
-		if (isspace (c))
+		if (ig_white_space & IGNORE_TRAILING_SPACE
+		    && isspace (c))
 		  {
+		    char const *p1 = p;
+		    unsigned char c1;
 		    do
-		      if ((c = *p++) == '\n')
-			goto hashing_done;
-		    while (isspace (c));
-
-		    h = HASH (h, ' ');
+		      if ((c1 = *p1++) == '\n')
+			{
+			  p = p1;
+			  goto hashing_done;
+			}
+		    while (isspace (c1));
 		  }
 
-		/* C is now the first non-space.  */
-		h = HASH (h, tolower (c));
-	      }
-	    break;
+		size_t repetitions = 1;
 
-	  case IGNORE_TAB_EXPANSION:
-	    {
-	      size_t column = 0;
-	      while ((c = *p++) != '\n')
-		{
-		  size_t repetitions = 1;
-
+		if (ig_white_space & IGNORE_TAB_EXPANSION)
 		  switch (c)
 		    {
 		    case '\b':
@@ -280,92 +296,29 @@ find_and_hash_each_line (struct file_data *current)
 		      break;
 
 		    default:
-		      c = tolower (c);
 		      column++;
 		      break;
 		    }
 
-		  do
-		    h = HASH (h, c);
-		  while (--repetitions != 0);
-		}
-	    }
-	    break;
+		if (ig_case)
+		  c = tolower (c);
 
-	  default:
+		do
+		  h = HASH (h, c);
+		while (--repetitions != 0);
+	      }
+	  }
+	  break;
+
+	default:
+	  if (ig_case)
 	    while ((c = *p++) != '\n')
 	      h = HASH (h, tolower (c));
-	    break;
-	  }
-      else
-	switch (ignore_white_space)
-	  {
-	  case IGNORE_ALL_SPACE:
-	    while ((c = *p++) != '\n')
-	      if (! isspace (c))
-		h = HASH (h, c);
-	    break;
-
-	  case IGNORE_SPACE_CHANGE:
-	    while ((c = *p++) != '\n')
-	      {
-		if (isspace (c))
-		  {
-		    do
-		      if ((c = *p++) == '\n')
-			goto hashing_done;
-		    while (isspace (c));
-
-		    h = HASH (h, ' ');
-		  }
-
-		/* C is now the first non-space.  */
-		h = HASH (h, c);
-	      }
-	    break;
-
-	  case IGNORE_TAB_EXPANSION:
-	    {
-	      size_t column = 0;
-	      while ((c = *p++) != '\n')
-		{
-		  size_t repetitions = 1;
-
-		  switch (c)
-		    {
-		    case '\b':
-		      column -= 0 < column;
-		      break;
-
-		    case '\t':
-		      c = ' ';
-		      repetitions = tabsize - column % tabsize;
-		      column = (column + repetitions < column
-				? 0
-				: column + repetitions);
-		      break;
-
-		    case '\r':
-		      column = 0;
-		      break;
-
-		    default:
-		      column++;
-		      break;
-		    }
-
-		  do
-		    h = HASH (h, c);
-		  while (--repetitions != 0);
-		}
-	    }
-	    break;
-
-	  default:
+	  else
 	    while ((c = *p++) != '\n')
 	      h = HASH (h, c);
-	    break;
-	  }
+	  break;
+	}
 
    hashing_done:;
 
@@ -381,7 +334,7 @@ find_and_hash_each_line (struct file_data *current)
 	     complete line, put it into buckets[-1] so that it can
 	     compare equal only to the other file's incomplete line
 	     (if one exists).  */
-	  if (ignore_white_space < IGNORE_SPACE_CHANGE)
+	  if (ig_white_space < IGNORE_TRAILING_SPACE)
 	    bucket = &buckets[-1];
 	}
 
