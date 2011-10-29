@@ -57,7 +57,7 @@ void	ioapic_intsrc(int, int, enum intr_trigger, enum intr_polarity);
 void	*ioapic_gsi_ioaddr(int);
 int	ioapic_gsi_pin(int);
 void	ioapic_pin_setup(void *, int, int,
-	    enum intr_trigger, enum intr_polarity);
+	    enum intr_trigger, enum intr_polarity, int);
 void	ioapic_extpin_setup(void *, int, int);
 int	ioapic_extpin_gsi(void);
 int	ioapic_gsi(int, int);

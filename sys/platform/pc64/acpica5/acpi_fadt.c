@@ -252,3 +252,9 @@ acpi_sci_pci_shariable(void)
 	else
 		return 0;
 }
+
+int
+acpi_sci_irqno(void)
+{
+	return acpi_sci_irq;
+}

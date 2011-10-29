@@ -4,5 +4,6 @@
 void	acpi_sci_config(void);
 int	acpi_sci_enabled(void);
 int	acpi_sci_pci_shariable(void);
+int	acpi_sci_irqno(void);
 
 #endif	/* !_ACPI_SCI_VAR_H_ */
