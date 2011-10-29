@@ -602,6 +602,7 @@ static __inline void
 vm_page_free_zero(vm_page_t m)
 {
 #ifdef PMAP_DEBUG
+#ifdef PHYS_TO_DMAP
 	char *p = (char *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
 	int i;
 
@@ -610,7 +611,7 @@ vm_page_free_zero(vm_page_t m)
 			panic("non-zero page in vm_page_free_zero()");
 		}
 	}
-
+#endif
 #endif
 	vm_page_flag_set(m, PG_ZERO);
 	vm_page_free_toq(m);
