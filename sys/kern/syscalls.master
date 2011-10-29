@@ -361,10 +361,11 @@
 			    int msgflg); }
 227	STD	BSD	{ int msgrcv(int msqid, void *msgp, size_t msgsz, \
 			    long msgtyp, int msgflg); }
-228	STD	BSD	{ caddr_t shmat(int shmid, void *shmaddr, int shmflg); }
+228	STD	BSD	{ caddr_t shmat(int shmid, const void *shmaddr, \
+			    int shmflg); }
 229	STD	BSD	{ int shmctl(int shmid, int cmd, \
 			    struct shmid_ds *buf); }
-230	STD	BSD	{ int shmdt(void *shmaddr); }
+230	STD	BSD	{ int shmdt(const void *shmaddr); }
 231	STD	BSD	{ int shmget(key_t key, size_t size, int shmflg); }
 ;
 232	STD	POSIX	{ int clock_gettime(clockid_t clock_id, \

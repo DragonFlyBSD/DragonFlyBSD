@@ -1112,7 +1112,7 @@ struct	shmat_args {
 	struct sysmsg sysmsg;
 #endif
 	int	shmid;	char shmid_[PAD_(int)];
-	void *	shmaddr;	char shmaddr_[PAD_(void *)];
+	const void *	shmaddr;	char shmaddr_[PAD_(const void *)];
 	int	shmflg;	char shmflg_[PAD_(int)];
 };
 struct	shmctl_args {
@@ -1127,7 +1127,7 @@ struct	shmdt_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
-	void *	shmaddr;	char shmaddr_[PAD_(void *)];
+	const void *	shmaddr;	char shmaddr_[PAD_(const void *)];
 };
 struct	shmget_args {
 #ifdef _KERNEL

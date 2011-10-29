@@ -24,9 +24,8 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/shmat.2,v 1.8.2.6 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/shmat.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
-.Dd August 2, 1995
+.Dd October 29, 2011
 .Dt SHMAT 2
 .Os
 .Sh NAME
@@ -41,9 +40,9 @@
 .In sys/ipc.h
 .In sys/shm.h
 .Ft void *
-.Fn shmat "int shmid" "void *addr" "int flag"
+.Fn shmat "int shmid" "const void *addr" "int flag"
 .Ft int
-.Fn shmdt "void *addr"
+.Fn shmdt "const void *addr"
 .Sh DESCRIPTION
 .Fn Shmat
 attaches the shared memory segment identified by

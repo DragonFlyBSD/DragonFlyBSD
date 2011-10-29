@@ -24,9 +24,8 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/shmctl.2,v 1.9.2.4 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/shmctl.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
-.Dd July 17, 1995
+.Dd October 29, 2011
 .Dt SHMCTL 2
 .Os
 .Sh NAME
@@ -97,12 +96,14 @@ struct is defined as follows:
 .\" with nroff, but otherwise it's straight from sys/shm.h
 .\"
 .Bd -literal
+typedef unsigned int shmatt_t;
+
 struct shmid_ds {
     struct ipc_perm shm_perm;   /* operation permission structure */
-    int             shm_segsz;  /* size of segment in bytes */
+    size_t          shm_segsz;  /* size of segment in bytes */
     pid_t           shm_lpid;   /* process ID of last shared memory op */
     pid_t           shm_cpid;   /* process ID of creator */
-    short           shm_nattch; /* number of current attaches */
+    shmatt_t        shm_nattch; /* number of current attaches */
     time_t          shm_atime;  /* time of last shmat() */
     time_t          shm_dtime;  /* time of last shmdt() */
     time_t          shm_ctime;  /* time of last change by shmctl() */

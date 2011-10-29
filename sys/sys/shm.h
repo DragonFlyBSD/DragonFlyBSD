@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/sys/shm.h,v 1.14 1999/12/29 04:24:46 peter Exp $ */
-/* $DragonFly: src/sys/sys/shm.h,v 1.6 2006/09/30 20:03:44 swildner Exp $ */
 /*	$NetBSD: shm.h,v 1.15 1994/06/29 06:45:17 cgd Exp $	*/
 
 /*
@@ -51,13 +50,14 @@
 #define SHM_R       (IPC_R)
 #define SHM_W       (IPC_W)
 
+typedef unsigned int	shmatt_t;
 
 struct shmid_ds {
 	struct ipc_perm shm_perm;	/* operation permission structure */
 	size_t          shm_segsz;	/* size of segment in bytes */
 	pid_t           shm_lpid;   /* process ID of last shared memory op */
 	pid_t           shm_cpid;	/* process ID of creator */
-	int		shm_nattch;	/* number of current attaches */
+	shmatt_t	shm_nattch;	/* number of current attaches */
 	time_t          shm_atime;	/* time of last shmat() */
 	time_t          shm_dtime;	/* time of last shmdt() */
 	time_t          shm_ctime;	/* time of last change by shmctl() */
@@ -96,10 +96,10 @@ void	shmfork (struct proc *, struct proc *);
 
 __BEGIN_DECLS
 int shmsys (int, ...);
-void *shmat  (int, void *, int);
+void *shmat  (int, const void *, int);
 int shmget (key_t, size_t, int);
 int shmctl (int, int, struct shmid_ds *);
-int shmdt  (void *);
+int shmdt  (const void *);
 __END_DECLS
 
 #endif /* !_KERNEL */
