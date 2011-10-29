@@ -8,4 +8,7 @@ CFLAGS+=	-I. -I${.CURDIR}
 DPADD=		${RELTOP}/libdiffutils/libdiffutils.a
 LDADD=		${RELTOP}/libdiffutils/libdiffutils.a
 
+DPADD+=		${RELTOP}/libver/libver.a
+LDADD+=		${RELTOP}/libver/libver.a
+
 BINDIR?=	/usr/bin

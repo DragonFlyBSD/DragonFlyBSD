@@ -4,7 +4,7 @@ LIB=		diffutils
 INTERNALLIB=	true
 
 CONTRIBDIR=	${BASEDIR}/lib
-.PATH:		${CONTRIBDIR} ${CONTRIBDIR}/uniwidth
+.PATH:		${CONTRIBDIR} ${CONTRIBDIR}/uniwidth ${CONTRIBDIR}/unistr
 
 CFLAGS+=	-I${CONTRIBDIR} -I${.CURDIR} -I${.OBJDIR}
 CFLAGS+=	-DHAVE_CONFIG_H
@@ -61,13 +61,18 @@ SRCS=	c-stack.c \
 	strftime.c \
 	stripslash.c \
 	tempname.c \
-	timegm.c \
 	uinttostr.c \
 	umaxtostr.c \
 	wcwidth.c \
 	xmalloc.c \
 	xstrtol.c \
 	xstrtol-error.c \
-	xstrtoul.c
+	xstrtoul.c \
+	filenamecat.c \
+	filenamecat-lgpl.c \
+	u8-mbtoucr.c \
+	u8-uctomb.c \
+	u8-uctomb-aux.c \
+	strerror-override.c
 
 .include <bsd.lib.mk>

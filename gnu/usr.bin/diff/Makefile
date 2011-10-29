@@ -1,3 +1,3 @@
-SUBDIR=	libdiffutils diff3 sdiff diff doc
+SUBDIR=	libdiffutils libver diff diff3 sdiff doc
 
 .include <bsd.subdir.mk>

@@ -1726,6 +1726,7 @@ TO_REMOVE+=/usr/share/misc/gprof.callg
 TO_REMOVE+=/usr/share/misc/gprof.flat
 TO_REMOVE+=/usr/share/man/cat4/i386/ndis.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/ndis.4.gz
+TO_REMOVE+=/usr/share/info/diff.info.gz
 TO_REMOVE+=/usr/include/vfs/gnu
 
 .if ${MACHINE_ARCH} == "x86_64"

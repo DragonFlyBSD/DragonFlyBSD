@@ -1,7 +1,7 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Like <fcntl.h>, but with non-working flags defined to 0.
 
-   Copyright (C) 2006-2010 Free Software Foundation, Inc.
+   Copyright (C) 2006-2011 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,11 +22,18 @@
 #pragma GCC system_header
 #endif
 
+
 #if defined __need_system_fcntl_h
 /* Special invocation convention.  */
 
 #include <sys/types.h>
-#ifndef __GLIBC__ /* Avoid namespace pollution on glibc systems.  */
+/* On some systems other than glibc, <sys/stat.h> is a prerequisite of
+   <fcntl.h>.  On glibc systems, we would like to avoid namespace pollution.
+   But on glibc systems, <fcntl.h> includes <sys/stat.h> inside an
+   extern "C" { ... } block, which leads to errors in C++ mode with the
+   overridden <sys/stat.h> from gnulib.  These errors are known to be gone
+   with g++ version >= 4.3.  */
+#if !(defined __GLIBC__ || defined __UCLIBC__) || (defined __cplusplus && defined GNULIB_NAMESPACE && !(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)))
 # include <sys/stat.h>
 #endif
 #include_next <fcntl.h>
@@ -37,7 +44,13 @@
 #ifndef _GL_FCNTL_H
 
 #include <sys/types.h>
-#ifndef __GLIBC__ /* Avoid namespace pollution on glibc systems.  */
+/* On some systems other than glibc, <sys/stat.h> is a prerequisite of
+   <fcntl.h>.  On glibc systems, we would like to avoid namespace pollution.
+   But on glibc systems, <fcntl.h> includes <sys/stat.h> inside an
+   extern "C" { ... } block, which leads to errors in C++ mode with the
+   overridden <sys/stat.h> from gnulib.  These errors are known to be gone
+   with g++ version >= 4.3.  */
+#if !(defined __GLIBC__ || defined __UCLIBC__) || (defined __cplusplus && defined GNULIB_NAMESPACE && !(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)))
 # include <sys/stat.h>
 #endif
 /* The include_next requires a split double-inclusion guard.  */
@@ -259,10 +272,20 @@
    _GL_CXXALIASWARN_1 (func, GNULIB_NAMESPACE)
 # define _GL_CXXALIASWARN_1(func,namespace) \
    _GL_CXXALIASWARN_2 (func, namespace)
-# define _GL_CXXALIASWARN_2(func,namespace) \
-   _GL_WARN_ON_USE (func, \
-                    "The symbol ::" #func " refers to the system function. " \
-                    "Use " #namespace "::" #func " instead.")
+/* To work around GCC bug <http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43881>,
+   we enable the warning only when not optimizing.  */
+# if !__OPTIMIZE__
+#  define _GL_CXXALIASWARN_2(func,namespace) \
+    _GL_WARN_ON_USE (func, \
+                     "The symbol ::" #func " refers to the system function. " \
+                     "Use " #namespace "::" #func " instead.")
+# elif __GNUC__ >= 3 && GNULIB_STRICT_CHECKING
+#  define _GL_CXXALIASWARN_2(func,namespace) \
+     extern __typeof__ (func) func
+# else
+#  define _GL_CXXALIASWARN_2(func,namespace) \
+     _GL_EXTERN_C int _gl_cxxalias_dummy
+# endif
 #else
 # define _GL_CXXALIASWARN(func) \
     _GL_EXTERN_C int _gl_cxxalias_dummy
@@ -277,10 +300,20 @@
                         GNULIB_NAMESPACE)
 # define _GL_CXXALIASWARN1_1(func,rettype,parameters_and_attributes,namespace) \
    _GL_CXXALIASWARN1_2 (func, rettype, parameters_and_attributes, namespace)
-# define _GL_CXXALIASWARN1_2(func,rettype,parameters_and_attributes,namespace) \
-   _GL_WARN_ON_USE_CXX (func, rettype, parameters_and_attributes, \
-                        "The symbol ::" #func " refers to the system function. " \
-                        "Use " #namespace "::" #func " instead.")
+/* To work around GCC bug <http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43881>,
+   we enable the warning only when not optimizing.  */
+# if !__OPTIMIZE__
+#  define _GL_CXXALIASWARN1_2(func,rettype,parameters_and_attributes,namespace) \
+    _GL_WARN_ON_USE_CXX (func, rettype, parameters_and_attributes, \
+                         "The symbol ::" #func " refers to the system function. " \
+                         "Use " #namespace "::" #func " instead.")
+# elif __GNUC__ >= 3 && GNULIB_STRICT_CHECKING
+#  define _GL_CXXALIASWARN1_2(func,rettype,parameters_and_attributes,namespace) \
+     extern __typeof__ (func) func
+# else
+#  define _GL_CXXALIASWARN1_2(func,rettype,parameters_and_attributes,namespace) \
+     _GL_EXTERN_C int _gl_cxxalias_dummy
+# endif
 #else
 # define _GL_CXXALIASWARN1(func,rettype,parameters_and_attributes) \
     _GL_EXTERN_C int _gl_cxxalias_dummy
@@ -386,7 +419,11 @@ _GL_CXXALIAS_RPL (open, int, (const char *filename, int flags, ...));
 # else
 _GL_CXXALIAS_SYS (open, int, (const char *filename, int flags, ...));
 # endif
+/* On HP-UX 11, in C++ mode, open() is defined as an inline function with a
+   default argument.  _GL_CXXALIASWARN does not work in this case.  */
+# if !defined __hpux
 _GL_CXXALIASWARN (open);
+# endif
 #elif defined GNULIB_POSIXCHECK
 # undef open
 /* Assume open is always declared.  */
@@ -457,9 +494,12 @@ _GL_WARN_ON_USE (openat, "openat is not portable - "
 #endif
 
 #if !defined O_CLOEXEC && defined O_NOINHERIT
-/* Mingw spells it `O_NOINHERIT'.  Intentionally leave it
-   undefined if not available.  */
+/* Mingw spells it `O_NOINHERIT'.  */
 # define O_CLOEXEC O_NOINHERIT
+#endif
+
+#ifndef O_CLOEXEC
+# define O_CLOEXEC 0
 #endif
 
 #ifndef O_DIRECT
@@ -474,6 +514,10 @@ _GL_WARN_ON_USE (openat, "openat is not portable - "
 # define O_DSYNC 0
 #endif
 
+#ifndef O_EXEC
+# define O_EXEC O_RDONLY /* This is often close enough in older systems.  */
+#endif
+
 #ifndef O_NDELAY
 # define O_NDELAY 0
 #endif
@@ -484,6 +528,19 @@ _GL_WARN_ON_USE (openat, "openat is not portable - "
 
 #ifndef O_NONBLOCK
 # define O_NONBLOCK O_NDELAY
+#endif
+
+/* If the gnulib module 'nonblocking' is in use, guarantee a working non-zero
+   value of O_NONBLOCK.  Otherwise, O_NONBLOCK is defined (above) to O_NDELAY
+   or to 0 as fallback.  */
+#if 0
+# if O_NONBLOCK
+#  define GNULIB_defined_O_NONBLOCK 0
+# else
+#  define GNULIB_defined_O_NONBLOCK 1
+#  undef O_NONBLOCK
+#  define O_NONBLOCK 0x40000000
+# endif
 #endif
 
 #ifndef O_NOCTTY
@@ -502,12 +559,21 @@ _GL_WARN_ON_USE (openat, "openat is not portable - "
 # define O_RSYNC 0
 #endif
 
+#ifndef O_SEARCH
+# define O_SEARCH O_RDONLY /* This is often close enough in older systems.  */
+#endif
+
 #ifndef O_SYNC
 # define O_SYNC 0
 #endif
 
 #ifndef O_TTY_INIT
 # define O_TTY_INIT 0
+#endif
+
+#if O_ACCMODE != (O_RDONLY | O_WRONLY | O_RDWR | O_EXEC | O_SEARCH)
+# undef O_ACCMODE
+# define O_ACCMODE (O_RDONLY | O_WRONLY | O_RDWR | O_EXEC | O_SEARCH)
 #endif
 
 /* For systems that distinguish between text and binary I/O.

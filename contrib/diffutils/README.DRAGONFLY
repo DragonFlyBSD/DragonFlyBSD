@@ -1,13 +1,13 @@
-GNU DIFFUTILS 3.0
+GNU DIFFUTILS 3.2
 =================
 
 Original source can be downloaded from:
 http://ftp.gnu.org/gnu/diffutils
 
-file = diffutils-3.0.tar.gz
-date = 03 May 2010
-size = 1824077
-sha1 = 17fcdcd435ef6b424aa9c7a487ffde408d1a00e6
+file = diffutils-3.2.tar.gz
+date = 02 September 2011
+size = 2023539
+sha1 = e145a54a8ff67fa6272de48ec0e2f4897f05dce7
 
 A list of files and directories removed is in README.DELETED
 

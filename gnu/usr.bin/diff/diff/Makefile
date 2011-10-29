@@ -3,6 +3,7 @@
 
 PROG=		diff
 CFLAGS+=	-I${SRCDIR}/lib -I${.CURDIR}/../libdiffutils
+CFLAGS+=	-I${.CURDIR}/../libver
 
 SRCS=		analyze.c \
 		context.c \

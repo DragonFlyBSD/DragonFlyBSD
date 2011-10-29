@@ -2,7 +2,7 @@
 /* -*- buffer-read-only: t -*- vi: set ro: */
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Provide a more complete sys/stat header file.
-   Copyright (C) 2005-2010 Free Software Foundation, Inc.
+   Copyright (C) 2005-2011 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #if __GNUC__ >= 3
 #pragma GCC system_header
 #endif
+
 
 #if defined __need_system_sys_stat_h
 /* Special invocation convention.  */
@@ -258,10 +259,20 @@
    _GL_CXXALIASWARN_1 (func, GNULIB_NAMESPACE)
 # define _GL_CXXALIASWARN_1(func,namespace) \
    _GL_CXXALIASWARN_2 (func, namespace)
-# define _GL_CXXALIASWARN_2(func,namespace) \
-   _GL_WARN_ON_USE (func, \
-                    "The symbol ::" #func " refers to the system function. " \
-                    "Use " #namespace "::" #func " instead.")
+/* To work around GCC bug <http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43881>,
+   we enable the warning only when not optimizing.  */
+# if !__OPTIMIZE__
+#  define _GL_CXXALIASWARN_2(func,namespace) \
+    _GL_WARN_ON_USE (func, \
+                     "The symbol ::" #func " refers to the system function. " \
+                     "Use " #namespace "::" #func " instead.")
+# elif __GNUC__ >= 3 && GNULIB_STRICT_CHECKING
+#  define _GL_CXXALIASWARN_2(func,namespace) \
+     extern __typeof__ (func) func
+# else
+#  define _GL_CXXALIASWARN_2(func,namespace) \
+     _GL_EXTERN_C int _gl_cxxalias_dummy
+# endif
 #else
 # define _GL_CXXALIASWARN(func) \
     _GL_EXTERN_C int _gl_cxxalias_dummy
@@ -276,10 +287,20 @@
                         GNULIB_NAMESPACE)
 # define _GL_CXXALIASWARN1_1(func,rettype,parameters_and_attributes,namespace) \
    _GL_CXXALIASWARN1_2 (func, rettype, parameters_and_attributes, namespace)
-# define _GL_CXXALIASWARN1_2(func,rettype,parameters_and_attributes,namespace) \
-   _GL_WARN_ON_USE_CXX (func, rettype, parameters_and_attributes, \
-                        "The symbol ::" #func " refers to the system function. " \
-                        "Use " #namespace "::" #func " instead.")
+/* To work around GCC bug <http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43881>,
+   we enable the warning only when not optimizing.  */
+# if !__OPTIMIZE__
+#  define _GL_CXXALIASWARN1_2(func,rettype,parameters_and_attributes,namespace) \
+    _GL_WARN_ON_USE_CXX (func, rettype, parameters_and_attributes, \
+                         "The symbol ::" #func " refers to the system function. " \
+                         "Use " #namespace "::" #func " instead.")
+# elif __GNUC__ >= 3 && GNULIB_STRICT_CHECKING
+#  define _GL_CXXALIASWARN1_2(func,rettype,parameters_and_attributes,namespace) \
+     extern __typeof__ (func) func
+# else
+#  define _GL_CXXALIASWARN1_2(func,rettype,parameters_and_attributes,namespace) \
+     _GL_EXTERN_C int _gl_cxxalias_dummy
+# endif
 #else
 # define _GL_CXXALIASWARN1(func,rettype,parameters_and_attributes) \
     _GL_EXTERN_C int _gl_cxxalias_dummy
@@ -648,7 +669,11 @@ _GL_WARN_ON_USE (fstatat, "fstatat is not portable - "
 
 
 #if 0
-# if 0
+/* Use the rpl_ prefix also on Solaris <= 9, because on Solaris 9 our futimens
+   implementation relies on futimesat, which on Solaris 10 makes an invocation
+   to futimens that is meant to invoke the libc's futimens(), not gnulib's
+   futimens().  */
+# if 0 || (!1 && defined __sun)
 #  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
 #   undef futimens
 #   define futimens rpl_futimens
@@ -661,7 +686,9 @@ _GL_FUNCDECL_SYS (futimens, int, (int fd, struct timespec const times[2]));
 #  endif
 _GL_CXXALIAS_SYS (futimens, int, (int fd, struct timespec const times[2]));
 # endif
+# if 1
 _GL_CXXALIASWARN (futimens);
+# endif
 #elif defined GNULIB_POSIXCHECK
 # undef futimens
 # if HAVE_RAW_DECL_FUTIMENS
@@ -754,11 +781,14 @@ _GL_CXXALIAS_RPL (mkdir, int, (char const *name, mode_t mode));
    which are included above.  */
 # if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
 
+#  if !GNULIB_defined_rpl_mkdir
 static inline int
 rpl_mkdir (char const *name, mode_t mode)
 {
   return _mkdir (name);
 }
+#   define GNULIB_defined_rpl_mkdir 1
+#  endif
 
 #  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
 #   define mkdir rpl_mkdir
@@ -843,7 +873,8 @@ _GL_CXXALIAS_RPL (mknod, int, (char const *file, mode_t mode, dev_t dev));
 _GL_FUNCDECL_SYS (mknod, int, (char const *file, mode_t mode, dev_t dev)
                               _GL_ARG_NONNULL ((1)));
 #  endif
-_GL_CXXALIAS_SYS (mknod, int, (char const *file, mode_t mode, dev_t dev));
+/* Need to cast, because on OSF/1 5.1, the third parameter is '...'.  */
+_GL_CXXALIAS_SYS_CAST (mknod, int, (char const *file, mode_t mode, dev_t dev));
 # endif
 _GL_CXXALIASWARN (mknod);
 #elif defined GNULIB_POSIXCHECK
@@ -888,7 +919,8 @@ _GL_WARN_ON_USE (mknodat, "mknodat is not portable - "
 #  else /* !_LARGE_FILES */
 #   define stat(name, st) rpl_stat (name, st)
 #  endif /* !_LARGE_FILES */
-_GL_EXTERN_C int stat (const char *name, struct stat *buf) _GL_ARG_NONNULL ((1, 2));
+_GL_EXTERN_C int stat (const char *name, struct stat *buf)
+                      _GL_ARG_NONNULL ((1, 2));
 # endif
 #elif defined GNULIB_POSIXCHECK
 # undef stat
@@ -900,7 +932,11 @@ _GL_WARN_ON_USE (stat, "stat is unportable - "
 
 
 #if 0
-# if 0
+/* Use the rpl_ prefix also on Solaris <= 9, because on Solaris 9 our utimensat
+   implementation relies on futimesat, which on Solaris 10 makes an invocation
+   to utimensat that is meant to invoke the libc's utimensat(), not gnulib's
+   utimensat().  */
+# if 0 || (!1 && defined __sun)
 #  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
 #   undef utimensat
 #   define utimensat rpl_utimensat
@@ -919,7 +955,9 @@ _GL_FUNCDECL_SYS (utimensat, int, (int fd, char const *name,
 _GL_CXXALIAS_SYS (utimensat, int, (int fd, char const *name,
                                    struct timespec const times[2], int flag));
 # endif
+# if 1
 _GL_CXXALIASWARN (utimensat);
+# endif
 #elif defined GNULIB_POSIXCHECK
 # undef utimensat
 # if HAVE_RAW_DECL_UTIMENSAT
