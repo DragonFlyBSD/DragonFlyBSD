@@ -62,26 +62,26 @@ static uid_t	user2uid(const char *);
 static gid_t	grp2gid(const char *);
 
 static struct nlist symbols[] = {
-	{"_sema"},
+	{ .n_name = "_sema" },
 #define X_SEMA		0
-	{"_seminfo"},
+	{ .n_name = "_seminfo" },
 #define X_SEMINFO	1
-	{"_semu"},
+	{ .n_name = "_semu" },
 #define X_SEMU		2
-	{"_msginfo"},
+	{ .n_name = "_msginfo" },
 #define X_MSGINFO	3
-	{"_msqids"},
+	{ .n_name = "_msqids" },
 #define X_MSQIDS	4
-	{"_shminfo"},
+	{ .n_name = "_shminfo" },
 #define X_SHMINFO	5
-	{"_shmsegs"},
+	{ .n_name = "_shmsegs" },
 #define X_SHMSEGS	6
-	{NULL}
+	{ .n_name = NULL }
 };
 
 static kvm_t *kd;
 
-char   *
+static char *
 fmt_perm(u_short mode)
 {
 	static char buffer[100];
@@ -101,7 +101,7 @@ fmt_perm(u_short mode)
 	return (&buffer[0]);
 }
 
-void
+static void
 cvt_time(time_t t, char *buf)
 {
 	struct tm *tm;
@@ -135,8 +135,8 @@ main(int argc, char **argv)
 	char   *core, *namelist;
 	char	*user, *grp;
 	int     i;
-	uid_t	useruid;
-	gid_t	grpgid;
+	uid_t	useruid = 0;
+	gid_t	grpgid = 0;
 
 	core = namelist = NULL;
 	user = grp = NULL;
@@ -281,9 +281,9 @@ main(int argc, char **argv)
 					cvt_time(msqptr->msg_rtime, rtime_buf);
 					cvt_time(msqptr->msg_ctime, ctime_buf);
 
-					printf("q %6d %10d %s %8s %8s",
+					printf("q %6d %10ld %s %8s %8s",
 					    IXSEQ_TO_IPCID(i, msqptr->msg_perm),
-					    msqptr->msg_perm.key,
+					    (long)msqptr->msg_perm.key,
 					    fmt_perm(msqptr->msg_perm.mode),
 					    user_from_uid(msqptr->msg_perm.uid, 0),
 					    group_from_gid(msqptr->msg_perm.gid, 0));
@@ -294,18 +294,18 @@ main(int argc, char **argv)
 						    group_from_gid(msqptr->msg_perm.cgid, 0));
 
 					if (option & OUTSTANDING)
-						printf(" %6d %6d",
+						printf(" %6lu %6lu",
 						    msqptr->msg_cbytes,
 						    msqptr->msg_qnum);
 
 					if (option & BIGGEST)
-						printf(" %6d",
+						printf(" %6lu",
 						    msqptr->msg_qbytes);
 
 					if (option & PID)
 						printf(" %6d %6d",
-						    msqptr->msg_lspid,
-						    msqptr->msg_lrpid);
+						    (int)msqptr->msg_lspid,
+						    (int)msqptr->msg_lrpid);
 
 					if (option & TIME)
 						printf("%s %s %s",
@@ -327,15 +327,15 @@ main(int argc, char **argv)
 	    kvm_read(kd, symbols[X_SHMINFO].n_value, &shminfo, sizeof(shminfo))) {
 		if (display & SHMTOTAL) {
 			printf("shminfo:\n");
-			printf("\tshmmax: %12lu\t(max shared memory segment size)\n",
+			printf("\tshmmax: %12ld\t(max shared memory segment size)\n",
 			    shminfo.shmmax);
-			printf("\tshmmin: %12d\t(min shared memory segment size)\n",
+			printf("\tshmmin: %12ld\t(min shared memory segment size)\n",
 			    shminfo.shmmin);
-			printf("\tshmmni: %12d\t(max number of shared memory identifiers)\n",
+			printf("\tshmmni: %12ld\t(max number of shared memory identifiers)\n",
 			    shminfo.shmmni);
-			printf("\tshmseg: %12d\t(max shared memory segments per process)\n",
+			printf("\tshmseg: %12ld\t(max shared memory segments per process)\n",
 			    shminfo.shmseg);
-			printf("\tshmall: %12d\t(max amount of shared memory in pages)\n\n",
+			printf("\tshmall: %12ld\t(max amount of shared memory in pages)\n\n",
 			    shminfo.shmall);
 		}
 		if (display & SHMINFO) {
@@ -375,9 +375,9 @@ main(int argc, char **argv)
 					cvt_time(shmptr->shm_dtime, dtime_buf);
 					cvt_time(shmptr->shm_ctime, ctime_buf);
 
-					printf("m %6d %10d %s %8s %8s",
+					printf("m %6d %10ld %s %8s %8s",
 					    IXSEQ_TO_IPCID(i, shmptr->shm_perm),
-					    shmptr->shm_perm.key,
+					    (long)shmptr->shm_perm.key,
 					    fmt_perm(shmptr->shm_perm.mode),
 					    user_from_uid(shmptr->shm_perm.uid, 0),
 					    group_from_gid(shmptr->shm_perm.gid, 0));
@@ -392,7 +392,7 @@ main(int argc, char **argv)
 						    shmptr->shm_nattch);
 
 					if (option & BIGGEST)
-						printf(" %12ul",
+						printf(" %12zd",
 						    shmptr->shm_segsz);
 
 					if (option & PID)
@@ -471,9 +471,9 @@ main(int argc, char **argv)
 					cvt_time(semaptr->sem_otime, otime_buf);
 					cvt_time(semaptr->sem_ctime, ctime_buf);
 
-					printf("s %6d %10d %s %8s %8s",
+					printf("s %6d %10ld %s %8s %8s",
 					    IXSEQ_TO_IPCID(i, semaptr->sem_perm),
-					    semaptr->sem_perm.key,
+					    (long)semaptr->sem_perm.key,
 					    fmt_perm(semaptr->sem_perm.mode),
 					    user_from_uid(semaptr->sem_perm.uid, 0),
 					    group_from_gid(semaptr->sem_perm.gid, 0));
