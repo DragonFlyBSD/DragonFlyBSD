@@ -9,7 +9,6 @@ LIB=		crypt
 .PATH:		${.CURDIR}/../libmd
 SRCS=		crypt.c crypt-md5.c crypt-sha256.c crypt-sha512.c \
             md5c.c sha256c.c sha512c.c misc.c
-INCS=		crypt.h
 WARNS?=		2
 MAN=		crypt.3
 MLINKS=		crypt.3 crypt_get_format.3 crypt.3 crypt_set_format.3
