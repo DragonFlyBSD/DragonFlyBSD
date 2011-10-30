@@ -1728,6 +1728,7 @@ TO_REMOVE+=/usr/share/man/cat4/i386/ndis.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/ndis.4.gz
 TO_REMOVE+=/usr/share/info/diff.info.gz
 TO_REMOVE+=/usr/include/vfs/gnu
+TO_REMOVE+=/usr/include/crypt.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
