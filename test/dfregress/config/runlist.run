@@ -1,0 +1,53 @@
+# Testcase				type		Options			Command line arguments
+sample/test1/test1			userland	defaults		arg1 "arg 2" arg3 arg4
+sample/test1/test1			userland	make=gmake
+sample/test2/test2			userland	defaults
+sample/test3/test3			userland	defaults
+sample/test4/test4			userland	timeout=30
+sample/test5/test5			userland	defaults
+sample/test5/test5			userland	nobuild
+sample/testk1/testk1.ko			kernel		defaults
+sample/testb1/testb1			buildonly	defaults
+
+io/kqueue_1/kqueue_1			userland	defaults
+io/kqueue_2/kqueue_2			userland	defaults
+io/pselect_1/pselect_1			userland	defaults
+io/select_1/select_1			userland	defaults
+io/select_2/select_2			userland	defaults
+io/select_3/select_3			userland	defaults
+io/select_4/select_4			userland	defaults
+io/sendfd_1/sendfd_1			userland	timeout=20
+
+mem/mmap_madvise_1/mmap_madvise_1	userland	defaults
+mem/mmap_1/mmap_1			userland	timeout=300		200000
+
+priv/setreuid/setreuid			userland	runas=nobody
+
+compiler/div128/div128			buildonly	defaults
+
+threads/umtx_errno/umtx_errno		userland	timeout=300		20000
+
+crypto/aes/aestest			userland	defaults		ecbnk44.txt
+crypto/aes/aestest			userland	defaults		ecbnk48.txt
+crypto/aes/aestest			userland	defaults		ecbnt44.txt
+crypto/aes/aestest			userland	defaults		ecbnt48.txt
+crypto/aes/aestest			userland	defaults		ecbvk44.txt
+crypto/aes/aestest			userland	defaults		ecbvk48.txt
+crypto/aes/aestest			userland	defaults		ecbvt44.txt
+crypto/aes/aestest			userland	defaults		ecbvt48.txt
+crypto/aesctr/aesctr			userland	defaults
+crypto/aesxts/aes_xts			userland	defaults
+crypto/serpent/serpent_test		userland	defaults		serpentecb_vk.txt
+crypto/serpent/serpent_test		userland	defaults		serpentecb_vt.txt
+crypto/twofish/twofish_test		userland	defaults		twofishecb_vk.txt
+crypto/twofish/twofish_test		userland	defaults		twofishecb_vt.txt
+
+#openat_1		userland	intpre,intpost,timeout=100
+#openat_1		userland	intpre,intpost,timeout=100
+#openat_1		userland	intpre,intpost,timeout=100
+#openat_1		userland	intpre,intpost,timeout=100
+#openat_1		userland	intpre,intpost,timeout=100
+#openat_1		userland	intpre,intpost,timeout=100
+#openat_1		userland	intpre,intpost,timeout=100
+#openat_2		userland	defaults
+#openat_3		userland	pre=openat_pre,post=openat_post
