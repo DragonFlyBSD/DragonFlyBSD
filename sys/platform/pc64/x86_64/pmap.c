@@ -2577,12 +2577,15 @@ pmap_scan(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva,
 			 */
 			KKASSERT(pte_pv == NULL);
 		} else if (pte_pv) {
-			KKASSERT((*ptep & (PG_MANAGED|PG_V)) ==
-				 (PG_MANAGED|PG_V));
+			KASSERT((*ptep & (PG_MANAGED|PG_V)) == (PG_MANAGED|
+								PG_V),
+				("bad *ptep %016lx sva %016lx pte_pv %p",
+				*ptep, sva, pte_pv));
 			func(pmap, &info, pte_pv, pt_pv, sva, ptep, arg);
 		} else {
-			KKASSERT((*ptep & (PG_MANAGED|PG_V)) ==
-				 PG_V);
+			KASSERT((*ptep & (PG_MANAGED|PG_V)) == PG_V,
+				("bad *ptep %016lx sva %016lx pte_pv NULL",
+				*ptep, sva));
 			func(pmap, &info, pte_pv, pt_pv, sva, ptep, arg);
 		}
 		if (pt_pv)
@@ -2803,13 +2806,19 @@ kernel_skip:
 			 * not NULL) is consumed by the callback.
 			 */
 			if (pte_pv) {
-				KKASSERT((*ptep & (PG_MANAGED|PG_V)) ==
-					 (PG_MANAGED|PG_V));
+				KASSERT((*ptep & (PG_MANAGED|PG_V)) ==
+					 (PG_MANAGED|PG_V),
+					("bad *ptep %016lx sva %016lx "
+					 "pte_pv %p",
+					 *ptep, sva, pte_pv));
 				func(pmap, &info, pte_pv, pt_pv, sva,
 				     ptep, arg);
 			} else {
-				KKASSERT((*ptep & (PG_MANAGED|PG_V)) ==
-					 PG_V);
+				KASSERT((*ptep & (PG_MANAGED|PG_V)) ==
+					 PG_V,
+					("bad *ptep %016lx sva %016lx "
+					 "pte_pv NULL",
+					 *ptep, sva));
 				func(pmap, &info, pte_pv, pt_pv, sva,
 				     ptep, arg);
 			}
