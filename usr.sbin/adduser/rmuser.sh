@@ -24,8 +24,7 @@
 #
 #	Email: Mike Makonnen <mtm@FreeBSD.Org>
 #
-# $FreeBSD: src/usr.sbin/adduser/rmuser.sh,v 1.8 2004/02/29 09:54:15 schweikh Exp $
-# $DragonFly: src/usr.sbin/adduser/rmuser.sh,v 1.1 2004/06/21 17:47:12 cpressey Exp $
+# $FreeBSD: src/usr.sbin/adduser/rmuser.sh,v 1.11 2008/07/30 18:37:21 jhb Exp $
 #
 
 ATJOBDIR="/var/at/jobs"
@@ -34,6 +33,7 @@ MAILSPOOL="/var/mail"
 SIGKILL="-KILL"
 TEMPDIRS="/tmp /var/tmp"
 THISCMD=`/usr/bin/basename $0`
+PWCMD="${PWCMD:-/usr/sbin/pw}"
 
 # err msg
 #	Display $msg on stderr.
@@ -87,10 +87,10 @@ rm_mail() {
 		    echo -n " mailspool"
 		rm ${MAILSPOOL}/$login
 	fi
-	if [ -f ${MAILSPOOL}/${login}.pop ]; then
-		verbose && echo -n " ${MAILSPOOL}/${login}.pop" ||
+	if [ -f ${MAILSPOOL}/.${login}.pop ]; then
+		verbose && echo -n " ${MAILSPOOL}/.${login}.pop" ||
 		    echo -n " pop3"
-		rm ${MAILSPOOL}/${login}.pop
+		rm ${MAILSPOOL}/.${login}.pop
 	fi
 	verbose && echo '.'
 }
@@ -179,7 +179,7 @@ rm_user() {
 	}
 	! verbose && echo -n " passwd"
 	verbose && echo -n " from the system:"
-	pw userdel -n $login $pw_rswitch
+	${PWCMD} userdel -n $login $pw_rswitch
 	verbose && echo ' Done.'
 }
 
@@ -302,7 +302,7 @@ if [ ! "$userlist" ]; then
 		show_usage
 		exit 1
 	else
-		echo -n "Please enter one or more user name's: "
+		echo -n "Please enter one or more user names: "
 		read userlist
 	fi
 fi
@@ -313,7 +313,7 @@ for _user in $userlist ; do
 	# Make sure the name exists in the passwd database and that it
 	# does not have a uid of 0
 	#
-	userrec=`pw 2>/dev/null usershow -n $_user`
+	userrec=`${PWCMD} 2>/dev/null usershow -n $_user`
 	if [ "$?" != "0" ]; then
 		err "user ($_user) does not exist in the password database."
 		continue
@@ -344,7 +344,7 @@ for _user in $userlist ; do
 	fi
 
 	# Disable any further attempts to log into this account
-	pw 2>/dev/null lock $_user
+	${PWCMD} 2>/dev/null lock $_user
 
 	# Remove crontab, mail spool, etc. Then obliterate the user from
 	# the passwd and group database.

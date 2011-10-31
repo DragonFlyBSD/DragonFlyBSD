@@ -24,25 +24,24 @@
 #
 #       Email: Mike Makonnen <mtm@FreeBSD.Org>
 #
-# $FreeBSD: src/usr.sbin/adduser/adduser.sh,v 1.31 2007/10/20 00:45:31 mtm Exp $
-# $DragonFly: src/usr.sbin/adduser/adduser.sh,v 1.4 2008/07/21 23:42:02 swildner Exp $
+# $FreeBSD: src/usr.sbin/adduser/adduser.sh,v 1.33 2010/01/14 22:04:08 joel Exp $
 #
 
 # err msg
-#       Display $msg on stderr, unless we're being quiet.
-# 
+#	Display $msg on stderr, unless we're being quiet.
+#
 err() {
 	if [ -z "$quietflag" ]; then
-        	echo 1>&2 ${THISCMD}: ERROR: $*
+		echo 1>&2 ${THISCMD}: ERROR: $*
 	fi
 }
 
 # info msg
-#       Display $msg on stdout, unless we're being quiet.
-# 
+#	Display $msg on stdout, unless we're being quiet.
+#
 info() {
 	if [ -z "$quietflag" ]; then
-        	echo ${THISCMD}: INFO: $*
+		echo ${THISCMD}: INFO: $*
 	fi
 }
 
@@ -51,7 +50,7 @@ info() {
 #	is not, output the value of the next higher uid that is available.
 #	If a uid is not specified, output the first available uid, as indicated
 #	by pw(8).
-# 
+#
 get_nextuid () {
 	_uid=$1
 	_nextuid=
@@ -82,6 +81,7 @@ show_usage() {
 	echo "  -E		disable this account after creation"
 	echo "  -G		additional groups to add accounts to"
 	echo "  -L		login class of the user"
+	echo "  -M		file permission for home directory"
 	echo "  -N		do not read configuration file"
 	echo "  -S		a nonexistent shell is not an error"
 	echo "  -d		home directory"
@@ -163,8 +163,7 @@ fullpath_from_shell() {
 #	the path is invalid or it is not executable it
 #	will emit an informational message saying so.
 #
-shell_exists()
-{
+shell_exists() {
 	_sh="$1"
 	_shellchk="${GREPCMD} '^$_sh$' ${ETCSHELLS} > /dev/null 2>&1"
 
@@ -191,6 +190,7 @@ save_config() {
 	echo "# NOTE: only *some* variables are saved." >> ${ADDUSERCONF}
 	echo "# Last Modified on `${DATECMD}`."		>> ${ADDUSERCONF}
 	echo ''				>> ${ADDUSERCONF}
+	echo "defaultHomePerm=$uhomeperm" >> ${ADDUSERCONF}
 	echo "defaultLgroup=$ulogingroup" >> ${ADDUSERCONF}
 	echo "defaultclass=$uclass"	>> ${ADDUSERCONF}
 	echo "defaultgroups=$ugroups"	>> ${ADDUSERCONF}
@@ -248,7 +248,12 @@ add_user() {
 		if [ "$uhome" = "$NOHOME" ]; then
 			_home='-d "$uhome"'
 		else
-			_home='-m -d "$uhome"'
+			# Use home directory permissions if specified
+			if [ -n "$uhomeperm" ]; then
+				_home='-m -d "$uhome" -M "$uhomeperm"'
+			else
+				_home='-m -d "$uhome"'
+			fi
 		fi
 	elif [ -n "$Dflag" -a -n "$uhome" ]; then
 		_home='-d "$uhome"'
@@ -450,6 +455,29 @@ get_homedir() {
 	fi
 }
 
+# get_homeperm
+#	Reads the account's home directory permissions.
+#
+get_homeperm() {
+	uhomeperm=$defaultHomePerm
+	_input=
+	_prompt=
+
+	if [ -n "$uhomeperm" ]; then
+		_prompt="Home directory permissions [${uhomeperm}]: "
+	else
+		_prompt="Home directory permissions (Leave empty for default): "
+	fi
+	if [ -z "$fflag" ]; then
+		echo -n "$_prompt"
+		read _input
+	fi
+
+	if [ -n "$_input" ]; then
+		uhomeperm="$_input"
+	fi
+}
+
 # get_uid
 #	Reads a numeric userid in an interactive or batch session. Automatically
 #	allocates one if it is not specified.
@@ -602,6 +630,7 @@ input_from_file() {
 			get_class
 			get_shell
 			get_homedir
+			get_homeperm
 			get_password
 			get_expire_dates
 			ugroups="$defaultgroups"
@@ -617,7 +646,6 @@ input_from_file() {
 #	the user database.
 #
 input_interactive() {
-
 	_disable=
 	_pass=
 	_passconfirm=
@@ -671,6 +699,7 @@ input_interactive() {
 	get_class
 	get_shell
 	get_homedir
+	get_homeperm
 
 	while : ; do
 		echo -n "Use password-based authentication? [$_usepass]: "
@@ -781,6 +810,7 @@ input_interactive() {
 	printf "%-10s : %s\n" "Class" "$uclass"
 	printf "%-10s : %s %s\n" "Groups" "${ulogingroup:-$username}" "$ugroups"
 	printf "%-10s : %s\n" "Home" "$uhome"
+	printf "%-10s : %s\n" "Home Mode" "$uhomeperm"
 	printf "%-10s : %s\n" "Shell" "$ushell"
 	printf "%-10s : %s\n" "Locked" "$_disable"
 	while : ; do
@@ -825,6 +855,7 @@ ugecos=
 ulogingroup=
 uclass=
 uhome=
+uhomeperm=
 upass=
 ushell=
 udotdir=/usr/share/skel
@@ -851,6 +882,7 @@ defaultclass=
 defaultLgroup=
 defaultgroups=
 defaultshell="${DEFAULTSHELL}"
+defaultHomePerm=
 
 # Make sure the user running this program is root. This isn't a security
 # measure as much as it is a useful method of reminding the user to
@@ -937,6 +969,10 @@ for _switch ; do
 			msgfile="$2"
 			;;
 		esac
+		shift; shift
+		;;
+	-M)
+		defaultHomePerm=$2
 		shift; shift
 		;;
 	-N)

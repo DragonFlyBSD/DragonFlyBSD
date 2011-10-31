@@ -24,10 +24,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/adduser/adduser.8,v 1.60 2007/10/20 00:45:31 mtm Exp $
-.\" $DragonFly: src/usr.sbin/adduser/adduser.8,v 1.5 2007/12/28 16:37:10 matthias Exp $
+.\" $FreeBSD: src/usr.sbin/adduser/adduser.8,v 1.62 2008/03/16 21:36:05 brueffer Exp $
 .\"
-.Dd June 7, 2006
+.Dd October 31, 2011
 .Dt ADDUSER 8
 .Os
 .Sh NAME
@@ -38,6 +37,7 @@
 .Op Fl CDENShq
 .Op Fl G Ar groups
 .Op Fl L Ar login_class
+.Op Fl M Ar mode
 .Op Fl d Ar partition
 .Op Fl f Ar file
 .Op Fl g Ar login_group
@@ -240,6 +240,9 @@ Please note that the message
 file can reference the internal variables of the
 .Nm
 script.
+.It Fl M Ar mode
+Create the home directory with permissions set to
+.Ar mode .
 .It Fl N
 Do not read the default configuration file.
 .It Fl q
@@ -393,7 +396,7 @@ and this field is
 empty, its contents will be used
 as a password.
 This field will be ignored if the
-.Fl p
+.Fl w
 option is used with a
 .Cm no
 or
