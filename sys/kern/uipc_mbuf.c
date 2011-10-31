@@ -621,12 +621,12 @@ mbinit(void *dummy)
 	 * Initialize statistics
 	 */
 	for (i = 0; i < ncpus; i++) {
-		atomic_set_long_nonlocked(&mbstat[i].m_msize, MSIZE);
-		atomic_set_long_nonlocked(&mbstat[i].m_mclbytes, MCLBYTES);
-		atomic_set_long_nonlocked(&mbstat[i].m_mjumpagesize, MJUMPAGESIZE);
-		atomic_set_long_nonlocked(&mbstat[i].m_minclsize, MINCLSIZE);
-		atomic_set_long_nonlocked(&mbstat[i].m_mlen, MLEN);
-		atomic_set_long_nonlocked(&mbstat[i].m_mhlen, MHLEN);
+		mbstat[i].m_msize = MSIZE;
+		mbstat[i].m_mclbytes = MCLBYTES;
+		mbstat[i].m_mjumpagesize = MJUMPAGESIZE;
+		mbstat[i].m_minclsize = MINCLSIZE;
+		mbstat[i].m_mlen = MLEN;
+		mbstat[i].m_mhlen = MHLEN;
 	}
 
 	/*
@@ -735,9 +735,9 @@ m_chtype(struct mbuf *m, int type)
 {
 	struct globaldata *gd = mycpu;
 
-	atomic_add_long_nonlocked(&mbtypes[gd->gd_cpuid][type], 1);
-	atomic_subtract_long_nonlocked(&mbtypes[gd->gd_cpuid][m->m_type], 1);
-	atomic_set_short_nonlocked(&m->m_type, type);
+	++mbtypes[gd->gd_cpuid][type];
+	--mbtypes[gd->gd_cpuid][m->m_type];
+	m->m_type = type;
 }
 
 static void
@@ -754,7 +754,7 @@ m_reclaim(void)
 				(*pr->pr_drain)();
 		}
 	}
-	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_drain, 1);
+	++mbstat[mycpu->gd_cpuid].m_drain;
 }
 
 static __inline void
@@ -769,8 +769,8 @@ updatestats(struct mbuf *m, int type)
 	KASSERT(m->m_nextpkt == NULL, ("mbuf %p: bad m_nextpkt in get", m));
 #endif
 
-	atomic_add_long_nonlocked(&mbtypes[gd->gd_cpuid][type], 1);
-	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mbufs, 1);
+	++mbtypes[gd->gd_cpuid][type];
+	++mbstat[gd->gd_cpuid].m_mbufs;
 
 }
 
@@ -919,8 +919,8 @@ retryonce:
 
 	mbuftrack(m);
 
-	atomic_add_long_nonlocked(&mbtypes[mycpu->gd_cpuid][type], 1);
-	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters, 1);
+	++mbtypes[mycpu->gd_cpuid][type];
+	++mbstat[mycpu->gd_cpuid].m_clusters;
 	return (m);
 }
 
@@ -1002,8 +1002,7 @@ m_mclget(struct mbuf *m, int how)
 	mcl = objcache_get(mclmeta_cache, MBTOM(how));
 	if (mcl != NULL) {
 		linkcluster(m, mcl);
-		atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters,
-					  1);
+		++mbstat[mycpu->gd_cpuid].m_clusters;
 	} else {
 		++mbstat[mycpu->gd_cpuid].m_drops;
 	}
@@ -1036,8 +1035,10 @@ m_mclfree(void *arg)
 {
 	struct mbcluster *mcl = arg;
 
-	if (atomic_fetchadd_int(&mcl->mcl_refs, -1) == 1)
+	if (atomic_fetchadd_int(&mcl->mcl_refs, -1) == 1) {
+		--mbstat[mycpu->gd_cpuid].m_clusters;
 		objcache_put(mclmeta_cache, mcl);
+	}
 }
 
 /*
@@ -1066,7 +1067,7 @@ m_free(struct mbuf *m)
 
 	KASSERT(m->m_type != MT_FREE, ("freeing free mbuf %p", m));
 	KASSERT(M_TRAILINGSPACE(m) >= 0, ("overflowed mbuf %p", m));
-	atomic_subtract_long_nonlocked(&mbtypes[gd->gd_cpuid][m->m_type], 1);
+	--mbtypes[gd->gd_cpuid][m->m_type];
 
 	n = m->m_next;
 
@@ -1145,7 +1146,7 @@ m_free(struct mbuf *m)
 				else
 					objcache_put(mbufcluster_cache, m);
 			}
-			atomic_subtract_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters, 1);
+			--mbstat[mycpu->gd_cpuid].m_clusters;
 		} else {
 			/*
 			 * Hell.  Someone else has a ref on this cluster,
@@ -1159,7 +1160,6 @@ m_free(struct mbuf *m)
 			 * XXX we could try to connect another cluster to
 			 * it.
 			 */
-
 			m->m_ext.ext_free(m->m_ext.ext_arg); 
 			m->m_flags &= ~(M_EXT | M_EXT_CLUSTER);
 			if (m->m_ext.ext_size == MCLBYTES) {
@@ -1176,15 +1176,6 @@ m_free(struct mbuf *m)
 		}
 		break;
 	case M_EXT | M_EXT_CLUSTER:
-		/*
-		 * Normal cluster associated with an mbuf that was allocated
-		 * from the normal mbuf pool rather then the cluster pool.
-		 * The cluster has to be independantly disassociated from the
-		 * mbuf.
-		 */
-		if (m_sharecount(m) == 1)
-			atomic_subtract_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters, 1);
-		/* fall through */
 	case M_EXT:
 		/*
 		 * Normal cluster association case, disconnect the cluster from
@@ -1204,7 +1195,7 @@ m_free(struct mbuf *m)
 			m->m_data = m->m_dat;
 			objcache_put(mbuf_cache, m);
 		}
-		atomic_subtract_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mbufs, 1);
+		--mbstat[mycpu->gd_cpuid].m_mbufs;
 		break;
 	default:
 		if (!panicstr)
@@ -1352,11 +1343,11 @@ m_copym(const struct mbuf *m, int off0, int len, int wait)
 		np = &n->m_next;
 	}
 	if (top == NULL)
-		atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mcfail, 1);
+		++mbstat[mycpu->gd_cpuid].m_mcfail;
 	return (top);
 nospace:
 	m_freem(top);
-	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mcfail, 1);
+	++mbstat[mycpu->gd_cpuid].m_mcfail;
 	return (NULL);
 }
 
@@ -1418,7 +1409,7 @@ m_copypacket(struct mbuf *m, int how)
 	return top;
 nospace:
 	m_freem(top);
-	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mcfail, 1);
+	++mbstat[mycpu->gd_cpuid].m_mcfail;
 	return (NULL);
 }
 
@@ -1511,7 +1502,7 @@ m_dup(struct mbuf *m, int how)
 nospace:
 	m_freem(top);
 nospace0:
-	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mcfail, 1);
+	++mbstat[mycpu->gd_cpuid].m_mcfail;
 	return (NULL);
 }
 
@@ -1588,7 +1579,7 @@ m_dup_data(struct mbuf *m, int how)
 nospace:
 	*p = NULL;
 	m_freem(top);
-	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mcfail, 1);
+	++mbstat[mycpu->gd_cpuid].m_mcfail;
 	return (NULL);
 }
 
@@ -1770,7 +1761,7 @@ m_pullup(struct mbuf *n, int len)
 	return (m);
 bad:
 	m_freem(n);
-	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mcfail, 1);
+	++mbstat[mycpu->gd_cpuid].m_mcfail;
 	return (NULL);
 }
 
