@@ -65,7 +65,6 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.51 2008/09/29 20:52:23 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -732,7 +731,7 @@ tcp_usr_send(netmsg_t msg)
 	struct socket *so = msg->send.base.nm_so;
 	int flags = msg->send.nm_flags;
 	struct mbuf *m = msg->send.nm_m;
-	struct mbuf *control = msg->send.nm_control;
+	struct mbuf *control __debugvar = msg->send.nm_control;
 	int error = 0;
 	struct inpcb *inp;
 	struct tcpcb *tp;
