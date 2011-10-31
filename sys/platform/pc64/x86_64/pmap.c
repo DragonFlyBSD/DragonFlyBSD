@@ -114,6 +114,7 @@
 #include <machine/globaldata.h>
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>
+#include <machine/inttypes.h>
 
 #include <ddb/ddb.h>
 
@@ -1646,10 +1647,6 @@ pmap_release(struct pmap *pmap)
 
 	KASSERT(pmap->pm_active == 0,
 		("pmap still active! %016jx", (uintmax_t)pmap->pm_active));
-#if defined(DIAGNOSTIC)
-	if (object->ref_count != 1)
-		panic("pmap_release: pteobj reference count != 1");
-#endif
 
 	spin_lock(&pmap_spin);
 	TAILQ_REMOVE(&pmap_list, pmap, pm_pmnode);
@@ -3597,7 +3594,8 @@ pmap_testbit(vm_page_t m, int bit)
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (pv->pv_pmap == NULL) {
-			kprintf("Null pmap (tb) at va: 0x%lx\n", pv->pv_va);
+			kprintf("Null pmap (tb) at pindex: %"PRIu64"\n",
+			    pv->pv_pindex);
 			continue;
 		}
 #endif
@@ -3652,7 +3650,8 @@ restart:
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (pv->pv_pmap == NULL) {
-			kprintf("Null pmap (cb) at va: 0x%lx\n", pv->pv_va);
+			kprintf("Null pmap (cb) at pindex: %"PRIu64"\n",
+			    pv->pv_pindex);
 			continue;
 		}
 #endif
