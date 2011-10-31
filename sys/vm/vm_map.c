@@ -2472,12 +2472,14 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	 */
 	for (current = entry; current->start < end; current = current->next) {
 		if (current->maptype == VM_MAPTYPE_SUBMAP) {
+			lwkt_reltoken(&map->token);
 			vm_map_unlock_read(map);
 			return (KERN_INVALID_ARGUMENT);
 		}
 		if (end > current->end &&
 		    (current->next == &map->header ||
 			current->end != current->next->start)) {
+			lwkt_reltoken(&map->token);
 			vm_map_unlock_read(map);
 			return (KERN_INVALID_ADDRESS);
 		}
