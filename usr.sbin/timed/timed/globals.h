@@ -32,7 +32,6 @@
  *
  *	@(#)globals.h	8.1 (Berkeley) 6/6/93
  *	$FreeBSD: src/usr.sbin/timed/timed/globals.h,v 1.5 2000/03/03 13:01:56 shin Exp $
- *	$DragonFly: src/usr.sbin/timed/timed/globals.h,v 1.3 2004/09/05 02:16:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -175,4 +174,3 @@ extern int nnets;			/* nets I am connected to */
 
 # define max(a,b) 	(a<b ? b : a)
 # define min(a,b) 	(a>b ? b : a)
-# define abs(x)		(x>=0 ? x : -(x))

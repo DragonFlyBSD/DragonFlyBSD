@@ -28,14 +28,12 @@
  *
  * @(#)fly.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/fly.c,v 1.6.2.1 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/fly.c,v 1.4 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
 #undef UP
 #include <curses.h>
 
-#define abs(a)  ((a) < 0 ? -(a) : (a))
 #define MIDR  (LINES / 2 - 1)
 #define MIDC  (COLS / 2 - 1)
 

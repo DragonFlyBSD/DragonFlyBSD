@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  *	@(#)externs.h	8.1 (Berkeley) 5/31/93
- * $DragonFly: src/games/sail/externs.h,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include <stdarg.h>
@@ -59,7 +58,6 @@ extern char issetuid;				/* running setuid */
 
 #define die()           (random() % 6 + 1)
 #define sqr(a)		((a) * (a))
-#define abs(a)		((a) > 0 ? (a) : -(a))
 #define min(a,b)	((a) < (b) ? (a) : (b))
 
 #define grappled(a)	((a)->file->ngrap)
