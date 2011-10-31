@@ -85,7 +85,7 @@
         do {                                                    \
                 (status) = rdmsr(MSR_AMDK7_FIDVID_STATUS);      \
         } while (PN8_STA_PENDING(status))
-#define abs(x) ( x < 0 ? -x : x )
+#define abs(x) ( (x) < 0 ? -(x) : (x) )
 
 #define POWERNOW_MAX_STATES             16
 
