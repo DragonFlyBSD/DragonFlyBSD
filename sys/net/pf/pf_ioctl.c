@@ -206,7 +206,7 @@ pfattach(void)
 
 	if (!rn_inithead((void **)&pf_maskhead, NULL, 0)) {
 		kprintf("pf mask radix tree create failed\n");
-		return ENOMEM;
+		return;
 	}
 	kmalloc_create(&pf_state_pl, "pf state pool list");
 	kmalloc_raise_limit(pf_state_pl, 0);
@@ -3204,8 +3204,6 @@ dehook_pf(void)
 static int
 pf_load(void)
 {
-	int error;
-
 	lwkt_gettoken(&pf_token);
 
 	lockinit(&pf_mod_lck, "pf task lck", 0, LK_CANRECURSE);
