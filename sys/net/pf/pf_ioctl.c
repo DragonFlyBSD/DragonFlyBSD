@@ -213,7 +213,7 @@ pfattach(void)
 	kmalloc_create(&pf_frent_pl, "pf fragment pool list");
 	kmalloc_raise_limit(pf_frent_pl, 0);
 	kmalloc_create(&pf_cent_pl, "pf cent pool list");
-        kmalloc_raise_limit(pf_cent_pl, 0);
+	kmalloc_raise_limit(pf_cent_pl, 0);
 	
 	pfr_initialize();
 	pfi_initialize();
