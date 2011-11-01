@@ -81,9 +81,10 @@
  * 201200 - 2.12 release
  * 201300 - 2.13 master
  * 201301 - header rename: <vfs/gnu/ext2fs/...> -> <gnu/vfs/ext2fs/...>
+ * 201302 - header <crypt.h> is gone
  */
 #undef __DragonFly_version
-#define __DragonFly_version 201301	/* propagated to newvers */
+#define __DragonFly_version 201302	/* propagated to newvers */
 
 #include <sys/_null.h>
 
