@@ -47,7 +47,7 @@ mpn_divrem (mp_ptr qp, mp_size_t qxn,
       TMP_DECL;
 
       TMP_MARK;
-      q2p = (mp_ptr) TMP_ALLOC ((nn + qxn) * BYTES_PER_MP_LIMB);
+      q2p = TMP_ALLOC_LIMBS (nn + qxn);
 
       np[0] = mpn_divrem_1 (q2p, qxn, np, nn, dp[0]);
       qn = nn + qxn - 1;
@@ -72,11 +72,11 @@ mpn_divrem (mp_ptr qp, mp_size_t qxn,
       if (UNLIKELY (qxn != 0))
 	{
 	  mp_ptr n2p;
-	  n2p = (mp_ptr) TMP_ALLOC ((nn + qxn) * BYTES_PER_MP_LIMB);
+	  n2p = TMP_ALLOC_LIMBS (nn + qxn);
 	  MPN_ZERO (n2p, qxn);
 	  MPN_COPY (n2p + qxn, np, nn);
-	  q2p = (mp_ptr) TMP_ALLOC ((nn - dn + qxn + 1) * BYTES_PER_MP_LIMB);
-	  rp = (mp_ptr) TMP_ALLOC (dn * BYTES_PER_MP_LIMB);
+	  q2p = TMP_ALLOC_LIMBS (nn - dn + qxn + 1);
+	  rp = TMP_ALLOC_LIMBS (dn);
 	  mpn_tdiv_qr (q2p, rp, 0L, n2p, nn + qxn, dp, dn);
 	  MPN_COPY (np, rp, dn);
 	  qn = nn - dn + qxn;
@@ -85,8 +85,8 @@ mpn_divrem (mp_ptr qp, mp_size_t qxn,
 	}
       else
 	{
-	  q2p = (mp_ptr) TMP_ALLOC ((nn - dn + 1) * BYTES_PER_MP_LIMB);
-	  rp = (mp_ptr) TMP_ALLOC (dn * BYTES_PER_MP_LIMB);
+	  q2p = TMP_ALLOC_LIMBS (nn - dn + 1);
+	  rp = TMP_ALLOC_LIMBS (dn);
 	  mpn_tdiv_qr (q2p, rp, 0L, np, nn, dp, dn);
 	  MPN_COPY (np, rp, dn);	/* overwrite np area with remainder */
 	  qn = nn - dn;

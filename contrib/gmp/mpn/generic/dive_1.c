@@ -30,7 +30,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 /* Divide a={src,size} by d=divisor and store the quotient in q={dst,size}.
    q will only be correct if d divides a exactly.
 
-   A separate loop is used for shift==0 because n<<BITS_PER_MP_LIMB doesn't
+   A separate loop is used for shift==0 because n<<GMP_LIMB_BITS doesn't
    give zero on all CPUs (for instance it doesn't on the x86s).  This
    separate loop might run faster too, helping odd divisors.
 
@@ -50,7 +50,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    faster on some CPUs and would mean just the shift==0 style loop would be
    needed.
 
-   If n<<BITS_PER_MP_LIMB gives zero on a particular CPU then the separate
+   If n<<GMP_LIMB_BITS gives zero on a particular CPU then the separate
    shift==0 loop is unnecessary, and could be eliminated if there's no great
    speed difference.
 

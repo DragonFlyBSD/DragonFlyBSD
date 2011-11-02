@@ -70,19 +70,19 @@ mpz_probab_prime_p (mpz_srcptr n, int reps)
   r = mpn_mod_1 (PTR(n), (mp_size_t) SIZ(n), (mp_limb_t) PP);
 #endif
   if (r % 3 == 0
-#if BITS_PER_MP_LIMB >= 4
+#if GMP_LIMB_BITS >= 4
       || r % 5 == 0
 #endif
-#if BITS_PER_MP_LIMB >= 8
+#if GMP_LIMB_BITS >= 8
       || r % 7 == 0
 #endif
-#if BITS_PER_MP_LIMB >= 16
+#if GMP_LIMB_BITS >= 16
       || r % 11 == 0 || r % 13 == 0
 #endif
-#if BITS_PER_MP_LIMB >= 32
+#if GMP_LIMB_BITS >= 32
       || r % 17 == 0 || r % 19 == 0 || r % 23 == 0 || r % 29 == 0
 #endif
-#if BITS_PER_MP_LIMB >= 64
+#if GMP_LIMB_BITS >= 64
       || r % 31 == 0 || r % 37 == 0 || r % 41 == 0 || r % 43 == 0
       || r % 47 == 0 || r % 53 == 0
 #endif

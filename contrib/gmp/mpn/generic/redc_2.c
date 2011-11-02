@@ -41,7 +41,7 @@ mpn_addmul_2 (mp_ptr rp, mp_srcptr up, mp_size_t n, mp_srcptr vp)
 }
 #endif
 
-#if defined (__ia64) && W_TYPE_SIZE == 64
+#if defined (__GNUC__) && defined (__ia64) && W_TYPE_SIZE == 64
 #define umul2low(ph, pl, uh, ul, vh, vl) \
   do {									\
     mp_limb_t _ph, _pl;							\
@@ -74,6 +74,7 @@ mpn_redc_2 (mp_ptr rp, mp_ptr up, mp_srcptr mp, mp_size_t n, mp_srcptr mip)
   mp_limb_t upn;
   mp_limb_t cy;
 
+  ASSERT (n > 0);
   ASSERT_MPN (up, 2*n);
 
   if ((n & 1) != 0)

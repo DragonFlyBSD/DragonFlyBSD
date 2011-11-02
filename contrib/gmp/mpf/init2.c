@@ -21,7 +21,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp-impl.h"
 
 void
-mpf_init2 (mpf_ptr r, unsigned long int prec_in_bits)
+mpf_init2 (mpf_ptr r, mp_bitcnt_t prec_in_bits)
 {
   mp_size_t prec;
 

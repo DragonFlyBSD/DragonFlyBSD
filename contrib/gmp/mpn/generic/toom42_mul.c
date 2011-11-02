@@ -29,15 +29,6 @@ You should have received a copy of the GNU Lesser General Public License
 along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 
-/*
-  Things to work on:
-
-  1. Trim allocation.  The allocations for as1, asm1, bs1, and bsm1 could be
-     avoided by instead reusing the pp area and the scratch allocation.
-
-  2. Apply optimizations also to mul_toom32.c.
-*/
-
 #include "gmp.h"
 #include "gmp-impl.h"
 
@@ -56,20 +47,9 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
   vinf=              a3 *     b1  # A(inf)*B(inf)
 */
 
-#if TUNE_PROGRAM_BUILD
-#define MAYBE_mul_toom22   1
-#else
-#define MAYBE_mul_toom22						\
-  (MUL_TOOM33_THRESHOLD >= 2 * MUL_TOOM22_THRESHOLD)
-#endif
-
-#define TOOM22_MUL_N_REC(p, a, b, n, ws)				\
+#define TOOM42_MUL_N_REC(p, a, b, n, ws)				\
   do {									\
-    if (! MAYBE_mul_toom22						\
-	|| BELOW_THRESHOLD (n, MUL_KARATSUBA_THRESHOLD))		\
-      mpn_mul_basecase (p, a, n, b, n);					\
-    else								\
-      mpn_toom22_mul (p, a, n, b, n, ws);				\
+    mpn_mul_n (p, a, b, n);						\
   } while (0)
 
 void
@@ -115,32 +95,7 @@ mpn_toom42_mul (mp_ptr pp,
   a1_a3 = pp + n + 1;
 
   /* Compute as1 and asm1.  */
-  a0_a2[n] = mpn_add_n (a0_a2, a0, a2, n);
-  a1_a3[n] = mpn_add (a1_a3, a1, n, a3, s);
-#if HAVE_NATIVE_mpn_addsub_n
-  if (mpn_cmp (a0_a2, a1_a3, n + 1) < 0)
-    {
-      mpn_addsub_n (as1, asm1, a1_a3, a0_a2, n + 1);
-      vm1_neg = 1;
-    }
-  else
-    {
-      mpn_addsub_n (as1, asm1, a0_a2, a1_a3, n + 1);
-      vm1_neg = 0;
-    }
-#else
-  mpn_add_n (as1, a0_a2, a1_a3, n + 1);
-  if (mpn_cmp (a0_a2, a1_a3, n + 1) < 0)
-    {
-      mpn_sub_n (asm1, a1_a3, a0_a2, n + 1);
-      vm1_neg = 1;
-    }
-  else
-    {
-      mpn_sub_n (asm1, a0_a2, a1_a3, n + 1);
-      vm1_neg = 0;
-    }
-#endif
+  vm1_neg = mpn_toom_eval_dgr3_pm1 (as1, asm1, ap, n, s, a0_a2) & 1;
 
   /* Compute as2.  */
 #if HAVE_NATIVE_mpn_addlsh1_n
@@ -164,15 +119,15 @@ mpn_toom42_mul (mp_ptr pp,
   /* Compute bs1 and bsm1.  */
   if (t == n)
     {
-#if HAVE_NATIVE_mpn_addsub_n
+#if HAVE_NATIVE_mpn_add_n_sub_n
       if (mpn_cmp (b0, b1, n) < 0)
 	{
-	  cy = mpn_addsub_n (bs1, bsm1, b1, b0, n);
+	  cy = mpn_add_n_sub_n (bs1, bsm1, b1, b0, n);
 	  vm1_neg ^= 1;
 	}
       else
 	{
-	  cy = mpn_addsub_n (bs1, bsm1, b0, b1, n);
+	  cy = mpn_add_n_sub_n (bs1, bsm1, b0, b1, n);
 	}
       bs1[n] = cy >> 1;
 #else
@@ -220,16 +175,16 @@ mpn_toom42_mul (mp_ptr pp,
 #define vinf  (pp + 4 * n)			/* s+t */
 #define vm1   scratch				/* 2n+1 */
 #define v2    (scratch + 2 * n + 1)		/* 2n+2 */
-#define scratch_out	scratch + 4 * n + 4
+#define scratch_out	scratch + 4 * n + 4	/* Currently unused. */
 
   /* vm1, 2n+1 limbs */
-  TOOM22_MUL_N_REC (vm1, asm1, bsm1, n, scratch_out);
+  TOOM42_MUL_N_REC (vm1, asm1, bsm1, n, scratch_out);
   cy = 0;
   if (asm1[n] != 0)
     cy = mpn_add_n (vm1 + n, vm1 + n, bsm1, n);
   vm1[2 * n] = cy;
 
-  TOOM22_MUL_N_REC (v2, as2, bs2, n + 1, scratch_out);	/* v2, 2n+1 limbs */
+  TOOM42_MUL_N_REC (v2, as2, bs2, n + 1, scratch_out);	/* v2, 2n+1 limbs */
 
   /* vinf, s+t limbs */
   if (s > t)  mpn_mul (vinf, a3, s, b1, t);
@@ -238,7 +193,7 @@ mpn_toom42_mul (mp_ptr pp,
   vinf0 = vinf[0];				/* v1 overlaps with this */
 
   /* v1, 2n+1 limbs */
-  TOOM22_MUL_N_REC (v1, as1, bs1, n, scratch_out);
+  TOOM42_MUL_N_REC (v1, as1, bs1, n, scratch_out);
   if (as1[n] == 1)
     {
       cy = bs1[n] + mpn_add_n (v1 + n, v1 + n, bs1, n);
@@ -261,9 +216,9 @@ mpn_toom42_mul (mp_ptr pp,
     cy += mpn_add_n (v1 + n, v1 + n, as1, n);
   v1[2 * n] = cy;
 
-  TOOM22_MUL_N_REC (v0, ap, bp, n, scratch_out);	/* v0, 2n limbs */
+  TOOM42_MUL_N_REC (v0, ap, bp, n, scratch_out);	/* v0, 2n limbs */
 
-  mpn_toom_interpolate_5pts (pp, v2, vm1, n, s + t, 1^vm1_neg, vinf0, scratch + 4 * n + 4);
+  mpn_toom_interpolate_5pts (pp, v2, vm1, n, s + t, vm1_neg, vinf0);
 
   TMP_FREE;
 }

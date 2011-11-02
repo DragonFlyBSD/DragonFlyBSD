@@ -28,17 +28,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 
-/*
-  Things to work on:
-
-  1. Trim allocation.  The allocations for as1, asm1, bs1, and bsm1 could be
-     avoided by instead reusing the pp area and the scratch allocation.
-*/
-
 #include "gmp.h"
 #include "gmp-impl.h"
 
-/* Evaluate in: -1, -1/2, 0, +1/2, +1, +2, +inf
+/* Evaluate in: 0, +1, -1, +2, -2, 1/2, +inf
 
   <-s-><--n--><--n--><--n--><--n-->
    ___ ______ ______ ______ ______
@@ -50,8 +43,8 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
   v1  = (  a0+ a1+ a2+ a3+  a4)*( b0+ b1+ b2) #    A(1)*B(1)      ah  <= 4   bh <= 2
   vm1 = (  a0- a1+ a2- a3+  a4)*( b0- b1+ b2) #   A(-1)*B(-1)    |ah| <= 2   bh <= 1
   v2  = (  a0+2a1+4a2+8a3+16a4)*( b0+2b1+4b2) #    A(2)*B(2)      ah  <= 30  bh <= 6
+  vm2 = (  a0-2a1+4a2-8a3+16a4)*( b0-2b1+4b2) #    A(2)*B(2)     -9<=ah<=20 -1<=bh<=4
   vh  = (16a0+8a1+4a2+2a3+  a4)*(4b0+2b1+ b2) #  A(1/2)*B(1/2)    ah  <= 30  bh <= 6
-  vmh = (16a0-8a1+4a2-2a3+  a4)*(4b0-2b1+ b2) # A(-1/2)*B(-1/2)  -9<=ah<=20 -1<=bh<=4
   vinf=                     a4 *          b2  #  A(inf)*B(inf)
 */
 
@@ -62,12 +55,11 @@ mpn_toom53_mul (mp_ptr pp,
 		mp_ptr scratch)
 {
   mp_size_t n, s, t;
-  int vm1_neg, vmh_neg;
   mp_limb_t cy;
-  mp_ptr gp, hp;
-  mp_ptr as1, asm1, as2, ash, asmh;
-  mp_ptr bs1, bsm1, bs2, bsh, bsmh;
-  enum toom4_flags flags;
+  mp_ptr gp;
+  mp_ptr as1, asm1, as2, asm2, ash;
+  mp_ptr bs1, bsm1, bs2, bsm2, bsh;
+  enum toom7_flags flags;
   TMP_DECL;
 
 #define a0  ap
@@ -92,124 +84,61 @@ mpn_toom53_mul (mp_ptr pp,
   as1  = TMP_SALLOC_LIMBS (n + 1);
   asm1 = TMP_SALLOC_LIMBS (n + 1);
   as2  = TMP_SALLOC_LIMBS (n + 1);
+  asm2 = TMP_SALLOC_LIMBS (n + 1);
   ash  = TMP_SALLOC_LIMBS (n + 1);
-  asmh = TMP_SALLOC_LIMBS (n + 1);
 
   bs1  = TMP_SALLOC_LIMBS (n + 1);
   bsm1 = TMP_SALLOC_LIMBS (n + 1);
   bs2  = TMP_SALLOC_LIMBS (n + 1);
+  bsm2 = TMP_SALLOC_LIMBS (n + 1);
   bsh  = TMP_SALLOC_LIMBS (n + 1);
-  bsmh = TMP_SALLOC_LIMBS (n + 1);
 
   gp = pp;
-  hp = pp + n + 1;
 
   /* Compute as1 and asm1.  */
-  gp[n]  = mpn_add_n (gp, a0, a2, n);
-  gp[n] += mpn_add   (gp, gp, n, a4, s);
-  hp[n]  = mpn_add_n (hp, a1, a3, n);
-#if HAVE_NATIVE_mpn_addsub_n
-  if (mpn_cmp (gp, hp, n + 1) < 0)
-    {
-      mpn_addsub_n (as1, asm1, hp, gp, n + 1);
-      vm1_neg = 1;
-    }
-  else
-    {
-      mpn_addsub_n (as1, asm1, gp, hp, n + 1);
-      vm1_neg = 0;
-    }
-#else
-  mpn_add_n (as1, gp, hp, n + 1);
-  if (mpn_cmp (gp, hp, n + 1) < 0)
-    {
-      mpn_sub_n (asm1, hp, gp, n + 1);
-      vm1_neg = 1;
-    }
-  else
-    {
-      mpn_sub_n (asm1, gp, hp, n + 1);
-      vm1_neg = 0;
-    }
-#endif
+  flags = toom7_w3_neg & mpn_toom_eval_pm1 (as1, asm1, 4, ap, n, s, gp);
 
-  /* Compute as2.  */
-#if !HAVE_NATIVE_mpn_addlsh_n
-  ash[n] = mpn_lshift (ash, a2, n, 2);			/*        4a2       */
-#endif
+  /* Compute as2 and asm2. */
+  flags |= toom7_w1_neg & mpn_toom_eval_pm2 (as2, asm2, 4, ap, n, s, gp);
+
+  /* Compute ash = 16 a0 + 8 a1 + 4 a2 + 2 a3 + a4
+     = 2*(2*(2*(2*a0 + a1) + a2) + a3) + a4  */
 #if HAVE_NATIVE_mpn_addlsh1_n
-  cy  = mpn_addlsh1_n (as2, a3, a4, s);
-  if (s != n)
-    cy = mpn_add_1 (as2 + s, a3 + s, n - s, cy);
-  cy = 2 * cy + mpn_addlsh1_n (as2, a2, as2, n);
-  cy = 2 * cy + mpn_addlsh1_n (as2, a1, as2, n);
-  as2[n] = 2 * cy + mpn_addlsh1_n (as2, a0, as2, n);
-#else
-  cy  = mpn_lshift (as2, a4, s, 1);
-  cy += mpn_add_n (as2, a3, as2, s);
-  if (s != n)
-    cy = mpn_add_1 (as2 + s, a3 + s, n - s, cy);
-  cy = 4 * cy + mpn_lshift (as2, as2, n, 2);
-  cy += mpn_add_n (as2, a1, as2, n);
-  cy = 2 * cy + mpn_lshift (as2, as2, n, 1);
-  as2[n] = cy + mpn_add_n (as2, a0, as2, n);
-  mpn_add_n (as2, ash, as2, n + 1);
-#endif
-
-  /* Compute ash and asmh.  */
-#if HAVE_NATIVE_mpn_addlsh_n
-  cy  = mpn_addlsh_n (gp, a2, a0, n, 2);		/* 4a0  +  a2       */
-  cy = 4 * cy + mpn_addlsh_n (gp, a4, gp, n, 2);	/* 16a0 + 4a2 +  a4 */ /* FIXME s */
-  gp[n] = cy;
-  cy  = mpn_addlsh_n (hp, a3, a1, n, 2);		/*  4a1 +  a3       */
-  cy = 2 * cy + mpn_lshift (hp, hp, n, 1);		/*  8a1 + 2a3       */
-  hp[n] = cy;
-#else
-  gp[n] = mpn_lshift (gp, a0, n, 4);			/* 16a0             */
-  mpn_add (gp, gp, n + 1, a4, s);			/* 16a0 +        a4 */
-  mpn_add_n (gp, ash, gp, n+1);				/* 16a0 + 4a2 +  a4 */
-  cy  = mpn_lshift (hp, a1, n, 3);			/*  8a1             */
-  cy += mpn_lshift (ash, a3, n, 1);			/*        2a3       */
-  cy += mpn_add_n (hp, ash, hp, n);			/*  8a1 + 2a3       */
-  hp[n] = cy;
-#endif
-#if HAVE_NATIVE_mpn_addsub_n
-  if (mpn_cmp (gp, hp, n + 1) < 0)
+  cy = mpn_addlsh1_n (ash, a1, a0, n);
+  cy = 2*cy + mpn_addlsh1_n (ash, a2, ash, n);
+  cy = 2*cy + mpn_addlsh1_n (ash, a3, ash, n);
+  if (s < n)
     {
-      mpn_addsub_n (ash, asmh, hp, gp, n + 1);
-      vmh_neg = 1;
+      mp_limb_t cy2;
+      cy2 = mpn_addlsh1_n (ash, a4, ash, s);
+      ash[n] = 2*cy + mpn_lshift (ash + s, ash + s, n - s, 1);
+      MPN_INCR_U (ash + s, n+1-s, cy2);
     }
   else
-    {
-      mpn_addsub_n (ash, asmh, gp, hp, n + 1);
-      vmh_neg = 0;
-    }
+    ash[n] = 2*cy + mpn_addlsh1_n (ash, a4, ash, n);
 #else
-  mpn_add_n (ash, gp, hp, n + 1);
-  if (mpn_cmp (gp, hp, n + 1) < 0)
-    {
-      mpn_sub_n (asmh, hp, gp, n + 1);
-      vmh_neg = 1;
-    }
-  else
-    {
-      mpn_sub_n (asmh, gp, hp, n + 1);
-      vmh_neg = 0;
-    }
+  cy = mpn_lshift (ash, a0, n, 1);
+  cy += mpn_add_n (ash, ash, a1, n);
+  cy = 2*cy + mpn_lshift (ash, ash, n, 1);
+  cy += mpn_add_n (ash, ash, a2, n);
+  cy = 2*cy + mpn_lshift (ash, ash, n, 1);
+  cy += mpn_add_n (ash, ash, a3, n);
+  cy = 2*cy + mpn_lshift (ash, ash, n, 1);
+  ash[n] = cy + mpn_add (ash, ash, n, a4, s);
 #endif
 
   /* Compute bs1 and bsm1.  */
   bs1[n] = mpn_add (bs1, b0, n, b2, t);		/* b0 + b2 */
-#if HAVE_NATIVE_mpn_addsub_n
+#if HAVE_NATIVE_mpn_add_n_sub_n
   if (bs1[n] == 0 && mpn_cmp (bs1, b1, n) < 0)
     {
-      bs1[n] = mpn_addsub_n (bs1, bsm1, b1, bs1, n) >> 1;
+      bs1[n] = mpn_add_n_sub_n (bs1, bsm1, b1, bs1, n) >> 1;
       bsm1[n] = 0;
-      vm1_neg ^= 1;
+      flags ^= toom7_w3_neg;
     }
   else
     {
-      cy = mpn_addsub_n (bs1, bsm1, bs1, b1, n);
+      cy = mpn_add_n_sub_n (bs1, bsm1, bs1, b1, n);
       bsm1[n] = bs1[n] - (cy & 1);
       bs1[n] += (cy >> 1);
     }
@@ -218,7 +147,7 @@ mpn_toom53_mul (mp_ptr pp,
     {
       mpn_sub_n (bsm1, b1, bs1, n);
       bsm1[n] = 0;
-      vm1_neg ^= 1;
+      flags ^= toom7_w3_neg;
     }
   else
     {
@@ -227,46 +156,64 @@ mpn_toom53_mul (mp_ptr pp,
   bs1[n] += mpn_add_n (bs1, bs1, b1, n);  /* b0+b1+b2 */
 #endif
 
-  /* Compute bs2 */
-  hp[n]   = mpn_lshift (hp, b1, n, 1);			/*       2b1       */
-
-#ifdef HAVE_NATIVE_mpn_addlsh1_n
-  cy = mpn_addlsh1_n (bs2, b1, b2, t);
-  if (t != n)
-    cy = mpn_add_1 (bs2 + t, b1 + t, n - t, cy);
-  bs2[n] = 2 * cy + mpn_addlsh1_n (bs2, b0, bs2, n);
+  /* Compute bs2 and bsm2. */
+#if HAVE_NATIVE_mpn_addlsh_n || HAVE_NATIVE_mpn_addlsh2_n
+#if HAVE_NATIVE_mpn_addlsh2_n
+  cy = mpn_addlsh2_n (bs2, b0, b2, t);
+#else /* HAVE_NATIVE_mpn_addlsh_n */
+  cy = mpn_addlsh_n (bs2, b0, b2, t, 2);
+#endif
+  if (t < n)
+    cy = mpn_add_1 (bs2 + t, b0 + t, n - t, cy);
+  bs2[n] = cy;
 #else
-  bs2[t] = mpn_lshift (bs2, b2, t, 2);
-  mpn_add (bs2, hp, n + 1, bs2, t + 1);
-  bs2[n] += mpn_add_n (bs2, bs2, b0, n);
+  cy = mpn_lshift (gp, b2, t, 2);
+  bs2[n] = mpn_add (bs2, b0, n, gp, t);
+  MPN_INCR_U (bs2 + t, n+1-t, cy);
 #endif
 
-  /* Compute bsh and bsmh.  */
-#if HAVE_NATIVE_mpn_addlsh_n
-  gp[n] = mpn_addlsh_n (gp, b2, b0, n, 2);		/* 4a0  +       a2 */
-#else
-  cy = mpn_lshift (gp, b0, n, 2);			/* 4b0             */
-  gp[n] = cy + mpn_add (gp, gp, n, b2, t);		/* 4b0 +        b2 */
-#endif
-#if HAVE_NATIVE_mpn_addsub_n
-  if (mpn_cmp (gp, hp, n + 1) < 0)
+  gp[n] = mpn_lshift (gp, b1, n, 1);
+
+#if HAVE_NATIVE_mpn_add_n_sub_n
+  if (mpn_cmp (bs2, gp, n+1) < 0)
     {
-      mpn_addsub_n (bsh, bsmh, hp, gp, n + 1);
-      vmh_neg^= 1;
-    }
-  else
-    mpn_addsub_n (bsh, bsmh, gp, hp, n + 1);
-#else
-  mpn_add_n (bsh, gp, hp, n + 1);			/* 4b0 + 2b1 +  b2 */
-  if (mpn_cmp (gp, hp, n + 1) < 0)
-    {
-      mpn_sub_n (bsmh, hp, gp, n + 1);
-      vmh_neg ^= 1;
+      ASSERT_NOCARRY (mpn_add_n_sub_n (bs2, bsm2, gp, bs2, n+1));
+      flags ^= toom7_w1_neg;
     }
   else
     {
-      mpn_sub_n (bsmh, gp, hp, n + 1);
+      ASSERT_NOCARRY (mpn_add_n_sub_n (bs2, bsm2, bs2, gp, n+1));
     }
+#else
+  if (mpn_cmp (bs2, gp, n+1) < 0)
+    {
+      ASSERT_NOCARRY (mpn_sub_n (bsm2, gp, bs2, n+1));
+      flags ^= toom7_w1_neg;
+    }
+  else
+    {
+      ASSERT_NOCARRY (mpn_sub_n (bsm2, bs2, gp, n+1));
+    }
+  mpn_add_n (bs2, bs2, gp, n+1);
+#endif
+
+  /* Compute bsh = 4 b0 + 2 b1 + b0 = 2*(2*b0 + b1)+b0.  */
+#if HAVE_NATIVE_mpn_addlsh1_n
+  cy = mpn_addlsh1_n (bsh, b1, b0, n);
+  if (t < n)
+    {
+      mp_limb_t cy2;
+      cy2 = mpn_addlsh1_n (bsh, b2, bsh, t);
+      bsh[n] = 2*cy + mpn_lshift (bsh + t, bsh + t, n - t, 1);
+      MPN_INCR_U (bsh + t, n+1-t, cy2);
+    }
+  else
+    bsh[n] = 2*cy + mpn_addlsh1_n (bsh, b2, bsh, n);
+#else
+  cy = mpn_lshift (bsh, b0, n, 1);
+  cy += mpn_add_n (bsh, bsh, b1, n);
+  cy = 2*cy + mpn_lshift (bsh, bsh, n, 1);
+  bsh[n] = cy + mpn_add (bsh, bsh, n, b2, t);
 #endif
 
   ASSERT (as1[n] <= 4);
@@ -275,18 +222,26 @@ mpn_toom53_mul (mp_ptr pp,
   ASSERT (bsm1[n] <= 1);
   ASSERT (as2[n] <= 30);
   ASSERT (bs2[n] <= 6);
+  ASSERT (asm2[n] <= 20);
+  ASSERT (bsm2[n] <= 4);
   ASSERT (ash[n] <= 30);
   ASSERT (bsh[n] <= 6);
-  ASSERT (asmh[n] <= 20);
-  ASSERT (bsmh[n] <= 4);
 
 #define v0    pp				/* 2n */
-#define v1    (scratch + 6 * n + 6)		/* 2n+1 */
-#define vm1   scratch				/* 2n+1 */
-#define v2    (scratch + 2 * n + 2)		/* 2n+1 */
+#define v1    (pp + 2 * n)			/* 2n+1 */
 #define vinf  (pp + 6 * n)			/* s+t */
-#define vh    (pp + 2 * n)			/* 2n+1 */
-#define vmh   (scratch + 4 * n + 4)
+#define v2    scratch				/* 2n+1 */
+#define vm2   (scratch + 2 * n + 1)		/* 2n+1 */
+#define vh    (scratch + 4 * n + 2)		/* 2n+1 */
+#define vm1   (scratch + 6 * n + 3)		/* 2n+1 */
+#define scratch_out (scratch + 8 * n + 4)		/* 2n+1 */
+  /* Total scratch need: 10*n+5 */
+
+  /* Must be in allocation order, as they overwrite one limb beyond
+   * 2n+1. */
+  mpn_mul_n (v2, as2, bs2, n + 1);		/* v2, 2n+1 limbs */
+  mpn_mul_n (vm2, asm2, bsm2, n + 1);		/* vm2, 2n+1 limbs */
+  mpn_mul_n (vh, ash, bsh, n + 1);		/* vh, 2n+1 limbs */
 
   /* vm1, 2n+1 limbs */
 #ifdef SMALLER_RECURSION
@@ -312,12 +267,6 @@ mpn_toom53_mul (mp_ptr pp,
   vm1[2 * n] = 0;
   mpn_mul_n (vm1, asm1, bsm1, n + ((asm1[n] | bsm1[n]) != 0));
 #endif /* SMALLER_RECURSION */
-
-  mpn_mul_n (v2, as2, bs2, n + 1);		/* v2, 2n+1 limbs */
-
-  /* vinf, s+t limbs */
-  if (s > t)  mpn_mul (vinf, a4, s, b2, t);
-  else        mpn_mul (vinf, b2, t, a4, s);
 
   /* v1, 2n+1 limbs */
 #ifdef SMALLER_RECURSION
@@ -358,16 +307,14 @@ mpn_toom53_mul (mp_ptr pp,
   mpn_mul_n (v1, as1, bs1, n + ((as1[n] | bs1[n]) != 0));
 #endif /* SMALLER_RECURSION */
 
-  mpn_mul_n (vh, ash, bsh, n + 1);
+  mpn_mul_n (v0, a0, b0, n);			/* v0, 2n limbs */
 
-  mpn_mul_n (vmh, asmh, bsmh, n + 1);
+  /* vinf, s+t limbs */
+  if (s > t)  mpn_mul (vinf, a4, s, b2, t);
+  else        mpn_mul (vinf, b2, t, a4, s);
 
-  mpn_mul_n (v0, ap, bp, n);			/* v0, 2n limbs */
-
-  flags =  vm1_neg ? toom4_w3_neg : 0;
-  flags |= vmh_neg ? toom4_w1_neg : 0;
-
-  mpn_toom_interpolate_7pts (pp, n, flags, vmh, vm1, v1, v2, s + t, scratch + 8 * n + 8);
+  mpn_toom_interpolate_7pts (pp, n, flags, vm2, vm1, v2, vh, s + t,
+			     scratch_out);
 
   TMP_FREE;
 }

@@ -37,7 +37,7 @@ mpn_sizeinbase (mp_srcptr xp, mp_size_t xsize, int base)
 
   ASSERT (xsize >= 0);
   ASSERT (base >= 2);
-  ASSERT (base < numberof (__mp_bases));
+  ASSERT (base < numberof (mp_bases));
 
   /* Special case for X == 0.  */
   if (xsize == 0)
@@ -45,14 +45,14 @@ mpn_sizeinbase (mp_srcptr xp, mp_size_t xsize, int base)
 
   /* Calculate the total number of significant bits of X.  */
   count_leading_zeros (cnt, xp[xsize-1]);
-  totbits = xsize * BITS_PER_MP_LIMB - cnt;
+  totbits = xsize * GMP_LIMB_BITS - cnt;
 
   if (POW2_P (base))
     {
       /* Special case for powers of 2, giving exact result.  */
-      lb_base = __mp_bases[base].big_base;
+      lb_base = mp_bases[base].big_base;
       return (totbits + lb_base - 1) / lb_base;
     }
   else
-    return (size_t) (totbits * __mp_bases[base].chars_per_bit_exactly) + 1;
+    return (size_t) (totbits * mp_bases[base].chars_per_bit_exactly) + 1;
 }

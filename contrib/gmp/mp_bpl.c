@@ -19,6 +19,6 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp.h"
 #include "gmp-impl.h"
 
-const int mp_bits_per_limb = BITS_PER_MP_LIMB;
+const int mp_bits_per_limb = GMP_LIMB_BITS;
 const int __gmp_0 = 0;
 int __gmp_junk;

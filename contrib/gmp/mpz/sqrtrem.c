@@ -79,7 +79,7 @@ msqrt (mpz_srcptr op, mpz_ptr root, mpz_ptr rem)
       if (root_ptr == op_ptr)
 	{
 	  /* ROOT and OP are identical.  Allocate temporary space for OP.  */
-	  op_ptr = (mp_ptr) TMP_ALLOC (op_size * BYTES_PER_MP_LIMB);
+	  op_ptr = TMP_ALLOC_LIMBS (op_size);
 	  /* Copy to the temporary space.  Hack: Avoid temporary variable
 	     by using ROOT_PTR.  */
 	  MPN_COPY (op_ptr, root_ptr, op_size);

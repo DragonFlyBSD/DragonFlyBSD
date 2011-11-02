@@ -70,8 +70,8 @@ _mpq_cmp_ui (const MP_RAT *op1, unsigned long int num2, unsigned long int den2)
     return -num1_size;
 
   TMP_MARK;
-  tmp1_ptr = (mp_ptr) TMP_ALLOC ((num1_size + 1) * BYTES_PER_MP_LIMB);
-  tmp2_ptr = (mp_ptr) TMP_ALLOC ((den1_size + 1) * BYTES_PER_MP_LIMB);
+  tmp1_ptr = TMP_ALLOC_LIMBS (num1_size + 1);
+  tmp2_ptr = TMP_ALLOC_LIMBS (den1_size + 1);
 
   cy_limb = mpn_mul_1 (tmp1_ptr, op1->_mp_num._mp_d, num1_size,
                        (mp_limb_t) den2);

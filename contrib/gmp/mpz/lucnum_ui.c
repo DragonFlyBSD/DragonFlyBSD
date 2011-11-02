@@ -167,7 +167,7 @@ mpz_lucnum_ui (mpz_ptr ln, unsigned long n)
       TRACE (printf ("  zeros=%d\n", zeros));
 
       ASSERT (xalloc >= 2*lsize);
-      mpn_sqr_n (xp, lp, lsize);
+      mpn_sqr (xp, lp, lsize);
       lsize *= 2;
       lsize -= (xp[lsize-1] == 0);
 

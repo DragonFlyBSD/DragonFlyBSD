@@ -23,10 +23,10 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "longlong.h"
 
 int
-mpf_eq (mpf_srcptr u, mpf_srcptr v, unsigned long int n_bits)
+mpf_eq (mpf_srcptr u, mpf_srcptr v, mp_bitcnt_t n_bits)
 {
   mp_srcptr up, vp, p;
-  mp_size_t usize, vsize, minsize, maxsize, n_limbs, i;
+  mp_size_t usize, vsize, minsize, maxsize, n_limbs, i, size;
   mp_exp_t uexp, vexp;
   mp_limb_t diff;
   int cnt;
@@ -100,32 +100,37 @@ mpf_eq (mpf_srcptr u, mpf_srcptr v, unsigned long int n_bits)
 	return 0;
     }
 
-  if (minsize != maxsize)
+  n_bits -= (maxsize - 1) * GMP_NUMB_BITS;
+
+  size = maxsize - minsize;
+  if (size != 0)
     {
       if (up[0] != vp[0])
 	return 0;
+
+      /* Now either U or V has its limbs consumed, i.e, continues with an
+	 infinite number of implicit zero limbs.  Check that the other operand
+	 has just zeros in the corresponding, relevant part.  */
+
+      if (usize > vsize)
+	p = up - size;
+      else
+	p = vp - size;
+
+      for (i = size - 1; i > 0; i--)
+	{
+	  if (p[i] != 0)
+	    return 0;
+	}
+
+      diff = p[0];
     }
-
-  /* Now either U or V has its limbs consumed.  Check the the other operand
-     has just zeros in the corresponding, relevant part.  */
-
-  if (usize > vsize)
-    p = up + minsize - maxsize;
   else
-    p = vp + minsize - maxsize;
-
-  for (i = maxsize - minsize - 1; i > 0; i--)
     {
-      if (p[i] != 0)
-	return 0;
+      /* Both U or V has its limbs consumed.  */
+
+      diff = up[0] ^ vp[0];
     }
-
-  n_bits -= (maxsize - 1) * GMP_NUMB_BITS;
-
-  if (minsize != maxsize)
-    diff = p[0];
-  else
-    diff = up[0] ^ vp[0];
 
   if (n_bits < GMP_NUMB_BITS)
     diff >>= GMP_NUMB_BITS - n_bits;

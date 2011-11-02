@@ -1,4 +1,4 @@
-/* mpq_set_si(dest,ulong_num,ulong_den) -- Set DEST to the retional number
+/* mpq_set_si(dest,ulong_num,ulong_den) -- Set DEST to the rational number
    ULONG_NUM/ULONG_DEN.
 
 Copyright 1991, 1994, 1995, 2001, 2003 Free Software Foundation, Inc.

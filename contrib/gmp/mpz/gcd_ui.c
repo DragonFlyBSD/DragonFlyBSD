@@ -1,4 +1,4 @@
-/* mpz_gcd_ui -- Calculate the greatest common divisior of two integers.
+/* mpz_gcd_ui -- Calculate the greatest common divisor of two integers.
 
 Copyright 1994, 1996, 1999, 2000, 2001, 2002, 2003, 2004 Free Software
 Foundation, Inc.

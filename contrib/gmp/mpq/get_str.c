@@ -37,8 +37,8 @@ mpq_get_str (char *str, int base, mpq_srcptr q)
          the high limbs of num and den are used.  +2 for rounding up the
          chars per bit of num and den.  +3 for sign, slash and '\0'.  */
       str_alloc = ((size_t) ((ABS (q->_mp_num._mp_size) + q->_mp_den._mp_size)
-                             * BITS_PER_MP_LIMB
-                             * __mp_bases[ABS(base)].chars_per_bit_exactly))
+                             * GMP_LIMB_BITS
+                             * mp_bases[ABS(base)].chars_per_bit_exactly))
                    + 5;
       str = (char *) (*__gmp_allocate_func) (str_alloc);
     }

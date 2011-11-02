@@ -69,7 +69,7 @@ mpn_set_str (mp_ptr rp, const unsigned char *str, size_t str_len, int base)
       int next_bitpos;
       mp_limb_t res_digit;
       mp_size_t size;
-      int bits_per_indigit = __mp_bases[base].big_base;
+      int bits_per_indigit = mp_bases[base].big_base;
 
       size = 0;
       res_digit = 0;
@@ -107,7 +107,7 @@ mpn_set_str (mp_ptr rp, const unsigned char *str, size_t str_len, int base)
 
       TMP_MARK;
 
-      chars_per_limb = __mp_bases[base].chars_per_limb;
+      chars_per_limb = mp_bases[base].chars_per_limb;
 
       un = str_len / chars_per_limb + 1;
 
@@ -139,9 +139,9 @@ mpn_set_str_compute_powtab (powers_t *powtab, mp_ptr powtab_mem, mp_size_t un, i
 
   powtab_mem_ptr = powtab_mem;
 
-  chars_per_limb = __mp_bases[base].chars_per_limb;
-  big_base = __mp_bases[base].big_base;
-  big_base_inverted = __mp_bases[base].big_base_inverted;
+  chars_per_limb = mp_bases[base].chars_per_limb;
+  big_base = mp_bases[base].big_base;
+  big_base_inverted = mp_bases[base].big_base_inverted;
   count_leading_zeros (normalization_steps, big_base);
 
   p = powtab_mem_ptr;
@@ -169,7 +169,7 @@ mpn_set_str_compute_powtab (powers_t *powtab, mp_ptr powtab_mem, mp_size_t un, i
 
       ASSERT_ALWAYS (powtab_mem_ptr < powtab_mem + mpn_dc_set_str_powtab_alloc (un));
 
-      mpn_sqr_n (t, p, n);
+      mpn_sqr (t, p, n);
       n = 2 * n - 1; n += t[n] != 0;
       digits_in_base *= 2;
 #if 1
@@ -278,11 +278,11 @@ mpn_bc_set_str (mp_ptr rp, const unsigned char *str, size_t str_len, int base)
   mp_limb_t res_digit;
 
   ASSERT (base >= 2);
-  ASSERT (base < numberof (__mp_bases));
+  ASSERT (base < numberof (mp_bases));
   ASSERT (str_len >= 1);
 
-  big_base = __mp_bases[base].big_base;
-  chars_per_limb = __mp_bases[base].chars_per_limb;
+  big_base = mp_bases[base].big_base;
+  chars_per_limb = mp_bases[base].chars_per_limb;
 
   size = 0;
   for (i = chars_per_limb; i < str_len; i += chars_per_limb)

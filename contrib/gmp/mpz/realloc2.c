@@ -23,7 +23,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp-impl.h"
 
 void
-mpz_realloc2 (mpz_ptr m, unsigned long bits)
+mpz_realloc2 (mpz_ptr m, mp_bitcnt_t bits)
 {
   mp_size_t new_alloc;
 

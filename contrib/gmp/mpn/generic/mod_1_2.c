@@ -36,7 +36,7 @@ mpn_mod_1s_2p_cps (mp_limb_t cps[5], mp_limb_t b)
   mp_limb_t B1modb, B2modb, B3modb;
   int cnt;
 
-  ASSERT (b <= GMP_NUMB_MAX / 2);
+  ASSERT (b <= (~(mp_limb_t) 0) / 2);
 
   count_leading_zeros (cnt, b);
 
@@ -53,6 +53,18 @@ mpn_mod_1s_2p_cps (mp_limb_t cps[5], mp_limb_t b)
   cps[2] = B1modb >> cnt;
   cps[3] = B2modb >> cnt;
   cps[4] = B3modb >> cnt;
+
+#if WANT_ASSERT
+  {
+    int i;
+    b = cps[2];
+    for (i = 3; i <= 4; i++)
+      {
+	b += cps[i];
+	ASSERT (b >= cps[i]);
+      }
+  }
+#endif
 }
 
 mp_limb_t
@@ -63,15 +75,27 @@ mpn_mod_1s_2p (mp_srcptr ap, mp_size_t n, mp_limb_t b, mp_limb_t cps[5])
   mp_size_t i;
   int cnt;
 
+  ASSERT (n >= 1);
+
   B1modb = cps[2];
   B2modb = cps[3];
   B3modb = cps[4];
 
   if ((n & 1) != 0)
     {
-      umul_ppmm (rh, rl, ap[n - 1], B2modb);
+      if (n == 1)
+	{
+	  rl = ap[n - 1];
+	  bi = cps[0];
+	  cnt = cps[1];
+	  udiv_qrnnd_preinv (q, r, rl >> (GMP_LIMB_BITS - cnt),
+			     rl << cnt, b, bi);
+	  return r >> cnt;
+	}
+
       umul_ppmm (ph, pl, ap[n - 2], B1modb);
       add_ssaaaa (ph, pl, ph, pl, 0, ap[n - 3]);
+      umul_ppmm (rh, rl, ap[n - 1], B2modb);
       add_ssaaaa (rh, rl, rh, rl, ph, pl);
       n--;
     }

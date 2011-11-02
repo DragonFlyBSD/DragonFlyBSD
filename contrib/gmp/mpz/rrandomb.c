@@ -22,10 +22,10 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp.h"
 #include "gmp-impl.h"
 
-static void gmp_rrandomb __GMP_PROTO ((mp_ptr, gmp_randstate_t, unsigned long int));
+static void gmp_rrandomb __GMP_PROTO ((mp_ptr, gmp_randstate_t, mp_bitcnt_t));
 
 void
-mpz_rrandomb (mpz_ptr x, gmp_randstate_t rstate, unsigned long int nbits)
+mpz_rrandomb (mpz_ptr x, gmp_randstate_t rstate, mp_bitcnt_t nbits)
 {
   mp_size_t nl;
 
@@ -49,9 +49,9 @@ mpz_rrandomb (mpz_ptr x, gmp_randstate_t rstate, unsigned long int nbits)
 #endif
 
 static void
-gmp_rrandomb (mp_ptr rp, gmp_randstate_t rstate, unsigned long int nbits)
+gmp_rrandomb (mp_ptr rp, gmp_randstate_t rstate, mp_bitcnt_t nbits)
 {
-  unsigned long int bi;
+  mp_bitcnt_t bi;
   mp_limb_t ranm;		/* buffer for random bits */
   unsigned cap_chunksize, chunksize;
   mp_size_t i;

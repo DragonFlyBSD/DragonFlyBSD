@@ -22,7 +22,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp.h"
 #include "gmp-impl.h"
 
-static void gmp_rrandomb __GMP_PROTO ((mp_ptr, gmp_randstate_t, unsigned long int));
+static void gmp_rrandomb __GMP_PROTO ((mp_ptr, gmp_randstate_t, mp_bitcnt_t));
 
 /* Ask _gmp_rand for 32 bits per call unless that's more than a limb can hold.
    Thus, we get the same random number sequence in the common cases.
@@ -54,9 +54,9 @@ mpn_random2 (mp_ptr rp, mp_size_t n)
 }
 
 static void
-gmp_rrandomb (mp_ptr rp, gmp_randstate_t rstate, unsigned long int nbits)
+gmp_rrandomb (mp_ptr rp, gmp_randstate_t rstate, mp_bitcnt_t nbits)
 {
-  unsigned long int bi;
+  mp_bitcnt_t bi;
   mp_limb_t ranm;		/* buffer for random bits */
   unsigned cap_chunksize, chunksize;
   mp_size_t i;

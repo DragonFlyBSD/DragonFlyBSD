@@ -1,7 +1,9 @@
 /* mpz_divexact -- finds quotient when known that quot * den == num && den != 0.
 
+Contributed to the GNU project by Niels Möller.
+
 Copyright 1991, 1993, 1994, 1995, 1996, 1997, 1998, 2000, 2001, 2002, 2005,
-2006, 2007 Free Software Foundation, Inc.
+2006, 2007, 2009 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -18,16 +20,6 @@ License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
-/*  Ken Weber (kweber@mat.ufrgs.br, kweber@mcs.kent.edu)
-
-    Funding for this work has been partially provided by Conselho Nacional
-    de Desenvolvimento Cienti'fico e Tecnolo'gico (CNPq) do Brazil, Grant
-    301314194-2, and was done while I was a visiting reseacher in the Instituto
-    de Matema'tica at Universidade Federal do Rio Grande do Sul (UFRGS).
-
-    References:
-	T. Jebelean, An algorithm for exact division, Journal of Symbolic
-	Computation, v. 15, 1993, pp. 169-180.	*/
 
 #include "gmp.h"
 #include "gmp-impl.h"
@@ -36,10 +28,10 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 void
 mpz_divexact (mpz_ptr quot, mpz_srcptr num, mpz_srcptr den)
 {
-  mp_ptr qp, tp;
-  mp_size_t qsize, tsize;
+  mp_ptr qp;
+  mp_size_t qn;
   mp_srcptr np, dp;
-  mp_size_t nsize, dsize;
+  mp_size_t nn, dn;
   TMP_DECL;
 
 #if WANT_ASSERT
@@ -52,83 +44,38 @@ mpz_divexact (mpz_ptr quot, mpz_srcptr num, mpz_srcptr den)
   }
 #endif
 
-  nsize = ABS (num->_mp_size);
-  dsize = ABS (den->_mp_size);
+  nn = ABSIZ (num);
+  dn = ABSIZ (den);
 
-  qsize = nsize - dsize + 1;
-  if (quot->_mp_alloc < qsize)
-    _mpz_realloc (quot, qsize);
+  qn = nn - dn + 1;
+  MPZ_REALLOC (quot, qn);
 
-  np = num->_mp_d;
-  dp = den->_mp_d;
-  qp = quot->_mp_d;
-
-  if (nsize < dsize)
+  if (nn < dn)
     {
       /* This special case avoids segfaults below when the function is
 	 incorrectly called with |N| < |D|, N != 0.  It also handles the
 	 well-defined case N = 0.  */
-      quot->_mp_size = 0;
-      return;
-    }
-
-  if (dsize <= 1)
-    {
-      if (dsize == 1)
-	{
-	  MPN_DIVREM_OR_DIVEXACT_1 (qp, np, nsize, dp[0]);
-	  qsize -= qp[qsize - 1] == 0;
-	  quot->_mp_size = (num->_mp_size ^ den->_mp_size) >= 0 ? qsize : -qsize;
-	  return;
-	}
-
-      /*  Generate divide-by-zero error since dsize == 0.  */
-      DIVIDE_BY_ZERO;
-    }
-
-  /* Avoid quadratic behaviour, but do it conservatively.  */
-  if (qsize > 1500)
-    {
-      mpz_tdiv_q (quot, num, den);
+      SIZ(quot) = 0;
       return;
     }
 
   TMP_MARK;
 
-  /*  QUOT <-- NUM/2^r, T <-- DEN/2^r where = r number of twos in DEN.  */
-  while (dp[0] == 0)
-    np += 1, nsize -= 1, dp += 1, dsize -= 1;
-  tsize = MIN (qsize, dsize);
-  if ((dp[0] & 1) != 0)
-    {
-      if (quot == den)		/*  QUOT and DEN overlap.  */
-	{
-	  tp = (mp_ptr) TMP_ALLOC (tsize * BYTES_PER_MP_LIMB);
-	  MPN_COPY (tp, dp, tsize);
-	}
-      else
-	tp = (mp_ptr) dp;
-      if (qp != np)
-	MPN_COPY_INCR (qp, np, qsize);
-    }
-  else
-    {
-      unsigned int r;
-      tp = (mp_ptr) TMP_ALLOC (tsize * BYTES_PER_MP_LIMB);
-      count_trailing_zeros (r, dp[0]);
-      mpn_rshift (tp, dp, tsize, r);
-      if (dsize > tsize)
-	tp[tsize - 1] |= (dp[tsize] << (GMP_NUMB_BITS - r)) & GMP_NUMB_MASK;
-      mpn_rshift (qp, np, qsize, r);
-      if (nsize > qsize)
-	qp[qsize - 1] |= (np[qsize] << (GMP_NUMB_BITS - r)) & GMP_NUMB_MASK;
-    }
+  qp = PTR(quot);
 
-  /*  Now QUOT <-- QUOT/T.  */
-  mpn_bdivmod (qp, qp, qsize, tp, tsize, qsize * GMP_NUMB_BITS);
-  MPN_NORMALIZE (qp, qsize);
+  if (quot == num || quot == den)
+    qp = TMP_ALLOC_LIMBS (qn);
 
-  quot->_mp_size = (num->_mp_size ^ den->_mp_size) >= 0 ? qsize : -qsize;
+  np = PTR(num);
+  dp = PTR(den);
+
+  mpn_divexact (qp, np, nn, dp, dn);
+  MPN_NORMALIZE (qp, qn);
+
+  SIZ(quot) = (SIZ(num) ^ SIZ(den)) >= 0 ? qn : -qn;
+
+  if (qp != PTR(quot))
+    MPN_COPY (PTR(quot), qp, qn);
 
   TMP_FREE;
 }

@@ -63,7 +63,7 @@ mpf_mul (mpf_ptr r, mpf_srcptr u, mpf_srcptr v)
       mp_size_t adj;
 
       rsize = usize + vsize;
-      tp = (mp_ptr) TMP_ALLOC (rsize * BYTES_PER_MP_LIMB);
+      tp = TMP_ALLOC_LIMBS (rsize);
       cy_limb = (usize >= vsize
 		 ? mpn_mul (tp, up, usize, vp, vsize)
 		 : mpn_mul (tp, vp, vsize, up, usize));

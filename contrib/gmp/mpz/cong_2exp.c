@@ -22,9 +22,10 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 
 int
-mpz_congruent_2exp_p (mpz_srcptr a, mpz_srcptr c, unsigned long d)
+mpz_congruent_2exp_p (mpz_srcptr a, mpz_srcptr c, mp_bitcnt_t d)
 {
-  unsigned long  i, dlimbs, dbits;
+  mp_size_t      i, dlimbs;
+  unsigned       dbits;
   mp_ptr         ap, cp;
   mp_limb_t      dmask, alimb, climb, sum;
   mp_size_t      asize_signed, csize_signed, asize, csize;

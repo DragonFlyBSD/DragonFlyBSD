@@ -1,18 +1,17 @@
 /* mpn_tdiv_qr -- Divide the numerator (np,nn) by the denominator (dp,dn) and
    write the nn-dn+1 quotient limbs at qp and the dn remainder limbs at rp.  If
    qxn is non-zero, generate that many fraction limbs and append them after the
-   other quotient limbs, and update the remainder accordningly.  The input
+   other quotient limbs, and update the remainder accordingly.  The input
    operands are unaffected.
 
    Preconditions:
    1. The most significant limb of of the divisor must be non-zero.
-   2. No argument overlap is permitted.  (??? relax this ???)
-   3. nn >= dn, even if qxn is non-zero.  (??? relax this ???)
+   2. nn >= dn, even if qxn is non-zero.  (??? relax this ???)
 
    The time complexity of this is O(qn*qn+M(dn,qn)), where M(m,n) is the time
    complexity of multiplication.
 
-Copyright 1997, 2000, 2001, 2002, 2005 Free Software Foundation, Inc.
+Copyright 1997, 2000, 2001, 2002, 2005, 2009 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -38,13 +37,8 @@ void
 mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 	     mp_srcptr np, mp_size_t nn, mp_srcptr dp, mp_size_t dn)
 {
-  /* FIXME:
-     1. qxn
-     2. pass allocated storage in additional parameter?
-  */
   ASSERT_ALWAYS (qxn == 0);
 
-  ASSERT (qxn >= 0);
   ASSERT (nn >= 0);
   ASSERT (dn >= 0);
   ASSERT (dn == 0 || dp[dn - 1] != 0);
@@ -58,7 +52,7 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 
     case 1:
       {
-	rp[0] = mpn_divmod_1 (qp, np, nn, dp[0]);
+	rp[0] = mpn_divrem_1 (qp, (mp_size_t) 0, np, nn, dp[0]);
 	return;
       }
 
@@ -77,7 +71,7 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 	    d2p = dtmp;
 	    d2p[1] = (dp[1] << cnt) | (dp[0] >> (GMP_NUMB_BITS - cnt));
 	    d2p[0] = (dp[0] << cnt) & GMP_NUMB_MASK;
-	    n2p = (mp_ptr) TMP_ALLOC ((nn + 1) * BYTES_PER_MP_LIMB);
+	    n2p = TMP_ALLOC_LIMBS (nn + 1);
 	    cy = mpn_lshift (n2p, np, nn, cnt);
 	    n2p[nn] = cy;
 	    qhl = mpn_divrem_2 (qp, 0L, n2p, nn + (cy != 0), d2p);
@@ -90,7 +84,7 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 	else
 	  {
 	    d2p = (mp_ptr) dp;
-	    n2p = (mp_ptr) TMP_ALLOC (nn * BYTES_PER_MP_LIMB);
+	    n2p = TMP_ALLOC_LIMBS (nn);
 	    MPN_COPY (n2p, np, nn);
 	    qhl = mpn_divrem_2 (qp, 0L, n2p, nn, d2p);
 	    qp[nn - 2] = qhl;	/* always store nn-2+1 quotient limbs */
@@ -104,12 +98,13 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
     default:
       {
 	int adjust;
+	gmp_pi1_t dinv;
 	TMP_DECL;
 	TMP_MARK;
 	adjust = np[nn - 1] >= dp[dn - 1];	/* conservative tests for quotient size */
 	if (nn + adjust >= 2 * dn)
 	  {
-	    mp_ptr n2p, d2p, q2p;
+	    mp_ptr n2p, d2p;
 	    mp_limb_t cy;
 	    int cnt;
 
@@ -118,9 +113,9 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 	      {
 		count_leading_zeros (cnt, dp[dn - 1]);
 		cnt -= GMP_NAIL_BITS;
-		d2p = (mp_ptr) TMP_ALLOC (dn * BYTES_PER_MP_LIMB);
+		d2p = TMP_ALLOC_LIMBS (dn);
 		mpn_lshift (d2p, dp, dn, cnt);
-		n2p = (mp_ptr) TMP_ALLOC ((nn + 1) * BYTES_PER_MP_LIMB);
+		n2p = TMP_ALLOC_LIMBS (nn + 1);
 		cy = mpn_lshift (n2p, np, nn, cnt);
 		n2p[nn] = cy;
 		nn += adjust;
@@ -129,50 +124,27 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 	      {
 		cnt = 0;
 		d2p = (mp_ptr) dp;
-		n2p = (mp_ptr) TMP_ALLOC ((nn + 1) * BYTES_PER_MP_LIMB);
+		n2p = TMP_ALLOC_LIMBS (nn + 1);
 		MPN_COPY (n2p, np, nn);
 		n2p[nn] = 0;
 		nn += adjust;
 	      }
 
-	    if (dn < DIV_DC_THRESHOLD)
-	      mpn_sb_divrem_mn (qp, n2p, nn, d2p, dn);
+	    invert_pi1 (dinv, d2p[dn - 1], d2p[dn - 2]);
+	    if (BELOW_THRESHOLD (dn, DC_DIV_QR_THRESHOLD))
+	      mpn_sbpi1_div_qr (qp, n2p, nn, d2p, dn, dinv.inv32);
+	    else if (BELOW_THRESHOLD (dn, MUPI_DIV_QR_THRESHOLD) ||   /* fast condition */
+		     BELOW_THRESHOLD (nn, 2 * MU_DIV_QR_THRESHOLD) || /* fast condition */
+		     (double) (2 * (MU_DIV_QR_THRESHOLD - MUPI_DIV_QR_THRESHOLD)) * dn /* slow... */
+		     + (double) MUPI_DIV_QR_THRESHOLD * nn > (double) dn * nn)    /* ...condition */
+	      mpn_dcpi1_div_qr (qp, n2p, nn, d2p, dn, &dinv);
 	    else
 	      {
-		/* Divide 2*dn / dn limbs as long as the limbs in np last.  */
-		q2p = qp + nn - dn;
-		n2p += nn - dn;
-		do
-		  {
-		    q2p -= dn;  n2p -= dn;
-		    mpn_dc_divrem_n (q2p, n2p, d2p, dn);
-		    nn -= dn;
-		  }
-		while (nn >= 2 * dn);
-
-		if (nn != dn)
-		  {
-		    mp_limb_t ql;
-		    n2p -= nn - dn;
-
-		    /* We have now dn < nn - dn < 2dn.  Make a recursive call,
-		       since falling out to the code below isn't pretty.
-		       Unfortunately, mpn_tdiv_qr returns nn-dn+1 quotient
-		       limbs, which would overwrite one already generated
-		       quotient limbs.  Preserve it with an ugly hack.  */
-		    /* FIXME: This suggests that we should have an
-		       mpn_tdiv_qr_internal that instead returns the most
-		       significant quotient limb and move the meat of this
-		       function there.  */
-		    /* FIXME: Perhaps call mpn_sb_divrem_mn here for certain
-		       operand ranges, to decrease overhead for small
-		       operands?  */
-		    ql = qp[nn - dn]; /* preserve quotient limb... */
-		    mpn_tdiv_qr (qp, n2p, 0L, n2p, nn, d2p, dn);
-		    qp[nn - dn] = ql; /* ...restore it again */
-		  }
+		mp_size_t itch = mpn_mu_div_qr_itch (nn, dn, 0);
+		mp_ptr scratch = TMP_ALLOC_LIMBS (itch);
+		mpn_mu_div_qr (qp, rp, n2p, nn, d2p, dn, scratch);
+		n2p = rp;
 	      }
-
 
 	    if (cnt != 0)
 	      mpn_rshift (rp, n2p, dn, cnt);
@@ -246,11 +218,11 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 		count_leading_zeros (cnt, dp[dn - 1]);
 		cnt -= GMP_NAIL_BITS;
 
-		d2p = (mp_ptr) TMP_ALLOC (qn * BYTES_PER_MP_LIMB);
+		d2p = TMP_ALLOC_LIMBS (qn);
 		mpn_lshift (d2p, dp + in, qn, cnt);
 		d2p[0] |= dp[in - 1] >> (GMP_NUMB_BITS - cnt);
 
-		n2p = (mp_ptr) TMP_ALLOC ((2 * qn + 1) * BYTES_PER_MP_LIMB);
+		n2p = TMP_ALLOC_LIMBS (2 * qn + 1);
 		cy = mpn_lshift (n2p, np + nn - 2 * qn, 2 * qn, cnt);
 		if (adjust)
 		  {
@@ -267,7 +239,7 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 		cnt = 0;
 		d2p = (mp_ptr) dp + in;
 
-		n2p = (mp_ptr) TMP_ALLOC ((2 * qn + 1) * BYTES_PER_MP_LIMB);
+		n2p = TMP_ALLOC_LIMBS (2 * qn + 1);
 		MPN_COPY (n2p, np + nn - 2 * qn, 2 * qn);
 		if (adjust)
 		  {
@@ -280,25 +252,30 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 	    if (qn == 1)
 	      {
 		mp_limb_t q0, r0;
-		mp_limb_t gcc272bug_n1, gcc272bug_n0, gcc272bug_d0;
-		/* Due to a gcc 2.7.2.3 reload pass bug, we have to use some
-		   temps here.  This doesn't hurt code quality on any machines
-		   so we do it unconditionally.  */
-		gcc272bug_n1 = n2p[1];
-		gcc272bug_n0 = n2p[0];
-		gcc272bug_d0 = d2p[0];
-		udiv_qrnnd (q0, r0, gcc272bug_n1, gcc272bug_n0 << GMP_NAIL_BITS,
-			    gcc272bug_d0 << GMP_NAIL_BITS);
-		r0 >>= GMP_NAIL_BITS;
-		n2p[0] = r0;
+		udiv_qrnnd (q0, r0, n2p[1], n2p[0] << GMP_NAIL_BITS, d2p[0] << GMP_NAIL_BITS);
+		n2p[0] = r0 >> GMP_NAIL_BITS;
 		qp[0] = q0;
 	      }
 	    else if (qn == 2)
-	      mpn_divrem_2 (qp, 0L, n2p, 4L, d2p);
-	    else if (qn < DIV_DC_THRESHOLD)
-	      mpn_sb_divrem_mn (qp, n2p, 2 * qn, d2p, qn);
+	      mpn_divrem_2 (qp, 0L, n2p, 4L, d2p); /* FIXME: obsolete function */
 	    else
-	      mpn_dc_divrem_n (qp, n2p, d2p, qn);
+	      {
+		invert_pi1 (dinv, d2p[qn - 1], d2p[qn - 2]);
+		if (BELOW_THRESHOLD (qn, DC_DIV_QR_THRESHOLD))
+		  mpn_sbpi1_div_qr (qp, n2p, 2 * qn, d2p, qn, dinv.inv32);
+		else if (BELOW_THRESHOLD (qn, MU_DIV_QR_THRESHOLD))
+		  mpn_dcpi1_div_qr (qp, n2p, 2 * qn, d2p, qn, &dinv);
+		else
+		  {
+		    mp_size_t itch = mpn_mu_div_qr_itch (2 * qn, qn, 0);
+		    mp_ptr scratch = TMP_ALLOC_LIMBS (itch);
+		    mp_ptr r2p = rp;
+		    if (np == r2p)	/* If N and R share space, put ... */
+		      r2p += nn - qn;	/* intermediate remainder at N's upper end. */
+		    mpn_mu_div_qr (qp, r2p, n2p, 2 * qn, d2p, qn, scratch);
+		    MPN_COPY (n2p, r2p, qn);
+		  }
+	      }
 
 	    rn = qn;
 	    /* Multiply the first ignored divisor limb by the most significant
@@ -316,7 +293,7 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 		dl = dp[in - 2];
 
 #if GMP_NAIL_BITS == 0
-	      x = (dp[in - 1] << cnt) | ((dl >> 1) >> ((~cnt) % BITS_PER_MP_LIMB));
+	      x = (dp[in - 1] << cnt) | ((dl >> 1) >> ((~cnt) % GMP_LIMB_BITS));
 #else
 	      x = (dp[in - 1] << cnt) & GMP_NUMB_MASK;
 	      if (cnt != 0)
@@ -366,7 +343,7 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 	      }
 	    /* True: partial remainder now is neutral, i.e., it is not shifted up.  */
 
-	    tp = (mp_ptr) TMP_ALLOC (dn * BYTES_PER_MP_LIMB);
+	    tp = TMP_ALLOC_LIMBS (dn);
 
 	    if (in < qn)
 	      {

@@ -33,7 +33,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    Note that prodp gets usize+vsize limbs stored, even if the actual result
    only needs usize+vsize-1.
 
-   There's no good reason to call here with vsize>=MUL_KARATSUBA_THRESHOLD.
+   There's no good reason to call here with vsize>=MUL_TOOM22_THRESHOLD.
    Currently this is allowed, but it might not be in the future.
 
    This is the most critical code for multiplication.  All multiplies rely

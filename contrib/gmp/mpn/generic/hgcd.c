@@ -383,7 +383,7 @@ mpn_hgcd_lehmer (mp_ptr ap, mp_ptr bp, mp_size_t n,
     }
 }
 
-/* Multiply M by M1 from the right. Needs 4*(M->n + M1->n) + 5 limbs
+/* Multiply M by M1 from the right. Needs 3*(M->n + M1->n) + 5 limbs
    of temporary storage (see mpn_matrix22_mul_itch). */
 void
 mpn_hgcd_matrix_mul (struct hgcd_matrix *M, const struct hgcd_matrix *M1,
@@ -395,7 +395,13 @@ mpn_hgcd_matrix_mul (struct hgcd_matrix *M, const struct hgcd_matrix *M1,
      are > 0, no element can decrease. The new elements are of size
      M->n + M1->n, one limb more or less. The computation of the
      matrix product produces elements of size M->n + M1->n + 1. But
-     the true size, after normalization, may be three limbs smaller. */
+     the true size, after normalization, may be three limbs smaller.
+
+     The reason that the product has normalized size >= M->n + M1->n -
+     2 is subtle. It depends on the fact that M and M1 can be factored
+     as products of (1,1; 0,1) and (1,0; 1,1), and that we can't have
+     M ending with a large power and M1 starting with a large power of
+     the same matrix. */
 
   /* FIXME: Strassen multiplication gives only a small speedup. In FFT
      multiplication range, this function could be sped up quite a lot
@@ -505,16 +511,15 @@ mpn_hgcd_matrix_adjust (struct hgcd_matrix *M,
 
    Let S(r) denote the required storage. For M1 we need 4 * (ceil(n1/2) + 1)
    = 4 * (ceil(n/4) + 1), for the hgcd_matrix_adjust call, we need n + 2,
-   and for the hgcd_matrix_mul, we may need 4 ceil(n/2) + 1. In total,
-   4 * ceil(n/4) + 4 ceil(n/2) + 5 <= 12 ceil(n/4) + 5.
+   and for the hgcd_matrix_mul, we may need 3 ceil(n/2) + 8. In total,
+   4 * ceil(n/4) + 3 ceil(n/2) + 12 <= 10 ceil(n/4) + 12.
 
    For the recursive call, we need S(n1) = S(ceil(n/2)).
 
-   S(n) <= 12*ceil(n/4) + 5 + S(ceil(n/2))
-	<= 12*(ceil(n/4) + ... + ceil(n/2^(1+k))) + 5k + S(ceil(n/2^k))
-	<= 12*(2 ceil(n/4) + k) + 5k + S(n/2^k)
-	<= 24 ceil(n/4) + 17k + S(n/2^k)
-
+   S(n) <= 10*ceil(n/4) + 12 + S(ceil(n/2))
+	<= 10*(ceil(n/4) + ... + ceil(n/2^(1+k))) + 12k + S(ceil(n/2^k))
+	<= 10*(2 ceil(n/4) + k) + 12k + S(ceil(n/2^k))
+	<= 20 ceil(n/4) + 22k + S(ceil(n/2^k))
 */
 
 mp_size_t
@@ -532,7 +537,7 @@ mpn_hgcd_itch (mp_size_t n)
   count_leading_zeros (count, nscaled);
   k = GMP_LIMB_BITS - count;
 
-  return 24 * ((n+3) / 4) + 17 * k
+  return 20 * ((n+3) / 4) + 22 * k
     + MPN_HGCD_LEHMER_ITCH (HGCD_THRESHOLD);
 }
 
@@ -607,7 +612,18 @@ mpn_hgcd (mp_ptr ap, mp_ptr bp, mp_size_t n,
 	  /* Needs 2 (p + M->n) <= 2 (2*s - n2 + 1 + n2 - s - 1)
 	     = 2*s <= 2*(floor(n/2) + 1) <= n + 2. */
 	  n = mpn_hgcd_matrix_adjust (&M1, p + nn, ap, bp, p, tp + scratch);
-	  /* Needs 4 ceil(n/2) + 1 */
+
+	  /* We need a bound for of M->n + M1.n. Let n be the original
+	     input size. Then
+
+	       ceil(n/2) - 1 >= size of product >= M.n + M1.n - 2
+
+	     and it follows that
+
+	       M.n + M1.n <= ceil(n/2) + 1
+
+	     Then 3*(M.n + M1.n) + 5 <= 3 * ceil(n/2) + 8 is the
+	     amount of needed scratch space. */
 	  mpn_hgcd_matrix_mul (M, &M1, tp + scratch);
 	  success = 1;
 	}

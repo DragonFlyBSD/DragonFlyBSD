@@ -24,7 +24,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp-impl.h"
 
 void
-mpf_urandomb (mpf_t rop, gmp_randstate_t rstate, unsigned long int nbits)
+mpf_urandomb (mpf_t rop, gmp_randstate_t rstate, mp_bitcnt_t nbits)
 {
   mp_ptr rp;
   mp_size_t nlimbs;

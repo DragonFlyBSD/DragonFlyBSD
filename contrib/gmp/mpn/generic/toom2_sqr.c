@@ -6,7 +6,7 @@
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2006, 2007, 2008 Free Software Foundation, Inc.
+Copyright 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -32,12 +32,10 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
   <-s--><--n-->
    ____ ______
   |_a1_|___a0_|
-   |b1_|___b0_|
-   <-t-><--n-->
 
-  v0  =  a0     * b0       #   A(0)*B(0)
-  vm1 = (a0- a1)*(b0- b1)  #  A(-1)*B(-1)
-  vinf=      a1 *     b1   # A(inf)*B(inf)
+  v0  =  a0     ^2  #   A(0)^2
+  vm1 = (a0- a1)^2  #  A(-1)^2
+  vinf=      a1 ^2  # A(inf)^2
 */
 
 #if TUNE_PROGRAM_BUILD
@@ -47,10 +45,10 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
   (SQR_TOOM3_THRESHOLD >= 2 * SQR_TOOM2_THRESHOLD)
 #endif
 
-#define TOOM2_SQR_N_REC(p, a, n, ws)					\
+#define TOOM2_SQR_REC(p, a, n, ws)					\
   do {									\
     if (! MAYBE_sqr_toom2						\
-	|| BELOW_THRESHOLD (n, SQR_KARATSUBA_THRESHOLD))		\
+	|| BELOW_THRESHOLD (n, SQR_TOOM2_THRESHOLD))			\
       mpn_sqr_basecase (p, a, n);					\
     else								\
       mpn_toom2_sqr (p, a, n, ws);					\
@@ -103,15 +101,16 @@ mpn_toom2_sqr (mp_ptr pp,
 #define v0	pp				/* 2n */
 #define vinf	(pp + 2 * n)			/* s+s */
 #define vm1	scratch				/* 2n */
+#define scratch_out	scratch + 2 * n
 
   /* vm1, 2n limbs */
-  TOOM2_SQR_N_REC (vm1, asm1, n, scratch);
+  TOOM2_SQR_REC (vm1, asm1, n, scratch_out);
 
   /* vinf, s+s limbs */
-  TOOM2_SQR_N_REC (vinf, a1, s, scratch);
+  TOOM2_SQR_REC (vinf, a1, s, scratch_out);
 
   /* v0, 2n limbs */
-  TOOM2_SQR_N_REC (v0, ap, n, scratch);
+  TOOM2_SQR_REC (v0, ap, n, scratch_out);
 
   /* H(v0) + L(vinf) */
   cy = mpn_add_n (pp + 2 * n, v0 + n, vinf, n);

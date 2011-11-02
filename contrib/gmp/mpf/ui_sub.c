@@ -140,7 +140,7 @@ mpf_ui_sub (mpf_ptr r, unsigned long int u, mpf_srcptr v)
 
   /* Allocate temp space for the result.  Allocate
      just vsize + ediff later???  */
-  tp = (mp_ptr) TMP_ALLOC (prec * BYTES_PER_MP_LIMB);
+  tp = TMP_ALLOC_LIMBS (prec);
 
   if (ediff >= prec)
     {

@@ -54,7 +54,7 @@ mpz_tdiv_r (mpz_ptr rem, mpz_srcptr num, mpz_srcptr den)
     }
 
   TMP_MARK;
-  qp = (mp_ptr) TMP_ALLOC (ql * BYTES_PER_MP_LIMB);
+  qp = TMP_ALLOC_LIMBS (ql);
   rp = PTR (rem);
   np = PTR (num);
   dp = PTR (den);
@@ -67,7 +67,7 @@ mpz_tdiv_r (mpz_ptr rem, mpz_srcptr num, mpz_srcptr den)
   if (dp == rp)
     {
       mp_ptr tp;
-      tp = (mp_ptr) TMP_ALLOC (dl * BYTES_PER_MP_LIMB);
+      tp = TMP_ALLOC_LIMBS (dl);
       MPN_COPY (tp, dp, dl);
       dp = tp;
     }
@@ -75,7 +75,7 @@ mpz_tdiv_r (mpz_ptr rem, mpz_srcptr num, mpz_srcptr den)
   if (np == rp)
     {
       mp_ptr tp;
-      tp = (mp_ptr) TMP_ALLOC (nl * BYTES_PER_MP_LIMB);
+      tp = TMP_ALLOC_LIMBS (nl);
       MPN_COPY (tp, np, nl);
       np = tp;
     }

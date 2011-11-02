@@ -19,18 +19,25 @@ along with this file.  If not, see http://www.gnu.org/licenses/.  */
 /* You have to define the following before including this file:
 
    UWtype -- An unsigned type, default type for operations (typically a "word")
-   UHWtype -- An unsigned type, at least half the size of UWtype.
+   UHWtype -- An unsigned type, at least half the size of UWtype
    UDWtype -- An unsigned type, at least twice as large a UWtype
    W_TYPE_SIZE -- size in bits of UWtype
 
-   SItype, USItype -- Signed and unsigned 32 bit types.
-   DItype, UDItype -- Signed and unsigned 64 bit types.
+   SItype, USItype -- Signed and unsigned 32 bit types
+   DItype, UDItype -- Signed and unsigned 64 bit types
 
    On a 32 bit machine UWtype should typically be USItype;
    on a 64 bit machine, UWtype should typically be UDItype.
 
-   CAUTION!  Using this file outside of GMP is not safe.  You need to include
-   gmp.h and gmp-impl.h, or certain things might not work as expected.
+   Optionally, define:
+
+   LONGLONG_STANDALONE -- Avoid code that needs machine-dependent support files
+   NO_ASM -- Disable inline asm
+
+
+   CAUTION!  Using this version of longlong.h outside of GMP is not safe.  You
+   need to include gmp.h and gmp-impl.h, or certain things might not work as
+   expected.
 */
 
 #define __BITS4 (W_TYPE_SIZE / 4)
@@ -505,6 +512,12 @@ long __MPN(count_leading_zeros) _PROTO ((UDItype));
 extern UWtype __MPN(udiv_qrnnd) _PROTO ((UWtype *, UWtype, UWtype, UWtype));
 #define UDIV_TIME 200
 #endif /* LONGLONG_STANDALONE */
+#endif
+#if defined (__ARM_ARCH_5__)
+/* This actually requires arm 5 */
+#define count_leading_zeros(count, x) \
+  __asm__ ("clz\t%0, %1" : "=r" (count) : "r" (x))
+#define COUNT_LEADING_ZEROS_0 32
 #endif
 #endif /* __arm__ */
 

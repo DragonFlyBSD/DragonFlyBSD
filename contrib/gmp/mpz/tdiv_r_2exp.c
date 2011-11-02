@@ -21,7 +21,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp-impl.h"
 
 void
-mpz_tdiv_r_2exp (mpz_ptr res, mpz_srcptr in, unsigned long int cnt)
+mpz_tdiv_r_2exp (mpz_ptr res, mpz_srcptr in, mp_bitcnt_t cnt)
 {
   mp_size_t in_size = ABS (in->_mp_size);
   mp_size_t res_size;

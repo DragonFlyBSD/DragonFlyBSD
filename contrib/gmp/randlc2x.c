@@ -92,11 +92,11 @@ lc (mp_ptr rp, gmp_randstate_t rstate)
     {
       mp_size_t tmp = an + seedn;
       ta = tn + 1;
-      tp = (mp_ptr) TMP_ALLOC (ta * BYTES_PER_MP_LIMB);
+      tp = TMP_ALLOC_LIMBS (ta);
       MPN_ZERO (&tp[tmp], ta - tmp); /* mpn_mul won't zero it out.  */
     }
   else
-    tp = (mp_ptr) TMP_ALLOC (ta * BYTES_PER_MP_LIMB);
+    tp = TMP_ALLOC_LIMBS (ta);
 
   /* t = a * seed.  NOTE: an is always > 0; see initialization.  */
   ASSERT (seedn >= an && an > 0);
@@ -155,7 +155,7 @@ randget_lc (gmp_randstate_t rstate, mp_ptr rp, unsigned long int nbits)
   chunk_nbits = p->_mp_m2exp / 2;
   tn = BITS_TO_LIMBS (chunk_nbits);
 
-  tp = (mp_ptr) TMP_ALLOC (tn * BYTES_PER_MP_LIMB);
+  tp = TMP_ALLOC_LIMBS (tn);
 
   rbitpos = 0;
   while (rbitpos + chunk_nbits <= nbits)
@@ -283,7 +283,7 @@ void
 gmp_randinit_lc_2exp (gmp_randstate_t rstate,
 		      mpz_srcptr a,
 		      unsigned long int c,
-		      unsigned long int m2exp)
+		      mp_bitcnt_t m2exp)
 {
   gmp_rand_lc_struct *p;
   mp_size_t seedn = BITS_TO_LIMBS (m2exp);

@@ -71,7 +71,7 @@ mpf_div_ui (mpf_ptr r, mpf_srcptr u, unsigned long int v)
   up = u->_mp_d;
 
   tsize = 1 + prec;
-  tp = (mp_ptr) TMP_ALLOC ((tsize + 1) * BYTES_PER_MP_LIMB);
+  tp = TMP_ALLOC_LIMBS (tsize + 1);
 
   if (usize > tsize)
     {

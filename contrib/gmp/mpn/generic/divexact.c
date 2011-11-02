@@ -4,12 +4,11 @@
 
    Contributed to the GNU project by Torbjorn Granlund.
 
-   THE FUNCTIONS IN THIS FILE ARE INTERNAL WITH A MUTABLE INTERFACE.  IT IS
-   ONLY SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS
-   ALMOST GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GMP
-   RELEASE.
+   THE FUNCTIONS IN THIS FILE ARE INTERNAL WITH MUTABLE INTERFACES.  IT IS ONLY
+   SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
+   GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GMP RELEASE.
 
-Copyright 2006, 2007 Free Software Foundation, Inc.
+Copyright 2006, 2007, 2009 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -26,6 +25,74 @@ License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
+
+#include "gmp.h"
+#include "gmp-impl.h"
+#include "longlong.h"
+
+#if 1
+void
+mpn_divexact (mp_ptr qp,
+	      mp_srcptr np, mp_size_t nn,
+	      mp_srcptr dp, mp_size_t dn)
+{
+  unsigned shift;
+  mp_size_t qn;
+  mp_ptr tp, wp;
+  TMP_DECL;
+
+  ASSERT (dn > 0);
+  ASSERT (nn >= dn);
+  ASSERT (dp[dn-1] > 0);
+
+  while (dp[0] == 0)
+    {
+      ASSERT (np[0] == 0);
+      dp++;
+      np++;
+      dn--;
+      nn--;
+    }
+
+  if (dn == 1)
+    {
+      MPN_DIVREM_OR_DIVEXACT_1 (qp, np, nn, dp[0]);
+      return;
+    }
+
+  TMP_MARK;
+
+  qn = nn + 1 - dn;
+  count_trailing_zeros (shift, dp[0]);
+
+  if (shift > 0)
+    {
+      mp_size_t ss = (dn > qn) ? qn + 1 : dn;
+
+      tp = TMP_ALLOC_LIMBS (ss);
+      mpn_rshift (tp, dp, ss, shift);
+      dp = tp;
+
+      /* Since we have excluded dn == 1, we have nn > qn, and we need
+	 to shift one limb beyond qn. */
+      wp = TMP_ALLOC_LIMBS (qn + 1);
+      mpn_rshift (wp, np, qn + 1, shift);
+    }
+  else
+    {
+      wp = TMP_ALLOC_LIMBS (qn);
+      MPN_COPY (wp, np, qn);
+    }
+
+  if (dn > qn)
+    dn = qn;
+
+  tp = TMP_ALLOC_LIMBS (mpn_bdiv_q_itch (qn, dn));
+  mpn_bdiv_q (qp, wp, qn, dp, dn, tp);
+  TMP_FREE;
+}
+
+#else
 
 /* We use the Jebelean's bidirectional exact division algorithm.  This is
    somewhat naively implemented, with equal quotient parts done by 2-adic
@@ -44,16 +111,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    * It makes the msb part 1 or 2 limbs larger than the lsb part, in spite of
      that the latter is faster.  We should at least reverse this, but perhaps
      we should make the lsb part considerably larger.  (How do we tune this?)
-
-   Perhaps we could somehow use 2-adic division for both parts, not as now
-   truncating division for the upper part and 2-adic for the lower part.
 */
-
-
-#include "gmp.h"
-#include "gmp-impl.h"
-#include "longlong.h"
-
 
 mp_size_t
 mpn_divexact_itch (mp_size_t nn, mp_size_t dn)
@@ -76,7 +134,8 @@ mpn_divexact (mp_ptr qp,
   int cnt;
   mp_ptr xdp;
   mp_limb_t di;
-  mp_limb_t dip[2], xp[2], cy;
+  mp_limb_t cy;
+  gmp_pi1_t dinv;
   TMP_DECL;
 
   TMP_MARK;
@@ -90,7 +149,7 @@ mpn_divexact (mp_ptr qp,
       MPN_COPY (tp, np, qn);
       binvert_limb (di, dp[0]);  di = -di;
       dn = MIN (dn, qn);
-      mpn_sb_bdiv_q (qp, tp, qn, dp, dn, di);
+      mpn_sbpi1_bdiv_q (qp, tp, qn, dp, dn, di);
       TMP_FREE;
       return;
     }
@@ -107,14 +166,14 @@ mpn_divexact (mp_ptr qp,
 	  MPN_COPY (tp, np, qn);
 	  binvert_limb (di, dp[0]);  di = -di;
 	  dn = MIN (dn, qn);
-	  mpn_sb_bdiv_q (qp, tp, qn, dp, dn, di);
+	  mpn_sbpi1_bdiv_q (qp, tp, qn, dp, dn, di);
 	}
       else if (BELOW_THRESHOLD (dn, MU_BDIV_Q_THRESHOLD))
 	{
 	  tp = scratch;
 	  MPN_COPY (tp, np, qn);
 	  binvert_limb (di, dp[0]);  di = -di;
-	  mpn_dc_bdiv_q (qp, tp, qn, dp, dn, di);
+	  mpn_dcpi1_bdiv_q (qp, tp, qn, dp, dn, di);
 	}
       else
 	{
@@ -180,23 +239,14 @@ mpn_divexact (mp_ptr qp,
       MPN_COPY (tp, np + nn - nn1, nn1);
     }
 
+  invert_pi1 (dinv, xdp[qn1 - 1], xdp[qn1 - 2]);
   if (BELOW_THRESHOLD (qn1, DC_DIVAPPR_Q_THRESHOLD))
     {
-      /* Compute divisor inverse.  */
-      cy = mpn_add_1 (xp, xdp + qn1 - 2, 2, 1);
-      if (cy != 0)
-	dip[0] = dip[1] = 0;
-      else
-	{
-	  mp_limb_t scratch[10];	/* FIXME */
-	  mpn_invert (dip, xp, 2, scratch);
-	}
-
-      qp[qn0 - 1 + nn1 - qn1] = mpn_sb_divappr_q (qp + qn0 - 1, tp, nn1, xdp, qn1, dip);
+      qp[qn0 - 1 + nn1 - qn1] = mpn_sbpi1_divappr_q (qp + qn0 - 1, tp, nn1, xdp, qn1, dinv.inv32);
     }
   else if (BELOW_THRESHOLD (qn1, MU_DIVAPPR_Q_THRESHOLD))
     {
-      qp[qn0 - 1 + nn1 - qn1] = mpn_dc_divappr_q (qp + qn0 - 1, tp, nn1, xdp, qn1);
+      qp[qn0 - 1 + nn1 - qn1] = mpn_dcpi1_divappr_q (qp + qn0 - 1, tp, nn1, xdp, qn1, &dinv);
     }
   else
     {
@@ -215,12 +265,12 @@ mpn_divexact (mp_ptr qp,
   if (BELOW_THRESHOLD (qn0, DC_BDIV_Q_THRESHOLD))
     {
       MPN_COPY (tp, np, qn0);
-      mpn_sb_bdiv_q (qp, tp, qn0, dp, qn0, di);
+      mpn_sbpi1_bdiv_q (qp, tp, qn0, dp, qn0, di);
     }
   else if (BELOW_THRESHOLD (qn0, MU_BDIV_Q_THRESHOLD))
     {
       MPN_COPY (tp, np, qn0);
-      mpn_dc_bdiv_q (qp, tp, qn0, dp, qn0, di);
+      mpn_dcpi1_bdiv_q (qp, tp, qn0, dp, qn0, di);
     }
   else
     {
@@ -232,3 +282,4 @@ mpn_divexact (mp_ptr qp,
 
   TMP_FREE;
 }
+#endif

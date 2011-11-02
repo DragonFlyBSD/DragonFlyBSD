@@ -68,7 +68,7 @@ mpq_cmp (const MP_RAT *op1, const MP_RAT *op2)
   /* 2. Same, but compare the number of significant bits.  */
   {
     int cnt1, cnt2;
-    unsigned long int bits1, bits2;
+    mp_bitcnt_t bits1, bits2;
 
     count_leading_zeros (cnt1, op1->_mp_num._mp_d[num1_size - 1]);
     count_leading_zeros (cnt2, op2->_mp_den._mp_d[den2_size - 1]);

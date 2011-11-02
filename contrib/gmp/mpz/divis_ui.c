@@ -51,7 +51,7 @@ mpz_divisible_ui_p (mpz_srcptr a, unsigned long d)
   ap = PTR(a);
   asize = ABS(asize);  /* ignore sign of a */
 
-  if (BELOW_THRESHOLD (asize, MODEXACT_1_ODD_THRESHOLD))
+  if (ABOVE_THRESHOLD (asize, BMOD_1_TO_MOD_1_THRESHOLD))
     return mpn_mod_1 (ap, asize, (mp_limb_t) d) == 0;
 
   if (! (d & 1))

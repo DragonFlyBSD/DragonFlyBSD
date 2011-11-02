@@ -20,12 +20,12 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp.h"
 #include "gmp-impl.h"
 
-unsigned long int
+mp_bitcnt_t
 mpz_remove (mpz_ptr dest, mpz_srcptr src, mpz_srcptr f)
 {
   mpz_t fpow[GMP_LIMB_BITS];		/* Really MP_SIZE_T_BITS */
   mpz_t x, rem;
-  unsigned long int pwr;
+  mp_bitcnt_t pwr;
   int p;
 
   if (mpz_cmp_ui (f, 1) <= 0)
@@ -40,7 +40,7 @@ mpz_remove (mpz_ptr dest, mpz_srcptr src, mpz_srcptr f)
 
   if (mpz_cmp_ui (f, 2) == 0)
     {
-      unsigned long int s0;
+      mp_bitcnt_t s0;
       s0 = mpz_scan1 (src, 0);
       mpz_div_2exp (dest, src, s0);
       return s0;

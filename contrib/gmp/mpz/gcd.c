@@ -90,7 +90,7 @@ gcd (mpz_srcptr u, mpz_srcptr v, mpz_ptr g)
   usize -= u_zero_limbs;
   count_trailing_zeros (u_zero_bits, *up);
   tp = up;
-  up = (mp_ptr) TMP_ALLOC (usize * BYTES_PER_MP_LIMB);
+  up = TMP_ALLOC_LIMBS (usize);
   if (u_zero_bits != 0)
     {
       mpn_rshift (up, tp, usize, u_zero_bits);
@@ -105,7 +105,7 @@ gcd (mpz_srcptr u, mpz_srcptr v, mpz_ptr g)
   vsize -= v_zero_limbs;
   count_trailing_zeros (v_zero_bits, *vp);
   tp = vp;
-  vp = (mp_ptr) TMP_ALLOC (vsize * BYTES_PER_MP_LIMB);
+  vp = TMP_ALLOC_LIMBS (vsize);
   if (v_zero_bits != 0)
     {
       mpn_rshift (vp, tp, vsize, v_zero_bits);
@@ -135,7 +135,7 @@ gcd (mpz_srcptr u, mpz_srcptr v, mpz_ptr g)
     ? mpn_gcd (vp, vp, vsize, up, usize)
     : mpn_gcd (vp, up, usize, vp, vsize);
 
-  /*  Here G <-- V << (g_zero_limbs*BITS_PER_MP_LIMB + g_zero_bits).  */
+  /*  Here G <-- V << (g_zero_limbs*GMP_LIMB_BITS + g_zero_bits).  */
   gsize = vsize + g_zero_limbs;
   if (g_zero_bits != 0)
     {

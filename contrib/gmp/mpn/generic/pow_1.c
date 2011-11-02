@@ -34,6 +34,9 @@ mpn_pow_1 (mp_ptr rp, mp_srcptr bp, mp_size_t bn, mp_limb_t exp, mp_ptr tp)
   mp_size_t rn;
   int par;
 
+  ASSERT (bn >= 1);
+  /* FIXME: Add operand overlap criteria */
+
   if (exp <= 1)
     {
       if (exp == 0)
@@ -68,7 +71,7 @@ mpn_pow_1 (mp_ptr rp, mp_srcptr bp, mp_size_t bn, mp_limb_t exp, mp_ptr tp)
       if ((cnt & 1) != 0)
 	MP_PTR_SWAP (rp, tp);
 
-      mpn_sqr_n (rp, bp, bn);
+      mpn_sqr (rp, bp, bn);
       rn = 2 * bn; rn -= rp[rn - 1] == 0;
 
       for (i = GMP_LIMB_BITS - cnt - 1;;)
@@ -83,7 +86,7 @@ mpn_pow_1 (mp_ptr rp, mp_srcptr bp, mp_size_t bn, mp_limb_t exp, mp_ptr tp)
 	  if (--i == 0)
 	    break;
 
-	  mpn_sqr_n (tp, rp, rn);
+	  mpn_sqr (tp, rp, rn);
 	  rn = 2 * rn; rn -= tp[rn - 1] == 0;
 	  MP_PTR_SWAP (rp, tp);
 	}
@@ -93,7 +96,7 @@ mpn_pow_1 (mp_ptr rp, mp_srcptr bp, mp_size_t bn, mp_limb_t exp, mp_ptr tp)
       if (((par ^ cnt) & 1) == 0)
 	MP_PTR_SWAP (rp, tp);
 
-      mpn_sqr_n (rp, bp, bn);
+      mpn_sqr (rp, bp, bn);
       rn = 2 * bn; rn -= rp[rn - 1] == 0;
 
       for (i = GMP_LIMB_BITS - cnt - 1;;)
@@ -108,7 +111,7 @@ mpn_pow_1 (mp_ptr rp, mp_srcptr bp, mp_size_t bn, mp_limb_t exp, mp_ptr tp)
 	  if (--i == 0)
 	    break;
 
-	  mpn_sqr_n (tp, rp, rn);
+	  mpn_sqr (tp, rp, rn);
 	  rn = 2 * rn; rn -= tp[rn - 1] == 0;
 	  MP_PTR_SWAP (rp, tp);
 	}
