@@ -81,7 +81,6 @@
 #define	MAP_HASSEMAPHORE 0x0200	/* region may contain semaphores */
 #define	MAP_STACK	 0x0400	/* region grows down, like a stack */
 #define	MAP_NOSYNC	 0x0800 /* page to but do not sync underlying file */
-#define	MAP_TRYFIXED	0x10000 /* attempt hint address, even within heap */
 
 #ifdef _P1003_1B_VISIBLE
 /*
@@ -115,7 +114,9 @@
 /*
  * Extended flags
  */
-#define	MAP_NOCORE	 0x00020000 /* dont include these pages in a coredump */
+#define	MAP_TRYFIXED	0x00010000 /* attempt hint address, even within heap */
+#define	MAP_NOCORE	0x00020000 /* dont include these pages in a coredump */
+#define MAP_SIZEALIGN	0x00040000 /* size is also an alignment requirement */
 
 /*
  * Advice to madvise

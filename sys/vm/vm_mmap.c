@@ -1187,6 +1187,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	vm_object_t object;
 	vm_offset_t eaddr;
 	vm_size_t   esize;
+	vm_size_t   align;
 	struct vnode *vp;
 	struct thread *td = curthread;
 	struct proc *p;
@@ -1233,6 +1234,16 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	if (foff & PAGE_MASK) {
 		lwkt_reltoken(&map->token);
 		return (EINVAL);
+	}
+
+	if (flags & MAP_SIZEALIGN) {
+		align = size;
+		if ((align ^ (align - 1)) != (align << 1) - 1) {
+			lwkt_reltoken(&map->token);
+			return (EINVAL);
+		}
+	} else {
+		align = PAGE_SIZE;
 	}
 
 	if ((flags & (MAP_FIXED | MAP_TRYFIXED)) == 0) {
@@ -1366,11 +1377,11 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		rv = vm_map_stack(map, *addr, size, flags,
 				  prot, maxprot, docow);
 	} else if (flags & MAP_VPAGETABLE) {
-		rv = vm_map_find(map, object, foff, addr, size, PAGE_SIZE,
+		rv = vm_map_find(map, object, foff, addr, size, align,
 				 fitit, VM_MAPTYPE_VPAGETABLE,
 				 prot, maxprot, docow);
 	} else {
-		rv = vm_map_find(map, object, foff, addr, size, PAGE_SIZE,
+		rv = vm_map_find(map, object, foff, addr, size, align,
 				 fitit, VM_MAPTYPE_NORMAL,
 				 prot, maxprot, docow);
 	}
