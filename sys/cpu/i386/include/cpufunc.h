@@ -91,6 +91,15 @@ bsfl(u_int mask)
 	return (result);
 }
 
+static __inline u_int
+bsflong(u_long mask)
+{
+	u_long	result;
+
+	__asm __volatile("bsfl %0,%0" : "=r" (result) : "0" (mask));
+	return (result);
+}
+
 /*
  * Find the last 1 in mask, starting with bit 31 and return the
  * bit number.  If mask is 0 the result is undefined.

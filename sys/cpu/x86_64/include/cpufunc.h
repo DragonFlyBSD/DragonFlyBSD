@@ -97,6 +97,15 @@ bsfq(u_long mask)
 	return (result);
 }
 
+static __inline u_long
+bsflong(u_long mask)
+{
+	u_long	result;
+
+	__asm __volatile("bsfq %1,%0" : "=r" (result) : "rm" (mask));
+	return (result);
+}
+
 static __inline u_int
 bsrl(u_int mask)
 {
