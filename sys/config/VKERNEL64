@@ -16,6 +16,7 @@ options		DEBUG_PCTRACK
 ##options		KTR_SPIN_CONTENTION
 #options	DEBUG_CRIT_SECTIONS
 
+options		VM_PAGE_DEBUG
 options		QUOTA
 options		DUMMYNET
 options         IPFIREWALL              #firewall
@@ -54,8 +55,8 @@ options 	NFS_ROOT		#NFS usable as root device, NFS required
 options 	MSDOSFS			#MSDOS Filesystem
 options 	CD9660			#ISO 9660 Filesystem
 options 	PROCFS			#Process filesystem
-options 	COMPAT_43		#Compatible with BSD 4.3 [KEEP THIS!]
-options		COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
+#options 	COMPAT_43		#Compatible with BSD 4.3
+#options	COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
 options		DEVICE_POLLING		# Support mixed interrupt-polling
 					# handling of network device drivers
 options 	UCONSOLE		#Allow users to grab the console
