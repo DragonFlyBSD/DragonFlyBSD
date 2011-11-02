@@ -46,6 +46,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <vm/pmap.h>
 #include <machine/vmparam.h>
 
@@ -144,31 +145,43 @@ init_param1(void)
 void
 init_param2(int physpages)
 {
+	size_t limsize;
+
+	/*
+	 * Calculate manually becaus the VM page queues / system is not set up yet
+	 */
+	limsize = (size_t)physpages * PAGE_SIZE;
+	if (limsize > KvaSize)
+		limsize = KvaSize;
+	limsize /= 1024 * 1024;		/* smaller of KVM or physmem in MB */
 
 	/* Base parameters */
 	maxusers = MAXUSERS;
 	TUNABLE_INT_FETCH("kern.maxusers", &maxusers);
 	if (maxusers == 0) {
-		maxusers = physpages / (2 * 1024 * 1024 / PAGE_SIZE);
+		maxusers = limsize / 8;		/* ~384 per 3G */
 		if (maxusers < 32)
-		    maxusers = 32;
-		if (maxusers > 384)
-		    maxusers = 384;
+			maxusers = 32;
+		/* no upper limit */
 	}
 
 	/*
 	 * The following can be overridden after boot via sysctl.  Note:
 	 * unless overriden, these macros are ultimately based on maxusers.
-	 */
-	maxproc = NPROC;
-	TUNABLE_INT_FETCH("kern.maxproc", &maxproc);
-
-	/*
+	 *
 	 * Limit maxproc so that kmap entries cannot be exhausted by
 	 * processes.
 	 */
-	if (maxproc > (physpages / 12))
-		maxproc = physpages / 12;
+	maxproc = NPROC;
+	TUNABLE_INT_FETCH("kern.maxproc", &maxproc);
+	if (maxproc < 32)
+		maxproc = 32;
+	if (maxproc > limsize * 21)
+		maxproc = limsize * 21;
+
+	/*
+	 * Maximum number of open files
+	 */
 	maxfiles = MAXFILES;
 	TUNABLE_INT_FETCH("kern.maxfiles", &maxfiles);
 	if (maxfiles < 128)
