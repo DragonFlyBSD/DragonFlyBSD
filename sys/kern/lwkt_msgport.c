@@ -367,7 +367,11 @@ _lwkt_pullmsg(lwkt_port_t port, lwkt_msg_t msg)
     else
 	queue = &port->mp_msgq;
     TAILQ_REMOVE(queue, msg, ms_node);
-    msg->ms_flags &= ~MSGF_QUEUED;
+
+    /*
+     * atomic op needed for spin ports
+     */
+    atomic_clear_int(&msg->ms_flags, MSGF_QUEUED);
 }
 
 static __inline
@@ -376,7 +380,10 @@ _lwkt_pushmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
     lwkt_msg_queue *queue;
 
-    msg->ms_flags |= MSGF_QUEUED;
+    /*
+     * atomic op needed for spin ports
+     */
+    atomic_set_int(&msg->ms_flags, MSGF_QUEUED);
     if (__predict_false(msg->ms_flags & MSGF_PRIORITY))
 	queue = &port->mp_msgq_prio;
     else
@@ -404,8 +411,11 @@ static __inline
 void
 _lwkt_enqueue_reply(lwkt_port_t port, lwkt_msg_t msg)
 {
+    /*
+     * atomic op needed for spin ports
+     */
     _lwkt_pushmsg(port, msg);
-    msg->ms_flags |= MSGF_REPLY | MSGF_DONE;
+    atomic_set_int(&msg->ms_flags, MSGF_REPLY | MSGF_DONE);
 }
 
 /************************************************************************
@@ -797,6 +807,7 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
 	     */
 	    if (msg->ms_flags & MSGF_SYNC) {
 		won = msg;
+		atomic_set_int(&msg->ms_flags, MSGF_WAITING);
 	    } else {
 		won = port;
 		port->mp_flags |= MSGPORTF_WAITING;
@@ -873,8 +884,16 @@ lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	 * If a synchronous completion has been requested, just wakeup
 	 * the message without bothering to queue it to the target port.
 	 */
+	spin_lock(&port->mpu_spin);
 	msg->ms_flags |= MSGF_DONE | MSGF_REPLY;
-	wakeup(msg);
+	dowakeup = 0;
+	if (msg->ms_flags & MSGF_WAITING) {
+		atomic_clear_int(&msg->ms_flags, MSGF_WAITING);
+		dowakeup = 1;
+	}
+	spin_unlock(&port->mpu_spin);
+	if (dowakeup)
+		wakeup(msg);
     } else {
 	/*
 	 * If an asynchronous completion has been requested the message

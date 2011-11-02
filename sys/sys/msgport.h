@@ -98,7 +98,7 @@ typedef struct lwkt_msg {
 #define MSGF_QUEUED	0x0004		/* message has been queued sanitychk */
 #define MSGF_SYNC	0x0008		/* synchronous message operation */
 #define MSGF_INTRANSIT	0x0010		/* in-transit (IPI) */
-#define MSGF_UNUSED0020	0x0020
+#define MSGF_WAITING	0x0020		/* MSGF_SYNC being waited upon */
 #define MSGF_DROPABLE	0x0040		/* message supports drop */
 #define MSGF_ABORTABLE	0x0080		/* message supports abort */
 #define MSGF_PRIORITY	0x0100		/* priority message */
