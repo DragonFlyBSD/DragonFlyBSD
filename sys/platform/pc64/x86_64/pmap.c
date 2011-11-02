@@ -2802,6 +2802,17 @@ kernel_skip:
 			}
 
 			/*
+			 * *ptep can get ripped out while we were blocked.
+			 */
+			if (*ptep == 0) {
+				if (pte_pv) {
+					pv_put(pte_pv);
+					pte_pv = NULL;
+				}
+				continue;
+			}
+
+			/*
 			 * Ready for the callback.  The locked pte_pv (if
 			 * not NULL) is consumed by the callback.
 			 */
