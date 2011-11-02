@@ -430,6 +430,7 @@ so_pru_ctlinput(struct protosw *pr, int cmd, struct sockaddr *arg, void *extra)
 void
 netmsg_so_notify(netmsg_t msg)
 {
+	struct lwkt_token *tok;
 	struct signalsockbuf *ssb;
 
 	ssb = (msg->notify.nm_etype & NM_REVENT) ?
@@ -439,15 +440,20 @@ netmsg_so_notify(netmsg_t msg)
 	/*
 	 * Reply immediately if the event has occured, otherwise queue the
 	 * request.
+	 *
+	 * NOTE: Socket can change if this is an accept predicate so cache
+	 *	 the token.
 	 */
+	tok = lwkt_token_pool_lookup(msg->base.nm_so);
+	lwkt_gettoken(tok);
 	if (msg->notify.nm_predicate(&msg->notify)) {
+		lwkt_reltoken(tok);
 		lwkt_replymsg(&msg->base.lmsg,
 			      msg->base.lmsg.ms_error);
 	} else {
-		lwkt_gettoken(&kq_token);
 		TAILQ_INSERT_TAIL(&ssb->ssb_kq.ki_mlist, &msg->notify, nm_list);
 		atomic_set_int(&ssb->ssb_flags, SSB_MEVENT);
-		lwkt_reltoken(&kq_token);
+		lwkt_reltoken(tok);
 	}
 }
 
@@ -504,14 +510,16 @@ netmsg_so_notify_abort(netmsg_t msg)
 	 * The original notify message is not destroyed until after the
 	 * abort request is returned, so we can check its state.
 	 */
+	lwkt_getpooltoken(nmsg->base.nm_so);
 	if ((nmsg->base.lmsg.ms_flags & (MSGF_DONE | MSGF_REPLY)) == 0) {
 		ssb = (nmsg->nm_etype & NM_REVENT) ?
 				&nmsg->base.nm_so->so_rcv :
 				&nmsg->base.nm_so->so_snd;
-		lwkt_gettoken(&kq_token);
 		TAILQ_REMOVE(&ssb->ssb_kq.ki_mlist, nmsg, nm_list);
-		lwkt_reltoken(&kq_token);
+		lwkt_relpooltoken(nmsg->base.nm_so);
 		lwkt_replymsg(&nmsg->base.lmsg, EINTR);
+	} else {
+		lwkt_relpooltoken(nmsg->base.nm_so);
 	}
 
 	/*

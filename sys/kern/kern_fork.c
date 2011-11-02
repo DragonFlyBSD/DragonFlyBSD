@@ -632,6 +632,7 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	destproc->p_usched->heuristic_forking(origlp, lp);
 	crit_exit();
 	lp->lwp_cpumask &= usched_mastermask;
+	lwkt_token_init(&lp->lwp_token, "lwp_token");
 
 	/*
 	 * Assign the thread to the current cpu to begin with so we

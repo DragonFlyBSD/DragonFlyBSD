@@ -42,6 +42,9 @@
 #ifndef _SYS_EVENT_H_
 #include <sys/event.h>
 #endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 #ifndef _SYS_FILEDESC_H_
 #include <sys/filedesc.h>
 #endif

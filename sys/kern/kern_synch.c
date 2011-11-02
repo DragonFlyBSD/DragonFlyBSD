@@ -573,7 +573,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 			 * Early termination only occurs when tsleep() is
 			 * entered while in a normal LSRUN state.
 			 */
-			lwkt_gettoken(&p->p_token);
+			lwkt_gettoken(&lp->lwp_token);
 			if ((sig = CURSIG(lp)) != 0)
 				goto resume;
 
@@ -715,7 +715,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	 * that it wishes to interlock a mailbox signal against since
 	 * the flag is cleared on *any* system call that sleeps.
 	 *
-	 * p->p_token is held in the p && catch case.
+	 * lp->lwp_token is held in the lwp && catch case.
 	 */
 resume:
 	if (p) {
@@ -729,10 +729,15 @@ resume:
 					error = ERESTART;
 			}
 		}
-		if (catch)
-			lwkt_reltoken(&p->p_token);
 		lp->lwp_flag &= ~(LWP_BREAKTSLEEP | LWP_SINTR);
-		p->p_flag &= ~P_MAILBOX;
+		if (catch)
+			lwkt_reltoken(&lp->lwp_token);
+		if (p->p_flag & P_MAILBOX) {
+			lwkt_gettoken(&p->p_token);
+			p->p_flag &= ~P_MAILBOX;
+			lwkt_reltoken(&p->p_token);
+		}
+
 	}
 	logtsleep1(tsleep_end);
 	crit_exit_quick(td);
@@ -889,7 +894,7 @@ endtsleep(void *arg)
 	 * This can block
 	 */
 	if ((lp = td->td_lwp) != NULL)
-		lwkt_gettoken(&lp->lwp_proc->p_token);
+		lwkt_gettoken(&lp->lwp_token);
 
 	/*
 	 * Only do nominal wakeup processing if TDF_TIMEOUT and
@@ -908,7 +913,7 @@ endtsleep(void *arg)
 		}
 	}
 	if (lp)
-		lwkt_reltoken(&lp->lwp_proc->p_token);
+		lwkt_reltoken(&lp->lwp_token);
 	lwkt_rele(td);
 	crit_exit();
 }
@@ -1103,7 +1108,7 @@ wakeup_domain_one(const volatile void *ident, int domain)
 void
 setrunnable(struct lwp *lp)
 {
-	ASSERT_LWKT_TOKEN_HELD(&lp->lwp_proc->p_token);
+	ASSERT_LWKT_TOKEN_HELD(&lp->lwp_token);
 	crit_enter();
 	if (lp->lwp_stat == LSSTOP)
 		lp->lwp_stat = LSSLEEP;

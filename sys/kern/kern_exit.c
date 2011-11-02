@@ -246,10 +246,12 @@ killlwps(struct lwp *lp)
 	 */
 	FOREACH_LWP_IN_PROC(tlp, p) {
 		LWPHOLD(tlp);
+		lwkt_gettoken(&tlp->lwp_token);
 		if ((tlp->lwp_flag & LWP_WEXIT) == 0) {
 			lwpsignal(p, tlp, SIGKILL);
 			tlp->lwp_flag |= LWP_WEXIT;
 		}
+		lwkt_reltoken(&tlp->lwp_token);
 		LWPRELE(tlp);
 	}
 

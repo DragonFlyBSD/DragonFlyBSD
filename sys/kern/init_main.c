@@ -176,6 +176,7 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	lwp0.lwp_proc = &proc0;
 	proc0.p_usched = usched_init();
 	lwp0.lwp_cpumask = (cpumask_t)-1;
+	lwkt_token_init(&lwp0.lwp_token, "lwp_token");
 	varsymset_init(&proc0.p_varsymset, NULL);
 	thread0.td_flags |= TDF_RUNNING;
 	thread0.td_proc = &proc0;

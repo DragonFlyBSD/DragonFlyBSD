@@ -351,7 +351,11 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 			 * Remove the signal also from the thread lists.
 			 */
 			FOREACH_LWP_IN_PROC(lp, p) {
+				LWPHOLD(lp);
+				lwkt_gettoken(&lp->lwp_token);
 				SIGDELSET(lp->lwp_siglist, sig);
+				lwkt_reltoken(&lp->lwp_token);
+				LWPRELE(lp);
 			}
 			if (sig != SIGCONT) {
 				/* easier in ksignal */
@@ -950,6 +954,9 @@ trapsignal(struct lwp *lp, int sig, u_long code)
  * lwps hold the signal blocked.
  *
  * Caller must hold p->p_token.
+ *
+ * Returns a lp or NULL.  If non-NULL the lp is held and its token is
+ * acquired.
  */
 static struct lwp *
 find_lwp_for_signal(struct proc *p, int sig)
@@ -965,9 +972,15 @@ find_lwp_for_signal(struct proc *p, int sig)
 	 * soon anyways.
 	 */
 	lp = lwkt_preempted_proc();
-	if (lp != NULL && lp->lwp_proc == p &&
-	    !SIGISMEMBER(lp->lwp_sigmask, sig)) {
-		return (lp);
+	if (lp != NULL && lp->lwp_proc == p) {
+		LWPHOLD(lp);
+		lwkt_gettoken(&lp->lwp_token);
+		if (!SIGISMEMBER(lp->lwp_sigmask, sig)) {
+			/* return w/ token held */
+			return (lp);
+		}
+		lwkt_reltoken(&lp->lwp_token);
+		LWPRELE(lp);
 	}
 
 	run = sleep = stop = NULL;
@@ -976,23 +989,66 @@ find_lwp_for_signal(struct proc *p, int sig)
 		 * If the signal is being blocked by the lwp, then this
 		 * lwp is not eligible for receiving the signal.
 		 */
-		if (SIGISMEMBER(lp->lwp_sigmask, sig))
+		LWPHOLD(lp);
+		lwkt_gettoken(&lp->lwp_token);
+
+		if (SIGISMEMBER(lp->lwp_sigmask, sig)) {
+			lwkt_reltoken(&lp->lwp_token);
+			LWPRELE(lp);
 			continue;
+		}
 
 		switch (lp->lwp_stat) {
 		case LSRUN:
-			run = lp;
+			if (sleep) {
+				lwkt_token_swap();
+				lwkt_reltoken(&sleep->lwp_token);
+				LWPRELE(sleep);
+				sleep = NULL;
+				run = lp;
+			} else if (stop) {
+				lwkt_token_swap();
+				lwkt_reltoken(&stop->lwp_token);
+				LWPRELE(stop);
+				stop = NULL;
+				run = lp;
+			} else {
+				run = lp;
+			}
 			break;
-
-		case LSSTOP:
-			stop = lp;
-			break;
-
 		case LSSLEEP:
-			if (lp->lwp_flag & LWP_SINTR)
-				sleep = lp;
+			if (lp->lwp_flag & LWP_SINTR) {
+				if (sleep) {
+					lwkt_reltoken(&lp->lwp_token);
+					LWPRELE(lp);
+				} else if (stop) {
+					lwkt_token_swap();
+					lwkt_reltoken(&stop->lwp_token);
+					LWPRELE(stop);
+					stop = NULL;
+					sleep = lp;
+				} else {
+					sleep = lp;
+				}
+			} else {
+				lwkt_reltoken(&lp->lwp_token);
+				LWPRELE(lp);
+			}
+			break;
+		case LSSTOP:
+			if (sleep) {
+				lwkt_reltoken(&lp->lwp_token);
+				LWPRELE(lp);
+			} else if (stop) {
+				lwkt_reltoken(&lp->lwp_token);
+				LWPRELE(lp);
+			} else {
+				stop = lp;
+			}
 			break;
 		}
+		if (run)
+			break;
 	}
 
 	if (run != NULL)
@@ -1052,6 +1108,10 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 
 	PHOLD(p);
 	lwkt_gettoken(&p->p_token);
+	if (lp) {
+		LWPHOLD(lp);
+		lwkt_gettoken(&lp->lwp_token);
+	}
 
 	prop = sigprop(sig);
 
@@ -1069,6 +1129,10 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * in the process flags.
 		 */
 		if (lp && (lp->lwp_flag & LWP_WEXIT)) {
+			if (lp) {
+				lwkt_reltoken(&lp->lwp_token);
+				LWPRELE(lp);
+			}
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			return;
@@ -1085,6 +1149,10 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 			 * lurking in a kqueue.
 			 */
 			KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
+			if (lp) {
+				lwkt_reltoken(&lp->lwp_token);
+				LWPRELE(lp);
+			}
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			return;
@@ -1204,8 +1272,10 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * so that the current signal will break the sleep
 		 * as soon as a SA_CONT signal will unstop the process.
 		 */
-		if (lp == NULL)
+		if (lp == NULL) {
+			/* NOTE: returns lp w/ token held */
 			lp = find_lwp_for_signal(p, sig);
+		}
 		if (lp != NULL &&
 		    (lp->lwp_stat == LSSLEEP || lp->lwp_stat == LSSTOP))
 			lp->lwp_flag |= LWP_BREAKTSLEEP;
@@ -1220,9 +1290,15 @@ active_process:
 	 * Never deliver a lwp-specific signal to a random lwp.
 	 */
 	if (lp == NULL) {
+		/* NOTE: returns lp w/ token held */
 		lp = find_lwp_for_signal(p, sig);
-		if (lp && SIGISMEMBER(lp->lwp_sigmask, sig))
-			lp = NULL;
+		if (lp) {
+			if (SIGISMEMBER(lp->lwp_sigmask, sig)) {
+				lwkt_reltoken(&lp->lwp_token);
+				LWPRELE(lp);
+				lp = NULL;
+			}
+		}
 	}
 
 	/*
@@ -1283,6 +1359,10 @@ active_process:
 	lwp_signotify(lp);
 
 out:
+	if (lp) {
+		lwkt_reltoken(&lp->lwp_token);
+		LWPRELE(lp);
+	}
 	lwkt_reltoken(&p->p_token);
 	PRELE(p);
 	crit_exit();
@@ -1428,6 +1508,9 @@ proc_stop(struct proc *p)
 	p->p_stat = SSTOP;
 
 	FOREACH_LWP_IN_PROC(lp, p) {
+		LWPHOLD(lp);
+		lwkt_gettoken(&lp->lwp_token);
+
 		switch (lp->lwp_stat) {
 		case LSSTOP:
 			/*
@@ -1458,6 +1541,8 @@ proc_stop(struct proc *p)
 			lwp_signotify(lp);
 			break;
 		}
+		lwkt_reltoken(&lp->lwp_token);
+		LWPRELE(lp);
 	}
 
 	if (p->p_nstopped == p->p_nthreads) {
@@ -1497,6 +1582,9 @@ proc_unstop(struct proc *p)
 	p->p_stat = SACTIVE;
 
 	FOREACH_LWP_IN_PROC(lp, p) {
+		LWPHOLD(lp);
+		lwkt_gettoken(&lp->lwp_token);
+
 		switch (lp->lwp_stat) {
 		case LSRUN:
 			/*
@@ -1532,6 +1620,8 @@ proc_unstop(struct proc *p)
 			break;
 
 		}
+		lwkt_reltoken(&lp->lwp_token);
+		LWPRELE(lp);
 	}
 	crit_exit();
 }

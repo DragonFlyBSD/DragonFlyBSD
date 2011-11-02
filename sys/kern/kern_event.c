@@ -58,10 +58,12 @@
 /*
  * Global token for kqueue subsystem
  */
+#if 0
 struct lwkt_token kq_token = LWKT_TOKEN_INITIALIZER(kq_token);
 SYSCTL_LONG(_lwkt, OID_AUTO, kq_collisions,
     CTLFLAG_RW, &kq_token.t_collisions, 0,
     "Collision counter of kq_token");
+#endif
 
 MALLOC_DEFINE(M_KQUEUE, "kqueue", "memory for kqueue system");
 
@@ -338,12 +340,14 @@ filt_proc(struct knote *kn, long hint)
 static void
 filt_timerexpire(void *knx)
 {
+	struct lwkt_token *tok;
 	struct knote *kn = knx;
 	struct callout *calloutp;
 	struct timeval tv;
 	int tticks;
 
-	lwkt_gettoken(&kq_token);
+	tok = lwkt_token_pool_lookup(kn->kn_kq);
+	lwkt_gettoken(tok);
 	if ((kn->kn_status & KN_DELETING) == 0) {
 		kn->kn_data++;
 		KNOTE_ACTIVATE(kn);
@@ -356,7 +360,7 @@ filt_timerexpire(void *knx)
 			callout_reset(calloutp, tticks, filt_timerexpire, kn);
 		}
 	}
-	lwkt_reltoken(&kq_token);
+	lwkt_reltoken(tok);
 }
 
 /*
@@ -419,6 +423,8 @@ filt_timer(struct knote *kn, long hint)
  * If we cannot acquire the knote we sleep and return 0.  The knote
  * may be stale on return in this case and the caller must restart
  * whatever loop they are in.
+ *
+ * Related kq token must be held.
  */
 static __inline
 int
@@ -437,6 +443,8 @@ knote_acquire(struct knote *kn)
 /*
  * Release an acquired knote, clearing KN_PROCESSING and handling any
  * KN_REPROCESS events.
+ *
+ * Caller must be holding the related kq token
  *
  * Non-zero is returned if the knote is destroyed.
  */
@@ -489,9 +497,11 @@ kqueue_init(struct kqueue *kq, struct filedesc *fdp)
 void
 kqueue_terminate(struct kqueue *kq)
 {
+	struct lwkt_token *tok;
 	struct knote *kn;
 
-	lwkt_gettoken(&kq_token);
+	tok = lwkt_token_pool_lookup(kq);
+	lwkt_gettoken(tok);
 	while ((kn = TAILQ_FIRST(&kq->kq_knlist)) != NULL) {
 		if (knote_acquire(kn))
 			knote_detach_and_drop(kn);
@@ -501,7 +511,7 @@ kqueue_terminate(struct kqueue *kq)
 		kq->kq_knhash = NULL;
 		kq->kq_knhashmask = 0;
 	}
-	lwkt_reltoken(&kq_token);
+	lwkt_reltoken(tok);
 }
 
 /*
@@ -592,11 +602,13 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	int limit = kq_checkloop;
 	struct kevent kev[KQ_NEVENTS];
 	struct knote marker;
+	struct lwkt_token *tok;
 
 	tsp = tsp_in;
 	*res = 0;
 
-	lwkt_gettoken(&kq_token);
+	tok = lwkt_token_pool_lookup(kq);
+	lwkt_gettoken(tok);
 	for ( ;; ) {
 		n = 0;
 		error = kevent_copyinfn(uap, kev, KQ_NEVENTS, &n);
@@ -741,7 +753,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		error = 0;
 
 done:
-	lwkt_reltoken(&kq_token);
+	lwkt_reltoken(tok);
 	return (error);
 }
 
@@ -790,9 +802,13 @@ sys_kevent(struct kevent_args *uap)
 	return (error);
 }
 
+/*
+ * Caller must be holding the kq token
+ */
 int
 kqueue_register(struct kqueue *kq, struct kevent *kev)
 {
+	struct lwkt_token *tok;
 	struct filedesc *fdp = kq->kq_fdp;
 	struct filterops *fops;
 	struct file *fp = NULL;
@@ -813,15 +829,16 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 		return (EINVAL);
 	}
 
-	lwkt_gettoken(&kq_token);
+	tok = lwkt_token_pool_lookup(kq);
+	lwkt_gettoken(tok);
 	if (fops->f_flags & FILTEROP_ISFD) {
 		/* validate descriptor */
 		fp = holdfp(fdp, kev->ident, -1);
 		if (fp == NULL) {
-			lwkt_reltoken(&kq_token);
+			lwkt_reltoken(tok);
 			return (EBADF);
 		}
-
+		lwkt_getpooltoken(&fp->f_klist);
 again1:
 		SLIST_FOREACH(kn, &fp->f_klist, kn_link) {
 			if (kn->kn_kq == kq &&
@@ -832,12 +849,14 @@ again1:
 				break;
 			}
 		}
+		lwkt_relpooltoken(&fp->f_klist);
 	} else {
 		if (kq->kq_knhashmask) {
 			struct klist *list;
 			
 			list = &kq->kq_knhash[
 			    KN_HASH((u_long)kev->ident, kq->kq_knhashmask)];
+			lwkt_getpooltoken(list);
 again2:
 			SLIST_FOREACH(kn, list, kn_link) {
 				if (kn->kn_id == kev->ident &&
@@ -847,6 +866,7 @@ again2:
 					break;
 				}
 			}
+			lwkt_relpooltoken(list);
 		}
 	}
 
@@ -965,7 +985,7 @@ again2:
 	/* kn may be invalid now */
 
 done:
-	lwkt_reltoken(&kq_token);
+	lwkt_reltoken(tok);
 	if (fp != NULL)
 		fdrop(fp);
 	return (error);
@@ -975,6 +995,8 @@ done:
  * Block as necessary until the target time is reached.
  * If tsp is NULL we block indefinitely.  If tsp->ts_secs/nsecs are both
  * 0 we do not block at all.
+ *
+ * Caller must be holding the kq token.
  */
 static int
 kqueue_sleep(struct kqueue *kq, struct timespec *tsp)
@@ -1016,6 +1038,8 @@ kqueue_sleep(struct kqueue *kq, struct timespec *tsp)
  *
  * Continuous mode events may get recycled, do not continue scanning past
  * marker unless no events have been collected.
+ *
+ * Caller must be holding the kq token
  */
 static int
 kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
@@ -1159,11 +1183,13 @@ static int
 kqueue_ioctl(struct file *fp, u_long com, caddr_t data,
 	     struct ucred *cred, struct sysmsg *msg)
 {
+	struct lwkt_token *tok;
 	struct kqueue *kq;
 	int error;
 
-	lwkt_gettoken(&kq_token);
 	kq = (struct kqueue *)fp->f_data;
+	tok = lwkt_token_pool_lookup(kq);
+	lwkt_gettoken(tok);
 
 	switch(com) {
 	case FIOASYNC:
@@ -1180,7 +1206,7 @@ kqueue_ioctl(struct file *fp, u_long com, caddr_t data,
 		error = ENOTTY;
 		break;
 	}
-	lwkt_reltoken(&kq_token);
+	lwkt_reltoken(tok);
 	return (error);
 }
 
@@ -1229,6 +1255,8 @@ kqueue_wakeup(struct kqueue *kq)
 /*
  * Calls filterops f_attach function, acquiring mplock if filter is not
  * marked as FILTEROP_MPSAFE.
+ *
+ * Caller must be holding the related kq token
  */
 static int
 filter_attach(struct knote *kn)
@@ -1251,6 +1279,8 @@ filter_attach(struct knote *kn)
  *
  * Calls filterops f_detach function, acquiring mplock if filter is not
  * marked as FILTEROP_MPSAFE.
+ *
+ * Caller must be holding the related kq token
  */
 static void
 knote_detach_and_drop(struct knote *kn)
@@ -1272,6 +1302,8 @@ knote_detach_and_drop(struct knote *kn)
  *
  * If the knote is in the middle of being created or deleted we cannot
  * safely call the filter op.
+ *
+ * Caller must be holding the related kq token
  */
 static int
 filter_event(struct knote *kn, long hint)
@@ -1299,11 +1331,26 @@ filter_event(struct knote *kn, long hint)
 void
 knote(struct klist *list, long hint)
 {
+	struct kqueue *kq;
 	struct knote *kn;
+	struct knote *kntmp;
 
-	lwkt_gettoken(&kq_token);
+	lwkt_getpooltoken(list);
 restart:
 	SLIST_FOREACH(kn, list, kn_next) {
+		kq = kn->kn_kq;
+		lwkt_getpooltoken(kq);
+
+		/* temporary verification hack */
+		SLIST_FOREACH(kntmp, list, kn_next) {
+			if (kn == kntmp)
+				break;
+		}
+		if (kn != kntmp || kn->kn_kq != kq) {
+			lwkt_relpooltoken(kq);
+			goto restart;
+		}
+
 		if (kn->kn_status & KN_PROCESSING) {
 			/*
 			 * Someone else is processing the knote, ask the
@@ -1312,6 +1359,7 @@ restart:
 			 */
 			if (hint == 0) {
 				kn->kn_status |= KN_REPROCESS;
+				lwkt_relpooltoken(kq);
 				continue;
 			}
 
@@ -1326,6 +1374,7 @@ restart:
 			 */
 			kn->kn_status |= KN_WAITING | KN_REPROCESS;
 			tsleep(kn, 0, "knotec", hz);
+			lwkt_relpooltoken(kq);
 			goto restart;
 		}
 
@@ -1341,10 +1390,13 @@ restart:
 			if (filter_event(kn, hint))
 				KNOTE_ACTIVATE(kn);
 		}
-		if (knote_release(kn))
+		if (knote_release(kn)) {
+			lwkt_relpooltoken(kq);
 			goto restart;
+		}
+		lwkt_relpooltoken(kq);
 	}
-	lwkt_reltoken(&kq_token);
+	lwkt_relpooltoken(list);
 }
 
 /*
@@ -1356,9 +1408,10 @@ restart:
 void
 knote_insert(struct klist *klist, struct knote *kn)
 {
+	lwkt_getpooltoken(klist);
 	KKASSERT(kn->kn_status & KN_PROCESSING);
-	ASSERT_LWKT_TOKEN_HELD(&kq_token);
 	SLIST_INSERT_HEAD(klist, kn, kn_next);
+	lwkt_relpooltoken(klist);
 }
 
 /*
@@ -1370,11 +1423,13 @@ knote_insert(struct klist *klist, struct knote *kn)
 void
 knote_remove(struct klist *klist, struct knote *kn)
 {
+	lwkt_getpooltoken(klist);
 	KKASSERT(kn->kn_status & KN_PROCESSING);
-	ASSERT_LWKT_TOKEN_HELD(&kq_token);
 	SLIST_REMOVE(klist, kn, knote, kn_next);
+	lwkt_relpooltoken(klist);
 }
 
+#if 0
 /*
  * Remove all knotes from a specified klist
  *
@@ -1392,15 +1447,24 @@ knote_empty(struct klist *list)
 	}
 	lwkt_reltoken(&kq_token);
 }
+#endif
 
 void
 knote_assume_knotes(struct kqinfo *src, struct kqinfo *dst,
 		    struct filterops *ops, void *hook)
 {
+	struct kqueue *kq;
 	struct knote *kn;
 
-	lwkt_gettoken(&kq_token);
+	lwkt_getpooltoken(&src->ki_note);
+	lwkt_getpooltoken(&dst->ki_note);
 	while ((kn = SLIST_FIRST(&src->ki_note)) != NULL) {
+		kq = kn->kn_kq;
+		lwkt_getpooltoken(kq);
+		if (SLIST_FIRST(&src->ki_note) != kn || kn->kn_kq != kq) {
+			lwkt_relpooltoken(kq);
+			continue;
+		}
 		if (knote_acquire(kn)) {
 			knote_remove(&src->ki_note, kn);
 			kn->kn_fop = ops;
@@ -1409,8 +1473,10 @@ knote_assume_knotes(struct kqinfo *src, struct kqinfo *dst,
 			knote_release(kn);
 			/* kn may be invalid now */
 		}
+		lwkt_relpooltoken(kq);
 	}
-	lwkt_reltoken(&kq_token);
+	lwkt_relpooltoken(&dst->ki_note);
+	lwkt_relpooltoken(&src->ki_note);
 }
 
 /*
@@ -1419,24 +1485,41 @@ knote_assume_knotes(struct kqinfo *src, struct kqinfo *dst,
 void
 knote_fdclose(struct file *fp, struct filedesc *fdp, int fd)
 {
+	struct kqueue *kq;
 	struct knote *kn;
+	struct knote *kntmp;
 
-	lwkt_gettoken(&kq_token);
+	lwkt_getpooltoken(&fp->f_klist);
 restart:
 	SLIST_FOREACH(kn, &fp->f_klist, kn_link) {
 		if (kn->kn_kq->kq_fdp == fdp && kn->kn_id == fd) {
+			kq = kn->kn_kq;
+			lwkt_getpooltoken(kq);
+
+			/* temporary verification hack */
+			SLIST_FOREACH(kntmp, &fp->f_klist, kn_link) {
+				if (kn == kntmp)
+					break;
+			}
+			if (kn != kntmp || kn->kn_kq->kq_fdp != fdp ||
+			    kn->kn_id != fd || kn->kn_kq != kq) {
+				lwkt_relpooltoken(kq);
+				goto restart;
+			}
 			if (knote_acquire(kn))
 				knote_detach_and_drop(kn);
+			lwkt_relpooltoken(kq);
 			goto restart;
 		}
 	}
-	lwkt_reltoken(&kq_token);
+	lwkt_relpooltoken(&fp->f_klist);
 }
 
 /*
  * Low level attach function.
  *
  * The knote should already be marked for processing.
+ * Caller must hold the related kq token.
  */
 static void
 knote_attach(struct knote *kn)
@@ -1453,14 +1536,17 @@ knote_attach(struct knote *kn)
 						 &kq->kq_knhashmask);
 		list = &kq->kq_knhash[KN_HASH(kn->kn_id, kq->kq_knhashmask)];
 	}
+	lwkt_getpooltoken(list);
 	SLIST_INSERT_HEAD(list, kn, kn_link);
 	TAILQ_INSERT_HEAD(&kq->kq_knlist, kn, kn_kqlink);
+	lwkt_relpooltoken(list);
 }
 
 /*
  * Low level drop function.
  *
  * The knote should already be marked for processing.
+ * Caller must hold the related kq token.
  */
 static void
 knote_drop(struct knote *kn)
@@ -1475,6 +1561,7 @@ knote_drop(struct knote *kn)
 	else
 		list = &kq->kq_knhash[KN_HASH(kn->kn_id, kq->kq_knhashmask)];
 
+	lwkt_getpooltoken(list);
 	SLIST_REMOVE(list, kn, knote, kn_link);
 	TAILQ_REMOVE(&kq->kq_knlist, kn, kn_kqlink);
 	if (kn->kn_status & KN_QUEUED)
@@ -1484,12 +1571,14 @@ knote_drop(struct knote *kn)
 		kn->kn_fp = NULL;
 	}
 	knote_free(kn);
+	lwkt_relpooltoken(list);
 }
 
 /*
  * Low level enqueue function.
  *
  * The knote should already be marked for processing.
+ * Caller must be holding the kq token
  */
 static void
 knote_enqueue(struct knote *kn)
@@ -1514,6 +1603,7 @@ knote_enqueue(struct knote *kn)
  * Low level dequeue function.
  *
  * The knote should already be marked for processing.
+ * Caller must be holding the kq token
  */
 static void
 knote_dequeue(struct knote *kn)
