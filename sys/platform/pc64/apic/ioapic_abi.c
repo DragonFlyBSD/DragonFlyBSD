@@ -583,7 +583,6 @@ ioapic_abi_intr_setup(int intr, int flags)
 	cpu_disable_intr();
 
 	vector = IDT_OFFSET + intr;
-	setidt(vector, ioapic_intr[intr], SDT_SYSIGT, SEL_KPL, 0);
 
 	/*
 	 * Now reprogram the vector in the IO APIC.  In order to avoid
@@ -631,7 +630,6 @@ ioapic_abi_intr_teardown(int intr)
 	machintr_intr_disable(intr);
 
 	vector = IDT_OFFSET + intr;
-	setidt(vector, ioapic_intr[intr], SDT_SYSIGT, SEL_KPL, 0);
 
 	/*
 	 * In order to avoid losing an EOI for a level interrupt, which
