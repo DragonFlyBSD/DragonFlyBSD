@@ -1,5 +1,3 @@
-# $DragonFly: src/gnu/lib/gcc41/libobjc/Makefile,v 1.1 2008/06/30 12:16:03 hasso Exp $
-
 GCC_NO_PATH=	1
 .include "../Makefile.inc"
 .include "${STOPDIR}/cc_tools/Makefile.tools"
@@ -24,7 +22,7 @@ INCSDIR=	${INCLUDEDIR}/objc
 unwind.h: unwind-generic.h
 	cp ${.ALLSRC} ${.TARGET}
 
-CLEANFILES+=	unwind.h
+CLEANFILES+=	unwind.h runtime-info.h
 
 runtime-info.h: 
 	echo "" > tmp-runtime.m
