@@ -193,6 +193,8 @@ sys_extexit(struct extexit_args *uap)
  *
  * If forexec is non-zero the current thread and process flags are
  * cleaned up so they can be reused.
+ *
+ * Caller must hold curproc->p_token
  */
 int
 killalllwps(int forexec)

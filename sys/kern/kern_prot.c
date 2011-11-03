@@ -1210,9 +1210,11 @@ setsugid(void)
 	struct proc *p = curproc;
 
 	KKASSERT(p != NULL);
+	lwkt_gettoken(&p->p_token);
 	p->p_flag |= P_SUGID;
 	if (!(p->p_pfsflags & PF_ISUGID))
 		p->p_stops = 0;
+	lwkt_reltoken(&p->p_token);
 }
 
 /*

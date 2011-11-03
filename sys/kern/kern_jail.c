@@ -117,9 +117,11 @@ kern_jail_attach(int jid)
 		return(error);
 
 	prison_hold(pr);
+	lwkt_gettoken(&p->p_token);
 	cratom(&p->p_ucred);
 	p->p_ucred->cr_prison = pr;
 	p->p_flag |= P_JAILED;
+	lwkt_reltoken(&p->p_token);
 
 	return(0);
 }

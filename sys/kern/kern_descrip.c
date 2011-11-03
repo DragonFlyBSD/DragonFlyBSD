@@ -323,7 +323,11 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 				error = EBADF;
 				break;
 			}
-			p->p_leader->p_flag |= P_ADVLOCK;
+			if ((p->p_leader->p_flag & P_ADVLOCK) == 0) {
+				lwkt_gettoken(&p->p_leader->p_token);
+				p->p_leader->p_flag |= P_ADVLOCK;
+				lwkt_reltoken(&p->p_leader->p_token);
+			}
 			error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_SETLK,
 			    &dat->fc_flock, flg);
 			break;
@@ -332,7 +336,11 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 				error = EBADF;
 				break;
 			}
-			p->p_leader->p_flag |= P_ADVLOCK;
+			if ((p->p_leader->p_flag & P_ADVLOCK) == 0) {
+				lwkt_gettoken(&p->p_leader->p_token);
+				p->p_leader->p_flag |= P_ADVLOCK;
+				lwkt_reltoken(&p->p_leader->p_token);
+			}
 			error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_SETLK,
 			    &dat->fc_flock, flg);
 			break;

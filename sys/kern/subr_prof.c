@@ -298,6 +298,7 @@ sysctl_kern_prof(SYSCTL_HANDLER_ARGS)
 			return (error);
 		if (!req->newptr)
 			return (0);
+		lwkt_gettoken(&proc0.p_token);
 		if (state == GMON_PROF_OFF) {
 			gp->state = state;
 			stopprofclock(&proc0);
@@ -315,9 +316,11 @@ sysctl_kern_prof(SYSCTL_HANDLER_ARGS)
 			startguprof(gp);
 			gp->state = state;
 #endif
-		} else if (state != gp->state)
-			return (EINVAL);
-		return (0);
+		} else if (state != gp->state) {
+			error = EINVAL;
+		}
+		lwkt_reltoken(&proc0.p_token);
+		return (error);
 	case GPROF_COUNT:
 		return (sysctl_handle_opaque(oidp, 
 			gp->kcount, gp->kcountsize, req));

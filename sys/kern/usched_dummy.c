@@ -259,7 +259,7 @@ dummy_select_curproc(globaldata_t gd)
  * the current process on the userland scheduler's run queue prior
  * to calling dummy_select_curproc().
  *
- * The caller may set P_PASSIVE_ACQ in p_flag to indicate that we should
+ * The caller may set LWP_PASSIVE_ACQ in lwp_flag to indicate that we should
  * attempt to leave the thread on the current cpu.
  *
  * MPSAFE

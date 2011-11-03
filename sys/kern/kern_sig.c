@@ -2102,7 +2102,9 @@ postsig(int sig)
 		if (SIGISMEMBER(ps->ps_sigmailbox, sig)) {
 			int sig_copy = sig;
 			copyout(&sig_copy, (void *)action, sizeof(int));
+			lwkt_gettoken(&curproc->p_token);
 			curproc->p_flag |= P_MAILBOX;
+			lwkt_reltoken(&curproc->p_token);
 			crit_exit();
 			goto done;
 		}

@@ -364,13 +364,12 @@ struct	proc {
 #define	P_UNUSED07	0x100000 /* was: on a user scheduling run queue */
 #define	P_KTHREADP	0x200000 /* Process is really a kernel thread */
 #define P_IDLESWAP	0x400000 /* Swapout was due to idleswap, not load */
-#define	P_DEADLKTREAT   0x800000 /* lock aquisition - deadlock treatment */
 
 #define	P_JAILED	0x1000000 /* Process is in jail */
 #define	P_UNUSED0	0x2000000 /* need to restore mask before pause */
 #define	P_UNUSED1	0x4000000 /* have alternate signal stack */
 #define	P_INEXEC	0x8000000 /* Process is in execve(). */
-#define P_PASSIVE_ACQ	0x10000000 /* Passive acquire cpu (see kern_switch) */
+#define P_UNUSED1000	0x10000000
 #define	P_UPCALLWAIT	0x20000000 /* Wait for upcall or signal */
 #define P_XCPU		0x40000000 /* SIGXCPU */
 
@@ -391,6 +390,7 @@ struct	proc {
 #define	LWP_ONRUNQ	0x0000020 /* on a user scheduling run queue */
 #define	LWP_WEXIT	0x0000040 /* working on exiting */
 #define	LWP_WSTOP	0x0000080 /* working on stopping */
+#define LWP_PASSIVE_ACQ	0x0000100 /* Passive acquire cpu (see kern_switch) */
 
 #define	FIRST_LWP_IN_PROC(p)		RB_FIRST(lwp_rb_tree, &(p)->p_lwp_tree)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\

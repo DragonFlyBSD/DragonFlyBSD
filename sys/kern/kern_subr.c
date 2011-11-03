@@ -77,6 +77,7 @@ SYSCTL_INT(_kern, KERN_IOV_MAX, iov_max, CTLFLAG_RD, NULL, UIO_MAXIOV,
 int
 uiomove(caddr_t cp, size_t n, struct uio *uio)
 {
+	thread_t td = curthread;
 	struct iovec *iov;
 	size_t cnt;
 	int error = 0;
@@ -84,13 +85,13 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 
 	KASSERT(uio->uio_rw == UIO_READ || uio->uio_rw == UIO_WRITE,
 	    ("uiomove: mode"));
-	KASSERT(uio->uio_segflg != UIO_USERSPACE || uio->uio_td == curthread,
+	KASSERT(uio->uio_segflg != UIO_USERSPACE || uio->uio_td == td,
 	    ("uiomove proc"));
 
-	if (curproc) {
-		save = curproc->p_flag & P_DEADLKTREAT;
-		curproc->p_flag |= P_DEADLKTREAT;
-	}
+	crit_enter();
+	save = td->td_flags & TDF_DEADLKTREAT;
+	td->td_flags |= TDF_DEADLKTREAT;
+	crit_exit();
 
 	while (n > 0 && uio->uio_resid) {
 		iov = uio->uio_iov;
@@ -131,8 +132,9 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 		cp += cnt;
 		n -= cnt;
 	}
-	if (curproc)
-		curproc->p_flag = (curproc->p_flag & ~P_DEADLKTREAT) | save;
+	crit_enter();
+	td->td_flags = (td->td_flags & ~TDF_DEADLKTREAT) | save;
+	crit_exit();
 	return (error);
 }
 

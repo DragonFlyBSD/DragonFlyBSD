@@ -300,6 +300,7 @@ recheck:
 	 * aware of our situation, we do not have to wake it up.
 	 */
 	if (p->p_flag & P_SWAPPEDOUT) {
+		lwkt_gettoken(&p->p_token);
 		get_mplock();
 		p->p_flag |= P_SWAPWAIT;
 		swapin_request();
@@ -307,6 +308,7 @@ recheck:
 			tsleep(p, PCATCH, "SWOUT", 0);
 		p->p_flag &= ~P_SWAPWAIT;
 		rel_mplock();
+		lwkt_reltoken(&p->p_token);
 		goto recheck;
 	}
 
@@ -1454,9 +1456,9 @@ generic_lwp_return(struct lwp *lp, struct trapframe *frame)
 	if (KTRPOINT(lp->lwp_thread, KTR_SYSRET))
 		ktrsysret(lp, SYS_fork, 0, 0);
 #endif
-	p->p_flag |= P_PASSIVE_ACQ;
+	lp->lwp_flag |= LWP_PASSIVE_ACQ;
 	userexit(lp);
-	p->p_flag &= ~P_PASSIVE_ACQ;
+	lp->lwp_flag &= ~LWP_PASSIVE_ACQ;
 }
 
 /*

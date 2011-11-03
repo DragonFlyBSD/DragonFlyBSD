@@ -703,8 +703,11 @@ sys_sigreturn(struct sigreturn_args *uap)
 	 * Merge saved signal mailbox pending flag to maintain interlock
 	 * semantics against system calls.
 	 */
-	if (ucp->uc_mcontext.mc_xflags & PGEX_MAILBOX)
+	if (ucp->uc_mcontext.mc_xflags & PGEX_MAILBOX) {
+		lwkt_gettoken(&p->p_token);
 		p->p_flag |= P_MAILBOX;
+		lwkt_reltoken(&p->p_token);
+	}
 
 	if (ucp->uc_mcontext.mc_onstack & 1)
 		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;

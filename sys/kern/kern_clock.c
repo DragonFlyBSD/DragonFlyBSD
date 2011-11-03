@@ -937,6 +937,8 @@ startprofclock(struct proc *p)
 
 /*
  * Stop profiling on a process.
+ *
+ * caller must hold p->p_token
  */
 void
 stopprofclock(struct proc *p)

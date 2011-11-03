@@ -291,10 +291,12 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 			sess->s_ttyp = NULL;
 			bcopy(p->p_session->s_login, sess->s_login,
 			      sizeof(sess->s_login));
-			p->p_flag &= ~P_CONTROLT;
 			pgrp->pg_session = sess;
 			KASSERT(p == curproc,
 				("enterpgrp: mksession and p != curproc"));
+			lwkt_gettoken(&p->p_token);
+			p->p_flag &= ~P_CONTROLT;
+			lwkt_reltoken(&p->p_token);
 		} else {
 			pgrp->pg_session = p->p_session;
 			sess_hold(pgrp->pg_session);

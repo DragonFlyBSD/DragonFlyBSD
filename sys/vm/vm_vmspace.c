@@ -203,7 +203,9 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 	 * Signal mailbox interlock
 	 */
 	if (p->p_flag & P_MAILBOX) {
+		lwkt_gettoken(&p->p_token);
 		p->p_flag &= ~P_MAILBOX;
+		lwkt_reltoken(&p->p_token);
 		error = EINTR;
 		goto done;
 	}
