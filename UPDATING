@@ -43,6 +43,12 @@ file.
 If buildkernel complains about any of these drivers, just remove them
 from your kernel configuration.
 
+BINUTILS 2.20
+-------------
+Binutils 2.20 has been removed, leaving Binutils 2.21 as the only
+version of Binutils in base.  The value of BINUTILSVERS has no effect
+at all anymore.
+
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 2.8 to later versions                +
 +-----------------------------------------------------------------------+

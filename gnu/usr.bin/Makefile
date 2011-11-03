@@ -10,7 +10,8 @@ SUBDIR+=cvs
 SUBDIR+=gdb
 .endif
 
-SUBDIR+= binutils220
+# XXX marino: Step 1 for moving back to a single binutils system
+#SUBDIR+= binutils220
 SUBDIR+= binutils221
 
 .if !defined(NO_GCC41)

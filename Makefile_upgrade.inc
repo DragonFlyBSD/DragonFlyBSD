@@ -1729,6 +1729,20 @@ TO_REMOVE+=/usr/share/man/man4/i386/ndis.4.gz
 TO_REMOVE+=/usr/share/info/diff.info.gz
 TO_REMOVE+=/usr/include/vfs/gnu
 TO_REMOVE+=/usr/include/crypt.h
+TO_REMOVE+=/usr/share/man/man1/addr2line220.1.gz
+TO_REMOVE+=/usr/share/man/man1/ar220.1.gz
+TO_REMOVE+=/usr/share/man/man1/as220.1.gz
+TO_REMOVE+=/usr/share/man/man1/c++filt220.1.gz
+TO_REMOVE+=/usr/share/man/man1/ld220.1.gz
+TO_REMOVE+=/usr/share/man/man1/nm220.1.gz
+TO_REMOVE+=/usr/share/man/man1/objcopy220.1.gz
+TO_REMOVE+=/usr/share/man/man1/objdump220.1.gz
+TO_REMOVE+=/usr/share/man/man1/ranlib220.1.gz
+TO_REMOVE+=/usr/share/man/man1/readelf220.1.gz
+TO_REMOVE+=/usr/share/man/man1/size220.1.gz
+TO_REMOVE+=/usr/share/man/man1/strings220.1.gz
+TO_REMOVE+=/usr/share/man/man1/strip220.1.gz
+TO_REMOVE+=/usr/libexec/binutils220
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
