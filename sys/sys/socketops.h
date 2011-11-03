@@ -92,6 +92,7 @@ int so_pru_listen (struct socket *so, struct thread *td);
 int so_pru_peeraddr (struct socket *so, struct sockaddr **nam);
 int so_pru_rcvd (struct socket *so, int flags);
 int so_pru_rcvoob (struct socket *so, struct mbuf *m, int flags);
+void so_pru_sync (struct socket *so);
 int so_pru_send (struct socket *so, int flags, struct mbuf *m,
 		struct sockaddr *addr, struct mbuf *control,
 		struct thread *td);

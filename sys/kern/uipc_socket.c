@@ -98,6 +98,7 @@
 #include <machine/limits.h>
 
 extern int tcp_sosnd_agglim;
+extern int tcp_sosnd_async;
 
 #ifdef INET
 static int	 do_setopt_accept_filter(struct socket *so, struct sockopt *sopt);
@@ -390,6 +391,7 @@ soclose(struct socket *so, int fflag)
 	if (so->so_pcb == NULL)
 		goto discard;
 	if (so->so_state & SS_ISCONNECTED) {
+		so_pru_sync(so);
 		if ((so->so_state & SS_ISDISCONNECTING) == 0) {
 			error = sodisconnect(so);
 			if (error)
@@ -910,7 +912,7 @@ restart:
 		}
 		mp = &top;
 		do {
-		    int cnt = 0;
+		    int cnt = 0, async = 0;
 
 		    if (uio == NULL) {
 			/*
@@ -946,8 +948,11 @@ restart:
 		    } else if (resid > 0 && space > 0) {
 			    /* If there is more to send, set PRUS_MORETOCOME */
 		    	    pru_flags = PRUS_MORETOCOME;
+			    async = 1;
 		    } else {
 		    	    pru_flags = 0;
+			    if (tcp_sosnd_async)
+			    	async = 1;
 		    }
 
 		    /*
@@ -959,8 +964,7 @@ restart:
 		     * here, but there are probably other places that this
 		     * also happens.  We must rethink this.
 		     */
-		    if ((pru_flags & PRUS_OOB) ||
-		        (pru_flags & PRUS_MORETOCOME) == 0) {
+		    if (!async) {
 			    error = so_pru_send(so, pru_flags, top,
 			        NULL, NULL, td);
 		    } else {
@@ -1369,8 +1373,10 @@ soshutdown(struct socket *so, int how)
 		sorflush(so);
 		/*ssb_unlock(&so->so_rcv);*/
 	}
-	if (how != SHUT_RD)
+	if (how != SHUT_RD) {
+		so_pru_sync(so);
 		return (so_pru_shutdown(so));
+	}
 	return (0);
 }
 
