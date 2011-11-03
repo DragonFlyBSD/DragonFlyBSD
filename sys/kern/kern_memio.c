@@ -154,8 +154,9 @@ static int
 mmrw(cdev_t dev, struct uio *uio, int flags)
 {
 	int o;
-	u_int c, v;
+	u_int c;
 	u_int poolsize;
+	u_long v;
 	struct iovec *iov;
 	int error = 0;
 	caddr_t buf = NULL;
@@ -175,7 +176,7 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 			 * minor device 0 is physical memory, /dev/mem 
 			 */
 			v = uio->uio_offset;
-			v &= ~PAGE_MASK;
+			v &= ~(long)PAGE_MASK;
 			pmap_kenter((vm_offset_t)ptvmmap, v);
 			o = (int)uio->uio_offset & PAGE_MASK;
 			c = (u_int)(PAGE_SIZE - ((uintptr_t)iov->iov_base & PAGE_MASK));
