@@ -181,8 +181,8 @@ netisr_init(void)
 	 */
 	for (i = 0; i < ncpus; ++i) {
 		lwkt_create(netmsg_service_loop, NULL, NULL,
-			    &netisr_cpu[i], TDF_STOPREQ, i,
-			    "netisr_cpu %d", i);
+			    &netisr_cpu[i], TDF_STOPREQ|TDF_FORCE_SPINPORT,
+			    i, "netisr_cpu %d", i);
 		netmsg_service_port_init(&netisr_cpu[i].td_msgport);
 		lwkt_schedule(&netisr_cpu[i]);
 	}

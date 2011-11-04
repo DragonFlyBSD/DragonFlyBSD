@@ -344,7 +344,7 @@ struct thread {
 #define TDF_BLOCKED		0x00040000	/* Thread is blocked */
 #define TDF_PANICWARN		0x00080000	/* panic warning in switch */
 #define TDF_BLOCKQ		0x00100000	/* on block queue */
-#define TDF_UNUSED00200000	0x00200000
+#define TDF_FORCE_SPINPORT	0x00200000
 #define TDF_EXITING		0x00400000	/* thread exiting */
 #define TDF_USINGFP		0x00800000	/* thread using fp coproc */
 #define TDF_KERNELFP		0x01000000	/* kernel using fp coproc */

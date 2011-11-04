@@ -474,7 +474,7 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     td->td_pri = TDPRI_KERN_DAEMON;
     td->td_critcount = 1;
     td->td_toks_stop = &td->td_toks_base;
-    if (lwkt_use_spin_port)
+    if (lwkt_use_spin_port || (flags & TDF_FORCE_SPINPORT))
 	lwkt_initport_spin(&td->td_msgport);
     else
 	lwkt_initport_thread(&td->td_msgport, td);
