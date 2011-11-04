@@ -554,16 +554,8 @@ tw_osli_alloc_mem(struct twa_softc *sc)
 		return(error);
 	}
 
-	if ((sc->non_dma_mem = kmalloc(non_dma_mem_size, TW_OSLI_MALLOC_CLASS,
-				M_WAITOK)) == NULL) {
-		tw_osli_printf(sc, "error = %d",
-			TW_CL_SEVERITY_ERROR_STRING,
-			TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
-			0x2009,
-			"Can't allocate non-dma memory",
-			ENOMEM);
-		return(ENOMEM);
-	}
+	sc->non_dma_mem = kmalloc(non_dma_mem_size, TW_OSLI_MALLOC_CLASS,
+	    M_WAITOK);
 
 	/* Create the parent dma tag. */
 	if (bus_dma_tag_create(NULL,			/* parent */
@@ -700,19 +692,9 @@ tw_osli_alloc_mem(struct twa_softc *sc)
 	tw_osli_req_q_init(sc, TW_OSLI_FREE_Q);
 	tw_osli_req_q_init(sc, TW_OSLI_BUSY_Q);
 
-	if ((sc->req_ctx_buf = (struct tw_osli_req_context *)
-			kmalloc((sizeof(struct tw_osli_req_context) *
-				TW_OSLI_MAX_NUM_REQUESTS),
-				TW_OSLI_MALLOC_CLASS,
-				M_WAITOK | M_ZERO)) == NULL) {
-		tw_osli_printf(sc, "error = %d",
-			TW_CL_SEVERITY_ERROR_STRING,
-			TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
-			0x2012,
-			"Failed to allocate request packets",
-			ENOMEM);
-		return(ENOMEM);
-	}
+	sc->req_ctx_buf = kmalloc((sizeof(struct tw_osli_req_context) *
+	    TW_OSLI_MAX_NUM_REQUESTS), TW_OSLI_MALLOC_CLASS,
+	    M_WAITOK | M_ZERO);
 	for (i = 0; i < TW_OSLI_MAX_NUM_REQUESTS; i++) {
 		req = &(sc->req_ctx_buf[i]);
 		req->ctlr = sc;
@@ -1022,18 +1004,8 @@ tw_osli_fw_passthru(struct twa_softc *sc, TW_INT8 *buf)
 		(user_buf->driver_pkt.buffer_length +
 		(sc->sg_size_factor - 1)) & ~(sc->sg_size_factor - 1);
 	if ((req->length = data_buf_size_adjusted)) {
-		if ((req->data = kmalloc(data_buf_size_adjusted,
-			TW_OSLI_MALLOC_CLASS, M_WAITOK)) == NULL) {
-			error = ENOMEM;
-			tw_osli_printf(sc, "error = %d",
-				TW_CL_SEVERITY_ERROR_STRING,
-				TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
-				0x2016,
-				"Could not alloc mem for "
-				"fw_passthru data_buf",
-				error);
-			goto fw_passthru_err;
-		}
+		req->data = kmalloc(data_buf_size_adjusted,
+		    TW_OSLI_MALLOC_CLASS, M_WAITOK);
 		/* Copy the payload. */
 		if ((error = copyin((TW_VOID *)(user_buf->pdata),
 			req->data,
