@@ -954,6 +954,9 @@ restart:
 			    	async = 1;
 		    }
 
+		    if (flags & MSG_SYNC)
+			async = 0;
+
 		    /*
 		     * XXX all the SS_CANTSENDMORE checks previously
 		     * done could be out of date.  We could have recieved
