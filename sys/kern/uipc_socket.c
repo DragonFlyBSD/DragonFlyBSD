@@ -391,7 +391,6 @@ soclose(struct socket *so, int fflag)
 	if (so->so_pcb == NULL)
 		goto discard;
 	if (so->so_state & SS_ISCONNECTED) {
-		so_pru_sync(so);
 		if ((so->so_state & SS_ISDISCONNECTING) == 0) {
 			error = sodisconnect(so);
 			if (error)
@@ -1373,10 +1372,8 @@ soshutdown(struct socket *so, int how)
 		sorflush(so);
 		/*ssb_unlock(&so->so_rcv);*/
 	}
-	if (how != SHUT_RD) {
-		so_pru_sync(so);
+	if (how != SHUT_RD)
 		return (so_pru_shutdown(so));
-	}
 	return (0);
 }
 
