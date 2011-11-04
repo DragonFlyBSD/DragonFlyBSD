@@ -231,7 +231,7 @@ int tcp_sosnd_agglim = 2;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosnd_agglim, CTLFLAG_RW,
     &tcp_sosnd_agglim, 0, "TCP sosend mbuf aggregation limit");
 
-int tcp_sosnd_async = 0;
+int tcp_sosnd_async = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosnd_async, CTLFLAG_RW,
     &tcp_sosnd_async, 0, "TCP asynchronized pru_send");
 
