@@ -34,8 +34,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/subr_alist.c,v 1.4 2008/04/23 17:21:08 dillon Exp $
  */
 /*
  * This module has been adapted from the BLIST module, which was written
@@ -157,9 +155,7 @@ alist_create(daddr_t blocks, struct malloc_type *mtype)
 		skip = (skip + 1) * ALIST_META_RADIX;
 	}
 
-	bl = kmalloc(sizeof(struct alist), mtype, M_WAITOK);
-
-	bzero(bl, sizeof(*bl));
+	bl = kmalloc(sizeof(struct alist), mtype, M_WAITOK | M_ZERO);
 
 	bl->bl_blocks = blocks;
 	bl->bl_radix = radix;

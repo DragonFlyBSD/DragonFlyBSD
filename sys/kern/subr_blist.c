@@ -94,7 +94,6 @@
  *	This code can be compiled stand-alone for debugging.
  *
  * $FreeBSD: src/sys/kern/subr_blist.c,v 1.5.2.2 2003/01/12 09:23:12 dillon Exp $
- * $DragonFly: src/sys/kern/subr_blist.c,v 1.8 2008/08/10 22:09:50 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -187,9 +186,7 @@ blist_create(swblk_t blocks)
 		KKASSERT(skip > 0);
 	}
 
-	bl = kmalloc(sizeof(struct blist), M_SWAP, M_WAITOK);
-
-	bzero(bl, sizeof(*bl));
+	bl = kmalloc(sizeof(struct blist), M_SWAP, M_WAITOK | M_ZERO);
 
 	bl->bl_blocks = blocks;
 	bl->bl_radix = radix;

@@ -841,10 +841,9 @@ tws_send_scsi_cmd(struct tws_softc *sc, int cmd)
     cmd_pkt->cmd.pkt_a.cdb[4] = 128;
 
     req->length = TWS_SECTOR_SIZE;
-    req->data = kmalloc(TWS_SECTOR_SIZE, M_TWS, M_NOWAIT);
+    req->data = kmalloc(TWS_SECTOR_SIZE, M_TWS, M_NOWAIT | M_ZERO);
     if ( req->data == NULL )
         return(ENOMEM);
-    bzero(req->data, TWS_SECTOR_SIZE);
     req->flags = TWS_DIR_IN;
 
     callout_reset(&req->thandle, (TWS_IO_TIMEOUT * hz), tws_timeout, req);
@@ -870,10 +869,9 @@ tws_set_param(struct tws_softc *sc, u_int32_t table_id, u_int32_t param_id,
     }
 
     req->length = TWS_SECTOR_SIZE;
-    req->data = kmalloc(TWS_SECTOR_SIZE, M_TWS, M_NOWAIT);
+    req->data = kmalloc(TWS_SECTOR_SIZE, M_TWS, M_NOWAIT | M_ZERO);
     if ( req->data == NULL )
         return(ENOMEM);
-    bzero(req->data, TWS_SECTOR_SIZE);
     param = (struct tws_getset_param *)req->data;
 
     req->cb = tws_getset_param_complete;
@@ -920,10 +918,9 @@ tws_get_param(struct tws_softc *sc, u_int32_t table_id, u_int32_t param_id,
     }
 
     req->length = TWS_SECTOR_SIZE;
-    req->data = kmalloc(TWS_SECTOR_SIZE, M_TWS, M_NOWAIT);
+    req->data = kmalloc(TWS_SECTOR_SIZE, M_TWS, M_NOWAIT | M_ZERO);
     if ( req->data == NULL )
         return(FAILURE);
-    bzero(req->data, TWS_SECTOR_SIZE);
     param = (struct tws_getset_param *)req->data;
 
     req->cb = NULL;

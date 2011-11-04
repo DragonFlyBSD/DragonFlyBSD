@@ -32,7 +32,6 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.16 2007/01/06 03:23:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -115,12 +114,11 @@ kmstartup(void *dummy)
 		p->tolimit = MAXARCS;
 	p->tossize = p->tolimit * sizeof(struct tostruct);
 	cp = (char *)kmalloc(p->kcountsize + p->fromssize + p->tossize,
-	    M_GPROF, M_NOWAIT);
+	    M_GPROF, M_NOWAIT | M_ZERO);
 	if (cp == 0) {
 		kprintf("No memory for profiling.\n");
 		return;
 	}
-	bzero(cp, p->kcountsize + p->tossize + p->fromssize);
 	p->tos = (struct tostruct *)cp;
 	cp += p->tossize;
 	p->kcount = (HISTCOUNTER *)cp;

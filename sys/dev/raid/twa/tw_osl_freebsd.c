@@ -703,7 +703,8 @@ tw_osli_alloc_mem(struct twa_softc *sc)
 	if ((sc->req_ctx_buf = (struct tw_osli_req_context *)
 			kmalloc((sizeof(struct tw_osli_req_context) *
 				TW_OSLI_MAX_NUM_REQUESTS),
-				TW_OSLI_MALLOC_CLASS, M_WAITOK)) == NULL) {
+				TW_OSLI_MALLOC_CLASS,
+				M_WAITOK | M_ZERO)) == NULL) {
 		tw_osli_printf(sc, "error = %d",
 			TW_CL_SEVERITY_ERROR_STRING,
 			TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
@@ -712,9 +713,6 @@ tw_osli_alloc_mem(struct twa_softc *sc)
 			ENOMEM);
 		return(ENOMEM);
 	}
-	bzero(sc->req_ctx_buf,
-		sizeof(struct tw_osli_req_context) * TW_OSLI_MAX_NUM_REQUESTS);
-
 	for (i = 0; i < TW_OSLI_MAX_NUM_REQUESTS; i++) {
 		req = &(sc->req_ctx_buf[i]);
 		req->ctlr = sc;

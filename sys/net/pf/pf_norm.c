@@ -1354,10 +1354,10 @@ pf_normalize_tcp_init(struct mbuf *m, int off, struct pf_pdesc *pd,
 	KASSERT((src->scrub == NULL), 
 	    ("pf_normalize_tcp_init: src->scrub != NULL"));
 
-	src->scrub = kmalloc(sizeof(struct pf_state_scrub), M_PFSTATESCRUBPL, M_NOWAIT);
+	src->scrub = kmalloc(sizeof(struct pf_state_scrub), M_PFSTATESCRUBPL,
+	    M_NOWAIT | M_ZERO);
 	if (src->scrub == NULL)
 		return (1);
-	bzero(src->scrub, sizeof(*src->scrub));
 
 	switch (pd->af) {
 #ifdef INET
