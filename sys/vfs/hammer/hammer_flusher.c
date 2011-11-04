@@ -207,13 +207,13 @@ hammer_flusher_create(hammer_mount_t hmp)
 	TAILQ_INIT(&hmp->flusher.ready_list);
 
 	lwkt_create(hammer_flusher_master_thread, hmp,
-		    &hmp->flusher.td, NULL, 0, -1, "hammer-M");
+		    &hmp->flusher.td, NULL, TDF_SYSTHREAD, -1, "hammer-M");
 	for (i = 0; i < HAMMER_MAX_FLUSHERS; ++i) {
 		info = kmalloc(sizeof(*info), hmp->m_misc, M_WAITOK|M_ZERO);
 		info->hmp = hmp;
 		TAILQ_INSERT_TAIL(&hmp->flusher.ready_list, info, entry);
 		lwkt_create(hammer_flusher_slave_thread, info,
-			    &info->td, NULL, 0, -1, "hammer-S%d", i);
+			    &info->td, NULL, TDF_SYSTHREAD, -1, "hammer-S%d", i);
 	}
 }
 
@@ -546,6 +546,7 @@ hammer_flusher_flush_inode(hammer_inode_t ip, void *data)
 	++hammer_stats_inode_flushes;
 
 	hammer_flusher_clean_loose_ios(hmp);
+	vm_wait_nominal();
 	error = hammer_sync_inode(trans, ip);
 
 	/*
