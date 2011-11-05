@@ -1579,6 +1579,7 @@ TO_REMOVE+=/usr/share/man/man3/STAILQ_REMOVE_NEXT.3.gz
 TO_REMOVE+=/usr/bin/gasp
 TO_REMOVE+=/usr/share/man/cat9/memoryallocators.9.gz
 TO_REMOVE+=/usr/share/man/man9/memoryallocators.9.gz
+TO_REMOVE+=/usr/share/zoneinfo/Europe/Tiraspol
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/cat4/pfsync.4.gz
