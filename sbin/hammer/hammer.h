@@ -60,6 +60,8 @@
 #include "hammer_util.h"
 #include <vfs/hammer/hammer_ioctl.h>
 
+#include <libhammer.h>
+
 extern int RecurseOpt;
 extern int VerboseOpt;
 extern int QuietOpt;

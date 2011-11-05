@@ -43,9 +43,6 @@ typedef struct collect {
 	struct hammer_blockmap_layer2 *layer2;
 } *collect_t;
 
-#define COLLECT_HSIZE	1024
-#define COLLECT_HMASK	(COLLECT_HSIZE - 1)
-
 collect_t CollectHash[COLLECT_HSIZE];
 
 static void dump_blockmap(const char *label, int zone);

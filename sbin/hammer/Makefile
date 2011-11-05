@@ -9,8 +9,8 @@ SRCS=	hammer.c ondisk.c blockmap.c cache.c misc.c cycle.c \
 MAN=	hammer.8
 
 CFLAGS+= -I${.CURDIR}/../../sys -DALIST_NO_DEBUG
-LDADD=	-lm -lutil -lmd
-DPADD=	${LIBM} ${LIBUTIL} ${LIBMD}
+LDADD=	-lm -lutil -lmd -lhammer
+DPADD=	${LIBM} ${LIBUTIL} ${LIBMD} ${LIBHAMMER}
 
 .PATH: ${.CURDIR}/../../sys/libkern
 SRCS+= crc32.c

@@ -523,7 +523,7 @@ snapshot_ls(const char *path)
         }
 
 	ismaster = (pfs_od.mirror_flags & HAMMER_PFSD_SLAVE) ? 0 : 1;
-	mntpoint = find_pfs_mount(pfs.pfs_id, info.vol_fsid, ismaster);
+	mntpoint = libhammer_find_pfs_mount(pfs.pfs_id, info.vol_fsid, ismaster);
 
 	/* Note the degenerate case of PFS #0 */
 	printf("Snapshots on %s\tPFS #%d\n",
