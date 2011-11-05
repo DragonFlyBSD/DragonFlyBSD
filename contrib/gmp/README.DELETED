@@ -61,6 +61,8 @@ mpn/sparc32/
 mpn/sparc64/
 mpn/thumb/
 mpn/vax/
+mpn/x86/
+mpn/x86_64/
 mpn/z8000/
 mpn/z8000x/
 mpq/Makefile.am
