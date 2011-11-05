@@ -21,7 +21,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp-impl.h"
 
 void
-mpz_mul_2exp (mpz_ptr w, mpz_srcptr u, unsigned long int cnt)
+mpz_mul_2exp (mpz_ptr w, mpz_srcptr u, mp_bitcnt_t cnt)
 {
   mp_size_t usize = u->_mp_size;
   mp_size_t abs_usize = ABS (usize);

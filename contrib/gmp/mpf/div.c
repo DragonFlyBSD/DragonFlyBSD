@@ -1,6 +1,6 @@
 /* mpf_div -- Divide two floats.
 
-Copyright 1993, 1994, 1996, 2000, 2001, 2002, 2004, 2005 Free Software
+Copyright 1993, 1994, 1996, 2000, 2001, 2002, 2004, 2005, 2010 Free Software
 Foundation, Inc.
 
 This file is part of the GNU MP Library.
@@ -18,10 +18,8 @@ License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
-#include <stdio.h>  /* for NULL */
 #include "gmp.h"
 #include "gmp-impl.h"
-#include "longlong.h"
 
 
 /* Not done:
@@ -42,105 +40,87 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    overlap between quotient and dividend in mpn_tdiv_qr, then we can avoid
    copying up,usize.  This would only arise from a prec reduced with
    mpf_set_prec_raw and will be pretty unusual, but might be worthwhile if
-   it could be worked into the copy_u decision cleanly.
-
-   Future:
-
-   If/when mpn_tdiv_qr supports its qxn parameter we can use that instead of
-   padding u with zeros in temporary space.
-
-   If/when a quotient-only division exists it can be used here immediately.
-   remp is only to satisfy mpn_tdiv_qr, the remainder is not used.  */
+   it could be worked into the copy_u decision cleanly.  */
 
 void
 mpf_div (mpf_ptr r, mpf_srcptr u, mpf_srcptr v)
 {
   mp_srcptr up, vp;
-  mp_ptr rp, remp, tp, new_vp;
-  mp_size_t usize, vsize, rsize, prospective_rsize, tsize, zeros, copy_v_size;
+  mp_ptr rp, tp, new_vp;
+  mp_size_t usize, vsize, rsize, prospective_rsize, tsize, zeros;
   mp_size_t sign_quotient, prec, high_zero, chop;
   mp_exp_t rexp;
   int copy_u;
   TMP_DECL;
 
-  usize = u->_mp_size;
-  vsize = v->_mp_size;
+  usize = SIZ(u);
+  vsize = SIZ(v);
   sign_quotient = usize ^ vsize;
   usize = ABS (usize);
   vsize = ABS (vsize);
-  prec = r->_mp_prec;
+  prec = PREC(r);
 
   if (vsize == 0)
     DIVIDE_BY_ZERO;
 
   if (usize == 0)
     {
-      r->_mp_size = 0;
-      r->_mp_exp = 0;
+      SIZ(r) = 0;
+      EXP(r) = 0;
       return;
     }
 
   TMP_MARK;
-  rexp = u->_mp_exp - v->_mp_exp + 1;
+  rexp = EXP(u) - EXP(v) + 1;
 
-  rp = r->_mp_d;
-  up = u->_mp_d;
-  vp = v->_mp_d;
+  rp = PTR(r);
+  up = PTR(u);
+  vp = PTR(v);
 
   prospective_rsize = usize - vsize + 1; /* quot from using given u,v sizes */
-  rsize = prec + 1;                      /* desired quot */
+  rsize = prec + 1;			 /* desired quot */
 
-  zeros = rsize - prospective_rsize;     /* padding u to give rsize */
-  copy_u = (zeros > 0 || rp == up);      /* copy u if overlap or padding */
+  zeros = rsize - prospective_rsize;	 /* padding u to give rsize */
+  copy_u = (zeros > 0 || rp == up);	 /* copy u if overlap or padding */
 
-  chop = MAX (-zeros, 0);                /* negative zeros means shorten u */
+  chop = MAX (-zeros, 0);		 /* negative zeros means shorten u */
   up += chop;
   usize -= chop;
-  zeros += chop;                         /* now zeros >= 0 */
+  zeros += chop;			 /* now zeros >= 0 */
 
-  tsize = usize + zeros;                 /* size for possible copy of u */
-
-  if (WANT_TMP_DEBUG)
-    {
-      /* separate blocks, for malloc debugging */
-      remp = TMP_ALLOC_LIMBS (vsize);
-      tp = (copy_u ? TMP_ALLOC_LIMBS (tsize) : NULL);
-      new_vp = (rp == vp ? TMP_ALLOC_LIMBS (vsize) : NULL);
-    }
-  else
-    {
-      /* one block with conditionalized size, for efficiency */
-      copy_v_size = (rp == vp ? vsize : 0);
-      remp = TMP_ALLOC_LIMBS (vsize + copy_v_size + (copy_u ? tsize : 0));
-      new_vp = remp + vsize;
-      tp = new_vp + copy_v_size;
-    }
+  tsize = usize + zeros;		 /* size for possible copy of u */
 
   /* copy and possibly extend u if necessary */
   if (copy_u)
     {
+      tp = TMP_ALLOC_LIMBS (tsize + 1);	/* +1 for mpn_div_q's scratch needs */
       MPN_ZERO (tp, zeros);
       MPN_COPY (tp+zeros, up, usize);
       up = tp;
       usize = tsize;
     }
+  else
+    {
+      tp = TMP_ALLOC_LIMBS (usize + 1);
+    }
 
   /* ensure divisor doesn't overlap quotient */
   if (rp == vp)
     {
+      new_vp = TMP_ALLOC_LIMBS (vsize);
       MPN_COPY (new_vp, vp, vsize);
       vp = new_vp;
     }
 
   ASSERT (usize-vsize+1 == rsize);
-  mpn_tdiv_qr (rp, remp, (mp_size_t) 0, up, usize, vp, vsize);
+  mpn_div_q (rp, up, usize, vp, vsize, tp);
 
   /* strip possible zero high limb */
   high_zero = (rp[rsize-1] == 0);
   rsize -= high_zero;
   rexp -= high_zero;
 
-  r->_mp_size = sign_quotient >= 0 ? rsize : -rsize;
-  r->_mp_exp = rexp;
+  SIZ(r) = sign_quotient >= 0 ? rsize : -rsize;
+  EXP(r) = rexp;
   TMP_FREE;
 }

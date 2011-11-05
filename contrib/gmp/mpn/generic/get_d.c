@@ -4,7 +4,7 @@
    CERTAIN TO BE SUBJECT TO INCOMPATIBLE CHANGES OR DISAPPEAR COMPLETELY IN
    FUTURE GNU MP RELEASES.
 
-Copyright 2003, 2004 Free Software Foundation, Inc.
+Copyright 2003, 2004, 2007, 2009 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -124,10 +124,10 @@ static volatile const long CONST_NEG_1022_SUB_53 = -1022 - 53;
    Other:
 
    For reference, note that HPPA 8000, 8200, 8500 and 8600 trap FCNV,UDW,DBL
-   to the kernel for values >= 2^63.  This makes it slow, and worse the
-   Linux kernel (what versions?) apparently uses untested code in its trap
-   handling routines, and gets the sign wrong.  We don't use such a limb to
-   double cast, neither in the IEEE or generic code.  */
+   to the kernel for values >= 2^63.  This makes it slow, and worse the kernel
+   Linux (what versions?) apparently uses untested code in its trap handling
+   routines, and gets the sign wrong.  We don't use such a limb-to-double
+   cast, neither in the IEEE or generic code.  */
 
 
 double

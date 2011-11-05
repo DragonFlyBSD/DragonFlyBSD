@@ -45,7 +45,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    no indication how big the output would have been.  It's necessary to
    re-run to determine that size.
 
-   "size-1" would mean sucess from a C99 vsnprintf, and the re-run is
+   "size-1" would mean success from a C99 vsnprintf, and the re-run is
    unnecessary in this case, but we don't bother to try to detect what sort
    of vsnprintf we've got.  size-1 should occur rarely in normal
    circumstances.

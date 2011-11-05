@@ -99,7 +99,7 @@ mpz_congruent_p (mpz_srcptr a, mpz_srcptr c, mpz_srcptr d)
           if (sign < 0)
             NEG_MOD (clow, clow, dlow);
 
-          if (BELOW_THRESHOLD (asize, MODEXACT_1_ODD_THRESHOLD))
+          if (ABOVE_THRESHOLD (asize, BMOD_1_TO_MOD_1_THRESHOLD))
             {
               r = mpn_mod_1 (ap, asize, dlow);
               if (clow < dlow)

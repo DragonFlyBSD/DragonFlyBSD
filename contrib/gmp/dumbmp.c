@@ -101,16 +101,41 @@ mem_copyi (char *dst, char *src, int size)
     dst[i] = src[i];
 }
 
-int
-isprime (int n)
+static int
+isprime (unsigned long int t)
 {
-  int  i;
-  if (n < 2)
+  unsigned long int q, r, d;
+
+  if (t < 32)
+    return (0xa08a28acUL >> t) & 1;
+  if ((t & 1) == 0)
     return 0;
-  for (i = 2; i < n; i++)
-    if ((n % i) == 0)
-      return 0;
-  return 1;
+
+  if (t % 3 == 0)
+    return 0;
+  if (t % 5 == 0)
+    return 0;
+  if (t % 7 == 0)
+    return 0;
+
+  for (d = 11;;)
+    {
+      q = t / d;
+      r = t - q * d;
+      if (q < d)
+	return 1;
+      if (r == 0)
+	break;
+      d += 2;
+      q = t / d;
+      r = t - q * d;
+      if (q < d)
+	return 1;
+      if (r == 0)
+	break;
+      d += 4;
+    }
+  return 0;
 }
 
 int
@@ -676,6 +701,16 @@ mpz_tdiv_q (mpz_t q, mpz_t a, mpz_t b)
   mpz_init (r);
   mpz_tdiv_qr (q, r, a, b);
   mpz_clear (r);
+}
+
+void
+mpz_tdiv_r (mpz_t r, mpz_t a, mpz_t b)
+{
+  mpz_t  q;
+
+  mpz_init (q);
+  mpz_tdiv_qr (q, r, a, b);
+  mpz_clear (q);
 }
 
 void

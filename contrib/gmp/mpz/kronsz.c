@@ -85,7 +85,7 @@ mpz_si_kronecker (long a, mpz_srcptr b)
       /* a odd, b even
 
          Establish shifted b_low with valid bit1 for ASGN and RECIP below.
-         Zero limbs stripped are acounted for, but zero bits on b_low are
+         Zero limbs stripped are accounted for, but zero bits on b_low are
          not because they remain in {b_ptr,b_abs_size} for the
          JACOBI_MOD_OR_MODEXACT_1_ODD. */
 

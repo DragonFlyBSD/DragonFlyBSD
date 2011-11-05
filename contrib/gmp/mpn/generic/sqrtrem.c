@@ -8,8 +8,8 @@
    INTERFACES.  IN FACT, IT IS ALMOST GUARANTEED THAT THEY WILL CHANGE OR
    DISAPPEAR IN A FUTURE GMP RELEASE.
 
-Copyright 1999, 2000, 2001, 2002, 2004, 2005, 2008 Free Software Foundation,
-Inc.
+Copyright 1999, 2000, 2001, 2002, 2004, 2005, 2008, 2010 Free Software
+Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -92,9 +92,9 @@ static const unsigned short invsqrttab[384] =
 /* Compute s = floor(sqrt(a0)), and *rp = a0 - s^2.  */
 
 #if GMP_NUMB_BITS > 32
-#define MAGIC 0x10000000000	/* 0xffe7debbfc < MAGIC < 0x232b1850f410 */
+#define MAGIC CNST_LIMB(0x10000000000)	/* 0xffe7debbfc < MAGIC < 0x232b1850f410 */
 #else
-#define MAGIC 0x100000		/* 0xfee6f < MAGIC < 0x29cbc8 */
+#define MAGIC CNST_LIMB(0x100000)		/* 0xfee6f < MAGIC < 0x29cbc8 */
 #endif
 
 static mp_limb_t
@@ -121,7 +121,7 @@ mpn_sqrtrem1 (mp_ptr rp, mp_limb_t a0)
 
 #if GMP_NUMB_BITS > 32
   a1 = a0 >> (GMP_LIMB_BITS - 1 - 32);
-  t = (mp_limb_signed_t) (0x2000000000000l - 0x30000  - a1 * x0 * x0) >> 16;
+  t = (mp_limb_signed_t) (CNST_LIMB(0x2000000000000) - 0x30000  - a1 * x0 * x0) >> 16;
   x0 = (x0 << 16) + ((mp_limb_signed_t) (x0 * t) >> (16+2));
 
   /* x0 is now an 16 bits approximation of 1/sqrt(a0) */
@@ -239,7 +239,7 @@ mpn_dc_sqrtrem (mp_ptr sp, mp_ptr np, mp_size_t n)
       q >>= 1;
       if (c != 0)
 	c = mpn_add_n (np + l, np + l, sp + l, h);
-      mpn_sqr_n (np + n, sp, l);
+      mpn_sqr (np + n, sp, l);
       b = q + mpn_sub_n (np, np, np + n, 2 * l);
       c -= (l == h) ? b : mpn_sub_1 (np + 2 * l, np + 2 * l, 1, (mp_limb_t) b);
       q = mpn_add_1 (sp + l, sp + l, h, q);

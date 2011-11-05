@@ -60,7 +60,7 @@ mpq_set_f (mpq_ptr q, mpf_srcptr f)
     }
   else
     {
-      /* radix point is within or to the left of the limbs, use demominator */
+      /* radix point is within or to the left of the limbs, use denominator */
       mp_ptr     num_ptr, den_ptr;
       mp_size_t  den_size;
 

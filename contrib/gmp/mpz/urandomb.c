@@ -23,7 +23,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp-impl.h"
 
 void
-mpz_urandomb (mpz_ptr rop, gmp_randstate_t rstate, unsigned long int nbits)
+mpz_urandomb (mpz_ptr rop, gmp_randstate_t rstate, mp_bitcnt_t nbits)
 {
   mp_ptr rp;
   mp_size_t size;

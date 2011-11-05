@@ -4,7 +4,7 @@
    CERTAIN TO BE SUBJECT TO INCOMPATIBLE CHANGES OR DISAPPEAR COMPLETELY IN
    FUTURE GNU MP RELEASES.
 
-Copyright 2001, 2002, 2005 Free Software Foundation, Inc.
+Copyright 2001, 2002, 2005, 2009 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -26,8 +26,8 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "longlong.h"
 
 
-/* Determine whether {ap,asize} is divisible by {dp,dsize}.  Must have both
-   operands normalized, meaning high limbs non-zero, except that asize==0 is
+/* Determine whether {ap,an} is divisible by {dp,dn}.  Must have both
+   operands normalized, meaning high limbs non-zero, except that an==0 is
    allowed.
 
    There usually won't be many low zero bits on d, but the checks for this
@@ -35,14 +35,6 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    might reduce d to fit the single-limb mod_1/modexact_1 code.
 
    Future:
-
-   This is currently not much faster than the user doing an mpz_tdiv_r
-   and testing for a zero remainder, but hopefully it can be improved.
-
-   mpn_bdivmod is one possibility, but it only trades udiv_qrnnd's for
-   multiplies, it won't save crossproducts the way it can in mpz_divexact.
-   Definitely worthwhile on small operands for most processors, but a
-   sub-quadratic version will be wanted before it can be used on all sizes.
 
    Getting the remainder limb by limb would make an early exit possible on
    finding a non-zero.  This would probably have to be bdivmod style so
@@ -53,37 +45,30 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    just append a low zero limb to "a" rather than bit-shifting as
    mpn_tdiv_qr does internally, so long as it's already been checked that a
    has at least as many trailing zeros bits as d.  Or equivalently, pass
-   qxn==1 to mpn_tdiv_qr, if/when it accepts that.
-
-   When called from mpz_congruent_p, {ap,asize} is a temporary which can be
-   destroyed.  Maybe it'd be possible to get into mpn_tdiv_qr at a lower
-   level to save copying it, or maybe that function could accept rp==ap.
-
-   Could use __attribute__ ((regparm (2))) on i386, so the parameters
-   wouldn't need extra stack when called from mpz_divisible_p, but a
-   pre-release gcc 3 didn't generate particularly good register juggling in
-   that case, so this isn't done for now.  */
+   qxn==1 to mpn_tdiv_qr, if/when it accepts that.  */
 
 int
-mpn_divisible_p (mp_srcptr ap, mp_size_t asize,
-		 mp_srcptr dp, mp_size_t dsize)
+mpn_divisible_p (mp_srcptr ap, mp_size_t an,
+		 mp_srcptr dp, mp_size_t dn)
 {
   mp_limb_t  alow, dlow, dmask;
-  mp_ptr     qp, rp;
+  mp_ptr     qp, rp, tp;
   mp_size_t  i;
+  mp_limb_t di;
+  unsigned  twos;
   TMP_DECL;
 
-  ASSERT (asize >= 0);
-  ASSERT (asize == 0 || ap[asize-1] != 0);
-  ASSERT (dsize >= 1);
-  ASSERT (dp[dsize-1] != 0);
-  ASSERT_MPN (ap, asize);
-  ASSERT_MPN (dp, dsize);
+  ASSERT (an >= 0);
+  ASSERT (an == 0 || ap[an-1] != 0);
+  ASSERT (dn >= 1);
+  ASSERT (dp[dn-1] != 0);
+  ASSERT_MPN (ap, an);
+  ASSERT_MPN (dp, dn);
 
   /* When a<d only a==0 is divisible.
-     Notice this test covers all cases of asize==0. */
-  if (asize < dsize)
-    return (asize == 0);
+     Notice this test covers all cases of an==0. */
+  if (an < dn)
+    return (an == 0);
 
   /* Strip low zero limbs from d, requiring a==0 on those. */
   for (;;)
@@ -97,9 +82,9 @@ mpn_divisible_p (mp_srcptr ap, mp_size_t asize,
       if (alow != 0)
 	return 0;  /* a has fewer low zero limbs than d, so not divisible */
 
-      /* a!=0 and d!=0 so won't get to size==0 */
-      asize--; ASSERT (asize >= 1);
-      dsize--; ASSERT (dsize >= 1);
+      /* a!=0 and d!=0 so won't get to n==0 */
+      an--; ASSERT (an >= 1);
+      dn--; ASSERT (dn >= 1);
       ap++;
       dp++;
     }
@@ -109,41 +94,88 @@ mpn_divisible_p (mp_srcptr ap, mp_size_t asize,
   if ((alow & dmask) != 0)
     return 0;
 
-  if (dsize == 1)
+  if (dn == 1)
     {
-      if (BELOW_THRESHOLD (asize, MODEXACT_1_ODD_THRESHOLD))
-	return mpn_mod_1 (ap, asize, dlow) == 0;
+      if (ABOVE_THRESHOLD (an, BMOD_1_TO_MOD_1_THRESHOLD))
+	return mpn_mod_1 (ap, an, dlow) == 0;
 
-      if ((dlow & 1) == 0)
-	{
-	  unsigned  twos;
-	  count_trailing_zeros (twos, dlow);
-	  dlow >>= twos;
-	}
-      return mpn_modexact_1_odd (ap, asize, dlow) == 0;
+      count_trailing_zeros (twos, dlow);
+      dlow >>= twos;
+      return mpn_modexact_1_odd (ap, an, dlow) == 0;
     }
 
-  if (dsize == 2)
+  if (dn == 2)
     {
       mp_limb_t  dsecond = dp[1];
       if (dsecond <= dmask)
 	{
-	  unsigned  twos;
 	  count_trailing_zeros (twos, dlow);
 	  dlow = (dlow >> twos) | (dsecond << (GMP_NUMB_BITS-twos));
 	  ASSERT_LIMB (dlow);
-	  return MPN_MOD_OR_MODEXACT_1_ODD (ap, asize, dlow) == 0;
+	  return MPN_MOD_OR_MODEXACT_1_ODD (ap, an, dlow) == 0;
 	}
     }
 
+  /* Should we compute Q = A * D^(-1) mod B^k,
+                       R = A - Q * D  mod B^k
+     here, for some small values of k?  Then check if R = 0 (mod B^k).  */
+
+  /* We could also compute A' = A mod T and D' = D mod P, for some
+     P = 3 * 5 * 7 * 11 ..., and then check if any prime factor from P
+     dividing D' also divides A'.  */
+
   TMP_MARK;
 
-  rp = TMP_ALLOC_LIMBS (asize+1);
-  qp = rp + dsize;
+  rp = TMP_ALLOC_LIMBS (an + 1);
+  qp = TMP_ALLOC_LIMBS (an - dn + 1); /* FIXME: Could we avoid this */
 
-  mpn_tdiv_qr (qp, rp, (mp_size_t) 0, ap, asize, dp, dsize);
+  count_trailing_zeros (twos, dp[0]);
 
-  /* test for {rp,dsize} zero or non-zero */
+  if (twos != 0)
+    {
+      tp = TMP_ALLOC_LIMBS (dn);
+      ASSERT_NOCARRY (mpn_rshift (tp, dp, dn, twos));
+      dp = tp;
+
+      ASSERT_NOCARRY (mpn_rshift (rp, ap, an, twos));
+    }
+  else
+    {
+      MPN_COPY (rp, ap, an);
+    }
+  if (rp[an - 1] >= dp[dn - 1])
+    {
+      rp[an] = 0;
+      an++;
+    }
+  else if (an == dn)
+    {
+      TMP_FREE;
+      return 0;
+    }
+
+  ASSERT (an > dn);		/* requirement of functions below */
+
+  if (BELOW_THRESHOLD (dn, DC_BDIV_QR_THRESHOLD) ||
+      BELOW_THRESHOLD (an - dn, DC_BDIV_QR_THRESHOLD))
+    {
+      binvert_limb (di, dp[0]);
+      mpn_sbpi1_bdiv_qr (qp, rp, an, dp, dn, -di);
+      rp += an - dn;
+    }
+  else if (BELOW_THRESHOLD (dn, MU_BDIV_QR_THRESHOLD))
+    {
+      binvert_limb (di, dp[0]);
+      mpn_dcpi1_bdiv_qr (qp, rp, an, dp, dn, -di);
+      rp += an - dn;
+    }
+  else
+    {
+      tp = TMP_ALLOC_LIMBS (mpn_mu_bdiv_qr_itch (an, dn));
+      mpn_mu_bdiv_qr (qp, rp, rp, an, dp, dn, tp);
+    }
+
+  /* test for {rp,dn} zero or non-zero */
   i = 0;
   do
     {
@@ -153,7 +185,7 @@ mpn_divisible_p (mp_srcptr ap, mp_size_t asize,
 	  return 0;
 	}
     }
-  while (++i < dsize);
+  while (++i < dn);
 
   TMP_FREE;
   return 1;

@@ -8,7 +8,7 @@
    ONLY SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT'S ALMOST
    GUARANTEED THAT THEY'LL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2002, 2005, 2009 Free Software Foundation, Inc.
+Copyright 2002, 2005, 2009, 2010 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -26,11 +26,8 @@ You should have received a copy of the GNU Lesser General Public License
 along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 /* FIXME:
-   (a) Once there is a native mpn_tdiv_q function in GMP (division without
-       remainder), replace the quick-and-dirty implementation below by it.
-   (b) The implementation below is not optimal when remp == NULL, since the
-       complexity is M(n) where n is the input size, whereas it should be
-       only M(n/k) on average.
+     This implementation is not optimal when remp == NULL, since the complexity
+     is M(n), whereas it should be M(n/k) on average.
 */
 
 #include <stdio.h>		/* for NULL */
@@ -41,8 +38,6 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 static mp_size_t mpn_rootrem_internal (mp_ptr, mp_ptr, mp_srcptr, mp_size_t,
 				       mp_limb_t, int);
-static void mpn_tdiv_q (mp_ptr, mp_ptr, mp_size_t, mp_srcptr, mp_size_t,
-			mp_srcptr, mp_size_t);
 
 #define MPN_RSHIFT(cy,rp,up,un,cnt) \
   do {									\
@@ -124,7 +119,7 @@ static mp_size_t
 mpn_rootrem_internal (mp_ptr rootp, mp_ptr remp, mp_srcptr up, mp_size_t un,
 		      mp_limb_t k, int approx)
 {
-  mp_ptr qp, rp, sp, wp;
+  mp_ptr qp, rp, sp, wp, scratch;
   mp_size_t qn, rn, sn, wn, nl, bn;
   mp_limb_t save, save2, cy;
   unsigned long int unb; /* number of significant bits of {up,un} */
@@ -150,9 +145,15 @@ mpn_rootrem_internal (mp_ptr rootp, mp_ptr remp, mp_srcptr up, mp_size_t un,
   qp = TMP_ALLOC_LIMBS (un + EXTRA); /* will contain quotient and remainder
 					of R/(k*S^(k-1)), and S^k */
   if (remp == NULL)
-    rp = TMP_ALLOC_LIMBS (un);     /* will contain the remainder */
+    {
+      rp = TMP_ALLOC_LIMBS (un + 1);     /* will contain the remainder */
+      scratch = rp;			 /* used by mpn_div_q */
+    }
   else
-    rp = remp;
+    {
+      scratch = TMP_ALLOC_LIMBS (un + 1); /* used by mpn_div_q */
+      rp = remp;
+    }
   sp = rootp;
   wp = TMP_ALLOC_LIMBS (un + EXTRA); /* will contain S^(k-1), k*S^(k-1),
 					and temporary for mpn_pow_1 */
@@ -297,7 +298,7 @@ mpn_rootrem_internal (mp_ptr rootp, mp_ptr remp, mp_srcptr up, mp_size_t un,
 	     The quotient needs rn-wn+1 limbs, thus quotient+remainder
 	     need altogether rn+1 limbs. */
 	  tp = qp + qn + 1;	/* put remainder in Q buffer */
-	  mpn_tdiv_q (qp, tp, 0, rp, rn, wp, wn);
+	  mpn_div_q (qp, rp, rn, wp, wn, scratch);
 	  qn += qp[qn] != 0;
 	}
 
@@ -404,48 +405,4 @@ mpn_rootrem_internal (mp_ptr rootp, mp_ptr remp, mp_srcptr up, mp_size_t un,
 
   TMP_FREE;
   return rn;
-}
-
-/* return the quotient Q = {np, nn} divided by {dp, dn} only */
-static void
-mpn_tdiv_q (mp_ptr qp, mp_ptr rp, mp_size_t qxn, mp_srcptr np, mp_size_t nn,
-	    mp_srcptr dp, mp_size_t dn)
-{
-  mp_size_t qn = nn - dn; /* expected quotient size is qn+1 */
-  mp_size_t cut;
-
-  ASSERT_ALWAYS (qxn == 0);
-  if (dn <= qn + 3)
-    {
-      mpn_tdiv_qr (qp, rp, 0, np, nn, dp, dn);
-    }
-  else
-    {
-      mp_ptr tp;
-      TMP_DECL;
-      TMP_MARK;
-      tp = TMP_ALLOC_LIMBS (qn + 2);
-      cut = dn - (qn + 3);
-      /* perform a first division with divisor cut to dn-cut=qn+3 limbs
-	 and dividend to nn-(cut-1) limbs, i.e. the quotient will be one
-	 limb more than the final quotient.
-	 The quotient will have qn+2 < dn-cut limbs,
-	 and the remainder dn-cut = qn+3 limbs. */
-      mpn_tdiv_qr (tp, rp, 0, np + cut - 1, nn - cut + 1, dp + cut, dn - cut);
-      /* let Q' be the quotient of B * {np, nn} by {dp, dn} [qn+2 limbs]
-	 and T  be the approximation of Q' computed above, where
-	 B = 2^GMP_NUMB_BITS.
-	 We have Q' <= T <= Q'+1, and since floor(Q'/B) = Q, we have
-	 Q = floor(T/B), unless the last limb of T only consists of zeroes. */
-      if (tp[0] != 0)
-	{
-	  /* simply truncate one limb of T */
-	  MPN_COPY (qp, tp + 1, qn + 1);
-	}
-      else /* too bad: perform the expensive division */
-	{
-	  mpn_tdiv_qr (qp, rp, 0, np, nn, dp, dn);
-	}
-      TMP_FREE;
-    }
 }

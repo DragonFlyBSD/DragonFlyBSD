@@ -39,7 +39,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
    Enhancements:
 
-   Use the true mantissa size in the N_QLIMBS formala, to save a divide step
+   Use the true mantissa size in the N_QLIMBS formula, to save a divide step
    in nails.
 
    Examine the high limbs of num and den to see if the highest 1 bit of the

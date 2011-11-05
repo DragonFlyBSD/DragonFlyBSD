@@ -54,12 +54,12 @@ void
 mpn_sqr_basecase (mp_ptr rp, mp_srcptr up, mp_size_t n)
 {
   mp_size_t i;
-  mp_limb_t tarr[2 * SQR_KARATSUBA_THRESHOLD];
+  mp_limb_t tarr[2 * SQR_TOOM2_THRESHOLD];
   mp_ptr tp = tarr;
   mp_limb_t cy;
 
   /* must fit 2*n limbs in tarr */
-  ASSERT (n <= SQR_KARATSUBA_THRESHOLD);
+  ASSERT (n <= SQR_TOOM2_THRESHOLD);
 
   if ((n & 1) != 0)
     {
@@ -136,12 +136,12 @@ void
 mpn_sqr_basecase (mp_ptr rp, mp_srcptr up, mp_size_t n)
 {
   mp_size_t i;
-  mp_limb_t tarr[2 * SQR_KARATSUBA_THRESHOLD];
+  mp_limb_t tarr[2 * SQR_TOOM2_THRESHOLD];
   mp_ptr tp = tarr;
   mp_limb_t cy;
 
   /* must fit 2*n limbs in tarr */
-  ASSERT (n <= SQR_KARATSUBA_THRESHOLD);
+  ASSERT (n <= SQR_TOOM2_THRESHOLD);
 
   if ((n & 1) != 0)
     {
@@ -268,12 +268,12 @@ mpn_sqr_basecase (mp_ptr rp, mp_srcptr up, mp_size_t n)
   }
   if (n > 1)
     {
-      mp_limb_t tarr[2 * SQR_KARATSUBA_THRESHOLD];
+      mp_limb_t tarr[2 * SQR_TOOM2_THRESHOLD];
       mp_ptr tp = tarr;
       mp_limb_t cy;
 
       /* must fit 2*n limbs in tarr */
-      ASSERT (n <= SQR_KARATSUBA_THRESHOLD);
+      ASSERT (n <= SQR_TOOM2_THRESHOLD);
 
       cy = mpn_mul_1 (tp, up + 1, n - 1, up[0]);
       tp[n - 1] = cy;

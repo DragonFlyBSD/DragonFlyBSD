@@ -27,14 +27,14 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    search under u<0, but usually the search won't go very far so it seems
    reasonable to inline that code.  */
 
-unsigned long
-mpz_scan0 (mpz_srcptr u, unsigned long starting_bit)
+mp_bitcnt_t
+mpz_scan0 (mpz_srcptr u, mp_bitcnt_t starting_bit)
 {
   mp_srcptr      u_ptr = PTR(u);
   mp_size_t      size = SIZ(u);
   mp_size_t      abs_size = ABS(size);
   mp_srcptr      u_end = u_ptr + abs_size;
-  unsigned long  starting_limb = starting_bit / GMP_NUMB_BITS;
+  mp_size_t      starting_limb = starting_bit / GMP_NUMB_BITS;
   mp_srcptr      p = u_ptr + starting_limb;
   mp_limb_t      limb;
   int            cnt;
@@ -57,7 +57,7 @@ mpz_scan0 (mpz_srcptr u, unsigned long starting_bit)
         {
           p++;
           if (p == u_end)
-            return (unsigned long) abs_size * GMP_NUMB_BITS;
+            return (mp_bitcnt_t) abs_size * GMP_NUMB_BITS;
           limb = *p;
         }
 
@@ -115,5 +115,5 @@ mpz_scan0 (mpz_srcptr u, unsigned long starting_bit)
 
   ASSERT (limb != 0);
   count_trailing_zeros (cnt, limb);
-  return (p - u_ptr) * GMP_NUMB_BITS + cnt;
+  return (mp_bitcnt_t) (p - u_ptr) * GMP_NUMB_BITS + cnt;
 }

@@ -59,7 +59,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    then use that mpn_rshift.  */
 
 void
-mpf_mul_2exp (mpf_ptr r, mpf_srcptr u, unsigned long int exp)
+mpf_mul_2exp (mpf_ptr r, mpf_srcptr u, mp_bitcnt_t exp)
 {
   mp_srcptr up;
   mp_ptr rp = r->_mp_d;

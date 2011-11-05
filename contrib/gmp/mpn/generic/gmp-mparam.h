@@ -18,5 +18,5 @@ You should have received a copy of the GNU Lesser General Public License
 along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 
-/* Values for BITS_PER_MP_LIMB etc will be determined by ./configure and put
+/* Values for GMP_LIMB_BITS etc will be determined by ./configure and put
    in config.h. */

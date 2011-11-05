@@ -22,9 +22,10 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 
 int
-mpz_divisible_2exp_p (mpz_srcptr a, unsigned long d)
+mpz_divisible_2exp_p (mpz_srcptr a, mp_bitcnt_t d)
 {
-  unsigned long  i, dlimbs, dbits;
+  mp_size_t      i, dlimbs;
+  unsigned       dbits;
   mp_ptr         ap;
   mp_limb_t      dmask;
   mp_size_t      asize;

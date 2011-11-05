@@ -4,7 +4,7 @@
    CERTAIN TO BE SUBJECT TO INCOMPATIBLE CHANGES OR DISAPPEAR COMPLETELY IN
    FUTURE GNU MP RELEASES.
 
-Copyright 2001, 2002, 2005 Free Software Foundation, Inc.
+Copyright 2001, 2002, 2005, 2009 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -24,8 +24,6 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include <stdio.h>
 #include "gmp.h"
 #include "gmp-impl.h"
-#include "longlong.h"
-
 
 /* change this to "#define TRACE(x) x" for diagnostics */
 #define TRACE(x)
@@ -52,20 +50,13 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    This property of F[4m+3] can be verified by induction on F[4m+3] =
    7*F[4m-1] - F[4m-5], that formula being a standard lucas sequence
    identity U[i+j] = U[i]*V[j] - U[i-j]*Q^j.
-
-   Enhancements:
-
-   If there was an mpn_addlshift, it'd be possible to eliminate the yp
-   temporary, using xp=F[k]^2, fp=F[k-1]^2, f1p=xp+fp, fp+=4*fp, fp-=f1p,
-   fp+=2*(-1)^n, etc.  */
+*/
 
 mp_size_t
 mpn_fib2_ui (mp_ptr fp, mp_ptr f1p, unsigned long int n)
 {
-  mp_ptr         xp, yp;
   mp_size_t      size;
   unsigned long  nfirst, mask;
-  TMP_DECL;
 
   TRACE (printf ("mpn_fib2_ui n=%lu\n", n));
 
@@ -85,15 +76,15 @@ mpn_fib2_ui (mp_ptr fp, mp_ptr f1p, unsigned long int n)
   if (mask != 1)
     {
       mp_size_t  alloc;
+      mp_ptr        xp;
+      TMP_DECL;
 
       TMP_MARK;
       alloc = MPN_FIB2_SIZE (n);
-      TMP_ALLOC_LIMBS_2 (xp,alloc, yp,alloc);
+      xp = TMP_ALLOC_LIMBS (alloc);
 
       do
 	{
-	  mp_limb_t  c;
-
 	  /* Here fp==F[k] and f1p==F[k-1], with k being the bits of n from
 	     n&mask upwards.
 
@@ -114,45 +105,65 @@ mpn_fib2_ui (mp_ptr fp, mp_ptr f1p, unsigned long int n)
 	  /* f1p[size-1] might be zero, but this occurs rarely, so it's not
 	     worth bothering checking for it */
 	  ASSERT (alloc >= 2*size);
-	  mpn_sqr_n (xp, fp,  size);
-	  mpn_sqr_n (yp, f1p, size);
+	  mpn_sqr (xp, fp,  size);
+	  mpn_sqr (fp, f1p, size);
 	  size *= 2;
 
 	  /* Shrink if possible.  Since fp was normalized there'll be at
 	     most one high zero on xp (and if there is then there's one on
 	     yp too).  */
-	  ASSERT (xp[size-1] != 0 || yp[size-1] == 0);
+	  ASSERT (xp[size-1] != 0 || fp[size-1] == 0);
 	  size -= (xp[size-1] == 0);
 	  ASSERT (xp[size-1] != 0);  /* only one xp high zero */
 
+	  /* Calculate F[2k-1] = F[k]^2 + F[k-1]^2. */
+	  f1p[size] = mpn_add_n (f1p, xp, fp, size);
+
 	  /* Calculate F[2k+1] = 4*F[k]^2 - F[k-1]^2 + 2*(-1)^k.
 	     n&mask is the low bit of our implied k.  */
-	  c = mpn_lshift (fp, xp, size, 2);
-	  fp[0] |= (n & mask ? 0 : 2);	 /* possible +2 */
-	  c -= mpn_sub_n (fp, fp, yp, size);
-	  ASSERT (n & (mask << 1) ? fp[0] != 0 && fp[0] != 1 : 1);
-	  fp[0] -= (n & mask ? 2 : 0);	 /* possible -2 */
-	  ASSERT (alloc >= size+1);
-	  xp[size] = 0;
-	  yp[size] = 0;
-	  fp[size] = c;
-	  size += (c != 0);
+#if HAVE_NATIVE_mpn_rsblsh2_n || HAVE_NATIVE_mpn_rsblsh_n
+#if HAVE_NATIVE_mpn_rsblsh2_n
+	  fp[size] = mpn_rsblsh2_n (fp, fp, xp, size);
+#else /* HAVE_NATIVE_mpn_rsblsh_n */
+	  fp[size] = mpn_rsblsh_n (fp, fp, xp, size, 2);
+#endif
+	  if ((n & mask) == 0)
+	    MPN_INCR_U(fp, size + 1, 2);	/* possible +2 */
+	  else
+	  {
+	    ASSERT (fp[0] >= 2);
+	    fp[0] -= 2;				/* possible -2 */
+	  }
+#else
+	  {
+	    mp_limb_t  c;
 
-	  /* Calculate F[2k-1] = F[k]^2 + F[k-1]^2.
-	     F[2k-1]<F[2k+1] so no carry out of "size" limbs. */
-	  ASSERT_NOCARRY (mpn_add_n (f1p, xp, yp, size));
+	    c = mpn_lshift (xp, xp, size, 2);
+	    xp[0] |= (n & mask ? 0 : 2);	/* possible +2 */
+	    c -= mpn_sub_n (fp, xp, fp, size);
+	    ASSERT (n & mask ? fp[0] != 0 && fp[0] != 1 : 1);
+	    fp[0] -= (n & mask ? 2 : 0);	/* possible -2 */
+	    fp[size] = c;
+	  }
+#endif
+	  ASSERT (alloc >= size+1);
+	  size += (fp[size] != 0);
 
 	  /* now n&mask is the new bit of n being considered */
 	  mask >>= 1;
 
 	  /* Calculate F[2k] = F[2k+1] - F[2k-1], replacing the unwanted one of
 	     F[2k+1] and F[2k-1].  */
-	  ASSERT_NOCARRY (mpn_sub_n ((n & mask ? f1p : fp), fp, f1p, size));
+	  if (n & mask)
+	    ASSERT_NOCARRY (mpn_sub_n (f1p, fp, f1p, size));
+	  else {
+	    ASSERT_NOCARRY (mpn_sub_n ( fp, fp, f1p, size));
 
-	  /* Can have a high zero after replacing F[2k+1] with F[2k].
-	     f1p will have a high zero if fp does. */
-	  ASSERT (fp[size-1] != 0 || f1p[size-1] == 0);
-	  size -= (fp[size-1] == 0);
+	    /* Can have a high zero after replacing F[2k+1] with F[2k].
+	       f1p will have a high zero if fp does. */
+	    ASSERT (fp[size-1] != 0 || f1p[size-1] == 0);
+	    size -= (fp[size-1] == 0);
+	  }
 	}
       while (mask != 1);
 

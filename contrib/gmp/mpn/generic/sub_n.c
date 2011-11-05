@@ -1,6 +1,7 @@
 /* mpn_sub_n -- Subtract equal length limb vectors.
 
-Copyright 1992, 1993, 1994, 1996, 2000, 2002 Free Software Foundation, Inc.
+Copyright 1992, 1993, 1994, 1996, 2000, 2002, 2009 Free Software Foundation,
+Inc.
 
 This file is part of the GNU MP Library.
 
@@ -29,8 +30,8 @@ mpn_sub_n (mp_ptr rp, mp_srcptr up, mp_srcptr vp, mp_size_t n)
   mp_limb_t ul, vl, sl, rl, cy, cy1, cy2;
 
   ASSERT (n >= 1);
-  ASSERT (MPN_SAME_OR_SEPARATE_P (rp, up, n));
-  ASSERT (MPN_SAME_OR_SEPARATE_P (rp, vp, n));
+  ASSERT (MPN_SAME_OR_INCR_P (rp, up, n));
+  ASSERT (MPN_SAME_OR_INCR_P (rp, vp, n));
 
   cy = 0;
   do
@@ -59,8 +60,8 @@ mpn_sub_n (mp_ptr rp, mp_srcptr up, mp_srcptr vp, mp_size_t n)
   mp_limb_t ul, vl, rl, cy;
 
   ASSERT (n >= 1);
-  ASSERT (MPN_SAME_OR_SEPARATE_P (rp, up, n));
-  ASSERT (MPN_SAME_OR_SEPARATE_P (rp, vp, n));
+  ASSERT (MPN_SAME_OR_INCR_P (rp, up, n));
+  ASSERT (MPN_SAME_OR_INCR_P (rp, vp, n));
 
   cy = 0;
   do

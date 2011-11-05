@@ -81,7 +81,7 @@ mdiv (mpz_srcptr num, mpz_srcptr den, mpz_ptr quot, mpz_ptr rem)
   if (dp == rp || dp == qp)
     {
       mp_ptr tp;
-      tp = (mp_ptr) TMP_ALLOC (dl * BYTES_PER_MP_LIMB);
+      tp = TMP_ALLOC_LIMBS (dl);
       MPN_COPY (tp, dp, dl);
       dp = tp;
     }
@@ -90,7 +90,7 @@ mdiv (mpz_srcptr num, mpz_srcptr den, mpz_ptr quot, mpz_ptr rem)
   if (np == rp || np == qp)
     {
       mp_ptr tp;
-      tp = (mp_ptr) TMP_ALLOC (nl * BYTES_PER_MP_LIMB);
+      tp = TMP_ALLOC_LIMBS (nl);
       MPN_COPY (tp, np, nl);
       np = tp;
     }

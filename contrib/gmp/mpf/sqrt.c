@@ -82,7 +82,7 @@ mpf_sqrt (mpf_ptr r, mpf_srcptr u)
   /* root size is ceil(tsize/2), this will be our desired "prec" limbs */
   ASSERT ((tsize + 1) / 2 == prec);
 
-  tp = (mp_ptr) TMP_ALLOC (tsize * BYTES_PER_MP_LIMB);
+  tp = TMP_ALLOC_LIMBS (tsize);
 
   if (usize > tsize)
     {

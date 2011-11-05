@@ -21,12 +21,12 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp-impl.h"
 
 
-unsigned long
+mp_bitcnt_t
 mpz_hamdist (mpz_srcptr u, mpz_srcptr v)
 {
   mp_srcptr      up, vp;
   mp_size_t      usize, vsize;
-  unsigned long  count;
+  mp_bitcnt_t    count;
 
   usize = SIZ(u);
   vsize = SIZ(v);
@@ -37,7 +37,7 @@ mpz_hamdist (mpz_srcptr u, mpz_srcptr v)
   if (usize >= 0)
     {
       if (vsize < 0)
-        return ~ (unsigned long) 0;
+        return ~ (mp_bitcnt_t) 0;
 
       /* positive/positive */
 
@@ -60,7 +60,7 @@ mpz_hamdist (mpz_srcptr u, mpz_srcptr v)
       mp_size_t  old_vsize, step;
 
       if (vsize >= 0)
-        return ~ (unsigned long) 0;
+        return ~ (mp_limb_t) 0;
 
       /* negative/negative */
 
@@ -99,7 +99,7 @@ mpz_hamdist (mpz_srcptr u, mpz_srcptr v)
 
       if (vlimb == 0)
         {
-          unsigned long  twoscount;
+          mp_bitcnt_t  twoscount;
 
           /* first non-zero of v */
           old_vsize = vsize;

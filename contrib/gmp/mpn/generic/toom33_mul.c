@@ -1,13 +1,14 @@
-/* mpn_toom33_mul -- Multiply {ap,an} and {bp,bn} where an and bn are close in
+/* mpn_toom33_mul -- Multiply {ap,an} and {p,bn} where an and bn are close in
    size.  Or more accurately, bn <= an < (3/2)bn.
 
    Contributed to the GNU project by Torbjorn Granlund.
+   Additional improvements by Marco Bodrato.
 
    THE FUNCTION IN THIS FILE IS INTERNAL WITH A MUTABLE INTERFACE.  IT IS ONLY
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2006, 2007, 2008 Free Software Foundation, Inc.
+Copyright 2006, 2007, 2008, 2010 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -25,24 +26,16 @@ You should have received a copy of the GNU Lesser General Public License
 along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 
-/*
-  Things to work on:
-
-  1. Trim allocation.  The allocations for as1, asm1, bs1, and bsm1 could be
-     avoided by instead reusing the pp area and the scratch area.
-  2. Use new toom functions for the recursive calls.
-*/
-
 #include "gmp.h"
 #include "gmp-impl.h"
 
 /* Evaluate in: -1, 0, +1, +2, +inf
 
-  <-s-><--n--><--n--><--n-->
-   ___ ______ ______ ______
-  |a3_|___a2_|___a1_|___a0_|
-	       |_b1_|___b0_|
-	       <-t--><--n-->
+  <-s--><--n--><--n--><--n-->
+   ____ ______ ______ ______
+  |_a3_|___a2_|___a1_|___a0_|
+   |b3_|___b2_|___b1_|___b0_|
+   <-t-><--n--><--n--><--n-->
 
   v0  =  a0         * b0          #   A(0)*B(0)
   v1  = (a0+ a1+ a2)*(b0+ b1+ b2) #   A(1)*B(1)      ah  <= 2  bh <= 2
@@ -56,21 +49,28 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #define MAYBE_mul_toom33   1
 #else
 #define MAYBE_mul_basecase						\
-  (MUL_TOOM33_THRESHOLD < 3 * MUL_KARATSUBA_THRESHOLD)
+  (MUL_TOOM33_THRESHOLD < 3 * MUL_TOOM22_THRESHOLD)
 #define MAYBE_mul_toom33						\
   (MUL_TOOM44_THRESHOLD >= 3 * MUL_TOOM33_THRESHOLD)
 #endif
 
+/* FIXME: TOOM33_MUL_N_REC is not quite right for a balanced
+   multiplication at the infinity point. We may have
+   MAYBE_mul_basecase == 0, and still get s just below
+   MUL_TOOM22_THRESHOLD. If MUL_TOOM33_THRESHOLD == 7, we can even get
+   s == 1 and mpn_toom22_mul will crash.
+*/
+
 #define TOOM33_MUL_N_REC(p, a, b, n, ws)				\
   do {									\
     if (MAYBE_mul_basecase						\
-	&& BELOW_THRESHOLD (n, MUL_KARATSUBA_THRESHOLD))		\
+	&& BELOW_THRESHOLD (n, MUL_TOOM22_THRESHOLD))			\
       mpn_mul_basecase (p, a, n, b, n);					\
     else if (! MAYBE_mul_toom33						\
 	     || BELOW_THRESHOLD (n, MUL_TOOM33_THRESHOLD))		\
-      mpn_kara_mul_n (p, a, b, n, ws);					\
+      mpn_toom22_mul (p, a, n, b, n, ws);				\
     else								\
-      mpn_toom3_mul_n (p, a, b, n, ws);					\
+      mpn_toom33_mul (p, a, n, b, n, ws);				\
   } while (0)
 
 void
@@ -85,7 +85,6 @@ mpn_toom33_mul (mp_ptr pp,
   mp_ptr gp;
   mp_ptr as1, asm1, as2;
   mp_ptr bs1, bsm1, bs2;
-  TMP_DECL;
 
 #define a0  ap
 #define a1  (ap + n)
@@ -104,35 +103,34 @@ mpn_toom33_mul (mp_ptr pp,
   ASSERT (0 < s && s <= n);
   ASSERT (0 < t && t <= n);
 
-  TMP_MARK;
+  as1  = scratch + 4 * n + 4;
+  asm1 = scratch + 2 * n + 2;
+  as2 = pp + n + 1;
 
-  as1 = TMP_SALLOC_LIMBS (n + 1);
-  asm1 = TMP_SALLOC_LIMBS (n + 1);
-  as2 = TMP_SALLOC_LIMBS (n + 1);
+  bs1 = pp;
+  bsm1 = scratch + 3 * n + 3; /* we need 4n+4 <= 4n+s+t */
+  bs2 = pp + 2 * n + 2;
 
-  bs1 = TMP_SALLOC_LIMBS (n + 1);
-  bsm1 = TMP_SALLOC_LIMBS (n + 1);
-  bs2 = TMP_SALLOC_LIMBS (n + 1);
-
-  gp = pp;
+  gp = scratch;
 
   vm1_neg = 0;
 
   /* Compute as1 and asm1.  */
   cy = mpn_add (gp, a0, n, a2, s);
-#if HAVE_NATIVE_mpn_addsub_n
+#if HAVE_NATIVE_mpn_add_n_sub_n
   if (cy == 0 && mpn_cmp (gp, a1, n) < 0)
     {
-      cy = mpn_addsub_n (as1, asm1, a1, gp, n);
-      as1[n] = 0;
+      cy = mpn_add_n_sub_n (as1, asm1, a1, gp, n);
+      as1[n] = cy >> 1;
       asm1[n] = 0;
       vm1_neg = 1;
     }
   else
     {
-      cy2 = mpn_addsub_n (as1, asm1, gp, a1, n);
+      mp_limb_t cy2;
+      cy2 = mpn_add_n_sub_n (as1, asm1, gp, a1, n);
       as1[n] = cy + (cy2 >> 1);
-      asm1[n] = cy - (cy & 1);
+      asm1[n] = cy - (cy2 & 1);
     }
 #else
   as1[n] = cy + mpn_add_n (as1, gp, a1, n);
@@ -150,36 +148,45 @@ mpn_toom33_mul (mp_ptr pp,
 #endif
 
   /* Compute as2.  */
+#if HAVE_NATIVE_mpn_rsblsh1_n
+  cy = mpn_add_n (as2, a2, as1, s);
+  if (s != n)
+    cy = mpn_add_1 (as2 + s, as1 + s, n - s, cy);
+  cy += as1[n];
+  cy = 2 * cy + mpn_rsblsh1_n (as2, a0, as2, n);
+#else
 #if HAVE_NATIVE_mpn_addlsh1_n
   cy  = mpn_addlsh1_n (as2, a1, a2, s);
   if (s != n)
     cy = mpn_add_1 (as2 + s, a1 + s, n - s, cy);
   cy = 2 * cy + mpn_addlsh1_n (as2, a0, as2, n);
 #else
-  cy  = mpn_lshift (as2, a2, s, 1);
-  cy += mpn_add_n (as2, a1, as2, s);
+  cy = mpn_add_n (as2, a2, as1, s);
   if (s != n)
-    cy = mpn_add_1 (as2 + s, a1 + s, n - s, cy);
+    cy = mpn_add_1 (as2 + s, as1 + s, n - s, cy);
+  cy += as1[n];
   cy = 2 * cy + mpn_lshift (as2, as2, n, 1);
-  cy += mpn_add_n (as2, a0, as2, n);
+  cy -= mpn_sub_n (as2, as2, a0, n);
+#endif
 #endif
   as2[n] = cy;
 
   /* Compute bs1 and bsm1.  */
   cy = mpn_add (gp, b0, n, b2, t);
-#if HAVE_NATIVE_mpn_addsub_n
+#if HAVE_NATIVE_mpn_add_n_sub_n
   if (cy == 0 && mpn_cmp (gp, b1, n) < 0)
     {
-      cy = mpn_addsub_n (bs1, bsm1, b1, gp, n);
-      bs1[n] = 0;
+      cy = mpn_add_n_sub_n (bs1, bsm1, b1, gp, n);
+      bs1[n] = cy >> 1;
       bsm1[n] = 0;
       vm1_neg ^= 1;
     }
   else
     {
-      cy2 = mpn_addsub_n (bs1, bsm1, gp, b1, n);
+      mp_limb_t cy2;
+      cy2 = mpn_add_n_sub_n (bs1, bsm1, gp, b1, n);
       bs1[n] = cy + (cy2 >> 1);
-      bsm1[n] = cy - (cy & 1);
+      bsm1[n] = cy - (cy2 & 1);
     }
 #else
   bs1[n] = cy + mpn_add_n (bs1, gp, b1, n);
@@ -197,18 +204,26 @@ mpn_toom33_mul (mp_ptr pp,
 #endif
 
   /* Compute bs2.  */
+#if HAVE_NATIVE_mpn_rsblsh1_n
+  cy = mpn_add_n (bs2, b2, bs1, t);
+  if (t != n)
+    cy = mpn_add_1 (bs2 + t, bs1 + t, n - t, cy);
+  cy += bs1[n];
+  cy = 2 * cy + mpn_rsblsh1_n (bs2, b0, bs2, n);
+#else
 #if HAVE_NATIVE_mpn_addlsh1_n
   cy  = mpn_addlsh1_n (bs2, b1, b2, t);
   if (t != n)
     cy = mpn_add_1 (bs2 + t, b1 + t, n - t, cy);
   cy = 2 * cy + mpn_addlsh1_n (bs2, b0, bs2, n);
 #else
-  cy  = mpn_lshift (bs2, b2, t, 1);
-  cy += mpn_add_n (bs2, b1, bs2, t);
+  cy  = mpn_add_n (bs2, bs1, b2, t);
   if (t != n)
-    cy = mpn_add_1 (bs2 + t, b1 + t, n - t, cy);
+    cy = mpn_add_1 (bs2 + t, bs1 + t, n - t, cy);
+  cy += bs1[n];
   cy = 2 * cy + mpn_lshift (bs2, bs2, n, 1);
-  cy += mpn_add_n (bs2, b0, bs2, n);
+  cy -= mpn_sub_n (bs2, bs2, b0, n);
+#endif
 #endif
   bs2[n] = cy;
 
@@ -224,7 +239,7 @@ mpn_toom33_mul (mp_ptr pp,
 #define vinf  (pp + 4 * n)			/* s+t */
 #define vm1   scratch				/* 2n+1 */
 #define v2    (scratch + 2 * n + 1)		/* 2n+2 */
-#define scratch_out  (scratch + 4 * n + 4)
+#define scratch_out  (scratch + 5 * n + 5)
 
   /* vm1, 2n+1 limbs */
 #ifdef SMALLER_RECURSION
@@ -285,7 +300,5 @@ mpn_toom33_mul (mp_ptr pp,
 
   TOOM33_MUL_N_REC (v0, ap, bp, n, scratch_out);	/* v0, 2n limbs */
 
-  mpn_toom_interpolate_5pts (pp, v2, vm1, n, s + t, 1^vm1_neg, vinf0, scratch_out);
-
-  TMP_FREE;
+  mpn_toom_interpolate_5pts (pp, v2, vm1, n, s + t, vm1_neg, vinf0);
 }

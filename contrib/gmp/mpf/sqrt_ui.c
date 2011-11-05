@@ -77,7 +77,7 @@ mpf_sqrt_ui (mpf_ptr r, unsigned long int u)
   zeros = 2 * prec - 2;
   rsize = zeros + 1 + U2;
 
-  tp = (mp_ptr) TMP_ALLOC (rsize * BYTES_PER_MP_LIMB);
+  tp = TMP_ALLOC_LIMBS (rsize);
 
   MPN_ZERO (tp, zeros);
   tp[zeros] = u & GMP_NUMB_MASK;

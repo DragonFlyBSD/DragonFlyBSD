@@ -21,7 +21,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp-impl.h"
 
 void
-mpz_clrbit (mpz_ptr d, unsigned long int bit_index)
+mpz_clrbit (mpz_ptr d, mp_bitcnt_t bit_index)
 {
   mp_size_t dsize = d->_mp_size;
   mp_ptr dp = d->_mp_d;

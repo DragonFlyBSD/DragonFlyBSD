@@ -70,7 +70,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
        It's necessary to parse up the format string to recognise the GMP
        extra types F, Q and Z.  Other types and conversions are passed
        across to the standard sscanf or fscanf via funs->scan, for ease of
-       implemenation.  This is essential in the case of something like glibc
+       implementation.  This is essential in the case of something like glibc
        %p where the pointer format isn't actually documented.
 
        Because funs->scan doesn't get the whole input it can't put the right

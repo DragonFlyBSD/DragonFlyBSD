@@ -38,12 +38,12 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    the limb_index >= abs_size test covers u=0 too.  */
 
 int
-mpz_tstbit (mpz_srcptr u, unsigned long bit_index)
+mpz_tstbit (mpz_srcptr u, mp_bitcnt_t bit_index)
 {
   mp_srcptr      u_ptr      = PTR(u);
   mp_size_t      size       = SIZ(u);
   unsigned       abs_size   = ABS(size);
-  unsigned long  limb_index = bit_index / GMP_NUMB_BITS;
+  mp_size_t      limb_index = bit_index / GMP_NUMB_BITS;
   mp_srcptr      p          = u_ptr + limb_index;
   mp_limb_t      limb;
 

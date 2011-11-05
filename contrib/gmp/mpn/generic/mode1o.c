@@ -30,7 +30,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
            r*B^k + a - c == q*d
 
-   where B=2^BITS_PER_MP_LIMB, a is {src,size}, k is either size or size-1
+   where B=2^GMP_LIMB_BITS, a is {src,size}, k is either size or size-1
    (the caller won't know which), and q is the quotient (discarded).  d must
    be odd, c can be any limb value.
 

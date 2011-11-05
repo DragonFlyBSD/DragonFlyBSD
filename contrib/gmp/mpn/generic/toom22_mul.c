@@ -7,7 +7,7 @@
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2006, 2007, 2008 Free Software Foundation, Inc.
+Copyright 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -51,10 +51,27 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #define TOOM22_MUL_N_REC(p, a, b, n, ws)				\
   do {									\
     if (! MAYBE_mul_toom22						\
-	|| BELOW_THRESHOLD (n, MUL_KARATSUBA_THRESHOLD))		\
+	|| BELOW_THRESHOLD (n, MUL_TOOM22_THRESHOLD))			\
       mpn_mul_basecase (p, a, n, b, n);					\
     else								\
       mpn_toom22_mul (p, a, n, b, n, ws);				\
+  } while (0)
+
+/* Normally, this calls mul_basecase or toom22_mul.  But when when the fraction
+   MUL_TOOM33_THRESHOLD / MUL_TOOM22_THRESHOLD is large, an initially small
+   relative unbalance will become a larger and larger relative unbalance with
+   each recursion (the difference s-t will be invariant over recursive calls).
+   Therefore, we need to call toom32_mul.  FIXME: Suppress depending on
+   MUL_TOOM33_THRESHOLD / MUL_TOOM22_THRESHOLD and on MUL_TOOM22_THRESHOLD.  */
+#define TOOM22_MUL_REC(p, a, an, b, bn, ws)				\
+  do {									\
+    if (! MAYBE_mul_toom22						\
+	|| BELOW_THRESHOLD (bn, MUL_TOOM22_THRESHOLD))			\
+      mpn_mul_basecase (p, a, an, b, bn);				\
+    else if (4 * an < 5 * bn)						\
+      mpn_toom22_mul (p, a, an, b, bn, ws);				\
+    else								\
+      mpn_toom32_mul (p, a, an, b, bn, ws);				\
   } while (0)
 
 void
@@ -150,8 +167,8 @@ mpn_toom22_mul (mp_ptr pp,
   /* vm1, 2n limbs */
   TOOM22_MUL_N_REC (vm1, asm1, bsm1, n, scratch_out);
 
-  /* vinf, s+t limbs */
-  mpn_mul (vinf, a1, s, b1, t);
+  if (s > t)  TOOM22_MUL_REC (vinf, a1, s, b1, t, scratch_out);
+  else        TOOM22_MUL_N_REC (vinf, a1, b1, s, scratch_out);
 
   /* v0, 2n limbs */
   TOOM22_MUL_N_REC (v0, ap, bp, n, scratch_out);

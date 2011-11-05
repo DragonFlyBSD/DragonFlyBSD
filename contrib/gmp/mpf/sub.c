@@ -194,7 +194,7 @@ mpf_sub (mpf_ptr r, mpf_srcptr u, mpf_srcptr v)
 	  vsize = prec - 1;
 	}
 
-      tp = (mp_ptr) TMP_ALLOC (prec * BYTES_PER_MP_LIMB);
+      tp = TMP_ALLOC_LIMBS (prec);
       {
 	mp_limb_t cy_limb;
 	if (vsize == 0)
@@ -275,7 +275,7 @@ general_case:
 
   /* Allocate temp space for the result.  Allocate
      just vsize + ediff later???  */
-  tp = (mp_ptr) TMP_ALLOC (prec * BYTES_PER_MP_LIMB);
+  tp = TMP_ALLOC_LIMBS (prec);
 
   if (ediff >= prec)
     {

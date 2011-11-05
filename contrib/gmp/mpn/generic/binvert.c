@@ -1,13 +1,12 @@
-/* Compute {up,n}^(-1) mod 2(n*GMP_NUMB_BITS).
+/* Compute {up,n}^(-1) mod B^n.
 
    Contributed to the GNU project by Torbjorn Granlund.
 
-   THE FUNCTIONS IN THIS FILE ARE INTERNAL WITH A MUTABLE INTERFACE.  IT IS
-   ONLY SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS
-   ALMOST GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GMP
-   RELEASE.
+   THE FUNCTIONS IN THIS FILE ARE INTERNAL WITH MUTABLE INTERFACES.  IT IS ONLY
+   SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
+   GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GMP RELEASE.
 
-Copyright (C) 2004, 2005, 2006, 2007 Free Software Foundation, Inc.
+Copyright (C) 2004, 2005, 2006, 2007, 2009 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -52,12 +51,9 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 mp_size_t
 mpn_binvert_itch (mp_size_t n)
 {
-#if WANT_FFT
-  if (ABOVE_THRESHOLD (n, 2 * MUL_FFT_MODF_THRESHOLD))
-    return mpn_fft_next_size (n, mpn_fft_best_k (n, 0));
-  else
-#endif
-    return 3 * (n - (n >> 1));
+  mp_size_t itch_local = mpn_mulmod_bnm1_next_size (n);
+  mp_size_t itch_out = mpn_mulmod_bnm1_itch (itch_local, n, (n + 1) >> 1);
+  return itch_local + itch_out;
 }
 
 void
@@ -76,42 +72,28 @@ mpn_binvert (mp_ptr rp, mp_srcptr up, mp_size_t n, mp_ptr scratch)
 
   xp = scratch;
 
-  /* Compute a base value using a low-overhead O(n^2) algorithm.  FIXME: We
-     should call some divide-and-conquer lsb division function here for an
-     operand subrange.  */
+  /* Compute a base value of rn limbs.  */
   MPN_ZERO (xp, rn);
   xp[0] = 1;
   binvert_limb (di, up[0]);
   if (BELOW_THRESHOLD (rn, DC_BDIV_Q_THRESHOLD))
-    mpn_sb_bdiv_q (rp, xp, rn, up, rn, -di);
+    mpn_sbpi1_bdiv_q (rp, xp, rn, up, rn, -di);
   else
-    mpn_dc_bdiv_q (rp, xp, rn, up, rn, -di);
+    mpn_dcpi1_bdiv_q (rp, xp, rn, up, rn, -di);
 
   /* Use Newton iterations to get the desired precision.  */
   for (; rn < n; rn = newrn)
     {
+      mp_size_t m;
       newrn = *--sizp;
 
-#if WANT_FFT
-      if (ABOVE_THRESHOLD (newrn, 2 * MUL_FFT_MODF_THRESHOLD))
-	{
-	  int k;
-	  mp_size_t m, i;
+      /* X <- UR. */
+      m = mpn_mulmod_bnm1_next_size (newrn);
+      mpn_mulmod_bnm1 (xp, m, up, newrn, rp, rn, xp + m);
+      mpn_sub_1 (xp + m, xp, rn - (m - newrn), 1);
 
-	  k = mpn_fft_best_k (newrn, 0);
-	  m = mpn_fft_next_size (newrn, k);
-	  mpn_mul_fft (xp, m, up, newrn, rp, rn, k);
-	  for (i = rn - 1; i >= 0; i--)
-	    if (xp[i] > (i == 0))
-	      {
-		mpn_add_1 (xp + rn, xp + rn, newrn - rn, 1);
-		break;
-	      }
-	}
-      else
-#endif
-	mpn_mul (xp, up, newrn, rp, rn);
-      mpn_mullow_n (rp + rn, rp, xp + rn, newrn - rn);
-      mpn_neg_n (rp + rn, rp + rn, newrn - rn);
+      /* R = R(X/B^rn) */
+      mpn_mullo_n (rp + rn, rp, xp + rn, newrn - rn);
+      mpn_neg (rp + rn, rp + rn, newrn - rn);
     }
 }

@@ -1,4 +1,11 @@
-/* mpn_powm_sec -- Compute R = U^E mod M.  Safe variant, not leaking time info.
+/* mpn_powm_sec -- Compute R = U^E mod M.  Secure variant, side-channel silent
+   under the assumption that the multiply instruction is side channel silent.
+
+   Contributed to the GNU project by Torbjorn Granlund.
+
+   THE FUNCTIONS IN THIS FILE ARE INTERNAL WITH MUTABLE INTERFACES.  IT IS ONLY
+   SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
+   GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
 Copyright 2007, 2008, 2009 Free Software Foundation, Inc.
 
@@ -19,19 +26,14 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 
 /*
-  BASIC ALGORITHM, Compute b^e mod n, where n is odd.
+  BASIC ALGORITHM, Compute U^E mod M, where M < B^n is odd.
 
-  1. w <- b
+  1. T <- (B^n * U) mod M                Convert to REDC form
 
-  2. While w^2 < n (and there are more bits in e)
-       w <- power left-to-right base-2 without reduction
+  2. Compute table U^0, U^1, U^2... of E-dependent size
 
-  3. t <- (B^n * b) / n                Convert to REDC form
-
-  4. Compute power table of e-dependent size
-
-  5. While there are more bits in e
-       w <- power left-to-right base-k with reduction
+  3. While there are more bits in E
+       W <- power left-to-right base-k
 
 
   TODO:
@@ -40,19 +42,12 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
      That will simplify the code using getbits.  (Perhaps make getbits' sibling
      getbit then have similar form, for symmetry.)
 
-   * Write an itch function.
+   * Write an itch function.  Or perhaps get rid of tp parameter since the huge
+     pp area is allocated locally anyway?
 
    * Choose window size without looping.  (Superoptimize or think(tm).)
 
-   * Make it sub-quadratic.
-
    * Call new division functions, not mpn_tdiv_qr.
-
-   * Is redc obsolete with improved SB division?
-
-   * Consider special code for one-limb M.
-
-   * Handle even M (in mpz_powm_sec) with two modexps and CRT.
 */
 
 #include "gmp.h"
@@ -62,11 +57,108 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #define WANT_CACHE_SECURITY 1
 
 
+/* Define our own mpn squaring function.  We do this since we cannot use a
+   native mpn_sqr_basecase over TUNE_SQR_TOOM2_MAX, or a non-native one over
+   SQR_TOOM2_THRESHOLD.  This is so because of fixed size stack allocations
+   made inside mpn_sqr_basecase.  */
+
+#if HAVE_NATIVE_mpn_sqr_diagonal
+#define MPN_SQR_DIAGONAL(rp, up, n)					\
+  mpn_sqr_diagonal (rp, up, n)
+#else
+#define MPN_SQR_DIAGONAL(rp, up, n)					\
+  do {									\
+    mp_size_t _i;							\
+    for (_i = 0; _i < (n); _i++)					\
+      {									\
+	mp_limb_t ul, lpl;						\
+	ul = (up)[_i];							\
+	umul_ppmm ((rp)[2 * _i + 1], lpl, ul, ul << GMP_NAIL_BITS);	\
+	(rp)[2 * _i] = lpl >> GMP_NAIL_BITS;				\
+      }									\
+  } while (0)
+#endif
+
+
+#if ! HAVE_NATIVE_mpn_sqr_basecase
+/* The limit of the generic code is SQR_TOOM2_THRESHOLD.  */
+#define SQR_BASECASE_MAX  SQR_TOOM2_THRESHOLD
+#endif
+
+#if HAVE_NATIVE_mpn_sqr_basecase
+#ifdef TUNE_SQR_TOOM2_MAX
+/* We slightly abuse TUNE_SQR_TOOM2_MAX here.  If it is set for an assembly
+   mpn_sqr_basecase, it comes from SQR_TOOM2_THRESHOLD_MAX in the assembly
+   file.  An assembly mpn_sqr_basecase that does not define it, should allow
+   any size.  */
+#define SQR_BASECASE_MAX  SQR_TOOM2_THRESHOLD
+#endif
+#endif
+
+#ifndef SQR_BASECASE_MAX
+/* If SQR_BASECASE_MAX is now not defined, use mpn_sqr_basecase for any operand
+   size.  */
+#define mpn_local_sqr(rp,up,n,tp) mpn_sqr_basecase(rp,up,n)
+#else
+/* Define our own squaring function, which uses mpn_sqr_basecase for its
+   allowed sizes, but its own code for larger sizes.  */
+static void
+mpn_local_sqr (mp_ptr rp, mp_srcptr up, mp_size_t n, mp_ptr tp)
+{
+  mp_size_t i;
+
+  ASSERT (n >= 1);
+  ASSERT (! MPN_OVERLAP_P (rp, 2*n, up, n));
+
+  if (n < SQR_BASECASE_MAX)
+    {
+      mpn_sqr_basecase (rp, up, n);
+      return;
+    }
+
+  {
+    mp_limb_t ul, lpl;
+    ul = up[0];
+    umul_ppmm (rp[1], lpl, ul, ul << GMP_NAIL_BITS);
+    rp[0] = lpl >> GMP_NAIL_BITS;
+  }
+  if (n > 1)
+    {
+      mp_limb_t cy;
+      TMP_DECL;
+      TMP_MARK;
+
+      cy = mpn_mul_1 (tp, up + 1, n - 1, up[0]);
+      tp[n - 1] = cy;
+      for (i = 2; i < n; i++)
+	{
+	  mp_limb_t cy;
+	  cy = mpn_addmul_1 (tp + 2 * i - 2, up + i, n - i, up[i - 1]);
+	  tp[n + i - 2] = cy;
+	}
+      MPN_SQR_DIAGONAL (rp + 2, up + 1, n - 1);
+
+      {
+	mp_limb_t cy;
+#if HAVE_NATIVE_mpn_addlsh1_n
+	cy = mpn_addlsh1_n (rp + 1, rp + 1, tp, 2 * n - 2);
+#else
+	cy = mpn_lshift (tp, tp, 2 * n - 2, 1);
+	cy += mpn_add_n (rp + 1, rp + 1, tp, 2 * n - 2);
+#endif
+	rp[2 * n - 1] += cy;
+      }
+
+      TMP_FREE;
+    }
+}
+#endif
+
 #define getbit(p,bi) \
   ((p[(bi - 1) / GMP_LIMB_BITS] >> (bi - 1) % GMP_LIMB_BITS) & 1)
 
 static inline mp_limb_t
-getbits (const mp_limb_t *p, unsigned long bi, int nbits)
+getbits (const mp_limb_t *p, mp_bitcnt_t bi, int nbits)
 {
   int nbits_in_r;
   mp_limb_t r;
@@ -89,48 +181,25 @@ getbits (const mp_limb_t *p, unsigned long bi, int nbits)
     }
 }
 
-#undef HAVE_NATIVE_mpn_addmul_2
-
-#ifndef HAVE_NATIVE_mpn_addmul_2
-#define REDC_2_THRESHOLD		MP_SIZE_T_MAX
-#endif
-
-#ifndef REDC_2_THRESHOLD
-#define REDC_2_THRESHOLD		4
-#endif
-
-static void mpn_redc_n () {ASSERT_ALWAYS(0);}
-
 static inline int
-win_size (unsigned long eb)
+win_size (mp_bitcnt_t eb)
 {
   int k;
-  static unsigned long x[] = {1,4,27,100,325,1026,2905,7848,20457,51670,~0ul};
-  for (k = 0; eb > x[k]; k++)
+  static mp_bitcnt_t x[] = {0,4,27,100,325,1026,2905,7848,20457,51670,~(mp_bitcnt_t)0};
+  for (k = 1; eb > x[k]; k++)
     ;
   return k;
 }
 
-#define MPN_REDC_X(rp, tp, mp, n, mip)					\
-  do {									\
-    if (redc_x == 1)							\
-      mpn_redc_1 (rp, tp, mp, n, mip[0]);				\
-    else if (redc_x == 2)						\
-      mpn_redc_2 (rp, tp, mp, n, mip);					\
-    else								\
-      mpn_redc_n (rp, tp, mp, n, mip);					\
-  } while (0)
-
-  /* Convert U to REDC form, U_r = B^n * U mod M */
+/* Convert U to REDC form, U_r = B^n * U mod M */
 static void
-redcify (mp_ptr rp, mp_srcptr up, mp_size_t un, mp_srcptr mp, mp_size_t n)
+redcify (mp_ptr rp, mp_srcptr up, mp_size_t un, mp_srcptr mp, mp_size_t n, mp_ptr tp)
 {
-  mp_ptr tp, qp;
+  mp_ptr qp;
   TMP_DECL;
   TMP_MARK;
 
-  tp = TMP_ALLOC_LIMBS (un + n);
-  qp = TMP_ALLOC_LIMBS (un + 1);	/* FIXME: Put at tp+? */
+  qp = tp + un + n;
 
   MPN_ZERO (tp, n);
   MPN_COPY (tp + n, up, un);
@@ -139,118 +208,103 @@ redcify (mp_ptr rp, mp_srcptr up, mp_size_t un, mp_srcptr mp, mp_size_t n)
 }
 
 /* rp[n-1..0] = bp[bn-1..0] ^ ep[en-1..0] mod mp[n-1..0]
-   Requires that mp[n-1..0] is odd.
+   Requires that mp[n-1..0] is odd.  FIXME: is this true?
    Requires that ep[en-1..0] is > 1.
-   Uses scratch space tp[3n..0], i.e., 3n+1 words.  */
+   Uses scratch space at tp of 3n+1 limbs.  */
 void
 mpn_powm_sec (mp_ptr rp, mp_srcptr bp, mp_size_t bn,
 	      mp_srcptr ep, mp_size_t en,
 	      mp_srcptr mp, mp_size_t n, mp_ptr tp)
 {
-  mp_limb_t mip[2];
+  mp_limb_t minv;
   int cnt;
-  long ebi;
+  mp_bitcnt_t ebi;
   int windowsize, this_windowsize;
   mp_limb_t expbits;
-  mp_ptr pp, this_pp, last_pp;
+  mp_ptr pp, this_pp;
   long i;
-  int redc_x;
+  int cnd;
   TMP_DECL;
 
-  ASSERT (en > 1 || (en == 1 && ep[0] > 1));
+  ASSERT (en > 1 || (en == 1 && ep[0] > 0));
   ASSERT (n >= 1 && ((mp[0] & 1) != 0));
 
   TMP_MARK;
 
   count_leading_zeros (cnt, ep[en - 1]);
-  ebi = en * GMP_LIMB_BITS - cnt;
+  ebi = (mp_bitcnt_t) en * GMP_LIMB_BITS - cnt;
 
   windowsize = win_size (ebi);
 
-  if (BELOW_THRESHOLD (n, REDC_2_THRESHOLD))
-    {
-      binvert_limb (mip[0], mp[0]);
-      mip[0] = -mip[0];
-      redc_x = 1;
-    }
-#if defined (HAVE_NATIVE_mpn_addmul_2)
-  else
-    {
-      mpn_binvert (mip, mp, 2, tp);
-      mip[0] = -mip[0]; mip[1] = ~mip[1];
-      redc_x = 2;
-    }
-#endif
-#if 0
-  mpn_binvert (mip, mp, n, tp);
-  redc_x = 0;
-#endif
+  binvert_limb (minv, mp[0]);
+  minv = -minv;
 
-  pp = TMP_ALLOC_LIMBS (n << windowsize);
+  pp = tp + 4 * n;
 
   this_pp = pp;
   this_pp[n] = 1;
-  redcify (this_pp, this_pp + n, 1, mp, n);
+  redcify (this_pp, this_pp + n, 1, mp, n, tp + 6 * n);
   this_pp += n;
-  redcify (this_pp, bp, bn, mp, n);
+  redcify (this_pp, bp, bn, mp, n, tp + 6 * n);
 
   /* Precompute powers of b and put them in the temporary area at pp.  */
   for (i = (1 << windowsize) - 2; i > 0; i--)
     {
-      last_pp = this_pp;
+      mpn_mul_basecase (tp, this_pp, n, pp + n, n);
       this_pp += n;
-      mpn_mul_n (tp, last_pp, pp + n, n);
-      MPN_REDC_X (this_pp, tp, mp, n, mip);
+      mpn_redc_1_sec (this_pp, tp, mp, n, minv);
     }
 
   expbits = getbits (ep, ebi, windowsize);
-  ebi -= windowsize;
-  if (ebi < 0)
+  if (ebi < windowsize)
     ebi = 0;
+  else
+    ebi -= windowsize;
 
   MPN_COPY (rp, pp + n * expbits, n);
 
   while (ebi != 0)
     {
       expbits = getbits (ep, ebi, windowsize);
-      ebi -= windowsize;
       this_windowsize = windowsize;
-      if (ebi < 0)
+      if (ebi < windowsize)
 	{
-	  this_windowsize += ebi;
+	  this_windowsize -= windowsize - ebi;
 	  ebi = 0;
 	}
+      else
+	ebi -= windowsize;
 
       do
 	{
-	  mpn_sqr_n (tp, rp, n);
-	  MPN_REDC_X (rp, tp, mp, n, mip);
+	  mpn_local_sqr (tp, rp, n, tp + 2 * n);
+	  mpn_redc_1_sec (rp, tp, mp, n, minv);
 	  this_windowsize--;
 	}
       while (this_windowsize != 0);
 
 #if WANT_CACHE_SECURITY
       mpn_tabselect (tp + 2*n, pp, n, 1 << windowsize, expbits);
-      mpn_mul_n (tp, rp, tp + 2*n, n);
+      mpn_mul_basecase (tp, rp, n, tp + 2*n, n);
 #else
-      mpn_mul_n (tp, rp, pp + n * expbits, n);
+      mpn_mul_basecase (tp, rp, n, pp + n * expbits, n);
 #endif
-      MPN_REDC_X (rp, tp, mp, n, mip);
+      mpn_redc_1_sec (rp, tp, mp, n, minv);
     }
 
   MPN_COPY (tp, rp, n);
   MPN_ZERO (tp + n, n);
-  MPN_REDC_X (rp, tp, mp, n, mip);
-  if (mpn_cmp (rp, mp, n) >= 0)
-    mpn_sub_n (rp, rp, mp, n);
+  mpn_redc_1_sec (rp, tp, mp, n, minv);
+  cnd = mpn_sub_n (tp, rp, mp, n);	/* we need just retval */
+  mpn_subcnd_n (rp, rp, mp, n, !cnd);
   TMP_FREE;
 }
 
 #if ! HAVE_NATIVE_mpn_tabselect
 /* Select entry `which' from table `tab', which has nents entries, each `n'
    limbs.  Store the selected entry at rp.  Reads entire table to avoid
-   sideband information leaks.  O(n*nents).  */
-
+   side-channel information leaks.  O(n*nents).
+   FIXME: Move to its own file.  */
 void
 mpn_tabselect (volatile mp_limb_t *rp, volatile mp_limb_t *tab, mp_size_t n,
 	       mp_size_t nents, mp_size_t which)
@@ -270,3 +324,17 @@ mpn_tabselect (volatile mp_limb_t *rp, volatile mp_limb_t *tab, mp_size_t n,
     }
 }
 #endif
+
+mp_size_t
+mpn_powm_sec_itch (mp_size_t bn, mp_size_t en, mp_size_t n)
+{
+  int windowsize;
+  mp_size_t redcify_itch, itch;
+
+  windowsize = win_size (en * GMP_NUMB_BITS); /* slight over-estimate of exp */
+  itch = 4 * n + (n << windowsize);
+  redcify_itch = 2 * bn + n + 1;
+  /* The 6n is due to the placement of reduce scratch 6n into the start of the
+     scratch area.  */
+  return MAX (itch, redcify_itch + 6 * n);
+}

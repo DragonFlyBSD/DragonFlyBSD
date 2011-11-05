@@ -72,7 +72,7 @@ mpn_pow_1_highpart (mp_ptr rp, mp_size_t *ignp,
   count_leading_zeros (cnt, exp);
   for (i = GMP_LIMB_BITS - cnt - 2; i >= 0; i--)
     {
-      mpn_sqr_n (tp, rp + off, rn);
+      mpn_sqr (tp, rp + off, rn);
       rn = 2 * rn;
       rn -= tp[rn - 1] == 0;
       ign <<= 1;

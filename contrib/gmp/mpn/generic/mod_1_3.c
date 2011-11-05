@@ -8,7 +8,7 @@
    SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2008, 2009 Free Software Foundation, Inc.
+Copyright 2008, 2009, 2010 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -36,7 +36,7 @@ mpn_mod_1s_3p_cps (mp_limb_t cps[6], mp_limb_t b)
   mp_limb_t B1modb, B2modb, B3modb, B4modb;
   int cnt;
 
-  ASSERT (b <= GMP_NUMB_MAX / 3);
+  ASSERT (b <= (~(mp_limb_t) 0) / 3);
 
   count_leading_zeros (cnt, b);
 
@@ -55,6 +55,18 @@ mpn_mod_1s_3p_cps (mp_limb_t cps[6], mp_limb_t b)
   cps[3] = B2modb >> cnt;
   cps[4] = B3modb >> cnt;
   cps[5] = B4modb >> cnt;
+
+#if WANT_ASSERT
+  {
+    int i;
+    b = cps[2];
+    for (i = 3; i <= 5; i++)
+      {
+	b += cps[i];
+	ASSERT (b >= cps[i]);
+      }
+  }
+#endif
 }
 
 mp_limb_t
@@ -65,17 +77,38 @@ mpn_mod_1s_3p (mp_srcptr ap, mp_size_t n, mp_limb_t b, mp_limb_t cps[6])
   mp_size_t i;
   int cnt;
 
+  ASSERT (n >= 1);
+
   B1modb = cps[2];
   B2modb = cps[3];
   B3modb = cps[4];
   B4modb = cps[5];
 
-  umul_ppmm (ph, pl, ap[n - 2], B1modb);
-  add_ssaaaa (ph, pl, ph, pl, 0, ap[n - 3]);
-  umul_ppmm (ch, cl, ap[n - 1], B2modb);
-  add_ssaaaa (rh, rl, ph, pl, ch, cl);
+  /* We compute n mod 3 in a tricky way, which works except for when n is so
+     close to the maximum size that we don't need to support it.  The final
+     cast to int is a workaround for HP cc.  */
+  switch ((int) ((mp_limb_t) n * MODLIMB_INVERSE_3 >> (GMP_NUMB_BITS - 2)))
+    {
+    case 0:
+      umul_ppmm (ph, pl, ap[n - 2], B1modb);
+      add_ssaaaa (ph, pl, ph, pl, 0, ap[n - 3]);
+      umul_ppmm (rh, rl, ap[n - 1], B2modb);
+      add_ssaaaa (rh, rl, rh, rl, ph, pl);
+      n -= 3;
+      break;
+    case 2:	/* n mod 3 = 1 */
+      rh = 0;
+      rl = ap[n - 1];
+      n -= 1;
+      break;
+    case 1:	/* n mod 3 = 2 */
+      umul_ppmm (ph, pl, ap[n - 1], B1modb);
+      add_ssaaaa (rh, rl, ph, pl, 0, ap[n - 2]);
+      n -= 2;
+      break;
+    }
 
-  for (i = n - 6; i >= 0; i -= 3)
+  for (i = n - 3; i >= 0; i -= 3)
     {
       /* rr = ap[i]				< B
 	    + ap[i+1] * (B mod b)		<= (B-1)(b-1)
@@ -94,21 +127,6 @@ mpn_mod_1s_3p (mp_srcptr ap, mp_size_t n, mp_limb_t b, mp_limb_t cps[6])
 
       umul_ppmm (rh, rl, rh, B4modb);
       add_ssaaaa (rh, rl, rh, rl, ph, pl);
-    }
-
-  if (i >= -2)
-    {
-      umul_ppmm (ph, pl, rl, B1modb);
-      add_ssaaaa (ph, pl, ph, pl, 0, ap[i + 2]);
-      umul_ppmm (rh, rl, rh, B2modb);
-      add_ssaaaa (rh, rl, rh, rl, ph, pl);
-      if (i >= -1)
-	{
-	  umul_ppmm (ph, pl, rl, B1modb);
-	  add_ssaaaa (ph, pl, ph, pl, 0, ap[0]);
-	  umul_ppmm (rh, rl, rh, B2modb);
-	  add_ssaaaa (rh, rl, rh, rl, ph, pl);
-	}
     }
 
   bi = cps[0];

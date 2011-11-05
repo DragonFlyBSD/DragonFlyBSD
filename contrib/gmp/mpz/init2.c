@@ -23,7 +23,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include "gmp-impl.h"
 
 void
-mpz_init2 (mpz_ptr x, unsigned long bits)
+mpz_init2 (mpz_ptr x, mp_bitcnt_t bits)
 {
   mp_size_t  new_alloc;
 

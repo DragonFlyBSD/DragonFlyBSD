@@ -382,7 +382,7 @@ mpn_get_str (unsigned char *str, int base, mp_ptr up, mp_size_t un)
       int bit_pos;
       mp_size_t i;
       unsigned char *s = str;
-      unsigned long bits;
+      mp_bitcnt_t bits;
 
       n1 = up[un - 1];
       count_leading_zeros (cnt, n1);
@@ -391,11 +391,11 @@ mpn_get_str (unsigned char *str, int base, mp_ptr up, mp_size_t un)
 	 R + bits_per_digit * n when input ends in nth least significant
 	 nibble. */
 
-      bits = GMP_NUMB_BITS * un - cnt + GMP_NAIL_BITS;
+      bits = (mp_bitcnt_t) GMP_NUMB_BITS * un - cnt + GMP_NAIL_BITS;
       cnt = bits % bits_per_digit;
       if (cnt != 0)
 	bits += bits_per_digit - cnt;
-      bit_pos = bits - (un - 1) * GMP_NUMB_BITS;
+      bit_pos = bits - (mp_bitcnt_t) (un - 1) * GMP_NUMB_BITS;
 
       /* Fast loop for bit output.  */
       i = un - 1;
@@ -473,7 +473,7 @@ mpn_get_str (unsigned char *str, int base, mp_ptr up, mp_size_t un)
 
 	ASSERT_ALWAYS (powtab_mem_ptr < powtab_mem + mpn_dc_get_str_powtab_alloc (un));
 
-	mpn_sqr_n (t, p, n);
+	mpn_sqr (t, p, n);
 
 	digits_in_base *= 2;
 	n *= 2;  n -= t[n - 1] == 0;

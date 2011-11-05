@@ -25,9 +25,8 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    1. U must sooner or later have a limb != 0.
  */
 
-unsigned long int
-mpn_scan1 (register mp_srcptr up,
-	   register unsigned long int starting_bit)
+mp_bitcnt_t
+mpn_scan1 (mp_srcptr up, mp_bitcnt_t starting_bit)
 {
   mp_size_t starting_word;
   mp_limb_t alimb;

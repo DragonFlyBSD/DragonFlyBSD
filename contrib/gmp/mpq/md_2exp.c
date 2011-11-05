@@ -29,7 +29,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 static void
 mord_2exp (mpz_ptr ldst, mpz_ptr rdst, mpz_srcptr lsrc, mpz_srcptr rsrc,
-           unsigned long n)
+           mp_bitcnt_t n)
 {
   mp_size_t  rsrc_size = SIZ(rsrc);
   mp_size_t  len = ABS (rsrc_size);
@@ -81,14 +81,14 @@ mord_2exp (mpz_ptr ldst, mpz_ptr rdst, mpz_srcptr lsrc, mpz_srcptr rsrc,
 
 
 void
-mpq_mul_2exp (mpq_ptr dst, mpq_srcptr src, unsigned long n)
+mpq_mul_2exp (mpq_ptr dst, mpq_srcptr src, mp_bitcnt_t n)
 {
   mord_2exp (mpq_numref (dst), mpq_denref (dst),
              mpq_numref (src), mpq_denref (src), n);
 }
 
 void
-mpq_div_2exp (mpq_ptr dst, mpq_srcptr src, unsigned long n)
+mpq_div_2exp (mpq_ptr dst, mpq_srcptr src, mp_bitcnt_t n)
 {
   if (SIZ (mpq_numref(src)) == 0)
     {

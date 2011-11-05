@@ -64,10 +64,7 @@ with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
    Enhancements:
 
-   mpn_bdivmod could be used instead of mpn_tdiv_qr, like in mpn_gcd.
-   Currently tdiv_qr is preferred since it's sub-quadratic on big sizes,
-   although bdivmod might be a touch quicker on small sizes.  This can be
-   revised when bdivmod becomes sub-quadratic too.
+   mpn_bdiv_qr should be used instead of mpn_tdiv_qr.
 
    Some sort of multi-step algorithm should be used.  The current subtract
    and shift for every bit is very inefficient.  Lehmer (per current gcdext)

@@ -104,18 +104,18 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    Maybe a new sort of mpn_preinv_mod_1 could accept an unnormalized divisor
    and a shift count, like mpn_preinv_divrem_1.	 But mod_34lsub1 is our
    normal case, so lets not worry too much about mod_1.	 */
-#define PERFSQR_MOD_PP(r, up, usize)				\
-  do {								\
-    if (USE_PREINV_MOD_1)					\
-      {								\
-	(r) = mpn_preinv_mod_1 (up, usize, PERFSQR_PP_NORM,	\
-				PERFSQR_PP_INVERTED);		\
-	(r) %= PERFSQR_PP;					\
-      }								\
-    else							\
-      {								\
-	(r) = mpn_mod_1 (up, usize, PERFSQR_PP);		\
-      }								\
+#define PERFSQR_MOD_PP(r, up, usize)					\
+  do {									\
+    if (BELOW_THRESHOLD (usize, PREINV_MOD_1_TO_MOD_1_THRESHOLD))	\
+      {									\
+	(r) = mpn_preinv_mod_1 (up, usize, PERFSQR_PP_NORM,		\
+				PERFSQR_PP_INVERTED);			\
+	(r) %= PERFSQR_PP;						\
+      }									\
+    else								\
+      {									\
+	(r) = mpn_mod_1 (up, usize, PERFSQR_PP);			\
+      }									\
   } while (0)
 
 #define PERFSQR_MOD_IDX(idx, r, d, inv)				\
@@ -218,7 +218,7 @@ mpn_perfect_square_p (mp_srcptr up, mp_size_t usize)
     TMP_DECL;
 
     TMP_MARK;
-    root_ptr = (mp_ptr) TMP_ALLOC ((usize + 1) / 2 * BYTES_PER_MP_LIMB);
+    root_ptr = TMP_ALLOC_LIMBS ((usize + 1) / 2);
 
     /* Iff mpn_sqrtrem returns zero, the square is perfect.  */
     res = ! mpn_sqrtrem (root_ptr, NULL, up, usize);
