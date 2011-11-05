@@ -1743,6 +1743,7 @@ TO_REMOVE+=/usr/share/man/man1/size220.1.gz
 TO_REMOVE+=/usr/share/man/man1/strings220.1.gz
 TO_REMOVE+=/usr/share/man/man1/strip220.1.gz
 TO_REMOVE+=/usr/libexec/binutils220
+TO_REMOVE+=/usr/share/zoneinfo/Europe/Tiraspol
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
