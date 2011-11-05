@@ -141,8 +141,6 @@ libhammer_get_last_pfs(libhammer_volinfo_t volinfo)
 	return TAILQ_LAST(&volinfo->list_pseudo, pfslist);
 }
 
-#endif
-
 /*
  * MISC directive prototypes
  */
@@ -150,3 +148,5 @@ __BEGIN_DECLS
 char *libhammer_find_pfs_mount(int, uuid_t, int);
 void *_libhammer_malloc(size_t);
 __END_DECLS
+
+#endif
