@@ -1,11 +1,14 @@
+===========================================
+ GNU MULTIPLE PRECISION ARITHMETIC LIBRARY
+===========================================
+
 Original Source can be downloaded from:
 http://gmplib.org/
 
-file = gmp-4.3.2.tar
-date = 7 Jan 2010
-size = 12042240
-sha1 = 00c67a5fe9dc1fd76c1d2b006aea0cb5d06fd241
+file = gmp-5.0.2.tar.bz2
+date = 8 May 2011
+size = 2024576
+sha1 = 2968220e1988eabb61f921d11e5d2db5431e0a35
 
 A list of files and directories removed is in README.DELETED
 
-These sources are used only by the build of gcc-4.4+.

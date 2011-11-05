@@ -4,7 +4,7 @@
 /*
 
 Copyright 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006,
-2007 Free Software Foundation, Inc.
+2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -21,6 +21,9 @@ License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 */
+
+/* Define if building universal (internal helper macro) */
+/* #undef AC_APPLE_UNIVERSAL_BUILD */
 
 /* The gmp-mparam.h file (a string) the tune program should suggest updating.
    */
@@ -133,7 +136,8 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 /* #undef HAVE_HOST_CPU_FAMILY_m68k */
 /* #undef HAVE_HOST_CPU_FAMILY_power */
 /* #undef HAVE_HOST_CPU_FAMILY_powerpc */
-#define HAVE_HOST_CPU_FAMILY_x86 1
+/* #undef HAVE_HOST_CPU_FAMILY_x86 */
+/* #undef HAVE_HOST_CPU_FAMILY_x86_64 */
 
 /* Define one of the following to 1 for the host CPU, as per the output of
    ./config.guess.  If your CPU is not listed here, leave all undefined.  */
@@ -161,6 +165,9 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 
 /* Define to 1 if the system has the type `intmax_t'. */
 #define HAVE_INTMAX_T 1
+
+/* Define to 1 if the system has the type `intptr_t'. */
+#define HAVE_INTPTR_T 1
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
@@ -207,8 +214,12 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 /* Define to 1 each of the following for which a native (ie. CPU specific)
     implementation of the corresponding routine exists.  */
 /* #undef HAVE_NATIVE_mpn_add_n */
+/* #undef HAVE_NATIVE_mpn_add_n_sub_n */
 /* #undef HAVE_NATIVE_mpn_add_nc */
+/* #undef HAVE_NATIVE_mpn_addaddmul_1msb0 */
 /* #undef HAVE_NATIVE_mpn_addlsh1_n */
+/* #undef HAVE_NATIVE_mpn_addlsh2_n */
+/* #undef HAVE_NATIVE_mpn_addlsh_n */
 /* #undef HAVE_NATIVE_mpn_addmul_1c */
 /* #undef HAVE_NATIVE_mpn_addmul_2 */
 /* #undef HAVE_NATIVE_mpn_addmul_3 */
@@ -217,12 +228,12 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 /* #undef HAVE_NATIVE_mpn_addmul_6 */
 /* #undef HAVE_NATIVE_mpn_addmul_7 */
 /* #undef HAVE_NATIVE_mpn_addmul_8 */
-/* #undef HAVE_NATIVE_mpn_addsub_n */
-/* #undef HAVE_NATIVE_mpn_addaddmul_1msb0 */
 /* #undef HAVE_NATIVE_mpn_and_n */
 /* #undef HAVE_NATIVE_mpn_andn_n */
 /* #undef HAVE_NATIVE_mpn_bdiv_dbm1c */
-/* #undef HAVE_NATIVE_mpn_com_n */
+/* #undef HAVE_NATIVE_mpn_bdiv_q_1 */
+/* #undef HAVE_NATIVE_mpn_pi1_bdiv_q_1 */
+/* #undef HAVE_NATIVE_mpn_com */
 /* #undef HAVE_NATIVE_mpn_copyd */
 /* #undef HAVE_NATIVE_mpn_copyi */
 /* #undef HAVE_NATIVE_mpn_divexact_1 */
@@ -231,36 +242,54 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 /* #undef HAVE_NATIVE_mpn_divrem_1c */
 /* #undef HAVE_NATIVE_mpn_divrem_2 */
 /* #undef HAVE_NATIVE_mpn_gcd_1 */
+/* #undef HAVE_NATIVE_mpn_hamdist */
 /* #undef HAVE_NATIVE_mpn_invert_limb */
 /* #undef HAVE_NATIVE_mpn_ior_n */
 /* #undef HAVE_NATIVE_mpn_iorn_n */
+/* #undef HAVE_NATIVE_mpn_lshift */
 /* #undef HAVE_NATIVE_mpn_lshiftc */
+/* #undef HAVE_NATIVE_mpn_lshsub_n */
 /* #undef HAVE_NATIVE_mpn_mod_1 */
+/* #undef HAVE_NATIVE_mpn_mod_1_1p */
 /* #undef HAVE_NATIVE_mpn_mod_1c */
+/* #undef HAVE_NATIVE_mpn_mod_1s_2p */
+/* #undef HAVE_NATIVE_mpn_mod_1s_4p */
+/* #undef HAVE_NATIVE_mpn_mod_34lsub1 */
 /* #undef HAVE_NATIVE_mpn_modexact_1_odd */
 /* #undef HAVE_NATIVE_mpn_modexact_1c_odd */
+/* #undef HAVE_NATIVE_mpn_mul_1 */
 /* #undef HAVE_NATIVE_mpn_mul_1c */
 /* #undef HAVE_NATIVE_mpn_mul_2 */
 /* #undef HAVE_NATIVE_mpn_mul_3 */
 /* #undef HAVE_NATIVE_mpn_mul_4 */
+/* #undef HAVE_NATIVE_mpn_mul_basecase */
 /* #undef HAVE_NATIVE_mpn_nand_n */
 /* #undef HAVE_NATIVE_mpn_nior_n */
+/* #undef HAVE_NATIVE_mpn_popcount */
 /* #undef HAVE_NATIVE_mpn_preinv_divrem_1 */
 /* #undef HAVE_NATIVE_mpn_preinv_mod_1 */
 /* #undef HAVE_NATIVE_mpn_redc_1 */
 /* #undef HAVE_NATIVE_mpn_redc_2 */
+/* #undef HAVE_NATIVE_mpn_rsblsh1_n */
+/* #undef HAVE_NATIVE_mpn_rsblsh2_n */
+/* #undef HAVE_NATIVE_mpn_rsblsh_n */
 /* #undef HAVE_NATIVE_mpn_rsh1add_n */
+/* #undef HAVE_NATIVE_mpn_rsh1add_nc */
 /* #undef HAVE_NATIVE_mpn_rsh1sub_n */
+/* #undef HAVE_NATIVE_mpn_rsh1sub_nc */
+/* #undef HAVE_NATIVE_mpn_rshift */
 /* #undef HAVE_NATIVE_mpn_sqr_basecase */
 /* #undef HAVE_NATIVE_mpn_sqr_diagonal */
 /* #undef HAVE_NATIVE_mpn_sub_n */
 /* #undef HAVE_NATIVE_mpn_sub_nc */
 /* #undef HAVE_NATIVE_mpn_sublsh1_n */
+/* #undef HAVE_NATIVE_mpn_sublsh2_n */
+/* #undef HAVE_NATIVE_mpn_sublsh_n */
 /* #undef HAVE_NATIVE_mpn_submul_1c */
-/* #undef HAVE_NATIVE_mpn_umul_ppmm */
-/* #undef HAVE_NATIVE_mpn_umul_ppmm_r */
 /* #undef HAVE_NATIVE_mpn_udiv_qrnnd */
 /* #undef HAVE_NATIVE_mpn_udiv_qrnnd_r */
+/* #undef HAVE_NATIVE_mpn_umul_ppmm */
+/* #undef HAVE_NATIVE_mpn_umul_ppmm_r */
 /* #undef HAVE_NATIVE_mpn_xor_n */
 /* #undef HAVE_NATIVE_mpn_xnor_n */
 
@@ -424,6 +453,10 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 /* Assembler local label prefix */
 #define LSYM_PREFIX ".L"
 
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#define LT_OBJDIR ".libs/"
+
 /* Name of package */
 #define PACKAGE "gmp"
 
@@ -434,13 +467,16 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 #define PACKAGE_NAME "GNU MP"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "GNU MP 4.3.2"
+#define PACKAGE_STRING "GNU MP 5.0.2"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "gmp"
 
+/* Define to the home page for this package. */
+#define PACKAGE_URL "http://www.gnu.org/software/gmp/"
+
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "4.3.2"
+#define PACKAGE_VERSION "5.0.2"
 
 /* Define to 1 if the C compiler supports function prototypes. */
 #define PROTOTYPES 1
@@ -460,6 +496,9 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 /* The size of a `unsigned short', as computed by sizeof. */
 #define SIZEOF_UNSIGNED_SHORT (__SHORT_BITS / 8)
 
+/* The size of `void *', as computed by sizeof. */
+#define SIZEOF_VOID_P (__LONG_INT_BITS / 8)
+
 /* Define to 1 if sscanf requires writable inputs */
 /* #undef SSCANF_WRITABLE_INPUT */
 
@@ -469,11 +508,11 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
 #define TIME_WITH_SYS_TIME 1
 
-/* Maximum size the tune program can test for SQR_KARATSUBA_THRESHOLD */
-/* #undef TUNE_SQR_KARATSUBA_MAX */
+/* Maximum size the tune program can test for SQR_TOOM2_THRESHOLD */
+#define TUNE_SQR_TOOM2_MAX 80
 
 /* Version number of package */
-#define VERSION "4.3.2"
+#define VERSION "5.0.2"
 
 /* Define to 1 to enable ASSERT checking, per --enable-assert */
 /* #undef WANT_ASSERT */
@@ -483,6 +522,10 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 
 /* Define to 1 to enable FFTs for multiplication, per --enable-fft */
 #define WANT_FFT 1
+
+/* Define to 1 to enable old mpn_mul_fft_full for multiplication, per
+   --enable-old-fft-full */
+/* #undef WANT_OLD_FFT_FULL */
 
 /* Define to 1 if --enable-profiling=gprof */
 /* #undef WANT_PROFILING_GPROF */
@@ -500,6 +543,18 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 /* #undef WANT_TMP_NOTREENTRANT */
 /* #undef WANT_TMP_DEBUG */
 
+/* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
+   significant byte first (like Motorola and SPARC, unlike Intel). */
+#if defined AC_APPLE_UNIVERSAL_BUILD
+# if defined __BIG_ENDIAN__
+#  define WORDS_BIGENDIAN 1
+# endif
+#else
+# ifndef WORDS_BIGENDIAN
+/* #  undef WORDS_BIGENDIAN */
+# endif
+#endif
+
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */
 #define YYTEXT_POINTER 1
@@ -513,9 +568,19 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
 /* #undef inline */
 #endif
 
-/* Define to equivalent of C99 restrict keyword, or to nothing if this is not
-   supported. Do not define if restrict is supported directly. */
+/* Define to the equivalent of the C99 'restrict' keyword, or to
+   nothing if this is not supported.  Do not define if restrict is
+   supported directly.  */
 #define restrict __restrict
+/* Work around a bug in Sun C++: it does not support _Restrict or
+   __restrict__, even though the corresponding Sun C compiler ends up with
+   "#define restrict _Restrict" or "#define restrict __restrict__" in the
+   previous line.  Perhaps some future version of Sun C++ will work with
+   restrict; if so, hopefully it defines __RESTRICT like Sun C does.  */
+#if defined __SUNPRO_CC && !defined __RESTRICT
+# define _Restrict
+# define __restrict__
+#endif
 
 /* Define to empty if the keyword `volatile' does not work. Warning: valid
    code using `volatile' can become incorrect without. Disable with care. */
