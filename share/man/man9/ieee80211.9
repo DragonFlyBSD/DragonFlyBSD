@@ -32,6 +32,8 @@
 .Nm net80211
 .Nd 802.11 network layer
 .Sh SYNOPSIS
+.In net/if.h
+.In net/if_media.h
 .In netproto/802_11/ieee80211_var.h
 .Ft void
 .Fn ieee80211_ifattach "struct ieee80211com *ic" "const uint8_t macaddr[IEEE80211_ADDR_LEN]"
