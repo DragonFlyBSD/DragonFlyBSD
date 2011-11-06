@@ -32,7 +32,7 @@ CFLAGS+=	-I${GCCDIR}/libcpp/include
 CFLAGS+=	-I${GCCDIR}/libdecnumber -I${GCCDIR}/libdecnumber/dpd
 CFLAGS+=	-I${OTOPDIR}/libdecnumber
 CFLAGS+=	-I${STOPDIR}/gmp
-CFLAGS+=	-I${.CURDIR}/${TOP_PREFIX}/../../../../contrib/mpfr -I${STOPDIR}/mpfr
+CFLAGS+=	-I${.CURDIR}/${TOP_PREFIX}/../../../../contrib/mpfr/src -I${STOPDIR}/mpfr
 CFLAGS+=	-I${GCCDIR}/gcc/config/${GCC_CPU} -I${TOOLDIR}
 
 CFLAGS+=	-DIN_GCC -DHAVE_CONFIG_H
