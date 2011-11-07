@@ -100,7 +100,7 @@ MACHINE_CPU = athlon-xp athlon k7 3dnow sse2 sse mmx k6 k5 i586 i486 i386
 MACHINE_CPU = athlon-xp athlon k7 3dnow sse mmx k6 k5 i586 i486 i386
 .  elif ${CPUTYPE} == "athlon"
 MACHINE_CPU = athlon k7 3dnow mmx k6 k5 i586 i486 i386
-.  elif ${CPUTYPE} == "k6-3" || ${CPUTYPE} == "geode"
+.  elif ${CPUTYPE} == "k6-3"
 MACHINE_CPU = 3dnow mmx k6 k5 i586 i486 i386
 .  elif ${CPUTYPE} == "k6"
 MACHINE_CPU = mmx k6 k5 i586 i486 i386
@@ -108,8 +108,8 @@ MACHINE_CPU = mmx k6 k5 i586 i486 i386
 MACHINE_CPU = 3dnow mmx i586 i486 i386
 .  elif ${CPUTYPE} == "c3-2"
 MACHINE_CPU = sse mmx i586 i486 i386
-.  elif ${CPUTYPE} == "c7"
-MACHINE_CPU = sse3 sse2 sse i686 mmx i586 i486 i386
+.  elif ${CPUTYPE} == "geode"
+MACHINE_CPU = 3dnow i686 mmx i586 i486 i386
 .  elif ${CPUTYPE} == "winchip2"
 MACHINE_CPU = 3dnow mmx i486 i386
 .  elif ${CPUTYPE} == "winchip-c6"
