@@ -369,18 +369,26 @@ again:
 				goto again;
 			}
 			pqtype = m->queue - m->pc;
-			if (pqtype == PQ_CACHE) {
+			if (pqtype == PQ_CACHE &&
+			    m->hold_count == 0 &&
+			    m->wire_count == 0 &&
+			    (m->flags & PG_UNMANAGED) == 0) {
+				vm_page_protect(m, VM_PROT_NONE);
+				KKASSERT((m->flags & PG_MAPPED) == 0);
+				KKASSERT(m->dirty == 0);
 				vm_page_free(m);
 				--i;
 				continue;	/* retry the page */
 			}
-			if (pqtype != PQ_FREE) {
+			if (pqtype != PQ_FREE || m->hold_count) {
 				vm_page_wakeup(m);
 				vm_contig_pg_free(start,
 						  (i - start) * PAGE_SIZE);
 				start++;
 				goto again;
 			}
+			KKASSERT((m->valid & m->dirty) == 0);
+			KKASSERT(m->wire_count == 0);
 			KKASSERT(m->object == NULL);
 			vm_page_unqueue_nowakeup(m);
 			m->valid = VM_PAGE_BITS_ALL;
@@ -395,7 +403,8 @@ again:
 			 * Clear all flags except PG_BUSY, PG_ZERO, and
 			 * PG_WANTED, then unbusy the now allocated page.
 			 */
-			vm_page_flag_clear(m, ~(PG_BUSY|PG_ZERO|PG_WANTED));
+			vm_page_flag_clear(m, ~(PG_BUSY | PG_SBUSY |
+						PG_ZERO | PG_WANTED));
 			vm_page_wakeup(m);
 		}
 
