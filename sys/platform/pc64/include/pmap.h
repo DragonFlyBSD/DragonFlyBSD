@@ -55,7 +55,7 @@
 
 /*
  * Size of Kernel address space.  This is the number of page table pages
- * (2MB each) to use for the kernel.  256 pages == 512 Megabyte.
+ * (2GB each) to use for the kernel.  256 pages == 512 Gigabytes.
  * This **MUST** be a multiple of 4 (eg: 252, 256, 260, etc).
  */
 #ifndef KVA_PAGES

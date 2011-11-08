@@ -1,6 +1,4 @@
 /*
- * (MPSAFE)
- *
  * Copyright (c) 1991 Regents of the University of California.
  * Copyright (c) 1994 John S. Dyson
  * Copyright (c) 1994 David Greenman
@@ -42,35 +40,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
- * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
  */
-
 /*
- *	Manages physical address maps.
- *
- *	In addition to hardware address maps, this
- *	module is called upon to provide software-use-only
- *	maps which may or may not be stored in the same
- *	form as hardware maps.  These pseudo-maps are
- *	used to store intermediate results from copy
- *	operations to and from address spaces.
- *
- *	Since the information managed by this module is
- *	also stored by the logical address mapping module,
- *	this module may throw away valid virtual-to-physical
- *	mappings at almost any time.  However, invalidations
- *	of virtual-to-physical mappings must be done as
- *	requested.
- *
- *	In order to cope with hardware architectures which
- *	make virtual-to-physical map invalidates expensive,
- *	this module may delay invalidate or reduced protection
- *	operations until such time as they are actually
- *	necessary.  This module is given full information as
- *	to which processors are currently using which maps,
- *	and to when physical maps must be made correct.
+ * Manage physical address maps for x86-64 systems.
  */
 
 #if JG
@@ -2658,7 +2630,6 @@ fast_skip:
 			continue;
 		}
 
-retry_pt_pv:
 		/*
 		 * PT cache
 		 */
@@ -2731,51 +2702,18 @@ kernel_skip:
 
 		while (sva < va_next) {
 			/*
-			 * NOTE: It is possible for an empty ptep to
-			 *	 race a pv removal by some other means
-			 *	 (typically via the vm_page_t).
+			 * Acquire the related pte_pv, if any.  If *ptep == 0
+			 * the related pte_pv should not exist, but if *ptep
+			 * is not zero the pte_pv may or may not exist (e.g.
+			 * will not exist for an unmanaged page).
 			 *
-			 *	 For now debug the situation by locking
-			 *	 the potentially conflicting pv and
-			 *	 re-checking.
+			 * However a multitude of races are possible here.
+			 *
+			 * In addition, the (pt_pv, pte_pv) lock order is
+			 * backwards, so we have to be careful in aquiring
+			 * a properly locked pte_pv.
 			 */
 			lwkt_yield();
-			if (*ptep == 0) {
-				pte_pv = pv_find(pmap, pmap_pte_pindex(sva));
-				if (pte_pv == NULL) {
-					sva += PAGE_SIZE;
-					++ptep;
-					continue;
-				}
-
-				/*
-				 * Possible race against another thread
-				 * removing the pte.
-				 */
-				kprintf("pmap_scan: caught race func %p", func);
-				if (pt_pv) {
-					pv_put(pt_pv);	 /* must be non-NULL */
-					pt_pv = NULL;
-				}
-				pv_lock(pte_pv);	/* safe to block now */
-				if (pte_pv->pv_pmap) {
-					kprintf(", uh oh, pte_pv still good\n");
-					panic("unexpected non-NULL pte_pv %p",
-					      pte_pv);
-				} else {
-					kprintf(", resolved ok\n");
-				}
-				pv_put(pte_pv);
-				pte_pv = NULL;
-				goto retry_pt_pv;
-			}
-
-			/*
-			 * We need a locked pte_pv as well but just like the
-			 * above, the lock order is all wrong so if we
-			 * cannot acquire it non-blocking we will have to
-			 * undo a bunch of stuff and retry.
-			 */
 			if (pt_pv) {
 				pte_pv = pv_get_try(pmap, pmap_pte_pindex(sva),
 						    &error);
@@ -2802,19 +2740,25 @@ kernel_skip:
 			}
 
 			/*
-			 * *ptep can get ripped out while we were blocked.
+			 * Ok, if *ptep == 0 we had better NOT have a pte_pv.
 			 */
 			if (*ptep == 0) {
 				if (pte_pv) {
-					pv_put(pte_pv);
-					pte_pv = NULL;
+					kprintf("Unexpected non-NULL pte_pv "
+						"%p pt_pv %p *ptep = %016lx\n",
+						pte_pv, pt_pv, *ptep);
+					panic("Unexpected non-NULL pte_pv");
 				}
+				sva += PAGE_SIZE;
+				++ptep;
 				continue;
 			}
 
 			/*
-			 * Ready for the callback.  The locked pte_pv (if
-			 * not NULL) is consumed by the callback.
+			 * Ready for the callback.  The locked pte_pv (if any)
+			 * is consumed by the callback.  pte_pv will exist if
+			 *  the page is managed, and will not exist if it
+			 * isn't.
 			 */
 			if (pte_pv) {
 				KASSERT((*ptep & (PG_MANAGED|PG_V)) ==

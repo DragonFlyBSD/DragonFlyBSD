@@ -1226,12 +1226,35 @@ vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
 		if (m == NULL)
 			break;
 		if (vm_page_busy_try(m, TRUE)) {
+			/*
+			 * Various mechanisms such as a pmap_collect can
+			 * result in a busy page on the free queue.  We
+			 * have to move the page out of the way so we can
+			 * retry the allocation.  If the other thread is not
+			 * allocating the page then m->valid will remain 0 and
+			 * the pageout daemon will free the page later on.
+			 *
+			 * Since we could not busy the page, however, we
+			 * cannot make assumptions as to whether the page
+			 * will be allocated by the other thread or not,
+			 * so all we can do is deactivate it to move it out
+			 * of the way.  In particular, if the other thread
+			 * wires the page it may wind up on the inactive
+			 * queue and the pageout daemon will have to deal
+			 * with that case too.
+			 */
 			_vm_page_deactivate_locked(m, 0);
 			vm_page_spin_unlock(m);
 #ifdef INVARIANTS
                         kprintf("Warning: busy page %p found in cache\n", m);
 #endif
 		} else {
+			/*
+			 * Theoretically if we are able to busy the page
+			 * atomic with the queue removal (using the vm_page
+			 * lock) nobody else should be able to mess with the
+			 * page before us.
+			 */
 			KKASSERT((m->flags & PG_UNMANAGED) == 0);
 			KKASSERT(m->hold_count == 0);
 			KKASSERT(m->wire_count == 0);
@@ -1714,13 +1737,7 @@ vm_page_free_fromq_fast(void)
 				 */
 				_vm_page_deactivate_locked(m, 0);
 				vm_page_spin_unlock(m);
-			} else if ((m->flags & PG_ZERO) == 0) {
-				/*
-				 * The page is not PG_ZERO'd so return it.
-				 */
-				vm_page_spin_unlock(m);
-				break;
-			} else {
+			} else if (m->flags & PG_ZERO) {
 				/*
 				 * The page is PG_ZERO, requeue it and loop
 				 */
@@ -1734,6 +1751,15 @@ vm_page_free_fromq_fast(void)
 				} else {
 					vm_page_spin_unlock(m);
 				}
+			} else {
+				/*
+				 * The page is not PG_ZERO'd so return it.
+				 */
+				vm_page_spin_unlock(m);
+				KKASSERT((m->flags & PG_UNMANAGED) == 0);
+				KKASSERT(m->hold_count == 0);
+				KKASSERT(m->wire_count == 0);
+				break;
 			}
 			m = NULL;
 		}

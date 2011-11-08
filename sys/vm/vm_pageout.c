@@ -848,6 +848,22 @@ vm_pageout_scan_inactive(int pass, int q, int inactive_shortage,
 		 */
 
 		/*
+		 * It is possible for a page to be busied ad-hoc (e.g. the
+		 * pmap_collect() code) and wired and race against the
+		 * allocation of a new page.  vm_page_alloc() may be forced
+		 * to deactivate the wired page in which case it winds up
+		 * on the inactive queue and must be handled here.  We
+		 * correct the problem simply by unqueuing the page.
+		 */
+		if (m->wire_count) {
+			vm_page_unqueue_nowakeup(m);
+			vm_page_wakeup(m);
+			kprintf("WARNING: pagedaemon: wired page on "
+				"inactive queue %p\n", m);
+			continue;
+		}
+
+		/*
 		 * A held page may be undergoing I/O, so skip it.
 		 */
 		if (m->hold_count) {
