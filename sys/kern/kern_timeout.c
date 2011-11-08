@@ -399,6 +399,9 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *),
  *
  * WARNING! This function can return while it's c_func is still running
  *	    in the callout thread, a secondary check may be needed.
+ *	    Use callout_stop_sync() to wait for any callout function to
+ *	    complete before returning, being sure that no deadlock is
+ *	    possible if you do.
  */
 int
 callout_stop(struct callout *c)
@@ -485,6 +488,30 @@ callout_stop(struct callout *c)
 	}
 	crit_exit_gd(gd);
 	return (1);
+}
+
+/*
+ * Issue a callout_stop() and ensure that any callout race completes
+ * before returning.  Does NOT de-initialized the callout.
+ */
+void
+callout_stop_sync(struct callout *c)
+{
+	softclock_pcpu_t sc;
+
+	if (c->c_flags & CALLOUT_DID_INIT) {
+		callout_stop(c);
+#ifdef SMP
+		sc = &softclock_pcpu_ary[c->c_gd->gd_cpuid];
+#else
+		sc = &softclock_pcpu_ary[0];
+#endif
+		if (sc->running == c) {
+			while (sc->running == c)
+				tsleep(&sc->running, 0, "crace", 1);
+		}
+		KKASSERT((c->c_flags & (CALLOUT_PENDING|CALLOUT_ACTIVE)) == 0);
+	}
 }
 
 /*
