@@ -753,6 +753,14 @@ sys_setitimer(struct setitimer_args *uap)
 		p->p_realtimer = aitv;
 	} else {
 		p->p_timer[uap->which] = aitv;
+		switch(uap->which) {
+		case ITIMER_VIRTUAL:
+			p->p_flag &= ~P_SIGVTALRM;
+			break;
+		case ITIMER_PROF:
+			p->p_flag &= ~P_SIGPROF;
+			break;
+		}
 	}
 	lwkt_reltoken(&p->p_token);
 	return (0);

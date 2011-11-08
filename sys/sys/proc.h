@@ -366,8 +366,8 @@ struct	proc {
 #define P_IDLESWAP	0x400000 /* Swapout was due to idleswap, not load */
 
 #define	P_JAILED	0x1000000 /* Process is in jail */
-#define	P_UNUSED0	0x2000000 /* need to restore mask before pause */
-#define	P_UNUSED1	0x4000000 /* have alternate signal stack */
+#define	P_SIGVTALRM	0x2000000 /* signal SIGVTALRM pending due to itimer */
+#define	P_SIGPROF	0x4000000 /* signal SIGPROF pending due to itimer */
 #define	P_INEXEC	0x8000000 /* Process is in execve(). */
 #define P_UNUSED1000	0x10000000
 #define	P_UPCALLWAIT	0x20000000 /* Wait for upcall or signal */

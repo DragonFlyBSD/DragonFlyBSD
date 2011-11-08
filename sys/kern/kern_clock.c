@@ -554,17 +554,26 @@ hardclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 	 * ITimer handling is per-tick, per-cpu.
 	 *
 	 * We must acquire the per-process token in order for ksignal()
-	 * to be non-blocking.
+	 * to be non-blocking.  For the moment this requires an AST fault,
+	 * the ksignal() cannot be safely issued from this hard interrupt.
+	 *
+	 * XXX Even the trytoken here isn't right, and itimer operation in
+	 *     a multi threaded environment is going to be weird at the
+	 *     very least.
 	 */
 	if ((p = curproc) != NULL && lwkt_trytoken(&p->p_token)) {
 		crit_enter_hard();
 		if (frame && CLKF_USERMODE(frame) &&
 		    timevalisset(&p->p_timer[ITIMER_VIRTUAL].it_value) &&
-		    itimerdecr(&p->p_timer[ITIMER_VIRTUAL], ustick) == 0)
-			ksignal(p, SIGVTALRM);
+		    itimerdecr(&p->p_timer[ITIMER_VIRTUAL], ustick) == 0) {
+			p->p_flag |= P_SIGVTALRM;
+			need_user_resched();
+		}
 		if (timevalisset(&p->p_timer[ITIMER_PROF].it_value) &&
-		    itimerdecr(&p->p_timer[ITIMER_PROF], ustick) == 0)
-			ksignal(p, SIGPROF);
+		    itimerdecr(&p->p_timer[ITIMER_PROF], ustick) == 0) {
+			p->p_flag |= P_SIGPROF;
+			need_user_resched();
+		}
 		crit_exit_hard();
 		lwkt_reltoken(&p->p_token);
 	}
