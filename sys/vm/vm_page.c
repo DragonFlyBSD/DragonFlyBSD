@@ -172,6 +172,9 @@ vm_set_page_size(void)
  * queue in a bottom-up fashion, so both zero'd and non-zero'd page
  * requests pull 'recent' adds (higher physical addresses) first.
  *
+ * Beware that the page zeroing daemon will also be running soon after
+ * boot, moving pages from the head to the tail of the PQ_FREE queues.
+ *
  * Must be called in a critical section.
  */
 static vm_page_t
@@ -186,7 +189,8 @@ vm_add_new_page(vm_paddr_t pa)
 	m->pc = (pa >> PAGE_SHIFT) & PQ_L2_MASK;
 #ifdef SMP
 	/*
-	 * Twist for cpu localization instead of page coloring.
+	 * Twist for cpu localization in addition to page coloring, so
+	 * different cpus selecting by m->queue get different page colors.
 	 */
 	m->pc ^= ((pa >> PAGE_SHIFT) / PQ_L2_SIZE) & PQ_L2_MASK;
 	m->pc ^= ((pa >> PAGE_SHIFT) / (PQ_L2_SIZE * PQ_L2_SIZE)) & PQ_L2_MASK;
@@ -197,11 +201,15 @@ vm_add_new_page(vm_paddr_t pa)
 	atomic_add_int(&vmstats.v_page_count, 1);
 	atomic_add_int(&vmstats.v_free_count, 1);
 	vpq = &vm_page_queues[m->queue];
-	if (vpq->flipflop)
+	if ((vpq->flipflop & 15) == 0) {
+		pmap_zero_page(VM_PAGE_TO_PHYS(m));
+		m->flags |= PG_ZERO;
 		TAILQ_INSERT_TAIL(&vpq->pl, m, pageq);
-	else
+		atomic_add_int(&vm_page_zero_count, 1);
+	} else {
 		TAILQ_INSERT_HEAD(&vpq->pl, m, pageq);
-	vpq->flipflop = 1 - vpq->flipflop;
+	}
+	++vpq->flipflop;
 	++vpq->lcnt;
 
 	return (m);
