@@ -1672,6 +1672,7 @@ ahci_ata_complete_disk_synchronize_cache(struct ata_xfer *xa)
 	default:
 		kprintf("%s: synchronize_cache: unknown state %d\n",
 			ATANAME(ap, xa->at), xa->state);
+		panic("%s: Unknown state", ATANAME(ap, xa->at));
 		ccbh->status = CAM_REQ_CMP_ERR;
 		break;
 	}
@@ -1712,6 +1713,7 @@ ahci_ata_complete_disk_rw(struct ata_xfer *xa)
 	default:
 		kprintf("%s: disk_rw: unknown state %d\n",
 			ATANAME(ap, xa->at), xa->state);
+		panic("%s: Unknown state", ATANAME(ap, xa->at));
 		ccbh->status = CAM_REQ_CMP_ERR;
 		break;
 	}
@@ -1759,6 +1761,7 @@ ahci_atapi_complete_cmd(struct ata_xfer *xa)
 	default:
 		kprintf("%s: cmd %d: unknown state %d\n",
 			PORTNAME(ap), cdb->generic.opcode, xa->state);
+		panic("%s: Unknown state", PORTNAME(ap));
 		ccbh->status = CAM_REQ_CMP_ERR;
 		break;
 	}

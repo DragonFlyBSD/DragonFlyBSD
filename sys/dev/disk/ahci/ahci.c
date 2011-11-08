@@ -1750,13 +1750,13 @@ ahci_port_hardstop(struct ahci_port *ap)
 	while (ap->ap_active) {
 		slot = ffs(ap->ap_active) - 1;
 		ap->ap_active &= ~(1 << slot);
-		ap->ap_expired &= ~(1 << slot);
 		--ap->ap_active_cnt;
 		ccb = &ap->ap_ccbs[slot];
 		if (ccb->ccb_xa.flags & ATA_F_TIMEOUT_RUNNING) {
-			callout_stop(&ccb->ccb_timeout);
+			callout_stop_sync(&ccb->ccb_timeout);
 			ccb->ccb_xa.flags &= ~ATA_F_TIMEOUT_RUNNING;
 		}
+		ap->ap_expired &= ~(1 << slot);
 		ccb->ccb_xa.flags &= ~(ATA_F_TIMEOUT_DESIRED |
 				       ATA_F_TIMEOUT_EXPIRED);
 		ccb->ccb_xa.state = ATA_S_TIMEOUT;
@@ -1766,12 +1766,12 @@ ahci_port_hardstop(struct ahci_port *ap)
 	while (ap->ap_sactive) {
 		slot = ffs(ap->ap_sactive) - 1;
 		ap->ap_sactive &= ~(1 << slot);
-		ap->ap_expired &= ~(1 << slot);
 		ccb = &ap->ap_ccbs[slot];
 		if (ccb->ccb_xa.flags & ATA_F_TIMEOUT_RUNNING) {
-			callout_stop(&ccb->ccb_timeout);
+			callout_stop_sync(&ccb->ccb_timeout);
 			ccb->ccb_xa.flags &= ~ATA_F_TIMEOUT_RUNNING;
 		}
+		ap->ap_expired &= ~(1 << slot);
 		ccb->ccb_xa.flags &= ~(ATA_F_TIMEOUT_DESIRED |
 				       ATA_F_TIMEOUT_EXPIRED);
 		ccb->ccb_xa.state = ATA_S_TIMEOUT;
@@ -3552,12 +3552,13 @@ ahci_ata_cmd_done(struct ahci_ccb *ccb)
 	 * the flags, so make sure its stopped.
 	 */
 	if (xa->flags & ATA_F_TIMEOUT_RUNNING) {
-		callout_stop(&ccb->ccb_timeout);
+		callout_stop_sync(&ccb->ccb_timeout);
 		xa->flags &= ~ATA_F_TIMEOUT_RUNNING;
 	}
 	xa->flags &= ~(ATA_F_TIMEOUT_DESIRED | ATA_F_TIMEOUT_EXPIRED);
+	ccb->ccb_port->ap_expired &= ~(1 << ccb->ccb_slot);
 
-	KKASSERT(xa->state != ATA_S_ONCHIP);
+	KKASSERT(xa->state != ATA_S_ONCHIP && xa->state != ATA_S_PUT);
 	ahci_unload_prdt(ccb);
 
 	if (xa->state != ATA_S_TIMEOUT)
@@ -3577,6 +3578,7 @@ ahci_ata_cmd_timeout_unserialized(void *arg)
 	struct ahci_ccb		*ccb = arg;
 	struct ahci_port	*ap = ccb->ccb_port;
 
+	KKASSERT(ccb->ccb_xa.flags & ATA_F_TIMEOUT_RUNNING);
 	ccb->ccb_xa.flags &= ~ATA_F_TIMEOUT_RUNNING;
 	ccb->ccb_xa.flags |= ATA_F_TIMEOUT_EXPIRED;
 	ahci_os_signal_port_thread(ap, AP_SIGF_TIMEOUT);
