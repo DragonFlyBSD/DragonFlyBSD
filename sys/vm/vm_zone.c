@@ -182,7 +182,8 @@ zfree(vm_zone_t z, void *item)
 
 LIST_HEAD(zlist, vm_zone) zlist = LIST_HEAD_INITIALIZER(zlist);
 static int sysctl_vm_zone(SYSCTL_HANDLER_ARGS);
-static int zone_kmem_pages, zone_kern_pages, zone_kmem_kvaspace;
+static int zone_kmem_pages, zone_kern_pages;
+static long zone_kmem_kvaspace;
 
 /*
  * Create a zone, but don't allocate the zone structure.  If the
@@ -212,7 +213,7 @@ int
 zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 	int nentries, int flags, int zalloc)
 {
-	int totsize;
+	size_t totsize;
 
 	/*
 	 * Only zones created with zinit() are destroyable.
@@ -254,8 +255,8 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 	 * vm_map_entry_reserve().
 	 */
 	if (z->zflags & ZONE_INTERRUPT) {
-		totsize = round_page(z->zsize * nentries);
-		zone_kmem_kvaspace += totsize;
+		totsize = round_page((size_t)z->zsize * nentries);
+		atomic_add_long(&zone_kmem_kvaspace, totsize);
 
 		z->zkva = kmem_alloc_pageable(&kernel_map, totsize);
 		if (z->zkva == 0) {
@@ -360,7 +361,7 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 	z->znalloc = 0;
 	spin_init(&z->zlock);
 
-	bzero(item, nitems * z->zsize);
+	bzero(item, (size_t)nitems * z->zsize);
 	z->zitems = NULL;
 	for (i = 0; i < nitems; i++) {
 		((void **)item)[0] = z->zitems;
@@ -412,8 +413,10 @@ zdestroy(vm_zone_t z)
 		/*
 		 * Free the mapping.
 		 */
-		kmem_free(&kernel_map, z->zkva, z->zpagemax*PAGE_SIZE);
-		atomic_subtract_int(&zone_kmem_kvaspace, z->zpagemax*PAGE_SIZE);
+		kmem_free(&kernel_map, z->zkva,
+			  (size_t)z->zpagemax * PAGE_SIZE);
+		atomic_subtract_long(&zone_kmem_kvaspace,
+				     (size_t)z->zpagemax * PAGE_SIZE);
 
 		/*
 		 * Free the backing object and physical pages.
@@ -455,8 +458,9 @@ zget(vm_zone_t z)
 {
 	int i;
 	vm_page_t m;
-	int nitems, nbytes;
+	int nitems;
 	int savezpc;
+	size_t nbytes;
 	void *item;
 
 	if (z == NULL)
@@ -469,7 +473,7 @@ zget(vm_zone_t z)
 		 */
 		vm_object_hold(z->zobj);
 		savezpc = z->zpagecount;
-		nbytes = z->zpagecount * PAGE_SIZE;
+		nbytes = (size_t)z->zpagecount * PAGE_SIZE;
 		nbytes -= nbytes % z->zsize;
 		item = (char *) z->zkva + nbytes;
 		for (i = 0; ((i < z->zalloc) && (z->zpagecount < z->zpagemax));
@@ -499,7 +503,8 @@ zget(vm_zone_t z)
 			zone_kmem_pages++;
 			vmstats.v_wire_count++;
 		}
-		nitems = ((z->zpagecount * PAGE_SIZE) - nbytes) / z->zsize;
+		nitems = (((size_t)z->zpagecount * PAGE_SIZE) - nbytes) /
+			 z->zsize;
 		vm_object_drop(z->zobj);
 	} else if (z->zflags & ZONE_SPECIAL) {
 		/*
@@ -509,7 +514,7 @@ zget(vm_zone_t z)
 		 * instead.  The map entries are pre-reserved by the kernel
 		 * by vm_map_entry_reserve_cpu_init().
 		 */
-		nbytes = z->zalloc * PAGE_SIZE;
+		nbytes = (size_t)z->zalloc * PAGE_SIZE;
 
 		item = (void *)kmem_alloc3(&kernel_map, nbytes, KM_KRESERVE);
 
@@ -682,7 +687,7 @@ SYSCTL_OID(_vm, OID_AUTO, zone, CTLTYPE_STRING|CTLFLAG_RD, \
 
 SYSCTL_INT(_vm, OID_AUTO, zone_kmem_pages,
 	CTLFLAG_RD, &zone_kmem_pages, 0, "Number of interrupt safe pages allocated by zone");
-SYSCTL_INT(_vm, OID_AUTO, zone_kmem_kvaspace,
+SYSCTL_LONG(_vm, OID_AUTO, zone_kmem_kvaspace,
 	CTLFLAG_RD, &zone_kmem_kvaspace, 0, "KVA space allocated by zone");
 SYSCTL_INT(_vm, OID_AUTO, zone_kern_pages,
 	CTLFLAG_RD, &zone_kern_pages, 0, "Number of non-interrupt safe pages allocated by zone");
