@@ -198,6 +198,8 @@ sys_lwp_create(struct lwp_create_args *uap)
 	plimit_lwp_fork(p);	/* force exclusive access */
 	lp = lwp_fork(curthread->td_lwp, p, RFPROC);
 	error = cpu_prepare_lwp(lp, &params);
+	if (error)
+		goto fail;
 	if (params.tid1 != NULL &&
 	    (error = copyout(&lp->lwp_tid, params.tid1, sizeof(lp->lwp_tid))))
 		goto fail;
@@ -223,6 +225,7 @@ fail:
 	/* lwp_dispose expects an exited lwp, and a held proc */
 	lp->lwp_flag |= LWP_WEXIT;
 	lp->lwp_thread->td_flags |= TDF_EXITING;
+	lwkt_remove_tdallq(lp->lwp_thread);
 	PHOLD(p);
 	lwp_dispose(lp);
 	lwkt_reltoken(&p->p_token);
