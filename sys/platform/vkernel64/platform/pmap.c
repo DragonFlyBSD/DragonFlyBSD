@@ -98,7 +98,7 @@
 
 #define PMAP_KEEP_PDIRS
 #ifndef PMAP_SHPGPERPROC
-#define PMAP_SHPGPERPROC 200
+#define PMAP_SHPGPERPROC 1000
 #endif
 
 #if defined(DIAGNOSTIC)
