@@ -51,6 +51,7 @@ help:
 	@echo "    root              - create a new, empty root.img"
 	@echo "    install           - install a world & kernel"
 	@echo "                        into root.img"
+	@echo "    leaf		     - additional customizatio"
 	@echo "    kernel   	     - build vkernel"
 	@echo "    quickworld        - incremental rebuild world"
 	@echo "    quickkernel       - incremental rebuild kernel"
@@ -128,6 +129,10 @@ install: mount
 		 NO_MODULES= \
 		 installkernel
 	cp ${VKDIR}/root/boot/kernel/kernel ${VKDIR}/vkernel
+
+leaf: mount
+	echo 'ifconfig_vke0="up"' > ${VKDIR}/root/etc/rc.conf
+	echo 'defaultrouter="10.26.0.1" >> ${VKDIR}/root/etc/rc.conf
 
 # Quick reinstall - just install a new kernel on top of an existing image
 #
