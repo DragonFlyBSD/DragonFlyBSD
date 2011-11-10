@@ -326,17 +326,6 @@ cpu_thread_exit(void)
 	panic("cpu_exit");
 }
 
-/*
- * Process Reaper.  Called after the caller has acquired the thread's
- * rwlock and removed it from the reap list.
- */
-void
-cpu_proc_wait(struct proc *p)
-{
-	/* drop per-process resources */
-	pmap_dispose_proc(p);
-}
-
 #ifdef notyet
 static void
 setredzone(u_short *pte, caddr_t vaddr)

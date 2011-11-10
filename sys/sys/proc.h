@@ -542,7 +542,6 @@ void	cpu_set_thread_handler(struct thread *td, void (*retfunc)(void), void *func
 int	fork1 (struct lwp *, int, struct proc **);
 void	start_forked_proc (struct lwp *, struct proc *);
 int	trace_req (struct proc *);
-void	cpu_proc_wait (struct proc *);
 void	cpu_thread_wait (struct thread *);
 void	setsugid (void);
 void	faultin (struct proc *p);

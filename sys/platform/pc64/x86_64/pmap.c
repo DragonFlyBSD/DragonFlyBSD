@@ -1295,16 +1295,6 @@ pmap_init_proc(struct proc *p)
 }
 
 /*
- * Dispose the UPAGES for a process that has exited.
- * This routine directly impacts the exit perf of a process.
- */
-void
-pmap_dispose_proc(struct proc *p)
-{
-	KASSERT(p->p_lock == 0, ("attempt to dispose referenced proc! %p", p));
-}
-
-/*
  * Initialize pmap0/vmspace0.  This pmap is not added to pmap_list because
  * it, and IdlePTD, represents the template used to update all other pmaps.
  *

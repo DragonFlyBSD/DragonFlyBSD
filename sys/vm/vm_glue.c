@@ -266,20 +266,6 @@ vm_fork(struct proc *p1, struct proc *p2, int flags)
 }
 
 /*
- * Called after process has been wait(2)'ed apon and is being reaped.
- * The idea is to reclaim resources that we could not reclaim while  
- * the process was still executing.
- *
- * No requirements.
- */
-void
-vm_waitproc(struct proc *p)
-{
-	cpu_proc_wait(p);
-	vmspace_exitfree(p);	/* and clean-out the vmspace */
-}
-
-/*
  * Set default limits for VM system.  Call during proc0's initialization.
  *
  * Called from the low level boot code only.

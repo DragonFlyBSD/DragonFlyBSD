@@ -192,7 +192,6 @@ int		 pmap_prefault_ok (pmap_t, vm_offset_t);
 int		 pmap_mincore (pmap_t pmap, vm_offset_t addr);
 void		 pmap_init_proc (struct proc *);
 void		 pmap_init_thread (struct thread *td);
-void		 pmap_dispose_proc (struct proc *p);
 void		 pmap_replacevm (struct proc *, struct vmspace *, int);
 void		 pmap_setlwpvm (struct lwp *, struct vmspace *);
 

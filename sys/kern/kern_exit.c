@@ -947,17 +947,20 @@ loop:
 				ps = NULL;
 			}
 
-			vm_waitproc(p);
-
 			/*
-			 * Temporary refs may still have been acquired while
-			 * we removed the process, make sure they are all
-			 * gone before kfree()ing.  Now that the process has
-			 * been removed from all lists and all references to
-			 * it have gone away, no new refs can occur.
+			 * Our exitingcount was incremented when the process
+			 * became a zombie, now that the process has been
+			 * removed from (almost) all lists we should be able
+			 * to safely destroy its vmspace.  Wait for any current
+			 * holders to go away (so the vmspace remains stable),
+			 * then scrap it.
 			 */
 			while (p->p_lock)
 				tsleep(p, 0, "reap4", hz);
+			vmspace_exitfree(p);
+			while (p->p_lock)
+				tsleep(p, 0, "reap5", hz);
+
 			kfree(p, M_PROC);
 			atomic_add_int(&nprocs, -1);
 			error = 0;

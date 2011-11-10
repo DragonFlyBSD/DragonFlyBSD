@@ -887,16 +887,6 @@ pmap_init_proc(struct proc *p)
 }
 
 /*
- * Destroy the UPAGES for a process that has exited and disassociate
- * the process from its thread.
- */
-void
-pmap_dispose_proc(struct proc *p)
-{
-	KASSERT(p->p_lock == 0, ("attempt to dispose referenced proc! %p", p));
-}
-
-/*
  * We pre-allocate all page table pages for kernel virtual memory so
  * this routine will only be called if KVM has been exhausted.
  *
