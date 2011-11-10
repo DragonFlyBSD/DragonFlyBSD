@@ -70,6 +70,7 @@ _refcount_wait(volatile u_int *countp, const char *wstr)
 
 	for (;;) {
 		n = *countp;
+		cpu_ccfence();
 		if (n == 0)
 			break;
 		if (loops > threshold) {
@@ -106,6 +107,7 @@ _refcount_release_wakeup_n(volatile u_int *countp, u_int i)
 
 	for (;;) {
 		n = *countp;
+		cpu_ccfence();
 		if (n == (REFCNTF_WAITING | i)) {
 			if (atomic_cmpset_int(countp, n, 0)) {
 				wakeup(countp);
