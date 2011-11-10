@@ -826,6 +826,7 @@ sysctl_out_proc(struct proc *p, struct sysctl_req *req, int flags)
 	int error;
 
 	bzero(&ki, sizeof(ki));
+	lwkt_gettoken(&p->p_token);
 	fill_kinfo_proc(p, &ki);
 	if ((flags & KERN_PROC_FLAG_LWP) == 0)
 		skp = 1;
@@ -841,6 +842,7 @@ sysctl_out_proc(struct proc *p, struct sysctl_req *req, int flags)
 		if (skp)
 			break;
 	}
+	lwkt_reltoken(&p->p_token);
 	/* We need to output at least the proc, even if there is no lwp. */
 	if (had_output == 0) {
 		error = SYSCTL_OUT(req, &ki, sizeof(ki));

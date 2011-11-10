@@ -269,18 +269,23 @@ linprocfs_rw(struct vop_read_args *ap)
 	curp = td->td_proc;
 	KKASSERT(curp);
 
-	p = PFIND(pfs->pfs_pid);
-	if (p == 0)
+	p = pfind(pfs->pfs_pid);
+	if (p == NULL)
 		return (EINVAL);
-	if (p->p_pid == 1 && securelevel > 0 && uio->uio_rw == UIO_WRITE)
+	if (p->p_pid == 1 && securelevel > 0 && uio->uio_rw == UIO_WRITE) {
+		PRELE(p);
 		return (EACCES);
+	}
 	lp = FIRST_LWP_IN_PROC(p);
 	LWPHOLD(lp);
 
+	lwkt_gettoken(&pfs_token);
 	while (pfs->pfs_lockowner) {
 		tsleep(&pfs->pfs_lockowner, 0, "pfslck", 0);
 	}
 	pfs->pfs_lockowner = curthread;
+	lwkt_reltoken(&pfs_token);
+
 	switch (pfs->pfs_type) {
 	case Pmem:
 		rtval = procfs_domem(curp, lp, pfs, uio);
@@ -338,8 +343,13 @@ linprocfs_rw(struct vop_read_args *ap)
 		break;
 	}
 	LWPRELE(lp);
+	PRELE(p);
+
+	lwkt_gettoken(&pfs_token);
 	pfs->pfs_lockowner = NULL;
 	wakeup(&pfs->pfs_lockowner);
+	lwkt_reltoken(&pfs_token);
+
 	return rtval;
 }
 

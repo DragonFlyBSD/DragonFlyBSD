@@ -421,6 +421,7 @@ linprocfs_dostatm(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	char *ps, psbuf[1024];
 	struct kinfo_proc kp;
 
+	lwkt_gettoken(&p->p_token);
 	fill_kinfo_proc(p, &kp);
 
 	ps = psbuf;
@@ -435,6 +436,7 @@ linprocfs_dostatm(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	PS_ADD("",	"%ju",	(uintmax_t)0); /* XXX */
 #undef	PS_ADD
 	ps += ksprintf(ps, "\n");
+	lwkt_reltoken(&p->p_token);
 
 	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
@@ -450,6 +452,7 @@ linprocfs_doprocstat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	char *ps, psbuf[1024];
 	struct kinfo_proc kp;
 
+	lwkt_gettoken(&p->p_token);
 	fill_kinfo_proc(p, &kp);
 
 	start = 0;
@@ -512,6 +515,7 @@ linprocfs_doprocstat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	PS_ADD("policy",	"%u",	kp.kp_nice); /* XXX */ /* >= 2.5.19 */
 #undef PS_ADD
 	ps += ksprintf(ps, "\n");
+	lwkt_reltoken(&p->p_token);
 	
 	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
@@ -541,6 +545,7 @@ linprocfs_doprocstatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 
 	ps = psbuf;
 
+	lwkt_gettoken(&p->p_token);
 	if (p->p_stat > sizeof state_str / sizeof *state_str)
 		state = state_str[0];
 	else
@@ -607,6 +612,7 @@ linprocfs_doprocstatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	PS_ADD(ps, "CapPrm:\t%016x\n",	  0);
 	PS_ADD(ps, "CapEff:\t%016x\n",	  0);
 #undef PS_ADD
+	lwkt_reltoken(&p->p_token);
 	
 	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }

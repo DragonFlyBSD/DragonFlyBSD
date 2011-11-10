@@ -781,7 +781,7 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 		if (vmspace->vm_upcalls)
 			upc_release(vmspace, ONLY_LWP_IN_PROC(imgp->proc));
 		pmap_remove_pages(vmspace_pmap(vmspace),
-			0, VM_MAX_USER_ADDRESS);
+				  0, VM_MAX_USER_ADDRESS);
 		vm_map_remove(map, 0, VM_MAX_USER_ADDRESS);
 	} else {
 		vmspace_exec(imgp->proc, NULL);

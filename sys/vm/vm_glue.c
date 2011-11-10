@@ -161,6 +161,7 @@ useracc(c_caddr_t addr, int len, int rw)
 	vm_prot_t prot;
 	vm_map_t map;
 	vm_map_entry_t save_hint;
+	vm_offset_t wrap;
 
 	KASSERT((rw & (~VM_PROT_ALL)) == 0,
 	    ("illegal ``rw'' argument to useracc (%x)\n", rw));
@@ -168,14 +169,9 @@ useracc(c_caddr_t addr, int len, int rw)
 	/*
 	 * XXX - check separately to disallow access to user area and user
 	 * page tables - they are in the map.
-	 *
-	 * XXX - VM_MAX_USER_ADDRESS is an end address, not a max.  It was once
-	 * only used (as an end address) in trap.c.  Use it as an end address
-	 * here too.  This bogusness has spread.  I just fixed where it was
-	 * used as a max in vm_mmap.c.
 	 */
-	if ((vm_offset_t) addr + len > /* XXX */ VM_MAX_USER_ADDRESS
-	    || (vm_offset_t) addr + len < (vm_offset_t) addr) {
+	wrap = (vm_offset_t)addr + len;
+	if (wrap > VM_MAX_USER_ADDRESS || wrap < (vm_offset_t)addr) {
 		return (FALSE);
 	}
 	map = &curproc->p_vmspace->vm_map;
@@ -186,8 +182,7 @@ useracc(c_caddr_t addr, int len, int rw)
 	 */
 	save_hint = map->hint;
 	rv = vm_map_check_protection(map, trunc_page((vm_offset_t)addr),
-				     round_page((vm_offset_t)addr + len),
-				     prot, TRUE);
+				     round_page(wrap), prot, TRUE);
 	map->hint = save_hint;
 	vm_map_unlock_read(map);
 	
@@ -571,8 +566,6 @@ swapout_procs_callback(struct proc *p, void *data)
 			minslp = lp->lwp_slptime;
 	}
 
-	sysref_get(&vm->vm_sysref);
-
 	/*
 	 * If the process has been asleep for awhile, swap
 	 * it out.
@@ -586,7 +579,6 @@ swapout_procs_callback(struct proc *p, void *data)
 	/*
 	 * cleanup our reference
 	 */
-	sysref_put(&vm->vm_sysref);
 	lwkt_reltoken(&p->p_token);
 
 	return(0);
@@ -603,12 +595,11 @@ swapout(struct proc *p)
 		kprintf("swapping out %d (%s)\n", p->p_pid, p->p_comm);
 #endif
 	++p->p_ru.ru_nswap;
+
 	/*
 	 * remember the process resident count
 	 */
-	lwkt_gettoken(&p->p_vmspace->vm_map.token);
 	p->p_vmspace->vm_swrss = vmspace_resident_count(p->p_vmspace);
-	lwkt_reltoken(&p->p_vmspace->vm_map.token);
 	p->p_flag |= P_SWAPPEDOUT;
 	p->p_swtime = 0;
 }

@@ -68,6 +68,8 @@ dev_t dev2udev(cdev_t dev);	/* kvm_proc.c */
  * NOTE!  We may be asked to fill in kinfo_proc for a zombied process, and
  * the process may be in the middle of being deallocated.  Check all pointers
  * for NULL.
+ *
+ * Caller must hold p->p_token
  */
 void
 fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
@@ -150,21 +152,22 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 
 	if ((vm = p->p_vmspace) != NULL) {
 #ifdef _KERNEL
-		sysref_get(&vm->vm_sysref);
-		lwkt_gettoken(&vm->vm_map.token);
+		/*sysref_get(&vm->vm_sysref);*/
+		/*lwkt_gettoken(&vm->vm_map.token);*/
 #endif
 		kp->kp_vm_map_size = vm->vm_map.size;
 		kp->kp_vm_rssize = vmspace_resident_count(vm);
 #ifdef _KERNEL
-		kp->kp_vm_prssize = vmspace_president_count(vm);
+		/*XXX MP RACES */
+		/*kp->kp_vm_prssize = vmspace_president_count(vm);*/
 #endif
 		kp->kp_vm_swrss = vm->vm_swrss;
 		kp->kp_vm_tsize = vm->vm_tsize;
 		kp->kp_vm_dsize = vm->vm_dsize;
 		kp->kp_vm_ssize = vm->vm_ssize;
 #ifdef _KERNEL
-		lwkt_reltoken(&vm->vm_map.token);
-		sysref_put(&vm->vm_sysref);
+		/*lwkt_reltoken(&vm->vm_map.token);*/
+		/*sysref_put(&vm->vm_sysref);*/
 #endif
 	}
 

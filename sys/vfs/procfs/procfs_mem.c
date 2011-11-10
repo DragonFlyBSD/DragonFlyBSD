@@ -70,6 +70,9 @@
 static int	procfs_rwmem (struct proc *curp,
 				  struct proc *p, struct uio *uio);
 
+/*
+ * p->p_token must be held.
+ */
 static int
 procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 {
@@ -87,9 +90,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	 * page table usage in that process may be messed up.
 	 */
 	vm = p->p_vmspace;
-	sysref_get(&vm->vm_sysref);
 	if ((p->p_flag & P_WEXIT) || sysref_isinactive(&vm->vm_sysref)) {
-		sysref_put(&vm->vm_sysref);
 		return EFAULT;
 	}
 
@@ -154,7 +155,6 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	} while (error == 0 && uio->uio_resid > 0);
 
 	kmem_free(&kernel_map, kva, PAGE_SIZE);
-	sysref_put(&vm->vm_sysref);
 	return (error);
 }
 
@@ -169,17 +169,27 @@ procfs_domem(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	     struct uio *uio)
 {
 	struct proc *p = lp->lwp_proc;
+	int error;
 
 	if (uio->uio_resid == 0)
 		return (0);
 
-	/* Can't trace a process that's currently exec'ing. */ 
-	if ((p->p_flag & P_INEXEC) != 0)
-		return EAGAIN;
- 	if (!CHECKIO(curp, p) || p_trespass(curp->p_ucred, p->p_ucred))
- 		return EPERM;
-
-	return (procfs_rwmem(curp, p, uio));
+	lwkt_gettoken(&p->p_token);
+	if ((p->p_flag & P_INEXEC) != 0) {
+		/*
+		 * Can't trace a process that's currently exec'ing.
+		 */
+		error = EAGAIN;
+	} else if (!CHECKIO(curp, p) || p_trespass(curp->p_ucred, p->p_ucred)) {
+		/*
+		 * Can't trace processes outside our jail
+		 */
+		error = EPERM;
+	} else {
+		error = procfs_rwmem(curp, p, uio);
+	}
+	lwkt_reltoken(&p->p_token);
+	return(error);
 }
 
 /*
