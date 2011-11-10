@@ -559,6 +559,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 	long i;		/* must be 64 bits */
 	long nkpt_base;
 	long nkpt_phys;
+	int j;
 
 	/*
 	 * We are running (mostly) V=P at this point
@@ -568,18 +569,21 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 * MSGBUF_SIZE, and other stuff.  Be generous.
 	 *
 	 * Maxmem is in pages.
+	 *
+	 * ndmpdp is the number of 1GB pages we wish to map.
 	 */
 	ndmpdp = (ptoa(Maxmem) + NBPDP - 1) >> PDPSHIFT;
 	if (ndmpdp < 4)		/* Minimum 4GB of dirmap */
 		ndmpdp = 4;
+	KKASSERT(ndmpdp <= NKPDPE * NPDEPG);
 
 	/*
 	 * Starting at the beginning of kvm (not KERNBASE).
 	 */
 	nkpt_phys = (Maxmem * sizeof(struct vm_page) + NBPDR - 1) / NBPDR;
 	nkpt_phys += (Maxmem * sizeof(struct pv_entry) + NBPDR - 1) / NBPDR;
-	nkpt_phys += ((nkpt + nkpt + 1 + NKPML4E + NKPDPE + NDMPML4E + ndmpdp) +
-		     511) / 512;
+	nkpt_phys += ((nkpt + nkpt + 1 + NKPML4E + NKPDPE + NDMPML4E +
+		       ndmpdp) + 511) / 512;
 	nkpt_phys += 128;
 
 	/*
@@ -657,26 +661,34 @@ create_pagetables(vm_paddr_t *firstaddr)
 				PG_RW | PG_V | PG_U;
 	}
 
-	/* Now set up the direct map space using either 2MB or 1GB pages */
-	/* Preset PG_M and PG_A because demotion expects it */
+	/*
+	 * Now set up the direct map space using either 2MB or 1GB pages
+	 * Preset PG_M and PG_A because demotion expects it.
+	 *
+	 * When filling in entries in the PD pages make sure any excess
+	 * entries are set to zero as we allocated enough PD pages
+	 */
 	if ((amd_feature & AMDID_PAGE1GB) == 0) {
 		for (i = 0; i < NPDEPG * ndmpdp; i++) {
 			((pd_entry_t *)DMPDphys)[i] = i << PDRSHIFT;
 			((pd_entry_t *)DMPDphys)[i] |= PG_RW | PG_V | PG_PS |
-			    PG_G | PG_M | PG_A;
+						       PG_G | PG_M | PG_A;
 		}
-		/* And the direct map space's PDP */
+
+		/*
+		 * And the direct map space's PDP
+		 */
 		for (i = 0; i < ndmpdp; i++) {
 			((pdp_entry_t *)DMPDPphys)[i] = DMPDphys +
-			    (i << PAGE_SHIFT);
+							(i << PAGE_SHIFT);
 			((pdp_entry_t *)DMPDPphys)[i] |= PG_RW | PG_V | PG_U;
 		}
 	} else {
 		for (i = 0; i < ndmpdp; i++) {
 			((pdp_entry_t *)DMPDPphys)[i] =
-			    (vm_paddr_t)i << PDPSHIFT;
+						(vm_paddr_t)i << PDPSHIFT;
 			((pdp_entry_t *)DMPDPphys)[i] |= PG_RW | PG_V | PG_PS |
-			    PG_G | PG_M | PG_A;
+							 PG_G | PG_M | PG_A;
 		}
 	}
 
@@ -684,11 +696,18 @@ create_pagetables(vm_paddr_t *firstaddr)
 	((pdp_entry_t *)KPML4phys)[PML4PML4I] = KPML4phys;
 	((pdp_entry_t *)KPML4phys)[PML4PML4I] |= PG_RW | PG_V | PG_U;
 
-	/* Connect the Direct Map slot up to the PML4 */
-	((pdp_entry_t *)KPML4phys)[DMPML4I] = DMPDPphys;
-	((pdp_entry_t *)KPML4phys)[DMPML4I] |= PG_RW | PG_V | PG_U;
+	/*
+	 * Connect the Direct Map slots up to the PML4
+	 */
+	for (j = 0; j < NDMPML4E; ++j) {
+		((pdp_entry_t *)KPML4phys)[DMPML4I + j] =
+			(DMPDPphys + ((vm_paddr_t)j << PML4SHIFT)) |
+			PG_RW | PG_V | PG_U;
+	}
 
-	/* Connect the KVA slot up to the PML4 */
+	/*
+	 * Connect the KVA slot up to the PML4
+	 */
 	((pdp_entry_t *)KPML4phys)[KPML4I] = KPDPphys;
 	((pdp_entry_t *)KPML4phys)[KPML4I] |= PG_RW | PG_V | PG_U;
 }
@@ -1314,6 +1333,7 @@ void
 pmap_pinit(struct pmap *pmap)
 {
 	pv_entry_t pv;
+	int j;
 
 	/*
 	 * Misc initialization
@@ -1349,10 +1369,20 @@ pmap_pinit(struct pmap *pmap)
 		pmap_kenter((vm_offset_t)pmap->pm_pml4,
 			    VM_PAGE_TO_PHYS(pv->pv_m));
 		pv_put(pv);
-		pmap->pm_pml4[KPML4I] = KPDPphys | PG_RW | PG_V | PG_U;
-		pmap->pm_pml4[DMPML4I] = DMPDPphys | PG_RW | PG_V | PG_U;
 
-		/* install self-referential address mapping entry */
+		/*
+		 * Install DMAP and KMAP.
+		 */
+		for (j = 0; j < NDMPML4E; ++j) {
+			pmap->pm_pml4[DMPML4I + j] =
+				(DMPDPphys + ((vm_paddr_t)j << PML4SHIFT)) |
+				PG_RW | PG_V | PG_U;
+		}
+		pmap->pm_pml4[KPML4I] = KPDPphys | PG_RW | PG_V | PG_U;
+
+		/*
+		 * install self-referential address mapping entry
+		 */
 		pmap->pm_pml4[PML4PML4I] = VM_PAGE_TO_PHYS(pv->pv_m) |
 					   PG_V | PG_RW | PG_A | PG_M;
 	} else {

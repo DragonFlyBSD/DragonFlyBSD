@@ -101,7 +101,15 @@
 #define NUPTE_TOTAL	((vm_pindex_t)NPTEPG * NUPT_TOTAL)
 #define NUPTE_USER	((vm_pindex_t)NPTEPG * NPDEPG * NPDPEPG * NUPDP_USER)
 
-#define	NDMPML4E	1		/* number of dmap PML4 slots */
+/*
+ * Number of 512G dmap PML4 slots (max ~254 or so but don't go over 64,
+ * which gives us 32TB of ram).  Because we cache free, empty pmaps the
+ * initialization overhead is minimal.
+ *
+ * It should be possible to bump this up to 255 (but not 256), which would
+ * be able to address a maximum of ~127TB of physical ram.
+ */
+#define	NDMPML4E	64
 
 /*
  * The *PML4I values control the layout of virtual memory.  Each PML4
@@ -110,7 +118,7 @@
 #define	PML4PML4I	(NPML4EPG/2)	/* Index of recursive pml4 mapping */
 
 #define	KPML4I		(NPML4EPG-1)	/* Top 512GB for KVM */
-#define	DMPML4I		(KPML4I-1)	/* Next 512GB down for direct map */
+#define	DMPML4I		(KPML4I-NDMPML4E) /* Next 512GBxN down for dmap */
 
 /*
  * The location of KERNBASE in the last PD of the kernel's KVM (KPML4I)
