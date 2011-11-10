@@ -4590,7 +4590,8 @@ vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
  * If the buffer cache's vm_page_alloc() fails a vm_wait() can deadlock
  * against the pageout daemon if pages are not freed from other sources.
  *
- * MPSAFE
+ * If NULL is returned the caller is expected to retry (typically check if
+ * the page already exists on retry before trying to allocate one).
  */
 static
 vm_page_t
@@ -4603,7 +4604,8 @@ bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit)
 	/*
 	 * Try a normal allocation, allow use of system reserve.
 	 */
-	p = vm_page_alloc(obj, pg, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
+	p = vm_page_alloc(obj, pg, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM |
+				   VM_ALLOC_NULL_OK);
 	if (p)
 		return(p);
 
@@ -4640,13 +4642,13 @@ bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit)
 	 * won't deadlock.
 	 */
 	p = vm_page_alloc(obj, pg, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM |
-				   VM_ALLOC_INTERRUPT);
+				   VM_ALLOC_INTERRUPT | VM_ALLOC_NULL_OK);
 	if (p) {
 		if (vm_page_count_severe()) {
 			++lowmempgallocs;
 			vm_wait(hz / 20 + 1);
 		}
-	} else {
+	} else if (vm_page_lookup(obj, pg) == NULL) {
 		kprintf("bio_page_alloc: Memory exhausted during bufcache "
 			"page allocation\n");
 		++lowmempgfails;
