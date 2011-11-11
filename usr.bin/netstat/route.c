@@ -32,7 +32,6 @@
  *
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $
- * $DragonFly: src/usr.bin/netstat/route.c,v 1.13 2008/07/07 22:02:10 nant Exp $
  */
 
 #include <sys/kinfo.h>
@@ -49,7 +48,6 @@
 
 #include <netinet/in.h>
 #include <netipx/ipx.h>
-#include <netatalk/at.h>
 #include <netgraph/socket/ng_socket.h>
 
 #include <netproto/mpls/mpls.h>
@@ -206,9 +204,6 @@ pr_family(int af1)
 		break;
 	case AF_ISO:
 		afname = "ISO";
-		break;
-	case AF_APPLETALK:
-		afname = "AppleTalk";
 		break;
 	case AF_CCITT:
 		afname = "X.25";
@@ -644,14 +639,6 @@ fmt_sockaddr(struct sockaddr *sa, struct sockaddr *mask, int flags)
 			cp = "default";
 		else
 			cp = ipx_print(sa);
-		break;
-	    }
-	case AF_APPLETALK:
-	    {
-		if (!(flags & RTF_HOST) && mask)
-			cp = atalk_print2(sa,mask,9);
-		else
-			cp = atalk_print(sa,11);
 		break;
 	    }
 	case AF_NETGRAPH:

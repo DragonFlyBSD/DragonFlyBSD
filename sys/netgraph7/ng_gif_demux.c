@@ -63,7 +63,6 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_gif_demux.c,v 1.10 2005/01/07 01:45:39 imp Exp $
- * $DragonFly: src/sys/netgraph7/ng_gif_demux.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -107,7 +106,6 @@ typedef const struct iffam *iffam_p;
 const static struct iffam gFamilies[] = {
 	{ AF_INET,	NG_GIF_DEMUX_HOOK_INET	},
 	{ AF_INET6,	NG_GIF_DEMUX_HOOK_INET6	},
-	{ AF_APPLETALK,	NG_GIF_DEMUX_HOOK_ATALK	},
 	{ AF_IPX,	NG_GIF_DEMUX_HOOK_IPX	},
 	{ AF_ATM,	NG_GIF_DEMUX_HOOK_ATM	},
 	{ AF_NATM,	NG_GIF_DEMUX_HOOK_NATM	},

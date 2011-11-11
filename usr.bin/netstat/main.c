@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1983, 1988, 1993 Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 3/1/94
  * $FreeBSD: src/usr.bin/netstat/main.c,v 1.34.2.12 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/main.c,v 1.16 2008/07/11 23:09:18 thomas Exp $
  */
 
 #include <sys/param.h>
@@ -110,10 +109,6 @@ static struct nlist nl[] = {
 	{ .n_name = "_ipxstat"},
 #define N_SPXSTAT	24
 	{ .n_name = "_spx_istat"},
-#define N_DDPSTAT	25
-	{ .n_name = "_ddpstat"},
-#define N_DDPCB		26
-	{ .n_name = "_ddpcb"},
 #define N_NGSOCKS	27
 	{ .n_name = "_ngsocklist"},
 #define N_IP6STAT	28
@@ -223,13 +218,6 @@ struct protox pfkeyprotox[] = {
 };
 #endif
 
-struct protox atalkprotox[] = {
-	{ N_DDPCB,	N_DDPSTAT,	1,	atalkprotopr,
-	  ddp_stats,	NULL,		"ddp",	0 },
-	{ -1,		-1,		0,	0,
-	  0,		NULL,		NULL,	0 }
-};
-
 struct protox netgraphprotox[] = {
 	{ N_NGSOCKS,	-1,		1,	netgraphprotopr,
 	  NULL,		NULL,		"ctrl",	0 },
@@ -271,7 +259,7 @@ struct protox *protoprotox[] = {
 #ifdef IPSEC
 					 pfkeyprotox,
 #endif
-					 ipxprotox, atalkprotox,
+					 ipxprotox,
 #ifdef ISO
 					 isoprotox, 
 #endif
@@ -357,8 +345,6 @@ main(int argc, char **argv)
 #endif /*INET6*/
 			else if (strcmp(optarg, "unix") == 0)
 				af = AF_UNIX;
-			else if (strcmp(optarg, "atalk") == 0)
-				af = AF_APPLETALK;
 			else if (strcmp(optarg, "ng") == 0
 			    || strcmp(optarg, "netgraph") == 0)
 				af = AF_NETGRAPH;
@@ -561,9 +547,6 @@ main(int argc, char **argv)
 		for (tp = ipxprotox; tp->pr_name; tp++)
 			printproto(tp, tp->pr_name);
 	}
-	if (af == AF_APPLETALK || af == AF_UNSPEC)
-		for (tp = atalkprotox; tp->pr_name; tp++)
-			printproto(tp, tp->pr_name);
 	if (af == AF_NETGRAPH || af == AF_UNSPEC)
 		for (tp = netgraphprotox; tp->pr_name; tp++)
 			printproto(tp, tp->pr_name);

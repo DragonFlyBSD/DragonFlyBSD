@@ -37,7 +37,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.14 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.16 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -71,7 +70,6 @@
 #include "ng_ksocket.h"
 
 #include <netinet/in.h>
-#include <netproto/atalk/at.h>
 
 #define OFFSETOF(s, e) ((char *)&((s *)0)->e - (char *)((s *)0))
 #define SADATA_OFFSET	(OFFSETOF(struct sockaddr, sa_data))
@@ -124,7 +122,6 @@ static const struct ng_ksocket_alias ng_ksocket_families[] = {
 	{ "local",	PF_LOCAL	},
 	{ "inet",	PF_INET		},
 	{ "inet6",	PF_INET6	},
-	{ "atalk",	PF_APPLETALK	},
 	{ "ipx",	PF_IPX		},
 	{ "atm",	PF_ATM		},
 	{ NULL,		-1		},
@@ -155,8 +152,6 @@ static const struct ng_ksocket_alias ng_ksocket_protos[] = {
 	{ "encap",	IPPROTO_ENCAP,		PF_INET		},
 	{ "divert",	IPPROTO_DIVERT,		PF_INET		},
 	{ "pim",	IPPROTO_PIM,		PF_INET		},
-	{ "ddp",	ATPROTO_DDP,		PF_APPLETALK	},
-	{ "aarp",	ATPROTO_AARP,		PF_APPLETALK	},
 	{ NULL,		-1					},
 };
 
@@ -302,7 +297,6 @@ ng_ksocket_sockaddr_parse(const struct ng_parse_type *type,
 	    }
 
 #if 0
-	case PF_APPLETALK:	/* XXX implement these someday */
 	case PF_INET6:
 	case PF_IPX:
 #endif
@@ -367,7 +361,6 @@ ng_ksocket_sockaddr_unparse(const struct ng_parse_type *type,
 	    }
 
 #if 0
-	case PF_APPLETALK:	/* XXX implement these someday */
 	case PF_INET6:
 	case PF_IPX:
 #endif

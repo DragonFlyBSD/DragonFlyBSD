@@ -43,7 +43,6 @@
  */
 
 #include "opt_inet.h"
-#include "opt_atalk.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -72,12 +71,6 @@
 #include <netinet/ip_gre.h>
 #else
 #error ip_gre input without IP?
-#endif
-
-#ifdef NETATALK
-#include <netproto/atalk/at.h>
-#include <netproto/atalk/at_var.h>
-#include <netproto/atalk/at_extern.h>
 #endif
 
 /* Needs IP headers. */
@@ -173,11 +166,6 @@ gre_input2(struct mbuf *m ,int hlen, u_char proto)
 		case WCCP_PROTOCOL_TYPE:
 			isr = NETISR_IP;
 			break;
-#ifdef NETATALK
-		case ETHERTYPE_ATALK:
-			isr = NETISR_ATALK1;
-			break;
-#endif
 		case ETHERTYPE_IPV6:
 			/* FALLTHROUGH */
 		default:	   /* others not yet supported */

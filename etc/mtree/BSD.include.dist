@@ -212,8 +212,6 @@
     netproto
         802_11
         ..
-        atalk
-        ..
         atm
             ipatm
             ..

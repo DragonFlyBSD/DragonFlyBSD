@@ -31,7 +31,6 @@
 .\"
 .\"     @(#)chmod.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/chmod.2,v 1.16.2.7 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/chmod.2,v 1.4 2006/05/26 19:39:37 swildner Exp $
 .\"
 .Dd August 9, 2009
 .Dt CHMOD 2
@@ -169,7 +168,7 @@ owner after it has been created.
 Group inheritance is not affected.
 .Pp
 This feature is designed for use on fileservers serving PC users via
-ftp, SAMBA, or netatalk.
+ftp or SAMBA.
 It provides security holes for shell users and as
 such should not be used on shell machines, especially on home directories.
 This option requires the SUIDDIR

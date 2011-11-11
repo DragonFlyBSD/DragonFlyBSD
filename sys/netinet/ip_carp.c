@@ -25,7 +25,6 @@
  */
 /*
  * $FreeBSD: src/sys/netinet/ip_carp.c,v 1.48 2007/02/02 09:39:09 glebius Exp $
- * $DragonFly: src/sys/netinet/ip_carp.c,v 1.10 2008/07/27 10:06:57 sephe Exp $
  */
 
 #include "opt_carp.h"
@@ -1960,7 +1959,6 @@ carp_looutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	case AF_INET:
 	case AF_INET6:
 	case AF_IPX:
-	case AF_APPLETALK:
 		break;
 
 	default:

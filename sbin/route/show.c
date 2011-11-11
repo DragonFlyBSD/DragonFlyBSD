@@ -1,7 +1,6 @@
 /*
  * $OpenBSD: show.c,v 1.26 2003/08/26 08:33:12 itojun Exp $
  * $NetBSD: show.c,v 1.1 1996/11/15 18:01:41 gwr Exp $
- * $DragonFly: src/sbin/route/show.c,v 1.6 2006/01/19 22:19:30 dillon Exp $
  */
 /*
  * Copyright (c) 1983, 1988, 1993
@@ -272,9 +271,6 @@ pr_family(int af)
 		break;
 	case AF_CCITT:
 		afname = "X.25";
-		break;
-	case AF_APPLETALK:
-		afname = "AppleTalk";
 		break;
 	default:
 		afname = NULL;

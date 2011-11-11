@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.28 2008/07/10 00:19:27 aggelos Exp $
  */
 
 #include <sys/param.h>
@@ -154,8 +153,6 @@ linux_to_bsd_domain(int domain)
 		return (AF_CCITT);
 	case LINUX_AF_IPX:
 		return (AF_IPX);
-	case LINUX_AF_APPLETALK:
-		return (AF_APPLETALK);
 	}
 	return (-1);
 }

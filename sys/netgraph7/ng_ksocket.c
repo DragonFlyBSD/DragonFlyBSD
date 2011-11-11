@@ -38,7 +38,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.61 2008/03/07 21:12:56 mav Exp $
- * $DragonFly: src/sys/netgraph7/ng_ksocket.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -67,7 +66,6 @@
 #include "ng_ksocket.h"
 
 #include <netinet/in.h>
-#include <netatalk/at.h>
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_KSOCKET, "netgraph_ksock", "netgraph ksock node ");
@@ -120,7 +118,6 @@ static const struct ng_ksocket_alias ng_ksocket_families[] = {
 	{ "local",	PF_LOCAL	},
 	{ "inet",	PF_INET		},
 	{ "inet6",	PF_INET6	},
-	{ "atalk",	PF_APPLETALK	},
 	{ "ipx",	PF_IPX		},
 	{ "atm",	PF_ATM		},
 	{ NULL,		-1		},
@@ -151,8 +148,6 @@ static const struct ng_ksocket_alias ng_ksocket_protos[] = {
 	{ "encap",	IPPROTO_ENCAP,		PF_INET		},
 	{ "divert",	IPPROTO_DIVERT,		PF_INET		},
 	{ "pim",	IPPROTO_PIM,		PF_INET		},
-	{ "ddp",	ATPROTO_DDP,		PF_APPLETALK	},
-	{ "aarp",	ATPROTO_AARP,		PF_APPLETALK	},
 	{ NULL,		-1					},
 };
 
@@ -300,7 +295,6 @@ ng_ksocket_sockaddr_parse(const struct ng_parse_type *type,
 	    }
 
 #if 0
-	case PF_APPLETALK:	/* XXX implement these someday */
 	case PF_INET6:
 	case PF_IPX:
 #endif
@@ -364,7 +358,6 @@ ng_ksocket_sockaddr_unparse(const struct ng_parse_type *type,
 	    }
 
 #if 0
-	case PF_APPLETALK:	/* XXX implement these someday */
 	case PF_INET6:
 	case PF_IPX:
 #endif

@@ -3,7 +3,7 @@
 
 PROG=	netstat
 SRCS=	if.c inet.c inet6.c main.c mbuf.c mroute.c ipx.c route.c \
-	unix.c atalk.c netgraph.c mroute6.c ipsec.c # iso.c tp_astring.c
+	unix.c netgraph.c mroute6.c ipsec.c # iso.c tp_astring.c
 CFLAGS+=-DIPSEC
 CFLAGS+=-DINET6
 

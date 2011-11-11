@@ -40,7 +40,6 @@
  */
 
 #include "use_npx.h"
-#include "opt_atalk.h"
 #include "opt_compat.h"
 #include "opt_ddb.h"
 #include "opt_directio.h"

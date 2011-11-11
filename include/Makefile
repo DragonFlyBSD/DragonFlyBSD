@@ -68,7 +68,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netgraph/pppoe netgraph/pptpgre netgraph/rfc1490 netgraph/socket \
 	netgraph/tee netgraph/tty netgraph/vjc \
 	bus/cam bus/usb bus/pccard bus/pci bus/isa bus/ppbus bus/smbus \
-	netproto/atalk netproto/atm netproto/ipsec netproto/ipx \
+	netproto/atm netproto/ipsec netproto/ipx \
 	netproto/key netproto/natm netproto/ncp netproto/smb \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
 	netproto/atm/uni netproto/802_11 netproto/mpls \
@@ -128,7 +128,6 @@ INCSLINKS+=	vfs ${INCLUDEDIR}/fs
 INCSLINKS+=	vfs ${INCLUDEDIR}/ufs
 INCSLINKS+=	ufs ${INCLUDEDIR}/vfs/ffs
 INCSLINKS+=	emulation ${INCLUDEDIR}/compat
-INCSLINKS+=	netproto/atalk ${INCLUDEDIR}/netatalk
 INCSLINKS+=	netproto/atm ${INCLUDEDIR}/netatm
 INCSLINKS+=	netproto/ipsec ${INCLUDEDIR}/netipsec
 INCSLINKS+=	netproto/ipx ${INCLUDEDIR}/netipx

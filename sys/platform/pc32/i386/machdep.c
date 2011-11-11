@@ -40,7 +40,6 @@
 
 #include "use_npx.h"
 #include "use_isa.h"
-#include "opt_atalk.h"
 #include "opt_compat.h"
 #include "opt_cpu.h"
 #include "opt_ddb.h"

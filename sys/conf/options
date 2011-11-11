@@ -309,7 +309,6 @@ IPTUNNEL		opt_ipx.h
 LIBMCHAIN
 MPLS			opt_mpls.h
 NCP			opt_ncp.h
-NETATALK		opt_atalk.h
 PPP_BSDCOMP		opt_ppp.h
 PPP_DEFLATE		opt_ppp.h
 PPP_FILTER		opt_ppp.h
@@ -453,7 +452,6 @@ LPT_DEBUG		opt_lpt.h
 PLIP_DEBUG		opt_plip.h
 LOCKF_DEBUG		opt_debug_lockf.h
 NPX_DEBUG		opt_debug_npx.h
-NETATALKDEBUG		opt_atalk.h
 SI_DEBUG		opt_debug_si.h
 
 # Fb options

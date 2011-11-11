@@ -32,10 +32,8 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.96 2008/11/22 04:00:53 sephe Exp $
  */
 
-#include "opt_atalk.h"
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipx.h"
@@ -96,18 +94,6 @@ int (*ef_inputp)(struct ifnet*, const struct ether_header *eh, struct mbuf *m);
 int (*ef_outputp)(struct ifnet *ifp, struct mbuf **mp, struct sockaddr *dst,
 		  short *tp, int *hlen);
 #endif
-
-#ifdef NETATALK
-#include <netproto/atalk/at.h>
-#include <netproto/atalk/at_var.h>
-#include <netproto/atalk/at_extern.h>
-
-#define	llc_snap_org_code	llc_un.type_snap.org_code
-#define	llc_snap_ether_type	llc_un.type_snap.ether_type
-
-extern u_char	at_org_code[3];
-extern u_char	aarp_org_code[3];
-#endif /* NETATALK */
 
 #ifdef MPLS
 #include <netproto/mpls/mpls.h>
@@ -281,54 +267,6 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		bcopy(&(((struct sockaddr_ipx *)dst)->sipx_addr.x_host),
 		      edst, ETHER_ADDR_LEN);
 		break;
-#endif
-#ifdef NETATALK
-	case AF_APPLETALK: {
-		struct at_ifaddr *aa;
-
-		/*
-		 * Hold BGL
-		 */
-		get_mplock();
-
-		if ((aa = at_ifawithnet((struct sockaddr_at *)dst)) == NULL) {
-			error = 0;	/* XXX */
-			rel_mplock();
-			goto bad;
-		}
-		/*
-		 * In the phase 2 case, need to prepend an mbuf for
-		 * the llc header.  Since we must preserve the value
-		 * of m, which is passed to us by value, we m_copy()
-		 * the first mbuf, and use it for our llc header.
-		 */
-		if (aa->aa_flags & AFA_PHASE2) {
-			struct llc llc;
-
-			M_PREPEND(m, sizeof(struct llc), MB_DONTWAIT);
-			eh = mtod(m, struct ether_header *);
-			edst = eh->ether_dhost;
-			llc.llc_dsap = llc.llc_ssap = LLC_SNAP_LSAP;
-			llc.llc_control = LLC_UI;
-			bcopy(at_org_code, llc.llc_snap_org_code,
-			      sizeof at_org_code);
-			llc.llc_snap_ether_type = htons(ETHERTYPE_AT);
-			bcopy(&llc,
-			      mtod(m, caddr_t) + sizeof(struct ether_header),
-			      sizeof(struct llc));
-			eh->ether_type = htons(m->m_pkthdr.len);
-			hlen = sizeof(struct llc) + ETHER_HDR_LEN;
-		} else {
-			eh->ether_type = htons(ETHERTYPE_AT);
-		}
-		if (!aarpresolve(ac, m, (struct sockaddr_at *)dst, edst)) {
-			rel_mplock();
-			return (0);
-		}
-
-		rel_mplock();
-		break;
-	  }
 #endif
 	case pseudo_AF_HDRCMPLT:
 	case AF_UNSPEC:
@@ -1047,9 +985,6 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 	int isr, discard = 0;
 	u_short ether_type;
 	struct ip_fw *rule = NULL;
-#ifdef NETATALK
-	struct llc *l;
-#endif
 
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_len >= ETHER_HDR_LEN,
@@ -1234,15 +1169,6 @@ post_stats:
 		break;
 #endif
 
-#ifdef NETATALK
-	case ETHERTYPE_AT:
-		isr = NETISR_ATALK1;
-		break;
-	case ETHERTYPE_AARP:
-		isr = NETISR_AARP;
-		break;
-#endif
-
 #ifdef MPLS
 	case ETHERTYPE_MPLS:
 	case ETHERTYPE_MPLS_MCAST:
@@ -1270,30 +1196,6 @@ post_stats:
 			}
 			rel_mplock();
 		}
-#endif
-#ifdef NETATALK
-		if (ether_type > ETHERMTU)
-			goto dropanyway;
-		l = mtod(m, struct llc *);
-		if (l->llc_dsap == LLC_SNAP_LSAP &&
-		    l->llc_ssap == LLC_SNAP_LSAP &&
-		    l->llc_control == LLC_UI) {
-			if (bcmp(&(l->llc_snap_org_code)[0], at_org_code,
-				 sizeof at_org_code) == 0 &&
-			    ntohs(l->llc_snap_ether_type) == ETHERTYPE_AT) {
-				m_adj(m, sizeof(struct llc));
-				isr = NETISR_ATALK2;
-				break;
-			}
-			if (bcmp(&(l->llc_snap_org_code)[0], aarp_org_code,
-				 sizeof aarp_org_code) == 0 &&
-			    ntohs(l->llc_snap_ether_type) == ETHERTYPE_AARP) {
-				m_adj(m, sizeof(struct llc));
-				isr = NETISR_AARP;
-				break;
-			}
-		}
-dropanyway:
 #endif
 		if (ng_ether_input_orphan_p != NULL) {
 			/*
@@ -1691,15 +1593,6 @@ ether_characterize(struct mbuf **m0)
 #ifdef IPX
 	case ETHERTYPE_IPX:
 		isr = NETISR_IPX;
-		break;
-#endif
-
-#ifdef NETATALK
-	case ETHERTYPE_AT:
-		isr = NETISR_ATALK1;
-		break;
-	case ETHERTYPE_AARP:
-		isr = NETISR_AARP;
 		break;
 #endif
 

@@ -18,7 +18,6 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw2.c,v 1.4.2.13 2003/05/27 22:21:11 gshapiro Exp $
- * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.12 2007/11/05 08:58:35 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -159,9 +158,6 @@ static struct _s_x ether_types[] = {
 	{ "vlan",	0x8100 },
 	{ "loop",	0x9000 },
 	{ "trail",	0x1000 },
-	{ "at",		0x809b },
-	{ "atalk",	0x809b },
-	{ "aarp",	0x80f3 },
 	{ "pppoe_disc",	0x8863 },
 	{ "pppoe_sess",	0x8864 },
 	{ "ipx_8022",	0x00E0 },

@@ -1178,13 +1178,6 @@ netproto/802_11/wlan/ieee80211_superg.c     optional wlan ieee80211_support_supe
 netproto/802_11/wlan/ieee80211_tdma.c       optional wlan ieee80211_support_tdma
 netproto/802_11/wlan/ieee80211_wds.c        optional wlan
 netproto/802_11/wlan_xauth/ieee80211_xauth.c optional wlan_xauth
-netproto/atalk/aarp.c		optional netatalk
-netproto/atalk/at_control.c	optional netatalk
-netproto/atalk/at_proto.c	optional netatalk
-netproto/atalk/at_rmx.c		optional netatalk
-netproto/atalk/ddp_input.c	optional netatalk
-netproto/atalk/ddp_output.c	optional netatalk
-netproto/atalk/ddp_usrreq.c	optional netatalk
 netproto/atm/atm_aal5.c		optional atm_core
 netproto/atm/atm_cm.c			optional atm_core
 netproto/atm/atm_device.c		optional atm_core

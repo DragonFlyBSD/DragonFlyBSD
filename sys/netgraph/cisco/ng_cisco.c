@@ -37,7 +37,6 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_cisco.c,v 1.4.2.6 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.10 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_cisco.c,v 1.25 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -57,8 +56,6 @@
 
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
-
-#include <netproto/atalk/at.h>
 
 #include <netproto/ipx/ipx.h>
 #include <netproto/ipx/ipx_if.h>
@@ -113,7 +110,6 @@ struct cisco_priv {
 	struct in_addr localip;
 	struct in_addr localmask;
 	struct protoent inet6;		/* IPv6 information */
-	struct protoent atalk;		/* AppleTalk information */
 	struct protoent ipx;		/* IPX information */
 };
 typedef struct cisco_priv *sc_p;
@@ -216,7 +212,6 @@ cisco_constructor(node_p *nodep)
 	sc->downstream.af = 0xffff;
 	sc->inet.af = AF_INET;
 	sc->inet6.af = AF_INET6;
-	sc->atalk.af = AF_APPLETALK;
 	sc->ipx.af = AF_IPX;
 	return (0);
 }
@@ -239,9 +234,6 @@ cisco_newhook(node_p node, hook_p hook, const char *name)
 	} else if (strcmp(name, NG_CISCO_HOOK_INET) == 0) {
 		sc->inet.hook = hook;
 		hook->private = &sc->inet;
-	} else if (strcmp(name, NG_CISCO_HOOK_APPLETALK) == 0) {
-		sc->atalk.hook = hook;
-		hook->private = &sc->atalk;
 	} else if (strcmp(name, NG_CISCO_HOOK_IPX) == 0) {
 		sc->ipx.hook = hook;
 		hook->private = &sc->ipx;
@@ -386,9 +378,6 @@ cisco_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		break;
 	case AF_INET6:
 		h->protocol = htons(ETHERTYPE_IPV6);
-		break;
-	case AF_APPLETALK:	/* AppleTalk Protocol */
-		h->protocol = htons(ETHERTYPE_AT);
 		break;
 	case AF_IPX:		/* Novell IPX Protocol */
 		h->protocol = htons(ETHERTYPE_IPX);
@@ -553,9 +542,6 @@ cisco_input(sc_p sc, struct mbuf *m, meta_p meta)
 			break;
 		case ETHERTYPE_IPV6:
 			pep = &sc->inet6;
-			break;
-		case ETHERTYPE_AT:
-			pep = &sc->atalk;
 			break;
 		case ETHERTYPE_IPX:
 			pep = &sc->ipx;

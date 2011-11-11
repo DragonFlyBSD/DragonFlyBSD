@@ -65,7 +65,6 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.38 2008/10/27 02:56:30 sephe Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -89,9 +88,6 @@
 #define NETISR_RESERVED0 0		/* cannot be used */
 #define	NETISR_IP	2		/* same as AF_INET */
 #define	NETISR_NS	6		/* same as AF_NS */
-#define	NETISR_AARP	15		/* Appletalk ARP */
-#define	NETISR_ATALK2	16		/* Appletalk phase 2 */
-#define	NETISR_ATALK1	17		/* Appletalk phase 1 */
 #define	NETISR_ARP	18		/* same as AF_LINK */
 #define	NETISR_MPLS	21		/* MPLS */
 #define	NETISR_IPX	23		/* same as AF_IPX */

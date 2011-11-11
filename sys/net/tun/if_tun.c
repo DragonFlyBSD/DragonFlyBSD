@@ -17,7 +17,6 @@
  */
 
 #include "use_tun.h"
-#include "opt_atalk.h"
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipx.h"
@@ -684,11 +683,6 @@ tunwrite(struct dev_write_args *ap)
 #ifdef IPX
 	case AF_IPX:
 		isr = NETISR_IPX;
-		break;
-#endif
-#ifdef NETATALK
-	case AF_APPLETALK:
-		isr = NETISR_ATALK2;
 		break;
 #endif
 	default:

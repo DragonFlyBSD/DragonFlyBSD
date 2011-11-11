@@ -142,7 +142,6 @@ struct	accept_filter_arg {
 #define AF_DLI		13		/* DEC Direct data link interface */
 #define AF_LAT		14		/* LAT */
 #define	AF_HYLINK	15		/* NSC Hyperchannel */
-#define	AF_APPLETALK	16		/* Apple Talk */
 #define	AF_ROUTE	17		/* Internal Routing Protocol */
 #define	AF_LINK		18		/* Link layer interface */
 #define	pseudo_AF_XTP	19		/* eXpress Transfer Protocol (no AF) */
@@ -239,7 +238,6 @@ struct sockaddr_storage {
 #define PF_DLI		AF_DLI
 #define PF_LAT		AF_LAT
 #define	PF_HYLINK	AF_HYLINK
-#define	PF_APPLETALK	AF_APPLETALK
 #define	PF_ROUTE	AF_ROUTE
 #define	PF_LINK		AF_LINK
 #define	PF_XTP		pseudo_AF_XTP	/* really just proto family, no AF */

@@ -233,9 +233,7 @@ extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
 #define	ETHERTYPE_VLTLMAN	0x8080	/* Vitalink TransLAN III Management */
 		    /* 0x8081 - 0x8083	   Counterpoint Computers */
 		    /* 0x8088 - 0x808A	   Xyplex */
-#define	ETHERTYPE_ATALK		0x809B	/* AppleTalk */
-#define	ETHERTYPE_AT		ETHERTYPE_ATALK		/* old NetBSD */
-#define	ETHERTYPE_APPLETALK	ETHERTYPE_ATALK		/* HP-UX */
+			     /* 0x809B	   AppleTalk */
 		    /* 0x809C - 0x809E	   Datability */
 #define	ETHERTYPE_SPIDER	0x809F	/* Spider Systems Ltd. */
 			     /* 0x80A3	   Nixdorf */
@@ -254,7 +252,7 @@ extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
 		    /* 0x80E0 - 0x80E3	   Allen-Bradley */
 		    /* 0x80E4 - 0x80F0	   Datability */
 #define	ETHERTYPE_RETIX		0x80F2	/* Retix */
-#define	ETHERTYPE_AARP		0x80F3	/* AppleTalk AARP */
+			     /* 0x80F3	   AppleTalk AARP */
 		    /* 0x80F4 - 0x80F5	   Kinetics */
 #define	ETHERTYPE_APOLLO	0x80F7	/* Apollo Computer */
 #define ETHERTYPE_VLAN		0x8100	/* IEEE 802.1Q VLAN tagging (XXX conflicts) */

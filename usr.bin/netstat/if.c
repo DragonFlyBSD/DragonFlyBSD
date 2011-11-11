@@ -32,7 +32,6 @@
  *
  * @(#)if.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/if.c,v 1.12 2008/03/07 11:34:21 sephe Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -311,10 +310,6 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 				}
 				break;
 
-			case AF_APPLETALK:
-				printf("atalk:%-12.12s ",atalk_print(sa,0x10) );
-				printf("%-9.9s  ",atalk_print(sa,0x0b) );
-				break;
 			case AF_LINK:
 				{
 				struct sockaddr_dl *sdl =

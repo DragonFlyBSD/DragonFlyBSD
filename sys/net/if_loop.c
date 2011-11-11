@@ -32,7 +32,6 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.9 2004/02/08 08:40:24 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.26 2008/10/04 11:21:10 sephe Exp $
  */
 
 /*
@@ -40,7 +39,6 @@
  */
 #include "use_loop.h"
 
-#include "opt_atalk.h"
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipx.h"
@@ -79,11 +77,6 @@
 #endif
 #include <netinet6/in6_var.h>
 #include <netinet/ip6.h>
-#endif
-
-#ifdef NETATALK
-#include <netproto/atalk/at.h>
-#include <netproto/atalk/at_var.h>
 #endif
 
 static void	loopattach(void *);
@@ -155,7 +148,6 @@ looutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	case AF_INET6:
 	case AF_IPX:
 	case AF_NS:
-	case AF_APPLETALK:
 		break;
 	default:
 		kprintf("looutput: af=%d unexpected\n", dst->sa_family);
@@ -283,11 +275,6 @@ rel:
 		isr = NETISR_IPX;
 		break;
 #endif
-#ifdef NETATALK
-	case AF_APPLETALK:
-		isr = NETISR_ATALK2;
-		break;
-#endif
 	default:
 		kprintf("if_simloop: can't handle af=%d\n", af);
 		m_freem(m);
@@ -339,11 +326,6 @@ lo_altqstart(struct ifnet *ifp)
 #ifdef ISO
 		case AF_ISO:
 			isr = NETISR_ISO;
-			break;
-#endif
-#ifdef NETATALK
-		case AF_APPLETALK:
-			isr = NETISR_ATALK2;
 			break;
 #endif
 		default:

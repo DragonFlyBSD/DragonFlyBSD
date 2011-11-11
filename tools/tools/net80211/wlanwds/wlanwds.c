@@ -50,7 +50,6 @@
 #include <net/if_dl.h>
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
-#include <netatalk/at.h>
 #include "netproto/802_11/ieee80211_ioctl.h"
 #include "netproto/802_11/ieee80211_dragonfly.h"
 #include <arpa/inet.h>
