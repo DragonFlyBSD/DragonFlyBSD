@@ -850,7 +850,7 @@ vm_object_terminate_callback(vm_page_t p, void *data __unused)
 	vm_object_t object;
 
 	object = p->object;
-	vm_page_busy_wait(p, FALSE, "vmpgtrm");
+	vm_page_busy_wait(p, TRUE, "vmpgtrm");
 	if (object != p->object) {
 		kprintf("vm_object_terminate: Warning: Encountered "
 			"busied page %p on queue %d\n", p, p->queue);
