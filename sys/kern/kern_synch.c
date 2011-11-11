@@ -409,7 +409,7 @@ _tsleep_remove(thread_t td)
 	globaldata_t gd = mycpu;
 	int id;
 
-	KKASSERT(td->td_gd == gd);
+	KKASSERT(td->td_gd == gd && IN_CRITICAL_SECT(td));
 	if (td->td_flags & TDF_TSLEEPQ) {
 		td->td_flags &= ~TDF_TSLEEPQ;
 		id = LOOKUP(td->td_wchan);

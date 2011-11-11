@@ -255,7 +255,9 @@ __mtx_lock_sh(mtx_t mtx, const char *ident, int flags, int to)
 				++mtx_contention_count;
 				/* retry */
 			} else {
+				crit_enter();
 				tsleep_remove(curthread);
+				crit_exit();
 			}
 		}
 		++mtx_collision_count;
