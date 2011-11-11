@@ -3594,7 +3594,8 @@ pmap_testbit(vm_page_t m, int bit)
 }
 
 /*
- * This routine is used to modify bits in ptes
+ * This routine is used to modify bits in ptes.  Only one bit should be
+ * specified.  PG_RW requires special handling.
  *
  * Caller must NOT hold any spin locks
  */
@@ -3615,22 +3616,55 @@ pmap_clearbit(vm_page_t m, int bit)
 		return;
 	}
 
-	pmap_inval_init(&info);
-
 	/*
+	 * PG_M or PG_A case
+	 *
 	 * Loop over all current mappings setting/clearing as appropos If
 	 * setting RO do we need to clear the VAC?
+	 *
+	 * NOTE: When clearing PG_M we could also (not implemented) drop
+	 *	 through to the PG_RW code and clear PG_RW too, forcing
+	 *	 a fault on write to redetect PG_M for virtual kernels, but
+	 *	 it isn't necessary since virtual kernels invalidate the
+	 *	 pte when they clear the VPTE_M bit in their virtual page
+	 *	 tables.
+	 *
+	 * NOTE: Does not re-dirty the page when clearing only PG_M.
 	 */
-	vm_page_spin_lock(m);
+	if ((bit & PG_RW) == 0) {
+		vm_page_spin_lock(m);
+		TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
+	#if defined(PMAP_DIAGNOSTIC)
+			if (pv->pv_pmap == NULL) {
+				kprintf("Null pmap (cb) at pindex: %"PRIu64"\n",
+				    pv->pv_pindex);
+				continue;
+			}
+	#endif
+			pte = pmap_pte_quick(pv->pv_pmap,
+					     pv->pv_pindex << PAGE_SHIFT);
+			pbits = *pte;
+			if (pbits & bit)
+				atomic_clear_long(pte, bit);
+		}
+		vm_page_spin_unlock(m);
+		return;
+	}
+
+	/*
+	 * Clear PG_RW.  Also clears PG_M and marks the page dirty if PG_M
+	 * was set.
+	 */
+	pmap_inval_init(&info);
+
 restart:
+	vm_page_spin_lock(m);
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 		/*
 		 * don't write protect pager mappings
 		 */
-		if (bit == PG_RW) {
-			if (!pmap_track_modified(pv->pv_pindex))
-				continue;
-		}
+		if (!pmap_track_modified(pv->pv_pindex))
+			continue;
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (pv->pv_pmap == NULL) {
@@ -3639,75 +3673,47 @@ restart:
 			continue;
 		}
 #endif
+		/*
+		 * Skip pages which do not have PG_RW set.
+		 */
+		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_pindex << PAGE_SHIFT);
+		if ((*pte & PG_RW) == 0)
+			continue;
 
 		/*
-		 * Careful here.  We can use a locked bus instruction to
-		 * clear PG_A or PG_M safely but we need to synchronize
-		 * with the target cpus when we mess with PG_RW.
-		 *
-		 * We do not have to force synchronization when clearing
-		 * PG_M even for PTEs generated via virtual memory maps,
-		 * because the virtual kernel will invalidate the pmap
-		 * entry when/if it needs to resynchronize the Modify bit.
+		 * Lock the PV
 		 */
-		if (bit & PG_RW) {
-			save_pmap = pv->pv_pmap;
-			save_pindex = pv->pv_pindex;
-			pv_hold(pv);
+		if (pv_hold_try(pv) == 0) {
 			vm_page_spin_unlock(m);
-			pmap_inval_interlock(&info, save_pmap,
+			pv_lock(pv);	/* held, now do a blocking lock */
+			pv_put(pv);	/* and release */
+			goto restart;	/* anything could have happened */
+		}
+
+		save_pmap = pv->pv_pmap;
+		vm_page_spin_unlock(m);
+		pmap_inval_interlock(&info, save_pmap,
 				     (vm_offset_t)save_pindex << PAGE_SHIFT);
-			vm_page_spin_lock(m);
-			if (pv->pv_pmap == NULL) {
-				pv_drop(pv);
-				goto restart;
-			}
-			pv_drop(pv);
-		}
-		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_pindex << PAGE_SHIFT);
-again:
-		pbits = *pte;
-		if (pbits & bit) {
-			if (bit == PG_RW) {
-				if (pbits & PG_M) {
-					vm_page_dirty(m);
-					atomic_clear_long(pte, PG_M|PG_RW);
-				} else {
-					/*
-					 * The cpu may be trying to set PG_M
-					 * simultaniously with our clearing
-					 * of PG_RW.
-					 */
-					if (!atomic_cmpset_long(pte, pbits,
-							       pbits & ~PG_RW))
-						goto again;
-				}
-			} else if (bit == PG_M) {
-				/*
-				 * We could also clear PG_RW here to force
-				 * a fault on write to redetect PG_M for
-				 * virtual kernels, but it isn't necessary
-				 * since virtual kernels invalidate the pte 
-				 * when they clear the VPTE_M bit in their
-				 * virtual page tables.
-				 */
-				atomic_clear_long(pte, PG_M);
-			} else {
-				atomic_clear_long(pte, bit);
+		KKASSERT(pv->pv_pmap == save_pmap);
+		for (;;) {
+			pbits = *pte;
+			cpu_ccfence();
+			if (atomic_cmpset_long(pte, pbits,
+					       pbits & ~(PG_RW|PG_M))) {
+				break;
 			}
 		}
-		if (bit & PG_RW) {
-			save_pmap = pv->pv_pmap;
-			pv_hold(pv);
-			vm_page_spin_unlock(m);
-			pmap_inval_deinterlock(&info, save_pmap);
-			vm_page_spin_lock(m);
-			if (pv->pv_pmap == NULL) {
-				pv_drop(pv);
-				goto restart;
-			}
-			pv_drop(pv);
-		}
+		pmap_inval_deinterlock(&info, save_pmap);
+		vm_page_spin_lock(m);
+
+		/*
+		 * If PG_M was found to be set while we were clearing PG_RW
+		 * we also clear PG_M (done above) and mark the page dirty.
+		 * Callers expect this behavior.
+		 */
+		if (pbits & PG_M)
+			vm_page_dirty(m);
+		pv_put(pv);
 	}
 	vm_page_spin_unlock(m);
 	pmap_inval_done(&info);
