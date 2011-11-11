@@ -274,8 +274,8 @@ default_capacity(struct storage *s, int mtpt)
 		swap = mem;
 	if (mem > capacity)
 		swap = capacity / 2;
-	if (swap > 8192)
-		swap = 8192;
+	if (swap > SWAP_MAX)
+		swap = SWAP_MAX;
 
 	if (capacity < DISK_MIN) {
 		/*

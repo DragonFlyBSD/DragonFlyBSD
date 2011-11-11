@@ -276,8 +276,8 @@ default_capacity(struct storage *s, const char *mtpt)
 
 	root = capacity / 4 * 3;
 	swap = 2 * mem;
-	if (swap > 8192)
-		swap = 8192;
+	if (swap > SWAP_MAX)
+		swap = SWAP_MAX;
 	boot = 768;
 	while (boot + root > capacity - 384)
 		boot -= 128;

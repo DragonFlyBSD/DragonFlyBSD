@@ -41,6 +41,11 @@
 
 #define	DISK_MIN	2048
 #define	HAMMER_MIN	51200
+#if defined(__i386__)
+#define	SWAP_MAX	32768
+#elif defined(__x86_64__)
+#define	SWAP_MAX	524288
+#endif
 
 #define	MTPT_ROOT	0
 #define	MTPT_SWAP	1
