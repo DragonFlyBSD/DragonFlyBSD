@@ -275,7 +275,7 @@ struct thread {
     int		td_fairq_load;		/* fairq */
     int		td_fairq_count;		/* fairq */
     struct globaldata *td_migrate_gd;	/* target gd for thread migration */
-    const void	*td_mplock_stallpc;	/* last mplock stall address */
+    const void	*unused01;
 #ifdef DEBUG_CRIT_SECTIONS
 #define CRIT_DEBUG_ARRAY_SIZE   32
 #define CRIT_DEBUG_ARRAY_MASK   (CRIT_DEBUG_ARRAY_SIZE - 1)

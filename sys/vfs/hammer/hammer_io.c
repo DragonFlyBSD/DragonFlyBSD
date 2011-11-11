@@ -1124,11 +1124,6 @@ hammer_io_complete(struct buf *bp)
 		hammer_stats_disk_write += iou->io.bytes;
 		atomic_add_int(&hammer_count_io_running_write, -iou->io.bytes);
 		atomic_add_int(&hmp->io_running_space, -iou->io.bytes);
-		if (hmp->io_running_wakeup &&
-		    hmp->io_running_space < hammer_limit_running_io / 2) {
-		    hmp->io_running_wakeup = 0;
-		    wakeup(&hmp->io_running_wakeup);
-		}
 		KKASSERT(hmp->io_running_space >= 0);
 		iou->io.running = 0;
 
@@ -1999,8 +1994,5 @@ hammer_io_flush_sync(hammer_mount_t hmp)
 void
 hammer_io_limit_backlog(hammer_mount_t hmp)
 {
-        while (hmp->io_running_space > hammer_limit_running_io) {
-                hmp->io_running_wakeup = 1;
-                tsleep(&hmp->io_running_wakeup, 0, "hmiolm", hz / 10);
-        }
+	waitrunningbufspace();
 }

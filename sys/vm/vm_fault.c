@@ -115,7 +115,6 @@ struct faultstate {
 	vm_map_t map;
 	vm_map_entry_t entry;
 	int lookup_still_valid;
-	int didlimit;
 	int hardfault;
 	int fault_flags;
 	int map_generation;
@@ -131,7 +130,6 @@ static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *, vpte_t, int);
 #if 0
 static int vm_fault_additional_pages (vm_page_t, int, int, vm_page_t *, int *);
 #endif
-static int vm_fault_ratelimit(struct vmspace *);
 static void vm_set_nosync(vm_page_t m, vm_map_entry_t entry);
 static void vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry,
 			int prot);
@@ -256,7 +254,6 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 
 	mycpu->gd_cnt.v_vm_faults++;
 
-	fs.didlimit = 0;
 	fs.hardfault = 0;
 	fs.fault_flags = fault_flags;
 	growstack = 1;
@@ -528,7 +525,6 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 
 	mycpu->gd_cnt.v_vm_faults++;
 
-	fs.didlimit = 0;
 	fs.hardfault = 0;
 	fs.fault_flags = fault_flags;
 	KKASSERT((fault_flags & VM_FAULT_WIRE_MASK) == 0);
@@ -737,7 +733,6 @@ vm_fault_object_page(vm_object_t object, vm_ooffset_t offset,
 	entry.maptype = VM_MAPTYPE_NORMAL;
 	entry.protection = entry.max_protection = fault_type;
 
-	fs.didlimit = 0;
 	fs.hardfault = 0;
 	fs.fault_flags = fault_flags;
 	fs.map = NULL;
@@ -1135,26 +1130,6 @@ vm_fault_object(struct faultstate *fs,
 					vm_object_drop(fs->object);
 				unlock_and_deallocate(fs);
 				return (KERN_PROTECTION_FAILURE);
-			}
-
-			/*
-			 * Ratelimit.
-			 */
-			if (fs->didlimit == 0 && curproc != NULL) {
-				int limticks;
-
-				limticks = vm_fault_ratelimit(curproc->p_vmspace);
-				if (limticks) {
-					vm_object_pip_wakeup(fs->first_object);
-					vm_object_chain_release_all(
-						fs->first_object, fs->object);
-					if (fs->object != fs->first_object)
-						vm_object_drop(fs->object);
-					unlock_and_deallocate(fs);
-					tsleep(curproc, 0, "vmrate", limticks);
-					fs->didlimit = 1;
-					return (KERN_TRY_AGAIN);
-				}
 			}
 
 			/*
@@ -1795,40 +1770,6 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 		}
 	}
 	lwkt_reltoken(&map->token);
-}
-
-/*
- * Reduce the rate at which memory is allocated to a process based
- * on the perceived load on the VM system. As the load increases
- * the allocation burst rate goes down and the delay increases. 
- *
- * Rate limiting does not apply when faulting active or inactive
- * pages.  When faulting 'cache' pages, rate limiting only applies
- * if the system currently has a severe page deficit.
- *
- * XXX vm_pagesupply should be increased when a page is freed.
- *
- * We sleep up to 1/10 of a second.
- */
-static int
-vm_fault_ratelimit(struct vmspace *vmspace)
-{
-	if (vm_load_enable == 0)
-		return(0);
-	if (vmspace->vm_pagesupply > 0) {
-		--vmspace->vm_pagesupply;	/* SMP race ok */
-		return(0);
-	}
-#ifdef INVARIANTS
-	if (vm_load_debug) {
-		kprintf("load %-4d give %d pgs, wait %d, pid %-5d (%s)\n",
-			vm_load, 
-			(1000 - vm_load ) / 10, vm_load * hz / 10000,
-			curproc->p_pid, curproc->p_comm);
-	}
-#endif
-	vmspace->vm_pagesupply = (1000 - vm_load) / 10;
-	return(vm_load * hz / 10000);
 }
 
 /*

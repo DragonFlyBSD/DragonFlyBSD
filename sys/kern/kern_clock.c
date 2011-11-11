@@ -533,11 +533,6 @@ hardclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 	     */
 	    cpu_sfence();
 	    basetime_index = ni;
-
-	    /*
-	     * Figure out how badly the system is starved for memory
-	     */
-	    vm_fault_ratecheck();
 	}
 
 	/*

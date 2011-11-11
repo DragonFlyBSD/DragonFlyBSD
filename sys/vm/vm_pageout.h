@@ -84,9 +84,6 @@ extern int vm_page_max_wired;
 extern int vm_pages_needed;	/* should be some "event" structure */
 extern int vm_pageout_pages_needed;
 extern int vm_pageout_deficit;
-extern int vm_load;
-extern int vm_load_enable;
-extern int vm_load_debug;
 
 #define VM_PAGEOUT_ASYNC 0
 #define VM_PAGEOUT_SYNC 1

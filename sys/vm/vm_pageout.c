@@ -183,18 +183,6 @@ static int pageout_lock_miss;
 SYSCTL_INT(_vm, OID_AUTO, pageout_lock_miss,
 	CTLFLAG_RD, &pageout_lock_miss, 0, "vget() lock misses during pageout");
 
-int vm_load;
-SYSCTL_INT(_vm, OID_AUTO, vm_load,
-	CTLFLAG_RD, &vm_load, 0, "load on the VM system");
-int vm_load_enable = 1;
-SYSCTL_INT(_vm, OID_AUTO, vm_load_enable,
-	CTLFLAG_RW, &vm_load_enable, 0, "enable vm_load rate limiting");
-#ifdef INVARIANTS
-int vm_load_debug;
-SYSCTL_INT(_vm, OID_AUTO, vm_load_debug,
-	CTLFLAG_RW, &vm_load_debug, 0, "debug vm_load");
-#endif
-
 #define VM_PAGEOUT_PAGE_COUNT 16
 int vm_pageout_page_count = VM_PAGEOUT_PAGE_COUNT;
 
@@ -207,24 +195,6 @@ static freeer_fcn_t vm_pageout_object_deactivate_pages;
 static void vm_req_vmdaemon (void);
 #endif
 static void vm_pageout_page_stats(int q);
-
-/*
- * Update vm_load to slow down faulting processes.
- *
- * SMP races ok.
- * No requirements.
- */
-void
-vm_fault_ratecheck(void)
-{
-	if (vm_pages_needed) {
-		if (vm_load < 1000)
-			++vm_load;
-	} else {
-		if (vm_load > 0)
-			--vm_load;
-	}
-}
 
 /*
  * vm_pageout_clean:
@@ -1914,12 +1884,23 @@ vm_pageout_thread(void)
 		active_shortage = vmstats.v_inactive_target -
 				  vmstats.v_inactive_count;
 
-		tmp = inactive_shortage;
-		if (tmp < vmstats.v_inactive_target / 10)
-			tmp = vmstats.v_inactive_target / 10;
-		inactive_shortage -= delta1;
-		if (inactive_shortage <= 0 && active_shortage > tmp * 2)
-			active_shortage = tmp * 2;
+		/*
+		 * If we were unable to free sufficient inactive pages to
+		 * satisfy the free/cache queue requirements then simply
+		 * reaching the inactive target may not be good enough.
+		 * Try to deactivate pages in excess of the target based
+		 * on the shortfall.
+		 *
+		 * However to prevent thrashing the VM system do not
+		 * deactivate more than an additional 1/10 the inactive
+		 * target's worth of active pages.
+		 */
+		if (delta1 < inactive_shortage) {
+			tmp = (inactive_shortage - delta1) * 2;
+			if (tmp > vmstats.v_inactive_target / 10)
+				tmp = vmstats.v_inactive_target / 10;
+			active_shortage += tmp;
+		}
 
 		delta2 = 0;
 		for (q = 0; q < PQ_MAXL2_SIZE; ++q) {

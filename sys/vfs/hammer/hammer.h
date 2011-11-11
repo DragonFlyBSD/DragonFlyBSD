@@ -913,7 +913,7 @@ struct hammer_mount {
 	struct hammer_mod_rb_tree lose_root;	/* loose buffers      */
 	int	locked_dirty_space;		/* meta/volu count    */
 	int	io_running_space;		/* io_token */
-	int	io_running_wakeup;		/* io_token */
+	int	unused01;
 	int	objid_cache_count;
 	int	dedup_cache_count;
 	int	error;				/* critical I/O error */
@@ -1045,7 +1045,6 @@ extern int hammer_count_io_running_read;
 extern int hammer_count_io_running_write;
 extern int hammer_count_io_locked;
 extern int hammer_limit_dirtybufspace;
-extern int hammer_limit_running_io;
 extern int hammer_limit_recs;
 extern int hammer_limit_inode_recs;
 extern int hammer_limit_reclaims;

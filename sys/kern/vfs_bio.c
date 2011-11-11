@@ -267,7 +267,7 @@ runningbufwakeup(struct buf *bp)
 		/*
 		 * see waitrunningbufspace() for limit test.
 		 */
-		limit = hirunningspace * 4 / 6;
+		limit = hirunningspace * 3 / 6;
 		if (runningbufreq && runningbufspace <= limit) {
 			runningbufreq = 0;
 			spin_unlock(&bufcspin);
@@ -305,37 +305,26 @@ bufcountwakeup(void)
 /*
  * waitrunningbufspace()
  *
- * Wait for the amount of running I/O to drop to hirunningspace * 4 / 6.
- * This is the point where write bursting stops so we don't want to wait
- * for the running amount to drop below it (at least if we still want bioq
- * to burst writes).
+ * If runningbufspace exceeds 4/6 hirunningspace we block until
+ * runningbufspace drops to 3/6 hirunningspace.  We also block if another
+ * thread blocked here in order to be fair, even if runningbufspace
+ * is now lower than the limit.
  *
  * The caller may be using this function to block in a tight loop, we
- * must block while runningbufspace is greater then or equal to
- * hirunningspace * 4 / 6.
- *
- * And even with that it may not be enough, due to the presence of
- * B_LOCKED dirty buffers, so also wait for at least one running buffer
- * to complete.
+ * must block while runningbufspace is greater than at least
+ * hirunningspace * 3 / 6.
  */
 void
 waitrunningbufspace(void)
 {
 	int limit = hirunningspace * 4 / 6;
-	int dummy;
 
-	spin_lock(&bufcspin);
-	if (runningbufspace > limit) {
-		while (runningbufspace > limit) {
-			++runningbufreq;
+	if (runningbufspace > limit || runningbufreq) {
+		spin_lock(&bufcspin);
+		while (runningbufspace > limit || runningbufreq) {
+			runningbufreq = 1;
 			ssleep(&runningbufreq, &bufcspin, 0, "wdrn1", 0);
 		}
-		spin_unlock(&bufcspin);
-	} else if (runningbufspace > limit / 2) {
-		++runningbufreq;
-		spin_unlock(&bufcspin);
-		tsleep(&dummy, 0, "wdrn2", 1);
-	} else {
 		spin_unlock(&bufcspin);
 	}
 }
