@@ -441,8 +441,9 @@ check_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 		 * Maybe remove this limit entirely?
 		 */
 		if ((strcasecmp(mountpoint, "swap") == 0) &&
-		    (capacity > 512*1024)) {
-			inform(a->c, _("Swap capacity is limited to 512G."));
+		    (capacity > SWAP_MAX)) {
+			inform(a->c, _("Swap capacity is limited to %dG."),
+			    SWAP_MAX / 1024);
 			valid = 0;
 		}
 
