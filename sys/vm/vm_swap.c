@@ -459,7 +459,7 @@ swapoff_one(int index)
 	 * of data we will have to page back in, plus an epsilon so
 	 * the system doesn't become critically low on swap space.
 	 */
-	for (q = 0; q < PQ_MAXL2_SIZE; ++q) {
+	for (q = 0; q < PQ_L2_SIZE; ++q) {
 		bzero(&marker, sizeof(marker));
 		marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
 		marker.queue = PQ_ACTIVE + q;

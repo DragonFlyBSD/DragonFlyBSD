@@ -488,7 +488,6 @@ DEBUG_PCTRACK		opt_pctrack.h
 
 # These are VM related options
 NO_SWAPPING		opt_vm.h
-PQ_CACHESIZE		opt_vmpage.h
 
 # Standard SMP options
 SMP			opt_global.h

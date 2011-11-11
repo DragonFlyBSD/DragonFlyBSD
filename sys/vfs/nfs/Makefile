@@ -5,7 +5,7 @@ KMOD=	nfs
 SRCS=	nfs_bio.c nfs_node.c nfs_kerb.c nfs_serv.c nfs_socket.c \
 	nfs_srvcache.c nfs_subs.c nfs_syscalls.c nfs_vfsops.c nfs_iod.c \
 	nfsm_subs.c nfs_vnops.c \
-	opt_inet.h opt_nfs.h opt_vmpage.h opt_bootp.h opt_nfsroot.h
+	opt_inet.h opt_nfs.h opt_bootp.h opt_nfsroot.h
 
 # 0/1 - requires INET to be configured in kernel
 #

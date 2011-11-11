@@ -90,9 +90,6 @@ options 	DFLDSIZ="(256*1024*1024)"
 #
 options 	BLKDEV_IOSIZE=8192
 
-# Options for the VM subsystem.
-options 	PQ_CACHESIZE=512	# color for 512k/16k cache
-
 # This allows you to actually store this configuration file into
 # the kernel binary itself, where it may be later read by saying:
 #    strings -n 3 /kernel | sed -n 's/^___//p' > MYKERNEL

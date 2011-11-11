@@ -71,10 +71,6 @@
 #ifndef	_VM_VM_PAGE_H_
 #define	_VM_VM_PAGE_H_
 
-#if !defined(KLD_MODULE) && defined(_KERNEL)
-#include "opt_vmpage.h"
-#endif
-
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
@@ -201,69 +197,46 @@ typedef struct vm_page *vm_page_t;
 #endif
 
 /*
- * Page coloring parameters.  We default to a middle of the road optimization.
- * Larger selections would not really hurt us but if a machine does not have
- * a lot of memory it could cause vm_page_alloc() to eat more cpu cycles 
- * looking for free pages.
+ * Page coloring parameters.  We use generous parameters designed to
+ * statistically spread pages over available cpu cache space.  This has
+ * become less important over time as cache associativity is higher
+ * in modern times but we still use the core algorithm to help reduce
+ * lock contention between cpus.
  *
- * Page coloring cannot be disabled.  Modules do not have access to most PQ
- * constants because they can change between builds.
+ * Page coloring cannot be disabled.
  */
-#if defined(_KERNEL) && !defined(KLD_MODULE)
 
-#if !defined(PQ_CACHESIZE)
-#define PQ_CACHESIZE 256	/* max is 1024 (MB) */
-#endif
-
-#if PQ_CACHESIZE >= 1024
 #define PQ_PRIME1 31	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_PRIME2 23	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_L2_SIZE 256	/* A number of colors opt for 1M cache */
 
-#elif PQ_CACHESIZE >= 512
+#if 0
 #define PQ_PRIME1 31	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_PRIME2 23	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_L2_SIZE 128	/* A number of colors opt for 512K cache */
 
-#elif PQ_CACHESIZE >= 256
 #define PQ_PRIME1 13	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_PRIME2 7	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_L2_SIZE 64	/* A number of colors opt for 256K cache */
 
-#elif PQ_CACHESIZE >= 128
 #define PQ_PRIME1 9	/* Produces a good PQ_L2_SIZE/3 + PQ_PRIME1 */
 #define PQ_PRIME2 5	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_L2_SIZE 32	/* A number of colors opt for 128k cache */
 
-#else
 #define PQ_PRIME1 5	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_PRIME2 3	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_L2_SIZE 16	/* A reasonable number of colors (opt for 64K cache) */
-
 #endif
 
 #define PQ_L2_MASK	(PQ_L2_SIZE - 1)
 
-#endif /* KERNEL && !KLD_MODULE */
-
-/*
- *
- * The queue array is always based on PQ_MAXL2_SIZE regardless of the actual
- * cache size chosen in order to present a uniform interface for modules.
- */
-#define PQ_MAXL2_SIZE	256	/* fixed maximum (in pages) / module compat */
-
-#if PQ_L2_SIZE > PQ_MAXL2_SIZE
-#error "Illegal PQ_L2_SIZE"
-#endif
-
 #define PQ_NONE		0
-#define PQ_FREE		(1 + 0*PQ_MAXL2_SIZE)
-#define PQ_INACTIVE	(1 + 1*PQ_MAXL2_SIZE)
-#define PQ_ACTIVE	(1 + 2*PQ_MAXL2_SIZE)
-#define PQ_CACHE	(1 + 3*PQ_MAXL2_SIZE)
-#define PQ_HOLD		(1 + 4*PQ_MAXL2_SIZE)
-#define PQ_COUNT	(1 + 5*PQ_MAXL2_SIZE)
+#define PQ_FREE		(1 + 0*PQ_L2_SIZE)
+#define PQ_INACTIVE	(1 + 1*PQ_L2_SIZE)
+#define PQ_ACTIVE	(1 + 2*PQ_L2_SIZE)
+#define PQ_CACHE	(1 + 3*PQ_L2_SIZE)
+#define PQ_HOLD		(1 + 4*PQ_L2_SIZE)
+#define PQ_COUNT	(1 + 5*PQ_L2_SIZE)
 
 /*
  * Scan support

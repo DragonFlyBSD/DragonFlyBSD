@@ -159,7 +159,7 @@ vm_swapcached_thread(void)
 {
 	enum { SWAPC_WRITING, SWAPC_CLEANING } state = SWAPC_WRITING;
 	enum { SWAPB_BURSTING, SWAPB_RECOVERING } burst = SWAPB_BURSTING;
-	static struct vm_page page_marker[PQ_MAXL2_SIZE];
+	static struct vm_page page_marker[PQ_L2_SIZE];
 	static struct vm_object object_marker;
 	int q;
 
@@ -176,7 +176,7 @@ vm_swapcached_thread(void)
 	 * Initialize our marker for the inactive scan (SWAPC_WRITING)
 	 */
 	bzero(&page_marker, sizeof(page_marker));
-	for (q = 0; q < PQ_MAXL2_SIZE; ++q) {
+	for (q = 0; q < PQ_L2_SIZE; ++q) {
 		page_marker[q].flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
 		page_marker[q].queue = PQ_INACTIVE + q;
 		page_marker[q].pc = q;
@@ -254,7 +254,7 @@ vm_swapcached_thread(void)
 		if (state == SWAPC_WRITING) {
 			if (vm_swapcache_curburst >= vm_swapcache_accrate) {
 				if (burst == SWAPB_BURSTING) {
-					for (q = 0; q < PQ_MAXL2_SIZE; ++q) {
+					for (q = 0; q < PQ_L2_SIZE; ++q) {
 						vm_swapcache_writing(
 							&page_marker[q]);
 					}
@@ -262,7 +262,7 @@ vm_swapcached_thread(void)
 						burst = SWAPB_RECOVERING;
 				} else if (vm_swapcache_curburst >
 					   vm_swapcache_minburst) {
-					for (q = 0; q < PQ_MAXL2_SIZE; ++q) {
+					for (q = 0; q < PQ_L2_SIZE; ++q) {
 						vm_swapcache_writing(
 							&page_marker[q]);
 					}
@@ -277,7 +277,7 @@ vm_swapcached_thread(void)
 	/*
 	 * Cleanup (NOT REACHED)
 	 */
-	for (q = 0; q < PQ_MAXL2_SIZE; ++q) {
+	for (q = 0; q < PQ_L2_SIZE; ++q) {
 		vm_page_queues_spin_lock(PQ_INACTIVE + q);
 		TAILQ_REMOVE(
 			&vm_page_queues[PQ_INACTIVE + q].pl,
