@@ -20,8 +20,9 @@
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
 #include <sys/jail.h>
+#include <sys/thread.h>
 
-#include <sys/mplock2.h>
+#include <sys/thread2.h>
 
 static MALLOC_DEFINE(M_SEM, "sem", "SVID compatible semaphores");
 
@@ -213,9 +214,7 @@ sys_semsys(struct semsys_args *uap)
 		return (EINVAL);
 	bcopy(&uap->a2, &uap->which,
 	      sizeof(struct semsys_args) - offsetof(struct semsys_args, a2));
-	get_mplock();
 	error = (*semcalls[which])(uap);
-	rel_mplock();
 	return (error);
 }
 
@@ -411,7 +410,6 @@ sys___semctl(struct __semctl_args *uap)
 	if (!jail_sysvipc_allowed && cred->cr_prison != NULL)
 		return (ENOSYS);
 
-	get_mplock();
 	switch (cmd) {
 	case SEM_STAT:
 		/*
@@ -423,28 +421,32 @@ sys___semctl(struct __semctl_args *uap)
 			break;
 		}
 		semakptr = &sema[semid];
+		lwkt_getpooltoken(semakptr);
 		if ((semakptr->sem_perm.mode & SEM_ALLOC) == 0) {
 			eval = EINVAL;
+			lwkt_relpooltoken(semakptr);
 			break;
 		}
-		if ((eval = ipcperm(td->td_proc, &semakptr->sem_perm, IPC_R)))
+		if ((eval = ipcperm(td->td_proc, &semakptr->sem_perm, IPC_R))) {
+			lwkt_relpooltoken(semakptr);
 			break;
-
+		}
 		bcopy(&semakptr, arg->buf, sizeof(struct semid_ds));
 		rval = IXSEQ_TO_IPCID(semid, semakptr->sem_perm);
+		lwkt_relpooltoken(semakptr);
 		break;
 	}
 	
 	semid = IPCID_TO_IX(semid);
 	if (semid < 0 || semid >= seminfo.semmni) {
-		rel_mplock();
 		return(EINVAL);
 	}
-
 	semaptr = &sema[semid];
+	lwkt_getpooltoken(semaptr);
+
 	if ((semaptr->sem_perm.mode & SEM_ALLOC) == 0 ||
 	    semaptr->sem_perm.seq != IPCID_TO_SEQ(uap->semid)) {
-		rel_mplock();
+		lwkt_relpooltoken(semaptr);
 		return(EINVAL);
 	}
 
@@ -577,8 +579,8 @@ sys___semctl(struct __semctl_args *uap)
 			break;
 		for (i = 0; i < semaptr->sem_nsems; i++) {
 			eval = copyin(&real_arg.array[i],
-			    (caddr_t)&semaptr->sem_base[i].semval,
-			    sizeof(real_arg.array[0]));
+				      (caddr_t)&semaptr->sem_base[i].semval,
+				      sizeof(real_arg.array[0]));
 			if (eval != 0)
 				break;
 		}
@@ -590,7 +592,7 @@ sys___semctl(struct __semctl_args *uap)
 		eval = EINVAL;
 		break;
 	}
-	rel_mplock();
+	lwkt_relpooltoken(semaptr);
 
 	if (eval == 0)
 		uap->sysmsg_result = rval;
@@ -617,14 +619,21 @@ sys_semget(struct semget_args *uap)
 	if (!jail_sysvipc_allowed && cred->cr_prison != NULL)
 		return (ENOSYS);
 
-	get_mplock();
 	eval = 0;
 
 	if (key != IPC_PRIVATE) {
 		for (semid = 0; semid < seminfo.semmni; semid++) {
-			if ((sema[semid].sem_perm.mode & SEM_ALLOC) &&
-			    sema[semid].sem_perm.key == key)
-				break;
+			if ((sema[semid].sem_perm.mode & SEM_ALLOC) == 0 ||
+			    sema[semid].sem_perm.key != key) {
+				continue;
+			}
+			lwkt_getpooltoken(&sema[semid]);
+			if ((sema[semid].sem_perm.mode & SEM_ALLOC) == 0 ||
+			    sema[semid].sem_perm.key != key) {
+				lwkt_relpooltoken(&sema[semid]);
+				continue;
+			}
+			break;
 		}
 		if (semid < seminfo.semmni) {
 #ifdef SEM_DEBUG
@@ -633,6 +642,7 @@ sys_semget(struct semget_args *uap)
 			if ((eval = ipcperm(td->td_proc,
 					    &sema[semid].sem_perm,
 					    semflg & 0700))) {
+				lwkt_relpooltoken(&sema[semid]);
 				goto done;
 			}
 			if (nsems > 0 && sema[semid].sem_nsems < nsems) {
@@ -640,6 +650,7 @@ sys_semget(struct semget_args *uap)
 				kprintf("too small\n");
 #endif
 				eval = EINVAL;
+				lwkt_relpooltoken(&sema[semid]);
 				goto done;
 			}
 			if ((semflg & IPC_CREAT) && (semflg & IPC_EXCL)) {
@@ -647,6 +658,7 @@ sys_semget(struct semget_args *uap)
 				kprintf("not exclusive\n");
 #endif
 				eval = EEXIST;
+				lwkt_relpooltoken(&sema[semid]);
 				goto done;
 			}
 			goto done;
@@ -659,23 +671,30 @@ sys_semget(struct semget_args *uap)
 	if (key == IPC_PRIVATE || (semflg & IPC_CREAT)) {
 		if (nsems <= 0 || nsems > seminfo.semmsl) {
 #ifdef SEM_DEBUG
-			kprintf("nsems out of range (0<%d<=%d)\n", nsems,
-			    seminfo.semmsl);
+			kprintf("nsems out of range (0<%d<=%d)\n",
+				nsems, seminfo.semmsl);
 #endif
 			eval = EINVAL;
 			goto done;
 		}
 		if (nsems > seminfo.semmns - semtot) {
 #ifdef SEM_DEBUG
-			kprintf("not enough semaphores left (need %d, got %d)\n",
-			    nsems, seminfo.semmns - semtot);
+			kprintf("not enough semaphores left "
+				"(need %d, got %d)\n",
+				nsems, seminfo.semmns - semtot);
 #endif
 			eval = ENOSPC;
 			goto done;
 		}
 		for (semid = 0; semid < seminfo.semmni; semid++) {
-			if ((sema[semid].sem_perm.mode & SEM_ALLOC) == 0)
-				break;
+			if (sema[semid].sem_perm.mode & SEM_ALLOC)
+				continue;
+			lwkt_getpooltoken(&sema[semid]);
+			if (sema[semid].sem_perm.mode & SEM_ALLOC) {
+				lwkt_relpooltoken(&sema[semid]);
+				continue;
+			}
+			break;
 		}
 		if (semid == seminfo.semmni) {
 #ifdef SEM_DEBUG
@@ -703,9 +722,10 @@ sys_semget(struct semget_args *uap)
 		bzero(sema[semid].sem_base,
 		    sizeof(sema[semid].sem_base[0])*nsems);
 #ifdef SEM_DEBUG
-		kprintf("sembase = 0x%x, next = 0x%x\n", sema[semid].sem_base,
-		    &sem[semtot]);
+		kprintf("sembase = 0x%x, next = 0x%x\n",
+			sema[semid].sem_base, &sem[semtot]);
 #endif
+		/* eval == 0 */
 	} else {
 #ifdef SEM_DEBUG
 		kprintf("didn't find it and wasn't asked to create it\n");
@@ -715,10 +735,10 @@ sys_semget(struct semget_args *uap)
 
 done:
 	if (eval == 0) {
-		uap->sysmsg_result = IXSEQ_TO_IPCID(semid,
-						    sema[semid].sem_perm);
+		uap->sysmsg_result =
+			IXSEQ_TO_IPCID(semid, sema[semid].sem_perm);
+		lwkt_relpooltoken(&sema[semid]);
 	}
-	rel_mplock();
 	return(eval);
 }
 
@@ -746,15 +766,14 @@ sys_semop(struct semop_args *uap)
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	get_mplock();
 	semid = IPCID_TO_IX(semid);	/* Convert back to zero origin */
 
 	if (semid < 0 || semid >= seminfo.semmni) {
 		eval = EINVAL;
-		goto done;
+		goto done2;
 	}
-
 	semaptr = &sema[semid];
+	lwkt_getpooltoken(semaptr);
 	if ((semaptr->sem_perm.mode & SEM_ALLOC) == 0) {
 		eval = EINVAL;
 		goto done;
@@ -998,7 +1017,8 @@ donex:
 	uap->sysmsg_result = 0;
 	eval = 0;
 done:
-	rel_mplock();
+	lwkt_relpooltoken(semaptr);
+done2:
 	return(eval);
 }
 
