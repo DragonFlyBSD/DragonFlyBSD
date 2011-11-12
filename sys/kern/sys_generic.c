@@ -1114,6 +1114,12 @@ putbits(int bytes, kfd_set *in_set, fd_set *out_set)
 	return (error);
 }
 
+static int
+dotimeout_only(struct timespec *ts)
+{
+	return(nanosleep1(ts, NULL));
+}
+
 /*
  * Common code for sys_select() and sys_pselect().
  *
@@ -1135,6 +1141,9 @@ doselect(int nd, fd_set *read, fd_set *write, fd_set *except,
 	*res = 0;
 	if (nd < 0)
 		return (EINVAL);
+	if (nd == 0)
+		return (dotimeout_only(ts));
+
 	if (nd > p->p_fd->fd_nfiles)		/* limit kmalloc */
 		nd = p->p_fd->fd_nfiles;
 
@@ -1452,6 +1461,9 @@ dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res)
         *res = 0;
         if (nfds < 0)
                 return (EINVAL);
+
+	if (nfds == 0)
+		return (dotimeout_only(ts));
 
 	/*
 	 * This is a bit arbitrary but we need to limit internal kmallocs.
