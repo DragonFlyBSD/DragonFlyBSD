@@ -1053,8 +1053,11 @@ sys_linux_wait4(struct linux_wait4_args *args)
 	error = kern_wait(args->pid, args->status ? &status : NULL, options,
 			  args->rusage ? &rusage : NULL, &args->sysmsg_result);
 
-	if (error == 0)
+	if (error == 0) {
+		spin_lock(&lp->lwp_spin);
 		lwp_delsig(lp, SIGCHLD);
+		spin_unlock(&lp->lwp_spin);
+	}
 
 	if (error == 0 && args->status) {
 		status &= 0xffff;

@@ -53,6 +53,7 @@
 #include <sys/signal2.h>
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
+#include <sys/spinlock2.h>
 
 #include <vm/vm.h>
 
@@ -211,7 +212,9 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 		p->p_flag &= ~P_TRACED;
 
 		/* remove pending SIGTRAP, else the process will die */
+		spin_lock(&lp->lwp_spin);
 		lwp_delsig(lp, SIGTRAP);
+		spin_unlock(&lp->lwp_spin);
 
 		/* give process back to original parent */
 		if (p->p_oppid != p->p_pptr->p_pid) {

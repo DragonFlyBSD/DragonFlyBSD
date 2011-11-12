@@ -488,6 +488,9 @@ tsleep_wakeup_remote(struct thread *td)
  *
  * During autoconfiguration or after a panic, a sleep will simply
  * lower the priority briefly to allow interrupts, then return.
+ *
+ * WARNING!  This code can't block (short of switching away), or bad things
+ *           will happen.  No getting tokens, no blocking locks, etc.
  */
 int
 tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
@@ -498,7 +501,6 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	globaldata_t gd;
 	int sig;
 	int catch;
-	int id;
 	int error;
 	int oldpri;
 	struct callout thandle;
@@ -553,7 +555,6 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	 * tokens or we can loose the wakeup.
 	 */
 	if ((flags & PINTERLOCKED) == 0) {
-		id = LOOKUP(ident);
 		_tsleep_interlock(gd, ident, flags);
 	}
 
@@ -573,18 +574,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 			 * Early termination only occurs when tsleep() is
 			 * entered while in a normal LSRUN state.
 			 */
-			lwkt_gettoken(&lp->lwp_token);
 			if ((sig = CURSIG(lp)) != 0)
-				goto resume;
-
-			/*
-			 * Early termination if PCATCH was set and a
-			 * mailbox signal was possibly delivered prior to
-			 * the system call even being made, in order to
-			 * allow the user to interlock without having to
-			 * make additional system calls.
-			 */
-			if (p->p_flag & P_MAILBOX)
 				goto resume;
 
 			/*
@@ -708,21 +698,11 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	/*
 	 * Figure out the correct error return.  If interrupted by a
 	 * signal we want to return EINTR or ERESTART.  
-	 *
-	 * If P_MAILBOX is set no automatic system call restart occurs
-	 * and we return EINTR.  P_MAILBOX is meant to be used as an
-	 * interlock, the user must poll it prior to any system call
-	 * that it wishes to interlock a mailbox signal against since
-	 * the flag is cleared on *any* system call that sleeps.
-	 *
-	 * lp->lwp_token is held in the lwp && catch case.
 	 */
 resume:
 	if (p) {
 		if (catch && error == 0) {
-			if ((p->p_flag & P_MAILBOX) && sig == 0) {
-				error = EINTR;
-			} else if (sig != 0 || (sig = CURSIG(lp))) {
+			if (sig != 0 || (sig = CURSIG(lp))) {
 				if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
 					error = EINTR;
 				else
@@ -730,14 +710,6 @@ resume:
 			}
 		}
 		lp->lwp_flag &= ~(LWP_BREAKTSLEEP | LWP_SINTR);
-		if (catch)
-			lwkt_reltoken(&lp->lwp_token);
-		if (p->p_flag & P_MAILBOX) {
-			lwkt_gettoken(&p->p_token);
-			p->p_flag &= ~P_MAILBOX;
-			lwkt_reltoken(&p->p_token);
-		}
-
 	}
 	logtsleep1(tsleep_end);
 	crit_exit_quick(td);
@@ -881,6 +853,7 @@ endtsleep(void *arg)
 	thread_t td = arg;
 	struct lwp *lp;
 
+	KKASSERT(td->td_gd == mycpu);
 	crit_enter();
 
 	/*
@@ -899,7 +872,7 @@ endtsleep(void *arg)
 	/*
 	 * Only do nominal wakeup processing if TDF_TIMEOUT and
 	 * TDF_TSLEEP_DESCHEDULED are both still set.  Otherwise
-	 * we raced a wakeup or we began executed and raced due to
+	 * we raced a wakeup or we began executing and raced due to
 	 * blocking in the token above, and should do nothing.
 	 */
 	if ((td->td_flags & (TDF_TIMEOUT | TDF_TSLEEP_DESCHEDULED)) ==

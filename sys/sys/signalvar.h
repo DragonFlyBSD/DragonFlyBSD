@@ -69,7 +69,6 @@ struct	sigacts {
 	sigset_t ps_signodefer;		/* signals not masked while handled */
 	sigset_t ps_siginfo;		/* signals that want SA_SIGINFO args */
 	sigset_t ps_usertramp;		/* SunOS compat; libc sigtramp XXX */
-	sigset_t ps_sigmailbox;		/* signals that update a mailbox */
 	unsigned int ps_refcnt;
 	int      ps_flag;
 };

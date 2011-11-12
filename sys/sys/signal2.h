@@ -45,6 +45,9 @@
  */
 /*
  * Determine which signals are pending for a lwp.
+ *
+ * (Does not need to be interlocked with lwp_spin.  If caller holds a
+ *  critical section races will be resolved through an AST).
  */
 static __inline sigset_t
 lwp_sigpend(struct lwp *lp)
@@ -58,6 +61,8 @@ lwp_sigpend(struct lwp *lp)
 
 /*
  * Mark a signal as handled by the lwp.
+ *
+ * (p->p_token must be held, lp->lwp_spin must be held)
  */
 static __inline void
 lwp_delsig(struct lwp *lp, int sig)

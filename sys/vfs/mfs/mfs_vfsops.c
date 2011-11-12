@@ -477,8 +477,11 @@ mfs_start(struct mount *mp, int flags)
 			if (dounmount(mp, 0) != 0) {
 				KKASSERT(td->td_proc);
 				sig = CURSIG(td->td_lwp);
-				if (sig)
+				if (sig) {
+					spin_lock(&td->td_lwp->lwp_spin);
 					lwp_delsig(td->td_lwp, sig);
+					spin_unlock(&td->td_lwp->lwp_spin);
+				}
 			}
 		}
 		else if (tsleep((caddr_t)mfsp, PCATCH, "mfsidl", 0))

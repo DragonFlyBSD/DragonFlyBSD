@@ -236,10 +236,6 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	/* Make the size of the saved context visible to userland */
 	sf.sf_uc.uc_mcontext.mc_len = sizeof(sf.sf_uc.uc_mcontext);
 
-	/* Save mailbox pending state for syscall interlock semantics */
-	if (p->p_flag & P_MAILBOX)
-		sf.sf_uc.uc_mcontext.mc_xflags |= PGEX_MAILBOX;
-
 	/* Allocate and validate space for the signal handler context. */
         if ((lp->lwp_flag & LWP_ALTSTACK) != 0 && !oonstack &&
 	    SIGISMEMBER(psp->ps_sigonstack, sig)) {
@@ -406,7 +402,6 @@ int
 sys_sigreturn(struct sigreturn_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
-	struct proc *p = lp->lwp_proc;
 	struct trapframe *regs;
 	ucontext_t uc;
 	ucontext_t *ucp;
@@ -505,16 +500,6 @@ sys_sigreturn(struct sigreturn_args *uap)
 	 * Restore the FPU state from the frame
 	 */
 	npxpop(&ucp->uc_mcontext);
-
-	/*
-	 * Merge saved signal mailbox pending flag to maintain interlock
-	 * semantics against system calls.
-	 */
-	if (ucp->uc_mcontext.mc_xflags & PGEX_MAILBOX) {
-		lwkt_gettoken(&p->p_token);
-		p->p_flag |= P_MAILBOX;
-		lwkt_reltoken(&p->p_token);
-	}
 
 	if (ucp->uc_mcontext.mc_onstack & 1)
 		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;

@@ -221,6 +221,7 @@ struct lwp {
 	struct kqueue	lwp_kqueue;	/* for select/poll */
 	u_int		lwp_kqueue_serial;
 	struct lwkt_token lwp_token;	/* per-lwp token for signal/state */
+	struct spinlock lwp_spin;	/* spinlock for signal handling */
 };
 
 struct	proc {
@@ -353,7 +354,7 @@ struct	proc {
 
 /* Should probably be changed into a hold count. */
 /* was	P_NOSWAP	0x08000	was: Do not swap upages; p->p_hold */
-#define P_MAILBOX	0x10000	/* Possible mailbox signal pending */
+#define P_UNUSED7	0x10000
 
 #define	P_UPCALLPEND	0x20000	/* an upcall is pending */
 

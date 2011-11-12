@@ -69,6 +69,7 @@
 
 #include <sys/signal2.h>
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/cpu.h>
 #include <machine/smp.h>
@@ -255,8 +256,6 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 			oact->sa_flags |= SA_NODEFER;
 		if (SIGISMEMBER(ps->ps_siginfo, sig))
 			oact->sa_flags |= SA_SIGINFO;
-		if (SIGISMEMBER(ps->ps_sigmailbox, sig))
-			oact->sa_flags |= SA_MAILBOX;
 		if (sig == SIGCHLD && p->p_sigacts->ps_flag & PS_NOCLDSTOP)
 			oact->sa_flags |= SA_NOCLDSTOP;
 		if (sig == SIGCHLD && p->p_sigacts->ps_flag & PS_NOCLDWAIT)
@@ -272,13 +271,6 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 				lwkt_reltoken(&p->p_token);
 				return (EINVAL);
 			}
-#if 0
-			/* (not needed, SIG_DFL forces action to occur) */
-			if (act->sa_flags & SA_MAILBOX) {
-				lwkt_reltoken(&p->p_token);
-				return (EINVAL);
-			}
-#endif
 		}
 
 		/*
@@ -312,10 +304,6 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 			SIGADDSET(ps->ps_signodefer, sig);
 		else
 			SIGDELSET(ps->ps_signodefer, sig);
-		if (act->sa_flags & SA_MAILBOX)
-			SIGADDSET(ps->ps_sigmailbox, sig);
-		else
-			SIGDELSET(ps->ps_sigmailbox, sig);
 		if (sig == SIGCHLD) {
 			if (act->sa_flags & SA_NOCLDSTOP)
 				p->p_sigacts->ps_flag |= PS_NOCLDSTOP;
@@ -341,21 +329,18 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 		 * and for signals set to SIG_DFL where the default is to
 		 * ignore. However, don't put SIGCONT in p_sigignore, as we
 		 * have to restart the process.
+		 *
+		 * Also remove the signal from the process and lwp signal
+		 * list.
 		 */
 		if (ps->ps_sigact[_SIG_IDX(sig)] == SIG_IGN ||
 		    (sigprop(sig) & SA_IGNORE &&
 		     ps->ps_sigact[_SIG_IDX(sig)] == SIG_DFL)) {
-			/* never to be seen again */
 			SIGDELSET(p->p_siglist, sig);
-			/*
-			 * Remove the signal also from the thread lists.
-			 */
 			FOREACH_LWP_IN_PROC(lp, p) {
-				LWPHOLD(lp);
-				lwkt_gettoken(&lp->lwp_token);
+				spin_lock(&lp->lwp_spin);
 				SIGDELSET(lp->lwp_siglist, sig);
-				lwkt_reltoken(&lp->lwp_token);
-				LWPRELE(lp);
+				spin_unlock(&lp->lwp_spin);
 			}
 			if (sig != SIGCONT) {
 				/* easier in ksignal */
@@ -435,6 +420,7 @@ execsigs(struct proc *p)
 			if (sig != SIGCONT)
 				SIGADDSET(p->p_sigignore, sig);
 			SIGDELSET(p->p_siglist, sig);
+			/* don't need spinlock */
 			SIGDELSET(lp->lwp_siglist, sig);
 		}
 		ps->ps_sigact[_SIG_IDX(sig)] = SIG_DFL;
@@ -1193,10 +1179,13 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * Nobody can handle this signal, add it to the lwp or
 		 * process pending list 
 		 */
-		if (lp)
+		if (lp) {
+			spin_lock(&lp->lwp_spin);
 			SIGADDSET(lp->lwp_siglist, sig);
-		else
+			spin_unlock(&lp->lwp_spin);
+		} else {
 			SIGADDSET(p->p_siglist, sig);
+		}
 
 		/*
 		 * If the process is stopped and is being traced, then no
@@ -1354,7 +1343,9 @@ active_process:
 	/*
 	 * Mark signal pending at this specific thread.
 	 */
+	spin_lock(&lp->lwp_spin);
 	SIGADDSET(lp->lwp_siglist, sig);
+	spin_unlock(&lp->lwp_spin);
 
 	lwp_signotify(lp);
 
@@ -1729,7 +1720,9 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		error = 0;
 		bzero(info, sizeof(*info));
 		info->si_signo = sig;
+		spin_lock(&lp->lwp_spin);
 		lwp_delsig(lp, sig);	/* take the signal! */
+		spin_unlock(&lp->lwp_spin);
 
 		if (sig == SIGKILL) {
 			sigexit(lp, sig);
@@ -1888,7 +1881,9 @@ issignal(struct lwp *lp, int maytrace)
 		 * only if P_TRACED was on when they were posted.
 		 */
 		if (SIGISMEMBER(p->p_sigignore, sig) && (traced == 0)) {
+			spin_lock(&lp->lwp_spin);
 			lwp_delsig(lp, sig);
+			spin_unlock(&lp->lwp_spin);
 			continue;
 		}
 		if (maytrace && (p->p_flag & P_TRACED) && (p->p_flag & P_PPWAIT) == 0) {
@@ -1914,7 +1909,9 @@ issignal(struct lwp *lp, int maytrace)
 			 * then it will leave it in p->p_xstat;
 			 * otherwise we just look for signals again.
 			 */
+			spin_lock(&lp->lwp_spin);
 			lwp_delsig(lp, sig);	/* clear old signal */
+			spin_unlock(&lp->lwp_spin);
 			sig = p->p_xstat;
 			if (sig == 0)
 				continue;
@@ -2018,7 +2015,9 @@ issignal(struct lwp *lp, int maytrace)
 			lwkt_reltoken(&p->p_token);
 			return (sig);
 		}
+		spin_lock(&lp->lwp_spin);
 		lwp_delsig(lp, sig);		/* take the signal! */
+		spin_unlock(&lp->lwp_spin);
 	}
 	/* NOTREACHED */
 }
@@ -2054,7 +2053,9 @@ postsig(int sig)
 		vkernel_trap(lp, tf);
 	}
 
+	spin_lock(&lp->lwp_spin);
 	lwp_delsig(lp, sig);
+	spin_unlock(&lp->lwp_spin);
 	action = ps->ps_sigact[_SIG_IDX(sig)];
 #ifdef KTRACE
 	if (KTRPOINT(lp->lwp_thread, KTR_PSIG))
@@ -2094,22 +2095,6 @@ postsig(int sig)
 		}
 
 		/*
-		 * Handle the mailbox case.  Copyout to the appropriate
-		 * location but do not generate a signal frame.  The system
-		 * call simply returns EINTR and the user is responsible for
-		 * polling the mailbox.
-		 */
-		if (SIGISMEMBER(ps->ps_sigmailbox, sig)) {
-			int sig_copy = sig;
-			copyout(&sig_copy, (void *)action, sizeof(int));
-			lwkt_gettoken(&curproc->p_token);
-			curproc->p_flag |= P_MAILBOX;
-			lwkt_reltoken(&curproc->p_token);
-			crit_exit();
-			goto done;
-		}
-
-		/*
 		 * Set the signal mask and calculate the mask to restore
 		 * when the signal function returns.
 		 *
@@ -2140,8 +2125,6 @@ postsig(int sig)
 		}
 		(*p->p_sysent->sv_sendsig)(action, sig, &returnmask, code);
 	}
-done:
-	;
 }
 
 /*
