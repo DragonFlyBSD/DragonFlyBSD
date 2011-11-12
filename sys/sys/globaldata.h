@@ -185,6 +185,7 @@ typedef struct globaldata *globaldata_t;
 #define RQB_TIMER		7	/* 0080 */
 #define RQB_RUNNING		8	/* 0100 */
 #define RQB_SPINNING		9	/* 0200 */
+#define RQB_QUICKRET		10	/* 0400 */
 
 #define RQF_IPIQ		(1 << RQB_IPIQ)
 #define RQF_INTPEND		(1 << RQB_INTPEND)
@@ -196,6 +197,7 @@ typedef struct globaldata *globaldata_t;
 #define RQF_AST_UPCALL		(1 << RQB_AST_UPCALL)
 #define RQF_RUNNING		(1 << RQB_RUNNING)
 #define RQF_SPINNING		(1 << RQB_SPINNING)
+#define RQF_QUICKRET		(1 << RQB_QUICKRET)
 
 #define RQF_AST_MASK		(RQF_AST_OWEUPC|RQF_AST_SIGNAL|\
 				RQF_AST_USER_RESCHED|RQF_AST_LWKT_RESCHED|\

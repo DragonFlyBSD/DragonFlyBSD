@@ -563,6 +563,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	 */
 	regs->tf_cs = _ucodesel;
 	regs->tf_ss = _udatasel;
+	clear_quickret();
 }
 
 /*
@@ -721,6 +722,7 @@ sys_sigreturn(struct sigreturn_args *uap)
 
 	lp->lwp_sigmask = ucp->uc_sigmask;
 	SIG_CANTMASK(lp->lwp_sigmask);
+	clear_quickret();
 	crit_exit();
 	return(EJUSTRETURN);
 }
@@ -1048,6 +1050,7 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 	/* was i386_user_cleanup() in NetBSD */
 	user_ldt_free(pcb);
   
+	clear_quickret();
 	bzero((char *)regs, sizeof(struct trapframe));
 	regs->tf_rip = entry;
 	regs->tf_rsp = ((stack - 8) & ~0xFul) + 8; /* align the stack */
@@ -2023,6 +2026,7 @@ set_regs(struct lwp *lp, struct reg *regs)
 	    !CS_SECURE(regs->r_cs))
 		return (EINVAL);
 	bcopy(&regs->r_rdi, &tp->tf_rdi, sizeof(*regs));
+	clear_quickret();
 	return (0);
 }
 

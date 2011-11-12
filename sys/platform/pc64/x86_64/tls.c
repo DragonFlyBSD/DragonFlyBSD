@@ -169,6 +169,7 @@ set_user_TLS(void)
 		gd->gd_user_gs = td->td_pcb->pcb_gsbase;
 		wrmsr(MSR_KGSBASE, gd->gd_user_gs);
 	}
+	clear_quickret();
 	crit_exit_quick(td);
 }
 

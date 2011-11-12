@@ -90,6 +90,8 @@
     atomic_clear_int(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
 #define	clear_lwkt_resched()	\
     atomic_clear_int(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
+#define	clear_quickret()	\
+    atomic_clear_int(&mycpu->gd_reqflags, RQF_QUICKRET)
 #define	user_resched_wanted()	\
     (mycpu->gd_reqflags & RQF_AST_USER_RESCHED)
 #define	lwkt_resched_wanted()	\

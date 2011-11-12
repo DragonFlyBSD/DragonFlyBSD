@@ -396,6 +396,7 @@ trap(struct trapframe *frame)
 	vm_offset_t eva;
 
 	p = td->td_proc;
+	clear_quickret();
 
 #ifdef DDB
         /*

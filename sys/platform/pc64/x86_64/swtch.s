@@ -495,7 +495,13 @@ ENTRY(cpu_heavy_restore)
 	andq	$~0x0000fc00,%rcx
 	orq     %rcx,%rax
 	movq    %rax,%dr7
+
+	/*
+	 * Clear the QUICKRET flag when restoring a user process context
+	 * so we don't try to do a quick syscall return.
+	 */
 1:
+	andl	$~RQF_QUICKRET,PCPU(reqflags)
 	movq	%rbx,%rax
 	movq	PCB_RBX(%rdx),%rbx
 	ret
