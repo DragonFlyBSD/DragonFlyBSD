@@ -514,65 +514,67 @@ apic_dump(char* str)
  *  vector is any valid SYSTEM INT vector
  *  delivery_mode is 1 of: APIC_DELMODE_FIXED, APIC_DELMODE_LOWPRIO
  *
- * A backlog of requests can create a deadlock between cpus.  To avoid this
- * we have to be able to accept IPIs at the same time we are trying to send
- * them.  The critical section prevents us from attempting to send additional
- * IPIs reentrantly, but also prevents IPIQ processing so we have to call
- * lwkt_process_ipiq() manually.  It's rather messy and expensive for this
- * to occur but fortunately it does not happen too often.
+ * WARNINGS!
+ *
+ * We now implement a per-cpu interlock (gd->gd_npoll) to prevent more than
+ * one IPI from being sent to any given cpu at a time.  Thus we no longer
+ * have to process incoming IPIs while waiting for the status to clear.
+ * No deadlock should be possible.
+ *
+ * We now physically disable interrupts for the lapic ICR operation.  If
+ * we do not do this then it looks like an EOI sent to the lapic (which
+ * occurs even with a critical section) can interfere with the command
+ * register ready status and cause an IPI to be lost.
+ *
+ * e.g. an interrupt can occur, issue the EOI, IRET, and cause the command
+ * register to busy just before we write to icr_lo, resulting in a lost
+ * issuance.  This only appears to occur on Intel cpus and is not
+ * documented.  It could simply be that cpus are so fast these days that
+ * it was always an issue, but is only now rearing its ugly head.  This
+ * is conjecture.
  */
 int
 apic_ipi(int dest_type, int vector, int delivery_mode)
 {
+	unsigned long rflags;
 	u_long  icr_lo;
 
-	crit_enter();
-	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
-	    unsigned long rflags = read_rflags();
-	    cpu_enable_intr();
-	    DEBUG_PUSH_INFO("apic_ipi");
-	    while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
-		lwkt_process_ipiq();
-	    }
-	    DEBUG_POP_INFO();
-	    write_rflags(rflags);
+	rflags = read_rflags();
+	cpu_disable_intr();
+	while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
+		cpu_pause();
 	}
-
 	icr_lo = (lapic->icr_lo & APIC_ICRLO_RESV_MASK) | dest_type | 
 		delivery_mode | vector;
 	lapic->icr_lo = icr_lo;
-	crit_exit();
+	write_rflags(rflags);
+
 	return 0;
 }
 
 void
 single_apic_ipi(int cpu, int vector, int delivery_mode)
 {
+	unsigned long rflags;
 	u_long  icr_lo;
 	u_long  icr_hi;
 
-	crit_enter();
-	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
-	    unsigned long rflags = read_rflags();
-	    cpu_enable_intr();
-	    DEBUG_PUSH_INFO("single_apic_ipi");
-	    while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
-		lwkt_process_ipiq();
-	    }
-	    DEBUG_POP_INFO();
-	    write_rflags(rflags);
+	rflags = read_rflags();
+	cpu_disable_intr();
+	while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
+		cpu_pause();
 	}
 	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
 	icr_hi |= (CPUID_TO_APICID(cpu) << 24);
 	lapic->icr_hi = icr_hi;
 
 	/* build ICR_LOW */
-	icr_lo = (lapic->icr_lo & APIC_ICRLO_RESV_MASK)
-	    | APIC_DEST_DESTFLD | delivery_mode | vector;
+	icr_lo = (lapic->icr_lo & APIC_ICRLO_RESV_MASK) |
+		 APIC_DEST_DESTFLD | delivery_mode | vector;
 
 	/* write APIC ICR */
 	lapic->icr_lo = icr_lo;
-	crit_exit();
+	write_rflags(rflags);
 }
 
 #if 0	

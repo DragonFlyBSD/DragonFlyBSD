@@ -537,7 +537,8 @@ void
 lwkt_free_thread(thread_t td)
 {
     KKASSERT(td->td_refs == 0);
-    KKASSERT((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_RUNQ)) == 0);
+    KKASSERT((td->td_flags & (TDF_RUNNING | TDF_PREEMPT_LOCK |
+			      TDF_RUNQ | TDF_TSLEEPQ)) == 0);
     if (td->td_flags & TDF_ALLOCATED_THREAD) {
     	objcache_put(thread_cache, td);
     } else if (td->td_flags & TDF_ALLOCATED_STACK) {

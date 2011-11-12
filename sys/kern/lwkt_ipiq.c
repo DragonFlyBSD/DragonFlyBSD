@@ -505,6 +505,12 @@ again:
 	}
 	mask &= ~CPUMASK(n);
     }
+
+    /*
+     * Process pending cpusyncs.  If the current thread has a cpusync
+     * active cpusync we only run the list once and do not re-flag
+     * as the thread itself is processing its interlock.
+     */
     if (lwkt_process_ipiq_core(gd, &gd->gd_cpusyncq, NULL)) {
 	if (gd->gd_curthread->td_cscount == 0)
 	    goto again;
@@ -638,6 +644,9 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
      *	     to the loading of ip_rindex.  Even though stores might be
      *	     ordered, loads are probably not.  A memory fence is required
      *	     to prevent reordering of the loads after the ip_rindex update.
+     *
+     * NOTE: Single pass only.  Returns non-zero if the queue is not empty
+     *	     on return.
      */
     while (wi - (ri = ip->ip_rindex) > 0) {
 	ri &= MAXCPUFIFO_MASK;
@@ -888,6 +897,7 @@ lwkt_cpusync_remote2(lwkt_cpusync_t cs)
 	ip->ip_info[wi].arg1 = cs;
 	ip->ip_info[wi].arg2 = 0;
 	cpu_sfence();
+	KKASSERT(ip->ip_windex - ip->ip_rindex < MAXCPUFIFO);
 	++ip->ip_windex;
 	if (ipiq_debug && (ip->ip_windex & 0xFFFFFF) == 0) {
 		kprintf("cpu %d cm=%016jx %016jx f=%p\n",

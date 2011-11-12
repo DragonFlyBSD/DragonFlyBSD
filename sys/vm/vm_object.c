@@ -255,6 +255,7 @@ vm_object_drop(vm_object_t obj)
 	 * we drop hold_count 1->0 as there is no longer any way to reference
 	 * the object.
 	 */
+	KKASSERT(obj->hold_count > 0);
 	if (refcount_release(&obj->hold_count)) {
 		if (obj->ref_count == 0 && (obj->flags & OBJ_DEAD))
 			zfree(obj_zone, obj);
