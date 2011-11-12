@@ -722,7 +722,7 @@ tcp_destroy_timermsg(struct tcpcb *tp)
 static __inline void
 tcp_callout_init(struct tcp_callout *tc, uint32_t task)
 {
-	callout_init(&tc->tc_callout);
+	callout_init_mp(&tc->tc_callout);
 	tc->tc_task = task;
 }
 

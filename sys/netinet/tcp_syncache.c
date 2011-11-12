@@ -329,7 +329,7 @@ syncache_init(void)
 		for (i = 0; i <= SYNCACHE_MAXREXMTS; i++) {
 			/* Initialize the timer queues. */
 			TAILQ_INIT(&syncache_percpu->timerq[i]);
-			callout_init(&syncache_percpu->tt_timerq[i]);
+			callout_init_mp(&syncache_percpu->tt_timerq[i]);
 
 			syncache_percpu->mrec[i].slot = i;
 			syncache_percpu->mrec[i].port = cpu_portfn(cpu);
