@@ -129,8 +129,8 @@ biosched_done(thread_t td)
 void
 bwillwrite(int bytes)
 {
-	int count;
-	int factor;
+	long count;
+	long factor;
 
 	count = bd_heatup();
 	if (count > 0) {

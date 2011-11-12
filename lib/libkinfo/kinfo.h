@@ -67,7 +67,7 @@ int	kinfo_get_tty_tk_nin(uint64_t *);
 int	kinfo_get_tty_tk_nout(uint64_t *);
 
 /* VFS */
-int	kinfo_get_vfs_bufspace(int *);
+int	kinfo_get_vfs_bufspace(long *);
 
 /* Per-CPU accumulators */
 PCPU_STATISTICS_PROT(cputime, struct kinfo_cputime);

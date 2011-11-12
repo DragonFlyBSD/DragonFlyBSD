@@ -46,7 +46,7 @@
 #include "kcore_private.h"
 
 int
-kcore_get_vfs_bufspace(struct kcore_data *kc, int *bufspace)
+kcore_get_vfs_bufspace(struct kcore_data *kc, long *bufspace)
 {
 	static struct nlist nl[] = {
 		{ "_bufspace", 0, 0, 0, 0},

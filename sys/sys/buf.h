@@ -377,7 +377,7 @@ struct cluster_save {
 extern int	nbuf;			/* The number of buffer headers */
 extern long	maxswzone;		/* Max KVA for swap structures */
 extern long	maxbcache;		/* Max KVA for buffer cache */
-extern int	hidirtybufspace;
+extern long	hidirtybufspace;
 extern int      buf_maxio;              /* nominal maximum I/O for buffer */
 extern struct buf *buf;			/* The buffer headers. */
 extern char	*buffers;		/* The buffer contents. */

@@ -42,7 +42,7 @@
 #include <stddef.h>
 
 int
-kinfo_get_vfs_bufspace(int *bufspace)
+kinfo_get_vfs_bufspace(long *bufspace)
 {
 	size_t len = sizeof(*bufspace);
 

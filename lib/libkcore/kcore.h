@@ -93,7 +93,7 @@ int	 kcore_get_sched_profhz(struct kcore_data *, int *);
 int	 kcore_get_sched_stathz(struct kcore_data *, int *);
 int	 kcore_get_tty_tk_nin(struct kcore_data *, uint64_t *);
 int	 kcore_get_tty_tk_nout(struct kcore_data *, uint64_t *);
-int	 kcore_get_vfs_bufspace(struct kcore_data *, int *);
+int	 kcore_get_vfs_bufspace(struct kcore_data *, long *);
 __END_DECLS;
 
 #endif

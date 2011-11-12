@@ -119,22 +119,22 @@ vm_page_t bogus_page;
  * These are all static, but make the ones we export globals so we do
  * not need to use compiler magic.
  */
-int bufspace;			/* locked by buffer_map */
-int maxbufspace;
-static int bufmallocspace;	/* atomic ops */
-int maxbufmallocspace, lobufspace, hibufspace;
+long bufspace;			/* locked by buffer_map */
+long maxbufspace;
+static long bufmallocspace;	/* atomic ops */
+long maxbufmallocspace, lobufspace, hibufspace;
 static int bufreusecnt, bufdefragcnt, buffreekvacnt;
-static int lorunningspace;
-static int hirunningspace;
+static long lorunningspace;
+static long hirunningspace;
 static int runningbufreq;		/* locked by bufcspin */
-static int dirtybufspace;		/* locked by bufcspin */
+static long dirtybufspace;		/* locked by bufcspin */
 static int dirtybufcount;		/* locked by bufcspin */
-static int dirtybufspacehw;		/* locked by bufcspin */
+static long dirtybufspacehw;		/* locked by bufcspin */
 static int dirtybufcounthw;		/* locked by bufcspin */
-static int runningbufspace;		/* locked by bufcspin */
+static long runningbufspace;		/* locked by bufcspin */
 static int runningbufcount;		/* locked by bufcspin */
-int lodirtybufspace;
-int hidirtybufspace;
+long lodirtybufspace;
+long hidirtybufspace;
 static int getnewbufcalls;
 static int getnewbufrestarts;
 static int recoverbufcalls;
@@ -154,13 +154,13 @@ static u_int lowmempgfails;
 /*
  * Sysctls for operational control of the buffer cache.
  */
-SYSCTL_INT(_vfs, OID_AUTO, lodirtybufspace, CTLFLAG_RW, &lodirtybufspace, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, lodirtybufspace, CTLFLAG_RW, &lodirtybufspace, 0,
 	"Number of dirty buffers to flush before bufdaemon becomes inactive");
-SYSCTL_INT(_vfs, OID_AUTO, hidirtybufspace, CTLFLAG_RW, &hidirtybufspace, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, hidirtybufspace, CTLFLAG_RW, &hidirtybufspace, 0,
 	"High watermark used to trigger explicit flushing of dirty buffers");
-SYSCTL_INT(_vfs, OID_AUTO, lorunningspace, CTLFLAG_RW, &lorunningspace, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, lorunningspace, CTLFLAG_RW, &lorunningspace, 0,
 	"Minimum amount of buffer space required for active I/O");
-SYSCTL_INT(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW, &hirunningspace, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW, &hirunningspace, 0,
 	"Maximum amount of buffer space to usable for active I/O");
 SYSCTL_UINT(_vfs, OID_AUTO, lowmempgallocs, CTLFLAG_RW, &lowmempgallocs, 0,
 	"Page allocations done during periods of very low free memory");
@@ -173,29 +173,29 @@ SYSCTL_UINT(_vfs, OID_AUTO, vm_cycle_point, CTLFLAG_RW, &vm_cycle_point, 0,
  */
 SYSCTL_INT(_vfs, OID_AUTO, nbuf, CTLFLAG_RD, &nbuf, 0,
 	"Total number of buffers in buffer cache");
-SYSCTL_INT(_vfs, OID_AUTO, dirtybufspace, CTLFLAG_RD, &dirtybufspace, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, dirtybufspace, CTLFLAG_RD, &dirtybufspace, 0,
 	"Pending bytes of dirty buffers (all)");
-SYSCTL_INT(_vfs, OID_AUTO, dirtybufspacehw, CTLFLAG_RD, &dirtybufspacehw, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, dirtybufspacehw, CTLFLAG_RD, &dirtybufspacehw, 0,
 	"Pending bytes of dirty buffers (heavy weight)");
 SYSCTL_INT(_vfs, OID_AUTO, dirtybufcount, CTLFLAG_RD, &dirtybufcount, 0,
 	"Pending number of dirty buffers");
 SYSCTL_INT(_vfs, OID_AUTO, dirtybufcounthw, CTLFLAG_RD, &dirtybufcounthw, 0,
 	"Pending number of dirty buffers (heavy weight)");
-SYSCTL_INT(_vfs, OID_AUTO, runningbufspace, CTLFLAG_RD, &runningbufspace, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, runningbufspace, CTLFLAG_RD, &runningbufspace, 0,
 	"I/O bytes currently in progress due to asynchronous writes");
 SYSCTL_INT(_vfs, OID_AUTO, runningbufcount, CTLFLAG_RD, &runningbufcount, 0,
 	"I/O buffers currently in progress due to asynchronous writes");
-SYSCTL_INT(_vfs, OID_AUTO, maxbufspace, CTLFLAG_RD, &maxbufspace, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, maxbufspace, CTLFLAG_RD, &maxbufspace, 0,
 	"Hard limit on maximum amount of memory usable for buffer space");
-SYSCTL_INT(_vfs, OID_AUTO, hibufspace, CTLFLAG_RD, &hibufspace, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, hibufspace, CTLFLAG_RD, &hibufspace, 0,
 	"Soft limit on maximum amount of memory usable for buffer space");
-SYSCTL_INT(_vfs, OID_AUTO, lobufspace, CTLFLAG_RD, &lobufspace, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, lobufspace, CTLFLAG_RD, &lobufspace, 0,
 	"Minimum amount of memory to reserve for system buffer space");
-SYSCTL_INT(_vfs, OID_AUTO, bufspace, CTLFLAG_RD, &bufspace, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, bufspace, CTLFLAG_RD, &bufspace, 0,
 	"Amount of memory available for buffers");
-SYSCTL_INT(_vfs, OID_AUTO, maxmallocbufspace, CTLFLAG_RD, &maxbufmallocspace,
+SYSCTL_LONG(_vfs, OID_AUTO, maxmallocbufspace, CTLFLAG_RD, &maxbufmallocspace,
 	0, "Maximum amount of memory reserved for buffers using malloc");
-SYSCTL_INT(_vfs, OID_AUTO, bufmallocspace, CTLFLAG_RD, &bufmallocspace, 0,
+SYSCTL_LONG(_vfs, OID_AUTO, bufmallocspace, CTLFLAG_RD, &bufmallocspace, 0,
 	"Amount of memory left for buffers using malloc-scheme");
 SYSCTL_INT(_vfs, OID_AUTO, getnewbufcalls, CTLFLAG_RD, &getnewbufcalls, 0,
 	"New buffer header acquisition requests");
@@ -255,8 +255,8 @@ bufspacewakeup(void)
 static __inline void
 runningbufwakeup(struct buf *bp)
 {
-	int totalspace;
-	int limit;
+	long totalspace;
+	long limit;
 
 	if ((totalspace = bp->b_runningbufspace) != 0) {
 		spin_lock(&bufcspin);
@@ -317,7 +317,7 @@ bufcountwakeup(void)
 void
 waitrunningbufspace(void)
 {
-	int limit = hirunningspace * 4 / 6;
+	long limit = hirunningspace * 4 / 6;
 
 	if (runningbufspace > limit || runningbufreq) {
 		spin_lock(&bufcspin);
@@ -422,9 +422,9 @@ bd_speedup(void)
 int
 bd_heatup(void)
 {
-	int mid1;
-	int mid2;
-	int totalspace;
+	long mid1;
+	long mid2;
+	long totalspace;
 
 	mid1 = lodirtybufspace + (hidirtybufspace - lodirtybufspace) / 2;
 
@@ -645,7 +645,7 @@ bufinit(void)
 	 * this may result in KVM fragmentation which is not handled optimally
 	 * by the system.
 	 */
-	maxbufspace = nbuf * BKVASIZE;
+	maxbufspace = (long)nbuf * BKVASIZE;
 	hibufspace = imax(3 * maxbufspace / 4, maxbufspace - MAXBSIZE * 10);
 	lobufspace = hibufspace - MAXBSIZE;
 
@@ -2514,7 +2514,7 @@ SYSINIT(bufdaemon_hw, SI_SUB_KTHREAD_BUF, SI_ORDER_FIRST,
 static void
 buf_daemon(void)
 {
-	int limit;
+	long limit;
 
 	/*
 	 * This process needs to be suspended prior to shutdown sync.
@@ -2573,7 +2573,7 @@ buf_daemon(void)
 static void
 buf_daemon_hw(void)
 {
-	int limit;
+	long limit;
 
 	/*
 	 * This process needs to be suspended prior to shutdown sync.
@@ -3306,7 +3306,7 @@ allocbuf(struct buf *bp, int size)
 				} else {
 					kfree(bp->b_data, M_BIOBUF);
 					if (bp->b_bufsize) {
-						atomic_subtract_int(&bufmallocspace, bp->b_bufsize);
+						atomic_subtract_long(&bufmallocspace, bp->b_bufsize);
 						bufspacewakeup();
 						bp->b_bufsize = 0;
 					}
@@ -3334,7 +3334,7 @@ allocbuf(struct buf *bp, int size)
 				bp->b_bufsize = mbsize;
 				bp->b_bcount = size;
 				bp->b_flags |= B_MALLOC;
-				atomic_add_int(&bufmallocspace, mbsize);
+				atomic_add_long(&bufmallocspace, mbsize);
 				return 1;
 			}
 			origbuf = NULL;
@@ -3349,8 +3349,8 @@ allocbuf(struct buf *bp, int size)
 				origbufsize = bp->b_bufsize;
 				bp->b_data = bp->b_kvabase;
 				if (bp->b_bufsize) {
-					atomic_subtract_int(&bufmallocspace,
-							    bp->b_bufsize);
+					atomic_subtract_long(&bufmallocspace,
+							     bp->b_bufsize);
 					bufspacewakeup();
 					bp->b_bufsize = 0;
 				}

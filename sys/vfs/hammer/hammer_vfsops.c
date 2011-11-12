@@ -94,13 +94,13 @@ int64_t hammer_stats_commits;
 int64_t hammer_stats_undo;
 int64_t hammer_stats_redo;
 
-int hammer_count_dirtybufspace;		/* global */
+long hammer_count_dirtybufspace;	/* global */
 int hammer_count_refedbufs;		/* global */
 int hammer_count_reservations;
-int hammer_count_io_running_read;
-int hammer_count_io_running_write;
+long hammer_count_io_running_read;
+long hammer_count_io_running_write;
 int hammer_count_io_locked;
-int hammer_limit_dirtybufspace;		/* per-mount */
+long hammer_limit_dirtybufspace;	/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_inode_recs = 2048;	/* per inode */
 int hammer_limit_reclaims;
@@ -163,7 +163,7 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, live_dedup, CTLFLAG_RW,
 SYSCTL_INT(_vfs_hammer, OID_AUTO, tdmux_ticks, CTLFLAG_RW,
 	   &hammer_tdmux_ticks, 0, "Hammer tdmux ticks");
 
-SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufspace, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer, OID_AUTO, limit_dirtybufspace, CTLFLAG_RW,
 	   &hammer_limit_dirtybufspace, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_recs, CTLFLAG_RW,
 	   &hammer_limit_recs, 0, "");
@@ -251,17 +251,17 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_bmap_saves, CTLFLAG_RW,
 	    &hammer_live_dedup_bmap_saves, 0,
 	    "useful physical block lookups");
 
-SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufspace, CTLFLAG_RD,
+SYSCTL_LONG(_vfs_hammer, OID_AUTO, count_dirtybufspace, CTLFLAG_RD,
 	   &hammer_count_dirtybufspace, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_refedbufs, CTLFLAG_RD,
 	   &hammer_count_refedbufs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_reservations, CTLFLAG_RD,
 	   &hammer_count_reservations, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, count_io_running_read, CTLFLAG_RD,
+SYSCTL_LONG(_vfs_hammer, OID_AUTO, count_io_running_read, CTLFLAG_RD,
 	   &hammer_count_io_running_read, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_io_locked, CTLFLAG_RD,
 	   &hammer_count_io_locked, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, count_io_running_write, CTLFLAG_RD,
+SYSCTL_LONG(_vfs_hammer, OID_AUTO, count_io_running_write, CTLFLAG_RD,
 	   &hammer_count_io_running_write, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, zone_limit, CTLFLAG_RW,
 	   &hammer_zone_limit, 0, "");

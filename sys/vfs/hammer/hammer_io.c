@@ -303,7 +303,7 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, int limit)
 	int   error;
 
 	if ((bp = io->bp) == NULL) {
-		atomic_add_int(&hammer_count_io_running_read, io->bytes);
+		atomic_add_long(&hammer_count_io_running_read, io->bytes);
 		if (hammer_cluster_enable && limit > io->bytes) {
 			error = cluster_read(devvp, io->offset + limit,
 					     io->offset, io->bytes,
@@ -314,7 +314,7 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, int limit)
 			error = bread(devvp, io->offset, io->bytes, &io->bp);
 		}
 		hammer_stats_disk_read += io->bytes;
-		atomic_add_int(&hammer_count_io_running_read, -io->bytes);
+		atomic_add_long(&hammer_count_io_running_read, -io->bytes);
 
 		/*
 		 * The code generally assumes b_ops/b_dep has been set-up,
@@ -737,8 +737,8 @@ hammer_io_flush(struct hammer_io *io, int reclaim)
 	 *	 update io_running_space.
 	 */
 	io->running = 1;
-	atomic_add_int(&hmp->io_running_space, io->bytes);
-	atomic_add_int(&hammer_count_io_running_write, io->bytes);
+	atomic_add_long(&hmp->io_running_space, io->bytes);
+	atomic_add_long(&hammer_count_io_running_write, io->bytes);
 	lwkt_gettoken(&hmp->io_token);
 	TAILQ_INSERT_TAIL(&hmp->iorun_list, io, iorun_entry);
 	lwkt_reltoken(&hmp->io_token);
@@ -943,7 +943,7 @@ hammer_io_clear_modify(struct hammer_io *io, int inval)
 	if (io->mod_root == &io->hmp->volu_root ||
 	    io->mod_root == &io->hmp->meta_root) {
 		io->hmp->locked_dirty_space -= io->bytes;
-		atomic_add_int(&hammer_count_dirtybufspace, -io->bytes);
+		atomic_add_long(&hammer_count_dirtybufspace, -io->bytes);
 	}
 	RB_REMOVE(hammer_mod_rb_tree, io->mod_root, io);
 	io->mod_root = NULL;
@@ -1019,12 +1019,12 @@ hammer_io_set_modlist(struct hammer_io *io)
 	case HAMMER_STRUCTURE_VOLUME:
 		io->mod_root = &hmp->volu_root;
 		hmp->locked_dirty_space += io->bytes;
-		atomic_add_int(&hammer_count_dirtybufspace, io->bytes);
+		atomic_add_long(&hammer_count_dirtybufspace, io->bytes);
 		break;
 	case HAMMER_STRUCTURE_META_BUFFER:
 		io->mod_root = &hmp->meta_root;
 		hmp->locked_dirty_space += io->bytes;
-		atomic_add_int(&hammer_count_dirtybufspace, io->bytes);
+		atomic_add_long(&hammer_count_dirtybufspace, io->bytes);
 		break;
 	case HAMMER_STRUCTURE_UNDO_BUFFER:
 		io->mod_root = &hmp->undo_root;
@@ -1122,8 +1122,8 @@ hammer_io_complete(struct buf *bp)
 #endif
 		}
 		hammer_stats_disk_write += iou->io.bytes;
-		atomic_add_int(&hammer_count_io_running_write, -iou->io.bytes);
-		atomic_add_int(&hmp->io_running_space, -iou->io.bytes);
+		atomic_add_long(&hammer_count_io_running_write, -iou->io.bytes);
+		atomic_add_long(&hmp->io_running_space, -iou->io.bytes);
 		KKASSERT(hmp->io_running_space >= 0);
 		iou->io.running = 0;
 
@@ -1350,8 +1350,8 @@ hammer_io_checkwrite(struct buf *bp)
 	 */
 	KKASSERT(io->running == 0);
 	io->running = 1;
-	atomic_add_int(&io->hmp->io_running_space, io->bytes);
-	atomic_add_int(&hammer_count_io_running_write, io->bytes);
+	atomic_add_long(&io->hmp->io_running_space, io->bytes);
+	atomic_add_long(&hammer_count_io_running_write, io->bytes);
 	TAILQ_INSERT_TAIL(&io->hmp->iorun_list, io, iorun_entry);
 
 	hammer_put_interlock(&io->lock, 1);
