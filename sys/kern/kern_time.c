@@ -68,12 +68,24 @@ struct timezone tz;
  * timers when they expire.
  */
 
-int	nanosleep1(struct timespec *rqt, struct timespec *rmt);
 static int	settime(struct timeval *);
 static void	timevalfix(struct timeval *);
 
-static int     sleep_hard_us = 100;
-SYSCTL_INT(_kern, OID_AUTO, sleep_hard_us, CTLFLAG_RW, &sleep_hard_us, 0, "")
+/*
+ * Nanosleep tries very hard to sleep for a precisely requested time
+ * interval, down to 1uS.  The administrator can impose a minimum delay
+ * and a delay below which we hard-loop instead of initiate a timer
+ * interrupt and sleep.
+ *
+ * For machines under high loads it might be beneficial to increase min_us
+ * to e.g. 1000uS (1ms) so spining processes sleep meaningfully.
+ */
+static int     nanosleep_min_us = 10;
+static int     nanosleep_hard_us = 100;
+SYSCTL_INT(_kern, OID_AUTO, nanosleep_min_us, CTLFLAG_RW,
+	   &nanosleep_min_us, 0, "")
+SYSCTL_INT(_kern, OID_AUTO, nanosleep_hard_us, CTLFLAG_RW,
+	   &nanosleep_hard_us, 0, "")
 
 static int
 settime(struct timeval *tv)
@@ -313,8 +325,11 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 
 		if (tv.tv_sec == 0 && ticks == 0) {
 			thread_t td = curthread;
-			if (tv.tv_usec < sleep_hard_us) {
+			if (tv.tv_usec > 0 && tv.tv_usec < nanosleep_min_us)
+				tv.tv_usec = nanosleep_min_us;
+			if (tv.tv_usec < nanosleep_hard_us) {
 				lwkt_user_yield();
+				cpu_pause();
 			} else {
 				crit_enter_quick(td);
 				systimer_init_oneshot(&info, ns1_systimer,
