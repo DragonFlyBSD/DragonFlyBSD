@@ -227,6 +227,8 @@ fail:
 	lp->lwp_thread->td_flags |= TDF_EXITING;
 	lwkt_remove_tdallq(lp->lwp_thread);
 	PHOLD(p);
+	biosched_done(lp->lwp_thread);
+	dsched_exit_thread(lp->lwp_thread);
 	lwp_dispose(lp);
 	lwkt_reltoken(&p->p_token);
 fail2:
