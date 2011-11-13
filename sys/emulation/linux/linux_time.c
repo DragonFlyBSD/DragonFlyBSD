@@ -189,7 +189,6 @@ sys_linux_clock_getres(struct linux_clock_getres_args *args)
 
 	return (copyout(&lts, args->tp, sizeof lts));
 }
-extern int nanosleep1(struct timespec *rqt, struct timespec *rmt);
 
 int
 sys_linux_clock_nanosleep(struct linux_clock_nanosleep_args *args)

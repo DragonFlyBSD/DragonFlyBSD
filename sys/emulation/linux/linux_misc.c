@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.39 2007/06/26 19:31:03 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -60,6 +59,7 @@
 #include <sys/signal2.h>
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
+#include <sys/spinlock2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
