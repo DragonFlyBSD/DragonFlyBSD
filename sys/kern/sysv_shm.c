@@ -669,13 +669,16 @@ shmfork(struct proc *p1, struct proc *p2)
 	size_t size;
 	int i;
 
+	get_mplock();
 	size = shminfo.shmseg * sizeof(struct shmmap_state);
 	shmmap_s = kmalloc(size, M_SHM, M_WAITOK);
 	bcopy((caddr_t)p1->p_vmspace->vm_shm, (caddr_t)shmmap_s, size);
 	p2->p_vmspace->vm_shm = (caddr_t)shmmap_s;
-	for (i = 0; i < shminfo.shmseg; i++, shmmap_s++)
+	for (i = 0; i < shminfo.shmseg; i++, shmmap_s++) {
 		if (shmmap_s->shmid != -1)
 			shmsegs[IPCID_TO_IX(shmmap_s->shmid)].shm_nattch++;
+	}
+	rel_mplock();
 }
 
 void
@@ -686,11 +689,13 @@ shmexit(struct vmspace *vm)
 
 	if ((base = (struct shmmap_state *)vm->vm_shm) != NULL) {
 		vm->vm_shm = NULL;
+		get_mplock();
 		for (i = 0, shm = base; i < shminfo.shmseg; i++, shm++) {
 			if (shm->shmid != -1)
 				shm_delete_mapping(vm, shm);
 		}
 		kfree(base, M_SHM);
+		rel_mplock();
 	}
 }
 
