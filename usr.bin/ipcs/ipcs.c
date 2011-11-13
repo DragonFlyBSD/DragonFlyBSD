@@ -107,7 +107,7 @@ cvt_time(time_t t, char *buf)
 	struct tm *tm;
 
 	if (t == 0) {
-		strcpy(buf, "no-entry");
+		strcpy(buf, "noentry");
 	} else {
 		tm = localtime(&t);
 		sprintf(buf, "%2d:%02d:%02d",
@@ -392,7 +392,7 @@ main(int argc, char **argv)
 						    shmptr->shm_nattch);
 
 					if (option & BIGGEST)
-						printf(" %12zd",
+						printf(" %13zd",
 						    shmptr->shm_segsz);
 
 					if (option & PID)
@@ -484,11 +484,11 @@ main(int argc, char **argv)
 						    group_from_gid(semaptr->sem_perm.cgid, 0));
 
 					if (option & BIGGEST)
-						printf(" %6d",
+						printf(" %5d",
 						    semaptr->sem_nsems);
 
 					if (option & TIME)
-						printf("%s %s",
+						printf(" %s %s",
 						    otime_buf,
 						    ctime_buf);
 
