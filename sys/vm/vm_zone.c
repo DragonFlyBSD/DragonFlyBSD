@@ -46,6 +46,8 @@ static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 
 #define	ZENTRY_FREE	0x12342378
 
+int zone_burst = 32;
+
 static void *zget(vm_zone_t z);
 
 /*
@@ -59,11 +61,13 @@ zalloc(vm_zone_t z)
 {
 	globaldata_t gd = mycpu;
 	void *item;
+	int n;
 
 #ifdef INVARIANTS
 	if (z == NULL)
 		zerror(ZONE_ERROR_INVALID);
 #endif
+retry:
 	/*
 	 * Avoid spinlock contention by allocating from a per-cpu queue
 	 */
@@ -88,21 +92,27 @@ zalloc(vm_zone_t z)
 	}
 
 	/*
-	 * Per-zone spinlock for the remainder.
+	 * Per-zone spinlock for the remainder.  Always load at least one
+	 * item.
 	 */
 	spin_lock(&z->zlock);
 	if (z->zfreecnt > z->zfreemin) {
-		item = z->zitems;
+		n = zone_burst;
+		do {
+			item = z->zitems;
 #ifdef INVARIANTS
-		KASSERT(item != NULL, ("zitems unexpectedly NULL"));
-		if (((void **)item)[1] != (void *)ZENTRY_FREE)
-			zerror(ZONE_ERROR_NOTFREE);
-		((void **)item)[1] = 0;
+			KASSERT(item != NULL, ("zitems unexpectedly NULL"));
+			if (((void **)item)[1] != (void *)ZENTRY_FREE)
+				zerror(ZONE_ERROR_NOTFREE);
 #endif
-		z->zitems = ((void **)item)[0];
-		z->zfreecnt--;
-		z->znalloc++;
+			z->zitems = ((void **)item)[0];
+			z->zfreecnt--;
+			((void **)item)[0] = z->zitems_pcpu[gd->gd_cpuid];
+			z->zitems_pcpu[gd->gd_cpuid] = item;
+			++z->zfreecnt_pcpu[gd->gd_cpuid];
+		} while (--n > 0 && z->zfreecnt > z->zfreemin);
 		spin_unlock(&z->zlock);
+		goto retry;
 	} else {
 		spin_unlock(&z->zlock);
 		item = zget(z);
@@ -701,6 +711,8 @@ SYSCTL_OID(_vm, OID_AUTO, zone, CTLTYPE_STRING|CTLFLAG_RD, \
 
 SYSCTL_INT(_vm, OID_AUTO, zone_kmem_pages,
 	CTLFLAG_RD, &zone_kmem_pages, 0, "Number of interrupt safe pages allocated by zone");
+SYSCTL_INT(_vm, OID_AUTO, zone_burst,
+	CTLFLAG_RW, &zone_burst, 0, "Burst from depot to pcpu cache");
 SYSCTL_LONG(_vm, OID_AUTO, zone_kmem_kvaspace,
 	CTLFLAG_RD, &zone_kmem_kvaspace, 0, "KVA space allocated by zone");
 SYSCTL_INT(_vm, OID_AUTO, zone_kern_pages,
