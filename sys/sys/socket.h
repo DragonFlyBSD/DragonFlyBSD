@@ -142,6 +142,7 @@ struct	accept_filter_arg {
 #define AF_DLI		13		/* DEC Direct data link interface */
 #define AF_LAT		14		/* LAT */
 #define	AF_HYLINK	15		/* NSC Hyperchannel */
+#define	AF_APPLETALK	16		/* Apple Talk */
 #define	AF_ROUTE	17		/* Internal Routing Protocol */
 #define	AF_LINK		18		/* Link layer interface */
 #define	pseudo_AF_XTP	19		/* eXpress Transfer Protocol (no AF) */
