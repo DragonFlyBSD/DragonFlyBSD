@@ -65,10 +65,12 @@ inodes(void)
 	if (getcwd(path, sizeof(path)) == NULL)
 		err(1, "getcwd()");
 
-	if (statvfs(path, &buf) < 0)
+	if (statfs(path, &sbuf) < 0)
 		err(1, "statfs(%s)", path);
+	if (statvfs(path, &buf) < 0)
+		err(1, "statvfs(%s)", path);
 	if (!strcmp(sbuf.f_fstypename, "msdosfs"))
-			buf.f_ffree = 9999;
+		buf.f_ffree = 9999;
 	flags = sbuf.f_flags & MNT_VISFLAGMASK;
 	if (op->verbose > 2)
 		printf("Free inodes on %s (%s): %jd\n", path, sbuf.f_mntonname,
