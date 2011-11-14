@@ -246,6 +246,7 @@ static int wid_mtu;
 static int wid_if;
 static int wid_expire;
 static int wid_mplslops;
+static int wid_msl;
 
 static void
 size_cols(int ef, struct radix_node *rn)
@@ -259,6 +260,7 @@ size_cols(int ef, struct radix_node *rn)
 	wid_if = WID_IF_DEFAULT(ef);
 	wid_expire = 6;
 	wid_mplslops = 7;
+	wid_msl = 7;
 
 	if (Wflag)
 		size_cols_tree(rn);
@@ -350,9 +352,18 @@ size_cols_rtentry(struct rtentry *rt)
 			}
 		}
 	}
-	if (rt->rt_shim[0] != NULL)
-		len = strlen(labelops(rt));
-	wid_mplslops = MAX(len, wid_mplslops);
+	if (Wflag) {
+		if (rt->rt_shim[0] != NULL) {
+			len = strlen(labelops(rt));
+			wid_mplslops = MAX(len, wid_mplslops);
+		}
+
+		if (rt->rt_rmx.rmx_msl) {
+			len = snprintf(buffer, sizeof(buffer),
+				       "%lu", rt->rt_rmx.rmx_msl);
+			wid_msl = MAX(len, wid_msl);
+		}
+	}
 }
 
 
@@ -367,7 +378,7 @@ pr_rthdr(int af1)
 		printf("%-8.8s ","Address");
 	if (af1 == AF_INET || Wflag) {
 		if (Wflag) {
-			printf("%-*.*s %-*.*s %-*.*s %*.*s %*.*s %*.*s %*.*s %*s %-*s\n",
+			printf("%-*.*s %-*.*s %-*.*s %*.*s %*.*s %*.*s %*.*s %*s %-*s %*s\n",
 				wid_dst,	wid_dst,	"Destination",
 				wid_gw,		wid_gw,		"Gateway",
 				wid_flags,	wid_flags,	"Flags",
@@ -376,7 +387,8 @@ pr_rthdr(int af1)
 				wid_mtu,	wid_mtu,	"Mtu",
 				wid_if,		wid_if,		"Netif",
 				wid_expire,			"Expire",
-				wid_mplslops,			"Labelops");
+				wid_mplslops,			"Labelops",
+				wid_msl,			"Msl");
 		} else {
 			printf("%-*.*s %-*.*s %-*.*s %*.*s %*.*s %*.*s %*s\n",
 				wid_dst,	wid_dst,	"Destination",
@@ -772,6 +784,8 @@ p_rtentry(struct rtentry *rt)
 			if ((expire_time =
 			    rt->rt_rmx.rmx_expire - time(NULL)) > 0)
 				printf(" %*d", wid_expire, (int)expire_time);
+			else
+				printf("%*s ", wid_expire, "");
 		} else {
 			printf("%*s ", wid_expire, "");
 		}
@@ -781,6 +795,12 @@ p_rtentry(struct rtentry *rt)
 	if (Wflag) {
 		if (rt->rt_shim[0] != NULL)
 			printf(" %-*s", wid_mplslops, labelops(rt));
+		else
+			printf(" %-*s", wid_mplslops, "");
+		if (rt->rt_rmx.rmx_msl != 0)
+			printf(" %*lu", wid_msl, rt->rt_rmx.rmx_msl);
+		else
+			printf(" %*s", wid_msl, "");
 	}
 	putchar('\n');
 }

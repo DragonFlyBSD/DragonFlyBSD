@@ -788,6 +788,7 @@ rt_setmetrics(u_long which, struct rt_metrics *in, struct rt_metrics *out)
 	setmetric(RTV_HOPCOUNT, rmx_hopcount);
 	setmetric(RTV_MTU, rmx_mtu);
 	setmetric(RTV_EXPIRE, rmx_expire);
+	setmetric(RTV_MSL, rmx_msl);
 #undef setmetric
 }
 

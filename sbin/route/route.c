@@ -562,6 +562,7 @@ set_metric(char *value, int key)
 	caseof(K_SSTHRESH, RTV_SSTHRESH, rmx_ssthresh);
 	caseof(K_RTT, RTV_RTT, rmx_rtt);
 	caseof(K_RTTVAR, RTV_RTTVAR, rmx_rttvar);
+	caseof(K_MSL, RTV_MSL, rmx_msl);
 	}
 	rtm_inits |= flag;
 	if (lockrest || locking)
@@ -761,6 +762,7 @@ newroute(int argc, char **argv)
 			case K_SSTHRESH:
 			case K_RTT:
 			case K_RTTVAR:
+			case K_MSL:
 				if (--argc == 0)
 					usage(NULL);
 				set_metric(*++argv, key);
@@ -1374,7 +1376,7 @@ const char *msgtypes[] = {
 };
 
 char metricnames[] =
-"\011pksent\010rttvar\7rtt\6ssthresh\5sendpipe\4recvpipe\3expire\2hopcount"
+"\011msl\010rttvar\7rtt\6ssthresh\5sendpipe\4recvpipe\3expire\2hopcount"
 "\1mtu";
 char routeflags[] =
 "\1UP\2GATEWAY\3HOST\4REJECT\5DYNAMIC\6MODIFIED\7DONE\010MASK_PRESENT"
@@ -1527,7 +1529,7 @@ print_getmsg(struct rt_msghdr *rtm, int msglen)
 #define msec(u)	(((u) + 500) / 1000)		/* usec to msec */
 
 	printf("\n%s\n", "\
- recvpipe  sendpipe  ssthresh  rtt,msec    rttvar  hopcount      mtu     expire");
+ recvpipe  sendpipe  ssthresh  rtt,msec    rttvar  hopcount      mtu     expire      msl");
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_recvpipe, lock(RPIPE));
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_sendpipe, lock(SPIPE));
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_ssthresh, lock(SSTHRESH));
@@ -1537,7 +1539,8 @@ print_getmsg(struct rt_msghdr *rtm, int msglen)
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_mtu, lock(MTU));
 	if (rtm->rtm_rmx.rmx_expire != 0)
 		rtm->rtm_rmx.rmx_expire -= time(0);
-	printf("%8ld%c\n", rtm->rtm_rmx.rmx_expire, lock(EXPIRE));
+	printf("%8ld%c ", rtm->rtm_rmx.rmx_expire, lock(EXPIRE));
+	printf("%8ld\n", rtm->rtm_rmx.rmx_msl);
 #undef lock
 #undef msec
 #define	RTA_IGN	(RTA_DST|RTA_GATEWAY|RTA_NETMASK|RTA_IFP|RTA_IFA|RTA_BRD)

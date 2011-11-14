@@ -115,7 +115,9 @@ struct rt_metrics {	/* grouped for locality of reference */
 	u_long	rmx_recvpipe;	/* inbound delay-bandwidth product */
 	u_long	rmx_hopcount;	/* max hops expected */
 	u_short rmx_mssopt;	/* peer's cached MSS */
-	u_long	rmx_filler[3];	/* for future expansion */
+	u_short	rmx_pad;	/* explicit pad */
+	u_long	rmx_msl;	/* maximum segment lifetime */
+	u_long	rmx_filler[2];	/* for future expansion */
 };
 
 /*
@@ -270,6 +272,7 @@ struct rt_msghdr {
 #define RTV_SSTHRESH	0x20	/* init or lock _ssthresh */
 #define RTV_RTT		0x40	/* init or lock _rtt */
 #define RTV_RTTVAR	0x80	/* init or lock _rttvar */
+#define RTV_MSL		0x100	/* init or lock _msl */
 
 /*
  * Bitmask values for rtm_addrs.
