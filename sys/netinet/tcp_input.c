@@ -243,6 +243,7 @@ static int	 tcp_reass(struct tcpcb *, struct tcphdr *, int *,
 static void	 tcp_xmit_timer(struct tcpcb *, int);
 static void	 tcp_newreno_partial_ack(struct tcpcb *, struct tcphdr *, int);
 static void	 tcp_sack_rexmt(struct tcpcb *, struct tcphdr *);
+static int	 tcp_rmx_msl(const struct tcpcb *);
 
 /* Neighbor Discovery, Neighbor Unreachability Detection Upper layer hint. */
 #ifdef INET6
@@ -2309,7 +2310,8 @@ process_ACK:
 				tp->t_state = TCPS_TIME_WAIT;
 				tcp_canceltimers(tp);
 				tcp_callout_reset(tp, tp->tt_2msl,
-					    2 * tcp_msl, tcp_timer_2msl);
+					    2 * tcp_rmx_msl(tp),
+					    tcp_timer_2msl);
 				soisdisconnected(so);
 			}
 			break;
@@ -2333,7 +2335,7 @@ process_ACK:
 		 * it and restart the finack timer.
 		 */
 		case TCPS_TIME_WAIT:
-			tcp_callout_reset(tp, tp->tt_2msl, 2 * tcp_msl,
+			tcp_callout_reset(tp, tp->tt_2msl, 2 * tcp_rmx_msl(tp),
 			    tcp_timer_2msl);
 			goto dropafterack;
 		}
@@ -2536,7 +2538,7 @@ dodata:							/* XXX */
 		case TCPS_FIN_WAIT_2:
 			tp->t_state = TCPS_TIME_WAIT;
 			tcp_canceltimers(tp);
-			tcp_callout_reset(tp, tp->tt_2msl, 2 * tcp_msl,
+			tcp_callout_reset(tp, tp->tt_2msl, 2 * tcp_rmx_msl(tp),
 				    tcp_timer_2msl);
 			soisdisconnected(so);
 			break;
@@ -2545,7 +2547,7 @@ dodata:							/* XXX */
 		 * In TIME_WAIT state restart the 2 MSL time_wait timer.
 		 */
 		case TCPS_TIME_WAIT:
-			tcp_callout_reset(tp, tp->tt_2msl, 2 * tcp_msl,
+			tcp_callout_reset(tp, tp->tt_2msl, 2 * tcp_rmx_msl(tp),
 			    tcp_timer_2msl);
 			break;
 		}
@@ -3208,4 +3210,25 @@ tcp_timer_keep_activity(struct tcpcb *tp, int thflags)
 					  tcp_timer_keep);
 		}
 	}
+}
+
+static int
+tcp_rmx_msl(const struct tcpcb *tp)
+{
+	struct rtentry *rt;
+	struct inpcb *inp = tp->t_inpcb;
+#ifdef INET6
+	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) ? TRUE : FALSE);
+#else
+	const boolean_t isipv6 = FALSE;
+#endif
+
+	if (isipv6)
+		rt = tcp_rtlookup6(&inp->inp_inc);
+	else
+		rt = tcp_rtlookup(&inp->inp_inc);
+	if (rt == NULL || rt->rt_rmx.rmx_msl == 0)
+		return tcp_msl;
+
+	return (rt->rt_rmx.rmx_msl * hz);
 }
