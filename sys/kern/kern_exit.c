@@ -206,14 +206,14 @@ killalllwps(int forexec)
 	 * Interlock against P_WEXIT.  Only one of the process's thread
 	 * is allowed to do the master exit.
 	 */
-	if (p->p_flag & P_WEXIT)
+	if (p->p_flags & P_WEXIT)
 		return (EALREADY);
-	p->p_flag |= P_WEXIT;
+	p->p_flags |= P_WEXIT;
 
 	/*
-	 * Interlock with LWP_WEXIT and kill any remaining LWPs
+	 * Interlock with LWP_MP_WEXIT and kill any remaining LWPs
 	 */
-	lp->lwp_flag |= LWP_WEXIT;
+	atomic_set_int(&lp->lwp_mpflags, LWP_MP_WEXIT);
 	if (p->p_nthreads > 1)
 		killlwps(lp);
 
@@ -223,8 +223,8 @@ killalllwps(int forexec)
 	 * have been killed.
 	 */
 	if (forexec) {
-		lp->lwp_flag &= ~LWP_WEXIT;
-		p->p_flag &= ~P_WEXIT;
+		atomic_clear_int(&lp->lwp_mpflags, LWP_MP_WEXIT);
+		p->p_flags &= ~P_WEXIT;
 	}
 	return(0);
 }
@@ -242,16 +242,16 @@ killlwps(struct lwp *lp)
 
 	/*
 	 * Kill the remaining LWPs.  We must send the signal before setting
-	 * LWP_WEXIT.  The setting of WEXIT is optional but helps reduce
+	 * LWP_MP_WEXIT.  The setting of WEXIT is optional but helps reduce
 	 * races.  tlp must be held across the call as it might block and
 	 * allow the target lwp to rip itself out from under our loop.
 	 */
 	FOREACH_LWP_IN_PROC(tlp, p) {
 		LWPHOLD(tlp);
 		lwkt_gettoken(&tlp->lwp_token);
-		if ((tlp->lwp_flag & LWP_WEXIT) == 0) {
+		if ((tlp->lwp_mpflags & LWP_MP_WEXIT) == 0) {
 			lwpsignal(p, tlp, SIGKILL);
-			tlp->lwp_flag |= LWP_WEXIT;
+			atomic_set_int(&tlp->lwp_mpflags, LWP_MP_WEXIT);
 		}
 		lwkt_reltoken(&tlp->lwp_token);
 		LWPRELE(tlp);
@@ -344,13 +344,13 @@ exit1(int rv)
 	TAILQ_FOREACH(ep, &exit_list, next) 
 		(*ep->function)(td);
 
-	if (p->p_flag & P_PROFIL)
+	if (p->p_flags & P_PROFIL)
 		stopprofclock(p);
 	/*
 	 * If parent is waiting for us to exit or exec,
 	 * P_PPWAIT is set; we will wakeup the parent below.
 	 */
-	p->p_flag &= ~(P_TRACED | P_PPWAIT);
+	p->p_flags &= ~(P_TRACED | P_PPWAIT);
 	SIGEMPTYSET(p->p_siglist);
 	SIGEMPTYSET(lp->lwp_siglist);
 	if (timevalisset(&p->p_realtimer.it_value))
@@ -505,8 +505,8 @@ exit1(int rv)
 			 * Traced processes are killed
 			 * since their existence means someone is screwing up.
 			 */
-			if (q->p_flag & P_TRACED) {
-				q->p_flag &= ~P_TRACED;
+			if (q->p_flags & P_TRACED) {
+				q->p_flags &= ~P_TRACED;
 				ksignal(q, SIGKILL);
 			}
 			q = nq;
@@ -595,11 +595,11 @@ lwp_exit(int masterexit)
 	int dowake = 0;
 
 	/*
-	 * lwp_exit() may be called without setting LWP_WEXIT, so
+	 * lwp_exit() may be called without setting LWP_MP_WEXIT, so
 	 * make sure it is set here.
 	 */
 	ASSERT_LWKT_TOKEN_HELD(&p->p_token);
-	lp->lwp_flag |= LWP_WEXIT;
+	atomic_set_int(&lp->lwp_mpflags, LWP_MP_WEXIT);
 
 	/*
 	 * Clean up any virtualization
@@ -966,10 +966,10 @@ loop:
 			error = 0;
 			goto done;
 		}
-		if (p->p_stat == SSTOP && (p->p_flag & P_WAITED) == 0 &&
-		    ((p->p_flag & P_TRACED) || (options & WUNTRACED))) {
+		if (p->p_stat == SSTOP && (p->p_flags & P_WAITED) == 0 &&
+		    ((p->p_flags & P_TRACED) || (options & WUNTRACED))) {
 			lwkt_gettoken(&p->p_token);
-			p->p_flag |= P_WAITED;
+			p->p_flags |= P_WAITED;
 
 			*res = p->p_pid;
 			p->p_usched->heuristic_exiting(td->td_lwp, p);
@@ -982,11 +982,11 @@ loop:
 			lwkt_reltoken(&p->p_token);
 			goto done;
 		}
-		if ((options & WCONTINUED) && (p->p_flag & P_CONTINUED)) {
+		if ((options & WCONTINUED) && (p->p_flags & P_CONTINUED)) {
 			lwkt_gettoken(&p->p_token);
 			*res = p->p_pid;
 			p->p_usched->heuristic_exiting(td->td_lwp, p);
-			p->p_flag &= ~P_CONTINUED;
+			p->p_flags &= ~P_CONTINUED;
 
 			if (status)
 				*status = SIGCONT;

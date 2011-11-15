@@ -392,7 +392,7 @@ proc0_init(void *dummy __unused)
 
 	p->p_sysent = &aout_sysvec;
 
-	p->p_flag = P_SYSTEM;
+	p->p_flags = P_SYSTEM;
 	p->p_stat = SACTIVE;
 	lp->lwp_stat = LSRUN;
 	p->p_nice = NZERO;
@@ -687,7 +687,7 @@ create_init(const void *udata __unused)
 	error = fork1(&lwp0, RFFDG | RFPROC, &initproc);
 	if (error)
 		panic("cannot fork init: %d", error);
-	initproc->p_flag |= P_SYSTEM;
+	initproc->p_flags |= P_SYSTEM;
 	lp = ONLY_LWP_IN_PROC(initproc);
 	cpu_set_fork_handler(lp, start_init, NULL);
 	crit_exit();

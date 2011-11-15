@@ -1501,7 +1501,7 @@ vm_pageout_scan_callback(struct proc *p, void *data)
 	 * Never kill system processes or init.  If we have configured swap
 	 * then try to avoid killing low-numbered pids.
 	 */
-	if ((p->p_flag & P_SYSTEM) || (p->p_pid == 1) ||
+	if ((p->p_flags & P_SYSTEM) || (p->p_pid == 1) ||
 	    ((p->p_pid < 48) && (vm_swap_size != 0))) {
 		return (0);
 	}
@@ -2066,7 +2066,7 @@ vm_daemon_callback(struct proc *p, void *data __unused)
 	 * if this is a system process or if we have already
 	 * looked at this process, skip it.
 	 */
-	if (p->p_flag & (P_SYSTEM | P_WEXIT))
+	if (p->p_flags & (P_SYSTEM | P_WEXIT))
 		return (0);
 
 	/*
@@ -2087,7 +2087,7 @@ vm_daemon_callback(struct proc *p, void *data __unused)
 	 * swapped out.  Set the limit to nothing to get as
 	 * many pages out to swap as possible.
 	 */
-	if (p->p_flag & P_SWAPPEDOUT)
+	if (p->p_flags & P_SWAPPEDOUT)
 		limit = 0;
 
 	lwkt_gettoken(&p->p_vmspace->vm_map.token);

@@ -249,7 +249,7 @@ acct_process(struct proc *p)
 	acct.ac_gid = p->p_ucred->cr_rgid;
 
 	/* (7) The terminal from which the process was started */
-	if ((p->p_flag & P_CONTROLT) && p->p_pgrp->pg_session->s_ttyp)
+	if ((p->p_flags & P_CONTROLT) && p->p_pgrp->pg_session->s_ttyp)
 		acct.ac_tty = dev2udev(p->p_pgrp->pg_session->s_ttyp->t_dev);
 	else
 		acct.ac_tty = NOUDEV;

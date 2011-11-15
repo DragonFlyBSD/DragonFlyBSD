@@ -173,14 +173,15 @@ suspend_kproc(struct thread *td, int timo)
 {
 	if (td->td_proc == NULL) {
 		lwkt_gettoken(&kpsus_token);
-		td->td_flags |= TDF_STOPREQ;	/* request thread pause */
+		/* request thread pause */
+		atomic_set_int(&td->td_mpflags, TDF_MP_STOPREQ);
 		wakeup(td);
-		while (td->td_flags & TDF_STOPREQ) {
+		while (td->td_mpflags & TDF_MP_STOPREQ) {
 			int error = tsleep(td, 0, "suspkp", timo);
 			if (error == EWOULDBLOCK)
 				break;
 		}
-		td->td_flags &= ~TDF_STOPREQ;
+		atomic_clear_int(&td->td_mpflags, TDF_MP_STOPREQ);
 		lwkt_reltoken(&kpsus_token);
 		return(0);
 	} else {
@@ -193,14 +194,14 @@ kproc_suspend_loop(void)
 {
 	struct thread *td = curthread;
 
-	if (td->td_flags & TDF_STOPREQ) {
+	if (td->td_mpflags & TDF_MP_STOPREQ) {
 		lwkt_gettoken(&kpsus_token);
-		td->td_flags &= ~TDF_STOPREQ;
-		while ((td->td_flags & TDF_WAKEREQ) == 0) {
+		atomic_clear_int(&td->td_mpflags, TDF_MP_STOPREQ);
+		while ((td->td_mpflags & TDF_MP_WAKEREQ) == 0) {
 			wakeup(td);
 			tsleep(td, 0, "kpsusp", 0);
 		}
-		td->td_flags &= ~TDF_WAKEREQ;
+		atomic_clear_int(&td->td_mpflags, TDF_MP_WAKEREQ);
 		wakeup(td);
 		lwkt_reltoken(&kpsus_token);
 	}

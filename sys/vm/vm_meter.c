@@ -176,15 +176,15 @@ do_vmtotal_callback(struct proc *p, void *data)
 	struct vmtotal *totalp = data;
 	struct lwp *lp;
 
-	if (p->p_flag & P_SYSTEM)
+	if (p->p_flags & P_SYSTEM)
 		return(0);
 
 	FOREACH_LWP_IN_PROC(lp, p) {
 		switch (lp->lwp_stat) {
 		case LSSTOP:
 		case LSSLEEP:
-			if ((p->p_flag & P_SWAPPEDOUT) == 0) {
-				if ((lp->lwp_flag & LWP_SINTR) == 0)
+			if ((p->p_flags & P_SWAPPEDOUT) == 0) {
+				if ((lp->lwp_flags & LWP_SINTR) == 0)
 					totalp->t_dw++;
 				else if (lp->lwp_slptime < maxslp)
 					totalp->t_sl++;
@@ -196,7 +196,7 @@ do_vmtotal_callback(struct proc *p, void *data)
 			break;
 
 		case LSRUN:
-			if (p->p_flag & P_SWAPPEDOUT)
+			if (p->p_flags & P_SWAPPEDOUT)
 				totalp->t_sw++;
 			else
 				totalp->t_rq++;
@@ -211,7 +211,7 @@ do_vmtotal_callback(struct proc *p, void *data)
 		/*
 		 * Set while in vm_fault()
 		 */
-		if (lp->lwp_flag & LWP_PAGING)
+		if (lp->lwp_flags & LWP_PAGING)
 			totalp->t_pw++;
 	}
 	return(0);

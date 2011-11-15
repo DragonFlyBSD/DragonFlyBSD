@@ -405,7 +405,7 @@ define ps
             printf "%5d %08x %4d %5d %5d  %06x  %d  %-10s   ", \
                    $proc.p_pid, $aproc, \
                    $proc.p_cred->p_ruid, $pptr->p_pid, \
-                   $proc.p_pgrp->pg_id, $proc.p_flag, $proc.p_stat, \
+                   $proc.p_pgrp->pg_id, $proc.p_flags, $proc.p_stat, \
                    &$proc.p_comm[0]
             if ($proc.p_wchan)
                 if ($proc.p_wmesg)
@@ -497,7 +497,7 @@ define btpa
             printf "%5d %08x %4d %5d %5d  %06x %d  %-10s   ", \
                    $proc.p_pid, $aproc, \
                    $proc.p_cred->p_ruid, $pptr->p_pid, \
-                   $proc.p_pgrp->pg_id, $proc.p_flag, $proc.p_stat, \
+                   $proc.p_pgrp->pg_id, $proc.p_flags, $proc.p_stat, \
                    &$proc.p_comm[0]
             if ($proc.p_wchan)
                 if ($proc.p_wmesg)
@@ -506,7 +506,7 @@ define btpa
                 printf "%x", $proc.p_wchan
             end
             printf "\n"
-	   if ($proc->p_flag & 4)
+	   if ($proc->p_flags & 4)
 	      btr $proc->p_addr->u_pcb->pcb_ebp
 	   else
               echo (not loaded)\n
@@ -523,7 +523,7 @@ document btpa
 Show backtraces for all processes in the system.
 end
 define btpp
-  if ($myvectorproc->p_flag & 4)
+  if ($myvectorproc->p_flags & 4)
     btr $myvectorproc->p_addr->u_pcb->pcb_ebp
   else
     echo (not loaded)\n
@@ -547,7 +547,7 @@ define defproc
                printf "%5d %08x %4d %5d %5d  %06x %d  %-10s   ", \
                       $proc.p_pid, $aproc, \
                       $proc.p_cred->p_ruid, $pptr->p_pid, \
-                     $proc.p_pgrp->pg_id, $proc.p_flag, $proc.p_stat, \
+                     $proc.p_pgrp->pg_id, $proc.p_flags, $proc.p_stat, \
                      &$proc.p_comm[0]
                if ($proc.p_wchan)
                    if ($proc.p_wmesg)
@@ -570,7 +570,7 @@ end
 define fr
 set $fno = 0
 set $searching = 1
-if ($myvectorproc->p_flag & 4)
+if ($myvectorproc->p_flags & 4)
   set $frame = $myvectorproc->p_addr->u_pcb->pcb_ebp
   while (($searching == 1) && (*(int *) $frame > 0xc0000000))
     set $myebp = *(int *) $frame

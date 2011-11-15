@@ -61,7 +61,7 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 
 	if (db_more(&nl) < 0)
 	    return;
-	db_printf("  pid      lwp  uid  ppid  pgrp  pflag  lflag stat  wmesg    wchan cmd\n");
+	db_printf("  pid      lwp  uid  ppid  pgrp  pflags lflags stat  wmesg    wchan cmd\n");
 	for (;;) {
 		while (lp == NULL) {
 			--np;
@@ -88,8 +88,8 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		db_printf("%5d %8p %4d %5d %5d %06x %06x  %d %d",
 		    p->p_pid, (volatile void *)lp,
 		    p->p_ucred ? p->p_ucred->cr_ruid : 0, pp->p_pid,
-		    p->p_pgrp ? p->p_pgrp->pg_id : 0, p->p_flag,
-		    lp->lwp_flag, p->p_stat, lp->lwp_stat);
+		    p->p_pgrp ? p->p_pgrp->pg_id : 0, p->p_flags,
+		    lp->lwp_flags, p->p_stat, lp->lwp_stat);
 		if (lp->lwp_wchan) {
 			db_printf(" %6s %8p",
 				(lp->lwp_wmesg ? lp->lwp_wmesg : "?"),

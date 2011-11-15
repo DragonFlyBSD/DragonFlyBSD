@@ -269,7 +269,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	/*
 	 * Allocate space for the signal handler context.
 	 */
-	if ((lp->lwp_flag & LWP_ALTSTACK) && !oonstack &&
+	if ((lp->lwp_flags & LWP_ALTSTACK) && !oonstack &&
 	    SIGISMEMBER(p->p_sigacts->ps_sigonstack, sig)) {
 		fp = (struct l_rt_sigframe *)(lp->lwp_sigstk.ss_sp +
 		    lp->lwp_sigstk.ss_size - sizeof(struct l_rt_sigframe));
@@ -327,7 +327,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 
 	frame.sf_sc.uc_stack.ss_sp = lp->lwp_sigstk.ss_sp;
 	frame.sf_sc.uc_stack.ss_size = lp->lwp_sigstk.ss_size;
-	frame.sf_sc.uc_stack.ss_flags = (lp->lwp_flag & LWP_ALTSTACK)
+	frame.sf_sc.uc_stack.ss_flags = (lp->lwp_flags & LWP_ALTSTACK)
 	    ? ((oonstack) ? LINUX_SS_ONSTACK : 0) : LINUX_SS_DISABLE;
 
 	bsd_to_linux_sigset(mask, &frame.sf_sc.uc_sigmask);
@@ -433,7 +433,7 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	/*
 	 * Allocate space for the signal handler context.
 	 */
-	if ((lp->lwp_flag & LWP_ALTSTACK) && !oonstack &&
+	if ((lp->lwp_flags & LWP_ALTSTACK) && !oonstack &&
 	    SIGISMEMBER(p->p_sigacts->ps_sigonstack, sig)) {
 		fp = (struct l_sigframe *)(lp->lwp_sigstk.ss_sp +
 		    lp->lwp_sigstk.ss_size - sizeof(struct l_sigframe));

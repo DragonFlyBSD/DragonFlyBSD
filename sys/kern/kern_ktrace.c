@@ -613,7 +613,7 @@ ktrcanset(struct thread *calltd, struct proc *targetp)
 	     caller->cr_rgid == target->cr_rgid &&	/* XXX */
 	     target->cr_rgid == target->cr_svgid &&
 	     (targetp->p_traceflag & KTRFAC_ROOT) == 0 &&
-	     (targetp->p_flag & P_SUGID) == 0) ||
+	     (targetp->p_flags & P_SUGID) == 0) ||
 	     caller->cr_uid == 0)
 		return (1);
 

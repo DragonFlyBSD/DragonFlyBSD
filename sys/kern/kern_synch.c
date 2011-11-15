@@ -117,9 +117,6 @@ static fixpt_t cexp[3] = {
 static void	endtsleep (void *);
 static void	loadav (void *arg);
 static void	schedcpu (void *arg);
-#ifdef SMP
-static void	tsleep_wakeup_remote(struct thread *td);
-#endif
 
 /*
  * Adjust the scheduler quantum.  The quantum is specified in microseconds.
@@ -281,8 +278,8 @@ schedcpu_resource(struct proc *p, void *data __unused)
 		killproc(p, "exceeded maximum CPU limit");
 		break;
 	case PLIMIT_TESTCPU_XCPU:
-		if ((p->p_flag & P_XCPU) == 0) {
-			p->p_flag |= P_XCPU;
+		if ((p->p_flags & P_XCPU) == 0) {
+			p->p_flags |= P_XCPU;
 			ksignal(p, SIGXCPU);
 		}
 		break;
@@ -402,6 +399,7 @@ tsleep_interlock(const volatile void *ident, int flags)
 
 /*
  * Remove thread from sleepq.  Must be called with a critical section held.
+ * The thread must not be migrating.
  */
 static __inline void
 _tsleep_remove(thread_t td)
@@ -410,6 +408,7 @@ _tsleep_remove(thread_t td)
 	int id;
 
 	KKASSERT(td->td_gd == gd && IN_CRITICAL_SECT(td));
+	KKASSERT((td->td_flags & TDF_MIGRATING) == 0);
 	if (td->td_flags & TDF_TSLEEPQ) {
 		td->td_flags &= ~TDF_TSLEEPQ;
 		id = LOOKUP(td->td_wchan);
@@ -426,51 +425,6 @@ tsleep_remove(thread_t td)
 {
 	_tsleep_remove(td);
 }
-
-/*
- * This function removes a thread from the tsleep queue and schedules
- * it.  This function may act asynchronously.  The target thread may be
- * sleeping on a different cpu.
- *
- * This function mus be called while in a critical section but if the
- * target thread is sleeping on a different cpu we cannot safely probe
- * td_flags.
- *
- * This function is only called from a different cpu via setrunnable()
- * when the thread is in a known sleep.  However, multiple wakeups are
- * possible and we must hold the td to prevent a race against the thread
- * exiting.
- */
-static __inline
-void
-_tsleep_wakeup(struct thread *td)
-{
-#ifdef SMP
-	globaldata_t gd = mycpu;
-
-	if (td->td_gd != gd) {
-		lwkt_hold(td);
-		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)tsleep_wakeup_remote, td);
-		return;
-	}
-#endif
-	_tsleep_remove(td);
-	if (td->td_flags & TDF_TSLEEP_DESCHEDULED) {
-		td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;
-		lwkt_schedule(td);
-	}
-}
-
-#ifdef SMP
-static
-void
-tsleep_wakeup_remote(struct thread *td)
-{
-	_tsleep_wakeup(td);
-	lwkt_rele(td);
-}
-#endif
-
 
 /*
  * General sleep call.  Suspends the current process until a wakeup is
@@ -559,12 +513,12 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	}
 
 	/*
-	 * Setup for the current process (if this is a process). 
-	 *
-	 * We hold the process token if lp && catch.  The resume
-	 * code will release it.
+	 * Setup for the current process (if this is a process).  We must
+	 * interlock with lwp_token to avoid remote wakeup races via
+	 * setrunnable()
 	 */
 	if (lp) {
+		lwkt_gettoken(&lp->lwp_token);
 		if (catch) {
 			/*
 			 * Early termination if PCATCH was set and a
@@ -581,7 +535,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 			 * Causes ksignal to wake us up if a signal is
 			 * received (interlocked with p->p_token).
 			 */
-			lp->lwp_flag |= LWP_SINTR;
+			lp->lwp_flags |= LWP_SINTR;
 		}
 	} else {
 		KKASSERT(p == NULL);
@@ -641,7 +595,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 		/*
 		 * Ok, we are sleeping.  Place us in the SSLEEP state.
 		 */
-		KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
+		KKASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
 		/*
 		 * tstop() sets LSSTOP, so don't fiddle with that.
 		 */
@@ -649,7 +603,6 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 			lp->lwp_stat = LSSLEEP;
 		lp->lwp_ru.ru_nvcsw++;
 		lwkt_switch();
-		td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;
 
 		/*
 		 * And when we are woken up, put us back in LSRUN.  If we
@@ -661,7 +614,6 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 		lp->lwp_slptime = 0;
 	} else {
 		lwkt_switch();
-		td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;
 	}
 
 	/* 
@@ -672,9 +624,17 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 
 	/*
 	 * Cleanup the timeout.  If the timeout has already occured thandle
-	 * has already been stopped, otherwise stop thandle.
+	 * has already been stopped, otherwise stop thandle.  If the timeout
+	 * is running (the callout thread must be blocked trying to get
+	 * lwp_token) then wait for us to get scheduled.
 	 */
 	if (timo) {
+		while (td->td_flags & TDF_TIMEOUT_RUNNING) {
+			lwkt_deschedule_self(td);
+			td->td_wmesg = "tsrace";
+			lwkt_switch();
+			kprintf("td %p %s: timeout race\n", td, td->td_comm);
+		}
 		if (td->td_flags & TDF_TIMEOUT) {
 			td->td_flags &= ~TDF_TIMEOUT;
 			error = EWOULDBLOCK;
@@ -683,6 +643,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 			callout_stop(&thandle);
 		}
 	}
+	td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;
 
 	/*
 	 * Make sure we have been removed from the sleepq.  In most
@@ -700,7 +661,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	 * signal we want to return EINTR or ERESTART.  
 	 */
 resume:
-	if (p) {
+	if (lp) {
 		if (catch && error == 0) {
 			if (sig != 0 || (sig = CURSIG(lp))) {
 				if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
@@ -709,7 +670,8 @@ resume:
 					error = ERESTART;
 			}
 		}
-		lp->lwp_flag &= ~(LWP_BREAKTSLEEP | LWP_SINTR);
+		lp->lwp_flags &= ~LWP_SINTR;
+		lwkt_reltoken(&lp->lwp_token);
 	}
 	logtsleep1(tsleep_end);
 	crit_exit_quick(td);
@@ -841,9 +803,6 @@ lwkt_sleep(const char *wmesg, int flags)
 /*
  * Implement the timeout for tsleep.
  *
- * We set LWP_BREAKTSLEEP to indicate that an event has occured, but
- * we only call setrunnable if the process is not stopped.
- *
  * This type of callout timeout is scheduled on the same cpu the process
  * is sleeping on.  Also, at the moment, the MP lock is held.
  */
@@ -853,41 +812,39 @@ endtsleep(void *arg)
 	thread_t td = arg;
 	struct lwp *lp;
 
+	/*
+	 * We are going to have to get the lwp_token, which means we might
+	 * block.  This can race a tsleep getting woken up by other means
+	 * so set TDF_TIMEOUT_RUNNING to force the tsleep to wait for our
+	 * processing to complete (sorry tsleep!).
+	 *
+	 * We can safely set td_flags because td MUST be on the same cpu
+	 * as we are.
+	 */
 	KKASSERT(td->td_gd == mycpu);
 	crit_enter();
+	td->td_flags |= TDF_TIMEOUT_RUNNING | TDF_TIMEOUT;
 
 	/*
-	 * Do this before we potentially block acquiring the token.  Setting
-	 * TDF_TIMEOUT tells tsleep that we have already stopped the callout.
-	 */
-	lwkt_hold(td);
-	td->td_flags |= TDF_TIMEOUT;
-
-	/*
-	 * This can block
+	 * This can block but TDF_TIMEOUT_RUNNING will prevent the thread
+	 * from exiting the tsleep on us.  The flag is interlocked by virtue
+	 * of lp being on the same cpu as we are.
 	 */
 	if ((lp = td->td_lwp) != NULL)
 		lwkt_gettoken(&lp->lwp_token);
 
-	/*
-	 * Only do nominal wakeup processing if TDF_TIMEOUT and
-	 * TDF_TSLEEP_DESCHEDULED are both still set.  Otherwise
-	 * we raced a wakeup or we began executing and raced due to
-	 * blocking in the token above, and should do nothing.
-	 */
-	if ((td->td_flags & (TDF_TIMEOUT | TDF_TSLEEP_DESCHEDULED)) ==
-	    (TDF_TIMEOUT | TDF_TSLEEP_DESCHEDULED)) {
-		if (lp) {
-			lp->lwp_flag |= LWP_BREAKTSLEEP;
-			if (lp->lwp_proc->p_stat != SSTOP)
-				setrunnable(lp);
-		} else {
-			_tsleep_wakeup(td);
-		}
-	}
-	if (lp)
+	KKASSERT(td->td_flags & TDF_TSLEEP_DESCHEDULED);
+
+	if (lp) {
+		if (lp->lwp_proc->p_stat != SSTOP)
+			setrunnable(lp);
 		lwkt_reltoken(&lp->lwp_token);
-	lwkt_rele(td);
+	} else {
+		_tsleep_remove(td);
+		lwkt_schedule(td);
+	}
+	KKASSERT(td->td_gd == mycpu);
+	td->td_flags &= ~TDF_TIMEOUT_RUNNING;
 	crit_exit();
 }
 
@@ -931,7 +888,6 @@ restart:
 			KKASSERT(td->td_gd == gd);
 			_tsleep_remove(td);
 			if (td->td_flags & TDF_TSLEEP_DESCHEDULED) {
-				td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;
 				lwkt_schedule(td);
 				if (domain & PWAKEUP_ONE)
 					goto done;
@@ -1071,22 +1027,27 @@ wakeup_domain_one(const volatile void *ident, int domain)
 /*
  * setrunnable()
  *
- * Make a process runnable.  lp->lwp_proc->p_token must be held on call.
- * This only has an effect if we are in SSLEEP.  We only break out of the
- * tsleep if LWP_BREAKTSLEEP is set, otherwise we just fix-up the state.
+ * Make a process runnable.  lp->lwp_token must be held on call and this
+ * function must be called from the cpu owning lp.
  *
- * NOTE: With p_token held we can only safely manipulate the process
- * structure and the lp's lwp_stat.
+ * This only has an effect if we are in LSSTOP or LSSLEEP.
  */
 void
 setrunnable(struct lwp *lp)
 {
+	thread_t td = lp->lwp_thread;
+
 	ASSERT_LWKT_TOKEN_HELD(&lp->lwp_token);
+	KKASSERT(td->td_gd == mycpu);
 	crit_enter();
 	if (lp->lwp_stat == LSSTOP)
 		lp->lwp_stat = LSSLEEP;
-	if (lp->lwp_stat == LSSLEEP && (lp->lwp_flag & LWP_BREAKTSLEEP))
-		_tsleep_wakeup(lp->lwp_thread);
+	if (lp->lwp_stat == LSSLEEP) {
+		_tsleep_remove(td);
+		lwkt_schedule(td);
+	} else if (td->td_flags & TDF_SINTR) {
+		lwkt_schedule(td);
+	}
 	crit_exit();
 }
 
@@ -1094,15 +1055,15 @@ setrunnable(struct lwp *lp)
  * The process is stopped due to some condition, usually because p_stat is
  * set to SSTOP, but also possibly due to being traced.  
  *
+ * Caller must hold p->p_token
+ *
  * NOTE!  If the caller sets SSTOP, the caller must also clear P_WAITED
  * because the parent may check the child's status before the child actually
  * gets to this routine.
  *
  * This routine is called with the current lwp only, typically just
- * before returning to userland.
- *
- * Setting LWP_BREAKTSLEEP before entering the tsleep will cause a passive
- * SIGCONT to break out of the tsleep.
+ * before returning to userland if the process state is detected as
+ * possibly being in a stopped state.
  */
 void
 tstop(void)
@@ -1111,19 +1072,21 @@ tstop(void)
 	struct proc *p = lp->lwp_proc;
 	struct proc *q;
 
+	lwkt_gettoken(&lp->lwp_token);
 	crit_enter();
+
 	/*
-	 * If LWP_WSTOP is set, we were sleeping
+	 * If LWP_MP_WSTOP is set, we were sleeping
 	 * while our process was stopped.  At this point
 	 * we were already counted as stopped.
 	 */
-	if ((lp->lwp_flag & LWP_WSTOP) == 0) {
+	if ((lp->lwp_mpflags & LWP_MP_WSTOP) == 0) {
 		/*
 		 * If we're the last thread to stop, signal
 		 * our parent.
 		 */
 		p->p_nstopped++;
-		lp->lwp_flag |= LWP_WSTOP;
+		atomic_set_int(&lp->lwp_mpflags, LWP_MP_WSTOP);
 		wakeup(&p->p_nstopped);
 		if (p->p_nstopped == p->p_nthreads) {
 			/*
@@ -1132,7 +1095,7 @@ tstop(void)
 			q = p->p_pptr;
 			PHOLD(q);
 			lwkt_gettoken(&q->p_token);
-			p->p_flag &= ~P_WAITED;
+			p->p_flags &= ~P_WAITED;
 			wakeup(p->p_pptr);
 			if ((q->p_sigacts->ps_flag & PS_NOCLDSTOP) == 0)
 				ksignal(q, SIGCHLD);
@@ -1141,13 +1104,13 @@ tstop(void)
 		}
 	}
 	while (p->p_stat == SSTOP) {
-		lp->lwp_flag |= LWP_BREAKTSLEEP;
 		lp->lwp_stat = LSSTOP;
 		tsleep(p, 0, "stop", 0);
 	}
 	p->p_nstopped--;
-	lp->lwp_flag &= ~LWP_WSTOP;
+	atomic_clear_int(&lp->lwp_mpflags, LWP_MP_WSTOP);
 	crit_exit();
+	lwkt_reltoken(&lp->lwp_token);
 }
 
 /*

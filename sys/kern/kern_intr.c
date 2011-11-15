@@ -263,7 +263,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
      */
     if (emergency_intr_thread.td_kstack == NULL) {
 	lwkt_create(ithread_emergency, NULL, NULL, &emergency_intr_thread,
-		    TDF_STOPREQ | TDF_INTTHREAD, ncpus - 1, "ithread emerg");
+		    TDF_NOSTART | TDF_INTTHREAD, ncpus - 1, "ithread emerg");
 	systimer_init_periodic_nq(&emergency_intr_timer,
 		    emergency_intr_timer_callback, &emergency_intr_thread, 
 		    (emergency_intr_enable ? emergency_intr_freq : 1));
@@ -278,7 +278,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     if (info->i_state == ISTATE_NOTHREAD) {
 	info->i_state = ISTATE_NORMAL;
 	lwkt_create(ithread_handler, (void *)(intptr_t)intr, NULL,
-		    &info->i_thread, TDF_STOPREQ | TDF_INTTHREAD, cpuid,
+		    &info->i_thread, TDF_NOSTART | TDF_INTTHREAD, cpuid,
 		    "ithread %d", intr);
 	if (intr >= FIRST_SOFTINT)
 	    lwkt_setpri(&info->i_thread, TDPRI_SOFT_NORM);

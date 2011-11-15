@@ -193,7 +193,7 @@ procfs_open(struct vop_open_args *ap)
 		p1 = curproc;
 		KKASSERT(p1);
 		/* Can't trace a process that's currently exec'ing. */ 
-		if ((p2->p_flag & P_INEXEC) != 0) {
+		if ((p2->p_flags & P_INEXEC) != 0) {
 			error = EAGAIN;
 			goto done;
 		}
@@ -291,7 +291,7 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	}
 
 	/* Can't trace a process that's currently exec'ing. */ 
-	if ((procp->p_flag & P_INEXEC) != 0) {
+	if ((procp->p_flags & P_INEXEC) != 0) {
 		error = EAGAIN;
 		goto done;
 	}
@@ -556,7 +556,7 @@ procfs_getattr(struct vop_getattr_args *ap)
 	case Pfpregs:
 	case Pdbregs:
 	case Pmem:
-		if (procp->p_flag & P_SUGID)
+		if (procp->p_flags & P_SUGID)
 			vap->va_mode &= ~((VREAD|VWRITE)|
 					  ((VREAD|VWRITE)>>3)|
 					  ((VREAD|VWRITE)>>6));
@@ -626,7 +626,7 @@ procfs_getattr(struct vop_getattr_args *ap)
 		 * change the owner to root - otherwise 'ps' and friends
 		 * will break even though they are setgid kmem. *SIGH*
 		 */
-		if (procp->p_flag & P_SUGID)
+		if (procp->p_flags & P_SUGID)
 			vap->va_uid = 0;
 		else
 			vap->va_uid = procp->p_ucred->cr_uid;

@@ -154,8 +154,8 @@ sys_upc_control(struct upc_control_args *uap)
 		    vu->vu_pending = (int)(intptr_t)uap->data;
 		error = 0;
 		targlp = vu->vu_lwp;
-		targlp->lwp_proc->p_flag |= P_UPCALLPEND;	/* XXX lwp flags */
-		if (targlp->lwp_proc->p_flag & P_UPCALLWAIT)
+		targlp->lwp_proc->p_flags |= P_UPCALLPEND; /* XXX lwp flags */
+		if (targlp->lwp_proc->p_flags & P_UPCALLWAIT)
 		    wakeup(&targlp->lwp_upcall);
 #ifdef SMP
 		if (targlp->lwp_thread->td_gd != mycpu)
@@ -252,9 +252,9 @@ sys_upc_control(struct upc_control_args *uap)
 	    }
 	}
 	if (uap->cmd == UPC_CONTROL_WAIT && vu == NULL) {
-	    lp->lwp_proc->p_flag |= P_UPCALLWAIT;	/* XXX lwp flags */
+	    lp->lwp_proc->p_flags |= P_UPCALLWAIT;	/* XXX lwp flags */
 	    tsleep(&lp->lwp_upcall, PCATCH, "wupcall", 0);
-	    lp->lwp_proc->p_flag &= ~P_UPCALLWAIT;	/* XXX lwp flags */
+	    lp->lwp_proc->p_flags &= ~P_UPCALLWAIT;	/* XXX lwp flags */
 	}
 	break;
     default:

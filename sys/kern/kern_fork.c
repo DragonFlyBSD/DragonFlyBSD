@@ -223,7 +223,7 @@ fail:
 	lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
 	--p->p_nthreads;
 	/* lwp_dispose expects an exited lwp, and a held proc */
-	lp->lwp_flag |= LWP_WEXIT;
+	atomic_set_int(&lp->lwp_mpflags, LWP_MP_WEXIT);
 	lp->lwp_thread->td_flags |= TDF_EXITING;
 	lwkt_remove_tdallq(lp->lwp_thread);
 	PHOLD(p);
@@ -405,12 +405,12 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 *	 other consumers to gain temporary references to p2
 	 *	 (p2->p_lock can change).
 	 */
-	if (p1->p_flag & P_PROFIL)
+	if (p1->p_flags & P_PROFIL)
 		startprofclock(p2);
 	p2->p_ucred = crhold(lp1->lwp_thread->td_ucred);
 
 	if (jailed(p2->p_ucred))
-		p2->p_flag |= P_JAILED;
+		p2->p_flags |= P_JAILED;
 
 	if (p2->p_args)
 		refcount_acquire(&p2->p_args->ar_ref);
@@ -486,11 +486,11 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * Preserve some more flags in subprocess.  P_PROFIL has already
 	 * been preserved.
 	 */
-	p2->p_flag |= p1->p_flag & P_SUGID;
-	if (p1->p_session->s_ttyvp != NULL && p1->p_flag & P_CONTROLT)
-		p2->p_flag |= P_CONTROLT;
+	p2->p_flags |= p1->p_flags & P_SUGID;
+	if (p1->p_session->s_ttyvp != NULL && p1->p_flags & P_CONTROLT)
+		p2->p_flags |= P_CONTROLT;
 	if (flags & RFPPWAIT)
-		p2->p_flag |= P_PPWAIT;
+		p2->p_flags |= P_PPWAIT;
 
 	/*
 	 * Inherit the virtual kernel structure (allows a virtual kernel
@@ -624,7 +624,7 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	bcopy(&origlp->lwp_startcopy, &lp->lwp_startcopy,
 	    (unsigned) ((caddr_t)&lp->lwp_endcopy -
 			(caddr_t)&lp->lwp_startcopy));
-	lp->lwp_flag |= origlp->lwp_flag & LWP_ALTSTACK;
+	lp->lwp_flags |= origlp->lwp_flags & LWP_ALTSTACK;
 	/*
 	 * Set cpbase to the last timeout that occured (not the upcoming
 	 * timeout).
@@ -761,7 +761,7 @@ start_forked_proc(struct lwp *lp1, struct proc *p2)
 	 * We must hold our p_token to interlock the flag/tsleep
 	 */
 	lwkt_gettoken(&p2->p_token);
-	while (p2->p_flag & P_PPWAIT)
+	while (p2->p_flags & P_PPWAIT)
 		tsleep(lp1->lwp_proc, 0, "ppwait", 0);
 	lwkt_reltoken(&p2->p_token);
 }

@@ -415,9 +415,9 @@ interpret:
 	 * mark as execed, wakeup the process that vforked (if any) and tell
 	 * it that it now has its own resources back
 	 */
-	p->p_flag |= P_EXEC;
-	if (p->p_pptr && (p->p_flag & P_PPWAIT)) {
-		p->p_flag &= ~P_PPWAIT;
+	p->p_flags |= P_EXEC;
+	if (p->p_pptr && (p->p_flags & P_PPWAIT)) {
+		p->p_flags &= ~P_PPWAIT;
 		wakeup((caddr_t)p->p_pptr);
 	}
 
@@ -430,7 +430,7 @@ interpret:
 	if ((((attr.va_mode & VSUID) && p->p_ucred->cr_uid != attr.va_uid) ||
 	     ((attr.va_mode & VSGID) && p->p_ucred->cr_gid != attr.va_gid)) &&
 	    (imgp->vp->v_mount->mnt_flag & MNT_NOSUID) == 0 &&
-	    (p->p_flag & P_TRACED) == 0) {
+	    (p->p_flags & P_TRACED) == 0) {
 		/*
 		 * Turn off syscall tracing for set-id programs, except for
 		 * root.  Record any set-id flags first to make sure that
@@ -464,7 +464,7 @@ interpret:
 	} else {
 		if (p->p_ucred->cr_uid == p->p_ucred->cr_ruid &&
 		    p->p_ucred->cr_gid == p->p_ucred->cr_rgid)
-			p->p_flag &= ~P_SUGID;
+			p->p_flags &= ~P_SUGID;
 	}
 
 	/*
@@ -497,7 +497,7 @@ interpret:
          * as we're now a bona fide freshly-execed process.
          */
 	KNOTE(&p->p_klist, NOTE_EXEC);
-	p->p_flag &= ~P_INEXEC;
+	p->p_flags &= ~P_INEXEC;
 
 	/*
 	 * If tracing the process, trap to debugger so breakpoints
@@ -505,7 +505,7 @@ interpret:
 	 */
 	STOPEVENT(p, S_EXEC, 0);
 
-	if (p->p_flag & P_TRACED)
+	if (p->p_flags & P_TRACED)
 		ksignal(p, SIGTRAP);
 
 	/* clear "fork but no exec" flag, as we _are_ execing */
@@ -571,7 +571,7 @@ exec_fail:
 	 * clearing it.
 	 */
 	if (imgp->vmspace_destroyed & 2)
-		p->p_flag &= ~P_INEXEC;
+		p->p_flags &= ~P_INEXEC;
 	lwkt_reltoken(&p->p_token);
 	if (imgp->vmspace_destroyed) {
 		/*
@@ -758,7 +758,7 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 			return (error);
 	}
 	imgp->vmspace_destroyed |= 2;	/* we are responsible for P_INEXEC */
-	p->p_flag |= P_INEXEC;
+	p->p_flags |= P_INEXEC;
 
 	/*
 	 * Blow away entire process VM, if address space not shared,

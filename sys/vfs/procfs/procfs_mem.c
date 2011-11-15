@@ -90,7 +90,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	 * page table usage in that process may be messed up.
 	 */
 	vm = p->p_vmspace;
-	if ((p->p_flag & P_WEXIT) || sysref_isinactive(&vm->vm_sysref)) {
+	if ((p->p_flags & P_WEXIT) || sysref_isinactive(&vm->vm_sysref)) {
 		return EFAULT;
 	}
 
@@ -175,7 +175,7 @@ procfs_domem(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		return (0);
 
 	lwkt_gettoken(&p->p_token);
-	if ((p->p_flag & P_INEXEC) != 0) {
+	if ((p->p_flags & P_INEXEC) != 0) {
 		/*
 		 * Can't trace a process that's currently exec'ing.
 		 */

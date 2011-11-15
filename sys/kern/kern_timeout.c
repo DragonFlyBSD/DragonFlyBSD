@@ -178,7 +178,7 @@ swi_softclock_setup(void *arg)
 		 * the cpu they were scheduled on.
 		 */
 		lwkt_create(softclock_handler, sc, NULL,
-			    &sc->thread, TDF_STOPREQ | TDF_INTTHREAD,
+			    &sc->thread, TDF_NOSTART | TDF_INTTHREAD,
 			    cpu, "softclock %d", cpu);
 	}
 }

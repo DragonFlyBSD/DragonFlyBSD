@@ -448,7 +448,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	sf.sf_uc.uc_mcontext.mc_len = sizeof(sf.sf_uc.uc_mcontext);
 
 	/* Allocate and validate space for the signal handler context. */
-        if ((lp->lwp_flag & LWP_ALTSTACK) != 0 && !oonstack &&
+        if ((lp->lwp_flags & LWP_ALTSTACK) != 0 && !oonstack &&
 	    SIGISMEMBER(psp->ps_sigonstack, sig)) {
 		sp = (char *)(lp->lwp_sigstk.ss_sp + lp->lwp_sigstk.ss_size -
 			      sizeof(struct sigframe));

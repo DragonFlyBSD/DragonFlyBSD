@@ -304,7 +304,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 
 	lwkt_gettoken(&p->p_token);
 	/* Can't trace a process that's currently exec'ing. */
-	if ((p->p_flag & P_INEXEC) != 0) {
+	if ((p->p_flags & P_INEXEC) != 0) {
 		lwkt_reltoken(&p->p_token);
 		PRELE(p);
 		lwkt_reltoken(&proc_token);
@@ -329,14 +329,14 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		}
 
 		/* Already traced */
-		if (p->p_flag & P_TRACED) {
+		if (p->p_flags & P_TRACED) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			lwkt_reltoken(&proc_token);
 			return EBUSY;
 		}
 
-		if (curp->p_flag & P_TRACED)
+		if (curp->p_flags & P_TRACED)
 			for (pp = curp->p_pptr; pp != NULL; pp = pp->p_pptr)
 				if (pp == p) {
 					lwkt_reltoken(&p->p_token);
@@ -347,7 +347,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 
 		/* not owned by you, has done setuid (unless you're root) */
 		if ((p->p_ucred->cr_ruid != curp->p_ucred->cr_ruid) ||
-		     (p->p_flag & P_SUGID)) {
+		     (p->p_flags & P_SUGID)) {
 			if ((error = priv_check_cred(curp->p_ucred, PRIV_ROOT, 0)) != 0) {
 				lwkt_reltoken(&p->p_token);
 				PRELE(p);
@@ -395,7 +395,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 	case PT_SETDBREGS:
 #endif
 		/* not being traced... */
-		if ((p->p_flag & P_TRACED) == 0) {
+		if ((p->p_flags & P_TRACED) == 0) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			lwkt_reltoken(&proc_token);
@@ -412,7 +412,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 
 		/* not currently stopped */
 		if (p->p_stat != SSTOP ||
-		    (p->p_flag & P_WAITED) == 0) {
+		    (p->p_flags & P_WAITED) == 0) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			lwkt_reltoken(&proc_token);
@@ -447,7 +447,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 	switch (req) {
 	case PT_TRACE_ME:
 		/* set my trace flag and "owner" so it can read/write me */
-		p->p_flag |= P_TRACED;
+		p->p_flags |= P_TRACED;
 		p->p_oppid = p->p_pptr->p_pid;
 		lwkt_reltoken(&p->p_token);
 		PRELE(p);
@@ -456,7 +456,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 
 	case PT_ATTACH:
 		/* security check done above */
-		p->p_flag |= P_TRACED;
+		p->p_flags |= P_TRACED;
 		p->p_oppid = p->p_pptr->p_pid;
 		if (p->p_pptr != curp)
 			proc_reparent(p, curp);
@@ -509,7 +509,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 					PRELE(pp);
 			}
 
-			p->p_flag &= ~(P_TRACED | P_WAITED);
+			p->p_flags &= ~(P_TRACED | P_WAITED);
 			p->p_oppid = 0;
 
 			/* should we send SIGCHLD? */
@@ -523,7 +523,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		crit_enter();
 		if (p->p_stat == SSTOP) {
 			p->p_xstat = data;
-			lp->lwp_flag |= LWP_BREAKTSLEEP;
 			proc_unstop(p);
 		} else if (data) {
 			ksignal(p, data);

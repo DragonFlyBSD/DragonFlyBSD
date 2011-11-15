@@ -61,7 +61,7 @@ procfs_doregs(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	int kl;
 
 	/* Can't trace a process that's currently exec'ing. */ 
-	if ((p->p_flag & P_INEXEC) != 0)
+	if ((p->p_flags & P_INEXEC) != 0)
 		return EAGAIN;
 	if (!CHECKIO(curp, p) || p_trespass(curp->p_ucred, p->p_ucred))
 		return EPERM;
@@ -93,5 +93,5 @@ procfs_doregs(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 int
 procfs_validregs(struct lwp *lp)
 {
-	return ((lp->lwp_proc->p_flag & P_SYSTEM) == 0);
+	return ((lp->lwp_proc->p_flags & P_SYSTEM) == 0);
 }

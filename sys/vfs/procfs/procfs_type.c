@@ -79,5 +79,5 @@ procfs_dotype(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 int
 procfs_validtype(struct lwp *lp)
 {
-	return ((lp->lwp_proc->p_flag & P_SYSTEM) == 0);
+	return ((lp->lwp_proc->p_flags & P_SYSTEM) == 0);
 }

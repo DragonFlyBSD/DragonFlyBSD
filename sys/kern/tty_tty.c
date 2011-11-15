@@ -75,7 +75,8 @@ static struct dev_ops ctty_ops = {
 	.d_kqfilter =	cttykqfilter
 };
 
-#define cttyvp(p) ((p)->p_flag & P_CONTROLT ? (p)->p_session->s_ttyvp : NULL)
+#define cttyvp(p) (((p)->p_flags & P_CONTROLT) ? \
+			(p)->p_session->s_ttyvp : NULL)
 
 /*
  * This opens /dev/tty.  Because multiple opens of /dev/tty only
@@ -238,7 +239,7 @@ cttyioctl(struct dev_ioctl_args *ap)
 	}
 	if (ap->a_cmd == TIOCNOTTY) {
 		if (!SESS_LEADER(p)) {
-			p->p_flag &= ~P_CONTROLT;
+			p->p_flags &= ~P_CONTROLT;
 			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&p->p_token);
 			return (0);

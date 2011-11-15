@@ -124,7 +124,7 @@ struct faultstate {
 
 static int debug_cluster = 0;
 SYSCTL_INT(_vm, OID_AUTO, debug_cluster, CTLFLAG_RW, &debug_cluster, 0, "");
-static int vm_shared_fault = 1;
+static int vm_shared_fault = 0;
 SYSCTL_INT(_vm, OID_AUTO, shared_fault, CTLFLAG_RW, &vm_shared_fault, 0,
 	   "Allow shared token on vm_object");
 static long vm_shared_hit = 0;
@@ -271,7 +271,7 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	growstack = 1;
 
 	if ((lp = curthread->td_lwp) != NULL)
-		lp->lwp_flag |= LWP_PAGING;
+		lp->lwp_flags |= LWP_PAGING;
 
 	lwkt_gettoken(&map->token);
 
@@ -393,12 +393,13 @@ RetryFault:
 			 * short-cut a quick mapping.
 			 *
 			 * WARNING!  We cannot call swap_pager_unswapped()
-			 *	     with a shared token!
+			 *	     with a shared token!  Note that we
+			 *	     have to test fs.first_prot here.
 			 */
 			vm_page_activate(fs.m);
 			if (fs.m->valid == VM_PAGE_BITS_ALL &&
 			    ((fs.m->flags & PG_SWAPPED) == 0 ||
-			     (fs.prot & VM_PROT_WRITE) == 0 ||
+			     (fs.first_prot & VM_PROT_WRITE) == 0 ||
 			     (fs.fault_flags & VM_FAULT_DIRTY) == 0)) {
 				fs.lookup_still_valid = TRUE;
 				fs.first_m = NULL;
@@ -565,7 +566,7 @@ done:
 		vm_object_drop(fs.first_object);
 	lwkt_reltoken(&map->token);
 	if (lp)
-		lp->lwp_flag &= ~LWP_PAGING;
+		lp->lwp_flags &= ~LWP_PAGING;
 	return (result);
 }
 

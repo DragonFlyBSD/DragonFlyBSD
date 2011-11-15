@@ -68,7 +68,7 @@
 #define TRACE_WAIT_P(curp, p) \
 	(((p)->p_stat == SSTOP) && \
 	 (p)->p_pptr == (curp) && \
-	 ((p)->p_flag & P_TRACED))
+	 ((p)->p_flags & P_TRACED))
 
 #define PROCFS_CTL_ATTACH	1
 #define PROCFS_CTL_DETACH	2
@@ -119,7 +119,7 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 	ASSERT_LWKT_TOKEN_HELD(&proc_token);
 
 	/* Can't trace a process that's currently exec'ing. */ 
-	if ((p->p_flag & P_INEXEC) != 0)
+	if ((p->p_flags & P_INEXEC) != 0)
 		return EAGAIN;
 	/*
 	 * Authorization check: rely on normal debugging protection, except
@@ -141,7 +141,7 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 	 */
 	if (op == PROCFS_CTL_ATTACH) {
 		/* check whether already being traced */
-		if (p->p_flag & P_TRACED)
+		if (p->p_flags & P_TRACED)
 			return (EBUSY);
 
 		/* can't trace yourself! */
@@ -156,7 +156,7 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 		 *   proc gets to see all the action.
 		 * Stop the target.
 		 */
-		p->p_flag |= P_TRACED;
+		p->p_flags |= P_TRACED;
 		faultin(p);
 		p->p_xstat = 0;		/* XXX ? */
 		if (p->p_pptr != curp) {
@@ -205,11 +205,11 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 	 */
 	case PROCFS_CTL_DETACH:
 		/* if not being traced, then this is a painless no-op */
-		if ((p->p_flag & P_TRACED) == 0)
+		if ((p->p_flags & P_TRACED) == 0)
 			return (0);
 
 		/* not being traced any more */
-		p->p_flag &= ~P_TRACED;
+		p->p_flags &= ~P_TRACED;
 
 		/* remove pending SIGTRAP, else the process will die */
 		spin_lock(&lp->lwp_spin);
@@ -228,8 +228,8 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 		}
 
 		p->p_oppid = 0;
-		p->p_flag &= ~P_WAITED;	/* XXX ? */
-		wakeup((caddr_t) curp);	/* XXX for CTL_WAIT below ? */
+		p->p_flags &= ~P_WAITED;	/* XXX ? */
+		wakeup((caddr_t) curp);		/* XXX for CTL_WAIT below ? */
 
 		break;
 
@@ -258,10 +258,10 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 	 */
 	case PROCFS_CTL_WAIT:
 		error = 0;
-		if (p->p_flag & P_TRACED) {
+		if (p->p_flags & P_TRACED) {
 			while (error == 0 &&
 					p->p_stat != SSTOP &&
-					(p->p_flag & P_TRACED) &&
+					(p->p_flags & P_TRACED) &&
 					(p->p_pptr == curp)) {
 				error = tsleep((caddr_t) p,
 						PCATCH, "procfsx", 0);
@@ -282,8 +282,8 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 
 	/*
 	 * If the process is in a stopped state, make it runnable again.
-	 * Do not set LWP_BREAKTSLEEP - that is, do not break a tsleep that
-	 * might be in progress.
+	 * Do not set LWP_MP_BREAKTSLEEP - that is, do not break a tsleep
+	 * that might be in progress.
 	 */
 	if (p->p_stat == SSTOP)
 		proc_unstop(p);

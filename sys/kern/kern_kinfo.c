@@ -86,7 +86,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	kp->kp_paddr = (uintptr_t)p;
 	kp->kp_fd = (uintptr_t)p->p_fd;
 
-	kp->kp_flags = p->p_flag;
+	kp->kp_flags = p->p_flags;
 	kp->kp_stat = p->p_stat;
 	kp->kp_lock = p->p_lock;
 	kp->kp_acflag = p->p_acflag;
@@ -132,7 +132,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 		if ((p->p_session != NULL) && SESS_LEADER(p))
 			kp->kp_auxflags |= KI_SLEADER;
 	}
-	if (sess && (p->p_flag & P_CONTROLT) != 0 && sess->s_ttyp != NULL) {
+	if (sess && (p->p_flags & P_CONTROLT) != 0 && sess->s_ttyp != NULL) {
 		kp->kp_tdev = dev2udev(sess->s_ttyp->t_dev);
 		if (sess->s_ttyp->t_pgrp != NULL)
 			kp->kp_tpgid = sess->s_ttyp->t_pgrp->pg_id;
@@ -189,7 +189,7 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 	kl->kl_pid = lwp->lwp_proc->p_pid;
 	kl->kl_tid = lwp->lwp_tid;
 
-	kl->kl_flags = lwp->lwp_flag;
+	kl->kl_flags = lwp->lwp_flags;
 	kl->kl_stat = lwp->lwp_stat;
 	kl->kl_lock = lwp->lwp_lock;
 	kl->kl_tdflags = lwp->lwp_thread->td_flags;
@@ -203,7 +203,7 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 	 */
 	if (kl->kl_stat == LSRUN) {
 		if ((kl->kl_tdflags & TDF_RUNQ) == 0 &&
-		    (lwp->lwp_flag & LWP_ONRUNQ) == 0) {
+		    (lwp->lwp_mpflags & LWP_MP_ONRUNQ) == 0) {
 			kl->kl_stat = LSSLEEP;
 		}
 	}

@@ -120,7 +120,7 @@ journal_create_threads(struct journal *jo)
 	jo->flags &= ~(MC_JOURNAL_STOP_REQ | MC_JOURNAL_STOP_IMM);
 	jo->flags |= MC_JOURNAL_WACTIVE;
 	lwkt_create(journal_wthread, jo, NULL, &jo->wthread,
-		    TDF_STOPREQ, -1,
+		    TDF_NOSTART, -1,
 		    "journal w:%.*s", JIDMAX, jo->id);
 	lwkt_setpri(&jo->wthread, TDPRI_KERN_DAEMON);
 	lwkt_schedule(&jo->wthread);
@@ -128,7 +128,7 @@ journal_create_threads(struct journal *jo)
 	if (jo->flags & MC_JOURNAL_WANT_FULLDUPLEX) {
 	    jo->flags |= MC_JOURNAL_RACTIVE;
 	    lwkt_create(journal_rthread, jo, NULL, &jo->rthread,
-			TDF_STOPREQ, -1,
+			TDF_NOSTART, -1,
 			"journal r:%.*s", JIDMAX, jo->id);
 	    lwkt_setpri(&jo->rthread, TDPRI_KERN_DAEMON);
 	    lwkt_schedule(&jo->rthread);

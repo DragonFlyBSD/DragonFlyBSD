@@ -297,7 +297,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 				db_printf("pid %d not found\n", pid);
 				return;
 			}
-			if ((p->p_flag & P_SWAPPEDOUT)) {
+			if ((p->p_flags & P_SWAPPEDOUT)) {
 				db_printf("pid %d swapped out\n", pid);
 				return;
 			}

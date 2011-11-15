@@ -183,7 +183,7 @@ dummy_acquire_curproc(struct lwp *lp)
 		crit_exit();
 		gd = mycpu;
 		dd = &dummy_pcpu[gd->gd_cpuid];
-		KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
+		KKASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
 	} while (dd->uschedcp != lp);
 }
 
@@ -205,7 +205,7 @@ dummy_release_curproc(struct lwp *lp)
 	globaldata_t gd = mycpu;
 	dummy_pcpu_t dd = &dummy_pcpu[gd->gd_cpuid];
 
-	KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
+	KKASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
 	if (dd->uschedcp == lp) {
 		dummy_select_curproc(gd);
 	}
@@ -240,7 +240,7 @@ dummy_select_curproc(globaldata_t gd)
 	} else {
 		--dummy_runqcount;
 		TAILQ_REMOVE(&dummy_runq, lp, lwp_procq);
-		lp->lwp_flag &= ~LWP_ONRUNQ;
+		atomic_clear_int(&lp->lwp_mpflags, LWP_MP_ONRUNQ);
 		dd->uschedcp = lp;
 		atomic_set_cpumask(&dummy_curprocmask, gd->gd_cpumask);
 		spin_unlock(&dummy_spin);
@@ -259,7 +259,7 @@ dummy_select_curproc(globaldata_t gd)
  * the current process on the userland scheduler's run queue prior
  * to calling dummy_select_curproc().
  *
- * The caller may set LWP_PASSIVE_ACQ in lwp_flag to indicate that we should
+ * The caller may set LWP_PASSIVE_ACQ in lwp_flags to indicate that we should
  * attempt to leave the thread on the current cpu.
  *
  * MPSAFE
@@ -280,11 +280,11 @@ dummy_setrunqueue(struct lwp *lp)
 		/*
 		 * Add to our global runq
 		 */
-		KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
+		KKASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
 		spin_lock(&dummy_spin);
 		++dummy_runqcount;
 		TAILQ_INSERT_TAIL(&dummy_runq, lp, lwp_procq);
-		lp->lwp_flag |= LWP_ONRUNQ;
+		atomic_set_int(&lp->lwp_mpflags, LWP_MP_ONRUNQ);
 #ifdef SMP
 		lwkt_giveaway(lp->lwp_thread);
 #endif
@@ -493,7 +493,7 @@ dummy_sched_thread(void *dummy)
 	} else if ((lp = TAILQ_FIRST(&dummy_runq)) != NULL) {
 		--dummy_runqcount;
 		TAILQ_REMOVE(&dummy_runq, lp, lwp_procq);
-		lp->lwp_flag &= ~LWP_ONRUNQ;
+		atomic_clear_int(&lp->lwp_mpflags, LWP_MP_ONRUNQ);
 		dd->uschedcp = lp;
 		atomic_set_cpumask(&dummy_curprocmask, cpumask);
 		spin_unlock(&dummy_spin);
@@ -531,7 +531,7 @@ dummy_sched_thread_cpu_init(void)
 	    kprintf(" %d", i);
 
 	lwkt_create(dummy_sched_thread, NULL, NULL, &dd->helper_thread, 
-		    TDF_STOPREQ, i, "dsched %d", i);
+		    TDF_NOSTART, i, "dsched %d", i);
 
 	/*
 	 * Allow user scheduling on the target cpu.  cpu #0 has already

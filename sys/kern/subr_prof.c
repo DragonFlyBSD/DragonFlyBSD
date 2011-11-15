@@ -432,7 +432,7 @@ addupc_task(struct proc *p, u_long pc, u_int ticks)
 	u_short v;
 
 	/* Testing P_PROFIL may be unnecessary, but is certainly safe. */
-	if ((p->p_flag & P_PROFIL) == 0 || ticks == 0)
+	if ((p->p_flags & P_PROFIL) == 0 || ticks == 0)
 		return;
 
 	prof = &p->p_prof;

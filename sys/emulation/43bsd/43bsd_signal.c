@@ -168,7 +168,7 @@ sys_osigstack(struct osigstack_args *uap)
 		lp->lwp_sigstk.ss_sp = ss.ss_sp;
 		lp->lwp_sigstk.ss_size = 0;
 		lp->lwp_sigstk.ss_flags |= ss.ss_onstack & SS_ONSTACK;
-		lp->lwp_flag |= LWP_ALTSTACK;
+		lp->lwp_flags |= LWP_ALTSTACK;
 	}
 	return (error);
 }

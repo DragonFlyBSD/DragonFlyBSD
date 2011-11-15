@@ -97,7 +97,7 @@ procfs_dostatus(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
 	    " %d %d %d %d ", pid, ppid, pgid, sid);
 	DOCHECK();
-	if ((p->p_flag&P_CONTROLT) && (tp = sess->s_ttyp))
+	if ((p->p_flags & P_CONTROLT) && (tp = sess->s_ttyp))
 		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
 		    "%d,%d ", major(tp->t_dev), minor(tp->t_dev));
 	else
@@ -121,7 +121,7 @@ procfs_dostatus(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		DOCHECK();
 	}
 
-	if (p->p_flag & P_SWAPPEDOUT) {
+	if (p->p_flags & P_SWAPPEDOUT) {
 		ps += ksnprintf(ps, psbuf + sizeof(psbuf) - ps,
 		    " -1,-1 -1,-1 -1,-1");
 	} else {
@@ -211,7 +211,8 @@ procfs_docmdline(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 
 	if (p->p_args &&
 	    (ps_argsopen || (CHECKIO(curp, p) &&
-	     (p->p_flag & P_INEXEC) == 0 && !p_trespass(curp->p_ucred, p->p_ucred)))
+	     (p->p_flags & P_INEXEC) == 0 &&
+	     !p_trespass(curp->p_ucred, p->p_ucred)))
 	 ) {
 		bp = p->p_args->ar_args;
 		buflen = p->p_args->ar_length;

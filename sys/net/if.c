@@ -2753,7 +2753,7 @@ ifnetinit(void *dummy __unused)
 		struct thread *thr = &ifnet_threads[i];
 
 		lwkt_create(ifnet_service_loop, NULL, NULL,
-			    thr, TDF_STOPREQ|TDF_FORCE_SPINPORT,
+			    thr, TDF_NOSTART|TDF_FORCE_SPINPORT,
 			    i, "ifnet %d", i);
 		netmsg_service_port_init(&thr->td_msgport);
 		lwkt_schedule(thr);

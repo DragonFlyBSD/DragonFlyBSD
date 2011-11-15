@@ -81,7 +81,7 @@ static int	sig_ffs(sigset_t *set);
 static int	sigprop(int sig);
 static void	lwp_signotify(struct lwp *lp);
 #ifdef SMP
-static void	signotify_remote(void *arg);
+static void	lwp_signotify_remote(void *arg);
 #endif
 static int	kern_sigtimedwait(sigset_t set, siginfo_t *info,
 		    struct timespec *timeout);
@@ -433,7 +433,7 @@ execsigs(struct proc *p)
 	lp->lwp_sigstk.ss_flags = SS_DISABLE;
 	lp->lwp_sigstk.ss_size = 0;
 	lp->lwp_sigstk.ss_sp = 0;
-	lp->lwp_flag &= ~LWP_ALTSTACK;
+	lp->lwp_flags &= ~LWP_ALTSTACK;
 	/*
 	 * Reset no zombies if child dies flag as Solaris does.
 	 */
@@ -561,7 +561,7 @@ kern_sigsuspend(struct __sigset *set)
 	 * to indicate this.
 	 */
 	lp->lwp_oldsigmask = lp->lwp_sigmask;
-	lp->lwp_flag |= LWP_OLDMASK;
+	lp->lwp_flags |= LWP_OLDMASK;
 
 	SIG_CANTMASK(*set);
 	lp->lwp_sigmask = *set;
@@ -602,7 +602,7 @@ kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss)
 	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
 
-	if ((lp->lwp_flag & LWP_ALTSTACK) == 0)
+	if ((lp->lwp_flags & LWP_ALTSTACK) == 0)
 		lp->lwp_sigstk.ss_flags |= SS_DISABLE;
 
 	if (oss)
@@ -612,12 +612,12 @@ kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss)
 		if (ss->ss_flags & SS_DISABLE) {
 			if (lp->lwp_sigstk.ss_flags & SS_ONSTACK)
 				return (EINVAL);
-			lp->lwp_flag &= ~LWP_ALTSTACK;
+			lp->lwp_flags &= ~LWP_ALTSTACK;
 			lp->lwp_sigstk.ss_flags = ss->ss_flags;
 		} else {
 			if (ss->ss_size < p->p_sysent->sv_minsigstksz)
 				return (ENOMEM);
-			lp->lwp_flag |= LWP_ALTSTACK;
+			lp->lwp_flags |= LWP_ALTSTACK;
 			lp->lwp_sigstk = *ss;
 		}
 	}
@@ -695,7 +695,7 @@ dokillpg(int sig, int pgid, int all)
 		LIST_FOREACH(p, &pgrp->pg_members, p_pglist) {
 			if (p->p_pid <= 1 || 
 			    p->p_stat == SZOMB ||
-			    (p->p_flag & P_SYSTEM) ||
+			    (p->p_flags & P_SYSTEM) ||
 			    !CANSIGNAL(p, sig)) {
 				continue;
 			}
@@ -714,7 +714,7 @@ killpg_all_callback(struct proc *p, void *data)
 {
 	struct killpg_info *info = data;
 
-	if (p->p_pid <= 1 || (p->p_flag & P_SYSTEM) ||
+	if (p->p_pid <= 1 || (p->p_flags & P_SYSTEM) ||
 	    p == curproc || !CANSIGNAL(p, info->sig)) {
 		return (0);
 	}
@@ -762,7 +762,7 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 		 * called directly with P_WEXIT set to kill individual LWPs
 		 * during exit, which is allowed.
 		 */
-		if (p->p_flag & P_WEXIT) {
+		if (p->p_flags & P_WEXIT) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			lwkt_reltoken(&proc_token);
@@ -872,7 +872,7 @@ pgsignal(struct pgrp *pgrp, int sig, int checkctty)
 		pgref(pgrp);
 		lockmgr(&pgrp->pg_lock, LK_EXCLUSIVE);
 		LIST_FOREACH(p, &pgrp->pg_members, p_pglist) {
-			if (checkctty == 0 || p->p_flag & P_CONTROLT)
+			if (checkctty == 0 || p->p_flags & P_CONTROLT)
 				ksignal(p, sig);
 		}
 		lockmgr(&pgrp->pg_lock, LK_RELEASE);
@@ -905,7 +905,7 @@ trapsignal(struct lwp *lp, int sig, u_long code)
 	}
 
 
-	if ((p->p_flag & P_TRACED) == 0 && SIGISMEMBER(p->p_sigcatch, sig) &&
+	if ((p->p_flags & P_TRACED) == 0 && SIGISMEMBER(p->p_sigcatch, sig) &&
 	    !SIGISMEMBER(lp->lwp_sigmask, sig)) {
 		lp->lwp_ru.ru_nsignals++;
 #ifdef KTRACE
@@ -1003,7 +1003,7 @@ find_lwp_for_signal(struct proc *p, int sig)
 			}
 			break;
 		case LSSLEEP:
-			if (lp->lwp_flag & LWP_SINTR) {
+			if (lp->lwp_flags & LWP_SINTR) {
 				if (sleep) {
 					lwkt_reltoken(&lp->lwp_token);
 					LWPRELE(lp);
@@ -1106,7 +1106,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 	 * if signal event is tracked by procfs, give *that*
 	 * a chance, as well.
 	 */
-	if ((p->p_flag & P_TRACED) || (p->p_stops & S_SIG)) {
+	if ((p->p_flags & P_TRACED) || (p->p_stops & S_SIG)) {
 		action = SIG_DFL;
 	} else {
 		/*
@@ -1114,7 +1114,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * that we must still deliver the signal if P_WEXIT is set
 		 * in the process flags.
 		 */
-		if (lp && (lp->lwp_flag & LWP_WEXIT)) {
+		if (lp && (lp->lwp_mpflags & LWP_MP_WEXIT)) {
 			if (lp) {
 				lwkt_reltoken(&lp->lwp_token);
 				LWPRELE(lp);
@@ -1169,7 +1169,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		        return;
 		}
 		SIG_CONTSIGMASK(p->p_siglist);
-		p->p_flag &= ~P_CONTINUED;
+		p->p_flags &= ~P_CONTINUED;
 	}
 
 	crit_enter();
@@ -1191,7 +1191,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * If the process is stopped and is being traced, then no
 		 * further action is necessary.
 		 */
-		if (p->p_flag & P_TRACED)
+		if (p->p_flags & P_TRACED)
 			goto out;
 
 		/*
@@ -1225,7 +1225,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 			q = p->p_pptr;
 			PHOLD(q);
 			lwkt_gettoken(&q->p_token);
-			p->p_flag |= P_CONTINUED;
+			p->p_flags |= P_CONTINUED;
 			wakeup(q);
 			if (action == SIG_DFL)
 				SIGDELSET(p->p_siglist, sig);
@@ -1255,19 +1255,14 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 
 		/*
 		 * Otherwise the process is stopped and it received some
-		 * signal, which does not change its stopped state.
-		 *
-		 * We have to select one thread to set LWP_BREAKTSLEEP,
-		 * so that the current signal will break the sleep
-		 * as soon as a SA_CONT signal will unstop the process.
+		 * signal, which does not change its stopped state.  When
+		 * the process is continued a wakeup(p) will be issued which
+		 * will wakeup any threads sleeping in tstop().
 		 */
 		if (lp == NULL) {
 			/* NOTE: returns lp w/ token held */
 			lp = find_lwp_for_signal(p, sig);
 		}
-		if (lp != NULL &&
-		    (lp->lwp_stat == LSSLEEP || lp->lwp_stat == LSSTOP))
-			lp->lwp_flag |= LWP_BREAKTSLEEP;
 		goto out;
 
 		/* NOTREACHED */
@@ -1305,7 +1300,7 @@ active_process:
 	 * not be dispatched if masked but we must still deliver it.
 	 */
 	if (p->p_nice > NZERO && action == SIG_DFL && (prop & SA_KILL) &&
-	    (p->p_flag & P_TRACED) == 0) {
+	    (p->p_flags & P_TRACED) == 0) {
 		p->p_nice = NZERO;
 	}
 
@@ -1320,7 +1315,7 @@ active_process:
 		 * could cause deadlock.  Take no action at this
 		 * time.
 		 */
-		if (p->p_flag & P_PPWAIT) {
+		if (p->p_flags & P_PPWAIT) {
 			SIGADDSET(p->p_siglist, sig);
 			goto out;
 		}
@@ -1360,7 +1355,10 @@ out:
 }
 
 /*
- * p->p_token must be held
+ * Notify the LWP that a signal has arrived.  The LWP does not have to be
+ * sleeping on the current cpu.
+ *
+ * p->p_token and lp->lwp_token must be held on call.
  */
 static void
 lwp_signotify(struct lwp *lp)
@@ -1368,73 +1366,38 @@ lwp_signotify(struct lwp *lp)
 	ASSERT_LWKT_TOKEN_HELD(&lp->lwp_proc->p_token);
 	crit_enter();
 
-	if (lp->lwp_stat == LSSLEEP || lp->lwp_stat == LSSTOP) {
+	if (lp == lwkt_preempted_proc()) {
 		/*
-		 * Thread is in tsleep.
+		 * lwp is on the current cpu AND it is currently running
+		 * (we preempted it).
 		 */
-
+		signotify();
+	} else if (lp->lwp_thread->td_gd == mycpu) {
 		/*
-		 * If the thread is sleeping uninterruptibly
-		 * we can't interrupt the sleep... the signal will
-		 * be noticed when the lwp returns through
-		 * trap() or syscall().
-		 *
-		 * Otherwise the signal can interrupt the sleep.
-		 *
-		 * If the process is traced, the lwp will handle the
-		 * tracing in issignal() when it returns to userland.
+		 * lwp is on the current cpu, we can safely call
+		 * setrunnable()
 		 */
-		if (lp->lwp_flag & LWP_SINTR) {
-			/*
-			 * Make runnable and break out of any tsleep as well.
-			 */
-			lp->lwp_flag |= LWP_BREAKTSLEEP;
-			setrunnable(lp);
-		}
-	} else {
-		/*
-		 * Otherwise the thread is running
-		 *
-		 * LSRUN does nothing with the signal, other than kicking
-		 * ourselves if we are running.
-		 * SZOMB and SIDL mean that it will either never be noticed,
-		 * or noticed very soon.
-		 *
-		 * Note that lwp_thread may be NULL or may not be completely
-		 * initialized if the process is in the SIDL or SZOMB state.
-		 *
-		 * For SMP we may have to forward the request to another cpu.
-		 * YYY the MP lock prevents the target process from moving
-		 * to another cpu, see kern/kern_switch.c
-		 *
-		 * If the target thread is waiting on its message port,
-		 * wakeup the target thread so it can check (or ignore)
-		 * the new signal.  YYY needs cleanup.
-		 */
-		if (lp == lwkt_preempted_proc()) {
-			signotify();
-		} else if (lp->lwp_stat == LSRUN) {
-			struct thread *td = lp->lwp_thread;
-			struct proc *p __debugvar = lp->lwp_proc;
-
-			KASSERT(td != NULL,
-			    ("pid %d/%d NULL lwp_thread stat %d flags %08x/%08x",
-			    p->p_pid, lp->lwp_tid, lp->lwp_stat,
-			    p->p_flag, lp->lwp_flag));
-
-			/*
-			 * To prevent a MP race with TDF_SINTR we must
-			 * schedule the thread on the correct cpu.
-			 */
+		setrunnable(lp);
+	} else
 #ifdef SMP
-			if (td->td_gd != mycpu) {
-				LWPHOLD(lp);
-				lwkt_send_ipiq(td->td_gd, signotify_remote, lp);
-			} else
+	if (lp->lwp_flags & LWP_SINTR) {
+		/*
+		 * The lwp is on some other cpu but sitting in a tsleep,
+		 * we have to hold it to prevent it from going away and
+		 * chase after the cpu it is sitting on.
+		 *
+		 * The lwp_token interlocks LWP_SINTR.
+		 */
+		LWPHOLD(lp);
+		lwkt_send_ipiq(lp->lwp_thread->td_gd, lwp_signotify_remote, lp);
+	} else
 #endif
-			if (td->td_flags & TDF_SINTR)
-				lwkt_schedule(td);
-		}
+	{
+		/*
+		 * Otherwise the lwp is either in some uninterruptable state
+		 * or it is on the userland scheduler's runqueue waiting to
+		 * be scheduled to a cpu.
+		 */
 	}
 	crit_exit();
 }
@@ -1442,39 +1405,32 @@ lwp_signotify(struct lwp *lp)
 #ifdef SMP
 
 /*
- * This function is called via an IPI.  We will be in a critical section but
- * the MP lock will NOT be held.  The passed lp will be held.
+ * This function is called via an IPI so we cannot call setrunnable() here
+ * (because while we hold the lp we don't own its token, and can't get it
+ * from an IPI).
  *
- * We must essentially repeat the code at the end of lwp_signotify(),
- * in particular rechecking all races.  If we are still not on the
- * correct cpu we leave the lwp ref intact and continue the chase.
- *
- * XXX this may still not be entirely correct, since we are checking
- *     lwp_stat asynchronously.
+ * We are interlocked by virtue of being on the same cpu as the target.  If
+ * we still are and LWP_SINTR is set we can schedule the target thread.
  */
 static void
-signotify_remote(void *arg)
+lwp_signotify_remote(void *arg)
 {
 	struct lwp *lp = arg;
-	thread_t td;
+	thread_t td = lp->lwp_thread;
 
 	if (lp == lwkt_preempted_proc()) {
 		signotify();
-	} else if (lp->lwp_stat == LSRUN) {
-		/*
-		 * To prevent a MP race with TDF_SINTR we must
-		 * schedule the thread on the correct cpu.
-		 */
-		td = lp->lwp_thread;
-		if (td->td_gd != mycpu) {
-			lwkt_send_ipiq(td->td_gd, signotify_remote, lp);
-			return;
-			/* NOT REACHED */
-		}
+		LWPRELE(lp);
+	} else if (td->td_gd == mycpu) {
+		if (lp->lwp_flags & LWP_SINTR)
+			lwkt_schedule(td);
 		if (td->td_flags & TDF_SINTR)
 			lwkt_schedule(td);
+		LWPRELE(lp);
+	} else {
+		lwkt_send_ipiq(td->td_gd, lwp_signotify_remote, lp);
+		/* LWPHOLD() is forwarded to the target cpu */
 	}
-	LWPRELE(lp);
 }
 
 #endif
@@ -1514,12 +1470,14 @@ proc_stop(struct proc *p)
 			/*
 			 * We're sleeping, but we will stop before
 			 * returning to userspace, so count us
-			 * as stopped as well.  We set LWP_WSTOP
+			 * as stopped as well.  We set LWP_MP_WSTOP
 			 * to signal the lwp that it should not
 			 * increase p_nstopped when reaching tstop().
+			 *
+			 * LWP_MP_WSTOP is protected by lp->lwp_token.
 			 */
-			if ((lp->lwp_flag & LWP_WSTOP) == 0) {
-				lp->lwp_flag |= LWP_WSTOP;
+			if ((lp->lwp_mpflags & LWP_MP_WSTOP) == 0) {
+				atomic_set_int(&lp->lwp_mpflags, LWP_MP_WSTOP);
 				++p->p_nstopped;
 			}
 			break;
@@ -1544,7 +1502,7 @@ proc_stop(struct proc *p)
 		q = p->p_pptr;
 		PHOLD(q);
 		lwkt_gettoken(&q->p_token);
-		p->p_flag &= ~P_WAITED;
+		p->p_flags &= ~P_WAITED;
 		wakeup(q);
 		if ((q->p_sigacts->ps_flag & PS_NOCLDSTOP) == 0)
 			ksignal(p->p_pptr, SIGCHLD);
@@ -1595,9 +1553,12 @@ proc_unstop(struct proc *p)
 			 * Nevertheless we call setrunnable() so that it
 			 * will wake up in case a signal or timeout arrived
 			 * in the meantime.
+			 *
+			 * LWP_MP_WSTOP is protected by lp->lwp_token.
 			 */
-			if (lp->lwp_flag & LWP_WSTOP) {
-				lp->lwp_flag &= ~LWP_WSTOP;
+			if (lp->lwp_mpflags & LWP_MP_WSTOP) {
+				atomic_clear_int(&lp->lwp_mpflags,
+						 LWP_MP_WSTOP);
 				--p->p_nstopped;
 			} else {
 				if (bootverbose)
@@ -1607,13 +1568,24 @@ proc_unstop(struct proc *p)
 			/* FALLTHROUGH */
 
 		case LSSTOP:
-			setrunnable(lp);
+			/*
+			 * This handles any lwp's waiting in a tsleep with
+			 * SIGCATCH.
+			 */
+			lwp_signotify(lp);
 			break;
 
 		}
 		lwkt_reltoken(&lp->lwp_token);
 		LWPRELE(lp);
 	}
+
+	/*
+	 * This handles any lwp's waiting in tstop().  We have interlocked
+	 * the setting of p_stat by acquiring and releasing each lpw's
+	 * token.
+	 */
+	wakeup(p);
 	crit_exit();
 }
 
@@ -1856,7 +1828,7 @@ issignal(struct lwp *lp, int maytrace)
 	lwkt_gettoken(&p->p_token);
 
 	for (;;) {
-		int traced = (p->p_flag & P_TRACED) || (p->p_stops & S_SIG);
+		int traced = (p->p_flags & P_TRACED) || (p->p_stops & S_SIG);
 
 		/*
 		 * If this process is supposed to stop, stop this thread.
@@ -1866,7 +1838,7 @@ issignal(struct lwp *lp, int maytrace)
 
 		mask = lwp_sigpend(lp);
 		SIGSETNAND(mask, lp->lwp_sigmask);
-		if (p->p_flag & P_PPWAIT)
+		if (p->p_flags & P_PPWAIT)
 			SIG_STOPSIGMASK(mask);
 		if (SIGISEMPTY(mask)) {		/* no signal to send */
 			lwkt_reltoken(&p->p_token);
@@ -1886,7 +1858,9 @@ issignal(struct lwp *lp, int maytrace)
 			spin_unlock(&lp->lwp_spin);
 			continue;
 		}
-		if (maytrace && (p->p_flag & P_TRACED) && (p->p_flag & P_PPWAIT) == 0) {
+		if (maytrace &&
+		    (p->p_flags & P_TRACED) &&
+		    (p->p_flags & P_PPWAIT) == 0) {
 			/*
 			 * If traced, always stop, and stay stopped until
 			 * released by the parent.
@@ -1902,7 +1876,7 @@ issignal(struct lwp *lp, int maytrace)
 			proc_stop(p);
 			do {
 				tstop();
-			} while (!trace_req(p) && (p->p_flag & P_TRACED));
+			} while (!trace_req(p) && (p->p_flags & P_TRACED));
 
 			/*
 			 * If parent wants us to take the signal,
@@ -1931,7 +1905,7 @@ issignal(struct lwp *lp, int maytrace)
 			 * to the top to rescan signals.  This ensures
 			 * that p_sig* and ps_sigact are consistent.
 			 */
-			if ((p->p_flag & P_TRACED) == 0)
+			if ((p->p_flags & P_TRACED) == 0)
 				continue;
 		}
 
@@ -1975,7 +1949,7 @@ issignal(struct lwp *lp, int maytrace)
 			 * process group, ignore tty stop signals.
 			 */
 			if (prop & SA_STOP) {
-				if (p->p_flag & P_TRACED ||
+				if (p->p_flags & P_TRACED ||
 		    		    (p->p_pgrp->pg_jobc == 0 &&
 				    prop & SA_TTYSTOP))
 					break;	/* == ignore */
@@ -2003,7 +1977,7 @@ issignal(struct lwp *lp, int maytrace)
 			 * than SIGCONT, unless process is traced.
 			 */
 			if ((prop & SA_CONT) == 0 &&
-			    (p->p_flag & P_TRACED) == 0)
+			    (p->p_flags & P_TRACED) == 0)
 				kprintf("issignal\n");
 			break;		/* == ignore */
 
@@ -2059,7 +2033,7 @@ postsig(int sig)
 	action = ps->ps_sigact[_SIG_IDX(sig)];
 #ifdef KTRACE
 	if (KTRPOINT(lp->lwp_thread, KTR_PSIG))
-		ktrpsig(lp, sig, action, lp->lwp_flag & LWP_OLDMASK ?
+		ktrpsig(lp, sig, action, lp->lwp_flags & LWP_OLDMASK ?
 			&lp->lwp_oldsigmask : &lp->lwp_sigmask, 0);
 #endif
 	STOPEVENT(p, S_SIG, sig);
@@ -2103,9 +2077,9 @@ postsig(int sig)
 		 * mask from before the sigsuspend is what we want
 		 * restored after the signal processing is completed.
 		 */
-		if (lp->lwp_flag & LWP_OLDMASK) {
+		if (lp->lwp_flags & LWP_OLDMASK) {
 			returnmask = lp->lwp_oldsigmask;
-			lp->lwp_flag &= ~LWP_OLDMASK;
+			lp->lwp_flags &= ~LWP_OLDMASK;
 		} else {
 			returnmask = lp->lwp_sigmask;
 		}
@@ -2286,7 +2260,7 @@ coredump(struct lwp *lp, int sig)
 	
 	STOPEVENT(p, S_CORE, 0);
 
-	if (((sugid_coredump == 0) && p->p_flag & P_SUGID) || do_coredump == 0)
+	if (((sugid_coredump == 0) && p->p_flags & P_SUGID) || do_coredump == 0)
 		return (EFAULT);
 	
 	/*
@@ -2397,7 +2371,7 @@ pgsigio(struct sigio *sigio, int sig, int checkctty)
 		lockmgr(&pg->pg_lock, LK_EXCLUSIVE);
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
 			if (CANSIGIO(sigio->sio_ruid, sigio->sio_ucred, p) &&
-			    (checkctty == 0 || (p->p_flag & P_CONTROLT)))
+			    (checkctty == 0 || (p->p_flags & P_CONTROLT)))
 				ksignal(p, sig);
 		}
 		lockmgr(&pg->pg_lock, LK_RELEASE);

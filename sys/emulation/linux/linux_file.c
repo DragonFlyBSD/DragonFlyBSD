@@ -141,7 +141,7 @@ linux_open_common(int dfd, char *lpath, int lflags, int mode, int *iresult)
 	nlookup_done_at(&nd, fp);
 
 	if (error == 0 && !(flags & O_NOCTTY) && 
-		SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
+		SESS_LEADER(p) && !(p->p_flags & P_CONTROLT)) {
 		struct file *fp;
 
 		fp = holdfp(p->p_fd, *iresult, -1);

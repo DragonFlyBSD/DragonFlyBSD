@@ -143,8 +143,7 @@ uprintf(const char *fmt, ...)
 	struct putchar_arg pca;
 	int retval = 0;
 
-	if (p && p->p_flag & P_CONTROLT &&
-	    p->p_session->s_ttyvp) {
+	if (p && (p->p_flags & P_CONTROLT) && p->p_session->s_ttyvp) {
 		__va_start(ap, fmt);
 		pca.tty = p->p_session->s_ttyp;
 		pca.flags = TOTTY;
@@ -158,7 +157,7 @@ uprintf(const char *fmt, ...)
 tpr_t
 tprintf_open(struct proc *p)
 {
-	if ((p->p_flag & P_CONTROLT) && p->p_session->s_ttyvp) {
+	if ((p->p_flags & P_CONTROLT) && p->p_session->s_ttyvp) {
 		sess_hold(p->p_session);
 		return ((tpr_t) p->p_session);
 	}

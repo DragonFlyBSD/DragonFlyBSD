@@ -302,13 +302,13 @@ vm_init_limits(struct proc *p)
 void
 faultin(struct proc *p)
 {
-	if (p->p_flag & P_SWAPPEDOUT) {
+	if (p->p_flags & P_SWAPPEDOUT) {
 		/*
 		 * The process is waiting in the kernel to return to user
 		 * mode but cannot until P_SWAPPEDOUT gets cleared.
 		 */
 		lwkt_gettoken(&p->p_token);
-		p->p_flag &= ~(P_SWAPPEDOUT | P_SWAPWAIT);
+		p->p_flags &= ~(P_SWAPPEDOUT | P_SWAPWAIT);
 #ifdef INVARIANTS
 		if (swap_debug)
 			kprintf("swapping in %d (%s)\n", p->p_pid, p->p_comm);
@@ -397,7 +397,7 @@ scheduler_callback(struct proc *p, void *data)
 	segsz_t pgs;
 	int pri;
 
-	if (p->p_flag & P_SWAPWAIT) {
+	if (p->p_flags & P_SWAPWAIT) {
 		pri = 0;
 		FOREACH_LWP_IN_PROC(lp, p) {
 			/* XXX lwp might need a different metric */
@@ -453,7 +453,7 @@ swapin_request(void)
 
 #define	swappable(p) \
 	(((p)->p_lock == 0) && \
-	((p)->p_flag & (P_TRACED|P_SYSTEM|P_SWAPPEDOUT|P_WEXIT)) == 0)
+	((p)->p_flags & (P_TRACED|P_SYSTEM|P_SWAPPEDOUT|P_WEXIT)) == 0)
 
 
 /*
@@ -586,7 +586,7 @@ swapout(struct proc *p)
 	 * remember the process resident count
 	 */
 	p->p_vmspace->vm_swrss = vmspace_resident_count(p->p_vmspace);
-	p->p_flag |= P_SWAPPEDOUT;
+	p->p_flags |= P_SWAPPEDOUT;
 	p->p_swtime = 0;
 }
 

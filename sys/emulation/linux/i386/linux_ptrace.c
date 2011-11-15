@@ -381,13 +381,13 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 		}
 
 		/* System processes can't be debugged. */
-		if ((p->p_flag & P_SYSTEM) != 0) {
+		if ((p->p_flags & P_SYSTEM) != 0) {
 			error = EINVAL;
 			goto fail;
 		}
 
 		/* not being traced... */
-		if ((p->p_flag & P_TRACED) == 0) {
+		if ((p->p_flags & P_TRACED) == 0) {
 			error = EPERM;
 			goto fail;
 		}
@@ -399,7 +399,7 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 		}
 
 		/* not currently stopped */
-		if ((p->p_flag & (P_TRACED|P_WAITED)) == 0) {
+		if ((p->p_flags & (P_TRACED|P_WAITED)) == 0) {
 			error = EBUSY;
 			goto fail;
 		}

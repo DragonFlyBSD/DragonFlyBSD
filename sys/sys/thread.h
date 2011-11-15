@@ -258,7 +258,7 @@ struct thread {
     const volatile void	*td_wchan;	/* waiting on channel */
     int		td_pri;		/* 0-31, 31=highest priority (note 1) */
     int		td_critcount;	/* critical section priority */
-    int		td_flags;	/* TDF flags */
+    u_int	td_flags;	/* TDF flags */
     int		td_wdomain;	/* domain for wchan address (typ 0) */
     void	(*td_preemptable)(struct thread *td, int critcount);
     void	(*td_release)(struct thread *td);
@@ -274,7 +274,7 @@ struct thread {
     int		td_refs;	/* hold position in gd_tdallq / hold free */
     int		td_nest_count;	/* prevent splz nesting */
     int		td_contended;	/* token contention count */
-    int		td_unused01[1];	/* for future fields */
+    u_int	td_mpflags;	/* flags can be set by foreign cpus */
 #ifdef SMP
     int		td_cscount;	/* cpu synchronization master */
 #else
@@ -340,23 +340,23 @@ struct thread {
  * does not allow a thread to be scheduled if it already resides on some
  * queue.
  */
-#define TDF_RUNNING		0x0001	/* thread still active */
-#define TDF_RUNQ		0x0002	/* on an LWKT run queue */
-#define TDF_PREEMPT_LOCK	0x0004	/* I have been preempted */
-#define TDF_PREEMPT_DONE	0x0008	/* acknowledge preemption complete */
-#define TDF_UNUSED00000010	0x0010
-#define TDF_MIGRATING		0x0020	/* thread is being migrated */
-#define TDF_SINTR		0x0040	/* interruptability hint for 'ps' */
-#define TDF_TSLEEPQ		0x0080	/* on a tsleep wait queue */
+#define TDF_RUNNING		0x00000001	/* thread still active */
+#define TDF_RUNQ		0x00000002	/* on an LWKT run queue */
+#define TDF_PREEMPT_LOCK	0x00000004	/* I have been preempted */
+#define TDF_PREEMPT_DONE	0x00000008	/* ac preemption complete */
+#define TDF_NOSTART		0x00000010	/* do not schedule on create */
+#define TDF_MIGRATING		0x00000020	/* thread is being migrated */
+#define TDF_SINTR		0x00000040	/* interruptability for 'ps' */
+#define TDF_TSLEEPQ		0x00000080	/* on a tsleep wait queue */
 
-#define TDF_SYSTHREAD		0x0100	/* allocations may use reserve */
-#define TDF_ALLOCATED_THREAD	0x0200	/* objcache allocated thread */
-#define TDF_ALLOCATED_STACK	0x0400	/* objcache allocated stack */
-#define TDF_VERBOSE		0x0800	/* verbose on exit */
-#define TDF_DEADLKTREAT		0x1000	/* special lockmgr deadlock treatment */
-#define TDF_STOPREQ		0x2000	/* suspend_kproc */
-#define TDF_WAKEREQ		0x4000	/* resume_kproc */
-#define TDF_TIMEOUT		0x8000	/* tsleep timeout */
+#define TDF_SYSTHREAD		0x00000100	/* reserve memory may be used */
+#define TDF_ALLOCATED_THREAD	0x00000200	/* objcache allocated thread */
+#define TDF_ALLOCATED_STACK	0x00000400	/* objcache allocated stack */
+#define TDF_VERBOSE		0x00000800	/* verbose on exit */
+#define TDF_DEADLKTREAT		0x00001000	/* special lockmgr treatment */
+#define TDF_UNUSED2000		0x00002000
+#define TDF_TIMEOUT_RUNNING	0x00004000	/* tsleep timeout race */
+#define TDF_TIMEOUT		0x00008000	/* tsleep timeout */
 #define TDF_INTTHREAD		0x00010000	/* interrupt thread */
 #define TDF_TSLEEP_DESCHEDULED	0x00020000	/* tsleep core deschedule */
 #define TDF_BLOCKED		0x00040000	/* Thread is blocked */
@@ -368,6 +368,9 @@ struct thread {
 #define TDF_KERNELFP		0x01000000	/* kernel using fp coproc */
 #define TDF_UNUSED02000000	0x02000000
 #define TDF_CRYPTO		0x04000000	/* crypto thread */
+
+#define TDF_MP_STOPREQ		0x00000001	/* suspend_kproc */
+#define TDF_MP_WAKEREQ		0x00000002	/* resume_kproc */
 
 /*
  * Thread priorities.  Typically only one thread from any given

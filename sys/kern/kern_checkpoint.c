@@ -783,7 +783,7 @@ checkpoint_signal_handler(struct lwp *lp)
 	 * Being able to checkpoint an suid or sgid program is not a good
 	 * idea.
 	 */
-	if (sugid_coredump == 0 && (p->p_flag & P_SUGID)) {
+	if (sugid_coredump == 0 && (p->p_flags & P_SUGID)) {
 		chptinuse--;
 		return (EPERM);
 	}

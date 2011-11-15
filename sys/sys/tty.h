@@ -221,7 +221,7 @@ struct speedtab {
 
 /* Is tp controlling terminal for p? */
 #define	isctty(p, tp)							\
-	((p)->p_session == (tp)->t_session && (p)->p_flag & P_CONTROLT)
+	((p)->p_session == (tp)->t_session && ((p)->p_flags & P_CONTROLT))
 
 /* Is p in background of tp? */
 #define	isbackground(p, tp)						\

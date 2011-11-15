@@ -294,7 +294,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 		}
 		pgrp.pg_session = &sess;
 
-		if ((proc.p_flag & P_CONTROLT) && sess.s_ttyp != NULL) {
+		if ((proc.p_flags & P_CONTROLT) && sess.s_ttyp != NULL) {
 			if (KREAD(kd, (u_long)sess.s_ttyp, &tty)) {
 				_kvm_err(kd, kd->program,
 					 "can't read tty at %p", sess.s_ttyp);
@@ -351,7 +351,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 			break;
 
 		case KERN_PROC_TTY:
-			if ((proc.p_flag & P_CONTROLT) == 0 ||
+			if ((proc.p_flags & P_CONTROLT) == 0 ||
 			    dev2udev(proc.p_pgrp->pg_session->s_ttyp->t_dev)
 					!= (dev_t)arg)
 				continue;

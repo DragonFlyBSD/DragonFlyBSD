@@ -291,6 +291,7 @@ _lwkt_thread_ctor(void *obj, void *privdata, int ocflags)
 	td->td_kstack = NULL;
 	td->td_kstack_size = 0;
 	td->td_flags = TDF_ALLOCATED_THREAD;
+	td->td_mpflags = 0;
 	return (1);
 }
 
@@ -336,7 +337,8 @@ lwkt_schedule_self(thread_t td)
     crit_enter_quick(td);
     KASSERT(td != &td->td_gd->gd_idlethread,
 	    ("lwkt_schedule_self(): scheduling gd_idlethread is illegal!"));
-    KKASSERT(td->td_lwp == NULL || (td->td_lwp->lwp_flag & LWP_ONRUNQ) == 0);
+    KKASSERT(td->td_lwp == NULL ||
+	     (td->td_lwp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
     _lwkt_enqueue(td);
     crit_exit_quick(td);
 }
@@ -470,6 +472,7 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     td->td_kstack = stack;
     td->td_kstack_size = stksize;
     td->td_flags = flags;
+    td->td_mpflags = 0;
     td->td_gd = gd;
     td->td_pri = TDPRI_KERN_DAEMON;
     td->td_critcount = 1;
@@ -1268,7 +1271,9 @@ _lwkt_schedule(thread_t td)
 	    ("lwkt_schedule(): scheduling gd_idlethread is illegal!"));
     KKASSERT((td->td_flags & TDF_MIGRATING) == 0);
     crit_enter_gd(mygd);
-    KKASSERT(td->td_lwp == NULL || (td->td_lwp->lwp_flag & LWP_ONRUNQ) == 0);
+    KKASSERT(td->td_lwp == NULL ||
+	     (td->td_lwp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
+
     if (td == mygd->gd_curthread) {
 	_lwkt_enqueue(td);
     } else {
@@ -1604,7 +1609,8 @@ lwkt_setcpu_remote(void *arg)
     cpu_mfence();
     td->td_flags &= ~TDF_MIGRATING;
     KKASSERT(td->td_migrate_gd == NULL);
-    KKASSERT(td->td_lwp == NULL || (td->td_lwp->lwp_flag & LWP_ONRUNQ) == 0);
+    KKASSERT(td->td_lwp == NULL ||
+	    (td->td_lwp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
     _lwkt_enqueue(td);
 }
 #endif
@@ -1649,10 +1655,10 @@ lwkt_create(void (*func)(void *), void *arg, struct thread **tdp,
     /*
      * Schedule the thread to run
      */
-    if ((td->td_flags & TDF_STOPREQ) == 0)
-	lwkt_schedule(td);
+    if (td->td_flags & TDF_NOSTART)
+	td->td_flags &= ~TDF_NOSTART;
     else
-	td->td_flags &= ~TDF_STOPREQ;
+	lwkt_schedule(td);
     return 0;
 }
 

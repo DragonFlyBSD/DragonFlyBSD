@@ -69,7 +69,7 @@ vinum_daemon(void)
 {
     struct daemonq *request;
 
-    curproc->p_flag |= P_SYSTEM;		    /* we're a system process */
+    curproc->p_flags |= P_SYSTEM;		    /* we're a system process */
     daemon_save_config();				    /* start by saving the configuration */
     daemonpid = curproc->p_pid;				    /* mark our territory */
     while (1) {

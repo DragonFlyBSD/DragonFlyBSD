@@ -770,10 +770,10 @@ sys_setitimer(struct setitimer_args *uap)
 		p->p_timer[uap->which] = aitv;
 		switch(uap->which) {
 		case ITIMER_VIRTUAL:
-			p->p_flag &= ~P_SIGVTALRM;
+			p->p_flags &= ~P_SIGVTALRM;
 			break;
 		case ITIMER_PROF:
-			p->p_flag &= ~P_SIGPROF;
+			p->p_flags &= ~P_SIGPROF;
 			break;
 		}
 	}

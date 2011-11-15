@@ -295,7 +295,7 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 			KASSERT(p == curproc,
 				("enterpgrp: mksession and p != curproc"));
 			lwkt_gettoken(&p->p_token);
-			p->p_flag &= ~P_CONTROLT;
+			p->p_flags &= ~P_CONTROLT;
 			lwkt_reltoken(&p->p_token);
 		} else {
 			pgrp->pg_session = p->p_session;
@@ -939,7 +939,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 				break;
 
 			case KERN_PROC_TTY:
-				if ((p->p_flag & P_CONTROLT) == 0 ||
+				if ((p->p_flags & P_CONTROLT) == 0 ||
 				    p->p_session == NULL ||
 				    p->p_session->s_ttyp == NULL ||
 				    dev2udev(p->p_session->s_ttyp->t_dev) != 

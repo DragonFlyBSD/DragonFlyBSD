@@ -490,7 +490,8 @@ again:
 		while (isbackground(p, tp)) {
 			if (SIGISMEMBER(p->p_sigignore, SIGTTIN) ||
 			    SIGISMEMBER(lp->lwp_sigmask, SIGTTIN) ||
-			    p->p_pgrp->pg_jobc == 0 || p->p_flag & P_PPWAIT) {
+			    p->p_pgrp->pg_jobc == 0 ||
+			    (p->p_flags & P_PPWAIT)) {
 				lwkt_reltoken(&tty_token);
 				return (EIO);
 			}

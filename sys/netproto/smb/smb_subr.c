@@ -386,7 +386,7 @@ smb_kthread_create(void (*func)(void *), void *arg,
 		*newpp = p2;
 
 	/* this is a non-swapped system process */
-	p2->p_flag |= P_SYSTEM;
+	p2->p_flags |= P_SYSTEM;
 	p2->p_sigacts->ps_flag |= PS_NOCLDWAIT;
 
 	lp2 = ONLY_LWP_IN_PROC(p2);

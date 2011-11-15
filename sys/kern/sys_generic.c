@@ -891,7 +891,7 @@ sys_pselect(struct pselect_args *uap)
 			 * us.  So make a note to restore it after executing
 			 * the handler.
 			 */
-			lp->lwp_flag |= LWP_OLDMASK;
+			lp->lwp_flags |= LWP_OLDMASK;
 		} else {
 			/*
 			 * No handler to run. Restore previous mask immediately.

@@ -323,9 +323,9 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 				error = EBADF;
 				break;
 			}
-			if ((p->p_leader->p_flag & P_ADVLOCK) == 0) {
+			if ((p->p_leader->p_flags & P_ADVLOCK) == 0) {
 				lwkt_gettoken(&p->p_leader->p_token);
-				p->p_leader->p_flag |= P_ADVLOCK;
+				p->p_leader->p_flags |= P_ADVLOCK;
 				lwkt_reltoken(&p->p_leader->p_token);
 			}
 			error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_SETLK,
@@ -336,9 +336,9 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 				error = EBADF;
 				break;
 			}
-			if ((p->p_leader->p_flag & P_ADVLOCK) == 0) {
+			if ((p->p_leader->p_flags & P_ADVLOCK) == 0) {
 				lwkt_gettoken(&p->p_leader->p_token);
-				p->p_leader->p_flag |= P_ADVLOCK;
+				p->p_leader->p_flags |= P_ADVLOCK;
 				lwkt_reltoken(&p->p_leader->p_token);
 			}
 			error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_SETLK,
@@ -1978,7 +1978,7 @@ fdfree(struct proc *p, struct filedesc *repl)
 			("filedesc_to_refcount botch: fdl_refcount=%d",
 			 fdtol->fdl_refcount));
 		if (fdtol->fdl_refcount == 1 &&
-		    (p->p_leader->p_flag & P_ADVLOCK) != 0) {
+		    (p->p_leader->p_flags & P_ADVLOCK) != 0) {
 			for (i = 0; i <= fdp->fd_lastfile; ++i) {
 				fdnode = &fdp->fd_files[i];
 				if (fdnode->fp == NULL ||
@@ -2006,7 +2006,7 @@ fdfree(struct proc *p, struct filedesc *repl)
 	retry:
 		if (fdtol->fdl_refcount == 1) {
 			if (fdp->fd_holdleaderscount > 0 &&
-			    (p->p_leader->p_flag & P_ADVLOCK) != 0) {
+			    (p->p_leader->p_flags & P_ADVLOCK) != 0) {
 				/*
 				 * close() or do_dup() has cleared a reference
 				 * in a shared file descriptor table.
@@ -2382,7 +2382,7 @@ closef(struct file *fp, struct proc *p)
 	if (p != NULL && fp->f_type == DTYPE_VNODE &&
 	    (((struct vnode *)fp->f_data)->v_flag & VMAYHAVELOCKS)
 	) {
-		if ((p->p_leader->p_flag & P_ADVLOCK) != 0) {
+		if ((p->p_leader->p_flags & P_ADVLOCK) != 0) {
 			lf.l_whence = SEEK_SET;
 			lf.l_start = 0;
 			lf.l_len = 0;
@@ -2401,7 +2401,7 @@ closef(struct file *fp, struct proc *p)
 			for (fdtol = fdtol->fdl_next;
 			     fdtol != p->p_fdtol;
 			     fdtol = fdtol->fdl_next) {
-				if ((fdtol->fdl_leader->p_flag &
+				if ((fdtol->fdl_leader->p_flags &
 				     P_ADVLOCK) == 0)
 					continue;
 				fdtol->fdl_holdcount++;

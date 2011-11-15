@@ -597,7 +597,7 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 		 * change the owner to root - otherwise 'ps' and friends
 		 * will break even though they are setgid kmem. *SIGH*
 		 */
-		if (procp->p_flag & P_SUGID)
+		if (procp->p_flags & P_SUGID)
 			vap->va_uid = 0;
 		else
 			vap->va_uid = procp->p_ucred->cr_uid;

@@ -324,7 +324,7 @@ sys_setpgid(struct setpgid_args *uap)
 			error = EPERM;
 			goto done;
 		}
-		if (targp->p_flag & P_EXEC) {
+		if (targp->p_flags & P_EXEC) {
 			error = EACCES;
 			goto done;
 		}
@@ -873,7 +873,7 @@ sys_getresgid(struct getresgid_args *uap)
 int
 sys_issetugid(struct issetugid_args *uap)
 {
-	uap->sysmsg_result = (curproc->p_flag & P_SUGID) ? 1 : 0;
+	uap->sysmsg_result = (curproc->p_flags & P_SUGID) ? 1 : 0;
 	return (0);
 }
 
@@ -1211,7 +1211,7 @@ setsugid(void)
 
 	KKASSERT(p != NULL);
 	lwkt_gettoken(&p->p_token);
-	p->p_flag |= P_SUGID;
+	p->p_flags |= P_SUGID;
 	if (!(p->p_pfsflags & PF_ISUGID))
 		p->p_stops = 0;
 	lwkt_reltoken(&p->p_token);

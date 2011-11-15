@@ -169,13 +169,14 @@ struct lwp {
 	struct vmspace	*lwp_vmspace;	/* Inherited from p_vmspace */
 	struct vkernel_lwp *lwp_vkernel;/* VKernel support, lwp part */
 
-	lwpid_t		lwp_tid;	/* Our thread id . */
+	lwpid_t		lwp_tid;	/* Our thread id */
 
-	int		lwp_flag;	/* LWP_* flags. */
-	enum lwpstat	lwp_stat;	/* LS* lwp status. */
+	u_int		lwp_flags;	/* LWP_*    flags */
+	u_int		lwp_mpflags;	/* LWP_MP_* flags */
+	enum lwpstat	lwp_stat;	/* LS* lwp status */
 	int		lwp_lock;	/* lwp lock (prevent destruct) count */
 
-	int		lwp_dupfd;	/* Sideways return value from fdopen. XXX */
+	int		lwp_dupfd;	/* Sideways return value from fdopen */
 
 	/*
 	 * The following two fields are marked XXX since (at least) the
@@ -240,7 +241,7 @@ struct	proc {
 #define p_sigcatch	p_sigacts->ps_sigcatch
 #define	p_rlimit	p_limit->pl_rlimit
 
-	int		p_flag;		/* P_* flags. */
+	int		p_flags;	/* P_* flags. */
 	enum procstat	p_stat;		/* S* process status. */
 	char		p_pad1[3];
 
@@ -335,64 +336,64 @@ struct	proc {
 #define	p_pgid		p_pgrp->pg_id
 
 /* These flags are kept in p_flags. */
-#define	P_ADVLOCK	0x00001	/* Process may hold a POSIX advisory lock. */
-#define	P_CONTROLT	0x00002	/* Has a controlling terminal. */
+#define	P_ADVLOCK	0x00001	/* Process may hold a POSIX advisory lock */
+#define	P_CONTROLT	0x00002	/* Has a controlling terminal */
 #define	P_SWAPPEDOUT	0x00004	/* Swapped out of memory */
-#define P_UNUSED3	0x00008	/* was: Event pending, break tsleep on sigcont */
-#define	P_PPWAIT	0x00010	/* Parent is waiting for child to exec/exit. */
-#define	P_PROFIL	0x00020	/* Has started profiling. */
-#define P_UNUSED5	0x00040 /* was: Selecting; wakeup/waiting danger. */
-#define	P_UNUSED4	0x00080	/* was: Sleep is interruptible. */
-#define	P_SUGID		0x00100	/* Had set id privileges since last exec. */
-#define	P_SYSTEM	0x00200	/* System proc: no sigs, stats or swapping. */
+#define P_UNUSED3	0x00008
+#define	P_PPWAIT	0x00010	/* Parent is waiting for child to exec/exit */
+#define	P_PROFIL	0x00020	/* Has started profiling */
+#define P_UNUSED5	0x00040 /* was: Selecting; wakeup/waiting danger */
+#define	P_UNUSED4	0x00080	/* was: Sleep is interruptible */
+#define	P_SUGID		0x00100	/* Had set id privileges since last exec */
+#define	P_SYSTEM	0x00200	/* System proc: no sigs, stats or swapping */
 #define	P_UNUSED2	0x00400	/* was: SIGSTOP status */
-#define	P_TRACED	0x00800	/* Debugged process being traced. */
+#define	P_TRACED	0x00800	/* Debugged process being traced */
 #define	P_WAITED	0x01000	/* SIGSTOP status was returned by wait3/4 */
 #define	P_WEXIT		0x02000	/* Working on exiting (master exit) */
-#define	P_EXEC		0x04000	/* Process called exec. */
-#define	P_CONTINUED	0x08000	/* Proc has continued from a stopped state. */
+#define	P_EXEC		0x04000	/* Process called exec */
+#define	P_CONTINUED	0x08000	/* Proc has continued from a stopped state */
 
-/* Should probably be changed into a hold count. */
-/* was	P_NOSWAP	0x08000	was: Do not swap upages; p->p_hold */
-#define P_UNUSED7	0x10000
+#define P_UNUSED16	0x00010000
+#define	P_UPCALLPEND	0x00020000 /* an upcall is pending */
 
-#define	P_UPCALLPEND	0x20000	/* an upcall is pending */
-
-#define	P_SWAPWAIT	0x40000	/* Waiting for a swapin */
-#define	P_UNUSED6	0x80000	/* was: Now in a zombied state */
+#define	P_SWAPWAIT	0x00040000 /* Waiting for a swapin */
+#define	P_UNUSED19	0x00080000 /* was: Now in a zombied state */
 
 /* Marked a kernel thread */
-#define	P_UNUSED07	0x100000 /* was: on a user scheduling run queue */
-#define	P_KTHREADP	0x200000 /* Process is really a kernel thread */
-#define P_IDLESWAP	0x400000 /* Swapout was due to idleswap, not load */
+#define	P_UNUSED20	0x00100000 /* was: on a user scheduling run queue */
+#define	P_KTHREADP	0x00200000 /* Process is really a kernel thread */
+#define P_IDLESWAP	0x00400000 /* Swapout was due to idleswap, not load */
 
-#define	P_JAILED	0x1000000 /* Process is in jail */
-#define	P_SIGVTALRM	0x2000000 /* signal SIGVTALRM pending due to itimer */
-#define	P_SIGPROF	0x4000000 /* signal SIGPROF pending due to itimer */
-#define	P_INEXEC	0x8000000 /* Process is in execve(). */
-#define P_UNUSED1000	0x10000000
+#define	P_JAILED	0x01000000 /* Process is in jail */
+#define	P_SIGVTALRM	0x02000000 /* signal SIGVTALRM pending due to itimer */
+#define	P_SIGPROF	0x04000000 /* signal SIGPROF pending due to itimer */
+#define	P_INEXEC	0x08000000 /* Process is in execve(). */
+#define P_UNUSED28	0x10000000
 #define	P_UPCALLWAIT	0x20000000 /* Wait for upcall or signal */
 #define P_XCPU		0x40000000 /* SIGXCPU */
 
+#define	LWP_ALTSTACK	0x0000001 /* have alternate signal stack */
+#define	LWP_OLDMASK	0x0000002 /* need to restore mask before pause */
+#define	LWP_SINTR	0x0000008 /* Sleep is interruptible. */
+#define LWP_SELECT	0x0000010 /* Selecting; wakeup/waiting danger. */
+#define LWP_UNUSED20	0x0000020
+#define	LWP_UNUSED40	0x0000040
+#define	LWP_UNUSED80	0x0000080
+#define LWP_PASSIVE_ACQ	0x0000100 /* Passive acquire cpu (see kern_switch) */
+#define LWP_PAGING	0x0000200 /* Currently in vm_fault */
+
 /*
- * LWP_WSTOP: When set the thread will stop prior to return to userland
+ * LWP_MP_WSTOP: When set the thread will stop prior to return to userland
  *	      and has been counted in the process stop-threads-count, but
  *	      may still be running in kernel-land.
  *
- * LWP_WEXIT: When set the thread has been asked to exit and will not return
+ * LWP_MP_WEXIT: When set the thread has been asked to exit and will not return
  *	      to userland.  p_nthreads will not be decremented until the
  *	      thread has actually exited.
  */
-#define	LWP_ALTSTACK	0x0000001 /* have alternate signal stack */
-#define	LWP_OLDMASK	0x0000002 /* need to restore mask before pause */
-#define LWP_BREAKTSLEEP	0x0000004 /* Event pending, break tsleep on sigcont */
-#define	LWP_SINTR	0x0000008 /* Sleep is interruptible. */
-#define LWP_SELECT	0x0000010 /* Selecting; wakeup/waiting danger. */
-#define	LWP_ONRUNQ	0x0000020 /* on a user scheduling run queue */
-#define	LWP_WEXIT	0x0000040 /* working on exiting */
-#define	LWP_WSTOP	0x0000080 /* working on stopping */
-#define LWP_PASSIVE_ACQ	0x0000100 /* Passive acquire cpu (see kern_switch) */
-#define LWP_PAGING	0x0000200 /* Currently in vm_fault */
+#define	LWP_MP_ONRUNQ	0x0000001 /* on a user scheduling run queue */
+#define LWP_MP_WEXIT	0x0000002 /* working on exiting */
+#define	LWP_MP_WSTOP	0x0000004 /* working on stopping */
 
 #define	FIRST_LWP_IN_PROC(p)		RB_FIRST(lwp_rb_tree, &(p)->p_lwp_tree)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\

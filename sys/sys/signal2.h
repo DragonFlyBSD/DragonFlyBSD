@@ -103,7 +103,7 @@ __cursig(struct lwp *lp, int mayblock, int maytrace)
 		 *  a) we may block and
 		 *  b) somebody is tracing us.
 		 */
-		if (!(mayblock && (p->p_flag & P_TRACED)))
+		if (!(mayblock && (p->p_flags & P_TRACED)))
 			return (0);
 	}
 

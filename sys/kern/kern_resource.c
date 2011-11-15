@@ -295,8 +295,11 @@ donice(struct proc *chgp, int n)
 	if (n < chgp->p_nice && priv_check_cred(cr, PRIV_SCHED_SETPRIORITY, 0))
 		return (EACCES);
 	chgp->p_nice = n;
-	FOREACH_LWP_IN_PROC(lp, chgp)
+	FOREACH_LWP_IN_PROC(lp, chgp) {
+		LWPHOLD(lp);
 		chgp->p_usched->resetpriority(lp);
+		LWPRELE(lp);
+	}
 	return (0);
 }
 

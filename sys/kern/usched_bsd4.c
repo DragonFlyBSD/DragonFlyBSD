@@ -227,11 +227,18 @@ bsd4_acquire_curproc(struct lwp *lp)
 {
 	globaldata_t gd;
 	bsd4_pcpu_t dd;
+	thread_t td;
 #if 0
 	struct lwp *olp;
 #endif
 
-	crit_enter();
+	/*
+	 * Make sure we aren't sitting on a tsleep queue.
+	 */
+	td = lp->lwp_thread;
+	crit_enter_quick(td);
+	if (td->td_flags & TDF_TSLEEPQ)
+		tsleep_remove(td);
 	bsd4_recalculate_estcpu(lp);
 
 	/*
@@ -307,8 +314,8 @@ bsd4_acquire_curproc(struct lwp *lp)
 		}
 	} while (dd->uschedcp != lp);
 
-	crit_exit();
-	KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
+	crit_exit_quick(td);
+	KKASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
 }
 
 /*
@@ -339,7 +346,7 @@ bsd4_release_curproc(struct lwp *lp)
 
 	if (dd->uschedcp == lp) {
 		crit_enter();
-		KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
+		KKASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
 		dd->uschedcp = NULL;	/* don't let lp be selected */
 		dd->upri = PRIBASE_NULL;
 		atomic_clear_cpumask(&bsd4_curprocmask, gd->gd_cpumask);
@@ -426,9 +433,9 @@ bsd4_setrunqueue(struct lwp *lp)
 	 */
 	crit_enter();
 	KASSERT(lp->lwp_stat == LSRUN, ("setrunqueue: lwp not LSRUN"));
-	KASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0,
+	KASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0,
 	    ("lwp %d/%d already on runq! flag %08x/%08x", lp->lwp_proc->p_pid,
-	     lp->lwp_tid, lp->lwp_proc->p_flag, lp->lwp_flag));
+	     lp->lwp_tid, lp->lwp_proc->p_flags, lp->lwp_flags));
 	KKASSERT((lp->lwp_thread->td_flags & TDF_RUNQ) == 0);
 
 	/*
@@ -838,7 +845,7 @@ bsd4_resetpriority(struct lwp *lp)
 	 */
 	if ((lp->lwp_priority ^ newpriority) & ~PPQMASK) {
 		lp->lwp_priority = newpriority;
-		if (lp->lwp_flag & LWP_ONRUNQ) {
+		if (lp->lwp_mpflags & LWP_MP_ONRUNQ) {
 			bsd4_remrunqueue_locked(lp);
 			lp->lwp_rqtype = newrqtype;
 			lp->lwp_rqindex = (newpriority & PRIMASK) / PPQ;
@@ -1065,8 +1072,8 @@ again:
 	--bsd4_runqcount;
 	if (TAILQ_EMPTY(q))
 		*which &= ~(1 << pri);
-	KASSERT((lp->lwp_flag & LWP_ONRUNQ) != 0, ("not on runq6!"));
-	lp->lwp_flag &= ~LWP_ONRUNQ;
+	KASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) != 0, ("not on runq6!"));
+	atomic_clear_int(&lp->lwp_mpflags, LWP_MP_ONRUNQ);
 	return lp;
 }
 
@@ -1103,8 +1110,8 @@ bsd4_remrunqueue_locked(struct lwp *lp)
 	u_int32_t *which;
 	u_int8_t pri;
 
-	KKASSERT(lp->lwp_flag & LWP_ONRUNQ);
-	lp->lwp_flag &= ~LWP_ONRUNQ;
+	KKASSERT(lp->lwp_mpflags & LWP_MP_ONRUNQ);
+	atomic_clear_int(&lp->lwp_mpflags, LWP_MP_ONRUNQ);
 	--bsd4_runqcount;
 	KKASSERT(bsd4_runqcount >= 0);
 
@@ -1153,8 +1160,8 @@ bsd4_setrunqueue_locked(struct lwp *lp)
 	u_int32_t *which;
 	int pri;
 
-	KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
-	lp->lwp_flag |= LWP_ONRUNQ;
+	KKASSERT((lp->lwp_mpflags & LWP_MP_ONRUNQ) == 0);
+	atomic_set_int(&lp->lwp_mpflags, LWP_MP_ONRUNQ);
 	++bsd4_runqcount;
 
 	pri = lp->lwp_rqindex;
@@ -1334,7 +1341,7 @@ sched_thread_cpu_init(void)
 	    kprintf(" %d", i);
 
 	lwkt_create(sched_thread, NULL, NULL, &dd->helper_thread, 
-		    TDF_STOPREQ, i, "usched %d", i);
+		    TDF_NOSTART, i, "usched %d", i);
 
 	/*
 	 * Allow user scheduling on the target cpu.  cpu #0 has already

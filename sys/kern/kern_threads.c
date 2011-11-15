@@ -111,9 +111,9 @@ sys_thr_sleep(struct thr_sleep_args *uap)
 	uap->sysmsg_result = 0;
 	if (p->p_wakeup == 0) {
 		sleepstart = ticks;
-		lp->lwp_flag |= LWP_SINTR;
+		lp->lwp_flags |= LWP_SINTR;
 		error = tsleep(p, 0, "thrslp", timo);
-		lp->lwp_flag &= ~LWP_SINTR;
+		lp->lwp_flags &= ~LWP_SINTR;
 		if (error == EWOULDBLOCK) {
 			p->p_wakeup = 0;
 			uap->sysmsg_result = EAGAIN;

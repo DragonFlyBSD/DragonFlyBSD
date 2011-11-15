@@ -895,7 +895,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 	case  TIOCSETP:
 	case  TIOCSLTC:
 #endif
-		while (isbackground(p, tp) && !(p->p_flag & P_PPWAIT) &&
+		while (isbackground(p, tp) && !(p->p_flags & P_PPWAIT) &&
 		    !SIGISMEMBER(p->p_sigignore, SIGTTOU) &&
 		    !SIGISMEMBER(lp->lwp_sigmask, SIGTTOU)) {
 			if (p->p_pgrp->pg_jobc == 0) {
@@ -1238,7 +1238,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		tp->t_pgrp = p->p_pgrp;
 		otp = p->p_session->s_ttyp;
 		p->p_session->s_ttyp = tp;
-		p->p_flag |= P_CONTROLT;
+		p->p_flags |= P_CONTROLT;
 		if (otp)
 			ttyunhold(otp);
 		if (opgrp) {
@@ -1795,7 +1795,7 @@ loop:
 		crit_exit();
 		if (SIGISMEMBER(pp->p_sigignore, SIGTTIN) ||
 		    SIGISMEMBER(lp->lwp_sigmask, SIGTTIN) ||
-		    (pp->p_flag & P_PPWAIT) || pp->p_pgrp->pg_jobc == 0) {
+		    (pp->p_flags & P_PPWAIT) || pp->p_pgrp->pg_jobc == 0) {
 			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (EIO);
@@ -2124,7 +2124,7 @@ loop:
 	 */
 	lwkt_gettoken(&proc_token);
 	if ((pp = curproc) && isbackground(pp, tp) &&
-	    ISSET(tp->t_lflag, TOSTOP) && !(pp->p_flag & P_PPWAIT) &&
+	    ISSET(tp->t_lflag, TOSTOP) && !(pp->p_flags & P_PPWAIT) &&
 	    !SIGISMEMBER(pp->p_sigignore, SIGTTOU) &&
 	    !SIGISMEMBER(lp->lwp_sigmask, SIGTTOU)) {
 		if (pp->p_pgrp->pg_jobc == 0) {
@@ -2642,7 +2642,7 @@ ttyinfo(struct tty *tp)
 		 * XXX lwp This is a horrible mixture.  We need to rework this
 		 * as soon as lwps have their own runnable status.
 		 */
-		if (pick->p_flag & P_WEXIT)
+		if (pick->p_flags & P_WEXIT)
 			str = "exiting";
 		else if (lp->lwp_stat == LSRUN)
 			str = "running";
@@ -2661,7 +2661,7 @@ ttyinfo(struct tty *tp)
 		 * 'pick' becomes invalid the moment we exit the critical
 		 * section.
 		 */
-		if (lp->lwp_thread && (pick->p_flag & P_SWAPPEDOUT) == 0)
+		if (lp->lwp_thread && (pick->p_flags & P_SWAPPEDOUT) == 0)
 			calcru_proc(pick, &ru);
 
 		pctcpu = (lp->lwp_pctcpu * 10000 + FSCALE / 2) >> FSHIFT;
@@ -2766,9 +2766,9 @@ proc_compare(struct proc *p1, struct proc *p2)
 	/*
 	 * favor one sleeping in a non-interruptible sleep
 	 */
-	if (lp1->lwp_flag & LWP_SINTR && (lp2->lwp_flag & LWP_SINTR) == 0)
+	if (lp1->lwp_flags & LWP_SINTR && (lp2->lwp_flags & LWP_SINTR) == 0)
 		return (1);
-	if (lp2->lwp_flag & LWP_SINTR && (lp1->lwp_flag & LWP_SINTR) == 0)
+	if (lp2->lwp_flags & LWP_SINTR && (lp1->lwp_flags & LWP_SINTR) == 0)
 		return (0);
 	return (p2->p_pid > p1->p_pid);		/* tie - return highest pid */
 }
