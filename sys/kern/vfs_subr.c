@@ -1325,16 +1325,25 @@ vrevoke(struct vnode *vp, struct ucred *cred)
 	reference_dev(dev);
 	lwkt_gettoken(&spechash_token);
 
+restart:
 	vqn = SLIST_FIRST(&dev->si_hlist);
 	if (vqn)
-		vref(vqn);
+		vhold(vqn);
 	while ((vq = vqn) != NULL) {
-		vqn = SLIST_NEXT(vqn, v_cdevnext);
+		if (sysref_isactive(&vq->v_sysref)) {
+			vref(vq);
+			fdrevoke(vq, DTYPE_VNODE, cred);
+			/*v_release_rdev(vq);*/
+			vrele(vq);
+			if (vq->v_rdev != dev) {
+				vdrop(vq);
+				goto restart;
+			}
+		}
+		vqn = SLIST_NEXT(vq, v_cdevnext);
 		if (vqn)
-			vref(vqn);
-		fdrevoke(vq, DTYPE_VNODE, cred);
-		/*v_release_rdev(vq);*/
-		vrele(vq);
+			vhold(vqn);
+		vdrop(vq);
 	}
 	lwkt_reltoken(&spechash_token);
 	dev_drevoke(dev);
