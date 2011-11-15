@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.32 2007/11/20 21:03:51 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -37,7 +36,7 @@
 #include <sys/malloc.h>
 #include <sys/stat.h>
 #include <sys/module.h>
-#include <sys/buf.h>
+#include <sys/buf2.h>
 #include <sys/iconv.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
