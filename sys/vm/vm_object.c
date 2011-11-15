@@ -214,17 +214,26 @@ debugvm_object_hold(vm_object_t obj, char *file, int line)
 
 #if defined(DEBUG_LOCKS)
 	int i;
+	u_int mask;
 
-	i = ffs(~obj->debug_hold_bitmap) - 1;
-	if (i == -1) {
-		kprintf("vm_object hold count > VMOBJ_DEBUG_ARRAY_SIZE");
-		obj->debug_hold_ovfl = 1;
+	for (;;) {
+		mask = ~obj->debug_hold_bitmap;
+		cpu_ccfence();
+		if (mask == 0xFFFFFFFFU) {
+			if (obj->debug_hold_ovfl == 0)
+				obj->debug_hold_ovfl = 1;
+			break;
+		}
+		i = ffs(mask) - 1;
+		if (atomic_cmpset_int(&obj->debug_hold_bitmap, ~mask,
+				      ~mask | (1 << i))) {
+			obj->debug_hold_bitmap |= (1 << i);
+			obj->debug_hold_thrs[i] = curthread;
+			obj->debug_hold_file[i] = file;
+			obj->debug_hold_line[i] = line;
+			break;
+		}
 	}
-
-	obj->debug_hold_bitmap |= (1 << i);
-	obj->debug_hold_thrs[i] = curthread;
-	obj->debug_hold_file[i] = file;
-	obj->debug_hold_line[i] = line;
 #endif
 }
 
@@ -248,17 +257,26 @@ debugvm_object_hold_shared(vm_object_t obj, char *file, int line)
 
 #if defined(DEBUG_LOCKS)
 	int i;
+	u_int mask;
 
-	i = ffs(~obj->debug_hold_bitmap) - 1;
-	if (i == -1) {
-		kprintf("vm_object hold count > VMOBJ_DEBUG_ARRAY_SIZE");
-		obj->debug_hold_ovfl = 1;
+	for (;;) {
+		mask = ~obj->debug_hold_bitmap;
+		cpu_ccfence();
+		if (mask == 0xFFFFFFFFU) {
+			if (obj->debug_hold_ovfl == 0)
+				obj->debug_hold_ovfl = 1;
+			break;
+		}
+		i = ffs(mask) - 1;
+		if (atomic_cmpset_int(&obj->debug_hold_bitmap, ~mask,
+				      ~mask | (1 << i))) {
+			obj->debug_hold_bitmap |= (1 << i);
+			obj->debug_hold_thrs[i] = curthread;
+			obj->debug_hold_file[i] = file;
+			obj->debug_hold_line[i] = line;
+			break;
+		}
 	}
-
-	obj->debug_hold_bitmap |= (1 << i);
-	obj->debug_hold_thrs[i] = curthread;
-	obj->debug_hold_file[i] = file;
-	obj->debug_hold_line[i] = line;
 #endif
 }
 
