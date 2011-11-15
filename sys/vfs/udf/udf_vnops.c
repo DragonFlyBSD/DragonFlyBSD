@@ -36,7 +36,7 @@
 #include <sys/malloc.h>
 #include <sys/stat.h>
 #include <sys/module.h>
-#include <sys/buf2.h>
+#include <sys/buf.h>
 #include <sys/iconv.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
@@ -45,6 +45,8 @@
 #include <sys/unistd.h>
 
 #include <machine/inttypes.h>
+
+#include <sys/buf2.h>
 
 #include <vfs/udf/ecma167-udf.h>
 #include <vfs/udf/osta.h>
