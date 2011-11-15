@@ -29,7 +29,9 @@ static int vmm_ncpus;
 static int vmm_fetched;
 static struct vmmeter *vmm_cur, *vmm_prev;
 static struct kinfo_cputime *vmm_cptime_cur, *vmm_cptime_prev;
+#if 0
 static struct save_ctx symctx;
+#endif
 static int symbols_read;
 
 static void
@@ -113,12 +115,14 @@ do { \
 #undef CPUD
 #define CPUC(idx, field) vmm_cptime_cur[idx].cp_##field
 
+#if 0
 		n = X_START + CPU_LABEL_W;
 
 		DRAW_ROW(n, CPU_STARTX + i, 15, "%-*s", CPUC(i, msg));
 		DRAW_ROW(n, CPU_STARTX + i, 35, "%-*s",
 			address_to_symbol((void *)(intptr_t)CPUC(i, stallpc),
 					  &symctx));
+#endif
 #undef CPUC
 	}
 }
@@ -155,12 +159,14 @@ labelvmm(void)
 	for (i = 0; i < vmm_ncpus; ++i)
 		mvprintw(CPU_START + i, X_START, "cpu%d", i);
 
+#if 0
 	n = X_START + CPU_LABEL_W;
 	DRAW_ROW(n, CPU_STARTX - 1, 15, "%-*s", "contention");
 	DRAW_ROW(n, CPU_STARTX - 1, 35, "%-*s", "function");
 
 	for (i = 0; i < vmm_ncpus; ++i)
 		mvprintw(CPU_STARTX + i, X_START, "cpu%d", i);
+#endif
 }
 
 WINDOW *

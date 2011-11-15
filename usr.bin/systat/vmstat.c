@@ -29,10 +29,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)vmstat.c	8.2 (Berkeley) 1/12/94
- * $FreeBSD: src/usr.bin/systat/vmstat.c,v 1.38.2.4 2002/03/12 19:50:23 phantom Exp $
- * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.12 2008/11/10 04:59:45 swildner Exp $
  */
 
 /*
@@ -170,7 +166,7 @@ static struct nlist namelist[] = {
 #define GENSTATROW	 7	/* uses 2 rows and 30 cols */
 #define GENSTATCOL	16
 #define VMSTATROW	 6	/* uses 17 rows and 12 cols */
-#define VMSTATCOL	48
+#define VMSTATCOL	50
 #define GRAPHROW	10	/* uses 3 rows and 51 cols */
 #define GRAPHCOL	 0
 #define NAMEIROW	14	/* uses 3 rows and 38 cols */
@@ -272,12 +268,12 @@ labelkre(void)
 
 	clear();
 	mvprintw(STATROW, STATCOL + 4, "users    Load");
-	mvprintw(MEMROW, MEMCOL, "Mem:MB    REAL            VIRTUAL");
-	mvprintw(MEMROW + 1, MEMCOL, "        Tot   Share      Tot    Share");
+	mvprintw(MEMROW, MEMCOL, "Mem:      REAL            VIRTUAL");
+	mvprintw(MEMROW + 1, MEMCOL, "       Tot  Share     Tot  Share");
 	mvprintw(MEMROW + 2, MEMCOL, "Act");
 	mvprintw(MEMROW + 3, MEMCOL, "All");
 
-	mvprintw(MEMROW + 1, MEMCOL + 41, "Free");
+	mvprintw(MEMROW + 1, MEMCOL + 36, "Free");
 
 	mvprintw(PAGEROW, PAGECOL,     "        VN PAGER  SWAP PAGER ");
 	mvprintw(PAGEROW + 1, PAGECOL, "        in  out     in  out ");
@@ -287,24 +283,24 @@ labelkre(void)
 	mvprintw(INTSROW, INTSCOL + 3, " Interrupts");
 	mvprintw(INTSROW + 1, INTSCOL + 9, "total");
 
-	mvprintw(VMSTATROW + 1, VMSTATCOL + 10, "cow");
-	mvprintw(VMSTATROW + 2, VMSTATCOL + 10, "wire");
-	mvprintw(VMSTATROW + 3, VMSTATCOL + 10, "act");
-	mvprintw(VMSTATROW + 4, VMSTATCOL + 10, "inact");
-	mvprintw(VMSTATROW + 5, VMSTATCOL + 10, "cache");
-	mvprintw(VMSTATROW + 6, VMSTATCOL + 10, "free");
-	mvprintw(VMSTATROW + 7, VMSTATCOL + 10, "daefr");
-	mvprintw(VMSTATROW + 8, VMSTATCOL + 10, "prcfr");
-	mvprintw(VMSTATROW + 9, VMSTATCOL + 10, "react");
-	mvprintw(VMSTATROW + 10, VMSTATCOL + 10, "pdwake");
-	mvprintw(VMSTATROW + 11, VMSTATCOL + 10, "pdpgs");
-	mvprintw(VMSTATROW + 12, VMSTATCOL + 10, "intrn");
-	mvprintw(VMSTATROW + 13, VMSTATCOL + 10, "buf");
-	mvprintw(VMSTATROW + 14, VMSTATCOL + 10, "dirtybuf");
+	mvprintw(VMSTATROW + 1, VMSTATCOL + 8, "cow");
+	mvprintw(VMSTATROW + 2, VMSTATCOL + 8, "wire");
+	mvprintw(VMSTATROW + 3, VMSTATCOL + 8, "act");
+	mvprintw(VMSTATROW + 4, VMSTATCOL + 8, "inact");
+	mvprintw(VMSTATROW + 5, VMSTATCOL + 8, "cache");
+	mvprintw(VMSTATROW + 6, VMSTATCOL + 8, "free");
+	mvprintw(VMSTATROW + 7, VMSTATCOL + 8, "daefr");
+	mvprintw(VMSTATROW + 8, VMSTATCOL + 8, "prcfr");
+	mvprintw(VMSTATROW + 9, VMSTATCOL + 8, "react");
+	mvprintw(VMSTATROW + 10, VMSTATCOL + 8, "pdwake");
+	mvprintw(VMSTATROW + 11, VMSTATCOL + 8, "pdpgs");
+	mvprintw(VMSTATROW + 12, VMSTATCOL + 8, "intrn");
+	mvprintw(VMSTATROW + 13, VMSTATCOL + 8, "buf");
+	mvprintw(VMSTATROW + 14, VMSTATCOL + 8, "dirtybuf");
 
-	mvprintw(VMSTATROW + 15, VMSTATCOL + 10, "desiredvnodes");
-	mvprintw(VMSTATROW + 16, VMSTATCOL + 10, "numvnodes");
-	mvprintw(VMSTATROW + 17, VMSTATCOL + 10, "freevnodes");
+	mvprintw(VMSTATROW + 15, VMSTATCOL + 8, "desiredvnodes");
+	mvprintw(VMSTATROW + 16, VMSTATCOL + 8, "numvnodes");
+	mvprintw(VMSTATROW + 17, VMSTATCOL + 8, "freevnodes");
 
 	mvprintw(GENSTATROW, GENSTATCOL, "  Csw  Trp  Sys  Int  Sof  Flt");
 
@@ -349,7 +345,7 @@ labelkre(void)
 		extended_vm_stats = 1;
 	} else {
 		extended_vm_stats = 0;
-		mvprintw(VMSTATROW + 0, VMSTATCOL + 10, "zfod");
+		mvprintw(VMSTATROW + 0, VMSTATCOL + 8, "zfod");
 	}
 
 	for (i = 0; i < nintr; i++) {
@@ -482,35 +478,36 @@ showkre(void)
 	mvaddstr(STATROW, STATCOL + 53, buf);
 #define pgtokb(pg)	(long)((intmax_t)(pg) * vms.v_page_size / 1024)
 #define pgtomb(pg)	(long)((intmax_t)(pg) * vms.v_page_size / (1024 * 1024))
-	putlong(pgtomb(total.t_arm), MEMROW + 2, MEMCOL + 3, 8, 'M');
-	putlong(pgtomb(total.t_armshr), MEMROW + 2, MEMCOL + 11, 8, 'M');
-	putlong(pgtomb(total.t_avm), MEMROW + 2, MEMCOL + 19, 9, 'M');
-	putlong(pgtomb(total.t_avmshr), MEMROW + 2, MEMCOL + 28, 9, 'M');
-	putlong(pgtomb(total.t_rm), MEMROW + 3, MEMCOL + 3, 8, 'M');
-	putlong(pgtomb(total.t_rmshr), MEMROW + 3, MEMCOL + 11, 8, 'M');
-	putlong(pgtomb(total.t_vm), MEMROW + 3, MEMCOL + 19, 9, 'M');
-	putlong(pgtomb(total.t_vmshr), MEMROW + 3, MEMCOL + 28, 9, 'M');
-	putlong(pgtomb(total.t_free), MEMROW + 2, MEMCOL + 37, 8, 'M');
+#define pgtob(pg)	(long)((intmax_t)(pg) * vms.v_page_size)
+	putlong(pgtob(total.t_arm), MEMROW + 2, MEMCOL + 4, 6, 0);
+	putlong(pgtob(total.t_armshr), MEMROW + 2, MEMCOL + 11, 6, 0);
+	putlong(pgtob(total.t_avm), MEMROW + 2, MEMCOL + 19, 6, 0);
+	putlong(pgtob(total.t_avmshr), MEMROW + 2, MEMCOL + 26, 6, 0);
+	putlong(pgtob(total.t_rm), MEMROW + 3, MEMCOL + 4, 6, 0);
+	putlong(pgtob(total.t_rmshr), MEMROW + 3, MEMCOL + 11, 6, 0);
+	putlong(pgtob(total.t_vm), MEMROW + 3, MEMCOL + 19, 6, 0);
+	putlong(pgtob(total.t_vmshr), MEMROW + 3, MEMCOL + 26, 6, 0);
+	putlong(pgtob(total.t_free), MEMROW + 2, MEMCOL + 34, 6, 0);
 	putlong(total.t_rq - 1, PROCSROW + 1, PROCSCOL + 0, 3, 'D');
 	putlong(total.t_pw, PROCSROW + 1, PROCSCOL + 3, 3, 'D');
 	putlong(total.t_dw, PROCSROW + 1, PROCSCOL + 6, 3, 'D');
 	putlong(total.t_sl, PROCSROW + 1, PROCSCOL + 9, 3, 'D');
 	putlong(total.t_sw, PROCSROW + 1, PROCSCOL + 12, 3, 'D');
 	if (extended_vm_stats == 0) {
-		PUTRATE(Vmm.v_zfod, VMSTATROW + 0, VMSTATCOL + 4, 5);
+		PUTRATE(Vmm.v_zfod, VMSTATROW + 0, VMSTATCOL, 7);
 	}
-	PUTRATE(Vmm.v_cow_faults, VMSTATROW + 1, VMSTATCOL + 3, 6);
-	putlong(pgtokb(vms.v_wire_count), VMSTATROW + 2, VMSTATCOL, 9, 'K');
-	putlong(pgtokb(vms.v_active_count), VMSTATROW + 3, VMSTATCOL, 9, 'K');
-	putlong(pgtokb(vms.v_inactive_count), VMSTATROW + 4, VMSTATCOL, 9, 'K');
-	putlong(pgtokb(vms.v_cache_count), VMSTATROW + 5, VMSTATCOL, 9, 'K');
-	putlong(pgtokb(vms.v_free_count), VMSTATROW + 6, VMSTATCOL, 9, 'K');
-	PUTRATE(Vmm.v_dfree, VMSTATROW + 7, VMSTATCOL, 9);
-	PUTRATE(Vmm.v_pfree, VMSTATROW + 8, VMSTATCOL, 9);
-	PUTRATE(Vmm.v_reactivated, VMSTATROW + 9, VMSTATCOL, 9);
-	PUTRATE(Vmm.v_pdwakeups, VMSTATROW + 10, VMSTATCOL, 9);
-	PUTRATE(Vmm.v_pdpages, VMSTATROW + 11, VMSTATCOL, 9);
-	PUTRATE(Vmm.v_intrans, VMSTATROW + 12, VMSTATCOL, 9);
+	PUTRATE(Vmm.v_cow_faults, VMSTATROW + 1, VMSTATCOL, 7);
+	putlong(pgtob(vms.v_wire_count), VMSTATROW + 2, VMSTATCOL, 7, 0);
+	putlong(pgtob(vms.v_active_count), VMSTATROW + 3, VMSTATCOL, 7, 0);
+	putlong(pgtob(vms.v_inactive_count), VMSTATROW + 4, VMSTATCOL, 7, 0);
+	putlong(pgtob(vms.v_cache_count), VMSTATROW + 5, VMSTATCOL, 7, 0);
+	putlong(pgtob(vms.v_free_count), VMSTATROW + 6, VMSTATCOL, 7, 0);
+	PUTRATE(Vmm.v_dfree, VMSTATROW + 7, VMSTATCOL, 7);
+	PUTRATE(Vmm.v_pfree, VMSTATROW + 8, VMSTATCOL, 7);
+	PUTRATE(Vmm.v_reactivated, VMSTATROW + 9, VMSTATCOL, 7);
+	PUTRATE(Vmm.v_pdwakeups, VMSTATROW + 10, VMSTATCOL, 7);
+	PUTRATE(Vmm.v_pdpages, VMSTATROW + 11, VMSTATCOL, 7);
+	PUTRATE(Vmm.v_intrans, VMSTATROW + 12, VMSTATCOL, 7);
 
 	if (extended_vm_stats) {
 		PUTRATE(Vmm.v_zfod, VMSTATROW + 11, VMSTATCOL - 16, 9);
@@ -522,11 +519,11 @@ showkre(void)
 		PUTRATE(Vmm.v_tfree, VMSTATROW + 14, VMSTATCOL - 16, 9);
 	}
 
-	putlong(s.bufspace/1024, VMSTATROW + 13, VMSTATCOL, 9, 'K');
-	putlong(s.dirtybufspace/1024, VMSTATROW + 14, VMSTATCOL, 9, 'K');
-	putlong(s.desiredvnodes, VMSTATROW + 15, VMSTATCOL, 9, 'D');
-	putlong(s.numvnodes, VMSTATROW + 16, VMSTATCOL, 9, 'D');
-	putlong(s.freevnodes, VMSTATROW + 17, VMSTATCOL, 9, 'D');
+	putlong(s.bufspace, VMSTATROW + 13, VMSTATCOL, 7, 0);
+	putlong(s.dirtybufspace/1024, VMSTATROW + 14, VMSTATCOL, 7, 'k');
+	putlong(s.desiredvnodes, VMSTATROW + 15, VMSTATCOL, 7, 'D');
+	putlong(s.numvnodes, VMSTATROW + 16, VMSTATCOL, 7, 'D');
+	putlong(s.freevnodes, VMSTATROW + 17, VMSTATCOL, 7, 'D');
 	PUTRATE(Vmm.v_vnodein, PAGEROW + 2, PAGECOL + 6, 4);
 	PUTRATE(Vmm.v_vnodeout, PAGEROW + 2, PAGECOL + 11, 4);
 	PUTRATE(Vmm.v_swapin, PAGEROW + 2, PAGECOL + 18, 4);
@@ -654,7 +651,10 @@ static void
 putlong(long n, int l, int lc, int w, int type)
 {
 	char b[128];
-	int xtype;
+	int isneg;
+	int i;
+	long d;
+	long u;
 
 	move(l, lc);
 	if (n == 0) {
@@ -662,33 +662,83 @@ putlong(long n, int l, int lc, int w, int type)
 			addch(' ');
 		return;
 	}
-	snprintf(b, sizeof(b), "%*ld", w, n);
-	if (strlen(b) > (size_t)w) {
-		if (type == 'D') {
-			n /= 1000;
-			xtype = 'K';
-		} else {
-			n /= 1024;
-			xtype = 'M';
-		}
-		snprintf(b, sizeof(b), "%*ld%c", w - 1, n, xtype);
-		if (strlen(b) > (size_t)w) {
-			if (type == 'D') {
-				n /= 1000;
-				xtype = 'M';
-			} else {
-				n /= 1024;
-				xtype = 'G';
-			}
-			snprintf(b, sizeof(b), "%*ld%c", w - 1, n, xtype);
-			if (strlen(b) > (size_t)w) {
-				while (w-- > 0)
-					addch('*');
-				return;
-			}
+	if (type == 0 || type == 'D')
+		snprintf(b, sizeof(b), "%*ld", w, n);
+	else
+		snprintf(b, sizeof(b), "%*ld%c", w - 1, n, type);
+	if (strlen(b) <= (size_t)w) {
+		addstr(b);
+		return;
+	}
+
+	if (type == 'D')
+		u = 1000;
+	else
+		u = 1024;
+	if (n < 0) {
+		n = -n;
+		isneg = 1;
+		if ((unsigned long)n == (unsigned long)LONG_MAX + 1)
+			n = LONG_MAX;
+	} else {
+		isneg = 0;
+	}
+
+	for (d = 1; n / d >= 1000; d *= u) {
+		switch(type) {
+		case 'D':
+		case 0:
+			type = 'k';
+			break;
+		case 'k':
+			type = 'M';
+			break;
+		case 'M':
+			type = 'G';
+			break;
+		case 'G':
+			type = 'T';
+			break;
+		case 'T':
+			type = 'X';
+			break;
+		default:
+			type = '?';
+			break;
 		}
 	}
-	addstr(b);
+
+	i = w - isneg;
+	if (n / d >= 100)
+		i -= 3;
+	else if (n / d >= 10)
+		i -= 2;
+	else
+		i -= 1;
+	if (i > 4) {
+		snprintf(b + 64, sizeof(b) - 64, "%ld.%03ld%c",
+			 n / d, n / (d / 1000) % 1000, type);
+	} else if (i > 3) {
+		snprintf(b + 64, sizeof(b) - 64, "%ld.%02ld%c",
+			 n / d, n / (d / 100) % 100, type);
+	} else if (i > 2) {
+		snprintf(b + 64, sizeof(b) - 64, "%ld.%01ld%c",
+			 n / d, n / (d / 10) % 10, type);
+	} else {
+		snprintf(b + 64, sizeof(b) - 64, "%ld%c",
+			 n / d, type);
+	}
+	w -= strlen(b + 64);
+	i = 64;
+	if (isneg) {
+		b[--i] = '-';
+		--w;
+	}
+	while (w > 0) {
+		--w;
+		b[--i] = ' ';
+	}
+	addstr(b + i);
 }
 
 static void
