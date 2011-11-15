@@ -413,7 +413,7 @@ emx_attach(device_t dev)
 	sc->serializes[i++] = &sc->rx_data[1].rx_serialize;
 	KKASSERT(i == EMX_NSERIALIZE);
 
-	callout_init(&sc->timer);
+	callout_init_mp(&sc->timer);
 
 	sc->dev = sc->osdep.dev = dev;
 
