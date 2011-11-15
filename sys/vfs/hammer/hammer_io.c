@@ -52,6 +52,7 @@
 #include <sys/fcntl.h>
 #include <sys/nlookup.h>
 #include <sys/buf.h>
+
 #include <sys/buf2.h>
 
 static void hammer_io_modify(hammer_io_t io, int count);

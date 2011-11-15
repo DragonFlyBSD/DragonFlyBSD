@@ -371,13 +371,15 @@ hammer_vop_read(struct vop_read_args *ap)
 		/*
 		 * MPSAFE
 		 */
-		bp = getcacheblk(ap->a_vp, base_offset, blksize);
-		if (bp) {
+		bp = getblk(ap->a_vp, base_offset, blksize, 0, 0);
+		if ((bp->b_flags & (B_INVAL | B_CACHE | B_RAM)) == B_CACHE) {
+			bp->b_flags &= ~B_AGE;
 			error = 0;
 			goto skip;
-		} else {
-			if (ap->a_ioflag & IO_NRDELAY)
-				return (EWOULDBLOCK);
+		}
+		if (ap->a_ioflag & IO_NRDELAY) {
+			bqrelse(bp);
+			return (EWOULDBLOCK);
 		}
 
 		/*
@@ -389,6 +391,10 @@ hammer_vop_read(struct vop_read_args *ap)
 			hammer_start_transaction(&trans, ip->hmp);
 		}
 
+		/*
+		 * NOTE: A valid bp has already been acquired, but was not
+		 *	 B_CACHE.
+		 */
 		if (hammer_cluster_enable) {
 			/*
 			 * Use file_limit to prevent cluster_read() from
@@ -400,12 +406,13 @@ hammer_vop_read(struct vop_read_args *ap)
 			    file_limit > HAMMER_XDEMARC) {
 				file_limit = HAMMER_XDEMARC;
 			}
-			error = cluster_read(ap->a_vp,
+			error = cluster_readx(ap->a_vp,
 					     file_limit, base_offset,
 					     blksize, uio->uio_resid,
 					     seqcount * BKVASIZE, &bp);
 		} else {
-			error = bread(ap->a_vp, base_offset, blksize, &bp);
+			error = breadnx(ap->a_vp, base_offset, blksize,
+					NULL, NULL, 0, &bp);
 		}
 		if (error) {
 			brelse(bp);

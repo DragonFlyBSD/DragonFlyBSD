@@ -64,6 +64,8 @@
 #include <sys/stat.h> 				/* defines ALLPERMS */
 #include <vm/vm_zone.h>
 
+#include <sys/buf2.h>
+
 #include "bpb.h"
 #include "bootsect.h"
 #include "direntry.h"

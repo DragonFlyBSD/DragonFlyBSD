@@ -124,6 +124,15 @@ struct faultstate {
 
 static int debug_cluster = 0;
 SYSCTL_INT(_vm, OID_AUTO, debug_cluster, CTLFLAG_RW, &debug_cluster, 0, "");
+static int vm_shared_fault = 1;
+SYSCTL_INT(_vm, OID_AUTO, shared_fault, CTLFLAG_RW, &vm_shared_fault, 0,
+	   "Allow shared token on vm_object");
+static long vm_shared_hit = 0;
+SYSCTL_LONG(_vm, OID_AUTO, shared_hit, CTLFLAG_RW, &vm_shared_hit, 0,
+	   "Successful shared faults");
+static long vm_shared_miss = 0;
+SYSCTL_LONG(_vm, OID_AUTO, shared_miss, CTLFLAG_RW, &vm_shared_miss, 0,
+	   "Successful shared faults");
 
 static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t);
 static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *, vpte_t, int);
@@ -131,8 +140,10 @@ static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *, vpte_t, int);
 static int vm_fault_additional_pages (vm_page_t, int, int, vm_page_t *, int *);
 #endif
 static void vm_set_nosync(vm_page_t m, vm_map_entry_t entry);
-static void vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry,
-			int prot);
+static void vm_prefault(pmap_t pmap, vm_offset_t addra,
+			vm_map_entry_t entry, int prot, int fault_flags);
+static void vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
+			vm_map_entry_t entry, int prot, int fault_flags);
 
 static __inline void
 release_page(struct faultstate *fs)
@@ -250,13 +261,17 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	int result;
 	vm_pindex_t first_pindex;
 	struct faultstate fs;
+	struct lwp *lp;
 	int growstack;
 
-	mycpu->gd_cnt.v_vm_faults++;
-
+	vm_page_pcpu_cache();
 	fs.hardfault = 0;
 	fs.fault_flags = fault_flags;
+	fs.vp = NULL;
 	growstack = 1;
+
+	if ((lp = curthread->td_lwp) != NULL)
+		lp->lwp_flag |= LWP_PAGING;
 
 	lwkt_gettoken(&map->token);
 
@@ -358,12 +373,70 @@ RetryFault:
 	}
 
 	/*
+	 * Attempt to shortcut the fault if the lookup returns a
+	 * terminal object and the page is present.  This allows us
+	 * to obtain a shared token on the object instead of an exclusive
+	 * token, which theoretically should allow concurrent faults.
+	 */
+	if (vm_shared_fault &&
+	    fs.first_object->backing_object == NULL &&
+	    fs.entry->maptype == VM_MAPTYPE_NORMAL) {
+		int error;
+		vm_object_hold_shared(fs.first_object);
+		/*fs.vp = vnode_pager_lock(fs.first_object);*/
+		fs.m = vm_page_lookup_busy_try(fs.first_object,
+						first_pindex,
+						TRUE, &error);
+		if (error == 0 && fs.m) {
+			/*
+			 * Activate the page and figure out if we can
+			 * short-cut a quick mapping.
+			 *
+			 * WARNING!  We cannot call swap_pager_unswapped()
+			 *	     with a shared token!
+			 */
+			vm_page_activate(fs.m);
+			if (fs.m->valid == VM_PAGE_BITS_ALL &&
+			    ((fs.m->flags & PG_SWAPPED) == 0 ||
+			     (fs.prot & VM_PROT_WRITE) == 0 ||
+			     (fs.fault_flags & VM_FAULT_DIRTY) == 0)) {
+				fs.lookup_still_valid = TRUE;
+				fs.first_m = NULL;
+				fs.object = fs.first_object;
+				fs.prot = fs.first_prot;
+				if (fs.wired)
+					fault_type = fs.first_prot;
+				if (fs.prot & VM_PROT_WRITE) {
+					vm_object_set_writeable_dirty(
+							fs.m->object);
+					vm_set_nosync(fs.m, fs.entry);
+					if (fs.fault_flags & VM_FAULT_DIRTY) {
+						vm_page_dirty(fs.m);
+						/*XXX*/
+						swap_pager_unswapped(fs.m);
+					}
+				}
+				result = KERN_SUCCESS;
+				fault_flags |= VM_FAULT_BURST_QUICK;
+				fault_flags &= ~VM_FAULT_BURST;
+				++vm_shared_hit;
+				goto quick;
+			}
+			vm_page_wakeup(fs.m);
+			fs.m = NULL;
+		}
+		vm_object_drop(fs.first_object); /* XXX drop on shared tok?*/
+	}
+	++vm_shared_miss;
+
+	/*
 	 * Bump the paging-in-progress count to prevent size changes (e.g.
 	 * truncation operations) during I/O.  This must be done after
 	 * obtaining the vnode lock in order to avoid possible deadlocks.
 	 */
 	vm_object_hold(fs.first_object);
-	fs.vp = vnode_pager_lock(fs.first_object);
+	if (fs.vp == NULL)
+		fs.vp = vnode_pager_lock(fs.first_object);
 
 	fs.lookup_still_valid = TRUE;
 	fs.first_m = NULL;
@@ -418,6 +491,7 @@ RetryFault:
 	if (result != KERN_SUCCESS)
 		goto done;
 
+quick:
 	/*
 	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
 	 * will contain a busied page.
@@ -426,6 +500,9 @@ RetryFault:
 	 */
 	vm_page_flag_set(fs.m, PG_REFERENCED);
 	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
+	mycpu->gd_cnt.v_vm_faults++;
+	if (curthread->td_lwp)
+		++curthread->td_lwp->lwp_ru.ru_minflt;
 
 	/*KKASSERT(fs.m->queue == PQ_NONE); page-in op may deactivate page */
 	KKASSERT(fs.m->flags & PG_BUSY);
@@ -451,9 +528,17 @@ RetryFault:
 	 * first.
 	 */
 	if (fault_flags & VM_FAULT_BURST) {
-		if ((fs.fault_flags & VM_FAULT_WIRE_MASK) == 0 &&
-		    fs.wired == 0) {
-			vm_prefault(fs.map->pmap, vaddr, fs.entry, fs.prot);
+		if ((fs.fault_flags & VM_FAULT_WIRE_MASK) == 0
+		    && fs.wired == 0) {
+			vm_prefault(fs.map->pmap, vaddr,
+				    fs.entry, fs.prot, fault_flags);
+		}
+	}
+	if (fault_flags & VM_FAULT_BURST_QUICK) {
+		if ((fs.fault_flags & VM_FAULT_WIRE_MASK) == 0
+		    && fs.wired == 0) {
+			vm_prefault_quick(fs.map->pmap, vaddr,
+					  fs.entry, fs.prot, fault_flags);
 		}
 	}
 
@@ -479,6 +564,8 @@ done:
 	if (fs.first_object)
 		vm_object_drop(fs.first_object);
 	lwkt_reltoken(&map->token);
+	if (lp)
+		lp->lwp_flag &= ~LWP_PAGING;
 	return (result);
 }
 
@@ -522,8 +609,6 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	struct faultstate fs;
 	int result;
 	vm_prot_t orig_fault_type = fault_type;
-
-	mycpu->gd_cnt.v_vm_faults++;
 
 	fs.hardfault = 0;
 	fs.fault_flags = fault_flags;
@@ -661,6 +746,9 @@ RetryFault:
 	 */
 	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
 	vm_page_flag_set(fs.m, PG_REFERENCED);
+	mycpu->gd_cnt.v_vm_faults++;
+	if (curthread->td_lwp)
+		++curthread->td_lwp->lwp_ru.ru_minflt;
 
 	/*
 	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
@@ -677,14 +765,9 @@ RetryFault:
 	 * if a write fault was specified).
 	 */
 	vm_page_hold(fs.m);
+	vm_page_activate(fs.m);
 	if (fault_type & VM_PROT_WRITE)
 		vm_page_dirty(fs.m);
-
-	/*
-	 * Unbusy the page by activating it.  It remains held and will not
-	 * be reclaimed.
-	 */
-	vm_page_activate(fs.m);
 
 	if (curthread->td_lwp) {
 		if (fs.hardfault) {
@@ -818,10 +901,8 @@ RetryFault:
 	 * if a write fault was specified).
 	 */
 	vm_page_hold(fs.m);
-	if (fault_type & VM_PROT_WRITE)
-		vm_page_dirty(fs.m);
-
-	if (fault_flags & VM_FAULT_DIRTY)
+	vm_page_activate(fs.m);
+	if ((fault_type & VM_PROT_WRITE) || (fault_flags & VM_FAULT_DIRTY))
 		vm_page_dirty(fs.m);
 	if (fault_flags & VM_FAULT_UNSWAP)
 		swap_pager_unswapped(fs.m);
@@ -831,15 +912,8 @@ RetryFault:
 	 */
 	vm_page_flag_set(fs.m, PG_REFERENCED);
 
-	/*
-	 * Unbusy the page by activating it.  It remains held and will not
-	 * be reclaimed.
-	 */
-	vm_page_activate(fs.m);
-
 	if (curthread->td_lwp) {
 		if (fs.hardfault) {
-			mycpu->gd_cnt.v_vm_faults++;
 			curthread->td_lwp->lwp_ru.ru_majflt++;
 		} else {
 			curthread->td_lwp->lwp_ru.ru_minflt++;
@@ -929,6 +1003,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		 * It doesn't get set in the page directory if the page table
 		 * is modified during a read access.
 		 */
+		vm_page_activate(fs->m);
 		if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_V) &&
 		    (vpte & VPTE_W)) {
 			if ((vpte & (VPTE_M|VPTE_A)) != (VPTE_M|VPTE_A)) {
@@ -945,7 +1020,6 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		}
 		lwbuf_free(lwb);
 		vm_page_flag_set(fs->m, PG_REFERENCED);
-		vm_page_activate(fs->m);
 		vm_page_wakeup(fs->m);
 		fs->m = NULL;
 		cleanup_successful_fault(fs);
@@ -1144,7 +1218,7 @@ vm_fault_object(struct faultstate *fs,
 				    ((fs->vp || fs->object->backing_object) ?
 					VM_ALLOC_NULL_OK | VM_ALLOC_NORMAL :
 					VM_ALLOC_NULL_OK | VM_ALLOC_NORMAL |
-					VM_ALLOC_ZERO));
+					VM_ALLOC_USE_GD | VM_ALLOC_ZERO));
 			}
 			if (fs->m == NULL) {
 				vm_object_pip_wakeup(fs->first_object);
@@ -1187,6 +1261,7 @@ readrest:
 			else
 				seqaccess = -1;
 
+#if 0
 			/*
 			 * If sequential access is detected then attempt
 			 * to deactivate/cache pages behind the scan to
@@ -1257,6 +1332,7 @@ skip:
 
 				seqaccess = 1;
 			}
+#endif
 
 			/*
 			 * Avoid deadlocking against the map when doing I/O.
@@ -1625,6 +1701,7 @@ skip:
 	 * Also tell the backing pager, if any, that it should remove
 	 * any swap backing since the page is now dirty.
 	 */
+	vm_page_activate(fs->m);
 	if (fs->prot & VM_PROT_WRITE) {
 		vm_object_set_writeable_dirty(fs->m->object);
 		vm_set_nosync(fs->m, fs->entry);
@@ -2062,7 +2139,8 @@ vm_set_nosync(vm_page_t m, vm_map_entry_t entry)
 }
 
 static void
-vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
+vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
+	    int fault_flags)
 {
 	struct lwp *lp;
 	vm_page_t m;
@@ -2102,8 +2180,8 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 
 	object = entry->object.vm_object;
 	KKASSERT(object != NULL);
-	vm_object_hold(object);
 	KKASSERT(object == entry->object.vm_object);
+	vm_object_hold(object);
 	vm_object_chain_acquire(object);
 
 	noneg = 0;
@@ -2201,22 +2279,10 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 				m = vm_page_alloc(object, index,
 						  VM_ALLOC_NORMAL |
 						  VM_ALLOC_ZERO |
+						  VM_ALLOC_USE_GD |
 						  VM_ALLOC_NULL_OK);
 				if (m == NULL)
 					break;
-
-				if ((m->flags & PG_ZERO) == 0) {
-					vm_page_zero_fill(m);
-				} else {
-#ifdef PMAP_DEBUG
-					pmap_page_assertzero(
-							VM_PAGE_TO_PHYS(m));
-#endif
-					vm_page_flag_clear(m, PG_ZERO);
-					mycpu->gd_cnt.v_ozfod++;
-				}
-				mycpu->gd_cnt.v_zfod++;
-				m->valid = VM_PAGE_BITS_ALL;
 				allocated = 1;
 				pprot = prot;
 				/* lobject = object .. not needed */
@@ -2258,6 +2324,15 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 		}
 
 		/*
+		 * The object must be marked dirty if we are mapping a
+		 * writable page.  m->object is either lobject or object,
+		 * both of which are still held.  Do this before we
+		 * potentially drop the object.
+		 */
+		if (pprot & VM_PROT_WRITE)
+			vm_object_set_writeable_dirty(m->object);
+
+		/*
 		 * Do not conditionalize on PG_RAM.  If pages are present in
 		 * the VM system we assume optimal caching.  If caching is
 		 * not optimal the I/O gravy train will be restarted when we
@@ -2266,14 +2341,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 		 * of the object has been cached.  The cost for restarting
 		 * the gravy train should be low (since accesses will likely
 		 * be I/O bound anyway).
-		 *
-		 * The object must be marked dirty if we are mapping a
-		 * writable page.  m->object is either lobject or object,
-		 * both of which are still held.
 		 */
-		if (pprot & VM_PROT_WRITE)
-			vm_object_set_writeable_dirty(m->object);
-
 		if (lobject != object) {
 			if (object->backing_object != lobject)
 				vm_object_hold(object->backing_object);
@@ -2291,10 +2359,41 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 		 * (pages on the cache queue are not allowed to be mapped).
 		 */
 		if (allocated) {
+			/*
+			 * Page must be zerod.
+			 */
+			if ((m->flags & PG_ZERO) == 0) {
+				vm_page_zero_fill(m);
+			} else {
+#ifdef PMAP_DEBUG
+				pmap_page_assertzero(
+						VM_PAGE_TO_PHYS(m));
+#endif
+				vm_page_flag_clear(m, PG_ZERO);
+				mycpu->gd_cnt.v_ozfod++;
+			}
+			mycpu->gd_cnt.v_zfod++;
+			m->valid = VM_PAGE_BITS_ALL;
+
+			/*
+			 * Handle dirty page case
+			 */
 			if (pprot & VM_PROT_WRITE)
 				vm_set_nosync(m, entry);
 			pmap_enter(pmap, addr, m, pprot, 0);
+			mycpu->gd_cnt.v_vm_faults++;
+			if (curthread->td_lwp)
+				++curthread->td_lwp->lwp_ru.ru_minflt;
 			vm_page_deactivate(m);
+			if (pprot & VM_PROT_WRITE) {
+				/*vm_object_set_writeable_dirty(m->object);*/
+				vm_set_nosync(m, entry);
+				if (fault_flags & VM_FAULT_DIRTY) {
+					vm_page_dirty(m);
+					/*XXX*/
+					swap_pager_unswapped(m);
+				}
+			}
 			vm_page_wakeup(m);
 		} else if (error) {
 			/* couldn't busy page, no wakeup */
@@ -2307,9 +2406,21 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 			 */
 			if ((m->queue - m->pc) == PQ_CACHE)
 				vm_page_deactivate(m);
+			if (pprot & VM_PROT_WRITE) {
+				/*vm_object_set_writeable_dirty(m->object);*/
+				vm_set_nosync(m, entry);
+				if (fault_flags & VM_FAULT_DIRTY) {
+					vm_page_dirty(m);
+					/*XXX*/
+					swap_pager_unswapped(m);
+				}
+			}
 			if (pprot & VM_PROT_WRITE)
 				vm_set_nosync(m, entry);
 			pmap_enter(pmap, addr, m, pprot, 0);
+			mycpu->gd_cnt.v_vm_faults++;
+			if (curthread->td_lwp)
+				++curthread->td_lwp->lwp_ru.ru_minflt;
 			vm_page_wakeup(m);
 		} else {
 			vm_page_wakeup(m);
@@ -2317,4 +2428,135 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 	}
 	vm_object_chain_release(object);
 	vm_object_drop(object);
+}
+
+static void
+vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
+		  vm_map_entry_t entry, int prot, int fault_flags)
+{
+	struct lwp *lp;
+	vm_page_t m;
+	vm_offset_t addr;
+	vm_pindex_t pindex;
+	vm_object_t object;
+	int i;
+	int noneg;
+	int nopos;
+	int maxpages;
+
+	/*
+	 * Get stable max count value, disabled if set to 0
+	 */
+	maxpages = vm_prefault_pages;
+	cpu_ccfence();
+	if (maxpages <= 0)
+		return;
+
+	/*
+	 * We do not currently prefault mappings that use virtual page
+	 * tables.  We do not prefault foreign pmaps.
+	 */
+	if (entry->maptype == VM_MAPTYPE_VPAGETABLE)
+		return;
+	lp = curthread->td_lwp;
+	if (lp == NULL || (pmap != vmspace_pmap(lp->lwp_vmspace)))
+		return;
+
+	/*
+	 * Limit pre-fault count to 1024 pages.
+	 */
+	if (maxpages > 1024)
+		maxpages = 1024;
+
+	object = entry->object.vm_object;
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
+	KKASSERT(object->backing_object == NULL);
+
+	noneg = 0;
+	nopos = 0;
+	for (i = 0; i < maxpages; ++i) {
+		int error;
+
+		/*
+		 * Calculate the page to pre-fault, stopping the scan in
+		 * each direction separately if the limit is reached.
+		 */
+		if (i & 1) {
+			if (noneg)
+				continue;
+			addr = addra - ((i + 1) >> 1) * PAGE_SIZE;
+		} else {
+			if (nopos)
+				continue;
+			addr = addra + ((i + 2) >> 1) * PAGE_SIZE;
+		}
+		if (addr < entry->start) {
+			noneg = 1;
+			if (noneg && nopos)
+				break;
+			continue;
+		}
+		if (addr >= entry->end) {
+			nopos = 1;
+			if (noneg && nopos)
+				break;
+			continue;
+		}
+
+		/*
+		 * Skip pages already mapped, and stop scanning in that
+		 * direction.  When the scan terminates in both directions
+		 * we are done.
+		 */
+		if (pmap_prefault_ok(pmap, addr) == 0) {
+			if (i & 1)
+				noneg = 1;
+			else
+				nopos = 1;
+			if (noneg && nopos)
+				break;
+			continue;
+		}
+
+		/*
+		 * Follow the VM object chain to obtain the page to be mapped
+		 * into the pmap.  This version of the prefault code only
+		 * works with terminal objects.
+		 *
+		 * WARNING!  We cannot call swap_pager_unswapped() with a
+		 *	     shared token.
+		 */
+		pindex = ((addr - entry->start) + entry->offset) >> PAGE_SHIFT;
+
+		m = vm_page_lookup_busy_try(object, pindex, TRUE, &error);
+		if (m == NULL || error)
+			continue;
+
+		if (((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
+		    (m->flags & PG_FICTITIOUS) == 0 &&
+		    ((m->flags & PG_SWAPPED) == 0 ||
+		     (prot & VM_PROT_WRITE) == 0 ||
+		     (fault_flags & VM_FAULT_DIRTY) == 0)) {
+			/*
+			 * A fully valid page not undergoing soft I/O can
+			 * be immediately entered into the pmap.
+			 */
+			if ((m->queue - m->pc) == PQ_CACHE)
+				vm_page_deactivate(m);
+			if (prot & VM_PROT_WRITE) {
+				vm_object_set_writeable_dirty(m->object);
+				vm_set_nosync(m, entry);
+				if (fault_flags & VM_FAULT_DIRTY) {
+					vm_page_dirty(m);
+					/*XXX*/
+					swap_pager_unswapped(m);
+				}
+			}
+			pmap_enter(pmap, addr, m, prot, 0);
+			mycpu->gd_cnt.v_vm_faults++;
+			if (curthread->td_lwp)
+				++curthread->td_lwp->lwp_ru.ru_minflt;
+		}
+		vm_page_wakeup(m);
+	}
 }

@@ -43,6 +43,8 @@
 #include <sys/mount.h>
 #include <sys/vnode.h>
 
+#include <sys/buf2.h>
+
 #include "quota.h"
 #include "inode.h"
 #include "ufs_extern.h"

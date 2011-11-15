@@ -50,6 +50,8 @@ extern void panic(const char *, ...);
 #include <sys/ucred.h>
 #include <sys/mount.h>
 
+#include <sys/buf2.h>
+
 #include "quota.h"
 #include "inode.h"
 #include "fs.h"

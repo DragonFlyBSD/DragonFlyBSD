@@ -1421,8 +1421,8 @@ pmap_allocpte(pmap_t pmap, vm_offset_t va)
 	if (ptepa & PG_PS) {
 		pmap->pm_pdir[ptepindex] = 0;
 		ptepa = 0;
-		cpu_invltlb();
 		smp_invltlb();
+		cpu_invltlb();
 	}
 
 	/*
@@ -3283,8 +3283,8 @@ pmap_mapdev(vm_paddr_t pa, vm_size_t size)
 		tmpva += PAGE_SIZE;
 		pa += PAGE_SIZE;
 	}
-	cpu_invltlb();
 	smp_invltlb();
+	cpu_invltlb();
 
 	return ((void *)(va + offset));
 }
@@ -3312,8 +3312,8 @@ pmap_mapdev_uncacheable(vm_paddr_t pa, vm_size_t size)
 		tmpva += PAGE_SIZE;
 		pa += PAGE_SIZE;
 	}
-	cpu_invltlb();
 	smp_invltlb();
+	cpu_invltlb();
 
 	return ((void *)(va + offset));
 }

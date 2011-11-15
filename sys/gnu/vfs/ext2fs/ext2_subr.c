@@ -48,6 +48,8 @@
 #include <sys/vnode.h>
 #include <sys/buf.h>
 
+#include <sys/buf2.h>
+
 #include "quota.h"
 #include "inode.h"
 #include "ext2_extern.h"

@@ -89,6 +89,8 @@
 #include <sys/queue.h>
 #include <sys/vnode.h>
 
+#include <sys/buf2.h>
+
 #include <vfs/udf/ecma167-udf.h>
 #include <vfs/udf/osta.h>
 #include <vfs/udf/udf.h>

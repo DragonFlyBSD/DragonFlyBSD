@@ -1277,6 +1277,45 @@ vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
 }
 
 /*
+ * This implements a per-cpu cache of free, zero'd, ready-to-go pages.
+ * The idea is to populate this cache prior to acquiring any locks so
+ * we don't wind up potentially zeroing VM pages (under heavy loads) while
+ * holding potentialy contending locks.
+ *
+ * Note that we allocate the page uninserted into anything and use a pindex
+ * of 0, the vm_page_alloc() will effectively add gd_cpuid so these
+ * allocations should wind up being uncontended.  However, we still want
+ * to rove across PQ_L2_SIZE.
+ */
+void
+vm_page_pcpu_cache(void)
+{
+#if 0
+	globaldata_t gd = mycpu;
+	vm_page_t m;
+
+	if (gd->gd_vmpg_count < GD_MINVMPG) {
+		crit_enter_gd(gd);
+		while (gd->gd_vmpg_count < GD_MAXVMPG) {
+			m = vm_page_alloc(NULL, ticks & ~ncpus2_mask,
+					  VM_ALLOC_NULL_OK | VM_ALLOC_NORMAL |
+					  VM_ALLOC_NULL_OK | VM_ALLOC_ZERO);
+			if (gd->gd_vmpg_count < GD_MAXVMPG) {
+				if ((m->flags & PG_ZERO) == 0) {
+					pmap_zero_page(VM_PAGE_TO_PHYS(m));
+					vm_page_flag_set(m, PG_ZERO);
+				}
+				gd->gd_vmpg_array[gd->gd_vmpg_count++] = m;
+			} else {
+				vm_page_free(m);
+			}
+		}
+		crit_exit_gd(gd);
+	}
+#endif
+}
+
+/*
  * vm_page_alloc()
  *
  * Allocate and return a memory cell associated with this VM object/offset
@@ -1294,6 +1333,8 @@ vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
  *	VM_ALLOC_FORCE_ZERO	advisory request for pre-zero'd page only
  *	VM_ALLOC_NULL_OK	ok to return NULL on insertion collision
  *				(see vm_page_grab())
+ *	VM_ALLOC_USE_GD		ok to use per-gd cache
+ *
  * The object must be held if not NULL
  * This routine may not block
  *
@@ -1304,18 +1345,38 @@ vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
 vm_page_t
 vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 {
-	vm_page_t m = NULL;
+#ifdef SMP
+	globaldata_t gd = mycpu;
+#endif
+	vm_page_t m;
 	u_short pg_color;
+
+#if 0
+	/*
+	 * Special per-cpu free VM page cache.  The pages are pre-busied
+	 * and pre-zerod for us.
+	 */
+	if (gd->gd_vmpg_count && (page_req & VM_ALLOC_USE_GD)) {
+		crit_enter_gd(gd);
+		if (gd->gd_vmpg_count) {
+			m = gd->gd_vmpg_array[--gd->gd_vmpg_count];
+			crit_exit_gd(gd);
+			goto done;
+                }
+		crit_exit_gd(gd);
+        }
+#endif
+	m = NULL;
 
 #ifdef SMP
 	/*
 	 * Cpu twist - cpu localization algorithm
 	 */
 	if (object) {
-		pg_color = mycpu->gd_cpuid + (pindex & ~ncpus_fit_mask) +
+		pg_color = gd->gd_cpuid + (pindex & ~ncpus_fit_mask) +
 			   (object->pg_color & ~ncpus_fit_mask);
 	} else {
-		pg_color = mycpu->gd_cpuid + (pindex & ~ncpus_fit_mask);
+		pg_color = gd->gd_cpuid + (pindex & ~ncpus_fit_mask);
 	}
 #else
 	/*
@@ -1413,6 +1474,9 @@ loop:
 		("vm_page_alloc: free/cache page %p was dirty", m));
 	KKASSERT(m->queue == PQ_NONE);
 
+#if 0
+done:
+#endif
 	/*
 	 * Initialize the structure, inheriting some flags but clearing
 	 * all the rest.  The page has already been busied for us.

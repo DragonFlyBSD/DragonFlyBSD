@@ -176,6 +176,13 @@ vm_object_lock(vm_object_t obj)
 }
 
 void
+vm_object_lock_shared(vm_object_t obj)
+{
+	lwkt_token_t tok = lwkt_token_pool_lookup(obj);
+	lwkt_gettoken_shared(tok);
+}
+
+void
 vm_object_unlock(vm_object_t obj)
 {
 	lwkt_relpooltoken(obj);
@@ -204,6 +211,40 @@ debugvm_object_hold(vm_object_t obj, char *file, int line)
 	 */
 	refcount_acquire(&obj->hold_count);
 	vm_object_lock(obj);
+
+#if defined(DEBUG_LOCKS)
+	int i;
+
+	i = ffs(~obj->debug_hold_bitmap) - 1;
+	if (i == -1) {
+		kprintf("vm_object hold count > VMOBJ_DEBUG_ARRAY_SIZE");
+		obj->debug_hold_ovfl = 1;
+	}
+
+	obj->debug_hold_bitmap |= (1 << i);
+	obj->debug_hold_thrs[i] = curthread;
+	obj->debug_hold_file[i] = file;
+	obj->debug_hold_line[i] = line;
+#endif
+}
+
+void
+#ifndef DEBUG_LOCKS
+vm_object_hold_shared(vm_object_t obj)
+#else
+debugvm_object_hold_shared(vm_object_t obj, char *file, int line)
+#endif
+{
+	KKASSERT(obj != NULL);
+
+	/*
+	 * Object must be held (object allocation is stable due to callers
+	 * context, typically already holding the token on a parent object)
+	 * prior to potentially blocking on the lock, otherwise the object
+	 * can get ripped away from us.
+	 */
+	refcount_acquire(&obj->hold_count);
+	vm_object_lock_shared(obj);
 
 #if defined(DEBUG_LOCKS)
 	int i;
@@ -1609,11 +1650,13 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 	struct rb_vm_page_scan_info *info = data;
 	vm_object_t backing_object;
 	vm_object_t object;
+	vm_pindex_t pindex;
 	vm_pindex_t new_pindex;
 	vm_pindex_t backing_offset_index;
 	int op;
 
-	new_pindex = p->pindex - info->backing_offset_index;
+	pindex = p->pindex;
+	new_pindex = pindex - info->backing_offset_index;
 	op = info->limit;
 	object = info->object;
 	backing_object = info->backing_object;
@@ -1630,8 +1673,7 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 		 * note that we do not busy the backing object's
 		 * page.
 		 */
-		if (
-		    p->pindex < backing_offset_index ||
+		if (pindex < backing_offset_index ||
 		    new_pindex >= object->size
 		) {
 			return(0);
@@ -1646,7 +1688,6 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 		 * If this fails, the parent does not completely shadow
 		 * the object and we might as well give up now.
 		 */
-
 		pp = vm_page_lookup(object, new_pindex);
 		if ((pp == NULL || pp->valid == 0) &&
 		    !vm_pager_has_page(object, new_pindex)
@@ -1657,7 +1698,8 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 	}
 
 	/*
-	 * Check for busy page
+	 * Check for busy page.  Note that we may have lost (p) when we
+	 * possibly blocked above.
 	 */
 	if (op & (OBSC_COLLAPSE_WAIT | OBSC_COLLAPSE_NOWAIT)) {
 		vm_page_t pp;
@@ -1678,6 +1720,18 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 				return(-1);
 			}
 		}
+
+		/*
+		 * If (p) is no longer valid restart the scan.
+		 */
+		if (p->object != backing_object || p->pindex != pindex) {
+			kprintf("vm_object_backing_scan: Warning: page "
+				"%p ripped out from under us\n", p);
+			vm_page_wakeup(p);
+			info->error = -1;
+			return(-1);
+		}
+
 		if (op & OBSC_COLLAPSE_NOWAIT) {
 			if (p->valid == 0 /*|| p->hold_count*/ ||
 			    p->wire_count) {
@@ -2354,7 +2408,14 @@ vm_object_set_writeable_dirty(vm_object_t object)
 	struct vnode *vp;
 
 	/*vm_object_assert_held(object);*/
-	vm_object_set_flag(object, OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY);
+	/*
+	 * Avoid contention in vm fault path by checking the state before
+	 * issuing an atomic op on it.
+	 */
+	if ((object->flags & (OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY)) !=
+	    (OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY)) {
+		vm_object_set_flag(object, OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY);
+	}
 	if (object->type == OBJT_VNODE &&
 	    (vp = (struct vnode *)object->handle) != NULL) {
 		if ((vp->v_flag & VOBJDIRTY) == 0) {

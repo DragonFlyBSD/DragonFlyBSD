@@ -392,6 +392,7 @@ struct	proc {
 #define	LWP_WEXIT	0x0000040 /* working on exiting */
 #define	LWP_WSTOP	0x0000080 /* working on stopping */
 #define LWP_PASSIVE_ACQ	0x0000100 /* Passive acquire cpu (see kern_switch) */
+#define LWP_PAGING	0x0000200 /* Currently in vm_fault */
 
 #define	FIRST_LWP_IN_PROC(p)		RB_FIRST(lwp_rb_tree, &(p)->p_lwp_tree)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\

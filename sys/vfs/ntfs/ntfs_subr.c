@@ -41,10 +41,12 @@
 #include <sys/malloc.h>
 #include <sys/lock.h>
 #include <sys/spinlock.h>
-#include <sys/spinlock2.h>
 #include <sys/iconv.h>
 
 #include <machine/inttypes.h>
+
+#include <sys/buf2.h>
+#include <sys/spinlock2.h>
 
 #if defined(__NetBSD__)
 #include <miscfs/specfs/specdev.h>

@@ -50,6 +50,7 @@
 #include <vm/vm_page.h>
 #include <vm/vm_object.h>
 #include <vm/vm_extern.h>
+
 #include <sys/buf2.h>
 
 #if defined(__NetBSD__)

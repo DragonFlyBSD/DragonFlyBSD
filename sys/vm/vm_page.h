@@ -412,14 +412,15 @@ vm_page_flash(vm_page_t m)
  * must be specified.  VM_ALLOC_RETRY may only be specified if VM_ALLOC_NORMAL
  * is also specified.
  */
-#define VM_ALLOC_NORMAL		0x01	/* ok to use cache pages */
-#define VM_ALLOC_SYSTEM		0x02	/* ok to exhaust most of free list */
-#define VM_ALLOC_INTERRUPT	0x04	/* ok to exhaust entire free list */
-#define	VM_ALLOC_ZERO		0x08	/* req pre-zero'd memory if avail */
-#define	VM_ALLOC_QUICK		0x10	/* like NORMAL but do not use cache */
-#define VM_ALLOC_FORCE_ZERO	0x20	/* zero page even if already valid */
-#define VM_ALLOC_NULL_OK	0x40	/* ok to return NULL on collision */
-#define	VM_ALLOC_RETRY		0x80	/* indefinite block (vm_page_grab()) */
+#define VM_ALLOC_NORMAL		0x0001	/* ok to use cache pages */
+#define VM_ALLOC_SYSTEM		0x0002	/* ok to exhaust most of free list */
+#define VM_ALLOC_INTERRUPT	0x0004	/* ok to exhaust entire free list */
+#define	VM_ALLOC_ZERO		0x0008	/* req pre-zero'd memory if avail */
+#define	VM_ALLOC_QUICK		0x0010	/* like NORMAL but do not use cache */
+#define VM_ALLOC_FORCE_ZERO	0x0020	/* zero page even if already valid */
+#define VM_ALLOC_NULL_OK	0x0040	/* ok to return NULL on collision */
+#define	VM_ALLOC_RETRY		0x0080	/* indefinite block (vm_page_grab()) */
+#define VM_ALLOC_USE_GD		0x0100	/* use per-gd cache */
 
 void vm_page_queue_spin_lock(vm_page_t);
 void vm_page_queues_spin_lock(u_short);
@@ -435,6 +436,7 @@ void vm_page_wakeup(vm_page_t m);
 void vm_page_hold(vm_page_t);
 void vm_page_unhold(vm_page_t);
 void vm_page_activate (vm_page_t);
+void vm_page_pcpu_cache(void);
 vm_page_t vm_page_alloc (struct vm_object *, vm_pindex_t, int);
 vm_page_t vm_page_grab (struct vm_object *, vm_pindex_t, int);
 void vm_page_cache (vm_page_t);

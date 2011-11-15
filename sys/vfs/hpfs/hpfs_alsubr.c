@@ -40,6 +40,8 @@
 #include <sys/malloc.h>
 #include <sys/buf.h>
 
+#include <sys/buf2.h>
+
 #include "hpfs.h"
 #include "hpfs_subr.h"
 

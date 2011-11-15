@@ -53,6 +53,7 @@
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 #include <sys/sysctl.h>
+
 #include <sys/buf2.h>
 #include <vm/vm_page2.h>
 
@@ -99,7 +100,7 @@ extern int cluster_pbuf_freecnt;
  * bpp		- return buffer (*bpp) for (loffset,blksize)
  */
 int
-cluster_read(struct vnode *vp, off_t filesize, off_t loffset, 
+cluster_readx(struct vnode *vp, off_t filesize, off_t loffset,
 	     int blksize, size_t minreq, size_t maxreq, struct buf **bpp)
 {
 	struct buf *bp, *rbp, *reqbp;
@@ -153,7 +154,10 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 	/*
 	 * Get the requested block.
 	 */
-	*bpp = reqbp = bp = getblk(vp, loffset, blksize, 0, 0);
+	if (*bpp)
+		reqbp = bp = *bpp;
+	else
+		*bpp = reqbp = bp = getblk(vp, loffset, blksize, 0, 0);
 	origoffset = loffset;
 
 	/*

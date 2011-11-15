@@ -47,6 +47,9 @@
 #include <sys/syslink_vfs.h>
 #include <sys/unistd.h>
 #include <vm/vnode_pager.h>
+
+#include <sys/buf2.h>
+
 #include "userfs.h"
 
 /*

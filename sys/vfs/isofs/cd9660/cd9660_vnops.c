@@ -60,6 +60,8 @@
 #include <vm/vm.h>
 #include <vm/vnode_pager.h>
 
+#include <sys/buf2.h>
+
 #include "iso.h"
 #include "cd9660_node.h"
 #include "iso_rrip.h"

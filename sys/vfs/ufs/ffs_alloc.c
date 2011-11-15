@@ -40,7 +40,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/buf.h>
-#include <sys/buf2.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
@@ -51,6 +50,8 @@
 
 #include <sys/taskqueue.h>
 #include <machine/inttypes.h>
+
+#include <sys/buf2.h>
 
 #include "quota.h"
 #include "inode.h"

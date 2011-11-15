@@ -62,6 +62,8 @@
 #include <miscfs/specfs/specdev.h>
 #endif
 
+#include <sys/buf2.h>
+
 /*#define NTFS_DEBUG 1*/
 #include "ntfs.h"
 #include "ntfs_inode.h"

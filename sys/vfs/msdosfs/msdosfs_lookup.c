@@ -57,6 +57,8 @@
 #include <sys/namei.h>
 #include <sys/mount.h>
 
+#include <sys/buf2.h>
+
 #include "bpb.h"
 #include "direntry.h"
 #include "denode.h"

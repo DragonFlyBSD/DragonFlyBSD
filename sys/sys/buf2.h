@@ -353,6 +353,32 @@ biodone_chain(struct bio *bio)
 		bpdone(bio->bio_buf, 1);
 }
 
+static __inline int
+bread(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
+{
+	*bpp = NULL;
+	return(breadnx(vp, loffset, size, NULL, NULL, 0, bpp));
+}
+
+
+static __inline int
+breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
+      int *rabsize, int cnt, struct buf **bpp)
+{
+	*bpp = NULL;
+	return(breadnx(vp, loffset, size, raoffset, rabsize, cnt, bpp));
+}
+
+static __inline int
+cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
+             int blksize, size_t minreq, size_t maxreq, struct buf **bpp)
+{
+	*bpp = NULL;
+	return(cluster_readx(vp, filesize, loffset, blksize, minreq,
+			     maxreq, bpp));
+}
+
+
 #endif /* _KERNEL */
 
 #endif /* !_SYS_BUF2_H_ */

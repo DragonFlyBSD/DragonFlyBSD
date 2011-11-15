@@ -861,21 +861,6 @@ bremfree_locked(struct buf *bp)
 }
 
 /*
- * bread:
- *
- *	Get a buffer with the specified data.  Look in the cache first.  We
- *	must clear B_ERROR and B_INVAL prior to initiating I/O.  If B_CACHE
- *	is set, the buffer is valid and we do not have to do anything ( see
- *	getblk() ).
- *
- */
-int
-bread(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
-{
-	return (breadn(vp, loffset, size, NULL, NULL, 0, bpp));
-}
-
-/*
  * This version of bread issues any required I/O asyncnronously and
  * makes a callback on completion.
  *
@@ -915,23 +900,26 @@ breadcb(struct vnode *vp, off_t loffset, int size,
 }
 
 /*
- * breadn:
+ * breadnx() - Terminal function for bread() and breadn().
  *
- *	Operates like bread, but also starts asynchronous I/O on
- *	read-ahead blocks.  We must clear B_ERROR and B_INVAL prior
- *	to initiating I/O . If B_CACHE is set, the buffer is valid 
- *	and we do not have to do anything.
+ * This function will start asynchronous I/O on read-ahead blocks as well
+ * as satisfy the primary request.
  *
+ * We must clear B_ERROR and B_INVAL prior to initiating I/O.  If B_CACHE is
+ * set, the buffer is valid and we do not have to do anything.
  */
 int
-breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
+breadnx(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
 	int *rabsize, int cnt, struct buf **bpp)
 {
 	struct buf *bp, *rabp;
 	int i;
 	int rv = 0, readwait = 0;
 
-	*bpp = bp = getblk(vp, loffset, size, 0, 0);
+	if (*bpp)
+		bp = *bpp;
+	else
+		*bpp = bp = getblk(vp, loffset, size, 0, 0);
 
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
@@ -2819,7 +2807,7 @@ findblk(struct vnode *vp, off_t loffset, int flags)
 		 * Lookup.  Ref the buf while holding v_token to prevent
 		 * reuse (but does not prevent diassociation).
 		 */
-		lwkt_gettoken(&vp->v_token);
+		lwkt_gettoken_shared(&vp->v_token);
 		bp = buf_rb_hash_RB_LOOKUP(&vp->v_rbhash_tree, loffset);
 		if (bp == NULL) {
 			lwkt_reltoken(&vp->v_token);

@@ -60,6 +60,7 @@
 #include "ffs_extern.h"
 
 #include <vm/vm_page2.h>
+#include <sys/buf2.h>
 
 static int ffs_indirtrunc (struct inode *, ufs_daddr_t, ufs_daddr_t,
 	    ufs_daddr_t, int, long *);

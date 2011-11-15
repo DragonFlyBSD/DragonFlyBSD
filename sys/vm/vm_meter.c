@@ -175,9 +175,6 @@ do_vmtotal_callback(struct proc *p, void *data)
 {
 	struct vmtotal *totalp = data;
 	struct lwp *lp;
-	vm_map_entry_t entry;
-	vm_map_t map;
-	int paging;
 
 	if (p->p_flag & P_SYSTEM)
 		return(0);
@@ -210,32 +207,13 @@ do_vmtotal_callback(struct proc *p, void *data)
 		default:
 			return (0);
 		}
-	}
 
-	/*
-	 * Note active objects.
-	 */
-	paging = 0;
-	lwkt_gettoken(&p->p_token);
-	if (p->p_vmspace) {
-		map = &p->p_vmspace->vm_map;
-		vm_map_lock_read(map);
-		for (entry = map->header.next;
-		     entry != &map->header; entry = entry->next) {
-			if (entry->maptype != VM_MAPTYPE_NORMAL &&
-			    entry->maptype != VM_MAPTYPE_VPAGETABLE) {
-				continue;
-			}
-			if (entry->object.vm_object == NULL)
-				continue;
-			vm_object_set_flag(entry->object.vm_object, OBJ_ACTIVE);
-			paging |= entry->object.vm_object->paging_in_progress;
-		}
-		vm_map_unlock_read(map);
+		/*
+		 * Set while in vm_fault()
+		 */
+		if (lp->lwp_flag & LWP_PAGING)
+			totalp->t_pw++;
 	}
-	lwkt_reltoken(&p->p_token);
-	if (paging)
-		totalp->t_pw++;
 	return(0);
 }
 

@@ -304,14 +304,19 @@ void vm_object_dead_sleep(vm_object_t, const char *);
 void vm_object_dead_wakeup(vm_object_t);
 void vm_object_lock_swap(void);
 void vm_object_lock(vm_object_t);
+void vm_object_lock_shared(vm_object_t);
 void vm_object_unlock(vm_object_t);
 
 #ifndef DEBUG_LOCKS
 void vm_object_hold(vm_object_t);
+void vm_object_hold_shared(vm_object_t);
 #else
-#define vm_object_hold(obj)	\
+#define vm_object_hold(obj)		\
 	debugvm_object_hold(obj, __FILE__, __LINE__)
 void debugvm_object_hold(vm_object_t, char *, int);
+#define vm_object_hold_shared(obj)	\
+	debugvm_object_hold_shared(obj, __FILE__, __LINE__)
+void debugvm_object_hold_shared(vm_object_t, char *, int);
 #endif
 
 void vm_object_drop(vm_object_t);

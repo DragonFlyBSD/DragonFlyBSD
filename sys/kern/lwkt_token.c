@@ -200,171 +200,214 @@ _lwkt_token_pool_lookup(void *ptr)
  */
 static __inline
 void
-_lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td)
+_lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td, long excl)
 {
 	ref->tr_tok = tok;
+	ref->tr_count = excl;
 	ref->tr_owner = td;
 }
 
 /*
- * See kern/kern_spinlock.c for the discussion on cache-friendly contention
- * resolution.  We currently do not use cpu_lfence() (expensive!!) and, more
- * importantly, we do a read-test of t_ref before attempting an atomic op,
- * which greatly reduces hw cache bus contention.
+ * Attempt to acquire a shared or exclusive token.  Returns TRUE on success,
+ * FALSE on failure.
+ *
+ * If TOK_EXCLUSIVE is set in mode we are attempting to get an exclusive
+ * token, otherwise are attempting to get a shared token.
+ *
+ * If TOK_EXCLREQ is set in mode this is a blocking operation, otherwise
+ * it is a non-blocking operation (for both exclusive or shared acquisions).
  */
-static
+static __inline
 int
-_lwkt_trytoken_spin(lwkt_token_t tok, lwkt_tokref_t ref)
+_lwkt_trytokref(lwkt_tokref_t ref, thread_t td, long mode)
 {
-	int n;
+	lwkt_token_t tok;
+	lwkt_tokref_t oref;
+	long count;
 
-	for (n = 0; n < lwkt_token_spin; ++n) {
-		if (tok->t_ref == NULL &&
-		    atomic_cmpset_ptr(&tok->t_ref, NULL, ref)) {
-			return TRUE;
+	KASSERT(((mode & TOK_EXCLREQ) == 0 ||	/* non blocking */
+		td->td_gd->gd_intr_nesting_level == 0 ||
+		panic_cpu_gd == mycpu),
+		("Attempt to acquire token %p not already "
+		"held in hard code section", tok));
+
+	tok = ref->tr_tok;
+	if (mode & TOK_EXCLUSIVE) {
+		/*
+		 * Attempt to get an exclusive token
+		 */
+		for (;;) {
+			count = tok->t_count;
+			oref = tok->t_ref;	/* can be NULL */
+			cpu_ccfence();
+			if ((count & ~TOK_EXCLREQ) == 0) {
+				/*
+				 * It is possible to get the exclusive bit.
+				 * We must clear TOK_EXCLREQ on successful
+				 * acquisition.
+				 */
+				if (atomic_cmpset_long(&tok->t_count, count,
+						       (count & ~TOK_EXCLREQ) |
+						       TOK_EXCLUSIVE)) {
+					KKASSERT(tok->t_ref == NULL);
+					tok->t_ref = ref;
+					return TRUE;
+				}
+				/* retry */
+			} else if ((count & TOK_EXCLUSIVE) &&
+				   oref >= &td->td_toks_base &&
+				   oref < td->td_toks_stop) {
+				/*
+				 * Our thread already holds the exclusive
+				 * bit, we treat this tokref as a shared
+				 * token (sorta) to make the token release
+				 * code easier.
+				 *
+				 * NOTE: oref cannot race above if it
+				 *	 happens to be ours, so we're good.
+				 *	 But we must still have a stable
+				 *	 variable for both parts of the
+				 *	 comparison.
+				 *
+				 * NOTE: Since we already have an exclusive
+				 *	 lock and don't need to check EXCLREQ
+				 *	 we can just use an atomic_add here
+				 */
+				atomic_add_long(&tok->t_count, TOK_INCR);
+				ref->tr_count &= ~TOK_EXCLUSIVE;
+				return TRUE;
+			} else if ((mode & TOK_EXCLREQ) &&
+				   (count & TOK_EXCLREQ) == 0) {
+				/*
+				 * Unable to get the exclusive bit but being
+				 * asked to set the exclusive-request bit.
+				 * Since we are going to retry anyway just
+				 * set the bit unconditionally.
+				 */
+				atomic_set_long(&tok->t_count, TOK_EXCLREQ);
+				return FALSE;
+			} else {
+				/*
+				 * Unable to get the exclusive bit and not
+				 * being asked to set the exclusive-request
+				 * (aka lwkt_trytoken()), or EXCLREQ was
+				 * already set.
+				 */
+				cpu_pause();
+				return FALSE;
+			}
+			/* retry */
 		}
-		if (lwkt_token_delay) {
-			tsc_delay(lwkt_token_delay);
-		} else {
-			cpu_pause();
+	} else {
+		/*
+		 * Attempt to get a shared token.  Note that TOK_EXCLREQ
+		 * for shared tokens simply means the caller intends to
+		 * block.  We never actually set the bit in tok->t_count.
+		 */
+		for (;;) {
+			count = tok->t_count;
+			oref = tok->t_ref;	/* can be NULL */
+			cpu_ccfence();
+			if ((count & (TOK_EXCLUSIVE/*|TOK_EXCLREQ*/)) == 0) {
+				/* XXX EXCLREQ should work */
+				/*
+				 * It is possible to get the token shared.
+				 */
+				if (atomic_cmpset_long(&tok->t_count, count,
+						       count + TOK_INCR)) {
+					return TRUE;
+				}
+				/* retry */
+			} else if ((count & TOK_EXCLUSIVE) &&
+				   oref >= &td->td_toks_base &&
+				   oref < td->td_toks_stop) {
+				/*
+				 * We own the exclusive bit on the token so
+				 * we can in fact also get it shared.
+				 */
+				atomic_add_long(&tok->t_count, TOK_INCR);
+				return TRUE;
+			} else {
+				/*
+				 * We failed to get the token shared
+				 */
+				return FALSE;
+			}
+			/* retry */
 		}
 	}
-	return FALSE;
 }
 
 static __inline
-void
-_lwkt_reltoken_spin(lwkt_token_t tok)
-{
-	tok->t_ref = NULL;
-}
-
-#if 0
-/*
- * Helper function used by lwkt_getalltokens[_sorted]().
- *
- * Our attempt to acquire the token has failed.  To reduce cache coherency
- * bandwidth we set our cpu bit in t_collmask then wait for a reasonable
- * period of time for a hand-off from the current token owner.
- */
-static
 int
-_lwkt_trytoken_spin(lwkt_token_t tok, lwkt_tokref_t ref)
+_lwkt_trytokref_spin(lwkt_tokref_t ref, thread_t td, long mode)
 {
-	globaldata_t gd = mycpu;
-	cpumask_t mask;
-	int n;
+	int spin;
 
-	/*
-	 * Add our cpu to the collision mask and wait for the token to be
-	 * handed off to us.
-	 */
-	crit_enter();
-	atomic_set_cpumask(&tok->t_collmask, gd->gd_cpumask);
-	for (n = 0; n < lwkt_token_spin; ++n) {
-		/*
-		 * Token was released before we set our collision bit.
-		 */
-		if (tok->t_ref == NULL &&
-		    atomic_cmpset_ptr(&tok->t_ref, NULL, ref)) {
-			KKASSERT((tok->t_collmask & gd->gd_cpumask) != 0);
-			atomic_clear_cpumask(&tok->t_collmask, gd->gd_cpumask);
-			crit_exit();
-			return TRUE;
-		}
-
-		/*
-		 * Token was handed-off to us.
-		 */
-		if (tok->t_ref == &gd->gd_handoff) {
-			KKASSERT((tok->t_collmask & gd->gd_cpumask) == 0);
-			tok->t_ref = ref;
-			crit_exit();
-			return TRUE;
-		}
+	if (_lwkt_trytokref(ref, td, mode))
+		return TRUE;
+	for (spin = lwkt_token_spin; spin > 0; --spin) {
 		if (lwkt_token_delay)
 			tsc_delay(lwkt_token_delay);
 		else
 			cpu_pause();
+		if (_lwkt_trytokref(ref, td, mode))
+			return TRUE;
 	}
-
-	/*
-	 * We failed, attempt to clear our bit in the cpumask.  We may race
-	 * someone handing-off to us.  If someone other than us cleared our
-	 * cpu bit a handoff is incoming and we must wait for it.
-	 */
-	for (;;) {
-		mask = tok->t_collmask;
-		cpu_ccfence();
-		if (mask & gd->gd_cpumask) {
-			if (atomic_cmpset_cpumask(&tok->t_collmask,
-						  mask,
-						  mask & ~gd->gd_cpumask)) {
-				crit_exit();
-				return FALSE;
-			}
-			continue;
-		}
-		if (tok->t_ref != &gd->gd_handoff) {
-			cpu_pause();
-			continue;
-		}
-		tok->t_ref = ref;
-		crit_exit();
-		return TRUE;
-	}
+	return FALSE;
 }
 
 /*
- * Release token with hand-off
+ * Release a token that we hold.
  */
 static __inline
 void
-_lwkt_reltoken_spin(lwkt_token_t tok)
+_lwkt_reltokref(lwkt_tokref_t ref, thread_t td)
 {
-	globaldata_t xgd;
-	cpumask_t sidemask;
-	cpumask_t mask;
-	int cpuid;
+	lwkt_token_t tok;
+	long count;
 
-	if (tok->t_collmask == 0) {
-		tok->t_ref = NULL;
-		return;
-	}
-
-	crit_enter();
-	sidemask = ~(mycpu->gd_cpumask - 1);	/* high bits >= xcpu */
+	tok = ref->tr_tok;
 	for (;;) {
-		mask = tok->t_collmask;
+		count = tok->t_count;
 		cpu_ccfence();
-		if (mask == 0) {
+		if (tok->t_ref == ref) {
+			/*
+			 * We are an exclusive holder.  We must clear tr_ref
+			 * before we clear the TOK_EXCLUSIVE bit.  If we are
+			 * unable to clear the bit we must restore
+			 * tok->t_ref.
+			 */
+			KKASSERT(count & TOK_EXCLUSIVE);
 			tok->t_ref = NULL;
-			break;
+			if (atomic_cmpset_long(&tok->t_count, count,
+					       count & ~TOK_EXCLUSIVE)) {
+				return;
+			}
+			tok->t_ref = ref;
+			/* retry */
+		} else {
+			/*
+			 * We are a shared holder
+			 */
+			KKASSERT(count & TOK_COUNTMASK);
+			if (atomic_cmpset_long(&tok->t_count, count,
+					       count - TOK_INCR)) {
+				return;
+			}
+			/* retry */
 		}
-		if (mask & sidemask)
-			cpuid = BSFCPUMASK(mask & sidemask);
-		else
-			cpuid = BSFCPUMASK(mask);
-		xgd = globaldata_find(cpuid);
-		if (atomic_cmpset_cpumask(&tok->t_collmask, mask,
-					  mask & ~CPUMASK(cpuid))) {
-			tok->t_ref = &xgd->gd_handoff;
-			break;
-		}
+		/* retry */
 	}
-	crit_exit();
 }
-
-#endif
-
 
 /*
  * Obtain all the tokens required by the specified thread on the current
  * cpu, return 0 on failure and non-zero on success.  If a failure occurs
  * any partially acquired tokens will be released prior to return.
  *
- * lwkt_getalltokens is called by the LWKT scheduler to acquire all
- * tokens that the thread had acquired prior to going to sleep.
+ * lwkt_getalltokens is called by the LWKT scheduler to re-acquire all
+ * tokens that the thread had to release when it switched away.
  *
  * If spinning is non-zero this function acquires the tokens in a particular
  * order to deal with potential deadlocks.  We simply use address order for
@@ -376,7 +419,6 @@ int
 lwkt_getalltokens(thread_t td, int spinning)
 {
 	lwkt_tokref_t scan;
-	lwkt_tokref_t ref;
 	lwkt_token_t tok;
 
 	if (spinning)
@@ -389,55 +431,31 @@ lwkt_getalltokens(thread_t td, int spinning)
 		tok = scan->tr_tok;
 		for (;;) {
 			/*
-			 * Try to acquire the token if we do not already have
-			 * it.
-			 *
-			 * NOTE: If atomic_cmpset_ptr() fails we have to
-			 *	 loop and try again.  It just means we
-			 *	 lost a cpu race.
+			 * Only try really hard on the last token
 			 */
-			ref = tok->t_ref;
-			if (ref == NULL) {
-				if (atomic_cmpset_ptr(&tok->t_ref, NULL,scan))
-					break;
-				continue;
-			}
-
-			/*
-			 * Someone holds the token.
-			 *
-			 * Test if ref is already recursively held by this
-			 * thread.  We cannot safely dereference tok->t_ref
-			 * (it might belong to another thread and is thus
-			 * unstable), but we don't have to. We can simply
-			 * range-check it.
-			 */
-			if (ref >= &td->td_toks_base && ref < td->td_toks_stop)
-				break;
-
-			/*
-			 * Try hard to acquire this token before giving up
-			 * and releasing the whole lot.
-			 */
-			if (_lwkt_trytoken_spin(tok, scan))
-				break;
-			if (lwkt_sched_debug > 0) {
-				--lwkt_sched_debug;
-				kprintf("toka %p %s %s\n",
-					tok, tok->t_desc, td->td_comm);
+			if (scan == td->td_toks_stop - 1) {
+			    if (_lwkt_trytokref_spin(scan, td, scan->tr_count))
+				    break;
+			} else {
+			    if (_lwkt_trytokref(scan, td, scan->tr_count))
+				    break;
 			}
 
 			/*
 			 * Otherwise we failed to acquire all the tokens.
 			 * Release whatever we did get.
 			 */
+			if (lwkt_sched_debug > 0) {
+				--lwkt_sched_debug;
+				kprintf("toka %p %s %s\n",
+					tok, tok->t_desc, td->td_comm);
+			}
 			td->td_wmesg = tok->t_desc;
-			atomic_add_long(&tok->t_collisions, 1);
-			lwkt_relalltokens(td);
-
+			++tok->t_collisions;
+			while (--scan >= &td->td_toks_base)
+				_lwkt_reltokref(scan, td);
 			return(FALSE);
 		}
-
 	}
 	return (TRUE);
 }
@@ -458,14 +476,18 @@ void
 lwkt_relalltokens(thread_t td)
 {
 	lwkt_tokref_t scan;
-	lwkt_token_t tok;
 
-	for (scan = td->td_toks_stop - 1; scan >= &td->td_toks_base; --scan) {
-	/*for (scan = &td->td_toks_base; scan < td->td_toks_stop; ++scan) {*/
-		tok = scan->tr_tok;
-		if (tok->t_ref == scan)
-			_lwkt_reltoken_spin(tok);
+	/*
+	 * Weird order is to try to avoid a panic loop
+	 */
+	if (td->td_toks_have) {
+		scan = td->td_toks_have;
+		td->td_toks_have = NULL;
+	} else {
+		scan = td->td_toks_stop;
 	}
+	while (--scan >= &td->td_toks_base)
+		_lwkt_reltokref(scan, td);
 }
 
 /*
@@ -473,26 +495,14 @@ lwkt_relalltokens(thread_t td)
  * acquired in address-sorted order to deal with any deadlocks.  Ultimately
  * token failures will spin into the scheduler and get here.
  *
- * In addition, to reduce hardware cache coherency contention monitor/mwait
- * is interlocked with gd->gd_reqflags and RQF_SPINNING.  Other cores which
- * release a contended token will clear RQF_SPINNING and cause the mwait
- * to resume.  Any interrupt will also generally set RQF_* flags and cause
- * mwait to resume (or be a NOP in the first place).
- *
- * This code is required to set up RQF_SPINNING in case of failure.  The
- * caller may call monitor/mwait on gd->gd_reqflags on failure.  We do NOT
- * want to call mwait here, and doubly so while we are holding tokens.
- *
  * Called from critical section
  */
 static
 int
 _lwkt_getalltokens_sorted(thread_t td)
 {
-	/*globaldata_t gd = td->td_gd;*/
 	lwkt_tokref_t sort_array[LWKT_MAXTOKENS];
 	lwkt_tokref_t scan;
-	lwkt_tokref_t ref;
 	lwkt_token_t tok;
 	int i;
 	int j;
@@ -529,59 +539,32 @@ _lwkt_getalltokens_sorted(thread_t td)
 		tok = scan->tr_tok;
 		for (;;) {
 			/*
-			 * Try to acquire the token if we do not already have
-			 * it.
-			 *
-			 * NOTE: If atomic_cmpset_ptr() fails we have to
-			 *	 loop and try again.  It just means we
-			 *	 lost a cpu race.
+			 * Only try really hard on the last token
 			 */
-			ref = tok->t_ref;
-			if (ref == NULL) {
-				if (atomic_cmpset_ptr(&tok->t_ref, NULL, scan))
-					break;
-				continue;
+			if (scan == td->td_toks_stop - 1) {
+			    if (_lwkt_trytokref_spin(scan, td, scan->tr_count))
+				    break;
+			} else {
+			    if (_lwkt_trytokref(scan, td, scan->tr_count))
+				    break;
 			}
 
 			/*
-			 * Someone holds the token.
-			 *
-			 * Test if ref is already recursively held by this
-			 * thread.  We cannot safely dereference tok->t_ref
-			 * (it might belong to another thread and is thus
-			 * unstable), but we don't have to. We can simply
-			 * range-check it.
+			 * Otherwise we failed to acquire all the tokens.
+			 * Release whatever we did get.
 			 */
-			if (ref >= &td->td_toks_base && ref < td->td_toks_stop)
-				break;
-
-			/*
-			 * Try hard to acquire this token before giving up
-			 * and releasing the whole lot.
-			 */
-			if (_lwkt_trytoken_spin(tok, scan))
-				break;
 			if (lwkt_sched_debug > 0) {
 				--lwkt_sched_debug;
 				kprintf("tokb %p %s %s\n",
 					tok, tok->t_desc, td->td_comm);
 			}
-
-			/*
-			 * Tokens are released in reverse order to reduce
-			 * chasing race failures.
-			 */
 			td->td_wmesg = tok->t_desc;
-			atomic_add_long(&tok->t_collisions, 1);
-
-			for (j = i - 1; j >= 0; --j) {
-			/*for (j = 0; j < i; ++j) {*/
-				scan = sort_array[j];
-				tok = scan->tr_tok;
-				if (tok->t_ref == scan)
-					_lwkt_reltoken_spin(tok);
+			++tok->t_collisions;
+			while (--i >= 0) {
+				scan = sort_array[i];
+				_lwkt_reltokref(scan, td);
 			}
-			return (FALSE);
+			return(FALSE);
 		}
 	}
 
@@ -589,93 +572,7 @@ _lwkt_getalltokens_sorted(thread_t td)
 	 * We were successful, there is no need for another core to signal
 	 * us.
 	 */
-#if 0
-	atomic_clear_int(&gd->gd_reqflags, RQF_SPINNING);
-#endif
 	return (TRUE);
-}
-
-/*
- * Token acquisition helper function.  The caller must have already
- * made nref visible by adjusting td_toks_stop and will be responsible
- * for the disposition of nref on either success or failure.
- *
- * When acquiring tokens recursively we want tok->t_ref to point to
- * the outer (first) acquisition so it gets cleared only on the last
- * release.
- */
-static __inline
-int
-_lwkt_trytokref2(lwkt_tokref_t nref, thread_t td, int blocking)
-{
-	lwkt_token_t tok;
-	lwkt_tokref_t ref;
-
-	/*
-	 * Make sure the compiler does not reorder prior instructions
-	 * beyond this demark.
-	 */
-	cpu_ccfence();
-
-	/*
-	 * Attempt to gain ownership
-	 */
-	tok = nref->tr_tok;
-	for (;;) {
-		/*
-		 * Try to acquire the token if we do not already have
-		 * it.  This is not allowed if we are in a hard code
-		 * section (because it 'might' have blocked).
-		 */
-		ref = tok->t_ref;
-		if (ref == NULL) {
-			KASSERT((blocking == 0 ||
-				td->td_gd->gd_intr_nesting_level == 0 ||
-				panic_cpu_gd == mycpu),
-				("Attempt to acquire token %p not already "
-				 "held in hard code section", tok));
-
-			/*
-			 * NOTE: If atomic_cmpset_ptr() fails we have to
-			 *	 loop and try again.  It just means we
-			 *	 lost a cpu race.
-			 */
-			if (atomic_cmpset_ptr(&tok->t_ref, NULL, nref))
-				return (TRUE);
-			continue;
-		}
-
-		/*
-		 * Test if ref is already recursively held by this
-		 * thread.  We cannot safely dereference tok->t_ref
-		 * (it might belong to another thread and is thus
-		 * unstable), but we don't have to. We can simply
-		 * range-check it.
-		 *
-		 * It is ok to acquire a token that is already held
-		 * by the current thread when in a hard code section.
-		 */
-		if (ref >= &td->td_toks_base && ref < td->td_toks_stop)
-			return(TRUE);
-
-		/*
-		 * Spin generously.  This is preferable to just switching
-		 * away unconditionally.
-		 */
-		if (_lwkt_trytoken_spin(tok, nref))
-			return(TRUE);
-
-		/*
-		 * Otherwise we failed, and it is not ok to attempt to
-		 * acquire a token in a hard code section.
-		 */
-		KASSERT((blocking == 0 ||
-			td->td_gd->gd_intr_nesting_level == 0),
-			("Attempt to acquire token %p not already "
-			 "held in hard code section", tok));
-
-		return(FALSE);
-	}
 }
 
 /*
@@ -691,31 +588,37 @@ lwkt_gettoken(lwkt_token_t tok)
 	KKASSERT(ref < &td->td_toks_end);
 	++td->td_toks_stop;
 	cpu_ccfence();
-	_lwkt_tokref_init(ref, tok, td);
+	_lwkt_tokref_init(ref, tok, td, TOK_EXCLUSIVE|TOK_EXCLREQ);
 
-	if (_lwkt_trytokref2(ref, td, 1) == FALSE) {
-		/*
-		 * Give up running if we can't acquire the token right now.
-		 *
-		 * Since the tokref is already active the scheduler now
-		 * takes care of acquisition, so we need only call
-		 * lwkt_switch().
-		 *
-		 * Since we failed this was not a recursive token so upon
-		 * return tr_tok->t_ref should be assigned to this specific
-		 * ref.
-		 */
-		td->td_wmesg = tok->t_desc;
-		atomic_add_long(&tok->t_collisions, 1);
-		logtoken(fail, ref);
-		lwkt_switch();
-		logtoken(succ, ref);
-		KKASSERT(tok->t_ref == ref);
-	}
+	if (_lwkt_trytokref_spin(ref, td, TOK_EXCLUSIVE|TOK_EXCLREQ))
+		return;
+
+	/*
+	 * Give up running if we can't acquire the token right now.
+	 *
+	 * Since the tokref is already active the scheduler now
+	 * takes care of acquisition, so we need only call
+	 * lwkt_switch().
+	 *
+	 * Since we failed this was not a recursive token so upon
+	 * return tr_tok->t_ref should be assigned to this specific
+	 * ref.
+	 */
+	td->td_wmesg = tok->t_desc;
+	++tok->t_collisions;
+	logtoken(fail, ref);
+	td->td_toks_have = td->td_toks_stop - 1;
+	lwkt_switch();
+	logtoken(succ, ref);
+	KKASSERT(tok->t_ref == ref);
 }
 
+/*
+ * Similar to gettoken but we acquire a shared token instead of an exclusive
+ * token.
+ */
 void
-lwkt_gettoken_hard(lwkt_token_t tok)
+lwkt_gettoken_shared(lwkt_token_t tok)
 {
 	thread_t td = curthread;
 	lwkt_tokref_t ref;
@@ -724,68 +627,36 @@ lwkt_gettoken_hard(lwkt_token_t tok)
 	KKASSERT(ref < &td->td_toks_end);
 	++td->td_toks_stop;
 	cpu_ccfence();
-	_lwkt_tokref_init(ref, tok, td);
+	_lwkt_tokref_init(ref, tok, td, TOK_EXCLREQ);
 
-	if (_lwkt_trytokref2(ref, td, 1) == FALSE) {
-		/*
-		 * Give up running if we can't acquire the token right now.
-		 *
-		 * Since the tokref is already active the scheduler now
-		 * takes care of acquisition, so we need only call
-		 * lwkt_switch().
-		 *
-		 * Since we failed this was not a recursive token so upon
-		 * return tr_tok->t_ref should be assigned to this specific
-		 * ref.
-		 */
-		td->td_wmesg = tok->t_desc;
-		atomic_add_long(&tok->t_collisions, 1);
-		logtoken(fail, ref);
-		lwkt_switch();
-		logtoken(succ, ref);
-		KKASSERT(tok->t_ref == ref);
-	}
-	crit_enter_hard_gd(td->td_gd);
-}
+	if (_lwkt_trytokref_spin(ref, td, TOK_EXCLREQ))
+		return;
 
-lwkt_token_t
-lwkt_getpooltoken(void *ptr)
-{
-	thread_t td = curthread;
-	lwkt_token_t tok;
-	lwkt_tokref_t ref;
-
-	tok = _lwkt_token_pool_lookup(ptr);
-	ref = td->td_toks_stop;
-	KKASSERT(ref < &td->td_toks_end);
-	++td->td_toks_stop;
-	cpu_ccfence();
-	_lwkt_tokref_init(ref, tok, td);
-
-	if (_lwkt_trytokref2(ref, td, 1) == FALSE) {
-		/*
-		 * Give up running if we can't acquire the token right now.
-		 *
-		 * Since the tokref is already active the scheduler now
-		 * takes care of acquisition, so we need only call
-		 * lwkt_switch().
-		 *
-		 * Since we failed this was not a recursive token so upon
-		 * return tr_tok->t_ref should be assigned to this specific
-		 * ref.
-		 */
-		td->td_wmesg = tok->t_desc;
-		atomic_add_long(&tok->t_collisions, 1);
-		logtoken(fail, ref);
-		lwkt_switch();
-		logtoken(succ, ref);
-		KKASSERT(tok->t_ref == ref);
-	}
-	return(tok);
+	/*
+	 * Give up running if we can't acquire the token right now.
+	 *
+	 * Since the tokref is already active the scheduler now
+	 * takes care of acquisition, so we need only call
+	 * lwkt_switch().
+	 *
+	 * Since we failed this was not a recursive token so upon
+	 * return tr_tok->t_ref should be assigned to this specific
+	 * ref.
+	 */
+	td->td_wmesg = tok->t_desc;
+	++tok->t_collisions;
+	logtoken(fail, ref);
+	td->td_toks_have = td->td_toks_stop - 1;
+	lwkt_switch();
+	logtoken(succ, ref);
 }
 
 /*
  * Attempt to acquire a token, return TRUE on success, FALSE on failure.
+ *
+ * We setup the tokref in case we actually get the token (if we switch later
+ * it becomes mandatory so we set TOK_EXCLREQ), but we call trytokref without
+ * TOK_EXCLREQ in case we fail.
  */
 int
 lwkt_trytoken(lwkt_token_t tok)
@@ -797,17 +668,36 @@ lwkt_trytoken(lwkt_token_t tok)
 	KKASSERT(ref < &td->td_toks_end);
 	++td->td_toks_stop;
 	cpu_ccfence();
-	_lwkt_tokref_init(ref, tok, td);
+	_lwkt_tokref_init(ref, tok, td, TOK_EXCLUSIVE|TOK_EXCLREQ);
 
-	if (_lwkt_trytokref2(ref, td, 0) == FALSE) {
-		/*
-		 * Cleanup, deactivate the failed token.
-		 */
-		cpu_ccfence();
-		--td->td_toks_stop;
-		return (FALSE);
-	}
-	return (TRUE);
+	if (_lwkt_trytokref(ref, td, TOK_EXCLUSIVE))
+		return TRUE;
+
+	/*
+	 * Failed, unpend the request
+	 */
+	cpu_ccfence();
+	--td->td_toks_stop;
+	++tok->t_collisions;
+	return FALSE;
+}
+
+
+void
+lwkt_gettoken_hard(lwkt_token_t tok)
+{
+	lwkt_gettoken(tok);
+	crit_enter_hard();
+}
+
+lwkt_token_t
+lwkt_getpooltoken(void *ptr)
+{
+	lwkt_token_t tok;
+
+	tok = _lwkt_token_pool_lookup(ptr);
+	lwkt_gettoken(tok);
+	return (tok);
 }
 
 /*
@@ -828,28 +718,9 @@ lwkt_reltoken(lwkt_token_t tok)
 	 */
 	ref = td->td_toks_stop - 1;
 	KKASSERT(ref >= &td->td_toks_base && ref->tr_tok == tok);
-
-	/*
-	 * Only clear the token if it matches ref.  If ref was a recursively
-	 * acquired token it may not match.  Then adjust td_toks_stop.
-	 *
-	 * Some comparisons must be run prior to adjusting td_toks_stop
-	 * to avoid racing against a fast interrupt/ ipi which tries to
-	 * acquire a token.
-	 *
-	 * We must also be absolutely sure that the compiler does not
-	 * reorder the clearing of t_ref and the adjustment of td_toks_stop,
-	 * or reorder the adjustment of td_toks_stop against the conditional.
-	 *
-	 * NOTE: The mplock is a token also so sequencing is a bit complex.
-	 */
-	if (tok->t_ref == ref)
-		_lwkt_reltoken_spin(tok);
+	_lwkt_reltokref(ref, td);
 	cpu_sfence();
-	cpu_ccfence();
 	td->td_toks_stop = ref;
-	cpu_ccfence();
-	KKASSERT(tok->t_ref != ref);
 }
 
 void
@@ -888,7 +759,6 @@ lwkt_cnttoken(lwkt_token_t tok, thread_t td)
 	return(count);
 }
 
-
 /*
  * Pool tokens are used to provide a type-stable serializing token
  * pointer that does not race against disappearing data structures.
@@ -917,9 +787,9 @@ lwkt_token_pool_lookup(void *ptr)
 void
 lwkt_token_init(lwkt_token_t tok, const char *desc)
 {
+	tok->t_count = 0;
 	tok->t_ref = NULL;
 	tok->t_collisions = 0;
-	tok->t_collmask = 0;
 	tok->t_desc = desc;
 }
 
@@ -938,12 +808,16 @@ lwkt_token_uninit(lwkt_token_t tok)
  * ref and must remain pointing to the deeper ref.  If we were to swap
  * it the first release would clear the token even though a second
  * ref is still present.
+ *
+ * Only exclusively held tokens contain a reference to the tokref which
+ * has to be flipped along with the swap.
  */
 void
 lwkt_token_swap(void)
 {
 	lwkt_tokref_t ref1, ref2;
 	lwkt_token_t tok1, tok2;
+	long count1, count2;
 	thread_t td = curthread;
 
 	crit_enter();
@@ -955,9 +829,14 @@ lwkt_token_swap(void)
 
 	tok1 = ref1->tr_tok;
 	tok2 = ref2->tr_tok;
+	count1 = ref1->tr_count;
+	count2 = ref2->tr_count;
+
 	if (tok1 != tok2) {
 		ref1->tr_tok = tok2;
+		ref1->tr_count = count2;
 		ref2->tr_tok = tok1;
+		ref2->tr_count = count1;
 		if (tok1->t_ref == ref1)
 			tok1->t_ref = ref2;
 		if (tok2->t_ref == ref2)
@@ -966,26 +845,3 @@ lwkt_token_swap(void)
 
 	crit_exit();
 }
-
-#if 0
-int
-lwkt_token_is_stale(lwkt_tokref_t ref)
-{
-	lwkt_token_t tok = ref->tr_tok;
-
-	KKASSERT(tok->t_owner == curthread && ref->tr_state == 1 &&
-		 tok->t_count > 0);
-
-	/* Token is not stale */
-	if (tok->t_lastowner == tok->t_owner)
-		return (FALSE);
-
-	/*
-	 * The token is stale. Reset to not stale so that the next call to
-	 * lwkt_token_is_stale will return "not stale" unless the token
-	 * was acquired in-between by another thread.
-	 */
-	tok->t_lastowner = tok->t_owner;
-	return (TRUE);
-}
-#endif

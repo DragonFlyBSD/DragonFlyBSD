@@ -47,6 +47,8 @@
 #include <sys/ucred.h>
 #include <sys/vnode.h>
 
+#include <sys/buf2.h>
+
 #include "quota.h"
 #include "inode.h"
 #include "ext2_fs.h"

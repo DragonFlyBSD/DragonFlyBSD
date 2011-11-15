@@ -58,6 +58,8 @@
 #include <sys/mount.h>		/* to define statfs structure */
 #include <sys/vnode.h>		/* to define vattr structure */
 
+#include <sys/buf2.h>
+
 /*
  * msdosfs include files.
  */

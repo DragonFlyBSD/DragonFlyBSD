@@ -54,6 +54,8 @@
 #include "cd9660_node.h"
 #include "iso_rrip.h"
 
+#include <sys/buf2.h>
+
 /*
  * Convert a component of a pathname into a pointer to a locked inode.
  * This is a very central and rather complicated routine.

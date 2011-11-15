@@ -1,6 +1,3 @@
-/* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
-
 /*
  * Copyright (c) 1994 Adam Glass and Charles Hannum.  All rights reserved.
  *
@@ -588,6 +585,39 @@ shmget_allocate_segment(struct proc *p, struct shmget_args *uap, int mode)
 	shmseg->shm_ctime = time_second;
 	shm_committed += btoc(size);
 	shm_nused++;
+
+	/*
+	 * If a physical mapping is desired and we have a ton of free pages
+	 * we pre-allocate the pages here in order to avoid on-the-fly
+	 * allocation later.  This has a big effect on database warm-up
+	 * times since DFly supports concurrent page faults coming from the
+	 * same VM object for pages which already exist.
+	 *
+	 * This can hang the kernel for a while so only do it if shm_use_phys
+	 * is set to 2 or higher.
+	 */
+	if (shm_use_phys > 1) {
+		vm_pindex_t pi, pmax;
+		vm_page_t m;
+
+		pmax = round_page(shmseg->shm_segsz) >> PAGE_SHIFT;
+		vm_object_hold(shm_handle->shm_object);
+		if (pmax > vmstats.v_free_count)
+			pmax = vmstats.v_free_count;
+		for (pi = 0; pi < pmax; ++pi) {
+			m = vm_page_grab(shm_handle->shm_object, pi,
+					 VM_ALLOC_SYSTEM | VM_ALLOC_NULL_OK |
+					 VM_ALLOC_ZERO);
+			if (m == NULL)
+				break;
+			vm_pager_get_page(shm_handle->shm_object, &m, 1);
+			vm_page_activate(m);
+			vm_page_wakeup(m);
+			lwkt_yield();
+		}
+		vm_object_drop(shm_handle->shm_object);
+	}
+
 	if (shmseg->shm_perm.mode & SHMSEG_WANTED) {
 		/*
 		 * Somebody else wanted this key while we were asleep.  Wake

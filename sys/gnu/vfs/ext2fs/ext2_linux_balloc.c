@@ -34,8 +34,9 @@
 #include <sys/proc.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
-#include <sys/buf2.h>
 #include <sys/thread2.h>
+
+#include <sys/buf2.h>
 
 #include "quota.h"
 #include "dinode.h"

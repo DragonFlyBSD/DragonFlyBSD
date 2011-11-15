@@ -3174,18 +3174,14 @@ validate:
 	/*
 	 * If the mapping or permission bits are different, we need
 	 * to update the pte.
-	 *
-	 * We do not have to interlock pte insertions as no other
-	 * cpu will have a TLB entry.
 	 */
 	if ((origpte & ~(PG_M|PG_A)) != newpte) {
-#if 0
+#if 1
 		if ((prot & VM_PROT_NOSYNC) == 0)
 			pmap_inval_interlock(&info, pmap, va);
 #endif
 		*ptep = newpte | PG_A;
-		cpu_invlpg((void *)va);
-#if 0
+#if 1
 		if (prot & VM_PROT_NOSYNC)
 			cpu_invlpg((void *)va);
 		else
@@ -3299,7 +3295,7 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	info.addr = addr;
 	info.pmap = pmap;
 
-	vm_object_hold(object);
+	vm_object_hold_shared(object);
 	vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
 				pmap_object_init_pt_callback, &info);
 	vm_object_drop(object);
@@ -3341,20 +3337,22 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
  *
  * Returns FALSE if it would be non-trivial or if a pte is already loaded
  * into the slot.
+ *
+ * XXX This is safe only because page table pages are not freed.
  */
 int
 pmap_prefault_ok(pmap_t pmap, vm_offset_t addr)
 {
 	pt_entry_t *pte;
 
-	spin_lock(&pmap->pm_spin);
+	/*spin_lock(&pmap->pm_spin);*/
 	if ((pte = pmap_pte(pmap, addr)) != NULL) {
 		if (*pte & PG_V) {
-			spin_unlock(&pmap->pm_spin);
+			/*spin_unlock(&pmap->pm_spin);*/
 			return FALSE;
 		}
 	}
-	spin_unlock(&pmap->pm_spin);
+	/*spin_unlock(&pmap->pm_spin);*/
 	return TRUE;
 }
 

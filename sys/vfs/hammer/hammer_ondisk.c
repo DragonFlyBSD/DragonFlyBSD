@@ -43,6 +43,7 @@
 #include <sys/fcntl.h>
 #include <sys/nlookup.h>
 #include <sys/buf.h>
+
 #include <sys/buf2.h>
 
 static void hammer_free_volume(hammer_volume_t volume);

@@ -39,6 +39,8 @@
 #include <sys/nlookup.h>
 #include <sys/buf.h>
 
+#include <sys/buf2.h>
+
 static int
 hammer_setup_device(struct vnode **devvpp, const char *dev_path, int ronly);
 

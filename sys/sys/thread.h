@@ -97,23 +97,40 @@ struct intrframe;
  * Tokens are managed through a helper reference structure, lwkt_tokref.  Each
  * thread has a stack of tokref's to keep track of acquired tokens.  Multiple
  * tokref's may reference the same token.
+ *
+ * Tokens can be held shared or exclusive.   An exclusive holder is able
+ * to set the TOK_EXCLUSIVE bit in t_count as long as no bit in the count
+ * mask is set.  If unable to accomplish this TOK_EXCLREQ can be set instead
+ * which prevents any new shared acquisitions while the exclusive requestor
+ * spins in the scheduler.  A shared holder can bump t_count by the increment
+ * value as long as neither TOK_EXCLUSIVE or TOK_EXCLREQ is set, else spin
+ * in the scheduler.
+ *
+ * Multiple exclusive tokens are handled by treating the additional tokens
+ * as a special case of the shared token, incrementing the count value.  This
+ * reduces the complexity of the token release code.
  */
 
 typedef struct lwkt_token {
-    struct lwkt_tokref	*t_ref;		/* Owning ref or NULL */
+    long		t_count;	/* Shared/exclreq/exclusive access */
+    struct lwkt_tokref	*t_ref;		/* Exclusive ref */
     long		t_collisions;	/* Collision counter */
-    cpumask_t		t_collmask;	/* Collision resolve mask */
     const char		*t_desc;	/* Descriptive name */
 } lwkt_token;
+
+#define TOK_EXCLUSIVE	0x00000001	/* Exclusive lock held */
+#define TOK_EXCLREQ	0x00000002	/* Exclusive request pending */
+#define TOK_INCR	4		/* Shared count increment */
+#define TOK_COUNTMASK	(~(long)(TOK_EXCLUSIVE|TOK_EXCLREQ))
 
 /*
  * Static initialization for a lwkt_token.
  */
 #define LWKT_TOKEN_INITIALIZER(name)	\
 {					\
+	.t_count = 0,			\
 	.t_ref = NULL,			\
 	.t_collisions = 0,		\
-	.t_collmask = 0,		\
 	.t_desc = #name			\
 }
 
@@ -158,6 +175,7 @@ typedef struct lwkt_token {
 
 struct lwkt_tokref {
     lwkt_token_t	tr_tok;		/* token in question */
+    long		tr_count;	/* TOK_EXCLUSIVE|TOK_EXCLREQ or 0 */
     struct thread	*tr_owner;	/* me */
 };
 
@@ -270,12 +288,12 @@ struct thread {
     struct thread *td_preempted; /* we preempted this thread */
     struct ucred *td_ucred;		/* synchronized from p_ucred */
     struct caps_kinfo *td_caps;	/* list of client and server registrations */
-    lwkt_tokref_t td_toks_stop;
+    lwkt_tokref_t td_toks_have;		/* tokens we own */
+    lwkt_tokref_t td_toks_stop;		/* tokens we want */
     struct lwkt_tokref td_toks_array[LWKT_MAXTOKENS];
     int		td_fairq_load;		/* fairq */
     int		td_fairq_count;		/* fairq */
     struct globaldata *td_migrate_gd;	/* target gd for thread migration */
-    const void	*unused01;
 #ifdef DEBUG_CRIT_SECTIONS
 #define CRIT_DEBUG_ARRAY_SIZE   32
 #define CRIT_DEBUG_ARRAY_MASK   (CRIT_DEBUG_ARRAY_SIZE - 1)
@@ -427,6 +445,7 @@ extern void lwkt_passive_release(thread_t);
 extern void lwkt_maybe_splz(thread_t);
 
 extern void lwkt_gettoken(lwkt_token_t);
+extern void lwkt_gettoken_shared(lwkt_token_t);
 extern void lwkt_gettoken_hard(lwkt_token_t);
 extern int  lwkt_trytoken(lwkt_token_t);
 extern void lwkt_reltoken(lwkt_token_t);

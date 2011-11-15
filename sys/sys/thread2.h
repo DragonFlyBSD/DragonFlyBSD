@@ -35,8 +35,9 @@
 static __inline int
 _lwkt_token_held(lwkt_token_t tok, thread_t td)
 {
-	return (tok->t_ref >= &td->td_toks_base &&
-		tok->t_ref < td->td_toks_stop);
+	return ((tok->t_count & ~(TOK_EXCLUSIVE|TOK_EXCLREQ)) ||
+		(tok->t_ref >= &td->td_toks_base &&
+		 tok->t_ref < td->td_toks_stop));
 }
 
 /*

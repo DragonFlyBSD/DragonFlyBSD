@@ -55,6 +55,8 @@
 #include <vm/vm_pager.h>
 #include <vm/swap_pager.h>
 
+#include <sys/buf2.h>
+
 #include <vfs/fifofs/fifo.h>
 #include <vfs/tmpfs/tmpfs_vnops.h>
 #include <vfs/tmpfs/tmpfs.h>

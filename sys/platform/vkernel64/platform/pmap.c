@@ -1080,9 +1080,7 @@ pmap_pinit(struct pmap *pmap)
 				     VM_ALLOC_ZERO);
 		pmap->pm_pdirm = ptdpg;
 		vm_page_flag_clear(ptdpg, PG_MAPPED);
-		if (ptdpg->wire_count == 0)
-			atomic_add_int(&vmstats.v_wire_count, 1);
-		ptdpg->wire_count = 1;
+		vm_page_wire(ptdpg);
 		vm_page_wakeup(ptdpg);
 		pmap_kenter((vm_offset_t)pmap->pm_pml4, VM_PAGE_TO_PHYS(ptdpg));
 	}
@@ -1267,10 +1265,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	 * the caller.
 	 */
 	m->hold_count++;
-
-	if (m->wire_count == 0)
-		atomic_add_int(&vmstats.v_wire_count, 1);
-	m->wire_count++;
+	vm_page_wire(m);
 
 	/*
 	 * Map the pagetable page into the process address space, if

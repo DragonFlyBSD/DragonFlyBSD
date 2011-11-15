@@ -61,6 +61,8 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
+#include <sys/buf2.h>
+
 #include "bpb.h"
 #include "msdosfsmount.h"
 #include "direntry.h"

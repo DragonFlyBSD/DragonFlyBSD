@@ -52,6 +52,8 @@
 #include "cd9660_rrip.h"
 #include "iso_rrip.h"
 
+#include <sys/buf2.h>
+
 typedef int	rrt_func_t (void *, ISO_RRIP_ANALYZE *ana);
 
 typedef struct {

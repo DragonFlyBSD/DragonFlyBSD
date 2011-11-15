@@ -52,6 +52,8 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
+#include <sys/buf2.h>
+
 #include "quota.h"
 #include "inode.h"
 #include "ext2mount.h"

@@ -63,6 +63,8 @@
 #include <vm/vm_page.h>
 #include <vm/vm_zone.h>
 
+#include <sys/buf2.h>
+
 static MALLOC_DEFINE(M_FFSNODE, "FFS node", "FFS vnode private part");
 
 static int	ffs_sbupdate (struct ufsmount *, int);

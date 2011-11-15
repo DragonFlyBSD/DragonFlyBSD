@@ -87,7 +87,7 @@ phys_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	/* Switch off pv_entries */
 	vm_page_unmanage(m);
 	m->valid = VM_PAGE_BITS_ALL;
-	m->dirty = 0;
+	m->dirty = VM_PAGE_BITS_ALL;
 
 	return (VM_PAGER_OK);
 }

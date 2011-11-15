@@ -243,7 +243,7 @@ struct vm_map {
 /*
  * vm_flags_t values
  */
-#define MAP_WIREFUTURE		0x01	/* wire all future pages */
+#define MAP_WIREFUTURE		0x0001	/* wire all future pages */
 
 /*
  * Registered upcall
@@ -527,6 +527,7 @@ vmspace_president_count(struct vmspace *vmspace)
 #define VM_FAULT_BURST		0x04	/* Burst fault can be done */
 #define VM_FAULT_DIRTY		0x08	/* Dirty the page */
 #define VM_FAULT_UNSWAP		0x10	/* Remove backing store from the page */
+#define VM_FAULT_BURST_QUICK	0x20	/* Special case shared vm_object */
 #define VM_FAULT_WIRE_MASK	(VM_FAULT_CHANGE_WIRING|VM_FAULT_USER_WIRE)
 
 #ifdef _KERNEL

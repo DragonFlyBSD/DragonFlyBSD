@@ -225,6 +225,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 		mem = vm_page_grab(&kernel_object, OFF_TO_IDX(addr + i),
 				   VM_ALLOC_FORCE_ZERO | VM_ALLOC_NORMAL |
 				   VM_ALLOC_RETRY);
+		vm_page_unqueue_nowakeup(mem);
 		vm_page_wakeup(mem);
 	}
 	vm_object_drop(&kernel_object);

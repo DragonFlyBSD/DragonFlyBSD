@@ -59,6 +59,8 @@
 
 #include <vm/vm_zone.h>
 
+#include <sys/buf2.h>
+
 #include "iso.h"
 #include "iso_rrip.h"
 #include "cd9660_node.h"
