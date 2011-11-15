@@ -23,7 +23,7 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd June 23, 2009
+.Dd November 15, 2011
 .Dt DRM 4
 .Os
 .Sh NAME
@@ -102,14 +102,22 @@ EndSection
 .Ed
 .El
 .Pp
+In order to use two graphics cards (an on-board and another
+AGP/PCI/PCIe card) with DRI, a
+.Pa /dev/dri/card1
+link to
+.Pa /dev/dri/card0
+has to be created using
+.Xr devfsctl 8 .
+.Pp
 Debugging output can be enabled and disabled by setting the
 .Xr sysctl 8
 node
-.Ar hw.dri.debug .
+.Ar hw.dri.0.debug .
 .Sh SEE ALSO
 .Xr Xorg 1 ,
 .Xr agp 4 ,
-.Xr exa 4 ,
+.\".Xr exa 4 ,
 .Xr xorg.conf 5
 .Sh HISTORY
 DRM was first available for Linux.
