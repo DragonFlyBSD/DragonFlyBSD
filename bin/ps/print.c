@@ -62,6 +62,7 @@
 #include "ps.h"
 
 static const char *make_printable(const char *str);
+static void put64(u_int64_t n, int w, int type);
 
 void
 printheader(void)
@@ -415,27 +416,34 @@ wchan(const KINFO *k, const struct varent *vent)
 	}
 }
 
-#ifndef pgtok
-#define pgtok(a)        (((a)*getpagesize())/1024)
-#endif
+static u_int64_t
+pgtob(u_int64_t pg)
+{
+	static size_t pgsize;
+
+	if (pgsize == 0)
+		pgsize = getpagesize();
+	return(pg * pgsize);
+}
 
 void
 vsize(const KINFO *k, const struct varent *vent)
 {
-	printf("%*ju", vent->width, (uintmax_t)(KI_PROC(k, vm_map_size)/1024));
+	put64((uintmax_t)KI_PROC(k, vm_map_size)/1024, vent->width, 'k');
 }
 
 void
 rssize(const KINFO *k, const struct varent *vent)
 {
 	/* XXX don't have info about shared */
-	printf("%*lu", vent->width, (u_long)pgtok(KI_PROC(k, vm_rssize)));
+	put64(pgtob(KI_PROC(k, vm_rssize))/1024, vent->width, 'k');
 }
 
+/* doesn't account for text */
 void
-p_rssize(const KINFO *k, const struct varent *vent)	/* doesn't account for text */
+p_rssize(const KINFO *k, const struct varent *vent)
 {
-	printf("%*ld", vent->width, (long)pgtok(KI_PROC(k, vm_rssize)));
+	put64(pgtob(KI_PROC(k, vm_rssize))/1024, vent->width, 'k');
 }
 
 void
@@ -581,7 +589,7 @@ maxrss(const KINFO *k __unused, const struct varent *vent)
 void
 tsize(const KINFO *k, const struct varent *vent)
 {
-	printf("%*ld", vent->width, (long)pgtok(KI_PROC(k, vm_tsize)));
+	put64(pgtob(KI_PROC(k, vm_tsize))/1024, vent->width, 'k');
 }
 
 void
@@ -705,4 +713,75 @@ make_printable(const char *str)
 	err(1, NULL);
     strvis(cpy, str, VIS_TAB | VIS_NL | VIS_NOSLASH);
     return(cpy);
+}
+
+/*
+ * Output a number, divide down as needed to fit within the
+ * field.  This function differs from the code used by systat
+ * in that it tries to differentiate the display by always
+ * using a decimal point for excessively large numbers so
+ * the human eye naturally notices the difference.
+ */
+static void
+put64(u_int64_t n, int w, int type)
+{
+	char b[128];
+	u_int64_t d;
+	u_int64_t u;
+	size_t len;
+	int ntype;
+
+	snprintf(b, sizeof(b), "%*jd", w, (uintmax_t)n);
+	len = strlen(b);
+	if (len <= (size_t)w) {
+		fwrite(b, len, 1, stdout);
+		return;
+	}
+
+	if (type == 'D')
+		u = 1000;
+	else
+		u = 1024;
+
+	ntype = 0;
+	for (d = 1; n / d >= 100000; d *= u) {
+		switch(type) {
+		case 'D':
+		case 0:
+			type = 'k';
+			ntype = 'M';
+			break;
+		case 'k':
+			type = 'M';
+			ntype = 'G';
+			break;
+		case 'M':
+			type = 'G';
+			ntype = 'T';
+			break;
+		case 'G':
+			type = 'T';
+			ntype = 'X';
+			break;
+		case 'T':
+			type = 'X';
+			ntype = '?';
+			break;
+		default:
+			type = '?';
+			break;
+		}
+	}
+	if (w > 4 && n / d >= u) {
+		snprintf(b, sizeof(b), "%*ju.%02u%c",
+			 w - 4,
+			 (uintmax_t)(n / (d * u)),
+			 (u_int)(n / (d * u / 100) % 100),
+			 ntype);
+	} else {
+		snprintf(b, sizeof(b), "%*jd%c",
+			w - 1, (uintmax_t)n / d, type);
+	}
+	len = strlen(b);
+	fwrite(b, len, 1, stdout);
 }
