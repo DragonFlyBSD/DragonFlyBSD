@@ -403,7 +403,6 @@ int
 sys_sigreturn(struct sigreturn_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
-	struct proc *p = lp->lwp_proc;
 	struct trapframe *regs;
 	ucontext_t ucp;
 	int cs;
