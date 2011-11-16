@@ -1390,6 +1390,9 @@ lwp_signotify(struct lwp *lp)
 		 */
 		LWPHOLD(lp);
 		lwkt_send_ipiq(lp->lwp_thread->td_gd, lwp_signotify_remote, lp);
+	} else if (lp->lwp_thread->td_flags & TDF_SINTR) {
+		LWPHOLD(lp);
+		lwkt_send_ipiq(lp->lwp_thread->td_gd, lwp_signotify_remote, lp);
 	} else
 #endif
 	{
