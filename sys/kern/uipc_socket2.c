@@ -384,10 +384,27 @@ sonewconn(struct socket *head, int connstatus)
 	so->so_snd.ssb_lowat = head->so_snd.ssb_lowat;
 	so->so_rcv.ssb_timeo = head->so_rcv.ssb_timeo;
 	so->so_snd.ssb_timeo = head->so_snd.ssb_timeo;
-	so->so_rcv.ssb_flags |= head->so_rcv.ssb_flags &
-				(SSB_AUTOSIZE | SSB_AUTOLOWAT);
-	so->so_snd.ssb_flags |= head->so_snd.ssb_flags &
-				(SSB_AUTOSIZE | SSB_AUTOLOWAT);
+
+	if (head->so_rcv.ssb_flags & SSB_AUTOLOWAT)
+		so->so_rcv.ssb_flags |= SSB_AUTOLOWAT;
+	else
+		so->so_rcv.ssb_flags &= ~SSB_AUTOLOWAT;
+
+	if (head->so_snd.ssb_flags & SSB_AUTOLOWAT)
+		so->so_snd.ssb_flags |= SSB_AUTOLOWAT;
+	else
+		so->so_snd.ssb_flags &= ~SSB_AUTOLOWAT;
+
+	if (head->so_rcv.ssb_flags & SSB_AUTOSIZE)
+		so->so_rcv.ssb_flags |= SSB_AUTOSIZE;
+	else
+		so->so_rcv.ssb_flags &= ~SSB_AUTOSIZE;
+
+	if (head->so_snd.ssb_flags & SSB_AUTOSIZE)
+		so->so_snd.ssb_flags |= SSB_AUTOSIZE;
+	else
+		so->so_snd.ssb_flags &= ~SSB_AUTOSIZE;
+
 	lwkt_getpooltoken(head);
 	if (connstatus) {
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
