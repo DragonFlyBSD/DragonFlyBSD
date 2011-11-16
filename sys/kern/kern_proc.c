@@ -1037,11 +1037,10 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 	if (namelen != 1) 
 		return (EINVAL);
 
-	p = pfindn((pid_t)name[0]);
+	p = pfind((pid_t)name[0]);
 	if (p == NULL)
-		goto done2;
+		goto done;
 	lwkt_gettoken(&p->p_token);
-	PHOLD(p);
 
 	if ((!ps_argsopen) && p_trespass(cr1, p->p_ucred))
 		goto done;
@@ -1050,9 +1049,11 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 		error = EPERM;
 		goto done;
 	}
-	if (req->oldptr && p->p_args != NULL) {
-		error = SYSCTL_OUT(req, p->p_args->ar_args,
-				   p->p_args->ar_length);
+	if (req->oldptr && (pa = p->p_args) != NULL) {
+		refcount_acquire(&pa->ar_ref);
+		error = SYSCTL_OUT(req, pa->ar_args, pa->ar_length);
+		if (refcount_release(&pa->ar_ref))
+			kfree(pa, M_PARGS);
 	}
 	if (req->newptr == NULL)
 		goto done;
@@ -1086,9 +1087,10 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 		}
 	}
 done:
-	PRELE(p);
-	lwkt_reltoken(&p->p_token);
-done2:
+	if (p) {
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
+	}
 	return (error);
 }
 
@@ -1105,10 +1107,10 @@ sysctl_kern_proc_cwd(SYSCTL_HANDLER_ARGS)
 	if (namelen != 1) 
 		return (EINVAL);
 
-	lwkt_gettoken(&proc_token);
-	p = pfindn((pid_t)name[0]);
+	p = pfind((pid_t)name[0]);
 	if (p == NULL)
 		goto done;
+	lwkt_gettoken(&p->p_token);
 
 	/*
 	 * If we are not allowed to see other args, we certainly shouldn't
@@ -1117,20 +1119,23 @@ sysctl_kern_proc_cwd(SYSCTL_HANDLER_ARGS)
 	if ((!ps_argsopen) && p_trespass(cr1, p->p_ucred))
 		goto done;
 
-	PHOLD(p);
-	if (req->oldptr && p->p_fd != NULL) {
-		error = cache_fullpath(p, &p->p_fd->fd_ncdir,
-		    &fullpath, &freepath, 0);
+	if (req->oldptr && p->p_fd != NULL && p->p_fd->fd_ncdir.ncp) {
+		struct nchandle nch;
+
+		cache_copy(&p->p_fd->fd_ncdir, &nch);
+		error = cache_fullpath(p, &nch, &fullpath, &freepath, 0);
+		cache_drop(&nch);
 		if (error)
 			goto done;
 		error = SYSCTL_OUT(req, fullpath, strlen(fullpath) + 1);
 		kfree(freepath, M_TEMP);
 	}
 
-	PRELE(p);
-
 done:
-	lwkt_reltoken(&proc_token);
+	if (p) {
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
+	}
 	return (error);
 }
 
