@@ -239,6 +239,7 @@ struct sockaddr_storage {
 #define PF_DLI		AF_DLI
 #define PF_LAT		AF_LAT
 #define	PF_HYLINK	AF_HYLINK
+#define	PF_APPLETALK	AF_APPLETALK
 #define	PF_ROUTE	AF_ROUTE
 #define	PF_LINK		AF_LINK
 #define	PF_XTP		pseudo_AF_XTP	/* really just proto family, no AF */
