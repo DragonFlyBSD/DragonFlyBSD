@@ -89,12 +89,11 @@
 #ifndef _VM_VM_PAGE_H_
 #include <vm/vm_page.h>
 #endif
-
-#ifdef _KERNEL
-
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
 #endif
+
+#ifdef _KERNEL
 
 #ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
@@ -186,6 +185,7 @@ struct vm_object {
 	 */
 	RB_HEAD(swblock_rb_tree, swblock) swblock_root;
 	int	swblock_count;
+	struct	lwkt_token	token;
 };
 
 /*
@@ -272,7 +272,7 @@ vm_object_pip_wait(vm_object_t object, char *waitid)
 static __inline lwkt_token_t
 vm_object_token(vm_object_t obj)
 {
-	return (lwkt_token_pool_lookup(obj));
+	return (&obj->token);
 }
 
 vm_object_t vm_object_allocate (objtype_t, vm_pindex_t);
