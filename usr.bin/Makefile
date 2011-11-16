@@ -44,6 +44,7 @@ SUBDIR=	alias \
 	csplit \
 	ctags \
 	cut \
+	dfregress \
 	dirname \
 	drill \
 	du \
