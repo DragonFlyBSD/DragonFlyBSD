@@ -248,7 +248,7 @@ procfs_close(struct vop_close_args *ap)
 		 */
 		p = NULL;
 		if ((ap->a_vp->v_opencount < 2)
-		    && (p = pfind(pfs->pfs_pid))
+		    && (p = pfs_pfind(pfs->pfs_pid))
 		    && !(p->p_pfsflags & PF_LINGER)) {
 			spin_lock(&p->p_spin);
 			p->p_stops = 0;

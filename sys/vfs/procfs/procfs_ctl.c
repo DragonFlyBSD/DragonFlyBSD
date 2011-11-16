@@ -220,7 +220,7 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 		if (p->p_oppid != p->p_pptr->p_pid) {
 			struct proc *pp;
 
-			pp = pfind(p->p_oppid);
+			pp = pfs_pfind(p->p_oppid);
 			if (pp) {
 				proc_reparent(p, pp);
 				pfs_pdone(pp);

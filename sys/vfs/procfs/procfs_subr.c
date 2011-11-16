@@ -316,7 +316,6 @@ procfs_rw(struct vop_read_args *ap)
 		return (EINVAL);
 
 	lwkt_gettoken(&proc_token);
-
 	p = pfs_pfind(pfs->pfs_pid);
 	if (p == NULL) {
 		rtval = (EINVAL);
@@ -334,8 +333,6 @@ procfs_rw(struct vop_read_args *ap)
 		tsleep(&pfs->pfs_lockowner, 0, "pfslck", 0);
 	}
 	pfs->pfs_lockowner = curproc->p_pid;
-
-	lwkt_gettoken(&p->p_token);
 
 	switch (pfs->pfs_type) {
 	case Pnote:
@@ -387,15 +384,14 @@ procfs_rw(struct vop_read_args *ap)
 		rtval = EOPNOTSUPP;
 		break;
 	}
-	lwkt_reltoken(&p->p_token);
 	LWPRELE(lp);
 
 	pfs->pfs_lockowner = 0;
 	wakeup(&pfs->pfs_lockowner);
 
 out:
-	lwkt_reltoken(&proc_token);
 	pfs_pdone(p);
+	lwkt_reltoken(&proc_token);
 
 	return rtval;
 }
