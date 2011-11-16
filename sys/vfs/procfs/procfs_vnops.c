@@ -212,7 +212,7 @@ procfs_open(struct vop_open_args *ap)
 	}
 	error = vop_stdopen(ap);
 done:
-	PRELE(p2);
+	pfs_pdone(p2);
 	return error;
 }
 
@@ -256,8 +256,7 @@ procfs_close(struct vop_close_args *ap)
 			spin_unlock(&p->p_spin);
 			wakeup(&p->p_step);
 		}
-		if (p)
-			PRELE(p);
+		pfs_pdone(p);
 		break;
 	default:
 		break;
@@ -390,7 +389,7 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	}
 	error = 0;
 done:
-	PRELE(procp);
+	pfs_pdone(procp);
 	return 0;
 }
 
@@ -511,13 +510,13 @@ procfs_getattr(struct vop_getattr_args *ap)
 	case Pcurproc:
 		procp = NULL;
 		break;
-
 	default:
 		procp = pfs_pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
 			error = ENOENT;
 			goto done;
 		}
+		break;
 	}
 
 	error = 0;
@@ -556,10 +555,11 @@ procfs_getattr(struct vop_getattr_args *ap)
 	case Pfpregs:
 	case Pdbregs:
 	case Pmem:
-		if (procp->p_flags & P_SUGID)
+		if (procp->p_flags & P_SUGID) {
 			vap->va_mode &= ~((VREAD|VWRITE)|
 					  ((VREAD|VWRITE)>>3)|
 					  ((VREAD|VWRITE)>>6));
+		}
 		break;
 	default:
 		break;
@@ -577,8 +577,13 @@ procfs_getattr(struct vop_getattr_args *ap)
 
 	vap->va_nlink = 1;
 	if (procp) {
-		vap->va_uid = procp->p_ucred->cr_uid;
-		vap->va_gid = procp->p_ucred->cr_gid;
+		if (procp->p_ucred) {
+			vap->va_uid = procp->p_ucred->cr_uid;
+			vap->va_gid = procp->p_ucred->cr_gid;
+		} else {
+			vap->va_uid = -1;
+			vap->va_gid = -1;
+		}
 	}
 
 	switch (pfs->pfs_type) {
@@ -594,10 +599,12 @@ procfs_getattr(struct vop_getattr_args *ap)
 
 	case Pcurproc: {
 		char buf[16];		/* should be enough */
+
 		vap->va_uid = 0;
 		vap->va_gid = 0;
-		vap->va_size = vap->va_bytes =
-		    ksnprintf(buf, sizeof(buf), "%ld", (long)curproc->p_pid);
+		vap->va_size = ksnprintf(buf, sizeof(buf),
+					 "%ld", (long)curproc->p_pid);
+		vap->va_bytes = vap->va_size;
 		break;
 	}
 
@@ -608,7 +615,13 @@ procfs_getattr(struct vop_getattr_args *ap)
 
 	case Pfile: {
 		char *fullpath, *freepath;
-		error = cache_fullpath(procp, &procp->p_textnch, &fullpath, &freepath, 0);
+
+		if (procp->p_textnch.ncp == NULL)
+			error = EINVAL;
+		else
+			error = cache_fullpath(procp, &procp->p_textnch,
+						&fullpath, &freepath, 0);
+
 		if (error == 0) {
 			vap->va_size = strlen(fullpath);
 			kfree(freepath, M_TEMP);
@@ -628,8 +641,10 @@ procfs_getattr(struct vop_getattr_args *ap)
 		 */
 		if (procp->p_flags & P_SUGID)
 			vap->va_uid = 0;
-		else
+		else if (procp->p_ucred)
 			vap->va_uid = procp->p_ucred->cr_uid;
+		else
+			vap->va_uid = -1;
 		break;
 
 	case Pregs:
@@ -658,8 +673,7 @@ procfs_getattr(struct vop_getattr_args *ap)
 		panic("procfs_getattr");
 	}
 done:
-	if (procp)
-		PRELE(procp);
+	pfs_pdone(procp);
 	return (error);
 }
 
@@ -820,8 +834,7 @@ out:
 			vn_unlock(dvp);
 		}
 	}
-	if (p)
-		PRELE(p);
+	pfs_pdone(p);
 	return (error);
 }
 
@@ -924,7 +937,7 @@ procfs_readdir_proc(struct vop_readdir_args *ap)
 	uio->uio_offset = (off_t)i;
 	error = 0;
 done:
-	PRELE(p);
+	pfs_pdone(p);
 	return error;
 }
 
@@ -1077,22 +1090,24 @@ procfs_readlink(struct vop_readlink_args *ap)
 		if (procp == NULL || procp->p_ucred == NULL) {
 			kprintf("procfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);
-			if (procp)
-				PRELE(procp);
+			pfs_pdone(procp);
 			return (uiomove("unknown", sizeof("unknown") - 1,
-			    ap->a_uio));
+					ap->a_uio));
 		}
-		error = cache_fullpath(procp, &procp->p_textnch, &fullpath, &freepath, 0);
+		if (procp->p_textnch.ncp)
+			error = cache_fullpath(procp, &procp->p_textnch,
+					       &fullpath, &freepath, 0);
+		else
+			error = EINVAL;
+
 		if (error != 0) {
-			if (procp)
-				PRELE(procp);
+			pfs_pdone(procp);
 			return (uiomove("unknown", sizeof("unknown") - 1,
-			    ap->a_uio));
+					ap->a_uio));
 		}
 		error = uiomove(fullpath, strlen(fullpath), ap->a_uio);
 		kfree(freepath, M_TEMP);
-		if (procp)
-			PRELE(procp);
+		pfs_pdone(procp);
 		return (error);
 	default:
 		return (EINVAL);

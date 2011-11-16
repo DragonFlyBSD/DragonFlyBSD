@@ -272,8 +272,18 @@ pfs_pfind(pid_t pfs_pid)
 	} else {
 		p = pfind(pfs_pid);
 	}
-
+	if (p)
+		lwkt_gettoken(&p->p_token);
 	return p;
+}
+
+void
+pfs_pdone(struct proc *p)
+{
+	if (p) {
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
+	}
 }
 
 int
@@ -369,14 +379,11 @@ procfs_rw(struct vop_read_args *ap)
 	LWPRELE(lp);
 
 	pfs->pfs_lockowner = 0;
-	lwkt_reltoken(&proc_token);
 	wakeup(&pfs->pfs_lockowner);
 
 out:
-	if (LWKT_TOKEN_HELD(&proc_token))
-		lwkt_reltoken(&proc_token);
-	if (p)
-		PRELE(p);
+	lwkt_reltoken(&proc_token);
+	pfs_pdone(p);
 
 	return rtval;
 }

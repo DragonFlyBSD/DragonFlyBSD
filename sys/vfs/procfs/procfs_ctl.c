@@ -223,7 +223,7 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 			pp = pfind(p->p_oppid);
 			if (pp) {
 				proc_reparent(p, pp);
-				PRELE(pp);
+				pfs_pdone(pp);
 			}
 		}
 
