@@ -280,7 +280,7 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	struct procfs_status *psp;
 	unsigned char flags;
 
-	procp = pfind(pfs->pfs_pid);
+	procp = pfs_pfind(pfs->pfs_pid);
 	if (procp == NULL)
 		return ENOTTY;
 	p = curproc;
