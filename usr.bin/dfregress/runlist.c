@@ -33,6 +33,7 @@
 #include <sys/wait.h>
 
 #include <errno.h>
+#include <limits.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
@@ -53,9 +54,9 @@
 #include "kernel.h"
 #include <dfregress.h>
 
-const char *output_file = "/tmp/results.plist";
-const char *testcase_dir = ".";
-const char *prepost_dir = ".";
+char output_file[PATH_MAX+1];
+char testcase_dir[PATH_MAX+1];
+char prepost_dir[PATH_MAX+1];
 
 prop_array_t
 runlist_load_from_text(const char *runlist_file)
@@ -120,6 +121,9 @@ runlist_run_test(void *arg, prop_dictionary_t testcase)
 	str = strrchr(testcase_dir_only, '/');
 	if (str != NULL)
 		*str = '\0';
+
+	printf("Running testcase %s... ", testcase_get_name(testcase));
+	fflush(stdout);
 
 	/* Switch to testcase directory */
 	r = chdir(testcase_dir_only);
@@ -308,5 +312,7 @@ out:
 
 	/* ... and save results */
 	runlist_save(output_file, runlist);
+
+	printf("done.\n");
 	return 0;
 }

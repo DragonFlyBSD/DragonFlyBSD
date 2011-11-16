@@ -97,7 +97,6 @@ static char *get_arg_string(prop_dictionary_t testcase)
 static void
 print_summary(prop_array_t runlist)
 {
-	int i;
 	float total_run;
 	float total_tests;
 
@@ -135,7 +134,7 @@ print_summary(prop_array_t runlist)
 }
 
 static int
-runlist_parse_summary(void *arg, prop_dictionary_t testcase)
+runlist_parse_summary(void *arg __unused, prop_dictionary_t testcase)
 {
 	char *args;
 	int i, j;
@@ -156,10 +155,9 @@ runlist_parse_summary(void *arg, prop_dictionary_t testcase)
 }
 
 static int
-runlist_parse_detail(void *arg, prop_dictionary_t testcase)
+runlist_parse_detail(void *arg __unused, prop_dictionary_t testcase)
 {
 	char *args;
-	int i;
 
 	args = get_arg_string(testcase);
 

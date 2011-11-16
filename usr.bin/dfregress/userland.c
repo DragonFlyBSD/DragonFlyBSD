@@ -70,7 +70,7 @@ run_userland(const char *binary, const char **argv, int need_setuid, uid_t uid,
 {
 	struct itimerval itim;
 	struct sigaction sa;
-	pid_t pid, r_pid;
+	pid_t pid = -1, r_pid;
 	int r, status;
 	int fd_stdout = -1, fd_stderr = -1;
 	size_t sz_stdout, sz_stderr;

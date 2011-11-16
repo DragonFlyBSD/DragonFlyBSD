@@ -27,9 +27,9 @@
  * SUCH DAMAGE.
  */
 
-extern const char *testcase_dir;
-extern const char *output_file;
-extern const char *prepost_dir;
+extern char testcase_dir[];
+extern char output_file[];
+extern char prepost_dir[];
 
 typedef int (*runlist_iterator_t)(void *, prop_dictionary_t);
 

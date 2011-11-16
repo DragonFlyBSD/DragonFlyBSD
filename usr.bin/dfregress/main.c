@@ -33,6 +33,7 @@
 #include <sys/wait.h>
 
 #include <errno.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,25 +65,30 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	const char *runlist_file = "runlist.run";
+	char runlist_file[PATH_MAX];
+	char *p;
 	int ch;
 
 	while ((ch = getopt(argc, argv, "h?o:r:t:p:")) != -1) {
 		switch (ch) {
 		case 'o':
-			output_file = optarg;
+			if ((p = realpath(optarg, output_file)) == NULL)
+				err(1, "realpath(%s)", optarg);
 			break;
 
 		case 't':
-			testcase_dir = optarg;
+			if ((p = realpath(optarg, testcase_dir)) == NULL)
+				err(1, "realpath(%s)", optarg);
 			break;
 
 		case 'r':
-			runlist_file = optarg;
+			if ((p = realpath(optarg, runlist_file)) == NULL)
+				err(1, "realpath(%s)", optarg);
 			break;
 
 		case 'p':
-			prepost_dir = optarg;
+			if ((p = realpath(optarg, prepost_dir)) == NULL)
+				err(1, "realpath(%s)", optarg);
 			break;
 
 		case '?':
