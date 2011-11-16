@@ -272,8 +272,20 @@ pfs_pfind(pid_t pfs_pid)
 	} else {
 		p = pfind(pfs_pid);
 	}
-	if (p)
+
+	/*
+	 * Make sure the process is not in the middle of exiting (where
+	 * a lot of its structural members may wind up being NULL).  If it
+	 * is we give up on it.
+	 */
+	if (p) {
 		lwkt_gettoken(&p->p_token);
+		if (p->p_flags & P_WEXIT) {
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
+			p = NULL;
+		}
+	}
 	return p;
 }
 
