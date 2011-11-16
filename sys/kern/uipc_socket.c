@@ -440,6 +440,9 @@ discard:
 	if (so->so_state & SS_NOFDREF)
 		panic("soclose: NOFDREF");
 	sosetstate(so, SS_NOFDREF);	/* take ref */
+
+	/* Make sure all asychronous sending are done */
+	so_pru_sync(so);
 	sofree(so);			/* dispose of ref */
 	return (error);
 }
