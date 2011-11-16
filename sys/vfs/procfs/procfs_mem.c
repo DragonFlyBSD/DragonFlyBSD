@@ -90,16 +90,17 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	 * page table usage in that process may be messed up.
 	 */
 	vm = p->p_vmspace;
-	if ((p->p_flags & P_WEXIT) || sysref_isinactive(&vm->vm_sysref)) {
+	if (p->p_stat == SIDL || p->p_stat == SZOMB)
 		return EFAULT;
-	}
+	if ((p->p_flags & P_WEXIT) || sysref_isinactive(&vm->vm_sysref))
+		return EFAULT;
 
 	/*
 	 * The map we want...
 	 */
 	map = &vm->vm_map;
 
-	writing = uio->uio_rw == UIO_WRITE;
+	writing = (uio->uio_rw == UIO_WRITE);
 	reqprot = VM_PROT_READ;
 	if (writing)
 		reqprot |= VM_PROT_WRITE | VM_PROT_OVERRIDE_WRITE;
@@ -156,6 +157,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	} while (error == 0 && uio->uio_resid > 0);
 
 	kmem_free(&kernel_map, kva, PAGE_SIZE);
+
 	return (error);
 }
 

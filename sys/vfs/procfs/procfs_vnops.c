@@ -616,11 +616,16 @@ procfs_getattr(struct vop_getattr_args *ap)
 	case Pfile: {
 		char *fullpath, *freepath;
 
-		if (procp->p_textnch.ncp == NULL)
+		if (procp->p_textnch.ncp) {
+			struct nchandle nch;
+
+			cache_copy(&procp->p_textnch, &nch);
+			error = cache_fullpath(procp, &nch,
+					       &fullpath, &freepath, 0);
+			cache_drop(&nch);
+		} else {
 			error = EINVAL;
-		else
-			error = cache_fullpath(procp, &procp->p_textnch,
-						&fullpath, &freepath, 0);
+		}
 
 		if (error == 0) {
 			vap->va_size = strlen(fullpath);
@@ -1094,11 +1099,16 @@ procfs_readlink(struct vop_readlink_args *ap)
 			return (uiomove("unknown", sizeof("unknown") - 1,
 					ap->a_uio));
 		}
-		if (procp->p_textnch.ncp)
-			error = cache_fullpath(procp, &procp->p_textnch,
+		if (procp->p_textnch.ncp) {
+			struct nchandle nch;
+
+			cache_copy(&procp->p_textnch, &nch);
+			error = cache_fullpath(procp, &nch,
 					       &fullpath, &freepath, 0);
-		else
+			cache_drop(&nch);
+		} else {
 			error = EINVAL;
+		}
 
 		if (error != 0) {
 			pfs_pdone(procp);
