@@ -720,6 +720,7 @@ RetryFault:
 	 * will have an additinal PIP count if it is not equal to
 	 * fs->first_object
 	 */
+	fs.m = NULL;
 	result = vm_fault_object(&fs, first_pindex, fault_type);
 
 	if (result == KERN_TRY_AGAIN) {
@@ -741,15 +742,28 @@ RetryFault:
 	}
 
 	/*
-	 * Update the pmap.  We really only have to do this if a COW
-	 * occured to replace the read-only page with the new page.  For
-	 * now just do it unconditionally. XXX
+	 * DO NOT UPDATE THE PMAP!!!  This function may be called for
+	 * a pmap unrelated to the current process pmap, in which case
+	 * the current cpu core will not be listed in the pmap's pm_active
+	 * mask.  Thus invalidation interlocks will fail to work properly.
+	 *
+	 * (for example, 'ps' uses procfs to read program arguments from
+	 * each process's stack).
+	 *
+	 * In addition to the above this function will be called to acquire
+	 * a page that might already be faulted in, re-faulting it
+	 * continuously is a waste of time.
+	 *
+	 * XXX could this have been the cause of our random seg-fault
+	 *     issues?  procfs accesses user stacks.
 	 */
-	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
 	vm_page_flag_set(fs.m, PG_REFERENCED);
+#if 0
+	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
 	mycpu->gd_cnt.v_vm_faults++;
 	if (curthread->td_lwp)
 		++curthread->td_lwp->lwp_ru.ru_minflt;
+#endif
 
 	/*
 	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
@@ -1614,8 +1628,24 @@ skip:
 			} else {
 				/*
 				 * Oh, well, lets copy it.
+				 *
+				 * Why are we unmapping the original page
+				 * here?  Well, in short, not all accessors
+				 * of user memory go through the pmap.  The
+				 * procfs code doesn't have access user memory
+				 * via a local pmap, so vm_fault_page*()
+				 * can't call pmap_enter().  And the umtx*()
+				 * code may modify the COW'd page via a DMAP
+				 * or kernel mapping and not via the pmap,
+				 * leaving the original page still mapped
+				 * read-only into the pmap.
+				 *
+				 * So we have to remove the page from at
+				 * least the current pmap if it is in it.
+				 * Just remove it from all pmaps.
 				 */
 				vm_page_copy(fs->m, fs->first_m);
+				vm_page_protect(fs->m, VM_PROT_NONE);
 				vm_page_event(fs->m, VMEVENT_COW);
 			}
 
