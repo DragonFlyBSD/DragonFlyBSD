@@ -2274,6 +2274,7 @@ vm_page_io_finish(vm_page_t m)
  *
  * If VM_ALLOC_RETRY is specified this routine will never return NULL.  Also
  * note that VM_ALLOC_NORMAL must be specified if VM_ALLOC_RETRY is specified.
+ * VM_ALLOC_NULL_OK is implied when VM_ALLOC_RETRY is specified.
  *
  * This routine may block, but if VM_ALLOC_RETRY is not set then NULL is
  * always returned if we had blocked.  
@@ -2303,6 +2304,8 @@ vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 			}
 			/* retry */
 		} else if (m == NULL) {
+			if (allocflags & VM_ALLOC_RETRY)
+				allocflags |= VM_ALLOC_NULL_OK;
 			m = vm_page_alloc(object, pindex,
 					  allocflags & ~VM_ALLOC_RETRY);
 			if (m)
