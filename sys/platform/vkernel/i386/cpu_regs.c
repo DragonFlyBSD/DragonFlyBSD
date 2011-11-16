@@ -918,7 +918,8 @@ fill_regs(struct lwp *lp, struct reg *regs)
 {
 	struct trapframe *tp;
 
-	tp = lp->lwp_md.md_regs;
+	if ((tp = lp->lwp_md.md_regs) == NULL)
+		return EINVAL;
 	regs->r_gs = tp->tf_gs;
 	regs->r_fs = tp->tf_fs;
 	regs->r_es = tp->tf_es;
@@ -1015,6 +1016,8 @@ set_fpregs_xmm(struct save87 *sv_87, struct savexmm *sv_xmm)
 int
 fill_fpregs(struct lwp *lp, struct fpreg *fpregs)
 {
+	if (lp->lwp_thread == NULL || lp->lwp_thread->td_pcb == NULL)
+		return EINVAL;
 #ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr) {
 		fill_fpregs_xmm(&lp->lwp_thread->td_pcb->pcb_save.sv_xmm,

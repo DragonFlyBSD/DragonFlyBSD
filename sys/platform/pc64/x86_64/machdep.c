@@ -2011,7 +2011,8 @@ fill_regs(struct lwp *lp, struct reg *regs)
 {
 	struct trapframe *tp;
 
-	tp = lp->lwp_md.md_regs;
+	if ((tp = lp->lwp_md.md_regs) == NULL)
+		return EINVAL;
 	bcopy(&tp->tf_rdi, &regs->r_rdi, sizeof(*regs));
 	return (0);
 }
@@ -2079,6 +2080,8 @@ set_fpregs_xmm(struct save87 *sv_87, struct savexmm *sv_xmm)
 int
 fill_fpregs(struct lwp *lp, struct fpreg *fpregs)
 {
+	if (lp->lwp_thread == NULL || lp->lwp_thread->td_pcb == NULL)
+		return EINVAL;
 #ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr) {
 		fill_fpregs_xmm(&lp->lwp_thread->td_pcb->pcb_save.sv_xmm,
@@ -2107,6 +2110,8 @@ set_fpregs(struct lwp *lp, struct fpreg *fpregs)
 int
 fill_dbregs(struct lwp *lp, struct dbreg *dbregs)
 {
+	struct pcb *pcb;
+
         if (lp == NULL) {
                 dbregs->dr[0] = rdr0();
                 dbregs->dr[1] = rdr1();
@@ -2116,19 +2121,18 @@ fill_dbregs(struct lwp *lp, struct dbreg *dbregs)
                 dbregs->dr[5] = rdr5();
                 dbregs->dr[6] = rdr6();
                 dbregs->dr[7] = rdr7();
-        } else {
-		struct pcb *pcb;
-
-                pcb = lp->lwp_thread->td_pcb;
-                dbregs->dr[0] = pcb->pcb_dr0;
-                dbregs->dr[1] = pcb->pcb_dr1;
-                dbregs->dr[2] = pcb->pcb_dr2;
-                dbregs->dr[3] = pcb->pcb_dr3;
-                dbregs->dr[4] = 0;
-                dbregs->dr[5] = 0;
-                dbregs->dr[6] = pcb->pcb_dr6;
-                dbregs->dr[7] = pcb->pcb_dr7;
+		return (0);
         }
+	if (lp->lwp_thread == NULL || (pcb = lp->lwp_thread->td_pcb) == NULL)
+		return EINVAL;
+	dbregs->dr[0] = pcb->pcb_dr0;
+	dbregs->dr[1] = pcb->pcb_dr1;
+	dbregs->dr[2] = pcb->pcb_dr2;
+	dbregs->dr[3] = pcb->pcb_dr3;
+	dbregs->dr[4] = 0;
+	dbregs->dr[5] = 0;
+	dbregs->dr[6] = pcb->pcb_dr6;
+	dbregs->dr[7] = pcb->pcb_dr7;
 	return (0);
 }
 
