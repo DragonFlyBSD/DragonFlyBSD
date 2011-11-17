@@ -1768,7 +1768,7 @@ retry_space:
 			}
 			goto retry_space;
 		}
-		error = so_pru_send(so, 0, m, NULL, NULL, td);
+		error = so_pru_senda(so, 0, m, NULL, NULL, td);
 		crit_exit();
 		if (error) {
 			ssb_unlock(&so->so_snd);
@@ -1777,7 +1777,7 @@ retry_space:
 	}
 	if (mheader != NULL) {
 		*sbytes += mheader->m_pkthdr.len;
-		error = so_pru_send(so, 0, mheader, NULL, NULL, td);
+		error = so_pru_senda(so, 0, mheader, NULL, NULL, td);
 		mheader = NULL;
 	}
 	ssb_unlock(&so->so_snd);

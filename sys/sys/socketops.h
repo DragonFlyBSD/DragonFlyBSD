@@ -106,5 +106,17 @@ int so_pr_ctloutput(struct socket *so, struct sockopt *sopt);
 void so_pru_ctlinput(struct protosw *pr, int cmd,
 		struct sockaddr *arg, void *extra);
 
+static __inline int
+so_pru_senda(struct socket *so, int flags, struct mbuf *m,
+	     struct sockaddr *addr, struct mbuf *control, struct thread *td)
+{
+	if (so->so_proto->pr_flags & PR_ASYNC_SEND) {
+		so_pru_send_async(so, flags, m, addr, control, td);
+		return 0;
+	} else {
+		return so_pru_send(so, flags, m, addr, control, td);
+	}
+}
+
 #endif	/* _KERNEL */
 #endif	/* _SYS_SOCKETOPS_H_ */
