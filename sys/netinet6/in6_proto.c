@@ -187,7 +187,7 @@ struct protosw inet6sw[] = {
 	.pr_domain = &inet6domain,
 	.pr_protocol = IPPROTO_TCP,
 	.pr_flags = PR_CONNREQUIRED | PR_WANTRCVD | PR_LISTEN |
-		    PR_MPSAFE | PR_LASTHDR,
+		    PR_MPSAFE | PR_LASTHDR | PR_ASYNC_SEND,
 
 	.pr_input = tcp6_input,
 	.pr_output = NULL,

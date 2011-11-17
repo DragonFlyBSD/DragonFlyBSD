@@ -339,6 +339,9 @@ so_pru_send_async(struct socket *so, int flags, struct mbuf *m,
 {
 	struct netmsg_pru_send *msg;
 
+	KASSERT(so->so_proto->pr_flags & PR_ASYNC_SEND,
+	    ("async pru_send is not supported\n"));
+
 	msg = &m->m_hdr.mh_sndmsg;
 	netmsg_init(&msg->base, so, &netisr_apanic_rport,
 		    0, so->so_proto->pr_usrreqs->pru_send);
