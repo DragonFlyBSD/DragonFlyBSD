@@ -128,8 +128,6 @@ void	spp_stats (u_long, char *, int);
 void	idp_stats (u_long, char *, int);
 void	nserr_stats (u_long, char *, int);
 
-void	ddp_stats (u_long, const char *, int);
-
 void	netgraphprotopr (u_long, const char *, int);
 
 void	unixpr (void);
