@@ -95,8 +95,11 @@ loop:
 		if (pfs->pfs_pid == pid && pfs->pfs_type == pfs_type &&
 		    PFSTOV(pfs)->v_mount == mp) {
 			vp = PFSTOV(pfs);
-			if (vget(vp, LK_EXCLUSIVE))
+			vhold_interlocked(vp);
+			if (vget(vp, LK_EXCLUSIVE)) {
+				vdrop(vp);
 				goto loop;
+			}
 
 			/*
 			 * Make sure the vnode is still in the cache after
@@ -110,11 +113,13 @@ loop:
 					break;
 				}
 			}
+			vdrop(vp);
 			if (pfs == NULL || PFSTOV(pfs) != vp) {
 				vput(vp);
 				goto loop;
 
 			}
+			KKASSERT(vp->v_data == pfs);
 			*vpp = vp;
 			return (0);
 		}
@@ -252,6 +257,7 @@ procfs_freevp(struct vnode *vp)
 	KKASSERT(*pfspp);
 	*pfspp = pfs->pfs_next;
 	pfs->pfs_next = NULL;
+	pfs->pfs_vnode = NULL;
 	kfree(pfs, M_TEMP);
 	return (0);
 }

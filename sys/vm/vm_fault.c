@@ -124,7 +124,7 @@ struct faultstate {
 
 static int debug_cluster = 0;
 SYSCTL_INT(_vm, OID_AUTO, debug_cluster, CTLFLAG_RW, &debug_cluster, 0, "");
-static int vm_shared_fault = 0;
+static int vm_shared_fault = 1;
 SYSCTL_INT(_vm, OID_AUTO, shared_fault, CTLFLAG_RW, &vm_shared_fault, 0,
 	   "Allow shared token on vm_object");
 static long vm_shared_hit = 0;
@@ -377,10 +377,18 @@ RetryFault:
 	 * terminal object and the page is present.  This allows us
 	 * to obtain a shared token on the object instead of an exclusive
 	 * token, which theoretically should allow concurrent faults.
+	 *
+	 * We cannot acquire a shared token on kernel_map, at least not
+	 * on i386, because the i386 pmap code uses the kernel_object for
+	 * its page table page management, resulting in a shared->exclusive
+	 * sequence which will deadlock.  This will not happen normally
+	 * anyway, except on well cached pageable kmem (like pipe buffers),
+	 * so it should not impact performance.
 	 */
 	if (vm_shared_fault &&
 	    fs.first_object->backing_object == NULL &&
-	    fs.entry->maptype == VM_MAPTYPE_NORMAL) {
+	    fs.entry->maptype == VM_MAPTYPE_NORMAL &&
+	    fs.map != &kernel_map) {
 		int error;
 		vm_object_hold_shared(fs.first_object);
 		/*fs.vp = vnode_pager_lock(fs.first_object);*/

@@ -172,26 +172,25 @@ vm_object_lock_swap(void)
 void
 vm_object_lock(vm_object_t obj)
 {
-	lwkt_getpooltoken(obj);
+	lwkt_gettoken(&obj->token);
 }
 
 void
 vm_object_lock_shared(vm_object_t obj)
 {
-	lwkt_token_t tok = lwkt_token_pool_lookup(obj);
-	lwkt_gettoken_shared(tok);
+	lwkt_gettoken_shared(&obj->token);
 }
 
 void
 vm_object_unlock(vm_object_t obj)
 {
-	lwkt_relpooltoken(obj);
+	lwkt_reltoken(&obj->token);
 }
 
 static __inline void
 vm_object_assert_held(vm_object_t obj)
 {
-	ASSERT_LWKT_TOKEN_HELD(lwkt_token_pool_lookup(obj));
+	ASSERT_LWKT_TOKEN_HELD(&obj->token);
 }
 
 void
@@ -310,16 +309,20 @@ vm_object_drop(vm_object_t obj)
 #endif
 
 	/*
-	 * The lock is a pool token, no new holders should be possible once
-	 * we drop hold_count 1->0 as there is no longer any way to reference
-	 * the object.
+	 * No new holders should be possible once we drop hold_count 1->0 as
+	 * there is no longer any way to reference the object.
 	 */
 	KKASSERT(obj->hold_count > 0);
 	if (refcount_release(&obj->hold_count)) {
-		if (obj->ref_count == 0 && (obj->flags & OBJ_DEAD))
+		if (obj->ref_count == 0 && (obj->flags & OBJ_DEAD)) {
+			vm_object_unlock(obj);
 			zfree(obj_zone, obj);
+		} else {
+			vm_object_unlock(obj);
+		}
+	} else {
+		vm_object_unlock(obj);
 	}
-	vm_object_unlock(obj);	/* uses pool token, ok to call on freed obj */
 }
 
 /*
@@ -336,6 +339,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 
 	RB_INIT(&object->rb_memq);
 	LIST_INIT(&object->shadow_head);
+	lwkt_token_init(&object->token, "vmobj");
 
 	object->type = type;
 	object->size = size;
