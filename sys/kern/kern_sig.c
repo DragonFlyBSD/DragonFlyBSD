@@ -1359,43 +1359,77 @@ out:
  * sleeping on the current cpu.
  *
  * p->p_token and lp->lwp_token must be held on call.
+ *
+ * We can only safely schedule the thread on its current cpu and only if
+ * one of the SINTR flags is set.  If an SINTR flag is set AND we are on
+ * the correct cpu we are properly interlocked, otherwise we could be
+ * racing other thread transition states (or the lwp is on the user scheduler
+ * runq but not scheduled) and must not do anything.
+ *
+ * Since we hold the lwp token we know the lwp cannot be ripped out from
+ * under us so we can safely hold it to prevent it from being ripped out
+ * from under us if we are forced to IPI another cpu to make the local
+ * checks there.
+ *
+ * Adjustment of lp->lwp_stat can only occur when we hold the lwp_token,
+ * which we won't in an IPI so any fixups have to be done here, effectively
+ * replicating part of what setrunnable() does.
  */
 static void
 lwp_signotify(struct lwp *lp)
 {
 	ASSERT_LWKT_TOKEN_HELD(&lp->lwp_proc->p_token);
-	crit_enter();
 
+	crit_enter();
 	if (lp == lwkt_preempted_proc()) {
 		/*
 		 * lwp is on the current cpu AND it is currently running
 		 * (we preempted it).
 		 */
 		signotify();
-	} else if (lp->lwp_thread->td_gd == mycpu) {
+	} else if (lp->lwp_flags & LWP_SINTR) {
 		/*
-		 * lwp is on the current cpu, we can safely call
-		 * setrunnable()
+		 * lwp is sitting in tsleep() with PCATCH set
 		 */
-		setrunnable(lp);
-	} else
 #ifdef SMP
-	if (lp->lwp_flags & LWP_SINTR) {
-		/*
-		 * The lwp is on some other cpu but sitting in a tsleep,
-		 * we have to hold it to prevent it from going away and
-		 * chase after the cpu it is sitting on.
-		 *
-		 * The lwp_token interlocks LWP_SINTR.
-		 */
-		LWPHOLD(lp);
-		lwkt_send_ipiq(lp->lwp_thread->td_gd, lwp_signotify_remote, lp);
-	} else if (lp->lwp_thread->td_flags & TDF_SINTR) {
-		LWPHOLD(lp);
-		lwkt_send_ipiq(lp->lwp_thread->td_gd, lwp_signotify_remote, lp);
-	} else
+		if (lp->lwp_thread->td_gd == mycpu) {
+			setrunnable(lp);
+		} else {
+			/*
+			 * We can only adjust lwp_stat while we hold the
+			 * lwp_token, and we won't in the IPI function.
+			 */
+			LWPHOLD(lp);
+			if (lp->lwp_stat == LSSTOP)
+				lp->lwp_stat = LSSLEEP;
+			lwkt_send_ipiq(lp->lwp_thread->td_gd,
+				       lwp_signotify_remote, lp);
+		}
+#else
+		setrunnable(lp);
 #endif
-	{
+	} else if (lp->lwp_thread->td_flags & TDF_SINTR) {
+		/*
+		 * lwp is sitting in lwkt_sleep() with PCATCH set.
+		 */
+#ifdef SMP
+		if (lp->lwp_thread->td_gd == mycpu) {
+			setrunnable(lp);
+		} else {
+			/*
+			 * We can only adjust lwp_stat while we hold the
+			 * lwp_token, and we won't in the IPI function.
+			 */
+			LWPHOLD(lp);
+			if (lp->lwp_stat == LSSTOP)
+				lp->lwp_stat = LSSLEEP;
+			lwkt_send_ipiq(lp->lwp_thread->td_gd,
+				       lwp_signotify_remote, lp);
+		}
+#else
+		setrunnable(lp);
+#endif
+	} else {
 		/*
 		 * Otherwise the lwp is either in some uninterruptable state
 		 * or it is on the userland scheduler's runqueue waiting to
@@ -1413,7 +1447,8 @@ lwp_signotify(struct lwp *lp)
  * from an IPI).
  *
  * We are interlocked by virtue of being on the same cpu as the target.  If
- * we still are and LWP_SINTR is set we can schedule the target thread.
+ * we still are and LWP_SINTR or TDF_SINTR is set we can safely schedule
+ * the target thread.
  */
 static void
 lwp_signotify_remote(void *arg)
@@ -1425,10 +1460,10 @@ lwp_signotify_remote(void *arg)
 		signotify();
 		LWPRELE(lp);
 	} else if (td->td_gd == mycpu) {
-		if (lp->lwp_flags & LWP_SINTR)
+		if ((lp->lwp_flags & LWP_SINTR) ||
+		    (td->td_flags & TDF_SINTR)) {
 			lwkt_schedule(td);
-		if (td->td_flags & TDF_SINTR)
-			lwkt_schedule(td);
+		}
 		LWPRELE(lp);
 	} else {
 		lwkt_send_ipiq(td->td_gd, lwp_signotify_remote, lp);
