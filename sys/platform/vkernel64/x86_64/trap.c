@@ -846,6 +846,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 	vm_prot_t ftype;
 	thread_t td = curthread;
 	struct lwp *lp = td->td_lwp;
+	int fault_flags;
 
 	va = trunc_page(eva);
 	if (usermode == FALSE) {
@@ -895,11 +896,15 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 			goto nogo;
 		}
 
-		/* Fault in the user page: */
-		rv = vm_fault(map, va, ftype,
-			      (ftype & VM_PROT_WRITE) ? VM_FAULT_DIRTY
-						      : VM_FAULT_NORMAL);
+		fault_flags = 0;
+		if (usermode)
+			fault_flags |= VM_FAULT_BURST;
+		if (ftype & VM_PROT_WRITE)
+			fault_flags |= VM_FAULT_DIRTY;
+		else
+			fault_flags |= VM_FAULT_NORMAL;
 
+		rv = vm_fault(map, va, ftype, fault_flags);
 		PRELE(lp->lwp_proc);
 	} else {
 		/*
