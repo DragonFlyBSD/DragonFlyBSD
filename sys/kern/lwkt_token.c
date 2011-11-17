@@ -590,6 +590,26 @@ lwkt_gettoken(lwkt_token_t tok)
 	cpu_ccfence();
 	_lwkt_tokref_init(ref, tok, td, TOK_EXCLUSIVE|TOK_EXCLREQ);
 
+#ifdef DEBUG_LOCKS
+	/*
+	 * Taking an exclusive token after holding it shared will
+	 * livelock. Scan for that case and assert.
+	 */
+	lwkt_tokref_t tk;
+	int found = 0;
+	for (tk = &td->td_toks_base; tk < ref; tk++) {
+		if (tk->tr_tok != tok)
+			continue;
+		
+		found++;
+		if (tk->tr_count & TOK_EXCLUSIVE) 
+			goto good;
+	}
+	/* We found only shared instances of this token if found >0 here */
+	KASSERT((found == 0), ("Token %p s/x livelock", tok));
+good:
+#endif
+
 	if (_lwkt_trytokref_spin(ref, td, TOK_EXCLUSIVE|TOK_EXCLREQ))
 		return;
 
@@ -628,6 +648,19 @@ lwkt_gettoken_shared(lwkt_token_t tok)
 	++td->td_toks_stop;
 	cpu_ccfence();
 	_lwkt_tokref_init(ref, tok, td, TOK_EXCLREQ);
+
+#ifdef DEBUG_LOCKS
+        /*
+         * Taking a pool token in shared mode is a bad idea; other
+         * addresses deeper in the call stack may hash to the same pool
+         * token and you may end up with an exclusive-shared livelock.
+         * Warn in this condition.
+         */
+        if ((tok >= &pool_tokens[0]) &&
+            (tok < &pool_tokens[LWKT_NUM_POOL_TOKENS]))
+                kprintf("Warning! Taking pool token %p in shared mode\n", tok);
+#endif
+
 
 	if (_lwkt_trytokref_spin(ref, td, TOK_EXCLREQ))
 		return;
