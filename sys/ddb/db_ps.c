@@ -160,6 +160,8 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		return;
 	    db_printf("  tdq     thread pid    flags pri/cs/mp        sp    wmesg wchan comm\n");
 	    TAILQ_FOREACH(td, &gd->gd_tdallq, td_allq) {
+		if (td->td_flags & TDF_MARKER)
+		    continue;
 		if (db_more(&nl) < 0)
 		    return;
 		db_printf("  %3d %p %3d %08x %2d/%02d %p %8.8s %p %s\n",

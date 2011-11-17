@@ -517,6 +517,11 @@ lwkt_set_comm(thread_t td, const char *ctl, ...)
     KTR_LOG(ctxsw_newtd, td, &td->td_comm[0]);
 }
 
+/*
+ * Prevent the thread from getting destroyed.  Note that unlike PHOLD/PRELE
+ * this does not prevent the thread from migrating to another cpu so the
+ * gd_tdallq state is not protected by this.
+ */
 void
 lwkt_hold(thread_t td)
 {
@@ -1692,16 +1697,22 @@ lwkt_exit(void)
      */
     gd = mycpu;
     crit_enter_quick(td);
+    lwkt_wait_free(td);
     while ((std = gd->gd_freetd) != NULL) {
 	KKASSERT((std->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK)) == 0);
 	gd->gd_freetd = NULL;
 	objcache_put(thread_cache, std);
+	lwkt_wait_free(td);
     }
 
     /*
      * Remove thread resources from kernel lists and deschedule us for
      * the last time.  We cannot block after this point or we may end
      * up with a stale td on the tsleepq.
+     *
+     * None of this may block, the critical section is the only thing
+     * protecting tdallq and the only thing preventing new lwkt_hold()
+     * thread refs now.
      */
     if (td->td_flags & TDF_TSLEEPQ)
 	tsleep_remove(td);

@@ -869,7 +869,6 @@ loop:
 				reaplwp(lp);
 			}
 			KKASSERT(p->p_nthreads == 0);
-			lwkt_reltoken(&p->p_token);
 
 			/*
 			 * Don't do anything really bad until all references
@@ -904,6 +903,7 @@ loop:
 				wakeup((caddr_t)t);
 				error = 0;
 				PRELE(t);
+				lwkt_reltoken(&p->p_token);
 				goto done;
 			}
 
@@ -914,6 +914,7 @@ loop:
 			 * the zombie list.
 			 */
 			proc_remove_zombie(p);
+			lwkt_reltoken(&p->p_token);
 			leavepgrp(p);
 
 			p->p_xstat = 0;
