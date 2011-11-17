@@ -56,21 +56,12 @@ procfs_dofpregs(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	struct proc *p = lp->lwp_proc;
 	int error;
 	struct fpreg r;
-	char *kv;
-	int kl;
 
 	/* Can't trace a process that's currently exec'ing. */ 
 	if ((p->p_flags & P_INEXEC) != 0)
 		return EAGAIN;
 	if (!CHECKIO(curp, p) || p_trespass(curp->p_ucred, p->p_ucred))
 		return EPERM;
-	kl = sizeof(r);
-	kv = (char *) &r;
-
-	kv += uio->uio_offset;
-	kl -= uio->uio_offset;
-	if (kl > uio->uio_resid)
-		kl = uio->uio_resid;
 
 	LWPHOLD(lp);
 	error = procfs_read_fpregs(lp, &r);
@@ -83,8 +74,8 @@ procfs_dofpregs(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 			error = procfs_write_fpregs(lp, &r);
 	}
 	LWPRELE(lp);
-
 	uio->uio_offset = 0;
+
 	return (error);
 }
 

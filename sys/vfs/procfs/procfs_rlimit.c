@@ -107,19 +107,9 @@ procfs_dorlimit(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		}
 	}
 
-	/*
-	 * This logic is rather tasty - but its from procfs_status.c, so
-	 * I guess I'll use it here.
-	 */
-
 	xlen = ps - psbuf;
-	xlen -= (size_t)uio->uio_offset;
-	ps = psbuf + (size_t)uio->uio_offset;
-	xlen = szmin(xlen, uio->uio_resid);
-	if (xlen == 0)
-		error = 0;
-	else
-		error = uiomove_frombuf(psbuf, xlen, uio);
+	error = uiomove_frombuf(psbuf, xlen, uio);
+
 	return (error);
 }
 

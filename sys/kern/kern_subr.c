@@ -187,7 +187,8 @@ uiomovez(size_t n, struct uio *uio)
 
 /*
  * Wrapper for uiomove() that validates the arguments against a known-good
- * kernel buffer.
+ * kernel buffer.  This function automatically indexes the buffer by
+ * uio_offset and handles all range checking.
  */
 int
 uiomove_frombuf(void *buf, size_t buflen, struct uio *uio)

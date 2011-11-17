@@ -49,6 +49,7 @@
 #include <vm/vm_page.h>
 #include <vm/vm_object.h>
 
+#include <machine/limits.h>
 
 #define MEBUFFERSIZE 256
 
@@ -188,7 +189,12 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		 *  start, end, res, priv res, cow, access, type, (fullpath).
 		 */
 		ksnprintf(mebuffer, sizeof(mebuffer),
-		    "0x%lx 0x%lx %d %d %p %s%s%s %d %d 0x%x %s %s %s %s\n",
+#if LONG_BIT == 64
+			  "0x%016lx 0x%016lx %d %d %p %s%s%s %d %d "
+#else
+			  "0x%08lx 0x%08lx %d %d %p %s%s%s %d %d "
+#endif
+			  "0x%04x %s %s %s %s\n",
 			(u_long)entry->start, (u_long)entry->end,
 			resident, privateresident, obj,
 			(entry->protection & VM_PROT_READ)?"r":"-",
