@@ -32,7 +32,6 @@
  *
  *	@(#)netstat.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/usr.bin/netstat/netstat.h,v 1.16.2.7 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.10 2007/08/16 20:03:58 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -115,8 +114,6 @@ void	upHex (char *);
 
 char	*routename (u_long);
 char	*netname (u_long, u_long);
-char	*atalk_print (struct sockaddr *, int);
-char	*atalk_print2 (struct sockaddr *, struct sockaddr *, int);
 char	*ipx_print (struct sockaddr *);
 char	*ns_print (struct sockaddr *);
 void	routepr (u_long);
@@ -131,7 +128,6 @@ void	spp_stats (u_long, char *, int);
 void	idp_stats (u_long, char *, int);
 void	nserr_stats (u_long, char *, int);
 
-void	atalkprotopr (u_long, const char *, int);
 void	ddp_stats (u_long, const char *, int);
 
 void	netgraphprotopr (u_long, const char *, int);
