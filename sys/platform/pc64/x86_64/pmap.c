@@ -232,7 +232,7 @@ static pv_entry_t pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex,
 		      pv_entry_t *pvpp);
 static void pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp,
 		      struct pmap_inval_info *info);
-static vm_page_t pmap_remove_pv_page(pv_entry_t pv, int holdpg);
+static vm_page_t pmap_remove_pv_page(pv_entry_t pv);
 
 static void pmap_remove_callback(pmap_t pmap, struct pmap_inval_info *info,
 		      pv_entry_t pte_pv, pv_entry_t pt_pv, vm_offset_t va,
@@ -1157,7 +1157,7 @@ pmap_kremove(vm_offset_t va)
 	pmap_inval_init(&info);
 	pte = vtopte(va);
 	pmap_inval_interlock(&info, &kernel_pmap, va);
-	*pte = 0;
+	(void)pte_load_clear(pte);
 	pmap_inval_deinterlock(&info, &kernel_pmap);
 	pmap_inval_done(&info);
 }
@@ -1167,7 +1167,7 @@ pmap_kremove_quick(vm_offset_t va)
 {
 	pt_entry_t *pte;
 	pte = vtopte(va);
-	*pte = 0;
+	(void)pte_load_clear(pte);
 	cpu_invlpg((void *)va);
 }
 
@@ -1265,7 +1265,7 @@ pmap_qremove(vm_offset_t va, int count)
 		pt_entry_t *pte;
 
 		pte = vtopte(va);
-		*pte = 0;
+		(void)pte_load_clear(pte);
 		cpu_invlpg((void *)va);
 		va += PAGE_SIZE;
 	}
@@ -1397,11 +1397,10 @@ pmap_puninit(pmap_t pmap)
 	if ((pv = pmap->pm_pmlpv) != NULL) {
 		if (pv_hold_try(pv) == 0)
 			pv_lock(pv);
-		p = pmap_remove_pv_page(pv, 1);
+		p = pmap_remove_pv_page(pv);
 		pv_free(pv);
 		pmap_kremove((vm_offset_t)pmap->pm_pml4);
 		vm_page_busy_wait(p, FALSE, "pgpun");
-		vm_page_unhold(p);
 		KKASSERT(p->flags & (PG_FICTITIOUS|PG_UNMANAGED));
 		vm_page_unwire(p, 0);
 		vm_page_flag_clear(p, PG_MAPPED | PG_WRITEABLE);
@@ -1699,7 +1698,7 @@ pmap_release_callback(pv_entry_t pv, void *data)
 	 * by us, so we have to be sure not to unwire them either.
 	 */
 	if (pv->pv_pindex < pmap_pt_pindex(0)) {
-		pmap_remove_pv_page(pv, 0);
+		pmap_remove_pv_page(pv);
 		goto skip;
 	}
 
@@ -1723,9 +1722,8 @@ pmap_release_callback(pv_entry_t pv, void *data)
 	 * removed above by pmap_remove_pv_pte() did not undo the
 	 * last wire_count so we have to do that as well.
 	 */
-	p = pmap_remove_pv_page(pv, 1);
+	p = pmap_remove_pv_page(pv);
 	vm_page_busy_wait(p, FALSE, "pmaprl");
-	vm_page_unhold(p);
 	if (p->wire_count != 1) {
 		kprintf("p->wire_count was %016lx %d\n",
 			pv->pv_pindex, p->wire_count);
@@ -1875,6 +1873,8 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 		pte = pte_load_clear(ptep);
 		if (info)
 			pmap_inval_deinterlock(info, pmap);
+		else
+			cpu_invlpg((void *)va);
 
 		/*
 		 * Now update the vm_page_t
@@ -1916,13 +1916,11 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 
 static
 vm_page_t
-pmap_remove_pv_page(pv_entry_t pv, int holdpg)
+pmap_remove_pv_page(pv_entry_t pv)
 {
 	vm_page_t m;
 
 	m = pv->pv_m;
-	if (holdpg)
-		vm_page_hold(m);
 	KKASSERT(m);
 	vm_page_spin_lock(m);
 	pv->pv_m = NULL;
@@ -1934,9 +1932,7 @@ pmap_remove_pv_page(pv_entry_t pv, int holdpg)
 	if (TAILQ_EMPTY(&m->md.pv_list))
 		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 	vm_page_spin_unlock(m);
-	if (holdpg)
-		return(m);
-	return(NULL);
+	return(m);
 }
 
 /*
@@ -2837,7 +2833,7 @@ pmap_remove_callback(pmap_t pmap, struct pmap_inval_info *info,
 		 * terminal pages are not wired based on mmu presence.
 		 */
 		pmap_remove_pv_pte(pte_pv, pt_pv, info);
-		pmap_remove_pv_page(pte_pv, 0);
+		pmap_remove_pv_page(pte_pv);
 		pv_free(pte_pv);
 	} else {
 		/*
@@ -2890,12 +2886,12 @@ pmap_remove_all(vm_page_t m)
 		 * Holding no spinlocks, pv is locked.
 		 */
 		pmap_remove_pv_pte(pv, NULL, &info);
-		pmap_remove_pv_page(pv, 0);
+		pmap_remove_pv_page(pv);
 		pv_free(pv);
 		vm_page_spin_lock(m);
 	}
-	vm_page_spin_unlock(m);
 	KKASSERT((m->flags & (PG_MAPPED|PG_WRITEABLE)) == 0);
+	vm_page_spin_unlock(m);
 	pmap_inval_done(&info);
 }
 
@@ -3056,87 +3052,73 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		KKASSERT(*ptep == 0 || (*ptep & PG_MANAGED));
 	}
 
-	if ((prot & VM_PROT_NOSYNC) == 0)
-		pmap_inval_init(&info);
-
 	pa = VM_PAGE_TO_PHYS(m);
 	origpte = *ptep;
 	opa = origpte & PG_FRAME;
 
+	newpte = (pt_entry_t)(pa | pte_prot(pmap, prot) | PG_V | PG_A);
+	if (wired)
+		newpte |= PG_W;
+	if (va < VM_MAX_USER_ADDRESS)
+		newpte |= PG_U;
+	if (pte_pv)
+		newpte |= PG_MANAGED;
+	if (pmap == &kernel_pmap)
+		newpte |= pgeflag;
+
 	/*
-	 * Mapping has not changed, must be protection or wiring change.
+	 * It is possible for multiple faults to occur in threaded
+	 * environments, the existing pte might be correct.
 	 */
-	if (origpte && (opa == pa)) {
-		/*
-		 * Wiring change, just update stats. We don't worry about
-		 * wiring PT pages as they remain resident as long as there
-		 * are valid mappings in them. Hence, if a user page is wired,
-		 * the PT page will be also.
-		 */
-		KKASSERT(pte_pv == NULL || m == pte_pv->pv_m);
-		if (wired && ((origpte & PG_W) == 0))
-			atomic_add_long(&pmap->pm_stats.wired_count, 1);
-		else if (!wired && (origpte & PG_W))
-			atomic_add_long(&pmap->pm_stats.wired_count, -1);
+	if (((origpte ^ newpte) & ~(pt_entry_t)(PG_M|PG_A)) == 0)
+		goto done;
 
-#if defined(PMAP_DIAGNOSTIC)
-		if (pmap_nw_modified(origpte)) {
-			kprintf("pmap_enter: modified page not writable: "
-				"va: 0x%lx, pte: 0x%lx\n", va, origpte);
-		}
-#endif
-
-		/*
-		 * We might be turning off write access to the page,
-		 * so we go ahead and sense modify status.
-		 */
-		if (pte_pv) {
-			if ((origpte & PG_M) &&
-			    pmap_track_modified(pte_pv->pv_pindex)) {
-				vm_page_t om;
-				om = pte_pv->pv_m;
-				KKASSERT(PHYS_TO_VM_PAGE(opa) == om);
-				vm_page_dirty(om);
-			}
-			pa |= PG_MANAGED;
-		}
-		goto validate;
-	} 
+	if ((prot & VM_PROT_NOSYNC) == 0)
+		pmap_inval_init(&info);
 
 	/*
-	 * Mapping has changed, invalidate old range and fall through to
-	 * handle validating new mapping.
+	 * Ok, either the address changed or the protection or wiring
+	 * changed.
 	 *
-	 * We always interlock pte removals.
+	 * Clear the current entry, interlocking the removal.  For managed
+	 * pte's this will also flush the modified state to the vm_page.
+	 * Atomic ops are mandatory in order to ensure that PG_M events are
+	 * not lost during any transition.
 	 */
 	if (opa) {
 		if (pte_pv) {
-			/* XXX pmap_remove_pv_pte() unwires pt_pv */
+			/*
+			 * pmap_remove_pv_pte() unwires pt_pv and assumes
+			 * we will free pte_pv, but since we are reusing
+			 * pte_pv we want to retain the wire count.
+			 */
 			vm_page_wire_quick(pt_pv->pv_m);
 			if (prot & VM_PROT_NOSYNC)
 				pmap_remove_pv_pte(pte_pv, pt_pv, NULL);
 			else
 				pmap_remove_pv_pte(pte_pv, pt_pv, &info);
 			if (pte_pv->pv_m)
-				pmap_remove_pv_page(pte_pv, 0);
+				pmap_remove_pv_page(pte_pv);
 		} else if (prot & VM_PROT_NOSYNC) {
-			*ptep = 0;
+			/* leave wire count on PT page intact */
+			(void)pte_load_clear(ptep);
 			cpu_invlpg((void *)va);
 			atomic_add_long(&pmap->pm_stats.resident_count, -1);
 		} else {
+			/* leave wire count on PT page intact */
 			pmap_inval_interlock(&info, pmap, va);
-			*ptep = 0;
+			(void)pte_load_clear(ptep);
 			pmap_inval_deinterlock(&info, pmap);
 			atomic_add_long(&pmap->pm_stats.resident_count, -1);
 		}
 		KKASSERT(*ptep == 0);
 	}
 
-	/*
-	 * Enter on the PV list if part of our managed memory.  Wiring is
-	 * handled automatically.
-	 */
 	if (pte_pv) {
+		/*
+		 * Enter on the PV list if part of our managed memory.
+		 * Wiring of the PT page is already handled.
+		 */
 		KKASSERT(pte_pv->pv_m == NULL);
 		vm_page_spin_lock(m);
 		pte_pv->pv_m = m;
@@ -3147,55 +3129,47 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		*/
 		vm_page_flag_set(m, PG_MAPPED);
 		vm_page_spin_unlock(m);
-		pa |= PG_MANAGED;
 	} else if (pt_pv && opa == 0) {
+		/*
+		 * We have to adjust the wire count on the PT page ourselves
+		 * for unmanaged entries.  If opa was non-zero we retained
+		 * the existing wire count from the removal.
+		 */
 		vm_page_wire_quick(pt_pv->pv_m);
 	}
 
 	/*
-	 * Increment counters
+	 * Ok, for UVM (pt_pv != NULL) we don't need to interlock or
+	 * invalidate anything, the TLB won't have any stale entries to
+	 * remove.
+	 *
+	 * For KVM there appear to still be issues.  Theoretically we
+	 * should be able to scrap the interlocks entirely but we
+	 * get crashes.
 	 */
+	if ((prot & VM_PROT_NOSYNC) == 0 && pt_pv == NULL)
+		pmap_inval_interlock(&info, pmap, va);
+	*(volatile pt_entry_t *)ptep = newpte;
+
+	if ((prot & VM_PROT_NOSYNC) == 0 && pt_pv == NULL)
+		pmap_inval_deinterlock(&info, pmap);
+	else if (pt_pv == NULL)
+		cpu_invlpg((void *)va);
+
 	if (wired)
 		atomic_add_long(&pmap->pm_stats.wired_count, 1);
-
-validate:
-	/*
-	 * Now validate mapping with desired protection/wiring.
-	 */
-	newpte = (pt_entry_t)(pa | pte_prot(pmap, prot) | PG_V);
-
-	if (wired)
-		newpte |= PG_W;
-	if (va < VM_MAX_USER_ADDRESS)
-		newpte |= PG_U;
-	if (pmap == &kernel_pmap)
-		newpte |= pgeflag;
+	if (newpte & PG_RW)
+		vm_page_flag_set(m, PG_WRITEABLE);
+	if (pte_pv == NULL)
+		atomic_add_long(&pmap->pm_stats.resident_count, 1);
 
 	/*
-	 * If the mapping or permission bits are different, we need
-	 * to update the pte.
+	 * Cleanup
 	 */
-	if ((origpte & ~(PG_M|PG_A)) != newpte) {
-#if 1
-		if ((prot & VM_PROT_NOSYNC) == 0)
-			pmap_inval_interlock(&info, pmap, va);
-#endif
-		*ptep = newpte | PG_A;
-#if 1
-		if (prot & VM_PROT_NOSYNC)
-			cpu_invlpg((void *)va);
-		else
-			pmap_inval_deinterlock(&info, pmap);
-#endif
-		if (newpte & PG_RW)
-			vm_page_flag_set(m, PG_WRITEABLE);
-		if (pte_pv == NULL)
-			atomic_add_long(&pmap->pm_stats.resident_count, 1);
-	}
-
-	KKASSERT((newpte & PG_MANAGED) == 0 || (m->flags & PG_MAPPED));
-	if ((prot & VM_PROT_NOSYNC) == 0)
+	if ((prot & VM_PROT_NOSYNC) == 0 || pte_pv == NULL)
 		pmap_inval_done(&info);
+done:
+	KKASSERT((newpte & PG_MANAGED) == 0 || (m->flags & PG_MAPPED));
 
 	/*
 	 * Cleanup the pv entry, allowing other accessors.
