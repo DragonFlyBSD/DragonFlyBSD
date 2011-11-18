@@ -326,11 +326,69 @@ By default
 ships only with the
 .Xr dfr2text 8
 text-based frontend.
+.Sh HOW TO WRITE A TESTCASE
+A userland testcase is a simple program that prints some relevant
+information to stdout and stderr, both of which are captured by the test
+driver, and returns an exit value of 0 if the test passed, or any other
+non-zero exit value to signal a failure.
+The exact exit value is recorded by
+.Nm .
+All signals/exceptions not explicitly caught by the testcase will abort
+the execution of the testcase and the result will be set appropriately and
+the signal number will be recorded.
+.Pp
+A kernel testcase is a simple kernel module that defines two methods:
+a
+.Fn run
+method as well as an optional
+.Fn abort
+method.
+The
+.Fn
+run
+method will be run from a separate kernel thread.
+The testcase will need to call
+.Xr tbridge 9
+functions to record output and to notify of testcase completion.
+Refer to the
+.Xr tbridge 9
+man page for more details.
+.Pp
+For all testcase types the build stage is common.
+Every testcase should either have the
+.Ic nobuild
+option set, or have a Makefile or similar in its directory.
+By default
+.Nm
+assumes it is a standard
+.Xr make 1
+Makefile.
+If that is not the case, the
+.Ic build
+option needs to be adjusted accordingly.
+.Sh GENERAL ADVICE ON WRITING TESTCASES
+Test only one thing at a time, it is not good practice to test multiple
+things in the same testcase as it makes it less obvious what's going on.
+.Pp
+Keep it short, simple and well documented on what the requirements are,
+what the preconditions need to be, what exactly is being tested, ideally
+with a reference to a particular bug if that exists, and most importantly
+what the expected outcomes are.
+.Pp
+Make sure your testcase doesn't depend on any other being run previously
+as well as that it won't hinder any other testcase from running.
+This effectively means that your testcase should make no assumptions as
+to what has been run previously unless it has a registered pre-command
+and that the system should be left as found before your testcase.
 .Sh EXAMPLES
 An example runlist can be found under
 .Pa test/testcases/sample.run .
+.Pp
+Several example testcases for both userland and kernel are under
+.Pa test/testcases/sample .
 .Sh SEE ALSO
-.Xr dfr2text 8
+.Xr dfr2text 8 ,
+.Xr tbridge 9
 .Sh HISTORY
 The
 .Nm
