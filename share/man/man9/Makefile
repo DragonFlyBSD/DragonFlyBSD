@@ -151,6 +151,7 @@ MAN=	accept_filter.9 \
 	SYSINIT.9 \
 	systimer.9 \
 	taskqueue.9 \
+	tbridge.9 \
 	time.9 \
 	token.9 \
 	tvtohz.9 \
