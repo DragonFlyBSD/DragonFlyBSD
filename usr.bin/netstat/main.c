@@ -109,41 +109,41 @@ static struct nlist nl[] = {
 	{ .n_name = "_ipxstat"},
 #define N_SPXSTAT	24
 	{ .n_name = "_spx_istat"},
-#define N_NGSOCKS	27
+#define N_NGSOCKS	25
 	{ .n_name = "_ngsocklist"},
-#define N_IP6STAT	28
+#define N_IP6STAT	26
 	{ .n_name = "_ip6stat" },
-#define N_ICMP6STAT	29
+#define N_ICMP6STAT	27
 	{ .n_name = "_icmp6stat" },
-#define N_IPSECSTAT	30
+#define N_IPSECSTAT	28
 	{ .n_name = "_ipsecstat" },
-#define N_IPSEC6STAT	31
+#define N_IPSEC6STAT	29
 	{ .n_name = "_ipsec6stat" },
-#define N_PIM6STAT	32
+#define N_PIM6STAT	30
 	{ .n_name = "_pim6stat" },
-#define N_MRT6PROTO	33
+#define N_MRT6PROTO	31
 	{ .n_name = "_ip6_mrtproto" },
-#define N_MRT6STAT	34
+#define N_MRT6STAT	32
 	{ .n_name = "_mrt6stat" },
-#define N_MF6CTABLE	35
+#define N_MF6CTABLE	33
 	{ .n_name = "_mf6ctable" },
-#define N_MIF6TABLE	36
+#define N_MIF6TABLE	34
 	{ .n_name = "_mif6table" },
-#define N_PFKEYSTAT	37
+#define N_PFKEYSTAT	35
 	{ .n_name = "_pfkeystat" },
-#define N_MBSTAT	38
+#define N_MBSTAT	36
 	{ .n_name = "_mbstat" },
-#define N_MBTYPES	39
+#define N_MBTYPES	37
 	{ .n_name = "_mbtypes" },
-#define N_NMBCLUSTERS	40
+#define N_NMBCLUSTERS	38
 	{ .n_name = "_nmbclusters" },
-#define N_NMBUFS	41
+#define N_NMBUFS	39
 	{ .n_name = "_nmbufs" },
-#define	N_RTTRASH	42
+#define	N_RTTRASH	40
 	{ .n_name = "_rttrash" },
-#define	N_NCPUS		43
+#define	N_NCPUS		41
 	{ .n_name = "_ncpus" },
-#define	N_CARPSTAT	44
+#define	N_CARPSTAT	42
 	{ .n_name = "_carpstats" },
 	{ .n_name = NULL },
 };
