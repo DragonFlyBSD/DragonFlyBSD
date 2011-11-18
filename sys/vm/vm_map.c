@@ -814,12 +814,17 @@ vm_map_lookup_entry(vm_map_t map, vm_offset_t address, vm_map_entry_t *entry)
 	 * It is possible that the problem is related to the setting
 	 * of the hint during map_entry deletion, in the code specified
 	 * at the GGG comment later on in this file.
+	 *
+	 * YYY More likely it's because this function can be called with
+	 * a shared lock on the map, resulting in map->hint updates possibly
+	 * racing.  Fixed now but untested.
 	 */
 	/*
 	 * Quickly check the cached hint, there's a good chance of a match.
 	 */
-	if (map->hint != &map->header) {
-		tmp = map->hint;
+	tmp = map->hint;
+	cpu_ccfence();
+	if (tmp != &map->header) {
 		if (address >= tmp->start && address < tmp->end) {
 			*entry = tmp;
 			return(TRUE);
@@ -3503,6 +3508,7 @@ Retry:
 	 */
 	if (grow_amount > stack_entry->start - end) {
 		if (use_read_lock && vm_map_lock_upgrade(map)) {
+			/* lost lock */
 			use_read_lock = 0;
 			goto Retry;
 		}
@@ -3541,6 +3547,7 @@ Retry:
 	}
 
 	if (use_read_lock && vm_map_lock_upgrade(map)) {
+		/* lost lock */
 		use_read_lock = 0;
 		goto Retry;
 	}
@@ -3758,6 +3765,7 @@ RetryLookup:
 	 * blown lookup routine.
 	 */
 	entry = map->hint;
+	cpu_ccfence();
 	*out_entry = entry;
 	*object = NULL;
 
@@ -3859,6 +3867,7 @@ RetryLookup:
 			 */
 
 			if (use_read_lock && vm_map_lock_upgrade(map)) {
+				/* lost lock */
 				use_read_lock = 0;
 				goto RetryLookup;
 			}
@@ -3878,9 +3887,9 @@ RetryLookup:
 	/*
 	 * Create an object if necessary.
 	 */
-	if (entry->object.vm_object == NULL &&
-	    !map->system_map) {
+	if (entry->object.vm_object == NULL && !map->system_map) {
 		if (use_read_lock && vm_map_lock_upgrade(map))  {
+			/* lost lock */
 			use_read_lock = 0;
 			goto RetryLookup;
 		}
