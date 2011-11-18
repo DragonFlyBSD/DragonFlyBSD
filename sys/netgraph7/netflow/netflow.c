@@ -240,7 +240,7 @@ hash_insert(priv_p priv, struct flow_hash_entry  *hsh, struct flow_rec *r,
 	struct sockaddr_in sin;
 	struct rtentry *rt;
 
-	mtx_assert(&hsh->mtx, MA_OWNED);
+	KKASSERT(mtx_owned(&hsh->mtx));
 
 	fle = uma_zalloc_arg(priv->zone, priv, M_WAITOK | M_NULLOK);
 	if (fle == NULL) {

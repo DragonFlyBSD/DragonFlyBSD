@@ -626,7 +626,7 @@ ng_pppoe_constructor(node_p node)
 
 	LIST_INIT(&privp->listeners);
 	for (i = 0; i < SESSHASHSIZE; i++) {
-	    mtx_init(&privp->sesshash[i].mtx, "PPPoE hash mutex", NULL, MTX_DEF);
+	    mtx_init(&privp->sesshash[i].mtx);
 	    LIST_INIT(&privp->sesshash[i].head);
 	}
 
@@ -1696,7 +1696,7 @@ ng_pppoe_shutdown(node_p node)
 	int	i;
 
 	for (i = 0; i < SESSHASHSIZE; i++)
-	    mtx_destroy(&privp->sesshash[i].mtx);
+	    mtx_uninit(&privp->sesshash[i].mtx);
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(privp->node);
 	kfree(privp, M_NETGRAPH_PPPOE);

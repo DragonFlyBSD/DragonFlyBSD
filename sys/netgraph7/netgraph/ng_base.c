@@ -58,6 +58,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/msgport2.h>
+#include <sys/mutex2.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
@@ -176,7 +177,7 @@ static struct mtx	ng_idhash_mtx;
 #define NG_IDHASH_FN(ID) ((ID) % (NG_ID_HASH_SIZE))
 #define NG_IDHASH_FIND(ID, node)					\
 	do { 								\
-		mtx_assert(&ng_idhash_mtx, MA_OWNED);			\
+		KKASSERT(mtx_owned(&ng_idhash_mtx));			\
 		LIST_FOREACH(node, &ng_ID_hash[NG_IDHASH_FN(ID)],	\
 						nd_idnodes) {		\
 			if (NG_NODE_IS_VALID(node)			\
@@ -245,13 +246,13 @@ MALLOC_DEFINE(M_NETGRAPH_MSG, "netgraph_msg", "netgraph name storage");
 	    M_WAITOK | M_NULLOK | M_ZERO)
 
 #define	NG_QUEUE_LOCK_INIT(n)			\
-	mtx_init(&(n)->q_mtx, "ng_node", NULL, MTX_DEF)
+	mtx_init(&(n)->q_mtx)
 #define	NG_QUEUE_LOCK(n)			\
 	mtx_lock(&(n)->q_mtx)
 #define	NG_QUEUE_UNLOCK(n)			\
 	mtx_unlock(&(n)->q_mtx)
 #define	NG_WORKLIST_LOCK_INIT()			\
-	mtx_init(&ng_worklist_mtx, "ng_worklist", NULL, MTX_DEF)
+	mtx_init(&ng_worklist_mtx)
 #define	NG_WORKLIST_LOCK()			\
 	mtx_lock(&ng_worklist_mtx)
 #define	NG_WORKLIST_UNLOCK()			\
@@ -786,7 +787,7 @@ ng_unref_node(node_p node)
 		LIST_REMOVE(node, nd_idnodes);
 		mtx_unlock(&ng_idhash_mtx);
 
-		mtx_destroy(&node->nd_input_queue.q_mtx);
+		mtx_uninit(&node->nd_input_queue.q_mtx);
 		NG_FREE_NODE(node);
 	}
 	return (v - 1);
@@ -1113,7 +1114,7 @@ ng_destroy_hook(hook_p hook)
 	} else
 		mtx_unlock(&ng_topo_mtx);
 
-	mtx_assert(&ng_topo_mtx, MA_NOTOWNED);
+	KKASSERT(mtx_notowned(&ng_topo_mtx));
 
 	/*
 	 * Remove the hook from the node's list to avoid possible recursion
@@ -1869,7 +1870,7 @@ ng_dequeue(node_p node, int *rw)
 	struct ng_queue *ngq = &node->nd_input_queue;
 
 	/* This MUST be called with the mutex held. */
-	mtx_assert(&ngq->q_mtx, MA_OWNED);
+	KKASSERT(mtx_owned(&ngq->q_mtx));
 
 	/* If there is nothing queued, then just return. */
 	if (!QUEUE_ACTIVE(ngq)) {
@@ -3053,19 +3054,13 @@ ngb_mod_event(module_t mod, int event, void *data)
 	case MOD_LOAD:
 		/* Initialize everything. */
 		NG_WORKLIST_LOCK_INIT();
-		mtx_init(&ng_typelist_mtx, "netgraph types mutex", NULL,
-		    MTX_DEF);
-		mtx_init(&ng_idhash_mtx, "netgraph idhash mutex", NULL,
-		    MTX_DEF);
-		mtx_init(&ng_namehash_mtx, "netgraph namehash mutex", NULL,
-		    MTX_DEF);
-		mtx_init(&ng_topo_mtx, "netgraph topology mutex", NULL,
-		    MTX_DEF);
+		mtx_init(&ng_typelist_mtx);
+		mtx_init(&ng_idhash_mtx);
+		mtx_init(&ng_namehash_mtx);
+		mtx_init(&ng_topo_mtx);
 #ifdef	NETGRAPH_DEBUG
-		mtx_init(&ng_nodelist_mtx, "netgraph nodelist mutex", NULL,
-		    MTX_DEF);
-		mtx_init(&ngq_mtx, "netgraph item list mutex", NULL,
-		    MTX_DEF);
+		mtx_init(&ng_nodelist_mtx);
+		mtx_init(&ngq_mtx);
 #endif
 		ng_qzone = uma_zcreate("NetGraph items", sizeof(struct ng_item),
 		    NULL, NULL, NULL, NULL, UMA_ALIGN_CACHE, 0);
@@ -3291,7 +3286,7 @@ static void
 ng_worklist_add(node_p node)
 {
 
-	mtx_assert(&node->nd_input_queue.q_mtx, MA_OWNED);
+	KKASSERT(mtx_owned(&node->nd_input_queue.q_mtx));
 
 	if ((node->nd_input_queue.q_flags2 & NGQ2_WORKQ) == 0) {
 		static struct task ng_task;

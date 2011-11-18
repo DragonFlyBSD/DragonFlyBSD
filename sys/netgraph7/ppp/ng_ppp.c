@@ -509,8 +509,8 @@ ng_ppp_constructor(node_p node)
 		priv->links[i].seq = MP_NOSEQ;
 	ng_callout_init(&priv->fragTimer);
 
-	mtx_init(&priv->rmtx, "ng_ppp_recv", NULL, MTX_DEF);
-	mtx_init(&priv->xmtx, "ng_ppp_xmit", NULL, MTX_DEF);
+	mtx_init(&priv->rmtx);
+	mtx_init(&priv->xmtx);
 
 	/* Done */
 	return (0);
@@ -744,8 +744,8 @@ ng_ppp_shutdown(node_p node)
 
 	/* Take down netgraph node */
 	ng_ppp_frag_reset(node);
-	mtx_destroy(&priv->rmtx);
-	mtx_destroy(&priv->xmtx);
+	mtx_uninit(&priv->rmtx);
+	mtx_uninit(&priv->xmtx);
 	bzero(priv, sizeof(*priv));
 	kfree(priv, M_NETGRAPH_PPP);
 	NG_NODE_SET_PRIVATE(node, NULL);
@@ -1429,7 +1429,7 @@ ng_ppp_rcvdata(hook_p hook, item_p item)
 
 	/* Proceed to multilink layer. Mutex will be unlocked inside. */
 	error = ng_ppp_mp_recv(node, item, proto, linkNum);
-	mtx_assert(&priv->rmtx, MA_NOTOWNED);
+	KKASSERT(mtx_notowned(&priv->rmtx));
 	return (error);
 
 done:

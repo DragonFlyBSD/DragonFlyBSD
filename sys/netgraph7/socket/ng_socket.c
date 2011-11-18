@@ -343,7 +343,7 @@ ngc_send(netmsg_t netmsg)
 
 	mtx_lock(&priv->mtx);
 	if (priv->error == -1)
-		lksleep(priv, (struct lock *)&priv->mtx, 0, "ngsock", 0);
+		mtxsleep(priv, &priv->mtx, 0, "ngsock", 0);
 	mtx_unlock(&priv->mtx);
 	KASSERT(priv->error != -1,
 	    ("ng_socket: priv->error wasn't updated"));
@@ -581,7 +581,7 @@ ng_attach_cntl(struct socket *so)
 	priv->refs++;
 
 	/* Initialize mutex. */
-	mtx_init(&priv->mtx, "ng_socket", NULL, MTX_DEF);
+	mtx_init(&priv->mtx);
 
 	/* Make the generic node components */
 	if ((error = ng_make_node_common(&typestruct, &priv->node)) != 0) {
@@ -669,12 +669,12 @@ ng_detach_common(struct ngpcb *pcbp, int which)
 static void
 ng_socket_free_priv(struct ngsock *priv)
 {
-	mtx_assert(&priv->mtx, MA_OWNED);
+	KKASSERT(mtx_owned(&priv->mtx));
 
 	priv->refs--;
 
 	if (priv->refs == 0) {
-		mtx_destroy(&priv->mtx);
+		mtx_uninit(&priv->mtx);
 		kfree(priv, M_NETGRAPH_SOCK);
 		return;
 	}

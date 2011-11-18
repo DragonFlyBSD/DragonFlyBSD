@@ -288,7 +288,7 @@ ng_pptpgre_constructor(node_p node)
 	NG_NODE_SET_PRIVATE(node, priv);
 
 	/* Initialize state */
-	mtx_init(&priv->uppersess.mtx, "ng_pptp", NULL, MTX_DEF);
+	mtx_init(&priv->uppersess.mtx);
 	ng_callout_init(&priv->uppersess.sackTimer);
 	ng_callout_init(&priv->uppersess.rackTimer);
 	priv->uppersess.node = node;
@@ -344,7 +344,7 @@ ng_pptpgre_newhook(node_p node, hook_p hook, const char *name)
 			return (ENOMEM);
 	
 		/* Initialize state */
-		mtx_init(&hpriv->mtx, "ng_pptp", NULL, MTX_DEF);
+		mtx_init(&hpriv->mtx);
 		ng_callout_init(&hpriv->sackTimer);
 		ng_callout_init(&hpriv->rackTimer);
 		hpriv->conf.cid = cid;
@@ -469,7 +469,7 @@ ng_pptpgre_rcvdata(hook_p hook, item_p item)
 
 	rval = ng_pptpgre_xmit(hpriv, item);
 
-	mtx_assert(&hpriv->mtx, MA_NOTOWNED);
+	KKASSERT(mtx_notowned(&hpriv->mtx));
 
 	return (rval);
 }
@@ -495,7 +495,7 @@ ng_pptpgre_disconnect(hook_p hook)
 		ng_pptpgre_reset(hpriv);
 
 		LIST_REMOVE(hpriv, sessions);
-		mtx_destroy(&hpriv->mtx);
+		mtx_uninit(&hpriv->mtx);
 		kfree(hpriv, M_NETGRAPH);
 	}
 
@@ -518,7 +518,7 @@ ng_pptpgre_shutdown(node_p node)
 	ng_pptpgre_reset(&priv->uppersess);
 
 	LIST_REMOVE(&priv->uppersess, sessions);
-	mtx_destroy(&priv->uppersess.mtx);
+	mtx_uninit(&priv->uppersess.mtx);
 
 	kfree(priv, M_NETGRAPH);
 
@@ -543,7 +543,7 @@ ng_pptpgre_xmit(hpriv_p hpriv, item_p item)
 	int grelen, error;
 	struct mbuf *m;
 
-	mtx_assert(&hpriv->mtx, MA_OWNED);
+	KKASSERT(mtx_owned(&hpriv->mtx));
 
 	if (item) {
 		NGI_GET_M(item, m);
@@ -808,7 +808,7 @@ badAck:
 		if (extralen > 0)
 			m_adj(m, -extralen);
 
-		mtx_assert(&hpriv->mtx, MA_NOTOWNED);
+		KKASSERT(mtx_notowned(&hpriv->mtx));
 
 		/* Deliver frame to upper layers */
 		NG_FWD_NEW_DATA(error, item, hpriv->hook, m);
@@ -916,7 +916,7 @@ ng_pptpgre_send_ack_timeout(node_p node, hook_p hook, void *arg1, int arg2)
 	mtx_lock(&hpriv->mtx);
 	/* Send a frame with an ack but no payload */
   	ng_pptpgre_xmit(hpriv, NULL);
-	mtx_assert(&hpriv->mtx, MA_NOTOWNED);
+	KKASSERT(mtx_notowned(&hpriv->mtx));
 }
 
 /*************************************************************************

@@ -45,29 +45,13 @@ typedef __va_list	va_list;
 #define va_start(ap,last)	__va_start(ap,last)
 #define va_end(ap)	__va_end(ap)
 
-/* Temporary lock stuff */
-int lock_sleep(void *, int, const char *, int, struct lock *);
-int lockstatus_owned(struct lock *, struct thread *);
-/* End Temporary lock stuff */
+/*
+#define mtx_assert(mtx, MA_OWNED) 		\
+			KKASSERT(mtx_owned(&(mtx)->lock))
 
-struct mtx {
-	struct lock	lock;
-};
-
-#define MA_OWNED LK_EXCLUSIVE
-#define MA_NOTOWNED 0
-#define mtx_contested(mtx)	0
-
-#define mtx_lock(mtx)	lockmgr(&(mtx)->lock, LK_EXCLUSIVE|LK_RETRY)
-#define mtx_unlock(mtx)	lockmgr(&(mtx)->lock, LK_RELEASE)
-#define mtx_assert(mtx, mode) 		\
-			KKASSERT(lockstatus(&(mtx)->lock, curthread) == mode)
-#define mtx_init(mtx, name, something, type)	\
-			lockinit(&(mtx)->lock, name, 0, 0)
-#define mtx_destroy(mtx)			\
-			lockuninit(&(mtx)->lock)
-#define mtx_trylock(mtx)			\
-			(lockmgr(&(mtx)->lock, LK_EXCLUSIVE|LK_NOWAIT) == 0)
+#define mtx_assert(mtx, MA_NOTOWNED) 		\
+			KKASSERT(mtx_notowned(&(mtx)->lock))
+*/
 
 #define IFNET_RLOCK()	crit_enter()
 #define IFNET_RUNLOCK()	crit_exit()

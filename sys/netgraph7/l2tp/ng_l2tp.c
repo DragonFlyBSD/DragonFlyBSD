@@ -683,7 +683,7 @@ ng_l2tp_shutdown(node_p node)
 	ng_uncallout(&seq->rack_timer, node);
 	ng_uncallout(&seq->xack_timer, node);
 
-	mtx_destroy(&seq->mtx);
+	mtx_uninit(&seq->mtx);
 
 	kfree(priv, M_NETGRAPH_L2TP);
 
@@ -1219,7 +1219,7 @@ ng_l2tp_seq_init(priv_p priv)
 	seq->ssth = seq->wmax;
 	ng_callout_init(&seq->rack_timer);
 	ng_callout_init(&seq->xack_timer);
-	mtx_init(&seq->mtx, "ng_l2tp", NULL, MTX_DEF);
+	mtx_init(&seq->mtx);
 	L2TP_SEQ_CHECK(seq);
 }
 
