@@ -14,13 +14,15 @@
 name="routing"
 start_cmd="routing_start"
 stop_cmd="routing_stop"
-extra_commands="options static"
+extra_commands="options static change"
 static_cmd="static_start"
+change_cmd="change_start"
 options_cmd="options_start"
 
 routing_start()
 {
 	static_start
+	change_start
 	options_start
 }
 
@@ -46,6 +48,18 @@ static_start()
 		for i in ${static_routes}; do
 			eval route_args=\$route_${i}
 			route add ${route_args}
+		done
+	fi
+}
+
+change_start()
+{
+	# Change routes. This should be done before router discovery.
+	#
+	if [ -n "${change_routes}" ]; then
+		for i in ${change_routes}; do
+			eval route_args=\$change_route_${i}
+			route change ${route_args}
 		done
 	fi
 }
