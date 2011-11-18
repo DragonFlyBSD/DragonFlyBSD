@@ -678,11 +678,13 @@ vm_swapcache_cleaning(vm_object_t marker)
 		 * requested number of blocks, it will return n >= count
 		 * and we break and pick it back up on a future attempt.
 		 */
+		vm_object_lock_swap();
 		lwkt_reltoken(&vmobj_token);
+
 		n = swap_pager_condfree(object, &marker->size, count);
-		lwkt_gettoken(&vmobj_token);
 
 		vm_object_drop(object);
+		lwkt_gettoken(&vmobj_token);
 	
 		count -= n;
 		if (count < 0) 
