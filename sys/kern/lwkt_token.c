@@ -857,8 +857,8 @@ lwkt_token_swap(void)
 
 	ref1 = td->td_toks_stop - 1;
 	ref2 = td->td_toks_stop - 2;
-	KKASSERT(ref1 > &td->td_toks_base);
-	KKASSERT(ref2 > &td->td_toks_base);
+	KKASSERT(ref1 >= &td->td_toks_base);
+	KKASSERT(ref2 >= &td->td_toks_base);
 
 	tok1 = ref1->tr_tok;
 	tok2 = ref2->tr_tok;
