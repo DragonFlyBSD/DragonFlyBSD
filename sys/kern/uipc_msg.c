@@ -317,19 +317,13 @@ so_pru_send(struct socket *so, int flags, struct mbuf *m,
 	return (error);
 }
 
-static void
-so_pru_sync_handler(netmsg_t msg)
-{
-	lwkt_replymsg(&msg->lmsg, 0);
-}
-
 void
 so_pru_sync(struct socket *so)
 {
 	struct netmsg_base msg;
 
 	netmsg_init(&msg, so, &curthread->td_msgport, 0,
-	    so_pru_sync_handler);
+	    netmsg_sync_handler);
 	lwkt_domsg(so->so_port, &msg.lmsg, 0);
 }
 

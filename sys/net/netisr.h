@@ -184,6 +184,7 @@ void		netisr_barrier_rem(struct netisr_barrier *);
 
 void		netmsg_service_port_init(lwkt_port_t);
 void		netmsg_service_sync(void);
+void		netmsg_sync_handler(netmsg_t);
 void		schednetisr(int);
 
 #define curnetport	cur_netport()
