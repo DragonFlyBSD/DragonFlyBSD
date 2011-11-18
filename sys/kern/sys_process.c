@@ -76,8 +76,8 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 	pageno = trunc_page(addr);
 
 	tmap = map;
-	rv = vm_map_lookup (&tmap, pageno, VM_PROT_READ, &out_entry,
-		&object, &pindex, &out_prot, &wired);
+	rv = vm_map_lookup(&tmap, pageno, VM_PROT_READ, &out_entry,
+			   &object, &pindex, &out_prot, &wired);
 
 	if (rv != KERN_SUCCESS)
 		return EINVAL;
@@ -154,8 +154,8 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 	 */
 
 	tmap = map;
-	rv = vm_map_lookup (&tmap, pageno, VM_PROT_WRITE, &out_entry,
-		&object, &pindex, &out_prot, &wired);
+	rv = vm_map_lookup(&tmap, pageno, VM_PROT_WRITE, &out_entry,
+			   &object, &pindex, &out_prot, &wired);
 	if (rv != KERN_SUCCESS)
 		return EINVAL;
 

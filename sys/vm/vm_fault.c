@@ -338,6 +338,9 @@ RetryFault:
 		 * If we don't COW now, on a user wire, the user will never
 		 * be able to write to the mapping.  If we don't make this
 		 * restriction, the bookkeeping would be nearly impossible.
+		 *
+		 * XXX We have a shared lock, this will have a MP race but
+		 * I don't see how it can hurt anything.
 		 */
 		if ((fs.entry->protection & VM_PROT_WRITE) == 0)
 			fs.entry->max_protection &= ~VM_PROT_WRITE;
