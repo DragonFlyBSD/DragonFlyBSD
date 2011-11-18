@@ -1004,6 +1004,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 		goto post_threads;
 
 	marker = kmalloc(sizeof(struct thread), M_TEMP, M_WAITOK|M_ZERO);
+	marker->td_flags = TDF_MARKER;
 	error = 0;
 
 	for (n = 1; n <= ncpus; ++n) {
@@ -1018,27 +1019,17 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 
 		crit_enter();
 		TAILQ_INSERT_TAIL(&rgd->gd_tdallq, marker, td_allq);
-		crit_exit();
 
 		while ((td = TAILQ_PREV(marker, lwkt_queue, td_allq)) != NULL) {
-			crit_enter();
-			if (td != TAILQ_PREV(marker, lwkt_queue, td_allq)) {
-				crit_exit();
-				continue;
-			}
 			TAILQ_REMOVE(&rgd->gd_tdallq, marker, td_allq);
 			TAILQ_INSERT_BEFORE(td, marker, td_allq);
+			if (td->td_flags & TDF_MARKER)
+				continue;
+			if (td->td_proc)
+				continue;
+
 			lwkt_hold(td);
 			crit_exit();
-
-			if (td->td_flags & TDF_MARKER) {
-				lwkt_rele(td);
-				continue;
-			}
-			if (td->td_proc) {
-				lwkt_rele(td);
-				continue;
-			}
 
 			switch (oid) {
 			case KERN_PROC_PGRP:
@@ -1052,10 +1043,10 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 				break;
 			}
 			lwkt_rele(td);
+			crit_enter();
 			if (error)
 				break;
 		}
-		crit_enter();
 		TAILQ_REMOVE(&rgd->gd_tdallq, marker, td_allq);
 		crit_exit();
 
