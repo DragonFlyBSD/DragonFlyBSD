@@ -1,0 +1,340 @@
+.\"
+.\" Copyright (c) 2011
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd November 17, 2011
+.Dt DFREGRESS 8
+.Os
+.Sh NAME
+.Nm dfregress
+.Nd an automation test driver and framework
+.Sh SYNOPSIS
+.Nm
+.Fl o Ar output_plist
+.Fl t Ar testcase_dir
+.Fl r Ar runlist_file
+.Op Fl p Ar prepost_dir
+.Nm
+.Fl h
+.Sh DESCRIPTION
+.Nm
+is a regression test framework and automation driver.
+It executes a series of testcases as specified in the
+.Ar runlist_file
+and collects the results.
+.Pp
+The path to the testcase collection is specified via the
+.Ar testcase_dir
+argument, and similarly the path to the pre- and post commands is
+specified via
+.Ar prepost_dir .
+The
+.Ar prepost_dir
+only needs to be specified if the runlist contains custom pre or
+post commands.
+.Pp
+The output is saved in plist format to the
+.Ar output_plist
+file.
+Other tools, known as frontends, can parse the plist output into
+an easier to read form.
+.Pp
+The following is a summary of the arguments:
+.Bl -tag -width indent
+.It Fl o Ar output_plist
+Specifies the file to which to write the results.
+The resulting file, 
+.Ar output_plist ,
+will be in plist format.
+.It Fl t Ar testcase_dir
+Specifies the directory in which to find the testcases specified in the runlist.
+.It Fl r Ar runlist_file
+Specifies the file containing the runlist to use for the test execution.
+.It Fl p Ar prepost_dir
+Specifies the directory in which to find the pre- and post commands used
+in the runlist.
+This argument is only required when the runlist uses custom pre- or post
+commands.
+.It Fl h
+Prints a short synopsys.
+.El
+.Sh RUNLIST SYNTAX
+Testcases are specified one testcase per line, with whitespace separated
+values.
+Empty lines and lines beginning with a
+.Dq #
+are ignored.
+.Pp
+Runlist lines are of the following format:
+.Bd -literal -offset indent
+.Ic testcase type options Cm arguments ...
+.Ed
+.Pp
+The
+.Ic testcase
+part needs to be a relative path from the testcase base directory specified
+by the
+.Fl t
+argument to the resulting (after building the testcase) testcase executable.
+The testcase will be executed with the
+.Ic Cm arguments
+passed as command line arguments to it.
+.Pp
+Valid types are
+.Ic userland ,
+.Ic kernel
+and
+.Ic buildonly :
+.Bl -tag -width indent -offset indent
+.It Ic userland
+A userland testcase is a normal userland executable that returns a non-zero
+exit value on test failure.
+.It Ic kernel
+A kernel testcase is run with the kernel test bridge inside the kernel.
+.It Ic buildonly
+A buildonly test passes when the build for the given testcase succeeds.
+.El
+.Pp
+Valid options are
+.Ic defaults ,
+.Ic make ,
+.Ic timeout ,
+.Ic nobuild ,
+.Ic runas ,
+.Ic intpre ,
+.Ic intpost ,
+.Ic pre ,
+and
+.Ic post :
+.Bl -tag -width indent -offset indent
+.It Ic defaults
+This option does nothing.
+All default options are applied.
+.It Ic make Ar make_command
+Uses
+.Ar make_command
+instead of
+.Xr make 1
+to build the testcase.
+.It Ic timeout Ar timeout
+Sets the timeout for the testcase after which the testcase will be aborted to
+.Ar timeout
+seconds.
+.It Ic nobuild
+If this option is set, the build stage and cleanup stage of the test case
+are not run.
+.It Ic runas Ar uid
+Runs the testcase as the user identified by the given
+.Ar uid .
+.It Ic intpre
+Executes the testcase command with the argument
+.Dq pre
+during the pre-run command stage.
+.It Ic intpost
+Executes the testcase command with the argument
+.Dq post
+during the post-run command stage.
+.It Ic pre Ar precmd
+Executes the command specified by
+.Ar precmd
+during the pre-run command stage.
+.It Ic pre Ar postcmd
+Executes the command specified by
+.Ar postcmd
+during the post-run command stage.
+.El
+.Sh TESTCASE EXECUTION
+.Bl -enum -width 3n -offset indent
+.It
+.Tn "CHDIR"
+to the testcase directory.
+If it fails, the result will be set to
+.Dv RESULT_PREFAIL
+and the
+.Ar sysbuf
+buffer will provide further details.
+.It
+.Tn "BUILD"
+the testcase using the command specified by the
+.Ic make
+option or, if not specified,
+.Xr make 1 ,
+unless the
+.Ic nobuild
+option was specified.
+If there is an internal driver error, the result will be set to
+.Dv RESULT_PREFAIL ,
+the next step to be performed will be
+.Tn "CLEANUP"
+and the
+.Ar sysbuf
+buffer will provide further details.
+If no internal error occurs, the
+.Ar buildbuf
+will contain the build log.
+.It
+.Tn "RUN PRE COMMAND"
+if
+.Ic intpre
+or
+.Ic pre
+are set.
+If there is an internal driver error, the result will be set to
+.Dv RESULT_PREFAIL ,
+the next step to be performed will be
+.Tn "CLEANUP"
+and the
+.Ar sysbuf
+buffer will provide further details.
+If the pre command has a non-zero exit value, the result will be set to
+.Dv RESULT_PREFAIL
+and the
+next step to be performed will be
+.Tn "CLEANUP" .
+In this case and in the case where the command succeeds, the
+.Ar precmd_buf
+will contain the execution log.
+.It
+.Tn "RUN TESTCASE"
+depending on type:
+.Bl -tag -width 2n -compact
+.It "buildonly"
+testcases will get their result set to
+.Dv RESULT_PASS at this point, since the build must have succeeded already.
+.It "userland"
+testcases will get executed in a separate child process, possibly as a
+different user, depending on whether the
+.Ic runas
+option was specified.
+The result will be set to
+.Dv RESULT_TIMEOUT
+if the timeout is reached before the testcase finishes,
+.Dv RESULT_SIGNALLED
+if the testcase dies because of an unhandled signal (often due to crashing),
+.Dv RESULT_NOTRUN
+if the testcase could not be executed,
+.Dv RESULT_FAIL
+if the testcase completes but returns failure or
+.Dv RESULT_PASS
+if the testcase completes and returns success.
+.It "kernel"
+testcases will be executed in kernel space by loading a given module and
+running the testcase entry point function.
+The result will be set to
+.Dv RESULT_NOTRUN
+if the testcase could not be executed.
+Otherwise the result will be set according to the kernel test case to
+one of
+.Dv RESULT_TIMEOUT ,
+.Dv RESULT_FAIL ,
+or
+.Dv RESULT_PASS .
+.El
+The output will be logged separately for stdout and stderr to the
+.Ar stdout_buf
+and
+.Ar stderr_buf
+respectively.
+If the result was
+.Dv RESULT_NOTRUN
+the
+.Ar sysbuf
+will contain more information.
+.It
+.Tn "RUN POST COMMAND"
+if
+.Ic intpost
+or
+.Ic post
+are set.
+If there is an internal driver error, the result will be set to
+.Dv RESULT_POSTFAIL ,
+the next step to be performed will be
+.Tn "CLEANUP"
+and the
+.Ar sysbuf
+buffer will provide further details.
+If the post command has a non-zero exit value, the result will be set to
+.Dv RESULT_POSTFAIL
+and the
+next step to be performed will be
+.Tn "CLEANUP" .
+In this case and in the case where the command succeeds, the
+.Ar postcmd_buf
+will contain the execution log.
+.It
+.Tn "CLEANUP"
+the testcase execution using the command specified by the
+.Ic make
+option or, if not specified,
+.Xr make 1
+with the parameter
+.Dq clean ,
+unless the
+.Ic nobuild
+option was specified.
+If there is an internal driver error the
+.Ar sysbuf
+buffer will contain more information.
+If no internal error occurs, the
+.Ar cleanu_pbuf
+will contain the cleanup log.
+.El
+.Sh FRONTENDS
+The output of
+.Nm
+is in the Apple plist serialized object format.
+This format can be easily parsed by using
+.Xr proplib 3
+when using C.
+Ruby and Python also have parsers for the plist format.
+.Pp
+A frontend for
+.Nm
+parses the intermediate output plist into a more easily readable format
+such as plain text or websites.
+.Pp
+By default
+.Nm
+ships only with the
+.Xr dfr2text 8
+text-based frontend.
+.Sh EXAMPLES
+An example runlist can be found under
+.Pa test/testcases/sample.run .
+.Sh SEE ALSO
+.Xr dfr2text 8
+.Sh HISTORY
+The
+.Nm
+utility appeared in
+.Dx 2.13 .
+.Sh AUTHORS
+.An Alex Hornung

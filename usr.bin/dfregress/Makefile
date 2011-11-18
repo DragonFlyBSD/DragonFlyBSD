@@ -1,6 +1,6 @@
 PROG=		dfregress
 INCS=		dfregress.h
-NOMAN=
+MAN=		dfregress.8
 
 CFLAGS+=	-I.
 
