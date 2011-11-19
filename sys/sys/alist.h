@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2007,2011 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -30,18 +30,18 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/alist.h,v 1.2 2007/10/09 17:18:09 dillon Exp $
  */
 /*
  * Implements a power-of-2 aligned and sized resource bitmap.  The
- * number of blocks need not be a power-of-2, but all allocations must
- * be a power of 2 and will be aligned on return.  Frees do not have to
- * be aligned.
+ * number of blocks need not be a power-of-2, but any allocation which is
+ * not a power of 2 will first allocate the nearest higher power of 2
+ * and then free the remainder.  Frees have no alignment requirements
+ * and piecemeal frees are allowed.
  *
  * alist = alist_create(blocks, malloctype)
+ * (void)  alist_init(alist, blocks, records, nrecords)
  * (void)  alist_destroy(alist, malloctype)
- * blkno = alist_alloc(alist, count)
+ * blkno = alist_alloc(alist, start, count)
  * (void)  alist_free(alist, blkno, count)
  *
  * A radix tree is constructed using radix 16 for the meta nodes and radix 32
@@ -67,33 +67,47 @@
 #include <sys/types.h>
 #endif
 
-/*
- * blmeta and bl_bitmap_t MUST be a power of 2 in size.
- */
+typedef u_int32_t	alist_bmap_t;
+typedef u_int32_t	alist_blk_t;
 
+/*
+ * almeta and alist_bmap_t MUST be a power of 2 in size.
+ */
 typedef struct almeta {
-	u_daddr_t	bm_bitmap;	/* bitmap if we are a leaf	*/
-	daddr_t		bm_bighint;	/* biggest contiguous block hint*/
+	alist_bmap_t	bm_bitmap;	/* bitmap if we are a leaf	*/
+	alist_blk_t	bm_bighint;	/* biggest contiguous block hint*/
 } almeta_t;
 
 typedef struct alist {
-	daddr_t		bl_blocks;	/* area of coverage		*/
-	int		bl_radix;	/* coverage radix		*/
-	daddr_t		bl_skip;	/* starting skip		*/
-	daddr_t		bl_free;	/* number of free blocks	*/
+	alist_blk_t	bl_blocks;	/* area of coverage		*/
+	alist_blk_t	bl_radix;	/* coverage radix		*/
+	alist_blk_t	bl_skip;	/* starting skip		*/
+	alist_blk_t	bl_free;	/* number of free blocks	*/
 	almeta_t	*bl_root;	/* root of radix tree		*/
-	daddr_t		bl_rootblks;	/* daddr_t blks allocated for tree */
+	alist_blk_t	bl_rootblks;	/* #blocks handled by tree	*/
 } *alist_t;
 
-#define ALIST_META_RADIX	(sizeof(u_daddr_t)*4)	/* 16 */
-#define ALIST_BMAP_RADIX	(sizeof(u_daddr_t)*8)	/* 32 */
-#define ALIST_BLOCK_NONE	((daddr_t)-1)
+#define ALIST_META_RADIX	(sizeof(alist_bmap_t)*4)	/* 16 */
+#define ALIST_BMAP_RADIX	(sizeof(alist_bmap_t)*8)	/* 32 */
+#define ALIST_BLOCK_NONE	((alist_blk_t)-1)
 
-extern alist_t alist_create(daddr_t blocks, struct malloc_type *mtype);
-extern void alist_destroy(alist_t blist, struct malloc_type *mtype);
-extern daddr_t alist_alloc(alist_t blist, daddr_t count);
-extern void alist_free(alist_t blist, daddr_t blkno, daddr_t count);
-extern void alist_print(alist_t blist);
+/*
+ * When alist_init() is used the caller can pre-allocate the records
+ * array.
+ */
+#define ALIST_RECORDS_65536	2193
+#define ALIST_RECORDS_1048576	34961
+
+extern alist_t alist_create(alist_blk_t blocks, struct malloc_type *mtype);
+extern void alist_init(alist_t alist, alist_blk_t blocks,
+				almeta_t *records, alist_blk_t nrecords);
+extern void alist_destroy(alist_t alist, struct malloc_type *mtype);
+extern alist_blk_t alist_alloc(alist_t alist, alist_blk_t start,
+				alist_blk_t count);
+extern void alist_free(alist_t alist, alist_blk_t blkno, alist_blk_t count);
+extern alist_blk_t alist_free_info(alist_t bl, alist_blk_t *startp,
+				alist_blk_t *countp);
+extern void alist_print(alist_t alist);
 
 #endif	/* _SYS_ALIST_H_ */
 
