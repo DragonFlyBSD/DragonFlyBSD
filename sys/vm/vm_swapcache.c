@@ -636,10 +636,13 @@ vm_swapcache_cleaning(vm_object_t marker)
 	lwkt_gettoken(&vmobj_token);
 
 	while ((object = TAILQ_NEXT(object, object_list)) != NULL) {
-		lwkt_yield();
-		if (--count <= 0)
-			break;
 		vm_object_hold(object);
+
+		lwkt_yield();
+		if (--count <= 0) {
+			vm_object_drop(object);
+			break;
+		}
 
 		/* 
 		 * Only operate on live VNODE objects with regular/chardev types
@@ -678,7 +681,7 @@ vm_swapcache_cleaning(vm_object_t marker)
 		 * requested number of blocks, it will return n >= count
 		 * and we break and pick it back up on a future attempt.
 		 */
-		vm_object_lock_swap();
+		lwkt_token_swap();
 		lwkt_reltoken(&vmobj_token);
 
 		n = swap_pager_condfree(object, &marker->size, count);
