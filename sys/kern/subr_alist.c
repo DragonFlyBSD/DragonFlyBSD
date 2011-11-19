@@ -303,7 +303,6 @@ alist_free_info(alist_t bl, alist_blk_t *startp, alist_blk_t *countp)
 	alist_blk_t skip = bl->bl_skip;
 	alist_blk_t next_skip;
 	alist_blk_t i;
-	alist_blk_t j;
 	alist_bmap_t mask;
 	almeta_t *scan = bl->bl_root;
 
@@ -355,6 +354,12 @@ alist_free_info(alist_t bl, alist_blk_t *startp, alist_blk_t *countp)
 		scan += 1 + next_skip * i;
 		skip = next_skip - 1;
 	}
+
+	/*
+	 * If we got all the way down to a leaf node locate the last block,
+	 * power-of-2 aligned and power-of-2 sized.  Well, the easiest way
+	 * to deal with this is to just return 1 block.
+	 */
 	if (radix == ALIST_BMAP_RADIX) {
 		mask = scan->bm_bitmap;
 		for (i = ALIST_BMAP_RADIX - 1; i != ALIST_BLOCK_NONE; --i) {
@@ -365,20 +370,14 @@ alist_free_info(alist_t bl, alist_blk_t *startp, alist_blk_t *countp)
 		/*
 		 * did not find free entry
 		 */
-		if (i == ALIST_BLOCK_NONE) {
+		if (i == ALIST_BLOCK_NONE)
 			return(bl->bl_free);
-		}
 
 		/*
-		 * span free entries
+		 * Return one block.
 		 */
-		for (j = i; j != ALIST_BLOCK_NONE; --j) {
-			if ((mask & ((alist_bmap_t)1U << j)) == 0)
-				break;
-		}
-		++j;
-		*startp += j;
-		*countp = i - j + 1;
+		*startp += i;
+		*countp = 1;
 		return(bl->bl_free);
 	}
 	return(bl->bl_free);
