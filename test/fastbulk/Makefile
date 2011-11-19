@@ -13,10 +13,23 @@ NPARALLEL?= 8
 
 all:
 	@echo "fastbulk build options"
-	@echo "    make setup          - setup/mount the build environment"
-	@echo "    make cleanup        - unmount the build environment"
-	@echo "    make changes      - deinstall modified packages"
+	@echo "    make scratch      - cleanup, setup, cpdup /etc, bootstrap"
 	@echo "    make build        - iterate all dirs / build package"
+	@echo "    make setup        - setup/mount the build environment"
+	@echo "    make cleanup      - unmount the build environment"
+	@echo "    make realclean    - rm -rf the build env except for"
+	@echo "                        packages and distfiles"
+	@echo "    make changes      - deinstall modified packages"
+	@echo "make variables (defaults shown):"
+	@echo ""
+	@echo "    BUILDBASE=/build/fastbulk     all fastbulk-generated files"
+	@echo "    SYSPKGSRC=/usr/pkgsrc         where to get pkgsrc from"
+	@echo "    SYSROOT=/                     rootenv to replicate"
+	@echo "    NPARALLEL=8                   maximum concurrency"
+	@echo ""
+	@echo "NOTE: ${BUILDBASE}/{distfiles,packages} are normally retained"
+	@echo "      to avoid having to re-pull and for incremental operation"
+	@echo ""
 
 scratch: cleanup
 	rm -rf ${BUILDBASE}/var.db
@@ -53,6 +66,8 @@ setup: cleanup
 	mkdir -p ${BUILDBASE}/usr.pkg
 	mkdir -p ${BUILDBASE}/usr.obj
 	mkdir -p ${BUILDBASE}/var.db
+	mkdir -p ${BUILDBASE}/var.db/pkg
+	mkdir -p ${BUILDBASE}/var.db/pkg.refcount
 	mkdir -p ${BUILDBASE}/var.db.pkg
 	mkdir -p ${BUILDBASE}/var.db.pkg.refcount
 	mkdir -p ${BUILDBASE}/track
