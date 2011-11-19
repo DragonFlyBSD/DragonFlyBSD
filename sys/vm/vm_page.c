@@ -73,6 +73,8 @@
 #include <sys/vmmeter.h>
 #include <sys/vnode.h>
 #include <sys/kernel.h>
+#include <sys/alist.h>
+#include <sys/sysctl.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -111,6 +113,16 @@ LIST_HEAD(vm_page_action_list, vm_page_action);
 struct vm_page_action_list	action_list[VMACTION_HSIZE];
 static volatile int vm_pages_waiting;
 
+static struct alist vm_contig_alist;
+static struct almeta vm_contig_ameta[ALIST_RECORDS_65536];
+static struct spinlock vm_contig_spin = SPINLOCK_INITIALIZER(&vm_contig_spin);
+
+static u_long vm_dma_reserved = 0;
+TUNABLE_ULONG("vm.dma_reserved", &vm_dma_reserved);
+SYSCTL_ULONG(_vm, OID_AUTO, dma_reserved, CTLFLAG_RD, &vm_dma_reserved, 0,
+	    "Memory reserved for DMA");
+SYSCTL_UINT(_vm, OID_AUTO, dma_free_pages, CTLFLAG_RD,
+	    &vm_contig_alist.bl_free, 0, "Memory reserved for DMA");
 
 RB_GENERATE2(vm_page_rb_tree, vm_page, rb_entry, rb_vm_page_compare,
 	     vm_pindex_t, pindex);
@@ -147,7 +159,8 @@ vm_page_queue_init(void)
 long first_page = 0;
 int vm_page_array_size = 0;
 int vm_page_zero_count = 0;
-vm_page_t vm_page_array = 0;
+vm_page_t vm_page_array = NULL;
+vm_paddr_t vm_low_phys_reserved;
 
 /*
  * (low level boot)
@@ -177,7 +190,7 @@ vm_set_page_size(void)
  *
  * Must be called in a critical section.
  */
-static vm_page_t
+static void
 vm_add_new_page(vm_paddr_t pa)
 {
 	struct vpgqueues *vpq;
@@ -195,6 +208,22 @@ vm_add_new_page(vm_paddr_t pa)
 	m->pc ^= ((pa >> PAGE_SHIFT) / PQ_L2_SIZE) & PQ_L2_MASK;
 	m->pc ^= ((pa >> PAGE_SHIFT) / (PQ_L2_SIZE * PQ_L2_SIZE)) & PQ_L2_MASK;
 #endif
+	/*
+	 * Reserve a certain number of contiguous low memory pages for
+	 * contigmalloc() to use.
+	 */
+	if (pa < vm_low_phys_reserved) {
+		atomic_add_int(&vmstats.v_page_count, 1);
+		atomic_add_int(&vmstats.v_dma_pages, 1);
+		m->queue = PQ_NONE;
+		m->wire_count = 1;
+		alist_free(&vm_contig_alist, pa >> PAGE_SHIFT, 1);
+		return;
+	}
+
+	/*
+	 * General page
+	 */
 	m->queue = m->pc + PQ_FREE;
 	KKASSERT(m->dirty == 0);
 
@@ -211,8 +240,6 @@ vm_add_new_page(vm_paddr_t pa)
 	}
 	++vpq->flipflop;
 	++vpq->lcnt;
-
-	return (m);
 }
 
 /*
@@ -275,7 +302,6 @@ vm_page_startup(void)
 	 * Initialize the queue headers for the free queue, the active queue
 	 * and the inactive queue.
 	 */
-
 	vm_page_queue_init();
 
 #if !defined(_KERNEL_VIRTUAL)
@@ -300,7 +326,6 @@ vm_page_startup(void)
 	    VM_PROT_READ | VM_PROT_WRITE);
 	bzero((void *)vm_page_dump, vm_page_dump_size);
 #endif
-
 	/*
 	 * Compute the number of pages of memory that will be available for
 	 * use (taking into account the overhead of a page structure per
@@ -310,13 +335,36 @@ vm_page_startup(void)
 	page_range = phys_avail[(nblocks - 1) * 2 + 1] / PAGE_SIZE - first_page;
 	npages = (total - (page_range * sizeof(struct vm_page))) / PAGE_SIZE;
 
+#ifndef _KERNEL_VIRTUAL
+	/*
+	 * (only applies to real kernels)
+	 *
+	 * Initialize the contiguous reserve map.  We initially reserve up
+	 * to 1/4 available physical memory or 65536 pages (~256MB), whichever
+	 * is lower.
+	 *
+	 * Once device initialization is complete we return most of the
+	 * reserved memory back to the normal page queues but leave some
+	 * in reserve for things like usb attachments.
+	 */
+	vm_low_phys_reserved = (vm_paddr_t)65536 << PAGE_SHIFT;
+	if (vm_low_phys_reserved > total / 4)
+		vm_low_phys_reserved = total / 4;
+	if (vm_dma_reserved == 0) {
+		vm_dma_reserved = 16 * 1024 * 1024;	/* 16MB */
+		if (vm_dma_reserved > total / 16)
+			vm_dma_reserved = total / 16;
+	}
+#endif
+	alist_init(&vm_contig_alist, 65536, vm_contig_ameta,
+		   ALIST_RECORDS_65536);
+
 	/*
 	 * Initialize the mem entry structures now, and put them in the free
 	 * queue.
 	 */
 	new_end = trunc_page(end - page_range * sizeof(struct vm_page));
-	mapped = pmap_map(&vaddr, new_end, end,
-	    VM_PROT_READ | VM_PROT_WRITE);
+	mapped = pmap_map(&vaddr, new_end, end, VM_PROT_READ | VM_PROT_WRITE);
 	vm_page_array = (vm_page_t)mapped;
 
 #if defined(__x86_64__) && !defined(_KERNEL_VIRTUAL)
@@ -359,6 +407,96 @@ vm_page_startup(void)
 	else
 		virtual_start = vaddr;
 }
+
+/*
+ * We tended to reserve a ton of memory for contigmalloc().  Now that most
+ * drivers have initialized we want to return most the remaining free
+ * reserve back to the VM page queues so they can be used for normal
+ * allocations.
+ *
+ * We leave vm_dma_reserved bytes worth of free pages in the reserve pool.
+ */
+static void
+vm_page_startup_finish(void *dummy __unused)
+{
+	alist_blk_t blk;
+	alist_blk_t rblk;
+	alist_blk_t count;
+	alist_blk_t xcount;
+	alist_blk_t bfree;
+	vm_page_t m;
+
+	spin_lock(&vm_contig_spin);
+	for (;;) {
+		bfree = alist_free_info(&vm_contig_alist, &blk, &count);
+		if (bfree <= vm_dma_reserved / PAGE_SIZE)
+			break;
+		if (count == 0)
+			break;
+
+		/*
+		 * Figure out how much of the initial reserve we have to
+		 * free in order to reach our target.
+		 */
+		bfree -= vm_dma_reserved / PAGE_SIZE;
+		if (count > bfree) {
+			blk += count - bfree;
+			count = bfree;
+		}
+
+		/*
+		 * Calculate the nearest power of 2 <= count.
+		 */
+		for (xcount = 1; xcount <= count; xcount <<= 1)
+			;
+		xcount >>= 1;
+		blk += count - xcount;
+		count = xcount;
+
+		/*
+		 * Allocate the pages from the alist, then free them to
+		 * the normal VM page queues.
+		 *
+		 * Pages allocated from the alist are wired.  We have to
+		 * busy, unwire, and free them.  We must also adjust
+		 * vm_low_phys_reserved before freeing any pages to prevent
+		 * confusion.
+		 */
+		rblk = alist_alloc(&vm_contig_alist, blk, count);
+		if (rblk != blk) {
+			kprintf("vm_page_startup_finish: Unable to return "
+				"dma space @0x%08x/%d -> 0x%08x\n",
+				blk, count, rblk);
+			break;
+		}
+		atomic_add_int(&vmstats.v_dma_pages, -count);
+		spin_unlock(&vm_contig_spin);
+
+		m = PHYS_TO_VM_PAGE((vm_paddr_t)blk << PAGE_SHIFT);
+		vm_low_phys_reserved = VM_PAGE_TO_PHYS(m);
+		while (count) {
+			vm_page_busy_wait(m, FALSE, "cpgfr");
+			vm_page_unwire(m, 0);
+			vm_page_free(m);
+			--count;
+			++m;
+		}
+		spin_lock(&vm_contig_spin);
+	}
+	spin_unlock(&vm_contig_spin);
+
+	/*
+	 * Print out how much DMA space drivers have already allocated and
+	 * how much is left over.
+	 */
+	kprintf("DMA space used: %jdk, remaining available: %jdk\n",
+		(intmax_t)(vmstats.v_dma_pages - vm_contig_alist.bl_free) *
+		(PAGE_SIZE / 1024),
+		(intmax_t)vm_contig_alist.bl_free * (PAGE_SIZE / 1024));
+}
+SYSINIT(vm_pgend, SI_SUB_PROC0_POST, SI_ORDER_ANY,
+	vm_page_startup_finish, NULL)
+
 
 /*
  * Scan comparison function for Red-Black tree scans.  An inclusive
@@ -1523,6 +1661,88 @@ done:
 }
 
 /*
+ * Attempt to allocate contiguous physical memory with the specified
+ * requirements.
+ */
+vm_page_t
+vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
+		     unsigned long alignment, unsigned long boundary,
+		     unsigned long size)
+{
+	alist_blk_t blk;
+
+	alignment >>= PAGE_SHIFT;
+	if (alignment == 0)
+		alignment = 1;
+	boundary >>= PAGE_SHIFT;
+	if (boundary == 0)
+		boundary = 1;
+	size = (size + PAGE_MASK) >> PAGE_SHIFT;
+
+	spin_lock(&vm_contig_spin);
+	blk = alist_alloc(&vm_contig_alist, 0, size);
+	if (blk == ALIST_BLOCK_NONE) {
+		spin_unlock(&vm_contig_spin);
+		if (bootverbose) {
+			kprintf("vm_page_alloc_contig: %ldk nospace\n",
+				(size + PAGE_MASK) * (PAGE_SIZE / 1024));
+		}
+		return(NULL);
+	}
+	if (high && ((vm_paddr_t)(blk + size) << PAGE_SHIFT) > high) {
+		alist_free(&vm_contig_alist, blk, size);
+		spin_unlock(&vm_contig_spin);
+		if (bootverbose) {
+			kprintf("vm_page_alloc_contig: %ldk high "
+				"%016jx failed\n",
+				(size + PAGE_MASK) * (PAGE_SIZE / 1024),
+				(intmax_t)high);
+		}
+		return(NULL);
+	}
+	spin_unlock(&vm_contig_spin);
+	if (bootverbose) {
+		kprintf("vm_page_alloc_contig: %016jx/%ldk\n",
+			(intmax_t)(vm_paddr_t)blk << PAGE_SHIFT,
+			(size + PAGE_MASK) * (PAGE_SIZE / 1024));
+	}
+	return (PHYS_TO_VM_PAGE((vm_paddr_t)blk << PAGE_SHIFT));
+}
+
+/*
+ * Free contiguously allocated pages.  The pages will be wired but not busy.
+ * When freeing to the alist we leave them wired and not busy.
+ */
+void
+vm_page_free_contig(vm_page_t m, unsigned long size)
+{
+	vm_paddr_t pa = VM_PAGE_TO_PHYS(m);
+	vm_pindex_t start = pa >> PAGE_SHIFT;
+	vm_pindex_t pages = (size + PAGE_MASK) >> PAGE_SHIFT;
+
+	if (bootverbose) {
+		kprintf("vm_page_free_contig:  %016jx/%ldk\n",
+			(intmax_t)pa, size / 1024);
+	}
+	if (pa < vm_low_phys_reserved) {
+		KKASSERT(pa + size <= vm_low_phys_reserved);
+		spin_lock(&vm_contig_spin);
+		alist_free(&vm_contig_alist, start, pages);
+		spin_unlock(&vm_contig_spin);
+	} else {
+		while (pages) {
+			vm_page_busy_wait(m, FALSE, "cpgfr");
+			vm_page_unwire(m, 0);
+			vm_page_free(m);
+			--pages;
+			++m;
+		}
+
+	}
+}
+
+
+/*
  * Wait for sufficient free memory for nominal heavy memory use kernel
  * operations.
  */
@@ -1713,10 +1933,10 @@ vm_page_free_toq(vm_page_t m)
 	KKASSERT(m->flags & PG_BUSY);
 
 	if (m->busy || ((m->queue - m->pc) == PQ_FREE)) {
-		kprintf(
-		"vm_page_free: pindex(%lu), busy(%d), PG_BUSY(%d), hold(%d)\n",
-		    (u_long)m->pindex, m->busy, (m->flags & PG_BUSY) ? 1 : 0,
-		    m->hold_count);
+		kprintf("vm_page_free: pindex(%lu), busy(%d), "
+			"PG_BUSY(%d), hold(%d)\n",
+			(u_long)m->pindex, m->busy,
+			((m->flags & PG_BUSY) ? 1 : 0), m->hold_count);
 		if ((m->queue - m->pc) == PQ_FREE)
 			panic("vm_page_free: freeing free page");
 		else

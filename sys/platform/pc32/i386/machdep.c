@@ -361,8 +361,9 @@ again:
 #endif
 
 	kprintf("avail memory = %ju (%ju MB)\n",
-		(intmax_t)ptoa(vmstats.v_free_count),
-		(intmax_t)ptoa(vmstats.v_free_count) / 1024 / 1024);
+		(intmax_t)ptoa(vmstats.v_free_count + vmstats.v_dma_pages),
+		(intmax_t)ptoa(vmstats.v_free_count + vmstats.v_dma_pages) /
+		1024 / 1024);
 
 	/*
 	 * Set up buffers, so they can be used to read disk labels.

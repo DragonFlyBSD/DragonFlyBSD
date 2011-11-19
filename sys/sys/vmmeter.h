@@ -132,6 +132,9 @@ struct vmstats {
 	u_int v_pageout_free_min;   /* min number pages reserved for kernel */
 	u_int v_interrupt_free_min; /* reserved number of pages for int code */
 	u_int v_free_severe;	/* severe depletion of pages below this pt */
+	u_int v_dma_avail;	/* free dma-reserved pages */
+	u_int v_dma_pages;	/* total dma-reserved pages */
+	u_int v_unused[8];
 };
 
 #ifdef _KERNEL

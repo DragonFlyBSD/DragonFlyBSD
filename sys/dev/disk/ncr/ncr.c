@@ -3591,7 +3591,7 @@ ncr_attach (device_t dev)
 		np->bst2 = rman_get_bustag(np->sram_res);
 		np->bsh2 = rman_get_bushandle(np->sram_res);
 	} else if (sizeof (struct script) > PAGE_SIZE) {
-		np->script  = (struct script*) vm_page_alloc_contig 
+		np->script  = (struct script*) kmem_alloc_contig
 			(round_page(sizeof (struct script)), 
 			 0, 0xffffffff, PAGE_SIZE);
 	} else {
@@ -3601,7 +3601,7 @@ ncr_attach (device_t dev)
 
 	/* XXX JGibbs - Use contigmalloc */
 	if (sizeof (struct scripth) > PAGE_SIZE) {
-		np->scripth = (struct scripth*) vm_page_alloc_contig 
+		np->scripth = (struct scripth*) kmem_alloc_contig
 			(round_page(sizeof (struct scripth)), 
 			 0, 0xffffffff, PAGE_SIZE);
 	} else 

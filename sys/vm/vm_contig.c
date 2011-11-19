@@ -193,6 +193,10 @@ vm_contig_pg_clean(int queue, int count)
 			vm_page_wakeup(m);
 			continue;
 		}
+		if (m->wire_count || m->hold_count) {
+			vm_page_wakeup(m);
+			continue;
+		}
 		if ((object = m->object) == NULL) {
 			vm_page_wakeup(m);
 			continue;
@@ -258,7 +262,14 @@ vm_contig_pg_alloc(unsigned long size, vm_paddr_t low, vm_paddr_t high,
 	if ((boundary & (boundary - 1)) != 0)
 		panic("vm_contig_pg_alloc: boundary must be a power of 2");
 
-	start = 0;
+	/*
+	 * See if we can get the pages from the contiguous page reserve
+	 * alist.  The returned pages will be allocated and wired but not
+	 * busied.
+	 */
+	m = vm_page_alloc_contig(low, high, alignment, boundary, size);
+	if (m)
+		return (m - &pga[0]);
 
 	/*
 	 * Three passes (0, 1, 2).  Each pass scans the VM page list for
@@ -266,6 +277,7 @@ vm_contig_pg_alloc(unsigned long size, vm_paddr_t low, vm_paddr_t high,
 	 * we attempt to flush inactive pages and reset the start index back
 	 * to 0.  For passes 1 and 2 we also attempt to flush active pages.
 	 */
+	start = 0;
 	for (pass = 0; pass < 3; pass++) {
 		/*
 		 * Find first page in array that is free, within range, 
@@ -355,7 +367,7 @@ again:
 		}
 
 		/*
-		 * Try to allocate the pages.
+		 * Try to allocate the pages, wiring them as we go.
 		 *
 		 * (still in critical section)
 		 */
@@ -405,6 +417,7 @@ again:
 			 */
 			vm_page_flag_clear(m, ~(PG_BUSY | PG_SBUSY |
 						PG_ZERO | PG_WANTED));
+			vm_page_wire(m);
 			vm_page_wakeup(m);
 		}
 
@@ -434,18 +447,18 @@ static void
 vm_contig_pg_free(int start, u_long size)
 {
 	vm_page_t pga = vm_page_array;
-	vm_page_t m;
-	int i;
 	
 	size = round_page(size);
 	if (size == 0)
 		panic("vm_contig_pg_free: size must not be 0");
 
-	for (i = start; i < (start + size / PAGE_SIZE); i++) {
-		m = &pga[i];
-		vm_page_busy_wait(m, FALSE, "cpgfr");
-		vm_page_free(m);
-	}
+	/*
+	 * The pages are wired, vm_page_free_contig() determines whether they
+	 * belong to the contig space or not and either frees them to that
+	 * space (leaving them wired), or unwires the page and frees it to the
+	 * normal PQ_FREE queue.
+	 */
+	vm_page_free_contig(&pga[start], size);
 }
 
 /*
@@ -460,65 +473,24 @@ vm_contig_pg_free(int start, u_long size)
 static vm_offset_t
 vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 {
-	vm_offset_t addr, tmp_addr;
+	vm_offset_t addr;
+	vm_paddr_t pa;
 	vm_page_t pga = vm_page_array;
-	int i, count;
+	u_long offset;
 
-	size = round_page(size);
 	if (size == 0)
 		panic("vm_contig_pg_kmap: size must not be 0");
-
-	/*
-	 * We've found a contiguous chunk that meets our requirements.
-	 * Allocate KVM, and assign phys pages and return a kernel VM
-	 * pointer.
-	 */
-	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
-	vm_map_lock(map);
-	if (vm_map_findspace(map, vm_map_min(map), size, PAGE_SIZE, 0, &addr) !=
-	    KERN_SUCCESS) {
-		/*
-		 * XXX We almost never run out of kernel virtual
-		 * space, so we don't make the allocated memory
-		 * above available.
-		 */
-		vm_map_unlock(map);
-		vm_map_entry_release(count);
-		return (0);
+	size = round_page(size);
+	addr = kmem_alloc_pageable(&kernel_map, size);
+	if (addr) {
+		pa = VM_PAGE_TO_PHYS(&pga[start]);
+		for (offset = 0; offset < size; offset += PAGE_SIZE)
+			pmap_kenter_quick(addr + offset, pa + offset);
+		smp_invltlb();
+		if (flags & M_ZERO)
+			bzero((void *)addr, size);
 	}
-
-	/*
-	 * kernel_object maps 1:1 to kernel_map.
-	 */
-	vm_object_hold(&kernel_object);
-	vm_object_reference_locked(&kernel_object);
-	vm_map_insert(map, &count, 
-		      &kernel_object, addr,
-		      addr, addr + size,
-		      VM_MAPTYPE_NORMAL,
-		      VM_PROT_ALL, VM_PROT_ALL,
-		      0);
-	vm_map_unlock(map);
-	vm_map_entry_release(count);
-
-	tmp_addr = addr;
-	for (i = start; i < (start + size / PAGE_SIZE); i++) {
-		vm_page_t m = &pga[i];
-		if (vm_page_insert(m, &kernel_object, OFF_TO_IDX(tmp_addr)) ==
-		    FALSE) {
-			panic("vm_contig_pg_kmap: page already exists @%p",
-			      (void *)(intptr_t)tmp_addr);
-		}
-		if ((flags & M_ZERO) && !(m->flags & PG_ZERO))
-			pmap_zero_page(VM_PAGE_TO_PHYS(m));
-		m->flags = 0;
-		tmp_addr += PAGE_SIZE;
- 	}
-	vm_map_wire(map, addr, addr + size, 0);
-
-	vm_object_drop(&kernel_object);
-
-	return (addr);
+	return(addr);
 }
 
 /*
@@ -542,15 +514,10 @@ contigmalloc(
  * No requirements.
  */
 void *
-contigmalloc_map(
-	unsigned long size,	/* should be size_t here and for malloc() */
-	struct malloc_type *type,
-	int flags,
-	vm_paddr_t low,
-	vm_paddr_t high,
-	unsigned long alignment,
-	unsigned long boundary,
-	vm_map_t map)
+contigmalloc_map(unsigned long size, struct malloc_type *type,
+		 int flags, vm_paddr_t low, vm_paddr_t high,
+		 unsigned long alignment, unsigned long boundary,
+		 vm_map_t map)
 {
 	int index;
 	void *rv;
@@ -577,18 +544,27 @@ contigmalloc_map(
 void
 contigfree(void *addr, unsigned long size, struct malloc_type *type)
 {
+	vm_paddr_t pa;
+	vm_page_t m;
+
+	if (size == 0)
+		panic("vm_contig_pg_kmap: size must not be 0");
+	size = round_page(size);
+
+	pa = pmap_extract(&kernel_pmap, (vm_offset_t)addr);
+	pmap_qremove((vm_offset_t)addr, size / PAGE_SIZE);
 	kmem_free(&kernel_map, (vm_offset_t)addr, size);
+
+	m = PHYS_TO_VM_PAGE(pa);
+	vm_page_free_contig(m, size);
 }
 
 /*
  * No requirements.
  */
 vm_offset_t
-vm_page_alloc_contig(
-	vm_offset_t size,
-	vm_paddr_t low,
-	vm_paddr_t high,
-	vm_offset_t alignment)
+kmem_alloc_contig(vm_offset_t size, vm_paddr_t low, vm_paddr_t high,
+		  vm_offset_t alignment)
 {
 	return ((vm_offset_t)contigmalloc_map(size, M_DEVBUF, M_NOWAIT, low,
 				high, alignment, 0ul, &kernel_map));

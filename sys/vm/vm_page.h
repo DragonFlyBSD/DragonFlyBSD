@@ -438,6 +438,9 @@ void vm_page_unhold(vm_page_t);
 void vm_page_activate (vm_page_t);
 void vm_page_pcpu_cache(void);
 vm_page_t vm_page_alloc (struct vm_object *, vm_pindex_t, int);
+vm_page_t vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
+                     unsigned long alignment, unsigned long boundary,
+		     unsigned long size);
 vm_page_t vm_page_grab (struct vm_object *, vm_pindex_t, int);
 void vm_page_cache (vm_page_t);
 int vm_page_try_to_cache (vm_page_t);
@@ -447,9 +450,12 @@ void vm_page_deactivate (vm_page_t);
 void vm_page_deactivate_locked (vm_page_t);
 int vm_page_insert (vm_page_t, struct vm_object *, vm_pindex_t);
 vm_page_t vm_page_lookup (struct vm_object *, vm_pindex_t);
-vm_page_t VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_wait)(struct vm_object *, vm_pindex_t,
-				int, const char * VM_PAGE_DEBUG_ARGS);
-vm_page_t VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_try)(struct vm_object *, vm_pindex_t, int, int * VM_PAGE_DEBUG_ARGS);
+vm_page_t VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_wait)(
+		struct vm_object *, vm_pindex_t, int, const char *
+		VM_PAGE_DEBUG_ARGS);
+vm_page_t VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_try)(
+		struct vm_object *, vm_pindex_t, int, int *
+		VM_PAGE_DEBUG_ARGS);
 void vm_page_remove (vm_page_t);
 void vm_page_rename (vm_page_t, struct vm_object *, vm_pindex_t);
 void vm_page_startup (void);
@@ -471,6 +477,7 @@ int vm_page_bits (int, int);
 vm_page_t vm_page_list_find(int basequeue, int index, boolean_t prefer_zero);
 void vm_page_zero_invalid(vm_page_t m, boolean_t setvalid);
 void vm_page_free_toq(vm_page_t m);
+void vm_page_free_contig(vm_page_t m, unsigned long size);
 vm_page_t vm_page_free_fromq_fast(void);
 void vm_page_event_internal(vm_page_t, vm_page_event_t);
 void vm_page_dirty(vm_page_t m);

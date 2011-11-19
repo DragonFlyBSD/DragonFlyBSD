@@ -2230,6 +2230,7 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 	int	   huh;
 	int	   result;
 	int	   submitted;
+	size_t	   contigsize = 0;
 
 	data = NULL;
 	channel = minor2hba(minor_no);
@@ -2289,6 +2290,7 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 	if (ccb->eata_ccb.DataIn || ccb->eata_ccb.DataOut) {
 		/* Data I/O is involved in this command.  Alocate buffer */
 		if (ccb->eata_ccb.cp_datalen > PAGE_SIZE) {
+			contigsize = ccb->eata_ccb.cp_datalen;
 			data = contigmalloc(ccb->eata_ccb.cp_datalen,
 					    M_TEMP, M_WAITOK, 0, ~0,
 					    ccb->eata_ccb.cp_datalen,
@@ -2322,8 +2324,12 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 	if (ccb->eata_ccb.cp_datalen != 0) {
 		if (dpt_scatter_gather(dpt, ccb, ccb->eata_ccb.cp_datalen,
 				       data) != 0) {
-			if (data != NULL)
-				kfree(data, M_TEMP);
+			if (data != NULL) {
+				if (contigsize)
+					contigfree(data, contigsize, M_TEMP);
+				else
+					kfree(data, M_TEMP);
+			}
 			return (EFAULT);
 		}
 	}
@@ -2389,8 +2395,12 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 	(void) tsleep((void *) ccb, PCATCH, "dptucw", 100 * hz);
 
 	/* Free allocated memory */
-	if (data != NULL)
-		kfree(data, M_TEMP);
+	if (data != NULL) {
+		if (contigsize)
+			contigfree(data, contigsize, M_TEMP);
+		else
+			kfree(data, M_TEMP);
+	}
 
 	return (0);
 }
