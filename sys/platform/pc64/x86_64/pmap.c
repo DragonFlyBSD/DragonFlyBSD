@@ -3091,8 +3091,12 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 			 * pmap_remove_pv_pte() unwires pt_pv and assumes
 			 * we will free pte_pv, but since we are reusing
 			 * pte_pv we want to retain the wire count.
+			 *
+			 * pt_pv won't exist for a kernel page (managed or
+			 * otherwise).
 			 */
-			vm_page_wire_quick(pt_pv->pv_m);
+			if (pt_pv)
+				vm_page_wire_quick(pt_pv->pv_m);
 			if (prot & VM_PROT_NOSYNC)
 				pmap_remove_pv_pte(pte_pv, pt_pv, NULL);
 			else
