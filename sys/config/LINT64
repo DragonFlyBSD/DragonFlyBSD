@@ -104,7 +104,6 @@ options 	INCLUDE_CONFIG_FILE     # Include this file in kernel
 #
 options 	ROOTDEVNAME=\"ufs:da0s2e\"
 
-
 #####################################################################
 # SMP OPTIONS:
 #
@@ -120,7 +119,6 @@ options 	ROOTDEVNAME=\"ufs:da0s2e\"
 #
 #options 	SMP			# Symmetric MultiProcessor Kernel
 
-
 #####################################################################
 # CPU OPTIONS
 
@@ -146,7 +144,7 @@ cpu		HAMMER_CPU
 options		CPU_AMD64X2_INTR_SPAM
 #options 	CPU_DISABLE_SSE
 options		CPU_ENABLE_EST
-
+
 #####################################################################
 # COMPATIBILITY OPTIONS
 
@@ -194,7 +192,6 @@ options 	MSGSEG=2049	# max number of message segments in the system
 options 	MSGSSZ=16	# size of a message segment MUST be power of 2
 options 	MSGTQL=41	# max amount of messages in the system
 
-
 #####################################################################
 # DEBUGGING OPTIONS
 
@@ -265,7 +262,6 @@ options 	COMPILING_LINT
 # Allow ordinary users to take the console - this is useful for X.
 options 	UCONSOLE
 
-
 #####################################################################
 # NETWORKING OPTIONS
 
@@ -558,7 +554,6 @@ options         DEVICE_POLLING
 # IFPOLL_ENABLE adds hardware queues' based polling
 options		IFPOLL_ENABLE
 
-
 #####################################################################
 # FILESYSTEM OPTIONS
 
@@ -675,7 +670,6 @@ options 	CD9660_ICONV
 options 	MSDOSFS_ICONV
 options 	NTFS_ICONV
 
-
 #####################################################################
 # POSIX P1003.1B
 
@@ -688,7 +682,6 @@ options 	P1003_1B
 options 	_KPOSIX_PRIORITY_SCHEDULING
 options 	_KPOSIX_VERSION=199309L
 
-
 #####################################################################
 # CLOCK OPTIONS
 
@@ -715,7 +708,6 @@ options 	HZ=100
 #options 	CLK_USE_I8254_CALIBRATION
 #options 	CLK_USE_TSC_CALIBRATION
 
-
 #####################################################################
 # SCSI DEVICES
 
@@ -847,7 +839,6 @@ options 	SCSI_PT_DEFAULT_TIMEOUT="60"
 # are in....
 options 	SES_ENABLE_PASSTHROUGH
 
-
 #####################################################################
 # MISCELLANEOUS DEVICES AND OPTIONS
 
@@ -882,7 +873,6 @@ options 	LIBICONV
 # Size of the kernel message buffer.  Should be N * pagesize.
 options 	MSGBUF_SIZE=40960
 
-
 #####################################################################
 # HARDWARE DEVICE CONFIGURATION
 
