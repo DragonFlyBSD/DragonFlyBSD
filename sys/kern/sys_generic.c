@@ -1141,7 +1141,7 @@ doselect(int nd, fd_set *read, fd_set *write, fd_set *except,
 	*res = 0;
 	if (nd < 0)
 		return (EINVAL);
-	if (nd == 0)
+	if (nd == 0 && ts)
 		return (dotimeout_only(ts));
 
 	if (nd > p->p_fd->fd_nfiles)		/* limit kmalloc */
@@ -1462,7 +1462,7 @@ dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res)
         if (nfds < 0)
                 return (EINVAL);
 
-	if (nfds == 0)
+	if (nfds == 0 && ts)
 		return (dotimeout_only(ts));
 
 	/*
