@@ -3583,7 +3583,6 @@ pmap_clearbit(vm_page_t m, int bit)
 	pv_entry_t pv;
 	pt_entry_t *pte;
 	pt_entry_t pbits;
-	vm_pindex_t save_pindex;
 	pmap_t save_pmap;
 
 	if (bit == PG_RW)
@@ -3669,7 +3668,7 @@ restart:
 		save_pmap = pv->pv_pmap;
 		vm_page_spin_unlock(m);
 		pmap_inval_interlock(&info, save_pmap,
-				     (vm_offset_t)save_pindex << PAGE_SHIFT);
+				     (vm_offset_t)pv->pv_pindex << PAGE_SHIFT);
 		KKASSERT(pv->pv_pmap == save_pmap);
 		for (;;) {
 			pbits = *pte;
@@ -4045,6 +4044,8 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
  * target pmap until all such modifications have completed.  We have to do
  * this because the thread making the modifications has already set up its
  * SMP synchronization mask.
+ *
+ * This function cannot sleep!
  *
  * No requirements.
  */
