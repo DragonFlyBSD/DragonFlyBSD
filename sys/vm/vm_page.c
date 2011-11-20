@@ -217,6 +217,7 @@ vm_add_new_page(vm_paddr_t pa)
 		atomic_add_int(&vmstats.v_dma_pages, 1);
 		m->queue = PQ_NONE;
 		m->wire_count = 1;
+		atomic_add_int(&vmstats.v_wire_count, 1);
 		alist_free(&vm_contig_alist, pa >> PAGE_SHIFT, 1);
 		return;
 	}
