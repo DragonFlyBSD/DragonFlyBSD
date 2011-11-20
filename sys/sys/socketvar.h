@@ -56,6 +56,10 @@
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+#ifndef _NET_NETMSG_H_
+#include <net/netmsg.h>
+#endif
+
 struct accept_filter;
 
 /*
@@ -148,6 +152,8 @@ struct socket {
 		void	*so_accept_filter_arg;	/* saved filter args */
 		char	*so_accept_filter_str;	/* saved user args */
 	} *so_accf;
+
+	struct netmsg_base so_clomsg;
 };
 
 #endif

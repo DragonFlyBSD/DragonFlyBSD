@@ -87,7 +87,9 @@ int so_pru_connect2 (struct socket *so1, struct socket *so2);
 int so_pru_control_direct(struct socket *so, u_long cmd, caddr_t data,
 		struct ifnet *ifp);
 int so_pru_detach (struct socket *so);
+void so_pru_detach_direct (struct socket *so);
 int so_pru_disconnect (struct socket *so);
+void so_pru_disconnect_direct (struct socket *so);
 int so_pru_listen (struct socket *so, struct thread *td);
 int so_pru_peeraddr (struct socket *so, struct sockaddr **nam);
 int so_pru_rcvd (struct socket *so, int flags);

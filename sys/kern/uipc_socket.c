@@ -91,6 +91,7 @@
 #include <sys/jail.h>
 #include <vm/vm_zone.h>
 #include <vm/pmap.h>
+#include <net/netmsg2.h>
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>
@@ -110,6 +111,10 @@ static void 	filt_sowdetach(struct knote *kn);
 static int	filt_sowrite(struct knote *kn, long hint);
 static int	filt_solisten(struct knote *kn, long hint);
 
+static void	sodiscard(struct socket *so);
+static int	soclose_sync(struct socket *so, int fflag);
+static void	soclose_fast(struct socket *so);
+
 static struct filterops solisten_filtops = 
 	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_sordetach, filt_solisten };
 static struct filterops soread_filtops =
@@ -127,6 +132,10 @@ MALLOC_DEFINE(M_PCB, "pcb", "protocol control block");
 static int somaxconn = SOMAXCONN;
 SYSCTL_INT(_kern_ipc, KIPC_SOMAXCONN, somaxconn, CTLFLAG_RW,
     &somaxconn, 0, "Maximum pending socket connection queue size");
+
+static int use_soclose_fast = 1;
+SYSCTL_INT(_kern_ipc, OID_AUTO, soclose_fast, CTLFLAG_RW,
+    &use_soclose_fast, 0, "Fast socket close");
 
 /*
  * Socket operation routines.
@@ -385,9 +394,54 @@ sofree(struct socket *so)
 int
 soclose(struct socket *so, int fflag)
 {
-	int error = 0;
+	int error;
 
 	funsetown(&so->so_sigio);
+	if (!use_soclose_fast ||
+	    (so->so_proto->pr_flags & PR_SYNC_PORT) ||
+	    (so->so_options & SO_LINGER)) {
+		error = soclose_sync(so, fflag);
+	} else {
+		soclose_fast(so);
+		error = 0;
+	}
+	return error;
+}
+
+static void
+sodiscard(struct socket *so)
+{
+	lwkt_getpooltoken(so);
+	if (so->so_options & SO_ACCEPTCONN) {
+		struct socket *sp;
+
+		while ((sp = TAILQ_FIRST(&so->so_incomp)) != NULL) {
+			TAILQ_REMOVE(&so->so_incomp, sp, so_list);
+			soclrstate(sp, SS_INCOMP);
+			sp->so_head = NULL;
+			so->so_incqlen--;
+			soaborta(sp);
+		}
+		while ((sp = TAILQ_FIRST(&so->so_comp)) != NULL) {
+			TAILQ_REMOVE(&so->so_comp, sp, so_list);
+			soclrstate(sp, SS_COMP);
+			sp->so_head = NULL;
+			so->so_qlen--;
+			soaborta(sp);
+		}
+	}
+	lwkt_relpooltoken(so);
+
+	if (so->so_state & SS_NOFDREF)
+		panic("soclose: NOFDREF");
+	sosetstate(so, SS_NOFDREF);	/* take ref */
+}
+
+static int
+soclose_sync(struct socket *so, int fflag)
+{
+	int error = 0;
+
 	if (so->so_pcb == NULL)
 		goto discard;
 	if (so->so_state & SS_ISCONNECTED) {
@@ -417,34 +471,97 @@ drop:
 			error = error2;
 	}
 discard:
-	lwkt_getpooltoken(so);
-	if (so->so_options & SO_ACCEPTCONN) {
-		struct socket *sp;
+	sodiscard(so);
+	so_pru_sync(so);	/* unpend async sending */
+	sofree(so);		/* dispose of ref */
 
-		while ((sp = TAILQ_FIRST(&so->so_incomp)) != NULL) {
-			TAILQ_REMOVE(&so->so_incomp, sp, so_list);
-			soclrstate(sp, SS_INCOMP);
-			sp->so_head = NULL;
-			so->so_incqlen--;
-			soaborta(sp);
-		}
-		while ((sp = TAILQ_FIRST(&so->so_comp)) != NULL) {
-			TAILQ_REMOVE(&so->so_comp, sp, so_list);
-			soclrstate(sp, SS_COMP);
-			sp->so_head = NULL;
-			so->so_qlen--;
-			soaborta(sp);
-		}
-	}
-	lwkt_relpooltoken(so);
-	if (so->so_state & SS_NOFDREF)
-		panic("soclose: NOFDREF");
-	sosetstate(so, SS_NOFDREF);	/* take ref */
-
-	/* Make sure all asychronous sending are done */
-	so_pru_sync(so);
-	sofree(so);			/* dispose of ref */
 	return (error);
+}
+
+static void
+soclose_sofree_async_handler(netmsg_t msg)
+{
+	sofree(msg->base.nm_so);
+}
+
+static void
+soclose_sofree_async(struct socket *so)
+{
+	struct netmsg_base *base = &so->so_clomsg;
+
+	netmsg_init(base, so, &netisr_apanic_rport, 0,
+	    soclose_sofree_async_handler);
+	lwkt_sendmsg(so->so_port, &base->lmsg);
+}
+
+static void
+soclose_disconn_async_handler(netmsg_t msg)
+{
+	struct socket *so = msg->base.nm_so;
+
+	if ((so->so_state & SS_ISCONNECTED) &&
+	    (so->so_state & SS_ISDISCONNECTING) == 0)
+		so_pru_disconnect_direct(so);
+
+	if (so->so_pcb)
+		so_pru_detach_direct(so);
+
+	sodiscard(so);
+	sofree(so);
+}
+
+static void
+soclose_disconn_async(struct socket *so)
+{
+	struct netmsg_base *base = &so->so_clomsg;
+
+	netmsg_init(base, so, &netisr_apanic_rport, 0,
+	    soclose_disconn_async_handler);
+	lwkt_sendmsg(so->so_port, &base->lmsg);
+}
+
+static void
+soclose_detach_async_handler(netmsg_t msg)
+{
+	struct socket *so = msg->base.nm_so;
+
+	if (so->so_pcb)
+		so_pru_detach_direct(so);
+
+	sodiscard(so);
+	sofree(so);
+}
+
+static void
+soclose_detach_async(struct socket *so)
+{
+	struct netmsg_base *base = &so->so_clomsg;
+
+	netmsg_init(base, so, &netisr_apanic_rport, 0,
+	    soclose_detach_async_handler);
+	lwkt_sendmsg(so->so_port, &base->lmsg);
+}
+
+static void
+soclose_fast(struct socket *so)
+{
+	if (so->so_pcb == NULL)
+		goto discard;
+
+	if ((so->so_state & SS_ISCONNECTED) &&
+	    (so->so_state & SS_ISDISCONNECTING) == 0) {
+		soclose_disconn_async(so);
+		return;
+	}
+
+	if (so->so_pcb) {
+		soclose_detach_async(so);
+		return;
+	}
+
+discard:
+	sodiscard(so);
+	soclose_sofree_async(so);
 }
 
 /*

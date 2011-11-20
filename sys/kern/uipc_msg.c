@@ -231,6 +231,19 @@ so_pru_detach(struct socket *so)
 	return (error);
 }
 
+void
+so_pru_detach_direct(struct socket *so)
+{
+	struct netmsg_pru_detach msg;
+	netisr_fn_t func = so->so_proto->pr_usrreqs->pru_detach;
+
+	netmsg_init(&msg.base, so, &netisr_adone_rport, 0, func);
+	msg.base.lmsg.ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
+	msg.base.lmsg.ms_flags |= MSGF_SYNC;
+	func((netmsg_t)&msg);
+	KKASSERT(msg.base.lmsg.ms_flags & MSGF_DONE);
+}
+
 int
 so_pru_disconnect(struct socket *so)
 {
@@ -241,6 +254,19 @@ so_pru_disconnect(struct socket *so)
 		    0, so->so_proto->pr_usrreqs->pru_disconnect);
 	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
+}
+
+void
+so_pru_disconnect_direct(struct socket *so)
+{
+	struct netmsg_pru_disconnect msg;
+	netisr_fn_t func = so->so_proto->pr_usrreqs->pru_disconnect;
+
+	netmsg_init(&msg.base, so, &netisr_adone_rport, 0, func);
+	msg.base.lmsg.ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
+	msg.base.lmsg.ms_flags |= MSGF_SYNC;
+	func((netmsg_t)&msg);
+	KKASSERT(msg.base.lmsg.ms_flags & MSGF_DONE);
 }
 
 int
