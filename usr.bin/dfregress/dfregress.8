@@ -37,10 +37,10 @@
 .Nd an automation test driver and framework
 .Sh SYNOPSIS
 .Nm
-.Fl o Ar output_plist
-.Fl t Ar testcase_dir
-.Fl r Ar runlist_file
+.Op Fl o Ar output_plist
+.Op Fl t Ar testcase_dir
 .Op Fl p Ar prepost_dir
+.Ar runlist_file
 .Nm
 .Fl h
 .Sh DESCRIPTION
@@ -52,7 +52,15 @@ and collects the results.
 .Pp
 The path to the testcase collection is specified via the
 .Ar testcase_dir
-argument, and similarly the path to the pre- and post commands is
+argument.
+If this argument is not specified, the default is assumed to be the
+same directory as that of the runlist.
+For example if the used runlist ist
+.Pa /usr/src/test/testcases/sample.run
+the default testcase directory, unless otherwise specified, will be
+.Pa /usr/src/test/testcases .
+.Pp
+Similarly the path to the pre- and post commands is
 specified via
 .Ar prepost_dir .
 The
@@ -62,11 +70,18 @@ post commands.
 .Pp
 The output is saved in plist format to the
 .Ar output_plist
-file.
+file, or if none is specified, to a file with the same base name as
+the runlist, but in the current working directory and with a
+.Pa .plist
+extension.
+For example if the used runlist is
+.Pa /usr/src/test/testcases/sample.run
+the default output, unless otherwise specified, will be
+.Pa ./sample.plist .
 Other tools, known as frontends, can parse the plist output into
 an easier to read form.
 .Pp
-The following is a summary of the arguments:
+The following is a summary of the optional parameters:
 .Bl -tag -width indent
 .It Fl o Ar output_plist
 Specifies the file to which to write the results.
@@ -75,8 +90,6 @@ The resulting file,
 will be in plist format.
 .It Fl t Ar testcase_dir
 Specifies the directory in which to find the testcases specified in the runlist.
-.It Fl r Ar runlist_file
-Specifies the file containing the runlist to use for the test execution.
 .It Fl p Ar prepost_dir
 Specifies the directory in which to find the pre- and post commands used
 in the runlist.

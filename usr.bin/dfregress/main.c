@@ -55,10 +55,11 @@
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: dfregress -o <output plist file> \n"
+	fprintf(stderr, "Usage: dfregress [options] <input runlist>\n"
+	    "Valid options are:\n"
+	    "  -o <output results plist file>\n"
             "  -t <testcase directory>\n"
-	    "  -p <pre/post command directory>\n"
-	    "  -r <input runlist file>\n");
+	    "  -p <pre/post command directory>\n");
 	exit(1);
 }
 
@@ -66,24 +67,23 @@ int
 main(int argc, char *argv[])
 {
 	char runlist_file[PATH_MAX];
-	char *p;
+	char *p, *s;
+	int oflag = 0;
+	int tflag = 0;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "h?o:r:t:p:")) != -1) {
+	while ((ch = getopt(argc, argv, "h?o:t:p:")) != -1) {
 		switch (ch) {
 		case 'o':
 			if ((p = realpath(optarg, output_file)) == NULL)
 				err(1, "realpath(%s)", optarg);
+			oflag = 1;
 			break;
 
 		case 't':
 			if ((p = realpath(optarg, testcase_dir)) == NULL)
 				err(1, "realpath(%s)", optarg);
-			break;
-
-		case 'r':
-			if ((p = realpath(optarg, runlist_file)) == NULL)
-				err(1, "realpath(%s)", optarg);
+			tflag = 1;
 			break;
 
 		case 'p':
@@ -101,6 +101,69 @@ main(int argc, char *argv[])
 
 	argc -= optind;
 	argv += optind;
+
+	if (argc != 1)
+		usage();
+		/* NOTREACHED */
+
+	if ((p = realpath(argv[0], runlist_file)) == NULL)
+		err(1, "realpath(%s)", optarg);
+
+	if (!tflag) {
+		/*
+		 * No explicit testcase directory:
+		 * Use default testcase directory - the directory where the
+		 * runlist is.
+		 */
+		strcpy(testcase_dir, runlist_file);
+		p = strrchr(testcase_dir, '/');
+		if (p == NULL) {
+			fprintf(stderr, "Unknown error while determining "
+			    "default testcase directory. testcase_dir = %s\n",
+			    testcase_dir);
+			exit(1);
+			/* NOTREACHED */
+		}
+
+		*p = '\0';
+	}
+
+	if (!oflag) {
+		/*
+		 * No explicit output file:
+		 * By default we'll take the basename of the runlist file
+		 * and append .plist to it in the cwd; i.e.:
+		 * /foo/bar/baz.run -> ./baz.plist
+		 */
+		p = strrchr(runlist_file, '/');
+		if (p == NULL) {
+			fprintf(stderr, "Unkown error while determining "
+			    "default output file. runlist_file = %s\n",
+			    runlist_file);
+			exit(1);
+			/* NOTREACHED */
+		}
+
+		++p;
+
+		s = getcwd(output_file, PATH_MAX);
+		if (s == NULL)
+			err(1, "getcwd()");
+			/* NOTREACHED */
+
+		strcat(output_file, "/");
+		strcat(output_file, p);
+
+		if ((p = strrchr(output_file, '.')) != NULL)
+			*p = '\0';
+
+
+		strcat(output_file, ".plist");
+	}
+
+	printf("Output plist results:\t%s\n", output_file);
+	printf("Runlist:\t\t%s\n", runlist_file);
+	printf("Testcase directory:\t%s\n", testcase_dir);
 
 	prop_array_t runlist = runlist_load_from_text(runlist_file);
 	runlist_iterate(runlist, runlist_run_test, runlist);
