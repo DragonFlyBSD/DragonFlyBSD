@@ -107,7 +107,7 @@ main(int argc, char *argv[])
 		/* NOTREACHED */
 
 	if ((p = realpath(argv[0], runlist_file)) == NULL)
-		err(1, "realpath(%s)", optarg);
+		err(1, "realpath(%s)", argv[0]);
 
 	if (!tflag) {
 		/*
@@ -164,6 +164,7 @@ main(int argc, char *argv[])
 	printf("Output plist results:\t%s\n", output_file);
 	printf("Runlist:\t\t%s\n", runlist_file);
 	printf("Testcase directory:\t%s\n", testcase_dir);
+	printf("\n");
 
 	prop_array_t runlist = runlist_load_from_text(runlist_file);
 	runlist_iterate(runlist, runlist_run_test, runlist);
