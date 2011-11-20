@@ -2,7 +2,6 @@ DRIVER_DIR=	${.CURDIR}/../..
 
 PROG=		dfr2text
 MAN=		dfr2text.8
-DEBUG_FLAGS=	-O0 -g3
 
 SRCS+=		fe_text.c config.c parser.c
 SRCS+=		runlist.c testcase.c
