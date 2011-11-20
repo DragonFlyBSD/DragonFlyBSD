@@ -1486,6 +1486,7 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 #ifdef SMP
 	globaldata_t gd = mycpu;
 #endif
+	vm_object_t obj;
 	vm_page_t m;
 	u_short pg_color;
 
@@ -1578,11 +1579,12 @@ loop:
 		if (m != NULL) {
 			KASSERT(m->dirty == 0,
 				("Found dirty cache page %p", m));
-			if (m->object) {
-				if (vm_object_hold_try(m->object)) {
+			if ((obj = m->object) != NULL) {
+				if (vm_object_hold_try(obj)) {
 					vm_page_protect(m, VM_PROT_NONE);
 					vm_page_free(m);
-					vm_object_drop(m->object);
+					/* m->object NULL here */
+					vm_object_drop(obj);
 				} else {
 					vm_page_deactivate(m);
 					vm_page_wakeup(m);
