@@ -70,7 +70,7 @@ The following is a summary of the arguments:
 .Bl -tag -width indent
 .It Fl o Ar output_plist
 Specifies the file to which to write the results.
-The resulting file, 
+The resulting file,
 .Ar output_plist ,
 will be in plist format.
 .It Fl t Ar testcase_dir
@@ -104,7 +104,7 @@ by the
 .Fl t
 argument to the resulting (after building the testcase) testcase executable.
 The testcase will be executed with the
-.Ic Cm arguments
+.Cm arguments
 passed as command line arguments to it.
 .Pp
 Valid types are
@@ -344,15 +344,14 @@ method as well as an optional
 .Fn abort
 method.
 The
-.Fn
-run
+.Fn run
 method will be run from a separate kernel thread.
 The testcase will need to call
 .Xr tbridge 9
 functions to record output and to notify of testcase completion.
 Refer to the
 .Xr tbridge 9
-man page for more details.
+manual page for more details.
 .Pp
 For all testcase types the build stage is common.
 Every testcase should either have the
