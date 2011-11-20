@@ -175,6 +175,15 @@ vm_object_lock(vm_object_t obj)
 	lwkt_gettoken(&obj->token);
 }
 
+/*
+ * Returns TRUE on sucesss
+ */
+static int
+vm_object_lock_try(vm_object_t obj)
+{
+	return(lwkt_trytoken(&obj->token));
+}
+
 void
 vm_object_lock_shared(vm_object_t obj)
 {
@@ -234,6 +243,56 @@ debugvm_object_hold(vm_object_t obj, char *file, int line)
 		}
 	}
 #endif
+}
+
+int
+#ifndef DEBUG_LOCKS
+vm_object_hold_try(vm_object_t obj)
+#else
+debugvm_object_hold_try(vm_object_t obj, char *file, int line)
+#endif
+{
+	KKASSERT(obj != NULL);
+
+	/*
+	 * Object must be held (object allocation is stable due to callers
+	 * context, typically already holding the token on a parent object)
+	 * prior to potentially blocking on the lock, otherwise the object
+	 * can get ripped away from us.
+	 */
+	refcount_acquire(&obj->hold_count);
+	if (vm_object_lock_try(obj) == 0) {
+		if (refcount_release(&obj->hold_count)) {
+			if (obj->ref_count == 0 && (obj->flags & OBJ_DEAD))
+				zfree(obj_zone, obj);
+		}
+		return(0);
+	}
+
+#if defined(DEBUG_LOCKS)
+	int i;
+	u_int mask;
+
+	for (;;) {
+		mask = ~obj->debug_hold_bitmap;
+		cpu_ccfence();
+		if (mask == 0xFFFFFFFFU) {
+			if (obj->debug_hold_ovfl == 0)
+				obj->debug_hold_ovfl = 1;
+			break;
+		}
+		i = ffs(mask) - 1;
+		if (atomic_cmpset_int(&obj->debug_hold_bitmap, ~mask,
+				      ~mask | (1 << i))) {
+			obj->debug_hold_bitmap |= (1 << i);
+			obj->debug_hold_thrs[i] = curthread;
+			obj->debug_hold_file[i] = file;
+			obj->debug_hold_line[i] = line;
+			break;
+		}
+	}
+#endif
+	return(1);
 }
 
 void
