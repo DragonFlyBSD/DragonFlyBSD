@@ -225,13 +225,13 @@ _lwkt_trytokref(lwkt_tokref_t ref, thread_t td, long mode)
 	lwkt_tokref_t oref;
 	long count;
 
+	tok = ref->tr_tok;
 	KASSERT(((mode & TOK_EXCLREQ) == 0 ||	/* non blocking */
 		td->td_gd->gd_intr_nesting_level == 0 ||
 		panic_cpu_gd == mycpu),
 		("Attempt to acquire token %p not already "
 		"held in hard code section", tok));
 
-	tok = ref->tr_tok;
 	if (mode & TOK_EXCLUSIVE) {
 		/*
 		 * Attempt to get an exclusive token
