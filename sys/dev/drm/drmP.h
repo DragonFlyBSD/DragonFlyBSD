@@ -178,7 +178,8 @@ MALLOC_DECLARE(DRM_MEM_HASHTAB);
 } while (0)
 #define DRM_SPINUNLOCK_IRQRESTORE(u, irqflags) DRM_SPINUNLOCK(u)
 #define DRM_SPINLOCK_ASSERT(l)
-#define DRM_CURRENTPID		curthread->td_proc->p_pid
+#define DRM_CURRENTPID		(curthread->td_proc ?	\
+				 curthread->td_proc->p_pid : -1)
 #define DRM_LOCK()		DRM_SPINLOCK(&dev->dev_lock)
 #define DRM_UNLOCK()		DRM_SPINUNLOCK(&dev->dev_lock)
 #define DRM_SYSCTL_HANDLER_ARGS	(SYSCTL_HANDLER_ARGS)
