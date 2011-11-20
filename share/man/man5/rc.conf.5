@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd June 30, 2011
+.Dd November 20, 2011
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1409,6 +1409,19 @@ in the value, a
 .Va route_ Ns Aq Ar element
 variable is assumed to exist whose contents will later be passed to a
 .Dq Nm route Cm add
+operation.
+.It Va change_routes
+.Pq Vt str
+Set to the list of static routes that are to be changed at system boot time
+(such as those added by the kernel).
+If not set to
+.Dq Li NO
+then for each whitespace separated
+.Ar element
+in the value, a
+.Va change_route_ Ns Aq Ar element
+variable is assumed to exist whose contents will later be passed to a
+.Dq Nm route Cm change
 operation.
 .It Va ipv6_static_routes
 .Pq Vt str
