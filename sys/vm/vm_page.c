@@ -1569,12 +1569,28 @@ loop:
 #endif
 		/*
 		 * On success move the page into the free queue and loop.
+		 *
+		 * Only do this if we can safely acquire the vm_object lock,
+		 * because this is effectively a random page and the caller
+		 * might be holding the lock shared, we don't want to
+		 * deadlock.
 		 */
 		if (m != NULL) {
 			KASSERT(m->dirty == 0,
 				("Found dirty cache page %p", m));
-			vm_page_protect(m, VM_PROT_NONE);
-			vm_page_free(m);
+			if (m->object) {
+				if (vm_object_hold_try(m->object)) {
+					vm_page_protect(m, VM_PROT_NONE);
+					vm_page_free(m);
+					vm_object_drop(m->object);
+				} else {
+					vm_page_deactivate(m);
+					vm_page_wakeup(m);
+				}
+			} else {
+				vm_page_protect(m, VM_PROT_NONE);
+				vm_page_free(m);
+			}
 			goto loop;
 		}
 
