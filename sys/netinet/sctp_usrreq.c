@@ -1909,7 +1909,7 @@ sctp_optsget(struct socket *so,
 			break;
 		}
 		events = mtod(m, struct sctp_event_subscribe *);
-		memset(events, 0, sizeof(events));
+		memset(events, 0, sizeof(*events));
 		SCTP_INP_RLOCK(inp);
 		if (inp->sctp_flags & SCTP_PCB_FLAGS_RECVDATAIOEVNT)
 			events->sctp_data_io_event = 1;

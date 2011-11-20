@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_power.c 186302 2008-12-18 23:00:09Z sam $
- * $DragonFly$
  */
 
 /*
@@ -103,7 +102,7 @@ ieee80211_power_vdetach(struct ieee80211vap *vap)
 void
 ieee80211_psq_init(struct ieee80211_psq *psq, const char *name)
 {
-	memset(psq, 0, sizeof(psq));
+	memset(psq, 0, sizeof(*psq));
 	psq->psq_maxlen = IEEE80211_PS_MAX_QUEUE;
 }
 

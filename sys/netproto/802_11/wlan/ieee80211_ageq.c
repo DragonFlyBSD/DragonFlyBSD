@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_ageq.c 195527 2009-07-10 02:19:57Z sam $
- * $DragonFly$
  */
 
 /*
@@ -50,7 +49,7 @@
 void
 ieee80211_ageq_init(struct ieee80211_ageq *aq, int maxlen, const char *name)
 {
-	memset(aq, 0, sizeof(aq));
+	memset(aq, 0, sizeof(*aq));
 	aq->aq_maxlen = maxlen;
 }
 
