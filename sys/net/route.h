@@ -116,7 +116,7 @@ struct rt_metrics {	/* grouped for locality of reference */
 	u_long	rmx_hopcount;	/* max hops expected */
 	u_short rmx_mssopt;	/* peer's cached MSS */
 	u_short	rmx_pad;	/* explicit pad */
-	u_long	rmx_msl;	/* maximum segment lifetime */
+	u_long	rmx_msl;	/* maximum segment lifetime, unit: ms */
 	u_long	rmx_filler[2];	/* for future expansion */
 };
 

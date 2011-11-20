@@ -3217,6 +3217,7 @@ tcp_rmx_msl(const struct tcpcb *tp)
 {
 	struct rtentry *rt;
 	struct inpcb *inp = tp->t_inpcb;
+	int msl;
 #ifdef INET6
 	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) ? TRUE : FALSE);
 #else
@@ -3230,5 +3231,9 @@ tcp_rmx_msl(const struct tcpcb *tp)
 	if (rt == NULL || rt->rt_rmx.rmx_msl == 0)
 		return tcp_msl;
 
-	return (rt->rt_rmx.rmx_msl * hz);
+	msl = (rt->rt_rmx.rmx_msl * hz) / 1000;
+	if (msl == 0)
+		msl = 1;
+
+	return msl;
 }

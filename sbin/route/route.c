@@ -1529,7 +1529,7 @@ print_getmsg(struct rt_msghdr *rtm, int msglen)
 #define msec(u)	(((u) + 500) / 1000)		/* usec to msec */
 
 	printf("\n%s\n", "\
- recvpipe  sendpipe  ssthresh  rtt,msec    rttvar  hopcount      mtu     expire      msl");
+ recvpipe  sendpipe  ssthresh  rtt,msec    rttvar  hopcount      mtu     expire  msl,msec");
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_recvpipe, lock(RPIPE));
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_sendpipe, lock(SPIPE));
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_ssthresh, lock(SSTHRESH));
