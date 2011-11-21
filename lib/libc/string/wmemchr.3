@@ -55,6 +55,7 @@
 .Nm wcslcat ,
 .Nm wcslcpy ,
 .Nm wcslen ,
+.Nm wcsncasecmp ,
 .Nm wcsncat ,
 .Nm wcsncmp ,
 .Nm wcsncpy ,
@@ -98,6 +99,8 @@
 .Fn wcslcpy "wchar_t *s1" "const wchar_t *s2" "size_t n"
 .Ft size_t
 .Fn wcslen "const wchar_t *s"
+.Ft int
+.Fn wcsncasecmp "const wchar_t *s1" "const wchar_t *s2" "size_t n"
 .Ft wchar_t *
 .Fn wcsncat "wchar_t * restrict s1" "const wchar_t * restrict s2" "size_t n"
 .Ft int
@@ -151,6 +154,7 @@ These functions conform to
 with the exception of
 .Fn wcscasecmp ,
 .Fn wcsdup ,
+.Fn wcsncasecmp ,
 and
 .Fn wcsnlen ,
 which conform to

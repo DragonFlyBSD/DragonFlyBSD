@@ -19,6 +19,7 @@ MISRCS+=bcmp.c bcopy.c bzero.c ffs.c ffsl.c ffsll.c fls.c flsl.c flsll.c \
 	wcslcat.c wcslcpy.c wcslen.c wcsncat.c wcsncmp.c wcsncpy.c wcsnlen.c \
 	wcspbrk.c \
 	wcscasecmp.c \
+	wcsncasecmp.c \
 	wcsrchr.c wcsspn.c wcsstr.c wcstok.c wcswidth.c wcsxfrm.c wmemchr.c \
 	wmemcmp.c \
 	wmemcpy.c wmemmove.c wmemset.c
@@ -77,6 +78,7 @@ MLINKS+=wmemchr.3 wcscat.3 \
 	wmemchr.3 wcsspn.3 \
 	wmemchr.3 wcsstr.3 \
 	wmemchr.3 wcscasecmp.3 \
+	wmemchr.3 wcsncasecmp.3 \
 	wmemchr.3 wmemcmp.3 \
 	wmemchr.3 wmemcpy.3 \
 	wmemchr.3 wmemmove.3 \
