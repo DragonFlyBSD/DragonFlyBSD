@@ -339,6 +339,8 @@ ad_strategy(struct dev_strategy_args *ap)
 	request->transfersize = 0;
 	request->flags = ATA_R_CONTROL;
 	request->u.ata.command = ATA_FLUSHCACHE;
+	/* ATA FLUSHCACHE requests may take up to 30 sec to timeout */
+	request->timeout = 30;
 	break;
     default:
 	device_printf(dev, "FAILURE - unknown BUF operation\n");
