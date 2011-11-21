@@ -44,7 +44,7 @@
 .Pp
 Functions:
 .Ft int
-.Fn tbridge_rpintf "const char *fmt" "..."
+.Fn tbridge_printf "const char *fmt" "..."
 .Ft void
 .Fn tbridge_test_done "int result"
 .Pp
@@ -89,7 +89,7 @@ The
 callback is optional, but highly recommended.
 It is called whenever a testcase execution times out, so that the
 testcase can clean up and abort all running tasks, if possible.
-If this is not applicable to your thread because it is impossible
+If this is not applicable to your test because it is impossible
 to interrupt, set to
 .Dv NULL .
 .Sh FUNCTIONS

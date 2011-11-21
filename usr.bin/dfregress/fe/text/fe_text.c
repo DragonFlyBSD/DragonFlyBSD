@@ -203,7 +203,7 @@ int
 main(int argc, char *argv[])
 {
 	if (argc != 2) {
-		fprintf(stderr, "Usage: dfregress2text <foo.plist>\n");
+		fprintf(stderr, "Usage: dfr2text <foo.plist>\n");
 		exit(1);
 	}
 
