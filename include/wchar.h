@@ -133,6 +133,7 @@ wchar_t	*wcscpy(wchar_t * __restrict, const wchar_t * __restrict);
 size_t	wcscspn(const wchar_t *, const wchar_t *);
 size_t	wcsftime(wchar_t * __restrict, size_t, const wchar_t * __restrict,
 		 const struct tm * __restrict);
+int	wcscasecmp(const wchar_t *, const wchar_t *);
 size_t	wcslen(const wchar_t *);
 wchar_t	*wcsncat(wchar_t * __restrict, const wchar_t * __restrict, size_t);
 int	wcsncmp(const wchar_t *, const wchar_t *, size_t);

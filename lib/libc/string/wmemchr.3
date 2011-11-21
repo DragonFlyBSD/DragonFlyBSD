@@ -36,7 +36,7 @@
 .\" $FreeBSD: src/lib/libc/string/wmemchr.3,v 1.8 2007/01/09 00:28:12 imp Exp $
 .\" $DragonFly: src/lib/libc/string/wmemchr.3,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
-.Dd April 23, 2009
+.Dd November 21, 2011
 .Dt WMEMCHR 3
 .Os
 .Sh NAME
@@ -45,6 +45,7 @@
 .Nm wmemcpy ,
 .Nm wmemmove ,
 .Nm wmemset ,
+.Nm wcscasecmp ,
 .Nm wcscat ,
 .Nm wcschr ,
 .Nm wcscmp ,
@@ -77,6 +78,8 @@
 .Fn wmemmove "wchar_t *s1" "const wchar_t *s2" "size_t n"
 .Ft wchar_t *
 .Fn wmemset "wchar_t *s" "wchar_t c" "size_t n"
+.Ft int
+.Fn wcscasecmp "const wchar_t *s1" "const wchar_t *s2"
 .Ft wchar_t *
 .Fn wcscat "wchar_t * restrict s1" "const wchar_t * restrict s2"
 .Ft wchar_t *
@@ -146,6 +149,7 @@ counterpart, such as
 These functions conform to
 .St -isoC-99 ,
 with the exception of
+.Fn wcscasecmp ,
 .Fn wcsdup ,
 and
 .Fn wcsnlen ,
