@@ -35,7 +35,6 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.31 2008/01/05 14:02:41 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1037,7 +1036,7 @@ nfs_getauth(struct nfsmount *nmp, struct nfsreq *rep,
 	else {
 		*auth_len = nmp->nm_authlen;
 		*verf_len = nmp->nm_verflen;
-		bcopy((caddr_t)nmp->nm_key, (caddr_t)key, sizeof (key));
+		bcopy((caddr_t)nmp->nm_key, (caddr_t)key, sizeof (NFSKERBKEY_T));
 	}
 	nmp->nm_state &= ~NFSSTA_HASAUTH;
 	nmp->nm_state |= NFSSTA_WAITAUTH;
@@ -1173,7 +1172,7 @@ nfs_savenickauth(struct nfsmount *nmp, struct ucred *cred, int len,
 			nuidp->nu_expire = time_second + NFS_KERBTTL;
 			nuidp->nu_timestamp = ktvout;
 			nuidp->nu_nickname = nick;
-			bcopy(key, nuidp->nu_key, sizeof (key));
+			bcopy(key, nuidp->nu_key, sizeof (NFSKERBKEY_T));
 			TAILQ_INSERT_TAIL(&nmp->nm_uidlruhead, nuidp,
 				nu_lru);
 			LIST_INSERT_HEAD(NMUIDHASH(nmp, cred->cr_uid),
