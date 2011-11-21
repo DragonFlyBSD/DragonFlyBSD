@@ -945,8 +945,8 @@ bce_attach(device_t dev)
 	/* Attach to the Ethernet interface list. */
 	ether_ifattach(ifp, sc->eaddr, NULL);
 
-	callout_init(&sc->bce_tick_callout);
-	callout_init(&sc->bce_pulse_callout);
+	callout_init_mp(&sc->bce_tick_callout);
+	callout_init_mp(&sc->bce_pulse_callout);
 
 	/* Hookup IRQ last. */
 	rc = bus_setup_intr(dev, sc->bce_res_irq, INTR_MPSAFE, bce_intr, sc,
