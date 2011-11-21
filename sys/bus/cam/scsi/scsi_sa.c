@@ -95,10 +95,6 @@
  * Additional options that can be set for config: SA_1FM_AT_EOT
  */
 
-#ifndef	UNUSED_PARAMETER
-#define	UNUSED_PARAMETER(x)	x = x
-#endif
-
 #define	QFRLS(ccb)	\
 	if (((ccb)->ccb_h.status & CAM_DEV_QFRZN) != 0)	\
 		cam_release_devq((ccb)->ccb_h.path, 0, 0, 0, FALSE)
@@ -1840,21 +1836,16 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
 
 /*
  * Mount the tape (make sure it's ready for I/O).
+ *
+ * oflags can be checked for 'kind' of open (read-only check) - later
+ * dev can be checked for a control-mode or compression open - later
  */
 static int
-samount(struct cam_periph *periph, int oflags, cdev_t dev)
+samount(struct cam_periph *periph, __unused int oflags, __unused cdev_t dev)
 {
 	struct	sa_softc *softc;
 	union	ccb *ccb;
 	int	error;
-
-	/*
-	 * oflags can be checked for 'kind' of open (read-only check) - later
-	 * dev can be checked for a control-mode or compression open - later
-	 */
-	UNUSED_PARAMETER(oflags);
-	UNUSED_PARAMETER(dev);
-
 
 	softc = (struct sa_softc *)periph->softc;
 
