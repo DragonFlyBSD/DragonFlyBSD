@@ -83,9 +83,10 @@
  * 201301 - header rename: <vfs/gnu/ext2fs/...> -> <gnu/vfs/ext2fs/...>
  * 201302 - header <crypt.h> is gone
  * 201303 - <netatalk/...> and <netproto/atalk/...> are gone
+ * 201304 - Added wcscasecmp, wcsncasecmp to libc
  */
 #undef __DragonFly_version
-#define __DragonFly_version 201303	/* propagated to newvers */
+#define __DragonFly_version 201304	/* propagated to newvers */
 
 #include <sys/_null.h>
 
