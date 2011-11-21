@@ -179,7 +179,7 @@ options 	SC_PIXEL_MODE		# add support for the raster text mode
 device		agp		# support several AGP chipsets
 
 # HW monitoring devices
-device		aps0	at isa? port 0x1600
+#device		aps0	at isa? port 0x1600
 device		lm0	at isa? port 0x290
 device		it0	at isa?	port 0x290
 device		it1	at isa?	port 0xc00

@@ -200,7 +200,7 @@ device		npx0	at nexus? port IO_NPX irq 13
 device		apm0	at nexus? disable flags 0x20 # Advanced Power Management
 
 # HW monitoring devices
-device		aps0	at isa? port 0x1600
+#device		aps0	at isa? port 0x1600
 device		lm0	at isa? port 0x290
 device		it0	at isa?	port 0x290
 device		it1	at isa?	port 0xc00
