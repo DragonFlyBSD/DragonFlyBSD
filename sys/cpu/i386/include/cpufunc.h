@@ -531,7 +531,7 @@ rdmsr(u_int msr)
 {
 	u_int64_t rv;
 
-	__asm __volatile(".byte 0x0f, 0x32" : "=A" (rv) : "c" (msr));
+	__asm __volatile("rdmsr" : "=A" (rv) : "c" (msr));
 	return (rv);
 }
 
@@ -540,7 +540,7 @@ rdpmc(u_int pmc)
 {
 	u_int64_t rv;
 
-	__asm __volatile(".byte 0x0f, 0x33" : "=A" (rv) : "c" (pmc));
+	__asm __volatile("rdpmc" : "=A" (rv) : "c" (pmc));
 	return (rv);
 }
 
@@ -551,7 +551,7 @@ rdtsc(void)
 {
 	u_int64_t rv;
 
-	__asm __volatile(".byte 0x0f, 0x31" : "=A" (rv));
+	__asm __volatile("rdtsc" : "=A" (rv));
 	return (rv);
 }
 
@@ -570,7 +570,7 @@ write_eflags(u_int ef)
 static __inline void
 wrmsr(u_int msr, u_int64_t newval)
 {
-	__asm __volatile(".byte 0x0f, 0x30" : : "A" (newval), "c" (msr));
+	__asm __volatile("wrmsr" : : "A" (newval), "c" (msr));
 }
 
 static __inline u_short
