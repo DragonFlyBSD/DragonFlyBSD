@@ -1,5 +1,4 @@
 # $FreeBSD: src/etc/root/dot.cshrc,v 1.25.2.2 2001/03/05 13:36:53 asmodai Exp $
-# $DragonFly: src/etc/root/dot.cshrc,v 1.3 2005/12/04 22:29:30 dillon Exp $
 #
 # .cshrc - csh resource script, read at beginning of execution by each shell
 #
@@ -15,7 +14,7 @@ alias ll	ls -lA
 # A righteous umask
 umask 22
 
-set path = (/sbin /bin /usr/sbin /usr/bin /usr/pkg/bin /usr/pkg/sbin /usr/games /usr/local/sbin /usr/local/bin /usr/X11R6/bin $HOME/bin)
+set path = (/sbin /bin /usr/sbin /usr/bin /usr/pkg/bin /usr/pkg/sbin /usr/games /usr/local/sbin /usr/local/bin $HOME/bin)
 
 setenv	EDITOR	vi
 setenv	PAGER	more

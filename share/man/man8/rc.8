@@ -34,7 +34,6 @@
 .\"
 .\"     @(#)rc.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/share/man/man8/rc.8,v 1.22 2002/12/12 17:25:58 ru Exp $
-.\" $DragonFly: src/share/man/man8/rc.8,v 1.12 2008/05/02 02:05:06 swildner Exp $
 .Dd September 28, 2009
 .Dt RC 8
 .Os
@@ -397,11 +396,9 @@ script can execute scripts from multiple
 .Nm rc.d/
 directories.
 The default locations are
-.Pa /usr/pkg/etc/rc.d/ ,
-.Pa /usr/local/etc/rc.d/ ,
-.Pa /usr/pkg/xorg/etc/rc.d/
+.Pa /usr/pkg/etc/rc.d/
 and
-.Pa /usr/X11R6/etc/rc.d/ ,
+.Pa /usr/local/etc/rc.d/ ,
 but these may be overridden with the
 .Va local_startup
 .Xr rc.conf 5
