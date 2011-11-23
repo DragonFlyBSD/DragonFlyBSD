@@ -58,10 +58,13 @@ typedef struct __ucontext {
 __BEGIN_DECLS
   
 #if __BSD_VISIBLE || __POSIX_VISIBLE < 200809
+#ifdef __i386__
+/* XXX not fully implemented yet on x86_64 */
 int	getcontext(ucontext_t *);
 int	setcontext(const ucontext_t *);
 void	makecontext(ucontext_t *, void (*)(void), int, ...);
 int	swapcontext(ucontext_t *, const ucontext_t *);
+#endif
 #endif
    
 __END_DECLS
