@@ -348,6 +348,8 @@ distribution:
 	    ${DESTDIR}/var/crash
 	cd ${.CURDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${FREEBSD} ${DESTDIR}/
+	${LN} -s "../dev/video/bktr/ioctl_bt848.h" ${DESTDIR}/usr/include/machine/ioctl_bt848.h
+	${LN} -s "../dev/video/meteor/ioctl_meteor.h" ${DESTDIR}/usr/include/machine/ioctl_meteor.h
 .if !defined(NOMAN)
 	cd ${.CURDIR}/../share/man; ${MAKE} makedb
 .endif
