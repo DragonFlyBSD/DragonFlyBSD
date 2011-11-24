@@ -84,6 +84,8 @@
 #include <netinet/sctp_peeloff.h>
 #endif /* SCTP */
 
+extern int use_soaccept_pred_fast;
+
 /*
  * System call interface to the socket abstraction.
  */
@@ -296,6 +298,26 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	else
 		fflags = lfp->f_flag;
 
+	if (use_soaccept_pred_fast) {
+		boolean_t pred;
+
+		/* Initialize necessary parts for soaccept_predicate() */
+		netmsg_init(&msg.base, head, &netisr_apanic_rport, 0, NULL);
+		msg.nm_fflags = fflags;
+
+		lwkt_getpooltoken(head);
+		pred = soaccept_predicate(&msg);
+		lwkt_relpooltoken(head);
+
+		if (pred) {
+			error = msg.base.lmsg.ms_error;
+			if (error)
+				goto done;
+			else
+				goto accepted;
+		}
+	}
+
 	/* optimize for uniprocessor case later XXX JH */
 	netmsg_init_abortable(&msg.base, head, &curthread->td_msgport,
 			      0, netmsg_so_notify, netmsg_so_notify_doabort);
@@ -306,6 +328,7 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	if (error)
 		goto done;
 
+accepted:
 	/*
 	 * At this point we have the connection that's ready to be accepted.
 	 *

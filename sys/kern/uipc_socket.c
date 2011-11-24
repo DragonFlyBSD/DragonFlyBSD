@@ -137,6 +137,10 @@ static int use_soclose_fast = 1;
 SYSCTL_INT(_kern_ipc, OID_AUTO, soclose_fast, CTLFLAG_RW,
     &use_soclose_fast, 0, "Fast socket close");
 
+int use_soaccept_pred_fast = 1;
+SYSCTL_INT(_kern_ipc, OID_AUTO, soaccept_pred_fast, CTLFLAG_RW,
+    &use_soaccept_pred_fast, 0, "Fast socket accept predication");
+
 /*
  * Socket operation routines.
  * These routines are called by the routines in
