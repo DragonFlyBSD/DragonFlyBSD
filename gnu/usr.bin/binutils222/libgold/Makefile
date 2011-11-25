@@ -1,0 +1,66 @@
+.include "../Makefile.gld"
+
+LIB=		gold
+WARNS=		1
+INTERNALLIB=	true
+
+SRCS+=	archive.cc		\
+	attributes.cc		\
+	binary.cc		\
+	common.cc		\
+	compressed_output.cc	\
+	copy-relocs.cc		\
+	cref.cc			\
+	defstd.cc		\
+	descriptors.cc		\
+	dirsearch.cc		\
+	dwarf_reader.cc		\
+	dynobj.cc		\
+	ehframe.cc		\
+	errors.cc		\
+	expression.cc		\
+	fileread.cc		\
+	gc.cc			\
+	gold-threads.cc		\
+	gold.cc			\
+	icf.cc			\
+	incremental.cc		\
+	int_encoding.cc		\
+	layout.cc		\
+	mapfile.cc		\
+	merge.cc		\
+	object.cc		\
+	options.cc		\
+	output.cc		\
+	parameters.cc		\
+	plugin.cc		\
+	readsyms.cc		\
+	reduced_debug_output.cc	\
+	reloc.cc		\
+	resolve.cc		\
+	script-sections.cc	\
+	script.cc		\
+	stringpool.cc		\
+	symtab.cc		\
+	target.cc		\
+	target-select.cc	\
+	timer.cc		\
+	version.cc		\
+	workqueue-threads.cc	\
+	workqueue.cc		\
+	yyscript.c		\
+	mremap.c
+
+# The next files aren't really part of libgold, but they are common to both
+# ld.gold and incremental dump, so add them here to avoid building object
+# files twice
+
+SRCS+=	i386.cc			\
+	x86_64.cc		\
+	sparc.cc		\
+	powerpc.cc		\
+	arm.cc			\
+	arm-reloc-property.cc
+
+
+.include <bsd.lib.mk>
