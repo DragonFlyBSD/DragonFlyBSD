@@ -64,6 +64,12 @@
             elf
             ..
         ..
+        binutils222
+            ldscripts
+            ..
+            elf
+            ..
+        ..
         custom
         ..
         gcc41
