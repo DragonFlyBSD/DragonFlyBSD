@@ -28,7 +28,6 @@ SRCS=   basic_blocks.c	\
 	bsd_callg_bl.c	\
 	fsf_callg_bl.c
 MAN=	gprof221.1
-MLINKS+=gprof221.1 gprof.1
 
 CFLAGS=	-DHAVE_CONFIG_H
 CFLAGS+=-I${.CURDIR} -I${.CURDIR}/../libbfd -I${.OBJDIR}/../libbfd

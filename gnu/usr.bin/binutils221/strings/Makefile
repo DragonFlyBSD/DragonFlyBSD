@@ -4,7 +4,6 @@
 
 PROG=	strings
 MAN=	strings221.1
-MLINKS+=strings221.1 strings.1
 WARNS=	2
 
 strings221.1: ${SRCDIR}/binutils/doc/strings.1
