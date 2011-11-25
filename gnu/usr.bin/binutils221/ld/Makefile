@@ -6,7 +6,6 @@ ELF_SCR_EXT=	x xbn xc xd xdc xdw xn xr xs xsc xsw xu xw
 
 PROG=	ld.bfd
 MAN=	ld221.1
-MLINKS+=ld221.1 ld.1
 LIBEXEC_BINUTILS= ${BINDIR}/..
 SCRIPTDIR= ${LIBEXEC_BINUTILS}/ldscripts
 SRCS+=	ldgram.y	\

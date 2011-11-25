@@ -41,7 +41,7 @@
 #endif
 
 #ifndef BINUTILSVER_DEFAULT
-#define	BINUTILSVER_DEFAULT "binutils221"
+#define	BINUTILSVER_DEFAULT "binutils222"
 #endif
 
 #ifndef OBJFORMAT_PATH_DEFAULT
@@ -78,6 +78,7 @@ static struct command commands[] = {
 	{"size",	BINUTILS},
 	{"strings",	BINUTILS},
 	{"strip",	BINUTILS},
+	{"incremental-dump", BINUTILS},
 	{"objformat",	OBJFORMAT},
 	{"",		-1}
 };

@@ -4,7 +4,6 @@
 
 PROG=	size
 MAN=	size221.1
-MLINKS+=size221.1 size.1
 WARNS=	2
 
 size221.1: ${SRCDIR}/binutils/doc/size.1

@@ -5,7 +5,6 @@
 PROG=	objdump
 SRCS=	elfcomm.c objdump.c
 MAN=	objdump221.1
-MLINKS+=objdump221.1 objdump.1
 WARNS=	1
 
 DPADD+=	${.OBJDIR}/../libopcodes/libopcodes.a
