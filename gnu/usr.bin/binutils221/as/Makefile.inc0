@@ -7,6 +7,7 @@ TARGET_OS?=	dragonfly
 
 PROG=	as
 MAN=	as221.1
+MLINKS+=as221.1 as.1
 SRCS+=	app.c			\
 	as.c			\
 	atof-generic.c		\

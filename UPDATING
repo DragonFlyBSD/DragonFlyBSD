@@ -46,7 +46,7 @@ from your kernel configuration.
 BINUTILS 2.20
 -------------
 Binutils 2.20 has been removed in favor of Binutils 2.22.  The accepted
-values of BINUTILSVERS are now binutils221 and binutils222 (default).
+values of BINUTILSVERS have changed accordingly.
 
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 2.8 to later versions                +
