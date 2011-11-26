@@ -1,7 +1,0 @@
-# Used to do keyword replacement in bfd-X.h
-#
-BFD_HOST_64BIT_LONG?=0
-BFD_HOST_64BIT_LONG_LONG?=1
-BFD_HOST_64_BIT?=long long
-BFD_HOST_U_64_BIT?=unsigned long long
-BFD_HOSTPTR_T?=unsigned long
