@@ -1,0 +1,6 @@
+Original source can be downloaded from:
+http://www.tcpdump.org/release/
+
+A list of files and directories removed is in README.DELETED
+
+Remember to update lib/libpcap/config.h.

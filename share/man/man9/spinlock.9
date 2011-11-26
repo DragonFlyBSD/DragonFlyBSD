@@ -1,0 +1,207 @@
+.\"
+.\" Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd October 9, 2011
+.Dt SPINLOCK 9
+.Os
+.Sh NAME
+.Nm spin_init ,
+.Nm spin_lock ,
+.Nm spin_lock_quick ,
+.Nm spin_trylock ,
+.Nm spin_uninit ,
+.Nm spin_unlock ,
+.Nm spin_unlock_quick ,
+.Nm spin_pool_lock ,
+.Nm spin_pool_unlock
+.Nd core spinlocks
+.Sh SYNOPSIS
+.In sys/spinlock.h
+.In sys/spinlock2.h
+.Ft void
+.Fn spin_init "struct spinlock *mtx"
+.Ft void
+.Fn spin_uninit "struct spinlock *mtx"
+.Ft void
+.Fn spin_lock "struct spinlock *mtx"
+.Ft void
+.Fn spin_lock_quick "globaldata_t gd" "struct spinlock *mtx"
+.Ft boolean_t
+.Fn spin_trylock "struct spinlock *mtx"
+.Ft void
+.Fn spin_unlock "struct spinlock *mtx"
+.Ft void
+.Fn spin_unlock_quick "globaldata_t gd" "struct spinlock *mtx"
+.Sh DESCRIPTION
+The
+.Fa spinlock
+structure and call API are defined in the
+.In sys/spinlock.h
+and
+.In sys/spinlock2.h
+header files, respectively.
+.Pp
+The
+.Fn spin_init
+function initializes a new
+.Fa spinlock
+structure for use.
+The structure is cleaned up with
+.Fn spin_uninit
+when it is no longer needed.
+.Pp
+The
+.Fn spin_lock
+function obtains an exclusive
+.Em read-write
+spinlock.
+A thread may hold any number of exclusive spinlocks but should always
+be mindful of ordering deadlocks.
+The
+.Fn spin_trylock
+function will return
+.Dv TRUE
+if the spinlock was successfully obtained and
+.Dv FALSE
+if it wasn't.
+If you have the current CPU's
+.Fa globaldata
+pointer in hand you can call
+.Fn spin_lock_quick ,
+but most code will just call the normal version.
+A spinlock used only for exclusive access has about the same overhead
+as a mutex based on a locked bus cycle.
+.Pp
+A previously obtained exclusive spinlock is released by calling either
+.Fn spin_unlock
+or
+.Fn spin_unlock_quick .
+.Pp
+The
+.Fn spin_pool_lock
+function locks a pool spinlock associated with a given address.
+The spinlock's lifetime is not tied to any objects at the address.
+The function returns the locked spinlock.
+The
+.Fn spin_pool_unlock
+function unlocks a pool spinlock associated with an address.
+Pool spinlocks need not be initialized.
+.Sh IMPLEMENTATION NOTES
+A thread may not hold any spinlock across a blocking condition or
+thread switch.
+LWKT tokens should be used for situations where you want an exclusive
+run-time lock that will survive a blocking condition or thread switch.
+Tokens will be automatically unlocked when a thread switches away and
+relocked when the thread is switched back in.
+If you want a lock that survives a blocking condition or thread switch
+without being released, use
+.Xr lockmgr 9
+locks or LWKT reader/writer locks.
+.Pp
+.Dx Ap s
+core spinlocks should only be used around small contained sections of
+code.
+For example, to manage a reference count or to implement higher level
+locking mechanisms.
+Both the token code and the
+.Xr lockmgr 9
+code use exclusive spinlocks internally.
+Core spinlocks should not be used around large chunks of code.
+.Pp
+Holding one or more spinlocks will disable thread preemption by
+another thread (e.g. preemption by an interrupt thread), but will not
+disable FAST interrupts or IPIs.
+This means that a FAST interrupt can still operate during a spinlock,
+and any threaded interrupt (which is basically all interrupts except
+the clock interrupt) will still be scheduled for later execution, but
+will not be able to preempt the current thread.
+If you wish to disable FAST interrupts and IPIs you need to enter a
+critical section prior to obtaining the spinlock.
+.Pp
+Currently, FAST interrupts, including IPI messages, are not allowed to
+acquire any spinlocks.
+It is possible to work around this if
+.Va mycpu->gd_spinlocks_wr
+is 0.
+If one
+or the other is not zero, the FAST interrupt or IPI cannot acquire
+any spinlocks without risking a deadlock, even if the spinlocks in
+question are not related.
+.Pp
+A thread may hold any number of exclusive
+.Em read-write
+spinlocks.
+.Pp
+Spinlocks spin.
+A thread will not block, switch away, or lose its critical section
+while obtaining or releasing a spinlock.
+Spinlocks do not use IPIs or other mechanisms.
+They are considered to be a very low level mechanism.
+.Pp
+If a spinlock can not be obtained after one second a warning will be
+printed on the console.
+If a system panic occurs, spinlocks will succeed after one second in
+order to allow the panic operation to proceed.
+.Pp
+If you have a complex structure such as a
+.Xr vnode 9
+which contains a token or
+.Xr lockmgr 9
+lock, it is legal to directly access the internal spinlock embedded
+in those structures for other purposes as long as the spinlock is not
+held when you issue the token or
+.Xr lockmgr 9
+operation.
+.Sh FILES
+The uncontended path of the spinlock implementation is in
+.Pa /sys/sys/spinlock2.h .
+The core of the spinlock implementation is in
+.Pa /sys/kern/kern_spinlock.c .
+.Sh SEE ALSO
+.Xr crit_enter 9 ,
+.Xr lockmgr 9 ,
+.Xr serializer 9
+.Sh HISTORY
+A
+.Nm spinlock
+implementation first appeared in
+.Dx 1.3 .
+.Sh AUTHORS
+.An -nosplit
+The original
+.Nm spinlock
+implementation was written by
+.An Jeffrey M. Hsu
+and was later extended by
+.An Matthew Dillon .
+This manual page was written by
+.An Matthew Dillon
+and
+.An Sascha Wildner .

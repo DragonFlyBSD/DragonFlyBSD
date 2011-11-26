@@ -1,0 +1,109 @@
+.\" Copyright (c) 2001 Ruslan Ermilov <ru@FreeBSD.org>.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.2.2.19 2003/03/25 10:20:12 murray Exp $
+.\"
+.\"     %beginstrip%
+.
+.eo
+.
+.
+.ds doc-volume-operating-system DragonFly
+.
+.\" DragonFly .Lb values
+.ds doc-str-Lb-libalias         Packet Aliasing Library (libalias, \-lalias)
+.ds doc-str-Lb-libarchive       Streaming Archive Library (libarchive, \-larchive)
+.ds doc-str-Lb-libbluetooth     Bluetooth Host Lookup Library (libbluetooth, \-lbluetooth)
+.ds doc-str-Lb-libbsdxml        eXpat XML parser library (libbsdxml, \-lbsdxml)
+.ds doc-str-Lb-libcalendar      Calendar Arithmetic Library (libcalendar, \-lcalendar)
+.ds doc-str-Lb-libcam           Common Access Method User Library (libcam, \-lcam)
+.ds doc-str-Lb-libcaps          CAPS IPC Library (libcaps, \-lcaps)
+.ds doc-str-Lb-libcipher        FreeSec Crypt Library (libcipher, \-lcipher)
+.ds doc-str-Lb-libdevattr       Device attribute and event library (libdevattr \-ldevattr)
+.ds doc-str-Lb-libdevinfo       Device and Resource Information Utility Library (libdevinfo, \-ldevinfo)
+.ds doc-str-Lb-libdevstat       Device Statistics Library (libdevstat, \-ldevstat)
+.ds doc-str-Lb-libdm            Device Mapper Library (libdm, \-ldm)
+.ds doc-str-Lb-libfetch         File Transfer Library (libfetch, \-lfetch)
+.ds doc-str-Lb-libfsid          Filesystem Identification Library (libfsid, \-lfsid)
+.ds doc-str-Lb-libftpio         FTP Connection Management Library (libftpio, \-lftpio)
+.ds doc-str-Lb-libhammer        HAMMER Filesystem Userland Library (libhammer, \-lhammer)
+.ds doc-str-Lb-libipx           IPX Address Conversion Support Library (libipx, \-lipx)
+.ds doc-str-Lb-libkcore         Kernel Memory Core Access Library (libkcore, \-lkcore)
+.ds doc-str-Lb-libkiconv        Kernel side iconv library (libkiconv, \-lkiconv)
+.ds doc-str-Lb-libkinfo         Kernel Information Access Library (libkinfo, \-lkinfo)
+.ds doc-str-Lb-libmd            Message Digest (MD4, MD5, etc.) Support Library (libmd, \-lmd)
+.ds doc-str-Lb-libnetgraph      Netgraph User Library (libnetgraph, \-lnetgraph)
+.ds doc-str-Lb-libposix1e       POSIX.1e Security API Library (libposix1e, \-lposix1e)
+.ds doc-str-Lb-libprop          Property Container Object Library (libprop, \-lprop)
+.ds doc-str-Lb-libradius        RADIUS Client Library (libradius, \-lradius)
+.ds doc-str-Lb-librpcsvc        RPC Service Library (librpcsvc, \-lrpcsvc)
+.ds doc-str-Lb-libsdp           Bluetooth Service Discovery Protocol Library (libsdp, \-lsdp)
+.ds doc-str-Lb-libskey          S/Key Password Control Table Access Library (libskey, \-lskey)
+.ds doc-str-Lb-libstand         Standalone Applications Library (libstand, \-lstand)
+.ds doc-str-Lb-libtacplus       TACACS+ Client Library (libtacplus, \-ltacplus)
+.ds doc-str-Lb-libtcplay        TrueCrypt-compatible API library (libtcplay, \-ltcplay)
+.ds doc-str-Lb-libvgl           Video Graphics Library (libvgl, \-lvgl)
+.
+.
+.\" Default .Os value
+.ds doc-default-operating-system DragonFly\~2.13
+.
+.
+.\" DragonFly releases not found in doc-common
+.ds doc-operating-system-DragonFly-1.7 1.7
+.ds doc-operating-system-DragonFly-1.9 1.9
+.ds doc-operating-system-DragonFly-1.11 1.11
+.ds doc-operating-system-DragonFly-1.13 1.13
+.ds doc-operating-system-DragonFly-2.1 2.1
+.ds doc-operating-system-DragonFly-2.2 2.2
+.ds doc-operating-system-DragonFly-2.3 2.3
+.ds doc-operating-system-DragonFly-2.4 2.4
+.ds doc-operating-system-DragonFly-2.5 2.5
+.ds doc-operating-system-DragonFly-2.6 2.6
+.ds doc-operating-system-DragonFly-2.7 2.7
+.ds doc-operating-system-DragonFly-2.9 2.9
+.ds doc-operating-system-DragonFly-2.11 2.11
+.ds doc-operating-system-DragonFly-2.13 2.13
+.
+.\" FreeBSD releases not found in doc-common.
+.ds doc-operating-system-FreeBSD-8.0  8.0
+.ds doc-operating-system-FreeBSD-9.0  9.0
+.
+.\" NetBSD releases not found in doc-common.
+.ds doc-operating-system-NetBSD-5.0   5.0
+.ds doc-operating-system-NetBSD-6.0   6.0
+.
+.\" Definitions not (yet) in doc-syms
+.ds doc-str-St--p1003.1-2008   \*[doc-Tn-font-size]\%IEEE\*[doc-str-St] Std 1003.1-2008
+.as doc-str-St--p1003.1-2008   " (\*[Lq]\)\*[Px]\*[doc-str-St].1\*[Rq])
+.
+.ec
+.
+.\" Locale support
+.if d doc-locale \{\
+.  ie "\*[doc-locale]"ru.KOI8-R" \
+.    mso mdoc/ru.KOI8-R
+.  el \{ .if "\*[doc-locale]"fr.ISO8859-1" \
+.    mso mdoc/fr.ISO8859-1
+.\}\}

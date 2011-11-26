@@ -1,0 +1,4 @@
+# $FreeBSD: src/tools/regression/bin/sh/set-e/not2.0,v 1.2 2009/05/31 17:23:27 stefanf Exp $
+set -e
+! false
+! eval false

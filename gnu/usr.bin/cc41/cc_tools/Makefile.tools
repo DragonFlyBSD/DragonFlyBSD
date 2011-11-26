@@ -1,0 +1,12 @@
+# $DragonFly: src/gnu/usr.bin/cc41/cc_tools/Makefile.tools,v 1.3 2007/09/24 03:04:28 y0netan1 Exp $
+
+MIC= sh ${GCCDIR}/move-if-change
+TOOLGENDIR= ${OTOPDIR}/cc_tools/gen
+.PATH: ${TOOLGENDIR}
+CFLAGS+= -I${TOOLGENDIR}
+
+.if !exists(${TOOLGENDIR})
+beforedepend: mktooldir
+mktooldir:
+	mkdir -p ${TOOLGENDIR}
+.endif

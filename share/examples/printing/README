@@ -1,0 +1,8 @@
+# $FreeBSD: src/share/examples/printing/README,v 1.6 1999/08/28 00:19:34 peter Exp $ 
+# $DragonFly: src/share/examples/printing/README,v 1.2 2003/06/17 04:36:57 dillon Exp $ 
+#
+# The files in this directory are generated automatically
+# from doc/handbook/printing.sgml, do not edit it here!
+#
+# Please change doc/handbook/printing.sgml or maybe 
+# src/tools/tools/epfe/epfe.pl instead.

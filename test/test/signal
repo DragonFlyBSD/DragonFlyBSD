@@ -1,0 +1,5 @@
+<signal mode="CONVOLUTIONAL">
+    <signal mode="REED_SOLOMON">
+        You can't stop the signal.
+    </signal>
+</signal>

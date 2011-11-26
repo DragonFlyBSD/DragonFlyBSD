@@ -1,0 +1,157 @@
+.\"
+.\" Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd November 3, 2010
+.Dt MKINITRD 8
+.Os
+.Sh NAME
+.Nm mkinitrd
+.Nd build an initial ramdisk image for use as early userland
+.Sh SYNOPSIS
+.Nm
+.Op Fl b Ar bootdir
+.Op Fl t Ar tmpdir
+.Sh DESCRIPTION
+The
+.Nm
+script builds a ramdisk (md) image based on the UFS filesystem containing
+only the most basic tools, such as a minimal
+.Xr init 8 ,
+.Xr sh 1
+as well as many
+.Xr mount 8
+utilities.
+.Pp
+It will also copy the contents of
+.Pa /usr/share/initrd
+onto the ramdisk, maintaining the same hierarchy.
+.Pp
+On completion, the final image will be copied to
+.Pa /boot/kernel/initrd.img ,
+ready to be used as an early userland.
+The base directory for
+.Pa kernel/initrd.img
+can be changed with the
+.Fl b
+option to an optional
+.Ar bootdir (the default is
+.Pa /boot ) .
+The temporary directory to be used for setting up the image can be specified
+using the
+.Fl t
+option (the default is
+.Pa /tmp ) .
+.Pp
+The
+.Nm
+script will check for
+.Pa /etc/defaults/mkinitrd.conf
+and
+.Pa /etc/mkinitrd.conf
+and include the configuration from these files in the given order, allowing
+the user to override or add to the following variables:
+.Bd -literal -offset indent
+BUILD_DIR
+INITRD_SIZE
+BIN_TOOLS
+SBIN_TOOLS
+INITRD_DIRS
+CONTENT_DIRS
+.Ed
+.Pp
+Adding the following lines to
+.Pa /boot/loader.conf
+will enable the use of the created initrd image:
+.Bd -literal -offset indent
+initrd.img_load="YES"
+initrd.img_type="md_image"
+vfs.root.mountfrom="ufs:md0s0"
+.Ed
+.Pp
+The format for vfs.root.realroot in
+.Pa /boot/loader.conf
+that allows the user to specify what system to mount as the
+new root in the initrd is specified in its general form below:
+.Bd -literal -offset indent
+vfs.root.realroot="<type>:[arg1[:arg2[:argN]]]"
+.Ed
+.Pp
+Currently, three types of real root are supported,
+.Pa local ,
+.Pa tcplay
+and
+.Pa crypt .
+The
+.Pa local
+type allows to mount any local file system that does not require any
+special setup apart from the initial discovery and calling the
+.Pa mount
+program. The general format is as follows:
+.Bd -literal -offset indent
+vfs.root.realroot="local:<FS TYPE>:<DEVICE PATH>[:<OPTIONS>]"
+.Ed
+.Pp
+The
+.Pa crypt
+type allows to mount volumes supported by cryptsetup. The device will
+be set up by prompting the user for his key, and this volume will then
+be mounted as the new root.
+.Bd -literal -offset indent
+vfs.root.realroot="crypt:<FS TYPE>:<DEVICE PATH>:<VOLUME NAME>[:<OPTIONS>]"
+.Ed
+.Pp
+The
+.Pa tcplay
+type allows to mount volumes supported by
+.Xr tcplay 8 .
+The device will be set up by prompting the user for his key, and this
+volume will then be mounted as the new root.
+.Bd -literal -offset indent
+vfs.root.realroot="tcplay:<FS TYPE>:<DEVICE PATH>:<VOLUME NAME>[:<OPTIONS>]"
+.Ed
+.Sh EXAMPLES
+.Bd -literal -offset indent
+vfs.root.realroot="local:ufs:/dev/vg00/lv0[:OPTIONS]"
+.Ed
+.Bd -literal -offset indent
+vfs.root.realroot="crypt:ufs:/dev/ad0s0a:secvolume[:OPTIONS]"
+.Ed
+.Sh SEE ALSO
+.Xr md 4 ,
+.Xr loader.conf 5
+.Sh HISTORY
+The
+.Nm
+command first appeared in
+.Dx 2.7 .
+.Sh AUTHORS
+.Nm
+was written by
+.An Alex Hornung Aq ahornung@gmail.com .

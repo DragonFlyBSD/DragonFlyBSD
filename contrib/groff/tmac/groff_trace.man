@@ -1,0 +1,326 @@
+.ig
+groff_trace.7
+
+File position: <groff-source>/tmac/groff_trace.man
+
+Last update: 05 Jan 2009
+
+This file is part of groff, the GNU roff type-setting system.
+
+Copyright (C) 2002, 2006, 2007, 2008, 2009
+  Free Software Foundation, Inc.
+
+written by Bernd Warken.
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with the
+Invariant Sections being this .ig-section and AUTHOR, with no
+Front-Cover Texts, and with no Back-Cover Texts.
+
+A copy of the Free Documentation License is included as a file called
+FDL in the main directory of the groff source package.
+..
+.
+.ds Ellipsis .\|.\|.\&\"
+.
+.TH GROFF_TRACE @MAN7EXT@ "@MDATE@" "Groff Version @VERSION@"
+.
+.SH NAME
+groff_trace \- groff macro package trace.tmac
+.
+.\" --------------------------------------------------------------------
+.SH SYNOPSIS
+.\" --------------------------------------------------------------------
+.
+.SY "groff \-m trace"
+.RI [ options
+.IR \*[Ellipsis] ]
+.RI [ files
+.IR \*[Ellipsis] ]
+.YS
+.
+.\" --------------------------------------------------------------------
+.SH DESCRIPTION
+.\" --------------------------------------------------------------------
+.
+The
+.I trace
+macro package of
+.BR groff (@MAN1EXT@)
+can be a valuable tool for debugging documents written in the roff
+formatting language.
+.
+A call stack trace is protocolled on standard error, this is, a
+diagnostic message is emitted on entering and exiting of a macro call.
+.
+This greatly eases to track down an error in some macro.
+.
+.
+.P
+This tracing process is activated by specifying the groff or troff
+command line option
+.BR \-m\ trace .
+This works also with the
+.BR groffer (@MAN1EXT@)
+viewer program.
+.
+A finer control can be obtained by including the macro file within the
+document by the groff macro call
+.BR .mso\ trace.tmac .
+Only macros that are defined after this line are traced.
+.
+.
+.P
+If command line option
+.B \-r\ trace-full=1
+is given (or if this register is set in the document), number and string
+register assignments together with some other requests are traced also.
+.
+.
+.P
+If some other macro package should be traced as well it must be specified
+after
+.B \-m\ trace
+on the command line.
+.
+.
+.P
+The macro file
+.B trace.tmac
+is unusual because it does not contain any macros to be called by a
+user.
+.
+Instead, the existing macro definition and appending facilities are
+modified such that they display diagnostic messages.
+.
+.
+.\" --------------------------------------------------------------------
+.SH EXAMPLES
+.\" --------------------------------------------------------------------
+.
+In the following examples, a roff fragment is fed into groff via
+standard input.
+.
+As we are only interested in the diagnostic messages (standard error)
+on the terminal, the normal formatted output (standard output) is
+redirected to the nirvana device
+.IR /dev/null .
+The resulting diagnostic messages are displayed directly below the
+corresponding example.
+.
+.
+.\" --------------------------------------------------------------------
+.SS "Command line option"
+Example:
+.
+.RS
+.P
+.EX
+\fIsh#\fP echo '.
+> .de test_macro
+> ..
+> .test_macro
+> .test_macro some dummy arguments
+> ' | groff -m trace >/dev/null
+
+*** .de test_macro
+*** de trace enter: .test_macro
+*** trace exit: .test_macro
+*** de trace enter: .test_macro "some" "dummy" "arguments"
+*** trace exit: .test_macro "some" "dummy" "arguments"
+.EE
+.RE
+.
+.P
+The entry and the exit of each macro call is displayed on the terminal
+(standard output) \[em] together with the arguments (if any).
+.
+.
+.\" --------------------------------------------------------------------
+.SS "Nested macro calls"
+Example:
+.
+.RS
+.P
+.EX
+\fIsh#\fP echo '.
+> .de child
+> ..
+> .de parent
+> .child
+> ..
+> .parent
+> ' | groff -m trace >/dev/null
+
+*** .de child
+*** .de parent
+*** de trace enter: .parent
+ *** de trace enter: .child
+ *** trace exit: .child
+*** trace exit: .parent
+.EE
+.RE
+.
+.P
+This shows that macro calls can be nested.
+.
+This powerful feature can help to tack down quite complex call stacks.
+.
+.
+.\" --------------------------------------------------------------------
+.SS "Activating with .mso"
+Example:
+.
+.RS
+.P
+.EX
+\fIsh#\fP echo '.
+> .de before
+> ..
+> .mso trace.tmac
+> .de after
+> ..
+> .before
+> .after
+> .before
+>  ' | groff >/dev/null
+
+*** de trace enter: .after
+*** trace exit: .after
+.EE
+.RE
+.
+.P
+Here, the tracing is activated within the document, not by a command
+line option.
+.
+As tracing was not active when macro
+.I before
+was defined, no call of this macro is protocolled; on the other hand,
+the macro
+.I after
+is fully protocolled.
+.
+.
+.\" --------------------------------------------------------------------
+.SH PROBLEMS
+.\" --------------------------------------------------------------------
+.
+Because
+.B trace.tmac
+wraps the
+.B .de
+request (and its cousins), macro arguments are expanded one level more.
+.
+This causes problems if an argument contains four backslashes or more
+to prevent too early expansion of the backslash.  For example, this
+macro call
+.
+.IP
+.EX
+\&.foo \e\e\e\en[bar]
+.EE
+.
+.P
+normally passes `\e\en[bar]' to macro `.foo', but with the redefined
+.B .de
+request it passes `\en[bar]' instead.
+.
+.P
+The solution to this problem is to use groff's
+.B \eE
+escape which is an escape character not interpreted in copy mode, for
+example
+.
+.IP
+.EX
+\&.foo \eEn[bar]
+.EE
+.
+.
+.\" --------------------------------------------------------------------
+.SH FILES
+.\" --------------------------------------------------------------------
+.
+The
+.I trace
+macros are kept in the file
+.B trace.tmac
+located in the
+.IR "tmac directory" ;
+see
+.BR groff_tmac (@MAN5EXT@)
+for details.
+.
+.
+.\" --------------------------------------------------------------------
+.SH ENVIRONMENT
+.\" --------------------------------------------------------------------
+.
+.TP
+.B $GROFF_TMAC_PATH
+A colon-separated list of additional tmac directories in which to
+search for macro files; see
+.BR groff_tmac (@MAN5EXT@)
+for details.
+.
+.
+.\" --------------------------------------------------------------------
+.SH AUTHOR
+.\" --------------------------------------------------------------------
+.
+Copyright (C) 2002, 2006, 2007, 2008 Free Software Foundation, Inc.
+.
+.P
+This document is distributed under the terms of the FDL (GNU Free
+Documentation License) version 1.1 or later.
+.
+You should have received a copy of the FDL on your system, it is also
+available on-line at the
+.UR http://\:www.gnu.org/\:copyleft/\:fdl.html
+GNU copyleft site
+.UE .
+.
+.P
+This document is part of
+.IR groff ,
+the GNU roff distribution.
+.
+It was written by Bernd Warken.
+.
+.
+.\" --------------------------------------------------------------------
+.SH "SEE ALSO"
+.\" --------------------------------------------------------------------
+.
+.TP
+.BR groff (@MAN1EXT@)
+An overview of the groff system.
+.
+.TP
+.BR troff (@MAN1EXT@)
+For details on option
+.BR \-m .
+.
+.TP
+.BR groffer (@MAN1EXT@)
+A viewer program for all kinds of roff documents.
+.
+.TP
+.BR groff_tmac (@MAN5EXT@)
+A general description of groff macro packages.
+.
+.TP
+.BR groff (@MAN7EXT@)
+A short reference for the groff formatting language.
+.
+.P
+A complete reference for all parts of the groff system is found in the
+groff
+.BR info (1)
+file.
+.
+.\" Local Variables:
+.\" mode: nroff
+.\" End:

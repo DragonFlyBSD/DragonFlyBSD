@@ -1,0 +1,65 @@
+CRYPTSETUP_1.0 {
+	global:
+		crypt_init;
+		crypt_init_by_name;
+		crypt_set_log_callback;
+		crypt_set_confirm_callback;
+		crypt_set_password_callback;
+		crypt_set_timeout;
+		crypt_set_password_retry;
+		crypt_set_iterarion_time;
+		crypt_set_password_verify;
+
+		crypt_memory_lock;
+		crypt_format;
+		crypt_load;
+		crypt_suspend;
+		crypt_resume_by_passphrase;
+		crypt_resume_by_keyfile;
+		crypt_free;
+
+		crypt_keyslot_add_by_passphrase;
+		crypt_keyslot_add_by_keyfile;
+		crypt_keyslot_add_by_volume_key;
+		crypt_keyslot_destroy;
+		crypt_activate_by_passphrase;
+		crypt_activate_by_keyfile;
+		crypt_activate_by_volume_key;
+		crypt_deactivate;
+		crypt_volume_key_get;
+		crypt_volume_key_verify;
+		crypt_status;
+		crypt_dump;
+		crypt_get_cipher;
+		crypt_get_cipher_mode;
+		crypt_get_uuid;
+		crypt_get_data_offset;
+		crypt_get_volume_key_size;
+
+		crypt_keyslot_status;
+		crypt_get_error;
+		crypt_get_dir;
+		crypt_set_debug_level;
+		crypt_log;
+
+		crypt_header_backup;
+		crypt_header_restore;
+
+		crypt_create_device;
+		crypt_update_device;
+		crypt_resize_device;
+		crypt_query_device;
+		crypt_remove_device;
+		crypt_luksFormat;
+		crypt_luksOpen;
+		crypt_luksKillSlot;
+		crypt_luksRemoveKey;
+		crypt_luksAddKey;
+		crypt_luksUUID;
+		crypt_isLuks;
+		crypt_luksDump;
+
+		crypt_put_options;
+	local:
+		*;
+};

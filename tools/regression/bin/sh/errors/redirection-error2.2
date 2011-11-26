@@ -1,0 +1,4 @@
+# $FreeBSD: src/tools/regression/bin/sh/errors/redirection-error2.2,v 1.2 2010/10/12 18:20:38 obrien Exp $
+
+# sh should fail gracefully on this bad redirect
+${SH} -c 'echo 1 >&$a' 2>/dev/null

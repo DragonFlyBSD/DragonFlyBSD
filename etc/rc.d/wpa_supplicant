@@ -1,0 +1,56 @@
+#!/bin/sh
+#
+# $FreeBSD: src/etc/rc.d/wpa_supplicant,v 1.2 2005/10/19 22:26:47 jkim Exp $
+#
+
+# PROVIDE: wpa_supplicant
+# REQUIRE: mountcritremote
+# KEYWORD: nojail nostart
+
+. /etc/rc.subr
+. /etc/network.subr
+
+name="wpa_supplicant"
+rcvar=
+command="/usr/sbin/${name}"
+conf_file="/etc/wpa_supplicant.conf"
+
+start_precmd="wpa_supplicant_precmd"
+wpa_supplicant_precmd()
+{
+	ifconfig $ifn up
+}
+start_postcmd="wpa_supplicant_postcmd"
+wpa_supplicant_postcmd()
+{
+	while ! ifconfig $ifn | grep -qw "status: associated"; do
+		sleep 1
+	done
+}
+
+ifn="$2"
+if [ -z "$ifn" ]; then
+	return 1
+fi
+
+is_ndis_interface()
+{
+	case `sysctl -n net.wlan.${1#wlan}.%parent 2>/dev/null` in
+		ndis*) true ;;
+		*) false ;;
+	esac
+}
+
+if is_ndis_interface ${ifn}; then
+	driver="ndis"
+else
+	driver="bsd"
+fi
+
+load_rc_config $name
+
+pid_file="/var/run/${name}/${ifn}.pid"
+command_args="-B -q -i $ifn -c $conf_file -D $driver -P $pid_file"
+required_files=$conf_file
+
+run_rc_command "$1"

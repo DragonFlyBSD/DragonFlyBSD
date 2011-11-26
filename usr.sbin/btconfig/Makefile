@@ -1,0 +1,12 @@
+# $NetBSD: Makefile,v 1.2 2007/05/28 12:06:34 tls Exp $
+# $DragonFly: src/usr.sbin/btconfig/Makefile,v 1.1 2008/01/04 09:54:22 hasso Exp $
+
+PROG=		btconfig
+SRCS=		btconfig.c
+MAN = 		btconfig.8
+
+CFLAGS+=	-I${.CURDIR}/../../sys
+DPADD+=		${LIBBLUETOOTH}
+LDADD+=		-lbluetooth
+
+.include <bsd.prog.mk>

@@ -1,0 +1,6 @@
+# $NetBSD: EBCDIC.src,v 1.1 2003/06/27 08:40:53 tshiozak Exp $
+# $DragonFly: src/share/i18n/esdb/EBCDIC/EBCDIC.src,v 1.2 2008/04/10 10:21:12 hasso Exp $
+
+NAME		"EBCDIC-x"
+ENCODING	"NONE"
+DEFCSID		"EBCDIC-x"	0

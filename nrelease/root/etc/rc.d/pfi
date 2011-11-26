@@ -1,0 +1,199 @@
+#!/bin/sh
+
+# $Id: pfi,v 1.12 2005/03/07 06:18:21 cpressey Exp $
+# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.8 2005/12/10 00:11:08 swildner Exp $
+#
+
+# PROVIDE: pfi
+# REQUIRE: mountoptional
+
+. /etc/rc.subr
+
+name=pfi
+start_cmd="pfi_start"
+stop_cmd=":"
+
+get_pfi_config()
+{
+	[ -r /etc/pfi.conf ] && return 0
+
+	if [ -r $1/pfi.conf ]; then
+		echo " found!"
+		tr -d "\r" < $1/pfi.conf > /etc/pfi.conf
+		echo "pfi_found_on_device='$2'" >> /etc/pfi.conf
+
+		# If the pfi.conf says to run a custom script from the pfi
+		# media, run it now, so that it has access to the pfi media.
+
+		if [ -r /etc/defaults/pfi.conf ]; then
+			. /etc/defaults/pfi.conf
+		fi
+		. /etc/pfi.conf
+		if [ "$pfi_script" != "" -a -x "$1/$pfi_script" ]; then
+			$1/$pfi_script
+		fi
+		return 0
+	else
+		return 1
+	fi
+}
+
+get_authorized_hosts()
+{
+	[ -r /root/.ssh/authorized_hosts ] && return 0
+	if [ -r $1/authorized_hosts ]; then
+		echo "authorized_hosts found!"
+		mkdir -p /root/.ssh/
+		tr -d "\r" < $1/authorized_hosts > /root/.ssh/authorized_hosts
+	fi
+}
+
+look_for_pfi_config_msdos()
+{
+	[ -r /etc/pfi.conf ] && return 0
+
+	for try_device in da0s1 da1s1 da8s1 fd0 fd1; do
+		if [ -c /dev/${try_device} ]; then
+			echo -n "Looking for pfi.conf on /dev/${try_device}..."
+			if mount_msdos -o rdonly /dev/$try_device /mnt ; then
+				echo -n " /dev/$try_device ok..."
+				if get_pfi_config /mnt /dev/$try_device; then
+					get_authorized_hosts /mnt
+					umount /mnt
+					return 0
+				fi
+				umount /mnt
+			fi
+			echo " not found"
+		fi
+	done
+	return 1
+}
+
+look_for_pfi_config_cd9660()
+{
+	[ -r /etc/pfi.conf ] && return 0
+
+	for try_device in acd0 cd0 acd1 cd1; do
+		if [ -c /dev/${try_device} ]; then
+			echo -n "Looking for pfi.conf on /dev/${try_device}..."
+			if mount_cd9660 /dev/$try_device /mnt ; then
+				echo -n " /dev/$try_device ok..."
+				if get_pfi_config /mnt /dev/$try_device; then
+					get_authorized_hosts /mnt
+					umount /mnt
+					return 0
+				fi
+				umount /mnt
+			fi
+			echo " not found"
+		fi
+	done
+	return 1
+}
+
+pfi_start()
+{
+	echo "Starting pfi..."
+
+	# Get the pfi.conf file off the pfi media and into /etc/pfi.conf.
+
+	look_for_pfi_config_cd9660
+	look_for_pfi_config_msdos
+
+	# If the search was not successful, stub out a dummy pfi.conf.
+
+	if [ ! -r /etc/pfi.conf ]; then
+		echo '' >/etc/pfi.conf
+	fi
+
+	# Append the contents of pfi.conf onto rc.conf, so that settings
+	# (such as ifconfig_dc0="DHCP") will be picked up by pfi_rc_actions.
+
+	cp /etc/rc.conf /etc/rc.conf.orig
+	cat /etc/pfi.conf >>/etc/rc.conf
+
+	# Read in the pfi.conf we either found or created for ourselves.
+
+	if [ -r /etc/defaults/pfi.conf ]; then
+		. /etc/defaults/pfi.conf
+	fi
+	. /etc/pfi.conf
+
+	# We can perform any pre-install tasks here by
+	# examining the contents of pfi_* variables.
+
+	# Interpret pfi_sshd_* options.  These basically add settings
+	# to /etc/ssh/sshd_config; it is assumed "sshd" will appear
+	# in pfi_rc_actions to restart sshd.
+
+	case ${pfi_sshd_permit_root_login} in
+	YES)
+		echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+		;;
+	without-password)
+		echo "PermitRootLogin without-password" >> /etc/ssh/sshd_config
+		;;
+	forced-commands-only)
+		echo "PermitRootLogin forced-commands-only" >> /etc/ssh/sshd_config
+		;;
+	*)
+		;;
+	esac
+
+	case ${pfi_sshd_permit_empty_passwords} in
+	YES)
+		echo "PermitEmptyPasswords yes" >> /etc/ssh/sshd_config
+		;;
+	*)
+		;;
+	esac
+
+	# Interpret pfi_set_root_password.  If it is not empty, use
+	# it to set root's LiveCD password.
+
+	if [ "X$pfi_set_root_password" != "X" ]; then
+		echo "$pfi_set_root_password" | \
+		    /usr/sbin/pw usermod root -h 0
+	fi
+
+	# The most important pre-install task is to restart
+	# any RCNG scripts listed in pfi_rc_actions with any new
+	# settings that might have been set up by pfi.conf.
+
+	if [ "X$pfi_rc_actions" != "X" ]; then
+		rev_actions=`reverse_list $pfi_rc_actions`
+
+		for _rc_elem in ${rev_actions}; do
+			echo "Stopping ${_rc_elem}..."
+			rcstop ${_rc_elem}
+		done
+		for _rc_elem in ${pfi_rc_actions}; do
+			echo "Starting ${_rc_elem}..."
+			rcstart ${_rc_elem}
+		done
+	fi
+
+	# Restore the original rc.conf.
+
+	mv /etc/rc.conf.orig /etc/rc.conf
+
+	# Set up auto-login if requested.
+
+	if [ "X$pfi_autologin" != "XNONE" ]; then
+		echo 'AL.pfi:\' >> /etc/gettytab
+		echo "        :al=${pfi_autologin}:tc=Pc:" >> /etc/gettytab
+		sed -i '' 's|^ttyv0.*|ttyv0 "/usr/libexec/getty AL.pfi" cons25 on secure|' /etc/ttys
+	fi
+
+	# Finally, start thttpd if the user wants to use
+	# the cgi frontend.
+
+	if [ "X$pfi_frontend" = "Xcgi" ]; then
+		echo "Starting thttpd..."
+		/usr/local/sbin/thttpd_wrapper &
+	fi
+}
+
+load_rc_config $name
+run_rc_command "$1"

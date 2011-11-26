@@ -1,0 +1,126 @@
+.\"
+.\" Copyright (c) 2009 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd July 10, 2009
+.Dt GETDEVPATH 3
+.Os
+.Sh NAME
+.Nm getdevpath
+.Nd retrieve device path given name or label
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/types.h
+.In fstab.h
+.Ft char *
+.Fn getdevpath "const char *devname" "int flags"
+.Sh DESCRIPTION
+.Fn getdevpath
+takes a device name such as
+.Dq Pa da0 ,
+a device identifier such as
+.Dq Li V21JYQ0G ,
+a device path beginning with
+.Dq Pa /
+or
+.Dq Pa \&. ,
+or a device label from one of the
+.Pa devtab
+files, and returns an allocated path which may be used to open the device.
+.Pp
+Device names prefixed with
+.Dq Pa /
+or
+.Dq Pa \&.
+are assumed to be device paths and an exact allocated copy is simply returned.
+However, flags may modify the operation.
+.Pp
+Device names specified with a type prefix, such as
+.Dq Li serno:V21JYQ0G
+are assumed to be typed device identifiers and are directly translated to
+the appropriate path in
+.Pa /dev ,
+for example
+.Dq Pa /dev/serno/V21JYQ0G .
+.Pp
+Device labels are directly checked against
+.Pa /dev
+first, using
+.Fn lstat ,
+and if not found will be searched for in one of the
+.Pa devtab
+files.
+.Pp
+The following flags may be passed to
+.Fn getdevpath :
+.Bl -tag -width ".Dv GETDEVPATH_RAWDEV" -offset indent
+.It Dv GETDEVPATH_RAWDEV
+Normally,
+.Fn getdevpath
+returns a high level devfs path which often winds up being a softlink in
+devfs.
+If this flag is specified and the device path represents a softlink,
+.Fn getdevpath
+will do a
+.Xr readlink 2
+and return the actual raw device path instead.
+If the device path cannot be
+.Fn lstat Ap d
+this option will return
+.Dv NULL .
+.El
+.Sh RETURN VALUES
+.Fn getdevpath
+returns a pointer to a
+.Fn malloc Ap d
+path on success and
+.Dv NULL
+on failure.
+If a failure occurs
+.Va errno
+will be set appropriately.
+.Pp
+Note that a
+.Fn malloc Ap d
+path may be returned even if it does not exist in the filesystem.
+Callers should not assume that the device is accessible
+unless they can also open the device.
+.Sh SEE ALSO
+.Xr devfs 5 ,
+.Xr devtab 5 ,
+.Xr fstab 5
+.Sh HISTORY
+The
+.Nm
+function appeared in
+.Dx 2.3 .

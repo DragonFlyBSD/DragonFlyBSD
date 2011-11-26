@@ -1,0 +1,3486 @@
+'\" t
+.ig
+Copyright (C) 1989, 2000, 2001, 2002, 2003, 2006, 2007, 2009
+  Free Software Foundation, Inc.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this
+manual into another language, under the above conditions for modified
+versions, except that this permission notice may be included in
+translations approved by the Free Software Foundation instead of in
+the original English.
+..
+.
+.TH GROFF_MM @MAN7EXT@ "@MDATE@" "Groff Version @VERSION@"
+.
+.
+.SH NAME
+.
+groff_mm \- groff mm macros
+.
+.
+.SH SYNOPSIS
+.
+.B groff
+.B \-m@TMAC_M_PREFIX@m
+[
+.IR options .\|.\|.\&
+]
+[
+.IR files .\|.\|.\&
+]
+.
+.
+.SH DESCRIPTION
+.
+The groff mm macros are intended to be compatible with the DWB mm macros
+with the following limitations:
+.
+.TP
+.B \(bu
+No Bell Labs localisms are implemented.
+.
+.TP
+.B \(bu
+The macros OK and PM are not implemented.
+.
+.TP
+.B \(bu
+groff mm does not support cut marks.
+.
+.LP
+.B m@TMAC_M_PREFIX@m
+is intended to support easy localization.
+Use
+.B m@TMAC_M_PREFIX@mse
+as an example how to adapt the output format to a national standard.
+Localized strings are collected in the file
+.RI `@MACRODIR@/ xx .tmac',
+where
+.I xx
+denotes the two-letter code for the
+.IR language ,
+as defined in the ISO 639 standard.
+For Swedish,
+this is `sv.tmac' \[en]
+not `se',
+which is the ISO 3166 two-letter code for the
+.I country
+(as used for the output format localization).
+.
+.\"########################################################################
+.LP
+A file called
+.B locale
+or
+.IB country _locale
+is read after the initialization of the global variables.
+It is therefore possible to localize the macros with a different company
+name and so on.
+.
+.LP
+In this manual,
+square brackets are used to show optional arguments.
+.
+.
+.SS "Number registers and strings"
+.
+Many macros can be controlled by number registers and strings.
+A number register is assigned with the
+.B nr
+command:
+.
+.RS
+.LP
+.BI .nr\  "XXX \fR[\fP\fB\[+-]\fP\fR]\fPn \fR[\fPi\fR]\fP
+.RE
+.
+.LP
+.I XXX
+is the name of the register,
+.I n\c
+\~is the value to be assigned, and
+.I i\c
+\~is the increment value for auto-increment.
+.I n\c
+\~can have a plus or minus sign as a prefix if an increment
+or decrement of the current value is wanted.
+(Auto-increment or auto-decrement occurs if the number register is
+used with a plus or minus sign,
+.BI \[rs]n+[ XXX ]
+or
+.BI \[rs]n-[ XXX ]\fR.)\fP
+.
+.LP
+Strings are defined with
+.BR ds .
+.
+.RS
+.LP
+\fB\&.ds\fP \fIYYY string\fP
+.RE
+.
+.LP
+The string is assigned everything to the end of the line,
+even blanks.
+Initial blanks in
+.I string
+should be prefixed with a double-quote.
+(Strings are used in the text as
+.BI \[rs]*[ YYY ]\fR.)\fP
+.
+.
+.SS "Special formatting of number registers"
+.
+A number register is printed with normal digits if no format has been
+given.
+Set the format with
+.BR af :
+.
+.RS
+.LP
+.BI .af\  "R c"
+.RE
+.
+.LP
+.I R\c
+\~is the name of the register,
+.I c\c
+\~is the format.
+.
+.RS
+.LP
+.TS 
+tab(@);
+lb lb
+l l.
+Form@Sequence
+1@0, 1, 2, 3, .\|.\|.
+001@000, 001, 002, 003, .\|.\|.
+i@0, i, ii, iii, iv, .\|.\|.
+I@0, I, II, III, IV, .\|.\|.
+a@0, a, b, c, .\|.\|., z, aa, ab, .\|.\|.
+A@0, A, B, C, .\|.\|., Z, AA, AB, .\|.\|.
+.TE
+.RE
+.
+.
+.SS Fonts
+.
+In
+.BR m@TMAC_M_PREFIX@m ,
+the fonts (or rather, font styles)
+.B R\c
+\~(normal),
+.B I\c
+\~(italic), and
+.B B\c
+\~(bold) are hardwired to font positions
+.BR 1 ,
+.BR 2 ,
+and\~\c
+.BR 3 ,
+respectively.
+Internally, font positions are used for backwards compatibility.
+From a practical point of view it doesn't make a big difference \[en]
+a different font family can still be selected with a call to the
+.B .fam
+request or using
+.BR groff 's
+.B \-f
+command line option.
+On the other hand, if you want to replace just, say, font
+.BR B ,
+you have to replace the font at position\~2 (with a call to
+`.fp\~2\~.\|.\|.').
+.
+.
+.SS Macros
+.
+.TP
+.BI )E\  "level text"
+Add heading text
+.I text
+to the table of contents with
+.IR level ,
+which is either\~0 or in the range 1 to\~7.
+See also
+.BR .H .
+This macro is used for customized tables of contents.
+.
+.TP
+.BR 1C\  [ 1 ]
+Begin one-column processing.
+A\~\c
+.B 1
+as an argument disables the page break.
+Use wide footnotes,
+small footnotes may be overprinted.
+.
+.TP
+.B 2C
+Begin two-column processing.
+Splits the page in two columns.
+It is a special case of
+.BR MC .
+See also
+.BR 1C .
+.
+.TP
+.B AE
+Abstract end,
+see
+.BR AS .
+.
+.TP
+.BI AF\ \fR[\fP name-of-firm \fR]\fP
+Author's firm, should be called before
+.BR AU ,
+see also
+.BR COVER .
+.
+.TP
+.BI AL\  \fR[\fPtype\ \fR[\fPtext-indent\  \fR[\fP1\fR]]]\fP
+Start auto-increment list.
+Items are numbered beginning with one.
+The
+.I type
+argument controls the format of numbers.
+.
+.RS
+.IP
+.TS
+tab(@);
+lb lb
+l l.
+Arg@Description
+1@Arabic (the default)
+A@Upper-case letters (A-Z)
+a@Lower-case letters (a-z)
+I@Upper-case roman
+i@Lower-case roman
+.TE
+.RE
+.
+.IP
+.I text-indent
+sets the indentation and overrides
+.BR Li .
+A third argument prohibits printing of a blank line before each item.
+.
+.TP
+.BI APP\  "name text"
+Begin an appendix with name
+.IR name .
+Automatic naming occurs if
+.I name
+is
+.BR \[dq]\[dq] .
+The appendices start with\~\c
+.B A
+if automatic naming is used.
+A new page is ejected,
+and a header is also produced if the number variable
+.B Aph
+is non-zero.
+This is the default.
+The appendix always appears in the `List of contents' with correct
+page numbers.
+The name `APPENDIX' can be changed by setting the string
+.B App
+to the desired text.
+The string 
+.B Apptxt
+contains the current appendix text.
+.
+.TP
+.BI APPSK\  "name pages text"
+Same as
+.BR .APP ,
+but the page number is incremented with
+.IR pages .
+This is used when diagrams or other non-formatted documents are
+included as appendices.
+.
+.TP
+.BI AS\  "\fR[\fParg \fR[\fPindent\fR]]\fP"
+Abstract start.
+Indentation is specified in `ens',
+but scaling is allowed.
+Argument
+.I arg
+controls where the abstract is printed.
+.
+.RS
+.TS
+tab(@);
+lb lb
+l lx.
+\fBArg@Placement\fP
+0@T{
+Abstract is printed on page\~1 and on the cover sheet if used in the
+released-paper style (\fBMT 4\fP),
+otherwise it is printed on page\~1 without a cover sheet.
+T}
+1@Abstract is only printed on the cover sheet (\fBMT 4\fP only).
+2@T{
+Abstract is printed only on the cover sheet (other than \fBMT 4\fP only).
+The cover sheet is printed without a need for \fBCS\fP.
+T}
+.TE
+.RE
+.
+.IP
+An abstract is not printed at all in external letters (\fBMT 5\fP).
+The
+.I indent
+parameter controls the indentation of both margins,
+otherwise normal text indentation is used.
+.
+.TP
+.BI AST\  \fR[\fPtitle\fR]\fP
+Abstract title.
+Default is `ABSTRACT'.
+Sets the text above the abstract text.
+.
+.TP
+.BI AT\  "title1 \fR[\fPtitle2 \fR[.\|.\|.]]\fP"
+Author's title.
+.B AT
+must appear just after each
+.BR AU .
+The title shows up after the name in the signature block.
+.
+.TP
+.BI AU\  "\fR[\fPname \fR[\fPinitials \fR[\fPloc \fR[\fPdept \fR[\fPext \fR[\fProom \fR[\fParg \fR[\fParg \fR[\fParg\fR]]]]]]]]]\fP"
+Author information.
+Specifies the author of the memo or paper,
+and is printed on the cover sheet and on other similar places.
+.B AU
+must not appear before
+.BR TL .
+The author information
+can contain initials, location, department, telephone extension,
+room number or name and up to three extra arguments.
+.
+.TP
+.BI AV\  \fR[\fPname\  \fR[\fP1\fR]]\fP
+Approval signature.
+Generates an approval line with place for signature and date.
+The string `APPROVED:' can be changed with variable
+.BR Letapp ;
+it is replaced with an empty lin if there is a second argument.
+The string `Date' can be changed with variable
+.BR Letdate .
+.
+.TP
+.BI AVL\  \fR[\fPname\fR]\fP
+Letter signature.
+Generates a line with place for signature.
+.
+.TP
+.BI B\  "\fR[\fPbold-text \fR[\fPprev-font-text \fR[\fPbold \fR[.\|.\|.]]]]\fP"
+Begin boldface.
+No limit on the number of arguments.
+All arguments are concatenated to one word;
+the first, third and so on is printed in boldface.
+.
+.TP
+.B B1
+Begin box (as the ms macro).
+Draws a box around the text.
+The text is indented one character,
+and the right margin is one character shorter.
+.
+.TP
+.B B2
+End box.
+Finishes the box started with
+.BR B1 .
+.
+.TP
+.B BE
+End bottom block,
+see
+.BR BS .
+.
+.TP
+.BI BI\  "\fR[\fPbold-text \fR[\fPitalic-text \fR[\fPbold-text \fR[.\|.\|.]]]]\fP"
+Bold-italic.
+No limit on the number of arguments,
+see\~\c
+.BR B .
+.
+.TP
+.BI BL\  \fR[\fPtext-indent\  \fR[\fP1\fR]]\fP
+Start bullet list.
+Initializes a list with a bullet and a space in the beginning of each
+list item (see
+.BR LI ).
+.I text-indent
+overrides the default indentation of the list items set by number register
+.BR Pi .
+A third argument prohibits printing of a blank line before each item.
+.
+.TP
+.BI BR\  "\fR[\fPbold-text \fR[\fProman-text \fR[\fPbold-text \fR[.\|.\|.]]]]\fP"
+Bold-roman.
+No limit on the number of arguments.
+.
+.TP
+.B BS
+Bottom block start.
+Begins the definition of a text block which is printed at the bottom
+of each page.
+The block ends with
+.BR BE .
+.
+.TP
+.BI BVL\  "text-indent \fR[\fPmark-indent\ " \fR[\fP1\fR]]\fP
+Start of broken variable-item list.
+Broken variable-item list has no fixed mark,
+it assumes that every
+.B LI
+has a mark instead.
+The text always begins at the next line after the mark.
+.I text-indent
+sets the indentation to the text, and
+.I mark-indent
+the distance from the current indentation to the mark.
+A third argument prohibits printing of a blank line before each item.
+.
+.TP
+.BI COVER\  \fR[\fParg\fR]\fP
+Begin a coversheet definition.
+It is important that
+.B .COVER
+appears before any normal text.
+This macro uses
+.I arg
+to build the filename 
+`@TMAC_MDIR@/\fIarg\fP.cov'.
+Therefore it is possible to create unlimited types of cover sheets.
+`ms.cov' is supposed to look like the ms cover sheet.
+.B .COVER
+requires a
+.B .COVEND
+at the end of the cover definition.
+Always use this order of the cover macros:
+.
+.RS
+.IP
+.nf
+\&.COVER
+\&.TL
+\&.AF
+\&.AU
+\&.AT
+\&.AS
+\&.AE
+\&.COVEND
+.fi
+.RE
+.
+.IP
+However, only
+.B .TL
+and
+.B .AU
+are required.
+.
+.TP
+.B COVEND
+Finish the cover description and print the cover page.
+It is defined in the cover file.
+.
+.TP
+.B DE
+Display end.
+Ends a block of text or display that begins
+with
+.B DS
+or
+.BR DF .
+.
+.TP
+.BI DF\  "\fR[\fPformat \fR[\fPfill \fR[\fPrindent\fR]]]\fP"
+Begin floating display (no nesting allowed).
+A floating display is saved in a queue and is printed in the order entered.
+.IR Format ,
+.IR fill ,
+and
+.I rindent
+are the same as in
+.BR DS .
+Floating displays are controlled by the two number registers
+.B De
+and
+.BR Df .
+.
+.IP
+.B De register
+.
+.RS
+.IP
+.TS
+tab(@);
+l lx.
+0@T{
+Nothing special, this is the default.
+T}
+1@T{
+A page eject occurs after each printed display,
+giving only one display per page and no text following it.
+T}
+.TE
+.RE
+.
+.IP
+.B Df register
+.
+.RS
+.IP
+.TS
+tab(@);
+l lx.
+0@T{
+Displays are printed at the end of each section (when section-page
+numbering is active) or at the end of the document.
+T}
+1@T{
+A new display is printed on the current page if there is enough space,
+otherwise it is printed at the end of the document.
+T}
+2@T{
+One display is printed at the top of each page or column
+(in multi-column mode).
+T}
+3@T{
+Print one display if there is enough space for it,
+otherwise it is printed at the top of the next page or column.
+T}
+4@T{
+Print as many displays as possible in a new page or column.
+A page break occurs between each display if
+.B De
+is not zero.
+T}
+5@T{
+Fill the current page with displays and the rest beginning at a new page
+or column.
+(This is the default.)
+A page break occurs between each display
+if \fBDe\fP is not zero.
+T}
+.TE
+.RE
+.RE
+.
+.TP
+.BI DL\  \fR[\fPtext-indent\  "\fR[\fP\fB1\fP \fR[\fP\fB1\fP\fR]]]\fP"
+Dash list start.
+Begins a list where each item is printed after a dash.
+.I text-indent
+changes the default indentation of the list items set by
+number register
+.BR Pi .
+A second argument prevents an empty line between each list item.
+See
+.BR LI .
+A third argument prohibits printing of a blank line before each item.
+.
+.TP
+.BI DS\  "\fR[\fPformat \fR[\fPfill \fR[\fPrindent\fR]]]\fP"
+Static display start.
+Begins collection of text until
+.BR DE .
+The text is printed together on the same page,
+unless it is longer than the height of the page.
+.B DS
+can be nested arbitrarily.
+.
+.IP
+.B format
+.
+.RS
+.IP
+.TS
+tab(@);
+l lx.
+\[dq]\[dq]@No indentation.
+none@No indentation.
+L@No indentation.
+I@T{
+Indent text with the value of number register
+.BR Si .
+T}
+C@Center each line.
+CB@Center the whole display as a block.
+R@Right-adjust the lines.
+RB@Right-adjust the whole display as a block.
+.TE
+.RE
+.
+.IP
+The values `L', `I', `C', and `CB' can also be specified as
+`0', `1', `2', and `3', respectively,
+for compatibility reasons.
+.
+.IP
+.B fill
+.
+.RS
+.IP
+.TS
+tab(@);
+l l.
+\[dq]\[dq]@Line-filling turned off.
+none@Line-filling turned off.
+N@Line-filling turned off.
+F@Line-filling turned on.
+.TE
+.RE
+.
+.IP
+`N' and `F' can also be specified as `0' and `1', respectively.
+.
+.IP
+By default, an empty line is printed before and after the display.
+Setting number register
+.B Ds
+to\~0 prevents this.
+.I rindent
+shortens the line length by that amount.
+.
+.TP
+.BI EC\  "\fR[\fPtitle \fR[\fPoverride \fR[\fPflag \fR[\fPrefname\fR]]]]\fP"
+Equation title.
+Sets a title for an equation.
+The
+.I override
+argument changes the numbering.
+.
+.IP
+.B flag
+.
+.RS
+.IP
+.TS
+tab(@);
+l lx.
+none@T{
+.I override
+is a prefix to the number.
+T}
+0@T{
+.I override
+is a prefix to the number.
+T}
+1@T{
+.I override
+is a suffix to the number.
+T}
+2@T{
+.I override
+replaces the number.
+T}
+.TE
+.RE
+.
+.IP
+.B EC
+uses the number register
+.B Ec
+as a counter.
+It is possible to use
+.B .af
+to change the format of the number.
+If number register
+.B Of
+is\~1,
+the format of title uses a dash instead of a dot after the number.
+.
+.IP
+The string
+.B Le
+controls the title of the List of Equations;
+default is `LIST OF EQUATIONS'.
+The List of Equations is only printed if number register
+.B Le
+is\~1.
+The default is\~0.
+The string
+.B Liec
+contains the word `Equation',
+which is printed before the number.
+If
+.I refname
+is used,
+then the equation number is saved with
+.BR .SETR ,
+and can be retrieved with `\fB.GETST\fP \fIrefname\fP'.
+.
+.IP
+Special handling of the title occurs if
+.B EC
+is used inside
+.BR DS / DE ;
+it is not affected by the format of
+.BR DS .
+.
+.TP
+.BI EF\  \fR[\fParg\fR]\fP
+Even-page footer,
+printed just above the normal page footer on even pages.
+See
+.BR PF .
+.
+.IP
+This macro defines string
+.BR EOPef .
+.
+.TP
+.BI EH\  \fR[\fParg\fR]\fP
+Even-page header,
+printed just below the normal page header on even pages.
+See
+.BR PH .
+.
+.IP
+This macro defines string
+.BR TPeh .
+.
+.TP
+.B EN
+Equation end, see
+.BR EQ .
+.
+.TP
+.B EOP
+End-of-page user-defined macro.
+This macro is called instead of the normal printing of the footer.
+The macro is executed in a separate environment,
+without any trap active.
+See
+.BR TP .
+.
+.IP
+.B strings available to EOP
+.RS
+.TS
+tab(@);
+l l.
+EOPf@argument of \fBPF\fP
+EOPef@argument of \fBEF\fP
+EOPof@argument of \fBOF\fP
+.TE
+.RE
+.
+.TP
+.BI EPIC\  "\fR[\fP\fB\-L\fP\fR]\fP width height \fR[\fPname\fR]\fP"
+Draw a box with the given
+.I width
+and
+.IR height .
+It also prints the text
+.I name
+or a default string if
+.I name
+is not specified.
+This is used to include external pictures;
+just give the size of the picture.
+.B \-L
+left-adjusts the picture;
+the default is to center.
+See
+.BR PIC .
+.
+.TP
+.BI EQ\  \fR[\fPlabel\fR]\fP
+Equation start.
+.BR EQ / EN
+are the delimiters for equations written for
+.BR @g@eqn (@MAN1EXT@).
+.BR EQ / EN
+must be inside of a
+.BR DS / DE
+pair,
+except if
+.B EQ
+is used to set options for
+.B @g@eqn
+only.
+The
+.I label
+argument appears at the right margin of the equation,
+centered vertically within the
+.BR DS / DE
+block,
+unless number register
+.B Eq
+is\~1.
+Then the label appears at the left margin.
+.IP
+If there are multiple
+.BR EQ / EN
+blocks within a single
+.BR DS / DE
+pair,
+only the last equation label (if any) is printed.
+.
+.TP
+.BI EX\  "\fR[\fPtitle \fR[\fPoverride \fR[\fPflag \fR[\fPrefname\fR]]]]\fP"
+Exhibit title.
+The arguments are the same as for
+.BR EC .
+.B EX
+uses the number register
+.B Ex
+as a counter.
+The string
+.B Lx
+controls the title of the List of Exhibits;
+default is `LIST OF EXHIBITS'.
+The List of Exhibits is only printed if number register
+.B Lx
+is\~1,
+which is the default.
+The string
+.B Liex
+contains the word `Exhibit',
+which is printed before the number.
+If
+.I refname
+is used, the exhibit number is saved with
+.BR .SETR ,
+and can be retrieved with `\fB.GETST\fP \fIrefname\fP'.
+.
+.IP
+Special handling of the title occurs if
+.B EX
+is used inside
+.BR DS / DE ;
+it is not affected by the format of
+.BR DS .
+.
+.TP
+.BI FC\  \fR[\fPclosing\fR]\fP
+Print `Yours\~very\~truly,' as a formal closing of a letter or memorandum.
+The argument replaces the default string.
+The default is stored in string variable
+.BR Letfc .
+.
+.TP
+.BI FD\  \fR[\fParg\  \fR[\fP1\fR]]\fP
+Footnote default format.
+Controls the hyphenation (hyphen),
+right margin justification (adjust),
+and indentation of footnote text (indent).
+It can also change the label justification (ljust).
+.
+.RS
+.IP
+.TS
+tab(@);
+lb lb lb lb lb
+l l l l l.
+arg@hyphen@adjust@indent@ljust
+0@no@yes@yes@left
+1@yes@yes@yes@left
+2@no@no@yes@left
+3@yes@no@yes@left
+4@no@yes@no@left
+5@yes@yes@no@left
+6@no@no@no@left
+7@yes@no@no@left
+8@no@yes@yes@right
+9@yes@yes@yes@right
+10@no@no@yes@right
+11@yes@no@yes@right
+.TE
+.RE
+.
+.IP
+An argument greater than or equal to 11 is considered as value\~0.
+Default for
+.B m@TMAC_M_PREFIX@m
+is 10.
+.
+.TP
+.B FE
+Footnote end.
+.
+.TP
+.BI FG\  "\fR[\fPtitle \fR[\fPoverride \fR[\fPflag \fR[\fPrefname\fR]]]]\fP"
+Figure title.
+The arguments are the same as for
+.BR EC .
+.B FG
+uses the number register
+.B Fg
+as a counter.
+The string
+.B Lf
+controls the title of the List of Figures;
+default is `LIST OF FIGURES'.
+The List of Figures is only printed if number register
+.B Lf
+is\~1, which is the default.
+The string
+.B Lifg
+contains the word `Figure',
+which is printed before the number.
+If
+.I refname
+is used, then the figure number is saved with
+.BR .SETR ,
+and can be retrieved with `\fB.GETST\fP \fIrefname\fP'.
+.
+.IP
+Special handling of the title occurs if
+.B FG
+is used inside
+.BR DS / DE ,
+it is not affected by the format of
+.BR DS .
+.
+.TP
+.BI FS\  \fR[\fPlabel\fR]\fP
+Footnote start.
+The footnote is ended by
+.BR FE .
+By default, footnotes are automatically numbered;
+the number is available in string\~\c
+.BR F .
+Just add
+.B \[rs]*F
+in the text.
+By adding
+.IR label ,
+it is possible to have other number or names on the footnotes.
+Footnotes in displays are now possible.
+An empty line separates footnotes;
+the height of the line is controlled by number register
+.BR Fs ,
+default value is\~1.
+.
+.TP
+.BI GETHN\  "refname \fR[\fPvarname\fR]\fP"
+Include the header number where the corresponding `\fBSETR\fP \fIrefname\fP'
+was placed.
+This is displayed as `X.X.X.' in pass\~1.
+See
+.BR INITR .
+If
+.I varname
+is used,
+.B GETHN
+sets the string variable
+.I varname
+to the header number.
+.
+.TP
+.BI GETPN\  "refname \fR[\fPvarname\fR]\fP"
+Include the page number where the corresponding `\fBSETR\fP \fIrefname\fP'
+was placed.
+This is displayed as `9999' in pass\~1.
+See
+.BR INITR .
+If
+.I varname
+is used,
+.B GETPN
+sets the stringvariable
+.I varname
+to the page number.
+.
+.TP
+.BI GETR\  refname
+Combine
+.B GETHN
+and
+.B GETPN
+with the text `chapter' and `,\~page'.
+The string
+.B Qrf
+contains the text for the reference:
+.
+.RS
+.IP
+\&.ds Qrf See chapter \[rs]\[rs]*[Qrfh], page \[rs]\[rs]*[Qrfp].
+.RE
+.
+.IP
+.B Qrf
+may be changed to support other languages.
+Strings
+.B Qrfh
+and
+.B Qrfp
+are set by
+.B GETR
+and contain the page and header number, respectively.
+.
+.TP
+.BI GETST\  "refname \fR[\fPvarname\fR]\fP"
+Include the string saved with the second argument to
+.BR .SETR .
+This is a dummy string in pass\~1.
+If
+.I varname
+is used,
+.B GETST
+sets it to the saved string.
+See
+.BR INITR .
+.
+.TP
+.BI H\  "level \fR[\fPheading-text \fR[\fPheading-suffix\fR]]\fP"
+Numbered section heading.
+Section headers can have a level between 1 and 14;
+level\~1 is the top level.
+The text is given in
+.IR heading-text ,
+and must be surrounded by double quotes if it contains spaces.
+.I heading-suffix
+is added to the header in the text but not in the table of contents.
+This is normally used for footnote marks and similar things.
+Don't use
+.B \[rs]*F
+in
+.IR heading-suffix ,
+it doesn't work.
+A manual label must be used, see
+.BR FS .
+.sp
+A call to the paragraph macro\~\c
+.B P
+directly after\~\c
+.B H
+is ignored.
+.B H\c
+\~takes care of spacing and indentation.
+.
+.IP
+.B Page ejection before heading
+.
+.RS
+.IP
+Number register
+.B Ej
+controls page ejection before the heading.
+By default, a level-one heading gets two blank lines before it;
+higher levels only get one.
+A new page is ejected before each first-level heading if number register
+.B Ej
+is\~1.
+All levels below or equal the value of
+.B Ej
+get a new page.
+Default value for
+.B Ej
+is\~0.
+.RE
+.
+.IP
+.B Heading break level
+.
+.RS
+.IP
+A line break occurs after the heading if the heading level is less
+or equal to number register
+.BR Hb .
+Default value is\~2.
+.RE
+.
+.IP
+.B Heading space level
+.
+.RS
+.IP
+A blank line is inserted after the heading if the heading level is less
+or equal to number register
+.BR Hs .
+Default value is\~2.
+.
+.IP
+Text follows the heading on the same line if the level is greater
+than both
+.B Hb
+and
+.BR Hs .
+.RE
+.
+.IP
+.B Post-heading indent
+.
+.RS
+.IP
+Indentation of the text after the heading is controlled by number
+register
+.BR Hi .
+Default value is\~0.
+.
+.IP
+.B Hi
+.TS
+tab(@);
+l lx.
+0@The text is left-justified.
+1@T{
+Indentation of the text follows the value of number 
+register
+.B Pt ,
+see
+.BR P .
+T}
+2@T{
+The text is lined up with the first word of the heading.
+T}
+.TE
+.
+.IP
+.B Centered section headings
+.
+.RS
+.IP
+All headings whose level is equal or below number register
+.B Hc
+and also less than or equal to
+.B Hb
+or
+.B Hs
+are centerered.
+.RE
+.
+.IP
+.B Font control of the heading
+.
+.RS
+.IP
+The font of each heading level is controlled by string
+.BR HF .
+It contains a font number or font name for each level.
+Default value is
+.
+.RS
+.IP
+.B 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+.RE
+.
+.IP
+(all headings in italic).
+This could also be written as
+.
+.RS
+.IP
+.B I I I I I I I I I I I I I I
+.RE
+.
+.IP
+Note that some other implementations use
+.B 3\~3\~2\~2\~2\~2\~2
+as the default value.
+All omitted values are presumed to have value\~1.
+.RE
+.
+.IP
+.B Point size control
+.
+.RS
+.IP
+String
+.B HP
+controls the point size of each heading,
+in the same way as
+.B HF
+controls the font.
+A value of\~0 selects the default point size.
+Default value is
+.
+.RS
+.IP
+.B 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+.RE
+.
+.IP
+Beware that only the point size changes, not the vertical size.
+The latter can be controlled by the user-specified macros
+.B HX
+and/or
+.BR HZ .
+.RE
+.
+.IP
+.B Heading counters
+.
+.RS
+.IP
+Fourteen number registers named
+.B H1
+up to
+.B H14
+contain the counter for each heading level.
+The values are printed using arabic numerals;
+this can be changed with the macro
+.B HM
+(see below).
+All marks are concatenated before printing.
+To avoid this,
+set number register
+.B Ht
+to\~1.
+This only prints the current heading counter at each heading.
+.RE
+.
+.IP
+.B Automatic table of contents
+.
+.RS
+.IP
+All headings whose level is equal or below number register
+.B Cl
+are saved to be printed in the table of contents.
+Default value is\~2.
+.RE
+.
+.IP
+.B Special control of the heading, user-defined macros
+.
+.RS
+.IP
+The following macros can be defined by the user to get a finer control
+of vertical spacing, fonts, or other features.
+Argument
+.I level
+is the level-argument to\~\c
+.BR H ,
+but\~0 for unnumbered headings (see
+.BR HU ).
+Argument
+.I rlevel
+is the real level;
+it is set to number register
+.B Hu
+for unnumbered headings.
+Argument
+.I heading-text
+is the text argument to
+.B H
+and
+.BR HU .
+.
+.RS
+.TP
+.BI HX\  "level rlevel heading-text"
+This macro is called just before the printing of the heading.
+The following registers are available for
+.BR HX .
+Note that
+.B HX
+may alter
+.BR }0 ,
+.BR }2 ,
+and
+.BR ;3 .
+.
+.RS
+.TP
+.BR }0\  (string)
+Contains the heading mark plus two spaces if
+.I rlevel
+is non-zero,
+otherwise empty.
+.
+.TP
+.BR ;0\  (register)
+Contains the position of the text after the heading.
+0\~means that the text should follow the heading on the same line,
+1\~means that a line break should occur before the text,
+and 2\~means that a blank line should separate the heading and the text.
+.
+.TP
+.BR }2\  (string)
+Contains two spaces if register
+.B ;0
+is\~0.
+It is used to separate the heading from the text.
+The string is empty if
+.B ;0
+is non-zero.
+.
+.TP
+.BR ;3\  (register)
+Contains the needed space in units after the heading.
+Default is 2v.
+Can be used to change things like numbering
+.RB ( }0 ),
+vertical spacing
+.RB ( }2 ),
+and the needed space after the heading.
+.RE
+.
+.TP
+.BI HY\  "dlevel rlevel heading-text"
+This macro is called after size and font calculations and
+might be used to change indentation.
+.
+.TP
+.BI HZ\  "dlevel rlevel heading-text"
+This macro is called after the printing of the heading,
+just before
+.B H
+or
+.B HU
+exits.
+Can be used to change the page header according to the section heading.
+.RE
+.RE
+.
+.TP
+.BI HC\  \fR[\fPhyphenation-character\fR]\fP
+Set hyphenation character.
+Default value is `\[rs]%'.
+Resets to the default if called without argument.
+Hyphenation can be turned off by setting number
+register
+.B Hy
+to\~0 at the beginning of the file.
+.
+.TP
+.BI HM\  "\fR[\fParg1 \fR[\fParg2 \fR[.\|.\|.\& [\fParg14\fR]]]]\fP"
+Heading mark style.
+Controls the type of marking for printing of the heading counters.
+Default is\~1 for all levels.
+.
+.IP
+.B Argument
+.
+.TS
+tab(@);
+l l.
+1@Arabic numerals.
+0001@Arabic numerals with leading zeroes, one or more.
+A@upper-case alphabetic
+a@lower-case alphabetic
+I@upper-case roman numerals
+i@lower-case roman numerals
+\[dq]\[dq]@Arabic numerals.
+.TE
+.
+.TP
+.BI HU\  heading-text
+Unnumbered section header.
+.B HU
+behaves like
+.B H
+at the level in number register
+.BR Hu .
+See\~\c
+.BR H .
+.
+.TP
+.BI HX\  "dlevel rlevel heading-text"
+User-defined heading exit.
+Called just before printing the header.
+See\~\c
+.BR H .
+.
+.TP
+.BI HY\  "dlevel rlevel heading-text"
+User-defined heading exit.
+Called just before printing the header.
+See\~\c
+.BR H .
+.
+.TP
+.BI HZ\  "dlevel rlevel heading-text"
+User-defined heading exit.
+Called just after printing the header.
+See\~\c
+.BR H .
+.
+.TP
+.BI I\  "\fR[\fPitalic-text \fR[\fPprev-font-text \fR[\fPitalic-text \fR[.\|.\|.]]]]\fP"
+Italic.
+Changes the font to italic if called without arguments.
+With one argument it sets the word in italic.
+With two arguments it concatenates them and sets the first
+word in italic and the second in the previous font.
+There is no limit on the number of argument;
+all are concatenated.
+.
+.TP
+.BI IA\  "\fR[\fPaddressee-name \fR[\fPtitle\fR]]\fP"
+Begin specification of the addressee and addressee's address in
+letter style.
+Several names can be specified with empty
+.BR IA / IE -pairs,
+but only one address.
+See
+.BR LT .
+.
+.TP
+.BI IB\  "\fR[\fPitalic-text \fR[\fPbold-text \fR[\fPitalic-text \fR[.\|.\|.]]]]\fP"
+Italic-bold.
+Even arguments are printed in italic, odd in boldface.
+See\~\c
+.BR I .
+.
+.TP
+.B IE
+End the address specification after
+.BR IA .
+.
+.TP
+.BI INITI\  "type filename \fR[\fPmacro\fR]\fP"
+Initialize the new index system and set the filename to collect
+index lines in with
+.BR IND .
+Argument
+.I type
+selects the type of index:
+page number, header marks or both.
+The default is page numbers.
+.
+.IP
+It is also possible to create a macro that is responsible
+for formatting each row;
+just add the name of the macro as a third argument.
+The macro is then called with the index as argument(s).
+.
+.IP
+.B type
+.
+.IP
+.TS
+tab(@);
+l lx.
+N@Page numbers
+H@Header marks
+B@T{
+Both page numbers and header marks, 
+separated with a tab character.
+T}
+.TE
+.
+.TP
+.BI INITR\  filename
+Initialize the refence macros.
+References are written to stderr and are supposed to
+be written to `\fIfilename\fR.qrf'. 
+Requires two passes with groff;
+this is handled by a separate program called
+.BR mmroff (@MAN1EXT@).
+This program exists because
+.BR groff (@MAN1EXT@)
+by default deactivates the unsafe operations that are required by
+.BR INITR .
+The first pass looks for references,
+and the second one includes them.
+.B INITR
+can be used several times,
+but it is only the first occurrence of
+.B INITR
+that is active.
+.
+.IP
+See also
+.BR SETR ,
+.BR GETPN ,
+and
+.BR GETHN .
+.
+.TP
+.BI IND\  "arg1 \fR[\fParg2 \fR[.\|.\|.]]\fP"
+Write a line in the index file selected by
+.B INITI
+with all arguments and the page number or header mark separated by tabs.
+.
+.RS
+.IP
+.B Examples
+.
+.IP
+arg1\[rs]tpage number
+.br
+arg1\[rs]targ2\[rs]tpage number
+.br
+arg1\[rs]theader mark
+.br
+arg1\[rs]tpage number\[rs]theader mark
+.RE
+.
+.TP
+.B INDP
+Print the index by running the command specified
+by string variable
+.BR Indcmd ,
+which has `sort\ \-t\[rs]t' as the default value.
+.B INDP
+reads the output from the command to form the index,
+by default in two columns (this can be changed by defining
+.BR TYIND ).
+The index is printed with string variable
+.B Index
+as header,
+default is `INDEX'.
+One-column processing is reactivated after the list.
+.B INDP
+calls the user-defined macros
+.BR TXIND ,
+.BR TYIND ,
+and
+.B TZIND
+if defined.
+.B TXIND
+is called before printing the string `INDEX',
+.B TYIND
+is called instead of printing `INDEX', and
+.B TZIND
+is called after the printing and should take care of restoring to normal
+operation again.
+.
+.TP
+.B ISODATE \fR[\fP0\fR]\fP
+Change the predefined date string in
+.B DT
+to ISO-format, this is, `YYYY-MM-DD'.
+This can also be done by adding
+.B \-rIso=1
+on the command line.
+Reverts to old date format if argument is\~\c
+.BR 0 .
+.
+.TP
+.BI IR\  "\fR[\fPitalic-text \fR[\fProman-text \fR[\fPitalic-text \fR[.\|.\|.]]]]\fP"
+Italic-roman.
+Even arguments are printed in italic, odd in roman.
+See\~\c
+.BR I .
+.
+.TP
+.BI LB\  "text-indent mark-indent pad type \fR[\fPmark \fR[\fPLI-space \fR[\fPLB-space\fR]]]\fP"
+List-begin macro.
+This is the common macro used for all lists.
+.I text-indent
+is the number of spaces to indent the text from the current indentation.
+.
+.IP
+.I pad
+and
+.I mark-indent
+control where to put the mark.
+The mark is placed within the mark area,
+and
+.I mark-indent
+sets the number of spaces before this area.
+By default it is\~0.
+The mark area ends where the text begins.
+The start of the text
+is still controlled by
+.IR text-indent .
+.
+.IP
+The mark is left-justified whitin the mark area if
+.I pad
+is\~0.
+If
+.I pad
+is greater than\~0,
+.I mark-indent
+is ignored,
+and the mark is placed
+.I pad
+spaces before the text.
+This right-justifies the mark.
+.
+.IP
+If
+.I type
+is\~0 the list either has a hanging indentation or,
+if argument
+.I mark
+is given,
+the string
+.I mark
+as a mark.
+.
+.IP
+If
+.I type
+is greater than\~0 automatic numbering occurs,
+using arabic numbers if
+.I mark
+is empty.
+.I mark
+can then be any of `1', `A', `a', `I', or `i'.
+.
+.IP
+.I type
+selects one of six possible ways to display the mark.
+.
+.IP
+.B type
+.
+.RS
+.IP
+.br
+.TS
+tab(@);
+l l.
+1@x.
+2@x)
+3@(x)
+4@[x]
+5@<x>
+6@{x}
+.TE
+.RE
+.
+.IP
+Every item in the list gets
+.I LI-space
+number of blank lines before them.
+Default is\~1.
+.
+.IP
+.B LB
+itself prints
+.I LB-space
+blank lines.
+Default is\~0.
+.
+.TP
+.BI LC\  \fR[\fPlist-level\fR]\fP
+List-status clear.
+Terminates all current active lists down to
+.IR list-level ,
+or\~0 if no argmuent is given.
+This is used by\~\c
+.B H
+to clear any active list.
+.
+.TP
+.B LE \fR[\fP1\fR]\fP
+List end.
+Terminates the current list.
+.B LE
+outputs a blank line if an argument is given.
+.
+.TP
+.BI LI\  \fR[\fPmark\  \fR[\fP1\fR|\fP2\fR]]\fP
+List item preceding every item in a list.
+Without argument,
+.B LI
+prints the mark determined by the current list type.
+By giving
+.B LI
+one argument, it uses that as the mark instead.
+Two arguments to
+.B LI
+makes
+.I mark
+a prefix to the current mark.
+There is no separating space between the prefix
+and the mark if the second argument is `2' instead of `1'.
+This behaviour can also be achieved by setting number register
+.B Limsp
+to zero.
+A zero length
+.I mark
+makes a hanging indentation instead.
+.
+.IP
+A blank line is printed before the list item by default.
+This behaviour can be controlled by number register
+.BR Ls .
+Pre-spacing occurs for each list level less than or equal to
+.BR Ls .
+Default value is 99.
+There is no nesting limit.
+.
+.IP
+The indentation can be changed through number register
+.BR Li .
+Default is\~6.
+.
+.IP
+All lists begin with a list initialization macro,
+.BR LB .
+There are, however, seven predefined list types to make lists easier to use.
+They all call
+.B LB
+with different default values.
+.
+.RS
+.IP
+.TS
+tab(@);
+l l.
+\fBAL\fP@Automatically Incremented List
+\fBML\fP@Marked List
+\fBVL\fP@Variable-Item List
+\fBBL\fP@Bullet List
+\fBDL\fP@Dash List
+\fBRL\fP@Reference List
+\fBBVL\fP@Broken Variable List.
+.TE
+.RE
+.
+.IP
+These lists are described at other places in this manual.
+See also
+.BR LB .
+.
+.TP
+.BI LT\  \fR[\fIarg\fR]\fI
+Format a letter in one of four different styles depending
+on the argument.
+See also section
+.BR INTERNALS .
+.
+.RS
+.IP
+.TS
+tab(@);
+lb lb
+l lx.
+Arg@Style
+BL@T{
+Blocked.
+Date line, return address, writer's address and closing
+begins at the center of the line.
+All other lines begin at the left margin.
+T}
+SB@T{
+Semi-blocked.
+Same as blocked,
+except that the first line in every paragraph is indented five spaces.
+T}
+FB@T{
+Full-blocked.
+All lines begin at the left margin.
+T}
+SP@T{
+Simplified.
+Almost the same as the full-blocked style.
+Subject and the writer's identification are printed in all-capital.
+T}
+.TE
+.RE
+.
+.TP
+.BI LO\  "type \fR[\fParg\fR]\fP"
+Specify options in letter (see
+.BR .LT ).
+This is a list of the standard options:
+.
+.RS
+.IP
+.TS
+tab(@);
+l lx.
+CN@T{
+Confidential notation.
+Prints `CONFIDENTIAL' on the second line below the date line.
+Any argument replaces `CONFIDENTIAL'.
+See also string variable
+.BR LetCN .
+T}
+RN@T{
+Reference notation.
+Prints `In reference to:' and the argument two lines below the date line.
+See also string variable
+.BR LetRN .
+T}
+AT@T{
+Attention.
+Prints `ATTENTION:' and the argument below the inside address.
+See also string variable
+.BR LetAT .
+T}
+SA@T{
+Salutation.
+Prints `To Whom It May Concern:' or the argument if it was present.
+The salutation is printed two lines below the inside address.
+See also string variable
+.BR LetSA .
+T}
+SJ@T{
+Subject line.
+Prints the argument as subject prefixed with `SUBJECT:'
+two lines below the inside address,
+except in letter type `SP',
+where the subject is printed in all-capital without any prefix.
+See also string variable
+.BR LetSJ .
+T}
+.TE
+.RE
+.
+.TP
+.BI MC\  "column-size \fR[\fPcolumn-separation\fR]\fP"
+Begin multiple columns.
+Return to normal with
+.BR 1C .
+.B MC
+creates as many columns as the current line length permits.
+.I column-size
+is the width of each column,
+and
+.I column-separation
+is the space between two columns.
+Default separation is
+.IR column-size /15.
+See also
+.BR 1C .
+.
+.TP
+.BI ML\  "mark \fR[\fPtext-indent\ " \fR[\fP1\fR]]\fP
+Marked list start.
+The
+.I mark
+argument is printed before each list item.
+.I text-indent
+sets the indent and overrides
+.BR Li .
+A third argument prohibits printing of a blank line before each item.
+.
+.TP
+.BI MT\  "\fR[\fParg \fR[\fPaddressee\fR]]\fP"
+Memorandum type.
+The argument
+.I arg
+is part of a filename in `@TMAC_MDIR@/*.MT'.
+Memorandum types 0 to\~5 are supported,
+including type `string' (which gets internally mapped to type\~6).
+.I addressee
+just sets a variable, used in the AT&T macros.
+.
+.IP
+.B arg
+.
+.RS
+.IP
+.TS
+tab(@);
+l l.
+0@Normal memorandum, no type printed.
+1@Memorandum with `MEMORANDUM FOR FILE' printed.
+2@Memorandum with `PROGRAMMER'S NOTES' printed.
+3@Memorandum with `ENGINEER'S NOTES' printed.
+4@Released paper style.
+5@External letter style.
+.TE
+.RE
+.
+.IP
+See also
+.BR COVER / COVEND ,
+a more flexible type of front page.
+.
+.TP
+.BI MOVE\  "y-pos \fR[\fPx-pos \fR[\fPline-length\fR]]\fP"
+Move to a position, setting page offset to
+.IR x-pos .
+If
+.I line-length
+is not given, the difference between current and new page offset is used.
+Use
+.B PGFORM
+without arguments to return to normal.
+.
+.TP
+.BI MULB\  "cw1 space1 \fR[\fPcw2 space2 \fR[\fPcw3 \fR.\|.\|.]]\fP"
+Begin a special multi-column mode.
+All columns widths must be specified.
+The space between the columns must be specified also.
+The last column does not need any space definition.
+.B MULB
+starts a diversion,
+and
+.B MULE
+ends the diversion and prints the columns.
+The unit for the width and space arguments is `n',
+but
+.B MULB
+accepts all normal unit specifications like `c' and `i'.
+.B MULB
+operates in a separate environment.
+.
+.TP
+.B MULN
+Begin the next column.
+This is the only way to switch the column.
+.
+.TP
+.B MULE
+End the multi-column mode and print the columns.
+.
+.TP
+.BI nP\  \fR[\fPtype\fR]\fP
+Print numbered paragraph with header level two.
+See
+.BR .P .
+.
+.TP
+.B NCOL
+Force printing to the next column.
+Don't use this together with the
+.B MUL*
+macros, see
+.BR 2C .
+.
+.TP
+.BI NS\  \fR[\fParg\  \fR[\fP1\fR]]\fP
+Print different types of notations.
+The argument selects between the predefined type of notations.
+If the second argument is available, 
+then the argument becomes the entire notation.
+If the argument doesn't select a predefined type,
+it is printed as `Copy (\fIarg\fP) to'.
+It is possible to add more standard notations,
+see the string variables
+.B Letns
+and
+.BR Letnsdef .
+.
+.RS
+.IP
+.TS
+tab(@);
+l l.
+\fBArg@Notation\fP
+\fInone\fP@Copy To
+\[dq]\[dq]@Copy To
+1@Copy To (with att.\&) to
+2@Copy To (without att.\&) to
+3@Att.
+4@Atts.
+5@Enc.
+6@Encs.
+7@Under separate cover
+8@Letter to
+9@Memorandum to
+10@Copy (with atts.\&) to
+11@Copy (without atts.\&) to
+12@Abstract Only to
+13@Complete Memorandum to
+14@CC
+.TE
+.RE
+.
+.TP
+.BI ND\  new-date
+New date.
+Overrides the current date.
+Date is not printed if
+.I new-date
+is an empty string.
+.
+.TP
+.BI OF\  \fR[\fParg\fR]\fP
+Odd-page footer, a line printed just above the normal footer.
+See
+.B EF
+and
+.BR PF .
+.
+.IP
+This macro defines string
+.BR EOPof .
+.
+.TP
+.BI OH\  \fR[\fParg\fR]\fP
+Odd-page header, a line printed just below the normal header.
+See
+.B EH
+and
+.BR PH .
+.
+.IP
+This macro defines string
+.BR TPoh .
+.
+.TP
+.B OP
+Make sure that the following text is printed at the top
+of an odd-numbered page.
+Does not output an empty page if currently at the top of an odd page.
+.
+.TP
+.BI P\  \fR[\fPtype\fR]\fP
+Begin new paragraph.
+.B P\c
+\~without argument produces left-justified text,
+even the first line of the paragraph.
+This is the same as setting
+.I type
+to\~0.
+If the argument is\~1,
+the first line of text following\~\c
+.B P
+is indented by the number of spaces in number register
+.BR Pi ,
+by default\~5.
+.
+.IP
+Instead of giving an argument to\~\c
+.B P
+it is possible to set the paragraph type in number register
+.BR Pt .
+Using 0 and\~1 is the same as adding that value to
+.BR P .
+A value of\~2 indents all paragraphs,
+except after headings, lists, and displays
+(this value can't be used as an argument to
+.B P
+itself).
+.
+.IP
+The space between two paragraphs is controlled by number register
+.BR Ps ,
+and is\~1 by default (one blank line).
+.
+.TP
+.BI PGFORM\  "\fR[\fPlinelength \fR[\fPpagelength \fR[\fPpageoffset\ " \fR[\fP1\fR]]]]\fP
+Set line length, page length, and/or page offset.
+This macro can be used for special formatting,
+like letter heads and other.
+It is normally the first command in a file,
+though it is not necessary.
+.B PGFORM
+can be used without arguments to reset everything after a
+.B MOVE
+call.
+A line break is done unless the fourth argument is given.
+This can be used to avoid the page number on the first page
+while setting new width and length.
+(It seems as if this macro sometimes doesn't work too well.
+Use the command line arguments to change
+line length, page length, and page offset instead.)
+.
+.TP
+.B PGNH
+No header is printed on the next page.
+Used to get rid of the header in letters or other special texts.
+This macro must be used before any text to inhibit the page header
+on the first page.
+.
+.TP
+.BI "PIC \fR[\fP\-L\fR] [\fP\-C\fR] [\fP\-R\fR] [\fP\-I\ " "n\fR]\fP filename \fR[\fPwidth \fR[\fPheight\fR]]\fP"
+Include a PostScript file in the document.
+The macro depends on
+.BR mmroff (@MAN1EXT@)
+and
+.BR INITR .
+The arguments
+.BR \-L ,
+.BR \-C ,
+.BR \-R ,
+and
+.BI \-I\  n
+adjust the picture or indent it.
+The optional
+.I width
+and
+.I height
+can also be given to resize the picture.
+.
+.TP
+.B PE
+Picture end.
+Ends a picture for
+.BR @g@pic (@MAN1EXT).
+.
+.TP
+.BI PF\  \fR[\fParg\fR]\fP
+Page footer.
+.B PF
+sets the line to be printed at the bottom of each page.
+Empty by default.
+See
+.B PH
+for the argument specification.
+.
+.IP
+This macro defines string
+.BR EOPf .
+.
+.TP
+.BI PH\  \fR[\fParg\fR]\fP
+Page header,
+a line printed at the top of each page.
+The argument should be specified as
+.
+.RS
+.IP
+.RI \[dq]' left-part ' center-part ' right-part '\[dq]
+.RE
+.
+.IP
+where
+.IR left-part ,
+.IR center-part,
+and
+.I right-part
+are printed left-justified, centered, and right justified, respectively.
+Within the argument to
+.BR PH ,
+the character `%' is changed to the current page number.
+The default argument is
+.
+.RS
+.IP
+\[dq]''- % -''\[dq]
+.RE
+.
+.IP
+which gives the page number between two dashes.
+.
+.IP
+This macro defines string
+.BR TPh .
+.
+.TP
+.B PS
+Picture start (from pic).
+Begins a picture for
+.BR @g@pic (@MAN1EXT@).
+.
+.TP
+.B PX
+Page header user-defined exit.
+This macro is called just after the printing of the page header in
+.I no-space
+mode.
+.
+.TP
+.B R
+Roman.
+Return to roman font, see also\~\c
+.BR I .
+.
+.TP
+.BI RB\  "\fR[\fProman-text \fR[\fPbold-text \fR[\fProman-text \fR[.\|.\|.]]]]\fP"
+Roman-bold.
+Even arguments are printed in roman,
+odd in boldface.
+See\~\c
+.BR I .
+.
+.TP
+.BI RD\  "\fR[\fPprompt \fR[\fPdiversion \fR[\fPstring\fR]]]\fP"
+Read from standard input to diversion and/or string.
+The text is saved in a diversion named
+.IR diversion .
+Recall the text by writing the name of the diversion after a dot
+on an empty line.
+A string is also defined if
+.I string
+is given.
+.I Diversion
+and/or
+.I prompt
+can be empty (\[dq]\[dq]).
+.
+.TP
+.B RF
+Reference end.
+Ends a reference definition and returns to normal processing.
+See
+.BR RS .
+.
+.TP
+.BI RI\  "\fR[\fProman-text \fR[\fPitalic-text \fR[\fProman-text \fR[.\|.\|.]]]]\fP"
+Print even arguments in roman, odd in italic.
+See\~\c
+.BR I .
+.
+.TP
+.BI RL\  \fR[\fPtext-indent \fR[\fP1\fR]]\fP
+Reference list start.
+Begins a list where each item is preceded with an automatically
+incremented number between square brackets.
+.I text-indent
+changes the default indentation.
+.
+.TP
+.BI RP\  "\fR[\fParg1 \fR[\fParg2\fR]]\fP"
+Produce reference page.
+This macro can be used if a reference page is wanted somewhere in the
+document.
+It is not needed if
+.B TC
+is used to produce a table of contents.
+The reference page is then printed automatically.
+.
+.IP
+The reference counter is not reset if
+.I arg1
+is\~1.
+.
+.IP
+.I arg2
+tells
+.B RP
+whether to eject a page or not.
+.
+.IP
+.B arg2
+.
+.RS
+.IP
+.TS
+tab(@);
+l lx.
+0@T{
+The reference page is printed on a separate page.
+This is the default.
+T}
+1@Do not eject page after the list.
+2@Do not eject page before the list.
+3@Do not eject page before and after the list.
+.TE
+.RE
+.
+.IP
+The reference items are separated by a blank line.
+Setting number register
+.B Ls
+to\~0 suppresses the line.
+.
+.IP
+The string
+.B Rp
+contains the reference page title and is set to `REFERENCES' by default.
+.
+.TP
+.BI RS\  \fR[\fPstring-name\fR]\fP
+Begin an automatically numbered reference definition.
+Put the string
+.B \[rs]*(Rf
+where the reference mark should be and write the reference between
+.BR RS / RF
+at next new line after the reference mark.
+The reference number is stored in number register
+.BR :R .
+If
+.I string-name
+is given,
+a string with that name is defined and contains the current reference mark.
+The string can be referenced as
+.BI \[rs]*[ string-name ]
+later in the text.
+.
+.TP
+.BI S\  "\fR[\fPsize \fR[\fPspacing\fR]]\fP"
+Set point size and vertical spacing.
+If any argument is equal to `P',
+the previous value is used.
+A `C' means current value,
+and `D' the default value.
+If `+' or `\-' is used before the value,
+the current value is incremented or decremented, respectively.
+.
+.TP
+.BI SA\  \fR[\fParg\fR]\fP
+Set right-margin justification.
+Justification is turned on by default.
+No argument or value `0' turns off justification,
+and `1' turns on justification.
+.
+.TP
+.BI SETR\  "refname \fR[\fPstring\fR]\fP"
+Remember the current header and page number as
+.IR refname .
+Saves
+.I string
+if
+.I string
+is defined.
+.I string
+is retrieved with
+.BR .GETST .
+See
+.BR INITR .
+.
+.TP
+.BI SG\  \fR[\fParg\  \fR[\fP1\fR]]\fP
+Signature line.
+Prints the authors name(s) after the formal closing.
+The argument is appended to the reference data,
+printed at either the first or last author.
+The reference data is the location,
+department, and initials specified with
+.BR .AU .
+It is printed at the first author if the second argument is given,
+otherwise at the last.
+No reference data is printed if the author(s) is specified through
+.BR .WA / .WE .
+See section
+.BR INTERNALS .
+.
+.TP
+.BI SK\  \fR[\fPpages\fR]\fP
+Skip pages.
+If
+.I pages
+is\~0 or omitted,
+a skip to the next page occurs unless it is already at the top of a page.
+Otherwise it skips
+.I pages
+pages.
+.
+.TP
+.BI SM\  "string1 \fR[\fPstring2 \fR[\fPstring3\fR]]\fP"
+Make a string smaller.
+If
+.I string2
+is given,
+.I string1
+is made smaller and
+.I string2
+stays at normal size,
+concatenated with
+.IR string1 .
+With three arguments,
+everything is concatenated,
+but only
+.I string2
+is made smaller.
+.
+.TP
+.BI SP\  \fR[\fPlines\fR]\fP
+Space vertically.
+.I lines
+can have any scaling factor,
+like `3i' or `8v'.
+Several
+.B SP
+calls in a line only produces the maximum number of lines, not the sum.
+.B SP
+is ignored also until the first text line in a page.
+Add 
+.B \[rs]&
+before a call to
+.B SP
+to avoid this.
+.
+.TP
+.B TAB
+Reset tabs to every\ 5n.
+Normally used to reset any previous tab positions.
+.
+.TP
+.BI TB\  "\fR[\fPtitle \fR[\fPoverride \fR[\fPflag \fR[\fPrefname\fR]]]]\fP"
+Table title.
+The arguments are the same as for
+.BR EC .
+.B TB
+uses the number register
+.B Tb
+as a counter.
+The string
+.B Lt
+controls the title of the List of Tables;
+default value is `LIST OF TABLES'.
+The List of Tables is only printed if number register
+.B Lt
+is\~1, which is the default.
+The string
+.B Litb
+contains the word `TABLE',
+which is printed before the number.
+.
+.IP
+Special handling of the title occurs if
+.B TB
+is used inside
+.BR DS / DE ,
+it is not affected by the format of
+.BR DS .
+.
+.TP
+.BI TC\  "\fR[\fPslevel \fR[\fPspacing \fR[\fPtlevel \fR[\fPtab \fR[\fPh1 \fR[\fPh2 \fR[\fPh3 \fR[\fPh4 \fR[\fPh5\fR]]]]]]]]]\fP"
+Table of contents.
+This macro is normally used as the last line of the document.
+It generates a table of contents with headings up to the level
+controlled by number register
+.BR Cl .
+Note that
+.B Cl
+controls the saving of headings,
+it has nothing to do with
+.BR TC .
+Headings with a level less than or equal to
+.I slevel
+get
+.I spacing
+number of lines before them.
+Headings with a level less than or equal to
+.I tlevel
+have their page numbers right-justified with dots or spaces separating
+the text and the page number.
+Spaces are used if
+.I tab
+is greater than zero,
+dots otherwise.
+Other headings have the page number directly at the end
+of the heading text
+.RI ( ragged-right ).
+.
+.IP
+The rest of the arguments is printed, centered, before the
+table of contents.
+.
+.IP
+The user-defined macros
+.B TX
+and
+.B TY
+are used if
+.B TC
+is called with at most four arguments.
+.B TX
+is called before the printing of the string `CONTENTS',
+and
+.B TY
+is called instead of printing `CONTENTS'.
+.
+.IP
+Equivalent macros can be defined for list of figures, tables, equations
+and exhibits by defining
+.BI TX xx
+or
+.BI TY xx\fR,\fP
+where
+.I xx
+is `Fg', `TB', `EC', or `EX', respectively.
+.
+.IP
+String
+.B Ci
+can be set to control the indentations for each heading-level.
+It must be scaled, like
+.
+.RS
+.IP
+\&.ds Ci .25i .5i .75i 1i 1i
+.RE
+.
+.IP
+By default,
+the indentation is controlled by the maximum length of headings in each
+level.
+.
+.IP
+The string variables 
+.BR Lifg ,
+.BR Litb ,
+.BR Liex ,
+.BR Liec ,
+and
+.B Licon
+contain `Figure', `TABLE', `Exhibit', `Equation',
+and `CONTENTS', respectively.
+These can be redefined to other languages.
+.
+.TP
+.B TE
+Table end.
+See
+.BR TS .
+.
+.TP
+.B TH \fR[\fPN\fR]\fP
+Table header.
+See
+.BR TS .
+.B TH
+ends the header of the table.
+This header is printed again if a page break occurs.
+Argument `N' isn't implemented yet.
+.
+.TP
+.BI TL\  "\fR[\fPcharging-case-number \fR[\fPfiling-case-number\fR]]\fP"
+Begin title of memorandum.
+All text up to the next
+.B AU
+is included in the title.
+.I charging-case-number
+and
+.I filing-case-number
+are saved for use in the front page processing.
+.
+.TP
+.BI TM\  "\fR[\fPnum1 \fR[\fPnum2 \fR[.\|.\|.]]]\fP"
+Technical memorandum numbers used in
+.BR .MT .
+An unlimited number of arguments may be given.
+.
+.TP
+.B TP
+Top-of-page user-defined macro.
+This macro is called instead of the normal page header.
+It is possible to get complete control over the header.
+Note that the header and the footer are printed in a separate environment.
+Line length is preserved, though.
+See
+.BR EOP .
+.
+.IP
+.B strings available to TP
+.RS
+.TS
+tab(@);
+l l.
+TPh@argument of \fBPH\fP
+TPeh@argument of \fBEH\fP
+TPoh@argument of \fBOH\fP
+.TE
+.RE
+.
+.TP
+.B TS \fR[\fPH\fR]\fP
+Table start.
+This is the start of a table specification to
+.BR @g@tbl (@MAN1EXT@).
+.B TS
+ends with
+.BR TE .
+Argument `H' tells
+.B m@TMAC_M_PREFIX@m
+that the table has a header.
+See
+.BR TH .
+.
+.TP
+.B TX
+User-defined table of contents exit.
+This macro is called just before
+.B TC
+prints the word `CONTENTS'.
+See
+.BR TC .
+.
+.TP
+.B TY
+User-defined table of contents exit.
+This macro is called instead of printing `CONTENTS'.
+See
+.BR TC .
+.
+.TP
+.BI VERBON\  "\fR[\fPflag \fR[\fPpoint-size \fR[\fPfont\fR]]]\fP"
+Begin verbatim output using Courier font.
+Usually for printing programs.
+All characters have equal width.
+The point size can be changed with the second argument.
+By specifying a third argument it is possible to use another
+font instead of Courier.
+.I flag
+controls several special features.
+Its value is the sum of all wanted features.
+.
+.RS
+.IP
+.TS
+tab(@);
+lb lb
+l lx.
+Arg@Description
+1@T{
+Disable the escape character (\[rs]).
+This is normally turned on during verbose output.
+T}
+2@Add an empty line before the verbose text.
+4@Add an empty line after the verbose text.
+8@T{
+Print the verbose text with numbered lines.
+This adds four digit-sized spaces in the beginning of each line.
+Finer control is available with the string variable
+.BR Verbnm .
+It contains all arguments to the
+.BR troff (@MAN1EXT@)
+command
+.BR .nm ,
+normally `1'.
+T}
+16@T{
+Indent the verbose text by `5n'.
+This is controlled by the number-variable
+.B Verbin
+(in units).
+T}
+.TE
+.RE
+.
+.TP
+.B VERBOFF
+End verbatim output.
+.
+.TP
+.BI VL\  "text-indent \fR[\fPmark-indent\ " \fR[\fP1\fR]]\fP
+Variable-item list.
+It has no fixed mark,
+it assumes that every
+.B LI
+has a mark instead.
+.I text-indent
+sets the indent to the text,
+and
+.I mark-indent
+the distance from the current indentation to the mark.
+A third argument prohibits printing of a blank line before each item.
+.
+.TP
+.BI "VM \fR[\fP\-T\fR] [\fP" "top \fR[\fPbottom\fR]]\fP"
+Vertical margin.
+Adds extra vertical top and margin space.
+Option
+.B \-T
+sets the total space instead.
+If no argument is given, reset the margin to zero,
+or the default (`7v 5v') if
+.B \-T
+has been used.
+It is higly recommended that macros
+.B TP
+and/or
+.B EOP
+are defined if using
+.B \-T
+and setting top and/or bottom margin to less than the default.
+.
+.TP
+.BI WA\  "\fR[\fPwriter-name \fR[\fPtitle\fR]]\fP"
+Begin specification of the writer and writer's address.
+Several names can be specified with empty
+.BR WA / WE
+pairs,
+but only one address.
+.
+.TP
+.B WE
+End the address specification after
+.BR .WA .
+.
+.TP
+.BI WC\  "\fR[\fPformat1\fR] [\fPformat2\fR] [.\|.\|.]\fP"
+Footnote and display width control.
+.
+.RS
+.TS
+tab(@);
+l lx.
+N@T{
+Set default mode which is equal to using the options
+.BR \-WF ,
+.BR \-FF ,
+.BR \-WD ,
+and
+.BR FB .
+T}
+WF@T{
+Wide footnotes, wide also in two-column mode.
+T}
+-WF@Normal footnote width, follow column mode.
+FF@T{
+All footnotes gets the same width as the first footnote encountered.
+T}
+-FF@T{
+Normal footnotes, width follows \fBWF\fP and \fB-WF\fP.
+T}
+WD@T{
+Wide displays, wide also in two-column mode.
+T}
+-WD@T{
+Normal display width, follow column mode.
+T}
+FB@T{
+Floating displays generates a line break when printed on the current
+page.
+T}
+-FB@T{
+Floating displays does not generate line break.
+T}
+.TE
+.RE
+.
+.
+.SS "Strings used in m@TMAC_M_PREFIX@m"
+.
+.TP
+.B App
+A string containing the word `APPENDIX'.
+.
+.TP
+.B Apptxt
+The current appendix text.
+.
+.TP
+.B EM
+Em dash string
+.
+.TP
+.B H1txt
+Updated by
+.B .H
+and
+.B .HU
+to the current heading text.
+Also updated in table of contents & friends.
+.
+.TP
+.B HF
+Font list for headings, `2 2 2 2 2 2 2' by default.
+Non-numeric font names may also be used.
+.
+.TP
+.B HP
+Point size list for headings.
+By default, this is `0 0 0 0 0 0 0' which is the same as
+`10 10 10 10 10 10 10'.
+.
+.TP
+.B Index
+Contains the string `INDEX'.
+.
+.TP
+.B Indcmd
+Contains the index command.
+Default value is `sort\ \-t\[rs]t'.
+.
+.TP
+.B Lifg
+String containing `Figure'.
+.
+.TP
+.B Litb
+String containing `TABLE'.
+.
+.TP
+.B Liex
+String containing `Exhibit'.
+.
+.TP
+.B Liec
+String containing `Equation'.
+.
+.TP
+.B Licon
+String containing `CONTENTS'.
+.
+.TP
+.B Lf
+Contains the string `LIST OF FIGURES'.
+.
+.TP
+.B Lt
+Contains the string `LIST OF TABLES'.
+.
+.TP
+.B Lx
+Contains the string `LIST OF EXHIBITS'.
+.
+.TP
+.B Le
+Contains the string `LIST OF EQUATIONS'.
+.
+.TP
+.B Letfc
+Contains the string `Yours very truly,',
+used in
+.BR .FC .
+.
+.TP
+.B Letapp
+Contains the string `APPROVED:',
+used in
+.BR .AV .
+.
+.TP
+.B Letdate
+Contains the string `Date',
+used in
+.BR .AV .
+.
+.TP
+.B LetCN
+Contains the string `CONFIDENTIAL',
+used in
+.BR ".LO CN" .
+.
+.TP
+.B LetSA
+Contains the string `To Whom It May Concern:',
+used in
+.BR ".LO SA" .
+.
+.TP
+.B LetAT
+Contains the string `ATTENTION:',
+used in
+.BR ".LO AT" .
+.
+.TP
+.B LetSJ
+Contains the string `SUBJECT:',
+used in
+.BR ".LO SJ" .
+.
+.TP
+.B LetRN
+Contains the string `In reference to:',
+used in
+.BR ".LO RN" .
+.
+.TP
+.B Letns
+is an array containing the different strings used in
+.BR .NS .
+It is really a number of string variables prefixed with
+.BR Letns! .
+If the argument doesn't exist,
+it is included between
+.B ()
+with
+.B Letns!copy
+as a prefix and
+.B Letns!to
+as a suffix.
+Observe the space after `Copy' and before `to'.
+.
+.RS
+.IP
+.TS
+tab(@);
+lb lb
+l l.
+Name@Value
+Letns!0@Copy to
+Letns!1@Copy (with att.\&) to
+Letns!2@Copy (without att.\&) to
+Letns!3@Att.
+Letns!4@Atts.
+Letns!5@Enc.
+Letns!6@Encs.
+Letns!7@Under separate cover
+Letns!8@Letter to
+Letns!9@Memorandum to
+Letns!10@Copy (with atts.\&) to
+Letns!11@Copy (without atts.\&) to
+Letns!12@Abstract Only to
+Letns!13@Complete Memorandum to
+Letns!14@CC
+Letns!copy@Copy \[rs]"
+Letns!to@" to
+.TE
+.RE
+.
+.TP
+.B Letnsdef
+Define the standard notation used when no argument is given to
+.BR .NS .
+Default is\~0.
+.
+.TP
+.B "MO1 - MO12"
+Strings containing the month names `January' through `December'.
+.
+.TP
+.B Qrf
+String containing `See chapter \[rs]\[rs]*[Qrfh], page \[rs]\[rs]n[Qrfp].'.
+.
+.TP
+.B Rp
+Contains the string `REFERENCES'.
+.
+.TP
+.B Tcst
+Contains the current status of the table of contents and list of figures,
+etc.
+Empty outside of
+.BR .TC .
+Useful in user-defined macros like
+.BR .TP .
+.
+.RS
+.IP
+.TS
+tab(@);
+lb lb
+l l.
+Value@Meaning
+co@Table of contents
+fg@List of figures
+tb@List of tables
+ec@List of equations
+ex@List of exhibits
+ap@Appendix
+.TE
+.RE
+.
+.TP
+.B Tm
+Contains the string `\[rs](tm', the trade mark symbol.
+.
+.TP
+.B Verbnm
+Argument to
+.B .nm
+in the
+.B .VERBON
+command.
+Default is\~1.
+.
+.
+.SS "Number variables used in m@TMAC_M_PREFIX@m"
+.
+.TP
+.B Aph
+Print an appendix page for every new appendix  if this number variable
+is non-zero.
+No output occurs if
+.B Aph
+is zero, but there is always an appendix entry in the `List of contents'.
+.
+.TP
+.B Cl
+Contents level (in the range 0 to 14).
+The contents is saved if a heading level is lower than or equal to the
+value of
+.BR Cl .
+Default is\~2.
+.
+.TP
+.B Cp
+Eject page between list of table, list of figure, etc., if the value of
+.B Cp
+is zero.
+Default is\~0.
+.
+.TP
+.B D
+Debug flag.
+Values greater than zero produce debug information of increasing verbosity.
+A value of\~1 gives information about the progress of formatting.
+Default is\~0.
+.
+.TP
+.B De
+If set to\~1, eject after floating display is output.
+Default is\~0.
+.
+.TP
+.B Dsp
+If defined, it controls the space output before and after static displays.
+Otherwise the value of
+.B Lsp
+is used.
+.
+.TP
+.B Df
+Control floating keep output.
+This is a number in the range 0 to 5, with a default value of\~5.
+See
+.BR .DF .
+.
+.TP
+.B Ds
+If set to\~1, use the amount of space stored in register
+.B Lsp
+before and after display.
+Default is\~1.
+.
+.TP
+.B Ej
+If set to\~1, eject page before each first-level heading.
+Default is\~0.
+.
+.TP
+.B Eq
+Equation labels are left-adjusted if set to\~0
+and right-adjusted if set to\~1.
+Default is\~0.
+.
+.TP
+.B Fs
+Footnote spacing.
+Default is\~1.
+.
+.TP
+.B "H1 - H7"
+Heading counters
+.
+.TP
+.B H1dot
+Append a dot after the level-one heading number if value is greater than
+zero.
+Default is\~1.
+.
+.TP
+.B H1h
+A copy of number register
+.BR H1 ,
+but it is incremented just before the page break.
+Useful in user-defined header macros.
+.
+.TP
+.B Hb
+Heading break level.
+A number in the range 0 to 14,
+with a default value of\~2.
+See\~\c
+.BR .H .
+.
+.TP
+.B Hc
+Heading centering level.
+A number in the range 0 to 14,
+with a default value value of\~0.
+See\~\c
+.BR .H .
+.
+.TP
+.B Hi
+Heading temporary indent.
+A number in the range 0 to 2,
+with a default value of\~1.
+.
+.RS
+.IP
+.TS
+tab(@);
+l lx.
+0@no indentation, left margin
+1@T{
+indent to the right, similar to
+.RB ` ".P 1" '
+T}
+2@T{
+indent to line up with text part of preceding heading
+T}
+.TE
+.RE
+.
+.TP
+.B Hps
+Heading pre-space level.
+If the heading level is less than or equal to
+.BR Hps ,
+two lines precede the section heading instead of one.
+Default is first level only.
+The real amount of lines is controlled by the variables
+.B Hps1
+and
+.BR Hps2 .
+.
+.TP
+.B Hps1
+Number of lines preceding
+.B .H
+if the heading level is greater than
+.BR Hps .
+Value is in units, default is 0.5.
+.
+.TP
+.B Hps2
+Number of lines preceding
+.B .H
+if the heading level is less than or equal to
+.BR Hps .
+Value is in units, default is\~1.
+.
+.TP
+.B Hs
+Heading space level.
+A number in the range 0 to 14,
+with a default value of\~2.
+See\~\c
+.BR .H .
+.
+.TP
+.B Hss
+Number of lines following
+.B .H
+if the heading level is less than or equal to
+.BR Hs .
+Value is in units, default is\~1.
+.
+.TP
+.B Ht
+Heading numbering type.
+.
+.RS
+.IP
+.TS
+tab(@);
+l l.
+0@multiple levels (1.1.1, 1.1.2, etc.)
+1@single level
+.TE
+.RE
+.IP
+Default is\~0.
+.
+.TP
+.B Hu
+Unnumbered heading level.
+Default is\~2.
+.
+.TP
+.B Hy
+Hyphenation status of text body.
+.
+.RS
+.IP
+.TS
+tab(@);
+l l.
+0@no hyphenation
+1@hyphenation on, set to value\~14
+.TE
+.RE
+.
+.IP
+Default is\~0.
+.
+.TP
+.B Iso
+Set this variable to\~1 on the command line to get an
+ISO-formatted date string (\fB\-rIso=1\fP).
+Useless inside of a document.
+.
+.TP
+.B L
+Page length, only for command line settings.
+.
+.TP
+.B Letwam
+Maximum lines in return-address, used in
+.BR .WA / .WE .
+Default is\~14.
+.
+.TP
+.BR Lf ,\  Lt ,\  Lx ,\  Le
+Enable (1) or disable (0) the printing of List of figures,
+List of tables, List of exhibits and List of equations, respectively.
+Default values are Lf=1, Lt=1, Lx=1, and Le=0.
+.
+.TP
+.B Li
+List indentation, used by
+.BR .AL .
+Default is\~6.
+.
+.TP
+.B Limsp
+A flag controlling the insertion of space between prefix and mark in
+automatic lists
+.RB ( .AL ).
+.
+.RS
+.IP
+.TS
+tab(@);
+l l.
+0@no space
+1@emit space
+.TE
+.RE
+.
+.TP
+.B Ls
+List space threshold.
+If current list level is greater than
+.B Ls
+no spacing occurs around lists.
+Default is\~99.
+.
+.TP
+.B Lsp
+The vertical space used by an empty line.
+The default is 0.5v in troff mode and 1v in nroff mode.
+.
+.TP
+.B N
+Page numbering style.
+.
+.RS
+.IP
+.TS
+tab(@);
+l lx.
+0@normal header for all pages.
+1@T{
+header replaces footer on first page, header is empty.
+T}
+2@page header is removed on the first page.
+3@`section-page' numbering style enabled.
+4@page header is removed on the first page.
+5@T{
+`section-page' and `section-figure' numbering style enabled.
+T}
+.TE
+.RE
+.
+.IP
+Default is\~0.
+See also the number registers
+.B Sectf
+and
+.BR Sectp .
+.
+.TP
+.B Np
+A flag to control whether paragraphs are numbered.
+.
+.RS
+.IP
+.TS
+tab(@);
+l l.
+0@not numbered
+1@numbered in first-level headings.
+.TE
+.RE
+.
+.IP
+Default is\~0.
+.
+.TP
+.B O
+Page offset, only for command line settings.
+.
+.TP
+.B Of
+Format of figure, table, exhibit, and equation titles.
+.
+.RS
+.IP
+.TS
+tab(@);
+l l.
+0@\[dq]. \[dq]
+1@\[dq] - \[dq]
+.TE
+.RE
+.
+.IP
+Default is\~0.
+.
+.TP
+.B P
+Current page-number, normally the same as `%' unless
+`section-page' numbering style is enabled.
+.
+.TP
+.B Pi
+Paragraph indentation.
+Default is\~5.
+.
+.TP
+.B Pgps
+A flag to control whether header and footer point size should follow
+the current settings or just change when the header and footer are defined.
+.
+.RS
+.IP
+.TS
+tab(@);
+l lx.
+0@T{
+Point size only changes to the current setting when
+.BR .PH ,
+.BR .PF ,
+.BR .OH ,
+.BR .EH ,
+.BR .OF ,
+or
+.B .OE
+is executed.
+T}
+1@T{
+Point size changes after every
+.BR .S .
+This is the default.
+T}
+.TE
+.RE
+.
+.TP
+.B Ps
+Paragraph spacing.
+Default is\~1.
+.
+.TP
+.B Pt
+Paragraph type.
+.
+.RS
+.IP
+.TS
+tab(@);
+l lx.
+0@left-justified
+1@indented paragraphs
+2@T{
+indented paragraphs except after
+.BR .H ,
+.BR .DE ,
+or
+.BR .LE .
+T}
+.TE
+.RE
+.
+.IP
+Default is\~0.
+.
+.TP
+.B Sectf
+A flag controlling `section-figures' numbering style.
+A non-zero value enables this.
+See also register\~\c
+.BR N .
+.
+.TP
+.B Sectp
+A flag controlling `section-page' numbering style.
+A non-zero value enables this.
+See also register\~\c
+.BR N .
+.
+.TP
+.B Si
+Display indentation.
+Default is\~5.
+.
+.TP
+.B Verbin
+Indentation for
+.BR .VERBON .
+Default is 5n.
+.
+.TP
+.B W
+Line length, only for command line settings.
+.
+.TP
+.B .mgm
+Always\~1.
+.
+.
+.SH INTERNALS
+.
+The letter macros are using different submacros depending on
+the letter type.
+The name of the submacro has the letter type
+as suffix.
+It is therefore possible to define other letter types,
+either in the national macro-file, or as local additions.
+.B .LT
+sets the number variables
+.B Pt
+and
+.B Pi
+to 0 and\~5, respectively.
+The following strings and macros must be defined for a new letter type.
+.
+.TP
+.BI let@init_ type
+This macro is called directly by
+.BR .LT .
+It is supposed to initialize variables and other stuff.
+.
+.TP
+.BI let@head_ type
+This macro prints the letter head,
+and is called instead of the normal page header.
+It is supposed to remove the alias
+.BR let@header ,
+otherwise it is called for all pages.
+.
+.TP
+.BI let@sg_ "type name title n flag \fR[\fParg1 \fR[\fParg2 \fR[.\|.\|.]]]\fP"
+.B .SG
+is calling this macro only for letters;
+memorandums have its own processing.
+.I name
+and
+.I title
+are specified through
+.BR .WA / .WB .
+.I n\c
+\~is the counter, 1-max,
+and
+.I flag
+is true for the last name.
+Any other argument to
+.B .SG
+is appended.
+.
+.TP
+.BI let@fc_ "type closing"
+This macro is called by
+.BR .FC ,
+and has the formal closing as the argument.
+.
+.LP
+.B .LO
+is implemented as a general option-macro.
+It demands that a string named
+.BI Let type
+is defined, where
+.I type
+is the letter type.
+.B .LO
+then assigns the argument to the string variable
+.BI let*lo- type\fR.\fP
+.
+.
+.\".SH BUGS
+.
+.
+.SH AUTHOR
+.
+Jörgen Hägg, Lund, Sweden <jh@axis.se>.
+.
+.
+.SH FILES
+.
+.TP
+.B @MACRODIR@/@TMAC_M_PREFIX@m.tmac
+.TP
+.B @TMAC_MDIR@/*.cov
+.TP
+.B @TMAC_MDIR@/*.MT
+.TP
+.B @TMAC_MDIR@/locale
+.
+.
+.SH "SEE ALSO"
+.
+.BR groff (@MAN1EXT@),
+.BR @g@troff (@MAN1EXT@),
+.BR @g@tbl (@MAN1EXT@),
+.BR @g@pic (@MAN1EXT@),
+.BR @g@eqn (@MAN1EXT@)
+.br
+.BR groff_mmse (@MAN7EXT@)
+.
+.\" Local Variables:
+.\" mode: nroff
+.\" coding: latin-1
+.\" End:

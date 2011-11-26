@@ -1,0 +1,45 @@
+$DragonFly: src/usr.bin/make/tests/README,v 1.3 2005/02/26 11:58:04 okumoto Exp $
+
+This directory contains regresion tests for make(1).
+
+The tests are invoked via the test.sh script.
+	% test.sh [-v] [-m path_to_make_binary] command
+
+	clean	- Remove the results and the other temp files.
+
+	compare	- Check if results of the test match the expected
+		  output from stdout, stderr, and the status.
+
+	desc	- print description of test
+
+	diff	- Output the diffs from the tests and the expected
+		  stdout, stderr, and the status files.
+
+	run	- Invoke test, compare, and clean in sequence.
+
+	test	- Invoke the test code
+
+	update	- Copy the output of the last test run as the expected
+		  output from stdout, stderr, and the status.
+
+Example:
+	% sh test.sh -m `pwd`/../obj/make run
+
+Directory layout
+----------------
+common.sh		- common code
+test.sh			- top level test script.
+basic/test.sh		- 2nd level test script.
+variables/test.sh	- 2nd level test script.
+
+basic/
+      t0/test.sh	- regression test
+      t1/test.sh	- regression test
+      t2/test.sh	- regression test
+variables/
+          t0/test.sh	- regression test
+          t1/test.sh	- regression test
+
+Each test directory should contain a test.sh script
+and the expected output files.
+

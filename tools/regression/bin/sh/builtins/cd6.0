@@ -1,0 +1,10 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/cd6.0,v 1.1 2011/05/27 20:01:46 jilles Exp $
+
+set -e
+cd -P /bin
+d=$PWD
+CDPATH=/:
+cd -P .
+[ "$d" = "$PWD" ]
+cd -P ./
+[ "$d" = "$PWD" ]

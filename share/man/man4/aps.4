@@ -1,0 +1,121 @@
+.\"	$OpenBSD: aps.4,v 1.8 2007/12/23 22:09:19 jmc Exp $
+.\"
+.\" Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd March 18, 2010
+.Dt APS 4
+.Os
+.Sh NAME
+.Nm aps
+.Nd ThinkPad Active Protection System accelerometer
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device isa"
+.Cd "device aps0 at isa? port 0x1600"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+aps_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for several sensors found in some
+.Tn ThinkPad
+laptops.
+.Pp
+The sensors currently supported are:
+.Bl -column "Sensor         " "Units  " "Typical" -offset indent
+.It Sy "Sensor" Ta Sy "Units" Ta Sy "Typical Use"
+.It Li "X_ACCEL" Ta "Unknown" Ta "X Acceleration"
+.It Li "Y_ACCEL" Ta "Unknown" Ta "Y Acceleration"
+.It Li "X_VAR" Ta "Unknown" Ta "Weighted X Acceleration?"
+.It Li "Y_VAR" Ta "Unknown" Ta "Weighted Y Acceleration?"
+.It Li "Temp1" Ta "uK" Ta "Unknown"
+.It Li "Temp2" Ta "uK" Ta "Unknown"
+.It Li "Keyboard Active" Ta "boolean" Ta "Keyboard activity"
+.It Li "Mouse Active" Ta "boolean" Ta "Mouse activity"
+.It Li "Lid Open" Ta "boolean" Ta "Lid state"
+.El
+.Pp
+Sensor values are made available through the
+.Dv HW_SENSORS
+.Xr sysctl 3
+interface,
+and can be monitored with the
+.Xr systat 1
+.Ar sensors
+display,
+.Xr sensorsd 8
+and
+.Xr sysctl 8
+.Ar hw.sensors .
+For example, on a ThinkPad R51:
+.Bd -literal -offset indent
+%sysctl hw.sensors.aps0
+hw.sensors.aps0.raw0: 488 (X_ACCEL)
+hw.sensors.aps0.raw1: 481 (Y_ACCEL)
+hw.sensors.aps0.raw2: 488 (X_VAR)
+hw.sensors.aps0.raw3: 481 (Y_VAR)
+hw.sensors.aps0.temp0: 52.00 degC
+hw.sensors.aps0.temp1: 52.00 degC
+hw.sensors.aps0.indicator0: Off (Keyboard Active)
+hw.sensors.aps0.indicator1: Off (Mouse Active)
+hw.sensors.aps0.indicator2: On (Lid Open)
+.Ed
+.Sh SEE ALSO
+.Xr systat 1 ,
+.Xr sysctl 3 ,
+.Xr intro 4 ,
+.Xr isa 4 ,
+.Xr sensorsd 8 ,
+.Xr sysctl 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Ox 3.8 .
+.Dx
+support was added in
+.Dx 2.5 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+driver was written by
+.An Jonathan Gray Aq jsg@openbsd.org .
+It was adapted to
+.Dx
+by
+.An Constantine A. Murenin ,
+University of Waterloo.
+.Sh CAVEATS
+The
+.Nm
+driver does not yet maintain state and subsequently does not take
+evasive action when it thinks the hard drive is in danger.
+.Pp
+The Y axis on X40 and possibly other models seems to be inverted.
+It is unknown how to distinguish between different versions of the
+accelerometer to compensate for this in the driver at this time.
+.Pp
+As IBM provides no documentation, it is not known what all the available
+sensors are used for.

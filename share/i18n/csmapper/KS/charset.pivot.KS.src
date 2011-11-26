@@ -1,0 +1,9 @@
+# $NetBSD: charset.pivot.KS.src,v 1.2 2006/10/18 17:54:55 tnozaki Exp $
+# $DragonFly: src/share/i18n/csmapper/KS/charset.pivot.KS.src,v 1.2 2008/04/10 10:21:11 hasso Exp $
+
+JOHAB			UCS			1
+KSC5601			UCS			1
+KSC5601HANJA		UCS			1
+UCS			JOHAB			1
+UCS			KSC5601			1
+UCS			KSC5601HANJA		1

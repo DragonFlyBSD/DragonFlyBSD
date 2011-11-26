@@ -1,0 +1,56 @@
+penicillin.chem:
+.cstart
+
+# Example file for `chem':
+#    Penicillin or C16_H18_N2_O4_S or
+#    3,3-dimethyl-6-oxo-7-(2-phenylacetyl)amino-2-thia-5-
+#      azabicyclo[3.2.0]heptane-4-carboxylic acid
+
+# Found at http://www.chemindustry.com/apps/chemicals.
+
+# Source file position: <groff-source>/contrib/chem/example/morphine.chem
+# Installed position: <prefix>/share/doc/groff/example/chem/morphine.chem
+
+# Copyright (C) 2006, 2009 Free Software Foundation, Inc.
+# Written by Bernd Warken.
+
+# Last update: 5 Jan 2009
+
+# This file is part of `chem', which is part of `groff'.
+
+# `groff' is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# `groff' is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+R1:	flatring5 pointing up put S at 1 put N at 4
+	bond 45 at R1.V2
+	bond 135 at R1.V2
+	bond 120 at R1.V3
+D1:	doublebond 45 ; O
+	bond 135 at D1.start ; OH
+	bond left at R1.N
+	doublebond -135 ; O
+	bond left at R1.V5
+B1:	bond down length .3
+	bond -60 at B1.start ; N
+	bond up ; H
+	bond -120 at N
+D2:	doublebond down ; O
+	bond -60 at D2.start
+	bond -120
+	benzene
+
+### Emacs settings
+# Local Variables:
+# mode: Nroff
+# End:
+.cend

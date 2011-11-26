@@ -1,0 +1,64 @@
+DISABLE_PSE
+PMAP_SHPGPERPROC	opt_pmap.h
+PPC_PROBE_CHIPSET	opt_ppc.h
+PPC_DEBUG		opt_ppc.h
+MAXMEM
+PERFMON			opt_perfmon.h
+POWERFAIL_NMI		opt_trap.h
+AUTO_EOI_1		opt_auto_eoi.h
+AUTO_EOI_2		opt_auto_eoi.h
+CONSPEED		opt_comconsole.h
+I586_PMC_GUPROF		opt_i586_guprof.h
+BROKEN_KEYBOARD_RESET	opt_reset.h
+APIC_IO			opt_apic.h
+
+# Options for emulators.  These should only be used at config time, so
+# they are handled like options for static file systems
+# (see src/sys/conf/options), except for broken debugging options.
+NDISAPI			opt_dontuse.h
+
+# x86_64 SMP options
+CPU_AMD64X2_INTR_SPAM	opt_cpu.h
+CPU_ENABLE_EST		opt_cpu.h
+
+# The cpu type
+#
+HAMMER_CPU		opt_cpu.h
+MAXCONS			opt_syscons.h
+SC_ALT_MOUSE_IMAGE	opt_syscons.h
+SC_DEBUG_LEVEL		opt_syscons.h
+SC_DFLT_FONT		opt_syscons.h
+SC_DISABLE_DDBKEY	opt_syscons.h
+SC_DISABLE_REBOOT	opt_syscons.h
+SC_HISTORY_SIZE		opt_syscons.h
+SC_KERNEL_CONS_ATTR	opt_syscons.h
+SC_KERNEL_CONS_REV_ATTR	opt_syscons.h
+SC_MOUSE_CHAR		opt_syscons.h
+SC_NO_CUTPASTE		opt_syscons.h
+SC_NO_FONT_LOADING	opt_syscons.h
+SC_NO_HISTORY		opt_syscons.h
+SC_NO_SYSMOUSE		opt_syscons.h
+SC_NORM_ATTR		opt_syscons.h
+SC_NORM_REV_ATTR	opt_syscons.h
+SC_PIXEL_MODE		opt_syscons.h
+SC_TWOBUTTON_MOUSE	opt_syscons.h
+
+VGA_ALT_SEQACCESS	opt_vga.h
+VGA_DEBUG		opt_vga.h
+VGA_KEEP_POWERON_MODE	opt_vga.h
+VGA_NO_FONT_LOADING	opt_vga.h
+VGA_NO_MODE_CHANGE	opt_vga.h
+VGA_WIDTH90		opt_vga.h
+
+PSM_HOOKRESUME		opt_psm.h
+PSM_RESETAFTERSUSPEND	opt_psm.h
+PSM_DEBUG		opt_psm.h
+
+ATKBD_DFLT_KEYMAP	opt_atkbd.h
+
+KBD_DISABLE_KEYMAP_LOAD	opt_kbd.h
+KBD_INSTALL_CDEV	opt_kbd.h
+KBD_MAXRETRY		opt_kbd.h
+KBD_MAXWAIT		opt_kbd.h
+KBD_RESETDELAY		opt_kbd.h
+KBDIO_DEBUG		opt_kbd.h

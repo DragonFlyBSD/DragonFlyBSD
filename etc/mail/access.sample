@@ -1,0 +1,11 @@
+# $FreeBSD: src/etc/mail/access.sample,v 1.1.2.2 2000/11/03 07:23:50 dirk Exp $
+# $DragonFly: src/etc/mail/access.sample,v 1.2 2003/06/17 04:24:47 dillon Exp $
+#
+# Mail relay access control list.  Default is to reject mail unless the
+# destination is local, or listed in /etc/mail/local-host-names
+#
+cyberspammer.com		550 We don't accept mail from spammers
+FREE.STEALTH.MAILER@		550 We don't accept mail from spammers
+another.source.of.spam		REJECT
+okay.cyberspammer.com		OK
+128.32				RELAY

@@ -1,0 +1,5 @@
+# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.crash,v 1.2 2006/02/17 19:18:06 dillon Exp $
+source .gdbinit.kernel
+source .gdbinit.vinum.paths
+source .gdbinit.vinum
+asf

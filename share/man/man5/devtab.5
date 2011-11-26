@@ -1,0 +1,107 @@
+.\"
+.\" Copyright (c) 2009
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd September 13, 2009
+.Dt DEVTAB 5
+.Os
+.Sh NAME
+.Nm devtab
+.Nd label conversion file for device paths
+.Sh DESCRIPTION
+The
+.Nm
+file contains label conversions for
+.Xr fstab 5 ,
+.Xr mount 8 ,
+.Xr hammer 8 ,
+and other commands which expect device paths.
+It is typically used to translate longer serial numbers (which
+.Xr devfs 5
+automatically creates as
+.Pa /dev/serno/<serial>[.suffix] )
+into short form names.
+.Pp
+.Nm
+is only read by programs, and not written;
+it is the duty of the system administrator to properly create
+and maintain this file.
+Each conversion is described on a separate line;
+fields on each line are separated by tabs or spaces.
+.Pp
+The first field specifies the conversion's label.
+.Pp
+The second field is the conversion's type.
+Valid types are
+.Bl -tag -width ".Sy serno" -offset indent
+.It Sy serno
+Translates to
+.Pa /dev/serno
+.It Sy path
+Translates to the path as specified
+.El
+.Pp
+The third field specifies the conversion's base path
+.Sh FILES
+.Bl -tag -width ".Pa /etc/devtab" -compact
+.It Pa /etc/devtab
+The
+.Nm
+file resides in
+.Pa /etc .
+.El
+.Sh EXAMPLES
+This will translate references like
+.Sy fubar ,
+.Sy fubar.s1a
+etc.\& to their
+.Pa /dev/serno/L123456
+counterparts:
+.Pp
+.Dl "fubar        serno        L123456"
+.Pp
+This will translate references like
+.Sy fubar ,
+.Sy fubar.s1a
+etc.\& to their
+.Pa /full/path
+counterparts:
+.Pp
+.Dl "fubar        path         /full/path"
+.Sh SEE ALSO
+.Xr getdevpath 3 ,
+.Xr fstab 5 ,
+.Xr hammer 8 ,
+.Xr mount 8
+.Sh HISTORY
+The
+.Nm
+file format appeared in
+.Dx 2.3 .

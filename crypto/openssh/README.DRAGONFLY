@@ -1,0 +1,26 @@
+Original source can be downloaded from OpenBSD at
+ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/
+
+A list of deleted files is in README.DELETED.
+
+Upgrading notes:
+./configure --prefix=/usr --sysconfdir=/etc/ssh \
+	--with-pam --with-tcp-wrappers --with-libedit --with-ssl-engine
+
+Update config.h and version.h in secure/lib/libssh.
+Update ssh{,d}_config and ssh{,d}_config.5.
+Update ssh_namespace.h
+
+Used in:
+lib/pam_module/pam_ssh/
+secure/lib/libssh/
+secure/libexec/sftp-server/
+secure/libexec/ssh-keysign/
+secure/usr.bin/scp/
+secure/usr.bin/sftp/
+secure/usr.bin/ssh/
+secure/usr.bin/ssh-add/
+secure/usr.bin/ssh-agent/
+secure/usr.bin/ssh-keygen/
+secure/usr.bin/ssh-keyscan/
+secure/usr.sbin/sshd/

@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# $FreeBSD: src/etc/rc.d/msgs,v 1.1 2002/06/13 22:14:36 gordon Exp $
+# $DragonFly: src/etc/rc.d/msgs,v 1.4 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: msgs
+# REQUIRE: LOGIN
+
+. /etc/rc.subr
+dummy_rc_command "$1"
+
+# Make a bounds file for msgs(1) if there isn't one already
+#
+if [ -d /var/msgs -a ! -f /var/msgs/bounds -a ! -L /var/msgs/bounds ]; then
+	echo 0 > /var/msgs/bounds
+fi

@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+# $DragonFly: src/etc/periodic/daily/160.clean-hammer,v 1.1 2008/10/22 20:15:55 swildner Exp $
+#
+# Snapshot/prune/reblock all HAMMER file systems
+#
+
+# If there is a global system configuration file, suck it in.
+#
+if [ -r /etc/defaults/periodic.conf ]
+then
+    . /etc/defaults/periodic.conf
+    source_periodic_confs
+fi
+
+case "$daily_clean_hammer_enable" in
+    [Yy][Ee][Ss])
+	echo ""
+	echo "HAMMER maintenance:"
+	case "$daily_clean_hammer_verbose" in
+	    [Yy][Ee][Ss])
+		verbose=-v;;
+	    *)
+		verbose=;;
+	esac
+
+	hammer $verbose cleanup && rc=0;;
+
+    *)  rc=0;;
+esac
+
+exit $rc

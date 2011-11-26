@@ -1,0 +1,26 @@
+# $FreeBSD: src/tools/regression/bin/sh/parser/heredoc11.0,v 1.1 2011/05/20 16:03:36 jilles Exp $
+
+failures=''
+
+check() {
+	if eval "[ $* ]"; then
+		:
+	else
+		echo "Failed: $*"
+		failures=x$failures
+	fi
+}
+
+check '`cat <<EOF
+foo
+EOF` = foo'
+
+check '"`cat <<EOF
+foo
+EOF`" = foo'
+
+check '`eval "cat <<EOF
+foo
+EOF"` = foo'
+
+test "x$failures" = x

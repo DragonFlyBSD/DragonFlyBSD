@@ -1,0 +1,90 @@
+#! /bin/sh
+#
+# make-zapfdr -- script for creating the file zapfdr.ps
+#
+# Copyright (C) 2006, 2009
+# Free Software Foundation, Inc.
+#      Written by Werner Lemberg <wl@gnu.org>
+#
+# This file is part of groff.
+#
+# groff is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# groff is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+#
+# usage:
+#
+#   make-zapfdr < ZapfDingbats.afm > zapfdr.ps
+#
+
+
+# Write preamble.
+cat <<END
+%!PS-Adobe-3.0 Resource-Font
+%%DocumentNeededResources: font ZapfDingbats
+%%EndComments
+%%IncludeResource: font ZapfDingbats
+
+/ZapfDingbats findfont [-1 0 0 1 0 0] makefont
+
+dup length 1 add dict begin
+{
+	exch dup dup /FID ne exch /UniqueID ne and {
+		exch def
+	} {
+		pop pop
+	} ifelse
+} forall
+
+/FontName /ZapfDingbats-Reverse def
+END
+
+
+# Emit reverse metrics.
+sed '
+  /^StartCharMetrics/ {
+    s|StartCharMetrics \([0-9]*\)|/Metrics \1 dict dup begin|
+    H
+    d
+  }
+
+  /^C / {
+    s|^.*$|&@|
+    s|^.* N \([^ ]*\) ;.*$|&/\1 [|
+    s|^.* B [0-9-]* [0-9-]* \([0-9]*\) [0-9-]* ;.*$|&-\1 |
+    s|^.* B [0-9-]* [0-9-]* -\([0-9]*\) [0-9-]* ;.*$|&\1 |
+    s|^.* WX \([0-9]*\) ;.*$|&-\1] def|
+    s|^.* WX -\([0-9]*\) ;.*$|&\1] def|
+    s|^.*@|	|
+    H
+    d
+  }
+
+  $ {
+    g
+    p
+  }
+
+  d
+'
+
+
+# Write postamble.
+cat <<END
+
+end def
+
+/ZapfDingbats-Reverse currentdict end definefont pop
+END
+
+# EOF

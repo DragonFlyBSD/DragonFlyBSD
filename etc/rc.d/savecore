@@ -1,0 +1,73 @@
+#!/bin/sh
+#
+# $NetBSD: savecore,v 1.5 2002/03/22 04:34:00 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/savecore,v 1.3 2002/09/06 16:18:05 gordon Exp $
+# $DragonFly: src/etc/rc.d/savecore,v 1.6 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: savecore
+# REQUIRE: syslogd
+# BEFORE:  SERVERS
+
+. /etc/rc.subr
+
+name="savecore"
+start_cmd="savecore_start"
+start_precmd="savecore_prestart"
+stop_cmd=":"
+
+case ${OSTYPE} in
+NetBSD)
+	rcvar=$name
+	;;
+esac
+
+savecore_prestart()
+{
+	#	${DUMPDIR} should be a directory or a symbolic link
+	#	to the crash directory if core dumps are to be saved.
+	#
+	DUMPDIR="${dumpdir:-/var/crash}"
+
+	# Quit if we have no dump device
+	case ${dumpdev} in
+	[Nn][Oo] | '')
+		debug 'No dump device. Quitting.'
+		dumpdev=
+		return 0
+	;;
+	esac
+	# If there is no crash directory set it now
+	case ${dumpdir} in
+	'')
+		dumpdir='/var/crash'
+		;;
+	[Nn][Oo])
+		dumpdir='NO'
+		;;
+	esac
+	if [ ! -e "${dumpdev}" -o ! -d "${dumpdir}" ]; then
+		warn "Wrong dump device or directory. Savecore not run."
+		dumpdev=
+		return 0
+	fi
+	return 0
+}
+
+savecore_start()
+{
+	if [ X$dumpdev != X ]; then
+		if savecore -C "${DUMPDIR}" "${dumpdev}" > /dev/null; then
+			savecore ${savecore_flags} ${DUMPDIR} ${dumpdev}
+			if checkyesno crashinfo_enable; then
+				${crashinfo_program} -d ${DUMPDIR}
+			fi
+		else
+			echo 'No core dumps found.'
+		fi
+		return ${RC_CONFIGURED}
+	fi
+}
+
+load_rc_config $name
+run_rc_command "$1"

@@ -1,0 +1,11 @@
+Original source can be downloaded from:
+http://www.greenwoodsoftware.com/less/
+
+A list of deleted files is in README.DELETED.
+
+When upgrading, remember to update usr.bin/less/defines.h.
+
+This source is used in:
+	usr.bin/less
+	usr.bin/lessecho
+	usr.bin/lesskey

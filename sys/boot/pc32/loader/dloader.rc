@@ -1,0 +1,15 @@
+# loader.rc for dloader
+#
+# common/do_dloader.c has put us in "/boot" if it exists,
+# else we are in "/".  It depends on whether the system
+# is configured with a single boot+root or a separate boot
+# with a HAMMER root.
+
+include defaults/loader.conf
+include defaults/dloader.menu
+optinclude dloader.menu
+optinclude loader.conf
+optinclude loader.conf.local
+
+optcd ${base}${default_kernel}
+menu

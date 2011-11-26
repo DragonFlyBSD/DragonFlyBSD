@@ -1,0 +1,40 @@
+#!/bin/sh
+#
+# $DragonFly: src/etc/rc.d/mixer,v 1.8 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: mixer
+# REQUIRE: DAEMON
+# BEFORE:  LOGIN
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="mixer"
+rcvar=`set_rcvar`
+start_cmd="mixer_start"
+stop_cmd="mixer_stop"
+mixer_conf=/etc/mixer.conf
+
+mixer_start()
+{
+	if [ -r $mixer_conf ]; then
+		echo "Loading mixer settings"
+		xargs -L 1 mixer < $mixer_conf
+	fi
+}
+
+mixer_stop()
+{
+	[ -z "$mixer_conf" ] && return
+	if [ -w $mixer_conf -o \( ! -e $mixer_conf -a -w `dirname $mixer_conf` \) ]; then
+		echo "Storing mixer settings"
+		> $mixer_conf
+		for f in /dev/mixer[0-9]*; do
+			printf "-f %s %s\n" "$f" "$(mixer -f "$f" -s)" >> $mixer_conf
+		done
+	fi
+}
+
+load_rc_config $name
+run_rc_command "$1"

@@ -1,0 +1,12 @@
+# $FreeBSD: src/etc/phones,v 1.8 1999/08/27 23:23:43 peter Exp $
+# $DragonFly: src/etc/phones,v 1.2 2003/06/17 04:24:45 dillon Exp $
+#	From: @(#)phones	5.2 (Berkeley) 6/30/90
+#
+# phones -- remote host phone number data base
+# see tip(1), phones(5)
+#
+system1		9=3155557750
+system2		  9145551241
+netcom		1(408)555-9760
+netcom		1(415)555-9940
+omen		1(503)555-3746

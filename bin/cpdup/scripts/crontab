@@ -1,0 +1,9 @@
+# Generally speaking a mirroring op runs much faster then an offsite
+# mirroring op, and a cleaning pass can seriously thrash the disk, so you
+# want to stagger operations
+#
+# $DragonFly: src/bin/cpdup/scripts/crontab,v 1.1 2006/09/16 21:57:10 dillon Exp $
+10 1 1 * *	(cd ~/adm; /usr/bin/lockf -k -t 0 .lockmirror ./do_mirror 1)
+15 1 2-31 * *	(cd ~/adm; /usr/bin/lockf -k -t 0 .lockmirror ./do_mirror 2)
+15 4 * * *	(cd ~/adm; /usr/bin/lockf -k -t 0 .lockremote ./do_remote 2)
+10 8 * * *	(cd ~/adm; /usr/bin/lockf -k -t 0 .lockclean ./do_cleanup 90)

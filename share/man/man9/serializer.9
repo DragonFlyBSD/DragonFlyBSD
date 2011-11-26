@@ -1,0 +1,182 @@
+.\"
+.\" Copyright (c) 2007
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd April 10, 2010
+.Dt SERIALIZER 9
+.Os
+.Sh NAME
+.Nm lwkt_serialize_init ,
+.Nm lwkt_serialize_enter ,
+.Nm lwkt_serialize_adaptive_enter ,
+.Nm lwkt_serialize_try ,
+.Nm lwkt_serialize_exit ,
+.Nm lwkt_serialize_handler_enable ,
+.Nm lwkt_serialize_handler_disable ,
+.Nm lwkt_serialize_handler_call ,
+.Nm lwkt_serialize_handler_try ,
+.Nm ASSERT_SERIALIZED
+.Nm ASSERT_NOT_SERIALIZED
+.Nd generic low level serializer
+.Sh SYNOPSIS
+.In sys/serialize.h
+.Ft void
+.Fn lwkt_serialize_init "lwkt_serialize_t s"
+.Ft void
+.Fn lwkt_serialize_enter "lwkt_serialize_t s"
+.Ft void
+.Fn lwkt_serialize_adaptive_enter "lwkt_serialize_t s"
+.Ft int
+.Fn lwkt_serialize_try "lwkt_serialize_t s"
+.Ft void
+.Fn lwkt_serialize_exit "lwkt_serialize_t s"
+.Ft void
+.Fn lwkt_serialize_handler_enable "lwkt_serialize_t s"
+.Ft void
+.Fn lwkt_serialize_handler_disable "lwkt_serialize_t s"
+.Ft void
+.Fo lwkt_serialize_handler_call
+.Fa "lwkt_serialize_t s"
+.Fa "void (*func)(void *, void *)"
+.Fa "void *arg"
+.Fa "void *frame"
+.Fc
+.Ft int
+.Fo lwkt_serialize_handler_try
+.Fa "lwkt_serialize_t s"
+.Fa "void (*func)(void *, void *)"
+.Fa "void *arg"
+.Fa "void *frame"
+.Fc
+.Fn ASSERT_SERIALIZED "s"
+.Fn ASSERT_NOT_SERIALIZED "s"
+.Sh DESCRIPTION
+The
+.Nm serializer
+API provides a fast locked-bus-cycle-based serialization facility
+that will serialize across blocking conditions.
+It is very similar to a lock but much faster for the common case.
+.Pp
+This API was initially designed to be a replacement for SPL calls, but
+may be used whenever a low level exclusive lock (serialization) and/or
+interrupt/device interaction is required.
+Unlike tokens this serialization is not safe from deadlocks nor is it
+recursive, and care must be taken when using it.
+Note that
+.Xr tsleep 9
+will not release a serializer that is being held.
+.Pp
+There are two primary facilities \(em the serializer facility itself and
+an integrated non-stackable interrupt handler disablement facility
+used by drivers.
+.Pp
+.Fn lwkt_serialize_init ,
+.Fn lwkt_serialize_enter
+and
+.Fn lwkt_serialize_exit
+respectively initialize, hold and release the serializer
+.Fa s .
+.Fn lwkt_serialize_try
+is a non-blocking version of
+.Fn lwkt_serialize_enter .
+.Pp
+.Fn lwkt_serialize_adaptive_enter
+is a special version of
+.Fn lwkt_serialize_enter
+which will try to spin a bit before the current thread is put to sleep
+if the serializer
+.Fa s
+is contended.
+By default,
+.Fn lwkt_serialize_adaptive_enter
+favors spinning over sleeping.
+This behavior can be changed by tuning the
+.Va debug.serialize_bolimit
+and
+.Va debug.serialize_boround
+.Xr sysctl 8
+variables.
+Note that
+.Fn lwkt_serialize_adaptive_enter
+is only available in SMP kernels.
+.Pp
+.Fn lwkt_serialize_handler_disable ,
+.Fn lwkt_serialize_handler_enable
+and
+.Fn lwkt_serialize_handler_call
+respectively disable, enable and call an interrupt handler
+.Fa func
+for the serializer
+.Fa s .
+The arguments
+.Fa arg
+and
+.Fa frame
+will be passed to the handler.
+.Fn lwkt_serialize_handler_try
+is a non-blocking version of
+.Fn lwkt_serialize_handler_call .
+.Pp
+The
+.Fn ASSERT_SERIALIZED
+and
+.Fn ASSERT_NOT_SERIALIZED
+macros assert that the serializer
+.Fa s
+is being held/not held.
+.Sh RETURN VALUES
+The
+.Fn lwkt_serialize_try
+and
+.Fn lwkt_serialize_handler_try
+functions return 0 on success and 1 on failure.
+.Sh FILES
+The serializer itself is implemented in
+.Pa /sys/kern/lwkt_serialize.c .
+The header file
+.Pa /sys/sys/serialize.h
+describes the public interface and the structure of a serializer.
+.Sh SEE ALSO
+.Xr crit_enter 9 ,
+.Xr spinlock 9 ,
+.Xr zsleep 9
+.Sh HISTORY
+The
+.Nm serializer
+API first appeared in
+.Dx 1.3 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm serializer
+API was written by
+.An Matt Dillon .
+This manual page was written by
+.An Hasso Tepper .

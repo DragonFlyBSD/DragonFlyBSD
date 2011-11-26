@@ -1,0 +1,46 @@
+.\" (c) Copyright 2010 by Matthew Dillon and Dima Ruban.  Permission to
+.\"    use and distribute based on the DragonFly copyright.
+.\"
+.Dd June 28, 2010
+.Dt POWERD 8
+.Os
+.Sh NAME
+.Nm powerd
+.Nd simple ACPI based CPU/power control
+.Sh SYNOPSIS
+.Nm
+.Op Fl d
+.Sh DESCRIPTION
+The
+.Nm
+daemon monitors the CPU load and automatically adjusts the CPU
+frequency up or down.
+.Pp
+All CPUs will be set to their maximum frequency when the 1 second
+machine load exceeds 25% of one CPU.  All CPUs will be set to their
+minimum frequency when the 10 second machine load drops below 12% of
+one CPU.
+.Pp
+The options are as follows:
+.Bl -tag -width Fl
+.It Fl d
+Debug option.
+Causes
+.Nm
+to not go to the background and prints some debug output to
+.Va stdout .
+.El
+.Sh DIAGNOSTICS
+The
+.Nm
+utility will exit with a non-zero code if the required sysctls are not
+present.
+.Sh SEE ALSO
+.Xr acpi 4
+.Sh HISTORY
+The
+.Nm
+command first appeared in
+.Dx 2.7 .
+.Sh BUGS
+I'm shocked I tell you, shocked that there might be bugs in this program!

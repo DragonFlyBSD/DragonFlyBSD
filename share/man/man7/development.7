@@ -1,0 +1,273 @@
+.\"
+.\" Copyright (c) 2008
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/share/man/man7/development.7,v 1.12 2008/07/27 22:23:42 thomas Exp $
+.\"
+.Dd December 27, 2009
+.Dt DEVELOPMENT 7
+.Os
+.Sh NAME
+.Nm development
+.Nd quick starter for development with the DragonFly codebase
+.Sh DESCRIPTION
+.Dx
+uses the
+.Xr git 1
+distributed revision control system.
+If it is not already on the system, it needs to be installed via
+.Xr pkgsrc 7
+.Pa ( /usr/pkgsrc/devel/scmgit ) .
+.Pp
+The
+.Sx EXAMPLES
+section gives initial information to get going with development on
+.Dx .
+Please refer to the
+.Xr git 1
+manual pages and other related documents for further information on git's
+capabilities and how to use them.
+The
+.Sx SEE ALSO
+section below has some links.
+.Pp
+For information on how to build the
+.Dx
+system from source code, see
+.Xr build 7 .
+For information on how to build the LiveCD, LiveDVD or thumb drive image, see
+.Xr release 7 .
+.Pp
+For a specification of
+.Dx Ap s
+preferred source code style, refer to
+.Xr style 9 .
+An
+.Xr emacs 1
+function to switch C-mode to this style (more or less) can be found in
+.Pa /usr/share/misc/dragonfly.el .
+.Sh EXAMPLES
+A fresh copy of the repository can be cloned anywhere.
+Note that the directory to clone into
+.Pa ( /usr/src
+in the following example) must not exist, so all previous work in this
+directory has to be saved and the directory be removed prior to cloning.
+Also note that while the main repository is on
+.Pa crater ,
+it is recommended that one of the
+.Dx
+mirrors be used instead.
+.Pp
+Simple setup and updating of local repository is done using
+.Pa /usr/Makefile :
+.Bd -literal -offset 4n
+cd /usr
+make help		# get help
+make src-checkout	# initial setup
+make src-update
+.Ed
+.Pp
+Somewhat finer control can be achieved using
+.Xr git 1
+directly.
+To clone the repository and check out the master branch (this will take
+some time):
+.Bd -literal -offset 4n
+cd /usr
+git clone -o crater git://crater.dragonflybsd.org/dragonfly.git src
+cd src
+.Ed
+.Pp
+The repository can be held up to date by pulling frequently (to set up a
+.Xr cron 8
+job,
+.Xr git 1 Ap s
+.Fl Fl git-dir
+option can be used):
+.Bd -literal -offset 4n
+cd /usr/src
+git pull
+.Ed
+.Pp
+It is not recommended to work directly in the master branch.
+To create and checkout a working branch:
+.Bd -literal -offset 4n
+git checkout -b work
+.Ed
+.Pp
+To create and checkout a branch of the
+.Dx 2.0
+release (called
+.Sy rel2_0 ) :
+.Bd -literal -offset 4n
+git checkout -b rel2_0 crater/DragonFly_RELEASE_2_0
+.Ed
+.Pp
+Branches can be deleted just as easy:
+.Bd -literal -offset 4n
+git branch -d work
+.Ed
+.Pp
+After changes have been made to a branch, they can be committed:
+.Bd -literal -offset 4n
+git commit -a
+.Ed
+.Pp
+.Xr git-commit 1 Ap s
+.Fl m
+and
+.Fl F
+options can be used to specify a commit message on the command line or read
+it from a file, respectively.
+.Pp
+Finally, branches can be merged with the (updated) master by using
+.Cm rebase :
+.Bd -literal -offset 4n
+git checkout master
+git pull
+git checkout work
+git rebase master
+.Ed
+.Sh VENDOR IMPORTS
+When importing vendor sources, make sure that you don't import
+too many unnecessary sources.
+Especially test suites that are not used by the
+.Dx
+build are good candidates for being stripped away.
+These instructions assume that you have already extracted
+the source package into its final directory and that they are
+trimmed appropriately.
+.Pp
+.Em \&Do not change the vendor sources before importing them
+on the vendor branch!
+Necessary changes to the vendor sources can be applied to
+.Pa master
+after the import.
+.Pp
+For the following commands, we will import the imaginary package
+.Nm foo-2.3
+into
+.Pa /usr/src/contrib/foo .
+If this is the first import of
+.Nm foo ,
+you will have to choose the name of the vendor branch.
+Customarily, this will be
+.Pa vendor/FOO .
+However, if you intend to maintain multiple vendor sources for the
+same package
+.Em concurrently ,
+you should choose a branch name which includes part of the version,
+i.e.\&
+.Pa vendor/FOO2 .
+.Pp
+As a first step, we trick git to work on the vendor branch instead of on
+.Pa master .
+Be careful, since after issuing this command all your commits will go to the
+vendor branch, but you will commit
+.Em the whole working tree
+and not just the vendor sources!
+Thus you have to specify the exact directory for
+.Li git commit .
+In order to commit, you will have to add the new sources first.
+.Pp
+If the vendor branch already exists, make sure that you have a local vendor
+branch which is up to date.
+To this end, run:
+.Bd -literal -offset 4n
+git update-ref refs/heads/vendor/FOO origin/vendor/FOO
+.Ed
+.Pp
+The next commands perform the actual import.
+.Bd -literal -offset 4n
+git symbolic-ref HEAD refs/heads/vendor/FOO
+git add contrib/foo
+git commit -m "Import foo-2.3" contrib/foo
+.Ed
+.Pp
+With these commands we have imported the vendor sources on their own branch.
+In the next step, we merge the vendor branch into master.
+.Bd -literal -offset 4n
+git checkout master
+git merge vendor/FOO
+.Ed
+.Pp
+Now you are free to change the sources in contrib/foo, since you are
+back on the
+.Pa master
+branch.
+The first thing to do is to add
+.Pa README.DRAGONFLY
+and
+.Pa README.DELETED .
+The former documents how the imported sources can be obtained, including
+a checksum of the tarball.
+The latter lists all files and directories that have been removed from the
+source package.
+You should use the
+.Pa /usr/src/tools/tools/genreadmedeleted/genreadmedeleted
+shell script to generate this file.
+Commit the
+.Pa README Ns s
+first, then commit your local changes to the sources:
+.Bd -literal -offset 4n
+git add contrib/foo/README.D*
+git commit -m "foo: add our READMEs"
+.Ed
+.Pp
+Finally, push master and the vendor branch to crater:
+.Bd -literal -offset 4n
+git push crater master vendor/FOO
+.Ed
+.Sh SEE ALSO
+.Xr git 1 Pq Pa pkgsrc/devel/scmgit ,
+.Xr build 7 ,
+.Xr committer 7 ,
+.Xr release 7
+.Rs
+.%T "Git User's Manual"
+.%O "http://www.kernel.org/pub/software/scm/git/docs/user-manual.html"
+.Re
+.Rs
+.%T "Git Magic"
+.%O "http://www-cs-students.stanford.edu/~blynn/gitmagic/"
+.Re
+.Sh HISTORY
+The
+.Nm
+manual page was originally written by
+.An Matthew Dillon Aq dillon@FreeBSD.org
+and first appeared
+in
+.Fx 5.0 ,
+December 2002.
+It was rewritten when
+.Dx
+switched to
+.Xr git 1 .

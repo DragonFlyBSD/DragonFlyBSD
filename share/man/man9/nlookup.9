@@ -1,0 +1,269 @@
+.\"
+.\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd August 1, 2010
+.Dt NLOOKUP 9
+.Os
+.Sh NAME
+.Nm nlookup ,
+.Nm nlookup_init ,
+.Nm nlookup_init_at ,
+.Nm nlookup_init_raw ,
+.Nm nlookup_init_root ,
+.Nm nlookup_set_cred ,
+.Nm nlookup_zero ,
+.Nm nlookup_done ,
+.Nm nlookup_done_at ,
+.Nm nlookup_simple ,
+.Nm nlookup_mp ,
+.Nm nreadsymlink ,
+.Nm naccess ,
+.Nm naccess_va
+.Nd namecache API
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/nlookup.h
+.Ft int
+.Fn nlookup "struct nlookupdata *nd"
+.Ft int
+.Fn nlookup_init "struct nlookupdata *nd" "const char *path" "enum uio_seg seg" "int flags"
+.Ft int
+.Fn nlookup_init_at "struct nlookupdata *nd" "struct file **fpp" "int fd" "const char *path" "enum uio_seg seg" "int flags"
+.Ft int
+.Fn nlookup_init_raw "struct nlookupdata *nd" "const char *path" "enum uio_seg seg" "int flags" "struct ucred *cred" "struct namecache *ncstart"
+.Ft int
+.Fn nlookup_init_root "struct nlookupdata *nd" "const char *path" "enum uio_seg seg" "int flags" "struct ucred *cred" "struct namecache *ncstart" "struct namecache *ncroot"
+.Ft void
+.Fn nlookup_set_cred "struct nlookupdata *nd" "struct ucred *cred"
+.Ft void
+.Fn nlookup_zero "struct nlookupdata *nd"
+.Ft void
+.Fn nlookup_done "struct nlookupdata *nd"
+.Ft void
+.Fn nlookup_done_at "struct nlookupdata *nd" "struct file *fp"
+.Ft "struct namecache *"
+.Fn nlookup_simple "const char *str" "enum uio_seg seg" "int niflags" "int *error"
+.Ft int
+.Fn nlookup_mp "struct mount *mp" "struct namecache **ncpp"
+.Ft int
+.Fn nreadsymlink "struct nlookupdata *nd" "struct namecache *ncp" "struct nlcomponent *nlc"
+.Ft int
+.Fn naccess "struct namecache *ncp" "int vmode" "struct ucred *cred"
+.Ft int
+.Fn naccess_va "struct vattr *va" "int vmode" "struct ucred *cred"
+.Sh DESCRIPTION
+.Fn nlookup
+does a generic namecache lookup.
+Note that the passed
+.Fa "struct nlookupdata"
+is not
+.Fn nlookup_done Ap d
+on return, even if an error occurs.
+If no error occurs the returned nl_ncp
+is always referenced and locked, otherwise it may or may not be.
+Intermediate directory elements, including the current directory,
+require execute (search) permission.
+.Fn nlookup
+does not examine the access permissions on the returned element.
+If
+.Dv NLC_CREATE
+or
+.Dv NLC_DELETE
+is set the last directory must allow
+node creation
+.Po
+.Dv VCREATE Ns / Ns Dv VDELETE
+.Pc ,
+and an error code of 0
+will be returned for a non-existent target.
+Otherwise a non-existent target will cause
+.Er ENOENT
+to be returned.
+.Pp
+.Fn nlookup_init
+initializes a
+.Fa "struct nlookupdata" ,
+and does an early error
+return for copyin faults or a degenerate empty string (which is
+not allowed).
+The first process proc0's
+credentials are used if the calling
+thread is not associated with a process context.
+.Pp
+.Fn nlookup_init_at
+is similar to
+.Fn nlookup_init
+except that when
+.Fa path
+is a relative path and
+.Fa fd
+is not
+.Dv AT_FDCWD ,
+.Fa path
+is interpreted relative to the directory associated with
+.Fa fd
+and the file entry for
+.Fa fd
+is referenced and returned in
+.Fa *fpp .
+Its main use is the implementation of
+.Fn *at
+system calls.
+.Pp
+.Fn nlookup_init_raw
+works similarly to
+.Fn nlookup_init
+but does not assume a process context.
+rootncp is always chosen for the root directory and the
+.Fa cred
+and starting directory are supplied in the arguments.
+.Pp
+.Fn nlookup_init_root
+works similarly to
+.Fn nlookup_init_raw
+but does not assume rootnch for the root directory.
+The root directory is supplied in the arguments, and is also
+used for the jail directory.
+.Pp
+.Fn nlookup_set_cred
+sets a different credential; this credential will be used by
+future operations performed on nd.nl_open_vp
+and the
+.Fa nlookupdata
+structure.
+.Pp
+.Fn nlookup_zero
+zeroes a given
+.Fa "struct nlookupdata" .
+.Pp
+.Fn nlookup_done
+cleans up an
+.Fa nlookupdata
+structure after we are through with
+it.
+This function may be called on any nlookupdata structure
+initialized with
+.Fn nlookup_init .
+Calling
+.Fn nlookup_done
+is mandatory in all cases except where
+.Fn nlookup_init
+returns an error, even if as a consumer you believe you
+have taken all dynamic elements out of the
+.Fa nlookupdata
+structure.
+.Pp
+.Fn nlookup_done_at
+cleans up an
+.Fa nlookupdata
+structure that was initialized with
+.Fn nlookup_init_at
+and drops the reference to
+.Fa fp .
+.Pp
+.Fn nlookup_simple
+is a simple all-in-one
+.Fn nlookup .
+It returns a locked namecache structure or NULL if an error
+occurred.
+Note that the returned ncp
+is not checked for permissions,
+though
+.Dv VEXEC
+is checked on the directory path leading up to
+the result.
+The caller must call
+.Fn naccess
+to check the permissions of the returned leaf.
+.Pp
+.Fn nlookup_mp
+is used to resolve a mount point's glue ncp.
+It creates the illusion of continuity in the namecache tree
+by connecting the ncp related to the vnode under the mount
+to the ncp related to the mount's root vnode.
+If no error occurred a locked, ref'd ncp is stored in
+.Fa *ncpp .
+.Pp
+.Fn nreadsymlink
+reads the contents of a symlink, allocates a path buffer out
+of the namei_zone and initialize the supplied nlcomponent
+with the result.
+If an error occurs no buffer will be allocated or returned
+in the nlc.
+.Pp
+.Fn naccess
+generally checks the V* access bits from
+.In sys/vnode.h .
+All specified bits must pass for this function to return 0.
+If
+.Dv VCREATE
+is specified and the target ncp represents a
+non-existent file or dir, or if
+.Dv VDELETE
+is specified and the
+target exists, the parent directory is checked for
+.Dv VWRITE .
+If
+.Dv VEXCL
+is specified and the target ncp represents a positive
+hit, an error is returned.
+If
+.Dv VCREATE
+is not specified and the target does not exist
+(negative hit),
+.Er ENOENT
+is returned.
+Note that
+.Fn nlookup
+does not (and should not) return
+.Er ENOENT
+for non-existent leafs.
+The passed ncp may or may not be locked.
+The caller should use a locked ncp on leaf lookups, especially
+for
+.Dv VCREATE ,
+.Dv VDELETE ,
+and
+.Dv VEXCL
+checks.
+.Pp
+.Fn naccess_va
+checks the requested access against the given
+.Fa vattr
+using
+.Fa cred .
+.Sh FILES
+.Pa sys/kern/vfs_nlookup.c
+.Sh SEE ALSO
+.Xr VFS 9 ,
+.Xr vnode 9
+.Sh AUTHORS
+This man page was written by
+.An Sascha Wildner .

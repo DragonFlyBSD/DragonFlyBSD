@@ -1,0 +1,4 @@
+# The cpu type
+#
+I586_CPU                opt_global.h
+I686_CPU                opt_global.h

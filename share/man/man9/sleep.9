@@ -1,0 +1,309 @@
+.\"
+.\" Copyright (c) 2004,2010 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Hiten Pandya <hmp@backplane.com>.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" Copyright (c) 1996 Joerg Wunsch
+.\"
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE DEVELOPERS ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE DEVELOPERS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man9/sleep.9,v 1.18.2.5 2001/12/17 11:30:19 ru Exp $
+.\"
+.Dd April 12, 2010
+.Dt SLEEP 9
+.Os
+.Sh NAME
+.Nm tsleep ,
+.Nm ssleep ,
+.Nm lksleep ,
+.Nm mtxsleep ,
+.Nm zsleep ,
+.Nm tsleep_interlock ,
+.Nm wakeup ,
+.Nm wakeup_one
+.Nd wait/sleep/block for events
+.Sh SYNOPSIS
+.In sys/param.h
+.In sys/serialize.h
+.In sys/systm.h
+.In sys/proc.h
+.Ft int
+.Fn tsleep "void *ident" "int flags" "const char *wmesg" "int timo"
+.Ft int
+.Fn ssleep "void *ident" "struct spinlock *spin" "int flags" "const char *wmesg" "int timo"
+.Ft int
+.Fn lksleep "void *ident" "struct lock *lock" "int flags" "const char *wmesg" "int timo"
+.Ft int
+.Fn mtxsleep "void *ident" "struct mtx *mtx" "int flags" "const char *wmesg" "int timo"
+.Ft int
+.Fn zsleep "void *ident" "struct lwkt_serialize *slz" "int flags" "const char *wmesg" "int timo"
+.Ft void
+.Fn tsleep_interlock "void *ident" "int flags"
+.Ft void
+.Fn wakeup "void *ident"
+.Ft void
+.Fn wakeup_one "void *ident"
+.Sh DESCRIPTION
+The functions
+.Fn tsleep ,
+.Fn ssleep ,
+.Fn lksleep ,
+.Fn mtxsleep ,
+.Fn zsleep ,
+and
+.Fn wakeup
+handle event-based process blocking.
+If a process must wait for an
+external event, it is put on sleep by
+.Fn tsleep ,
+.Fn ssleep ,
+.Fn lksleep ,
+.Fn mtxsleep ,
+or
+.Fn zsleep .
+.Pp
+The parameter
+.Ar ident
+is an arbitrary address that uniquely identifies the event on which
+the process is being asleep.
+All processes sleeping on a single
+.Fa ident
+are woken up later by
+.Fn wakeup ,
+often called from inside an interrupt routine, to indicate that the
+resource the process/thread was blocking on is available now.
+.Pp
+The parameter
+.Fa wmesg
+is a string describing the sleep condition for tools like
+.Xr ps 1 .
+Due to the limited space of those programs to display arbitrary strings,
+this message should not be longer than 6 characters.
+.Pp
+The
+.Fn tsleep
+function is general in its use and suspends the current process/thread until a
+wakeup is performed on the specified identifier.
+The process/thread will then be made runnable.
+The process/thread will sleep at most
+.Fa timo
+\&/ hz seconds (0 means no timeout).
+If
+.Fa flags
+contains the
+.Dv PCATCH
+flag, signals are checked before and after sleeping, else signals are
+ignored.
+.Pp
+.Fn Tsleep_interlock
+is similar to
+.Fn tsleep ,
+in that it queues a thread on a sleep queue, but it does not actually put the
+thread to sleep.
+This allows coupling tsleep with higher-level synchronization primitives.
+The pattern is:
+.Bd -literal
+(acquire high level synchronization primitive)
+(test condition of interest)
+tsleep_interlock(ident, flags)
+(release high level synchronization primitive)
+tsleep(..., PINTERLOCK)
+.Ed
+.Pp
+For example, to implement
+.Fn ssleep :
+.Bd -literal
+spin_lock_wr(&important_lock);
+if (important_condition == 0) {
+	tsleep_interlock(ident, flags);
+	spin_unlock_wr(&important_lock);
+	tsleep(..., PINTERLOCK);
+}
+.Ed
+.Pp
+The
+.Fn ssleep
+function works like
+.Fn tsleep
+while at the same time releasing the exclusive (write) spinlock
+.Fa spin
+before sleeping and reacquiring it before
+.Fn ssleep
+returns.
+This is an atomic operation, which guarantees that a
+.Fn wakeup
+interlocked by
+.Fa spin
+will not be missed.
+.Pp
+The
+.Fn lksleep
+function works like
+.Fn tsleep
+while at the same time releasing the exclusive lockmgr lock
+.Fa lock
+before sleeping and reacquiring it before
+.Fn lksleep
+returns.
+This is an atomic operation, which guarantees that a
+.Fn wakeup
+interlocked by
+.Fa lock
+will not be missed.
+.Pp
+The
+.Fn mtxsleep
+function works like
+.Fn tsleep
+while at the same time atomically releasing the mutex
+.Fa mtx
+before sleeping and reacquiring it in exclusive state before
+.Fn mtxsleep
+returns.
+.Pp
+The
+.Fn zsleep
+function works like
+.Fn tsleep
+while at the same time releasing the serializer
+.Fa slz
+before sleeping and reacquiring it before
+.Fn zsleep
+returns.
+This is an atomic operation, which guarantees that a
+.Fn wakeup
+interlocked by
+.Fa slz
+will not be missed.
+.Pp
+The
+.Fn wakeup_one
+function is used to make the first process/thread in the queue that is
+sleeping on the parameter
+.Fa ident
+runnable.
+This can prevent the system from becoming saturated
+when a large number of processes/threads are sleeping on the same address,
+but only one of them can actually do any useful work when made
+runnable.
+.Sh IMPLEMENTATION NOTES
+Unlike
+.Fx ,
+the
+.Fn tsleep
+function in
+.Dx
+ignores priority information because it is not required by the
+.Tn LWKT
+subsystem.
+Sleeps without the
+.Dv LWP_SINTR
+flag set are assumed to be disk-waits, otherwise they are
+normal sleeps.
+.Sh RETURN VALUES
+The
+.Fn tsleep
+function returns
+.Li 0
+if awakened, otherwise an appropriate error code is returned.
+.Sh FILES
+The various sleep functions are in
+.Pa /sys/kern/kern_synch.c .
+.Sh ERRORS
+.Bl -tag -width Er
+.It Bq Er EWOULDBLOCK
+The timeout expired.
+.It Bq Er ERESTART
+A signal needs to be delivered and the system call should
+be restarted if possible.
+This only happens if
+.Dv PCATCH
+was set in
+.Fa flags .
+.It Bq Er EINTR
+The system call needs to be interrupted by the signal.
+This only happens if
+.Dv PCATCH
+was set in
+.Fa flags .
+.El
+.Sh SEE ALSO
+.Xr ps 1 ,
+.Xr kmalloc 9 ,
+.Xr serializer 9
+.Sh HISTORY
+The sleep/wakeup process synchronization mechanism is very old.
+It appeared in a very early version of Unix.
+.Pp
+.Fn tsleep
+appeared in
+.Bx 4.4 .
+.Pp
+.Fn ssleep
+appeared in
+.Dx 1.6 ,
+.Fn zsleep
+in
+.Dx 2.0 ,
+and
+.Fn lksleep
+and
+.Fn mtxsleep
+in
+.Dx 2.3 .
+.Sh AUTHORS
+.An -nosplit
+This manual page was written by
+.An J\(:org Wunsch
+and modified for
+.Dx
+by
+.An Hiten Pandya Aq hmp@dragonflybsd.org

@@ -1,0 +1,92 @@
+.\" Copyright (c) 1996 Doug Rabson
+.\"
+.\" All rights reserved.
+.\"
+.\" This program is free software.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE DEVELOPERS ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE DEVELOPERS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man9/vget.9,v 1.5.2.1 2001/12/17 11:30:19 ru Exp $
+.\"
+.Dd May 5, 2007
+.Dt VGET 9
+.Os
+.Sh NAME
+.Nm vget
+.Nd Acquire a primary reference, lock, and reactivate a vnode
+.Sh SYNOPSIS
+.In sys/param.h
+.In sys/vnode.h
+.Ft int
+.Fn vget "struct vnode *vp" "int lockflag"
+.Sh DESCRIPTION
+Acquire a primary reference to vnode and lock it, reactivating the vnode
+from the cache or free list if necessary.
+This kernel function must be used if the vnode in hand is
+not already known to be actively referenced, such as when obtaining
+the vnode pointer from a namecache or VM object structure.
+.Bl -tag -width ".Fa lockflag"
+.It Fa vp
+The vnode being acquired, typically obtained from some other system
+structure.
+.It Fa lockflag
+Must be
+.Dv LK_SHARED
+or
+.Dv LK_EXCLUSIVE .
+Passing 0 is illegal.
+.Dv LK_NOWAIT
+may be logically ORd in if you do not wish to block and can handle the
+additional error codes that might be returned.
+.El
+.Pp
+When not in use, vnodes are kept on a free list or marked as being cached.
+The vnodes still reference valid files but may be reused to refer to a
+new file at any time.
+Often, references to these vnodes are present in auxiliary structures
+related to the vnode, such as namecache entries and VM objects.
+.Pp
+When acquiring a vnode pointer from these auxiliary structures the
+.Nm
+function must be used to both reference and, if necessary, reactivate
+the vnode.  The vnode will also be locked accordingly.
+.Sh RETURN VALUES
+0 is returned on success,
+.Er ENOENT
+is returned if the vnode becomes unusable while
+.Nm
+is blocked trying to lock it, and other errors may be returned as well.
+.Er ENOENT
+is not typically considered to be a fatal error but simply an
+indication that the caller needs to relookup the vnode as related
+structures may be in the midst of being destroyed.
+.Sh SEE ALSO
+.Xr vdrop 9 ,
+.Xr vhold 9 ,
+.Xr vnode 9 ,
+.Xr vn_lock 9 ,
+.Xr vn_unlock 9 ,
+.Xr vput 9 ,
+.Xr vref 9 ,
+.Xr vrele 9
+.Sh AUTHORS
+This manual page was written by
+.An Doug Rabson .

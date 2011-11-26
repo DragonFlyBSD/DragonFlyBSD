@@ -1,0 +1,170 @@
+.\" Copyright (c) 2001 John H. Baldwin <jhb@FreeBSD.org>
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man9/ktr.9,v 1.8 2005/03/08 01:37:36 hmp Exp $
+.\"
+.Dd July 16, 2011
+.Dt KTR 9
+.Os
+.Sh NAME
+.Nm KTR_INFO_MASTER ,
+.Nm KTR_INFO_MASTER_EXTERN ,
+.Nm KTR_INFO ,
+.Nm KTR_LOG
+.Nd kernel tracing facility
+.Sh SYNOPSIS
+.In sys/ktr.h
+.Vt "extern int ktr_entries" ;
+.Vt "extern int ktr_verbose" ;
+.Vt "extern struct ktr_entry *ktr_buf[MAXCPU]" ;
+.Fn KTR_INFO_MASTER "master"
+.Fn KTR_INFO_MASTER_EXTERN "master"
+.Fn KTR_INFO "compile" "master" "name" "maskbit" "format" "datasize"
+.Fn KTR_LOG "info" "arg ..."
+.Sh DESCRIPTION
+The
+.Nm ktr
+facility provides a circular buffer of events that can be logged in a
+.Xr kprintf 9
+style fashion.
+These events can then be dumped with
+.Xr ddb 4 ,
+.Xr gdb 1
+or
+.Xr ktrdump 8 .
+.Pp
+.Fn KTR_INFO_MASTER
+declares a new master variable
+.Dv ktr Ns _ Ns Fa master Ns _ Ns Dv enable
+that is used to turn on and off event logging.
+.Fn KTR_INFO_MASTER_EXTERN
+is a convenience macro for declaring a master variable
+.Sy extern .
+.Pp
+The
+.Fn KTR_INFO
+macro registers a new event
+.Fa name
+that will be controlled by the
+.Fa master
+enable variable.
+Code for logging this event will be compiled in when
+.Fa compile
+is defined.
+The
+.Fa format
+argument is a limited (i.e.\& only integral types, no formatting)
+.Xr kprintf 9
+style format string used to build the text of the event log message while
+.Fa datasize
+specifies the size of the data to be logged, either the total size of the
+arguments required by the
+.Fa format
+string.
+For logging a fixed string with
+.Fn KTR_INFO ,
+.Fa datasize
+is 0.
+The
+.Fa maskbit
+is a bit number that determines which of the corresponding
+.Va debug.ktr.*_enable
+sysctl's bits will enable logging of this event.
+.Pp
+Kernel events are logged via the
+.Fn KTR_LOG
+macro.
+The
+.Fa info
+parameter is an identifier of the format
+.Fa master Ns _ Ns Fa name .
+.Fn KTR_LOG
+accepts zero or more additional
+.Fa arg
+arguments as required by the
+.Fa format
+string passed to the associated
+.Fn KTR_INFO
+call.
+.Pp
+The
+.Va ktr_entries
+variable contains the number of entries in the
+.Va ktr_buf
+array.
+These variables are mostly useful for post-mortem crash dump tools to locate
+the base of the circular trace buffer and its length.
+.Pp
+The
+.Va ktr_verbose
+variable stores the verbose flag that controls whether events are logged to
+the console in addition to the event buffer.
+.Sh EXAMPLES
+This example demonstrates a simple usage of the KTR facility:
+.Pp
+.Bd -literal -compact
+#include <sys/ktr.h>
+
+\&...
+
+#if !defined(KTR_FOO)
+#define KTR_FOO		KTR_ALL
+#endif
+KTR_INFO_MASTER(foo);
+KTR_INFO(KTR_FOO, foo, func1, 0, "func1()", 0);
+KTR_INFO(KTR_FOO, foo, func2, 1, "func2(%d)", sizeof(int));
+
+\&...
+
+void
+func1(void)
+{
+	KTR_LOG(foo_func1);
+	...
+}
+
+void
+func2(int arg)
+{
+	KTR_LOG(foo_func2, arg);
+	...
+}
+.Ed
+.Sh SEE ALSO
+.Xr gdb 1 ,
+.Xr ddb 4 ,
+.Xr ktr 4 ,
+.Xr ktrdump 8 ,
+.Xr kprintf 9
+.Sh HISTORY
+The
+.Nm ktr
+kernel tracing facility first appeared in
+.Bsx 3.0
+and was imported into
+.Fx 5.0
+and
+.Dx 1.1 .
+It was completely rewritten by Matthew Dillon in
+.Dx 1.3 .

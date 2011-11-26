@@ -1,0 +1,138 @@
+.\"	$OpenBSD: nfe.4,v 1.10 2006/08/30 22:56:05 jmc Exp $
+.\"	$DragonFly: src/share/man/man4/nfe.4,v 1.10 2008/07/26 07:41:45 sephe Exp $
+.\"
+.\" Copyright (c) 2006 Jonathan Gray <jsg@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd July 12, 2008
+.Dt NFE 4
+.Os
+.Sh NAME
+.Nm nfe
+.Nd NVIDIA nForce MCP 10/100/Gigabit Ethernet driver
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device miibus"
+.Cd "device nfe"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+if_nfe_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver supports PCI Ethernet adapters based on the NVIDIA
+nForce Media and Communications Processors (MCP), such as
+the nForce, nForce 2, nForce 3, CK804, MCP04, MCP51, MCP55,
+MCP61, MCP65, MCP67, MCP73, MCP77 and MCP79 Ethernet controller chips.
+.Pp
+The
+.Nm
+driver supports the following
+.Ar media
+types:
+.Pp
+.Bl -tag -width autoselect -compact
+.It Cm autoselect
+Enable autoselection of the media type and options.
+.It Cm 10baseT
+Set 10Mbps operation.
+.It Cm 100baseTX
+Set 100Mbps (Fast Ethernet) operation.
+.It Cm 1000baseT
+Set 1000Mbps (Gigabit Ethernet) operation (recent models only).
+.El
+.Ss MIB Variables and Loader Tunables
+The following per-interface variables are implemented in the
+.Va hw.nfe Ns Em X
+branch of the
+.Xr sysctl 3
+MIB.
+Loader tunables with the same names, but using the prefix
+.Va hw.nfe
+are also implemented, they apply to all
+.Nm
+interfaces in system and can be set in
+.Xr loader.conf 5 .
+.Bl -tag -width ".Va rx_ring_count"
+.It Va imtimer
+Interrupt moderation time (unit: microseconds).
+The default value is -125.
+A value of 0 means disabled.
+A negative value, -Y, means hardware timer simulated interrupt moderation,
+the simulated interrupt moderation timer will be set to Y.
+A positive valye, Y, means hardware timer only interrupt moderation,
+hardware timer will be set to Y.
+Value can be tuned when the interface is running.
+Positive values in the range 64-128 seems to be a reasonable.
+.It Va rx_ring_count
+RX ring count.
+sysctl node is read-only.
+The default value is 128.
+With heavier interrupt moderation (eg. imtimer=-250),
+it is recommended to increase rx_ring_count (eg. to 512).
+.It Va tx_ring_count
+TX ring count.
+sysctl node is read-only.
+The default value is 256.
+.El
+.Pp
+For more information on configuring this device, see
+.Xr ifconfig 8 .
+The
+.Nm
+driver supports
+.Xr polling 4 .
+.Sh SEE ALSO
+.Xr arp 4 ,
+.Xr ifmedia 4 ,
+.Xr intro 4 ,
+.Xr miibus 4 ,
+.Xr netintro 4 ,
+.Xr pci 4 ,
+.Xr polling 4 ,
+.Xr vlan 4 ,
+.Xr loader.conf 5 ,
+.Xr ifconfig 8
+.Sh HISTORY
+The
+.Nm
+device driver first appeared in
+.Ox 3.9
+and was imported into
+.Dx 1.7 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+driver was written by
+.An Jonathan Gray
+.Aq jsg@openbsd.org
+and
+.An Damien Bergamini
+.Aq damien@openbsd.org .
+It was ported to
+.Dx
+by
+.An Sepherosa Ziehau
+.Aq sepherosa@gmail.com .
+.Sh CAVEATS
+NVIDIA refuse to release any documentation on their products.

@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# $NetBSD: mountcritlocal,v 1.7 2002/04/29 12:29:53 lukem Exp $
+# $FreeBSD: src/etc/rc.d/mountcritlocal,v 1.5 2003/06/01 01:43:37 gordon Exp $
+# $DragonFly: src/etc/rc.d/mountcritlocal,v 1.5 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: mountcritlocal
+# REQUIRE: root
+
+. /etc/rc.subr
+
+name="mountcritlocal"
+start_cmd="mountcritlocal_start"
+stop_cmd=":"
+
+mountcritlocal_start()
+{
+	# Set up the list of network filesystem types for which mounting
+	# should be delayed until after network initialization.
+	case ${extra_netfs_types} in
+	[Nn][Oo])
+	;;
+		*)
+		netfs_types="${netfs_types} ${extra_netfs_types}"
+			;;
+		esac
+
+	# Mount everything except nfs filesystems.
+	mount_excludes='no'
+	for i in ${netfs_types}; do
+		fstype=${i%:*}
+		mount_excludes="${mount_excludes}${fstype},"
+	done
+	mount_excludes=${mount_excludes%,}
+	mount -a -t ${mount_excludes}
+	case $? in
+	0)
+		;;
+	*)
+		echo 'Mounting /etc/fstab filesystems failed,' \
+			' startup aborted'
+		exit 1
+		;;
+		esac
+
+}
+
+load_rc_config $name
+run_rc_command "$1"

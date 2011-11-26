@@ -1,0 +1,127 @@
+.\"	$OpenBSD: ahci.4,v 1.7 2008/04/19 01:18:39 djm Exp $
+.\"
+.\" Copyright (c) 2006 David Gwynne <dlg@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" TORTIOUS ACTION, ARISING OUT OF
+.\" PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd August 3, 2009
+.Dt AHCI 4
+.Os
+.Sh NAME
+.Nm ahci
+.Nd Advanced Host Controller Interface for Serial ATA
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device ahci"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+ahci_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for Serial ATA controllers conforming to the
+Advanced Host Controller Interface specification.
+.Pp
+Several AHCI capable controllers also provide a compatibility mode that
+causes them to appear as a traditional ATA controller supported by
+.Xr nata 4 .
+.Pp
+Although
+.Nm
+controllers are actual ATA controllers, the driver emulates SCSI via a
+translation layer.
+.Sh LOADER TUNABLES
+The following hints may be set in
+.Xr loader.conf 5
+to control the
+.Nm
+driver's behavior.
+Note that the hint need only exist, so removing it requires commenting it out.
+.Pp
+Usually both the
+.Xr nata 4
+and the
+.Nm
+drivers are loaded.
+The
+.Xr nata 4
+driver will pick up any ata-like devices which the
+.Nm
+driver misses.
+If the
+.Nm
+driver is disabled the
+.Xr nata 4
+driver will typically pick up the
+.Nm
+devices, albeit under the
+.Pa ad
+disk name rather than the
+.Pa da
+disk name.
+.Bd -literal -offset indent
+hint.ahci.disabled=1
+.Ed
+.Pp
+The
+.Nm
+driver can be told to force a lower-speed 1.5Gb link speed
+if necessary, and can also be told to refrain from attempting to send
+certain higher-level ATA commands to initialize ATA features which
+some devices might not properly implement.
+.Bd -literal -offset indent
+hint.ahci.force150=1
+hint.ahci.nofeatures=1
+.Ed
+.Sh SYSCTL VARIABLES
+Link power management can be set with the sysctl
+.Va hw.ahci%d.%d.link_pwr_mgmt
+to 0 for `disabled', 1 for `medium', and 2 for `aggressive'.
+Link power state can be read with the sysctl
+.Va hw.ahci%d.%d.link_pwr_state .
+.Sh SEE ALSO
+.Xr intro 4 ,
+.Xr nata 4 ,
+.Xr pci 4 ,
+.Xr scsi 4 ,
+.Xr sili 4 ,
+.Xr loader.conf 5
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Dx 2.3 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+driver was originally written by
+.An David Gwynne Aq dlg@openbsd.org
+and
+.An Christopher Pascoe Aq pascoe@openbsd.org
+for
+.Ox .
+.Pp
+It was ported to
+.Dx
+by
+.An Matt Dillon Aq dillon@apollo.backplane.com
+who added new features such as hot-plug and port multiplier support.

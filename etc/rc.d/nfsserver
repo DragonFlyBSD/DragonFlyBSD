@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# $FreeBSD: src/etc/rc.d/nfsserver,v 1.2 2002/10/12 10:31:31 schweikh Exp $
+# $DragonFly: src/etc/rc.d/nfsserver,v 1.4 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: nfsserver
+# REQUIRE: NETWORKING mountcritremote
+
+. /etc/rc.subr
+
+name="nfsserver"
+rcvar="nfs_server_enable"
+start_cmd="nfsserver_start"
+stop_cmd=":"
+
+# Load nfs modules if they were not compiled into the kernel
+nfsserver_start()
+{
+	if ! sysctl vfs.nfs >/dev/null 2>&1; then
+		if ! kldload nfs; then
+			warn 'Could not load NFS module'
+			return 1
+		fi
+	fi
+	return 0
+}
+
+load_rc_config $name
+run_rc_command "$1"

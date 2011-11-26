@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# $DragonFly: src/etc/rc.d/rndcontrol,v 1.2 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: rndcontrol
+# REQUIRE: DAEMON
+# BEFORE:  LOGIN
+
+. /etc/rc.subr
+
+name="rndcontrol"
+start_cmd="rand_start"
+
+rand_start()
+{
+	# interrupts for /dev/random device
+	#
+	case ${rand_irqs} in
+	[Nn][Oo] | '')
+		;;
+	*)
+		echo -n 'entropy IRQs:'
+		for irq in ${rand_irqs}; do
+			echo -n " ${irq}" && rndcontrol -q -s ${irq}
+		done
+		echo '.'
+		;;
+	esac
+}
+
+
+load_rc_config $name
+run_rc_command "$1"

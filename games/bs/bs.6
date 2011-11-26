@@ -1,0 +1,77 @@
+.\" $FreeBSD: src/games/bs/bs.6,v 1.1.1.1.12.1 2001/07/22 11:32:10 dd Exp $
+.\" $DragonFly: src/games/bs/bs.6,v 1.4 2008/05/02 02:05:03 swildner Exp $
+.Dd August 23, 1989
+.Dt BS 6
+.Os
+.Sh NAME
+.Nm bs
+.Nd battleships game
+.Sh SYNOPSIS
+.Nm
+.Op Fl bsc
+.Sh DESCRIPTION
+This program allows you to play the familiar Battleships game against the
+computer on a 10x10 board.
+The interface is visual and largely self-explanatory;
+you place your ships and pick your shots by moving the
+cursor around the
+.Sq sea
+with the
+.Xr rogue 6
+/
+.Xr hack 6
+motion keys
+.Dq hjklyubn .
+.Pp
+Note that when selecting a ship to place, you must type the capital letter
+(these are, after all, capital ships).
+During ship placement, the `r' command may be used to ignore the current
+position and randomly place your currently selected ship.
+The `R' command will place all remaining ships randomly.
+The \&^L command (form feed, ASCII 12) will force a screen redraw).
+.Pp
+The command-line arguments control game modes.
+.Bl -tag -width ".Fl b"
+.It Fl b
+selects a
+.Dq blitz
+variant
+.It Fl s
+selects a
+.Dq salvo
+variant
+.It Fl c
+permits ships to be placed adjacently
+.El
+.Pp
+The
+.Dq blitz
+variant allows a side to shoot for as long as it continues to score hits.
+.Pp
+The
+.Dq salvo
+game allows a player one shot per turn for each of his/her ships still afloat.
+This puts a premium scoring hits early and knocking out some
+ships and also makes much harder the situation where you face a superior force
+with only your PT-boat.
+.Pp
+Normally, ships must be separated by at least one square of open water.
+The
+.Fl c
+option disables this check and allows them to close-pack.
+.Pp
+The algorithm the computer uses once it has found a ship to sink is provably
+optimal.
+The dispersion criterion for the random-fire algorithm may not be.
+.Sh AUTHORS
+.An -nosplit
+Originally written by one
+.An Bruce Holloway
+in 1986.
+Salvo mode added by
+.An Chuck A. DeGaul Aq cbosgd!cad .
+Visual user interface,
+.Sq closepack
+option, code rewrite and manual page by
+.An Eric S. Raymond Aq esr@snark.thyrsus.com
+August 1989.

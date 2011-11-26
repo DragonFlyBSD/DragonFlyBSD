@@ -1,0 +1,650 @@
+.\"
+.\" swapcache - Cache clean filesystem data & meta-data on SSD-based swap
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.Dd February 7, 2010
+.Dt SWAPCACHE 8
+.Os
+.Sh NAME
+.Nm swapcache
+.Nd a mechanism to use fast swap to cache filesystem data and meta-data
+.Sh SYNOPSIS
+.Cd sysctl vm.swapcache.accrate=100000
+.Cd sysctl vm.swapcache.maxfilesize=0
+.Cd sysctl vm.swapcache.maxburst=2000000000
+.Cd sysctl vm.swapcache.curburst=4000000000
+.Cd sysctl vm.swapcache.minburst=10000000
+.Cd sysctl vm.swapcache.read_enable=0
+.Cd sysctl vm.swapcache.meta_enable=0
+.Cd sysctl vm.swapcache.data_enable=0
+.Cd sysctl vm.swapcache.use_chflags=1
+.Cd sysctl vm.swapcache.maxlaunder=256
+.Cd sysctl vm.swapcache.hysteresis=(vm.stats.vm.v_inactive_target/2)
+.Sh DESCRIPTION
+.Nm
+is a system capability which allows a solid state disk (SSD) in a swap
+space configuration to be used to cache clean filesystem data and meta-data
+in addition to its normal function of backing anonymous memory.
+.Pp
+Sysctls are used to manage operational parameters and can be adjusted at
+any time.
+Typically a large initial burst is desired after system boot,
+controlled by the initial
+.Va vm.swapcache.curburst
+parameter.
+This parameter is reduced as data is written to swap by the swapcache
+and increased at a rate specified by
+.Va vm.swapcache.accrate .
+Once this parameter reaches zero write activity ceases until it has
+recovered sufficiently for write activity to resume.
+.Pp
+.Va vm.swapcache.meta_enable
+enables the writing of filesystem meta-data to the swapcache.
+Filesystem
+metadata is any data which the filesystem accesses via the disk device
+using buffercache.
+Meta-data is cached globally regardless of file or directory flags.
+.Pp
+.Va vm.swapcache.data_enable
+enables the writing of clean filesystem file-data to the swapcache.
+Filesystem filedata is any data which the filesystem accesses via a
+regular file.
+In technical terms, when the buffer cache is used to access
+a regular file through its vnode.
+Please do not blindly turn on this option, see the
+.Sx PERFORMANCE TUNING
+section for more information.
+.Pp
+.Va vm.swapcache.use_chflags
+enables the use of the
+.Va cache
+and
+.Va noscache
+.Xr chflags 1
+flags to control which files will be data-cached.
+If this sysctl is disabled and
+.Va data_enable
+is enabled, the system will ignore file flags and attempt to
+swapcache all regular files.
+.Pp
+.Va vm.swapcache.read_enable
+enables reading from the swapcache and should be set to 1 for normal
+operation.
+.Pp
+.Va vm.swapcache.maxfilesize
+controls which files are to be cached based on their size.
+If set to non-zero only files smaller than the specified size
+will be cached.
+Larger files will not be cached.
+.Pp
+.Va vm.swapcache.maxlaunder
+controls the maximum number of clean VM pages which will be added to
+the swap cache and written out to swap on each poll.
+Swapcache polls ten times a second.
+.Pp
+.Va vm.swapcache.hysteresis
+controls how many pages swapcache waits to be added to the inactive page
+queue before continuing its scan.
+Once it decides to scan it continues subject to the above limitations
+until it reaches the end of the inactive page queue.
+This parameter is designed to make swapcache generate more bulky bursts
+to swap which helps SSDs reduce write amplification effects.
+.Sh PERFORMANCE TUNING
+Best operation is achieved when the active data set fits within the
+swapcache.
+.Pp
+.Bl -tag -width 4n -compact
+.It Va vm.swapcache.accrate
+This specifies the burst accumulation rate in bytes per second and
+ultimately controls the write bandwidth to swap averaged over a long
+period of time.
+This parameter must be carefully chosen to manage the write endurance of
+the SSD in order to avoid wearing it out too quickly.
+Even though SSDs have limited write endurance, there is massive
+cost/performance benefit to using one in a swapcache configuration.
+.Pp
+Let's use the Intel X25V 40GB MLC SATA SSD as an example.
+This device has approximately a
+40TB (40 terabyte) write endurance, but see later
+notes on this, it is more a minimum value.
+Limiting the long term average bandwidth to 100KB/sec leads to no more
+than ~9GB/day writing which calculates approximately to a 12 year endurance.
+Endurance scales linearly with size.
+The 80GB version of this SSD
+will have a write endurance of approximately 80TB.
+.Pp
+MLC SSDs have a 1000-10000x write endurance, while the lower density
+higher-cost SLC SSDs have a 10000-100000x write endurance, approximately.
+MLC SSDs can be used for the swapcache (and swap) as long as the system
+manager is cognizant of its limitations.
+.Pp
+.It Va vm.swapcache.meta_enable
+Turning on just
+.Va meta_enable
+causes only filesystem meta-data to be cached and will result
+in very fast directory operations even over millions of inodes
+and even in the face of other invasive operations being run
+by other processes.
+.Pp
+For
+.Nm HAMMER
+filesystems meta-data includes the B-Tree, directory entries,
+and data related to tiny files.
+Approximately 6 GB of swapcache is needed
+for every 14 million or so inodes cached, effectively giving one the
+ability to cache all the meta-data in a multi-terabyte filesystem using
+a fairly small SSD.
+.Pp
+.It Va vm.swapcache.data_enable
+Turning on
+.Va data_enable
+(with or without other features) allows bulk file data to be cached.
+This feature is very useful for web server operation when the
+operational data set fits in swap.
+However, care must be taken to avoid thrashing the swapcache.
+In almost all cases you will want to leave chflags mode enabled
+and use 'chflags cache' on governing directories to control which
+directory subtrees file data should be cached for.
+.Pp
+Vnode recycling can also cause problems.
+32-bit systems are typically limited to 100,000 cached vnodes and
+64-bit systems are typically limited to around 400,000 cached vnodes.
+When operating on a filesystem containing a large number of files
+vnode recycling by the kernel will cause related swapcache data
+to be lost and also cause potential thrashing of the swapcache.
+Cache thrashing due to vnode recyclement can occur whether chflags
+mode is used or not.
+.Pp
+To solve the thrashing problem you can turn on HAMMER's
+double buffering feature via
+.Va vfs.hammer.double_buffer .
+This causes HAMMER to cache file data via its block device.
+HAMMER cannot avoid also caching file data via individual vnodes
+but will try to expire the second copy more quickly (hence
+why it is called double buffer mode), but the key point here is
+that
+.Nm
+will only cache the data blocks via the block device when
+double_buffer mode is used and since the block device is associated
+with the mount it will not get recycled.
+This allows the data for any number (potentially millions) of files to
+be cached.
+You still should use chflags mode to control the size of the dataset
+being cached to remain under 75% of configured swap space.
+.Pp
+Data caching is definitely more wasteful of the SSD's write durability
+than meta-data caching.
+If not carefully managed the swapcache may exhaust its burst and smack
+against the long term average bandwidth limit, causing the SSD to wear
+out at the maximum rate you programmed.
+Data caching is far less wasteful and more efficient
+if (on a 64-bit system only) you provide a sufficiently large SSD.
+.Pp
+When caching large data sets you may want to use a medium-sized SSD
+with good write performance instead of a small SSD to accommodate
+the higher burst write rate data caching incurs and to reduce
+interference between reading and writing.
+Write durability also tends to scale with larger SSDs, but keep in mind
+that newer flash technologies use smaller feature sizes on-chip
+which reduce the write durability of the chips, so pay careful attention
+to the type of flash employed by the SSD when making durability
+assumptions.
+For example, an Intel X25-V only has 40MB/s in write performance
+and burst writing by swapcache will seriously interfere with
+concurrent read operation on the SSD.
+The 80GB X25-M on the otherhand has double the write performance.
+But the Intel 310 series SSDs use flash chips with a smaller feature
+size so an 80G 310 series SSD will wind up with a durability relative
+close to the older 40G X25-V.
+.Pp
+When data caching is turned on you generally always want swapcache's
+chflags mode enabled and use
+.Xr chflags 1
+with the
+.Va cache
+flag to enable data caching on a directory.
+This flag is tracked by the namecache and does not need to be
+recursively set in the directory tree.
+Simply setting the flag in a top level directory or mount point
+is usually sufficient.
+However, the flag does not track across mount points.
+A typical setup is something like this:
+.Pp
+.Dl chflags cache /etc /sbin /bin /usr /home
+.Dl chflags noscache /usr/obj
+.Pp
+It is possible to tell
+.Nm
+to ignore the cache flag by setting
+.Va vm.swapcache.use_chflags
+to zero, but it is not recommended.
+.Nm chflag Ns 'ing .
+.Pp
+Filesystems such as NFS which do not support flags generally
+have a
+.Va cache
+mount option which enables swapcache operation on the mount.
+.Pp
+.It Va vm.swapcache.maxfilesize
+This may be used to reduce cache thrashing when a focus on a small
+potentially fragmented filespace is desired, leaving the
+larger (more linearly accessed) files alone.
+.Pp
+.It Va vm.swapcache.minburst
+This controls hysteresis and prevents nickel-and-dime write bursting.
+Once
+.Va curburst
+drops to zero, writing to the swapcache ceases until it has recovered past
+.Va minburst .
+The idea here is to avoid creating a heavily fragmented swapcache where
+reading data from a file must alternate between the cache and the primary
+filesystem.
+Doing so does not save disk seeks on the primary filesystem
+so we want to avoid doing small bursts.
+This parameter allows us to do larger bursts.
+The larger bursts also tend to improve SSD performance as the SSD itself
+can do a better job write-combining and erasing blocks.
+.Pp
+.It Va vm_swapcache.maxswappct
+This controls the maximum amount of swapspace
+.Nm
+may use, in percentage terms.
+The default is 75%, leaving the remaining 25% of swap available for normal
+paging operations.
+.El
+.Pp
+It is important to note that you should always use
+.Xr disklabel64 8
+to label your SSD.
+Disklabel64 will properly align the base of the
+partition space relative to the physical drive regardless of how badly
+aligned the fdisk slice is.
+This will significantly reduce write amplification and write combining
+inefficiencies on the SSD.
+.Pp
+Finally, interleaved swap (multiple SSDs) may be used to increase
+performance even further.
+A single SATA-II SSD is typically capable of reading 120-220MB/sec.
+Configuring two SSDs for your swap will
+improve aggregate swapcache read performance by 1.5x to 1.8x.
+In tests with two Intel 40GB SSDs 300MB/sec was easily achieved.
+With two SATA-III SSDs it is possible to achieve 600MB/sec or better
+and well over 400MB/sec random-read performance (versus the ~3MB/sec
+random read performance a hard drive gives you).
+.Pp
+At this point you will be configuring more swap space than a 32 bit
+.Dx
+kernel can handle (due to KVM limitations).
+By default, 32 bit
+.Dx
+systems only support 32GB of configured swap and while this limit
+can be increased somewhat by using
+.Va kern.maxswzone
+in
+.Pa /boot/loader.conf
+(a setting of 96m == a maximum of 96GB of swap),
+you will quickly run out of KVM.
+Running a 64-bit system with its 512G maximum swap space default
+is preferable at that point.
+.Pp
+In addition there will be periods of time where the system is in
+steady state and not writing to the swapcache.
+During these periods
+.Va curburst
+will inch back up but will not exceed
+.Va maxburst .
+Thus the
+.Va maxburst
+value controls how large a repeated burst can be.
+Remember that
+.Va curburst
+dynamically tracks burst and will go up and down depending.
+.Pp
+A second bursting parameter called
+.Va vm.swapcache.minburst
+controls bursting when the maximum write bandwidth has been reached.
+When
+.Va minburst
+reaches zero write activity ceases and
+.Va curburst
+is allowed to recover up to
+.Va minburst
+before write activity resumes.
+The recommended range for the
+.Va minburst
+parameter is 1MB to 50MB.
+This parameter has a relationship to
+how fragmented the swapcache gets when not in a steady state.
+Large bursts reduce fragmentation and reduce incidences of
+excessive seeking on the hard drive.
+If set too low the
+swapcache will become fragmented within a single regular file
+and the constant back-and-forth between the swapcache and the
+hard drive will result in excessive seeking on the hard drive.
+.Sh SWAPCACHE SIZE & MANAGEMENT
+The swapcache feature will use up to 75% of configured swap space
+by default.
+The remaining 25% is reserved for normal paging operation.
+The system operator should configure at least 4 times the SWAP space
+versus main memory and no less than 8GB of swap space.
+If a 40GB SSD is used the recommendation is to configure 16GB to 32GB of
+swap (note: 32-bit is limited to 32GB of swap by default, for 64-bit
+it is 512GB of swap), and to leave the remainder unwritten and unused.
+.Pp
+The
+.Va vm_swapcache.maxswappct
+sysctl may be used to change the default.
+You may have to change this default if you also use
+.Xr tmpfs 5 ,
+.Xr vn 4 ,
+or if you have not allocated enough swap for reasonable normal paging
+activity to occur (in which case you probably shouldn't be using
+.Nm
+anyway).
+.Pp
+If swapcache reaches the 75% limit it will begin tearing down swap
+in linear bursts by iterating through available VM objects, until
+swap space use drops to 70%.
+The tear-down is limited by the rate at
+which new data is written and this rate in turn is often limited by
+.Va vm.swapcache.accrate ,
+resulting in an orderly replacement of cached data and meta-data.
+The limit is typically only reached when doing full data+meta-data
+caching with no file size limitations and serving primarily large
+files, or (on a 64-bit system) bumping
+.Va kern.maxvnodes
+up to very high values.
+.Sh NORMAL SWAP PAGING ACTIVITY WITH SSD SWAP
+This is not a function of
+.Nm
+per se but instead a normal function of the system.
+Most systems have
+sufficient memory that they do not need to page memory to swap.
+These types of systems are the ones best suited for MLC SSD
+configured swap running with a
+.Nm
+configuration.
+Systems which modestly page to swap, in the range of a few hundred
+megabytes a day worth of writing, are also well suited for MLC SSD
+configured swap.
+Desktops usually fall into this category even if they
+page out a bit more because swap activity is governed by the actions of
+a single person.
+.Pp
+Systems which page anonymous memory heavily when
+.Nm
+would otherwise be turned off are not usually well suited for MLC SSD
+configured swap.
+Heavy paging activity is not governed by
+.Nm
+bandwidth control parameters and can lead to excessive uncontrolled
+writing to the MLC SSD, causing premature wearout.
+You would have to use the lower density, more expensive SLC SSD
+technology (which has 10x the durability).
+This isn't to say that
+.Nm
+would be ineffective, just that the aggregate write bandwidth required
+to support the system would be too large for MLC flash technologies.
+.Pp
+With this caveat in mind, SSD based paging on systems with insufficient
+RAM can be extremely effective in extending the useful life of the system.
+For example, a system with a measly 192MB of RAM and SSD swap can run
+a -j 8 parallel build world in a little less than twice the time it
+would take if the system had 2GB of RAM, whereas it would take 5x to 10x
+as long with normal HD based swap.
+.Sh USING SWAPCACHE WITH NORMAL HARD DRIVES
+Although
+.Nm
+is designed to work with SSD-based storage it can also be used with
+HD-based storage as an aid for offloading the primary storage system.
+Here we need to make a distinction between using RAID for fanning out
+storage versus using RAID for redundancy.  There are numerous situations
+where RAID-based redundancy does not make sense.
+.Pp
+A good example would be in an environment where the servers themselves
+are redundant and can suffer a total failure without effecting
+ongoing operations.  When the primary storage requirements easily fit onto
+a single large-capacity drive it doesn't make a whole lot of sense to
+use RAID if your only desire is to improve performance.  If you had a farm
+of, say, 20 servers supporting the same facility adding RAID to each one
+would not accomplish anything other than to bloat your deployment and
+maintenance costs.
+.Pp
+In these sorts of situations it may be desirable and convenient to have
+the primary filesystem for each machine on a single large drive and then
+use the
+.Nm
+facility to offload the drive and make the machine more effective without
+actually distributing the filesystem itself across multiple drives.
+For the purposes of offloading while a SSD would be the most effective
+from a performance standpoint, a second medium sized HD with its much lower
+cost and higher capacity might actually be more cost effective.
+.Pp
+In cases where you might desire to use
+.Nm
+with a normal hard drive you should probably consider running a 64-bit
+.Dx
+instead of a 32-bit system.
+The 64-bit build is capable of supporting much larger swap configurations
+(upwards of 512G) and would be a more suitable match against a medium-sized
+HD.
+.Sh EXPLANATION OF STATIC VS DYNAMIC WEARING LEVELING, AND WRITE-COMBINING
+Modern SSDs keep track of space that has never been written to.
+This would also include space freed up via TRIM, but simply not
+touching a bit of storage in a factory fresh SSD works just as well.
+Once you touch (write to) the storage all bets are off, even if
+you reformat/repartition later.  It takes sending the SSD a
+whole-device TRIM command or special format command to take it back
+to its factory-fresh condition (sans wear already present).
+.Pp
+SSDs have wear leveling algorithms which are responsible for trying
+to even out the erase/write cycles across all flash cells in the
+storage.  The better a job the SSD can do the longer the SSD will
+remain usable.
+.Pp
+The more unused storage there is from the SSDs point of view the
+easier a time the SSD has running its wear leveling algorithms.
+Basically the wear leveling algorithm in a modern SSD (say Intel or OCZ)
+uses a combination of static and dynamic leveling.  Static is the
+best, allowing the SSD to reuse flash cells that have not been
+erased very much by moving static (unchanging) data out of them and
+into other cells that have more wear.  Dynamic wear leveling involves
+writing data to available flash cells and then marking the cells containing
+the previous copy of the data as being free/reusable.  Dynamic wear leveling
+is the worst kind but the easiest to implement.  Modern SSDs use a combination
+of both algorithms plus also do write-combining.
+.Pp
+USB sticks often use only dynamic wear leveling and have short life spans
+because of that.
+.Pp
+In anycase, any unused space in the SSD effectively makes the dynamic
+wear leveling the SSD does more efficient by giving the SSD more 'unused'
+space above and beyond the physical space it reserves beyond its stated
+storage capacity to cycle data throgh, so the SSD lasts longer in theory.
+.Pp
+Write-combining is a feature whereby the SSD is able to reduced write
+amplification effects by combining OS writes of smaller, discrete,
+non-contiguous logical sectors into a single contiguous 128KB physical
+flash block.
+.Pp
+On the flip side write-combining also results in more complex lookup tables
+which can become fragmented over time and reduce the SSDs read performance.
+Fragmentation can also occur when write-combined blocks are rewritten
+piecemeal.
+Modern SSDs can regain the lost performance by de-combining previously
+write-combined areas as part of their static wear leveling algorithm, but
+at the cost of extra write/erase cycles which slightly increase write
+amplification effects.
+Operating systems can also help maintain the SSDs performance by utilizing
+larger blocks.
+Write-combining results in a net-reduction
+of write-amplification effects but due to having to de-combine later and
+other fragmentary effects it isn't 100%.
+From testing with Intel devices write-amplification can be well controlled
+in the 2x-4x range with the OS doing 16K writes, versus a worst-case
+8x write-amplification with 16K blocks, 32x with 4K blocks, and a truly
+horrid worst-case with 512 byte blocks.
+.Pp
+The
+.Dx
+.Nm
+feature utilizes 64K-128K writes and is specifically designed to minimize
+write amplification and write-combining stresses.
+In terms of placing an actual filesystem on the SSD, the
+.Dx
+.Xr hammer 8
+filesystem utilizes 16K blocks and is well behaved as long as you limit
+reblocking operations.
+For UFS you should create the filesystem with at least a 4K fragment
+size, versus the default 2K.
+Modern Windows filesystems use 4K clusters but it is unclear how SSD-friendly
+NTFS is.
+.Sh EXPLANATION OF FLASH CHIP FEATURE SIZE VS ERASE/REWRITE CYCLE DURABILITY
+Manufacturers continue to produce flash chips with smaller feature sizes.
+Smaller flash cells means reduced erase/rewrite cycle durability which in
+turn reduces the durability of the SSD.
+.Pp
+The older 34nm flash typically had a 10,000 cell durability while the newer
+25nm flash is closer to 1000.  The newer flash uses larger ECCs and more
+sensitive voltage comparators on-chip to increase the durability closer to
+3000 cycles.  Generally speaking you should assume a durability of around
+1/3 for the same storage capacity using the new chips versus the older
+chips.  If you can squeeze out a 400TB durability from an older 40GB X25-V
+using 34nm technology then you should assume around a 400TB durability from
+a newer 120GB 310 series SSD using 25nm technology.
+.Sh WARNINGS
+I am going to repeat and expand a bit on SSD wear.
+Wear on SSDs is a function of the write durability of the cells,
+whether the SSD implements static or dynamic wear leveling (or both),
+write amplification effects when the OS does not issue write-aligned 128KB
+ops or when the SSD is unable to write-combine adjacent logical sectors,
+or if the SSD has a poor write-combining algorithm for non-adjacent sectors.
+In addition some additional erase/rewrite activity occurs from cleanup
+operations the SSD performs as part of its static wear leveling algorithms
+and its write-decombining algorithms (necessary to maintain performance over
+time).  MLC flash uses 128KB physical write/erase blocks while SLC flash
+typically uses 64KB physical write/erase blocks.
+.Pp
+The algorithms the SSD implements in its firmware are probably the most
+important part of the device and a major differentiator between e.g. SATA
+and USB-based SSDs.  SATA form factor drives will universally be far superior
+to USB storage sticks.
+SSDs can also have wildly different wearout rates and wildly different
+performance curves over time.
+For example the performance of a SSD which does not implement
+write-decombining can seriously degrade over time as its lookup
+tables become severely fragmented.
+For the purposes of this manual page we are primarily using Intel and OCZ
+drives when describing performance and wear issues.
+.Pp
+.Nm
+parameters should be carefully chosen to avoid early wearout.
+For example, the Intel X25V 40GB SSD has a minimum write durability
+of 40TB and an actual durability that can be quite a bit higher.
+Generally speaking, you want to select parameters that will give you
+at least 10 years of service life.
+The most important parameter to control this is
+.Va vm.swapcache.accrate .
+.Nm
+uses a very conservative 100KB/sec default but even a small X25V
+can probably handle 300KB/sec of continuous writing and still last 10 years.
+.Pp
+Depending on the wear leveling algorithm the drive uses, durability
+and performance can sometimes be improved by configuring less
+space (in a manufacturer-fresh drive) than the drive's probed capacity.
+For example, by only using 32GB of a 40GB SSD.
+SSDs typically implement 10% more storage than advertised and
+use this storage to improve wear leveling.
+As cells begin to fail
+this overallotment slowly becomes part of the primary storage
+until it has been exhausted.
+After that the SSD has basically failed.
+Keep in mind that if you use a larger portion of the SSD's advertised
+storage the SSD will not know if/when you decide to use less unless
+appropriate TRIM commands are sent (if supported), or a low level
+factory erase is issued.
+.Pp
+.Nm smartctl
+(from pkgsrc's sysutils/smartmontools) may be used to retrieve
+the wear indicator from the drive.
+One usually runs something like
+.Ql smartctl -d sat -a /dev/daXX
+(for AHCI/SILI/SCSI), or
+.Ql smartctl -a /dev/adXX
+for NATA.
+Some SSDs
+(particularly the Intels) will brick the SATA port when smart operations
+are done while the drive is busy with normal activity, so the tool should
+only be run when the SSD is idle.
+.Pp
+ID 232 (0xe8) in the SMART data dump indicates available reserved
+space and ID 233 (0xe9) is the wear-out meter.
+Reserved space
+typically starts at 100 and decrements to 10, after which the SSD
+is considered to operate in a degraded mode.
+The wear-out meter typically starts at 99 and decrements to 0,
+after which the SSD has failed.
+.Pp
+.Nm
+tends to use large 64KB writes and tends to cluster multiple writes
+linearly.
+The SSD is able to take significant advantage of this
+and write amplification effects are greatly reduced.
+If we take a 40GB Intel X25V as an example the vendor specifies a write
+durability of approximately 40TB, but
+.Nm
+should be able to squeeze out upwards of 200TB due the fairly optimal
+write clustering it does.
+The theoretical limit for the Intel X25V is 400TB (10,000 erase cycles
+per MLC cell, 40GB drive, with 34nm technology), but the firmware doesn't
+do perfect static wear leveling so the actual durability is less.
+In tests over several hundred days we have validated a write endurance
+greater than 200TB on the 40G Intel X25V using
+.Nm .
+.Pp
+In contrast, filesystems directly stored on a SSD could have
+fairly severe write amplification effects and will have durabilities
+ranging closer to the vendor-specified limit.
+.Pp
+Power-on hours, power cycles, and read operations do not really affect wear.
+There is something called read-disturb but it is unclear what sort of
+ratio would be needed.  Since the data is cached in ram and thus not
+re-read at a high rate there is no expectation of a practical effect.
+For all intents and purposes only write operations effect wear.
+.Pp
+SSD's with MLC-based flash technology are high-density, low-cost solutions
+with limited write durability.
+SLC-based flash technology is a low-density,
+higher-cost solution with 10x the write durability as MLC.
+The durability also scales with the amount of flash storage.
+SLC based flash is typically
+twice as expensive per gigabyte.
+From a cost perspective, SLC based flash
+is at least 5x more cost effective in situations where high write
+bandwidths are required (because it lasts 10x longer).
+MLC is at least 2x more cost effective in situations where high
+write bandwidth is not required.
+When wear calculations are in years, these differences become huge, but
+often the quantity of storage needed trumps the wear life so we expect most
+people will be using MLC.
+.Nm
+is usable with both technologies.
+.Sh SEE ALSO
+.Xr chflags 1 ,
+.Xr fstab 5 ,
+.Xr disklabel64 8 ,
+.Xr hammer 8 ,
+.Xr swapon 8
+.Sh HISTORY
+.Nm
+first appeared in
+.Dx 2.5 .
+.Sh AUTHORS
+.An Matthew Dillon

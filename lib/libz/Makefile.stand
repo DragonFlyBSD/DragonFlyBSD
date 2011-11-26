@@ -1,0 +1,11 @@
+# $DragonFly: src/lib/libz/Makefile.stand,v 1.4 2005/07/21 16:07:41 joerg Exp $
+
+# decompression functionality from libz for libstand
+
+# relative to lib/libstand
+ZLIBDIR= ${.CURDIR}/../../contrib/zlib-1.2
+.PATH: ${ZLIBDIR}
+
+CFLAGS+=-DCOMPILING_LIBSTAND -I${ZLIBDIR}
+SRCS+=	adler32.c crc32.c deflate.c infback.c inffast.c inflate.c \
+	inftrees.c zutil.c

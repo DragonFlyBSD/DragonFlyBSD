@@ -1,0 +1,74 @@
+#!/bin/sh
+#
+# Copyright (c) 2000  The FreeBSD Project
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+#
+#	@(#)rc	5.27 (Berkeley) 6/5/91
+# $FreeBSD: src/etc/rc,v 1.329 2003/05/02 05:27:33 dougb Exp $
+# $DragonFly: src/etc/rc,v 1.4 2005/11/19 18:34:02 joerg Exp $
+#
+
+# System startup script run by init on autoboot or after single-user.
+# Output and error are redirected to console by init,
+# and the console is the controlling terminal.
+
+# Note user-configurable behavior is no longer in this file, but rather in
+# /etc/rc.conf, $local_startup/*, /etc/rc.local and /etc/rc.shutdown.local.
+
+stty status '^T'
+
+# Set shell to ignore SIGINT (2), but not children;
+# shell catches SIGQUIT (3) and returns to single user after fsck.
+#
+trap : 2
+trap : 3	# shouldn't be needed
+
+HOME=/
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+export HOME PATH
+
+. /etc/rc.subr
+
+# Note: the system configuration files are loaded as part of
+# the RCNG system (rc.d/rccond).  Do not load them here as it may
+# interfere with diskless booting.
+#
+if [ "$1" = autoboot ]; then
+	autoboot=yes
+	_boot="faststart"
+	rc_fast=yes        # run_rc_command(): do fast booting
+else
+	autoboot=no
+	_boot="start"
+fi
+
+files=`rcorder -s nostart /etc/rc.d/* 2>/dev/null`
+
+for _rc_elem in ${files}; do
+	run_rc_script ${_rc_elem} ${_boot}
+done
+
+echo ''
+date
+exit 0

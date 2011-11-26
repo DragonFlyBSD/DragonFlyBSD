@@ -1,0 +1,182 @@
+.\"-
+.\" Copyright (c) 2002 Chad David
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/usr.bin/ktrdump/ktrdump.8,v 1.7 2005/03/08 06:58:56 hmp Exp $
+.\"
+.Dd November 9, 2008
+.Dt KTRDUMP 8
+.Os
+.Sh NAME
+.Nm ktrdump
+.Nd print kernel ktr trace buffer
+.Sh SYNOPSIS
+.Nm
+.Op Fl acdfilnpqrstx
+.Op Fl A Ar factor
+.Op Fl N Ar execfile
+.Op Fl M Ar corefile
+.Op Fl o Ar outfile
+.Sh DESCRIPTION
+The
+.Nm
+utility is used to dump the contents of the kernel ktr trace buffer.
+.Pp
+The following options are available:
+.Bl -tag -width ".Fl N Ar execfile"
+.It Fl a
+Print most fields.
+Implies
+.Fl c
+.Fl i
+.Fl x
+.Fl p
+.Fl r ,
+and
+.Fl s .
+Note that
+.Fl f
+is not included.
+.It Fl c
+Print the CPU number that each entry was logged from.
+.It Fl d
+Dump an event stream to the file specified with
+.Fl o .
+This stream can be examined with
+.Xr evtranalyze 1 .
+.It Fl f
+Print the file and line number that each entry was logged from.
+.It Fl i
+Print the ID string field, identifying the facility being logged.
+.It Fl l
+.Nm
+will loop waiting for new data rather than exit.
+.It Fl n
+.Nm
+normally tries to translate the caller fields and (when easily parsed)
+trace arguments into symbols.
+This option forces hex values to be displayed instead.
+This option will also cause relative timestamps to
+be displayed as TSC timestamps rather than converted to microseconds.
+.It Fl p
+Print the trace data.
+.It Fl q
+Quiet mode; do not print the column header.
+.It Fl r
+Print relative timestamps in microseconds, rather than absolute TSC
+timestamps.
+.It Fl s
+Attempt to merge the KTR logs for all cpus into a single time-sorted
+log.
+For the numbers to make any sense you probably want to turn on the
+.Va debug.ktr.resynchronize
+.Xr sysctl 3
+variable.
+This sysctl causes the kernel to periodically
+calculate the drift between each CPU's TSC and apply a correction.
+.It Fl t
+Print the timestamp for each entry.
+.It Fl x
+Print the call chain leading up to the procedure which issued
+the KTR.
+.It Fl A Ar factor
+Specify a correction factor to be applied to attempt to remove the
+overhead of the KTR logging call itself.
+.It Fl N Ar execfile
+The kernel image to resolve symbols from.
+The default is the value returned via
+.Xr getbootfile 3 .
+.It Fl M Ar corefile
+The core file or memory image to read from.
+The default is
+.Pa /dev/mem .
+.It Fl o Ar outfile
+The file to write the output to.
+The default is standard output.
+.El
+.Sh OPERATIONAL NOTES
+Users of
+.Nm
+should keep in mind that the act of trace logging will itself affect
+execution overheads.
+On a 2Ghz cpu a logging call can take anywhere from 40ns to 150ns to run.
+.Pp
+The TSC counter is used on cpus equipped with it (which is all modern cpus).
+The TSC counters may not be synchronized on SMP systems and may drift even
+between cores on multi-core cpus.
+Enabling synchronization between cpus via the
+.Va debug.ktr.resynchronize
+sysctl will impose additional system overheads and will generally only be
+accurate to within 100ns or so (and perhaps not even that good).
+Resynchronization only occurs 10 times a second and serious drift will
+cause a great deal of measurement noise when trying to compare events occurring
+on two different cpus.
+.Pp
+Users using the
+.Fl s
+option should be aware that events for each cpu are independently logged
+and one cpu might have more events logged then another, causing earlier
+events to be discarded sooner than other cpus.
+The beginning portion of
+the sorted output may thus show MP related events for one cpu with no
+corresponding events for other cpus.
+.Pp
+It is possible to somewhat characterize KTR logging overheads by setting
+the
+.Va debug.ktr.testlogcnt
+sysctl and then observing test logging events in the KTR output.
+Tests 1-3 log four dummy arguments while tests 4-6 log no arguments.
+.Pp
+It is possible to characterize IPI messaging latencies by setting the
+.Va debug.ktr.testipicnt
+sysctl.
+A small number between 1 and 1000 is recommended.
+This will
+cause the system to ping pong a single IPI message between cpu 0 and cpu 1
+asynchronously that number of times, as fast as it can.
+A
+.Nm
+should be performed almost immediately after setting the sysctl or you
+might miss the logged events.
+.Sh SEE ALSO
+.Xr ktr 4 ,
+.Xr ktr 9
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Fx 5.0 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+utility was originally implemented by
+.An Jake Burkholder Aq jake@FreeBSD.org .
+This manual page was originally written by
+.An Chad David Aq davidc@FreeBSD.org .
+The program and manual page were rewritten pretty much from
+scratch by
+.An Matthew Dillon
+for
+.Dx .

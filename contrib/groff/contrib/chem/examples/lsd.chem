@@ -1,0 +1,51 @@
+lsd.chem:
+.cstart
+
+# Example file for `chem':
+#   LSD or Lysergic acid dethylamide or C20_H25_N3O or
+#   9,10-Didehydro-N,N-diethyl-6-methyl-ergoline-8-beta-carboxamide
+
+# Source file position: <groff-source>/contrib/chem/example/lsd.p
+# Installed position: <prefix>/share/doc/groff/example/chem/lsd.p
+
+# Copyright (C) 2006, 2009 Free Software Foundation, Inc.
+# Written by Bernd Warken.
+
+# Last update: 5 Jan 2009
+
+# This file is part of `chem', which is part of `groff'.
+
+# `groff' is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# `groff' is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+F:	flatring5 pointing left put N at 5 double 3,4
+	H below F.N
+B:	benzene pointing right with .V1 at F.V2
+R1:	ring pointing right with .V4 at B.V6
+	front bond right from R1.V6 ; H
+R2:	ring pointing right with .V2 at R1.V6 put N at 1 double 3,4
+	bond right from R2.N
+	back bond -60 from R2.V5 ; H
+	bond up from R2.V5
+B1:	double bond up ; O
+        bond right from B1.start ; N
+        bond 45
+	bond right
+        bond 135 from N
+	bond right
+
+### Emacs settings
+# Local Variables:
+# mode: Nroff
+# End:
+.cend

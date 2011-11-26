@@ -1,0 +1,3 @@
+# The cpu type
+#
+HAMMER_CPU              opt_global.h

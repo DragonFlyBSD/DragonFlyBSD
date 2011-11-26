@@ -1,0 +1,79 @@
+# This file tells config what files go into building a kernel,
+# files marked standard are always included.
+#
+# $DragonFly: src/sys/platform/vkernel/conf/files,v 1.21 2008/03/20 02:14:52 dillon Exp $
+#
+crypto/blowfish/bf_enc.c		optional	ipsec ipsec_esp
+crypto/des/des_enc.c			optional	ipsec ipsec_esp
+crypto/des/des_ecb.c			optional	netsmbcrypto
+crypto/des/des_enc.c			optional	netsmbcrypto
+crypto/des/des_setkey.c			optional	netsmbcrypto
+crypto/blowfish/bf_enc.c		optional	crypto
+crypto/des/des_enc.c			optional	crypto
+crypto/des/des_ecb.c			optional	crypto
+crypto/des/des_setkey.c			optional	crypto
+emulation/dragonfly12/dfbsd12_getdirentries.c	optional	compat_df12
+emulation/dragonfly12/dfbsd12_stat.c		optional	compat_df12
+kern/link_elf_obj.c		standard
+vfs/smbfs/smbfs_io.c		optional	smbfs
+vfs/smbfs/smbfs_node.c		optional	smbfs
+vfs/smbfs/smbfs_smb.c		optional	smbfs
+vfs/smbfs/smbfs_subr.c		optional	smbfs
+vfs/smbfs/smbfs_vfsops.c	optional	smbfs
+vfs/smbfs/smbfs_vnops.c		optional	smbfs
+cpu/x86_64/misc/atomic.c	standard				\
+	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+platform/vkernel64/x86_64/autoconf.c	standard
+platform/vkernel64/x86_64/mp.c		optional	smp		\
+	compile-with	"${CC} -c -pthread ${CFLAGS} -I/usr/include ${.IMPSRC}"
+#
+# DDB XXX
+cpu/x86_64/misc/elf_machdep.c		standard
+cpu/x86_64/misc/lwbuf.c			standard
+cpu/x86_64/misc/in_cksum2.s		optional	inet
+cpu/x86_64/misc/monitor.s		standard
+cpu/x86_64/misc/ktr.c			optional	ktr
+cpu/x86_64/misc/db_disasm.c		optional	ddb
+cpu/x86_64/misc/x86_64-gdbstub.c	optional	ddb
+cpu/x86_64/misc/bzeront.s		standard
+
+#
+# DOS mbr and gpt
+kern/subr_diskmbr.c			standard
+kern/subr_diskgpt.c			standard
+
+# DEVICES
+#
+dev/virtual/cdrom/vcd.c			optional	vcd
+dev/virtual/disk/vdisk.c		optional	vkd
+dev/virtual/net/if_vke.c		optional	vke
+
+# PLATFORM FILES
+#
+platform/vkernel64/x86_64/global.s		standard
+platform/vkernel64/x86_64/swtch.s		standard
+platform/vkernel64/x86_64/npx.c		standard
+platform/vkernel64/x86_64/db_interface.c	optional	ddb
+platform/vkernel64/x86_64/db_trace.c	optional	ddb
+platform/vkernel64/x86_64/vm_machdep.c	standard
+platform/vkernel64/x86_64/cpu_regs.c	standard
+platform/vkernel64/x86_64/userldt.c		standard
+platform/vkernel64/x86_64/tls.c		standard
+platform/vkernel64/x86_64/trap.c	standard
+platform/vkernel64/x86_64/exception.c	standard
+platform/vkernel64/x86_64/procfs_machdep.c	standard
+platform/vkernel64/x86_64/fork_tramp.s	standard
+platform/vkernel64/platform/init.c	standard
+platform/vkernel64/platform/globaldata.c	standard
+platform/vkernel64/platform/kqueue.c	standard
+platform/vkernel64/platform/shutdown.c	standard
+platform/vkernel64/platform/machintr.c	standard
+platform/vkernel64/platform/copyio.c	standard
+platform/vkernel64/platform/pmap.c	standard
+platform/vkernel64/platform/pmap_inval.c	standard
+platform/vkernel64/platform/busdma_machdep.c standard
+platform/vkernel64/platform/sysarch.c	standard
+platform/vkernel64/platform/systimer.c	standard
+platform/vkernel64/platform/console.c	standard
+platform/vkernel64/platform/ipl_funcs.c	standard
+platform/vkernel64/platform/cothread.c	standard

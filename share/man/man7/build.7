@@ -1,0 +1,264 @@
+.\" Copyright (c) 2000
+.\"	Mike W. Meyer
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
+.\" $DragonFly: src/share/man/man7/build.7,v 1.18 2008/11/14 15:04:42 swildner Exp $
+.\"
+.Dd April 12, 2009
+.Dt BUILD 7
+.Os
+.Sh NAME
+.Nm build
+.Nd information on how to build the system
+.Sh DESCRIPTION
+The source for the
+.Dx
+system and applications is located in
+.Pa /usr/src .
+This directory contains the
+.Dq "base system"
+sources, which is loosely defined as the things required to rebuild
+the system to a useful state.
+It also contains the source for the system documentation, including
+manual pages.
+Refer to
+.Xr development 7
+for more information on how to obtain the
+.Dx
+sources.
+.Pp
+Third party applications have to be built using the
+.Xr pkgsrc 7
+system.
+The file
+.Pa /usr/src/UPDATING
+gives specifics on how to obtain the tree for building packages.
+.Pp
+The
+.Xr make 1
+command is used in
+.Pa /usr/src
+to build and install the things in that directory.
+Issuing the
+.Xr make 1
+command in any directory or
+subdirectory of those directories has the same effect as issuing the
+same command in all subdirectories of that directory.
+With no target specified, the things in that directory are just built.
+The following list provides the names and actions for other targets:
+.Bl -tag -width ".Cm install"
+.It Cm clean
+Removes any files created during the build process.
+.It Cm install
+Installs the results of the build for this directory.
+.El
+.Pp
+The other
+.Pa /usr/src
+make targets are:
+.Bl -tag -width ".Cm reinstallkernel"
+.It Cm buildworld
+Rebuild everything but the kernel.
+.It Cm quickworld
+Same as
+.Cm buildworld ,
+but skip bootstrap, build and cross-build tool steps.
+This target can be used for incremental upgrades once a full build of the
+world has been done with
+.Cm buildworld .
+.It Cm realquickworld
+Same as
+.Cm quickworld ,
+but also skip the depend step.
+.It Cm crossworld
+Just do the bootstrap, build and cross-build steps.
+.It Cm installworld
+Install everything built by
+.Cm buildworld .
+.It Cm world
+.Cm buildworld +
+.Cm installworld .
+.It Cm buildkernel
+Rebuild the kernel and the kernel-modules.
+.It Cm nativekernel
+Rebuild the kernel and the kernel-modules using native tools.
+.It Cm quickkernel
+Same as
+.Cm buildkernel ,
+but skip the depend step and do not clean out the
+obj modules.
+This target can be used for incremental upgrades once a full
+build of the kernel has been done with
+.Cm buildkernel .
+.It Cm installkernel
+Install the kernel and the kernel-modules.
+.It Cm reinstallkernel
+Reinstall the kernel and the kernel-modules.
+.It Cm kernel
+.Cm buildkernel +
+.Cm installkernel .
+.It Cm preupgrade
+Perform certain upgrades that have to be done before
+.Cm installworld .
+.Cm installworld
+will complain if they have not been done.
+.It Cm upgrade
+Upgrade the files in /etc and also setup the rest of the system for
+the version of
+.Dx
+just installed.
+.It Cm most
+Build user commands, no libraries or include files.
+.It Cm installmost
+Install user commands, no libraries or include files.
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width ".Ev MAKEOBJDIRPREFIX"
+.It Ev TARGET_ARCH , TARGET_PLATFORM
+The target machine processor architecture and hardware platform.
+These have to be set for cross-building.
+.Ev TARGET_ARCH
+is analogous to the
+.Dq Nm uname Fl p
+output.
+To build for the 32 bit
+.Tn Intel
+architecture known as IA-32, x86 or x86-32, use:
+.Bd -literal -offset indent
+TARGET_ARCH=i386
+TARGET_PLATFORM=pc32
+.Ed
+.Pp
+For the 64 bit
+.Tn AMD
+architecture known as AMD64, x86-64 or Intel 64, use:
+.Bd -literal -offset indent
+TARGET_ARCH=x86_64
+TARGET_PLATFORM=pc64
+.Ed
+.It Ev DESTDIR
+An existing directory to be the root of
+the hierarchy where the resulting binaries will be
+installed (the default is
+.Pa / ) .
+.It Ev MAKEOBJDIRPREFIX
+The directory hierarchy where the object files will be built (the default is
+.Pa /usr/obj ) .
+.It Ev __MAKE_CONF
+Used to override the path of
+.Xr make.conf 5
+(the default is
+.Pa /etc/make.conf ) .
+.It Ev KERNCONF
+The name of the kernel configuration file from which the kernel should
+be built (the default is
+.Li GENERIC ) .
+.It Ev KERNCONFDIR
+The directory where the kernel configuration files are kept (the default is
+.Pa /usr/src/sys/config ) .
+.It Ev DESTLABEL
+Common suffix added to kernel and modules directory names, prefixed by
+a single dot.  For example,
+.Bd -literal -offset indent
+make DESTLABEL=test installkernel
+.Ed
+.Pp
+installs them as
+.Pa /boot/kernel.test
+and
+.Pa /boot/modules.test ,
+respectively.
+.It Ev DESTKERNDIR
+Where to install the kernel and the modules (the default is
+.Pa /boot ) ,
+in the directory hierarchy specified by the environment variable
+.Ev DESTDIR .
+.It Ev DESTKERNNAME
+The name of the installed kernel file (the default is
+.Pa kernel ) ,
+under the directory specified by
+.Ev DESTKERNDIR .
+This overrides the effect of
+.Ev DESTLABEL .
+.It Ev DESTMODULESNAME
+The name of the directory to install the kernel modules (the default is
+.Pa modules ) ,
+under the directory specified by
+.Ev DESTKERNDIR .
+This overrides the effect of
+.Ev DESTLABEL .
+.El
+.Sh FILES
+.Bl -tag -width ".Pa /usr/src/Makefile_upgrade.inc" -compact
+.It Pa /etc/make.conf
+.It Pa /etc/defaults/make.conf
+.It Pa /usr/src/share/doc/Makefile
+.It Pa /usr/src/Makefile
+.It Pa /usr/src/Makefile.inc1
+.It Pa /usr/src/Makefile_upgrade.inc
+.El
+.Sh EXAMPLES
+The
+.Dq approved
+method of updating your system from the latest sources is:
+.Bd -literal -offset indent
+make buildworld
+make buildkernel KERNCONF=FOO
+make installkernel KERNCONF=FOO
+make installworld
+make upgrade
+.Ed
+.Pp
+After running these commands a system reboot is required,
+otherwise many programs which have been rebuilt (such as
+.Xr ps 1 ,
+.Xr top 1 ,
+etc.) may not work with the old kernel which is still running.
+.Sh CAVEATS
+The build and install order in the
+.Sx EXAMPLES
+section enforces that the new kernel is installed before the new
+world.
+Sometimes it might be necessary to reboot the system between those two
+steps.
+In this case
+.Dq Nm make Cm installworld
+will tell you to do so.
+.Sh SEE ALSO
+.Xr cc 1 ,
+.Xr install 1 ,
+.Xr make 1 ,
+.Xr wmake 1 ,
+.Xr make.conf 5 ,
+.Xr development 7 ,
+.Xr pkgsrc 7 ,
+.Xr release 7 ,
+.Xr config 8 ,
+.Xr reboot 8 ,
+.Xr shutdown 8
+.Sh AUTHORS
+.An -nosplit
+.An Mike W. Meyer Aq mwm@mired.org
+and
+.An Sascha Wildner Aq swildner@gmail.com .

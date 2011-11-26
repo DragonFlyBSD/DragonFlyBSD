@@ -1,0 +1,31 @@
+#!/bin/sh
+# PROVIDE: udevd
+# REQUIRE: mountcritlocal
+
+. /etc/rc.subr
+
+name="udevd"
+rcvar=`set_rcvar`
+pidfile="/var/run/${name}.pid"
+command="/sbin/${name}"
+start_cmd="udevd_start"
+
+udevd_start()
+{
+	# Avoid doing the hangup+resume maneuver if udevd is
+	# already running normally.
+	if [ ! -e /var/run/udevd.pid ]; then
+		killall -HUP udevd &> /dev/null
+		sleep 1
+	fi
+
+	# If udevd was running before but its stuff was under
+	# the mountpoints, it now should be in place and there
+	# is no need to run it again.
+	if [ ! -e /var/run/udevd.pid ]; then
+		$command
+	fi
+}
+
+load_rc_config $name
+run_rc_command "$1"

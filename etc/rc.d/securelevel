@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# $NetBSD: securelevel,v 1.4 2002/03/22 04:34:00 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/securelevel,v 1.6 2003/05/05 15:38:41 mtm Exp $
+# $DragonFly: src/etc/rc.d/securelevel,v 1.5 2006/10/24 09:24:15 victor Exp $
+#
+
+# PROVIDE: securelevel
+
+. /etc/rc.subr
+
+name="securelevel"
+start_cmd="securelevel_start"
+stop_cmd=":"
+
+securelevel_start()
+{
+	# Last chance to set sysctl variables that failed the first time.
+	#
+	/etc/rc.d/sysctl lastload
+
+	case ${kern_securelevel} in
+	[0-3]*)
+		if [ ${kern_securelevel} -ge 0 ]; then
+			echo 'Raising kernel security level: '
+			${SYSCTL_W} kern.securelevel=${kern_securelevel}
+		fi
+		;;
+	esac
+}
+
+load_rc_config $name
+run_rc_command "$1"

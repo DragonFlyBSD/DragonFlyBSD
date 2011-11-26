@@ -1,0 +1,31 @@
+# $FreeBSD: src/include/rpc/Makefile,v 1.2 2002/05/12 16:00:48 ru Exp $
+# $DragonFly: src/include/rpc/Makefile,v 1.2 2003/06/17 04:25:58 dillon Exp $
+
+.SUFFIXES: .x
+
+RPCCOM = rpcgen -C
+
+HDRS=	rpcb_prot.h
+
+XFILES= rpcb_prot.x
+
+HFILES=	auth.h auth_unix.h clnt.h clnt_soc.h clnt_stat.h \
+	nettype.h pmap_clnt.h pmap_prot.h pmap_rmt.h raw.h \
+	rpc.h rpc_msg.h rpcb_clnt.h rpcent.h rpc_com.h \
+	svc.h svc_auth.h svc_soc.h svc_dg.h types.h xdr.h
+
+# Secure RPC
+HFILES+= auth_des.h des.h des_crypt.h
+
+# Kerberos
+HFILES+= auth_kerb.h
+
+CLEANFILES+= ${HDRS}
+
+INCS=	${HFILES} ${XFILES} ${HDRS}
+INCSDIR=${INCLUDEDIR}/rpc
+
+.x.h:
+	${RPCCOM} -h -DWANT_NFS3 ${.IMPSRC} -o ${.TARGET}
+
+.include <bsd.prog.mk>

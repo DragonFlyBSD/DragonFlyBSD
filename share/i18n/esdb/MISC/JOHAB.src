@@ -1,0 +1,10 @@
+# $NetBSD: JOHAB.src,v 1.1 2006/10/18 17:54:55 tnozaki Exp $
+# $DragonFly: src/share/i18n/esdb/MISC/JOHAB.src,v 1.1 2008/04/10 10:21:13 hasso Exp $
+
+NAME		"JOHAB"
+ENCODING	"JOHAB"
+VARIABLE	""
+DEFCSID		"ISO646-KR"		0
+DEFCSID		"JOHAB"			1
+DEFCSID		"KSC5601HANJA"		2
+INVALID		0x3F # '?'

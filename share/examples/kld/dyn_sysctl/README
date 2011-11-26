@@ -1,0 +1,9 @@
+This example module creates partially overlapping subtrees to demonstrate
+reference counting. It also contains example of attaching a subtree to the
+wrong place, i.e. to a dynamic oid that could belong to someone else.
+The framework should deal with this case gracefully.
+
+Andrzej Bialecki <abial@freebsd.org>
+
+$FreeBSD: src/share/examples/kld/dyn_sysctl/README,v 1.1.2.1 2000/09/25 12:09:19 ps Exp $
+$DragonFly: src/share/examples/kld/dyn_sysctl/README,v 1.2 2003/06/17 04:36:57 dillon Exp $

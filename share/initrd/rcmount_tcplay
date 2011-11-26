@@ -1,0 +1,28 @@
+#!/bin/sh
+
+if [ ! -x /sbin/tcplay ]; then
+	return 1;
+fi
+
+FSTYPE=$2
+MOUNTFROM=$3
+VOLUME=$4
+OPTIONS=$5
+
+# Make sure that MOUNTFROM starts with /dev/
+substr="${MOUNTFROM##/dev/}"
+if [ "$substr" = "$MOUNTFROM" ]; then
+	MOUNTFROM="/dev/$MOUNTFROM"
+fi
+
+# Open crypto volume
+/sbin/tcplay -m $VOLUME -d $MOUNTFROM $OPTIONS
+if [ "$?" -ne "0" ]; then
+	return 2;
+fi
+
+# Mount, as is expected, onto /new_root
+mount -o ro -t $FSTYPE /dev/mapper/$VOLUME /new_root
+if [ "$?" -ne "0" ]; then
+	return 3;
+fi

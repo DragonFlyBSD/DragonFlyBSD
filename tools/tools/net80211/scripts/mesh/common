@@ -1,0 +1,13 @@
+#! /bin/sh
+#
+# Common setup.
+#
+# $FreeBSD: src/tools/tools/net80211/scripts/mesh/common,v 1.1 2009/07/11 15:02:45 rpaulo Exp $
+#
+PATH=../:.:$PATH
+. config
+. config.mesh
+
+WLAN=`ifconfig wlan create wlanmode mesh wlandev $WIRELESS`
+ifconfig $WLAN meshid $MESHID channel $CHANNEL mtu 1500
+wlandebug -i $WLAN mesh+hwmp+state+scan+assoc

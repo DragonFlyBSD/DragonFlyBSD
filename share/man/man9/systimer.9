@@ -1,0 +1,101 @@
+.\"
+.\" Copyright (c) 2010, The DragonFly Project.
+.\"
+.\" This software is derived from software contributed to the DragonFly Project
+.\" by Venkatesh Srinivas <me@endeavour.zapto.org>.
+.\"
+.\" Permission to use, copy, modify, or distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR OTHER DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA, OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE, OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd August 19, 2010
+.Dt SYSTIMER 9
+.Os
+.Sh NAME
+.Nm systimer_init_periodic ,
+.Nm systimer_init_periodic_nq ,
+.Nm systimer_adjust_periodic ,
+.Nm systimer_init_oneshot
+.Nd periodic callbacks
+.Sh SYNOPSIS
+.In sys/systimer.h
+.Ft void
+.Fn systimer_init_periodic "systimer_t info" "void *func" "void *data" "int hz"
+.Ft void
+.Fn systimer_init_periodic_nq "systimer_t info" "void *func" "void *data" "int hz"
+.Ft void
+.Fn systimer_adjust_periodic "systimer_t info" "int hz"
+.Ft void
+.Fn systimer_init_oneshot "systimer_t info" "void *func" "void *data" "int us"
+.Sh DESCRIPTION
+Systimers invoke callbacks at either fixed frequencies or after time delays.
+The callbacks are invoked in an interrupt thread and should only be used
+for limited work.
+.Pp
+The
+.Fn systimer_init_periodic
+function initializes a systimer callback function to be called at frequency
+.Fa hz .
+The
+.Fa info
+argument is an allocated systimer structure; the
+.Fa func
+argument is the function to call, with argument
+.Fa data .
+.Pp
+The
+.Fn systimer_init_periodic_nq
+function initializes a systimer callback function to be called at a frequency
+.Fa hz .
+Unlike the
+.Fn systimer_init_periodic
+function, the
+.Fn systimer_init_periodic_nq
+function's callback is only called once at a given time, even if delays caused
+multiple time intervals to have occurred.
+.Pp
+The
+.Fn systimer_adjust_periodic
+function changes the frequency at which a systimer's callback is invoked.
+The
+current time interval is not affected.
+The
+.Fa hz
+argument specifies the new frequency.
+.Pp
+The
+.Fn systimer_init_oneshot
+function arranges for a systimer callback function
+.Fa func
+to be invoked with argument
+.Fa data
+once, after at least
+.Fa us
+microseconds.
+.Sh EXAMPLE
+A simple example of using a one-short systimer to call a function after a short
+time:
+.Bd -literal -offset indent
+\&...
+static struct systimer short_st;
+char *str = "goodbye!";
+\&...
+systimer_init_oneshot(&short_st, panic, str, 1000);
+\&...
+.Ed
+.Sh FILES
+The systimer implementation is in
+.Pa /sys/kern/kern_systimer.c .
+.Sh SEE ALSO
+.Xr callout 9
+.Sh HISTORY
+Systimers first appeared in
+.Dx 1.0 .

@@ -1,0 +1,136 @@
+.\"
+.\" Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd October 13, 2007
+.Dt RCRUN 8
+.Os
+.Sh NAME
+.Nm rcrun ,
+.Nm rcstart ,
+.Nm rcforce ,
+.Nm rcfast ,
+.Nm rcstop ,
+.Nm rcrestart ,
+.Nm rcvar ,
+.Nm rcdisable ,
+.Nm rcenable ,
+.Nm rclist
+.Nd rc script control utility
+.Sh SYNOPSIS
+.Nm rcrun
+.Cm command Ar script ...
+.Nm rcstart
+.Ar script ...
+.Nm rcforce
+.Ar script ...
+.Nm rcfast
+.Ar script ...
+.Nm rcstop
+.Ar script ...
+.Nm rcrestart
+.Ar script ...
+.Nm rcvar
+.Ar script ...
+.Nm rcdisable
+.Ar script ...
+.Nm rcenable
+.Ar script ...
+.Nm rclist
+.Op Ar script ...
+.Sh DESCRIPTION
+The
+.Nm
+utility provides a number of commands for controlling
+.Xr rc 8
+scripts.
+.Pp
+The
+.Cm start ,
+.Cm forcestart ,
+.Cm faststart ,
+.Cm stop ,
+.Cm restart ,
+and
+.Cm rcvar
+commands are just passed to the scripts.
+See
+.Xr rc 8
+for more information on these commands.
+.Pp
+The remaining commands are:
+.Bl -tag -width ".Cm disable"
+.It Cm disable
+Sets the corresponding
+.Va _enable
+variable in
+.Xr rc.conf 5
+to
+.Dq Li NO
+and runs the
+.Cm stop
+command.
+.It Cm enable
+Sets the corresponding
+.Va _enable
+variable in
+.Xr rc.conf 5
+to
+.Dq Li YES
+and runs the
+.Cm start
+command.
+.It Cm list
+Shows the status of the specified scripts.
+If no argument is specified, the status of all scripts is shown.
+.El
+.Pp
+.Nm Rcstart ,
+.Nm rcforce ,
+.Nm rcfast ,
+.Nm rcstop ,
+.Nm rcrestart ,
+.Nm rcvar ,
+.Nm rcdisable ,
+.Nm rcenable
+and
+.Nm rclist
+are shortcuts for
+.Nm Ap s
+commands.
+.Sh SEE ALSO
+.Xr rc.conf 5 ,
+.Xr rc 8
+.Sh HISTORY
+The
+.Nm
+script first appeared in
+.Dx 1.0 .
+.Sh AUTHORS
+.An Matt Dillon

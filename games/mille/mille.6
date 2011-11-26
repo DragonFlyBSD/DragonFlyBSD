@@ -1,0 +1,361 @@
+.\" Copyright (c) 1983, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"	@(#)mille.6	8.2 (Berkeley) 12/30/93
+.\" $FreeBSD: src/games/mille/mille.6,v 1.4.2.1 2001/07/22 11:01:22 dd Exp $
+.\" $DragonFly: src/games/mille/mille.6,v 1.5 2008/05/02 02:05:03 swildner Exp $
+.\"
+.Dd December 30, 1993
+.Dt MILLE 6
+.Os
+.Sh NAME
+.Nm mille
+.Nd play Mille Bornes
+.Sh SYNOPSIS
+.Nm
+.Op Ar file
+.Sh DESCRIPTION
+.Nm Mille
+plays a two-handed game reminiscent of
+the Parker Brother's game of Mille Bornes with you.
+The rules are described below.
+If a file name is given on the command line,
+the game saved in that file is started.
+.Pp
+When a game is started up,
+the bottom of the score window will contain a list of commands.
+They are:
+.Bl -tag -width "xxxxxx" -offset indent
+.It Ic P
+Pick a card from the deck.
+This card is placed in the `P' slot in your hand.
+.It Ic D
+Discard a card from your hand.
+To indicate which card, type the number of the card in the hand (or
+.Ic P
+for the just-picked card) followed by a <RETURN> or <SPACE>.
+The <RETURN> or <SPACE> is required to allow recovery from typos
+which can be very expensive, like discarding safeties.
+.It Ic U
+Use a card.
+The card is again indicated by its number, followed by a <RETURN> or <SPACE>.
+.It Ic O
+Toggle ordering the hand.
+By default off, if turned on it will sort the cards in your hand appropriately.
+This is not recommended for the impatient on slow terminals.
+.It Ic Q
+Quit the game.
+This will ask for confirmation, just to be sure.
+Hitting <DELETE> (or <RUBOUT>) is equivalent.
+.It Ic S
+Save the game in a file.
+If the game was started from a file,
+you will be given an opportunity to save it on the same file.
+If you don't wish to, or you did not start from a file,
+you will be asked for the file name.
+If you type a <RETURN> without a name,
+the save will be terminated and the game resumed.
+.It Ic R
+Redraw the screen from scratch.
+The command ^L (control `L') will also work.
+.It Ic W
+Toggle window type.
+This switches the score window between the startup window
+(with all the command names) and the end-of-game window.
+Using the end-of-game window
+saves time by eliminating the switch at the end of the game
+to show the final score.
+Recommended for hackers and other miscreants.
+.El
+.Pp
+If you make a mistake, an error message will be printed
+on the last line of the score window, and a bell will beep.
+.Pp
+At the end of each hand or game,
+you will be asked if you wish to play another.
+If not, it will ask you if you want to save the game.
+If you do, and the save is unsuccessful,
+play will be resumed as if you had said you wanted to play another hand/game.
+This allows you to use the
+.Ic S
+command to reattempt the save.
+.Sh CARDS
+Here is some useful information.
+The number in parentheses after the card name
+is the number of that card in the deck:
+.Bl -column "Speed Limit (3)" "Speed Limit (3)" "End of Limit (6)"
+.It Sy Hazard Ta Sy Repair Ta Sy Safety
+.It Out of Gas (2) Ta Gasoline (6) Ta Extra Tank (1)
+.It Flat Tire (2) Ta Spare Tire (6) Ta Puncture Proof (1)
+.It Accident (2) Ta Repairs (6) Ta Driving Ace (1)
+.It Stop (4) Ta Go (14) Ta Right of Way (1)
+.It Speed Limit (3) Ta End of Limit (6)
+.El
+.Bd -centered
+25 \- (10), 50 \- (10), 75 \- (10), 100 \- (12), 200 \- (4)
+.Ed
+.Sh RULES
+.Ss Object
+The point of this game is to get a total of 5000 points in several hands.
+Each hand is a race to put down exactly 700 miles before your opponent does.
+Beyond the points gained by putting down milestones,
+there are several other ways of making points.
+.Ss Overview
+The game is played with a deck of 101 cards.
+.Em Distance
+cards represent a number of miles traveled.
+They come in denominations of 25, 50, 75, 100, and 200.
+When one is played,
+it adds that many miles to the player's trip so far this hand.
+.Em Hazard
+cards are used to prevent your opponent from putting down Distance cards.
+They can only be played if your opponent has a
+.Em Go
+card on top of the Battle pile.
+The cards are
+.Sq Out of Gas ,
+.Sq Accident ,
+.Sq Flat Tire ,
+.Sq Speed Limit ,
+and
+.Sq Stop .
+.Em Remedy
+cards fix problems caused by Hazard cards played on you by your opponent.
+The cards are
+.Sq Gasoline ,
+.Sq Repairs ,
+.Sq Spare Tire ,
+.Sq End of Limit ,
+and
+.Sq Go .
+.Em Safety
+cards prevent your opponent from putting specific Hazard cards on you
+in the first place.
+They are
+.Sq Extra Tank ,
+.Sq Driving Ace ,
+.Sq Puncture Proof ,
+and
+.Sq Right of Way ,
+and there are only one of each in the deck.
+.Ss Board Layout
+The board is split into several areas.
+From top to bottom, they are:
+.Sy SAFETY AREA
+(unlabeled): This is where the safeties will be placed as they are played.
+.Sy HAND :
+These are the cards in your hand.
+.Sy BATTLE :
+This is the Battle pile.
+All the Hazard and Remedy Cards are played here, except the
+.Sq Speed Limit
+and
+.Sq End of Limit
+cards.  Only the top card is displayed, as it is the only effective one.
+.Sy SPEED :
+The Speed pile.  The
+.Sq Speed Limit
+and
+.Sq End of Limit
+cards are played here
+to control the speed at which the player is allowed to put down miles.
+.Sy MILEAGE :
+Miles are placed here.
+The total of the numbers shown here is the distance traveled so far.
+.Ss Play
+The first pick alternates between the two players.
+Each turn usually starts with a pick from the deck.
+The player then plays a card, or if this is not possible or desirable,
+discards one.
+Normally, a play or discard of a single card constitutes a turn.
+If the card played is a safety, however,
+the same player takes another turn immediately.
+.Pp
+This repeats until one of the players reaches 700 points or the deck runs out.
+If someone reaches 700, they have the option of going for an
+.Dq Extension ,
+which means that the play continues until someone reaches 1000 miles.
+.Ss Hazard and Remedy Cards
+Hazard Cards are played on your opponent's Battle and Speed piles.
+Remedy Cards are used for undoing the effects of your opponent's nastiness.
+.Bl -tag -width ".Sq Go (Green Light)" -offset indent
+.It Sq Go (Green Light)
+must be the top card on your Battle pile for you to play any mileage,
+unless you have played the
+.Sq Right of Way
+card (see below).
+.It Sq Stop
+is played on your opponent's
+.Sq Go
+card to prevent them from playing mileage until they play a
+.Sq Go
+card.
+.It Sq Speed Limit
+is played on your opponent's Speed pile.
+Until they play an
+.Sq End of Limit
+they can only play 25 or 50 mile cards, presuming their
+.Sq Go
+card allows them to do even that.
+.It Sq End of Limit
+is played on your Speed pile to nullify a
+.Sq Speed Limit
+played by your opponent.
+.It Sq Out of Gas
+is played on your opponent's
+.Sq Go
+card.
+They must then play a
+.Sq Gasoline
+card, and then a
+.Sq Go
+card before they can play any more mileage.
+.It Sq Flat Tire
+is played on your opponent's
+.Sq Go
+card.
+They must then play a
+.Sq Spare Tire
+card, and then a
+.Sq Go
+card before they can play any more mileage.
+.It Sq Accident
+is played on your opponent's
+.Sq Go
+card.
+They must then play a
+.Sq Repairs
+card, and then a
+.Sq Go
+card before they can play any more mileage.
+.El
+.Ss Safety Cards
+Safety cards prevent your opponent
+from playing the corresponding Hazard cards on you for the rest of the hand.
+It cancels an attack in progress, and
+.Em always entitles the player to an extra turn .
+.Bl -tag -width ".Sq Puncture Proof" -offset indent
+.It Sq Right of Way
+prevents your opponent from playing both
+.Sq Stop
+and
+.Sq Speed Limit
+cards on you.
+It also acts as a permanent
+.Sq Go
+card for the rest of the hand, so you can play mileage
+as long as there is not a Hazard card on top of your Battle pile.
+In this case only, your opponent can play Hazard cards directly on a
+Remedy card other than a Go card.
+.It Sq Extra Tank
+When played, your opponent cannot play an
+.Sq Out of Gas
+on your Battle Pile.
+.It Sq Puncture Proof
+When played, your opponent cannot play a
+.Sq Flat Tire
+on your Battle Pile.
+.It Sq Driving Ace
+When played, your opponent cannot play an
+.Sq Accident
+on your Battle Pile.
+.El
+.Ss Distance Cards
+Distance cards are played when you have a
+.Sq Go
+card on your Battle pile,
+or a Right of Way in your Safety area and are not stopped by a Hazard Card.
+They can be played in any combination that totals exactly 700 miles,
+except that
+.Em you cannot play more than two 200 mile cards in one hand .
+A hand ends whenever one player gets exactly 700 miles or the deck runs out.
+In that case, play continues until neither someone reaches 700,
+or neither player can use any cards in their hand.
+If the trip is completed after the deck runs out, this is called
+.Dq Delayed Action .
+.Ss Coup Fourr\['e]
+This is a French fencing term for a counter-thrust move as part of a parry
+to an opponent's attack.
+In current French colloquial language it means a sneaky, underhanded blow.
+In Mille Bornes, it is used as follows:
+If an opponent plays a Hazard card,
+and you have the corresponding Safety in your hand,
+you play it immediately, even
+.Em before
+you draw.
+This immediately removes the Hazard card from your Battle pile,
+and protects you from that card for the rest of the game.  This
+gives you more points (see
+.Sx Scoring
+below).
+.Ss Scoring :
+Scores are totaled at the end of each hand,
+whether or not anyone completed the trip.
+The terms used in the Score window have the following meanings:
+.Bl -tag -width ".Sy Milestones Played" -offset indent
+.It Sy Milestones Played
+Each player scores as many miles as they played before the trip ended.
+.It Sy Each Safety
+100 points for each safety in the Safety area.
+.It Sy All 4 Safeties
+300 points if all four safeties are played.
+.It Sy Each Coup Fourr\['e]
+300 points for each Coup Fourr\['e] accomplished.
+.El
+.Pp
+The following bonus scores can apply only to the winning player.
+.Bl -tag -width ".Sy Trip Completed" -offset indent
+.It Sy Trip Completed
+400 points bonus for completing the trip to 700 or 1000.
+.It Sy Safe Trip
+300 points bonus for completing the trip without using any 200 mile cards.
+.It Sy Delayed Action
+300 points bonus for finishing after the deck was exhausted.
+.It Sy Extension
+200 points bonus for completing a 1000 mile trip.
+.It Sy Shut-Out
+500 points bonus for completing the trip
+before your opponent played any mileage cards.
+.El
+.Pp
+Running totals are also kept for the current score for each player
+for the hand
+.Sy ( Hand Total ) ,
+the game
+.Sy ( Overall Total ) ,
+and number of games won
+.Sy ( Games ) .
+.Sh SEE ALSO
+.Xr curses 3
+.Rs
+.%T "Screen Updating and Cursor Movement Optimization: A Library Package"
+.%A Ken Arnold
+.Re
+.Sh AUTHORS
+Ken Arnold
+.Pp
+The game itself is a product of Parker Brothers, Inc.

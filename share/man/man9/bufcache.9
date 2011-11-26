@@ -1,0 +1,167 @@
+.\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Hiten Pandya <hmp@dragonflybsd.org>.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd July 29, 2005
+.Dt BUFCACHE 9
+.Os
+.Sh NAME
+.Nm bufinit ,
+.Nm bread ,
+.Nm bwrite
+.Nd Buffer Cache Functions
+.Sh SYNOPSIS
+.In sys/param.h
+.In sys/systm.h
+.In sys/buf.h
+.In sys/buf2.h
+.Ft int
+.Fo bread
+.Fa "struct vnode *vp"
+.Fa "daddr_t blkno"
+.Fa "int size"
+.Fa "struct buf **bpp"
+.Fc
+.Ft int
+.Fo bwrite
+.Fa "struct buf *bp"
+.Fc
+.Sh DESCRIPTION
+The buffer cache functions are at the heart of all storage file systems;
+they are used for reading from and writing to the underlying storage.
+The
+.Fn bread
+and
+.Fn bwrite
+functions observe most activity in the kernel from file systems, but other
+functions such as
+.Fn breadn
+are also used.
+.Pp
+At boot time, the
+.Fn bufinit
+function is invoked to initialize various accounting code.
+It also initializes
+.Va nbuf
+number of buffers and inserts them into the empty queue
+.Dv BQUEUE_EMPTY .
+The variable
+.Va nbuf
+is a global variable in the kernel that is tunable at boot time using
+the
+.Xr loader 8 .
+.Sh FUNCTIONS
+.Bl -tag -width compact
+.It Fn bread "*vp" "blkno" "size" "**bpp"
+Retrieve a buffer with specified data.
+An internal function,
+.Fn getblk
+is called to check whether the data is available in cache or if it
+should be read from the
+.Fa vp .
+If the data is available in cache, the
+.Dv B_CACHE
+flag will be set otherwise
+.Fa size
+bytes will be read starting at block number
+.Fa blkno
+from the block special device vnode
+.Fa vp .
+.Pp
+In case when the buffer is not in cache or not cacheable this
+function will put the calling process or thread to sleep, using
+.Fa bp
+as the wait channel and
+.Ql "biord"
+as the wait message.
+.Pp
+On successful return, the
+.Va b_data
+field of
+.Fa bp
+will point to valid data address and
+.Va b_count
+will contain the number of bytes read.
+.It Fn bwrite "*bp"
+Write a buffer back to the device pointed to by
+.Va b_dev
+field.
+Until the write operation is complete, the calling thread or
+process will be put to sleep by the kernel using
+.Fa bp
+as the wait channel and
+.Ql "biowr"
+as the wait message.
+.Pp
+Before calling this function, the following fields are the least
+to be set:
+.Bl -tag -width compact
+.It Va b_data
+This field should be set to a valid data buffer to be written by
+.Fn bwrite .
+.It Va b_bcount
+Size of buffer to be written, analogous to the
+.Fa size
+argument of
+.Fn bread .
+.It Va b_blkno
+Logical block number at which the buffer should be written.
+.It Va b_dev
+This can be set by using the
+.Fn vn_todev
+function on the device vnode.
+.It Va b_vp
+This should be set to the vnode of the device to which the buffer
+will be written.
+.El
+.Pp
+This function will put the calling process or thread to sleep if the
+data cannot be written when operating synchronously, using
+.Fa bp
+as the wait channel and
+.Ql "biowr"
+as the wait message.
+On successful return the
+.Va b_resid
+field of
+.Fa bp
+will be set to the value zero, thus indicating a successful write.
+.El
+.Sh CODE REFERENCES
+The file system code, located under
+.Pa sys/vfs
+directory are the main source of reference.
+.Sh SEE ALSO
+.Xr buf 9 ,
+.Xr VFS 9
+.Sh AUTHORS
+This manual page was written by
+.An Hiten Pandya Aq hmp@freebsd.org .

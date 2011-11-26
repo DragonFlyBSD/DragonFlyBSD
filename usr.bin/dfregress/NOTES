@@ -1,0 +1,76 @@
+======
+Result values:
+======
+
+#define RESULT_TIMEOUT		0x01
+#define RESULT_SIGNALLED	0x02
+#define RESULT_NOTRUN		0x03
+#define RESULT_FAIL		0x04
+#define RESULT_PASS		0x05
+#define RESULT_UNKNOWN		0x06
+#define RESULT_PREFAIL		0x07
+#define RESULT_POSTFAIL		0x08
+#define RESULT_BUILDFAIL	0x09
+
+
+A testcase can be considered not run when the result is any of the following:
+RESULT_BUILDFAIL, RESULT_PREFAIL, RESULT_NOTRUN, RESULT_UNKNOWN
+
+A testcase can be considered run when the result is any of the following:
+RESULT_TIMEOUT, RESULT_SIGNALLED, RESULT_FAIL, RESULT_PASS, RESULT_POSTFAIL
+
+
+
+
+======
+Execution of a single test case:
+======
+1) chdir to testcase directory
+	- if it fails, set RESULT_PREFAIL (sysbuf is of interest), goto (6)
+
+2) build testcase (make) (unless nobuild flag is set).
+	+ build_buf is used for stdout/stderr
+	- if there is an internal driver error (that leads to not running the
+          build command), set RESULT_PREFAIL (sysbuf is of interest), goto (6)
+	- if the build command has a non-zero exit value, set the result to
+	  BUILDFAIL, unless it's a buildonly test case, in which it is set to
+	  the actual result value (TIMEOUT, SIGNALLED, FAIL)
+	  goto (6)
+
+3) run 'pre' command if intpre or pre is set.
+	+ precmd_buf is used for stdout/stderr
+	- if there is an internal driver error (that leads to not running the
+	  command), set RESULT_PREFAIL (sysbuf is of interest), goto (6)
+	- if the pre command has a non-zero exit value, set RESULT_PREFAIL and
+	  goto (6)
+
+4) run actual testcase, depending on type
+	+ stdout_buf is used for stdout
+	+ stderr_buf is used for stderr
+	- for BUILDONLY: set RESULT_PASS since the build already succeeded
+	- for userland and kernel: run the testcase, possibly as a different
+	  user (depending on the runas option), set the result to the actual
+	  result value (TIMEOUT, SIGNALLED, FAIL, NOTRUN)
+	- if there is an internal driver error (that leads to not running the
+	  command), RESULT_NOTRUN is set (sysbuf is of interest)
+
+5) run 'post' command if intpost or post is set.
+	+ postcmd_buf is used for stdout/stderr
+	- if there is an internal driver error (that leads to not running the
+	  command), set RESULT_POSTFAIL (sysbuf is of interest), goto (6)
+	- if the post command has a non-zero exit value, set RESULT_POSTFAIL
+	  and goto (6)
+
+6) clean testcase directory (make clean) (unless nobuild flag is set).
+	+ cleanup_buf is used for stdout/stderr and system (driver error) buffer
+	- no further action.
+
+7) results are saved.
+
+
+
+======
+TODO
+======
+ - read config defaults from file, not statically coded into config.c
+ - add collected rusage into output dictionary

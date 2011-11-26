@@ -1,0 +1,14 @@
+# $FreeBSD: src/share/skel/dot.mail_aliases,v 1.2 1999/08/28 00:21:53 peter Exp $
+# $DragonFly: src/share/skel/dot.mail_aliases,v 1.3 2005/09/25 06:09:07 swildner Exp $
+#
+# .mail_aliases - private mail aliases
+#
+# see also mail(1)
+#
+
+# DragonFly Mailing lists aliases
+# alias dragonfly-bugs bugs@dragonflybsd.org
+# alias dragonfly-users users@dragonflybsd.org
+
+# an alias for your good friends
+# alias bicycle  christoph gerhardt velophil zentralrad

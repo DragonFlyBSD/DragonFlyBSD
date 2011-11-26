@@ -1,0 +1,104 @@
+.\"
+.\" Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/usr.bin/pctrack/pctrack.8,v 1.4 2006/07/22 18:49:25 swildner Exp $
+.\"
+.Dd June 8, 2006
+.Dt PCTRACK 8
+.Os
+.Sh NAME
+.Nm pctrack
+.Nd print kernel system/interrupt PC sampling history
+.Sh SYNOPSIS
+.Nm
+.Op Fl fnsi
+.Op Fl c Ar cpu
+.Op Fl N Ar execfile
+.Op Fl M Ar corefile
+.Op Ar interval
+.Sh DESCRIPTION
+Kernels compiled with
+.Dv DEBUG_PCTRACK
+record the program counter (PC) of
+the code interrupted by the statistics clock interrupt.
+This information can be dumped with the
+.Nm
+utility
+.Pp
+The following options are available:
+.Bl -tag -width ".Fl N Ar execfile"
+.It Fl c Ar cpu
+Specify which CPU to dump.  If not specified, all CPUs will be dumped.
+.It Fl f
+If a single CPU and either
+.Fl i
+or
+.Fl s
+is specified, this option will use the repeat interval to detect changes
+and dump them as they occur.
+.It Fl i
+Dump the interrupt tracking buffer.
+.It Fl s
+Dump the kernel tracking buffer.
+If neither
+.Fl i
+or
+.Fl s
+is specified, both tracking buffers will be dumped.
+.It Fl n
+.Nm
+normally tries to translate the PC into symbols.  This option forces hex
+values to be displayed instead.
+.It Fl N Ar execfile
+The kernel image to resolve symbols from.
+The default is the value returned via
+.Xr getbootfile 3 .
+.It Fl M Ar corefile
+The core file or memory image to read from.
+The default is
+.Pa /dev/mem .
+.El
+.\".Sh OPERATIONAL NOTES
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Dx 1.5 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+utility was originally implemented by
+.An Matthew Dillon
+for
+.Dx .

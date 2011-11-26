@@ -1,0 +1,163 @@
+.\"	$NetBSD: timeout.9,v 1.2 1996/06/23 22:32:34 pk Exp $
+.\"
+.\" Copyright (c) 1996 The NetBSD Foundation, Inc.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to The NetBSD Foundation
+.\" by Paul Kranenburg.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"        This product includes software developed by the NetBSD
+.\"        Foundation, Inc. and its contributors.
+.\" 4. Neither the name of The NetBSD Foundation nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE
+.\" LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man9/timeout.9,v 1.9.2.6 2001/12/17 11:30:19 ru Exp $
+.\" $DragonFly: src/share/man/man9/callout.9,v 1.6 2008/05/02 02:05:06 swildner Exp $
+.\"
+.Dd November 14, 2007
+.Dt CALLOUT 9
+.Os
+.Sh NAME
+.Nm callout_init ,
+.Nm callout_init_mp ,
+.Nm callout_reset ,
+.Nm callout_stop ,
+.Nm callout_active ,
+.Nm callout_pending ,
+.Nm callout_deactivate
+.Nd execute a function after a specified length of time
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/systm.h
+.Bd -literal
+typedef void timeout_t (void *);
+.Ed
+.Ft void
+.Fn callout_init "struct callout *c"
+.Ft void
+.Fn callout_init_mp "struct callout *c"
+.Ft void
+.Fn callout_reset "struct callout *c" "int ticks" "timeout_t *func" "void *arg"
+.Ft int
+.Fn callout_stop "struct callout *c"
+.Ft int
+.Fn callout_active "struct callout *c"
+.Ft int
+.Fn callout_pending "struct callout *c"
+.Fn callout_deactivate "struct callout *c"
+.Sh DESCRIPTION
+The
+.Nm callout
+facility provides a mechanism to execute a function at a given time.
+The timer is based on the hardclock timer which ticks
+.Dv hz
+times per second.
+.Pp
+Clients of the
+.Nm callout
+facility are responsible for providing pre-allocated callout structures, or
+.Dq handles .
+The
+.Nm callout
+facility replaces the historic
+.Bx
+functions
+.Fn timeout
+and
+.Fn untimeout .
+.Pp
+The
+.Fn callout_init
+function initializes the callout handle
+.Fa c
+so it can be passed to
+.Fn callout_stop
+or
+.Fn callout_reset
+without any side effects.
+The MP version of this function,
+.Fn callout_init_mp ,
+requires that the callback function installed by
+.Fn callout_reset
+be MP safe.
+.Pp
+The
+.Fn callout_reset
+function resets and starts the timer associated with the callout handle
+.Fa c .
+When the timer expires after
+.Fa ticks Ns No /hz
+seconds, the function specified by
+.Fa func
+will be called with the argument
+.Fa arg .
+.Pp
+The function
+.Fn callout_stop
+cancels the callout associated with the callout handle
+.Fa c
+if it is currently pending.
+It is safe to call
+.Fn callout_stop
+on a callout that is not pending, so long as it is initialized.
+If the callout is not set, has already been serviced or is currently
+being serviced, then zero will be returned.
+.Pp
+The
+.Fn callout_pending
+macro tests if the callout handle
+.Fa c
+is pending.
+A pending callout is one that has been started and whose function has not
+yet been called.
+.Pp
+The
+.Fn callout_active
+macro returns true if a timer has been started but not explicitly stopped,
+even if it has already fired.
+.Pp
+The
+.Fn callout_deactivate
+macro deactivates the specified callout
+.Fa c .
+.Pp
+The
+.Fn callout_active ,
+.Fn callout_pending
+and
+.Fn callout_deactivate
+macros may only be used when the state of the callout structure is stable,
+meaning from within the callback function or after the callback function
+has been called but the timer has not yet been reset.
+.Sh RETURN VALUES
+The
+.Fn callout_stop
+function and the
+.Fn callout_pending
+macro return non-zero if the callout is still pending or zero otherwise.
+The
+.Fn callout_active
+macro returns non-zero if the callout is active or zero otherwise.

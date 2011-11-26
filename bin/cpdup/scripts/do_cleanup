@@ -1,0 +1,54 @@
+#!/bin/csh
+#
+# $DragonFly: src/bin/cpdup/scripts/do_cleanup,v 1.1 2006/09/16 21:57:10 dillon Exp $
+
+source params
+
+if ( "$argv" == "" ) then
+	echo "./do_cleanup percentage"
+	exit 1
+endif
+
+set full = $argv[1]
+
+while (1)
+    set dcap = `df -i $cleaning_path | tail -1 | awk '{ print $5; }' | sed -e 's/%//'`
+    set icap = `df -i $cleaning_path | tail -1 | awk '{ print $8; }' | sed -e 's/%//'`
+    echo "space $dcap/$full inodes $icap/$full"
+
+    if ( $dcap < $full && $icap < $full ) then
+	break
+    endif
+
+    foreach i ( ${backup_nfs}/* )
+	set host = ${i:t}
+	if ( ! -d $backup_nfs/$host ) then
+	    continue
+	endif
+	set curbackup = `readlink $cleaning_path/mirrors/$host`
+	foreach item ( `ls -1da $cleaning_path/mirrors/$host.*` )
+	    if ( ! -d $item ) then
+		continue
+	    endif
+	    if ( "${item:t}" == "$curbackup" ) then
+		continue
+	    endif
+	    echo "Removing $item"
+	    # for safety, use a full path and do not rely on item's path
+	    #
+	    rm -rf $cleaning_path/mirrors/${item:t}
+	    break
+	end
+    end
+
+    # let the fs catch up and update the df info
+    #
+    sync
+    sync
+    foreach benice ( 1 2 3 4 5 )
+	sync
+	sleep 5
+    end
+    sync
+    sync
+end

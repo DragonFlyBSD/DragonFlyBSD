@@ -1,0 +1,1017 @@
+.ig
+@g@chem.1 - man page for @g@chem (section 1).
+
+Source file position:  <groff_source_top>/contrib/chem/chem.man
+Installed position:    $prefix/share/man/man1/@g@chem.1
+
+Last update: 05 Jan 2009
+..
+.
+.
+.de au
+This file was written by Bernd Warken.
+It is based on the documentation of
+.UR http://\:cm.bell-labs.com/\:cm/\:cs/\:who/\:bwk/\:index.html
+Brian Kernighan
+.UE 's
+original
+.I awk
+version of
+.IR chem .
+..
+.
+.
+.de co
+Copyright (C) 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+.
+.
+.P
+This file is part of
+.IR chem ,
+which is part of
+.IR groff ,
+a free software project.
+.
+You can redistribute it and/or modify it under the terms of the
+.nh
+.B "GNU General Public License"
+.hy
+as published by the
+.nh
+.BR "Free Software Foundation" ,
+.hy
+either version\~2, or (at your option) any later version.
+.
+.
+.P
+You should have received a copy of the \f(CRGNU General Public
+License\fP along with
+.IR groff ,
+see the files \%\f(CBCOPYING\fP and \%\f(CBLICENSE\fP in the top
+directory of the
+.I groff
+source package.
+.
+Or read the
+.I man page
+.BR gpl (1).
+You can also write to the
+.nh
+.B "Free Software Foundation, 51 Franklin St - Fifth Floor, Boston,"
+.BR "MA 02110-1301, USA" .
+.hy
+..
+.
+.
+.\" --------------------------------------------------------------------
+.\" Local macro definitions
+.
+.ds El \&.\|.\|.\&
+.
+.\" .File_name  (<path_name>)
+.\"
+.\" Display a file or directory name in CB font.
+.\"
+.de FN
+.  CB \\$@
+..
+.
+.\" .CB  (<path_name>)
+.\"
+.\" Display a line in CB font, for example after .TP
+.\"
+.de CB
+.nh
+\\&\\f(CB\\$1\\fP\\$2
+.hy
+..
+.
+.\" End of macro definitions
+.
+.
+.TH @G@CHEM @MAN1EXT@ "@MDATE@" "Groff Version @VERSION@"
+.SH NAME
+@g@chem \- groff preprocessor for producing chemical structure diagrams
+.
+.
+.SH "SYNOPSIS"
+.\" --------------------------------------------------------------------
+.\" SH "SYNOPSIS"
+.\" --------------------------------------------------------------------
+.
+.SY @g@chem
+.RI [ "\%option" \*(El]
+.OP \-\-
+.RI [ "\%filespec" \*(El]
+.
+.SY @g@chem
+.B \-h
+|
+.B \-\-help
+.
+.SY @g@chem
+.B \-v
+|
+.B \-\-version
+.YS
+.
+.
+.\" --------------------------------------------------------------------
+.SH OPTION USAGE
+.\" --------------------------------------------------------------------
+.
+.P
+There are no other options than
+.BR \-h ,
+.BR \-\-help ,
+.BR \-v ,
+and
+.BR \%\-\-version ;
+these options provoke the printing of a version or usage information,
+respectively, and all
+.I filespec
+arguments are ignored.
+.
+A
+.I filespec
+argument is either a file name of an existing file or a minus
+character
+.BR \- ,
+meaning standard input.
+.
+If no argument is specified then standard input is taken
+automatically.
+.
+.
+.\" --------------------------------------------------------------------
+.SH DESCRIPTION
+.\" --------------------------------------------------------------------
+.
+.I chem
+produces chemical structure diagrams.
+.
+Today's version is best suited for organic chemistry (bonds, rings).
+.
+The
+.B @g@chem
+program is a
+.B groff
+preprocessor like
+.BR @g@eqn ,
+.BR @g@pic ,
+.BR @g@tbl ,
+etc.
+.
+It generates
+.I pic
+output such that all
+.I chem
+parts are translated into diagrams of the
+.I pic
+language.
+.
+.
+.P
+The program
+.B @g@chem
+originates from the Perl source file
+.FN chem.pl .
+It tells
+.B @g@pic
+to include a copy of the macro file
+.FN chem.pic .
+.
+Moreover the
+.I groff
+source file
+.FN pic.tmac
+is loaded.
+.
+.
+.P
+In a style reminiscent of
+.I eqn
+and
+.IR pic ,
+the
+.I chem
+diagrams are written in a special language.
+.
+.
+.P
+A set of
+.I chem
+lines looks like this
+.
+.
+.IP
+.nf
+.ft B
+\&.cstart
+\fIchem data\fP
+\&.cend
+.ft
+.fi
+.
+.
+.P
+Lines containing the keywords
+.B .cstart
+and
+.B .cend
+start and end the input for
+.BR @g@chem ,
+respectively.
+.
+In
+.I pic
+context, i.e., after the call of
+.BR .PS ,
+.I chem
+input can optionally be started by the line
+.B \%begin\~chem
+and ended by the line with the single word
+.B end
+instead.
+.
+.
+.P
+Anything outside these initialization lines is copied through
+without modification;
+all data between the initialization lines is converted into
+.I pic
+commands to draw the diagram.
+.
+.
+.P
+As an example,
+.
+.IP
+.nf
+.ft B
+\&.cstart
+CH3
+bond
+CH3
+\&.cend
+.ft
+.fi
+.
+.
+.P
+prints two
+.B CH3
+groups with a bond between them.
+.
+.
+.P
+To actually view this, you must run
+.B @g@chem
+followed by
+.BR groffer :
+.
+.IP
+.B "@g@chem [file\*(El] | groffer"
+.
+.P
+If you want to create just
+.B groff
+output, you must run
+.B @g@chem
+followed by
+.B groff
+with the option
+.B \-p
+for the activation of
+.BR @g@pic :
+.IP
+.B "@g@chem [file\*(El] | groff -p \*(El"
+.
+.
+.\" --------------------------------------------------------------------
+.SH THE LANGUAGE
+.\" --------------------------------------------------------------------
+.
+The
+.I chem
+input language is rather small.  It provides rings of several styles
+and a way to glue them together as desired, bonds of several styles,
+moieties (e.g.,
+.BR C ,
+.BR NH3 ,
+\*(El), and strings.
+.
+.
+.\" --------------------------------------------------------------------
+.SS Setting Variables
+.\" --------------------------------------------------------------------
+.
+There are some variables that can be set by commands.
+.
+Such commands have two possible forms, either
+.
+.RS
+.P
+.I "variable value"
+.RE
+.
+.P
+or
+.
+.RS
+.P
+.IB "variable " = " value"
+.RE
+.
+.P
+This sets the given
+.I variable
+to the argument
+.IR value .
+If more arguments are given only the last argument is taken, all other
+arguments are ignored.
+.
+.
+.P
+There are only a few variables to be set by these commands:
+.
+.TP
+.BI textht " arg"
+Set the height of the text to
+.IR arg ;
+default is 0.16.
+.
+.TP
+.BI cwid " arg"
+Set the character width to
+.IR arg ;
+default is 0.12.
+.
+.TP
+.BI db " arg"
+Set the bond length to
+.IR arg ;
+default is 0.2.
+.
+.TP
+.BI size " arg"
+Scale the diagram to make it look plausible at point size
+.IR arg ;
+default is 10 point.
+.
+.
+.\" --------------------------------------------------------------------
+.SS Bonds
+.\" --------------------------------------------------------------------
+.
+This
+.
+.RS
+.SY bond
+.RI [ direction ]
+.RI [ length\ n ]
+.RB [ from\ \c
+.IR Name | picstuff ]
+.YS
+.RE
+.
+.P
+draws a single bond in direction from nearest corner of
+.IR Name .
+.B bond
+can also be
+.BR "double bond" ,
+.BR "front bond" ,
+.BR "back bond" ,
+etc.
+.
+(We will get back to
+.I Name
+soon.)
+.
+.
+.P
+.I direction
+is the angle in degrees (0\~up, positive clockwise)
+or a direction word like
+.BR up ,
+.BR down ,
+.B sw
+(=\~southwest), etc.
+.
+If no direction is specified, the bond goes in the current direction
+(usually that of the last bond).
+.
+.
+.P
+Normally the bond begins at the last object placed;  this
+can be changed by naming a
+.B from
+place.
+.
+For instance, to make a simple alkyl chain:
+.
+.RS
+.TS
+tab (@);
+lb l.
+CH3
+bond@(this one goes right from the CH3)
+C@(at the right end of the bond)
+double bond up@(from the C)
+O@(at the end of the double bond)
+bond right from C
+CH3
+.TE
+.RE
+.
+.
+.P
+A length in inches may be specified to override the default length.
+.
+Other
+.I pic
+commands can be tacked on to the end of a bond command, to created
+dotted or dashed bonds or to specify a
+.B to
+place.
+.
+.
+.\" --------------------------------------------------------------------
+.SS Rings
+.\" --------------------------------------------------------------------
+.
+There are lots of rings, but only 5 and 6-sided rings get
+much support.
+.
+.B ring
+by itself is a 6-sided ring;
+.B benzene
+is the benzene ring with a circle inside.
+.B aromatic
+puts a circle into any kind of ring.
+.
+.RS
+.SY ring
+.RB [ \%pointing\  ( up | right | left | down )]
+.RB [ \%aromatic ]
+.RB [ put\ Mol\ at\ \fIn\fP ]
+.RB [ \%double\ \c
+.IR i , j\ \c
+.IR k , l\ \c
+\*(El]
+.RI [ picstuff ]
+.YS
+.RE
+.
+.
+.P
+The vertices of a ring are numbered 1, 2, \*(El from the
+vertex that points in the natural compass direction.
+.
+So for a hexagonal ring with the point at the top, the top vertex
+is\~1, while if the ring has a point at the east side, that is
+vertex\~1.
+.
+This is expressed as
+.
+.IP
+.ft B
+.nf
+R1: ring pointing up
+R2: ring pointing right
+.fi
+.ft
+.
+.
+.P
+The ring vertices are named
+.BR .V1 ,
+\*(El,
+.BI .V n\fR,\fP
+with
+.B .V1
+in the pointing direction.
+.
+So the corners of
+.B R1
+are
+.B R1.V1
+(the
+.IR top ),
+.BR R1.V2 ,
+.BR R1.V3 ,
+.B R1.V4
+(the
+.IR bottom ),
+etc., whereas for
+.BR R2 ,
+.B R2.V1
+is the rightmost vertex and
+.B R2.V4
+the leftmost.
+.
+These vertex names are used for connecting bonds or other rings.  For
+example,
+.
+.IP
+.ft B
+.nf
+R1: benzene pointing right
+R2: benzene pointing right with .V6 at R1.V2
+.fi
+.ft
+.P
+creates two benzene rings connected along a side.
+.
+.
+.P
+Interior double bonds are specified as
+.BI \%double\  n1 , n2\ n3 , n4\ \fR\*(El;\fP
+each number pair adds an interior bond.
+.
+So the alternate form of a benzene ring is
+.
+.IP
+.B "ring double 1,2 3,4 5,6"
+.
+.
+.P
+Heterocycles (rings with something other than carbon at a vertex) are
+written as
+.BI put\  X\  at\  V\fR,\fP
+as in
+.
+.IP
+.B "R: ring put N at 1 put O at 2"
+.
+.
+.P
+In this heterocycle,
+.B R.N
+and
+.B R.O
+become synonyms for
+.B R.V1
+and
+.BR R.V2 .
+.
+.
+.P
+There are two 5-sided rings.
+.
+.B ring5
+is pentagonal with a side that matches the 6-sided ring; it has four
+natural directions.
+.
+A
+.B \%flatring
+is a 5-sided ring created by chopping one corner of a 6-sided ring so
+that it exactly matches the 6-sided rings.
+.
+.
+.P
+The description of a ring has to fit on a single line.
+.
+.
+.\" --------------------------------------------------------------------
+.SS Moieties and Strings
+.\" --------------------------------------------------------------------
+.
+A moiety is a string of characters beginning with a capital letter,
+such as N(C2H5)2.
+.
+Numbers are converted to subscripts (unless they appear to be
+fractional values, as in N2.5H).
+.
+The name of a moiety is determined from the moiety after special
+characters have been stripped out: e.g., N(C2H5)2) has the name NC2H52.
+.
+.
+.P
+Moieties can be specified in two kinds.
+.
+Normally a moiety is placed right after the last thing mentioned,
+separated by a semicolon surrounded by spaces, e.g.,
+.
+.IP
+.B "B1: bond ; OH"
+.
+.P
+Here the moiety is
+.BR OH ;
+it is set after a bond.
+.
+.
+.P
+As the second kind a moiety can be positioned as the first word in a
+.IR pic -like
+command, e.g.,
+.
+.IP
+.B "CH3 at C + (0.5,0.5)"
+.
+.P
+Here the moiety is
+.BR CH3 .
+It is placed at a position relative to
+.BR C ,
+a moiety used earlier in the chemical structure.
+.
+.
+.P
+So moiety names can be specified as
+.I chem
+positions everywhere in the
+.I chem
+code.
+.
+Beneath their printing moieties are names for places.
+.
+.
+.P
+The moiety
+.B BP
+is special.
+.
+It is not printed but just serves as a mark to be referred to in later
+.I chem
+commands.
+.
+For example,
+.
+.IP
+.B "bond ; BP"
+.
+.P
+sets a mark at the end of the bond.
+.
+This can be used then for specifying a place.
+.
+The name
+.B BP
+is derived from
+.I branch point
+(i.e., line crossing).
+.
+.
+.P
+A string within double quotes
+.B \(dq
+is interpreted as a part of a
+.I chem
+command.
+.
+It represents a string that should be printed (without the quotes).
+.
+Text within quotes \(dq\*(El\(dq is treated more or less
+like a moiety except that no changes are made to the quoted part.
+.
+.
+.\" --------------------------------------------------------------------
+.SS Names
+.\" --------------------------------------------------------------------
+.
+In the alkyl chain above, notice that the carbon atom
+.B C
+was used both to draw something and as the name for a place.
+.
+A moiety always defines a name for a place;  you can use
+your own names for places instead, and indeed, for rings
+you will have to.
+.
+A name is just
+.
+.IP
+.IB Name :
+\*(El
+.
+.
+.P
+.I Name
+is often the name of a moiety like
+.BR CH3 ,
+but it need not to be.
+.
+Any name that begins with a capital letter and which contains
+only letters and numbers is valid:
+.
+.RS
+.TP
+.B First:
+.B bond
+.TQ
+\&
+.B "bond 30 from First"
+.RE
+.
+.
+.\" --------------------------------------------------------------------
+.SS Miscellaneous
+.\" --------------------------------------------------------------------
+.
+The specific construction
+.RS
+.TP
+.BR bond\  \*(El " ; moiety"
+.RE
+.P
+is equivalent to
+.IP
+.ft B
+.nf
+bond
+moiety
+.fi
+.ft
+.
+.
+.P
+Otherwise, each item has to be on a separate line (and only one line).
+Note that there must be whitespace after the semicolon which separates
+the commands.
+.
+.
+.P
+A period character
+.B .\&
+or a single quote
+.B '
+in the first column of a line signals a
+.I troff
+command, which is copied through as-is.
+.
+.
+.P
+A line whose first non-blank character is a hash character
+.RB ( # )
+is treated as a comment and thus ignored.
+.
+However, hash characters within a word are kept.
+.
+.
+.P
+A line whose first word is
+.B pic
+is copied through as-is after the word
+.B pic
+has been removed.
+.
+.
+.P
+The command
+.IP
+.B size
+.I n
+.P
+scales the diagram to make it look plausible at point size\~\c
+.I n
+(default is 10\~point).
+.
+.
+.P
+Anything else is assumed to be
+.I pic
+code, which is copied through with a label.
+.
+.
+.P
+Since
+.B @g@chem
+is a
+.B @g@pic
+preprocessor, it is possible to include
+.I pic
+statements in the middle of a diagram to draw things not provided for
+by
+.I chem
+itself.
+.
+Such
+.I pic
+statements should be included in
+.I chem
+code by adding
+.B pic
+as the first word of this line for clarity.
+.
+.
+.P
+The following
+.I pic
+commands are accepted as
+.I chem
+commands, so no
+.B pic
+command word is needed:
+.
+.IP
+.B define
+Start the definition of
+.I pic
+macro within
+.IR chem .
+.
+.RS
+.TP
+.B [
+Start a block composite.
+.
+.TP
+.B ]
+End a block composite.
+.
+.TP
+.B {
+Start a macro definition block.
+.
+.TP
+.B }
+End a macro definition block.
+.RE
+.
+.P
+The macro names from
+.B define
+statements are stored and their call is accepted as a
+.I chem
+command as well.
+.
+.
+.\" --------------------------------------------------------------------
+.SS WISH LIST
+.\" --------------------------------------------------------------------
+.
+.P
+This TODO list was collected by Brian Kernighan.
+.
+.
+.P
+Error checking is minimal; errors are usually detected and reported in
+an oblique fashion by
+.IR pic .
+.
+.
+.P
+There is no library or file inclusion mechanism, and there is no
+shorthand for repetitive structures.
+.
+.
+.P
+The extension mechanism is to create
+.I pic
+macros, but these are tricky to get right and don't have all the
+properties of built-in objects.
+.
+.
+.P
+There is no in-line chemistry yet (e.g., analogous to the $\*(El$
+construct of eqn).
+.
+.
+.P
+There is no way to control entry point for bonds on groups.
+.
+Normally a bond connects to the carbon atom if entering from
+the top or bottom and otherwise to the nearest corner.
+.
+.
+.P
+Bonds from substituted atoms on heterocycles do not join at the proper
+place without adding a bit of
+.IR pic .
+.
+.
+.P
+There is no decent primitive for brackets.
+.
+.
+.P
+Text (quoted strings) doesn't work very well.
+.
+.
+.P
+A squiggle bond is needed.
+.
+.
+.\" --------------------------------------------------------------------
+.SH "FILES"
+.\" --------------------------------------------------------------------
+.
+.TP
+.FN @DATASUBDIR@/pic/chem.pic
+A collection of
+.I pic
+macros needed by
+.BR @g@chem .
+.
+.TP
+.FN @MACRODIR@/pic.tmac
+A macro file which redefines
+.B .PS
+and
+.BR .PE
+to center
+.I pic
+diagrams.
+.
+.TP
+.FN @DOCDIR@/examples/chem/*.chem
+Example files for
+.IR chem .
+.
+.TP
+.FN @DOCDIR@/examples/chem/122/*.chem
+Example files from the classical
+.I chem
+book
+.BR 122.ps .
+.
+.
+.\" --------------------------------------------------------------------
+.SH "BUGS"
+.\" --------------------------------------------------------------------
+.
+Report bugs to the
+.MT bug-groff@\:gnu.org
+bug-groff mailing list
+.ME .
+.
+Include a complete, self-contained example that will allow the bug to
+be reproduced, and say which version of
+.I groff
+and
+.I chem
+you are using.
+.
+You can get both version numbers by calling
+.BR "@g@chem --version" .
+.
+.
+.P
+You can also use the
+.MT groff@\:gnu.org
+groff mailing list
+.ME ,
+but you must first subscribe to this list.
+.
+You can do that by visiting the
+.UR http://\:lists.gnu.org/\:mailman/\:listinfo/\:groff
+groff mailing list web page
+.UE .
+.
+.
+.P
+See
+.BR \%groff (@MAN1EXT@)
+for information on availability.
+.
+.
+.\" --------------------------------------------------------------------
+.SH "SEE ALSO"
+.\" --------------------------------------------------------------------
+.
+.BR \%groff (@MAN1EXT@),
+.BR \%@g@pic (@MAN1EXT@),
+.BR \%groffer (@MAN1EXT@).
+.
+.
+.P
+You can still get the original
+.UR http://\:cm.bell-labs.com/\:netlib/\:typesetting/\:chem.gz
+chem awk source
+.UE .
+.
+Its
+.FN README
+file was used for this manual page.
+.
+.
+.P
+The other classical document on
+.I chem
+is
+.UR http://\:cm.bell-labs.com/\:cm/\:cs/\:cstr/\:122.ps.gz
+122.ps
+.UE .
+.
+.
+.\" --------------------------------------------------------------------
+.SH "AUTHOR"
+.\" --------------------------------------------------------------------
+.au
+.
+.
+.\" --------------------------------------------------------------------
+.SH "COPYING"
+.\" --------------------------------------------------------------------
+.co
+.
+.
+.\" --------------------------------------------------------------------
+.\" Emacs settings
+.\" --------------------------------------------------------------------
+.
+.\" Local Variables:
+.\" mode: nroff
+.\" End:

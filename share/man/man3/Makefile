@@ -1,0 +1,123 @@
+#	@(#)Makefile	8.2 (Berkeley) 12/13/93
+# $FreeBSD: src/share/man/man3/Makefile,v 1.15.2.3 2001/04/25 11:11:30 ru Exp $
+# $DragonFly: src/share/man/man3/Makefile,v 1.6 2007/01/28 14:52:02 swildner Exp $
+
+MAN=	assert.3 bitstring.3 end.3 fpgetround.3 intro.3 queue.3 \
+	stdarg.3 sysexits.3 tree.3
+MLINKS+=bitstring.3 bit_alloc.3 bitstring.3 bit_clear.3 \
+	bitstring.3 bit_decl.3 bitstring.3 bit_ffc.3 bitstring.3 bit_ffs.3 \
+	bitstring.3 bit_nclear.3 bitstring.3 bit_nset.3 bitstring.3 bit_set.3 \
+	bitstring.3 bitstr_size.3 bitstring.3 bit_test.3 bitstring.3 bit_fls.3 \
+	bitstring.3 bit_nsearch.3
+MLINKS+=end.3 edata.3 end.3 etext.3
+MLINKS+=fpgetround.3 fpsetround.3 fpgetround.3 fpgetmask.3
+MLINKS+=fpgetround.3 fpsetmask.3 fpgetround.3 fpgetsticky.3
+MLINKS+=fpgetround.3 fpsetsticky.3 fpgetround.3 fpresetsticky.3
+MLINKS+=fpgetround.3 fpsetprec.3 fpgetround.3 fpgetprec.3
+
+MLINKS+=queue.3 LIST_EMPTY.3
+MLINKS+=queue.3 LIST_ENTRY.3
+MLINKS+=queue.3 LIST_FOREACH_MUTABLE.3
+MLINKS+=queue.3 LIST_HEAD.3
+MLINKS+=queue.3 LIST_HEAD_INITIALIZER.3
+MLINKS+=queue.3 LIST_INIT.3
+MLINKS+=queue.3 LIST_INSERT_AFTER.3
+MLINKS+=queue.3 LIST_INSERT_BEFORE.3
+MLINKS+=queue.3 LIST_INSERT_HEAD.3
+MLINKS+=queue.3 LIST_FIRST.3
+MLINKS+=queue.3 LIST_FOREACH.3
+MLINKS+=queue.3 LIST_NEXT.3
+MLINKS+=queue.3 LIST_REMOVE.3
+MLINKS+=queue.3 SLIST_EMPTY.3
+MLINKS+=queue.3 SLIST_ENTRY.3
+MLINKS+=queue.3 SLIST_FIRST.3
+MLINKS+=queue.3 SLIST_FOREACH.3
+MLINKS+=queue.3 SLIST_FOREACH_MUTABLE.3
+MLINKS+=queue.3 SLIST_FOREACH_PREVPTR.3
+MLINKS+=queue.3 SLIST_HEAD.3
+MLINKS+=queue.3 SLIST_HEAD_INITIALIZER.3
+MLINKS+=queue.3 SLIST_INIT.3
+MLINKS+=queue.3 SLIST_INSERT_AFTER.3
+MLINKS+=queue.3 SLIST_INSERT_HEAD.3
+MLINKS+=queue.3 SLIST_NEXT.3
+MLINKS+=queue.3 SLIST_REMOVE.3
+MLINKS+=queue.3 SLIST_REMOVE_AFTER.3
+MLINKS+=queue.3 SLIST_REMOVE_HEAD.3
+MLINKS+=queue.3 STAILQ_CONCAT.3
+MLINKS+=queue.3 STAILQ_EMPTY.3
+MLINKS+=queue.3 STAILQ_ENTRY.3
+MLINKS+=queue.3 STAILQ_FIRST.3
+MLINKS+=queue.3 STAILQ_FOREACH.3
+MLINKS+=queue.3 STAILQ_FOREACH_MUTABLE.3
+MLINKS+=queue.3 STAILQ_HEAD.3
+MLINKS+=queue.3 STAILQ_HEAD_INITIALIZER.3
+MLINKS+=queue.3 STAILQ_INIT.3
+MLINKS+=queue.3 STAILQ_INSERT_AFTER.3
+MLINKS+=queue.3 STAILQ_INSERT_HEAD.3
+MLINKS+=queue.3 STAILQ_INSERT_TAIL.3
+MLINKS+=queue.3 STAILQ_LAST.3
+MLINKS+=queue.3 STAILQ_NEXT.3
+MLINKS+=queue.3 STAILQ_REMOVE.3
+MLINKS+=queue.3 STAILQ_REMOVE_AFTER.3
+MLINKS+=queue.3 STAILQ_REMOVE_HEAD.3
+MLINKS+=queue.3 TAILQ_CONCAT.3
+MLINKS+=queue.3 TAILQ_EMPTY.3
+MLINKS+=queue.3 TAILQ_ENTRY.3
+MLINKS+=queue.3 TAILQ_FIRST.3
+MLINKS+=queue.3 TAILQ_FOREACH.3
+MLINKS+=queue.3 TAILQ_FOREACH_MUTABLE.3
+MLINKS+=queue.3 TAILQ_FOREACH_REVERSE.3
+MLINKS+=queue.3 TAILQ_FOREACH_REVERSE_MUTABLE.3
+MLINKS+=queue.3 TAILQ_HEAD.3
+MLINKS+=queue.3 TAILQ_HEAD_INITIALIZER.3
+MLINKS+=queue.3 TAILQ_INIT.3
+MLINKS+=queue.3 TAILQ_INSERT_AFTER.3
+MLINKS+=queue.3 TAILQ_INSERT_BEFORE.3
+MLINKS+=queue.3 TAILQ_INSERT_HEAD.3
+MLINKS+=queue.3 TAILQ_INSERT_TAIL.3
+MLINKS+=queue.3 TAILQ_LAST.3
+MLINKS+=queue.3 TAILQ_NEXT.3
+MLINKS+=queue.3 TAILQ_PREV.3
+MLINKS+=queue.3 TAILQ_REMOVE.3
+
+MLINKS+=stdarg.3 varargs.3 stdarg.3 va_arg.3 stdarg.3 va_end.3
+MLINKS+=stdarg.3 va_start.3
+MLINKS+=stdarg.3 va_copy.3
+
+MLINKS+=tree.3 RB_EMPTY.3
+MLINKS+=tree.3 RB_ENTRY.3
+MLINKS+=tree.3 RB_FIND.3
+MLINKS+=tree.3 RB_FOREACH.3
+MLINKS+=tree.3 RB_GENERATE.3
+MLINKS+=tree.3 RB_HEAD.3
+MLINKS+=tree.3 RB_INIT.3
+MLINKS+=tree.3 RB_INITIALIZER.3
+MLINKS+=tree.3 RB_INSERT.3
+MLINKS+=tree.3 RB_LEFT.3
+MLINKS+=tree.3 RB_MAX.3
+MLINKS+=tree.3 RB_MIN.3
+MLINKS+=tree.3 RB_NEXT.3
+MLINKS+=tree.3 RB_PARENT.3
+MLINKS+=tree.3 RB_PROTOTYPE.3
+MLINKS+=tree.3 RB_REMOVE.3
+MLINKS+=tree.3 RB_RIGHT.3
+MLINKS+=tree.3 RB_ROOT.3
+MLINKS+=tree.3 SPLAY_EMPTY.3
+MLINKS+=tree.3 SPLAY_ENTRY.3
+MLINKS+=tree.3 SPLAY_FIND.3
+MLINKS+=tree.3 SPLAY_FOREACH.3
+MLINKS+=tree.3 SPLAY_GENERATE.3
+MLINKS+=tree.3 SPLAY_HEAD.3
+MLINKS+=tree.3 SPLAY_INIT.3
+MLINKS+=tree.3 SPLAY_INITIALIZER.3
+MLINKS+=tree.3 SPLAY_INSERT.3
+MLINKS+=tree.3 SPLAY_LEFT.3
+MLINKS+=tree.3 SPLAY_MAX.3
+MLINKS+=tree.3 SPLAY_MIN.3
+MLINKS+=tree.3 SPLAY_NEXT.3
+MLINKS+=tree.3 SPLAY_PROTOTYPE.3
+MLINKS+=tree.3 SPLAY_REMOVE.3
+MLINKS+=tree.3 SPLAY_RIGHT.3
+MLINKS+=tree.3 SPLAY_ROOT.3
+
+.include <bsd.prog.mk>

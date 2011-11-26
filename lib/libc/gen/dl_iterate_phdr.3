@@ -1,0 +1,119 @@
+.\"   $NetBSD: dl_iterate_phdr.3,v 1.2 2010/10/16 12:05:48 wiz Exp $
+.\"   $OpenBSD: dl_iterate_phdr.3,v 1.3 2007/05/31 19:19:48 jmc Exp $
+.\"
+.\" Copyright (c) 2005 Mark Kettenis
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd April 28, 2011
+.Dt DL_ITERATE_PHDR 3
+.Os
+.Sh NAME
+.Nm dl_iterate_phdr
+.Nd iterate over program headers
+.Sh LIBRARY
+This function is not in a library.
+It is included in every dynamically linked program automatically.
+.Sh SYNOPSIS
+.In link.h
+.Ft int
+.Fn dl_iterate_phdr "int (*callback)(struct dl_phdr_info *, size_t, void*)" "void *data"
+.Sh DESCRIPTION
+The
+.Fn dl_iterate_phdr
+function iterates over all shared objects loaded into a process's
+address space, calling
+.Fa callback
+for each shared object, passing it information about the object's
+program headers and the
+.Fa data
+argument.
+The information about the program headers is passed in a structure
+that is defined as:
+.Bd -literal
+struct dl_phdr_info {
+        Elf_Addr                dlpi_addr;
+        const char             *dlpi_name;
+        const Elf_Phdr         *dlpi_phdr;
+        Elf_Half                dlpi_phnum;
+        unsigned long long int  dlpi_adds;
+        unsigned long long int  dlpi_subs;
+        size_t                  dlpi_tls_modid;
+        void                   *dlpi_tls_data;
+};
+.Ed
+.Pp
+The members of
+.Li struct dl_phdr_info
+have the following meaning:
+.Bl -tag -width XXXdlpi_phdr
+.It Fa dlpi_addr
+The base address at which the shared object is mapped into the address
+space of the calling process.
+.It Fa dlpi_name
+The name of the shared object.
+.It Fa dlpi_phdr
+A pointer to the shared object's program headers.
+.It Fa dlpi_phnum
+The number of program headers in the shared object.
+.It Fa dlpi_adds
+The number of objects added into the main program.
+.It Fa dlpi_subs
+The number of objects removed from the main program.
+.El
+.Pp
+To make it possible for programs to check whether any new members have
+been added, the size of the structure is passed as an argument to
+.Fa callback .
+.Sh EXAMPLE
+The following program displays a list of pathnames of the shared objects it has
+loaded. For each shared object, the program lists the virtual addresses at
+which the object's ELF segments are loaded.
+.Bd -literal
+#include <link.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+static int
+callback(struct dl_phdr_info *info, size_t size, void *data)
+{
+    int j;
+    printf("name=%s (%d segments)\en", info->dlpi_name,
+        info->dlpi_phnum);
+    for (j = 0; j < info->dlpi_phnum; j++)
+         printf("\t\t header %2d: address=%10p\en", j,
+             (void *) (info->dlpi_addr + info->dlpi_phdr[j].p_vaddr));
+    return 0;
+}
+
+int
+main(int argc, char *argv[])
+{
+    dl_iterate_phdr(callback, NULL);
+    exit(EXIT_SUCCESS);
+}
+.Ed
+.Sh RETURN VALUE
+The
+.Fn dl_iterate_phdr
+function returns whatever value was returned by the last call to callback.
+.Sh SEE ALSO
+.Xr ld 1 ,
+.Xr ld-elf.so.2 1 ,
+.Xr dlfcn 3 ,
+.Xr elf 5
+.Sh HISTORY
+The
+.Nm
+function first appeared in
+.Dx 2.9 .

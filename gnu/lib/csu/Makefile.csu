@@ -1,0 +1,58 @@
+# $FreeBSD: src/gnu/lib/csu/Makefile,v 1.24 2004/09/10 06:48:04 ru Exp $
+
+SRCS+=		crtstuff.c
+HDRS+=		tm.h
+
+NOBJS=		crtbegin.o crtend.o
+SOBJS=		crtbeginS.o crtendS.o
+
+OBJS+=		${NOBJS} ${SOBJS}
+INSTALLOBJS+=	${NOBJS} ${SOBJS}
+
+OBJS+=	${SRCS:N*.h:R:S/$/.o/g}
+
+CRTS_CFLAGS=	${PICFLAG}
+MKDEP=		-DCRT_BEGIN
+
+BEGINSRC?=	crtstuff.c
+ENDSRC?=	crtstuff.c
+
+${NOBJS} ${SOBJS}: ${HDRS}
+
+crtbegin.o:	${BEGINSRC}
+	${CC} ${CFLAGS} -g0 -DCRT_BEGIN \
+		-c -o ${.TARGET} ${.ALLSRC:N*.h}
+
+crtbeginS.o:	${BEGINSRC}
+	${CC} ${CFLAGS} ${CRTS_CFLAGS} -g0 -DCRT_BEGIN -DCRTSTUFFS_O \
+		-c -o ${.TARGET} ${.ALLSRC:N*.h}
+
+crtend.o:	${ENDSRC}
+	${CC} ${CFLAGS} -g0 -DCRT_END \
+		-c -o ${.TARGET} ${.ALLSRC:N*.h}
+
+crtendS.o:	${ENDSRC}
+	${CC} ${CFLAGS} ${CRTS_CFLAGS} -g0 -DCRT_END -DCRTSTUFFS_O \
+		-c -o ${.TARGET} ${.ALLSRC:N*.h}
+
+CLEANFILES+=	tm.h options.h auto-host.h
+beforedepend: tm.h options.h auto-host.h
+tm.h: ${CCDIR}/cc_prep/Makefile
+	${MAKE} -f ${.ALLSRC} MFILE=${.ALLSRC} GCCDIR=${GCCDIR} ${.TARGET}
+
+options.h:
+	touch ${.TARGET}
+
+auto-host.h:
+	echo '#include "dragonfly-native.h"' > ${.TARGET}
+
+all: ${INSTALLOBJS}
+
+realinstall:
+	${INSTALL} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
+	    ${INSTALLOBJS} ${DESTDIR}${TARGET_LIBDIR}
+
+clean:
+	rm -f ${CLEANFILES} ${OBJS} ${OBJS:S/$/.tmp/}
+
+.include <bsd.lib.mk>

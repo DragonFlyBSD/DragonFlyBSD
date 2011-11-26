@@ -1,0 +1,7 @@
+How does CSU work in DragonFly?
+===============================
+
+Every GCC carries some own CSU sources which need to be used.  However, we
+also provide a part of the startup files.  Stuff here goes into /usr/lib,
+and the per-GCC files are installed from gnu/lib/gccXX/csu into
+/usr/lib/gccXX.

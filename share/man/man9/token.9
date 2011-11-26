@@ -1,0 +1,237 @@
+.\"
+.\" Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Venkatesh Srinivas <me@endeavour.zapto.org>.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd June 10, 2010
+.Dt TOKEN 9
+.Os
+.Sh NAME
+.Nm lwkt_token_init ,
+.Nm lwkt_token_uninit ,
+.Nm lwkt_gettoken ,
+.Nm lwkt_trytoken ,
+.Nm lwkt_reltoken ,
+.Nm lwkt_token_pool_lookup ,
+.Nm lwkt_getpooltoken ,
+.\".Nm lwkt_relpooltoken ,
+.Nm lwkt_token_swap
+.Nd soft token locks
+.Sh SYNOPSIS
+.In sys/thread.h
+.Ft void
+.Fn lwkt_token_init "struct lwkt_token *tok" "char *desc"
+.Ft void
+.Fn lwkt_token_uninit "struct lwkt_token *tok"
+.Ft void
+.Fn lwkt_gettoken "struct lwkt_token *tok"
+.Ft int
+.Fn lwkt_trytoken "struct lwkt_token *tok"
+.Ft void
+.Fn lwkt_reltoken "struct lwkt_token *tok"
+.Ft struct lwkt_token *
+.Fn lwkt_token_pool_lookup "void *ptr"
+.Ft struct lwkt_token *
+.Fn lwkt_getpooltoken "void *ptr"
+.Ft void
+.Fn lwkt_token_swap "void"
+.Sh DESCRIPTION
+A soft token is a lock which is only held while a thread is running.
+If a thread explicitly blocks, all its tokens are released, and reacquired
+when the thread resumes.
+While a thread blocks, the conditions protected by a soft token
+may change and may need to be reevaluated on wakeup.
+.Pp
+Tokens may be taken recursively.
+However, tokens must be released in the reverse order they were acquired.
+.Pp
+The pool token interface exists to allow using tokens with data structures
+which may be deallocated.
+It allows getting a token reference from an address, which
+is implemented by a set of statically allocated tokens and a hash function.
+.Pp
+The
+.Fn lwkt_token_init
+function is called to initialize a token.
+The
+.Fa desc
+argument specifies the wait string displayed when waiting for the token.
+The
+.Fn lwkt_token_uninit
+function is called to de-initialize one.
+Before using a token, it must be initialized.
+.Pp
+The
+.Fn lwkt_gettoken
+function attempts to acquire a token.
+If it is unsuccessful, the calling thread blocks.
+The
+.Fn lwkt_trytoken
+does the same thing; however, if it cannot acquire the token, it returns 0
+instead of blocking.
+The
+.Fn lwkt_reltoken
+function releases a previously acquired soft token.
+.Pp
+The
+.Fn lwkt_token_pool_lookup
+function takes an address and maps it to one of a number of statically
+allocated tokens.
+The
+.Fn lwkt_getpooltoken
+function acquires a token associated with an address.
+Use these two functions when tokens must protect a data structure,
+but the structure can be deallocated.
+Pool tokens do not need to be initialized.
+.Pp
+The
+.Fn lwkt_token_swap
+function swaps the two most recently acquired tokens; this allows release of
+tokens out-of-order.
+This function should not be called when less than two tokens are held.
+.Sh EXAMPLES
+A simple example of using a token to protect access to a data structure:
+.Bd -literal
+/* Data structure to be protected */
+struct protected_data {
+	struct lwkt_token tok;
+	int data;
+};
+
+struct protected_data pdata;
+
+/* Called early in boot */
+void
+init(void)
+{
+	lwkt_token_init(&pdata.tok, "example");
+	pdata.data = 0;
+}
+
+/*
+ * A silly kthread; it uses a token to protect pdata.data.
+ */
+void
+kthread1(void)
+{
+	int local;
+
+	/*
+	 * Get the soft token.
+	 */
+	lwkt_gettoken(&pdata.tok);
+	for (;;) {
+		local = pdata.data++;
+		tsleep(pdata, 0, "sleep", 0);
+		/*
+		 * While we are asleep, we do not hold the token. When we
+		 * awake here, we will hold the token again, but we may not
+		 * depend on local reflecting pdata.data.
+		 */
+
+		local = pdata.data;
+		if (local == 4)
+			break;
+	}
+	/*
+	 * Release the token.
+	 */
+	lwkt_reltoken(&pdata.tok);
+}
+.Ed
+.Pp
+An example using pool tokens:
+.Bd -literal
+struct dynamic_data {
+	int ref;
+};
+
+/*
+ * Use a token to protect a reference count in a dynamic structure.
+ * Embedding a token in the structure would be inappropriate, since
+ * another thread may attempt to take the token after we have freed
+ * the object but before we have removed all external references to it.
+ */
+void
+kfunction(struct dynamic_data *dynptr)
+{
+	struct lwkt_token *tok;
+
+	/*
+	 * Get a token from the associated with the address of dynptr
+	 */
+	tok = lwkt_getpooltoken(dynptr);
+	dynptr->ref--;
+	if (dynptr->ref == 0)
+		free(dynptr);
+
+	/*
+	 * Release the token via its reference, as above
+	 */
+	lwkt_reltoken(tok);
+}
+.Ed
+.Sh NOTES
+Soft tokens are not released when a thread is preempted; they are only released
+when a thread explicitly blocks, such as via
+.Fn tsleep
+or
+.Fn lwkt_switch .
+.Pp
+If
+.Fn lwkt_gettoken
+blocks while attempting to acquire a token, all currently-held tokens will
+be released till a thread can acquire all of them again.
+.Pp
+When tokens are held and
+.Fn tsleep_interlock
+is used, tokens are not released until blocking happens - that is until the
+.Fn tsleep
+paired with the
+.Fn tsleep_interlock
+is called.
+.Sh FILES
+The LWKT Token implementation is in
+.Pa /sys/kern/lwkt_token.c .
+.Sh SEE ALSO
+.Xr crit_enter 9 ,
+.Xr lockmgr 9 ,
+.Xr serializer 9 ,
+.Xr sleep 9 ,
+.Xr spinlock 9
+.Sh HISTORY
+LWKT tokens first appeared in
+.Dx 1.0 .
+.Sh AUTHORS
+The
+.Nm token
+implementation was written by
+.An Matthew Dillon .

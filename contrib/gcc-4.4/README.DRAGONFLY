@@ -1,0 +1,40 @@
+    GCC-4.4.7 PRE-RELEASE
+    =====================
+
+    This directory contains a selected set of files from the GNU
+    gcc-4.4.7 snapshot distribution.
+
+    ON THE VENDOR BRANCH (vendor/GCC44), DO NOT CREATE OR EDIT ANY FILES
+    IN THIS DIRECTORY HIERARCHY!  THIS HIERARCHY REPRESENTS AN EXACT COPY,
+    MINUS UNNEEDED FILES, OF THE GNU GCC DISTRIBUTION.
+
+    All modifications are made in the master or release branches!
+    The file README.DELETED contains a list of deleted files.
+
+    file = gcc-4.4-20111025.tar.bz2
+    date = 26 October 2011
+    size = 59618628
+    sha1 = b480c0066d41b74d3c65e863f585ab09eee4697a
+
+
+    The following files have been added or patched:
+    =======================================================
+    /libstdc++-v3/config/os/bsd/dragonfly/ctype_base.h
+    /libstdc++-v3/config/os/bsd/dragonfly/ctype_inline.h
+    /libstdc++-v3/config/os/bsd/dragonfly/ctype_noninline.h
+    /libstdc++-v3/config/os/bsd/dragonfly/os_defines.h
+    /libstdc++-v3/config/locale/dragonfly/c_locale.cc
+    /libstdc++-v3/config/locale/dragonfly/ctype_members.cc
+    /libstdc++-v3/configure.host
+    /libgcc/config.host
+    /gcc/c-format.c
+    /gcc/c-opts.c
+    /gcc/crtstuff.c
+    /gcc/tree-inline.c
+    /gcc/unwind-dw2-fde-glibc.c
+    /gcc/config/dragonfly.h
+    /gcc/config/i386/dragonfly-unwind.h
+    /gcc/config/i386/dragonfly.h
+    /gcc/config/i386/dragonfly64.h
+    /gcc/config/i386/i386.c
+    /include/libiberty.h

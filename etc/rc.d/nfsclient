@@ -1,0 +1,67 @@
+#!/bin/sh
+#
+# $FreeBSD: src/etc/rc.d/nfsclient,v 1.3 2002/10/12 10:31:31 schweikh Exp $
+# $DragonFly: src/etc/rc.d/nfsclient,v 1.6 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: nfsclient
+# REQUIRE: NETWORKING mountcritremote rpcbind
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="nfsclient"
+rcvar="nfs_client_enable"
+start_cmd="nfsclient_start"
+start_precmd="nfsclient_precmd"
+stop_cmd="unmount_all"
+
+# Load nfs module if it was not compiled into the kernel
+nfsclient_precmd()
+{
+	if ! sysctl vfs.nfs >/dev/null 2>&1; then
+		if ! kldload nfs; then
+			warn 'Could not load nfs module'
+			return 1
+		fi
+	fi
+	return 0
+}
+
+nfsclient_start()
+{
+	#
+	# Set some nfs client related sysctls
+	#
+	echo -n "NFS CLIENT:"
+	if [ -n "${nfs_access_cache}" ]; then
+		sysctl vfs.nfs.access_cache_timeout=${nfs_access_cache} >/dev/null
+	fi
+	if [ -n "${nfs_neg_cache}" ]; then
+		sysctl vfs.nfs.neg_cache_timeout=${nfs_neg_cache} >/dev/null
+	fi
+	if [ -n "${nfs_bufpackets}" ]; then
+		sysctl vfs.nfs.bufpackets=${nfs_bufpackets} > /dev/null
+	fi
+	echo -n " access_cache_timeout=`sysctl -n vfs.nfs.access_cache_timeout`"
+	echo -n " neg_cache_timeout=`sysctl -n vfs.nfs.neg_cache_timeout`"
+	unmount_all
+}
+
+unmount_all()
+{
+	# If /var/db/mounttab exists, some nfs-server has not been
+	# successfully notified about a previous client shutdown.
+	# If there is no /var/db/mounttab, we do nothing.
+
+	if checkyesno rpc_umntall_enable; then
+		if [ -f /var/db/mounttab ]; then
+			echo -n ' rpc.umntall'
+			rpc.umntall -k
+		fi
+	fi
+}
+load_rc_config $name
+run_rc_command "$1"
+
+echo '.'

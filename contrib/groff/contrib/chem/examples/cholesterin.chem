@@ -1,0 +1,52 @@
+cholesterin.chem:
+.cstart
+
+# Example file for `chem':
+#   Cholesterin or C27_H46O or
+#   10,13-dimethyl-17-(6-methylheptan-2-yl)-2,3,4,5,6,9,11,12,14,15,16,17-
+#     dodecahydro-1H-cyclopenta[a]phenanthren-3-ol
+
+# Source file position: <groff-source>/contrib/chem/example/cholesterin.p
+# Installed position: <prefix>/share/doc/groff/example/chem/cholesterin.p
+
+# Copyright (C) 2006, 2009 Free Software Foundation, Inc.
+# Written by Bernd Warken.
+
+# Last update: 5 Jan 2009
+
+# This file is part of `chem', which is part of `groff'.
+
+# `groff' is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# `groff' is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+R1:	ring6
+	bond -120 ; HO
+R2:	ring6 with .V5 at R1.V3 with .V6 at R1.V2 double 4,5
+	bond up at R2.V6
+R3:	ring6 with .V5 at R2.V1 with .V4 at R2.V2
+R4:	flatring5 pointing up with .V4 at R3.V3 with .V5 at R3.V2
+	bond up at R4.V5
+	bond up at R4.V1
+B1:	bond -60
+	bond 60 at B1.start
+	bond 120
+	bond 60
+	bond 120
+B2:	bond 60
+	bond down at B2.start
+
+### Emacs settings
+# Local Variables:
+# mode: Nroff
+# End:
+.cend

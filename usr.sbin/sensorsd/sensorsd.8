@@ -1,0 +1,101 @@
+.\" $OpenBSD: sensorsd.8,v 1.20 2008/03/16 22:26:43 jmc Exp $
+.\" $DragonFly: src/usr.sbin/sensorsd/sensorsd.8,v 1.6 2008/11/02 18:29:07 swildner Exp $
+.\"
+.\" Copyright (c) 2003 Henning Brauer <henning@openbsd.org>
+.\" Copyright (c) 2005 Matthew Gream <matthew.gream@pobox.com>
+.\" Copyright (c) 2007 Constantine A. Murenin <cnst@FreeBSD.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd October 19, 2008
+.Dt SENSORSD 8
+.Os
+.Sh NAME
+.Nm sensorsd
+.Nd "hardware sensors monitor"
+.Sh SYNOPSIS
+.Nm
+.Op Fl d
+.Op Fl c Ar check
+.Sh DESCRIPTION
+The
+.Nm
+utility retrieves sensor monitoring data like fan speed,
+temperature and voltage via
+.Xr sysctl 3 .
+When the state of any monitored sensor changes, an alert is sent using
+.Xr syslog 3
+and a command, if specified, is executed.
+.Pp
+By default,
+.Nm
+monitors status changes on all sensors that keep their state,
+thus sensors that automatically provide status do not require
+any additional configuration.
+In addition, for every sensor,
+no matter whether it automatically provides its state or not,
+custom low and high limits may be set,
+so that a local notion of sensor status can be computed by
+.Nm ,
+indicating whether the sensor is within or is exceeding its limits.
+.Pp
+Limit and command values for a particular sensor may be specified in the
+.Xr sensorsd.conf 5
+configuration file.
+This file is reloaded upon receiving
+.Dv SIGHUP .
+.Pp
+The options are as follows:
+.Bl -tag -width indent
+.It Fl c Ar check
+Check sensors every
+.Ar check
+seconds.
+The shortest reporting period for state changes
+will be three times this value.
+The default is 20.
+.It Fl d
+Do not daemonize.
+If this option is specified,
+.Nm
+will run in the foreground.
+.El
+.Sh FILES
+.Bl -tag -width ".Pa /etc/sensorsd.conf"
+.It Pa /etc/sensorsd.conf
+Configuration file for
+.Nm .
+.El
+.Sh SEE ALSO
+.Xr sysctl 3 ,
+.Xr syslog 3 ,
+.Xr sensorsd.conf 5 ,
+.Xr syslogd 8
+.Sh HISTORY
+The
+.Nm
+program first appeared in
+.Ox 3.5
+and was imported into
+.Dx 1.11 .
+.Sh CAVEATS
+Certain sensors may flip status from time to time.
+To guard against false reports,
+.Nm
+implements a state dumping mechanism.
+However, this inevitably introduces
+an additional delay in status reporting and command execution,
+e.g.\& one may notice that
+.Nm
+makes its initial report about the state of monitored sensors
+not immediately, but about 60 seconds after it is started.

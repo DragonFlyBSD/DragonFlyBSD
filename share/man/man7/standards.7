@@ -1,0 +1,173 @@
+.\"
+.\" Copyright (c) 2010
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd November 6, 2010
+.Dt STANDARDS 7
+.Os
+.Sh NAME
+.Nm standards
+.Nd standards supported by DragonFly
+.Sh SYNOPSIS
+.Fd "#define _XOPEN_SOURCE 600"
+.Pp
+.In sys/cdefs.h
+.Sh DESCRIPTION
+A number of
+.Dq feature test macros ,
+namely
+.Dv _POSIX_C_SOURCE
+and
+.Dv _XOPEN_SOURCE ,
+can be used by applications to indicate desired sets of features (beyond
+those specified by the C standard) in the programming environment supplied by
+.Dx .
+These macros determine which prototypes are exposed by header files and so on.
+.Pp
+If neither
+.Dv _POSIX_C_SOURCE
+and
+.Dv _XOPEN_SOURCE
+are set, the programming environment defaults to
+.St -susv3 .
+In addition, a number of
+.Bx
+specific prototypes, definitions etc.\& are made visible.
+.Ss POSIX Standards (_POSIX_C_SOURCE)
+The value of the
+.Dv _POSIX_C_SOURCE
+macro determines which
+.Tn POSIX
+standard the programming environment conforms to.
+.Bl -tag -width ".Li 199009"
+.It Li 1
+Make definitions conforming to
+.St -p1003.1-90
+visible.
+Implies
+.St -isoC-90 .
+.It Li 2
+Additionally, make definitions conforming to
+.St -p1003.2-92
+visible.
+.It Li 199009
+Same as
+.Li 1 .
+.It Li 199209
+Same as
+.Li 2 .
+.It Li 199309
+Additionally, make definitions conforming to
+.St -p1003.1b-93
+visible.
+.It Li 199506
+Additionally, make definitions conforming to
+.St -p1003.1c-95
+visible.
+.It Li 200112
+Additionally, make definitions conforming to
+.St -p1003.1-2001
+visible.
+Implies
+.St -isoC-99 .
+This is the default.
+.It Li 200809
+Additionally, make definitions conforming to
+.St -p1003.1-2008
+visible.
+Implies
+.St -isoC-99 .
+.El
+.Pp
+Defining
+.Dv _POSIX_C_SOURCE
+to any value lower than
+.Li 199009
+(other than
+.Li 1
+or
+.Li 2 )
+makes it default to
+.Li 198808
+which makes definitions conforming to
+.St -p1003.1-88
+visible.
+No C standard is implied in this case.
+.Pp
+Defining the obsolete
+.Dv _POSIX_SOURCE
+macro without defining
+.Dv _POSIX_C_SOURCE
+is equivalent to defining
+.Dv _POSIX_C_SOURCE
+to
+.Li 198808 .
+.Ss X/Open CAE Specifications (_XOPEN_SOURCE)
+The value of the
+.Dv _XOPEN_SOURCE
+macro determines which X/Open CAE specification the programming
+environment conforms to.
+.Bl -tag -width ".Li 500"
+.It Li 500
+Make defintions conforming to the
+.St -susv2
+visible.
+Implies defining
+.Dv _POSIX_C_SOURCE
+to
+.Li 199506 .
+.It Li 600
+Make definitions conforming to the
+.St -susv3
+visible.
+Implies defining
+.Dv _POSIX_C_SOURCE
+to
+.Li 200112 .
+This is the default.
+.It Li 700
+Make definitions conforming to
+.St -p1003.1-2008
+and to the corresponding XSI extensions visible.
+.El
+.Pp
+If both CAE and POSIX conformance is required, only
+.Dv _XOPEN_SOURCE
+can be set.
+.\".Ss Miscellaneous Macros
+.\".Dv _ANSI_SOURCE
+.\".Dv _C99_SOURCE
+.\".Dv _DRAGONFLY_SOURCE
+.\".Dv _NETBSD_SOURCE
+.Sh HISTORY
+A
+.Nm
+manual page first appeared in
+.Dx 2.7 .

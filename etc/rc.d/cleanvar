@@ -1,0 +1,59 @@
+#!/bin/sh
+#
+# $FreeBSD: src/etc/rc.d/cleanvar,v 1.5 2003/07/14 13:02:36 mtm Exp $
+# $DragonFly: src/etc/rc.d/cleanvar,v 1.5 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: cleanvar
+# REQUIRE: mountcritlocal
+
+. /etc/rc.subr 
+
+dummy_rc_command "$1"
+
+# use recursion and shell test, because /usr/bin/find is not yet mounted
+#
+purgedir()
+{
+	local dir file
+
+	if [ $# -eq 0 ]; then
+		purgedir .
+	else
+		for dir
+		do
+		(
+			cd "$dir" && for file in .* *
+			do
+				[ ."$file" = .. -o ."$file" = ... ] && continue
+				if [ -d "$file" -a ! -L "$file" ]
+				then
+					purgedir "$file"
+				else
+					rm -f -- "$file"
+				fi
+			done
+		)
+		done
+	fi
+}
+
+# These files must be removed only the first time this script is run
+# on boot.
+#
+[ "$1" != "reload" ] && rm -f /var/run/clean_var /var/spool/lock/clean_var
+
+# purge /var/run /var/spool/lock and /var/spool/uucp/.Temp/*
+#
+if [ -d /var/run -a ! -f /var/run/clean_var ]; then
+	purgedir /var/run
+	# And an initial utmp file
+	(cd /var/run && cp /dev/null utmp && chmod 644 utmp;)
+	>/var/run/clean_var
+fi
+if [ -d /var/spool/lock -a ! -f /var/spool/lock/clean_var ]; then
+	purgedir /var/spool/lock
+	>/var/spool/lock/clean_var
+fi
+rm -rf /var/spool/uucp/.Temp/*
+

@@ -1,0 +1,9 @@
+This directory contains most of the file distribution. The original
+source can be obtained from:
+	ftp://ftp.astron.com/pub/file/
+
+A list of the omitted files and directories can be found in
+README.DELETED.
+
+This is used in lib/libmagic and usr.bin/file.  When upgrading, remember
+to update config.h in lib/libmagic.

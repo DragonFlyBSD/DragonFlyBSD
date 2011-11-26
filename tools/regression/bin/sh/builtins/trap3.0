@@ -1,0 +1,11 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/trap3.0,v 1.2 2011/02/20 14:18:58 jilles Exp $
+
+{
+	trap '' garbage && exit 3
+	trap - garbage && exit 3
+	trap true garbage && exit 3
+	trap '' 99999 && exit 3
+	trap - 99999 && exit 3
+	trap true 99999 && exit 3
+} 2>/dev/null
+exit 0

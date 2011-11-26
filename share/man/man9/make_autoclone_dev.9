@@ -1,0 +1,243 @@
+.\"
+.\" Copyright (c) 2009
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd August 13, 2010
+.Dt MAKE_AUTOCLONE_DEV 9
+.Os
+.Sh NAME
+.Nm make_autoclone_dev ,
+.Nm destroy_autoclone_dev ,
+.Nm devfs_clone_bitmap_init ,
+.Nm devfs_clone_bitmap_uninit ,
+.Nm devfs_clone_bitmap_fff ,
+.Nm devfs_clone_bitmap_chk ,
+.Nm devfs_clone_bitmap_set ,
+.Nm devfs_clone_bitmap_get ,
+.Nm devfs_clone_bitmap_put ,
+.Nm DEVFS_DECLARE_CLONE_BITMAP ,
+.Nm DEVFS_CLONE_BITMAP
+.Nd device clone functions
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/conf.h
+.In sys/devfs.h
+.Ft cdev_t
+.Fn make_autoclone_dev "struct dev_ops *ops" "struct devfs_bitmap *bitmap" "d_clone_t *nhandler" "uid_t uid" "gid_t gid" "int perms" "const char *fmt" "..."
+.Ft void
+.Fn destroy_autoclone_dev "cdev_t dev" "struct devfs_bitmap *bitmap"
+.Ft void
+.Fn devfs_clone_bitmap_init "struct devfs_bitmap *bitmap"
+.Ft void
+.Fn devfs_clone_bitmap_uninit "struct devfs_bitmap *bitmap"
+.Ft void
+.Fn devfs_clone_bitmap_fff "struct devfs_bitmap *bitmap"
+.Ft int
+.Fn devfs_clone_bitmap_chk "struct devfs_bitmap *bitmap" "int unit"
+.Ft void
+.Fn devfs_clone_bitmap_set "struct devfs_bitmap *bitmap" "int unit"
+.Ft int
+.Fn devfs_clone_bitmap_get "struct devfs_bitmap *bitmap" "int limit"
+.Ft void
+.Fn devfs_clone_bitmap_put "struct devfs_bitmap *bitmap" "int unit"
+.Fn DEVFS_DECLARE_CLONE_BITMAP "name"
+.Fn DEVFS_CLONE_BITMAP "name"
+.Sh DESCRIPTION
+.Fn make_autoclone_dev
+creates a
+.Vt cdev_t
+with the default
+.Fa ops ,
+visible in the
+.Xr devfs 5
+namespace, that (when opened) will invoke the clone handler specified by
+.Fa nhandler .
+If a
+.Vt devfs_bitmap *
+is specified, the given
+.Fa bitmap
+is initialized using
+.Fn devfs_clone_bitmap_init .
+.Pp
+The clone handler must be defined as follows:
+.Bd -literal
+d_clone_t mydev_clone;
+
+int
+mydev_clone(struct dev_clone_args *ap)
+{
+};
+.Ed
+.Pp
+When called, the handler is passed a pointer to a populated
+.Vt dev_clone_args
+structure, which is defined as follows:
+.Bd -literal
+struct dev_clone_args {
+        struct dev_generic_args a_head;
+        struct cdev     *a_dev;
+        const char      *a_name;
+        size_t           a_namelen;
+        struct ucred    *a_cred;
+        int              a_mode;
+};
+.Ed
+.Pp
+.Fa a_head.a_dev
+is the
+.Vt cdev_t
+of the accessed autoclone device.
+.Fa a_name
+and
+.Fa a_namelen
+are the registered clonable base name and its length, as specified to
+.Fn make_autoclone_dev .
+.Fa a_mode
+and
+.Fa a_cred
+contain the mode and cred passed to the autoclone device's
+.Fn open .
+.Pp
+The clone handler must set
+.Fa a_dev
+to a new
+.Vt cdev_t ,
+returned by a call to
+.Fn make_only_dev .
+.Fa a_dev
+may also be set to
+.Dv NULL ,
+in which case the
+.Fn open
+will ultimately fail with
+.Er ENXIO .
+If
+.Fa a_dev
+is
+.Pf non- Ns Dv NULL ,
+it is automatically made visible and linked into
+.Xr devfs 5
+as if it was created with
+.Fn make_dev .
+Thus,
+.Fn destroy_dev
+should be used to destroy the cloned
+.Vt cdev_t
+once it is no longer required,
+usually during
+.Fn close .
+.Pp
+.Fn destroy_autoclone_dev
+destroys a
+.Vt cdev_t
+created by
+.Fn make_autoclone_dev
+unregistering its clone handler and (if non-NULL) also uninitializes its
+.Fa bitmap
+using
+.Fn devfs_clone_bitmap_uninit .
+.Pp
+.Fn devfs_clone_bitmap_init
+initializes the given clone
+.Fa bitmap
+so it is ready to use.
+.Pp
+.Fn devfs_clone_bitmap_uninit
+frees the memory associated with the specified clone
+.Fa bitmap
+and leaves it unusable.
+.Pp
+.Fn devfs_clone_bitmap_fff
+returns the first unused unit in
+.Fa bitmap .
+To use this unit, it has to be acquired by a call to
+.Fn devfs_clone_bitmap_set .
+.Pp
+.Fn devfs_clone_bitmap_chk
+checks if
+.Fa unit
+is in use (set) and returns 1 if it is; otherwise 0 is returned.
+.Pp
+.Fn devfs_clone_bitmap_set
+marks
+.Fa unit
+in
+.Fa bitmap
+as used, so further calls to
+.Fn devfs_clone_bitmap_fff
+or
+.Fn devfs_clone_bitmap_get
+cannot retrieve it.
+If one intends to use a clone handler along with preallocated devices, it
+is recommended to block the unit numbers of the preallocated devices by
+calling
+.Fn devfs_clone_bitmap_set
+on them.
+.Pp
+.Fn devfs_clone_bitmap_put
+marks
+.Fa unit
+in the
+.Fa bitmap
+as unused so further calls to
+.Fn devfs_clone_bitmap_fff
+or
+.Fn devfs_clone_bitmap_get
+can retrieve it again.
+.Pp
+.Fn devfs_clone_bitmap_get
+is a shortcut to
+.Fn devfs_clone_bitmap_fff
+and
+.Fn devfs_clone_bitmap_set .
+It will return the first unused unit number and also mark it as used.
+.Pp
+The
+.Fn DEVFS_DECLARE_CLONE_BITMAP
+macro declares a clone bitmap with the specified
+.Fa name .
+As long as the name specified is unique, this macro can be used to declare
+global variables.
+.Pp
+The
+.Fn DEVFS_CLONE_BITMAP
+is a macro which expands the specified
+.Fa name
+to the full name of a clone bitmap.
+It is used in conjunction with
+.Fn DEVFS_DECLARE_CLONE_BITMAP ,
+as it uses the same name.
+.Sh HISTORY
+The
+.Xr devfs 5
+clone facilities and the associated functions all appeared in
+.Dx 2.3 .
+.Sh AUTHOR
+.An Alex Hornung

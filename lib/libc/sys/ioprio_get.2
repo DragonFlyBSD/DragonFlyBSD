@@ -1,0 +1,138 @@
+.\"
+.\" Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd May 12, 2010
+.Dt IOPRIO_GET 2
+.Os
+.Sh NAME
+.Nm ioprio_get ,
+.Nm ioprio_set
+.Nd get/set the I/O priority
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/resource.h
+.Ft int
+.Fn ioprio_get "int which" "int who"
+.Ft int
+.Fn ioprio_set "int which" "int who" "int prio"
+.Sh DESCRIPTION
+The
+.Fn ioprio_get
+and
+.Fn ioprio_set
+functions get and set the I/O scheduler priority of a process, process group
+or all processes of a user.
+.Pp
+The
+.Fa which
+argument specifies what type of resource's priority is to be modified.
+It can have the following values (as defined in
+.In sys/resource.h ) :
+.Bl -tag -width ".Dv PRIO_PROCESS"
+.It Dv PRIO_PROCESS
+A single process
+.It Dv PRIO_PGRP
+A process group
+.It Dv PRIO_USER
+All processes of a user
+.El
+.Pp
+The
+.Fa who
+argument specifies, depending on the
+.Fa which
+argument, either the process ID (if
+.Fa which
+is
+.Dv PRIO_PROCESS ) ,
+the process group ID (if
+.Fa which
+is
+.Dv PRIO_PGRP ) ,
+or the user ID (if
+.Fa which
+is
+.Dv PRIO_USER ) .
+A value of 0 specifies either the current process, the current process group,
+or the current user.
+.Pp
+For the
+.Fn ioprio_set
+function, the
+.Fa prio
+argument specifies the priority to be set.
+It can range from 1 to 10, with higher numbers indicating a higher priority.
+.Sh RETURN VALUES
+.Rv -std ioprio_get ioprio_set
+.Sh ERRORS
+The
+.Fn ioprio_get
+function will fail if:
+.Bl -tag -width ".Bq Er EINVAL"
+.It Bq Er EINVAL
+An invalid value was specified for the
+.Fa which
+argument
+.It Bq Er ESRCH
+No corresponding process, process group or user could be found for the ID
+specified in
+.Fa who
+.El
+.Pp
+The
+.Fn ioprio_set
+function will fail if:
+.Bl -tag -width ".Bq Er EACCES"
+.It Bq Er EACCES
+The caller isn't allowed to access the I/O priority
+.It Bq Er EINVAL
+An invalid value was specified for the
+.Fa which
+argument
+.It Bq Er EPERM
+The caller doesn't own the specified process or processes
+.It Bq Er ESRCH
+No corresponding process, process group or user could be found for the ID
+specified in
+.Fa who
+.El
+.Sh SEE ALSO
+.Xr ioprio 1
+.Sh HISTORY
+The
+.Fn ioprio_get
+and
+.Fn ioprio_set
+function calls first appeared in
+.Dx 2.7 .
+.Sh AUTHORS
+.An -nosplit
+.An Alex Hornung

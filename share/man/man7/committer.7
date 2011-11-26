@@ -1,0 +1,303 @@
+.\" Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+.\" 
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" 
+.\" $DragonFly: src/share/man/man7/committer.7,v 1.11 2008/05/02 02:05:06 swildner Exp $
+.\" 
+.Dd March 26, 2009
+.Dt COMMITTER 7
+.Os
+.Sh NAME
+.Nm committer
+.Nd instructions and rules for DragonFly committers
+.Sh SETTING UP GIT
+See
+.Xr development 7
+on how to pull a fresh copy of the
+.Dx
+.Xr git 1
+repository.
+.Pp
+Committers have to push to
+.Pa crater.dragonflybsd.org
+via
+.Xr ssh 1 .
+If the system is set up to pull from a
+.Dx
+mirror, a remote entry will have to be set up:
+.Bd -literal -offset indent
+git remote add crater \\
+	ssh://crater.dragonflybsd.org/repository/git/dragonfly.git
+.Ed
+.Pp
+Your
+.Pa ~/.gitconfig
+should contain at least:
+.Bd -literal -offset indent
+[user]
+	name = Your Name
+	email = <login>@dragonflybsd.org
+.Ed
+.Pp
+Alternatively, see the
+.Va user.name
+and
+.Va user.email
+variables in
+.Xr git-config 1 .
+.Sh SSH DSA KEYS
+The git repository machine is
+.Pa crater.dragonflybsd.org ,
+and the
+.Dx
+developer machine is
+.Pa leaf.dragonflybsd.org .
+We create
+an account for you on both machines and install your public SSH
+key to give you access.
+.Pp
+Your
+.Pa crater
+account is set up for repository access only.
+It can only operate as a git slave and cannot be logged into.
+That is,
+.Pa crater.dragonflybsd.org
+is only used as part of
+.Nm git Cm push
+operations.
+.Pp
+Your
+.Pa leaf
+account is a general developer account.
+Any
+.Dx
+developer can have a
+.Pa leaf
+account, whether a committer or not.
+It can be useful as a developer rendezvous,
+however.
+For example, people upload kernel cores to
+.Pa leaf
+so other
+developers can look at them.
+You log into your
+.Pa leaf
+account with:
+.Bd -literal -offset indent
+ssh you@leaf.dragonflybsd.org
+.Ed
+.Pp
+The rules for account use are in
+.Pa leaf Ap s
+MOTD.
+It is very important that you never install a password or create a SSH
+key pair on
+.Pa leaf
+to use to access other machines.
+Because non-committers can have
+.Pa leaf
+accounts,
+.Pa leaf
+is not considered a secure machine.
+.Sh TESTING COMMIT ACCESS
+There is a directory called
+.Pa /usr/src/test/test .
+To test your commit
+access, try making a modification and committing a file in this
+directory.
+Try to push the commit to
+.Pa crater
+afterwards.
+.Bd -literal -offset indent
+cd /usr/src/test/test
+(edit something)
+git commit file_you_edited
+git push crater
+.Ed
+.Sh COMMITTING REAL WORK
+Make modifications as needed.
+For example, edit files.
+Files and directories can just be added locally.
+They are stored in your local copy of the repository and then
+synchronized with
+.Pa crater Ap s
+repository when you
+.Nm git Cm push .
+When adding new files make git aware of them like this:
+.Bd -literal -offset indent
+git add filename
+git commit filename
+.Ed
+.Pp
+To actually push your changes to the repository on
+.Pa crater ,
+use:
+.Bd -literal -offset indent
+git push crater
+.Ed
+.Pp
+To merge bug fixes to other branches (MFC), use
+.Nm git Cm cherry-pick :
+.Bd -literal -offset indent
+git checkout -b rel2_2 crater/DragonFly_RELEASE_2_2
+git cherry-pick <commit>
+git push crater rel2_2:DragonFly_RELEASE_2_2
+.Ed
+.Pp
+Do not set the default remote tag to
+.Pa origin .
+It is set to
+.Pa crater
+by default.
+This reduces instances where accidental commits or repository
+operations are made on the master repository.
+.Pp
+It is recommended to enable the MFC-detection commit hook, so that
+you are reminded of MFCing in case certain keywords are detected in
+the commit message. To do so, copy the hook into place:
+.Bd -literal -offset indent
+cp /usr/src/tools/commit-msg /usr/src/.git/hooks/commit-msg
+.Ed
+.Sh STRUCTURE OF COMMIT MESSAGES
+As many
+.Xr git 1
+tools display the first line of a commit message as a summary,
+structure your commit messages like this, if possible:
+.Bd -literal -offset indent
+One line summary of your change (less than 50 characters).
+
+Maybe more text here describing your changes in detail (including
+issue tracker IDs etc).
+.Ed
+.Pp
+To customize the commit template for
+.Dx ,
+use:
+.Bd -literal -offset indent
+git config --add commit.template /usr/src/tools/gittemplate
+.Ed
+.Sh DISCUSSING COMMITTABLE WORK BEFOREHAND
+Discussion prior to committing usually occurs on the
+.Pa kernel@ ,
+.Pa submit@ ,
+or
+.Pa bugs@
+mailing lists and depends on the work involved.
+Simple and obvious work such as documentation edits or additions
+doesn't really need a heads up.
+.Pp
+Simple and obvious bug fixes don't need a heads up either, other than to
+say that you will (or just have) committed the fix, so you don't
+race other committers trying to do the same thing.
+Usually the developer most active in a discussion about a bug commits the
+fix, but it isn't considered a big deal.
+.Pp
+More complex issues are usually discussed on the lists first.
+Non-trivial but straight forward bug fixes usually go through
+a testing period, where you say something like:
+.Do
+Here is a patch
+to driver BLAH that fixes A, B, and C, please test it.
+If there are no objections I will commit it next Tuesday.
+.Dc
+(usually a week,
+or more depending on the complexity of the patch).
+.Pp
+New drivers or utilities are usually discussed.
+Committers will often commit new work
+.Em without
+hooking it into the buildworld or
+buildkernel infrastructure in order to be able to continue
+development on it in piecemeal without having to worry about it
+breaking buildworld or buildkernel, and then they hook it in as a
+last step after they've stabilized it.
+Examples of this include
+new versions of GCC, updates to vendor packages such as bind,
+sendmail, etc.
+.Sh SOURCE OWNERSHIP
+Areas within the repository do not
+.Dq belong
+to any committer.
+Often situations will arise where one developer commits work and
+another developer finds an issue with it that needs to be corrected.
+.Pp
+All committed work becomes community property.
+No developer has a
+.Dq lock
+on any part of the source tree.
+However, if a developer is
+actively working on a portion of the source tree and you find a bug
+or other issue, courtesy dictates that you post to
+.Pa kernel@
+and/or email the developer.
+.Pp
+This means that, generally, if you do not see a commit to an area
+of the source tree in the last few weeks, it isn't considered active and
+you don't really need to confer with the developer that made the
+commit, though you should still post to the
+.Pa kernel@
+mailing list and, of course, confer with developers when their expertise
+is needed.
+.Pp
+One exception to this rule is documentation.
+If any developer commits
+new work, the documentation guys have free reign to go in and correct
+.Xr mdoc 7
+errors.
+This is really a convenience as most developers are not
+.Xr mdoc 7
+gurus and it's a waste of time for the doc guys to post to
+.Pa kernel@
+for all the little corrections they make.
+.Sh CONFLICTS
+On the occasion that a major code conflict occurs, for example if two
+people are doing major work in the same area of the source tree and forgot
+to collaborate with each other, the project leader will be responsible for
+resolving the conflict.
+Again, the repository is considered community
+property and it must be acceptable for any developer to be able to work on
+any area of the tree that he or she has an interest in.
+.Sh MAJOR ARCHITECTURAL CHANGES
+This is generally
+.An Matt Dillon Ap s
+area of expertise.
+All major architectural changes must be discussed on the
+.Pa kernel@
+mailing list and he retains veto power.
+.Pp
+This isn't usually an issue with any work.
+At best if something
+doesn't look right architecturally he'll chip in with adjustments to
+make it fit in.
+Nothing ever really gets vetoed.
+.Sh SEE ALSO
+.Xr git 1 Pq Pa pkgsrc/devel/scmgit ,
+.Xr development 7

@@ -1,0 +1,5 @@
+# $FreeBSD: src/tools/regression/bin/sh/parser/dollar-quote2.0,v 1.2 2011/06/07 08:46:13 attilio Exp $
+
+# This depends on the ASCII character set.
+
+[ $'\e' = "$(printf "\033")" ]

@@ -1,0 +1,602 @@
+.\" Copyright (c) 2000
+.\"	Mike W. Meyer
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
+.\"
+.Dd April 2, 2011
+.Dt MAKE.CONF 5
+.Os
+.Sh NAME
+.Nm make.conf
+.Nd system build information
+.Sh DESCRIPTION
+The file
+.Nm
+contains settings that control the compilation of the
+.Dx
+sources.
+The file
+.Nm
+is generally created by the system administrator when the values need
+to be changed from their defaults.
+.Pp
+The purpose of
+.Nm
+is not to run commands or perform compilation actions
+directly.
+Instead, it is included by the various makefiles in
+.Pa /usr/src
+which conditionalize their internal actions according to the settings
+found there.
+.Pp
+The
+.Pa /etc/make.conf
+file is included from the appropriate
+.Pa Makefile
+which specifies the default settings for all the available options.
+Options need only be specified in
+.Pa /etc/make.conf
+when the system administrator wishes to override these defaults.
+.Pp
+The build procedures occur in three areas: world, kernel, and
+documentation.
+Variables set in
+.Nm
+may be applicable during builds in one, two, or all of these areas.
+They may be specified for a particular build via the
+.Fl D
+option of
+.Xr make 1 .
+.Pp
+The following lists provide a name and short description for each
+variable you can use during the indicated builds.
+The values of variables flagged as
+.Vt bool
+are ignored; the variable being set at all (even to
+.Dq Li FALSE
+or
+.Dq Li NO )
+causes it to be treated as if it were set.
+.Pp
+The following list provides a name and short description for variables
+that are used for all builds, or are used by the
+.Pa makefiles
+for things other than builds.
+.Bl -tag -width Ar
+.It Va CPUTYPE
+.Pq Vt str
+Controls which processor should be targeted for generated code.
+This controls processor-specific optimizations in certain code
+(currently only OpenSSL) as well as modifying the value of
+.Va CFLAGS
+and
+.Va COPTFLAGS
+to contain the appropriate optimization directive to
+.Xr gcc 1 .
+The automatic setting of
+.Va CFLAGS
+and
+.Va COPTFLAGS
+may be overridden using the
+.Va NO_CPU_CFLAGS
+and
+.Va NO_CPU_COPTFLAGS
+variables, respectively.  Refer to
+.Pa /usr/share/examples/etc/defaults/make.conf
+for a list of recognized
+.Va CPUTYPE
+options.
+.It Va CCVER
+.Pq Vt str
+Controls which GCC version to use by default.
+It should be set as
+.Li CCVER?=
+so as not to interfere with overrides from userland.
+We currently recommend that an override NOT be set in
+.Pa /etc/make.conf .
+Currently accepted values for compilers which are part of
+.Dx
+are
+.Dq gcc41
+and
+.Dq gcc44
+(default).
+All other values will handled according to the settings in
+.Xr compilers.conf 5 .
+.It Va BINUTILSVER
+.Pq Vt str
+Controls which binutils to use by default.
+Currently accepted values are
+.Dq binutils221
+(default).
+.It Va CFLAGS
+.Pq Vt str
+Controls the compiler setting when compiling C code.
+Optimization levels above
+.Fl O
+.Pq Fl O2 , No ...
+are not supported.
+.Va BDECFLAGS
+is provided as a set of
+.Xr gcc 1
+settings suggested by
+.An "Bruce Evans" Aq bde@FreeBSD.org
+for developing and testing changes.
+They can be used, if set, by:
+.Bd -literal -offset indent
+CFLAGS+=${BDECFLAGS}
+.Ed
+.It Va DEBUG_FLAGS
+.Pq Vt str
+Similar to
+.Va CFLAGS
+but it will cause
+.Va STRIP
+to be set to a blank value, if set.
+Typically,
+.Va DEBUG_FLAGS
+is set to
+.Fl g
+for compiling with debug symbols.
+.It Va NO_CPU_CFLAGS
+.Pq Vt str
+Setting this variable will prevent CPU specific compiler flags
+from being automatically added to
+.Va CFLAGS
+during compile time.
+.It Va CXXFLAGS
+.Pq Vt str
+Controls the compiler settings when compiling C++ code.
+.Va CXXFLAGS
+is initially set to the value of
+.Va CFLAGS .
+If you want to add to the
+.Va CXXFLAGS
+value, use
+.Dq Li +=
+instead of
+.Dq Li = .
+.It Va INSTALL
+.Pq Vt str
+the default install command.
+To have components compared before doing the install, use
+.Bd -literal -offset indent
+INSTALL="install -C"
+.Ed
+.It Va LOCAL_DIRS
+.Pq Vt str
+List any directories that should be entered when running make
+.Pa /usr/src
+in this variable.
+.It Va MAKE_SHELL
+.Pq Vt str
+Controls the shell used internally by
+.Xr make 1
+to process the command scripts in makefiles.
+.Xr sh 1 ,
+.Xr ksh 1 ,
+and
+.Xr csh 1
+all currently supported.
+.Bd -literal -offset indent
+MAKE_SHELL?=sh
+.Ed
+.It Va MODULES_OVERRIDE
+.Pq Vt str
+Set to a list of modules to build instead of all of them.
+.It Va MTREE_FOLLOWS_SYMLINKS
+.Pq Vt str
+Set this to
+.Dq Fl L
+to cause
+.Xr mtree 8
+to follow symlinks.
+.It Va STRIP
+.Pq Vt str
+Set this to the flag to pass to the
+.Xr strip 1
+command.
+If set to a blank value, debug symbols will not be removed.
+.Va STRIP
+is automatically set to a blank value if
+.Va DEBUG_FLAGS
+is set.
+.It Va WANT_HESIOD
+.Pq Vt bool
+Set this to build
+.Xr hesiod 3
+support into libc.
+.It Va NO_NS_CACHING
+.Pq Vt bool
+Set this to disable name caching in the nsswitch subsystem.
+The generic caching daemon,
+.Xr nscd 8 ,
+will not be built either if this option is set.
+.It Va NO_WERROR
+Set this if you don't want
+.Fl Werror
+to be added to
+.Va CWARNFLAGS
+or used in the kernel build.
+.It Va STATIC_LOCALES
+.Pq Vt str
+Set to a list of locales to build into statically-linked binaries.
+Currently supported locales are: BIG5 EUC EUCTW ISO2022 MSKanji UTF8
+.El
+.Pp
+The following list provides a name and short description for variables
+that are only used doing a kernel build:
+.Bl -tag -width Ar
+.It Va BOOT_COMCONSOLE_PORT
+.Pq Vt str
+The port address to use for the console if the boot blocks have
+been configured to use a serial console instead of the keyboard/video card.
+.It Va BOOT_COMCONSOLE_SPEED
+.Pq Vt int
+The baud rate to use for the console if the boot blocks have
+been configured to use a serial console instead of the keyboard/video card.
+.It Va COPTFLAGS
+.Pq Vt str
+Controls the compiler settings when building the
+kernel.
+Optimization levels above
+.Fl O
+.Pq Fl O2 , No ...
+are not guaranteed to work.
+.It Va KERNCONF
+.Pq Vt str
+Controls which kernel configurations will be
+built by
+.Dq Li "${MAKE} buildkernel"
+and installed by
+.Dq Li "${MAKE} installkernel" .
+For example,
+.Bd -literal -offset indent
+KERNCONF=MINE DEBUG GENERIC OTHERMACHINE
+.Ed
+.Pp
+will build the kernels specified by the config files
+.Pa MINE , DEBUG , GENERIC ,
+and
+.Pa OTHERMACHINE ,
+and install the kernel specified by the config file
+.Pa MINE .
+It defaults to
+.Pa GENERIC .
+.It Va LOADER_TFTP_SUPPORT
+.Pq Vt bool
+While not a buildkernel-affected option, there is no better place for this.
+By default the
+.Xr pxeboot 8
+loader retrieves the kernel via NFS.
+Defining this and recompiling
+.Pa /usr/src/sys/boot
+will cause it to retrieve the kernel via TFTP.
+This allows pxeboot to load a custom BOOTP diskless kernel yet
+still mount the server's
+.Pa /
+rather than load the server's kernel.
+.It Va NO_CPU_COPTFLAGS
+.Pq Vt str
+Setting this variable will prevent CPU specific compiler flags
+from being automatically added to
+.Va COPTFLAGS
+during compile time.
+.It Va NO_KERNELCLEAN
+.Pq Vt bool
+Set this to skip the clean target when using
+.Dq Li "${MAKE} buildkernel" .
+.It Va NO_KERNELCONFIG
+.Pq Vt bool
+Set this to skip running
+.Xr config 8
+during
+.Dq Li "${MAKE} buildkernel" .
+.It Va NO_KERNELDEPEND
+.Pq Vt bool
+Set this to skip running
+.Dq Li "${MAKE} depend"
+during
+.Dq Li "${MAKE} buildkernel" .
+.It Va NO_KERNEL_OLD_STRIP
+.Pq Vt bool
+Set this to skip stripping debugging symbols from old kernel and modules
+(kernel.old, modules.old) during
+.Dq Li "${MAKE} installkernel" .
+.It Va NO_MODULES
+.Pq Vt bool
+Set to not build modules with the kernel.
+.El
+.Pp
+The following list provides a name and short description for variables
+that are used during the world build:
+.Bl -tag -width Ar
+.It Va ENABLE_SUID_SSH
+.Pq Vt bool
+Set this to install
+.Xr ssh 1
+with the setuid bit turned on.
+.It Va MODULES_WITH_WORLD
+.Pq Vt bool
+Set to build modules with the system instead of the kernel.
+.It Va NO_CRYPT
+.Pq Vt bool
+Set to not build crypto code.
+.It Va NO_CVS
+.Pq Vt bool
+Set to not build CVS.
+.It Va NO_GAMES
+.Pq Vt bool
+Set to not build games.
+.It Va NO_GCC41
+.Pq Vt bool
+Set to not build the older version of GCC (4.1).
+.It Va NO_GDB
+.Pq Vt bool
+Set to not build
+.Xr gdb 1
+.It Va NO_I4B
+.Pq Vt bool
+Set to not build isdn4bsd package.
+.It Va NO_LIBC_R
+.Pq Vt bool
+Set to not build
+.Nm libc_r
+(reentrant version of
+.Nm libc ) .
+.It Va NO_LPR
+.Pq Vt bool
+Set to not build
+.Xr lpr 1
+and related programs.
+.It Va NO_MAILWRAPPER
+.Pq Vt bool
+Set to not build the
+.Xr mailwrapper 8
+MTA selector.
+.It Va NO_OBJC
+.Pq Vt bool
+Set to not build Objective C support.
+.It Va NO_OPENSSH
+.Pq Vt bool
+Set to not build OpenSSH.
+.It Va NO_OPENSSL
+.Pq Vt bool
+Set to not build OpenSSL (implies
+.Va NO_OPENSSH ) .
+.It Va NO_SENDMAIL
+.Pq Vt bool
+Set to not build
+.Xr sendmail 8
+and related programs.
+.It Va NO_SHARE
+.Pq Vt bool
+Set to not enter the share subdirectory.
+.It Va NO_X
+.Pq Vt bool
+Set to not compile in X\-Windows support (e.g.\&
+.Xr doscmd 1 ) .
+.It Va NOCLEAN
+.Pq Vt bool
+Set this to disable cleaning during
+.Dq Li "make buildworld" .
+This should not be set unless you know what you are doing.
+.It Va NOCLEANDIR
+.Pq Vt bool
+Set this to run
+.Dq Li "${MAKE} clean"
+instead of
+.Dq Li "${MAKE} cleandir" .
+.It Va NOFSCHG
+.Pq Vt bool
+Set to not install certain components with flag schg.
+This is useful in a jailed environment.
+.It Va NOINFO
+.Pq Vt bool
+Set to not make or install
+.Xr info 5
+files.
+.It Va NOINFOCOMPRESS
+.Pq Vt bool
+Set to not compress the info pages.
+.It Va NOMAN
+.Pq Vt bool
+Set to not build manual pages
+.It Va NOMANCOMPRESS
+.Pq Vt bool
+Set to not compress the manual pages.
+.It Va NOPROFILE
+.Pq Vt bool
+Set to avoid compiling profiled libraries.
+.It Va PPP_NOSUID
+.Pq Vt bool
+Set to disable the installation of
+.Xr ppp 8
+with the set-user-ID bit on.
+.It Va SENDMAIL_MC
+.Pq Vt str
+The default
+.Xr m4 1
+configuration file to use at install time.
+The value should include the full path to the
+.Pa .mc
+file, e.g.,
+.Pa /etc/mail/myconfig.mc .
+Use with caution as a make install will overwrite any existing
+.Pa /etc/mail/sendmail.cf .
+Note that
+.Va SENDMAIL_CF
+is now deprecated.
+.It Va SENDMAIL_SUBMIT_MC
+.Pq Vt str
+The default
+.Xr m4 1
+configuration file for mail submission
+to use at install time.
+The value should include the full path to the
+.Pa .mc
+file, e.g.,
+.Pa /etc/mail/mysubmit.mc .
+Use with caution as a make install will overwrite any existing
+.Pa /etc/mail/submit.cf .
+.It Va SENDMAIL_ADDITIONAL_MC
+.Pq Vt str
+Additional
+.Pa .mc
+files which should be built into
+.Pa .cf
+files at build time.
+The value should include the full path to the
+.Pa .mc
+file(s), e.g.,
+.Pa /etc/mail/foo.mc
+.Pa /etc/mail/bar.mc .
+.It Va SENDMAIL_CF_DIR
+.Pq Vt str
+Override the default location for the
+.Xr m4 1
+configuration files used to build a
+.Pa .cf
+file from a
+.Pa .mc
+file.
+.It Va SENDMAIL_M4_FLAGS
+.Pq Vt str
+Flags passed to
+.Xr m4 1
+when building a
+.Pa .cf
+file from a
+.Pa .mc
+file.
+.It Va SENDMAIL_CFLAGS
+.Pq Vt str
+Flags to pass to the compile command when building
+.Xr sendmail 8 .
+The
+.Va SENDMAIL_*
+flags can be used to provide SASL support with setting such as:
+.Bd -literal -offset indent
+SENDMAIL_CFLAGS=-I/usr/local/include -DSASL
+SENDMAIL_LDFLAGS=-L/usr/local/lib
+SENDMAIL_LDADD=-lsasl
+.Ed
+.It Va SENDMAIL_LDFLAGS
+.Pq Vt str
+Flags to pass to the
+.Xr ld 1
+command when building
+.Xr sendmail 8 .
+.It Va SENDMAIL_LDADD
+.Pq Vt str
+Flags to add to the end of the
+.Xr ld 1
+command when building
+.Xr sendmail 8 .
+.It Va SENDMAIL_DPADD
+.Pq Vt str
+Extra dependencies to add when building
+.Xr sendmail 8 .
+.It Va SENDMAIL_SET_USER_ID
+.Pq Vt bool
+If set, install
+.Xr sendmail 8
+as a set-user-ID root binary instead of a set-group-ID binary
+and do not install
+.Pa /etc/mail/submit.{cf,mc} .
+Use of this flag is not recommended and the alternative advice in
+.Pa /etc/mail/README
+should be followed instead if at all possible.
+.It Va SENDMAIL_MAP_PERMS
+.Pq Vt str
+Mode to use when generating alias and map database files using
+.Pa /etc/mail/Makefile .
+The default value is 0640.
+.It Va THREAD_LIB
+.Pq Vt str
+Set to either
+.Li c_r
+or
+.Li thread_xu
+to configure the system's default threading library.
+The default is
+.Li thread_xu .
+.It Va WANT_IDEA
+.Pq Vt bool
+Set to build the IDEA encryption code.
+This code is patented in the USA and many European countries.
+It is
+.Em "YOUR RESPONSIBILITY"
+to determine if you can legally use IDEA.
+.It Va WANT_INSTALLER
+.Pq Vt bool
+Set to build the installer.
+.El
+.Pp
+The following list provides a name and short description for variables
+that are used when building documentation.
+.Bl -tag -width Ar
+.It Va DOC_LANG
+.Pq Vt str
+The list of languages and encodings to build and install.
+.It Va PRINTERDEVICE
+.Pq Vt str
+The default format for system documentation, depends on your
+printer.
+This can be set to
+.Dq Li ascii
+for simple printers or
+.Dq Li ps
+for postscript or graphics printers with a ghostscript
+filter.
+.It Va GROFF_PAPER_SIZE
+.Pq Vt str
+The default paper size for
+.Xr groff 1
+(either
+.Dq letter
+or
+.Dq A4 ) .
+.El
+.Sh FILES
+.Bl -tag -width /etc/defaults/make.conf -compact
+.It Pa /etc/defaults/make.conf
+.It Pa /etc/make.conf
+.It Pa /usr/src/Makefile
+.It Pa /usr/src/Makefile.inc1
+.El
+.Sh SEE ALSO
+.Xr gcc 1 ,
+.Xr install 1 ,
+.Xr make 1 ,
+.Xr lpd 8 ,
+.Xr sendmail 8
+.Sh HISTORY
+The
+.Nm
+file appeared sometime before
+.Fx 4.0 .
+.Sh AUTHORS
+This manual page was written by
+.An Mike W. Meyer Aq mwm@mired.org .

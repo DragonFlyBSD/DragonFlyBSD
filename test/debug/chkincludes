@@ -1,0 +1,81 @@
+#!/bin/csh
+#
+# check that all major header files can be #include'd
+# singly with various combinations of _KERNEL, _KERNEL_STRUCTURES, and
+# userland access.
+#
+# The goal is that the only error reported should be a specific #error
+# indicating that particular support is not available.
+#
+# $DragonFly: src/test/debug/chkincludes,v 1.2 2006/10/24 17:09:46 swildner Exp $
+
+cd /usr/src/sys
+set files = ( sys/*.h vm/*.h net*/*.h ddb/*.h i386/include/*.h )
+rm -rf /tmp/chkdir
+mkdir /tmp/chkdir
+cd /tmp/chkdir
+
+awk -f /usr/src/sys/tools/makeobjops.awk -- -h /usr/src/sys/kern/device_if.m
+awk -f /usr/src/sys/tools/makeobjops.awk -- -h /usr/src/sys/kern/bus_if.m
+awk -f /usr/src/sys/tools/makeobjops.awk -- -h /usr/src/sys/dev/netif/mii_layer/miibus_if.m
+awk -f /usr/src/sys/tools/makeobjops.awk -- -h /usr/src/sys/bus/ppbus/ppbus_if.m
+awk -f /usr/src/sys/tools/makeobjops.awk -- -h /usr/src/sys/bus/pccard/card_if.m
+awk -f /usr/src/sys/tools/makeobjops.awk -- -h /usr/src/sys/bus/pccard/power_if.m
+awk -f /usr/src/sys/tools/makeobjops.awk -- -h /usr/src/sys/dev/agp/agp_if.m
+awk -f /usr/src/sys/tools/makeobjops.awk -- -h /usr/src/sys/bus/pci/pci_if.m
+awk -f /usr/src/sys/tools/makeobjops.awk -- -h /usr/src/sys/bus/pci/pcib_if.m
+awk -f /usr/src/sys/tools/makeobjops.awk -- -h /usr/src/sys/bus/usb/usb_if.m
+awk -f /usr/src/sys/tools/makeobjops.awk -- -h /usr/src/sys/bus/isa/isa_if.m
+
+echo -n > opt_cam.h
+echo -n > opt_scsi.h
+echo -n > opt_ktr.h
+echo -n > opt_icmp_bandlim.h
+echo "#define INET 1" > opt_inet.h
+
+ln -s /usr/src/sys/arch/i386/include machine
+
+foreach i ( $files )
+    if ( "$i" == "sys/syscall-hide.h" ) then
+	continue
+    endif
+    if ( "$i" == "sys/sysunion.h" ) then
+	continue
+    endif
+
+    cat > chkincl.c << EOF
+#include <$i>
+EOF
+    echo "TRY $i (_KERNEL)"
+    cc -D_KERNEL -DKLD_MODULE -fno-builtin -I/usr/src/sys -I. -Wall -Wstrict-prototypes -c chkincl.c -o chkincl.o
+end
+foreach i ( $files )
+    if ( "$i" == "sys/syscall-hide.h" ) then
+	continue
+    endif
+    if ( "$i" == "sys/sysunion.h" ) then
+	continue
+    endif
+
+    cat > chkincl.c << EOF
+#include <$i>
+EOF
+    echo "TRY $i (_KERNEL_STRUCTURES)"
+    cc -D_KERNEL_STRUCTURES -fno-builtin -I/usr/src/sys -I. -Wall -Wstrict-prototypes -c chkincl.c -o chkincl.o
+end
+
+foreach i ( $files )
+    if ( "$i" == "sys/syscall-hide.h" ) then
+	continue
+    endif
+    if ( "$i" == "sys/sysunion.h" ) then
+	continue
+    endif
+
+    cat > chkincl.c << EOF
+#include <$i>
+EOF
+    echo "TRY $i (USER)"
+    cc -fno-builtin -I/usr/src/sys -I. -Wall -Wstrict-prototypes -c chkincl.c -o chkincl.o
+end
+

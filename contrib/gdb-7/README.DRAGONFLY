@@ -1,0 +1,41 @@
+GNU GDB 7.3
+===========
+
+Original source can be downloaded from:
+http://ftp.gnu.org/gnu/gdb
+
+file = gdb-7.3a.tar.bz2
+date = 24 August 2011
+size = 19503041
+sha1 = d68061206a3485bab32da3fb751c6c3b913c2b9c
+
+A list of files and directories removed is in README.DELETED
+
+The following files were added:
+	gdb/amd64dfly-nat.c
+	gdb/amd64dfly-tdep.c
+	gdb/i386dfly-nat.c
+	gdb/i386dfly-tdep.c
+
+Local modifications applied to following files:
+	gdb/amd64-tdep.h
+	gdb/charset.c
+	gdb/configure.host
+	gdb/configure.tgt
+	gdb/corelow.c
+	gdb/defs.h
+	gdb/i386-tdep.h
+	gdb/i386bsd-nat.c
+	gdb/i386fbsd-tdep.c
+	gdb/inf-ptrace.c
+	gdb/inferior.c
+	gdb/inferior.h
+	gdb/infrun.c
+	gdb/main.c
+	gdb/mi/mi-interp.c
+	gdb/mi/mi-main.c
+	gdb/osabi.c
+	gdb/top.c
+	gdb/tui-io.c
+	include/elf/common.h
+	include/libiberty.h

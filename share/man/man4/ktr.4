@@ -1,0 +1,215 @@
+.\" Copyright (c) 2001 John H. Baldwin <jhb@FreeBSD.org>
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man4/ktr.4,v 1.9 2003/09/08 19:57:19 ru Exp $
+.\"
+.Dd August 13, 2011
+.Dt KTR 4
+.Os
+.Sh NAME
+.Nm ktr
+.Nd kernel tracing facility
+.Sh SYNOPSIS
+.Cd options KTR
+.Cd options KTR_ENTRIES=8192
+.Cd options KTR_VERBOSE=1
+.Cd options KTR_ALL
+.Cd options KTR_CTXSW
+.Cd options KTR_DMCRYPT
+.Cd options KTR_ETHERNET
+.\".Cd options KTR_HAMMER
+.Cd options KTR_IF_BGE
+.Cd options KTR_IF_EM
+.Cd options KTR_IF_EMX
+.Cd options KTR_IF_START
+.Cd options KTR_IFQ
+.Cd options KTR_IPIQ
+.Cd options KTR_KERNENTRY
+.Cd options KTR_MEMORY
+.Cd options KTR_POLLING
+.Cd options KTR_SERIALIZER
+.Cd options KTR_SPIN_CONTENTION
+.\".Cd options KTR_TCP
+.Cd options KTR_TESTLOG
+.Cd options KTR_TOKENS
+.Cd options KTR_TSLEEP
+.Cd options KTR_USB_MEMORY
+.Sh DESCRIPTION
+The
+.Nm
+facility allows kernel events to be logged while the kernel executes so that
+they can be examined later when debugging.
+The only mandatory option to enable
+.Nm
+is
+.Cd options KTR .
+.Pp
+The
+.Dv KTR_ENTRIES
+option sets the size of the buffer of events.
+It must be a power of two.
+The size of the buffer in the currently running kernel can be found via the
+read-only sysctl
+.Va debug.ktr.entries .
+By default the buffer contains 2048 entries.
+.Pp
+For debugging purposes, the following
+.Nm
+related kernel options exist:
+.Bl -tag -width ".Dv KTR_SPIN_CONTENTION"
+.It Dv KTR_ALL
+turns on all options
+.It Dv KTR_CTXSW
+context switches
+.It Dv KTR_DMCRYPT
+read and write strategy paths of
+.Xr dm 4 Ap s
+.Pa crypt
+target
+.It Dv KTR_ETHERNET
+cost of
+.Fn ether_input_chain
+and
+.Fn ether_input_dispatch
+.It Dv KTR_IF_BGE
+.Xr bge 4
+interrupts and sent/received packets
+.It Dv KTR_IF_EM
+.Xr em 4
+interrupts and sent/received packets
+.It Dv KTR_IF_EMX
+.Xr emx 4
+interrupts and sent/received packets
+.It Dv KTR_IFQ
+classic ifq dequeue/enqueue operation
+.It Dv KTR_IF_START
+running/avoiding/scheduling ifnet.if_start
+.It Dv KTR_IPIQ
+IPI related data (IPI requests, CPU synchronization etc.)
+.It Dv KTR_KERNENTRY
+entry of the kernel from userland (faults, syscalls)
+.It Dv KTR_MEMORY
+.Xr kmalloc 9
+and
+.Xr kfree 9
+events
+.It Dv KTR_POLLING
+.Xr polling 4
+begins and ends
+.It Dv KTR_SERIALIZER
+.Xr serializer 9
+related events
+.It Dv KTR_SPIN_CONTENTION
+.Xr spinlock 9
+contention
+.It Dv KTR_TESTLOG
+IPI performance testing
+.It Dv KTR_TOKENS
+LWKT token related events
+.It Dv KTR_TSLEEP
+.Xr tsleep 9
+and
+.Xr wakeup 9
+.It Dv KTR_USB_MEMORY
+USB memory allocation
+.El
+.Ss Verbose Mode
+By default, events are only logged to the internal buffer for examination
+later, but if the verbose flag is set then they are dumped to the kernel
+console as well.
+This flag can also be set from the loader via the
+.Va debug.ktr.verbose
+environment variable, or it can be examined and set after booting via the
+.Va debug.ktr.verbose
+sysctl.
+If the flag is set to zero, which is the default, then verbose output is
+disabled.
+If the flag is set to one, then the contents of the log message and the CPU
+number are printed to the kernel console.
+If the flag is greater than one, then the filename and line number of the
+event are output to the console in addition to the log message and the CPU
+number.
+The
+.Dv KTR_VERBOSE
+option enables verbose mode and sets the flag to one.
+.Ss Examining the Events
+The KTR buffer can be examined with
+.Xr ktrdump 8 ,
+.Xr gdb 1
+or from within
+.Xr ddb 4
+via the
+.Ic show ktr Op Cm /v
+command.
+This command displays the contents of the trace buffer one page at a time.
+At the
+.Dq Li --more--
+prompt, the Enter key displays one more entry and prompts again.
+The spacebar displays another page of entries.
+Any other key quits.
+By default the timestamp, filename, and line number are not displayed with
+each log entry.
+If the
+.Cm /v
+modifier is specified, then they are displayed in addition to the normal
+output.
+Note that the events are displayed in reverse chronological order.
+That is, the most recent events are displayed first.
+.Sh SYSCTL VARIABLES
+.Bl -tag -width ".Va debug.ktr.resynchronize"
+.It Va debug.ktr.*_enable
+A 32 bit mask used to control event logging.
+Each bit corresponds to one or more events depending on the values of the
+.Fa maskbit
+parameters that were passed to the
+.Xr KTR_INFO 9
+calls which declared the events.
+.Pp
+Unless
+.Dv KTR_ALL
+is specified in the kernel configuration, the default is to turn on logging
+for all corresponding events (i.e.\& setting the sysctl to -1).
+.It Va debug.ktr.*_mask
+Read only sysctls (one per event) that show the
+.Va debug.ktr.*_enable
+values corresponding to the events.
+.It Va debug.ktr.resynchronize
+Resynchronize the TSC across all CPUs 10 times per second in an attempt to
+reduce drift errors.
+Note that this is very expensive and therefore the default is 0.
+.El
+.Sh SEE ALSO
+.Xr gdb 1 ,
+.Xr ddb 4 ,
+.Xr ktrdump 8 ,
+.Xr ktr 9
+.Sh HISTORY
+The KTR kernel tracing facility first appeared in
+.Bsx 3.0
+and was imported into
+.Fx 5.0
+and
+.Dx 1.1 .
+It was completely rewritten by Matthew Dillon in
+.Dx 1.3 .

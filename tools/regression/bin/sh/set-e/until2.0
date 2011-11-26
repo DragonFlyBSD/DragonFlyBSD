@@ -1,0 +1,5 @@
+# $FreeBSD: src/tools/regression/bin/sh/set-e/until2.0,v 1.1 2005/09/04 11:59:59 stefanf Exp $
+set -e
+until false; false; do
+	break
+done

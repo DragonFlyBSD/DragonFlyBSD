@@ -1,0 +1,54 @@
+chAc_morphine.chem:
+.br
+.cstart
+
+# Example file for `chem':
+
+# This originates from Computing Science Technical Report No. 122
+#   CHEM - A Program for Typesetting Chemical Diagrams: User Manual
+#   by Jon L. Bentley, Lynn W. Jelinski, Brian W. Kernighan
+#   <http://cm.bell-labs.com/cm/cs/cstr/122.ps.gz>.
+
+# Copyright (C) 2006, 2009 Free Software Foundation, Inc.
+
+# Last update: 5 Jan 2009
+
+# This file is part of `chem', which is part of `groff'.
+
+# `groff' is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# `groff' is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+########################################################################
+
+R1:  ring6 double 1,2
+     bond -60 from R1.V6 ; HO
+R2:  ring6 with .V1 at R1.V3
+     bond 60 from R2.V2 ; N
+     bond right from N ; CH3
+R3:  benzene with .V1 at R2.V5
+     bond -120 from R3.V5 ; HO
+# this is the furan ring
+     bond -135 length .33 from R1.V5 ; O
+     bond -45 length .33 from R3.V6
+# this is the odd ring
+     bond up length .1 from N ; BP
+B1:  bond up length .33 from R1.V4
+     bond to BP
+
+
+########################################################################
+### Emacs settings
+# Local Variables:
+# mode: Nroff
+# End:
+.cend

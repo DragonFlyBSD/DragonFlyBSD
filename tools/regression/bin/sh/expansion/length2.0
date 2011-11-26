@@ -1,0 +1,4 @@
+# $FreeBSD: src/tools/regression/bin/sh/expansion/length2.0,v 1.1 2011/03/13 16:20:38 jilles Exp $
+
+v=$-
+[ "${#-}" = "${#v}" ] || echo '${#-} wrong'

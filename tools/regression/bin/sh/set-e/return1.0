@@ -1,0 +1,11 @@
+# $FreeBSD: src/tools/regression/bin/sh/set-e/return1.0,v 1.2 2005/09/04 21:29:09 stefanf Exp $
+set -e
+
+# PR 77067, 85267
+f() {
+	return 1
+	true
+}
+
+f || true
+exit 0

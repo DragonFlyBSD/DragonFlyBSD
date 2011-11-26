@@ -1,0 +1,412 @@
+.\"
+.\" Copyright (c) 2009
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd March 9, 2009
+.Dt OBJCACHE 9
+.Os
+.Sh NAME
+.Nm objcache_create ,
+.Nm objcache_create_mbacked ,
+.Nm objcache_create_simple ,
+.Nm objcache_destroy ,
+.Nm objcache_dtor ,
+.Nm objcache_get ,
+.Nm objcache_malloc_alloc ,
+.Nm objcache_malloc_free ,
+.Nm objcache_nop_alloc ,
+.Nm objcache_nop_free ,
+.\" .Nm objcache_populate_linear ,
+.Nm objcache_put ,
+.Nm objcache_reclaimlist
+.Nd "object caching facility"
+.Sh SYNOPSIS
+.In sys/objcache.h
+.Ft struct objcache *
+.Fo objcache_create
+.Fa "const char *name"
+.Fa "int *cluster_limit0"
+.Fa "int mag_capacity"
+.Fa "objcache_ctor_fn *ctor"
+.Fa "objcache_dtor_fn *dtor"
+.Fa "void *privdata"
+.Fa "objcache_alloc_fn *alloc"
+.Fa "objcache_free_fn *free"
+.Fa "void *allocator_args"
+.Fc
+.Ft struct objcache *
+.Fo objcache_create_mbacked
+.Fa "malloc_type_t mtype"
+.Fa "size_t objsize"
+.Fa "int *cluster_limit"
+.Fa "int mag_capacity"
+.Fa "objcache_ctor_fn *ctor"
+.Fa "objcache_dtor_fn *dtor"
+.Fa "void *privdata"
+.Fc
+.Ft struct objcache *
+.Fn objcache_create_simple "malloc_type_t mtype" "size_t objsize"
+.Ft void
+.Fn objcache_destroy "struct objcache *oc"
+.Ft void
+.Fn objcache_dtor "struct objcache *oc" "void *obj"
+.Ft void *
+.Fn objcache_get "struct objcache *oc" "int ocflags"
+.Ft void *
+.Fn objcache_malloc_alloc "void *allocator_args" "int ocflags"
+.Ft void
+.Fn objcache_malloc_free "void *obj" "void *allocator_args"
+.Ft void *
+.Fn objcache_nop_alloc "void *allocator_args" "int ocflags"
+.Ft void
+.Fn objcache_nop_free "void *obj" "void *allocator_args"
+.\" .Ft void
+.\" .Fo objcache_populate_linear
+.\" .Fa "struct objcache *oc"
+.\" .Fa "void *elts"
+.\" .Fa "int nelts"
+.\" .Fa "int size"
+.\" .Fc
+.Ft void
+.Fn objcache_put "struct objcache *oc" "void *obj"
+.Ft boolean_t
+.Fn objcache_reclaimlist "struct objcache *oc[]" "int nlist" "int ocflags"
+.Sh DESCRIPTION
+Object caching is a technique for manipulating objects that are frequently
+allocated and freed.
+The idea behind caching is to preserve the invariant portion of an object's
+initial state between uses, so it does not have to be destroyed and reborn
+every time the object is used.
+.Pp
+.Fn objcache_create
+creates a new object cache.
+It is identified by
+.Fa name ,
+which is used to distinguish the object in diagnostic output.
+The
+.Fa cluster_limit0
+determines the number of available magazines in the depot layer.
+It must be at least
+.Fa mag_capacity *
+ncpus * 8.
+If 0 is given, then there is no limit to the number of magazines the depot
+can have (aside from the inherent limitation imposed by the restricted nature
+of the back end allocator).
+The
+.Fa mag_capacity
+describes the capacity of the magazine, that is the largest number of objects
+it can hold.
+If set to 0, the default value is used as defined in
+.Pa sys/kern/kern_objcache.c .
+Currently, the default value is 64.
+The object caching system itself may adjust the cluster limit and/or
+magazines' capacity based on the number of available CPUs.
+.Fa ctor
+specifies a function that constructs (i.e., performs the one-time
+initialization of) an object in the cache.
+It is defined as:
+.Bd -literal
+boolean_t foo_ctor(void *obj, void *privdata, int ocflags);
+.Ed
+.Pp
+If no constructor is needed, it must be set to
+.Dv NULL .
+.Fa dtor
+specifies a deconstructor function that destroys the cached object, before it
+is released to the back end that manages the flow of real memory.
+It is defined as:
+.Bd -literal
+void foo_dtor(void *obj, void *privdata);
+.Ed
+.Pp
+If no deconstructor is needed, it must be set to
+.Dv NULL .
+The interface to underlying allocator is provided by
+.Fa alloc ,
+.Fa free
+and
+.Fa allocator_args .
+It must adhere to the following form:
+.Bd -literal
+void *foo_alloc(void *allocator_args, int ocflags);
+void foo_free(void *obj, void *allocator_args);
+.Ed
+.Pp
+.Fn objcache_malloc_alloc
+and
+.Fn objcache_malloc_free
+are wrappers for
+.Xr kmalloc 9
+allocation functions.
+Whereas,
+.Fn objcache_nop_alloc
+and
+.Fn objcache_nop_free
+are wrappers for allocation policies that pre-allocate at initialization time
+instead of doing run-time allocation.
+.Pp
+.Fn objcache_create_mbacked
+creates a new object cache of size
+.Fa objsize ,
+backed with a
+.Vt malloc_type_t
+argument.
+The latter is used to perform statistics in memory usage and for basic sanity
+checks.
+For the underlying allocator,
+.Xr kmalloc 9
+functions are employed.
+.Pp
+.Fn objcache_create_simple
+creates a new object cache of size
+.Fa objsize ,
+backed with a
+.Vt malloc_type_t
+argument.
+The
+.Fa cluster_limit0
+is set to 0 and the default value for magazines' capacity is used.
+.Fa ctor
+and
+.Fa dtor
+are set to
+.Dv NULL .
+.Fa privdata
+is  set to
+.Dv NULL
+as well.
+For the underlying allocator,
+.Xr kmalloc 9
+functions are employed.
+.Pp
+.Fn objcache_get
+returns an object from the
+.Fa oc
+object cache.
+The object is in its initialized state.
+Newly allocated objects are subjected to the object cache's constructor
+function, if not
+.Dv NULL ,
+prior to being returned.
+.Fa ocflags
+is only used when the depot does not have any non-empty magazines and a new
+object needs to be allocated using the back end allocator.
+In this case we cannot depend on flags such as
+.Dv M_ZERO .
+If the back end allocator fails, or if the depot's object limit has been
+reached and
+.Dv M_WAITOK
+is not specified,
+.Dv NULL
+is returned.
+.Pp
+.Fn objcache_put
+returns
+.Fa obj
+to the
+.Fa oc
+object cache.
+The object must be in its initialized state prior to this call.
+If there is no empty magazine, the object deconstructor is called and
+the object is freed.
+.Pp
+.Fn objcache_dtor
+puts
+.Fa obj
+back into the
+.Fa oc
+object cache, indicating that the object is not in any shape to be reused and
+should be deconstructed and freed immediately.
+.Pp
+.Fn objcache_reclaimlist
+iterates over the
+.Fa oclist[]
+list with
+.Fa nlist
+elements and tries to free up some memory.
+For each object cache in the reclaim list, the current per-CPU cache is tried
+first and then the full magazine depot.
+The function returns
+.Dv TRUE
+as soon as some free memory is found
+and
+.Dv FALSE
+otherwise.
+.Pp
+.Fn objcache_destroy
+destroys the
+.Fa oc
+object cache.
+The object must have no existing references.
+.\" .Pp
+.\" .Fn objcache_populate_linear
+.\" populates the per-cluster depot with elements from a linear block of memory.
+.\" Must be called for individually for each cluster.
+.\" Populated depots should not be destroyed.
+.\" Currently this function is unimplemented.
+.Sh IMPLEMENTATION NOTES
+.Ss Magazine
+A magazine is the very basic functional unit of the object caching scheme.
+The number of objects it can hold is fixed and determined by its capacity.
+The term magazine is used as an analogy with automatic weapon
+(a firearm that can fire several rounds without reloading).
+.Ss Per-CPU object cache
+The reasoning behind per-CPU caches is to allow CPUs to perform their
+transactions (i.e., allocations, frees) in a parallel, yet lockless manner.
+.Pp
+Each CPU is given two magazines, an active and a backup.
+This is done in order to avoid a situation where a tight loop of
+two allocations followed by two frees can cause thrashing at the
+magazine boundary.
+.Pp
+If we need to add an object to the cache and the active magazine is full,
+room is searched in the backup magazine.
+If the backup has room, we swap active with backup and add the object.
+If both magazines are full, we get an empty magazine from the depot
+and move a fully loaded magazine to the depot.
+.Ss Magazine depot
+Each object cache manages a global supply of magazines, the depot, that is
+available across all CPUs.
+The depot maintains two lists of magazines.
+One for completely full and one for completely free magazines.
+The per-CPU object caches only exchange completely full or
+completely empty magazines with the depot layer.
+.Sh EXAMPLES
+.Bd -literal
+/* This is the data structure we are going to cache. */
+struct foo {
+        int x;
+        char str[32];
+};
+
+MALLOC_DEFINE(M_FOOBUF, "foobuf", "Buffer to my little precious data");
+
+struct objcache_malloc_args foo_malloc_args = {
+        sizeof(struct foo), M_FOOBUF };
+
+struct objcache *foo_cache;
+
+/*
+ * Object cache constructor.
+ */
+static boolean_t
+foo_cache_ctor(void *obj, void *privdata, int ocflags)
+{
+        struct foo *myfoo = obj;
+
+        /*
+         * Do any initialization of the object here. Let's just zero out
+         * the data structure for the fun of it.
+         */
+        bzero(myfoo, sizeof(*myfoo));
+
+        return (TRUE);
+}
+
+/*
+ * Object cache deconstructor.
+ */
+static void
+foo_cache_dtor(void *obj, void *privdata)
+{
+        struct foo *myfoo = obj;
+
+        /*
+         * Do any clean up here. E.g., if you have kmalloc'ed() inside
+         * the constructor, this is the right place and time to kfree().
+         */
+}
+
+/*
+ * Initialize our subsystem.
+ */
+static void
+foo_init(void)
+{
+        /* Create the object cache. */
+        foo_cache = objcache_create("foo",
+            0,                          /* infinite depot's capacity */
+            0,                          /* default magazine's capacity */
+            foo_ctor, foo_dtor, NULL,
+            objcache_malloc_alloc,
+            objcache_malloc_free,
+            &foo_malloc_args);
+}
+
+/*
+ * Random function.
+ */
+static void
+foo_random(...)
+{
+        struct foo *myfoo;
+
+        /* Get a `foo' object from the object cache. */
+        myfoo = objcache_get(foo_cache, M_WAITOK);
+
+        /* Do stuff with it. */
+        /* ... */
+
+        /* We don't need it anymore. Put it back in object cache. */
+        objcache_put(foo_cache, myfoo);
+}
+
+/*
+ * Shutdown our subsystem.
+ */
+static void
+foo_uninit(void)
+{
+        /* Destroy the object cache. */
+        objcache_destroy(foo_cache);
+}
+.Ed
+.Sh SEE ALSO
+.Xr memory 9
+.Rs
+.%A "Jeff Bonwick"
+.%T "The Slab Allocator: An Object-Caching Kernel Memory Allocator"
+.%R "USENIX Summer 1994 Technical Conference"
+.Re
+.Rs
+.%A "Jeff Bonwick"
+.%A "Jonathan Adams"
+.%T "Magazines and Vmem: Extending the Slab Allocator to Many CPUs and Arbitrary Resources"
+.%R "USENIX 2001 Technical Conference"
+.Re
+.Sh HISTORY
+The object caching system appeared in
+.Dx 1.3 .
+.Sh AUTHORS
+The object caching system was written by
+.An -nosplit
+.An "Jeffrey M. Hsu" Aq "hsu@freebsd.org" .
+This manual page was written by
+.An "Stathis Kamperis" Aq "ekamperi@gmail.com" .

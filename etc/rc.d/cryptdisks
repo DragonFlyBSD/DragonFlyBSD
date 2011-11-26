@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# PROVIDE: cryptdisks
+# BEFORE:  mountcritlocal localswap dumpon
+
+$_rc_subr_loaded . /etc/rc.subr
+
+name="cryptdisks"
+start_cmd="cryptdisks_start"
+stop_cmd="cryptdisks_stop"
+CRYPTTAB="/etc/crypttab"
+
+cryptdisks_start()
+{
+	if [ ! -f $CRYPTTAB ]; then
+		return 0;
+	fi
+
+	if [ -x /sbin/dmsetup ]; then
+		/sbin/dmsetup version >/dev/null 2>&1
+		if [ $? -ne 0 ]; then 
+			warn "/etc/crypttab found but dm is not loaded or present in kernel"
+			return 1;
+		fi
+	fi
+
+	echo "Configuring crypto disks."
+	/sbin/cryptdisks -1
+}
+
+cryptdisks_stop()
+{
+	if [ ! -f $CRYPTTAB ]; then
+		return 0;
+	fi
+ 
+	if [ -x /sbin/dmsetup ]; then
+		/sbin/dmsetup version >/dev/null 2>&1
+		if [ $? -ne 0 ]; then
+			warn "/etc/crypttab found but dm is not loaded or present in kernel"
+			return 1;
+		fi
+	fi
+ 
+	echo "Unconfiguring crypto disks."
+	/sbin/cryptdisks -0
+
+}
+
+load_rc_config $name
+run_rc_command "$1"

@@ -1,0 +1,97 @@
+.\"
+.\" Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd July 11, 2010
+.Dt UDEV 3
+.Os
+.Sh NAME
+.Nm udev_new ,
+.Nm udev_ref ,
+.Nm udev_unref ,
+.Nm udev_get_dev_path ,
+.Nm udev_set_userdata ,
+.Nm udev_get_userdata
+.Nd general udev functions
+.Sh LIBRARY
+.Lb libdevattr
+.Sh SYNOPSIS
+.In devattr.h
+.Ft struct udev *
+.Fn udev_new "void"
+.Ft struct udev *
+.Fn udev_ref "struct udev *udev_ctx"
+.Ft void
+.Fn udev_unref "struct udev *udev_ctx"
+.Ft const char *
+.Fn udev_get_dev_path "struct udev *udev_ctx"
+.Ft void
+.Fn udev_set_userdata "struct udev *udev_ctx" "void *userdata"
+.Ft void *
+.Fn udev_get_userdata "struct udev *udev_ctx"
+.Sh DESCRIPTION
+The
+.Fn udev_new
+function returns a new udev context.
+This is needed as a context for all other libdevattr functions.
+The returned context has a refcount of 1.
+This function returns
+.Dv NULL
+if no udev context could be created, which usually happens when
+the udevd daemon is not running.
+.Pp
+The
+.Fn udev_ref
+and
+.Fn udev_unref
+functions increase or decrease the reference count on a udev object respectively.
+When the reference count drops to 0, the object is automatically destroyed.
+The
+.Fn udev_ref
+function returns the same object that was passed in.
+.Pp
+The
+.Fn udev_get_dev_path
+function returns the path to the system device directory.
+.Pp
+The
+.Fn udev_set_userdata
+function allows the consumer to associate some
+.Fa userdata
+to the specified
+.Fa udev_ctx .
+The
+.Fn udev_get_userdata
+function returns the currently associated user data.
+.Sh SEE ALSO
+.Xr devattr 3 ,
+.Xr udev_device 3 ,
+.Xr udev_enumerate 3 ,
+.Xr udev_monitor 3 ,
+.Xr udevd 8

@@ -1,0 +1,167 @@
+.\"
+.\" Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd July 11, 2010
+.Dt UDEV_DEVICE 3
+.Os
+.Sh NAME
+.Nm udev_device_ref ,
+.Nm udev_device_unref ,
+.Nm udev_device_get_dictionary ,
+.Nm udev_device_get_udev ,
+.Nm udev_device_get_action ,
+.Nm udev_device_get_devnum ,
+.Nm udev_device_get_devnode ,
+.Nm udev_device_get_driver ,
+.Nm udev_device_get_subsystem ,
+.Nm udev_device_get_kptr ,
+.Nm udev_device_get_major ,
+.Nm udev_device_get_minor ,
+.Nm udev_device_get_property_value
+.Nd udev device functions
+.Sh LIBRARY
+.Lb libdevattr
+.Sh SYNOPSIS
+.In devattr.h
+.Ft struct udev_device *
+.Fn udev_device_ref "struct udev_device *udev_device"
+.Ft void
+.Fn udev_device_unref "struct udev_device *udev_device"
+.Ft struct udev *
+.Fn udev_device_get_udev "struct udev_device *udev_device"
+.Ft prop_dictionary_t
+.Fn udev_device_get_dictionary "struct udev_device *udev_device"
+.Ft const char *
+.Fn udev_device_get_action "struct udev_device *udev_device"
+.Ft dev_t
+.Fn udev_device_get_devnum "struct udev_device *udev_device"
+.Ft const char *
+.Fn udev_device_get_devnode "struct udev_device *udev_device"
+.Ft const char *
+.Fn udev_device_get_driver "struct udev_device *udev_device"
+.Ft const char *
+.Fn udev_device_get_subsystem "struct udev_device *udev_device"
+.Ft uint64_t
+.Fn udev_device_get_kptr "struct udev_device *udev_device"
+.Ft int32_t
+.Fn udev_device_get_major "struct udev_device *udev_device"
+.Ft int32_t
+.Fn udev_device_get_minor "struct udev_device *udev_device"
+.Ft const char *
+.Fn udev_device_get_property_value "struct udev_device *udev_device" "const char *key"
+.Sh DESCRIPTION
+The
+.Fn udev_device_ref
+and
+.Fn udev_device_unref
+functions increase or decrease the reference count on a
+.Fa udev_device
+object respectively.
+When the reference count drops to 0, the object is automatically destroyed.
+The
+.Fn udev_device_ref
+function returns the same object that was passed in.
+.Pp
+The
+.Fn udev_device_get_udev
+function returns the udev context in which the
+.Fa udev_device
+was created.
+.Pp
+The
+.Fn udev_device_get_dictionary
+function returns the raw
+.Xr prop_dictionary 3
+dictionary associated to the given
+.Fa udev_device .
+It returns
+.Dv NULL
+when no dictionary is associated to the device.
+.Pp
+The
+.Fn udev_device_get_action
+function returns the action, as a string, related to the
+.Fa udev_device .
+Possible actions are "add" for attach events, "remove" for detach events and
+"none" if the udev_device is not associated with a particular event.
+.Pp
+The
+.Fn udev_device_get_devnum ,
+.Fn udev_device_get_devnode ,
+.Fn udev_device_get_driver ,
+.Fn udev_device_get_subsystem ,
+.Fn udev_device_get_kptr ,
+.Fn udev_device_get_major
+and
+.Fn udev_device_get_minor
+function return some information of the device corresponding to the
+.Fa udev_device .
+The
+.Fn udev_device_get_devnum ,
+function returns the device number.
+The
+.Fn udev_device_get_devnode
+function returns the full path in the system to the given device.
+The returned string and errno are the same as for the
+.Xr devname 3
+function.
+The
+.Fn udev_device_get_driver
+and
+.Fn udev_device_get_subsystem
+functions return the driver name and subsystem of the device if available.
+Otherwise they return
+.Dv NULL .
+The
+.Fn udev_device_get_kptr ,
+.Fn udev_device_get_major
+and
+.Fn udev_device_get_minor
+functions return the kernel pointer to the associated cdev_t, the major and the
+minor number, respectively.
+.Pp
+The
+.Fn udev_device_get_property_value
+function returns the value for the
+.Fa udev_device
+for the specified property
+.Fa key .
+It returns
+.Dv NULL
+if the specified
+.Fa udev_device
+has no property for
+.Fa key .
+.Sh SEE ALSO
+.Xr devattr 3 ,
+.Xr udev 3 ,
+.Xr udev_enumerate 3 ,
+.Xr udev_monitor 3 ,
+.Xr udevd 8

@@ -1,0 +1,8 @@
+# $FreeBSD: src/tools/regression/bin/sh/expansion/length6.0,v 1.1 2011/04/20 22:24:54 jilles Exp $
+
+x='!@#$%^&*()[]'
+[ ${#x} = 12 ] || echo bad 1
+[ "${#x}" = 12 ] || echo bad 2
+IFS=2
+[ ${#x} = 1 ] || echo bad 3
+[ "${#x}" = 12 ] || echo bad 4

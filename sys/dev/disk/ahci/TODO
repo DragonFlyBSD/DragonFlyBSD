@@ -1,0 +1,121 @@
+
+10 second timeout in CAM
+
+
+-----
+
+DELAY's might tsleep, so interrupts might run.  fix poll loop to detect
+completion via other interrupts.
+
+Locking serialize_enter/exit.  Lots of recursion.   Needs help.  Use
+lockmgr()?   Needs to be converted to per-port locking, also.
+
+Port multiplier support (basics are now in)
+
+Simulate various mode pages (serial number access and so forth).
+
+NOTE RACE:  When stopping a port explicitly which has not self stopped,
+i.e. CR is still on, we can race command completion and not have a good
+idea what bits to reload into CI etc to restart the commands that
+were running.  This should only be done if we intend to reset the port.
+
+NOTE RACE:  A transient IFS interrupt (fatal phy/protocol error) can occur
+when soft-resetting through a port multiplier, between the first and second
+FISes.  We need to be able to lock access to the port.
+
+------ serial number -----------
+
+OpenBSD /etc/devtab
+
+name	type	serialnumber
+	naa
+	wwn
+	serno
+	etc
+
+------ Misc probe info --------
+
+<AHCI-PCI-SATA> port
+<S64A,NCQ,SSNTF,SALP,SAL,SCLO,PMD,SSC,PSC,CCCS,EMS>,
+6 ports, 32 tags/port, gen 1 (1.5Gbps) and 2 (3Gbps)
+
+ahci0: AHCI 1.2 capabilities 0xe3229f05
+<S64A,NCQ,SSNTF,SAL,SCLO,SPM,PMD>, 6 ports, 32 tags/port, gen 1 (1.5Gbps) and 2 (3Gbps)
+
+0xf722ff83<S64A,NCQ,SSNTF,SMPS,SALP,SAL,SCLO,SPM,PMD,SSC,PSC,CCCS> 4 ports, 32
+
+
+Chipsets supporting FBSS (FIS-Based Switching):
+	SB800
+	S5000 (w/ ESB2)
+	(add more)
+---------------------------
+
+Set device bits FIS:
+
+	EEEEEEEE HHHHLLLL NIRxxxxx FFFFFFFF
+	rrrrrrrr rrrrrrrr rrrrrrrr rrrrrrrr	(reserved)
+
+	F8 FIS TYPE (0xA1)
+	N	Notification bit
+	I	Interrupt bit
+	R	Reset bit
+	H4	Status hi (bit 3 is 'r' bit?)
+	L4	Status Lo (bit 3 is 'r' bit?)
+	E8	Error code
+
+	ATAPI/DISK notification:  Word78 of IDENTIFY,
+	Use SET FEATURES to set.
+
+IDENTIFY DEVICE Changed in SATA 2:
+
+	Word 75		4:0 Max Queue depth
+
+	Word 76		9	Supports IPM requests
+			8	supports NCQ
+			7-4	reservedr
+			3	reserved
+			2	supports GEN2
+			1	supports GEN1
+			0	reserved (set to 0)
+
+	Word 78		4	supports in-order data delivery
+			3	supports IPMfrom device
+			2	supports DMA setup AA opt
+			1	supports non-zero buffer offssets in DMA setup
+			0	reserved (set to 0
+
+	Word 79		(sata features enabled)
+
+
+	Device configuration overlay
+	Word 0-7	Defined by ATA
+	Word 8		3	suports async notification
+			2	supports IPM
+			1	supports nz buffer offsets in DMA setup FIS
+			0	supports NCQ
+	Word 9		reserved for SATA
+	10-255		as defined by ATA
+
+SET FEATURES DEF
+
+	Feature 10h	Enable use of SATA feature
+	feature 90h	Disable use of SATA feature
+
+	sector count register contains specific feature to enable
+
+	01		No zero buffer offset in DMA setup fis
+	02		DMA setup fis AA opt
+	03		device initated power state transitions
+	04		guaranteed in-order data delivery
+	05		Asynchronous notification
+
+
+SCR REGISTERS
+
+	0		SStatus
+	1		SError
+	2		SControl
+	3		SActive
+	4		SNotification	<----
+	5-15		reserved

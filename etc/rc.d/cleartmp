@@ -1,0 +1,44 @@
+#!/bin/sh
+#
+# $NetBSD: cleartmp,v 1.4 2002/03/22 04:33:58 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/cleartmp,v 1.4 2002/10/12 10:31:31 schweikh Exp $
+# $DragonFly: src/etc/rc.d/cleartmp,v 1.7 2008/11/22 18:36:18 swildner Exp $
+#
+
+# PROVIDE: cleartmp
+# REQUIRE: mountcritremote
+# BEFORE: DAEMON
+
+. /etc/rc.subr
+
+name="cleartmp"
+rcvar=`set_rcvar clear_tmp`
+start_cmd="cleartmp_start"
+stop_cmd=":"
+
+cleartmp_start()
+{
+	echo "Clearing /tmp."
+	#
+	#	Prune quickly with one rm, then use find to clean up
+	#	the rest. Exceptions are lost+found/ (which is preserved
+	#	but its contents are removed), quota.{group,user}, and
+	#	snapshots/ (left untouched). This is not needed with mfs
+	#	/tmp, but doesn't hurt anything.
+	#
+	(cd /tmp && rm -rf [a-km-prt-zA-Z]* &&
+	    find -x . ! -name . ! -name lost+found \
+		! -name snapshots ! -path "./snapshots/*" \
+		! -name quota.user ! -name quota.group \
+		-exec rm -rf -- {} \; -type d -prune)
+	
+		# Remove X lock files, since they will prevent you from
+		# restarting X
+		#
+		rm -f /tmp/.X*-lock
+		rm -fr /tmp/.X11-unix
+		mkdir -m 1777 /tmp/.X11-unix
+}
+
+load_rc_config $name
+run_rc_command "$1"

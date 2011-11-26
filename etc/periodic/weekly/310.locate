@@ -1,0 +1,33 @@
+#!/bin/sh -
+#
+# $FreeBSD: src/etc/periodic/weekly/310.locate,v 1.7 2007/02/23 18:44:20 remko Exp $
+# $DragonFly: src/etc/periodic/weekly/310.locate,v 1.3 2007/12/29 21:44:44 matthias Exp $
+#
+
+# If there is a global system configuration file, suck it in.
+#
+if [ -r /etc/defaults/periodic.conf ]
+then
+    . /etc/defaults/periodic.conf
+    source_periodic_confs
+fi
+
+case "$weekly_locate_enable" in
+    [Yy][Ee][Ss])
+	echo ""
+	echo "Rebuilding locate database:"
+
+	locdb=/var/db/locate.database
+
+	touch $locdb && rc=0 || rc=3
+	chown nobody $locdb || rc=3
+	chmod 644 $locdb || rc=3
+
+	cd /
+	echo /usr/libexec/locate.updatedb | nice -n 5 su -fm nobody || rc=3
+	chmod 444 $locdb || rc=3;;
+
+    *)  rc=0;;
+esac
+
+exit $rc

@@ -1,0 +1,8 @@
+# $FreeBSD: src/tools/regression/bin/sh/errors/assignment-error2.0,v 1.1 2011/01/01 13:26:18 jilles Exp $
+
+set -e
+HOME=/
+readonly HOME
+cd /sbin
+{ HOME=/bin cd; } 2>/dev/null || :
+[ "$(pwd)" != /bin ]

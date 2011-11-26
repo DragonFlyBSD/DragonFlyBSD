@@ -1,0 +1,307 @@
+.\" Copyright (c) 2001 The NetBSD Foundation, Inc.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to The NetBSD Foundation
+.\" by Gregory McGarry.
+.\"
+.\" Copyright (c) 2001 Yar Tikhiy
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"        This product includes software developed by the NetBSD
+.\"        Foundation, Inc. and its contributors.
+.\" 4. Neither the name of The NetBSD Foundation nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\" 
+.\" $NetBSD: agp.4,v 1.10 2003/05/14 07:59:00 wiz Exp $
+.\" $DragonFly: src/share/man/man4/agp.4,v 1.5 2007/09/12 09:26:32 hasso Exp $
+.\"
+.Dd September 12, 2007
+.Dt AGP 4
+.Os
+.Sh NAME
+.Nm agp
+.Nd accelerated graphics port driver
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device agp"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+agp_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides machine-independent support for the accelerated
+graphics port (AGP) found on many PC-based and PCI systems.  The AGP
+specification was designed by Intel.
+.Pp
+The AGP chipset is positioned between the PCI-Host bridge and the
+graphics accelerator to provide a high-performance dedicated graphics
+bus for moving large amounts of data directly from host memory to the
+graphics accelerator.  The specification currently supports a peak
+bandwidth of 528 MB/s.  AGP uses a Graphics Address Remapping Table
+(GART) to provide a physically-contiguous view of scattered pages in
+host memory for DMA transfers.
+.Pp
+The
+.Nm
+driver supports the following chipsets:
+.Pp
+.Bl -dash -compact -offset indent
+.It
+ALI M1541, M1621 and M1671 host to AGP bridges
+.It
+AMD 751, 761 and 762 host to AGP bridges
+.It
+AMD 8151 AGP graphics tunnel
+.It
+ATI RS100, RS200, RS250 and RS300 AGP bridges
+.It
+Intel i810, i815, i830, 845, 852, 855, 865, 915, 945, 946 and 965
+series SVGA controllers
+.It
+Intel 82443LX, 82443BX, 82443GX, i820, i840, i845, i845G, i850, i855,
+i855GM, i860, i865, i875P, E7205 and E7505 host to AGP bridges
+.It
+Nvidia nForce, nForce2 and nForce3 AGP controllers
+.It
+SiS 530, 540, 550, 620, 630, 645, 645DX, 648, 650, 651, 655, 661, 730,
+735, 740, 741, 745, 746, 755, 760 and 5591 host to AGP bridges
+.It
+ULi M1689 AGP controller
+.It
+VIa 3238, 3296, 82C597, 82C598, 82C691, 82C694X, 82C8363, 8235, 8237,
+8361, 8367, 8371, 8377, 8380, 8385, 8501, 8601, 862x, 8633, 8653, 8703,
+8753, 8754, 8763, 8783, KT880, K8T800Pro, PM800, PM880, PN800, PN880,
+PT880, XM266 and XN266 host to PCI bridges
+.El
+.Pp
+The
+.Nm
+driver also provides an interface to user processes for use by X
+servers.  A user process communicates to the device initially by means
+of
+.Xr ioctl 2
+calls performed on
+.Pa /dev/agpgart .
+All calls and related structures are defined in
+.In sys/agpio.h .
+The calls supported are:
+.Bl -tag -width indent
+.It Dv AGPIOC_INFO
+Returns state of the
+.Nm
+system.
+The result is a pointer to the following structure:
+.Bd -literal
+typedef struct _agp_info {
+        agp_version version;    /* version of the driver       */
+        uint32_t bridge_id;     /* bridge vendor/device        */
+        uint32_t agp_mode;      /* mode info of bridge         */
+        off_t aper_base;        /* base of aperture            */
+        size_t aper_size;       /* size of aperture            */
+        size_t pg_total;        /* max pages (swap + system)   */
+        size_t pg_system;       /* max pages (system)          */
+        size_t pg_used;         /* current pages used          */
+} agp_info;
+.Ed
+.It Dv AGPIOC_ACQUIRE
+Acquire control of the AGP chipset for use by this client.
+Returns
+.Er EBUSY
+if the AGP chipset is already acquired by another client.
+.It Dv AGPIOC_RELEASE
+Release control of the AGP chipset.
+This does not unbind or free any allocated memory, which is the
+responsibility of the client to handle if necessary.
+.It Dv AGPIOC_SETUP
+Enable the AGP hardware with the relevant mode.
+This
+.Xr ioctl 2
+takes the following structure:
+.Bd -literal
+typedef struct _agp_setup {
+        uint32_t agp_mode;     /* mode info of bridge          */
+} agp_setup;
+.Ed
+.Pp
+The mode bits are defined in
+.In sys/agpio.h .
+.It Dv AGPIOC_ALLOCATE
+Allocate physical memory suitable for mapping into the AGP aperture.
+This
+.Xr ioctl 2
+takes the following structure:
+.Bd -literal
+typedef struct _agp_allocate {
+        int key;               /* tag of allocation            */
+        size_t pg_count;       /* number of pages              */
+        uint32_t type;         /* 0 == normal, other devspec   */
+        paddr_t physical;      /* device specific (some devices
+                                * need a phys address of the
+                                * actual page behind the gatt
+                                * table)                       */
+} agp_allocate;
+.Ed
+.Pp
+Returns a handle to the allocated memory.
+.It Dv AGPIOC_DEALLOCATE
+Free the previously allocated memory associated with the handle passed.
+.It Dv AGPIOC_BIND
+Bind the allocated memory at given offset with the AGP aperture.
+Returns
+.Er EINVAL
+if the memory is already bound or the offset is not at AGP page boundary.
+This
+.Xr ioctl 2
+takes the following structure:
+.Bd -literal
+typedef struct _agp_bind {
+        int key;               /* tag of allocation            */
+        off_t pg_start;        /* starting page to populate    */
+} agp_bind;
+.Ed
+.Pp
+The tag of allocation is the handle returned by
+.Dv AGPIOC_ALLOCATE .
+.It Dv AGPIOC_UNBIND
+Unbind memory from the AGP aperture.
+Returns
+.Er EINVAL
+if the memory is not bound.
+This
+.Xr ioctl 2
+takes the following structure:
+.Bd -literal
+typedef struct _agp_unbind {
+        int key;               /* tag of allocation            */
+        uint32_t priority;     /* priority for paging out      */
+} agp_unbind;
+.Ed
+.El
+.Sh FILES
+.Bl -tag -width ".Pa /dev/agpgart" -compact
+.It Pa /dev/agpgart
+AGP GART device special file
+.El
+.Sh EXAMPLES
+This short code fragment is an example of opening the AGP device
+and performing some basic operations:
+.Bd -literal
+#include \*[Lt]stdio.h\*[Gt]
+#include \*[Lt]sys/types.h\*[Gt]
+#include \*[Lt]sys/ioctl.h\*[Gt]
+#include \*[Lt]sys/agpio.h\*[Gt]
+#include \*[Lt]fcntl.h\*[Gt]
+#include \*[Lt]err.h\*[Gt]
+
+int
+main(int argc, char **argv)
+{
+	int fd;
+	agp_info info;
+	agp_allocate alloc;
+	agp_setup setup;
+	agp_bind bind;
+	agp_unbind unbind;
+
+	fd = open("/dev/agpgart", O_RDWR);
+	if (fd \*[Lt] 0)
+		err(1, "open");
+
+	if (ioctl(fd, AGPIOC_INFO, \*[Am]info) \*[Lt] 0)
+		err(2, "ioctl AGPIOC_INFO");
+
+	printf("version:	%u.%u\\n", info.version.major,
+	    info.version.minor);
+
+	printf("id:		%x\\n", info.bridge_id);
+	printf("mode:		%x\\n", info.agp_mode);
+	printf("base:		%x\\n", info.aper_base);
+	printf("size:		%uM\\n", info.aper_size);
+	printf("total mem:	%u\\n", info.pg_total);
+	printf("system mem:	%u\\n", info.pg_system);
+	printf("used mem:	%u\\n\\n", info.pg_used);
+
+	setup.agp_mode = info.agp_mode;
+
+	if (ioctl(fd, AGPIOC_SETUP, \*[Am]setup) \*[Lt] 0)
+		err(3, "ioctl AGPIOC_SETUP");
+
+	if (ioctl(fd, AGPIOC_ACQUIRE, 0) \*[Lt] 0)
+		err(3, "ioctl AGPIOC_ACQUIRE");
+
+	alloc.type = 0;
+	alloc.pg_count = 64;
+
+	if (ioctl(fd, AGPIOC_ALLOCATE, \*[Am]alloc) \*[Lt] 0)
+		err(4, "ioctl AGPIOC_ALLOCATE");
+
+	printf("alloc key %d, paddr %x\\n", alloc.key, alloc.physical);
+	if (ioctl(fd, AGPIOC_INFO, \*[Am]info) \*[Lt] 0)
+		err(5, "ioctl AGPIOC_INFO");
+
+	bind.key = alloc.key;
+	bind.pg_start = 0x1000;
+
+	if (ioctl(fd, AGPIOC_BIND, \*[Am]bind) \*[Lt] 0)
+		err(6, "ioctl AGPIOC_BIND");
+
+	printf("used mem now:	%u\\n\\n", info.pg_used);
+
+	unbind.key = alloc.key;
+	unbind.priority = 0;
+
+	if (ioctl(fd, AGPIOC_UNBIND, \*[Am]unbind) \*[Lt] 0)
+		err(6, "ioctl AGPIOC_BIND");
+
+	if (ioctl(fd, AGPIOC_DEALLOCATE, \*[Am]alloc.key) \*[Lt] 0)
+		err(6, "ioctl AGPIOC_DEALLOCATE");
+
+	if (ioctl(fd, AGPIOC_RELEASE, 0) \*[Lt] 0)
+		err(7, "ioctl AGPIOC_RELEASE");
+
+	close(fd);
+
+	printf("agp test successful\\n");
+
+	return 0;
+}
+.Ed
+.Sh SEE ALSO
+.Xr ioctl 2
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Fx 4.1 .

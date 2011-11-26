@@ -1,0 +1,10 @@
+table Icon
+  Caption: Terminal
+  Command: urxvt
+  Icon: /root/.idesktop/terminal.png
+  Width: 64
+  Height: 64
+  X: 220
+  Y: 40
+end
+

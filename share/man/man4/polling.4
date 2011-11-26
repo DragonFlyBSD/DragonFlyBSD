@@ -1,0 +1,249 @@
+.\" Copyright (c) 2002 Luigi Rizzo
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man4/polling.4,v 1.27 2007/04/06 14:25:14 brueffer Exp $
+.\" $DragonFly: src/share/man/man4/polling.4,v 1.13 2007/11/03 07:35:52 swildner Exp $
+.\"
+.Dd October 2, 2007
+.Dt POLLING 4
+.Os
+.Sh NAME
+.Nm polling
+.Nd device polling support
+.Sh SYNOPSIS
+.Cd "options DEVICE_POLLING"
+.Sh DESCRIPTION
+Device polling
+.Nm (
+for brevity) refers to a technique that
+lets the operating system periodically poll devices, instead of
+relying on the devices to generate interrupts when they need attention.
+This might seem inefficient and counterintuitive, but when done
+properly,
+.Nm
+gives more control to the operating system on
+when and how to handle devices, with a number of advantages in terms
+of system responsiveness and performance.
+.Pp
+In particular,
+.Nm
+reduces the overhead for context
+switches which is incurred when servicing interrupts, and
+gives more control on the scheduling of a CPU between various
+tasks (user processes, software interrupts, device handling)
+which ultimately reduces the chances of livelock in the system.
+.Ss Principles of Operation
+In the normal, interrupt-based mode, devices generate an interrupt
+whenever they need attention.
+This in turn causes a
+context switch and the execution of an interrupt handler
+which performs whatever processing is needed by the device.
+The duration of the interrupt handler is potentially unbounded
+unless the device driver has been programmed with real-time
+concerns in mind (which is generally not the case for
+.Dx
+drivers).
+Furthermore, under heavy traffic load, the system might be
+persistently processing interrupts without being able to
+complete other work, either in the kernel or in userland.
+.Pp
+Device polling disables interrupts by polling devices on clock
+interrupts.
+This way, the context switch overhead is removed.
+Furthermore,
+the operating system can control accurately how much work to spend
+in handling device events, and thus prevent livelock by reserving
+some amount of CPU to other tasks.
+.Pp
+Enabling
+.Nm
+also changes the way software network interrupts
+are scheduled, so there is never the risk of livelock because
+packets are not processed to completion.
+.Ss Enabling polling
+Currently only network interface drivers support the
+.Nm
+feature.
+It is turned on and off with help of
+.Xr ifconfig 8
+command.
+An interface does not have to be
+.Dq up
+in order to turn on its
+.Nm
+feature.
+.Ss Loader Tunables
+The following tunables can be set from
+.Xr loader.conf 5 :
+.Bl -tag -width indent -compact
+.It Va kern.polling.enable
+If set to non-zero,
+.Nm
+is enabled.
+Default is enabled.
+.Pp
+.It Va kern.polling.cpumask
+A bitmask that controls which CPUs support device polling.
+Default is 0xffffffff.
+.El
+.Ss MIB Variables
+The operation of
+.Nm
+is controlled by the following per CPU
+.Xr sysctl 8
+MIB variables
+.Em ( X
+is the CPU number):
+.Pp
+.Bl -tag -width indent -compact
+.It Va kern.polling.X.enable
+If set to non-zero,
+.Nm
+is enabled.
+Default is enabled.
+.Pp
+.It Va kern.polling.X.pollhz
+The polling frequency, whose range is 1 to 30000.
+Default is 2000.
+.Pp
+.It Va kern.polling.cpumask
+A read only bitmask of the CPUs that support device polling.
+.Pp
+.It Va kern.polling.defcpu
+The default CPU used to run device polling (read only).
+.Pp
+.It Va kern.polling.X.user_frac
+When
+.Nm
+is enabled, and provided that there is some work to do,
+up to this percent of the CPU cycles is reserved to userland tasks,
+the remaining fraction being available for
+.Nm
+processing.
+Default is 50.
+.Pp
+.It Va kern.polling.X.burst
+Maximum number of packets grabbed from each network interface in
+each timer tick.
+This number is dynamically adjusted by the kernel,
+according to the programmed
+.Va user_frac , burst_max ,
+CPU speed, and system load.
+.Pp
+.It Va kern.polling.X.each_burst
+The burst above is split into smaller chunks of this number of
+packets, going round-robin among all interfaces registered for
+.Nm .
+This prevents the case that a large burst from a single interface
+can saturate the IP interrupt queue
+.Pq Va net.inet.ip.intr_queue_maxlen .
+Default is 5.
+.Pp
+.It Va kern.polling.X.burst_max
+Upper bound for
+.Va kern.polling.burst .
+Note that when
+.Nm
+is enabled, each interface can receive at most
+.Pq Va pollhz No * Va burst_max
+packets per second unless there are spare CPU cycles available for
+.Nm
+in the idle loop.
+This number should be tuned to match the expected load
+(which can be quite high with GigE cards).
+Default is 150 which is adequate for 100Mbit network and pollhz=1000.
+.Pp
+.It Va kern.polling.X.reg_frac
+Controls how often (every
+.Va reg_frac No / Va pollhz
+seconds) the status registers of the device are checked for error
+conditions and the like.
+Increasing this value reduces the load on the bus, but also delays
+the error detection.
+Default is 20.
+.Pp
+.It Va kern.polling.X.handlers
+How many active devices have registered for
+.Nm .
+.Pp
+.It Va kern.polling.X.short_ticks
+.It Va kern.polling.X.lost_polls
+.It Va kern.polling.X.pending_polls
+.It Va kern.polling.X.residual_burst
+.It Va kern.polling.X.phase
+.It Va kern.polling.X.suspect
+.It Va kern.polling.X.stalled
+Debugging variables.
+.El
+.Sh SUPPORTED DEVICES
+Device polling requires explicit modifications to the device drivers.
+As of this writing, the
+.Xr bce 4 ,
+.Xr bge 4 ,
+.Xr dc 4 ,
+.Xr em 4 ,
+.Xr fwe 4 ,
+.Xr fxp 4 ,
+.Xr jme 4 ,
+.Xr nfe 4 ,
+.Xr nge 4 ,
+.Xr re 4 ,
+.Xr rl 4 ,
+.Xr sis 4 ,
+.Xr stge 4 ,
+.Xr vge 4 ,
+.Xr vr 4 ,
+.Xr wi 4
+and
+.Xr xl 4
+devices are supported, with others in the works.
+The modifications are rather straightforward, consisting in
+the extraction of the inner part of the interrupt service routine
+and writing a callback function,
+.Fn *_poll ,
+which is invoked
+to probe the device for events and process them.
+(See the
+conditionally compiled sections of the devices mentioned above
+for more details.)
+.Pp
+In order to reduce the latency in processing packets,
+it is advisable to set the
+.Xr sysctl 8
+variable
+.Va kern.polling.X.pollhz
+to at least 1000.
+.Sh HISTORY
+Device polling first appeared in
+.Fx 4.6 .
+It was rewritten in
+.Dx 1.3 .
+.Sh AUTHORS
+.An -nosplit
+The device polling code was rewritten by
+.An Matt Dillon
+based on the original code by
+.An Luigi Rizzo Aq luigi@iet.unipi.it .
+.An Sepherosa Ziehau
+made the polling frequency settable at runtime and added per CPU polling.

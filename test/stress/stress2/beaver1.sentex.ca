@@ -1,0 +1,15 @@
+# $FreeBSD$
+
+# Configuration needed for the beaver1 test box
+
+export RUNDIR=/usr/tmp/stressX
+TZ=Europe/Copenhagen; export TZ
+
+###export BLASTHOST=192.168.5.105	# orangutan
+export BLASTHOST=127.0.0.1	#
+
+export DISKIMAGE=/usr/tmp/diskimage	# Location of 1G disk image
+export MNTPOINT=/mnt		# Disk image mount point
+export TESTUSER=test		# Name of non root test user
+###export MDSTART=5		# Start of free md units
+###INCARNATIONS=125

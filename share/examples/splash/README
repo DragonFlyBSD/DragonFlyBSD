@@ -1,0 +1,4 @@
+$DragonFly: src/share/examples/splash/README,v 1.1 2003/10/13 03:15:26 dillon Exp $
+
+This directory contains sample boot splash BMP images. 
+man 'splash' for more information.

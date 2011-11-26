@@ -1,0 +1,146 @@
+.\" Copyright (c) 1992, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software developed by the Computer Systems
+.\" Engineering group at Lawrence Berkeley Laboratory under DARPA contract
+.\" BG 91-66 and contributed to Berkeley.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)kvm_read.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libkvm/kvm_read.3,v 1.6.2.3 2001/12/17 10:08:30 ru Exp $
+.\" $DragonFly: src/lib/libkvm/kvm_read.3,v 1.4 2008/09/07 08:36:54 swildner Exp $
+.\"
+.Dd January 8, 2006
+.Dt KVM_READ 3
+.Os
+.Sh NAME
+.Nm kvm_read ,
+.Nm kvm_readstr ,
+.Nm kvm_write
+.Nd read or write kernel virtual memory
+.Sh LIBRARY
+.Lb libkvm
+.Sh SYNOPSIS
+.In sys/types.h
+.In kvm.h
+.Ft ssize_t
+.Fn kvm_read "kvm_t *kd" "unsigned long addr" "void *buf" "size_t nbytes"
+.Ft "char *"
+.Fn kvm_readstr "kvm_t *kd" "unsigned long addr" "char *buf" "size_t *len"
+.Ft ssize_t
+.Fn kvm_write "kvm_t *kd" "unsigned long addr" "const void *buf" "size_t nbytes"
+.Sh DESCRIPTION
+The
+.Fn kvm_read ,
+.Fn kvm_readstr
+and
+.Fn kvm_write
+functions are used to read and write kernel virtual memory (or a crash
+dump file). See
+.Fn kvm_open 3
+or
+.Fn kvm_openfiles 3
+for information regarding opening kernel virtual memory and crash dumps.
+.Pp
+The
+.Fn kvm_read
+function transfers
+.Fa nbytes
+bytes of data from
+the kernel space address
+.Fa addr
+to
+.Fa buf .
+Conversely,
+.Fn kvm_write
+transfers data from
+.Fa buf
+to
+.Fa addr .
+Unlike their SunOS counterparts, these functions cannot be used to
+read or write process address spaces.
+.Pp
+The
+.Fn kvm_readstr
+function exists for convenience to read NUL terminated strings
+from the kernel address space.
+If
+.Fa buf
+is
+.Dv NULL ,
+.Fn kvm_readstr
+will allocate a sufficiently large buffer, which needs to be
+deallocated via
+.Xr free 3
+by the caller.
+If
+.Fa len
+is not
+.Dv NULL ,
+.Fn kvm_readstr
+will interpret the value it is pointing to as the size of
+.Fa buf
+and will store the size of the complete string at
+.Fa addr .
+Note that if only
+.Fa buf
+is too small to hold the complete string,
+.Fn kvm_readstr
+will return
+.Dv NULL
+but set
+.Fa len
+to the size needed.
+.Sh RETURN VALUES
+For
+.Fn kvm_read
+and
+.Fn kvm_write
+the number of bytes actually transferred is returned, if the request
+was successful.
+Otherwise, -1 is returned.
+.Pp
+For
+.Fn kvm_readstr
+.Dv NULL
+is returned on failure.
+Upon success, the address of the string is returned, which will be
+.Fa buf
+if this was supplied.
+.Sh SEE ALSO
+.Xr kvm 3 ,
+.Xr kvm_close 3 ,
+.Xr kvm_getargv 3 ,
+.Xr kvm_getenvv 3 ,
+.Xr kvm_geterr 3 ,
+.Xr kvm_getprocs 3 ,
+.Xr kvm_nlist 3 ,
+.Xr kvm_open 3 ,
+.Xr kvm_openfiles 3

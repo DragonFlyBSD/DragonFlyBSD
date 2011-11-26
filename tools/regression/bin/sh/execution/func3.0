@@ -1,0 +1,7 @@
+# $FreeBSD: src/tools/regression/bin/sh/execution/func3.0,v 1.2 2010/12/12 21:18:16 jilles Exp $
+
+# This may fail when parsing or when defining the function, or the definition
+# may silently do nothing. In no event may the function be executed.
+
+${SH} -c 'unset() { echo overriding function executed, bad; }; v=1; unset v; exit "${v-0}"' 2>/dev/null
+:

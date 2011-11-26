@@ -1,0 +1,160 @@
+.\"	$OpenBSD: altq.9,v 1.4 2001/07/12 12:41:42 itojun Exp $
+.\"	$NetBSD: altq.9,v 1.14 2007/06/24 19:26:58 rumble Exp $
+.\"	$DragonFly: src/share/man/man9/altq.9,v 1.1 2007/11/18 14:10:41 swildner Exp $
+.\"
+.\" Copyright (C) 2001
+.\" Sony Computer Science Laboratories Inc.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY SONY CSL AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL SONY CSL OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd November 18, 2007
+.Dt ALTQ 9
+.Os
+.Sh NAME
+.Nm ALTQ
+.Nd kernel interfaces for manipulating output queues on network interfaces
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/socket.h
+.In net/if.h
+.In net/ifq_var.h
+.Ft static int
+.Fn ifq_enqueue "struct ifaltq *_ifq" "struct mbuf *_m" "struct altq_pkgattr *_pa"
+.Ft static int
+.Fn ifq_handoff "struct ifnet *_ifp" "struct mbuf *_m" "struct altq_pkgattr *_pa"
+.Ft struct mbuf *
+.Fn ifq_dequeue "struct ifaltq *_ifq" "struct mbuf *_mpolled"
+.Ft struct mbuf *
+.Fn ifq_poll "struct ifaltq *_ifq"
+.Ft void
+.Fn ifq_purge "struct ifaltq *_ifq"
+.Ft void
+.Fn ifq_classify "struct ifaltq *_ifq" "struct mbuf *_m" "uint8_t _af" "struct altq_pkgattr *_pa"
+.Ft int
+.Fn ifq_is_empty "struct ifaltq *_ifq"
+.Ft void
+.Fn ifq_set_maxlen "struct ifaltq *_ifq" "int _len"
+.Ft void
+.Fn ifq_set_ready "struct ifaltq *_ifq"
+.Ft int
+.Fn ifq_is_enabled "struct ifaltq *_ifq"
+.Sh DESCRIPTION
+The
+.Nm
+system is a framework to manage queueing disciplines on network
+interfaces.
+.Nm
+introduces new functions to manipulate output queues.
+The output queue functions are used to abstract queue operations and not to
+touch the internal fields of the output queue structure.
+.Pp
+.Fn ifq_enqueue
+and
+.Fn ifq_handoff
+enqueue a packet
+.Fa _m
+to the queue
+.Fa _ifq .
+The underlying queueing discipline may discard the packet.
+They return 0 on success, or
+.Er ENOBUFS
+if the packet is discarded.
+The packet pointed to by
+.Fa _m
+will be freed by the device driver on success or by the queueing discipline on
+failure, so that the caller should not touch
+.Fa _m
+after calling
+.Fn ifq_enqueue .
+.Fn ifq_handoff
+combines the enqueue operation with statistic generation and calls
+.Fn if_start
+upon successful enqueue to initiate the actual send.
+.Pp
+.Fn ifq_dequeue
+dequeues a packet from the queue.
+It returns the dequeued packet, or
+.Dv NULL
+if no packet is dequeued.
+The caller must always check the return value
+since a non-empty queue could return
+.Dv NULL
+under rate-limiting.
+.Pp
+.Fn ifq_poll
+returns the next packet without removing it from the queue.
+It is guaranteed by the underlying queueing discipline that
+.Fn ifq_dequeue
+immediately after
+.Fn ifq_poll
+returns the same packet.
+.Pp
+.Fn ifq_purge
+discards all the packets in the queue.
+The purge operation is needed since a non-work conserving queue cannot be
+emptied by a dequeue loop.
+.Pp
+.Fn ifq_classify
+classifies a packet to a scheduling class, and returns the result in
+.Fa _pa .
+.Pp
+.Fn ifq_is_empty
+can be used to check if the queue is empty.
+Note that
+.Fn ifq_dequeue
+could still return
+.Dv NULL
+if the queueing discipline is non-work conserving.
+.Pp
+.Fn ifq_set_maxlen
+sets the queue length limit to the default FIFO queue.
+.Pp
+.Fn ifq_set_ready
+sets a flag to indicate that this driver is converted to use the new macros.
+.Nm
+can be enabled only on interfaces with this flag.
+.Pp
+.Fn ifq_is_enabled
+returns 1 if
+.Nm
+is enabled for the queue, 0 if not.
+.Sh QUEUEING DISCIPLINES
+Queueing disciplines need to maintain
+.Fa ifq_len
+.Po
+used by
+.Fn ifq_is_empty
+.Pc .
+Queueing disciplines also need to guarantee that the same mbuf is returned if
+.Fn ifq_dequeue
+is called immediately after
+.Fn ifq_poll .
+.Sh SEE ALSO
+.Xr altq 4 ,
+.Xr pf 4 ,
+.Xr pf.conf 5 ,
+.Xr pfctl 8
+.Sh HISTORY
+The
+.Nm
+system first appeared in March 1997 and was imported into
+.Dx 1.1 .

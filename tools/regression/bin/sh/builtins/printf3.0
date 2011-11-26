@@ -1,0 +1,5 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/printf3.0,v 1.1 2010/12/20 23:06:57 jilles Exp $
+
+set -e
+v=$(! printf "%d" @wrong 2>/dev/null)
+[ "$v" = "0" ]

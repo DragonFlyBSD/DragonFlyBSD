@@ -1,0 +1,118 @@
+.\"
+.\" Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd April 10, 2010
+.Dt CRIT_ENTER 9
+.Os
+.Sh NAME
+.Nm crit_enter ,
+.Nm crit_enter_gd ,
+.Nm crit_enter_id ,
+.Nm crit_exit ,
+.Nm crit_exit_gd ,
+.Nm crit_exit_id
+.Nd enter and exit a critical section
+.Sh SYNOPSIS
+.In sys/thread2.h
+.Ft void
+.Fn crit_enter "void"
+.Ft void
+.Fn crit_exit "void"
+.Ft void
+.Fn crit_enter_gd "globaldata_t gd"
+.Ft void
+.Fn crit_exit_gd "globaldata_t gd"
+.Ft void
+.Fn crit_enter_id "const char *id"
+.Ft void
+.Fn crit_exit_id "const char *id"
+.Sh DESCRIPTION
+The
+.Fn crit_enter
+and
+.Fn crit_exit
+functions are used to enter and exit a critical section of code.
+Entering a critical section will disallow preemption of the currently
+running thread on the current CPU for the duration of the critical section.
+While a critical section is active, interrupts and IPIs are also prevented
+from executing on the current CPU.
+Instead, the interrupt code marks the interrupt as deferred and immediately
+returns (without scheduling any interrupt thread).
+If an interrupt or an IPI is deferred in this way, it will be processed upon
+leaving the critical section.
+.Pp
+It is possible for a thread to sleep while holding a critical section,
+however this results in the critical section being given up for the time of
+the sleep and being reacquired after waking up.
+.Pp
+If the current CPU's globaldata pointer is available,
+.Fn crit_enter_gd
+and
+.Fn crit_exit_gd
+may be used to reduce the amount of generated code.
+.Pp
+Critical sections are per-CPU entities.
+They are typically used to interlock operations local to the CPU.
+A critical section on one CPU will not prevent an interrupt or IPI from
+occurring on some other CPU.
+If cross-CPU interlocks are required the more heavy weight
+.Xr spinlock 9
+or
+.Xr serializer 9
+lock is recommended instead.
+.Pp
+Unlike spinlocks and serializer locks, critical sections can be nested.
+.Sh DEBUGGING CRITICAL SECTIONS
+Kernels compiled with
+.Dv DEBUG_CRIT_SECTIONS
+will report any
+.Fn crit_exit
+calls that are made from a different function than the
+.Fn crit_enter
+that they are unnesting.
+The
+.Fn crit_enter_id
+and
+.Fn crit_exit_id
+functions can be used to specify a fixed ID in cases where this is done
+on purpose.
+Identifiers must be string pointers but the debug code only checks the
+pointer address, it does not do a
+.Fn strcmp
+to validate the ID.
+.Sh FILES
+The critical section implementation is in
+.Pa /sys/sys/thread2.h .
+.Sh SEE ALSO
+.Xr serializer 9 ,
+.Xr spinlock 9
+.Sh HISTORY
+These functions were introduced in
+.Dx 1.0 .

@@ -1,0 +1,5 @@
+# $FreeBSD: src/tools/regression/bin/sh/set-e/while2.0,v 1.2 2010/08/16 17:18:08 jilles Exp $
+set -e
+while false; false; do
+	:
+done

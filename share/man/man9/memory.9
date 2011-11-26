@@ -1,0 +1,99 @@
+.\" $NetBSD: memoryallocators.9,v 1.4 2009/08/03 20:02:55 rmind Exp $
+.\"
+.\" Copyright (c) 2011 Venkatesh Srinivas
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man9/zone.9,v 1.9.2.4 2002/05/02 20:01:29 asmodai Exp $
+.\"
+.Dd March 23, 2011
+.Dt MEMORY 9
+.Os
+.Sh NAME
+.Nm memory
+.Nd introduction to kernel memory allocators
+.Sh DESCRIPTION
+The
+.Dx
+kernel provides several memory allocators, each with different characteristics
+and purposes.
+.Ss kmalloc
+kmalloc is the primary kernel memory allocator. kmalloc allocates pages from
+the kernel address space via
+.Xr vm_page_alloc 9
+and constructs buffers by slicing allocated pages. Allocations larger than 8 KB
+are served directly with pages from the kernel address space. kmalloc tracks
+allocation statistics in a malloc_zone structure, which must be declared
+before use.
+.Pp
+kmalloc is implemented as a slab allocator, with per-CPU slab structures. It
+may block while attempting to get free pages.
+.Pp
+For more information, see
+.Xr kmalloc 9 .
+.Ss Object caches
+The object cache is a frontend memory allocator to some backing allocator. It
+provides for per-CPU caches of constructed objects, saving time on setup of
+allocated structures. The object cache is well-suited to oft-allocated
+structures which have relatively complex setup routines.
+.Pp
+The object cache routines may block allocating cache structures or buffers.
+.Pp
+For more information, see
+.Xr objcache 9 .
+.Ss MPIPE
+MPIPE is a memory allocator frontend to kmalloc; an MPIPE can be created with
+a fixed number of buffers. The MPIPE guarantees that the desired
+number of buffers are available and can be allocated without blocking. Beyond
+the fixed count, MPIPE calls kmalloc and may block or may fail to allocate.
+.Pp
+For more information see
+.Xr mpipe 9 .
+.Ss The Zone Allocator
+The zone allocator is a specialized memory allocator; it performs a similar
+function to kmalloc, but it can run from statically allocated structures in
+addition to dynamically allocated vm_pages. The zone allocator should be
+restricted to use before the VM is initialized and to core VM structures.
+.Pp
+The zone allocator may block.
+.Pp
+For more information see
+.Xr zone 9 .
+.Sh HISTORY
+The kmalloc and Zone allocators were inherited from
+.Fx .
+The kmalloc allocator was converted to a per-CPU slab allocator in
+.Dx 1.0 .
+.Pp
+The MPIPE allocator appeared in
+.Dx 1.0 .
+The Object cache appeared in
+.Dx 1.3 .
+.Sh AUTHORS
+.An -nosplit
+This manual page is based on the
+.Nx
+analogue, by
+.An Elad Efrat Aq elad@NetBSD.org
+and
+.An YAMAMOTO Takashi Aq yamt@NetBSD.org .

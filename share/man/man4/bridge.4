@@ -1,0 +1,236 @@
+.\" Copyright 2001 Wasabi Systems, Inc.
+.\" All rights reserved.
+.\"
+.\" Written by Jason R. Thorpe for Wasabi Systems, Inc.
+.\" Spanning tree modifications by Matthew Dillon
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed for the NetBSD Project by
+.\"	Wasabi Systems, Inc.
+.\" 4. The name of Wasabi Systems, Inc. may not be used to endorse
+.\"    or promote products derived from this software without specific prior
+.\"    written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY WASABI SYSTEMS, INC. ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL WASABI SYSTEMS, INC
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\"
+.Dd February 22, 2011
+.Dt BRIDGE 4
+.Os
+.Sh NAME
+.Nm bridge
+.Nd network bridge device
+.Sh SYNOPSIS
+.Cd "pseudo-device bridge"
+.Sh DESCRIPTION
+The
+.Nm
+driver creates a logical link between two or more IEEE 802 networks
+that use the same (or
+.Dq similar enough )
+framing format.
+For example, it is possible to bridge Ethernet and 802.11 networks together,
+but it is not possible to bridge Ethernet and Token Ring together.
+.Pp
+To use
+.Nm ,
+the administrator must first create the interface and configure
+the bridge parameters.
+The bridge is created using the
+.Xr ifconfig 8
+.Cm create
+subcommand.
+See the
+.Xr ifconfig 8
+manual page for further information on configuring bridges.
+.Pp
+A bridge can be used to provide several services, such as a simple
+802.11-to-Ethernet bridge for wireless hosts, and traffic isolation.
+.Pp
+A bridge works like a hub, forwarding traffic from one interface
+to another.
+Multicast and broadcast packets are always forwarded to all
+interfaces that are part of the bridge.
+For unicast traffic, the bridge learns which MAC addresses are associated
+with which interfaces and will forward the traffic selectively.
+.Pp
+The bridge operates in a safe mode by default, setting the MAC source in
+the link header on outgoing packets to the outgoing interface MAC.
+This reduces the chance that the layer-2 switching in your switches
+will become confused.
+.Pp
+The bridge supports various special features via
+.Cm link
+options.
+.Bl -tag -width indent
+.It Cm link0
+The link0 option enables transparent bridging mode.
+The bridge will make every effort to retain the ethernet header
+when forwarding packets between interfaces, making the bridging
+function work more like a hardware bridge device.
+.It Cm link1
+The link1 option enables keepalive transmission and automatically
+places a member into a special blocked mode if no keepalive reception
+occurs.
+If either sides of the link uses this option then both sides must use
+this option.
+This option is impemented by sending CFG updates on the hello interval
+to the remote.
+The link is considered lost after 10 intervals (typically 20 seconds).
+.It Cm link2
+The link2 option enables channel bonding (see also ifbondweight).
+All member interfaces with the same mac address are considered to
+be in a bonding group.
+When something like
+.Xr tap 4
+is used, you can manually control or copy the mac to create bonding groups.
+When interface bonding is enabled normally blocked interfaces belonging
+to the same bonding group as an active forwarding interface will be
+changed to the bonding state.
+Both sides of link the member represents must operate in bonding mode
+for this to work, otherwise the remote end may decide to throw away
+half your packets.
+.El
+.Pp
+If your network becomes glitchy, with long pauses in tcp sessions, then
+transparent bridging mode is likely the cause.  This mode should only be
+used when you are bridging networks with devices that do MAC-based security
+or firewalling (for example, the supremely braindead at&t uverse router),
+or which impose severe limitations on MAC:IP assignments.
+.Pp
+If member interfaces constantly enter a 'blocked (link1)' state then the
+other end of those interfaces is not implementing the link1 keepalive.
+Both sides must implement the keepalive.
+.Pp
+If you get an enormous amount of packet loss and are using link2-based
+bonding, then the other side of those member interfaces are probably
+not implementing link2-based bonding.
+.Pp
+The
+.Nm
+driver implements the IEEE 802.1D Spanning Tree protocol (STP).
+Spanning Tree is used to detect and remove loops in a network topology.
+.Pp
+Packet filtering can be used with any firewall package that hooks in via the
+.Xr pfil 9
+framework.
+When filtering is enabled, bridged packets will pass through the filter
+inbound on the originating interface, on the bridge interface and outbound on
+the appropriate interfaces.
+Either stage can be disabled, this behaviour can be controlled using
+.Xr sysctl 8 :
+Set
+.Va net.link.bridge.pfil_member
+to
+.Li 1
+to enable filtering on the incoming and outgoing member interfaces
+and set
+.Va net.link.bridge.pfil_bridge
+to
+.Li 1
+to enable filtering on the bridge interface.
+.Pp
+ARP and REVARP packets are forwarded without being filtered and others
+that are not IP nor IPv6 packets are not forwarded when filtering is
+enabled.
+.Pp
+Note that packets to and from the bridging host will be seen by the
+filter on the interface with the appropriate address configured as well
+as on the interface on which the packet arrives or departs.
+.Pp
+The MTU of the first member interface to be added is used as the bridge MTU,
+all additional members are required to have exactly the same value.
+.Sh EXTRA FEATURES
+.Dx
+implements two additional features to make spanning tree operation more
+resilient.
+.Pp
+Specifying
+.Cm link0
+on the bridge interface places the bridge in transparent bridging mode.
+The bridge will make every attempt to retain the original source MAC in
+the ethernet link header.
+.Pp
+Specifying
+.Cm link1
+on the bridge interface forces the bridge to generate a 802.11d CFG
+message on every hello interval for all interfaces participating
+in the STP protocol.
+Normally CFG messages are only generated by the root bridge interface
+or during topology changes.
+In addition the bridge code expects to receive 802.11d frames from
+all interface participating in the STP protocol.
+.Pp
+An interface which fails to receive a 802.11d frame within 10 times
+the hello interval (usually 20 seconds) automatically goes into
+l1blocking mode, which can be observed in the ifconfig output for
+the bridge.  This removes the interface from consideration and the
+bridge code automatically routes around it.
+.Pp
+Using
+.Cm link0
+and
+.Cm link1
+together between two
+.Dx
+boxes allows you to maintain multiple parallel vpns between those
+boxes via different networks (if you happen to be on more than one
+with internet access).
+Use separate openvpn instances and tap devices for each vpn link
+to accomplish this, placing them in the same bridge interface on
+the two endpoints.
+The tap devices do not need any IP configuration when bridged and
+can be assigned the same ether MAC (in fact they have to be
+if you want the failover to work nicely).
+.Sh SEE ALSO
+.Xr pf 4 ,
+.Xr ifconfig 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Ox 2.5
+and found its way into
+.Dx 1.3 .
+Transparent bridging (link0) was added in
+.Dx 2.9
+in 2011.
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+driver was originally written by
+.An Jason L. Wright
+.Aq jason@thought.net
+as part of an undergraduate independent study at the University of
+North Carolina at Greensboro.
+.Pp
+This version of the
+.Nm
+driver has been heavily modified from the original version by
+.An Jason R. Thorpe
+.Aq thorpej@wasabisystems.com .
+.Sh BUGS
+The
+.Nm
+driver currently supports only Ethernet and Ethernet-like (e.g. 802.11)
+network devices, with exactly the same interface MTU size as the bridge device.

@@ -1,0 +1,153 @@
+.\"
+.\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Hiten Pandya <hmp@backplane.com>.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"	$NetBSD: physio.9,v 1.2 1996/11/11 00:05:12 lukem Exp $
+.\"
+.\" Copyright (c) 1996 The NetBSD Foundation, Inc.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to The NetBSD Foundation
+.\" by Paul Kranenburg.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"        This product includes software developed by the NetBSD
+.\"        Foundation, Inc. and its contributors.
+.\" 4. Neither the name of The NetBSD Foundation nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE
+.\" LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man9/physio.9,v 1.6.2.4 2001/12/17 11:30:18 ru Exp $
+.\" $DragonFly: src/share/man/man9/physio.9,v 1.5 2008/11/09 10:59:14 swildner Exp $
+.\"
+.Dd November 9, 2008
+.Dt PHYSIO 9
+.Os
+.Sh NAME
+.Nm physread ,
+.Nm physwrite
+.Nd initiate I/O on raw devices
+.Sh SYNOPSIS
+.In sys/buf.h
+.In sys/device.h
+.Ft int
+.Fn physread "struct dev_read_args *ap"
+.Ft int
+.Fn physwrite "struct dev_write_args *ap"
+.Sh DESCRIPTION
+.Fn Physread
+and
+.Fn physwrite
+are helper functions typically called from character device read and write
+routines to start I/O on a user process buffer.
+They will call the
+.Fn dev_dstrategy
+routine one or more times depending on the size of transfer which is
+described by the
+.Fa ap
+argument.
+.Pp
+The maximum amount of data transferable in one iteration of the
+.Fn physread
+and
+.Fn physwrite
+functions is determined by the maximum I/O size supported by the device
+.Fa dev ,
+otherwise the value of
+.Dv DFLTPHYS
+is used.
+Until the I/O operation is complete, the calling process or thread is
+put to sleep with the wait message set to
+.Ql "physstr" .
+.Pp
+The
+.Fn physread
+and
+.Fn physwrite
+functions always await the completion of the entire requested transfer
+before returning, unless an error condition is detected earlier.
+.Pp
+The
+.Fa ap
+argument is a pointer to a
+.Vt dev_read_args
+or
+.Vt dev_write_args
+structure, as passed to
+.Nm d_read
+or
+.Nm d_write .
+.Sh RETURN VALUES
+If successful
+.Fn physread
+and
+.Fn physwrite
+will return 0.
+.Pp
+The
+.Va errno
+value
+.Er EFAULT
+will be returned if the address range described by
+.Fa uio
+is not accessible by the calling process or thread.
+.Pp
+Note that the actual transfer size may be less than requested by
+.Fa ap
+if the device signals an
+.Dq end of file
+condition.
+.Sh SEE ALSO
+.Xr read 2 ,
+.Xr write 2 ,
+.Xr uio 9

@@ -1,0 +1,19 @@
+Here are some hints about testing modifications to macro packages 
+and manual pages.
+
+1. Use groff's `-ww' option to catch potential problems.
+   Ideally, there shouldn't be any warnings.
+
+2. For a well-formedness check, run doclifter (http://catb.org/~esr/doclifter)
+   against your page.  This tool was written to lift pages to XML, but as a 
+   side effect it acts as a validator that will warn you of potential problems 
+   and non-portable constructs.
+
+3. The two most important groff client types are X terminal emulators 
+   and Postscript printers.  Eyeball-check your output under both.
+
+4. The colorized man output of the Midnight Commander (what you get by 
+   pressing the F3 key on a man page) is good for making small errors
+   more visible.
+
+5. Try different terminal line lengths, say, 80 and 100 characters.

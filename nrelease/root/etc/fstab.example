@@ -1,0 +1,13 @@
+# $DragonFly: src/nrelease/root/etc/fstab.example,v 1.1 2003/12/01 21:14:03 dillon Exp $
+# Example fstab based on /README.
+#
+# Device		Mountpoint	FStype	Options		Dump	Pass#
+/dev/ad0s1a		/		ufs	rw		1	1
+/dev/ad0s1b		none		swap	sw		0	0
+/dev/ad0s1d		/var		ufs	rw		2	2
+/dev/ad0s1e		/tmp		ufs	rw		2	2
+/dev/ad0s1f		/usr		ufs	rw		2	2
+/dev/ad0s1g		/home		ufs	rw		2	2
+proc			/proc		procfs	rw		0	0
+# example MFS remount (for a pristine MFS filesystem do not use -C)
+#swap			/mnt		mfs	rw,-C,-s=4000	0	0

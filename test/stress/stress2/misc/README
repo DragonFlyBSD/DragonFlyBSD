@@ -1,0 +1,6 @@
+$FreeBSD$
+
+This directory contains various test scenarios. Most are regression
+tests for problems fixed.
+
+The script "all.sh" will run all the test scenarios for ever.

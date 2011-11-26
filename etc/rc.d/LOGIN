@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# $NetBSD: LOGIN,v 1.7 2002/03/22 04:33:57 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/LOGIN,v 1.3 2002/10/12 13:49:20 schweikh Exp $
+# $DragonFly: src/etc/rc.d/LOGIN,v 1.4 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: LOGIN
+# REQUIRE: DAEMON
+
+#	This is a dummy dependency to ensure user services such as xdm,
+#	inetd, cron and kerberos are started after everything else, in case
+#	the administrator has increased the system security level and
+#	wants to delay user logins until the system is (almost) fully
+#	operational.
+. /etc/rc.subr
+dummy_rc_command "$1"

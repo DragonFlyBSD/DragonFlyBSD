@@ -1,0 +1,194 @@
+.\"
+.\" Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/share/man/man9/kenv.9,v 1.9 2008/08/30 17:11:42 swildner Exp $
+.\"
+.Dd August 30, 2008
+.Dt KENV 9
+.Os
+.Sh NAME
+.Nm kfreeenv ,
+.Nm kgetenv ,
+.Nm kgetenv_int ,
+.Nm kgetenv_quad ,
+.Nm kgetenv_string ,
+.Nm kgetenv_ulong ,
+.Nm ksetenv ,
+.Nm ktestenv ,
+.Nm kunsetenv
+.Nd API for manipulation of the kernel environment
+.Sh SYNOPSIS
+.In sys/systm.h
+.Ft void
+.Fn kfreeenv "char *env"
+.Ft char *
+.Fn kgetenv "const char *name"
+.Ft int
+.Fn kgetenv_int "const char *name" "int *data"
+.Ft int
+.Fn kgetenv_quad "const char *name" "quad_t *data"
+.Ft int
+.Fn kgetenv_string "const char *name" "char *data" "int size"
+.Ft int
+.Fn kgetenv_ulong "const char *name" "unsigned long *data"
+.Ft int
+.Fn ksetenv "const char *name" "const char *value"
+.Ft int
+.Fn ktestenv "const char *name"
+.Ft int
+.Fn kunsetenv "const char *name"
+.Sh DESCRIPTION
+.Nm kenv
+provides an API for manipulation of the kernel environment of a live system by
+.Dq consumers
+(other kernel subsystems).
+Upon boot, the kernel environment is inherited from
+.Xr loader 8 .
+The static environment inherited is converted to a dynamic array at the end of
+the
+.Nm kmem
+subsystem configure phase of the kernel booting process.
+.Pp
+The
+.Fn kfreeenv
+function reclaims an array of characters earlier allocated by one of the
+.Fn kgetenv
+functions for use by the caller.
+.Pp
+The
+.Fn kgetenv*
+functions look up a given entry in the kernel environment, and return it if
+found.
+The
+.Fn kgetenv_int ,
+.Fn kgetenv_quad ,
+.Fn kgetenv_string ,
+and
+.Fn kgetenv_ulong
+functions return
+.Dv 1
+if unsuccessful,
+.Dv 0
+if successful, and return the
+found value in the given destination.
+.Pp
+The
+.Fn kgetenv
+function returns the value string or
+.Dv NULL
+if it failed.
+.Pp
+The
+.Fn ksetenv
+function sets a given environment key to the given value. It returns
+.Dv -1
+if either the
+.Fa name
+or
+.Fa value
+arguments were too large, the maxmimum number of entries in the dynamic
+environment was reached, or if the dynamic environment was not setup yet.
+The latter can happen when calling
+.Fn ksetenv
+before the
+.Nm kmem
+subsystem is initialized.
+.Pp
+The
+.Fn ktestenv
+function tests whether a given key exists in the kernel environment, returning
+.Dv 1
+if it does and
+.Dv 0
+if it does not.
+.Pp
+The
+.Fn kunsetenv
+function removes a given key and its associated value from the dynamic kernel
+environment.
+It returns
+.Dv -1
+if the key does not exist, or if the dynamic was not setup yet.
+If successful, it returns
+.Dv 0 .
+.Sh SYSCTLS
+.Bl -tag -width indent
+.It Va kern.environment
+Current static kernel environment query OID.
+.El
+.Sh FILES
+.Bl -tag -width ".Pa sys/kern/kern_environment.c"
+.It Pa sys/kern/kern_environment.c
+.El
+.Sh SEE ALSO
+.Xr sysctl 3 ,
+.Xr loader.conf 5 ,
+.Xr loader 8 ,
+.Xr sysctl 8
+.Sh HISTORY
+A
+.Fn getenv
+function first appeared in
+.Fx 3.0 ,
+.Fn getenv_int
+in
+.Fx 3.1 ,
+.Fn getenv_quad
+in
+.Fx 3.4 ,
+.Fn getenv_string
+in
+.Fx 4.5
+and other functions first appeared in
+.Fx 5.0
+and subsequently
+.Dx 1.7 .
+.Sh AUTHORS
+.An -nosplit
+The original
+.Nm kenv
+implementation was written by
+.An Michael Smith .
+It was subsequently extended by
+.An Matt Jacob ,
+.An John Baldwin
+and
+.An Maxime Henrion .
+This manual page was written by
+.An Thomas E. Spanjaard .
+.Sh BUGS
+The
+.Va kern.environment
+sysctl OID currently only reports information about the static kernel
+environment, not the dynamic one.
+.Pp
+The return values from various functions could do with some standardisation,
+using the error codes from
+.In sys/errno.h .

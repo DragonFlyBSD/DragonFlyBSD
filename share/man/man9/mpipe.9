@@ -1,0 +1,136 @@
+.\"
+.\" Copyright (c) 2010, The DragonFly Project.
+.\"
+.\" This software is derived from software contributed to the DragonFly Project
+.\" by Venkatesh Srinivas <me@endeavour.zapto.org>.
+.\"
+.\" Permission to use, copy, modify, or distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR OTHER DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA, OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE, OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd December 21, 2010
+.Dt MPIPE 9
+.Os
+.Sh NAME
+.Nm mpipe_init ,
+.Nm mpipe_done ,
+.Nm mpipe_alloc_nowait ,
+.Nm mpipe_alloc_waitok ,
+.Nm mpipe_free
+.Nd malloc pipelines
+.Sh SYNOPSIS
+.In sys/mpipe.h
+.Ft void
+.Fn mpipe_init "malloc_pipe_t mpipe" "malloc_type_t type" "int bytes" \
+"int nnom" "int nmax" "int mpflags" \
+"void (*construct)(void *, void *)" \
+"void (*deconstruct)(void *, void *)" \
+"void *priv"
+.Ft void
+.Fn mpipe_done "malloc_pipe_t mpipe"
+.Ft void *
+.Fn mpipe_alloc_nowait "malloc_pipe_t mpipe"
+.Ft void *
+.Fn mpipe_alloc_waitok "malloc_pipe_t mpipe"
+.Ft void
+.Fn mpipe_free "malloc_pipe_t mpipe" "void *buf"
+.Sh DESCRIPTION
+A malloc pipeline is a linear pool of buffers of a single type.
+A malloc
+pipeline guarantees a number of outstanding allocations and provides both
+blocking and non-blocking behavior above the guaranteed allocation amounts.
+A malloc pipeline can have an upper limit, beyond which allocations sleep
+or fail respectively.
+Malloc pipelines are intended for situations where
+a minimum number of buffers are required to make progress.
+.Pp
+The
+.Fn mpipe_init
+function initializes a malloc pipeline
+.Fa mpipe .
+The pipeline allocates buffers of size
+.Fa bytes
+from the malloc zone
+.Fa type .
+The pipeline is prefilled with
+.Fa nnom
+buffers and has a limit of
+.Fa nmax
+buffers.
+The
+.Fa construct
+argument is a callback, invoked when a buffer is allocated from the system.
+The
+.Fa deconstruct
+argument is a callback, invoked when the malloc pipeline is destroyed or a
+buffer is freed to the system.
+Both
+.Fa construct
+and
+.Fa deconstruct
+are invoked with the buffer address as their first parameter and with
+.Fa priv
+as their second parameter.
+The
+.Fa flags
+argument controls allocation parameters:
+.Bl -tag -width ".Dv MPF_NOZERO" -offset indent
+.It Dv MPF_NOZERO
+Do not zero allocated buffers.
+.It Dv MPF_CACHEDATA
+By default, MPIPE buffers are zeroed on free; this flag disables that behavior.
+.It Dv MPF_INT
+Allocations may use the interrupt memory reserve.
+.El
+.Pp
+This function may block.
+.Pp
+The
+.Fn mpipe_done
+function destroys a malloc pipeline.
+The pipeline's destructor is invoked on
+each buffer and then they are returned to the system.
+It is an error to invoke
+this function on a pipeline with outstanding allocations.
+This function may block.
+.Pp
+The
+.Fn mpipe_alloc_nowait
+function allocates a buffer from the malloc pipeline.
+It will first allocate from the pipeline itself; if that is exhausted,
+it will fall back on
+.Xr kmalloc 9 ,
+up to the pipeline maximum.
+This function may not block.
+.Pp
+The
+.Fn mpipe_alloc_waitok
+function allocates a buffer from the malloc pipeline.
+It will first allocate from the pipeline; if that is exhausted,
+it will fall back on
+.Xr kmalloc 9 ,
+up to the pipeline maximum.
+It will sleep if it reaches the maximum, potentially releasing any tokens.
+.Pp
+The
+.Fn mpipe_free
+function frees a buffer to the malloc pipeline.
+If the pipeline is full, it will free directly to the kernel allocator,
+calling the destructor as it does.
+This function may block.
+.Sh FILES
+The MPIPE implementation is in
+.Pa /sys/kern/kern_mpipe.c .
+.Sh SEE ALSO
+.Xr memory 9
+.Sh HISTORY
+MPIPE first appeared in
+.Dx 1.0 .

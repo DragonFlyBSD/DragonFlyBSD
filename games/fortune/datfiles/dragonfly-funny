@@ -1,0 +1,171 @@
+These fortunes were brought to you by:
+$DragonFly: src/games/fortune/datfiles/dragonfly-funny,v 1.1 2006/03/17 03:15:16 justin Exp $
+%
+/*
+ * Phrases work is currently commented out.  Remove comments here
+ * and in header setup to enable.
+ *
+ * char *Phrases[] = {
+ *     "Tired of Penguins?  Switch totheDragon!",
+ *     "Dragging BSD, kicking and screaming, into the 21st century.",
+ *     "Best thing since sliced bread.",
+ *     "A new day and a new way.",
+ *     "The way BSD should be!",
+ *     "Here be Dragons.",
+ *     "DragonFly BSD, the logical successor to FreeBSD 4.x.",
+ *     "Use the Force: DragonFly release1 in June!"
+ *     "Catch the buzz!",
+ *     "When one wing isn't enough!",
+ *     "The best breed",
+ *     "A Dragonfly a day will keep Microsoft away.",
+ *     "Catch the Buzz.",
+ *     "When two wings aren't enough."
+ * };
+ */
+
+  -- Hidden in tablegc, the driving engine behind the DragonFly
+     website.
+%
+<buggs> don't drink and drive, use DragonFly
+<chiller> Pretty fly, like dragonfly
+<chiller> maybe an 'a' there..
+<buggs> DF, back to the future
+<corecode> DF - back to BSD's future
+
+  -- said on EFnet #dragonflybsd
+%
+<Diannora> Theres a hole in my mem-ory, Theres a hole in my mem-ory,
+<Diannora> the compactor had a go, the memory now is low, Theres a hole in
+my mem-ory!
+<coolvibe> free your mallocs, dianora, dianora, dianora. Free your mallocs
+dianora, it isn't strange there's a hole
+<Diannora> Theres a hole in my memory, dear coolvibe dear coolvibe, theres
+a hole in my memory dear coolvibe !
+<Diannora> Why fix it Dianora, Dianora, Why fix it Dianora Dianora !
+
+  -- said on EFnet #dragonflybsd
+%
+<coolvibe> Daemons gathered in their masses
+<robg> just like hackers at conventions
+<coolvibe> evil code that plots destruction
+<robg> sorceror of mass construction
+<coolvibe> in the fields the coredump's burning
+<coolvibe> as the code machine keeps turning
+<coolvibe> Death and hatred to bugkind.
+<coolvibe> poisoning their debugged minds
+<coolvibe> oh lord yeah!
+
+  -- said on EFnet #dragonflybsd
+%
+< GeekGod> speak now or forever hold your commit
+
+  -- said on EFnet #dragonflybsd
+%
+< schoolio> The watched kernel never panics
+
+  -- said on EFnet #dragonflybsd
+%
+>     I'm just joking.  But I may hand a commit bit to anyone who
+>     submits too many cosmetic changes and make that person our
+>     official cosmetics spokeperson :-).
+
+Just call me "Mary Kay"  :D
+
+  -- Chis Pressey in reply to Matt Dillon on the submit@ mailinglist
+%
+<Niacin> BSD
+<Niacin> Bibles Sex Drugs
+<Niacin> kinda like the mormans
+
+  -- said on EFnet  #dragonflybsd
+%
+<hmp> Niacin: BSD --- The Mad Cow Disease
+<hmp> ;)
+
+  -- said on EFnet  #dragonflybsd
+%
+<cpressey> Pokemon DragonFlyBSD: "Gotta patch 'em all"
+
+  -- said on EFnet  #dragonflybsd
+%
+<coolvibe>  can I play with sourcecode
+<coolvibe>  the coder looks at his crystal ball
+<coolvibe>  can I play with sourcecode
+<coolvibe>  there is no vision there at all
+<coolvibe>  can I play with sourcecode - the coder looked and he laughed at me
+<coolvibe>  can I play with sourcecode - he said you're blind, too blind to seeee
+<robg>  coolvibe, your killing me how am i supposed to get anything done..
+
+  -- coolvibe molesting some Iron Maiden lyrics on EFnet #dragonflybsd
+%
+
+<@Dianora> hsu is sending me porn!
+<@Dianora> X-From_: hsu@freebsd.org  Tue Mar 23 13:02:07 2004
+<@Dianora> From: hsu@freebsd.org
+<@Dianora> To: db@db.net
+<@Dianora> Subject: Re: Free porn
+<@Dianora> I hate those viruses
+<+aaron> at least it's *free* porn.
+
+  -- overheard on EFnet #dragonflybsd
+%
+[talking about Matt's bike accident and broken shoulder]
+< GeekGod> i hadn't even heard of that paticular bone before matts fun
+<@coolvibe> what, clavicle?
+< GeekGod> roger
+<+aaron> there's a bone named roger?
+
+  -- said on EFnet #dragonflybsd
+%
+<@cpressey> oh, well.  ok then.
+<@coolvibe> ?
+-!- cpressey is now known as marykay
+<@coolvibe> hahahahah
+
+  -- said on EFnet #dragonflybsd
+%
+<@buggs> BSD had hacker called Matt
+<@buggs> And all his patches were fat
+<@buggs> But the whining masses cried like a kid
+<@buggs> And took away his commit bit
+<@buggs> But he still was coding high
+<@buggs> And put them all in DragonFly
+
+  -- said on EFnet #dragonflybsd
+%
+<@cpressey> panic: bikeshed: wrong colour
+
+  -- said on EFnet #dragonflybsd
+%
+<@coolvibe> I left alone, my mind was blank. I needed time to get the mutexes
+	from my mind. What did I see, can I believe, that what I saw that
+	night was real and not just fantasy
+<@coolvibe> just what I saw, in that old code, where they reflections of those
+	past hacks staring back at me
+<@coolvibe> cos in my dreams, it's always there, the evil lock that twists my
+	mind and brings me to dispair!
+<@coolvibe> the night was black, was no use holding back, cus I just had to
+	see, was someone watching me.
+<@coolvibe> In the mist, dark hackers move and twist, was all this for real,
+	or some kind of hell
+<@coolvibe> 6 66, the number of the beasty
+<@coolvibe> hacks and locks were spawned to be released
+<@coolvibe> compilers blazed, and sacred chants were praised, as they start
+	to cry, hands held to the sky
+<@coolvibe> in the night, the locks were spinning bright, the ritual has
+	begun, beasties work is done
+<@coolvibe> six, six six, the number of the beastie, sacrifice is going on
+	tonight
+
+  -- coolvibe molesting more Iron Maiden lyrics, on EFnet #dragonflybsd
+%
+<eirik> and now nobody can get an ip
+<eirik> except me which added some ugly hack into the network stack
+
+ -- said on EFnet DragonFlyBSD
+%
+15:27 <@dillon> It's been a long slog
+15:28 <@dillon> but now it is allllll over
+15:28 <@dillon> time for pie!
+
+ -- said on EFnet DragonFlyBSD

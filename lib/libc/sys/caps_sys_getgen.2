@@ -1,0 +1,83 @@
+.\"
+.\" Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/lib/libc/sys/caps_sys_getgen.2,v 1.1 2006/02/28 22:40:49 swildner Exp $
+.\"
+.Dd February 28, 2006
+.Dt CAPS_SYS_GETGEN 2
+.Os
+.Sh NAME
+.Nm caps_sys_getgen
+.Nd get the generation number for a CAPS IPC link
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/caps.h
+.Ft caps_gen_t
+.Fn caps_sys_getgen "int portid"
+.Sh DESCRIPTION
+The
+.Fn caps_sys_getgen
+function returns the 64 bit generation number for a CAPS link
+specified by the
+.Fa portid
+identifier.
+This number is typically used to allow a client to detect when a
+service has been restarted.
+.Sh RETURN VALUES
+On success, the 64 bit generation number is returned.
+If an error occurs, -1 is returned and
+.Va errno
+is set.
+.Sh ERRORS
+This function will fail if:
+.Bl -tag -width ".Bq Er ENOTCONN"
+.It Bq Er EINVAL
+The
+.Fa portid
+could not be found.
+.It Bq Er ENOTCONN
+The process originally creating the port forked and the child
+process attempts to access the port.
+The child process is expected to create its own port.
+.El
+.Sh SEE ALSO
+.Xr caps_sys_setgen 2
+.Sh HISTORY
+The
+.Fn caps_sys_getgen
+function call first appeared in
+.Dx 1.0 .
+.Sh AUTHORS
+.An -nosplit
+CAPS IPC was written by
+.An Matthew Dillon .
+This man page was written by
+.An Sascha Wildner .

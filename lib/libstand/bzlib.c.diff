@@ -1,0 +1,56 @@
+$FreeBSD: src/lib/libstand/bzlib.c.diff,v 1.1.2.2 2002/02/18 09:13:03 sobomax Exp $
+$DragonFly: src/lib/libstand/bzlib.c.diff,v 1.3 2005/06/30 15:55:17 corecode Exp $
+
+A patch to avoid linking into libstand compression routines from the bzip2
+that never being used anyway, while bloat loader(8) by additional 15KB.
+
+--- ../../contrib/bzip2-1.0/bzlib.c	2005-02-15 17:24:58.000000000 +0100
++++ bzlib.c	2005-06-30 17:45:31.000000000 +0200
+@@ -75,6 +75,7 @@
+ 
+ #include "bzlib_private.h"
+ 
++#ifndef BZ_NO_COMPRESS
+ 
+ /*---------------------------------------------------*/
+ /*--- Compression stuff                           ---*/
+@@ -130,6 +131,7 @@
+ }
+ #endif
+ 
++#endif /* BZ_NO_COMPRESS */
+ 
+ /*---------------------------------------------------*/
+ static
+@@ -156,6 +158,7 @@
+    if (addr != NULL) free ( addr );
+ }
+ 
++#ifndef BZ_NO_COMPRESS
+ 
+ /*---------------------------------------------------*/
+ static
+@@ -528,6 +531,7 @@
+    return BZ_OK;
+ }
+ 
++#endif /* BZ_NO_COMPRESS */
+ 
+ /*---------------------------------------------------*/
+ /*--- Decompression stuff                         ---*/
+@@ -921,6 +925,7 @@
+    return BZ_OK;
+ }
+ 
++#ifndef BZ_NO_COMPRESS
+ 
+ #ifndef BZ_NO_STDIO
+ /*---------------------------------------------------*/
+@@ -1610,6 +1615,7 @@
+ }
+ #endif
+ 
++#endif /* BZ_NO_COMPRESS */
+ 
+ /*-------------------------------------------------------------*/
+ /*--- end                                           bzlib.c ---*/

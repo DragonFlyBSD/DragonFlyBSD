@@ -1,0 +1,47 @@
+libaura v3.0 README
+===================
+
+$Id: README,v 1.3 2005/03/21 03:26:56 cpressey Exp $
+
+What is libaura?
+----------------
+
+libaura is a LIBrary of Assorted Useful Reusable Abstractions.  Notably,
+it provides dictionary and extensible buffer data types, memory management
+functions (wrappers to malloc() and free()), and filesystem predicates
+(is_file(), is_dir(), etc.)
+
+What is the current state of the project?
+-----------------------------------------
+
+EXPERIMENTAL.  libaura's application programming interface may change at
+any time.  libaura 3.0 is not intended to be backwards-compatible with
+any previous versions.  If you use libaura in a project, be prepared to
+chase API changes.
+
+How do I build and install libaura?
+-----------------------------------
+
+On a BSD-based system, go into the libaura source directory and type:
+
+	make
+
+Once built, it can be installed by typing (as root):
+
+	make install
+
+Directions may differ for other systems.
+
+An alternative method is to build libaura using the ports system and
+install it using the package system.
+
+How do I use libaura from a program?
+------------------------------------
+
+You can give gcc the following sort of command line flags to tell it to
+link your program with libaura:
+
+	gcc foo.c -o foo -L/usr/local/lib -laura
+
+See the libaura source code for the list of available functions and what
+they do.

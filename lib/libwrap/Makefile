@@ -1,0 +1,27 @@
+# $FreeBSD: src/lib/libwrap/Makefile,v 1.5.2.3 2002/07/22 14:21:50 ru Exp $
+#
+
+LIB=	wrap
+SHLIB_MAJOR= 4
+INCS=	tcpd.h
+MAN=	hosts_access.3
+MAN+=	hosts_access.5 hosts_options.5
+CSTD?=	gnu89
+WARNS?=	1
+
+.PATH:	${.CURDIR}/../../contrib/tcp_wrappers
+
+CFLAGS+=-DFACILITY=LOG_AUTH -DHOSTS_ACCESS -DNETGROUP -DDAEMON_UMASK=022 \
+	-DREAL_DAEMON_DIR=\"/usr/libexec\" -DPROCESS_OPTIONS \
+	-DSEVERITY=LOG_INFO -DRFC931_TIMEOUT=10 \
+	-DHOSTS_DENY=\"/etc/hosts.deny\" -DHOSTS_ALLOW=\"/etc/hosts.allow\" \
+	-DSYS_ERRLIST_DEFINED -DALWAYS_HOSTNAME
+.if !defined(NOINET6)
+CFLAGS+=-DINET6
+.endif
+
+SRCS+=	clean_exit.c diag.c eval.c fix_options.c hosts_access.c	\
+	hosts_ctl.c misc.c options.c percent_m.c percent_x.c	\
+	refuse.c rfc931.c shell_cmd.c socket.c update.c libvars.c
+
+.include <bsd.lib.mk>

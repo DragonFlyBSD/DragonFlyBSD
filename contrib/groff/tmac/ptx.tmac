@@ -1,0 +1,40 @@
+.\" ptx.tmac
+.\"
+.\"   Provide `.xx' macro to format permuted index entries as created
+.\"   by GNU ptx.
+.\"
+.\" Written 2008 by Werner Lemberg (wl@gnu.org)
+.\"
+.\" Public domain.
+.
+.nr ptx-ref-pos (\n[.l] - .65i)
+.nr ptx-head-pos (\n[ptx-ref-pos] / 2)
+.
+.ds ptx-sep-2 "   \"
+.ds ptx-sep-4 " \"
+.ds ptx-sep-5 " \"
+.
+.
+.de xx
+.  ds ptx-sep-1
+.  if \w\\$2 \
+.    ds ptx-sep-1 " \|\"
+.
+.  ds ptx-sep-3
+.  if \w\\$4 \
+.    ds ptx-sep-3 " \|\"
+.
+.  ds ptx-filler \\*[ptx-sep-4]\f3\a\fP\\*[ptx-sep-5]
+.  ta (\\n[ptx-ref-pos]u - \w\\*[ptx-sep-5]u)
+.
+\h(\\n[ptx-head-pos]u - \w\\$1\\*[ptx-sep-1]\\$2\\*[ptx-sep-2]u)\
+\\$1\\*[ptx-sep-1]\
+\\$2\\*[ptx-sep-2]\
+\\$3\\*[ptx-sep-3]\
+\\$4\\*[ptx-filler]\
+\\$5
+..
+.
+.nf
+.
+.\" eof

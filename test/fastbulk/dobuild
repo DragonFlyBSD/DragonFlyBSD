@@ -1,0 +1,34 @@
+#!/bin/csh
+#
+# This is run from the chroot via fastbulk, which has CDd
+# into a particular pkgsrc directory and wants us to build it.
+
+# Nothing to do if the package already exists.  Remove the run log
+# to prevent fastbulk from replacing the log from a previous run
+#
+set pkgname = "`bmake show-var VARNAME=PKGNAME`"
+set logname = $argv[1]
+if ( -f /usr/pkgsrc/packages/All/${pkgname}.tgz ) then
+    rm -f /tmp/logs/run/$logname
+    exit 0
+endif
+
+# We have to remove any conflicting packages or the one we
+# are trying to build will refuse to build.  Note that we
+# leave the related packages intact.
+#
+foreach i ( `bmake show-var VARNAME=CONFLICTS` )
+    echo "DELETING CONFLICTING PACKAGE: $i"
+    pkg_delete -r "$i"
+end
+
+# To ensure a clean build deinstall anything that
+# may cause our build repackage to fail.
+#
+# Clean after repackaging (if it succeeded) to keep the
+# work topology footprint small.  The work topology is
+# left intact for failed builds.
+#
+bmake deinstall DEINSTALLDEPENDS=ALL SKIP_LICENSE_CHECK=yes
+bmake repackage clean SKIP_LICENSE_CHECK=yes
+exit $status

@@ -1,0 +1,20 @@
+
+    Generate daily HEAD snapshots.  Basically setup the config file and
+    these files in ~root/snapshots and add a root cron job:
+
+    23 2 * * *      cd /root/snapshots; lockf -ks -t 0 .buildlock ./docron
+
+    The snapshots can be made available via rsyncd using a rsyncd.conf
+    file similar to this:
+
+uid = nobody
+gid = nobody
+use chroot = yes
+
+[snapshots]
+        path = /archive/snapshots
+
+    Another machine can mirror the snapshots using something like this:
+
+    lockf -ks -t 0 /root/adm/.rsynclock2 /usr/pkg/bin/rsync -aHS	\
+	snapshotbox.domain::snapshots/ /archive/snapshots/

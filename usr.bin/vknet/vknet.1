@@ -1,0 +1,152 @@
+.\"
+.\" Copyright (c) 2008 The DragonFly Project.  All rights reserved.
+.\" 
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" 
+.\" $DragonFly: src/usr.bin/vknet/vknet.1,v 1.4 2008/07/21 23:42:23 swildner Exp $
+.\"
+.Dd May 27, 2008
+.Dt VKNET 1
+.Os
+.Sh NAME
+.Nm vknet
+.Nd create a bridged network between two hosts over
+.Xr ssh 1
+.Sh SYNOPSIS
+.Nm
+.Op Fl C
+.Op Fl b Ar local-bridge
+.Op Fl B Ar remote-bridge
+.Op Fl r Ar delay Ns Op : Ns Ar retries
+.Ar local-spec
+.Oo Ns Ar user Ns @ Oc Ns Ar host Ns Op : Ns Ar remote-spec
+.Nm
+.Fl S
+.Op Fl b Ar local-bridge
+.Ar local-spec
+.Sh DESCRIPTION
+The
+.Nm
+utility connects the local machine's network to the remote machine's
+network over a SSH connection.
+.Pp
+The local and remote specification typically supplies a path to a
+.Nm vknetd
+socket such as
+.Pa /var/run/vknet ,
+but may also specify a
+.Xr tap 4
+interface or the
+.Cm auto
+keyword to automatically allocate a
+.Xr tap 4
+interface.
+.Ar remote-spec
+defaults to
+.Pa /var/run/vknet .
+.Pp
+If a TAP interface is used on any given side it can be bridged on that
+side.
+.Pp
+If a unix domain socket path is specified
+.Nm
+connects to use via the SOCK_SEQPACKET socket type.
+.Xr vknetd 8
+sockets cannot be bridged (but you don't want to anyway because
+.Nm vknetd
+is already typically connected to a potentially bridged TAP interface).
+.Pp
+The following options are available:
+.Bl -tag -width flag
+.It Fl C
+Request that
+.Xr ssh 1
+compress the connection.
+.It Fl b Ar local-bridge
+Specify that the local specification, which must be a TAP interface or
+.Cm auto ,
+be bridged to the specified bridge.
+.It Fl B Ar remote-bridge
+Specify that the remote specification, which must be a TAP interface or
+.Cm auto ,
+be bridged to the specified bridge on the remote side.
+.It Fl r Ar delay Ns Op : Ns Ar retries
+If the link cannot be established or is lost, delay the specified number
+of seconds and retry.
+If no retry limit is specified an unlimited number of retries will be made.
+.It Fl S
+This option is used by the
+.Nm
+run on the remote side of the
+.Xr ssh 1
+link to use stdin and stdout as its remote specification.
+This option is typically not specified manually.
+.El
+.Sh REQUIREMENTS
+You may have to load the
+.Ar if_tap
+and/or
+.Ar if_bridge
+modules, or run
+.Xr vknetd 8
+to provide an interconnect to the local and remote machine's nework.
+.Sh FILES
+.Bl -tag -width ".Pa /var/run/vknet" -compact
+.It Pa /dev/tap*
+TAP interface used to route packets from userland providers back into the
+real machine.
+If not otherwise specified an unused TAP interface will be selected.
+.Pp
+.It Pa /var/run/vknet
+Socket
+.Nm
+typically connects to, established by
+.Xr vknetd 8 .
+.El
+.Sh EXAMPLES
+.Dl "vknet -r 5 /var/run/vknet myhomesystem:/var/run/vknet"
+.Pp
+.Dl "vknet -r 5 -b bridge0 -B bridge0 auto myhomesystem:auto"
+.Sh SEE ALSO
+.Xr ssh 1 ,
+.Xr bridge 4 ,
+.Xr tap 4 ,
+.Xr vke 4 ,
+.Xr vkernel 7 ,
+.Xr vknetd 8
+.Sh HISTORY
+The
+.Nm
+command was written by Matthew Dillon and first appeared in
+.Dx 1.13
+in May 2008.
+.Sh BUGS
+There are currently no known bugs.

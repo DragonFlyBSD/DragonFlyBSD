@@ -1,0 +1,240 @@
+	Interbench - The Linux Interactivity Benchmark
+
+
+	Introduction
+
+This benchmark application is designed to benchmark interactivity in Linux. See
+the file readme.interactivity for a brief definition. 
+
+It is designed to measure the effect of changes in Linux kernel design or system
+configuration changes such as cpu, I/O scheduler and filesystem changes and
+options. With careful benchmarking, different hardware can be compared.
+
+
+	What does it do?
+
+It is designed to emulate the cpu scheduling behaviour of interactive tasks and
+measure their scheduling latency and jitter. It does this with the tasks on
+their own and then in the presence of various background loads, both with
+configurable nice levels and the benchmarked tasks can be real time.
+
+
+	How does it work?
+
+First it benchmarks how best to reproduce a fixed percentage of cpu usage on the
+machine currently being used for the benchmark. It saves this to a file and then
+uses this for all subsequent runs to keep the emulation of cpu usage constant.
+
+It runs a real time high priority timing thread that wakes up the thread or
+threads of the simulated interactive tasks and then measures the latency in the
+time taken to schedule. As there is no accurate timer driven scheduling in linux
+the timing thread sleeps as accurately as linux kernel supports, and latency is
+considered as the time from this sleep till the simulated task gets scheduled.
+
+Each benchmarked simulation runs as a separate process with its own threads,
+and the background load (if any) also runs as a separate process.
+
+
+	What interactive tasks are simulated and how?
+
+X:
+X is simulated as a thread that uses a variable amount of cpu ranging from 0 to
+100%. This simulates an idle gui where a window is grabbed and then dragged
+across the screen.
+
+Audio:
+Audio is simulated as a thread that tries to run at 50ms intervals that then
+requires 5% cpu. This behaviour ignores any caching that would normally be done
+by well designed audio applications, but has been seen as the interval used to
+write to audio cards by a popular linux audio player. It also ignores any of the
+effects of different audio drivers and audio cards. Audio is also benchmarked
+running SCHED_FIFO if the real time benchmarking option is used.
+
+Video:
+Video is simulated as a thread that tries to receive cpu 60 times per second
+and uses 40% cpu. This would be quite a demanding video playback at 60fps. Like
+the audio simulator it ignores caching, drivers and video cards. As per audio,
+video is benchmarked with the real time option.
+
+Gaming:
+The cpu usage behind gaming is not at all interactive, yet games clearly are
+intended for interactive usage. This load simply uses as much cpu as it can
+get. It does not return deadlines met as there are no deadlines with an
+unlocked frame rate in a game. This does not accurately emulate a 3d game
+which is gpu bound (limited purely by the graphics card), only a cpu bound
+one.
+
+Custom:
+This load will allow you to specify your own combination of cpu percentage and
+intervals if you have a specific workload you are interested in and know the
+cpu usage and frame rate of it on the hardware you are testing.
+
+
+	What loads are simulated?
+
+None:
+Otherwise idle system.
+
+Video:
+The video simulation thread is also used as a background load.
+
+X:
+The X simulation thread is used as a load.
+
+Burn:
+A configurable number of threads fully cpu bound (4 by default).
+
+Write:
+A streaming write to disk repeatedly of a file the size of physical ram.
+
+Read:
+Repeatedly reading a file from disk the size of physical ram (to avoid any
+caching effects).
+
+Compile:
+Simulating a heavy 'make -j4' compilation by running Burn, Write and Read
+concurrently.
+
+Memload:
+Simulating heavy memory and swap pressure by repeatedly accessing 110% of
+available ram and moving it around and freeing it. You need to have some
+swap enabled due to the nature of this load, and if it detects no swap this
+load is disabled.
+
+Hack:
+This repeatedly runs the benchmarking program "hackbench" as 'hackbench 50'.
+This is suggested as a real time load only but because of how extreme this
+load is it is not unusual for an out-of-memory kill to occur which will
+invalidate any data you get. For this reason it is disabled by default.
+
+Custom:
+The custom simulation is used as a load.
+
+
+	What is measured and what does it mean?
+
+1. The average scheduling latency (time to requesting cpu till actually getting
+it) of deadlines met during the test period. 
+2. The scheduling jitter is represented by calculating the standard deviation
+of the latency
+3. The maximum latency seen during the test period
+4. Percentage of desired cpu
+5. Percentage of deadlines met.
+
+This data is output to console and saved to a file which is stamped with the
+kernel name and date. See sample.log.
+
+	Sample:
+--- Benchmarking simulated cpu of X in the presence of simulated ---
+Load	Latency +/- SD (ms)  Max Latency   % Desired CPU  % Deadlines Met
+None	  0.495 +/- 0.495         45		 100	         96
+Video	   11.7 +/- 11.7        1815		89.6	       62.7
+Burn	   27.9 +/- 28.1        3335		78.5	         44
+Write	   4.02 +/- 4.03         372		  97	       78.7
+Read	   1.09 +/- 1.09         158		99.7	         88
+Compile	   28.8 +/- 28.8        3351		78.2	       43.7
+Memload	   2.81 +/- 2.81         187		98.7	         85
+
+What can be seen here is that never during this test run were all the so called
+deadlines met by the X simulator, although all the desired cpu was achieved
+under no load. In X terms this means that every bit of window movement was
+drawn while moving the window, but some were delayed and there was enough time
+to catch up before the next deadline. In the 'Burn' column we can see that only
+44% of the deadlines were met, and only 78.5% of the desired cpu was achieved.
+This means that some deadlines were so late (%deadlines met was low) that some
+redraws were dropped entirely to catch up. In X terms this would translate into
+jerky movement, in audio it would be a skip, and in video it would be a dropped
+frame. Note that despite the massive maximum latency of >3seconds, the average
+latency is still less than 30ms. This is because redraws are dropped in order
+to catch up usually by these sorts of applications.
+
+
+	What is relevant in the data?
+
+The results pessimise quite a lot what happens in real world terms because they
+ignore the reality of buffering, but this allows us to pick up subtle 
+differences more readily. In terms of what would be noticed by the end user,
+dropping deadlines would make noticable clicks in audio, subtle visible frame
+time delays in video, and loss of "smooth" movement in X. Dropping desired cpu
+would be much more noticeable with audio skips, missed video frames or jerks
+in window movement under X. The magnitude of these would be best represented by
+the maximum latency. When the deadlines are actually met, the average latency
+represents how "smooth" it would look. Average humans' limit of perception for
+jitter is in the order of 7ms. Trained audio observers might notice much less.
+
+
+	How to use it?
+
+In response to critisicm of difficulty in setting up my previous benchmark, 
+contest, I've made this as simple as possible.
+
+	Short version:
+make
+./interbench
+
+Please read the long version before submitting results!
+
+	Longer version:
+Build with 'make'. It is a single executable once built so if you desire to
+install it simply copy the interbench binary wherever you like.
+
+To get good reproducible data from it you should boot into runlevel one so
+that nothing else is running on the machine. All power saving (cpu throttling,
+cpu frequency modifications) must be disabled on the first run to get an
+accurate measurement for cpu usage. You may enable them later if you are
+benchmarking their effect on interactivity on that machine. Root is almost
+mandatory for this benchmark, or real time privileges at the very least. You
+need free disk space in the directory it is being run in the order of 2* your
+physical ram for the disk loads. A default run in v0.21 takes about 15
+minutes to complete, longer if your disk is slow.
+
+As the benchmark bases the work it does on the speed of the hardware the
+results from different hardware can not be directly compared. However changes
+of kernels, filesystem and options can be compared. To do a comparison of
+different cpus and keep the workload constant, using the -l option and
+passing the value of "loops_per_ms" from the first hardware tested will keep
+the number of cpu cycles fairly constant allowing some comparison. Future
+versions may add the option of setting the amount of disk throughput etc.
+
+
+Command line options supported:
+interbench [-l <int>] [-L <int>] [-t <int] [-B <int>] [-N <int>]
+        [-b] [-c] [-r] [-C <int> -I <int>] [-m <comment>]
+        [-w <load type>] [-x <load type>] [-W <bench>] [-X <bench>]
+        [-h]
+
+ -l     Use <int> loops per sec (default: use saved benchmark)
+ -L     Use cpu load of <int> with burn load (default: 4)
+ -t     Seconds to run each benchmark (default: 30)
+ -B     Nice the benchmarked thread to <int> (default: 0)
+ -N     Nice the load thread to <int> (default: 0)
+ -b     Benchmark loops_per_ms even if it is already known
+ -c     Output to console only (default: use console and logfile)
+ -r     Perform real time scheduling benchmarks (default: non-rt)
+ -C     Use <int> percentage cpu as a custom load (default: no custom load)
+ -I     Use <int> microsecond intervals for custom load (needs -C as well)
+ -m     Add <comment> to the log file as a separate line
+ -w     Add <load type> to the list of loads to be tested against
+ -x     Exclude <load type> from the list of loads to be tested against
+ -W     Add <bench> to the list of benchmarks to be tested
+ -X     Exclude <bench> from the list of benchmarks to be tested
+ -h     Show help
+
+There is one hidden option which is not supported by default, -u
+which emulates a uniprocessor when run on an smp machine. The support for cpu
+affinity is not built in by default because there are multiple versions of
+the sched_setaffinity call in glibc that not only accept different variable
+types but across architectures take different numbers of arguments. For x86
+support you can change the '#if 0' in interbench.c to '#if 1' to enable the
+affinity support to be built in. The function on x86_64 for those very keen
+does not have the sizeof argument.
+
+
+Thanks:
+For help from Zwane Mwaikambo, Bert Hubert, Seth Arnold, Rik Van Riel,
+Nicholas Miell, John Levon, Miguel Freitas and Peter Williams.
+Aggelos Economopoulos for contest code, Bob Matthews for irman (mem_load)
+code, Rusty Russell for hackbench code and Julien Valroff for manpage.
+
+Sat Mar 4 12:11:34 2006
+Con Kolivas < kernel at kolivas dot org >

@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# This commit-msg hook tries to guess whether the current commit addresses
+# an existing bug based on a number of keywords in the commit message and
+# reminds the committer of MFC'ing it.
+
+lines=`grep -Ei 'CVE|vulnerability|fix|panic|bug|Reported-by|Dragonfly-bug' "$1" | grep -v '^#'`
+
+if [ "$lines" != "" ]; then
+	echo ''
+	echo -n 'NOTE: '
+	echo >&2 This commit seems to fix an existing issue, please \
+		consider MFC\'ing it to the current stable release.
+	echo ''
+fi

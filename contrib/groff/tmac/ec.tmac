@@ -1,0 +1,64 @@
+.\" ec.tmac
+.\"
+.\" Switch to EC fonts.
+.\"
+.\" Load this file before any language-specific stuff.
+.\"
+.\" hcode values are not handled.
+.\"
+.
+.nr _C \n(.C
+.cp 0
+.
+.ftr R REC
+.ftr I IEC
+.ftr B BEC
+.ftr BI BIEC
+.
+.sty 1 R
+.sty 2 B
+.sty 3 I
+.sty 4 BI
+.
+.ftr CW CWEC
+.ftr CWI CWIEC
+.ftr CR CWEC
+.ftr C CWEC
+.ftr CO CWIEC
+.ftr CI CWIEC
+.ftr TT CWEC
+.ftr H HREC
+.
+.special MI S
+.fspecial TREC TRTC TR
+.fspecial TIEC TITC TI
+.fspecial TBEC TBTC TB
+.fspecial TBIEC TBITC TBI
+.fspecial HREC HRTC HR
+.fspecial HIEC HITC HI
+.fspecial HBEC HBTC HB
+.fspecial HBIEC HBIEC HBI
+.fspecial CWEC CWTC SC CW
+.fspecial CWIEC CWITC SC CWI
+.
+.\" remove definitions of glyphs which are in TC fonts
+.rchar \[co] \[rg]
+.rchar \[ct]
+.rchar \[tm]
+.rchar \[f/]
+.rchar \[S1] \[S2] \[S3]
+.rchar \[Of] \[Om]
+.rchar \[Cs]
+.rchar \[de]
+.
+.\" \[pl] and \[eq] must be roman
+.char \[pl] \f[TREC]+
+.char \[eq] \f[TREC]=
+.
+.schar \[nm] \o'\f[TREC]/\[mo]'
+.
+.\" an ID register
+.nr ECFONTS 1
+.
+.cp \n(_C
+.\" EOF

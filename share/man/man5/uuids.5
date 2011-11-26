@@ -1,0 +1,79 @@
+.\"
+.\" Copyright (c) 2008
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd February 8, 2009
+.Dt UUIDS 5
+.Os
+.Sh NAME
+.Nm uuids
+.Nd UUIDs and their symbolic names
+.Sh SYNOPSIS
+.Nm /etc/defaults/uuids
+.Nm /etc/uuids
+.Sh DESCRIPTION
+A
+.Nm
+file contains a list of UUIDs (universally unique identifiers) and their symbolic names.
+.Pp
+Each line in a
+.Nm
+file, other than comment lines that begin with a
+.Sq # ,
+specifies a UUID and its symbolic name.
+The first field is the UUID, the second field is the name,
+they are separated by tabs or spaces.
+A UUID is a 128 bit number written in hexadecimal and formatted like this:
+01234567-89ab-cdef-0123-456789abcdef,
+i.e. 16 hexadecimal digits, with dash
+.Pq Sq - ,
+after digit no. 8, 12, 16 and 20.
+A name is a text string enclosed in double quotes
+.Pq Sq \&" .
+.Sh FILES
+.Bl -tag -width ".Pa /etc/defaults/uuids" -compact
+.It Pa /etc/defaults/uuids
+A list of UUIDs and their symbolic names provided by the OS vendor.
+.It Pa /etc/uuids
+A list of UUIDs and their symbolic names provided by the
+system administrator.
+.El
+.Sh EXAMPLES
+A UUID with name
+.Dq test UUID :
+.Bd -literal -offset indent
+# test uuids(5) file
+061ceb5d-5beb-11dd-924c-010e0cd0bad1   "test UUID"
+.Ed
+.Sh SEE ALSO
+.Xr uuid 3
+.Sh AUTHORS
+This manual page was written by
+.An Thomas Nikolajsen .

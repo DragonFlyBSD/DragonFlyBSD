@@ -1,0 +1,304 @@
+.\" Copyright (c) 2004,2005 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd February 8, 2009
+.Dt JSCAN 8
+.Os
+.Sh NAME
+.Nm jscan
+.Nd journal file processing program
+.Sh SYNOPSIS
+.Nm
+.Op Fl 2dfuvF
+.Op Fl c Ar count[k,m,g,t]
+.Op Fl D Ar directory
+.Op Fl m Ar mirror_transid_file/none
+.Op Fl o/O Ar output_transid_file/none
+.Op Fl s Ar size[k,m,g,t]
+.Op Fl w/W Ar journal_prefix
+.Op Ar journal_prefix/file
+.Sh DESCRIPTION
+The
+.Nm
+utility scans journal file or input stream for the purposes of debugging
+dumps, restoration, undo, mirroring, and other journaling features.
+.Bl -tag -width indent
+.It Fl 2
+Implement the full-duplex acknowledgement protocol on the input descriptor.
+Note that shell pipes are full-duplex and can be used with this option.
+.It Fl c Ar count
+Specify the number of transaction records which should be scanned, then exit.
+This option is typically used along with
+.Fl m
+to limit the amount of work that
+.Nm
+does, giving you the ability to incrementally run a mirror forwards or
+backwards.  It is not usually used when piping in a live journal, but it
+can be.
+.It Fl d
+Display the contents of the journaling file or stream in a human readable
+format on stderr.  Note that stdout is used only for
+.Fl o .
+.It Fl f
+.Nm
+will sleep for 5 seconds and loop when it hits EOF on file or prefix
+set input rather than exit.  This option is typically used when running
+on an input file or prefix set which is live (being written to by
+another
+.Nm
+instance).
+.It Fl D Ar directory
+Specify the base directory for the mirroring option.
+.It Fl m Ar mirror_transid_file/none
+Generate a mirror in the directory specified by
+.Fl D
+or, if not specified, the current directory.
+The
+.Ar mirror_transid_file
+will be used to track the transaction id representing the current
+synchronization point for the mirror.  The keyword
+.Ar none
+may be specified if no tracking file is desired.  However, if no tracking
+file is specified it will not be possible to roll the mirror forwards or
+backwards or restart the journaling stream being used to generate the mirror.
+.Pp
+It is important to note that journaling streams can contain meta-transactions
+representing huge, multi-gigabyte operations.  If the journaling data is
+not being recorded to regular files via
+.Fl w/W
+it is possible that
+.Nm
+could run itself out of memory trying to record the meta-transactions.
+In addition, the mirror would not be restartable.  If the journaling data
+is being recorded via
+.Fl w/W
+and a mirroring transaction id file is being kept, the mirror can be
+restarted.
+.Pp
+While it is possible to run a journaling stream directly into a mirror,
+it is more typical to file the jornaling stream with
+.Fl w
+and catch the mirror up as a batch job with the journaling file set prefix
+specified as the input every so often.  This way the system operator can
+use other
+.Nm
+commands to, for example, run a mirror backwards and forwards in time.
+.It Fl o/O Ar output_transid_file/none
+Generate a journaling stream on stdout using the specified file to track
+the transaction id to help with restarts.
+The
+.Fl o
+option indicates a half-duplex output stream while the
+.Fl O
+option indicates a full-duplex (ACK protocol) output stream.
+.Pp
+This option is not really designed to output to regular files because it
+does NOT necessarily weed out duplicate records.  When both the input
+stream and output stream are full-duplex and
+.Fl w/W
+is not specified,
+.Nm
+acts as a stateless transceiver and the input stream is not acked until
+an ack is received from the output stream.
+.Pp
+This option is most typically used in conjunction with
+.Fl w/W .
+In this case the ACK protocol is handled independently for the input side
+and the output side uses the journaling data recorded by
+.Fl w/W
+as a buffer.
+.Pp
+In half-duplex output mode the output transaction id file is updated
+after a raw transaction record has been successfully written to stdout.
+In full-duplex output mode the file is only updated with ACK data returned
+on the stdout descriptor.
+.Pp
+As with the
+.Fl m
+option, you can combine
+.Fl o
+in a journaling pipe with other options, but if you are trying to use it
+as a buffer it may be better to have it separately pull its data off of
+a journaling file set generated via
+.Fl w .
+.It Fl s Ar size
+Change the size limit for rotating files created via
+.Fl w .
+The default is 100M.  Values are in bytes or may be suffixed with k,
+m, or g.
+If a raw transaction causes the file's size limit to be exceeded, a new file
+will be created.  If a raw transaction is, in-whole, larger than the file's
+size limit, the raw transaction will still be fully written to the file before
+a new file is created.  Raw transactions are typically limited to the size
+of the source system's memory FIFO.  This option is typically used to size
+journaling files to fit onto the appropriate backup media or to provide
+bite-sized chunks for other programs to ingest.
+.Pp
+When restarting a journal, a new sequence number will always be chosen for
+the resumption of data recording.  No existing file will be appended to when
+.Nm
+is reinvoked.
+.It Fl u
+Will cause the journal to be scanned backwards (requires seekable media).
+Transactions will be dumped in reverse order.  If mirroring, the UNDO
+data will be executed.  If not specified, 1 hour's worth of data will be
+undone.  Can only be used with a journaling file or journaling prefix
+as the input.
+.It Fl v
+Increase verbosity on stderr.  This option is primarily used for debugging.
+.It Fl w Ar prefix
+The received journaling stream is recorded in journaling files named
+.Ar <prefix>.<seq>
+and the current transaction id is tracked in a file named
+.Ar <prefix>.transid .
+A journaling file is closed out and a new file with the next sequence
+number is created once the file surpasses 100MB.
+.Pp
+This option is robust across restarts.  The current transaction id
+will be read and the input stream will be skipped until it is reached.
+If the input is a journaling file or prefix set,
+.Nm
+will be able to quickly seek to the restart point.
+.Pp
+NOTE: If
+you are generating a mirror with the same command via
+.Fl m ,
+and the journaling data input is a stream rather than a file or prefix
+set, you must use
+.Fl w/W
+if you want the mirror to be restartable.  This is because while we can
+pick up the transaction id where we left off, that raw transaction id may
+have cut a larger meta-transaction in half and the mirroring code will
+not be able to access the whole of the transaction unless it has a file
+or prefix set to work with.
+.It Fl W Ar prefix
+Similar to
+.Fl w
+except that the journaling files created are strictly temporary and will
+be deleted once they exceed the size limit AND the related meta-transactions
+have been completed.
+.Pp
+If combined with
+.Fl m ,
+the meta-transactions are considered to be completed only when the mirror
+finishes executing them.  It is possible for several sequence number files
+to build if a particularly large meta-transaction is coming down the pipe.
+.Pp
+If combined with
+.Fl o/O ,
+the meta-transactions are considered to be completed when the data has
+been successfully written out to the pipe in half duplex mode, or when
+the ACK has been received in full-duplex mode.
+.Pp
+If both
+.Fl m
+and
+.Fl w/W
+is used, the journaling data files are only deleted when both actions
+no longer need the data.
+.It Fl F
+Forces
+.Nm
+to
+.Fn fsync
+after updating a journaling file prior to acknowledging the
+data or updating a transaction-id-tracking file.  If specified twice,
+.Nm
+will also
+.Fn fsync
+after updating the transaction-id-tracking file.
+.It Ar journal_prefix/file
+Specify the input to
+.Nm .
+This can be a journaling file set prefix
+or it can be a plain file.  If no input file is specified, stdin is
+assumed.  Note that when generating a mirror from a stdin stream, the
+mirror will not be restartable unless
+.Fl w/W
+is also used.
+.El
+.Sh OPERATIONAL NOTES
+It is often important to be able to quickly stage journaled data through
+a dedicated backup machine on a LAN.  There are several places where data
+can be buffered and staged out.
+.Pp
+The machine generating the journal typically buffers several megabytes of
+journal data in the kernel.  This local machine can pipe that data to
+.Nm
+or some other locally run program to add another buffering stage, or you
+can directly attach a TCP connection to the kernel's journaling output.
+.Pp
+The LAN backup box typically buffers gigabytes worth of data by running
+multiple jscans.  The
+.Nm
+on the receiving end of the TCP or pipe (for
+example, via ssh) typically records the data via the
+.Fl w
+option, and then runs other
+.Nm
+programs from scripts or cron to take that data and copy it to your
+off-site backup machine.  Other
+.Nm
+programs may use the same data
+set to generate mirrors or other backup streams.
+.Pp
+It should be noted that if
+.Fl w/W
+is specified, both mirroring mode and output mode will internally
+fork the program once the appropriate synchronization point has been reached,
+effectively decoupling their operation, and read all of their data via
+the journaling files written out by the master program.  In particular,
+blockages in the mirroring and output code will not affect our ability
+to buffer the journaling input data via
+.Fl w/W .
+If
+.Fl w/W
+is not specified then neither the mirroring or output modes will fork.  Under
+these conditions, if the input is a stream rather than a file
+.Nm
+will be forced to buffer meta-transactions (for mirroring) entirely in
+memory, which could present a serious problem since a single meta-transaction
+can exceed a gigabyte (e.g. if someone were to do a single
+.Fn write
+system call writing a gigabyte all in one go).
+.Sh SEE ALSO
+.Xr mountctl 8
+.Sh CAVEATS
+This utility is currently under construction and not all features have been
+implemented yet.
+In fact, most have not.
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Dx 1.3 .

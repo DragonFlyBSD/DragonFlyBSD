@@ -1,0 +1,10 @@
+# $DragonFly: src/share/msgdef/ja_JP.UTF-8.src,v 1.1 2004/09/28 08:53:32 asmodai Exp $
+#
+# WARNING: spaces may be essential at the end of lines
+# WARNING: empty lines are essential too
+#
+# yesexpr
+^[yYｙＹはハ].*
+# noexpr
+^[nNｎＮいイ].*
+# EOF

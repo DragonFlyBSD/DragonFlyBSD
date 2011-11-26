@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# $DragonFly: src/etc/rc.d/ftpd,v 1.2 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: ftpd
+# REQUIRE: DAEMON
+# BEFORE:  LOGIN
+
+. /etc/rc.subr
+
+name="ftpd"
+rcvar=`set_rcvar`
+pidfile="/var/run/${name}.pid"
+command="/usr/libexec/${name}"
+command_args="-D -p $pidfile"
+
+load_rc_config $name
+run_rc_command "$1"

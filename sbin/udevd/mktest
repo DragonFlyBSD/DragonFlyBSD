@@ -1,0 +1,7 @@
+DEBUG_FLAGS=-g
+PROG=	test_udevd
+SRCS=	test_udevd.c
+LDADD=	-lprop
+NOMAN=
+
+.include <bsd.prog.mk>

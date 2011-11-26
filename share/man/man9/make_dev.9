@@ -1,0 +1,330 @@
+.\" Copyright (c) 1999 Chris Costello
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man9/make_dev.9,v 1.2.2.3 2001/12/17 11:30:18 ru Exp $
+.\"
+.Dd September 11, 2009
+.Dt MAKE_DEV 9
+.Os
+.Sh NAME
+.Nm destroy_dev ,
+.Nm destroy_only_dev ,
+.Nm devfs_scan_callback ,
+.Nm dev_ops_intercept ,
+.Nm dev_ops_remove_all ,
+.Nm dev_ops_remove_minor ,
+.Nm dev_ops_restore ,
+.Nm make_dev ,
+.Nm make_dev_alias ,
+.Nm make_dev_covering ,
+.Nm make_only_dev ,
+.Nm reference_dev ,
+.Nm release_dev
+.Nd "device entry manipulation functions"
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/conf.h
+.In sys/devfs.h
+.Ft void
+.Fn destroy_dev "cdev_t dev"
+.Ft void
+.Fn destroy_only_dev "cdev_t dev"
+.Ft int
+.Fn devfs_scan_callback "devfs_scan_t *callback"
+.Ft struct dev_ops *
+.Fn dev_ops_intercept "cdev_t dev" "struct dev_ops *iops"
+.Ft int
+.Fn dev_ops_remove_all "struct dev_ops *ops"
+.Ft void
+.Fn dev_ops_restore "cdev_t dev" "struct dev_ops *oops"
+.Ft int
+.Fn dev_ops_remove_minor "struct dev_ops *ops" "int minor"
+.Ft cdev_t
+.Fn make_dev "struct dev_ops *ops" "int minor" "uid_t uid" "gid_t gid" "int perms" "char *fmt" ...
+.Ft int
+.Fn make_dev_alias "cdev_t target" "const char *fmt" ...
+.Ft cdev_t
+.Fn make_dev_covering "struct dev_ops *ops" "cdev_t rdev" "int minor" "uid_t uid" "gid_t gid" "int perms" "char *fmt" ...
+.Ft cdev_t
+.Fn make_only_dev "struct dev_ops *ops" "int minor" "uid_t uid" "gid_t gid" "int perms" "const char *fmt" ...
+.Ft cdev_t
+.Fn reference_dev "cdev_t dev"
+.Ft void
+.Fn release_dev "cdev_t dev"
+.Sh DESCRIPTION
+The
+.Fn make_dev
+function creates a
+.Vt cdev_t
+structure for a new device and makes the device name visible in the
+.Xr devfs 5
+mount points.
+The device's name must be unique.
+The name is the expansion of
+.Fa fmt
+and following arguments as
+.Xr kprintf 9
+would print it.
+The name determines its path under
+.Pa /dev .
+The permissions of the file specified in
+.Fa perms
+are defined in
+.In sys/stat.h :
+.Pp
+.Bd -literal -offset indent -compact
+#define S_IRWXU 0000700    /* RWX mask for owner */
+#define S_IRUSR 0000400    /* R for owner */
+#define S_IWUSR 0000200    /* W for owner */
+#define S_IXUSR 0000100    /* X for owner */
+
+#define S_IRWXG 0000070    /* RWX mask for group */
+#define S_IRGRP 0000040    /* R for group */
+#define S_IWGRP 0000020    /* W for group */
+#define S_IXGRP 0000010    /* X for group */
+
+#define S_IRWXO 0000007    /* RWX mask for other */
+#define S_IROTH 0000004    /* R for other */
+#define S_IWOTH 0000002    /* W for other */
+#define S_IXOTH 0000001    /* X for other */
+
+#define S_ISUID 0004000    /* set user id on execution */
+#define S_ISGID 0002000    /* set group id on execution */
+#define S_ISVTX 0001000    /* sticky bit */
+#ifndef _POSIX_SOURCE
+#define S_ISTXT 0001000
+#endif
+.Ed
+.Pp
+The
+.Fa ops
+argument is a pointer to a
+.Vt dev_ops
+data structure, which is defined as follows:
+.Bd -literal
+struct dev_ops {
+        struct {
+                const char      *name;  /* base name, e.g. 'da' */
+                int              maj;   /* major device number */
+                u_int            flags; /* D_XXX flags */
+                void            *data;  /* custom driver data */
+                int              refs;  /* ref count */
+                int              id;
+        } head;
+
+#define dev_ops_first_field     d_default
+        d_default_t     *d_default;
+        d_open_t        *d_open;
+        d_close_t       *d_close;
+        d_read_t        *d_read;
+        d_write_t       *d_write;
+        d_ioctl_t       *d_ioctl;
+        d_mmap_t        *d_mmap;
+        d_strategy_t    *d_strategy;
+        d_dump_t        *d_dump;
+        d_psize_t       *d_psize;
+        d_kqfilter_t    *d_kqfilter;
+        d_clone_t       *d_clone;       /* clone from base dev_ops */
+        d_revoke_t      *d_revoke;
+#define dev_ops_last_field      d_revoke
+};
+.Ed
+.Pp
+While one can and should initialize the
+.Fa name
+and
+.Fa maj
+fields, they are effectively ignored.
+Device major numbers are assigned automatically out of an internal pool of
+major numbers, so there is no need to specify a unique major number in the
+.Vt dev_ops
+structure.
+.Pp
+Every member of the
+.Fn d_xxx_t
+family is defined as:
+.Bd -literal
+typedef int d_xxx_t (struct dev_xxx_args *ap);
+.Ed
+.Pp
+Therefore, if one wants to implement a
+.Fn mydev_open
+function, this is the way:
+.Bd -literal
+d_open_t mydev_open;
+
+int
+mydev_open(struct dev_open_args *ap)
+{
+}
+.Ed
+.Pp
+.Fn make_dev_covering
+is equivalent to make_dev, except that it also takes an argument
+.Vt cdev_t rdev
+which is set as the backing device for the newly created device.
+This function should be used whenever a device is created covering
+another raw device, as the disk subsystem does.
+.Pp
+.Fn make_only_dev
+creates a
+.Vt cdev_t
+structure and initializes it the same way
+.Fn make_dev
+would, but the device will not appear in the
+.Xr devfs 5
+namespace.
+.Pp
+.Fn destroy_dev
+takes the returned
+.Vt cdev_t
+from
+.Fn make_dev
+and destroys the registration for that device.
+It should not be used to destroy a
+.Vt cdev_t
+created by
+.Fn make_only_dev .
+.Pp
+.Fn destroy_only_dev
+takes the returned
+.Vt cdev_t
+from
+.Fn make_only_dev
+and destroys the registration for that device.
+It should not be used to destroy a
+.Vt cdev_t
+created by
+.Fn make_dev .
+.Pp
+.Fn make_dev_alias
+creates an automatic
+.Xr devfs 5
+link (alias) with the given name to the
+.Vt cdev_t
+specified by
+.Fa target .
+The
+.Vt cdev_t
+must have been created either by
+.Fn make_dev
+or bt a clone handler.
+Aliases are alternative names for devices in the
+.Xr devfs 5
+namespace.
+The lifetime of an alias is that of its associated
+.Vt cdev_t .
+Once the
+.Vt cdev_t
+is removed or destroyed, the alias is also destroyed and its name is
+removed from the
+.Xr devfs 5
+namespace.
+.Pp
+.Fn reference_dev
+adds a reference to
+.Fa dev .
+Callers generally add their own references when they are going to store a device
+node in a variable for long periods of time, to prevent a disassociation from
+freeing the node.
+.Pp
+.Fn release_dev
+releases a reference on
+.Fa dev .
+The device will be terminated when the last reference has been released.
+.Pp
+.Fn dev_ops_intercept
+intercepts the device operations vector of
+.Fa dev
+with
+.Fa iops .
+The old
+.Vt dev_ops
+is returned which may be used in a subsequent
+.Fn dev_ops_restore
+call.
+The function sets the
+.Dv SI_INTERCEPTED
+flag in
+.Fa dev .
+.Pp
+.Fn dev_ops_restore
+restores the device operations vector of
+.Fa dev
+to
+.Fa oops .
+Also it unsets the
+.Dv SI_INTERCEPTED
+flag in
+.Fa dev .
+.Pp
+.Fn dev_ops_remove_all
+destroys all the
+.Vt cdev_t
+with the given
+.Fa ops
+and removes the devices from the
+.Xr devfs 5
+namespace.
+This function is useful when uninitializing a driver.
+.Pp
+.Fn dev_ops_remove_minor
+destroys all the
+.Vt cdev_t
+with the given
+.Fa ops
+and
+.Fa minor
+and removes the devices from the
+.Xr devfs 5
+namespace.
+.Pp
+.Fn devfs_scan_callback
+calls the given
+.Fa callback
+function for every device registered in
+.Xr devfs 5 .
+The
+.Fa callback
+function has the following form:
+.Bd -literal
+devfs_scan_t mydev_scan_callback;
+
+void
+mydev_scan_callback(cdev_t dev)
+{
+};
+.Ed
+.Sh HISTORY
+The
+.Fn make_dev
+and
+.Fn destroy_dev
+functions first appeared in
+.Fx 4.0 .
+.Pp
+A major overhaul of these functions occurred in
+.Dx 2.3
+with the addition of
+.Xr devfs 5 .

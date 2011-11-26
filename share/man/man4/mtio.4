@@ -1,0 +1,102 @@
+.\" Copyright (c) 1996
+.\"	Mike Pritchard <mpp@FreeBSD.org>.  All rights reserved.
+.\"
+.\" Copyright (c) 1983, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)mtio.4	8.1 (Berkeley) 6/5/93
+.\" $FreeBSD: src/share/man/man4/mtio.4,v 1.8.2.6 2001/08/17 13:08:38 ru Exp $
+.\"
+.Dd March 5, 2005
+.Dt MTIO 4
+.Os
+.Sh NAME
+.Nm mtio
+.Nd magtape interface
+.Sh DESCRIPTION
+The special files
+named
+.Pa /dev/[nr]sa*
+refer to SCSI tape drives,
+which may be attached to the system.
+.Pa /dev/[nr]sa*.ctl
+are control devices that can be used to issue ioctls to the SCSI
+tape driver to set parameters that are required to last beyond the
+unmounting of a tape.
+.Pp
+The rewind devices automatically rewind
+when the last requested read, write or seek has finished, or the end of the tape
+has been reached.
+The letter
+.Ql n
+is usually prepended to
+the name of the no-rewind devices.
+.Pp
+Tapes can be written with either fixed length records or variable length
+records.  See
+.Xr sa 4
+for more information.  Two end-of-file markers mark the end of a tape, and
+one end-of-file marker marks the end of a tape file.
+If the tape is not to be rewound it is positioned with the
+head in between the two tape marks, where the next write
+will over write the second end-of-file marker.
+.Pp
+All of the magtape devices may be manipulated with the
+.Xr mt 1
+command.
+.Pp
+A number of
+.Xr ioctl 2
+operations are available
+on raw magnetic tape.
+Consult
+.In sys/mtio.h
+for further information.
+.Sh FILES
+.Bl -tag -width /dev/[nr]sa* -compact
+.It Pa /dev/[nr]sa*
+.El
+.Sh SEE ALSO
+.Xr mt 1 ,
+.Xr tar 1 ,
+.Xr sa 4
+.Sh HISTORY
+The
+.Nm
+manual appeared in
+.Bx 4.2 .
+An i386 version first appeared in
+.Fx 2.2 .
+.Sh BUGS
+The status should be returned in a device independent format.
+.Pp
+The special file naming should be redone in a consistent and understandable
+manner.

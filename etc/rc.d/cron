@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# $NetBSD: cron,v 1.5 2000/09/19 13:04:38 lukem Exp $
+# $FreeBSD: src/etc/rc.d/cron,v 1.3 2003/05/05 15:38:41 mtm Exp $
+# $DragonFly: src/etc/rc.d/cron,v 1.3 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: cron
+# REQUIRE: LOGIN
+# BEFORE: securelevel
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="cron"
+rcvar="`set_rcvar`"
+command="/usr/sbin/${name}"
+pidfile="/var/run/${name}.pid"
+
+load_rc_config $name
+run_rc_command "$1"

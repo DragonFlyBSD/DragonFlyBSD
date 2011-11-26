@@ -1,0 +1,173 @@
+.\"
+.\" Copyright (c) 2009
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $Id: cxm.4,v 1.1 2004/10/16 00:12:35 mavetju Exp $
+.\"
+.Dd February 24, 2011
+.Dt CXM 4
+.Os
+.Sh NAME
+.Nm cxm
+.Nd Conexant iTVC MPEG Coder
+.Sh SYNOPSIS
+To compile this driver into the kernel, place the following lines in
+your kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device iicbus"
+.Cd "device iic"
+.Cd "device iicbb"
+.Cd "device cxm"
+.Ed
+.\".Pp
+.\"Alternatively, to load the driver as a module at boot time, place the
+.\"following line in
+.\".Pa /boot/loader.conf :
+.\".Bd -literal -offset indent
+.\"cxm_load="YES"
+.\".Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for the PCI
+.Em video
+capture on the Hauppauge PVR-250/350.
+It uses the
+.Xr bktr 4
+and Meteor driver ioctls.
+.Pp
+Note that in order for the
+.Xr cxm 4
+driver to work properly, the necessary firmware files have to be extracted
+from the driver CD-ROM prior to compiling the kernel.
+The tool necessary to do this can be found in
+.Pa /usr/src/tools/multimedia/cxm/extract_fw .
+.Sh HARDWARE
+The following cards are known to work:
+.Pp
+.Bl -bullet -compact
+.It
+Hauppauge PVR-250
+.It
+Hauppauge PVR-350
+.El
+.Pp
+The following tuners are known to work:
+.Pp
+.Bl -bullet -compact
+.It
+Philips FI1216 MK2
+.It
+Philips FI1236 MK2
+.It
+Philips FI1246 MK2
+.It
+Philips FM1216
+.It
+Philips FM1216ME MK3
+.It
+Philips FM1236
+.It
+Philips FM1246
+.It
+Philips FQ1216ME
+.It
+Philips FQ1216ME MK3
+.It
+Temic 4006 FH5
+.It
+Temic 4009 FR5
+.It
+Temic 4036 FY5
+.It
+Temic 4039 FR5
+.It
+Temic 4066 FY5
+.It
+LG Innotek TPI8PSB11D
+.It
+LG Innotek TPI8PSB01N
+.It
+LG Innotek TAPC-H701F
+.It
+LG Innotek TAPC-H001F
+.It
+LG Innotek TAPE-H001F
+.It
+Microtune 4049 FM5
+.It
+TCL 2002N-6A
+.It
+TCL M2523-5N-E
+.El
+.Sh FILES
+.Bl -tag -width ".Pa /usr/src/tools/multimedia/cxm/extract_fw" -compact
+.\".It Pa /boot/modules/cxm.ko
+.\"Kernel module
+.\".It Pa /boot/modules/cxm_iic.ko
+.\"Kernel module
+.It Pa /dev/cxm0
+Device
+.It Pa /usr/src/tools/multimedia/cxm/extract_fw
+Firmware extraction tool
+.It Pa /usr/src/tools/multimedia/cxm/setchannel
+Channel switching tool
+.\".It Pa /usr/local/bin/pvr250-setsize
+.\"Set size of capture windows
+.El
+.Sh EXAMPLES
+To access the video card, use
+.Pa /dev/cxm0 .
+For example:
+.Pp
+.Dl "cat /dev/cxm0 > filename.mpg"
+.Sh SEE ALSO
+.Xr cxm_setchannel 1 ,
+.Xr bktr 4 ,
+.Xr cxm_extract_fw 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in the
+.Pa FreeBSD-multimedia@
+mailing list in January 2004 and in the
+.Fx
+Ports collection in October 2004.
+.Pp
+It was ported to
+.Dx 2.3
+by
+.An Sascha Wildner .
+.Sh AUTHORS
+.An -nosplit
+This driver was made by
+.An John Wehle Aq john@feith.com
+and this manual page was made by
+.An Edwin Groothuis Aq edwin@FreeBSD.org .

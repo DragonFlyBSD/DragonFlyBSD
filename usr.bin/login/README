@@ -1,0 +1,13 @@
+This login has additional functionalities. They are all based on (part of)
+Wietse Venema's logdaemon package.
+
+
+The following defines can be used:
+
+- LOGALL to log all logins
+
+
+-Guido
+
+$FreeBSD: src/usr.bin/login/README,v 1.5 2006/03/06 12:56:35 yar Exp $
+$DragonFly: src/usr.bin/login/README,v 1.2 2003/06/17 04:29:28 dillon Exp $

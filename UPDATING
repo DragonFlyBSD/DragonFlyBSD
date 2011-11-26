@@ -1,0 +1,338 @@
+# Updating Information for DragonFly users.
+#
+#
+# This file should warn you of any pitfalls which you might need to work around
+# when trying to update your DragonFly system.  The information below is
+# in reverse-time order, with the latest information at the top.
+#
+# If you discover any problem, please contact the bugs@lists.dragonflybsd.org
+# mailing list with the details.
+
++-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 2.10 to later versions               +
++-----------------------------------------------------------------------+
+
+SEVERAL ISA DRIVERS REMOVED
+---------------------------
+
+The following ISA only drivers have been removed along with a couple of
+associated userland tools:
+
+aha(4)
+asc(4) & sasc(1)
+ctx
+dgb(4)
+el(4)
+gpib
+gsc(4) & sgsc(1)
+ie(4)
+labpc(4)
+le(4)
+mse(4)
+rc(4)
+rdp(4)
+spigot
+tw(4) & xten(1) & xtend(8)
+wl(4) & wlconfig(8)
+wt(4)
+
+Note that two of these drivers (aha(4) and ie(4)) are in our GENERIC
+config and one (aha(4)) is in our X86_64_GENERIC kernel configuration
+file.
+
+If buildkernel complains about any of these drivers, just remove them
+from your kernel configuration.
+
+BINUTILS 2.20
+-------------
+Binutils 2.20 has been removed, leaving Binutils 2.21 as the only
+version of Binutils in base.  The value of BINUTILSVERS has no effect
+at all anymore.
+
++-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 2.8 to later versions                +
++-----------------------------------------------------------------------+
+
+GCC 4.4 & BINUTILS 2.21
+-----------------------
+
+GCC 4.4 has been made DragonFly's default compiler and Binutils 2.21 has
+been made DragonFly's default Binutils.
+
+That means that any settings that set CCVER to 'gcc44' are not needed
+anymore. Instead, CCVER can be set to 'gcc41' to go back to using
+GCC 4.1.
+
+It also means that 'binutils221' as a value for BINUTILSVER has no
+effect anymore. 2.17 has been removed and 'binutils220' is available
+as an option.
+
+The NO_GCC44 option has been removed and will not affect the build
+anymore. There is now a NO_GCC41 option that will prevent GCC 4.1 from
+building in a similar fashion.
+
+Note that you must do a full buildworld/buildkernel for upgrading.
+
+pkg_radd settings
+-----------------
+
+The config file for pkg_radd has moved from /etc/settings.conf to 
+/etc/pkg_radd.conf.  Save the contents of settings.conf before upgrading
+if this is needed.  This warning only applies if /etc/settings.conf 
+exists.  pkg_radd will continue to work with defaults.
+
++-----------------------------------------------------------------------+
++         20100927							+
++         UPGRADING DRAGONFLY FROM 2.6 to 2.8 or HEAD			+
++-----------------------------------------------------------------------+
+
+OpenSSL
+--------
+
+OpenSSL has been upgraded, and SHLIB_MAJOR was bumped for libssh and libcrypto.
+This shouldn't break any 3rd-party software, but you'll need to recompile your
+3rd-party software if you want it to link against the new version of OpenSSL.
+
+Loader
+-------
+
+A new loader (dloader) has been added which better handles booting from
+multiple kernel/module versions.
+
+To upgrade (Only for this upgrade, for post 2.8 upgrades see GENERAL below)
+
+	cd /usr/src
+	make buildworld
+	make installworld
+	make upgrade
+	make buildkernel KERNCONF=<KERNELNAME>
+	make installkernel KERNCONF=<KERNELNAME>
+
+Note that you must installworld and run the 'upgrade' target before
+installing the new kernel.
+
+BIND
+-----
+
+BIND has been removed from the base system.  The ldns and drill tools have 
+been added for basic functionality.  Use 'drill' where you would normally 
+use nslookup or dig, or install BIND from pkgsrc.  It's available as 
+net/bind95, net/bind96, or net/bind97 as of this writing.
+
+This only affects older systems upgrading to 2.8.  New 2.8+ installs 
+include BIND as a pkgsrc package.
+
++-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY ON AN EXISTING DRAGONFLY SYSTEM		+
++				GENERAL					+
++-----------------------------------------------------------------------+
+
+Instructions on how to obtain and maintain DragonFly source code using git
+are in the development(7) manual page.
+
+To upgrade a DragonFly system from sources you run the following sequence:
+
+	cd /usr/src
+	make buildworld
+	make buildkernel KERNCONF=<KERNELNAME>
+	make installkernel KERNCONF=<KERNELNAME>
+	make installworld
+
+You will also want to run the 'upgrade' target to upgrade your /etc and the
+rest of your system.  The upgrade target is aware of stale files created by
+older DragonFly installations and should delete them automatically.
+
+	make upgrade
+
+See the build(7) manual page for further information.
+
+Once you've done a full build of the world and kernel you can do incremental
+upgrades of either by using the 'quickworld' and 'quickkernel' targets
+instead of 'buildworld' and 'buildkernel'.  If you have any problems with
+the quick targets, try updating your repo first, and then a full buildworld
+and buildkernel as shown above, before asking for help.
+
++-----------------------------------------------------------------------+
++         UPGRADING FROM DRAGONFLY <= 2.0 TO DRAGONFLY >= 2.1		+
++-----------------------------------------------------------------------+
+
+In 2.1 kernel and modules has moved to boot directory.  For most cases
+this is handled automatically by 'make upgrade'.  A few cases needs manual
+intervention:
+
+ * When installing a kernel without first doing a make buildworld,
+   installworld and upgrade to the same DESTDIR as kernel:
+   make DESTDIR/boot directory and move kernel and modules into this boot
+   directory; also move kernel.old and modules.old.
+   Typical example is vkernel(7), use (no modules used):
+
+	cd /var/vkernel
+	mkdir boot
+	chflags noschg kernel
+	mv kernel kernel.old boot
+	chflags schg boot/kernel
+	
+ * When using a boot-only partition, /boot/loader.rc needs to be edited:
+   delete occurrences of '/boot/'.
+   These occurences can normally be deleted in any case, see loader(8).
+
++-----------------------------------------------------------------------+
++         UPGRADING FROM DRAGONFLY <= 1.8 TO DRAGONFLY >= 1.9		+
++-----------------------------------------------------------------------+
+
+In 1.9 major changes to the disk management infrastructure have taken
+place.  make upgrade may not catch all of your disk devices in /dev,
+so after upgrading be sure to cd /dev; ./MAKEDEV <blah> where <blah>
+are all of your disk devices.  HOWEVER, from late 2.3 on we run devfs
+and MAKEDEV no longer exists.
+
+The biggest changes in 1.9 are:
+
+(1) That whole-slice devices such as da0s1 no longer share the same device
+    id as partition c devices such as da0s1c.
+
+(2) The whole-disk device (e.g. da0) is full raw access to the disk,
+    with no snooping or reserved sectors.  Consequently you cannot run
+    disklabel on this device.  Instead you must run disklabel on a
+    whole-slice device.
+
+(3) The 'compatibility' partitions now use slice 0 in the device name,
+    so instead of da0a you must specify da0s0a.  Also, as per (1) above,
+    accessing the disklabel for the compatibility partitions must be
+    done via slice 0 (da0s0).
+
+(4) Many device drivers that used to fake up labels, such as CD, ACD, VN,
+    and CCD now run through the disk management layer and are assigned
+    real disk management devices.   VN and CCD in particular do not usually
+    use a MBR and disklabels must be accessed through the compatibility
+    slice 0.  Your /etc/ccd.conf file still specifies 'ccd0', though, you
+    don't name it 'ccd0s0' in the config file.
+
+Generally speaking, you have to get used to running fdisk and disklabel on
+the correctly specified device names.  A lot of the wiggle, such as running
+disklabel on a partition, has been removed.
+
++-----------------------------------------------------------------------+
++         UPGRADING FROM OLDER VERSIONS OF DRAGONFLY OR FREEBSD		+
++-----------------------------------------------------------------------+
+
+> Kerberos IV
+-------------
+
+Kerberos IV (eBones) was removed from the tree, please consider moving to
+Kerberos 5 (Heimdal).
+
+> Package Management System
+---------------------------
+
+Starting with the 1.4 release, DragonFly uses NetBSD's pkgsrc package
+management system.  The necessary tools to build and maintain packages
+are provided in /usr/pkg/bin and /usr/pkg/sbin.  Make sure that these
+directories are in your PATH variable.
+
+In order to obtain a reasonably current snapshot of the pkgsrc tree, use
+the tarball from NetBSD:
+
+	fetch -o /tmp/pkgsrc.tar.gz ftp://ftp.NetBSD.org/pub/NetBSD/packages/pkgsrc.tar.gz
+	cd /usr; tar -xzf /tmp/pkgsrc.tar.gz; chown -R root:wheel pkgsrc
+
+This tree can then be kept up to date with cvs update:
+
+	cd /usr/pkgsrc; cvs up
+
+NOTE! If you upgraded from a pre-1.4 system to 1.4 or later, you need to
+build and install the pkgsrc bootstrap manually:
+
+	cd /usr/pkgsrc/bootstrap
+	./bootstrap --pkgdbdir /var/db/pkg --prefix /usr/pkg
+
++-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY ON AN EXISTING DRAGONFLY SYSTEM		+
++         UPDATING FROM PRE-1.2 SYSTEMS OR FreeBSD 4.x TO               +
++         DRAGONFLY 1.3+ (EITHER PREVIEW or HEAD)                       +
++-----------------------------------------------------------------------+
+
+The compatibility shims for the build environment have been removed, you
+have to update to DragonFly 1.2 release branch first.
+
+The default PAM configuration has moved from /etc/pam.conf to /etc/pam.d/.
+The existing configuration can be converted using /etc/pam.d/convert.sh.
+Entries in /etc/pam.d/ override entries in /etc/pam.conf. In addition
+the pam_skey.so module was retired, you have to remove it manually from
+your configuration, when you convert it.
+
+> Required user and group IDs when upgrading from either FreeBSD or DragonFly
+---------------------
+
+The following users may be missing from your password file.  Use vipw and
+add any that are missing:
+
+smmsp:*:25:25::0:0:Sendmail Submission User:/var/spool/clientmqueue:/sbin/nologin
+_pflogd:*:64:64::0:0:pflogd privsep user:/var/empty:/sbin/nologin
+
+The following groups may be missing from your group file.  Use vi /etc/group
+and add any that are missing:
+
+smmsp:*:25:
+authpf:*:63:
+_pflogd:*:64:
+
+
+> Upgrading to DragonFly from FreeBSD
+---------------------
+
+You can build the DragonFly world and DragonFly kernels on a FreeBSD-4.x or
+FreeBSD-5.x machine and then install DragonFly over FreeBSD, replacing
+FreeBSD.  Note that the DragonFly buildworld target does not try to reuse
+make depend information, it starts from scratch, so no pre-cleaning of the
+object hierarchy is necessary.
+
+	# get the CVS repository (it is placed in /home/dcvs, 500MB).
+	# Please use the -h option and a mirror site to pull the 
+	# initial repository, but feel free to use the main repository
+	# machine to pull updates.
+	cvsup /usr/share/examples/cvsup/DragonFly-cvs-supfile
+	# install the source from the CVS hierarchy (remove preexisting
+	# FreeBSD src first) (500MB)
+	cd /usr
+	rm -rf src
+	cvs -R -d /home/dcvs checkout -P src
+
+	# build it (500MB used in /usr/obj)
+	#
+	cd /usr/src
+	make buildworld
+	make buildkernel KERNCONF=<KERNELNAME>
+
+Once you have built DragonFly you have to install it over FreeBSD.  Since
+DragonFly does not track changes made by FreeBSD to its include file 
+hierarchy and include file pollution can cause all sorts of unexpected
+compilation issues to come up, it is best to wipe your include hierarchy
+prior to installing DragonFly.  Note that you should not wipe any installed
+FreeBSD header files or binaries until after you have successfully completed
+the build steps above.
+
+	rm -rf /usr/include
+	mkdir /usr/include
+	make installkernel KERNCONF=<KERNELNAME>
+	make installworld
+
+Then you need to upgrade your system.  DragonFly's 'make upgrade' target 
+will unconditionally upgrade the /etc files that sysops do not usually
+mess around with, such as the files in /etc/rc.d.  It will also remove any
+obsolete files such as utilities and manpages that have been removed from
+the system since the version you're coming from.  If you are unsure we 
+recommend that you make a backup of at least your /etc before applying
+this step.  Note that DragonFly's RC system is basically RCNG from
+FreeBSD-5, but there are some differences in the contents of the RC files.
+
+	make upgrade
+
+NOTE! Never do a 'make upgrade' before 'make installworld' has been run.
+Doing so might leave your system in an unusable state.
+
+Finally we recommend that you do an 'ls -lta BLAH' for /bin, /sbin, /usr/bin,
+/usr/bin, and /usr/lib, and remove any stale files that you find.  Please
+report these files to the DragonFly developers so that they can be added to
+the 'upgrade' target.
+

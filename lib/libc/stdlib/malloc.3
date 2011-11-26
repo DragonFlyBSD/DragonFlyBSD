@@ -1,0 +1,343 @@
+.\" $NetBSD: malloc.3,v 1.38 2010/05/03 08:23:20 jruoho Exp $
+.\"
+.\" Copyright (c) 1980, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" the American National Standards Committee X3, on Information
+.\" Processing Systems.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)malloc.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/stdlib/malloc.3,v 1.73 2007/06/15 22:32:33 jasone Exp $
+.\"
+.Dd May 21, 2010
+.Dt MALLOC 3
+.Os
+.Sh NAME
+.Nm malloc ,
+.Nm calloc ,
+.Nm realloc ,
+.Nm reallocf ,
+.Nm free ,
+.Nd general purpose memory allocation functions
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In stdlib.h
+.Ft void *
+.Fn malloc "size_t size"
+.Ft void *
+.Fn calloc "size_t number" "size_t size"
+.Ft void *
+.Fn realloc "void *ptr" "size_t size"
+.Ft void *
+.Fn reallocf "void *ptr" "size_t size"
+.Ft void
+.Fn free "void *ptr"
+.Sh DESCRIPTION
+The
+.Fn malloc
+function allocates
+.Fa size
+bytes of uninitialized memory.
+The allocated space is suitably aligned (after possible pointer coercion)
+for storage of any type of object.
+If the space is at least
+.Em pagesize
+bytes in length (see
+.Xr getpagesize 3 ) ,
+the returned memory will be page boundary aligned as well.
+.Pp
+The
+.Fn calloc
+function allocates space for
+.Fa number
+objects,
+each
+.Fa size
+bytes in length.
+The result is identical to calling
+.Fn malloc
+with an argument of
+.Dq "number * size" ,
+with the exception that the allocated memory is explicitly initialized
+to zero bytes.
+.Pp
+The
+.Fn realloc
+function changes the size of the previously allocated memory referenced by
+.Fa ptr
+to
+.Fa size
+bytes.
+The contents of the memory are unchanged up to the lesser of the new and
+old sizes.
+If the new size is larger,
+the value of the newly allocated portion of the memory is undefined.
+Upon success, the memory referenced by
+.Fa ptr
+is freed and a pointer to the newly allocated memory is returned.
+Note that
+.Fn realloc
+may move the memory allocation, resulting in a different return value than
+.Fa ptr .
+If
+.Fa ptr
+is
+.Dv NULL ,
+the
+.Fn realloc
+function behaves identically to
+.Fn malloc
+for the specified size.
+.Pp
+The
+.Fn reallocf
+function call is identical to the realloc function call, except that it
+will free the passed pointer when the requested memory cannot be allocated.
+This is a
+.Fx
+/
+.Dx
+specific API designed to ease the problems with traditional coding styles
+for realloc causing memory leaks in libraries.
+.Pp
+The
+.Fn free
+function causes the allocated memory referenced by
+.Fa ptr
+to be made available for future allocations.
+If
+.Fa ptr
+is
+.Dv NULL ,
+no action occurs.
+.Sh IMPLEMENTATION NOTES
+.Dx Ap s
+.Nm
+implementation is based on a port of the
+.Dx
+kernel slab allocator, appropriately modified for a user process
+environment.
+.Pp
+The slab allocator breaks memory allocations up to 8KB into 80 zones.
+Each zone represents a fixed allocation size in multiples of some
+core chunking.
+The chunking is a power-of-2 but the fixed allocation size is not.
+For example, a 1025-byte request is allocated out of the zone with a
+chunking of 128, thus in multiples of 1152 bytes.
+The minimum chunking, used for allocations in the 0-127 byte range,
+is 8 bytes (16 of the 80 zones).
+Beyond that the power-of-2 chunking is between 1/8 and 1/16 of the
+minimum allocation size for any given zone.
+.Pp
+As a special case any power-of-2-sized allocation within the zone
+limit (8K) will be aligned to the same power-of-2 rather than that
+zone's (smaller) chunking.
+This is not something you can depend upon for
+.Fn malloc ,
+but it is used internally to optimize
+.Xr posix_memalign 3 .
+.Pp
+Each zone reserves memory in 64KB blocks.
+Actual memory use tends to be significantly less as only the pages
+actually needed are faulted in.
+Allocations larger than 8K are managed using
+.Xr mmap 2
+and tracked with a hash table.
+.Pp
+The zone mechanism results in well-fitted allocations with little
+waste in a long-running environment which makes a lot of allocations.
+Short-running environments which do not make many allocations will see
+a bit of extra bloat due to the large number of zones but it will
+be almost unnoticeable in the grand scheme of things.
+To reduce bloat further the normal randomized start offset implemented
+in the kernel version of the allocator to improve L1 cache fill is
+disabled in the libc version.
+.Pp
+The zone mechanism also has the nice side effect of greatly reducing
+fragmentation over the original
+.Nm .
+.Pp
+.Fn calloc
+is directly supported by keeping track of newly-allocated zones which
+will be demand-zero'd by the system.
+If the allocation is known to be zero'd we do not bother
+.Fn bzero Ns ing
+it.
+If it is a reused allocation we
+.Fn bzero .
+.Pp
+.Tn POSIX
+threading is supported by duplicating the primary structure.
+A thread entering
+.Fn malloc
+which is unable to immediately acquire a mutex on the last primary
+structure it used will switch to a different primary structure.
+At the moment this is more of a quick hack than a solution, but it works.
+.Sh RETURN VALUES
+The
+.Fn malloc
+and
+.Fn calloc
+functions return a pointer to the allocated memory if successful; otherwise
+a
+.Dv NULL
+pointer is returned and
+.Va errno
+is set to
+.Er ENOMEM .
+.Pp
+The
+.Fn realloc
+and
+.Fn reallocf
+functions return a pointer, possibly identical to
+.Fa ptr ,
+to the allocated memory
+if successful; otherwise a
+.Dv NULL
+pointer is returned, and
+.Va errno
+is set to
+.Er ENOMEM
+if the error was the result of an allocation failure.
+The
+.Fn realloc
+function always leaves the original buffer intact
+when an error occurs, whereas
+.Fn reallocf
+deallocates it in this case.
+.Pp
+The
+.Fn free
+function returns no value.
+.Sh EXAMPLES
+When using
+.Fn malloc ,
+be careful to avoid the following idiom:
+.Bd -literal -offset indent
+if ((p = malloc(number * size)) == NULL)
+	err(EXIT_FAILURE, "malloc");
+.Ed
+.Pp
+The multiplication may lead to an integer overflow.
+To avoid this,
+.Fn calloc
+is recommended.
+.Pp
+If
+.Fn malloc
+must be used, be sure to test for overflow:
+.Bd -literal -offset indent
+if (size && number > SIZE_MAX / size) {
+	errno = EOVERFLOW;
+	err(EXIT_FAILURE, "allocation");
+}
+.Ed
+.Pp
+When using
+.Fn realloc ,
+one must be careful to avoid the following idiom:
+.Bd -literal -offset indent
+nsize += 50;
+
+if ((p = realloc(p, nsize)) == NULL)
+	return NULL;
+.Ed
+.Pp
+Do not adjust the variable describing how much memory has been allocated
+until it is known that the allocation has been successful.
+This can cause aberrant program behavior if the incorrect size value is used.
+In most cases, the above example will also leak memory.
+As stated earlier, a return value of
+.Dv NULL
+indicates that the old object still remains allocated.
+Better code looks like this:
+.Bd -literal -offset indent
+newsize = size + 50;
+
+if ((p2 = realloc(p, newsize)) == NULL) {
+
+	if (p != NULL)
+		free(p);
+
+	p = NULL;
+	return NULL;
+}
+
+p = p2;
+size = newsize;
+.Ed
+.Sh DIAGNOSTICS
+If
+.Fn malloc ,
+.Fn calloc ,
+.Fn realloc
+or
+.Fn free
+detect an error, a message will be printed to file descriptor
+.Dv STDERR_FILENO
+and the process will dump core.
+.Sh SEE ALSO
+.Xr madvise 2 ,
+.Xr mmap 2 ,
+.Xr sbrk 2 ,
+.Xr alloca 3 ,
+.Xr atexit 3 ,
+.Xr emalloc 3 ,
+.Xr getpagesize 3 ,
+.Xr memory 3 ,
+.Xr posix_memalign 3
+.Sh STANDARDS
+The
+.Fn malloc ,
+.Fn calloc ,
+.Fn realloc
+and
+.Fn free
+functions conform to
+.St -isoC .
+.Sh HISTORY
+The
+.Fn reallocf
+function first appeared in
+.Fx 3.0 .
+.Pp
+.Dx Ap s
+.Nm
+implementation is based on the kernel's slab allocator (see
+.Xr posix_memalign 3 Ap s
+.Sx IMPLEMENTATION NOTES ) .
+It first appeared in
+.Dx 2.3 .
+.Sh AUTHORS
+.An Matt Dillon

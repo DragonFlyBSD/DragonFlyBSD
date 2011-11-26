@@ -1,0 +1,187 @@
+.\"
+.\" Copyright (c) 2008
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd July 21, 2009
+.Dt MOUNTCTL 2
+.Os
+.Sh NAME
+.Nm mountctl
+.Nd execute a mount control operation
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/mountctl.h
+.Ft int
+.Fo mountctl
+.Fa "const char *path"
+.Fa "int op"
+.Fa "int fd"
+.Fa "void *ctl"
+.Fa "int ctllen"
+.Fa "void *buf"
+.Fa "int buflen"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn mountctl
+system call executes the mount control operation
+.Fa op
+on the mount point
+.Fa path .
+An optional file descriptor
+.Fa fd
+can be passed, or set to -1 if unneeded.
+The
+.Fa ctl
+argument is for passing operation specific data and usually points to
+some struct (see
+.Sx CONTROL OPERATIONS
+for further information).
+The data's size is specified by
+.Fa ctllen .
+The
+.Fa buf
+and
+.Fa buflen
+arguments are used if the operation needs to return data to the caller
+or set to
+.Dv NULL
+and 0 if unused.
+.Sh CONTROL OPERATIONS
+The following operations are defined in
+.In sys/mountctl.h :
+.Bl -tag -width indent
+.It Dv MOUNTCTL_SET_EXPORT
+Set export control of a filesystem.
+This operation needs a
+.Vt struct export_args
+passed in
+.Fa ctl .
+Note that export control for numerous filesystems may still only be settable
+with
+.Xr mount 2 .
+New software should attempt to use
+.Fn mountctl
+before using the old
+.Xr mount 2
+method.
+.It Dv MOUNTCTL_INSTALL_VFS_JOURNAL
+Install a journal on a mount point.
+This operation needs a
+.Vt struct mountctl_install_journal
+passed in
+.Fa ctl .
+The journal file must be specified via
+.Fa fd .
+A mount point may have multiple journals attached to it.
+.It Dv MOUNTCTL_REMOVE_VFS_JOURNAL
+Disassociate a journal from a mount point.
+This operation needs a
+.Vt struct mountctl_remove_journal
+passed in
+.Fa ctl .
+.It Dv MOUNTCTL_RESTART_VFS_JOURNAL
+Restart a journal with a new descriptor.
+This operation needs a
+.Vt struct mountctl_restart_journal
+passed in
+.Fa ctl .
+The journal file must be specified via
+.Fa fd .
+.It Dv MOUNTCTL_STATUS_VFS_JOURNAL
+Return a journal's status.
+This operation needs a
+.Vt struct mountctl_status_journal
+passed in
+.Fa ctl
+and an array of
+.Vt struct mountctl_journal_ret_status
+in
+.Fa buf .
+.It MOUNTCTL_MOUNTFLAGS
+It will store a comma separated string buffer in the
+.Fa buf
+parameter with the name list of the currently set
+user mount flags. The
+.Fa buf
+will be sized at most
+.Fa buflen
+bytes.
+.\" XXX Not yet implemented:
+.\".It Dv MOUNTCTL_INSTALL_BLK_JOURNAL
+.\".It Dv MOUNTCTL_REMOVE_BLK_JOURNAL
+.\".It Dv MOUNTCTL_RESYNC_BLK_JOURNAL
+.\".It Dv MOUNTCTL_RESYNC_VFS_JOURNAL
+.\".It Dv MOUNTCTL_STATUS_BLK_JOURNAL
+.El
+.Sh RETURN VALUES
+Upon successful completion, the number
+of copied bytes is returned; otherwise
+the value -1 is returned and the
+global variable
+.Va errno
+is set to indicate the error.
+.Sh ERRORS
+The
+.Fn mountctl
+function will fail when one of the following occurs:
+.Bl -tag -width Er
+.It Bq Er EBADF
+.Fa \&Fd
+is not an active descriptor.
+.It Bq Er EINVAL
+The specified
+.Fa ctllen
+is not 0-1024,
+.Fa buflen
+is not 0-16384, or
+.Fa path
+is
+.Dv NULL .
+.It Bq Er EPERM
+The caller is not the super-user.
+.El
+.Sh SEE ALSO
+.Xr mount 2 ,
+.Xr mountctl 8
+.Sh HISTORY
+The
+.Fn mountctl
+system call first appeared in
+.Dx 1.1 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Fn mountctl
+system call was written by
+.An Matthew Dillon
+and this manual page was written by
+.An Sascha Wildner .

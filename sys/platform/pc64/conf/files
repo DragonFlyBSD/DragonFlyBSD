@@ -1,0 +1,235 @@
+# This file tells config what files go into building a kernel,
+# files marked standard are always included.
+#
+linux32_genassym.o		optional	compat_linux32			\
+	dependency 	"$S/emulation/linux/x86_64/linux32_genassym.c ${FORWARD_HEADERS_COOKIE}" \
+	compile-with	"${CC} ${CFLAGS:N-fno-common} ${WERROR} -c ${.IMPSRC}" \
+	no-obj no-implicit-rule						   \
+	clean		"linux32_genassym.o"
+#
+linux32_assym.h			optional	compat_linux32		   \
+	dependency 	"$S/kern/genassym.sh linux32_genassym.o"		   \
+	compile-with	"sh $S/kern/genassym.sh linux32_genassym.o > ${.TARGET}" \
+	no-obj no-implicit-rule before-depend				   \
+	clean		"linux32_assym.h"
+#
+font.h				optional	sc_dflt_font		\
+	compile-with	"uudecode < /usr/share/syscons/fonts/${SC_DFLT_FONT}-8x16.fnt && file2c 'static u_char dflt_font_16[16*256] = {' '};' < ${SC_DFLT_FONT}-8x16 > font.h && uudecode < /usr/share/syscons/fonts/${SC_DFLT_FONT}-8x14.fnt && file2c 'static u_char dflt_font_14[14*256] = {' '};' < ${SC_DFLT_FONT}-8x14 >> font.h && uudecode < /usr/share/syscons/fonts/${SC_DFLT_FONT}-8x8.fnt && file2c 'static u_char dflt_font_8[8*256] = {' '};' < ${SC_DFLT_FONT}-8x8 >> font.h" \
+	no-obj no-implicit-rule before-depend				\
+	clean		"font.h"
+#
+atkbdmap.h			optional	atkbd_dflt_keymap	\
+	compile-with	"/usr/sbin/kbdcontrol -L ${ATKBD_DFLT_KEYMAP} | sed -e 's/^static keymap_t.* = /static keymap_t key_map = /' -e 's/^static accentmap_t.* = /static accentmap_t accent_map = /' > atkbdmap.h"				\
+	no-obj no-implicit-rule before-depend				\
+	clean		"atkbdmap.h"
+#
+ukbdmap.h			optional	ukbd_dflt_keymap	\
+	compile-with	"/usr/sbin/kbdcontrol -L ${UKBD_DFLT_KEYMAP} | sed -e 's/^static keymap_t.* = /static keymap_t key_map = /' -e 's/^static accentmap_t.* = /static accentmap_t accent_map = /' > ukbdmap.h"				\
+	no-obj no-implicit-rule before-depend				\
+	clean		"ukbdmap.h"
+#
+hptmvraid.o			optional	hptmv			\
+	dependency	"$S/dev/raid/hptmv/x86_64-elf.raid.o.uu"	\
+	compile-with	"uudecode < $S/dev/raid/hptmv/x86_64-elf.raid.o.uu" \
+	no-implicit-rule
+#
+emulation/linux/linux_file.c	optional	compat_linux32
+emulation/linux/linux_getcwd.c	optional	compat_linux32
+emulation/linux/linux_ioctl.c	optional	compat_linux32
+emulation/linux/linux_ipc.c	optional	compat_linux32
+emulation/linux/linux_mib.c	optional	compat_linux32
+emulation/linux/linux_misc.c	optional	compat_linux32
+emulation/linux/linux_signal.c	optional	compat_linux32
+emulation/linux/linux_socket.c	optional	compat_linux32
+emulation/linux/linux_stats.c	optional	compat_linux32
+emulation/linux/linux_sysctl.c  optional        compat_linux32
+emulation/linux/linux_uid16.c   optional        compat_linux32
+emulation/linux/linux_util.c	optional	compat_linux32
+emulation/linux/x86_64/linux32_dummy.c	optional	compat_linux32
+emulation/linux/x86_64/linux32_locore.s	optional	compat_linux32	  \
+	dependency 	"linux32_assym.h"
+emulation/linux/x86_64/linux32_machdep.c	optional	compat_linux32
+emulation/linux/x86_64/linux32_sysent.c	optional	compat_linux32
+emulation/linux/x86_64/linux32_sysvec.c	optional	compat_linux32
+emulation/ndis/kern_ndis.c	optional	ndisapi pci
+emulation/ndis/kern_windrv.c	optional	ndisapi pci
+emulation/ndis/subr_hal.c	optional	ndisapi pci
+emulation/ndis/subr_ndis.c	optional	ndisapi pci
+emulation/ndis/subr_ntoskrnl.c	optional	ndisapi pci
+emulation/ndis/subr_pe.c	optional	ndisapi pci
+emulation/ndis/subr_usbd.c	optional	ndisapi pci
+emulation/ndis/winx64_wrap.S	optional	ndisapi pci
+
+# XXX use assembler versions of bf_enc and des_enc
+crypto/blowfish/bf_enc.c		optional	ipsec ipsec_esp
+crypto/des/des_enc.c			optional	ipsec ipsec_esp
+crypto/des/des_ecb.c			optional	netsmbcrypto
+crypto/des/des_enc.c			optional	netsmbcrypto
+crypto/des/des_setkey.c			optional	netsmbcrypto
+crypto/blowfish/bf_enc.c		optional	crypto
+crypto/des/des_enc.c			optional	crypto
+crypto/des/des_ecb.c			optional	crypto
+crypto/des/des_setkey.c			optional	crypto
+
+${OSACPI_MD_DIR}/OsdEnvironment.c	optional        acpi
+${OSACPI_MD_DIR}/acpi_machdep.c		optional        acpi
+${OSACPI_MD_DIR}/acpi_pstate_machdep.c	optional	acpi
+${OSACPI_MD_DIR}/acpi_wakeup.c		optional        acpi
+acpi.h					optional	acpi		\
+	dependency	"$S/${ACPICA_DIR}/include/acpi.h"		\
+	compile-with	"cp $S/${ACPICA_DIR}/include/acpi.h ${.OBJDIR}/"	\
+	no-obj no-implicit-rule before-depend				\
+	clean		"acpi.h"
+platform/acenv.h			optional	acpi		\
+	dependency	"$S/${ACPICA_DIR}/include/platform/acenv.h"	\
+	compile-with	"mkdir -p ${.OBJDIR}/platform; cat ${.ALLSRC} | sed -e 's/__FreeBSD__/__DragonFly__/' -e 's/acfreebsd.h/acdragonfly.h/' > ${.TARGET}" \
+	no-obj no-implicit-rule before-depend				\
+	clean		"acenv.h"
+acpi_wakecode.h				optional        acpi		\
+	dependency	"$S/${OSACPI_MD_DIR}/acpi_wakecode.S"		\
+	compile-with	"${MAKE} -f $S/${OSACPI_MD_DIR}/Makefile MAKESRCPATH=$S/${OSACPI_MD_DIR}" \
+       no-obj no-implicit-rule before-depend				\
+       clean           "acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin"
+#
+dev/crypto/aesni/aesencdec_x86_64.S	optional	aesni
+dev/crypto/aesni/aeskeys_x86_64.S	optional	aesni
+dev/crypto/aesni/aesni.c		optional	aesni
+dev/crypto/aesni/aesni_wrap.c		optional	aesni
+dev/crypto/padlock/padlock.c		optional	padlock
+dev/crypto/padlock/padlock_cipher.c	optional	padlock
+dev/crypto/padlock/padlock_hash.c	optional	padlock
+dev/crypto/padlock/padlock_rng.c	optional	padlock
+dev/crypto/padlock/rng_harvest_x86_64.S	optional	padlock
+dev/video/fb/fb.c			optional	vga
+dev/video/fb/splash.c			optional	splash
+dev/video/fb/vga.c			optional	vga
+dev/powermng/est/est.c			optional	cpu_enable_est
+dev/netif/ndis/if_ndis.c		optional	ndis
+dev/netif/ndis/if_ndis_pccard.c		optional	ndis pccard
+dev/netif/ndis/if_ndis_pci.c		optional	ndis cardbus
+dev/netif/ndis/if_ndis_pci.c		optional	ndis pci
+dev/netif/ndis/if_ndis_usb.c		optional	ndis usb
+dev/misc/kbd/atkbd.c			optional	atkbd
+dev/misc/kbd/atkbdc.c			optional	atkbdc
+dev/misc/kbd/kbd.c			optional	atkbd
+dev/misc/kbd/kbd.c			optional	kbd
+dev/misc/kbd/kbd.c			optional	sc
+dev/misc/kbd/kbd.c			optional	ukbd
+dev/misc/kbd/kbdsw.c			optional	atkbd
+dev/misc/kbd/kbdsw.c			optional	kbd
+dev/misc/kbd/kbdsw.c			optional	sc
+dev/misc/kbd/kbdsw.c			optional	ukbd
+dev/misc/syscons/schistory.c		optional	sc
+dev/misc/syscons/scmouse.c		optional	sc
+dev/misc/syscons/scterm.c		optional	sc
+dev/misc/syscons/scterm-dumb.c		optional	sc
+dev/misc/syscons/scterm-sc.c		optional	sc
+dev/misc/syscons/scvgarndr.c		optional	sc vga
+dev/misc/syscons/scvidctl.c		optional	sc
+dev/misc/syscons/scvtb.c		optional	sc
+dev/misc/syscons/syscons.c		optional	sc
+dev/misc/syscons/sysmouse.c		optional	sc
+kern/link_elf_obj.c		standard
+vfs/smbfs/smbfs_io.c		optional	smbfs
+vfs/smbfs/smbfs_node.c		optional	smbfs
+vfs/smbfs/smbfs_smb.c		optional	smbfs
+vfs/smbfs/smbfs_subr.c		optional	smbfs
+vfs/smbfs/smbfs_vfsops.c	optional	smbfs
+vfs/smbfs/smbfs_vnops.c		optional	smbfs
+
+cpu/x86_64/misc/atomic.c		standard			\
+        compile-with    "${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+platform/pc64/x86_64/autoconf.c	standard
+platform/pc64/x86_64/mpboot.S		optional	smp
+
+# DDB XXX
+cpu/x86_64/misc/x86_64-gdbstub.c	optional	ddb
+cpu/x86_64/misc/lwbuf.c			standard
+cpu/x86_64/misc/elf_machdep.c		standard
+cpu/x86_64/misc/in_cksum2.s		optional	inet
+cpu/x86_64/misc/ktr.c			optional	ktr
+cpu/x86_64/misc/db_disasm.c		optional	ddb
+cpu/x86_64/misc/bzeront.s		standard
+cpu/x86_64/misc/monitor.s		standard
+#
+# DOS mbr and gpt
+kern/subr_diskmbr.c			standard
+kern/subr_diskgpt.c			standard
+
+libkern/memset.c			standard
+libkern/stack_protector.c		standard
+
+# DEVICES
+#
+
+# PLATFORM FILES
+#
+platform/pc64/x86_64/exception.S		standard
+platform/pc64/x86_64/ipl.s		standard
+platform/pc64/x86_64/global.s		standard
+platform/pc64/x86_64/support.s		standard
+platform/pc64/x86_64/sigtramp.s		standard
+platform/pc64/x86_64/swtch.s		standard
+platform/pc64/x86_64/npx.c		standard
+platform/pc64/x86_64/db_interface.c	optional	ddb
+platform/pc64/x86_64/db_trace.c		optional	ddb
+platform/pc64/x86_64/dump_machdep.c	standard
+platform/pc64/x86_64/minidump_machdep.c	standard
+platform/pc64/x86_64/vm_machdep.c	standard
+platform/pc64/x86_64/machdep.c		standard
+platform/pc64/x86_64/userldt.c		standard
+platform/pc64/x86_64/tls.c		standard
+platform/pc64/x86_64/trap.c		standard
+platform/pc64/x86_64/procfs_machdep.c	standard
+platform/pc64/x86_64/initcpu.c		standard
+platform/pc64/x86_64/identcpu.c		standard
+platform/pc64/x86_64/amd64_mem.c	standard
+platform/pc64/x86_64/cpufreq_machdep.c    standard
+
+platform/pc64/apic/lapic.c		standard
+platform/pc64/apic/ioapic.c		standard
+platform/pc64/apic/ioapic_abi.c		standard
+platform/pc64/apic/ioapic_ipl.s		standard
+platform/pc64/apic/apic_vector.s	standard
+
+bus/isa/x86_64/isa.c			optional	isa
+bus/isa/x86_64/isa_dma.c			optional	isa
+
+platform/pc64/x86_64/nexus.c		standard
+
+platform/pc64/icu/icu.c                 standard
+platform/pc64/icu/icu_abi.c             standard
+platform/pc64/icu/icu_ipl.s             standard
+platform/pc64/icu/icu_vector.s          standard
+platform/pc64/icu/elcr.c		standard
+
+bus/pci/x86_64/legacy.c			optional	pci
+bus/pci/x86_64/pci_bus.c			optional	pci
+bus/pci/x86_64/pci_cfgreg.c		optional	pci
+bus/pci/x86_64/mptable_pci.c		optional	pci
+# notyet (BIOS struct and functions)
+#bus/pci/x86_64/pci_pir.c			optional	pci
+
+platform/pc64/x86_64/pmap.c		standard
+platform/pc64/x86_64/pmap_inval.c		standard
+platform/pc64/x86_64/busdma_machdep.c standard
+platform/pc64/x86_64/sysarch.c	standard
+platform/pc64/x86_64/console.c	standard
+platform/pc64/x86_64/ipl_funcs.c	standard
+kern/syscalls.c			standard
+platform/pc64/x86_64/mp_machdep.c		optional	smp
+platform/pc64/x86_64/mptable.c		standard
+platform/pc64/acpica5/acpi_sdt.c	standard
+platform/pc64/acpica5/acpi_fadt.c	standard
+platform/pc64/acpica5/acpi_madt.c	standard
+dev/misc/atkbd/atkbd_isa.c		optional	atkbd
+dev/misc/atkbdc_layer/atkbdc_isa.c	optional	atkbdc
+dev/misc/ppc/ppc.c			optional	ppc
+dev/misc/psm/psm.c			optional	psm
+dev/serial/sio/sio.c			optional	sio
+bus/isa/syscons_isa.c			optional	sc
+bus/isa/vga_isa.c			optional	vga
+platform/pc64/isa/clock.c		standard
+platform/pc64/isa/isa_intr.c		standard
+platform/pc64/x86_64/spinlock.s		standard
+dev/netif/elink_layer/elink.c		optional	ep

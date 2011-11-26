@@ -1,0 +1,29 @@
+/*
+ * $DragonFly: src/nrelease/root/autorun/stylesheet.css,v 1.1 2005/03/21 05:46:40 dillon Exp $
+ */
+body {margin:0;text-align:center;background:url("bar.gif") repeat-x 0px 222px;}
+h1,h2,h3,h4,h5,h6,p,a,ul,li{margin:0; padding:0;}
+h3 span {display:none;}
+p {margin-bottom:10px;margin-left:5px;font-size:11px;font-family:verdana, sans serif, arial, helvetica;}
+h3 {margin-top:25px;margin-bottom:10px;}
+#main {width:600px;margin:0px auto 0px auto;
+border-right:2px solid #EFEFEF;border-left:2px solid #EFEFEF;
+text-align:left;
+}
+
+#txt {width:448px;padding-left:150px;padding-right:2px;margin-top:40px;}
+#header {display:block;height:225px;width:600px;background:url("dflylogo.png") no-repeat;margin-bottom:10px;border-bottom:2px dotted #efefef}
+#header span {display:none;}
+#welcome h3 {display:block;width:272px;height:22px;background:url("welcome.png");}
+#started h3 {display:block;width:272px;height:22px;background:url("started.png");}
+#links{position:absolute;top:273px;width:145px;}
+#links ul {list-style-type:none;margin-bottom:30px;margin-top:5px;}
+#links li {width:145px;margin-bottom:5px;margin-left:6px;font-size:11px;}
+#links a {color:#0000ff;text-decoration:none;}
+#links a:hover {text-decoration:underline;}
+#links h3 {margin:0;margin-top:5px;margin-left:2px;}
+#relevant .item {display:block;width:124px;height:16px;background:url("links.png");}
+#docs .item  {display:block;width:124px;height:16px;background:url("docs.png"); }
+#press .item  {display:block;width:124px;height:16px;background:url("press.png");}  
+#other .item {display:block;width:124px;height:16px;background:url("other.png");}
+

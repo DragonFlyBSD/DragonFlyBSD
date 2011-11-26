@@ -1,0 +1,62 @@
+.\" $DragonFly: src/usr.sbin/resident/resident.8,v 1.5 2007/05/12 07:21:51 swildner Exp $
+.\"
+.Dd May 21, 2003
+.Dt RESIDENT 8
+.Os
+.Sh NAME
+.Nm resident
+.Nd Make a dynamic binary resident
+.Sh SYNOPSIS
+.Nm
+.Op Fl l
+.Op Fl f
+.Op Fl x Ar id
+.Op Fl d
+.Op Fl R
+.Ar "program ..."
+.Sh DESCRIPTION
+The
+.Nm
+utility may be used to make a dynamic binary memory-resident.
+This works
+by running the binary just past its DLL mmap's and relocation and then
+making a copy of its vmspace.
+The copy is registered in the kernel and later
+exec's of the program will cause a copy of the copy to be used.
+When
+.Pa ld-elf.so
+detects that it is running resident, it skips all initial library
+loads (because they are already loaded).
+.Pp
+Care must be taken when using this program.
+It is recommended that you
+delete all resident registrations when updating the system shared libraries
+and binaries.
+.Pp
+The following options are available:
+.Bl -tag -width indent
+.It Fl l
+List binaries that are currently memory-resident.
+.It Fl f
+Force mode, even if the binary does not appear to be a dynamic binary.
+This way you can run resident through statically compiled wrappers.  The first
+dynamic binary encountered in the exec chain will be operated on.
+.It Fl x Ar id
+Delete a registration by id.
+.It Fl d
+Delete a registration by program name.
+If neither of the above two options are specified a new registration is created.
+.It Fl R
+Delete all registrations in the kernel.
+.El
+.Sh SEE ALSO
+.Xr ld 1 ,
+.Xr ldd 1 ,
+.Xr nm 1 ,
+.Xr rtld 1 ,
+.Xr resident.conf 5
+.Sh AUTHORS
+The
+.Nm
+program, its kernel supplement and this manual page was written by
+.An Matthew Dillon Aq dillon@backplane.com .

@@ -1,0 +1,287 @@
+.\" Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/lib/libc/sys/sys_checkpoint.2,v 1.10 2008/05/02 02:05:04 swildner Exp $
+.\"
+.Dd June 29, 2007
+.Dt SYS_CHECKPOINT 2
+.Os
+.Sh NAME
+.Nm sys_checkpoint
+.Nd checkpoint or restore a process
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/checkpoint.h
+.Ft int
+.Fn sys_checkpoint "int type" "int fd" "pid_t pid" "int retval"
+.Sh DESCRIPTION
+The
+.Fn sys_checkpoint
+system call executes a checkpoint function as specified by
+.Fa type .
+Supported types are as follows:
+.Bl -tag -width ".Dv CKPT_FREEZE" -offset indent
+.It Dv CKPT_FREEZE
+Generate a checkpoint file.
+Currently
+.Fa pid
+must be -1 or the pid of the current process.
+The checkpoint file will be written out to
+.Fa fd ,
+and
+.Fa retval
+is unused but must be specified as -1.
+As a special case, if
+.Fa pid
+and
+.Fa fd
+are both specified as -1, the system will generate a checkpoint file
+using the system checkpoint template.
+.Pp
+This function returns 0 on success, -1 on error, and typically 1
+on resume.
+The value returned on resume is controlled by the
+.Fa retval
+argument passed to
+.Fn sys_checkpoint
+when resuming a checkpoint file.
+A user program which installs its own
+.Dv SIGCKPT
+signal handler and calls
+.Fn sys_checkpoint
+manually thus has control over both termination/continuance and
+resumption.
+.It Dv CKPT_THAW
+Restore a checkpointed program.
+The
+.Fa pid
+must be specified as -1, and
+.Fa fd
+represents the checkpoint file.
+The
+.Fa retval
+specifies the value returned to the resumed program if
+.Fn sys_checkpoint
+was called directly.
+.Pp
+The checkpointed program will replace the current program, similar to
+an
+.Xr exec 3
+call.
+.El
+.Sh RETURN VALUES
+Upon successful completion, the value 0 is typically returned.
+A checkpoint being resumed typically returns a positive value;
+otherwise the value -1 is returned and the global variable
+.Va errno
+is set to indicate the error.
+.Sh EXAMPLE
+.Bd -literal -offset indent -compact
+/*
+ * Demonstrate checkpointing.  Use control-E to checkpoint
+ * the program and 'checkpt -r x.ckpt' to resume it.
+ */
+#include <sys/types.h>
+#include <sys/signal.h>
+#include <sys/checkpoint.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+
+void docheckpoint(void);
+
+int wantckpt;
+
+void
+dockpt(int sig)
+{
+    wantckpt = 1;
+}
+
+int
+main(int argc, char** argv)
+{
+     int i = 0;
+
+     signal(SIGCKPT, dockpt);
+
+     for (;;) {
+	printf("iteration: %d\en", i);
+	++i;
+	sleep(1);
+	if (wantckpt) {
+		wantckpt = 0;
+		printf("Checkpoint requested\en");
+		docheckpoint();
+	}
+    }
+    return(0);
+}
+
+void
+docheckpoint(void)
+{
+    int ret;
+    int fd;
+
+    fd = open("x.ckpt", O_RDWR|O_CREAT|O_TRUNC, 0666);
+    if (fd < 0) {
+	printf("unable to create checkpoint file: %s\en",
+		strerror(errno));
+	return;
+    }
+
+    ret = sys_checkpoint(CKPT_FREEZE, fd, -1, -1);
+    if (ret < 0) {
+	printf("unable to checkpoint: %s\en",
+		strerror(errno));
+    } else if (ret == 0) {
+	printf("checkpoint successful, continuing\en");
+    } else if (ret == 1) {
+	printf("resuming from checkpoint.\en");
+    } else {
+	printf("unknown return value %d from sys_checkpoint\en", ret);
+	exit(1);
+    }
+    /* note that the file descriptor is still valid on a resume */
+    close(fd);
+}
+.Ed
+.Sh ERRORS
+.Bl -tag -width Er
+.It Bq Er EBADF
+The given
+.Fa fd
+is not a valid regular file, socket descriptor, or pipe.
+Note that not
+all systems necessarily support checkpointing to sockets and pipes.
+.It Bq Er EPERM
+The caller does not have permission to issue the checkpoint command.
+Checkpointing may be restricted or disabled using sysctls.
+.It Bq Er EIO
+An I/O error occurred while reading from the file system.
+.It Bq Er EINVAL
+An invalid parameter was specified.
+.El
+.Sh CHECKPOINT FEATURES
+The system checkpointing code will save the process register state (including
+floating point registers), signal state, file descriptors representing
+regular files or directories (anything that can be converted into a file
+handle for storage), and both shared and private memory mappings.
+Private, writable mappings are copied to the checkpoint file while shared
+mappings and stored by referencing the file handle and offset.
+Note that the system checkpointing code does not retain references to
+deleted files, so mappings and open descriptors of deleted files
+cannot be restored.
+Unpredictable operation will occur if a checkpoint-unaware program
+is restored and some of the underlying files mapped by the program
+have changed.
+.Pp
+The system checkpointing code is not able to retain the process pid, process
+group, user/group creds, or descriptors 0, 1, and 2.
+These will be inherited from whomever restores the checkpoint.
+.Pp
+When a checkpointed program is restored modified private mappings will
+be mapped from the checkpoint file itself, but major portions of the
+original program binary will be mapped from the original program binary.
+If the resumed program is checkpointed again the system will automatically
+copy any mappings from the original checkpoint file to the new one, since
+the original is likely being replaced.
+The caller must not truncate the existing checkpoint file when creating
+a new one or specify the existing file's file descriptor as the new
+one as this will destroy the data that the checkpoint operation needs
+to copy to the new file.
+It is best to checkpoint to a new file and then rename-over the old, or to
+.Xr remove 3
+the old file before creating the new
+one so it remains valid as long as the program continues to run.
+.Pp
+Threaded programs cannot currently be checkpointed.
+The program must be
+reduced to a single thread before it can be safely checkpointed.
+.Pp
+.Dv MAP_VPAGETABLE
+mappings cannot currently be checkpointed.
+A program must restore such mappings manually on resumption.
+Only regular file and
+anonymous memory mappings are checkpointed and restored.
+Device and other special mappings are not.
+Only regular file descriptors are checkpointed and restored.
+Devices, pipes, sockets, and other special descriptors are not.
+Memory wiring states are not checkpointed or restored.
+.Xr madvise 2
+states are not checkpointed or restored.
+Basic mapping permissions are checkpointed and restored.
+.Sh SECURITY
+The sysctl
+.Va kern.ckptgroup
+controls which group can use system checkpointing.
+By default, only users in the
+.Ql wheel
+group are allowed to checkpoint and restore processes.
+To allow users in any group to have this capability (risky), set sysctl
+.Va kern.ckptgroup
+to -1.
+.Sh SIGNALS
+Two signals are associated with checkpointing.
+.Dv SIGCKPT
+is delivered via the tty ckpt character, usually control-E.
+Its default action is to checkpoint a program and continue running it.
+The
+.Dv SIGCKPTEXIT
+signal can only be delivered by
+.Xr kill 2 .
+Its default action is to checkpoint a program and then exit.
+.Dv SIGCKPTEXIT
+might not be implemented by the system.
+Both signals are defined to
+be greater or equal to signal 32 and cannot be manipulated using legacy
+masking functions.
+.Pp
+If a program overrides the default action for a checkpoint signal the
+system will not undertake any action of its own.
+The program may issue
+the checkpoint command from the signal handler itself or simply set a
+reminder for later action.
+It is usually safest to set a reminder and
+do the actual checkpointing from your main loop.
+.Sh SEE ALSO
+.Xr checkpt 1 ,
+.Xr signal 3
+.Sh HISTORY
+The
+.Fn sys_checkpoint
+function call appeared in
+.Dx 1.1 .

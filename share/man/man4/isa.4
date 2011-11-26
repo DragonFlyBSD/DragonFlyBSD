@@ -1,0 +1,169 @@
+.\"	$OpenBSD: isa.4,v 1.60 2008/03/19 19:33:12 deraadt Exp $
+.\"	$NetBSD: isa.4,v 1.19 2000/03/18 16:54:37 augustss Exp $
+.\"
+.\" Copyright (c) 2000 Theo de Raadt.  All rights reserved.
+.\" Copyright (c) 1997 Jason R. Thorpe.  All rights reserved.
+.\" Copyright (c) 1997 Jonathan Stone
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgements:
+.\"      This product includes software developed by Jonathan Stone
+.\" 4. The name of the author may not be used to endorse or promote products
+.\"    derived from this software without specific prior written permission
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.Dd October 17, 2010
+.Dt ISA 4
+.Os
+.Sh NAME
+.Nm isa
+.Nd introduction to ISA bus support
+.Sh SYNOPSIS
+.Cd "device isa"
+.Sh DESCRIPTION
+The system includes a machine-independent
+.Tn ISA
+bus subsystem and several machine-independent
+.Tn ISA
+device drivers.
+.Pp
+Note that interrupt mappings on the i386 may require that you configure
+your BIOS to reserve the interrupts for these devices as "Legacy ISA".
+If such configuration is not done, the system may use those interrupts
+for
+.Xr pci 4
+devices instead.
+.Pp
+.Dx
+provides support for the following devices.
+Note that not all architectures support all devices.
+.Ss SCSI controllers
+.Bl -tag -width 12n -offset indent -compact
+.It Xr adv 4
+Advansys SCSI host adapter driver
+.It Xr aic 4
+Adaptec AIC-6260 and AIC-6360 SCSI driver
+.It Xr bt 4
+Buslogic/Mylex MultiMaster SCSI host adapter driver
+.It Xr stg 4
+Future Domain based SCSI controller driver
+.El
+.Ss Disk and tape controllers
+.Bl -tag -width 12n -offset indent -compact
+.It Xr fdc 4
+PC architecture floppy disk controller driver
+.It Xr nata 4
+Generic ATA/ATAPI disk controller driver
+.It Xr ata 4
+Generic ATA/ATAPI disk controller driver (deprecated)
+.El
+.Ss Serial and parallel interfaces
+.Bl -tag -width 12n -offset indent -compact
+.It Xr cy 4
+Cyclades Cyclom-Y serial driver
+.It Xr digi 4
+DigiBoard intelligent serial cards driver
+.It Xr lpt 4
+Generic printer device driver
+.It Xr rp 4
+Comtrol RocketPort serial card driver
+.It Xr si 4
+Specialix International SI/XIO or SX serial card driver
+.It Xr sio 4
+Generic serial controller driver
+.It Xr stl 4
+Stallion Technologies multiport serial controller driver
+.It Xr stli 4
+Stallion Technologies multiport serial controller driver
+.El
+.Ss Network interfaces
+.Bl -tag -width 12n -offset indent -compact
+.It Xr an 4
+Aironet Communications 4500/4800 wireless network adapter driver
+.It Xr ar 4
+Digi/Arnet SYNC/570i device driver
+.It Xr cs 4
+Crystal Semiconductor CS8900 and CS8920 ethernet adapter driver
+.It Xr ed 4
+Novell NE1000/NE2000 and WD-80x3 ethenet adapter driver
+.It Xr ep 4
+3Com Etherlink III (3C5x9) ethernet adapter driver
+.It Xr ex 4
+Intel EtherExpress Pro/10 and Pro/10+ ethernet adapter driver
+.It Xr fe 4
+Fujitsu MB86960A and MB86965A ethernet adapter driver
+.It Xr lnc 4
+AMD Am7900 LANCE and Am79C9xx PCnet ethernet adapter driver
+.It Xr sn 4
+SMC91Cxx ethernet adapter driver
+.It Xr sr 4
+RISCom/N2 device driver
+.El
+.Ss Sound cards
+.Bl -tag -width 12n -offset indent -compact
+.It Xr snd_ad1816 4
+Analog Devices AD1816 ISA bridge device driver
+.It Xr snd_ess 4
+Ensoniq ESS ISA PnP/non-PnP bridge device driver
+.It Xr snd_mss 4
+Microsoft Sound System ISA PnP/non-PnP bridge device driver
+.It Xr snd_sbc 4
+Creative Sound Blaster ISA and compatible bridge device driver
+.El
+.Ss Hardware Sensors
+.Bl -tag -width 12n -offset indent -compact
+.It Xr aps 4
+ThinkPad Active Protection System accelerometer
+.It Xr it 4
+ITE IT8705F/IT8712F/IT8716F/IT8718F/IT8726F and SiS SiS950
+temperature, voltage, and fan sensor with watchdog timer
+.It Xr lm 4
+National Semiconductor LM78/79/81 temperature, voltage, and fan sensor
+.It Xr nsclpcsio 4
+National Semiconductor PC87366 LPC Super I/O with GPIO
+.It Xr uguru 4
+ABIT temperature, voltage and fan sensors
+.It Xr wbsio 4
+Winbond LPC Super I/O
+.El
+.Ss Miscellaneous devices
+.Bl -tag -width 12n -offset indent -compact
+.It Xr atkbdc 4
+AT keyboard controller interface
+.It Xr joy 4
+Joystick device driver
+.It Xr npx 4
+Numeric Processing Extension coprocessor and emulator
+.It Xr orm 4
+ISA I/O space option ROM(s) driver
+.It Xr ppc 4
+Parallel Port Chipset driver
+.It Xr spic 4
+Sony Programmable I/O Controller device driver
+.It Xr syscons 4
+System Console driver
+.It Xr vga 4
+VGA graphics driver
+.El
+.Sh SEE ALSO
+.Xr intro 4 ,
+.Xr pnpbios 4

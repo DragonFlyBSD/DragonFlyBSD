@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# $NetBSD: rarpd,v 1.5 2002/03/22 04:33:59 thorpej Exp $
+# $FreeBSD: src/etc/rc.d/rarpd,v 1.2 2002/06/13 22:14:36 gordon Exp $
+# $DragonFly: src/etc/rc.d/rarpd,v 1.3 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: rarpd
+# REQUIRE: DAEMON
+# BEFORE:  LOGIN
+
+. /etc/rc.subr
+
+name="rarpd"
+rcvar=`set_rcvar`
+command="/usr/sbin/${name}"
+pidfile="/var/run/${name}.pid"
+required_files="/etc/ethers"
+
+load_rc_config $name
+run_rc_command "$1"

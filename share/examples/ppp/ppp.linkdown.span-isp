@@ -1,0 +1,18 @@
+# $FreeBSD: src/share/examples/ppp/ppp.linkdown.span-isp,v 1.2.2.1 2002/09/01 08:01:18 brian Exp $
+# $DragonFly: src/share/examples/ppp/ppp.linkdown.span-isp,v 1.2 2003/06/17 04:36:57 dillon Exp $
+
+# Refer to ppp.conf.span-isp for a description of what this file is for.
+# This file is only required on the Gateway machine.
+
+# The ISP links start our MP version of ppp as they come up
+isp1:
+  !bg pppctl /var/run/ppp/vpn link 1 close
+
+isp2:
+  !bg pppctl /var/run/ppp/vpn link 2 close
+
+ispN:
+  !bg pppctl /var/run/ppp/vpn link N close
+
+vpn:
+  set server none

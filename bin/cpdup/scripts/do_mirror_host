@@ -1,0 +1,108 @@
+#!/bin/csh
+#
+# $DragonFly: src/bin/cpdup/scripts/do_mirror_host,v 1.2 2006/09/21 00:18:13 dillon Exp $
+
+source params
+
+if ( "$argv" == "" ) then
+    echo "Specify host mounted in $backup_nfs (e.g. 'apollo'), and level."
+    echo "Level 0 - full backup, do not use hardlink trick"
+    echo "Level 1 - full backup, use hardlink trick but verify each file"
+    echo "Level 2 - full backup, use hardlink trick and stat shortcut"
+    echo "./do_mirror_host <host> <level> > $backup_path/mirrors/<host>.log"
+    exit 1
+endif
+
+set date = `date "+%Y%m%d"`
+set host = "$argv[1]"
+set level = "$argv[2]"
+
+if ( ! -d $backup_nfs/$host ) then
+    echo "Host not found in $backup_nfs"
+    exit 1
+endif
+if ( ! -d $backup_path/mirrors/$host ) then
+    mkdir $backup_path/mirrors/$host
+endif
+
+# Target directory for this backup
+#
+set target = $host.$date
+if ( ! -d $backup_path/mirrors/$target ) then
+    mkdir -p $backup_path/mirrors/$target
+endif
+
+set failed = 0
+
+# Record log
+#
+rm -f $backup_path/mirrors/$target/{INPROGRESS,FAILED,SUCCEEDED}
+if ( -f $backup_path/mirrors/$host.log ) then
+    ln $backup_path/mirrors/$host.log $backup_path/mirrors/$target/INPROGRESS
+else
+    echo "NO LOG RECORDED" > $backup_path/mirrors/$target/INPROGRESS
+endif
+
+# Iterate subdirectories.  Each subdirectory is considered to be a separate
+# filesystem.
+#
+foreach fs ( $backup_nfs/$host/* )
+    set dirname = $fs:t
+
+    echo "Backing up $fs"
+    if ( ! -d $backup_path/mirrors/$target/$dirname ) then
+	mkdir -p $backup_path/mirrors/$target/$dirname
+    endif
+    if ( -f $fs/NOT_MOUNTED ) then
+	echo "NOT MOUNTED"
+	set failed = 1
+	continue
+    endif
+    switch ( $level )
+    case 0:
+	echo "cpdup -i0 -s0 -I $fs $backup_path/mirrors/$target/$dirname"
+	cpdup -i0 -s0 -I $fs $backup_path/mirrors/$target/$dirname
+	if ( $status != 0 ) then
+	    set failed = 1
+	endif
+	breaksw
+    case 1:
+	echo "cpdup -f -i0 -s0 -I -H $backup_path/mirrors/$host/$dirname $fs $backup_path/mirrors/$target/$dirname"
+	cpdup -f -i0 -s0 -I -H $backup_path/mirrors/$host/$dirname $fs $backup_path/mirrors/$target/$dirname
+	if ( $status != 0 ) then
+	    set failed = 1
+	endif
+	breaksw
+    case 2:
+	echo "cpdup -i0 -s0 -I -H $backup_path/mirrors/$host/$dirname $fs $backup_path/mirrors/$target/$dirname"
+	cpdup -i0 -s0 -I -H $backup_path/mirrors/$host/$dirname $fs $backup_path/mirrors/$target/$dirname
+	if ( $status != 0 ) then
+	    set failed = 1
+	endif
+	breaksw
+    default:
+	echo "UNKNOWN BACKUP LEVEL, USE ONLY 0-2"
+	set failed = 1
+	breaksw
+    endsw
+    sync
+    echo ""
+end
+
+# If we succeeded then set up a softlink so a higher level incremental
+# backup can locate the most recent version of the previous level,
+# another so we can locate the most recent backup period, and also
+# rename the log file.
+#
+if ( $failed == 0 ) then
+    rm -f $backup_path/mirrors/$host
+    ln -s "$host.$date" $backup_path/mirrors/$host
+    mv $backup_path/mirrors/$target/{INPROGRESS,SUCCEEDED}
+    sync
+    echo "SUCCEEDED"
+else
+    mv $backup_path/mirrors/$target/{INPROGRESS,FAILED}
+    sync
+    echo "FAILED"
+endif
+

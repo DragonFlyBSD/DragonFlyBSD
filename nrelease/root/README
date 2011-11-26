@@ -1,0 +1,394 @@
+			    DRAGONFLY 'Live CD' README FILE
+
+    This CD/DVD/USB stick boots DragonFly BSD.  Basically what you get is a
+    full base system on the media with certain critical directories, such as
+    /tmp, remounted read-write using TMPFS.  Your existing hard drive is not
+    affected by booting this media.
+
+    DragonFly 'Live CD' can be used from either CD, DVD or USB stick, in the
+    following the media is called 'CD' for brevity (nothing is specific to the
+    CD media).  The DragonFly 'Live CD' is used for both trying out DragonFly,
+    installing DragonFly and for emergency repair of DragonFly systems.
+
+    NOTE!!! DRAGONFLY IS UNDERGOING DEVELOPMENT AND IS CONSIDERED
+    EXPERIMENTAL!  BSD RELATED EXPERIENCE IS RECOMMENDED WHEN USING
+    THIS CD.
+
+    If you just want to play with DragonFly and not mess with your hard disk,
+    this CD boots into a fully operational console-based system, though
+    without swap it should be noted that you are limited by available memory.
+    It is a good idea to test your hardware for compatibility from a CD boot
+    before spending time installing the dist on your hard disk.
+
+
+			    AUTOMATIC INSTALLATION
+
+    There are currently two installation tools available - the installer, and
+    rconfig.
+
+    The installer can be run with a text-based (curses) user interface
+    from the serial console or a VTY, and provides a straightforward method
+    for installing DragonFly on your HD.  To start it, just login with the
+    username 'installer'.
+
+    The installer can also be run with a web-based (CGI) user interface.
+    To set this up manually is a bit of work, but much of it can be automated
+    by writing a couple of lines into a configuration file on a floppy disk
+    or USB pendrive, and inserting or attaching that to the computer before
+    booting the CD.  See the file /etc/defaults/pfi.conf for more info.
+
+    rconfig is a client/server protocol which requires a server (typically on
+    the same network).  An example server setup can be found in
+    /usr/share/examples/rconfig.  If you have multiple machines you can setup
+    an installation script and run rconfig on a server and then install the
+    clients from CD boot with network connectivity (e.g. 'dhclient <if>')
+    and then, typically, 'rconfig -a'.
+
+    You can also just boot from the CD, login as 'root' to get a shell
+    prompt, copy the sample script to /tmp, edit, and run it directly
+    (assuming that blowing away your existing disk is ok).
+
+
+				  CONSOLE OPERATION
+
+    The second stage boot (boot2) and third stage boot (loader) default
+    to dual serial & video console I/O.  You can direct the boot output
+    to just the serial port by creating the file /boot.config with the
+    line '-h', or to just the screen using '-V'.  If you wish to leave
+    boot2 in dual I/O mode but want the third stage to use just one or the
+    other, you can set the 'console' environment variable in /boot/loader.conf
+    to either 'vidconsole' or 'comconsole'.
+
+    The dual serial port operation might have to be disabled if you use
+    the serial port for things like UPSs.  Also note that by default
+    the CD will not run a login prompt on the serial port after booting is
+    complete.  This can be enabled by editing the 'ttyd0' line in /etc/ttys
+    after installation is complete.
+
+    Note that the kernel itself currently only supports one console or the
+    other.  If both are enabled, the kernel will use the video console or
+    the last one for which input was received.
+
+
+				MANUAL INSTALLATION
+
+    Manual installation of DragonFly onto an HD involves the following sequence
+    of commands.  You must be familiar with BSD style UNIX systems to do
+    installations manually.  The primary IDE hard drive is typically 'ad0',
+    if using AHCI, SILI or SCSI HD controller it is typically 'da0', and if
+    using USB HD controller it is typically 'da8'.
+    DragonFly is typically installed onto the first free slice (ad0s1 if disk
+    is empty, ad0s2 if your first slice contains another OS, etc).  Be careful
+    to substitute the correct disk and partition name in the steps below.
+
+    You need to decide which file system to use for DragonFly install: UFS or
+    HAMMER.  UFS is the classical BSD file system and HAMMER is a newer and
+    more feature rich file system, HAMMER needs 50GB space at minimum, see
+    'man HAMMER'.  The installation is somewhat different depending on the
+    file system used.
+
+	# OPTIONAL STEP: If your disk is already partitioned and you
+	# have a spare primary partition on which you want to install
+	# DragonFly, skip this step.  However, sometimes old boot
+	# blocks or cruft in the boot area can interfere with the
+	# initialization process.  A cure is to zero out the start of
+	# the disk before running fdisk.  Replace 'ad0' with the choosen disk.
+	#
+	# WARNING: This COMPLETELY WIPES and repartitions your hard drive.
+	#
+	dd if=/dev/zero of=/dev/ad0 bs=32k count=16
+	fdisk -I ad0
+	fdisk -B ad0
+
+	# If you didn't zero the disk as above, but have a spare slice
+	# whose partition type you want to change to DragonFly, use fdisk(8).
+
+	# This installs boot blocks onto the HD and verifies their
+	# installation.  See note just above the 'reboot' below for
+	# things to try if it does not boot from your HD.  If you
+	# already have a multi-OS bootloader installed you can skip
+	# this step.
+	#
+	boot0cfg -B ad0
+	boot0cfg -v ad0
+
+	# This creates an initial label on the chosen slice of the HD.  If
+	# you have problems booting you could try wiping the first 32 blocks
+	# of the slice with dd and then reinstalling the label.  Replace
+	# 'ad0s1' with the chosen slice.
+	#
+	# dd if=/dev/zero of=/dev/ad0s1 bs=32k count=16
+	disklabel -B -r -w ad0s1 auto
+
+	# Edit the label.  Create various standard partitions.  The typical
+	# configuration is:
+	#
+	# UFS (fstype 4.2BSD):
+	#	ad0s1a	768m		This will be your /
+	#	ad0s1b	4096m		This will be your swap
+	#	ad0s1c			(leave alone)
+	#	ad0s1d	512m		This will be your /var
+	#	ad0s1e	512m		This will be your /tmp
+	#	ad0s1f	8192m		This will be your /usr (min 4096m)
+	#	ad0s1g	*		All remaining space to your /home
+	#
+	# HAMMER (fstype HAMMER):
+	#	ad0s1a  768m		This will be your /boot; UFS
+	#       ad0s1b	4096m		This will be your swap
+	#	ad0s1d	*		All remaining space to your /; HAMMER
+	#
+	# An example disklabel can be found in /etc/disklabel.ad0s1.
+	#
+	disklabel -e ad0s1
+
+	# Newfs (format) the various file systems.
+	#
+	# UFS:
+	# Softupdates is not normally enabled on the root file system because
+	# large kernel or world installs/upgrades can run it out of space due
+	# to softupdate's delayed bitmap freeing code.
+	#
+	newfs /dev/ad0s1a
+	newfs -U /dev/ad0s1d
+	newfs -U /dev/ad0s1e
+	newfs -U /dev/ad0s1f
+	newfs -U /dev/ad0s1g
+	#
+	# HAMMER:
+	newfs /dev/ad0s1a
+	newfs_hammer -L ROOT /dev/ad0s1d
+
+	# Mount the file systems.
+	#
+	# UFS:
+	mount /dev/ad0s1a /mnt
+	mkdir /mnt/var
+	mkdir /mnt/tmp
+	mkdir /mnt/usr
+	mkdir /mnt/home
+	mount /dev/ad0s1d /mnt/var
+	mount /dev/ad0s1e /mnt/tmp
+	mount /dev/ad0s1f /mnt/usr
+	mount /dev/ad0s1g /mnt/home
+	#
+	# HAMMER:
+	mount -t hammer /dev/ad0s1d /mnt
+	mkdir /mnt/boot
+	mount /dev/ad0s1a /mnt/boot
+	# Make HAMMER pseudo file systems (PFSs), and NULL mount them.
+	# All PFSs share all space in a HAMMER file system, but policy on how
+	# often to make snapshots, how long to keep them and general ability to
+	# delete them is per PFS.  Also mirroring (e.g. for backup) is done
+	# per PFS.  Typical setup is:
+	#
+	mkdir /mnt/pfs
+	hammer pfs-master /mnt/pfs/var
+	hammer pfs-master /mnt/pfs/var.crash
+	hammer pfs-master /mnt/pfs/tmp
+	hammer pfs-master /mnt/pfs/usr
+	hammer pfs-master /mnt/pfs/usr.obj
+	hammer pfs-master /mnt/pfs/home
+	mkdir /mnt/var
+	mkdir /mnt/tmp
+	mkdir /mnt/usr
+	mkdir /mnt/home
+	mount -t null /mnt/pfs/var /mnt/var
+	mount -t null /mnt/pfs/tmp /mnt/tmp
+	mount -t null /mnt/pfs/usr /mnt/usr
+	mount -t null /mnt/pfs/home /mnt/home
+	mkdir /mnt/var/crash
+	mkdir /mnt/usr/obj
+	mount -t null /mnt/pfs/var.crash /mnt/var/crash
+	mount -t null /mnt/pfs/usr.obj /mnt/usr/obj
+	# add root file system to /boot/loader.conf
+	echo 'vfs.root.mountfrom="hammer:ad0s1d"' >> /mnt/boot/loader.conf
+
+
+	# UFS & HAMMER:
+	# Copy the CD onto the target.  cpdup won't cross mount boundaries
+	# on the source (e.g. the TMPFS remounts) or destination, so it takes
+	# a few commands.
+	#
+	# Note that /etc contains the config files used for booting from the
+	# CD itself, and /etc.hdd contains those for booting off a
+	# hard disk.  So it's the latter that you want to copy to /mnt/etc.
+	#
+	cpdup / /mnt
+	cpdup /boot /mnt/boot
+	cpdup /var /mnt/var
+	cpdup /etc.hdd /mnt/etc
+	cpdup /usr /mnt/usr
+
+	# Cleanup.  Also, with /tmp a partition it is usually reasonable
+	# to make /var/tmp a softlink to /tmp.
+	#
+	chmod 1777 /mnt/tmp
+	rm -rf /mnt/var/tmp
+	ln -s /tmp /mnt/var/tmp
+
+	# Edit /mnt/etc/fstab to reflect the new mounts.  An example fstab
+	# file based on the above parameters exists as /mnt/etc/fstab.example
+	# which you can rename to /mnt/etc/fstab.
+	#
+	mv /mnt/etc/fstab.example /mnt/etc/fstab
+	vi /mnt/etc/fstab
+
+	# Save out your disklabel just in case.  It's a good idea to save
+	# it to /etc so you can get at it from your backups.  You do intend
+	# to backup your system, yah? :-)  (This isn't critical but it's a
+	# good idea).
+	#
+	disklabel ad0s1 > /mnt/etc/disklabel.ad0s1
+
+
+			MISC CLEANUPS BEFORE REBOOTING
+
+    Once you've duplicated the CD onto your HD you have to make some edits
+    so the system boots properly from your HD.  Primarily you must remove
+    or edit /mnt/boot/loader.conf, which exists on the CD to tell the kernel
+    to mount the CD's root partition.
+
+	# Remove or edit /mnt/boot/loader.conf so the kernel does not try
+	# to obtain the root file system from the CD, and remove the other
+	# cruft that was sitting on the CD that you don't need on the HD.
+	#
+	rm /mnt/boot/loader.conf
+	rm /mnt/README* /mnt/autorun* /mnt/index.html /mnt/dflybsd.ico
+	rm /mnt/boot.catalog
+	rm -r /mnt/rr_moved
+
+    At this point it should be possible to reboot.  The CD may be locked
+    since it is currently mounted.  To remove the CD, type 'halt' instead
+    of 'reboot', wait for the machine to halt, then the CD door should be
+    unlocked.  Remove the CD and hit any key to reboot.
+
+    Be careful of the CD drawer closing on you if you try to remove the CD
+    while the machine is undergoing a reboot or reset.
+
+    WARNING: Do not just hit reset; the kernel may not have written out
+    all the pending data to your HD.  Either unmount the HD partitions
+    or type halt or reboot.
+
+	# halt
+	(let the machine halt)
+	(remove CD when convenient, be careful of the CD drawer closing on you)
+	(hit any key to reboot)
+
+
+				    THE ACPI ISSUE
+
+    You will notice in the boot menu that you can choose to boot with or
+    without ACPI.  ACPI is an infrastructure designed to allow an operating
+    system to configure hardware devices associated with the system.
+    Unfortunately, as usual, PC BIOS makers have royally screwed up the
+    standard and ACPI is as likely to hurt as it is to help.  Worse, some
+    PCs cannot be booted without it, so there is no good 'default' choice.
+
+    The system will use ACPI by default.  You can disable it in the default
+    boot by adding the line 'hint.acpi.0.disabled=1' in /boot/loader.conf.
+    If you boot without hitting any menu options the system will boot without
+    ACPI.  To boot without ACPI no matter what, place 'unset acpi_load' in
+    our /boot/loader.conf instead.  This is not recommended.
+
+
+			IF YOU HAVE PROBLEMS BOOTING FROM HD
+
+    There are a couple of things to try.  Try booting from the CD again and
+    use boot0cfg to turn off packet mode (boot0cfg -o nopacket ad0).  If you
+    can select CHS or LBA mode in your BIOS, try changing the mode to LBA.
+    Also try booting with and without ACPI (option 1 or 2 in the boot menu).
+
+    Once you have a working HD based system you can clean up /etc/rc.conf
+    to enable things like cron, sendmail, setup your networking, and so
+    forth.  If 'ifconfig' does not show your networking device you could
+    try to kldload it from /boot/kernel.  With a recognized network device
+    you can ifconfig its IP address or, if you have a DHCP server on your
+    network, use 'dhclient <interfacename>' to obtain an IP address from
+    the network.
+
+
+	    USING GIT TO OBTAIN A SOURCE TREE AND DOING BUILDWORLDS
+
+    Instructions on how to obtain and maintain DragonFly source code using
+    git are in the development(7) manual page.
+
+    To upgrade a DragonFly system from sources you run the following
+    sequence:
+
+    cd /usr/src
+    make buildworld
+    make KERNCONF=<KERNELNAME> buildkernel
+    make KERNCONF=<KERNELNAME> installkernel
+    make installworld
+
+    You will also want to run the 'upgrade' target to upgrade your /etc
+    and the rest of your system.  The upgrade target is aware of stale
+    files created by older DragonFly installations and should delete them
+    automatically.
+
+    make upgrade
+
+    See the build(7) manual page for further information.
+
+    Once you've done a full build of the world and kernel you can do
+    incremental upgrades of either by using the 'quickworld' and
+    'quickkernel' targets instead of 'buildworld' and 'buildkernel'.  If
+    you have any problems with the quick targets, try updating your repo
+    first, and then a full buildworld and buildkernel as shown above, before
+    asking for help.
+
+
+		OBTAINING A PKGSRC TREE TO BUILD/INSTALL PACKAGES
+
+    In order to obtain a reasonably current snapshot of the pkgsrc tree, use
+    our repo:
+
+    cd /usr
+    make help
+    make pkgsrc-create
+
+    This tree can then be kept up to date with:
+
+    cd /usr
+    make pkgsrc-update
+
+
+			EMERGENCY RECOVERY FROM THE 'Live CD'
+
+    Lets say you blew up your kernel or something else in / and you need to
+    boot the 'Live CD' to fix it.  Remember that you have a fully operational
+    system when booting the 'Live CD', but that you have to fsck and mount your
+    hard drive (typically onto /mnt) to get at the contents of your HD.
+
+    Your HD is typically an IDE hard drive, so the device is typically 'ad0',
+    if using AHCI, SILI or SCSI HD controller it is typically 'da0', and if
+    using USB HD controller it is typically 'da8'.  Steps below will use 'ad0',
+    be careful to substitute the correct disk name below.
+
+    DragonFly is typically on the first slice, which is /dev/ad0s1.  For UFS
+    setup the root partition is always in partition 'a', which is /dev/ad0s1a.
+    For HAMMER setup the typical setup is that boot partition is partition 'a',
+    and root partition is partition 'd'.
+
+    # UFS:
+    # fsck root before trying to mount it.
+    fsck /dev/ad0s1a
+    # mount root read-write onto /mnt
+    mount /dev/ad0s1a /mnt
+    #
+    # HAMMER:
+    # fsck boot before trying to mount it.
+    fsck /dev/ad0s1a
+    # mount root read-write onto /mnt
+    mount -t hammer /dev/ad0s1d /mnt
+    # mount boot read-write onto /mnt/boot
+    mount /dev/ad0s1a /mnt/boot
+    #
+    # copy files from the CD as appropriate to make it possible to boot
+    # from your HD again.  Note that /mnt/boot/kernel/kernel may be
+    # flags-protected.
+    chflags noschg /mnt/boot/kernel/kernel
+    cp /boot/kernel/* /mnt/boot/kernel
+
+    If you want to mount other partitions from your HD but have forgotten
+    what they are, simply cat /mnt/etc/fstab after mounting the root partition.

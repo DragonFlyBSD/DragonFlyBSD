@@ -1,0 +1,6 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/exit1.0,v 1.1 2011/01/01 15:25:15 jilles Exp $
+
+# exit with an argument should overwrite the exit status in an EXIT trap.
+
+trap 'true; exit $?' 0
+false

@@ -1,0 +1,13 @@
+Original source can be obtained from:
+http://www.bzip.org/
+
+The file README.DELETED contains a list of deleted files.
+
+cvs hint:
+cvs import src/contrib/bzip2-1.0 BZIP v1_0_?
+
+This is used by:
+lib/libbz2/
+lib/libstand/
+usr.bin/bzip2/
+usr.bin/bzip2recover/

@@ -1,0 +1,105 @@
+diff --git a/block.c b/block.c
+index b68a8da..6ed24ad 100644
+--- a/block.c
++++ b/block.c
+@@ -35,8 +35,10 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <sys/ioctl.h>
++#ifndef __DragonFly__
+ #include <sys/disk.h>
+ #endif
++#endif
+ 
+ #define SECTOR_BITS 9
+ #define SECTOR_SIZE (1 << SECTOR_BITS)
+diff --git a/configure b/configure
+index 6164241..3e206b2 100755
+--- a/configure
++++ b/configure
+@@ -228,6 +228,11 @@ if [ "$cpu" = "i386" -o "$cpu" = "x86_64" ] ; then
+     kqemu="yes"
+ fi
+ ;;
++DragonFly)
++bsd="yes"
++oss="yes"
++dragonfly="yes"
++;;
+ NetBSD)
+ bsd="yes"
+ audio_drv_list="oss"
+@@ -1317,6 +1322,10 @@ if test "$darwin" = "yes" ; then
+   echo "CONFIG_DARWIN=yes" >> $config_mak
+   echo "#define CONFIG_DARWIN 1" >> $config_h
+ fi
++if test "$dragonfly" = "yes" ; then
++  echo "CONFIG_DRAGONFLY=yes" >> $config_mak
++  echo "#define CONFIG_DRAGONFLY 1" >> $config_h
++fi
+ 
+ if test "$aix" = "yes" ; then
+   echo "CONFIG_AIX=yes" >> $config_mak
+diff --git a/cpu-exec.c b/cpu-exec.c
+index 7607e24..deb845d 100644
+--- a/cpu-exec.c
++++ b/cpu-exec.c
+@@ -1156,6 +1156,12 @@ static inline int handle_cpu_signal(unsigned long pc, unsigned long address,
+ # define EIP_sig(context)  (*((unsigned long*)&(context)->uc_mcontext->ss.eip))
+ # define TRAP_sig(context)    ((context)->uc_mcontext->es.trapno)
+ # define ERROR_sig(context)   ((context)->uc_mcontext->es.err)
++#elif defined (__DragonFly__)
++# include <ucontext.h>
++
++# define EIP_sig(context)  (*((unsigned long*)&(context)->uc_mcontext.mc_eip))
++# define TRAP_sig(context)    ((context)->uc_mcontext.mc_trapno)
++# define ERROR_sig(context)   ((context)->uc_mcontext.mc_err)
+ #else
+ # define EIP_sig(context)     ((context)->uc_mcontext.gregs[REG_EIP])
+ # define TRAP_sig(context)    ((context)->uc_mcontext.gregs[REG_TRAPNO])
+@@ -1166,7 +1172,7 @@ int cpu_signal_handler(int host_signum, void *pinfo,
+                        void *puc)
+ {
+     siginfo_t *info = pinfo;
+-    struct ucontext *uc = puc;
++    ucontext_t *uc = puc;
+     unsigned long pc;
+     int trapno;
+ 
+diff --git a/texi2pod.pl b/texi2pod.pl
+index 5d28a05..abca509 100755
+--- a/texi2pod.pl
++++ b/texi2pod.pl
+@@ -1,4 +1,4 @@
+-#! /usr/bin/perl -w
++#! /usr/bin/env perl -w
+ 
+ #   Copyright (C) 1999, 2000, 2001, 2003 Free Software Foundation, Inc.
+ 
+diff --git a/usb-bsd.c b/usb-bsd.c
+index fa4093c..60e78d4 100644
+--- a/usb-bsd.c
++++ b/usb-bsd.c
+@@ -34,7 +34,11 @@
+ #undef USB_SPEED_LOW
+ 
+ #include <sys/ioctl.h>
++#ifdef __DragonFly__
++#include <bus/usb/usb.h>
++#else
+ #include <dev/usb/usb.h>
++#endif
+ #include <signal.h>
+ 
+ /* This value has maximum potential at 16.
+--- a/exec-all.h~	2009-08-17 01:32:59 +0200
++++ a/exec-all.h	2009-08-17 01:13:49 +0200
+@@ -35,7 +35,7 @@
+ typedef struct TranslationBlock TranslationBlock;
+ 
+ /* XXX: make safe guess about sizes */
+-#define MAX_OP_PER_INSTR 64
++#define MAX_OP_PER_INSTR 80
+ /* A Call op needs up to 6 + 2N parameters (N = number of arguments).  */
+ #define MAX_OPC_PARAM 10
+ #define OPC_BUF_SIZE 512

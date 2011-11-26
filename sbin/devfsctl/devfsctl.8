@@ -1,0 +1,260 @@
+.\"
+.\" Copyright (c) 2009
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd August 25, 2009
+.Dt DEVFSCTL 8
+.Os
+.Sh NAME
+.Nm devfsctl
+.Nd manipulate devfs rules
+.Sh SYNOPSIS
+.Nm
+.Fl a
+.Fl f Ar file
+.Op Fl m Ar mount_point
+.Nm
+.Fl d
+.Fl f Ar file
+.Nm
+.Fl c
+.Op Fl m Ar mount_point
+.Nm
+.Fl r
+.Op Fl m Ar mount_point
+.Nm
+.Fl h
+.Sh DESCRIPTION
+The
+.Nm
+provides an interface to manipulate the in-kernel
+.Xr devfs 5
+ruleset.
+.Pp
+The options are as follows:
+.Bl -tag -width indent
+.It Fl a
+Load the ruleset specified by
+.Fl f
+and apply it.
+It will not overwrite currently applied rules,
+but just append the new ones.
+.It Fl c
+Clear the current ruleset.
+This does not reset the device nodes, but only clear out all stored rules
+so that they are not applied to new nodes.
+It is therefore recommended to use this command in conjunction with
+.Fl r .
+.It Fl d
+Reads ruleset specified by
+.Fl f
+and then dumps its contents to stdout.
+The rules will not be applied.
+This option cannot be used in conjunction with any other option.
+It is useful for checking the correct syntax and order of the specified ruleset
+and will show the final interpretation as it would be applied.
+.It Fl f Ar file
+Specifies the file containing the ruleset to be loaded.
+This option is a requirement for
+.Fl a
+and
+.Fl d .
+.It Fl h
+Shows a usage message with a short description of
+.Nm Ap s
+options.
+.It Fl m Ar mount_point
+Specifies the mount point to which the loaded rules shall apply.
+If this option is not specified, the rules will apply to all
+.Xr devfs 5
+mountpoints.
+The
+.Ar mount_point
+argument does not accept wildcards and must be an absolute path.
+.It Fl r
+Reset all
+.Xr devfs 5
+nodes to their original status.
+This does not clear the current ruleset and it is hence recommended
+to use this command together with
+.Fl c .
+.El
+.Sh RULE SYNTAX
+Rules are specified one rule per line, with whitespace separated values.
+Empty lines and lines beginning with a
+.Dq #
+are ignored.
+Once applied, the rules are in effect for existing device nodes as well
+as future ones.
+Rules are applied in the order specified, thus later rules will override
+prior ones.
+.Pp
+Names used in
+.Xr devfs 5
+rules can be either device names (? and * wildcards are allowed), device
+types or existing groups.
+Groups are referenced in rules by prefixing them with
+.Sq @ .
+A device type is one of the following list of special names:
+.Pp
+.Bl -tag -offset indent -width ".Li D_DISK" -compact
+.It Li D_DISK
+disk devices/slices/partitions
+.It Li D_TAPE
+tape devices
+.It Li D_MEM
+(kernel) memory devices
+.It Li D_TTY
+tty devices
+.El
+.Pp
+Rule lines are of the following format:
+.Bd -literal -offset indent
+.Ic action Cm argument ...
+.Ed
+.Pp
+Valid actions are
+.Ic group ,
+.Ic include ,
+.Ic hide ,
+.Ic jail ,
+.Ic link ,
+.Ic perm
+and
+.Ic show :
+.Bl -tag -width indent -offset indent
+.It Ic group Ar group_name Ar name ...
+This will group the specified names into a group of the specified
+.Ar group_name .
+.It Ic include Ar file
+Includes the specified rule file and processes its rules.
+.It Ic hide Ar name
+This will hide the device node(s) specified by
+.Ar name .
+A hidden node will not appear in directory listings and all operations on
+it will fail, except if it is open already.
+By default, everything except
+.Xr pty 4
+nodes is shown.
+.It Ic jail Ar yes|no
+A
+.Sq Ar yes
+argument will cause all following rules to only apply to mounts of
+.Xr devfs 5
+inside a
+.Xr jail 8 ,
+until a
+.Dq Ic jail Ar no
+is reached.
+.It Ic link Ar device Ar path
+.Ic link
+rules will create a link node at the specified
+.Ar link_path
+to the given
+.Ar device .
+The path is relative to the mountpoint being operated on (see
+.Xr devfsctl 8 Ap s
+.Fl m
+option), which is usually
+.Pa /dev .
+.Pp
+Note that for
+.Ic link
+rules, the
+.Ar device
+has to be a single device node and specifying a device type or group (unless
+it contains only one node) is not possible.
+.It Ic perm Ar name Ar user:group Ar mode
+A
+.Ic perm
+rule will applies the specified mode (octal, see
+.Xr chmod 1 )
+and ownership (see
+.Xr chown 2 )
+to
+.Ar name .
+.It Ic show Ar name
+This will show previously hidden nodes again.
+.El
+.Sh FILES
+.Bl -tag -width ".Pa /etc/devfs" -compact
+.It Pa /etc/defaults/devfs.conf
+Global devfs ruleset file
+.It Pa /etc/devfs.conf
+Local devfs ruleset file
+.El
+.Sh EXAMPLES
+Examples of valid names:
+.Bd -literal -offset indent
+bpf*
+tun0
+D_DISK
+serno/*s3
+@groupA
+.Ed
+.Pp
+Examples of valid rules:
+.Bd -literal -offset indent
+group   foo     da*     ri*
+group   foo     ad*
+group   foo     md*
+
+perm    da0     uucp:dialer 0644
+link    foo     bar
+hide    @foo
+show    D_DISK
+group   g1      a b f g
+group   g2      c d
+group   g3      @g1 h @g2 i j k D_MEM
+jail    yes
+hide    @g3
+perm    @g3     root:wheel 0644
+jail    no
+group   cdrom   cd*     acd*
+group   disks   da*
+group   disks   ad*
+group   drives  @disks  @cdrom
+
+group   test    @disks  @g2     y
+show    @drives
+show    @disks
+show    @test
+link    da0     "my drives/my new da0"
+.Ed
+.Sh SEE ALSO
+.Xr devfs 5 ,
+.Xr mount_devfs 8
+.Sh HISTORY
+The
+.Nm
+utility appeared in
+.Dx 2.3 .
+.Sh AUTHORS
+.An Alex Hornung

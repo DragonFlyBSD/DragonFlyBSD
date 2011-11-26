@@ -1,0 +1,21 @@
+#
+# $FreeBSD: src/etc/pam.d/login,v 1.17 2007/06/10 18:57:20 yar Exp $
+# $DragonFly: src/etc/pam.d/login,v 1.1 2005/07/22 18:20:43 joerg Exp $
+#
+# PAM configuration for the "login" service
+#
+
+# auth
+auth		sufficient	pam_self.so		no_warn
+auth		include		system
+
+# account
+account		requisite	pam_securetty.so
+account		required	pam_nologin.so
+account		include		system
+
+# session
+session		include		system
+
+# password
+password	include		system

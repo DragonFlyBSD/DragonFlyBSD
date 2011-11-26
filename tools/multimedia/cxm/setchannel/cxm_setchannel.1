@@ -1,0 +1,149 @@
+.\"
+.\" Copyright (c) 2009
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $Id: cxm.4,v 1.1 2004/10/16 00:12:35 mavetju Exp $
+.\"
+.Dd April 19, 2009
+.Dt CXM_SETCHANNEL 1
+.Os
+.Sh NAME
+.Nm cxm_setchannel
+.Nd Hauppauge channel selector
+.Sh SYNOPSIS
+.Nm
+.Op Fl a Ar on | off
+.Oo
+.Fl c | r | s | t
+.Oc
+.Op Fl d Ar unit
+.Op Fl g Ar geom
+.Op Fl m Ar chnl_set
+.Op Ar chnl | freq
+.Sh DESCRIPTION
+.Nm
+provides support for selecting channels on the PVR-250/350 cards via
+.Pa /dev/cxm0
+(unit is selectable with
+.Fl d ) .
+.Pp
+The options are as follows:
+.Bl -tag -width indent
+.It Fl a Ar on | off
+Enable/disable AFC (automatic frequency control).
+.It Fl c
+Select composite input.
+.It Fl r
+Select radio input.
+.It Fl s
+Select S-Video input.
+.It Fl t
+Select tuner.
+.It Fl d Ar unit
+Select unit (0..x).
+.It Fl g Ar geom
+Select geometry.
+Valid geometries are:
+.Pp
+.Bl -tag -compact -width indent
+.It Xo Li 352x240
+or
+.Li 352x288
+.Tn ( VCD )
+.Xc
+.It Xo Li 480x480
+or
+.Li 480x576
+.Tn ( SVCD )
+.Xc
+.It Xo Li 352x480
+or
+.Li 352x576
+.Tn ( DVD ,
+half D1)
+.Xc
+.It Xo Li 720x480
+or
+.Li 720x576
+.Tn ( DVD ,
+full D1)
+.Xc
+.El
+.It Fl m Ar chnl_set
+Select channel set/system.
+Valid sets are:
+.Pp
+.Bl -tag -compact -width indent
+.It Li 0
+Tuner default
+.It Li 1
+US Broadcast (NTSC)
+.It Li 2
+US Cable (NTSC)
+.It Li 4
+Western Europe (PAL)
+.It Li 5
+Japan Broadcast (NTSC)
+.It Li 6
+Japan Cable (NTSC)
+.It Li 8
+Australia (PAL)
+.It Li 9
+France (SECAM)
+.El
+.El
+.Pp
+The argument passed to
+.Nm
+has to be either a channel number or a frequency in MHz (which must include
+a decimal point).
+.Sh SEE ALSO
+.Xr bktr 4 ,
+.Xr cxm 4
+.Sh HISTORY
+The
+.Nm
+program first appeared in the
+.Pa FreeBSD-multimedia@
+mailing list in January 2004 and in the
+.Fx
+Ports collection in October 2004.
+.Pp
+It was ported to
+.Dx 2.3
+by
+.An Sascha Wildner .
+.Sh AUTHORS
+.An -nosplit
+This program was made by
+.An John Wehle Aq john@feith.com .
+.Pp
+This manual page was made by
+.An Edwin Groothuis Aq edwin@FreeBSD.org .

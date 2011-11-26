@@ -1,0 +1,153 @@
+.\"
+.\" Copyright (c) 2007 Xin LI
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. The name of the author may not be used to endorse or promote products
+.\"    derived from this software without specific prior written permission
+.\"
+.\" THIS DOCUMENTATION IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man5/tmpfs.5,v 1.7 2010/01/29 15:11:50 jh Exp $
+.\"
+.Dd February 2, 2010
+.Dt TMPFS 5
+.Os
+.Sh NAME
+.Nm tmpfs
+.Nd "efficient memory file system"
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "options TMPFS"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+tmpfs_load="YES"
+.Ed
+.Sh OPTIONS
+The following options are available when
+mounting
+.Nm
+file systems:
+.Bl -tag -width indent
+.It Cm gid
+root group id.
+.It Cm uid
+root user id.
+.It Cm mode
+permissions in octal format.
+.It Cm inodes
+maximum number of inodes.
+.It Cm size
+maximum size for the file system.
+.It Cm maxfilesize
+maximum file size of the file system.
+.El
+.Sh DESCRIPTION
+In the
+.Dx
+implementation,
+.Nm
+filesystems are backed by swap space.
+Only memory pressure will cause data to be backed to swap.
+Normal filesystem operations such as
+.Fn fsync ,
+buffer cache flushing, and vnode recycling have no effect.
+.Pp
+.Nm
+stores meta-data in wired kernel memory.
+Meta-data is not backed by swap so care must be taken if using
+.Nm
+to store large numbers of small files.
+.Pp
+It is recommended that a large amount of swap space be reserved on modern
+.Dx
+platforms to accommodate
+.Nm
+and other subsystems.
+32-bit kernels can accommodate 32G of swap by default while 64-bit kernels
+can accommodate 512G of swap by default.
+These defaults can be increased though it should be noted that 32-bit
+kernels are ultimately limited by the amount of KVM available in its
+small 32-bit address space.
+.Pp
+.Nm
+will allocate and deallocate swap backing store on the fly based on usage.
+By default
+.Nm
+allows up to 100% of swap space to be used.
+If this is not desirable then the size option should be used to limit
+its size.
+.Pp
+Every option that accepts a numerical value as its argument can take a
+trailing
+.Sq b
+to indicate bytes (the default), a trailing
+.Sq k
+to indicate kilobytes, a trailing
+.Sq M
+to indicate megabytes or a trailing
+.Sq G
+to indicate gigabytes.
+Note that both lowercase and uppercase forms of these letters are allowed.
+.Sh EXAMPLES
+To mount a
+.Nm
+memory file system:
+.Pp
+.Dl "mount -t tmpfs tmpfs /tmp"
+.Sh SEE ALSO
+.Xr fstab 5 ,
+.Xr mount_tmpfs 8 ,
+.Xr swapcache 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Dx 2.5 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+kernel implementation was written by
+.An Julio M. Merino Vidal Aq jmmv@NetBSD.org
+as a Google SoC project.
+.Pp
+.An Rohit Jalan
+and others ported it from
+.Nx
+to
+.Fx .
+.Pp
+.An Naoya Sugioka
+and others ported it from
+.Nx
+to
+.Dx .
+.Pp
+This manual page was written by
+.An Xin LI Aq delphij@FreeBSD.org .
+.Sh BUGS
+Hopefully not.

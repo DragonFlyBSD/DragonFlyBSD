@@ -1,0 +1,224 @@
+.\" Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/lib/libc/sys/umtx.2,v 1.12 2008/04/14 20:17:41 dillon Exp $
+.\"
+.Dd February 21, 2005
+.Dt UMTX 2
+.Os
+.Sh NAME
+.Nm umtx_sleep ,
+.Nm umtx_wakeup
+.Nd kernel support for userland mutexes
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.Ft int
+.Fn umtx_sleep "const int *ptr" "int value" "int timeout"
+.Ft int
+.Fn umtx_wakeup "const int *ptr" "int count"
+.Sh DESCRIPTION
+The
+.Fn umtx_sleep
+system call will put the calling process to sleep for
+.Fa timeout
+microseconds if the contents of the specified point matches
+the specified value.
+Specifying a timeout of 0 indicates an indefinite timeout.
+The comparison is not atomic with the sleep but is properly
+interlocked against another process calling
+.Fn umtx_wakeup .
+In particular, while it is possible for two userland threads to race, one
+going to sleep simultaneously with another releasing the mutex, this condition
+is caught when the second userland thread calls
+.Fn umtx_wakeup
+after releasing the contended mutex.
+.Pp
+The
+.Fa timeout
+is not specific limitation other than what fits in the signed integer.
+A negative timeout will return
+.Er EINVAL .
+.Pp
+The
+.Fn umtx_wakeup
+system call will wakeup the specified number of processes sleeping
+in
+.Fn umtx_sleep
+on the specified user address.  A count of 0 will wake up all sleeping
+processes.  This function may wake up more processes then the specified
+count but will never wake up fewer processes (unless there are simply not
+that many currently sleeping on the address).  The current
+.Dx
+implementation optimized the count = 1 case but otherwise just wakes up
+all processes sleeping on the address.
+.Pp
+Kernel support for userland mutexes is based on the physical memory backing
+the user address.  Two userland programs may use this facility through
+.Fn mmap ,
+.Fn sysv ,
+.Fn rfork ,
+or light weight process-based shared memory.
+It is important to note that the kernel does not
+take responsibility for adjusting the contents of the mutex or for the
+userland implementation of the mutex.
+.Pp
+.Fn umtx_sleep
+does not restart in case of a signal, even if the signal specifies
+that system calls should restart.
+.Pp
+Various operating system events can cause
+.Fn umtx_sleep
+to return prematurely, with the contents of the mutex unchanged relative
+to the compare value.  Callers must be able to deal with such returns.
+.Sh RETURN VALUES
+.Fn umtx_sleep
+will return 0 if it successfully slept and was then woken up.  Otherwise
+it will return -1 and set
+.Va errno
+as shown below.
+.Pp
+.Fn umtx_wakeup
+will generally return 0 unless the address is bad.
+.Sh EXAMPLE
+.Bd -literal -compact
+
+void
+userland_get_mutex(struct umtx *mtx)
+{
+    int v;
+
+    for (;;) {
+	v = mtx->lock;
+	if ((v & MTX_LOCKED) == 0) {
+	    /*
+	     * not locked, attempt to lock.
+	     */
+	    if (cmp_and_exg(&mtx->lock, v, v | MTX_LOCKED) == 0)
+		return;
+	} else {
+	    /*
+	     * Locked, bump the contested count and obtain the contested
+	     * mutex.
+	     */
+	    if (cmp_and_exg(&mtx->lock, v, v + 1) == 0) {
+		userland_get_mutex_contested(mtx);
+		return;
+	    }
+	}
+    }
+}
+
+static void
+userland_get_mutex_contested(struct umtx *mtx)
+{
+    int v;
+
+    for (;;) {
+	v = mtx->lock;
+	assert(v & ~MTX_LOCKED);	/* our contesting count still there */
+	if ((v & MTX_LOCKED) == 0) {
+	    /*
+	     * not locked, attempt to remove our contested count and
+	     * lock at the same time.
+	     */
+	    if (cmp_and_exg(&mtx->lock, v, (v - 1) | MTX_LOCKED) == 0)
+		return;
+	} else {
+	    /*
+	     * Still locked, sleep and try again.
+	     */
+	    umtx_sleep(&mtx->lock, v, 0);
+	    /*
+	     * XXX note: if we are woken up here but do not proceed to
+	     * attempt to obtain the mutex, we should chain the
+	     * umtx_wakeup() along.
+	     */
+	}
+    }
+}
+
+void
+userland_rel_mutex(struct umtx *mtx)
+{
+    int v;
+
+    for (;;) {
+	v = mtx->lock;
+	assert(v & MTX_LOCKED);	/* we still have it locked */
+	if (v == MTX_LOCKED) {
+	    /*
+	     * We hold an uncontested lock, try to set to an unlocked
+	     * state.
+	     */
+	    if (cmp_and_exg(&mtx->lock, MTX_LOCKED, 0) == 0)
+		return;
+	} else {
+	    /*
+	     * We hold a contested lock, unlock and wakeup exactly
+	     * one sleeper.  It is possible for this to race a new
+	     * thread obtaining a lock, in which case any contested
+	     * sleeper we wake up will simply go back to sleep.
+	     */
+	    if (cmp_and_exg(&mtx->lock, v, v & ~MTX_LOCKED) == 0) {
+		umtx_wakeup(&mtx->lock, 1);
+		return;
+	    }
+	}
+    }
+}
+.Ed
+.Sh ERRORS
+.Bl -tag -width Er
+.It Bq Er EBUSY
+The contents of
+.Fa *ptr
+did not match
+.Fa value
+.It Bq Er EWOULDBLOCK
+The specified timeout occurred.
+.It Bq Er EINTR
+The
+.Fn umtx_sleep
+call was interrupted by a signal.
+.It Bq Er EINVAL
+An invalid parameter (typically an invalid timeout) was specified.
+.El
+.Sh SEE ALSO
+.Xr tls 2
+.Sh HISTORY
+The
+.Fn umtx_sleep ,
+and
+.Fn umtx_wakeup
+function calls first appeared in
+.Dx 1.1 .

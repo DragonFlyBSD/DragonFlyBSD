@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# $NetBSD: motd,v 1.5 2000/09/19 13:04:38 lukem Exp $
+# $FreeBSD: src/etc/rc.d/motd,v 1.6 2003/06/30 22:06:26 mtm Exp $
+# $DragonFly: src/etc/rc.d/motd,v 1.10 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: motd
+# REQUIRE: mountcritremote
+# BEFORE:  LOGIN
+
+. /etc/rc.subr
+
+name="motd"
+rcvar="update_motd"
+start_cmd="motd_start"
+stop_cmd=":"
+PERMS="644"
+
+motd_start()
+{
+	#	Update kernel info in /etc/motd
+	#	Must be done *before* interactive logins are possible
+	#	to prevent possible race conditions.
+	#
+	echo "Updating motd."
+	if [ ! -f /etc/motd ]; then
+		install -c -o root -g wheel -m ${PERMS} /dev/null /etc/motd
+	fi
+	T1=`mktemp -t motd`
+	awk 'NR == 1{if ($1 == "DragonFly") {print} else {exit 1}}' < /etc/motd > $T1 && {	
+
+        T2=`mktemp -t motd`
+        uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\) $,\1 (\3) #\2,' > ${T2}
+        cmp -s $T1 $T2 || {
+                       awk '{if (NR == 1) {next} else {print}}' < /etc/motd >> ${T2}
+                       cp $T2 /etc/motd
+                       chmod ${PERMS} /etc/motd
+                       rm -f $T2
+               }
+	}
+	rm -f $T1 $T2
+}
+load_rc_config $name
+run_rc_command "$1"

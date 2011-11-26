@@ -1,0 +1,184 @@
+.\"
+.\" Copyright (c) 2008 The DragonFly Project.  All rights reserved.
+.\" 
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" 
+.\" $DragonFly: src/usr.sbin/vknetd/vknetd.8,v 1.3 2008/05/31 12:04:15 swildner Exp $
+.\"
+.Dd May 21, 2009
+.Dt VKNETD 8
+.Os
+.Sh NAME
+.Nm vknetd
+.Nd create a bridged network for (typically user-run) vkernels
+.Sh SYNOPSIS
+.Nm
+.Op Fl cdU
+.Op Fl b Ar bridgeN
+.Op Fl p Ar socket_path
+.Op Fl t Ar tapN
+.Op Ar address Ns / Ns Ar cidrbits
+.Sh DESCRIPTION
+The
+.Nm
+utility creates a virtualized bridged network suitable for vkernel use.
+The utility was created to simplify
+.Nm vkernel
+operations and to allow user-run
+vkernels to have access to a network.
+General use is to specify a large 10-dot network which multiple vkernels are
+then able to connect to, and backfeed the whole mess to a TAP interface.
+.Pp
+A
+.Nm vkernel
+would make use of the virtualized network by specifying
+.Fl I Ar /var/run/vknet
+instead of a
+.Xr tap 4
+interface.
+Any number of vkernels may connect to the virtual network.
+.Pp
+.Nm
+Implements a simple bridge for all entities connected to it.
+A cache
+of MAC addresses is built up (just like an ethernet switch does) and matching
+packets will be forwarded directly to the proper
+.Sq port
+(connected clients or TAP interface).
+Unknown MACs will be broadcast.
+.Pp
+The following options are available:
+.Bl -tag -width flag
+.It Fl c
+Connect into the bridge and monitor activity.
+This option currently only monitors broadcast packets.
+Packets with cached MACs are not monitored.
+.It Fl d
+Debug mode.
+Do not go into the background.
+.It Fl U
+Unsecure mode.
+Act as a pure bridge and do not try to secure the IP
+space from host visibility.
+This is typically used with the
+.Fl b
+option to directly bridge
+.Nm
+into the host rather than operating it as a separate subnet.
+All IP protocols will be allowed through and no address checking
+will be done.
+.Pp
+When this option is not specified
+.Nm
+runs in secure mode and only allowed through ICMP, UDP, and TCP,
+and only IP addresses within the space defined on the command line.
+.Nm
+was started.
+.It Fl b Ar bridgeN
+The
+.Xr tap 4
+interface
+will be bridged into the specified bridge.
+.It Fl p Ar socket_path
+Specify where to create the unix domain socket in the filesystem space.
+By default the socket is called
+.Pa /var/run/vknet .
+.It Fl t Ar tapN
+Specify a particular
+.Xr tap 4
+interface to use.
+If not specified,
+.Nm
+will search for an unused TAP interface.
+.It Ar address Ns / Ns Ar cidrbits
+When operating in secure mode (which is the default), a CIDR block must be
+specified.
+It is optional in unsecure mode.
+The
+.Ar address
+is the address you wish to assign to the TAP
+interface and will sit on both the host and virtual networks if not bridged.
+The
+.Ar cidrbits
+is the number of bits representing the virtual subnet.
+For example,
+10.1.0.1/24 places the TAP interface on 10.1.0.1 and gives you an 8 bit
+subnet capable of handling 254 hosts.
+An address of 0.0.0.0 is allowed as a special case in secure mode so that
+bootp (
+.Xr dhclient 8 )
+can get through.
+.El
+.Sh FILES
+.Bl -tag -width ".Pa /var/run/vknet" -compact
+.It Pa /dev/tap*
+TAP interface used to route packets from userland providers back into the
+real machine.
+If not otherwise specified an unused TAP interface will be selected.
+.It Pa /var/run/vknet
+Default socket
+.Nm
+sits on waiting for connections.
+.El
+.Sh EXAMPLES
+.Dl "vknetd 10.1.0.1/16"
+.Sh REQUIREMENTS
+.Nm
+requires that the
+.Nm if_tap
+and
+.Nm if_bridge
+modules be loaded.
+In addition, a
+.Dq vknet
+group must exist in
+.Pa /etc/groups .
+.Sh SEE ALSO
+.Xr vknet 1 ,
+.Xr bridge 4 ,
+.Xr tap 4 ,
+.Xr vke 4 ,
+.Xr vkernel 7 ,
+.Xr dhclient 8
+.Sh HISTORY
+The
+.Nm
+command was written by Matthew Dillon and first appeared in
+.Dx 1.13
+in May 2008.
+.Sh BUGS
+.Nm
+defaults to secure mode and will prevent IP spoofing, but the security
+does not yet handle ARP issues so ARP spoofing can be used to create a
+denial of service attack on the host network.
+.Pp
+.Nm
+does not currently implement a timeout for its MAC cache.

@@ -1,0 +1,232 @@
+.\"
+.\" Copyright (c) 2007
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd March 28, 2010
+.Dt KERNCONF 5
+.Os
+.Sh NAME
+.Nm kernconf
+.Nd kernel configuration file
+.Sh SYNOPSIS
+.Cd cpu ...
+.Cd device ...
+.Cd ident ...
+.Cd machine ...
+.Cd machine-arch ...
+.Cd makeoptions ...
+.Cd maxusers ...
+.Cd options ...
+.Cd platform ...
+.Cd pseudo-device ...
+.Sh DESCRIPTION
+This manual page describes the structure of the kernel configuration file.
+It is processed by
+.Xr config 8
+to create a build environment where a kernel may be built using
+.Xr make 1 .
+See
+.Xr build 7
+for information on how to build kernels.
+.Pp
+Each line starts with a keyword at the beginning of the line and is
+followed by additional parameters.
+Long input lines may be broken into shorter lines by starting the
+second and subsequent lines with a white space character.
+Numbers are specified using
+.Tn C Ns -style
+syntax.
+Blank lines are ignored.
+The
+.Sq #
+character is interpreted as a comment and is ignored along with everything
+that follows it on the same line.
+.Sh KEYWORDS
+The following keywords are recognized in a configuration file:
+.Pp
+.Bl -tag -width indent -compact
+.It Sy cpu Ar name
+This system is to run on the CPU type
+.Ar name .
+Legal types are, for
+.Sy i386 :
+.Sy I486_CPU
+(i486),
+.Sy I586_CPU
+.Tn ( Pentium ) ,
+and
+.Sy I686_CPU
+.Tn ( Pentium Pro ) ;
+for
+.Sy x86_64 :
+.Sy HAMMER_CPU
+.Tn ( x86-64 ) .
+More than one CPU type specification can appear in a configuration file.
+.Pp
+.It Sy device Ar name \
+Oo Sy at Ar bus Oc \
+Oo Sy port Ar num Oc \
+Oo Sy irq Ar num Oc \
+Oo Sy drq Ar num Oc \
+Oo Sy iomem Ar num Oc \
+Oo Sy iosiz Ar num Oc \
+Op Sy flags Ar num
+Configures support for device
+.Ar name .
+Additional parameters may be passed to specify
+.Tn I/O
+configuration settings (most often for
+.Xr isa 4
+devices):
+.Bl -tag -width ".Sy iomem"
+.It Sy at
+specifies a bus to which the device is attached.
+.It Sy port
+specifies the start address of
+.Tn I/O
+ports to be used by the device.
+.It Sy irq
+specifies the number of ports used by the device.
+.It Sy drq
+is the interrupt line number to be used.
+.It Sy iomem
+specifies the physical memory address used by the device.
+.It Sy iosiz
+specifies the physical memory size used by the device.
+.It Sy flags
+sets various flag bits for the device.
+.El
+.Pp
+.It Sy ident Ar string
+Sets the kernel identification string to
+.Ar string .
+.Pp
+.It Sy machine Ar name
+The system is to run on the machine type
+.Ar name .
+This is a legacy keyword, it is normally set to same value as
+.Sy machine_arch .
+.Pp
+.It Sy machine_arch Ar name
+The system is to run on the machine architecture
+.Ar name .
+The legal architectures are
+.Sy i386 ,
+and
+.Sy x86_64 .
+.Pp
+.It Sy makeoptions Ar name Ns Sy = Ns Ar value
+Defines a
+.Xr make 1
+macro
+.Ar name
+with the value
+.Ar value
+in the kernel Makefile.
+.Pp
+.It Sy maxusers Ar integer
+Set the
+.Va maxusers
+variable in the kernel.
+.Pp
+.It Sy options Ar name Ns Op Sy = Ns Ar value
+Sets the option
+.Ar name .
+Some options expect to be assigned a value, which may be an integer,
+a double-quoted word, a bare word, or an empty string
+.Pq Qq .
+Note that those are eventually handled by the C compiler, so the rules
+of that language apply.
+.\"For more information see the
+.\".Sx OPTIONS
+.\"section.
+.Pp
+.It Sy platform Ar name
+Sets the platform of this kernel to
+.Ar name .
+Legal platforms are
+.Sy pc32
+(32 bit
+.Tn Intel
+architecture),
+.Sy pc64
+(64 bit
+.Tn AMD
+architecture),
+.Sy vkernel
+(32 bit virtual kernel),
+and
+.Sy vkernel64
+(64 bit virtual kernel).
+.Pp
+.It Sy pseudo-device Ar name Op Ar N
+Includes support for the pseudo-device
+.Ar name .
+Some pseudo-devices can have multiple or
+.Ar N
+instances.
+.El
+.\".Sh OPTIONS
+.Sh FILES
+.Bl -tag -width ".Pa /sys/config/X86_64_GENERIC"
+.It Pa /sys/config/GENERIC
+default
+.Sy i386
+kernel configuration file
+.It Pa /sys/config/LINT
+kernel configuration file for checking all the sources,
+includes description of kernel configuration options
+.It Pa /sys/config/SOEKRIS
+kernel configuration file for the
+.Tn Soekris Engineering net5501
+board
+.It Pa /sys/config/VKERNEL
+default 32 bit
+.Xr vkernel 7
+kernel configuration file
+.It Pa /sys/config/VKERNEL64
+default 64 bit
+.Xr vkernel 7
+kernel configuration file
+.It Pa /sys/config/X86_64_GENERIC
+default
+.Sy x86_64
+kernel configuration file
+.El
+.Sh SEE ALSO
+.Xr make 1 ,
+.Xr build 7 ,
+.Xr vkernel 7 ,
+.Xr config 8
+.Sh HISTORY
+The
+.Nm
+manual page first appeared in
+.Dx 1.11 .

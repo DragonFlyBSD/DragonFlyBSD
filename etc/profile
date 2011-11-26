@@ -1,0 +1,25 @@
+# $FreeBSD: src/etc/profile,v 1.12.2.1 2000/07/31 20:13:26 rwatson Exp $
+# $DragonFly: src/etc/profile,v 1.4 2005/10/08 11:24:43 corecode Exp $
+#
+# System-wide .profile file for sh(1).
+#
+# Uncomment this to give you the default 4.2 behavior, where disk 
+# information is shown in K-Blocks
+# BLOCKSIZE=K; export BLOCKSIZE
+#
+# For the setting of languages and character sets please see
+# login.conf(5) and in particular the charset and lang options.
+# For full locales list check /usr/share/locale/*
+# You should also read the setlocale(3) man page for information
+# on how to achieve more precise control of locale settings.
+#
+# Read system messages
+# msgs -f
+# Allow terminal messages
+# mesg y
+
+# a safer version of rm that isn't as annoying as -i
+#
+alias rm='rm -I'
+# enable line editing
+set -o emacs

@@ -1,0 +1,8 @@
+# $NetBSD: KOI7.src,v 1.1 2006/04/08 14:15:48 tnozaki Exp $
+# $DragonFly: src/share/i18n/esdb/KOI/KOI7.src,v 1.1 2008/04/10 10:21:13 hasso Exp $
+
+NAME		"KOI7"
+ENCODING	"NONE"
+VARIABLE	""
+DEFCSID		"KOI7"		0
+INVALID		0x3F # ?

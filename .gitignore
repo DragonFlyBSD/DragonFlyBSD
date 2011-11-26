@@ -1,0 +1,16 @@
+*.[1-9].gz
+*.[psS]o
+*.a
+*.bak
+*.core
+*.diff
+*.o
+*.old
+*.orig
+*.patch
+*.rej
+*.swap
+*~
+.*.sw[po]
+.sw[po]
+cscope.*

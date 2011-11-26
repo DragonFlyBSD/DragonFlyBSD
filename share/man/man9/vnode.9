@@ -1,0 +1,167 @@
+.\" Copyright (c) 1996 Doug Rabson
+.\"
+.\" All rights reserved.
+.\"
+.\" This program is free software.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE DEVELOPERS ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE DEVELOPERS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man9/vnode.9,v 1.10.2.5 2001/12/17 11:30:19 ru Exp $
+.\"
+.Dd May 5, 2007
+.Dt VNODE 9
+.Os
+.Sh NAME
+.Nm vnode
+.Nd internal representation of a file, directory, or other VFS entity
+.Sh SYNOPSIS
+.In sys/param.h
+.In sys/vnode.h
+.Sh DESCRIPTION
+The vnode is the focus of all file activity in
+.Ux .
+The
+.Nm
+is described by
+.Vt "struct vnode" .
+There is a
+unique vnode allocated for each active file, each current directory,
+each mounted-on file, text file, and the root.
+.Pp
+Each vnode has numerous reference counts,
+.Fa v_sysref ,
+.Fa v_auxrefs ,
+.Fa v_opencount ,
+and
+.Fa v_writecount .
+.Pp
+.Fa v_sysref
+represents the number of primary references to the vnode.
+It is actually
+a structure which utilizes the SYSREF API and also manages allocation and
+deallocation of the vnode.
+Primary references keep a vnode ready for I/O and prevent it from being
+deactivated.
+Primary references are managed by
+.Xr vref 9
+and
+.Xr vrele 9 .
+.Pp
+.Fa v_auxrefs
+represents the number of auxiliary references to a vnode.
+Auxiliary references prevent a vnode from being reclaimed (if not already being
+reclaimed), reused for other purposes, or otherwise destroyed, but
+do not activate or deactivate the vnode.
+Auxiliary references are managed by
+.Xr vhold 9
+and
+.Xr vdrop 9 .
+.Pp
+.Fa v_opencount
+represents the number of discrete
+.Fn open
+calls made on the vnode (reading or writing).
+.Fa v_writecount
+represents the number of discrete
+.Fn open
+calls made on the vnode for the purpose of writing.
+This field will be a subset of
+.Fa v_opencount .
+These fields are managed primarily by calls to
+.Xr vn_open 9
+and
+.Xr vn_close 9 .
+.Pp
+A deactivated vnode or a vnode in an unknown state accessed from an
+Auxiliary data structure can be reactivated, referenced, and locked using
+.Xr vget 9
+and
+.Xr vput 9 .
+.Pp
+An actively referenced and possibly locked vnode must be passed
+to most kernel procedures taking a vnode as an argument.
+Most kernel procedures returning a vnode will return one that is actively
+referenced.
+.Pp
+Other commonly used members of the vnode structure are
+.Fa v_mount
+which points at the filesystem which owns the vnode,
+.Fa v_type
+which contains the type of object the vnode represents and
+.Fa v_data
+which is used by filesystems to store filesystem specific data with
+the vnode.
+The
+.Fa v_ops
+field is used by the
+.Dv VOP_*
+macros to call functions in the filesystem which implement the vnode's
+functionality.
+.Sh VNODE TYPES
+.Bl -tag -width ".Dv VSOCK"
+.It Dv VNON
+No type.
+.It Dv VREG
+A regular file; may be with or without VM object backing.
+If you want to make sure this get a backing object, call
+.Xr vfs_object_create 9 .
+.It Dv VDIR
+A directory.
+.It Dv VBLK
+A block device; may be with or without VM object backing.
+If you want to make sure this get a backing object, call
+.Xr vfs_object_create 9 .
+.It Dv VCHR
+A character device.
+.It Dv VLNK
+A symbolic link.
+.It Dv VSOCK
+A socket.
+Advisory locking won't work on this.
+.It Dv VFIFO
+A FIFO (named pipe).
+Advisory locking won't work on this.
+.It Dv VBAD
+An old style bad sector map.
+.El
+.Sh IMPLEMENTATION NOTES
+.Dv VFIFO
+uses the
+.Vt struct fileops
+from
+.Pa /sys/kern/sys_pipe.c .
+.Dv VSOCK
+uses the
+.Vt struct fileops
+from
+.Pa /sys/kern/sys_socket.c .
+Everything else uses the one from
+.Pa /sys/kern/vfs_vnops.c .
+.Pp
+The VFIFO/VSOCK code, which is why
+.Vt struct fileops
+is used at all, is an artifact of an incomplete integration of
+the VFS code into the kernel.
+.Sh SEE ALSO
+.Xr VFS 9
+.Sh AUTHORS
+This manual page was written by
+.An Doug Rabson .

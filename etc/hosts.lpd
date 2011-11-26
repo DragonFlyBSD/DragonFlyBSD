@@ -1,0 +1,5 @@
+# $FreeBSD: src/etc/hosts.lpd,v 1.4 1999/08/27 23:23:42 peter Exp $
+# $DragonFly: src/etc/hosts.lpd,v 1.2 2003/06/17 04:24:45 dillon Exp $
+#
+# See lpd(8)
+#machine.domain

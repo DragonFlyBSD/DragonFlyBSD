@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# Fixup kern.bootfile.  In a BOOT+ROOT setup the boot loader does not
+# understand that the boot partition will be mounted as /boot under root
+# in the actual system and sets up the kern.bootfile sysctl incorrectly.
+# This fixes up kern.bootfile.
+#
+
+# PROVIDE: fixbootfile
+# REQUIRE: mountcritlocal
+# BEFORE: sysctl
+
+. /etc/rc.subr
+
+name="fixbootfile"
+start_cmd="fixbootfile_start"
+stop_cmd=":"
+
+fixbootfile_start()
+{
+	case ${fixbootfile} in
+	[Nn][Oo])
+		;;
+	*)
+		bootfile=`sysctl -n kern.bootfile`
+		if [ -f "/boot$bootfile" ]; then
+			sysctl kern.bootfile="/boot$bootfile"
+		fi
+		;;
+	esac
+}
+
+load_rc_config $name
+run_rc_command "$1"

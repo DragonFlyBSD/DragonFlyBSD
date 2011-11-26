@@ -1,0 +1,313 @@
+.TH CRYPTSETUP "8" "" "cryptsetup" "Maintenance Commands"
+.SH NAME
+cryptsetup - setup cryptographic volumes for dm-crypt (including LUKS extension)
+.SH SYNOPSIS
+
+.B cryptsetup <options> <action> <action args>
+.SH DESCRIPTION
+.PP
+cryptsetup is used to conveniently setup dm-crypt managed device-mapper mappings.
+For basic (plain) dm-crypt mappings, there are four operations.
+.SH ACTIONS
+These strings are valid for \fB<action>\fR, followed by their \fB<action args>\fR:
+
+\fIcreate\fR <name> <device>
+.IP
+creates a mapping with <name> backed by device <device>.
+
+\fB<options>\fR can be [\-\-hash, \-\-cipher, \-\-verify-passphrase, \-\-key-file, \-\-key-size, \-\-offset, \-\-skip, \-\-readonly]
+.PP
+\fIremove\fR <name>
+.IP
+removes an existing mapping <name>.
+.PP
+\fIstatus\fR <name>
+.IP
+reports the status for the mapping <name>.
+.PP
+\fIresize\fR <name>
+.IP
+resizes an active mapping <name>.
+
+If \-\-size (in sectors) is not specified, the size of the underlying block device is used.
+.PP
+.br
+.SH LUKS EXTENSION
+
+LUKS, Linux Unified Key Setup, is a standard for hard disk encryption. It standardizes a partition header, as well as the format of the bulk data. LUKS can manage multiple passwords, that can be revoked effectively and that are protected against dictionary attacks with PBKDF2. 
+
+These are valid LUKS actions:
+
+\fIluksFormat\fR <device> [<key file>]
+.IP
+initializes a LUKS partition and sets the initial key, either via prompting or via <key file>.
+
+\fB<options>\fR can be [\-\-cipher, \-\-verify-passphrase, \-\-key-size, \-\-key-slot,
+\-\-key-file (takes precedence over optional second argument)].
+
+.PP
+\fIluksOpen\fR <device> <name>
+.IP
+opens the LUKS partition <device> and sets up a mapping <name> after successful verification of the supplied key material (either via key file by \-\-key-file, or via prompting).
+
+\fB<options>\fR can be [\-\-key-file, \-\-readonly].
+.PP
+\fIluksClose\fR <name>
+.IP
+identical to \fIremove\fR.
+.PP
+\fIluksSuspend\fR <name>
+.IP
+suspends active device (all IO operations are frozen) and wipes encryption key from kernel. Kernel version 2.6.19 or later is required.
+
+After that operation you have to use \fIluksResume\fR to reinstate encryption key (and resume device) or \fIluksClose\fR to remove mapped device.
+
+\fBWARNING:\fR never try to suspend device where is the cryptsetup binary itself.
+.PP
+\fIluksResume\fR <name>
+.IP
+Resumes suspended device and reinstates encryption key. You will need provide passphrase
+identical to \fIluksOpen\fR command (using prompting or key file).
+
+\fB<options>\fR can be [\-\-key-file]
+.PP
+\fIluksAddKey\fR <device> [<new key file>]
+.IP
+add a new key file/passphrase. An existing passphrase or key file (via \-\-key-file) must be supplied.
+The key file with the new material is supplied as a positional argument.
+
+\fB<options>\fR can be [\-\-key-file, \-\-key-slot].
+.PP
+\fIluksRemoveKey\fR <device> [<key file>] 
+.IP
+remove supplied key or key file from LUKS device
+.PP
+\fIluksKillSlot\fR <device> <key slot number>
+.IP
+wipe key with number <key slot> from LUKS device. A remaining passphrase or
+key file (via \-\-key-file) must be supplied.
+
+\fB<options>\fR can be [\-\-key-file].
+.PP
+\fIluksDelKey\fR <device> <key slot number>
+.IP
+identical to luksKillSlot, but deprecated action name.
+.PP
+\fIluksUUID\fR <device>
+.IP
+print UUID, if <device> has a LUKS header.
+.PP
+\fIisLuks\fR <device>
+.IP
+returns true, if <device> is a LUKS partition. Otherwise, false.
+.PP
+\fIluksDump\fR <device>
+.IP
+dumps the header information of a LUKS partition.
+.PP
+\fIluksHeaderBackup\fR <device> \-\-header-backup-file <file>
+.IP
+Stores binary backup of LUKS header and keyslot areas.
+
+\fBWARNING:\fR Please note that with this backup file (and old passphrase knowledge) you can decrypt data even if old passphrase was wiped from real device.
+
+Also note that anti-forensic splitter is not used during manipulation with backup file.
+.PP
+\fIluksHeaderRestore\fR <device> \-\-header-backup-file <file>
+.IP
+
+Restores binary backup of LUKS header and keyslot areas from specified file.
+
+\fBWARNING:\fR All the keyslot areas are overwritten, only active keyslots form backup file are available after issuing this command.
+
+This command allows restoring header if device do not contain LUKS header or if the master key size and data offset in LUKS header on device match the backup file.
+.PP
+
+For more information about LUKS, see \fBhttp://code.google.com/p/cryptsetup/wiki/Specification\fR
+
+.SH OPTIONS
+.TP
+.B "\-\-verbose, \-v"
+Print more verbose messages.
+.TP
+.B "\-\-debug"
+Run in debug mode with full diagnostic logs.
+.TP
+.B "\-\-hash, \-h"
+For \fIcreate\fR action specifies hash to use for password hashing.
+
+For \fIluksFormat\fR action specifies hash used in LUKS key setup scheme and volume key digest.
+
+\fBWARNING:\fR setting hash other than \fBsha1\fR causes LUKS device incompatible with older version of cryptsetup.
+
+The hash string is passed to libgcrypt, so all hashes accepted by gcrypt are supported.
+Default is set during compilation, compatible values with old version of cryptsetup are
+\fB"ripemd160"\fR for \fIcreate\fR action and \fB"sha1"\fR for \fIluksFormat\fR.
+
+Use \fIcryptsetup \-\-help\fR to show defaults.
+.TP
+.B "\-\-cipher, \-c"
+set cipher specification string.
+
+Default mode is configurable during compilation,
+you can see compiled-in default using \fIcryptsetup \-\-help\fR.
+If not changed, the default is for plain dm-crypt and LUKS mappings
+"aes-cbc-essiv:sha256".
+
+For pre-2.6.10 kernels, use "aes-plain" as they don't understand
+the new cipher spec strings. To use ESSIV, use "aes-cbc-essiv:sha256".
+
+For XTS mode, kernel version 2.6.24 or more recent is required.
+Use "aes-xts-plain" cipher specification and set key size to 256 (or 512) bits (see \-s option).
+.TP
+.B "\-\-verify-passphrase, \-y"
+query for passwords twice. Useful when creating a (regular) mapping for the first time, or when running \fIluksFormat\fR.
+.TP
+.B "\-\-key-file, \-d"
+use file as key material.
+
+With LUKS, key material supplied in key files via \-d are always used for existing passphrases,
+except in \fIluksFormat\fR action where \-d is equivalent to positional key file argument.
+If you want to set a new key via a key file, you have to use a positional arg to \fIluksAddKey\fR.
+
+If the key file is "-", stdin will be used. With the "-" key file reading will
+not stop when new line character is detected. See section \fBNOTES ON PASSWORD PROCESSING\fR for more information.
+.TP
+.B "\-\-master-key-file"
+Use pre-generated master key stored in file. For \fIluksFormat\fR it allows LUKS header reformatting with the same master key (if all other parameters are the same existing encrypted data remains intact).
+
+For \fIluksAddKey\fR it allows adding new passphrase with only master key knowledge.
+.TP
+.B "\-\-key-slot, \-S"
+For LUKS operations that add key material, this options allows to you specify which key slot is selected for the new key. This option can be used for \fIluksFormat\fR and \fIluksAddKey\fR.
+.TP
+.B "\-\-key-size, \-s"
+set key size in bits.
+
+Has to be a multiple of 8 bits. The key size is limited by the used cipher. See output of /proc/crypto for more information.
+Can be used for \fIcreate\fR or \fIluksFormat\fR, all other LUKS actions will use key-size specified by the LUKS header.
+Default is set during compilation, if not changed it is 256 bits.
+
+Use \fIcryptsetup \-\-help\fR to show defaults.
+
+For \fIluksOpen\fR this option specifies number of bits read from the key-file (default is exhaustive read from key-file).
+.TP
+.B "\-\-size, \-b"
+force the size of the underlying device in sectors.
+This option is only relevant for \fIcreate\fR and \fIresize\fR action.
+.TP
+.B "\-\-offset, \-o"
+start offset in the backend device.
+This option is only relevant for \fIcreate\fR action.
+.TP
+.B "\-\-skip, \-p"
+how many sectors of the encrypted data to skip at the beginning. This is different from the \-\-offset options with respect to IV calculations. Using \-\-offset will shift the IV calculation by the same negative amount. Hence, if \-\-offset \fIn\fR, sector \fIn\fR will be the first sector on the mapping with IV \fI0\fR. Using \-\-skip would have resulted in sector \fIn\fR being the first sector also, but with IV \fIn\fR.
+This option is only relevant for \fIcreate\fR action.
+.TP
+.B "\-\-readonly"
+set up a read-only mapping.
+.TP
+.B "\-\-iter-time, \-i"
+The number of milliseconds to spend with PBKDF2 password processing. This option is only relevant to the LUKS operations as \fIluksFormat\fR or \fIluksAddKey\fR.
+.TP
+.B "\-\-batch-mode, \-q"
+Do not ask for confirmation. Use with care! This option is only relevant for \fIluksFormat\fR, \fIluksAddKey\fR, \fIluksRemoveKey\fR or \fIluksKillSlot\fR.
+.TP
+.B "\-\-timeout, \-t"
+The number of seconds to wait before timeout. This option is relevant every time a password is asked, like \fIcreate\fR, \fIluksOpen\fR, \fIluksFormat\fR or \fIluksAddKey\fR. It has no effect if used in conjunction with \-\-key-file.
+.TP
+.B "\-\-tries, \-T"
+How often the input of the passphrase shall be retried. This option is relevant every time a password is asked, like \fIcreate\fR, \fIluksOpen\fR, \fIluksFormat\fR or \fIluksAddKey\fR. The default is 3 tries.
+.TP
+.B "\-\-align-payload=\fIvalue\fR"
+Align payload at a boundary of \fIvalue\fR 512-byte sectors. This option is relevant for \fIluksFormat\fR.  If your block device lives on a RAID, it is
+useful to align the filesystem at full stripe boundaries so it can take advantage of the RAID's geometry.  See for instance the sunit and swidth options
+in the mkfs.xfs manual page. By default, the payload is aligned at an 8 sector (4096 byte) boundary.
+.TP
+.B "\-\-version"
+Show the version.
+
+.SH NOTES ON PASSWORD PROCESSING
+\fIFrom a terminal\fR: Password processing is new-line sensitive, meaning the reading will stop after encountering \\n. It will process the read material (without newline) with the default hash or the hash given by \-\-hash. After hashing, it will be cropped to the key size given by \-s.
+
+\fIFrom stdin\fR: Reading will continue until EOF (so using e.g. /dev/random as stdin will not work), with the trailing newline stripped. After that the read data will be hashed with the default hash or the hash given by \-\-hash and the result will be cropped to the keysize given by \-s. If "plain" is used as an argument to the hash option, the input data will not be hashed.
+Instead, it will be zero padded (if shorter than the keysize) or truncated (if longer than the keysize) and used directly as the key. No warning will be given if the amount of data read from stdin is less than the keysize.
+
+\fIFrom a key file\fR: It will be cropped to the size given by \-s. If there is insufficient key material in the key file, cryptsetup will quit with an error.
+
+If \-\-key-file=- is used for reading the key from stdin, no trailing newline is stripped from the input. Without that option, cryptsetup strips trailing newlines from stdin input.
+.SH NOTES ON PASSWORD PROCESSING FOR LUKS
+LUKS uses PBKDF2 to protect against dictionary attacks (see RFC 2898).
+
+LUKS will always do an exhaustive password reading. Hence, password can not be read from /dev/random, /dev/zero or any other stream that does not terminate.
+
+For any password creation action (luksAddKey, or luksFormat), the user may specify how much the time the password processing should consume.
+Increasing the time will lead to a more secure password, but also will take luksOpen longer to complete. The default setting of one second is sufficient for good security.
+.SH INCOHERENT BEHAVIOUR FOR INVALID PASSWORDS/KEYS
+LUKS checks for a valid password or key when an encrypted partition is unlocked. Thus the luksOpen action fails with invalid password or key, contrary to the plain dm-crypt create action.
+
+Please also be sure that you are using the same keyboard and language setting as during device format.
+.SH NOTES ON SUPPORTED CIPHERS, MODES, HASHES AND KEY SIZES
+The available combinations of ciphers, modes, hashes and key sizes depend on kernel support. See /proc/crypto for a list of available options. You might need to load additional kernel crypto modules in order to get more options.
+
+For \-\-hash option all algorithms supported by gcrypt library are available.
+.SH NOTES ON PASSWORDS
+Mathematics can't be bribed. Make sure you keep your passwords safe. There are a few nice tricks for constructing a fallback, when suddenly out of (or after being) blue, your brain refuses to cooperate. These fallbacks are possible with LUKS, as it's only possible with LUKS to have multiple passwords.
+.SH AUTHORS
+cryptsetup is written by Christophe Saout <christophe@saout.de>
+.br
+LUKS extensions, and man page by Clemens Fruhwirth <clemens@endorphin.org>
+.SH "COMPATABILITY WITH OLD SUSE TWOFISH PARTITIONS"
+To read images created with SuSE Linux 9.2's loop_fish2 use \-\-cipher
+twofish-cbc-null \-s 256 \-h sha512, for images created with even
+older SuSE Linux use \-\-cipher twofish-cbc-null \-s 192 \-h
+ripemd160:20
+
+.SH DEPRECATED ACTIONS
+.PP
+\fIreload\fR <name> <device>
+.IP
+modifies an active mapping <name>. Same options as for
+create. 
+.B WARNING:
+Do not use this for LUKS devices, as the semantics
+are identical to the create action, which are totally incompatible
+with the LUKS key setup. 
+
+This action is deprected because it proved to be rarely useful.  It is
+uncommon to change the underlying device, key, or offset on the
+fly. In case, you really want to do this, you certainly know what you
+are doing and then you are probably better off with the swiss knive
+tool for device mapper, namely dmsetup. It provides you with the same
+functionality, see dmsetup reload.
+.PP
+\fIluksDelKey\fR <device> <key slot number>
+.IP
+identical to luksKillSlot, but deprecated action name. This option was
+renamed, as we introduced luksRemoveKey, a softer method for disabling
+password slots. To make a clear distinction that luksDelKey was more brutal than luksRemoveKey
+.PP
+\fI\-\-non-exclusive\fR
+.IP
+This option is ignored. Non-exclusive access to the same block device
+can cause data corruption thus this mode is no longer supported by cryptsetup.
+
+.SH "REPORTING BUGS"
+Report bugs to <dm-crypt@saout.de> or Issues section on LUKS website.
+Please attach output of failed command with added \-\-debug option.
+.SH COPYRIGHT
+Copyright \(co 2004 Christophe Saout
+.br
+Copyright \(co 2004-2006 Clemens Fruhwirth
+.br
+Copyright \(co 2009-2010 Red Hat, Inc.
+
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+.SH "SEE ALSO"
+
+dm-crypt website, \fBhttp://www.saout.de/misc/dm-crypt/\fR
+
+LUKS website, \fBhttp://code.google.com/p/cryptsetup/\fR
+
+dm-crypt TWiki, \fBhttp://www.saout.de/tikiwiki/tiki-index.php\fR

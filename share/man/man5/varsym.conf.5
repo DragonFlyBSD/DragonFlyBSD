@@ -1,0 +1,74 @@
+.\"
+.\" Copyright (c) 2007
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd May 11, 2007
+.Dt VARSYM.CONF 5
+.Os
+.Sh NAME
+.Nm varsym.conf
+.Nd set system-wide
+.Xr varsym 1
+variables
+.Sh SYNOPSIS
+.Pa /etc/varsym.conf
+.Sh DESCRIPTION
+The
+.Nm
+file specifies a list of variables that can then be used in variant symlinks.
+Each line has the format
+.Li var=data .
+Empty lines or lines beginning with a
+.Dq #
+are ignored.
+.Pp
+Processing
+.Nm
+is activated by setting
+.Va varsym_enable
+in
+.Pa /etc/rc.conf
+and setting the
+.Va vfs.varsym_enable
+sysctl.
+.Sh FILES
+.Bl -tag -width ".Pa /etc/varsym.conf" -compact
+.It Pa /etc/varsym.conf
+configuration file for specifying system-wide
+.Xr varsym 1
+variables
+.El
+.Sh SEE ALSO
+.Xr ln 1 ,
+.Xr varsym 1 ,
+.Xr rc.conf 5
+.Sh AUTHORS
+This manual page was written by
+.An Sascha Wildner .

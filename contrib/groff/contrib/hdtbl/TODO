@@ -1,0 +1,21 @@
+TODO
+----
+
+* Macro TOTC (Table Of Table Captions).
+
+* Automatic recognition of the number of columns.
+
+* Optional automatic calculation of the cell widths from the widths of the
+  first line of the cell content instead of the explicit specification with
+  the width argument.  This seems to be non-trivial without a preprocessor
+  or additional external calls via .sy or .pso.
+
+* Handling of pagebreaks in tables.
+
+* Floating text left and/or right from tables.
+
+* Converter hdtbl2html (awk, elisp, perl?); should be easy to write.
+
+* Support for nroff.
+
+* Support for -Thtml.

@@ -1,0 +1,190 @@
+.\"
+.\" Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd November 16, 2010
+.Dt UDEV_MONITOR 3
+.Os
+.Sh NAME
+.Nm udev_monitor_new ,
+.Nm udev_monitor_ref ,
+.Nm udev_monitor_unref ,
+.Nm udev_monitor_get_udev ,
+.Nm udev_monitor_get_fd ,
+.Nm udev_monitor_receive_device ,
+.Nm udev_monitor_enable_receiving ,
+.Nm udev_monitor_filter_add_match_subsystem_devtype ,
+.Nm udev_monitor_filter_add_match_expr ,
+.Nm udev_monitor_filter_add_match_property ,
+.Nm udev_monitor_filter_add_nomatch_expr ,
+.Nm udev_monitor_filter_add_nomatch_property ,
+.Nm udev_monitor_filter_add_match_regex ,
+.Nm udev_monitor_filter_add_nomatch_regex
+.Nd device event monitor functions
+.Sh LIBRARY
+.Lb libdevattr
+.Sh SYNOPSIS
+.In devattr.h
+.Ft struct udev_monitor *
+.Fn udev_monitor_new "struct udev *udev_ctx"
+.Ft struct udev_monitor *
+.Fn udev_monitor_ref "struct udev_monitor *udev_monitor"
+.Ft void
+.Fn udev_monitor_unref "struct udev_monitor *udev_monitor"
+.Ft struct udev *
+.Fn udev_monitor_get_udev "struct udev_monitor *udev_monitor"
+.Ft int
+.Fn udev_monitor_get_fd "struct udev_monitor *udev_monitor"
+.Ft struct udev_device *
+.Fn udev_monitor_receive_device "struct udev_monitor *udev_monitor"
+.Ft int
+.Fn udev_monitor_enable_receiving "struct udev_monitor *udev_monitor"
+.Ft int
+.Fn udev_monitor_filter_add_match_subsystem_devtype "struct udev_monitor *udev_monitor" "const char *subsystem" "const char *devtype"
+.Ft int
+.Fn udev_monitor_filter_add_match_expr "struct udev_monitor *udev_monitor" "const char *key" "char *expr"
+.Ft int
+.Fn udev_monitor_filter_add_match_property "struct udev_monitor *udev_monitor" "const char *key" "const char *expr"
+.Ft int
+.Fn udev_monitor_filter_add_nomatch_expr "struct udev_monitor *udev_monitor" "const char *key" "char *expr"
+.Ft int
+.Fn udev_monitor_filter_add_nomatch_property "struct udev_monitor *udev_monitor" "const char *key" "const char *expr"
+.Ft int
+.Fn udev_monitor_filter_add_match_regex "struct udev_monitor *udev_monitor" "const char *key" "char *expr"
+.Ft int
+.Fn udev_monitor_filter_add_nomatch_regex "struct udev_monitor *udev_monitor" "const char *key" "char *expr"
+.Sh DESCRIPTION
+The
+.Fn udev_monitor_new
+function creates a new udev_monitor object in the specified udev context
+.Fa udev_ctx .
+It returns
+.Dv NULL
+if no such object could be created.
+.Pp
+The
+.Fn udev_monitor_ref
+and
+.Fn udev_monitor_unref
+functions increase or decrease the reference count on a
+.Fa udev_monitor
+object respectively.
+When the reference count drops to 0, the object is automatically destroyed and
+any remaining event socket closed.
+The
+.Fn udev_monitor_ref
+function returns the same object that was passed in.
+.Pp
+The
+.Fn udev_monitor_get_udev
+function returns the udev context in which the
+.Fa udev_monitor
+object was created.
+.Pp
+The
+.Fn udev_monitor_enable_receiving
+function enables receiving event notifications matching the filters added by
+previous calls to
+.Fn udev_monitor_filter_* .
+The function returns -1 if an error occurs.
+.Pp
+The
+.Fn udev_monitor_receive_device
+function reads a udev_device, once the monitor has been enabled for receiving.
+This call will block until a device is available.
+It returns
+.Dv NULL
+if a read error occurs.
+.Pp
+The
+.Fn udev_monitor_get_fd
+returns the raw file descriptor on which events are notified after a call to
+.Fn udev_monitor_enable_receiving .
+This file descriptor can then be used in conjunction with
+.Xr poll 2
+or
+.Xr kqueue 2 .
+The
+.Fn udev_monitor_receive_device
+call must be used to read from the descriptor.
+The function returns -1 if the socket is not connected.
+.Pp
+The
+.Fn udev_monitor_filter_add_match_subsystem_devtype
+function adds a filter that matches the given
+.Fa subsystem
+and/or
+.Fa devtype .
+If
+.Fa subsystem
+or
+.Fa devtype
+is
+.Dv NULL ,
+that argument is ignored.
+The function returns 0 in case of success and a negative value if an error
+occurred.
+NOTE: Currently devtype matching is not implemented.
+.Pp
+The
+.Fn udev_monitor_filter_add_match_expr ,
+.Fn udev_monitor_filter_add_match_property ,
+.Fn udev_monitor_filter_add_nomatch_expr
+and
+.Fn udev_monitor_filter_add_nomatch_property
+functions add a filter to match or not to match, respectively, devices with the
+specified
+.Fa key
+and value
+.Fa expr .
+The
+.Fa expr
+can contain wildcards.
+On error, these functions return a negative value and 0 if no error occurred.
+.Pp
+The
+.Fn udev_monitor_filter_add_match_regex ,
+and
+.Fn udev_monitor_filter_add_nomatch_regex
+functions add a filter to match or not to match, respectively, devices with the
+specified
+.Fa key
+and value
+.Fa expr .
+The
+.Fa expr
+can contain regular expressions according to
+.Xr regex 3 .
+On error, these functions return a negative value and 0 if no error occurred.
+.Sh SEE ALSO
+.Xr devattr 3 ,
+.Xr udev 3 ,
+.Xr udev_device 3 ,
+.Xr udev_enumerate 3 ,
+.Xr udevd 8

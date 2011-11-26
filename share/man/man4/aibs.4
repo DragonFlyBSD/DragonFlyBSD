@@ -1,0 +1,237 @@
+.\"	$OpenBSD: aibs.4,v 1.4 2009/07/30 06:30:45 jmc Exp $
+.\"
+.\" Copyright (c) 2009 Constantine A. Murenin <cnst+dfly@bugmail.mojo.ru>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd February 9, 2010
+.Dt AIBS 4
+.Os
+.Sh NAME
+.Nm aibs
+.Nd "ASUSTeK AI Booster ACPI ATK0110 voltage, temperature and fan sensor"
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device acpi"
+.Cd "device aibs"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following lines in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+acpi_load="YES"
+aibs_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for the voltage, temperature and fan sensors
+available through the
+.Tn ATK0110
+.Tn ASOC
+.Tn ACPI
+device
+on
+.Tn ASUSTeK
+motherboards.
+The number of sensors of each type,
+as well as the description of each sensor,
+varies according to the motherboard.
+.Pp
+The driver supports an arbitrary set of sensors,
+provides descriptions regarding what each sensor is used for,
+and reports whether each sensor is within the specifications
+as defined by the motherboard manufacturer through
+.Tn ACPI .
+.Pp
+The
+.Nm
+driver supports sensor states as follows:
+.Bl -bullet
+.It
+Temperature sensors can have a state of
+.Dv OK ,
+.Dv WARN ,
+.Dv CRIT
+or
+.Dv UNKNOWN ;
+fan and voltage sensors can have a state of
+.Dv OK
+or
+.Dv WARN
+only.
+.It
+Temperature sensors that have a reading of 0
+are marked
+.Dv invalid
+and their state is set to
+.Dv UNKNOWN ,
+whereas all other sensors are always assumed valid.
+.It
+Temperature sensors have two upper limits
+.Dv ( WARN
+and
+.Dv CRIT ) ,
+fan sensors may have either only the lower limit,
+or, depending on the
+.Tn DSDT ,
+one lower and one upper limit,
+and voltage sensors always have a lower and an upper limit.
+.El
+.Pp
+Sensor values are made available through the
+.Dv HW_SENSORS
+.Xr sysctl 3
+interface,
+and can be monitored with the
+.Xr systat 1
+.Ar sensors
+display,
+.Xr sensorsd 8
+and
+.Xr sysctl 8
+.Ar hw.sensors .
+For example, on an Asus Stricker Extreme motherboard:
+.Bd -literal -offset indent
+$ sysctl hw.sensors.aibs0
+hw.sensors.aibs0.temp0=31.00 degC (CPU Temperature), OK
+hw.sensors.aibs0.temp1=43.00 degC (MB Temperature), OK
+hw.sensors.aibs0.fan0=2490 RPM (CPU FAN Speed), OK
+hw.sensors.aibs0.fan1=0 RPM (CHASSIS FAN Speed), WARNING
+hw.sensors.aibs0.fan2=0 RPM (OPT1 FAN Speed), WARNING
+hw.sensors.aibs0.fan3=0 RPM (OPT2 FAN Speed), WARNING
+hw.sensors.aibs0.fan4=0 RPM (OPT3 FAN Speed), WARNING
+hw.sensors.aibs0.fan5=0 RPM (OPT4 FAN Speed), WARNING
+hw.sensors.aibs0.fan6=0 RPM (OPT5 FAN Speed), WARNING
+hw.sensors.aibs0.fan7=0 RPM (PWR FAN Speed), WARNING
+hw.sensors.aibs0.volt0=1.26 VDC (Vcore Voltage), OK
+hw.sensors.aibs0.volt1=3.25 VDC ( +3.3 Voltage), OK
+hw.sensors.aibs0.volt2=4.95 VDC ( +5.0 Voltage), OK
+hw.sensors.aibs0.volt3=11.78 VDC (+12.0 Voltage), OK
+hw.sensors.aibs0.volt4=1.23 VDC (1.2VHT Voltage), OK
+hw.sensors.aibs0.volt5=1.50 VDC (SB CORE Voltage), OK
+hw.sensors.aibs0.volt6=1.25 VDC (CPU VTT Voltage), OK
+hw.sensors.aibs0.volt7=0.93 VDC (DDR2 TERM Voltage), OK
+hw.sensors.aibs0.volt8=1.23 VDC (NB CORE Voltage), OK
+hw.sensors.aibs0.volt9=1.87 VDC (MEMORY Voltage), OK
+.Ed
+.Pp
+Generally, sensors provided by the
+.Nm
+driver may also be supported by a variety of other drivers,
+such as
+.Xr lm 4
+or
+.Xr it 4 .
+The precise collection of
+.Nm
+sensors is comprised of the sensors
+specifically utilised in the motherboard
+design, which may be supported through
+a combination of one or more physical hardware monitoring chips.
+.Pp
+The
+.Nm
+driver, however, provides the following advantages
+when compared to the native hardware monitoring drivers:
+.Bl -bullet
+.It
+Sensor values from
+.Nm
+are expected to be more reliable.
+For example, voltage sensors in many hardware monitoring chips
+can only sense voltage from 0 to 2 or 4 volts, and the excessive
+voltage is removed by the resistors, which may vary with the motherboard
+and with the voltage that is being sensed.
+In
+.Nm ,
+the required resistor factors are provided by
+the motherboard manufacturer through
+.Tn ACPI ;
+in the native drivers, the resistor factors
+are encoded into the driver based on the chip manufacturer's recommendations.
+In essence, sensor values from
+.Nm
+are very likely to be identical to the readings from the
+Hardware Monitor screen in the BIOS.
+.It
+Sensor descriptions from
+.Nm
+are more likely to match the markings on the motherboard.
+.It
+Sensor status is supported by
+.Nm .
+The status is reported based on the acceptable range of values
+for each individual sensor as suggested by the motherboard manufacturer.
+For example, the threshold for the CPU temperature sensor is likely
+to be significantly higher than that for the chassis temperature sensor.
+.It
+Support for newer chips in
+.Nm .
+Newer chips may miss a native driver,
+but should be supported through
+.Nm
+regardless.
+.El
+.Pp
+As a result, sensor readings from the actual
+native hardware monitoring drivers
+are redundant when
+.Nm
+is present, and
+may be ignored as appropriate.
+Whereas on
+.Ox
+the native drivers have to be specifically disabled should
+their presence be judged unnecessary,
+on
+.Dx
+the
+.Xr lm 4
+and
+.Xr it 4
+are not probed provided that
+.Xr acpi 4
+is configured and the system potentially supports
+the hardware monitoring chip through
+.Tn ACPI .
+.Sh SEE ALSO
+.Xr systat 1 ,
+.Xr sysctl 3 ,
+.Xr acpi 4 ,
+.Xr intro 4 ,
+.Xr sensorsd 8 ,
+.Xr sysctl 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Ox 4.7
+and
+.Dx 2.5 .
+.Sh AUTHORS
+The
+.Nm
+driver was written for
+.Ox
+and
+.Dx
+by
+.An Constantine A. Murenin Aq http://cnst.su/ ,
+Raouf Boutaba Research Group,
+David R. Cheriton School of Computer Science,
+University of Waterloo.

@@ -1,0 +1,6 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/getopts2.0,v 1.1 2008/08/27 20:26:34 stefanf Exp $
+set - -ax
+getopts ax option
+set -C
+getopts ax option
+echo $option

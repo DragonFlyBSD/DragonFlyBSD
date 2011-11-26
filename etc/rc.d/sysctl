@@ -1,0 +1,55 @@
+#!/bin/sh
+#
+# $NetBSD: sysctl,v 1.12 2002/04/29 12:10:23 lukem Exp $
+# $FreeBSD: src/etc/rc.d/sysctl,v 1.12 2003/04/24 08:20:47 mtm Exp $
+# $DragonFly: src/etc/rc.d/sysctl,v 1.5 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: sysctl
+# REQUIRE: root
+# BEFORE:  DAEMON
+
+. /etc/rc.subr
+
+name="sysctl"
+stop_cmd=":"
+start_cmd="DragonFly_start"
+extra_commands="reload lastload"
+reload_cmd="DragonFly_start"
+lastload_cmd="DragonFly_start last"
+
+DragonFly_start()
+{
+	#
+	# Read in /etc/sysctl.conf and set things accordingly
+	#
+	if [ -f /etc/sysctl.conf ]; then
+		while read var comments
+		do
+			case ${var} in
+			\#*|'')
+				;;
+			*)
+				mib=${var%=*}
+				val=${var#*=}
+
+				if current_value=`${SYSCTL} -n ${mib} 2>/dev/null`; then
+					case ${current_value} in
+					${val})
+						;;
+					*)
+						sysctl ${var}
+						;;
+					esac
+				elif [ "$1" = "last" ]; then
+					warn "sysctl ${mib} does not exist."
+				fi
+				;;
+			esac
+		done < /etc/sysctl.conf
+	fi
+}
+
+
+load_rc_config $name
+run_rc_command "$1"

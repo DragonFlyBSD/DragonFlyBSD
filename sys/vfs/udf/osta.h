@@ -1,0 +1,29 @@
+/*
+ * Prototypes for the OSTA functions
+ *
+ * $FreeBSD: src/sys/fs/udf/osta.h,v 1.2 2003/11/05 06:55:23 scottl Exp $
+ * $DragonFly: src/sys/vfs/udf/osta.h,v 1.1 2004/03/12 22:38:15 joerg Exp $
+ */
+
+#ifndef UNIX
+#define	UNIX
+#endif
+
+#ifndef MAXLEN
+#define	MAXLEN	255
+#endif
+
+/***********************************************************************
+ * The following two typedef's are to remove compiler dependancies.
+ * byte needs to be unsigned 8-bit, and unicode_t needs to be
+ * unsigned 16-bit.
+ */
+typedef unsigned short unicode_t;
+typedef unsigned char byte;
+
+int udf_UncompressUnicode(int, byte *, unicode_t *);
+int udf_UncompressUnicodeByte(int, byte *, byte *);
+int udf_CompressUnicode(int, int, unicode_t *, byte *);
+unsigned short udf_cksum(unsigned char *, int);
+unsigned short udf_unicode_cksum(unsigned short *, int);
+int UDFTransName(unicode_t *, unicode_t *, int);

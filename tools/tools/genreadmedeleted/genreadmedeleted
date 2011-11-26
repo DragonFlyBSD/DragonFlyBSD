@@ -1,0 +1,59 @@
+#!/bin/sh
+
+# $DragonFly: src/tools/tools/genreadmedeleted/genreadmedeleted,v 1.2 2006/09/27 10:24:15 corecode Exp $
+
+if [ $# -lt 2 -o $# -gt 3 ]
+then
+	echo "$0 <origdir> <trim'ddir> [readmefile]" >&2
+	echo "    readmefile defaults to trim'ddir/README.DELETED" >&2
+	echo "    you can use '-' as readmefile to force output to stdout" >&2
+	exit 1
+fi
+
+origdir=`realpath $1`/; shift
+trimdir=`realpath $1`/; shift
+readme=${1:-$trimdir/README.DELETED}
+
+trimdir() {
+	local curdir=$1
+	local isdir
+	cd "$origdir$curdir"
+	set -- .* *
+	for f
+	do
+		case "$f" in
+		.|..)
+			continue
+			;;
+		esac
+
+		if [ -d "$f" ]
+		then
+			isdir=/
+		else
+			isdir=
+		fi
+
+		if [ ! -e "$trimdir$curdir$f" ]
+		then
+			printf '%s%s\n' "$curdir$f" "$isdir"
+			continue
+		fi
+
+		case "$isdir" in
+		/)
+			(trimdir "$curdir$f/")
+			;;
+		esac
+	done
+}
+
+case "$readme" in
+-)
+	;;
+*)
+	exec > $readme
+	;;
+esac
+
+trimdir ""

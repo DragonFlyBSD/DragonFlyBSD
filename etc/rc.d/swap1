@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# $NetBSD: swap1,v 1.8 2002/03/24 15:52:41 lukem Exp $
+# $FreeBSD: src/etc/rc.d/swap1,v 1.3 2002/09/06 16:18:05 gordon Exp $
+# $DragonFly: src/etc/rc.d/swap1,v 1.5 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: localswap
+# REQUIRE: savecore
+# BEFORE:  SERVERS
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="swap1"
+start_cmd='df_swap1_start'
+stop_cmd=':'
+
+#		Add all block-type swap devices; these might be necessary
+#		during disk checks.
+#
+swap1_start()
+{
+	if ! checkyesno no_swap; then
+		swapctl -A -t blk
+	fi
+}
+
+#		Remove all block-type swap devices
+#
+swap1_stop()
+{
+	if checkyesno swapoff || [ -n "$rc_force" ]; then
+		echo "Removing block-type swap devices"
+		swapctl -U -t blk
+	fi
+}
+
+df_swap1_start()
+{
+	if [ `${SYSCTL_N} vm.swap_enabled` = 0 ]; then
+		return ${RC_CONFIGURED}
+	else
+		swapon -a && return ${RC_CONFIGURED}
+	fi
+	return ${RC_FAILED}
+}
+
+
+load_rc_config swap
+run_rc_command "$1"

@@ -1,0 +1,77 @@
+.\" This source code is a product of Sun Microsystems, Inc. and is provided
+.\" for unrestricted use provided that this legend is included on all tape
+.\" media and as a part of the software program in whole or part.  Users
+.\" may copy or modify this source code without charge, but are not authorized
+.\" to license or distribute it to anyone else except as part of a product or
+.\" program developed by the user.
+.\"
+.\" THIS PROGRAM CONTAINS SOURCE CODE COPYRIGHTED BY SUN MICROSYSTEMS, INC.
+.\" SUN MICROSYSTEMS, INC., MAKES NO REPRESENTATIONS ABOUT THE SUITABLITY
+.\" OF SUCH SOURCE CODE FOR ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT
+.\" EXPRESS OR IMPLIED WARRANTY OF ANY KIND.  SUN MICROSYSTEMS, INC. DISCLAIMS
+.\" ALL WARRANTIES WITH REGARD TO SUCH SOURCE CODE, INCLUDING ALL IMPLIED
+.\" WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  IN
+.\" NO EVENT SHALL SUN MICROSYSTEMS, INC. BE LIABLE FOR ANY SPECIAL, INDIRECT,
+.\" INCIDENTAL, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
+.\" FROM USE OF SUCH SOURCE CODE, REGARDLESS OF THE THEORY OF LIABILITY.
+.\"
+.\" This source code is provided with no support and without any obligation on
+.\" the part of Sun Microsystems, Inc. to assist in its use, correction,
+.\" modification or enhancement.
+.\"
+.\" SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
+.\" INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY THIS
+.\" SOURCE CODE OR ANY PART THEREOF.
+.\"
+.\" Sun Microsystems, Inc.
+.\" 2550 Garcia Avenue
+.\" Mountain View, California 94043
+.\"
+.\" Copyright (c) 1991 Sun Microsystems, Inc.
+.\"
+.\" $FreeBSD: release/8.1.0/lib/libc/gen/dlopen.3 205979 2010-03-31 13:51:31Z gahr $
+.\"
+.Dd April 28, 2011
+.Dt DLERROR 3
+.Os
+.Sh NAME
+.Nm dlerror
+.Nd retrieve dynamic linker error messages
+.Sh LIBRARY
+This function is not in a library.
+It is included in every dynamically linked program automatically.
+.Sh SYNOPSIS
+.In dlfcn.h
+.Ft char *
+.Fn dlerror "void"
+.Sh DESCRIPTION
+The
+.Fn dlerror
+function
+returns a null-terminated character string describing the last error that
+occurred during a call to
+.Fn dlopen ,
+.Fn dladdr ,
+.Fn dlinfo ,
+.Fn dlsym ,
+.Fn dlvsym ,
+or
+.Fn dlclose .
+If no such error has occurred,
+.Fn dlerror
+returns a null pointer.
+At each call to
+.Fn dlerror ,
+the error indication is reset.
+Thus in the case of two calls
+to
+.Fn dlerror ,
+where the second call follows the first immediately, the second call
+will always return a null pointer.
+.Sh SEE ALSO
+.Xr rtld 1 ,
+.Xr dlclose 3 ,
+.Xr dlfcn 3 ,
+.Xr dlopen 3 ,
+.Xr dlsym 3 ,
+.Xr dlvsym 3

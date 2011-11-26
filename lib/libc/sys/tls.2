@@ -1,0 +1,169 @@
+.\" Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by David Xu <davidxu@freebsd.org> and Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/lib/libc/sys/tls.2,v 1.11 2008/05/02 02:05:04 swildner Exp $
+.\"
+.Dd February 21, 2005
+.Dt TLS 2
+.Os
+.Sh NAME
+.Nm set_tls_area ,
+.Nm get_tls_area
+.Nd kernel TLS (thread local storage) support
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/tls.h
+.Ft int
+.Fn set_tls_area "int which" "struct tls_info *info" "size_t infosize"
+.Ft int
+.Fn get_tls_area "int which" "struct tls_info *info" "size_t infosize"
+.Sh DESCRIPTION
+The
+.Fn set_tls_area
+system call creates an entry for the TLS facility
+.Fa which
+representing thread local storage as specified by the
+.Fa info
+structure.  A descriptor representing the facility is returned, or -1 if
+an error occurred.  The facility may be cleared by specifying a NULL pointer
+and an infosize of 0.
+The
+.Fn get_tls_area
+system call retrieves the requested TLS facility.  A descriptor representing
+the facility is returned, or -1 if an error occurred.  If you simply want the
+descriptor you may specify a NULL pointer and an infosize of 0.
+.Pp
+The returned descriptor and the TLS mechanism is machine-dependent.  On IA32
+three global segment descriptors are supported  (0, 1, and 2) and the %gs
+load value is returned.
+.Pp
+The
+.Fa tls_info
+structure passed to
+.Fn set_tls_area
+should first be zerod (to remain compatible with future extensions)
+and then initialized.
+.Bd -literal
+struct tls_info {
+        void	*base;		/* base address of TLS area */
+        int	size;		/* size of TLS area in bytes */
+};
+.Ed
+.Pp
+The actual implementation of the area is machine-dependent.  If the kernel
+is unable to accommodate the supplied size it may create a larger area.
+If the kernel is unable to accommodate the supplied base address an error
+will be returned.
+.Sh RETURN VALUES
+A return value of 0 is returned on success, -1 on error.
+.Sh EXAMPLE
+.Bd -literal -compact
+
+/*
+ * Pseudo example showing how the TLS system calls work on IA32.
+ */
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <sys/tls.h>
+
+int X;
+
+static int getdata(int offset);
+
+int
+main(int ac, char **av)
+{
+    int i;
+    int gs;
+    struct tls_info info;
+
+    info.base = &X;
+    info.size = sizeof(X);
+    if ((gs = set_tls_area(0, &info, sizeof(info))) < 0) {
+        perror("setarea");
+        exit(1);
+    }
+    printf("gs = %04x\en", gs);
+    __asm __volatile("mov %0,%%gs" : : "g" (gs) );
+
+    if (get_tls_area(0, &info, sizeof(info)) < 0) {
+        perror("getarea");
+        exit(1);
+    }
+    printf("%p/%d\en", info.base, info.size);
+
+    X = 1;
+    printf("should be 1: %d\en", getdata(0));
+    X = 2;
+    printf("should be 2: %d\en", getdata(0));
+
+    printf("this should fault:\en");
+    fflush(stdout);
+    getdata(4);
+
+    return(0);
+}
+
+static int
+getdata(int offset)
+{
+    int rv;
+    __asm __volatile("movl %%gs:(%0),%%eax; movl %%eax,%1" : "+r" (offset) : "m"
+ (rv) : "ax");
+    return (rv);
+}
+
+.Ed
+.Sh ERRORS
+.Bl -tag -width Er
+.It Bq Er ERANGE
+The specified facility index,
+.Fa which ,
+is not supported.
+.It Bq Er EINVAL
+An invalid parameter has been specified.
+.It Bq Er ENOENT
+(get_tls_area) The specified facility has not been initialized with
+.Fn sys_set_tls_area .
+.El
+.Sh SEE ALSO
+.Xr umtx 2
+.Sh HISTORY
+The
+.Fn set_tls_area ,
+and
+.Fn get_tls_area
+function calls first appeared in
+.Dx 1.1 .

@@ -1,0 +1,111 @@
+#!/bin/csh
+#
+# $DragonFly: src/bin/cpdup/scripts/do_remote_host,v 1.2 2006/09/21 00:18:13 dillon Exp $
+
+source params
+
+if ( "$argv" == "" ) then
+    echo "Specify host mounted in $backup_nfs (e.g. 'apollo'), and level."
+    echo "Level 0 - full backup, do not use hardlink trick"
+    echo "Level 1 - full backup, use hardlink trick but verify each file"
+    echo "Level 2 - full backup, use hardlink trick and stat shortcut"
+    echo "./do_remote_host <host> <level> > $remote_path/mirrors/<host>.log"
+    exit 1
+endif
+
+set host = "$argv[1]"
+set level = "$argv[2]"
+
+if ( ! -d $backup_nfs/$host ) then
+    echo "Host not found in $backup_nfs"
+    exit 1
+endif
+if ( ! -d $backup_path/mirrors/$host ) then
+    echo "No backup found for $host"
+    exit 1
+endif
+
+# Figure out the source directory
+#
+set source = `readlink $backup_path/mirrors/$host`
+if ( "$source" == "" ) then
+    echo "No backup found for $host at $backup_path/mirrors/$host"
+    echo "or it was not a softlink"
+    exit 1
+endif
+
+# Figure out the hardlink optimized side directory on
+# the target.
+#
+
+if ( $level != 0 ) then
+    set hlbase = `ssh $remote_host -n "readlink ${remote_path}/mirrors/$host"`
+    if ( "$hlbase" == "" ) then
+	echo "Missing softlink at ${remote_host}:${remote_path}/mirrors/${host}"
+	echo "cannot proceed.  Perhaps you did not run a level 0 with"
+	echo "the do_remote script to create the hardlink base and softlink?"
+	exit 1
+    endif
+
+    if ( "$hlbase" == "$source" ) then
+	echo "SUCCEEDED - NO NEW BACKUP SINCE LAST TIME"
+	exit 0
+    endif
+endif
+
+# Figure out the target path and add prefixes
+#
+set basename = $source
+set target = ${remote_host}:${remote_path}/mirrors/${source}
+set source = $backup_path/mirrors/${source}
+set hlbase = ${remote_path}/mirrors/${hlbase}
+
+echo "---------- OFFSITE BACKUP OF $source ---------"
+echo "SOURCE $source"
+echo "HLBASE $hlbase"
+echo "TARGET $target"
+
+# Do the actual backup
+#
+
+set failed = 0
+
+switch($level)
+case 0:
+    echo "cpdup -i0 -s0 -I $source $target"
+    cpdup -i0 -s0 -I $source $target
+    if ( $status != 0 ) then
+	set failed = 1
+    endif
+    breaksw
+case 1:
+    echo "cpdup -f -i0 -s0 -I -H $hlbase $source $target"
+    cpdup -f -i0 -s0 -I -H $hlbase $source $target
+    if ( $status != 0 ) then
+	set failed = 1
+    endif
+    breaksw
+case 2:
+    echo "cpdup -i0 -s0 -I -H $hlbase $source $target"
+    cpdup -i0 -s0 -I -H $hlbase $source $target
+    if ( $status != 0 ) then
+	set failed = 1
+    endif
+    breaksw
+default:
+    echo "UNKNOWN BACKUP LEVEL, USE ONLY 0-2"
+    set failed = 1
+    breaksw
+endsw
+
+if ( $failed == 0 ) then
+    ssh $remote_host -n "rm -f ${remote_path}/mirrors/$host; ln -s $basename ${remote_path}/mirrors/$host"
+    sync
+    echo "SUCCEEDED"
+    exit 0
+else
+    sync
+    echo "FAILED"
+    exit 1
+endif
+

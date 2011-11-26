@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+# $FreeBSD: src/etc/rc.d/dumpon,v 1.1 2002/06/13 22:14:36 gordon Exp $
+# $DragonFly: src/etc/rc.d/dumpon,v 1.3 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: dumpon
+# REQUIRE: initrandom
+# BEFORE: disks savecore
+
+. /etc/rc.subr
+
+name="dumpon"
+start_cmd="dumpon_start"
+stop_cmd=":"
+
+dumpon_start()
+{
+	# Enable dumpdev so that savecore can see it. Enable it
+	# early so a crash early in the boot process can be caught.
+	#
+	case ${dumpdev} in
+	[Nn][Oo] | '')
+		;;
+	*)
+		/sbin/dumpon -v ${dumpdev}
+		;;
+	esac
+}
+
+load_rc_config $name
+run_rc_command "$1"

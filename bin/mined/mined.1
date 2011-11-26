@@ -1,0 +1,150 @@
+.\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+.\"
+.\" This manual page is derived from software contributed to The
+.\" DragonFly Project by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/bin/mined/mined.1,v 1.8 2007/07/30 02:09:22 swildner Exp $
+.\"
+.Dd March 15, 2005
+.Dt MINED 1
+.Os
+.Sh NAME
+.Nm mined
+.Nd emergency text editor
+.Sh SYNOPSIS
+.Nm
+.Op Ar file
+.Sh DESCRIPTION
+The
+.Nm
+utility is a simple text editor primarily designed for use when a
+system is booted single-user and has no
+.Pa /usr
+(and thus no access to
+.Xr vi 1 ) .
+Simple help can be obtained by hitting the F1 key while in the editor.
+CTRL+W writes out the file and CTRL+X exits the editor.
+.Sh KEY BINDINGS
+.Bl -tag -width "Right arrow" -compact -offset indent
+.It F1
+HELP
+.It F2
+File status
+.It F3
+Forward search
+.It F4
+Global replace
+.It Shift+F3
+Backwards search
+.It Shift+F4
+Line replace
+.It Up arrow
+Move up one line
+.It Down arrow
+Move down one line
+.It Left arrow
+Move left one character
+.It Right arrow
+Move right one character
+.It Home
+File top
+.It End
+File bottom
+.It Page Up
+Scroll one page up
+.It Page Down
+Scroll one page down
+.It Esc
+Repeat last cmd # times
+.It CTRL+A
+Start of line
+.It CTRL+B
+Word backward
+.It CTRL+C
+Save from marked location to current cursor location
+.It CTRL+D
+Reverse scroll
+.It CTRL+E
+End of line
+.It CTRL+F
+Word forward
+.It CTRL+G
+Insert a file at cursor
+.It CTRL+K
+Delete from marked location to current cursor location
+.It CTRL+L
+Erase and redraw screen
+.It CTRL+N
+Delete next word
+.It CTRL+P
+Delete previous word
+.It CTRL+Q
+Insert the contents of the save file into new file
+.It CTRL+S
+Run shell
+.It CTRL+T
+Delete to end of line
+.It CTRL+U
+Forward scroll
+.It CTRL+V
+Visit another file
+.It CTRL+W
+Write current file
+.It CTRL+X
+Exit
+.It CTRL+Y
+Insert the contents of the save file at cursor
+.It CTRL+\e\\&
+Abort current operation
+.It CTRL+@
+Set mark
+.It CTRL+^
+Screen top
+.It CTRL+_
+Screen bottom
+.It CTRL+]
+Goto line #
+.El
+.Sh SEE ALSO
+.Xr ed 1 ,
+.Xr ee 1 ,
+.Xr vi 1
+.Sh CAVEATS
+The terminal type is hardwired to either an xterm or cons25 (video console).
+The editor understands stty
+rows and columns but is otherwise meant to be fairly minimal in scope.
+.Sh HISTORY
+The
+.Nm
+utility first appeared in Minix.
+It was brought into PicoBSD for a
+time, and some work was done on it, then later brought into
+.Dx
+where some additional usability work was done on it.

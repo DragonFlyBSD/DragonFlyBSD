@@ -1,0 +1,223 @@
+.\"
+.\" Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd July 11, 2010
+.Dt UDEV_ENUMERATE 3
+.Os
+.Sh NAME
+.Nm udev_enumerate_new ,
+.Nm udev_enumerate_ref ,
+.Nm udev_enumerate_unref ,
+.Nm udev_enumerate_get_udev ,
+.Nm udev_enumerate_scan_devices ,
+.Nm udev_enumerate_get_array ,
+.Nm udev_enumerate_get_list_entry ,
+.Nm udev_list_entry_get_next ,
+.Nm udev_list_entry_foreach ,
+.Nm udev_list_entry_get_dictionary ,
+.Nm udev_list_entry_get_device ,
+.Nm udev_enumerate_add_match_subsystem ,
+.Nm udev_enumerate_add_nomatch_subsystem ,
+.Nm udev_enumerate_add_match_expr ,
+.Nm udev_enumerate_add_match_property ,
+.Nm udev_enumerate_add_nomatch_expr ,
+.Nm udev_enumerate_add_nomatch_property ,
+.Nm udev_enumerate_add_match_regex ,
+.Nm udev_enumerate_add_nomatch_regex
+.Nd device listing functions
+.Sh LIBRARY
+.Lb libdevattr
+.Sh SYNOPSIS
+.In devattr.h
+.Ft struct udev_enumerate *
+.Fn udev_enumerate_new "struct udev *udev_ctx"
+.Ft struct udev_enumerate *
+.Fn udev_enumerate_ref "struct udev *udev_ctx"
+.Ft void
+.Fn udev_enumerate_unref "struct udev *udev_ctx"
+.Ft struct udev *
+.Fn udev_enumerate_get_udev "struct udev *udev_ctx"
+.Ft int
+.Fn udev_enumerate_scan_devices "struct udev *udev_ctx"
+.Ft prop_array_t
+.Fn udev_enumerate_get_array "struct udev_enumerate *udev_enum"
+.Ft struct udev_list_entry *
+.Fn udev_enumerate_get_list_entry "struct udev_enumerate *udev_enum"
+.Ft struct udev_list_entry *
+.Fn udev_list_entry_get_next "struct udev_list_entry *list_entry"
+.Fn udev_list_entry_foreach "struct udev_list_entry *list_entry" "struct udev_list_entry *first_entry"
+.Ft prop_dictionary_t
+.Fn udev_list_entry_get_dictionary "struct udev_list_entry *list_entry"
+.Ft struct udev_device *
+.Fn udev_list_entry_get_device "struct udev_list_entry *list_entry"
+.Ft int
+.Fn udev_enumerate_add_match_subsystem "struct udev_enumerate *udev_enum" "const char *subsystem"
+.Ft int
+.Fn udev_enumerate_add_nomatch_subsystem "struct udev_enumerate *udev_enum" "const char *subsystem"
+.Ft int
+.Fn udev_enumerate_add_match_expr "struct udev_enumerate *udev_enum" "const char *key" "char *expr"
+.Ft int
+.Fn udev_enumerate_add_match_property "struct udev_enumerate *udev_enum" "const char *key" "const char *property"
+.Ft int
+.Fn udev_enumerate_add_nomatch_expr "struct udev_enumerate *udev_enum" "const char *key" "char *expr"
+.Ft int
+.Fn udev_enumerate_add_nomatch_property "struct udev_enumerate *udev_enum" "const char *key" "const char *property"
+.Ft int
+.Fn udev_enumerate_add_match_regex "struct udev_enumerate *udev_enum" "const char *key" "char *expr"
+.Ft int
+.Fn udev_enumerate_add_nomatch_regex "struct udev_enumerate *udev_enum" "const char *key" "char *expr"
+.Sh DESCRIPTION
+The
+.Fn udev_enumerate_new
+function creates a new udev_enumerate object in the specified udev context
+.Fa udev_ctx .
+It returns
+.Dv NULL
+if no such object could be created.
+.Pp
+The
+.Fn udev_enumerate_ref
+and
+.Fn udev_enumerate_unref
+functions increase or decrease the reference count on a
+.Fa udev_enumerate
+object respectively.
+When the reference count drops to 0, the object is automatically destroyed.
+The
+.Fn udev_enumerate_ref
+function returns the same object that was passed in.
+.Pp
+The
+.Fn udev_enumerate_get_udev
+function returns the udev context in which the
+.Fa udev_enumerate
+object was created.
+.Pp
+The
+.Fn udev_enumerate_scan_devices
+function retrieves the set of devices matching the set of expressions and
+properties specified with previous calls to
+.Fn udev_enumerate_add_match_*
+and
+.Fn udev_enumerate_add_nomatch_* .
+This function returns -1 in case of failure.
+.Pp
+The
+.Fn udev_enumerate_get_array
+function returns the raw
+.Xr prop_array 3
+array containing the whole set of devices retrieved by
+.Fn udev_enumerate_scan_devices .
+.Pp
+The
+.Fn udev_enumerate_get_list_entry
+function returns the first list entry of the specified
+.Fa udev_enumerate
+context or
+.Dv NULL
+if the set is empty.
+The
+.Fn udev_list_entry_get_next
+returns the next list element after
+.Fa list_entry
+or
+.Dv NULL
+if the current element was the last.
+The
+.Fn udev_list_entry_foreach
+is a convenient macro behaving as a for loop that will iterate the whole set
+starting at the list element specified by
+.Fa first_entry
+and setting
+.Fa list_entry
+to the current element.
+.Pp
+The
+.Fn udev_list_entry_get_device
+function returns the
+.Fa udev_device
+associated to the current list entry or
+.Dv NULL
+if no device is associated.
+.Pp
+The
+.Fn udev_list_entry_get_dictionary
+function returns the raw
+.Xr prop_dictionary 3
+dictionary associated to the list entry or
+.Dv NULL
+if no dictionary is associated.
+.Pp
+The
+.Fn udev_enumerate_add_match_subsystem
+and
+.Fn udev_enumerate_add_nomatch_subsystem
+functions add a filter to match or not to match, respectively, devices with the
+specified
+.Fa subsystem .
+These functions return a negative value if an error occurred and 0 if no error
+occurred.
+.Pp
+The
+.Fn udev_enumerate_add_match_expr ,
+.Fn udev_enumerate_add_match_property ,
+.Fn udev_enumerate_add_nomatch_expr
+and
+.Fn udev_enumerate_add_nomatch_property
+functions add a filter to match or not to match, respectively, devices with the
+specified
+.Fa key
+and value
+.Fa expr .
+The
+.Fa expr
+can contain wildcards.
+On error, these functions return a negative value and 0 if no error occurred.
+.Pp
+The
+.Fn udev_enumerate_add_match_regex ,
+and
+.Fn udev_enumerate_add_nomatch_regex
+functions add a filter to match or not to match, respectively, devices with the
+specified
+.Fa key
+and value
+.Fa expr .
+The
+.Fa expr
+can contain regular expressions according to
+.Xr regex 3 .
+On error, these functions return a negative value and 0 if no error occurred.
+.Sh SEE ALSO
+.Xr devattr 3 ,
+.Xr udev 3 ,
+.Xr udev_device 3 ,
+.Xr udev_monitor 3 ,
+.Xr udevd 8

@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# $DragonFly: src/etc/rc.d/varsym,v 1.2 2005/11/19 21:47:32 swildner Exp $
+#
+
+# PROVIDE: varsym
+# REQUIRE: mountcritremote
+
+. /etc/rc.subr
+
+name=varsym
+rcvar='varsym_enable'
+required_files="/etc/varsym.conf"
+start_cmd="varsym_start"
+stop_cmd=":"
+
+varsym_start()
+{
+	if [ -f /etc/varsym.conf ]; then
+        while read sym
+                do
+                        case ${sym} in
+                        \#*|' ')
+                                ;;
+                        *)
+                        varsym -s ${sym}
+                        esac
+                done < /etc/varsym.conf
+        fi
+
+}
+
+load_rc_config $name
+run_rc_command "$1"
+

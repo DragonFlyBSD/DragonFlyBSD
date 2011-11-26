@@ -1,0 +1,15 @@
+# Makefile.modules - build the modules (executed from the modules: target
+# in Makefile).
+#
+.if defined(MODULES_OVERRIDE)
+SUBDIR=${MODULES_OVERRIDE}
+.else
+.if ${MACHINE_PLATFORM} != "vkernel" && ${MACHINE_PLATFORM} != "vkernel64"
+SUBDIR=bus
+.endif
+SUBDIR+=crypto emulation dev gnu kern net netbt netgraph netproto vfs
+SUBDIR+=libiconv
+.endif
+
+.include <bsd.subdir.mk>
+

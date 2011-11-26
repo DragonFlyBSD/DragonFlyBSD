@@ -1,0 +1,8 @@
+# $NetBSD: UTF.src,v 1.1 2003/06/27 08:40:59 tshiozak Exp $
+# $DragonFly: src/share/i18n/esdb/UTF/UTF.src,v 1.2 2008/04/10 10:21:13 hasso Exp $
+
+NAME		"UTF-x"
+ENCODING	"UTF-mod"
+VARIABLE	"UTF-var"
+DEFCSID		"UCS"		0
+INVALID		0x3F	# '?'

@@ -1,0 +1,78 @@
+.\"	$NetBSD: wbsio.4,v 1.1 2010/02/21 05:16:29 cnst Exp $
+.\"	$OpenBSD: wbsio.4,v 1.2 2008/02/17 16:48:47 jmc Exp $
+.\"
+.\" Copyright (c) 2008 Mark Kettenis <kettenis@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd March 8, 2010
+.Dt WBSIO 4
+.Os
+.Sh NAME
+.Nm wbsio
+.Nd Winbond LPC Super I/O
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device isa"
+.Cd "device wbsio0 at isa? port 0x2e"
+.Cd "device wbsio1 at isa? port 0x4e"
+.Cd "device lm"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following lines in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+lm_load="YES"
+wbsio_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for the Winbond LPC Super I/O ICs.
+Only the hardware monitoring function is currently supported.
+.Pp
+Support for the hardware monitor function is provided through the
+.Xr lm 4
+driver.
+.Sh SEE ALSO
+.Xr intro 4 ,
+.Xr isa 4 ,
+.Xr lm 4
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Ox 4.3 .
+.Nx
+support was added in
+.Nx 6.0 .
+.Dx
+support was added in
+.Dx 2.5 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+driver was written by
+.An Mark Kettenis Aq kettenis@openbsd.org .
+It was adapted to
+.Nx
+and
+.Dx
+by
+.An Constantine A. Murenin ,
+University of Waterloo.

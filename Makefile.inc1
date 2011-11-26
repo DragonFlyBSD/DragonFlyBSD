@@ -1,0 +1,979 @@
+#
+# $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
+#
+# Build-time options are documented in make.conf(5).
+#
+# The intended user-driven targets are:
+#
+# buildworld  - rebuild *everything*, including glue to help do upgrades
+# quickworld  - skip the glue and do a depend+build on the meat
+# realquickworld - skip the glue and depend stages and just build the meat
+# crossworld  - only build the glue (particularly the cross-build environment)
+# installworld- install everything built by "buildworld"
+# most        - build user commands, no libraries or include files
+# installmost - install user commands, no libraries or include files
+#
+# Standard targets (not defined here) are documented in the makefiles in
+# /usr/share/mk.  These include:
+#		obj depend all install clean cleandepend cleanobj
+
+# Put initial settings here.
+SUBDIR=
+
+# We must do share/info early so that installation of info `dir'
+# entries works correctly.  Do it first since it is less likely to
+# grow dependencies on include and lib than vice versa.
+.if exists(${.CURDIR}/share/info)
+SUBDIR+= share/info
+.endif
+
+# We must do include and lib early so that the perl *.ph generation
+# works correctly as it uses the header files installed by this.
+.if exists(${.CURDIR}/include)
+SUBDIR+= include
+.endif
+.if exists(${.CURDIR}/lib)
+SUBDIR+= lib
+.endif
+# This exists simply to ensure that the obj dir hierarchy is
+# intact for nrelease, allowing the nrelease Makefile's to 
+# reference ${.OBJDIR}.
+#
+.if exists(${.CURDIR}/nrelease)
+SUBDIR+= nrelease
+.endif
+
+.if exists(${.CURDIR}/bin)
+SUBDIR+= bin
+.endif
+.if exists(${.CURDIR}/games) && !defined(NO_GAMES)
+SUBDIR+= games
+.endif
+.if exists(${.CURDIR}/gnu)
+SUBDIR+= gnu
+.endif
+.if exists(${.CURDIR}/libexec)
+SUBDIR+= libexec
+.endif
+.if exists(${.CURDIR}/sbin)
+SUBDIR+= sbin
+.endif
+.if exists(${.CURDIR}/secure) && !defined(NO_CRYPT)
+SUBDIR+= secure
+.endif
+.if exists(${.CURDIR}/share) && !defined(NO_SHARE)
+SUBDIR+= share
+.endif
+.if exists(${.CURDIR}/sys)
+SUBDIR+= sys
+.endif
+.if exists(${.CURDIR}/usr.bin)
+SUBDIR+= usr.bin
+.endif
+.if exists(${.CURDIR}/usr.sbin)
+SUBDIR+= usr.sbin
+.endif
+
+.if exists(${.CURDIR}/etc)
+SUBDIR+= etc
+.endif
+
+# These are last, since it is nice to at least get the base system
+# rebuilt before you do them.
+.if defined(LOCAL_DIRS)
+.for _DIR in ${LOCAL_DIRS}
+.if exists(${.CURDIR}/${_DIR}) & exists(${.CURDIR}/${_DIR}/Makefile)
+SUBDIR+= ${_DIR}
+.endif
+.endfor
+.endif
+
+.if defined(SUBDIR_OVERRIDE)
+SUBDIR=		${SUBDIR_OVERRIDE}
+.endif
+
+.if defined(NOCLEANDIR)
+CLEANDIR=	clean cleandepend
+.else
+CLEANDIR=	cleandir
+.endif
+
+.if defined(NO_CLEAN)
+NOCLEAN=	# defined
+.endif
+
+# Object directory base in primary make.  Note that when we rerun make
+# from inside this file we change MAKEOBJDIRPREFIX to the appropriate
+# subdirectory because the rest of the build system needs it that way.
+# The original object directory base is saved in OBJTREE.
+#
+MAKEOBJDIRPREFIX?=	/usr/obj
+OBJTREE?=		${MAKEOBJDIRPREFIX}
+
+# Used for stage installs and pathing
+#
+DESTDIRBASE?=		${OBJTREE}${.CURDIR}
+
+# Remove DESTDIR from MAKEFLAGS.  It is present in the environment
+# anyhow, and we need to be able to override it for stage installs
+.MAKEFLAGS:=	${.MAKEFLAGS:NDESTDIR=*}
+
+# This sets the compiler we use to build the world/kernel with
+WORLD_CCVER?=	gcc44
+WORLD_BINUTILSVER?=	binutils221
+
+# temporary until everybody has converted to x86_64
+.if ${MACHINE_ARCH} == "amd64"
+MACHINE_ARCH=	x86_64
+.makeenv MACHINE_ARCH
+.endif
+
+TARGET_ARCH?=	${MACHINE_ARCH}
+.if ${TARGET_ARCH} == ${MACHINE_ARCH}
+TARGET?=	${MACHINE}
+.else
+TARGET?=	${TARGET_ARCH}
+.endif
+.if make(buildworld)
+BUILD_ARCH!=	sysctl -n hw.machine_arch
+
+# temporary until everybody has converted to x86_64
+.if ${BUILD_ARCH} == "amd64"
+BUILD_ARCH=	x86_64
+.endif
+
+.if ${MACHINE_ARCH} != ${BUILD_ARCH}
+.error To cross-build, set TARGET_ARCH.
+.endif
+.endif
+
+# Backwards compatibility with older make's or older sys.mk's.  make
+# is expected to define MACHINE_PLATFORM.
+#
+.if !defined(MACHINE_PLATFORM)
+MACHINE_PLATFORM= pc32
+.endif
+
+# XXX this is ugly and we need to come up with a nicer solution
+.if !defined(TARGET_PLATFORM)
+.if ${TARGET_ARCH} == "i386"
+TARGET_PLATFORM= pc32
+.elif ${TARGET_ARCH} == "x86_64"
+TARGET_PLATFORM= pc64
+.else
+.error Unknown target architecture.
+.endif
+.endif
+
+THREAD_LIB?=	thread_xu
+.if ${THREAD_LIB} == "c_r"
+.if defined(NO_LIBC_R)
+.error libc_r is chosen as the default thread library, but NO_LIBC_R is defined
+.endif
+.endif
+
+# BTOOLS	(Natively built) All non-cross-development tools that the
+#		main build needs.  This includes things like 'mkdir' and 'rm'.
+#		We will not use the native system's exec path once we start
+#		on WORLD.  (bootstrap-tools and build-tools or BTOOLS)
+#
+# CTOOLS	(Natively built) Cross development tools which are specific
+#		to the target architecture.
+#
+# WORLD		(Cross built) Our ultimate buildworld, using only BTOOLS and
+#		CTOOLS.
+#
+# MACHINE_PLATFORM Platform Architecture we are building on
+# MACHINE	Machine Architecture (usually the same as MACHINE_ARCH)
+# MACHINE_ARCH	Cpu Architecture we are building on
+#
+# TARGET_PLATFORM Platform Architecture we are building for
+# TARGET	Machine Architecture we are building for
+# TARGET_ARCH	Cpu Architecture we are building for
+#
+BTOOLSDEST=	${DESTDIRBASE}/btools_${MACHINE_ARCH}
+CTOOLSDEST=	${DESTDIRBASE}/ctools_${MACHINE_ARCH}_${TARGET_ARCH}
+WORLDDEST=	${DESTDIRBASE}/world_${TARGET_ARCH}
+
+# The bootstrap-tools path is used by the bootstrap-tools, build-tools, and
+# cross-tools stages to augment the existing command path to access newer
+# versions of certain utilities such as 'patch' that the cross-tools stage
+# might expect.
+#
+BTOOLSPATH= ${BTOOLSDEST}/usr/sbin:${BTOOLSDEST}/usr/bin:${BTOOLSDEST}/bin:${BTOOLSDEST}/usr/games
+
+# The strict temporary command path contains all binaries required
+# by the buildworld system after the cross-tools stage.
+#
+STRICTTMPPATH=	${CTOOLSDEST}/usr/sbin:${CTOOLSDEST}/usr/bin:${CTOOLSDEST}/bin:${CTOOLSDEST}/usr/games:${BTOOLSDEST}/usr/sbin:${BTOOLSDEST}/usr/bin:${BTOOLSDEST}/bin:${BTOOLSDEST}/usr/games:/usr/pkg/bin
+
+TMPDIR?=	/tmp
+TMPPID!=	echo $$$$
+
+#
+# Building a world goes through the following stages
+#
+# 1. bootstrap-tool stage [BMAKE]
+#	This stage is responsible for creating programs that
+#	are needed for backward compatibility reasons. They
+#	are not built as cross-tools.
+# 2. build-tool stage [TMAKE]
+#	This stage is responsible for creating the object
+#	tree and building any tools that are needed during
+#	the build process.
+# 3. cross-tool stage [XMAKE]
+#	This stage is responsible for creating any tools that
+#	are needed for cross-builds. A cross-compiler is one
+#	of them.
+# 4. world stage [WMAKE]
+#	This stage actually builds the world.
+# 5. install stage (optional) [IMAKE]
+#	This stage installs a previously built world.
+#
+
+# bootstrap-tool stage
+#
+BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
+		OBJTREE=${OBJTREE} \
+		DESTDIR=${BTOOLSDEST} \
+		PATH=${BTOOLSPATH}:${PATH} \
+		INSTALL="sh ${.CURDIR}/tools/install.sh"
+
+BMAKE=		${BMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
+		-DNOINFO -DNOMAN -DNOPIC -DNOPROFILE -DNOSHARED \
+		-DNO_WERROR -DNO_NLS
+
+# build-tool stage
+#
+TMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
+		OBJTREE=${OBJTREE} \
+		DESTDIR= \
+		PATH=${BTOOLSPATH}:${PATH} \
+		INSTALL="sh ${.CURDIR}/tools/install.sh"
+
+TMAKE=		${TMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
+		-DNO_FORTRAN -DNOSHARED
+
+# cross-tool stage
+#
+# note: TOOLS_PREFIX points to the obj root holding the cross
+#	compiler binaries, while USRDATA_PREFIX points to the obj root 
+#	holding the target environment (and also determines where cross-built
+#	libraries, crt*.o, and include files are installed).
+#
+XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
+		OBJTREE=${OBJTREE} \
+		DESTDIR=${CTOOLSDEST} \
+		INSTALL="sh ${.CURDIR}/tools/install.sh" \
+		TOOLS_PREFIX=${CTOOLSDEST} \
+		USRDATA_PREFIX=${WORLDDEST} \
+		PATH=${BTOOLSPATH}:${PATH}
+
+XMAKE=		${XMAKEENV} ${MAKE} -f Makefile.inc1 -DNO_FORTRAN -DNO_GDB \
+		-DBOOTSTRAPPING -DNOSHARED
+
+# world stage, note the strict path and note that TOOLS_PREFIX is left
+# unset and USRDATA_PREFIX (which defaults to TOOLS_PREFIX) is set to empty,
+# which is primarily for the compiler so it targets / (e.g. /usr/<blah>)
+# for both binary and library paths, even though it is being compiled to
+# WORLDDEST.  None of the programs in the world stage are ever actually
+# executed during the buildworld/installworld.
+#
+CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
+		OBJTREE=${OBJTREE} \
+		MACHINE_ARCH=${TARGET_ARCH} \
+		MACHINE=${TARGET} \
+		MACHINE_PLATFORM=${TARGET_PLATFORM} \
+		OBJFORMAT_PATH=${CTOOLSDEST} \
+		HOST_CCVER=${HOST_CCVER} \
+		CCVER=${WORLD_CCVER} \
+		BINUTILSVER=${WORLD_BINUTILSVER}
+
+WMAKEENV=	${CROSSENV} \
+		DESTDIR=${WORLDDEST} \
+		INSTALL="sh ${.CURDIR}/tools/install.sh" \
+		PATH=${STRICTTMPPATH}
+
+WMAKE=		${WMAKEENV} ${MAKE} -f Makefile.inc1
+
+# install stage
+#
+IMAKEENV=	${CROSSENV} \
+		PATH=${STRICTTMPPATH}
+IMAKE=		${IMAKEENV} ${MAKE} -f Makefile.inc1
+
+# kernel stage
+#
+KMAKEENV=	${WMAKEENV}
+
+# buildworld
+#
+# Attempt to rebuild the entire system, with reasonable chance of
+# success, regardless of how old your existing system is.
+#
+_worldtmp: _cleantmp _mtreetmp
+.ORDER: _cleantmp _mtreetmp
+
+_cleantmp:
+	@echo
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Rebuilding the temporary build tree"
+	@echo "--------------------------------------------------------------"
+.if !defined(NOCLEAN)
+	rm -rf ${BTOOLSDEST} ${CTOOLSDEST} ${WORLDDEST}
+.else
+	# XXX - These two can depend on any header file.
+	rm -f ${OBJTREE}${.CURDIR}/usr.bin/kdump/ioctl.c
+	rm -f ${OBJTREE}${.CURDIR}/usr.bin/truss/ioctl.c
+.endif
+
+_mtreetmp:
+	mkdir -p ${DESTDIRBASE} ${BTOOLSDEST} ${CTOOLSDEST} ${WORLDDEST}
+.for _dir in ${WORLDDEST} ${BTOOLSDEST} ${CTOOLSDEST}
+	mtree -deU -f ${.CURDIR}/etc/mtree/BSD.root.dist	\
+		-p ${_dir}/  > /dev/null
+	mtree -deU -f ${.CURDIR}/etc/mtree/BSD.usr.dist		\
+		-p ${_dir}/usr > /dev/null
+.endfor
+	mtree -deU -f ${.CURDIR}/etc/mtree/BSD.include.dist	\
+		-p ${WORLDDEST}/usr/include > /dev/null
+	${LN} -sf ${.CURDIR}/sys ${WORLDDEST}
+
+_bootstrap-tools:
+	@echo
+	@echo "--------------------------------------------------------------"
+	@echo ">>> stage 1: bootstrap tools"
+	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${BMAKE} bootstrap-tools
+_cleanobj:
+	@echo
+	@echo "--------------------------------------------------------------"
+	@echo ">>> stage 2a: cleaning up the object tree"
+	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${WMAKE} ${CLEANDIR:S/^/par-/}
+_obj:
+	@echo
+	@echo "--------------------------------------------------------------"
+	@echo ">>> stage 2b: rebuilding the object tree"
+	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${WMAKE} par-obj
+_build-tools:
+	@echo
+	@echo "--------------------------------------------------------------"
+	@echo ">>> stage 2c: build tools"
+	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${TMAKE} build-tools
+_cross-tools:
+	@echo
+	@echo "--------------------------------------------------------------"
+	@echo ">>> stage 3: cross tools"
+	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${XMAKE} cross-tools
+_includes:
+	@echo
+	@echo "--------------------------------------------------------------"
+	@echo ">>> stage 4a: populating ${WORLDDEST}/usr/include"
+	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${WMAKE} SHARED=symlinks par-includes
+_libraries:
+	@echo
+	@echo "--------------------------------------------------------------"
+	@echo ">>> stage 4b: building libraries"
+	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${WMAKE} -DNOHTML -DNOINFO -DNOMAN -DNOFSCHG libraries
+_depend:
+	@echo
+	@echo "--------------------------------------------------------------"
+	@echo ">>> stage 4c: make dependencies"
+	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${WMAKE} par-depend
+everything:
+	@echo
+	@echo "--------------------------------------------------------------"
+	@echo ">>> stage 4d: building everything.."
+	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${WMAKE} all
+
+# note: buildworld no longer depends on _cleanobj because we rm -rf the
+# entire object tree and built the bootstrap tools in a different location.
+#
+# buildworld	- build everything from scratch
+# quickworld	- skip the bootstrap, build, and cross-build steps
+# realquickworld - skip the bootstrap, build, crossbuild, and depend step.
+#
+# note: we include _obj in realquickworld to prevent accidental creation
+# of files in /usr/src.
+
+WMAKE_TGTS=
+.if !defined(SUBDIR_OVERRIDE)
+WMAKE_TGTS+=	_worldtmp _bootstrap-tools
+.endif
+WMAKE_TGTS+=	_obj _build-tools
+.if !defined(SUBDIR_OVERRIDE)
+WMAKE_TGTS+=	_cross-tools
+.endif
+WMAKE_TGTS+=	_includes _libraries _depend everything
+
+buildworld: ${WMAKE_TGTS}
+
+quickworld: _mtreetmp _obj _includes _libraries _depend everything
+
+realquickworld: _mtreetmp _obj _includes _libraries everything
+
+crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
+
+.ORDER: ${WMAKE_TGTS}
+.ORDER: _obj _includes
+.ORDER: _mtreetmp _obj
+
+#
+# installcheck
+#
+# Checks to be sure system is ready for installworld
+#
+installcheck:
+.if !defined(NO_SENDMAIL)
+	@pw usershow smmsp || (echo "You may need to run 'make preupgrade' first"; exit 1)
+	@pw groupshow smmsp || (echo "You may need to run 'make preupgrade' first"; exit 1)
+.endif
+	@pw usershow _pflogd || (echo "You may need to run 'make preupgrade' first"; exit 1)
+	@pw groupshow authpf || (echo "You may need to run 'make preupgrade' first"; exit 1)
+	@pw groupshow _pflogd || (echo "You may need to run 'make preupgrade' first"; exit 1)
+.if !defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/"
+	@case `uname -r` in 1.2*|1.3-*|1.3.*|1.4.*|1.5.0-*|1.5.1-*|1.5.2-*|1.5.3-*) echo "You must upgrade your kernel to at least 1.5.4 and reboot before you can safely installworld, due to libc/system call ABI changes" ; exit 1;; esac
+.endif
+#
+# installworld
+#
+# Installs everything compiled by a 'buildworld'.
+#
+installworld: installcheck
+	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
+	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
+
+#
+# reinstall
+#
+# If you have a build server, you can NFS mount the source and obj directories
+# and do a 'make reinstall' on the *client* to install new binaries from the
+# most recent server build.
+#
+reinstall:
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Making hierarchy"
+	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${MAKE} -f Makefile.inc1 hierarchy
+	@echo
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Installing everything.."
+	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${MAKE} -f Makefile.inc1 install
+
+#
+# buildkernel, nativekernel, quickkernel, and installkernel
+#
+# Which kernels to build and/or install is specified by setting
+# KERNCONF. If not defined a GENERIC kernel is built/installed.
+# Only the existing (depending TARGET) config files are used
+# for building kernels and only the first of these is designated
+# as the one being installed.
+#
+# You can specify INSTALLSTRIPPED=1 if you wish the installed 
+# kernel and modules to be stripped of its debug info (required
+# symbols are left intact).  You can specify INSTALLSTRIPPEDMODULES
+# if you only want to strip the modules of their debug info.  These
+# only apply if you have DEBUG=-g in your kernel config or make line.
+#
+# Note that we have to use TARGET instead of TARGET_ARCH when
+# we're in kernel-land. Since only TARGET_ARCH is (expected) to
+# be set to cross-build, we have to make sure TARGET is set
+# properly.
+
+.if !defined(KERNCONF) && defined(KERNEL)
+KERNCONF=	${KERNEL}
+KERNWARN=	yes
+.else
+# XXX makeshift fix to build the right kernel for the (target) architecture
+# We should configure this in the platform files somehow
+.if ${TARGET_ARCH} == "i386"
+KERNCONF?=	GENERIC
+.else
+KERNCONF?=	X86_64_GENERIC
+.endif
+.endif
+INSTKERNNAME?=	kernel
+
+KRNLSRCDIR=	${.CURDIR}/sys
+KRNLCONFDIR=	${KRNLSRCDIR}/config
+KRNLOBJDIR=	${OBJTREE}${KRNLSRCDIR}
+KERNCONFDIR?=	${KRNLCONFDIR}
+
+BUILDKERNELS=
+INSTALLKERNEL=
+.for _kernel in ${KERNCONF}
+.if exists(${KERNCONFDIR}/${_kernel})
+BUILDKERNELS+=	${_kernel}
+.if empty(INSTALLKERNEL)
+INSTALLKERNEL= ${_kernel}
+.endif
+.endif
+.endfor
+
+# kernel version numbers survive rm -rf
+#
+.for _kernel in ${BUILDKERNELS}
+.if exists(${KRNLOBJDIR}/${_kernel}/version)
+KERNEL_VERSION_${_kernel} != cat ${KRNLOBJDIR}/${_kernel}/version
+.endif
+.endfor
+
+#
+# buildkernel
+#
+# Builds all kernels defined by BUILDKERNELS.
+#
+bk_tools:
+	@if [ ! -f ${WORLDDEST}/.libraries_done ]; then \
+	    echo "You must buildworld before buildkernel.  If you wish"; \
+	    echo "to build a kernel using native tools, config it manually"; \
+	    echo "or use the nativekernel target if you are in a rush"; \
+	    exit 1; \
+	fi
+
+maybe_bk_tools:
+.for _kernel in ${BUILDKERNELS}
+	@if [ ! -f ${KRNLOBJDIR}/${_kernel}/.nativekernel_run ]; then \
+	    if [ ! -f ${WORLDDEST}/.libraries_done ]; then \
+		echo "The kernel was build using buildworld tools which no" ; \
+		echo "longer appear to exist, quickkernel failed!" ; \
+		exit 1; \
+	    fi; \
+	fi
+.endfor
+
+bk_build_list:
+.if empty(BUILDKERNELS)
+	@echo ">>> ERROR: Missing kernel configuration file(s) (${KERNCONF})."
+	@echo ">>> Did you move your kernel configs from i386/conf to config/?"
+	@false
+.endif
+
+bk_kernwarn:
+.if defined(KERNWARN)
+	@echo "--------------------------------------------------------------"
+	@echo ">>> WARNING: KERNEL= setting should be changed to KERNCONF="
+	@echo "--------------------------------------------------------------"
+	@sleep 3
+.endif
+	@echo
+
+# The buildkernel target rebuilds the specified kernels from scratch
+# using the crossbuild tools generated by the last buildworld.  It is
+# the safest (but also the most time consuming) way to build a new kernel.
+#
+buildkernel:	bk_tools bk_build_list bk_kernwarn
+.for _kernel in ${BUILDKERNELS}
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Kernel build for ${_kernel} started on `LC_ALL=C date`"
+	@echo "--------------------------------------------------------------"
+	@echo "===> ${_kernel}"
+.if !defined(NOCLEAN) && !defined(NO_KERNELCLEAN)
+	rm -rf ${KRNLOBJDIR}/${_kernel}
+.else
+	@if [ -f ${KRNLOBJDIR}/${_kernel}/.nativekernel_run ]; then \
+		echo "YOU ARE REBUILDING WITH BUILDKERNEL, REMOVING OLD NATIVEKERNEL BUILD"; \
+		rm -rf ${KRNLOBJDIR}/${_kernel}; fi
+.endif
+	mkdir -p ${KRNLOBJDIR}
+.if !defined(NO_KERNELCONFIG)
+	cd ${KRNLCONFDIR}; \
+		PATH=${STRICTTMPPATH} \
+		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
+			${KERNCONFDIR}/${_kernel}
+.endif
+.if !defined(NOCLEAN) && !defined(NO_KERNELCLEAN) && defined(KERNEL_VERSION_${_kernel})
+	echo ${KERNEL_VERSION_${_kernel}} > ${KRNLOBJDIR}/${_kernel}/version
+.endif
+	touch ${KRNLOBJDIR}/${_kernel}/.buildkernel_run
+.if !defined(NO_KERNELDEPEND)
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    ${KMAKEENV} ${MAKE} KERNEL=${INSTKERNNAME} depend
+.endif
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    ${KMAKEENV} ${MAKE} KERNEL=${INSTKERNNAME} all
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Kernel build for ${_kernel} completed on `LC_ALL=C date`"
+	@echo "--------------------------------------------------------------"
+.endfor
+
+# The nativekernel target rebuilds the specified kernels from scratch
+# using the system's standard compiler rather than using the crossbuild
+# tools generated by the last buildworld.  This is fairly safe if your
+# system is reasonable up-to-date.
+#
+nativekernel:	bk_build_list bk_kernwarn
+.for _kernel in ${BUILDKERNELS}
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Kernel build for ${_kernel} started on `LC_ALL=C date`"
+	@echo "--------------------------------------------------------------"
+	@echo "===> ${_kernel}"
+.if !defined(NOCLEAN) && !defined(NO_KERNELCLEAN)
+	rm -rf ${KRNLOBJDIR}/${_kernel}
+.else
+	@if [ -f ${KRNLOBJDIR}/${_kernel}/.buildkernel_run ]; then \
+		echo "YOU ARE REBUILDING WITH NATIVEKERNEL, REMOVING OLD BUILDKERNEL BUILD"; \
+		rm -rf ${KRNLOBJDIR}/${_kernel}; fi
+.endif
+	mkdir -p ${KRNLOBJDIR}
+.if !defined(NO_KERNELCONFIG)
+	cd ${KRNLCONFDIR}; \
+		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
+			${KERNCONFDIR}/${_kernel}
+.endif
+.if !defined(NOCLEAN) && !defined(NO_KERNELCLEAN) && defined(KERNEL_VERSION_${_kernel})
+	echo ${KERNEL_VERSION_${_kernel}} > ${KRNLOBJDIR}/${_kernel}/version
+.endif
+	touch ${KRNLOBJDIR}/${_kernel}/.nativekernel_run
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    MAKESRCPATH=${KRNLSRCDIR}/dev/disk/aic7xxx/aicasm \
+	    ${MAKE} -DBOOTSTRAPPING -f ${KRNLSRCDIR}/dev/disk/aic7xxx/aicasm/Makefile
+.if !defined(NO_KERNELDEPEND)
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    ${MAKE} KERNEL=${INSTKERNNAME} depend
+.endif
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    ${MAKE} KERNEL=${INSTKERNNAME} all
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Kernel build for ${_kernel} completed on `LC_ALL=C date`"
+	@echo "--------------------------------------------------------------"
+.endfor
+
+# The quickkernel target rebuilds the specified kernels as quickly
+# as possible.  It will use the native tools or the buildworld cross tools
+# based on whether the kernel was originally generated via buildkernel or
+# nativekernel.  Config is rerun but the object hierarchy is not rebuilt,
+# nor is the make depend step run.
+#
+quickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
+.for _kernel in ${BUILDKERNELS}
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Kernel build for ${_kernel} started on `LC_ALL=C date`"
+	@echo "--------------------------------------------------------------"
+	@echo "===> ${_kernel}"
+.if exists(${KRNLOBJDIR}/${_kernel}/.buildkernel_run)
+.if !defined(NO_KERNELCONFIG)
+	cd ${KRNLCONFDIR}; \
+		PATH=${STRICTTMPPATH} \
+		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
+			${KERNCONFDIR}/${_kernel}
+.endif
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    ${KMAKEENV} ${MAKE} KERNEL=${INSTKERNNAME} all
+.else
+.if !defined(NO_KERNELCONFIG)
+	cd ${KRNLCONFDIR}; \
+	    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
+		${KERNCONFDIR}/${_kernel}
+.endif
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    ${MAKE} KERNEL=${INSTKERNNAME} all
+.endif
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Kernel build for ${_kernel} completed on `LC_ALL=C date`"
+	@echo "--------------------------------------------------------------"
+.endfor
+
+
+# installkernel
+#
+# Install the kernel defined by INSTALLKERNEL
+#
+installkernel reinstallkernel:
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Kernel install for ${INSTALLKERNEL} started on `LC_ALL=C date`"
+	@echo "--------------------------------------------------------------"
+.if exists(${KRNLOBJDIR}/${INSTALLKERNEL}/.buildkernel_run)
+	cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
+	    ${IMAKEENV} ${MAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
+.else
+	cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
+	    ${MAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
+.endif
+
+#
+# most
+#
+# Build most of the user binaries on the existing system libs and includes.
+#
+most:
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Building programs only"
+	@echo "--------------------------------------------------------------"
+.for _dir in bin sbin libexec usr.bin usr.sbin gnu/libexec gnu/usr.bin gnu/usr.sbin
+	cd ${.CURDIR}/${_dir};		${MAKE} DIRPRFX=${_dir}/ all
+.endfor
+
+#
+# installmost
+#
+# Install the binaries built by the 'most' target.  This does not include
+# libraries or include files.
+#
+installmost:
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Installing programs only"
+	@echo "--------------------------------------------------------------"
+.for _dir in bin sbin libexec usr.bin usr.sbin gnu/libexec gnu/usr.bin gnu/usr.sbin
+	cd ${.CURDIR}/${_dir};		${MAKE} DIRPRFX=${_dir}/ install
+.endfor
+
+#
+# ------------------------------------------------------------------------
+#
+# From here onwards are utility targets used by the 'make world' and
+# related targets.  If your 'world' breaks, you may like to try to fix
+# the problem and manually run the following targets to attempt to
+# complete the build.  Beware, this is *not* guaranteed to work, you
+# need to have a pretty good grip on the current state of the system
+# to attempt to manually finish it.  If in doubt, 'make world' again.
+#
+
+# bootstrap-tools: Build all tools required to build all tools.  Note that
+# order is important in a number of cases and also note that the bootstrap
+# and build tools stages have access to earlier binaries they themselves
+# had generated.
+#
+# patch:	older patch's do not have -i.  This program must be built
+#		first so other bootstrap tools that need to apply patches
+#		can use it.
+# [x]install:	dependancies on various new install features
+# rpcgen:	old rpcgen used a hardwired cpp path, newer OBJFORMAT_PATH
+#		envs are not compatible with older objformat binaries.
+#
+.if exists(${.CURDIR}/games) && !defined(NO_GAMES)
+_strfile=	games/fortune/strfile
+.endif
+
+bootstrap-tools:
+	${LN} -fs /bin/date ${BTOOLSDEST}/bin/date
+.for _tool in ${_strfile} \
+    usr.bin/patch \
+    bin/chmod bin/cp bin/cpdup bin/dd bin/mkdir bin/rm bin/echo bin/test \
+    bin/cat bin/ln bin/mv bin/csh bin/expr bin/sh \
+    bin/hostname bin/kill \
+    usr.bin/yacc usr.bin/colldef usr.bin/uudecode usr.bin/xinstall \
+    usr.bin/m4 usr.bin/rpcgen usr.bin/make usr.bin/awk usr.bin/stat \
+    usr.bin/find usr.bin/lex usr.bin/sed usr.bin/uname usr.bin/touch \
+    usr.bin/mkdep usr.bin/mktemp usr.bin/lorder usr.bin/file2c \
+    usr.bin/tsort usr.bin/tr usr.bin/join usr.bin/wc usr.bin/basename \
+    usr.bin/gencat usr.bin/chflags usr.bin/expand usr.bin/paste \
+    usr.bin/mklocale usr.bin/uuencode usr.bin/compile_et usr.bin/hexdump \
+    usr.bin/cap_mkdb usr.bin/true usr.bin/false \
+    usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
+    usr.bin/tail usr.bin/unifdef \
+    usr.sbin/chown usr.sbin/mtree usr.sbin/config \
+    usr.sbin/btxld usr.sbin/zic usr.sbin/makewhatis \
+    gnu/usr.bin/texinfo gnu/usr.bin/grep usr.bin/sort \
+    usr.bin/gzip usr.bin/bzip2 usr.bin/mkcsmapper usr.bin/mkesdb
+	${ECHODIR} "===> ${_tool} (bootstrap-tools)"; \
+		cd ${.CURDIR}/${_tool}; \
+		${MAKE} DIRPRFX=${_tool}/ obj; \
+		${MAKE} DIRPRFX=${_tool}/ depend; \
+		${MAKE} DIRPRFX=${_tool}/ all; \
+		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
+.endfor
+	touch ${BTOOLSDEST}/.bootstrap_done
+
+# build-tools: Build special purpose build tools.
+#
+# XXX we may be able to remove or consolidate this into bootstrap-tools
+# now that we have the native helper (.nx/.no) infrastructure.
+#
+.if exists(${.CURDIR}/share) && !defined(NO_SHARE)
+_share=	share/syscons/scrnmaps
+.endif
+
+.if !defined(NO_GCC41)
+_gcc41_cross= gnu/usr.bin/cc41
+_gcc41_tools= gnu/usr.bin/cc41/cc_prep gnu/usr.bin/cc41/cc_tools
+.endif
+_gcc44_cross= gnu/usr.bin/cc44
+_gcc44_tools= gnu/usr.bin/cc44/cc_prep gnu/usr.bin/cc44/cc_tools
+_custom_cross= libexec/customcc
+_binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
+
+build-tools:
+.for _tool in ${_gcc41_tools} ${_gcc44_tools} ${_libkrb5} ${_share}
+	${ECHODIR} "===> ${_tool} (build-tools)"; \
+		cd ${.CURDIR}/${_tool}; \
+		${MAKE} DIRPRFX=${_tool}/ obj; \
+		${MAKE} DIRPRFX=${_tool}/ depend; \
+		${MAKE} DIRPRFX=${_tool}/ all; \
+		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
+.endfor
+	touch ${BTOOLSDEST}/.build_done
+
+#
+# cross-tools: Build cross-building tools
+#
+.if ${TARGET_ARCH} == "i386" && ${MACHINE_ARCH} != "i386"
+_btxld=	usr.sbin/btxld
+.endif
+
+cross-tools:
+.for _tool in ${_btxld} ${_binutils} \
+	      usr.bin/objformat \
+	      ${_gcc41_cross} ${_gcc44_cross} ${_custom_cross}
+	${ECHODIR} "===> ${_tool} (cross-tools)"; \
+		cd ${.CURDIR}/${_tool}; \
+		${MAKE} DIRPRFX=${_tool}/ obj; \
+		${MAKE} DIRPRFX=${_tool}/ depend; \
+		${MAKE} DIRPRFX=${_tool}/ all; \
+		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${CTOOLSDEST} install
+.endfor
+	touch ${CTOOLSDEST}/.cross_done
+
+#
+# hierarchy - ensure that all the needed directories are present
+#
+hierarchy:
+	cd ${.CURDIR}/etc;		${MAKE} distrib-dirs
+
+#
+# libraries - build all libraries, and install them under ${DESTDIR}.
+#
+# The list of libraries with dependents (${_prebuild_libs}) and their
+# interdependencies (__L) are built automatically by the
+# ${.CURDIR}/tools/make_libdeps.sh script.
+#
+# .makeenv does not work when bootstrapping from 4.x, so we must be sure
+# to specify the correct CCVER or 'cc' will not exec the correct compiler.
+#
+libraries:
+.if !defined(NO_GCC41)
+	cd ${.CURDIR}; \
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc41 \
+		${MAKE} -f Makefile.inc1 _startup_libs41;
+.endif
+	cd ${.CURDIR}; \
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc44 \
+		${MAKE} -f Makefile.inc1 _startup_libs44;
+	cd ${.CURDIR}; \
+	    ${MAKE} -f Makefile.inc1 _startup_libs; \
+	    ${MAKE} -f Makefile.inc1 _prebuild_libs; \
+	    ${MAKE} -f Makefile.inc1 _generic_libs;
+	touch ${WORLDDEST}/.libraries_done
+
+# These dependencies are not automatically generated:
+#
+# gnu/lib/${CCVER}/libgcc and gnu/lib/${CCVER}/csu must be built before all
+# shared libraries for ELF.  The target for _startup_libsXX is
+# specifically built using gccXX.
+#
+_startup_libs41=	gnu/lib/gcc41/csu gnu/lib/gcc41/libgcc
+_startup_libs44=	gnu/lib/gcc44/csu gnu/lib/gcc44/libgcc
+_startup_libs=		lib/csu lib/libc lib/libc_rtld
+
+_prebuild_libs=		lib/libbz2 lib/liblzma lib/libz
+_prebuild_libs+=	lib/libutil
+
+_generic_libs=	gnu/lib
+
+_prebuild_libs+= lib/libcom_err lib/libcrypt lib/libmd \
+		lib/libncurses/libncurses lib/libopie lib/libradius \
+		lib/libsbuf lib/libtacplus lib/libm \
+		lib/libpam lib/libypclnt lib/lib${THREAD_LIB} \
+		lib/libpthread lib/libprop lib/libdevattr
+
+lib/libopie__L lib/libradius__L lib/libtacplus__L: lib/libmd__L
+
+_generic_libs+=	lib
+
+.if !defined(NO_CRYPT)
+.if !defined(NO_OPENSSL)
+_prebuild_libs+=	secure/lib/libcrypto secure/lib/libssl
+.if !defined(NO_OPENSSH)
+_prebuild_libs+=	secure/lib/libssh
+secure/lib/libssh__L: secure/lib/libcrypto__L lib/libz__L
+.endif
+.endif
+_generic_libs+=	secure/lib
+.endif
+
+_generic_libs+=	usr.bin/lex/lib
+
+.for _lib in ${_startup_libs41} ${_startup_libs44} \
+		${_startup_libs} ${_prebuild_libs} ${_generic_libs}
+${_lib}__L: .PHONY
+.if exists(${.CURDIR}/${_lib})
+	${ECHODIR} "===> ${_lib}"; \
+		cd ${.CURDIR}/${_lib}; \
+		${MAKE} DIRPRFX=${_lib}/ depend; \
+		${MAKE} DIRPRFX=${_lib}/ all; \
+		${MAKE} DIRPRFX=${_lib}/ install
+.endif
+.endfor
+
+_startup_libs: ${_startup_libs:S/$/__L/}
+_startup_libs41: ${_startup_libs41:S/$/__L/}
+_startup_libs44: ${_startup_libs44:S/$/__L/}
+_prebuild_libs: ${_prebuild_libs:S/$/__L/}
+_generic_libs: ${_generic_libs:S/$/__L/}
+
+# library targets must be ordered because there are inter-library
+# races (e.g. generation of tconfig.h)
+#
+.ORDER: ${_startup_libs41:S/$/__L/}
+.ORDER: ${_startup_libs44:S/$/__L/}
+.ORDER: ${_startup_libs:S/$/__L/}
+.ORDER: ${_prebuild_libs:S/$/__L/}
+.ORDER: ${_generic_libs:S/$/__L/}
+
+.for __target in clean cleandepend cleandir obj depend includes
+.for entry in ${SUBDIR}
+${entry}.${__target}__D: .PHONY
+	@if test -d ${.CURDIR}/${entry}.${MACHINE_ARCH}; then \
+		${ECHODIR} "===> ${DIRPRFX}${entry}.${MACHINE_ARCH}"; \
+		edir=${entry}.${MACHINE_ARCH}; \
+		cd ${.CURDIR}/$${edir}; \
+	else \
+		${ECHODIR} "===> ${DIRPRFX}${entry}"; \
+		edir=${entry}; \
+		cd ${.CURDIR}/$${edir}; \
+	fi; \
+	${MAKE} ${__target} DIRPRFX=${DIRPRFX}$${edir}/
+.endfor
+par-${__target}: ${SUBDIR:S/$/.${__target}__D/}
+.ORDER: ${SUBDIR:S/$/.${__target}__D/}
+.endfor
+.ORDER: par-clean par-cleandepend par-cleandir par-obj par-depend par-includes
+
+# The wmake target is used by /usr/bin/wmake to run make in a
+# world build environment.
+#
+wmake:
+	@echo '${WMAKEENV} ${MAKE} -m ${.CURDIR}/share/mk ${WMAKE_ARGS}'
+
+wmakeenv:
+	@echo '${WMAKEENV} /bin/sh'
+
+bmake:
+	@echo '${BMAKEENV} ${MAKE} -m ${.CURDIR}/share/mk ${BMAKE_ARGS}'
+
+bmakeenv:
+	@echo '${BMAKEENV} /bin/sh'
+
+tmake:
+	@echo '${TMAKEENV} ${MAKE} -m ${.CURDIR}/share/mk ${TMAKE_ARGS}'
+
+tmakeenv:
+	@echo '${TMAKEENV} /bin/sh'
+
+xmake:
+	@echo '${XMAKEENV} ${MAKE} -m ${.CURDIR}/share/mk ${XMAKE_ARGS}'
+
+xmakeenv:
+	@echo '${XMAKEENV} /bin/sh'
+
+.include <bsd.subdir.mk>
+

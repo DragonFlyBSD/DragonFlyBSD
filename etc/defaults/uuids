@@ -1,0 +1,40 @@
+# $DragonFly: src/etc/defaults/uuids,v 1.4 2008/07/27 22:12:10 thomas Exp $
+#
+#
+# EFI
+# 
+00000000-0000-0000-0000-000000000000	"Unused"
+c12a7328-f81f-11d2-ba4b-00a0c93ec93b	"EFI System"
+024dee41-33e7-11d3-9d69-0008c781f39f	"MBR"
+#
+# DragonFly
+#
+9d087404-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Label32"
+9d58fdbd-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Swap"
+9d94ce7c-1ca5-11dc-8817-01301bb8a9f5	"DragonFly UFS1"
+9dd4478f-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Vinum"
+dbd5211b-1ca5-11dc-8817-01301bb8a9f5	"DragonFly CCD"
+3d48ce54-1d16-11dc-8696-01301bb8a9f5	"DragonFly Label64"
+bd215ab2-1d16-11dc-8696-01301bb8a9f5	"DragonFly Legacy"
+61dc63ac-6e38-11dc-8513-01301bb8a9f5	"DragonFly HAMMER"
+#
+# FreeBSD
+#
+516e7cb4-6ecf-11d6-8ff8-00022d09712b	"FreeBSD Legacy"
+516e7cb5-6ecf-11d6-8ff8-00022d09712b	"FreeBSD Swap"
+516e7cb6-6ecf-11d6-8ff8-00022d09712b	"FreeBSD UFS/UFS2"
+516e7cb8-6ecf-11d6-8ff8-00022d09712b	"FreeBSD Vinum"
+#
+# Microsoft
+#
+e3c9e316-0b5c-4db8-817d-f92df00215ae	"MS Reserved"
+ebd0a0a2-b9e5-4433-87c0-68b6b72699c7	"MS/Linux Basic Data"
+5808c8aa-7e8f-42e0-85d2-e1e90434cfb3	"MS LDM Metadata"
+af9b60a0-1431-4f62-bc68-3311714a69ad	"MS LDM Data"
+#
+# Linux
+#
+a19d880f-05fc-4d3b-a006-743f0f84911e	"Linux Raid"
+0657fd6d-a4ab-43c4-84e5-0933c84b4f4f	"Linux Swap"
+e6d6d379-f507-44c2-a23c-238f2a3df928	"Linux LVM"
+48465300-0000-11aa-aa11-00306543ecac	"Apple HFS"

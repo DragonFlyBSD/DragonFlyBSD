@@ -1,0 +1,153 @@
+.\" $DragonFly: src/share/man/man4/ugensa.4,v 1.4 2008/02/22 12:55:12 hasso Exp $
+.\" $OpenBSD: umsm.4,v 1.20 2007/05/31 19:19:52 jmc Exp $
+.\"
+.\" Copyright (c) 2006 Jonathan Gray <jsg@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd February 21, 2008
+.Dt UGENSA 4
+.Os
+.Sh NAME
+.Nm ugensa
+.Nd Generic USB serial device
+.Sh SYNOPSIS
+To compile this driver into the kernel, place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device ugensa"
+.Cd "device ucom"
+.Ed
+.Pp
+Alternatively, to load the driver as a module at boot time, place the
+following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+ugensa_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+is the minimal USB serial driver written to support virtual serial ports in
+devices where hardware specific settings (baudrate, flow control etc) don't
+make sense or just don't apply.
+.Pp
+The virtual serial ports are accessed through the
+.Xr ucom 4
+driver which makes them behave like a
+.Xr tty 4 .
+.Pp
+The
+.Nm
+driver was originally written to support Qualcomm MSM chipset found in EVDO
+and UMTS capable modems, but there is nothing MSM chipset specific in it.
+Many devices supported by the driver aren't typical USB devices, but CardBus,
+ExpressCard or PCI Express Mini Cards that incorporate a USB controller
+with the actual devices attached to it.
+.Pp
+Communication devices supported by the
+.Nm
+driver typically have more than one virtual serial port, but only one of
+them (usually the first one) can be used with
+.Xr ppp 8
+or
+.Xr pppd 8 .
+At least one of additional ports can usually be used for device/network
+monitoring and other communication tasks (like SMS for example).
+Protocols and methods used to access these features are out of scope of this
+driver.
+.Pp
+The following devices should work with the
+.Nm
+driver:
+.Pp
+.Bl -column "Device                " "Bus" -compact -offset 6n
+.It Em "Device		Bus"
+.It Li "AirPrime PC5220" Ta Ta CardBus
+.It Li "AnyDATA ADU-E100A/D/H" Ta Ta USB
+.It Li "Dell Wireless 5500" Ta Ta PCI Express Mini Card
+.It Li "Dell Wireless 5505" Ta Ta PCI Express Mini Card
+.It Li "Dell Wireless 5510" Ta Ta PCI Express Mini Card
+.It Li "Dell Wireless 5520" Ta Ta PCI Express Mini Card
+.It Li "Dell Wireless 5700" Ta Ta PCI Express Mini Card
+.It Li "Dell Wireless 5700" Ta Ta ExpressCard
+.It Li "Huawei Mobile Connect" Ta Ta CardBus
+.It Li "Huawei E220" Ta Ta USB
+.It Li "Kyocera KPC650" Ta Ta CardBus
+.It Li "Novatel Wireless Expedite EU740" Ta Ta PCI Express Mini Card
+.It Li "Novatel Wireless Expedite EU870D" Ta Ta PCI Express Mini Card
+.It Li "Novatel Wireless Expedite EV620" Ta Ta PCI Express Mini Card
+.It Li "Novatel Wireless Merlin ES620" Ta Ta CardBus
+.It Li "Novatel Wireless Merlin ES720" Ta Ta CardBus
+.It Li "Novatel Wireless Merlin EX720" Ta Ta ExpressCard
+.It Li "Novatel Wireless Merlin S620" Ta Ta CardBus
+.It Li "Novatel Wireless Merlin S640" Ta Ta CardBus
+.It Li "Novatel Wireless Merlin S720" Ta Ta CardBus
+.It Li "Novatel Wireless Merlin U730" Ta Ta CardBus
+.It Li "Novatel Wireless Merlin U740" Ta Ta CardBus
+.It Li "Novatel Wireless Merlin V620" Ta Ta CardBus
+.It Li "Novatel Wireless Merlin XS620" Ta ExpressCard
+.It Li "Novatel Wireless Merlin XU870" Ta ExpressCard
+.It Li "Novatel Wireless Ovation U720" Ta Ta USB
+.It Li "Novatel Wireless Ovation MC727" Ta Ta USB
+.It Li "Novatel Wireless Ovation MC950D" Ta Ta USB
+.It Li "ONDA Communication H600" Ta Ta CardBus
+.It Li "Sierra Wireless MC5720" Ta Ta PCI Express Mini Card
+.It Li "Sierra Wireless MC5725" Ta Ta PCI Express Mini Card
+.It Li "Sierra Wireless MC8755" Ta Ta PCI Express Mini Card
+.It Li "Sierra Wireless MC8765" Ta Ta PCI Express Mini Card
+.It Li "Sierra Wireless MC8775" Ta Ta PCI Express Mini Card
+.It Li "Sierra Wireless MC8780" Ta Ta PCI Express Mini Card
+.It Li "Sierra Wireless MC8781" Ta Ta PCI Express Mini Card
+.It Li "Sierra Wireless AirCard 580" Ta Ta CardBus
+.It Li "Sierra Wireless AirCard 595" Ta Ta CardBus
+.It Li "Sierra Wireless AirCard 595U" Ta Ta USB
+.It Li "Sierra Wireless AirCard 597E" Ta Ta ExpressCard
+.It Li "Sierra Wireless AirCard 875" Ta Ta CardBus
+.It Li "Sierra Wireless AirCard 880" Ta Ta CardBus
+.It Li "Sierra Wireless AirCard 880E" Ta Ta ExpressCard
+.It Li "Sierra Wireless AirCard 880U" Ta Ta USB
+.It Li "Sierra Wireless AirCard 881" Ta Ta CardBus
+.It Li "Sierra Wireless AirCard 881E" Ta Ta ExpressCard
+.It Li "Sierra Wireless AirCard 881U" Ta Ta USB
+.El
+.Pp
+Due to rebranding (which is very common in mobile broadband business) this
+list is certainly incomplete.
+.Sh SEE ALSO
+.Xr tty 4 ,
+.Xr ucom 4 ,
+.Xr usb 4 ,
+.Xr ppp 8 ,
+.Xr pppd 8
+.Sh HISTORY
+The
+.Nm
+device driver first appeared in
+.Ox 4.0
+as
+.Nm umsm .
+It was imported into
+.Dx 1.11
+with its present name and extended to support multiple virtual serial ports
+per device.
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+driver was written by
+.An Jonathan Gray
+.Aq jsg@openbsd.org .
+.Sh CAVEATS
+For Verizon Wireless (and possibly other services), cards require a one-time
+activation before they will work.

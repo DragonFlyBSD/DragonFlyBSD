@@ -1,0 +1,8 @@
+# $NetBSD: KZ1048.src,v 1.1 2007/03/13 16:34:39 tnozaki Exp $
+# $DragonFly: src/share/i18n/esdb/KAZAKH/KZ1048.src,v 1.1 2008/04/10 10:21:12 hasso Exp $
+
+NAME		"KZ1048"
+ENCODING	"NONE"
+VARIABLE	"none"
+DEFCSID		"KZ1048"		0
+INVALID		0x3F # '?'

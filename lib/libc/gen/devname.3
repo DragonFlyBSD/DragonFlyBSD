@@ -1,0 +1,172 @@
+.\" Copyright (c) 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. All advertising materials mentioning features or use of this software
+.\"    must display the following acknowledgement:
+.\"	This product includes software developed by the University of
+.\"	California, Berkeley and its contributors.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)devname.3	8.2 (Berkeley) 4/29/95
+.\" $FreeBSD: src/lib/libc/gen/devname.3,v 1.7.2.7 2003/03/15 15:11:05 trhodes Exp $
+.\" $DragonFly: src/lib/libc/gen/devname.3,v 1.5 2007/05/17 08:19:00 swildner Exp $
+.\"
+.Dd August 11, 2009
+.Dt DEVNAME 3
+.Os
+.Sh NAME
+.Nm devname ,
+.Nm devname_r ,
+.Nm fdevname ,
+.Nm fdevname_r
+.Nd get device name
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/stat.h
+.In stdlib.h
+.Ft char *
+.Fn devname "dev_t dev" "mode_t type"
+.Ft char *
+.Fn devname_r "dev_t dev" "mode_t type" "char *buf" "size_t len"
+.Ft char *
+.Fn fdevname "int fd"
+.Ft int
+.Fn fdevname_r "int fd" "char *buf" "size_t len"
+.Sh DESCRIPTION
+The
+.Fn devname
+and
+.Fn devname_r
+functions return a pointer to the name of the block or character
+device in
+.Pa /dev
+with a device number of
+.Fa dev ,
+and a file type matching the one encoded in
+.Fa type
+which must be one of
+.Dv S_IFBLK
+or
+.Dv S_IFCHR .
+To find the right name,
+.Fn devname
+and
+.Fn devname_r
+first search the device database created by
+.Xr dev_mkdb 8 ;
+if that fails, it will format the information encapsulated in
+.Fa dev
+and
+.Fa type
+in a human-readable format.
+.Pp
+The
+.Fn fdevname
+and
+.Fn fdevname_r
+function obtain the device name directly from a file descriptor
+pointing to a character device.
+.Pp
+.Fn devname
+and
+.Fn fdevname
+returns a pointer to an internal static object; thus, subsequent calls will
+modify the same buffer.
+.Fn devname_r
+and
+.Fn fdevname_r
+avoid this problem by taking a buffer
+.Fa buf
+and a buffer length
+.Fa len
+as arguments.
+.Sh RETURN VALUES
+The
+.Fn devname ,
+.Fn devname_r
+and
+.Fn fdevname
+functions return a pointer to the name of the block or character
+device in
+.Pa /dev
+if successful; otherwise
+.Dv NULL
+is returned.
+If
+.Fn fdevname
+fails,
+.Va errno
+is set to indicate the error.
+.Pp
+The
+.Fn fdevname_r
+function returns 0 if successful.
+Otherwise an error number is returned.
+.Sh ERRORS
+The
+.Fn fdevname
+and
+.Fn fdevname_r
+functions may fail and return the following error codes:
+.Bl -tag -width Er
+.It Bq Er EBADF
+The
+.Fa fd
+is not a valid open file descriptor.
+.It Bq Er EINVAL
+The
+.Fa fd
+must belong to a character device.
+.El
+.Pp
+The
+.Fn fdevname_r
+function may fail and return the following error code:
+.Bl -tag -width Er
+.It Bq Er ERANGE
+The
+.Fa len
+argument is smaller than the length of the string to be returned.
+.El
+.Sh SEE ALSO
+.Xr stat 2 ,
+.Xr dev_mkdb 8
+.Sh HISTORY
+The
+.Fn devname
+function appeared in
+.Bx 4.4 .
+.Pp
+The
+.Fn devname_r
+function appeared in
+.Dx 1.0
+and the
+.Fn fdevname
+and
+.Fn fdevname_r
+functions appeared in
+.Dx 2.3 .

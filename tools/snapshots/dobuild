@@ -1,0 +1,117 @@
+#!/bin/csh
+#
+# Create a working chroot for snapshot building
+#
+
+source config
+
+set ncpu = `sysctl -n hw.ncpu`
+set pushdsilent
+set xdate = "date"
+
+echo "`$xdate` - SNAPSHOTS DOBUILD BEGIN"
+
+# Options
+#
+set nrelease_args = "release"
+
+foreach arg ( $argv )
+    switch ( $arg )
+    case "realquick":
+	set quick = 1
+	set realquick = 1
+	set nrelease_args = "realquick"
+	breaksw
+    case "quick":
+	set quick = 1
+	set nrelease_args = "quick"
+	breaksw
+    default:
+	echo "`$xdate` - Unknown option $arg"
+	echo "`$xdate` - SNAPSHOTS DOBUILD END"
+	exit 1
+    endsw
+end
+
+echo "`$xdate` - Setting up chroot environment"
+if ( ! -e $build/root/dev/null ) then
+    mount_devfs dummy $build/root/dev
+endif
+
+umount $build/root/usr/pkgsrc/distfiles >& /dev/null
+mount_null $build/distfiles $build/root/usr/pkgsrc/distfiles
+
+setenv PKGSRC_PATH /usr/pkgsrc
+
+echo "`$xdate` - Build is running nrelease, tail -f $build/nrelease-build.out"
+chroot $build/root csh -c "cd /usr/src/nrelease; make -DNOPROFILE -DWITHOUT_SRCS img $nrelease_args" >& $build/nrelease-build.out
+
+if ( $? > 0 ) then
+    echo "`$xdate` - NRelease build had a problem, see $build/nrelease-build.out"
+    echo "`$xdate` - SNAPSHOTS DOBUILD END"
+    exit 1
+endif
+
+# Figure out the filename
+#
+set arch = `uname -p`
+if ( "$arch" == "i386" ) then
+set kobjs = $build/root/usr/obj/usr/src/sys/GENERIC
+else
+set kobjs = $build/root/usr/obj/usr/src/sys/X86_64_GENERIC
+endif
+
+if ( ! -f $kobjs/vers.txt ) then
+    echo "`$xdate` - nrelease build did not generate $kobjs/vers.txt"
+    echo "`$xdate` - SNAPSHOTS DOBUILD END"
+    exit 1
+endif
+
+# Store the snapshots.  Make sure the files are inaccessible until
+# completely written out.
+#
+set basename = `cat $kobjs/vers.txt`
+mkdir -p $snapshots/$arch/images
+mkdir -p $snapshots/$arch/kernels
+set filepath = $snapshots/$arch
+umask 077
+bzip2 < $build/root/usr/release/dfly.iso > $filepath/images/$basename.iso.bz2
+bzip2 < $build/root/usr/release/dfly.img > $filepath/images/$basename.img.bz2
+(cd $build/root/usr/release/root; tar cf - boot | bzip2 > $filepath/kernels/$basename.boot.tar.bz2)
+chmod 644 $filepath/images/$basename.iso.bz2
+chmod 644 $filepath/images/$basename.img.bz2
+chmod 644 $filepath/kernels/$basename.boot.tar.bz2
+sync
+pushd $filepath/images
+md5 $basename.iso.bz2 >> CHECKSUM.MD5
+md5 $basename.img.bz2 >> CHECKSUM.MD5
+popd
+
+pushd $filepath/kernels
+md5 $basename.boot.tar.bz2 >> CHECKSUM.MD5
+popd
+
+# Only adjust the 'latest' softlink shortcuts for
+# development snapshots.  Release shortcuts have
+# to be done manually.
+#
+if ( "$relsname" == "DEV" ) then
+    pushd $filepath
+    rm -f DragonFly-${arch}-LATEST-ISO.iso.bz2.new
+    rm -f DragonFly-${arch}-LATEST-IMG.img.bz2.new
+    rm -f DragonFly-${arch}-LATEST-BOOT.tar.bz2.new
+    ln -s images/$basename.iso.bz2 DragonFly-${arch}-LATEST-ISO.iso.bz2.new
+    ln -s images/$basename.img.bz2 DragonFly-${arch}-LATEST-IMG.img.bz2.new
+    ln -s kernels/$basename.boot.tar.bz2 DragonFly-${arch}-LATEST-BOOT.tar.bz2.new
+    mv -f DragonFly-${arch}-LATEST-ISO.iso.bz2.new \
+	    DragonFly-${arch}-LATEST-ISO.iso.bz2
+    mv -f DragonFly-${arch}-LATEST-IMG.img.bz2.new \
+	    DragonFly-${arch}-LATEST-IMG.img.bz2
+    mv -f DragonFly-${arch}-LATEST-BOOT.tar.bz2.new \
+	    DragonFly-${arch}-LATEST-BOOT.tar.bz2
+    popd
+endif
+
+sync
+
+echo "`$xdate` - SNAPSHOTS DOBUILD END"

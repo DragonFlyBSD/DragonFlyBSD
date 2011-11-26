@@ -1,0 +1,213 @@
+#!/bin/sh
+#
+# Copyright (c) 2004 The DragonFly Project.  All rights reserved.
+# 
+# This code is derived from software contributed to The DragonFly Project
+# by Andreas Hauser <andy-dragonfly@splashground.de>
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the
+#    distribution.
+# 3. Neither the name of The DragonFly Project nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific, prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+# COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+# OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+#
+# $DragonFly: src/etc/rc.firewall,v 1.6 2007/06/02 09:16:49 swildner Exp $
+ 
+# A simple packetfilter configurable via /etc/rc.conf
+#
+# Variables in rc.conf:
+#
+# firewall_type
+#     UNKNOWN  - disables the loading of firewall rules.
+#     open     - will allow anyone in
+#     client   - enables the packetfilter
+#     simple   - enables the packetfilter
+#     closed   - totally disables IP services except via lo0 interface
+#     filename - will load the rules in the given filename (full path required)
+#
+#  firewall_trusted_nets
+#  firewall_trusted_interfaces
+#  firewall_allowed_icmp_types
+#  firewall_open_tcp_ports
+#  firewall_open_udp_ports
+
+if [ -z "${source_rc_confs_defined}" ]; then
+        if [ -r /etc/defaults/rc.conf ]; then
+                . /etc/defaults/rc.conf
+                source_rc_confs
+        elif [ -r /etc/rc.conf ]; then
+                . /etc/rc.conf
+        fi
+fi
+
+case ${firewall_quiet} in
+[Yy][Ee][Ss])
+        fwcmd="/sbin/ipfw -q"
+        ;;
+*)
+        fwcmd="/sbin/ipfw"
+        ;;
+esac
+
+case ${firewall_logging} in
+[Yy][Ee][Ss])
+        log="log"
+        ;;
+*)
+        log=""
+        ;;
+esac
+
+# we handle start, stop, firewall_type and nothing as argument
+if [ -n "$1" ]; then
+    case $1 in
+        start)
+        ;;
+        stop)
+        firewall_type="open"
+        ;;
+        *)
+        firewall_type="$1"
+        ;;
+    esac
+fi
+
+divert_nat() {
+    case ${natd_enable} in
+	[Yy][Ee][Ss])
+        if [ -n "${natd_interface}" ]; then
+                ${fwcmd} add divert natd all from any to any via ${natd_interface}
+        fi
+    esac
+}
+
+allow_loopback() {
+    ${fwcmd} add pass all from any to any via lo0
+    ${fwcmd} add deny ${log} all from any to 127.0.0.0/8
+    ${fwcmd} add deny ${log} ip from 127.0.0.0/8 to any
+}
+
+deny_spoof() {
+    # XXX we don't have verrevpath yet
+    # ${fwcmd} add deny ${log} ip from any to any not verrevpath in
+    echo no verrevpath yet, so no anti-spoof
+}
+
+allow_icmp_types() {
+    for type in $*; do
+        ${fwcmd} add allow icmp from any to any icmptypes ${type}
+    done
+}
+
+allow_trusted_nets() {
+    for net in $*; do
+        ${fwcmd} add pass all from me to ${net}
+        ${fwcmd} add pass all from ${net} to me
+    done
+}
+
+allow_trusted_interfaces() {
+    for interface in $*; do
+        ${fwcmd} add pass all from any to any via ${interface}
+    done
+}
+
+allow_connections() {
+    ${fwcmd} add pass tcp from any to any established
+    ${fwcmd} add pass all from any to any frag
+    ${fwcmd} add pass tcp from me to any setup
+    ${fwcmd} add pass udp from me to any keep-state
+}
+
+open_tcp_ports() {
+    for port in $*; do
+        ${fwcmd} add pass tcp from any to me ${port} setup
+    done
+}
+
+open_udp_ports() {
+    for port in $*; do
+        ${fwcmd} add pass udp from any to me ${port}
+        ${fwcmd} add pass udp from me ${port} to any
+    done
+}
+
+deny_not_routed_nets()
+{
+    # These nets should not be routed
+    nets="10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 0.0.0.0/8 \
+        169.254.0.0/16 192.0.2.0/24 224.0.0.0/4 240.0.0.0/4"
+    for net in ${nets} ; do
+        ${fwcmd} add deny ${log} all from $net to any
+    done
+}
+
+deny_rest() {
+    ${fwcmd} add 65000 deny ${log} all from any to any
+}
+
+allow_rest() {
+    ${fwcmd} add 65000 pass all from any to any
+}
+
+
+${fwcmd} -f flush
+
+case ${firewall_type} in
+    [Oo][Pp][Ee][Nn])
+        allow_loopback
+        deny_spoof
+        divert_nat
+        allow_rest
+    ;;
+
+    # historical names
+    [Cc][Ll][Ii][Ee][Nn][Tt]|[Ss][Ii][Mm][Pp][Ll][Ee]|"")
+        allow_loopback
+        deny_spoof
+        divert_nat
+        allow_trusted_nets ${firewall_trusted_nets}
+        allow_trusted_interfaces ${firewall_trusted_interfaces}
+        allow_connections
+        allow_icmp_types ${firewall_allowed_icmp_types}
+        deny_not_routed_nets
+        open_tcp_ports ${firewall_open_tcp_ports}
+        open_udp_ports ${firewall_open_udp_ports}
+        deny_rest
+    ;;
+
+    [Cc][Ll][Oo][Ss][Ee][Dd])
+        allow_loopback
+        deny_rest
+    ;;
+
+    [Uu][Nn][Kk][Nn][Oo][Ww][Nn])
+    ;;
+
+    *)
+        if [ -r "${firewall_type}" ]; then
+            ${fwcmd} ${firewall_flags} ${firewall_type}
+        fi
+    ;;
+esac

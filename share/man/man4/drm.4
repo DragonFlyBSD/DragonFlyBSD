@@ -1,0 +1,142 @@
+.\"	$NetBSD: drm.4,v 1.7 2009/05/12 08:16:46 wiz Exp $
+.\"
+.\" Copyright (c) 2007 Thomas Klausner
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.Dd November 15, 2011
+.Dt DRM 4
+.Os
+.Sh NAME
+.Nm drm
+.Nd Direct Rendering Manager (DRI kernel support)
+.Sh SYNOPSIS
+.Cd device drm
+.Cd device i915drm
+.Cd device mach64drm
+.Cd device mgadrm
+.Cd device r128drm
+.Cd device radeondrm
+.Cd device savagedrm
+.Cd device sisdrm
+.Cd device tdfxdrm
+.\".Cd device viadrm
+.Pp
+.Cd options DRM_DEBUG
+.\".Cd options DRM_LINUX
+.Sh DESCRIPTION
+The
+.Tn Direct Rendering Manager
+is part of the
+.Tn Direct Rendering Infrastructure
+(see
+.Pa http://dri.freedesktop.org/ )
+for supporting video acceleration.
+For older chipsets it's used for 3d acceleration only, but newer chipsets
+may require
+.Nm
+for 2d acceleration (XVideo, exa(4)) as well.
+.Pp
+The
+.Nm
+drivers provide support for the following chipsets:
+.Pp
+.Bl -tag -width XsavagedrmXXX -offset indent -compact
+.It i915drm
+Intel i915, i945, i965, G3x, G4x
+.It mach64drm
+Mach64 (3D Rage Pro, Rage)
+.It mgadrm
+Matrox G[24]00, G[45]50
+.It r128drm
+ATI Rage 128
+.It radeondrm
+ATI Radeon
+.It savagedrm
+S3 Savage
+.It sisdrm
+SiS
+.It tdfxdrm
+3dfx (Voodoo)
+.\".It viadrm
+.\"VIA
+.El
+.Pp
+To make use of the driver:
+.Pp
+.Bl -bullet -compact
+.It
+The kernel must include
+.Xr agp 4
+.It
+.Xr Xorg 1 ,
+MesaLib and the video driver to be used must be compiled with DRI support
+.It
+DRI must be enabled in the
+.Xr xorg.conf 5
+configuration file:
+.Bd -literal
+Section "DRI"
+        Group "wheel"
+        Mode 0660
+EndSection
+.Ed
+.El
+.Pp
+In order to use two graphics cards (an on-board and another
+AGP/PCI/PCIe card) with DRI, a
+.Pa /dev/dri/card1
+link to
+.Pa /dev/dri/card0
+has to be created using
+.Xr devfsctl 8 .
+.Pp
+Debugging output can be enabled and disabled by setting the
+.Xr sysctl 8
+node
+.Ar hw.dri.0.debug .
+.Sh SEE ALSO
+.Xr Xorg 1 ,
+.Xr agp 4 ,
+.\".Xr exa 4 ,
+.Xr xorg.conf 5
+.Sh HISTORY
+DRM was first available for Linux.
+Subsequently Eric Anholt ported the DRM kernel modules to
+.Fx .
+.Sh CAVEATS
+Disable AIGLX if necessary
+.Pq Pa xorg.conf :
+.Bd -literal -offset indent
+Section "ServerFlags"
+        Option  "AIGLX" "off"
+EndSection
+
+Section "Extensions"
+        Option "Composite" "Disable"
+EndSection
+.Ed
+.Pp
+.Cd options DRM_DEBUG
+can slow DRI down a lot, disable it once
+.Nm
+works.

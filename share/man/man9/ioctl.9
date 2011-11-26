@@ -1,0 +1,245 @@
+.\" $NetBSD: ioctl.9,v 1.26 2008/11/12 12:35:54 ad Exp $
+.\"
+.\" Copyright (c) 1999  The NetBSD Foundation, Inc.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to The NetBSD Foundation
+.\" by Heiko W.Rupp <hwr@pilhuhn.de>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.\"
+.Dd February 27, 2009
+.Dt IOCTL 9
+.Os
+.Sh NAME
+.Nm ioctl ,
+.Nm _IO ,
+.Nm _IOR ,
+.Nm _IOW ,
+.Nm _IOWR
+.Nd "how to implement a new ioctl call to access device drivers"
+.Sh SYNOPSIS
+.In sys/ioctl.h
+.In sys/ioccom.h
+.Ft int
+.Fn ioctl "int d" "unsigned long request" "..."
+.Fn _IO "g" "t"
+.Fn _IOR "g" "n" "t"
+.Fn _IOW "g" "n" "t"
+.Fn _IOWR "g" "n" "t"
+.Sh DESCRIPTION
+Whenever an
+.Xr ioctl 2
+call is made, the kernel dispatches it to the device driver
+which can then interpret the request number and data in a specialized
+manner.
+Ioctls are defined as:
+.Bd -literal
+#define MYDEVIOCTL   fun(g, n, t)
+.Ed
+.Pp
+where the different symbols correspond to:
+.Bl -tag -width ".Dv MYDEVIOCTL"
+.It Dv MYDEVIOCTL
+The name which will later be given in the
+.Xr ioctl 2
+system call as second argument, e.g.,
+.Bd -literal
+ioctl(fd, MYDEVIOCTL, ...)
+.Ed
+.It Fn fun
+A macro which can be one of:
+.Bl -tag -width ".Fn _IOWR"
+.It Fn  _IO
+The call is a simple message to the kernel by itself.
+It does not copy anything into the kernel, nor does it want anything back.
+.It Fn _IOR
+The call only reads parameters from the kernel and does not
+pass any to it.
+.It Fn _IOW
+The call only writes parameters to the kernel, but does not want anything
+back.
+.It Fn _IOWR
+The call writes data to the kernel and wants information back.
+.El
+.Pp
+We always consider reading or writing to the kernel, from the user perspective.
+.It Fa g
+This integer describes to which subsystem the ioctl applies.
+Here are some examples:
+.Pp
+.Bl -tag -width xxxxx -compact
+.It '5'
+.Xr perfmon 4
+.It '8'
+.Xr aac 4
+.It 'a'
+.Xr nata 4
+.It 'B'
+.Xr bpf 4
+.It 'C'
+.Xr ciss 4
+.It 'd'
+.Xr disklabel 5
+.It 'd'
+diskslice
+.It 'f'
+generic file-descriptor
+.It 'F'
+frame buffer
+.It 'h'
+.Xr HAMMER 5
+.It 'i'
+.Xr iic 4
+.It 'i'
+.Xr carp 4
+.It 'i'
+.Xr gre 4
+.It 'k'
+.Xr keyboard 4
+and
+.Xr syscons 4
+.It 'm'
+.Xr mem 4
+.It 'm'
+.Pa /dev/midi
+.It 'm'
+.Xr mtio 4
+.It 'n'
+.Xr smb 4
+.It 'n'
+NetWare volume mount
+.It 'p'
+.Pa /dev/dsp
+and
+.Pa /dev/audio
+.It 'p'
+.Xr pci 4
+.It 'p'
+.Xr ppbus 4
+.It 'P'
+.Xr apm 4
+.It 'q'
+.Pa /dev/sequencer
+.It 'r'
+random number generator
+.It 't'
+.Xr tty 4
+.It 't'
+.Xr ppp 4
+.It 't'
+.Xr tap 4
+.It 't'
+.Xr tun 4
+.It 't'
+SLIP ttys
+.It 'T'
+.Xr snp 4
+.\".It 'V'
+.\"VMware
+.El
+.It Fa n
+This number uniquely identifies the ioctl within the group.
+That said, two subsystems may share the same
+.Fa g ,
+but there may be only one
+.Fa n
+for a given
+.Fa g .
+This is an unsigned 8 bit number.
+.It Fa t
+This specifies the type of the passed parameter.
+This one gets internally transformed to the size of the parameter, so
+for example, if you want to pass a structure, then you have to specify that
+structure and not a pointer to it or sizeof(struct MYDEV).
+.El
+.Pp
+In order for the new ioctl to be visible to the system, it is installed
+in either
+.In sys/ioctl.h or one of the files that are reached from
+.In sys/ioctl.h .
+.Sh RETURN VALUES
+A distinction must be made at this point.
+All
+.Fn *_ioctl
+routines from
+.Em within kernel
+should return either 0 for success
+or a defined error code, as described in
+.In sys/errno.h .
+At the libc level though a conversion takes place, so that eventually
+.Xr ioctl 2
+returns either 0 for success or -1 for failure, in which case the
+.Va errno
+variable is set accordingly.
+.Pp
+The use of magic numbers such as -1, to indicate that a given ioctl
+code was not handled, is strongly discouraged.
+The value -1 is bound to the
+.Er ERESTART
+pseudo-error, which is returned inside kernel to modify return to process.
+.Sh EXAMPLES
+Let's suppose that we want to pass an integer value to the kernel.
+From the user point of view, this is like writing to the kernel.
+So we define the ioctl as:
+.Bd -literal -offset indent
+#define	MYDEVIOCTL	_IOW('i', 25, int)
+.Ed
+.Pp
+Within the
+.Fn *_ioctl
+routine of the driver, it can be then accessed like:
+.Bd -literal -offset indent
+int
+mydev_ioctl(struct dev_ioctl_args *ap)
+{
+	int error;
+	int *a;
+
+	switch (ap->a_cmd) {
+	case MYDEVIOCTL:
+		a = (int *)ap->data;
+		kprintf("Value passed from userspace: %d\\n", *a);
+		return (0);    /* Success */
+		break;
+
+	/* Handle other ioctls here */
+
+        default:
+                /* Inappropriate ioctl for device */
+                error = ENOTTY;
+		break;
+	}
+
+	return (error);
+}
+.Ed
+.Pp
+In userspace:
+.Bd -literal -offset indent
+int a = 101;
+if (ioctl(fd, MYDEVIOCTL, \*[Am]a) == -1) {
+	/* Handle failure */
+}
+.Ed
+.Sh SEE ALSO
+.Xr ioctl 2

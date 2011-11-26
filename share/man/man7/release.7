@@ -1,0 +1,229 @@
+.\"
+.\" Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man7/release.7,v 1.3.2.6 2003/04/12 20:42:30 murray Exp $
+.\"
+.Dd May 12, 2010
+.Dt NRELEASE 7
+.Os
+.Sh NAME
+.Nm nrelease
+.Nd release building infrastructure
+.Sh DESCRIPTION
+.Dx
+provides a complete build environment suitable for users to make
+full releases of the
+.Dx
+operating system.
+All of the tools necessary to build releases are available from the
+git repository in
+.Pa src/nrelease .
+A complete release (that is, a live CD) can actually be built with
+only a single command.
+This command is aptly named
+.Dq Li "make release" .
+.Pp
+This document does not cover source code management, quality
+assurance, or other aspects of the release engineering process.
+.Sh TARGETS
+The release Makefile
+.Pq Pa src/nrelease/Makefile
+defines a number of targets which are roughly modeled after the
+targets used for building the system.
+.Bl -tag -width ".Cm realquickrel"
+.It Cm help
+Offer some help.
+.It Cm release
+Builds world and kernel, installs them, adds packages and prepares the ISO
+image.
+.It Cm quickrel
+Same as
+.Cm release
+but uses the
+.Cm quickworld
+target (alias
+.Cm quick ) .
+.It Cm realquickrel
+Same as
+.Cm release
+but uses the
+.Cm realquickworld
+target (alias
+.Cm realquick ) .
+.It Cm clean
+Removes the ISO root directory and object files.
+.It Cm realclean
+Same as
+.Cm clean
+but also removes external packages.
+.El
+.Pp
+The
+.Cm quickrel
+and
+.Cm realquickrel
+targets will only work if a full
+.Cm buildworld
+and
+.Cm buildkernel
+have been done before.
+For a description of the corresponding build targets, see
+.Xr build 7 .
+.Pp
+A number of additional targets may be specified along with
+.Cm release ,
+.Cm quickrel ,
+or
+.Cm realquickrel
+to add additional features:
+.Bl -tag -width ".Cm realquickrel"
+.It Cm gui
+Adds
+.Xr Xorg 1
+along with some additional applications to the ISO (LiveDVD).
+.El
+.Pp
+During the process of rolling a release a check is performed to find
+out if external packages to be put on the CD exist on your system.
+If they cannot be found, the release process will stop and give
+proper commands for downloading and setting up these packages.
+.Sh ENVIRONMENT
+.Bl -tag -width ".Va PKGSRC_EXTRA_PACKAGES"
+.It Va ISODIR
+Default prefix of
+.Va ISOFILE
+and
+.Va ISOROOT
+(default is
+.Pa /usr/release ) .
+.It Va ISOFILE
+Name of the ISO image to generate (default is
+.Pa /usr/release/dfly.iso ) .
+.It Va ISOROOT
+Location where the image contents are installed to before the ISO is prepared.
+.It Va KERNCONF
+Kernel configuration(s) to use.
+.It Va PKGBIN_MKISOFS
+Location of the
+.Xr mkisofs 8
+utility which is to be used during the build.
+.It Va PKGBIN_PKG_ADD
+Location of the
+.Xr pkg_add 1
+utility which is to be used during the build.
+.It Va PKGBIN_PKG_ADMIN
+Location of the
+.Xr pkg_admin 1
+utility which is to be used during the build.
+.It Va PKGBIN_PKG_DELETE
+Location of the
+.Xr pkg_delete 1
+utility which is to be used during the build.
+.It Va PKGSRC_PACKAGES
+List of packages to be added to the ISO.
+.It Va PKGSRC_EXTRA_PACKAGES
+List of packages, in addition to
+.Va PKGSRC_PACKAGES ,
+to be added to the ISO.
+.It Va PKGSRC_PATH
+Location of
+.Xr pkgsrc 7
+tree to be used for package building.
+.It Va PKGSRC_PKG_PATH
+Specifies the location where binary
+.Xr pkgsrc 7
+packages are kept.
+.It Va WITHOUT_SRCS
+If set, this variable will prevent source code from being copied to
+the ISO image.
+.It Va IMGFILE
+The name of the image file (default is
+.Pa /usr/release/dfly.img ) .
+.It Va IMGMNT
+The mount point for the image (default is
+.Pa /usr/release/mnt ) .
+.It Va IMGUSBDEV
+The disk device to use in the image's
+.Xr fstab 5
+(default is
+.Pa /dev/da8 ) .
+.El
+.Sh FILES
+.Bl -tag -compact
+.It Pa /etc/make.conf
+.It Pa src/Makefile
+.It Pa src/Makefile.inc1
+.It Pa src/nrelease/Makefile
+.El
+.Sh EXAMPLES
+The following sequence of commands is used to build a standard
+.Dx 2.0
+installation CD image (assuming that a local git repository is
+available, see
+.Xr development 7
+for how to get this):
+.Bd -literal -offset indent
+cd /usr/src
+git checkout -b rel2_0 crater/DragonFly_RELEASE_2_0
+cd nrelease
+make release
+.Ed
+.Pp
+After running these commands, the image will be available in the
+.Pa /usr/release
+directory.
+.\".Pp
+.\"The steps required for engineering a release are documented in (CVS)
+.\".Pa doc/notes/release.txt
+.\"(how to branch the CVS tree etc.)
+.\"They were put in an out of the way place so normal developers would not
+.\"accidentally try to run the commands in question.
+.Sh SEE ALSO
+.Xr git 1 ,
+.Xr make 1 ,
+.Xr make.conf 5 ,
+.Xr build 7 ,
+.Xr development 7 ,
+.Xr pkgsrc 7
+.Sh HISTORY
+The
+.Nm
+framework was added in
+.Dx 1.0
+to implement the idea of a
+.Dq "live CD" .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+infrastructure was written by
+.An Matthew Dillon .
+This manual page was written by
+.An Sascha Wildner .

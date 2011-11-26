@@ -1,0 +1,108 @@
+# Makefile.usr - installed as /usr/Makefile
+#
+# Provides simple targets to download and maintain /usr/src, /usr/pkgsrc etc.
+
+GITHOST?=git.dragonflybsd.org
+
+help all:
+	@echo "HELP:"
+	@echo ""
+.if exists(${.CURDIR}/pkgsrc/.git)
+.if exists(${.CURDIR}/pkgsrc/Makefile)
+	@echo "    make pkgsrc-update       - update your pkgsrc repo from the net"
+.else
+	@echo "    make pkgsrc-checkout     - initial checkout of your pre-packaged"
+	@echo "                               pkgsrc repo."
+	@echo "    make pkgsrc-update       - update your pkgsrc repo from the net"
+	@echo "                               after the initial checkout."
+.endif
+.else
+	@echo "    make pkgsrc-create       - fetch initial pkgsrc repo from the net"
+	@echo "    make pkgsrc-create-repo  - fetch pkgsrc repo only, no checkout"
+	@echo "    make pkgsrc-update       - update your pkgsrc repo from the net"
+.endif
+	@echo ""
+.if exists(${.CURDIR}/src/.git)
+.if exists(${.CURDIR}/src/Makefile)
+	@echo "    make src-update          - update your src repo from the net"
+.else
+	@echo "    make src-checkout        - initial checkout of your pre-packaged src repo"
+	@echo "    make src-update          - update your src repo from the net"
+	@echo "                               after the initial checkout."
+.endif
+.else
+	@echo "    make src-create          - fetch initial src repo from the net"
+	@echo "    make src-create-shallow  - fetch initial history-free src repo"
+	@echo "    make src-create-repo     - fetch src repo only, no checkout"
+	@echo "    make src-update          - update your src repo from the net"
+.endif
+	@echo ""
+.if exists(${.CURDIR}/src-sys.tgz)
+	@echo "    make release-sys-extract - extract the pre-packaged sys-only sources"
+.endif
+	@echo ""
+	@echo "If automating please feel free to run git pull's from cron."
+	@echo "We prefer once a day but you can run them more often if you"
+	@echo "desire."
+	@echo ""
+	@echo "If you have a repo previously maintained via CVS you should"
+	@echo "rm -rf it (save any local modifications) and then use the"
+	@echo "make src-create and/or make pkgsrc-create to set up the initial"
+	@echo "git repo."
+
+pkgsrc-create-repo:
+	@echo "If problems occur you may have to rm -rf pkgsrc and try again."
+	@echo ""
+	mkdir -p ${.CURDIR}/pkgsrc
+	cd ${.CURDIR}/pkgsrc && git init
+	cd ${.CURDIR}/pkgsrc && \
+		git remote add origin git://${GITHOST}/pkgsrcv2.git
+	cd ${.CURDIR}/pkgsrc && git fetch origin
+	cd ${.CURDIR}/pkgsrc && git branch master origin/master
+	cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2011Q3 origin/pkgsrc-2011Q3
+
+pkgsrc-create: pkgsrc-create-repo
+	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2011Q3
+	cd ${.CURDIR}/pkgsrc && git pull
+
+pkgsrc-checkout:
+	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2011Q3
+
+pkgsrc-update:
+	cd ${.CURDIR}/pkgsrc && git pull
+
+src-create-repo:
+	@echo "If problems occur you may have to rm -rf src and try again."
+	@echo ""
+	mkdir -p ${.CURDIR}/src
+	cd ${.CURDIR}/src && git init
+	cd ${.CURDIR}/src && \
+		git remote add origin git://${GITHOST}/dragonfly.git
+	cd ${.CURDIR}/src && git fetch origin
+	cd ${.CURDIR}/src && git branch master origin/master
+
+src-create: src-create-repo
+	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git pull
+
+src-create-shallow:
+	@echo "If problems occur you may have to rm -rf src and try again."
+	@echo ""
+	mkdir -p ${.CURDIR}/src
+	cd ${.CURDIR}/src && git init
+	cd ${.CURDIR}/src && \
+	    git remote add origin git://${GITHOST}/dragonfly.git
+	cd ${.CURDIR}/src && git fetch --depth=1 origin
+	cd ${.CURDIR}/src && git branch master origin/master
+	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git pull
+
+src-checkout:
+	cd ${.CURDIR}/src && git checkout master
+
+src-update:
+	cd ${.CURDIR}/src && git pull
+
+release-sys-extract:
+	cd ${.CURDIR} && tar xvpzf src-sys.tgz
+

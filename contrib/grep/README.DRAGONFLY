@@ -1,0 +1,17 @@
+GNU GREP 2.9
+============
+
+Original source can be downloaded from:
+http://ftp.gnu.org/gnu/grep
+
+file = grep-2.9.tar.gz
+date = 21 June 2011
+size = 1790291
+sha1 = 910ccb63f7436349c0bc6ae60f916a8cf938fcb8
+
+A list of files and directories removed is in README.DELETED
+
+Local modifications applied to following files:
+	src/main.c
+	doc/grep.texi
+

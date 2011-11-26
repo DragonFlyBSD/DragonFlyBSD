@@ -1,0 +1,21 @@
+Scripts and Tools to help with Debugging DragonFly.
+
+Files in this directory:
+
+	ncptrace.c -	Trace the kernel's namecache hierarchy.  Namecache
+			records are typically in one of three states:
+			unresolved (marked UNRESOLVED -- cache state not yet
+			known), positive cache hit (non-NULL vp), or negative
+			cache hit (NULL vp)
+
+	ttyinfo.c  -	Extract clist information and check the
+			block counts looking for corruption.
+
+	vnodeinfo.c -	Run through the mountlist and scan and display
+			summary counts and all related vnodes.
+			
+	vmpageinfo.c -	Run through the vm_page_array and the vm_page_buckets
+			hash table and check that all the pages have the
+			correct hash table association.
+				
+

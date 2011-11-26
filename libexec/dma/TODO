@@ -1,0 +1,4 @@
+- unquote/handle quoted local recipients
+- use proper sysexit codes
+- handle/use ESMTP extensions
+- .forward support

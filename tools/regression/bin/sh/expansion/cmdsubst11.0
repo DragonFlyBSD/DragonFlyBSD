@@ -1,0 +1,5 @@
+# $FreeBSD: src/tools/regression/bin/sh/expansion/cmdsubst11.0,v 1.1 2011/06/16 21:50:28 jilles Exp $
+
+# Not required by POSIX but useful for efficiency.
+
+[ $$ = $(eval '${SH} -c echo\ \$PPID') ]

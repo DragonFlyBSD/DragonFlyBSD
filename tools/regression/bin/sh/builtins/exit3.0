@@ -1,0 +1,5 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/exit3.0,v 1.1 2011/01/08 23:08:13 jilles Exp $
+
+# exit without arguments differs from exit $? in an EXIT trap.
+
+trap 'false; exit' 0

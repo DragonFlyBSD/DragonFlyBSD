@@ -1,0 +1,90 @@
+.\"
+.\" Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/lib/libc/sys/caps_sys_reply.2,v 1.1 2006/02/28 22:40:49 swildner Exp $
+.\"
+.Dd February 28, 2006
+.Dt CAPS_SYS_REPLY 2
+.Os
+.Sh NAME
+.Nm caps_sys_reply
+.Nd reply to a CAPS IPC message
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/caps.h
+.Ft int
+.Fn caps_sys_reply "int portid" "const void *msg" "int msgsize" "off_t msgid"
+.Sh DESCRIPTION
+Reply to the received CAPS message identified by
+.Fa msgid
+on the port specified by
+.Fa portid .
+The reply may supply opaque data in
+.Fa msg .
+The memory associated with the message must be left intact until
+an acknowledgement is returned at a later time.
+The kernel does not make a copy of the message and its size may not
+exceed 128KB.
+.Pp
+This function is only used on the server side.
+The server may reply to a message without retrieving its data.
+.Sh RETURN VALUES
+.Rv -std caps_sys_reply
+.Sh ERRORS
+This function will fail if:
+.Bl -tag -width ".Bq Er ENOTCONN"
+.It Bq Er EINVAL
+An invalid argument was specified.
+.It Bq Er ENOTCONN
+The process originally creating the port forked and the child
+process attempts to access the port.
+The child process is expected to create its own port.
+This error is also returned if the remote end closed its connection
+and is no longer available.
+Note that a child process may not reply to a message received by its
+parent.
+.El
+.Sh SEE ALSO
+.Xr caps_sys_client 2 ,
+.Xr caps_sys_get 2 ,
+.Xr caps_sys_put 2 ,
+.Xr caps_sys_service 2
+.Sh HISTORY
+The
+.Fn caps_sys_reply
+function call first appeared in
+.Dx 1.0 .
+.Sh AUTHORS
+.An -nosplit
+CAPS IPC was written by
+.An Matthew Dillon .
+This man page was written by
+.An Sascha Wildner .

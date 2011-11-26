@@ -1,0 +1,16 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/lineno.0,v 1.1 2008/05/15 19:58:44 stefanf Exp $
+echo $LINENO
+echo $LINENO
+
+f() {	
+	echo $LINENO
+	echo $LINENO
+}
+
+f
+
+echo ${LINENO:-foo}
+echo ${LINENO=foo}
+echo ${LINENO:+foo}
+echo ${LINENO+foo}
+echo ${#LINENO}

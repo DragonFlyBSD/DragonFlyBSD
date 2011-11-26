@@ -1,0 +1,22 @@
+# /etc/devtab
+#
+# This file contains label conversions for fstab, mount, fsck, hammer,
+# and other commands which expect device paths.  It is typically used
+# to translate longer serial numbers (which devfs automatically installs
+# as "/dev/serno/<serialnumber>[.suffix]" into short-form names to simplify
+# fstab.
+#
+# For use cases a label is represented up to the last '.' (if any),
+# looked up, and then any suffix after and including the leading '.' is
+# tacked onto the result.  So in /etc/fstab the label "fubar.s1a"
+# would translate to "/dev/serno/L123456.s1a" in our first example below.
+#
+# Currently the "serno" and "path" types are supported.  Really any generic
+# type is supported and will translate into a subdirectory lookup in /dev.
+# The "path" type translates to an absolute path with no prepended /dev,
+# suitable for files represented by block devices.
+#
+# label		type		basepath
+# -----		------		-------
+# fubar		serno		L123456
+# fubar		path		/full/path

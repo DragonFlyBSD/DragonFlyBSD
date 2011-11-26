@@ -1,0 +1,270 @@
+.\"
+.\" Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd May 9, 2010
+.Dt MUTEX 9
+.Os
+.Sh NAME
+.Nm mutex ,
+.Nm mtx_init ,
+.Nm mtx_uninit ,
+.Nm mtx_lock_sh ,
+.Nm mtx_lock_sh_quick ,
+.Nm mtx_lock_ex ,
+.Nm mtx_lock_ex_quick ,
+.Nm mtx_spinlock_ex ,
+.Nm mtx_spinlock_sh ,
+.Nm mtx_lock_ex_try ,
+.Nm mtx_lock_sh_try ,
+.Nm mtx_downgrade ,
+.Nm mtx_upgrade_try ,
+.Nm mtx_unlock ,
+.Nm mtx_unlock_ex ,
+.Nm mtx_unlock_sh ,
+.Nm mtx_islocked ,
+.Nm mtx_islocked_ex ,
+.Nm mtx_notlocked ,
+.Nm mtx_notlocked_ex ,
+.Nm mtx_owned ,
+.Nm mtx_notowned ,
+.Nm mtx_lockrefs ,
+.Nm mtx_hold ,
+.Nm mtx_drop
+.Nd general blocking/spinnable mutex functions
+.Sh SYNOPSIS
+.In sys/globaldata.h
+.In sys/mutex2.h
+.Ft void
+.Fn mtx_init "struct mtx *mtx"
+.Ft void
+.Fn mtx_uninit "struct mtx *mtx"
+.Ft void
+.Fn mtx_lock_sh "struct mtx *mtx" "const char *ident" "int flags" "int to"
+.Ft void
+.Fn mtx_lock_sh_quick "struct mtx *mtx" "const char *ident"
+.Ft void
+.Fn mtx_lock_ex "struct mtx *mtx" "const char *ident" "int flags" "int to"
+.Ft void
+.Fn mtx_lock_ex_quick "struct mtx *mtx" "const char *ident"
+.Ft void
+.Fn mtx_spinlock_ex "struct mtx *mtx"
+.Ft void
+.Fn mtx_spinlock_sh "struct mtx *mtx"
+.Ft int
+.Fn mtx_lock_ex_try "struct mtx *mtx"
+.Ft int
+.Fn mtx_lock_sh_try "struct mtx *mtx"
+.Ft void
+.Fn mtx_downgrade "struct mtx *mtx"
+.Ft int
+.Fn mtx_upgrade_try "struct mtx *mtx"
+.Ft void
+.Fn mtx_unlock "struct mtx *mtx"
+.Ft void
+.Fn mtx_unlock_ex "struct mtx *mtx"
+.Ft void
+.Fn mtx_unlock_sh "struct mtx *mtx"
+.Ft int
+.Fn mtx_islocked "struct mtx *mtx"
+.Ft int
+.Fn mtx_islocked_ex "struct mtx *mtx"
+.Ft int
+.Fn mtx_notlocked "struct mtx *mtx"
+.Ft int
+.Fn mtx_notlocked_ex "struct mtx *mtx"
+.Ft int
+.Fn mtx_owned "struct mtx *mtx"
+.Ft int
+.Fn mtx_notowned "struct mtx *mtx"
+.Ft int
+.Fn mtx_lockrefs "struct mtx *mtx"
+.Ft void
+.Fn mtx_hold "struct mtx *mtx"
+.Ft int
+.Fn mtx_drop "struct mtx *mtx"
+.Sh DESCRIPTION
+Mutexes are used to implement mutual exclusion between threads.
+Mutexes can be locked in shared or exclusive mode; they can also block
+or spin the current thread when there is contention.
+.Pp
+Mutexes also have an associated reference count, independent of the lock.
+.Pp
+System-wide mutex contention statistics can be found in the
+.Va kern.mtx_contention_count ,
+.Va kern.mtx_collision_count ,
+and
+.Va kern.mtx_wakeup_count
+variables.
+.Va kern.mtx_contention_count
+is incremented each time an attempt to acquire a mutex fails due to contention.
+.Va kern.mtx_wakeup_count
+is incremented each time an exclusive lock is converted to either a shared or
+unlocked state an waiters for the shared state are woken.
+.Pp
+The mutex functions are similar to the
+.Xr lockmgr 9
+functions.
+.Sh FUNCTIONS
+The
+.Fn mtx_init
+function initializes a mutex to the unlocked state.
+It is an error to use a mutex without initializing it.
+.Pp
+The
+.Fn mtx_uninit
+function deinitializes a mutex.
+.Pp
+The
+.Fn mtx_lock_sh
+function attempts to lock a mutex in shared mode and blocks the current
+thread until it is able to do so.
+The
+.Fa ident
+parameter is as in
+.Xr tsleep 9 ,
+it is a string describing the reason for a thread to be blocked.
+The
+.Fa flags
+parameter is passed to
+.Xr tsleep 9
+if the thread must block; the to parameter is a timeout for the sleep.
+.Fn mtx_lock_sh_quick
+is a version without flags or a timeout.
+.Pp
+The
+.Fn mtx_lock_ex
+function attempts to lock a mutex exclusively and blocks the current thread
+until it is able to do so.
+The
+.Fa ident
+parameter and flags parameters are as in
+.Xr tsleep 9 .
+The
+.Fa to
+parameter is a timeout on the sleep.
+.Fa mtx_lock_ex_quick
+is is a version without flags or a timeout.
+.Pp
+The
+.Fn mtx_spinlock_ex
+function attempts to lock the mutex in exclusive mode and spins until it is
+able to do so; the
+.Fn mtx_spinlock_sh
+function attempts to lock the mutex in shared mode and spins until it is
+able to do so.
+.Pp
+The
+.Fn mtx_lock_ex_try
+and
+.Fn mtx_lock_sh_try
+functions attempt to lock the mutex in exclusive or shared mode, respectively.
+If they are not able to, they return
+.Er EAGAIN .
+.Pp
+The
+.Fn mtx_downgrade
+function converts an exclusively held lock to a shared lock.
+The lock must be held by the calling thread.
+If the lock is already shared, this call is a no-op.
+.Pp
+The
+.Fn mtx_upgrade_try
+function attempts to convert a shared lock to an exclusive one.
+The mutex must be held by the caller in the shared state.
+If the upgrade is successful, this function returns 0; otherwise, it returns
+.Er EDEADLK .
+.Pp
+The
+.Fn mtx_unlock
+function releases a held mutex;
+it works on both exclusive and shared mutexes.
+The
+.Fn mtx_unlock_ex
+and
+.Fn mtx_unlock_sh
+functions are optimized unlock paths, used when it is known that a lock is held
+exclusively or in shared state.
+.Pp
+The
+.Fn mtx_islocked
+function returns non-zero if the mutex is locked in either shared of
+exclusive state by any thread.
+.Fn mtx_islocked_ex
+returns non-zero if the mutex is locked exclusively by any thread.
+The
+.Fn mtx_notlocked
+function returns non-zero if the mutex is not locked.
+The
+.Fn mtx_owned
+function returns non-zero if the mutex is exclusively locked by the calling
+thread.
+The
+.Fn mtx_notowned
+function returns non-zero if the mutex is not exclusively locked by the
+calling thread.
+The
+.Fn mtx_lockrefs
+function returns the number of shared or exclusive locks on the mutex.
+.Pp
+The
+.Fn mtx_hold
+function increments the reference count associated with each mutex.
+The reference count is independent of the lock field.
+The
+.Fn mtx_drop
+function decrements the reference count associated with each mutex
+and returns the old value of the count.
+A return value of
+.Sq 1
+means that the current count is
+.Sq 0 .
+.Sh FILES
+The uncontended path of the
+.Nm
+implementation is in
+.Pa /sys/sys/mutex2.h .
+The data structures are in
+.Pa /sys/sys/mutex.h .
+The core of the spinlock implementation is in
+.Pa /sys/kern/kern_mutex.c .
+.Sh SEE ALSO
+.Xr crit_enter 9 ,
+.Xr lockmgr 9 ,
+.Xr serializer 9 ,
+.Xr spinlock 9
+.Sh HISTORY
+Mutexes first appeared in
+.Dx 2.3 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+implementation was written by
+.An Matthew Dillon .

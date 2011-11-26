@@ -1,0 +1,349 @@
+.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.19 2008/01/22 19:17:38 swildner Exp $
+.\"
+.\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd January 6, 2009
+.Dt DNTPD 8
+.Os
+.Sh NAME
+.Nm dntpd
+.Nd Network time protocol client daemon
+.Sh SYNOPSIS
+.Nm
+.Bk -words
+.Op Fl 46dnqstFSQ
+.Op Fl f Ar config_file
+.Op Fl i Ar insane_deviation
+.Op Fl l Ar log_level
+.Op Fl T Ar nominal_poll
+.Op Fl L Ar maximum_poll
+.Op targets
+.Ek
+.Sh DESCRIPTION
+The
+.Nm
+daemon will synchronize the system clock to one or more external NTP time
+sources.
+By default an initial coarse offset correction will be made if
+time is off by greater than 2 minutes.
+Additional sliding offset corrections will be made if necessary.
+Once sufficient information is obtained,
+.Nm
+will also correct the clock frequency.
+Over the long haul the frequency can
+usually be corrected to within 2 ppm of the time source.
+Offset errors can
+typically be corrected to within 20 milliseconds, or within 1 millisecond of
+a low latency time source.
+.Pp
+By default
+.Nm
+will load its configuration from
+.Pa /etc/dntpd.conf
+and run as a daemon (background itself).
+If you re-execute the binary it will automatically kill the currently running
+.Nm
+daemon.
+If you run
+.Nm
+with the -Q option any currently running daemon will be killed and
+no new daemon will be started.
+.Pp
+The following command line options are available:
+.Bl -tag -width Fl
+.It Fl 4
+Forces
+.Nm
+to use only IPv4 addresses.
+.It Fl 6
+Forces
+.Nm
+to use only IPv6 addresses.
+.It Fl d
+Run in debug mode.
+Implies
+.Fl F ,
+.Fl l Ar 99 ,
+and
+.Fl f Ar /dev/null
+and logs to stderr instead of syslog.
+The normal client code is run and time corrections will be made.
+.It Fl n
+No-update mode.
+No actual update is made any time the client would
+otherwise normally update the system frequency or offset.
+.It Fl q
+Quiet mode.
+Implies a logging level of 0.
+.It Fl s
+Issue a coarse offset correction on startup.
+Normally a coarse offset
+correction is only made when the time differential is greater than 2
+minutes.
+This option will cause the initial offset correction to be
+a coarse correction regardless.
+Note that the system will still not make
+a correction unless the offset error is greater than 4 times the standard
+deviation of the queries.
+.It Fl t
+Test mode.
+Implies
+.Fl F ,
+.Fl l Ar 99 ,
+.Fl n ,
+and
+.Fl f Ar /dev/null
+and logs to stderr instead of syslog.
+A single linear regression is
+accumulated at the nominal polling rate and reported until terminated.
+No time corrections are made.
+This option is meant for testing only.
+Note that frequency corrections based on internet time sources typically
+require a long (10-30min) polling rate to be well correlated.
+.It Fl F
+Run in the foreground.
+Unlike debug mode, this option will still log to syslog.
+.It Fl S
+Do not set the time immediately on startup (default).
+.It Fl Q
+Terminate any running background daemon and exit.
+.It Fl f Ar config_file
+Specify the configuration file.
+The default is
+.Pa /etc/dntpd.conf .
+.It Fl i Ar insane_deviation
+Specify how much deviation is allowed in calculated offsets, in seconds.
+Fractions may be specified.
+A quorum of servers must agree with the one we select as being the best time
+source in order for us to select that source.
+The default deviation allowed is a fairly expansive 0.5 seconds.
+Note that offset errors due to internet packet latency can
+exceed 25ms (0.025).
+.It Fl l Ar log_level
+Specify the log level.
+The default is 1.
+All serious errors are logged at log level 0.
+Major time corrections are logged at log level 1.
+All time corrections and state changes are logged at log level 2.
+Log levels 3 and 4 increase the amount of debugging information logged.
+.It Fl T Ar nominal_poll
+Set the nominal polling interval, in seconds.
+This is the interval used while the client is in acquisition mode.
+The default is 300 seconds (5 minutes).
+.It Fl L Ar maximum_poll
+Set the maximum polling interval, in seconds.
+This is the interval used
+while the client is in maintenance mode, after it believes it has
+stabilized the system's clock.
+The default is 1800 seconds (30 minutes).
+.It targets
+Specify targets in addition to the ones listed in the config file.
+Note that certain options
+.Fl ( d , t )
+disable the config file, and you can specify a configuration file of
+.Pa /dev/null
+if you want to disable it otherwise.
+.El
+.Sh IMPLEMENTATION NOTES
+.Nm
+runs two linear regressions for each target against the uncorrected system
+time.
+The two linear regressions are staggered so the second one is stable
+and can replace the first one once the first's sampling limit has been
+reached.
+The second linear regression is also capable of overriding the first if
+the target changes sufficiently to invalidate the first's correlation.
+.Pp
+The linear regression is a line-fitting algorithm which allows us to
+calculate a running Y-intercept, slope, and correlation factor.
+The
+Y-intercept is currently not used but can be an indication of a shift in
+the time source.
+The slope basically gives us the drift rate which in
+turn allows us to correct the frequency.
+The correlation gives us a
+quality indication, with 0 being the worst and \(+- 1.0 being the best.
+.Pp
+A standard deviation is calculated for offset corrections.
+A standard
+deviation gives us measure of the deviation from the mean of a set of
+samples.
+.Nm
+uses the sum(offset_error) and sum(offset_error^2) method to calculate
+a running standard deviation.
+The offset error relative to the
+frequency-corrected real time is calculated for each sample.
+Note that
+this differs from the uncorrected offset error that the linear regression
+uses to calculate the frequency correction.
+.Pp
+In order to make a frequency correction a minimum of 8 samples and a
+correlation \(>= 0.99, or 16 samples and a correlation \(>= 0.96 is required.
+Once these requirements are met a frequency correction will typically be
+made each sampling period.
+Frequency corrections do not 'jump' the system
+time or otherwise cause fine-time computations to be inaccurate and thus
+can pretty much be made at will.
+.Pp
+In order to make an offset correction a minimum of 4 samples is required
+and the standard deviation must be less than \(14 the current calculated
+offset error.
+The system typically applies offset corrections slowly over
+time.
+The algorithm will make an offset correction whenever these standards
+are met but the fact that the offset error must be greater than 4 times the
+standard deviation generally results in very few offset corrections being
+made once time has been frequency-corrected.
+.Nm
+will not attempt to make a followup offset correction until the system
+has completed applying the previous offset correction, as doing so would
+cause a serious overshoot or undershoot.
+It is possible to use a more
+sophisticated algorithm to take running offset corrections into account
+but we do not do that (yet).
+.Pp
+.Nm
+maintains an operations mode for each target.
+An initial 6 samples are taken
+at 5 second intervals, after which samples are taken at 5 minute intervals.
+If the time source is deemed to be good enough (using fairly relaxed
+correlation and standard deviation comparisons) the polling interval is
+increased to 30 minutes.
+Note that long intervals are required to get good
+correlations from internet time sources.
+.Pp
+If a target stops responding to NTP requests the operations mode goes into a
+failed state which polls the target at the nominal polling rate
+(e.g., 5 minutes).
+Once re-acquired
+.Nm
+will either go back to the 5-second startup mode or to the 5-minute
+acquisition mode depending on how long the target was in the failed state.
+.Sh TIME SYNCHRONIZATION ISSUES
+If the system clock is naturally off-frequency
+.Nm
+will be forced to make several offset corrections before it gets enough data
+to make a frequency correction.
+Once the frequency has been corrected
+.Nm
+can typically keep the time synchronized to within 1-20 milliseconds depending
+on the source and both the number of offset corrections and the size of the
+offset corrections should be significantly reduced.
+.Pp
+It will take up to 30 seconds for
+.Nm
+to make the initial coarse offset correction.
+It can take anywhere from 5 minutes to 3 hours for
+.Nm
+to make the initial frequency correction, depending on the time source.
+Internet time sources require long delays between samples to get a high
+quality correlation in order to issue a frequency correction.
+.Pp
+It is difficult to calculate the packet latency for an internet time source
+and in some cases this can result in time sources which disagree as much as
+20ms with each other.
+If you specify multiple targets and run in
+debug or a high-logging mode you may observe this issue.
+.Sh MULTIPLE SERVERS AND DNS ROUND ROBINS
+Multiple servers may be specified in the configuration file.
+Pool domains
+are supported and the same domain name may be specified several times to
+connect to several different targets within the pool.
+Your DNS server must rotate IPs for this to work properly (all
+.Ux
+name servers will rotate IPs).
+.Nm
+will automatically weed out any duplicate IPs.
+.Pp
+When two or more time sources are configured,
+.Nm
+will do a quorum-based sanity check on its best pick and fail the server if
+its offset deviates significantly from other servers.
+.Pp
+If a server fails,
+.Nm
+will relookup its domain name and attempt to reconnect to it.
+To avoid overloading servers due to packet routing snafus, reconnections
+can take upwards of an hour to cycle.
+.Sh CONFIGURATION FILE
+The
+.Pa /etc/dntpd.conf
+file contains a list of servers in the 'server <servername>' format, one
+per line.
+Any information after a '#' is assumed to be a comment.
+Any
+number of servers may be specified but it is usually wasteful to have more
+than four.
+.Pp
+The system will start dntpd at boot if you add the line:
+.Bd -literal
+dntpd_enable="YES"
+.Ed
+.Pp
+to
+.Pa /etc/rc.conf .
+.Nm
+will periodically re-resolve failed DNS queries and failed servers
+and may be enabled at boot time even if the network is not yet
+operational.
+.Sh FILES
+.Bl -tag -compact
+.It Pa /var/run/dntpd.pid
+When started as a daemon,
+.Nm
+stores its pid in this file.
+When terminating a running
+.Nm
+this file is used to obtain the pid.
+.Pp
+.It Pa /etc/dntpd.conf
+The default configuration file.
+.El
+.Sh HISTORY
+The
+.Nm
+command first appeared in
+.Dx 1.3 .
+.Sh AUTHORS
+This program was written by
+.An Matthew Dillon .
+.Sh BUGS
+An algorithm is needed to deal with time sources with packet-latency-based
+offset errors.
+.Pp
+The offset correction needs to be able to operate while a prior offset
+correction is still in-progress.
+.Pp
+We need to record the frequency correction in a file which is then read on
+startup, to avoid having to recorrect the frequency from scratch every
+time the system is rebooted.

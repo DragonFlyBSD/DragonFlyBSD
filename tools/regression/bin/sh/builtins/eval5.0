@@ -1,0 +1,4 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/eval5.0,v 1.1 2010/08/03 22:17:29 jilles Exp $
+
+# eval should return 0 if no command was executed.
+eval $(false)

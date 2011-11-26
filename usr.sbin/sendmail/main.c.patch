@@ -1,0 +1,25 @@
+$DragonFly: src/usr.sbin/sendmail/main.c.patch,v 1.1 2008/02/18 19:47:32 dillon Exp $
+
+Index: main.c
+===================================================================
+RCS file: /cvs/src/contrib/sendmail-8.14/sendmail/main.c,v
+retrieving revision 1.1.1.2
+diff -u -p -r1.1.1.2 main.c
+--- main.c	5 Nov 2007 01:37:45 -0000	1.1.1.2
++++ main.c	18 Feb 2008 19:30:27 -0000
+@@ -2543,9 +2543,12 @@ 						     NULL), &forged);
+ 		macdefine(&BlankEnvelope.e_macro, A_TEMP, '_', authinfo);
+ 
+ 		/* at this point we are in a child: reset state */
+-		sm_rpool_free(MainEnvelope.e_rpool);
+-		(void) newenvelope(&MainEnvelope, &MainEnvelope,
+-				   sm_rpool_new_x(NULL));
++		{
++			SM_RPOOL_T *opool = MainEnvelope.e_rpool;
++			(void) newenvelope(&MainEnvelope, &MainEnvelope,
++					   sm_rpool_new_x(NULL));
++			sm_rpool_free(opool);
++		}
+ 	}
+ 
+ 	if (LogLevel > 9)

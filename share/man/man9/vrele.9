@@ -1,0 +1,68 @@
+.\" Copyright (c) 1996 Doug Rabson
+.\"
+.\" All rights reserved.
+.\"
+.\" This program is free software.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE DEVELOPERS ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE DEVELOPERS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/share/man/man9/vrele.9,v 1.6.2.2 2001/12/17 11:30:19 ru Exp $
+.\"
+.Dd May 5, 2007
+.Dt VRELE 9
+.Os
+.Sh NAME
+.Nm vrele
+.Nd Release a previously obtained primary reference for a vnode
+.Sh SYNOPSIS
+.In sys/param.h
+.In sys/vnode.h
+.Ft void
+.Fn vrele "struct vnode *vp"
+.Sh DESCRIPTION
+The caller is holding a primary reference to the vnode and wishes to
+release it.
+.Bl -tag -width ".Fa vp"
+.It Fa vp
+The vnode being released.
+.El
+.Pp
+Any code in the system which obtains a primary reference to a vnode via
+.Xr vref 9
+typically releases that reference with
+.Fn vrele
+when it is finished with the vnode.
+Upon release of the last primary
+reference, the vnode will be deactivated and either moved to the free
+list for later reuse or marked as being cache.
+The vnode can be reactivated at any time prior to the system reusing it.
+.Sh SEE ALSO
+.Xr vdrop 9 ,
+.Xr vget 9 ,
+.Xr vhold 9 ,
+.Xr vnode 9 ,
+.Xr vn_lock 9 ,
+.Xr vn_unlock 9 ,
+.Xr vput 9 ,
+.Xr vref 9
+.Sh AUTHORS
+This manual page was written by
+.An Doug Rabson .

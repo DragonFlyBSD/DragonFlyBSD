@@ -1,0 +1,4 @@
+# $FreeBSD: src/tools/regression/bin/sh/expansion/cmdsubst4.0,v 1.1 2010/12/27 23:56:03 jilles Exp $
+
+exec 2>/dev/null
+! y=$(: </var/empty/nonexistent)

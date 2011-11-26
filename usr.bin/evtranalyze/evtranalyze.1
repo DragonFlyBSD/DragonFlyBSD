@@ -1,0 +1,188 @@
+.\"-
+.\" Copyright (c) 2009-10 Aggelos Economopoulos
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"
+.Dd June 13, 2010
+.Dt EVTRANALYZE 1
+.Os
+.Sh NAME
+.Nm evtranalyze
+.Nd analyze a trace stream
+.Sh SYNOPSIS
+.Nm
+.Op Fl f Ar infile
+.Ar command
+.Op Ar argument ...
+.Sh DESCRIPTION
+The
+.Nm
+utility is used to analyze an event trace stream.
+It takes a few global options, after which the user should
+specify a subcommand, followed by the subcommands options.
+.Ss Global options
+The global options are
+.Bl -tag -width indent
+.It Fl f Ar path
+Specifies the file containing the event stream.
+.El
+.Pp
+The subcommands are:
+.Bl -ohang
+.\" ==== show ====
+.It Cm show
+Lists the individual events, one per line.
+The timestamps are relative to the previous event.
+The flags it accepts are:
+.Bl -tag -width indent-two
+.It Fl f Ar fmt
+Limits the displayed events to those matching
+.Ar fmt .
+.El
+.\" ==== stats ====
+.It Cm stats
+Prints out statistics about the specified variable.
+It needs at least two additional parameters.
+The first one specifies the expected variable type.
+The second specifies the variable name.
+Currently, the supported variable types are
+.Ar integer
+and
+.Ar completion .
+The first is for 'continuous' values and will be treated as a floating
+point value.
+The second is for events that appear in pairs of data constructors with
+matching arguments.
+For example,
+.Dq BeginEvent 4 2
+and
+.Dq EndEvent 4 2 .
+If the variable takes values of
+.Ar completion
+type, then there must be two more arguments: one specifying the
+.Dq opening
+constructor and another specifying the
+.Dq closing
+constructor.
+So in our example those would be BeginEvent and EndEvent, in that order.
+The command will display appropriate statistics for the chosen value type
+(if the variable is assigned values of different types, those assignments
+will be ignored).
+The user can specify additional flags immediatelly after the expected
+variable type. Those are:
+.Bl -tag -width indent-two
+.It Fl p Ar basename
+Generates SVG plots of potentially interesting variable properties.
+For integer variables, it will plot the value of the variable versus time.
+For completion variables, it will generate a histogram of the time elapsed
+between matching Begin and End events.
+Currently, this will only work if the ploticus program is installed as
+.Pa /usr/pkg/bin/pl .
+The svg files will all start with
+.Ar basename .
+In addition,
+.Nm
+will leave behind the data files used to generate the plots (with the
+suffix
+.Pa .data
+replaced for
+.Pa .svg ) .
+These files can be used to create new plots with a program of the user's
+choosing.
+.El
+.\" ==== svg ====
+.It Cm svg
+Generates an svg file (by default
+.Pa output.svg )
+in the current directory, displaying the stream events.
+The flags it accepts are:
+.Bl -tag -width indent-two
+.It Fl i Ar interval
+Limits the displayed events to those occurring within the
+specified time interval.
+The interval is specified in the form [c|m]<num>:<num>.
+If
+.Ar interval
+starts with 'c', <num> is absolute (i.e. not relative to the start of the
+event stream) clock cycles (integral).
+If
+.Ar interval
+starts with 'm', <num> is a floating point number specifying miliseconds
+since the first event in the stream.
+.It Fl o Ar path
+Specifies an alternate output file.
+.El
+.\" ==== summary ====
+.It Cm summary
+Displays summary information about the event stream.
+.El
+.Sh EXAMPLES
+Firstly, one can generate an event trace as described in
+.Xr ktrdump 8 .
+Assume that our trace is in
+.Pa trace.evtr .
+Then
+.Bd -literal -offset indent
+evtranalyze -f trace.evtr summary
+.Ed
+.Pp
+will display summary information for the number of events encountered
+on each processor.
+.Bd -literal -offset indent
+evtranalyze -f trace.evtr show
+.Ed
+.Pp
+will display those events in chronological order, merging event traces
+from all system cpus.
+.Bd -literal -offset indent
+evtranalyze -f trace.evtr stats integer varname
+.Ed
+.Pp
+will display statistics about the integer variable
+.Ar varname ,
+while
+.Bd -literal -offset indent
+evtranalyze -f trace.evtr stats completion -p test varname Open Close
+.Ed
+.Pp
+displays statistics for completion events (matching Open/Close constructors)
+on the variable
+.Ar varname
+and in addition generates appropriate plots in files named
+.Sq Pa test*.svg .
+.Sh SEE ALSO
+.Xr ktrdump 8
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Dx 2.5 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+utility was implemented by
+.An Aggelos Economopoulos Aq aggelos@dragonflybsd.org
+for
+.Dx .

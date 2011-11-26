@@ -1,0 +1,28 @@
+#!/bin/csh
+#
+# $DragonFly: src/bin/cpdup/scripts/do_mirror,v 1.1 2006/09/16 21:57:10 dillon Exp $
+
+source params
+
+if ( "$argv" == "" ) then
+    echo "do_mirror <level>"
+    exit 1
+endif
+
+echo "STARTING MIRRORS `date` level $argv"
+foreach i ( $backup_nfs/* )
+    set host = ${i:t}
+    if ( -d $i ) then
+	./do_mirror_host $host $argv >& $backup_path/mirrors/${host}.log &
+    endif
+end
+echo "WAITING FOR MIRRORS TO COMPLETE `date`"
+wait
+foreach i ( ${backup_nfs}/* )
+    set host = ${i:t}
+    if ( -d $i ) then
+	echo -n "${host}: "
+	tail -1 $backup_path/mirrors/${host}.log
+    endif
+end
+echo "DONE MIRRORING `date`"
