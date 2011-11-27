@@ -172,10 +172,9 @@ nexus_probe(device_t dev)
 		 */
 		if (ioapic_enable) {
 			rm->rm_end = IDT_HWI_VECTORS - 1;
-			if (rman_init(rm, cpuid) ||
-			    rman_manage_region(rm,
-			    rm->rm_start, rm->rm_end))
-				panic("nexus_probe irq_rman");
+			if (rman_init(rm, cpuid))
+				panic("nexus_probe rman_init");
+			MachIntrABI.rman_setup(rm);
 		} else {
 			rm->rm_end = 15;
 			if (rman_init(rm, cpuid) ||

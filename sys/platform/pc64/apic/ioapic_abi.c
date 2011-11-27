@@ -46,6 +46,7 @@
 #include <sys/machintr.h>
 #include <sys/interrupt.h>
 #include <sys/bus.h>
+#include <sys/rman.h>
 #include <sys/thread2.h>
 
 #include <machine/smp.h>
@@ -470,6 +471,9 @@ static struct ioapic_irqmap {
 #define IOAPIC_IMT_LINE		2
 #define IOAPIC_IMT_SYSCALL	3
 
+#define IOAPIC_IMT_ISHWI(map)	((map)->im_type != IOAPIC_IMT_RESERVED && \
+				 (map)->im_type != IOAPIC_IMT_SYSCALL)
+
 #define IOAPIC_IMF_CONF		0x1
 
 extern void	IOAPIC_INTREN(int);
@@ -490,6 +494,7 @@ static void	ioapic_abi_cleanup(void);
 static void	ioapic_abi_setdefault(void);
 static void	ioapic_abi_stabilize(void);
 static void	ioapic_abi_initmap(void);
+static void	ioapic_abi_rman_setup(struct rman *);
 
 static int	ioapic_abi_gsi_cpuid(int, int);
 
@@ -506,7 +511,8 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 	.cleanup	= ioapic_abi_cleanup,
 	.setdefault	= ioapic_abi_setdefault,
 	.stabilize	= ioapic_abi_stabilize,
-	.initmap	= ioapic_abi_initmap
+	.initmap	= ioapic_abi_initmap,
+	.rman_setup	= ioapic_abi_rman_setup
 };
 
 static int	ioapic_abi_extint_irq = -1;
@@ -1025,4 +1031,51 @@ ioapic_abi_gsi_cpuid(int irq, int gsi)
 		}
 	}
 	return cpuid;
+}
+
+static void
+ioapic_abi_rman_setup(struct rman *rm)
+{
+	int start, end, i;
+
+	KASSERT(rm->rm_cpuid >= 0 && rm->rm_cpuid < MAXCPU,
+	    ("invalid rman cpuid %d", rm->rm_cpuid));
+
+	start = end = -1;
+	for (i = 0; i < IOAPIC_HWI_VECTORS; ++i) {
+		const struct ioapic_irqmap *map =
+		    &ioapic_irqmaps[rm->rm_cpuid][i];
+
+		if (start < 0) {
+			if (IOAPIC_IMT_ISHWI(map))
+				start = end = i;
+		} else {
+			if (IOAPIC_IMT_ISHWI(map)) {
+				end = i;
+			} else {
+				KKASSERT(end >= 0);
+				if (bootverbose) {
+					kprintf("IOAPIC: rman cpu%d %d - %d\n",
+					    rm->rm_cpuid, start, end);
+				}
+				if (rman_manage_region(rm, start, end)) {
+					panic("rman_manage_region"
+					    "(cpu%d %d - %d)", rm->rm_cpuid,
+					    start, end);
+				}
+				start = end = -1;
+			}
+		}
+	}
+	if (start >= 0) {
+		KKASSERT(end >= 0);
+		if (bootverbose) {
+			kprintf("IOAPIC: rman cpu%d %d - %d\n",
+			    rm->rm_cpuid, start, end);
+		}
+		if (rman_manage_region(rm, start, end)) {
+			panic("rman_manage_region(cpu%d %d - %d)",
+			    rm->rm_cpuid, start, end);
+		}
+	}
 }

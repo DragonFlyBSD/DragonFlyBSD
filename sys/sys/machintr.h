@@ -47,6 +47,8 @@
 #include <sys/bus.h>
 #endif
 
+struct rman;
+
 enum machintr_type { MACHINTR_GENERIC, MACHINTR_ICU, MACHINTR_IOAPIC };
 
 #define MACHINTR_VECTOR_SETUP		1
@@ -71,6 +73,7 @@ struct machintr_abi {
     void	(*setdefault)(void);		/* set default vectors */
     void	(*stabilize)(void);		/* stable before ints enabled */
     void	(*initmap)(void);		/* init irq mapping */
+    void	(*rman_setup)(struct rman *);	/* setup rman */
 };
 
 #define machintr_intr_enable(intr)	MachIntrABI.intr_enable(intr)
