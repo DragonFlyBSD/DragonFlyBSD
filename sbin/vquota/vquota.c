@@ -44,8 +44,11 @@
 #include <sys/tree.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <sys/types.h>
+#include <libutil.h>
 
 static bool flag_debug = 0;
+static bool flag_humanize = 0;
 
 static void usage(int);
 static int get_dirsize(char *);
@@ -54,9 +57,9 @@ static int get_fslist(void);
 static void
 usage(int retcode)
 {
-	fprintf(stderr, "usage: vquota [-D] check directory\n");
-	fprintf(stderr, "       vquota [-D] lsfs\n");
-	fprintf(stderr, "       vquota [-D] show mount_point\n");
+	fprintf(stderr, "usage: vquota [-Dh] check directory\n");
+	fprintf(stderr, "       vquota [-Dh] lsfs\n");
+	fprintf(stderr, "       vquota [-Dh] show mount_point\n");
 	exit(retcode);
 }
 
@@ -257,6 +260,8 @@ get_dirsize(char* dirname)
 	struct ac_unode *unp, ufind;
 	struct ac_gnode *gnp, gfind;
 	int		i;
+	char		hbuf[5];
+	uint32_t	uid, gid;
 
 	/* TODO: check directory name sanity */
 	fts_args[0] = dirname;
@@ -304,25 +309,40 @@ get_dirsize(char* dirname)
 	}
 	fts_close(fts);
 
-	printf("total: %"PRIu64"\n", global_size);
+	if (flag_humanize) {
+		humanize_number(hbuf, sizeof(hbuf), global_size, "",
+		    HN_AUTOSCALE, HN_NOSPACE);
+		printf("total: %s\n", hbuf);
+	} else {
+		printf("total: %"PRIu64"\n", global_size);
+	}
 	RB_FOREACH(unp, ac_utree, &ac_uroot) {
-		for (i=0; i<ACCT_CHUNK_NIDS; i++) {
-			if (unp->uid_chunk[i] != 0) {
-				printf("uid %"PRIu32": %"PRIu64"\n",
-				    (unp->left_bits << ACCT_CHUNK_BITS) + i,
-				    unp->uid_chunk[i]);
-			}
-
+	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
+		if (unp->uid_chunk[i] != 0) {
+		    uid = (unp->left_bits << ACCT_CHUNK_BITS) + i;
+		    if (flag_humanize) {
+			humanize_number(hbuf, sizeof(hbuf),
+			unp->uid_chunk[i], "", HN_AUTOSCALE, HN_NOSPACE);
+			printf("uid %"PRIu32": %s\n", uid, hbuf);
+		    } else {
+			printf("uid %"PRIu32": %"PRIu64"\n", uid, unp->uid_chunk[i]);
+		    }
 		}
+	    }
 	}
 	RB_FOREACH(gnp, ac_gtree, &ac_groot) {
-		for (i=0; i<ACCT_CHUNK_NIDS; i++) {
-			if (gnp->gid_chunk[i] != 0) {
-				printf("gid %"PRIu32": %"PRIu64"\n",
-				    (gnp->left_bits << ACCT_CHUNK_BITS) + i,
-				    gnp->gid_chunk[i]);
-			}
+	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
+		if (gnp->gid_chunk[i] != 0) {
+		    gid = (gnp->left_bits << ACCT_CHUNK_BITS) + i;
+		    if (flag_humanize) {
+			humanize_number(hbuf, sizeof(hbuf),
+			gnp->gid_chunk[i], "", HN_AUTOSCALE, HN_NOSPACE);
+			printf("gid %"PRIu32": %s\n", gid, hbuf);
+		    } else {
+			printf("gid %"PRIu32": %"PRIu64"\n", gid, gnp->gid_chunk[i]);
+		    }
 		}
+	    }
 	}
 
 	return retval;
@@ -422,6 +442,7 @@ show_mp(char *path)
 	prop_dictionary_t item;
 	uint32_t id;
 	uint64_t space;
+	char hbuf[5];
 
 	args = prop_dictionary_create();
 	res  = prop_dictionary_create();
@@ -456,7 +477,12 @@ show_mp(char *path)
 			printf("gid %u:", id);
 		else
 			printf("total space used");
-		printf(" %"PRIu64"\n", space);
+		if (flag_humanize) {
+			humanize_number(hbuf, sizeof(hbuf), space, "", HN_AUTOSCALE, HN_NOSPACE);
+			printf(" %s\n", hbuf);
+		} else {
+			printf(" %" PRIu64 "\n", space);
+		}
 	}
 	prop_object_iterator_release(iter);
 
@@ -471,10 +497,13 @@ main(int argc, char **argv)
 {
 	int ch;
 
-	while ((ch = getopt(argc, argv, "D")) != -1) {
+	while ((ch = getopt(argc, argv, "Dh")) != -1) {
 		switch(ch) {
 		case 'D':
 			flag_debug = 1;
+			break;
+		case 'h':
+			flag_humanize = 1;
 			break;
 		}
 	}
