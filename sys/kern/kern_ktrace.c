@@ -128,8 +128,11 @@ ktrsysret(struct lwp *lp, int code, int error, register_t retval)
 	kth = ktrgetheader(KTR_SYSRET);
 	ktp.ktr_code = code;
 	ktp.ktr_error = error;
-	ktp.ktr_retval = retval;		/* what about val2 ? */
-
+	if (error == 0)
+		ktp.ktr_retval = retval;		/* what about val2 ? */
+	else
+		ktp.ktr_retval = 0;
+ 
 	kth->ktr_buf = (caddr_t)&ktp;
 	kth->ktr_len = sizeof(struct ktr_sysret);
 
