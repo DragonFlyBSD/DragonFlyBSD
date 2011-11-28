@@ -460,7 +460,10 @@ ldns_str2rdf_apl(ldns_rdf **rd, const char *str)
 	size_t i = 0;
 
 	/* [!]afi:address/prefix */
-	if (strlen(my_str) < 2) {
+	if (strlen(my_str) < 2
+			|| strchr(my_str, ':') == NULL
+			|| strchr(my_str, '/') == NULL
+			|| strchr(my_str, ':') > strchr(my_str, '/')) {
 		return LDNS_STATUS_INVALID_STR;
 	}
 

@@ -263,11 +263,6 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 	for(i = 2 ; i < (ssize_t)labels_count + 2; i++) {
 		labels[i] = ldns_dname_left_chop(labels[i - 1]);
 	}
-	/* if no servers is given with @, start by asking local resolver */
-	/* first part todo :) */
-	for (i = 0; i < (ssize_t) ldns_resolver_nameserver_count(local_res); i++) {
-		(void) ldns_resolver_push_nameserver(res, ldns_resolver_nameservers(local_res)[i]);
-	}
 
 	/* get the nameserver for the label
 	 * ask: dnskey and ds for the label

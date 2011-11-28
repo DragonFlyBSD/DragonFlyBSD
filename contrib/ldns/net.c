@@ -341,6 +341,11 @@ ldns_udp_bgsend(ldns_buffer *qbin, const struct sockaddr_storage *to, socklen_t 
 	}
 
 	if (ldns_udp_send_query(qbin, sockfd, to, tolen) == 0) {
+#ifndef USE_WINSOCK
+		close(sockfd);
+#else
+		closesocket(sockfd);
+#endif
 		return 0;
 	}
 	return sockfd;
@@ -678,6 +683,11 @@ ldns_tcp_bgsend(ldns_buffer *qbin, const struct sockaddr_storage *to, socklen_t 
 	}
 	
 	if (ldns_tcp_send_query(qbin, sockfd, to, tolen) == 0) {
+#ifndef USE_WINSOCK
+		close(sockfd);
+#else
+		closesocket(sockfd);
+#endif
 		return 0;
 	}
 	

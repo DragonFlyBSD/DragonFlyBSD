@@ -536,6 +536,9 @@ ldns_key_rr2ds(const ldns_rr *key, ldns_hash h)
 		return NULL;
 #endif
 #ifdef USE_ECDSA
+		/* Make similar ``not implemented'' construct as above when 
+		   draft-hoffman-dnssec-ecdsa-04 becomes a standard
+		 */
 	case LDNS_SHA384:
 		digest = LDNS_XMALLOC(uint8_t, SHA384_DIGEST_LENGTH);
 		if (!digest) {
@@ -543,10 +546,6 @@ ldns_key_rr2ds(const ldns_rr *key, ldns_hash h)
 			return NULL;
 		}
                 break;
-#else
-		/* not implemented */
-		ldns_rr_free(ds);
-		return NULL;
 #endif
 	}
 
@@ -565,7 +564,14 @@ ldns_key_rr2ds(const ldns_rr *key, ldns_hash h)
 	ldns_rr_push_rdf(ds, tmp);
 
 	/* copy the algorithm field */
-	ldns_rr_push_rdf(ds, ldns_rdf_clone( ldns_rr_rdf(key, 2))); 
+	if ((tmp = ldns_rr_rdf(key, 2)) == NULL) {
+		LDNS_FREE(digest);
+		ldns_buffer_free(data_buf);
+		ldns_rr_free(ds);
+		return NULL;
+	} else {
+		ldns_rr_push_rdf(ds, ldns_rdf_clone( tmp )); 
+	}
 
 	/* digest hash type */
 	sha1hash = (uint8_t)h;
@@ -764,20 +770,6 @@ ldns_dnssec_rrsets_contains_type(ldns_dnssec_rrsets *rrsets,
 	return 0;
 }
 
-/* returns true if the current dnssec_rrset from the given list of rrsets
- * is glue */
-static int
-is_glue(ldns_dnssec_rrsets *cur_rrsets, ldns_dnssec_rrsets *orig_rrsets)
-{
-	/* only glue if a or aaaa if there are no ns, unless there is soa */
-	return (cur_rrsets->type == LDNS_RR_TYPE_A ||
-	        cur_rrsets->type ==  LDNS_RR_TYPE_AAAA) &&
-	        (ldns_dnssec_rrsets_contains_type(orig_rrsets,
-	              LDNS_RR_TYPE_NS) &&
-	        !ldns_dnssec_rrsets_contains_type(orig_rrsets,
-	              LDNS_RR_TYPE_SOA));
-}
-
 ldns_rr *
 ldns_dnssec_create_nsec(ldns_dnssec_name *from,
                         ldns_dnssec_name *to,
@@ -787,9 +779,9 @@ ldns_dnssec_create_nsec(ldns_dnssec_name *from,
 	ldns_rr_type types[65536];
 	size_t type_count = 0;
 	ldns_dnssec_rrsets *cur_rrsets;
+	int on_delegation_point;
 
-	if (!from || !to || (nsec_type != LDNS_RR_TYPE_NSEC &&
-					 nsec_type != LDNS_RR_TYPE_NSEC3)) {
+	if (!from || !to || (nsec_type != LDNS_RR_TYPE_NSEC)) {
 		return NULL;
 	}
 
@@ -798,14 +790,22 @@ ldns_dnssec_create_nsec(ldns_dnssec_name *from,
 	ldns_rr_set_owner(nsec_rr, ldns_rdf_clone(ldns_dnssec_name_name(from)));
 	ldns_rr_push_rdf(nsec_rr, ldns_rdf_clone(ldns_dnssec_name_name(to)));
 
+	on_delegation_point = ldns_dnssec_rrsets_contains_type(
+			from->rrsets, LDNS_RR_TYPE_NS)
+		&& !ldns_dnssec_rrsets_contains_type(
+			from->rrsets, LDNS_RR_TYPE_SOA);
+
 	cur_rrsets = from->rrsets;
 	while (cur_rrsets) {
-		if (is_glue(cur_rrsets, from->rrsets)) {
-			cur_rrsets = cur_rrsets->next;
-			continue;
-		}
-		if (cur_rrsets->type != LDNS_RR_TYPE_RRSIG &&
-		    cur_rrsets->type != LDNS_RR_TYPE_NSEC) {
+		/* Do not include non-authoritative rrsets on the delegation point
+		 * in the type bitmap */
+		if ((on_delegation_point && (
+				cur_rrsets->type == LDNS_RR_TYPE_NS 
+			     || cur_rrsets->type == LDNS_RR_TYPE_DS))
+			|| (!on_delegation_point &&
+				cur_rrsets->type != LDNS_RR_TYPE_RRSIG
+			     && cur_rrsets->type != LDNS_RR_TYPE_NSEC)) {
+
 			types[type_count] = cur_rrsets->type;
 			type_count++;
 		}
@@ -839,6 +839,7 @@ ldns_dnssec_create_nsec3(ldns_dnssec_name *from,
 	size_t type_count = 0;
 	ldns_dnssec_rrsets *cur_rrsets;
 	ldns_status status;
+	int on_delegation_point;
 
 	flags = flags;
 
@@ -865,13 +866,24 @@ ldns_dnssec_create_nsec3(ldns_dnssec_name *from,
 	                          salt_length,
 	                          salt);
 
+	on_delegation_point = ldns_dnssec_rrsets_contains_type(
+			from->rrsets, LDNS_RR_TYPE_NS)
+		&& !ldns_dnssec_rrsets_contains_type(
+			from->rrsets, LDNS_RR_TYPE_SOA);
 	cur_rrsets = from->rrsets;
 	while (cur_rrsets) {
-		if (is_glue(cur_rrsets, from->rrsets)) {
-			cur_rrsets = cur_rrsets->next;
-			continue;
-		}
-		if (cur_rrsets->type != LDNS_RR_TYPE_RRSIG) {
+		/* Do not include non-authoritative rrsets on the delegation point
+		 * in the type bitmap. Potentionally not skipping insecure
+		 * delegation should have been done earlier, in function
+		 * ldns_dnssec_zone_create_nsec3s, or even earlier in:
+		 * ldns_dnssec_zone_sign_nsec3_flg .
+		 */
+		if ((on_delegation_point && (
+				cur_rrsets->type == LDNS_RR_TYPE_NS
+			     || cur_rrsets->type == LDNS_RR_TYPE_DS))
+			|| (!on_delegation_point &&
+				cur_rrsets->type != LDNS_RR_TYPE_RRSIG)) {
+
 			types[type_count] = cur_rrsets->type;
 			type_count++;
 		}
@@ -1199,9 +1211,11 @@ ldns_create_nsec3(ldns_rdf *cur_owner,
 uint8_t
 ldns_nsec3_algorithm(const ldns_rr *nsec3_rr)
 {
-	if (nsec3_rr && ldns_rr_get_type(nsec3_rr) == LDNS_RR_TYPE_NSEC3 &&
-	    ldns_rdf_size(ldns_rr_rdf(nsec3_rr, 0)) > 0
-	    ) {
+	if (nsec3_rr && 
+	      (ldns_rr_get_type(nsec3_rr) == LDNS_RR_TYPE_NSEC3 ||
+	       ldns_rr_get_type(nsec3_rr) == LDNS_RR_TYPE_NSEC3PARAM)
+	    && (ldns_rr_rdf(nsec3_rr, 0) != NULL)
+	    && ldns_rdf_size(ldns_rr_rdf(nsec3_rr, 0)) > 0) {
 		return ldns_rdf2native_int8(ldns_rr_rdf(nsec3_rr, 0));
 	}
 	return 0;
@@ -1210,9 +1224,11 @@ ldns_nsec3_algorithm(const ldns_rr *nsec3_rr)
 uint8_t
 ldns_nsec3_flags(const ldns_rr *nsec3_rr)
 {
-	if (nsec3_rr && ldns_rr_get_type(nsec3_rr) == LDNS_RR_TYPE_NSEC3 &&
-	    ldns_rdf_size(ldns_rr_rdf(nsec3_rr, 1)) > 0
-	    ) {
+	if (nsec3_rr && 
+	      (ldns_rr_get_type(nsec3_rr) == LDNS_RR_TYPE_NSEC3 ||
+	       ldns_rr_get_type(nsec3_rr) == LDNS_RR_TYPE_NSEC3PARAM)
+	    && (ldns_rr_rdf(nsec3_rr, 1) != NULL)
+	    && ldns_rdf_size(ldns_rr_rdf(nsec3_rr, 1)) > 0) {
 		return ldns_rdf2native_int8(ldns_rr_rdf(nsec3_rr, 1));
 	}
 	return 0;
@@ -1227,9 +1243,11 @@ ldns_nsec3_optout(const ldns_rr *nsec3_rr)
 uint16_t
 ldns_nsec3_iterations(const ldns_rr *nsec3_rr)
 {
-	if (nsec3_rr && ldns_rr_get_type(nsec3_rr) == LDNS_RR_TYPE_NSEC3 &&
-	    ldns_rdf_size(ldns_rr_rdf(nsec3_rr, 2)) > 0
-	    ) {
+	if (nsec3_rr &&
+	      (ldns_rr_get_type(nsec3_rr) == LDNS_RR_TYPE_NSEC3 ||
+	       ldns_rr_get_type(nsec3_rr) == LDNS_RR_TYPE_NSEC3PARAM)
+	    && (ldns_rr_rdf(nsec3_rr, 2) != NULL)
+	    && ldns_rdf_size(ldns_rr_rdf(nsec3_rr, 2)) > 0) {
 		return ldns_rdf2native_int16(ldns_rr_rdf(nsec3_rr, 2));
 	}
 	return 0;
@@ -1239,7 +1257,10 @@ ldns_nsec3_iterations(const ldns_rr *nsec3_rr)
 ldns_rdf *
 ldns_nsec3_salt(const ldns_rr *nsec3_rr)
 {
-	if (nsec3_rr && ldns_rr_get_type(nsec3_rr) == LDNS_RR_TYPE_NSEC3) {
+	if (nsec3_rr && 
+	      (ldns_rr_get_type(nsec3_rr) == LDNS_RR_TYPE_NSEC3 ||
+	       ldns_rr_get_type(nsec3_rr) == LDNS_RR_TYPE_NSEC3PARAM)
+	    ) {
 		return ldns_rr_rdf(nsec3_rr, 3);
 	}
 	return NULL;
@@ -1326,8 +1347,12 @@ ldns_nsec_bitmap_covers_type(const ldns_rdf *nsec_bitmap, ldns_rr_type type)
 	uint16_t cur_type;
 	uint16_t pos = 0;
 	uint16_t bit_pos;
-	uint8_t *data = ldns_rdf_data(nsec_bitmap);
+	uint8_t *data;
 
+	if (nsec_bitmap == NULL) {
+		return false;
+	}
+	data = ldns_rdf_data(nsec_bitmap);
 	while(pos < ldns_rdf_size(nsec_bitmap)) {
 		window_block_nr = data[pos];
 		bitmap_length = data[pos + 1];
@@ -1359,7 +1384,11 @@ ldns_nsec_covers_name(const ldns_rr *nsec, const ldns_rdf *name)
 	bool result;
 
 	if (ldns_rr_get_type(nsec) == LDNS_RR_TYPE_NSEC) {
-		nsec_next = ldns_rdf_clone(ldns_rr_rdf(nsec, 0));
+		if (ldns_rr_rdf(nsec, 0) != NULL) {
+			nsec_next = ldns_rdf_clone(ldns_rr_rdf(nsec, 0));
+		} else {
+			return false;
+		}
 	} else if (ldns_rr_get_type(nsec) == LDNS_RR_TYPE_NSEC3) {
 		hash_next = ldns_nsec3_next_owner(nsec);
 		next_hash_str = ldns_rdf2str(hash_next);

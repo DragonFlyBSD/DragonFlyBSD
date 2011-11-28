@@ -132,12 +132,14 @@ ldns_fget_token_l(FILE *f, char *token, const char *delim, size_t limit, int *li
 			}
 		}
 		if (c != '\0' && c != '\n') {
-			*t++ = c;
 			i++;
 		}
 		if (limit > 0 && i >= limit) {
 			*t = '\0';
 			return -1;
+		}
+		if (c != '\0' && c != '\n') {
+			*t++ = c;
 		}
 		if (c == '\\' && prev_c == '\\')
 			prev_c = 0;
@@ -302,12 +304,12 @@ ldns_bget_token(ldns_buffer *b, char *token, const char *delim, size_t limit)
                         }
 		}
 
-		*t++ = c;
 		i++;
 		if (limit > 0 && i >= limit) {
 			*t = '\0';
 			return -1;
 		}
+		*t++ = c;
 
 		if (c == '\\' && lc == '\\') {
 			lc = 0;

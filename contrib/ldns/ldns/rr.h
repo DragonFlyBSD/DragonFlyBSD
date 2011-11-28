@@ -176,6 +176,7 @@ enum ldns_enum_rr_type
 	LDNS_RR_TYPE_DHCID = 49,
 
 	LDNS_RR_TYPE_NSEC3 = 50,
+	LDNS_RR_TYPE_NSEC3PARAM = 51,
 	LDNS_RR_TYPE_NSEC3PARAMS = 51,
 
         /** draft-ietf-dnsop-trust-history */

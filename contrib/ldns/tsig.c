@@ -66,9 +66,9 @@ ldns_tsig_prepare_pkt_wire(uint8_t *wire, size_t wire_len, size_t *result_len)
 
 	ldns_status status;
 
-        if(wire_len < LDNS_HEADER_SIZE) {
-                return NULL;
-        }
+	if(wire_len < LDNS_HEADER_SIZE) {
+		return NULL;
+	}
 	/* fake parse the wire */
 	qd_count = LDNS_QDCOUNT(wire);
 	an_count = LDNS_ANCOUNT(wire);
@@ -118,9 +118,9 @@ ldns_tsig_prepare_pkt_wire(uint8_t *wire, size_t wire_len, size_t *result_len)
 
 	*result_len = pos;
 	wire2 = LDNS_XMALLOC(uint8_t, *result_len);
-        if(!wire2) {
-                return NULL;
-        }
+	if(!wire2) {
+		return NULL;
+	}
 	memcpy(wire2, wire, *result_len);
 
 	ldns_write_uint16(wire2 + LDNS_ARCOUNT_OFF, ar_count);
@@ -134,19 +134,23 @@ ldns_digest_function(char *name)
 {
 	/* these are the mandatory algorithms from RFC4635 */
 	/* The optional algorithms are not yet implemented */
-	if (strlen(name) == 12 && strncasecmp(name, "hmac-sha256.", 11) == 0) {
+	if (strlen(name) == 12 
+			&& strncasecmp(name, "hmac-sha256.", 11) == 0) {
 #ifdef HAVE_EVP_SHA256
 		return EVP_sha256();
 #else
 		return NULL;
 #endif
-	} else if (strlen(name) == 10 && strncasecmp(name, "hmac-sha1.", 9) == 0)
+	} else if (strlen(name) == 10
+			&& strncasecmp(name, "hmac-sha1.", 9) == 0) {
 		return EVP_sha1();
-	else if (strlen(name) == 25 && strncasecmp(name,
-		     "hmac-md5.sig-alg.reg.int.", 25) == 0)
+	} else if (strlen(name) == 25 
+			&& strncasecmp(name, "hmac-md5.sig-alg.reg.int.", 25) 
+			== 0) {
 		return EVP_md5();
-	else
+	} else {
 		return NULL;
+	}
 }
 #endif
 
@@ -157,23 +161,37 @@ ldns_tsig_mac_new(ldns_rdf **tsig_mac, uint8_t *pkt_wire, size_t pkt_wire_size,
 		ldns_rdf *algorithm_rdf, ldns_rdf *time_signed_rdf, ldns_rdf *error_rdf,
 		ldns_rdf *other_data_rdf, ldns_rdf *orig_mac_rdf, int tsig_timers_only)
 {
+	ldns_status status;
 	char *wireformat;
 	int wiresize;
-	unsigned char *mac_bytes;
-	unsigned char *key_bytes;
+	unsigned char *mac_bytes = NULL;
+	unsigned char *key_bytes = NULL;
 	int key_size;
 	const EVP_MD *digester;
-	char *algorithm_name;
+	char *algorithm_name = NULL;
 	unsigned int md_len = EVP_MAX_MD_SIZE;
 	ldns_rdf *result = NULL;
 	ldns_buffer *data_buffer = NULL;
+	ldns_rdf *canonical_key_name_rdf = NULL;
+	ldns_rdf *canonical_algorithm_rdf = NULL;
+	
+	if (key_name_rdf == NULL || algorithm_rdf == NULL) {
+		return LDNS_STATUS_NULL;
+	}
+	canonical_key_name_rdf  = ldns_rdf_clone(key_name_rdf);
+	canonical_algorithm_rdf = ldns_rdf_clone(algorithm_rdf);
 
+	if (canonical_key_name_rdf == NULL 
+			|| canonical_algorithm_rdf  == NULL) {
+		return LDNS_STATUS_MEM_ERR;
+	}
 	/*
 	 * prepare the digestable information
 	 */
 	data_buffer = ldns_buffer_new(LDNS_MAX_PACKETLEN);
-	if(!data_buffer) {
-		return LDNS_STATUS_MEM_ERR;
+	if (!data_buffer) {
+		status = LDNS_STATUS_MEM_ERR;
+		goto clean;
 	}
 	/* if orig_mac is not NULL, add it too */
 	if (orig_mac_rdf) {
@@ -181,10 +199,14 @@ ldns_tsig_mac_new(ldns_rdf **tsig_mac, uint8_t *pkt_wire, size_t pkt_wire_size,
  	}
 	ldns_buffer_write(data_buffer, pkt_wire, pkt_wire_size);
 	if (!tsig_timers_only) {
-		(void)ldns_rdf2buffer_wire(data_buffer, key_name_rdf);
+		ldns_dname2canonical(canonical_key_name_rdf);
+		(void)ldns_rdf2buffer_wire(data_buffer, 
+				canonical_key_name_rdf);
 		ldns_buffer_write_u16(data_buffer, LDNS_RR_CLASS_ANY);
 		ldns_buffer_write_u32(data_buffer, 0);
-		(void)ldns_rdf2buffer_wire(data_buffer, algorithm_rdf);
+		ldns_dname2canonical(canonical_algorithm_rdf);
+		(void)ldns_rdf2buffer_wire(data_buffer, 
+				canonical_algorithm_rdf);
 	}
 	(void)ldns_rdf2buffer_wire(data_buffer, time_signed_rdf);
 	(void)ldns_rdf2buffer_wire(data_buffer, fudge_rdf);
@@ -198,35 +220,29 @@ ldns_tsig_mac_new(ldns_rdf **tsig_mac, uint8_t *pkt_wire, size_t pkt_wire_size,
 
 	algorithm_name = ldns_rdf2str(algorithm_rdf);
 	if(!algorithm_name) {
-		ldns_buffer_free(data_buffer);
-		return LDNS_STATUS_MEM_ERR;
+		status = LDNS_STATUS_MEM_ERR;
+		goto clean;
 	}
 
 	/* prepare the key */
 	key_bytes = LDNS_XMALLOC(unsigned char,
 			ldns_b64_pton_calculate_size(strlen(key_data)));
 	if(!key_bytes) {
-		LDNS_FREE(algorithm_name);
-		ldns_buffer_free(data_buffer);
-		return LDNS_STATUS_MEM_ERR;
+		status = LDNS_STATUS_MEM_ERR;
+		goto clean;
 	}
 	key_size = ldns_b64_pton(key_data, key_bytes,
-                ldns_b64_pton_calculate_size(strlen(key_data)));
+	ldns_b64_pton_calculate_size(strlen(key_data)));
 	if (key_size < 0) {
-		LDNS_FREE(algorithm_name);
-		LDNS_FREE(key_bytes);
-		ldns_buffer_free(data_buffer);
-		/* LDNS_STATUS_INVALID_B64 */
-		return LDNS_STATUS_INVALID_B64;
+		status = LDNS_STATUS_INVALID_B64;
+		goto clean;
 	}
 	/* hmac it */
 	/* 2 spare bytes for the length */
 	mac_bytes = LDNS_XMALLOC(unsigned char, md_len+2);
 	if(!mac_bytes) {
-		LDNS_FREE(algorithm_name);
-		LDNS_FREE(key_bytes);
-		ldns_buffer_free(data_buffer);
-		return LDNS_STATUS_MEM_ERR;
+		status = LDNS_STATUS_MEM_ERR;
+		goto clean;
 	}
 	memset(mac_bytes, 0, md_len+2);
 
@@ -240,21 +256,19 @@ ldns_tsig_mac_new(ldns_rdf **tsig_mac, uint8_t *pkt_wire, size_t pkt_wire_size,
 		result = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_INT16_DATA, md_len + 2,
 				mac_bytes);
 	} else {
-		LDNS_FREE(algorithm_name);
-		LDNS_FREE(mac_bytes);
-		LDNS_FREE(key_bytes);
-		ldns_buffer_free(data_buffer);
-		return LDNS_STATUS_CRYPTO_UNKNOWN_ALGO;
+		status = LDNS_STATUS_CRYPTO_UNKNOWN_ALGO;
+		goto clean;
 	}
-
-	LDNS_FREE(algorithm_name);
+	*tsig_mac = result;
+	status = LDNS_STATUS_OK;
+  clean:
 	LDNS_FREE(mac_bytes);
 	LDNS_FREE(key_bytes);
+	LDNS_FREE(algorithm_name);
 	ldns_buffer_free(data_buffer);
-
-	*tsig_mac = result;
-
-	return LDNS_STATUS_OK;
+	ldns_rdf_free(canonical_algorithm_rdf);
+	ldns_rdf_free(canonical_key_name_rdf);
+	return status;
 }
 #endif /*  HAVE_SSL */
 
@@ -288,7 +302,7 @@ ldns_pkt_tsig_verify_next(ldns_pkt *pkt, uint8_t *wire, size_t wirelen, const ch
 
 	ldns_rr *orig_tsig = ldns_pkt_tsig(pkt);
 
-	if (!orig_tsig) {
+	if (!orig_tsig || ldns_rr_rd_count(orig_tsig) <= 6) {
 		ldns_rdf_deep_free(key_name_rdf);
 		return false;
 	}
@@ -366,19 +380,19 @@ ldns_pkt_tsig_sign_next(ldns_pkt *pkt, const char *key_name, const char *key_dat
 	ldns_rdf *time_signed_rdf = NULL;
 
 	algorithm_rdf = ldns_rdf_new_frm_str(LDNS_RDF_TYPE_DNAME, algorithm_name);
-        if(!key_name_rdf || !algorithm_rdf) {
-                status = LDNS_STATUS_MEM_ERR;
-                goto clean;
-        }
+	if(!key_name_rdf || !algorithm_rdf) {
+		status = LDNS_STATUS_MEM_ERR;
+		goto clean;
+	}
 
 	/* eww don't have create tsigtime rdf yet :( */
 	/* bleh :p */
 	if (gettimeofday(&tv_time_signed, NULL) == 0) {
 		time_signed = LDNS_XMALLOC(uint8_t, 6);
-                if(!time_signed) {
-                        status = LDNS_STATUS_MEM_ERR;
-                        goto clean;
-                }
+		if(!time_signed) {
+			status = LDNS_STATUS_MEM_ERR;
+			goto clean;
+		}
 		ldns_write_uint64_as_uint48(time_signed,
 				(uint64_t)tv_time_signed.tv_sec);
 	} else {
@@ -387,11 +401,11 @@ ldns_pkt_tsig_sign_next(ldns_pkt *pkt, const char *key_name, const char *key_dat
 	}
 
 	time_signed_rdf = ldns_rdf_new(LDNS_RDF_TYPE_TSIGTIME, 6, time_signed);
-        if(!time_signed_rdf) {
-                LDNS_FREE(time_signed);
-                status = LDNS_STATUS_MEM_ERR;
-                goto clean;
-        }
+	if(!time_signed_rdf) {
+		LDNS_FREE(time_signed);
+		status = LDNS_STATUS_MEM_ERR;
+		goto clean;
+	}
 
 	fudge_rdf = ldns_native2rdf_int16(LDNS_RDF_TYPE_INT16, fudge);
 
@@ -401,10 +415,10 @@ ldns_pkt_tsig_sign_next(ldns_pkt *pkt, const char *key_name, const char *key_dat
 
 	other_data_rdf = ldns_native2rdf_int16_data(0, NULL);
 
-        if(!fudge_rdf || !orig_id_rdf || !error_rdf || !other_data_rdf) {
-                status = LDNS_STATUS_MEM_ERR;
-                goto clean;
-        }
+	if(!fudge_rdf || !orig_id_rdf || !error_rdf || !other_data_rdf) {
+		status = LDNS_STATUS_MEM_ERR;
+		goto clean;
+	}
 
 	if (ldns_pkt2wire(&pkt_wire, pkt, &pkt_wire_len) != LDNS_STATUS_OK) {
 		status = LDNS_STATUS_ERR;
@@ -423,10 +437,10 @@ ldns_pkt_tsig_sign_next(ldns_pkt *pkt, const char *key_name, const char *key_dat
 
 	/* Create the TSIG RR */
 	tsig_rr = ldns_rr_new();
-        if(!tsig_rr) {
-                status = LDNS_STATUS_MEM_ERR;
-                goto clean;
-        }
+	if(!tsig_rr) {
+		status = LDNS_STATUS_MEM_ERR;
+		goto clean;
+	}
 	ldns_rr_set_owner(tsig_rr, key_name_rdf);
 	ldns_rr_set_class(tsig_rr, LDNS_RR_CLASS_ANY);
 	ldns_rr_set_type(tsig_rr, LDNS_RR_TYPE_TSIG);

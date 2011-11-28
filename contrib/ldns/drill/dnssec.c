@@ -215,6 +215,7 @@ ldns_verify_denial(ldns_pkt *pkt, ldns_rdf *name, ldns_rr_type type, ldns_rr_lis
 	} else if( (nsecs = ldns_pkt_rr_list_by_type(pkt, LDNS_RR_TYPE_NSEC3, LDNS_SECTION_ANY_NOQUESTION)) ) {
                 ldns_rr_list* sigs = ldns_pkt_rr_list_by_type(pkt, LDNS_RR_TYPE_RRSIG, LDNS_SECTION_ANY_NOQUESTION);
                 ldns_rr* q = ldns_rr_new();
+		ldns_rr* match = NULL;
                 if(!sigs) return LDNS_STATUS_MEM_ERR;
                 if(!q) return LDNS_STATUS_MEM_ERR;
                 ldns_rr_set_question(q, 1);
@@ -223,7 +224,11 @@ ldns_verify_denial(ldns_pkt *pkt, ldns_rdf *name, ldns_rr_type type, ldns_rr_lis
                 if(!ldns_rr_owner(q)) return LDNS_STATUS_MEM_ERR;
                 ldns_rr_set_type(q, type);
                 
-                result = ldns_dnssec_verify_denial_nsec3(q, nsecs, sigs, ldns_pkt_get_rcode(pkt), type, ldns_pkt_ancount(pkt) == 0);
+                /* result = ldns_dnssec_verify_denial_nsec3(q, nsecs, sigs, ldns_pkt_get_rcode(pkt), type, ldns_pkt_ancount(pkt) == 0); */
+                result = ldns_dnssec_verify_denial_nsec3_match(q, nsecs, sigs, ldns_pkt_get_rcode(pkt), type, ldns_pkt_ancount(pkt) == 0, &match);
+		if (result == LDNS_STATUS_OK && match && nsec_rrs && nsec_rr_sigs) {
+			(void) get_dnssec_rr(pkt, ldns_rr_owner(match), LDNS_RR_TYPE_NSEC3, nsec_rrs, nsec_rr_sigs);
+		}
                 ldns_rr_free(q);
 		ldns_rr_list_deep_free(nsecs);
 		ldns_rr_list_deep_free(sigs);
