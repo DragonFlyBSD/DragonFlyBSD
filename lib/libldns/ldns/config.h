@@ -25,6 +25,12 @@
 /* Define to 1 if you have the `b64_pton' function. */
 /* #undef HAVE_B64_PTON */
 
+/* Define to 1 if you have the `bzero' function. */
+#define HAVE_BZERO 1
+
+/* Define to 1 if you have the `calloc' function. */
+#define HAVE_CALLOC 1
+
 /* Define to 1 if you have the `ctime_r' function. */
 #define HAVE_CTIME_R 1
 
@@ -94,6 +100,9 @@
 /* Define to 1 if you have the <memory.h> header file. */
 #define HAVE_MEMORY_H 1
 
+/* Define to 1 if you have the `memset' function. */
+#define HAVE_MEMSET 1
+
 /* Define to 1 if you have the <netdb.h> header file. */
 #define HAVE_NETDB_H 1
 
@@ -109,7 +118,7 @@
 /* Define to 1 if you have the <openssl/ssl.h> header file. */
 #define HAVE_OPENSSL_SSL_H 1
 
-/* Define if you have Python libraries and header files. */
+/* If available, contains the Python version number currently in use. */
 /* #undef HAVE_PYTHON */
 
 /* Define to 1 if you have the `random' function. */
@@ -131,7 +140,7 @@
 /* Define to 1 if you have the <stdarg.h> header file. */
 #define HAVE_STDARG_H 1
 
-/* Define to 1 if you have the <stdbool.h> header file. */
+/* Define to 1 if stdbool.h conforms to C99. */
 #define HAVE_STDBOOL_H 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
@@ -152,7 +161,7 @@
 /* Define to 1 if you have the `strtoul' function. */
 #define HAVE_STRTOUL 1
 
-/* Define if you have Swig libraries and header files. */
+/* Define if you have SWIG libraries and header files. */
 /* #undef HAVE_SWIG */
 
 /* Define to 1 if you have the <sys/mount.h> header file. */
@@ -185,6 +194,9 @@
 /* Define to 1 if you have the <ws2tcpip.h> header file. */
 /* #undef HAVE_WS2TCPIP_H */
 
+/* Define to 1 if the system has the type `_Bool'. */
+#define HAVE__BOOL 1
+
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
 #define LT_OBJDIR ".libs/"
@@ -196,7 +208,7 @@
 #define PACKAGE_NAME "ldns"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "ldns 1.6.9"
+#define PACKAGE_STRING "ldns 1.6.11"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libdns"
@@ -205,7 +217,10 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.6.9"
+#define PACKAGE_VERSION "1.6.11"
+
+/* The size of `time_t', as computed by sizeof. */
+#define SIZEOF_TIME_T 4
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1

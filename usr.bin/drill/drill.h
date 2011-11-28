@@ -12,7 +12,7 @@
 
 #include "drill_util.h"
 
-#define DRILL_VERSION "1.6.9"
+#define DRILL_VERSION "1.6.11"
 
 /* what kind of stuff do we allow */
 #define DRILL_QUERY	0
