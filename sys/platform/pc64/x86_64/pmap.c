@@ -965,24 +965,6 @@ pmap_init2(void)
  * Low level helper routines.....
  ***************************************************/
 
-#if defined(PMAP_DIAGNOSTIC)
-
-/*
- * This code checks for non-writeable/modified pages.
- * This should be an invalid condition.
- */
-static
-int
-pmap_nw_modified(pt_entry_t pte)
-{
-	if ((pte & (PG_M|PG_RW)) == PG_M)
-		return 1;
-	else
-		return 0;
-}
-#endif
-
-
 /*
  * this routine defines the region(s) of memory that should
  * not be tested for the modified bit.
