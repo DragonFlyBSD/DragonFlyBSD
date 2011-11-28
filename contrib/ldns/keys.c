@@ -278,8 +278,11 @@ ldns_key_new_frm_fp_ecdsa_l(FILE* fp, ldns_algorithm alg, int* line_nr)
                 EC_KEY_free(ec);
                 return NULL;
         }
-        EVP_PKEY_assign_EC_KEY(evp_key, ec);
-
+        if (!EVP_PKEY_assign_EC_KEY(evp_key, ec)) {
+		EVP_PKEY_free(evp_key);
+                EC_KEY_free(ec);
+                return NULL;
+	}
         return evp_key;
 }
 #endif
@@ -839,7 +842,6 @@ ldns_key_new_frm_algorithm(ldns_signing_algorithm alg, uint16_t size)
 				ldns_key_free(k);
 				return NULL;
 			}
-
 			ldns_key_set_rsa_key(k, r);
 #endif /* HAVE_SSL */
 			break;
@@ -929,7 +931,11 @@ ldns_key_new_frm_algorithm(ldns_signing_algorithm alg, uint16_t size)
                                 EC_KEY_free(ec);
                                 return NULL;
                         }
-                        EVP_PKEY_assign_EC_KEY(k->_key.key, ec);
+                        if (!EVP_PKEY_assign_EC_KEY(k->_key.key, ec)) {
+                                ldns_key_free(k);
+                                EC_KEY_free(ec);
+                                return NULL;
+			}
 #endif /* splint */
 			break;
 #endif

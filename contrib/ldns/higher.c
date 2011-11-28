@@ -310,7 +310,12 @@ ldns_nsec_type_check(ldns_rr *nsec, ldns_rr_type t)
         uint16_t pos = 0;
         uint16_t bit_pos;
 	ldns_rdf *nsec_type_list = ldns_rr_rdf(nsec, 1); 
-	uint8_t *data = ldns_rdf_data(nsec_type_list);
+	uint8_t *data;
+	
+	if (nsec_type_list == NULL) {
+		return false;
+	}
+	data  = ldns_rdf_data(nsec_type_list);
 
 	while(pos < ldns_rdf_size(nsec_type_list)) {
 		window_block_nr = data[pos];

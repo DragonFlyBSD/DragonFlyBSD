@@ -42,7 +42,7 @@ ldns_sign_public_buffer(ldns_buffer *sign_buf, ldns_key *key);
  */
 ldns_rr_list *ldns_sign_public(ldns_rr_list *rrset, ldns_key_list *keys);
 
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * Sign a buffer with the DSA key (hash with SHA1)
  * \param[in] to_sign buffer with the data
@@ -80,11 +80,42 @@ ldns_rdf *ldns_sign_public_rsasha1(ldns_buffer *to_sign, RSA *key);
  * \return a ldns_rdf with the signed data
  */
 ldns_rdf *ldns_sign_public_rsamd5(ldns_buffer *to_sign, RSA *key);
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 
 /**
- * Finds the first dnssec_name node in the rbtree that has not been marked
- * as glue, starting at the given node
+ * Marks the names in the zone that are occluded. Those names will be skipped
+ * when walking the tree with the ldns_dnssec_name_node_next_nonglue()
+ * function. But watch out! Names that are partially occluded (like glue with
+ * the same name as the delegation) will not be marked and should specifically 
+ * be taken into account seperately.
+ *
+ * When glue_list is given (not NULL), in the process of marking the names, all
+ * glue resource records will be pushed to that list, even glue at the delegation name.
+ *
+ * \param[in] zone the zone in which to mark the names
+ * \param[in] glue_list the list to which to push the glue rrs
+ * \return LDNS_STATUS_OK on success, an error code otherwise
+ */
+ldns_status
+ldns_dnssec_zone_mark_and_get_glue(
+		ldns_dnssec_zone *zone, ldns_rr_list *glue_list);
+
+/**
+ * Marks the names in the zone that are occluded. Those names will be skipped
+ * when walking the tree with the ldns_dnssec_name_node_next_nonglue()
+ * function. But watch out! Names that are partially occluded (like glue with
+ * the same name as the delegation) will not be marked and should specifically 
+ * be taken into account seperately.
+ *
+ * \param[in] zone the zone in which to mark the names
+ * \return LDNS_STATUS_OK on succesful completion
+ */
+ldns_status
+ldns_dnssec_zone_mark_glue(ldns_dnssec_zone *zone);
+
+/**
+ * Finds the first dnssec_name node in the rbtree that is not occluded.
+ * It *does* return names that are partially occluded.
  *
  * \param[in] node the first node to check
  * \return the first node that has not been marked as glue, or NULL
@@ -237,6 +268,40 @@ ldns_status ldns_dnssec_zone_sign_nsec3_flg(ldns_dnssec_zone *zone,
 				uint8_t salt_length,
 				uint8_t *salt,
 				int signflags);
+
+/**
+ * signs the given zone with the given new zone, with NSEC3
+ *
+ * \param[in] zone the zone to sign
+ * \param[in] key_list the list of keys to sign the zone with
+ * \param[in] new_rrs newly created resource records are added to this list, to free them later
+ * \param[in] func callback function that decides what to do with old signatures
+ * \param[in] arg optional argument for the callback function
+ * \param[in] algorithm the NSEC3 hashing algorithm to use
+ * \param[in] flags NSEC3 flags
+ * \param[in] iterations the number of NSEC3 hash iterations to use
+ * \param[in] salt_length the length (in octets) of the NSEC3 salt
+ * \param[in] salt the NSEC3 salt data
+ * \param[in] signflags option flags for signing process. 0 is the default.
+ * \param[out] map a referenced rbtree pointer variable. The newly created 
+ *                 rbtree will contain mappings from hashed owner names to the 
+ *                 unhashed name.
+ * \return LDNS_STATUS_OK on success, an error code otherwise
+ */
+ldns_status ldns_dnssec_zone_sign_nsec3_flg_mkmap(ldns_dnssec_zone *zone,
+				ldns_rr_list *new_rrs,
+				ldns_key_list *key_list,
+				int (*func)(ldns_rr *, void *),
+				void *arg,
+				uint8_t algorithm,
+				uint8_t flags,
+				uint16_t iterations,
+				uint8_t salt_length,
+				uint8_t *salt,
+				int signflags,
+				ldns_rbtree_t **map
+				);
+
 
 /**
  * signs the given zone with the given keys

@@ -605,7 +605,7 @@ void ldns_sha256_final(sha2_byte digest[], ldns_sha256_CTX* context) {
 	}
 
 	/* Clean up state data: */
-	MEMSET_BZERO(context, sizeof(context));
+	MEMSET_BZERO(context, sizeof(ldns_sha256_CTX));
 	usedspace = 0;
 }
 
@@ -915,7 +915,7 @@ void ldns_sha512_final(sha2_byte digest[], ldns_sha512_CTX* context) {
 	}
 
 	/* Zero out state data */
-	MEMSET_BZERO(context, sizeof(context));
+	MEMSET_BZERO(context, sizeof(ldns_sha512_CTX));
 }
 
 unsigned char *
@@ -968,7 +968,7 @@ void ldns_sha384_final(sha2_byte digest[], ldns_sha384_CTX* context) {
 	}
 
 	/* Zero out state data */
-	MEMSET_BZERO(context, sizeof(context));
+	MEMSET_BZERO(context, sizeof(ldns_sha384_CTX));
 }
 
 unsigned char *

@@ -607,8 +607,8 @@ ldns_buffer_status_ok(ldns_buffer *buffer)
 
 /**
  * prints to the buffer, increasing the capacity if required using
- * buffer_reserve(). The buffer's position is set to the terminating
- * '\\0'. Returns the number of characters written (not including the
+ * buffer_reserve(). The buffer's position is set to the terminating '\\0'
+ * Returns the number of characters written (not including the
  * terminating '\\0') or -1 on failure.
  */
 int ldns_buffer_printf(ldns_buffer *buffer, const char *format, ...);

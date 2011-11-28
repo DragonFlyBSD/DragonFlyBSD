@@ -199,10 +199,14 @@ static const int mdays[] = {
 	31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 };
 
+#define LDNS_MOD(x,y) (((x) % (y) < 0) ? ((x) % (y) + (y)) : ((x) % (y)))
+#define LDNS_DIV(x,y) (((x) % (y) < 0) ? ((x) / (y) -  1 ) : ((x) / (y)))
+
 static int
 is_leap_year(int year)
 {
-	return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+	return LDNS_MOD(year,   4) == 0 && (LDNS_MOD(year, 100) != 0 
+	    || LDNS_MOD(year, 400) == 0);
 }
 
 static int
@@ -210,7 +214,9 @@ leap_days(int y1, int y2)
 {
 	--y1;
 	--y2;
-	return (y2/4 - y1/4) - (y2/100 - y1/100) + (y2/400 - y1/400);
+	return (LDNS_DIV(y2,   4) - LDNS_DIV(y1,   4)) - 
+	       (LDNS_DIV(y2, 100) - LDNS_DIV(y1, 100)) +
+	       (LDNS_DIV(y2, 400) - LDNS_DIV(y1, 400));
 }
 
 /*
@@ -239,6 +245,100 @@ mktime_from_utc(const struct tm *tm)
 	seconds = minutes * 60 + tm->tm_sec;
 
 	return seconds;
+}
+
+#if SIZEOF_TIME_T <= 4
+
+static void
+ldns_year_and_yday_from_days_since_epoch(int64_t days, struct tm *result)
+{
+	int year = 1970;
+	int new_year;
+
+	while (days < 0 || days >= (int64_t) (is_leap_year(year) ? 366 : 365)) {
+		new_year = year + (int) LDNS_DIV(days, 366);
+		if (year == new_year) {
+			year += days < 0 ? -1 : 1;
+		}
+		days -= (new_year - year) * 365;
+		days -= leap_days(year, new_year);
+		year  = new_year;
+	}
+	result->tm_year = year;
+	result->tm_yday = (int) days;
+}
+
+/* Number of days per month in a leap year. */
+static const int leap_year_mdays[] = {
+	31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+};
+
+static void
+ldns_mon_and_mday_from_year_and_yday(struct tm *result)
+{
+	int idays = result->tm_yday;
+	const int *mon_lengths = is_leap_year(result->tm_year) ? 
+					leap_year_mdays : mdays;
+
+	result->tm_mon = 0;
+	while  (idays >= mon_lengths[result->tm_mon]) {
+		idays -= mon_lengths[result->tm_mon++];
+	}
+	result->tm_mday = idays + 1;
+}
+
+static void
+ldns_wday_from_year_and_yday(struct tm *result)
+{
+	result->tm_wday = 4 /* 1-1-1970 was a thursday */
+			+ LDNS_MOD((result->tm_year - 1970), 7) * LDNS_MOD(365, 7)
+			+ leap_days(1970, result->tm_year)
+			+ result->tm_yday;
+	result->tm_wday = LDNS_MOD(result->tm_wday, 7);
+	if (result->tm_wday < 0) {
+		result->tm_wday += 7;
+	}
+}
+
+static struct tm *
+ldns_gmtime64_r(int64_t clock, struct tm *result)
+{
+	result->tm_isdst = 0;
+	result->tm_sec   = (int) LDNS_MOD(clock, 60);
+	clock            =       LDNS_DIV(clock, 60);
+	result->tm_min   = (int) LDNS_MOD(clock, 60);
+	clock            =       LDNS_DIV(clock, 60);
+	result->tm_hour  = (int) LDNS_MOD(clock, 24);
+	clock            =       LDNS_DIV(clock, 24);
+
+	ldns_year_and_yday_from_days_since_epoch(clock, result);
+	ldns_mon_and_mday_from_year_and_yday(result);
+	ldns_wday_from_year_and_yday(result);
+	result->tm_year -= 1900;
+
+	return result;
+}
+
+#endif /* SIZEOF_TIME_T <= 4 */
+
+static int64_t
+ldns_serial_arithmitics_time(int32_t time, time_t now)
+{
+	int32_t offset = time - (int32_t) now;
+	return (int64_t) now + offset;
+}
+
+
+struct tm *
+ldns_serial_arithmitics_gmtime_r(int32_t time, time_t now, struct tm *result)
+{
+#if SIZEOF_TIME_T <= 4
+	int64_t secs_since_epoch = ldns_serial_arithmitics_time(time, now);
+	return  ldns_gmtime64_r(secs_since_epoch, result);
+#else
+	time_t  secs_since_epoch = ldns_serial_arithmitics_time(time, now);
+	return  gmtime_r(&secs_since_epoch, result);
+#endif
 }
 
 /**

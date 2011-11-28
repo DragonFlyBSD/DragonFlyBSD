@@ -23,11 +23,11 @@
 #ifndef LDNS_DNSSEC_H
 #define LDNS_DNSSEC_H
 
-#ifdef HAVE_SSL
+#include <ldns/common.h>
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
-#endif /* HAVE_SSL */
-#include <ldns/common.h>
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 #include <ldns/packet.h>
 #include <ldns/keys.h>
 #include <ldns/zone.h>
@@ -127,7 +127,7 @@ uint16_t ldns_calc_keytag(const ldns_rr *key);
  */
 uint16_t ldns_calc_keytag_raw(uint8_t* key, size_t keysize);
 
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * converts a buffer holding key material to a DSA key in openssl.
  *
@@ -173,9 +173,9 @@ EVP_PKEY* ldns_gost2pkey_raw(unsigned char* key, size_t keylen);
  */
 EVP_PKEY* ldns_ecdsa2pkey_raw(unsigned char* key, size_t keylen, uint8_t algo);
 
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * converts a buffer holding key material to a RSA key in openssl.
  *
@@ -191,7 +191,7 @@ RSA *ldns_key_buf2rsa(ldns_buffer *key);
  * \return a RSA * structure with the key material
  */
 RSA *ldns_key_buf2rsa_raw(unsigned char* key, size_t len);
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 
 /** 
  * returns a new DS rr that represents the given key rr.
@@ -209,6 +209,16 @@ ldns_rdf *
 ldns_dnssec_create_nsec_bitmap(ldns_rr_type rr_type_list[],
 						 size_t size,
 						 ldns_rr_type nsec_type);
+
+/**
+ * returns whether a rrset of the given type is found in the rrsets.
+ *
+ * \param[in] rrsets the rrsets to be tested
+ * \param[in] type the type to test for
+ * \return int 1 if the type was found, 0 otherwise.
+ */
+int
+ldns_dnssec_rrsets_contains_type (ldns_dnssec_rrsets *rrsets, ldns_rr_type type);
 
 /**
  * Creates NSEC
@@ -372,7 +382,7 @@ bool ldns_nsec_bitmap_covers_type(const ldns_rdf *nsec_bitmap, ldns_rr_type type
  */
 bool ldns_nsec_covers_name(const ldns_rr *nsec, const ldns_rdf *name);
 
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * verify a packet 
  * \param[in] p the packet
@@ -438,7 +448,7 @@ int ldns_dnssec_default_delete_signatures(ldns_rr *sig, void *n);
  */
 int ldns_dnssec_default_replace_signatures(ldns_rr *sig, void *n);
 
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * Converts the DSA signature from ASN1 representation (RFC2459, as 
  * used by OpenSSL) to raw signature data as used in DNS (rfc2536)
@@ -488,7 +498,7 @@ ldns_status
 ldns_convert_ecdsa_rrsig_rdf2asn1(ldns_buffer *target_buffer,
         const ldns_rdf *sig_rdf);
 
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 
 #ifdef __cplusplus
 }
