@@ -1,7 +1,3 @@
-#	from: @(#)bsd.subdir.mk	5.9 (Berkeley) 2/1/91
-# $FreeBSD: src/share/mk/bsd.subdir.mk,v 1.30.2.5 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.subdir.mk,v 1.4 2005/12/09 18:53:44 swildner Exp $
-#
 # The include file <bsd.subdir.mk> contains the default targets
 # for building subdirectories. 
 #
@@ -17,6 +13,11 @@
 #		Each of the targets will execute the same target in the
 #		subdirectories.
 #
+# SUBDIR_ORDERED A list of subdirectories which also must be included in
+#		in SUBDIR which have ordering requirements.  If this
+#		Make variable does not exist then all subdirectories are
+#		assumed to be strictly ordered.
+#
 # +++ targets +++
 #
 #	afterinstall, all, all-man, beforeinstall, checkdpadd,
@@ -26,22 +27,54 @@
 
 .include <bsd.init.mk>
 
-_SUBDIR: .USE
+# If SUBDIR_ORDERED not specified we default strongly ordering all
+# subdirectories.
+#
+SUBDIR_ORDERED?= ${SUBDIR}
+
+__targets= \
+	checkdpadd clean cleandepend cleandir cleanobj \
+	obj objlink tags depend all all-man \
+	maninstall realinstall	\
+	lint manlint regress \
+	buildfiles buildincludes installfiles installincludes
+
+.for __target in ${__targets}
+
 .if defined(SUBDIR) && !empty(SUBDIR) && !defined(NO_SUBDIR)
-	@for entry in ${SUBDIR}; do \
-		if test -d ${.CURDIR}/$${entry}.${MACHINE_ARCH}; then \
-			${ECHODIR} "===> ${DIRPRFX}$${entry}.${MACHINE_ARCH}"; \
-			edir=$${entry}.${MACHINE_ARCH}; \
+
+_SUBDIR_${__target}: ${SUBDIR:S/^/_SUBDIR_${__target}_/}
+
+# Now create the command set for each subdirectory and target
+#
+
+.for entry in ${SUBDIR}
+_SUBDIR_${__target}_${entry}:
+		@(if test -d ${.CURDIR}/${entry}.${MACHINE_ARCH}; then \
+			${ECHODIR} "===> ${DIRPRFX}${entry}.${MACHINE_ARCH}"; \
+			edir=${entry}.${MACHINE_ARCH}; \
 			cd ${.CURDIR}/$${edir}; \
 		else \
-			${ECHODIR} "===> ${DIRPRFX}$$entry"; \
-			edir=$${entry}; \
+			${ECHODIR} "===> ${DIRPRFX}${entry}"; \
+			edir=${entry}; \
 			cd ${.CURDIR}/$${edir}; \
 		fi; \
-		${MAKE} ${.TARGET:realinstall=install} \
-		    DIRPRFX=${DIRPRFX}$$edir/; \
-	done
+		${MAKE} ${__target:realinstall=install} \
+		    DIRPRFX=${DIRPRFX}$$edir/;)
+
+.endfor
+
+# order subdirectories for each target, set up dependency
+#
+.ORDER: ${SUBDIR_ORDERED:S/^/_SUBDIR_${__target}_/}
+
+.else
+
+_SUBDIR_${__target}: .USE
+
 .endif
+
+.endfor
 
 ${SUBDIR}::
 	@if test -d ${.TARGET}.${MACHINE_ARCH}; then \
@@ -52,17 +85,15 @@ ${SUBDIR}::
 	${MAKE} all
 
 
-.for __target in all all-man checkdpadd clean cleandepend cleandir \
-    depend lint maninstall manlint \
-    obj objlink realinstall regress tags
-${__target}: _SUBDIR
+.for __target in ${__targets}
+${__target}: _SUBDIR_${__target}
 .endfor
 
 .for __target in files includes
 .for __stage in build install
 ${__stage}${__target}:
 .if make(${__stage}${__target})
-${__stage}${__target}: _SUBDIR
+${__stage}${__target}: _SUBDIR_${__stage}${__target}
 .endif
 .endfor
 ${__target}:
@@ -80,6 +111,4 @@ install: beforeinstall realinstall afterinstall
 .ORDER: beforeinstall realinstall afterinstall
 .endif
 
-.ORDER: clean cleandepend cleandir cleanobj \
-	obj objlink tags depend all all-man \
-	install maninstall realinstall
+.ORDER: ${__targets:S/^/_SUBDIR_/}
