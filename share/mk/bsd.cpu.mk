@@ -14,7 +14,8 @@
 # If the host system does not have the desired compiler for HOST_CCVER
 # we back off to something it probably does have.
 
-_DEFAULT_CCVER=	gcc44
+_DEFAULT_CCVER=		gcc44
+_DEFAULT_BINUTILSVER=	binutils222
 
 CCVER ?= ${_DEFAULT_CCVER}
 _CCVER := ${CCVER}
@@ -24,13 +25,10 @@ HOST_CCVER?= ${_CCVER}
 HOST_CCVER?= ${_DEFAULT_CCVER}
 .endif
 
-_DEFAULT_BINUTILSVER=	binutils222
-_PREVIOUS_BINUTILSVER=	binutils221
-
 .if exists(/usr/libexec/${_DEFAULT_BINUTILSVER}/elf/as)
 HOST_BINUTILSVER?=	${_DEFAULT_BINUTILSVER}
 .else
-HOST_BINUTILSVER?=	${_PREVIOUS_BINUTILSVER}
+HOST_BINUTILSVER!=	basename `find -s /usr/libexec/binutils* -depth 0 | tail -1`
 .endif
 
 .if defined(FORCE_CPUTYPE)
