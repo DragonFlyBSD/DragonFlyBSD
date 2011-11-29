@@ -115,4 +115,8 @@ SUBDIR+= ${MACHINE}
 SUBDIR+= ${MACHINE_ARCH}
 .endif
 
+# maximum parallelism
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

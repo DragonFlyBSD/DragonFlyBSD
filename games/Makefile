@@ -44,4 +44,8 @@ SUBDIR= adventure \
 	worms \
 	wump
 
+# maximum parallelism
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

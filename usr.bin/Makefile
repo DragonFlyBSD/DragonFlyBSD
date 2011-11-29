@@ -7,6 +7,11 @@
 # XXX Use GNU versions: apropos diff grep ld man ptx uucp whatis
 # Moved to secure: bdes
 #
+
+# No ordering dependencies, everything can run in parallel
+#
+SUBDIR_ORDERED=
+
 SUBDIR=	alias \
 	apply \
 	asa \

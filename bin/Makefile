@@ -40,4 +40,8 @@ SUBDIR= cat \
 SUBDIR+=rmail
 .endif
 
+# maximum parallelism
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

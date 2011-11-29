@@ -9,4 +9,8 @@ SUBDIR+=libssh
 .endif
 .endif
 
+# maximum parallelism
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

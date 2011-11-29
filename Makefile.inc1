@@ -754,27 +754,38 @@ installmost:
 _strfile=	games/fortune/strfile
 .endif
 
-bootstrap-tools:
+BSTRAPDIRS= ${_strfile} \
+	usr.bin/patch \
+	bin/chmod bin/cp bin/cpdup bin/dd bin/mkdir bin/rm bin/echo \
+	bin/test bin/cat bin/ln bin/mv bin/csh bin/expr bin/sh \
+	bin/hostname bin/kill \
+	usr.bin/yacc usr.bin/colldef usr.bin/uudecode usr.bin/xinstall \
+	usr.bin/m4 usr.bin/rpcgen usr.bin/make usr.bin/awk usr.bin/stat \
+	usr.bin/find usr.bin/lex usr.bin/sed usr.bin/uname usr.bin/touch \
+	usr.bin/mkdep usr.bin/mktemp usr.bin/lorder usr.bin/file2c \
+	usr.bin/tsort usr.bin/tr usr.bin/join usr.bin/wc usr.bin/basename \
+	usr.bin/gencat usr.bin/chflags usr.bin/expand usr.bin/paste \
+	usr.bin/mklocale usr.bin/uuencode usr.bin/compile_et usr.bin/hexdump \
+	usr.bin/cap_mkdb usr.bin/true usr.bin/false \
+	usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
+	usr.bin/tail usr.bin/unifdef \
+	usr.sbin/chown usr.sbin/mtree usr.sbin/config \
+	usr.sbin/btxld usr.sbin/zic usr.sbin/makewhatis \
+	gnu/usr.bin/texinfo gnu/usr.bin/grep usr.bin/sort \
+	usr.bin/gzip usr.bin/bzip2 usr.bin/mkcsmapper usr.bin/mkesdb
+
+bootstrap-tools: bootstrap-tools-before bootstrap-tools-targets
+	touch ${BTOOLSDEST}/.bootstrap_done
+
+bootstrap-tools-before:
 	${LN} -fs /bin/date ${BTOOLSDEST}/bin/date
-.for _tool in ${_strfile} \
-    usr.bin/patch \
-    bin/chmod bin/cp bin/cpdup bin/dd bin/mkdir bin/rm bin/echo bin/test \
-    bin/cat bin/ln bin/mv bin/csh bin/expr bin/sh \
-    bin/hostname bin/kill \
-    usr.bin/yacc usr.bin/colldef usr.bin/uudecode usr.bin/xinstall \
-    usr.bin/m4 usr.bin/rpcgen usr.bin/make usr.bin/awk usr.bin/stat \
-    usr.bin/find usr.bin/lex usr.bin/sed usr.bin/uname usr.bin/touch \
-    usr.bin/mkdep usr.bin/mktemp usr.bin/lorder usr.bin/file2c \
-    usr.bin/tsort usr.bin/tr usr.bin/join usr.bin/wc usr.bin/basename \
-    usr.bin/gencat usr.bin/chflags usr.bin/expand usr.bin/paste \
-    usr.bin/mklocale usr.bin/uuencode usr.bin/compile_et usr.bin/hexdump \
-    usr.bin/cap_mkdb usr.bin/true usr.bin/false \
-    usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
-    usr.bin/tail usr.bin/unifdef \
-    usr.sbin/chown usr.sbin/mtree usr.sbin/config \
-    usr.sbin/btxld usr.sbin/zic usr.sbin/makewhatis \
-    gnu/usr.bin/texinfo gnu/usr.bin/grep usr.bin/sort \
-    usr.bin/gzip usr.bin/bzip2 usr.bin/mkcsmapper usr.bin/mkesdb
+
+bootstrap-tools-targets: ${BSTRAPDIRS:S/^/bstrap-/}
+
+.ORDER: bootstrap-tools-before bootstrap-tools-targets
+
+.for _tool in ${BSTRAPDIRS}
+bstrap-${_tool}!
 	${ECHODIR} "===> ${_tool} (bootstrap-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -782,7 +793,6 @@ bootstrap-tools:
 		${MAKE} DIRPRFX=${_tool}/ all; \
 		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
 .endfor
-	touch ${BTOOLSDEST}/.bootstrap_done
 
 # build-tools: Build special purpose build tools.
 #
@@ -802,8 +812,15 @@ _gcc44_tools= gnu/usr.bin/cc44/cc_prep gnu/usr.bin/cc44/cc_tools
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
 
-build-tools:
-.for _tool in ${_gcc41_tools} ${_gcc44_tools} ${_libkrb5} ${_share}
+BTOOLSDIRS= ${_gcc41_tools} ${_gcc44_tools} ${_libkrb5} ${_share}
+
+build-tools: build-tools-targets
+	touch ${BTOOLSDEST}/.build_done
+
+build-tools-targets: ${BTOOLSDIRS:S/^/btools-/}
+
+.for _tool in ${BTOOLSDIRS}
+btools-${_tool}!
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -811,7 +828,6 @@ build-tools:
 		${MAKE} DIRPRFX=${_tool}/ all; \
 		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
 .endfor
-	touch ${BTOOLSDEST}/.build_done
 
 #
 # cross-tools: Build cross-building tools
@@ -820,10 +836,16 @@ build-tools:
 _btxld=	usr.sbin/btxld
 .endif
 
-cross-tools:
-.for _tool in ${_btxld} ${_binutils} \
-	      usr.bin/objformat \
-	      ${_gcc41_cross} ${_gcc44_cross} ${_custom_cross}
+CTOOLSDIRS= ${_btxld} ${_binutils} usr.bin/objformat \
+		${_gcc41_cross} ${_gcc44_cross} ${_custom_cross}
+
+cross-tools: cross-tools-targets
+	touch ${CTOOLSDEST}/.cross_done
+
+cross-tools-targets: ${CTOOLSDIRS:S/^/ctools-/}
+
+.for _tool in ${CTOOLSDIRS}
+ctools-${_tool}!
 	${ECHODIR} "===> ${_tool} (cross-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -831,7 +853,6 @@ cross-tools:
 		${MAKE} DIRPRFX=${_tool}/ all; \
 		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${CTOOLSDEST} install
 .endfor
-	touch ${CTOOLSDEST}/.cross_done
 
 #
 # hierarchy - ensure that all the needed directories are present

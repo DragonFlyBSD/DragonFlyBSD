@@ -6,4 +6,8 @@ SUBDIR= gcc44 libcryptsetup libdevmapper libdialog libluks liblvm
 SUBDIR+= gcc41
 .endif
 
+# maximum parallelism
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>
