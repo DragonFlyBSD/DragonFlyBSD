@@ -813,6 +813,25 @@ strip(const char *to_name)
 }
 
 /*
+ * When doing a concurrent make -j N multiple install's can race the mkdir.
+ */
+static
+int
+mkdir_race(const char *path, int nmode)
+{
+	int res;
+	struct stat sb;
+
+	res = mkdir(path, nmode);
+	if (res < 0 && errno == EEXIST) {
+		if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode))
+			return(0);
+		res = mkdir(path, mode);
+	}
+	return (res);
+}
+
+/*
  * install_dir --
  *	build directory hierarchy
  */
@@ -828,7 +847,8 @@ install_dir(char *path)
 			ch = *p;
 			*p = '\0';
 			if (stat(path, &sb)) {
-				if (errno != ENOENT || mkdir(path, 0755) < 0) {
+				if (errno != ENOENT ||
+				    mkdir_race(path, 0755) < 0) {
 					err(EX_OSERR, "mkdir %s", path);
 					/* NOTREACHED */
 				} else if (verbose)
