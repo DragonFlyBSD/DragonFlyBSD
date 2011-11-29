@@ -98,6 +98,7 @@ main(int argc, char **argv)
 		/* Running kernel. Use sysctl. */
 		if (sysctlbyname("kern.msgbuf", NULL, &buflen, NULL, 0) == -1)
 			err(1, "sysctl kern.msgbuf");
+		buflen += 4096;		/* add some slop */
 		if ((bp = malloc(buflen)) == NULL)
 			errx(1, "malloc failed");
 		if (sysctlbyname("kern.msgbuf", bp, &buflen, NULL, 0) == -1)
