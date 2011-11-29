@@ -291,6 +291,7 @@ exit1(int rv)
 	}
 	varsymset_clean(&p->p_varsymset);
 	lockuninit(&p->p_varsymset.vx_lock);
+
 	/*
 	 * Kill all lwps associated with the current process, return an
 	 * error if we race another thread trying to do the same thing
@@ -652,6 +653,9 @@ lwp_exit(int masterexit)
 	 * synchronously, which is much faster.
 	 *
 	 * Wakeup anyone waiting on p_nthreads to drop to 1 or 0.
+	 *
+	 * The process is left held until the reaper calls lwp_dispose() on
+	 * the lp (after calling lwp_wait()).
 	 */
 	if (masterexit == 0) {
 		lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
@@ -681,15 +685,15 @@ lwp_exit(int masterexit)
 }
 
 /*
- * Wait until a lwp is completely dead.
+ * Wait until a lwp is completely dead.  The final interlock in this drama
+ * is when TDF_EXITING is set in cpu_thread_exit() just before the final
+ * switchout.
  *
- * If the thread is still executing, which can't be waited upon,
- * return failure.  The caller is responsible of waiting a little
- * bit and checking again.
+ * At the point TDF_EXITING is set a complete exit is accomplished when
+ * TDF_RUNNING and TDF_PREEMPT_LOCK are both clear.
  *
- * Suggested use:
- * while (!lwp_wait(lp))
- *	tsleep(lp, 0, "lwpwait", 1);
+ * Returns non-zero on success, and zero if the caller needs to retry
+ * the lwp_wait().
  */
 static int
 lwp_wait(struct lwp *lp)
@@ -698,10 +702,24 @@ lwp_wait(struct lwp *lp)
 
 	KKASSERT(lwkt_preempted_proc() != lp);
 
-	while (lp->lwp_lock > 0)
+	/*
+	 * Wait until the lp has entered its low level exit and wait
+	 * until other cores with refs on the lp (e.g. for ps or signaling)
+	 * release them.
+	 */
+	if (lp->lwp_lock > 0) {
 		tsleep(lp, 0, "lwpwait1", 1);
+		return(0);
+	}
 
-	lwkt_wait_free(td);
+	/*
+	 * Wait until the thread is no longer references and no longer
+	 * runnable or preempted (i.e. finishes its low level exit).
+	 */
+	if (td->td_refs) {
+		tsleep(td, 0, "lwpwait2", 1);
+		return(0);
+	}
 
 	/*
 	 * The lwp's thread may still be in the middle
@@ -716,12 +734,15 @@ lwp_wait(struct lwp *lp)
 	 * and let the caller deal with sleeping and calling
 	 * us again.
 	 */
-	if ((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|
-			     TDF_EXITING|TDF_RUNQ)) != TDF_EXITING) {
+	if ((td->td_flags & (TDF_RUNNING |
+			     TDF_PREEMPT_LOCK |
+			     TDF_EXITING)) != TDF_EXITING) {
+		tsleep(lp, 0, "lwpwait2", 1);
 		return (0);
 	}
-	KASSERT((td->td_flags & TDF_TSLEEPQ) == 0,
-		("lwp_wait: td %p (%s) still on sleep queue", td, td->td_comm));
+	KASSERT((td->td_flags & (TDF_RUNQ|TDF_TSLEEPQ)) == 0,
+		("lwp_wait: td %p (%s) still on run or sleep queue",
+		td, td->td_comm));
 	return (1);
 }
 
@@ -736,8 +757,9 @@ lwp_dispose(struct lwp *lp)
 
 	KKASSERT(lwkt_preempted_proc() != lp);
 	KKASSERT(td->td_refs == 0);
-	KKASSERT((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_EXITING)) ==
-		 TDF_EXITING);
+	KKASSERT((td->td_flags & (TDF_RUNNING |
+				  TDF_PREEMPT_LOCK |
+				  TDF_EXITING)) == TDF_EXITING);
 
 	PRELE(lp->lwp_proc);
 	lp->lwp_proc = NULL;
@@ -1116,11 +1138,8 @@ reaplwps(void *context, int dummy)
 static void
 reaplwp(struct lwp *lp)
 {
-	if (lwp_wait(lp) == 0) {
-		tsleep_interlock(lp, 0);
-		while (lwp_wait(lp) == 0)
-			tsleep(lp, PINTERLOCKED, "lwpreap", 1);
-	}
+	while (lwp_wait(lp) == 0)
+		;
 	lwp_dispose(lp);
 }
 
@@ -1131,7 +1150,8 @@ deadlwp_init(void)
 
 	for (cpu = 0; cpu < ncpus; cpu++) {
 		LIST_INIT(&deadlwp_list[cpu]);
-		deadlwp_task[cpu] = kmalloc(sizeof(*deadlwp_task[cpu]), M_DEVBUF, M_WAITOK);
+		deadlwp_task[cpu] = kmalloc(sizeof(*deadlwp_task[cpu]),
+					    M_DEVBUF, M_WAITOK);
 		TASK_INIT(deadlwp_task[cpu], 0, reaplwps, &deadlwp_list[cpu]);
 	}
 }

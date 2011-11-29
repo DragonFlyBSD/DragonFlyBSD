@@ -401,7 +401,8 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
 	}
 	crit_exit_gd(gd);
     	KASSERT((td->td_flags &
-		 (TDF_ALLOCATED_THREAD|TDF_RUNNING)) == TDF_ALLOCATED_THREAD,
+		 (TDF_ALLOCATED_THREAD|TDF_RUNNING|TDF_PREEMPT_LOCK)) ==
+		 TDF_ALLOCATED_THREAD,
 		("lwkt_alloc_thread: corrupted td flags 0x%X", td->td_flags));
     	flags |= td->td_flags & (TDF_ALLOCATED_THREAD|TDF_ALLOCATED_STACK);
     }
@@ -533,13 +534,6 @@ lwkt_rele(thread_t td)
 {
     KKASSERT(td->td_refs > 0);
     atomic_add_int(&td->td_refs, -1);
-}
-
-void
-lwkt_wait_free(thread_t td)
-{
-    while (td->td_refs)
-	tsleep(td, 0, "tdreap", hz);
 }
 
 void
@@ -1694,15 +1688,24 @@ lwkt_exit(void)
      *
      * We have to cache the current td in gd_freetd because objcache_put()ing
      * it would rip it out from under us while our thread is still active.
+     *
+     * We are the current thread so of course our own TDF_RUNNING bit will
+     * be set, so unlike the lwp reap code we don't wait for it to clear.
      */
     gd = mycpu;
     crit_enter_quick(td);
-    lwkt_wait_free(td);
-    while ((std = gd->gd_freetd) != NULL) {
-	KKASSERT((std->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK)) == 0);
-	gd->gd_freetd = NULL;
-	objcache_put(thread_cache, std);
-	lwkt_wait_free(td);
+    for (;;) {
+	if (td->td_refs) {
+	    tsleep(td, 0, "tdreap", 1);
+	    continue;
+	}
+	if ((std = gd->gd_freetd) != NULL) {
+	    KKASSERT((std->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK)) == 0);
+	    gd->gd_freetd = NULL;
+	    objcache_put(thread_cache, std);
+	    continue;
+	}
+	break;
     }
 
     /*
