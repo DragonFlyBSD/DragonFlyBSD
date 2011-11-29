@@ -964,6 +964,7 @@ kern/subr_blist.c	standard
 kern/subr_sbuf.c	standard
 kern/subr_scanf.c	standard
 kern/subr_taskqueue.c	standard
+kern/subr_rbtree.c	standard
 kern/sys_generic.c	standard
 kern/sys_pipe.c		standard
 kern/sys_process.c	standard
