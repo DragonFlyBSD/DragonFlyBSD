@@ -686,6 +686,21 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 #else
 	const boolean_t isipv6 = FALSE;
 #endif
+	struct sockaddr_in sin_faddr;
+	struct sockaddr *faddr;
+
+	if (isipv6) {
+		/* XXX Not ready yet */
+		faddr = NULL;
+	} else {
+		/* XXX duplicate later on code */
+		faddr = (struct sockaddr *)&sin_faddr;
+		sin_faddr.sin_family = AF_INET;
+		sin_faddr.sin_len = sizeof(sin_faddr);
+		sin_faddr.sin_addr = sc->sc_inc.inc_faddr;
+		sin_faddr.sin_port = sc->sc_inc.inc_fport;
+		bzero(sin_faddr.sin_zero, sizeof(sin_faddr.sin_zero));
+	}
 
 	/*
 	 * Ok, create the full blown connection, and set things up
@@ -696,7 +711,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	 * Set the protocol processing port for the socket to the current
 	 * port (that the connection came in on).
 	 */
-	so = sonewconn(lso, SS_ISCONNECTED);
+	so = sonewconn_faddr(lso, SS_ISCONNECTED, faddr);
 	if (so == NULL) {
 		/*
 		 * Drop the connection; we will send a RST if the peer
@@ -773,7 +788,6 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		}
 	} else {
 		struct in_addr laddr;
-		struct sockaddr_in sin;
 
 		inp->inp_options = ip_srcroute(m);
 		if (inp->inp_options == NULL) {
@@ -783,15 +797,10 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		inp->inp_route = sc->sc_route;
 		sc->sc_route.ro_rt = NULL;
 
-		sin.sin_family = AF_INET;
-		sin.sin_len = sizeof sin;
-		sin.sin_addr = sc->sc_inc.inc_faddr;
-		sin.sin_port = sc->sc_inc.inc_fport;
-		bzero(sin.sin_zero, sizeof sin.sin_zero);
 		laddr = inp->inp_laddr;
 		if (inp->inp_laddr.s_addr == INADDR_ANY)
 			inp->inp_laddr = sc->sc_inc.inc_laddr;
-		if (in_pcbconnect(inp, (struct sockaddr *)&sin, &thread0)) {
+		if (in_pcbconnect(inp, faddr, &thread0)) {
 			inp->inp_laddr = laddr;
 			goto abort;
 		}

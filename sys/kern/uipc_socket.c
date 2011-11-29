@@ -281,6 +281,8 @@ sodealloc(struct socket *so)
 		do_setopt_accept_filter(so, NULL);
 #endif /* INET */
 	crfree(so->so_cred);
+	if (so->so_faddr != NULL)
+		kfree(so->so_faddr, M_SONAME);
 	kfree(so, M_SOCKET);
 }
 
@@ -597,14 +599,20 @@ soabort_oncpu(struct socket *so)
  * so is passed in ref'd, which becomes owned by
  * the cleared SS_NOFDREF flag.
  */
+void
+soaccept_generic(struct socket *so)
+{
+	if ((so->so_state & SS_NOFDREF) == 0)
+		panic("soaccept: !NOFDREF");
+	soclrstate(so, SS_NOFDREF);	/* owned by lack of SS_NOFDREF */
+}
+
 int
 soaccept(struct socket *so, struct sockaddr **nam)
 {
 	int error;
 
-	if ((so->so_state & SS_NOFDREF) == 0)
-		panic("soaccept: !NOFDREF");
-	soclrstate(so, SS_NOFDREF);	/* owned by lack of SS_NOFDREF */
+	soaccept_generic(so);
 	error = so_pru_accept_direct(so, nam);
 	return (error);
 }

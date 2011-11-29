@@ -1687,3 +1687,20 @@ in_pcblist_global_nomarker(SYSCTL_HANDLER_ARGS, struct xinpcb **xi0, int *nxi0)
 
 	return 0;
 }
+
+void
+in_savefaddr(struct socket *so, const struct sockaddr *faddr)
+{
+	struct sockaddr_in *sin;
+
+	KASSERT(faddr->sa_family == AF_INET,
+	    ("not AF_INET faddr %d\n", faddr->sa_family));
+
+	sin = kmalloc(sizeof(*sin), M_SONAME, M_WAITOK | M_ZERO);
+	sin->sin_family = AF_INET;
+	sin->sin_len = sizeof(*sin);
+	sin->sin_port = ((const struct sockaddr_in *)faddr)->sin_port;
+	sin->sin_addr = ((const struct sockaddr_in *)faddr)->sin_addr;
+
+	so->so_faddr = (struct sockaddr *)sin;
+}

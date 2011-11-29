@@ -154,6 +154,7 @@ struct socket {
 	} *so_accf;
 
 	struct netmsg_base so_clomsg;
+	struct sockaddr *so_faddr;
 };
 
 #endif
@@ -394,6 +395,7 @@ void	soabort (struct socket *so);
 void	soaborta (struct socket *so);
 void	soabort_oncpu (struct socket *so);
 int	soaccept (struct socket *so, struct sockaddr **nam);
+void	soaccept_generic (struct socket *so);
 struct	socket *soalloc (int waitok);
 int	sobind (struct socket *so, struct sockaddr *nam, struct thread *td);
 void	socantrcvmore (struct socket *so);
@@ -417,6 +419,8 @@ void	soisreconnecting (struct socket *so);
 void	sosetport (struct socket *so, struct lwkt_port *port);
 int	solisten (struct socket *so, int backlog, struct thread *td);
 struct socket *sonewconn (struct socket *head, int connstatus);
+struct socket *sonewconn_faddr (struct socket *head, int connstatus,
+	    const struct sockaddr *faddr);
 int	sooptcopyin (struct sockopt *sopt, void *buf, size_t len,
 			 size_t minlen);
 int	soopt_to_kbuf (struct sockopt *sopt, void *buf, size_t len,
