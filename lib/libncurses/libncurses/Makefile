@@ -310,4 +310,17 @@ INCS=	term.h ${.CURDIR}/../include/termcap.h \
 	${NCURSESDIR}/include/ncurses_dll.h
 INCSLINKS=curses.h ${INCLUDEDIR}/ncurses.h
 
+# Make the generated files depend on the headers, otherwise
+# the make depend step cannot run -j parallel due to not yet
+# knowing what the actual dependencies are.
+#
+codes.c: ${INCS}
+comp_captab.c: ${INCS}
+expanded.c: ${INCS}
+fallback.c: ${INCS}
+lib_gen.c: ${INCS}
+lib_keyname.c: ${INCS}
+names.c: ${INCS}
+unctrl.c: ${INCS}
+
 .include <bsd.lib.mk>
