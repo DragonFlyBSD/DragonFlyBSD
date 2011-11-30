@@ -539,10 +539,6 @@ ENTRY(cpu_kthread_restore)
 	call    lwkt_switch_return
 	addl    $4,%esp
 	popl    %eax
-#if 0
-	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
-	orl	$TDF_RUNNING,TD_FLAGS(%eax)
-#endif
 	decl	TD_CRITCOUNT(%eax)
 	popl	%eax		/* kthread exit function */
 	pushl	PCB_EBX(%esi)	/* argument to ESI function */

@@ -271,7 +271,7 @@ ENTRY(cpu_exit_switch)
 	ret
 
 /*
- * cpu_heavy_restore()	(current thread in %rax on entry)
+ * cpu_heavy_restore()	(current thread in %rax on entry, old thread in %rbx)
  *
  *	Restore the thread after an LWKT switch.  This entry is normally
  *	called via the LWKT switch restore function, which was pulled 
@@ -347,7 +347,7 @@ ENTRY(cpu_heavy_restore)
 	movq	%rcx,%cr3
 4:
 	/*
-	 * NOTE: %rbx is the previous thread and %eax is the new thread.
+	 * NOTE: %rbx is the previous thread and %rax is the new thread.
 	 *	 %rbx is retained throughout so we can return it.
 	 *
 	 *	 lwkt_switch[_return] is responsible for handling TDF_RUNNING.
@@ -612,7 +612,8 @@ ENTRY(cpu_idle_restore)
 	jmp	cpu_idle
 
 /*
- * cpu_kthread_restore() (current thread is %rax on entry) (one-time execution)
+ * cpu_kthread_restore() (current thread is %rax on entry, previous is %rbx)
+ *			 (one-time execution)
  *
  *	Don't bother setting up any regs other then %rbp so backtraces
  *	don't die.  This restore function is used to bootstrap into an
@@ -630,8 +631,7 @@ ENTRY(cpu_kthread_restore)
 	sti
 	movq	KPML4phys,%rcx
 	movq	TD_PCB(%rax),%r13
-	/* JG "movq $0, %rbp"? "xorq %rbp, %rbp"? */
-	movq	$0,%rbp
+	xorq	%rbp,%rbp
 	movq	%rcx,%cr3
 
 	/*
@@ -644,10 +644,6 @@ ENTRY(cpu_kthread_restore)
 	movq	%rbx,%rdi
 	call	lwkt_switch_return
 	popq	%rax
-#if 0
-	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
-	orl	$TDF_RUNNING,TD_FLAGS(%rax)
-#endif
 	decl	TD_CRITCOUNT(%rax)
 	movq	PCB_R12(%r13),%rdi	/* argument to RBX function */
 	movq	PCB_RBX(%r13),%rax	/* thread function */
@@ -669,7 +665,7 @@ ENTRY(cpu_kthread_restore)
 ENTRY(cpu_lwkt_switch)
 	pushq	%rbp	/* JG note: GDB hacked to locate ebp rel to td_sp */
 	pushq	%rbx
-	movq	PCPU(curthread),%rbx
+	movq	PCPU(curthread),%rbx	/* becomes old thread in restore */
 	pushq	%r12
 	pushq	%r13
 	pushq	%r14
@@ -698,11 +694,10 @@ ENTRY(cpu_lwkt_switch)
 	pushq	$cpu_lwkt_restore
 	movq	%rsp,TD_SP(%rbx)
 	movq	%rax,PCPU(curthread)
-	movq	TD_SP(%rax),%rsp
-
 	/*
 	 * %rax contains new thread, %rbx contains old thread.
 	 */
+	movq	TD_SP(%rax),%rsp
 	ret
 
 /*
@@ -727,7 +722,7 @@ ENTRY(cpu_lwkt_restore)
 	movq	%rcx,%cr3
 1:
 	/*
-	 * NOTE: %rbx is the previous thread and %eax is the new thread.
+	 * NOTE: %rbx is the previous thread and %rax is the new thread.
 	 *	 %rbx is retained throughout so we can return it.
 	 *
 	 *	 lwkt_switch[_return] is responsible for handling TDF_RUNNING.
