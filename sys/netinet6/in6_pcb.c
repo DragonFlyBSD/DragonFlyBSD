@@ -1262,3 +1262,39 @@ init_sin6(struct sockaddr_in6 *sin6, struct mbuf *m)
 
 	return;
 }
+
+static void
+in6_savefaddr(struct socket *so, const struct sockaddr *faddr)
+{
+	struct sockaddr_in6 *sin6;
+
+	KASSERT(faddr->sa_family == AF_INET6,
+	    ("not AF_INET6 faddr %d\n", faddr->sa_family));
+
+	sin6 = kmalloc(sizeof(*sin6), M_SONAME, M_WAITOK | M_ZERO);
+	sin6->sin6_family = AF_INET6;
+	sin6->sin6_len = sizeof(*sin6);
+
+	sin6->sin6_port = ((const struct sockaddr_in6 *)faddr)->sin6_port;
+	sin6->sin6_addr = ((const struct sockaddr_in6 *)faddr)->sin6_addr;
+
+	if (IN6_IS_SCOPE_LINKLOCAL(&sin6->sin6_addr))
+		sin6->sin6_scope_id = ntohs(sin6->sin6_addr.s6_addr16[1]);
+	else
+		sin6->sin6_scope_id = 0;	/*XXX*/
+	if (IN6_IS_SCOPE_LINKLOCAL(&sin6->sin6_addr))
+		sin6->sin6_addr.s6_addr16[1] = 0;
+
+	so->so_faddr = (struct sockaddr *)sin6;
+}
+
+void
+in6_mapped_savefaddr(struct socket *so, const struct sockaddr *faddr)
+{
+	if (faddr->sa_family == AF_INET) {
+		in_savefaddr(so, faddr);
+		in6_sin_2_v4mapsin6_in_sock(&so->so_faddr);
+	} else {
+		in6_savefaddr(so, faddr);
+	}
+}

@@ -687,13 +687,17 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	const boolean_t isipv6 = FALSE;
 #endif
 	struct sockaddr_in sin_faddr;
+	struct sockaddr_in6 sin6_faddr;
 	struct sockaddr *faddr;
 
 	if (isipv6) {
-		/* XXX Not ready yet */
-		faddr = NULL;
+		faddr = (struct sockaddr *)&sin6_faddr;
+		sin6_faddr.sin6_family = AF_INET6;
+		sin6_faddr.sin6_len = sizeof(sin6_faddr);
+		sin6_faddr.sin6_addr = sc->sc_inc.inc6_faddr;
+		sin6_faddr.sin6_port = sc->sc_inc.inc_fport;
+		sin6_faddr.sin6_flowinfo = sin6_faddr.sin6_scope_id = 0;
 	} else {
-		/* XXX duplicate later on code */
 		faddr = (struct sockaddr *)&sin_faddr;
 		sin_faddr.sin_family = AF_INET;
 		sin_faddr.sin_len = sizeof(sin_faddr);
@@ -757,7 +761,6 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 #endif
 	if (isipv6) {
 		struct in6_addr laddr6;
-		struct sockaddr_in6 sin6;
 		/*
 		 * Inherit socket options from the listening socket.
 		 * Note that in6p_inputopts are not (and should not be)
@@ -774,15 +777,10 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		inp->in6p_route = sc->sc_route6;
 		sc->sc_route6.ro_rt = NULL;
 
-		sin6.sin6_family = AF_INET6;
-		sin6.sin6_len = sizeof sin6;
-		sin6.sin6_addr = sc->sc_inc.inc6_faddr;
-		sin6.sin6_port = sc->sc_inc.inc_fport;
-		sin6.sin6_flowinfo = sin6.sin6_scope_id = 0;
 		laddr6 = inp->in6p_laddr;
 		if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
 			inp->in6p_laddr = sc->sc_inc.inc6_laddr;
-		if (in6_pcbconnect(inp, (struct sockaddr *)&sin6, &thread0)) {
+		if (in6_pcbconnect(inp, faddr, &thread0)) {
 			inp->in6p_laddr = laddr6;
 			goto abort;
 		}
