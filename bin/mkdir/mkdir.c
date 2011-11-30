@@ -49,6 +49,7 @@
 #include <unistd.h>
 
 static int	build(char *, mode_t);
+static int	mkdir_race(const char *path, int nmode);
 static void	usage(void);
 
 int vflag;
@@ -172,7 +173,7 @@ build(char *path, mode_t omode)
 			umask(oumask);
 		if (stat(path, &sb)) {
 			if (errno != ENOENT ||
-			    mkdir(path, last ? omode : 
+			    mkdir_race(path, last ? omode :
 				  S_IRWXU | S_IRWXG | S_IRWXO) < 0) {
 				warn("%s", path);
 				retval = 1;
@@ -195,6 +196,21 @@ build(char *path, mode_t omode)
 	if (!first && !last)
 		umask(oumask);
 	return (retval);
+}
+
+int
+mkdir_race(const char *path, int nmode)
+{
+	int res;
+	struct stat sb;
+
+	res = mkdir(path, nmode);
+	if (res < 0 && errno == EEXIST) {
+	       if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode))
+		       return(0);
+	       res = mkdir(path, nmode);
+	}
+	return (res);
 }
 
 static void
