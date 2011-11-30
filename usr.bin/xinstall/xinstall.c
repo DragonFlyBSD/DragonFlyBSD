@@ -826,7 +826,7 @@ mkdir_race(const char *path, int nmode)
 	if (res < 0 && errno == EEXIST) {
 		if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode))
 			return(0);
-		res = mkdir(path, mode);
+		res = mkdir(path, nmode);
 	}
 	return (res);
 }
