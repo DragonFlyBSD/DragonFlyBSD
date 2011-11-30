@@ -251,10 +251,12 @@ scanradix(
 	kvm_t *kd,
 	int dmmax, 
 	int nswdev,
+	int64_t *availp,
 	int tab
 ) {
 	blmeta_t meta;
 	blmeta_t scan_array[BLIST_BMAP_RADIX];
+	int i;
 
 	if (scan_cache) {
 		meta = *scan_cache;
@@ -292,24 +294,32 @@ scanradix(
 		    meta.bm_bighint
 		);
 
+		if (meta.u.bmu_bitmap) {
+			for (i = 0; i < BLIST_BMAP_RADIX; ++i) {
+				if (meta.u.bmu_bitmap & (1 << i))
+					++*availp;
+			}
+		}
 	} else if (meta.u.bmu_avail == radix) {
 		/*
 		 * Meta node if all free
 		 */
-		printf("%*.*s(0x%06x,%lld) Submap ALL-FREE {\n",
+		printf("%*.*s(0x%06x,%lld) Submap ALL-FREE (big=%d) {\n",
 		    TABME,
 		    blk,
-		    (long long)radix
+		    (long long)radix,
+		    meta.bm_bighint
 		);
-
+		*availp += radix;
 	} else if (meta.u.bmu_avail == 0) {
 		/*
 		 * Meta node if all used
 		 */
-		printf("%*.*s(0x%06x,%lld) Submap ALL-ALLOCATED\n",
+		printf("%*.*s(0x%06x,%lld) Submap ALL-ALLOCATED (big=%d)\n",
 		    TABME,
 		    blk,
-		    (long long)radix
+		    (long long)radix,
+		    meta.bm_bighint
 		);
 	} else {
 		/*
@@ -317,6 +327,7 @@ scanradix(
 		 */
 		int i;
 		int next_skip;
+		int64_t avail_tmp = 0;
 
 		printf("%*.*s(0x%06x,%lld) Submap avail=%d big=%d {\n",
 		    TABME,
@@ -344,13 +355,21 @@ scanradix(
 			    kd,
 			    dmmax,
 			    nswdev,
+			    &avail_tmp,
 			    tab + 4
 			);
 			if (r < 0)
 				break;
 			blk += (swblk_t)radix;
 		}
-		printf("%*.*s}\n", TABME);
+		*availp += avail_tmp;
+		if (avail_tmp == meta.u.bmu_avail)
+			printf("%*.*s}\n", TABME);
+		else
+			printf("%*.*s} (AVAIL MISMATCH %jd/%jd\n",
+				TABME,
+				(intmax_t)avail_tmp,
+				(intmax_t)meta.u.bmu_avail);
 	}
 	return(0);
 }
@@ -360,6 +379,7 @@ dump_blist(kvm_t *kd)
 {
 	struct blist *swapblist = NULL;
 	struct blist blcopy = { 0 };
+	int64_t avail = 0;
 
 	KGET(NL_SWAPBLIST, swapblist);
 
@@ -388,8 +408,10 @@ dump_blist(kvm_t *kd)
 	    kd,
 	    dmmax,
 	    nswdev,
+	    &avail,
 	    0
 	);
+	printf("final availability: %jd\n", (intmax_t)avail);
 }
 
 static
