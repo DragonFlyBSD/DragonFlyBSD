@@ -737,6 +737,14 @@ vm_swapcache_cleaning(vm_object_t marker)
 		if (count < 0)
 			break;
 	}
+
+	/*
+	 * If we wound up at the end of the list this will move the
+	 * marker back to the beginning.
+	 */
+	if (object == NULL)
+		vm_swapcache_movemarker(marker, NULL);
+
 	lwkt_reltoken(&vmobj_token);
 }
 
