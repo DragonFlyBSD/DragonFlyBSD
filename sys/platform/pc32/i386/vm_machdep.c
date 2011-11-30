@@ -286,7 +286,7 @@ cpu_lwp_exit(void)
 	if ((ext = pcb->pcb_ext) != NULL) {
 		crit_enter();
 		pcb->pcb_ext = NULL;
-		td->td_switch(td);
+		lwkt_switch_return(td->td_switch(td));
 		crit_exit();
 		kmem_free(&kernel_map, (vm_offset_t)ext, ctob(IOPAGES + 1));
 	}
