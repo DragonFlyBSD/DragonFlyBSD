@@ -92,8 +92,6 @@
  *	      it within a signed 32 bit integer.
  *
  *	This code can be compiled stand-alone for debugging.
- *
- * $FreeBSD: src/sys/kern/subr_blist.c,v 1.5.2.2 2003/01/12 09:23:12 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -418,7 +416,6 @@ blst_leaf_alloc(blmeta_t *scan, swblk_t blk, int count)
  *	calls that hit this node.  We have to check for our collapse cases
  *	and we have a few optimizations strewn in as well.
  */
-
 static swblk_t
 blst_meta_alloc(blmeta_t *scan, swblk_t blk, swblk_t count,
 		int64_t radix, int skip)
@@ -426,24 +423,24 @@ blst_meta_alloc(blmeta_t *scan, swblk_t blk, swblk_t count,
 	int i;
 	int next_skip = ((u_int)skip / BLIST_META_RADIX);
 
+	/*
+	 * ALL-ALLOCATED special case
+	 */
 	if (scan->u.bmu_avail == 0)  {
-		/*
-		 * ALL-ALLOCATED special case
-		 */
-		scan->bm_bighint = count;
+		scan->bm_bighint = 0;
 		return(SWAPBLK_NONE);
 	}
 
 	/*
-	 * note: radix may exceed 32 bits until first division.
+	 * ALL-FREE special case, initialize uninitialized
+	 * sublevel.
+	 *
+	 * NOTE: radix may exceed 32 bits until first division.
 	 */
 	if (scan->u.bmu_avail == radix) {
-		radix /= BLIST_META_RADIX;
+		scan->bm_bighint = radix;
 
-		/*
-		 * ALL-FREE special case, initialize uninitialize
-		 * sublevel.
-		 */
+		radix /= BLIST_META_RADIX;
 		for (i = 1; i <= skip; i += next_skip) {
 			if (scan[i].bm_bighint == (swblk_t)-1)
 				break;
@@ -468,7 +465,8 @@ blst_meta_alloc(blmeta_t *scan, swblk_t blk, swblk_t count,
 			if (next_skip == 1) {
 				r = blst_leaf_alloc(&scan[i], blk, count);
 			} else {
-				r = blst_meta_alloc(&scan[i], blk, count, radix, next_skip - 1);
+				r = blst_meta_alloc(&scan[i], blk, count,
+						    radix, next_skip - 1);
 			}
 			if (r != SWAPBLK_NONE) {
 				scan->u.bmu_avail -= count;
@@ -476,6 +474,7 @@ blst_meta_alloc(blmeta_t *scan, swblk_t blk, swblk_t count,
 					scan->bm_bighint = scan->u.bmu_avail;
 				return(r);
 			}
+			/* bighint was updated by recursion */
 		} else if (scan[i].bm_bighint == (swblk_t)-1) {
 			/*
 			 * Terminator
@@ -501,9 +500,7 @@ blst_meta_alloc(blmeta_t *scan, swblk_t blk, swblk_t count,
 
 /*
  * BLST_LEAF_FREE() -	free allocated block from leaf bitmap
- *
  */
-
 static void
 blst_leaf_free(blmeta_t *scan, swblk_t blk, int count)
 {
@@ -560,13 +557,11 @@ blst_meta_free(blmeta_t *scan, swblk_t freeBlk, swblk_t count,
 #endif
 
 	/*
-	 * NOTE: radix may exceed 32 bits until first division.
+	 * ALL-ALLOCATED special case, initialize for recursion.
+	 *
+	 * We will short-cut the ALL-ALLOCATED -> ALL-FREE case.
 	 */
 	if (scan->u.bmu_avail == 0) {
-		/*
-		 * ALL-ALLOCATED special case, with possible
-		 * shortcut to ALL-FREE special case.
-		 */
 		scan->u.bmu_avail = count;
 		scan->bm_bighint = count;
 
@@ -590,16 +585,22 @@ blst_meta_free(blmeta_t *scan, swblk_t freeBlk, swblk_t count,
 
 	/*
 	 * ALL-FREE special case.
+	 *
+	 * Set bighint for higher levels to snoop.
 	 */
-
-	if (scan->u.bmu_avail == radix)
+	if (scan->u.bmu_avail == radix) {
+		scan->bm_bighint = radix;
 		return;
-	if (scan->u.bmu_avail > radix)
-		panic("blst_meta_free: freeing already free blocks (%d) %d/%lld", count, scan->u.bmu_avail, (long long)radix);
+	}
 
 	/*
 	 * Break the free down into its components
 	 */
+	if (scan->u.bmu_avail > radix) {
+		panic("blst_meta_free: freeing already "
+		      "free blocks (%d) %d/%lld",
+		      count, scan->u.bmu_avail, (long long)radix);
+	}
 
 	radix /= BLIST_META_RADIX;
 
@@ -620,10 +621,21 @@ blst_meta_free(blmeta_t *scan, swblk_t freeBlk, swblk_t count,
 		if (next_skip == 1) {
 			blst_leaf_free(&scan[i], freeBlk, v);
 		} else {
-			blst_meta_free(&scan[i], freeBlk, v, radix, next_skip - 1, blk);
+			blst_meta_free(&scan[i], freeBlk, v,
+				       radix, next_skip - 1, blk);
 		}
-		if (scan->bm_bighint < scan[i].bm_bighint)
+
+		/*
+		 * After having dealt with the becomes-all-free case any
+		 * partial free will not be able to bring us to the
+		 * becomes-all-free state.
+		 *
+		 * We can raise bighint to at least the sub-segment's
+		 * bighint.
+		 */
+		if (scan->bm_bighint < scan[i].bm_bighint) {
 		    scan->bm_bighint = scan[i].bm_bighint;
+		}
 		count -= v;
 		freeBlk += v;
 		blk += (swblk_t)radix;
