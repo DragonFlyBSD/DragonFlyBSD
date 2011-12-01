@@ -1,4 +1,4 @@
- /*
+/*
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +32,6 @@
  *
  * @(#)sys_term.c	8.4+1 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/telnetd/sys_term.c,v 1.7.2.5 2002/06/17 02:48:02 jmallett Exp $
- * $DragonFly: src/crypto/telnet/telnetd/sys_term.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #include <sys/types.h>
