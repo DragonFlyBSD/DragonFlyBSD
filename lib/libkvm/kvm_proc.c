@@ -675,7 +675,7 @@ kvm_argv(kvm_t *kd, pid_t pid, u_long addr, int narg, int maxcnt)
 
 		/* will we exceed the malloc/realloced buffer? */
 		if (len + cc > kd->arglen) {
-			int off;
+			size_t off;
 			char **pp;
 			char *op = kd->argspc;
 
