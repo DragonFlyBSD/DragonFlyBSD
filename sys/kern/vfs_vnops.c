@@ -1003,14 +1003,24 @@ debug_vn_lock(struct vnode *vp, int flags, const char *filename, int line)
 	return (error);
 }
 
-/*
- * MPSAFE
- */
+#ifdef DEBUG_VN_UNLOCK
+
+void
+debug_vn_unlock(struct vnode *vp, const char *filename, int line)
+{
+	kprintf("vn_unlock from %s:%d\n", filename, line);
+	lockmgr(&vp->v_lock, LK_RELEASE);
+}
+
+#else
+
 void
 vn_unlock(struct vnode *vp)
 {
 	lockmgr(&vp->v_lock, LK_RELEASE);
 }
+
+#endif
 
 /*
  * MPSAFE

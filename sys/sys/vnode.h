@@ -450,15 +450,23 @@ int	vn_cache_strategy(struct vnode *vp, struct bio *bio);
 int	vn_close (struct vnode *vp, int flags);
 void	vn_gone (struct vnode *vp);
 int	vn_isdisk (struct vnode *vp, int *errp);
-int	vn_lock (struct vnode *vp, int flags);
 int	vn_islocked (struct vnode *vp);
 int	vn_islocked_unlock (struct vnode *vp);
 void	vn_islocked_relock (struct vnode *vp, int vpls);
+int	vn_lock (struct vnode *vp, int flags);
 void	vn_unlock (struct vnode *vp);
+
 #ifdef	DEBUG_LOCKS
 int	debug_vn_lock (struct vnode *vp, int flags,
 		const char *filename, int line);
 #define vn_lock(vp,flags)	debug_vn_lock(vp, flags, __FILE__, __LINE__)
+#endif
+
+/*#define DEBUG_VN_UNLOCK*/
+#ifdef DEBUG_VN_UNLOCK
+void	debug_vn_unlock (struct vnode *vp,
+		const char *filename, int line);
+#define vn_unlock(vp)		debug_vn_unlock(vp, __FILE__, __LINE__)
 #endif
 
 int	vn_get_namelen(struct vnode *, int *);
@@ -524,6 +532,12 @@ void	vref (struct vnode *vp);
 void	vrele (struct vnode *vp);
 void	vsetflags (struct vnode *vp, int flags);
 void	vclrflags (struct vnode *vp, int flags);
+
+/*#define DEBUG_VPUT*/
+#ifdef DEBUG_VPUT
+void	debug_vput (struct vnode *vp, const char *filename, int line);
+#define vput(vp)		debug_vput(vp, __FILE__, __LINE__)
+#endif
 
 void	vfs_subr_init(void);
 void	vfs_mount_init(void);

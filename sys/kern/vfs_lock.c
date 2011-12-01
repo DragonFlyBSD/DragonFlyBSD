@@ -572,6 +572,18 @@ vget(struct vnode *vp, int flags)
 	return(error);
 }
 
+#ifdef DEBUG_VPUT
+
+void
+debug_vput(struct vnode *vp, const char *filename, int line)
+{
+	kprintf("vput(%p) %s:%d\n", vp, filename, line);
+	vn_unlock(vp);
+	vrele(vp);
+}
+
+#else
+
 /*
  * MPSAFE
  */
@@ -581,6 +593,8 @@ vput(struct vnode *vp)
 	vn_unlock(vp);
 	vrele(vp);
 }
+
+#endif
 
 /*
  * XXX The vx_*() locks should use auxrefs, not the main reference counter.

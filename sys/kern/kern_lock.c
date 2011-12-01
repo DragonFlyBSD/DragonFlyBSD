@@ -487,6 +487,8 @@ lkmatch1:
 				    td->td_lockmgr_stack_id[i] > 0
 				) {
 					td->td_lockmgr_stack_id[i]--;
+					lkp->lk_filename = file;
+					lkp->lk_lineno = line;
 					break;
 				}
 			}
@@ -494,6 +496,8 @@ lkmatch1:
 		} else if (lkp->lk_flags & LK_SHARE_NONZERO) {
 			dowakeup += shareunlock(lkp, 1);
 			COUNT(td, -1);
+		} else {
+			panic("lockmgr: LK_RELEASE: no lock held");
 		}
 		if (lkp->lk_flags & LK_WAIT_NONZERO)
 			++dowakeup;
