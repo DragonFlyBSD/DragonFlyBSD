@@ -1,4 +1,4 @@
- /*
+/*
  * Data structures and definitions for dealing with the 
  * Common Access Method Transport (xpt) layer.
  *
@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.h,v 1.3 1999/12/29 04:54:27 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.h,v 1.4 2008/05/18 20:30:19 pavalos Exp $
  */
 
 #ifndef _CAM_CAM_XPT_H

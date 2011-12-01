@@ -1,4 +1,4 @@
- /*-
+/*-
  * Copyright (c) 2005-2008 Daniel Braniss <danny@cs.huji.ac.il>
  * All rights reserved.
  *
