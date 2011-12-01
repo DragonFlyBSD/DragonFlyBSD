@@ -60,6 +60,7 @@ usage(int retcode)
 	fprintf(stderr, "usage: vquota [-Dh] check directory\n");
 	fprintf(stderr, "       vquota [-Dh] lsfs\n");
 	fprintf(stderr, "       vquota [-Dh] show mount_point\n");
+	fprintf(stderr, "       vquota [-Dh] sync mount_point\n");
 	exit(retcode);
 }
 
@@ -164,7 +165,10 @@ hl_register(ino_t inode)
 	return retval;
 }
 
-/* storage for collected uid numbers */
+/* global variable used by get_dir_size() */
+uint64_t global_size;
+
+/* storage for collected id numbers */
 /* FIXME: same data structures used in kernel, should find a way to
  * deduplicate this code */
 
@@ -242,13 +246,18 @@ gnode_insert(gid_t gid)
 	return gnp;
 }
 
+/*
+ * get_dirsize(): walks a directory tree in the same filesystem
+ * output:
+ * - global rb-trees ac_uroot and ac_groot
+ * - global variable global_size
+ */
 static int
 get_dirsize(char* dirname)
 {
 	FTS		*fts;
 	FTSENT		*p;
 	char*		fts_args[2];
-	uint64_t	global_size = 0;
 	int		retval = 0;
 
 	/* what we need */
@@ -259,9 +268,6 @@ get_dirsize(char* dirname)
 
 	struct ac_unode *unp, ufind;
 	struct ac_gnode *gnp, gfind;
-	int		i;
-	char		hbuf[5];
-	uint32_t	uid, gid;
 
 	/* TODO: check directory name sanity */
 	fts_args[0] = dirname;
@@ -309,6 +315,20 @@ get_dirsize(char* dirname)
 	}
 	fts_close(fts);
 
+	return retval;
+}
+
+static int
+cmd_check(char* dirname)
+{
+	int32_t uid, gid;
+	char	hbuf[5];
+	struct  ac_unode *unp;
+	struct  ac_gnode *gnp;
+	int	rv, i;
+
+	rv = get_dirsize(dirname);
+
 	if (flag_humanize) {
 		humanize_number(hbuf, sizeof(hbuf), global_size, "",
 		    HN_AUTOSCALE, HN_NOSPACE);
@@ -345,7 +365,7 @@ get_dirsize(char* dirname)
 	    }
 	}
 
-	return retval;
+	return rv;
 }
 
 /* print a list of filesystems with accounting enabled */
@@ -375,7 +395,7 @@ get_fslist(void)
 
 static bool
 send_command(const char *path, const char *cmd,
-		prop_dictionary_t args, prop_dictionary_t *res)
+		prop_object_t args, prop_dictionary_t *res)
 {
 	prop_dictionary_t dict;
 	struct plistref pref;
@@ -447,7 +467,10 @@ show_mp(char *path)
 	args = prop_dictionary_create();
 	res  = prop_dictionary_create();
 	if (args == NULL)
-		printf("couldn't create args dictionary\n");
+		printf("show_mp(): couldn't create args dictionary\n");
+	res  = prop_dictionary_create();
+	if (res == NULL)
+		printf("show_mp(): couldn't create res dictionary\n");
 
 	rv = send_command(path, "get usage all", args, &res);
 	if (rv == false) {
@@ -455,7 +478,7 @@ show_mp(char *path)
 		goto end;
 	}
 
-	reslist = prop_dictionary_get(res, "get usage all");
+	reslist = prop_dictionary_get(res, "returned data");
 	if (reslist == NULL) {
 		printf("show_mp(): failed to get array of results");
 		rv = false;
@@ -476,7 +499,7 @@ show_mp(char *path)
 		else if (prop_dictionary_get_uint32(item, "gid", &id))
 			printf("gid %u:", id);
 		else
-			printf("total space used");
+			printf("total:");
 		if (flag_humanize) {
 			humanize_number(hbuf, sizeof(hbuf), space, "", HN_AUTOSCALE, HN_NOSPACE);
 			printf(" %s\n", hbuf);
@@ -490,6 +513,66 @@ end:
 	prop_object_release(args);
 	prop_object_release(res);
 	return (rv == true);
+}
+
+/* sync the in-kernel counters to the actual file system usage */
+static int cmd_sync(char *dirname)
+{
+	prop_dictionary_t res, item;
+	prop_array_t args;
+	struct ac_unode *unp;
+	struct ac_gnode *gnp;
+	int rv = 0, i;
+
+	args = prop_array_create();
+	if (args == NULL)
+		printf("cmd_sync(): couldn't create args dictionary\n");
+	res  = prop_dictionary_create();
+	if (res == NULL)
+		printf("cmd_sync(): couldn't create res dictionary\n");
+
+	rv = get_dirsize(dirname);
+
+	item = prop_dictionary_create();
+	if (item == NULL)
+		printf("cmd_sync(): couldn't create item dictionary\n");
+	(void) prop_dictionary_set_uint64(item, "space used", global_size);
+	prop_array_add_and_rel(args, item);
+
+	RB_FOREACH(unp, ac_utree, &ac_uroot) {
+	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
+		if (unp->uid_chunk[i] != 0) {
+		    item = prop_dictionary_create();
+		    (void) prop_dictionary_set_uint32(item, "uid",
+				(unp->left_bits << ACCT_CHUNK_BITS) + i);
+		    (void) prop_dictionary_set_uint64(item, "space used",
+				unp->uid_chunk[i]);
+		    prop_array_add_and_rel(args, item);
+		}
+	    }
+	}
+	RB_FOREACH(gnp, ac_gtree, &ac_groot) {
+	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
+		if (gnp->gid_chunk[i] != 0) {
+		    item = prop_dictionary_create();
+		    (void) prop_dictionary_set_uint32(item, "gid",
+				(gnp->left_bits << ACCT_CHUNK_BITS) + i);
+		    (void) prop_dictionary_set_uint64(item, "space used",
+				gnp->gid_chunk[i]);
+		    prop_array_add_and_rel(args, item);
+		}
+	    }
+	}
+
+	if (send_command(dirname, "set usage all", args, &res) == false) {
+		printf("Failed to send message to kernel\n");
+		rv = 1;
+	}
+
+	prop_object_release(args);
+	prop_object_release(res);
+
+	return rv;
 }
 
 int
@@ -515,7 +598,7 @@ main(int argc, char **argv)
 	if (strcmp(argv[0], "check") == 0) {
 		if (argc != 2)
 			usage(1);
-		return get_dirsize(argv[1]);
+		return cmd_check(argv[1]);
 	}
 	if (strcmp(argv[0], "lsfs") == 0) {
 		return get_fslist();
@@ -524,6 +607,11 @@ main(int argc, char **argv)
 		if (argc != 2)
 			usage(1);
 		return show_mp(argv[1]);
+	}
+	if (strcmp(argv[0], "sync") == 0) {
+		if (argc != 2)
+			usage(1);
+		return cmd_sync(argv[1]);
 	}
 
 	usage(0);

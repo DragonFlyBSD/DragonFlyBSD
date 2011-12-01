@@ -72,6 +72,14 @@ List mounted file systems having space accounting enabled
 Show file size usage for the file system mounted under
 .Ar mount_point .
 The information is broken down by uid and gid
+.
+.\" ==== sync ====
+.It Cm sync Ar mount_point
+Initialize in one go the usage counters for the filesystem
+mounted under
+.Ar mount_point
+with real usage data. This command scans an entire filesystem
+directory hierarchy and may be slow to run
 .El
 .
 .Sh EXAMPLES

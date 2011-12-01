@@ -210,13 +210,67 @@ cmd_get_usage_all(struct mount *mp, prop_array_t dict_out)
 	}
 }
 
+static int
+cmd_set_usage_all(struct mount *mp, prop_array_t args)
+{
+	struct ac_unode ufind, *unp;
+	struct ac_gnode gfind, *gnp;
+	prop_dictionary_t item;
+	prop_object_iterator_t iter;
+	uint32_t id;
+	uint64_t space;
+
+	spin_lock(&mp->mnt_acct.ac_spin);
+	/* 0. zero all statistics */
+	/* we don't bother to free up memory, most of it would probably be
+	 * re-allocated immediately anyway. just bzeroing the existing nodes
+	 * is fine */
+	mp->mnt_acct.ac_bytes = 0;
+	RB_FOREACH(unp, ac_utree, &mp->mnt_acct.ac_uroot) {
+		bzero(&unp->uid_chunk, sizeof(unp->uid_chunk));
+	}
+	RB_FOREACH(gnp, ac_gtree, &mp->mnt_acct.ac_groot) {
+		bzero(&gnp->gid_chunk, sizeof(gnp->gid_chunk));
+	}
+
+	/* args contains an array of dict */
+	iter = prop_array_iterator(args);
+	if (iter == NULL) {
+		kprintf("cmd_set_usage_all(): failed to create iterator\n");
+		return 1;
+	}
+	while ((item = prop_object_iterator_next(iter)) != NULL) {
+		prop_dictionary_get_uint64(item, "space used", &space);
+		if (prop_dictionary_get_uint32(item, "uid", &id)) {
+			ufind.left_bits = (id >> ACCT_CHUNK_BITS);
+			unp = RB_FIND(ac_utree, &mp->mnt_acct.ac_uroot, &ufind);
+			if (unp == NULL)
+				unp = unode_insert(mp, id);
+			unp->uid_chunk[(id & ACCT_CHUNK_MASK)] = space;
+		} else if (prop_dictionary_get_uint32(item, "gid", &id)) {
+			gfind.left_bits = (id >> ACCT_CHUNK_BITS);
+			gnp = RB_FIND(ac_gtree, &mp->mnt_acct.ac_groot, &gfind);
+			if (gnp == NULL)
+				gnp = gnode_insert(mp, id);
+			gnp->gid_chunk[(id & ACCT_CHUNK_MASK)] = space;
+		} else {
+			mp->mnt_acct.ac_bytes = space;
+		}
+	}
+	prop_object_iterator_release(iter);
+
+	spin_unlock(&mp->mnt_acct.ac_spin);
+	return 0;
+}
+
 int
 sys_vquotactl(struct vquotactl_args *vqa)
 /* const char *path, struct plistref *pref */
 {
 	const char *path;
 	struct plistref pref;
-	prop_dictionary_t dict, args;
+	prop_dictionary_t dict;
+	prop_object_t args;
 	char *cmd;
 
 	prop_array_t pa_out;
@@ -260,12 +314,16 @@ sys_vquotactl(struct vquotactl_args *vqa)
 		cmd_get_usage_all(mp, pa_out);
 		goto done;
 	}
+	if (strcmp(cmd, "set usage all") == 0) {
+		error = cmd_set_usage_all(mp, args);
+		goto done;
+	}
 	return EINVAL;
 
 done:
 	/* kernel to userland */
 	dict = prop_dictionary_create();
-	error = prop_dictionary_set(dict, "get usage all", pa_out);
+	error = prop_dictionary_set(dict, "returned data", pa_out);
 
 	error = prop_dictionary_copyout(&pref, dict);
 	error = copyout(&pref, vqa->pref, sizeof(pref));
