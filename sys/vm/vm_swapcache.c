@@ -84,6 +84,7 @@ static int vm_swapcached_flush (vm_page_t m, int isblkdev);
 static int vm_swapcache_test(vm_page_t m);
 static void vm_swapcache_writing(vm_page_t marker);
 static void vm_swapcache_cleaning(vm_object_t marker);
+static void vm_swapcache_movemarker(vm_object_t marker, vm_object_t object);
 struct thread *swapcached_thread;
 
 SYSCTL_NODE(_vm, OID_AUTO, swapcache, CTLFLAG_RW, NULL, NULL);
@@ -103,6 +104,7 @@ static int64_t vm_swapcache_maxburst = 2000000000LL;	/* 2G nominal max */
 static int64_t vm_swapcache_accrate = 100000LL;		/* 100K/s */
 static int64_t vm_swapcache_write_count;
 static int64_t vm_swapcache_maxfilesize;
+static int64_t vm_swapcache_cleanperobj = 16*1024*1024;
 
 SYSCTL_INT(_vm_swapcache, OID_AUTO, maxlaunder,
 	CTLFLAG_RW, &vm_swapcache_maxlaunder, 0, "");
@@ -132,6 +134,8 @@ SYSCTL_QUAD(_vm_swapcache, OID_AUTO, accrate,
 	CTLFLAG_RW, &vm_swapcache_accrate, 0, "");
 SYSCTL_QUAD(_vm_swapcache, OID_AUTO, write_count,
 	CTLFLAG_RW, &vm_swapcache_write_count, 0, "");
+SYSCTL_QUAD(_vm_swapcache, OID_AUTO, cleanperobj,
+	CTLFLAG_RW, &vm_swapcache_cleanperobj, 0, "");
 
 #define SWAPMAX(adj)	\
 	((int64_t)vm_swap_max * (vm_swapcache_maxswappct + (adj)) / 100)
@@ -343,6 +347,11 @@ vm_swapcache_writing(vm_page_t marker)
 			&vm_page_queues[marker->queue].pl, marker, pageq);
 		TAILQ_INSERT_AFTER(
 			&vm_page_queues[marker->queue].pl, m, marker, pageq);
+
+		/*
+		 * Ignore markers and ignore pages that already have a swap
+		 * assignment.
+		 */
 		if (m->flags & (PG_MARKER | PG_SWAPPED)) {
 			++count;
 			continue;
@@ -616,7 +625,9 @@ vm_swapcache_test(vm_page_t m)
 }
 
 /*
- * Cleaning pass
+ * Cleaning pass.
+ *
+ * We clean whole objects up to 16MB
  */
 static
 void
@@ -627,7 +638,6 @@ vm_swapcache_cleaning(vm_object_t marker)
 	int count;
 	int n;
 
-	object = marker;
 	count = vm_swapcache_maxlaunder;
 
 	/*
@@ -635,38 +645,53 @@ vm_swapcache_cleaning(vm_object_t marker)
 	 */
 	lwkt_gettoken(&vmobj_token);
 
-	while ((object = TAILQ_NEXT(object, object_list)) != NULL) {
-		vm_object_hold(object);
-
-		lwkt_yield();
-		if (--count <= 0) {
-			vm_object_drop(object);
-			break;
-		}
-
-		/* 
-		 * Only operate on live VNODE objects with regular/chardev types
+	while ((object = TAILQ_NEXT(marker, object_list)) != NULL) {
+		/*
+		 * We have to skip markers.  We cannot hold/drop marker
+		 * objects!
 		 */
-		if ((object->type != OBJT_VNODE) ||
-		    ((object->flags & OBJ_DEAD) || object->swblock_count == 0) ||
-		    ((vp = object->handle) == NULL) ||
-		    (vp->v_type != VREG && vp->v_type != VCHR)) {
-			vm_object_drop(object);
+		if (object->type == OBJT_MARKER) {
+			vm_swapcache_movemarker(marker, object);
 			continue;
 		}
 
 		/*
-		 * Adjust iterator.
+		 * Safety, or in case there are millions of VM objects
+		 * without swapcache backing.
 		 */
-		if (marker->backing_object != object)
-			marker->size = 0;
+		if (--count <= 0)
+			break;
 
 		/*
-		 * Move the marker so we can work on the VM object
+		 * We must hold the object before potentially yielding.
 		 */
-		TAILQ_REMOVE(&vm_object_list, marker, object_list);
-		TAILQ_INSERT_AFTER(&vm_object_list, object,
-				   marker, object_list);
+		vm_object_hold(object);
+		lwkt_yield();
+
+		/* 
+		 * Only operate on live VNODE objects that are either
+		 * VREG or VCHR (VCHR for meta-data).
+		 */
+		if ((object->type != OBJT_VNODE) ||
+		    ((object->flags & OBJ_DEAD) ||
+		     object->swblock_count == 0) ||
+		    ((vp = object->handle) == NULL) ||
+		    (vp->v_type != VREG && vp->v_type != VCHR)) {
+			vm_object_drop(object);
+			/* object may be invalid now */
+			vm_swapcache_movemarker(marker, object);
+			continue;
+		}
+
+		/*
+		 * Reset the object pindex stored in the marker if the
+		 * working object has changed.
+		 */
+		if (marker->backing_object != object) {
+			marker->size = 0;
+			marker->backing_object_offset = 0;
+			marker->backing_object = object;
+		}
 
 		/*
 		 * Look for swblocks starting at our iterator.
@@ -680,36 +705,66 @@ vm_swapcache_cleaning(vm_object_t marker)
 		 * excessive number of swblocks, or is able to free the
 		 * requested number of blocks, it will return n >= count
 		 * and we break and pick it back up on a future attempt.
+		 *
+		 * Scan the object linearly and try to batch large sets of
+		 * blocks that are likely to clean out entire swap radix
+		 * tree leafs.
 		 */
 		lwkt_token_swap();
 		lwkt_reltoken(&vmobj_token);
 
-		n = swap_pager_condfree(object, &marker->size, count);
+		n = swap_pager_condfree(object, &marker->size,
+				    (count + SWAP_META_MASK) & ~SWAP_META_MASK);
 
-		vm_object_drop(object);
+		vm_object_drop(object);		/* object may be invalid now */
 		lwkt_gettoken(&vmobj_token);
-	
-		count -= n;
-		if (count < 0) 
-			break;
 
 		/*
-		 * Setup for loop.
+		 * If we have exhausted the object or deleted our per-pass
+		 * page limit then move us to the next object.  Note that
+		 * the current object may no longer be on the vm_object_list.
 		 */
-		marker->size = 0;
-		object = marker;
+		if (n <= 0 ||
+		    marker->backing_object_offset > vm_swapcache_cleanperobj) {
+			vm_swapcache_movemarker(marker, object);
+		}
+
+		/*
+		 * If we have exhausted our max-launder stop for now.
+		 */
+		count -= n;
+		marker->backing_object_offset += n * PAGE_SIZE;
+		if (count < 0)
+			break;
 	}
 
 	/*
-	 * Adjust marker so we continue the scan from where we left off.
-	 * When we reach the end we start back at the beginning.
+	 * If we wound up at the end of the list this will move the
+	 * marker back to the beginning.
 	 */
-	TAILQ_REMOVE(&vm_object_list, marker, object_list);
-	if (object)
-		TAILQ_INSERT_BEFORE(object, marker, object_list);
-	else
-		TAILQ_INSERT_HEAD(&vm_object_list, marker, object_list);
-	marker->backing_object = object;
+	if (object == NULL)
+		vm_swapcache_movemarker(marker, NULL);
 
 	lwkt_reltoken(&vmobj_token);
+}
+
+/*
+ * Move the marker past the current object.  Object can be stale, but we
+ * still need it to determine if the marker has to be moved.  If the object
+ * is still the 'current object' (object after the marker), we hop-scotch
+ * the marker past it.
+ */
+static void
+vm_swapcache_movemarker(vm_object_t marker, vm_object_t object)
+{
+	if (TAILQ_NEXT(marker, object_list) == object) {
+		TAILQ_REMOVE(&vm_object_list, marker, object_list);
+		if (object) {
+			TAILQ_INSERT_AFTER(&vm_object_list, object,
+					   marker, object_list);
+		} else {
+			TAILQ_INSERT_HEAD(&vm_object_list,
+					  marker, object_list);
+		}
+	}
 }

@@ -105,7 +105,7 @@ ${_YC}: ${_YSRC}
 
 .if !target(depend)
 .if defined(SRCS)
-depend: beforedepend ${DEPENDFILE} afterdepend
+depend: beforedepend _dependincs ${DEPENDFILE} afterdepend
 
 # Different types of sources are compiled with slightly different flags.
 # Split up the sources, and filter out headers and non-applicable flags.
@@ -185,7 +185,7 @@ ${DEPENDFILE}: _EXTRADEPEND
 
 .ORDER: ${_DEPENDFILES} ${DEPENDFILE} afterdepend
 .else
-depend: beforedepend afterdepend
+depend: beforedepend _dependincs afterdepend
 .endif
 .if !target(beforedepend)
 beforedepend:
@@ -232,4 +232,16 @@ checkdpadd:
 		echo "DPADD =  ${DPADD}" ; \
 	fi
 .endif
+.endif
+
+.if defined(INCS) && make(depend)
+
+_dependincs: ${INCS} ${SRCS}
+
+.ORDER: _dependincs depend
+
+.else
+
+_dependincs:
+
 .endif

@@ -21,9 +21,10 @@
 #ifndef LDNS_KEYS_H
 #define LDNS_KEYS_H
 
-#ifdef HAVE_SSL
+#include <ldns/common.h>
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 #include <openssl/ssl.h>
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 #include <ldns/dnssec.h>
 #include <ldns/util.h>
 #include <errno.h>
@@ -53,7 +54,7 @@ enum ldns_enum_algorithm
         LDNS_RSASHA256          = 8,   /* RFC 5702 */
         LDNS_RSASHA512          = 10,  /* RFC 5702 */
         LDNS_ECC_GOST           = 12,  /* RFC 5933 */
-#ifdef USE_ECDSA
+#if LDNS_BUILD_CONFIG_USE_ECDSA
 	/* this ifdef has to be removed once it is no longer experimental,
 	 * to be able to use these values outside of the ldns library itself */
         LDNS_ECDSAP256SHA256    = 13,  /* draft-hoffman-dnssec-ecdsa */
@@ -73,7 +74,7 @@ enum ldns_enum_hash
         LDNS_SHA1               = 1,  /* RFC 4034 */
         LDNS_SHA256             = 2,  /* RFC 4509 */
         LDNS_HASH_GOST          = 3   /* RFC 5933 */
-#ifdef USE_ECDSA
+#if LDNS_BUILD_CONFIG_USE_ECDSA
 	/* this ifdef has to be removed once it is no longer experimental,
 	 * to be able to use these values outside of the ldns library itself */
         ,LDNS_SHA384             = 4   /* draft-hoffman-dnssec-ecdsa EXPERIMENTAL */
@@ -94,7 +95,7 @@ enum ldns_enum_signing_algorithm
 	LDNS_SIGN_RSASHA512	 = LDNS_RSASHA512,
 	LDNS_SIGN_DSA_NSEC3	 = LDNS_DSA_NSEC3,
 	LDNS_SIGN_ECC_GOST       = LDNS_ECC_GOST,
-#ifdef USE_ECDSA
+#if LDNS_BUILD_CONFIG_USE_ECDSA
 	/* this ifdef has to be removed once it is no longer experimental,
 	 * to be able to use these values outside of the ldns library itself */
         LDNS_SIGN_ECDSAP256SHA256 = LDNS_ECDSAP256SHA256,
@@ -123,13 +124,13 @@ struct ldns_struct_key {
 	/** Storage pointers for the types of keys supported */
 	/* TODO remove unions? */
 	struct {
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 #ifndef S_SPLINT_S
 		/* The key can be an OpenSSL EVP Key
 		 */
 		EVP_PKEY *key;
 #endif
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 		/**
 		 * The key can be an HMAC key
 		 */
@@ -220,7 +221,7 @@ ldns_status ldns_key_new_frm_fp(ldns_key **k, FILE *fp);
  */
 ldns_status ldns_key_new_frm_fp_l(ldns_key **k, FILE *fp, int *line_nr);
 
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * Read the key with the given id from the given engine and store it
  * in the given ldns_key structure. The algorithm type is set
@@ -235,9 +236,9 @@ ldns_status ldns_key_new_frm_engine(ldns_key **key, ENGINE *e, char *key_id, ldn
  * \return NULL on failure otherwise a RSA structure
  */
 RSA *ldns_key_new_frm_fp_rsa(FILE *fp);
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * frm_fp helper function. This function parses the
  * remainder of the (RSA) priv. key file generated from bind9
@@ -246,9 +247,9 @@ RSA *ldns_key_new_frm_fp_rsa(FILE *fp);
  * \return NULL on failure otherwise a RSA structure
  */
 RSA *ldns_key_new_frm_fp_rsa_l(FILE *fp, int *line_nr);
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * frm_fp helper function. This function parses the
  * remainder of the (DSA) priv. key file
@@ -256,9 +257,9 @@ RSA *ldns_key_new_frm_fp_rsa_l(FILE *fp, int *line_nr);
  * \return NULL on failure otherwise a RSA structure
  */
 DSA *ldns_key_new_frm_fp_dsa(FILE *fp);
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * frm_fp helper function. This function parses the
  * remainder of the (DSA) priv. key file
@@ -267,9 +268,9 @@ DSA *ldns_key_new_frm_fp_dsa(FILE *fp);
  * \return NULL on failure otherwise a RSA structure
  */
 DSA *ldns_key_new_frm_fp_dsa_l(FILE *fp, int *line_nr);
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * frm_fp helper function. This function parses the
  * remainder of the (HMAC-MD5) key file
@@ -281,7 +282,7 @@ DSA *ldns_key_new_frm_fp_dsa_l(FILE *fp, int *line_nr);
 unsigned char *ldns_key_new_frm_fp_hmac(FILE *fp, size_t *hmac_size);
 #endif
 
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * frm_fp helper function. This function parses the
  * remainder of the (HMAC-MD5) key file
@@ -292,7 +293,7 @@ unsigned char *ldns_key_new_frm_fp_hmac(FILE *fp, size_t *hmac_size);
  * \return NULL on failure otherwise a newly allocated char buffer
  */
 unsigned char *ldns_key_new_frm_fp_hmac_l(FILE *fp, int *line_nr, size_t *hmac_size);
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 
 /* acces write functions */
 /**
@@ -301,7 +302,7 @@ unsigned char *ldns_key_new_frm_fp_hmac_l(FILE *fp, int *line_nr, size_t *hmac_s
  * \param[in] l the algorithm
  */
 void ldns_key_set_algorithm(ldns_key *k, ldns_signing_algorithm l);
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * Set the key's evp key
  * \param[in] k the key
@@ -331,7 +332,7 @@ int ldns_key_EVP_load_gost_id(void);
 
 /** Release the engine reference held for the GOST engine. */
 void ldns_key_EVP_unload_gost(void);
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 
 /**
  * Set the key's hmac data
@@ -424,7 +425,7 @@ size_t ldns_key_list_key_count(const ldns_key_list *key_list);
  */
 ldns_key *ldns_key_list_key(const ldns_key_list *key, size_t nr);
 
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * returns the (openssl) RSA struct contained in the key
  * \param[in] k the key to look in
@@ -437,14 +438,14 @@ RSA *ldns_key_rsa_key(const ldns_key *k);
  * \return the RSA * structure in the key
  */
 EVP_PKEY *ldns_key_evp_key(const ldns_key *k);
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 
 /**
  * returns the (openssl) DSA struct contained in the key
  */
-#ifdef HAVE_SSL
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 DSA *ldns_key_dsa_key(const ldns_key *k);
-#endif /* HAVE_SSL */
+#endif /* LDNS_BUILD_CONFIG_HAVE_SSL */
 
 /**
  * return the signing alg of the key

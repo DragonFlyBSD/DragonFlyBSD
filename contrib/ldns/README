@@ -8,6 +8,8 @@ Contents:
 	INFORMATION FOR SPECIFIC OPERATING SYSTEMS
 		Mac OS X
 		Solaris
+	KNOWN ISSUES
+		pyldns
         Your Support
 
 Project page:
@@ -65,6 +67,7 @@ commands may be a little bit different on your machine. Most notable, you'll nee
 * Developers
 ldns is developed by the ldns team at NLnet Labs. This team currently
 consists of:
+  o Willem Toorop
   o Wouter Wijngaards
   o Matthijs Mekking
 
@@ -74,6 +77,7 @@ Former main developers:
 
 * Credits
 We have received patches from the following people, thanks!
+  o Bedrich Kosata
   o Erik Rozendaal
   o Håkan Olsson
   o Jakob Schlyter
@@ -82,7 +86,7 @@ We have received patches from the following people, thanks!
   o Ondřej Surý
 
 
-IFORMATION FOR SPECIFIC OPERATING SYSTEMS
+INFORMATION FOR SPECIFIC OPERATING SYSTEMS
 
 MAC OS X
 
@@ -103,6 +107,17 @@ compile in 64-bit mode. Jakob Schlyter has kindly contributed a build
 script that sets the right build and link options. You can find it in
 contrib/build-solaris.sh
 
+KNOWN ISSUES
+
+A complete list of currently known open issues can be found here:
+http://www.nlnetlabs.nl/projects/ldns/bugs
+
+* pyldns
+Compiling pyldns produces many ``unused parameter'' warnings.  Those are
+harmless and may safely be ignored.
+Also when building with Swig which version is before 2.0.4, compiling
+pyldns produces many ``missing initializer'' warnings. Those are harmless
+too.
 
 Your Support
 NLnet Labs offers all of its software products as open source, most are

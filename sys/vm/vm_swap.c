@@ -271,6 +271,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 
 	cred = td->td_ucred;
 
+	lwkt_gettoken(&vm_token);	/* needed for vm_swap_size and blist */
 	mtx_lock(&swap_mtx);
 
 	if (!swapdev_vp) {
@@ -284,23 +285,21 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 
 	for (sp = swdevt, index = 0 ; index < nswdev; index++, sp++) {
 		if (sp->sw_vp == vp) {
-			mtx_unlock(&swap_mtx);
-			return EBUSY;
+			error = EBUSY;
+			goto done;
 		}
 		if (!sp->sw_vp)
 			goto found;
 
 	}
-	mtx_unlock(&swap_mtx);
-	return EINVAL;
+	error = EINVAL;
+	goto done;
     found:
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(vp, FREAD | FWRITE, cred, NULL);
 	vn_unlock(vp);
-	if (error) {
-		mtx_unlock(&swap_mtx);
-		return (error);
-	}
+	if (error)
+		goto done;
 
 	/*
 	 * v_rdev is not valid until after the VOP_OPEN() call.  dev_psize()
@@ -315,15 +314,15 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 		dpsize = dev_dpsize(dev);
 		if (dpsize == -1) {
 			VOP_CLOSE(vp, FREAD | FWRITE);
-			mtx_unlock(&swap_mtx);
-			return (ENXIO);
+			error = ENXIO;
+			goto done;
 		}
 		nblks = (u_quad_t)dpsize;
 	}
 	if (nblks == 0) {
 		VOP_CLOSE(vp, FREAD | FWRITE);
-		mtx_unlock(&swap_mtx);
-		return (ENXIO);
+		error = ENXIO;
+		goto done;
 	}
 
 	/*
@@ -348,8 +347,8 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 		kprintf("exceeded maximum of %d blocks per swap unit\n",
 			(int)BLIST_MAXBLKS / nswdev);
 		VOP_CLOSE(vp, FREAD | FWRITE);
-		mtx_unlock(&swap_mtx);
-		return (ENXIO);
+		error = ENXIO;
+		goto done;
 	}
 
 	sp->sw_vp = vp;
@@ -382,9 +381,11 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 		vm_swap_max += blk;
 	}
 	swap_pager_newswap();
-
+	error = 0;
+done:
 	mtx_unlock(&swap_mtx);
-	return (0);
+	lwkt_reltoken(&vm_token);
+	return (error);
 }
 
 /*

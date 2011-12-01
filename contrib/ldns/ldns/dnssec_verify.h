@@ -6,6 +6,7 @@
 #define LDNS_DNSSEC_TRUST_TREE_MAX_PARENTS 10
 
 #include <ldns/dnssec.h>
+#include <ldns/host2str.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,6 +56,17 @@ void ldns_dnssec_data_chain_deep_free(ldns_dnssec_data_chain *chain);
  * \param[in] *chain The dnssec_data_chain to print
  */
 void ldns_dnssec_data_chain_print(FILE *out, const ldns_dnssec_data_chain *chain);
+
+/**
+ * Prints the dnssec_data_chain to the given file stream
+ * 
+ * \param[in] *out The file stream to print to
+ * \param[in] *fmt The format of the textual representation
+ * \param[in] *chain The dnssec_data_chain to print
+ */
+void ldns_dnssec_data_chain_print_fmt(FILE *out, 
+		const ldns_output_format *fmt,
+		const ldns_dnssec_data_chain *chain);
 
 /**
  * Build an ldns_dnssec_data_chain, which contains all
@@ -158,9 +170,28 @@ size_t ldns_dnssec_trust_tree_depth(ldns_dnssec_trust_tree *tree);
  * \param[in] extended If true, add little explanation lines to the output
  */
 void ldns_dnssec_trust_tree_print(FILE *out,
-						    ldns_dnssec_trust_tree *tree,
-						    size_t tabs,
-						    bool extended);
+	       	ldns_dnssec_trust_tree *tree,
+		size_t tabs,
+		bool extended);
+
+/**
+ * Prints the dnssec_trust_tree structure to the given file
+ * stream.
+ *
+ * If a link status is not LDNS_STATUS_OK; the status and
+ * relevant signatures are printed too
+ *
+ * \param[in] *out The file stream to print to
+ * \param[in] *fmt The format of the textual representation
+ * \param[in] tree The trust tree to print
+ * \param[in] tabs Prepend each line with tabs*2 spaces
+ * \param[in] extended If true, add little explanation lines to the output
+ */
+void ldns_dnssec_trust_tree_print_fmt(FILE *out,
+		const ldns_output_format *fmt,
+	       	ldns_dnssec_trust_tree *tree,
+		size_t tabs,
+		bool extended);
 
 /**
  * Adds a trust tree as a parent for the given trust tree
@@ -193,8 +224,7 @@ ldns_dnssec_trust_tree *ldns_dnssec_derive_trust_tree(
 					   ldns_rr *rr);
 
 /**
- * Sub function for derive_trust_tree that is used for a
- * 'normal' rrset
+ * Sub function for derive_trust_tree that is used for a 'normal' rrset
  *
  * \param[in] new_tree The trust tree that we are building
  * \param[in] data_chain The data chain containing the data for the trust tree
@@ -390,6 +420,31 @@ ldns_status ldns_dnssec_verify_denial_nsec3(ldns_rr *rr,
 								    bool packet_nodata);
 
 /**
+ * Same as ldns_status ldns_dnssec_verify_denial_nsec3 but also returns
+ * the nsec rr that matched.
+ *
+ * \param[in] rr The (query) RR to check the denial of existence for
+ * \param[in] nsecs The list of NSEC3 RRs that are supposed to deny the
+ *                  existence of the RR
+ * \param[in] rrsigs The RRSIG rr covering the NSEC RRs
+ * \param[in] packet_rcode The RCODE value of the packet that provided the
+ *                         NSEC3 RRs
+ * \param[in] packet_qtype The original query RR type
+ * \param[in] packet_nodata True if the providing packet had an empty ANSWER
+ *                          section
+ * \param[in] match On match, the given (reference to a) pointer will be set 
+ *                  to point to the matching nsec resource record.
+ * \return LDNS_STATUS_OK if the NSEC3 RRs deny the existence, error code
+ *                        containing the reason they do not otherwise
+ */
+ldns_status ldns_dnssec_verify_denial_nsec3_match(ldns_rr *rr,
+						  ldns_rr_list *nsecs,
+						  ldns_rr_list *rrsigs,
+						  ldns_pkt_rcode packet_rcode,
+						  ldns_rr_type packet_qtype,
+						  bool packet_nodata,
+						  ldns_rr **match);
+/**
  * Verifies the already processed data in the buffers
  * This function should probably not be used directly.
  *
@@ -465,6 +520,7 @@ ldns_status ldns_verify_rrsig(ldns_rr_list *rrset,
 						ldns_rr *rrsig,
 						ldns_rr *key);
 
+#if LDNS_BUILD_CONFIG_HAVE_SSL
 /**
  * verifies a buffer with signature data for a buffer with rrset data 
  * with an EVP_PKEY
@@ -474,12 +530,10 @@ ldns_status ldns_verify_rrsig(ldns_rr_list *rrset,
  * \param[in] key the EVP key structure
  * \param[in] digest_type The digest type of the signature
  */
-#ifdef HAVE_SSL
 ldns_status ldns_verify_rrsig_evp(ldns_buffer *sig,
 						    ldns_buffer *rrset,
 						    EVP_PKEY *key,
 						    const EVP_MD *digest_type);
-#endif
 
 /**
  * Like ldns_verify_rrsig_evp, but uses raw signature data.
@@ -489,7 +543,6 @@ ldns_status ldns_verify_rrsig_evp(ldns_buffer *sig,
  * \param[in] key the EVP key structure
  * \param[in] digest_type The digest type of the signature
  */
-#ifdef HAVE_SSL
 ldns_status ldns_verify_rrsig_evp_raw(unsigned char *sig,
 							   size_t siglen,
 							   ldns_buffer *rrset,

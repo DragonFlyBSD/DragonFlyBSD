@@ -356,7 +356,15 @@ accepted:
 	fo_ioctl(nfp, FIOASYNC, (caddr_t)&tmp, td->td_ucred, NULL);
 
 	sa = NULL;
-	error = soaccept(so, &sa);
+	if (so->so_faddr != NULL) {
+		sa = so->so_faddr;
+		so->so_faddr = NULL;
+
+		soaccept_generic(so);
+		error = 0;
+	} else {
+		error = soaccept(so, &sa);
+	}
 
 	/*
 	 * Set the returned name and namelen as applicable.  Set the returned

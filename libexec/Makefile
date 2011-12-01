@@ -35,4 +35,8 @@ SUBDIR=	atrun \
 SUBDIR+=mail.local smrsh
 .endif
 
+# maximum parallelism
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

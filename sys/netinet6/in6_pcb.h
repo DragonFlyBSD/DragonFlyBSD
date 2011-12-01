@@ -123,6 +123,7 @@ int	in6_setsockaddr (struct socket *so, struct sockaddr **nam);
 void	in6_mapped_sockaddr_dispatch(union netmsg *msg);
 int	in6_mapped_sockaddr (struct socket *so, struct sockaddr **nam);
 int	in6_mapped_peeraddr (struct socket *so, struct sockaddr **nam);
+void	in6_mapped_savefaddr (struct socket *so, const struct sockaddr *faddr);
 void	in6_mapped_peeraddr_dispatch(netmsg_t msg);
 struct	in6_addr *in6_selectsrc (struct sockaddr_in6 *,
 				     struct ip6_pktopts *,

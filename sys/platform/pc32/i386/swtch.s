@@ -309,17 +309,36 @@ ENTRY(cpu_heavy_restore)
 	 * wait for it to complete before we can continue.
 	 */
 	movl	LWP_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
-	movl	PCPU(cpumask), %esi
-	MPLOCKED orl	%esi, VM_PMAP+PM_ACTIVE(%ecx)
 #ifdef SMP
-	testl	$CPUMASK_LOCK,VM_PMAP+PM_ACTIVE(%ecx)
+	pushl	%eax				/* save curthread */
+1:
+	movl	VM_PMAP+PM_ACTIVE(%ecx),%eax	/* old value for cmpxchgl */
+	movl	PCPU(cpumask), %esi
+	orl	%eax,%esi			/* new value for cmpxchgl */
+	MPLOCKED cmpxchgl %esi,VM_PMAP+PM_ACTIVE(%ecx)
+	jnz	1b
+
+	/*
+	 * Check CPUMASK_BIT
+	 */
+	testl	$CPUMASK_LOCK,%eax
 	jz	1f
-	pushl	%eax
-	pushl	%ecx
+	pushl	%ecx				/* call(stack:vmspace) */
 	call	pmap_interlock_wait
 	popl	%ecx
-	popl	%eax
+
+	/*
+	 * Needs unconditional load cr3
+	 */
+	popl	%eax				/* EAX = curthread */
+	movl	TD_PCB(%eax),%edx		/* EDX = PCB */
+	movl	PCB_CR3(%edx),%ecx
+	jmp	2f
 1:
+	popl	%eax
+#else
+	movl	PCPU(cpumask), %esi
+	orl	%esi, VM_PMAP+PM_ACTIVE(%ecx)
 #endif
 
 	/*
@@ -333,12 +352,14 @@ ENTRY(cpu_heavy_restore)
 	movl	PCB_CR3(%edx),%ecx
 	cmpl	%esi,%ecx
 	je	4f
+2:
 #if defined(SWTCH_OPTIM_STATS)
 	decl	_swtch_optim_stats
 	incl	_tlb_flush_count
 #endif
 	movl	%ecx,%cr3
 4:
+
 	/*
 	 * NOTE: %ebx is the previous thread and %eax is the new thread.
 	 *	 %ebx is retained throughout so we can return it.
@@ -580,10 +601,6 @@ ENTRY(cpu_kthread_restore)
 	call	lwkt_switch_return
 	addl	$4,%esp
 	popl	%eax
-#if 0
-	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
-	orl	$TDF_RUNNING,TD_FLAGS(%eax)
-#endif
 	decl	TD_CRITCOUNT(%eax)
 	popl	%eax		/* kthread exit function */
 	pushl	PCB_EBX(%esi)	/* argument to ESI function */

@@ -113,7 +113,8 @@ ldns_update_soa_mname(ldns_rdf *zone, ldns_resolver *r,
 	/* Expect a SOA answer. */
 	*mname = NULL;
 	while ((soa_rr = ldns_rr_list_pop_rr(ldns_pkt_answer(resp)))) {
-		if (ldns_rr_get_type(soa_rr) != LDNS_RR_TYPE_SOA)
+		if (ldns_rr_get_type(soa_rr) != LDNS_RR_TYPE_SOA
+				|| ldns_rr_rdf(soa_rr, 0) == NULL)
 			continue;
 		/* [RFC1035 3.3.13] */
 		*mname = ldns_rdf_clone(ldns_rr_rdf(soa_rr, 0));
@@ -161,7 +162,8 @@ ldns_update_soa_zone_mname(const char *fqdn, ldns_resolver *r,
 
 	/* XXX Is it safe to only look in authority section here? */
 	while ((soa_rr = ldns_rr_list_pop_rr(ldns_pkt_authority(resp)))) {
-		if (ldns_rr_get_type(soa_rr) != LDNS_RR_TYPE_SOA)
+		if (ldns_rr_get_type(soa_rr) != LDNS_RR_TYPE_SOA
+				|| ldns_rr_rdf(soa_rr, 0) == NULL)
 			continue;
 		/* [RFC1035 3.3.13] */
 		soa_mname = ldns_rdf_clone(ldns_rr_rdf(soa_rr, 0));
@@ -244,7 +246,8 @@ ldns_update_soa_zone_mname(const char *fqdn, ldns_resolver *r,
 
 	/* XXX Is it safe to only look in authority section here, too? */
 	while ((soa_rr = ldns_rr_list_pop_rr(ldns_pkt_authority(resp)))) {
-		if (ldns_rr_get_type(soa_rr) != LDNS_RR_TYPE_SOA)
+		if (ldns_rr_get_type(soa_rr) != LDNS_RR_TYPE_SOA
+				|| ldns_rr_rdf(soa_rr, 0) == NULL)
 			continue;
 		/* [RFC1035 3.3.13] */
 		soa_mname = ldns_rdf_clone(ldns_rr_rdf(soa_rr, 0));

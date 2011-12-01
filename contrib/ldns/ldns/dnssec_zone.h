@@ -10,6 +10,7 @@
  
 #include <ldns/ldns.h>
 #include <ldns/rbtree.h>
+#include <ldns/host2str.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,8 +71,13 @@ struct ldns_struct_dnssec_name
 	 */
 	ldns_dnssec_rrs *nsec_signatures;
 	/**
-	 * Set to true if this name is glue
-	 * (as marked by ldns_dnssec_zone_mark_glue())
+	 * Unlike what the name is_glue suggests, this field is set to true by
+	 * ldns_dnssec_zone_mark_glue() or ldns_dnssec_zone_mark_and_get_glue()
+	 * when the name, this dnssec_name struct represents, is occluded.
+	 * Names that contain other occluded rrsets and records with glue on
+	 * the delegation point will NOT have this bool set to true.
+	 * This field should NOT be read directly, but only via the 
+	 * ldns_dnssec_name_is_glue() function!
 	 */
 	bool is_glue;
 	/**
@@ -131,6 +137,16 @@ ldns_status ldns_dnssec_rrs_add_rr(ldns_dnssec_rrs *rrs, ldns_rr *rr);
 void ldns_dnssec_rrs_print(FILE *out, ldns_dnssec_rrs *rrs);
 
 /**
+ * Prints the given rrs to the file descriptor
+ *
+ * \param[in] out the file descriptor to print to
+ * \param[in] fmt the format of the textual representation
+ * \param[in] rrs the list of RRs to print
+ */
+void ldns_dnssec_rrs_print_fmt(FILE *out, 
+		const ldns_output_format *fmt, ldns_dnssec_rrs *rrs);
+
+/**
  * Creates a new list (entry) of RRsets
  * \return the newly allocated structure
  */
@@ -188,8 +204,22 @@ ldns_status ldns_dnssec_rrsets_add_rr(ldns_dnssec_rrsets *rrsets, ldns_rr *rr);
  * \param[in] follow if set to false, only print the first RRset
  */ 
 void ldns_dnssec_rrsets_print(FILE *out,
-						ldns_dnssec_rrsets *rrsets,
-						bool follow);
+		ldns_dnssec_rrsets *rrsets,
+		bool follow);
+
+/**
+ * Print the given list of rrsets to the fiven file descriptor
+ * 
+ * \param[in] out the file descriptor to print to
+ * \param[in] fmt the format of the textual representation
+ * \param[in] rrsets the list of RRsets to print
+ * \param[in] follow if set to false, only print the first RRset
+ */ 
+void ldns_dnssec_rrsets_print_fmt(FILE *out,
+		const ldns_output_format *fmt,
+		ldns_dnssec_rrsets *rrsets,
+		bool follow);
+
 
 /**
  * Create a new data structure for a dnssec name
@@ -237,6 +267,18 @@ ldns_rdf *ldns_dnssec_name_name(ldns_dnssec_name *name);
  */
 void ldns_dnssec_name_set_name(ldns_dnssec_name *name,
 						 ldns_rdf *dname);
+/**
+ * Returns if dnssec_name structure is marked as glue.
+ * The ldns_dnssec_zone_mark_glue() function has to be called on a zone before
+ * using this function.
+ * Only names that have only glue rrsets will be marked.
+ * Names that have other occluded rrsets and names containing glue on the 
+ * delegation point will NOT be marked!
+ *
+ * \param[in] name the dnssec name to get the domain name from
+ * \return true if the structure is marked as glue, false otherwise.
+ */
+bool ldns_dnssec_name_is_glue(ldns_dnssec_name *name);
 
 /**
  * Sets the NSEC(3) RR of the given dnssec_name structure
@@ -301,6 +343,17 @@ ldns_dnssec_rrsets *ldns_dnssec_zone_find_rrset(ldns_dnssec_zone *zone,
 void ldns_dnssec_name_print(FILE *out, ldns_dnssec_name *name);
 
 /**
+ * Prints the RRs in the  dnssec name structure to the given
+ * file descriptor
+ *
+ * \param[in] out the file descriptor to print to
+ * \param[in] fmt the format of the textual representation
+ * \param[in] name the name structure to print the contents of
+ */
+void ldns_dnssec_name_print_fmt(FILE *out, 
+		const ldns_output_format *fmt, ldns_dnssec_name *name);
+
+/**
  * Creates a new dnssec_zone structure
  * \return the allocated structure
  */
@@ -343,12 +396,33 @@ ldns_status ldns_dnssec_zone_add_rr(ldns_dnssec_zone *zone,
 void ldns_dnssec_zone_names_print(FILE *out, ldns_rbtree_t *tree, bool print_soa);
 
 /**
+ * Prints the rbtree of ldns_dnssec_name structures to the file descriptor
+ *
+ * \param[in] out the file descriptor to print the names to
+ * \param[in] fmt the format of the textual representation
+ * \param[in] tree the tree of ldns_dnssec_name structures to print
+ * \param[in] print_soa if true, print SOA records, if false, skip them
+ */
+void ldns_dnssec_zone_names_print_fmt(FILE *out, const ldns_output_format *fmt,
+		ldns_rbtree_t *tree, bool print_soa);
+
+/**
  * Prints the complete zone to the given file descriptor
  *
  * \param[in] out the file descriptor to print to
  * \param[in] zone the dnssec_zone to print
  */
 void ldns_dnssec_zone_print(FILE *out, ldns_dnssec_zone *zone);
+
+/**
+ * Prints the complete zone to the given file descriptor
+ *
+ * \param[in] out the file descriptor to print to
+ * \param[in] fmt the format of the textual representation
+ * \param[in] zone the dnssec_zone to print
+ */
+void ldns_dnssec_zone_print_fmt(FILE *out, 
+		const ldns_output_format *fmt, ldns_dnssec_zone *zone);
 
 /**
  * Adds explicit dnssec_name structures for the empty nonterminals

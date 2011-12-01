@@ -856,6 +856,20 @@ tcp_usr_rcvoob(netmsg_t msg)
 	COMMON_END(PRU_RCVOOB);
 }
 
+static void
+tcp_usr_savefaddr(struct socket *so, const struct sockaddr *faddr)
+{
+	in_savefaddr(so, faddr);
+}
+
+#ifdef INET6
+static void
+tcp6_usr_savefaddr(struct socket *so, const struct sockaddr *faddr)
+{
+	in6_mapped_savefaddr(so, faddr);
+}
+#endif
+
 /* xxx - should be const */
 struct pr_usrreqs tcp_usrreqs = {
 	.pru_abort = tcp_usr_abort,
@@ -876,7 +890,8 @@ struct pr_usrreqs tcp_usrreqs = {
 	.pru_shutdown = tcp_usr_shutdown,
 	.pru_sockaddr = in_setsockaddr_dispatch,
 	.pru_sosend = sosendtcp,
-	.pru_soreceive = soreceive
+	.pru_soreceive = soreceive,
+	.pru_savefaddr = tcp_usr_savefaddr
 };
 
 #ifdef INET6
@@ -899,7 +914,8 @@ struct pr_usrreqs tcp6_usrreqs = {
 	.pru_shutdown = tcp_usr_shutdown,
 	.pru_sockaddr = in6_mapped_sockaddr_dispatch,
 	.pru_sosend = sosendtcp,
-	.pru_soreceive = soreceive
+	.pru_soreceive = soreceive,
+	.pru_savefaddr = tcp6_usr_savefaddr
 };
 #endif /* INET6 */
 

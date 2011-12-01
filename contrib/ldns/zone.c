@@ -228,7 +228,8 @@ ldns_zone_glue_rr_list(const ldns_zone *z)
 			a = ldns_rr_list_rr(addr, j);
 			dname_a = ldns_rr_owner(a);
 
-			if (ldns_dname_is_subdomain(dname_a, ns_owner)) {
+			if (ldns_dname_is_subdomain(dname_a, ns_owner) ||
+				ldns_dname_compare(dname_a, ns_owner) == 0) {
 				/* GLUE! */
 				if (!ldns_rr_list_push_rr(glue, a)) goto memory_error;
 			}

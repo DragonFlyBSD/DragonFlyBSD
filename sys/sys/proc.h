@@ -448,8 +448,10 @@ extern void stopevent(struct proc*, unsigned int, unsigned int);
  *
  * MPSAFE
  */
-#define PHOLD(p)	atomic_add_int(&(p)->p_lock, 1)
-#define PRELE(p)	atomic_add_int(&(p)->p_lock, -1)
+#define PHOLD(p)	phold((p))
+#define PRELE(p)	prele((p))
+#define PSTALL(p, msg, n) \
+	do { if ((p)->p_lock > (n)) pstall((p), (msg), (n)); } while (0)
 
 /*
  * Hold lwp in memory, don't destruct, normally for ptrace/procfs work
@@ -549,6 +551,9 @@ void	cpu_thread_wait (struct thread *);
 void	setsugid (void);
 void	faultin (struct proc *p);
 void	swapin_request (void);
+void	phold (struct proc *);
+void	prele (struct proc *);
+void	pstall (struct proc *, const char *, int);
 
 u_int32_t	procrunnable (void);
 

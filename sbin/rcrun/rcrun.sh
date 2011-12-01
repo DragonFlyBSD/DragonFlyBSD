@@ -1,8 +1,48 @@
 #!/bin/sh
 #
-# rcng command
+# Copyright (c) 2003
+#	The DragonFly Project.  All rights reserved.
 #
-# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.9 2008/07/21 23:42:02 swildner Exp $
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the
+#    distribution.
+# 3. Neither the name of The DragonFly Project nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific, prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+# COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+# OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+#
+
+. /etc/defaults/rc.conf
+
+buildrclist()
+{
+    rcfiles=`find /etc/rc.d -type f`
+    for d in $local_startup; do
+	if [ -d $d ]; then
+	    rcfiles="$rcfiles `find $d -type f`"
+	fi
+    done
+    rclist=`rcorder -o $1 $rcfiles`
+}
 
 dostart()
 {
@@ -19,7 +59,8 @@ dostart()
 	    ;;
 	*)
 	    _return=0
-	    for j in `rcorder -o $i /etc/rc.d/*`; do
+	    buildrclist $i
+	    for j in $rclist; do
 		need=1
 		for k in `rcorder -p $j`; do
 		    if [ $k = $i ]; then
@@ -43,7 +84,7 @@ dostart()
 		echo "Unable to find keyword $i"
 	    elif [ $_return = 0 ]; then
 		echo "Running $j $arg"
-		(cd /etc/rc.d; sh $j $arg)
+		(sh $j $arg)
 		case X`varsym -s -q rcng_$i` in
 		Xdisabled*)
 		    echo "$i is disabled, enable in rc.conf first or use rcforce"
@@ -109,21 +150,23 @@ faststart)
 	;;
 stop)
 	for i in $@; do
-	    j=`rcorder -o $i /etc/rc.d/* | tail -1`
+	    buildrclist $i
+	    j=`echo "$rclist" | tail -1`
 	    if [ X$j = X ]; then
 		echo "Unable to find keyword $i"
 	    else
-		(cd /etc/rc.d; sh $j stop)
+		(sh $j stop)
 	    fi
 	done
 	;;
 restart)
 	for i in $@; do
-	    j=`rcorder -o $i /etc/rc.d/* | tail -1`
+	    buildrclist $i
+	    j=`echo "$rclist" | tail -1`
 	    if [ X$j = X ]; then
 		echo "Unable to find keyword $i"
 	    else
-		(cd /etc/rc.d; sh $j restart)
+		(sh $j restart)
 	    fi
 	done
 	;;
@@ -134,13 +177,14 @@ disable|enable)
 	    mode=NO
 	fi
 	for i in $@; do
-	    j=`rcorder -o $i /etc/rc.d/* | tail -1`
+	    buildrclist $i
+	    j=`echo "$rclist" | tail -1`
 	    if [ X$j = X ]; then
 		echo "Unable to find provider id $i"
 	    elif [ `varsym -s -q rcng_$i` = "$mode" ]; then
 		echo "$i is already $mode"
 	    else
-		vars=`(cd /etc/rc.d; sh $j rcvar) 2>/dev/null | grep = | sed -e 's/\\$//g' | sed -e 's/=.*//g'`
+		vars=`(sh $j rcvar) 2>/dev/null | grep = | sed -e 's/\\$//g' | sed -e 's/=.*//g'`
 		cp /etc/rc.conf /etc/rc.conf.bak
 		if [ $arg = disable ]; then
 		    rcstop $i
@@ -159,11 +203,12 @@ disable|enable)
 	;;
 rcvar)
 	for i in $@; do
-	    j=`rcorder -o $i /etc/rc.d/* | tail -1`
+	    buildrclist $i
+	    j=`echo "$rclist" | tail -1`
 	    if [ X$j = X ]; then
 		echo "Unable to find provider id $i"
 	    else
-		(cd /etc/rc.d; sh $j rcvar)
+		(sh $j rcvar)
 	    fi
 	done
 	;;
@@ -183,4 +228,3 @@ list)
 	echo "             script ..."
 	;;
 esac
-

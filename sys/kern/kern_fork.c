@@ -120,9 +120,11 @@ sys_fork(struct fork_args *uap)
 
 	error = fork1(lp, RFFDG | RFPROC | RFPGLOCK, &p2);
 	if (error == 0) {
+		PHOLD(p2);
 		start_forked_proc(lp, p2);
 		uap->sysmsg_fds[0] = p2->p_pid;
 		uap->sysmsg_fds[1] = 0;
+		PRELE(p2);
 	}
 	return error;
 }
@@ -139,9 +141,11 @@ sys_vfork(struct vfork_args *uap)
 
 	error = fork1(lp, RFFDG | RFPROC | RFPPWAIT | RFMEM | RFPGLOCK, &p2);
 	if (error == 0) {
+		PHOLD(p2);
 		start_forked_proc(lp, p2);
 		uap->sysmsg_fds[0] = p2->p_pid;
 		uap->sysmsg_fds[1] = 0;
+		PRELE(p2);
 	}
 	return error;
 }
@@ -171,10 +175,16 @@ sys_rfork(struct rfork_args *uap)
 
 	error = fork1(lp, uap->flags | RFPGLOCK, &p2);
 	if (error == 0) {
-		if (p2)
+		if (p2) {
+			PHOLD(p2);
 			start_forked_proc(lp, p2);
-		uap->sysmsg_fds[0] = p2 ? p2->p_pid : 0;
-		uap->sysmsg_fds[1] = 0;
+			uap->sysmsg_fds[0] = p2->p_pid;
+			uap->sysmsg_fds[1] = 0;
+			PRELE(p2);
+		} else {
+			uap->sysmsg_fds[0] = 0;
+			uap->sysmsg_fds[1] = 0;
+		}
 	}
 	return error;
 }
@@ -241,7 +251,8 @@ int
 fork1(struct lwp *lp1, int flags, struct proc **procp)
 {
 	struct proc *p1 = lp1->lwp_proc;
-	struct proc *p2, *pptr;
+	struct proc *p2;
+	struct proc *pptr;
 	struct pgrp *p1grp;
 	struct pgrp *plkgrp;
 	uid_t uid;
@@ -256,6 +267,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 
 	lwkt_gettoken(&p1->p_token);
 	plkgrp = NULL;
+	p2 = NULL;
 
 	/*
 	 * Here we don't create a new process, but we divorce
@@ -363,11 +375,33 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		goto done;
 	}
 
-	/* Allocate new proc. */
+	/*
+	 * Allocate a new process, don't get fancy: zero the structure.
+	 */
 	p2 = kmalloc(sizeof(struct proc), M_PROC, M_WAITOK|M_ZERO);
 
 	/*
-	 * Setup linkage for kernel based threading XXX lwp
+	 * Core initialization.  SIDL is a safety state that protects the
+	 * partially initialized process once it starts getting hooked
+	 * into system structures and becomes addressable.
+	 *
+	 * We must be sure to acquire p2->p_token as well, we must hold it
+	 * once the process is on the allproc list to avoid things such
+	 * as competing modifications to p_flags.
+	 */
+	p2->p_lasttid = -1;	/* first tid will be 0 */
+	p2->p_stat = SIDL;
+
+	RB_INIT(&p2->p_lwp_tree);
+	spin_init(&p2->p_spin);
+	lwkt_token_init(&p2->p_token, "proc");
+	lwkt_gettoken(&p2->p_token);
+
+	/*
+	 * Setup linkage for kernel based threading XXX lwp.  Also add the
+	 * process to the allproclist.
+	 *
+	 * The process structure is addressable after this point.
 	 */
 	if (flags & RFTHREAD) {
 		p2->p_peers = p1->p_peers;
@@ -376,26 +410,13 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	} else {
 		p2->p_leader = p2;
 	}
-
-	RB_INIT(&p2->p_lwp_tree);
-	spin_init(&p2->p_spin);
-	lwkt_token_init(&p2->p_token, "proc");
-	p2->p_lasttid = -1;	/* first tid will be 0 */
-
-	/*
-	 * Setting the state to SIDL protects the partially initialized
-	 * process once it starts getting hooked into the rest of the system.
-	 */
-	p2->p_stat = SIDL;
 	proc_add_allproc(p2);
 
 	/*
-	 * Make a proc table entry for the new process.
-	 * The whole structure was zeroed above, so copy the section that is
-	 * copied directly from the parent.
+	 * Initialize the section which is copied verbatim from the parent.
 	 */
 	bcopy(&p1->p_startcopy, &p2->p_startcopy,
-	    (unsigned) ((caddr_t)&p2->p_endcopy - (caddr_t)&p2->p_startcopy));
+	      ((caddr_t)&p2->p_endcopy - (caddr_t)&p2->p_startcopy));
 
 	/*
 	 * Duplicate sub-structures as needed.  Increase reference counts
@@ -458,11 +479,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	} else {
 		p2->p_fd = fdshare(p1);
 		if (p1->p_fdtol == NULL) {
-			lwkt_gettoken(&p1->p_token);
-			p1->p_fdtol =
-				filedesc_to_leader_alloc(NULL,
-							 p1->p_leader);
-			lwkt_reltoken(&p1->p_token);
+			p1->p_fdtol = filedesc_to_leader_alloc(NULL,
+							       p1->p_leader);
 		}
 		if ((flags & RFTHREAD) != 0) {
 			/*
@@ -487,7 +505,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * been preserved.
 	 */
 	p2->p_flags |= p1->p_flags & P_SUGID;
-	if (p1->p_session->s_ttyvp != NULL && p1->p_flags & P_CONTROLT)
+	if (p1->p_session->s_ttyvp != NULL && (p1->p_flags & P_CONTROLT))
 		p2->p_flags |= P_CONTROLT;
 	if (flags & RFPPWAIT)
 		p2->p_flags |= P_PPWAIT;
@@ -562,16 +580,20 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 
 	if (flags == (RFFDG | RFPROC | RFPGLOCK)) {
 		mycpu->gd_cnt.v_forks++;
-		mycpu->gd_cnt.v_forkpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
+		mycpu->gd_cnt.v_forkpages += p2->p_vmspace->vm_dsize +
+					     p2->p_vmspace->vm_ssize;
 	} else if (flags == (RFFDG | RFPROC | RFPPWAIT | RFMEM | RFPGLOCK)) {
 		mycpu->gd_cnt.v_vforks++;
-		mycpu->gd_cnt.v_vforkpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
+		mycpu->gd_cnt.v_vforkpages += p2->p_vmspace->vm_dsize +
+					      p2->p_vmspace->vm_ssize;
 	} else if (p1 == &proc0) {
 		mycpu->gd_cnt.v_kthreads++;
-		mycpu->gd_cnt.v_kthreadpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
+		mycpu->gd_cnt.v_kthreadpages += p2->p_vmspace->vm_dsize +
+						p2->p_vmspace->vm_ssize;
 	} else {
 		mycpu->gd_cnt.v_rforks++;
-		mycpu->gd_cnt.v_rforkpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
+		mycpu->gd_cnt.v_rforkpages += p2->p_vmspace->vm_dsize +
+					      p2->p_vmspace->vm_ssize;
 	}
 
 	/*
@@ -601,6 +623,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	*procp = p2;
 	error = 0;
 done:
+	if (p2)
+		lwkt_reltoken(&p2->p_token);
 	lwkt_reltoken(&p1->p_token);
 	if (plkgrp) {
 		lockmgr(&plkgrp->pg_lock, LK_RELEASE);
@@ -724,6 +748,8 @@ rm_at_fork(forklist_fn function)
 /*
  * Add a forked process to the run queue after any remaining setup, such
  * as setting the fork handler, has been completed.
+ *
+ * p2 is held by the caller.
  */
 void
 start_forked_proc(struct lwp *lp1, struct proc *p2)

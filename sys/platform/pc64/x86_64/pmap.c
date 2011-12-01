@@ -965,24 +965,6 @@ pmap_init2(void)
  * Low level helper routines.....
  ***************************************************/
 
-#if defined(PMAP_DIAGNOSTIC)
-
-/*
- * This code checks for non-writeable/modified pages.
- * This should be an invalid condition.
- */
-static
-int
-pmap_nw_modified(pt_entry_t pte)
-{
-	if ((pte & (PG_M|PG_RW)) == PG_M)
-		return 1;
-	else
-		return 0;
-}
-#endif
-
-
 /*
  * this routine defines the region(s) of memory that should
  * not be tested for the modified bit.
@@ -3294,6 +3276,13 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
 		vmstats.v_free_count < vmstats.v_free_reserved) {
 		    return(-1);
 	}
+
+	/*
+	 * Ignore list markers and ignore pages we cannot instantly
+	 * busy (while holding the object token).
+	 */
+	if (p->flags & PG_MARKER)
+		return 0;
 	if (vm_page_busy_try(p, TRUE))
 		return 0;
 	if (((p->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&

@@ -1031,12 +1031,41 @@ ldns_resolver_query(const ldns_resolver *r, const ldns_rdf *name,
 	return pkt;
 }
 
+static size_t *
+ldns_resolver_backup_rtt(ldns_resolver *r)
+{
+	size_t *new_rtt;
+	size_t *old_rtt = ldns_resolver_rtt(r);
+
+	if (old_rtt && ldns_resolver_nameserver_count(r)) {
+		new_rtt = LDNS_XMALLOC(size_t
+				, ldns_resolver_nameserver_count(r));
+		memcpy(new_rtt, old_rtt, sizeof(size_t)
+				* ldns_resolver_nameserver_count(r));
+		ldns_resolver_set_rtt(r, new_rtt);
+		return old_rtt;
+	}
+	return NULL;
+}
+
+static void
+ldns_resolver_restore_rtt(ldns_resolver *r, size_t *old_rtt)
+{
+	size_t *cur_rtt = ldns_resolver_rtt(r);
+
+	if (cur_rtt) {
+		LDNS_FREE(cur_rtt);
+	}
+	ldns_resolver_set_rtt(r, old_rtt);
+}
+
 ldns_status
 ldns_resolver_send_pkt(ldns_pkt **answer, ldns_resolver *r,
 				   ldns_pkt *query_pkt)
 {
 	ldns_pkt *answer_pkt = NULL;
 	ldns_status stat = LDNS_STATUS_OK;
+	size_t *rtt;
 
 	stat = ldns_send(&answer_pkt, (ldns_resolver *)r, query_pkt);
 	if (stat != LDNS_STATUS_OK) {
@@ -1051,9 +1080,21 @@ ldns_resolver_send_pkt(ldns_pkt **answer, ldns_resolver *r,
 			if (ldns_pkt_tc(answer_pkt)) {
 				/* was EDNS0 set? */
 				if (ldns_pkt_edns_udp_size(query_pkt) == 0) {
-					ldns_pkt_set_edns_udp_size(query_pkt, 4096);
+					ldns_pkt_set_edns_udp_size(query_pkt
+							, 4096);
 					ldns_pkt_free(answer_pkt);
-					stat = ldns_send(&answer_pkt, r, query_pkt);
+					/* Nameservers should not become 
+					 * unreachable because fragments are
+					 * dropped (network error). We might
+					 * still have success with TCP.
+					 * Therefore maintain reachability
+					 * statuses of the nameservers by
+					 * backup and restore the rtt list.
+					 */
+					rtt = ldns_resolver_backup_rtt(r);
+					stat = ldns_send(&answer_pkt, r
+							, query_pkt);
+					ldns_resolver_restore_rtt(r, rtt);
 				}
 				/* either way, if it is still truncated, use TCP */
 				if (stat != LDNS_STATUS_OK ||

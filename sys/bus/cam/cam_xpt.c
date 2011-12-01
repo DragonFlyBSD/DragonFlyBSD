@@ -4693,10 +4693,14 @@ xpt_dev_async(u_int32_t async_code, struct cam_eb *bus, struct cam_et *target,
 		/*
 		 * When we lose a device the device may be about to detach
 		 * the sim, we have to clear out all pending timeouts and
-		 * requests before that happens.  XXX it would be nice if
-		 * we could abort the requests pertaining to the device.
+		 * requests before that happens.
+		 *
+		 * This typically happens most often with USB/UMASS devices.
+		 *
+		 * XXX it would be nice if we could abort the requests
+		 * pertaining to the device.
 		 */
-		xpt_release_devq_timeout(device);
+		xpt_release_devq_device(device, /*count*/1, /*run_queue*/TRUE);
 		if ((device->flags & CAM_DEV_UNCONFIGURED) == 0) {
 			device->flags |= CAM_DEV_UNCONFIGURED;
 			xpt_release_device(bus, target, device);
@@ -4758,13 +4762,8 @@ xpt_freeze_simq(struct cam_sim *sim, u_int count)
 }
 
 /*
- * WARNING: most devices, especially USB/UMASS, may detach their sim early.
- * We ref-count the sim (and the bus only NULLs it out when the bus has been
- * freed, which is not the case here), but the device queue is also freed XXX
- * and we have to check that here.
- *
- * XXX fixme: could we simply not null-out the device queue via 
- * cam_sim_free()?
+ * Release the device queue after a timeout has expired, typically used to
+ * introduce a delay before retrying after an I/O error or other problem.
  */
 static void
 xpt_release_devq_timeout(void *arg)
@@ -4772,8 +4771,9 @@ xpt_release_devq_timeout(void *arg)
 	struct cam_ed *device;
 
 	device = (struct cam_ed *)arg;
-
+	CAM_SIM_LOCK(device->sim);
 	xpt_release_devq_device(device, /*count*/1, /*run_queue*/TRUE);
+	CAM_SIM_UNLOCK(device->sim);
 }
 
 void

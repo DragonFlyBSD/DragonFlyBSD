@@ -21,4 +21,8 @@ SUBDIR+= cc41
 SUBDIR+= cc44
 .ORDER: binutils222 cc44
 
+# maximum parallelism
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

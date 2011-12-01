@@ -2546,6 +2546,13 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
 		vmstats.v_free_count < vmstats.v_free_reserved) {
 		    return(-1);
 	}
+
+	/*
+	 * Ignore list markers and ignore pages we cannot instantly
+	 * busy (while holding the object token).
+	 */
+	if (p->flags & PG_MARKER)
+		return 0;
 	if (vm_page_busy_try(p, TRUE))
 		return 0;
 	if (((p->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&

@@ -141,6 +141,91 @@ procinit(void)
 }
 
 /*
+ * Process hold/release support functions.  These functions must be MPSAFE.
+ * Called via the PHOLD(), PRELE(), and PSTALL() macros.
+ *
+ * p->p_lock is a simple hold count with a waiting interlock.  No wakeup()
+ * is issued unless someone is actually waiting for the process.
+ *
+ * Most holds are short-term, allowing a process scan or other similar
+ * operation to access a proc structure without it getting ripped out from
+ * under us.  procfs and process-list sysctl ops also use the hold function
+ * interlocked with various p_flags to keep the vmspace intact when reading
+ * or writing a user process's address space.
+ *
+ * There are two situations where a hold count can be longer.  Exiting lwps
+ * hold the process until the lwp is reaped, and the parent will hold the
+ * child during vfork()/exec() sequences while the child is marked P_PPWAIT.
+ *
+ * The kernel waits for the hold count to drop to 0 (or 1 in some cases) at
+ * various critical points in the fork/exec and exit paths before proceeding.
+ */
+#define PLOCK_WAITING	0x40000000
+#define PLOCK_MASK	0x3FFFFFFF
+
+void
+pstall(struct proc *p, const char *wmesg, int count)
+{
+	int o;
+	int n;
+
+	for (;;) {
+		o = p->p_lock;
+		cpu_ccfence();
+		if ((o & PLOCK_MASK) <= count)
+			break;
+		n = o | PLOCK_WAITING;
+		tsleep_interlock(&p->p_lock, 0);
+		if (atomic_cmpset_int(&p->p_lock, o, n)) {
+			tsleep(&p->p_lock, PINTERLOCKED, wmesg, 0);
+		}
+	}
+}
+
+void
+phold(struct proc *p)
+{
+	int o;
+	int n;
+
+	for (;;) {
+		o = p->p_lock;
+		cpu_ccfence();
+		n = o + 1;
+		if (atomic_cmpset_int(&p->p_lock, o, n))
+			break;
+	}
+}
+
+void
+prele(struct proc *p)
+{
+	int o;
+	int n;
+
+	/*
+	 * Fast path
+	 */
+	if (atomic_cmpset_int(&p->p_lock, 1, 0))
+		return;
+
+	/*
+	 * Slow path
+	 */
+	for (;;) {
+		o = p->p_lock;
+		KKASSERT((o & PLOCK_MASK) > 0);
+		cpu_ccfence();
+		n = (o - 1) & ~PLOCK_WAITING;
+		if (atomic_cmpset_int(&p->p_lock, o, n)) {
+			if (o & PLOCK_WAITING)
+				wakeup(&p->p_lock);
+			break;
+		}
+	}
+}
+
+/*
  * Is p an inferior of the current process?
  *
  * No requirements.
@@ -642,9 +727,7 @@ void
 proc_move_allproc_zombie(struct proc *p)
 {
 	lwkt_gettoken(&proc_token);
-	while (p->p_lock) {
-		tsleep(p, 0, "reap1", hz / 10);
-	}
+	PSTALL(p, "reap1", 0);
 	LIST_REMOVE(p, p_list);
 	LIST_INSERT_HEAD(&zombproc, p, p_list);
 	LIST_REMOVE(p, p_hash);
@@ -666,9 +749,7 @@ void
 proc_remove_zombie(struct proc *p)
 {
 	lwkt_gettoken(&proc_token);
-	while (p->p_lock) {
-		tsleep(p, 0, "reap2", hz / 10);
-	}
+	PSTALL(p, "reap2", 0);
 	LIST_REMOVE(p, p_list); /* off zombproc */
 	LIST_REMOVE(p, p_sibling);
 	lwkt_reltoken(&proc_token);

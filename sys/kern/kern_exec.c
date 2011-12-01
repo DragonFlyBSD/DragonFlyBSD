@@ -761,6 +761,18 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 	p->p_flags |= P_INEXEC;
 
 	/*
+	 * After setting P_INEXEC wait for any remaining references to
+	 * the process (p) to go away.
+	 *
+	 * In particular, a vfork/exec sequence will replace p->p_vmspace
+	 * and we must interlock anyone trying to access the space (aka
+	 * procfs or sys_process.c calling procfs_domem()).
+	 *
+	 * If P_PPWAIT is set the parent vfork()'d and has a PHOLD() on us.
+	 */
+	PSTALL(p, "exec1", ((p->p_flags & P_PPWAIT) ? 1 : 0));
+
+	/*
 	 * Blow away entire process VM, if address space not shared,
 	 * otherwise, create a new VM space so that other threads are
 	 * not disrupted.  If we are execing a resident vmspace we

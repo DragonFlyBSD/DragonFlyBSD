@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/rman.h,v 1.5.2.1 2001/06/05 08:06:07 imp Exp $
- * $DragonFly: src/sys/sys/rman.h,v 1.11 2008/09/30 12:20:29 hasso Exp $
  */
 
 #ifndef _SYS_RMAN_H_
@@ -152,7 +151,7 @@ uint32_t rman_make_alignment_flags(uint32_t size);
 #define rman_set_bushandle(r,h)	((r)->r_bushandle = (h))
 #define rman_get_bushandle(r)	((r)->r_bushandle)
 #define rman_set_rid(r,i)       ((r)->r_rid = (i))
-#define rman_get_rid(r,i)       ((r)->r_rid)
+#define rman_get_rid(r)         ((r)->r_rid)
 #define rman_is_region_manager(r,rm) ((r)->r_rm == rm)
 #define rman_get_cpuid(r)	((r)->r_rm->rm_cpuid)
 

@@ -188,4 +188,8 @@ SUBDIR+=boot0cfg
 SUBDIR+=installer
 .endif
 
+# maximum parallelism
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

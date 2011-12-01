@@ -1,3 +1,80 @@
+1.6.11	2011-09-29
+	* bugfix #394: Fix socket leak on errors
+	* bugfix #392: Apex only and percentage checks for ldns-verify-zone 
+	  (thanks Miek Gieben)
+	* bugfix #398: Allow NSEC RRSIGs before the NSEC3 in ldns-verify-zone
+	* Fix python site package path from sitelib to sitearch for pyldns.
+	* Fix python api to support python2 and python3 (thanks Karel Slany).
+	* bugfix #401: Correction of date/time functions algorithm and 
+	  prevention of an infinite loop therein
+	* bugfix #402: Correct the minimum and maximum number of rdata fields
+	  in TSIG. (thanks David Keeler)
+	* bugfix #403: Fix heap overflow (thanks David Keeler)
+	* bugfix #404: Make parsing APL strings more robust
+	  (thanks David Keeler)
+	* bugfix #391: Complete library assessment to prevent assertion errors
+       	  through ldns_rdf_size usage.
+	* Slightly more specific error messaging on wrong number of rdata
+	  fields with the LDNS_STATUS_MISSING_RDATA_FIELDS_RRSIG and
+	  LDNS_STATUS_MISSING_RDATA_FIELDS_KEY result codes.
+	* bugfix #406: More rigorous openssl result code handling to prevent
+	  future crashes within openssl.
+	* Fix ldns_fetch_valid_domain_keys to search deeper than just one level
+          for a DNSKEY that signed a DS RR. (this function was used in the
+	  check_dnssec_trace nagios module)
+	* bugfix #407: Canonicalize TSIG dnames and algorithm fields
+	* A new output specifier to accommodate configuration of what to show
+	  in comment texts when converting host and/or wire-format data to
+	  string. All conversion to string and printing functions have a new
+	  version that have such a format specifier as an extra argument.
+	  The default is changed so that only DNSKEY RR's are annotated with 
+	  an comment show the Key Tag of the DNSKEY.
+	* Fixed the ldns resolver to not mark a nameserver unreachable when
+	  edns0 is tried unsuccessfully with size 4096 (no return packet came),
+	  but to still try TCP. A big UDP packet might have been corrupted by 
+	  fragments dropping firewalls.
+	* Update of libdns.vim (thanks Miek Gieben)
+	* Added the ldnsx Python module to our contrib section, which adds even
+	  more pythonisticism to the usage of ldns with  Python. (Many thanks 
+	  to Christpher Olah and Paul Wouters)
+	  The ldnsx module is automatically installed when --with-pyldns is
+	  used with configuring, but may explicitly be excluded with the
+	  --without-pyldnsx option to configure.
+	* bugfix #410: Fix clearing out temporary data on stack in sha2.c
+	* bugfix #411: Don't let empty non-terminal NSEC3s cause assertion failure.
+
+1.6.10	2011-05-31
+	* New example tool added: ldns-gen-zone.
+	* bugfix #359: Serial-arithmetic for the inception and expiration
+	  fields of a RRSIG and correctly converting them to broken-out time
+	  information.
+	* bugfix #364: Slight performance increase of ldns-verifyzone.
+	* bugfix #367: Fix to allow glue records with the same name as the
+	  delegation.
+	* Fix ldns-verifyzone to allow NSEC3-less records for NS rrsets *and* 
+	  glue when the zone is opt-out.
+	* bugfix #376: Adapt ldns_nsec3_salt, ldns_nsec3_iterations, 
+	  ldns_nsec3_flags and ldns_nsec3_algorithm to work for NSEC3PARAMS too.
+	* pyldns memory leaks fixed by Bedrich Kosata (at the cost of a bit
+	  performance)
+	* Better handling of reference variables in ldns_rr_new_frm_fp_l from
+	  pyldns, with a very nice generator function by Bedrich Kosata.
+	* Decoupling of the rdfs in rrs in the python wrappers to enable
+	  the python garbage collector by Bedrich Kosata.
+	* bugfix #380: Minimizing effect of discrepancies in sizeof(bool) at
+	  build time and when used.
+	* bugfix #383: Fix detection of empty nonterminals of multiple labels.
+	* Fixed the ommission of rrsets in nsec(3)s and rrsigs to all occluded
+	  names (in stead of just the ones that contain glue only) and all
+	  occluded records on the delegation points (in stead of just the glue).
+	* Clarify the operation of ldns_dnssec_mark_glue and the usage of
+	  ldns_dnssec_node_next_nonglue functions in the documentation.
+	* Added function ldns_dnssec_mark_and_get_glue as an real fast
+	  alternative for ldns_zone_glue_rr_list.
+	* Fix parse buffer overflow for max length domain names.
+	* Fix Makefile for U in environment, since wrong U is more common than
+	  deansification necessity.
+
 1.6.9	2011-03-16
 	* Fix creating NSEC(3) bitmaps: make array size 65536,
 	  don't add doubles.

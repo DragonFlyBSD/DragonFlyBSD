@@ -29,6 +29,13 @@
 #ifndef	_SYS_TREE_H_
 #define	_SYS_TREE_H_
 
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
+#endif
+
+void rb_spin_lock(struct spinlock *spin);
+void rb_spin_unlock(struct spinlock *spin);
+
 /*
  * This file defines data structures for different types of trees:
  * splay trees and red-black trees.
@@ -289,7 +296,9 @@ void name##_SPLAY_MINMAX(struct name *head, int __comp) \
 	     (x) != NULL;						\
 	     (x) = SPLAY_NEXT(name, head, x))
 
-/* Macros that define a red-black tree */
+/*
+ * Macros that define a red-black tree
+ */
 
 #define RB_SCAN_INFO(name, type)					\
 struct name##_scan_info {						\
@@ -301,15 +310,24 @@ struct name##_scan_info {						\
 struct name {								\
 	struct type *rbh_root; 		     /* root of the tree */	\
 	struct name##_scan_info *rbh_inprog; /* scans in progress */	\
+	struct spinlock rbh_spin;					\
 }
 
 #define RB_INITIALIZER(root)						\
-	{ NULL, NULL }
+	{ NULL, NULL, SPINLOCK_INITIALIZER(root.spin) }
 
 #define RB_INIT(root) do {						\
 	(root)->rbh_root = NULL;					\
 	(root)->rbh_inprog = NULL;					\
 } while (/*CONSTCOND*/ 0)
+
+#ifdef _KERNEL
+#define RB_SCAN_LOCK(spin)	rb_spin_lock(spin)
+#define RB_SCAN_UNLOCK(spin)	rb_spin_unlock(spin)
+#else
+#define RB_SCAN_LOCK(spin)
+#define RB_SCAN_UNLOCK(spin)
+#endif
 
 #define RB_BLACK	0
 #define RB_RED		1
@@ -698,8 +716,10 @@ name##_SCANCMP_ALL(struct type *type __unused, void *data __unused)	\
 static __inline void							\
 name##_scan_info_link(struct name##_scan_info *scan, struct name *head)	\
 {									\
+	RB_SCAN_LOCK(&head->rbh_spin);					\
 	scan->link = RB_INPROG(head);					\
 	RB_INPROG(head) = scan;						\
+	RB_SCAN_UNLOCK(&head->rbh_spin);				\
 }									\
 									\
 static __inline void							\
@@ -707,10 +727,12 @@ name##_scan_info_done(struct name##_scan_info *scan, struct name *head)	\
 {									\
 	struct name##_scan_info **infopp;				\
 									\
+	RB_SCAN_LOCK(&head->rbh_spin);					\
 	infopp = &RB_INPROG(head);					\
 	while (*infopp != scan) 					\
 		infopp = &(*infopp)->link;				\
 	*infopp = scan->link;						\
+	RB_SCAN_UNLOCK(&head->rbh_spin);				\
 }									\
 									\
 STORQUAL int								\
