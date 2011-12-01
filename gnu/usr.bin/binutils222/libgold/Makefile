@@ -51,16 +51,4 @@ SRCS+=	archive.cc		\
 	yyscript.c		\
 	mremap.c
 
-# The next files aren't really part of libgold, but they are common to both
-# ld.gold and incremental dump, so add them here to avoid building object
-# files twice
-
-SRCS+=	i386.cc			\
-	x86_64.cc		\
-	sparc.cc		\
-	powerpc.cc		\
-	arm.cc			\
-	arm-reloc-property.cc
-
-
 .include <bsd.lib.mk>

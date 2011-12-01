@@ -163,6 +163,7 @@ db_print_stack_entry(const char *name, int narg, char **argnp, int *argp,
   	}
 	db_printf(") at ");
 	db_printsym(callpc, DB_STGY_PROC);
+        db_printf(" %p ",  (void*) callpc);
 	db_printf("\n");
 }
 

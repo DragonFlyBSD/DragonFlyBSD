@@ -1,7 +1,13 @@
 .include "../Makefile.gld"
 
 PROG_CXX= ld.gold
-SRCS+=	  main.cc
+SRCS+=	main.cc			\
+	i386.cc			\
+	x86_64.cc		\
+	sparc.cc		\
+	powerpc.cc		\
+	arm.cc			\
+	arm-reloc-property.cc
 NOMAN=
 WARNS=	1
 CFLAGS+= -I${.CURDIR}/../libgold
