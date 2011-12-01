@@ -239,8 +239,10 @@ ENTRY(cpu_exit_switch)
 	 */
 	movq	KPML4phys,%rcx
 	movq	%cr3,%rax
+#if 1
 	cmpq	%rcx,%rax
 	je	1f
+#endif
 	/* JG no increment of statistics counters? see cpu_heavy_restore */
 	movq	%rcx,%cr3
 1:
@@ -297,7 +299,6 @@ ENTRY(cpu_exit_switch)
 
 ENTRY(cpu_heavy_restore)
 	popfq
-	movq	TD_LWP(%rax),%rcx
 
 #if defined(SWTCH_OPTIM_STATS)
 	incl	_swtch_optim_stats
@@ -305,30 +306,53 @@ ENTRY(cpu_heavy_restore)
 	/*
 	 * Tell the pmap that our cpu is using the VMSPACE now.  We cannot
 	 * safely test/reload %cr3 until after we have set the bit in the
-	 * pmap (remember, we do not hold the MP lock in the switch code).
+	 * pmap.
 	 *
-	 * Also note that when switching between two lwps sharing the
-	 * same vmspace we have already avoided clearing the cpu bit
-	 * in pm_active.  If we had cleared it other cpus would not know
-	 * to IPI us and we would have to unconditionally reload %cr3.
+	 * We must do an interlocked test of the CPUMASK_BIT at the same
+	 * time.  If found to be set we will have to wait for it to clear
+	 * and then do a forced reload of %cr3 (even if the value matches).
 	 *
-	 * Also note that if the pmap is undergoing an atomic inval/mod
-	 * that is unaware that our cpu has been added to it we have to
-	 * wait for it to complete before we can continue.
+	 * XXX When switching between two LWPs sharing the same vmspace
+	 *     the cpu_heavy_switch() code currently avoids clearing the
+	 *     cpu bit in PM_ACTIVE.  So if the bit is already set we can
+	 *     avoid checking for the interlock via CPUMASK_BIT.  We currently
+	 *     do not perform this optimization.
+	 *
+	 * %rax is needed for the cmpxchgl so store newthread in %r12
+	 * temporarily.
 	 */
-	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	movq	PCPU(cpumask), %rsi
-	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE(%rcx)
+	movq	TD_LWP(%rax),%rcx
+	movq	LWP_VMSPACE(%rcx),%rcx		/* RCX = vmspace */
 #ifdef SMP
-	btq	$CPUMASK_BIT,VM_PMAP+PM_ACTIVE(%rcx)
-	jnc	1f
-	pushq	%rax
-	movq	%rcx,%rdi
-	call	pmap_interlock_wait		/* pmap_interlock_wait(vm) */
-	popq	%rax
+	movq	%rax,%r12			/* save newthread ptr */
 1:
-#endif
+	movq	VM_PMAP+PM_ACTIVE(%rcx),%rax	/* old contents */
+	movq	PCPU(cpumask),%rsi		/* new contents */
+	orq	%rax,%rsi
+	MPLOCKED cmpxchgq %rsi,VM_PMAP+PM_ACTIVE(%rcx)
+	jnz	1b
 
+	/*
+	 * Check CPUMASK_BIT
+	 */
+	btq	$CPUMASK_BIT,%rax	/* test interlock */
+	jnc	1f
+	movq	%rcx,%rdi		/* (found to be set) */
+	call	pmap_interlock_wait	/* pmap_interlock_wait(%rdi:vm) */
+
+	/*
+	 * Need unconditional load cr3
+	 */
+	movq	%r12,%rax
+	movq	TD_PCB(%rax),%rdx	/* RDX = PCB */
+	movq	PCB_CR3(%rdx),%rcx	/* RCX = desired CR3 */
+	jmp	2f			/* unconditional reload */
+1:
+	movq	%r12,%rax		/* restore RAX = newthread */
+#else
+	movq	PCPU(cpumask),%rsi
+	orq	%rsi,VM_PMAP+PM_ACTIVE(%rcx)
+#endif
 	/*
 	 * Restore the MMU address space.  If it is the same as the last
 	 * thread we don't have to invalidate the tlb (i.e. reload cr3).
@@ -336,16 +360,18 @@ ENTRY(cpu_heavy_restore)
 	 * already have been set before we set it above, check? YYY
 	 */
 	movq	TD_PCB(%rax),%rdx		/* RDX = PCB */
-	movq	%cr3,%rsi
-	movq	PCB_CR3(%rdx),%rcx
+	movq	%cr3,%rsi			/* RSI = current CR3 */
+	movq	PCB_CR3(%rdx),%rcx		/* RCX = desired CR3 */
 	cmpq	%rsi,%rcx
 	je	4f
+2:
 #if defined(SWTCH_OPTIM_STATS)
 	decl	_swtch_optim_stats
 	incl	_tlb_flush_count
 #endif
 	movq	%rcx,%cr3
 4:
+
 	/*
 	 * NOTE: %rbx is the previous thread and %rax is the new thread.
 	 *	 %rbx is retained throughout so we can return it.
@@ -693,10 +719,10 @@ ENTRY(cpu_lwkt_switch)
 	movq	%rdi,%rax		/* switch to this thread */
 	pushq	$cpu_lwkt_restore
 	movq	%rsp,TD_SP(%rbx)
-	movq	%rax,PCPU(curthread)
 	/*
 	 * %rax contains new thread, %rbx contains old thread.
 	 */
+	movq	%rax,PCPU(curthread)
 	movq	TD_SP(%rax),%rsp
 	ret
 
@@ -717,8 +743,10 @@ ENTRY(cpu_lwkt_switch)
 ENTRY(cpu_lwkt_restore)
 	movq	KPML4phys,%rcx	/* YYY borrow but beware desched/cpuchg/exit */
 	movq	%cr3,%rdx
+#if 1
 	cmpq	%rcx,%rdx
 	je	1f
+#endif
 	movq	%rcx,%cr3
 1:
 	/*
