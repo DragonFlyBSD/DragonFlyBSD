@@ -1062,10 +1062,11 @@ devfs_spec_close(struct vop_close_args *ap)
 			node->flags |= DEVFS_INVISIBLE;
 
 		/*
-		 * Unlock around dev_dclose()
+		 * Unlock around dev_dclose(), unless the vnode is
+		 * undergoing a vgone/reclaim (during umount).
 		 */
 		needrelock = 0;
-		if (vn_islocked(vp)) {
+		if ((vp->v_flag & VRECLAIMED) == 0 && vn_islocked(vp)) {
 			needrelock = 1;
 			vn_unlock(vp);
 		}
@@ -1073,12 +1074,20 @@ devfs_spec_close(struct vop_close_args *ap)
 		/*
 		 * WARNING!  If the device destroys itself the devfs node
 		 *	     can disappear here.
+		 *
+		 * WARNING!  vn_lock() will fail if the vp is in a VRECLAIM,
+		 *	     which can occur during umount.
 		 */
 		error = dev_dclose(dev, ap->a_fflag, S_IFCHR);
 		/* node is now stale */
 
-		if (needrelock)
-			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+		if (needrelock) {
+			if (vn_lock(vp, LK_EXCLUSIVE | LK_RETRY) != 0) {
+				panic("devfs_spec_close: vnode %p "
+				      "unexpectedly could not be relocked",
+				      vp);
+			}
+		}
 	} else {
 		error = 0;
 	}

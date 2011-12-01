@@ -295,8 +295,12 @@ devfs_allocv(struct vnode **vpp, struct devfs_node *node)
 try_again:
 	while ((vp = node->v_node) != NULL) {
 		error = vget(vp, LK_EXCLUSIVE);
-		if (error != ENOENT) {
+		if (error == 0) {
 			*vpp = vp;
+			goto out;
+		}
+		if (error != ENOENT) {
+			*vpp = NULL;
 			goto out;
 		}
 	}
