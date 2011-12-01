@@ -484,7 +484,8 @@ swp_pager_getswapspace(vm_object_t object, int npages)
 	lwkt_gettoken(&vm_token);
 	if ((blk = blist_alloc(swapblist, npages)) == SWAPBLK_NONE) {
 		if (swap_pager_full != 2) {
-			kprintf("swap_pager_getswapspace: failed\n");
+			kprintf("swap_pager_getswapspace: failed alloc=%d\n",
+				npages);
 			swap_pager_full = 2;
 			swap_pager_almost_full = 1;
 		}
