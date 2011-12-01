@@ -347,11 +347,7 @@ exit1(int rv)
 
 	if (p->p_flags & P_PROFIL)
 		stopprofclock(p);
-	/*
-	 * If parent is waiting for us to exit or exec,
-	 * P_PPWAIT is set; we will wakeup the parent below.
-	 */
-	p->p_flags &= ~(P_TRACED | P_PPWAIT);
+
 	SIGEMPTYSET(p->p_siglist);
 	SIGEMPTYSET(lp->lwp_siglist);
 	if (timevalisset(&p->p_realtimer.it_value))
@@ -480,6 +476,15 @@ exit1(int rv)
 		cache_drop(&p->p_textnch);
 
 	/*
+	 * We have to handle PPWAIT here or proc_move_allproc_zombie()
+	 * will block on the PHOLD() the parent is doing.
+	 */
+	if (p->p_flags & P_PPWAIT) {
+		p->p_flags &= ~P_PPWAIT;
+		wakeup(p->p_pptr);
+	}
+
+	/*
 	 * Move the process to the zombie list.  This will block
 	 * until the process p_lock count reaches 0.  The process will
 	 * not be reaped until TDF_EXITING is set by cpu_thread_exit(),
@@ -557,7 +562,10 @@ exit1(int rv)
 	} else {
 	        ksignal(q, SIGCHLD);
 	}
+
+	p->p_flags &= ~P_TRACED;
 	wakeup(p->p_pptr);
+
 	PRELE(q);
 	/* lwkt_reltoken(&proc_token); */
 	/* NOTE: p->p_pptr can get ripped out */
@@ -903,8 +911,7 @@ loop:
 			 * put a hold on the process for short periods of
 			 * time.
 			 */
-			while (p->p_lock)
-				tsleep(p, 0, "reap3", hz);
+			PSTALL(p, "reap3", 0);
 
 			/* Take care of our return values. */
 			*res = p->p_pid;
@@ -978,11 +985,9 @@ loop:
 			 * holders to go away (so the vmspace remains stable),
 			 * then scrap it.
 			 */
-			while (p->p_lock)
-				tsleep(p, 0, "reap4", hz);
+			PSTALL(p, "reap4", 0);
 			vmspace_exitfree(p);
-			while (p->p_lock)
-				tsleep(p, 0, "reap5", hz);
+			PSTALL(p, "reap5", 0);
 
 			kfree(p, M_PROC);
 			atomic_add_int(&nprocs, -1);

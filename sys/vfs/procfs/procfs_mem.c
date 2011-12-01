@@ -92,7 +92,8 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	vm = p->p_vmspace;
 	if (p->p_stat == SIDL || p->p_stat == SZOMB)
 		return EFAULT;
-	if ((p->p_flags & P_WEXIT) || sysref_isinactive(&vm->vm_sysref))
+	if ((p->p_flags & (P_WEXIT | P_INEXEC)) ||
+	    sysref_isinactive(&vm->vm_sysref))
 		return EFAULT;
 
 	/*
