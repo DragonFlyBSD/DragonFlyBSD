@@ -557,12 +557,12 @@ sysctl_sysctl_name(SYSCTL_HANDLER_ARGS)
 	int error = 0;
 	struct sysctl_oid *oid;
 	struct sysctl_oid_list *lsp = &sysctl__children, *lsp2;
-	char buf[10];
+	char buf[16];
 
 	sysctl_lock(LK_SHARED);
 	while (namelen) {
 		if (!lsp) {
-			ksnprintf(buf,sizeof(buf),"%d",*name);
+			ksnprintf(buf, sizeof(buf), "%d", *name);
 			if (req->oldidx)
 				error = SYSCTL_OUT(req, ".", 1);
 			if (!error)
