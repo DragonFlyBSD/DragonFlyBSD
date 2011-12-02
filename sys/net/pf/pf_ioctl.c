@@ -192,7 +192,6 @@ static struct dev_ops pf_ops = {	    /* XXX convert to port model */
 
 static volatile int pf_pfil_hooked = 0;
 int pf_end_threads = 0;
-struct lock pf_mod_lck;
 
 int debug_pfugidhack = 0;
 SYSCTL_INT(_debug, OID_AUTO, pfugidhack, CTLFLAG_RW, &debug_pfugidhack, 0,
@@ -3206,7 +3205,6 @@ pf_load(void)
 {
 	lwkt_gettoken(&pf_token);
 
-	lockinit(&pf_mod_lck, "pf task lck", 0, LK_CANRECURSE);
 	pf_dev = make_dev(&pf_ops, 0, 0, 0, 0600, PF_NAME);
 	pfattach();
 	lockinit(&pf_consistency_lock, "pfconslck", 0, LK_CANRECURSE);
@@ -3247,14 +3245,12 @@ pf_unload(void)
 	pf_end_threads = 1;
 	while (pf_end_threads < 2) {
 		wakeup_one(pf_purge_thread);
-		lksleep(pf_purge_thread, &pf_mod_lck, 0, "pftmo", hz);
-
+		tsleep(pf_purge_thread, 0, "pftmo", hz);
 	}
 	pfi_cleanup();
 	pf_osfp_flush();
 	dev_ops_remove_all(&pf_ops);
 	lockuninit(&pf_consistency_lock);
-	lockuninit(&pf_mod_lck);
 	lwkt_reltoken(&pf_token);
 
 	if (pf_maskhead != NULL) {
