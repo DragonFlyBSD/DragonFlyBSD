@@ -1416,8 +1416,6 @@ vgone_vxlocked(struct vnode *vp)
 	 */
 	KKASSERT(vp->v_lock.lk_exclusivecount == 1);
 
-	get_mplock();
-
 	/*
 	 * Clean out the filesystem specific data and set the VRECLAIMED
 	 * bit.  Also deactivate the vnode if necessary. 
@@ -1446,7 +1444,6 @@ vgone_vxlocked(struct vnode *vp)
 	 * Set us to VBAD
 	 */
 	vp->v_type = VBAD;
-	rel_mplock();
 }
 
 /*
@@ -2188,8 +2185,9 @@ vfs_msync(struct mount *mp, int flags)
 	vmsc_flags = VMSC_GETVP;
 	if (flags != MNT_WAIT)
 		vmsc_flags |= VMSC_NOWAIT;
-	vmntvnodescan(mp, vmsc_flags, vfs_msync_scan1, vfs_msync_scan2,
-			(void *)(intptr_t)flags);
+	vmntvnodescan(mp, vmsc_flags,
+		      vfs_msync_scan1, vfs_msync_scan2,
+		      (void *)(intptr_t)flags);
 }
 
 /*
