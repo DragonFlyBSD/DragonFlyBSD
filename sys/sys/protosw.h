@@ -218,8 +218,6 @@ struct pru_attach_info {
  * These are netmsg'd requests almost universally in the context of the
  * appropriate protocol thread.  Exceptions:
  *
- *	pru_accept() - called synchronously from user context
- *
  *	pru_sosend() - called synchronously from user context, typically
  *		       runs generic kernel code and then messages via
  *		       pru_send().
@@ -232,7 +230,7 @@ struct pru_attach_info {
  */
 struct pr_usrreqs {
 	void	(*pru_abort) (netmsg_t msg);
-	void	(*pru_accept) (netmsg_t msg);	/* synchronous call */
+	void	(*pru_accept) (netmsg_t msg);
 	void	(*pru_attach) (netmsg_t msg);
 	void	(*pru_bind) (netmsg_t msg);
 	void	(*pru_connect) (netmsg_t msg);

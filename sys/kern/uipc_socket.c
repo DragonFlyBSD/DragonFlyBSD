@@ -613,7 +613,7 @@ soaccept(struct socket *so, struct sockaddr **nam)
 	int error;
 
 	soaccept_generic(so);
-	error = so_pru_accept_direct(so, nam);
+	error = so_pru_accept(so, nam);
 	return (error);
 }
 

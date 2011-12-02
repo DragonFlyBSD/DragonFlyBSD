@@ -100,22 +100,16 @@ so_pru_abort_oncpu(struct socket *so)
 	sofree(msg.base.nm_so);
 }
 
-/*
- * WARNING!  Synchronous call from user context
- */
 int
-so_pru_accept_direct(struct socket *so, struct sockaddr **nam)
+so_pru_accept(struct socket *so, struct sockaddr **nam)
 {
 	struct netmsg_pru_accept msg;
-	netisr_fn_t func = so->so_proto->pr_usrreqs->pru_accept;
 
-	netmsg_init(&msg.base, so, &netisr_adone_rport, 0, func);
-	msg.base.lmsg.ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
-	msg.base.lmsg.ms_flags |= MSGF_SYNC;
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+	    0, so->so_proto->pr_usrreqs->pru_accept);
 	msg.nm_nam = nam;
-	func((netmsg_t)&msg);
-	KKASSERT(msg.base.lmsg.ms_flags & MSGF_DONE);
-	return(msg.base.lmsg.ms_error);
+
+	return lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 }
 
 int
