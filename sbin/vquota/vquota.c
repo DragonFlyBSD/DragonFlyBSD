@@ -37,6 +37,7 @@
 #include <err.h>
 #include <string.h>
 #include <fts.h>
+#include <inttypes.h>
 
 static void usage(int);
 static int get_dirsize( char* );
@@ -84,7 +85,7 @@ static int get_dirsize( char* dirname ) {
 		}
 	}
 
-	printf( "%lu\n", size_of_files );
+	printf( "%"PRIu64"\n", size_of_files );
 	return retval;
 }
 
