@@ -210,7 +210,7 @@ db_print_stack_entry(const char *name, int narg, char **argnp, long *argp,
 			db_printf(",");
 	}
 	db_printf(") at ");
-	db_printsym(callpc, DB_STGY_PROC);	
+	db_printsym(callpc, DB_STGY_PROC);
 	db_printf(" %p ",  (void*) callpc);
 	db_printf("\n");
 }
