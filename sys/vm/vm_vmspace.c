@@ -119,7 +119,8 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 
 	lwkt_gettoken(&vkp->token);
 	if (RB_INSERT(vmspace_rb_tree, &vkp->root, ve)) {
-		sysref_put(&ve->vmspace->vm_sysref);
+		vmspace_free(ve->vmspace);
+		ve->vmspace = NULL; /* safety */
 		kfree(ve, M_VKERNEL);
 		error = EEXIST;
 	} else {
@@ -575,7 +576,8 @@ vmspace_entry_delete(struct vmspace_entry *ve, struct vkernel_proc *vkp)
 			  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	vm_map_remove(&ve->vmspace->vm_map,
 		      VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
-	sysref_put(&ve->vmspace->vm_sysref);
+	vmspace_free(ve->vmspace);
+	ve->vmspace = NULL; /* safety */
 	kfree(ve, M_VKERNEL);
 }
 

@@ -99,6 +99,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	/*
 	 * The map we want...
 	 */
+	vmspace_hold(vm);
 	map = &vm->vm_map;
 
 	writing = (uio->uio_rw == UIO_WRITE);
@@ -157,6 +158,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 		vm_page_unhold(m);
 	} while (error == 0 && uio->uio_resid > 0);
 
+	vmspace_drop(vm);
 	kmem_free(&kernel_map, kva, PAGE_SIZE);
 
 	return (error);

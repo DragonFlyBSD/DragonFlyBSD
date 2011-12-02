@@ -423,9 +423,8 @@ swap_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 	vm_object_t object;
 
 	KKASSERT(handle == NULL);
-	object = vm_object_allocate(OBJT_DEFAULT,
-				    OFF_TO_IDX(offset + PAGE_MASK + size));
-	vm_object_hold(object);
+	object = vm_object_allocate_hold(OBJT_DEFAULT,
+					 OFF_TO_IDX(offset + PAGE_MASK + size));
 	swp_pager_meta_convert(object);
 	vm_object_drop(object);
 

@@ -192,6 +192,7 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
+	struct vnode *ovp;
 	register_t *stack_base;
 	struct pargs *pa;
 	struct sigacts *ops;
@@ -478,12 +479,14 @@ interpret:
 	}
 
 	/*
-	 * Store the vp for use in procfs
+	 * Store the vp for use in procfs.  Be sure to keep p_textvp
+	 * consistent if we block during the switch-over.
 	 */
-	if (p->p_textvp)		/* release old reference */
-		vrele(p->p_textvp);
+	ovp = p->p_textvp;
+	vref(imgp->vp);			/* ref new vp */
 	p->p_textvp = imgp->vp;
-	vref(p->p_textvp);
+	if (ovp)			/* release old vp */
+		vrele(ovp);
 
 	/* Release old namecache handle to text file */
 	if (p->p_textnch.ncp)
@@ -513,7 +516,7 @@ interpret:
 
 	/* Set values passed into the program in registers. */
 	exec_setregs(imgp->entry_addr, (u_long)(uintptr_t)stack_base,
-	    imgp->ps_strings);
+		     imgp->ps_strings);
 
 	/* Set the access time on the vnode */
 	vn_mark_atime(imgp->vp, td);
@@ -777,9 +780,6 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 	 * otherwise, create a new VM space so that other threads are
 	 * not disrupted.  If we are execing a resident vmspace we
 	 * create a duplicate of it and remap the stack.
-	 *
-	 * The exitingcnt test is not strictly necessary but has been
-	 * included for code sanity (to make the code more deterministic).
 	 */
 	map = &vmspace->vm_map;
 	if (vmcopy) {
@@ -787,8 +787,7 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 		vmspace = imgp->proc->p_vmspace;
 		pmap_remove_pages(vmspace_pmap(vmspace), stack_addr, USRSTACK);
 		map = &vmspace->vm_map;
-	} else if (vmspace->vm_sysref.refcnt == 1 &&
-		   vmspace->vm_exitingcnt == 0) {
+	} else if (vmspace->vm_sysref.refcnt == 1) {
 		shmexit(vmspace);
 		if (vmspace->vm_upcalls)
 			upc_release(vmspace, ONLY_LWP_IN_PROC(imgp->proc));

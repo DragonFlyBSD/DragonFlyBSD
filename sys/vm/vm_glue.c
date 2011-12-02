@@ -245,8 +245,8 @@ vm_fork(struct proc *p1, struct proc *p2, int flags)
 	}
 
 	if (flags & RFMEM) {
+		vmspace_ref(p1->p_vmspace);
 		p2->p_vmspace = p1->p_vmspace;
-		sysref_get(&p1->p_vmspace->vm_sysref);
 	}
 
 	while (vm_page_count_severe()) {

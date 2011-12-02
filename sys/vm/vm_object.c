@@ -385,7 +385,7 @@ vm_object_drop(vm_object_t obj)
 }
 
 /*
- * Initialize a freshly allocated object
+ * Initialize a freshly allocated object, returning a held object.
  *
  * Used only by vm_object_allocate() and zinitna().
  *
@@ -431,6 +431,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	RB_INIT(&object->swblock_root);
 	vm_object_lock_init(object);
 
+	vm_object_hold(object);
 	lwkt_gettoken(&vmobj_token);
 	TAILQ_INSERT_TAIL(&vm_object_list, object, object_list);
 	vm_object_count++;
@@ -449,6 +450,7 @@ vm_object_init(void)
 	
 	_vm_object_allocate(OBJT_DEFAULT, OFF_TO_IDX(KvaEnd),
 			    &kernel_object);
+	vm_object_drop(&kernel_object);
 
 	obj_zone = &obj_zone_store;
 	zbootinit(obj_zone, "VM OBJECT", sizeof (struct vm_object),
@@ -468,6 +470,23 @@ vm_object_init2(void)
  */
 vm_object_t
 vm_object_allocate(objtype_t type, vm_pindex_t size)
+{
+	vm_object_t result;
+
+	result = (vm_object_t) zalloc(obj_zone);
+
+	_vm_object_allocate(type, size, result);
+	vm_object_drop(result);
+
+	return (result);
+}
+
+/*
+ * This version returns a held object, allowing further atomic initialization
+ * of the object.
+ */
+vm_object_t
+vm_object_allocate_hold(objtype_t type, vm_pindex_t size)
 {
 	vm_object_t result;
 

@@ -127,11 +127,12 @@ dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 		/*
 		 * Allocate object and associate it with the pager.
 		 */
-		object = vm_object_allocate(OBJT_DEVICE,
-					    OFF_TO_IDX(foff + size));
+		object = vm_object_allocate_hold(OBJT_DEVICE,
+						 OFF_TO_IDX(foff + size));
 		object->handle = handle;
 		TAILQ_INIT(&object->un_pager.devp.devp_pglist);
 		dev->si_object = object;
+		vm_object_drop(object);
 	} else {
 		/*
 		 * Gain a reference to the object.

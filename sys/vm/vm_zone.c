@@ -280,6 +280,7 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 		} else {
 			z->zobj = obj;
 			_vm_object_allocate(OBJT_DEFAULT, z->zpagemax, obj);
+			vm_object_drop(obj);
 		}
 		z->zallocflag = VM_ALLOC_SYSTEM | VM_ALLOC_INTERRUPT |
 				VM_ALLOC_NORMAL | VM_ALLOC_RETRY;

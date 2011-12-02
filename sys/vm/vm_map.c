@@ -250,17 +250,66 @@ vmspace_alloc(vm_offset_t min, vm_offset_t max)
 	vm = sysref_alloc(&vmspace_sysref_class);
 	bzero(&vm->vm_startcopy,
 	      (char *)&vm->vm_endcopy - (char *)&vm->vm_startcopy);
-	vm_map_init(&vm->vm_map, min, max, NULL);
+	vm_map_init(&vm->vm_map, min, max, NULL);	/* initializes token */
+
+	/*
+	 * Use a hold to prevent any additional racing hold from terminating
+	 * the vmspace before we manage to activate it.  This also acquires
+	 * the token for safety.
+	 */
+	KKASSERT(vm->vm_holdcount == 0);
+	KKASSERT(vm->vm_exitingcnt == 0);
+	vmspace_hold(vm);
 	pmap_pinit(vmspace_pmap(vm));		/* (some fields reused) */
-	lwkt_gettoken(&vm->vm_map.token);
 	vm->vm_map.pmap = vmspace_pmap(vm);		/* XXX */
 	vm->vm_shm = NULL;
-	vm->vm_exitingcnt = 0;
+	vm->vm_flags = 0;
 	cpu_vmspace_alloc(vm);
 	sysref_activate(&vm->vm_sysref);
-	lwkt_reltoken(&vm->vm_map.token);
+	vmspace_drop(vm);
 
 	return (vm);
+}
+
+/*
+ * Free a primary reference to a vmspace.  This can trigger a
+ * stage-1 termination.
+ */
+void
+vmspace_free(struct vmspace *vm)
+{
+	/*
+	 * We want all finalization to occur via vmspace_drop() so we
+	 * need to hold the vm around the put.
+	 */
+	vmspace_hold(vm);
+	sysref_put(&vm->vm_sysref);
+	vmspace_drop(vm);
+}
+
+void
+vmspace_ref(struct vmspace *vm)
+{
+	sysref_get(&vm->vm_sysref);
+}
+
+void
+vmspace_hold(struct vmspace *vm)
+{
+	refcount_acquire(&vm->vm_holdcount);
+	lwkt_gettoken(&vm->vm_map.token);
+}
+
+void
+vmspace_drop(struct vmspace *vm)
+{
+	lwkt_reltoken(&vm->vm_map.token);
+	if (refcount_release(&vm->vm_holdcount)) {
+		if (vm->vm_exitingcnt == 0 &&
+		    sysref_isinactive(&vm->vm_sysref)) {
+			vmspace_terminate(vm);
+		}
+	}
 }
 
 /*
@@ -279,18 +328,21 @@ vmspace_dtor(void *obj, void *private)
 }
 
 /*
- * Called in two cases: 
+ * Called in three cases:
  *
- * (1) When the last sysref is dropped, but exitingcnt might still be
- *     non-zero.
+ * (1) When the last sysref is dropped and the vmspace becomes inactive.
+ *     (holdcount will not be 0 because the vmspace is held through the op)
  *
- * (2) When there are no sysrefs (i.e. refcnt is negative) left and the
- *     exitingcnt becomes zero
+ * (2) When exitingcount becomes 0 on the last reap
+ *     (holdcount will not be 0 because the vmspace is held through the op)
+ *
+ * (3) When the holdcount becomes 0 in addition to the above two
  *
  * sysref will not scrap the object until we call sysref_put() once more
  * after the last ref has been dropped.
  *
- * Interlocked by the sysref API.
+ * VMSPACE_EXIT1 flags the primary deactivation
+ * VMSPACE_EXIT2 flags the last reap
  */
 static void
 vmspace_terminate(struct vmspace *vm)
@@ -298,46 +350,46 @@ vmspace_terminate(struct vmspace *vm)
 	int count;
 
 	/*
-	 * If exitingcnt is non-zero we can't get rid of the entire vmspace
-	 * yet, but we can scrap user memory.
+	 *
 	 */
 	lwkt_gettoken(&vm->vm_map.token);
-	if (vm->vm_exitingcnt) {
+	if ((vm->vm_flags & VMSPACE_EXIT1) == 0) {
+		vm->vm_flags |= VMSPACE_EXIT1;
 		shmexit(vm);
 		pmap_remove_pages(vmspace_pmap(vm), VM_MIN_USER_ADDRESS,
 				  VM_MAX_USER_ADDRESS);
 		vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
 			      VM_MAX_USER_ADDRESS);
-		lwkt_reltoken(&vm->vm_map.token);
-		return;
 	}
-	cpu_vmspace_free(vm);
+	if ((vm->vm_flags & VMSPACE_EXIT2) == 0 && vm->vm_exitingcnt == 0) {
+		vm->vm_flags |= VMSPACE_EXIT2;
+		cpu_vmspace_free(vm);
+		shmexit(vm);
+		KKASSERT(vm->vm_upcalls == NULL);
 
-	/*
-	 * Make sure any SysV shm is freed, it might not have in
-	 * exit1()
-	 */
-	shmexit(vm);
+		/*
+		 * Lock the map, to wait out all other references to it.
+		 * Delete all of the mappings and pages they hold, then call
+		 * the pmap module to reclaim anything left.
+		 */
+		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
+		vm_map_lock(&vm->vm_map);
+		vm_map_delete(&vm->vm_map, vm->vm_map.min_offset,
+			      vm->vm_map.max_offset, &count);
+		vm_map_unlock(&vm->vm_map);
+		vm_map_entry_release(count);
 
-	KKASSERT(vm->vm_upcalls == NULL);
+		lwkt_gettoken(&vmspace_pmap(vm)->pm_token);
+		pmap_release(vmspace_pmap(vm));
+		lwkt_reltoken(&vmspace_pmap(vm)->pm_token);
+	}
 
-	/*
-	 * Lock the map, to wait out all other references to it.
-	 * Delete all of the mappings and pages they hold, then call
-	 * the pmap module to reclaim anything left.
-	 */
-	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
-	vm_map_lock(&vm->vm_map);
-	vm_map_delete(&vm->vm_map, vm->vm_map.min_offset,
-		vm->vm_map.max_offset, &count);
-	vm_map_unlock(&vm->vm_map);
-	vm_map_entry_release(count);
-
-	lwkt_gettoken(&vmspace_pmap(vm)->pm_token);
-	pmap_release(vmspace_pmap(vm));
-	lwkt_reltoken(&vmspace_pmap(vm)->pm_token);
 	lwkt_reltoken(&vm->vm_map.token);
-	sysref_put(&vm->vm_sysref);
+	if (vm->vm_exitingcnt == 0 && vm->vm_holdcount == 0) {
+		KKASSERT(vm->vm_flags & VMSPACE_EXIT1);
+		KKASSERT(vm->vm_flags & VMSPACE_EXIT2);
+		sysref_put(&vm->vm_sysref);
+	}
 }
 
 /*
@@ -356,21 +408,21 @@ vmspace_unlock(struct vmspace *vm __unused)
 /*
  * This is called during exit indicating that the vmspace is no
  * longer in used by an exiting process, but the process has not yet
- * been cleaned up.
+ * been reaped.
  *
  * No requirements.
  */
 void
 vmspace_exitbump(struct vmspace *vm)
 {
-	lwkt_gettoken(&vm->vm_map.token);
+	vmspace_hold(vm);
 	++vm->vm_exitingcnt;
-	lwkt_reltoken(&vm->vm_map.token);
+	vmspace_drop(vm);	/* handles termination sequencing */
 }
 
 /*
- * This is called in the wait*() handling code.  The vmspace can be terminated
- * after the last wait is finished using it.
+ * Decrement the exitingcnt and issue the stage-2 termination if it becomes
+ * zero and the stage1 termination has already occured.
  *
  * No requirements.
  */
@@ -380,15 +432,12 @@ vmspace_exitfree(struct proc *p)
 	struct vmspace *vm;
 
 	vm = p->p_vmspace;
-	lwkt_gettoken(&vm->vm_map.token);
 	p->p_vmspace = NULL;
-
-	if (--vm->vm_exitingcnt == 0 && sysref_isinactive(&vm->vm_sysref)) {
-		lwkt_reltoken(&vm->vm_map.token);
+	vmspace_hold(vm);
+	KKASSERT(vm->vm_exitingcnt > 0);
+	if (--vm->vm_exitingcnt == 0 && sysref_isinactive(&vm->vm_sysref))
 		vmspace_terminate(vm);
-	} else {
-		lwkt_reltoken(&vm->vm_map.token);
-	}
+	vmspace_drop(vm);	/* handles termination sequencing */
 }
 
 /*
@@ -408,7 +457,7 @@ vmspace_swap_count(struct vmspace *vm)
 	int count = 0;
 	int n;
 
-	lwkt_gettoken(&vm->vm_map.token);
+	vmspace_hold(vm);
 	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
 		switch(cur->maptype) {
 		case VM_MAPTYPE_NORMAL:
@@ -425,7 +474,8 @@ vmspace_swap_count(struct vmspace *vm)
 			break;
 		}
 	}
-	lwkt_reltoken(&vm->vm_map.token);
+	vmspace_drop(vm);
+
 	return(count);
 }
 
@@ -444,7 +494,7 @@ vmspace_anonymous_count(struct vmspace *vm)
 	vm_object_t object;
 	int count = 0;
 
-	lwkt_gettoken(&vm->vm_map.token);
+	vmspace_hold(vm);
 	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
 		switch(cur->maptype) {
 		case VM_MAPTYPE_NORMAL:
@@ -461,7 +511,8 @@ vmspace_anonymous_count(struct vmspace *vm)
 			break;
 		}
 	}
-	lwkt_reltoken(&vm->vm_map.token);
+	vmspace_drop(vm);
+
 	return(count);
 }
 
@@ -3153,6 +3204,13 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		 * We cannot use *_hold() here because the split code will
 		 * probably try to destroy the object.  The lock is a pool
 		 * token and doesn't care.
+		 *
+		 * We must bump src_map->timestamp when setting
+		 * MAP_ENTRY_NEEDS_COPY to force any concurrent fault
+		 * to retry, otherwise the concurrent fault might improperly
+		 * install a RW pte when its supposed to be a RO(COW) pte.
+		 * This race can occur because a vnode-backed fault may have
+		 * to temporarily release the map lock.
 		 */
 		if (src_entry->object.vm_object != NULL) {
 			vm_map_split(src_entry);
@@ -3163,6 +3221,7 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 			dst_entry->eflags |= (MAP_ENTRY_COW |
 					      MAP_ENTRY_NEEDS_COPY);
 			dst_entry->offset = src_entry->offset;
+			++src_map->timestamp;
 		} else {
 			dst_entry->object.vm_object = NULL;
 			dst_entry->offset = 0;
@@ -3640,15 +3699,12 @@ vmspace_exec(struct proc *p, struct vmspace *vmcopy)
 	pmap_replacevm(p, newvmspace, 0);
 	lwkt_reltoken(&newvmspace->vm_map.token);
 	lwkt_reltoken(&oldvmspace->vm_map.token);
-	sysref_put(&oldvmspace->vm_sysref);
+	vmspace_free(oldvmspace);
 }
 
 /*
  * Unshare the specified VM space for forcing COW.  This
  * is called by rfork, for the (RFMEM|RFPROC) == 0 case.
- *
- * The exitingcnt test is not strictly necessary but has been
- * included for code sanity (to make the code a bit more deterministic).
  */
 void
 vmspace_unshare(struct proc *p) 
@@ -3657,7 +3713,7 @@ vmspace_unshare(struct proc *p)
 	struct vmspace *newvmspace;
 
 	lwkt_gettoken(&oldvmspace->vm_map.token);
-	if (oldvmspace->vm_sysref.refcnt == 1 && oldvmspace->vm_exitingcnt == 0) {
+	if (oldvmspace->vm_sysref.refcnt == 1) {
 		lwkt_reltoken(&oldvmspace->vm_map.token);
 		return;
 	}
@@ -3667,7 +3723,7 @@ vmspace_unshare(struct proc *p)
 	pmap_replacevm(p, newvmspace, 0);
 	lwkt_reltoken(&newvmspace->vm_map.token);
 	lwkt_reltoken(&oldvmspace->vm_map.token);
-	sysref_put(&oldvmspace->vm_sysref);
+	vmspace_free(oldvmspace);
 }
 
 /*
