@@ -60,6 +60,8 @@
 
 #include <sys/buf2.h>
 #include <sys/signal2.h>
+#include <vm/vm_page2.h>
+
 #include "hammer_disk.h"
 #include "hammer_mount.h"
 #include "hammer_ioctl.h"
