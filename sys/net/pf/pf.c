@@ -963,7 +963,7 @@ pf_purge_thread(void *v)
 		lockmgr(&pf_consistency_lock, LK_EXCLUSIVE);
 
 		if (pf_end_threads) {
-			pf_purge_expired_states(pf_status.states, 1);
+			pf_purge_expired_states(pf_status.states, 0);
 			pf_purge_expired_fragments();
 			pf_purge_expired_src_nodes(1);
 			pf_end_threads++;
