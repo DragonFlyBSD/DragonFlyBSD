@@ -601,9 +601,13 @@ again:
 	 *
 	 * If we are reserving a whole buffer (or more), the caller will
 	 * probably use a direct read, so do nothing.
+	 *
+	 * If we do not have a whole lot of system memory we really can't
+	 * afford to block while holding the blkmap_lock!
 	 */
 	if (bytes < HAMMER_BUFSIZE && (next_offset & HAMMER_BUFMASK) == 0) {
-		hammer_bnew(hmp, next_offset, errorp, &buffer3);
+		if (!vm_page_count_min(HAMMER_BUFSIZE / PAGE_SIZE))
+			hammer_bnew(hmp, next_offset, errorp, &buffer3);
 	}
 
 	/*
