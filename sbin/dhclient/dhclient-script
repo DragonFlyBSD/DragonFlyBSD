@@ -70,11 +70,11 @@ delete_old_routes() {
 
 add_new_routes() {
 	for router in $new_routers; do
-		route delete default >/dev/null 2>&1
+		route -q delete default
 		if [ "$new_ip_address" = "$router" ]; then
-			route add default -iface $router >/dev/null 2>&1
+			route -q add default -iface $router
 		else
-			route add default $router >/dev/null 2>&1
+			route -q add default $router
 		fi
 		# 2nd and subsequent default routers error out, so explicitly
 		# stop processing the list after the first one.
