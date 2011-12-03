@@ -26,7 +26,7 @@
 delete_old_address() {
 	if [ -n "$old_ip_address" ]; then
 		ifconfig $interface inet $old_ip_address delete $medium
-		route delete "$old_ip_address" 127.0.0.1 >/dev/null 2>&1
+		#route delete "$old_ip_address" 127.0.0.1 >/dev/null 2>&1
 	fi
 }
 
@@ -38,13 +38,13 @@ add_new_address() {
 		$medium
 
 	# XXX Original TIMEOUT code did not do this unless $new_routers was set?
-	route add $new_ip_address 127.0.0.1 >/dev/null 2>&1
+	#route add $new_ip_address 127.0.0.1 >/dev/null 2>&1
 }
 
 delete_old_alias() {
 	if [ -n "$alias_ip_address" ]; then
 		ifconfig $interface inet $alias_ip_address delete > /dev/null 2>&1
-		route delete $alias_ip_address 127.0.0.1 > /dev/null 2>&1
+#		#route delete $alias_ip_address 127.0.0.1 > /dev/null 2>&1
 	fi
 }
 
@@ -52,7 +52,7 @@ add_new_alias() {
 	if [ -n "$alias_ip_address" ]; then
 		ifconfig $interface inet $alias_ip_address alias netmask \
 		    $alias_subnet_mask
-		route add $alias_ip_address 127.0.0.1
+		#route add $alias_ip_address 127.0.0.1
 	fi
 }
 
