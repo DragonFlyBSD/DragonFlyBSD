@@ -182,7 +182,7 @@ static void ip_2_ip6_hdr (struct ip6_hdr *ip6, struct ip *ip);
 static int udp_connect_oncpu(struct socket *so, struct thread *td,
 			struct sockaddr_in *sin, struct sockaddr_in *if_sin);
 static int udp_output (struct inpcb *, struct mbuf *, struct sockaddr *,
-			struct mbuf *, struct thread *);
+			struct thread *);
 
 void
 udp_init(void)
@@ -784,7 +784,7 @@ SYSCTL_PROC(_net_inet_udp, OID_AUTO, getcred, CTLTYPE_OPAQUE|CTLFLAG_RW,
 
 static int
 udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
-	   struct mbuf *control, struct thread *td)
+	   struct thread *td)
 {
 	struct udpiphdr *ui;
 	int len = m->m_pkthdr.len;
@@ -1242,13 +1242,13 @@ udp_send(netmsg_t msg)
 	int error;
 
 	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+	KKASSERT(msg->send.nm_control == NULL);
 
 	inp = so->so_pcb;
 	if (inp) {
 		error = udp_output(inp,
 				   msg->send.nm_m,
 				   msg->send.nm_addr,
-				   msg->send.nm_control,
 				   msg->send.nm_td);
 	} else {
 		m_freem(msg->send.nm_m);
