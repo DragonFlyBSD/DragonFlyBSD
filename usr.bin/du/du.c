@@ -279,6 +279,7 @@ main(int argc, char **argv)
 		if (p->fts_parent->fts_pointer)
 			savednumber = *(du_number_t *)p->fts_parent->fts_pointer;
 	}
+	fts_close(fts);
 
 	if (errno)
 		err(1, "fts_read");

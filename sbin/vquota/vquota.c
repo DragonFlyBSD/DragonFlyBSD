@@ -89,6 +89,7 @@ get_dirsize(char* dirname)
 			size_of_files += p->fts_statp->st_size;
 		}
 	}
+	fts_close(fts);
 
 	printf("%"PRIu64"\n", size_of_files);
 	return retval;
