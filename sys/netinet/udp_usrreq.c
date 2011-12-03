@@ -1238,6 +1238,7 @@ static void
 udp_send(netmsg_t msg)
 {
 	struct socket *so = msg->send.base.nm_so;
+	struct mbuf *m = msg->send.nm_m;
 	struct inpcb *inp;
 	int error;
 
@@ -1246,15 +1247,14 @@ udp_send(netmsg_t msg)
 
 	inp = so->so_pcb;
 	if (inp) {
-		error = udp_output(inp,
-				   msg->send.nm_m,
-				   msg->send.nm_addr,
-				   msg->send.nm_td);
+		struct sockaddr *addr = msg->send.nm_addr;
+		struct thread *td = msg->send.nm_td;
+
+		error = udp_output(inp, m, addr, td);
 	} else {
-		m_freem(msg->send.nm_m);
+		m_freem(m);
 		error = EINVAL;
 	}
-	msg->send.nm_m = NULL;
 	lwkt_replymsg(&msg->send.base.lmsg, error);
 }
 
