@@ -346,7 +346,7 @@ customizeiso:
 	    echo ".ifdef BSD_PKG_MK	# added by nrelease" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
 	test -e ${ISODIR}/.didbootstrap || \
-	    echo "PKG_DEFAULT_OPTIONS='dri inet6'" \
+	    echo "PKG_DEFAULT_OPTIONS=dri inet6" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
 .if make(gui)
 	test -e ${ISODIR}/.didbootstrap || \
