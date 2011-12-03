@@ -40,25 +40,29 @@
 #include <inttypes.h>
 
 static void usage(int);
-static int get_dirsize( char* );
+static int get_dirsize(char *);
 
-static void usage(int retcode) {
-	fprintf( stderr, "usage: vquota check directory\n" );
+static void
+usage(int retcode)
+{
+	fprintf(stderr, "usage: vquota check directory\n");
 	exit(retcode);
 }
 
-static int get_dirsize( char* dirname ) {
-	FTS			*fts;
+static int
+get_dirsize(char* dirname)
+{
+	FTS		*fts;
 	FTSENT		*p;
 	char*		fts_args[2];
 	uint64_t	size_of_files = 0;
-	int			retval = 0;
+	int		retval = 0;
 
 	/* TODO: check directory name sanity */
 	fts_args[0] = dirname;
 	fts_args[1] = NULL;
 
-	if ((fts = fts_open( fts_args, FTS_PHYSICAL, NULL)) == NULL)
+	if ((fts = fts_open(fts_args, FTS_PHYSICAL, NULL)) == NULL)
 		err(1, "fts_open() failed");
 
 	while ((p = fts_read(fts)) != NULL) {
@@ -79,23 +83,25 @@ static int get_dirsize( char* dirname ) {
 			/* files with more than one link, undecided */
 			// if (p->fts_statp->st_nlink > 1 && linkchk(p))
 			if (p->fts_statp->st_nlink > 1)
-				fprintf( stderr, "%s has more than one link\n", p->fts_name );
-				
+				fprintf(stderr, "%s has more than one link\n",
+				    p->fts_name );
+
 			size_of_files += p->fts_statp->st_size;
 		}
 	}
 
-	printf( "%"PRIu64"\n", size_of_files );
+	printf("%"PRIu64"\n", size_of_files);
 	return retval;
 }
 
-int main( int argc, char **argv ) {
-	
+int
+main(int argc, char **argv)
+{
 	if (argc < 3)
 		usage(1);
 	
 	if (strcmp(argv[1], "check") == 0) {
-		return get_dirsize( argv[2] );
+		return get_dirsize(argv[2]);
 	}
 
 	return 0;
