@@ -77,8 +77,8 @@ esp_aesctr_mature(struct secasvar *sav)
 	algo = esp_algorithm_lookup(sav->alg_enc);
 	if (!algo) {
 		ipseclog((LOG_ERR,
-		    "esp_aeesctr_mature %s: unsupported algorithm.\n",
-		    algo->name));
+		    "esp_aeesctr_mature: unsupported algorithm %d\n",
+		    sav->alg_enc));
 		return 1;
 	}
 
