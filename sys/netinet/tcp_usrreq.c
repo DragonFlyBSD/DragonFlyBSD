@@ -731,13 +731,14 @@ tcp_usr_send(netmsg_t msg)
 	struct socket *so = msg->send.base.nm_so;
 	int flags = msg->send.nm_flags;
 	struct mbuf *m = msg->send.nm_m;
-	struct mbuf *control __debugvar = msg->send.nm_control;
 	int error = 0;
 	struct inpcb *inp;
 	struct tcpcb *tp;
 	TCPDEBUG0;
 
-	KKASSERT(control == NULL);
+	KKASSERT(msg->send.nm_control == NULL);
+	KKASSERT(msg->send.nm_addr == NULL);
+	KKASSERT((flags & PRUS_FREEADDR) == 0);
 
 	inp = so->so_pcb;
 

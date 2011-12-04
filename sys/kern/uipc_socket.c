@@ -940,12 +940,7 @@ restart:
 	if (flags & MSG_DONTROUTE)
 		pru_flags |= PRUS_DONTROUTE;
 
-	/*
-	 * XXX
-	 * 'addr' could be free by the caller, so if it is ever supplied
-	 * we can't do asynchronized pru_send
-	 */
-	if (addr == NULL && udp_sosnd_async && (flags & MSG_SYNC) == 0) {
+	if (udp_sosnd_async && (flags & MSG_SYNC) == 0) {
 		so_pru_send_async(so, pru_flags, top, addr, NULL, td);
 		error = 0;
 	} else {

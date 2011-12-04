@@ -1243,6 +1243,7 @@ udp_send(netmsg_t msg)
 {
 	struct socket *so = msg->send.base.nm_so;
 	struct mbuf *m = msg->send.nm_m;
+	struct sockaddr *addr = msg->send.nm_addr;
 	int pru_flags = msg->send.nm_flags;
 	struct inpcb *inp;
 	int error;
@@ -1252,7 +1253,6 @@ udp_send(netmsg_t msg)
 
 	inp = so->so_pcb;
 	if (inp) {
-		struct sockaddr *addr = msg->send.nm_addr;
 		struct thread *td = msg->send.nm_td;
 		int flags = 0;
 
@@ -1263,6 +1263,9 @@ udp_send(netmsg_t msg)
 		m_freem(m);
 		error = EINVAL;
 	}
+
+	if (pru_flags & PRUS_FREEADDR)
+		kfree(addr, M_SONAME);
 
 	if ((pru_flags & PRUS_NOREPLY) == 0)
 		lwkt_replymsg(&msg->send.base.lmsg, error);
