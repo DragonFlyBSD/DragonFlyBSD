@@ -39,7 +39,6 @@
  *
  *	@(#)tty_conf.c	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty_conf.c,v 1.16.2.1 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/kern/tty_conf.c,v 1.6 2006/12/23 23:47:54 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -89,7 +88,7 @@ struct	linesw linesw[MAXLDISC] =
 	NODISC(8),		/* loadable */
 };
 
-int	nlinesw = sizeof (linesw) / sizeof (linesw[0]);
+int	nlinesw = NELEM(linesw);
 
 static struct linesw nodisc = NODISC(0);
 

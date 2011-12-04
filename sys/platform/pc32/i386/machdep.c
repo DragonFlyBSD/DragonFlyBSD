@@ -2013,7 +2013,7 @@ init386(int first)
 	 */
 	ldt_segs[LUCODE_SEL].ssd_limit = atop(VM_MAX_USER_ADDRESS - 1);
 	ldt_segs[LUDATA_SEL].ssd_limit = atop(VM_MAX_USER_ADDRESS - 1);
-	for (x = 0; x < sizeof ldt_segs / sizeof ldt_segs[0]; x++)
+	for (x = 0; x < NELEM(ldt_segs); x++)
 		ssdtosd(&ldt_segs[x], &ldt[x].sd);
 
 	_default_ldt = GSEL(GLDT_SEL, SEL_KPL);

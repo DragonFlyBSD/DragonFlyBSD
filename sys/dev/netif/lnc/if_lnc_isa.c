@@ -252,8 +252,7 @@ le_isa_probe(device_t dev)
 	case 0:
 		return (-20);
 	case ENOENT:
-		for (i = 0; i < sizeof(le_isa_params) /
-		    sizeof(le_isa_params[0]); i++) {
+		for (i = 0; i < NELEM(le_isa_params); i++) {
 			if (le_isa_probe_legacy(dev, &le_isa_params[i]) == 0) {
 				device_set_desc(dev, le_isa_params[i].name);
 				return (-20);
@@ -288,8 +287,7 @@ le_isa_attach(device_t dev)
 		macstride = 1;
 		break;
 	case ENOENT:
-		for (i = 0; i < sizeof(le_isa_params) /
-		    sizeof(le_isa_params[0]); i++) {
+		for (i = 0; i < NELEM(le_isa_params); i++) {
 			if (le_isa_probe_legacy(dev, &le_isa_params[i]) == 0) {
 				lesc->sc_rres = bus_alloc_resource(dev,
 				    SYS_RES_IOPORT, &lesc->sc_rrid, 0, ~0,

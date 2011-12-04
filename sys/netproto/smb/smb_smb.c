@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_smb.c,v 1.1.2.3 2002/12/14 14:44:19 fjoe Exp $
- * $DragonFly: src/sys/netproto/smb/smb_smb.c,v 1.7 2007/08/21 17:26:47 dillon Exp $
  */
 /*
  * various SMB requests. Most of the routines merely packs data into mbufs.
@@ -71,7 +70,7 @@ static struct smb_dialect smb_dialects[] = {
 	{-1,			NULL}
 };
 
-#define	SMB_DIALECT_MAX	(sizeof(smb_dialects) / sizeof(struct smb_dialect) - 2)
+#define	SMB_DIALECT_MAX	(NELEM(smb_dialects) - 2)
 
 static int
 smb_smb_nomux(struct smb_vc *vcp, struct smb_cred *scred, const char *name)

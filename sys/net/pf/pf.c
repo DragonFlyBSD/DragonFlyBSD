@@ -2111,8 +2111,7 @@ pf_step_into_anchor(int *depth, struct pf_ruleset **rs, int n,
 	(*r)->anchor->match = 0;
 	if (match)
 		*match = 0;
-	if (*depth >= sizeof(pf_anchor_stack) /
-	    sizeof(pf_anchor_stack[0])) {
+	if (*depth >= NELEM(pf_anchor_stack)) {
 		kprintf("pf_step_into_anchor: stack overflow\n");
 		*r = TAILQ_NEXT(*r, entries);
 		return;

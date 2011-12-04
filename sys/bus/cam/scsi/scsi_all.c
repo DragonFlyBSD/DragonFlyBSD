@@ -144,7 +144,7 @@ static struct scsi_op_quirk_entry scsi_op_quirk_table[] = {
 		 * feel free to change this quirk entry.
 		 */
 		{T_CDROM, SIP_MEDIA_REMOVABLE, "PLEXTOR", "CD-ROM PX*", "*"},
-		sizeof(plextor_cd_ops)/sizeof(struct op_table_entry),
+		NELEM(plextor_cd_ops),
 		plextor_cd_ops
 	}
 };
@@ -617,8 +617,7 @@ scsi_op_desc(u_int16_t opcode, struct scsi_inquiry_data *inq_data)
 
 	match = cam_quirkmatch((caddr_t)inq_data,
 			       (caddr_t)scsi_op_quirk_table,
-			       sizeof(scsi_op_quirk_table)/
-			       sizeof(*scsi_op_quirk_table),
+			       NELEM(scsi_op_quirk_table),
 			       sizeof(*scsi_op_quirk_table),
 			       scsi_inquiry_match);
 
@@ -727,7 +726,7 @@ static struct scsi_sense_quirk_entry sense_quirk_table[] = {
 		 */
 		{T_DIRECT, SIP_MEDIA_FIXED, "QUANTUM", "FIREBALL S*", "*"},
 		/*num_sense_keys*/0,
-		sizeof(quantum_fireball_entries)/sizeof(struct asc_table_entry),
+		NELEM(quantum_fireball_entries),
 		/*sense key entries*/NULL,
 		quantum_fireball_entries
 	},
@@ -738,7 +737,7 @@ static struct scsi_sense_quirk_entry sense_quirk_table[] = {
 		 */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "SONY", "SMO-*", "*"},
 		/*num_sense_keys*/0,
-		sizeof(sony_mo_entries)/sizeof(struct asc_table_entry),
+		NELEM(sony_mo_entries),
 		/*sense key entries*/NULL,
 		sony_mo_entries
 	}

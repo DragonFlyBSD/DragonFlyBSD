@@ -97,7 +97,7 @@ static const struct iffam gFamilies[] = {
 	{ AF_NATM,	NG_IFACE_HOOK_NATM	},
 	{ AF_NS,	NG_IFACE_HOOK_NS	},
 };
-#define NUM_FAMILIES		(sizeof(gFamilies) / sizeof(*gFamilies))
+#define NUM_FAMILIES		NELEM(gFamilies)
 
 /* Node private data */
 struct ng_iface_private {

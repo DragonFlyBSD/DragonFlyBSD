@@ -114,8 +114,7 @@ struct adw_pci_identity adw_pci_ident_table[] =
 #endif
 };
 
-static const int adw_num_pci_devs =
-	sizeof(adw_pci_ident_table) / sizeof(*adw_pci_ident_table);
+static const int adw_num_pci_devs = NELEM(adw_pci_ident_table);
 
 #define ADW_PCI_MAX_DMA_ADDR    (0xFFFFFFFFUL)
 #define ADW_PCI_MAX_DMA_COUNT   (0xFFFFFFFFUL)

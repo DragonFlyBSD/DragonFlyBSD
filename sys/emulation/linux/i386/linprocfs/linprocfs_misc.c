@@ -546,7 +546,7 @@ linprocfs_doprocstatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	ps = psbuf;
 
 	lwkt_gettoken(&p->p_token);
-	if (p->p_stat > sizeof state_str / sizeof *state_str)
+	if (p->p_stat > NELEM(state_str))
 		state = state_str[0];
 	else
 		state = state_str[(int)p->p_stat];

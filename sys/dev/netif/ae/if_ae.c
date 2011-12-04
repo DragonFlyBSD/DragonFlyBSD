@@ -213,8 +213,8 @@ struct {
 	STATS_ENTRY("truncated", "frames truncated due to Rx FIFO inderrun",
 	    rx_trunc)
 };
-#define AE_STATS_RX_LEN (sizeof(ae_stats_rx) / sizeof(*ae_stats_rx))
-#define AE_STATS_TX_LEN (sizeof(ae_stats_tx) / sizeof(*ae_stats_tx))
+#define AE_STATS_RX_LEN NELEM(ae_stats_rx)
+#define AE_STATS_TX_LEN NELEM(ae_stats_tx)
 
 static void
 ae_stop(struct ae_softc *sc)

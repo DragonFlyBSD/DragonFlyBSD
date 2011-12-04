@@ -410,7 +410,7 @@ static	stlpcibrd_t	stl_pcibrds[] = {
 	{ STL_PCINSVENDID, STL_PCINSDEVID, BRD_ECHPCI },
 };
 
-static int      stl_nrpcibrds = sizeof(stl_pcibrds) / sizeof(stlpcibrd_t);
+static int      stl_nrpcibrds = NELEM(stl_pcibrds);
 
 /*****************************************************************************/
 
@@ -702,7 +702,7 @@ static unsigned int	sc26198_baudtable[] = {
 	230400, 460800
 };
 
-#define	SC26198_NRBAUDS	(sizeof(sc26198_baudtable) / sizeof(unsigned int))
+#define	SC26198_NRBAUDS	NELEM(sc26198_baudtable)
 
 /*
  *      Define the maximum baud rate of the sc26198 devices.

@@ -468,8 +468,7 @@ static struct {
 	{ MOUSE_MODEL_GENERIC,
 	  0xc0, MOUSE_PS2_PACKETSIZE, NULL },
 };
-#define	GENERIC_MOUSE_ENTRY	\
-    ((sizeof(vendortype) / sizeof(*vendortype)) - 1)
+#define	GENERIC_MOUSE_ENTRY	(NELEM(vendortype) - 1)
 
 /* device driver declarateion */
 static device_method_t psm_methods[] = {

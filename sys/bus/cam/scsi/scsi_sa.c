@@ -1489,7 +1489,7 @@ saregister(struct cam_periph *periph, void *arg)
 	 */
 	match = cam_quirkmatch((caddr_t)&cgd->inq_data,
 			       (caddr_t)sa_quirk_table,
-			       sizeof(sa_quirk_table)/sizeof(*sa_quirk_table),
+			       NELEM(sa_quirk_table),
 			       sizeof(*sa_quirk_table), scsi_inquiry_match);
 
 	if (match != NULL) {

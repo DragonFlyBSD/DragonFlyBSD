@@ -620,8 +620,7 @@ static struct xpt_quirk_entry xpt_quirk_table[] =
 	},
 };
 
-static const int xpt_quirk_table_size =
-	sizeof(xpt_quirk_table) / sizeof(*xpt_quirk_table);
+static const int xpt_quirk_table_size = NELEM(xpt_quirk_table);
 
 typedef enum {
 	DM_RET_COPY		= 0x01,
@@ -6401,7 +6400,7 @@ xpt_find_quirk(struct cam_ed *device)
 
 	match = cam_quirkmatch((caddr_t)&device->inq_data,
 			       (caddr_t)xpt_quirk_table,
-			       sizeof(xpt_quirk_table)/sizeof(*xpt_quirk_table),
+			       NELEM(xpt_quirk_table),
 			       sizeof(*xpt_quirk_table), scsi_inquiry_match);
 
 	if (match == NULL)

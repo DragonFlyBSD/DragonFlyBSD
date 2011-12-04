@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/dev/isp/isp.c,v 1.41.2.23 2002/10/11 17:34:28 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp.c,v 1.5 2007/05/13 22:25:42 swildner Exp $ */
 /*
  * Machine and OS Independent (well, as best as possible)
  * code for the Qlogic ISP SCSI adapters.
@@ -5245,10 +5244,10 @@ isp_mboxcmd_qnw(struct ispsoftc *isp, mbreg_t *mbp, int nodelay)
 
 	if (IS_FC(isp)) {
 		mcp = mbpfc;
-		lim = (sizeof (mbpfc) / sizeof (mbpfc[0]));
+		lim = NELEM(mbpfc);
 	} else {
 		mcp = mbpscsi;
-		lim = (sizeof (mbpscsi) / sizeof (mbpscsi[0]));
+		lim = NELEM(mbpscsi);
 	}
 	opcode = mbp->param[0];
 	ibits = HIBYT(mcp[opcode]) & NMBOX_BMASK(isp);
@@ -5286,10 +5285,10 @@ isp_mboxcmd(struct ispsoftc *isp, mbreg_t *mbp, int logmask)
 
 	if (IS_FC(isp)) {
 		mcp = mbpfc;
-		lim = (sizeof (mbpfc) / sizeof (mbpfc[0]));
+		lim = NELEM(mbpfc);
 	} else {
 		mcp = mbpscsi;
-		lim = (sizeof (mbpscsi) / sizeof (mbpscsi[0]));
+		lim = NELEM(mbpscsi);
 	}
 
 	if ((opcode = mbp->param[0]) >= lim) {

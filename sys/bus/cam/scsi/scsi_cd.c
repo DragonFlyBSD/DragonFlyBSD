@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.44 2008/07/18 00:07:23 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -702,7 +701,7 @@ cdregister(struct cam_periph *periph, void *arg)
 	 */
 	match = cam_quirkmatch((caddr_t)&cgd->inq_data,
 			       (caddr_t)cd_quirk_table,
-			       sizeof(cd_quirk_table)/sizeof(*cd_quirk_table),
+			       NELEM(cd_quirk_table),
 			       sizeof(*cd_quirk_table), scsi_inquiry_match);
 
 	if (match != NULL)
@@ -1869,8 +1868,7 @@ cdgetpagesize(int page_num)
 {
 	int i;
 
-	for (i = 0; i < (sizeof(cd_page_size_table)/
-	    sizeof(cd_page_size_table[0])); i++) {
+	for (i = 0; i < NELEM(cd_page_size_table); i++) {
 		if (cd_page_size_table[i].page == page_num)
 			return (cd_page_size_table[i].page_size);
 	}

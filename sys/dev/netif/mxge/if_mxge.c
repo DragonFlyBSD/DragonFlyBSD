@@ -2862,9 +2862,7 @@ mxge_media_probe(mxge_softc_t *sc)
 	if (*ptr == 'R') {
 		/* -R is XFP */
 		mxge_media_types = mxge_xfp_media_types;
-		mxge_media_type_entries = 
-			sizeof (mxge_xfp_media_types) /
-			sizeof (mxge_xfp_media_types[0]);
+		mxge_media_type_entries = NELEM(mxge_xfp_media_types);
 		byte = MXGE_XFP_COMPLIANCE_BYTE;
 		cage_type = "XFP";
 	}
@@ -2872,9 +2870,7 @@ mxge_media_probe(mxge_softc_t *sc)
 	if (*ptr == 'S' || *(ptr +1) == 'S') {
 		/* -S or -2S is SFP+ */
 		mxge_media_types = mxge_sfp_media_types;
-		mxge_media_type_entries = 
-			sizeof (mxge_sfp_media_types) /
-			sizeof (mxge_sfp_media_types[0]);
+		mxge_media_type_entries = NELEM(mxge_sfp_media_types);
 		cage_type = "SFP+";
 		byte = 3;
 	}

@@ -274,8 +274,7 @@ static struct {
     },
 
 };
-#define METEOR_PIXFMT_TABLE_SIZE ( sizeof(meteor_pixfmt_table) / \
-				   sizeof(meteor_pixfmt_table[0]) )
+#define METEOR_PIXFMT_TABLE_SIZE NELEM(meteor_pixfmt_table)
 
 
 #define BSWAP (BT848_COLOR_CTL_BSWAP_ODD | BT848_COLOR_CTL_BSWAP_EVEN)

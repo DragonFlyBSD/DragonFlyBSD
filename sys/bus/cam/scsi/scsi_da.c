@@ -1176,7 +1176,7 @@ daregister(struct cam_periph *periph, void *arg)
 	 */
 	match = cam_quirkmatch((caddr_t)&cgd->inq_data,
 			       (caddr_t)da_quirk_table,
-			       sizeof(da_quirk_table)/sizeof(*da_quirk_table),
+			       NELEM(da_quirk_table),
 			       sizeof(*da_quirk_table), scsi_inquiry_match);
 
 	if (match != NULL)

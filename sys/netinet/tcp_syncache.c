@@ -69,7 +69,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.35 2008/11/22 11:03:35 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1388,7 +1387,7 @@ syncookie_generate(struct syncache *sc)
 			tcp_secret[idx].ts_secbits[i] = karc4random();
 		tcp_secret[idx].ts_expire = ticks + SYNCOOKIE_TIMEOUT;
 	}
-	for (data = sizeof(tcp_msstab) / sizeof(int) - 1; data > 0; data--)
+	for (data = NELEM(tcp_msstab) - 1; data > 0; data--)
 		if (tcp_msstab[data] <= sc->sc_peer_mss)
 			break;
 	data = (data << SYNCOOKIE_WNDBITS) | idx;

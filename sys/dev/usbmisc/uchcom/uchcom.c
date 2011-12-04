@@ -165,7 +165,7 @@ static const struct uchcom_divider_record dividers[] =
 	{    2941,    368,               93750, { 1,    0, 0 } },
 	{     367,      1,               11719, { 0,    0, 0 } },
 };
-#define NUM_DIVIDERS	(sizeof (dividers) / sizeof (dividers[0]))
+#define NUM_DIVIDERS	NELEM(dividers)
 
 static void	uchcom_get_status(void *, int, u_char *, u_char *);
 static void	uchcom_set(void *, int, int, int);

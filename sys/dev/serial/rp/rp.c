@@ -942,10 +942,10 @@ rp_releaseresource(CONTROLLER_t *ctlp)
 
 	if (ctlp->rp != NULL) {
 		crit_enter();
-		for (i = 0 ; i < sizeof(p_rp_addr) / sizeof(*p_rp_addr) ; i++)
+		for (i = 0 ; i < NELEM(p_rp_addr) ; i++)
 			if (p_rp_addr[i] == ctlp->rp)
 				p_rp_addr[i] = NULL;
-		for (i = 0 ; i < sizeof(p_rp_table) / sizeof(*p_rp_table) ; i++)
+		for (i = 0 ; i < NELEM(p_rp_table) ; i++)
 			if (p_rp_table[i] == ctlp->rp)
 				p_rp_table[i] = NULL;
 		crit_exit();

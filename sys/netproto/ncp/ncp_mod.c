@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_mod.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.11 2006/12/22 23:57:54 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -461,7 +460,7 @@ static struct sysent newent[] = {
 	{3,	(sy_call_t*)sys_sncp_request}
 };
 
-#define	SC_SIZE	sizeof(newent)/sizeof(struct sysent)
+#define	SC_SIZE	NELEM(newent)
 /*
  * Miscellaneous modules must have their own save areas...
  */
