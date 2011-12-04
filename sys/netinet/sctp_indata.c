@@ -3821,7 +3821,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 	/* always set this up to cum-ack */
 	asoc->this_sack_highest_gap = last_tsn;
 
-	if (((num_seg * sizeof (sizeof(struct sctp_gap_ack_block))) + sizeof(struct sctp_sack_chunk)) > sack_length) {
+	if (((num_seg * sizeof(struct sctp_gap_ack_block)) + sizeof(struct sctp_sack_chunk)) > sack_length) {
 		/* skip corrupt segments */
 		strike_enabled = 0;
 		goto skip_segments;
