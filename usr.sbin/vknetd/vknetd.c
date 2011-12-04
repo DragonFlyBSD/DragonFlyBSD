@@ -48,12 +48,16 @@ static void *vknet_io(void *arg);
 static int vknet_connect(const char *pathName);
 static void vknet_monitor(int net_fd);
 static void usage(void);
+static void writepid(void);
+static void cleanup(int);
 
 pthread_mutex_t BridgeMutex;
 
 int SecureOpt = 1;
 int DebugOpt = 0;
 int SetAddrOpt = 0;
+const char *pidfile = "/var/run/vknetd.pid";
+
 struct in_addr NetAddress;
 struct in_addr NetMask;
 
@@ -69,7 +73,7 @@ main(int ac, char **av)
 	ioinfo_t tap_info;
 	pthread_t dummy_td;
 
-	while ((c = getopt(ac, av, "b:cdp:t:U")) != -1) {
+	while ((c = getopt(ac, av, "b:cdp:i:t:U")) != -1) {
 		switch (c) {
 		case 'U':
 			SecureOpt = 0;
@@ -82,6 +86,9 @@ main(int ac, char **av)
 			break;
 		case 'p':
 			pathName = optarg;
+			break;
+		case 'i':
+			pidfile = optarg;
 			break;
 		case 't':
 			tapName = optarg;
@@ -147,6 +154,12 @@ main(int ac, char **av)
 		perror("listener: ");
 		exit(1);
 	}
+
+	writepid();
+
+	signal(SIGINT, cleanup);
+	signal(SIGHUP, cleanup);
+	signal(SIGTERM, cleanup);
 
 	/*
 	 * Now make us a demon and start the threads going.
@@ -467,11 +480,32 @@ vknet_monitor(int net_fd)
 /*
  * Misc
  */
+static void
+writepid(void)
+{
+	FILE *pf;
+
+	if ((pf = fopen(pidfile, "w+")) == NULL)
+		errx(1, "Failed to create pidfile %s", pidfile);
+
+	if ((fprintf(pf, "%d\n", getpid())) < 1)
+		err(1, "fprintf");
+
+	fclose(pf);
+}
+
+static void
+cleanup(int __unused sig)
+{
+	if (pidfile)
+		unlink(pidfile);
+}
+
 static
 void
 usage(void)
 {
-	fprintf(stderr, "usage: vknet [-cdU] [-b bridgeN] [-p socket_path] [-t tapN] [address/cidrbits]\n");
+	fprintf(stderr, "usage: vknet [-cdU] [-b bridgeN] [-p socket_path] [-i pidfile] [-t tapN] [address/cidrbits]\n");
 	fprintf(stderr, "address/cidrbits must be specified in default secure mode.\n");
 	exit(1);
 }

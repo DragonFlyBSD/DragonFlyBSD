@@ -33,7 +33,7 @@
 .\" 
 .\" $DragonFly: src/usr.sbin/vknetd/vknetd.8,v 1.3 2008/05/31 12:04:15 swildner Exp $
 .\"
-.Dd May 21, 2009
+.Dd Dec 5, 2011
 .Dt VKNETD 8
 .Os
 .Sh NAME
@@ -44,6 +44,7 @@
 .Op Fl cdU
 .Op Fl b Ar bridgeN
 .Op Fl p Ar socket_path
+.Op Fl i Ar pidfile
 .Op Fl t Ar tapN
 .Op Ar address Ns / Ns Ar cidrbits
 .Sh DESCRIPTION
@@ -111,6 +112,11 @@ will be bridged into the specified bridge.
 Specify where to create the unix domain socket in the filesystem space.
 By default the socket is called
 .Pa /var/run/vknet .
+.It Fl i Ar pidfile
+When specified, write process id to
+.Ar pidfile
+instead of the default
+.Pa /var/run/vknetd.pid .
 .It Fl t Ar tapN
 Specify a particular
 .Xr tap 4

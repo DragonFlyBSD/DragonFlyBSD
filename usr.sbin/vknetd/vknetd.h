@@ -47,6 +47,7 @@
 #include <net/ethernet.h>
 #include <net/bridge/if_bridgevar.h>
 #include <stdio.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
@@ -54,6 +55,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <assert.h>
+#include <err.h>
 #include <grp.h>
 
 #include <pthread.h>
