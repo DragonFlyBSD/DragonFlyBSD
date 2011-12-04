@@ -128,7 +128,7 @@ struct protosw inetsw[] = {
 	.pr_type = SOCK_DGRAM,
 	.pr_domain = &inetdomain,
 	.pr_protocol = IPPROTO_UDP,
-	.pr_flags = PR_ATOMIC|PR_ADDR|PR_MPSAFE,
+	.pr_flags = PR_ATOMIC|PR_ADDR|PR_MPSAFE|PR_ASYNC_SEND,
 
 	.pr_input = udp_input,
 	.pr_output = NULL,

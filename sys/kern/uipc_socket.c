@@ -100,6 +100,7 @@
 
 extern int tcp_sosnd_agglim;
 extern int tcp_sosnd_async;
+extern int udp_sosnd_async;
 
 #ifdef INET
 static int	 do_setopt_accept_filter(struct socket *so, struct sockopt *sopt);
@@ -939,7 +940,17 @@ restart:
 	if (flags & MSG_DONTROUTE)
 		pru_flags |= PRUS_DONTROUTE;
 
-	error = so_pru_send(so, pru_flags, top, addr, NULL, td);
+	/*
+	 * XXX
+	 * 'addr' could be free by the caller, so if it is ever supplied
+	 * we can't do asynchronized pru_send
+	 */
+	if (addr == NULL && udp_sosnd_async && (flags & MSG_SYNC) == 0) {
+		so_pru_send_async(so, pru_flags, top, addr, NULL, td);
+		error = 0;
+	} else {
+		error = so_pru_send(so, pru_flags, top, addr, NULL, td);
+	}
 	top = NULL;		/* sent or freed in lower layer */
 
 release:

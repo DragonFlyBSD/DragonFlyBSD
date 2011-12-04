@@ -145,6 +145,10 @@ static int	strict_mcast_mship = 1;
 SYSCTL_INT(_net_inet_udp, OID_AUTO, strict_mcast_mship, CTLFLAG_RW,
 	&strict_mcast_mship, 0, "Only send multicast to member sockets");
 
+int	udp_sosnd_async = 1;
+SYSCTL_INT(_net_inet_udp, OID_AUTO, sosnd_async, CTLFLAG_RW,
+	&udp_sosnd_async, 0, "UDP asynchronized pru_send");
+
 struct	inpcbinfo udbinfo;
 
 static struct netisr_barrier *udbinfo_br;
@@ -1259,7 +1263,9 @@ udp_send(netmsg_t msg)
 		m_freem(m);
 		error = EINVAL;
 	}
-	lwkt_replymsg(&msg->send.base.lmsg, error);
+
+	if ((pru_flags & PRUS_NOREPLY) == 0)
+		lwkt_replymsg(&msg->send.base.lmsg, error);
 }
 
 void
