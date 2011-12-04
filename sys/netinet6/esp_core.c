@@ -403,7 +403,7 @@ esp_cbc_mature(struct secasvar *sav)
 	algo = esp_algorithm_lookup(sav->alg_enc);
 	if (!algo) {
 		ipseclog((LOG_ERR,
-		    "esp_cbc_mature unsupported algorithm %d\n",
+		    "esp_cbc_mature: unsupported algorithm %d\n",
 		    sav->alg_enc));
 		return 1;
 	}
