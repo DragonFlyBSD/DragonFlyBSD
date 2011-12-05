@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.29 2008/08/01 23:11:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -447,10 +446,6 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 	 * Read the elf header from the file.
 	 */
 	hdr = kmalloc(sizeof(*hdr), M_LINKER, M_WAITOK);
-	if (hdr == NULL) {
-		error = ENOMEM;
-		goto out;
-	}
 	error = vn_rdwr(UIO_READ, vp, (void *)hdr, sizeof(*hdr), 0,
 			UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
 	if (error)
@@ -506,10 +501,6 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 		goto out;
 	}
 	shdr = kmalloc(nbytes, M_LINKER, M_WAITOK);
-	if (shdr == NULL) {
-		error = ENOMEM;
-		goto out;
-	}
 	ef->e_shdr = shdr;
 	error = vn_rdwr(UIO_READ, vp, (caddr_t) shdr, nbytes, hdr->e_shoff,
 			UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);

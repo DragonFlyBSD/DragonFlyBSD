@@ -156,9 +156,6 @@ msginit(void *dummy)
 		panic("msginfo.msgseg > 32767");
 	}
 
-	if (msgmaps == NULL)
-		panic("msgmaps is NULL");
-
 	for (i = 0; i < msginfo.msgseg; i++) {
 		if (i > 0)
 			msgmaps[i-1].next = i;
@@ -167,9 +164,6 @@ msginit(void *dummy)
 	free_msgmaps = 0;
 	nfree_msgmaps = msginfo.msgseg;
 
-	if (msghdrs == NULL)
-		panic("msghdrs is NULL");
-
 	for (i = 0; i < msginfo.msgtql; i++) {
 		msghdrs[i].msg_type = 0;
 		if (i > 0)
@@ -177,9 +171,6 @@ msginit(void *dummy)
 		msghdrs[i].msg_next = NULL;
     	}
 	free_msghdrs = &msghdrs[0];
-
-	if (msqids == NULL)
-		panic("msqids is NULL");
 
 	for (i = 0; i < msginfo.msgmni; i++) {
 		msqids[i].msg_qbytes = 0;	/* implies entry is available */

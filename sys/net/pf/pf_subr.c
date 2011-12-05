@@ -71,9 +71,6 @@ hook_establish(struct hook_desc_head *head, int tail, void (*fn)(void *),
 	struct hook_desc *hdp;
 
 	hdp = kmalloc(sizeof (*hdp), M_DEVBUF, M_WAITOK);
-	if (hdp == NULL)
-		return (NULL);
-
 	hdp->hd_fn = fn;
 	hdp->hd_arg = arg;
 	if (tail)

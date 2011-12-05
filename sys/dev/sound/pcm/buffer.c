@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/buffer.c,v 1.25.2.3 2007/04/26 08:21:43 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.11 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -182,8 +181,6 @@ sndbuf_resize(struct snd_dbuf *b, unsigned int blkcnt, unsigned int blksz)
 
 	chn_unlock(b->channel);
 	tmpbuf = kmalloc(blkcnt * blksz, M_DEVBUF, M_WAITOK);
-	if (tmpbuf == NULL)
-		return ENOMEM;
 	chn_lock(b->channel);
 	b->blkcnt = blkcnt;
 	b->blksz = blksz;

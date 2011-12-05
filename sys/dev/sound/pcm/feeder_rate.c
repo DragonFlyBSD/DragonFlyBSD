@@ -63,7 +63,6 @@
  * testing revisions.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/feeder_rate.c,v 1.11.2.2 2006/01/29 02:27:28 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/feeder_rate.c,v 1.5 2007/01/04 21:47:03 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -510,18 +509,12 @@ feed_rate_init(struct pcm_feeder *f)
 	struct feed_rate_info *info;
 
 	info = kmalloc(sizeof(*info), M_RATEFEEDER, M_WAITOK | M_ZERO);
-	if (info == NULL)
-		return ENOMEM;
 	/*
 	 * bufsz = sample from last cycle + conversion space
 	 */
 	info->bufsz = 2 + feeder_rate_buffersize;
 	info->buffer = kmalloc(sizeof(*info->buffer) * info->bufsz,
 					M_RATEFEEDER, M_WAITOK | M_ZERO);
-	if (info->buffer == NULL) {
-		kfree(info, M_RATEFEEDER);
-		return ENOMEM;
-	}
 	info->rsrc = DSP_DEFAULT_SPEED;
 	info->rdst = DSP_DEFAULT_SPEED;
 	f->data = info;

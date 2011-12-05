@@ -444,8 +444,6 @@ tagname2tag(struct pf_tags *head, char *tagname)
 
 	/* allocate and fill new struct pf_tagname */
 	tag = kmalloc(sizeof(*tag), M_TEMP, M_WAITOK);
-	if (tag == NULL)
-		return (0);
 	strlcpy(tag->name, tagname, sizeof(tag->name));
 	tag->tag = new_tagid;
 	tag->ref++;
@@ -1135,11 +1133,7 @@ pfioctl(struct dev_ioctl_args *ap)
 			error = EBUSY;
 			break;
 		}
-		rule = kmalloc(sizeof(struct pf_rule), M_PFRULEPL,M_WAITOK);
-		if (rule == NULL) {
-			error = ENOMEM;
-			break;
-		}
+		rule = kmalloc(sizeof(struct pf_rule), M_PFRULEPL, M_WAITOK);
 		bcopy(&pr->rule, rule, sizeof(struct pf_rule));
 		rule->cuid = ap->a_cred->cr_ruid;
 		rule->cpid = 0;

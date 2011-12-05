@@ -396,8 +396,6 @@ _prop_object_copyin(const struct plistref *pref, const prop_type_t type,
 	 * Allow malloc to fail in case pmap would be exhausted.
 	 */
 	buf = kmalloc(pref->pref_len + 1, M_TEMP, M_WAITOK);
-	if (buf == NULL)
-		return (ENOMEM);
 	error = copyin(pref->pref_plist, buf, pref->pref_len);
 	if (error) {
 		kfree(buf, M_TEMP);

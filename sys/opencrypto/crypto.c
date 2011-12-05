@@ -220,11 +220,6 @@ crypto_init(void)
 	crypto_drivers_num = CRYPTO_DRIVERS_INITIAL;
 	crypto_drivers = kmalloc(crypto_drivers_num * sizeof(struct cryptocap),
 				 M_CRYPTO_DATA, M_WAITOK | M_ZERO);
-	if (crypto_drivers == NULL) {
-		kprintf("crypto_init: cannot malloc driver table\n");
-		error = ENOMEM;
-		goto bad;
-	}
 
 	for (n = 0; n < ncpus; ++n) {
 		tdinfo = &tdinfo_array[n];
@@ -523,11 +518,6 @@ crypto_get_driverid(device_t dev, int flags)
 		newdrv = kmalloc(2 * crypto_drivers_num *
 				 sizeof(struct cryptocap),
 				 M_CRYPTO_DATA, M_WAITOK|M_ZERO);
-		if (newdrv == NULL) {
-			CRYPTO_DRIVER_UNLOCK();
-			kprintf("crypto: no space to expand driver table!\n");
-			return -1;
-		}
 
 		bcopy(crypto_drivers, newdrv,
 		    crypto_drivers_num * sizeof(struct cryptocap));

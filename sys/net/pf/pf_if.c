@@ -620,11 +620,6 @@ pfi_address_add(struct sockaddr *sa, int af, int net)
 			return;
 		}
 		p = kmalloc(new_max * sizeof(*pfi_buffer), PFI_MTYPE, M_WAITOK);
-		if (p == NULL) {
-			kprintf("pfi_address_add: no memory to grow buffer "
-			    "(%d/%d)\n", pfi_buffer_cnt, PFI_BUFFER_MAX);
-			return;
-		}
 		memcpy(pfi_buffer, p, pfi_buffer_cnt * sizeof(*pfi_buffer));
 		/* no need to zero buffer */
 		kfree(pfi_buffer, PFI_MTYPE);

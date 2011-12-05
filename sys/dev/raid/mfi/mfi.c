@@ -2371,9 +2371,6 @@ mfi_user_command(struct mfi_softc *sc, struct mfi_ioc_passthru *ioc)
 
 	if (ioc->buf_size > 0) {
 		ioc_buf = kmalloc(ioc->buf_size, M_MFIBUF, M_WAITOK);
-		if (ioc_buf == NULL) {
-			return (ENOMEM);
-		}
 		error = copyin(ioc->buf, ioc_buf, ioc->buf_size);
 		if (error) {
 			device_printf(sc->mfi_dev, "failed to copyin\n");

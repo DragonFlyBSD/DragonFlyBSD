@@ -271,11 +271,6 @@ sgregister(struct cam_periph *periph, void *arg)
 	}
 
 	softc = kmalloc(sizeof(*softc), M_DEVBUF, M_WAITOK | M_ZERO);
-	if (softc == NULL) {
-		kprintf("sgregister: Unable to allocate softc\n");
-		return (CAM_REQ_CMP_ERR);
-	}
-
 	softc->state = SG_STATE_NORMAL;
 	softc->pd_type = SID_TYPE(&cgd->inq_data);
 	softc->sg_timeout = SG_DEFAULT_TIMEOUT / SG_DEFAULT_HZ * hz;

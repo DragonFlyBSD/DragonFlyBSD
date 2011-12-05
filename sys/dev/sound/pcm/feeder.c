@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/feeder.c,v 1.33.2.3 2006/03/07 15:51:19 jhb Exp $
- * $DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.6 2007/01/04 21:47:03 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -63,12 +62,6 @@ feeder_register(void *p)
 
 		SLIST_INIT(&feedertab);
 		fte = kmalloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
-		if (fte == NULL) {
-			kprintf("can't allocate memory for root feeder: %s\n",
-			    fc->name);
-
-			return;
-		}
 		fte->feederclass = fc;
 		fte->desc = NULL;
 		fte->idx = feedercnt;
@@ -88,11 +81,6 @@ feeder_register(void *p)
 	while ((feedercnt < MAXFEEDERS) && (fc->desc[i].type > 0)) {
 		/* kprintf("adding feeder %s, %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out); */
 		fte = kmalloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
-		if (fte == NULL) {
-			kprintf("can't allocate memory for feeder '%s', %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out);
-
-			return;
-		}
 		fte->feederclass = fc;
 		fte->desc = &fc->desc[i];
 		fte->idx = feedercnt;
