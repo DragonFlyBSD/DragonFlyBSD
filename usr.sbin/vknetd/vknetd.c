@@ -155,17 +155,18 @@ main(int ac, char **av)
 		exit(1);
 	}
 
+	/*
+	 * Now make us a demon and start the threads going.
+	 */
+	if (DebugOpt == 0)
+		daemon(1, 0);
+
 	writepid();
 
 	signal(SIGINT, cleanup);
 	signal(SIGHUP, cleanup);
 	signal(SIGTERM, cleanup);
 
-	/*
-	 * Now make us a demon and start the threads going.
-	 */
-	if (DebugOpt == 0)
-		daemon(1, 0);
 	pthread_mutex_init(&BridgeMutex, NULL);
 	pthread_create(&dummy_td, NULL, vknet_io, tap_info);
 	vknet_acceptor(net_fd);
