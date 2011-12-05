@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.44 2008/09/01 19:39:44 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -441,9 +440,7 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
 
     KLD_DPF(FILE, ("linker_make_file: new file, filename=%s\n", filename));
     lockmgr(&lock, LK_EXCLUSIVE);
-    lf = kmalloc(sizeof(struct linker_file), M_LINKER, M_WAITOK);
-    bzero(lf, sizeof(*lf));
-
+    lf = kmalloc(sizeof(struct linker_file), M_LINKER, M_WAITOK | M_ZERO);
     lf->refs = 1;
     lf->userrefs = 0;
     lf->flags = 0;

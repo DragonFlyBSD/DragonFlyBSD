@@ -78,10 +78,7 @@ _alloc_safe_mem(size_t req_sz, const char *file, int line)
 
 	/* only shift, to make sure things (TM) keep aligned */
 	alloc_sz = req_sz;
-	mem = kmalloc(alloc_sz << 2, M_SAFEMEM, M_WAITOK);
-
-	bzero(mem, alloc_sz << 2);
-
+	mem = kmalloc(alloc_sz << 2, M_SAFEMEM, M_WAITOK | M_ZERO);
 	user_mem = mem + alloc_sz;
 	hdr = (struct safe_mem_hdr *)(user_mem - sizeof(*hdr));
 	tail = (struct safe_mem_tail *)(user_mem + alloc_sz);
