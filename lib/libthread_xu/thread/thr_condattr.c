@@ -28,8 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libthread_xu/thread/thr_condattr.c,v 1.6 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -96,7 +94,7 @@ _pthread_condattr_setclock(pthread_condattr_t *attr,
 {
 	if (attr == NULL || *attr == NULL)
 		return (EINVAL);
-	if (clock_id != CLOCK_REALTIME ||
+	if (clock_id != CLOCK_REALTIME &&
 	    clock_id != CLOCK_MONOTONIC)
 		return (EINVAL);
 	(*attr)->c_clockid = clock_id;
