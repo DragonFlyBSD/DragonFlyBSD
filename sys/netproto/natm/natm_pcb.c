@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/netnatm/natm_pcb.c,v 1.6.6.1 2000/08/03 18:56:28 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm_pcb.c,v 1.9 2008/01/05 14:02:40 swildner Exp $ */
 /*	$NetBSD: natm_pcb.c,v 1.4 1996/11/09 03:26:27 chuck Exp $	*/
 
 /*
@@ -63,7 +62,7 @@ npcb_alloc(int wait)
 {
   struct natmpcb *npcb;
 
-  MALLOC(npcb, struct natmpcb *, sizeof(*npcb), M_PCB, wait | M_ZERO);
+  npcb = kmalloc(sizeof(*npcb), M_PCB, wait | M_ZERO);
 
 #ifdef DIAGNOSTIC
   if (wait == M_WAITOK && npcb == NULL) panic("npcb_alloc: MALLOC didn't wait");
@@ -92,7 +91,7 @@ npcb_free(struct natmpcb *npcb, int op)
     if (npcb->npcb_inq) {
       npcb->npcb_flags = NPCB_DRAIN;	/* flag for distruction */
     } else {
-      FREE(npcb, M_PCB);		/* kill it! */
+      kfree(npcb, M_PCB);		/* kill it! */
     }
   }
 

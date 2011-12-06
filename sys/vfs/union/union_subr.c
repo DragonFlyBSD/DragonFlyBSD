@@ -36,7 +36,6 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.28 2007/05/06 19:23:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -541,8 +540,7 @@ loop:
 		goto out;
 	}
 
-	MALLOC((*vpp)->v_data, void *, sizeof(struct union_node),
-		M_TEMP, M_WAITOK);
+	(*vpp)->v_data = kmalloc(sizeof(struct union_node), M_TEMP, M_WAITOK);
 
 	vsetflags(*vpp, vflag);
 	if (uppervp)

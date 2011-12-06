@@ -37,7 +37,6 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.18 2007/08/25 23:27:02 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -144,7 +143,7 @@ loop:
 	 * XXX this may not matter anymore since getnewvnode now returns
 	 * a VX locked vnode.
 	 */
-	MALLOC(pfs, struct pfsnode *, sizeof(struct pfsnode), M_TEMP, M_WAITOK);
+	pfs = kmalloc(sizeof(struct pfsnode), M_TEMP, M_WAITOK);
 
 	error = getnewvnode(VT_PROCFS, mp, vpp, 0, 0);
 	if (error) {

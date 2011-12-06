@@ -126,8 +126,7 @@ pfsync_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 
 	lwkt_gettoken(&pf_token);
 
-	MALLOC(sc, struct pfsync_softc *, sizeof(*sc), M_PFSYNC,
-	    M_WAITOK|M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_PFSYNC, M_WAITOK | M_ZERO);
 	pfsync_sync_ok = 1;
 	sc->sc_mbuf = NULL;
 	sc->sc_mbuf_net = NULL;

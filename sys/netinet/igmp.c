@@ -36,7 +36,6 @@
  *
  *	@(#)igmp.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp.c,v 1.29.2.2 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/netinet/igmp.c,v 1.14 2008/06/08 08:38:05 sephe Exp $
  */
 
 /*
@@ -137,7 +136,7 @@ find_rti(struct ifnet *ifp)
 		}
 		rti = rti->rti_next;
 	}
-	MALLOC(rti, struct router_info *, sizeof *rti, M_IGMP, M_INTWAIT);
+	rti = kmalloc(sizeof *rti, M_IGMP, M_INTWAIT);
 	rti->rti_ifp = ifp;
 	rti->rti_type = IGMP_V2_ROUTER;
 	rti->rti_time = 0;

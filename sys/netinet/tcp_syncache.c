@@ -312,9 +312,8 @@ syncache_init(void)
 
 		syncache_percpu = &tcp_syncache_percpu[cpu];
 		/* Allocate the hash table. */
-		MALLOC(syncache_percpu->hashbase, struct syncache_head *,
-		    tcp_syncache.hashsize * sizeof(struct syncache_head),
-		    M_SYNCACHE, M_WAITOK);
+		syncache_percpu->hashbase = kmalloc(tcp_syncache.hashsize * sizeof(struct syncache_head),
+						    M_SYNCACHE, M_WAITOK);
 
 		/* Initialize the hash buckets. */
 		for (i = 0; i < tcp_syncache.hashsize; i++) {

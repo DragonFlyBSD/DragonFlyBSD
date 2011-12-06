@@ -65,7 +65,6 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.68 2008/08/22 09:14:17 sephe Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -309,8 +308,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	}
 
 	/* Allocate a new queue entry. */
-	MALLOC(te, struct tseg_qent *, sizeof(struct tseg_qent), M_TSEGQ,
-	       M_INTWAIT | M_NULLOK);
+	te = kmalloc(sizeof(struct tseg_qent), M_TSEGQ, M_INTWAIT | M_NULLOK);
 	if (te == NULL) {
 		tcpstat.tcps_rcvmemdrop++;
 		m_freem(m);

@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.20 2007/05/18 17:05:12 dillon Exp $
  *
  * Low level socket routines
  */
@@ -135,7 +134,7 @@ ncp_getsockname(struct socket *so, caddr_t asa, int *alen) {
 		*alen=len;
 	}
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	return (error);
 }
 #endif
@@ -365,7 +364,7 @@ ncp_watchdog(struct ncp_conn *conn) {
 		break;
 	}
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	return;
 }
 #endif /* IPX */

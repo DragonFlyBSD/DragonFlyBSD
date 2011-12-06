@@ -37,7 +37,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_vjc.c,v 1.9.2.5 2002/07/02 23:44:03 archie Exp $
- * $DragonFly: src/sys/netgraph/vjc/ng_vjc.c,v 1.8 2008/01/05 14:02:40 swildner Exp $
  * $Whistle: ng_vjc.c,v 1.17 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -247,13 +246,13 @@ ng_vjc_constructor(node_p *nodep)
 	int error;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&ng_vjc_typestruct, nodep))) {
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 	(*nodep)->private = priv;
@@ -395,10 +394,10 @@ ng_vjc_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 
 done:
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -552,7 +551,7 @@ ng_vjc_rmnode(node_p node)
 	ng_cutlinks(node);
 	ng_unname(node);
 	bzero(priv, sizeof(*priv));
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	node->private = NULL;
 	ng_unref(node);
 	return (0);

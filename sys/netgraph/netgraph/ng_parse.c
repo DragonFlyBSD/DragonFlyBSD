@@ -714,7 +714,7 @@ ng_string_parse(const struct ng_parse_type *type,
 	*off += len;
 	len = strlen(sval) + 1;
 	bcopy(sval, buf, len);
-	FREE(sval, M_NETGRAPH);
+	kfree(sval, M_NETGRAPH);
 	*buflen = len;
 	return (0);
 }
@@ -730,7 +730,7 @@ ng_string_unparse(const struct ng_parse_type *type,
 		return (ENOMEM);
 	NG_PARSE_APPEND("%s", s);
 	*off += strlen(raw) + 1;
-	FREE(s, M_NETGRAPH);
+	kfree(s, M_NETGRAPH);
 	return (0);
 }
 
@@ -776,7 +776,7 @@ ng_fixedstring_parse(const struct ng_parse_type *type,
 	*off += len;
 	len = strlen(sval) + 1;
 	bcopy(sval, buf, len);
-	FREE(sval, M_NETGRAPH);
+	kfree(sval, M_NETGRAPH);
 	bzero(buf + len, fi->bufSize - len);
 	*buflen = fi->bufSize;
 	return (0);
@@ -957,17 +957,17 @@ ng_bytearray_parse(const struct ng_parse_type *type,
 
 		arraylen = (*getLength)(type, start, buf);
 		if (arraylen > *buflen) {
-			FREE(str, M_NETGRAPH);
+			kfree(str, M_NETGRAPH);
 			return (ERANGE);
 		}
 		slen = strlen(str) + 1;
 		if (slen > arraylen) {
-			FREE(str, M_NETGRAPH);
+			kfree(str, M_NETGRAPH);
 			return (E2BIG);
 		}
 		bcopy(str, buf, slen);
 		bzero(buf + slen, arraylen - slen);
-		FREE(str, M_NETGRAPH);
+		kfree(str, M_NETGRAPH);
 		*off += toklen;
 		*buflen = arraylen;
 		return (0);
@@ -1060,7 +1060,7 @@ ng_parse_composite(const struct ng_parse_type *type, const char *s,
 	int align, len, blen, error = 0;
 
 	/* Initialize */
-	MALLOC(foff, int *, num * sizeof(*foff), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	foff = kmalloc(num * sizeof(*foff), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (foff == NULL) {
 		error = ENOMEM;
 		goto done;
@@ -1217,7 +1217,7 @@ gotIndex:
 	*buflen = blen;
 done:
 	if (foff != NULL)
-		FREE(foff, M_NETGRAPH);
+		kfree(foff, M_NETGRAPH);
 	return (error);
 }
 
@@ -1237,7 +1237,7 @@ ng_unparse_composite(const struct ng_parse_type *type, const u_char *data,
 	u_char *workBuf;
 
 	/* Get workspace for checking default values */
-	MALLOC(workBuf, u_char *, workSize, M_NETGRAPH, M_NOWAIT);
+	workBuf = kmalloc(workSize, M_NETGRAPH, M_NOWAIT);
 	if (workBuf == NULL)
 		return (ENOMEM);
 
@@ -1288,14 +1288,14 @@ ng_unparse_composite(const struct ng_parse_type *type, const u_char *data,
 		/* Print value */
 		if ((error = INVOKE(etype, unparse)
 		    (etype, data, off, cbuf, cbuflen)) != 0) {
-			FREE(workBuf, M_NETGRAPH);
+			kfree(workBuf, M_NETGRAPH);
 			return (error);
 		}
 		cbuflen -= strlen(cbuf);
 		cbuf += strlen(cbuf);
 		didOne = 1;
 	}
-	FREE(workBuf, M_NETGRAPH);
+	kfree(workBuf, M_NETGRAPH);
 
 	/* Closing brace/bracket */
 	NG_PARSE_APPEND("%s%c",
@@ -1529,7 +1529,7 @@ ng_parse_get_token(const char *s, int *startp, int *lenp)
 	case '"':
 		if ((t = ng_get_string_token(s, startp, lenp)) == NULL)
 			return T_ERROR;
-		FREE(t, M_NETGRAPH);
+		kfree(t, M_NETGRAPH);
 		return T_STRING;
 	default:
 		for (i = *startp + 1; s[i] != '\0' && !isspace(s[i])
@@ -1556,7 +1556,7 @@ ng_get_string_token(const char *s, int *startp, int *lenp)
 	start = *startp;
 	if (s[*startp] != '"')
 		return (NULL);
-	MALLOC(cbuf, char *, strlen(s + start), M_NETGRAPH, M_NOWAIT);
+	cbuf = kmalloc(strlen(s + start), M_NETGRAPH, M_NOWAIT);
 	if (cbuf == NULL)
 		return (NULL);
 	strcpy(cbuf, s + start + 1);
@@ -1634,7 +1634,7 @@ ng_encode_string(const char *raw)
 	char *cbuf;
 	int off = 0;
 
-	MALLOC(cbuf, char *, strlen(raw) * 4 + 3, M_NETGRAPH, M_NOWAIT);
+	cbuf = kmalloc(strlen(raw) * 4 + 3, M_NETGRAPH, M_NOWAIT);
 	if (cbuf == NULL)
 		return (NULL);
 	cbuf[off++] = '"';

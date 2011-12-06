@@ -1484,7 +1484,7 @@ sctp_iterator_timer(struct sctp_iterator *it)
 		if (it->function_atend != NULL) {
 			(*it->function_atend)(it->pointer, it->val);
 		}
-		FREE(it, M_PCB);
+		kfree(it, M_PCB);
 		return;
 	}
  select_a_new_ep:

@@ -780,7 +780,7 @@ haderror:
 		vfs_unbusy(mp);
 		if (didalloc)
 			kfree(mp, M_MOUNT);
-		FREE(nam, M_SONAME);
+		kfree(nam, M_SONAME);
 		return (error);
 	}
 	*mpp = mp;
@@ -1034,7 +1034,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	if (mp->mnt_flag & MNT_UPDATE) {
 		nmp = VFSTONFS(mp);
 		/* update paths, file handles, etc, here	XXX */
-		FREE(nam, M_SONAME);
+		kfree(nam, M_SONAME);
 		return (0);
 	} else {
 		nmp = objcache_get(nfsmount_objcache, M_WAITOK);
@@ -1264,7 +1264,7 @@ nfs_free_mount(struct nfsmount *nmp)
 		nmp->nm_cred = NULL;
 	}
 	if (nmp->nm_nam) {
-		FREE(nmp->nm_nam, M_SONAME);
+		kfree(nmp->nm_nam, M_SONAME);
 		nmp->nm_nam = NULL;
 	}
 	objcache_put(nfsmount_objcache, nmp);

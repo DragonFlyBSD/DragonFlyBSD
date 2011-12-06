@@ -36,7 +36,6 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.39 2007/11/20 21:03:50 dillon Exp $
  */
 
 /*
@@ -133,12 +132,11 @@ portal_lookup(struct vop_old_lookup_args *ap)
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if MALLOC should block.
 	 */
-	MALLOC(pt, struct portalnode *, sizeof(struct portalnode),
-		M_TEMP, M_WAITOK);
+	pt = kmalloc(sizeof(struct portalnode), M_TEMP, M_WAITOK);
 
 	error = getnewvnode(VT_PORTAL, dvp->v_mount, &fvp, 0, 0);
 	if (error) {
-		FREE(pt, M_TEMP);
+		kfree(pt, M_TEMP);
 		goto bad;
 	}
 	fvp->v_type = VREG;
@@ -537,7 +535,7 @@ portal_reclaim(struct vop_reclaim_args *ap)
 		kfree((caddr_t) pt->pt_arg, M_TEMP);
 		pt->pt_arg = 0;
 	}
-	FREE(ap->a_vp->v_data, M_TEMP);
+	kfree(ap->a_vp->v_data, M_TEMP);
 	ap->a_vp->v_data = 0;
 
 	return (0);

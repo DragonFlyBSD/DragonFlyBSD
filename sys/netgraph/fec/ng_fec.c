@@ -33,7 +33,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.26 2008/05/28 12:11:13 sephe Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -270,8 +269,8 @@ ng_fec_get_unit(int *unit)
 		int i, *newarray, newlen;
 
 		newlen = (2 * ng_fec_units_len) + 4;
-		MALLOC(newarray, int *, newlen * sizeof(*ng_fec_units),
-		    M_NETGRAPH, M_NOWAIT);
+		newarray = kmalloc(newlen * sizeof(*ng_fec_units),
+				   M_NETGRAPH, M_NOWAIT);
 		if (newarray == NULL)
 			return (ENOMEM);
 		bcopy(ng_fec_units, newarray,
@@ -279,7 +278,7 @@ ng_fec_get_unit(int *unit)
 		for (i = ng_fec_units_len; i < newlen; i++)
 			newarray[i] = ~0;
 		if (ng_fec_units != NULL)
-			FREE(ng_fec_units, M_NETGRAPH);
+			kfree(ng_fec_units, M_NETGRAPH);
 		ng_fec_units = newarray;
 		ng_fec_units_len = newlen;
 	}
@@ -315,7 +314,7 @@ ng_fec_free_unit(int unit)
 	 */
 	ng_units_in_use++;
 	if (ng_units_in_use == 0) { /* XXX make SMP safe */
-		FREE(ng_fec_units, M_NETGRAPH);
+		kfree(ng_fec_units, M_NETGRAPH);
 		ng_fec_units_len = 0;
 		ng_fec_units = NULL;
 	}
@@ -365,8 +364,7 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	}
 
 	/* Allocate new list entry. */
-	MALLOC(new, struct ng_fec_portlist *,
-	    sizeof(struct ng_fec_portlist), M_NETGRAPH, M_NOWAIT);
+	new = kmalloc(sizeof(struct ng_fec_portlist), M_NETGRAPH, M_NOWAIT);
 	if (new == NULL)
 		return(ENOMEM);
 
@@ -452,7 +450,7 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 
 	/* Delete port */
 	TAILQ_REMOVE(&b->ng_fec_ports, p, fec_list);
-	FREE(p, M_NETGRAPH);
+	kfree(p, M_NETGRAPH);
 	b->fec_ifcnt--;
 
 	return(0);
@@ -1059,7 +1057,7 @@ ng_fec_constructor(node_p *nodep)
 	int error = 0;
 
 	/* Allocate node and interface private structures */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -1071,16 +1069,16 @@ ng_fec_constructor(node_p *nodep)
 
 	/* Get an interface unit number */
 	if ((error = ng_fec_get_unit(&priv->unit)) != 0) {
-		FREE(ifp, M_NETGRAPH);
-		FREE(priv, M_NETGRAPH);
+		kfree(ifp, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&typestruct, nodep)) != 0) {
 		ng_fec_free_unit(priv->unit);
-		FREE(ifp, M_NETGRAPH);
-		FREE(priv, M_NETGRAPH);
+		kfree(ifp, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 	node = *nodep;
@@ -1183,8 +1181,8 @@ ng_fec_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
-	FREE(msg, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -1216,7 +1214,7 @@ ng_fec_rmnode(node_p node)
 	ether_ifdetach(&priv->arpcom.ac_if);
 	ifmedia_removeall(&priv->ifmedia);
 	ng_fec_free_unit(priv->unit);
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	node->private = NULL;
 	ng_unref(node);
 	return (0);

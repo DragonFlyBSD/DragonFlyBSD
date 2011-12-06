@@ -32,7 +32,6 @@
  *
  *	@(#)uio.h	8.5 (Berkeley) 2/22/94
  * $FreeBSD: src/sys/sys/uio.h,v 1.11.2.1 2001/09/28 16:58:35 dillon Exp $
- * $DragonFly: src/sys/sys/uio.h,v 1.14 2006/05/27 20:17:17 dillon Exp $
  */
 
 #ifndef _SYS_UIO_H_
@@ -109,7 +108,7 @@ static __inline void
 iovec_free(struct iovec **kiov, struct iovec *siov)
 {
 	if (*kiov != siov) {
-		FREE(*kiov, M_IOV);
+		kfree(*kiov, M_IOV);
 		*kiov = NULL;
 	}
 }

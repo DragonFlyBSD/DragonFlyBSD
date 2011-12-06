@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.21 2008/01/05 14:02:40 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -384,7 +383,7 @@ smb_nbst_create(struct smb_vc *vcp, struct thread *td)
 {
 	struct nbpcb *nbp;
 
-	MALLOC(nbp, struct nbpcb *, sizeof *nbp, M_NBDATA, M_WAITOK | M_ZERO);
+	nbp = kmalloc(sizeof *nbp, M_NBDATA, M_WAITOK | M_ZERO);
 	nbp->nbp_timo.tv_sec = 15;	/* XXX: sysctl ? */
 	nbp->nbp_state = NBST_CLOSED;
 	nbp->nbp_vc = vcp;

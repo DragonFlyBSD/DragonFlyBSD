@@ -2388,7 +2388,7 @@ sctp_sack_check(struct sctp_tcb *stcb, int ok_to_sack, int was_a_gap, int *abort
 		 */
 		struct sctp_tmit_chunk *chk;
 		sctp_handle_stream_reset_response(stcb, asoc->pending_reply);
-		FREE(asoc->pending_reply, M_PCB);
+		kfree(asoc->pending_reply, M_PCB);
 		asoc->pending_reply = NULL;
 		chk = TAILQ_FIRST(&asoc->pending_reply_queue);
 		while (chk) {

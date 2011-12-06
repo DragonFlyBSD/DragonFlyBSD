@@ -37,7 +37,6 @@
  * Author: Archie Cobbs <archie@FreeBSD.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_one2many.c,v 1.1.2.2 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/one2many/ng_one2many.c,v 1.4 2005/02/17 13:59:59 joerg Exp $
  */
 
 /*
@@ -193,7 +192,7 @@ ng_one2many_constructor(node_p *nodep)
 	int error;
 
 	/* Allocate and initialize private info */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 	priv->conf.xmitAlg = NG_ONE2MANY_XMIT_ROUNDROBIN;
@@ -201,7 +200,7 @@ ng_one2many_constructor(node_p *nodep)
 
 	/* Call superclass constructor */
 	if ((error = ng_make_node_common(&ng_one2many_typestruct, nodep))) {
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 	(*nodep)->private = priv;
@@ -374,8 +373,8 @@ ng_one2many_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp != NULL)
-		FREE(resp, M_NETGRAPH);
-	FREE(msg, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -439,7 +438,7 @@ ng_one2many_rmnode(node_p node)
 	ng_cutlinks(node);
 	KASSERT(priv->numActiveMany == 0,
 	    ("%s: numActiveMany=%d", __func__, priv->numActiveMany));
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	node->private = NULL;
 	ng_unref(node);
 	return (0);

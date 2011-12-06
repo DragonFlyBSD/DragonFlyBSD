@@ -29,7 +29,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/sys/netncp/ncp_conn.c,v 1.3.2.5 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.15 2007/05/13 18:33:58 swildner Exp $
  *
  * Connection tables
  */
@@ -201,8 +200,7 @@ ncp_conn_alloc(struct thread *td, struct ucred *cred, struct ncp_conn **conn)
 	int error;
 	struct ncp_conn *ncp;
 
-	MALLOC(ncp, struct ncp_conn *, sizeof(struct ncp_conn), 
-	    M_NCPDATA, M_WAITOK | M_ZERO);
+	ncp = kmalloc(sizeof(struct ncp_conn), M_NCPDATA, M_WAITOK | M_ZERO);
 	error = 0;
 	lockinit(&ncp->nc_lock, "ncplck", 0, 0);
 	ncp_conn_cnt++;
@@ -266,7 +264,7 @@ ncp_conn_free(struct ncp_conn *ncp)
 	if (ncp->li.user) kfree(ncp->li.user, M_NCPDATA);
 	if (ncp->li.password) kfree(ncp->li.password, M_NCPDATA);
 	crfree(ncp->nc_owner);
-	FREE(ncp, M_NCPDATA);
+	kfree(ncp, M_NCPDATA);
 	return (0);
 }
 
@@ -420,8 +418,8 @@ ncp_conn_gethandle(struct ncp_conn *conn, struct thread *td, struct ncp_handle *
 		lockmgr(&lhlock, LK_RELEASE);
 		return 0;
 	}
-	MALLOC(refp,struct ncp_handle *,sizeof(struct ncp_handle),M_NCPDATA,
-	    M_WAITOK | M_ZERO);
+	refp = kmalloc(sizeof(struct ncp_handle), M_NCPDATA,
+		       M_WAITOK | M_ZERO);
 	SLIST_INSERT_HEAD(&lhlist,refp,nh_next);
 	refp->nh_ref++;
 	refp->nh_td = td;
@@ -448,7 +446,7 @@ ncp_conn_puthandle(struct ncp_handle *handle, struct thread *td, int force) {
 	}
 	if (refp->nh_ref == 0) {
 		SLIST_REMOVE(&lhlist, refp, ncp_handle, nh_next);
-		FREE(refp, M_NCPDATA);
+		kfree(refp, M_NCPDATA);
 	}
 	lockmgr(&lhlock, LK_RELEASE);
 	return 0;
@@ -485,7 +483,7 @@ ncp_conn_putprochandles(struct thread *td) {
 		haveone = 1;
 		hp->nh_conn->ref_cnt -= hp->nh_ref;
 		SLIST_REMOVE(&lhlist, hp, ncp_handle, nh_next);
-		FREE(hp, M_NCPDATA);
+		kfree(hp, M_NCPDATA);
 	}
 	lockmgr(&lhlock, LK_RELEASE);
 	return haveone;

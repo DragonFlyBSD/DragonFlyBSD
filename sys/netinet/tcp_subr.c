@@ -957,7 +957,7 @@ no_valid_rt:
 	while((q = LIST_FIRST(&tp->t_segq)) != NULL) {
 		LIST_REMOVE(q, tqe_q);
 		m_freem(q->tqe_m);
-		FREE(q, M_TSEGQ);
+		kfree(q, M_TSEGQ);
 		atomic_add_int(&tcp_reass_qsize, -1);
 	}
 	/* throw away SACK blocks in scoreboard*/
@@ -1009,7 +1009,7 @@ tcp_drain_oncpu(struct inpcbhead *head)
 		    (te = LIST_FIRST(&tcpb->t_segq)) != NULL) {
 			LIST_REMOVE(te, tqe_q);
 			m_freem(te->tqe_m);
-			FREE(te, M_TSEGQ);
+			kfree(te, M_TSEGQ);
 			atomic_add_int(&tcp_reass_qsize, -1);
 			/* retry */
 		} else {

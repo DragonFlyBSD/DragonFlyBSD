@@ -37,7 +37,6 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.40 2008/06/19 23:27:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -168,7 +167,7 @@ cd9660_getattr(struct vop_getattr_args *ap)
 		struct uio auio;
 		char *cp;
 
-		MALLOC(cp, char *, MAXPATHLEN, M_TEMP, M_WAITOK);
+		cp = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 		aiov.iov_base = cp;
 		aiov.iov_len = MAXPATHLEN;
 		auio.uio_iov = &aiov;
@@ -183,7 +182,7 @@ cd9660_getattr(struct vop_getattr_args *ap)
 		rdlnk.a_cred = proc0.p_ucred; /* use root cred */
 		if (cd9660_readlink(&rdlnk) == 0)
 			vap->va_size = MAXPATHLEN - auio.uio_resid;
-		FREE(cp, M_TEMP);
+		kfree(cp, M_TEMP);
 	}
 	vap->va_flags	= 0;
 	vap->va_gen = 1;
@@ -432,7 +431,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 	if ((error = vn_lock(vdp, LK_EXCLUSIVE|LK_RETRY)) != 0)
 		return (error);
 
-	MALLOC(idp, struct isoreaddir *, sizeof(*idp), M_TEMP, M_WAITOK);
+	idp = kmalloc(sizeof(*idp), M_TEMP, M_WAITOK);
 	idp->saveent.de.d_namlen = idp->assocent.de.d_namlen = 0;
 	/*
 	 * XXX
@@ -453,8 +452,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 		ncookies = uio->uio_resid / 16 + 1;
 		if (ncookies > 1024)
 			ncookies = 1024;
-		MALLOC(cookies, off_t *, ncookies * sizeof(off_t),
-		       M_TEMP, M_WAITOK);
+		cookies = kmalloc(ncookies * sizeof(off_t), M_TEMP, M_WAITOK);
 		idp->cookies = cookies;
 		idp->ncookies = ncookies;
 	}
@@ -463,7 +461,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 
 	if ((entryoffsetinblock = idp->curroff & bmask) &&
 	    (error = cd9660_devblkatoff(vdp, (off_t)idp->curroff, NULL, &bp))) {
-		FREE(idp, M_TEMP);
+		kfree(idp, M_TEMP);
 		goto done;
 	}
 	endsearch = dp->i_size;
@@ -590,7 +588,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 	uio->uio_offset = idp->uio_off;
 	*ap->a_eofflag = idp->eofflag;
 
-	FREE(idp, M_TEMP);
+	kfree(idp, M_TEMP);
 
 done:
 	vn_unlock(vdp);

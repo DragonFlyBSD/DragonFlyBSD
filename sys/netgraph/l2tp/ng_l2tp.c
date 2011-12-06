@@ -38,7 +38,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_l2tp.c,v 1.1.2.1 2002/08/20 23:48:15 archie Exp $
- * $DragonFly: src/sys/netgraph/l2tp/ng_l2tp.c,v 1.8 2006/01/14 11:10:47 swildner Exp $
  */
 
 /*
@@ -317,7 +316,7 @@ ng_l2tp_constructor(node_p *nodep)
 	int error;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_L2TP, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH_L2TP, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -331,7 +330,7 @@ ng_l2tp_constructor(node_p *nodep)
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&ng_l2tp_typestruct, nodep))) {
-		FREE(priv, M_NETGRAPH_L2TP);
+		kfree(priv, M_NETGRAPH_L2TP);
 		return (error);
 	}
 	NG_NODE_SET_PRIVATE(*nodep, priv);
@@ -381,8 +380,8 @@ ng_l2tp_newhook(node_p node, hook_p hook, const char *name)
 			return (EINVAL);
 
 		/* Create hook private structure */
-		MALLOC(hpriv, hookpriv_p,
-		    sizeof(*hpriv), M_NETGRAPH_L2TP, M_NOWAIT | M_ZERO);
+		hpriv = kmalloc(sizeof(*hpriv), M_NETGRAPH_L2TP,
+				M_NOWAIT | M_ZERO);
 		if (hpriv == NULL)
 			return (ENOMEM);
 		hpriv->conf.session_id = htons(session_id);
@@ -434,9 +433,9 @@ ng_l2tp_rcvmsg(node_p node, struct ng_mesg *msg,
 
 			/* Save calling node as failure target */
 			if (priv->ftarget != NULL)
-				FREE(priv->ftarget, M_NETGRAPH_L2TP);
-			MALLOC(priv->ftarget, char *,
-			    strlen(raddr) + 1, M_NETGRAPH_L2TP, M_NOWAIT);
+				kfree(priv->ftarget, M_NETGRAPH_L2TP);
+			priv->ftarget = kmalloc(strlen(raddr) + 1,
+						M_NETGRAPH_L2TP, M_NOWAIT);
 			if (priv->ftarget == NULL) {
 				error = ENOMEM;
 				break;
@@ -572,8 +571,8 @@ ng_l2tp_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
-	FREE(msg, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -638,8 +637,8 @@ ng_l2tp_shutdown(node_p node)
 	/* Free private data if neither timer is running */
 	if (!seq->rack_timer_running && !seq->xack_timer_running) {
 		if (priv->ftarget != NULL)
-			FREE(priv->ftarget, M_NETGRAPH_L2TP);
-		FREE(priv, M_NETGRAPH_L2TP);
+			kfree(priv->ftarget, M_NETGRAPH_L2TP);
+		kfree(priv, M_NETGRAPH_L2TP);
 		NG_NODE_SET_PRIVATE(node, NULL);
 	}
 
@@ -663,7 +662,7 @@ ng_l2tp_disconnect(hook_p hook)
 	else if (hook == priv->lower)
 		priv->lower = NULL;
 	else {
-		FREE(NG_HOOK_PRIVATE(hook), M_NETGRAPH_L2TP);
+		kfree(NG_HOOK_PRIVATE(hook), M_NETGRAPH_L2TP);
 		NG_HOOK_SET_PRIVATE(hook, NULL);
 	}
 
@@ -1270,8 +1269,8 @@ ng_l2tp_seq_xack_timeout(void *arg)
 		seq->xack_timer_running = 0;
 		if (!seq->rack_timer_running) {
 			if (priv->ftarget != NULL)
-				FREE(priv->ftarget, M_NETGRAPH_L2TP);
-			FREE(priv, M_NETGRAPH_L2TP);
+				kfree(priv->ftarget, M_NETGRAPH_L2TP);
+			kfree(priv, M_NETGRAPH_L2TP);
 			NG_NODE_SET_PRIVATE(node, NULL);
 		}
 		NG_NODE_UNREF(node);
@@ -1312,8 +1311,8 @@ ng_l2tp_seq_rack_timeout(void *arg)
 		seq->rack_timer_running = 0;
 		if (!seq->xack_timer_running) {
 			if (priv->ftarget != NULL)
-				FREE(priv->ftarget, M_NETGRAPH_L2TP);
-			FREE(priv, M_NETGRAPH_L2TP);
+				kfree(priv->ftarget, M_NETGRAPH_L2TP);
+			kfree(priv, M_NETGRAPH_L2TP);
 			NG_NODE_SET_PRIVATE(node, NULL);
 		}
 		NG_NODE_UNREF(node);

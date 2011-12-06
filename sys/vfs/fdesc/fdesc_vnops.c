@@ -36,7 +36,6 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.39 2007/11/20 21:03:50 dillon Exp $
  */
 
 /*
@@ -135,11 +134,11 @@ loop:
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if MALLOC should block.
 	 */
-	MALLOC(fd, struct fdescnode *, sizeof(struct fdescnode), M_TEMP, M_WAITOK);
+	fd = kmalloc(sizeof(struct fdescnode), M_TEMP, M_WAITOK);
 
 	error = getnewvnode(VT_FDESC, mp, vpp, 0, 0);
 	if (error) {
-		FREE(fd, M_TEMP);
+		kfree(fd, M_TEMP);
 		goto out;
 	}
 	(*vpp)->v_data = fd;
@@ -509,7 +508,7 @@ fdesc_reclaim(struct vop_reclaim_args *ap)
 	struct fdescnode *fd = VTOFDESC(vp);
 
 	LIST_REMOVE(fd, fd_hash);
-	FREE(vp->v_data, M_TEMP);
+	kfree(vp->v_data, M_TEMP);
 	vp->v_data = 0;
 
 	return (0);

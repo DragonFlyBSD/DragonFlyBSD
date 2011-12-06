@@ -38,7 +38,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.19 2008/01/06 16:55:52 swildner Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -207,7 +206,7 @@ ngt_open(cdev_t dev, struct tty *tp)
 	}
 
 	/* Initialize private struct */
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_WAITOK | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_NETGRAPH, M_WAITOK | M_ZERO);
 	sc->tp = tp;
 	sc->hotchar = NG_TTY_DFL_HOTCHAR;
 	sc->qtail = &sc->qhead;
@@ -219,7 +218,7 @@ ngt_open(cdev_t dev, struct tty *tp)
 	error = ng_make_node_common(&typestruct, &sc->node);
 	ngt_nodeop_ok = 0;
 	if (error) {
-		FREE(sc, M_NETGRAPH);
+		kfree(sc, M_NETGRAPH);
 		goto done;
 	}
 	ksnprintf(name, sizeof(name), "%s%d", typestruct.name, ngt_unit++);
@@ -564,7 +563,7 @@ ngt_shutdown(node_p node)
 	m_freem(sc->qhead);
 	m_freem(sc->m);
 	bzero(sc, sizeof(*sc));
-	FREE(sc, M_NETGRAPH);
+	kfree(sc, M_NETGRAPH);
 	lwkt_reltoken(&tty_token);
 	return (0);
 }
@@ -646,10 +645,10 @@ ngt_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 
 done:
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	lwkt_reltoken(&tty_token);
 	return (error);
 }

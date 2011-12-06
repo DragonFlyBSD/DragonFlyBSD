@@ -104,10 +104,10 @@ linux_getsockaddr(struct sockaddr **namp, struct sockaddr *uaddr, size_t len)
 		break;
 	}
 
-	MALLOC(sa, struct sockaddr *, sa_len, M_SONAME, M_WAITOK);
+	sa = kmalloc(sa_len, M_SONAME, M_WAITOK);
 	error = copyin(uaddr, sa, sa_len);
 	if (error) {
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	} else {
 		/*
 		 * Convert to the 4.4BSD sockaddr structure.
@@ -332,7 +332,7 @@ linux_bind(struct linux_bind_args *args, int *res)
 		return (error);
 
 	error = kern_bind(linux_args.s, sa);
-	FREE(sa, M_SONAME);
+	kfree(sa, M_SONAME);
 
 	return (error);
 }
@@ -364,7 +364,7 @@ linux_connect(struct linux_connect_args *args, int *res)
 		return (error);
 
 	error = kern_connect(linux_args.s, 0, sa);
-	FREE(sa, M_SONAME);
+	kfree(sa, M_SONAME);
 
 	if (error != EISCONN)
 		return (error);
@@ -451,7 +451,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 			}
 		}
 		if (sa)
-			FREE(sa, M_SONAME);
+			kfree(sa, M_SONAME);
 	} else {
 		error = kern_accept(linux_args.s, 0, NULL, 0, res);
 	}
@@ -497,7 +497,7 @@ linux_getsockname(struct linux_getsockname_args *args, int *res)
 		error = copyout(&sa_len, linux_args.namelen,
 		    sizeof(*linux_args.namelen));
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	return(error);
 }
 
@@ -529,7 +529,7 @@ linux_getpeername(struct linux_getpeername_args *args, int *res)
 		error = copyout(&sa_len, linux_args.namelen,
 		    sizeof(*linux_args.namelen));
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	return(error);
 }
 
@@ -705,7 +705,7 @@ linux_sendto(struct linux_sendto_args *args, size_t *res)
 		if (linux_args.len < offsetof(struct ip, ip_off))
 			return (EINVAL);
 
-		MALLOC(msg, caddr_t, linux_args.len, M_LINUX, M_WAITOK);
+		msg = kmalloc(linux_args.len, M_LINUX, M_WAITOK);
 		error = copyin(linux_args.msg, msg, linux_args.len);
 		if (error)
 			goto cleanup;
@@ -730,9 +730,9 @@ linux_sendto(struct linux_sendto_args *args, size_t *res)
 
 cleanup:
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	if (msg)
-		FREE(msg, M_LINUX);
+		kfree(msg, M_LINUX);
 	return(error);
 }
 
@@ -795,7 +795,7 @@ linux_recvfrom(struct linux_recvfrom_args *args, size_t *res)
 			    sizeof(fromlen));
 	}
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 
 	return(error);
 }
@@ -902,7 +902,7 @@ cleanup:
 	iovec_free(&iov, aiov);
 cleanup2:
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	return (error);
 }
 
@@ -1030,7 +1030,7 @@ linux_recvmsg(struct linux_recvmsg_args *args, size_t *res)
 
 cleanup:
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	iovec_free(&iov, aiov);
 	if (control)
 		m_freem(control);

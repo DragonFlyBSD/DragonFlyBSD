@@ -28,7 +28,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.24 2008/03/07 11:34:19 sephe Exp $
  */
 
 /*
@@ -311,9 +310,8 @@ sr_attach(device_t device)
 	int unit;		/* index: channel w/in card */
 
 	hc = (struct sr_hardc *)device_get_softc(device);
-	MALLOC(sc, struct sr_softc *,
-		hc->numports * sizeof(struct sr_softc),
-		M_DEVBUF, M_WAITOK | M_ZERO);
+	sc = kmalloc(hc->numports * sizeof(struct sr_softc), M_DEVBUF,
+		     M_WAITOK | M_ZERO);
 	hc->sc = sc;
 
 	/*
@@ -479,7 +477,7 @@ sr_detach(device_t device)
 	 * deallocate any system resources we may have
 	 * allocated on behalf of this driver.
 	 */
-	FREE(hc->sc, M_DEVBUF);
+	kfree(hc->sc, M_DEVBUF);
 	hc->sc = NULL;
 	hc->mem_start = NULL;
 	return (sr_deallocate_resources(device));
@@ -2712,8 +2710,8 @@ ngsr_rcvmsg(node_p node,
 			    char	*arg;
 			    int pos = 0;
 			    int resplen = sizeof(struct ng_mesg) + 512;
-			    MALLOC(*resp, struct ng_mesg *, resplen,
-					M_NETGRAPH, M_INTWAIT | M_ZERO);
+			    *resp = kmalloc(resplen, M_NETGRAPH,
+					    M_INTWAIT | M_ZERO);
 			    if (*resp == NULL) { 
 				error = ENOMEM;
 				break;

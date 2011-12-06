@@ -32,9 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.10 2007/01/28 06:31:00 y0netan1 Exp $
- *	from: DragonFly kern/uipc_syscalls.c,v 1.13
- *
  * The original versions of these syscalls used to live in
  * kern/uipc_syscalls.c.  These are heavily modified to use the
  * new split syscalls.
@@ -73,10 +70,10 @@ compat_43_getsockaddr(struct sockaddr **namp, caddr_t uaddr, size_t len)
 		return ENAMETOOLONG;
 	if (len < offsetof(struct sockaddr, sa_data[0]))
 		return EDOM;
-	MALLOC(sa, struct sockaddr *, len, M_SONAME, M_WAITOK);
+	sa = kmalloc(len, M_SONAME, M_WAITOK);
 	error = copyin(uaddr, sa, len);
 	if (error) {
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	} else {
 		/*
 		 * Convert to the 4.4BSD sockaddr structure.
@@ -134,7 +131,7 @@ sys_oaccept(struct accept_args *uap)
 			}
 		}
 		if (sa)
-			FREE(sa, M_SONAME);
+			kfree(sa, M_SONAME);
 	} else {
 		get_mplock();
 		error = kern_accept(uap->s, 0, NULL, 0, &uap->sysmsg_iresult);
@@ -166,7 +163,7 @@ sys_ogetsockname(struct getsockname_args *uap)
 		error = copyout(&sa_len, uap->alen, sizeof(*uap->alen));
 	}
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	return (error);
 }
 
@@ -193,7 +190,7 @@ sys_ogetpeername(struct ogetpeername_args *uap)
 	if (error == 0)
 		error = copyout(&sa_len, uap->alen, sizeof(*uap->alen));
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	return (error);
 }
 
@@ -317,7 +314,7 @@ cleanup:
 	iovec_free(&iov, aiov);
 cleanup2:
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	return (error);
 }
 
@@ -401,7 +398,7 @@ sys_orecvfrom(struct recvfrom_args *uap)
 			copyout(&fromlen, uap->fromlenaddr, sizeof(fromlen));
 	}
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 
 	return (error);
 }
@@ -536,7 +533,7 @@ sys_orecvmsg(struct orecvmsg_args *uap)
 
 cleanup:
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	iovec_free(&iov, aiov);
 	if (control)
 		m_freem(control);

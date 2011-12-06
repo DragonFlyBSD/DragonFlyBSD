@@ -32,7 +32,6 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.59 2008/09/17 21:44:25 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1105,8 +1104,7 @@ restart:
 	 * XXX this may no longer be true since getnewvnode returns a
 	 * VX locked vnode now.
 	 */
-	MALLOC(ip, struct inode *, sizeof(struct inode), 
-	    ump->um_malloctype, M_WAITOK);
+	ip = kmalloc(sizeof(struct inode), ump->um_malloctype, M_WAITOK);
 
 	/* Allocate a new vnode/inode. */
 	error = getnewvnode(VT_UFS, mp, &vp, VLKTIMEOUT, LK_CANRECURSE);

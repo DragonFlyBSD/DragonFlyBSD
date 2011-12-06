@@ -4843,7 +4843,7 @@ sctp_sendall_completes(void *ptr, u_int32_t val)
 
 	/* now free everything */
 	m_freem(ca->m);
-	FREE(ca, M_PCB);
+	kfree(ca, M_PCB);
 }
 
 
@@ -4916,8 +4916,7 @@ sctp_sendall (struct sctp_inpcb *inp, struct uio *uio, struct mbuf *m, struct sc
 {
 	int ret;
 	struct sctp_copy_all *ca;
-	MALLOC(ca, struct sctp_copy_all *,
-	       sizeof(struct sctp_copy_all), M_PCB, MB_WAIT);
+	ca = kmalloc(sizeof(struct sctp_copy_all), M_PCB, MB_WAIT);
 	if (ca == NULL) {
 		m_freem(m);
 		return (ENOMEM);
@@ -4936,7 +4935,7 @@ sctp_sendall (struct sctp_inpcb *inp, struct uio *uio, struct mbuf *m, struct sc
 		ca->sndlen = uio->uio_resid;
 		ca->m = sctp_copy_out_all(uio, ca->sndlen);
 		if (ca->m == NULL) {
-			FREE(ca, M_PCB);
+			kfree(ca, M_PCB);
 			return (ENOMEM);
 		}
 	} else {
@@ -4960,7 +4959,7 @@ sctp_sendall (struct sctp_inpcb *inp, struct uio *uio, struct mbuf *m, struct sc
 #ifdef SCTP_DEBUG
 		kprintf("Failed to initate iterator to takeover associations\n");
 #endif
-		FREE(ca, M_PCB);
+		kfree(ca, M_PCB);
 		return (EFAULT);
 
 	}
@@ -7502,13 +7501,11 @@ sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
 					       asoc->streamoutcnt, asoc->pre_open_streams);
 				}
 #endif
-				FREE(asoc->strmout, M_PCB);
+				kfree(asoc->strmout, M_PCB);
 				asoc->strmout = NULL;
 				asoc->streamoutcnt = asoc->pre_open_streams;
-				MALLOC(asoc->strmout, struct sctp_stream_out *,
-				       asoc->streamoutcnt *
-				       sizeof(struct sctp_stream_out), M_PCB,
-				       MB_WAIT);
+				asoc->strmout = kmalloc(asoc->streamoutcnt * sizeof(struct sctp_stream_out),
+							M_PCB, MB_WAIT);
 				for (i = 0; i < asoc->streamoutcnt; i++) {
 					/*
 					 * inbound side must be set to 0xffff,
@@ -10282,16 +10279,15 @@ sctp_sosend(struct socket *so,
 						       asoc->streamoutcnt, asoc->pre_open_streams);
 					}
 #endif
-					FREE(asoc->strmout, M_PCB);
+					kfree(asoc->strmout, M_PCB);
 					asoc->strmout = NULL;
 					asoc->streamoutcnt = asoc->pre_open_streams;
 
 					/* What happesn if this fails? .. we panic ...*/
-					MALLOC(asoc->strmout,
-					       struct sctp_stream_out *,
-					       asoc->streamoutcnt *
-					       sizeof(struct sctp_stream_out),
-					       M_PCB, MB_WAIT);
+					asoc->strmout =
+					    kmalloc(asoc->streamoutcnt *
+						sizeof(struct sctp_stream_out),
+						M_PCB, MB_WAIT);
 					for (i = 0; i < asoc->streamoutcnt; i++) {
 						/*
 						 * inbound side must be set to 0xffff,

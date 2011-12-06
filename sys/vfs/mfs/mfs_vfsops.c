@@ -32,7 +32,6 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.41 2008/07/26 22:31:54 mneumann Exp $
  */
 
 
@@ -328,8 +327,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if MALLOC should block.
 	 */
-	MALLOC(mfsp, struct mfsnode *, sizeof *mfsp, M_MFSNODE,
-	       M_WAITOK|M_ZERO);
+	mfsp = kmalloc(sizeof *mfsp, M_MFSNODE, M_WAITOK | M_ZERO);
 
 	minnum = (int)curproc->p_pid;
 
@@ -409,7 +407,7 @@ error_1:	/* no state to back out*/
 			destroy_dev(mfsp->mfs_dev);
 			mfsp->mfs_dev = NULL;
 		}
-		FREE(mfsp, M_MFSNODE);
+		kfree(mfsp, M_MFSNODE);
 	}
 
 success:
@@ -492,7 +490,7 @@ mfs_start(struct mount *mp, int flags)
                 destroy_dev(mfsp->mfs_dev);
                 mfsp->mfs_dev = NULL;
         }
-	FREE(mfsp, M_MFSNODE);
+	kfree(mfsp, M_MFSNODE);
 	return (0);
 }
 

@@ -35,7 +35,6 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.45 2007/05/18 17:05:13 dillon Exp $
  */
 
 /*
@@ -845,7 +844,7 @@ nfs_reply(struct nfsmount *nmp, struct nfsreq *myrep)
 			return (error);
 		}
 		if (nam)
-			FREE(nam, M_SONAME);
+			kfree(nam, M_SONAME);
 
 		/*
 		 * Get the xid and check that it is an rpc reply
@@ -1550,7 +1549,7 @@ nfs_request_processreply(nfsm_info_t info, int error)
 		KKASSERT(*req->r_dposp == info->dpos);
 		m_freem(req->r_mreq);
 		req->r_mreq = NULL;
-		FREE(req, M_NFSREQ);
+		kfree(req, M_NFSREQ);
 		return (0);
 	}
 	m_freem(info->mrep);
@@ -2633,7 +2632,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 					     M_NFSRVDESC, mf);
 				if (!rec) {
 					if (nam)
-						FREE(nam, M_SONAME);
+						kfree(nam, M_SONAME);
 					m_freem(sio.sb_mb);
 					continue;
 				}
@@ -2858,15 +2857,14 @@ nfsrv_dorec(struct nfssvc_sock *slp, struct nfsd *nfsd,
 	nam = rec->nr_address;
 	m = rec->nr_packet;
 	kfree(rec, M_NFSRVDESC);
-	MALLOC(nd, struct nfsrv_descript *, sizeof (struct nfsrv_descript),
-		M_NFSRVDESC, M_WAITOK);
+	nd = kmalloc(sizeof(struct nfsrv_descript), M_NFSRVDESC, M_WAITOK);
 	nd->nd_md = nd->nd_mrep = m;
 	nd->nd_nam2 = nam;
 	nd->nd_dpos = mtod(m, caddr_t);
 	error = nfs_getreq(nd, nfsd, TRUE);
 	if (error) {
 		if (nam) {
-			FREE(nam, M_SONAME);
+			kfree(nam, M_SONAME);
 		}
 		kfree((caddr_t)nd, M_NFSRVDESC);
 		return (error);

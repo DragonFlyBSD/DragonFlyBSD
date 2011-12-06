@@ -303,14 +303,13 @@ user_ldt_alloc(struct pcb *pcb, int len)
 {
 	struct pcb_ldt *pcb_ldt, *new_ldt;
 
-	MALLOC(new_ldt, struct pcb_ldt *, sizeof(struct pcb_ldt),
-		M_SUBPROC, M_WAITOK);
+	new_ldt = kmalloc(sizeof(struct pcb_ldt), M_SUBPROC, M_WAITOK);
 
 	new_ldt->ldt_len = len = NEW_MAX_LD(len);
 	new_ldt->ldt_base = (caddr_t)kmem_alloc(&kernel_map,
 					        len * sizeof(union descriptor));
 	if (new_ldt->ldt_base == NULL) {
-		FREE(new_ldt, M_SUBPROC);
+		kfree(new_ldt, M_SUBPROC);
 		return NULL;
 	}
 	new_ldt->ldt_refcnt = 1;
@@ -350,7 +349,7 @@ user_ldt_free(struct pcb *pcb)
 	if (--pcb_ldt->ldt_refcnt == 0) {
 		kmem_free(&kernel_map, (vm_offset_t)pcb_ldt->ldt_base,
 			  pcb_ldt->ldt_len * sizeof(union descriptor));
-		FREE(pcb_ldt, M_SUBPROC);
+		kfree(pcb_ldt, M_SUBPROC);
 	}
 }
 
@@ -440,7 +439,7 @@ ki386_set_ldt(struct lwp *lp, char *args, int *res)
 				  pcb_ldt->ldt_len * sizeof(union descriptor));
 			pcb_ldt->ldt_base = new_ldt->ldt_base;
 			pcb_ldt->ldt_len = new_ldt->ldt_len;
-			FREE(new_ldt, M_SUBPROC);
+			kfree(new_ldt, M_SUBPROC);
 		} else {
 			pcb->pcb_ldt = pcb_ldt = new_ldt;
 		}

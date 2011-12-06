@@ -236,7 +236,7 @@ ngc_send(netmsg_t msg)
 	/* Allocate an expendable buffer for the path, chop off
 	 * the sockaddr header, and make sure it's NUL terminated */
 	len = sap->sg_len - 2;
-	MALLOC(path, char *, len + 1, M_NETGRAPH, M_WAITOK);
+	path = kmalloc(len + 1, M_NETGRAPH, M_WAITOK);
 	bcopy(sap->sg_data, path, len);
 	path[len] = '\0';
 
@@ -247,7 +247,7 @@ ngc_send(netmsg_t msg)
 
 	/* Move the data into a linear buffer as well. Messages are not
 	 * delivered in mbufs. */
-	MALLOC(xmsg, char *, len + 1, M_NETGRAPH, M_WAITOK);
+	xmsg = kmalloc(len + 1, M_NETGRAPH, M_WAITOK);
 	m_copydata(m, 0, len, xmsg);
 
 	/* The callee will free the xmsg when done. The addr is our business. */
@@ -261,7 +261,7 @@ ngc_send(netmsg_t msg)
 
 release:
 	if (path != NULL)
-		FREE(path, M_NETGRAPH);
+		kfree(path, M_NETGRAPH);
 	if (control != NULL)
 		m_freem(control);
 	if (m != NULL)
@@ -449,7 +449,7 @@ ng_setsockaddr(netmsg_t msg)
 	if (pcbp->sockdata->node->name != NULL)
 		sg_len += namelen = strlen(pcbp->sockdata->node->name);
 
-	MALLOC(sg, struct sockaddr_ng *, sg_len, M_SONAME, M_WAITOK | M_ZERO);
+	sg = kmalloc(sg_len, M_SONAME, M_WAITOK | M_ZERO);
 
 	if (pcbp->sockdata->node->name != NULL)
 		bcopy(pcbp->sockdata->node->name, sg->sg_data, namelen);
@@ -482,12 +482,11 @@ ng_attach_cntl(struct socket *so)
 	pcbp = sotongpcb(so);
 
 	/* Allocate node private info */
-	MALLOC(privdata, struct ngsock *,
-	    sizeof(*privdata), M_NETGRAPH, M_WAITOK | M_ZERO);
+	privdata = kmalloc(sizeof(*privdata), M_NETGRAPH, M_WAITOK | M_ZERO);
 
 	/* Make the generic node components */
 	if ((error = ng_make_node_common(&typestruct, &privdata->node)) != 0) {
-		FREE(privdata, M_NETGRAPH);
+		kfree(privdata, M_NETGRAPH);
 		ng_detach_common(pcbp, NG_CONTROL);
 		return (error);
 	}
@@ -522,7 +521,7 @@ ng_attach_common(struct socket *so, int type)
 		return (error);
 
 	/* Allocate the pcb */
-	MALLOC(pcbp, struct ngpcb *, sizeof(*pcbp), M_PCB, M_WAITOK | M_ZERO);
+	pcbp = kmalloc(sizeof(*pcbp), M_PCB, M_WAITOK | M_ZERO);
 	pcbp->type = type;
 
 	/* Link the pcb and the socket */
@@ -569,7 +568,7 @@ ng_detach_common(struct ngpcb *pcbp, int which)
 	sofree(so);		/* remove pcb ref */
 
 	LIST_REMOVE(pcbp, socks);
-	FREE(pcbp, M_PCB);
+	kfree(pcbp, M_PCB);
 }
 
 #ifdef NOTYET
@@ -737,7 +736,7 @@ ship_msg(struct ngpcb *pcbp, struct ng_mesg *msg, struct sockaddr_ng *addr)
 
 	/* Here we free the message, as we are the end of the line.
 	 * We need to do that regardless of whether we got mbufs. */
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 
 	if (mdata == NULL) {
 		TRAP_ERROR;
@@ -811,7 +810,7 @@ ngs_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 			error = EINVAL;		/* unknown command */
 		}
 		/* Free the message and return */
-		FREE(msg, M_NETGRAPH);
+		kfree(msg, M_NETGRAPH);
 		return(error);
 
 	}
@@ -819,7 +818,7 @@ ngs_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 	if ((retaddr == NULL) || (*retaddr == '\0'))
 		retaddr = "";
 	addrlen = strlen(retaddr);
-	MALLOC(addr, struct sockaddr_ng *, addrlen + 4, M_NETGRAPH, M_NOWAIT);
+	addr = kmalloc(addrlen + 4, M_NETGRAPH, M_NOWAIT);
 	if (addr == NULL) {
 		TRAP_ERROR;
 		return (ENOMEM);
@@ -831,7 +830,7 @@ ngs_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 
 	/* Send it up */
 	error = ship_msg(pcbp, msg, addr);
-	FREE(addr, M_NETGRAPH);
+	kfree(addr, M_NETGRAPH);
 	return (error);
 }
 
@@ -926,7 +925,7 @@ ngs_rmnode(node_p node)
 	}
 	node->private = NULL;
 	ng_unref(node);
-	FREE(sockdata, M_NETGRAPH);
+	kfree(sockdata, M_NETGRAPH);
 	return (0);
 }
 

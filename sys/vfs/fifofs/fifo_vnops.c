@@ -167,7 +167,7 @@ fifo_open(struct vop_open_args *ap)
 
 	lwkt_gettoken(&vp->v_token);
 	if ((fip = vp->v_fifoinfo) == NULL) {
-		MALLOC(fip, struct fifoinfo *, sizeof(*fip), M_FIFOINFO, M_WAITOK);
+		fip = kmalloc(sizeof(*fip), M_FIFOINFO, M_WAITOK);
 		vp->v_fifoinfo = fip;
 		error = socreate(AF_LOCAL, &rso, SOCK_STREAM, 0, td);
 		if (error) {
@@ -523,7 +523,7 @@ fifo_close(struct vop_close_args *ap)
 	}
 	error1 = soclose(fip->fi_readsock, FNONBLOCK);
 	error2 = soclose(fip->fi_writesock, FNONBLOCK);
-	FREE(fip, M_FIFOINFO);
+	kfree(fip, M_FIFOINFO);
 	vp->v_fifoinfo = NULL;
 	if (error1) {
 		error2 = error1;

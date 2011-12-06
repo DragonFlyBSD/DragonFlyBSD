@@ -259,7 +259,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 				    TAILQ_REMOVE(&slp->ns_uidlruhead, nuidp,
 					nu_lru);
 				    if (nuidp->nu_flag & NU_NAM)
-					FREE(nuidp->nu_nam, M_SONAME);
+					kfree(nuidp->nu_nam, M_SONAME);
 			        }
 				nuidp->nu_flag = 0;
 				nuidp->nu_cr = nsd->nsd_cr;
@@ -336,7 +336,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 		tslp = nfs_udpsock;
 		if (tslp->ns_flag & SLP_VALID) {
 			if (mynam != NULL)
-				FREE(mynam, M_SONAME);
+				kfree(mynam, M_SONAME);
 			return (EPERM);
 		}
 	}
@@ -359,7 +359,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	error = soreserve(so, siz, siz, NULL);
 	if (error) {
 		if (mynam != NULL)
-			FREE(mynam, M_SONAME);
+			kfree(mynam, M_SONAME);
 		return (error);
 	}
 
@@ -667,7 +667,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 					nfsstats.srv_errs++;
 				nfsrv_updatecache(nd, FALSE, mreq);
 				if (nd->nd_nam2)
-					FREE(nd->nd_nam2, M_SONAME);
+					kfree(nd->nd_nam2, M_SONAME);
 				break;
 			}
 			nfsstats.srvrpccnt[nd->nd_procnum]++;
@@ -712,7 +712,7 @@ skip:
 			if (nfsrtton)
 				nfsd_rt(sotype, nd, cacherep);
 			if (nd->nd_nam2)
-				FREE(nd->nd_nam2, M_SONAME);
+				kfree(nd->nd_nam2, M_SONAME);
 			if (nd->nd_mrep)
 				m_freem(nd->nd_mrep);
 			if (error == EPIPE || error == ENOBUFS)
@@ -733,11 +733,11 @@ skip:
 				nfsd_rt(sotype, nd, cacherep);
 			m_freem(nd->nd_mrep);
 			if (nd->nd_nam2)
-				FREE(nd->nd_nam2, M_SONAME);
+				kfree(nd->nd_nam2, M_SONAME);
 			break;
 		    };
 		    if (nd) {
-			FREE((caddr_t)nd, M_NFSRVDESC);
+			kfree((caddr_t)nd, M_NFSRVDESC);
 			nd = NULL;
 		    }
 
@@ -812,13 +812,13 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 		soshutdown(so, SHUT_RDWR);
 		closef(fp, NULL);
 		if (slp->ns_nam)
-			FREE(slp->ns_nam, M_SONAME);
+			kfree(slp->ns_nam, M_SONAME);
 		m_freem(slp->ns_raw);
 		while ((rec = STAILQ_FIRST(&slp->ns_rec)) != NULL) {
 			--slp->ns_numrec;
 			STAILQ_REMOVE_HEAD(&slp->ns_rec, nr_link);
 			if (rec->nr_address)
-				FREE(rec->nr_address, M_SONAME);
+				kfree(rec->nr_address, M_SONAME);
 			m_freem(rec->nr_packet);
 			kfree(rec, M_NFSRVDESC);
 		}
@@ -829,7 +829,7 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 			LIST_REMOVE(nuidp, nu_hash);
 			TAILQ_REMOVE(&slp->ns_uidlruhead, nuidp, nu_lru);
 			if (nuidp->nu_flag & NU_NAM)
-				FREE(nuidp->nu_nam, M_SONAME);
+				kfree(nuidp->nu_nam, M_SONAME);
 			kfree((caddr_t)nuidp, M_NFSUID);
 		}
 		crit_enter();

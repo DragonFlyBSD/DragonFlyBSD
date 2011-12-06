@@ -105,7 +105,7 @@ ipxipattach(void)
 		ifp->if_flags = IFF_POINTOPOINT;
 	}
 
-	MALLOC((m), struct ifnet_en *, sizeof(*m), M_PCB, M_WAITOK | M_ZERO);
+	(m) = kmalloc(sizeof(*m), M_PCB, M_WAITOK | M_ZERO);
 	m->ifen_next = ipxip_list;
 	ipxip_list = m;
 	ifp = &m->ifen_ifnet;

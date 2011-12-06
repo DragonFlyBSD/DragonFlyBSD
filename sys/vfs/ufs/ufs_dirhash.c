@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ufs/ufs_dirhash.c,v 1.3.2.6 2002/04/10 21:41:14 dwmalone Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_dirhash.c,v 1.6 2006/05/26 17:07:48 dillon Exp $
  */
 /*
  * This implements a hash-based lookup scheme for UFS directories.
@@ -155,13 +154,13 @@ ufsdirhash_build(struct inode *ip)
 	 * Use non-blocking mallocs so that we will revert to a linear
 	 * lookup on failure rather than potentially blocking forever.
 	 */
-	MALLOC(dh, struct dirhash *, sizeof *dh, M_DIRHASH, M_NOWAIT | M_ZERO);
+	dh = kmalloc(sizeof *dh, M_DIRHASH, M_NOWAIT | M_ZERO);
 	if (dh == NULL)
 		return (-1);
-	MALLOC(dh->dh_hash, doff_t **, narrays * sizeof(dh->dh_hash[0]),
-	    M_DIRHASH, M_NOWAIT | M_ZERO);
-	MALLOC(dh->dh_blkfree, uint8_t *, nblocks * sizeof(dh->dh_blkfree[0]),
-	    M_DIRHASH, M_NOWAIT);
+	dh->dh_hash = kmalloc(narrays * sizeof(dh->dh_hash[0]), M_DIRHASH,
+			      M_NOWAIT | M_ZERO);
+	dh->dh_blkfree = kmalloc(nblocks * sizeof(dh->dh_blkfree[0]),
+				 M_DIRHASH, M_NOWAIT);
 	if (dh->dh_hash == NULL || dh->dh_blkfree == NULL)
 		goto fail;
 	for (i = 0; i < narrays; i++) {
@@ -228,11 +227,11 @@ fail:
 		for (i = 0; i < narrays; i++)
 			if (dh->dh_hash[i] != NULL)
 				objcache_put(ufsdirhash_oc, dh->dh_hash[i]);
-		FREE(dh->dh_hash, M_DIRHASH);
+		kfree(dh->dh_hash, M_DIRHASH);
 	}
 	if (dh->dh_blkfree != NULL)
-		FREE(dh->dh_blkfree, M_DIRHASH);
-	FREE(dh, M_DIRHASH);
+		kfree(dh->dh_blkfree, M_DIRHASH);
+	kfree(dh, M_DIRHASH);
 	ip->i_dirhash = NULL;
 	ufs_dirhashmem -= memreqd;
 	return (-1);
@@ -258,13 +257,13 @@ ufsdirhash_free(struct inode *ip)
 	if (dh->dh_hash != NULL) {
 		for (i = 0; i < dh->dh_narrays; i++)
 			objcache_put(ufsdirhash_oc, dh->dh_hash[i]);
-		FREE(dh->dh_hash, M_DIRHASH);
-		FREE(dh->dh_blkfree, M_DIRHASH);
+		kfree(dh->dh_hash, M_DIRHASH);
+		kfree(dh->dh_blkfree, M_DIRHASH);
 		mem += dh->dh_narrays * sizeof(*dh->dh_hash) +
 		    dh->dh_narrays * DH_NBLKOFF * sizeof(**dh->dh_hash) +
 		    dh->dh_nblk * sizeof(*dh->dh_blkfree);
 	}
-	FREE(dh, M_DIRHASH);
+	kfree(dh, M_DIRHASH);
 	ip->i_dirhash = NULL;
 
 	ufs_dirhashmem -= mem;
@@ -960,8 +959,8 @@ ufsdirhash_recycle(int wanted)
 		/* Free the detached memory. */
 		for (i = 0; i < narrays; i++)
 			objcache_put(ufsdirhash_oc, hash[i]);
-		FREE(hash, M_DIRHASH);
-		FREE(blkfree, M_DIRHASH);
+		kfree(hash, M_DIRHASH);
+		kfree(blkfree, M_DIRHASH);
 
 		/* Account for the returned memory, and repeat if necessary. */
 		ufs_dirhashmem -= mem;

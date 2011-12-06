@@ -286,8 +286,8 @@ ng_iface_get_unit(int *unit)
 		int i, *newarray, newlen;
 
 		newlen = (2 * ng_iface_units_len) + 4;
-		MALLOC(newarray, int *, newlen * sizeof(*ng_iface_units),
-		    M_NETGRAPH, M_NOWAIT);
+		newarray = kmalloc(newlen * sizeof(*ng_iface_units),
+				   M_NETGRAPH, M_NOWAIT);
 		if (newarray == NULL)
 			return (ENOMEM);
 		bcopy(ng_iface_units, newarray,
@@ -295,7 +295,7 @@ ng_iface_get_unit(int *unit)
 		for (i = ng_iface_units_len; i < newlen; i++)
 			newarray[i] = ~0;
 		if (ng_iface_units != NULL)
-			FREE(ng_iface_units, M_NETGRAPH);
+			kfree(ng_iface_units, M_NETGRAPH);
 		ng_iface_units = newarray;
 		ng_iface_units_len = newlen;
 	}
@@ -544,12 +544,12 @@ ng_iface_constructor(node_p *nodep)
 	int error = 0;
 
 	/* Allocate node and interface private structures */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
-	MALLOC(ifp, struct ifnet *, sizeof(*ifp), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	ifp = kmalloc(sizeof(*ifp), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (ifp == NULL) {
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (ENOMEM);
 	}
 
@@ -559,16 +559,16 @@ ng_iface_constructor(node_p *nodep)
 
 	/* Get an interface unit number */
 	if ((error = ng_iface_get_unit(&priv->unit)) != 0) {
-		FREE(ifp, M_NETGRAPH);
-		FREE(priv, M_NETGRAPH);
+		kfree(ifp, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&typestruct, nodep)) != 0) {
 		ng_iface_free_unit(priv->unit);
-		FREE(ifp, M_NETGRAPH);
-		FREE(priv, M_NETGRAPH);
+		kfree(ifp, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 	node = *nodep;
@@ -724,8 +724,8 @@ ng_iface_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
-	FREE(msg, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -800,10 +800,10 @@ ng_iface_rmnode(node_p node)
 	ng_unname(node);
 	bpfdetach(priv->ifp);
 	if_detach(priv->ifp);
-	FREE(priv->ifp, M_NETGRAPH);
+	kfree(priv->ifp, M_NETGRAPH);
 	priv->ifp = NULL;
 	ng_iface_free_unit(priv->unit);
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	node->private = NULL;
 	ng_unref(node);
 	return (0);

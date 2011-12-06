@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.c,v 1.2.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.25 2007/08/08 00:12:52 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -227,10 +226,10 @@ loop:
 	if (fap == NULL)
 		return ENOENT;
 
-	MALLOC(np, struct smbnode *, sizeof *np, M_SMBNODE, M_WAITOK);
+	np = kmalloc(sizeof *np, M_SMBNODE, M_WAITOK);
 	error = getnewvnode(VT_SMBFS, mp, &vp, VLKTIMEOUT, LK_CANRECURSE);
 	if (error) {
-		FREE(np, M_SMBNODE);
+		kfree(np, M_SMBNODE);
 		return error;
 	}
 	vp->v_type = fap->fa_attr & SMB_FA_DIR ? VDIR : VREG;
@@ -319,7 +318,7 @@ smbfs_reclaim(struct vop_reclaim_args *ap)
 	smbfs_hash_unlock(smp, td);
 	if (np->n_name)
 		smbfs_name_free(np->n_name);
-	FREE(np, M_SMBNODE);
+	kfree(np, M_SMBNODE);
 	if (dvp) {
 		/*
 		 * Indicate that we released something; see comment

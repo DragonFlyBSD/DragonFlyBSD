@@ -37,7 +37,6 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.29 2008/02/16 15:53:39 matthias Exp $
  */
 
 /*
@@ -1060,7 +1059,7 @@ crfree(struct ucred *cr)
 			prison_free(cr->cr_prison);
 		cr->cr_prison = NULL;	/* safety */
 
-		FREE((caddr_t)cr, M_CRED);
+		kfree((caddr_t)cr, M_CRED);
 	}
 }
 

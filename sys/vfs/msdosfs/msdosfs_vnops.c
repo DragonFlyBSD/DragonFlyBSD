@@ -1554,8 +1554,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		ncookies = uio->uio_resid / 16 + 1;
 		if (ncookies > 1024)
 			ncookies = 1024;
-		MALLOC(cookies, off_t *, ncookies * sizeof(off_t), M_TEMP,
-		       M_WAITOK);
+		cookies = kmalloc(ncookies * sizeof(off_t), M_TEMP, M_WAITOK);
 		*ap->a_cookies = cookies;
 		*ap->a_ncookies = ncookies;
 	}

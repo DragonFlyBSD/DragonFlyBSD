@@ -338,7 +338,7 @@ bpfopen(struct dev_open_args *ap)
 	if (d != NULL)
 		return(EBUSY);
 
-	MALLOC(d, struct bpf_d *, sizeof *d, M_BPF, M_WAITOK | M_ZERO);
+	d = kmalloc(sizeof *d, M_BPF, M_WAITOK | M_ZERO);
 	dev->si_drv1 = d;
 	d->bd_bufsize = bpf_bufsize;
 	d->bd_sig = SIGIO;

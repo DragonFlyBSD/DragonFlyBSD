@@ -37,7 +37,6 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_rfc1490.c,v 1.6.2.4 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/rfc1490/ng_rfc1490.c,v 1.6 2008/01/05 14:02:40 swildner Exp $
  * $Whistle: ng_rfc1490.c,v 1.22 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -127,13 +126,13 @@ ng_rfc1490_constructor(node_p *nodep)
 	int error;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&typestruct, nodep))) {
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 	(*nodep)->private = priv;
@@ -174,7 +173,7 @@ static int
 ng_rfc1490_rcvmsg(node_p node, struct ng_mesg *msg,
 		  const char *raddr, struct ng_mesg **rp)
 {
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (EINVAL);
 }
 
@@ -320,7 +319,7 @@ ng_rfc1490_rmnode(node_p node)
 	ng_unname(node);
 	bzero(priv, sizeof(*priv));
 	node->private = NULL;
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	ng_unref(node);		/* let the node escape */
 	return (0);
 }

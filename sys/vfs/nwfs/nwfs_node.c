@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.27 2007/08/08 00:12:52 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -165,11 +164,11 @@ rescan:
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if MALLOC should block.
 	 */
-	MALLOC(np, struct nwnode *, sizeof *np, M_NWNODE, M_WAITOK | M_ZERO);
+	np = kmalloc(sizeof *np, M_NWNODE, M_WAITOK | M_ZERO);
 	error = getnewvnode(VT_NWFS, mp, &vp, 0, 0);
 	if (error) {
 		*vpp = NULL;
-		FREE(np, M_NWNODE);
+		kfree(np, M_NWNODE);
 		return (error);
 	}
 	np->n_vnode = vp;

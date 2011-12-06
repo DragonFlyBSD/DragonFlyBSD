@@ -28,7 +28,6 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.18 2008/06/21 03:39:20 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -316,7 +315,7 @@ ng_eiface_constructor(node_p *nodep)
 	int error = 0;
 
 	/* Allocate node and interface private structures */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_WAITOK | M_ZERO);
 
 	ifp = &(priv->arpcom.ac_if);
 
@@ -326,7 +325,7 @@ ng_eiface_constructor(node_p *nodep)
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&typestruct, nodep))) {
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 	node = *nodep;
@@ -478,8 +477,8 @@ ng_eiface_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
-	FREE(msg, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 

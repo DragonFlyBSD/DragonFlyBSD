@@ -37,7 +37,6 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_message.h,v 1.4.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/ng_message.h,v 1.6 2008/01/05 14:02:38 swildner Exp $
  * $Whistle: ng_message.h,v 1.12 1999/01/25 01:17:44 archie Exp $
  */
 
@@ -275,8 +274,8 @@ struct typelist {
  */
 #define NG_MKMESSAGE(msg, cookie, cmdid, len, how)			\
 	do {								\
-	  MALLOC((msg), struct ng_mesg *, sizeof(struct ng_mesg)	\
-	    + (len), M_NETGRAPH, (how) | M_ZERO);			\
+	  (msg) = kmalloc(sizeof(struct ng_mesg) + (len), M_NETGRAPH,	\
+	    (how) | M_ZERO);						\
 	  if ((msg) == NULL)						\
 	    break;							\
 	  (msg)->header.version = NG_VERSION;				\
@@ -293,8 +292,8 @@ struct typelist {
  */
 #define NG_MKRESPONSE(rsp, msg, len, how)				\
 	do {								\
-	  MALLOC((rsp), struct ng_mesg *, sizeof(struct ng_mesg)	\
-	    + (len), M_NETGRAPH, (how) | M_ZERO);			\
+	  (rsp) = kmalloc(sizeof(struct ng_mesg) + (len), M_NETGRAPH,	\
+	    (how) | M_ZERO);						\
 	  if ((rsp) == NULL)						\
 	    break;							\
 	  (rsp)->header.version = NG_VERSION;				\

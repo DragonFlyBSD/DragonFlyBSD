@@ -38,7 +38,6 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_status.c,v 1.20.2.4 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.15 2007/02/19 01:14:24 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -221,31 +220,30 @@ procfs_docmdline(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		buf = 0;
 	} else {
 		buflen = 256;
-		MALLOC(buf, char *, buflen + 1, M_TEMP, M_WAITOK);
+		buf = kmalloc(buflen + 1, M_TEMP, M_WAITOK);
 		bp = buf;
 		ps = buf;
 		error = copyin((void*)PS_STRINGS, &pstr, sizeof(pstr));
 
 		if (error) {
-			FREE(buf, M_TEMP);
+			kfree(buf, M_TEMP);
 			return (error);
 		}
 		if (pstr.ps_nargvstr < 0) {
-			FREE(buf, M_TEMP);
+			kfree(buf, M_TEMP);
 			return (EINVAL);
 		}
 		if (pstr.ps_nargvstr > ARG_MAX) {
-			FREE(buf, M_TEMP);
+			kfree(buf, M_TEMP);
 			return (E2BIG);
 		}
-		MALLOC(ps_argvstr, char **,
-		       pstr.ps_nargvstr * sizeof(char *),
-		       M_TEMP, M_WAITOK);
+		ps_argvstr = kmalloc(pstr.ps_nargvstr * sizeof(char *),
+				     M_TEMP, M_WAITOK);
 		error = copyin((void *)pstr.ps_argvstr, ps_argvstr,
 			       pstr.ps_nargvstr * sizeof(char *));
 		if (error) {
-			FREE(ps_argvstr, M_TEMP);
-			FREE(buf, M_TEMP);
+			kfree(ps_argvstr, M_TEMP);
+			kfree(buf, M_TEMP);
 			return (error);
 		}
 		bytes_left = buflen;
@@ -261,11 +259,11 @@ procfs_docmdline(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 			bytes_left -= done;
 		}
 		buflen = ps - buf;
-		FREE(ps_argvstr, M_TEMP);
+		kfree(ps_argvstr, M_TEMP);
 	}
 
 	error = uiomove_frombuf(bp, buflen, uio);
 	if (buf)
-		FREE(buf, M_TEMP);
+		kfree(buf, M_TEMP);
 	return (error);
 }

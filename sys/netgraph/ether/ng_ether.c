@@ -38,7 +38,6 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.17 2008/07/27 10:06:57 sephe Exp $
  */
 
 /*
@@ -304,7 +303,7 @@ ng_ether_attach(struct ifnet *ifp)
 	}
 
 	/* Allocate private data */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL) {
 		log(LOG_ERR, "%s: can't %s for %s\n",
 		    __func__, "allocate memory", name);
@@ -342,7 +341,7 @@ ng_ether_detach(struct ifnet *ifp)
 	IFP2NG(ifp) = NULL;		/* detach node from interface */
 	priv = node->private;		/* free node private info */
 	bzero(priv, sizeof(*priv));
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	node->private = NULL;
 	ng_unref(node);			/* free node itself */
 }
@@ -540,8 +539,8 @@ ng_ether_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp != NULL)
-		FREE(resp, M_NETGRAPH);
-	FREE(msg, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 

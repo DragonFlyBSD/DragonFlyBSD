@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.35 2008/06/08 07:56:06 nth Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -303,8 +302,8 @@ again:
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if MALLOC should block.
 	 */
-	MALLOC(ldep, struct denode *, sizeof(struct denode), M_MSDOSFSNODE,
-	    M_WAITOK | M_ZERO);
+	ldep = kmalloc(sizeof(struct denode), M_MSDOSFSNODE,
+		       M_WAITOK | M_ZERO);
 
 	/*
 	 * Directory entry was not in cache, have to create a vnode and
@@ -315,7 +314,7 @@ again:
 	error = getnewvnode(VT_MSDOSFS, mntp, &nvp, VLKTIMEOUT, 0);
 	if (error) {
 		*depp = NULL;
-		FREE(ldep, M_MSDOSFSNODE);
+		kfree(ldep, M_MSDOSFSNODE);
 		return error;
 	}
 

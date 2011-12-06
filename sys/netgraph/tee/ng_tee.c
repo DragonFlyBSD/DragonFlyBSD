@@ -37,7 +37,6 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tee.c,v 1.7.2.5 2002/07/02 23:44:03 archie Exp $
- * $DragonFly: src/sys/netgraph/tee/ng_tee.c,v 1.6 2008/01/05 14:02:40 swildner Exp $
  * $Whistle: ng_tee.c,v 1.18 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -154,12 +153,12 @@ ngt_constructor(node_p *nodep)
 	sc_p privdata;
 	int error = 0;
 
-	MALLOC(privdata, sc_p, sizeof(*privdata), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	privdata = kmalloc(sizeof(*privdata), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (privdata == NULL)
 		return (ENOMEM);
 
 	if ((error = ng_make_node_common(&ng_tee_typestruct, nodep))) {
-		FREE(privdata, M_NETGRAPH);
+		kfree(privdata, M_NETGRAPH);
 		return (error);
 	}
 	(*nodep)->private = privdata;
@@ -257,10 +256,10 @@ ngt_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 
 done:
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -317,8 +316,7 @@ ngt_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 
 		/* Copy meta info */
 		if (meta != NULL) {
-			MALLOC(meta2, meta_p,
-			    meta->used_len, M_NETGRAPH, M_NOWAIT);
+			meta2 = kmalloc(meta->used_len, M_NETGRAPH, M_NOWAIT);
 			if (meta2 == NULL) {
 				m_freem(m2);
 				NG_FREE_DATA(m, meta);
@@ -365,7 +363,7 @@ ngt_rmnode(node_p node)
 	ng_unname(node);
 	node->private = NULL;
 	ng_unref(privdata->node);
-	FREE(privdata, M_NETGRAPH);
+	kfree(privdata, M_NETGRAPH);
 	return (0);
 }
 

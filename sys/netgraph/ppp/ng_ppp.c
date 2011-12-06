@@ -37,7 +37,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ppp.c,v 1.15.2.10 2003/03/10 17:55:48 archie Exp $
- * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.13 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_ppp.c,v 1.24 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -385,13 +384,13 @@ ng_ppp_constructor(node_p *nodep)
 	int i, error;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&ng_ppp_typestruct, nodep))) {
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 	(*nodep)->private = priv;
@@ -575,10 +574,10 @@ ng_ppp_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 
 done:
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -803,7 +802,7 @@ ng_ppp_rmnode(node_p node)
 	ng_unname(node);
 	ng_ppp_frag_reset(node);
 	bzero(priv, sizeof(*priv));
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	node->private = NULL;
 	ng_unref(node);		/* let the node escape */
 	return (0);
@@ -1132,7 +1131,7 @@ ng_ppp_mp_input(node_p node, int linkNum, struct mbuf *m, meta_p meta)
 	}
 
 	/* Allocate a new frag struct for the queue */
-	MALLOC(frag, struct ng_ppp_frag *, sizeof(*frag), M_NETGRAPH, M_NOWAIT);
+	frag = kmalloc(sizeof(*frag), M_NETGRAPH, M_NOWAIT);
 	if (frag == NULL) {
 		NG_FREE_DATA(m, meta);
 		ng_ppp_frag_process(node);
@@ -1151,7 +1150,7 @@ ng_ppp_mp_input(node_p node, int linkNum, struct mbuf *m, meta_p meta)
 		} else if (diff == 0) {	     /* should never happen! */
 			link->stats.dupFragments++;
 			NG_FREE_DATA(frag->data, frag->meta);
-			FREE(frag, M_NETGRAPH);
+			kfree(frag, M_NETGRAPH);
 			return (EINVAL);
 		}
 	}
@@ -1228,7 +1227,7 @@ ng_ppp_get_packet(node_p node, struct mbuf **mp, meta_p *metap)
 			tail = tail->m_next;
 		if (qent->last)
 			qnext = NULL;
-		FREE(qent, M_NETGRAPH);
+		kfree(qent, M_NETGRAPH);
 		priv->qlen--;
 	}
 	*mp = m;
@@ -1277,7 +1276,7 @@ ng_ppp_frag_trim(node_p node)
 			priv->bundleStats.dropFragments++;
 			TAILQ_REMOVE(&priv->frags, qent, f_qent);
 			NG_FREE_DATA(qent->data, qent->meta);
-			FREE(qent, M_NETGRAPH);
+			kfree(qent, M_NETGRAPH);
 			priv->qlen--;
 			removed = 1;
 		}
@@ -1339,7 +1338,7 @@ ng_ppp_frag_process(node_p node)
 		priv->bundleStats.dropFragments++;
 		TAILQ_REMOVE(&priv->frags, qent, f_qent);
 		NG_FREE_DATA(qent->data, qent->meta);
-		FREE(qent, M_NETGRAPH);
+		kfree(qent, M_NETGRAPH);
 		priv->qlen--;
 
 		/* Process queue again */
@@ -1416,7 +1415,7 @@ ng_ppp_frag_checkstale(node_p node)
 			priv->bundleStats.dropFragments++;
 			TAILQ_REMOVE(&priv->frags, qent, f_qent);
 			NG_FREE_DATA(qent->data, qent->meta);
-			FREE(qent, M_NETGRAPH);
+			kfree(qent, M_NETGRAPH);
 			priv->qlen--;
 		}
 
@@ -2006,7 +2005,7 @@ ng_ppp_frag_reset(node_p node)
 	for (qent = TAILQ_FIRST(&priv->frags); qent; qent = qnext) {
 		qnext = TAILQ_NEXT(qent, f_qent);
 		NG_FREE_DATA(qent->data, qent->meta);
-		FREE(qent, M_NETGRAPH);
+		kfree(qent, M_NETGRAPH);
 	}
 	TAILQ_INIT(&priv->frags);
 	priv->qlen = 0;

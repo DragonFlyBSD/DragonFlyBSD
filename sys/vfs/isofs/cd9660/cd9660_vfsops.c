@@ -37,7 +37,6 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.46 2008/09/17 21:44:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -734,8 +733,7 @@ again:
 		*vpp = NULLVP;
 		return (error);
 	}
-	MALLOC(ip, struct iso_node *, sizeof(struct iso_node), M_ISOFSNODE,
-	    M_WAITOK | M_ZERO);
+	ip = kmalloc(sizeof(struct iso_node), M_ISOFSNODE, M_WAITOK | M_ZERO);
 	ip->i_vnode = vp;
 	ip->i_dev = dev;
 	ip->i_number = ino;

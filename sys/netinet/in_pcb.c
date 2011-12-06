@@ -65,7 +65,6 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.48 2008/11/08 03:38:23 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -983,8 +982,7 @@ in_setsockaddr(struct socket *so, struct sockaddr **nam)
 	/*
 	 * Do the malloc first in case it blocks.
 	 */
-	MALLOC(sin, struct sockaddr_in *, sizeof *sin, M_SONAME,
-		M_WAITOK | M_ZERO);
+	sin = kmalloc(sizeof *sin, M_SONAME, M_WAITOK | M_ZERO);
 	sin->sin_family = AF_INET;
 	sin->sin_len = sizeof *sin;
 
@@ -1021,8 +1019,7 @@ in_setpeeraddr(struct socket *so, struct sockaddr **nam)
 	/*
 	 * Do the malloc first in case it blocks.
 	 */
-	MALLOC(sin, struct sockaddr_in *, sizeof *sin, M_SONAME,
-		M_WAITOK | M_ZERO);
+	sin = kmalloc(sizeof *sin, M_SONAME, M_WAITOK | M_ZERO);
 	sin->sin_family = AF_INET;
 	sin->sin_len = sizeof *sin;
 

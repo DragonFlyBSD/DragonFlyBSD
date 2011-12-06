@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/uipc_accf.c,v 1.2.2.2 2000/09/20 21:19:21 ps Exp $
- *	$DragonFly: src/sys/kern/uipc_accf.c,v 1.3 2005/06/06 15:02:28 dillon Exp $
  */
 
 #define ACCEPT_FILTER_MOD
@@ -74,7 +73,7 @@ accept_filt_add(struct accept_filter *filt)
 				return (EEXIST);
 			} else {
 				p->accf_callback = filt->accf_callback;
-				FREE(filt, M_ACCF);
+				kfree(filt, M_ACCF);
 				return (0);
 			}
 		}
@@ -118,7 +117,7 @@ accept_filt_generic_mod_event(module_t mod, int event, void *data)
 
 	switch (event) {
 	case MOD_LOAD:
-		MALLOC(p, struct accept_filter *, sizeof(*p), M_ACCF, M_WAITOK);
+		p = kmalloc(sizeof(*p), M_ACCF, M_WAITOK);
 		bcopy(accfp, p, sizeof(*p));
 		crit_enter();
 		error = accept_filt_add(p);

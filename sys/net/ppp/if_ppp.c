@@ -70,7 +70,6 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.41 2008/09/24 14:26:38 sephe Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -294,8 +293,7 @@ pppalloc(struct thread *td)
     sc->sc_relinq = NULL;
     bzero((char *)&sc->sc_stats, sizeof(sc->sc_stats));
 #ifdef VJC
-    MALLOC(sc->sc_comp, struct slcompress *, sizeof(struct slcompress),
-	   M_DEVBUF, M_WAITOK);
+    sc->sc_comp = kmalloc(sizeof(struct slcompress), M_DEVBUF, M_WAITOK);
     sl_compress_init(sc->sc_comp, -1);
 #endif
 #ifdef PPP_COMPRESS
@@ -549,7 +547,7 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 	    return EINVAL;
 	newcodelen = nbp->bf_len * sizeof(struct bpf_insn);
 	if (newcodelen != 0) {
-	    MALLOC(newcode, struct bpf_insn *, newcodelen, M_DEVBUF, M_WAITOK);
+	    newcode = kmalloc(newcodelen, M_DEVBUF, M_WAITOK);
 	    if ((error = copyin((caddr_t)nbp->bf_insns, (caddr_t)newcode,
 			       newcodelen)) != 0) {
 		kfree(newcode, M_DEVBUF);

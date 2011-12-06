@@ -3956,8 +3956,7 @@ sctp_accept(netmsg_t msg)
 	if (prim->sa_family == AF_INET) {
 		struct sockaddr_in *sin;
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		MALLOC(sin, struct sockaddr_in *, sizeof *sin, M_SONAME,
-		       M_WAITOK | M_ZERO);
+		sin = kmalloc(sizeof *sin, M_SONAME, M_WAITOK | M_ZERO);
 #else
 		sin = (struct sockaddr_in *)addr;
 		bzero((caddr_t)sin, sizeof (*sin));
@@ -3974,8 +3973,7 @@ sctp_accept(netmsg_t msg)
 	} else {
 		struct sockaddr_in6 *sin6;
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		MALLOC(sin6, struct sockaddr_in6 *, sizeof *sin6, M_SONAME,
-		       M_WAITOK | M_ZERO);
+		sin6 = kmalloc(sizeof *sin6, M_SONAME, M_WAITOK | M_ZERO);
 #else
 		sin6 = (struct sockaddr_in6 *)addr;
 #endif
@@ -4044,8 +4042,7 @@ sctp_ingetaddr_oncpu(struct socket *so, struct sockaddr **addr)
 	 * Do the malloc first in case it blocks.
 	 */
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-	MALLOC(sin, struct sockaddr_in *, sizeof *sin, M_SONAME, M_WAITOK |
-	       M_ZERO);
+	sin = kmalloc(sizeof *sin, M_SONAME, M_WAITOK | M_ZERO);
 #else
 	nam->m_len = sizeof(*sin);
 	memset(sin, 0, sizeof(*sin));
@@ -4055,7 +4052,7 @@ sctp_ingetaddr_oncpu(struct socket *so, struct sockaddr **addr)
 	inp = (struct sctp_inpcb *)so->so_pcb;
 	if (!inp) {
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		FREE(sin, M_SONAME);
+		kfree(sin, M_SONAME);
 #endif
 		return ECONNRESET;
 	}
@@ -4111,7 +4108,7 @@ sctp_ingetaddr_oncpu(struct socket *so, struct sockaddr **addr)
 		}
 		if (!fnd) {
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-			FREE(sin, M_SONAME);
+			kfree(sin, M_SONAME);
 #endif
 			SCTP_INP_RUNLOCK(inp);
 			return ENOENT;
@@ -4156,8 +4153,7 @@ sctp_peeraddr_oncpu(struct socket *so, struct sockaddr **addr)
 
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	/* XXX huh? why assign it above and then allocate it here? */
-	MALLOC(sin, struct sockaddr_in *, sizeof *sin, M_SONAME, M_WAITOK |
-	       M_ZERO);
+	sin = kmalloc(sizeof *sin, M_SONAME, M_WAITOK | M_ZERO);
 #else
 	nam->m_len = sizeof(*sin);
 	memset(sin, 0, sizeof(*sin));
@@ -4169,7 +4165,7 @@ sctp_peeraddr_oncpu(struct socket *so, struct sockaddr **addr)
 	inp = (struct sctp_inpcb *)so->so_pcb;
 	if (!inp) {
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		FREE(sin, M_SONAME);
+		kfree(sin, M_SONAME);
 #endif
 		error = ECONNRESET;
 		goto out;
@@ -4181,7 +4177,7 @@ sctp_peeraddr_oncpu(struct socket *so, struct sockaddr **addr)
 	SCTP_INP_RUNLOCK(inp);
 	if (stcb == NULL) {
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		FREE(sin, M_SONAME);
+		kfree(sin, M_SONAME);
 #endif
 		error = ECONNRESET;
 		goto out;
@@ -4200,7 +4196,7 @@ sctp_peeraddr_oncpu(struct socket *so, struct sockaddr **addr)
 	if (!fnd) {
 		/* No IPv4 address */
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		FREE(sin, M_SONAME);
+		kfree(sin, M_SONAME);
 #endif
 		error = ENOENT;
 	} else {

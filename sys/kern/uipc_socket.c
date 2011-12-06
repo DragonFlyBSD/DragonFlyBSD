@@ -1570,9 +1570,9 @@ do_setopt_accept_filter(struct socket *so, struct sockopt *sopt)
 				af->so_accept_filter->accf_destroy(so);
 			}
 			if (af->so_accept_filter_str != NULL) {
-				FREE(af->so_accept_filter_str, M_ACCF);
+				kfree(af->so_accept_filter_str, M_ACCF);
 			}
-			FREE(af, M_ACCF);
+			kfree(af, M_ACCF);
 			so->so_accf = NULL;
 		}
 		so->so_options &= ~SO_ACCEPTFILTER;
@@ -1585,7 +1585,7 @@ do_setopt_accept_filter(struct socket *so, struct sockopt *sopt)
 		goto out;
 	}
 	/* don't put large objects on the kernel stack */
-	MALLOC(afap, struct accept_filter_arg *, sizeof(*afap), M_TEMP, M_WAITOK);
+	afap = kmalloc(sizeof(*afap), M_TEMP, M_WAITOK);
 	error = sooptcopyin(sopt, afap, sizeof *afap, sizeof *afap);
 	afap->af_name[sizeof(afap->af_name)-1] = '\0';
 	afap->af_arg[sizeof(afap->af_arg)-1] = '\0';
@@ -1596,18 +1596,19 @@ do_setopt_accept_filter(struct socket *so, struct sockopt *sopt)
 		error = ENOENT;
 		goto out;
 	}
-	MALLOC(af, struct so_accf *, sizeof(*af), M_ACCF, M_WAITOK | M_ZERO);
+	af = kmalloc(sizeof(*af), M_ACCF, M_WAITOK | M_ZERO);
 	if (afp->accf_create != NULL) {
 		if (afap->af_name[0] != '\0') {
 			int len = strlen(afap->af_name) + 1;
 
-			MALLOC(af->so_accept_filter_str, char *, len, M_ACCF, M_WAITOK);
+			af->so_accept_filter_str = kmalloc(len, M_ACCF,
+							   M_WAITOK);
 			strcpy(af->so_accept_filter_str, afap->af_name);
 		}
 		af->so_accept_filter_arg = afp->accf_create(so, afap->af_arg);
 		if (af->so_accept_filter_arg == NULL) {
-			FREE(af->so_accept_filter_str, M_ACCF);
-			FREE(af, M_ACCF);
+			kfree(af->so_accept_filter_str, M_ACCF);
+			kfree(af, M_ACCF);
 			so->so_accf = NULL;
 			error = EINVAL;
 			goto out;
@@ -1618,7 +1619,7 @@ do_setopt_accept_filter(struct socket *so, struct sockopt *sopt)
 	so->so_options |= SO_ACCEPTFILTER;
 out:
 	if (afap != NULL)
-		FREE(afap, M_TEMP);
+		kfree(afap, M_TEMP);
 	return (error);
 }
 #endif /* INET */
@@ -1876,15 +1877,15 @@ sogetopt(struct socket *so, struct sockopt *sopt)
 		case SO_ACCEPTFILTER:
 			if ((so->so_options & SO_ACCEPTCONN) == 0)
 				return (EINVAL);
-			MALLOC(afap, struct accept_filter_arg *, sizeof(*afap),
-				M_TEMP, M_WAITOK | M_ZERO);
+			afap = kmalloc(sizeof(*afap), M_TEMP,
+				       M_WAITOK | M_ZERO);
 			if ((so->so_options & SO_ACCEPTFILTER) != 0) {
 				strcpy(afap->af_name, so->so_accf->so_accept_filter->accf_name);
 				if (so->so_accf->so_accept_filter_str != NULL)
 					strcpy(afap->af_arg, so->so_accf->so_accept_filter_str);
 			}
 			error = sooptcopyout(sopt, afap, sizeof(*afap));
-			FREE(afap, M_TEMP);
+			kfree(afap, M_TEMP);
 			break;
 #endif /* INET */
 			

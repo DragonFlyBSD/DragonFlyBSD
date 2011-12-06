@@ -264,7 +264,7 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 			case BUF_CMD_FREEBLKS:
 				if (secpp) {
 					if (secp)
-						FREE(secp, M_MDSECT);
+						kfree(secp, M_MDSECT);
 					*secpp = 0;
 				}
 				break;
@@ -285,25 +285,29 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 						break;
 				if (i == DEV_BSIZE && !uc) {
 					if (secp)
-						FREE(secp, M_MDSECT);
+						kfree(secp, M_MDSECT);
 					if (secpp)
 						*secpp = (u_char *)(uintptr_t)uc;
 				} else {
 					if (!secpp) {
-						MALLOC(secpp, u_char **, (secno + nsec + 1) * sizeof(u_char *), M_MD, M_WAITOK | M_ZERO);
+						secpp = kmalloc((secno + nsec + 1) * sizeof(u_char *),
+								M_MD,
+								M_WAITOK | M_ZERO);
 						bcopy(sc->secp, secpp, sc->nsecp * sizeof(u_char *));
-						FREE(sc->secp, M_MD);
+						kfree(sc->secp, M_MD);
 						sc->secp = secpp;
 						sc->nsecp = secno + nsec + 1;
 						secpp = &sc->secp[secno];
 					}
 					if (i == DEV_BSIZE) {
 						if (secp)
-							FREE(secp, M_MDSECT);
+							kfree(secp, M_MDSECT);
 						*secpp = (u_char *)(uintptr_t)uc;
 					} else {
 						if (!secp) 
-							MALLOC(secp, u_char *, DEV_BSIZE, M_MDSECT, M_WAITOK);
+							secp = kmalloc(DEV_BSIZE,
+								       M_MDSECT,
+								       M_WAITOK);
 						bcopy(dst, secp, DEV_BSIZE);
 
 						*secpp = secp;
@@ -393,7 +397,7 @@ mdcreate(unsigned length)
 	struct md_s *sc;
 	struct disk_info info;
 
-	MALLOC(sc, struct md_s *,sizeof(*sc), M_MD, M_WAITOK | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_MD, M_WAITOK | M_ZERO);
 	sc->unit = mdunits++;
 	bioq_init(&sc->bio_queue);
 	devstat_add_entry(&sc->stats, "md", sc->unit, DEV_BSIZE,
@@ -444,7 +448,7 @@ mdcreate_malloc(void)
 	sc->type = MD_MALLOC;
 
 	sc->nsect = MD_NSECT;	/* for now */
-	MALLOC(sc->secp, u_char **, sizeof(u_char *), M_MD, M_WAITOK | M_ZERO);
+	sc->secp = kmalloc(sizeof(u_char *), M_MD, M_WAITOK | M_ZERO);
 	sc->nsecp = 1;
 	kprintf("md%d: Malloc disk\n", sc->unit);
 }
@@ -467,7 +471,7 @@ md_drvcleanup(void)
 	TAILQ_FOREACH_MUTABLE(sc, &mdlist, link, sc_temp) {
 		for (secno = 0; secno < sc->nsecp; secno++) {
 			if ((u_int)(uintptr_t)sc->secp[secno] > 255)
-				FREE(sc->secp[secno], M_MDSECT);
+				kfree(sc->secp[secno], M_MDSECT);
 		}
 
 		if (sc->dev != NULL)
@@ -476,8 +480,8 @@ md_drvcleanup(void)
 		devstat_remove_entry(&sc->stats);
 		TAILQ_REMOVE(&mdlist, sc, link);
 
-		FREE(sc->secp, M_MD);
-		FREE(sc, M_MD);
+		kfree(sc->secp, M_MD);
+		kfree(sc, M_MD);
 	}
 
 	return 0;

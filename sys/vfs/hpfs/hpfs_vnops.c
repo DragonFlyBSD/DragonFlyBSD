@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.47 2008/06/19 23:27:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -647,7 +646,7 @@ hpfs_reclaim(struct vop_reclaim_args *ap)
 
 	vp->v_data = NULL;
 
-	FREE(hp, M_HPFSNO);
+	kfree(hp, M_HPFSNO);
 
 	return (0);
 }
@@ -941,8 +940,7 @@ readdone:
 		dprintf(("%d cookies, ",ncookies));
 		if (uio->uio_segflg != UIO_SYSSPACE || uio->uio_iovcnt != 1)
 			panic("hpfs_readdir: unexpected uio from NFS server");
-		MALLOC(cookies, off_t *, ncookies * sizeof(off_t),
-		       M_TEMP, M_WAITOK);
+		cookies = kmalloc(ncookies * sizeof(off_t), M_TEMP, M_WAITOK);
 		for (cookiep = cookies, i=0; i < ncookies; i++)
 			*cookiep++ = ++num;
 

@@ -32,7 +32,6 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.24 2007/06/14 02:55:25 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -525,7 +524,7 @@ ffs_indirtrunc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t dbn,
 
 	bap = (ufs_daddr_t *)bp->b_data;
 	if (lastbn != -1) {
-		MALLOC(copy, ufs_daddr_t *, fs->fs_bsize, M_TEMP, M_WAITOK);
+		copy = kmalloc(fs->fs_bsize, M_TEMP, M_WAITOK);
 		bcopy((caddr_t)bap, (caddr_t)copy, (uint)fs->fs_bsize);
 		bzero((caddr_t)&bap[last + 1],
 		    (uint)(NINDIR(fs) - (last + 1)) * sizeof (ufs_daddr_t));
@@ -572,7 +571,7 @@ ffs_indirtrunc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t dbn,
 		}
 	}
 	if (copy != NULL) {
-		FREE(copy, M_TEMP);
+		kfree(copy, M_TEMP);
 	} else {
 		bp->b_flags |= B_INVAL | B_NOCACHE;
 		brelse(bp);

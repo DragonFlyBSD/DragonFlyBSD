@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ah.c,v 1.1.4.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ah.c,v 1.10 2006/10/12 01:32:51 hsu Exp $	*/
 /*	$OpenBSD: ip_ah.c,v 1.63 2001/06/26 06:18:58 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -483,7 +482,7 @@ ah_massage_headers(struct mbuf **m0, int proto, int skip, int alg, int out)
 
 						/* Free, if we allocated. */
 						if (alloc)
-							FREE(ptr, M_XDATA);
+							kfree(ptr, M_XDATA);
 						return EINVAL;
 					}
 
@@ -503,7 +502,7 @@ ah_massage_headers(struct mbuf **m0, int proto, int skip, int alg, int out)
 
 						/* Free, if we allocated. */
 						if (alloc)
-							FREE(ptr, M_XDATA);
+							kfree(ptr, M_XDATA);
 						return EINVAL;
 					}
 				}
@@ -527,7 +526,7 @@ ah_massage_headers(struct mbuf **m0, int proto, int skip, int alg, int out)
 				DPRINTF(("ah_massage_headers: unexpected "
 				    "IPv6 header type %d", off));
 				if (alloc)
-					FREE(ptr, M_XDATA);
+					kfree(ptr, M_XDATA);
 				m_freem(m);
 				return EINVAL;
 			}

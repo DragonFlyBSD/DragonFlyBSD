@@ -37,7 +37,6 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_UI.c,v 1.6.2.2 2000/10/24 18:36:44 julian Exp $
- * $DragonFly: src/sys/netgraph/UI/ng_UI.c,v 1.6 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_UI.c,v 1.14 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -109,13 +108,13 @@ ng_UI_constructor(node_p *nodep)
 	int     error;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&typestruct, nodep))) {
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 	(*nodep)->private = priv;
@@ -152,7 +151,7 @@ static int
 ng_UI_rcvmsg(node_p node, struct ng_mesg *msg,
 	     const char *raddr, struct ng_mesg **rp)
 {
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (EINVAL);
 }
 
@@ -210,7 +209,7 @@ ng_UI_rmnode(node_p node)
 	ng_cutlinks(node);
 	ng_unname(node);
 	bzero(priv, sizeof(*priv));
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	node->private = NULL;
 	ng_unref(node);
 	return (0);

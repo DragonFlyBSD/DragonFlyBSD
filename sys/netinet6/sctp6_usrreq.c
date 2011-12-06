@@ -1367,8 +1367,7 @@ sctp6_getaddr(struct socket *so, struct mbuf *nam)
 	 * Do the malloc first in case it blocks.
 	 */
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-	MALLOC(sin6, struct sockaddr_in6 *, sizeof *sin6, M_SONAME,
-	       M_WAITOK | M_ZERO);
+	sin6 = kmalloc(sizeof *sin6, M_SONAME, M_WAITOK | M_ZERO);
 #else
 	nam->m_len = sizeof(*sin6);
 #endif
@@ -1379,7 +1378,7 @@ sctp6_getaddr(struct socket *so, struct mbuf *nam)
 	inp = (struct sctp_inpcb *)so->so_pcb;
 	if (!inp) {
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		FREE(sin6, M_SONAME);
+		kfree(sin6, M_SONAME);
 #endif
 		return ECONNRESET;
 	}
@@ -1433,7 +1432,7 @@ sctp6_getaddr(struct socket *so, struct mbuf *nam)
 		}
 		if (!fnd) {
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-			FREE(sin6, M_SONAME);
+			kfree(sin6, M_SONAME);
 #endif
 			return ENOENT;
 		}
@@ -1474,8 +1473,7 @@ sctp6_peeraddr(struct socket *so, struct mbuf *nam)
 		return (ENOTCONN);
 	}
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-	MALLOC(sin6, struct sockaddr_in6 *, sizeof *sin6, M_SONAME,
-	       M_WAITOK | M_ZERO);
+	sin6 = kmalloc(sizeof *sin6, M_SONAME, M_WAITOK | M_ZERO);
 #else
 	nam->m_len = sizeof(*sin6);
 #endif
@@ -1487,14 +1485,14 @@ sctp6_peeraddr(struct socket *so, struct mbuf *nam)
 	inp = (struct sctp_inpcb *)so->so_pcb;
 	if (!inp) {
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		FREE(sin6, M_SONAME);
+		kfree(sin6, M_SONAME);
 #endif
 		return ECONNRESET;
 	}
 	stcb = LIST_FIRST(&inp->sctp_asoc_list);
 	if (stcb == NULL) {
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		FREE(sin6, M_SONAME);
+		kfree(sin6, M_SONAME);
 #endif
 		return ECONNRESET;
 	}
@@ -1511,7 +1509,7 @@ sctp6_peeraddr(struct socket *so, struct mbuf *nam)
 	if (!fnd) {
 		/* No IPv4 address */
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		FREE(sin6, M_SONAME);
+		kfree(sin6, M_SONAME);
 #endif
 		return ENOENT;
 	}

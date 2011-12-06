@@ -421,7 +421,7 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, off_t doffset, daddr_t lastbn,
 	}
 
 	bap = (daddr_t *)bp->b_data;
-	MALLOC(copy, daddr_t *, fs->s_blocksize, M_TEMP, M_WAITOK);
+	copy = kmalloc(fs->s_blocksize, M_TEMP, M_WAITOK);
 	bcopy((caddr_t)bap, (caddr_t)copy, (u_int)fs->s_blocksize);
 	bzero((caddr_t)&bap[last + 1],
 	  (u_int)(NINDIR(fs) - (last + 1)) * sizeof (daddr_t));
@@ -464,7 +464,7 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, off_t doffset, daddr_t lastbn,
 			blocksreleased += blkcount;
 		}
 	}
-	FREE(copy, M_TEMP);
+	kfree(copy, M_TEMP);
 	*countp = blocksreleased;
 	return (allerror);
 }

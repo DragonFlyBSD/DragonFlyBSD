@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.35 2008/09/04 09:08:22 hasso Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -733,8 +732,7 @@ in6_setsockaddr(struct socket *so, struct sockaddr **nam)
 	/*
 	 * Do the malloc first in case it blocks.
 	 */
-	MALLOC(sin6, struct sockaddr_in6 *, sizeof *sin6, M_SONAME,
-	    M_WAITOK | M_ZERO);
+	sin6 = kmalloc(sizeof *sin6, M_SONAME, M_WAITOK | M_ZERO);
 	sin6->sin6_family = AF_INET6;
 	sin6->sin6_len = sizeof(*sin6);
 
@@ -777,8 +775,7 @@ in6_setpeeraddr(struct socket *so, struct sockaddr **nam)
 	/*
 	 * Do the malloc first in case it blocks.
 	 */
-	MALLOC(sin6, struct sockaddr_in6 *, sizeof(*sin6), M_SONAME,
-	    M_WAITOK | M_ZERO);
+	sin6 = kmalloc(sizeof(*sin6), M_SONAME, M_WAITOK | M_ZERO);
 	sin6->sin6_family = AF_INET6;
 	sin6->sin6_len = sizeof(struct sockaddr_in6);
 

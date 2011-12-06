@@ -1713,7 +1713,7 @@ sctp_move_pcb_and_assoc(struct sctp_inpcb *old_inp, struct sctp_inpcb *new_inp,
 	stcb->sctp_socket = new_inp->sctp_socket;
 	stcb->sctp_ep = new_inp;
 	if (new_inp->sctp_tcbhash != NULL) {
-		FREE(new_inp->sctp_tcbhash, M_PCB);
+		kfree(new_inp->sctp_tcbhash, M_PCB);
 		new_inp->sctp_tcbhash = NULL;
 	}
 	if ((new_inp->sctp_flags & SCTP_PCB_FLAGS_BOUNDALL) == 0) {
@@ -2493,7 +2493,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 	}
 	/* Now lets see about freeing the EP hash table. */
 	if (inp->sctp_tcbhash != NULL) {
-		FREE(inp->sctp_tcbhash, M_PCB);
+		kfree(inp->sctp_tcbhash, M_PCB);
 		inp->sctp_tcbhash = 0;
 	}
 	SCTP_INP_WUNLOCK(inp);
@@ -3066,9 +3066,9 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 	if ((err = sctp_add_remote_addr(stcb, firstaddr, 1, 1))) {
 		/* failure.. memory error? */
 		if (asoc->strmout)
-			FREE(asoc->strmout, M_PCB);
+			kfree(asoc->strmout, M_PCB);
 		if (asoc->mapping_array)
-			FREE(asoc->mapping_array, M_PCB);
+			kfree(asoc->mapping_array, M_PCB);
 
 		SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_asoc, stcb);
 		sctppcbinfo.ipi_count_asoc--;
@@ -3239,8 +3239,8 @@ sctp_add_vtag_to_timewait(struct sctp_inpcb *inp, u_int32_t tag)
 	}
 	/* Need to add a new block to chain */
 	if (!set) {
-		MALLOC(twait_block, struct sctp_tagblock *,
-		       sizeof(struct sctp_tagblock), M_PCB, M_NOWAIT);
+		twait_block = kmalloc(sizeof(struct sctp_tagblock), M_PCB,
+				      M_NOWAIT);
 		if (twait_block == NULL) {
 			return;
 		}
@@ -3413,7 +3413,7 @@ sctp_free_assoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 	}
 
 	if (asoc->pending_reply) {
-		FREE(asoc->pending_reply, M_PCB);
+		kfree(asoc->pending_reply, M_PCB);
 		asoc->pending_reply = NULL;
 	}
 	chk = TAILQ_FIRST(&asoc->pending_reply_queue);
@@ -3523,13 +3523,13 @@ sctp_free_assoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 		}
 	}
 	if (asoc->mapping_array) {
-		FREE(asoc->mapping_array, M_PCB);
+		kfree(asoc->mapping_array, M_PCB);
 		asoc->mapping_array = NULL;
 	}
 
 	/* the stream outs */
 	if (asoc->strmout) {
-		FREE(asoc->strmout, M_PCB);
+		kfree(asoc->strmout, M_PCB);
 		asoc->strmout = NULL;
 	}
 	asoc->streamoutcnt = 0;
@@ -3557,7 +3557,7 @@ sctp_free_assoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 				}
 			}
 		}
-		FREE(asoc->strmin, M_PCB);
+		kfree(asoc->strmin, M_PCB);
 		asoc->strmin = NULL;
 	}
 	asoc->streamincnt = 0;
@@ -3572,7 +3572,7 @@ sctp_free_assoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 	while (!TAILQ_EMPTY(&asoc->asconf_queue)) {
 		aparam = TAILQ_FIRST(&asoc->asconf_queue);
 		TAILQ_REMOVE(&asoc->asconf_queue, aparam, next);
-		FREE(aparam, M_PCB);
+		kfree(aparam, M_PCB);
 	}
 	if (asoc->last_asconf_ack_sent != NULL) {
 		sctp_m_freem(asoc->last_asconf_ack_sent);
@@ -5017,8 +5017,7 @@ sctp_initiate_iterator(asoc_func af, uint32_t pcb_state, uint32_t asoc_state,
 	if (af == NULL) {
 		return (-1);
 	}
-	MALLOC(it, struct sctp_iterator *, sizeof(struct sctp_iterator), M_PCB,
-	       M_WAITOK);
+	it = kmalloc(sizeof(struct sctp_iterator), M_PCB, M_WAITOK);
 	memset(it, 0, sizeof(*it));
 	it->function_toapply = af;
 	it->function_atend = ef;

@@ -37,7 +37,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pptpgre.c,v 1.2.2.13 2002/10/10 18:27:54 archie Exp $
- * $DragonFly: src/sys/netgraph/pptpgre/ng_pptpgre.c,v 1.8 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_pptpgre.c,v 1.7 1999/12/08 00:10:06 archie Exp $
  */
 
@@ -283,13 +282,13 @@ ng_pptpgre_constructor(node_p *nodep)
 	int error;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&ng_pptpgre_typestruct, nodep))) {
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 	(*nodep)->private = priv;
@@ -388,10 +387,10 @@ ng_pptpgre_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 
 done:
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -436,7 +435,7 @@ ng_pptpgre_rmnode(node_p node)
 
 	/* If no timers remain, free private info as well */
 	if (priv->timers == 0) {
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		node->private = NULL;
 	}
 
@@ -760,7 +759,7 @@ ng_pptpgre_start_recv_ack_timer(node_p node)
 #endif
 
 	/* Start new timer */
-	MALLOC(a->rackTimerPtr, node_p *, sizeof(node_p), M_NETGRAPH, M_NOWAIT);
+	a->rackTimerPtr = kmalloc(sizeof(node_p), M_NETGRAPH, M_NOWAIT);
 	if (a->rackTimerPtr == NULL) {
 		priv->stats.memoryFailures++;
 		return;			/* XXX potential hang here */
@@ -785,7 +784,7 @@ ng_pptpgre_stop_recv_ack_timer(node_p node)
 	struct ng_pptpgre_ackp *const a = &priv->ackp;
 
 	if (callout_stop(&a->rackTimer)) {
-		FREE(a->rackTimerPtr, M_NETGRAPH);
+		kfree(a->rackTimerPtr, M_NETGRAPH);
 		priv->timers--;
 		ng_unref(node);
 	}
@@ -806,13 +805,13 @@ ng_pptpgre_recv_ack_timeout(void *arg)
 
 	crit_enter();
 	/* This complicated stuff is needed to avoid race conditions */
-	FREE(arg, M_NETGRAPH);
+	kfree(arg, M_NETGRAPH);
 	KASSERT(node->refs > 0, ("%s: no refs", __func__));
 	KASSERT(priv != NULL, ("%s: priv=NULL", __func__));
 	priv->timers--;
 	if ((node->flags & NG_INVALID) != 0) {	/* shutdown race condition */
 		if (priv->timers == 0) {
-			FREE(priv, M_NETGRAPH);
+			kfree(priv, M_NETGRAPH);
 			node->private = NULL;
 		}
 		ng_unref(node);
@@ -863,7 +862,7 @@ ng_pptpgre_start_send_ack_timer(node_p node, int ackTimeout)
 
 	/* Start new timer */
 	KASSERT(a->sackTimerPtr == NULL, ("%s: sackTimer", __func__));
-	MALLOC(a->sackTimerPtr, node_p *, sizeof(node_p), M_NETGRAPH, M_NOWAIT);
+	a->sackTimerPtr = kmalloc(sizeof(node_p), M_NETGRAPH, M_NOWAIT);
 	if (a->sackTimerPtr == NULL) {
 		priv->stats.memoryFailures++;
 		return;			/* XXX potential hang here */
@@ -888,7 +887,7 @@ ng_pptpgre_stop_send_ack_timer(node_p node)
 	struct ng_pptpgre_ackp *const a = &priv->ackp;
 
 	if (callout_stop(&a->sackTimer)) {
-		FREE(a->sackTimerPtr, M_NETGRAPH);
+		kfree(a->sackTimerPtr, M_NETGRAPH);
 		priv->timers--;
 		ng_unref(node);
 	}
@@ -910,13 +909,13 @@ ng_pptpgre_send_ack_timeout(void *arg)
 
 	crit_enter();
 	/* This complicated stuff is needed to avoid race conditions */
-	FREE(arg, M_NETGRAPH);
+	kfree(arg, M_NETGRAPH);
 	KASSERT(node->refs > 0, ("%s: no refs", __func__));
 	KASSERT(priv != NULL, ("%s: priv=NULL", __func__));
 	priv->timers--;
 	if ((node->flags & NG_INVALID) != 0) {	/* shutdown race condition */
 		if (priv->timers == 0) {
-			FREE(priv, M_NETGRAPH);
+			kfree(priv, M_NETGRAPH);
 			node->private = NULL;
 		}
 		ng_unref(node);

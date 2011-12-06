@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.27 2008/09/04 09:08:22 hasso Exp $
  */
 
 /*
@@ -608,8 +607,8 @@ rip6_attach(netmsg_t msg)
 	inp->in6p_ip6_nxt = (long)proto;
 	inp->in6p_hops = -1;	/* use kernel default */
 	inp->in6p_cksum = -1;
-	MALLOC(inp->in6p_icmp6filt, struct icmp6_filter *,
-	       sizeof(struct icmp6_filter), M_PCB, M_NOWAIT);
+	inp->in6p_icmp6filt = kmalloc(sizeof(struct icmp6_filter), M_PCB,
+				      M_NOWAIT);
 	if (inp->in6p_icmp6filt != NULL)
 		ICMP6_FILTER_SETPASSALL(inp->in6p_icmp6filt);
 	error = 0;
@@ -630,7 +629,7 @@ rip6_detach(netmsg_t msg)
 	if (so == ip6_mrouter)
 		ip6_mrouter_done();
 	if (inp->in6p_icmp6filt) {
-		FREE(inp->in6p_icmp6filt, M_PCB);
+		kfree(inp->in6p_icmp6filt, M_PCB);
 		inp->in6p_icmp6filt = NULL;
 	}
 	in6_pcbdetach(inp);

@@ -38,7 +38,6 @@
  *
  * $Whistle: ng_mppc.c,v 1.4 1999/11/25 00:10:12 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_mppc.c,v 1.1.2.7 2002/12/16 17:58:42 archie Exp $
- * $DragonFly: src/sys/netgraph/mppc/ng_mppc.c,v 1.6 2008/01/05 14:02:39 swildner Exp $
  */
 
 /*
@@ -186,13 +185,13 @@ ng_mppc_constructor(node_p *nodep)
 	int error;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&ng_mppc_typestruct, nodep))) {
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 	(*nodep)->private = priv;
@@ -270,12 +269,12 @@ ng_mppc_rcvmsg(node_p node, struct ng_mesg *msg,
 
 			/* Save return address so we can send reset-req's */
 			if (!isComp && priv->ctrlpath != NULL) {
-				FREE(priv->ctrlpath, M_NETGRAPH);
+				kfree(priv->ctrlpath, M_NETGRAPH);
 				priv->ctrlpath = NULL;
 			}
 			if (!isComp && raddr != NULL) {
-				MALLOC(priv->ctrlpath, char *,
-				    strlen(raddr) + 1, M_NETGRAPH, M_NOWAIT);
+				priv->ctrlpath = kmalloc(strlen(raddr) + 1,
+							 M_NETGRAPH, M_NOWAIT);
 				if (priv->ctrlpath == NULL)
 					ERROUT(ENOMEM);
 				strcpy(priv->ctrlpath, raddr);
@@ -287,14 +286,12 @@ ng_mppc_rcvmsg(node_p node, struct ng_mesg *msg,
 #ifdef NETGRAPH_MPPC_COMPRESSION
 			/* Initialize state buffers for compression */
 			if (d->history != NULL) {
-				FREE(d->history, M_NETGRAPH);
+				kfree(d->history, M_NETGRAPH);
 				d->history = NULL;
 			}
 			if ((cfg->bits & MPPC_BIT) != 0) {
-				MALLOC(d->history, u_char *,
-				    isComp ? MPPC_SizeOfCompressionHistory() :
-				    MPPC_SizeOfDecompressionHistory(),
-				    M_NETGRAPH, M_NOWAIT);
+				d->history = kmalloc(isComp ? MPPC_SizeOfCompressionHistory() : MPPC_SizeOfDecompressionHistory(),
+						     M_NETGRAPH, M_NOWAIT);
 				if (d->history == NULL)
 					ERROUT(ENOMEM);
 				if (isComp)
@@ -343,10 +340,10 @@ ng_mppc_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 
 done:
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -418,15 +415,15 @@ ng_mppc_rmnode(node_p node)
 	ng_cutlinks(node);
 	ng_unname(node);
 	if (priv->ctrlpath != NULL)
-		FREE(priv->ctrlpath, M_NETGRAPH);
+		kfree(priv->ctrlpath, M_NETGRAPH);
 #ifdef NETGRAPH_MPPC_COMPRESSION
 	if (priv->xmit.history != NULL)
-		FREE(priv->xmit.history, M_NETGRAPH);
+		kfree(priv->xmit.history, M_NETGRAPH);
 	if (priv->recv.history != NULL)
-		FREE(priv->recv.history, M_NETGRAPH);
+		kfree(priv->recv.history, M_NETGRAPH);
 #endif
 	bzero(priv, sizeof(*priv));
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	node->private = NULL;
 	ng_unref(node);		/* let the node escape */
 	return (0);
@@ -480,7 +477,7 @@ ng_mppc_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 
 	/* Work with contiguous regions of memory */
 	inlen = m->m_pkthdr.len;
-	MALLOC(inbuf, u_char *, inlen, M_NETGRAPH, M_NOWAIT);
+	inbuf = kmalloc(inlen, M_NETGRAPH, M_NOWAIT);
 	if (inbuf == NULL)
 		return (ENOMEM);
 	m_copydata(m, 0, inlen, (caddr_t)inbuf);
@@ -488,9 +485,9 @@ ng_mppc_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 		outlen = MPPC_MAX_BLOWUP(inlen);
 	else
 		outlen = MPPC_HDRLEN + inlen;
-	MALLOC(outbuf, u_char *, outlen, M_NETGRAPH, M_NOWAIT);
+	outbuf = kmalloc(outlen, M_NETGRAPH, M_NOWAIT);
 	if (outbuf == NULL) {
-		FREE(inbuf, M_NETGRAPH);
+		kfree(inbuf, M_NETGRAPH);
 		return (ENOMEM);
 	}
 
@@ -533,7 +530,7 @@ ng_mppc_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 		bcopy(inbuf, outbuf + MPPC_HDRLEN, inlen);
 		outlen = MPPC_HDRLEN + inlen;
 	}
-	FREE(inbuf, M_NETGRAPH);
+	kfree(inbuf, M_NETGRAPH);
 
 	/* Always set the flushed bit in stateless mode */
 	if ((d->cfg.bits & MPPE_STATELESS) != 0)
@@ -569,7 +566,7 @@ ng_mppc_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 
 	/* Return packet in an mbuf */
 	*resultp = m_devget((caddr_t)outbuf, outlen, 0, NULL, NULL);
-	FREE(outbuf, M_NETGRAPH);
+	kfree(outbuf, M_NETGRAPH);
 	return (*resultp == NULL ? ENOBUFS : 0);
 }
 
@@ -596,7 +593,7 @@ ng_mppc_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 
 	/* Copy payload into a contiguous region of memory */
 	len = m->m_pkthdr.len - MPPC_HDRLEN;
-	MALLOC(buf, u_char *, len, M_NETGRAPH, M_NOWAIT);
+	buf = kmalloc(len, M_NETGRAPH, M_NOWAIT);
 	if (buf == NULL)
 		return (ENOMEM);
 	m_copydata(m, MPPC_HDRLEN, len, (caddr_t)buf);
@@ -689,7 +686,7 @@ ng_mppc_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 		log(LOG_ERR, "%s: rec'd unexpectedly %s packet",
 			__func__, "compressed");
 failed:
-		FREE(buf, M_NETGRAPH);
+		kfree(buf, M_NETGRAPH);
 		return (EINVAL);
 	}
 
@@ -702,10 +699,10 @@ failed:
 		int decomplen, rtn;
 
 		/* Allocate a buffer for decompressed data */
-		MALLOC(decompbuf, u_char *, MPPC_DECOMP_BUFSIZE
-		    + MPPC_DECOMP_SAFETY, M_NETGRAPH, M_NOWAIT);
+		decompbuf = kmalloc(MPPC_DECOMP_BUFSIZE + MPPC_DECOMP_SAFETY,
+				    M_NETGRAPH, M_NOWAIT);
 		if (decompbuf == NULL) {
-			FREE(buf, M_NETGRAPH);
+			kfree(buf, M_NETGRAPH);
 			return (ENOMEM);
 		}
 		decomplen = MPPC_DECOMP_BUFSIZE;
@@ -728,12 +725,12 @@ failed:
 		    || (rtn & MPPC_DECOMP_OK) != MPPC_DECOMP_OK) {
 			log(LOG_ERR, "%s: decomp returned 0x%x",
 			    __func__, rtn);
-			FREE(decompbuf, M_NETGRAPH);
+			kfree(decompbuf, M_NETGRAPH);
 			goto failed;
 		}
 
 		/* Replace compressed data with decompressed data */
-		FREE(buf, M_NETGRAPH);
+		kfree(buf, M_NETGRAPH);
 		buf = decompbuf;
 		len = decomplen - destCnt;
 	}
@@ -741,7 +738,7 @@ failed:
 
 	/* Return result in an mbuf */
 	*resultp = m_devget((caddr_t)buf, len, 0, NULL, NULL);
-	FREE(buf, M_NETGRAPH);
+	kfree(buf, M_NETGRAPH);
 	return (*resultp == NULL ? ENOBUFS : 0);
 }
 

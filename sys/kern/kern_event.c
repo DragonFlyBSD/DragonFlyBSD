@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.33 2007/02/03 17:05:57 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -384,8 +383,7 @@ filt_timerattach(struct knote *kn)
 	tticks = tvtohz_high(&tv);
 
 	kn->kn_flags |= EV_CLEAR;		/* automatically set */
-	MALLOC(calloutp, struct callout *, sizeof(*calloutp),
-	    M_KQUEUE, M_WAITOK);
+	calloutp = kmalloc(sizeof(*calloutp), M_KQUEUE, M_WAITOK);
 	callout_init(calloutp);
 	kn->kn_hook = (caddr_t)calloutp;
 	callout_reset(calloutp, tticks, filt_timerexpire, kn);
@@ -406,7 +404,7 @@ filt_timerdetach(struct knote *kn)
 
 	calloutp = (struct callout *)kn->kn_hook;
 	callout_terminate(calloutp);
-	FREE(calloutp, M_KQUEUE);
+	kfree(calloutp, M_KQUEUE);
 	kq_ncallouts--;
 }
 

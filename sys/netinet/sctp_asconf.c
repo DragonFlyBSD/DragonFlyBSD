@@ -1,5 +1,4 @@
 /*	$KAME: sctp_asconf.c,v 1.23 2004/08/17 06:28:01 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_asconf.c,v 1.7 2008/03/07 11:34:20 sephe Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -955,7 +954,7 @@ sctp_asconf_queue_add(struct sctp_tcb *stcb, struct ifaddr *ifa, uint16_t type)
 			/* take the entry off the appropriate list */
 			sctp_asconf_addr_mgmt_ack(stcb, aa->ifa, type, 1);
 			/* free the entry */
-			FREE(aa, M_PCB);
+			kfree(aa, M_PCB);
 
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_ASCONF1) {
@@ -967,7 +966,7 @@ sctp_asconf_queue_add(struct sctp_tcb *stcb, struct ifaddr *ifa, uint16_t type)
 	} /* for each aa */
 
 	/* adding new request to the queue */
-	MALLOC(aa, struct sctp_asconf_addr *, sizeof(*aa), M_PCB, M_NOWAIT);
+	aa = kmalloc(sizeof(*aa), M_PCB, M_NOWAIT);
 	if (aa == NULL) {
 		/* didn't get memory */
 #ifdef SCTP_DEBUG
@@ -1098,7 +1097,7 @@ sctp_asconf_queue_add_sa(struct sctp_tcb *stcb, struct sockaddr *sa,
 			/* delete the existing entry in the queue */
 			TAILQ_REMOVE(&stcb->asoc.asconf_queue, aa, next);
 			/* free the entry */
-			FREE(aa, M_PCB);
+			kfree(aa, M_PCB);
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_ASCONF1) {
 				kprintf("asconf_queue_add_sa: removing queued delete request\n");
@@ -1114,7 +1113,7 @@ sctp_asconf_queue_add_sa(struct sctp_tcb *stcb, struct sockaddr *sa,
 			/* take the entry off the appropriate list */
 			sctp_asconf_addr_mgmt_ack(stcb, aa->ifa, type, 1);
 			/* free the entry */
-			FREE(aa, M_PCB);
+			kfree(aa, M_PCB);
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_ASCONF1) {
 				kprintf("asconf_queue_add_sa: removing queued add request\n");
@@ -1125,7 +1124,7 @@ sctp_asconf_queue_add_sa(struct sctp_tcb *stcb, struct sockaddr *sa,
 	} /* for each aa */
 
 	/* adding new request to the queue */
-	MALLOC(aa, struct sctp_asconf_addr *, sizeof(*aa), M_PCB, M_NOWAIT);
+	aa = kmalloc(sizeof(*aa), M_PCB, M_NOWAIT);
 	if (aa == NULL) {
 		/* didn't get memory */
 #ifdef SCTP_DEBUG
@@ -1320,7 +1319,7 @@ sctp_asconf_process_param_ack(struct sctp_tcb *stcb,
 
 	/* remove the param and free it */
 	TAILQ_REMOVE(&stcb->asoc.asconf_queue, aparam, next);
-	FREE(aparam, M_PCB);
+	kfree(aparam, M_PCB);
 }
 
 /*

@@ -34,7 +34,6 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.20 2007/04/22 01:13:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1320,12 +1319,12 @@ spx_attach_oncpu(struct socket *so, int proto, struct pru_attach_info *ai)
 	}
 	ipxp = sotoipxpcb(so);
 
-	MALLOC(cb, struct spxpcb *, sizeof *cb, M_PCB, M_INTWAIT | M_ZERO);
+	cb = kmalloc(sizeof *cb, M_PCB, M_INTWAIT | M_ZERO);
 	ssb = &so->so_snd;
 
 	mm = m_getclr(MB_DONTWAIT, MT_HEADER);
 	if (mm == NULL) {
-		FREE(cb, M_PCB);
+		kfree(cb, M_PCB);
 		error = ENOBUFS;
 		goto spx_attach_end;
 	}
@@ -1668,7 +1667,7 @@ spx_close(struct spxpcb *cb)
 		kfree(q, M_SPX_Q);
 	}
 	m_free(cb->s_ipx_m);
-	FREE(cb, M_PCB);
+	kfree(cb, M_PCB);
 	ipxp->ipxp_pcb = 0;
 	soisdisconnected(so);
 	ipx_pcbdetach(ipxp);

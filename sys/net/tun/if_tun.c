@@ -142,7 +142,7 @@ tuncreate(cdev_t dev)
 	    UID_UUCP, GID_DIALER, 0600, "tun%d", lminor(dev));
 #endif
 
-	MALLOC(sc, struct tun_softc *, sizeof(*sc), M_TUN, M_WAITOK | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_TUN, M_WAITOK | M_ZERO);
 	sc->tun_flags = TUN_INITED;
 
 	ifp = &sc->tun_if;

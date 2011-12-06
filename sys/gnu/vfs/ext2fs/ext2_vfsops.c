@@ -1134,7 +1134,7 @@ restart:
 	 * which will cause a panic because ext2_sync() blindly
 	 * dereferences vp->v_data (as well it should).
 	 */
-	MALLOC(ip, struct inode *, sizeof(struct inode), M_EXT2NODE, M_WAITOK);
+	ip = kmalloc(sizeof(struct inode), M_EXT2NODE, M_WAITOK);
 
 	/* Allocate a new vnode/inode. */
 	if ((error = getnewvnode(VT_EXT2FS, mp, &vp, 0, LK_CANRECURSE)) != 0) {
@@ -1142,7 +1142,7 @@ restart:
 			wakeup(&ext2fs_inode_hash_lock);
 		ext2fs_inode_hash_lock = 0;
 		*vpp = NULL;
-		FREE(ip, M_EXT2NODE);
+		kfree(ip, M_EXT2NODE);
 		return (error);
 	}
 	bzero((caddr_t)ip, sizeof(struct inode));

@@ -28,7 +28,6 @@
  *	-------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ing.c,v 1.10.2.4 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.11 2007/06/04 00:40:31 swildner Exp $
  *
  *	last edit-date: [Tue Jan  1 10:43:58 2002]
  *
@@ -737,11 +736,11 @@ ng_ing_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 
 	/* Free the message and return */
 
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return(error);
 }
 

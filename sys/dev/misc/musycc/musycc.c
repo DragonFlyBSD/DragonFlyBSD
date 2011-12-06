@@ -993,14 +993,14 @@ musycc_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_m
 		NG_MKRESPONSE(*resp, msg, 
 		    sizeof(struct ng_mesg) + NG_TEXTRESPONSE, M_NOWAIT);
 		if (*resp == NULL) {
-			FREE(msg, M_NETGRAPH);
+			kfree(msg, M_NETGRAPH);
 			return (ENOMEM);
 		}
 		s = (char *)(*resp)->data;
 		status_8370(sc, s);
 		status_chans(sc,s);
 		(*resp)->header.arglen = strlen(s) + 1;
-		FREE(msg, M_NETGRAPH);
+		kfree(msg, M_NETGRAPH);
 		return (0);
         } else if (msg->header.cmd == NGM_TEXT_CONFIG) {
 		if (msg->header.arglen) {
@@ -1012,21 +1012,21 @@ musycc_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_m
 		NG_MKRESPONSE(*resp, msg, 
 		    sizeof(struct ng_mesg) + NG_TEXTRESPONSE, M_NOWAIT);
 		if (*resp == NULL) {
-			FREE(msg, M_NETGRAPH);
+			kfree(msg, M_NETGRAPH);
 			return (ENOMEM);
 		}
 		r = (char *)(*resp)->data;
 		*r = '\0';
 		musycc_config(node, s, r);
 		(*resp)->header.arglen = strlen(r) + 1;
-		FREE(msg, M_NETGRAPH);
+		kfree(msg, M_NETGRAPH);
 		return (0);
         }
 
 out:
 	if (resp)
 		*resp = NULL;
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (EINVAL);
 }
 
@@ -1063,7 +1063,7 @@ musycc_newhook(node_p node, hook_p hook, const char *name)
 		return (EINVAL);
 		
 	if (sc->chan[chan] == NULL) {
-		MALLOC(sch, struct schan *, sizeof(*sch), M_MUSYCC, M_WAITOK | M_ZERO);
+		sch = kmalloc(sizeof(*sch), M_MUSYCC, M_WAITOK | M_ZERO);
 		sch->sc = sc;
 		sch->state = DOWN;
 		sch->chan = chan;
@@ -1260,10 +1260,8 @@ musycc_connect(hook_p hook)
 	 */
 	sch->nmd = nmd = 200 + nts * 4;
 	sch->rx_last_md = 0;
-	MALLOC(sc->mdt[ch], struct mdesc *, 
-	    sizeof(struct mdesc) * nmd, M_MUSYCC, M_WAITOK);
-	MALLOC(sc->mdr[ch], struct mdesc *, 
-	    sizeof(struct mdesc) * nmd, M_MUSYCC, M_WAITOK);
+	sc->mdt[ch] = kmalloc(sizeof(struct mdesc) * nmd, M_MUSYCC, M_WAITOK);
+	sc->mdr[ch] = kmalloc(sizeof(struct mdesc) * nmd, M_MUSYCC, M_WAITOK);
 	for (i = 0; i < nmd; i++) {
 		if (i == nmd - 1) {
 			sc->mdt[ch][i].snext = &sc->mdt[ch][0];
@@ -1318,8 +1316,8 @@ errfree:
 		i--;
 		m_free(sc->mdr[ch][i].m);
 	}
-	FREE(sc->mdt[ch], M_MUSYCC);
-	FREE(sc->mdr[ch], M_MUSYCC);
+	kfree(sc->mdt[ch], M_MUSYCC);
+	kfree(sc->mdr[ch], M_MUSYCC);
 	return (ENOBUFS);
 }
 
@@ -1359,9 +1357,9 @@ musycc_disconnect(hook_p hook)
 		if (sc->mdr[ch][i].m != NULL)
 			m_freem(sc->mdr[ch][i].m);
 	}
-	FREE(sc->mdt[ch], M_MUSYCC);
+	kfree(sc->mdt[ch], M_MUSYCC);
 	sc->mdt[ch] = NULL;
-	FREE(sc->mdr[ch], M_MUSYCC);
+	kfree(sc->mdr[ch], M_MUSYCC);
 	sc->mdr[ch] = NULL;
 
 	for (i = 0; i < 32; i++) {
@@ -1447,7 +1445,7 @@ musycc_attach(device_t self)
 	f = pci_get_function(self);
 	/* For function zero allocate a csoftc */
 	if (f == 0) {
-		MALLOC(csc, struct csoftc *, sizeof(*csc), M_MUSYCC, M_WAITOK | M_ZERO);
+		csc = kmalloc(sizeof(*csc), M_MUSYCC, M_WAITOK | M_ZERO);
 		csc->bus = pci_get_bus(self);
 		csc->slot = pci_get_slot(self);
 		LIST_INSERT_HEAD(&sc_list, csc, list);
@@ -1521,8 +1519,8 @@ musycc_attach(device_t self)
 		sc->ds847x = csc->virbase[0] + i * 0x800;
 		sc->reg = (struct globalr *)
 		    (csc->virbase[0] + i * 0x800);
-		MALLOC(sc->mycg, struct mycg *, 
-		    sizeof(struct mycg), M_MUSYCC, M_WAITOK | M_ZERO);
+		sc->mycg = kmalloc(sizeof(struct mycg), M_MUSYCC,
+				   M_WAITOK | M_ZERO);
 		sc->ram = &sc->mycg->cg;
 
 		error = ng_make_node_common(&ngtypestruct, &sc->node);

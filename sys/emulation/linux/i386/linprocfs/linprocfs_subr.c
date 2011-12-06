@@ -39,7 +39,6 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.23 2007/08/25 23:27:02 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -125,11 +124,11 @@ loop:
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if MALLOC should block.
 	 */
-	MALLOC(pfs, struct pfsnode *, sizeof(struct pfsnode), M_TEMP, M_WAITOK);
+	pfs = kmalloc(sizeof(struct pfsnode), M_TEMP, M_WAITOK);
 
 	error = getnewvnode(VT_PROCFS, mp, vpp, 0, 0);
 	if (error) {
-		FREE(pfs, M_TEMP);
+		kfree(pfs, M_TEMP);
 		goto out;
 	}
 	vp = *vpp;
@@ -249,7 +248,7 @@ linprocfs_freevp(struct vnode *vp)
 	}
 	*pfspp = pfs->pfs_next;
 	lwkt_reltoken(&pfs_token);
-	FREE(vp->v_data, M_TEMP);
+	kfree(vp->v_data, M_TEMP);
 	vp->v_data = NULL;
 	return (0);
 }

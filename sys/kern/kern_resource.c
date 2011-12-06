@@ -37,7 +37,6 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.35 2008/05/27 05:25:34 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -951,7 +950,7 @@ uicreate(uid_t uid)
 
 		spin_uninit(&uip->ui_lock);
 		varsymset_clean(&uip->ui_varsymset);
-		FREE(uip, M_UIDINFO);
+		kfree(uip, M_UIDINFO);
 		uip = tmp;
 	} else {
 		LIST_INSERT_HEAD(UIHASH(uid), uip, ui_hash);
@@ -1021,7 +1020,7 @@ uifree(struct uidinfo *uip)
 	varsymset_clean(&uip->ui_varsymset);
 	lockuninit(&uip->ui_varsymset.vx_lock);
 	spin_uninit(&uip->ui_lock);
-	FREE(uip, M_UIDINFO);
+	kfree(uip, M_UIDINFO);
 	return(0);
 }
 

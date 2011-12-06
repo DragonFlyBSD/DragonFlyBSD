@@ -37,7 +37,6 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.57 2008/06/28 17:59:51 dillon Exp $
  */
 
 /*
@@ -434,7 +433,7 @@ sema_release(struct sema *semap)
 	LIST_REMOVE(item, wk_list);		\
 } while (0)
 
-#define WORKITEM_FREE(item, type) FREE(item, DtoM(type))
+#define WORKITEM_FREE(item, type) kfree(item, DtoM(type))
 
 #else /* DEBUG */
 static	void worklist_insert(struct workhead *, struct worklist *);
@@ -492,7 +491,7 @@ workitem_free(struct worklist *item, int type)
 			FREE_LOCK(&lk);
 		panic("workitem_free: type mismatch");
 	}
-	FREE(item, DtoM(type));
+	kfree(item, DtoM(type));
 }
 #endif /* DEBUG */
 
@@ -948,8 +947,8 @@ top:
 		ACQUIRE_LOCK(&lk);
 		goto top;
 	}
-	MALLOC(pagedep, struct pagedep *, sizeof(struct pagedep), M_PAGEDEP,
-		M_SOFTDEP_FLAGS | M_ZERO);
+	pagedep = kmalloc(sizeof(struct pagedep), M_PAGEDEP,
+			  M_SOFTDEP_FLAGS | M_ZERO);
 
 	if (pagedep_find(pagedephd, ip->i_number, lbn, mp)) {
 		kprintf("pagedep_lookup: blocking race avoided\n");
@@ -1039,8 +1038,8 @@ top:
 		ACQUIRE_LOCK(&lk);
 		goto top;
 	}
-	MALLOC(inodedep, struct inodedep *, sizeof(struct inodedep),
-		M_INODEDEP, M_SOFTDEP_FLAGS | M_ZERO);
+	inodedep = kmalloc(sizeof(struct inodedep), M_INODEDEP,
+			   M_SOFTDEP_FLAGS | M_ZERO);
 	if (inodedep_find(inodedephd, fs, inum)) {
 		kprintf("inodedep_lookup: blocking race avoided\n");
 		ACQUIRE_LOCK(&lk);
@@ -1116,8 +1115,8 @@ top:
 		return (0);
 	if (sema_get(&newblk_in_progress, 0) == 0)
 		goto top;
-	MALLOC(newblk, struct newblk *, sizeof(struct newblk),
-		M_NEWBLK, M_SOFTDEP_FLAGS | M_ZERO);
+	newblk = kmalloc(sizeof(struct newblk), M_NEWBLK,
+			 M_SOFTDEP_FLAGS | M_ZERO);
 
 	if (newblk_find(newblkhd, fs, newblkno)) {
 		kprintf("newblk_lookup: blocking race avoided\n");
@@ -1316,8 +1315,8 @@ bmsafemap_lookup(struct buf *bp)
 			return (WK_BMSAFEMAP(wk));
 	}
 	FREE_LOCK(&lk);
-	MALLOC(bmsafemap, struct bmsafemap *, sizeof(struct bmsafemap),
-		M_BMSAFEMAP, M_SOFTDEP_FLAGS);
+	bmsafemap = kmalloc(sizeof(struct bmsafemap), M_BMSAFEMAP,
+			    M_SOFTDEP_FLAGS);
 	bmsafemap->sm_list.wk_type = D_BMSAFEMAP;
 	bmsafemap->sm_list.wk_state = 0;
 	bmsafemap->sm_buf = bp;
@@ -1380,8 +1379,8 @@ softdep_setup_allocdirect(struct inode *ip, ufs_lbn_t lbn, ufs_daddr_t newblkno,
 	struct pagedep *pagedep;
 	struct newblk *newblk;
 
-	MALLOC(adp, struct allocdirect *, sizeof(struct allocdirect),
-		M_ALLOCDIRECT, M_SOFTDEP_FLAGS | M_ZERO);
+	adp = kmalloc(sizeof(struct allocdirect), M_ALLOCDIRECT,
+		      M_SOFTDEP_FLAGS | M_ZERO);
 	adp->ad_list.wk_type = D_ALLOCDIRECT;
 	adp->ad_lbn = lbn;
 	adp->ad_newblkno = newblkno;
@@ -1411,7 +1410,7 @@ softdep_setup_allocdirect(struct inode *ip, ufs_lbn_t lbn, ufs_daddr_t newblkno,
 		LIST_INSERT_HEAD(&bmsafemap->sm_allocdirecthd, adp, ad_deps);
 	}
 	LIST_REMOVE(newblk, nb_hash);
-	FREE(newblk, M_NEWBLK);
+	kfree(newblk, M_NEWBLK);
 
 	WORKLIST_INSERT_BP(bp, &adp->ad_list);
 	if (lbn >= NDADDR) {
@@ -1538,8 +1537,8 @@ newfreefrag(struct inode *ip, ufs_daddr_t blkno, long size)
 	fs = ip->i_fs;
 	if (fragnum(fs, blkno) + numfrags(fs, size) > fs->fs_frag)
 		panic("newfreefrag: frag size");
-	MALLOC(freefrag, struct freefrag *, sizeof(struct freefrag),
-		M_FREEFRAG, M_SOFTDEP_FLAGS);
+	freefrag = kmalloc(sizeof(struct freefrag), M_FREEFRAG,
+			   M_SOFTDEP_FLAGS);
 	freefrag->ff_list.wk_type = D_FREEFRAG;
 	freefrag->ff_state = ip->i_uid & ~ONWORKLIST;	/* XXX - used below */
 	freefrag->ff_inum = ip->i_number;
@@ -1565,7 +1564,7 @@ handle_workitem_freefrag(struct freefrag *freefrag)
 	tip.i_number = freefrag->ff_inum;
 	tip.i_uid = freefrag->ff_state & ~ONWORKLIST;	/* XXX - set above */
 	ffs_blkfree(&tip, freefrag->ff_blkno, freefrag->ff_fragsize);
-	FREE(freefrag, M_FREEFRAG);
+	kfree(freefrag, M_FREEFRAG);
 }
 
 /*
@@ -1608,8 +1607,8 @@ newallocindir(struct inode *ip, int ptrno, ufs_daddr_t newblkno,
 {
 	struct allocindir *aip;
 
-	MALLOC(aip, struct allocindir *, sizeof(struct allocindir),
-		M_ALLOCINDIR, M_SOFTDEP_FLAGS | M_ZERO);
+	aip = kmalloc(sizeof(struct allocindir), M_ALLOCINDIR,
+		      M_SOFTDEP_FLAGS | M_ZERO);
 	aip->ai_list.wk_type = D_ALLOCINDIR;
 	aip->ai_state = ATTACHED;
 	aip->ai_offset = ptrno;
@@ -1732,7 +1731,7 @@ setup_allocindir_phase2(struct buf *bp, struct inode *ip,
 				    aip, ai_deps);
 			}
 			LIST_REMOVE(newblk, nb_hash);
-			FREE(newblk, M_NEWBLK);
+			kfree(newblk, M_NEWBLK);
 			aip->ai_indirdep = indirdep;
 			/*
 			 * Check to see if there is an existing dependency
@@ -1773,8 +1772,8 @@ setup_allocindir_phase2(struct buf *bp, struct inode *ip,
 		}
 		if (indirdep)
 			break;
-		MALLOC(newindirdep, struct indirdep *, sizeof(struct indirdep),
-			M_INDIRDEP, M_SOFTDEP_FLAGS);
+		newindirdep = kmalloc(sizeof(struct indirdep), M_INDIRDEP,
+				      M_SOFTDEP_FLAGS);
 		newindirdep->ir_list.wk_type = D_INDIRDEP;
 		newindirdep->ir_state = ATTACHED;
 		LIST_INIT(&newindirdep->ir_deplisthd);
@@ -1850,8 +1849,8 @@ softdep_setup_freeblocks(struct inode *ip, off_t length)
 	fs = ip->i_fs;
 	if (length != 0)
 		panic("softde_setup_freeblocks: non-zero length");
-	MALLOC(freeblks, struct freeblks *, sizeof(struct freeblks),
-		M_FREEBLKS, M_SOFTDEP_FLAGS | M_ZERO);
+	freeblks = kmalloc(sizeof(struct freeblks), M_FREEBLKS,
+			   M_SOFTDEP_FLAGS | M_ZERO);
 	freeblks->fb_list.wk_type = D_FREEBLKS;
 	freeblks->fb_state = ATTACHED;
 	freeblks->fb_uid = ip->i_uid;
@@ -2136,8 +2135,8 @@ softdep_freefile(struct vnode *pvp, ino_t ino, int mode)
 	/*
 	 * This sets up the inode de-allocation dependency.
 	 */
-	MALLOC(freefile, struct freefile *, sizeof(struct freefile),
-		M_FREEFILE, M_SOFTDEP_FLAGS);
+	freefile = kmalloc(sizeof(struct freefile), M_FREEFILE,
+			   M_SOFTDEP_FLAGS);
 	freefile->fx_list.wk_type = D_FREEFILE;
 	freefile->fx_list.wk_state = 0;
 	freefile->fx_mode = mode;
@@ -2204,7 +2203,7 @@ check_inode_unwritten(struct inodedep *inodedep)
 	if (inodedep->id_state & ONWORKLIST)
 		WORKLIST_REMOVE(&inodedep->id_list);
 	if (inodedep->id_savedino != NULL) {
-		FREE(inodedep->id_savedino, M_INODEDEP);
+		kfree(inodedep->id_savedino, M_INODEDEP);
 		inodedep->id_savedino = NULL;
 	}
 	if (free_inodedep(inodedep) == 0) {
@@ -2465,8 +2464,8 @@ softdep_setup_directory_add(struct buf *bp, struct inode *dp, off_t diroffset,
 	fs = dp->i_fs;
 	lbn = lblkno(fs, diroffset);
 	offset = blkoff(fs, diroffset);
-	MALLOC(dap, struct diradd *, sizeof(struct diradd), M_DIRADD,
-	    M_SOFTDEP_FLAGS | M_ZERO);
+	dap = kmalloc(sizeof(struct diradd), M_DIRADD,
+		      M_SOFTDEP_FLAGS | M_ZERO);
 	dap->da_list.wk_type = D_DIRADD;
 	dap->da_offset = offset;
 	dap->da_newinum = newinum;
@@ -2476,13 +2475,13 @@ softdep_setup_directory_add(struct buf *bp, struct inode *dp, off_t diroffset,
 		ACQUIRE_LOCK(&lk);
 	} else {
 		dap->da_state |= MKDIR_BODY | MKDIR_PARENT;
-		MALLOC(mkdir1, struct mkdir *, sizeof(struct mkdir), M_MKDIR,
-		    M_SOFTDEP_FLAGS);
+		mkdir1 = kmalloc(sizeof(struct mkdir), M_MKDIR,
+				 M_SOFTDEP_FLAGS);
 		mkdir1->md_list.wk_type = D_MKDIR;
 		mkdir1->md_state = MKDIR_BODY;
 		mkdir1->md_diradd = dap;
-		MALLOC(mkdir2, struct mkdir *, sizeof(struct mkdir), M_MKDIR,
-		    M_SOFTDEP_FLAGS);
+		mkdir2 = kmalloc(sizeof(struct mkdir), M_MKDIR,
+				 M_SOFTDEP_FLAGS);
 		mkdir2->md_list.wk_type = D_MKDIR;
 		mkdir2->md_state = MKDIR_PARENT;
 		mkdir2->md_diradd = dap;
@@ -2729,8 +2728,8 @@ newdirrem(struct buf *bp, struct inode *dp, struct inode *ip,
 	if (num_dirrem > max_softdeps / 2 && speedup_syncer() == 0)
 		(void) request_cleanup(FLUSH_REMOVE, 0);
 	num_dirrem += 1;
-	MALLOC(dirrem, struct dirrem *, sizeof(struct dirrem),
-		M_DIRREM, M_SOFTDEP_FLAGS | M_ZERO);
+	dirrem = kmalloc(sizeof(struct dirrem), M_DIRREM,
+			 M_SOFTDEP_FLAGS | M_ZERO);
 	dirrem->dm_list.wk_type = D_DIRREM;
 	dirrem->dm_state = isrmdir ? RMDIR : 0;
 	dirrem->dm_mnt = ITOV(ip)->v_mount;
@@ -2833,8 +2832,8 @@ softdep_setup_directory_change(struct buf *bp, struct inode *dp,
 	 * Whiteouts do not need diradd dependencies.
 	 */
 	if (newinum != WINO) {
-		MALLOC(dap, struct diradd *, sizeof(struct diradd),
-		    M_DIRADD, M_SOFTDEP_FLAGS | M_ZERO);
+		dap = kmalloc(sizeof(struct diradd), M_DIRADD,
+			      M_SOFTDEP_FLAGS | M_ZERO);
 		dap->da_list.wk_type = D_DIRADD;
 		dap->da_state = DIRCHG | ATTACHED | DEPCOMPLETE;
 		dap->da_offset = offset;
@@ -3191,8 +3190,9 @@ softdep_disk_io_initiation(struct buf *bp)
 			/*
 			 * Replace up-to-date version with safe version.
 			 */
-			MALLOC(indirdep->ir_saveddata, caddr_t, bp->b_bcount,
-			    M_INDIRDEP, M_SOFTDEP_FLAGS);
+			indirdep->ir_saveddata = kmalloc(bp->b_bcount,
+							 M_INDIRDEP,
+							 M_SOFTDEP_FLAGS);
 			ACQUIRE_LOCK(&lk);
 			indirdep->ir_state &= ~ATTACHED;
 			indirdep->ir_state |= UNDONE;
@@ -3294,8 +3294,8 @@ initiate_write_inodeblock(struct inodedep *inodedep, struct buf *bp)
 	if ((inodedep->id_state & DEPCOMPLETE) == 0) {
 		if (inodedep->id_savedino != NULL)
 			panic("initiate_write_inodeblock: already doing I/O");
-		MALLOC(sip, struct ufs1_dinode *,
-		    sizeof(struct ufs1_dinode), M_INODEDEP, M_SOFTDEP_FLAGS);
+		sip = kmalloc(sizeof(struct ufs1_dinode), M_INODEDEP,
+			      M_SOFTDEP_FLAGS);
 		inodedep->id_savedino = sip;
 		*inodedep->id_savedino = *dp;
 		bzero((caddr_t)dp, sizeof(struct ufs1_dinode));
@@ -3509,7 +3509,7 @@ softdep_disk_write_complete(struct buf *bp)
 				panic("disk_write_complete: indirdep gone");
 			}
 			bcopy(indirdep->ir_saveddata, bp->b_data, bp->b_bcount);
-			FREE(indirdep->ir_saveddata, M_INDIRDEP);
+			kfree(indirdep->ir_saveddata, M_INDIRDEP);
 			indirdep->ir_saveddata = 0;
 			indirdep->ir_state &= ~UNDONE;
 			indirdep->ir_state |= ATTACHED;
@@ -3688,7 +3688,7 @@ handle_written_inodeblock(struct inodedep *inodedep, struct buf *bp)
 	 */
 	if (inodedep->id_savedino != NULL) {
 		*dp = *inodedep->id_savedino;
-		FREE(inodedep->id_savedino, M_INODEDEP);
+		kfree(inodedep->id_savedino, M_INODEDEP);
 		inodedep->id_savedino = NULL;
 		if ((bp->b_flags & B_DELWRI) == 0)
 			stat_inode_bitmap++;

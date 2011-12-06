@@ -37,7 +37,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bpf.c,v 1.2.4.4 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/bpf/ng_bpf.c,v 1.5 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_bpf.c,v 1.3 1999/12/03 20:30:23 archie Exp $
  */
 
@@ -236,7 +235,7 @@ ng_bpf_newhook(node_p node, hook_p hook, const char *name)
 	int error;
 
 	/* Create hook private structure */
-	MALLOC(hip, hinfo_p, sizeof(*hip), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	hip = kmalloc(sizeof(*hip), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (hip == NULL)
 		return (ENOMEM);
 	hip->hook = hook;
@@ -245,7 +244,7 @@ ng_bpf_newhook(node_p node, hook_p hook, const char *name)
 
 	/* Attach the default BPF program */
 	if ((error = ng_bpf_setprog(hook, &ng_bpf_default_prog)) != 0) {
-		FREE(hip, M_NETGRAPH);
+		kfree(hip, M_NETGRAPH);
 		hook->private = NULL;
 		return (error);
 	}
@@ -360,10 +359,10 @@ ng_bpf_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 
 done:
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -390,7 +389,7 @@ ng_bpf_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	/* Need to put packet in contiguous memory for bpf */
 	if (m->m_next != NULL) {
 		if (totlen > sizeof(buf)) {
-			MALLOC(data, u_char *, totlen, M_NETGRAPH, M_NOWAIT);
+			data = kmalloc(totlen, M_NETGRAPH, M_NOWAIT);
 			if (data == NULL) {
 				NG_FREE_DATA(m, meta);
 				return (ENOMEM);
@@ -405,7 +404,7 @@ ng_bpf_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	/* Run packet through filter */
 	len = bpf_filter(hip->prog->bpf_prog, data, totlen, totlen);
 	if (needfree)
-		FREE(data, M_NETGRAPH);
+		kfree(data, M_NETGRAPH);
 
 	/* See if we got a match and find destination hook */
 	if (len > 0) {
@@ -457,9 +456,9 @@ ng_bpf_disconnect(hook_p hook)
 	const hinfo_p hip = hook->private;
 
 	KASSERT(hip != NULL, ("%s: null info", __func__));
-	FREE(hip->prog, M_NETGRAPH);
+	kfree(hip->prog, M_NETGRAPH);
 	bzero(hip, sizeof(*hip));
-	FREE(hip, M_NETGRAPH);
+	kfree(hip, M_NETGRAPH);
 	hook->private = NULL;			/* for good measure */
 	if (hook->node->numhooks == 0)
 		ng_rmnode(hook->node);
@@ -486,14 +485,14 @@ ng_bpf_setprog(hook_p hook, const struct ng_bpf_hookprog *hp0)
 
 	/* Make a copy of the program */
 	size = NG_BPF_HOOKPROG_SIZE(hp0->bpf_prog_len);
-	MALLOC(hp, struct ng_bpf_hookprog *, size, M_NETGRAPH, M_NOWAIT);
+	hp = kmalloc(size, M_NETGRAPH, M_NOWAIT);
 	if (hp == NULL)
 		return (ENOMEM);
 	bcopy(hp0, hp, size);
 
 	/* Free previous program, if any, and assign new one */
 	if (hip->prog != NULL)
-		FREE(hip->prog, M_NETGRAPH);
+		kfree(hip->prog, M_NETGRAPH);
 	hip->prog = hp;
 	return (0);
 }

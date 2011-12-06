@@ -32,7 +32,6 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.30 2008/04/14 12:01:50 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -74,8 +73,7 @@ ktrgetheader(int type)
 	struct proc *p = curproc;	/* XXX */
 	struct lwp *lp = curthread->td_lwp;
 
-	MALLOC(kth, struct ktr_header *, sizeof (struct ktr_header),
-		M_KTRACE, M_WAITOK);
+	kth = kmalloc(sizeof(struct ktr_header), M_KTRACE, M_WAITOK);
 	kth->ktr_type = type;
 	/* XXX threaded flag is a hack at the moment */
 	kth->ktr_flags = (p->p_nthreads > 1) ? KTRH_THREADED : 0;
@@ -104,7 +102,7 @@ ktrsyscall(struct lwp *lp, int code, int narg, register_t args[])
 	 */
 	lp->lwp_traceflag |= KTRFAC_ACTIVE;
 	kth = ktrgetheader(KTR_SYSCALL);
-	MALLOC(ktp, struct ktr_syscall *, len, M_KTRACE, M_WAITOK);
+	ktp = kmalloc(len, M_KTRACE, M_WAITOK);
 	ktp->ktr_code = code;
 	ktp->ktr_narg = narg;
 	argp = &ktp->ktr_args[0];
@@ -113,8 +111,8 @@ ktrsyscall(struct lwp *lp, int code, int narg, register_t args[])
 	kth->ktr_buf = (caddr_t)ktp;
 	kth->ktr_len = len;
 	ktrwrite(lp, kth, NULL);
-	FREE(ktp, M_KTRACE);
-	FREE(kth, M_KTRACE);
+	kfree(ktp, M_KTRACE);
+	kfree(kth, M_KTRACE);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
 
@@ -137,7 +135,7 @@ ktrsysret(struct lwp *lp, int code, int error, register_t retval)
 	kth->ktr_len = sizeof(struct ktr_sysret);
 
 	ktrwrite(lp, kth, NULL);
-	FREE(kth, M_KTRACE);
+	kfree(kth, M_KTRACE);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
 
@@ -152,7 +150,7 @@ ktrnamei(struct lwp *lp, char *path)
 	kth->ktr_buf = path;
 
 	ktrwrite(lp, kth, NULL);
-	FREE(kth, M_KTRACE);
+	kfree(kth, M_KTRACE);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
 
@@ -174,7 +172,7 @@ ktrgenio(struct lwp *lp, int fd, enum uio_rw rw, struct uio *uio, int error)
 	uio->uio_rw = UIO_WRITE;
 
 	ktrwrite(lp, kth, uio);
-	FREE(kth, M_KTRACE);
+	kfree(kth, M_KTRACE);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
 
@@ -194,7 +192,7 @@ ktrpsig(struct lwp *lp, int sig, sig_t action, sigset_t *mask, int code)
 	kth->ktr_len = sizeof (struct ktr_psig);
 
 	ktrwrite(lp, kth, NULL);
-	FREE(kth, M_KTRACE);
+	kfree(kth, M_KTRACE);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
 
@@ -212,7 +210,7 @@ ktrcsw(struct lwp *lp, int out, int user)
 	kth->ktr_len = sizeof (struct ktr_csw);
 
 	ktrwrite(lp, kth, NULL);
-	FREE(kth, M_KTRACE);
+	kfree(kth, M_KTRACE);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
 #endif
@@ -270,8 +268,8 @@ sys_ktrace(struct ktrace_args *uap)
 			nlookup_done(&nd);
 			goto done;
 		}
-		MALLOC(tracenode, ktrace_node_t, sizeof (struct ktrace_node),
-		       M_KTRACE, M_WAITOK | M_ZERO);
+		tracenode = kmalloc(sizeof(struct ktrace_node), M_KTRACE,
+				    M_WAITOK | M_ZERO);
 		tracenode->kn_vp = nd.nl_open_vp;
 		tracenode->kn_refs = 1;
 		nd.nl_open_vp = NULL;
@@ -400,14 +398,14 @@ sys_utrace(struct utrace_args *uap)
 		return (EINVAL);
 	td->td_lwp->lwp_traceflag |= KTRFAC_ACTIVE;
 	kth = ktrgetheader(KTR_USER);
-	MALLOC(cp, caddr_t, uap->len, M_KTRACE, M_WAITOK);
+	cp = kmalloc(uap->len, M_KTRACE, M_WAITOK);
 	if (!copyin(uap->addr, cp, uap->len)) {
 		kth->ktr_buf = cp;
 		kth->ktr_len = uap->len;
 		ktrwrite(td->td_lwp, kth, NULL);
 	}
-	FREE(kth, M_KTRACE);
-	FREE(cp, M_KTRACE);
+	kfree(kth, M_KTRACE);
+	kfree(cp, M_KTRACE);
 	td->td_lwp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 
 	return (0);
@@ -427,7 +425,7 @@ ktrdestroy(struct ktrace_node **tracenodep)
 		if (atomic_fetchadd_int(&tracenode->kn_refs, -1) == 1) {
 			vn_close(tracenode->kn_vp, FREAD|FWRITE);
 			tracenode->kn_vp = NULL;
-			FREE(tracenode, M_KTRACE);
+			kfree(tracenode, M_KTRACE);
 		}
 	}
 }

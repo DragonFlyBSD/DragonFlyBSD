@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/net/ppp_deflate.c,v 1.12.2.1 2002/04/14 21:41:48 luigi Exp $	*/
-/* $DragonFly: src/sys/net/ppp_layer/ppp_deflate.c,v 1.9 2006/12/22 23:44:57 swildner Exp $	*/
 
 /*
  * ppp_deflate.c - interface the zlib procedures for Deflate compression
@@ -124,7 +123,7 @@ z_alloc(void *notused, u_int items, u_int size)
 {
     void *ptr;
 
-    MALLOC(ptr, void *, items * size, M_DEVBUF, M_WAITOK);
+    ptr = kmalloc(items * size, M_DEVBUF, M_WAITOK);
     return ptr;
 }
 
@@ -153,8 +152,7 @@ z_comp_alloc(u_char *options, int opt_len)
     if (w_size < DEFLATE_MIN_SIZE || w_size > DEFLATE_MAX_SIZE)
 	return NULL;
 
-    MALLOC(state, struct deflate_state *, sizeof(struct deflate_state),
-	   M_DEVBUF, M_WAITOK);
+    state = kmalloc(sizeof(struct deflate_state), M_DEVBUF, M_WAITOK);
 
     state->strm.next_in = NULL;
     state->strm.zalloc = z_alloc;
@@ -375,8 +373,7 @@ z_decomp_alloc(u_char *options, int opt_len)
     if (w_size < DEFLATE_MIN_SIZE || w_size > DEFLATE_MAX_SIZE)
 	return NULL;
 
-    MALLOC(state, struct deflate_state *, sizeof(struct deflate_state),
-	   M_DEVBUF, M_WAITOK);
+    state = kmalloc(sizeof(struct deflate_state), M_DEVBUF, M_WAITOK);
 
     state->strm.next_out = NULL;
     state->strm.zalloc = z_alloc;

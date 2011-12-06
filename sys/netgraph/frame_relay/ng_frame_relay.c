@@ -37,7 +37,6 @@
  * Author: Julian Elisher <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_frame_relay.c,v 1.9.2.2 2000/10/24 18:36:45 julian Exp $
- * $DragonFly: src/sys/netgraph/frame_relay/ng_frame_relay.c,v 1.6 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_frame_relay.c,v 1.20 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -220,11 +219,11 @@ ngfrm_constructor(node_p *nodep)
 	sc_p sc;
 	int error = 0;
 
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (!sc)
 		return (ENOMEM);
 	if ((error = ng_make_node_common(&typestruct, nodep))) {
-		FREE(sc, M_NETGRAPH);
+		kfree(sc, M_NETGRAPH);
 		return (error);
 	}
 	sc->addrlen = 2;	/* default */
@@ -490,7 +489,7 @@ ngfrm_rmnode(node_p node)
 	ng_cutlinks(node);
 	ng_unname(node);
 	node->private = NULL;
-	FREE(sc, M_NETGRAPH);
+	kfree(sc, M_NETGRAPH);
 	ng_unref(node);
 	return (0);
 }

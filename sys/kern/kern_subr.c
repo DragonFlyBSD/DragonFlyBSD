@@ -367,8 +367,8 @@ iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
 	if (iov_cnt > UIO_MAXIOV)
 		return EMSGSIZE;
 	if (iov_cnt > UIO_SMALLIOV) {
-		MALLOC(*kiov, struct iovec *, sizeof(struct iovec) * iov_cnt,
-		    M_IOV, M_WAITOK);
+		*kiov = kmalloc(sizeof(struct iovec) * iov_cnt, M_IOV,
+				M_WAITOK);
 	} else {
 		*kiov = siov;
 	}

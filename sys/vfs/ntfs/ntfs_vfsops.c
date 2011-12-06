@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.48 2008/09/17 21:44:25 dillon Exp $
  */
 
 
@@ -548,9 +547,8 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 		}
 
 		/* Alloc memory for attribute definitions */
-		MALLOC(ntmp->ntm_ad, struct ntvattrdef *,
-			num * sizeof(struct ntvattrdef),
-			M_NTFSMNT, M_WAITOK);
+		ntmp->ntm_ad = kmalloc(num * sizeof(struct ntvattrdef),
+				       M_NTFSMNT, M_WAITOK);
 
 		ntmp->ntm_adnum = num;
 
@@ -674,8 +672,8 @@ ntfs_unmount(struct mount *mp, int mntflags)
 	ntfs_82u_uninit(ntmp);
 	mp->mnt_data = (qaddr_t)0;
 	mp->mnt_flag &= ~MNT_LOCAL;
-	FREE(ntmp->ntm_ad, M_NTFSMNT);
-	FREE(ntmp, M_NTFSMNT);
+	kfree(ntmp->ntm_ad, M_NTFSMNT);
+	kfree(ntmp, M_NTFSMNT);
 	return (error);
 }
 
@@ -720,7 +718,7 @@ ntfs_calccfree(struct ntfsmount *ntmp, cn_t *cfreep)
 
 	bmsize = VTOF(vp)->f_size;
 
-	MALLOC(tmp, u_int8_t *, bmsize, M_TEMP, M_WAITOK);
+	tmp = kmalloc(bmsize, M_TEMP, M_WAITOK);
 
 	error = ntfs_readattr(ntmp, VTONT(vp), NTFS_A_DATA, NULL,
 			       0, bmsize, tmp, NULL);
@@ -733,7 +731,7 @@ ntfs_calccfree(struct ntfsmount *ntmp, cn_t *cfreep)
 	*cfreep = cfree;
 
     out:
-	FREE(tmp, M_TEMP);
+	kfree(tmp, M_TEMP);
 	return(error);
 }
 

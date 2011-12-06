@@ -190,7 +190,7 @@ ntfs_ntvattrget(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t type,
 	}
 	/* Scan $ATTRIBUTE_LIST for requested attribute */
 	len = lvap->va_datalen;
-	MALLOC(alpool, caddr_t, len, M_TEMP, M_WAITOK);
+	alpool = kmalloc(len, M_TEMP, M_WAITOK);
 	error = ntfs_readntvattr_plain(ntmp, ip, lvap, 0, len, alpool, &len,
 			NULL);
 	if (error)
@@ -246,7 +246,7 @@ ntfs_ntvattrget(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t type,
 	       "ino: %"PRId64", type: 0x%x, name: %.*s, vcn: %d\n", \
 	       ip->i_number, type, (int) namelen, name, (u_int32_t) vcn));
 out:
-	FREE(alpool, M_TEMP);
+	kfree(alpool, M_TEMP);
 	return (error);
 }
 
@@ -266,8 +266,7 @@ ntfs_loadntnode(struct ntfsmount *ntmp, struct ntnode *ip)
 
 	dprintf(("ntfs_loadntnode: loading ino: %"PRId64"\n",ip->i_number));
 
-	MALLOC(mfrp, struct filerec *, ntfs_bntob(ntmp->ntm_bpmftrec),
-	       M_TEMP, M_WAITOK);
+	mfrp = kmalloc(ntfs_bntob(ntmp->ntm_bpmftrec), M_TEMP, M_WAITOK);
 
 	if (ip->i_number < NTFS_SYSNODESNUM) {
 		struct buf     *bp;
@@ -338,7 +337,7 @@ ntfs_loadntnode(struct ntfsmount *ntmp, struct ntnode *ip)
 	ip->i_flag |= IN_LOADED;
 
 out:
-	FREE(mfrp, M_TEMP);
+	kfree(mfrp, M_TEMP);
 	return (error);
 }
 		
@@ -382,8 +381,7 @@ ntfs_ntlookup(struct ntfsmount *ntmp, ino_t ino, struct ntnode **ipp)
 		}
 	} while (LOCKMGR(&ntfs_hashlock, LK_EXCLUSIVE | LK_SLEEPFAIL));
 
-	MALLOC(ip, struct ntnode *, sizeof(struct ntnode),
-	       M_NTFSNTNODE, M_WAITOK | M_ZERO);
+	ip = kmalloc(sizeof(struct ntnode), M_NTFSNTNODE, M_WAITOK | M_ZERO);
 	ddprintf(("ntfs_ntlookup: allocating ntnode: %d: %p\n", ino, ip));
 
 	/* Generic initialization */
@@ -462,7 +460,7 @@ ntfs_ntput(struct ntnode *ip)
 	}
 	spin_unlock(&ip->i_interlock);
 	vrele(ip->i_devvp);
-	FREE(ip, M_NTFSNTNODE);
+	kfree(ip, M_NTFSNTNODE);
 }
 
 /*
@@ -506,14 +504,14 @@ ntfs_freentvattr(struct ntvattr *vap)
 {
 	if (vap->va_flag & NTFS_AF_INRUN) {
 		if (vap->va_vruncn)
-			FREE(vap->va_vruncn, M_NTFSRUN);
+			kfree(vap->va_vruncn, M_NTFSRUN);
 		if (vap->va_vruncl)
-			FREE(vap->va_vruncl, M_NTFSRUN);
+			kfree(vap->va_vruncl, M_NTFSRUN);
 	} else {
 		if (vap->va_datap)
-			FREE(vap->va_datap, M_NTFSRDATA);
+			kfree(vap->va_datap, M_NTFSRDATA);
 	}
-	FREE(vap, M_NTFSNTVATTR);
+	kfree(vap, M_NTFSNTVATTR);
 }
 
 /*
@@ -530,8 +528,8 @@ ntfs_attrtontvattr(struct ntfsmount *ntmp, struct ntvattr **rvapp,
 	error = 0;
 	*rvapp = NULL;
 
-	MALLOC(vap, struct ntvattr *, sizeof(struct ntvattr),
-		M_NTFSNTVATTR, M_WAITOK | M_ZERO);
+	vap = kmalloc(sizeof(struct ntvattr), M_NTFSNTVATTR,
+		      M_WAITOK | M_ZERO);
 	vap->va_ip = NULL;
 	vap->va_flag = rap->a_hdr.a_flag;
 	vap->va_type = rap->a_hdr.a_type;
@@ -567,15 +565,15 @@ ntfs_attrtontvattr(struct ntfsmount *ntmp, struct ntvattr **rvapp,
 		vap->va_allocated = rap->a_r.a_datalen;
 		vap->va_vcnstart = 0;
 		vap->va_vcnend = ntfs_btocn(vap->va_allocated);
-		MALLOC(vap->va_datap, caddr_t, vap->va_datalen,
-		       M_NTFSRDATA, M_WAITOK);
+		vap->va_datap = kmalloc(vap->va_datalen, M_NTFSRDATA,
+					M_WAITOK);
 		memcpy(vap->va_datap, (caddr_t) rap + rap->a_r.a_dataoff,
 		       rap->a_r.a_datalen);
 	}
 	ddprintf((", len: %d", vap->va_datalen));
 
 	if (error)
-		FREE(vap, M_NTFSNTVATTR);
+		kfree(vap, M_NTFSNTVATTR);
 	else
 		*rvapp = vap;
 
@@ -605,8 +603,8 @@ ntfs_runtovrun(cn_t **rcnp, cn_t **rclp, u_long *rcntp, u_int8_t *run)
 		off += (run[off] & 0xF) + ((run[off] >> 4) & 0xF) + 1;
 		cnt++;
 	}
-	MALLOC(cn, cn_t *, cnt * sizeof(cn_t), M_NTFSRUN, M_WAITOK);
-	MALLOC(cl, cn_t *, cnt * sizeof(cn_t), M_NTFSRUN, M_WAITOK);
+	cn = kmalloc(cnt * sizeof(cn_t), M_NTFSRUN, M_WAITOK);
+	cl = kmalloc(cnt * sizeof(cn_t), M_NTFSRUN, M_WAITOK);
 
 	off = 0;
 	cnt = 0;
@@ -744,14 +742,14 @@ ntfs_fget(struct ntfsmount *ntmp, struct ntnode *ip, int attrtype,
 	if (*fpp)
 		return (0);
 
-	MALLOC(fp, struct fnode *, sizeof(struct fnode), M_NTFSFNODE,
-	    M_WAITOK | M_ZERO);
+	fp = kmalloc(sizeof(struct fnode), M_NTFSFNODE, M_WAITOK | M_ZERO);
 	dprintf(("ntfs_fget: allocating fnode: %p\n",fp));
 
 	fp->f_ip = ip;
 	if (attrname) {
 		fp->f_flag |= FN_AATTRNAME;
-		MALLOC(fp->f_attrname, char *, strlen(attrname)+1, M_TEMP, M_WAITOK);
+		fp->f_attrname = kmalloc(strlen(attrname) + 1, M_TEMP,
+					 M_WAITOK);
 		strcpy(fp->f_attrname, attrname);
 	} else
 		fp->f_attrname = NULL;
@@ -781,10 +779,10 @@ ntfs_frele(struct fnode *fp)
 	dprintf(("ntfs_frele: deallocating fnode\n"));
 	LIST_REMOVE(fp,f_fnlist);
 	if (fp->f_flag & FN_AATTRNAME)
-		FREE(fp->f_attrname, M_TEMP);
+		kfree(fp->f_attrname, M_TEMP);
 	if (fp->f_dirblbuf)
-		FREE(fp->f_dirblbuf, M_NTFSDIR);
-	FREE(fp, M_NTFSFNODE);
+		kfree(fp->f_dirblbuf, M_NTFSDIR);
+	kfree(fp, M_NTFSFNODE);
 	ntfs_ntrele(ip);
 }
 
@@ -831,7 +829,7 @@ ntfs_ntlookupattr(struct ntfsmount *ntmp, const char *name, int namelen,
 
     out:
 	if (namelen) {
-		MALLOC((*attrname), char *, namelen, M_TEMP, M_WAITOK);
+		(*attrname) = kmalloc(namelen, M_TEMP, M_WAITOK);
 		memcpy((*attrname), name, namelen);
 		(*attrname)[namelen] = '\0';
 	}
@@ -893,7 +891,7 @@ ntfs_ntlookupfile(struct ntfsmount *ntmp, struct vnode *vp,
 
 	dprintf(("ntfs_ntlookupfile: blksz: %d, rdsz: %d\n", blsize, rdsize));
 
-	MALLOC(rdbuf, caddr_t, blsize, M_TEMP, M_WAITOK);
+	rdbuf = kmalloc(blsize, M_TEMP, M_WAITOK);
 
 	error = ntfs_readattr(ntmp, ip, NTFS_A_INDXROOT, "$I30",
 			       0, rdsize, rdbuf, NULL);
@@ -958,7 +956,7 @@ ntfs_ntlookupfile(struct ntfsmount *ntmp, struct vnode *vp,
 
 			/* free the buffer returned by ntfs_ntlookupattr() */
 			if (attrname) {
-				FREE(attrname, M_TEMP);
+				kfree(attrname, M_TEMP);
 				attrname = NULL;
 			}
 
@@ -1041,10 +1039,10 @@ ntfs_ntlookupfile(struct ntfsmount *ntmp, struct vnode *vp,
 	dprintf(("finish\n"));
 
 fail:
-	if (attrname) FREE(attrname, M_TEMP);
+	if (attrname) kfree(attrname, M_TEMP);
 	ntfs_ntvattrrele(vap);
 	ntfs_ntput(ip);
-	FREE(rdbuf, M_TEMP);
+	kfree(rdbuf, M_TEMP);
 	return (error);
 }
 
@@ -1110,8 +1108,8 @@ ntfs_ntreaddir(struct ntfsmount *ntmp, struct fnode *fp,
 
 	if (fp->f_dirblbuf == NULL) {
 		fp->f_dirblsz = vap->va_a_iroot->ir_size;
-		MALLOC(fp->f_dirblbuf, caddr_t,
-		       max(vap->va_datalen,fp->f_dirblsz), M_NTFSDIR, M_WAITOK);
+		fp->f_dirblbuf = kmalloc(max(vap->va_datalen, fp->f_dirblsz),
+					 M_NTFSDIR, M_WAITOK);
 	}
 
 	blsize = fp->f_dirblsz;
@@ -1126,7 +1124,7 @@ ntfs_ntreaddir(struct ntfsmount *ntmp, struct fnode *fp,
 			error = ENOTDIR;
 			goto fail;
 		}
-		MALLOC(bmp, u_char *, bmvap->va_datalen, M_TEMP, M_WAITOK);
+		bmp = kmalloc(bmvap->va_datalen, M_TEMP, M_WAITOK);
 		error = ntfs_readattr(ntmp, ip, NTFS_A_INDXBITMAP, "$I30", 0,
 				       bmvap->va_datalen, bmp, NULL);
 		if (error)
@@ -1232,7 +1230,7 @@ fail:
 	if (iavap)
 		ntfs_ntvattrrele(iavap);
 	if (bmp)
-		FREE(bmp, M_TEMP);
+		kfree(bmp, M_TEMP);
 	ntfs_ntput(ip);
 	return (error);
 }
@@ -1683,10 +1681,10 @@ ntfs_readattr(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t attrnum,
 		ddprintf(("ntfs_ntreadattr: compression: %d\n",
 			 vap->va_compressalg));
 
-		MALLOC(cup, u_int8_t *, ntfs_cntob(NTFS_COMPUNIT_CL),
-		       M_NTFSDECOMP, M_WAITOK);
-		MALLOC(uup, u_int8_t *, ntfs_cntob(NTFS_COMPUNIT_CL),
-		       M_NTFSDECOMP, M_WAITOK);
+		cup = kmalloc(ntfs_cntob(NTFS_COMPUNIT_CL), M_NTFSDECOMP,
+			      M_WAITOK);
+		uup = kmalloc(ntfs_cntob(NTFS_COMPUNIT_CL), M_NTFSDECOMP,
+			      M_WAITOK);
 
 		cn = (ntfs_btocn(roff)) & (~(NTFS_COMPUNIT_CL - 1));
 		off = roff - ntfs_cntob(cn);
@@ -1730,8 +1728,8 @@ ntfs_readattr(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t attrnum,
 			cn += NTFS_COMPUNIT_CL;
 		}
 
-		FREE(uup, M_NTFSDECOMP);
-		FREE(cup, M_NTFSDECOMP);
+		kfree(uup, M_NTFSDECOMP);
+		kfree(cup, M_NTFSDECOMP);
 	} else
 		error = ntfs_readattr_plain(ntmp, ip, attrnum, attrname,
 					     roff, rsize, rdata, &init, uio);
@@ -1897,8 +1895,8 @@ ntfs_toupper_use(struct mount *mp, struct ntfsmount *ntmp)
 	 * XXX for now, just the first 256 entries are used anyway,
 	 * so don't bother reading more
 	 */
-	MALLOC(ntfs_toupper_tab, wchar *, 65536 * sizeof(wchar),
-		M_NTFSRDATA, M_WAITOK);
+	ntfs_toupper_tab = kmalloc(65536 * sizeof(wchar), M_NTFSRDATA,
+				   M_WAITOK);
 
 	if ((error = VFS_VGET(mp, NULL, NTFS_UPCASEINO, &vp)))
 		goto out;
@@ -1924,7 +1922,7 @@ ntfs_toupper_unuse(void)
 
 	ntfs_toupper_usecount--;
 	if (ntfs_toupper_usecount == 0) {
-		FREE(ntfs_toupper_tab, M_NTFSRDATA);
+		kfree(ntfs_toupper_tab, M_NTFSRDATA);
 		ntfs_toupper_tab = NULL;
 	}
 #ifdef DIAGNOSTIC
@@ -1950,14 +1948,14 @@ ntfs_u28_init(struct ntfsmount *ntmp, wchar *u2w, char *cs_local,
 		return (0);
 	}
 
-	MALLOC(u28, char **, 256 * sizeof(char*), M_TEMP, M_WAITOK | M_ZERO);
+	u28 = kmalloc(256 * sizeof(char *), M_TEMP, M_WAITOK | M_ZERO);
 
 	for (i=0; i<256; i++) {
 		h = (u2w[i] >> 8) & 0xFF;
 		l = (u2w[i]) &0xFF;
 
 		if (u28[h] == NULL) {
-			MALLOC(u28[h], char *, 256 * sizeof(char), M_TEMP, M_WAITOK);
+			u28[h] = kmalloc(256 * sizeof(char), M_TEMP, M_WAITOK);
 			for (j=0; j<256; j++)
 				u28[h][j] = '_';
 		}
@@ -1990,9 +1988,9 @@ ntfs_u28_uninit(struct ntfsmount *ntmp)
 
 	for (i=0; i<256; i++)
 		if (u28[i] != NULL)
-			FREE(u28[i], M_TEMP);
+			kfree(u28[i], M_TEMP);
 
-	FREE(u28, M_TEMP);
+	kfree(u28, M_TEMP);
 
 	return (0);
 }
@@ -2009,7 +2007,7 @@ ntfs_82u_init(struct ntfsmount *ntmp, char *cs_local, char *cs_ntfs)
 		return (0);
 	}
 
-	MALLOC(_82u, wchar *, 256 * sizeof(wchar), M_TEMP, M_WAITOK);
+	_82u = kmalloc(256 * sizeof(wchar), M_TEMP, M_WAITOK);
 
 	for (i=0; i<256; i++)
 		_82u[i] = i;
@@ -2029,7 +2027,7 @@ ntfs_82u_uninit(struct ntfsmount *ntmp)
 		return (0);
 	}
 
-	FREE(ntmp->ntm_82u, M_TEMP);
+	kfree(ntmp->ntm_82u, M_TEMP);
 	return (0);
 }
 

@@ -37,7 +37,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_async.c,v 1.6.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/async/ng_async.c,v 1.7 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_async.c,v 1.17 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -183,23 +182,21 @@ nga_constructor(node_p *nodep)
 
 	if ((error = ng_make_node_common(&typestruct, nodep)))
 		return (error);
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (sc == NULL)
 		return (ENOMEM);
 	sc->amode = MODE_HUNT;
 	sc->cfg.accm = ~0;
 	sc->cfg.amru = NG_ASYNC_DEFAULT_MRU;
 	sc->cfg.smru = NG_ASYNC_DEFAULT_MRU;
-	MALLOC(sc->abuf, u_char *,
-	    ASYNC_BUF_SIZE(sc->cfg.smru), M_NETGRAPH, M_NOWAIT);
+	sc->abuf = kmalloc(ASYNC_BUF_SIZE(sc->cfg.smru), M_NETGRAPH, M_NOWAIT);
 	if (sc->abuf == NULL)
 		goto fail;
-	MALLOC(sc->sbuf, u_char *,
-	    SYNC_BUF_SIZE(sc->cfg.amru), M_NETGRAPH, M_NOWAIT);
+	sc->sbuf = kmalloc(SYNC_BUF_SIZE(sc->cfg.amru), M_NETGRAPH, M_NOWAIT);
 	if (sc->sbuf == NULL) {
-		FREE(sc->abuf, M_NETGRAPH);
+		kfree(sc->abuf, M_NETGRAPH);
 fail:
-		FREE(sc, M_NETGRAPH);
+		kfree(sc, M_NETGRAPH);
 		return (ENOMEM);
 	}
 	(*nodep)->private = sc;
@@ -281,19 +278,19 @@ nga_rcvmsg(node_p node, struct ng_mesg *msg,
 				ERROUT(EINVAL);
 			cfg->enabled = !!cfg->enabled;	/* normalize */
 			if (cfg->smru > sc->cfg.smru) {	/* reallocate buffer */
-				MALLOC(buf, u_char *, ASYNC_BUF_SIZE(cfg->smru),
-				    M_NETGRAPH, M_NOWAIT);
+				buf = kmalloc(ASYNC_BUF_SIZE(cfg->smru),
+					      M_NETGRAPH, M_NOWAIT);
 				if (!buf)
 					ERROUT(ENOMEM);
-				FREE(sc->abuf, M_NETGRAPH);
+				kfree(sc->abuf, M_NETGRAPH);
 				sc->abuf = buf;
 			}
 			if (cfg->amru > sc->cfg.amru) {	/* reallocate buffer */
-				MALLOC(buf, u_char *, SYNC_BUF_SIZE(cfg->amru),
-				    M_NETGRAPH, M_NOWAIT);
+				buf = kmalloc(SYNC_BUF_SIZE(cfg->amru),
+					      M_NETGRAPH, M_NOWAIT);
 				if (!buf)
 					ERROUT(ENOMEM);
-				FREE(sc->sbuf, M_NETGRAPH);
+				kfree(sc->sbuf, M_NETGRAPH);
 				sc->sbuf = buf;
 				sc->amode = MODE_HUNT;
 				sc->slen = 0;
@@ -321,10 +318,10 @@ nga_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 
 done:
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -338,10 +335,10 @@ nga_shutdown(node_p node)
 
 	ng_cutlinks(node);
 	ng_unname(node);
-	FREE(sc->abuf, M_NETGRAPH);
-	FREE(sc->sbuf, M_NETGRAPH);
+	kfree(sc->abuf, M_NETGRAPH);
+	kfree(sc->sbuf, M_NETGRAPH);
 	bzero(sc, sizeof(*sc));
-	FREE(sc, M_NETGRAPH);
+	kfree(sc, M_NETGRAPH);
 	node->private = NULL;
 	ng_unref(node);
 	return (0);

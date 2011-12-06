@@ -37,7 +37,6 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.21 2008/07/17 23:56:23 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -260,8 +259,8 @@ log_console(struct uio *uio)
 	pri = LOG_INFO | LOG_CONSOLE;
 	muio = *uio;
 	iovlen = uio->uio_iovcnt * sizeof (struct iovec);
-	MALLOC(miov, struct iovec *, iovlen, M_TEMP, M_WAITOK);
-	MALLOC(consbuffer, char *, CONSCHUNK, M_TEMP, M_WAITOK);
+	miov = kmalloc(iovlen, M_TEMP, M_WAITOK);
+	consbuffer = kmalloc(CONSCHUNK, M_TEMP, M_WAITOK);
 	bcopy((caddr_t)muio.uio_iov, (caddr_t)miov, iovlen);
 	muio.uio_iov = miov;
 	uio = &muio;
@@ -283,8 +282,8 @@ log_console(struct uio *uio)
 	if (!nl)
 		msglogchar('\n', pri);
 	msgbuftrigger = 1;
-	FREE(miov, M_TEMP);
-	FREE(consbuffer, M_TEMP);
+	kfree(miov, M_TEMP);
+	kfree(consbuffer, M_TEMP);
 	return;
 }
 

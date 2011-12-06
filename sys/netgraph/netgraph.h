@@ -255,7 +255,7 @@ struct ng_type {
 			if (retaddr) {					\
 				error = ng_queue_msg(here, resp, retaddr); \
 			} else {					\
-				FREE(resp, M_NETGRAPH);			\
+				kfree(resp, M_NETGRAPH);		\
 			}						\
 		}							\
 	} while (0)
@@ -263,7 +263,7 @@ struct ng_type {
 #define NG_FREE_MSG(msg)						\
 	do {								\
 		if ((msg)) {						\
-			FREE((msg), M_NETGRAPH);			\
+			kfree((msg), M_NETGRAPH);			\
 			(msg) = NULL;					\
 		}	 						\
 	} while (0)
@@ -271,7 +271,7 @@ struct ng_type {
 #define NG_FREE_META(a)							\
 	do {								\
 		if ((a)) {						\
-			FREE((a), M_NETGRAPH);				\
+			kfree((a), M_NETGRAPH);				\
 			(a) = NULL;					\
 		}							\
 	} while (0)

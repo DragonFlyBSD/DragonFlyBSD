@@ -38,7 +38,6 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.28 2008/09/24 14:26:39 sephe Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -340,7 +339,7 @@ ng_load_module(const char *name)
 	if ((path = linker_search_path(filename)) == NULL)
 		return (ENXIO);
 	error = linker_load_file(path, &lf);
-	FREE(path, M_LINKER);
+	kfree(path, M_LINKER);
 	if (error == 0)
 		lf->userrefs++;		/* pretend kldload'ed */
 	return (error);
@@ -409,7 +408,7 @@ ng_make_node_common(struct ng_type *type, node_p *nodepp)
 	}
 
 	/* Make a node and try attach it to the type */
-	MALLOC(node, node_p, sizeof(*node), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	node = kmalloc(sizeof(*node), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (node == NULL) {
 		TRAP_ERROR;
 		return (ENOMEM);
@@ -498,7 +497,7 @@ ng_unref(node_p node)
 		node->type->refs--;
 		LIST_REMOVE(node, nodes);
 		LIST_REMOVE(node, idnodes);
-		FREE(node, M_NETGRAPH);
+		kfree(node, M_NETGRAPH);
 	}
 	crit_exit();
 }
@@ -612,7 +611,7 @@ ng_name_node(node_p node, const char *name)
 	}
 
 	/* Allocate space and copy it */
-	MALLOC(node->name, char *, strlen(name) + 1, M_NETGRAPH, M_NOWAIT);
+	node->name = kmalloc(strlen(name) + 1, M_NETGRAPH, M_NOWAIT);
 	if (node->name == NULL) {
 		TRAP_ERROR;
 		return (ENOMEM);
@@ -687,7 +686,7 @@ void
 ng_unname(node_p node)
 {
 	if (node->name) {
-		FREE(node->name, M_NETGRAPH);
+		kfree(node->name, M_NETGRAPH);
 		node->name = NULL;
 		ng_unref(node);
 	}
@@ -709,7 +708,7 @@ ng_unref_hook(hook_p hook)
 {
 	crit_enter();
 	if (--hook->refs == 0)
-		FREE(hook, M_NETGRAPH);
+		kfree(hook, M_NETGRAPH);
 	crit_exit();
 }
 
@@ -733,7 +732,7 @@ ng_add_hook(node_p node, const char *name, hook_p *hookp)
 	}
 
 	/* Allocate the hook and link it up */
-	MALLOC(hook, hook_p, sizeof(*hook), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	hook = kmalloc(sizeof(*hook), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (hook == NULL) {
 		TRAP_ERROR;
 		return (ENOMEM);
@@ -756,7 +755,7 @@ ng_add_hook(node_p node, const char *name, hook_p *hookp)
 	node->numhooks++;
 
 	/* Set hook name */
-	MALLOC(hook->name, char *, strlen(name) + 1, M_NETGRAPH, M_NOWAIT);
+	hook->name = kmalloc(strlen(name) + 1, M_NETGRAPH, M_NOWAIT);
 	if (hook->name == NULL) {
 		error = ENOMEM;
 		LIST_REMOVE(hook, hooks);
@@ -873,7 +872,7 @@ ng_disconnect_hook(hook_p hook)
 	}
 	ng_unref(node);		/* might be the last reference */
 	if (hook->name)
-		FREE(hook->name, M_NETGRAPH);
+		kfree(hook->name, M_NETGRAPH);
 	hook->node = NULL;	/* may still be referenced elsewhere */
 	ng_unref_hook(hook);
 }
@@ -1177,7 +1176,7 @@ ng_path2node(node_p here, const char *address, node_p *destp, char **rtnp)
 
 	/* Now compute return address, i.e., the path to the sender */
 	if (rtnp != NULL) {
-		MALLOC(*rtnp, char *, NG_NODESIZ + 1, M_NETGRAPH, M_NOWAIT);
+		*rtnp = kmalloc(NG_NODESIZ + 1, M_NETGRAPH, M_NOWAIT);
 		if (*rtnp == NULL) {
 			TRAP_ERROR;
 			return (ENOMEM);
@@ -1214,7 +1213,7 @@ do {									\
 					(msg), (retaddr), (resp));	\
 		} else {						\
 			TRAP_ERROR;					\
-			FREE((msg), M_NETGRAPH);			\
+			kfree((msg), M_NETGRAPH);			\
 			(error) = EINVAL;				\
 		}							\
 	}								\
@@ -1235,7 +1234,7 @@ ng_send_msg(node_p here, struct ng_mesg *msg, const char *address,
 	/* Find the target node */
 	error = ng_path2node(here, address, &dest, &retaddr);
 	if (error) {
-		FREE(msg, M_NETGRAPH);
+		kfree(msg, M_NETGRAPH);
 		return error;
 	}
 
@@ -1254,7 +1253,7 @@ ng_send_msg(node_p here, struct ng_mesg *msg, const char *address,
 	 * have taken a copy if they needed to make a delayed response.
 	 */
 	if (retaddr)
-		FREE(retaddr, M_NETGRAPH);
+		kfree(retaddr, M_NETGRAPH);
 	return (error);
 }
 
@@ -1269,7 +1268,7 @@ ng_generic_msg(node_p here, struct ng_mesg *msg, const char *retaddr,
 
 	if (msg->header.typecookie != NGM_GENERIC_COOKIE) {
 		TRAP_ERROR;
-		FREE(msg, M_NETGRAPH);
+		kfree(msg, M_NETGRAPH);
 		return (EINVAL);
 	}
 	switch (msg->header.cmd) {
@@ -1563,7 +1562,7 @@ ng_generic_msg(node_p here, struct ng_mesg *msg, const char *retaddr,
 					break;
 			}
 			if (c->name == NULL) {
-				FREE(rp, M_NETGRAPH);
+				kfree(rp, M_NETGRAPH);
 				error = ENOSYS;
 				break;
 			}
@@ -1582,7 +1581,7 @@ ng_generic_msg(node_p here, struct ng_mesg *msg, const char *retaddr,
 			if ((error = ng_unparse(argstype,
 			    (u_char *)binary->data,
 			    ascii->data, bufSize)) != 0) {
-				FREE(rp, M_NETGRAPH);
+				kfree(rp, M_NETGRAPH);
 				break;
 			}
 		}
@@ -1637,7 +1636,7 @@ ng_generic_msg(node_p here, struct ng_mesg *msg, const char *retaddr,
 					break;
 			}
 			if (c->name == NULL) {
-				FREE(rp, M_NETGRAPH);
+				kfree(rp, M_NETGRAPH);
 				error = ENOSYS;
 				break;
 			}
@@ -1655,7 +1654,7 @@ ng_generic_msg(node_p here, struct ng_mesg *msg, const char *retaddr,
 		else {
 			if ((error = ng_parse(argstype, ascii->data,
 			    &off, (u_char *)binary->data, &bufSize)) != 0) {
-				FREE(rp, M_NETGRAPH);
+				kfree(rp, M_NETGRAPH);
 				break;
 			}
 		}
@@ -1686,7 +1685,7 @@ ng_generic_msg(node_p here, struct ng_mesg *msg, const char *retaddr,
 		TRAP_ERROR;
 		error = EINVAL;
 	}
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -1755,7 +1754,7 @@ ng_copy_meta(meta_p meta)
 
 	if (meta == NULL)
 		return (NULL);
-	MALLOC(meta2, meta_p, meta->used_len, M_NETGRAPH, M_NOWAIT);
+	meta2 = kmalloc(meta->used_len, M_NETGRAPH, M_NOWAIT);
 	if (meta2 == NULL)
 		return (NULL);
 	meta2->allocated_len = meta->used_len;
@@ -1919,8 +1918,7 @@ ng_getqblk(void)
 	if ((q = ngqfree) == NULL) {
 		crit_exit();
 		if (ngqsize < ngqroom) {	/* don't worry about races */
-			MALLOC(q, struct ng_queue_entry *,
-			    sizeof(*q), M_NETGRAPH, M_NOWAIT);
+			q = kmalloc(sizeof(*q), M_NETGRAPH, M_NOWAIT);
 		}
 	} else {
 		ngqfree = q->next;
@@ -1942,7 +1940,7 @@ do {									\
 		ngqfreesize++;						\
 		crit_exit();						\
 	} else {							\
-		FREE((q), M_NETGRAPH);					\
+		kfree((q), M_NETGRAPH);					\
 	}								\
 } while (0)
 
@@ -2003,13 +2001,13 @@ ng_queue_msg(node_p here, struct ng_mesg *msg, const char *address)
 	/* Find the target node. */
 	error = ng_path2node(here, address, &dest, &retaddr);
 	if (error) {
-		FREE(msg, M_NETGRAPH);
+		kfree(msg, M_NETGRAPH);
 		return (error);
 	}
 	if ((q = ng_getqblk()) == NULL) {
-		FREE(msg, M_NETGRAPH);
+		kfree(msg, M_NETGRAPH);
 		if (retaddr)
-			FREE(retaddr, M_NETGRAPH);
+			kfree(retaddr, M_NETGRAPH);
 		return (ENOBUFS);
 	}
 
@@ -2085,14 +2083,14 @@ ngintr(netmsg_t pmsg)
 			retaddr = ngq->body.msg.msg_retaddr;
 			RETURN_QBLK(ngq);
 			if (node->flags & NG_INVALID) {
-				FREE(msg, M_NETGRAPH);
+				kfree(msg, M_NETGRAPH);
 			} else {
 				CALL_MSG_HANDLER(error, node, msg,
 						 retaddr, NULL);
 			}
 			ng_unref(node);
 			if (retaddr)
-				FREE(retaddr, M_NETGRAPH);
+				kfree(retaddr, M_NETGRAPH);
 			break;
 		default:
 			RETURN_QBLK(ngq);

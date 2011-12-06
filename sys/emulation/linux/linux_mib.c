@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_mib.c,v 1.7.2.2 2001/11/05 19:08:22 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_mib.c,v 1.7 2003/08/15 06:32:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -124,8 +123,7 @@ get_prison(struct thread *td)
 		return (NULL);
 
 	if (pr->pr_linux == NULL) {
-		MALLOC(lpr, struct linux_prison *, sizeof *lpr,
-		    M_PRISON, M_WAITOK|M_ZERO);
+		lpr = kmalloc(sizeof *lpr, M_PRISON, M_WAITOK | M_ZERO);
 		pr->pr_linux = lpr;
 	}
 

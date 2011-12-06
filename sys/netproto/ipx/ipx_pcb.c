@@ -34,7 +34,6 @@
  *	@(#)ipx_pcb.c
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.c,v 1.18.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.13 2006/12/05 23:31:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,8 +61,7 @@ ipx_pcballoc(struct socket *so, struct ipxpcbhead *head)
 {
 	struct ipxpcb *ipxp;
 
-	MALLOC(ipxp, struct ipxpcb *, sizeof *ipxp, M_PCB, 
-		M_WAITOK | M_ZERO | M_NULLOK);
+	ipxp = kmalloc(sizeof *ipxp, M_PCB, M_WAITOK | M_ZERO | M_NULLOK);
 	if (ipxp == NULL)
 		return (ENOBUFS);
 	ipxp->ipxp_socket = so;
@@ -268,7 +266,7 @@ ipx_pcbdetach(struct ipxpcb *ipxp)
 	if (ipxp->ipxp_route.ro_rt != NULL)
 		rtfree(ipxp->ipxp_route.ro_rt);
 	LIST_REMOVE(ipxp, ipxp_list);
-	FREE(ipxp, M_PCB);
+	kfree(ipxp, M_PCB);
 }
 
 void

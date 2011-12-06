@@ -35,7 +35,6 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.48 2008/09/17 21:44:24 dillon Exp $
  */
 
 /*
@@ -1336,8 +1335,8 @@ nfs_getcookie(struct nfsnode *np, off_t off, int add)
 	dp = np->n_cookies.lh_first;
 	if (!dp) {
 		if (add) {
-			MALLOC(dp, struct nfsdmap *, sizeof (struct nfsdmap),
-				M_NFSDIROFF, M_WAITOK);
+			dp = kmalloc(sizeof(struct nfsdmap), M_NFSDIROFF,
+				     M_WAITOK);
 			dp->ndm_eocookie = 0;
 			LIST_INSERT_HEAD(&np->n_cookies, dp, ndm_list);
 		} else
@@ -1351,8 +1350,8 @@ nfs_getcookie(struct nfsnode *np, off_t off, int add)
 				return (NULL);
 			dp = dp->ndm_list.le_next;
 		} else if (add) {
-			MALLOC(dp2, struct nfsdmap *, sizeof (struct nfsdmap),
-				M_NFSDIROFF, M_WAITOK);
+			dp2 = kmalloc(sizeof(struct nfsdmap), M_NFSDIROFF,
+				      M_WAITOK);
 			dp2->ndm_eocookie = 0;
 			LIST_INSERT_AFTER(dp, dp2, ndm_list);
 			dp = dp2;

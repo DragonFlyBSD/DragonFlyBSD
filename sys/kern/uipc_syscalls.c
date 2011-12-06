@@ -170,7 +170,7 @@ sys_bind(struct bind_args *uap)
 	if (error)
 		return (error);
 	error = kern_bind(uap->s, sa);
-	FREE(sa, M_SONAME);
+	kfree(sa, M_SONAME);
 
 	return (error);
 }
@@ -378,7 +378,7 @@ accepted:
 			*name = sa;
 		} else {
 			if (sa)
-				FREE(sa, M_SONAME);
+				kfree(sa, M_SONAME);
 		}
 	}
 
@@ -428,7 +428,7 @@ sys_accept(struct accept_args *uap)
 			    sizeof(*uap->anamelen));
 		}
 		if (sa)
-			FREE(sa, M_SONAME);
+			kfree(sa, M_SONAME);
 	} else {
 		error = kern_accept(uap->s, 0, NULL, 0,
 				    &uap->sysmsg_iresult);
@@ -464,7 +464,7 @@ sys_extaccept(struct extaccept_args *uap)
 			    sizeof(*uap->anamelen));
 		}
 		if (sa)
-			FREE(sa, M_SONAME);
+			kfree(sa, M_SONAME);
 	} else {
 		error = kern_accept(uap->s, fflags, NULL, 0,
 				    &uap->sysmsg_iresult);
@@ -565,7 +565,7 @@ sys_connect(struct connect_args *uap)
 	if (error)
 		return (error);
 	error = kern_connect(uap->s, 0, sa);
-	FREE(sa, M_SONAME);
+	kfree(sa, M_SONAME);
 
 	return (error);
 }
@@ -586,7 +586,7 @@ sys_extconnect(struct extconnect_args *uap)
 	if (error)
 		return (error);
 	error = kern_connect(uap->s, fflags, sa);
-	FREE(sa, M_SONAME);
+	kfree(sa, M_SONAME);
 
 	return (error);
 }
@@ -694,7 +694,7 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 	if (KTRPOINT(td, KTR_GENIO)) {
 		int iovlen = auio->uio_iovcnt * sizeof (struct iovec);
 
-		MALLOC(ktriov, struct iovec *, iovlen, M_TEMP, M_WAITOK);
+		ktriov = kmalloc(iovlen, M_TEMP, M_WAITOK);
 		bcopy((caddr_t)auio->uio_iov, (caddr_t)ktriov, iovlen);
 		ktruio = *auio;
 	}
@@ -720,7 +720,7 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 			ktruio.uio_resid = len - auio->uio_resid;
 			ktrgenio(lp, s, UIO_WRITE, &ktruio, error);
 		}
-		FREE(ktriov, M_TEMP);
+		kfree(ktriov, M_TEMP);
 	}
 #endif
 	if (error == 0)
@@ -762,7 +762,7 @@ sys_sendto(struct sendto_args *uap)
 			     &uap->sysmsg_szresult);
 
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	return (error);
 }
 
@@ -839,7 +839,7 @@ cleanup:
 	iovec_free(&iov, aiov);
 cleanup2:
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	return (error);
 }
 
@@ -871,7 +871,7 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 	if (KTRPOINT(td, KTR_GENIO)) {
 		int iovlen = auio->uio_iovcnt * sizeof (struct iovec);
 
-		MALLOC(ktriov, struct iovec *, iovlen, M_TEMP, M_WAITOK);
+		ktriov = kmalloc(iovlen, M_TEMP, M_WAITOK);
 		bcopy(auio->uio_iov, ktriov, iovlen);
 		ktruio = *auio;
 	}
@@ -903,7 +903,7 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 			ktruio.uio_resid = len - auio->uio_resid;
 			ktrgenio(td->td_lwp, s, UIO_READ, &ktruio, error);
 		}
-		FREE(ktriov, M_TEMP);
+		kfree(ktriov, M_TEMP);
 	}
 #endif
 	if (error == 0)
@@ -963,7 +963,7 @@ sys_recvfrom(struct recvfrom_args *uap)
 		}
 	}
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 
 	return (error);
 }
@@ -1078,7 +1078,7 @@ sys_recvmsg(struct recvmsg_args *uap)
 
 cleanup:
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	iovec_free(&iov, aiov);
 	if (control)
 		m_freem(control);
@@ -1289,7 +1289,7 @@ sys_getsockname(struct getsockname_args *uap)
 	if (error == 0)
 		error = copyout(&sa_len, uap->alen, sizeof(*uap->alen));
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	return (error);
 }
 
@@ -1359,7 +1359,7 @@ sys_getpeername(struct getpeername_args *uap)
 	if (error == 0)
 		error = copyout(&sa_len, uap->alen, sizeof(*uap->alen));
 	if (sa)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	return (error);
 }
 
@@ -1374,10 +1374,10 @@ getsockaddr(struct sockaddr **namp, caddr_t uaddr, size_t len)
 		return ENAMETOOLONG;
 	if (len < offsetof(struct sockaddr, sa_data[0]))
 		return EDOM;
-	MALLOC(sa, struct sockaddr *, len, M_SONAME, M_WAITOK);
+	sa = kmalloc(len, M_SONAME, M_WAITOK);
 	error = copyin(uaddr, sa, len);
 	if (error) {
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 	} else {
 #if BYTE_ORDER != BIG_ENDIAN
 		/*

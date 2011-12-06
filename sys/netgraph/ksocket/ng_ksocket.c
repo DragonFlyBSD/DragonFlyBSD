@@ -248,17 +248,17 @@ ng_ksocket_sockaddr_parse(const struct ng_parse_type *type,
 			return (EINVAL);
 		pathlen = strlen(path);
 		if (pathlen > SOCK_MAXADDRLEN) {
-			FREE(path, M_NETGRAPH);
+			kfree(path, M_NETGRAPH);
 			return (E2BIG);
 		}
 		if (*buflen < pathoff + pathlen) {
-			FREE(path, M_NETGRAPH);
+			kfree(path, M_NETGRAPH);
 			return (ERANGE);
 		}
 		*off += toklen;
 		bcopy(path, sun->sun_path, pathlen);
 		sun->sun_len = pathoff + pathlen;
-		FREE(path, M_NETGRAPH);
+		kfree(path, M_NETGRAPH);
 		break;
 	    }
 
@@ -333,7 +333,7 @@ ng_ksocket_sockaddr_unparse(const struct ng_parse_type *type,
 		if ((pathtoken = ng_encode_string(pathbuf)) == NULL)
 			return (ENOMEM);
 		slen += ksnprintf(cbuf, cbuflen, "local/%s", pathtoken);
-		FREE(pathtoken, M_NETGRAPH);
+		kfree(pathtoken, M_NETGRAPH);
 		if (slen >= cbuflen)
 			return (ERANGE);
 		*off += sun->sun_len;
@@ -531,13 +531,13 @@ ng_ksocket_constructor(node_p *nodep)
 	int error;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&ng_ksocket_typestruct, nodep))) {
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 	(*nodep)->private = priv;
@@ -777,7 +777,7 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 		bail:
 			/* Cleanup */
 			if (sa != NULL)
-				FREE(sa, M_SONAME);
+				kfree(sa, M_SONAME);
 			break;
 		    }
 
@@ -808,7 +808,7 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 			ksopt = (struct ng_ksocket_sockopt *)resp->data;
 			sopt.sopt_val = ksopt->value;
 			if ((error = sogetopt(so, &sopt)) != 0) {
-				FREE(resp, M_NETGRAPH);
+				kfree(resp, M_NETGRAPH);
 				break;
 			}
 
@@ -866,10 +866,10 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 
 done:
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -954,7 +954,7 @@ ng_ksocket_rmnode(node_p node)
 	ng_cutlinks(node);
 	ng_unname(node);
 	bzero(priv, sizeof(*priv));
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	node->private = NULL;
 	ng_unref(node);		/* let the node escape */
 	return (0);
@@ -1063,7 +1063,7 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 		/* See if we got anything */
 		if (sio.sb_mb == NULL) {
 			if (sa != NULL)
-				FREE(sa, M_SONAME);
+				kfree(sa, M_SONAME);
 			break;
 		}
 
@@ -1079,9 +1079,9 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 			u_int len;
 
 			len = sizeof(*meta) + sizeof(*mhead) + sa->sa_len;
-			MALLOC(meta, meta_p, len, M_NETGRAPH, M_NOWAIT);
+			meta = kmalloc(len, M_NETGRAPH, M_NOWAIT);
 			if (meta == NULL) {
-				FREE(sa, M_SONAME);
+				kfree(sa, M_SONAME);
 				goto sendit;
 			}
 			mhead = &meta->options[0];
@@ -1093,7 +1093,7 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 			mhead->type = NG_KSOCKET_META_SOCKADDR;
 			mhead->len = sizeof(*mhead) + sa->sa_len;
 			bcopy(sa, mhead->data, sa->sa_len);
-			FREE(sa, M_SONAME);
+			kfree(sa, M_SONAME);
 		}
 sendit:		/* Forward data with optional peer sockaddr as meta info */
 		NG_SEND_DATA(error, priv->hook, sio.sb_mb, meta);
@@ -1192,7 +1192,7 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 
 	/* Clone a ksocket node to wrap the new socket */
 	if (ng_ksocket_constructor(&node2) != 0) {
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 		soclose(so, FNONBLOCK);
 		goto out;
 	}
@@ -1225,7 +1225,7 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 
 out:
 	if (sa != NULL)
-		FREE(sa, M_SONAME);
+		kfree(sa, M_SONAME);
 }
 
 /*

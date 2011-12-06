@@ -196,13 +196,13 @@ cisco_constructor(node_p *nodep)
 	sc_p sc;
 	int error = 0;
 
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (sc == NULL)
 		return (ENOMEM);
 
 	callout_init(&sc->timeout);
 	if ((error = ng_make_node_common(&typestruct, nodep))) {
-		FREE(sc, M_NETGRAPH);
+		kfree(sc, M_NETGRAPH);
 		return (error);
 	}
 	(*nodep)->private = sc;
@@ -338,8 +338,8 @@ cisco_rcvmsg(node_p node, struct ng_mesg *msg,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
-	FREE(msg, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -409,7 +409,7 @@ cisco_rmnode(node_p node)
 	ng_unname(node);
 	node->private = NULL;
 	ng_unref(sc->node);
-	FREE(sc, M_NETGRAPH);
+	kfree(sc, M_NETGRAPH);
 	return (0);
 }
 

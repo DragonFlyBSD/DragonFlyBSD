@@ -1,5 +1,4 @@
 /*	$KAME: sctputil.c,v 1.36 2005/03/06 16:04:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.9 2008/03/07 11:34:20 sephe Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -831,8 +830,8 @@ sctp_init_asoc(struct sctp_inpcb *m, struct sctp_association *asoc,
 	 */
 	asoc->streamoutcnt = asoc->pre_open_streams =
 	    m->sctp_ep.pre_open_stream_count;
-	MALLOC(asoc->strmout, struct sctp_stream_out *, asoc->streamoutcnt *
-	    sizeof(struct sctp_stream_out), M_PCB, M_NOWAIT);
+	asoc->strmout = kmalloc(asoc->streamoutcnt * sizeof(struct sctp_stream_out),
+				M_PCB, M_NOWAIT);
 	if (asoc->strmout == NULL) {
 		/* big trouble no memory */
 		return (ENOMEM);
@@ -855,14 +854,14 @@ sctp_init_asoc(struct sctp_inpcb *m, struct sctp_association *asoc,
 	/* Now the mapping array */
 	asoc->mapping_array_size = SCTP_INITIAL_MAPPING_ARRAY;
 #ifdef __NetBSD__
-	MALLOC(asoc->mapping_array, u_int8_t *, SCTP_INITIAL_MAPPING_ARRAY,
-	       M_PCB, M_NOWAIT);
+	asoc->mapping_array = kmalloc(SCTP_INITIAL_MAPPING_ARRAY, M_PCB,
+				      M_NOWAIT);
 #else
-	MALLOC(asoc->mapping_array, u_int8_t *, asoc->mapping_array_size,
-	       M_PCB, M_NOWAIT);
+	asoc->mapping_array = kmalloc(asoc->mapping_array_size, M_PCB,
+				      M_NOWAIT);
 #endif
 	if (asoc->mapping_array == NULL) {
-		FREE(asoc->strmout, M_PCB);
+		kfree(asoc->strmout, M_PCB);
 		return (ENOMEM);
 	}
 	memset(asoc->mapping_array, 0, asoc->mapping_array_size);
@@ -888,10 +887,10 @@ sctp_expand_mapping_array(struct sctp_association *asoc)
 
 	new_size = asoc->mapping_array_size + SCTP_MAPPING_ARRAY_INCR;
 #ifdef __NetBSD__
-	MALLOC(new_array, u_int8_t *, asoc->mapping_array_size
-		+ SCTP_MAPPING_ARRAY_INCR, M_PCB, M_NOWAIT);
+	new_array = kmalloc(asoc->mapping_array_size + SCTP_MAPPING_ARRAY_INCR,
+			    M_PCB, M_NOWAIT);
 #else
-	MALLOC(new_array, u_int8_t *, new_size, M_PCB, M_NOWAIT);
+	new_array = kmalloc(new_size, M_PCB, M_NOWAIT);
 #endif
 	if (new_array == NULL) {
 		/* can't get more, forget it */
@@ -901,7 +900,7 @@ sctp_expand_mapping_array(struct sctp_association *asoc)
 	}
 	memset(new_array, 0, new_size);
 	memcpy(new_array, asoc->mapping_array, asoc->mapping_array_size);
-	FREE(asoc->mapping_array, M_PCB);
+	kfree(asoc->mapping_array, M_PCB);
 	asoc->mapping_array = new_array;
 	asoc->mapping_array_size = new_size;
 	return (0);

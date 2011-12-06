@@ -35,7 +35,6 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.27 2007/08/08 00:12:51 swildner Exp $
  */
 
 
@@ -166,7 +165,7 @@ loop:
 	 */
 	bzero(np, sizeof (*np));
 	if (fhsize > NFS_SMALLFH) {
-		MALLOC(np->n_fhp, nfsfh_t *, fhsize, M_NFSBIGFH, M_WAITOK);
+		np->n_fhp = kmalloc(fhsize, M_NFSBIGFH, M_WAITOK);
 	} else {
 		np->n_fhp = &np->n_fh;
 	}
@@ -187,7 +186,7 @@ loop:
 		lockmgr(&nfsnhash_lock, LK_RELEASE);
 
 		if (np->n_fhsize > NFS_SMALLFH)
-			FREE((caddr_t)np->n_fhp, M_NFSBIGFH);
+			kfree((caddr_t)np->n_fhp, M_NFSBIGFH);
 		np->n_fhp = NULL;
 		objcache_put(nfsnode_objcache, np);
 		goto retry;
@@ -300,7 +299,7 @@ loop:
 	 */
 	bzero(np, sizeof (*np));
 	if (fhsize > NFS_SMALLFH) {
-		MALLOC(np->n_fhp, nfsfh_t *, fhsize, M_NFSBIGFH, M_WAITOK);
+		np->n_fhp = kmalloc(fhsize, M_NFSBIGFH, M_WAITOK);
 	} else {
 		np->n_fhp = &np->n_fh;
 	}
@@ -321,7 +320,7 @@ loop:
 		lockmgr(&nfsnhash_lock, LK_RELEASE);
 
 		if (np->n_fhsize > NFS_SMALLFH)
-			FREE((caddr_t)np->n_fhp, M_NFSBIGFH);
+			kfree((caddr_t)np->n_fhp, M_NFSBIGFH);
 		np->n_fhp = NULL;
 		objcache_put(nfsnode_objcache, np);
 
@@ -393,7 +392,7 @@ nfs_inactive(struct vop_inactive_args *ap)
 		nfs_removeit(sp);
 		crfree(sp->s_cred);
 		vrele(sp->s_dvp);
-		FREE((caddr_t)sp, M_NFSREQ);
+		kfree((caddr_t)sp, M_NFSREQ);
 	}
 
 	np->n_flag &= ~(NWRITEERR | NACC | NUPD | NCHG | NLOCKED | NWANTED);
@@ -449,11 +448,11 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 		while (dp) {
 			dp2 = dp;
 			dp = dp->ndm_list.le_next;
-			FREE((caddr_t)dp2, M_NFSDIROFF);
+			kfree((caddr_t)dp2, M_NFSDIROFF);
 		}
 	}
 	if (np->n_fhsize > NFS_SMALLFH) {
-		FREE((caddr_t)np->n_fhp, M_NFSBIGFH);
+		kfree((caddr_t)np->n_fhp, M_NFSBIGFH);
 	}
 	if (np->n_rucred) {
 		crfree(np->n_rucred);

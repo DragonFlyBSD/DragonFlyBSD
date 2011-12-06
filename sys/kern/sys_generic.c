@@ -37,7 +37,6 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.49 2008/05/05 22:09:44 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -297,7 +296,7 @@ dofileread(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 	if (KTRPOINT(td, KTR_GENIO))  {
 		int iovlen = auio->uio_iovcnt * sizeof(struct iovec);
 
-		MALLOC(ktriov, struct iovec *, iovlen, M_TEMP, M_WAITOK);
+		ktriov = kmalloc(iovlen, M_TEMP, M_WAITOK);
 		bcopy((caddr_t)auio->uio_iov, (caddr_t)ktriov, iovlen);
 		ktruio = *auio;
 	}
@@ -318,7 +317,7 @@ dofileread(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 			ktrgenio(td->td_lwp, fd, UIO_READ, &ktruio, error);
 			rel_mplock();
 		}
-		FREE(ktriov, M_TEMP);
+		kfree(ktriov, M_TEMP);
 	}
 #endif
 	if (error == 0)
@@ -507,7 +506,7 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 	if (KTRPOINT(td, KTR_GENIO))  {
 		int iovlen = auio->uio_iovcnt * sizeof(struct iovec);
 
-		MALLOC(ktriov, struct iovec *, iovlen, M_TEMP, M_WAITOK);
+		ktriov = kmalloc(iovlen, M_TEMP, M_WAITOK);
 		bcopy((caddr_t)auio->uio_iov, (caddr_t)ktriov, iovlen);
 		ktruio = *auio;
 	}
@@ -531,7 +530,7 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 			ktrgenio(lp, fd, UIO_WRITE, &ktruio, error);
 			rel_mplock();
 		}
-		FREE(ktriov, M_TEMP);
+		kfree(ktriov, M_TEMP);
 	}
 #endif
 	if (error == 0)

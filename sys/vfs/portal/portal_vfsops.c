@@ -36,7 +36,6 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.24 2007/05/18 17:05:13 dillon Exp $
  */
 
 /*
@@ -104,19 +103,17 @@ portal_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		return (ESOCKTNOSUPPORT);
 	}
 
-	MALLOC(pn, struct portalnode *, sizeof(struct portalnode),
-		M_TEMP, M_WAITOK);
+	pn = kmalloc(sizeof(struct portalnode), M_TEMP, M_WAITOK);
 
-	MALLOC(fmp, struct portalmount *, sizeof(struct portalmount),
-		M_PORTALFSMNT, M_WAITOK);	/* XXX */
+	fmp = kmalloc(sizeof(struct portalmount), M_PORTALFSMNT, M_WAITOK);	/* XXX */
 
 	 
 	vfs_add_vnodeops(mp, &portal_vnode_vops, &mp->mnt_vn_norm_ops);
 
 	error = getnewvnode(VT_PORTAL, mp, &rvp, 0, 0);
 	if (error) {
-		FREE(fmp, M_PORTALFSMNT);
-		FREE(pn, M_TEMP);
+		kfree(fmp, M_PORTALFSMNT);
+		kfree(pn, M_TEMP);
 		fdrop(fp);
 		return (error);
 	}

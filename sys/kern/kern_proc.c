@@ -34,7 +34,6 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.45 2008/06/12 23:25:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -359,16 +358,15 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 			error = ESRCH;
 			goto fatal;
 		}
-		MALLOC(pgrp, struct pgrp *, sizeof(struct pgrp),
-		       M_PGRP, M_WAITOK);
+		pgrp = kmalloc(sizeof(struct pgrp), M_PGRP, M_WAITOK);
 		if (mksess) {
 			struct session *sess;
 
 			/*
 			 * new session
 			 */
-			MALLOC(sess, struct session *, sizeof(struct session),
-			       M_SESSION, M_WAITOK);
+			sess = kmalloc(sizeof(struct session), M_SESSION,
+				       M_WAITOK);
 			sess->s_leader = p;
 			sess->s_sid = p->p_pid;
 			sess->s_count = 1;

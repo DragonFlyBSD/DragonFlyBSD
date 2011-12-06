@@ -35,7 +35,6 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.48 2008/09/17 21:44:24 dillon Exp $
  */
 
 /*
@@ -915,8 +914,7 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 				m2 = m;
 			}
 		}
-		MALLOC(iv, struct iovec *, i * sizeof (struct iovec),
-		       M_TEMP, M_WAITOK);
+		iv = kmalloc(i * sizeof(struct iovec), M_TEMP, M_WAITOK);
 		uiop->uio_iov = iv2 = iv;
 		m = info.mb;
 		left = len;
@@ -943,7 +941,7 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = VOP_READ(vp, uiop, IO_NODELOCKED | ioflag, cred);
 		off = uiop->uio_offset;
 		nh->nh_nextr = off;
-		FREE((caddr_t)iv2, M_TEMP);
+		kfree((caddr_t)iv2, M_TEMP);
 		if (error || (getret = VOP_GETATTR(vp, vap))) {
 			if (!error)
 				error = getret;
@@ -1113,8 +1111,7 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	}
 
 	if (len > 0) {
-	    MALLOC(ivp, struct iovec *, cnt * sizeof (struct iovec), M_TEMP,
-		M_WAITOK);
+	    ivp = kmalloc(cnt * sizeof(struct iovec), M_TEMP, M_WAITOK);
 	    uiop->uio_iov = iv = ivp;
 	    uiop->uio_iovcnt = cnt;
 	    mp1 = info.mrep;
@@ -1147,7 +1144,7 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	    uiop->uio_offset = off;
 	    error = VOP_WRITE(vp, uiop, ioflags, cred);
 	    nfsstats.srvvop_writes++;
-	    FREE((caddr_t)iv, M_TEMP);
+	    kfree((caddr_t)iv, M_TEMP);
 	}
 	aftat_ret = VOP_GETATTR(vp, vap);
 	vput(vp);
@@ -1415,8 +1412,7 @@ loop1:
 			mp1 = mp1->m_next;
 		    }
 		    uiop->uio_iovcnt = i;
-		    MALLOC(iov, struct iovec *, i * sizeof (struct iovec), 
-			M_TEMP, M_WAITOK);
+		    iov = kmalloc(i * sizeof(struct iovec), M_TEMP, M_WAITOK);
 		    uiop->uio_iov = ivp = iov;
 		    mp1 = info.mrep;
 		    while (mp1) {
@@ -1431,7 +1427,7 @@ loop1:
 			error = VOP_WRITE(vp, uiop, ioflags, cred);
 			nfsstats.srvvop_writes++;
 		    }
-		    FREE((caddr_t)iov, M_TEMP);
+		    kfree((caddr_t)iov, M_TEMP);
 		}
 		m_freem(info.mrep);
 		info.mrep = NULL;
@@ -2516,7 +2512,7 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		ERROROUT(nfsm_srvsattr(&info, vap));
 	}
 	NEGATIVEOUT(len2 = nfsm_strsiz(&info, NFS_MAXPATHLEN));
-	MALLOC(pathcp, caddr_t, len2 + 1, M_TEMP, M_WAITOK);
+	pathcp = kmalloc(len2 + 1, M_TEMP, M_WAITOK);
 	iv.iov_base = pathcp;
 	iv.iov_len = len2;
 	io.uio_resid = len2;
@@ -2563,7 +2559,7 @@ out:
 		vp = NULL;
 	}
 	if (pathcp) {
-		FREE(pathcp, M_TEMP);
+		kfree(pathcp, M_TEMP);
 		pathcp = NULL;
 	}
 	if (dirp) {
@@ -2594,7 +2590,7 @@ nfsmout:
 	if (dirp)
 		vrele(dirp);
 	if (pathcp)
-		FREE(pathcp, M_TEMP);
+		kfree(pathcp, M_TEMP);
 	return (error);
 }
 
@@ -2964,7 +2960,7 @@ nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	/*
 	 * end section.  Allocate rbuf and continue
 	 */
-	MALLOC(rbuf, caddr_t, siz, M_TEMP, M_WAITOK);
+	rbuf = kmalloc(siz, M_TEMP, M_WAITOK);
 again:
 	iv.iov_base = rbuf;
 	iv.iov_len = fullsiz;
@@ -3025,8 +3021,8 @@ again:
 				tl = nfsm_build(&info, 2 * NFSX_UNSIGNED);
 			*tl++ = nfs_false;
 			*tl = nfs_true;
-			FREE((caddr_t)rbuf, M_TEMP);
-			FREE((caddr_t)cookies, M_TEMP);
+			kfree((caddr_t)rbuf, M_TEMP);
+			kfree((caddr_t)cookies, M_TEMP);
 			error = 0;
 			goto nfsmout;
 		}
@@ -3156,8 +3152,8 @@ again:
 			mp1->m_len = bp - mtod(mp1, caddr_t);
 	} else
 		mp1->m_len += bp - info.bpos;
-	FREE((caddr_t)rbuf, M_TEMP);
-	FREE((caddr_t)cookies, M_TEMP);
+	kfree((caddr_t)rbuf, M_TEMP);
+	kfree((caddr_t)cookies, M_TEMP);
 
 nfsmout:
 	*mrq = info.mreq;
@@ -3251,7 +3247,7 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		goto nfsmout;
 	}
 	vn_unlock(vp);
-	MALLOC(rbuf, caddr_t, siz, M_TEMP, M_WAITOK);
+	rbuf = kmalloc(siz, M_TEMP, M_WAITOK);
 again:
 	iv.iov_base = rbuf;
 	iv.iov_len = fullsiz;
@@ -3307,8 +3303,8 @@ again:
 			tl += 2;
 			*tl++ = nfs_false;
 			*tl = nfs_true;
-			FREE((caddr_t)cookies, M_TEMP);
-			FREE((caddr_t)rbuf, M_TEMP);
+			kfree((caddr_t)cookies, M_TEMP);
+			kfree((caddr_t)rbuf, M_TEMP);
 			error = 0;
 			goto nfsmout;
 		}
@@ -3497,8 +3493,8 @@ invalid:
 			mp1->m_len = bp - mtod(mp1, caddr_t);
 	} else
 		mp1->m_len += bp - info.bpos;
-	FREE((caddr_t)cookies, M_TEMP);
-	FREE((caddr_t)rbuf, M_TEMP);
+	kfree((caddr_t)cookies, M_TEMP);
+	kfree((caddr_t)rbuf, M_TEMP);
 nfsmout:
 	*mrq = info.mreq;
 	if (vp)

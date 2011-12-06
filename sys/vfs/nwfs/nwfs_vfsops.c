@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.30 2008/01/06 16:55:53 swildner Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -115,7 +114,7 @@ nwfs_initnls(struct nwmount *nmp) {
 		nmp->m.nls.u2n = ncp_defnls.u2n;
 		return 0;
 	}
-	MALLOC(pe, char *, 256 * 4, M_NWFSDATA, M_WAITOK);
+	pe = kmalloc(256 * 4, M_NWFSDATA, M_WAITOK);
 	pc = pe;
 	do {
 		COPY_TABLE(nmp->m.nls.to_lower, ncp_defnls.to_lower);
@@ -172,7 +171,8 @@ nwfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	ncp_conn_unlock(conn,curthread);	/* we keep the ref */
 	mp->mnt_stat.f_iosize = conn->buffer_size;
         /* We must malloc our own mount info */
-        MALLOC(nmp,struct nwmount *,sizeof(struct nwmount),M_NWFSDATA, M_WAITOK|M_USE_RESERVE|M_ZERO);
+        nmp = kmalloc(sizeof(struct nwmount), M_NWFSDATA,
+		      M_WAITOK | M_USE_RESERVE | M_ZERO);
         mp->mnt_data = (qaddr_t)nmp;
 	nmp->connh = handle;
 	nmp->n_root = NULL;

@@ -29,7 +29,6 @@
  * netgraph node.
  *
  * $FreeBSD: src/sys/netgraph/ng_device.c,v 1.1.2.1 2002/08/23 07:15:44 julian Exp $
- * $DragonFly: src/sys/netgraph/ng_device.c,v 1.11 2007/06/03 20:51:10 dillon Exp $
  *
  */
 
@@ -218,7 +217,7 @@ static int
 ng_device_rcvmsg(node_p node, 
 	struct ng_mesg *msg, const char *retaddr, struct ng_mesg **rptr)
 {
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return(ENOTTY);
 }
 

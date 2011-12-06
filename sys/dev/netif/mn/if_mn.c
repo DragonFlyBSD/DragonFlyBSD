@@ -337,7 +337,7 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 	if (msg->header.typecookie != NGM_GENERIC_COOKIE) {
 		if (resp != NULL)
 			*resp = NULL;
-		FREE(msg, M_NETGRAPH);
+		kfree(msg, M_NETGRAPH);
 		return (EINVAL);
 	}
 		
@@ -345,14 +345,14 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 	    msg->header.cmd != NGM_TEXT_STATUS) {
 		if (resp != NULL)
 			*resp = NULL;
-		FREE(msg, M_NETGRAPH);
+		kfree(msg, M_NETGRAPH);
 		return (EINVAL);
 	}
 
 	NG_MKRESPONSE(*resp, msg, sizeof(struct ng_mesg) + NG_TEXTRESPONSE,
 	    M_INTWAIT);
 	if (*resp == NULL) {
-		FREE(msg, M_NETGRAPH);
+		kfree(msg, M_NETGRAPH);
 		return (ENOMEM);
 	}
 
@@ -366,7 +366,7 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 	if (msg->header.cmd == NGM_TEXT_CONFIG) {
 		ngmn_config(node, s, r);
 		(*resp)->header.arglen = strlen(r) + 1;
-		FREE(msg, M_NETGRAPH);
+		kfree(msg, M_NETGRAPH);
 		return (0);
 	}
 
@@ -438,7 +438,7 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 		    sch->tx_pending);
 	}
 	(*resp)->header.arglen = pos + 1;
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (0);
 }
 

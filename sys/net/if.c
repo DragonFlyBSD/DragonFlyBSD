@@ -2097,8 +2097,8 @@ if_addmulti(
 		llsa = 0;
 	}
 
-	MALLOC(ifma, struct ifmultiaddr *, sizeof *ifma, M_IFMADDR, M_WAITOK);
-	MALLOC(dupsa, struct sockaddr *, sa->sa_len, M_IFMADDR, M_WAITOK);
+	ifma = kmalloc(sizeof *ifma, M_IFMADDR, M_WAITOK);
+	dupsa = kmalloc(sa->sa_len, M_IFMADDR, M_WAITOK);
 	bcopy(sa, dupsa, sa->sa_len);
 
 	ifma->ifma_addr = dupsa;
@@ -2126,10 +2126,8 @@ if_addmulti(
 		if (ifma) {
 			ifma->ifma_refcount++;
 		} else {
-			MALLOC(ifma, struct ifmultiaddr *, sizeof *ifma,
-			       M_IFMADDR, M_WAITOK);
-			MALLOC(dupsa, struct sockaddr *, llsa->sa_len,
-			       M_IFMADDR, M_WAITOK);
+			ifma = kmalloc(sizeof *ifma, M_IFMADDR, M_WAITOK);
+			dupsa = kmalloc(llsa->sa_len, M_IFMADDR, M_WAITOK);
 			bcopy(llsa, dupsa, llsa->sa_len);
 			ifma->ifma_addr = dupsa;
 			ifma->ifma_ifp = ifp;

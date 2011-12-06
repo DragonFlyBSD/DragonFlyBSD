@@ -37,7 +37,6 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pppoe.c,v 1.23.2.17 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.11 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_pppoe.c,v 1.10 1999/11/01 09:24:52 julian Exp $
  */
 #if 0
@@ -514,13 +513,13 @@ ng_pppoe_constructor(node_p *nodep)
 
 AAA
 	/* Initialize private descriptor */
-	MALLOC(privdata, priv_p, sizeof(*privdata), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	privdata = kmalloc(sizeof(*privdata), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (privdata == NULL)
 		return (ENOMEM);
 
 	/* Call the 'generic' (ie, superclass) node constructor */
 	if ((error = ng_make_node_common(&typestruct, nodep))) {
-		FREE(privdata, M_NETGRAPH);
+		kfree(privdata, M_NETGRAPH);
 		return (error);
 	}
 
@@ -558,7 +557,7 @@ AAA
 		 * The infrastructure has already checked that it's unique,
 		 * so just allocate it and hook it in.
 		 */
-		MALLOC(sp, sessp, sizeof(*sp), M_NETGRAPH, M_NOWAIT | M_ZERO);
+		sp = kmalloc(sizeof(*sp), M_NETGRAPH, M_NOWAIT | M_ZERO);
 		if (sp == NULL)
 			return (ENOMEM);
 
@@ -651,8 +650,8 @@ AAA
 			/*
 			 * set up prototype header
 			 */
-			MALLOC(neg, negp, sizeof(*neg), M_NETGRAPH,
-			    M_NOWAIT | M_ZERO);
+			neg = kmalloc(sizeof(*neg), M_NETGRAPH,
+				      M_NOWAIT | M_ZERO);
 
 			if (neg == NULL) {
 				kprintf("pppoe: Session out of memory\n");
@@ -661,7 +660,7 @@ AAA
 			MGETHDR(neg->m, MB_DONTWAIT, MT_DATA);
 			if(neg->m == NULL) {
 				kprintf("pppoe: Session out of mbufs\n");
-				FREE(neg, M_NETGRAPH);
+				kfree(neg, M_NETGRAPH);
 				LEAVE(ENOBUFS);
 			}
 			neg->m->m_pkthdr.rcvif = NULL;
@@ -669,7 +668,7 @@ AAA
 			if ((neg->m->m_flags & M_EXT) == 0) {
 				kprintf("pppoe: Session out of mcls\n");
 				m_freem(neg->m);
-				FREE(neg, M_NETGRAPH);
+				kfree(neg, M_NETGRAPH);
 				LEAVE(ENOBUFS);
 			}
 			sp->neg = neg;
@@ -794,11 +793,11 @@ AAA
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 
 	/* Free the message and return */
 quit:
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return(error);
 }
 
@@ -1180,7 +1179,7 @@ AAA
 						= ETHERTYPE_PPPOE_SESS;
 				sp->pkt_hdr.ph.code = 0;
 				m_freem(neg->m);
-				FREE(sp->neg, M_NETGRAPH);
+				kfree(sp->neg, M_NETGRAPH);
 				sp->neg = NULL;
 				pppoe_send_event(sp, NGM_PPPOE_SUCCESS);
 				break;
@@ -1239,7 +1238,7 @@ AAA
 					 */
 					m_freem(sp->neg->m);
 					callout_stop(&sp->neg->timeout_ch);
-					FREE(sp->neg, M_NETGRAPH);
+					kfree(sp->neg, M_NETGRAPH);
 					sp->neg = NULL;
 				} else {
 					LEAVE (ENETUNREACH);
@@ -1395,7 +1394,7 @@ AAA
 	ng_unname(node);
 	node->private = NULL;
 	ng_unref(privdata->node);
-	FREE(privdata, M_NETGRAPH);
+	kfree(privdata, M_NETGRAPH);
 	return (0);
 }
 
@@ -1492,9 +1491,9 @@ AAA
 			callout_stop(&sp->neg->timeout_ch);
 			if (sp->neg->m)
 				m_freem(sp->neg->m);
-			FREE(sp->neg, M_NETGRAPH);
+			kfree(sp->neg, M_NETGRAPH);
 		}
-		FREE(sp, M_NETGRAPH);
+		kfree(sp, M_NETGRAPH);
 		hook->private = NULL;
 		/* work out how many session hooks there are */
 		/* Node goes away on last session hook removal */

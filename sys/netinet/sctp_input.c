@@ -268,10 +268,10 @@ sctp_process_init(struct sctp_init_chunk *cp, struct sctp_tcb *stcb,
 	/* open the requested streams */
 	if (asoc->strmin != NULL) {
 		/* Free the old ones */
-		FREE(asoc->strmin, M_PCB);
+		kfree(asoc->strmin, M_PCB);
 	}
-	MALLOC(asoc->strmin, struct sctp_stream_in *, asoc->streamincnt *
-	       sizeof(struct sctp_stream_in), M_PCB, M_NOWAIT);
+	asoc->strmin = kmalloc(asoc->streamincnt * sizeof(struct sctp_stream_in),
+			       M_PCB, M_NOWAIT);
 	if (asoc->strmin == NULL) {
 		/* we didn't get memory for the streams! */
 #ifdef SCTP_DEBUG
@@ -2745,11 +2745,11 @@ sctp_handle_stream_reset_response(struct sctp_tcb *stcb,
  				 * for each reset that the cum-ack
  				 * goes by. This is a short cut.
  				 */
- 				FREE(stcb->asoc.pending_reply, M_PCB);
+				kfree(stcb->asoc.pending_reply, M_PCB);
 				stcb->asoc.pending_reply = NULL;
  			}
- 			MALLOC(stcb->asoc.pending_reply, struct sctp_stream_reset_response *, param_length,
- 			       M_PCB, M_NOWAIT);
+			stcb->asoc.pending_reply = kmalloc(param_length, M_PCB,
+			    M_NOWAIT);
 			if (stcb->asoc.pending_reply == NULL)
 				return;		/* XXX */
  			memcpy(stcb->asoc.pending_reply, resp, param_length);

@@ -37,7 +37,6 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_sample.c,v 1.7.2.3 2002/07/02 23:44:03 archie Exp $
- * $DragonFly: src/sys/netgraph/ng_sample.c,v 1.4 2008/01/05 14:02:38 swildner Exp $
  * $Whistle: ng_sample.c,v 1.13 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -153,7 +152,7 @@ ng_xxx_constructor(node_p *nodep)
 	int i, error;
 
 	/* Initialize private descriptor */
-	MALLOC(privdata, xxx_p, sizeof(*privdata), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	privdata = kmalloc(sizeof(*privdata), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (privdata == NULL)
 		return (ENOMEM);
 	for (i = 0; i < XXX_NUM_DLCIS; i++) {
@@ -163,7 +162,7 @@ ng_xxx_constructor(node_p *nodep)
 
 	/* Call the 'generic' (ie, superclass) node constructor */
 	if ((error = ng_make_node_common(&typestruct, nodep))) {
-		FREE(privdata, M_NETGRAPH);
+		kfree(privdata, M_NETGRAPH);
 		return (error);
 	}
 
@@ -303,10 +302,10 @@ ng_xxx_rcvmsg(node_p node,
 	if (rptr)
 		*rptr = resp;
 	else if (resp)
-		FREE(resp, M_NETGRAPH);
+		kfree(resp, M_NETGRAPH);
 
 	/* Free the message and return */
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return(error);
 }
 
@@ -432,7 +431,7 @@ ng_xxx_rmnode(node_p node)
 	ng_unname(node);
 	node->private = NULL;
 	ng_unref(privdata->node);
-	FREE(privdata, M_NETGRAPH);
+	kfree(privdata, M_NETGRAPH);
 #else
 	privdata->packets_in = 0;		/* reset stats */
 	privdata->packets_out = 0;

@@ -37,7 +37,6 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_lmi.c,v 1.5.2.3 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/lmi/ng_lmi.c,v 1.8 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_lmi.c,v 1.38 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -192,13 +191,13 @@ nglmi_constructor(node_p *nodep)
 	sc_p sc;
 	int error = 0;
 
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (sc == NULL)
 		return (ENOMEM);
 
 	callout_init(&sc->timeout);
 	if ((error = ng_make_node_common(&typestruct, nodep))) {
-		FREE(sc, M_NETGRAPH);
+		kfree(sc, M_NETGRAPH);
 		return (error);
 	}
 	(*nodep)->private = sc;
@@ -341,7 +340,7 @@ nglmi_inquire(sc_p sc, int full)
 	 * added by other modules). */
 	/* MALLOC(meta, meta_p, sizeof( struct ng_meta) + META_PAD,
 	 * M_NETGRAPH, M_NOWAIT); */
-	MALLOC(meta, meta_p, sizeof(*meta) + META_PAD, M_NETGRAPH, M_NOWAIT);
+	meta = kmalloc(sizeof(*meta) + META_PAD, M_NETGRAPH, M_NOWAIT);
 	if (meta != NULL) {	/* if it failed, well, it was optional anyhow */
 		meta->used_len = (u_short) sizeof(struct ng_meta);
 		meta->allocated_len
@@ -546,7 +545,7 @@ nglmi_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 		error = EINVAL;
 		break;
 	}
-	FREE(msg, M_NETGRAPH);
+	kfree(msg, M_NETGRAPH);
 	return (error);
 }
 
@@ -1066,7 +1065,7 @@ nglmi_rmnode(node_p node)
 	ng_unname(node);
 	node->private = NULL;
 	ng_unref(sc->node);
-	FREE(sc, M_NETGRAPH);
+	kfree(sc, M_NETGRAPH);
 	return (0);
 }
 
