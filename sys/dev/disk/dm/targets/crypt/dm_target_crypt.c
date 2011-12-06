@@ -563,11 +563,6 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 #endif
 
 	priv = kmalloc(sizeof(dm_target_crypt_config_t), M_DMCRYPT, M_WAITOK);
-	if (priv == NULL) {
-		kprintf("dm_target_crypt: could not allocate memory\n");
-		kfree(status_str, M_DMCRYPT);
-		return ENOMEM;
-	}
 
 	/* Insert dmp to global pdev list */
 	if ((priv->pdev = dm_pdev_insert(dev)) == NULL) {
