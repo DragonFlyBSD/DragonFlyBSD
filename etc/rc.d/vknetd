@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+
+# PROVIDE: vknetd
+# REQUIRE: DAEMON netif
+# BEFORE:  LOGIN
+
+. /etc/rc.subr
+
+name="vknetd"
+rcvar=`set_rcvar`
+start_precmd="vknetd_precmd"
+command="/usr/sbin/${name}"
+pidfile="/var/run/${name}.pid"
+
+vknetd_precmd()
+{
+    # load if_tap kernel module if needed
+    if ! kldstat -q -m "if_tap"; then
+	if kldload if_tap; then
+	    info 'if_tap module loaded.'
+	else
+	    err 1 'if_tap module failed to load.'
+	fi
+    fi
+}
+
+load_rc_config $name
+run_rc_command "$1"

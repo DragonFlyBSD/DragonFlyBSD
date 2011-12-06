@@ -10,12 +10,12 @@ are two easy ways of doing this.  First you can set up a bridge:
     /usr/sbin/vknetd -p /var/run/vknet -U -b bridge0
 
 Second, you can set up a LAN just between the vkernel and the machine it
-is running on:
+is running on. In your /etc/rc.conf you set:
 
-    /usr/sbin/vknetd -p /var/run/vknet -U 10.30.0.1/16
+   vknetd_enable="YES"
+   vknetd_flags="10.30.0.1/16"
 
-This setup is typically done in /etc/rc.local.  vknetd just sits there
-waiting for connections.  Any number of vkernels can then attach to it.
-If you bridge you can use your normal LAN's dhcp server and run dhclient
-on the vkernel.  If you set up a local LAN it is easiest to simply configure
-the address by hand.
+vknetd just sits there waiting for connections.  Any number of vkernels
+can then attach to it. If you bridge you can use your normal LAN's dhcp
+server and run dhclient on the vkernel.  If you set up a local LAN it
+is easiest to simply configure the address by hand.
