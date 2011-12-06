@@ -1759,6 +1759,10 @@ TO_REMOVE+=/usr/libexec/binutils220
 TO_REMOVE+=/usr/share/zoneinfo/Europe/Tiraspol
 TO_REMOVE+=/usr/include/netatalk
 TO_REMOVE+=/usr/include/netproto/atalk
+TO_REMOVE+=/usr/share/man/cat9/MALLOC.9.gz
+TO_REMOVE+=/usr/share/man/man9/MALLOC.9.gz
+TO_REMOVE+=/usr/share/man/cat9/FREE.9.gz
+TO_REMOVE+=/usr/share/man/man9/FREE.9.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys

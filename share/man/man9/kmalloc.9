@@ -35,16 +35,13 @@
 .\"
 .\" $NetBSD: malloc.9,v 1.3 1996/11/11 00:05:11 lukem Exp $
 .\" $FreeBSD: src/share/man/man9/malloc.9,v 1.42 2005/02/22 17:20:20 brueffer Exp $
-.\" $DragonFly: src/share/man/man9/kmalloc.9,v 1.8 2008/01/19 08:23:17 swildner Exp $
 .\"
 .Dd January 15, 2010
 .Dt KMALLOC 9
 .Os
 .Sh NAME
 .Nm kmalloc ,
-.Nm MALLOC ,
 .Nm kfree ,
-.Nm FREE ,
 .Nm krealloc ,
 .Nm MALLOC_DEFINE ,
 .Nm MALLOC_DECLARE
@@ -54,10 +51,8 @@
 .In sys/malloc.h
 .Ft void *
 .Fn kmalloc "unsigned long size" "struct malloc_type *type" "int flags"
-.Fn MALLOC space cast "unsigned long size" "struct malloc_type *type" "int flags"
 .Ft void
 .Fn kfree "void *addr" "struct malloc_type *type"
-.Fn FREE "void *addr" "struct malloc_type *type"
 .Ft void *
 .Fn krealloc "void *addr" "unsigned long size" "struct malloc_type *type" "int flags"
 .Fn MALLOC_DECLARE type
@@ -112,20 +107,6 @@ the
 function behaves identically to
 .Fn kmalloc
 for the specified size.
-.Pp
-The
-.Fn MALLOC
-macro variant is functionally equivalent to
-.Bd -literal -offset indent
-(space) = (cast)kmalloc((u_long)(size), type, flags)
-.Ed
-.Pp
-and the
-.Fn FREE
-macro variant is equivalent to
-.Bd -literal -offset indent
-kfree((addr), type)
-.Ed
 .Pp
 Unlike its standard C library counterpart
 .Pq Xr malloc 3 ,
@@ -215,7 +196,7 @@ MALLOC_DEFINE(M_FOOBUF, "foobuffers", "Buffers to foo data into the ether");
 /* sys/something/foo_subr.c */
 
 \&...
-MALLOC(buf, struct foo_buf *, sizeof *buf, M_FOOBUF, M_NOWAIT);
+buf = kmalloc(sizeof *buf, M_FOOBUF, M_NOWAIT);
 
 .Ed
 .Sh IMPLEMENTATION NOTES
