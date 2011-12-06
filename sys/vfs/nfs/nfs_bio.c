@@ -35,7 +35,6 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.45 2008/07/18 00:09:39 dillon Exp $
  */
 
 
@@ -1728,7 +1727,6 @@ nfs_commitrpc_bio_done(nfsm_info_t info)
 	 * error occurred.
 	 */
 nfsmout:
-	kfree(info, M_NFSREQ);
 	if (error == 0) {
 		bp->b_dirtyoff = bp->b_dirtyend = 0;
 		bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
@@ -1737,6 +1735,7 @@ nfsmout:
 	} else {
 		nfs_writerpc_bio(info->vp, bio);
 	}
+	kfree(info, M_NFSREQ);
 	lwkt_reltoken(&nmp->nm_token);
 }
 
