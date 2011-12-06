@@ -89,10 +89,6 @@ kfree@p1(E,...)
 |
  &subE
 |
- BUG(...)
-|
- BUG_ON(...)
-|
  return_VALUE(...)
 |
  return_ACPI_STATUS(...)
