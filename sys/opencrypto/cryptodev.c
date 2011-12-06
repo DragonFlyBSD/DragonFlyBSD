@@ -326,7 +326,7 @@ bail:
 				kfree(crie.cri_key, M_XDATA);
 			}
 			if (cria.cri_key) {
-				bzero(crie.cri_key, crie.cri_klen / 8);
+				bzero(cria.cri_key, cria.cri_klen / 8);
 				kfree(cria.cri_key, M_XDATA);
 			}
 		}
