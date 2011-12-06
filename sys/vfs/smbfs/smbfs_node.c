@@ -226,14 +226,13 @@ loop:
 	if (fap == NULL)
 		return ENOENT;
 
-	np = kmalloc(sizeof *np, M_SMBNODE, M_WAITOK);
+	np = kmalloc(sizeof *np, M_SMBNODE, M_WAITOK | M_ZERO);
 	error = getnewvnode(VT_SMBFS, mp, &vp, VLKTIMEOUT, LK_CANRECURSE);
 	if (error) {
 		kfree(np, M_SMBNODE);
 		return error;
 	}
 	vp->v_type = fap->fa_attr & SMB_FA_DIR ? VDIR : VREG;
-	bzero(np, sizeof(*np));
 	vp->v_data = np;
 	np->n_vnode = vp;
 	np->n_mount = VFSTOSMBFS(mp);
