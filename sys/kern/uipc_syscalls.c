@@ -1102,7 +1102,7 @@ kern_setsockopt(int s, struct sockopt *sopt)
 		return (EFAULT);
 	if (sopt->sopt_val != NULL && sopt->sopt_valsize == 0)
 		return (EINVAL);
-	if (sopt->sopt_valsize < 0)
+	if (sopt->sopt_valsize > SOMAXOPT_SIZE)	/* unsigned */
 		return (EINVAL);
 
 	error = holdsock(p->p_fd, s, &fp);
@@ -1132,7 +1132,7 @@ sys_setsockopt(struct setsockopt_args *uap)
 	sopt.sopt_td = td;
 	sopt.sopt_val = NULL;
 
-	if (sopt.sopt_valsize < 0 || sopt.sopt_valsize > SOMAXOPT_SIZE)
+	if (sopt.sopt_valsize > SOMAXOPT_SIZE) /* unsigned */
 		return (EINVAL);
 	if (uap->val) {
 		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
@@ -1165,7 +1165,7 @@ kern_getsockopt(int s, struct sockopt *sopt)
 		return (EFAULT);
 	if (sopt->sopt_val != NULL && sopt->sopt_valsize == 0)
 		return (EINVAL);
-	if (sopt->sopt_valsize < 0 || sopt->sopt_valsize > SOMAXOPT_SIZE)
+	if (sopt->sopt_valsize > SOMAXOPT_SIZE) /* unsigned */
 		return (EINVAL);
 
 	error = holdsock(p->p_fd, s, &fp);
@@ -1203,7 +1203,7 @@ sys_getsockopt(struct getsockopt_args *uap)
 	sopt.sopt_td = td;
 	sopt.sopt_val = NULL;
 
-	if (sopt.sopt_valsize < 0 || sopt.sopt_valsize > SOMAXOPT_SIZE)
+	if (sopt.sopt_valsize > SOMAXOPT_SIZE) /* unsigned */
 		return (EINVAL);
 	if (uap->val) {
 		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
