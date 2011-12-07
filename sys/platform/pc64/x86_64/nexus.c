@@ -154,34 +154,14 @@ nexus_probe(device_t dev)
 	for (cpuid = 0; cpuid < ncpus; ++cpuid) {
 		struct rman *rm = &irq_rman[cpuid];
 
-		/*
-		 * IRQ's are on the mainboard on old systems, but on
-		 * the ISA part of PCI->ISA bridges.  There would be
-		 * multiple sets of IRQs on multi-ISA-bus systems.
-		 * PCI interrupts are routed to the ISA component,
-		 * so in a way, PCI can be a partial child of an ISA
-		 * bus(!).  APIC interrupts are global though.  In the
-		 * non-APIC case, disallow the use of IRQ 2.
-		 */
 		rm->rm_start = 0;
+		rm->rm_end = IDT_HWI_VECTORS - 1;
 		rm->rm_type = RMAN_ARRAY;
 		rm->rm_descr = "Interrupt request lines";
 
-		/*
-		 * XXX should use MachIntrABI.rman_setup
-		 */
-		if (ioapic_enable) {
-			rm->rm_end = IDT_HWI_VECTORS - 1;
-			if (rman_init(rm, cpuid))
-				panic("nexus_probe rman_init");
-			MachIntrABI.rman_setup(rm);
-		} else {
-			rm->rm_end = 15;
-			if (rman_init(rm, cpuid) ||
-			    rman_manage_region(rm, rm->rm_start, 1) ||
-			    rman_manage_region(rm, 3, rm->rm_end))
-				panic("nexus_probe irq_rman");
-		}
+		if (rman_init(rm, cpuid))
+			panic("nexus_probe rman_init");
+		MachIntrABI.rman_setup(rm);
 	}
 
 	/*
