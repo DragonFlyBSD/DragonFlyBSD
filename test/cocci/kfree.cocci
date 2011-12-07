@@ -10,7 +10,7 @@
 // Copyright: (C) 2010 Gilles Muller, INRIA/LiP6.  GPLv2.
 // URL: http://coccinelle.lip6.fr/
 // Comments:
-// Options: -no_includes -include_headers
+// Options: -no_includes -include_headers -D report
 
 virtual org
 virtual report
@@ -20,7 +20,7 @@ expression E;
 position p1;
 @@
 
-kfree@p1(E,...)
+\(contigfree@p1(E,...)\|kfree@p1(E,...)\|objcache_put@p1(...,E)\|mpipe_free@p1(...,E)\|zfree@p1(...,E)\)
 
 @print expression@
 constant char *c;
@@ -56,7 +56,7 @@ position ok;
 @@
 
 while (1) { ...
-  kfree@ok(E,...)
+  \(contigfree@ok(E,...)\|kfree@ok(E,...)\|objcache_put@ok(...,E)\|mpipe_free@ok(...,E)\|zfree@ok(...,E)\)
   ... when != break;
       when != goto l;
       when forall
@@ -70,7 +70,7 @@ statement S;
 position free.p1!=loop.ok,p2!={print.p,sz.p};
 @@
 
-kfree@p1(E,...)
+\(contigfree@p1(E,...)\|kfree@p1(E,...)\|objcache_put@p1(...,E)\|mpipe_free@p1(...,E)\|zfree@p1(...,E)\)
 ...
 (
  iter(...,subE,...) S // no use
