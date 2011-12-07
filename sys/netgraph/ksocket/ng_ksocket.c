@@ -809,6 +809,7 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 			sopt.sopt_val = ksopt->value;
 			if ((error = sogetopt(so, &sopt)) != 0) {
 				kfree(resp, M_NETGRAPH);
+				resp = NULL;
 				break;
 			}
 
