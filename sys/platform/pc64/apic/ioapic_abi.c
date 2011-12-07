@@ -990,9 +990,6 @@ ioapic_abi_gsi_cpuid(int irq, int gsi)
 
 	KKASSERT(gsi >= 0);
 
-	if (!ioapic_abi_gsi_balance)
-		return 0;
-
 	if (irq == 0 || gsi == 0) {
 		if (bootverbose) {
 			kprintf("IOAPIC: irq %d, gsi %d -> cpu0 (0)\n",
@@ -1013,6 +1010,14 @@ ioapic_abi_gsi_cpuid(int irq, int gsi)
 	kgetenv_int(envpath, &cpuid);
 
 	if (cpuid < 0) {
+		if (!ioapic_abi_gsi_balance) {
+			if (bootverbose) {
+				kprintf("IOAPIC: irq %d, gsi %d -> cpu0 "
+				    "(fixed)\n", irq, gsi);
+			}
+			return 0;
+		}
+
 		cpuid = gsi % ncpus;
 		if (bootverbose) {
 			kprintf("IOAPIC: irq %d, gsi %d -> cpu%d (auto)\n",
