@@ -1634,7 +1634,7 @@ rsvp_obj_print (const u_char *tptr, const char *ident, u_int tlen) {
         }
         /* do we also want to see a hex dump ? */
         if (vflag > 1 || hexdump==TRUE)
-            print_unknown_data(tptr+sizeof(sizeof(struct rsvp_object_header)),"\n\t    ", /* FIXME indentation */
+            print_unknown_data(tptr+sizeof(struct rsvp_object_header),"\n\t    ", /* FIXME indentation */
                                rsvp_obj_len-sizeof(struct rsvp_object_header));
 
         tptr+=rsvp_obj_len;
