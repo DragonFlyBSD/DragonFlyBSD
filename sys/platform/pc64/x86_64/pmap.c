@@ -1361,6 +1361,10 @@ pmap_pinit(struct pmap *pmap)
 		KKASSERT(pv->pv_m->flags & PG_MAPPED);
 		KKASSERT(pv->pv_m->flags & PG_WRITEABLE);
 	}
+	KKASSERT(pmap->pm_pml4[255] == 0);
+	KKASSERT(RB_ROOT(&pmap->pm_pvroot) == pv);
+	KKASSERT(pv->pv_entry.rbe_left == NULL);
+	KKASSERT(pv->pv_entry.rbe_right == NULL);
 }
 
 /*
@@ -4045,6 +4049,7 @@ pmap_interlock_wait(struct vmspace *vm)
 
 	if (pmap->pm_active & CPUMASK_LOCK) {
 		crit_enter();
+		KKASSERT(curthread->td_critcount >= 2);
 		DEBUG_PUSH_INFO("pmap_interlock_wait");
 		while (pmap->pm_active & CPUMASK_LOCK) {
 			cpu_ccfence();
