@@ -666,6 +666,7 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 				vm_page_protect(m, VM_PROT_NONE);
 				vnode_pager_freepage(m);
 			}
+			vm_object_drop(object);
 			return EIO;
 		}
 	}
