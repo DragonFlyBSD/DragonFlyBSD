@@ -302,7 +302,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 	mount_init(mp);
 	lockinit(&mp->mnt_lock, "vfslock", VLKTIMEOUT, 0);
 
-	vfs_busy(mp, LK_NOWAIT);
+	vfs_busy(mp, 0);
 	mp->mnt_vfc = vfsp;
 	mp->mnt_op = vfsp->vfc_vfsops;
 	vfsp->vfc_refcount++;
