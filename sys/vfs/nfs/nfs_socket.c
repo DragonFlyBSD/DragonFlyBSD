@@ -1138,7 +1138,7 @@ nfs_request_setup(nfsm_info_t info)
 	if (info->vp->v_mount->mnt_kern_flag & MNTK_UNMOUNTF) {
 		m_freem(info->mreq);
 		info->mreq = NULL;
-		return (ESTALE);
+		return (EIO);
 	}
 	nmp = VFSTONFS(info->vp->v_mount);
 	req = kmalloc(sizeof(struct nfsreq), M_NFSREQ, M_WAITOK);
