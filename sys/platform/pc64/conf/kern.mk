@@ -9,6 +9,7 @@
 # reserved for user applications.
 #
 CFLAGS+=	-mpreferred-stack-boundary=4
+CFLAGS+=	-fno-stack-protector
 CFLAGS+=	-mcmodel=kernel -mno-red-zone -mfpmath=387
 
 CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3
