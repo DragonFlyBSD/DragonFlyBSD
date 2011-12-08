@@ -759,7 +759,7 @@ sys_setitimer(struct setitimer_args *uap)
 	lwkt_gettoken(&p->p_token);
 	if (uap->which == ITIMER_REAL) {
 		if (timevalisset(&p->p_realtimer.it_value))
-			callout_stop(&p->p_ithandle);
+			callout_stop_sync(&p->p_ithandle);
 		if (timevalisset(&aitv.it_value)) 
 			callout_reset(&p->p_ithandle,
 			    tvtohz_high(&aitv.it_value), realitexpire, p);
@@ -800,12 +800,12 @@ realitexpire(void *arg)
 	struct timeval ctv, ntv;
 
 	p = (struct proc *)arg;
+	PHOLD(p);
 	lwkt_gettoken(&p->p_token);
 	ksignal(p, SIGALRM);
 	if (!timevalisset(&p->p_realtimer.it_interval)) {
 		timevalclear(&p->p_realtimer.it_value);
-		lwkt_reltoken(&p->p_token);
-		return;
+		goto done;
 	}
 	for (;;) {
 		timevaladd(&p->p_realtimer.it_value,
@@ -816,11 +816,12 @@ realitexpire(void *arg)
 			timevalsub(&ntv, &ctv);
 			callout_reset(&p->p_ithandle, tvtohz_low(&ntv),
 				      realitexpire, p);
-			lwkt_reltoken(&p->p_token);
-			return;
+			goto done;
 		}
 	}
+done:
 	lwkt_reltoken(&p->p_token);
+	PRELE(p);
 }
 
 /*

@@ -502,14 +502,20 @@ callout_stop_sync(struct callout *c)
 	if (c->c_flags & CALLOUT_DID_INIT) {
 		callout_stop(c);
 #ifdef SMP
-		sc = &softclock_pcpu_ary[c->c_gd->gd_cpuid];
+		if (c->c_gd) {
+			sc = &softclock_pcpu_ary[c->c_gd->gd_cpuid];
+			if (sc->running == c) {
+				while (sc->running == c)
+					tsleep(&sc->running, 0, "crace", 1);
+			}
+		}
 #else
 		sc = &softclock_pcpu_ary[0];
-#endif
 		if (sc->running == c) {
 			while (sc->running == c)
 				tsleep(&sc->running, 0, "crace", 1);
 		}
+#endif
 		KKASSERT((c->c_flags & (CALLOUT_PENDING|CALLOUT_ACTIVE)) == 0);
 	}
 }
