@@ -202,6 +202,9 @@
 #elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
 #include "acfreebsd.h"
 
+#elif defined(__DragonFly__)
+#include "acdragonfly.h"
+
 #elif defined(__NetBSD__)
 #include "acnetbsd.h"
 
