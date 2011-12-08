@@ -708,7 +708,6 @@ nfs_mountroot(struct mount *mp)
 	}
 
 	mp->mnt_flag |= MNT_ROOTFS;
-	vfs_unbusy(mp);
 
 	/*
 	 * This is not really an nfs issue, but it is much easier to
@@ -777,7 +776,6 @@ haderror:
 #endif
 		kprintf("nfs_mountroot: mount %s on %s: %d", path, which, error);
 		mp->mnt_vfc->vfc_refcount--;
-		vfs_unbusy(mp);
 		if (didalloc)
 			kfree(mp, M_MOUNT);
 		kfree(nam, M_SONAME);
