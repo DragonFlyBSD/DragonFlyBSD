@@ -810,7 +810,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	upc_frame.rdx = regs->tf_rdx;
 	upc_frame.flags = regs->tf_rflags;
 	upc_frame.oldip = regs->tf_rip;
-	if (copyout(&upc_frame, (void *)(regs->tf_rsp - sizeof(upc_frame)),
+	if (copyout(&upc_frame, (void *)(regs->tf_rsp - sizeof(upc_frame) - 128),
 	    sizeof(upc_frame)) != 0) {
 		kprintf("bad stack on upcall\n");
 	} else {
@@ -818,7 +818,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 		regs->tf_rcx = (register_t)vu->vu_data;
 		regs->tf_rdx = (register_t)lp->lwp_upcall;
 		regs->tf_rip = (register_t)vu->vu_ctx;
-		regs->tf_rsp -= sizeof(upc_frame);
+		regs->tf_rsp -= sizeof(upc_frame) + 128;
 	}
 }
 
@@ -1419,9 +1419,12 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 						"memory region, ignoring "
 						"second region\n");
 				}
-				continue;
+				break;
 			}
 		}
+		if (i <= physmap_idx)
+			continue;
+
 		Realmem += smap->length;
 
 		if (smap->base == physmap[physmap_idx + 1]) {
