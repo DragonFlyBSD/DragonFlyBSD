@@ -822,13 +822,6 @@ nfsm_request_bio(nfsm_info_t info, struct vnode *vp, int procnum,
 			if (error == EIO)		/* unrecoverable */
 				bp->b_flags |= B_INVAL;
 		}
-
-		/*
-		 * This can retry endlessly during a shutdown, change ESTALE
-		 * to EIO in this case.
-		 */
-		if (shutdown_inprog && error == ESTALE)
-			error = EIO;
 		bp->b_error = error;
 		biodone(info->bio);
 	}
