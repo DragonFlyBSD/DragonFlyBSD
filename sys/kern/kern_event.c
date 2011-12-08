@@ -296,10 +296,12 @@ filt_proc(struct knote *kn, long hint)
 	if (event == NOTE_EXIT) {
 		struct proc *p = kn->kn_ptr.p_proc;
 		if ((kn->kn_status & KN_DETACHED) == 0) {
+			PHOLD(p);
 			knote_remove(&p->p_klist, kn);
 			kn->kn_status |= KN_DETACHED;
 			kn->kn_data = p->p_xstat;
 			kn->kn_ptr.p_proc = NULL;
+			PRELE(p);
 		}
 		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT); 
 		return (1);
@@ -444,7 +446,7 @@ knote_acquire(struct knote *kn)
  *
  * Caller must be holding the related kq token
  *
- * Non-zero is returned if the knote is destroyed.
+ * Non-zero is returned if the knote is destroyed or detached.
  */
 static __inline
 int
@@ -464,8 +466,13 @@ knote_release(struct knote *kn)
 		if (filter_event(kn, 0))
 			KNOTE_ACTIVATE(kn);
 	}
-	kn->kn_status &= ~KN_PROCESSING;
-	return(0);
+	if (kn->kn_status & KN_DETACHED) {
+		kn->kn_status &= ~KN_PROCESSING;
+		return(1);
+	} else {
+		kn->kn_status &= ~KN_PROCESSING;
+		return(0);
+	}
 }
 
 /*
