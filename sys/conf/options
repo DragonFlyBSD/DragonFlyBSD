@@ -469,6 +469,7 @@ ENABLE_ALART		opt_intpm.h
 BLKDEV_IOSIZE		opt_global.h
 DEBUG			opt_global.h
 DEBUG_LOCKS		opt_global.h
+DEBUG_LOCKS_LATENCY	opt_global.h
 DEBUG_CRIT_SECTIONS	opt_global.h
 DIAGNOSTIC		opt_global.h
 INVARIANTS		opt_global.h

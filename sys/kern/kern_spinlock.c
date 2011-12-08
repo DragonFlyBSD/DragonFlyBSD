@@ -94,6 +94,16 @@ SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested2, CTLFLAG_RD,
     &spinlocks_contested2, 0,
     "Serious spinlock contention count");
 
+#ifdef DEBUG_LOCKS_LATENCY
+
+static long spinlocks_add_latency;
+SYSCTL_LONG(_debug, OID_AUTO, spinlocks_add_latency, CTLFLAG_RW,
+    &spinlocks_add_latency, 0,
+    "Add spinlock latency");
+
+#endif
+
+
 /*
  * We need a fairly large pool to avoid contention on large SMP systems,
  * particularly multi-chip systems.
@@ -166,6 +176,12 @@ spin_lock_contested(struct spinlock *spin)
 {
 	struct indefinite_info info = { 0, 0 };
 	int i;
+
+#ifdef DEBUG_LOCKS_LATENCY
+	long j;
+	for (j = spinlocks_add_latency; j > 0; --j)
+		cpu_ccfence();
+#endif
 
 	i = 0;
 	++spin->countb;

@@ -163,6 +163,16 @@ SYSCTL_LONG(_lwkt, OID_AUTO, tty_collisions, CTLFLAG_RW,
 SYSCTL_LONG(_lwkt, OID_AUTO, vnode_collisions, CTLFLAG_RW,
     &vnode_token.t_collisions, 0, "Collision counter of vnode_token");
 
+#ifdef DEBUG_LOCKS_LATENCY
+
+static long tokens_add_latency;
+SYSCTL_LONG(_debug, OID_AUTO, tokens_add_latency, CTLFLAG_RW,
+	    &tokens_add_latency, 0,
+	    "Add spinlock latency");
+
+#endif
+
+
 static int _lwkt_getalltokens_sorted(thread_t td);
 
 #ifdef SMP
@@ -344,15 +354,27 @@ _lwkt_trytokref_spin(lwkt_tokref_t ref, thread_t td, long mode)
 {
 	int spin;
 
-	if (_lwkt_trytokref(ref, td, mode))
+	if (_lwkt_trytokref(ref, td, mode)) {
+#ifdef DEBUG_LOCKS_LATENCY
+		long j;
+		for (j = tokens_add_latency; j > 0; --j)
+			cpu_ccfence();
+#endif
 		return TRUE;
+	}
 	for (spin = lwkt_token_spin; spin > 0; --spin) {
 		if (lwkt_token_delay)
 			tsc_delay(lwkt_token_delay);
 		else
 			cpu_pause();
-		if (_lwkt_trytokref(ref, td, mode))
+		if (_lwkt_trytokref(ref, td, mode)) {
+#ifdef DEBUG_LOCKS_LATENCY
+			long j;
+			for (j = tokens_add_latency; j > 0; --j)
+				cpu_ccfence();
+#endif
 			return TRUE;
+		}
 	}
 	return FALSE;
 }
