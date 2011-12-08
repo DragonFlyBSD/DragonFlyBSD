@@ -63,6 +63,8 @@
 
 MALLOC_DECLARE(M_TMPFS);
 
+static void tmpfs_strategy_done(struct bio *bio);
+
 static __inline
 void
 tmpfs_knote(struct vnode *vp, int flags)
@@ -671,10 +673,13 @@ static int
 tmpfs_strategy(struct vop_strategy_args *ap)
 {
 	struct bio *bio = ap->a_bio;
+	struct bio *nbio;
 	struct buf *bp = bio->bio_buf;
 	struct vnode *vp = ap->a_vp;
 	struct tmpfs_node *node;
 	vm_object_t uobj;
+	vm_page_t m;
+	int i;
 
 	if (vp->v_type != VREG) {
 		bp->b_resid = bp->b_bcount;
@@ -690,13 +695,61 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 	uobj = node->tn_reg.tn_aobj;
 
 	/*
-	 * Call swap_pager_strategy to read or write between the VM
-	 * object and the buffer cache.
+	 * Certain operations such as nvtruncbuf() can result in a
+	 * bdwrite() of one or more buffers related to the file,
+	 * leading to the possibility of our strategy function
+	 * being called for writing even when there is no swap space.
+	 *
+	 * When this case occurs we mark the underlying pages as valid
+	 * and dirty and complete the I/O manually.
+	 *
+	 * Otherwise just call swap_pager_strategy to read or write,
+	 * potentially assigning swap on write.  We push a BIO to catch
+	 * any swap allocation errors.
 	 */
-	swap_pager_strategy(uobj, bio);
+	if (bp->b_cmd == BUF_CMD_WRITE && vm_swap_size == 0) {
+		for (i = 0; i < bp->b_xio.xio_npages; ++i) {
+			m = bp->b_xio.xio_pages[i];
+			vm_page_set_validdirty(m, 0, PAGE_SIZE);
+		}
+		bp->b_resid = 0;
+		bp->b_error = 0;
+		biodone(bio);
+	} else {
+		nbio = push_bio(bio);
+		nbio->bio_done = tmpfs_strategy_done;
+		nbio->bio_offset = bio->bio_offset;
+		swap_pager_strategy(uobj, nbio);
+	}
 
 	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return 0;
+}
+
+/*
+ * bio finished.  If we ran out of sap just mark the pages valid
+ * and dirty and make it appear that the I/O has completed successfully.
+ */
+static void
+tmpfs_strategy_done(struct bio *bio)
+{
+	struct buf *bp;
+	vm_page_t m;
+	int i;
+
+	bp = bio->bio_buf;
+
+	if ((bp->b_flags & B_ERROR) && bp->b_error == ENOMEM) {
+		bp->b_flags &= ~B_ERROR;
+		bp->b_error = 0;
+		bp->b_resid = 0;
+		for (i = 0; i < bp->b_xio.xio_npages; ++i) {
+			m = bp->b_xio.xio_pages[i];
+			vm_page_set_validdirty(m, 0, PAGE_SIZE);
+		}
+	}
+	bio = pop_bio(bio);
+	biodone(bio);
 }
 
 static int
