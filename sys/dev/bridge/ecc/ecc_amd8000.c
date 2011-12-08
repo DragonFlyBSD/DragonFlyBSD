@@ -47,101 +47,83 @@
 
 #include "pcib_if.h"
 
-static int setup_none(device_t dev);
-static int setup_amd64(device_t dev);
-static void poll_amd64(void *dev_arg);
-
-struct pci_memory_controller { 
+struct ecc_amd8000_memctrl {
 	uint16_t	vid;
 	uint16_t	did;
 	const char	*desc;
-	int (*setup)(device_t dev);
 };
 
-struct pci_ecc_softc {
-	struct pci_memory_controller *config;
-	struct callout poll_callout;
-	int poll_enable;
+struct ecc_amd8000_softc {
+	device_t	ecc_device;
+	device_t	ecc_mydev;
+	struct callout	ecc_callout;
 };
 
-static struct pci_memory_controller mem_controllers[] = {
-	/* AMD */
-	{ 0x1022, 0x7006, "AMD 751", setup_none },
-	{ 0x1022, 0x700c, "AMD 762", setup_none },
-	{ 0x1022, 0x700e, "AMD 761", setup_none },
-	{ 0x1022, 0x1100, "AMD 8000", setup_amd64 },
-	{ 0x1022, 0x7454, "AMD 8000", setup_amd64 }
+#define ecc_printf(sc, fmt, arg...) \
+	device_printf((sc)->ecc_mydev, fmt , ##arg)
+
+static void	ecc_amd8000_callout(void *);
+static int	ecc_amd8000_probe(device_t);
+static int	ecc_amd8000_attach(device_t);
+
+static const struct ecc_amd8000_memctrl ecc_memctrls[] = {
+	{ 0x1022, 0x1100, "AMD 8000 memory controller" },
+	{ 0x1022, 0x7454, "AMD 8151 memory controller" },
+	{ 0, 0, NULL } /* required last entry */
 };
+
+static device_method_t ecc_amd8000_methods[] = {
+        /* Device interface */
+	DEVMETHOD(device_probe,		ecc_amd8000_probe),
+	DEVMETHOD(device_attach,	ecc_amd8000_attach),
+	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
+	DEVMETHOD(device_suspend,	bus_generic_suspend),
+	DEVMETHOD(device_resume,	bus_generic_resume),
+	{ 0, 0 }
+};
+
+static driver_t ecc_amd8000_driver = {
+	"ecc",
+	ecc_amd8000_methods,
+	sizeof(struct ecc_amd8000_softc)
+};
+static devclass_t ecc_devclass;
+DRIVER_MODULE(ecc_amd8000, hostb, ecc_amd8000_driver, ecc_devclass, NULL, NULL);
+MODULE_DEPEND(ecc_amd8000, pci, 1, 1, 1);
 
 static int
-pci_ecc_probe(device_t dev)
+ecc_amd8000_probe(device_t dev)
 {
-	struct pci_ecc_softc *sc;
-	uint16_t vid;
-	uint16_t did;
-	int i;
+	const struct ecc_amd8000_memctrl *mc;
+	uint16_t vid, did;
 
 	vid = pci_get_vendor(dev);
 	did = pci_get_device(dev);
 
-	for (i = 0; i < NELEM(mem_controllers); ++i) {
-		if (mem_controllers[i].vid == vid &&
-		    mem_controllers[i].did == did
-		) {
-			sc = device_get_softc(dev);
-			sc->config = &mem_controllers[i];
-			return(0);
+	for (mc = ecc_memctrls; mc->desc != NULL; ++mc) {
+		if (mc->vid == vid && mc->did == did) {
+			struct ecc_amd8000_softc *sc = device_get_softc(dev);
+
+			device_set_desc(dev, mc->desc);
+			sc->ecc_mydev = dev;
+			sc->ecc_device = device_get_parent(dev);
+			return (0);
 		}
 	}
 	return (ENXIO);
 }
 
 static int
-pci_ecc_attach(device_t dev)
+ecc_amd8000_attach(device_t dev)
 {
-	struct pci_ecc_softc *sc = device_get_softc(dev);
+	struct ecc_amd8000_softc *sc = device_get_softc(dev);
+	uint32_t draminfo, eccinfo;
+	int bus, slot, poll = 0;
 
-	return (sc->config->setup(dev));
-}
+	dev = sc->ecc_device; /* XXX */
 
-static device_method_t pci_ecc_methods[] = {
-        /* Device interface */
-        DEVMETHOD(device_probe,         pci_ecc_probe),
-        DEVMETHOD(device_attach,        pci_ecc_attach),
-        DEVMETHOD(device_shutdown,      bus_generic_shutdown),
-        DEVMETHOD(device_suspend,       bus_generic_suspend),
-        DEVMETHOD(device_resume,        bus_generic_resume),
-        { 0, 0 }
-};
-
-static driver_t pci_ecc_driver = {
-	"ecc",
-	pci_ecc_methods,
-	sizeof(struct pci_ecc_softc)
-};
-static devclass_t ecc_devclass;
-DRIVER_MODULE(ecc, pci, pci_ecc_driver, ecc_devclass, NULL, NULL);
-MODULE_DEPEND(ecc, pci, 1, 1, 1);
-
-/*
- * Architecture-specific procedures
- */
-static
-int
-setup_none(device_t dev)
-{
-	return(0);
-}
-
-static
-int
-setup_amd64(device_t dev)
-{
-	struct pci_ecc_softc *sc = device_get_softc(dev);
-	uint32_t draminfo;
-	uint32_t eccinfo;
-	int bus = pci_get_bus(dev);
-	int slot = pci_get_slot(dev);
+	bus = pci_get_bus(dev);
+	slot = pci_get_slot(dev);
 
 	/*
 	 * The memory bridge is recognized as four PCI devices
@@ -151,32 +133,31 @@ setup_amd64(device_t dev)
 	draminfo = pcib_read_config(dev, bus, slot, 2, 0x90, 4);
 	eccinfo = pcib_read_config(dev, bus, slot, 3, 0x44, 4);
 
-	device_printf(dev, "attached %s memory controller\n", sc->config->desc);
 	if ((draminfo >> 17) & 1)
-		device_printf(dev, "memory type: ECC\n");
+		ecc_printf(sc, "memory type: ECC\n");
 	else
-		device_printf(dev, "memory type: NON-ECC\n");
+		ecc_printf(sc, "memory type: NON-ECC\n");
 	switch((eccinfo >> 22) & 3) {
 	case 0:
-		device_printf(dev, "ecc mode: DISABLED\n");
+		ecc_printf(sc, "ecc mode: DISABLED\n");
 		break;
 	case 1:
-		device_printf(dev, "ecc mode: ENABLED/CORRECT-MODE\n");
-		sc->poll_enable = 1;
+		ecc_printf(sc, "ecc mode: ENABLED/CORRECT-MODE\n");
+		poll = 1;
 		break;
 	case 2:
-		device_printf(dev, "ecc mode: ENABLED/RESERVED (disabled)\n");
+		ecc_printf(sc, "ecc mode: ENABLED/RESERVED (disabled)\n");
 		break;
 	case 3:
-		device_printf(dev, "ecc mode: ENABLED/CHIPKILL-MODE\n");
-		sc->poll_enable = 1;
+		ecc_printf(sc, "ecc mode: ENABLED/CHIPKILL-MODE\n");
+		poll = 1;
 		break;
 	}
 
 	/*
 	 * Enable ECC logging and clear any previous error.
 	 */
-	if (sc->poll_enable) {
+	if (poll) {
 		uint64_t v64;
 		uint32_t v32;
 
@@ -186,22 +167,22 @@ setup_amd64(device_t dev)
 		v32 &= 0x7F801EFC;
 		pcib_write_config(dev, bus, slot, 3, 0x4C, v32, 4);
 
-		callout_init(&sc->poll_callout);
-		callout_reset(&sc->poll_callout, hz, poll_amd64, dev);
+		callout_init_mp(&sc->ecc_callout);
+		callout_reset(&sc->ecc_callout, hz, ecc_amd8000_callout, sc);
 	}
-	return(0);
+	return (0);
 }
 
-static
-void
-poll_amd64(void *dev_arg)
+static void
+ecc_amd8000_callout(void *xsc)
 {
-	device_t dev = dev_arg;
-	struct pci_ecc_softc *sc = device_get_softc(dev);
-	int bus = pci_get_bus(dev);
-	int slot = pci_get_slot(dev);
-	uint32_t v32;
-	uint32_t addr;
+	struct ecc_amd8000_softc *sc = xsc;
+	device_t dev = sc->ecc_device;
+	uint32_t v32, addr;
+	int bus, slot;
+
+	bus = pci_get_bus(dev);
+	slot = pci_get_slot(dev);
 
 	/*
 	 * The address calculation is not entirely correct.  We need to
@@ -210,13 +191,12 @@ poll_amd64(void *dev_arg)
 	v32 = pcib_read_config(dev, bus, slot, 3, 0x4C, 4);
 	if ((v32 & 0x80004000) == 0x80004000) {
 		addr = pcib_read_config(dev, bus, slot, 3, 0x50, 4);
-		device_printf(dev, "Correctable ECC error at %08x\n", addr);
+		ecc_printf(sc, "Correctable ECC error at %08x\n", addr);
 		pcib_write_config(dev, bus, slot, 3, 0x4C, v32 & 0x7F801EFC, 4);
 	} else if ((v32 & 0x80002000) == 0x80002000) {
 		addr = pcib_read_config(dev, bus ,slot, 3, 0x50, 4);
-		device_printf(dev, "Uncorrectable ECC error at %08x\n", addr);
+		ecc_printf(sc, "Uncorrectable ECC error at %08x\n", addr);
 		pcib_write_config(dev, bus, slot, 3, 0x4C, v32 & 0x7F801EFC, 4);
 	}
-	callout_reset(&sc->poll_callout, hz, poll_amd64, dev);
+	callout_reset(&sc->ecc_callout, hz, ecc_amd8000_callout, sc);
 }
-
