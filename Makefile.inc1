@@ -819,6 +819,9 @@ build-tools: build-tools-targets
 
 build-tools-targets: ${BTOOLSDIRS:S/^/btools-/}
 
+.ORDER: ${_gcc41_tools:S/^/btools-/}
+.ORDER: ${_gcc44_tools:S/^/btools-/}
+
 .for _tool in ${BTOOLSDIRS}
 btools-${_tool}!
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
