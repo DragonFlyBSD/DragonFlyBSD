@@ -177,7 +177,6 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 		 * And an object of the appropriate size
 		 */
 		object = vm_object_allocate_hold(OBJT_VNODE, lsize);
-		object->flags = 0;
 		object->handle = handle;
 		vp->v_object = object;
 		vp->v_filesize = length;
