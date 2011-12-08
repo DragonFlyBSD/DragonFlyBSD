@@ -2302,8 +2302,17 @@ vm_page_try_to_free(vm_page_t m)
 		vm_page_spin_unlock(m);
 		return(0);
 	}
-	if (m->dirty || m->hold_count || m->wire_count ||
-	    (m->flags & PG_UNMANAGED)) {
+
+	/*
+	 * The page can be in any state, including already being on the free
+	 * queue.  Check to see if it really can be freed.
+	 */
+	if (m->dirty ||				/* can't free if it is dirty */
+	    m->hold_count ||			/* or held (XXX may be wrong) */
+	    m->wire_count ||			/* or wired */
+	    (m->flags & PG_UNMANAGED) ||	/* or unmanaged */
+	    m->queue - m->pc == PQ_FREE ||	/* already on PQ_FREE */
+	    m->queue - m->pc == PQ_HOLD) {	/* already on PQ_HOLD */
 		if (_vm_page_wakeup(m)) {
 			vm_page_spin_unlock(m);
 			wakeup(m);
@@ -2315,6 +2324,8 @@ vm_page_try_to_free(vm_page_t m)
 	vm_page_spin_unlock(m);
 
 	/*
+	 * We can probably free the page.
+	 *
 	 * Page busied by us and no longer spinlocked.  Dirty pages will
 	 * not be freed by this function.    We have to re-test the
 	 * dirty bit after cleaning out the pmaps.
