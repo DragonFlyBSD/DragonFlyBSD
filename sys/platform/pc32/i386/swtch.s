@@ -558,9 +558,7 @@ ENTRY(cpu_idle_restore)
 	pushl	$0
 	movl	%ecx,%cr3
 	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
-#if 0
-	orl	$TDF_RUNNING,TD_FLAGS(%eax)
-#endif
+	orl	$TDF_RUNNING,TD_FLAGS(%eax)	/* manual, no switch_return */
 #ifdef SMP
 	cmpl	$0,PCPU(cpuid)
 	je	1f

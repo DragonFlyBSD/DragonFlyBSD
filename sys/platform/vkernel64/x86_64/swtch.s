@@ -561,9 +561,7 @@ ENTRY(cpu_idle_restore)
 	/* JG push RBP? */
 	pushq	$0
 	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
-#if 0
-	orl	$TDF_RUNNING,TD_FLAGS(%rax)
-#endif
+	orl	$TDF_RUNNING,TD_FLAGS(%rax)	/* manual, no switch_return */
 #ifdef SMP
 	cmpl	$0,PCPU(cpuid)
 	je	1f

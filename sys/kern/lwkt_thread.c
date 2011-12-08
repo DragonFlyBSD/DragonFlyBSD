@@ -594,6 +594,7 @@ lwkt_switch(void)
     int spinning = 0;
 
     KKASSERT(gd->gd_processing_ipiq == 0);
+    KKASSERT(td->td_flags & TDF_RUNNING);
 
     /*
      * Switching from within a 'fast' (non thread switched) interrupt or IPI
@@ -922,6 +923,7 @@ haveidle:
 	 *
 	 * We are responsible for marking ntd as TDF_RUNNING.
 	 */
+	KKASSERT((ntd->td_flags & TDF_RUNNING) == 0);
 	++switch_count;
 	KTR_LOG(ctxsw_sw, gd->gd_cpuid, ntd);
 	ntd->td_flags |= TDF_RUNNING;
@@ -1032,6 +1034,10 @@ lwkt_preempt(thread_t ntd, int critcount)
 	return;
     }
 #ifdef SMP
+    if (td->td_cscount) {
+	++preempt_miss;
+	return;
+    }
     if (ntd->td_gd != gd) {
 	++preempt_miss;
 	return;
@@ -1078,6 +1084,8 @@ lwkt_preempt(thread_t ntd, int critcount)
     KTR_LOG(ctxsw_pre, gd->gd_cpuid, ntd);
     save_gd_intr_nesting_level = gd->gd_intr_nesting_level;
     gd->gd_intr_nesting_level = 0;
+
+    KKASSERT((ntd->td_flags & TDF_RUNNING) == 0);
     ntd->td_flags |= TDF_RUNNING;
     xtd = td->td_switch(ntd);
     KKASSERT(xtd == ntd);

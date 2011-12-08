@@ -298,6 +298,8 @@ ENTRY(cpu_exit_switch)
  */
 
 ENTRY(cpu_heavy_restore)
+	movq	TD_PCB(%rax),%rdx		/* RDX = PCB */
+	movq	%rdx, PCPU(common_tss) + TSS_RSP0
 	popfq
 
 #if defined(SWTCH_OPTIM_STATS)
@@ -337,6 +339,13 @@ ENTRY(cpu_heavy_restore)
 	 */
 	btq	$CPUMASK_BIT,%rax	/* test interlock */
 	jnc	1f
+
+#if 0
+	movq	TD_PCB(%r12),%rdx	/* XXX debugging unconditional */
+	movq	PCB_CR3(%rdx),%rdx	/*     reloading of %cr3 */
+	movq	%rdx,%cr3
+#endif
+
 	movq	%rcx,%rdi		/* (found to be set) */
 	call	pmap_interlock_wait	/* pmap_interlock_wait(%rdi:vm) */
 
@@ -621,9 +630,7 @@ ENTRY(cpu_idle_restore)
 	pushq	$0
 	movq	%rcx,%cr3
 	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
-#if 0
-	orl	$TDF_RUNNING,TD_FLAGS(%rax)
-#endif
+	orl	$TDF_RUNNING,TD_FLAGS(%rax)	/* manual, no switch_return */
 #ifdef SMP
 	cmpl	$0,PCPU(cpuid)
 	je	1f
@@ -749,6 +756,15 @@ ENTRY(cpu_lwkt_restore)
 #endif
 	movq	%rcx,%cr3
 1:
+	/*
+	 * Safety, clear RSP0 in the tss so it isn't pointing at the
+	 * previous thread's kstack (if a heavy weight user thread).
+	 * RSP0 should only be used in ring 3 transitions and kernel
+	 * threads run in ring 0 so there should be none.
+	 */
+	xorq	%rdx,%rdx
+	movq	%rdx, PCPU(common_tss) + TSS_RSP0
+
 	/*
 	 * NOTE: %rbx is the previous thread and %rax is the new thread.
 	 *	 %rbx is retained throughout so we can return it.

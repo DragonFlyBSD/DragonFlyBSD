@@ -44,7 +44,7 @@
 
 /*
  * bcopy family
- * void bzero(void *buf, u_int len)
+ * void bzero(void *buf, size_t len)
  */
 
 /* done */
