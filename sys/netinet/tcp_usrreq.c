@@ -757,6 +757,13 @@ tcp_usr_send(netmsg_t msg)
 	tp = intotcpcb(inp);
 	TCPDEBUG1();
 
+#ifdef foo
+	/*
+	 * This is no longer necessary, since:
+	 * - sosendtcp() has already checked it for us
+	 * - It does not work with asynchronized send
+	 */
+
 	/*
 	 * Don't let too much OOB data build up
 	 */
@@ -767,6 +774,7 @@ tcp_usr_send(netmsg_t msg)
 			goto out;
 		}
 	}
+#endif
 
 	/*
 	 * Pump the data into the socket.
