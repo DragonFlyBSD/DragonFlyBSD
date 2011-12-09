@@ -1805,3 +1805,8 @@ TO_REMOVE+=/usr/share/man/man4/rum.4.gz
 TO_REMOVE+=/boot/modules/if_ural.ko
 TO_REMOVE+=/usr/share/man/cat4/ural.4.gz
 TO_REMOVE+=/usr/share/man/man4/ural.4.gz
+
+# XXX Remove when acpi_hp(4) has been fixed
+TO_REMOVE+=/boot/kernel/acpi_hp.ko
+TO_REMOVE+=/usr/share/man/cat4/acpi_hp.4.gz
+TO_REMOVE+=/usr/share/man/man4/acpi_hp.4.gz
