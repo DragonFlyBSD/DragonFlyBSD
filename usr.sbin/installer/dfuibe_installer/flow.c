@@ -1392,7 +1392,7 @@ state_setup_remote_installation_server(struct i_fn_args *a)
 			dfui_action_property_set(k, "accelerator", "ESC");
 
 			if (!dfui_be_present(a->c, f, &r))
-			abort_backend();
+				abort_backend();
 
 			strlcpy(interface, dfui_response_get_action_id(r), 256);
 

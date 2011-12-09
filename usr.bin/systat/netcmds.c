@@ -32,7 +32,6 @@
  *
  * @(#)netcmds.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netcmds.c,v 1.9 1999/08/28 01:06:04 peter Exp $
- * $DragonFly: src/usr.bin/systat/netcmds.c,v 1.7 2008/11/10 04:59:45 swildner Exp $
  */
 
 /*
@@ -227,9 +226,11 @@ checkport(struct inpcb *inp)
 	struct pitem *p;
 
 	if (ports)
-	for (p = ports; p < ports+nports; p++)
-		if (p->port == inp->inp_lport || p->port == inp->inp_fport)
-			return (p->onoff);
+		for (p = ports; p < ports+nports; p++) {
+			if (p->port == inp->inp_lport ||
+			    p->port == inp->inp_fport)
+				return (p->onoff);
+		}
 	return (1);
 }
 
@@ -284,10 +285,11 @@ checkhost(struct inpcb *inp)
 	struct hitem *p;
 
 	if (hosts)
-	for (p = hosts; p < hosts+nhosts; p++)
-		if (p->addr.s_addr == inp->inp_laddr.s_addr ||
-		    p->addr.s_addr == inp->inp_faddr.s_addr)
-			return (p->onoff);
+		for (p = hosts; p < hosts+nhosts; p++) {
+			if (p->addr.s_addr == inp->inp_laddr.s_addr ||
+			    p->addr.s_addr == inp->inp_faddr.s_addr)
+				return (p->onoff);
+		}
 	return (1);
 }
 

@@ -31,7 +31,6 @@
  *
  * @(#)use.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/use.c,v 1.4 1999/11/30 03:49:29 billf Exp $
- * $DragonFly: src/games/rogue/use.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -496,9 +495,13 @@ hallucinate(void)
 	while (obj) {
 		ch = mvinch(obj->row, obj->col);
 		if (((ch < 'A') || (ch > 'Z')) &&
-			((obj->row != rogue.row) || (obj->col != rogue.col)))
-		if ((ch != ' ') && (ch != '.') && (ch != '#') && (ch != '+')) {
-			addch(gr_obj_char());
+		    ((obj->row != rogue.row) || (obj->col != rogue.col)))
+		{
+			if ((ch != ' ') && (ch != '.') && (ch != '#') &&
+			    (ch != '+'))
+			{
+				addch(gr_obj_char());
+			}
 		}
 		obj = obj->next_object;
 	}

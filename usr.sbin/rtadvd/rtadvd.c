@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/rtadvd.c,v 1.3.2.4 2003/04/05 10:31:58 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/rtadvd.c,v 1.6 2005/12/05 00:56:37 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1021,7 +1020,7 @@ ra_input(int len, struct nd_router_advert *ra,
 	if (inconsistent)
 		rai->rainconsistent++;
 	
-  done:
+done:
 	free_ndopts(&ndopts);
 	return;
 }

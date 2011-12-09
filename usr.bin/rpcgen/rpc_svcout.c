@@ -28,7 +28,6 @@
  *
  * @(#)rpc_svcout.c	1.4	90/04/13 SMI; 1.29 89/03/30 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_svcout.c,v 1.26 2008/08/12 13:38:06 dfr Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_svcout.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 /*
@@ -597,7 +596,7 @@ print_return(const char *space)
 		if (timerflag) {
 			if (mtflag)
 				f_print(fout, "%spthread_mutex_lock(&_svcstate_lock);\n", space);
-				f_print(fout, "%s_rpcsvcstate = _SERVED;\n", space);
+			f_print(fout, "%s_rpcsvcstate = _SERVED;\n", space);
 			if (mtflag)
 				f_print(fout, "%spthread_mutex_unlock(&_svcstate_lock);\n", space);
 		}

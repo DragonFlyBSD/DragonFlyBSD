@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *      @(#) $FreeBSD: src/sbin/atm/ilmid/ilmid.c,v 1.6.2.2 2001/03/04 07:15:30 kris Exp $
- *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.8 2006/10/16 00:15:35 pavalos Exp $
  */
 
 /*
@@ -448,7 +447,7 @@ asn_get_pdu_len ( u_char **bufp, int *plen )
 	b = *bp++;
 	if ( plen )
 		(*plen)--;
-	 if ( b & 0x80 ) {
+	if ( b & 0x80 ) {
 		for ( i = 0; i < (b & ~0x80); i++ ) {
 			len = len * 256 + *bp++;
 			if ( plen )

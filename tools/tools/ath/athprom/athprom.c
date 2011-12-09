@@ -142,8 +142,8 @@ main(int argc, char *argv[])
 			} else {
 				val = (uint16_t) strtoul(cp+1, NULL, 0);
 				if (val == 0 && errno == EINVAL)
-				errx(1, "%s: invalid eeprom value %s",
-					progname, cp+1);
+					errx(1, "%s: invalid eeprom value %s",
+					    progname, cp+1);
 				oval = eeread(off);
 				printf("Write %04x: %04x = %04x? ",
 					off, oval, val);

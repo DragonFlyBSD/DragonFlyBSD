@@ -36,7 +36,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/startup.c,v 1.8.2.1 2000/07/01 10:46:25 ps Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/startup.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  *
  * @(#)startup.c	8.1 (Berkeley) 6/5/93
  */
@@ -131,7 +130,7 @@ ifinit(void)
 	if ((buf = malloc(needed)) == NULL)
 		quit("malloc");
         if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0)
-	lookforinterfaces = 0;
+		lookforinterfaces = 0;
 	cplim = buf + needed;
 	for (cp = buf; cp < cplim; cp += ifm->ifm_msglen) {
 		ifm = (struct if_msghdr *)cp;

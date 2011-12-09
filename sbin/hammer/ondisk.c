@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.25 2008/08/21 23:28:43 thomas Exp $
  */
 
 #include <sys/types.h>
@@ -279,11 +277,11 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 				  buf->raw_offset);
 			if (n != HAMMER_BUFSIZE) {
 				if (AssertOnFailure)
-				err(1, "get_buffer: %s:%016llx Read failed at "
-				       "offset %016llx",
-				    volume->name,
-				    (long long)buf->buf_offset,
-				    (long long)buf->raw_offset);
+					err(1, "get_buffer: %s:%016llx "
+					    "Read failed at offset %016llx",
+					    volume->name,
+					    (long long)buf->buf_offset,
+					    (long long)buf->raw_offset);
 				bzero(ondisk, HAMMER_BUFSIZE);
 			}
 		}

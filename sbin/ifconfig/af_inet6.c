@@ -140,7 +140,7 @@ setip6eui64(const char *cmd, int dummy __unused, int s,
 
 	if (afp->af_af != AF_INET6)
 		errx(EXIT_FAILURE, "%s not allowed for the AF", cmd);
- 	in6 = (struct in6_addr *)&in6_addreq.ifra_addr.sin6_addr;
+	in6 = (struct in6_addr *)&in6_addreq.ifra_addr.sin6_addr;
 	if (memcmp(&in6addr_any.s6_addr[8], &in6->s6_addr[8], 8) != 0)
 		errx(EXIT_FAILURE, "interface index is already filled");
 	if (getifaddrs(&ifap) != 0)
@@ -158,7 +158,7 @@ setip6eui64(const char *cmd, int dummy __unused, int s,
 	if (!lladdr)
 		errx(EXIT_FAILURE, "could not determine link local address"); 
 
- 	memcpy(&in6->s6_addr[8], &lladdr->s6_addr[8], 8);
+	memcpy(&in6->s6_addr[8], &lladdr->s6_addr[8], 8);
 
 	freeifaddrs(ifap);
 }

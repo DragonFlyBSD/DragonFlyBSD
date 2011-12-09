@@ -124,7 +124,7 @@ Sig(int i) {
 		sop[0].sem_op = 1;
 		if (semop(semid, sop, 1) == -1) {
 			if (errno != EINTR && errno != EIDRM && errno != EINVAL)
-			warn("Sig: semop (%s:%d)", __FILE__, __LINE__);
+				warn("Sig: semop (%s:%d)", __FILE__, __LINE__);
 			done_testing = 1;
 		}
 }
