@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pw/cpdir.c,v 1.5.2.1 2000/08/14 19:01:35 jhb Exp $
- * $DragonFly: src/usr.sbin/pw/cpdir.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
 #include <err.h>
@@ -79,9 +78,10 @@ copymkdir(char const * dir, char const * skel, mode_t mode, uid_t uid, gid_t gid
 							warn("warning: path too long '%s/%s' (skel file skipped)", dir, p);
 						else {
 						    if (S_ISDIR(st.st_mode)) {	/* Recurse for this */
-							if (strcmp(e->d_name, ".") != 0 && strcmp(e->d_name, "..") != 0)
+							if (strcmp(e->d_name, ".") != 0 && strcmp(e->d_name, "..") != 0) {
 								copymkdir(dst, src, (st.st_mode & 0777), uid, gid);
 								chflags(dst, st.st_flags);	/* propogate flags */
+							}
 							/*
 							 * Note: don't propogate special attributes
 							 * but do propogate file flags
