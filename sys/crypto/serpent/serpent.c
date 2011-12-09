@@ -184,7 +184,7 @@
 // 16 term solution that performs less well than 17 term one
 // in my environment (PPro/PII)
 
-#if(0)
+#if 0
 
 #define sb3(a,b,c,d,e,f,g,h)    \
 {   t1 = a ^ b;     \

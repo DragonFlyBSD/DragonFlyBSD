@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/spicds.c,v 1.5.2.2 2007/06/11 19:33:27 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/spicds.c,v 1.3 2007/06/27 13:26:18 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -74,7 +73,7 @@ spicds_wrcd(struct spicds_info *codec, int reg, u_int16_t val)
 {
 	int mask;
 
-#if(0)
+#if 0
 	device_printf(codec->dev, "spicds_wrcd(codec, 0x%02x, 0x%02x)\n", reg, val);
 #endif
 	/* start */
@@ -138,7 +137,7 @@ spicds_create(device_t dev, void *devinfo, int num, spicds_ctrl ctrl)
 {
 	struct spicds_info *codec;
 
-#if(0)
+#if 0
 	device_printf(dev, "spicds_create(dev, devinfo, %d, ctrl)\n", num);
 #endif
 	codec = kmalloc(sizeof *codec, M_SPICDS, M_WAITOK);
@@ -199,7 +198,7 @@ spicds_setdvc(struct spicds_info *codec, unsigned int dvc)
 void
 spicds_init(struct spicds_info *codec)
 {
-#if(0)
+#if 0
 	device_printf(codec->dev, "spicds_init(codec)\n");
 #endif
 	snd_mtxlock(codec->lock);
@@ -263,7 +262,7 @@ spicds_reinit(struct spicds_info *codec)
 void
 spicds_set(struct spicds_info *codec, int dir, unsigned int left, unsigned int right)
 {
-#if(0)
+#if 0
 	device_printf(codec->dev, "spicds_set(codec, %d, %d, %d)\n", dir, left, right);
 #endif
 	snd_mtxlock(codec->lock);
@@ -304,42 +303,42 @@ spicds_set(struct spicds_info *codec, int dir, unsigned int left, unsigned int r
                         right = right * 127 / 100;
 		}
 	if (dir == PCMDIR_REC && codec->type == SPICDS_TYPE_AK4524) {
-#if(0)
+#if 0
 		device_printf(codec->dev, "spicds_set(): AK4524(REC) %d/%d\n", left, right);
 #endif
 		spicds_wrcd(codec, AK4524_LIPGA, left);
 		spicds_wrcd(codec, AK4524_RIPGA, right);
 	}
 	if (dir == PCMDIR_PLAY && codec->type == SPICDS_TYPE_AK4524) {
-#if(0)
+#if 0
 		device_printf(codec->dev, "spicds_set(): AK4524(PLAY) %d/%d\n", left, right);
 #endif
 		spicds_wrcd(codec, AK4524_LOATT, left);
 		spicds_wrcd(codec, AK4524_ROATT, right);
 	}
 	if (dir == PCMDIR_PLAY && codec->type == SPICDS_TYPE_AK4528) {
-#if(0)
+#if 0
 		device_printf(codec->dev, "spicds_set(): AK4528(PLAY) %d/%d\n", left, right);
 #endif
 		spicds_wrcd(codec, AK4528_LOATT, left);
 		spicds_wrcd(codec, AK4528_ROATT, right);
 	}
         if (dir == PCMDIR_PLAY && codec->type == SPICDS_TYPE_WM8770) {
-#if(0)
+#if 0
                 device_printf(codec->dev, "spicds_set(): WM8770(PLAY) %d/%d\n", left, right);
 #endif
                 spicds_wrcd(codec, WM8770_AOATT_L1, left | WM8770_AOATT_UPDATE);
                 spicds_wrcd(codec, WM8770_AOATT_R1, right | WM8770_AOATT_UPDATE);
         }
         if (dir == PCMDIR_PLAY && codec->type == SPICDS_TYPE_AK4358) {
-#if(0)
+#if 0
                 device_printf(codec->dev, "spicds_set(): AK4358(PLAY) %d/%d\n", left, right);
 #endif
                 spicds_wrcd(codec, AK4358_LO1ATT, left | AK4358_OATT_ENABLE);
                 spicds_wrcd(codec, AK4358_RO1ATT, right | AK4358_OATT_ENABLE);
         }
         if (dir == PCMDIR_PLAY && codec->type == SPICDS_TYPE_AK4381) {
-#if(0)
+#if 0
                 device_printf(codec->dev, "spicds_set(): AK4381(PLAY) %d/%d\n", left, right);
 #endif
                 spicds_wrcd(codec, AK4381_LOATT, left);
@@ -347,7 +346,7 @@ spicds_set(struct spicds_info *codec, int dir, unsigned int left, unsigned int r
         }
 
         if (dir == PCMDIR_PLAY && codec->type == SPICDS_TYPE_AK4396) {
-#if(0)
+#if 0
                 device_printf(codec->dev, "spicds_set(): AK4396(PLAY) %d/%d\n", left, right);
 #endif
                 spicds_wrcd(codec, AK4396_LOATT, left);
