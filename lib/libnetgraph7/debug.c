@@ -74,9 +74,7 @@
 */
 #include <netgraph7/frame_relay/ng_frame_relay.h>
 #include <netgraph7/hole/ng_hole.h>
-/*
 #include <netgraph7/hub/ng_hub.h>
-*/
 #include <netgraph7/iface/ng_iface.h>
 /*
 #include <netgraph7/ip_input/ng_ip_input.h>
@@ -149,9 +147,7 @@ static const struct ng_cookie cookies[] = {
 	COOKIE(FRAMERELAY),
 	COOKIE(GENERIC),
 	COOKIE(HOLE),
-/*
 	COOKIE(HUB),
-*/
 	COOKIE(IFACE),
 /*
 	COOKIE(IP_INPUT),

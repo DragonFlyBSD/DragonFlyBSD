@@ -354,6 +354,7 @@ NETGRAPH7_FRAME_RELAY	opt_netgraph.h
 NETGRAPH7_GIF		opt_netgraph.h
 NETGRAPH7_GIF_DEMUX	opt_netgraph.h
 NETGRAPH7_HOLE		opt_netgraph.h
+NETGRAPH7_HUB		opt_netgraph.h
 NETGRAPH7_IFACE		opt_netgraph.h
 NETGRAPH7_IP_INPUT	opt_netgraph.h
 NETGRAPH7_IPFW		opt_netgraph.h

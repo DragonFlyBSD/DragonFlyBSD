@@ -1318,6 +1318,7 @@ netgraph7/frame_relay/ng_frame_relay.c			optional netgraph7_frame_relay
 netgraph7/ng_gif.c		optional netgraph7_gif
 netgraph7/ng_gif_demux.c	optional netgraph7_gif_demux
 netgraph7/hole/ng_hole.c	optional netgraph7_hole
+netgraph7/hub/ng_hub.c		optional netgraph7_hub
 netgraph7/iface/ng_iface.c	optional netgraph7_iface
 netgraph7/ng_ip_input.c		optional netgraph7_ip_input
 netgraph7/ng_ipfw.c		optional netgraph7_ipfw

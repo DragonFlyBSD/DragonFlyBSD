@@ -230,6 +230,8 @@
         ..
         hole
         ..
+        hub
+        ..
         iface
         ..
         ksocket

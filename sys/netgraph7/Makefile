@@ -14,6 +14,7 @@ SUBDIR=	UI \
 	ether \
 	frame_relay \
 	hole \
+	hub \
 	iface \
 	ksocket \
 	l2tp \

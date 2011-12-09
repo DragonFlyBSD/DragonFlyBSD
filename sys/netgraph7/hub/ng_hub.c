@@ -33,9 +33,9 @@
 #include <sys/mbuf.h>
 #include <sys/systm.h>
 
-#include "ng_message.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
 #include "ng_hub.h"
-#include "netgraph.h"
 
 static ng_constructor_t	ng_hub_constructor;
 static ng_rcvdata_t	ng_hub_rcvdata;
