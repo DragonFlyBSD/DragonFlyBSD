@@ -25,13 +25,13 @@ SUBDIR=	UI \
 	ppp \
 	pppoe \
 	pptpgre \
+	rfc1490 \
 	socket \
 	tee \
 	vjc
 #	eiface \
 #	fec \
 #	netgraph \
-#	rfc1490 \
 #	socket \
 #	sync_ar \
 #	sync_sr \

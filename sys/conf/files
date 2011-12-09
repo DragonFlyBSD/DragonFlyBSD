@@ -1334,7 +1334,7 @@ netgraph7/ppp/ng_ppp.c		optional netgraph7_ppp
 netgraph7/pppoe/ng_pppoe.c	optional netgraph7_pppoe
 netgraph7/pptpgre/ng_pptpgre.c	optional netgraph7_pptpgre
 netgraph7/ng_pred1.c		optional netgraph7_pred1
-netgraph7/ng_rfc1490.c		optional netgraph7_rfc1490
+netgraph7/rfc1490/ng_rfc1490.c	optional netgraph7_rfc1490
 netgraph7/socket/ng_socket.c	optional netgraph7_socket
 netgraph7/ng_split.c		optional netgraph7_split
 netgraph7/ng_sppp.c		optional netgraph7_sppp
