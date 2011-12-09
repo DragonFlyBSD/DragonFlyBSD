@@ -267,13 +267,15 @@ err_out:
 	if (pid != -1)
 		clean_child(pid);
 
-	if (fd_stdout >= 0)
+	if (fd_stdout >= 0) {
 		close(fd_stdout);
 		unlink(stdout_file);
+	}
 
-	if (fd_stderr >= 0)
+	if (fd_stderr >= 0) {
 		close(fd_stderr);
 		unlink(stderr_file);
+	}
 
 	return -1;
 }
