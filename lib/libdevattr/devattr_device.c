@@ -242,15 +242,17 @@ udev_device_get_property_value(struct udev_device *udev_device,
 	if ((po = prop_dictionary_get(udev_device->dict, key)) == NULL)
 		return NULL;
 
-		if (prop_object_type(po) == PROP_TYPE_STRING) {
+	if (prop_object_type(po) == PROP_TYPE_STRING) {
 		ps = po;
 		str = __DECONST(char *, prop_string_cstring_nocopy(ps));
 	} else if (prop_object_type(po) == PROP_TYPE_NUMBER) {
 		pn = po;
 		if (prop_number_unsigned(pn)) {
-			snprintf(buf, sizeof(buf), "%" PRIu64, prop_number_unsigned_integer_value(pn));
+			snprintf(buf, sizeof(buf), "%" PRIu64,
+			    prop_number_unsigned_integer_value(pn));
 		} else {
-			snprintf(buf, sizeof(buf), "%" PRIi64, prop_number_integer_value(pn));
+			snprintf(buf, sizeof(buf), "%" PRIi64,
+			    prop_number_integer_value(pn));
 		}
 		str = buf;
 	}

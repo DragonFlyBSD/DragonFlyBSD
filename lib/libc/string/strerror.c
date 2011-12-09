@@ -28,7 +28,6 @@
  *
  * @(#)strerror.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strerror.c,v 1.16 2007/01/09 00:28:12 imp Exp $
- * $DragonFly: src/lib/libc/string/strerror.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
 
 #if defined(NLS)
@@ -119,6 +118,6 @@ strerror(int num)
 	static char ebuf[NL_TEXTMAX];
 
 	if (strerror_r(num, ebuf, sizeof(ebuf)) != 0)
-	errno = EINVAL;
+		errno = EINVAL;
 	return (ebuf);
 }

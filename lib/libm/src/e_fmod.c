@@ -10,7 +10,6 @@
  * ====================================================
  *
  * $NetBSD: e_fmod.c,v 1.11 2002/05/26 22:01:49 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_fmod.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
  */
 
 /*
@@ -96,9 +95,9 @@ fmod(double x, double y)
 	    hz=hx-hy;lz=lx-ly; if(lx<ly) hz -= 1;
 	    if(hz<0){hx = hx+hx+(lx>>31); lx = lx+lx;}
 	    else {
-	    	if((hz|lz)==0) 		/* return sign(x)*0 */
+		if((hz|lz)==0) 		/* return sign(x)*0 */
 		    return Zero[(u_int32_t)sx>>31];
-	    	hx = hz+hz+(lz>>31); lx = lz+lz;
+		hx = hz+hz+(lz>>31); lx = lz+lz;
 	    }
 	}
 	hz=hx-hy;lz=lx-ly; if(lx<ly) hz -= 1;

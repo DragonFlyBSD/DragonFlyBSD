@@ -247,7 +247,7 @@ res_nmkupdate(res_state statp, ns_updrec *rrecp_in, u_char *buf, int buflen) {
 			for (i = 0; i < 2; i++) {
 				if (!getword_str(buf2, sizeof buf2, &startp,
 						 endp))
-				return (-1);
+					return (-1);
 				n = dn_comp(buf2, cp, buflen,
 					    dnptrs, lastdnptr);
 				if (n < 0)

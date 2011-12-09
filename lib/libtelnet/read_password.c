@@ -32,7 +32,6 @@
  *
  * @(#)read_password.c	8.3 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/libtelnet/read_password.c,v 1.1.1.1.8.2 2002/04/13 10:59:07 markm Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/read_password.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 /*
@@ -115,7 +114,7 @@ local_des_read_pw_string(s,max,prompt,verify)
 		continue;
 	    }
 	    if ((ptr = strchr(key_string, '\n')))
-	    *ptr = '\0';
+		    *ptr = '\0';
 	    if (strcmp(s,key_string)) {
 		printf("\n\07\07Mismatch - try again\n");
 		(void) fflush(stdout);

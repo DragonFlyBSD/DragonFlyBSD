@@ -13,7 +13,6 @@
  * ====================================================
  *
  * $NetBSD: e_fmodf.c,v 1.7 2002/05/26 22:01:49 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_fmodf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
  */
 
 /*
@@ -76,9 +75,9 @@ fmodf(float x, float y)
 	    hz=hx-hy;
 	    if(hz<0){hx = hx+hx;}
 	    else {
-	    	if(hz==0) 		/* return sign(x)*0 */
+		if(hz==0) 		/* return sign(x)*0 */
 		    return Zero[(u_int32_t)sx>>31];
-	    	hx = hz+hz;
+		hx = hz+hz;
 	    }
 	}
 	hz=hx-hy;

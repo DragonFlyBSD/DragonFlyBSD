@@ -347,11 +347,11 @@ __cached_read(struct cached_connection_ *connection, const char *entry_name,
 	if (result != 0)
 		goto fin;
 
-	 if (result_size > *data_size) {
-		 *data_size = result_size;
-		 error_code = -2;
-		 goto fin;
-	 }
+	if (result_size > *data_size) {
+		*data_size = result_size;
+		error_code = -2;
+		goto fin;
+	}
 
 	result = safe_read(connection, data, result_size);
 	if (result != 0)
