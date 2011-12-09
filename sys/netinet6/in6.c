@@ -2247,7 +2247,7 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst)
 			if (bscopecmp < 0)
 				goto replace; /* (9) */
 
-		  replace:
+replace:
 			ifa_best = (struct in6_ifaddr *)ifa;
 			blen = tlen >= 0 ? tlen :
 				in6_matchlen(IFA_IN6(ifa), dst);

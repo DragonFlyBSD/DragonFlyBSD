@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.30 2008/08/17 04:32:33 sephe Exp $
  */
 
 /*
@@ -956,7 +955,7 @@ cs_write_mbufs( struct cs_softc *sc, struct mbuf *m )
 		 * Ignore empty parts
 		 */
 		if (!len)
-		continue;
+			continue;
 
 		/*
 		 * Find actual data address

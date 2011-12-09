@@ -18,7 +18,6 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.35 2008/06/09 11:24:24 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -513,9 +512,9 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 			log(LOG_DEBUG,
 			    SPP_FMT "input packet is too small, %d bytes\n",
 			    SPP_ARGS(ifp), m->m_pkthdr.len);
-	  drop:
+drop:
 		m_freem (m);
-	  drop2:
+drop2:
 		++ifp->if_ierrors;
 		++ifp->if_iqdrops;
 		return;

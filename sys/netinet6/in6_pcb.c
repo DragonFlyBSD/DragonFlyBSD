@@ -691,8 +691,8 @@ in6_pcbdetach(struct inpcb *inp)
 
 	if (inp->in6p_options)
 		m_freem(inp->in6p_options);
- 	ip6_freepcbopts(inp->in6p_outputopts);
- 	ip6_freemoptions(inp->in6p_moptions);
+	ip6_freepcbopts(inp->in6p_outputopts);
+	ip6_freemoptions(inp->in6p_moptions);
 	if (inp->in6p_route.ro_rt)
 		rtfree(inp->in6p_route.ro_rt);
 	/* Check and free IPv4 related resources in case of mapped addr */
@@ -909,13 +909,13 @@ in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, in_port_t fport,
 	if (cmd != PRC_MSGSIZE)
 		arg = inet6ctlerrmap[cmd];
 	crit_enter();
- 	for (inp = LIST_FIRST(head); inp != NULL; inp = ninp) {
- 		ninp = LIST_NEXT(inp, inp_list);
+	for (inp = LIST_FIRST(head); inp != NULL; inp = ninp) {
+		ninp = LIST_NEXT(inp, inp_list);
 
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
 
- 		if ((inp->inp_vflag & INP_IPV6) == 0)
+		if ((inp->inp_vflag & INP_IPV6) == 0)
 			continue;
 		/*
 		 * If the error designates a new path MTU for a destination

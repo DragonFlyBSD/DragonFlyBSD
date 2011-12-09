@@ -1015,7 +1015,7 @@ prop_object_release_emergency(prop_object_t obj)
 		_PROP_ASSERT(obj);
 
 		if (po->po_type->pot_lock != NULL)
-		po->po_type->pot_lock();
+			po->po_type->pot_lock();
 
 		/* Save pointerto unlock function */
 		unlock = po->po_type->pot_unlock;

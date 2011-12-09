@@ -428,7 +428,7 @@ amr_cam_command(struct amr_softc *sc, struct amr_command **acp)
 
 	/* check to see if there is a ccb for us to work with */
 	if ((csio = (struct ccb_scsiio *)amr_dequeue_ccb(sc)) == NULL)
-	goto out;
+		goto out;
 
 	/* get bus/target, XXX validate against protected devices? */
 	bus = csio->ccb_h.sim_priv.entries[0].field;

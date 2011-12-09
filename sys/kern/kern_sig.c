@@ -1769,7 +1769,7 @@ sys_sigtimedwait(struct sigtimedwait_args *uap)
 	error = kern_sigtimedwait(set, &info, timeout);
 	if (error)
 		return (error);
- 	if (uap->info)
+	if (uap->info)
 		error = copyout(&info, uap->info, sizeof(info));
 	/* Repost if we got an error. */
 	/*

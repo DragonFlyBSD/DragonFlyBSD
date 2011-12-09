@@ -930,7 +930,7 @@ csa_readcodec(csa_res *resp, u_long offset, u_int32_t *data)
 		/*
 		 * Wait for a short while.
 		 */
-		 DELAY(25);
+		DELAY(25);
 	}
 
 	/*

@@ -2752,7 +2752,7 @@ sctp_handle_stream_reset_response(struct sctp_tcb *stcb,
 			    M_NOWAIT);
 			if (stcb->asoc.pending_reply == NULL)
 				return;		/* XXX */
- 			memcpy(stcb->asoc.pending_reply, resp, param_length);
+			memcpy(stcb->asoc.pending_reply, resp, param_length);
  		}
 
   	} else {

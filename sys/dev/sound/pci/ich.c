@@ -829,7 +829,7 @@ ich_calibrate(void *arg)
 		device_printf(sc->dev, "measured ac97 link rate at %d Hz", actual_48k_rate);
 		if (sc->ac97rate != actual_48k_rate)
 			kprintf(", will use %d Hz", sc->ac97rate);
-	 	kprintf("\n");
+		kprintf("\n");
 	}
 	sc->flags |= ICH_CALIBRATE_DONE;
 	ICH_UNLOCK(sc);

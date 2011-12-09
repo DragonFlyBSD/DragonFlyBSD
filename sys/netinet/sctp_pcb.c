@@ -2180,7 +2180,7 @@ sctp_iterator_inp_being_freed(struct sctp_inpcb *inp, struct sctp_inpcb *inp_nex
 		if (it == inp->inp_starting_point_for_iterator)
 			/* skip this guy, he's special */
 			continue;
- 		if (it->inp == inp) {
+		if (it->inp == inp) {
 			/* This is tricky and we DON'T lock the iterator.
 			 * Reason is he's running but waiting for me since
 			 * inp->inp_starting_point_for_iterator has the lock

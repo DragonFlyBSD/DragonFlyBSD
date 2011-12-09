@@ -571,7 +571,7 @@ nm_init(struct sc_info *sc)
 
 	if (bootverbose)
 		device_printf(sc->dev, "buftop is 0x%08x\n", sc->buftop);
- 	if ((nm_rdbuf(sc, ofs, 4) & NM_SIG_MASK) == NM_SIGNATURE) {
+	if ((nm_rdbuf(sc, ofs, 4) & NM_SIG_MASK) == NM_SIGNATURE) {
 		i = nm_rdbuf(sc, ofs + 4, 4);
 		if (i != 0 && i != 0xffffffff) {
 			if (bootverbose)

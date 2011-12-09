@@ -390,7 +390,7 @@ uscanneropen(struct dev_open_args *ap)
 	if (sc == NULL)
 		return (ENXIO);
 
- 	DPRINTFN(5, ("uscanneropen: flag=%d, mode=%d, unit=%d\n",
+	DPRINTFN(5, ("uscanneropen: flag=%d, mode=%d, unit=%d\n",
 		     ap->a_oflags, ap->a_devtype, unit));
 
 	if (sc->sc_dying)

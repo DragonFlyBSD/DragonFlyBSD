@@ -39,7 +39,6 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.46 2008/09/10 09:50:09 y0netan1 Exp $
  */
 
 /*
@@ -1968,7 +1967,7 @@ read:
 		 */
 		if (error)
 			break;
- 		if (uio->uio_resid == 0)
+		if (uio->uio_resid == 0)
 			break;
 		first = 0;
 	}
@@ -2004,11 +2003,11 @@ slowcase:
 		/*
 		 * Give user character.
 		 */
- 		error = ureadc(c, uio);
+		error = ureadc(c, uio);
 		if (error)
 			/* XXX should ungetc(c, qp). */
 			break;
- 		if (uio->uio_resid == 0)
+		if (uio->uio_resid == 0)
 			break;
 		/*
 		 * In canonical mode check for a "break character"

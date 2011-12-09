@@ -270,7 +270,7 @@ mss_release_resources(struct mss_info *mss, device_t dev)
     	if (mss->irq) {
     		if (mss->ih)
 			bus_teardown_intr(dev, mss->irq, mss->ih);
- 		bus_release_resource(dev, SYS_RES_IRQ, mss->irq_rid,
+		bus_release_resource(dev, SYS_RES_IRQ, mss->irq_rid,
 				     mss->irq);
 		mss->irq = 0;
     	}

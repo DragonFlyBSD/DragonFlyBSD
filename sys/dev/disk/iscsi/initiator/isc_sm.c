@@ -324,7 +324,7 @@ isc_qout(isc_session_t *sp, pduq_t *pq)
      iscsi_lock_ex(&sp->io_mtx);
      sp->flags |= ISC_OQNOTEMPTY;
      if(sp->flags & ISC_OWAITING)
-     wakeup(&sp->flags);
+	  wakeup(&sp->flags);
      iscsi_unlock_ex(&sp->io_mtx);
 
      return error;

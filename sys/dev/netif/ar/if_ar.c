@@ -1384,8 +1384,8 @@ ar_init_rx_dmac(struct ar_softc *sc)
 
 		x++;
 		if(x < 6)
-		TRC(kprintf("Descrp %p, data pt %x, data %x, ",
-			rxd, rxda, rxbuf));
+			TRC(kprintf("Descrp %p, data pt %x, data %x, ",
+			    rxd, rxda, rxbuf));
 
 		rxd->bp = (u_short)(rxbuf & 0xfffful);
 		rxd->bpb = (u_char)((rxbuf >> 16) & 0xff);

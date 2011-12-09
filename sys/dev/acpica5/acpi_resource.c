@@ -717,8 +717,8 @@ acpi_sysres_attach(device_t dev)
     dev_rl = BUS_GET_RESOURCE_LIST(bus, dev);
     bus_rl = BUS_GET_RESOURCE_LIST(device_get_parent(bus), bus);
     if(bus_rl)
-        kprintf("busrl is not null!\n");
-        SLIST_FOREACH(dev_rle, dev_rl, link) {
+	kprintf("busrl is not null!\n");
+	SLIST_FOREACH(dev_rle, dev_rl, link) {
 	if (dev_rle->type != SYS_RES_IOPORT && dev_rle->type != SYS_RES_MEMORY)
 	    continue;
 

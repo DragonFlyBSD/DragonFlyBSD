@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biosdisk.c,v 1.45 2004/09/21 06:46:44 wes Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/biosdisk.c,v 1.12 2007/06/18 05:13:42 dillon Exp $
  */
 
 /*
@@ -660,7 +659,7 @@ bd_opendisk(struct open_disk **odp, struct i386_devdesc *dev)
     if ((dptr->dp_typ == DOSPTYP_386BSD) && (dev->d_kind.biosdisk.partition < 0))
 	dev->d_kind.biosdisk.partition = 0;
 
- unsliced:
+unsliced:
     /* 
      * Now we have the slice offset, look for the partition in the disklabel if we have
      * a partition to start with.

@@ -262,7 +262,7 @@ sb_release_resources(struct sb_info *sb, device_t dev)
     	if (sb->irq) {
     		if (sb->ih)
 			bus_teardown_intr(dev, sb->irq, sb->ih);
- 		bus_release_resource(dev, SYS_RES_IRQ, 0, sb->irq);
+		bus_release_resource(dev, SYS_RES_IRQ, 0, sb->irq);
 		sb->irq = 0;
     	}
     	if (sb->drq) {

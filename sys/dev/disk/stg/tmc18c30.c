@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30.c,v 1.1.2.5 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.14 2007/01/06 08:33:34 dillon Exp $	*/
 /*	$NecBSD: tmc18c30.c,v 1.28.12.3 2001/06/19 04:35:48 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -360,7 +359,7 @@ stg_msg(struct stg_softc *sc, struct targ_info *ti, u_int msg)
 	if ((msg & SCSI_LOW_MSG_SYNCH) == 0)
 		return 0;
 
- 	period = ti->ti_maxsynch.period;
+	period = ti->ti_maxsynch.period;
 	offset = ti->ti_maxsynch.offset;
 	period = period << 2;
 	if (period >= 200)

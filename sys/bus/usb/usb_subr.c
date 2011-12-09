@@ -1111,7 +1111,7 @@ usbd_reload_device_desc(usbd_device_handle dev)
 		err = usbd_get_device_desc(dev, &dev->ddesc);
 		if (!err)
 			break;
- 		usbd_delay_ms(dev, 200);
+		usbd_delay_ms(dev, 200);
 	}
 	if (err)
 		return (err);

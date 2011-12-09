@@ -413,7 +413,7 @@ ugenopen(struct dev_open_args *ap)
 	if (sc == NULL)
 		return (ENXIO);
 
- 	DPRINTFN(5, ("ugenopen: flag=%d, mode=%d, unit=%d endpt=%d\n",
+	DPRINTFN(5, ("ugenopen: flag=%d, mode=%d, unit=%d endpt=%d\n",
 		     ap->a_oflags, ap->a_devtype, unit, endpt));
 
 	if (sc->sc_dying)

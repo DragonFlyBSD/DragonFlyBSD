@@ -2062,11 +2062,12 @@ ASR_initOutBound (
 
                 /* Initialize the outbound FIFO */
                 if (sc->ha_Msgs != (PI2O_SCSI_ERROR_REPLY_MESSAGE_FRAME)NULL)
-                for (size = sc->ha_Msgs_Count, addr = sc->ha_Msgs_Phys;
-                  size; --size) {
-                        sc->ha_Virt->FromFIFO = addr;
-                        addr += sizeof(I2O_SCSI_ERROR_REPLY_MESSAGE_FRAME);
-                }
+			for (size = sc->ha_Msgs_Count, addr = sc->ha_Msgs_Phys;
+			     size; --size) {
+				sc->ha_Virt->FromFIFO = addr;
+				addr +=
+				    sizeof(I2O_SCSI_ERROR_REPLY_MESSAGE_FRAME);
+			}
                 return (*Reply_Ptr);
         }
         return (0);

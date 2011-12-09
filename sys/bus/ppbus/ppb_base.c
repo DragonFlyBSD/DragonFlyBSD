@@ -24,9 +24,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_base.c,v 1.10.2.1 2000/08/01 23:26:26 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppb_base.c,v 1.5 2003/08/07 21:16:47 dillon Exp $
- *
  */
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -135,8 +134,8 @@ ppb_set_mode(device_t bus, int mode)
 	if (PPBUS_SETMODE(device_get_parent(bus), mode))
 		return -1;
 
-		/* XXX yet device mode = ppbus mode = chipset mode */
-		ppb->mode = (mode & PPB_MASK);
+	/* XXX yet device mode = ppbus mode = chipset mode */
+	ppb->mode = (mode & PPB_MASK);
 
 	return (old_mode);
 }

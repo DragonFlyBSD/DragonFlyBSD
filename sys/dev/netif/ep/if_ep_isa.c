@@ -123,10 +123,11 @@ const char *
 ep_isa_match_id(u_int32_t id, struct isa_ident *isa_devs)
 {
 	struct isa_ident *      i = isa_devs;
+
 	while(i->name != NULL) {
-	       if (id == i->id)
-		      return (i->name);
-	       i++;
+		if (id == i->id)
+			return (i->name);
+		i++;
 	}
 	/*
 	 * If we see a card that is likely to be a 3c509

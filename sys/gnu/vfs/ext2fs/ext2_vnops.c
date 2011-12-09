@@ -661,7 +661,7 @@ abortit:
 		 * decrement the link count on the parent
 		 * of the target directory.
 		 */
-		 if (doingdirectory && !newparent) {
+		if (doingdirectory && !newparent) {
 			dp->i_nlink--;
 			dp->i_flag |= IN_CHANGE;
 		}
