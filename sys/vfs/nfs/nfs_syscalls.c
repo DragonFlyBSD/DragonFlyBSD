@@ -602,8 +602,10 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			    !copyout(nfsd->nfsd_verfstr, nsd->nsd_verfstr,
 				nfsd->nfsd_verflen) &&
 			    !copyout((caddr_t)nsd, argp, sizeof (*nsd)))
+			{
 			    lwkt_reltoken(&slp->ns_token);
 			    return (ENEEDAUTH);
+			}
 			cacherep = RC_DROPIT;
 		    } else {
 			cacherep = nfsrv_getcache(nd, slp, &mreq);
