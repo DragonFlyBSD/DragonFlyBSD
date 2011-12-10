@@ -101,7 +101,7 @@ typedef struct frmrel_softc *sc_p;
 #define LASTBYTE_D_C	0x02	/* last byte is dl_core or dlci info */
 
 /* Used to do headers */
-const static struct segment {
+static const struct segment {
 	u_char  mask;
 	u_char  shift;
 	u_char  width;

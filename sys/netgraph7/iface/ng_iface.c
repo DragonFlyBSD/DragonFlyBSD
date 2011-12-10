@@ -97,7 +97,7 @@ struct iffam {
 typedef const struct iffam *iffam_p;
 
 /* List of address families supported by our interface */
-const static struct iffam gFamilies[] = {
+static const struct iffam gFamilies[] = {
 	{ AF_INET,	NG_IFACE_HOOK_INET	},
 	{ AF_INET6,	NG_IFACE_HOOK_INET6	},
 	{ AF_IPX,	NG_IFACE_HOOK_IPX	},
@@ -292,7 +292,7 @@ ng_iface_get_unit(int *unit)
 		int i, *newarray, newlen;
 
 		newlen = (2 * ng_iface_units_len) + 4;
-		MALLOC(newarray, int *, newlen * sizeof(*ng_iface_units),
+		newarray = kmalloc(newlen * sizeof(*ng_iface_units),
 		    M_NETGRAPH_IFACE, M_NOWAIT);
 		if (newarray == NULL)
 			return (ENOMEM);
@@ -301,7 +301,7 @@ ng_iface_get_unit(int *unit)
 		for (i = ng_iface_units_len; i < newlen; i++)
 			newarray[i] = ~0;
 		if (ng_iface_units != NULL)
-			FREE(ng_iface_units, M_NETGRAPH_IFACE);
+			kfree(ng_iface_units, M_NETGRAPH_IFACE);
 		ng_iface_units = newarray;
 		ng_iface_units_len = newlen;
 	}
@@ -577,7 +577,7 @@ ng_iface_constructor(node_p node)
 		       M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
-	MALLOC(ifp, struct ifnet *, sizeof(*ifp), M_NETGRAPH_IFACE, M_WAITOK | M_NULLOK | M_ZERO);
+	ifp = kmalloc(sizeof(*ifp), M_NETGRAPH_IFACE, M_WAITOK | M_NULLOK | M_ZERO);
 	if (ifp == NULL) {
 		kfree(priv, M_NETGRAPH_IFACE);
 		return (ENOMEM);
@@ -589,8 +589,8 @@ ng_iface_constructor(node_p node)
 
 	/* Get an interface unit number */
 	if ((error = ng_iface_get_unit(&priv->unit)) != 0) {
-		FREE(ifp, M_NETGRAPH_IFACE);
-		FREE(priv, M_NETGRAPH_IFACE);
+		kfree(ifp, M_NETGRAPH_IFACE);
+		kfree(priv, M_NETGRAPH_IFACE);
 		return (error);
 	}
 
@@ -837,7 +837,7 @@ ng_iface_shutdown(node_p node)
 
 	bpfdetach(priv->ifp);
 	if_detach(priv->ifp);
-	FREE(priv->ifp, M_NETGRAPH_IFACE);
+	kfree(priv->ifp, M_NETGRAPH_IFACE);
 	priv->ifp = NULL;
 	ng_iface_free_unit(priv->unit);
 	kfree(priv, M_NETGRAPH_IFACE);
