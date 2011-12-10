@@ -369,6 +369,8 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			copyinstr(path, mp->mnt_stat.f_mntonname,
 				  sizeof(mp->mnt_stat.f_mntonname) - 1,
 				  &size);
+		} else {	/* Root mount */
+			mp->mnt_stat.f_mntonname[0] = '/';
 		}
 
 		error = ffs_mountfs(devvp, mp, M_FFSNODE);
