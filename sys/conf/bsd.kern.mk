@@ -2,7 +2,7 @@
 
 # Warning flags for compiling the kernel and components of the kernel.
 #
-# Note that -Werror is on by default.To turn it off, e.g. when working
+# Note that -Werror is on by default. To turn it off, e.g. when working
 # on adding new warning options, NO_WERROR in make.conf (or on make(1)'s
 # command line) should be of material assistance.
 #
