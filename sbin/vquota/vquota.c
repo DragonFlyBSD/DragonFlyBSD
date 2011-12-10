@@ -80,12 +80,13 @@ get_dirsize(char* dirname)
 			retval = 1;
 			break;
 		default:
+#if 0
 			/* files with more than one link, undecided */
 			// if (p->fts_statp->st_nlink > 1 && linkchk(p))
 			if (p->fts_statp->st_nlink > 1)
 				fprintf(stderr, "%s has more than one link\n",
 				    p->fts_name );
-
+#endif
 			size_of_files += p->fts_statp->st_size;
 		}
 	}
@@ -103,6 +104,8 @@ main(int argc, char **argv)
 	
 	if (strcmp(argv[1], "check") == 0) {
 		return get_dirsize(argv[2]);
+	} else {
+		usage(1);
 	}
 
 	return 0;
