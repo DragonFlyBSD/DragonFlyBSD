@@ -638,7 +638,6 @@ printcpuinfo(void)
 #if defined(I486_CPU)
 	case CPUCLASS_486:
 		kprintf("486");
-		/* bzero_vector = i486_bzero; */
 		break;
 #endif
 #if defined(I586_CPU)
