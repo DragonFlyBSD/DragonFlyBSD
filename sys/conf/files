@@ -1339,7 +1339,7 @@ netgraph7/socket/ng_socket.c	optional netgraph7_socket
 netgraph7/ng_split.c		optional netgraph7_split
 netgraph7/ng_sppp.c		optional netgraph7_sppp
 netgraph7/ng_tag.c		optional netgraph7_tag
-netgraph7/ng_tcpmss.c		optional netgraph7_tcpmss
+netgraph7/tcpmss/ng_tcpmss.c	optional netgraph7_tcpmss
 netgraph7/tee/ng_tee.c		optional netgraph7_tee
 netgraph7/ng_tty.c		optional netgraph7_tty
 netgraph7/vjc/ng_vjc.c		optional netgraph7_vjc

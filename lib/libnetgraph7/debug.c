@@ -92,8 +92,8 @@
 #include <netgraph7/socket/ng_socket.h>
 #include <netgraph7/source/ng_source.h>
 #include <netgraph7/split/ng_split.h>
-#include <netgraph7/tcpmss/ng_tcpmss.h>
 */
+#include <netgraph7/tcpmss/ng_tcpmss.h>
 #include <netgraph7/tee/ng_tee.h>
 /*
 #include <netgraph7/tty/ng_tty.h>

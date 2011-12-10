@@ -27,6 +27,7 @@ SUBDIR=	UI \
 	pptpgre \
 	rfc1490 \
 	socket \
+	tcpmss \
 	tee \
 	vjc
 #	eiface \
