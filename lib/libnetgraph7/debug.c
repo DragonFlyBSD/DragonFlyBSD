@@ -165,8 +165,8 @@ static const struct ng_cookie cookies[] = {
 /*
 	COOKIE(SOURCE),
 	COOKIE(SPLIT),
-	COOKIE(TCPMSS),
 */
+	COOKIE(TCPMSS),
 	COOKIE(TEE),
 /*
 	COOKIE(TTY),
