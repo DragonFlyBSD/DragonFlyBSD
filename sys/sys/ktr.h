@@ -157,10 +157,10 @@ SYSCTL_DECL(_debug_ktr);
 #else
 
 #define KTR_INFO_MASTER(master)						\
-	    const static int ktr_ ## master ## _enable = 0
+	    static const int ktr_ ## master ## _enable = 0
 
 #define KTR_INFO_MASTER_EXTERN(master)					\
-	    const static int ktr_ ## master ## _enable
+	    static const int ktr_ ## master ## _enable
 
 #define KTR_INFO(compile, master, name, maskbit, format, datasize)	\
 	    static const int ktr_ ## master ## _ ## name ## _mask =	\
