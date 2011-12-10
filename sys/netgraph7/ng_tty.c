@@ -195,7 +195,7 @@ ngt_open(struct cdev *dev, struct tty *tp)
 		return (error);
 
 	/* Initialize private struct */
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_WAITOK | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_NETGRAPH, M_WAITOK | M_ZERO);
 	if (sc == NULL)
 		return (ENOMEM);
 
@@ -211,7 +211,7 @@ ngt_open(struct cdev *dev, struct tty *tp)
 	error = ng_make_node_common(&typestruct, &sc->node);
 	if (error) {
 		NGTUNLOCK(sc);
-		FREE(sc, M_NETGRAPH);
+		kfree(sc, M_NETGRAPH);
 		lwkt_reltoken(&tty_token);
 		return (error);
 	}
@@ -587,7 +587,7 @@ ngt_shutdown(node_p node)
 	mtx_destroy(&(sc)->outq.ifq_mtx);
 	m_freem(sc->m);
 	NG_NODE_UNREF(sc->node);
-	FREE(sc, M_NETGRAPH);
+	kfree(sc, M_NETGRAPH);
 
 	return (0);
 }

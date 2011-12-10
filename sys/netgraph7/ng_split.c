@@ -86,7 +86,8 @@ ng_split_constructor(node_p node)
 	priv_p		priv;
 
 	/* Allocate node */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_ZERO | M_WAITOK | M_NULLOK);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH,
+		       M_ZERO | M_WAITOK | M_NULLOK);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -156,7 +157,7 @@ ng_split_shutdown(node_p node)
 
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 
 	return (0);
 }

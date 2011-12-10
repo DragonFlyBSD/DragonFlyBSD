@@ -232,8 +232,8 @@ ng_gif_demux_constructor(node_p node)
 	priv_p priv;
 
 	/* Allocate and initialize private info */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_GIF_DEMUX,
-	    M_WAITOK | M_NULLOK | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH_GIF_DEMUX,
+		       M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 	priv->node = node;
@@ -370,7 +370,7 @@ ng_gif_demux_shutdown(node_p node)
 {
 	const priv_p priv = NG_NODE_PRIVATE(node);
 
-	FREE(priv, M_NETGRAPH_GIF_DEMUX);
+	kfree(priv, M_NETGRAPH_GIF_DEMUX);
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);
 	return (0);

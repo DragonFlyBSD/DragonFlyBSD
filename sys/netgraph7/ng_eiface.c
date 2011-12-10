@@ -338,7 +338,8 @@ ng_eiface_constructor(node_p node)
 	u_char eaddr[6] = {0,0,0,0,0,0};
 
 	/* Allocate node and interface private structures */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH,
+		       M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -551,7 +552,7 @@ ng_eiface_rmnode(node_p node)
 	ether_ifdetach(ifp);
 	if_free(ifp);
 	free_unr(ng_eiface_unit, priv->unit);
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);
 	return (0);

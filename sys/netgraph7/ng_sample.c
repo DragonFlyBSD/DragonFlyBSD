@@ -155,8 +155,8 @@ ng_xxx_constructor(node_p node)
 	int i;
 
 	/* Initialize private descriptor */
-	MALLOC(privdata, xxx_p, sizeof(*privdata), M_NETGRAPH,
-		M_WAITOK | M_NULLOK | M_ZERO);
+	privdata = kmalloc(sizeof(*privdata), M_NETGRAPH,
+			   M_WAITOK | M_NULLOK | M_ZERO);
 	if (privdata == NULL)
 		return (ENOMEM);
 	for (i = 0; i < XXX_NUM_DLCIS; i++) {
@@ -425,7 +425,7 @@ ng_xxx_shutdown(node_p node)
 #ifndef PERSISTANT_NODE
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);
-	FREE(privdata, M_NETGRAPH);
+	kfree(privdata, M_NETGRAPH);
 #else
 	if (node->nd_flags & NGF_REALLY_DIE) {
 		/*
@@ -435,7 +435,7 @@ ng_xxx_shutdown(node_p node)
 		 */
 		NG_NODE_SET_PRIVATE(node, NULL);
 		NG_NODE_UNREF(privdata->node);
-		FREE(privdata, M_NETGRAPH);
+		kfree(privdata, M_NETGRAPH);
 		return (0);
 	}
 	NG_NODE_REVIVE(node);		/* tell ng_rmnode() we will persist */

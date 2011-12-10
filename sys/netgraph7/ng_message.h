@@ -389,8 +389,8 @@ struct flow_manager {
  */
 #define NG_MKMESSAGE(msg, cookie, cmdid, len, how)			\
 	do {								\
-	  MALLOC((msg), struct ng_mesg *, sizeof(struct ng_mesg)	\
-	    + (len), M_NETGRAPH_MSG, (how) | M_ZERO);			\
+	  (msg) = kmalloc(sizeof(struct ng_mesg) + (len),		\
+	    M_NETGRAPH_MSG, (how) | M_ZERO);				\
 	  if ((msg) == NULL)						\
 	    break;							\
 	  (msg)->header.version = NG_VERSION;				\
@@ -407,8 +407,8 @@ struct flow_manager {
  */
 #define NG_MKRESPONSE(rsp, msg, len, how)				\
 	do {								\
-	  MALLOC((rsp), struct ng_mesg *, sizeof(struct ng_mesg)	\
-	    + (len), M_NETGRAPH_MSG, (how) | M_ZERO);			\
+	  (rsp) = kmalloc(sizeof(struct ng_mesg) + (len),		\
+	    M_NETGRAPH_MSG, (how) | M_ZERO);				\
 	  if ((rsp) == NULL)						\
 	    break;							\
 	  (rsp)->header.version = NG_VERSION;				\
@@ -426,8 +426,8 @@ struct flow_manager {
  */
 #define	NG_COPYMESSAGE(copy, msg, how)					\
 	do {								\
-	  MALLOC((copy), struct ng_mesg *, sizeof(struct ng_mesg) +	\
-	    (msg)->header.arglen, M_NETGRAPH_MSG, (how) | M_ZERO);	\
+	  (copy) = kmalloc(sizeof(struct ng_mesg) + (msg)->header.arglen,\
+	    M_NETGRAPH_MSG, (how) | M_ZERO);				\
 	  if ((copy) == NULL)						\
 	    break;							\
 	  (copy)->header.version = NG_VERSION;				\

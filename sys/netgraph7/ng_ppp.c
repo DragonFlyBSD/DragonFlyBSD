@@ -491,7 +491,8 @@ ng_ppp_constructor(node_p node)
 	int i;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_PPP, M_WAITOK | M_NULLOK | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH_PPP,
+		       M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -744,7 +745,7 @@ ng_ppp_shutdown(node_p node)
 	mtx_destroy(&priv->rmtx);
 	mtx_destroy(&priv->xmtx);
 	bzero(priv, sizeof(*priv));
-	FREE(priv, M_NETGRAPH_PPP);
+	kfree(priv, M_NETGRAPH_PPP);
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);		/* let the node escape */
 	return (0);

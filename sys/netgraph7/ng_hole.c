@@ -133,7 +133,7 @@ ngh_newhook(node_p node, hook_p hook, const char *name)
 	hinfo_p hip;
 
 	/* Create hook private structure. */
-	MALLOC(hip, hinfo_p, sizeof(*hip), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
+	hip = kmalloc(sizeof(*hip), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (hip == NULL)
 		return (ENOMEM);
 	NG_HOOK_SET_PRIVATE(hook, hip);
@@ -220,7 +220,7 @@ static int
 ngh_disconnect(hook_p hook)
 {
 
-	FREE(NG_HOOK_PRIVATE(hook), M_NETGRAPH);
+	kfree(NG_HOOK_PRIVATE(hook), M_NETGRAPH);
 	NG_HOOK_SET_PRIVATE(hook, NULL);
 	if (NG_NODE_NUMHOOKS(NG_HOOK_NODE(hook)) == 0)
 		ng_rmnode_self(NG_HOOK_NODE(hook));
