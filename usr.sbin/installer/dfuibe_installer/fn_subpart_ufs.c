@@ -368,9 +368,7 @@ check_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 	struct aura_dict *d;
 	const char *mountpoint, *capstring;
 	long capacity = 0;
-	long bsize, fsize;
 	int found_root = 0;
-	int softupdates, tmpfsbacked;
 	int valid = 1;
 
 	d = aura_dict_new(1, AURA_DICT_LIST);
@@ -389,16 +387,13 @@ check_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 		capstring = dfui_dataset_get_value(ds, "capacity");
 
 		if (expert) {
-			softupdates =
-			    (strcmp(dfui_dataset_get_value(ds, "softupdates"), "Y") == 0);
-			fsize = atol(dfui_dataset_get_value(ds, "fsize"));
-			bsize = atol(dfui_dataset_get_value(ds, "bsize"));
+			int tmpfsbacked;
+
 			tmpfsbacked = (strcmp(dfui_dataset_get_value(ds, "tmpfsbacked"), "Y") == 0);
-		} else {
-			softupdates = (strcmp(mountpoint, "/") == 0 ? 0 : 1);
-			tmpfsbacked = (strcmp(mountpoint, "/tmp") == 0 ? 0 : 1);
-			fsize = -1;
-			bsize = -1;
+			if (tmpfsbacked && strcmp(mountpoint, "/") == 0) {
+				inform(a->c, _("/ cannot be TMPFS backed."));
+				valid = 0;
+			}
 		}
 
 		if (aura_dict_exists(d, mountpoint, strlen(mountpoint) + 1)) {
