@@ -123,7 +123,6 @@ void	asm_xmm_memcpy(void);
 void	asm_generic_bcopy(void);
 void	asm_mmx_bcopy(void);
 void	asm_xmm_bcopy(void);
-void	i686_pagezero (void *addr);
 void	init_AMD_Elan_sc520(void);
 void	setidt (int idx, alias_for_inthand_t *func, int typ, int dpl,
 		    int selec);

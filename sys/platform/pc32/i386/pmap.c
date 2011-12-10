@@ -2691,13 +2691,7 @@ pmap_zero_page(vm_paddr_t phys)
 	*(int *)gd->gd_CMAP3 =
 		    PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
 	cpu_invlpg(gd->gd_CADDR3);
-
-#if defined(I686_CPU)
-	if (cpu_class == CPUCLASS_686)
-		i686_pagezero(gd->gd_CADDR3);
-	else
-#endif
-		bzero(gd->gd_CADDR3, PAGE_SIZE);
+	bzero(gd->gd_CADDR3, PAGE_SIZE);
 	*(int *) gd->gd_CMAP3 = 0;
 	crit_exit();
 }
@@ -2747,13 +2741,7 @@ pmap_zero_page_area(vm_paddr_t phys, int off, int size)
 		panic("pmap_zero_page: CMAP3 busy");
 	*(int *) gd->gd_CMAP3 = PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
 	cpu_invlpg(gd->gd_CADDR3);
-
-#if defined(I686_CPU)
-	if (cpu_class == CPUCLASS_686 && off == 0 && size == PAGE_SIZE)
-		i686_pagezero(gd->gd_CADDR3);
-	else
-#endif
-		bzero((char *)gd->gd_CADDR3 + off, size);
+	bzero((char *)gd->gd_CADDR3 + off, size);
 	*(int *) gd->gd_CMAP3 = 0;
 	crit_exit();
 }
