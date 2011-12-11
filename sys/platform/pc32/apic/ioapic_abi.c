@@ -512,6 +512,7 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 
 static int	ioapic_abi_extint_irq = -1;
 static int	ioapic_abi_line_irq_max;
+static int	ioapic_abi_gsi_balance;
 
 struct ioapic_irqinfo	ioapic_irqs[IOAPIC_HWI_VECTORS];
 
@@ -670,6 +671,8 @@ static void
 ioapic_abi_initmap(void)
 {
 	int cpu;
+
+	kgetenv_int("hw.ioapic.gsi.balance", &ioapic_abi_gsi_balance);
 
 	/*
 	 * NOTE: ncpus is not ready yet
@@ -981,6 +984,9 @@ ioapic_abi_gsi_cpuid(int irq, int gsi)
 	int cpuid = -1;
 
 	KKASSERT(gsi >= 0);
+
+	if (!ioapic_abi_gsi_balance)
+		return 0;
 
 	if (irq == 0 || gsi == 0) {
 		if (bootverbose) {
