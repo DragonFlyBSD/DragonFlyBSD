@@ -511,6 +511,7 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 };
 
 static int	ioapic_abi_extint_irq = -1;
+static int	ioapic_abi_line_irq_max;
 
 struct ioapic_irqinfo	ioapic_irqs[IOAPIC_HWI_VECTORS];
 
@@ -692,6 +693,9 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
 
 	KKASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS);
+	if (irq > ioapic_abi_line_irq_max)
+		ioapic_abi_line_irq_max = irq;
+
 	map = &ioapic_irqmaps[irq];
 
 	KKASSERT(map->im_type == IOAPIC_IMT_UNUSED);
@@ -743,6 +747,9 @@ ioapic_abi_fixup_irqmap(void)
 				kprintf("IOAPIC: irq %d reserved\n", i);
 		}
 	}
+	ioapic_abi_line_irq_max += 1;
+	if (bootverbose)
+		kprintf("IOAPIC: line irq max %d\n", ioapic_abi_line_irq_max);
 }
 
 int
