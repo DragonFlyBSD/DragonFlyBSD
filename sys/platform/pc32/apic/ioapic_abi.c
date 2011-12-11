@@ -952,14 +952,18 @@ ioapic_abi_gsi_cpuid(int irq, int gsi)
 	KKASSERT(gsi >= 0);
 
 	if (irq == 0 || gsi == 0) {
-		if (bootverbose)
-			kprintf("GSI %d -> CPU 0 (0)\n", gsi);
+		if (bootverbose) {
+			kprintf("IOAPIC: irq %d, gsi %d -> cpu0 (0)\n",
+			    irq, gsi);
+		}
 		return 0;
 	}
 
 	if (irq == acpi_sci_irqno()) {
-		if (bootverbose)
-			kprintf("GSI %d -> CPU 0 (sci)\n", gsi);
+		if (bootverbose) {
+			kprintf("IOAPIC: irq %d, gsi %d -> cpu0 (sci)\n",
+			    irq, gsi);
+		}
 		return 0;
 	}
 
@@ -968,15 +972,21 @@ ioapic_abi_gsi_cpuid(int irq, int gsi)
 
 	if (cpuid < 0) {
 		cpuid = gsi % ncpus;
-		if (bootverbose)
-			kprintf("GSI %d -> CPU %d (auto)\n", gsi, cpuid);
+		if (bootverbose) {
+			kprintf("IOAPIC: irq %d, gsi %d -> cpu%d (auto)\n",
+			    irq, gsi, cpuid);
+		}
 	} else if (cpuid >= ncpus) {
 		cpuid = ncpus - 1;
-		if (bootverbose)
-			kprintf("GSI %d -> CPU %d (fixup)\n", gsi, cpuid);
+		if (bootverbose) {
+			kprintf("IOAPIC: irq %d, gsi %d -> cpu%d (fixup)\n",
+			    irq, gsi, cpuid);
+		}
 	} else {
-		if (bootverbose)
-			kprintf("GSI %d -> CPU %d (user)\n", gsi, cpuid);
+		if (bootverbose) {
+			kprintf("IOAPIC: irq %d, gsi %d -> cpu%d (user)\n",
+			    irq, gsi, cpuid);
+		}
 	}
 	return cpuid;
 }
