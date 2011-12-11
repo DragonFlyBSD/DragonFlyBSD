@@ -760,7 +760,7 @@ ioapic_abi_find_gsi(int gsi, enum intr_trigger trig, enum intr_polarity pola)
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
 
-	for (irq = 0; irq < IOAPIC_HWI_VECTORS; ++irq) {
+	for (irq = 0; irq < ioapic_abi_line_irq_max; ++irq) {
 		const struct ioapic_irqmap *map = &ioapic_irqmaps[irq];
 
 		if (map->im_gsi == gsi) {
