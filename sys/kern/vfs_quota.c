@@ -82,8 +82,7 @@ unode_insert(struct mount *mp, uid_t uid)
 {
 	struct ac_unode *unp, *res;
 
-	unp = kmalloc(sizeof(struct ac_unode),
-				M_MOUNT, M_ZERO|M_WAITOK);
+	unp = kmalloc(sizeof(struct ac_unode), M_MOUNT, M_ZERO | M_WAITOK);
 
 	unp->left_bits = (uid >> ACCT_CHUNK_BITS);
 	res = RB_INSERT(ac_utree, &mp->mnt_acct.ac_uroot, unp);
@@ -97,8 +96,7 @@ gnode_insert(struct mount *mp, gid_t gid)
 {
 	struct ac_gnode *gnp, *res;
 
-	gnp = kmalloc(sizeof(struct ac_gnode),
-				M_MOUNT, M_ZERO|M_WAITOK);
+	gnp = kmalloc(sizeof(struct ac_gnode), M_MOUNT, M_ZERO | M_WAITOK);
 
 	gnp->left_bits = (gid >> ACCT_CHUNK_BITS);
 	res = RB_INSERT(ac_gtree, &mp->mnt_acct.ac_groot, gnp);
@@ -120,8 +118,9 @@ vq_init(struct mount *mp) {
 
 	/* and enable data collection */
 	mp->mnt_op->vfs_account = vfs_stdaccount;
-	kprintf("vfs accounting enabled for %s\n",
-				mp->mnt_stat.f_mntonname);
+	if (bootverbose)
+		kprintf("vfs accounting enabled for %s\n",
+		    mp->mnt_stat.f_mntonname);
 }
 
 
