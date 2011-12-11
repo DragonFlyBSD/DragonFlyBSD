@@ -76,7 +76,7 @@ struct nexus_device {
 
 #define DEVTONX(dev)	((struct nexus_device *)device_get_ivars(dev))
 
-static struct rman irq_rman, drq_rman, port_rman, mem_rman;
+static struct rman irq_rman[MAXCPU], drq_rman, port_rman, mem_rman;
 
 static	int nexus_probe(device_t);
 static	int nexus_attach(device_t);
@@ -151,35 +151,42 @@ DRIVER_MODULE(nexus, root, nexus_driver, nexus_devclass, NULL, NULL);
 static int
 nexus_probe(device_t dev)
 {
+	int cpuid;
+
 	device_quiet(dev);	/* suppress attach message for neatness */
 
-	/*
-	 * IRQ's are on the mainboard on old systems, but on the ISA part
-	 * of PCI->ISA bridges.  There would be multiple sets of IRQs on
-	 * multi-ISA-bus systems.  PCI interrupts are routed to the ISA
-	 * component, so in a way, PCI can be a partial child of an ISA bus(!).
-	 * APIC interrupts are global though.
-	 * In the non-APIC case, disallow the use of IRQ 2.
-	 */
-	irq_rman.rm_start = 0;
-	irq_rman.rm_type = RMAN_ARRAY;
-	irq_rman.rm_descr = "Interrupt request lines";
+	for (cpuid = 0; cpuid < ncpus; ++cpuid) {
+		struct rman *rm = &irq_rman[cpuid];
 
-	/*
-	 * XXX should use MachIntrABI.rman_setup
-	 */
-	if (ioapic_enable) {
-		irq_rman.rm_end = IDT_HWI_VECTORS - 1;
-		if (rman_init(&irq_rman, 0 /* TODO */)
-		    || rman_manage_region(&irq_rman,
-					  irq_rman.rm_start, irq_rman.rm_end))
-			panic("nexus_probe irq_rman");
-	} else {
-		irq_rman.rm_end = 15;
-		if (rman_init(&irq_rman, 0 /* TODO */)
-		    || rman_manage_region(&irq_rman, irq_rman.rm_start, 1)
-		    || rman_manage_region(&irq_rman, 3, irq_rman.rm_end))
-			panic("nexus_probe irq_rman");
+		/*
+		 * IRQ's are on the mainboard on old systems, but on
+		 * the ISA part of PCI->ISA bridges.  There would be
+		 * multiple sets of IRQs on multi-ISA-bus systems.
+		 * PCI interrupts are routed to the ISA component,
+		 * so in a way, PCI can be a partial child of an ISA
+		 * bus(!).  APIC interrupts are global though.  In the
+		 * non-APIC case, disallow the use of IRQ 2.
+		 */
+		rm->rm_start = 0;
+		rm->rm_type = RMAN_ARRAY;
+		rm->rm_descr = "Interrupt request lines";
+
+		/*
+		 * XXX should use MachIntrABI.rman_setup
+		 */
+		if (ioapic_enable) {
+			rm->rm_end = IDT_HWI_VECTORS - 1;
+			if (rman_init(rm, cpuid) ||
+			    rman_manage_region(rm,
+			    rm->rm_start, rm->rm_end))
+				panic("nexus_probe irq_rman");
+		} else {
+			rm->rm_end = 15;
+			if (rman_init(rm, cpuid) ||
+			    rman_manage_region(rm, rm->rm_start, 1) ||
+			    rman_manage_region(rm, 3, rm->rm_end))
+				panic("nexus_probe irq_rman");
+		}
 	}
 
 	/*
@@ -374,7 +381,7 @@ nexus_alloc_resource(device_t bus, device_t child, int type, int *rid,
 			print_backtrace(-1);
 			cpuid = 0; /* XXX */
 		}
-		rm = &irq_rman;
+		rm = &irq_rman[cpuid];
 		break;
 
 	case SYS_RES_DRQ:
