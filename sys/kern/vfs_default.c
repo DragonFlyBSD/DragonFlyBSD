@@ -292,10 +292,11 @@ vop_compat_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	/*
 	 * vop_old_lookup() always returns vp locked.  dvp may or may not be
 	 * left locked depending on CNP_PDIRUNLOCK.
+	 *
+	 * (*vpp) will be returned locked if no error occured, which is the
+	 * state we want.
 	 */
 	error = vop_old_lookup(ap->a_head.a_ops, ap->a_dvp, ap->a_vpp, &cnp);
-	if (error == 0)
-		vn_unlock(*ap->a_vpp);
 	if (cnp.cn_flags & CNP_PDIRUNLOCK)
 		vrele(ap->a_dvp);
 	else
