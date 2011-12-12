@@ -216,7 +216,7 @@ SYSCTL_INT(_lwkt, OID_AUTO, spin_fatal, CTLFLAG_RW,
 static int preempt_enable = 1;
 SYSCTL_INT(_lwkt, OID_AUTO, preempt_enable, CTLFLAG_RW,
 	&preempt_enable, 0, "Enable preemption");
-static int lwkt_cache_threads = 32;
+static int lwkt_cache_threads = 0;
 SYSCTL_INT(_lwkt, OID_AUTO, cache_threads, CTLFLAG_RD,
 	&lwkt_cache_threads, 0, "thread+kstack cache");
 
@@ -306,17 +306,25 @@ _lwkt_thread_dtor(void *obj, void *privdata)
 		td->td_kstack_size > 0,
 	    ("_lwkt_thread_dtor: corrupted stack"));
 	kmem_free(&kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
+	td->td_kstack = NULL;
+	td->td_flags = 0;
 }
 
 /*
  * Initialize the lwkt s/system.
  *
- * Nominally cache up to 32 thread + kstack structures.
+ * Nominally cache up to 32 thread + kstack structures.  Cache more on
+ * systems with a lot of cpu cores.
  */
 void
 lwkt_init(void)
 {
     TUNABLE_INT("lwkt.cache_threads", &lwkt_cache_threads);
+    if (lwkt_cache_threads == 0) {
+	lwkt_cache_threads = ncpus * 4;
+	if (lwkt_cache_threads < 32)
+	    lwkt_cache_threads = 32;
+    }
     thread_cache = objcache_create_mbacked(
 				M_THREAD, sizeof(struct thread),
 				NULL, lwkt_cache_threads,
