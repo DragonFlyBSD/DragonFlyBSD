@@ -203,8 +203,7 @@ announce_event(char *ifname, int sock, struct sockaddr_in *dst)
 			close(s);
 			return(0);
 		}
-	}
-	if (e->ne_sts == NDIS_STATUS_MEDIA_DISCONNECT) {
+	} else if (e->ne_sts == NDIS_STATUS_MEDIA_DISCONNECT) {
 		type = EVENT_DISCONNECT;
 		if (verbose)
 			dbgmsg("Received a disconnect event for %s", ifname);
@@ -212,12 +211,14 @@ announce_event(char *ifname, int sock, struct sockaddr_in *dst)
 			close(s);
 			return(0);
 		}
-	}
-	if (e->ne_sts == NDIS_STATUS_MEDIA_SPECIFIC_INDICATION) {
+	} else if (e->ne_sts == NDIS_STATUS_MEDIA_SPECIFIC_INDICATION) {
 		type = EVENT_MEDIA_SPECIFIC;
 		if (verbose)
 			dbgmsg("Received a media-specific event for %s",
 			    ifname);
+	} else {
+		dbgmsg("unknown event %u\n", e->ne_sts);
+		return(EINVAL);
 	}
 
 	end = buf + sizeof(buf);
