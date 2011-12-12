@@ -151,14 +151,14 @@ tcp_output(struct tcpcb *tp)
 	struct socket *so = inp->inp_socket;
 	long len, recvwin, sendwin;
 	int nsacked = 0;
-	int off, flags, error;
+	int off, flags, error = 0;
 #ifdef TCP_SIGNATURE
 	int sigoff = 0;
 #endif
-	struct mbuf *m;
+	struct mbuf *m = NULL;
 	struct ip *ip = NULL;
 	struct ipovly *ipov = NULL;
-	struct tcphdr *th;
+	struct tcphdr *th = NULL;
 	u_char opt[TCP_MAXOLEN];
 	unsigned int ipoptlen, optlen, hdrlen;
 	int idle;
@@ -715,7 +715,7 @@ send:
 		if ((m = m_copypack(so->so_snd.ssb_mb, off, (int)len,
 		    max_linkhdr + hdrlen)) == NULL) {
 			error = ENOBUFS;
-			goto out;
+			goto after_th;
 		}
 		/*
 		 * m_copypack left space for our hdr; use it.
@@ -731,7 +731,7 @@ send:
 #endif
 		if (m == NULL) {
 			error = ENOBUFS;
-			goto out;
+			goto after_th;
 		}
 		m->m_data += max_linkhdr;
 		m->m_len = hdrlen;
@@ -743,8 +743,9 @@ send:
 			m->m_next = m_copy(so->so_snd.ssb_mb, off, (int) len);
 			if (m->m_next == NULL) {
 				m_free(m);
+				m = NULL;
 				error = ENOBUFS;
-				goto out;
+				goto after_th;
 			}
 		}
 #endif
@@ -769,7 +770,7 @@ send:
 		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 		if (m == NULL) {
 			error = ENOBUFS;
-			goto out;
+			goto after_th;
 		}
 		if (isipv6 &&
 		    (hdrlen + max_linkhdr > MHLEN) && hdrlen <= MHLEN)
@@ -790,7 +791,7 @@ send:
 		/* this picks up the pseudo header (w/o the length) */
 		tcp_fillheaders(tp, ip, th);
 	}
-
+after_th:
 	/*
 	 * Fill in fields, remembering maximum advertised
 	 * window for use in delaying messages about window sizes.
@@ -799,30 +800,33 @@ send:
 	if (flags & TH_FIN && tp->t_flags & TF_SENTFIN &&
 	    tp->snd_nxt == tp->snd_max)
 		tp->snd_nxt--;
-	/*
-	 * If we are doing retransmissions, then snd_nxt will
-	 * not reflect the first unsent octet.  For ACK only
-	 * packets, we do not want the sequence number of the
-	 * retransmitted packet, we want the sequence number
-	 * of the next unsent octet.  So, if there is no data
-	 * (and no SYN or FIN), use snd_max instead of snd_nxt
-	 * when filling in ti_seq.  But if we are in persist
-	 * state, snd_max might reflect one byte beyond the
-	 * right edge of the window, so use snd_nxt in that
-	 * case, since we know we aren't doing a retransmission.
-	 * (retransmit and persist are mutually exclusive...)
-	 */
-	if (len || (flags & (TH_SYN|TH_FIN)) ||
-	    tcp_callout_active(tp, tp->tt_persist))
-		th->th_seq = htonl(tp->snd_nxt);
-	else
-		th->th_seq = htonl(tp->snd_max);
-	th->th_ack = htonl(tp->rcv_nxt);
-	if (optlen) {
-		bcopy(opt, th + 1, optlen);
-		th->th_off = (sizeof(struct tcphdr) + optlen) >> 2;
+
+	if (th != NULL) {
+		/*
+		 * If we are doing retransmissions, then snd_nxt will
+		 * not reflect the first unsent octet.  For ACK only
+		 * packets, we do not want the sequence number of the
+		 * retransmitted packet, we want the sequence number
+		 * of the next unsent octet.  So, if there is no data
+		 * (and no SYN or FIN), use snd_max instead of snd_nxt
+		 * when filling in ti_seq.  But if we are in persist
+		 * state, snd_max might reflect one byte beyond the
+		 * right edge of the window, so use snd_nxt in that
+		 * case, since we know we aren't doing a retransmission.
+		 * (retransmit and persist are mutually exclusive...)
+		 */
+		if (len || (flags & (TH_SYN|TH_FIN)) ||
+		    tcp_callout_active(tp, tp->tt_persist))
+			th->th_seq = htonl(tp->snd_nxt);
+		else
+			th->th_seq = htonl(tp->snd_max);
+		th->th_ack = htonl(tp->rcv_nxt);
+		if (optlen) {
+			bcopy(opt, th + 1, optlen);
+			th->th_off = (sizeof(struct tcphdr) + optlen) >> 2;
+		}
+		th->th_flags = flags;
 	}
-	th->th_flags = flags;
 
 	/*
 	 * Calculate receive window.  Don't shrink window, but avoid
@@ -836,7 +840,6 @@ send:
 		recvwin = (tcp_seq_diff_t)(tp->rcv_adv - tp->rcv_nxt);
 	if (recvwin > (long)TCP_MAXWIN << tp->rcv_scale)
 		recvwin = (long)TCP_MAXWIN << tp->rcv_scale;
-	th->th_win = htons((u_short) (recvwin>>tp->rcv_scale));
 
 	/*
 	 * Adjust the RXWIN0SENT flag - indicate that we have advertised
@@ -851,9 +854,14 @@ send:
 	else
 		tp->t_flags &= ~TF_RXWIN0SENT;
 
+	if (th != NULL)
+		th->th_win = htons((u_short) (recvwin>>tp->rcv_scale));
+
 	if (SEQ_GT(tp->snd_up, tp->snd_nxt)) {
-		th->th_urp = htons((u_short)(tp->snd_up - tp->snd_nxt));
-		th->th_flags |= TH_URG;
+		if (th != NULL) {
+			th->th_urp = htons((u_short)(tp->snd_up - tp->snd_nxt));
+			th->th_flags |= TH_URG;
+		}
 	} else {
 		/*
 		 * If no urgent pointer to send, then we pull
@@ -864,34 +872,43 @@ send:
 		tp->snd_up = tp->snd_una;		/* drag it along */
 	}
 
+	if (th != NULL) {
 #ifdef TCP_SIGNATURE
-	if (tp->t_flags & TF_SIGNATURE)
-		tcpsignature_compute(m, len, optlen,
-				(u_char *)(th + 1) + sigoff, IPSEC_DIR_OUTBOUND);
+		if (tp->t_flags & TF_SIGNATURE) {
+			tcpsignature_compute(m, len, optlen,
+			    (u_char *)(th + 1) + sigoff, IPSEC_DIR_OUTBOUND);
+		}
 #endif /* TCP_SIGNATURE */
 
-	/*
-	 * Put TCP length in extended header, and then
-	 * checksum extended header and data.
-	 */
-	m->m_pkthdr.len = hdrlen + len; /* in6_cksum() need this */
-	if (isipv6) {
 		/*
-		 * ip6_plen is not need to be filled now, and will be filled
-		 * in ip6_output().
+		 * Put TCP length in extended header, and then
+		 * checksum extended header and data.
 		 */
-		th->th_sum = in6_cksum(m, IPPROTO_TCP, sizeof(struct ip6_hdr),
-				       sizeof(struct tcphdr) + optlen + len);
-	} else {
-		m->m_pkthdr.csum_flags = CSUM_TCP;
-		m->m_pkthdr.csum_data = offsetof(struct tcphdr, th_sum);
-		if (len + optlen)
-			th->th_sum = in_addword(th->th_sum,
-						htons((u_short)(optlen + len)));
+		m->m_pkthdr.len = hdrlen + len; /* in6_cksum() need this */
+		if (isipv6) {
+			/*
+			 * ip6_plen is not need to be filled now, and will be
+			 * filled in ip6_output().
+			 */
+			th->th_sum = in6_cksum(m, IPPROTO_TCP,
+			    sizeof(struct ip6_hdr),
+			    sizeof(struct tcphdr) + optlen + len);
+		} else {
+			m->m_pkthdr.csum_flags = CSUM_TCP;
+			m->m_pkthdr.csum_data = offsetof(struct tcphdr, th_sum);
+			if (len + optlen) {
+				th->th_sum = in_addword(th->th_sum,
+				    htons((u_short)(optlen + len)));
+			}
 
-		/* IP version must be set here for ipv4/ipv6 checking later */
-		KASSERT(ip->ip_v == IPVERSION,
-		    ("%s: IP version incorrect: %d", __func__, ip->ip_v));
+			/*
+			 * IP version must be set here for ipv4/ipv6 checking
+			 * later
+			 */
+			KASSERT(ip->ip_v == IPVERSION,
+			    ("%s: IP version incorrect: %d",
+			     __func__, ip->ip_v));
+		}
 	}
 
 	/*
@@ -960,67 +977,72 @@ send:
 			tp->snd_max = tp->snd_nxt + xlen;
 	}
 
+	if (th != NULL) {
 #ifdef TCPDEBUG
-	/*
-	 * Trace.
-	 */
-	if (so->so_options & SO_DEBUG)
-		tcp_trace(TA_OUTPUT, tp->t_state, tp, mtod(m, void *), th, 0);
+		/* Trace. */
+		if (so->so_options & SO_DEBUG) {
+			tcp_trace(TA_OUTPUT, tp->t_state, tp,
+			    mtod(m, void *), th, 0);
+		}
 #endif
 
-	/*
-	 * Fill in IP length and desired time to live and
-	 * send to IP level.  There should be a better way
-	 * to handle ttl and tos; we could keep them in
-	 * the template, but need a way to checksum without them.
-	 */
-	/*
-	 * m->m_pkthdr.len should have been set before cksum calcuration,
-	 * because in6_cksum() need it.
-	 */
-	if (isipv6) {
 		/*
-		 * we separately set hoplimit for every segment, since the
-		 * user might want to change the value via setsockopt.
-		 * Also, desired default hop limit might be changed via
-		 * Neighbor Discovery.
+		 * Fill in IP length and desired time to live and
+		 * send to IP level.  There should be a better way
+		 * to handle ttl and tos; we could keep them in
+		 * the template, but need a way to checksum without them.
 		 */
-		ip6->ip6_hlim = in6_selecthlim(inp,
-		    (inp->in6p_route.ro_rt ?
-		     inp->in6p_route.ro_rt->rt_ifp : NULL));
-
-		/* TODO: IPv6 IP6TOS_ECT bit on */
-		error = ip6_output(m, inp->in6p_outputopts, &inp->in6p_route,
-				   (so->so_options & SO_DONTROUTE), NULL, NULL,
-				   inp);
-	} else {
-		struct rtentry *rt;
-		ip->ip_len = m->m_pkthdr.len;
-#ifdef INET6
-		if (INP_CHECK_SOCKAF(so, AF_INET6))
-			ip->ip_ttl = in6_selecthlim(inp,
+		/*
+		 * m->m_pkthdr.len should have been set before cksum
+		 * calcuration, because in6_cksum() need it.
+		 */
+		if (isipv6) {
+			/*
+			 * we separately set hoplimit for every segment,
+			 * since the user might want to change the value
+			 * via setsockopt.  Also, desired default hop
+			 * limit might be changed via Neighbor Discovery.
+			 */
+			ip6->ip6_hlim = in6_selecthlim(inp,
 			    (inp->in6p_route.ro_rt ?
 			     inp->in6p_route.ro_rt->rt_ifp : NULL));
-		else
+
+			/* TODO: IPv6 IP6TOS_ECT bit on */
+			error = ip6_output(m, inp->in6p_outputopts,
+			    &inp->in6p_route, (so->so_options & SO_DONTROUTE),
+			    NULL, NULL, inp);
+		} else {
+			struct rtentry *rt;
+			ip->ip_len = m->m_pkthdr.len;
+#ifdef INET6
+			if (INP_CHECK_SOCKAF(so, AF_INET6))
+				ip->ip_ttl = in6_selecthlim(inp,
+				    (inp->in6p_route.ro_rt ?
+				     inp->in6p_route.ro_rt->rt_ifp : NULL));
+			else
 #endif
-			ip->ip_ttl = inp->inp_ip_ttl;	/* XXX */
+				ip->ip_ttl = inp->inp_ip_ttl;	/* XXX */
 
-		ip->ip_tos = inp->inp_ip_tos;	/* XXX */
-		/*
-		 * See if we should do MTU discovery.
-		 * We do it only if the following are true:
-		 *	1) we have a valid route to the destination
-		 *	2) the MTU is not locked (if it is,
-		 *	   then discovery has been disabled)
-		 */
-		if (path_mtu_discovery &&
-		    (rt = inp->inp_route.ro_rt) && (rt->rt_flags & RTF_UP) &&
-		    !(rt->rt_rmx.rmx_locks & RTV_MTU))
-			ip->ip_off |= IP_DF;
+			ip->ip_tos = inp->inp_ip_tos;	/* XXX */
+			/*
+			 * See if we should do MTU discovery.
+			 * We do it only if the following are true:
+			 *	1) we have a valid route to the destination
+			 *	2) the MTU is not locked (if it is,
+			 *	   then discovery has been disabled)
+			 */
+			if (path_mtu_discovery &&
+			    (rt = inp->inp_route.ro_rt) &&
+			    (rt->rt_flags & RTF_UP) &&
+			    !(rt->rt_rmx.rmx_locks & RTV_MTU))
+				ip->ip_off |= IP_DF;
 
-		error = ip_output(m, inp->inp_options, &inp->inp_route,
-				  (so->so_options & SO_DONTROUTE) |
-				  IP_DEBUGROUTE, NULL, inp);
+			error = ip_output(m, inp->inp_options, &inp->inp_route,
+					  (so->so_options & SO_DONTROUTE) |
+					  IP_DEBUGROUTE, NULL, inp);
+		}
+	} else {
+		KASSERT(error != 0, ("no error, but th not set\n"));
 	}
 	if (error) {
 
