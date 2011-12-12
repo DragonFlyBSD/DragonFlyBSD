@@ -242,7 +242,7 @@ platform/pc32/i386/cpufreq_machdep.c	standard
 platform/pc32/acpica5/acpi_sdt.c	standard
 platform/pc32/acpica5/acpi_fadt.c	standard
 platform/pc32/acpica5/acpi_madt.c	standard
-platform/pc32/isa/clock.c		standard
+platform/pc32/isa/clock.c		standard nowerror
 dev/serial/cy/cy.c			optional	cy
 dev/serial/cy/cy_pci.c			optional	cy pci
 dev/netif/elink_layer/elink.c		optional	ep
