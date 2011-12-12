@@ -9,7 +9,11 @@
 
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
-		-Wold-style-declaration -Wold-style-definition -std=c99
+		-Wold-style-definition -std=c99
+
+.if ${CCVER} != "gcc41"
+CWARNFLAGS+=	-Wold-style-declaration
+.endif
 
 CFLAGS+= -finline-limit=${INLINE_LIMIT}
 CFLAGS+= --param inline-unit-growth=100
