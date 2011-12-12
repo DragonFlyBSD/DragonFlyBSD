@@ -229,7 +229,7 @@ dev/misc/psm/psm.c			optional	psm
 dev/serial/sio/sio.c			optional	sio
 bus/isa/syscons_isa.c			optional	sc
 bus/isa/vga_isa.c			optional	vga
-platform/pc64/isa/clock.c		standard
+platform/pc64/isa/clock.c		standard nowerror
 platform/pc64/isa/isa_intr.c		standard
 platform/pc64/x86_64/spinlock.s		standard
 dev/netif/elink_layer/elink.c		optional	ep
