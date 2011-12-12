@@ -201,7 +201,8 @@ ng_mppc_constructor(node_p node)
 	priv_p priv;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_MPPC, M_WAITOK | M_NULLOK | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH_MPPC,
+		       M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -292,14 +293,13 @@ ng_mppc_rcvmsg(node_p node, item_p item, hook_p lasthook)
 #ifdef NETGRAPH7_MPPC_COMPRESSION
 			/* Initialize state buffers for compression */
 			if (d->history != NULL) {
-				FREE(d->history, M_NETGRAPH_MPPC);
+				kfree(d->history, M_NETGRAPH_MPPC);
 				d->history = NULL;
 			}
 			if ((cfg->bits & MPPC_BIT) != 0) {
-				MALLOC(d->history, u_char *,
-				    isComp ? MPPC_SizeOfCompressionHistory() :
-				    MPPC_SizeOfDecompressionHistory(),
-				    M_NETGRAPH_MPPC, M_WAITOK | M_NULLOK);
+				d->history = kmalloc(isComp ? MPPC_SizeOfCompressionHistory() : MPPC_SizeOfDecompressionHistory(),
+						     M_NETGRAPH_MPPC,
+						     M_WAITOK | M_NULLOK);
 				if (d->history == NULL)
 					ERROUT(ENOMEM);
 				if (isComp)
@@ -422,12 +422,12 @@ ng_mppc_shutdown(node_p node)
 	/* Take down netgraph node */
 #ifdef NETGRAPH7_MPPC_COMPRESSION
 	if (priv->xmit.history != NULL)
-		FREE(priv->xmit.history, M_NETGRAPH_MPPC);
+		kfree(priv->xmit.history, M_NETGRAPH_MPPC);
 	if (priv->recv.history != NULL)
-		FREE(priv->recv.history, M_NETGRAPH_MPPC);
+		kfree(priv->recv.history, M_NETGRAPH_MPPC);
 #endif
 	bzero(priv, sizeof(*priv));
-	FREE(priv, M_NETGRAPH_MPPC);
+	kfree(priv, M_NETGRAPH_MPPC);
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);		/* let the node escape */
 	return (0);

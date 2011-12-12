@@ -73,7 +73,7 @@ static void	ioapic_gsi_setup(int);
 static const struct ioapic_info *
 		ioapic_gsi_search(int);
 static void	ioapic_pin_prog(void *, int, int,
-		    enum intr_trigger, enum intr_polarity, uint32_t);
+		    enum intr_trigger, enum intr_polarity, uint32_t, int);
 
 static struct ioapic_conf	ioapic_conf;
 
@@ -377,9 +377,11 @@ ioapic_gsi_setup(int gsi)
 				 *
 				 * This GSI is not used, disable it.
 				 */
+				imen_lock();
 				ioapic_pin_setup(ioapic_gsi_ioaddr(gsi),
 				    ioapic_gsi_pin(gsi), 0,
-				    INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH);
+				    INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH, 0);
+				imen_unlock();
 				return;
 			}
 			trig = INTR_TRIGGER_EDGE;
@@ -444,7 +446,7 @@ void
 ioapic_extpin_setup(void *addr, int pin, int vec)
 {
 	ioapic_pin_prog(addr, pin, vec,
-	    INTR_TRIGGER_CONFORM, INTR_POLARITY_CONFORM, IOART_DELEXINT);
+	    INTR_TRIGGER_CONFORM, INTR_POLARITY_CONFORM, IOART_DELEXINT, 0);
 }
 
 int
@@ -455,7 +457,7 @@ ioapic_extpin_gsi(void)
 
 void
 ioapic_pin_setup(void *addr, int pin, int vec,
-    enum intr_trigger trig, enum intr_polarity pola)
+    enum intr_trigger trig, enum intr_polarity pola, int cpuid)
 {
 	/*
 	 * Always clear an I/O APIC pin before [re]programming it.  This is
@@ -470,13 +472,14 @@ ioapic_pin_setup(void *addr, int pin, int vec,
 	 * interrupt.
 	 */
 	ioapic_pin_prog(addr, pin, vec, INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH,
-	    IOART_DELFIXED);
-	ioapic_pin_prog(addr, pin, vec, trig, pola, IOART_DELFIXED);
+	    IOART_DELFIXED, cpuid);
+	ioapic_pin_prog(addr, pin, vec, trig, pola, IOART_DELFIXED, cpuid);
 }
 
 static void
 ioapic_pin_prog(void *addr, int pin, int vec,
-    enum intr_trigger trig, enum intr_polarity pola, uint32_t del_mode)
+    enum intr_trigger trig, enum intr_polarity pola,
+    uint32_t del_mode, int cpuid)
 {
 	uint32_t flags, target;
 	int select;
@@ -532,7 +535,7 @@ ioapic_pin_prog(void *addr, int pin, int vec,
 	}
 
 	target = ioapic_read(addr, select + 1) & IOART_HI_DEST_RESV;
-	target |= (CPUID_TO_APICID(0) << IOART_HI_DEST_SHIFT) &
+	target |= (CPUID_TO_APICID(cpuid) << IOART_HI_DEST_SHIFT) &
 		  IOART_HI_DEST_MASK;
 
 	ioapic_write(addr, select, flags | vec);

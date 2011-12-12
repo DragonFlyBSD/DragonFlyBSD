@@ -72,13 +72,13 @@
 #define	MEMZALLOC(PTR, CAST, SIZE)					\
 	((PTR) = (CAST)kmalloc((SIZE), M_NG_SSCFU_INS, M_WAITOK | M_NULLOK | M_ZERO))
 #define	MEMFREE(PTR)							\
-	FREE(PTR, M_NG_SSCFU_INS)
+	kfree(PTR, M_NG_SSCFU_INS)
 
 #define	SIG_ALLOC(PTR)							\
 	((PTR) = kmalloc(sizeof(struct sscfu_sig),			\
 	    M_NG_SSCFU_SIG, M_WAITOK | M_NULLOK | M_ZERO))
 #define	SIG_FREE(PTR)							\
-	FREE(PTR, M_NG_SSCFU_SIG)
+	kfree(PTR, M_NG_SSCFU_SIG)
 
 #endif
 

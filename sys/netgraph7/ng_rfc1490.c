@@ -166,7 +166,8 @@ ng_rfc1490_constructor(node_p node)
 	priv_p priv;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH,
+		       M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -460,7 +461,7 @@ ng_rfc1490_shutdown(node_p node)
 
 	/* Take down netgraph node */
 	bzero(priv, sizeof(*priv));
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);		/* let the node escape */
 	return (0);

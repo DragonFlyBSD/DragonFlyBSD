@@ -213,7 +213,7 @@ ngfrm_constructor(node_p node)
 {
 	sc_p sc;
 
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (!sc)
 		return (ENOMEM);
 	sc->addrlen = 2;	/* default */
@@ -482,7 +482,7 @@ ngfrm_shutdown(node_p node)
 	const sc_p sc = NG_NODE_PRIVATE(node);
 
 	NG_NODE_SET_PRIVATE(node, NULL);
-	FREE(sc, M_NETGRAPH);
+	kfree(sc, M_NETGRAPH);
 	NG_NODE_UNREF(node);
 	return (0);
 }

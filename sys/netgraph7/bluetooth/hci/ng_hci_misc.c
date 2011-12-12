@@ -176,8 +176,7 @@ ng_hci_new_neighbor(ng_hci_unit_p unit)
 {
 	ng_hci_neighbor_p	n = NULL;
 
-	MALLOC(n, ng_hci_neighbor_p, sizeof(*n), M_NETGRAPH_HCI,
-		M_WAITOK | M_NULLOK | M_ZERO); 
+	n = kmalloc(sizeof(*n), M_NETGRAPH_HCI, M_WAITOK | M_NULLOK | M_ZERO);
 	if (n != NULL) {
 		getmicrotime(&n->updated);
 		LIST_INSERT_HEAD(&unit->neighbors, n, next);
@@ -195,7 +194,7 @@ ng_hci_free_neighbor(ng_hci_neighbor_p n)
 {
 	LIST_REMOVE(n, next);
 	bzero(n, sizeof(*n));
-	FREE(n, M_NETGRAPH_HCI);
+	kfree(n, M_NETGRAPH_HCI);
 } /* ng_hci_free_neighbor */
 
 /*
@@ -258,8 +257,8 @@ ng_hci_new_con(ng_hci_unit_p unit, int link_type)
 	int			num_pkts;
 	static int		fake_con_handle = 0x0f00;
 
-	MALLOC(con, ng_hci_unit_con_p, sizeof(*con), M_NETGRAPH_HCI,
-		M_WAITOK | M_NULLOK | M_ZERO);
+	con = kmalloc(sizeof(*con), M_NETGRAPH_HCI,
+		      M_WAITOK | M_NULLOK | M_ZERO);
 	if (con != NULL) {
 		con->unit = unit;
 		con->state = NG_HCI_CON_CLOSED;
@@ -321,7 +320,7 @@ ng_hci_free_con(ng_hci_unit_con_p con)
 	NG_BT_ITEMQ_DESTROY(&con->conq);
 
 	bzero(con, sizeof(*con));
-	FREE(con, M_NETGRAPH_HCI);
+	kfree(con, M_NETGRAPH_HCI);
 } /* ng_hci_free_con */
 
 /*

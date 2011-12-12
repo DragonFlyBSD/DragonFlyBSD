@@ -186,7 +186,7 @@ nglmi_constructor(node_p node)
 {
 	sc_p sc;
 
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (sc == NULL)
 		return (ENOMEM);
 
@@ -1054,7 +1054,7 @@ nglmi_shutdown(node_p node)
 
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(sc->node);
-	FREE(sc, M_NETGRAPH);
+	kfree(sc, M_NETGRAPH);
 	return (0);
 }
 

@@ -46,14 +46,13 @@
 #include <sys/machintr.h>
 #include <sys/interrupt.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 
 #include <machine/smp.h>
 #include <machine/segments.h>
 #include <machine/md_var.h>
 #include <machine/intr_machdep.h>
 #include <machine/globaldata.h>
-
-#include <sys/thread2.h>
 
 #include <machine_base/isa/isa_intr.h>
 #include <machine_base/icu/icu.h>
@@ -62,6 +61,8 @@
 #include <machine_base/apic/ioapic_abi.h>
 #include <machine_base/apic/ioapic_ipl.h>
 #include <machine_base/apic/apicreg.h>
+
+#include <dev/acpica5/acpi_sci_var.h>
 
 #define IOAPIC_HWI_VECTORS	IDT_HWI_VECTORS
 
@@ -462,7 +463,7 @@ static struct ioapic_irqmap {
 	enum intr_polarity	im_pola;
 	int			im_gsi;
 	uint32_t		im_flags;	/* IOAPIC_IMF_ */
-} ioapic_irqmaps[IOAPIC_HWI_VECTORS];
+} ioapic_irqmaps[MAXCPU][IOAPIC_HWI_VECTORS];
 
 #define IOAPIC_IMT_UNUSED	0
 #define IOAPIC_IMT_RESERVED	1
@@ -490,6 +491,8 @@ static void	ioapic_abi_setdefault(void);
 static void	ioapic_abi_stabilize(void);
 static void	ioapic_abi_initmap(void);
 
+static int	ioapic_abi_gsi_cpuid(int, int);
+
 struct machintr_abi MachIntrABI_IOAPIC = {
 	MACHINTR_IOAPIC,
 
@@ -508,6 +511,8 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 };
 
 static int	ioapic_abi_extint_irq = -1;
+static int	ioapic_abi_line_irq_max;
+static int	ioapic_abi_gsi_balance;
 
 struct ioapic_irqinfo	ioapic_irqs[IOAPIC_HWI_VECTORS];
 
@@ -580,8 +585,6 @@ ioapic_abi_intr_setup(int intr, int flags)
 	cpu_disable_intr();
 
 	vector = IDT_OFFSET + intr;
-	setidt(vector, ioapic_intr[intr], SDT_SYS386IGT,
-	       SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 
 	/*
 	 * Now reprogram the vector in the IO APIC.  In order to avoid
@@ -629,8 +632,6 @@ ioapic_abi_intr_teardown(int intr)
 	machintr_intr_disable(intr);
 
 	vector = IDT_OFFSET + intr;
-	setidt(vector, ioapic_intr[intr], SDT_SYS386IGT, SEL_KPL,
-	       GSEL(GCODE_SEL, SEL_KPL));
 
 	/*
 	 * In order to avoid losing an EOI for a level interrupt, which
@@ -669,11 +670,21 @@ ioapic_abi_setdefault(void)
 static void
 ioapic_abi_initmap(void)
 {
-	int i;
+	int cpu;
 
-	for (i = 0; i < IOAPIC_HWI_VECTORS; ++i)
-		ioapic_irqmaps[i].im_gsi = -1;
-	ioapic_irqmaps[IOAPIC_HWI_SYSCALL].im_type = IOAPIC_IMT_SYSCALL;
+	kgetenv_int("hw.ioapic.gsi.balance", &ioapic_abi_gsi_balance);
+
+	/*
+	 * NOTE: ncpus is not ready yet
+	 */
+	for (cpu = 0; cpu < MAXCPU; ++cpu) {
+		int i;
+
+		for (i = 0; i < IOAPIC_HWI_VECTORS; ++i)
+			ioapic_irqmaps[cpu][i].im_gsi = -1;
+		ioapic_irqmaps[cpu][IOAPIC_HWI_SYSCALL].im_type =
+		    IOAPIC_IMT_SYSCALL;
+	}
 }
 
 void
@@ -683,13 +694,18 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 	struct ioapic_irqinfo *info;
 	struct ioapic_irqmap *map;
 	void *ioaddr;
-	int pin;
+	int pin, cpuid;
 
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
 
 	KKASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS);
-	map = &ioapic_irqmaps[irq];
+	if (irq > ioapic_abi_line_irq_max)
+		ioapic_abi_line_irq_max = irq;
+
+	cpuid = ioapic_abi_gsi_cpuid(irq, gsi);
+
+	map = &ioapic_irqmaps[cpuid][irq];
 
 	KKASSERT(map->im_type == IOAPIC_IMT_UNUSED);
 	map->im_type = IOAPIC_IMT_LINE;
@@ -719,7 +735,7 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 		info->io_flags |= IOAPIC_IRQI_FLAG_LEVEL;
 
 	ioapic_pin_setup(ioaddr, pin, IDT_OFFSET + irq,
-	    map->im_trig, map->im_pola);
+	    map->im_trig, map->im_pola, cpuid);
 
 	imen_unlock();
 }
@@ -727,33 +743,74 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 void
 ioapic_abi_fixup_irqmap(void)
 {
-	int i;
+	int cpu;
 
-	for (i = 0; i < ISA_IRQ_CNT; ++i) {
-		struct ioapic_irqmap *map = &ioapic_irqmaps[i];
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		int i;
 
-		if (map->im_type == IOAPIC_IMT_UNUSED) {
-			map->im_type = IOAPIC_IMT_RESERVED;
-			if (bootverbose)
-				kprintf("IOAPIC: irq %d reserved\n", i);
+		for (i = 0; i < ISA_IRQ_CNT; ++i) {
+			struct ioapic_irqmap *map = &ioapic_irqmaps[cpu][i];
+
+			if (map->im_type == IOAPIC_IMT_UNUSED) {
+				map->im_type = IOAPIC_IMT_RESERVED;
+				if (bootverbose) {
+					kprintf("IOAPIC: "
+					    "cpu%d irq %d reserved\n", cpu, i);
+				}
+			}
 		}
 	}
+
+	ioapic_abi_line_irq_max += 1;
+	if (bootverbose)
+		kprintf("IOAPIC: line irq max %d\n", ioapic_abi_line_irq_max);
 }
 
 int
 ioapic_abi_find_gsi(int gsi, enum intr_trigger trig, enum intr_polarity pola)
 {
-	int irq;
+	int cpu;
 
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
 
-	for (irq = 0; irq < IOAPIC_HWI_VECTORS; ++irq) {
-		const struct ioapic_irqmap *map = &ioapic_irqmaps[irq];
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		int irq;
 
-		if (map->im_gsi == gsi) {
-			KKASSERT(map->im_type == IOAPIC_IMT_LINE);
+		for (irq = 0; irq < ioapic_abi_line_irq_max; ++irq) {
+			const struct ioapic_irqmap *map =
+			    &ioapic_irqmaps[cpu][irq];
 
+			if (map->im_gsi == gsi) {
+				KKASSERT(map->im_type == IOAPIC_IMT_LINE);
+
+				if (map->im_flags & IOAPIC_IMF_CONF) {
+					if (map->im_trig != trig ||
+					    map->im_pola != pola)
+						return -1;
+				}
+				return irq;
+			}
+		}
+	}
+	return -1;
+}
+
+int
+ioapic_abi_find_irq(int irq, enum intr_trigger trig, enum intr_polarity pola)
+{
+	int cpu;
+
+	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
+	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
+
+	if (irq < 0 || irq >= ioapic_abi_line_irq_max)
+		return -1;
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		const struct ioapic_irqmap *map = &ioapic_irqmaps[cpu][irq];
+
+		if (map->im_type == IOAPIC_IMT_LINE) {
 			if (map->im_flags & IOAPIC_IMF_CONF) {
 				if (map->im_trig != trig ||
 				    map->im_pola != pola)
@@ -765,43 +822,24 @@ ioapic_abi_find_gsi(int gsi, enum intr_trigger trig, enum intr_polarity pola)
 	return -1;
 }
 
-int
-ioapic_abi_find_irq(int irq, enum intr_trigger trig, enum intr_polarity pola)
-{
-	const struct ioapic_irqmap *map;
-
-	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
-	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
-
-	if (irq < 0 || irq >= IOAPIC_HWI_VECTORS)
-		return -1;
-	map = &ioapic_irqmaps[irq];
-
-	if (map->im_type != IOAPIC_IMT_LINE)
-		return -1;
-
-	if (map->im_flags & IOAPIC_IMF_CONF) {
-		if (map->im_trig != trig || map->im_pola != pola)
-			return -1;
-	}
-	return irq;
-}
-
 static void
 ioapic_abi_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 {
 	struct ioapic_irqinfo *info;
-	struct ioapic_irqmap *map;
+	struct ioapic_irqmap *map = NULL;
 	void *ioaddr;
-	int pin;
+	int pin, cpuid;
 
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
 
-	KKASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS);
-	map = &ioapic_irqmaps[irq];
-
-	KKASSERT(map->im_type == IOAPIC_IMT_LINE);
+	KKASSERT(irq >= 0 && irq < ioapic_abi_line_irq_max);
+	for (cpuid = 0; cpuid < ncpus; ++cpuid) {
+		map = &ioapic_irqmaps[cpuid][irq];
+		if (map->im_type == IOAPIC_IMT_LINE)
+			break;
+	}
+	KKASSERT(cpuid < ncpus);
 
 #ifdef notyet
 	if (map->im_flags & IOAPIC_IMF_CONF) {
@@ -846,7 +884,7 @@ ioapic_abi_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 		info->io_flags |= IOAPIC_IRQI_FLAG_LEVEL;
 
 	ioapic_pin_setup(ioaddr, pin, IDT_OFFSET + irq,
-	    map->im_trig, map->im_pola);
+	    map->im_trig, map->im_pola, cpuid);
 
 	imen_unlock();
 }
@@ -859,6 +897,9 @@ ioapic_abi_extint_irqmap(int irq)
 	void *ioaddr;
 	int pin, error, vec;
 
+	/* XXX only irq0 is allowed */
+	KKASSERT(irq == 0);
+
 	vec = IDT_OFFSET + irq;
 
 	if (ioapic_abi_extint_irq == irq)
@@ -870,7 +911,8 @@ ioapic_abi_extint_irqmap(int irq)
 	if (error)
 		return error;
 
-	map = &ioapic_irqmaps[irq];
+	/* ExtINT is always targeted to cpu0 */
+	map = &ioapic_irqmaps[0][irq];
 
 	KKASSERT(map->im_type == IOAPIC_IMT_RESERVED ||
 		 map->im_type == IOAPIC_IMT_LINE);
@@ -914,8 +956,74 @@ ioapic_abi_extint_irqmap(int irq)
 }
 
 static int
-ioapic_abi_intr_cpuid(int irq __unused)
+ioapic_abi_intr_cpuid(int irq)
 {
-	/* TODO */
+	const struct ioapic_irqmap *map = NULL;
+	int cpuid;
+
+	KKASSERT(irq >= 0 && irq < ioapic_abi_line_irq_max);
+
+	for (cpuid = 0; cpuid < ncpus; ++cpuid) {
+		map = &ioapic_irqmaps[cpuid][irq];
+		if (map->im_type == IOAPIC_IMT_LINE)
+			return cpuid;
+	}
+
+	/* XXX some drivers tries to peek at reserved IRQs */
+	for (cpuid = 0; cpuid < ncpus; ++cpuid) {
+		map = &ioapic_irqmaps[cpuid][irq];
+		KKASSERT(map->im_type == IOAPIC_IMT_RESERVED);
+	}
 	return 0;
+}
+
+static int
+ioapic_abi_gsi_cpuid(int irq, int gsi)
+{
+	char envpath[32];
+	int cpuid = -1;
+
+	KKASSERT(gsi >= 0);
+
+	if (!ioapic_abi_gsi_balance)
+		return 0;
+
+	if (irq == 0 || gsi == 0) {
+		if (bootverbose) {
+			kprintf("IOAPIC: irq %d, gsi %d -> cpu0 (0)\n",
+			    irq, gsi);
+		}
+		return 0;
+	}
+
+	if (irq == acpi_sci_irqno()) {
+		if (bootverbose) {
+			kprintf("IOAPIC: irq %d, gsi %d -> cpu0 (sci)\n",
+			    irq, gsi);
+		}
+		return 0;
+	}
+
+	ksnprintf(envpath, sizeof(envpath), "hw.ioapic.gsi.%d.cpu", gsi);
+	kgetenv_int(envpath, &cpuid);
+
+	if (cpuid < 0) {
+		cpuid = gsi % ncpus;
+		if (bootverbose) {
+			kprintf("IOAPIC: irq %d, gsi %d -> cpu%d (auto)\n",
+			    irq, gsi, cpuid);
+		}
+	} else if (cpuid >= ncpus) {
+		cpuid = ncpus - 1;
+		if (bootverbose) {
+			kprintf("IOAPIC: irq %d, gsi %d -> cpu%d (fixup)\n",
+			    irq, gsi, cpuid);
+		}
+	} else {
+		if (bootverbose) {
+			kprintf("IOAPIC: irq %d, gsi %d -> cpu%d (user)\n",
+			    irq, gsi, cpuid);
+		}
+	}
+	return cpuid;
 }

@@ -290,6 +290,7 @@ atkbd_configure(int flags)
 		i = kbd_find_keyboard(ATKBD_DRIVER_NAME, ATKBD_DEFAULT);
 		if (i >= 0) {
 			kbd = kbd_get_keyboard(i);
+			KBD_ALWAYS_LOCK(kbd);
 			kbd_unregister(kbd);
 			kbd = NULL; /* huh? */
 		}

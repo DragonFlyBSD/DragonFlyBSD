@@ -110,8 +110,8 @@ ng_hci_constructor(node_p node)
 {
 	ng_hci_unit_p	unit = NULL;
 
-	MALLOC(unit, ng_hci_unit_p, sizeof(*unit), M_NETGRAPH_HCI,
-		M_WAITOK | M_NULLOK | M_ZERO);
+	unit = kmalloc(sizeof(*unit), M_NETGRAPH_HCI,
+		       M_WAITOK | M_NULLOK | M_ZERO);
 	if (unit == NULL)
 		return (ENOMEM);
 
@@ -171,7 +171,7 @@ ng_hci_shutdown(node_p node)
 	NG_BT_MBUFQ_DESTROY(&unit->cmdq);
 
 	bzero(unit, sizeof(*unit));
-	FREE(unit, M_NETGRAPH_HCI);
+	kfree(unit, M_NETGRAPH_HCI);
 
 	return (0);
 } /* ng_hci_shutdown */

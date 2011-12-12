@@ -154,7 +154,8 @@ ng_tee_constructor(node_p node)
 {
 	sc_p privdata;
 
-	MALLOC(privdata, sc_p, sizeof(*privdata), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
+	privdata = kmalloc(sizeof(*privdata), M_NETGRAPH,
+			   M_WAITOK | M_NULLOK | M_ZERO);
 	if (privdata == NULL)
 		return (ENOMEM);
 
@@ -357,7 +358,7 @@ ng_tee_shutdown(node_p node)
 	const sc_p privdata = NG_NODE_PRIVATE(node);
 
 	NG_NODE_SET_PRIVATE(node, NULL);
-	FREE(privdata, M_NETGRAPH);
+	kfree(privdata, M_NETGRAPH);
 	NG_NODE_UNREF(node);
 	return (0);
 }

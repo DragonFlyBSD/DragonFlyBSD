@@ -507,12 +507,13 @@ ng_iface_constructor(node_p node)
 	priv_p priv;
 
 	/* Allocate node and interface private structures */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_IFACE, M_WAITOK | M_NULLOK | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH_IFACE,
+		       M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 	ifp = if_alloc(IFT_PROPVIRTUAL);
 	if (ifp == NULL) {
-		FREE(priv, M_NETGRAPH_IFACE);
+		kfree(priv, M_NETGRAPH_IFACE);
 		return (ENOMEM);
 	}
 
@@ -765,7 +766,7 @@ ng_iface_shutdown(node_p node)
 	if_free(priv->ifp);
 	priv->ifp = NULL;
 	free_unr(ng_iface_unit, priv->unit);
-	FREE(priv, M_NETGRAPH_IFACE);
+	kfree(priv, M_NETGRAPH_IFACE);
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);
 	return (0);

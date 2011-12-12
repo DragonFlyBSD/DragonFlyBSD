@@ -162,7 +162,8 @@ ng_vlan_constructor(node_p node)
 	priv_p priv;
 	int i;
 
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH,
+		       M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 	for (i = 0; i < HASHSIZE; i++)
@@ -242,8 +243,8 @@ ng_vlan_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				break;
 			}
 			/* Create filter. */
-			MALLOC(f, struct filter *, sizeof(*f),
-			    M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
+			f = kmalloc(sizeof(*f), M_NETGRAPH,
+				    M_WAITOK | M_NULLOK | M_ZERO);
 			if (f == NULL) {
 				error = ENOMEM;
 				break;
@@ -274,7 +275,7 @@ ng_vlan_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			NG_HOOK_SET_PRIVATE(hook, NULL);
 			LIST_REMOVE(f, next);
 			priv->nent--;
-			FREE(f, M_NETGRAPH);
+			kfree(f, M_NETGRAPH);
 			break;
 		case NGM_VLAN_GET_TABLE:
 			NG_MKRESPONSE(resp, msg, sizeof(*t) +
@@ -439,7 +440,7 @@ ng_vlan_shutdown(node_p node)
 
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	return (0);
 }
 
@@ -458,7 +459,7 @@ ng_vlan_disconnect(hook_p hook)
 		if ((f = NG_HOOK_PRIVATE(hook)) != NULL) {
 			LIST_REMOVE(f, next);
 			priv->nent--;
-			FREE(f, M_NETGRAPH);
+			kfree(f, M_NETGRAPH);
 		}
 	}
 	NG_HOOK_SET_PRIVATE(hook, NULL);

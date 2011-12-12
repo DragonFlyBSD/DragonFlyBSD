@@ -1,22 +1,15 @@
 # $FreeBSD: src/share/mk/bsd.kern.mk,v 1.17.2.1 2001/08/01 16:56:56 obrien Exp $
 
-#
 # Warning flags for compiling the kernel and components of the kernel.
 #
-# Note that the newly added -Wcast-qual is responsible for generating 
-# most of the remaining warnings.  Warnings introduced with -Wall will
-# also pop up, but are easier to fix.
+# Note that -Werror is on by default. To turn it off, e.g. when working
+# on adding new warning options, NO_WERROR in make.conf (or on make(1)'s
+# command line) should be of material assistance.
 #
+
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
-		-Wold-style-definition -std=c99
-#
-# The following flags are next up for working on:
-#	-W
-#
-# When working on removing warnings from code, the `-Werror' flag should be
-# of material assistance.
-#
+		-Wold-style-declaration -Wold-style-definition -std=c99
 
 CFLAGS+= -finline-limit=${INLINE_LIMIT}
 CFLAGS+= --param inline-unit-growth=100

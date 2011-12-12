@@ -285,8 +285,8 @@ ng_fec_get_unit(int *unit)
 		int i, *newarray, newlen;
 
 		newlen = (2 * ng_fec_units_len) + 4;
-		MALLOC(newarray, int *, newlen * sizeof(*ng_fec_units),
-		    M_NETGRAPH, M_WAITOK | M_NULLOK);
+		newarray = kmalloc(newlen * sizeof(*ng_fec_units),
+				   M_NETGRAPH, M_WAITOK | M_NULLOK);
 		if (newarray == NULL) {
 			mtx_unlock(&ng_fec_mtx);
 			return (ENOMEM);
@@ -296,7 +296,7 @@ ng_fec_get_unit(int *unit)
 		for (i = ng_fec_units_len; i < newlen; i++)
 			newarray[i] = ~0;
 		if (ng_fec_units != NULL)
-			FREE(ng_fec_units, M_NETGRAPH);
+			kfree(ng_fec_units, M_NETGRAPH);
 		ng_fec_units = newarray;
 		ng_fec_units_len = newlen;
 	}
@@ -334,7 +334,7 @@ ng_fec_free_unit(int unit)
 	 */
 	ng_units_in_use--;
 	if (ng_units_in_use == 0) { /* XXX make SMP safe */
-		FREE(ng_fec_units, M_NETGRAPH);
+		kfree(ng_fec_units, M_NETGRAPH);
 		ng_fec_units_len = 0;
 		ng_fec_units = NULL;
 	}
@@ -404,8 +404,8 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	}
 
 	/* Allocate new list entry. */
-	MALLOC(new, struct ng_fec_portlist *,
-	    sizeof(struct ng_fec_portlist), M_NETGRAPH, M_WAITOK | M_NULLOK);
+	new = kmalloc(sizeof(struct ng_fec_portlist), M_NETGRAPH,
+		      M_WAITOK | M_NULLOK);
 	if (new == NULL)
 		return(ENOMEM);
 
@@ -512,7 +512,7 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 
 	/* Delete port */
 	TAILQ_REMOVE(&b->ng_fec_ports, p, fec_list);
-	FREE(p, M_NETGRAPH);
+	kfree(p, M_NETGRAPH);
 	b->fec_ifcnt--;
 
 	if (b->fec_ifcnt == 0)
@@ -1197,13 +1197,14 @@ ng_fec_constructor(node_p node)
 	int error = 0;
 
 	/* Allocate node and interface private structures */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH,
+		       M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
 	ifp = priv->ifp = if_alloc(IFT_ETHER);
 	if (ifp == NULL) {
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (ENOSPC);
 	}
 	b = &priv->fec_bundle;
@@ -1214,7 +1215,7 @@ ng_fec_constructor(node_p node)
 	/* Get an interface unit number */
 	if ((error = ng_fec_get_unit(&priv->unit)) != 0) {
 		if_free(ifp);
-		FREE(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (error);
 	}
 
@@ -1338,7 +1339,7 @@ ng_fec_shutdown(node_p node)
 	if_free_type(priv->ifp, IFT_ETHER);
 	ifmedia_removeall(&priv->ifmedia);
 	ng_fec_free_unit(priv->unit);
-	FREE(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);
 	return (0);

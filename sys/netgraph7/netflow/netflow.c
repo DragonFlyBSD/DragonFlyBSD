@@ -330,9 +330,8 @@ ng_netflow_cache_init(priv_p priv)
 	uma_zone_set_max(priv->zone, CACHESIZE);
 
 	/* Allocate hash. */
-	MALLOC(priv->hash, struct flow_hash_entry *,
-	    NBUCKETS * sizeof(struct flow_hash_entry),
-	    M_NETFLOW_HASH, M_WAITOK | M_ZERO);
+	priv->hash = kmalloc(NBUCKETS * sizeof(struct flow_hash_entry),
+			     M_NETFLOW_HASH, M_WAITOK | M_ZERO);
 
 	if (priv->hash == NULL) {
 		uma_zdestroy(priv->zone);
@@ -381,7 +380,7 @@ ng_netflow_cache_flush(priv_p priv)
 
 	/* Free hash memory. */
 	if (priv->hash)
-		FREE(priv->hash, M_NETFLOW_HASH);
+		kfree(priv->hash, M_NETFLOW_HASH);
 
 	mtx_destroy(&priv->export_mtx);
 }

@@ -293,6 +293,7 @@ kbd_unregister(keyboard_t *kbd)
 {
 	int error;
 
+	KBD_LOCK_ASSERT(kbd);
 	lwkt_gettoken(&tty_token);
 	if ((kbd->kb_index < 0) || (kbd->kb_index >= keyboards)) {
 		lwkt_reltoken(&tty_token);

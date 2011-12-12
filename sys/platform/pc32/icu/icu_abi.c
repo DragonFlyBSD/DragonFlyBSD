@@ -186,8 +186,6 @@ icu_abi_intr_setup(int intr, int flags __unused)
 	ef = read_eflags();
 	cpu_disable_intr();
 
-	setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYS386IGT,
-	    SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	machintr_intr_enable(intr);
 
 	write_eflags(ef);
@@ -204,8 +202,6 @@ icu_abi_intr_teardown(int intr)
 	cpu_disable_intr();
 
 	machintr_intr_disable(intr);
-	setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYS386IGT,
-	    SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 
 	write_eflags(ef);
 }
