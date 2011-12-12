@@ -29,22 +29,11 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
+#
 
-TMP_DIR="/tmp"
-BOOT_DIR="/boot"
-INITRD_SIZE="15m"
-BIN_TOOLS="mkdir rm sh kill"
-SBIN_TOOLS="mount mount_devfs mount_hammer mount_nfs mount_null mount_procfs mount_tmpfs umount iscontrol cryptsetup lvm sysctl udevd tcplay"
-INITRD_DIRS="bin boot dev etc mnt proc sbin tmp var new_root"
-CONTENT_DIRS="/usr/share/initrd"
+. /etc/defaults/mkinitrd.conf
 
-if [ -e /etc/defaults/mkinitrd.conf ]; then
-	. /etc/defaults/mkinitrd.conf
-	echo "Loaded configuration from /etc/defaults/mkinitrd.conf"
-fi
-
-
-if [ -e /etc/mkinitrd.conf ]; then
+if [ -r /etc/mkinitrd.conf ]; then
 	. /etc/mkinitrd.conf
 	echo "Loaded configuration from /etc/mkinitrd.conf"
 fi
