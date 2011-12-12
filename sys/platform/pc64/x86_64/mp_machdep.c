@@ -290,7 +290,7 @@ init_secondary(void)
 	msr = ((u_int64_t)GSEL(GCODE_SEL, SEL_KPL) << 32) |
 	      ((u_int64_t)GSEL(GUCODE32_SEL, SEL_UPL) << 48);
 	wrmsr(MSR_STAR, msr);
-	wrmsr(MSR_SF_MASK, PSL_NT|PSL_T|PSL_I|PSL_C|PSL_D);
+	wrmsr(MSR_SF_MASK, PSL_NT|PSL_T|PSL_I|PSL_C|PSL_D|PSL_IOPL);
 
 	pmap_set_opt();		/* PSE/4MB pages, etc */
 #if JGXXX

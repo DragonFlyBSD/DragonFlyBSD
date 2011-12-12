@@ -769,7 +769,6 @@ alltraps:
 	pushl	%es
 	pushl	%fs
 	pushl	%gs
-	cld
 	.globl	alltraps_with_regs_pushed
 alltraps_with_regs_pushed:
 	mov	$KDSEL,%ax
@@ -783,6 +782,7 @@ calltrap:
 	FAKE_MCOUNT(btrap)		/* init "from" _btrap -> calltrap */
 	incl	PCPU(cnt)+V_TRAP
 	/* warning, trap frame dummy arg, no extra reg pushes */
+	cld
 	pushl	%esp			/* pass frame by reference */
 	call	trap
 	addl	$4,%esp

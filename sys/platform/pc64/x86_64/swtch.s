@@ -163,6 +163,7 @@ ENTRY(cpu_heavy_switch)
 	 * PCB_RSP.  We push the flags for later restore by cpu_heavy_restore.
 	 */
 	pushfq
+	cli
 	movq	$cpu_heavy_restore, %rax
 	pushq	%rax
 	movq	%rsp,TD_SP(%rbx)
@@ -267,6 +268,7 @@ ENTRY(cpu_exit_switch)
 	 * thread but %rsp still points to the old thread's stack, but
 	 * we are protected by a critical section so it is ok.
 	 */
+	cli
 	movq	%rdi,%rax
 	movq	%rax,PCPU(curthread)
 	movq	TD_SP(%rax),%rsp
@@ -478,6 +480,8 @@ ENTRY(cpu_heavy_restore)
 	movq	PCB_R15(%rdx), %r15
 	movq	PCB_RIP(%rdx), %rax
 	movq	%rax, (%rsp)
+	movw	$KDSEL,%ax
+	movw	%ax,%es
 
 #if JG
 	/*
@@ -704,6 +708,7 @@ ENTRY(cpu_lwkt_switch)
 	pushq	%r14
 	pushq	%r15
 	pushfq
+	cli
 
 #if 1
 	/*

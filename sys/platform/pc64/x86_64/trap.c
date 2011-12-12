@@ -937,11 +937,11 @@ nogo:
 	if (td->td_lwp->lwp_vkernel == NULL) {
 		if (bootverbose || freeze_on_seg_fault || ddb_on_seg_fault) {
 			kprintf("seg-fault ft=%04x ff=%04x addr=%p rip=%p "
-			    "pid=%d p_comm=%s\n",
+			    "pid=%d cpu=%d p_comm=%s\n",
 			    ftype, fault_flags,
 			    (void *)frame->tf_addr,
 			    (void *)frame->tf_rip,
-			    p->p_pid, p->p_comm);
+			    p->p_pid, mycpu->gd_cpuid, p->p_comm);
 		}
 #ifdef DDB
 		while (freeze_on_seg_fault) {
@@ -1276,6 +1276,9 @@ out:
 		 * (which was holding the value of %rcx) is restored for
 		 * the next iteration.
 		 */
+		if (frame->tf_err != 0 && frame->tf_err != 2)
+			kprintf("lp %s:%d frame->tf_err is weird %ld\n",
+				td->td_comm, lp->lwp_proc->p_pid, frame->tf_err);
 		frame->tf_rip -= frame->tf_err;
 		frame->tf_r10 = frame->tf_rcx;
 		break;

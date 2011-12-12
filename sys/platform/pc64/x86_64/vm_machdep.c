@@ -201,7 +201,8 @@ cpu_prepare_lwp(struct lwp *lp, struct lwp_params *params)
 	regs->tf_rip = (long)params->func;
 	regs->tf_rsp = (long)params->stack;
 	/* Set up argument for function call */
-	regs->tf_rdi = (long)params->arg; /* JG Can this be in userspace addresses? */
+	regs->tf_rdi = (long)params->arg;
+
 	/*
 	 * Set up fake return address.  As the lwp function may never return,
 	 * we simply copy out a NULL pointer and force the lwp to receive
@@ -410,3 +411,68 @@ kvm_access_check(vm_offset_t saddr, vm_offset_t eaddr, int prot)
 	return 0;
 }
 
+#if 0
+
+void _test_frame_enter(struct trapframe *frame);
+void _test_frame_exit(struct trapframe *frame);
+
+void
+_test_frame_enter(struct trapframe *frame)
+{
+	thread_t td = curthread;
+
+	if (ISPL(frame->tf_cs) == SEL_UPL) {
+		KKASSERT(td->td_lwp);
+                KASSERT(td->td_lwp->lwp_md.md_regs == frame,
+                        ("_test_frame_exit: Frame mismatch %p %p",
+			td->td_lwp->lwp_md.md_regs, frame));
+	    td->td_lwp->lwp_saveusp = (void *)frame->tf_rsp;
+	    td->td_lwp->lwp_saveupc = (void *)frame->tf_rip;
+	}
+	if ((char *)frame < td->td_kstack ||
+	    (char *)frame > td->td_kstack + td->td_kstack_size) {
+		panic("_test_frame_exit: frame not on kstack %p kstack=%p\n",
+			frame, td->td_kstack);
+	}
+}
+
+void
+_test_frame_exit(struct trapframe *frame)
+{
+	thread_t td = curthread;
+
+	if (ISPL(frame->tf_cs) == SEL_UPL) {
+		KKASSERT(td->td_lwp);
+                KASSERT(td->td_lwp->lwp_md.md_regs == frame,
+                        ("_test_frame_exit: Frame mismatch %p %p",
+			td->td_lwp->lwp_md.md_regs, frame));
+		if (td->td_lwp->lwp_saveusp != (void *)frame->tf_rsp) {
+			kprintf("_test_frame_exit: %s:%d usp mismatch %p/%p\n",
+				td->td_comm, td->td_proc->p_pid,
+				td->td_lwp->lwp_saveusp,
+				(void *)frame->tf_rsp);
+		}
+		if (td->td_lwp->lwp_saveupc != (void *)frame->tf_rip) {
+			kprintf("_test_frame_exit: %s:%d upc mismatch %p/%p\n",
+				td->td_comm, td->td_proc->p_pid,
+				td->td_lwp->lwp_saveupc,
+				(void *)frame->tf_rip);
+		}
+
+		/*
+		 * adulterate the fields to catch entries that
+		 * don't run through test_frame_enter
+		 */
+		td->td_lwp->lwp_saveusp =
+			(void *)~(intptr_t)td->td_lwp->lwp_saveusp;
+		td->td_lwp->lwp_saveupc =
+			(void *)~(intptr_t)td->td_lwp->lwp_saveupc;
+	}
+	if ((char *)frame < td->td_kstack ||
+	    (char *)frame > td->td_kstack + td->td_kstack_size) {
+		panic("_test_frame_exit: frame not on kstack %p kstack=%p\n",
+			frame, td->td_kstack);
+	}
+}
+
+#endif

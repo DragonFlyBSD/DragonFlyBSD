@@ -223,6 +223,8 @@ struct lwp {
 	u_int		lwp_kqueue_serial;
 	struct lwkt_token lwp_token;	/* per-lwp token for signal/state */
 	struct spinlock lwp_spin;	/* spinlock for signal handling */
+	void		*lwp_reserveds1; /* reserved for lwp_saveusp */
+	void		*lwp_reserveds2; /* reserved for lwp_saveupc */
 };
 
 struct	proc {

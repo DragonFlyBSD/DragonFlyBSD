@@ -183,6 +183,7 @@ alltraps_pushregs_no_rdi:
 	.globl	calltrap
 	.type	calltrap,@function
 calltrap:
+	cld
 	movq	%rsp, %rdi
 	call	trap
 	MEXITCOUNT
@@ -228,6 +229,7 @@ IDTVEC(dblfault)
 	jz	1f
 	swapgs
 1:	movq	%rsp, %rdi
+	cld
 	call	dblfault_handler
 2:	hlt
 	jmp	2b
@@ -409,6 +411,7 @@ nmi_needswapgs:
 /* Note: this label is also used by ddb and gdb: */
 nmi_calltrap:
 	FAKE_MCOUNT(TF_RIP(%rsp))
+	cld
 	movq	%rsp, %rdi
 	call	trap
 	MEXITCOUNT

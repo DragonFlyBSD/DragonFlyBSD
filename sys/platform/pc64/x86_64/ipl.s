@@ -474,7 +474,7 @@ splz_timer:
 	 */
 #define PUSH_DUMMY							\
 	pushfq ;			/* phys int frame / flags */	\
-	movl	%cs,%eax ;						\
+	xorq	%rax,%rax ;		/* something not SEL_UPL */	\
 	pushq	%rax ;			/* phys int frame / cs */	\
 	pushq	3*8(%rsp) ;		/* original caller eip */	\
 	subq	$TF_RIP,%rsp ;		/* trap frame */		\
