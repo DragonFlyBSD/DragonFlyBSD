@@ -1,3 +1,3 @@
-SUBDIR=cmx dcons joy kbdmux lpbb pcfclock nmdm syscons snp tbridge
+SUBDIR=cmx dcons ecc joy kbdmux lpbb pcfclock nmdm syscons snp tbridge
 
 .include <bsd.subdir.mk>

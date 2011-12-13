@@ -1337,6 +1337,7 @@ device		"snd_uaudio"
 # Miscellaneous hardware:
 #
 # bktr: Brooktree bt848/848a/849a/878/879 video capture and TV Tuner board
+# ecc: ECC memory controller
 # joy: joystick
 # rp: Comtrol Rocketport(ISA) - single card
 # si: Specialix SI/XIO 4-32 port terminal multiplexor
@@ -1375,7 +1376,7 @@ device		"snd_uaudio"
 #  The Rev 2 host cards use a 32K chunk, on a 32K boundary.
 #  The cards can use an IRQ of 11, 12 or 15.
 
-# for the SoundBlaster 16 multicd - up to 4 devices
+device		ecc
 device		joy0	at isa? port IO_GAME
 device		nrp
 #device		rp0	at isa? port 0x280

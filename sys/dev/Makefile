@@ -3,7 +3,6 @@
 SUBDIR=	\
 	acpica5 \
 	agp \
-	bridge \
 	crypto \
 	disk \
 	drm \
