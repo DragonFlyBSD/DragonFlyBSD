@@ -347,6 +347,9 @@ ioapic_gsi_setup(int gsi)
 		return;
 	}
 
+	trig = 0;	/* silence older gcc's */
+	pola = 0;	/* silence older gcc's */
+
 	for (irq = 0; irq < ISA_IRQ_CNT; ++irq) {
 		const struct ioapic_intsrc *int_src =
 		    &ioapic_conf.ioc_intsrc[irq];
