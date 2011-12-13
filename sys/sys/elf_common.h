@@ -224,6 +224,7 @@ typedef struct {
 #define EM_486		6	/* Intel i486. */
 #define EM_MIPS_RS4_BE	10	/* MIPS R4000 Big-Endian */
 #define EM_ALPHA_STD	41	/* Digital Alpha (standard value). */
+#define EM_ALPHA	0x9026	/* Alpha (written in the absence of an ABI) */
 
 #define EM_NUM		111
 
