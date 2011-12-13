@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd October 10, 2006
+.Dd December 13, 2011
 .Dt ECC 4
 .Os
 .Sh NAME
@@ -47,7 +47,18 @@ device attaches to an ECC memory controller.
 If ECC support is enabled in the BIOS, the device will poll the controller
 once a second and report any corrections or uncorrectable errors.
 .Sh HARDWARE
-Currently, only the AMD64's memory controller is supported.
+The
+.Nm
+driver supports the following memory controllers:
+.Pp
+.Bl -bullet -compact
+.It
+AMD 8000 memory controller
+.It
+AMD 8151 memory controller
+.It
+Intel E3-1200 memory controller
+.El
 .Sh HISTORY
 The
 .Nm
