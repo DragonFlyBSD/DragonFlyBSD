@@ -66,10 +66,15 @@
 
 /* __BIT(n): nth bit, where __BIT(0) == 0x1. */
 #define	__BIT(__n) (((__n) == 32) ? 0 : ((uint32_t)1 << (__n)))
+#define	__BIT64(__n) (((__n) == 64) ? 0 : ((uint64_t)1 << (__n)))
 
 /* __BITS(m, n): bits m through n, m < n. */
 #define	__BITS(__m, __n)	\
 	((__BIT(MAX((__m), (__n)) + 1) - 1) ^ (__BIT(MIN((__m), (__n))) - 1))
+
+#define	__BITS64(__m, __n)	\
+	((__BIT64(MAX((__m), (__n)) + 1) - 1) ^ \
+	 (__BIT64(MIN((__m), (__n))) - 1))
 
 /* Find least significant bit that is set */
 #define	__LOWEST_SET_BIT(__mask) ((((__mask) - 1) & (__mask)) ^ (__mask))
