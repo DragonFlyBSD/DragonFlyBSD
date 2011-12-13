@@ -188,7 +188,7 @@ __elfN(brand_inuse)(Elf_Brandinfo *entry)
 
 	info.rval = FALSE;
 	info.entry = entry;
-	allproc_scan(elf_brand_inuse_callback, entry);
+	allproc_scan(elf_brand_inuse_callback, &info);
 	return (info.rval);
 }
 
