@@ -72,8 +72,7 @@ struct intr_info {
 	unsigned long	i_straycount;
 } intr_info_ary[MAX_INTS];
 
-int max_installed_hard_intr;
-int max_installed_soft_intr;
+static int max_installed_hard_intr;
 
 #define EMERGENCY_INTR_POLLING_FREQ_MAX 20000
 
@@ -325,9 +324,6 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     if (intr < FIRST_SOFTINT) {
 	if (max_installed_hard_intr <= intr)
 	    max_installed_hard_intr = intr + 1;
-    } else {
-	if (max_installed_soft_intr <= intr)
-	    max_installed_soft_intr = intr + 1;
     }
 
     /*
@@ -1022,34 +1018,6 @@ SYSCTL_PROC(_hw, OID_AUTO, intrnames, CTLTYPE_OPAQUE | CTLFLAG_RD,
 	NULL, 0, sysctl_intrnames, "", "Interrupt Names");
 
 static int
-sysctl_intrcnt(SYSCTL_HANDLER_ARGS)
-{
-    struct intr_info *info;
-    int error = 0;
-    int intr;
-
-    for (intr = 0; intr < max_installed_hard_intr; ++intr) {
-	info = &intr_info_ary[intr];
-
-	error = SYSCTL_OUT(req, &info->i_count, sizeof(info->i_count));
-	if (error)
-		goto failed;
-    }
-    for (intr = FIRST_SOFTINT; intr < max_installed_soft_intr; ++intr) {
-	info = &intr_info_ary[intr];
-
-	error = SYSCTL_OUT(req, &info->i_count, sizeof(info->i_count));
-	if (error)
-		goto failed;
-    }
-failed:
-    return(error);
-}
-
-SYSCTL_PROC(_hw, OID_AUTO, intrcnt, CTLTYPE_OPAQUE | CTLFLAG_RD,
-	NULL, 0, sysctl_intrcnt, "", "Interrupt Counts");
-
-static int
 sysctl_intrcnt_all(SYSCTL_HANDLER_ARGS)
 {
     struct intr_info *info;
@@ -1068,6 +1036,9 @@ failed:
 }
 
 SYSCTL_PROC(_hw, OID_AUTO, intrcnt_all, CTLTYPE_OPAQUE | CTLFLAG_RD,
+	NULL, 0, sysctl_intrcnt_all, "", "Interrupt Counts");
+
+SYSCTL_PROC(_hw, OID_AUTO, intrcnt, CTLTYPE_OPAQUE | CTLFLAG_RD,
 	NULL, 0, sysctl_intrcnt_all, "", "Interrupt Counts");
 
 static void
