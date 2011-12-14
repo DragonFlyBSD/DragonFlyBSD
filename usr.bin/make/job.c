@@ -2251,8 +2251,7 @@ Job_CatchChildren(bool block)
 	}
 
 	for (;;) {
-		pid = waitpid((pid_t)-1, &status,
-		    (block ? 0 : WNOHANG) | WUNTRACED);
+		pid = waitpid((pid_t)-1, &status, (block ? 0 : WNOHANG));
 		if (pid <= 0)
 			break;
 
