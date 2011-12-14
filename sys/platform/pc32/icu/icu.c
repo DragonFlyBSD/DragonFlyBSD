@@ -131,6 +131,7 @@ icu_definit(void)
 void
 icu_reinit(void)
 {
+#ifdef foo
 	int i;
 
 	icu_init();
@@ -138,6 +139,9 @@ icu_reinit(void)
 		if (count_registered_ints(i))
 			machintr_intr_enable(i);
 	}
+#else
+	icu_init();
+#endif
 }
 
 /*

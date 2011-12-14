@@ -117,7 +117,6 @@ void *register_int(int intr, inthand2_t *handler, void *arg,
 			    struct lwkt_serialize *serializer, int flags,
 			    int cpuid);
 long get_interrupt_counter(int intr);
-int count_registered_ints(int intr);
 
 void unregister_swi(void *id, int intr, int cpuid);
 void unregister_int(void *id, int cpuid);

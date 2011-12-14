@@ -419,17 +419,6 @@ unregister_int(void *id, int cpuid)
     }
 }
 
-int
-count_registered_ints(int intr)
-{
-    struct intr_info *info;
-
-    if (intr < 0 || intr >= MAX_INTS)
-	panic("register_int: bad intr %d", intr);
-    info = &intr_info_ary[intr];
-    return(info->i_fast + info->i_slow);
-}
-
 long
 get_interrupt_counter(int intr)
 {
