@@ -276,8 +276,6 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 		/*
 		 * Change setting atomically.
 		 */
-		crit_enter();
-
 		ps->ps_catchmask[_SIG_IDX(sig)] = act->sa_mask;
 		SIG_CANTMASK(ps->ps_catchmask[_SIG_IDX(sig)]);
 		if (act->sa_flags & SA_SIGINFO) {
@@ -354,8 +352,6 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 			else
 				SIGADDSET(p->p_sigcatch, sig);
 		}
-
-		crit_exit();
 	}
 	lwkt_reltoken(&p->p_token);
 	return (0);
@@ -725,8 +721,11 @@ killpg_all_callback(struct proc *p, void *data)
 }
 
 /*
- * Send a general signal to a process or LWPs within that process.  Note
- * that new signals cannot be sent if a process is exiting.
+ * Send a general signal to a process or LWPs within that process.
+ *
+ * Note that new signals cannot be sent if a process is exiting or already
+ * a zombie, but we return success anyway as userland is likely to not handle
+ * the race properly.
  * 
  * No requirements.
  */
@@ -744,10 +743,20 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 		struct proc *p;
 		struct lwp *lp = NULL;
 
-		/* kill single process */
+		/*
+		 * Send a signal to a single process.  If the kill() is
+		 * racing an exiting process which has not yet been reaped
+		 * act as though the signal was delivered successfully but
+		 * don't actually try to deliver the signal.
+		 */
 		if ((p = pfind(pid)) == NULL) {
+			if ((p = zpfind(pid)) == NULL) {
+				lwkt_reltoken(&proc_token);
+				return (ESRCH);
+			}
 			lwkt_reltoken(&proc_token);
-			return (ESRCH);
+			PRELE(p);
+			return (0);
 		}
 		lwkt_gettoken(&p->p_token);
 		if (!CANSIGNAL(p, sig)) {
@@ -1092,11 +1101,21 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 
 	KKASSERT(lp == NULL || lp->lwp_proc == p);
 
+	/*
+	 * We don't want to race... well, all sorts of things.  Get appropriate
+	 * tokens.
+	 *
+	 * Don't try to deliver a generic signal to an exiting process,
+	 * the signal structures could be in flux.  We check the LWP later
+	 * on.
+	 */
 	PHOLD(p);
 	lwkt_gettoken(&p->p_token);
 	if (lp) {
 		LWPHOLD(lp);
 		lwkt_gettoken(&lp->lwp_token);
+	} else if (p->p_flags & P_WEXIT) {
+		goto out;
 	}
 
 	prop = sigprop(sig);
@@ -1171,8 +1190,6 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		SIG_CONTSIGMASK(p->p_siglist);
 		p->p_flags &= ~P_CONTINUED;
 	}
-
-	crit_enter();
 
 	if (p->p_stat == SSTOP) {
 		/*
@@ -1323,9 +1340,13 @@ active_process:
 		/*
 		 * Do not actually try to manipulate the process, but simply
 		 * stop it.  Lwps will stop as soon as they safely can.
+		 *
+		 * Ignore stop if the process is exiting.
 		 */
-		p->p_xstat = sig;
-		proc_stop(p);
+		if ((p->p_flags & P_WEXIT) == 0) {
+			p->p_xstat = sig;
+			proc_stop(p);
+		}
 		goto out;
 	}
 
@@ -1351,7 +1372,6 @@ out:
 	}
 	lwkt_reltoken(&p->p_token);
 	PRELE(p);
-	crit_exit();
 }
 
 /*
@@ -1483,11 +1503,9 @@ proc_stop(struct proc *p)
 	struct lwp *lp;
 
 	ASSERT_LWKT_TOKEN_HELD(&p->p_token);
-	crit_enter();
 
 	/* If somebody raced us, be happy with it */
 	if (p->p_stat == SSTOP || p->p_stat == SZOMB) {
-		crit_exit();
 		return;
 	}
 	p->p_stat = SSTOP;
@@ -1547,7 +1565,6 @@ proc_stop(struct proc *p)
 		lwkt_reltoken(&q->p_token);
 		PRELE(q);
 	}
-	crit_exit();
 }
 
 /*
@@ -1559,12 +1576,9 @@ proc_unstop(struct proc *p)
 	struct lwp *lp;
 
 	ASSERT_LWKT_TOKEN_HELD(&p->p_token);
-	crit_enter();
 
-	if (p->p_stat != SSTOP) {
-		crit_exit();
+	if (p->p_stat != SSTOP)
 		return;
-	}
 
 	p->p_stat = SACTIVE;
 
@@ -1624,7 +1638,6 @@ proc_unstop(struct proc *p)
 	 * token.
 	 */
 	wakeup(p);
-	crit_exit();
 }
 
 /* 
@@ -1991,9 +2004,11 @@ issignal(struct lwp *lp, int maytrace)
 		    		    (p->p_pgrp->pg_jobc == 0 &&
 				    prop & SA_TTYSTOP))
 					break;	/* == ignore */
-				p->p_xstat = sig;
-				proc_stop(p);
-				tstop();
+				if ((p->p_flags & P_WEXIT) == 0) {
+					p->p_xstat = sig;
+					proc_stop(p);
+					tstop();
+				}
 				break;
 			} else if (prop & SA_IGNORE) {
 				/*
@@ -2090,8 +2105,6 @@ postsig(int sig)
 		KASSERT(action != SIG_IGN && !SIGISMEMBER(lp->lwp_sigmask, sig),
 		    ("postsig action"));
 
-		crit_enter();
-
 		/*
 		 * Reset the signal handler if asked to
 		 */
@@ -2126,7 +2139,6 @@ postsig(int sig)
 		if (!SIGISMEMBER(ps->ps_signodefer, sig))
 			SIGADDSET(lp->lwp_sigmask, sig);
 
-		crit_exit();
 		lp->lwp_ru.ru_nsignals++;
 		if (lp->lwp_sig != sig) {
 			code = 0;
