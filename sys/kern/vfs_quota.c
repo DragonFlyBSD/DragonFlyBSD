@@ -109,9 +109,15 @@ gnode_insert(struct mount *mp, gid_t gid)
 	return gnp;
 }
 
+static int vfs_accounting_enabled = 0;	/* global vfs accounting enable */
+TUNABLE_INT("vfs.accounting.enable", &vfs_accounting_enabled);
+
 /* initializes global accounting data */
 void
 vq_init(struct mount *mp) {
+
+	if (!vfs_accounting_enabled)
+		return;
 
 	/* initialize the rb trees */
 	RB_INIT(&mp->mnt_acct.ac_uroot);
