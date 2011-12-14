@@ -419,22 +419,6 @@ unregister_int(void *id, int cpuid)
     }
 }
 
-const char *
-get_registered_name(int intr)
-{
-    intrec_t rec;
-
-    if (intr < 0 || intr >= MAX_INTS)
-	panic("register_int: bad intr %d", intr);
-
-    if ((rec = intr_info_ary[intr].i_reclist) == NULL)
-	return(NULL);
-    else if (rec->next)
-	return("mux");
-    else
-	return(rec->name);
-}
-
 int
 count_registered_ints(int intr)
 {
@@ -455,19 +439,6 @@ get_interrupt_counter(int intr)
 	panic("register_int: bad intr %d", intr);
     info = &intr_info_ary[intr];
     return(info->i_count);
-}
-
-
-void
-swi_setpriority(int intr, int pri)
-{
-    struct intr_info *info;
-
-    if (intr < FIRST_SOFTINT || intr >= MAX_INTS)
-	panic("register_swi: bad intr %d", intr);
-    info = &intr_info_ary[intr];
-    if (info->i_state != ISTATE_NOTHREAD)
-	lwkt_setpri(&info->i_thread, pri);
 }
 
 void

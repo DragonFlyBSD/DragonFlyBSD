@@ -118,9 +118,7 @@ void *register_int(int intr, inthand2_t *handler, void *arg,
 			    int cpuid);
 long get_interrupt_counter(int intr);
 int count_registered_ints(int intr);
-const char *get_registered_name(int intr);
 
-void swi_setpriority(int intr, int pri);
 void unregister_swi(void *id, int intr, int cpuid);
 void unregister_int(void *id, int cpuid);
 void register_randintr(int intr);
