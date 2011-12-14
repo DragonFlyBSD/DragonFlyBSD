@@ -116,7 +116,8 @@ SYSCTL_INT(_vfs, OID_AUTO, accounting_enabled, CTLFLAG_RD,
 
 /* initializes global accounting data */
 void
-vq_init(struct mount *mp) {
+vq_init(struct mount *mp)
+{
 
 	if (!vfs_accounting_enabled)
 		return;
@@ -139,7 +140,8 @@ vq_init(struct mount *mp) {
 
 
 void
-vq_done(struct mount *mp) {
+vq_done(struct mount *mp)
+{
 	/* TODO: remove the rb trees here */
 }
 
@@ -170,7 +172,8 @@ vfs_stdaccount(struct mount *mp, uid_t uid, gid_t gid, int64_t delta)
 }
 
 static void
-cmd_get_usage_all(struct mount *mp, prop_array_t dict_out) {
+cmd_get_usage_all(struct mount *mp, prop_array_t dict_out)
+{
 	struct ac_unode *unp;
 	struct ac_gnode *gnp;
 	int i;
