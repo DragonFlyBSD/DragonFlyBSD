@@ -107,7 +107,7 @@ is returned.
 In user space, the buffer is allocated using
 .Xr malloc 3 .
 In the kernel, the buffer is allocated using
-.Xr malloc 9
+.Xr kmalloc 9
 using the malloc type
 .Dv M_TEMP .
 .It Fn prop_data_data_nocopy "prop_data_t data"
