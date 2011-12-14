@@ -72,7 +72,7 @@ struct intr_info {
 	unsigned long	i_straycount;
 } intr_info_ary[MAX_INTS];
 
-static int max_installed_hard_intr;
+static int max_installed_hard_intr[MAXCPU];
 
 #define EMERGENCY_INTR_POLLING_FREQ_MAX 20000
 
@@ -123,8 +123,8 @@ static void int_moveto_origcpu(int, int);
 
 int intr_info_size = NELEM(intr_info_ary);
 
-static struct systimer emergency_intr_timer;
-static struct thread emergency_intr_thread;
+static struct systimer emergency_intr_timer[MAXCPU];
+static struct thread emergency_intr_thread[MAXCPU];
 
 #define ISTATE_NOTHREAD		0
 #define ISTATE_NORMAL		1
@@ -156,26 +156,27 @@ SYSCTL_PROC(_kern, OID_AUTO, emergency_intr_freq, CTLTYPE_INT | CTLFLAG_RW,
 static int
 sysctl_emergency_enable(SYSCTL_HANDLER_ARGS)
 {
-	int error, enabled;
+	int error, enabled, cpuid, freq;
 
 	enabled = emergency_intr_enable;
 	error = sysctl_handle_int(oidp, &enabled, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
 	emergency_intr_enable = enabled;
-	if (emergency_intr_enable) {
-		systimer_adjust_periodic(&emergency_intr_timer,
-					 emergency_intr_freq);
-	} else {
-		systimer_adjust_periodic(&emergency_intr_timer, 1);
-	}
+	if (emergency_intr_enable)
+		freq = emergency_intr_freq;
+	else
+		freq = 1;
+
+	for (cpuid = 0; cpuid < ncpus; ++cpuid)
+		systimer_adjust_periodic(&emergency_intr_timer[cpuid], freq);
 	return 0;
 }
 
 static int
 sysctl_emergency_freq(SYSCTL_HANDLER_ARGS)
 {
-        int error, phz;
+        int error, phz, cpuid, freq;
 
         phz = emergency_intr_freq;
         error = sysctl_handle_int(oidp, &phz, 0, req);
@@ -187,12 +188,13 @@ sysctl_emergency_freq(SYSCTL_HANDLER_ARGS)
                 phz = EMERGENCY_INTR_POLLING_FREQ_MAX;
 
         emergency_intr_freq = phz;
-	if (emergency_intr_enable) {
-		systimer_adjust_periodic(&emergency_intr_timer,
-					 emergency_intr_freq);
-	} else {
-		systimer_adjust_periodic(&emergency_intr_timer, 1);
-	}
+	if (emergency_intr_enable)
+		freq = emergency_intr_freq;
+	else
+		freq = 1;
+
+	for (cpuid = 0; cpuid < ncpus; ++cpuid)
+		systimer_adjust_periodic(&emergency_intr_timer[cpuid], freq);
         return 0;
 }
 
@@ -256,19 +258,22 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     rec->next = NULL;
     rec->serializer = serializer;
 
+    int_moveto_destcpu(&orig_cpuid, cpuid);
+
     /*
      * Create an emergency polling thread and set up a systimer to wake
      * it up.
      */
-    if (emergency_intr_thread.td_kstack == NULL) {
-	lwkt_create(ithread_emergency, NULL, NULL, &emergency_intr_thread,
-		    TDF_NOSTART | TDF_INTTHREAD, ncpus - 1, "ithread emerg");
-	systimer_init_periodic_nq(&emergency_intr_timer,
-		    emergency_intr_timer_callback, &emergency_intr_thread, 
+    if (emergency_intr_thread[cpuid].td_kstack == NULL) {
+	lwkt_create(ithread_emergency, NULL, NULL,
+		    &emergency_intr_thread[cpuid],
+		    TDF_NOSTART | TDF_INTTHREAD, cpuid, "ithread emerg %d",
+		    cpuid);
+	systimer_init_periodic_nq(&emergency_intr_timer[cpuid],
+		    emergency_intr_timer_callback,
+		    &emergency_intr_thread[cpuid],
 		    (emergency_intr_enable ? emergency_intr_freq : 1));
     }
-
-    int_moveto_destcpu(&orig_cpuid, cpuid);
 
     /*
      * Create an interrupt thread if necessary, leave it in an unscheduled
@@ -322,8 +327,8 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
      * a bit more efficient.
      */
     if (intr < FIRST_SOFTINT) {
-	if (max_installed_hard_intr <= intr)
-	    max_installed_hard_intr = intr + 1;
+	if (max_installed_hard_intr[cpuid] <= intr)
+	    max_installed_hard_intr[cpuid] = intr + 1;
     }
 
     /*
@@ -918,7 +923,7 @@ ithread_emergency(void *arg __unused)
     globaldata_t gd = mycpu;
     struct intr_info *info;
     intrec_t rec, nrec;
-    int intr;
+    int intr, cpuid = mycpuid;
     TD_INVARIANTS_DECLARE;
 
     get_mplock();
@@ -926,7 +931,7 @@ ithread_emergency(void *arg __unused)
     TD_INVARIANTS_GET(gd->gd_curthread);
 
     for (;;) {
-	for (intr = 0; intr < max_installed_hard_intr; ++intr) {
+	for (intr = 0; intr < max_installed_hard_intr[cpuid]; ++intr) {
 	    info = &intr_info_ary[intr];
 	    for (rec = info->i_reclist; rec; rec = nrec) {
 		/* rec may be invalid after call */
