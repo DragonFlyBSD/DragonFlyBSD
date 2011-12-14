@@ -89,7 +89,7 @@ method where the driver can decide if the request should be accepted.
 .Pp
 The vap creation process is done in three steps.
 First the driver allocates the data structure with
-.Xr malloc 9 .
+.Xr kmalloc 9 .
 This data structure must have an
 .Vt ieee80211vap
 structure at the front but is usually extended with driver-private state.
@@ -153,4 +153,4 @@ that beacon are stopped before stopping the hardware timers).
 .Sh SEE ALSO
 .Xr ieee80211 9 ,
 .Xr ifnet 9 ,
-.Xr malloc 9
+.Xr kmalloc 9

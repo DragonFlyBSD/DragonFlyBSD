@@ -227,7 +227,7 @@ Allocate and initialize a
 structure.
 This method cannot sleep.
 The default method allocates zero'd memory using
-.Xr malloc 9 .
+.Xr kmalloc 9 .
 Drivers should override this method to allocate extended storage
 for their own needs.
 Memory allocated by the driver must be tagged with
@@ -567,4 +567,4 @@ Device supports Reduced Inter Frame Spacing (RIFS).
 .Xr ieee80211_scan 9 ,
 .Xr ieee80211_vap 9 ,
 .Xr ifnet 9 ,
-.Xr malloc 9
+.Xr kmalloc 9
