@@ -279,7 +279,7 @@ doreti_soft:
 	movl	%ecx,%edi		/* argument to C call */
 	incl	TD_NEST_COUNT(%rbx)	/* prevent doreti/splz nesting */
 	decl	TD_CRITCOUNT(%rbx)	/* so we can preempt */
-	call	sched_ithd		/* YYY must pull in imasks */
+	call	sched_ithd_soft		/* YYY must pull in imasks */
 	incl	TD_CRITCOUNT(%rbx)
 	decl	TD_NEST_COUNT(%rbx)
 	popq	%rax
@@ -438,7 +438,7 @@ splz_soft:
 	movl	%ecx,%edi		/* C argument */
 	incl	TD_NEST_COUNT(%rbx)	/* prevent doreti/splz nesting */
 	decl	TD_CRITCOUNT(%rbx)
-	call	sched_ithd		/* YYY must pull in imasks */
+	call	sched_ithd_soft		/* YYY must pull in imasks */
 	incl	TD_CRITCOUNT(%rbx)
 	decl	TD_NEST_COUNT(%rbx)	/* prevent doreti/splz nesting */
 	popq	%rax

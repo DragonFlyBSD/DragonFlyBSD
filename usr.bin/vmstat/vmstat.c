@@ -47,6 +47,7 @@
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
+#include <sys/interrupt.h>
 
 #include <vm/vm_param.h>
 
@@ -743,14 +744,14 @@ dointr(void)
 	intrcnt = calloc(nintr, sizeof(*intrcnt));
 	if (intrcnt == NULL)
 		err(1, "malloc");
-	sysctlbyname("hw.intrcnt_all", intrcnt, &size, NULL, 0);
+	sysctlbyname("hw.intrcnt", intrcnt, &size, NULL, 0);
 
 	nwidth = 21;
 	for (i = 0; i < nintr; ++i) {
 		if (nwidth < (int)strlen(intrname[i]))
 			nwidth = (int)strlen(intrname[i]);
 	}
-	if (verbose) nwidth += 8;
+	if (verbose) nwidth += 12;
 
 	printf("%-*.*s %11s %10s\n",
 		nwidth, nwidth, "interrupt", "total", "rate");
@@ -764,7 +765,9 @@ dointr(void)
 			infop = intrname[i];
 			if (verbose && named) {
 				snprintf(irqinfo, sizeof(irqinfo),
-					 "irq%zd: %s", i, intrname[i]);
+					 "irq%-3zd %3zd: %s",
+					 i % MAX_INTS, i / MAX_INTS,
+					 intrname[i]);
 				infop = irqinfo;
 			}
 			printf("%-*.*s %11lu %10lu\n", 

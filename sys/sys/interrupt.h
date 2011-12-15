@@ -116,14 +116,15 @@ void *register_int(int intr, inthand2_t *handler, void *arg,
 			    const char *name,
 			    struct lwkt_serialize *serializer, int flags,
 			    int cpuid);
-long get_interrupt_counter(int intr);
+long get_interrupt_counter(int intr, int cpuid);
 
 void unregister_swi(void *id, int intr, int cpuid);
 void unregister_int(void *id, int cpuid);
 void register_randintr(int intr);
 void unregister_randintr(int intr);
 int next_registered_randintr(int intr);
-void sched_ithd(int intr);	/* procedure called from MD */
+void sched_ithd_soft(int intr);	/* procedure called from MD */
+void sched_ithd_hard(int intr);	/* procedure called from MD */
 int ithread_cpuid(int intr);
 
 extern char	eintrnames[];	/* end of intrnames[] */

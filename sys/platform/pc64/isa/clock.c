@@ -1019,7 +1019,7 @@ i8254_ioapic_trial(int irq, struct cputimer_intr *cti)
 	KKASSERT(sys_cputimer == &i8254_cputimer);
 	KKASSERT(cti == &i8254_cputimer_intr);
 
-	lastcnt = get_interrupt_counter(irq);
+	lastcnt = get_interrupt_counter(irq, mycpuid);
 
 	/*
 	 * Force an 8254 Timer0 interrupt and wait 1/100s for
@@ -1032,7 +1032,7 @@ i8254_ioapic_trial(int irq, struct cputimer_intr *cti)
 	while (sys_cputimer->count() - base < sys_cputimer->freq / 100)
 		; /* nothing */
 
-	if (get_interrupt_counter(irq) - lastcnt == 0)
+	if (get_interrupt_counter(irq, mycpuid) - lastcnt == 0)
 		return ENOENT;
 	return 0;
 }

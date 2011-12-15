@@ -139,12 +139,12 @@ splz(void)
 				--irq;
 				atomic_clear_int(&gd->gd_spending, 1 << irq);
 				irq += FIRST_SOFTINT;
-				sched_ithd(irq);
+				sched_ithd_soft(irq);
 			}
 			while ((irq = ffs(gd->gd_fpending)) != 0) {
 				--irq;
 				atomic_clear_int(&gd->gd_fpending, 1 << irq);
-				sched_ithd(irq);
+				sched_ithd_hard(irq);
 			}
 		}
 		crit_exit_noyield(td);
@@ -154,7 +154,7 @@ splz(void)
 /*
  * Allows an unprotected signal handler or mailbox to signal an interrupt
  *
- * For sched_ithd() to properly preempt via lwkt_schedule() we cannot
+ * For sched_ithd_hard() to properly preempt via lwkt_schedule() we cannot
  * enter a critical section here.  We use td_nest_count instead.
  */
 void
@@ -169,7 +169,7 @@ signalintr(int intr)
 	} else {
 		++td->td_nest_count;
 		atomic_clear_int(&gd->gd_fpending, 1 << intr);
-		sched_ithd(intr);
+		sched_ithd_hard(intr);
 		--td->td_nest_count;
 	}
 }

@@ -204,7 +204,7 @@ acpi_sci_config(void)
 		    intr_str_trigger(mode->sci_trig),
 		    intr_str_polarity(mode->sci_pola));
 
-		last_cnt = get_interrupt_counter(acpi_sci_irq);
+		last_cnt = get_interrupt_counter(acpi_sci_irq, 0);
 
 		machintr_intr_config(acpi_sci_irq,
 		    mode->sci_trig, mode->sci_pola);
@@ -218,7 +218,7 @@ acpi_sci_config(void)
 
 		unregister_int(sci_desc, 0);
 
-		if (get_interrupt_counter(acpi_sci_irq) - last_cnt < 20) {
+		if (get_interrupt_counter(acpi_sci_irq, 0) - last_cnt < 20) {
 			acpi_sci_trig = mode->sci_trig;
 			acpi_sci_pola = mode->sci_pola;
 
