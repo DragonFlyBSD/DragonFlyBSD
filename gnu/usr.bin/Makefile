@@ -11,7 +11,9 @@ SUBDIR+=gdb
 .endif
 
 SUBDIR+= binutils222
+.if !defined(NO_BINUTILS221)
 SUBDIR+= binutils221
+.endif
 
 .if !defined(NO_GCC41)
 SUBDIR+= cc41
