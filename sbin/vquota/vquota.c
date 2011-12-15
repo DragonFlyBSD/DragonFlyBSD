@@ -205,7 +205,7 @@ unode_insert(uid_t uid)
 	unp = malloc(sizeof(struct ac_unode));
 	if (unp == NULL) {
 		printf("unode_insert(): malloc failed\n");
-		exit (ENOMEM);
+		exit(ENOMEM);
 	}
 	bzero(unp, sizeof(struct ac_unode));
 
@@ -226,7 +226,7 @@ gnode_insert(gid_t gid)
 	gnp = malloc(sizeof(struct ac_gnode));
 	if (gnp == NULL) {
 		printf("gnode_insert(): malloc failed\n");
-		exit (ENOMEM);
+		exit(ENOMEM);
 	}
 	bzero(gnp, sizeof(struct ac_gnode));
 
@@ -309,7 +309,8 @@ get_dirsize(char* dirname)
 		for (i=0; i<ACCT_CHUNK_NIDS; i++) {
 			if (unp->uid_chunk[i] != 0) {
 				printf("uid %"PRIu32": %"PRIu64"\n",
-					(unp->left_bits << ACCT_CHUNK_BITS) + i, unp->uid_chunk[i]);
+				    (unp->left_bits << ACCT_CHUNK_BITS) + i,
+				    unp->uid_chunk[i]);
 			}
 
 		}
@@ -318,7 +319,8 @@ get_dirsize(char* dirname)
 		for (i=0; i<ACCT_CHUNK_NIDS; i++) {
 			if (gnp->gid_chunk[i] != 0) {
 				printf("gid %"PRIu32": %"PRIu64"\n",
-					(gnp->left_bits << ACCT_CHUNK_BITS) + i, gnp->gid_chunk[i]);
+				    (gnp->left_bits << ACCT_CHUNK_BITS) + i,
+				    gnp->gid_chunk[i]);
 			}
 		}
 	}
@@ -327,7 +329,9 @@ get_dirsize(char* dirname)
 }
 
 /* print a list of filesystems with accounting enabled */
-static int get_fslist(void) {
+static int
+get_fslist(void)
+{
 	struct statfs *mntbufp;
 	int nloc, i;
 
@@ -343,7 +347,7 @@ static int get_fslist(void) {
 	    /* vfs accounting enabled on this one ? */
 	    if (mntbufp[i].f_flags & MNT_ACCOUNTING)
 		printf("%s on %s\n", mntbufp[i].f_mntfromname,
-						mntbufp[i].f_mntonname);
+		    mntbufp[i].f_mntonname);
 	}
 
 	return 0;
@@ -351,7 +355,8 @@ static int get_fslist(void) {
 
 static bool
 send_command(const char *path, const char *cmd,
-		prop_dictionary_t args, prop_dictionary_t *res) {
+		prop_dictionary_t args, prop_dictionary_t *res)
+{
 	prop_dictionary_t dict;
 	struct plistref pref;
 
@@ -385,7 +390,8 @@ send_command(const char *path, const char *cmd,
 	}
 
 	if (flag_debug)
-		printf("Message to kernel:\n%s\n", prop_dictionary_externalize(dict));
+		printf("Message to kernel:\n%s\n",
+		    prop_dictionary_externalize(dict));
 
 	error = vquotactl(path, &pref);
 	if (error != 0) {
@@ -399,13 +405,16 @@ send_command(const char *path, const char *cmd,
 	}
 
 	if (flag_debug)
-		printf("Message from kernel:\n%s\n", prop_dictionary_externalize(*res));
+		printf("Message from kernel:\n%s\n",
+		    prop_dictionary_externalize(*res));
 
 	return true;
 }
 
 /* show collected statistics on mount point */
-static int show_mp(char *path) {
+static int
+show_mp(char *path)
+{
 	prop_dictionary_t args, res;
 	prop_array_t reslist;
 	bool rv;
@@ -447,7 +456,7 @@ static int show_mp(char *path) {
 			printf("gid %u:", id);
 		else
 			printf("total space used");
-		printf(" %" PRIu64 "\n", space);
+		printf(" %"PRIu64"\n", space);
 	}
 	prop_object_iterator_release(iter);
 
@@ -458,7 +467,8 @@ end:
 }
 
 int
-main(int argc, char **argv) {
+main(int argc, char **argv)
+{
 	int ch;
 
 	while ((ch = getopt(argc, argv, "D")) != -1) {
