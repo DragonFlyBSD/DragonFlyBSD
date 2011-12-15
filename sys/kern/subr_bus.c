@@ -1900,12 +1900,31 @@ resource_find(const char *name, int unit, const char *resname,
 	return(ENOENT);
 }
 
+static int
+resource_kenv(const char *name, int unit, const char *resname, long *result)
+{
+	const char *env;
+	char buf[64];
+
+	ksnprintf(buf, sizeof(buf), "%s%d.%s", name, unit, resname);
+	if ((env = kgetenv(buf)) != NULL) {
+		*result = strtol(env, NULL, 0);
+		return(0);
+	}
+	return (ENOENT);
+}
+
 int
 resource_int_value(const char *name, int unit, const char *resname, int *result)
 {
-	int error;
 	struct config_resource *res;
+	long kvalue = 0;
+	int error;
 
+	if (resource_kenv(name, unit, resname, &kvalue) == 0) {
+		*result = (int)kvalue;
+		return 0;
+	}
 	if ((error = resource_find(name, unit, resname, &res)) != 0)
 		return(error);
 	if (res->type != RES_INT)
@@ -1918,9 +1937,14 @@ int
 resource_long_value(const char *name, int unit, const char *resname,
 		    long *result)
 {
-	int error;
 	struct config_resource *res;
+	long kvalue;
+	int error;
 
+	if (resource_kenv(name, unit, resname, &kvalue) == 0) {
+		*result = (long)kvalue;
+		return 0;
+	}
 	if ((error = resource_find(name, unit, resname, &res)) != 0)
 		return(error);
 	if (res->type != RES_LONG)

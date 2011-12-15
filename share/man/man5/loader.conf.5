@@ -167,6 +167,28 @@ selects the video console, and
 .Dq nullconsole
 selects a mute console
 (useful for systems with neither a video console nor a serial port).
+.Pp
+When using a comconsole the kernel defaults to allowing a console on sio0.
+To change this to sio1 you must specify
+.Va sio0.flags=0
+and
+.Va sio1.flags=0x10
+in addition to setting the console to the comconsole.
+.Pp
+If you want the boot code to be available on COM2 at 57600 baud instead
+of COM1, for example, you must set the variables
+.Va BOOT_COMCONSOLE_PORT=0x2f8
+and
+.Va BOOT_COMCONSOLE_SPEED=57600
+in
+.Pa /etc/make.conf
+and recompile and install the boot code at
+.Pa /usr/src/sys/boot ,
+then install the bootcode to the partition via
+.Xr disklabel 8 .
+.Pp
+Note that in comconsole mode the kernel will pick up the baud rate
+from the boot loader, so no kernel recompile is needed.
 .It Va fred_disable
 .Pq Dq NO
 Shows a monochrome version of Fred, the official
@@ -218,6 +240,19 @@ If set to
 the vesa module will be loaded, enabling bitmaps above VGA resolution to
 be displayed.
 .El
+.Sh IPMI
+Generally speaking machines with IPMI capabilities are capable of
+redirecting the BIOS POST to a fake serial port controlled by the BMC.
+It is then possible to use
+.Xr ipmitool 1
+from pkgsrc to access the console.
+DragonFly kernels adjust the video mode in a way that the BMC cannot usually
+redirect, so your best bet is to set the boot loader AND the kernel up to
+use a serial port via the
+.Va console=comconsole
+feature described above.
+Often the IPMI controller, called the BMC, is not sitting on COM1 so
+DragonFly's default console parameters and baud rate will not work.
 .Sh FILES
 .Bl -tag -width ".Pa /boot/defaults/dloader.menu" -compact
 .It Pa /boot/defaults/dloader.menu
