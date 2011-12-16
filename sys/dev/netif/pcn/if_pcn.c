@@ -882,7 +882,7 @@ pcn_tick(void *xsc)
 	mii = device_get_softc(sc->pcn_miibus);
 	mii_tick(mii);
 
-	if (sc->pcn_link & !(mii->mii_media_status & IFM_ACTIVE))
+	if (sc->pcn_link && !(mii->mii_media_status & IFM_ACTIVE))
 		sc->pcn_link = 0;
 
 	if (!sc->pcn_link) {
