@@ -600,13 +600,26 @@ ioapic_abi_stabilize(void)
 static void
 ioapic_abi_intr_setup(int intr, int flags)
 {
+	const struct ioapic_irqmap *map;
 	int vector, select;
 	uint32_t value;
 	register_t ef;
 
-	KKASSERT(intr >= 0 && intr < IOAPIC_HWI_VECTORS &&
-	    intr != IOAPIC_HWI_SYSCALL);
-	KKASSERT(ioapic_irqs[intr].io_addr != NULL);
+	KASSERT(intr >= 0 && intr < IOAPIC_HWI_VECTORS,
+	    ("ioapic setup, invalid irq %d\n", intr));
+
+	map = &ioapic_irqmaps[mycpuid][intr];
+	KASSERT(IOAPIC_IMT_ISHWI(map),
+	    ("ioapic setup, not hwi irq %d, type %d, cpu%d",
+	     intr, map->im_type, mycpuid));
+	if (map->im_type != IOAPIC_IMT_LINE) {
+		kprintf("ioapic setup, irq %d cpu%d not LINE\n",
+		    intr, mycpuid);
+		return;
+	}
+
+	KASSERT(ioapic_irqs[intr].io_addr != NULL,
+	    ("ioapic setup, no GSI information, irq %d\n", intr));
 
 	ef = read_rflags();
 	cpu_disable_intr();
@@ -641,13 +654,26 @@ ioapic_abi_intr_setup(int intr, int flags)
 static void
 ioapic_abi_intr_teardown(int intr)
 {
+	const struct ioapic_irqmap *map;
 	int vector, select;
 	uint32_t value;
 	register_t ef;
 
-	KKASSERT(intr >= 0 && intr < IOAPIC_HWI_VECTORS &&
-	    intr != IOAPIC_HWI_SYSCALL);
-	KKASSERT(ioapic_irqs[intr].io_addr != NULL);
+	KASSERT(intr >= 0 && intr < IOAPIC_HWI_VECTORS,
+	    ("ioapic teardown, invalid irq %d\n", intr));
+
+	map = &ioapic_irqmaps[mycpuid][intr];
+	KASSERT(IOAPIC_IMT_ISHWI(map),
+	    ("ioapic teardown, not hwi irq %d, type %d, cpu%d",
+	     intr, map->im_type, mycpuid));
+	if (map->im_type != IOAPIC_IMT_LINE) {
+		kprintf("ioapic teardown, irq %d cpu%d not LINE\n",
+		    intr, mycpuid);
+		return;
+	}
+
+	KASSERT(ioapic_irqs[intr].io_addr != NULL,
+	    ("ioapic teardown, no GSI information, irq %d\n", intr));
 
 	ef = read_rflags();
 	cpu_disable_intr();
