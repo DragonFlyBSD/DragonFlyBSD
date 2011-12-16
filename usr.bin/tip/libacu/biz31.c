@@ -52,7 +52,7 @@ static int
 biz_dialer(num, mod)
 	char *num, *mod;
 {
-	register int connected = 0;
+	int connected = 0;
 
 	if (!bizsync(FD)) {
 		logent(value(HOST), "", "biz", "out of sync");
@@ -128,7 +128,7 @@ biz31_abort()
 
 static int
 echo(s)
-	register char *s;
+	char *s;
 {
 	char c;
 
@@ -160,7 +160,7 @@ sigALRM()
 
 static int
 detect(s)
-	register char *s;
+	char *s;
 {
 	sig_t f;
 	char c;
@@ -185,7 +185,7 @@ detect(s)
 
 static int
 flush(s)
-	register char *s;
+	char *s;
 {
 	sig_t f;
 	char c;
@@ -220,7 +220,7 @@ bizsync(fd)
 #	define chars(b)	(b)
 #	define IOCTL	FIONREAD
 #endif
-	register int already = 0;
+	int already = 0;
 	char buf[10];
 
 retry:

@@ -61,7 +61,7 @@ df_dialer(num, acu, df03)
 	char *num, *acu;
 	int df03;
 {
-	register int f = FD;
+	int f = FD;
 	int speed = 0, rw = 2;
 	char c = '\0';
 

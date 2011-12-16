@@ -32,7 +32,6 @@
  *
  * @(#)ventel.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/libacu/ventel.c,v 1.3 1999/08/28 01:06:31 peter Exp $
- * $DragonFly: src/usr.bin/tip/libacu/ventel.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  */
 
 /*
@@ -59,15 +58,15 @@ static	jmp_buf timeoutbuf;
  */
 #define delay(num,denom) busyloop(CPUSPEED*num/denom)
 #define CPUSPEED 1000000	/* VAX 780 is 1MIPS */
-#define	DELAY(n)	{ register long N = (n); while (--N > 0); }
+#define	DELAY(n)	{ long N = (n); while (--N > 0); }
 busyloop(n) { DELAY(n); }
 
 ven_dialer(num, acu)
-	register char *num;
+	char *num;
 	char *acu;
 {
-	register char *cp;
-	register int connected = 0;
+	char *cp;
+	int connected = 0;
 	char *msg, *index(), line[80];
 
 	/*
@@ -142,7 +141,7 @@ ven_abort()
 
 static void
 echo(s)
-	register char *s;
+	char *s;
 {
 	char c;
 
@@ -174,10 +173,10 @@ sigALRM()
 
 static int
 gobble(match, response)
-	register char match;
+	char match;
 	char response[];
 {
-	register char *cp = response;
+	char *cp = response;
 	sig_t f;
 	char c;
 

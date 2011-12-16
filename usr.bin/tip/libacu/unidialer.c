@@ -32,7 +32,6 @@
  *
  * @(#)unidialer.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/libacu/unidialer.c,v 1.7 1999/08/28 01:06:30 peter Exp $
- * $DragonFly: src/usr.bin/tip/libacu/unidialer.c,v 1.4 2005/05/07 23:20:43 corecode Exp $
  */
 
 /*
@@ -91,7 +90,7 @@ static unsigned int intercommand_delay;
 static unsigned int escape_guard_time;
 static unsigned int reset_delay;
 
-static int unidialer_dialer (register char *num, char *acu);
+static int unidialer_dialer (char *num, char *acu);
 static void unidialer_disconnect ();
 static void unidialer_abort ();
 static int unidialer_connect(void);
@@ -134,7 +133,7 @@ static void unidialer_write_str (int fd, CONST char *cp);
 static void unidialer_disconnect ();
 static void sigALRM ();
 static int unidialersync ();
-static int unidialer_swallow (register char *match);
+static int unidialer_swallow (char *match);
 
 /*
 	Global vars
@@ -404,9 +403,9 @@ int unidialer_get_okay (int ms)
 	return okay;
 }
 
-static int unidialer_dialer (register char *num, char *acu)
+static int unidialer_dialer (char *num, char *acu)
 {
-	register char *cp;
+	char *cp;
 	char dial_string [80];
 #if ACULOG
 	char line [80];
@@ -561,7 +560,7 @@ static void sigALRM ()
 	longjmp(timeoutbuf, 1);
 }
 
-static int unidialer_swallow (register char *match)
+static int unidialer_swallow (char *match)
 {
 	sig_t f;
 	char c;

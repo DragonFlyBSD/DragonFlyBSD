@@ -34,7 +34,6 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)remote.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/remote.c,v 1.4 1999/08/28 01:06:35 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/remote.c,v 1.4 2005/04/19 05:32:02 cpressey Exp $
  */
 
 #include <err.h>
@@ -101,9 +100,9 @@ expand_tilde (char **path, void (*free) (char *p))
 
 static void
 getremcap(host)
-	register char *host;
+	char *host;
 {
-	register char **p, ***q;
+	char **p, ***q;
 	char *bp;
 	char *rempath;
 	int   stat;
@@ -251,7 +250,7 @@ char *
 getremote(host)
 	char *host;
 {
-	register char *cp;
+	char *cp;
 	static char *next;
 	static int lookedup = 0;
 

@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * @(#)biz22.c	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/tip/libacu/biz22.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  */
 
 #include "tipconf.h"
@@ -54,7 +53,7 @@ static int
 biz_dialer(num, mod)
 	char *num, *mod;
 {
-	register int connected = 0;
+	int connected = 0;
 	char cbuf[40];
 
 	if (boolean(value(VERBOSE)))
@@ -142,7 +141,7 @@ sigALRM()
 
 static int
 cmd(s)
-	register char *s;
+	char *s;
 {
 	sig_t f;
 	char c;
@@ -164,7 +163,7 @@ cmd(s)
 
 static int
 detect(s)
-	register char *s;
+	char *s;
 {
 	sig_t f;
 	char c;

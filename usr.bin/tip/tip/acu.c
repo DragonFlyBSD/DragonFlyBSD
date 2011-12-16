@@ -32,7 +32,6 @@
  *
  * @(#)acu.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/acu.c,v 1.5 1999/08/28 01:06:31 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/acu.c,v 1.3 2005/04/19 05:32:02 cpressey Exp $
  */
 
 #include "tipconf.h"
@@ -66,7 +65,7 @@ static jmp_buf jmpbuf;
 char *
 connect()
 {
-	register char *cp = PN;
+	char *cp = PN;
 	char *phnum, string[256];
 	FILE *fd;
 	int tried = 0;
@@ -190,9 +189,9 @@ acuabort(s)
 
 static acu_t *
 acutype(s)
-	register char *s;
+	char *s;
 {
-	register acu_t *p;
+	acu_t *p;
 	extern acu_t acutable[];
 
 	for (p = acutable; p->acu_name != '\0'; p++)

@@ -32,7 +32,6 @@
  *
  * @(#)acucommon.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/libacu/acucommon.c,v 1.3 1999/08/28 01:06:30 peter Exp $
- * $DragonFly: src/usr.bin/tip/libacu/acucommon.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
 
 /*
@@ -83,7 +82,7 @@ void acu_nap (unsigned int how_long)
 {
 				int omask;
         struct itimerval itv, oitv;
-        register struct itimerval *itp = &itv;
+        struct itimerval *itp = &itv;
         struct sigvec vec, ovec;
 
         timerclear(&itp->it_interval);

@@ -75,11 +75,11 @@ static char dumbuf[DUMBUFLEN];
 static	int state = IDLE;
 
 hay_dialer(num, acu)
-	register char *num;
+	char *num;
 	char *acu;
 {
-	register char *cp;
-	register int connected = 0;
+	char *cp;
+	int connected = 0;
 	char dummy;
 #if ACULOG
 	char line[80];
@@ -160,7 +160,7 @@ sigALRM()
 
 static char
 gobble(match)
-	register char *match;
+	char *match;
 {
 	char c;
 	sig_t f;
@@ -195,7 +195,7 @@ gobble(match)
 }
 
 error_rep(c)
-	register char c;
+	char c;
 {
 	printf("\n\r");
 	switch (c) {

@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/tip/libacu/v831.c,v 1.1.12.1 2000/07/01 12:24:22 ps Exp $
- * $DragonFly: src/usr.bin/tip/libacu/v831.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  *
  * @(#)v831.c	8.1 (Berkeley) 6/6/93
  */
@@ -55,7 +54,7 @@ v831_dialer(num, acu)
         char *num, *acu;
 {
         int status, pid, connected = 1;
-        register int timelim;
+        int timelim;
 
         if (boolean(value(VERBOSE)))
                 printf("\nstarting call...");
@@ -180,10 +179,10 @@ struct vaconfig {
 
 static int
 dialit(phonenum, acu)
-	register char *phonenum;
+	char *phonenum;
 	char *acu;
 {
-        register struct vaconfig *vp;
+        struct vaconfig *vp;
         char c;
         int i, two = 2;
 
@@ -256,10 +255,10 @@ dialit(phonenum, acu)
 
 static char *
 sanitize(s)
-	register char *s;
+	char *s;
 {
         static char buf[128];
-        register char *cp;
+        char *cp;
 
         for (cp = buf; *s; s++) {
 		if (!isdigit(*s) && *s == '<' && *s != '_')

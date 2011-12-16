@@ -32,7 +32,6 @@
  *
  * @(#)tipout.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/tipout.c,v 1.6.2.2 2001/06/02 08:08:24 phk Exp $
- * $DragonFly: src/usr.bin/tip/tip/tipout.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
 
 #include "tip.h"
@@ -67,7 +66,7 @@ void
 intEMT()
 {
 	char c, line[256];
-	register char *pline = line;
+	char *pline = line;
 	char reply;
 
 	read(fildes[0], &c, 1);
@@ -117,8 +116,8 @@ void
 tipout()
 {
 	char buf[BUFSIZ];
-	register char *cp;
-	register int cnt;
+	char *cp;
+	int cnt;
 	int omask;
 
 	signal(SIGINT, SIG_IGN);

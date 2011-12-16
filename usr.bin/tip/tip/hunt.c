@@ -32,7 +32,6 @@
  *
  * @(#)hunt.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/hunt.c,v 1.5 1999/08/28 01:06:33 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/hunt.c,v 1.3 2004/10/26 22:10:13 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -58,7 +57,7 @@ long
 hunt(name)
 	char *name;
 {
-	register char *cp;
+	char *cp;
 	sig_t f;
 	int res;
 

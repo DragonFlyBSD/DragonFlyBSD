@@ -32,7 +32,6 @@
  *
  * @(#)cu.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/cu.c,v 1.4 1999/08/28 01:06:33 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/cu.c,v 1.3 2005/04/19 05:32:02 cpressey Exp $
  */
 
 #include "tipconf.h"
@@ -48,7 +47,7 @@ void	cleanup();
 cumain(argc, argv)
 	char *argv[];
 {
-	register int i;
+	int i;
 	static char sbuf[12];
 
 	if (argc < 2) {

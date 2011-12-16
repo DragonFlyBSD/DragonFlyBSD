@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/tip/libacu/dn11.c,v 1.1.12.1 2000/07/01 12:24:22 ps Exp $
- * $DragonFly: src/usr.bin/tip/libacu/dn11.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  *
  * @(#)dn11.c	8.1 (Berkeley) 6/6/93
  */
@@ -53,7 +52,7 @@ dn_dialer(num, acu)
 {
 	char *p, *q, phone[40];
 	int lt, nw, connected = 1;
-	register int timelim;
+	int timelim;
 
 	if (boolean(value(VERBOSE)))
 		printf("\nstarting call...");

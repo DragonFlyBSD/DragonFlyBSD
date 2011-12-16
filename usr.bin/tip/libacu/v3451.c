@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * @(#)v3451.c	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/tip/libacu/v3451.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  */
 
 /*
@@ -49,7 +48,7 @@ static int prefix(char *, char *);
 static	jmp_buf Sjbuf;
 
 v3451_dialer(num, acu)
-	register char *num;
+	char *num;
 	char *acu;
 {
 	sig_t func;
@@ -138,7 +137,7 @@ v3451_abort()
 
 static void
 vawrite(cp, delay)
-	register char *cp;
+	char *cp;
 	int delay;
 {
 
@@ -148,10 +147,10 @@ vawrite(cp, delay)
 
 static
 expect(cp)
-	register char *cp;
+	char *cp;
 {
 	char buf[300];
-	register char *rp = buf;
+	char *rp = buf;
 	int timeout = 30, online = 0;
 
 	if (strcmp(cp, "\"\"") == 0)
@@ -203,9 +202,9 @@ notin(sh, lg)
 
 static
 prefix(s1, s2)
-	register char *s1, *s2;
+	char *s1, *s2;
 {
-	register char c;
+	char c;
 
 	while ((c = *s1++) == *s2++)
 		if (c == '\0')

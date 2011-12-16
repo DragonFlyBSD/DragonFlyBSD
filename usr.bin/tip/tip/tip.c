@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tip.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/tip.c,v 1.12.2.2 2001/06/02 08:08:24 phk Exp $
- * $DragonFly: src/usr.bin/tip/tip/tip.c,v 1.6 2005/04/19 05:32:02 cpressey Exp $
  */
 
 /*
@@ -95,8 +94,8 @@ main(argc, argv)
 	char *argv[];
 {
 	char *system = NULL;
-	register int i;
-	register char *p;
+	int i;
+	char *p;
 	char sbuf[12];
 
 	gid = getgid();
@@ -384,10 +383,10 @@ static	jmp_buf promptbuf;
 int
 prompt(s, p, sz)
 	char *s;
-	register char *p;
+	char *p;
 	size_t sz;
 {
-	register char *b = p;
+	char *b = p;
 	sig_t oint, oquit;
 
 	stoprompt = 0;
@@ -483,8 +482,8 @@ extern esctable_t etable[];
 char
 escape()
 {
-	register char gch;
-	register esctable_t *p;
+	char gch;
+	esctable_t *p;
 	char c = character(value(ESCAPE));
 	int i;
 
@@ -513,7 +512,7 @@ speed(n)
 #if HAVE_TERMIOS
 	return (n);
 #else
-	register CONST int *p;
+	CONST int *p;
 
 	for (p = bauds; *p != -1;  p++)
 		if (*p == n)
@@ -524,7 +523,7 @@ speed(n)
 
 int
 any(c, p)
-	register char c, *p;
+	char c, *p;
 {
 	while (p && *p)
 		if (*p++ == c)
@@ -534,9 +533,9 @@ any(c, p)
 
 int
 size(s)
-	register char	*s;
+	char	*s;
 {
-	register int i = 0;
+	int i = 0;
 
 	while (s && *s++)
 		i++;
@@ -545,10 +544,10 @@ size(s)
 
 char *
 interp(s)
-	register char *s;
+	char *s;
 {
 	static char buf[256];
-	register char *p = buf, c, *q;
+	char *p = buf, c, *q;
 
 	while ((c = *s++)) {
 		for (q = "\nn\rr\tt\ff\033E\bb"; *q; q++)
@@ -593,7 +592,7 @@ void
 help(c)
 	char c;
 {
-	register esctable_t *p;
+	esctable_t *p;
 
 	printf("%c\r\n", c);
 	for (p = etable; p->e_char; p++) {
@@ -644,9 +643,9 @@ ttysetup (int speed)
  */
 char *
 sname(s)
-	register char *s;
+	char *s;
 {
-	register char *p = s;
+	char *p = s;
 
 	while (*s)
 		if (*s++ == '/')
@@ -666,10 +665,10 @@ void
 xpwrite(fd, buf, n)
 	int fd;
 	char *buf;
-	register int n;
+	int n;
 {
-	register int i;
-	register char *bp;
+	int i;
+	char *bp;
 
 	bp = buf;
 	if (bits8 == 0)
@@ -693,7 +692,7 @@ void
 setparity(defparity)
 	char *defparity;
 {
-	register int i, flip, clr, set;
+	int i, flip, clr, set;
 	char *parity;
 	extern char evenpartab[];
 

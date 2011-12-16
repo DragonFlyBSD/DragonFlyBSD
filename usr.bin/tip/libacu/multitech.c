@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * @(#)multitech.c	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/tip/libacu/multitech.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  */
 
 /*
@@ -70,7 +69,7 @@ void multitech_disconnect ();
 void acu_nap (unsigned int how_long);
 static void sigALRM ();
 static int multitechsync ();
-static int multitech_swallow (register char *match);
+static int multitech_swallow (char *match);
 static int multitech_connect(void);
 
 /*
@@ -80,9 +79,9 @@ static int timeout = 0;
 static int connected = 0;
 static jmp_buf timeoutbuf, intbuf;
 
-int multitech_dialer (register char *num, char *acu)
+int multitech_dialer (char *num, char *acu)
 {
-	register char *cp;
+	char *cp;
 #if ACULOG
 	char line [80];
 #endif
@@ -200,7 +199,7 @@ static void sigALRM ()
 	longjmp(timeoutbuf, 1);
 }
 
-static int multitech_swallow (register char *match)
+static int multitech_swallow (char *match)
   {
 	sig_t f;
 	char c;

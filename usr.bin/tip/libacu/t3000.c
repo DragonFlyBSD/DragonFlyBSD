@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * @(#)t3000.c	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/tip/libacu/t3000.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  */
 
 /*
@@ -54,10 +53,10 @@ static	int t3000_connect(void);
 static	int t3000_swallow(char *);
 
 t3000_dialer(num, acu)
-	register char *num;
+	char *num;
 	char *acu;
 {
-	register char *cp;
+	char *cp;
 #if ACULOG
 	char line[80];
 #endif
@@ -133,7 +132,7 @@ sigALRM()
 
 static int
 t3000_swallow(match)
-  register char *match;
+  char *match;
   {
 	sig_t f;
 	char c;
