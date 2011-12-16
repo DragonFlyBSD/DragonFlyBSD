@@ -646,7 +646,7 @@ ioapic_abi_intr_setup(int intr, int flags)
 
 	imen_unlock();
 
-	machintr_intr_enable(intr);
+	IOAPIC_INTREN(intr);
 
 	write_rflags(ef);
 }
@@ -682,7 +682,7 @@ ioapic_abi_intr_teardown(int intr)
 	 * Teardown an interrupt vector.  The vector should already be
 	 * installed in the cpu's IDT, but make sure.
 	 */
-	machintr_intr_disable(intr);
+	IOAPIC_INTRDIS(intr);
 
 	vector = IDT_OFFSET + intr;
 
