@@ -100,6 +100,8 @@ extern void	ICU_INTRDIS(int);
 
 extern int	imcr_present;
 
+static void	icu_abi_intr_enable(int);
+static void	icu_abi_intr_disable(int);
 static void	icu_abi_intr_setup(int, int);
 static void	icu_abi_intr_teardown(int);
 static void	icu_abi_intr_config(int, enum intr_trigger, enum intr_polarity);
@@ -114,8 +116,8 @@ static void	icu_abi_rman_setup(struct rman *);
 
 struct machintr_abi MachIntrABI_ICU = {
 	MACHINTR_ICU,
-	.intr_disable	= ICU_INTRDIS,
-	.intr_enable	= ICU_INTREN,
+	.intr_disable	= icu_abi_intr_disable,
+	.intr_enable	= icu_abi_intr_enable,
 	.intr_setup	= icu_abi_intr_setup,
 	.intr_teardown	= icu_abi_intr_teardown,
 	.intr_config	= icu_abi_intr_config,
@@ -133,6 +135,48 @@ struct machintr_abi MachIntrABI_ICU = {
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
  */
 
+static void
+icu_abi_intr_enable(int irq)
+{
+	const struct icu_irqmap *map;
+
+	KASSERT(irq >= 0 && irq < IDT_HWI_VECTORS,
+	    ("icu enable, invalid irq %d\n", irq));
+
+	map = &icu_irqmaps[mycpuid][irq];
+	KASSERT(ICU_IMT_ISHWI(map),
+	    ("icu enable, not hwi irq %d, type %d, cpu%d\n",
+	     irq, map->im_type, mycpuid));
+	if (map->im_type != ICU_IMT_LINE) {
+		kprintf("icu enable, irq %d cpu%d not LINE\n",
+		    irq, mycpuid);
+		return;
+	}
+
+	ICU_INTREN(irq);
+}
+
+static void
+icu_abi_intr_disable(int irq)
+{
+	const struct icu_irqmap *map;
+
+	KASSERT(irq >= 0 && irq < IDT_HWI_VECTORS,
+	    ("icu disable, invalid irq %d\n", irq));
+
+	map = &icu_irqmaps[mycpuid][irq];
+	KASSERT(ICU_IMT_ISHWI(map),
+	    ("icu disable, not hwi irq %d, type %d, cpu%d\n",
+	     irq, map->im_type, mycpuid));
+	if (map->im_type != ICU_IMT_LINE) {
+		kprintf("icu disable, irq %d cpu%d not LINE\n",
+		    irq, mycpuid);
+		return;
+	}
+
+	ICU_INTRDIS(irq);
+}
+
 /*
  * Called before interrupts are physically enabled
  */
@@ -142,8 +186,8 @@ icu_abi_stabilize(void)
 	int intr;
 
 	for (intr = 0; intr < ICU_HWI_VECTORS; ++intr)
-		machintr_intr_disable(intr);
-	machintr_intr_enable(ICU_IRQ_SLAVE);
+		ICU_INTRDIS(intr);
+	ICU_INTREN(ICU_IRQ_SLAVE);
 }
 
 /*
@@ -184,9 +228,21 @@ icu_abi_finalize(void)
 static void
 icu_abi_intr_setup(int intr, int flags)
 {
+	const struct icu_irqmap *map;
 	register_t ef;
 
-	KKASSERT(intr >= 0 && intr < ICU_HWI_VECTORS && intr != ICU_IRQ_SLAVE);
+	KASSERT(intr >= 0 && intr < IDT_HWI_VECTORS,
+	    ("icu setup, invalid irq %d\n", intr));
+
+	map = &icu_irqmaps[mycpuid][intr];
+	KASSERT(ICU_IMT_ISHWI(map),
+	    ("icu setup, not hwi irq %d, type %d, cpu%d\n",
+	     intr, map->im_type, mycpuid));
+	if (map->im_type != ICU_IMT_LINE) {
+		kprintf("icu setup, irq %d cpu%d not LINE\n",
+		    intr, mycpuid);
+		return;
+	}
 
 	ef = read_rflags();
 	cpu_disable_intr();
@@ -199,9 +255,21 @@ icu_abi_intr_setup(int intr, int flags)
 static void
 icu_abi_intr_teardown(int intr)
 {
+	const struct icu_irqmap *map;
 	register_t ef;
 
-	KKASSERT(intr >= 0 && intr < ICU_HWI_VECTORS && intr != ICU_IRQ_SLAVE);
+	KASSERT(intr >= 0 && intr < IDT_HWI_VECTORS,
+	    ("icu teardown, invalid irq %d\n", intr));
+
+	map = &icu_irqmaps[mycpuid][intr];
+	KASSERT(ICU_IMT_ISHWI(map),
+	    ("icu teardown, not hwi irq %d, type %d, cpu%d\n",
+	     intr, map->im_type, mycpuid));
+	if (map->im_type != ICU_IMT_LINE) {
+		kprintf("icu teardown, irq %d cpu%d not LINE\n",
+		    intr, mycpuid);
+		return;
+	}
 
 	ef = read_rflags();
 	cpu_disable_intr();
