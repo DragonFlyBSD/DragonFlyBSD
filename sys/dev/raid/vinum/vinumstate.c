@@ -39,7 +39,6 @@
  *
  * $Id: vinumstate.c,v 2.18 2000/05/10 07:30:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumstate.c,v 1.28.2.2 2000/06/08 02:00:23 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumstate.c,v 1.7 2006/12/20 18:14:40 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -128,7 +127,7 @@ set_sd_state(int sdno, enum sdstate newstate, enum setstateflags flags)
 	     * not reborn, we won't go down without
 	     * use of force.
 	     */
-	    if ((!flags & setstate_force)
+	    if (!(flags & setstate_force)
 		&& (sd->plexno >= 0)
 		&& (sd->state != sd_reborn))
 		return 0;				    /* don't do it */
