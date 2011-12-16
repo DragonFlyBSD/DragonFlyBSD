@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/memcontrol/memcontrol.c,v 1.3.4.5 2002/09/16 21:58:41 dwmalone Exp $
- * $DragonFly: src/usr.sbin/memcontrol/memcontrol.c,v 1.3 2005/03/18 01:57:58 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -236,7 +235,7 @@ setfunc(int memfd, int argc, char *argv[])
     while(argc--) {
 	for (i = 0; attrnames[i].name != NULL; i++) {
 	    if (!strcmp(attrnames[i].name, argv[0])) {
-		if (!attrnames[i].kind & MDF_SETTABLE)
+		if (!(attrnames[i].kind & MDF_SETTABLE))
 		    help("flags");
 		mrd.mr_flags |= attrnames[i].val;
 		break;
