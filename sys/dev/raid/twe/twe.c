@@ -1138,7 +1138,7 @@ twe_done(struct twe_softc *sc)
 
 	if (!(status_reg & TWE_STATUS_RESPONSE_QUEUE_EMPTY)) {
 	    found = 1;
-	    rq = TWE_RESPONSE_QUEUE(sc);
+	    rq.value = TWE_RESPONSE_QUEUE(sc);
 	    tr = sc->twe_lookup[rq.u.response_id];	/* find command */
 	    cmd = TWE_FIND_COMMAND(tr);
 	    if (tr->tr_status != TWE_CMD_BUSY)
@@ -1244,7 +1244,7 @@ twe_drain_response_queue(struct twe_softc *sc)
 	    return(1);
 	if (status_reg & TWE_STATUS_RESPONSE_QUEUE_EMPTY)
 	    return(0);
-	rq = TWE_RESPONSE_QUEUE(sc);
+	rq.value = TWE_RESPONSE_QUEUE(sc);
     }
 }
 
