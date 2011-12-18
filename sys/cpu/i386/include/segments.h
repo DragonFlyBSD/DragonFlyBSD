@@ -201,9 +201,7 @@ struct region_descriptor {
 #define SEGEX_IDX(s)	(((s)>>3)&0x1fff)
 
 /*
- * Size of IDT table.  Theoretically we only need to cover past 0x81
- * (NIDT=130) if not running APIC_IO or SMP, but at this point we might
- * as well just use all of them.
+ * Size of IDT table.
  */
 #define	NIDT	256		/* we use them all */
 
