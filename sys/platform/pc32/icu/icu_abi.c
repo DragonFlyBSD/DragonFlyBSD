@@ -247,7 +247,7 @@ icu_abi_intr_setup(int intr, int flags __unused)
 	ef = read_eflags();
 	cpu_disable_intr();
 
-	machintr_intr_enable(intr);
+	ICU_INTREN(intr);
 
 	write_eflags(ef);
 }
@@ -274,7 +274,7 @@ icu_abi_intr_teardown(int intr)
 	ef = read_eflags();
 	cpu_disable_intr();
 
-	machintr_intr_disable(intr);
+	ICU_INTRDIS(intr);
 
 	write_eflags(ef);
 }
