@@ -1870,9 +1870,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * SHOULD be after elcr_probe()
 	 */
 	MachIntrABI_ICU.initmap();
-#ifdef SMP
 	MachIntrABI_IOAPIC.initmap();
-#endif
 
 #ifdef DDB
 	kdb_init();

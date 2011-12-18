@@ -2085,9 +2085,7 @@ init386(int first)
 	 * SHOULD be after elcr_probe()
 	 */
 	MachIntrABI_ICU.initmap();
-#ifdef SMP
 	MachIntrABI_IOAPIC.initmap();
-#endif
 
 #ifdef DDB
 	kdb_init();
