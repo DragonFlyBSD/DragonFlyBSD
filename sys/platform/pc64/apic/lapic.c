@@ -112,24 +112,24 @@ lapic_init(boolean_t bsp)
 	 */
 	if (bsp) {
 		/* Install a 'Spurious INTerrupt' vector */
-		setidt(XSPURIOUSINT_OFFSET, Xspuriousint,
+		setidt_global(XSPURIOUSINT_OFFSET, Xspuriousint,
 		    SDT_SYSIGT, SEL_KPL, 0);
 
 		/* Install a timer vector */
-		setidt(XTIMER_OFFSET, Xtimer,
+		setidt_global(XTIMER_OFFSET, Xtimer,
 		    SDT_SYSIGT, SEL_KPL, 0);
 
 #ifdef SMP
 		/* Install an inter-CPU IPI for TLB invalidation */
-		setidt(XINVLTLB_OFFSET, Xinvltlb,
+		setidt_global(XINVLTLB_OFFSET, Xinvltlb,
 		    SDT_SYSIGT, SEL_KPL, 0);
 
 		/* Install an inter-CPU IPI for IPIQ messaging */
-		setidt(XIPIQ_OFFSET, Xipiq,
+		setidt_global(XIPIQ_OFFSET, Xipiq,
 		    SDT_SYSIGT, SEL_KPL, 0);
 
 		/* Install an inter-CPU IPI for CPU stop/restart */
-		setidt(XCPUSTOP_OFFSET, Xcpustop,
+		setidt_global(XCPUSTOP_OFFSET, Xcpustop,
 		    SDT_SYSIGT, SEL_KPL, 0);
 #endif
 	}

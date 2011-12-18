@@ -287,8 +287,8 @@ icu_abi_setdefault(void)
 	for (intr = 0; intr < ICU_HWI_VECTORS; ++intr) {
 		if (intr == ICU_IRQ_SLAVE)
 			continue;
-		setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYSIGT,
-		       SEL_KPL, 0);
+		setidt_global(IDT_OFFSET + intr, icu_intr[intr],
+		    SDT_SYSIGT, SEL_KPL, 0);
 	}
 }
 

@@ -134,7 +134,7 @@
 int	current_postcode;
 
 /** XXX FIXME: what system files declare these??? */
-extern struct region_descriptor r_gdt, r_idt;
+extern struct region_descriptor r_gdt;
 
 extern int nkpt;
 extern int naps;
@@ -247,7 +247,7 @@ init_secondary(void)
 	wrmsr(MSR_GSBASE, (u_int64_t)ps);
 	wrmsr(MSR_KGSBASE, 0);		/* XXX User value while we're in the kernel */
 
-	lidt(&r_idt);
+	lidt(&r_idt_arr[mdcpu->mi.gd_cpuid]);
 
 #if 0
 	lldt(_default_ldt);

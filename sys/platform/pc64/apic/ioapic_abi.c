@@ -715,8 +715,8 @@ ioapic_abi_setdefault(void)
 	for (intr = 0; intr < IOAPIC_HWI_VECTORS; ++intr) {
 		if (intr == IOAPIC_HWI_SYSCALL)
 			continue;
-		setidt(IDT_OFFSET + intr, ioapic_intr[intr], SDT_SYSIGT,
-		       SEL_KPL, 0);
+		setidt_global(IDT_OFFSET + intr, ioapic_intr[intr],
+		    SDT_SYSIGT, SEL_KPL, 0);
 	}
 }
 
