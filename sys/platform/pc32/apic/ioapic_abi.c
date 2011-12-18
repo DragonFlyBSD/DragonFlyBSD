@@ -525,20 +525,42 @@ struct ioapic_irqinfo	ioapic_irqs[IOAPIC_HWI_VECTORS];
 static void
 ioapic_abi_intr_enable(int irq)
 {
-	if (irq < 0 || irq >= IOAPIC_HWI_VECTORS) {
-		kprintf("ioapic_abi_intr_enable invalid irq %d\n", irq);
+	const struct ioapic_irqmap *map;
+
+	KASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS,
+	    ("ioapic enable, invalid irq %d\n", irq));
+
+	map = &ioapic_irqmaps[mycpuid][irq];
+	KASSERT(IOAPIC_IMT_ISHWI(map),
+	    ("ioapic enable, not hwi irq %d, type %d, cpu%d\n",
+	     irq, map->im_type, mycpuid));
+	if (map->im_type != IOAPIC_IMT_LINE) {
+		kprintf("ioapic enable, irq %d cpu%d not LINE\n",
+		    irq, mycpuid);
 		return;
 	}
+
 	IOAPIC_INTREN(irq);
 }
 
 static void
 ioapic_abi_intr_disable(int irq)
 {
-	if (irq < 0 || irq >= IOAPIC_HWI_VECTORS) {
-		kprintf("ioapic_abi_intr_disable invalid irq %d\n", irq);
+	const struct ioapic_irqmap *map;
+
+	KASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS,
+	    ("ioapic disable, invalid irq %d\n", irq));
+
+	map = &ioapic_irqmaps[mycpuid][irq];
+	KASSERT(IOAPIC_IMT_ISHWI(map),
+	    ("ioapic disable, not hwi irq %d, type %d, cpu%d\n",
+	     irq, map->im_type, mycpuid));
+	if (map->im_type != IOAPIC_IMT_LINE) {
+		kprintf("ioapic disable, irq %d cpu%d not LINE\n",
+		    irq, mycpuid);
 		return;
 	}
+
 	IOAPIC_INTRDIS(irq);
 }
 
