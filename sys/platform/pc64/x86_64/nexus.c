@@ -351,7 +351,7 @@ nexus_alloc_resource(device_t bus, device_t child, int type, int *rid,
 
 	switch (type) {
 	case SYS_RES_IRQ:
-		KASSERT(cpuid >= 0 || cpuid < ncpus,
+		KASSERT(cpuid >= 0 && cpuid < ncpus,
 		    ("nexus invalid cpuid %d:\n", cpuid));
 		rm = &irq_rman[cpuid];
 		break;
