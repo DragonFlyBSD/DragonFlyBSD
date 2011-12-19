@@ -9,8 +9,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_hypot.c,v 1.12 2002/05/26 22:01:50 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_hypot.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: e_hypot.c,v 1.13 2008/04/25 22:21:53 christos
  */
 
 /* hypot(x,y)
@@ -29,9 +28,9 @@
  *		x1*x1+(y*y+(x2*(x+x1))) for x*x+y*y
  *	where x1 = x with lower 32 bits cleared, x2 = x-x1; else
  *	2. if x <= 2y use
- *		t1*y1+((x-y)*(x-y)+(t1*y2+t2*y))
+ *		t1*yy1+((x-y)*(x-y)+(t1*y2+t2*y))
  *	where t1 = 2x with lower 32 bits cleared, t2 = 2x-t1,
- *	y1= y with lower 32 bits chopped, y2 = y-y1.
+ *	yy1= y with lower 32 bits chopped, y2 = y-yy1.
  *
  *	NOTE: scaling may be necessary if some argument is too
  *	      large or too tiny
@@ -51,7 +50,7 @@
 double
 hypot(double x, double y)
 {
-	double a,b,t1,t2,y1_,y2,w;
+	double a=x,b=y,t1,t2,yy1,y2,w;
 	int32_t j,k,ha,hb;
 
 	GET_HIGH_WORD(ha,x);
@@ -105,13 +104,13 @@ hypot(double x, double y)
 	    w  = sqrt(t1*t1-(b*(-b)-t2*(a+t1)));
 	} else {
 	    a  = a+a;
-	    y1_ = 0;
-	    SET_HIGH_WORD(y1_,hb);
-	    y2 = b - y1_;
+	    yy1 = 0;
+	    SET_HIGH_WORD(yy1,hb);
+	    y2 = b - yy1;
 	    t1 = 0;
 	    SET_HIGH_WORD(t1,ha+0x00100000);
 	    t2 = a - t1;
-	    w  = sqrt(t1*y1_-(w*(-w)-(t1*y2+t2*b)));
+	    w  = sqrt(t1*yy1-(w*(-w)-(t1*y2+t2*b)));
 	}
 	if(k!=0) {
 	    u_int32_t high;

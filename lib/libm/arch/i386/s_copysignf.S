@@ -2,7 +2,7 @@
  * Written by J.T. Conklin <jtc@NetBSD.org>.
  * Public domain.
  *
- * $NetBSD: s_copysignf.S,v 1.5 2003/07/26 19:25:01 salo Exp $
+ * $NetBSD: s_copysignf.S,v 1.7 2011/06/21 21:52:49 joerg Exp
  */
 
 #include <machine/asm.h>
@@ -28,27 +28,11 @@ ENTRY(copysignf)
 	movl	%eax,4(%esp)
 	flds	4(%esp)
 #else
-#if 0
-	/*
-	 * XXXfvdl gas doesn't grok this.
-	 * but it's legal according to the p4 manual.
-	 */
-	movss    .Lpos(%rip),%xmm2
-	movss    .Lneg(%rip),%xmm3
-	pandq   %xmm2,%xmm1
-	pandq   %xmm3,%xmm0
-	porq    %xmm1,%xmm0
-#else
-	movss	%xmm0,-4(%rsp)
-	movss	%xmm1,-8(%rsp)
-	movl	-8(%rsp),%edx
-	andl	$0x80000000,%edx
-	movl	-4(%rsp),%eax
-	andl	$0x7fffffff,%eax
-	orl	%edx,%eax
-	movl	%eax,-4(%rsp)
-	movss	-4(%rsp),%xmm0
-#endif
+	movss	.Lpos(%rip),%xmm2
+	movss	.Lneg(%rip),%xmm3
+	pand	%xmm2,%xmm1
+	pand	%xmm3,%xmm0
+	por	%xmm1,%xmm0
 #endif
 	ret
 END(copysignf)

@@ -7,11 +7,10 @@
 
 #include <complex.h>
 #include <math.h>
-#include "../src/math_private.h"
 
 double
 cabs(double complex z)
 {
 
-	return hypot(creal(z), cimag(z));
+	return hypot(__real__ z, __imag__ z);
 }

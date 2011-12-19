@@ -7,11 +7,10 @@
 
 #include <complex.h>
 #include <math.h>
-#include "../src/math_private.h"
 
 float
 cabsf(float complex z)
 {
 
-	return hypotf(crealf(z), cimagf(z));
+	return hypotf(__real__ z, __imag__ z);
 }

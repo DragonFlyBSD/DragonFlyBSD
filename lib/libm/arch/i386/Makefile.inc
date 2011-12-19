@@ -10,6 +10,7 @@ SRCS+=	e_acos.S e_asin.S e_atan2.S e_atan2f.S e_exp.S e_expf.S e_fmod.S \
 	s_log1p.S s_log1pf.S s_logb.S s_logbf.S s_rint.S s_rintf.S \
 	s_scalbn.S s_scalbnf.S s_significand.S s_significandf.S s_sin.S \
 	s_sinf.S s_tan.S s_tanf.S
+SRCS+= s_ilogbl.S s_logbl.S s_modf.S s_scalbnl.S
 
 # This file is included by arch/x86_64/Makefile.inc, so pull in the right
 # fenv.[ch].

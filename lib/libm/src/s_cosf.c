@@ -12,8 +12,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: s_cosf.c,v 1.8 2002/05/26 22:01:55 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_cosf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: s_cosf.c,v 1.9 2007/08/20 16:01:39 drochner Exp $
  */
 
 #include <math.h>

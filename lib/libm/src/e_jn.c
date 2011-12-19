@@ -9,8 +9,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_jn.c,v 1.12 2002/05/26 22:01:50 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_jn.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: e_jn.c,v 1.14 2010/11/29 15:10:06 drochner Exp $
  */
 
 /*
@@ -200,7 +199,12 @@ jn(int n, double x)
 			}
 	     	    }
 		}
-	    	b = (t*j0(x)/b);
+		z = j0(x);
+		w = j1(x);
+		if (fabs(z) >= fabs(w))
+			b = (t*z/b);
+		else
+			b = (t*w/a);
 	    }
 	}
 	if(sgn==1) return -b; else return b;

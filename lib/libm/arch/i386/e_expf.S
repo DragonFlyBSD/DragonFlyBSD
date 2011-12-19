@@ -2,7 +2,7 @@
  * Written by J.T. Conklin <jtc@NetBSD.org>.
  * Public domain.
  *
- * $NetBSD: e_expf.S,v 1.5 2003/07/26 19:24:58 salo Exp $
+ * $NetBSD: e_expf.S,v 1.6 2008/06/24 17:27:56 drochner Exp $ $
  */
 
 #include <machine/asm.h>
@@ -12,6 +12,15 @@
 /* e^x = 2^(x * log2(e)) */
 ENTRY(expf)
 	XMM_ONE_ARG_FLOAT_PROLOGUE
+
+	/*
+	 * catch +/-Inf and NaN arguments
+	 */
+	movl	ARG_FLOAT_ONE,%eax
+	andl	$0x7fffffff,%eax
+	cmpl	$0x7f800000,%eax
+	jae	x_Inf_or_NaN
+
 	flds	ARG_FLOAT_ONE
 	fldl2e
 	fmulp				/* x * log2(e) */
@@ -24,6 +33,23 @@ ENTRY(expf)
 	faddp				/* 2^(fract(x * log2(e))) */
 	fscale				/* e^x */
 	fstp	%st(1)
+	XMM_FLOAT_EPILOGUE
+	ret
+
+x_Inf_or_NaN:
+	/*
+	 * Return 0 if x is -Inf.  Otherwise just return x, although the
+	 * C version would return (x + x) (Real Indefinite) if x is a NaN.
+	 */
+	movl	ARG_FLOAT_ONE,%eax
+	cmpl	$0xff800000,%eax
+	jne	x_not_minus_Inf
+	fldz
+	XMM_FLOAT_EPILOGUE
+	ret
+
+x_not_minus_Inf:
+	flds	ARG_FLOAT_ONE
 	XMM_FLOAT_EPILOGUE
 	ret
 END(expf)

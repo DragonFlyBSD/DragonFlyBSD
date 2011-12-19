@@ -12,8 +12,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_jnf.c,v 1.9 2002/05/26 22:01:50 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_jnf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: e_jnf.c,v 1.11 2010/11/29 15:10:06 drochner Exp $
  */
 
 #include <math.h>
@@ -155,7 +154,12 @@ jnf(int n, float x)
 			}
 	     	    }
 		}
-	    	b = (t*j0f(x)/b);
+		z = j0f(x);
+		w = j1f(x);
+		if (fabsf(z) >= fabsf(w))
+			b = (t*z/b);
+		else
+			b = (t*w/a);
 	    }
 	}
 	if(sgn==1) return -b; else return b;
@@ -187,7 +191,7 @@ ynf(int n, float x)
 	b = y1f(x);
 	/* quit if b is -inf */
 	GET_FLOAT_WORD(ib,b);
-	for(i=1;i<n&&ib!=0xff800000;i++){
+	for(i=1;i<n&&(uint32_t)ib!=0xff800000;i++){
 	    temp = b;
 	    b = ((float)(i+i)/x)*b - a;
 	    GET_FLOAT_WORD(ib,b);

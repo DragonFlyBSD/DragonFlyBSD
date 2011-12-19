@@ -9,8 +9,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_j0.c,v 1.11 2002/05/26 22:01:50 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_j0.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: e_j0.c,v 1.12 2007/08/20 16:01:38 drochner Exp $
  */
 
 /* j0(x), y0(x)

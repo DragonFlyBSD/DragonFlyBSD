@@ -33,6 +33,8 @@ MI_FUNCS+=	\
 	s_round.c s_roundf.c s_scalbn.c s_scalbnf.c \
 	s_signgam.c s_significand.c s_significandf.c s_sin.c s_sinf.c \
 	s_tan.c s_tanf.c s_tanh.c s_tanhf.c
+MI_FUNCS+= s_exp2.c s_exp2f.c s_frexp.c s_ilogbl.c s_logbl.c s_nextafterl.c s_nexttoward.c \
+	s_remquo.c s_remquof.c s_scalbnl.c s_fabsl.c
 
 .for f in ${MI_FUNCS}
 .if empty(SRCS:M${f:H:R})

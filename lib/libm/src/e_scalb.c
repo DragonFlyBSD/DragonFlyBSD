@@ -9,8 +9,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_scalb.c,v 1.9 2002/05/26 22:01:52 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_scalb.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: e_scalb.c,v 1.10 2010/04/23 19:17:07 drochner Exp $
  */
 
 /*

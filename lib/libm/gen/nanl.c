@@ -1,3 +1,5 @@
+/* $NetBSD: nanl.c,v 1.2 2008/04/28 20:23:01 martin Exp $ */
+
 /*-
  * Copyright (c) 2006 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -13,13 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -32,13 +27,10 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
- * $NetBSD: nanl.c,v 1.1 2006/03/15 22:07:09 kleink Exp $
- * $DragonFly: src/lib/libm/gen/nanl.c,v 1.1 2007/06/17 17:46:01 pavalos Exp $
  */
 
 #define	NAN_FUNCTION	nanl
 #define	NAN_TYPE	long double
-#define	NAN_STRTOD	strtod	/* XXX should be strtold */
+#define	NAN_STRTOD	strtold
 
 #include "nan.c"

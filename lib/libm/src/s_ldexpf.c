@@ -1,4 +1,4 @@
-/* s_ldexpf.c -- float version of s_ldexp.c.
+/* s_ldexp0f.c -- float version of s_ldexp0.c.
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  */
 
@@ -12,8 +12,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: s_ldexpf.c,v 1.6 2002/05/26 22:01:57 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_ldexpf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: s_ldexpf.c,v 1.8 2010/04/23 19:17:07 drochner Exp $
  */
 
 #include <math.h>
@@ -21,10 +20,10 @@
 #include <errno.h>
 
 float
-ldexpf(float value, int expo)
+ldexpf(float value, int exp0)
 {
 	if(!finitef(value)||value==(float)0.0) return value;
-	value = scalbnf(value,expo);
+	value = scalbnf(value,exp0);
 	if(!finitef(value)||value==(float)0.0) errno = ERANGE;
 	return value;
 }

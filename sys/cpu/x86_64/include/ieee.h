@@ -76,7 +76,9 @@ struct ieee_ext {
  * A NaN is a `signalling NaN' if its QUIETNAN bit is clear in its
  * high fraction; if the bit is set, it is a `quiet NaN'.
  */
-#define	EXT_EXP_INFNAN	32767
+#define	EXT_EXP_INFNAN	0x7fff
+#define	EXT_EXP_INF	0x7fff
+#define	EXT_EXP_NAN	0x7fff
 
 #if 0
 #define	EXT_QUIETNAN	(1 << 30)
@@ -94,3 +96,11 @@ union ieee_ext_u {
 	long double		extu_ld;
 	struct ieee_ext		extu_ext;
 };
+
+#define extu_exp	extu_ext.ext_exp
+#define extu_sign	extu_ext.ext_sign
+#define extu_fracl	extu_ext.ext_fracl
+#define extu_frach	extu_ext.ext_frach
+
+#define LDBL_NBIT	0x80000000
+#define mask_nbit_l(u)	((u).extu_frach &= ~LDBL_NBIT)

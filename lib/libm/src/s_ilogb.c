@@ -9,8 +9,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: s_ilogb.c,v 1.12 2002/05/26 22:01:56 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_ilogb.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: s_ilogb.c,v 1.13 2011/07/28 22:32:29 joerg Exp $
  */
 
 /* ilogb(double x)

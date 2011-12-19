@@ -1,4 +1,4 @@
-/* $NetBSD: cacoshf.c,v 1.1 2007/08/20 16:01:31 drochner Exp $ */
+/* $NetBSD: cacoshf.c,v 1.2 2009/08/03 19:41:32 drochner Exp $ */
 
 /*-
  * Copyright (c) 2007 The NetBSD Foundation, Inc.

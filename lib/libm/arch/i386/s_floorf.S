@@ -2,7 +2,7 @@
  * Written by J.T. Conklin <jtc@NetBSD.org>.
  * Public domain.
  *
- * $NetBSD: s_floorf.S,v 1.7 2004/07/16 18:40:24 drochner Exp $
+ * $NetBSD: s_floorf.S,v 1.8 2011/06/18 21:24:51 joerg Exp $
  */
 
 #include <machine/asm.h>
@@ -20,7 +20,7 @@ ENTRY(floorf)
 	movw	%dx,-8(%ebp)
 	fldcw	-8(%ebp)		/* load modfied control word */
 
-	flds	8(%ebp);		/* round */
+	flds	8(%ebp)			/* round */
 	frndint
 
 	fldcw	-4(%ebp)		/* restore original control word */

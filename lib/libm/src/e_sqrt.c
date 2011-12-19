@@ -9,8 +9,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_sqrt.c,v 1.12 2002/05/26 22:01:52 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_sqrt.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: e_sqrt.c,v 1.13 2009/02/16 01:19:34 lukem Exp $
  */
 
 /* sqrt(x)
@@ -153,7 +152,7 @@ sqrt(double x)
 	    t  = s0;
 	    if((t<ix0)||((t==ix0)&&(t1<=ix1))) {
 		s1  = t1+r;
-		if(((t1&sign)==sign)&&(s1&sign)==0) s0 += 1;
+		if(((t1&sign)==(u_int32_t)sign)&&(s1&sign)==0) s0 += 1;
 		ix0 -= t;
 		if (ix1 < t1) ix0 -= 1;
 		ix1 -= t1;

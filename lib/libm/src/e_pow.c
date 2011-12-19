@@ -9,8 +9,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_pow.c,v 1.13 2004/06/30 18:43:15 drochner Exp $
- * $DragonFly: src/lib/libm/src/e_pow.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: e_pow.c,v 1.16 2010/04/23 19:17:07 drochner Exp $
  */
 
 /* pow(x,y) return x**y
@@ -98,7 +97,7 @@ double
 pow(double x, double y)
 {
 	double z,ax,z_h,z_l,p_h,p_l;
-	double y1_,t1,t2,r,s,t,u,v,w;
+	double yy1,t1,t2,r,s,t,u,v,w;
 	int32_t i,j,k,yisint,n;
 	int32_t hx,hy,ix,iy;
 	u_int32_t lx,ly;
@@ -127,7 +126,7 @@ pow(double x, double y)
 		k = (iy>>20)-0x3ff;	   /* exponent */
 		if(k>20) {
 		    j = ly>>(52-k);
-		    if((j<<(52-k))==ly) yisint = 2-(j&1);
+		    if((uint32_t)(j<<(52-k))==ly) yisint = 2-(j&1);
 		} else if(ly==0) {
 		    j = iy>>(20-k);
 		    if((j<<(20-k))==iy) yisint = 2-(j&1);
@@ -247,11 +246,11 @@ pow(double x, double y)
 	    t2 = z_l-(((t1-t)-dp_h[k])-z_h);
 	}
 
-    /* split up y into y1_+y2 and compute (y1_+y2)*(t1+t2) */
-	y1_  = y;
-	SET_LOW_WORD(y1_,0);
-	p_l = (y-y1_)*t1+y*t2;
-	p_h = y1_*t1;
+    /* split up y into yy1+y2 and compute (yy1+y2)*(t1+t2) */
+	yy1  = y;
+	SET_LOW_WORD(yy1,0);
+	p_l = (y-yy1)*t1+y*t2;
+	p_h = yy1*t1;
 	z = p_l+p_h;
 	EXTRACT_WORDS(j,i,z);
 	if (j>=0x40900000) {				/* z >= 1024 */

@@ -9,8 +9,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: k_rem_pio2.c,v 1.11 2003/01/04 23:43:03 wiz Exp $
- * $DragonFly: src/lib/libm/src/k_rem_pio2.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: k_rem_pio2.c,v 1.12 2010/04/23 19:17:07 drochner Exp $
  */
 
 /*

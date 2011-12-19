@@ -22,33 +22,38 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $NetBSD: s_fminl.c,v 1.3 2011/07/04 11:46:41 mrg Exp $
  */
 
-#include <sys/cdefs.h>
-
 #include <math.h>
+#include <string.h>
 
-#include "fpmath.h"
-
+#include <machine/ieee.h>
+#ifdef EXT_EXP_INFNAN
 long double
 fminl(long double x, long double y)
 {
-	union IEEEl2bits u[2];
+	union ieee_ext_u u[2];
 
-	u[0].e = x;
-	mask_nbit_l(u[0]);
-	u[1].e = y;
-	mask_nbit_l(u[1]);
+	memset(&u, 0, sizeof u);
+	u[0].extu_ld = x;
+	u[0].extu_ext.ext_frach &= ~0x80000000;
+	u[1].extu_ld = y;
+	u[1].extu_ext.ext_frach &= ~0x80000000;
 
 	/* Check for NaNs to avoid raising spurious exceptions. */
-	if (u[0].bits.exp == 32767 && (u[0].bits.manh | u[0].bits.manl) != 0)
+	if (u[0].extu_ext.ext_exp == EXT_EXP_INFNAN &&
+	    (u[0].extu_ext.ext_frach | u[0].extu_ext.ext_fracl) != 0)
 		return (y);
-	if (u[1].bits.exp == 32767 && (u[1].bits.manh | u[1].bits.manl) != 0)
+	if (u[1].extu_ext.ext_exp == EXT_EXP_INFNAN &&
+	    (u[1].extu_ext.ext_frach | u[1].extu_ext.ext_fracl) != 0)
 		return (x);
 
-	/* Handle comparisons of signed zeroes. */
-	if (u[0].bits.sign != u[1].bits.sign)
-		return (u[1].bits.sign ? y : x);
+	/* Handle comparisons of ext_signed zeroes. */
+	if (u[0].extu_ext.ext_sign != u[1].extu_ext.ext_sign)
+		return (u[1].extu_ext.ext_sign ? y : x);
 
 	return (x < y ? x : y);
 }
+#endif

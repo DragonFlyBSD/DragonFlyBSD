@@ -12,8 +12,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: k_rem_pio2f.c,v 1.7 2002/05/26 22:01:53 wiz Exp $
- * $DragonFly: src/lib/libm/src/k_rem_pio2f.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: k_rem_pio2f.c,v 1.8 2010/04/23 19:17:07 drochner Exp $
  */
 
 #include <math.h>

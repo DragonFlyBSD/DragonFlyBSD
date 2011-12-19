@@ -22,31 +22,33 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $NetBSD: s_fmax.c,v 1.2 2010/03/08 01:05:20 snj Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include <math.h>
 
-#include "fpmath.h"
+#include <machine/ieee.h>
 
 double
 fmax(double x, double y)
 {
-	union IEEEd2bits u[2];
+	union ieee_double_u u[2];
 
-	u[0].d = x;
-	u[1].d = y;
+	u[0].dblu_d = x;
+	u[1].dblu_d = y;
 
 	/* Check for NaNs to avoid raising spurious exceptions. */
-	if (u[0].bits.exp == 2047 && (u[0].bits.manh | u[0].bits.manl) != 0)
+	if (u[0].dblu_dbl.dbl_exp == DBL_EXP_INFNAN &&
+	    (u[0].dblu_dbl.dbl_frach | u[0].dblu_dbl.dbl_fracl) != 0)
 		return (y);
-	if (u[1].bits.exp == 2047 && (u[1].bits.manh | u[1].bits.manl) != 0)
+	if (u[1].dblu_dbl.dbl_exp == DBL_EXP_INFNAN &&
+	    (u[1].dblu_dbl.dbl_frach | u[1].dblu_dbl.dbl_fracl) != 0)
 		return (x);
 
 	/* Handle comparisons of signed zeroes. */
-	if (u[0].bits.sign != u[1].bits.sign)
-		return (u[u[0].bits.sign].d);
+	if (u[0].dblu_dbl.dbl_sign != u[1].dblu_dbl.dbl_sign)
+		return (u[u[0].dblu_dbl.dbl_sign].dblu_d);
 
 	return (x > y ? x : y);
 }

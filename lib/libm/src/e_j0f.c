@@ -12,8 +12,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_j0f.c,v 1.9 2006/03/19 20:42:44 christos Exp $
- * $DragonFly: src/lib/libm/src/e_j0f.c,v 1.3 2007/06/17 00:53:52 pavalos Exp $
+ * $NetBSD: e_j0f.c,v 1.10 2007/08/20 16:01:38 drochner Exp $
  */
 
 #include <math.h>

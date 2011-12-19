@@ -12,8 +12,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_powf.c,v 1.12 2006/03/19 20:46:25 christos Exp $
- * $DragonFly: src/lib/libm/src/e_powf.c,v 1.2 2007/06/17 00:57:06 pavalos Exp $
+ * $NetBSD: e_powf.c,v 1.15 2010/04/23 19:17:07 drochner Exp $
  */
 
 #include <math.h>
@@ -56,7 +55,7 @@ float
 powf(float x, float y)
 {
 	float z,ax,z_h,z_l,p_h,p_l;
-	float y1_,t1,t2,r,s,t,u,v,w;
+	float yy1,t1,t2,r,s,t,u,v,w;
 	int32_t i,j,k,yisint,n;
 	int32_t hx,hy,ix,iy,is;
 
@@ -194,11 +193,11 @@ powf(float x, float y)
 	if(((((u_int32_t)hx>>31)-1)|(yisint-1))==0)
 	    s = -one;	/* (-ve)**(odd int) */
 
-    /* split up y into y1_+y2 and compute (y1_+y2)*(t1+t2) */
+    /* split up y into yy1+y2 and compute (yy1+y2)*(t1+t2) */
 	GET_FLOAT_WORD(is,y);
-	SET_FLOAT_WORD(y1_,is&0xfffff000);
-	p_l = (y-y1_)*t1+y*t2;
-	p_h = y1_*t1;
+	SET_FLOAT_WORD(yy1,is&0xfffff000);
+	p_l = (y-yy1)*t1+y*t2;
+	p_h = yy1*t1;
 	z = p_l+p_h;
 	GET_FLOAT_WORD(j,z);
 	if (j>0x43000000)				/* if z > 128 */
@@ -206,7 +205,7 @@ powf(float x, float y)
 	else if (j==0x43000000) {			/* if z == 128 */
 	    if(p_l+ovt>z-p_h) return s*huge*huge;	/* overflow */
 	}
-	else if (j==0xc3160000){			/* z == -150 */
+	else if ((uint32_t)j==0xc3160000){		/* z == -150 */
 	    if(p_l<=z-p_h) return s*tiny*tiny;		/* underflow */
 	}
 	else if ((j&0x7fffffff)>0x43160000)		/* z <= -150 */

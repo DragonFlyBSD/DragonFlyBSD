@@ -12,8 +12,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_scalbf.c,v 1.6 2002/05/26 22:01:52 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_scalbf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: e_scalbf.c,v 1.7 2010/04/23 19:17:07 drochner Exp $
  */
 
 #include <math.h>

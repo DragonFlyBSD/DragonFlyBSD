@@ -1,3 +1,5 @@
+/* $NetBSD: lrint.c,v 1.4 2008/04/26 23:49:50 christos Exp $ */
+
 /*-
  * Copyright (c) 2004
  *	Matthias Drochner. All rights reserved.
@@ -22,9 +24,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $NetBSD: lrint.c,v 1.3 2004/10/13 15:18:32 drochner Exp $
- * $DragonFly: src/lib/libm/src/lrint.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
  */
 
 #include <math.h>
@@ -56,7 +55,7 @@ LRINTNAME(double x)
 
 	GET_HIGH_WORD(i0, x);
 	e = i0 >> 20;
-	s = e >> DBL_EXPBITS;
+	s = (uint32_t)e >> DBL_EXPBITS;
 	e = (e & 0x7ff) - DBL_EXP_BIAS;
 
 	/* 1.0 x 2^-1 is the smallest number which can be rounded to 1 */

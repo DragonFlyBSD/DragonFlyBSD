@@ -12,8 +12,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: s_frexpf.c,v 1.9 2002/12/05 16:03:42 scw Exp $
- * $DragonFly: src/lib/libm/src/s_frexpf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: s_frexpf.c,v 1.10 2007/08/21 20:12:27 drochner Exp $
  */
 
 #include <math.h>
@@ -38,6 +37,6 @@ frexpf(float x, int *eptr)
 	}
 	*eptr += (ix>>23)-126;
 	hx = (hx&0x807fffff)|0x3f000000;
-	*(int*)(void*)&x = hx;
+	SET_FLOAT_WORD(x,hx);
 	return x;
 }

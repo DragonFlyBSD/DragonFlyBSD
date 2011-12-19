@@ -11,8 +11,7 @@
 
 /*
  * from: @(#)fdlibm.h 5.1 93/09/24
- * $NetBSD: math_private.h,v 1.11 2001/02/21 18:09:26 bjh21 Exp $
- * $DragonFly: src/lib/libm/src/math_private.h,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: math_private.h,v 1.16 2010/09/16 20:39:50 drochner Exp $
  */
 
 #ifndef _MATH_PRIVATE_H_
@@ -76,7 +75,7 @@ do {								\
   ew_u.value = (d);						\
   (ix0) = ew_u.parts.msw;					\
   (ix1) = ew_u.parts.lsw;					\
-} while (0)
+} while (/*CONSTCOND*/0)
 
 /* Get the more significant 32 bit int from a double.  */
 
@@ -85,7 +84,7 @@ do {								\
   ieee_double_shape_type gh_u;					\
   gh_u.value = (d);						\
   (i) = gh_u.parts.msw;						\
-} while (0)
+} while (/*CONSTCOND*/0)
 
 /* Get the less significant 32 bit int from a double.  */
 
@@ -94,7 +93,7 @@ do {								\
   ieee_double_shape_type gl_u;					\
   gl_u.value = (d);						\
   (i) = gl_u.parts.lsw;						\
-} while (0)
+} while (/*CONSTCOND*/0)
 
 /* Set a double from two 32 bit ints.  */
 
@@ -104,7 +103,7 @@ do {								\
   iw_u.parts.msw = (ix0);					\
   iw_u.parts.lsw = (ix1);					\
   (d) = iw_u.value;						\
-} while (0)
+} while (/*CONSTCOND*/0)
 
 /* Set the more significant 32 bits of a double from an int.  */
 
@@ -114,7 +113,7 @@ do {								\
   sh_u.value = (d);						\
   sh_u.parts.msw = (v);						\
   (d) = sh_u.value;						\
-} while (0)
+} while (/*CONSTCOND*/0)
 
 /* Set the less significant 32 bits of a double from an int.  */
 
@@ -124,7 +123,7 @@ do {								\
   sl_u.value = (d);						\
   sl_u.parts.lsw = (v);						\
   (d) = sl_u.value;						\
-} while (0)
+} while (/*CONSTCOND*/0)
 
 /* A union which permits us to convert between a float and a 32 bit
    int.  */
@@ -142,7 +141,7 @@ do {								\
   ieee_float_shape_type gf_u;					\
   gf_u.value = (d);						\
   (i) = gf_u.word;						\
-} while (0)
+} while (/*CONSTCOND*/0)
 
 /* Set a float from a 32 bit int.  */
 
@@ -151,29 +150,54 @@ do {								\
   ieee_float_shape_type sf_u;					\
   sf_u.word = (i);						\
   (d) = sf_u.value;						\
-} while (0)
-
-#ifdef _COMPLEX_H
+} while (/*CONSTCOND*/0)
 
 /*
- * C99 specifies that complex numbers have the same representation as
- * an array of two elements, where the first element is the real part
- * and the second element is the imaginary part.
+ * Attempt to get strict C99 semantics for assignment with non-C99 compilers.
+ */
+#if FLT_EVAL_METHOD == 0 || __GNUC__ == 0
+#define	STRICT_ASSIGN(type, lval, rval)	((lval) = (rval))
+#else
+#define	STRICT_ASSIGN(type, lval, rval) do {	\
+	volatile type __lval;			\
+						\
+	if (sizeof(type) >= sizeof(double))	\
+		(lval) = (rval);		\
+	else {					\
+		__lval = (rval);		\
+		(lval) = __lval;		\
+	}					\
+} while (/*CONSTCOND*/0)
+#endif
+
+#ifdef	_COMPLEX_H
+
+/*
+ * Quoting from ISO/IEC 9899:TC2:
+ *
+ * 6.2.5.13 Types
+ * Each complex type has the same representation and alignment requirements as
+ * an array type containing exactly two elements of the corresponding real type;
+ * the first element is equal to the real part, and the second element to the
+ * imaginary part, of the complex number.
  */
 typedef union {
-	float complex f;
-	float a[2];
+	float complex z;
+	float parts[2];
 } float_complex;
+
 typedef union {
-	double complex f;
-	double a[2];
+	double complex z;
+	double parts[2];
 } double_complex;
+
 typedef union {
-	long double complex f;
-	long double a[2];
+	long double complex z;
+	long double parts[2];
 } long_double_complex;
-#define REALPART(z)     ((z).a[0])
-#define IMAGPART(z)     ((z).a[1])
+
+#define	REAL_PART(z)	((z).parts[0])
+#define	IMAG_PART(z)	((z).parts[1])
 
 /*
  * Inline functions that can be used to construct complex values.
@@ -188,34 +212,34 @@ typedef union {
 static __inline float complex
 cpackf(float x, float y)
 {
-	float_complex z;
+	float_complex fc;
 
-	REALPART(z) = x;
-	IMAGPART(z) = y;
-	return (z.f);
+	REAL_PART(fc) = x;
+	IMAG_PART(fc) = y;
+	return (fc.z);
 }
 
 static __inline double complex
 cpack(double x, double y)
 {
-	double_complex z;
+	double_complex dc;
 
-	REALPART(z) = x;
-	IMAGPART(z) = y;
-	return (z.f);
+	REAL_PART(dc) = x;
+	IMAG_PART(dc) = y;
+	return (dc.z);
 }
 
 static __inline long double complex
 cpackl(long double x, long double y)
 {
-	long_double_complex z;
+	long_double_complex ldc;
 
-	REALPART(z) = x;
-	IMAGPART(z) = y;
-	return (z.f);
+	REAL_PART(ldc) = x;
+	IMAG_PART(ldc) = y;
+	return (ldc.z);
 }
 
-#endif /* _COMPLEX_H */
+#endif	/* _COMPLEX_H */
 
 __BEGIN_DECLS
 #pragma GCC visibility push(hidden)

@@ -2,7 +2,7 @@
  * Written by J.T. Conklin <jtc@NetBSD.org>.
  * Public domain.
  *
- * $NetBSD: s_ceil.S,v 1.7 2003/07/26 19:25:00 salo Exp $
+ * $NetBSD: s_ceil.S,v 1.8 2011/06/18 21:24:51 joerg Exp
  */
 
 #include <machine/asm.h>
@@ -22,7 +22,7 @@ ENTRY(ceil)
 	movw	%dx,-8(%ebp)
 	fldcw	-8(%ebp)		/* load modfied control word */
 
-	fldl	8(%ebp);		/* round */
+	fldl	8(%ebp)			/* round */
 	frndint
 
 	fldcw	-4(%ebp)		/* restore original control word */
