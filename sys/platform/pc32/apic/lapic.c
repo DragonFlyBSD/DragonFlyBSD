@@ -35,6 +35,7 @@
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
 #include <machine/pmap.h>
+#include <machine/specialreg.h>
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/ioapic_abi.h>
@@ -110,6 +111,40 @@ lapic_init(boolean_t bsp)
 	 * only need to be installed once; we do it on BSP.
 	 */
 	if (bsp) {
+		if (cpu_vendor_id == CPU_VENDOR_AMD &&
+		    CPUID_TO_FAMILY(cpu_id) >= 0xf) {
+			uint32_t tcr;
+
+			/*
+			 * Set the LINTEN bit in the HyperTransport
+			 * Transaction Control Register.
+			 *
+			 * This will cause EXTINT and NMI interrupts
+			 * routed over the hypertransport bus to be
+			 * fed into the LAPIC LINT0/LINT1.  If the bit
+			 * isn't set, the interrupts will go to the
+			 * general cpu INTR/NMI pins.  On a dual-core
+			 * cpu the interrupt winds up going to BOTH cpus.
+			 * The first cpu that does the interrupt ack
+			 * cycle will get the correct interrupt.  The
+			 * second cpu that does it will get a spurious
+			 * interrupt vector (typically IRQ 7).
+			 */
+			outl(0x0cf8,
+			    (1 << 31) |	/* enable */
+			    (0 << 16) |	/* bus */
+			    (0x18 << 11) | /* dev (cpu + 0x18) */
+			    (0 << 8) |	/* func */
+			    0x68	/* reg */
+			    );
+			tcr = inl(0xcfc);
+			if ((tcr & 0x00010000) == 0) {
+				kprintf("LAPIC: AMD LINTEN on\n");
+				outl(0xcfc, tcr|0x00010000);
+			}
+			outl(0x0cf8, 0);
+		}
+
 		/* Install a 'Spurious INTerrupt' vector */
 		setidt(XSPURIOUSINT_OFFSET, Xspuriousint,
 		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
