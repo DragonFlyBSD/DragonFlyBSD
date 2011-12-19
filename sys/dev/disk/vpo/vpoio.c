@@ -25,8 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpoio.c,v 1.10.2.3 2001/10/02 05:27:20 nsouch Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpoio.c,v 1.8 2006/12/22 23:26:17 swildner Exp $
- *
  */
 
 #ifdef _KERNEL
@@ -118,9 +116,9 @@ struct ppb_microseq wait_microseq[] = {			\
 #define INIT_TRIG_MICROSEQ {						\
 	int i;								\
 	for (i=1; i <= 7; i+=2) {					\
-		disconnect_microseq[i].arg[2] = (union ppb_insarg)d_pulse; \
-		connect_epp_microseq[i].arg[2] = 			\
-		connect_spp_microseq[i].arg[2] = (union ppb_insarg)c_pulse; \
+		disconnect_microseq[i].arg[2].c = d_pulse;		\
+		connect_epp_microseq[i].arg[2].c = 			\
+		connect_spp_microseq[i].arg[2].c = c_pulse;		\
 	}								\
 }
 
@@ -440,13 +438,16 @@ error:
  * vpoio_outstr()
  */
 static int
-vpoio_outstr(struct vpoio_data *vpo, char *buffer, int size)
+vpoio_outstr(struct vpoio_data *vpo, char *_buffer, int _size)
 {
+	union ppb_insarg buffer = { .c = _buffer };
+	union ppb_insarg size = { .i = _size };
+	union ppb_insarg unknown = { .i = MS_UNKNOWN };
 	device_t ppbus = device_get_parent(vpo->vpo_dev);
 	int error = 0;
 
-	ppb_MS_exec(ppbus, vpo->vpo_dev, MS_OP_PUT, (union ppb_insarg)buffer,
-		(union ppb_insarg)size, (union ppb_insarg)MS_UNKNOWN, &error);
+	ppb_MS_exec(ppbus, vpo->vpo_dev, MS_OP_PUT, buffer, size, unknown,
+	    &error);
 
 	ppb_ecp_sync(ppbus);
 
@@ -457,13 +458,16 @@ vpoio_outstr(struct vpoio_data *vpo, char *buffer, int size)
  * vpoio_instr()
  */
 static int
-vpoio_instr(struct vpoio_data *vpo, char *buffer, int size)
+vpoio_instr(struct vpoio_data *vpo, char *_buffer, int _size)
 {
+	union ppb_insarg buffer = { .c = _buffer };
+	union ppb_insarg size = { .i = _size };
+	union ppb_insarg unknown = { .i = MS_UNKNOWN };
 	device_t ppbus = device_get_parent(vpo->vpo_dev);
 	int error = 0;
 
-	ppb_MS_exec(ppbus, vpo->vpo_dev, MS_OP_GET, (union ppb_insarg)buffer,
-		(union ppb_insarg)size, (union ppb_insarg)MS_UNKNOWN, &error);
+	ppb_MS_exec(ppbus, vpo->vpo_dev, MS_OP_GET, buffer, size, unknown,
+	    &error);
 
 	ppb_ecp_sync(ppbus);
 

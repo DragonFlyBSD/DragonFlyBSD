@@ -25,8 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/immio.c,v 1.10.2.3 2001/10/02 05:27:20 nsouch Exp $
- * $DragonFly: src/sys/dev/disk/vpo/immio.c,v 1.7 2006/12/22 23:26:17 swildner Exp $
- *
  */
 
 /*
@@ -433,16 +431,19 @@ error:
  * imm_outstr()
  */
 static int
-imm_outstr(struct vpoio_data *vpo, char *buffer, int size)
+imm_outstr(struct vpoio_data *vpo, char *_buffer, int _size)
 {
+	union ppb_insarg buffer = { .c = _buffer };
+	union ppb_insarg size = { .i = _size };
+	union ppb_insarg unknown = { .i = MS_UNKNOWN };
 	device_t ppbus = device_get_parent(vpo->vpo_dev);
 	int error = 0;
 
 	if (PPB_IN_EPP_MODE(ppbus))
 		ppb_reset_epp_timeout(ppbus);
 
-	ppb_MS_exec(ppbus, vpo->vpo_dev, MS_OP_PUT, (union ppb_insarg)buffer,
-		(union ppb_insarg)size, (union ppb_insarg)MS_UNKNOWN, &error);
+	ppb_MS_exec(ppbus, vpo->vpo_dev, MS_OP_PUT, buffer, size, unknown,
+	    &error);
 
 	return (error);
 }
@@ -451,16 +452,19 @@ imm_outstr(struct vpoio_data *vpo, char *buffer, int size)
  * imm_instr()
  */
 static int
-imm_instr(struct vpoio_data *vpo, char *buffer, int size)
+imm_instr(struct vpoio_data *vpo, char *_buffer, int _size)
 {
+	union ppb_insarg buffer = { .c = _buffer };
+	union ppb_insarg size = { .i = _size };
+	union ppb_insarg unknown = { .i = MS_UNKNOWN };
 	device_t ppbus = device_get_parent(vpo->vpo_dev);
 	int error = 0;
 
 	if (PPB_IN_EPP_MODE(ppbus))
 		ppb_reset_epp_timeout(ppbus);
 
-	ppb_MS_exec(ppbus, vpo->vpo_dev, MS_OP_GET, (union ppb_insarg)buffer,
-		(union ppb_insarg)size, (union ppb_insarg)MS_UNKNOWN, &error);
+	ppb_MS_exec(ppbus, vpo->vpo_dev, MS_OP_GET, buffer, size, unknown,
+	    &error);
 
 	return (error);
 }
