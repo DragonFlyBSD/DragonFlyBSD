@@ -35,7 +35,6 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.31 2008/06/05 18:06:31 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -557,7 +556,9 @@ format_config(char *config, int len)
 void
 save_config(void)
 {
-    queue_daemon_request(daemonrq_saveconfig, (union daemoninfo) 0);
+    union daemoninfo di = { .nothing = 0 };
+
+    queue_daemon_request(daemonrq_saveconfig, di);
 }
 
 /*

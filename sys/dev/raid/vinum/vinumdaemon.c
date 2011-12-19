@@ -36,7 +36,6 @@
  *
  * $Id: vinumdaemon.c,v 1.8 2000/01/03 05:22:03 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumdaemon.c,v 1.16 2000/01/05 06:03:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.12 2008/06/05 18:06:31 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -254,10 +253,11 @@ queue_daemon_request(enum daemonrq type, union daemoninfo info)
 int
 vinum_finddaemon(void)
 {
+    union daemoninfo di = { .nothing = 0 };
     int result;
 
     if (daemonpid != 0) {				    /* we think we have a daemon, */
-	queue_daemon_request(daemonrq_ping, (union daemoninfo) 0); /* queue a ping */
+	queue_daemon_request(daemonrq_ping, di);	    /* queue a ping */
 	result = tsleep(&vinum_finddaemon, 0, "reap", 2 * hz);
 	if (result == 0)				    /* yup, the daemon's up and running */
 	    return 0;

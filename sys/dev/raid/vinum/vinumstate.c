@@ -49,6 +49,7 @@
 int
 set_drive_state(int driveno, enum drivestate newstate, enum setstateflags flags)
 {
+    union daemoninfo di;
     struct drive *drive = &DRIVE[driveno];
     int oldstate = drive->state;
     int sdno;
@@ -78,9 +79,10 @@ set_drive_state(int driveno, enum drivestate newstate, enum setstateflags flags)
     if (newstate == drive_up) {				    /* want to bring it up */
 	if ((drive->flags & VF_OPEN) == 0)		    /* should be open, but we're not */
 	    init_drive(drive, 1);			    /* which changes the state again */
-    } else						    /* taking it down or worse */
-	queue_daemon_request(daemonrq_closedrive,	    /* get the daemon to close it */
-	    (union daemoninfo) drive);
+    } else {						    /* taking it down or worse */
+	di.drive = drive;
+	queue_daemon_request(daemonrq_closedrive, di);	    /* get the daemon to close it */
+    }
     if ((flags & setstate_configuring) == 0)		    /* configuring? */
 	save_config();					    /* no: save the updated configuration now */
     return 1;

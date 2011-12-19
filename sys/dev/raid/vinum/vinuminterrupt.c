@@ -41,7 +41,6 @@
  *
  * $Id: vinuminterrupt.c,v 1.12 2000/11/24 03:41:42 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinuminterrupt.c,v 1.25.2.3 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.13 2007/08/01 11:46:46 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -63,6 +62,7 @@ void sdio_done(struct bio *bio);
 void
 complete_rqe(struct bio *bio)
 {
+    union daemoninfo di;
     struct buf *bp = bio->bio_buf;
     struct rqelement *rqe;
     struct request *rq;
@@ -220,8 +220,10 @@ complete_rqe(struct bio *bio)
 	    if (rq->isplex) {				    /* plex operation, */
 		ubio->bio_buf->b_flags |= B_ERROR;	    /* yes, propagate to user */
 		ubio->bio_buf->b_error = rq->error;
-	    } else					    /* try to recover */
-		queue_daemon_request(daemonrq_ioerror, (union daemoninfo) rq); /* let the daemon complete */
+	    } else {					    /* try to recover */
+		di.rq = rq;
+		queue_daemon_request(daemonrq_ioerror, di); /* let the daemon complete */
+	    }
 	} else {
 	    ubio->bio_buf->b_resid = 0;			    /* completed our transfer */
 	    if (rq->isplex == 0)			    /* volume request, */

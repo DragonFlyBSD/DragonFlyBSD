@@ -37,7 +37,6 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.20 2007/05/15 22:44:12 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -200,6 +199,7 @@ vinum_inactive(int confopen)
 void
 free_vinum(int cleardrive)
 {
+    union daemoninfo di = { .nothing = 0 };
     int i;
     int drives_allocated = vinum_conf.drives_allocated;
 
@@ -215,7 +215,7 @@ free_vinum(int cleardrive)
     }
     while ((vinum_conf.flags & (VF_STOPPING | VF_DAEMONOPEN))
 	== (VF_STOPPING | VF_DAEMONOPEN)) {		    /* at least one daemon open, we're stopping */
-	queue_daemon_request(daemonrq_return, (union daemoninfo) 0); /* stop the daemon */
+	queue_daemon_request(daemonrq_return, di);	    /* stop the daemon */
 	tsleep(&vinumclose, 0, "vstop", 1);		    /* and wait for it */
     }
     if (SD != NULL) {
