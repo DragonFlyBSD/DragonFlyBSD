@@ -127,21 +127,11 @@ cpu		HAMMER_CPU
 #
 # Options for CPU features.
 #
-# CPU_AMD64X2_INTR_SPAM tries to route HyperTransport EXTINT and NMI
-# messages to LINT0 on the local APIC when the BIOS has forgotten to
-# do that.  If this is not done on a multi-core cpu, EXTINT and NMI
-# get routed to the INTR/NMI pins on *BOTH* cores simultaneously, causing
-# two INTA ack cycles one of which will almost certainly result in a
-# spurious interrupt vector being presented.  This is often visible as
-# an unmaskable IRQ 7 which occurs for every normal interrupt that occurs
-# on a system.
-#
 # CPU_DISABLE_SSE disables SSE/MMX2 instructions support.
 #
 # CPU_ENABLE_EST enables support for Enhanced SpeedStep technology
 # found in Pentium(tm) M processors.
 #
-options		CPU_AMD64X2_INTR_SPAM
 #options 	CPU_DISABLE_SSE
 options		CPU_ENABLE_EST
 
