@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_command.c,v 1.34.2.2 2001/07/29 22:48:36 kris Exp $
- * $DragonFly: src/sys/ddb/db_command.c,v 1.12 2007/05/07 05:21:38 dillon Exp $
  */
 
 /*
@@ -67,7 +66,65 @@ static db_cmdfcn_t	db_fncall;
 static db_cmdfcn_t	db_gdb;
 static db_cmdfcn_t	db_reset;
 
-static struct command	db_show_cmds[];
+/*
+ * 'show' commands
+ */
+
+static struct command db_show_all_cmds[] = {
+#if 0
+	{ "threads",	db_show_all_threads,	0,	0 },
+#endif
+	{ "procs",	db_ps,			0,	0 },
+	{ NULL }
+};
+
+static struct command db_show_cmds[] = {
+	{ "all",	0,			0,	db_show_all_cmds },
+	{ "registers",	db_show_regs,		0,	0 },
+	{ "breaks",	db_listbreak_cmd, 	0,	0 },
+#if 0
+	{ "thread",	db_show_one_thread,	0,	0 },
+#endif
+#if 0
+	{ "port",	ipc_port_print,		0,	0 },
+#endif
+	{ NULL, }
+};
+
+static struct command db_command_table[] = {
+	{ "print",	db_print_cmd,		0,	0 },
+	{ "p",		db_print_cmd,		0,	0 },
+	{ "examine",	db_examine_cmd,		CS_SET_DOT, 0 },
+	{ "x",		db_examine_cmd,		CS_SET_DOT, 0 },
+	{ "search",	db_search_cmd,		CS_OWN|CS_SET_DOT, 0 },
+	{ "set",	db_set_cmd,		CS_OWN,	0 },
+	{ "write",	db_write_cmd,		CS_MORE|CS_SET_DOT, 0 },
+	{ "w",		db_write_cmd,		CS_MORE|CS_SET_DOT, 0 },
+	{ "delete",	db_delete_cmd,		0,	0 },
+	{ "d",		db_delete_cmd,		0,	0 },
+	{ "break",	db_breakpoint_cmd,	0,	0 },
+	{ "dwatch",	db_deletewatch_cmd,	0,	0 },
+	{ "watch",	db_watchpoint_cmd,	CS_MORE,0 },
+	{ "dhwatch",	db_deletehwatch_cmd,	0,      0 },
+	{ "hwatch",	db_hwatchpoint_cmd,	0,      0 },
+	{ "step",	db_single_step_cmd,	0,	0 },
+	{ "s",		db_single_step_cmd,	0,	0 },
+	{ "continue",	db_continue_cmd,	0,	0 },
+	{ "c",		db_continue_cmd,	0,	0 },
+	{ "until",	db_trace_until_call_cmd,0,	0 },
+	{ "next",	db_trace_until_matching_cmd,0,	0 },
+	{ "match",	db_trace_until_matching_cmd,0,	0 },
+	{ "trace",	db_stack_trace_cmd,	0,	0 },
+	{ "where",	db_stack_trace_cmd, 0,	0 },
+	{ "call",	db_fncall,		CS_OWN,	0 },
+	{ "show",	0,			0,	db_show_cmds },
+	{ "ps",		db_ps,			0,	0 },
+	{ "gdb",	db_gdb,			0,	0 },
+	{ "reset",	db_reset,		0,	0 },
+	{ NULL, }
+};
+
+static struct command	*db_last_command = 0;
 
 /*
  * if 'ed' style: 'dot' is set at start of last item printed,
@@ -364,66 +421,6 @@ db_command(struct command **last_cmdp, struct command *cmd_table,
 	    }
 	}
 }
-
-/*
- * 'show' commands
- */
-
-static struct command db_show_all_cmds[] = {
-#if 0
-	{ "threads",	db_show_all_threads,	0,	0 },
-#endif
-	{ "procs",	db_ps,			0,	0 },
-	{ NULL }
-};
-
-static struct command db_show_cmds[] = {
-	{ "all",	0,			0,	db_show_all_cmds },
-	{ "registers",	db_show_regs,		0,	0 },
-	{ "breaks",	db_listbreak_cmd, 	0,	0 },
-#if 0
-	{ "thread",	db_show_one_thread,	0,	0 },
-#endif
-#if 0
-	{ "port",	ipc_port_print,		0,	0 },
-#endif
-	{ NULL, }
-};
-
-static struct command db_command_table[] = {
-	{ "print",	db_print_cmd,		0,	0 },
-	{ "p",		db_print_cmd,		0,	0 },
-	{ "examine",	db_examine_cmd,		CS_SET_DOT, 0 },
-	{ "x",		db_examine_cmd,		CS_SET_DOT, 0 },
-	{ "search",	db_search_cmd,		CS_OWN|CS_SET_DOT, 0 },
-	{ "set",	db_set_cmd,		CS_OWN,	0 },
-	{ "write",	db_write_cmd,		CS_MORE|CS_SET_DOT, 0 },
-	{ "w",		db_write_cmd,		CS_MORE|CS_SET_DOT, 0 },
-	{ "delete",	db_delete_cmd,		0,	0 },
-	{ "d",		db_delete_cmd,		0,	0 },
-	{ "break",	db_breakpoint_cmd,	0,	0 },
-	{ "dwatch",	db_deletewatch_cmd,	0,	0 },
-	{ "watch",	db_watchpoint_cmd,	CS_MORE,0 },
-	{ "dhwatch",	db_deletehwatch_cmd,	0,      0 },
-	{ "hwatch",	db_hwatchpoint_cmd,	0,      0 },
-	{ "step",	db_single_step_cmd,	0,	0 },
-	{ "s",		db_single_step_cmd,	0,	0 },
-	{ "continue",	db_continue_cmd,	0,	0 },
-	{ "c",		db_continue_cmd,	0,	0 },
-	{ "until",	db_trace_until_call_cmd,0,	0 },
-	{ "next",	db_trace_until_matching_cmd,0,	0 },
-	{ "match",	db_trace_until_matching_cmd,0,	0 },
-	{ "trace",	db_stack_trace_cmd,	0,	0 },
-	{ "where",	db_stack_trace_cmd, 0,	0 },
-	{ "call",	db_fncall,		CS_OWN,	0 },
-	{ "show",	0,			0,	db_show_cmds },
-	{ "ps",		db_ps,			0,	0 },
-	{ "gdb",	db_gdb,			0,	0 },
-	{ "reset",	db_reset,		0,	0 },
-	{ NULL, }
-};
-
-static struct command	*db_last_command = 0;
 
 #if 0
 void
