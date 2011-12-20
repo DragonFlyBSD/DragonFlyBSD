@@ -138,40 +138,40 @@ smb_sm_lookupint(struct smb_vcspec *vcspec, struct smb_sharespec *shspec,
 		error = smb_vc_lock(vcp, LK_EXCLUSIVE);
 		if (error)
 			continue;
-		itry {
-			if ((vcp->obj.co_flags & SMBV_PRIVATE) ||
-			    !CONNADDREQ(vcp->vc_paddr, vcspec->sap) ||
-			    strcmp(vcp->vc_username, vcspec->username) != 0)
-				ithrow(1);
-			if (vcspec->owner != SMBM_ANY_OWNER) {
-				if (vcp->vc_uid != vcspec->owner)
-					ithrow(1);
-			} else
-				exact = 0;
-			if (vcspec->group != SMBM_ANY_GROUP) {
-				if (vcp->vc_grp != vcspec->group)
-					ithrow(1);
-			} else
-				exact = 0;
 
-			if (vcspec->mode & SMBM_EXACT) {
-				if (!exact ||
-				    (vcspec->mode & SMBM_MASK) != vcp->vc_mode)
-					ithrow(1);
-			}
-			if (smb_vc_access(vcp, scred, vcspec->mode) != 0)
-				ithrow(1);
-			vcspec->ssp = NULL;
-			if (shspec)
-				ithrow(smb_vc_lookupshare(vcp, shspec, scred, &vcspec->ssp));
-			error = 0;
-			break;
-		} icatch(error) {
-			smb_vc_unlock(vcp, 0);
-		} ifinally {
-		} iendtry;
-		if (error == 0)
-			break;
+		error = 1;
+		if ((vcp->obj.co_flags & SMBV_PRIVATE) ||
+		    !CONNADDREQ(vcp->vc_paddr, vcspec->sap) ||
+		    strcmp(vcp->vc_username, vcspec->username) != 0)
+			goto unlock;
+		if (vcspec->owner != SMBM_ANY_OWNER) {
+			if (vcp->vc_uid != vcspec->owner)
+				goto unlock;
+		} else
+			exact = 0;
+		if (vcspec->group != SMBM_ANY_GROUP) {
+			if (vcp->vc_grp != vcspec->group)
+				goto unlock;
+		} else
+			exact = 0;
+
+		if (vcspec->mode & SMBM_EXACT) {
+			if (!exact ||
+			    (vcspec->mode & SMBM_MASK) != vcp->vc_mode)
+				goto unlock;
+		}
+		if (smb_vc_access(vcp, scred, vcspec->mode) != 0)
+			goto unlock;
+		vcspec->ssp = NULL;
+		if (shspec) {
+			error = smb_vc_lookupshare(vcp, shspec, scred, &vcspec->ssp);
+			if (error != 0)
+				goto unlock;
+		}
+		error = 0;
+		break;
+unlock:
+		smb_vc_unlock(vcp, 0);
 	}
 	if (vcp) {
 		smb_vc_ref(vcp);
@@ -454,38 +454,61 @@ smb_vc_create(struct smb_vcspec *vcspec,
 	vcp->vc_grp = gid;
 
 	smb_sl_init(&vcp->vc_stlock, "vcstlock");
-	error = 0;
-	itry {
+
+	do {
+		error = ENOMEM;
 		vcp->vc_paddr = dup_sockaddr(vcspec->sap);
-		ierror(vcp->vc_paddr == NULL, ENOMEM);
+		if (vcp->vc_paddr == NULL)
+			break;
 
 		vcp->vc_laddr = dup_sockaddr(vcspec->lap);
-		ierror(vcp->vc_laddr == NULL, ENOMEM);
+		if (vcp->vc_laddr == NULL)
+			break;
 
-		ierror((vcp->vc_pass = smb_strdup(vcspec->pass)) == NULL, ENOMEM);
+		vcp->vc_pass = smb_strdup(vcspec->pass);
+		if (vcp->vc_pass == NULL)
+			break;
 
-		vcp->vc_domain = smb_strdup((domain && domain[0]) ? domain : "NODOMAIN");
-		ierror(vcp->vc_domain == NULL, ENOMEM);
+		vcp->vc_domain = smb_strdup((domain && domain[0]) ? domain
+								  : "NODOMAIN");
+		if (vcp->vc_domain == NULL)
+			break;
 
-		ierror((vcp->vc_srvname = smb_strdup(vcspec->srvname)) == NULL, ENOMEM);
-		ierror((vcp->vc_username = smb_strdup(vcspec->username)) == NULL, ENOMEM);
+		vcp->vc_srvname = smb_strdup(vcspec->srvname);
+		if (vcp->vc_srvname == NULL)
+			break;
+		vcp->vc_username = smb_strdup(vcspec->username);
+		if (vcp->vc_username == NULL)
+			break;
 
-		ithrow(iconv_open("tolower", vcspec->localcs, &vcp->vc_tolower));
-		ithrow(iconv_open("toupper", vcspec->localcs, &vcp->vc_toupper));
+		error = iconv_open("tolower", vcspec->localcs, &vcp->vc_tolower);
+		if (error != 0)
+			break;
+		error = iconv_open("toupper", vcspec->localcs, &vcp->vc_toupper);
+		if (error != 0)
+			break;
+
 		if (vcspec->servercs[0]) {
-			ithrow(iconv_open(vcspec->servercs, vcspec->localcs,
-			    &vcp->vc_toserver));
-			ithrow(iconv_open(vcspec->localcs, vcspec->servercs,
-			    &vcp->vc_tolocal));
+			error = iconv_open(vcspec->servercs, vcspec->localcs,
+			    &vcp->vc_toserver);
+			if (error != 0)
+				break;
+			error = iconv_open(vcspec->localcs, vcspec->servercs,
+			    &vcp->vc_tolocal);
+			if (error != 0)
+				break;
 		}
 
-		ithrow(smb_iod_create(vcp));
+		error = smb_iod_create(vcp);
+		if (error != 0)
+			break;
 		*vcpp = vcp;
 		smb_co_addchild(&smb_vclist, VCTOCP(vcp));
-	} icatch(error) {
+		error = 0;
+	} while (0);
+
+	if (error)
 		smb_vc_put(vcp, scred);
-	} ifinally {
-	} iendtry;
 	return error;
 }
 

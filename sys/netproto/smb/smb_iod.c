@@ -146,29 +146,46 @@ smb_iod_connect(struct smbiod *iod)
 		break;
 	}
 	vcp->vc_genid++;
-	error = 0;
-	itry {
-		ithrow(SMB_TRAN_CREATE(vcp, td));
+
+	do {
+		error = SMB_TRAN_CREATE(vcp, td);
+		if (error != 0)
+			break;
 		SMBIODEBUG("tcreate\n");
+
 		if (vcp->vc_laddr) {
-			ithrow(SMB_TRAN_BIND(vcp, vcp->vc_laddr, td));
+			error = SMB_TRAN_BIND(vcp, vcp->vc_laddr, td);
+			if (error != 0)
+				break;
 		}
 		SMBIODEBUG("tbind\n");
-		ithrow(SMB_TRAN_CONNECT(vcp, vcp->vc_paddr, td));
+
+		error = SMB_TRAN_CONNECT(vcp, vcp->vc_paddr, td);
+		if (error != 0)
+			break;
 		SMB_TRAN_SETPARAM(vcp, SMBTP_SELECTID, &iod->iod_flags);
 		iod->iod_state = SMBIOD_ST_TRANACTIVE;
 		SMBIODEBUG("tconnect\n");
+
 /*		vcp->vc_mid = 0;*/
-		ithrow(smb_smb_negotiate(vcp, &iod->iod_scred));
+
+		error = smb_smb_negotiate(vcp, &iod->iod_scred);
+		if (error != 0)
+			break;
 		SMBIODEBUG("snegotiate\n");
-		ithrow(smb_smb_ssnsetup(vcp, &iod->iod_scred));
+
+		error = smb_smb_ssnsetup(vcp, &iod->iod_scred);
+		if (error != 0)
+			break;
 		iod->iod_state = SMBIOD_ST_VCACTIVE;
 		SMBIODEBUG("completed\n");
+
 		smb_iod_invrq(iod);
-	} icatch(error) {
+		error = 0;
+	} while (0);
+
+	if (error)
 		smb_iod_dead(iod);
-	} ifinally {
-	} iendtry;
 	return error;
 }
 
