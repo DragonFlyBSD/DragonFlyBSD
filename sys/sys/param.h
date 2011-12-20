@@ -84,9 +84,10 @@
  * 201302 - header <crypt.h> is gone
  * 201303 - <netatalk/...> and <netproto/atalk/...> are gone
  * 201304 - Added wcscasecmp, wcsncasecmp to libc
+ * 201305 - Sync libm with NetBSD-current libm (new functions added)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 201304	/* propagated to newvers */
+#define __DragonFly_version 201305	/* propagated to newvers */
 
 #include <sys/_null.h>
 
