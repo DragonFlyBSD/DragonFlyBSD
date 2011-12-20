@@ -1763,6 +1763,7 @@ TO_REMOVE+=/usr/share/man/cat9/MALLOC.9.gz
 TO_REMOVE+=/usr/share/man/man9/MALLOC.9.gz
 TO_REMOVE+=/usr/share/man/cat9/FREE.9.gz
 TO_REMOVE+=/usr/share/man/man9/FREE.9.gz
+TO_REMOVE+=/usr/share/man/cat3/ieee.3.gz
 TO_REMOVE+=/usr/share/man/man3/ieee.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
