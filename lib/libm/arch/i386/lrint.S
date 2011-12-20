@@ -22,3 +22,5 @@ ENTRY(lrint)
 	ret
 #endif
 END(lrint)
+
+	.section .note.GNU-stack,"",%progbits

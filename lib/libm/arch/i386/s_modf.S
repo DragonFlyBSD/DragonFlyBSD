@@ -102,3 +102,5 @@ L1:
 	leave
 	ret
 END(modf)
+
+	.section .note.GNU-stack,"",%progbits

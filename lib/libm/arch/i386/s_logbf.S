@@ -17,3 +17,5 @@ ENTRY(logbf)
 	XMM_FLOAT_EPILOGUE
 	ret
 END(logbf)
+
+	.section .note.GNU-stack,"",%progbits

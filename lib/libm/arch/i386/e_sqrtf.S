@@ -16,3 +16,5 @@ ENTRY(sqrtf)
 #endif
 	ret
 END(sqrtf)
+
+	.section .note.GNU-stack,"",%progbits

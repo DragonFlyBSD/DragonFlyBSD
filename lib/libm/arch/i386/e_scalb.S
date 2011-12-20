@@ -18,3 +18,5 @@ ENTRY(scalb)
 	XMM_DOUBLE_EPILOGUE
 	ret
 END(scalb)
+
+	.section .note.GNU-stack,"",%progbits

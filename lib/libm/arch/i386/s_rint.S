@@ -16,3 +16,5 @@ ENTRY(rint)
 	XMM_DOUBLE_EPILOGUE
 	ret
 END(rint)
+
+	.section .note.GNU-stack,"",%progbits

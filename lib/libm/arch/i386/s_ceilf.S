@@ -42,3 +42,5 @@ ENTRY(ceilf)
 #endif
 	ret
 END(ceilf)
+
+	.section .note.GNU-stack,"",%progbits

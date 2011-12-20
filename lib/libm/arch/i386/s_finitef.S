@@ -24,3 +24,5 @@ ENTRY(finitef)
 #endif
 	ret
 END(finitef)
+
+	.section .note.GNU-stack,"",%progbits

@@ -25,3 +25,5 @@ ENTRY(scalbnf)
 #endif
 	ret
 END(scalbnf)
+
+	.section .note.GNU-stack,"",%progbits

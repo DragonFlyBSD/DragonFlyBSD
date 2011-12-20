@@ -103,3 +103,5 @@ x_not_minus_Inf:
 	XMM_DOUBLE_EPILOGUE
 	ret
 END(exp)
+
+	.section .note.GNU-stack,"",%progbits

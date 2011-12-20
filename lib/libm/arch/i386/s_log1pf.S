@@ -75,3 +75,5 @@ use_fyl2xp1:
 	XMM_FLOAT_EPILOGUE
 	ret
 END(log1pf)
+
+	.section .note.GNU-stack,"",%progbits

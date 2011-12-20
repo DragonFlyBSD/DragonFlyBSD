@@ -18,3 +18,5 @@ ENTRY(tanf)
 	XMM_FLOAT_EPILOGUE
 	ret
 END(tanf)
+
+	.section .note.GNU-stack,"",%progbits

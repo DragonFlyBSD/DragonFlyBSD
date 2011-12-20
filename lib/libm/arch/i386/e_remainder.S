@@ -21,3 +21,5 @@ ENTRY(remainder)
 	XMM_DOUBLE_EPILOGUE
 	ret
 END(remainder)
+
+	.section .note.GNU-stack,"",%progbits

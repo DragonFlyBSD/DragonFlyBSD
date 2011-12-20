@@ -23,3 +23,5 @@ ENTRY(acos)
 	XMM_DOUBLE_EPILOGUE
 	ret
 END(acos)
+
+	.section .note.GNU-stack,"",%progbits

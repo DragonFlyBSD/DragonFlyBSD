@@ -53,3 +53,5 @@ x_not_minus_Inf:
 	XMM_FLOAT_EPILOGUE
 	ret
 END(expf)
+
+	.section .note.GNU-stack,"",%progbits

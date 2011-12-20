@@ -17,3 +17,5 @@ ENTRY(sinf)
 	XMM_FLOAT_EPILOGUE
 	ret
 END(sinf)
+
+	.section .note.GNU-stack,"",%progbits

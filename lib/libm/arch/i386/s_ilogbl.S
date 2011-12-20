@@ -23,3 +23,5 @@ ENTRY(ilogbl)
 #endif
 	ret
 END(ilogbl)
+
+	.section .note.GNU-stack,"",%progbits

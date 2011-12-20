@@ -42,3 +42,5 @@ ENTRY(floorf)
 #endif
 	ret
 END(floorf)
+
+	.section .note.GNU-stack,"",%progbits

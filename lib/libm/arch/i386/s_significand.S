@@ -17,3 +17,5 @@ ENTRY(significand)
 	XMM_DOUBLE_EPILOGUE
 	ret
 END(significand)
+
+	.section .note.GNU-stack,"",%progbits

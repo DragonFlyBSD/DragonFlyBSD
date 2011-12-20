@@ -21,3 +21,5 @@ ENTRY(remainderf)
 	XMM_FLOAT_EPILOGUE
 	ret
 END(remainderf)
+
+	.section .note.GNU-stack,"",%progbits

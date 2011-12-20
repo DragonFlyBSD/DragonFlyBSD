@@ -37,3 +37,5 @@ ENTRY(copysign)
 #endif
 	ret
 END(copysign)
+
+	.section .note.GNU-stack,"",%progbits

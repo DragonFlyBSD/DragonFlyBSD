@@ -16,3 +16,5 @@ ENTRY(rintf)
 	XMM_FLOAT_EPILOGUE
 	ret
 END(rintf)
+
+	.section .note.GNU-stack,"",%progbits

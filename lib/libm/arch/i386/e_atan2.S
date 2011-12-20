@@ -17,3 +17,5 @@ ENTRY(atan2)
 	XMM_DOUBLE_EPILOGUE
 	ret
 END(atan2)
+
+	.section .note.GNU-stack,"",%progbits

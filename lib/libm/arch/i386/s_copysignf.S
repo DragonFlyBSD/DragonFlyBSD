@@ -36,3 +36,5 @@ ENTRY(copysignf)
 #endif
 	ret
 END(copysignf)
+
+	.section .note.GNU-stack,"",%progbits

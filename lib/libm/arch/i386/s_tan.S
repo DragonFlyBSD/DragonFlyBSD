@@ -32,3 +32,5 @@ ENTRY(tan)
 	XMM_DOUBLE_EPILOGUE
 	ret
 END(tan)
+
+	.section .note.GNU-stack,"",%progbits

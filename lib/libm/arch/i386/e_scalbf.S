@@ -17,3 +17,5 @@ ENTRY(scalbf)
 	XMM_FLOAT_EPILOGUE
 	ret
 END(scalbf)
+
+	.section .note.GNU-stack,"",%progbits
