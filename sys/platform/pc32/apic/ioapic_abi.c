@@ -799,10 +799,14 @@ ioapic_abi_fixup_irqmap(void)
 {
 	int cpu;
 
+	ioapic_abi_line_irq_max += 1;
+	if (bootverbose)
+		kprintf("IOAPIC: line irq max %d\n", ioapic_abi_line_irq_max);
+
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		int i;
 
-		for (i = 0; i < ISA_IRQ_CNT; ++i) {
+		for (i = 0; i < ioapic_abi_line_irq_max; ++i) {
 			struct ioapic_irqmap *map = &ioapic_irqmaps[cpu][i];
 
 			if (map->im_type == IOAPIC_IMT_UNUSED) {
@@ -814,10 +818,6 @@ ioapic_abi_fixup_irqmap(void)
 			}
 		}
 	}
-
-	ioapic_abi_line_irq_max += 1;
-	if (bootverbose)
-		kprintf("IOAPIC: line irq max %d\n", ioapic_abi_line_irq_max);
 }
 
 int
