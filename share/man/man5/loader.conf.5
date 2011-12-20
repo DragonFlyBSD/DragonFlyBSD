@@ -246,13 +246,15 @@ redirecting the BIOS POST to a fake serial port controlled by the BMC.
 It is then possible to use
 .Xr ipmitool 1
 from pkgsrc to access the console.
-DragonFly kernels adjust the video mode in a way that the BMC cannot usually
+.Dx
+kernels adjust the video mode in a way that the BMC cannot usually
 redirect, so your best bet is to set the boot loader AND the kernel up to
 use a serial port via the
 .Va console=comconsole
 feature described above.
 Often the IPMI controller, called the BMC, is not sitting on COM1 so
-DragonFly's default console parameters and baud rate will not work.
+.Dx Ap s
+default console parameters and baud rate will not work.
 .Sh FILES
 .Bl -tag -width ".Pa /boot/defaults/dloader.menu" -compact
 .It Pa /boot/defaults/dloader.menu
