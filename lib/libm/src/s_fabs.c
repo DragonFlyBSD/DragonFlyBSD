@@ -1,7 +1,4 @@
-/* s_ldexp0f.c -- float version of s_ldexp0.c.
- * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
- */
-
+/* @(#)s_fabs.c 5.1 93/09/24 */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -12,18 +9,21 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: s_ldexpf.c,v 1.8 2010/04/23 19:17:07 drochner Exp $
+ * FreeBSD SVN: 97413 (2002-05-28)
+ */
+
+/*
+ * fabs(x) returns the absolute value of x.
  */
 
 #include <math.h>
 #include "math_private.h"
-#include <errno.h>
 
-float
-ldexpf(float value, int exp0)
+double
+fabs(double x)
 {
-	if(!finitef(value)||value==(float)0.0) return value;
-	value = scalbnf(value,exp0);
-	if(!finitef(value)||value==(float)0.0) errno = ERANGE;
-	return value;
+	u_int32_t high;
+	GET_HIGH_WORD(high,x);
+	SET_HIGH_WORD(x,high&0x7fffffff);
+        return x;
 }

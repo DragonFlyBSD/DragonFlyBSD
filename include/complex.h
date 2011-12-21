@@ -109,6 +109,7 @@ float complex clogf(float complex);
 /* 7.3.8.1 The cabs functions */
 double cabs(double complex);
 float cabsf(float complex);
+long double cabsl (long double complex);
 
 /* 7.3.8.2 The cpow functions */
 double complex cpow(double complex, double complex);
@@ -117,11 +118,13 @@ float complex cpowf(float complex, float complex);
 /* 7.3.8.3 The csqrt functions */
 double complex csqrt(double complex);
 float complex csqrtf(float complex);
+long double complex csqrtl(long double complex);
 
 /* 7.3.9 Manipulation functions */
 /* 7.3.9.1 The carg functions */
 double carg(double complex);
 float cargf(float complex);
+long double cargl(long double complex);
 
 /* 7.3.9.2 The cimag functions */
 double cimag(double complex);

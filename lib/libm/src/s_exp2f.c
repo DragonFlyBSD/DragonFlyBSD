@@ -62,7 +62,7 @@ static const double exp2ft[TBLSIZE] = {
 	0x1.4bfdad5362a27p+0,
 	0x1.5ab07dd485429p+0,
 };
-	
+
 /*
  * exp2f(x): compute the base 2 exponential of x
  *
@@ -104,7 +104,7 @@ exp2f(float x)
 		if(ix >= 0x7f800000) {
 			if ((ix & 0x7fffff) != 0 || (hx & 0x80000000) == 0)
 				return (x + x);	/* x is NaN or +Inf */
-			else 
+			else
 				return (0.0);	/* x is -Inf */
 		}
 		if(x >= 0x1.0p7f)

@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $NetBSD: s_roundf.c,v 1.2 2007/08/21 20:10:27 drochner Exp $
+ * FreeBSD SVN: 153017 (2005-12-02)
  */
 
 #include <math.h>
@@ -32,21 +32,18 @@ float
 roundf(float x)
 {
 	float t;
-	int i;
 
-	i = fpclassify(x);
-	if (i == FP_INFINITE || i == FP_NAN)
+	if (!isfinite(x))
 		return (x);
 
 	if (x >= 0.0) {
 		t = floorf(x);
-		if (x - t >= 0.5)
+		if (t - x <= -0.5)
 			t += 1.0;
 		return (t);
 	} else {
-		x = -x;
-		t = floorf(x);
-		if (x - t >= 0.5)
+		t = floorf(-x);
+		if (t + x <= -0.5)
 			t += 1.0;
 		return (-t);
 	}

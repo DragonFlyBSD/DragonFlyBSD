@@ -12,8 +12,7 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_lgammaf_r.c,v 1.6 2002/05/26 22:01:51 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_lgammaf_r.c,v 1.2 2007/07/03 18:51:45 pavalos Exp $
+ * FreeBSD SVN: 226380 (2011-10-15)
  */
 
 #include <math.h>
@@ -98,7 +97,7 @@ sin_pif(float x)
 	GET_FLOAT_WORD(ix,x);
 	ix &= 0x7fffffff;
 
-	if(ix<0x3e800000) return __kernel_sinf(pi*x,zero,0);
+	if(ix<0x3e800000) return __kernel_sindf(pi*x);
 	y = -x;		/* x is assume negative */
 
     /*
@@ -122,14 +121,14 @@ sin_pif(float x)
             }
         }
 	switch (n) {
-	    case 0:   y =  __kernel_sinf(pi*y,zero,0); break;
+	    case 0:   y =  __kernel_sindf(pi*y); break;
 	    case 1:
-	    case 2:   y =  __kernel_cosf(pi*((float)0.5-y),zero); break;
+	    case 2:   y =  __kernel_cosdf(pi*((float)0.5-y)); break;
 	    case 3:
-	    case 4:   y =  __kernel_sinf(pi*(one-y),zero,0); break;
+	    case 4:   y =  __kernel_sindf(pi*(one-y)); break;
 	    case 5:
-	    case 6:   y = -__kernel_cosf(pi*(y-(float)1.5),zero); break;
-	    default:  y =  __kernel_sinf(pi*(y-(float)2.0),zero,0); break;
+	    case 6:   y = -__kernel_cosdf(pi*(y-(float)1.5)); break;
+	    default:  y =  __kernel_sindf(pi*(y-(float)2.0)); break;
 	    }
 	return -y;
 }
@@ -139,12 +138,12 @@ float
 lgammaf_r(float x, int *signgamp)
 {
 	float t,y,z,nadj,p,p1,p2,p3,q,r,w;
-	int i,hx,ix;
+	int32_t hx;
+	int i,ix;
 
-	nadj = 0;
 	GET_FLOAT_WORD(hx,x);
 
-    /* purge off +-inf, NaN, +-0, and negative arguments */
+    /* purge off +-inf, NaN, +-0, tiny and negative arguments */
 	*signgamp = 1;
 	ix = hx&0x7fffffff;
 	if(ix>=0x7f800000) return x*x;

@@ -38,7 +38,7 @@
  * big endian.
  */
 
-#if (BYTE_ORDER == BIG_ENDIAN) || (defined(__arm__) && !defined(__VFP_FP__))
+#if BYTE_ORDER == BIG_ENDIAN
 
 typedef union
 {
@@ -48,12 +48,15 @@ typedef union
     u_int32_t msw;
     u_int32_t lsw;
   } parts;
+  struct
+  {
+    u_int64_t w;
+  } xparts;
 } ieee_double_shape_type;
 
 #endif
 
-#if (BYTE_ORDER == LITTLE_ENDIAN) && \
-    !(defined(__arm__) && !defined(__VFP_FP__))
+#if BYTE_ORDER == LITTLE_ENDIAN
 
 typedef union
 {
@@ -63,6 +66,10 @@ typedef union
     u_int32_t lsw;
     u_int32_t msw;
   } parts;
+  struct
+  {
+    u_int64_t w;
+  } xparts;
 } ieee_double_shape_type;
 
 #endif
@@ -76,6 +83,17 @@ do {								\
   (ix0) = ew_u.parts.msw;					\
   (ix1) = ew_u.parts.lsw;					\
 } while (/*CONSTCOND*/0)
+
+/*
+ * Get a 64-bit int from a double.
+ * Origin: FreeBSD msun/src/math_private.h
+ */
+#define EXTRACT_WORD64(ix,d)					\
+do {								\
+  ieee_double_shape_type ew_u;					\
+  ew_u.value = (d);						\
+  (ix) = ew_u.xparts.w;						\
+} while (0)
 
 /* Get the more significant 32 bit int from a double.  */
 
@@ -104,6 +122,17 @@ do {								\
   iw_u.parts.lsw = (ix1);					\
   (d) = iw_u.value;						\
 } while (/*CONSTCOND*/0)
+
+/*
+ * Set a double from a 64-bit int.
+ * Origin: FreeBSD msun/src/math_private.h
+ */
+#define INSERT_WORD64(d,ix)					\
+do {								\
+  ieee_double_shape_type iw_u;					\
+  iw_u.xparts.w = (ix);						\
+  (d) = iw_u.value;						\
+} while (0)
 
 /* Set the more significant 32 bits of a double from an int.  */
 
@@ -150,6 +179,30 @@ do {								\
   ieee_float_shape_type sf_u;					\
   sf_u.word = (i);						\
   (d) = sf_u.value;						\
+} while (/*CONSTCOND*/0)
+
+/*
+ * Get expsign as a 16 bit int from a long double.
+ * Origin: FreeBSD msun/src/math_private.h
+ */
+
+#define	GET_LDBL_EXPSIGN(i,d)					\
+do {								\
+  union IEEEl2bits ge_u;					\
+  ge_u.e = (d);							\
+  (i) = ge_u.xbits.expsign;					\
+} while (/*CONSTCOND*/0)
+
+/*
+ * Set expsign of a long double from a 16 bit int.
+ */
+
+#define	SET_LDBL_EXPSIGN(d,v)					\
+do {								\
+  union IEEEl2bits se_u;					\
+  se_u.e = (d);							\
+  se_u.xbits.expsign = (v);					\
+  (d) = se_u.e;							\
 } while (/*CONSTCOND*/0)
 
 /*
@@ -244,24 +297,25 @@ cpackl(long double x, long double y)
 __BEGIN_DECLS
 #pragma GCC visibility push(hidden)
 
-/* ieee style elementary functions */
-int	__libm_rem_pio2(double, double*);
-
 /* fdlibm kernel function */
+int	__kernel_rem_pio2(double*,double*,int,int,int);
+
+/* double precision kernel functions */
+int	__libm_rem_pio2(double, double*);
 double	__kernel_sin(double, double, int);
 double	__kernel_cos(double, double);
 double	__kernel_tan(double, double, int);
-int	__kernel_rem_pio2(double*, double*, int, int, int, const int*);
 
+/* float precision kernel functions */
+int	__libm_rem_pio2f(float,double*);
+float	__kernel_sindf(double);
+float	__kernel_cosdf(double);
+float	__kernel_tandf(double, int);
 
-/* ieee style elementary float functions */
-int	__libm_rem_pio2f(float,float*);
-
-/* float versions of fdlibm kernel functions */
-float	__kernel_sinf(float, float, int);
-float	__kernel_cosf(float, float);
-float	__kernel_tanf(float, float, int);
-int	__kernel_rem_pio2f(float*, float*, int, int, int, const int*);
+/* long double precision kernel functions */
+long double __kernel_sinl(long double, long double, int);
+long double __kernel_cosl(long double, long double);
+long double __kernel_tanl(long double, long double, int);
 
 #pragma GCC visibility pop
 __END_DECLS

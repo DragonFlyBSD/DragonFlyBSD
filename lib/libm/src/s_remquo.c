@@ -5,7 +5,7 @@
  *
  * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice 
+ * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
  */
@@ -74,7 +74,7 @@ remquo(double x, double y, int *quo)
 	} else iy = (hy>>20)-1023;
 
     /* set up {hx,lx}, {hy,ly} and align y to x */
-	if(ix >= -1022) 
+	if(ix >= -1022)
 	    hx = 0x00100000|(0x000fffff&hx);
 	else {		/* subnormal x, shift x to normal */
 	    n = -1022-ix;
@@ -86,7 +86,7 @@ remquo(double x, double y, int *quo)
 		lx = 0;
 	    }
 	}
-	if(iy >= -1022) 
+	if(iy >= -1022)
 	    hy = 0x00100000|(0x000fffff&hy);
 	else {		/* subnormal y, shift y to normal */
 	    n = -1022-iy;

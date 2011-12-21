@@ -1,8 +1,6 @@
-/* $NetBSD: lroundf.c,v 1.3 2008/04/26 23:49:50 christos Exp $ */
-
 /*-
- * Copyright (c) 2004
- *	Matthias Drochner. All rights reserved.
+ * Copyright (c) 2005 David Schultz <das@FreeBSD.ORG>
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,57 +22,23 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * FreeBSD SVN: 217108 (2011-01-07)
  */
 
-#include <math.h>
-#include <sys/ieee754.h>
-#include <machine/limits.h>
-#include "math_private.h"
+#include <machine/asm.h>
 
-#ifndef LROUNDNAME
-#define LROUNDNAME lroundf
-#define RESTYPE long int
-#define RESTYPE_MIN LONG_MIN
-#define RESTYPE_MAX LONG_MAX
+ENTRY(lrint)
+#ifdef __i386__
+	fldl	4(%esp)
+	subl	$4,%esp
+	fistpl	(%esp)
+	popl	%eax
+	ret
+#else
+	cvtsd2si %xmm0, %rax
+	ret
 #endif
+END(lrint)
 
-#define RESTYPE_BITS (sizeof(RESTYPE) * 8)
-
-RESTYPE
-LROUNDNAME(float x)
-{
-	u_int32_t i0;
-	int e, s, shift;
-	RESTYPE res;
-
-	GET_FLOAT_WORD(i0, x);
-	e = i0 >> SNG_FRACBITS;
-	s = (uint32_t)e >> SNG_EXPBITS;
-	e = (e & 0xff) - SNG_EXP_BIAS;
-
-	/* 1.0 x 2^-1 is the smallest number which can be rounded to 1 */
-	if (e < -1)
-		return (0);
-	/* 1.0 x 2^31 (or 2^63) is already too large */
-	if (e >= (int)RESTYPE_BITS - 1)
-		return (s ? RESTYPE_MIN : RESTYPE_MAX); /* ??? unspecified */
-
-	/* >= 2^23 is already an exact integer */
-	if (e < SNG_FRACBITS) {
-		/* add 0.5, extraction below will truncate */
-		x += (s ? -0.5 : 0.5);
-	}
-
-	GET_FLOAT_WORD(i0, x);
-	e = ((i0 >> SNG_FRACBITS) & 0xff) - SNG_EXP_BIAS;
-	i0 &= 0x7fffff;
-	i0 |= (1 << SNG_FRACBITS);
-
-	shift = e - SNG_FRACBITS;
-	if (shift >=0)
-		res = (shift < 32 ? (RESTYPE)i0 << shift : 0);
-	else
-		res = (shift > -32 ? i0 >> -shift : 0);
-
-	return (s ? -res : res);
-}
+	.section .note.GNU-stack,"",%progbits

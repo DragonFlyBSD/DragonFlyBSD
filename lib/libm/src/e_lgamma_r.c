@@ -1,16 +1,16 @@
-/* @(#)er_lgamma.c 5.1 93/09/24 */
+
+/* @(#)e_lgamma_r.c 1.3 95/01/18 */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
  *
- * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_lgamma_r.c,v 1.10 2002/05/26 22:01:51 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_lgamma_r.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * FreeBSD SVN: 226380 (2011-10-15)
  */
 
 /* lgamma_r(x, signgamp)
@@ -73,10 +73,11 @@
  *
  *   5. Special Cases
  *		lgamma(2+s) ~ s*(1-Euler) for tiny s
- *		lgamma(1)=lgamma(2)=0
- *		lgamma(x) ~ -log(x) for tiny x
- *		lgamma(0) = lgamma(inf) = inf
- *	 	lgamma(-integer) = +-inf
+ *		lgamma(1) = lgamma(2) = 0
+ *		lgamma(x) ~ -log(|x|) for tiny x
+ *		lgamma(0) = lgamma(neg.integer) = inf and raise divide-by-zero
+ *		lgamma(inf) = inf
+ *		lgamma(-inf) = inf (bug for bug compatible with C99!?)
  *
  */
 
@@ -203,12 +204,12 @@ double
 lgamma_r(double x, int *signgamp)
 {
 	double t,y,z,nadj,p,p1,p2,p3,q,r,w;
-	int i,hx,lx,ix;
+	int32_t hx;
+	int i,lx,ix;
 
-	nadj = 0;
 	EXTRACT_WORDS(hx,lx,x);
 
-    /* purge off +-inf, NaN, +-0, and negative arguments */
+    /* purge off +-inf, NaN, +-0, tiny and negative arguments */
 	*signgamp = 1;
 	ix = hx&0x7fffffff;
 	if(ix>=0x7ff00000) return x*x;

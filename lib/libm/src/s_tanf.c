@@ -1,5 +1,6 @@
 /* s_tanf.c -- float version of s_tan.c.
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ * Optimized by Bruce D. Evans.
  */
 
 /*
@@ -11,33 +12,57 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- *
- * $NetBSD: s_tanf.c,v 1.7 2002/05/26 22:01:58 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_tanf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * FreeBSD SVN: 176569 (2008-02-25)
  */
 
 #include <math.h>
+#define	INLINE_KERNEL_TANDF
+#define INLINE_REM_PIO2F
 #include "math_private.h"
+#include "e_rem_pio2f.c"
+#include "k_tanf.c"
+
+/* Small multiples of pi/2 rounded to double precision. */
+static const double
+t1pio2 = 1*M_PI_2,			/* 0x3FF921FB, 0x54442D18 */
+t2pio2 = 2*M_PI_2,			/* 0x400921FB, 0x54442D18 */
+t3pio2 = 3*M_PI_2,			/* 0x4012D97C, 0x7F3321D2 */
+t4pio2 = 4*M_PI_2;			/* 0x401921FB, 0x54442D18 */
 
 float
 tanf(float x)
 {
-	float y[2],z=0.0;
-	int32_t n, ix;
+	double y;
+	int32_t n, hx, ix;
 
-	GET_FLOAT_WORD(ix,x);
+	GET_FLOAT_WORD(hx,x);
+	ix = hx & 0x7fffffff;
 
-    /* |x| ~< pi/4 */
-	ix &= 0x7fffffff;
-	if(ix <= 0x3f490fda) return __kernel_tanf(x,z,1);
+	if(ix <= 0x3f490fda) {		/* |x| ~<= pi/4 */
+	    if(ix<0x39800000)		/* |x| < 2**-12 */
+		if(((int)x)==0) return x;	/* x with inexact if x != 0 */
+	    return __kernel_tandf(x,1);
+	}
+	if(ix<=0x407b53d1) {		/* |x| ~<= 5*pi/4 */
+	    if(ix<=0x4016cbe3)		/* |x| ~<= 3pi/4 */
+		return __kernel_tandf(x + (hx>0 ? -t1pio2 : t1pio2), -1);
+	    else
+		return __kernel_tandf(x + (hx>0 ? -t2pio2 : t2pio2), 1);
+	}
+	if(ix<=0x40e231d5) {		/* |x| ~<= 9*pi/4 */
+	    if(ix<=0x40afeddf)		/* |x| ~<= 7*pi/4 */
+		return __kernel_tandf(x + (hx>0 ? -t3pio2 : t3pio2), -1);
+	    else
+		return __kernel_tandf(x + (hx>0 ? -t4pio2 : t4pio2), 1);
+	}
 
     /* tan(Inf or NaN) is NaN */
-	else if (ix>=0x7f800000) return x-x;		/* NaN */
+	else if (ix>=0x7f800000) return x-x;
 
-    /* argument reduction needed */
+    /* general argument reduction needed */
 	else {
-	    n = __libm_rem_pio2f(x,y);
-	    return __kernel_tanf(y[0],y[1],1-((n&1)<<1)); /*   1 -- n even
-							      -1 -- n odd */
+	    n = __libm_rem_pio2f(x,&y);
+	    /* integer parameter: 1 -- n even; -1 -- n odd */
+	    return __kernel_tandf(y,1-((n&1)<<1));
 	}
 }

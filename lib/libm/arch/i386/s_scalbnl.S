@@ -23,4 +23,7 @@ ENTRY(scalbnl)
 	ret
 END(scalbnl)
 
+.globl	CNAME(ldexpl)
+.set	CNAME(ldexpl),CNAME(scalbnl)
+
 	.section .note.GNU-stack,"",%progbits

@@ -1,8 +1,6 @@
-/* $NetBSD: lround.c,v 1.3 2008/04/26 23:49:50 christos Exp $ */
-
 /*-
- * Copyright (c) 2004
- *	Matthias Drochner. All rights reserved.
+ * Copyright (c) 2005-2011 David Schultz <das@FreeBSD.ORG>
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,62 +22,46 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * FreeBSD SVN: 226371 (2011-10-15)
  */
 
+#include <fenv.h>
 #include <math.h>
-#include <sys/ieee754.h>
-#include <machine/limits.h>
 #include "math_private.h"
 
-#ifndef LROUNDNAME
-#define LROUNDNAME lround
-#define RESTYPE long int
-#define RESTYPE_MIN LONG_MIN
-#define RESTYPE_MAX LONG_MAX
-#endif
-
-#define RESTYPE_BITS (sizeof(RESTYPE) * 8)
-
-RESTYPE
-LROUNDNAME(double x)
+/*
+ * Fused multiply-add: Compute x * y + z with a single rounding error.
+ *
+ * A double has more than twice as much precision than a float, so
+ * direct double-precision arithmetic suffices, except where double
+ * rounding occurs.
+ */
+float
+fmaf(float x, float y, float z)
 {
-	u_int32_t i0, i1;
-	int e, s, shift;
-	RESTYPE res;
+	double xy, result;
+	uint32_t hr, lr;
 
-	GET_HIGH_WORD(i0, x);
-	e = i0 >> 20;
-	s = (uint32_t)e >> DBL_EXPBITS;
-	e = (e & 0x7ff) - DBL_EXP_BIAS;
+	xy = (double)x * y;
+	result = xy + z;
+	EXTRACT_WORDS(hr, lr, result);
+	/* Common case: The double precision result is fine. */
+	if ((lr & 0x1fffffff) != 0x10000000 ||	/* not a halfway case */
+	    (hr & 0x7ff00000) == 0x7ff00000 ||	/* NaN */
+	    result - xy == z ||			/* exact */
+	    fegetround() != FE_TONEAREST)	/* not round-to-nearest */
+		return (result);
 
-	/* 1.0 x 2^-1 is the smallest number which can be rounded to 1 */
-	if (e < -1)
-		return (0);
-	/* 1.0 x 2^31 (or 2^63) is already too large */
-	if (e >= (int)RESTYPE_BITS - 1)
-		return (s ? RESTYPE_MIN : RESTYPE_MAX); /* ??? unspecified */
-
-	/* >= 2^52 is already an exact integer */
-	if (e < DBL_FRACBITS) {
-		/* add 0.5, extraction below will truncate */
-		x += (s ? -0.5 : 0.5);
-	}
-
-	EXTRACT_WORDS(i0, i1, x);
-	e = ((i0 >> 20) & 0x7ff) - DBL_EXP_BIAS;
-	i0 &= 0xfffff;
-	i0 |= (1 << 20);
-
-	shift = e - DBL_FRACBITS;
-	if (shift >=0)
-		res = (shift < 32 ? (RESTYPE)i1 << shift : 0);
-	else
-		res = (shift > -32 ? i1 >> -shift : 0);
-	shift += 32;
-	if (shift >=0)
-		res |= (shift < 32 ? (RESTYPE)i0 << shift : 0);
-	else
-		res |= (shift > -32 ? i0 >> -shift : 0);
-
-	return (s ? -res : res);
+	/*
+	 * If result is inexact, and exactly halfway between two float values,
+	 * we need to adjust the low-order bit in the direction of the error.
+	 */
+	fesetround(FE_TOWARDZERO);
+	volatile double vxy = xy;  /* XXX work around gcc CSE bug */
+	double adjusted_result = vxy + z;
+	fesetround(FE_TONEAREST);
+	if (result == adjusted_result)
+		SET_LOW_WORD(adjusted_result, lr + 1);
+	return (adjusted_result);
 }

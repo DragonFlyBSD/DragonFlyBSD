@@ -6,7 +6,7 @@
  *
  * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice 
+ * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
  *
@@ -41,12 +41,12 @@ log2(double x)
 
 	k=0;
 	if (hx < 0x00100000) {			/* x < 2**-1022  */
-	    if (((hx&0x7fffffff)|lx)==0) 
+	    if (((hx&0x7fffffff)|lx)==0)
 		return -two54/zero;		/* log(+-0)=-inf */
 	    if (hx<0) return (x-x)/zero;	/* log(-#) = NaN */
 	    k -= 54; x *= two54; /* subnormal number, scale up x */
 	    GET_HIGH_WORD(hx,x);
-	} 
+	}
 	if (hx >= 0x7ff00000) return x+x;
 	k += (hx>>20)-1023;
 	hx &= 0x000fffff;
@@ -56,18 +56,18 @@ log2(double x)
 	f = x-1.0;
 	dk = (double)k;
 	if((0x000fffff&(2+hx))<3) {	/* |f| < 2**-20 */
-	    if (f==zero) 
+	    if (f==zero)
 		    return (dk);
 	    R = f*f*(0.5-0.33333333333333333*f);
 	    return (dk-(R-f)/ln2);
 	}
- 	s = f/(2.0+f); 
+	s = f/(2.0+f);
 	z = s*s;
 	i = hx-0x6147a;
 	w = z*z;
 	j = 0x6b851-hx;
-	t1= w*(Lg2+w*(Lg4+w*Lg6)); 
-	t2= z*(Lg1+w*(Lg3+w*(Lg5+w*Lg7))); 
+	t1= w*(Lg2+w*(Lg4+w*Lg6));
+	t2= z*(Lg1+w*(Lg3+w*(Lg5+w*Lg7)));
 	i |= j;
 	R = t2+t1;
 	if(i>0) {

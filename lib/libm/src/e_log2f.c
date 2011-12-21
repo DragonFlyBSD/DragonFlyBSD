@@ -20,7 +20,7 @@
 #include "math_private.h"
 
 static const float
-ln2 = 0.6931471805599452862268, 
+ln2 = 0.6931471805599452862268,
 two25 =    3.355443200e+07,	/* 0x4c000000 */
 Lg1 = 6.6666668653e-01,	/* 3F2AAAAB */
 Lg2 = 4.0000000596e-01,	/* 3ECCCCCD */
@@ -57,7 +57,7 @@ log2f(float x)
 	dk = (float)k;
 	f = x-(float)1.0;
 	if((0x007fffff&(15+ix))<16) {	/* |f| < 2**-20 */
-	    if (f==zero) 
+	    if (f==zero)
 		    return (dk);
 	    R = f*f*((float)0.5-(float)0.33333333333333333*f);
 	    return (dk-(R-f)/ln2);

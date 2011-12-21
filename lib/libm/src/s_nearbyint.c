@@ -22,9 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * FreeBSD SVN: 175309 (2008-01-14)
  */
-
-#include <sys/cdefs.h>
 
 #include <fenv.h>
 #include <math.h>
@@ -51,3 +51,4 @@ fn(type x)			\
 
 DECL(double, nearbyint, rint)
 DECL(float, nearbyintf, rintf)
+DECL(long double, nearbyintl, rintl)

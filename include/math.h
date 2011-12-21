@@ -205,6 +205,7 @@ double	j0(double);
 double	j1(double);
 double	jn(int, double);
 double	lgamma(double);
+double	tgamma(double);
 double	y0(double);
 double	y1(double);
 double	yn(int, double);
@@ -266,7 +267,6 @@ float	expf(float);
 float   exp2f(float);
 float	expm1f(float);
 float	frexpf(float, int *);
-long double	frexpl(long double, int *);
 int	ilogbf(float);
 float	ldexpf(float, int);
 float	logf(float);
@@ -275,13 +275,13 @@ float	log10f(float);
 float	log1pf(float);
 float	logbf(float);
 float	modff(float, float *);
+float	scalblnf(float, long);
 float	scalbnf(float, int);
 
 /* 7.12.7 power / absolute */
 
 float	cbrtf(float);
 float	fabsf(float);
-long double	fabsl(long double);
 float	hypotf(float, float);
 float	powf(float, float);
 float	sqrtf(float);
@@ -291,6 +291,7 @@ float	sqrtf(float);
 float	erff(float);
 float	erfcf(float);
 float	lgammaf(float);
+float	tgammaf(float);
 
 /* 7.12.9 nearest integer */
 
@@ -328,27 +329,27 @@ float  remquof(float, float, int *);
 /* 7.12.11 manipulation */
 
 float	copysignf(float, float);
-long double copysignl(long double, long double);
-
 double	nan(const char *);
 float	nanf(const char *);
-long double	nanl(const char *);
 float	nextafterf(float, float);
-long double nextafterl(long double, long double);
-double nexttoward (double, long double);
 
 /* 7.12.12 maximum, minimum, positive difference */
 double	fdim(double, double);
 float	fdimf(float, float);
-long double	fdiml(long double, long double);
 
 double	fmax(double, double);
 float	fmaxf(float, float);
-long double	fmaxl(long double, long double);
 
 double  fmin(double, double);
 float   fminf(float, float);
-long double     fminl(long double, long double);
+
+
+/* isoC99 */
+double fma  (double, double, double);
+float  fmaf (float,  float,  float);
+
+
+
 
 #endif /* __ISO_C_VISIBLE >= 1999 */
 
@@ -397,6 +398,7 @@ double	significand(double);
  * Functions callable from C, intended to support IEEE arithmetic.
  */
 double	copysign(double, double);
+double	scalbln(double, long);
 double	scalbn(double, int);
 
 /*
@@ -462,16 +464,52 @@ int	__signbitf(float);
 int	__signbitd(double);
 
 #ifdef __HAVE_LONG_DOUBLE
-int	__fpclassifyl(long double);
-int	__isfinitel(long double);
-int	__isinfl(long double);
-int	__isnanl(long double);
-int	__signbitl(long double);
-#endif
+int	__fpclassifyl       (long double);
+int	__isfinitel         (long double);
+int	__isinfl            (long double);
+int	__isnanl            (long double);
+int	__signbitl          (long double);
 
-int		ilogbl(long double);
-long double	logbl(long double);
-long double	scalbnl(long double, int);
+long double	acosl       (long double);
+long double	asinl       (long double);
+long double	atan2l      (long double, long double);
+long double	atanl       (long double);
+long double	ceill       (long double);
+long double	cosl        (long double);
+long double	cbrtl       (long double);
+long double	copysignl   (long double, long double);
+long double	fdiml       (long double, long double);
+long double	exp2l       (long double);
+long double	fabsl       (long double);
+long double	floorl      (long double);
+long double	fmal        (long double, long double, long double);
+long double	frexpl      (long double, int *);
+long double	fmaxl       (long double, long double);
+long double	fminl       (long double, long double);
+long double	fmodl       (long double, long double);
+long double	hypotl      (long double, long double);
+int        	ilogbl      (long double);
+long double	ldexpl      (long double, int);
+long long      	llroundl    (long double);
+long double	logbl       (long double);
+long       	lrintl      (long double);
+long		lroundl     (long double);
+long double	modfl       (long double, long double *);
+long double	nanl        (const char *);
+long double	nextafterl  (long double, long double);
+double     	nexttoward  (double,      long double);
+float      	nexttowardf (float,       long double);
+long double	remainderl  (long double, long double);
+long double	remquol     (long double, long double, int *);
+long double	rintl       (long double);
+long double	roundl      (long double);
+long double	scalblnl    (long double, long);
+long double	scalbnl     (long double, int);
+long double	sinl        (long double);
+long double	sqrtl       (long double);
+long double	tanl        (long double);
+long double	truncl      (long double);
+#endif
 __END_DECLS
 
 #endif /* _MATH_H_ */

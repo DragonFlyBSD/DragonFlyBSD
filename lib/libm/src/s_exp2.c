@@ -351,7 +351,7 @@ exp2(double x)
 			GET_LOW_WORD(lx,x);
 			if(((ix & 0xfffff) | lx) != 0 || (hx & 0x80000000) == 0)
 				return (x + x);	/* x is NaN or +Inf */
-			else 
+			else
 				return (0.0);	/* x is -Inf */
 		}
 		if(x >= 0x1.0p10)
