@@ -26,22 +26,23 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)lgamma.3	6.6 (Berkeley) 12/3/92
-.\"	$NetBSD: lgamma.3,v 1.21 2003/08/07 16:44:48 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/lgamma.3,v 1.1 2005/07/26 21:15:20 joerg Exp $
+.\" FreeBSD SVN: 176388 (2008-02-18)
 .\"
-.Dd December 3, 1992
+.Dd December 21, 2011
 .Dt LGAMMA 3
 .Os
 .Sh NAME
 .Nm lgamma ,
-.Nm lgammaf ,
 .Nm lgamma_r ,
+.Nm lgammaf ,
 .Nm lgammaf_r ,
 .Nm gamma ,
-.Nm gammaf ,
 .Nm gamma_r ,
-.Nm gammaf_r
-.Nd log gamma function
+.Nm gammaf ,
+.Nm gammaf_r ,
+.Nm tgamma ,
+.Nm tgammaf
+.Nd log gamma functions, gamma function
 .Sh LIBRARY
 .Lb libm
 .Sh SYNOPSIS
@@ -51,46 +52,69 @@
 .sp
 .Ft double
 .Fn lgamma "double x"
+.Ft double
+.Fn lgamma_r "double x" "int *signgamp"
 .Ft float
 .Fn lgammaf "float x"
-.Ft double
-.Fn lgamma_r "double x" "int *sign"
 .Ft float
-.Fn lgammaf_r "float x" "int *sign"
+.Fn lgammaf_r "float x" "int *signgamp"
 .Ft double
 .Fn gamma "double x"
+.Ft double
+.Fn gamma_r "double x" "int *signgamp"
 .Ft float
 .Fn gammaf "float x"
-.Ft double
-.Fn gamma_r "double x" "int *sign"
 .Ft float
-.Fn gammaf_r "float x" "int *sign"
+.Fn gammaf_r "float x" "int *signgamp"
+.Ft double
+.Fn tgamma "double x"
+.Ft float
+.Fn tgammaf "float x"
 .Sh DESCRIPTION
 .Fn lgamma x
+and
+.Fn lgammaf x
 .if t \{\
-returns ln\||\(*G(x)| where
+return ln\||\(*G(x)| where
 .Bd -unfilled -offset indent
-\(*G(x) = \(is\d\s8\z0\s10\u\u\s8\(if\s10\d t\u\s8x\-1\s10\d e\u\s8\-t\s10\d dt	for x \*[Gt] 0 and
-.br
+\(*G(x) = \(is\d\s8\z0\s10\u\u\s8\(if\s10\d t\u\s8x\-1\s10\d e\u\s8\-t\s10\d dt	for x > 0 and
 \(*G(x) = \(*p/(\(*G(1\-x)\|sin(\(*px))	for x \*[Lt] 1.
 .Ed
 .\}
 .if n \
-returns ln\||\(*G(x)|.
-.Pp
+return ln\||\(*G(x)|.
 The external integer
 .Fa signgam
 returns the sign of \(*G(x).
 .Pp
-.Fn lgamma_r
-is a reentrant interface that performs identically to
+.Fn lgamma_r x signgamp
+and
+.Fn lgammaf_r x signgamp
+provide the same functionality as
+.Fn lgamma x
+and
+.Fn lgammaf x
+but the caller must provide an integer to store the sign of \(*G(x).
+.Pp
+The
+.Fn tgamma x
+and
+.Fn tgammaf x
+functions return \(*G(x), with no effect on
+.Fa signgam .
+.Pp
+.Fn gamma ,
+.Fn gammaf ,
+.Fn gamma_r ,
+and
+.Fn gammaf_r
+are deprecated aliases for
 .Fn lgamma ,
-differing in that the sign of \(*G(x) is stored in the location
-pointed to by the
-.Fa sign
-argument and
-.Fa signgam
-is not modified.
+.Fn lgammaf ,
+.Fn lgamma_r ,
+and
+.Fn lgammaf_r ,
+respectively.
 .Sh IDIOSYNCRASIES
 Do not use the expression
 .Dq Li signgam\(**exp(lgamma(x))
@@ -102,23 +126,64 @@ lg = lgamma(x); g = signgam\(**exp(lg);
 .Pp
 Only after
 .Fn lgamma
+or
+.Fn lgammaf
 has returned can signgam be correct.
-.Sh RETURN VALUES
+.Pp
+For arguments in its range,
+.Fn tgamma
+is preferred, as for positive arguments
+it is accurate to within one unit in the last place.
+Exponentiation of
 .Fn lgamma
-returns appropriate values unless an argument is out of range.
+will lose up to 10 significant bits.
+.Sh RETURN VALUES
+.Fn gamma ,
+.Fn gamma_r ,
+.Fn gammaf ,
+.Fn gammaf_r ,
+.Fn lgamma ,
+.Fn lgamma_r ,
+.Fn lgammaf ,
+and
+.Fn lgammaf_r
+return appropriate values unless an argument is out of range.
 Overflow will occur for sufficiently large positive values, and
 non-positive integers.
-On the
-.Tn VAX ,
-the reserved operator is returned,
-and
-.Va errno
-is set to
-.Er ERANGE .
+For large non-integer negative values,
+.Fn tgamma
+will underflow.
 .Sh SEE ALSO
 .Xr math 3
+.Sh STANDARDS
+The
+.Fn lgamma ,
+.Fn lgammaf ,
+.Fn tgamma ,
+and
+.Fn tgammaf
+functions are expected to conform to
+.St -isoC-99 .
 .Sh HISTORY
 The
-.Nm lgamma
+.Fn lgamma
 function appeared in
 .Bx 4.3 .
+The
+.Fn gamma
+function appeared in
+.Bx 4.4
+as a function which computed \(*G(x).
+This version was used in
+.Fx 1.1 .
+The name
+.Fn gamma
+was originally dedicated to the
+.Fn lgamma
+function,
+and that usage was restored by switching to Sun's fdlibm in
+.Fx 1.1.5 .
+The
+.Fn tgamma
+function appeared in
+.Dx 2.13 .

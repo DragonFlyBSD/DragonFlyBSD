@@ -26,17 +26,18 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)hypot.3	6.7 (Berkeley) 5/6/91
-.\"	$NetBSD: hypot.3,v 1.16 2003/11/02 11:17:16 wiz Exp $
-.\"	$DragonFly: src/lib/libm/man/hypot.3,v 1.1 2005/07/26 21:15:20 joerg Exp $
+.\" $FreeBSD$
 .\"
-.Dd May 6, 1991
+.Dd December 21, 2011
 .Dt HYPOT 3
 .Os
 .Sh NAME
 .Nm hypot ,
 .Nm hypotf ,
+.Nm hypotl ,
 .Nm cabs ,
-.Nm cabsf
+.Nm cabsf ,
+.Nm cabsl
 .Nd Euclidean distance and complex absolute value functions
 .Sh LIBRARY
 .Lb libm
@@ -46,28 +47,41 @@
 .Fn hypot "double x" "double y"
 .Ft float
 .Fn hypotf "float x" "float y"
+.Ft "long double"
+.Fn hypotl "long double x" "long double y"
+.In complex.h
 .Ft double
-.Fn cabs "struct complex { double x; double y; } z"
+.Fn cabs "double complex z"
 .Ft float
-.Fn cabsf "struct complex { float x; float y; } z"
+.Fn cabsf "float complex z"
+.Ft "long double"
+.Fn cabsl "long double complex z"
 .Sh DESCRIPTION
 The
-.Fn hypot
+.Fn hypot ,
+.Fn hypotf
 and
-.Fn cabs
+.Fn hypotl
 functions
 compute the
 sqrt(x*x+y*y)
 in such a way that underflow will not happen, and overflow
 occurs only if the final result deserves it.
+The
+.Fn cabs ,
+.Fn cabsf
+and
+.Fn cabsl
+functions compute the complex absolute value of
+.Fa z .
 .Pp
 .Fn hypot "\*(If" "v"
 =
 .Fn hypot "v" "\*(If"
 = +\*(If for all
-.Ar v ,
+.Fa v ,
 including \*(Na.
-.Sh ERRORS
+.Sh ERROR (due to Roundoff, etc.)
 Below 0.97
 .Em ulps .
 Consequently
@@ -76,11 +90,6 @@ Consequently
 exactly;
 in general, hypot and cabs return an integer whenever an
 integer might be expected.
-.Pp
-The same cannot be said for the shorter and faster version of hypot
-and cabs that is provided in the comments in cabs.c; its error can
-exceed 1.2
-.Em ulps .
 .Sh NOTES
 As might be expected,
 .Fn hypot "v" "\*(Na"
@@ -88,13 +97,8 @@ and
 .Fn hypot "\*(Na" "v"
 are \*(Na for all
 .Em finite
-.Ar v ;
-with "reserved operand" in place of "\*(Na", the
-same is true on a
-.Tn VAX .
-But programmers on machines other than a
-.Tn VAX
-(it has no \*(If)
+.Fa v .
+But programmers
 might be surprised at first to discover that
 .Fn hypot "\(+-\*(If" "\*(Na"
 = +\*(If.
@@ -103,12 +107,12 @@ This is intentional; it happens because
 = +\*(If
 for
 .Em all
-.Ar v ,
+.Fa v ,
 finite or infinite.
 Hence
 .Fn hypot "\*(If" "v"
 is independent of
-.Ar v .
+.Fa v .
 Unlike the reserved operand fault on a
 .Tn VAX ,
 the
@@ -117,8 +121,20 @@ the
 disappear when it turns out to be irrelevant, as it does in
 .Fn hypot "\*(If" "\*(Na" .
 .Sh SEE ALSO
+.Xr carg 3 ,
 .Xr math 3 ,
 .Xr sqrt 3
+.Sh STANDARDS
+The
+.Fn hypot ,
+.Fn hypotf ,
+.Fn hypotl ,
+.Fn cabs ,
+.Fn cabsf ,
+and
+.Fn cabsl
+functions conform to
+.St -isoC-99 .
 .Sh HISTORY
 Both a
 .Fn hypot
@@ -127,11 +143,3 @@ function and a
 function
 appeared in
 .At v7 .
-.Sh BUGS
-The
-.Fn cabs
-and
-.Fn cabsf
-functions use structures that are not defined in any header and need to
-be defined by the user.
-As such they cannot be prototyped properly.

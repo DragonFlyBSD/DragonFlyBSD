@@ -26,16 +26,15 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)acosh.3	5.2 (Berkeley) 5/6/91
-.\"	$NetBSD: acosh.3,v 1.15 2003/08/07 16:44:46 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/acosh.3,v 1.2 2005/12/28 13:35:02 swildner Exp $
+.\" FreeBSD SVN: 165906 (2007-01-09)
 .\"
-.Dd May 6, 1991
+.Dd January 14, 2005
 .Dt ACOSH 3
 .Os
 .Sh NAME
 .Nm acosh ,
 .Nm acoshf
-.Nd inverse hyperbolic cosine function
+.Nd inverse hyperbolic cosine functions
 .Sh LIBRARY
 .Lb libm
 .Sh SYNOPSIS
@@ -47,31 +46,31 @@
 .Sh DESCRIPTION
 The
 .Fn acosh
-and
+and the
 .Fn acoshf
 functions compute the inverse hyperbolic cosine
 of the real
 argument
 .Ar x .
+For a discussion of error due to roundoff, see
+.Xr math 3 .
 .Sh RETURN VALUES
-.\" POSIX_MODE
-If x is less than one,
-.Fn acosh "x"
-and
-.Fn acoshf "x"
-return NaN and set the global variable
-.Va errno
-to
-.Er EDOM .
-.\" SVR4_MODE
-.\" call
-.\" .Xr matherr 3 .
+The
+.Fn acosh
+and the
+.Fn acoshf
+functions
+return the inverse hyperbolic cosine of
+.Ar x .
+If the argument is less than 1,
+.Fn acosh
+raises an invalid exception and returns an \*(Na.
 .Sh SEE ALSO
 .Xr asinh 3 ,
 .Xr atanh 3 ,
 .Xr exp 3 ,
+.Xr fenv 3 ,
 .Xr math 3
-.\" .Xr matherr 3
 .Sh HISTORY
 The
 .Fn acosh

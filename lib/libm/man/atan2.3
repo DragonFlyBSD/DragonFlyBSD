@@ -26,15 +26,15 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)atan2.3	5.1 (Berkeley) 5/2/91
-.\"	$NetBSD: atan2.3,v 1.16 2003/08/07 16:44:46 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/atan2.3,v 1.2 2005/12/10 00:22:29 swildner Exp $
+.\" $FreeBSD$
 .\"
-.Dd May 2, 1991
+.Dd December 21, 2011
 .Dt ATAN2 3
 .Os
 .Sh NAME
 .Nm atan2 ,
-.Nm atan2f
+.Nm atan2f ,
+.Nm atan2l
 .Nd arc tangent function of two variables
 .Sh LIBRARY
 .Lb libm
@@ -44,36 +44,33 @@
 .Fn atan2 "double y" "double x"
 .Ft float
 .Fn atan2f "float y" "float x"
+.Ft long double
+.Fn atan2l "long double y" "long double x"
 .Sh DESCRIPTION
 The
-.Fn atan2
+.Fn atan2 ,
+.Fn atan2f ,
 and
-.Fn atan2f
+.Fn atan2l
 functions compute the principal value of the arc tangent of
-.Ar y/ Ns Ar x ,
+.Fa y/ Ns Ar x ,
 using the signs of both arguments to determine the quadrant of
 the return value.
 .Sh RETURN VALUES
 The
-.Fn atan2
-function, if successful,
-returns the arc tangent of
-.Ar y/ Ns Ar x
+.Fn atan2 ,
+.Fn atan2f ,
+and
+.Fn atan2l
+functions, if successful,
+return the arc tangent of
+.Fa y/ Ns Ar x
 in the range
 .Bk -words
 .Bq \&- Ns \*(Pi , \&+ Ns \*(Pi
 .Ek
 radians.
-If both
-.Ar x
-and
-.Ar y
-are zero, the global variable
-.Va errno
-is set to
-.Er EDOM .
-On the
-.Tn VAX :
+Here are some of the special cases:
 .Bl -column atan_(y,x)_:=____  sign(y)_(Pi_atan2(Xy_xX))___
 .It Fn atan2 y x No := Ta
 .Fn atan y/x Ta
@@ -100,9 +97,7 @@ The function
 .Fn atan2
 defines "if x \*[Gt] 0,"
 .Fn atan2 0 0
-= 0 on a
-.Tn VAX
-despite that previously
+= 0 despite that previously
 .Fn atan2 0 0
 may have generated an error message.
 The reasons for assigning a value to
@@ -137,11 +132,11 @@ r\(**sin\(*h.
 These equations are satisfied when (x=0,y=0)
 is mapped to
 .if n \
-(r=0,theta=0)
+(r=0,theta=0).
 .if t \
-(r=0,\(*h=0)
-on a VAX.
-In general, conversions to polar coordinates should be computed thus:
+(r=0,\(*h=0).
+In general, conversions to polar coordinates
+should be computed thus:
 .Bd -unfilled -offset indent
 .if n \{\
 r	:= hypot(x,y);  ... := sqrt(x\(**x+y\(**y)
@@ -179,6 +174,8 @@ r := \(sr(x\(**x+y\(**y);\0\0if r = 0 then x := copysign(1,x);
 .Xr acos 3 ,
 .Xr asin 3 ,
 .Xr atan 3 ,
+.Xr cabs 3 ,
+.Xr carg 3 ,
 .Xr cos 3 ,
 .Xr cosh 3 ,
 .Xr math 3 ,
@@ -188,6 +185,9 @@ r := \(sr(x\(**x+y\(**y);\0\0if r = 0 then x := copysign(1,x);
 .Xr tanh 3
 .Sh STANDARDS
 The
-.Fn atan2
-function conforms to
-.St -ansiC .
+.Fn atan2 ,
+.Fn atan2f ,
+and
+.Fn atan2l
+functions conform to
+.St -isoC-99 .

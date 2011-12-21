@@ -26,16 +26,15 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)atanh.3	5.2 (Berkeley) 5/6/91
-.\"	$NetBSD: atanh.3,v 1.15 2003/08/07 16:44:46 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/atanh.3,v 1.2 2005/12/28 13:35:02 swildner Exp $
+.\" $FreeBSD$
 .\"
-.Dd May 6, 1991
+.Dd January 14, 2005
 .Dt ATANH 3
 .Os
 .Sh NAME
 .Nm atanh ,
 .Nm atanhf
-.Nd inverse hyperbolic tangent function
+.Nd inverse hyperbolic tangent functions
 .Sh LIBRARY
 .Lb libm
 .Sh SYNOPSIS
@@ -47,31 +46,34 @@
 .Sh DESCRIPTION
 The
 .Fn atanh
-and
+and the
 .Fn atanhf
 functions compute the inverse hyperbolic tangent
 of the real
 argument
 .Ar x .
+For a discussion of error due to roundoff, see
+.Xr math 3 .
 .Sh RETURN VALUES
-If |x|\*[Ge]1,
-.Fn atanh "x"
-and
-.Fn atanhf "x"
-.\" POSIX_MODE
-return +inf, -inf or NaN, and sets the global variable
-.Va errno
-to
-.Er EDOM .
-.\" SYSV_MODE
-.\" call
-.\" .Xr matherr 3 .
+The
+.Fn atanh
+and the
+.Fn atanhf
+functions
+return the inverse hyperbolic tangent of
+.Ar x
+if successful.
+If the argument has absolute value 1, a divide-by-zero exception
+is raised and an infinity is returned.
+If
+.Ar |x|
+> 1, an invalid exception is raised and an \*(Na is returned.
 .Sh SEE ALSO
 .Xr acosh 3 ,
 .Xr asinh 3 ,
 .Xr exp 3 ,
+.Xr fenv 3 ,
 .Xr math 3
-.\" .Xr matherr 3
 .Sh HISTORY
 The
 .Fn atanh

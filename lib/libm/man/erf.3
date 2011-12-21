@@ -26,8 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)erf.3	6.4 (Berkeley) 4/20/91
-.\"	$NetBSD: erf.3,v 1.12 2003/08/07 16:44:47 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/erf.3,v 1.1 2005/07/26 21:15:20 joerg Exp $
+.\" $FreeBSD$
 .\"
 .Dd April 20, 1991
 .Dt ERF 3
@@ -56,18 +55,24 @@ These functions calculate the error function of
 .Pp
 The
 .Fn erf
-calculates the error function of x; where
-.Bd -filled -offset indent
+and the
+.Fn erff
+functions calculate the error function of x; where
+.Bd -ragged -offset indent
 .if n \{\
-erf(x) = 2/sqrt(pi)\(**\|integral from 0 to x of exp(\-t\(**t) dt. \}
+erf(x) = 2/sqrt(pi)\(**\|integral from 0 to x of exp(\-t\(**t) dt.
+\}
 .if t \{\
 erf\|(x) :=
-(2/\(sr\(*p)\|\(is\d\s8\z0\s10\u\u\s8x\s10\d\|exp(\-t\u\s82\s10\d)\|dt. \}
+(2/\(sr\(*p)\|\(is\d\s8\z0\s10\u\u\s8x\s10\d\|exp(\-t\u\s82\s10\d)\|dt.
+\}
 .Ed
 .Pp
 The
 .Fn erfc
-function calculates the complementary error function of
+and the
+.Fn erfcf
+functions calculate the complementary error function of
 .Fa x ;
 that is
 .Fn erfc

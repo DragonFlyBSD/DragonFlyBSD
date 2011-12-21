@@ -26,10 +26,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	from: @(#)sinh.3	6.6 (Berkeley) 4/19/91
-.\"	$NetBSD: sinh.3,v 1.14 2003/08/07 16:44:49 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/sinh.3,v 1.1 2005/07/26 21:15:20 joerg Exp $
-.\"
-.Dd April 19, 1991
+.\" $FreeBSD$
+.Dd December 21, 2011
 .Dt SINH 3
 .Os
 .Sh NAME
@@ -47,7 +45,9 @@
 .Sh DESCRIPTION
 The
 .Fn sinh
-function computes the hyperbolic sine of
+and the
+.Fn sinhf
+functions compute the hyperbolic sine of
 .Fa x .
 .Sh RETURN VALUES
 The
@@ -66,6 +66,7 @@ is set to
 .Xr atan2 3 ,
 .Xr cos 3 ,
 .Xr cosh 3 ,
+.Xr csinh 3 ,
 .Xr math 3 ,
 .Xr sin 3 ,
 .Xr tan 3 ,
@@ -74,4 +75,4 @@ is set to
 The
 .Fn sinh
 function conforms to
-.St -ansiC .
+.St -isoC .

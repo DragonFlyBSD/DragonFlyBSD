@@ -26,10 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)j0.3	6.7 (Berkeley) 4/19/91
-.\"	$NetBSD: j0.3,v 1.16 2003/08/07 16:44:48 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/j0.3,v 1.1 2005/07/26 21:15:20 joerg Exp $
+.\" $FreeBSD$
 .\"
-.Dd April 19, 1991
+.Dd February 18, 2008
 .Dt J0 3
 .Os
 .Sh NAME
@@ -94,7 +93,8 @@ the functions
 and
 .Fn jnf
 compute the
-.Em Bessel function of the first kind of the integer order
+.Em Bessel function of the first kind of the integer
+.Em order
 .Fa n
 for the real value
 .Fa x .
@@ -102,7 +102,7 @@ for the real value
 The functions
 .Fn y0 ,
 .Fn y0f ,
-.Fn y1
+.Fn y1 ,
 and
 .Fn y1f
 compute the linearly independent
@@ -112,42 +112,57 @@ compute the linearly independent
 1, respectively,
 for the
 positive
-.Em integer
+.Em real
 value
-.Fa x
-(expressed as a double);
+.Fa x ;
 the functions
 .Fn yn
 and
 .Fn ynf
 compute the
-.Em Bessel function of the second kind for the integer order
+.Em Bessel function of the second kind for the integer
+.Em order
 .Fa n
 for the positive
-.Em integer
+.Em real
 value
-.Fa x
-(expressed as a double).
+.Fa x .
 .Sh RETURN VALUES
-If these functions are successful,
-the computed value is returned, otherwise
-the global
-variable
-.Va errno
-is set to
-.Er EDOM
-and a reserve operand fault is generated.
-.\" On the
-.\" .Tn VAX
-.\" and
-.\" .Tn Tahoe
-.\" architectures, a negative
-.\" .Fa x
-.\" value
-.\" results in an error.
+These routines return values of their respective Bessel functions.
+For large positive inputs, they may underflow and return \*(Pm0.
+.Pp
+The following applies to
+.Fn y0 ,
+.Fn y0f ,
+.Fn y1 ,
+.Fn y1f ,
+.Fn yn ,
+and
+.Fn ynf .
+If
+.Fa x
+is negative, these routines will generate an invalid exception and
+return \*(Na.
+If
+.Fa x
+is 0 or a sufficiently small positive number, these routines
+will generate an overflow exception and return -\*(If.
 .Sh SEE ALSO
 .Xr math 3
-.\" .Xr matherr 3
+.Sh STANDARDS
+The
+.Fn j0 ,
+.Fn j1 ,
+.Fn jn ,
+.Fn y0 ,
+.Fn y1 ,
+and
+.Fn yn
+functions conform to
+.St -p1003.1-2001 .
+The
+.Ft float
+versions are extensions.
 .Sh HISTORY
 This set of functions
 appeared in

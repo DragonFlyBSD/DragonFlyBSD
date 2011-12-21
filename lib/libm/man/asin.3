@@ -26,16 +26,16 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)asin.3	5.1 (Berkeley) 5/2/91
-.\"	$NetBSD: asin.3,v 1.16 2003/08/07 16:44:46 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/asin.3,v 1.2 2005/12/28 13:35:02 swildner Exp $
+.\" FreeBSD: 181074 (2008-07-31)
 .\"
-.Dd May 2, 1991
+.Dd December 21, 2011
 .Dt ASIN 3
 .Os
 .Sh NAME
 .Nm asin ,
-.Nm asinf
-.Nd arc sine function
+.Nm asinf ,
+.Nm asinl
+.Nd arc sine functions
 .Sh LIBRARY
 .Lb libm
 .Sh SYNOPSIS
@@ -44,44 +44,46 @@
 .Fn asin "double x"
 .Ft float
 .Fn asinf "float x"
+.Ft long double
+.Fn asinl "long double x"
 .Sh DESCRIPTION
 The
-.Fn asin
+.Fn asin ,
+.Fn asinf ,
 and
-.Fn asinf
+.Fn asinl
 functions compute the principal value of the arc sine of
-.Fa x
-in the range
-.Bk -words
-.Bq -\*(Pi/2, +\*(Pi/2 .
-.Ek
+.Fa x .
 .Sh RETURN VALUES
-.\" POSIX_MODE
-If |x|\*[Gt]1,
-.Fn asin "x"
-and
-.Fn asinf "x"
-return NaN and set the global variable
-.Va errno
-to
-.Er EDOM .
-.\" SYSV_MODE
-.\" call
-.\" .Xr matherr 3 .
+These functions return the arc sine in the range
+.Bk -words
+.Bq -\*(Pi/2 , +\*(Pi/2
+.Ek
+radians.
+If:
+.Bd -unfilled -offset indent
+.Pf \&| Ns Ar x Ns \&| > 1
+.Ed
+.Pp
+.Fn asin x
+raises an invalid exception and returns an \*(Na.
 .Sh SEE ALSO
 .Xr acos 3 ,
 .Xr atan 3 ,
 .Xr atan2 3 ,
 .Xr cos 3 ,
 .Xr cosh 3 ,
+.Xr fenv 3 ,
 .Xr math 3 ,
 .Xr sin 3 ,
 .Xr sinh 3 ,
 .Xr tan 3 ,
 .Xr tanh 3
-.\" .Xr matherr 3
 .Sh STANDARDS
 The
-.Fn asin
-function conforms to
-.St -ansiC .
+.Fn asin ,
+.Fn asinf ,
+and
+.Fn asinl
+functions conform to
+.St -isoC-99 .

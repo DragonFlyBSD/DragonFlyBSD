@@ -1,6 +1,7 @@
 .\" Copyright (c) 1991 The Regents of the University of California.
 .\" All rights reserved.
 .\"
+.\"	@(#)fabs.3	5.1 (Berkeley) 5/2/91
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
@@ -26,15 +27,16 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)fabs.3	5.1 (Berkeley) 5/2/91
-.\"	$NetBSD: fabs.3,v 1.15 2011/09/13 07:11:43 njoly Exp $
+.\" $FreeBSD$
 .\"
-.Dd May 2, 1991
+.Dd December 21, 2011
 .Dt FABS 3
 .Os
 .Sh NAME
 .Nm fabs ,
-.Nm fabsf
-.Nd floating-point absolute value function
+.Nm fabsf ,
+.Nm fabsl
+.Nd floating-point absolute value functions
 .Sh LIBRARY
 .Lb libm
 .Sh SYNOPSIS
@@ -43,17 +45,23 @@
 .Fn fabs "double x"
 .Ft float
 .Fn fabsf "float x"
+.Ft long double
+.Fn fabsl "long double x"
 .Sh DESCRIPTION
 The
-.Fn fabs
-and
+.Fn fabs ,
 .Fn fabsf
+and
+.Fn fabsl
 functions compute the absolute value of a floating-point number
 .Fa x .
 .Sh RETURN VALUES
 The
-.Fn fabs
-function returns the absolute value of
+.Fn fabs ,
+.Fn fabsf
+and
+.Fn fabsl
+functions return the absolute value of
 .Fa x .
 .Sh SEE ALSO
 .Xr abs 3 ,
@@ -65,4 +73,10 @@ function returns the absolute value of
 The
 .Fn fabs
 function conforms to
-.St -ansiC .
+.St -isoC .
+The
+.Fn fabsf
+and
+.Fn fabsl
+functions conform to
+.St -isoC-99 .

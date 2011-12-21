@@ -26,16 +26,15 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)cosh.3	5.1 (Berkeley) 5/2/91
-.\"	$NetBSD: cosh.3,v 1.15 2003/08/07 16:44:47 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/cosh.3,v 1.2 2005/12/28 13:35:02 swildner Exp $
+.\" $FreeBSD$
 .\"
-.Dd May 2, 1991
+.Dd January 14, 2005
 .Dt COSH 3
 .Os
 .Sh NAME
 .Nm cosh ,
 .Nm coshf
-.Nd hyperbolic cosine function
+.Nd hyperbolic cosine functions
 .Sh LIBRARY
 .Lb libm
 .Sh SYNOPSIS
@@ -47,7 +46,7 @@
 .Sh DESCRIPTION
 The
 .Fn cosh
-and
+and the
 .Fn coshf
 functions compute the hyperbolic cosine of
 .Fa x .
@@ -56,28 +55,24 @@ If the magnitude of x is too large,
 .Fn cosh "x"
 and
 .Fn coshf "x"
-.\" POSIX_MODE
 return Inf and sets the global variable
 .Va errno
 to
 .Er ERANGE .
-.\" SYSV_MODE
-.\" call
-.\" .Xr matherr 3 .
 .Sh SEE ALSO
 .Xr acos 3 ,
 .Xr asin 3 ,
 .Xr atan 3 ,
 .Xr atan2 3 ,
+.Xr ccosh 3 ,
 .Xr cos 3 ,
 .Xr math 3 ,
 .Xr sin 3 ,
 .Xr sinh 3 ,
 .Xr tan 3 ,
 .Xr tanh 3
-.\" .Xr matherr 3
 .Sh STANDARDS
 The
 .Fn cosh
 function conforms to
-.St -ansiC .
+.St -isoC .

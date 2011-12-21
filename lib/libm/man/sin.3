@@ -1,6 +1,7 @@
 .\" Copyright (c) 1991 The Regents of the University of California.
 .\" All rights reserved.
 .\"
+.\"	@(#)sin.3	6.7 (Berkeley) 4/19/91
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
@@ -26,16 +27,16 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)sin.3	6.7 (Berkeley) 4/19/91
-.\"	$NetBSD: sin.3,v 1.14 2003/08/07 16:44:49 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/sin.3,v 1.1 2005/07/26 21:15:20 joerg Exp $
+.\" $FreeBSD$
 .\"
-.Dd April 19, 1991
+.Dd December 21, 2011
 .Dt SIN 3
 .Os
 .Sh NAME
 .Nm sin ,
-.Nm sinf
-.Nd sine function
+.Nm sinf ,
+.Nm sinl
+.Nd sine functions
 .Sh LIBRARY
 .Lb libm
 .Sh SYNOPSIS
@@ -44,23 +45,32 @@
 .Fn sin "double x"
 .Ft float
 .Fn sinf "float x"
+.Ft long double
+.Fn sinl "long double x"
 .Sh DESCRIPTION
 The
-.Fn sin
-function computes the sine of
+.Fn sin ,
+.Fn sinf ,
+and
+.Fn sinl
+functions compute the sine of
 .Fa x
 (measured in radians).
 A large magnitude argument may yield a result with little
 or no significance.
 .Sh RETURN VALUES
 The
-.Fn sin
-function returns the sine value.
+.Fn sin ,
+.Fn sinf ,
+and
+.Fn sinl
+functions return the sine value.
 .Sh SEE ALSO
 .Xr acos 3 ,
 .Xr asin 3 ,
 .Xr atan 3 ,
 .Xr atan2 3 ,
+.Xr csin 3 ,
 .Xr cos 3 ,
 .Xr cosh 3 ,
 .Xr math 3 ,
@@ -68,7 +78,5 @@ function returns the sine value.
 .Xr tan 3 ,
 .Xr tanh 3
 .Sh STANDARDS
-The
-.Fn sin
-function conforms to
-.St -ansiC .
+These functions conform to
+.St -isoC-99 .

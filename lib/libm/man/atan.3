@@ -26,16 +26,16 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)atan.3	5.1 (Berkeley) 5/2/91
-.\"	$NetBSD: atan.3,v 1.16 2003/08/07 16:44:46 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/atan.3,v 1.1 2005/07/26 21:15:20 joerg Exp $
+.\" $FreeBSD$
 .\"
-.Dd May 2, 1991
+.Dd December 21, 2011
 .Dt ATAN 3
 .Os
 .Sh NAME
 .Nm atan ,
-.Nm atanf
-.Nd arc tangent function of one variable
+.Nm atanf ,
+.Nm atanl
+.Nd arc tangent functions of one variable
 .Sh LIBRARY
 .Lb libm
 .Sh SYNOPSIS
@@ -44,21 +44,22 @@
 .Fn atan "double x"
 .Ft float
 .Fn atanf "float x"
+.Ft long double
+.Fn atanl "long double x"
 .Sh DESCRIPTION
 The
-.Fn atan
+.Fn atan ,
+.Fn atanf ,
 and
-.Fn atanf
+.Fn atanl
 functions compute the principal value of the arc tangent of
-.Fa x
-in the range
+.Fa x .
+.Sh RETURN VALUES
+These functions return the arc tangent in the range
 .Bk -words
-.Bq -\*(Pi/2 , +\*(Pi/2 .
+.Bq -\*(Pi/2 , +\*(Pi/2
 .Ek
-.\" SYSV_MODE
-.\" .Sh RETURN VALUES
-.\" Exceptional cases are handled by
-.\" .Xr matherr 3 .
+radians.
 .Sh SEE ALSO
 .Xr acos 3 ,
 .Xr asin 3 ,
@@ -70,9 +71,11 @@ in the range
 .Xr sinh 3 ,
 .Xr tan 3 ,
 .Xr tanh 3
-.\" .Xr matherr 3
 .Sh STANDARDS
 The
-.Fn atan
-functions conforms to
-.St -ansiC .
+.Fn atan ,
+.Fn atanf ,
+and
+.Fn atanl
+functions conform to
+.St -isoC-99 .
