@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sbin/dump/cache.c,v 1.1.2.1 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/cache.c,v 1.5 2006/10/21 04:10:02 pavalos Exp $
  */
 /*
  * Block cache for dump
@@ -58,12 +57,11 @@
 
 #include <ctype.h>
 #include <stdio.h>
-#ifdef __STDC__
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#endif
+
 #include "dump.h"
 
 typedef struct Block {

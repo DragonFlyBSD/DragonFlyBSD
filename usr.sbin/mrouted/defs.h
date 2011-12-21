@@ -8,7 +8,6 @@
  *
  *
  * $FreeBSD: src/usr.sbin/mrouted/defs.h,v 1.12.2.1 2001/07/19 01:41:11 kris Exp $
- * $DragonFly: src/usr.sbin/mrouted/defs.h,v 1.6 2004/02/10 02:59:42 rob Exp $
  * defs.h,v 3.8.4.15 1998/03/01 02:51:42 fenner Exp
  */
 
@@ -95,13 +94,7 @@ typedef void (*ihfunc_t)(int, fd_set *);
 #define	DEL_ALL_ROUTES		1
 			    /* for Deleting kernel table entries */
 
-/* obnoxious gcc gives an extraneous warning about this constant... */
-#if defined(__STDC__) || defined(__GNUC__)
 #define JAN_1970	2208988800UL	/* 1970 - 1900 in seconds */
-#else
-#define JAN_1970	2208988800L	/* 1970 - 1900 in seconds */
-#define const		/**/
-#endif
 
 #ifdef RSRR
 #define BIT_ZERO(X)      ((X) = 0)

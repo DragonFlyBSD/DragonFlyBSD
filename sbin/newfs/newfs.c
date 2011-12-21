@@ -67,11 +67,7 @@
 #include <sys/mman.h>
 #endif
 
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 #include "mntopts.h"
 #include "defs.h"

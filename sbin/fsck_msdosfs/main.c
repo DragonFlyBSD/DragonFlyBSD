@@ -31,7 +31,6 @@
  *
  * $NetBSD: main.c,v 1.10 1997/10/01 02:18:14 enami Exp $
  * $FreeBSD: src/sbin/fsck_msdosfs/main.c,v 1.4.2.1 2001/08/01 05:47:56 obrien Exp $
- * $DragonFly: src/sbin/fsck_msdosfs/main.c,v 1.4 2003/11/01 17:15:58 drhodus Exp $
  */
 
 
@@ -43,11 +42,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 #include "fsutil.h"
 #include "ext.h"

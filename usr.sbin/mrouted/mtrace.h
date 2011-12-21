@@ -81,9 +81,4 @@ struct tr_resp {
 			x = htonl(~((1 << (32 - (i))) - 1)); \
 			};
 
-#if defined(__STDC__) || defined(__GNUC__)
 #define JAN_1970	2208988800UL	/* 1970 - 1900 in seconds */
-#else
-#define JAN_1970	2208988800L	/* 1970 - 1900 in seconds */
-#define const		/**/
-#endif

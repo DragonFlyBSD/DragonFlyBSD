@@ -28,7 +28,6 @@
 
 /* @(#) $Header: /home/daffy/u0/vern/flex/RCS/flexdef.h,v 2.53 95/04/20 11:17:36 vern Exp $ (LBL) */
 /* $FreeBSD: src/usr.bin/lex/flexdef.h,v 1.5 1999/10/27 07:56:44 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/flexdef.h,v 1.4 2005/08/04 17:31:22 drhodus Exp $ */
 
 #include <stdio.h>
 #include <ctype.h>
@@ -68,11 +67,7 @@
 #endif
 
 #ifndef PROTO
-#if __STDC__
 #define PROTO(proto) proto
-#else
-#define PROTO(proto) ()
-#endif
 #endif
 
 

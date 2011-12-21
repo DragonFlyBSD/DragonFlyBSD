@@ -33,9 +33,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsck/fsutil.c,v 1.2.2.1 2001/08/01 05:47:55 obrien Exp $
- * $DragonFly: src/sbin/fsck/fsutil.c,v 1.6 2006/10/12 04:04:03 dillon Exp $
- *
- * $NetBSD: fsutil.c,v 1.7 1998/07/30 17:41:03 thorpej Exp $
  */
 
 #include <sys/cdefs.h>
@@ -43,11 +40,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 #include <errno.h>
 #include <fstab.h>
 #include <err.h>

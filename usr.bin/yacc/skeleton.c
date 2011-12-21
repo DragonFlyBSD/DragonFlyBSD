@@ -36,7 +36,6 @@
  * @(#)skeleton.c	5.8 (Berkeley) 4/29/95
  *
  * $FreeBSD: src/usr.bin/yacc/skeleton.c,v 1.28.2.1 2001/07/19 05:46:39 peter Exp $
- * $DragonFly: src/usr.bin/yacc/skeleton.c,v 1.7 2008/07/12 16:52:48 mneumann Exp $
  */
 
 #include "defs.h"
@@ -64,11 +63,7 @@ const char *banner[] = {
     "#define yyclearin (yychar=(YYEMPTY))",
     "#define yyerrok (yyerrflag=0)",
     "#define YYRECOVERING() (yyerrflag!=0)",
-    "#if defined(__cplusplus) || __STDC__",
     "static int yygrowstack(void);",
-    "#else",
-    "static int yygrowstack();",
-    "#endif",
     NULL
 };
 
@@ -158,24 +153,14 @@ const char *body[] = {
     "#define YYERROR goto yyerrlab",
     "",
     "#ifndef YYPARSE_PARAM",
-    "#if defined(__cplusplus) || __STDC__",
     "#define YYPARSE_PARAM_ARG void",
     "#define YYPARSE_PARAM_DECL",
-    "#else	/* ! ANSI-C/C++ */",
-    "#define YYPARSE_PARAM_ARG",
-    "#define YYPARSE_PARAM_DECL",
-    "#endif	/* ANSI-C/C++ */",
     "#else	/* YYPARSE_PARAM */",
     "#ifndef YYPARSE_PARAM_TYPE",
     "#define YYPARSE_PARAM_TYPE void *",
     "#endif",
-    "#if defined(__cplusplus) || __STDC__",
     "#define YYPARSE_PARAM_ARG YYPARSE_PARAM_TYPE YYPARSE_PARAM",
     "#define YYPARSE_PARAM_DECL",
-    "#else	/* ! ANSI-C/C++ */",
-    "#define YYPARSE_PARAM_ARG YYPARSE_PARAM",
-    "#define YYPARSE_PARAM_DECL YYPARSE_PARAM_TYPE YYPARSE_PARAM;",
-    "#endif	/* ANSI-C/C++ */",
     "#endif	/* ! YYPARSE_PARAM */",
     "",
     "int",

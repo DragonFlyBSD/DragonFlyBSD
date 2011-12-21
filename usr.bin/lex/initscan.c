@@ -4,7 +4,6 @@
 /* Scanner skeleton version:
  * $Header: /home/daffy/u0/vern/flex/RCS/flex.skl,v 2.91 96/09/10 16:58:48 vern Exp $
  * $FreeBSD: src/usr.bin/lex/initscan.c,v 1.6 1999/10/27 07:56:45 obrien Exp $
- * $DragonFly: src/usr.bin/lex/initscan.c,v 1.5 2005/08/04 17:31:22 drhodus Exp $
  */
 
 #define FLEX_SCANNER
@@ -35,12 +34,9 @@
 
 #else	/* ! __cplusplus */
 
-#if __STDC__
-
 #define YY_USE_PROTOS
 #define YY_USE_CONST
 
-#endif	/* __STDC__ */
 #endif	/* ! __cplusplus */
 
 #ifdef YY_USE_CONST
@@ -1379,15 +1375,8 @@ static int yy_top_state YY_PROTO(( void ));
 #ifdef YY_MALLOC_DECL
 YY_MALLOC_DECL
 #else
-#if __STDC__
 #ifndef __cplusplus
 #include <stdlib.h>
-#endif
-#else
-/* Just try to get by without declaring the routines.  This will fail
- * miserably on non-ANSI systems for which sizeof(size_t) != sizeof(int)
- * or sizeof(void*) != sizeof(int).
- */
 #endif
 #endif
 

@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/usr.sbin/route6d/route6d.c,v 1.2.2.5 2001/07/03 11:02:09 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/route6d/route6d.c,v 1.8 2005/12/05 02:40:28 swildner Exp $	*/
 /*	$KAME: route6d.c,v 1.64 2001/05/08 04:36:37 itojun Exp $	*/
 
 /*
@@ -42,11 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#ifdef __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 #include <syslog.h>
 #include <stddef.h>
 #include <errno.h>
@@ -3241,11 +3236,7 @@ fatal(const char *fmt, ...)
 	va_list ap;
 	char buf[1024];
 
-#ifdef __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	vsnprintf(buf, sizeof(buf), fmt, ap);
 	perror(buf);
 	syslog(LOG_ERR, "%s: %s", buf, strerror(errno));
@@ -3258,11 +3249,7 @@ tracet(int level, const char *fmt, ...)
 {
 	va_list ap;
 
-#ifdef __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	if (level <= dflag) {
 		fprintf(stderr, "%s: ", hms());
 		vfprintf(stderr, fmt, ap);
@@ -3281,11 +3268,7 @@ trace(int level, const char *fmt, ...)
 {
 	va_list ap;
 
-#ifdef __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	if (level <= dflag)
 		vfprintf(stderr, fmt, ap);
 	if (dflag) {

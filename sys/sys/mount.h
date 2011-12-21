@@ -32,7 +32,6 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.47 2008/09/17 21:44:19 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -511,11 +510,9 @@ TAILQ_HEAD(mntlist, mount);	/* struct mntlist */
 /*
  * Operations supported on mounted file system.
  */
-#ifdef __STDC__
 struct nlookupdata;
 struct nlookupdata;
 struct mbuf;
-#endif
 
 typedef int vfs_mount_t(struct mount *mp, char *path, caddr_t data,
 				    struct ucred *cred);

@@ -32,7 +32,6 @@
  *
  * @(#)dumprmt.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/dump/dumprmt.c,v 1.14.2.1 2000/07/01 06:31:52 ps Exp $
- * $DragonFly: src/sbin/dump/dumprmt.c,v 1.13 2005/04/14 10:17:23 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -59,12 +58,10 @@
 #include <netdb.h>
 #include <pwd.h>
 #include <stdio.h>
-#ifdef __STDC__
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#endif
 
 #include "pathnames.h"
 #include "dump.h"

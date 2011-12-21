@@ -671,11 +671,10 @@ struct icmp6stat {
 #define RTF_PROBEMTU	RTF_PROTO1
 
 #ifdef _KERNEL
-# ifdef __STDC__
 struct	rtentry;
 struct	rttimer;
 struct	in6_multi;
-# endif
+
 void	icmp6_init (void);
 void	icmp6_paramerror (struct mbuf *, int);
 void	icmp6_error (struct mbuf *, int, int, int);

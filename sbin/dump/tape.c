@@ -32,7 +32,6 @@
  *
  * @(#)tape.c	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/tape.c,v 1.12.2.3 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/tape.c,v 1.14 2005/08/28 04:35:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,13 +56,9 @@
 #include <setjmp.h>
 #include <signal.h>
 #include <stdio.h>
-#ifdef __STDC__
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#else
-int	write(), read();
-#endif
 
 #include "dump.h"
 

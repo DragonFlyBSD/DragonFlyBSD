@@ -32,7 +32,6 @@
  *
  * @(#)traverse.c	8.7 (Berkeley) 6/15/95
  * $FreeBSD: src/sbin/dump/traverse.c,v 1.10.2.6 2003/04/14 20:10:35 johan Exp $
- * $DragonFly: src/sbin/dump/traverse.c,v 1.15 2006/10/21 04:10:02 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -53,11 +52,9 @@
 
 #include <ctype.h>
 #include <stdio.h>
-#ifdef __STDC__
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#endif
 
 #include "dump.h"
 

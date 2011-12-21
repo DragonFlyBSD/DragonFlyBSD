@@ -28,7 +28,6 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/misc.c,v 2.47 95/04/28 11:39:39 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/misc.c,v 1.5 1999/10/27 07:56:45 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/misc.c,v 1.4 2005/08/04 17:31:22 drhodus Exp $ */
 
 #include "flexdef.h"
 
@@ -513,14 +512,8 @@ Char myesc(Char *array)
 		case 'n': return '\n';
 		case 'r': return '\r';
 		case 't': return '\t';
-
-#if __STDC__
 		case 'a': return '\a';
 		case 'v': return '\v';
-#else
-		case 'a': return '\007';
-		case 'v': return '\013';
-#endif
 
 		case '0':
 		case '1':
@@ -684,11 +677,8 @@ char *readable_form(int c)
 			case '\n': return "\\n";
 			case '\r': return "\\r";
 			case '\t': return "\\t";
-
-#if __STDC__
 			case '\a': return "\\a";
 			case '\v': return "\\v";
-#endif
 
 			default:
 				(void) sprintf( rform, "\\%.3o",

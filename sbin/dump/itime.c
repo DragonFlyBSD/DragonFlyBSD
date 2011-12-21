@@ -32,7 +32,6 @@
  *
  * @(#)itime.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dump/itime.c,v 1.3.2.1 2001/08/01 06:29:35 obrien Exp $
- * $DragonFly: src/sbin/dump/itime.c,v 1.11 2006/10/21 04:10:02 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -47,10 +46,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#ifdef __STDC__
 #include <stdlib.h>
 #include <string.h>
-#endif
 
 #include "dump.h"
 

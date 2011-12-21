@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)init.c	8.1 (Berkeley) 7/15/93
  * $FreeBSD: src/sbin/init/init.c,v 1.38.2.8 2001/10/22 11:27:32 des Exp $
- * $DragonFly: src/sbin/init/init.c,v 1.10 2007/11/25 18:10:07 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -63,11 +62,7 @@
 #include <sys/reboot.h>
 #include <err.h>
 
-#ifdef __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 #ifdef SECURE
 #include <pwd.h>
