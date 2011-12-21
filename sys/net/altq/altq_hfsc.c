@@ -540,6 +540,7 @@ hfsc_class_create(struct hfsc_if *hif, struct service_curve *rsc,
 static int
 hfsc_class_destroy(struct hfsc_class *cl)
 {
+	struct hfsc_if *hif = cl->cl_hif;
 	int i;
 
 	if (cl == NULL)
@@ -572,13 +573,13 @@ hfsc_class_destroy(struct hfsc_class *cl)
 	}
 
 	for (i = 0; i < HFSC_MAX_CLASSES; i++) {
-		if (cl->cl_hif->hif_class_tbl[i] == cl) {
-			cl->cl_hif->hif_class_tbl[i] = NULL;
+		if (hif->hif_class_tbl[i] == cl) {
+			hif->hif_class_tbl[i] = NULL;
 			break;
 		}
 	}
 
-	cl->cl_hif->hif_classes--;
+	hif->hif_classes--;
 	crit_exit();
 
 	actlist_destroy(cl->cl_actc);
@@ -594,10 +595,12 @@ hfsc_class_destroy(struct hfsc_class *cl)
 #endif
 	}
 
-	if (cl == cl->cl_hif->hif_rootclass)
-		cl->cl_hif->hif_rootclass = NULL;
-	if (cl == cl->cl_hif->hif_defaultclass)
-		cl->cl_hif->hif_defaultclass = NULL;
+	if (cl == hif->hif_rootclass)
+		hif->hif_rootclass = NULL;
+	if (cl == hif->hif_defaultclass)
+		hif->hif_defaultclass = NULL;
+	if (cl == hif->hif_pollcache)
+		hif->hif_pollcache = NULL;
 
 	if (cl->cl_usc != NULL)
 		kfree(cl->cl_usc, M_ALTQ);
