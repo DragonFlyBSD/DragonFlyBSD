@@ -533,6 +533,10 @@ rmc_delete_class(struct rm_ifdat *ifd, struct rm_class *cl)
 		callout_stop(&cl->callout_);
 
 	crit_enter();
+
+	if (ifd->pollcache_ == cl)
+		ifd->pollcache_ = NULL;
+
 	/*
 	 * Free packets in the packet queue.
 	 * XXX - this may not be a desired behavior.  Packets should be
