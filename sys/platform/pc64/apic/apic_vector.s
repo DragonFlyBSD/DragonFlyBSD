@@ -256,11 +256,11 @@ Xcpustop:
 	MPLOCKED
 	btrq	%rax, stopped_cpus	/* stopped_cpus &= ~(1<<id) */
 
-	test	%eax, %eax
+	testq	%rax, %rax
 	jnz	2f
 
 	movq	CNAME(cpustop_restartfunc), %rax
-	test	%rax, %rax
+	testq	%rax, %rax
 	jz	2f
 	movq	$0, CNAME(cpustop_restartfunc)	/* One-shot */
 
