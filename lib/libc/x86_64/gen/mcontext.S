@@ -32,7 +32,7 @@
 	/*
 	 * int get_mcontext(mcontext_t *mcp : rdi)
 	 *
-	 * Copy the caller's context into the mcontext, %eax excepted.
+	 * Copy the caller's context into the mcontext, %rax excepted.
 	 */
         .weak   get_mcontext
         .set    get_mcontext,_get_mcontext
@@ -66,11 +66,11 @@ ENTRY(_get_mcontext)
 	 * Saved stack pointer as if we had returned from this
 	 * procedure.
 	 */
-	movq	%rsp,MC_RSP(%eax)
-	addq	$8,MC_RSP(%eax)
+	movq	%rsp,MC_RSP(%rdi)
+	addq	$8,MC_RSP(%rdi)
 
 	/*
-	 * Save eflags
+	 * Save rflags
 	 * XXX
 	 */
 
@@ -89,7 +89,7 @@ ENTRY(_get_mcontext)
 	/*
 	 * Set MC_LEN
 	 */
-	movl    $SIZEOF_MCONTEXT_T,MC_LEN(%eax)
+	movl    $SIZEOF_MCONTEXT_T,MC_LEN(%rdi)
 
 	/*
 	 * Return 0
