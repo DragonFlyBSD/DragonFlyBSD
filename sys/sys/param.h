@@ -85,9 +85,10 @@
  * 201303 - <netatalk/...> and <netproto/atalk/...> are gone
  * 201304 - Added wcscasecmp, wcsncasecmp to libc
  * 201305 - Sync libm with NetBSD-current libm (new functions added)
+ * 201306 - Sync libm with FreeBSD-current libm (~50 new functions)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 201305	/* propagated to newvers */
+#define __DragonFly_version 201306	/* propagated to newvers */
 
 #include <sys/_null.h>
 
