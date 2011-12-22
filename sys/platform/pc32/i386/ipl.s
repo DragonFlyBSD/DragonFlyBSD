@@ -443,8 +443,8 @@ splz_soft:
 	addl	$FIRST_SOFTINT,%ecx	/* actual intr number */
 	pushl	%eax
 	pushl	%ecx
-	decl	TD_CRITCOUNT(%ebx)
 	incl	TD_NEST_COUNT(%ebx)	/* prevent doreti/splz nesting */
+	decl	TD_CRITCOUNT(%ebx)
 	call	sched_ithd_soft		/* YYY must pull in imasks */
 	incl	TD_CRITCOUNT(%ebx)
 	decl	TD_NEST_COUNT(%ebx)	/* prevent doreti/splz nesting */
