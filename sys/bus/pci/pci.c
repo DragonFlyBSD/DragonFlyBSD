@@ -45,6 +45,8 @@
 #include <sys/endian.h>
 #include <sys/machintr.h>
 
+#include <machine/msi_machdep.h>
+
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <vm/vm_extern.h>
@@ -597,7 +599,6 @@ pci_read_cap_pmgt(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 static void
 pci_read_cap_ht(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 {
-#ifdef notyet
 #if defined(__i386__) || defined(__x86_64__)
 
 #define REG(n, w)	\
@@ -610,6 +611,9 @@ pci_read_cap_ht(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 	/* Determine HT-specific capability type. */
 	val = REG(ptr + PCIR_HT_COMMAND, 2);
 
+	if ((val & 0xe000) == PCIM_HTCAP_SLAVE)
+		cfg->ht.ht_slave = ptr;
+
 	if ((val & PCIM_HTCMD_CAP_MASK) != PCIM_HTCAP_MSI_MAPPING)
 		return;
 
@@ -618,14 +622,14 @@ pci_read_cap_ht(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 		addr = REG(ptr + PCIR_HTMSI_ADDRESS_HI, 4);
 		addr <<= 32;
 		addr |= REG(ptr + PCIR_HTMSI_ADDRESS_LO, 4);
-		if (addr != MSI_INTEL_ADDR_BASE) {
+		if (addr != MSI_X86_ADDR_BASE) {
 			device_printf(pcib, "HT Bridge at pci%d:%d:%d:%d "
 				"has non-default MSI window 0x%llx\n",
 				cfg->domain, cfg->bus, cfg->slot, cfg->func,
 				(long long)addr);
 		}
 	} else {
-		addr = MSI_INTEL_ADDR_BASE;
+		addr = MSI_X86_ADDR_BASE;
 	}
 
 	ht->ht_msimap = ptr;
@@ -635,7 +639,6 @@ pci_read_cap_ht(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 #undef REG
 
 #endif	/* __i386__ || __x86_64__ */
-#endif	/* notyet */
 }
 
 static void
@@ -828,6 +831,24 @@ pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 			}
 		}
 	}
+
+#if defined(__i386__) || defined(__x86_64__)
+	/*
+	 * Enable the MSI mapping window for all HyperTransport
+	 * slaves.  PCI-PCI bridges have their windows enabled via
+	 * PCIB_MAP_MSI().
+	 */
+	if (cfg->ht.ht_slave != 0 && cfg->ht.ht_msimap != 0 &&
+	    !(cfg->ht.ht_msictrl & PCIM_HTCMD_MSI_ENABLE)) {
+		device_printf(pcib,
+	    "Enabling MSI window for HyperTransport slave at pci%d:%d:%d:%d\n",
+		    cfg->domain, cfg->bus, cfg->slot, cfg->func);
+		 cfg->ht.ht_msictrl |= PCIM_HTCMD_MSI_ENABLE;
+		 WREG(cfg->ht.ht_msimap + PCIR_HT_COMMAND, cfg->ht.ht_msictrl,
+		     2);
+	}
+#endif
+
 /* REG and WREG use carry through to next functions */
 }
 
