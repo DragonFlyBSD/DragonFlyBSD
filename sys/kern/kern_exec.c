@@ -147,15 +147,16 @@ sysctl_kern_stackgap(SYSCTL_HANDLER_ARGS)
 	error = sysctl_handle_int(oidp, &new_val, 0, req);
 	if (error != 0 || req->newptr == NULL)
 		return (error);
-	if ((new_val < 0) || (new_val > 16 * PAGE_SIZE) || ! powerof2(new_val))
+	if (new_val > 0 && ((new_val > 16 * PAGE_SIZE) || !powerof2(new_val)))
 		return (EINVAL);
 	stackgap_random = new_val;
 
 	return(0);
 }
 
-SYSCTL_PROC(_kern, OID_AUTO, stackgap_random, CTLFLAG_RW|CTLTYPE_UINT, 
-	0, 0, sysctl_kern_stackgap, "IU", "Max random stack gap (power of 2)");
+SYSCTL_PROC(_kern, OID_AUTO, stackgap_random, CTLFLAG_RW|CTLTYPE_INT,
+	0, 0, sysctl_kern_stackgap, "IU",
+	"Max random stack gap (power of 2), static gap if negative");
 	
 void
 print_execve_args(struct image_args *args)
@@ -867,7 +868,7 @@ exec_copyin_args(struct image_args *args, char *fname,
 				break;
 			}
 			error = copyinstr(argp, args->endp,
-					    args->space, &length);
+					  args->space, &length);
 			if (error) {
 				if (error == ENAMETOOLONG)
 					error = E2BIG;
@@ -901,8 +902,8 @@ exec_copyin_args(struct image_args *args, char *fname,
 				error = EFAULT;
 				break;
 			}
-			error = copyinstr(envp, args->endp, args->space,
-			    &length);
+			error = copyinstr(envp, args->endp,
+					  args->space, &length);
 			if (error) {
 				if (error == ENAMETOOLONG)
 					error = E2BIG;
@@ -927,13 +928,29 @@ exec_free_args(struct image_args *args)
 
 /*
  * Copy strings out to the new process address space, constructing
- *	new arg and env vector tables. Return a pointer to the base
- *	so that it can be used as the initial stack pointer.
+ * new arg and env vector tables. Return a pointer to the base
+ * so that it can be used as the initial stack pointer.
+ *
+ * The format is, roughly:
+ *
+ *	[argv[]]			<-- vectp
+ *	[envp[]]
+ *	[ELF_Auxargs]
+ *
+ *	[args & env]			<-- destp
+ *	[sgap]
+ *	[SPARE_USRSPACE]
+ *	[execpath]
+ *	[szsigcode]
+ *	[ps_strings]			top of user stack
+ *
  */
 register_t *
 exec_copyout_strings(struct image_params *imgp)
 {
 	int argc, envc, sgap;
+	int gap;
+	int argsenvspace;
 	char **vectp;
 	char *stringp, *destp;
 	register_t *stack_base;
@@ -951,56 +968,57 @@ exec_copyout_strings(struct image_params *imgp)
 		execpath_len = 0;
 	arginfo = (struct ps_strings *)PS_STRINGS;
 	szsigcode = *(imgp->proc->p_sysent->sv_szsigcode);
+
+	argsenvspace = roundup((ARG_MAX - imgp->args->space), sizeof(char *));
+	gap = stackgap_random;
+	cpu_ccfence();
+	if (gap != 0) {
+		if (gap < 0)
+			sgap = ALIGN(-gap);
+		else
+			sgap = ALIGN(karc4random() & (stackgap_random - 1));
+	} else {
+		sgap = 0;
+	}
+
 	if (stackgap_random != 0)
 		sgap = ALIGN(karc4random() & (stackgap_random - 1));
 	else
 		sgap = 0;
-	destp =	(caddr_t)arginfo - szsigcode - SPARE_USRSPACE - sgap -
-	    roundup(execpath_len, sizeof(char *)) -
-	    roundup((ARG_MAX - imgp->args->space), sizeof(char *));
+
+	/*
+	 * Calculate destp, which points to [args & env] and above.
+	 */
+	destp = (caddr_t)arginfo - szsigcode -
+		roundup(execpath_len, sizeof(char *)) -
+		SPARE_USRSPACE -
+		sgap -
+		argsenvspace;
 
 	/*
 	 * install sigcode
 	 */
-	if (szsigcode)
+	if (szsigcode) {
 		copyout(imgp->proc->p_sysent->sv_sigcode,
-		    ((caddr_t)arginfo - szsigcode), szsigcode);
+			((caddr_t)arginfo - szsigcode), szsigcode);
+	}
 
 	/*
 	 * Copy the image path for the rtld
 	 */
-	if (execpath_len != 0) {
+	if (execpath_len) {
 		imgp->execpathp = (uintptr_t)arginfo
 				  - szsigcode
-				  - execpath_len;
+				  - roundup(execpath_len, sizeof(char *));
 		copyout(imgp->execpath, (void *)imgp->execpathp, execpath_len);
 	}
 
 	/*
-	 * If we have a valid auxargs ptr, prepare some room
-	 * on the stack.
-	 *
-	 * The '+ 2' is for the null pointers at the end of each of the
-	 * arg and env vector sets, and 'AT_COUNT*2' is room for the
-	 * ELF Auxargs data.
+	 * Calculate base for argv[], envp[], and ELF_Auxargs.
 	 */
-	if (imgp->auxargs) {
-		vectp = (char **)(destp - (imgp->args->argc +
-			imgp->args->envc + 2 + (AT_COUNT * 2) + execpath_len) *
-			sizeof(char*));
-	} else {
-		vectp = (char **)(destp - (imgp->args->argc +
-			imgp->args->envc + 2) * sizeof(char*));
-	}
+	vectp = (char **)destp - (AT_COUNT * 2);
+	vectp -= imgp->args->argc + imgp->args->envc + 2;
 
-	/*
-	 * NOTE: don't bother aligning the stack here for GCC 2.x, it will
-	 * be done in crt1.o.  Note that GCC 3.x aligns the stack in main.
-	 */
-
-	/*
-	 * vectp also becomes our initial stack base
-	 */
 	stack_base = (register_t *)vectp;
 
 	stringp = imgp->args->begin_argv;
@@ -1008,7 +1026,7 @@ exec_copyout_strings(struct image_params *imgp)
 	envc = imgp->args->envc;
 
 	/*
-	 * Copy out strings - arguments and environment.
+	 * Copy out strings - arguments and environment (at destp)
 	 */
 	copyout(stringp, destp, ARG_MAX - imgp->args->space);
 
