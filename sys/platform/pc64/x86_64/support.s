@@ -466,7 +466,10 @@ fusufault:
 /*
  * Store a 64-bit word, a 32-bit word, a 16-bit word, or an 8-bit byte to
  * user memory.  All these functions are MPSAFE.
+ *
  * addr = %rdi, value = %rsi
+ *
+ * Write a long
  */
 ALTENTRY(suword64)
 ENTRY(suword)
@@ -485,6 +488,9 @@ ENTRY(suword)
 	movq	%rax,PCB_ONFAULT(%rcx)
 	ret
 
+/*
+ * Write an int
+ */
 ENTRY(suword32)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx

@@ -379,11 +379,31 @@ fusufault:
 	ret
 
 /*
- * su{byte,sword,word} - MP SAFE
+ * su{byte,sword,word,word32} - MP SAFE
  *
- *	Write a byte (word, longword) to user memory
+ *	Write a long to user memory
  */
 ENTRY(suword)
+	movl	PCPU(curthread),%ecx
+	movl	TD_PCB(%ecx),%ecx
+	movl	$fusufault,PCB_ONFAULT(%ecx)
+	movl	4(%esp),%edx
+
+	cmpl	$VM_MAX_USER_ADDRESS-4,%edx	/* verify address validity */
+	ja	fusufault
+
+	movl	8(%esp),%eax
+	movl	%eax,(%edx)
+	xorl	%eax,%eax
+	movl	PCPU(curthread),%ecx
+	movl	TD_PCB(%ecx),%ecx
+	movl	%eax,PCB_ONFAULT(%ecx)
+	ret
+
+/*
+ * Write an integer to user memory
+ */
+ENTRY(suword32)
 	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)

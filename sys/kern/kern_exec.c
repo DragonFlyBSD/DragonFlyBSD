@@ -1016,7 +1016,7 @@ exec_copyout_strings(struct image_params *imgp)
 	 * Fill in "ps_strings" struct for ps, w, etc.
 	 */
 	suword(&arginfo->ps_argvstr, (long)(intptr_t)vectp);
-	suword(&arginfo->ps_nargvstr, argc);
+	suword32(&arginfo->ps_nargvstr, argc);
 
 	/*
 	 * Fill in argument portion of vector table.
@@ -1032,7 +1032,7 @@ exec_copyout_strings(struct image_params *imgp)
 	suword(vectp++, 0);
 
 	suword(&arginfo->ps_envstr, (long)(intptr_t)vectp);
-	suword(&arginfo->ps_nenvstr, envc);
+	suword32(&arginfo->ps_nenvstr, envc);
 
 	/*
 	 * Fill in environment portion of vector table.

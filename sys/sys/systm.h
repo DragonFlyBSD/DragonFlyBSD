@@ -246,6 +246,7 @@ int	fubyte (const void *base);
 int	subyte (void *base, int byte);
 long	fuword (const void *base);
 int	suword (void *base, long word);
+int	suword32 (void *base, int word);
 int	fusword (void *base);
 int	susword (void *base, int word);
 u_long	casuword(volatile u_long *p, u_long oldval, u_long newval);
