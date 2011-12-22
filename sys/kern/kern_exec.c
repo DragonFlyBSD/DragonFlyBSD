@@ -119,7 +119,7 @@ exec_objcache_init(void *arg __unused)
 	 * systems with a lot of cpu cores but it also eats a significant
 	 * amount of memory.
 	 */
-	cluster_limit = 16;
+	cluster_limit = (ncpus < 16) ? 16 : ncpus;
 	limsize = kmem_lim_size();
 	if (limsize > 7 * 1024)
 		cluster_limit *= 2;
