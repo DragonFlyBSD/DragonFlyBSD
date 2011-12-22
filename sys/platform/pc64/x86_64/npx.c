@@ -328,6 +328,7 @@ npxdna(void)
 	 * used the FP unit.  This also occurs when a thread pushes a
 	 * signal handler and uses FP in the handler.
 	 */
+	crit_enter();
 	if ((td->td_flags & (TDF_USINGFP | TDF_KERNELFP)) == 0) {
 		td->td_flags |= TDF_USINGFP;
 		npxinit(__INITIAL_NPXCW__);
@@ -341,7 +342,6 @@ npxdna(void)
 	 * and then restore the garbage rather then the originally saved
 	 * fpstate.
 	 */
-	crit_enter();
 	stop_emulating();
 	/*
 	 * Record new context early in case frstor causes an IRQ13.

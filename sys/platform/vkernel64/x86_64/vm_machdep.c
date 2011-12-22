@@ -254,7 +254,7 @@ cpu_lwp_exit(void)
 {
 	struct thread *td = curthread;
 	struct pcb *pcb;
-	npxexit();
+
 	pcb = td->td_pcb;
 
 	/* Some i386 functionality was dropped */
@@ -289,6 +289,7 @@ cpu_lwp_exit(void)
 void
 cpu_thread_exit(void)
 {
+	npxexit();
 	curthread->td_switch = cpu_exit_switch;
 	curthread->td_flags |= TDF_EXITING;
 	lwkt_switch();

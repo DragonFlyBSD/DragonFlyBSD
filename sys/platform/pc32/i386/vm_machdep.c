@@ -274,10 +274,6 @@ cpu_lwp_exit(void)
 	struct pcb *pcb;
 	struct pcb_ext *ext;
 
-#if NNPX > 0
-	npxexit();
-#endif	/* NNPX */
-
 	/*
 	 * If we were using a private TSS do a forced-switch to ourselves
 	 * to switch back to the common TSS before freeing it.
@@ -320,6 +316,9 @@ cpu_lwp_exit(void)
 void
 cpu_thread_exit(void)
 {
+#if NNPX > 0
+	npxexit();
+#endif
 	curthread->td_switch = cpu_exit_switch;
 	curthread->td_flags |= TDF_EXITING;
 	lwkt_switch();
