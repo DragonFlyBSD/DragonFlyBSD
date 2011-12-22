@@ -976,20 +976,16 @@ exec_copyout_strings(struct image_params *imgp)
 		if (gap < 0)
 			sgap = ALIGN(-gap);
 		else
-			sgap = ALIGN(karc4random() & (stackgap_random - 1));
+			sgap = ALIGN(karc4random() & (gap - 1));
 	} else {
 		sgap = 0;
 	}
 
-	if (stackgap_random != 0)
-		sgap = ALIGN(karc4random() & (stackgap_random - 1));
-	else
-		sgap = 0;
-
 	/*
 	 * Calculate destp, which points to [args & env] and above.
 	 */
-	destp = (caddr_t)arginfo - szsigcode -
+	destp = (caddr_t)arginfo -
+		szsigcode -
 		roundup(execpath_len, sizeof(char *)) -
 		SPARE_USRSPACE -
 		sgap -
