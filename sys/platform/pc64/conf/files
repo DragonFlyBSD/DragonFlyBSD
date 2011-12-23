@@ -165,6 +165,7 @@ libkern/stack_protector.c		standard
 # PLATFORM FILES
 #
 platform/pc64/x86_64/exception.S		standard
+platform/pc64/x86_64/msi_vector.s	standard
 platform/pc64/x86_64/ipl.s		standard
 platform/pc64/x86_64/global.s		standard
 platform/pc64/x86_64/support.s		standard
