@@ -240,6 +240,14 @@ suword(void *base, long word)
 	return(-1);
 }
 
+int
+suword32(void *base, int word)
+{
+	if (copyout(&word, base, sizeof(word)) == 0)
+		return(0);
+	return(-1);
+}
+
 /*
  * Fetch an short word (16 bits) from user space
  */
