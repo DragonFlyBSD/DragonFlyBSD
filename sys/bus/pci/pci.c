@@ -3150,16 +3150,14 @@ int
 pci_setup_intr(device_t dev, device_t child, struct resource *irq, int flags,
     driver_intr_t *intr, void *arg, void **cookiep, lwkt_serialize_t serializer)
 {
-#ifdef MSI
 	struct pci_devinfo *dinfo;
 	struct msix_table_entry *mte;
 	struct msix_vector *mv;
 	uint64_t addr;
 	uint32_t data;
-	int rid;
-#endif
-	int error;
+	int rid, error;
 	void *cookie;
+
 	error = bus_generic_setup_intr(dev, child, irq, flags, intr,
 	    arg, &cookie, serializer);
 	if (error)
@@ -3171,8 +3169,6 @@ pci_setup_intr(device_t dev, device_t child, struct resource *irq, int flags,
 		return(0);
 	}
 
-	pci_clear_command_bit(dev, child, PCIM_CMD_INTxDIS);
-#ifdef MSI
 	rid = rman_get_rid(irq);
 	if (rid == 0) {
 		/* Make sure that INTx is enabled */
@@ -3236,7 +3232,6 @@ pci_setup_intr(device_t dev, device_t child, struct resource *irq, int flags,
 			return (error);
 		}
 	}
-#endif
 	*cookiep = cookie;
 	return (0);
 }
@@ -3245,13 +3240,10 @@ int
 pci_teardown_intr(device_t dev, device_t child, struct resource *irq,
     void *cookie)
 {
-#ifdef MSI
 	struct msix_table_entry *mte;
 	struct resource_list_entry *rle;
 	struct pci_devinfo *dinfo;
-	int rid;
-#endif
-	int error;
+	int rid, error;
 
 	if (irq == NULL || !(rman_get_flags(irq) & RF_ACTIVE))
 		return (EINVAL);
@@ -3260,8 +3252,6 @@ pci_teardown_intr(device_t dev, device_t child, struct resource *irq,
 	if (device_get_parent(child) != dev)
 		return(bus_generic_teardown_intr(dev, child, irq, cookie));
 
-	pci_set_command_bit(dev, child, PCIM_CMD_INTxDIS);
-#ifdef MSI
 	rid = rman_get_rid(irq);
 	if (rid == 0) {
 		/* Mask INTx */
@@ -3302,7 +3292,6 @@ pci_teardown_intr(device_t dev, device_t child, struct resource *irq,
 	if (rid > 0)
 		KASSERT(error == 0,
 		    ("%s: generic teardown failed for MSI/MSI-X", __func__));
-#endif
 	error = bus_generic_teardown_intr(dev, child, irq, cookie);
 	return (error);
 }
@@ -3896,11 +3885,9 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 			 * Can't alloc legacy interrupt once MSI messages
 			 * have been allocated.
 			 */
-#ifdef MSI
 			if (*rid == 0 && (cfg->msi.msi_alloc > 0 ||
 			    cfg->msix.msix_alloc > 0))
 				return (NULL);
-#endif
 			/*
 			 * If the child device doesn't have an
 			 * interrupt routed and is deserving of an
