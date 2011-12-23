@@ -2439,6 +2439,7 @@ options 	DRM_LINUX
 #
 device		cmx		# Omnikey CardMan 4040 smartcard reader
 device		gpio		# Enable support for the gpio framework
+device		tbridge		# regression testing
 
 #
 # Embedded system options:
