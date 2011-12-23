@@ -214,7 +214,6 @@ platform/pc64/x86_64/pmap.c		standard
 platform/pc64/x86_64/pmap_inval.c		standard
 platform/pc64/x86_64/busdma_machdep.c standard
 platform/pc64/x86_64/sysarch.c	standard
-platform/pc64/x86_64/console.c	standard
 platform/pc64/x86_64/ipl_funcs.c	standard
 kern/syscalls.c			standard
 platform/pc64/x86_64/mp_machdep.c		optional	smp
