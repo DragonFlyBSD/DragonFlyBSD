@@ -801,7 +801,8 @@ MLINKS+=spinlock.9 spin_init.9 \
 MLINKS+=store.9 casuword.9 \
 	store.9 subyte.9 \
 	store.9 susword.9 \
-	store.9 suword.9
+	store.9 suword.9 \
+	store.9 suword32.9
 MLINKS+=syscall.9 syscalls.master.5
 MLINKS+=sysctl.9 SYSCTL_DECL.9 \
 	sysctl.9 SYSCTL_INT.9 \

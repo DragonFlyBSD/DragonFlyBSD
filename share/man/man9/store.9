@@ -33,9 +33,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/store.9,v 1.7.2.4 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/store.9,v 1.4 2007/04/07 19:29:52 swildner Exp $
 .\"
-.Dd August 2, 2010
+.Dd December 23, 2011
 .Dt STORE 9
 .Os
 .Sh NAME
@@ -43,7 +42,8 @@
 .Nm casuword ,
 .Nm subyte ,
 .Nm susword ,
-.Nm suword
+.Nm suword ,
+.Nm suword32
 .Nd store data to user-space
 .Sh SYNOPSIS
 .In sys/types.h
@@ -58,6 +58,8 @@
 .Fn susword "void *base" "int word"
 .Ft int
 .Fn suword "void *base" "long word"
+.Ft int
+.Fn suword32 "void *base" "int word"
 .Sh DESCRIPTION
 The
 .Nm
@@ -88,6 +90,10 @@ Stores a short word of data to the user-space address
 .It Fn suword
 Stores a word of data to the user-space address
 .Fa base .
+.It Fn suword32
+Like
+.Fn suword ,
+for cases when 32 bits are desired.
 .El
 .Sh RETURN VALUES
 The
