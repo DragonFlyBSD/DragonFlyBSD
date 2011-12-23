@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2002-2003 Networks Associates Technology, Inc.
+ * Copyright (c) 2001-2003 Networks Associates Technology, Inc.
  * Copyright (c) 2004-2011 Dag-Erling Smørgrav
  * All rights reserved.
  *
@@ -32,98 +32,96 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: pam_set_item.c 496 2011-11-21 16:20:45Z des $
+ * $Id: openpam_constants.c 491 2011-11-12 00:12:32Z des $
  */
 
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
 
-#include <sys/param.h>
-
-#include <stdlib.h>
-#include <string.h>
-
 #include <security/pam_appl.h>
 
 #include "openpam_impl.h"
 
-/*
- * XSSO 4.2.1
- * XSSO 6 page 60
- *
- * Set authentication information
- */
+const char *pam_err_name[PAM_NUM_ERRORS] = {
+	"PAM_SUCCESS",
+	"PAM_OPEN_ERR",
+	"PAM_SYMBOL_ERR",
+	"PAM_SERVICE_ERR",
+	"PAM_SYSTEM_ERR",
+	"PAM_BUF_ERR",
+	"PAM_CONV_ERR",
+	"PAM_PERM_DENIED",
+	"PAM_MAXTRIES",
+	"PAM_AUTH_ERR",
+	"PAM_NEW_AUTHTOK_REQD",
+	"PAM_CRED_INSUFFICIENT",
+	"PAM_AUTHINFO_UNAVAIL",
+	"PAM_USER_UNKNOWN",
+	"PAM_CRED_UNAVAIL",
+	"PAM_CRED_EXPIRED",
+	"PAM_CRED_ERR",
+	"PAM_ACCT_EXPIRED",
+	"PAM_AUTHTOK_EXPIRED",
+	"PAM_SESSION_ERR",
+	"PAM_AUTHTOK_ERR",
+	"PAM_AUTHTOK_RECOVERY_ERR",
+	"PAM_AUTHTOK_LOCK_BUSY",
+	"PAM_AUTHTOK_DISABLE_AGING",
+	"PAM_NO_MODULE_DATA",
+	"PAM_IGNORE",
+	"PAM_ABORT",
+	"PAM_TRY_AGAIN",
+	"PAM_MODULE_UNKNOWN",
+	"PAM_DOMAIN_UNKNOWN"
+};
 
-int
-pam_set_item(pam_handle_t *pamh,
-	int item_type,
-	const void *item)
-{
-	void **slot, *tmp;
-	size_t nsize, osize;
+const char *pam_item_name[PAM_NUM_ITEMS] = {
+	"(NO ITEM)",
+	"PAM_SERVICE",
+	"PAM_USER",
+	"PAM_TTY",
+	"PAM_RHOST",
+	"PAM_CONV",
+	"PAM_AUTHTOK",
+	"PAM_OLDAUTHTOK",
+	"PAM_RUSER",
+	"PAM_USER_PROMPT",
+	"PAM_REPOSITORY",
+	"PAM_AUTHTOK_PROMPT",
+	"PAM_OLDAUTHTOK_PROMPT",
+	"PAM_HOST",
+};
 
-	ENTERI(item_type);
-	if (pamh == NULL)
-		RETURNC(PAM_SYSTEM_ERR);
-	slot = &pamh->item[item_type];
-	osize = nsize = 0;
-	switch (item_type) {
-	case PAM_SERVICE:
-		/* set once only, by pam_start() */
-		if (*slot != NULL)
-			RETURNC(PAM_SYSTEM_ERR);
-		/* fall through */
-	case PAM_USER:
-	case PAM_AUTHTOK:
-	case PAM_OLDAUTHTOK:
-	case PAM_TTY:
-	case PAM_RHOST:
-	case PAM_RUSER:
-	case PAM_USER_PROMPT:
-	case PAM_AUTHTOK_PROMPT:
-	case PAM_OLDAUTHTOK_PROMPT:
-	case PAM_HOST:
-		if (*slot != NULL)
-			osize = strlen(*slot) + 1;
-		if (item != NULL)
-			nsize = strlen(item) + 1;
-		break;
-	case PAM_REPOSITORY:
-		osize = nsize = sizeof(struct pam_repository);
-		break;
-	case PAM_CONV:
-		osize = nsize = sizeof(struct pam_conv);
-		break;
-	default:
-		RETURNC(PAM_SYMBOL_ERR);
-	}
-	if (*slot != NULL) {
-		memset(*slot, 0xd0, osize);
-		FREE(*slot);
-	}
-	if (item != NULL) {
-		if ((tmp = malloc(nsize)) == NULL)
-			RETURNC(PAM_BUF_ERR);
-		memcpy(tmp, item, nsize);
-	} else {
-		tmp = NULL;
-	}
-	*slot = tmp;
-	RETURNC(PAM_SUCCESS);
-}
+const char *pam_facility_name[PAM_NUM_FACILITIES] = {
+	[PAM_ACCOUNT]		= "account",
+	[PAM_AUTH]		= "auth",
+	[PAM_PASSWORD]		= "password",
+	[PAM_SESSION]		= "session",
+};
 
-/*
- * Error codes:
- *
- *	PAM_SYMBOL_ERR
- *	PAM_SYSTEM_ERR
- *	PAM_BUF_ERR
- */
+const char *pam_control_flag_name[PAM_NUM_CONTROL_FLAGS] = {
+	[PAM_BINDING]		= "binding",
+	[PAM_OPTIONAL]		= "optional",
+	[PAM_REQUIRED]		= "required",
+	[PAM_REQUISITE]		= "requisite",
+	[PAM_SUFFICIENT]	= "sufficient",
+};
 
-/**
- * The =pam_set_item function sets the item specified by the =item_type
- * argument to a copy of the object pointed to by the =item argument.
- * The item is stored in the PAM context specified by the =pamh argument.
- * See =pam_get_item for a list of recognized item types.
- */
+const char *pam_func_name[PAM_NUM_PRIMITIVES] = {
+	"pam_authenticate",
+	"pam_setcred",
+	"pam_acct_mgmt",
+	"pam_open_session",
+	"pam_close_session",
+	"pam_chauthtok"
+};
+
+const char *pam_sm_func_name[PAM_NUM_PRIMITIVES] = {
+	"pam_sm_authenticate",
+	"pam_sm_setcred",
+	"pam_sm_acct_mgmt",
+	"pam_sm_open_session",
+	"pam_sm_close_session",
+	"pam_sm_chauthtok"
+};

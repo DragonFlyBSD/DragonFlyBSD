@@ -3,8 +3,7 @@ Makefile.am
 Makefile.in
 aclocal.m4
 autogen.sh
-bin
-compile
+bin/
 config.guess
 config.h.in
 config.sub
@@ -25,6 +24,6 @@ install-sh
 lib/Makefile.am
 lib/Makefile.in
 ltmain.sh
-misc
+misc/
 missing
-modules
+modules/

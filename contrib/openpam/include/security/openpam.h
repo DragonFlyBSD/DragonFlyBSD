@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2002-2003 Networks Associates Technology, Inc.
- * Copyright (c) 2004-2007 Dag-Erling Smørgrav
+ * Copyright (c) 2004-2011 Dag-Erling Smørgrav
  * All rights reserved.
  *
  * This software was developed for the FreeBSD Project by ThinkSec AS and
@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: openpam.h 408 2007-12-21 11:36:24Z des $
+ * $Id: openpam.h 455 2011-10-29 18:31:11Z des $
  */
 
 #ifndef SECURITY_OPENPAM_H_INCLUDED
@@ -58,6 +58,12 @@ int
 openpam_borrow_cred(pam_handle_t *_pamh,
 	const struct passwd *_pwd)
 	OPENPAM_NONNULL((1,2));
+
+int
+openpam_subst(const pam_handle_t *_pamh,
+	char *_buf,
+	size_t *_bufsize,
+	const char *_template);
 
 void
 openpam_free_data(pam_handle_t *_pamh,
@@ -309,18 +315,17 @@ struct pam_module {
  * Infrastructure for static modules using GCC linker sets.
  * You are not expected to understand this.
  */
-#if defined(__FreeBSD__)
+#if !defined(PAM_SOEXT)
 # define PAM_SOEXT ".so"
-#else
-# undef NO_STATIC_MODULES
-# define NO_STATIC_MODULES
 #endif
 
-#if defined(__GNUC__) && !defined(__PIC__) && !defined(NO_STATIC_MODULES)
+#if defined(OPENPAM_STATIC_MODULES)
+# if !defined(__GNUC__)
+#  error "Don't know how to build static modules on non-GNU compilers"
+# endif
 /* gcc, static linking */
 # include <sys/cdefs.h>
 # include <linker_set.h>
-# define OPENPAM_STATIC_MODULES
 # define PAM_EXTERN static
 # define PAM_MODULE_ENTRY(name)						\
 	static char _pam_name[] = name PAM_SOEXT;			\

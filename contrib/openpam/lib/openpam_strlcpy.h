@@ -1,24 +1,16 @@
 /*-
- * Copyright (c) 2002-2003 Networks Associates Technology, Inc.
- * Copyright (c) 2004-2011 Dag-Erling Smørgrav
+ * Copyright (c) 2011 Dag-Erling Smørgrav
  * All rights reserved.
- *
- * This software was developed for the FreeBSD Project by ThinkSec AS and
- * Network Associates Laboratories, the Security Research Division of
- * Network Associates, Inc.  under DARPA/SPAWAR contract N66001-01-C-8035
- * ("CBOSS"), as part of the DARPA CHATS research program.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
+ *    notice, this list of conditions and the following disclaimer
+ *    in this position and unchanged.
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote
- *    products derived from this software without specific prior written
- *    permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -32,36 +24,26 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: pam_authenticate_secondary.c 437 2011-09-13 12:00:13Z des $
+ * $Id: openpam_strlcpy.h 492 2011-11-20 02:04:17Z des $
  */
 
-#ifdef HAVE_CONFIG_H
-# include "config.h"
+#ifndef OPENPAM_STRLCPY_H_INCLUDED
+#define OPENPAM_STRLCPY_H_INCLUDED
+
+#ifndef HAVE_STRLCPY
+/* like strcpy(3), but always NUL-terminates; returns strlen(src) */
+size_t
+strlcpy(char *dst, const char *src, size_t size)
+{
+	size_t len;
+
+	for (len = 0; *src && size > 1; ++len, --size)
+		*dst++ = *src++;
+	*dst = '\0';
+	while (*src)
+		++len, ++src;
+	return (len);
+}
 #endif
 
-#include <security/pam_appl.h>
-
-/*
- * XSSO 4.2.1
- * XSSO 6 page 36
- *
- * Perform authentication to a secondary domain within the PAM framework
- */
-
-int
-pam_authenticate_secondary(pam_handle_t *pamh,
-	char *target_username,
-	char *target_module_type,
-	char *target_authn_domain,
-	char *target_supp_data,
-	char *target_module_authtok,
-	int flags)
-{
-
-	ENTER();
-	RETURNC(PAM_SYSTEM_ERR);
-}
-
-/*
- * NODOC
- */
+#endif
