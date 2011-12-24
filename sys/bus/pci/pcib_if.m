@@ -102,6 +102,7 @@ METHOD int alloc_msi {
 	int		count;
 	int		maxcount;
 	int		*irqs;
+	int		cpuid;
 };
 
 #

@@ -465,9 +465,9 @@ pci_is_pcix(device_t dev)
 }
 
 static __inline int
-pci_alloc_msi(device_t dev, int *count)
+pci_alloc_msi(device_t dev, int *count, int cpuid)
 {
-    return (PCI_ALLOC_MSI(device_get_parent(dev), dev, count));
+    return (PCI_ALLOC_MSI(device_get_parent(dev), dev, count, cpuid));
 }
 
 static __inline int

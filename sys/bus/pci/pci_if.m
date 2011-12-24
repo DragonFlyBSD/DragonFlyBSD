@@ -116,6 +116,7 @@ METHOD int alloc_msi {
 	device_t	dev;
 	device_t	child;
 	int		*count;
+	int		cpuid;
 };
 
 METHOD int alloc_msix {

@@ -2052,7 +2052,7 @@ pci_msi_blacklisted(void)
  * available to the driver as SYS_RES_IRQ resources starting at a rid 1.
  */
 int
-pci_alloc_msi_method(device_t dev, device_t child, int *count)
+pci_alloc_msi_method(device_t dev, device_t child, int *count, int cpuid)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	pcicfgregs *cfg = &dinfo->cfg;
@@ -2099,7 +2099,7 @@ pci_alloc_msi_method(device_t dev, device_t child, int *count)
 	for (;;) {
 		/* Try to allocate N messages. */
 		error = PCIB_ALLOC_MSI(device_get_parent(dev), child, actual,
-		    cfg->msi.msi_msgnum, irqs);
+		    cfg->msi.msi_msgnum, irqs, cpuid);
 		if (error == 0)
 			break;
 		if (actual == 1)
@@ -2116,7 +2116,7 @@ pci_alloc_msi_method(device_t dev, device_t child, int *count)
 	 */
 	for (i = 0; i < actual; i++)
 		resource_list_add(&dinfo->resources, SYS_RES_IRQ, i + 1,
-		    irqs[i], irqs[i], 1, -1);
+		    irqs[i], irqs[i], 1, cpuid);
 
 	if (bootverbose) {
 		if (actual == 1)

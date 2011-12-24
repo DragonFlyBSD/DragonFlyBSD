@@ -78,13 +78,13 @@ legacy_pcib_write_config(device_t dev, int bus, int slot, int func,
 
 static int
 legacy_pcib_alloc_msi(device_t pcib, device_t dev, int count, int maxcount,
-    int *irqs)
+    int *irqs, int cpuid)
 {
 	device_t bus;
 
 	bus = device_get_parent(pcib);
 	return (PCIB_ALLOC_MSI(device_get_parent(bus), dev, count, maxcount,
-	    irqs));
+	    irqs, cpuid));
 }
 
 static int
