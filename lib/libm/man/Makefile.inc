@@ -22,7 +22,7 @@ MLINKS+=cosh.3 coshf.3
 MLINKS+=erf.3 erff.3 erf.3 erfc.3 erf.3 erfcf.3
 MLINKS+=log.3 logf.3 log.3 log10.3 log.3 log10f.3 log.3 log1p.3 log.3 log1pf.3 \
 	log.3 log2.3 log.3 log2f.3 log.3 logl.3
-MLINKS+=exp.3 expf.3 exp.3 exp2.3 exp.3 exp2f.3 exp.3 expm1.3 exp.3 expmlf.3
+MLINKS+=exp.3 expf.3 exp.3 exp2.3 exp.3 exp2f.3 exp.3 expm1.3 exp.3 expm1f.3
 MLINKS+=exp.3 powf.3 exp.3 pow.3 exp.3 exp2l.3
 
 MLINKS+=fabs.3 fabsf.3 fabs.3 fabsl.3

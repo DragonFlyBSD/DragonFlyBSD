@@ -2500,7 +2500,8 @@ SYSINIT(bufdaemon_hw, SI_SUB_KTHREAD_BUF, SI_ORDER_FIRST,
  * MPSAFE thread
  */
 static void
-buf_daemon(void)
+buf_daemon1(struct thread *td, int queue, int (*buf_limit_fn)(long), 
+	    int *bd_req)
 {
 	long limit;
 
@@ -2508,7 +2509,7 @@ buf_daemon(void)
 	 * This process needs to be suspended prior to shutdown sync.
 	 */
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc,
-			      bufdaemon_td, SHUTDOWN_PRI_LAST);
+			      td, SHUTDOWN_PRI_LAST);
 	curthread->td_flags |= TDF_SYSTHREAD;
 
 	/*
@@ -2533,9 +2534,8 @@ buf_daemon(void)
 		 */
 		waitrunningbufspace();
 		limit = lodirtybufspace / 2;
-		while (runningbufspace + dirtybufspace > limit ||
-		       dirtybufcount - dirtybufcounthw >= nbuf / 2) {
-			if (flushbufqueues(BQUEUE_DIRTY) == 0)
+		while (buf_limit_fn(limit)) {
+			if (flushbufqueues(queue) == 0)
 				break;
 			if (runningbufspace < hirunningspace)
 				continue;
@@ -2548,70 +2548,39 @@ buf_daemon(void)
 		 * The sleep is just so the suspend code works.
 		 */
 		spin_lock(&bufcspin);
-		if (bd_request == 0)
-			ssleep(&bd_request, &bufcspin, 0, "psleep", hz);
-		bd_request = 0;
+		if (*bd_req == 0)
+			ssleep(bd_req, &bufcspin, 0, "psleep", hz);
+		*bd_req = 0;
 		spin_unlock(&bufcspin);
 	}
 }
 
-/*
- * MPSAFE thread
- */
+static int
+buf_daemon_limit(long limit)
+{
+	return (runningbufspace + dirtybufspace > limit ||
+		dirtybufcount - dirtybufcounthw >= nbuf / 2);
+}
+
+static int
+buf_daemon_hw_limit(long limit)
+{
+	return (runningbufspace + dirtybufspacehw > limit ||
+		dirtybufcounthw >= nbuf / 2);
+}
+
+static void
+buf_daemon(void)
+{
+	buf_daemon1(bufdaemon_td, BQUEUE_DIRTY, buf_daemon_limit, 
+		    &bd_request);
+}
+
 static void
 buf_daemon_hw(void)
 {
-	long limit;
-
-	/*
-	 * This process needs to be suspended prior to shutdown sync.
-	 */
-	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc,
-			      bufdaemonhw_td, SHUTDOWN_PRI_LAST);
-	curthread->td_flags |= TDF_SYSTHREAD;
-
-	/*
-	 * This process is allowed to take the buffer cache to the limit
-	 */
-	for (;;) {
-		kproc_suspend_loop();
-
-		/*
-		 * Do the flush.  Limit the amount of in-transit I/O we
-		 * allow to build up, otherwise we would completely saturate
-		 * the I/O system.  Wakeup any waiting processes before we
-		 * normally would so they can run in parallel with our drain.
-		 *
-		 * Once we decide to flush push the queued I/O up to
-		 * hirunningspace in order to trigger bursting by the bioq
-		 * subsystem.
-		 *
-		 * Our aggregate normal+HW lo water mark is lodirtybufspace,
-		 * but because we split the operation into two threads we
-		 * have to cut it in half for each thread.
-		 */
-		waitrunningbufspace();
-		limit = lodirtybufspace / 2;
-		while (runningbufspace + dirtybufspacehw > limit ||
-		       dirtybufcounthw >= nbuf / 2) {
-			if (flushbufqueues(BQUEUE_DIRTY_HW) == 0)
-				break;
-			if (runningbufspace < hirunningspace)
-				continue;
-			waitrunningbufspace();
-		}
-
-		/*
-		 * We reached our low water mark, reset the
-		 * request and sleep until we are needed again.
-		 * The sleep is just so the suspend code works.
-		 */
-		spin_lock(&bufcspin);
-		if (bd_request_hw == 0)
-			ssleep(&bd_request_hw, &bufcspin, 0, "psleep", hz);
-		bd_request_hw = 0;
-		spin_unlock(&bufcspin);
-	}
+	buf_daemon1(bufdaemonhw_td, BQUEUE_DIRTY_HW, buf_daemon_hw_limit,
+		    &bd_request_hw);
 }
 
 /*

@@ -1,5 +1,4 @@
 # $FreeBSD: src/tools/tools/README,v 1.18.2.2 2003/02/24 22:52:36 sam Exp $
-# $DragonFly: src/tools/tools/README,v 1.12 2008/04/26 09:49:50 swildner Exp $
 
 This directory is for tools.
 
@@ -23,7 +22,6 @@ kernxref	Shellscript to cross reference symbols in the LINT kernel.
 local_syms	Shellscript to find symbols not referenced by other files.
 mid	 	Create a Message-ID database for mailing lists.
 netrate		Generate network packets.
-pciid		Generate src/share/misc/pci_vendors.
 scsi-defects	Get at the primary or grown defect list of a SCSI disk.
 splitpatch	Python script to split a large patch file into independent
 		patches.  Default name convention is compatible with

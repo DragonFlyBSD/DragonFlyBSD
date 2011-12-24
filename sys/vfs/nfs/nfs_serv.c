@@ -103,14 +103,14 @@
 
 #define MAX_COMMIT_COUNT	(1024 * 1024)
 
-#define NUM_HEURISTIC		1017
+#define NUM_HEURISTIC		1031
 #define NHUSE_INIT		64
 #define NHUSE_INC		16
 #define NHUSE_MAX		2048
 
 static struct nfsheur {
     struct vnode *nh_vp;	/* vp to match (unreferenced pointer) */
-    off_t nh_nextr;		/* next offset for sequential detection */
+    off_t nh_nextoff;		/* next offset for sequential detection */
     int nh_use;			/* use count for selection */
     int nh_seqcount;		/* heuristic */
 } nfsheur[NUM_HEURISTIC];
@@ -142,6 +142,64 @@ static int nfsrv_access (struct mount *, struct vnode *, int,
 			struct ucred *, int, struct thread *, int);
 static void nfsrvw_coalesce (struct nfsrv_descript *,
 		struct nfsrv_descript *);
+
+/*
+ * Heuristic to detect sequential operation.
+ */
+static struct nfsheur *
+nfsrv_sequential_heuristic(struct uio *uio, struct vnode *vp, int writeop)
+{
+	struct nfsheur *nh;
+	int hi, try;
+
+	/* Locate best candidate */
+	try = 32;
+	hi = ((int)(vm_offset_t) vp / sizeof(struct vnode)) % NUM_HEURISTIC;
+	nh = &nfsheur[hi];
+
+	while (try--) {
+		if (nfsheur[hi].nh_vp == vp) {
+			nh = &nfsheur[hi];
+			break;
+		}
+		if (nfsheur[hi].nh_use > 0)
+			--nfsheur[hi].nh_use;
+		hi = (hi + 1) % NUM_HEURISTIC;
+		if (nfsheur[hi].nh_use < nh->nh_use)
+			nh = &nfsheur[hi];
+	}
+
+	/* Initialize hint if this is a new file */
+	if (nh->nh_vp != vp) {
+		nh->nh_vp = vp;
+		nh->nh_nextoff = uio->uio_offset;
+		nh->nh_use = NHUSE_INIT;
+		if (uio->uio_offset == 0)
+			nh->nh_seqcount = 4;
+		else
+			nh->nh_seqcount = 1;
+	}
+
+	/*
+	 * Calculate heuristic
+	 *
+	 * See vfs_vnops.c:sequential_heuristic().
+	 */
+	if ((uio->uio_offset == 0 && nh->nh_seqcount > 0) ||
+	    uio->uio_offset == nh->nh_nextoff) {
+		nh->nh_seqcount += howmany(uio->uio_resid, 16384);
+		if (nh->nh_seqcount > IO_SEQMAX)
+			nh->nh_seqcount = IO_SEQMAX;
+	} else if (nh->nh_seqcount > 1) {
+		nh->nh_seqcount = 1;
+	} else {
+		nh->nh_seqcount = 0;
+	}
+	nh->nh_use += NHUSE_INC;
+	if (nh->nh_use > NHUSE_MAX)
+		nh->nh_use = NHUSE_MAX;
+	return (nh);
+}
 
 /*
  * nfs v3 access service
@@ -642,6 +700,8 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	info.dpos = nfsd->nd_dpos;
 	info.v3 = (nfsd->nd_flag & ND_NFSV3);
 
+	bzero(&io, sizeof(struct uio));
+
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 #ifndef nolint
 	mp2 = NULL;
@@ -825,61 +885,6 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	else
 		cnt = reqlen;
 
-	/*
-	 * Calculate seqcount for heuristic
-	 */
-
-	{
-		int hi;
-		int try = 32;
-
-		/*
-		 * Locate best candidate
-		 */
-
-		hi = ((int)(vm_offset_t)vp / sizeof(struct vnode)) % NUM_HEURISTIC;
-		nh = &nfsheur[hi];
-
-		while (try--) {
-			if (nfsheur[hi].nh_vp == vp) {
-				nh = &nfsheur[hi];
-				break;
-			}
-			if (nfsheur[hi].nh_use > 0)
-				--nfsheur[hi].nh_use;
-			hi = (hi + 1) % NUM_HEURISTIC;
-			if (nfsheur[hi].nh_use < nh->nh_use)
-				nh = &nfsheur[hi];
-		}
-
-		if (nh->nh_vp != vp) {
-			nh->nh_vp = vp;
-			nh->nh_nextr = off;
-			nh->nh_use = NHUSE_INIT;
-			if (off == 0)
-				nh->nh_seqcount = 4;
-			else
-				nh->nh_seqcount = 1;
-		}
-
-		/*
-		 * Calculate heuristic
-		 */
-
-		if ((off == 0 && nh->nh_seqcount > 0) || off == nh->nh_nextr) {
-			if (++nh->nh_seqcount > IO_SEQMAX)
-				nh->nh_seqcount = IO_SEQMAX;
-		} else if (nh->nh_seqcount > 1) {
-			nh->nh_seqcount = 1;
-		} else {
-			nh->nh_seqcount = 0;
-		}
-		nh->nh_use += NHUSE_INC;
-		if (nh->nh_use > NHUSE_MAX)
-			nh->nh_use = NHUSE_MAX;
-		ioflag |= nh->nh_seqcount << IO_SEQSHIFT;
-        }
-
 	NEGKEEPOUT(nfsm_reply(&info, nfsd, slp,
 			      NFSX_POSTOPORFATTR(info.v3) +
 			      3 * NFSX_UNSIGNED + nfsm_rndup(cnt),
@@ -938,9 +943,13 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		uiop->uio_resid = len;
 		uiop->uio_rw = UIO_READ;
 		uiop->uio_segflg = UIO_SYSSPACE;
+		nh = nfsrv_sequential_heuristic(uiop, vp, 0);
+		ioflag |= nh->nh_seqcount << IO_SEQSHIFT;
 		error = VOP_READ(vp, uiop, IO_NODELOCKED | ioflag, cred);
-		off = uiop->uio_offset;
-		nh->nh_nextr = off;
+		if (error == 0) {
+			off = uiop->uio_offset;
+			nh->nh_nextoff = off;
+		}
 		kfree((caddr_t)iv2, M_TEMP);
 		if (error || (getret = VOP_GETATTR(vp, vap))) {
 			if (!error)
@@ -969,7 +978,7 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		nfsm_adj(info.mb, len - tlen, tlen - cnt);
 	if (info.v3) {
 		*tl++ = txdr_unsigned(cnt);
-		if (len < reqlen)
+		if (cnt < reqlen)
 			*tl++ = nfs_true;
 		else
 			*tl++ = nfs_false;
@@ -1004,6 +1013,7 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	int stable = NFSV3WRITE_FILESYNC;
 	struct vnode *vp = NULL;
 	struct mount *mp = NULL;
+	struct nfsheur *nh;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	struct uio io, *uiop = &io;
@@ -1142,7 +1152,11 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	    uiop->uio_segflg = UIO_SYSSPACE;
 	    uiop->uio_td = NULL;
 	    uiop->uio_offset = off;
+	    nh = nfsrv_sequential_heuristic(uiop, vp, 1);
+	    ioflags |= nh->nh_seqcount << IO_SEQSHIFT;
 	    error = VOP_WRITE(vp, uiop, ioflags, cred);
+	    if (error == 0)
+		nh->nh_nextoff = uiop->uio_offset;
 	    nfsstats.srvvop_writes++;
 	    kfree((caddr_t)iv, M_TEMP);
 	}
@@ -3550,7 +3564,12 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	}
 	for_ret = VOP_GETATTR(vp, &bfor);
 
-	if (cnt > MAX_COMMIT_COUNT) {
+	/*
+	 * RFC 1813 3.3.21: If count is 0, a flush from offset to the end of
+	 * file is done. At this time VOP_FSYNC does not accept offset and
+	 * byte count parameters, so call VOP_FSYNC the whole file for now.
+	 */
+	if (cnt == 0 || cnt > MAX_COMMIT_COUNT) {
 		/*
 		 * Give up and do the whole thing
 		 */
@@ -3589,7 +3608,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		}
 
 		crit_enter();
-		while (cnt > 0) {
+		while (error == 0 || cnt > 0) {
 			struct buf *bp;
 
 			/*
@@ -3610,7 +3629,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			if (bp) {
 				if (bp->b_flags & B_DELWRI) {
 					bremfree(bp);
-					bwrite(bp);
+					error = bwrite(bp);
 					++nfs_commit_miss;
 				} else {
 					BUF_UNLOCK(bp);
