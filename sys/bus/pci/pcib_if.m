@@ -114,6 +114,7 @@ METHOD int release_msi {
 	device_t	dev;
 	int		count;
 	int		*irqs;
+	int		cpuid;
 };
 
 #

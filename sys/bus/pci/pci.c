@@ -2179,7 +2179,7 @@ pci_release_msi_method(device_t dev, device_t child)
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	struct pcicfg_msi *msi = &dinfo->cfg.msi;
 	struct resource_list_entry *rle;
-	int error, i, irqs[32];
+	int error, i, irqs[32], cpuid = -1;
 
 	/* Try MSI-X first. */
 	error = pci_release_msix(dev, child);
@@ -2199,6 +2199,15 @@ pci_release_msi_method(device_t dev, device_t child)
 		KASSERT(rle != NULL, ("missing MSI resource"));
 		if (rle->res != NULL)
 			return (EBUSY);
+		if (i == 0) {
+			cpuid = rle->cpuid;
+			KASSERT(cpuid >= 0 && cpuid < ncpus,
+			    ("invalid MSI target cpuid %d\n", cpuid));
+		} else {
+			KASSERT(rle->cpuid == cpuid,
+			    ("MSI targets different cpus, "
+			     "was cpu%d, now cpu%d", cpuid, rle->cpuid));
+		}
 		irqs[i] = rle->start;
 	}
 
@@ -2210,7 +2219,8 @@ pci_release_msi_method(device_t dev, device_t child)
 	    msi->msi_ctrl, 2);
 
 	/* Release the messages. */
-	PCIB_RELEASE_MSI(device_get_parent(dev), child, msi->msi_alloc, irqs);
+	PCIB_RELEASE_MSI(device_get_parent(dev), child, msi->msi_alloc, irqs,
+	    cpuid);
 	for (i = 0; i < msi->msi_alloc; i++)
 		resource_list_delete(&dinfo->resources, SYS_RES_IRQ, i + 1);
 

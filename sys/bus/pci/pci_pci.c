@@ -609,12 +609,13 @@ pcib_alloc_msi(device_t pcib, device_t dev, int count, int maxcount,
 
 /* Pass request to release MSI/MSI-X messages up to the parent bridge. */
 int
-pcib_release_msi(device_t pcib, device_t dev, int count, int *irqs)
+pcib_release_msi(device_t pcib, device_t dev, int count, int *irqs, int cpuid)
 {
 	device_t bus;
 
 	bus = device_get_parent(pcib);
-	return (PCIB_RELEASE_MSI(device_get_parent(bus), dev, count, irqs));
+	return (PCIB_RELEASE_MSI(device_get_parent(bus), dev, count, irqs,
+	    cpuid));
 }
 
 /* Pass request to alloc an MSI-X message up to the parent bridge. */
