@@ -54,7 +54,7 @@ struct tbridge_testcase {
 	tbridge_run_t	tb_run;
 };
 
-int tbridge_printf(const char *fmt, ...);
+int tbridge_printf(const char *fmt, ...) __printflike(1, 2);
 void tbridge_test_done(int result);
 
 /* safemem functions */
