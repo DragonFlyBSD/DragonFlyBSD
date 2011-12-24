@@ -1294,6 +1294,24 @@ setidt_global(int idx, inthand_t *func, int typ, int dpl, int ist)
 	}
 }
 
+void
+setidt(int idx, inthand_t *func, int typ, int dpl, int ist, int cpu)
+{
+	struct gate_descriptor *ip;
+
+	KASSERT(cpu >= 0 && cpu < ncpus, ("invalid cpu %d\n", cpu));
+
+	ip = &idt_arr[cpu][idx];
+	ip->gd_looffset = (uintptr_t)func;
+	ip->gd_selector = GSEL(GCODE_SEL, SEL_KPL);
+	ip->gd_ist = ist;
+	ip->gd_xx = 0;
+	ip->gd_type = typ;
+	ip->gd_dpl = dpl;
+	ip->gd_p = 1;
+	ip->gd_hioffset = ((uintptr_t)func)>>16 ;
+}
+
 #define	IDTVEC(name)	__CONCAT(X,name)
 
 extern inthand_t
