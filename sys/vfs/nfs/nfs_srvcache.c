@@ -58,7 +58,7 @@
 
 #ifndef NFS_NOSERVER 
 static long numnfsrvcache;
-static long desirednfsrvcache = NFSRVCACHESIZ;
+static long desirednfsrvcache;
 
 #define	NFSRCHASH(xid) \
 	(&nfsrvhashtbl[((xid) + ((xid) >> 24)) & nfsrvhash])
@@ -129,11 +129,25 @@ static int nfsv2_repstat[NFS_NPROCS] = {
 };
 
 /*
+ * Size the NFS server's duplicate request cache at 1/2 the nmbclusters,
+ * within a (64, 2048) range. This is to prevent all mbuf clusters being
+ * tied up in the NFS dupreq cache for small values of nmbclusters.
+ */
+static void
+nfsrvcache_size_change(void)
+{
+	desirednfsrvcache = nmbclusters / 2;
+	desirednfsrvcache = MIN(desirednfsrvcache, NFSRVCACHE_MAX_SIZE);
+	desirednfsrvcache = MAX(desirednfsrvcache, NFSRVCACHE_MIN_SIZE);
+}
+
+/*
  * Initialize the server request cache list
  */
 void
 nfsrv_initcache(void)
 {
+	nfsrvcache_size_change();
 	nfsrvhashtbl = hashinit(desirednfsrvcache, M_NFSD, &nfsrvhash);
 	TAILQ_INIT(&nfsrvlruhead);
 }
