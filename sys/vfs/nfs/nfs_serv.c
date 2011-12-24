@@ -700,6 +700,8 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	info.dpos = nfsd->nd_dpos;
 	info.v3 = (nfsd->nd_flag & ND_NFSV3);
 
+	bzero(&io, sizeof(struct uio));
+
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 #ifndef nolint
 	mp2 = NULL;
