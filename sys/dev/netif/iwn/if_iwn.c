@@ -476,9 +476,11 @@ iwn_pci_attach(device_t dev)
 	sc->sc_st = rman_get_bustag(sc->mem);
 	sc->sc_sh = rman_get_bushandle(sc->mem);
 	sc->irq_rid = 0;
+#if 0
 	if ((result = pci_msi_count(dev)) == 1 &&
 	    pci_alloc_msi(dev, &result) == 0)
 		sc->irq_rid = 1;
+#endif
 	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irq_rid,
 	    RF_ACTIVE | RF_SHAREABLE);
 	if (sc->irq == NULL) {

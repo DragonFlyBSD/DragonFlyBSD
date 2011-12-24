@@ -4394,7 +4394,7 @@ mxge_add_single_irq(mxge_softc_t *sc)
 	int count, err, rid;
 
 	count = pci_msi_count(sc->dev);
-	if (count == 1 && pci_alloc_msi(sc->dev, &count) == 0) {
+	if (/* count == 1 && pci_alloc_msi(sc->dev, &count) == 0 */0) {
 		rid = 1;
 	} else {
 		rid = 0;

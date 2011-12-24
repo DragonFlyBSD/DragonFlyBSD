@@ -925,6 +925,8 @@ alc_attach(device_t dev)
 		device_printf(dev, "MSIX count : %d\n", msixc);
 		device_printf(dev, "MSI count : %d\n", msic);
 	}
+
+#if 0
 	/* Prefer MSIX over MSI. */
 	if (msix_disable == 0 || msi_disable == 0) {
 		if (msix_disable == 0 && msixc == ALC_MSIX_MESSAGES &&
@@ -949,6 +951,7 @@ alc_attach(device_t dev)
 				pci_release_msi(dev);
 		}
 	}
+#endif
 
 	error = bus_alloc_resources(dev, sc->alc_irq_spec, sc->alc_irq);
 	if (error != 0) {

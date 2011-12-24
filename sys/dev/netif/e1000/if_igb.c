@@ -2438,6 +2438,7 @@ mem:
 static int
 igb_setup_msix(struct adapter *adapter)
 {
+#if 0
 	device_t dev = adapter->dev;
 	int rid, want, queues, msgs;
 
@@ -2503,6 +2504,9 @@ msi:
        	if (msgs == 1 && pci_alloc_msi(dev, &msgs) == 0)
                	device_printf(adapter->dev,"Using MSI interrupt\n");
 	return (msgs);
+#else
+	return 0;
+#endif
 }
 
 /*********************************************************************
