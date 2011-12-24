@@ -3608,7 +3608,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		}
 
 		crit_enter();
-		while (cnt > 0) {
+		while (error == 0 || cnt > 0) {
 			struct buf *bp;
 
 			/*
@@ -3629,7 +3629,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			if (bp) {
 				if (bp->b_flags & B_DELWRI) {
 					bremfree(bp);
-					bwrite(bp);
+					error = bwrite(bp);
 					++nfs_commit_miss;
 				} else {
 					BUF_UNLOCK(bp);
