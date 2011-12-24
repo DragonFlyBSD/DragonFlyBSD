@@ -12,3 +12,5 @@ CFLAGS+=	-I${LIBPAMDIR}
 LDADD+=	-lpam
 
 OPENPAM_DIR=	${.CURDIR}/../../../contrib/openpam
+
+.include "../Makefile.inc"
