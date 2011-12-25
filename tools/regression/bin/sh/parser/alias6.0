@@ -1,0 +1,6 @@
+# $FreeBSD: src/tools/regression/bin/sh/parser/alias6.0,v 1.1 2011/07/16 16:14:14 jilles Exp $
+
+alias alias0='| cat >/dev/null'
+
+eval '{ echo bad; } alias0'
+eval '(echo bad)alias0'
