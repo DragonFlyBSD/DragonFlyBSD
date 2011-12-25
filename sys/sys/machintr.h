@@ -68,6 +68,13 @@ struct machintr_abi {
     		(int, enum intr_trigger, enum intr_polarity);
     int		(*intr_cpuid)(int);		/* intr target cpu */
 
+    int		(*msi_alloc)			/* alloc count intrs on cpu */
+    		(int intrs[], int count, int cpuid);
+    void	(*msi_release)			/* release count intrs on cpu */
+    		(const int intrs[], int count, int cpuid);
+    void	(*msi_map)			/* addr/data for intr on cpu */
+    		(int intr, uint64_t *addr, uint32_t *data, int cpuid);
+
     void	(*finalize)(void);		/* final before ints enabled */
     void	(*cleanup)(void);		/* cleanup */
     void	(*setdefault)(void);		/* set default vectors */

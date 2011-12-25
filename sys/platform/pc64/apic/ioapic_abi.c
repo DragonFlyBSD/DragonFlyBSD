@@ -54,6 +54,7 @@
 #include <machine/md_var.h>
 #include <machine/intr_machdep.h>
 #include <machine/globaldata.h>
+#include <machine/msi_var.h>
 
 #include <machine_base/isa/isa_intr.h>
 #include <machine_base/icu/icu.h>
@@ -463,13 +464,18 @@ static struct ioapic_irqmap {
 	enum intr_trigger	im_trig;
 	enum intr_polarity	im_pola;
 	int			im_gsi;
+	int			im_msi_base;
 	uint32_t		im_flags;	/* IOAPIC_IMF_ */
 } ioapic_irqmaps[MAXCPU][IOAPIC_HWI_VECTORS];
+
+static struct lwkt_token ioapic_irqmap_tok =
+	LWKT_TOKEN_INITIALIZER(ioapic_irqmap_token);
 
 #define IOAPIC_IMT_UNUSED	0
 #define IOAPIC_IMT_RESERVED	1
 #define IOAPIC_IMT_LINE		2
 #define IOAPIC_IMT_SYSCALL	3
+#define IOAPIC_IMT_MSI		4
 
 #define IOAPIC_IMT_ISHWI(map)	((map)->im_type != IOAPIC_IMT_RESERVED && \
 				 (map)->im_type != IOAPIC_IMT_SYSCALL)
@@ -489,6 +495,10 @@ static void	ioapic_abi_intr_config(int,
 		    enum intr_trigger, enum intr_polarity);
 static int	ioapic_abi_intr_cpuid(int);
 
+static int	ioapic_abi_msi_alloc(int [], int, int);
+static void	ioapic_abi_msi_release(const int [], int, int);
+static void	ioapic_abi_msi_map(int, uint64_t *, uint32_t *, int);
+
 static void	ioapic_abi_finalize(void);
 static void	ioapic_abi_cleanup(void);
 static void	ioapic_abi_setdefault(void);
@@ -506,6 +516,10 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 	.intr_teardown	= ioapic_abi_intr_teardown,
 	.intr_config	= ioapic_abi_intr_config,
 	.intr_cpuid	= ioapic_abi_intr_cpuid,
+
+	.msi_alloc	= ioapic_abi_msi_alloc,
+	.msi_release	= ioapic_abi_msi_release,
+	.msi_map	= ioapic_abi_msi_map,
 
 	.finalize	= ioapic_abi_finalize,
 	.cleanup	= ioapic_abi_cleanup,
@@ -533,11 +547,8 @@ ioapic_abi_intr_enable(int irq)
 	KASSERT(IOAPIC_IMT_ISHWI(map),
 	    ("ioapic enable, not hwi irq %d, type %d, cpu%d\n",
 	     irq, map->im_type, mycpuid));
-	if (map->im_type != IOAPIC_IMT_LINE) {
-		kprintf("ioapic enable, irq %d cpu%d not LINE\n",
-		    irq, mycpuid);
+	if (map->im_type != IOAPIC_IMT_LINE)
 		return;
-	}
 
 	IOAPIC_INTREN(irq);
 }
@@ -554,11 +565,8 @@ ioapic_abi_intr_disable(int irq)
 	KASSERT(IOAPIC_IMT_ISHWI(map),
 	    ("ioapic disable, not hwi irq %d, type %d, cpu%d\n",
 	     irq, map->im_type, mycpuid));
-	if (map->im_type != IOAPIC_IMT_LINE) {
-		kprintf("ioapic disable, irq %d cpu%d not LINE\n",
-		    irq, mycpuid);
+	if (map->im_type != IOAPIC_IMT_LINE)
 		return;
-	}
 
 	IOAPIC_INTRDIS(irq);
 }
@@ -612,11 +620,8 @@ ioapic_abi_intr_setup(int intr, int flags)
 	KASSERT(IOAPIC_IMT_ISHWI(map),
 	    ("ioapic setup, not hwi irq %d, type %d, cpu%d",
 	     intr, map->im_type, mycpuid));
-	if (map->im_type != IOAPIC_IMT_LINE) {
-		kprintf("ioapic setup, irq %d cpu%d not LINE\n",
-		    intr, mycpuid);
+	if (map->im_type != IOAPIC_IMT_LINE)
 		return;
-	}
 
 	KASSERT(ioapic_irqs[intr].io_addr != NULL,
 	    ("ioapic setup, no GSI information, irq %d\n", intr));
@@ -733,8 +738,10 @@ ioapic_abi_initmap(void)
 	for (cpu = 0; cpu < MAXCPU; ++cpu) {
 		int i;
 
-		for (i = 0; i < IOAPIC_HWI_VECTORS; ++i)
+		for (i = 0; i < IOAPIC_HWI_VECTORS; ++i) {
 			ioapic_irqmaps[cpu][i].im_gsi = -1;
+			ioapic_irqmaps[cpu][i].im_msi_base = -1;
+		}
 		ioapic_irqmaps[cpu][IOAPIC_HWI_SYSCALL].im_type =
 		    IOAPIC_IMT_SYSCALL;
 	}
@@ -1131,4 +1138,165 @@ ioapic_abi_rman_setup(struct rman *rm)
 			    rm->rm_cpuid, start, end);
 		}
 	}
+}
+
+static int
+ioapic_abi_msi_alloc(int intrs[], int count, int cpuid)
+{
+	int i, error;
+
+	KASSERT(cpuid >= 0 && cpuid < ncpus,
+	    ("invalid cpuid %d", cpuid));
+
+	KASSERT(count > 0 && count <= 32, ("invalid count %d\n", count));
+	KASSERT((count & (count - 1)) == 0,
+	    ("count %d is not power of 2\n", count));
+
+	lwkt_gettoken(&ioapic_irqmap_tok);
+
+	/*
+	 * NOTE:
+	 * Since IDT_OFFSET is 32, which is the maximum valid 'count',
+	 * we do not need to find out the first properly aligned
+	 * interrupt vector.
+	 */
+
+	error = ENOENT;
+	for (i = 0; i < IOAPIC_HWI_VECTORS; i += count) {
+		int j;
+
+		if (ioapic_irqmaps[cpuid][i].im_type != IOAPIC_IMT_UNUSED)
+			continue;
+
+		for (j = 1; j < count; ++j) {
+			if (ioapic_irqmaps[cpuid][i + j].im_type !=
+			    IOAPIC_IMT_UNUSED)
+				break;
+		}
+		if (j != count)
+			continue;
+
+		for (j = 0; j < count; ++j) {
+			struct ioapic_irqmap *map;
+			int intr = i + j;
+
+			map = &ioapic_irqmaps[cpuid][intr];
+			KASSERT(map->im_msi_base < 0,
+			    ("intr %d, stale MSI-base %d\n",
+			     intr, map->im_msi_base));
+
+			map->im_type = IOAPIC_IMT_MSI;
+			map->im_msi_base = i;
+
+			intrs[j] = intr;
+			msi_setup(intr, cpuid);
+
+			if (bootverbose) {
+				kprintf("alloc MSI intr %d on cpu%d\n",
+				    intr, cpuid);
+			}
+
+		}
+		error = 0;
+		break;
+	}
+
+	lwkt_reltoken(&ioapic_irqmap_tok);
+
+	return error;
+}
+
+static void
+ioapic_abi_msi_release(const int intrs[], int count, int cpuid)
+{
+	int i, msi_base = -1, intr_next = -1, mask;
+
+	KASSERT(cpuid >= 0 && cpuid < ncpus,
+	    ("invalid cpuid %d", cpuid));
+
+	KASSERT(count > 0 && count <= 32, ("invalid count %d\n", count));
+
+	mask = count - 1;
+	KASSERT((count & mask) == 0, ("count %d is not power of 2\n", count));
+
+	lwkt_gettoken(&ioapic_irqmap_tok);
+
+	for (i = 0; i < count; ++i) {
+		struct ioapic_irqmap *map;
+		int intr = intrs[i];
+
+		KASSERT(intr >= 0 && intr < IOAPIC_HWI_VECTORS,
+		    ("invalid intr %d\n", intr));
+
+		map = &ioapic_irqmaps[cpuid][intr];
+		KASSERT(map->im_type == IOAPIC_IMT_MSI,
+		    ("try release non-MSI intr %d, type %d\n",
+		     intr, map->im_type));
+		KASSERT(map->im_msi_base >= 0 && map->im_msi_base <= intr,
+		    ("intr %d, invalid MSI-base %d\n", intr, map->im_msi_base));
+		KASSERT((map->im_msi_base & mask) == 0,
+		    ("intr %d, MSI-base %d is not proper aligned %d\n",
+		     intr, map->im_msi_base, count));
+
+		if (msi_base < 0) {
+			msi_base = map->im_msi_base;
+		} else {
+			KASSERT(map->im_msi_base == msi_base,
+			    ("intr %d, inconsistent MSI-base, "
+			     "was %d, now %d\n",
+			     intr, msi_base, map->im_msi_base));
+		}
+
+		if (intr_next < intr)
+			intr_next = intr;
+
+		map->im_type = IOAPIC_IMT_UNUSED;
+		map->im_msi_base = -1;
+
+		if (bootverbose)
+			kprintf("release MSI intr %d on cpu%d\n", intr, cpuid);
+	}
+
+	KKASSERT(intr_next > 0);
+	KKASSERT(msi_base >= 0);
+
+	++intr_next;
+	if (intr_next < IOAPIC_HWI_VECTORS) {
+		const struct ioapic_irqmap *map =
+		    &ioapic_irqmaps[cpuid][intr_next];
+
+		if (map->im_type == IOAPIC_IMT_MSI) {
+			KASSERT(map->im_msi_base != msi_base,
+			    ("more than %d MSI was allocated\n", count));
+		}
+	}
+
+	lwkt_reltoken(&ioapic_irqmap_tok);
+}
+
+static void
+ioapic_abi_msi_map(int intr, uint64_t *addr, uint32_t *data, int cpuid)
+{
+	const struct ioapic_irqmap *map;
+
+	KASSERT(cpuid >= 0 && cpuid < ncpus,
+	    ("invalid cpuid %d", cpuid));
+
+	KASSERT(intr >= 0 && intr < IOAPIC_HWI_VECTORS,
+	    ("invalid intr %d\n", intr));
+
+	lwkt_gettoken(&ioapic_irqmap_tok);
+
+	map = &ioapic_irqmaps[cpuid][intr];
+	KASSERT(map->im_type == IOAPIC_IMT_MSI,
+	    ("try map non-MSI intr %d, type %d\n", intr, map->im_type));
+	KASSERT(map->im_msi_base >= 0 && map->im_msi_base <= intr,
+	    ("intr %d, invalid MSI-base %d\n", intr, map->im_msi_base));
+
+	msi_map(map->im_msi_base, addr, data, cpuid);
+
+	if (bootverbose)
+		kprintf("map MSI intr %d on cpu%d\n", intr, cpuid);
+
+	lwkt_reltoken(&ioapic_irqmap_tok);
 }
