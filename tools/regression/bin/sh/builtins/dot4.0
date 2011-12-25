@@ -1,0 +1,12 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/dot4.0,v 1.1 2011/05/22 12:15:14 jilles Exp $
+
+v=abcd
+v=$v$v$v$v
+v=$v$v$v$v
+v=$v$v$v$v
+v=$v$v$v$v
+v=$v$v$v$v
+r=$( (
+	trap 'exit 0' 0
+	. "$v"
+) 2>&1 >/dev/null) && [ -n "$r" ]
