@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.112 2011/06/18 23:58:59 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.113 2011/11/26 23:28:31 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -90,7 +90,7 @@ int oexitstatus;		/* saved exit status */
 
 static void evalloop(union node *, int);
 static void evalfor(union node *, int);
-static void evalcase(union node *, int);
+static union node *evalcase(union node *, int);
 static void evalsubshell(union node *, int);
 static void evalredir(union node *, int);
 static void expredir(union node *);
@@ -257,7 +257,7 @@ evaltree(union node *n, int flags)
 			evalfor(n, flags & ~EV_EXIT);
 			break;
 		case NCASE:
-			evalcase(n, flags);
+			next = evalcase(n, flags);
 			break;
 		case NDEFUN:
 			defun(n->narg.text, n->narg.next);
@@ -371,7 +371,7 @@ out:
 
 
 
-static void
+static union node *
 evalcase(union node *n, int flags)
 {
 	union node *cp;
@@ -384,26 +384,24 @@ evalcase(union node *n, int flags)
 	oexitstatus = exitstatus;
 	exitstatus = 0;
 	expandarg(n->ncase.expr, &arglist, EXP_TILDE);
-	for (cp = n->ncase.cases ; cp && evalskip == 0 ; cp = cp->nclist.next) {
+	for (cp = n->ncase.cases ; cp ; cp = cp->nclist.next) {
 		for (patp = cp->nclist.pattern ; patp ; patp = patp->narg.next) {
 			if (casematch(patp, arglist.list->text)) {
+				popstackmark(&smark);
 				while (cp->nclist.next &&
 				    cp->type == NCLISTFALLTHRU) {
-					if (evalskip != 0)
-						break;
 					evaltree(cp->nclist.body,
 					    flags & ~EV_EXIT);
+					if (evalskip != 0)
+						return (NULL);
 					cp = cp->nclist.next;
 				}
-				if (evalskip == 0) {
-					evaltree(cp->nclist.body, flags);
-				}
-				goto out;
+				return (cp->nclist.body);
 			}
 		}
 	}
-out:
 	popstackmark(&smark);
+	return (NULL);
 }
 
 
