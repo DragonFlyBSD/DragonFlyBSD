@@ -1,0 +1,10 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/dot3.0,v 1.1 2011/03/07 23:52:23 jilles Exp $
+
+# . should return 0 if no command was executed.
+
+if false; then
+	exit 3
+else
+	. /dev/null
+	exit $?
+fi
