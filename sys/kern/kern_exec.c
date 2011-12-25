@@ -155,7 +155,7 @@ sysctl_kern_stackgap(SYSCTL_HANDLER_ARGS)
 }
 
 SYSCTL_PROC(_kern, OID_AUTO, stackgap_random, CTLFLAG_RW|CTLTYPE_INT,
-	0, 0, sysctl_kern_stackgap, "IU",
+	0, 0, sysctl_kern_stackgap, "I",
 	"Max random stack gap (power of 2), static gap if negative");
 	
 void
