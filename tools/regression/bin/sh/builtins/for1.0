@@ -1,0 +1,4 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/for1.0,v 1.1 2011/10/28 23:02:21 jilles Exp $
+
+false
+for i in `false`; do exit 3; done
