@@ -1957,7 +1957,7 @@ pci_remap_msi_irq(device_t dev, u_int irq)
 			    i + 1);
 			if (rle->start == irq) {
 				error = PCIB_MAP_MSI(device_get_parent(bus),
-				    dev, irq, &addr, &data);
+				    dev, irq, &addr, &data, -1 /* XXX */);
 				if (error)
 					return (error);
 				pci_disable_msi(dev);
@@ -1980,7 +1980,7 @@ pci_remap_msi_irq(device_t dev, u_int irq)
 			mv = &cfg->msix.msix_vectors[i];
 			if (mv->mv_irq == irq) {
 				error = PCIB_MAP_MSI(device_get_parent(bus),
-				    dev, irq, &addr, &data);
+				    dev, irq, &addr, &data, -1 /* XXX */);
 				if (error)
 					return (error);
 				mv->mv_address = addr;
@@ -3199,7 +3199,8 @@ pci_setup_intr(device_t dev, device_t child, struct resource *irq, int flags,
 				KASSERT(dinfo->cfg.msi.msi_handlers == 0,
 			    ("MSI has handlers, but vectors not mapped"));
 				error = PCIB_MAP_MSI(device_get_parent(dev),
-				    child, rman_get_start(irq), &addr, &data);
+				    child, rman_get_start(irq), &addr, &data,
+				    rman_get_cpuid(irq));
 				if (error)
 					goto bad;
 				dinfo->cfg.msi.msi_addr = addr;
@@ -3221,7 +3222,8 @@ pci_setup_intr(device_t dev, device_t child, struct resource *irq, int flags,
 				KASSERT(mte->mte_handlers == 0,
 		    ("MSI-X table entry has handlers, but vector not mapped"));
 				error = PCIB_MAP_MSI(device_get_parent(dev),
-				    child, rman_get_start(irq), &addr, &data);
+				    child, rman_get_start(irq), &addr, &data,
+				    rman_get_cpuid(irq));
 				if (error)
 					goto bad;
 				mv->mv_address = addr;

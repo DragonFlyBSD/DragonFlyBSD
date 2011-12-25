@@ -644,13 +644,14 @@ pcib_release_msix(device_t pcib, device_t dev, int irq)
 /* Pass request to map MSI/MSI-X message up to parent bridge. */
 int
 pcib_map_msi(device_t pcib, device_t dev, int irq, uint64_t *addr,
-    uint32_t *data)
+    uint32_t *data, int cpuid)
 {
 	device_t bus;
 	int error;
 
 	bus = device_get_parent(pcib);
-	error = PCIB_MAP_MSI(device_get_parent(bus), dev, irq, addr, data);
+	error = PCIB_MAP_MSI(device_get_parent(bus), dev, irq, addr, data,
+	    cpuid);
 	if (error)
 		return (error);
 

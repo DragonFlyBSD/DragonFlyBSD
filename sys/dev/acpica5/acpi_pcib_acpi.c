@@ -76,7 +76,7 @@ static int		acpi_pcib_acpi_route_interrupt(device_t pcib,
 static int		acpi_pcib_alloc_msi(device_t pcib, device_t dev,
 			    int count, int maxcount, int *irqs, int cpuid);
 static int		acpi_pcib_map_msi(device_t pcib, device_t dev,
-			    int irq, uint64_t *addr, uint32_t *data);
+			    int irq, uint64_t *addr, uint32_t *data, int cpuid);
 static int		acpi_pcib_alloc_msix(device_t pcib, device_t dev,
 			    int *irq);
 static struct resource *acpi_pcib_acpi_alloc_resource(device_t dev,
@@ -349,12 +349,13 @@ acpi_pcib_alloc_msix(device_t pcib, device_t dev, int *irq)
 
 static int
 acpi_pcib_map_msi(device_t pcib, device_t dev, int irq, uint64_t *addr,
-    uint32_t *data)
+    uint32_t *data, int cpuid)
 {
 	device_t bus;
 
 	bus = device_get_parent(pcib);
-	return (PCIB_MAP_MSI(device_get_parent(bus), dev, irq, addr, data));
+	return (PCIB_MAP_MSI(device_get_parent(bus), dev, irq, addr, data,
+	    cpuid));
 }
 
 static u_long acpi_host_mem_start = 0x80000000;

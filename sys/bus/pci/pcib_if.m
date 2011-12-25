@@ -145,4 +145,5 @@ METHOD int map_msi {
 	int		irq;
 	uint64_t	*addr;
 	uint32_t	*data;
+	int		cpuid;
 };
