@@ -35,6 +35,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "pointer-set.h"
 #include "output.h"
 #include "ggc.h"
+#ifdef __DragonFly__
+#include <machine/cpufunc.h>
+#endif
 
 static void flow_loops_cfg_dump (FILE *);
 
@@ -861,6 +864,9 @@ fill_sons_in_loop (const struct loop *loop, basic_block bb,
 
   if (postpone)
     fill_sons_in_loop (loop, postpone, tovisit, tv);
+#ifdef __AMDCPUBUG_DFLY01_AVAILABLE__
+  cpu_amdcpubug_dfly01();
+#endif
 }
 
 /* Gets body of a LOOP (that must be different from the outermost loop)
