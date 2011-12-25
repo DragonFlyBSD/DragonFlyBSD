@@ -1,0 +1,9 @@
+# $FreeBSD: src/tools/regression/bin/sh/execution/set-x2.0,v 1.1 2011/06/08 21:58:19 jilles Exp $
+
+key='must contain this'
+PS4="$key+ "
+{ r=`set -x; { :; } 2>&1 >/dev/null`; } 2>/dev/null
+case $r in
+*"$key"*) true ;;
+*) false ;;
+esac
