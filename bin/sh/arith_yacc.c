@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/bin/sh/arith_yacc.c,v 1.6 2011/06/26 20:12:05 jilles Exp $
+ * $FreeBSD: src/bin/sh/arith_yacc.c,v 1.7 2011/11/08 23:54:39 jilles Exp $
  */
 
 #include <limits.h>
@@ -136,11 +136,11 @@ do_binop(int op, arith_t a, arith_t b)
 			yyerror("divide error");
 		return op == ARITH_REM ? a % b : a / b;
 	case ARITH_MUL:
-		return a * b;
+		return (uintmax_t)a * (uintmax_t)b;
 	case ARITH_ADD:
-		return a + b;
+		return (uintmax_t)a + (uintmax_t)b;
 	case ARITH_SUB:
-		return a - b;
+		return (uintmax_t)a - (uintmax_t)b;
 	case ARITH_LSHIFT:
 		return a << b;
 	case ARITH_RSHIFT:
