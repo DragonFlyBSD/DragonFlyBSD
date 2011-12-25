@@ -9,7 +9,6 @@
  * ====================================================
  *
  * $NetBSD: math.h,v 1.46 2007/02/22 22:08:19 drochner Exp $
- * $DragonFly: src/include/math.h,v 1.12 2007/06/17 18:00:08 pavalos Exp $
  */
 
 /*
@@ -20,6 +19,7 @@
 #define _MATH_H_
 
 #include <sys/cdefs.h>
+#include <machine/limits.h>
 
 #if __GNUC_PREREQ__(3, 3) || (defined(__INTEL_COMPILER) && __INTEL_COMPILER >= 800)
 #define	__MATH_BUILTIN_CONSTANTS
@@ -118,6 +118,10 @@ extern const union __float_u __nanf;
 /* NetBSD extensions */
 #define	_FP_LOMD	0x80		/* range for machine-specific classes */
 #define	_FP_HIMD	0xff
+
+/* 7.12#8 values returned by ilogb(0) or ilogb(NAN), respectively */
+#define	FP_ILOGB0	INT_MIN
+#define	FP_ILOGBNAN	INT_MIN
 
 #endif /* ISO C99 */
 
@@ -490,12 +494,14 @@ long double	fmodl       (long double, long double);
 long double	hypotl      (long double, long double);
 int        	ilogbl      (long double);
 long double	ldexpl      (long double, int);
+long long	llrintl     (long double);
 long long      	llroundl    (long double);
 long double	logbl       (long double);
 long       	lrintl      (long double);
 long		lroundl     (long double);
 long double	modfl       (long double, long double *);
 long double	nanl        (const char *);
+long double	nearbyintl  (long double);
 long double	nextafterl  (long double, long double);
 double     	nexttoward  (double,      long double);
 float      	nexttowardf (float,       long double);
