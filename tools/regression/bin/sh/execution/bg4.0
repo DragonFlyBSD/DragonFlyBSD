@@ -1,0 +1,6 @@
+# $FreeBSD: src/tools/regression/bin/sh/execution/bg4.0,v 1.1 2011/06/19 00:00:36 jilles Exp $
+
+x=''
+: ${x:=1} &
+wait
+exit ${x:-0}
