@@ -1,0 +1,6 @@
+# $FreeBSD: src/tools/regression/bin/sh/parser/func2.0,v 1.1 2011/05/30 21:49:59 jilles Exp $
+
+f() { return 42; }
+f() { return 3; } &
+f
+[ $? -eq 42 ]

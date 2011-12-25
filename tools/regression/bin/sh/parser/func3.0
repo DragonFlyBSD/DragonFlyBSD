@@ -1,0 +1,6 @@
+# $FreeBSD: src/tools/regression/bin/sh/parser/func3.0,v 1.1 2011/05/30 21:49:59 jilles Exp $
+
+name=/var/empty/nosuch
+f() { true; } <$name
+name=/dev/null
+f
