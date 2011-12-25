@@ -3306,7 +3306,6 @@ pci_teardown_intr(device_t dev, device_t child, struct resource *irq,
 	if (rid > 0)
 		KASSERT(error == 0,
 		    ("%s: generic teardown failed for MSI/MSI-X", __func__));
-	error = bus_generic_teardown_intr(dev, child, irq, cookie);
 	return (error);
 }
 
