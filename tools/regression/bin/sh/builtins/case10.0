@@ -1,0 +1,16 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/case10.0,v 1.1 2011/06/25 20:37:43 jilles Exp $
+
+case ! in
+[\!!]) ;;
+*) echo Failed at $LINENO ;;
+esac
+
+case ! in
+['!'!]) ;;
+*) echo Failed at $LINENO ;;
+esac
+
+case ! in
+["!"!]) ;;
+*) echo Failed at $LINENO ;;
+esac
