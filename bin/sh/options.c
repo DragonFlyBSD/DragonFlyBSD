@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)options.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/options.c,v 1.37 2011/06/13 21:03:27 jilles Exp $
+ * $FreeBSD: src/bin/sh/options.c,v 1.38 2011/11/20 21:48:50 jilles Exp $
  */
 
 #include <signal.h>
@@ -402,9 +402,10 @@ setcmd(int argc, char **argv)
 void
 getoptsreset(const char *value)
 {
-	if (number(value) == 1) {
+	while (*value == '0')
+		value++;
+	if (strcmp(value, "1") == 0)
 		shellparam.reset = 1;
-	}
 }
 
 /*
