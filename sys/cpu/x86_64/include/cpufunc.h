@@ -226,6 +226,38 @@ cpu_ccfence(void)
 	__asm __volatile("" : : : "memory");
 }
 
+/*
+ * This is a horrible, horrible hack that might have to be put at the
+ * end of certain procedures (on a case by case basis), just before it
+ * returns to avoid what we believe to be an unreported AMD cpu bug.
+ * Found to occur on both a Phenom II X4 820 (two of them), as well
+ * as a 48-core built around an Opteron 6168 (Id = 0x100f91  Stepping = 1).
+ * The problem does not appear to occur w/Intel cpus.
+ *
+ * The bug is likely related to either a write combining issue or the
+ * Return Address Stack (RAS) hardware cache.
+ *
+ * In particular, we had to do this for GCC's fill_sons_in_loop() routine
+ * which due to its deep recursion and stack flow appears to be able to
+ * tickle the amd cpu bug (w/ gcc-4.4.7).  Adding a single 'nop' to the
+ * end of the routine just before it returns works around the bug.
+ *
+ * The bug appears to be extremely sensitive to %rip and %rsp values, to
+ * the point where even just inserting an instruction in an unrelated
+ * procedure (shifting the entire code base being run) effects the outcome.
+ * DragonFly is probably able to more readily reproduce the bug due to
+ * the stackgap randomization code.  We would expect OpenBSD (where we got
+ * the stackgap randomization code from) to also be able to reproduce the
+ * issue.  To date we have only reproduced the issue in DragonFly.
+ */
+#define __AMDCPUBUG_DFLY01_AVAILABLE__
+
+static __inline void
+cpu_amdcpubug_dfly01(void)
+{
+	__asm __volatile("nop" : : : "memory");
+}
+
 #ifdef _KERNEL
 
 #define	HAVE_INLINE_FFS
