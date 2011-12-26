@@ -532,6 +532,7 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 static int	ioapic_abi_extint_irq = -1;
 static int	ioapic_abi_line_irq_max;
 static int	ioapic_abi_gsi_balance;
+static int	ioapic_abi_msi_start;	/* NOTE: for testing only */
 
 struct ioapic_irqinfo	ioapic_irqs[IOAPIC_HWI_VECTORS];
 
@@ -731,6 +732,9 @@ ioapic_abi_initmap(void)
 	int cpu;
 
 	kgetenv_int("hw.ioapic.gsi.balance", &ioapic_abi_gsi_balance);
+
+	kgetenv_int("hw.ioapic.msi_start", &ioapic_abi_msi_start);
+	ioapic_abi_msi_start &= ~0x1f;	/* MUST be 32 aligned */
 
 	/*
 	 * NOTE: ncpus is not ready yet
@@ -1162,7 +1166,7 @@ ioapic_abi_msi_alloc(int intrs[], int count, int cpuid)
 	 */
 
 	error = ENOENT;
-	for (i = 0; i < IOAPIC_HWI_VECTORS; i += count) {
+	for (i = ioapic_abi_msi_start; i < IOAPIC_HWI_VECTORS; i += count) {
 		int j;
 
 		if (ioapic_irqmaps[cpuid][i].im_type != IOAPIC_IMT_UNUSED)
