@@ -92,6 +92,7 @@ SYSCTL_NODE(_vm, OID_AUTO, swapcache, CTLFLAG_RW, NULL, NULL);
 int vm_swapcache_read_enable;
 int vm_swapcache_inactive_heuristic;
 static int vm_swapcache_sleep;
+static int vm_swapcache_maxscan = 256 * 4;
 static int vm_swapcache_maxlaunder = 256;
 static int vm_swapcache_data_enable = 0;
 static int vm_swapcache_meta_enable = 0;
@@ -108,6 +109,8 @@ static int64_t vm_swapcache_cleanperobj = 16*1024*1024;
 
 SYSCTL_INT(_vm_swapcache, OID_AUTO, maxlaunder,
 	CTLFLAG_RW, &vm_swapcache_maxlaunder, 0, "");
+SYSCTL_INT(_vm_swapcache, OID_AUTO, maxscan,
+	CTLFLAG_RW, &vm_swapcache_maxscan, 0, "");
 
 SYSCTL_INT(_vm_swapcache, OID_AUTO, data_enable,
 	CTLFLAG_RW, &vm_swapcache_data_enable, 0, "");
@@ -308,6 +311,7 @@ vm_swapcache_writing(vm_page_t marker)
 	struct vnode *vp;
 	vm_page_t m;
 	int count;
+	int scount;
 	int isblkdev;
 
 	/*
@@ -329,16 +333,13 @@ vm_swapcache_writing(vm_page_t marker)
 	 * suitable pages to push to the swap cache.
 	 *
 	 * We are looking for clean vnode-backed pages.
-	 *
-	 * NOTE: PG_SWAPPED pages in particular are not part of
-	 *	 our count because once the cache stabilizes we
-	 *	 can end up with a very high datarate of VM pages
-	 *	 cycling from it.
 	 */
 	count = vm_swapcache_maxlaunder;
+	scount = vm_swapcache_maxscan;
 
 	vm_page_queues_spin_lock(marker->queue);
-	while ((m = TAILQ_NEXT(marker, pageq)) != NULL && count-- > 0) {
+	while ((m = TAILQ_NEXT(marker, pageq)) != NULL &&
+	       count > 0 && scount-- > 0) {
 		KKASSERT(m->queue == marker->queue);
 
 		if (vm_swapcache_curburst < 0)
@@ -352,10 +353,8 @@ vm_swapcache_writing(vm_page_t marker)
 		 * Ignore markers and ignore pages that already have a swap
 		 * assignment.
 		 */
-		if (m->flags & (PG_MARKER | PG_SWAPPED)) {
-			++count;
+		if (m->flags & (PG_MARKER | PG_SWAPPED))
 			continue;
-		}
 		if (vm_page_busy_try(m, TRUE))
 			continue;
 		vm_page_queues_spin_unlock(marker->queue);
@@ -459,7 +458,7 @@ vm_swapcache_writing(vm_page_t marker)
 		 *
 		 * (adjust for the --count which also occurs in the loop)
 		 */
-		count -= vm_swapcached_flush(m, isblkdev) - 1;
+		count -= vm_swapcached_flush(m, isblkdev);
 
 		/*
 		 * Setup for next loop using marker.
@@ -636,9 +635,11 @@ vm_swapcache_cleaning(vm_object_t marker)
 	vm_object_t object;
 	struct vnode *vp;
 	int count;
+	int scount;
 	int n;
 
 	count = vm_swapcache_maxlaunder;
+	scount = vm_swapcache_maxscan;
 
 	/*
 	 * Look for vnode objects
@@ -659,7 +660,7 @@ vm_swapcache_cleaning(vm_object_t marker)
 		 * Safety, or in case there are millions of VM objects
 		 * without swapcache backing.
 		 */
-		if (--count <= 0)
+		if (--scount <= 0)
 			break;
 
 		/*
