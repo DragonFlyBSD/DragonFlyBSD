@@ -85,7 +85,7 @@ extern int stathz;			/* statistics clock's frequency */
 extern int profhz;			/* profiling clock's frequency */
 extern int ticks;
 extern int lbolt;			/* once a second sleep address */
-extern int lbolt_syncer;		/* approx 1 hz but may be sped up */
+extern void *lbolt_syncer;		/* approx 1 hz but may be sped up */
 
 /*
  * Enumerated types for known system startup interfaces.

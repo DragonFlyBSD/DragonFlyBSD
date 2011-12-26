@@ -397,6 +397,7 @@ struct ucred;
 struct uio;
 struct vattr;
 struct vnode;
+struct syncer_ctx;
 
 struct vnode *getsynthvnode(const char *devname);
 void	addaliasu (struct vnode *vp, int x, int y);
@@ -548,6 +549,9 @@ void	mount_init(struct mount *mp);
 
 void	vn_syncer_add(struct vnode *, int);
 void	vn_syncer_remove(struct vnode *);
+void	vn_syncer_thr_create(struct mount *);
+void	vn_syncer_thr_stop(struct mount *);
+
 void	vnlru_proc_wait(void);
 
 extern	struct vop_ops default_vnode_vops;

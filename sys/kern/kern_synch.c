@@ -74,7 +74,7 @@ SYSINIT(sched_setup, SI_SUB_KICK_SCHEDULER, SI_ORDER_FIRST, sched_setup, NULL)
 
 int	hogticks;
 int	lbolt;
-int	lbolt_syncer;
+void	*lbolt_syncer;
 int	sched_quantum;		/* Roundrobin scheduling quantum in ticks. */
 int	ncpus;
 int	ncpus2, ncpus2_shift, ncpus2_mask;	/* note: mask not cpumask_t */
@@ -190,7 +190,7 @@ schedcpu(void *arg)
 	allproc_scan(schedcpu_stats, NULL);
 	allproc_scan(schedcpu_resource, NULL);
 	wakeup((caddr_t)&lbolt);
-	wakeup((caddr_t)&lbolt_syncer);
+	wakeup(lbolt_syncer);
 	callout_reset(&schedcpu_callout, hz, schedcpu, NULL);
 }
 

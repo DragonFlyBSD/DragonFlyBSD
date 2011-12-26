@@ -91,6 +91,12 @@ vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_mount)(mp, path, data, cred);
+	if (error == 0) {
+		/* Create per-filesystem syncer threads if requested */
+		if ((mp->mnt_flag & MNT_UPDATE) == 0 &&
+		    (mp->mnt_kern_flag & MNTK_THR_SYNC))
+			vn_syncer_thr_create(mp);
+	}
 	VFS_MPUNLOCK(mp);
 	return (error);
 }
@@ -124,6 +130,8 @@ vfs_unmount(struct mount *mp, int mntflags)
 	int error;
 
 	VFS_MPLOCK1(mp);
+	if (mp->mnt_kern_flag & MNTK_THR_SYNC)
+		vn_syncer_thr_stop(mp);
 	error = (mp->mnt_op->vfs_acdone)(mp); 
 	if (error == 0)
 		error = (mp->mnt_op->vfs_unmount)(mp, mntflags);

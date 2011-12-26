@@ -1,6 +1,4 @@
 /*
- * (MPSAFE)
- *
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  * (c) UNIX System Laboratories, Inc.
@@ -39,7 +37,6 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.18 2008/05/18 05:54:25 dillon Exp $
  */
 
 /*
@@ -84,7 +81,6 @@
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 /*
  * The workitem queue.
@@ -108,11 +104,38 @@ static int stat_rush_requests;	/* number of times I/O speeded up */
 SYSCTL_INT(_debug, OID_AUTO, rush_requests, CTLFLAG_RW,
 		&stat_rush_requests, 0, "");
 
-static int syncer_delayno = 0;
-static long syncer_mask; 
-static struct lwkt_token syncer_token;
 LIST_HEAD(synclist, vnode);
-static struct synclist *syncer_workitem_pending;
+
+#define	SC_FLAG_EXIT		(0x1)		/* request syncer exit */
+#define	SC_FLAG_DONE		(0x2)		/* syncer confirm exit */
+#define 	SC_FLAG_BIOOPS_ALL	(0x4)		/* do bufops_sync(NULL) */
+
+struct syncer_ctx {
+	struct mount		*sc_mp;
+	struct lwkt_token 	sc_token;
+	struct thread		*sc_thread;
+	int			sc_flags;
+
+	struct synclist 	*syncer_workitem_pending;
+	long			syncer_mask;
+	int 			syncer_delayno;
+};
+
+static struct syncer_ctx syncer_ctx0;
+
+static void syncer_thread(void *);
+
+static void
+syncer_ctx_init(struct syncer_ctx *ctx, struct mount *mp)
+{
+	ctx->sc_mp = mp; 
+	lwkt_token_init(&ctx->sc_token, "syncer");
+	ctx->sc_flags = 0;
+
+	ctx->syncer_workitem_pending = hashinit(syncer_maxdelay, M_DEVBUF,
+						&ctx->syncer_mask);
+	ctx->syncer_delayno = 0;
+}
 
 /*
  * Called from vfsinit()
@@ -120,10 +143,27 @@ static struct synclist *syncer_workitem_pending;
 void
 vfs_sync_init(void)
 {
-	syncer_workitem_pending = hashinit(syncer_maxdelay, M_DEVBUF,
-					    &syncer_mask);
-	syncer_maxdelay = syncer_mask + 1;
-	lwkt_token_init(&syncer_token, "syncer");
+	syncer_ctx_init(&syncer_ctx0, NULL);
+	syncer_maxdelay = syncer_ctx0.syncer_mask + 1;
+	syncer_ctx0.sc_flags |= SC_FLAG_BIOOPS_ALL;
+	
+	/* Support schedcpu wakeup of syncer0 */
+	lbolt_syncer = &syncer_ctx0;
+}
+
+static struct syncer_ctx *
+vn_get_syncer(struct vnode *vp) {
+	struct mount *mp;
+	struct syncer_ctx *ctx;
+
+	ctx = NULL;
+	mp = vp->v_mount;
+	if (mp)
+		ctx = mp->mnt_syncer_ctx;
+	if (ctx == NULL)
+		ctx = &syncer_ctx0;
+
+	return (ctx);
 }
 
 /*
@@ -164,20 +204,23 @@ vfs_sync_init(void)
 void
 vn_syncer_add(struct vnode *vp, int delay)
 {
+	struct syncer_ctx *ctx;
 	int slot;
 
-	lwkt_gettoken(&syncer_token);
+	ctx = vn_get_syncer(vp);
+
+	lwkt_gettoken(&ctx->sc_token);
 
 	if (vp->v_flag & VONWORKLST)
 		LIST_REMOVE(vp, v_synclist);
 	if (delay > syncer_maxdelay - 2)
 		delay = syncer_maxdelay - 2;
-	slot = (syncer_delayno + delay) & syncer_mask;
+	slot = (ctx->syncer_delayno + delay) & ctx->syncer_mask;
 
-	LIST_INSERT_HEAD(&syncer_workitem_pending[slot], vp, v_synclist);
+	LIST_INSERT_HEAD(&ctx->syncer_workitem_pending[slot], vp, v_synclist);
 	vsetflags(vp, VONWORKLST);
 
-	lwkt_reltoken(&syncer_token);
+	lwkt_reltoken(&ctx->sc_token);
 }
 
 /*
@@ -189,14 +232,64 @@ vn_syncer_add(struct vnode *vp, int delay)
 void
 vn_syncer_remove(struct vnode *vp)
 {
-	lwkt_gettoken(&syncer_token);
+	struct syncer_ctx *ctx;
+
+	ctx = vn_get_syncer(vp);
+
+	lwkt_gettoken(&ctx->sc_token);
 
 	if ((vp->v_flag & VONWORKLST) && RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vclrflags(vp, VONWORKLST);
 		LIST_REMOVE(vp, v_synclist);
 	}
 
-	lwkt_reltoken(&syncer_token);
+	lwkt_reltoken(&ctx->sc_token);
+}
+
+/*
+ * Create per-filesystem syncer process
+ */
+void
+vn_syncer_thr_create(struct mount *mp)
+{
+	struct syncer_ctx *ctx;
+	static int syncalloc = 0;
+	int rc;
+
+	ctx = kmalloc(sizeof(struct syncer_ctx), M_TEMP, M_WAITOK);
+
+	syncer_ctx_init(ctx, mp);
+	mp->mnt_syncer_ctx = ctx;
+
+	rc = kthread_create(syncer_thread, ctx, &ctx->sc_thread, 
+			    "syncer%d", ++syncalloc);
+}
+
+/*
+ * Stop per-filesystem syncer process
+ */
+void
+vn_syncer_thr_stop(struct mount *mp)
+{
+	struct syncer_ctx *ctx;
+
+	ctx = mp->mnt_syncer_ctx;
+
+	lwkt_gettoken(&ctx->sc_token);
+
+	/* Signal the syncer process to exit */
+	ctx->sc_flags |= SC_FLAG_EXIT;
+	wakeup(ctx);
+	
+	/* Wait till syncer process exits */
+	while ((ctx->sc_flags & SC_FLAG_DONE) == 0) 
+		tsleep(&ctx->sc_flags, 0, "syncexit", hz);
+
+	mp->mnt_syncer_ctx = NULL;
+	lwkt_reltoken(&ctx->sc_token);
+	
+	kfree(ctx->syncer_workitem_pending, M_DEVBUF);
+	kfree(ctx, M_TEMP);
 }
 
 struct  thread *updatethread;
@@ -205,34 +298,44 @@ struct  thread *updatethread;
  * System filesystem synchronizer daemon.
  */
 static void
-syncer_thread(void)
+syncer_thread(void *_ctx)
 {
 	struct thread *td = curthread;
+	struct syncer_ctx *ctx = _ctx;
 	struct synclist *slp;
 	struct vnode *vp;
 	long starttime;
+	int *sc_flagsp;
+	int sc_flags;
+	int vnodes_synced = 0;
 
-	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
-			      SHUTDOWN_PRI_LAST);
+	/*
+	 * syncer0 runs till system shutdown; per-filesystem syncers are
+	 * terminated on filesystem unmount
+	 */
+	if (ctx == &syncer_ctx0) 
+		EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
+				      SHUTDOWN_PRI_LAST);
 	for (;;) {
 		kproc_suspend_loop();
 
 		starttime = time_second;
-		lwkt_gettoken(&syncer_token);
+		lwkt_gettoken(&ctx->sc_token);
 
 		/*
 		 * Push files whose dirty time has expired.  Be careful
 		 * of interrupt race on slp queue.
 		 */
-		slp = &syncer_workitem_pending[syncer_delayno];
-		syncer_delayno += 1;
-		if (syncer_delayno == syncer_maxdelay)
-			syncer_delayno = 0;
+		slp = &ctx->syncer_workitem_pending[ctx->syncer_delayno];
+		ctx->syncer_delayno += 1;
+		if (ctx->syncer_delayno == syncer_maxdelay)
+			ctx->syncer_delayno = 0;
 
 		while ((vp = LIST_FIRST(slp)) != NULL) {
 			if (vget(vp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
 				VOP_FSYNC(vp, MNT_LAZY, 0);
 				vput(vp);
+				vnodes_synced++;
 			}
 
 			/*
@@ -259,12 +362,20 @@ syncer_thread(void)
 			if (LIST_FIRST(slp) == vp)
 				vn_syncer_add(vp, syncdelay);
 		}
-		lwkt_reltoken(&syncer_token);
+
+		sc_flags = ctx->sc_flags;
+
+		/* Exit on unmount */
+		if (sc_flags & SC_FLAG_EXIT)
+			break;
+
+		lwkt_reltoken(&ctx->sc_token);
 
 		/*
 		 * Do sync processing for each mount.
 		 */
-		bio_ops_sync(NULL);
+		if (ctx->sc_mp || sc_flags & SC_FLAG_BIOOPS_ALL)
+			bio_ops_sync(ctx->sc_mp);
 
 		/*
 		 * The variable rushjob allows the kernel to speed up the
@@ -276,7 +387,7 @@ syncer_thread(void)
 		 * ahead of the disk that the kernel memory pool is being
 		 * threatened with exhaustion.
 		 */
-		if (rushjob > 0) {
+		if (ctx == &syncer_ctx0 && rushjob > 0) {
 			atomic_subtract_int(&rushjob, 1);
 			continue;
 		}
@@ -289,13 +400,28 @@ syncer_thread(void)
 		 * filesystem activity.
 		 */
 		if (time_second == starttime)
-			tsleep(&lbolt_syncer, 0, "syncer", 0);
+			tsleep(ctx, 0, "syncer", hz);
 	}
+
+	/*
+	 * Unmount/exit path for per-filesystem syncers; sc_token held
+	 */
+	ctx->sc_flags |= SC_FLAG_DONE;
+	sc_flagsp = &ctx->sc_flags;
+	lwkt_reltoken(&ctx->sc_token);
+	wakeup(sc_flagsp);
+
+	kthread_exit();
+}
+
+static void
+syncer_thread_start(void) {
+	syncer_thread(&syncer_ctx0);
 }
 
 static struct kproc_desc up_kp = {
-	"syncer",
-	syncer_thread,
+	"syncer0",
+	syncer_thread_start,
 	&updatethread
 };
 SYSINIT(syncer, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &up_kp)
@@ -312,7 +438,7 @@ speedup_syncer(void)
 	 * Don't bother protecting the test.  unsleep_and_wakeup_thread()
 	 * will only do something real if the thread is in the right state.
 	 */
-	wakeup(&lbolt_syncer);
+	wakeup(lbolt_syncer);
 	if (rushjob < syncdelay / 2) {
 		atomic_add_int(&rushjob, 1);
 		stat_rush_requests += 1;
@@ -470,14 +596,17 @@ static int
 sync_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
+	struct syncer_ctx *ctx;
 
-	lwkt_gettoken(&syncer_token);
+	ctx = vn_get_syncer(vp);
+
+	lwkt_gettoken(&ctx->sc_token);
 	KKASSERT(vp->v_mount->mnt_syncer != vp);
 	if (vp->v_flag & VONWORKLST) {
 		LIST_REMOVE(vp, v_synclist);
 		vclrflags(vp, VONWORKLST);
 	}
-	lwkt_reltoken(&syncer_token);
+	lwkt_reltoken(&ctx->sc_token);
 
 	return (0);
 }
