@@ -276,12 +276,13 @@ DRIVER_MODULE(if_emx, pci, emx_driver, emx_devclass, NULL, NULL);
 static int	emx_int_throttle_ceil = EMX_DEFAULT_ITR;
 static int	emx_rxd = EMX_DEFAULT_RXD;
 static int	emx_txd = EMX_DEFAULT_TXD;
-static int	emx_smart_pwr_down = FALSE;
+static int	emx_smart_pwr_down = 0;
 
 /* Controls whether promiscuous also shows bad packets */
 static int	emx_debug_sbp = FALSE;
 
-static int	emx_82573_workaround = TRUE;
+static int	emx_82573_workaround = 1;
+static int	emx_msi_enable = 1;
 
 TUNABLE_INT("hw.emx.int_throttle_ceil", &emx_int_throttle_ceil);
 TUNABLE_INT("hw.emx.rxd", &emx_rxd);
@@ -289,6 +290,7 @@ TUNABLE_INT("hw.emx.txd", &emx_txd);
 TUNABLE_INT("hw.emx.smart_pwr_down", &emx_smart_pwr_down);
 TUNABLE_INT("hw.emx.sbp", &emx_debug_sbp);
 TUNABLE_INT("hw.emx.82573_workaround", &emx_82573_workaround);
+TUNABLE_INT("hw.emx.msi.enable", &emx_msi_enable);
 
 /* Global used in WOL setup with multiport cards */
 static int	emx_global_quad_port_a = 0;
@@ -398,8 +400,10 @@ emx_attach(device_t dev)
 {
 	struct emx_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error = 0, i;
+	int error = 0, i, msi_enable;
+	u_int intr_flags;
 	uint16_t eeprom_data, device_id, apme_mask;
+	char env[64];
 
 	lwkt_serialize_init(&sc->main_serialize);
 	lwkt_serialize_init(&sc->tx_serialize);
@@ -452,12 +456,37 @@ emx_attach(device_t dev)
 	/*
 	 * Allocate interrupt
 	 */
+	msi_enable = emx_msi_enable;
+	ksnprintf(env, sizeof(env), "hw.%s.msi.enable",
+	    device_get_nameunit(dev));
+	kgetenv_int(env, &msi_enable);
+
 	sc->intr_rid = 0;
+	sc->intr_type = EMX_INTR_TYPE_LEGACY;
+	intr_flags = RF_SHAREABLE | RF_ACTIVE;
+
+	if (msi_enable) {
+		int cpu = -1;
+
+		ksnprintf(env, sizeof(env), "hw.%s.msi.cpu",
+		    device_get_nameunit(dev));
+		kgetenv_int(env, &cpu);
+		if (cpu >= ncpus)
+			cpu = ncpus - 1;
+
+		if (pci_alloc_msi(dev, &sc->intr_rid, 1, cpu) == 0) {
+			intr_flags &= ~RF_SHAREABLE;
+			sc->intr_type = EMX_INTR_TYPE_MSI;
+		}
+	}
+
 	sc->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->intr_rid,
-					      RF_SHAREABLE | RF_ACTIVE);
+	    intr_flags);
 	if (sc->intr_res == NULL) {
 		device_printf(dev, "Unable to allocate bus resource: "
 		    "interrupt\n");
+		if (sc->intr_rid != 0)
+			pci_release_msi(dev);
 		error = ENXIO;
 		goto fail;
 	}
@@ -686,7 +715,7 @@ emx_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->intr_res));
+	ifp->if_cpuid = rman_get_cpuid(sc->intr_res);
 	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 	return (0);
 fail:
@@ -731,6 +760,9 @@ emx_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_IRQ, sc->intr_rid,
 				     sc->intr_res);
 	}
+
+	if (sc->intr_type == EMX_INTR_TYPE_MSI)
+		pci_release_msi(dev);
 
 	if (sc->memory != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->memory_rid,

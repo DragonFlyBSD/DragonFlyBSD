@@ -252,6 +252,7 @@ struct emx_softc {
 	struct resource		*intr_res;
 	void			*intr_tag;
 	int			intr_rid;
+	int			intr_type;
 
 	struct ifmedia		media;
 	struct callout		timer;
@@ -375,6 +376,9 @@ struct emx_softc {
 
 	struct e1000_hw_stats	stats;
 };
+
+#define EMX_INTR_TYPE_LEGACY	0
+#define EMX_INTR_TYPE_MSI	1
 
 struct emx_txbuf {
 	struct mbuf	*m_head;
