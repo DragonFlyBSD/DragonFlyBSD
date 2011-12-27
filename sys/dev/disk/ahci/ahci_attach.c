@@ -74,6 +74,9 @@ static const struct ahci_device ahci_devices[] = {
 	    ahci_pci_attach, ahci_pci_detach, "AHCI-PCI-SATA" }
 };
 
+static int	ahci_msi_enable = 1;
+TUNABLE_INT("hw.ahci.msi.enable", &ahci_msi_enable);
+
 /*
  * Match during probe and attach.  The device does not yet have a softc.
  */
@@ -165,10 +168,11 @@ ahci_pci_attach(device_t dev)
 	struct ahci_port *ap;
 	const char *gen;
 	u_int32_t cap, pi, reg;
+	u_int irq_flags;
 	bus_addr_t addr;
-	int i;
-	int error;
+	int i, error, msi_enable;
 	const char *revision;
+	char env[64];
 
 	if (pci_read_config(dev, PCIR_COMMAND, 2) & 0x0400) {
 		device_printf(dev, "BIOS disabled PCI interrupt, "
@@ -177,14 +181,37 @@ ahci_pci_attach(device_t dev)
 			pci_read_config(dev, PCIR_COMMAND, 2) & ~0x0400, 2);
 	}
 
+	sc->sc_dev = dev;
 
 	/*
 	 * Map the AHCI controller's IRQ and BAR(5) (hardware registers)
 	 */
-	sc->sc_dev = dev;
+	msi_enable = ahci_msi_enable;
+	ksnprintf(env, sizeof(env), "hw.%s.msi.enable",
+	    device_get_nameunit(dev));
+	kgetenv_int(env, &msi_enable);
+
 	sc->sc_rid_irq = AHCI_IRQ_RID;
+	sc->sc_irq_type = AHCI_IRQ_TYPE_LEGACY;
+	irq_flags = RF_SHAREABLE | RF_ACTIVE;
+
+	if (msi_enable) {
+		int cpu = -1;
+
+		ksnprintf(env, sizeof(env), "hw.%s.msi.cpu",
+		    device_get_nameunit(dev));
+		kgetenv_int(env, &cpu);
+		if (cpu >= ncpus)
+			cpu = ncpus - 1;
+
+		if (pci_alloc_msi(dev, &sc->sc_rid_irq, 1, cpu) == 0) {
+			irq_flags &= ~RF_SHAREABLE;
+			sc->sc_irq_type = AHCI_IRQ_TYPE_MSI;
+		}
+	}
+
 	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->sc_rid_irq,
-					    RF_SHAREABLE | RF_ACTIVE);
+	    irq_flags);
 	if (sc->sc_irq == NULL) {
 		device_printf(dev, "unable to map interrupt\n");
 		ahci_pci_detach(dev);
@@ -529,6 +556,10 @@ ahci_pci_detach(device_t dev)
 				     sc->sc_rid_irq, sc->sc_irq);
 		sc->sc_irq = NULL;
 	}
+
+	if (sc->sc_irq_type == AHCI_IRQ_TYPE_MSI)
+		pci_release_msi(dev);
+
 	if (sc->sc_regs) {
 		bus_release_resource(dev, SYS_RES_MEMORY,
 				     sc->sc_rid_regs, sc->sc_regs);

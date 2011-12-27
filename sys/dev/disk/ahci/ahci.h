@@ -453,6 +453,7 @@ struct ahci_softc {
 	bus_space_tag_t		sc_iot;		/* split from sc_regs */
 	bus_space_handle_t	sc_ioh;		/* split from sc_regs */
 
+	int			sc_irq_type;
 	int			sc_rid_irq;	/* saved bus RIDs */
 	int			sc_rid_regs;
 	u_int32_t		sc_cap;		/* capabilities */
@@ -485,6 +486,9 @@ struct ahci_softc {
 	struct sysctl_oid	*sysctl_tree;
 };
 #define DEVNAME(_s)		((_s)->sc_dev.dv_xname)
+
+#define AHCI_IRQ_TYPE_LEGACY	0
+#define AHCI_IRQ_TYPE_MSI	1
 
 struct ahci_device {
 	pci_vendor_id_t		ad_vendor;
