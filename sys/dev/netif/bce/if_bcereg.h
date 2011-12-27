@@ -5858,6 +5858,8 @@ struct bce_softc {
 	bus_space_handle_t	bce_bhandle;	/* Device bus handle */
 	struct resource		*bce_res_irq;	/* IRQ Resource Handle */
 	void			*bce_intrhand;	/* Interrupt handler */
+	int			bce_irq_type;
+	int			bce_irq_rid;
 
 	/* ASIC Chip ID. */
 	uint32_t		bce_chipid;
@@ -5868,7 +5870,6 @@ struct bce_softc {
 #define BCE_PCI_32BIT_FLAG 	0x00000002
 #define BCE_NO_WOL_FLAG		0x00000008
 #define BCE_USING_DAC_FLAG	0x00000010
-#define BCE_USING_MSI_FLAG 	0x00000020
 #define BCE_MFW_ENABLE_FLAG	0x00000040	/* Management F/W is enabled */
 #define BCE_PCIE_FLAG		0x00000200
 
@@ -6125,5 +6126,8 @@ struct bce_softc {
 #define BCE_COALMASK_RX_BDS		0x20
 #define BCE_COALMASK_RX_TICKS_INT	0x40
 #define BCE_COALMASK_RX_TICKS		0x80
+
+#define BCE_IRQ_TYPE_LEGACY		0
+#define BCE_IRQ_TYPE_MSI		1
 
 #endif /* #ifndef _BCE_H_DEFINED */

@@ -472,6 +472,8 @@ static uint32_t	bce_rx_bds = 128;		/* bcm: 6 */
 static uint32_t	bce_rx_ticks_int = 125;		/* bcm: 18 */
 static uint32_t	bce_rx_ticks = 125;		/* bcm: 18 */
 
+static int	bce_msi_enable = 1;
+
 TUNABLE_INT("hw.bce.tx_bds_int", &bce_tx_bds_int);
 TUNABLE_INT("hw.bce.tx_bds", &bce_tx_bds);
 TUNABLE_INT("hw.bce.tx_ticks_int", &bce_tx_ticks_int);
@@ -480,6 +482,7 @@ TUNABLE_INT("hw.bce.rx_bds_int", &bce_rx_bds_int);
 TUNABLE_INT("hw.bce.rx_bds", &bce_rx_bds);
 TUNABLE_INT("hw.bce.rx_ticks_int", &bce_rx_ticks_int);
 TUNABLE_INT("hw.bce.rx_ticks", &bce_rx_ticks);
+TUNABLE_INT("hw.bce.msi.enable", &bce_msi_enable);
 
 /****************************************************************************/
 /* DragonFly device dispatch table.                                         */
@@ -663,11 +666,10 @@ bce_attach(device_t dev)
 	struct bce_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t val;
-	int rid, rc = 0;
+	u_int irq_flags;
+	int rid, rc = 0, msi_enable;
 	int i, j;
-#ifdef notyet
-	int count;
-#endif
+	char env[64];
 
 	sc->bce_dev = dev;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
@@ -688,16 +690,32 @@ bce_attach(device_t dev)
 	sc->bce_bhandle = rman_get_bushandle(sc->bce_res_mem);
 
 	/* Allocate PCI IRQ resources. */
-#ifdef notyet
-	count = pci_msi_count(dev);
-	if (count == 1 && pci_alloc_msi(dev, &count) == 0) {
-		rid = 1;
-		sc->bce_flags |= BCE_USING_MSI_FLAG;
-	} else
-#endif
-	rid = 0;
-	sc->bce_res_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
-						 RF_SHAREABLE | RF_ACTIVE);
+	msi_enable = bce_msi_enable;
+	ksnprintf(env, sizeof(env), "hw.%s.msi.enable",
+	    device_get_nameunit(dev));
+	kgetenv_int(env, &msi_enable);
+
+	sc->bce_irq_rid = 0;
+	sc->bce_irq_type = BCE_IRQ_TYPE_LEGACY;
+	irq_flags = RF_SHAREABLE | RF_ACTIVE;
+
+	if (msi_enable) {
+		int cpu = -1;
+
+		ksnprintf(env, sizeof(env), "hw.%s.msi.cpu",
+		    device_get_nameunit(dev));
+		kgetenv_int(env, &cpu);
+		if (cpu >= ncpus)
+			cpu = ncpus - 1;
+
+		if (pci_alloc_msi(dev, &sc->bce_irq_rid, 1, cpu) == 0) {
+			irq_flags &= ~RF_SHAREABLE;
+			sc->bce_irq_type = BCE_IRQ_TYPE_MSI;
+		}
+	}
+
+	sc->bce_res_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+	    &sc->bce_irq_rid, irq_flags);
 	if (sc->bce_res_irq == NULL) {
 		device_printf(dev, "PCI map interrupt failed\n");
 		rc = ENXIO;
@@ -1025,15 +1043,12 @@ bce_detach(device_t dev)
 	bus_generic_detach(dev);
 
 	if (sc->bce_res_irq != NULL) {
-		bus_release_resource(dev, SYS_RES_IRQ,
-			sc->bce_flags & BCE_USING_MSI_FLAG ? 1 : 0,
-			sc->bce_res_irq);
+		bus_release_resource(dev, SYS_RES_IRQ, sc->bce_irq_rid,
+		    sc->bce_res_irq);
 	}
 
-#ifdef notyet
-	if (sc->bce_flags & BCE_USING_MSI_FLAG)
+	if (sc->bce_irq_type == BCE_IRQ_TYPE_MSI)
 		pci_release_msi(dev);
-#endif
 
 	if (sc->bce_res_mem != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BAR(0),
