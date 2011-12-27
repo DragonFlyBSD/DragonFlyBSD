@@ -115,7 +115,8 @@ METHOD int find_extcap {
 METHOD int alloc_msi {
 	device_t	dev;
 	device_t	child;
-	int		*count;
+	int		*rid;
+	int		count;
 	int		cpuid;
 };
 

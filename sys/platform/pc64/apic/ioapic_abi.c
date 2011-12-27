@@ -1165,7 +1165,7 @@ ioapic_abi_msi_alloc(int intrs[], int count, int cpuid)
 	 * interrupt vector.
 	 */
 
-	error = ENOENT;
+	error = EMSGSIZE;
 	for (i = ioapic_abi_msi_start; i < IOAPIC_HWI_VECTORS; i += count) {
 		int j;
 
