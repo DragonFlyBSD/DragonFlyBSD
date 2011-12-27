@@ -59,6 +59,7 @@
 #include <machine/nexusvar.h>
 #include <machine/smp.h>
 #include <machine/intr_machdep.h>
+#include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 
 #include "pcib_if.h"
@@ -572,12 +573,20 @@ static int
 nexus_alloc_msi(device_t dev, device_t child, int count, int maxcount,
     int *irqs, int cpuid)
 {
+	if (!lapic_enable)
+		return ENODEV;
+
+	/* XXX temporary */
+	if (MachIntrABI.msi_alloc == NULL)
+		return ENODEV;
+
 	return MachIntrABI.msi_alloc(irqs, count, cpuid);
 }
 
 static int
 nexus_release_msi(device_t dev, device_t child, int count, int *irqs, int cpuid)
 {
+	KKASSERT(lapic_enable);
 	MachIntrABI.msi_release(irqs, count, cpuid);
 	return 0;
 }
@@ -586,6 +595,7 @@ static int
 nexus_map_msi(device_t dev, device_t child, int irq, uint64_t *addr,
     uint32_t *data, int cpuid)
 {
+	KKASSERT(lapic_enable);
 	MachIntrABI.msi_map(irq, addr, data, cpuid);
 	return 0;
 }
