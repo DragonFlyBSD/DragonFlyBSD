@@ -406,7 +406,10 @@ iwn_pci_attach(device_t dev)
 	struct ifnet *ifp;
 	const struct iwn_hal *hal;
 	uint32_t tmp;
-	int i, error, result;
+	int i, error;
+#ifdef OLD_MSI
+	int result;
+#endif
 	uint8_t macaddr[IEEE80211_ADDR_LEN];
 
 	wlan_serialize_enter();
@@ -476,7 +479,7 @@ iwn_pci_attach(device_t dev)
 	sc->sc_st = rman_get_bustag(sc->mem);
 	sc->sc_sh = rman_get_bushandle(sc->mem);
 	sc->irq_rid = 0;
-#if 0
+#ifdef OLD_MSI
 	if ((result = pci_msi_count(dev)) == 1 &&
 	    pci_alloc_msi(dev, &result) == 0)
 		sc->irq_rid = 1;

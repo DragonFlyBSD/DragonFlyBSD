@@ -506,6 +506,7 @@ mpt_pci_attach(device_t dev)
 
 	/* Get a handle to the interrupt */
 	iqd = 0;
+#ifdef OLD_MSI
 	if (mpt->msi_enable) {
 		/*
 		 * First try to alloc an MSI-X message.  If that
@@ -528,6 +529,7 @@ mpt_pci_attach(device_t dev)
 			}
 		}
 	}
+#endif
 	mpt->pci_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &iqd,
 	    RF_ACTIVE | RF_SHAREABLE);
 	if (mpt->pci_irq == NULL) {

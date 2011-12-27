@@ -475,6 +475,7 @@ tws_setup_irq(struct tws_softc *sc)
             device_printf(sc->tws_dev, "Using legacy INTx\n");
             break;
         case TWS_MSI :
+#ifdef OLD_MSI
             cmd = cmd | 0x0400;
             pci_write_config(sc->tws_dev, PCIR_COMMAND, cmd, 2);
             sc->irqs = 1;
@@ -492,6 +493,10 @@ tws_setup_irq(struct tws_softc *sc)
             if ( tws_setup_intr(sc, sc->irqs) == FAILURE )
                 return(FAILURE);
             device_printf(sc->tws_dev, "Using MSI\n");
+#else
+	    messages = 0;
+	    panic("%s: Using MSI", device_get_nameunit(sc->tws_dev));
+#endif
             break;
 
     }

@@ -4393,13 +4393,19 @@ mxge_add_single_irq(mxge_softc_t *sc)
 {
 	int count, err, rid;
 
+#ifdef OLD_MSI
 	count = pci_msi_count(sc->dev);
-	if (/* count == 1 && pci_alloc_msi(sc->dev, &count) == 0 */0) {
+	if (count == 1 && pci_alloc_msi(sc->dev, &count) == 0) {
 		rid = 1;
 	} else {
 		rid = 0;
 		sc->legacy_irq = 1;
 	}
+#else
+	count = 0;
+	rid = 0;
+	sc->legacy_irq = 1;
+#endif
 	sc->irq_res = bus_alloc_resource(sc->dev, SYS_RES_IRQ, &rid, 0, ~0,
 					 1, RF_SHAREABLE | RF_ACTIVE);
 	if (sc->irq_res == NULL) {

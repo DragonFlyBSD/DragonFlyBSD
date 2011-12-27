@@ -2438,7 +2438,7 @@ mem:
 static int
 igb_setup_msix(struct adapter *adapter)
 {
-#if 0
+#ifdef OLD_MSI
 	device_t dev = adapter->dev;
 	int rid, want, queues, msgs;
 

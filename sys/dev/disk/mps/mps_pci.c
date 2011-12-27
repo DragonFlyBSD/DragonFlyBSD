@@ -58,8 +58,10 @@ static int	mps_pci_detach(device_t);
 static int	mps_pci_suspend(device_t);
 static int	mps_pci_resume(device_t);
 static void	mps_pci_free(struct mps_softc *);
+#ifdef OLD_MSI
 static int	mps_alloc_msix(struct mps_softc *sc, int msgs);
 static int	mps_alloc_msi(struct mps_softc *sc, int msgs);
+#endif
 
 int mps_disable_msix = 0;
 TUNABLE_INT("hw.mps.disable_msix", &mps_disable_msix);
@@ -229,16 +231,21 @@ int
 mps_pci_setup_interrupts(struct mps_softc *sc)
 {
 	device_t dev;
-	int i, error, msgs;
+	int i, error;
+#ifdef OLD_MSI
+	int msgs;
+#endif
 
 	dev = sc->mps_dev;
 	error = ENXIO;
+#ifdef OLD_MSI
 	if ((mps_disable_msix == 0) &&
 	    ((msgs = pci_msix_count(dev)) >= MPS_MSI_COUNT))
 		error = mps_alloc_msix(sc, MPS_MSI_COUNT);
 	if ((error != 0) && (mps_disable_msi == 0) &&
 	    ((msgs = pci_msi_count(dev)) >= MPS_MSI_COUNT))
 		error = mps_alloc_msi(sc, MPS_MSI_COUNT);
+#endif
 
 	if (error != 0) {
 		sc->mps_flags |= MPS_FLAGS_INTX;
@@ -342,6 +349,7 @@ mps_pci_resume(device_t dev)
 	return (EINVAL);
 }
 
+#ifdef OLD_MSI
 static int
 mps_alloc_msix(struct mps_softc *sc, int msgs)
 {
@@ -359,3 +367,4 @@ mps_alloc_msi(struct mps_softc *sc, int msgs)
 	error = pci_alloc_msi(sc->mps_dev, &msgs);
 	return (error);
 }
+#endif
