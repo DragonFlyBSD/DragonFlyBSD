@@ -48,6 +48,15 @@ BINUTILS 2.20
 Binutils 2.20 has been removed in favor of Binutils 2.22.  The accepted
 values of BINUTILSVERS are now binutils221 and binutils222 (default).
 
+BUILDWORLD/-KERNEL PARALLELIZATION WORK
+---------------------------------------
+Due to changes in the way we build with more than one make job, you
+will have to update install(1) and mkdir(1) prior to buildworld if you
+want to build with 'make -j':
+
+cd /usr/src/usr.bin/xinstall; make; make install; make clean
+cd /usr/src/bin/mkdir; make; make install; make clean
+
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 2.8 to later versions                +
 +-----------------------------------------------------------------------+
