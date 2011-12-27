@@ -76,13 +76,13 @@ legacy_pcib_write_config(device_t dev, int bus, int slot, int func,
 
 static int
 legacy_pcib_alloc_msi(device_t pcib, device_t dev, int count, int maxcount,
-    int *irqs)
+    int *irqs, int cpuid)
 {
 	device_t bus;
 
 	bus = device_get_parent(pcib);
 	return (PCIB_ALLOC_MSI(device_get_parent(bus), dev, count, maxcount,
-	    irqs));
+	    irqs, cpuid));
 }
 
 static int
@@ -96,12 +96,13 @@ legacy_pcib_alloc_msix(device_t pcib, device_t dev, int *irq)
 
 static int
 legacy_pcib_map_msi(device_t pcib, device_t dev, int irq, uint64_t *addr,
-    uint32_t *data)
+    uint32_t *data, int cpuid)
 {
 	device_t bus;
 
 	bus = device_get_parent(pcib);
-	return (PCIB_MAP_MSI(device_get_parent(bus), dev, irq, addr, data));
+	return (PCIB_MAP_MSI(device_get_parent(bus), dev, irq, addr, data,
+	    cpuid));
 }
 
 static const char *
