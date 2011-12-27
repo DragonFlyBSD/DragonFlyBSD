@@ -869,7 +869,7 @@ state_begin_install(struct i_fn_args *a)
 	char msg_buf[3][1024];
 
 	snprintf(msg_buf[0], sizeof(msg_buf[0]),
-	    _("This experimental application will install %s"
+	    _("This application will install %s"
 	    " on one of the hard disk drives attached to this computer. "
 	    "It has been designed to make it easy to install "
 	    "%s in the typical case. "
