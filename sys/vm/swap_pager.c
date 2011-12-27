@@ -2024,7 +2024,7 @@ struct swblock *
 swp_pager_lookup(vm_object_t object, vm_pindex_t index)
 {
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
-	index &= ~SWAP_META_MASK;
+	index &= ~(vm_pindex_t)SWAP_META_MASK;
 	return (RB_LOOKUP(swblock_rb_tree, &object->swblock_root, index));
 }
 
@@ -2072,6 +2072,7 @@ swp_pager_meta_build(vm_object_t object, vm_pindex_t index, swblk_t swapblk)
 {
 	struct swblock *swap;
 	struct swblock *oswap;
+	vm_pindex_t v;
 
 	KKASSERT(swapblk != SWAPBLK_NONE);
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
@@ -2098,7 +2099,7 @@ retry:
 			vm_wait(0);
 			goto retry;
 		}
-		swap->swb_index = index & ~SWAP_META_MASK;
+		swap->swb_index = index & ~(vm_pindex_t)SWAP_META_MASK;
 		swap->swb_count = 0;
 
 		++object->swblock_count;
@@ -2110,13 +2111,17 @@ retry:
 	}
 
 	/*
-	 * Delete prior contents of metadata
+	 * Delete prior contents of metadata.
+	 *
+	 * NOTE: Decrement swb_count after the freeing operation (which
+	 *	 might block) to prevent racing destruction of the swblock.
 	 */
-
 	index &= SWAP_META_MASK;
 
-	if (swap->swb_pages[index] != SWAPBLK_NONE) {
-		swp_pager_freeswapspace(object, swap->swb_pages[index], 1);
+	while ((v = swap->swb_pages[index]) != SWAPBLK_NONE) {
+		swap->swb_pages[index] = SWAPBLK_NONE;
+		/* can block */
+		swp_pager_freeswapspace(object, v, 1);
 		--swap->swb_count;
 	}
 
@@ -2164,7 +2169,7 @@ swp_pager_meta_free(vm_object_t object, vm_pindex_t index, vm_pindex_t count)
 	 * due to the 64 bit page index space so we cannot safely iterate.
 	 */
 	info.object = object;
-	info.basei = index & ~SWAP_META_MASK;
+	info.basei = index & ~(vm_pindex_t)SWAP_META_MASK;
 	info.begi = index;
 	info.endi = index + count - 1;
 	swblock_rb_tree_RB_SCAN(&object->swblock_root, rb_swblock_scancmp,
@@ -2201,19 +2206,23 @@ swp_pager_meta_free_callback(struct swblock *swap, void *data)
 	/*
 	 * Scan and free the blocks.  The loop terminates early
 	 * if (swap) runs out of blocks and could be freed.
+	 *
+	 * NOTE: Decrement swb_count after swp_pager_freeswapspace()
+	 *	 to deal with a zfree race.
 	 */
 	while (index <= eindex) {
 		swblk_t v = swap->swb_pages[index];
 
 		if (v != SWAPBLK_NONE) {
 			swap->swb_pages[index] = SWAPBLK_NONE;
+			/* can block */
+			swp_pager_freeswapspace(object, v, 1);
 			if (--swap->swb_count == 0) {
 				swp_pager_remove(object, swap);
 				zfree(swap_zone, swap);
 				--object->swblock_count;
 				break;
 			}
-			swp_pager_freeswapspace(object, v, 1); /* can block */
 		}
 		++index;
 	}
@@ -2226,6 +2235,9 @@ swp_pager_meta_free_callback(struct swblock *swap, void *data)
  *
  *	This routine locates and destroys all swap metadata associated with
  *	an object.
+ *
+ * NOTE: Decrement swb_count after the freeing operation (which
+ *	 might block) to prevent racing destruction of the swblock.
  *
  * The caller must hold the object.
  */
@@ -2242,8 +2254,9 @@ swp_pager_meta_free_all(vm_object_t object)
 		for (i = 0; i < SWAP_META_PAGES; ++i) {
 			swblk_t v = swap->swb_pages[i];
 			if (v != SWAPBLK_NONE) {
-				--swap->swb_count;
+				/* can block */
 				swp_pager_freeswapspace(object, v, 1);
+				--swap->swb_count;
 			}
 		}
 		if (swap->swb_count != 0)
@@ -2301,11 +2314,13 @@ swp_pager_meta_ctl(vm_object_t object, vm_pindex_t index, int flags)
 					--object->swblock_count;
 				}
 			} 
+			/* swap ptr may be invalid */
 			if (flags & SWM_FREE) {
 				swp_pager_freeswapspace(object, r1, 1);
 				r1 = SWAPBLK_NONE;
 			}
 		}
+		/* swap ptr may be invalid */
 	}
 	return(r1);
 }
