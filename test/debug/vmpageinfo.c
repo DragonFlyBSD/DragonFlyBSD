@@ -182,28 +182,32 @@ main(int ac, char **av)
 		m.busy,
 		qstr
 	    );
-	    switch(obj.type) {
-	    case OBJT_DEFAULT:
-		ostr = "default";
-		break;
-	    case OBJT_SWAP:
-		ostr = "swap";
-		break;
-	    case OBJT_VNODE:
-		ostr = "vnode";
-		break;
-	    case OBJT_DEVICE:
-		ostr = "device";
-		break;
-	    case OBJT_PHYS:
-		ostr = "phys";
-		break;
-	    case OBJT_DEAD:
-		ostr = "dead";
-		break;
-	    default:
-		ostr = "unknown";
-		break;
+	    if (m.object) {
+		switch(obj.type) {
+		case OBJT_DEFAULT:
+		    ostr = "default";
+		    break;
+		case OBJT_SWAP:
+		    ostr = "swap";
+		    break;
+		case OBJT_VNODE:
+		    ostr = "vnode";
+		    break;
+		case OBJT_DEVICE:
+		    ostr = "device";
+		    break;
+		case OBJT_PHYS:
+		    ostr = "phys";
+		    break;
+		case OBJT_DEAD:
+		    ostr = "dead";
+		    break;
+		default:
+		    ostr = "unknown";
+		    break;
+		}
+	    } else {
+		ostr = "-";
 	    }
 	    printf(" %-7s", ostr);
 	    if (m.flags & PG_BUSY)
