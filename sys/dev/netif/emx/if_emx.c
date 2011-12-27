@@ -485,8 +485,6 @@ emx_attach(device_t dev)
 	if (sc->intr_res == NULL) {
 		device_printf(dev, "Unable to allocate bus resource: "
 		    "interrupt\n");
-		if (sc->intr_rid != 0)
-			pci_release_msi(dev);
 		error = ENXIO;
 		goto fail;
 	}
