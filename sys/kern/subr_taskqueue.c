@@ -401,7 +401,8 @@ TASKQUEUE_DEFINE(swi, taskqueue_swi_enqueue, 0,
  * related: platform/XXX/isa/ipl_funcs.c
  */
 TASKQUEUE_DEFINE(swi_mp, taskqueue_swi_enqueue, 0,
-    register_swi(SWI_TQ, taskqueue_swi_mp_run, NULL, "swi_mp_taskq", NULL, -1));
+    register_swi_mp(SWI_TQ, taskqueue_swi_mp_run, NULL, "swi_mp_taskq", NULL, 
+		    -1));
 
 struct taskqueue *taskqueue_thread[MAXCPU];
 
