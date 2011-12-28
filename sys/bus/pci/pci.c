@@ -4277,3 +4277,39 @@ pci_devlist_get_parent(pcicfgregs *cfg)
 }
 
 #endif	/* COMPAT_OLDPCI */
+
+int
+pci_alloc_1intr(device_t dev, int msi_enable, int *rid0, u_int *flags0)
+{
+	int rid, type;
+	u_int flags;
+	char env[64];
+
+	rid = 0;
+	type = PCI_INTR_TYPE_LEGACY;
+	flags = RF_SHAREABLE | RF_ACTIVE;
+
+	ksnprintf(env, sizeof(env), "hw.%s.msi.enable",
+	    device_get_nameunit(dev));
+	kgetenv_int(env, &msi_enable);
+
+	if (msi_enable) {
+		int cpu = -1;
+
+		ksnprintf(env, sizeof(env), "hw.%s.msi.cpu",
+		    device_get_nameunit(dev));
+		kgetenv_int(env, &cpu);
+		if (cpu >= ncpus)
+			cpu = ncpus - 1;
+
+		if (pci_alloc_msi(dev, &rid, 1, cpu) == 0) {
+			flags &= ~RF_SHAREABLE;
+			type = PCI_INTR_TYPE_MSI;
+		}
+	}
+
+	*rid0 = rid;
+	*flags0 = flags;
+
+	return type;
+}

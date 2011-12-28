@@ -487,9 +487,6 @@ struct ahci_softc {
 };
 #define DEVNAME(_s)		((_s)->sc_dev.dv_xname)
 
-#define AHCI_IRQ_TYPE_LEGACY	0
-#define AHCI_IRQ_TYPE_MSI	1
-
 struct ahci_device {
 	pci_vendor_id_t		ad_vendor;
 	pci_product_id_t	ad_product;

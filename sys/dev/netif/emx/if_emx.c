@@ -400,10 +400,9 @@ emx_attach(device_t dev)
 {
 	struct emx_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error = 0, i, msi_enable;
+	int error = 0, i;
 	u_int intr_flags;
 	uint16_t eeprom_data, device_id, apme_mask;
-	char env[64];
 
 	lwkt_serialize_init(&sc->main_serialize);
 	lwkt_serialize_init(&sc->tx_serialize);
@@ -456,29 +455,8 @@ emx_attach(device_t dev)
 	/*
 	 * Allocate interrupt
 	 */
-	msi_enable = emx_msi_enable;
-	ksnprintf(env, sizeof(env), "hw.%s.msi.enable",
-	    device_get_nameunit(dev));
-	kgetenv_int(env, &msi_enable);
-
-	sc->intr_rid = 0;
-	sc->intr_type = EMX_INTR_TYPE_LEGACY;
-	intr_flags = RF_SHAREABLE | RF_ACTIVE;
-
-	if (msi_enable) {
-		int cpu = -1;
-
-		ksnprintf(env, sizeof(env), "hw.%s.msi.cpu",
-		    device_get_nameunit(dev));
-		kgetenv_int(env, &cpu);
-		if (cpu >= ncpus)
-			cpu = ncpus - 1;
-
-		if (pci_alloc_msi(dev, &sc->intr_rid, 1, cpu) == 0) {
-			intr_flags &= ~RF_SHAREABLE;
-			sc->intr_type = EMX_INTR_TYPE_MSI;
-		}
-	}
+	sc->intr_type = pci_alloc_1intr(dev, emx_msi_enable,
+	    &sc->intr_rid, &intr_flags);
 
 	sc->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->intr_rid,
 	    intr_flags);
@@ -759,7 +737,7 @@ emx_detach(device_t dev)
 				     sc->intr_res);
 	}
 
-	if (sc->intr_type == EMX_INTR_TYPE_MSI)
+	if (sc->intr_type == PCI_INTR_TYPE_MSI)
 		pci_release_msi(dev);
 
 	if (sc->memory != NULL) {

@@ -170,9 +170,8 @@ ahci_pci_attach(device_t dev)
 	u_int32_t cap, pi, reg;
 	u_int irq_flags;
 	bus_addr_t addr;
-	int i, error, msi_enable;
+	int i, error;
 	const char *revision;
-	char env[64];
 
 	if (pci_read_config(dev, PCIR_COMMAND, 2) & 0x0400) {
 		device_printf(dev, "BIOS disabled PCI interrupt, "
@@ -186,29 +185,8 @@ ahci_pci_attach(device_t dev)
 	/*
 	 * Map the AHCI controller's IRQ and BAR(5) (hardware registers)
 	 */
-	msi_enable = ahci_msi_enable;
-	ksnprintf(env, sizeof(env), "hw.%s.msi.enable",
-	    device_get_nameunit(dev));
-	kgetenv_int(env, &msi_enable);
-
-	sc->sc_rid_irq = AHCI_IRQ_RID;
-	sc->sc_irq_type = AHCI_IRQ_TYPE_LEGACY;
-	irq_flags = RF_SHAREABLE | RF_ACTIVE;
-
-	if (msi_enable) {
-		int cpu = -1;
-
-		ksnprintf(env, sizeof(env), "hw.%s.msi.cpu",
-		    device_get_nameunit(dev));
-		kgetenv_int(env, &cpu);
-		if (cpu >= ncpus)
-			cpu = ncpus - 1;
-
-		if (pci_alloc_msi(dev, &sc->sc_rid_irq, 1, cpu) == 0) {
-			irq_flags &= ~RF_SHAREABLE;
-			sc->sc_irq_type = AHCI_IRQ_TYPE_MSI;
-		}
-	}
+	sc->sc_irq_type = pci_alloc_1intr(dev, ahci_msi_enable,
+	    &sc->sc_rid_irq, &irq_flags);
 
 	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->sc_rid_irq,
 	    irq_flags);
@@ -557,7 +535,7 @@ ahci_pci_detach(device_t dev)
 		sc->sc_irq = NULL;
 	}
 
-	if (sc->sc_irq_type == AHCI_IRQ_TYPE_MSI)
+	if (sc->sc_irq_type == PCI_INTR_TYPE_MSI)
 		pci_release_msi(dev);
 
 	if (sc->sc_regs) {

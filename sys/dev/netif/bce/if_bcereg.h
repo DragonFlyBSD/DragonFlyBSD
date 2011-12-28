@@ -6127,7 +6127,4 @@ struct bce_softc {
 #define BCE_COALMASK_RX_TICKS_INT	0x40
 #define BCE_COALMASK_RX_TICKS		0x80
 
-#define BCE_IRQ_TYPE_LEGACY		0
-#define BCE_IRQ_TYPE_MSI		1
-
 #endif /* #ifndef _BCE_H_DEFINED */

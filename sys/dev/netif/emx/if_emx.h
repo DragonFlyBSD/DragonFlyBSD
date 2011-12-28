@@ -377,9 +377,6 @@ struct emx_softc {
 	struct e1000_hw_stats	stats;
 };
 
-#define EMX_INTR_TYPE_LEGACY	0
-#define EMX_INTR_TYPE_MSI	1
-
 struct emx_txbuf {
 	struct mbuf	*m_head;
 	bus_dmamap_t	map;

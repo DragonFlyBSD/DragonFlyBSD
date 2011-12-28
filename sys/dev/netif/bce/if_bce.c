@@ -667,9 +667,8 @@ bce_attach(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t val;
 	u_int irq_flags;
-	int rid, rc = 0, msi_enable;
+	int rid, rc = 0;
 	int i, j;
-	char env[64];
 
 	sc->bce_dev = dev;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
@@ -690,29 +689,8 @@ bce_attach(device_t dev)
 	sc->bce_bhandle = rman_get_bushandle(sc->bce_res_mem);
 
 	/* Allocate PCI IRQ resources. */
-	msi_enable = bce_msi_enable;
-	ksnprintf(env, sizeof(env), "hw.%s.msi.enable",
-	    device_get_nameunit(dev));
-	kgetenv_int(env, &msi_enable);
-
-	sc->bce_irq_rid = 0;
-	sc->bce_irq_type = BCE_IRQ_TYPE_LEGACY;
-	irq_flags = RF_SHAREABLE | RF_ACTIVE;
-
-	if (msi_enable) {
-		int cpu = -1;
-
-		ksnprintf(env, sizeof(env), "hw.%s.msi.cpu",
-		    device_get_nameunit(dev));
-		kgetenv_int(env, &cpu);
-		if (cpu >= ncpus)
-			cpu = ncpus - 1;
-
-		if (pci_alloc_msi(dev, &sc->bce_irq_rid, 1, cpu) == 0) {
-			irq_flags &= ~RF_SHAREABLE;
-			sc->bce_irq_type = BCE_IRQ_TYPE_MSI;
-		}
-	}
+	sc->bce_irq_type = pci_alloc_1intr(dev, bce_msi_enable,
+	    &sc->bce_irq_rid, &irq_flags);
 
 	sc->bce_res_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
 	    &sc->bce_irq_rid, irq_flags);
@@ -1047,7 +1025,7 @@ bce_detach(device_t dev)
 		    sc->bce_res_irq);
 	}
 
-	if (sc->bce_irq_type == BCE_IRQ_TYPE_MSI)
+	if (sc->bce_irq_type == PCI_INTR_TYPE_MSI)
 		pci_release_msi(dev);
 
 	if (sc->bce_res_mem != NULL) {
