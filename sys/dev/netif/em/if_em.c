@@ -812,7 +812,7 @@ em_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = ithread_cpuid(rman_get_start(adapter->intr_res));
+	ifp->if_cpuid = rman_get_cpuid(adapter->intr_res);
 	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 	return (0);
 fail:
