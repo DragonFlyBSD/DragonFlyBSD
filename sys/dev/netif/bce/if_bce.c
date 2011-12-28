@@ -436,7 +436,10 @@ static void	bce_enable_intr(struct bce_softc *, int);
 #ifdef DEVICE_POLLING
 static void	bce_poll(struct ifnet *, enum poll_cmd, int);
 #endif
-static void	bce_intr(void *);
+static void	bce_intr(struct bce_softc *);
+static void	bce_intr_legacy(void *);
+static void	bce_intr_msi(void *);
+static void	bce_intr_msi_oneshot(void *);
 static void	bce_set_rx_mode(struct bce_softc *);
 static void	bce_stats_update(struct bce_softc *);
 static void	bce_tick(void *);
@@ -667,6 +670,7 @@ bce_attach(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t val;
 	u_int irq_flags;
+	void (*irq_handle)(void *);
 	int rid, rc = 0;
 	int i, j;
 
@@ -730,6 +734,19 @@ bce_attach(device_t dev)
 			      BCE_CHIP_ID(sc));
 		rc = ENODEV;
 		goto fail;
+	}
+
+	if (sc->bce_irq_type == PCI_INTR_TYPE_LEGACY) {
+		irq_handle = bce_intr_legacy;
+	} else if (sc->bce_irq_type == PCI_INTR_TYPE_MSI) {
+		irq_handle = bce_intr_msi;
+		if (BCE_CHIP_NUM(sc) == BCE_CHIP_NUM_5709) {
+			irq_handle = bce_intr_msi_oneshot;
+			sc->bce_flags |= BCE_ONESHOT_MSI_FLAG;
+		}
+	} else {
+		panic("%s: unsupported intr type %d\n",
+		    device_get_nameunit(dev), sc->bce_irq_type);
 	}
 
 	/*
@@ -945,7 +962,7 @@ bce_attach(device_t dev)
 	callout_init_mp(&sc->bce_pulse_callout);
 
 	/* Hookup IRQ last. */
-	rc = bus_setup_intr(dev, sc->bce_res_irq, INTR_MPSAFE, bce_intr, sc,
+	rc = bus_setup_intr(dev, sc->bce_res_irq, INTR_MPSAFE, irq_handle, sc,
 			    &sc->bce_intrhand, ifp->if_serializer);
 	if (rc != 0) {
 		device_printf(dev, "Failed to setup IRQ!\n");
@@ -3643,9 +3660,14 @@ bce_blockinit(struct bce_softc *sc)
 	       (sc->bce_cmd_ticks_int << 16) | sc->bce_cmd_ticks);
 	REG_WR(sc, BCE_HC_STATS_TICKS, (sc->bce_stats_ticks & 0xffff00));
 	REG_WR(sc, BCE_HC_STAT_COLLECT_TICKS, 0xbb8);	/* 3ms */
-	REG_WR(sc, BCE_HC_CONFIG,
-	       BCE_HC_CONFIG_TX_TMR_MODE |
-	       BCE_HC_CONFIG_COLLECT_STATS);
+
+	val = BCE_HC_CONFIG_TX_TMR_MODE | BCE_HC_CONFIG_COLLECT_STATS;
+	if (sc->bce_flags & BCE_ONESHOT_MSI_FLAG) {
+		if (bootverbose)
+			if_printf(&sc->arpcom.ac_if, "oneshot MSI\n");
+		val |= BCE_HC_CONFIG_ONE_SHOT | BCE_HC_CONFIG_USE_INT_PARAM;
+	}
+	REG_WR(sc, BCE_HC_CONFIG, val);
 
 	/* Clear the internal statistics counters. */
 	REG_WR(sc, BCE_HC_COMMAND, BCE_HC_COMMAND_CLR_STAT_NOW);
@@ -5354,9 +5376,8 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 /*   0 for success, positive value for failure.                             */
 /****************************************************************************/
 static void
-bce_intr(void *xsc)
+bce_intr(struct bce_softc *sc)
 {
-	struct bce_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct status_block *sblk;
 	uint16_t hw_rx_cons, hw_tx_cons;
@@ -5367,27 +5388,6 @@ bce_intr(void *xsc)
 	DBRUNIF(1, sc->interrupts_generated++);
 
 	sblk = sc->status_block;
-
-	/*
-	 * If the hardware status block index matches the last value
-	 * read by the driver and we haven't asserted our interrupt
-	 * then there's nothing to do.
-	 */
-	if (sblk->status_idx == sc->last_status_idx &&
-	    (REG_RD(sc, BCE_PCICFG_MISC_STATUS) &
-	     BCE_PCICFG_MISC_STATUS_INTA_VALUE))
-		return;
-
-	/* Ack the interrupt and stop others from occuring. */
-	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
-	       BCE_PCICFG_INT_ACK_CMD_USE_INT_HC_PARAM |
-	       BCE_PCICFG_INT_ACK_CMD_MASK_INT);
-
-	/*
-	 * Read back to deassert IRQ immediately to avoid too
-	 * many spurious interrupts.
-	 */
-	REG_RD(sc, BCE_PCICFG_INT_ACK_CMD);
 
 	/* Check if the hardware has finished any work. */
 	hw_rx_cons = bce_get_hw_rx_cons(sc);
@@ -5478,6 +5478,57 @@ bce_intr(void *xsc)
 	/* Handle any frames that arrived while handling the interrupt. */
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
+}
+
+static void
+bce_intr_legacy(void *xsc)
+{
+	struct bce_softc *sc = xsc;
+	struct status_block *sblk;
+
+	sblk = sc->status_block;
+
+	/*
+	 * If the hardware status block index matches the last value
+	 * read by the driver and we haven't asserted our interrupt
+	 * then there's nothing to do.
+	 */
+	if (sblk->status_idx == sc->last_status_idx &&
+	    (REG_RD(sc, BCE_PCICFG_MISC_STATUS) &
+	     BCE_PCICFG_MISC_STATUS_INTA_VALUE))
+		return;
+
+	/* Ack the interrupt and stop others from occuring. */
+	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
+	       BCE_PCICFG_INT_ACK_CMD_USE_INT_HC_PARAM |
+	       BCE_PCICFG_INT_ACK_CMD_MASK_INT);
+
+	/*
+	 * Read back to deassert IRQ immediately to avoid too
+	 * many spurious interrupts.
+	 */
+	REG_RD(sc, BCE_PCICFG_INT_ACK_CMD);
+
+	bce_intr(sc);
+}
+
+static void
+bce_intr_msi(void *xsc)
+{
+	struct bce_softc *sc = xsc;
+
+	/* Ack the interrupt and stop others from occuring. */
+	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
+	       BCE_PCICFG_INT_ACK_CMD_USE_INT_HC_PARAM |
+	       BCE_PCICFG_INT_ACK_CMD_MASK_INT);
+
+	bce_intr(sc);
+}
+
+static void
+bce_intr_msi_oneshot(void *xsc)
+{
+	bce_intr(xsc);
 }
 
 

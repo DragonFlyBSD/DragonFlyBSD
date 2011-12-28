@@ -5872,6 +5872,7 @@ struct bce_softc {
 #define BCE_USING_DAC_FLAG	0x00000010
 #define BCE_MFW_ENABLE_FLAG	0x00000040	/* Management F/W is enabled */
 #define BCE_PCIE_FLAG		0x00000200
+#define BCE_ONESHOT_MSI_FLAG	0x00000400
 
 	uint32_t		bce_cap_flags;
 #define BCE_PCIE_CAPABLE_FLAG	0x00000004
