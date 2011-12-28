@@ -370,12 +370,13 @@ DRIVER_MODULE(if_em, pci, em_driver, em_devclass, NULL, NULL);
 static int	em_int_throttle_ceil = EM_DEFAULT_ITR;
 static int	em_rxd = EM_DEFAULT_RXD;
 static int	em_txd = EM_DEFAULT_TXD;
-static int	em_smart_pwr_down = FALSE;
+static int	em_smart_pwr_down = 0;
 
 /* Controls whether promiscuous also shows bad packets */
 static int	em_debug_sbp = FALSE;
 
-static int	em_82573_workaround = TRUE;
+static int	em_82573_workaround = 1;
+static int	em_msi_enable = 1;
 
 TUNABLE_INT("hw.em.int_throttle_ceil", &em_int_throttle_ceil);
 TUNABLE_INT("hw.em.rxd", &em_rxd);
@@ -383,6 +384,7 @@ TUNABLE_INT("hw.em.txd", &em_txd);
 TUNABLE_INT("hw.em.smart_pwr_down", &em_smart_pwr_down);
 TUNABLE_INT("hw.em.sbp", &em_debug_sbp);
 TUNABLE_INT("hw.em.82573_workaround", &em_82573_workaround);
+TUNABLE_INT("hw.em.msi.enable", &em_msi_enable);
 
 /* Global used in WOL setup with multiport cards */
 static int	em_global_quad_port_a = 0;
@@ -2115,6 +2117,7 @@ static int
 em_alloc_pci_res(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
+	u_int intr_flags;
 	int val, rid;
 
 	/* Enable bus mastering */
@@ -2168,10 +2171,11 @@ em_alloc_pci_res(struct adapter *adapter)
 		    rman_get_bushandle(adapter->ioport);
 	}
 
-	adapter->intr_rid = 0;
+	adapter->intr_type = pci_alloc_1intr(dev, em_msi_enable,
+	    &adapter->intr_rid, &intr_flags);
+
 	adapter->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ,
-				&adapter->intr_rid,
-				RF_SHAREABLE | RF_ACTIVE);
+	    &adapter->intr_rid, intr_flags);
 	if (adapter->intr_res == NULL) {
 		device_printf(dev, "Unable to allocate bus resource: "
 		    "interrupt\n");
@@ -2192,6 +2196,9 @@ em_free_pci_res(struct adapter *adapter)
 		bus_release_resource(dev, SYS_RES_IRQ,
 		    adapter->intr_rid, adapter->intr_res);
 	}
+
+	if (adapter->intr_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(dev);
 
 	if (adapter->memory != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY,
