@@ -445,6 +445,7 @@ static void	bce_stats_update(struct bce_softc *);
 static void	bce_tick(void *);
 static void	bce_tick_serialized(struct bce_softc *);
 static void	bce_pulse(void *);
+static void	bce_pulse_check_msi(struct bce_softc *);
 static void	bce_add_sysctls(struct bce_softc *);
 
 static void	bce_coal_change(struct bce_softc *);
@@ -970,7 +971,7 @@ bce_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->bce_res_irq));
+	ifp->if_cpuid = rman_get_cpuid(sc->bce_res_irq);
 	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	/* Print some important debugging info. */
@@ -3628,6 +3629,8 @@ bce_blockinit(struct bce_softc *sc)
 	sc->last_status_idx = 0;
 	sc->rx_mode = BCE_EMAC_RX_MODE_SORT_MODE;
 
+	sc->pulse_check_status_idx = 0xffff;
+
 	/* Set up link change interrupt generation. */
 	REG_WR(sc, BCE_EMAC_ATTENTION_ENA, BCE_EMAC_ATTENTION_ENA_LINK);
 
@@ -5862,6 +5865,12 @@ bce_pulse(void *xsc)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
+	if (ifp->if_flags & IFF_RUNNING) {
+		if (sc->bce_irq_type == PCI_INTR_TYPE_MSI &&
+		    (sc->bce_flags & BCE_ONESHOT_MSI_FLAG) == 0)
+			bce_pulse_check_msi(sc);
+	}
+
 	/* Tell the firmware that the driver is still running. */
 	msg = (uint32_t)++sc->bce_fw_drv_pulse_wr_seq;
 	bce_shmem_wr(sc, BCE_DRV_PULSE_MB, msg);
@@ -5896,6 +5905,42 @@ bce_pulse(void *xsc)
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
+static void
+bce_pulse_check_msi(struct bce_softc *sc)
+{
+	int check = 0;
+
+	if (bce_get_hw_rx_cons(sc) != sc->hw_rx_cons) {
+		check = 1;
+	} else if (bce_get_hw_tx_cons(sc) != sc->hw_tx_cons) {
+		check = 1;
+	} else {
+		struct status_block *sblk = sc->status_block;
+
+		if ((sblk->status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) !=
+		    (sblk->status_attn_bits_ack & STATUS_ATTN_BITS_LINK_STATE))
+			check = 1;
+	}
+
+	if (check) {
+		uint32_t msi_ctrl;
+
+		msi_ctrl = REG_RD(sc, BCE_PCICFG_MSI_CONTROL);
+		if ((msi_ctrl & BCE_PCICFG_MSI_CONTROL_ENABLE) == 0)
+			return;
+
+		if (sc->pulse_check_status_idx == sc->last_status_idx) {
+			if_printf(&sc->arpcom.ac_if, "missing MSI\n");
+
+			REG_WR(sc, BCE_PCICFG_MSI_CONTROL,
+			    msi_ctrl & ~BCE_PCICFG_MSI_CONTROL_ENABLE);
+			REG_WR(sc, BCE_PCICFG_MSI_CONTROL, msi_ctrl);
+
+			bce_intr_msi(sc);
+		}
+	}
+	sc->pulse_check_status_idx = sc->last_status_idx;
+}
 
 /****************************************************************************/
 /* Periodic function to perform maintenance tasks.                          */

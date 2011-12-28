@@ -1059,6 +1059,9 @@ struct l2_fhdr {
  *  pci_config_l definition
  *  offset: 0000
  */
+#define BCE_PCICFG_MSI_CONTROL				0x00000058
+#define BCE_PCICFG_MSI_CONTROL_ENABLE			 (1L<<16)
+
 #define BCE_PCICFG_MISC_CONFIG				0x00000068
 #define BCE_PCICFG_MISC_CONFIG_TARGET_BYTE_SWAP		 (1L<<2)
 #define BCE_PCICFG_MISC_CONFIG_TARGET_MB_WORD_SWAP	 (1L<<3)
@@ -5994,6 +5997,7 @@ struct bce_softc {
 	bus_addr_t		status_block_paddr;	/* Physical address */
 
 	/* Driver maintained status block values. */
+	uint16_t		pulse_check_status_idx;
 	uint16_t		last_status_idx;
 	uint16_t		hw_rx_cons;
 	uint16_t		hw_tx_cons;
