@@ -43,4 +43,6 @@ struct acpi_cpux_softc {
 	struct sysctl_oid	*pcpu_sysctl_tree;	/* hw.acpi.cpuX */
 };
 
+uint32_t	acpi_cpu_md_features(void);
+
 #endif	/* !__ACPI_CPU_H__ */

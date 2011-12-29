@@ -79,7 +79,6 @@ struct acpi_cpu_softc {
     struct acpi_cx	 cpu_cx_states[MAX_CX_STATES];
     int			 cpu_cx_count;	/* Number of valid Cx states. */
     int			 cpu_prev_sleep;/* Last idle sleep duration. */
-    int			 cpu_features;	/* Child driver supported features. */
     /* Runtime state. */
     int			 cpu_non_c3;	/* Index of lowest non-C3 state. */
     u_int		 cpu_cx_stats[MAX_CX_STATES];/* Cx usage history. */
@@ -235,20 +234,11 @@ static int
 acpi_cpu_cst_attach(device_t dev)
 {
     ACPI_BUFFER		   buf;
-    ACPI_OBJECT		   arg[4], *obj;
-    ACPI_OBJECT_LIST	   arglist;
+    ACPI_OBJECT		   *obj;
     struct mdglobaldata	  *md;
     struct acpi_cpu_softc *sc;
     ACPI_STATUS		   status;
-    u_int		   features;
-    int			   cpu_id, drv_count, i;
-    driver_t 		  **drivers;
-    uint32_t		   cap_set[3];
-
-    /* UUID needed by _OSC evaluation */
-    static uint8_t cpu_oscuuid[16] = { 0x16, 0xA6, 0x77, 0x40, 0x0C, 0x29,
-				       0xBE, 0x47, 0x9E, 0xBD, 0xD8, 0x70,
-				       0x58, 0x71, 0x39, 0x53 };
+    int			   cpu_id;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
@@ -289,60 +279,6 @@ acpi_cpu_cst_attach(device_t dev)
 
 	/* Queue post cpu-probing task handler */
 	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cpu_startup, NULL);
-    }
-
-    /*
-     * Before calling any CPU methods, collect child driver feature hints
-     * and notify ACPI of them.  We support unified SMP power control
-     * so advertise this ourselves.  Note this is not the same as independent
-     * SMP control where each CPU can have different settings.
-     */
-    sc->cpu_features = ACPI_CAP_SMP_SAME | ACPI_CAP_SMP_SAME_C3;
-    if (devclass_get_drivers(acpi_cpu_cst_devclass,
-			     &drivers, &drv_count) == 0) {
-	for (i = 0; i < drv_count; i++) {
-	    if (ACPI_GET_FEATURES(drivers[i], &features) == 0)
-		sc->cpu_features |= features;
-	}
-	kfree(drivers, M_TEMP);
-    }
-
-    /*
-     * CPU capabilities are specified as a buffer of 32-bit integers:
-     * revision, count, and one or more capabilities.  The revision of
-     * "1" is not specified anywhere but seems to match Linux.
-     */
-    if (sc->cpu_features) {
-	arglist.Pointer = arg;
-	arglist.Count = 1;
-	arg[0].Type = ACPI_TYPE_BUFFER;
-	arg[0].Buffer.Length = sizeof(cap_set);
-	arg[0].Buffer.Pointer = (uint8_t *)cap_set;
-	cap_set[0] = 1; /* revision */
-	cap_set[1] = 1; /* number of capabilities integers */
-	cap_set[2] = sc->cpu_features;
-	AcpiEvaluateObject(sc->cpu_handle, "_PDC", &arglist, NULL);
-
-	/*
-	 * On some systems we need to evaluate _OSC so that the ASL
-	 * loads the _PSS and/or _PDC methods at runtime.
-	 *
-	 * TODO: evaluate failure of _OSC.
-	 */
-	arglist.Pointer = arg;
-	arglist.Count = 4;
-	arg[0].Type = ACPI_TYPE_BUFFER;
-	arg[0].Buffer.Length = sizeof(cpu_oscuuid);
-	arg[0].Buffer.Pointer = cpu_oscuuid;	/* UUID */
-	arg[1].Type = ACPI_TYPE_INTEGER;
-	arg[1].Integer.Value = 1;		/* revision */
-	arg[2].Type = ACPI_TYPE_INTEGER;
-	arg[2].Integer.Value = 1;		/* count */
-	arg[3].Type = ACPI_TYPE_BUFFER;
-	arg[3].Buffer.Length = sizeof(cap_set);	/* Capabilities buffer */
-	arg[3].Buffer.Pointer = (uint8_t *)cap_set;
-	cap_set[0] = 0;
-	AcpiEvaluateObject(sc->cpu_handle, "_OSC", &arglist, NULL);
     }
 
     /* Probe for Cx state support. */

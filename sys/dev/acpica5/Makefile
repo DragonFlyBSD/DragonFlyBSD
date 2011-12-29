@@ -98,6 +98,8 @@ SRCS+=		OsdCache.c
 
 # Machine-specific code for P-State
 SRCS+=	acpi_pstate_machdep.c
+# Machine-specific code for CPU
+SRCS+=	acpi_cpu_machdep.c
 # Machine-specific code such as sleep/wakeup
 SRCS+=	acpi_machdep.c acpi_wakecode.h
 SRCS+=	acpi_wakeup.c

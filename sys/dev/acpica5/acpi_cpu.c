@@ -150,7 +150,7 @@ acpi_cpu_attach(device_t dev)
     struct acpi_cpux_softc *sc = device_get_softc(dev);
     ACPI_HANDLE handle;
     device_t child;
-    int cpu_id;
+    int cpu_id, cpu_features;
     struct acpi_softc *acpi_sc;
 
     handle = acpi_get_handle(dev);
@@ -175,6 +175,63 @@ acpi_cpu_attach(device_t dev)
     if (sc->pcpu_sysctl_tree == NULL) {
 	sysctl_ctx_free(&sc->glob_sysctl_ctx);
 	return ENOMEM;
+    }
+
+    /*
+     * Before calling any CPU methods, collect child driver feature hints
+     * and notify ACPI of them.  We support unified SMP power control
+     * so advertise this ourselves.  Note this is not the same as independent
+     * SMP control where each CPU can have different settings.
+     */
+    cpu_features = ACPI_PDC_MP_C1PXTX | ACPI_PDC_MP_C2C3;
+    cpu_features |= acpi_cpu_md_features();
+
+    /*
+     * CPU capabilities are specified as a buffer of 32-bit integers:
+     * revision, count, and one or more capabilities.
+     */
+    if (cpu_features) {
+	ACPI_OBJECT_LIST arglist;
+	uint32_t cap_set[3];
+	ACPI_OBJECT arg[4];
+	ACPI_STATUS status;
+
+	/* UUID needed by _OSC evaluation */
+	static uint8_t cpu_oscuuid[16] = {
+	   0x16, 0xA6, 0x77, 0x40, 0x0C, 0x29, 0xBE, 0x47,
+	   0x9E, 0xBD, 0xD8, 0x70, 0x58, 0x71, 0x39, 0x53
+	};
+
+	arglist.Pointer = arg;
+	arglist.Count = 4;
+	arg[0].Type = ACPI_TYPE_BUFFER;
+	arg[0].Buffer.Length = sizeof(cpu_oscuuid);
+	arg[0].Buffer.Pointer = cpu_oscuuid;	/* UUID */
+	arg[1].Type = ACPI_TYPE_INTEGER;
+	arg[1].Integer.Value = 1;		/* revision */
+	arg[2].Type = ACPI_TYPE_INTEGER;
+	arg[2].Integer.Value = 2;		/* # of capabilities integers */
+	arg[3].Type = ACPI_TYPE_BUFFER;
+	arg[3].Buffer.Length = sizeof(cap_set[0]) * 2; /* capabilities buffer */
+	arg[3].Buffer.Pointer = (uint8_t *)cap_set;
+	cap_set[0] = 0;
+	cap_set[1] = cpu_features;
+	status = AcpiEvaluateObject(handle, "_OSC", &arglist, NULL);
+
+	if (!ACPI_SUCCESS(status)) {
+	    if (bootverbose)
+		device_printf(dev, "_OSC failed, use _PDC\n");
+
+	    arglist.Pointer = arg;
+	    arglist.Count = 1;
+	    arg[0].Type = ACPI_TYPE_BUFFER;
+	    arg[0].Buffer.Length = sizeof(cap_set);
+	    arg[0].Buffer.Pointer = (uint8_t *)cap_set;
+	    cap_set[0] = 1; /* revision */
+	    cap_set[1] = 1; /* # of capabilities integers */
+	    cap_set[2] = cpu_features;
+	    AcpiEvaluateObject(handle, "_PDC", &arglist, NULL);
+	}
     }
 
     child = BUS_ADD_CHILD(dev, dev, 0, "cpu_cst", -1);
