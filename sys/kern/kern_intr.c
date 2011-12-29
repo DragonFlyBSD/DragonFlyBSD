@@ -1009,12 +1009,6 @@ emergency_intr_timer_callback(systimer_t info, int in_ipi __unused,
 	lwkt_schedule(info->data);
 }
 
-int
-ithread_cpuid(int intr)
-{
-	return machintr_intr_cpuid(intr);
-}
-
 /* 
  * Sysctls used by systat and others: hw.intrnames and hw.intrcnt.
  * The data for this machine dependent, and the declarations are in machine

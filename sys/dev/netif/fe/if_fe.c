@@ -821,7 +821,7 @@ fe_attach (device_t dev)
 		return ENXIO;
 	}
 
-	sc->sc_if.if_cpuid = ithread_cpuid(rman_get_start(sc->irq_res));
+	sc->sc_if.if_cpuid = rman_get_cpuid(sc->irq_res);
 	KKASSERT(sc->sc_if.if_cpuid >= 0 && sc->sc_if.if_cpuid < ncpus);
   
   	/* Print additional info when attached.  */

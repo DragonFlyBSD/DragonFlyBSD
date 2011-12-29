@@ -1405,7 +1405,7 @@ ae_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->ae_irq_res));
+	ifp->if_cpuid = rman_get_cpuid(sc->ae_irq_res);
 	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 	return 0;
 fail:

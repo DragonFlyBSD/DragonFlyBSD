@@ -125,7 +125,6 @@ void unregister_randintr(int intr);
 int next_registered_randintr(int intr);
 void sched_ithd_soft(int intr);	/* procedure called from MD */
 void sched_ithd_hard(int intr);	/* procedure called from MD */
-int ithread_cpuid(int intr);
 
 extern char	eintrnames[];	/* end of intrnames[] */
 extern char	intrnames[];	/* string table containing device names */

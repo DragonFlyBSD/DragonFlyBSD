@@ -4176,7 +4176,7 @@ tulip_pci_attach(device_t dev)
 		return ENXIO;
 	    }
 
-	    sc->tulip_if.if_cpuid = ithread_cpuid(rman_get_start(res));
+	    sc->tulip_if.if_cpuid = rman_get_cpuid(res);
 	    KKASSERT(sc->tulip_if.if_cpuid >= 0 &&
 	    	     sc->tulip_if.if_cpuid < ncpus);
 	}

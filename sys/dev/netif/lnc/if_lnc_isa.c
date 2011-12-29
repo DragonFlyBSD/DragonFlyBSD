@@ -428,7 +428,7 @@ le_isa_attach(device_t dev)
 		goto fail_am7990;
 	}
 
-	sc->ifp->if_cpuid = ithread_cpuid(rman_get_start(lesc->sc_ires));
+	sc->ifp->if_cpuid = rman_get_cpuid(lesc->sc_ires);
 	KKASSERT(sc->ifp->if_cpuid >= 0 && sc->ifp->if_cpuid < ncpus);
 
 	return (0);

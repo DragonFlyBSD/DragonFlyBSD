@@ -1522,7 +1522,7 @@ skc_attach(device_t dev)
 		goto fail;
 	}
 
-	cpuid = ithread_cpuid(rman_get_start(sc->sk_irq));
+	cpuid = rman_get_cpuid(sc->sk_irq);
 	KKASSERT(cpuid >= 0 && cpuid < ncpus);
 
 	if (sc->sk_if[0] != NULL)

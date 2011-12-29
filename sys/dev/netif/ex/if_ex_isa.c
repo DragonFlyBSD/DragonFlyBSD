@@ -286,7 +286,7 @@ ex_isa_attach(device_t dev)
 		goto bad;
 	}
 
-	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq));
+	ifp->if_cpuid = rman_get_cpuid(sc->irq);
 	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	return(0);

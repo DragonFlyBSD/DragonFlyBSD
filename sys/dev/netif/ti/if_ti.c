@@ -1572,7 +1572,7 @@ ti_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->ti_irq));
+	ifp->if_cpuid = rman_get_cpuid(sc->ti_irq);
 	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	return 0;
