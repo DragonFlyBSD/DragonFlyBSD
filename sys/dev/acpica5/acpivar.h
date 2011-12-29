@@ -205,12 +205,12 @@ extern struct lock acpi_lock;
 #define ACPI_PDC_TX_MSR		(1 << 2) /* Intel OnDemand throttling MSRs */
 #define ACPI_PDC_MP_C1PXTX	(1 << 3) /* MP C1, Px, and Tx */
 #define ACPI_PDC_MP_C2C3	(1 << 4) /* MP C2 and C3 */
-#define ACPI_PDC_MP_PX_SWCORD	(1 << 5) /* MP Px, using _PSD */
-#define ACPI_PDC_MP_CX_SWCORD	(1 << 6) /* MP Cx, using _CSD */
-#define ACPI_PDC_MP_TX_SWCORD	(1 << 7) /* MP Tx, using _TSD */
+#define ACPI_PDC_MP_PX_SWCOORD	(1 << 5) /* MP Px, using _PSD */
+#define ACPI_PDC_MP_CX_SWCOORD	(1 << 6) /* MP Cx, using _CSD */
+#define ACPI_PDC_MP_TX_SWCOORD	(1 << 7) /* MP Tx, using _TSD */
 #define ACPI_PDC_MP_C1_NATIVE	(1 << 8) /* MP C1 support other than halt */
 #define ACPI_PDC_MP_C2C3_NATIVE	(1 << 9) /* MP C2 and C3 support */
-#define ACPI_PDC_PX_HWCORD	(1 << 11)/* Hardware coordination of Px */
+#define ACPI_PDC_PX_HWCOORD	(1 << 11)/* Hardware coordination of Px */
 
 /*
  * Quirk flags.

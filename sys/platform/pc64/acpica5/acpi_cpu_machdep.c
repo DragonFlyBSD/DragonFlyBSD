@@ -29,8 +29,8 @@ acpi_cpu_md_features(void)
 
 		if (cpu_feature2 & CPUID2_EST) {
 			return (ACPI_PDC_PX_MSR |
-			    ACPI_PDC_MP_PX_SWCORD |
-			    ACPI_PDC_PX_HWCORD);
+			    ACPI_PDC_MP_PX_SWCOORD |
+			    ACPI_PDC_PX_HWCOORD);
 		}
 	}
 	return 0;
