@@ -631,8 +631,10 @@ acpi_pst_domain_create_pkg(device_t dev, ACPI_OBJECT *obj)
 	}
 
 	dom = acpi_pst_domain_alloc(domain, coord, nproc);
-	if (bootverbose)
-		device_printf(dev, "create pkg domain%u\n", dom->pd_dom);
+	if (bootverbose) {
+		device_printf(dev, "create pkg domain%u, coord %#x\n",
+		    dom->pd_dom, dom->pd_coord);
+	}
 
 	return dom;
 }
