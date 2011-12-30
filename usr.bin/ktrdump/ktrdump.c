@@ -89,6 +89,25 @@ struct save_ctx {
 
 typedef void (*ktr_iter_cb_t)(void *, int, int, struct ktr_entry *, uint64_t *);
 
+#ifdef __x86_64__
+/* defined according to the x86_64 ABI spec */
+struct my_va_list {
+	uint32_t gp_offset;	/* offset to next available gpr in reg_save_area */
+	uint32_t fp_offset;	/* offset to next available fpr in reg_save_area */
+	void *overflow_arg_area;	/* args that are passed on the stack */
+	struct reg_save_area *reg_save_area;		/* register args */
+} __attribute__((packed));
+
+typedef struct my_va_list machine_va_list;
+
+struct reg_save_area {
+	uint64_t rdi, rsi, rdx, rcx, r8, r9;
+	/* XMM registers follow, but we don't use them */
+};
+#elif __i386__
+typedef void *machine_va_list;
+#endif
+
 static int cflag;
 static int dflag;
 static int fflag;
@@ -135,6 +154,7 @@ static void load_bufs(struct ktr_buffer *, struct ktr_entry **, int *);
 static void iterate_buf(FILE *, struct ktr_buffer *, int, u_int64_t *, ktr_iter_cb_t);
 static void iterate_bufs_timesorted(FILE *, struct ktr_buffer *, u_int64_t *, ktr_iter_cb_t);
 static void kvmfprintf(FILE *fp, const char *ctl, va_list va);
+static int va_list_from_blob(machine_va_list *valist, const char *fmt, char *blob, size_t blobsize);
 
 /*
  * Reads the ktr trace buffer from kernel memory and prints the trace entries.
@@ -472,14 +492,15 @@ print_entry(FILE *fo, int n, int row, struct ktr_entry *entry,
 		if (info == NULL)
 			info = kvm_ktrinfo(entry->ktr_info, &infoctx);
 		if (info) {
-#ifdef __amd64__
-			/* XXX todo */
+			machine_va_list ap;
+			const char *fmt;
+			fmt = kvm_string(info->kf_format, &fmtctx);
+			if (va_list_from_blob(&ap, fmt,
+					      (char *)&entry->ktr_data,
+					      info->kf_data_size))
+				err(2, "Can't generate va_list from %s\n", fmt);
 			kvmfprintf(fo, kvm_string(info->kf_format, &fmtctx),
-				 (void *)&entry->ktr_data);
-#else
-			kvmfprintf(fo, kvm_string(info->kf_format, &fmtctx),
-				 (void *)&entry->ktr_data);
-#endif
+				   (void *)&ap);
 		}
 	}
 	fprintf(fo, "\n");
@@ -985,10 +1006,6 @@ kvmfprintf(FILE *fp, const char *ctl, va_list va)
 	static struct save_ctx strctx;
 	const char *s;
 
-#ifdef __amd64__
-	/* XXX todo crashes right now */
-	return;
-#endif
 	while (*ctl) {
 		for (n = 0; ctl[n]; ++n) {
 			fmt[n] = ctl[n];
@@ -1107,3 +1124,264 @@ usage(void)
 			"[-N execfile] [-M corefile] [-o outfile]\n");
 	exit(1);
 }
+
+enum argument_class {
+	ARGCLASS_NONE,
+	ARGCLASS_INTEGER,
+	ARGCLASS_FP,
+	ARGCLASS_MEMORY,
+	ARGCLASS_ERR,
+};
+static size_t
+conversion_size(const char *fmt, enum argument_class *argclass)
+{
+	const char *p;
+	size_t convsize, intsz;
+
+	*argclass = ARGCLASS_ERR;
+	if (fmt[0] != '%')
+		return -1;
+
+	convsize = -1;
+	for (p = fmt + 1; p[0]; ++p) {
+		int again = 0;
+		/*
+		 * Eat flags. Notice this will accept duplicate
+		 * flags.
+		 */
+		switch (p[0]) {
+		case '#':
+		case '0':
+		case '-':
+		case ' ':
+		case '+':
+		case '\'':
+			again = !0;
+			break;
+		}
+		if (!again)
+			break;
+	}
+	/* Eat minimum field width, if any */
+	for (; isdigit(p[0]); ++p)
+			;
+	if (p[0] == '.')
+		++p;
+	/* Eat precision, if any */
+	for (; isdigit(p[0]); ++p)
+		;
+	intsz = 0;
+	switch (p[0]) {
+	case 'h':
+		if (p[1] == 'h') {
+			++p;
+			intsz = sizeof(char);
+		} else {
+			intsz = sizeof(short);
+		}
+		break;
+	case 'l':
+		if (p[1] == 'l') {
+			++p;
+			intsz = sizeof(long long);
+		} else {
+			intsz = sizeof(long);
+		}
+		break;
+	case 'j':
+		intsz = sizeof(intmax_t);
+		break;
+	case 't':
+		intsz = sizeof(ptrdiff_t);
+		break;
+	case 'z':
+		intsz = sizeof(size_t);
+		break;
+	default:
+		p--;	/* Anticipate the ++p that follows. Yes, I know. Eeek. */
+		break;
+	}
+	if (intsz == 0)
+		intsz = sizeof(int);
+	++p;
+
+	switch (p[0]) {
+	case 'c':
+		/* for %c, we only store 1 byte in the ktr entry */
+		convsize = sizeof(char);
+		*argclass = ARGCLASS_INTEGER;
+		break;
+	case 'd':
+	case 'i':
+	case 'o':
+	case 'u':
+	case 'x':
+	case 'X':
+		convsize = intsz;
+		*argclass = ARGCLASS_INTEGER;
+		break;
+	case 'p':
+		convsize = sizeof(void *);
+		*argclass = ARGCLASS_INTEGER;
+		break;
+	case 'f':
+		if (p[-1] == 'l')
+			convsize = sizeof(double);
+		else
+			convsize = sizeof(float);
+		break;
+		*argclass = ARGCLASS_FP;
+	case 's':
+		convsize = sizeof(char *);
+		*argclass = ARGCLASS_INTEGER;
+		break;
+	case '%':
+		convsize = 0;
+		*argclass = ARGCLASS_NONE;
+		break;
+	default:
+		fprintf(stderr, "Unknown conversion specifier %c "
+			"in fmt starting with %s", p[0], fmt - 1);
+		return -2;
+	}
+	return convsize;
+}
+
+#ifdef __x86_64__
+static int
+va_list_push_integral(struct my_va_list *valist, void *val, size_t valsize,
+		     size_t *stacksize)
+{
+	uint64_t r;
+
+	switch (valsize) {
+	case 1:
+		r = *(uint8_t *)val; break;
+	case 2:
+		r = *(uint32_t *)val; break;
+	case 4:
+		r = (*(uint32_t *)val); break;
+	case 8:
+		r = *(uint64_t *)val; break;
+	default:
+		err(1, "WTF\n");
+	}
+	/* we always need to push the full 8 bytes */
+	if ((valist->gp_offset + valsize) <= 48) {	/* got a free reg */
+
+		memcpy(((char *)valist->reg_save_area + valist->gp_offset),
+		       &r, sizeof(r));
+		valist->gp_offset += sizeof(r);
+		return 0;
+	}
+	/* push to "stack" */
+	if (!(valist->overflow_arg_area = realloc(valist->overflow_arg_area,
+						  *stacksize + sizeof(r))))
+		return -1;
+	memcpy((char *)valist->overflow_arg_area + *stacksize, &r, sizeof(r));
+	*stacksize += sizeof(r);
+	return 0;
+}
+
+static void
+va_list_rewind(struct my_va_list *valist)
+{
+	valist->gp_offset = 0;
+}
+
+static int
+va_list_from_blob(machine_va_list *valist, const char *fmt, char *blob, size_t blobsize)
+{
+	struct reg_save_area *regs;
+	const char *f;
+	size_t sz;
+
+	if (!(regs = malloc(sizeof(*regs))))
+		return -1;
+	*valist = (struct my_va_list) {
+		.gp_offset = 0,
+		.fp_offset = 0,
+		.overflow_arg_area = NULL,
+		.reg_save_area = regs,
+	};
+	enum argument_class argclass;
+	size_t stacksize = 0;
+
+	for (f = fmt; *f != '\0'; ++f) {
+		if (*f != '%')
+			continue;
+		sz = conversion_size(f, &argclass);
+		if (argclass == ARGCLASS_INTEGER) {
+			if (blobsize < sz) {
+				fprintf(stderr, "not enough data available "
+					"for format: %s", fmt);
+				return -1;
+			}
+			if (va_list_push_integral(valist, blob, sz, &stacksize))
+				return -1;
+			blob += sz;
+			blobsize -= sz;
+		} else if (argclass != ARGCLASS_NONE)
+			return -1;
+		/* walk past the '%' */
+		++f;
+	}
+	if (blobsize) {
+		fprintf(stderr, "Couldn't consume all data for format %s "
+			"(%zd bytes left over)\n", fmt, blobsize);
+		return -1;
+	}
+	va_list_rewind(valist);
+	return 0;
+}
+#elif __i386__
+static int
+va_list_from_blob(machine_va_list *valist, const char *fmt, char *blob, size_t blobsize)
+{
+	const char *f;
+	char *n;
+	size_t bytes, sz;
+	enum argument_class argclass;
+
+	n = NULL;
+	bytes = 0;
+	for (f = fmt; *f != '\0'; ++f) {
+		if (*f != '%')
+			continue;
+		sz = conversion_size(f, &argclass);
+		if (blobsize < sz) {
+			fprintf(stderr, "not enough data available "
+				"for format: %s", fmt);
+			return -1;
+		}
+		if ((argclass == ARGCLASS_INTEGER) && (sz < 4)) {
+			int i = -1;	/* do C integer promotion */
+			if (sz == 1)
+				i = *(char *)blob;
+			else
+				i = *(short *)blob;
+			if (!(n = realloc(n, bytes + 4)))
+				return -1;
+			memcpy(n + bytes, &i, sizeof(i));
+			bytes += 4;
+		} else {
+			if (!(n = realloc(n, bytes + sz)))
+				return -1;
+			memcpy(n + bytes, blob, sz);
+			bytes += sz;
+		}
+		blob += sz;
+		blobsize -= sz;
+
+	}
+	if (blobsize) {
+		fprintf(stderr, "Couldn't consume all data for format %s "
+			"(%zd bytes left over)\n", fmt, blobsize);
+		return -1;
+	}
+	*valist = n;
+	return 0;
+}
+#else
+#error "Don't know how to get a va_list on this platform"
+#endif
