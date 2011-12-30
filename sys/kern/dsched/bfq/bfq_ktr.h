@@ -52,13 +52,16 @@
 KTR_INFO_MASTER(dsched_bfq);
 
 /* thread created */
-KTR_INFO(KTR_DSCHED_BFQ, dsched_bfq, thread_created, 0, "%p", sizeof(void *));
+KTR_INFO(KTR_DSCHED_BFQ, dsched_bfq, thread_created, 0, "%p",
+    struct bfq_thread_io *bfq_tdio);
 
 /* average seek distance per thread */
-KTR_INFO(KTR_DSCHED_BFQ, dsched_bfq, thread_seek_avg, 0, "%p: %" PRIu64, sizeof(off_t) + sizeof(void *));
+KTR_INFO(KTR_DSCHED_BFQ, dsched_bfq, thread_seek_avg, 0, "%p: %" PRIu64,
+    struct bfq_thread_io *bfq_tdio, off_t seek_avg);
 
 /* average thinking time per thread */
-KTR_INFO(KTR_DSCHED_BFQ, dsched_bfq, thread_ttime_avg, 0, "%p: %" PRIu64, sizeof(off_t) + sizeof(void *));
+KTR_INFO(KTR_DSCHED_BFQ, dsched_bfq, thread_ttime_avg, 0, "%p: %" PRIu64,
+    struct bfq_thread_io *bfq_tdio, off_t ttime_avg);
 
 #endif
 

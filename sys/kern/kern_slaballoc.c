@@ -119,27 +119,26 @@
 
 #define btokup(z)	(&pmap_kvtom((vm_offset_t)(z))->ku_pagecnt)
 
-#define MEMORY_STRING	"ptr=%p type=%p size=%d flags=%04x"
-#define MEMORY_ARG_SIZE	(sizeof(void *) * 2 + sizeof(unsigned long) + 	\
-			sizeof(int))
+#define MEMORY_STRING	"ptr=%p type=%p size=%lu flags=%04x"
+#define MEMORY_ARGS	void *ptr, void *type, unsigned long size, int flags
 
 #if !defined(KTR_MEMORY)
 #define KTR_MEMORY	KTR_ALL
 #endif
 KTR_INFO_MASTER(memory);
-KTR_INFO(KTR_MEMORY, memory, malloc_beg, 0, "malloc begin", 0);
-KTR_INFO(KTR_MEMORY, memory, malloc_end, 1, MEMORY_STRING, MEMORY_ARG_SIZE);
-KTR_INFO(KTR_MEMORY, memory, free_zero, 2, MEMORY_STRING, MEMORY_ARG_SIZE);
-KTR_INFO(KTR_MEMORY, memory, free_ovsz, 3, MEMORY_STRING, MEMORY_ARG_SIZE);
-KTR_INFO(KTR_MEMORY, memory, free_ovsz_delayed, 4, MEMORY_STRING, MEMORY_ARG_SIZE);
-KTR_INFO(KTR_MEMORY, memory, free_chunk, 5, MEMORY_STRING, MEMORY_ARG_SIZE);
+KTR_INFO(KTR_MEMORY, memory, malloc_beg, 0, "malloc begin");
+KTR_INFO(KTR_MEMORY, memory, malloc_end, 1, MEMORY_STRING, MEMORY_ARGS);
+KTR_INFO(KTR_MEMORY, memory, free_zero, 2, MEMORY_STRING, MEMORY_ARGS);
+KTR_INFO(KTR_MEMORY, memory, free_ovsz, 3, MEMORY_STRING, MEMORY_ARGS);
+KTR_INFO(KTR_MEMORY, memory, free_ovsz_delayed, 4, MEMORY_STRING, MEMORY_ARGS);
+KTR_INFO(KTR_MEMORY, memory, free_chunk, 5, MEMORY_STRING, MEMORY_ARGS);
 #ifdef SMP
-KTR_INFO(KTR_MEMORY, memory, free_request, 6, MEMORY_STRING, MEMORY_ARG_SIZE);
-KTR_INFO(KTR_MEMORY, memory, free_rem_beg, 7, MEMORY_STRING, MEMORY_ARG_SIZE);
-KTR_INFO(KTR_MEMORY, memory, free_rem_end, 8, MEMORY_STRING, MEMORY_ARG_SIZE);
+KTR_INFO(KTR_MEMORY, memory, free_request, 6, MEMORY_STRING, MEMORY_ARGS);
+KTR_INFO(KTR_MEMORY, memory, free_rem_beg, 7, MEMORY_STRING, MEMORY_ARGS);
+KTR_INFO(KTR_MEMORY, memory, free_rem_end, 8, MEMORY_STRING, MEMORY_ARGS);
 #endif
-KTR_INFO(KTR_MEMORY, memory, free_beg, 9, "free begin", 0);
-KTR_INFO(KTR_MEMORY, memory, free_end, 10, "free end", 0);
+KTR_INFO(KTR_MEMORY, memory, free_beg, 9, "free begin");
+KTR_INFO(KTR_MEMORY, memory, free_end, 10, "free end");
 
 #define logmemory(name, ptr, type, size, flags)				\
 	KTR_LOG(memory_ ## name, ptr, type, size, flags)
@@ -1011,7 +1010,7 @@ kfree_remote(void *ptr)
     KKASSERT(z->z_RCount > 0);
     atomic_subtract_int(&z->z_RCount, 1);
 
-    logmemory(free_rem_beg, z, NULL, 0, 0);
+    logmemory(free_rem_beg, z, NULL, 0L, 0);
     KKASSERT(z->z_Magic == ZALLOC_SLAB_MAGIC);
     KKASSERT(z->z_Cpu  == mycpu->gd_cpuid);
     nfree = z->z_NFree;
@@ -1078,7 +1077,7 @@ kfree_remote(void *ptr)
 	kup = btokup(z);
 	*kup = 0;
     }
-    logmemory(free_rem_end, z, bchunk, 0, 0);
+    logmemory(free_rem_end, z, bchunk, 0L, 0);
 }
 
 #endif
@@ -1117,7 +1116,7 @@ kfree(void *ptr, struct malloc_type *type)
      * Handle special 0-byte allocations
      */
     if (ptr == ZERO_LENGTH_PTR) {
-	logmemory(free_zero, ptr, type, -1, 0);
+	logmemory(free_zero, ptr, type, -1UL, 0);
 	logmemory_quick(free_end);
 	return;
     }
@@ -1245,7 +1244,7 @@ kfree(void *ptr, struct malloc_type *type)
 	 * We can use a passive IPI to reduce overhead even further.
 	 */
 	if (bchunk == NULL && rsignal) {
-	    logmemory(free_request, ptr, type, z->z_ChunkSize, 0);
+		logmemory(free_request, ptr, type, (unsigned long)z->z_ChunkSize, 0);
 	    lwkt_send_ipiq_passive(z->z_CpuGd, kfree_remote, z);
 	    /* z can get ripped out from under us from this point on */
 	} else if (rsignal) {
@@ -1262,7 +1261,7 @@ kfree(void *ptr, struct malloc_type *type)
     /*
      * kfree locally
      */
-    logmemory(free_chunk, ptr, type, z->z_ChunkSize, 0);
+    logmemory(free_chunk, ptr, type, (unsigned long)z->z_ChunkSize, 0);
 
     crit_enter();
     chunk = ptr;

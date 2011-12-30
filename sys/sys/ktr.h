@@ -39,12 +39,9 @@
 #ifndef _SYS_KTR_H_
 #define	_SYS_KTR_H_
 
-#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
-#endif
-#ifndef _SYS_SYSCTL_H_
 #include <sys/sysctl.h>
-#endif
+#include <sys/cpputil.h>
 
 #ifdef _KERNEL
 #include "opt_ktr.h"
@@ -74,7 +71,7 @@
 struct ktr_info {
 	const char *kf_name;	/* human-interpreted subsystem name */
 	int32_t *kf_master_enable; /* the master enable variable */
-	const char *kf_format;	/* data format */
+	const char * const kf_format;	/* data format */
 	int kf_data_size;	/* relevance of the data buffer */
 };
 
@@ -101,7 +98,9 @@ struct ktr_cpu {
 
 #ifdef _KERNEL
 
-void	ktr_log(struct ktr_info *info, const char *file, int line, ...);
+struct ktr_entry * ktr_begin_write_entry(struct ktr_info *,
+					 const char *, int);
+int ktr_finish_write_entry(struct ktr_info *, struct ktr_entry *);
 void    cpu_ktr_caller(struct ktr_entry *ktr);
 
 #endif
@@ -132,27 +131,71 @@ SYSCTL_DECL(_debug_ktr);
  * definitions are and a number of static const int's which are used
  * by the compiler to optimize the trace logging at compile-time and
  * run-time.
+ * You're supposed to specify any arguments to the format as you would in
+ * a function prototype.
+ * We automagically create a struct for the arguments and a throwaway
+ * function that will be called with the format and the actual arguments
+ * at the KTR_LOG site. This makes sure that the compiler will typecheck
+ * the arguments against the format string. On gcc, this requires -Wformat
+ * (which is included in -Wall) and -O1 at least. Note that using
+ * ktr_info.kf_format will not work, hence we need to define another
+ * throwaway const wariable for the format.
  */
-#define KTR_INFO(compile, master, name, maskbit, format, datasize)	\
-	    static const int ktr_ ## master ## _ ## name ## _mask =	\
-		1 << maskbit;						\
-	    static const int ktr_ ## master ## _ ## name ## _enable =	\
+#define KTR_INFO(compile, master, name, maskbit, format, ...)		\
+	static const int ktr_ ## master ## _ ## name ## _mask =		\
+		1 << (maskbit);						\
+	static const int ktr_ ## master ## _ ##name ## _enable =	\
 		compile;						\
-	    static int ktr_ ## master ## _ ## name ## _mask_ro =	\
-		1 << maskbit;						\
-	    SYSCTL_INT(_debug_ktr_ ## master, OID_AUTO, name ## _mask,	\
-		CTLFLAG_RD, &ktr_ ## master ## _ ## name ## _mask_ro,	\
-		0, "Value of the " __XSTRING(name) " event in " __XSTRING(master) "'s mask"); \
-	    static struct ktr_info ktr_info_ ## master ## _ ## name = { \
-		#master "_" #name,					\
-		&ktr_ ## master ## _enable,				\
-		format,							\
-		datasize }
+	static int ktr_ ## master ## _ ## name ## _mask_ro =		\
+		1 << (maskbit);						\
+	SYSCTL_INT(_debug_ktr_ ## master, OID_AUTO, name ## _mask,	\
+		   CTLFLAG_RD, &ktr_ ## master ## _ ## name ## _mask_ro, \
+		   0, "Value of the " __XSTRING(name) " event in " __XSTRING(master) "'s mask"); \
+	__GENSTRUCT(ktr_info_ ## master ## _ ## name ## _args, __VA_ARGS__) \
+		__packed;						\
+	CTASSERT(sizeof(struct ktr_info_ ## master ## _ ## name ## _args) <= KTR_BUFSIZE); \
+	static inline void						\
+	__ktr_info_ ## master ## _ ## name ## _fmtcheck(const char *fmt, \
+							...) __printf0like(1, 2); \
+	static inline void						\
+	__ktr_info_ ## master ## _ ## name ## _fmtcheck(const char *fmt __unused, \
+							...)		\
+	{}								\
+	static const char * const __ktr_ ## master ## _ ## name ## _fmt = format; \
+	static struct ktr_info ktr_info_ ## master ## _ ## name = {	\
+		.kf_name = #master "_" #name,				\
+		.kf_master_enable = &ktr_ ## master ## _enable,		\
+		.kf_format = format,					\
+		.kf_data_size = sizeof(struct ktr_info_ ## master ## _ ## name ## _args), \
+	}
 
-#define KTR_LOG(name, args...)						\
-	    if (ktr_ ## name ## _enable &&				\
-	      (ktr_ ## name ## _mask & *ktr_info_ ## name .kf_master_enable)) \
-	    ktr_log(&ktr_info_ ## name, __FILE__, __LINE__, ##args)
+
+
+
+/*
+ * Call ktr_begin_write_entry() that sets up the entry for us; use
+ * a struct copy to give as max flexibility as possible to the compiler.
+ * In higher optimization levels, it will copy the arguments directly from
+ * registers to the destination buffer. Call our dummy function that will
+ * typecheck the arguments against the format string.
+ */
+#define KTR_LOG(name, ...)						\
+	do {								\
+		__ktr_info_ ## name ## _fmtcheck (__ktr_ ## name ## _fmt, ##__VA_ARGS__);	\
+		if (ktr_ ## name ## _enable &&				\
+		    (ktr_ ## name ## _mask & *ktr_info_ ## name .kf_master_enable)) { \
+			struct ktr_entry *entry;			\
+			entry = ktr_begin_write_entry(&ktr_info_ ## name, __FILE__, __LINE__); \
+			if (!entry)					\
+				break;					\
+			*(struct ktr_info_  ## name ## _args *)&entry->ktr_data[0] = \
+				(struct ktr_info_  ## name ## _args){ __VA_ARGS__}; \
+			if (ktr_finish_write_entry(&ktr_info_ ## name, entry)) { \
+				kprintf(ktr_info_ ## name .kf_format, ##__VA_ARGS__); \
+				kprintf("\n");				\
+			}						\
+		}							\
+	}  while(0)
 
 #else
 
@@ -162,9 +205,9 @@ SYSCTL_DECL(_debug_ktr);
 #define KTR_INFO_MASTER_EXTERN(master)					\
 	    static const int ktr_ ## master ## _enable
 
-#define KTR_INFO(compile, master, name, maskbit, format, datasize)	\
+#define KTR_INFO(compile, master, name, maskbit, format, ...)		\
 	    static const int ktr_ ## master ## _ ## name ## _mask =	\
-		1 << maskbit
+		    (1 << maskbit)
 
 #define KTR_LOG(info, args...)
 

@@ -396,9 +396,9 @@ TUNABLE_INT("hw.bge.tx_max_coal_bds", &bge_tx_max_coal_bds);
 #define KTR_IF_BGE	KTR_ALL
 #endif
 KTR_INFO_MASTER(if_bge);
-KTR_INFO(KTR_IF_BGE, if_bge, intr, 0, "intr", 0);
-KTR_INFO(KTR_IF_BGE, if_bge, rx_pkt, 1, "rx_pkt", 0);
-KTR_INFO(KTR_IF_BGE, if_bge, tx_pkt, 2, "tx_pkt", 0);
+KTR_INFO(KTR_IF_BGE, if_bge, intr, 0, "intr");
+KTR_INFO(KTR_IF_BGE, if_bge, rx_pkt, 1, "rx_pkt");
+KTR_INFO(KTR_IF_BGE, if_bge, tx_pkt, 2, "tx_pkt");
 #define logif(name)	KTR_LOG(if_bge_ ## name)
 
 static device_method_t bge_methods[] = {

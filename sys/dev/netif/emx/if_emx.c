@@ -302,11 +302,11 @@ static int	emx_display_debug_stats = 0;
 #define KTR_IF_EMX	KTR_ALL
 #endif
 KTR_INFO_MASTER(if_emx);
-KTR_INFO(KTR_IF_EMX, if_emx, intr_beg, 0, "intr begin", 0);
-KTR_INFO(KTR_IF_EMX, if_emx, intr_end, 1, "intr end", 0);
-KTR_INFO(KTR_IF_EMX, if_emx, pkt_receive, 4, "rx packet", 0);
-KTR_INFO(KTR_IF_EMX, if_emx, pkt_txqueue, 5, "tx packet", 0);
-KTR_INFO(KTR_IF_EMX, if_emx, pkt_txclean, 6, "tx clean", 0);
+KTR_INFO(KTR_IF_EMX, if_emx, intr_beg, 0, "intr begin");
+KTR_INFO(KTR_IF_EMX, if_emx, intr_end, 1, "intr end");
+KTR_INFO(KTR_IF_EMX, if_emx, pkt_receive, 4, "rx packet");
+KTR_INFO(KTR_IF_EMX, if_emx, pkt_txqueue, 5, "tx packet");
+KTR_INFO(KTR_IF_EMX, if_emx, pkt_txclean, 6, "tx clean");
 #define logif(name)	KTR_LOG(if_emx_ ## name)
 
 static __inline void

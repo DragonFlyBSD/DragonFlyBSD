@@ -175,32 +175,32 @@ struct ifnet		**ifindex2ifnet = NULL;
 static struct thread	ifnet_threads[MAXCPU];
 
 #define IFQ_KTR_STRING		"ifq=%p"
-#define IFQ_KTR_ARG_SIZE	(sizeof(void *))
+#define IFQ_KTR_ARGS	struct ifaltq *ifq
 #ifndef KTR_IFQ
 #define KTR_IFQ			KTR_ALL
 #endif
 KTR_INFO_MASTER(ifq);
-KTR_INFO(KTR_IFQ, ifq, enqueue, 0, IFQ_KTR_STRING, IFQ_KTR_ARG_SIZE);
-KTR_INFO(KTR_IFQ, ifq, dequeue, 1, IFQ_KTR_STRING, IFQ_KTR_ARG_SIZE);
+KTR_INFO(KTR_IFQ, ifq, enqueue, 0, IFQ_KTR_STRING, IFQ_KTR_ARGS);
+KTR_INFO(KTR_IFQ, ifq, dequeue, 1, IFQ_KTR_STRING, IFQ_KTR_ARGS);
 #define logifq(name, arg)	KTR_LOG(ifq_ ## name, arg)
 
 #define IF_START_KTR_STRING	"ifp=%p"
-#define IF_START_KTR_ARG_SIZE	(sizeof(void *))
+#define IF_START_KTR_ARGS	struct ifnet *ifp
 #ifndef KTR_IF_START
 #define KTR_IF_START		KTR_ALL
 #endif
 KTR_INFO_MASTER(if_start);
 KTR_INFO(KTR_IF_START, if_start, run, 0,
-	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
+	 IF_START_KTR_STRING, IF_START_KTR_ARGS);
 KTR_INFO(KTR_IF_START, if_start, sched, 1,
-	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
+	 IF_START_KTR_STRING, IF_START_KTR_ARGS);
 KTR_INFO(KTR_IF_START, if_start, avoid, 2,
-	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
+	 IF_START_KTR_STRING, IF_START_KTR_ARGS);
 KTR_INFO(KTR_IF_START, if_start, contend_sched, 3,
-	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
+	 IF_START_KTR_STRING, IF_START_KTR_ARGS);
 #ifdef SMP
 KTR_INFO(KTR_IF_START, if_start, chase_sched, 4,
-	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
+	 IF_START_KTR_STRING, IF_START_KTR_ARGS);
 #endif
 #define logifstart(name, arg)	KTR_LOG(if_start_ ## name, arg)
 

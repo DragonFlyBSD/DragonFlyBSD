@@ -108,19 +108,19 @@
 #endif
 KTR_INFO_MASTER(testlog);
 #if KTR_TESTLOG
-KTR_INFO(KTR_TESTLOG, testlog, test1, 0, "test1", sizeof(void *) * 4);
-KTR_INFO(KTR_TESTLOG, testlog, test2, 1, "test2", sizeof(void *) * 4);
-KTR_INFO(KTR_TESTLOG, testlog, test3, 2, "test3", sizeof(void *) * 4);
-KTR_INFO(KTR_TESTLOG, testlog, test4, 3, "test4", 0);
-KTR_INFO(KTR_TESTLOG, testlog, test5, 4, "test5", 0);
-KTR_INFO(KTR_TESTLOG, testlog, test6, 5, "test6", 0);
+KTR_INFO(KTR_TESTLOG, testlog, test1, 0, "test1 %d %d %d %d", int dummy1, int dummy2, int dummy3, int dummy4);
+KTR_INFO(KTR_TESTLOG, testlog, test2, 1, "test2 %d %d %d %d", int dummy1, int dummy2, int dummy3, int dummy4);
+KTR_INFO(KTR_TESTLOG, testlog, test3, 2, "test3 %d %d %d %d", int dummy1, int dummy2, int dummy3, int dummy4);
+KTR_INFO(KTR_TESTLOG, testlog, test4, 3, "test4");
+KTR_INFO(KTR_TESTLOG, testlog, test5, 4, "test5");
+KTR_INFO(KTR_TESTLOG, testlog, test6, 5, "test6");
 #ifdef SMP
-KTR_INFO(KTR_TESTLOG, testlog, pingpong, 6, "pingpong", 0);
-KTR_INFO(KTR_TESTLOG, testlog, pipeline, 7, "pipeline", 0);
-KTR_INFO(KTR_TESTLOG, testlog, crit_beg, 8, "crit_beg", 0);
-KTR_INFO(KTR_TESTLOG, testlog, crit_end, 9, "crit_end", 0);
-KTR_INFO(KTR_TESTLOG, testlog, spin_beg, 10, "spin_beg", 0);
-KTR_INFO(KTR_TESTLOG, testlog, spin_end, 11, "spin_end", 0);
+KTR_INFO(KTR_TESTLOG, testlog, pingpong, 6, "pingpong");
+KTR_INFO(KTR_TESTLOG, testlog, pipeline, 7, "pipeline");
+KTR_INFO(KTR_TESTLOG, testlog, crit_beg, 8, "crit_beg");
+KTR_INFO(KTR_TESTLOG, testlog, crit_end, 9, "crit_end");
+KTR_INFO(KTR_TESTLOG, testlog, spin_beg, 10, "spin_beg");
+KTR_INFO(KTR_TESTLOG, testlog, spin_end, 11, "spin_end");
 #endif
 #define logtest(name)	KTR_LOG(testlog_ ## name, 0, 0, 0, 0)
 #define logtest_noargs(name)	KTR_LOG(testlog_ ## name)
@@ -407,12 +407,11 @@ ktr_resync_callback(void *dummy __unused)
 #endif
 
 /*
- * KTR_WRITE_ENTRY - Primary entry point for kernel trace logging
+ * Setup the next empty slot and return it to the caller to store the data
+ * directly.
  */
-
-static __inline
-void
-ktr_write_entry(struct ktr_info *info, const char *file, int line, __va_list va)
+struct ktr_entry *
+ktr_begin_write_entry(struct ktr_info *info, const char *file, int line)
 {
 	struct ktr_cpu_core *kcpu;
 	struct ktr_entry *entry;
@@ -421,7 +420,7 @@ ktr_write_entry(struct ktr_info *info, const char *file, int line, __va_list va)
 	cpu = mycpu->gd_cpuid;
 	kcpu = &ktr_cpu[cpu].core;
 	if (kcpu->ktr_buf == NULL)
-		return;
+		return NULL;
 
 	crit_enter();
 	entry = kcpu->ktr_buf + (kcpu->ktr_idx & KTR_ENTRIES_MASK);
@@ -442,36 +441,26 @@ ktr_write_entry(struct ktr_info *info, const char *file, int line, __va_list va)
 	entry->ktr_file = file;
 	entry->ktr_line = line;
 	crit_exit();
-	if (info->kf_data_size > KTR_BUFSIZE)
-		bcopy(va, entry->ktr_data, KTR_BUFSIZE);
-	else if (info->kf_data_size)
-		bcopy(va, entry->ktr_data, info->kf_data_size);
+	return entry;
+}
+
+int
+ktr_finish_write_entry(struct ktr_info *info, struct ktr_entry *entry)
+{
 	if (ktr_stacktrace)
 		cpu_ktr_caller(entry);
 #ifdef KTR_VERBOSE
 	if (ktr_verbose && info->kf_format) {
 #ifdef SMP
-		kprintf("cpu%d ", cpu);
+		kprintf("cpu%d ", mycpu->gd_cpuid);
 #endif
 		if (ktr_verbose > 1) {
 			kprintf("%s.%d\t", entry->ktr_file, entry->ktr_line);
 		}
-		kvprintf(info->kf_format, va);
-		kprintf("\n");
+		return !0;
 	}
 #endif
-}
-
-void
-ktr_log(struct ktr_info *info, const char *file, int line, ...)
-{
-	__va_list va;
-
-	if (panicstr == NULL) {
-		__va_start(va, line);
-		ktr_write_entry(info, file, line, va);
-		__va_end(va);
-	}
+	return 0;
 }
 
 #ifdef DDB

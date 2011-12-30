@@ -99,21 +99,21 @@ SYSCTL_INT(_lwkt, OID_AUTO, panic_ipiq_count, CTLFLAG_RW, &panic_ipiq_count, 0, 
 #endif
 
 #define IPIQ_STRING	"func=%p arg1=%p arg2=%d scpu=%d dcpu=%d"
-#define IPIQ_ARG_SIZE	(sizeof(void *) * 2 + sizeof(int) * 3)
+#define IPIQ_ARGS	void *func, void *arg1, int arg2, int scpu, int dcpu
 
 #if !defined(KTR_IPIQ)
 #define KTR_IPIQ	KTR_ALL
 #endif
 KTR_INFO_MASTER(ipiq);
-KTR_INFO(KTR_IPIQ, ipiq, send_norm, 0, IPIQ_STRING, IPIQ_ARG_SIZE);
-KTR_INFO(KTR_IPIQ, ipiq, send_pasv, 1, IPIQ_STRING, IPIQ_ARG_SIZE);
-KTR_INFO(KTR_IPIQ, ipiq, send_nbio, 2, IPIQ_STRING, IPIQ_ARG_SIZE);
-KTR_INFO(KTR_IPIQ, ipiq, send_fail, 3, IPIQ_STRING, IPIQ_ARG_SIZE);
-KTR_INFO(KTR_IPIQ, ipiq, receive, 4, IPIQ_STRING, IPIQ_ARG_SIZE);
-KTR_INFO(KTR_IPIQ, ipiq, sync_start, 5, "cpumask=%08x", sizeof(cpumask_t));
-KTR_INFO(KTR_IPIQ, ipiq, sync_end, 6, "cpumask=%08x", sizeof(cpumask_t));
-KTR_INFO(KTR_IPIQ, ipiq, cpu_send, 7, IPIQ_STRING, IPIQ_ARG_SIZE);
-KTR_INFO(KTR_IPIQ, ipiq, send_end, 8, IPIQ_STRING, IPIQ_ARG_SIZE);
+KTR_INFO(KTR_IPIQ, ipiq, send_norm, 0, IPIQ_STRING, IPIQ_ARGS);
+KTR_INFO(KTR_IPIQ, ipiq, send_pasv, 1, IPIQ_STRING, IPIQ_ARGS);
+KTR_INFO(KTR_IPIQ, ipiq, send_nbio, 2, IPIQ_STRING, IPIQ_ARGS);
+KTR_INFO(KTR_IPIQ, ipiq, send_fail, 3, IPIQ_STRING, IPIQ_ARGS);
+KTR_INFO(KTR_IPIQ, ipiq, receive, 4, IPIQ_STRING, IPIQ_ARGS);
+KTR_INFO(KTR_IPIQ, ipiq, sync_start, 5, "cpumask=%08lx", unsigned long mask);
+KTR_INFO(KTR_IPIQ, ipiq, sync_end, 6, "cpumask=%08lx", unsigned long mask);
+KTR_INFO(KTR_IPIQ, ipiq, cpu_send, 7, IPIQ_STRING, IPIQ_ARGS);
+KTR_INFO(KTR_IPIQ, ipiq, send_end, 8, IPIQ_STRING, IPIQ_ARGS);
 
 #define logipiq(name, func, arg1, arg2, sgd, dgd)	\
 	KTR_LOG(ipiq_ ## name, func, arg1, arg2, sgd->gd_cpuid, dgd->gd_cpuid)
@@ -773,7 +773,7 @@ lwkt_cpusync_interlock(lwkt_cpusync_t cs)
 	++ipiq_cscount;
 	++gd->gd_curthread->td_cscount;
 	lwkt_send_ipiq_mask(mask, (ipifunc1_t)lwkt_cpusync_remote1, cs);
-	logipiq2(sync_start, mask);
+	logipiq2(sync_start, (long)mask);
 #if 0
 	if (gd->gd_curthread->td_wmesg == NULL)
 		gd->gd_curthread->td_wmesg = smsg;
@@ -845,7 +845,7 @@ lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
 	 */
 	--gd->gd_curthread->td_cscount;
 	lwkt_process_ipiq();
-	logipiq2(sync_end, mask);
+	logipiq2(sync_end, (long)mask);
     }
     crit_exit_id("cpusync");
 #else

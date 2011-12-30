@@ -68,28 +68,28 @@ struct exp_backoff {
 };
 
 #define SLZ_KTR_STRING		"slz=%p"
-#define SLZ_KTR_ARG_SIZE	(sizeof(void *))
+#define SLZ_KTR_ARGS		lwkt_serialize_t slz
 
 #ifndef KTR_SERIALIZER
 #define KTR_SERIALIZER	KTR_ALL
 #endif
 
 KTR_INFO_MASTER(slz);
-KTR_INFO(KTR_SERIALIZER, slz, enter_beg, 0, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, sleep_beg, 1, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, sleep_end, 2, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, exit_end, 3, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, wakeup_beg, 4, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, wakeup_end, 5, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, try, 6, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, tryfail, 7, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, tryok, 8, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
+KTR_INFO(KTR_SERIALIZER, slz, enter_beg, 0, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, sleep_beg, 1, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, sleep_end, 2, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, exit_end, 3, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, wakeup_beg, 4, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, wakeup_end, 5, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, try, 6, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, tryfail, 7, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, tryok, 8, SLZ_KTR_STRING, SLZ_KTR_ARGS);
 #ifdef SMP
 KTR_INFO(KTR_SERIALIZER, slz, spinbo, 9,
-	 "slz=%p bo1=%d bo=%d", (sizeof(void *) + (2 * sizeof(int))));
+	 "slz=%p bo1=%d bo=%d", lwkt_serialize_t slz, int backoff1, int backoff);
 #endif
-KTR_INFO(KTR_SERIALIZER, slz, enter_end, 10, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, exit_beg, 11, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
+KTR_INFO(KTR_SERIALIZER, slz, enter_end, 10, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, exit_beg, 11, SLZ_KTR_STRING, SLZ_KTR_ARGS);
 
 #define logslz(name, slz)		KTR_LOG(slz_ ## name, slz)
 #ifdef SMP

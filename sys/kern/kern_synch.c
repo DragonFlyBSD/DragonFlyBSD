@@ -93,11 +93,11 @@ MALLOC_DEFINE(M_TSLEEP, "tslpque", "tsleep queues");
 #define KTR_TSLEEP	KTR_ALL
 #endif
 KTR_INFO_MASTER(tsleep);
-KTR_INFO(KTR_TSLEEP, tsleep, tsleep_beg, 0, "tsleep enter %p", sizeof(void *));
-KTR_INFO(KTR_TSLEEP, tsleep, tsleep_end, 1, "tsleep exit", 0);
-KTR_INFO(KTR_TSLEEP, tsleep, wakeup_beg, 2, "wakeup enter %p", sizeof(void *));
-KTR_INFO(KTR_TSLEEP, tsleep, wakeup_end, 3, "wakeup exit", 0);
-KTR_INFO(KTR_TSLEEP, tsleep, ilockfail,  4, "interlock failed %p", sizeof(void *));
+KTR_INFO(KTR_TSLEEP, tsleep, tsleep_beg, 0, "tsleep enter %p", const volatile void *ident);
+KTR_INFO(KTR_TSLEEP, tsleep, tsleep_end, 1, "tsleep exit");
+KTR_INFO(KTR_TSLEEP, tsleep, wakeup_beg, 2, "wakeup enter %p", const volatile void *ident);
+KTR_INFO(KTR_TSLEEP, tsleep, wakeup_end, 3, "wakeup exit");
+KTR_INFO(KTR_TSLEEP, tsleep, ilockfail,  4, "interlock failed %p", const volatile void *ident);
 
 #define logtsleep1(name)	KTR_LOG(tsleep_ ## name)
 #define logtsleep2(name, val)	KTR_LOG(tsleep_ ## name, val)

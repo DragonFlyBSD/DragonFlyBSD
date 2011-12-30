@@ -68,23 +68,23 @@
 #include <bus/usb/usbdivar.h>	/* just for usb_dma_t */
 #include <bus/usb/usb_mem.h>
 
-#define USBKTR_STRING   "ptr=%p bus=%p size=%d align=%d"
-#define USBKTR_ARG_SIZE (sizeof(void *) * 2 + sizeof(int) * 2)
+#define USBKTR_STRING   "ptr=%p bus=%p size=%zu align=%zu"
+#define USBKTR_ARGS 	void  *p, usbd_bus_handle bus, size_t size, size_t align
 
 #if !defined(KTR_USB_MEMORY)
 #define KTR_USB_MEMORY	KTR_ALL
 #endif
 KTR_INFO_MASTER(usbmem);
-KTR_INFO(KTR_USB_MEMORY, usbmem, alloc_full, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
-KTR_INFO(KTR_USB_MEMORY, usbmem, alloc_frag, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
-KTR_INFO(KTR_USB_MEMORY, usbmem, free_full, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
-KTR_INFO(KTR_USB_MEMORY, usbmem, free_frag, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
-KTR_INFO(KTR_USB_MEMORY, usbmem, blkalloc, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
-KTR_INFO(KTR_USB_MEMORY, usbmem, blkalloc2, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
-KTR_INFO(KTR_USB_MEMORY, usbmem, blkfree, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
+KTR_INFO(KTR_USB_MEMORY, usbmem, alloc_full, 0, USBKTR_STRING, USBKTR_ARGS);
+KTR_INFO(KTR_USB_MEMORY, usbmem, alloc_frag, 0, USBKTR_STRING, USBKTR_ARGS);
+KTR_INFO(KTR_USB_MEMORY, usbmem, free_full, 0, USBKTR_STRING, USBKTR_ARGS);
+KTR_INFO(KTR_USB_MEMORY, usbmem, free_frag, 0, USBKTR_STRING, USBKTR_ARGS);
+KTR_INFO(KTR_USB_MEMORY, usbmem, blkalloc, 0, USBKTR_STRING, USBKTR_ARGS);
+KTR_INFO(KTR_USB_MEMORY, usbmem, blkalloc2, 0, USBKTR_STRING, USBKTR_ARGS);
+KTR_INFO(KTR_USB_MEMORY, usbmem, blkfree, 0, USBKTR_STRING, USBKTR_ARGS);
 
 #define logmemory(name, ptr, bus, size, align)		\
-	KTR_LOG(usbmem_ ## name, ptr, bus, (int)size, (int)align);
+	KTR_LOG(usbmem_ ## name, ptr, bus, size, align);
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (usbdebug) kprintf x
@@ -283,10 +283,10 @@ usb_freemem(usbd_bus_handle bus, usb_dma_t *p)
 	if (p->block->fullblock) {
 		DPRINTFN(1, ("usb_freemem: large free\n"));
 		usb_block_freemem(p->block);
-		logmemory(free_full, p, bus, 0, 0);
+		logmemory(free_full, p, bus, (size_t)0, (size_t)0);
 		return;
 	}
-	logmemory(free_frag, p, bus, 0, 0);
+	logmemory(free_frag, p, bus, (size_t)0, (size_t)0);
 	f = KERNADDR(p, 0);
 	f->block = p->block;
 	f->offs = p->offs;

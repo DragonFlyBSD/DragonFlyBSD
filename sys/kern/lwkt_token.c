@@ -85,23 +85,24 @@ extern int lwkt_sched_debug;
 static lwkt_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
 
 #define TOKEN_STRING	"REF=%p TOK=%p TD=%p"
-#define CONTENDED_STRING	"REF=%p TOK=%p TD=%p (contention started)"
-#define UNCONTENDED_STRING	"REF=%p TOK=%p TD=%p (contention stopped)"
+#define TOKEN_ARGS	lwkt_tokref_t ref, lwkt_token_t tok, struct thread *td
+#define CONTENDED_STRING	TOKEN_STRING " (contention started)"
+#define UNCONTENDED_STRING	TOKEN_STRING " (contention stopped)"
 #if !defined(KTR_TOKENS)
 #define	KTR_TOKENS	KTR_ALL
 #endif
 
 KTR_INFO_MASTER(tokens);
-KTR_INFO(KTR_TOKENS, tokens, fail, 0, TOKEN_STRING, sizeof(void *) * 3);
-KTR_INFO(KTR_TOKENS, tokens, succ, 1, TOKEN_STRING, sizeof(void *) * 3);
+KTR_INFO(KTR_TOKENS, tokens, fail, 0, TOKEN_STRING, TOKEN_ARGS);
+KTR_INFO(KTR_TOKENS, tokens, succ, 1, TOKEN_STRING, TOKEN_ARGS);
 #if 0
-KTR_INFO(KTR_TOKENS, tokens, release, 2, TOKEN_STRING, sizeof(void *) * 3);
-KTR_INFO(KTR_TOKENS, tokens, remote, 3, TOKEN_STRING, sizeof(void *) * 3);
-KTR_INFO(KTR_TOKENS, tokens, reqremote, 4, TOKEN_STRING, sizeof(void *) * 3);
-KTR_INFO(KTR_TOKENS, tokens, reqfail, 5, TOKEN_STRING, sizeof(void *) * 3);
-KTR_INFO(KTR_TOKENS, tokens, drain, 6, TOKEN_STRING, sizeof(void *) * 3);
-KTR_INFO(KTR_TOKENS, tokens, contention_start, 7, CONTENDED_STRING, sizeof(void *) * 3);
-KTR_INFO(KTR_TOKENS, tokens, contention_stop, 7, UNCONTENDED_STRING, sizeof(void *) * 3);
+KTR_INFO(KTR_TOKENS, tokens, release, 2, TOKEN_STRING, TOKEN_ARGS);
+KTR_INFO(KTR_TOKENS, tokens, remote, 3, TOKEN_STRING, TOKEN_ARGS);
+KTR_INFO(KTR_TOKENS, tokens, reqremote, 4, TOKEN_STRING, TOKEN_ARGS);
+KTR_INFO(KTR_TOKENS, tokens, reqfail, 5, TOKEN_STRING, TOKEN_ARGS);
+KTR_INFO(KTR_TOKENS, tokens, drain, 6, TOKEN_STRING, TOKEN_ARGS);
+KTR_INFO(KTR_TOKENS, tokens, contention_start, 7, CONTENDED_STRING, TOKEN_ARGS);
+KTR_INFO(KTR_TOKENS, tokens, contention_stop, 7, UNCONTENDED_STRING, TOKEN_ARGS);
 #endif
 
 #define logtoken(name, ref)						\

@@ -200,8 +200,8 @@ void		init_device_poll_pcpu(int);	/* per-cpu init routine */
 #define KTR_POLLING	KTR_ALL
 #endif
 KTR_INFO_MASTER(poll);
-KTR_INFO(KTR_POLLING, poll, beg, 0, POLL_KTR_STRING, POLL_KTR_ARG_SIZE);
-KTR_INFO(KTR_POLLING, poll, end, 1, POLL_KTR_STRING, POLL_KTR_ARG_SIZE);
+KTR_INFO(KTR_POLLING, poll, beg, 0, "ifp=%p", void *ifp);
+KTR_INFO(KTR_POLLING, poll, end, 1, "ifp=%p", void *ifp);
 
 #define logpoll(name, arg)	KTR_LOG(poll_ ## name, arg)
 

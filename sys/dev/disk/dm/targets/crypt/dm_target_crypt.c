@@ -66,27 +66,27 @@ KTR_INFO_MASTER(dmcrypt);
 #endif
 
 KTR_INFO(KTR_DMCRYPT, dmcrypt, crypto_dispatch, 0,
-    "crypto_dispatch(%p)", sizeof(void *));
+    "crypto_dispatch(%p)", struct cryptop *crp);
 KTR_INFO(KTR_DMCRYPT, dmcrypt, crypt_strategy, 0,
-    "crypt_strategy(b_cmd = %d, bp = %p)", sizeof(int) + sizeof(void *));
+    "crypt_strategy(b_cmd = %d, bp = %p)", int cmd, struct buf *bp);
 KTR_INFO(KTR_DMCRYPT, dmcrypt, crypto_write_start, 1,
     "crypto_write_start(crp = %p, bp = %p, sector = %d/%d)",
-    sizeof(void *) + sizeof(void *) + sizeof(int) + sizeof(int));
+    struct cryptop *crp, struct buf *bp, int i, int sectors);
 KTR_INFO(KTR_DMCRYPT, dmcrypt, crypto_cb_write_done, 1,
     "crypto_cb_write_done(crp = %p, bp = %p, n = %d)",
-    sizeof(void *) + sizeof(void *) + sizeof(int));
+    struct cryptop *crp, struct buf *bp, int n);
 KTR_INFO(KTR_DMCRYPT, dmcrypt, bio_write_done, 1,
-    "bio_write_done(bp = %p)", sizeof(void *));
+    "bio_write_done(bp = %p)", struct buf *bp);
 KTR_INFO(KTR_DMCRYPT, dmcrypt, crypto_write_retry, 1,
-    "crypto_write_retry(crp = %p)", sizeof(void *));
+    "crypto_write_retry(crp = %p)", struct buf *bp);
 KTR_INFO(KTR_DMCRYPT, dmcrypt, bio_read_done, 2,
-    "bio_read_done(bp = %p)", sizeof(void *));
+    "bio_read_done(bp = %p)", struct buf *bp);
 KTR_INFO(KTR_DMCRYPT, dmcrypt, crypto_read_start, 2,
     "crypto_read_start(crp = %p, bp = %p, sector = %d/%d)",
-    sizeof(void *) + sizeof(void *) + sizeof(int) + sizeof(int));
+    struct cryptop *crp, struct buf *bp, int i, int sectors);
 KTR_INFO(KTR_DMCRYPT, dmcrypt, crypto_cb_read_done, 2,
     "crypto_cb_read_done(crp = %p, bp = %p, n = %d)",
-    sizeof(void *) + sizeof(void *) + sizeof(int));
+    struct cryptop *crp, struct buf *bp, int n);
 
 struct target_crypt_config;
 

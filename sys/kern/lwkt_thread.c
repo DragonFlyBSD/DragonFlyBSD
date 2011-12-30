@@ -76,13 +76,10 @@
 #define KTR_CTXSW KTR_ALL
 #endif
 KTR_INFO_MASTER(ctxsw);
-KTR_INFO(KTR_CTXSW, ctxsw, sw, 0, "#cpu[%d].td = %p",
-	 sizeof(int) + sizeof(struct thread *));
-KTR_INFO(KTR_CTXSW, ctxsw, pre, 1, "#cpu[%d].td = %p",
-	 sizeof(int) + sizeof(struct thread *));
-KTR_INFO(KTR_CTXSW, ctxsw, newtd, 2, "#threads[%p].name = %s",
-	 sizeof (struct thread *) + sizeof(char *));
-KTR_INFO(KTR_CTXSW, ctxsw, deadtd, 3, "#threads[%p].name = <dead>", sizeof (struct thread *));
+KTR_INFO(KTR_CTXSW, ctxsw, sw, 0, "#cpu[%d].td = %p", int cpu, struct thread *td);
+KTR_INFO(KTR_CTXSW, ctxsw, pre, 1, "#cpu[%d].td = %p", int cpu, struct thread *td);
+KTR_INFO(KTR_CTXSW, ctxsw, newtd, 2, "#threads[%p].name = %s", struct thread *td, char *comm);
+KTR_INFO(KTR_CTXSW, ctxsw, deadtd, 3, "#threads[%p].name = <dead>", struct thread *td);
 
 static MALLOC_DEFINE(M_THREAD, "thread", "lwkt threads");
 
@@ -523,7 +520,7 @@ lwkt_set_comm(thread_t td, const char *ctl, ...)
     __va_start(va, ctl);
     kvsnprintf(td->td_comm, sizeof(td->td_comm), ctl, va);
     __va_end(va);
-    KTR_LOG(ctxsw_newtd, td, &td->td_comm[0]);
+    KTR_LOG(ctxsw_newtd, td, td->td_comm);
 }
 
 /*
