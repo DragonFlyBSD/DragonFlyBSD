@@ -1,6 +1,5 @@
 /*	$NetBSD: usbdi.c,v 1.106 2004/10/24 12:52:40 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi.c,v 1.91.2.1 2005/12/15 00:36:00 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.18 2007/06/29 22:56:31 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -771,7 +770,7 @@ usb_transfer_complete(usbd_xfer_handle xfer)
 	int sync = xfer->flags & USBD_SYNCHRONOUS;
 	int erred = xfer->status == USBD_CANCELLED ||
 	    xfer->status == USBD_TIMEOUT;
-	int repeat = pipe->repeat;
+	int repeat;
 	int polling;
 
 	DPRINTFN(5, ("usb_transfer_complete: pipe=%p xfer=%p status=%d "
@@ -790,6 +789,7 @@ usb_transfer_complete(usbd_xfer_handle xfer)
 		return;
 	}
 #endif
+	repeat = pipe->repeat;
 	polling = pipe->device->bus->use_polling;
 	/* XXXX */
 	if (polling)

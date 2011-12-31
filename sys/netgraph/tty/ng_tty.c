@@ -344,7 +344,7 @@ static int
 ngt_input(int c, struct tty *tp)
 {
 	const sc_p sc = (sc_p) tp->t_sc;
-	const node_p node = sc->node;
+	const node_p node = sc ? sc->node : NULL;
 	struct mbuf *m;
 	int error = 0;
 
