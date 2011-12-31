@@ -126,6 +126,13 @@ int next_registered_randintr(int intr);
 void sched_ithd_soft(int intr);	/* procedure called from MD */
 void sched_ithd_hard(int intr);	/* procedure called from MD */
 
+#ifdef _KERNEL_VIRTUAL
+void *register_int_virtual(int intr, inthand2_t *handler, void *arg,
+    const char *name, struct lwkt_serialize *serializer, int flags);
+void unregister_int_virtual(void *id);
+void sched_ithd_hard_virtual(int intr);
+#endif
+
 extern char	eintrnames[];	/* end of intrnames[] */
 extern char	intrnames[];	/* string table containing device names */
 

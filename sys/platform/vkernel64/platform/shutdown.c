@@ -74,7 +74,8 @@ initshutdown(void *arg __unused)
 	sa.sa_handler = shutdownsig;
 	sigaction(SIGTERM, &sa, NULL);
 
-	register_int(2, shutdown_intr, NULL, "shutdown", NULL, INTR_MPSAFE, 0);
+	register_int_virtual(2, shutdown_intr, NULL, "shutdown", NULL,
+	    INTR_MPSAFE);
 }
 
 static
