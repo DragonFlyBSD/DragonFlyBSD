@@ -16,7 +16,6 @@ options		DEBUG_PCTRACK
 ##options		KTR_SPIN_CONTENTION
 #options	DEBUG_CRIT_SECTIONS
 
-options		VM_PAGE_DEBUG
 options		QUOTA
 options		DUMMYNET
 options         IPFIREWALL              #firewall
@@ -34,12 +33,12 @@ options		ALTQ_FAIRQ	#fair queue
 #options        ALTQ_NOPCC      #don't use processor cycle counter
 options         ALTQ_DEBUG      #for debugging
 
-options 	IPSEC			#IP security
-options 	IPSEC_ESP		#IP security (crypto; define w/ IPSEC)
-options 	IPSEC_DEBUG		#debug for IP security
+options		IPSEC			#IP security
+options		IPSEC_ESP		#IP security (crypto; define w/ IPSEC)
+options		IPSEC_DEBUG		#debug for IP security
 
 options		HAMMER
-options 	NULLFS			#NULL filesystem
+options		NULLFS			#NULL filesystem
 options		EXT2FS
 options 	INET			#InterNETworking
 options 	INET6			#IPv6 communications protocols

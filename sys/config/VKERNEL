@@ -13,8 +13,8 @@ cpu		I686_CPU
 
 options		DEBUG_PCTRACK
 
-options		KTR
-options		KTR_SPIN_CONTENTION
+##options		KTR
+##options		KTR_SPIN_CONTENTION
 #options	DEBUG_CRIT_SECTIONS
 
 options		QUOTA
