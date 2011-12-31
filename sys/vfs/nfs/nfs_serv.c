@@ -101,6 +101,7 @@
 #define nfsdbprintf(info)
 #endif
 
+#define MAX_REORDERED_RPC	(16)
 #define MAX_COMMIT_COUNT	(1024 * 1024)
 
 #define NUM_HEURISTIC		1031
@@ -190,8 +191,11 @@ nfsrv_sequential_heuristic(struct uio *uio, struct vnode *vp, int writeop)
 		nh->nh_seqcount += howmany(uio->uio_resid, 16384);
 		if (nh->nh_seqcount > IO_SEQMAX)
 			nh->nh_seqcount = IO_SEQMAX;
+	} else if (qabs(uio->uio_offset - nh->nh_nextoff) <= MAX_REORDERED_RPC *
+		imax(vp->v_mount->mnt_stat.f_iosize, uio->uio_resid)) {
+		    /* Probably a reordered RPC, leave seqcount alone. */
 	} else if (nh->nh_seqcount > 1) {
-		nh->nh_seqcount = 1;
+		nh->nh_seqcount /= 2;
 	} else {
 		nh->nh_seqcount = 0;
 	}
