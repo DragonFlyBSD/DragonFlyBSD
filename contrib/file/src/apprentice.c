@@ -32,7 +32,7 @@
 #include "file.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: apprentice.c,v 1.171 2011/09/16 21:04:59 christos Exp $")
+FILE_RCSID("@(#)$File: apprentice.c,v 1.173 2011/12/08 12:38:24 rrt Exp $")
 #endif	/* lint */
 
 #include "magic.h"
@@ -737,8 +737,7 @@ load_1(struct magic_set *ms, int action, const char *fn, int *errs,
 			break;
 		}
 	}
-	if (line)
-		free(line);
+	free(line);
 	(void)fclose(f);
 }
 
@@ -791,6 +790,7 @@ apprentice_load(struct magic_set *ms, struct magic **magicp, uint32_t *nmagicp,
 				file_oomem(ms,
 				    strlen(fn) + strlen(d->d_name) + 2);
 				errs++;
+				closedir(dir);
 				goto out;
 			}
 			if (stat(mfn, &st) == -1 || !S_ISREG(st.st_mode)) {
@@ -805,6 +805,7 @@ apprentice_load(struct magic_set *ms, struct magic **magicp, uint32_t *nmagicp,
 				    realloc(filearr, mlen))) == NULL) {
 					file_oomem(ms, mlen);
 					free(mfn);
+					closedir(dir);
 					errs++;
 					goto out;
 				}
@@ -2301,7 +2302,7 @@ private int
 apprentice_compile(struct magic_set *ms, struct magic **magicp,
     uint32_t *nmagicp, const char *fn)
 {
-	int fd;
+	int fd = -1;
 	char *dbname;
 	int rv = -1;
 
@@ -2332,7 +2333,8 @@ apprentice_compile(struct magic_set *ms, struct magic **magicp,
 		goto out;
 	}
 
-	(void)close(fd);
+	if (fd != -1)
+		(void)close(fd);
 	rv = 0;
 out:
 	free(dbname);
