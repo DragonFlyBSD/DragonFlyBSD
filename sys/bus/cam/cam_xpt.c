@@ -1490,6 +1490,7 @@ xpt_init(void *dummy)
 
 	lockmgr(&xsoftc.xpt_lock, LK_EXCLUSIVE);
 	if ((status = xpt_bus_register(xpt_sim, /*bus #*/0)) != CAM_SUCCESS) {
+		lockmgr(&xsoftc.xpt_lock, LK_RELEASE);
 		kprintf("xpt_init: xpt_bus_register failed with status %#x,"
 		       " failing attach\n", status);
 		return (EINVAL);
@@ -1503,6 +1504,7 @@ xpt_init(void *dummy)
 	if ((status = xpt_create_path(&path, NULL, CAM_XPT_PATH_ID,
 				      CAM_TARGET_WILDCARD,
 				      CAM_LUN_WILDCARD)) != CAM_REQ_CMP) {
+		lockmgr(&xsoftc.xpt_lock, LK_RELEASE);
 		kprintf("xpt_init: xpt_create_path failed with status %#x,"
 		       " failing attach\n", status);
 		return (EINVAL);
