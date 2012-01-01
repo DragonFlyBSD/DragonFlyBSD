@@ -605,7 +605,7 @@ generate_histogram(int fd, const char *filesystem,
 	}
 
 	/*
-	 * Reduce to SplitupOpt (default 100MB) chunks.  This code may
+	 * Reduce to SplitupOpt (default 4GB) chunks.  This code may
 	 * use up to two additional elements.  Do the array in-place.
 	 *
 	 * Inefficient degenerate cases can occur if we do not accumulate
