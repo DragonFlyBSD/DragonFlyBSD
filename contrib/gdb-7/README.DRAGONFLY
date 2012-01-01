@@ -24,6 +24,7 @@ Local modifications applied to following files:
 	gdb/configure.tgt
 	gdb/corelow.c
 	gdb/defs.h
+	gdb/exec.c
 	gdb/i386-tdep.h
 	gdb/i386bsd-nat.c
 	gdb/i386fbsd-tdep.c

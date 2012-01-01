@@ -400,12 +400,13 @@ add_to_section_table (bfd *abfd, struct bfd_section *asect,
 int
 resize_section_table (struct target_section_table *table, int num_added)
 {
-  struct target_section *old_value;
   int old_count;
   int new_count;
 
-  old_value = table->sections;
   old_count = table->sections_end - table->sections;
+
+  if (!num_added)
+    return old_count;
 
   new_count = num_added + old_count;
 

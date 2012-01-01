@@ -143,8 +143,6 @@ kgdb_trgt_open(char *filename, int from_tty)
                        pspace = add_program_space(new_address_space());
                        pspace->symfile_object_file = symfile_objfile;
                        pspace->objfiles = object_files;
-                       pspace->target_sections = 
-                               current_program_space->target_sections;
                      }
                      inf8->pspace = pspace;
                      inf8->aspace = pspace->aspace;
