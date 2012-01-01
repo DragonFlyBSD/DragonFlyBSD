@@ -30,13 +30,33 @@
 #include <machine/cpufunc.h>
 
 /*
+ * Is a token held either by the specified thread or held shared?
+ *
+ * We can't inexpensively validate the thread for a shared token
+ * without iterating td->td_toks, so this isn't a perfect test.
+ */
+static __inline int
+_lwkt_token_held_any(lwkt_token_t tok, thread_t td)
+{
+	long count = tok->t_count;
+
+	cpu_ccfence();
+	if (tok->t_ref >= &td->td_toks_base && tok->t_ref < td->td_toks_stop)
+		return TRUE;
+	if ((count & TOK_EXCLUSIVE) == 0 &&
+	    (count & ~(TOK_EXCLUSIVE|TOK_EXCLREQ))) {
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/*
  * Is a token held by the specified thread?
  */
 static __inline int
-_lwkt_token_held(lwkt_token_t tok, thread_t td)
+_lwkt_token_held_excl(lwkt_token_t tok, thread_t td)
 {
-	return ((tok->t_count & ~(TOK_EXCLUSIVE|TOK_EXCLREQ)) ||
-		(tok->t_ref >= &td->td_toks_base &&
+	return ((tok->t_ref >= &td->td_toks_base &&
 		 tok->t_ref < td->td_toks_stop));
 }
 

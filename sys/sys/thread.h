@@ -137,10 +137,14 @@ typedef struct lwkt_token {
 /*
  * Assert that a particular token is held
  */
-#define LWKT_TOKEN_HELD(tok)		_lwkt_token_held(tok, curthread)
+#define LWKT_TOKEN_HELD_ANY(tok)	_lwkt_token_held_any(tok, curthread)
+#define LWKT_TOKEN_HELD_EXCL(tok)	_lwkt_token_held_excl(tok, curthread)
 
-#define ASSERT_LWKT_TOKEN_HELD(tok)	\
-	KKASSERT(LWKT_TOKEN_HELD(tok))
+#define ASSERT_LWKT_TOKEN_HELD(tok)		\
+	KKASSERT(LWKT_TOKEN_HELD_ANY(tok))
+
+#define ASSERT_LWKT_TOKEN_HELD_EXCL(tok)	\
+	KKASSERT(LWKT_TOKEN_HELD_EXCL(tok))
 
 #define ASSERT_NO_TOKENS_HELD(td)	\
 	KKASSERT((td)->td_toks_stop == &td->td_toks_array[0])

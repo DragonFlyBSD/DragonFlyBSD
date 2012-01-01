@@ -26,8 +26,8 @@
 
 void cpu_get_initial_mplock(void);
 
-#define MP_LOCK_HELD()		LWKT_TOKEN_HELD(&mp_token)
-#define ASSERT_MP_LOCK_HELD()	ASSERT_LWKT_TOKEN_HELD(&mp_token)
+#define MP_LOCK_HELD()		LWKT_TOKEN_HELD_EXCL(&mp_token)
+#define ASSERT_MP_LOCK_HELD()	ASSERT_LWKT_TOKEN_HELD_EXCL(&mp_token)
 
 #else
 
