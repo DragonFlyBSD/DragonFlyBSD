@@ -1117,8 +1117,10 @@ out:
 	tp->t_flags &= ~TF_ACKNOW;
 	if (tcp_delack_enabled)
 		tcp_callout_stop(tp, tp->tt_delack);
-	if (sendalot)
+	if (sendalot) {
+		th = NULL;
 		goto again;
+	}
 	return (0);
 }
 
