@@ -237,6 +237,7 @@ cmd_set_usage_all(struct mount *mp, prop_array_t args)
 	iter = prop_array_iterator(args);
 	if (iter == NULL) {
 		kprintf("cmd_set_usage_all(): failed to create iterator\n");
+		spin_unlock(&mp->mnt_acct.ac_spin);
 		return 1;
 	}
 	while ((item = prop_object_iterator_next(iter)) != NULL) {
