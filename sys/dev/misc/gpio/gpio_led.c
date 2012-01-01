@@ -185,6 +185,7 @@ led_attach(struct gpio *gp, void *arg, int pin, u_int32_t mask)
 
 	sc->gp_map = gpio_map(gp, NULL, pin, 1);
 	if (sc->gp_map == NULL) {
+		lockmgr(&led_lock, LK_RELEASE);
 		return 2;
 	}
 
