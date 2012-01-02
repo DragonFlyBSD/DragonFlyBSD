@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/ktr.9,v 1.8 2005/03/08 01:37:36 hmp Exp $
 .\"
-.Dd July 16, 2011
+.Dd January 2, 2012
 .Dt KTR 9
 .Os
 .Sh NAME
@@ -40,7 +40,7 @@
 .Vt "extern struct ktr_entry *ktr_buf[MAXCPU]" ;
 .Fn KTR_INFO_MASTER "master"
 .Fn KTR_INFO_MASTER_EXTERN "master"
-.Fn KTR_INFO "compile" "master" "name" "maskbit" "format" "datasize"
+.Fn KTR_INFO "compile" "master" "name" "maskbit" "format" "type name" "..."
 .Fn KTR_LOG "info" "arg ..."
 .Sh DESCRIPTION
 The
@@ -74,18 +74,13 @@ Code for logging this event will be compiled in when
 is defined.
 The
 .Fa format
-argument is a limited (i.e.\& only integral types, no formatting)
+argument is a format string in the manner of
 .Xr kprintf 9
-style format string used to build the text of the event log message while
-.Fa datasize
-specifies the size of the data to be logged, either the total size of the
-arguments required by the
-.Fa format
-string.
-For logging a fixed string with
-.Fn KTR_INFO ,
-.Fa datasize
-is 0.
+used to build the text of the event log message.
+The arguments required by the format string have to be specified with a
+.Fa type
+and a
+.Fa name .
 The
 .Fa maskbit
 is a bit number that determines which of the corresponding
@@ -132,8 +127,8 @@ This example demonstrates a simple usage of the KTR facility:
 #define KTR_FOO		KTR_ALL
 #endif
 KTR_INFO_MASTER(foo);
-KTR_INFO(KTR_FOO, foo, func1, 0, "func1()", 0);
-KTR_INFO(KTR_FOO, foo, func2, 1, "func2(%d)", sizeof(int));
+KTR_INFO(KTR_FOO, foo, func1, 0, "func1()");
+KTR_INFO(KTR_FOO, foo, func2, 1, "func2(%d)", int arg);
 
 \&...
 
