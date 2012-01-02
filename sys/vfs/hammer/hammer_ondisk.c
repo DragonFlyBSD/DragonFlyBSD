@@ -570,7 +570,7 @@ found_aliased:
 		 * interlock now held.  Shortcut if ondisk is already
 		 * assigned.
 		 */
-		++hammer_count_refedbufs;
+		atomic_add_int(&hammer_count_refedbufs, 1);
 		if (buffer->ondisk) {
 			hammer_io_advance(&buffer->io);
 			hammer_ref_interlock_done(&buffer->io.lock);
@@ -699,7 +699,7 @@ found_aliased:
 		kfree(buffer, hmp->m_misc);
 		goto again;
 	}
-	++hammer_count_refedbufs;
+	atomic_add_int(&hammer_count_refedbufs, 1);
 found:
 
 	/*
@@ -926,10 +926,10 @@ hammer_unload_buffer(hammer_buffer_t buffer, void *data)
 	 */
 	if (buffer->io.ioerror) {
 		hammer_io_clear_error_noassert(&buffer->io);
-		--hammer_count_refedbufs;
+		atomic_add_int(&hammer_count_refedbufs, -1);
 	}
 	hammer_ref_interlock_true(&buffer->io.lock);
-	++hammer_count_refedbufs;
+	atomic_add_int(&hammer_count_refedbufs, 1);
 
 	/*
 	 * We must not flush a dirty buffer to disk on umount.  It should
@@ -982,7 +982,7 @@ hammer_ref_buffer(hammer_buffer_t buffer)
 	}
 
 	if (locked) {
-		++hammer_count_refedbufs;
+		atomic_add_int(&hammer_count_refedbufs, 1);
 		error = hammer_load_buffer(buffer, 0);
 		/* NOTE: on error the buffer pointer is stale */
 	} else {
@@ -1023,7 +1023,7 @@ hammer_rel_buffer(hammer_buffer_t buffer, int locked)
 	 * so we don't account for the loss here.
 	 */
 	if (locked || (buffer->io.lock.refs & HAMMER_REFS_CHECK) == 0)
-		--hammer_count_refedbufs;
+		atomic_add_int(&hammer_count_refedbufs, -1);
 
 	/*
 	 * If the caller locked us or the normal released transitions

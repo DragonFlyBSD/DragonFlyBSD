@@ -1516,7 +1516,7 @@ hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
 	} else {
 		flush = hammer_ref_interlock(&buffer->io.lock);
 		if (flush)
-			++hammer_count_refedbufs;
+			atomic_add_int(&hammer_count_refedbufs, 1);
 
 		if (final < 0) {
 			hammer_io_clear_error(&buffer->io);
