@@ -1828,7 +1828,7 @@ ed_tick(void *arg)
 	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (sc->gone) {
-		crit_exit();
+		lwkt_serialize_exit(ifp->if_serializer);
 		return;
 	}
 
