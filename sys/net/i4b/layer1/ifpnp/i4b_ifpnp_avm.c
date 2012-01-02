@@ -485,7 +485,8 @@ avm_pnp_attach(device_t dev)
 						0UL, ~0UL, 1, RF_ACTIVE ) ))
 	{
 		kprintf("avm_pnp_attach: Couldn't get my io_base.\n");
-		return ENXIO;                                       
+		error = ENXIO;
+		goto fail;
 	}
 	if (sc->sc_resources.io_base[0] == NULL) {
 		kprintf("avm_pnp%d: couldn't map IO port\n", unit);
