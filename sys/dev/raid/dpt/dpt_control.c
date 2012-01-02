@@ -26,6 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $
  */
 
 /**
@@ -35,9 +36,6 @@
  * functionality of this code will change (possibly radically) in the
  * future.
  */
-
-#ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.14 2006/12/28 21:23:58 dillon Exp $"
 
 #include "opt_dpt.h"
 
@@ -260,6 +258,7 @@ dpt_get_sysinfo(void)
 	/* Get The Number Of Drives From The Bios Data Area */
 	if ((addr = (char *) dpt_physmap(0x0475, 1024)) == NULL) {
 		kprintf("DPT:  Cannot map BIOS address 0x0475.  No sysinfo... :-(\n");
+		crit_exit();
 		return;
 	}
 	dpt_sysinfo.numDrives = *addr;
