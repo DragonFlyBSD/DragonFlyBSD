@@ -61,6 +61,7 @@ int BulkOpt;
 u_int64_t BandwidthOpt;
 u_int64_t SplitupOpt = 4ULL * 1024ULL * 1024ULL * 1024ULL;
 u_int64_t MemoryLimit = 1024LLU * 1024 * 1024;
+const char *SplitupOptStr;
 const char *CyclePath;
 const char *LinkPath;
 
@@ -104,6 +105,7 @@ main(int ac, char **av)
 			}
 			break;
 		case 'S':
+			SplitupOptStr = strdup(optarg);
 			SplitupOpt = strtoull(optarg, &ptr, 0);
 			switch(*ptr) {
 			case 'g':
