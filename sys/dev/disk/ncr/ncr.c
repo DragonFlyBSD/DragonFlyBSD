@@ -3905,6 +3905,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 			/* XXX JGibbs - Freeze SIMQ */
 			ccb->ccb_h.status = CAM_RESRC_UNAVAIL;
 			xpt_done(ccb);
+			crit_exit();
 			return;
 		};
 		

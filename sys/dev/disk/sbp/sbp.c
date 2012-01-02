@@ -2668,6 +2668,7 @@ sbp_get_ocb(struct sbp_dev *sdev)
 	ocb = STAILQ_FIRST(&sdev->free_ocbs);
 	if (ocb == NULL) {
 		kprintf("ocb shortage!!!\n");
+		crit_exit();
 		return NULL;
 	}
 	STAILQ_REMOVE_HEAD(&sdev->free_ocbs, ocb);

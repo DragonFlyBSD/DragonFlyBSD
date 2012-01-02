@@ -1466,6 +1466,7 @@ btexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 		xpt_freeze_simq(bt->sim, /*count*/1);
 		ccb->ccb_h.status = CAM_REQUEUE_REQ;
 		xpt_done(ccb);
+		crit_exit();
 		return;
 	}
 	bt->cur_outbox->action_code = BMBO_START;	
