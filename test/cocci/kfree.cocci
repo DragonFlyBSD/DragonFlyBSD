@@ -11,6 +11,8 @@
 // URL: http://coccinelle.lip6.fr/
 // Comments:
 // Options: -no_includes -include_headers -D report
+//
+// Applies to kernel code.
 
 virtual org
 virtual report

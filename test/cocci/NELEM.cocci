@@ -1,3 +1,9 @@
+#
+# Find cases where NELEM() can be used.
+#
+# Applies to userland and kernel code.
+#
+
 @param@
 @@
 

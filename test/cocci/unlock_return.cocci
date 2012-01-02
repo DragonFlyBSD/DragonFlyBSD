@@ -1,12 +1,14 @@
 //
 // Look for missing lock releases before returning from a function.
 //
+// Applies to kernel code.
+//
 // NOTES
 // -----
 // * The results of running this patch have to be carefully reviewed.
 //   Some functions legally return with the lock held, even if the
 //   below pattern matches. Some other functions begin with the lock
-//   held, only to release and then reaquire it again.
+//   held, only to release and then reacquire it again.
 //
 // * Consider using -timeout because it might run a long time
 //   (indefinitely?) on some files.
