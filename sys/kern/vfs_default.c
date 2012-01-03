@@ -1469,10 +1469,6 @@ vfs_stdac_init(struct mount *mp)
 	const char* fs_type;
 	int i, fstype_ok = 0;
 
-	/* if mounted fs is read-only, do not do anything */
-	if (mp->mnt_flag & MNT_RDONLY)
-		return (0);
-
 	/* is mounted fs type one we want to do some accounting for ? */
 	for (i=0; i<ACCOUNTING_NB_FSTYPES; i++) {
 		fs_type = accounting_fstypes[i];
@@ -1494,10 +1490,6 @@ vfs_stdac_done(struct mount *mp)
 {
 	const char* fs_type;
 	int i, fstype_ok = 0;
-
-	/* if mounted fs is read-only, do not do anything */
-	if (mp->mnt_flag & MNT_RDONLY)
-		return (0);
 
 	/* is mounted fs type one we want to do some accounting for ? */
 	for (i=0; i<ACCOUNTING_NB_FSTYPES; i++) {
