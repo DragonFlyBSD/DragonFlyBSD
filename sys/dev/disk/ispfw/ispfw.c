@@ -293,36 +293,52 @@ static moduledata_t ispfw_mod = {
 };
 #if	defined(ISP_ALL) || !defined(KLD_MODULE)
 DECLARE_MODULE(ispfw, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(ispfw, 1);
 #elif	defined(ISP_1000)
 DECLARE_MODULE(isp_1000, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_1000, 1);
 #elif	defined(ISP_1040)
 DECLARE_MODULE(isp_1040, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_1040, 1);
 #elif	defined(ISP_1040_IT)
 DECLARE_MODULE(isp_1040_it, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_1040_it, 1);
 #elif	defined(ISP_1080)
 DECLARE_MODULE(isp_1080, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_1080, 1);
 #elif	defined(ISP_1080_IT)
 DECLARE_MODULE(isp_1080_it, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_1080_it, 1);
 #elif	defined(ISP_12160)
 DECLARE_MODULE(isp_12160, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_12160, 1);
 #elif	defined(ISP_12160_IT)
 DECLARE_MODULE(isp_12160_it, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_12160_it, 1);
 #elif	defined(ISP_2100)
 DECLARE_MODULE(isp_2100, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_2100, 1);
 #elif	defined(ISP_2200)
 DECLARE_MODULE(isp_2200, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_2200, 1);
 #elif	defined(ISP_2300)
 DECLARE_MODULE(isp_2300, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_2300, 1);
 #elif	defined(ISP_2322)
 DECLARE_MODULE(isp_2322, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_2322, 1);
 #elif	defined(ISP_2400)
 DECLARE_MODULE(isp_2400, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_2400, 1);
 #elif	defined(ISP_2400_MULTI)
 DECLARE_MODULE(isp_2400_multi, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_2400_multi, 1);
 #elif	defined(ISP_2500)
 DECLARE_MODULE(isp_2500, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_2500, 1);
 #elif	defined(ISP_2500_MULTI)
 DECLARE_MODULE(isp_2500_multi, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+MODULE_VERSION(isp_2500_multi, 1);
 #else
 #error	"firmware not specified"
 #endif
