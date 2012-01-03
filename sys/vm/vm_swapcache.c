@@ -82,7 +82,8 @@
 /* the kernel process "vm_pageout"*/
 static int vm_swapcached_flush (vm_page_t m, int isblkdev);
 static int vm_swapcache_test(vm_page_t m);
-static void vm_swapcache_writing(vm_page_t marker);
+static int vm_swapcache_writing_heuristic(void);
+static int vm_swapcache_writing(vm_page_t marker, int count, int scount);
 static void vm_swapcache_cleaning(vm_object_t marker);
 static void vm_swapcache_movemarker(vm_object_t marker, vm_object_t object);
 struct thread *swapcached_thread;
@@ -92,12 +93,13 @@ SYSCTL_NODE(_vm, OID_AUTO, swapcache, CTLFLAG_RW, NULL, NULL);
 int vm_swapcache_read_enable;
 int vm_swapcache_inactive_heuristic;
 static int vm_swapcache_sleep;
-static int vm_swapcache_maxscan = 256 * 4;
-static int vm_swapcache_maxlaunder = 256;
+static int vm_swapcache_maxscan = PQ_L2_SIZE * 8;
+static int vm_swapcache_maxlaunder = PQ_L2_SIZE * 4;
 static int vm_swapcache_data_enable = 0;
 static int vm_swapcache_meta_enable = 0;
 static int vm_swapcache_maxswappct = 75;
 static int vm_swapcache_hysteresis;
+static int vm_swapcache_min_hysteresis;
 int vm_swapcache_use_chflags = 1;	/* require chflags cache */
 static int64_t vm_swapcache_minburst = 10000000LL;	/* 10MB */
 static int64_t vm_swapcache_curburst = 4000000000LL;	/* 4G after boot */
@@ -121,7 +123,9 @@ SYSCTL_INT(_vm_swapcache, OID_AUTO, read_enable,
 SYSCTL_INT(_vm_swapcache, OID_AUTO, maxswappct,
 	CTLFLAG_RW, &vm_swapcache_maxswappct, 0, "");
 SYSCTL_INT(_vm_swapcache, OID_AUTO, hysteresis,
-	CTLFLAG_RW, &vm_swapcache_hysteresis, 0, "");
+	CTLFLAG_RD, &vm_swapcache_hysteresis, 0, "");
+SYSCTL_INT(_vm_swapcache, OID_AUTO, min_hysteresis,
+	CTLFLAG_RW, &vm_swapcache_min_hysteresis, 0, "");
 SYSCTL_INT(_vm_swapcache, OID_AUTO, use_chflags,
 	CTLFLAG_RW, &vm_swapcache_use_chflags, 0, "");
 
@@ -195,7 +199,8 @@ vm_swapcached_thread(void)
 		vm_page_queues_spin_unlock(PQ_INACTIVE + q);
 	}
 
-	vm_swapcache_hysteresis = vmstats.v_inactive_target / 2;
+	vm_swapcache_min_hysteresis = 1024;
+	vm_swapcache_hysteresis = vm_swapcache_min_hysteresis;
 	vm_swapcache_inactive_heuristic = -vm_swapcache_hysteresis;
 
 	/*
@@ -208,6 +213,10 @@ vm_swapcached_thread(void)
 	lwkt_reltoken(&vmobj_token);
 
 	for (;;) {
+		int reached_end;
+		int scount;
+		int count;
+
 		/*
 		 * Handle shutdown
 		 */
@@ -258,26 +267,44 @@ vm_swapcached_thread(void)
 		 * create unnecessary fragmentation.  The minimum burst
 		 * is one-seconds worth of accumulation.
 		 */
-		if (state == SWAPC_WRITING) {
-			if (vm_swapcache_curburst >= vm_swapcache_accrate) {
-				if (burst == SWAPB_BURSTING) {
-					for (q = 0; q < PQ_L2_SIZE; ++q) {
+		if (state != SWAPC_WRITING) {
+			vm_swapcache_cleaning(&object_marker);
+			continue;
+		}
+		if (vm_swapcache_curburst < vm_swapcache_accrate)
+			continue;
+
+		reached_end = 0;
+		count = vm_swapcache_maxlaunder / PQ_L2_SIZE + 2;
+		scount = vm_swapcache_maxscan / PQ_L2_SIZE + 2;
+
+		if (burst == SWAPB_BURSTING) {
+			if (vm_swapcache_writing_heuristic()) {
+				for (q = 0; q < PQ_L2_SIZE; ++q) {
+					reached_end +=
 						vm_swapcache_writing(
-							&page_marker[q]);
-					}
-					if (vm_swapcache_curburst <= 0)
-						burst = SWAPB_RECOVERING;
-				} else if (vm_swapcache_curburst >
-					   vm_swapcache_minburst) {
-					for (q = 0; q < PQ_L2_SIZE; ++q) {
-						vm_swapcache_writing(
-							&page_marker[q]);
-					}
-					burst = SWAPB_BURSTING;
+							&page_marker[q],
+							count,
+							scount);
 				}
 			}
-		} else {
-			vm_swapcache_cleaning(&object_marker);
+			if (vm_swapcache_curburst <= 0)
+				burst = SWAPB_RECOVERING;
+		} else if (vm_swapcache_curburst > vm_swapcache_minburst) {
+			if (vm_swapcache_writing_heuristic()) {
+				for (q = 0; q < PQ_L2_SIZE; ++q) {
+					reached_end +=
+						vm_swapcache_writing(
+							&page_marker[q],
+							count,
+							scount);
+				}
+			}
+			burst = SWAPB_BURSTING;
+		}
+		if (reached_end == PQ_L2_SIZE) {
+			vm_swapcache_inactive_heuristic =
+				-vm_swapcache_hysteresis;
 		}
 	}
 
@@ -304,29 +331,45 @@ static struct kproc_desc swpc_kp = {
 };
 SYSINIT(swapcached, SI_SUB_KTHREAD_PAGE, SI_ORDER_SECOND, kproc_start, &swpc_kp)
 
-static void
-vm_swapcache_writing(vm_page_t marker)
+/*
+ * Deal with an overflow of the heuristic counter or if the user
+ * manually changes the hysteresis.
+ *
+ * Try to avoid small incremental pageouts by waiting for enough
+ * pages to buildup in the inactive queue to hopefully get a good
+ * burst in.  This heuristic is bumped by the VM system and reset
+ * when our scan hits the end of the queue.
+ *
+ * Return TRUE if we need to take a writing pass.
+ */
+static int
+vm_swapcache_writing_heuristic(void)
+{
+	int hyst;
+
+	hyst = vmstats.v_inactive_count / 4;
+	if (hyst < vm_swapcache_min_hysteresis)
+		hyst = vm_swapcache_min_hysteresis;
+	cpu_ccfence();
+	vm_swapcache_hysteresis = hyst;
+
+	if (vm_swapcache_inactive_heuristic < -hyst)
+		vm_swapcache_inactive_heuristic = -hyst;
+
+	return (vm_swapcache_inactive_heuristic >= 0);
+}
+
+/*
+ * Take a writing pass on one of the inactive queues, return non-zero if
+ * we hit the end of the queue.
+ */
+static int
+vm_swapcache_writing(vm_page_t marker, int count, int scount)
 {
 	vm_object_t object;
 	struct vnode *vp;
 	vm_page_t m;
-	int count;
-	int scount;
 	int isblkdev;
-
-	/*
-	 * Deal with an overflow of the heuristic counter or if the user
-	 * manually changes the hysteresis.
-	 *
-	 * Try to avoid small incremental pageouts by waiting for enough
-	 * pages to buildup in the inactive queue to hopefully get a good
-	 * burst in.  This heuristic is bumped by the VM system and reset
-	 * when our scan hits the end of the queue.
-	 */
-	if (vm_swapcache_inactive_heuristic < -vm_swapcache_hysteresis)
-		vm_swapcache_inactive_heuristic = -vm_swapcache_hysteresis;
-	if (vm_swapcache_inactive_heuristic < 0)
-		return;
 
 	/*
 	 * Scan the inactive queue from our marker to locate
@@ -334,9 +377,6 @@ vm_swapcache_writing(vm_page_t marker)
 	 *
 	 * We are looking for clean vnode-backed pages.
 	 */
-	count = vm_swapcache_maxlaunder;
-	scount = vm_swapcache_maxscan;
-
 	vm_page_queues_spin_lock(marker->queue);
 	while ((m = TAILQ_NEXT(marker, pageq)) != NULL &&
 	       count > 0 && scount-- > 0) {
@@ -476,9 +516,12 @@ vm_swapcache_writing(vm_page_t marker)
 	 * of vfs_vmio_release() when they become unwired from the
 	 * buffer cache.
 	 */
-	if (m == NULL)
-		vm_swapcache_inactive_heuristic = -vm_swapcache_hysteresis;
 	vm_page_queues_spin_unlock(marker->queue);
+
+	/*
+	 * m invalid but can be used to test for NULL
+	 */
+	return (m == NULL);
 }
 
 /*

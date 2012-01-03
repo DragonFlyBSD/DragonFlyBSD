@@ -853,9 +853,9 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 				TAILQ_INSERT_TAIL(
 					&vm_page_queues[PQ_INACTIVE + q].pl,
 					m, pageq);
+				++vm_swapcache_inactive_heuristic;
 			}
 			vm_page_and_queue_spin_unlock(m);
-			++vm_swapcache_inactive_heuristic;
 			vm_page_wakeup(m);
 			continue;
 		}
@@ -958,9 +958,9 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 				TAILQ_INSERT_TAIL(
 					&vm_page_queues[PQ_INACTIVE + q].pl,
 					m, pageq);
+				++vm_swapcache_inactive_heuristic;
 			}
 			vm_page_and_queue_spin_unlock(m);
-			++vm_swapcache_inactive_heuristic;
 			vm_page_wakeup(m);
 		} else if (maxlaunder > 0) {
 			/*
@@ -997,9 +997,9 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 					TAILQ_INSERT_TAIL(
 					    &vm_page_queues[PQ_INACTIVE + q].pl,
 					    m, pageq);
+					++vm_swapcache_inactive_heuristic;
 				}
 				vm_page_and_queue_spin_unlock(m);
-				++vm_swapcache_inactive_heuristic;
 				vm_page_wakeup(m);
 				continue;
 			}
@@ -1098,9 +1098,9 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 					if (m->queue - m->pc == PQ_INACTIVE) {
 						TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE + q].pl, m, pageq);
 						TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE + q].pl, m, pageq);
+						++vm_swapcache_inactive_heuristic;
 					}
 					vm_page_and_queue_spin_unlock(m);
-					++vm_swapcache_inactive_heuristic;
 					if (object->flags & OBJ_MIGHTBEDIRTY)
 						++*vnodes_skippedp;
 					vm_page_wakeup(m);
