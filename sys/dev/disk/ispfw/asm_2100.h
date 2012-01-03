@@ -1,6 +1,5 @@
-/* $FreeBSD: src/sys/dev/ispfw/asm_2100.h,v 1.2.2.4 2002/10/11 17:31:30 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/ispfw/asm_2100.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
-/*
+/* $FreeBSD: src/sys/dev/ispfw/asm_2100.h,v 1.6 2005/01/06 01:42:50 imp Exp $ */
+/*-
  * Copyright (C) 1995, 1996, 1997, 1998, 1999, 2000 Qlogic, Inc.
  * All rights reserved.
  *

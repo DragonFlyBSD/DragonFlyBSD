@@ -1,9 +1,7 @@
-/* $FreeBSD: src/sys/dev/ispfw/ispfw.c,v 1.2.2.5 2002/10/12 00:13:09 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/ispfw/ispfw.c,v 1.7 2006/09/05 03:48:10 dillon Exp $ */
-/*
- * ISP Firmware Helper Pseudo Device for FreeBSD
+/*-
+ * ISP Firmware Modules for FreeBSD
  *
- * Copyright (c) 2000, by Matthew Jacob
+ * Copyright (c) 2000, 2001, 2006 by Matthew Jacob
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,135 +24,305 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/ispfw/ispfw.c,v 1.22 2010/03/05 03:37:42 sobomax Exp $
  */
 
 #include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/buf.h>
-#include <sys/disk.h>
+#include <sys/firmware.h>
 #include <sys/kernel.h>
-#include <sys/malloc.h>
 #include <sys/linker.h>
+#include <sys/module.h>
+#include <sys/systm.h>
 
-#include "asm_1040.h"
-#include "asm_1080.h"
-#include "asm_12160.h"
-#include "asm_2100.h"
-#include "asm_2200.h"
-#include "asm_2300.h"
+#if	defined(ISP_ALL) || !defined(KLD_MODULE)
+#define	ISP_1040	1
+#define	ISP_1040_IT	1
+#define	ISP_1080	1
+#define	ISP_1080_IT	1
+#define	ISP_12160	1
+#define	ISP_12160_IT	1
+#define	ISP_2100	1
+#define	ISP_2200	1
+#define	ISP_2300	1
+#define	ISP_2322	1
+#define	ISP_2400	1
+#define	ISP_2400_MULTI	1
+#define	ISP_2500	1
+#define	ISP_2500_MULTI	1
+#endif
 
-#define	ISPFW_VERSION	0
+#ifndef MODULE_NAME
+#define	MODULE_NAME	"ispfw"
+#endif
 
-#define	PCI_PRODUCT_QLOGIC_ISP1020	0x1020
-#define	PCI_PRODUCT_QLOGIC_ISP1080	0x1080
-#define	PCI_PRODUCT_QLOGIC_ISP10160	0x1016
-#define	PCI_PRODUCT_QLOGIC_ISP12160	0x1216
-#define	PCI_PRODUCT_QLOGIC_ISP1240	0x1240
-#define	PCI_PRODUCT_QLOGIC_ISP1280	0x1280
-#define	PCI_PRODUCT_QLOGIC_ISP2100	0x2100
-#define	PCI_PRODUCT_QLOGIC_ISP2200	0x2200
-#define	PCI_PRODUCT_QLOGIC_ISP2300	0x2300
-#define	PCI_PRODUCT_QLOGIC_ISP2312	0x2312
+#if	defined(ISP_1040) || defined(ISP_1040_IT)
+#include <dev/disk/ispfw/asm_1040.h>
+#endif
+#if	defined(ISP_1080) || defined(ISP_1080_IT)
+#include <dev/disk/ispfw/asm_1080.h>
+#endif
+#if	defined(ISP_12160) || defined(ISP_12160_IT)
+#include <dev/disk/ispfw/asm_12160.h>
+#endif
+#if	defined(ISP_2100)
+#include <dev/disk/ispfw/asm_2100.h>
+#endif
+#if	defined(ISP_2200)
+#include <dev/disk/ispfw/asm_2200.h>
+#endif
+#if	defined(ISP_2300)
+#include <dev/disk/ispfw/asm_2300.h>
+#endif
+#if	defined(ISP_2322)
+#include <dev/disk/ispfw/asm_2322.h>
+#endif
+#if	defined(ISP_2400) || defined(ISP_2400_MULTI)
+#include <dev/disk/ispfw/asm_2400.h>
+#endif
+#if	defined(ISP_2500) || defined(ISP_2500_MULTI)
+#include <dev/disk/ispfw/asm_2500.h>
+#endif
 
-typedef void ispfwfunc (int, int, int, const u_int16_t **);
-extern ispfwfunc *isp_get_firmware_p;
-static void isp_get_firmware (int, int, int, const u_int16_t **);
+#if	defined(ISP_1000)
+static int	isp_1000_loaded;
+#endif
+#if	defined(ISP_1040)
+static int	isp_1040_loaded;
+#endif
+#if	defined(ISP_1040_IT)
+static int	isp_1040_it_loaded;
+#endif
+#if	defined(ISP_1080)
+static int	isp_1080_loaded;
+#endif
+#if	defined(ISP_1080_IT)
+static int	isp_1080_it_loaded;
+#endif
+#if	defined(ISP_12160)
+static int	isp_12160_loaded;
+#endif
+#if	defined(ISP_12160_IT)
+static int	isp_12160_it_loaded;
+#endif
+#if	defined(ISP_2100)
+static int	isp_2100_loaded;
+#endif
+#if	defined(ISP_2200)
+static int	isp_2200_loaded;
+#endif
+#if	defined(ISP_2300)
+static int	isp_2300_loaded;
+#endif
+#if	defined(ISP_2322)
+static int	isp_2322_loaded;
+#endif
+#if	defined(ISP_2400)
+static int	isp_2400_loaded;
+#endif
+#if	defined(ISP_2400_MULTI)
+static int	isp_2400_multi_loaded;
+#endif
+#if	defined(ISP_2500)
+static int	isp_2500_loaded;
+#endif
+#if	defined(ISP_2500_MULTI)
+static int	isp_2500_multi_loaded;
+#endif
 
-static int ncallers = 0;
-static const u_int16_t ***callp = NULL;
-static int addcaller(const u_int16_t **);
+#define	ISPFW_VERSION	1
 
-static int
-addcaller(const u_int16_t **caller)
+#if	!defined(KLD_MODULE)
+#define	ISPFW_KLD	0
+#else
+#define	ISPFW_KLD	1
+#endif
+
+#define	RMACRO(token)	do {						\
+	if (token##_loaded)						\
+		break;							\
+	if (firmware_register(#token, token##_risc_code,		\
+	    token##_risc_code[3] * sizeof(token##_risc_code[3]),	\
+	    ISPFW_VERSION, NULL) == NULL) {				\
+		kprintf("%s: unable to register firmware <%s>\n",	\
+		    MODULE_NAME, #token);				\
+		break;							\
+	}								\
+	token##_loaded++;						\
+	if (bootverbose || ISPFW_KLD)					\
+		kprintf("%s: registered firmware <%s>\n", MODULE_NAME, 	\
+		    #token);						\
+} while (0)
+
+#define	UMACRO(token)	do {						\
+	if (!token##_loaded)						\
+		break;							\
+	if (firmware_unregister(#token) != 0) {				\
+		kprintf("%s: unable to unregister firmware <%s>\n",	\
+		    MODULE_NAME, #token);				\
+		break;							\
+	}								\
+	token##_loaded--;						\
+	if (bootverbose || ISPFW_KLD)					\
+		kprintf("%s: unregistered firmware <%s>\n", MODULE_NAME,\
+		    #token);						\
+} while (0)
+
+static void
+do_load_fw(void)
 {
-	const u_int16_t ***newcallp;
-	int i;
-	for (i = 0; i < ncallers; i++) {
-		if (callp[i] == caller)
-			return (1);
-	}
-	newcallp = kmalloc((ncallers + 1) * sizeof (const u_int16_t ***),
-	    M_DEVBUF, M_WAITOK);
-	for (i = 0; i < ncallers; i++) {
-		newcallp[i] = callp[i];
-	}
-	newcallp[ncallers] = caller;
-	if (ncallers++)
-		kfree(callp, M_DEVBUF);
-	callp = newcallp;
-	return (1);
+
+#if	defined(ISP_1000)
+	RMACRO(isp_1000);
+#endif
+#if	defined(ISP_1040)
+	RMACRO(isp_1040);
+#endif
+#if	defined(ISP_1040_IT)
+	RMACRO(isp_1040_it);
+#endif
+#if	defined(ISP_1080)
+	RMACRO(isp_1080);
+#endif
+#if	defined(ISP_1080_IT)
+	RMACRO(isp_1080_it);
+#endif
+#if	defined(ISP_12160)
+	RMACRO(isp_12160);
+#endif
+#if	defined(ISP_12160_IT)
+	RMACRO(isp_12160_it);
+#endif
+#if	defined(ISP_2100)
+	RMACRO(isp_2100);
+#endif
+#if	defined(ISP_2200)
+	RMACRO(isp_2200);
+#endif
+#if	defined(ISP_2300)
+	RMACRO(isp_2300);
+#endif
+#if	defined(ISP_2322)
+	RMACRO(isp_2322);
+#endif
+#if	defined(ISP_2400)
+	RMACRO(isp_2400);
+#endif
+#if	defined(ISP_2400_MULTI)
+	RMACRO(isp_2400_multi);
+#endif
+#if	defined(ISP_2500)
+	RMACRO(isp_2500);
+#endif
+#if	defined(ISP_2500_MULTI)
+	RMACRO(isp_2500_multi);
+#endif
 }
 
 static void
-isp_get_firmware(int version, int tgtmode, int devid, const u_int16_t **ptrp)
+do_unload_fw(void)
 {
-	const u_int16_t *rp = NULL;
 
-	if (version == ISPFW_VERSION) {
-		switch (devid) {
-		case PCI_PRODUCT_QLOGIC_ISP1020:
-			if (tgtmode)
-				rp = isp_1040_risc_code_it;
-			else
-				rp = isp_1040_risc_code;
-			break;
-		case PCI_PRODUCT_QLOGIC_ISP1080:
-		case PCI_PRODUCT_QLOGIC_ISP1240:
-		case PCI_PRODUCT_QLOGIC_ISP1280:
-			if (tgtmode)
-				rp = isp_1080_risc_code_it;
-			else
-				rp = isp_1080_risc_code;
-			break;
-		case PCI_PRODUCT_QLOGIC_ISP10160:
-		case PCI_PRODUCT_QLOGIC_ISP12160:
-			if (tgtmode)
-				rp = isp_12160_risc_code_it;
-			else
-				rp = isp_12160_risc_code;
-			break;
-		case PCI_PRODUCT_QLOGIC_ISP2100:
-			rp = isp_2100_risc_code;
-			break;
-		case PCI_PRODUCT_QLOGIC_ISP2200:
-			rp = isp_2200_risc_code;
-			break;
-		case PCI_PRODUCT_QLOGIC_ISP2300:
-		case PCI_PRODUCT_QLOGIC_ISP2312:
-			rp = isp_2300_risc_code;
-			break;
-		default:
-			break;
-		}
-	}
-	if (rp && addcaller(ptrp)) {
-		*ptrp = rp;
-	}
+#if	defined(ISP_1000)
+	UMACRO(isp_1000);
+#endif
+#if	defined(ISP_1040)
+	UMACRO(isp_1040);
+#endif
+#if	defined(ISP_1040_IT)
+	UMACRO(isp_1040_it);
+#endif
+#if	defined(ISP_1080)
+	UMACRO(isp_1080);
+#endif
+#if	defined(ISP_1080_IT)
+	UMACRO(isp_1080_it);
+#endif
+#if	defined(ISP_12160)
+	UMACRO(isp_12160);
+#endif
+#if	defined(ISP_12160_IT)
+	UMACRO(isp_12160_it);
+#endif
+#if	defined(ISP_2100)
+	UMACRO(isp_2100);
+#endif
+#if	defined(ISP_2200)
+	UMACRO(isp_2200);
+#endif
+#if	defined(ISP_2300)
+	UMACRO(isp_2300);
+#endif
+#if	defined(ISP_2322)
+	UMACRO(isp_2322);
+#endif
+#if	defined(ISP_2400)
+	UMACRO(isp_2400);
+#endif
+#if	defined(ISP_2400_MULTI)
+	UMACRO(isp_2400_multi);
+#endif
+#if	defined(ISP_2500)
+	UMACRO(isp_2500);
+#endif
+#if	defined(ISP_2500_MULTI)
+	UMACRO(isp_2500_multi);
+#endif
 }
 
 static int
-isp_module_handler(module_t mod, int what, void *arg)
+module_handler(module_t mod, int what, void *arg)
 {
+
 	switch (what) {
 	case MOD_LOAD:
-		isp_get_firmware_p = isp_get_firmware;
+		do_load_fw();
 		break;
 	case MOD_UNLOAD:
-		isp_get_firmware_p = NULL;
-		if (ncallers)  {
-			int i;
-			for (i = 0; i < ncallers; i++) {
-				*callp[i] = NULL;
-			}
-			kfree(callp, M_DEVBUF);
-		}
+		do_unload_fw();
+		break;
+	case MOD_SHUTDOWN:
 		break;
 	default:
-		break;
+		return (EOPNOTSUPP);
 	}
 	return (0);
 }
 static moduledata_t ispfw_mod = {
-	"ispfw", isp_module_handler, NULL
+	MODULE_NAME, module_handler, NULL
 };
+#if	defined(ISP_ALL) || !defined(KLD_MODULE)
 DECLARE_MODULE(ispfw, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_1000)
+DECLARE_MODULE(isp_1000, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_1040)
+DECLARE_MODULE(isp_1040, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_1040_IT)
+DECLARE_MODULE(isp_1040_it, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_1080)
+DECLARE_MODULE(isp_1080, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_1080_IT)
+DECLARE_MODULE(isp_1080_it, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_12160)
+DECLARE_MODULE(isp_12160, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_12160_IT)
+DECLARE_MODULE(isp_12160_IT, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_2100)
+DECLARE_MODULE(isp_2100, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_2200)
+DECLARE_MODULE(isp_2200, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_2300)
+DECLARE_MODULE(isp_2300, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_2322)
+DECLARE_MODULE(isp_2322, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_2400)
+DECLARE_MODULE(isp_2400, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_2400_MULTI)
+DECLARE_MODULE(isp_2400_multi, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_2500)
+DECLARE_MODULE(isp_2500, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#elif	defined(ISP_2500_MULTI)
+DECLARE_MODULE(isp_2500_multi, ispfw_mod, SI_SUB_DRIVERS, SI_ORDER_THIRD);
+#else
+#error	"firmware not specified"
+#endif

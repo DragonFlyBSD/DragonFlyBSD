@@ -1,5 +1,6 @@
+# $FreeBSD: src/sys/modules/ispfw/isp_2500_multi/Makefile,v 1.1 2009/08/01 00:57:34 mjacob Exp $
 #-
-# Copyright (c) 2006 by Matthew Jacob
+# Copyright (c) 2009 by Matthew Jacob
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,23 +25,11 @@
 # SUCH DAMAGE.
 #
 
-# $FreeBSD: src/sys/modules/ispfw/Makefile,v 1.6 2009/08/01 00:57:34 mjacob Exp $
+.PATH: ${.CURDIR}/..
 
+KMOD=	isp_2500_multi
+SRCS=	ispfw.c
 
-SUBDIR = ispfw
-SUBDIR += isp_1040
-SUBDIR += isp_1040_it
-SUBDIR += isp_1080
-SUBDIR += isp_1080_it
-SUBDIR += isp_12160
-SUBDIR += isp_12160_it
-SUBDIR += isp_2100
-SUBDIR += isp_2200
-SUBDIR += isp_2300
-SUBDIR += isp_2322
-SUBDIR += isp_2400
-SUBDIR += isp_2400_multi
-SUBDIR += isp_2500
-SUBDIR += isp_2500_multi
+CFLAGS += -DISP_2500_MULTI -DMODULE_NAME=\"${KMOD}\"
 
-.include <bsd.subdir.mk>
+.include <bsd.kmod.mk>

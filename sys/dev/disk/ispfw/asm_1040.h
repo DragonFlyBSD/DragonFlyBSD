@@ -1,6 +1,5 @@
-/* $FreeBSD: src/sys/dev/ispfw/asm_1040.h,v 1.1.2.3 2001/02/12 01:11:46 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/ispfw/asm_1040.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
-/*
+/* $FreeBSD: src/sys/dev/ispfw/asm_1040.h,v 1.5 2006/07/09 17:50:17 mjacob Exp $ */
+/*-
  * Copyright (C) 1995, 1996, 1997, 1998, 1999, 2000 Qlogic, Inc.
  * All rights reserved.
  *
@@ -35,6 +34,7 @@
 /*
  *	Firmware Version 4.66.00 (14:49 Sep 05, 2000)
  */
+#ifdef	ISP_1040
 static const u_int16_t isp_1040_risc_code[] = {
 	0x0078, 0x1041, 0x0000, 0x2cd0, 0x0000, 0x2043, 0x4f50, 0x5952,
 	0x4947, 0x4854, 0x2031, 0x3939, 0x312c, 0x3139, 0x3932, 0x2c31,
@@ -1471,6 +1471,7 @@ static const u_int16_t isp_1040_risc_code[] = {
 	0x0040, 0x3cc6, 0x20a9, 0x0100, 0x0078, 0x3caf, 0x2009, 0x3d51,
 	0x200b, 0x3d7f, 0x2009, 0x3d50, 0x200b, 0x0000, 0x007c, 0x4de2
 };
+#endif
 /************************************************************************
  *									*
  * 	        --- ISP1040 Initiator/Target Firmware ---               *
@@ -1480,7 +1481,8 @@ static const u_int16_t isp_1040_risc_code[] = {
 /*
  *	Firmware Version 7.65.00 (14:17 Jul 20, 1999)
  */
-static const u_int16_t isp_1040_risc_code_it[] = {
+#ifdef	ISP_1040_IT
+static const u_int16_t isp_1040_it_risc_code[] = {
 	0x0078, 0x103a, 0x0000, 0x4057, 0x0000, 0x2043, 0x4f50, 0x5952,
 	0x4947, 0x4854, 0x2031, 0x3939, 0x3520, 0x514c, 0x4f47, 0x4943,
 	0x2043, 0x4f52, 0x504f, 0x5241, 0x5449, 0x4f4e, 0x2049, 0x5350,
@@ -3541,3 +3543,4 @@ static const u_int16_t isp_1040_risc_code_it[] = {
 	0x0014, 0x878e, 0x0016, 0xa21c, 0x1035, 0xa8af, 0xa210, 0x3807,
 	0x300c, 0x817e, 0x872b, 0x8772, 0xa8a8, 0x0000, 0xdf21
 };
+#endif

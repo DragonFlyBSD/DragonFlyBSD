@@ -382,11 +382,12 @@ dev/powermng/km/km.c		optional km pci
 dev/raid/ida/ida.c		optional ida
 dev/raid/ida/ida_disk.c	optional ida
 dev/raid/ida/ida_pci.c	optional ida pci
-dev/disk/isp/isp_freebsd.c	optional isp
 dev/disk/isp/isp.c		optional isp
-dev/disk/isp/isp_pci.c	optional isp
+dev/disk/isp/isp_freebsd.c	optional isp
+dev/disk/isp/isp_library.c	optional isp
+dev/disk/isp/isp_pci.c		optional isp pci
 dev/disk/isp/isp_target.c	optional isp
-dev/disk/ispfw/ispfw.c	optional ispfw
+dev/disk/ispfw/ispfw.c		optional ispfw
 dev/raid/iir/iir.c		optional iir
 dev/raid/iir/iir_ctrl.c	optional iir
 dev/raid/iir/iir_pci.c	optional iir pci

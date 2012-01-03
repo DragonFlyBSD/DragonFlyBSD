@@ -1,6 +1,6 @@
 .include "${.CURDIR}/../../platform/${MACHINE_PLATFORM}/Makefile.inc"
 
-SUBDIR= ahci aic aic7xxx ccd dm iscsi ispfw md mmcsd mps mpt ncv nsp
+SUBDIR= ahci aic aic7xxx ccd dm iscsi isp ispfw md mmcsd mps mpt ncv nsp
 SUBDIR+= sbp sdhci sili stg trm vn vpo
 
 .for dir in ${SUBDIR}
