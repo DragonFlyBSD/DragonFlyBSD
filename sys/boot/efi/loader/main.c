@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/efi/loader/main.c,v 1.20 2003/08/02 08:22:03 marcel Exp $
- * $DragonFly: src/sys/boot/efi/loader/main.c,v 1.1 2003/11/10 06:08:33 dillon Exp $
  */
 
 #include <stand.h>
@@ -66,7 +65,7 @@ static void
 find_pal_proc(void)
 {
 	int i;
-	struct sal_system_table *saltab = 0;
+	struct sal_system_table *saltab = NULL;
 	static int sizes[6] = {
 		48, 32, 16, 32, 16, 16
 	};
@@ -316,7 +315,7 @@ static int
 command_sal(int argc, char *argv[])
 {
 	int i;
-	struct sal_system_table *saltab = 0;
+	struct sal_system_table *saltab = NULL;
 	static int sizes[6] = {
 		48, 32, 16, 32, 16, 16
 	};

@@ -147,7 +147,7 @@ ihfc_pnp_probe(device_t dev)
 	ihfc_id_t      *ids = &ihfc_pnp_ids[0];		/* ids ptr	  */
 	ihfc_sc_t 	*sc = &ihfc_softc[unit];	/* softc	  */
 	u_char	       flag = 0;			/* flag		  */
-	void         *dummy = 0;			/* a dummy	  */
+	void         *dummy = NULL;			/* a dummy	  */
 
 	HFC_VAR;
 
@@ -247,7 +247,7 @@ ihfc_isa_probe(device_t dev)
 	const u_char    *irq = &IRQ0[0]; 		/* irq's to try   */
 	const u_long *iobase = &IO0[0];			/* iobases to try */
 	u_char	        flag = 0;			/* flag		  */
-	void          *dummy = 0;			/* a dummy	  */
+	void          *dummy = NULL;			/* a dummy	  */
 
 	HFC_VAR;
 

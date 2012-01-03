@@ -26,7 +26,6 @@
  *		The AVM ISDN controllers' Low Level Interface.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_lli.c,v 1.2.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_lli.c,v 1.10 2006/12/22 23:44:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -661,7 +660,7 @@ iavc_handle_intr(iavc_softc_t *sc)
 static void
 iavc_handle_rx(iavc_softc_t *sc)
 {
-    u_int8_t *dmabuf = 0, cmd;
+    u_int8_t *dmabuf = NULL, cmd;
 
     if (sc->sc_dma) {
 	dmabuf = amcc_get_byte(&sc->sc_recvbuf[4], &cmd);

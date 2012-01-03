@@ -596,7 +596,7 @@ uaudio_get_cluster(int id, const struct io_terminal *iot)
 
 	for (i = 0; i < 25; i++) { /* avoid infinite loops */
 		dp = iot[id].d.desc;
-		if (dp == 0)
+		if (dp == NULL)
 			goto bad;
 		switch (dp->bDescriptorSubtype) {
 		case UDESCSUB_AC_INPUT:
@@ -2092,7 +2092,7 @@ uaudio_chan_alloc_buffers(struct uaudio_softc *sc, struct chan *ch)
 			goto bad;
 		ch->chanbufs[i].xfer = xfer;
 		buf = usbd_alloc_buffer(xfer, size);
-		if (buf == 0) {
+		if (buf == NULL) {
 			i++;
 			goto bad;
 		}

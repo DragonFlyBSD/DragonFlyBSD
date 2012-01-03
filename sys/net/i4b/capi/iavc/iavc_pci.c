@@ -119,7 +119,7 @@ static int
 iavc_pci_attach(device_t dev)
 {
     struct iavc_softc *sc;
-    void *ih = 0;
+    void *ih = NULL;
     u_int16_t did = pci_get_device(dev);
     int unit = device_get_unit(dev), ret;
     int error;

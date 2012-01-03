@@ -127,7 +127,7 @@ vinumattach(void *dummy)
      * read the initial configuration from.
      */
     if ((cp = kgetenv("vinum.drives")) != NULL) {
-	for (cp1 = cp, i = 0, drives = 0; *cp1 != '\0'; i++) {
+	for (cp1 = cp, i = 0, drives = NULL; *cp1 != '\0'; i++) {
 	    cp2 = cp1;
 	    while (*cp1 != '\0' && *cp1 != ',' && *cp1 != ' ')
 		cp1++;

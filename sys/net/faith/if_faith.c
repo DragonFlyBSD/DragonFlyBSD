@@ -33,7 +33,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/faith/if_faith.c,v 1.18 2008/01/11 11:59:40 sephe Exp $
  */
 /*
  * derived from
@@ -294,7 +293,7 @@ faithioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		if (ifr == 0) {
+		if (ifr == NULL) {
 			error = EAFNOSUPPORT;		/* XXX */
 			break;
 		}

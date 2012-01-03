@@ -68,7 +68,7 @@ aic_pccard_alloc_resources(device_t dev)
 	struct aic_pccard_softc *sc = device_get_softc(dev);
 	int rid;
 
-	sc->sc_port = sc->sc_irq = 0;
+	sc->sc_port = sc->sc_irq = NULL;
 
 	rid = 0;
 	sc->sc_port = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
@@ -98,7 +98,7 @@ aic_pccard_release_resources(device_t dev)
 		bus_release_resource(dev, SYS_RES_IOPORT, 0, sc->sc_port);
 	if (sc->sc_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sc_irq);
-	sc->sc_port = sc->sc_irq = 0;
+	sc->sc_port = sc->sc_irq = NULL;
 }
 
 static int

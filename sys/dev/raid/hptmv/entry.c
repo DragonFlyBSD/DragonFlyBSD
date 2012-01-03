@@ -134,8 +134,8 @@ static MV_BOOLEAN hptmv_event_notify(MV_SATA_ADAPTER *pMvSataAdapter,
 #define ccb_ccb_ptr spriv_ptr0
 #define ccb_adapter ccb_h.spriv_ptr1
 
-IAL_ADAPTER_T *gIal_Adapter = 0;
-IAL_ADAPTER_T *pCurAdapter = 0;
+IAL_ADAPTER_T *gIal_Adapter = NULL;
+IAL_ADAPTER_T *pCurAdapter = NULL;
 static MV_SATA_CHANNEL gMvSataChannels[MAX_VBUS][MV_SATA_CHANNELS_NUM];
 
 typedef struct st_HPT_DPC {
@@ -1272,7 +1272,7 @@ init_adapter(IAL_ADAPTER_T *pAdapter)
 
 	pAdapter->next = 0;
 
-	if(gIal_Adapter == 0){
+	if(gIal_Adapter == NULL){
 		gIal_Adapter = pAdapter;
 		pCurAdapter = gIal_Adapter;
 	}
@@ -2457,7 +2457,7 @@ static void hpt_worker_thread(void)
 				int i;
 				pAdapter = gIal_Adapter;
 
-				while(pAdapter != 0){
+				while(pAdapter != NULL){
 
 					_vbus_p = &pAdapter->VBus;
 

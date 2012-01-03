@@ -464,7 +464,7 @@ sctp_ctlinput(netmsg_t msg)
 	}
 
 	if (PRC_IS_REDIRECT(cmd)) {
-		ip = 0;
+		ip = NULL;
 	} else if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0) {
 		goto out;
 	}
@@ -811,7 +811,7 @@ sctp_send(netmsg_t msg)
 	int error;
 	struct sctp_inpcb *inp;
 	inp = (struct sctp_inpcb *)so->so_pcb;
-	if (inp == 0) {
+	if (inp == NULL) {
 		if (control) {
 			sctp_m_freem(control);
 			control = NULL;
@@ -3538,7 +3538,7 @@ sctp_ctloutput(netmsg_t msg)
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
 
-	if (inp == 0) {
+	if (inp == NULL) {
 		/* I made the same as TCP since we are not setup? */
 		error = ECONNRESET;
 		goto out;
@@ -3730,7 +3730,7 @@ sctp_usr_recvd(netmsg_t msg)
 		       so, inp, (u_int)flags);
 #endif
 
-	if (inp == 0) {
+	if (inp == NULL) {
 		/* I made the same as TCP since we are not setup? */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_USRREQ2)

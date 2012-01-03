@@ -81,7 +81,7 @@ key_output(struct mbuf *m, struct socket *so, ...)
 	struct sadb_msg *msg;
 	int len, error = 0;
 
-	if (m == 0)
+	if (m == NULL)
 		panic("key_output: NULL pointer was passed.\n");
 
 	pfkeystat.out_total++;
@@ -95,7 +95,7 @@ key_output(struct mbuf *m, struct socket *so, ...)
 	}
 
 	if (m->m_len < sizeof(struct sadb_msg)) {
-		if ((m = m_pullup(m, sizeof(struct sadb_msg))) == 0) {
+		if ((m = m_pullup(m, sizeof(struct sadb_msg))) == NULL) {
 			pfkeystat.out_nomem++;
 			error = ENOBUFS;
 			goto end;
@@ -185,7 +185,7 @@ key_sendup(struct socket *so, struct sadb_msg *msg, u_int len,
 	int tlen;
 
 	/* sanity check */
-	if (so == 0 || msg == 0)
+	if (so == NULL || msg == NULL)
 		panic("key_sendup: NULL pointer was passed.\n");
 
 	KEYDEBUG(KEYDEBUG_KEY_DUMP,

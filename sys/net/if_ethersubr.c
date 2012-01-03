@@ -699,7 +699,7 @@ ether_resolvemulti(
 		e_addr = LLADDR(sdl);
 		if ((e_addr[0] & 1) != 1)
 			return EADDRNOTAVAIL;
-		*llsa = 0;
+		*llsa = NULL;
 		return 0;
 
 #ifdef INET
@@ -728,7 +728,7 @@ ether_resolvemulti(
 			 * (This is used for multicast routers.)
 			 */
 			ifp->if_flags |= IFF_ALLMULTI;
-			*llsa = 0;
+			*llsa = NULL;
 			return 0;
 		}
 		if (!IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr))

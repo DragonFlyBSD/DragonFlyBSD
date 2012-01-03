@@ -70,8 +70,8 @@ static int
 dpt_pci_attach (device_t dev)
 {
 	dpt_softc_t *	dpt;
-	struct resource *io = 0;
-	struct resource *irq = 0;
+	struct resource *io = NULL;
+	struct resource *irq = NULL;
 	int		rid;
 	void *		ih;
 	int		error = 0;

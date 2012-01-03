@@ -3197,7 +3197,7 @@ geteblk(int size)
 
 	maxsize = (size + BKVAMASK) & ~BKVAMASK;
 
-	while ((bp = getnewbuf(0, 0, size, maxsize)) == 0)
+	while ((bp = getnewbuf(0, 0, size, maxsize)) == NULL)
 		;
 	allocbuf(bp, size);
 	bp->b_flags |= B_INVAL;	/* b_dep cleared by getnewbuf() */

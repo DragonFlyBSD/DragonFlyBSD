@@ -431,7 +431,7 @@ ugenopen(struct dev_open_args *ap)
 	for (dir = OUT; dir <= IN; dir++) {
 		if (ap->a_oflags & (dir == OUT ? FWRITE : FREAD)) {
 			sce = &sc->sc_endpoints[endpt][dir];
-			if (sce == 0 || sce->edesc == 0)
+			if (sce == NULL || sce->edesc == NULL)
 				return (ENXIO);
 		}
 	}
@@ -509,7 +509,7 @@ ugenopen(struct dev_open_args *ap)
 				sce->isoreqs[i].xfer = xfer;
 				buf = usbd_alloc_buffer
 					(xfer, isize * UGEN_NISORFRMS);
-				if (buf == 0) {
+				if (buf == NULL) {
 					i++;
 					goto bad;
 				}
@@ -1061,8 +1061,8 @@ ugen_set_interface(struct ugen_softc *sc, int ifaceidx, int altno)
 		endpt = ed->bEndpointAddress;
 		dir = UE_GET_DIR(endpt) == UE_DIR_IN ? IN : OUT;
 		sce = &sc->sc_endpoints[UE_GET_ADDR(endpt)][dir];
-		sce->sc = 0;
-		sce->edesc = 0;
+		sce->sc = NULL;
+		sce->edesc = NULL;
 		sce->iface = 0;
 	}
 
@@ -1338,7 +1338,7 @@ ugen_do_ioctl(struct ugen_softc *sc, int endpt, u_long cmd,
 		int len = UGETW(ur->ucr_request.wLength);
 		struct iovec iov;
 		struct uio uio;
-		void *ptr = 0;
+		void *ptr = NULL;
 		usbd_status err;
 		int error = 0;
 

@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/p1003_1b.c,v 1.5.2.2 2003/03/25 06:13:35 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_p1003_1b.c,v 1.10 2007/06/26 19:31:08 dillon Exp $
  */
 
 /* p1003_1b: Real Time common code.
@@ -88,7 +87,7 @@ MALLOC_DEFINE(M_P31B, "p1003.1b", "Posix 1003.1B");
 int p31b_proc(struct proc *p, pid_t pid, struct proc **pp)
 {
 	int ret = 0;
-	struct proc *other_proc = 0;
+	struct proc *other_proc = NULL;
 
 	if (pid == 0) {
 		other_proc = p;

@@ -182,7 +182,7 @@ iwic_pci_attach(device_t dev)
 {
 	unsigned short iobase;
 	struct iwic_softc *sc;
-	void *ih = 0;
+	void *ih = NULL;
 	int unit = device_get_unit(dev);
 	struct iwic_bchan *bchan;
 	

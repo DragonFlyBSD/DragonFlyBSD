@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_rman.c,v 1.10.2.1 2001/06/05 08:06:08 imp Exp $
- * $DragonFly: src/sys/kern/subr_rman.c,v 1.15 2008/09/30 12:20:29 hasso Exp $
  */
 
 /*
@@ -125,7 +124,7 @@ rman_manage_region(struct rman *rm, u_long start, u_long end)
 	DPRINTF(("rman_manage_region: <%s> request: start %#lx, end %#lx\n",
 	    rm->rm_descr, start, end));
 	r = kmalloc(sizeof *r, M_RMAN, M_NOWAIT | M_ZERO);
-	if (r == 0)
+	if (r == NULL)
 		return ENOMEM;
 	r->r_sharehead = 0;
 	r->r_start = start;
@@ -190,7 +189,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 	struct	resource *r, *s, *rv;
 	u_long	rstart, rend;
 
-	rv = 0;
+	rv = NULL;
 
 	DPRINTF(("rman_reserve_resource: <%s> request: [%#lx, %#lx], length "
 	       "%#lx, flags %u, device %s\n", rm->rm_descr, start, end,
@@ -254,7 +253,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 			 * two new allocations; the second requires but one.
 			 */
 			rv = kmalloc(sizeof *rv, M_RMAN, M_NOWAIT | M_ZERO);
-			if (rv == 0)
+			if (rv == NULL)
 				goto out;
 			rv->r_start = rstart;
 			rv->r_end = rstart + count - 1;
@@ -274,9 +273,9 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 				 */
 				r = kmalloc(sizeof *r, M_RMAN,
 				    M_NOWAIT | M_ZERO);
-				if (r == 0) {
+				if (r == NULL) {
 					kfree(rv, M_RMAN);
-					rv = 0;
+					rv = NULL;
 					goto out;
 				}
 				r->r_start = rv->r_end + 1;
@@ -332,7 +331,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 		if (s->r_start >= start && s->r_end <= end
 		    && (s->r_end - s->r_start + 1) == count) {
 			rv = kmalloc(sizeof *rv, M_RMAN, M_NOWAIT | M_ZERO);
-			if (rv == 0)
+			if (rv == NULL)
 				goto out;
 			rv->r_start = s->r_start;
 			rv->r_end = s->r_end;
@@ -346,7 +345,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 							M_NOWAIT | M_ZERO);
 				if (s->r_sharehead == 0) {
 					kfree(rv, M_RMAN);
-					rv = 0;
+					rv = NULL;
 					goto out;
 				}
 				LIST_INIT(s->r_sharehead);
@@ -375,7 +374,7 @@ out:
 		struct resource *whohas;
 		if (int_rman_activate_resource(rm, rv, &whohas)) {
 			int_rman_release_resource(rm, rv);
-			rv = 0;
+			rv = NULL;
 		}
 	}
 	lwkt_reltoken(rm->rm_slock);

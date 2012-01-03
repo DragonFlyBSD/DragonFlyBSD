@@ -29,7 +29,6 @@
  *      last edit-date: [Wed Jan 24 09:27:06 2001]
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_itk_ix1.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_itk_ix1.c,v 1.7 2007/05/17 08:19:02 swildner Exp $
  *
  *---------------------------------------------------------------------------
  *
@@ -183,8 +182,8 @@ int
 isic_probe_itkix1(device_t dev)
 {	
 	size_t unit = device_get_unit(dev);	/* get unit */
-	struct l1_softc *sc = 0;		/* softc */
-	void *ih = 0;				/* dummy */
+	struct l1_softc *sc = NULL;		/* softc */
+	void *ih = NULL;				/* dummy */
 	bus_space_tag_t    t;			/* bus things */
 	bus_space_handle_t h;
 	u_int8_t hd, hv1, hv2, saveale;

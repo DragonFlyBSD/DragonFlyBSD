@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.56 2008/05/27 07:48:00 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -526,7 +524,7 @@ init_kern_memory(void)
 		/* NOT REACHED */
 	}
 
-	firstfree = 0;
+	firstfree = NULL;
 	pmap_bootstrap((vm_paddr_t *)&firstfree, (int64_t)base);
 
 	mcontrol(base, KERNEL_KVA_SIZE, MADV_SETMAP,

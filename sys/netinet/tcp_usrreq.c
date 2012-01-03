@@ -175,7 +175,7 @@ tcp_usr_attach(netmsg_t msg)
 	struct pru_attach_info *ai = msg->attach.nm_ai;
 	int error;
 	struct inpcb *inp;
-	struct tcpcb *tp = 0;
+	struct tcpcb *tp = NULL;
 	TCPDEBUG0;
 
 	soreference(so);

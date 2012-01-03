@@ -1065,7 +1065,7 @@ nfs_getnickauth(struct nfsmount *nmp, struct ucred *cred, char **auth_str,
 		panic("nfs_getnickauth verf too small");
 #endif
 	for (nuidp = NMUIDHASH(nmp, cred->cr_uid)->lh_first;
-	    nuidp != 0; nuidp = nuidp->nu_hash.le_next) {
+	    nuidp != NULL; nuidp = nuidp->nu_hash.le_next) {
 		if (nuidp->nu_cr.cr_uid == cred->cr_uid)
 			break;
 	}

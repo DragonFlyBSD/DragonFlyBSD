@@ -32,7 +32,6 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.44 2008/09/06 05:44:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1216,7 +1215,7 @@ unp_externalize(struct mbuf *rights)
 			 * zero the pointer before calling unp_discard,
 			 * since it may end up in unp_gc()..
 			 */
-			*rp++ = 0;
+			*rp++ = NULL;
 			unp_discard(fp, NULL);
 		}
 		lwkt_reltoken(&unp_token);

@@ -143,13 +143,13 @@ pcf_probe(device_t pcfdev)
 	bzero(pcf, sizeof(struct pcf_softc));
 
 	pcf->rid_irq = pcf->rid_ioport = 0;
-	pcf->res_irq = pcf->res_ioport = 0;
+	pcf->res_irq = pcf->res_ioport = NULL;
 
 	/* IO port is mandatory */
 	pcf->res_ioport = bus_alloc_resource(pcfdev, SYS_RES_IOPORT,
 					     &pcf->rid_ioport, 0ul, ~0ul,
 					     IO_PCFSIZE, RF_ACTIVE);
-	if (pcf->res_ioport == 0) {
+	if (pcf->res_ioport == NULL) {
 		device_printf(pcfdev, "cannot reserve I/O port range\n");
 		goto error;
 	}
@@ -161,7 +161,7 @@ pcf_probe(device_t pcfdev)
 	if (!(pcf->pcf_flags & IIC_POLLED)) {
 		pcf->res_irq = bus_alloc_resource(pcfdev, SYS_RES_IRQ, &pcf->rid_irq,
 						  0ul, ~0ul, 1, RF_ACTIVE);
-		if (pcf->res_irq == 0) {
+		if (pcf->res_irq == NULL) {
 			device_printf(pcfdev, "can't reserve irq, polled mode.\n");
 			pcf->pcf_flags |= IIC_POLLED;
 		}
@@ -172,7 +172,7 @@ pcf_probe(device_t pcfdev)
 
 	return (0);
 error:
-	if (pcf->res_ioport != 0) {
+	if (pcf->res_ioport != NULL) {
 		bus_deactivate_resource(pcfdev, SYS_RES_IOPORT, pcf->rid_ioport,
 					pcf->res_ioport);
 		bus_release_resource(pcfdev, SYS_RES_IOPORT, pcf->rid_ioport,

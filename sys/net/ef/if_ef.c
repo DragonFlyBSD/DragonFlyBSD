@@ -203,7 +203,7 @@ ef_start(struct ifnet *ifp)
 	EFDEBUG("\n");
 	for (;;) {
 		IF_DEQUEUE(&ifp->if_snd, m);
-		if (m == 0)
+		if (m == NULL)
 			break;
 		BPF_MTAP(ifp, m);
 		if (IF_QFULL(&p->if_snd)) {

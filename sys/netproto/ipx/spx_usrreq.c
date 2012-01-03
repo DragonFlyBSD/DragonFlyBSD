@@ -351,7 +351,7 @@ dropwithreset:
 
 drop:
 bad:
-	if (cb == 0 || cb->s_ipxpcb->ipxp_socket->so_options & SO_DEBUG ||
+	if (cb == NULL || cb->s_ipxpcb->ipxp_socket->so_options & SO_DEBUG ||
             traceallspxs)
 		spx_trace(SA_DROP, (u_char)ostate, cb, &spx_savesi, 0);
 	m_freem(m);
@@ -955,7 +955,7 @@ send:
 			if (si->si_seq == cb->s_snxt)
 					cb->s_snxt++;
 				else
-					spxstat.spxs_sndvoid++, si = 0;
+					spxstat.spxs_sndvoid++, si = NULL;
 		}
 	}
 	/*

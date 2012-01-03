@@ -275,7 +275,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct vnode *devvp;
 	struct ext2_args args;
-	struct ext2mount *ump = 0;
+	struct ext2mount *ump = NULL;
 	struct ext2_sb_info *fs;
 	size_t size;
 	int error, flags;

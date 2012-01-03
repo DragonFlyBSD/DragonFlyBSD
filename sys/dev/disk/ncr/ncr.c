@@ -5263,7 +5263,7 @@ static void ncr_log_hard_error(ncb_p np, u_short sist, u_char dstat)
 	} else {
 		script_ofs	= dsp;
 		script_size	= 0;
-		script_base	= 0;
+		script_base	= NULL;
 		script_name	= "mem";
 	}
 
@@ -5866,7 +5866,7 @@ void ncr_int_sir (ncb_p np)
 	u_char scntl3;
 	u_char chg, ofs, per, fak, wide;
 	u_char num = INB (nc_dsps);
-	nccb_p	cp=0;
+	nccb_p	cp=NULL;
 	u_long	dsa;
 	u_int	target = INB (nc_sdid) & 0x0f;
 	tcb_p	tp     = &np->target[target];

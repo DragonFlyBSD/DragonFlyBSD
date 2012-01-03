@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_output.c,v 1.1.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.9 2008/09/04 09:08:22 hasso Exp $	*/
 /*	$KAME: udp6_output.c,v 1.31 2001/05/21 16:39:15 jinmei Exp $	*/
 
 /*
@@ -252,7 +251,7 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 	 * for UDP and IP6 headers.
 	 */
 	M_PREPEND(m, hlen + sizeof(struct udphdr), MB_DONTWAIT);
-	if (m == 0) {
+	if (m == NULL) {
 		error = ENOBUFS;
 		goto release;
 	}

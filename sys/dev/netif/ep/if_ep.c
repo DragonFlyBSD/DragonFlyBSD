@@ -39,7 +39,6 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.27 2008/05/14 11:59:19 sephe Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -477,7 +476,7 @@ startagain:
     outw(BASE + EP_W1_TX_PIO_WR_1, 0x0);	/* Second dword meaningless */
 
     if (EP_FTST(sc, F_ACCESS_32_BITS)) {
-        for (top = m; m != 0; m = m->m_next) {
+        for (top = m; m != NULL; m = m->m_next) {
 	    outsl(BASE + EP_W1_TX_PIO_WR_1, mtod(m, caddr_t),
 		  m->m_len / 4);
 	    if (m->m_len & 3)
@@ -486,7 +485,7 @@ startagain:
 		      m->m_len & 3);
 	}
     } else {
-        for (top = m; m != 0; m = m->m_next) {
+        for (top = m; m != NULL; m = m->m_next) {
 	    outsw(BASE + EP_W1_TX_PIO_WR_1, mtod(m, caddr_t), m->m_len / 2);
 	    if (m->m_len & 1)
 		outb(BASE + EP_W1_TX_PIO_WR_1,

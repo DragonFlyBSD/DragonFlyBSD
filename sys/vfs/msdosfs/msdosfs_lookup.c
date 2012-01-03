@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.21 2006/12/23 00:41:29 swildner Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -107,7 +106,7 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 	struct denode *dp;
 	struct denode *tdp;
 	struct msdosfsmount *pmp;
-	struct buf *bp = 0;
+	struct buf *bp = NULL;
 	struct direntry *dep = NULL;
 	u_char dosfilename[12];
 	int flags = cnp->cn_flags;
@@ -405,7 +404,7 @@ found:
 	 * in a deadlock.
 	 */
 	brelse(bp);
-	bp = 0;
+	bp = NULL;
 	
 foundroot:
 	/*

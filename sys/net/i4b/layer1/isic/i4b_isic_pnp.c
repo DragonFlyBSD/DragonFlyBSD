@@ -173,8 +173,8 @@ isic_pnp_attach(device_t dev)
 	u_int32_t vend_id = isa_get_vendorid(dev);	/* vendor id */
 	unsigned int unit = device_get_unit(dev);	/* get unit */
 	const char *name = device_get_desc(dev);	/* get description */
-	struct l1_softc *sc = 0;			/* softc */
-	void *ih = 0;					/* a dummy */
+	struct l1_softc *sc = NULL;			/* softc */
+	void *ih = NULL;					/* a dummy */
 	int ret;
  
 	/* see if we are out of bounds */

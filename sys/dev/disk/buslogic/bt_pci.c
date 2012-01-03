@@ -52,8 +52,8 @@ static int
 bt_pci_alloc_resources(device_t dev)
 {
 	int		command, type = 0, rid, zero;
-	struct resource *regs = 0;
-	struct resource *irq = 0;
+	struct resource *regs = NULL;
+	struct resource *irq = NULL;
 
 	command = pci_read_config(dev, PCIR_COMMAND, /*bytes*/1);
 #if 0

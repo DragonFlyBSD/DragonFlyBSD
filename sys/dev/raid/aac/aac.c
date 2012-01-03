@@ -1309,7 +1309,7 @@ aac_bio_complete(struct aac_command *cm)
 	/* fix up the bio based on status */
 	if (status == ST_OK) {
 		bp->b_resid = 0;
-		code = 0;
+		code = NULL;
 	} else {
 		bp->b_error = EIO;
 		bp->b_flags |= B_ERROR;

@@ -14,7 +14,6 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.28 2008/01/23 17:35:48 nth Exp $
  */
 
 #include <sys/param.h>
@@ -80,7 +79,7 @@ retry:
 				("zitems_pcpu unexpectedly NULL"));
 			if (((void **)item)[1] != (void *)ZENTRY_FREE)
 				zerror(ZONE_ERROR_NOTFREE);
-			((void **)item)[1] = 0;
+			((void **)item)[1] = NULL;
 #endif
 			z->zitems_pcpu[gd->gd_cpuid] = ((void **) item)[0];
 			--z->zfreecnt_pcpu[gd->gd_cpuid];
@@ -603,7 +602,7 @@ zget(vm_zone_t z)
 #ifdef INVARIANTS
 		if (((void **)item)[1] != (void *)ZENTRY_FREE)
 			zerror(ZONE_ERROR_NOTFREE);
-		((void **) item)[1] = 0;
+		((void **) item)[1] = NULL;
 #endif
 		z->zfreecnt--;
 		z->znalloc++;

@@ -686,7 +686,7 @@ puc_setup_intr(device_t dev, device_t child, struct resource *r, int flags,
 	sc = (struct puc_softc *)device_get_softc(dev);
 	for (i = 0; PUC_PORT_VALID(sc->sc_desc, i); i++) {
 		if (sc->sc_ports[i].dev == child) {
-			if (sc->sc_ports[i].ihand != 0)
+			if (sc->sc_ports[i].ihand != NULL)
 				return (ENXIO);
 			sc->sc_ports[i].ihand = ihand;
 			sc->sc_ports[i].ihandarg = arg;

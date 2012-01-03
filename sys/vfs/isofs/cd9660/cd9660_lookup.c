@@ -39,7 +39,6 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.25 2008/06/19 23:27:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -98,7 +97,7 @@ cd9660_lookup(struct vop_old_lookup_args *ap)
 	struct iso_node *dp;	/* inode for directory being searched */
 	struct iso_mnt *imp;	/* file system that directory is in */
 	struct buf *bp;			/* a buffer of directory entries */
-	struct iso_directory_record *ep = 0;/* the current directory entry */
+	struct iso_directory_record *ep = NULL;/* the current directory entry */
 	int entryoffsetinblock;		/* offset of ep in bp's buffer */
 	int saveoffset = 0;		/* offset of last directory entry in dir */
 	int numdirpasses;		/* strategy for directory search */

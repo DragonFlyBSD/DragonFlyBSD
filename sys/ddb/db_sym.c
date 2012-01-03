@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_sym.c,v 1.32 1999/08/28 00:41:10 peter Exp $
- * $DragonFly: src/sys/ddb/db_sym.c,v 1.7 2006/12/23 00:27:02 swildner Exp $
  */
 
 /*
@@ -213,7 +212,7 @@ db_search_symbol(db_addr_t val, db_strategy_t strategy, db_expr_t *offp)
 	c_db_sym_t	ret = C_DB_SYM_NULL, sym;
 
 	newdiff = diff = ~0;
-	db_last_symtab = 0;
+	db_last_symtab = NULL;
 	for (i = 0; i < db_nsymtab; i++) {
 	    sym = X_db_search_symbol(&db_symtabs[i], val, strategy, &newdiff);
 	    if (newdiff < diff) {
@@ -235,7 +234,7 @@ db_symbol_values(c_db_sym_t sym, const char **namep, db_expr_t *valuep)
 	db_expr_t	value;
 
 	if (sym == DB_SYM_NULL) {
-		*namep = 0;
+		*namep = NULL;
 		return;
 	}
 
@@ -278,13 +277,13 @@ db_printsym(db_expr_t off, db_strategy_t strategy)
 
 	cursym = db_search_symbol(off, strategy, &d);
 	db_symbol_values(cursym, &name, &value);
-	if (name == 0)
+	if (name == NULL)
 		value = off;
 	if (value >= DB_SMALL_VALUE_MIN && value <= DB_SMALL_VALUE_MAX) {
 		db_printf("%+#lr", (long)off);
 		return;
 	}
-	if (name == 0 || d >= (unsigned long)db_maxoff) {
+	if (name == NULL || d >= (unsigned long)db_maxoff) {
 		db_printf("%#lr", (unsigned long)off);
 		return;
 	}

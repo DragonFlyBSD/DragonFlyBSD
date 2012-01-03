@@ -192,7 +192,7 @@ socreate(int dom, struct socket **aso, int type,
 	else
 		prp = pffindtype(dom, type);
 
-	if (prp == 0 || prp->pr_usrreqs->pru_attach == 0)
+	if (prp == NULL || prp->pr_usrreqs->pru_attach == 0)
 		return (EPROTONOSUPPORT);
 
 	if (p->p_ucred->cr_prison && jail_socket_unixiproute_only &&
@@ -205,7 +205,7 @@ socreate(int dom, struct socket **aso, int type,
 
 	if (prp->pr_type != type)
 		return (EPROTOTYPE);
-	so = soalloc(p != 0);
+	so = soalloc(p != NULL);
 	if (so == NULL)
 		return (ENOBUFS);
 
@@ -762,7 +762,7 @@ restart:
 				if ((so->so_state & SS_ISCONFIRMING) == 0 &&
 				    !(resid == 0 && clen != 0))
 					gotoerr(ENOTCONN);
-			} else if (addr == 0)
+			} else if (addr == NULL)
 			    gotoerr(so->so_proto->pr_flags & PR_CONNREQUIRED ?
 				   ENOTCONN : EDESTADDRREQ);
 		}
@@ -808,7 +808,7 @@ restart:
 				 * For datagram protocols, leave room
 				 * for protocol headers in first mbuf.
 				 */
-				if (atomic && top == 0 && len < mlen)
+				if (atomic && top == NULL && len < mlen)
 					MH_ALIGN(m, len);
 			}
 			space -= len;
@@ -858,7 +858,7 @@ restart:
 		    if (dontroute)
 			    so->so_options &= ~SO_DONTROUTE;
 		    clen = 0;
-		    control = 0;
+		    control = NULL;
 		    top = NULL;
 		    mp = &top;
 		    if (error)

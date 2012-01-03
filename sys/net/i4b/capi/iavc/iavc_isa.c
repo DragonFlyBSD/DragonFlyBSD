@@ -180,7 +180,7 @@ static int
 iavc_isa_attach(device_t dev)
 {
 	struct iavc_softc *sc;
-	void *ih = 0;
+	void *ih = NULL;
 	int unit = device_get_unit(dev);
 	int irq;
 	int error;

@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.31 2008/10/27 02:56:30 sephe Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -1920,7 +1919,7 @@ icmp6_reflect(struct mbuf *m, size_t off)
 	struct ip6_hdr *ip6;
 	struct icmp6_hdr *icmp6;
 	struct in6_ifaddr *ia;
-	struct in6_addr t, *src = 0;
+	struct in6_addr t, *src = NULL;
 	int plen;
 	int type, code;
 	struct ifnet *outif = NULL;
@@ -2056,7 +2055,7 @@ icmp6_reflect(struct mbuf *m, size_t off)
 		src = &t;
 	}
 
-	if (src == 0) {
+	if (src == NULL) {
 		int e;
 		struct route_in6 ro;
 

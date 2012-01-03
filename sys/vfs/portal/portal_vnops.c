@@ -112,7 +112,7 @@ portal_lookup(struct vop_old_lookup_args *ap)
 	char *pname = cnp->cn_nameptr;
 	struct portalnode *pt;
 	int error;
-	struct vnode *fvp = 0;
+	struct vnode *fvp = NULL;
 	char *path;
 	int size;
 
@@ -174,7 +174,7 @@ portal_connect(struct socket *so, struct socket *so2)
 	struct unpcb *unp2;
 	struct unpcb *unp3;
 
-	if (so2 == 0)
+	if (so2 == NULL)
 		return (ECONNREFUSED);
 
 	if (so->so_type != so2->so_type)
@@ -183,7 +183,7 @@ portal_connect(struct socket *so, struct socket *so2)
 	if ((so2->so_options & SO_ACCEPTCONN) == 0)
 		return (ECONNREFUSED);
 
-	if ((so3 = sonewconn(so2, 0)) == 0)
+	if ((so3 = sonewconn(so2, 0)) == NULL)
 		return (ECONNREFUSED);
 
 	unp2 = so2->so_pcb;
@@ -203,7 +203,7 @@ portal_connect(struct socket *so, struct socket *so2)
 static int
 portal_open(struct vop_open_args *ap)
 {
-	struct socket *so = 0;
+	struct socket *so = NULL;
 	struct portalnode *pt;
 	struct thread *td = curthread;
 	struct vnode *vp = ap->a_vp;
@@ -211,7 +211,7 @@ portal_open(struct vop_open_args *ap)
 	struct iovec aiov[2];
 	struct sockbuf sio;
 	int res;
-	struct mbuf *cm = 0;
+	struct mbuf *cm = NULL;
 	struct cmsghdr *cmsg;
 	int newfds;
 	int *ip;

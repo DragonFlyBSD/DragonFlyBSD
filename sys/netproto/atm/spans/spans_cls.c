@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_cls.c,v 1.6 1999/08/28 00:48:49 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_cls.c,v 1.8 2006/12/20 18:14:43 dillon Exp $
  */
 
 /*
@@ -556,7 +555,7 @@ spanscls_bcast_output(struct ip_nif *inp, KBuffer *m)
 		 */
 		KB_ALLOCPKT(n, sizeof(struct spanscls_hdr),
 			KB_F_NOWAIT, KB_T_HEADER);
-		if (n == 0) {
+		if (n == NULL) {
 			KB_FREEALL(m);
 			return (ENOBUFS);
 		}
@@ -638,7 +637,7 @@ spanscls_cpcs_data(void *tok, KBuffer *m)
 	 */
 	if (KB_LEN(m) < sizeof(struct spanscls_hdr)) {
 		KB_PULLUP(m, sizeof(struct spanscls_hdr), m);
-		if (m == 0)
+		if (m == NULL)
 			return;
 	}
 	KB_DATASTART(m, chp, struct spanscls_hdr *);

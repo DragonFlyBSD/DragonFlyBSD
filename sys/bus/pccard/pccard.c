@@ -410,7 +410,7 @@ pccard_function_init(struct pccard_function *pf)
 	struct pccard_ivar *devi = PCCARD_IVAR(pf->dev);
 	struct resource_list *rl = &devi->resources;
 	struct resource_list_entry *rle;
-	struct resource *r = 0;
+	struct resource *r = NULL;
 	device_t bus;
 	u_long start, end, len;
 	int i, rid, spaces;
@@ -1106,7 +1106,7 @@ pccard_alloc_resource(device_t dev, device_t child, int type, int *rid,
     u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 	struct pccard_ivar *dinfo;
-	struct resource_list_entry *rle = 0;
+	struct resource_list_entry *rle = NULL;
 	int passthrough = (device_get_parent(child) != dev);
 	int isdefault = (start == 0 && end == ~0UL && count == 1);
 	struct resource *r = NULL;
@@ -1157,7 +1157,7 @@ pccard_release_resource(device_t dev, device_t child, int type, int rid,
 {
 	struct pccard_ivar *dinfo;
 	int passthrough = (device_get_parent(child) != dev);
-	struct resource_list_entry *rle = 0;
+	struct resource_list_entry *rle = NULL;
 
 	if (passthrough)
 		return BUS_RELEASE_RESOURCE(device_get_parent(dev), child,

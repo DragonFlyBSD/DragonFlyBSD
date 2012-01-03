@@ -1043,7 +1043,7 @@ mpssas_scsiio_timeout(void *data)
 
 	ccb = cm->cm_complete_data;
 	targ = cm->cm_targ;
-	if (targ == 0x00)
+	if (targ == NULL)
 		/* Driver bug */
 		targ = &sc->sassc->targets[ccb->ccb_h.target_id];
 

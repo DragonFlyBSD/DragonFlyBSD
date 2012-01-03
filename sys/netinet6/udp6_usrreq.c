@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.26 2007/04/22 01:13:14 dillon Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -820,7 +819,7 @@ udp6_send(netmsg_t msg)
 
 	if (!ip6_v6only) {
 		int hasv4addr;
-		struct sockaddr_in6 *sin6 = 0;
+		struct sockaddr_in6 *sin6 = NULL;
 
 		if (addr == NULL)
 			hasv4addr = (inp->inp_vflag & INP_IPV4);

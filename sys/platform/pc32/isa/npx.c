@@ -376,17 +376,17 @@ npx_probe1(device_t dev)
 				r = bus_alloc_resource(dev, SYS_RES_IOPORT,
 						       &rid, IO_NPX, IO_NPX,
 						       IO_NPXSIZE, RF_ACTIVE);
-				if (r == 0)
+				if (r == NULL)
 					panic("npx: can't get ports");
 				rid = 0;
 				r = bus_alloc_legacy_irq_resource(dev, &rid,
 				    npx_irq, RF_ACTIVE);
-				if (r == 0)
+				if (r == NULL)
 					panic("npx: can't get IRQ");
 				BUS_SETUP_INTR(device_get_parent(dev),
 					       dev, r, 0,
 					       npx_intr, 0, &intr, NULL);
-				if (intr == 0)
+				if (intr == NULL)
 					panic("npx: can't create intr");
 
 				return (0);

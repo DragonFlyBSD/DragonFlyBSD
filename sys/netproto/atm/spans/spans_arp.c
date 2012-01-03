@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_arp.c,v 1.7 2000/01/15 20:34:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_arp.c,v 1.9 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -581,7 +580,7 @@ spansarp_input(struct spanscls *clp, KBuffer *m)
 	 */
 	if (KB_LEN(m) < ARP_PACKET_LEN) {
 		KB_PULLUP(m, ARP_PACKET_LEN, m);
-		if (m == 0)
+		if (m == NULL)
 			return;
 	}
 	KB_DATASTART(m, chp, struct spanscls_hdr *);

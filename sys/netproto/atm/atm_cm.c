@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_cm.c,v 1.6 1999/08/28 00:48:34 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_cm.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -2724,7 +2723,7 @@ atm_cm_cpcs_data(Atm_connection *cop, KBuffer *m)
 			 * onto the front of the packet
 			 */
 			KB_ALLOCPKT(n, len, KB_F_NOWAIT, KB_T_HEADER);
-			if (n == 0) {
+			if (n == NULL) {
 				err = ENOMEM;
 				goto done;
 			}
@@ -2843,7 +2842,7 @@ atm_cm_cpcs_upper(int cmd, void *tok, int arg1, int arg2)
 			 */
 			if (KB_LEN(m) < T_ATM_LLC_MAX_LEN) {
 				KB_PULLUP(m, T_ATM_LLC_MAX_LEN, m);
-				if (m == 0) {
+				if (m == NULL) {
 					atm_cm_stat.cms_llcdrop++;
 					return;
 				}

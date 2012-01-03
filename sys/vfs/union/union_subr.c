@@ -329,7 +329,7 @@ union_allocvp(struct vnode **vpp,
 	      int docache)
 {
 	int error;
-	struct union_node *un = 0;
+	struct union_node *un = NULL;
 	struct union_mount *um = MOUNTTOUNIONMOUNT(mp);
 	struct thread *td = (cnp) ? cnp->cn_td : curthread; /* XXX */
 	int hash = 0;
@@ -358,7 +358,7 @@ union_allocvp(struct vnode **vpp,
 
 loop:
 	if (!docache) {
-		un = 0;
+		un = NULL;
 	} else for (try = 0; try < 3; try++) {
 		switch (try) {
 		case 0:
@@ -383,7 +383,7 @@ loop:
 		while (union_list_lock(hash))
 			continue;
 
-		for (un = unhead[hash].lh_first; un != 0;
+		for (un = unhead[hash].lh_first; un != NULL;
 					un = un->un_cache.le_next) {
 			if ((un->un_lowervp == lowervp ||
 			     un->un_lowervp == NULLVP) &&

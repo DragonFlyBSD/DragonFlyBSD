@@ -180,8 +180,8 @@ i4btelattach(void *dummy)
 		{
 			tel_sc[i][j].devstate = ST_IDLE;
 			tel_sc[i][j].audiofmt = CVT_NONE;
-			tel_sc[i][j].rcvttab = 0;
-			tel_sc[i][j].wcvttab = 0;
+			tel_sc[i][j].rcvttab = NULL;
+			tel_sc[i][j].wcvttab = NULL;
 			tel_sc[i][j].result = 0;
 
 			switch(j)
@@ -302,8 +302,8 @@ i4btelioctl(struct dev_ioctl_args *ap)
 				switch (*(int *)ap->a_data)
 				{
 					case CVT_NONE:
-						sc->rcvttab = 0;
-						sc->wcvttab = 0;
+						sc->rcvttab = NULL;
+						sc->wcvttab = NULL;
 						break;
 					case CVT_ALAW2ULAW:
 						/* ISDN: a-law */

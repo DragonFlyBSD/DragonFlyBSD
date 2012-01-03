@@ -36,7 +36,6 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.29 2006/12/23 00:41:30 swildner Exp $
  */
 
 /*
@@ -78,10 +77,10 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	struct union_args args;
 	struct vnode *lowerrootvp = NULLVP;
 	struct vnode *upperrootvp = NULLVP;
-	struct union_mount *um = 0;
-	struct ucred *cred = 0;
+	struct union_mount *um = NULL;
+	struct ucred *cred = NULL;
 	struct nlookupdata nd;
-	char *cp = 0;
+	char *cp = NULL;
 	int len;
 	u_int size;
 

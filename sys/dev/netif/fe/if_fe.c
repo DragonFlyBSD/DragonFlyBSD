@@ -22,7 +22,6 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.30 2008/08/17 04:32:33 sephe Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -1976,7 +1975,7 @@ fe_write_mbufs (struct fe_softc *sc, struct mbuf *m)
 	if ((sc->proto_dlcr6 & FE_D6_SBW) == FE_D6_SBW_BYTE)
 	{
 		/* 8-bit cards are easy.  */
-		for (mp = m; mp != 0; mp = mp->m_next) {
+		for (mp = m; mp != NULL; mp = mp->m_next) {
 			if (mp->m_len)
 				fe_outsb(sc, FE_BMPR8, mtod(mp, caddr_t),
 					 mp->m_len);
@@ -1987,7 +1986,7 @@ fe_write_mbufs (struct fe_softc *sc, struct mbuf *m)
 	{
 		/* 16-bit cards are a pain.  */
 		savebyte = NO_PENDING_BYTE;
-		for (mp = m; mp != 0; mp = mp->m_next) {
+		for (mp = m; mp != NULL; mp = mp->m_next) {
 
 			/* Ignore empty mbuf.  */
 			len = mp->m_len;

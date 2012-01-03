@@ -128,7 +128,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 	struct sockaddr_in6 jsin6;
 	struct ucred *cred = NULL;
 	struct in6_addr *dst;
-	struct in6_ifaddr *ia6 = 0;
+	struct in6_ifaddr *ia6 = NULL;
 	struct in6_pktinfo *pi = NULL;
 	int jailed = 0;
 
@@ -183,10 +183,10 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
 			if (!jailed_ip(cred->cr_prison,
 				(struct sockaddr *)&jsin6))
-				ia6 = 0;
+				ia6 = NULL;
 		}
 
-		if (ia6 == 0) {
+		if (ia6 == NULL) {
 			*errorp = EADDRNOTAVAIL;
 			return (0);
 		}
@@ -220,10 +220,10 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
 			if (!jailed_ip(cred->cr_prison,
 				(struct sockaddr *)&jsin6))
-				ia6 = 0;
+				ia6 = NULL;
 		}
 
-		if (ia6 == 0) {
+		if (ia6 == NULL) {
 			*errorp = EADDRNOTAVAIL;
 			return (0);
 		}
@@ -248,7 +248,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 
 		if (ifp) {
 			ia6 = in6_ifawithscope(ifp, dst);
-			if (ia6 == 0) {
+			if (ia6 == NULL) {
 				*errorp = EADDRNOTAVAIL;
 				return (0);
 			}
@@ -270,17 +270,17 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			rt = nd6_lookup(&sin6_next->sin6_addr, 1, NULL);
 			if (rt) {
 				ia6 = in6_ifawithscope(rt->rt_ifp, dst);
-				if (ia6 == 0)
+				if (ia6 == NULL)
 					ia6 = ifatoia6(rt->rt_ifa);
 			}
 			if (ia6 && jailed) {
 				jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
 				if (!jailed_ip(cred->cr_prison,
 					(struct sockaddr *)&jsin6))
-					ia6 = 0;
+					ia6 = NULL;
 			}
 
-			if (ia6 == 0) {
+			if (ia6 == NULL) {
 				*errorp = EADDRNOTAVAIL;
 				return (0);
 			}
@@ -332,17 +332,17 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 				jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
 				if (!jailed_ip(cred->cr_prison,
 					(struct sockaddr *)&jsin6))
-					ia6 = 0;
+					ia6 = NULL;
 			}
 
-			if (ia6 == 0) /* xxx scope error ?*/
+			if (ia6 == NULL) /* xxx scope error ?*/
 				ia6 = ifatoia6(ro->ro_rt->rt_ifa);
 
 			if (ia6 && jailed) {
 				jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
 				if (!jailed_ip(cred->cr_prison,
 					(struct sockaddr *)&jsin6))
-					ia6 = 0;
+					ia6 = NULL;
 			}
 		}
 #if 0
@@ -364,7 +364,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			return (&satosin6(&ia6->ia_addr)->sin6_addr);
 		}
 #endif /* 0 */
-		if (ia6 == 0) {
+		if (ia6 == NULL) {
 			*errorp = EHOSTUNREACH;	/* no route */
 			return (0);
 		}

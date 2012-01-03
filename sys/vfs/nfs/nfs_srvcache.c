@@ -185,7 +185,7 @@ nfsrv_getcache(struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 
 	lwkt_gettoken(&srvcache_token);
 loop:
-	for (rp = NFSRCHASH(nd->nd_retxid)->lh_first; rp != 0;
+	for (rp = NFSRCHASH(nd->nd_retxid)->lh_first; rp != NULL;
 	    rp = rp->rc_hash.le_next) {
 	    if (nd->nd_retxid == rp->rc_xid && nd->nd_procnum == rp->rc_proc &&
 		netaddr_match(NETFAMILY(rp), &rp->rc_haddr, nd->nd_nam)) {
@@ -299,7 +299,7 @@ nfsrv_updatecache(struct nfsrv_descript *nd, int repvalid, struct mbuf *repmbuf)
 
 	lwkt_gettoken(&srvcache_token);
 loop:
-	for (rp = NFSRCHASH(nd->nd_retxid)->lh_first; rp != 0;
+	for (rp = NFSRCHASH(nd->nd_retxid)->lh_first; rp != NULL;
 	    rp = rp->rc_hash.le_next) {
 	    if (nd->nd_retxid == rp->rc_xid && nd->nd_procnum == rp->rc_proc &&
 		netaddr_match(NETFAMILY(rp), &rp->rc_haddr, nd->nd_nam)) {

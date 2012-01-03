@@ -558,14 +558,14 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 		return EINVAL;
 	    }
 	} else
-	    newcode = 0;
+	    newcode = NULL;
 	bp = (cmd == PPPIOCSPASS)? &sc->sc_pass_filt: &sc->sc_active_filt;
 	oldcode = bp->bf_insns;
 	crit_enter();
 	bp->bf_len = nbp->bf_len;
 	bp->bf_insns = newcode;
 	crit_exit();
-	if (oldcode != 0)
+	if (oldcode != NULL)
 	    kfree(oldcode, M_DEVBUF);
 	break;
 #endif
@@ -650,7 +650,7 @@ pppsioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
     case SIOCADDMULTI:
     case SIOCDELMULTI:
-	if (ifr == 0) {
+	if (ifr == NULL) {
 	    error = EAFNOSUPPORT;
 	    break;
 	}
@@ -794,7 +794,7 @@ pppoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
      */
     if (M_LEADINGSPACE(m0) < PPP_HDRLEN) {
 	m0 = m_prepend(m0, PPP_HDRLEN, MB_DONTWAIT);
-	if (m0 == 0) {
+	if (m0 == NULL) {
 	    error = ENOBUFS;
 	    goto bad;
 	}
@@ -810,7 +810,7 @@ pppoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
     m0->m_len += PPP_HDRLEN;
 
     len = 0;
-    for (m = m0; m != 0; m = m->m_next)
+    for (m = m0; m != NULL; m = m->m_next)
 	len += m->m_len;
 
     if (sc->sc_flags & SC_LOG_OUTPKT) {

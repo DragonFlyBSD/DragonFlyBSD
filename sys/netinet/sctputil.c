@@ -3287,7 +3287,7 @@ sctp_sbappendaddr_nocheck(struct signalsockbuf *ssb, struct sockaddr *asa, struc
 			return (0);
  try_again:
 		MGETHDR(m, MB_DONTWAIT, MT_SONAME);
-		if (m == 0)
+		if (m == NULL)
 			return (0);
 		m->m_len = 0;
 		/* safety */

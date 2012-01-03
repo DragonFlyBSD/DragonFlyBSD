@@ -1674,7 +1674,7 @@ uhci_alloc_std_chain(struct uhci_pipe *upipe, uhci_softc_t *sc, int len,
 		ntd++;
 	DPRINTFN(10, ("uhci_alloc_std_chain: maxp=%d ntd=%d\n", maxp, ntd));
 	if (ntd == 0) {
-		*sp = *ep = 0;
+		*sp = *ep = NULL;
 		DPRINTFN(-1,("uhci_alloc_std_chain: ntd=0\n"));
 		return (USBD_NORMAL_COMPLETION);
 	}
@@ -2534,7 +2534,7 @@ uhci_setup_isoc(usbd_pipe_handle pipe)
 	/* Allocate the TDs and mark as inactive; */
 	for (i = 0; i < UHCI_VFRAMELIST_COUNT; i++) {
 		std = uhci_alloc_std(sc);
-		if (std == 0)
+		if (std == NULL)
 			goto bad;
 		std->td.td_status = htole32(UHCI_TD_IOS); /* iso, inactive */
 		std->td.td_token = htole32(token);

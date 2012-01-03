@@ -1525,7 +1525,7 @@ itjc_attach(device_t dev)
 				res_init_level = 0,
 				error = 0;
 
-	void			*ih = 0;
+	void			*ih = NULL;
 
 	dma_context_t		*ctx = &dma_context[unit];
 

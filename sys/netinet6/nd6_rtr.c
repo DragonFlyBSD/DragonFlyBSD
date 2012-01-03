@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_rtr.c,v 1.2.2.5 2003/04/05 10:28:53 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.17 2008/03/07 11:34:21 sephe Exp $	*/
 /*	$KAME: nd6_rtr.c,v 1.111 2001/04/27 01:37:15 jinmei Exp $	*/
 
 /*
@@ -1259,7 +1258,7 @@ pfxlist_onlink_check(void)
 			    find_pfxlist_reachable_router(pr) == NULL)
 				pr->ndpr_stateflags |= NDPRF_DETACHED;
 			if ((pr->ndpr_stateflags & NDPRF_DETACHED) &&
-			    find_pfxlist_reachable_router(pr) != 0)
+			    find_pfxlist_reachable_router(pr) != NULL)
 				pr->ndpr_stateflags &= ~NDPRF_DETACHED;
 		}
 	} else {

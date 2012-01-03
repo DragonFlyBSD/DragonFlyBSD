@@ -36,7 +36,6 @@
  * From: static char sccsid[] = "@(#)strtoul.c	8.1 (Berkeley) 6/4/93";
  *
  * $FreeBSD: src/sys/libkern/strtoul.c,v 1.3 1999/12/01 22:56:51 archie Exp $
- * $DragonFly: src/sys/libkern/strtoul.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -103,7 +102,7 @@ strtoul(const char *nptr, char **endptr, int base)
 		acc = ULONG_MAX;
 	} else if (neg)
 		acc = -acc;
-	if (endptr != 0)
+	if (endptr != NULL)
 		*((const char **)endptr) = any ? s - 1 : nptr;
 	return (acc);
 }

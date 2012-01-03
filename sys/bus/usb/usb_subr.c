@@ -178,7 +178,7 @@ static void
 usbd_devinfo_vp(usbd_device_handle dev, char *v, char *p, int usedev)
 {
 	usb_device_descriptor_t *udd = &dev->ddesc;
-	char *vendor = 0, *product = 0;
+	char *vendor = NULL, *product = NULL;
 
 	if (dev == NULL) {
 		v[0] = p[0] = '\0';

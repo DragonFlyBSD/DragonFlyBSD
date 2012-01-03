@@ -624,7 +624,7 @@ usbioctl(struct dev_ioctl_args *ap)
 		size_t len = UGETW(ur->ucr_request.wLength);
 		struct iovec iov;
 		struct uio uio;
-		void *ptr = 0;
+		void *ptr = NULL;
 		int addr = ur->ucr_addr;
 		usbd_status err;
 		int error = 0;

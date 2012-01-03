@@ -34,7 +34,6 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.20 2008/09/24 14:26:39 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -145,7 +144,7 @@ ipxintr(netmsg_t msg)
 	ipxstat.ipxs_total++;
 
 	if ((m->m_flags & M_EXT || m->m_len < sizeof(struct ipx)) &&
-	    (m = m_pullup(m, sizeof(struct ipx))) == 0) {
+	    (m = m_pullup(m, sizeof(struct ipx))) == NULL) {
 		ipxstat.ipxs_toosmall++;
 		goto out;
 	}

@@ -32,7 +32,6 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.33 2008/10/28 03:07:28 sephe Exp $
  */
 
 #include "opt_inet6.h"
@@ -210,7 +209,7 @@ rip_input(struct mbuf **mp, int *offp, int proto)
 					sorwakeup(last->inp_socket);
 				}
 				lwkt_reltoken(&last->inp_socket->so_rcv.ssb_token);
-				opts = 0;
+				opts = NULL;
 			}
 		}
 		last = inp;
@@ -586,7 +585,7 @@ rip_detach(netmsg_t msg)
 	struct inpcb *inp;
 
 	inp = so->so_pcb;
-	if (inp == 0)
+	if (inp == NULL)
 		panic("rip_detach");
 	if (so == ip_mrouter && ip_mrouter_done)
 		ip_mrouter_done();

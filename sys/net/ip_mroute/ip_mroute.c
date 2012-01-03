@@ -18,7 +18,6 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.23 2008/06/17 20:50:11 aggelos Exp $
  */
 
 #include "opt_mrouting.h"
@@ -3064,7 +3063,7 @@ pim_input(struct mbuf **mp, int *offp, int proto)
      * possibly the PIM REGISTER header.
      */
     if ((m->m_flags & M_EXT || m->m_len < minlen) &&
-	(m = m_pullup(m, minlen)) == 0) {
+	(m = m_pullup(m, minlen)) == NULL) {
 	log(LOG_ERR, "pim_input: m_pullup failure\n");
 	return(IPPROTO_DONE);
     }

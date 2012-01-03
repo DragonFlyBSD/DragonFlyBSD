@@ -66,7 +66,7 @@ aic_isa_alloc_resources(device_t dev)
 	struct aic_isa_softc *sc = device_get_softc(dev);
 	int rid;
 
-	sc->sc_port = sc->sc_irq = sc->sc_drq = 0;
+	sc->sc_port = sc->sc_irq = sc->sc_drq = NULL;
 
 	rid = 0;
 	sc->sc_port = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
@@ -115,7 +115,7 @@ aic_isa_release_resources(device_t dev)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sc_irq);
 	if (sc->sc_drq)
 		bus_release_resource(dev, SYS_RES_DRQ, 0, sc->sc_drq);
-	sc->sc_port = sc->sc_irq = sc->sc_drq = 0;
+	sc->sc_port = sc->sc_irq = sc->sc_drq = NULL;
 }
 
 static int

@@ -38,7 +38,6 @@
  *	=================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_tel_s016.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_tel_s016.c,v 1.7 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:27:24 2001]
  *
@@ -130,8 +129,8 @@ int
 isic_probe_s016(device_t dev)
 {
 	size_t unit = device_get_unit(dev);	/* get unit */
-	struct l1_softc *sc = 0;		/* softc */
-	void *ih = 0;				/* dummy */
+	struct l1_softc *sc = NULL;		/* softc */
+	void *ih = NULL;				/* dummy */
 	u_int8_t b0,b1,b2;			/* for signature */
 	bus_space_tag_t    t;			/* bus things */
 	bus_space_handle_t h;

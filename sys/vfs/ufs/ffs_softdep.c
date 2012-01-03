@@ -718,7 +718,7 @@ process_worklist_item(struct mount *matchmnt, int flags)
 		if (vp == NULL || !vn_islocked(vp))
 			break;
 	}
-	if (wk == 0) {
+	if (wk == NULL) {
 		FREE_LOCK(&lk);
 		return (0);
 	}
@@ -1908,7 +1908,7 @@ softdep_setup_freeblocks(struct inode *ip, off_t length)
 	 * any duplicate freefrag structures, then purge the merged list.
 	 */
 	merge_inode_lists(inodedep);
-	while ((adp = TAILQ_FIRST(&inodedep->id_inoupdt)) != 0)
+	while ((adp = TAILQ_FIRST(&inodedep->id_inoupdt)) != NULL)
 		free_allocdirect(&inodedep->id_inoupdt, adp, 1);
 	FREE_LOCK(&lk);
 	bdwrite(bp);
@@ -2026,7 +2026,7 @@ deallocate_dependencies(struct buf *bp, struct inodedep *inodedep)
 				panic("deallocate_dependencies: already gone");
 			}
 			indirdep->ir_state |= GOINGAWAY;
-			while ((aip = LIST_FIRST(&indirdep->ir_deplisthd)) != 0)
+			while ((aip = LIST_FIRST(&indirdep->ir_deplisthd)) != NULL)
 				free_allocindir(aip, inodedep);
 			if (bp->b_bio1.bio_offset >= 0 ||
 			    bp->b_bio2.bio_offset != indirdep->ir_savebp->b_bio1.bio_offset) {
@@ -2049,7 +2049,7 @@ deallocate_dependencies(struct buf *bp, struct inodedep *inodedep)
 				while ((dap =
 				    LIST_FIRST(&pagedep->pd_diraddhd[i])))
 					free_diradd(dap);
-			while ((dap = LIST_FIRST(&pagedep->pd_pendinghd)) != 0)
+			while ((dap = LIST_FIRST(&pagedep->pd_pendinghd)) != NULL)
 				free_diradd(dap);
 			/*
 			 * Copy any directory remove dependencies to the list
@@ -3513,7 +3513,7 @@ softdep_disk_write_complete(struct buf *bp)
 			indirdep->ir_saveddata = 0;
 			indirdep->ir_state &= ~UNDONE;
 			indirdep->ir_state |= ATTACHED;
-			while ((aip = LIST_FIRST(&indirdep->ir_donehd)) != 0) {
+			while ((aip = LIST_FIRST(&indirdep->ir_donehd)) != NULL) {
 				handle_allocindir_partdone(aip);
 				if (aip == LIST_FIRST(&indirdep->ir_donehd)) {
 					lk.lkt_held = NOHOLDER;

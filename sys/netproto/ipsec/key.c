@@ -5778,7 +5778,7 @@ static int
 key_register(struct socket *so, struct mbuf *m,
 	     const struct sadb_msghdr *mhp)
 {
-	struct secreg *reg, *newreg = 0;
+	struct secreg *reg, *newreg = NULL;
 
 	/* sanity check */
 	if (so == NULL || m == NULL || mhp == NULL || mhp->msg == NULL)

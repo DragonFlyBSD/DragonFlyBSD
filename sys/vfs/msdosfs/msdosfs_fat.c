@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_fat.c,v 1.23 2000/01/27 14:43:06 nyan Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.11 2006/12/23 00:41:29 swildner Exp $ */
 /*	$NetBSD: msdosfs_fat.c,v 1.28 1997/11/17 15:36:49 ws Exp $	*/
 
 /*-
@@ -282,12 +281,12 @@ fc_lookup(struct denode *dep, u_long findcn, u_long *frcnp, u_long *fsrcnp)
 {
 	int i;
 	u_long cn;
-	struct fatcache *closest = 0;
+	struct fatcache *closest = NULL;
 
 	for (i = 0; i < FC_SIZE; i++) {
 		cn = dep->de_fc[i].fc_frcn;
 		if (cn != FCE_EMPTY && cn <= findcn) {
-			if (closest == 0 || cn > closest->fc_frcn)
+			if (closest == NULL || cn > closest->fc_frcn)
 				closest = &dep->de_fc[i];
 		}
 	}

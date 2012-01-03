@@ -298,7 +298,7 @@ ipx_setpeeraddr(struct ipxpcb *ipxp, struct sockaddr **nam)
 struct ipxpcb *
 ipx_pcblookup(struct ipx_addr *faddr, int lport, int wildp)
 {
-	struct ipxpcb *ipxp, *match = 0;
+	struct ipxpcb *ipxp, *match = NULL;
 	int matchwild = 3, wildcard;
 	u_short fport;
 

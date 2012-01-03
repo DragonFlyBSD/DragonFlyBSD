@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/tty_subr.c,v 1.32 1999/08/28 00:46:21 peter Exp $
- * $DragonFly: src/sys/kern/tty_subr.c,v 1.10 2006/12/23 00:35:04 swildner Exp $
  */
 
 /*
@@ -63,7 +62,7 @@
 static void clist_init (void *);
 SYSINIT(clist, SI_SUB_CLIST, SI_ORDER_FIRST, clist_init, NULL)
 
-static struct cblock *cfreelist = 0;
+static struct cblock *cfreelist = NULL;
 int cfreecount = 0;
 static int cslushcount;
 static int ctotcount;
@@ -660,7 +659,7 @@ nextc(struct clist *clistp, char *cp, int *dst)
 int
 clist_unputc(struct clist *clistp)
 {
-	struct cblock *cblockp = 0, *cbp = 0;
+	struct cblock *cblockp = NULL, *cbp = NULL;
 	int chr = -1;
 
 	crit_enter();

@@ -120,7 +120,7 @@ hpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	int		error;
 	struct vnode	*devvp;
 	struct hpfs_args args;
-	struct hpfsmount *hpmp = 0;
+	struct hpfsmount *hpmp = NULL;
 	struct nlookupdata nd;
 
 	dprintf(("hpfs_mount():\n"));

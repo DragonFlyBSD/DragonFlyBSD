@@ -712,7 +712,7 @@ unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen, struct msdo
          *       ignores all dots before extension, and use all
          *       chars as filename except for dots.
          */
-        dp = dp1 = 0;
+        dp = dp1 = NULL;
         for (cp = un + 1, i = unlen - 1; --i >= 0;) {
                 switch (*cp++) {
                 case '.':
@@ -724,7 +724,7 @@ unix2dosfn(const u_char *un, u_char dn[12], size_t unlen, u_int gen, struct msdo
                 default:
                         if (dp1)
                                 dp = dp1;
-                        dp1 = 0;
+                        dp1 = NULL;
                         break;
                 }
         }

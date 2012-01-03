@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.29 2008/08/01 23:11:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -968,7 +967,7 @@ link_elf_search_symbol(linker_file_t lf, caddr_t value,
     u_long	    diff = off;
     u_long	    st_value;
     const Elf_Sym  *es;
-    const Elf_Sym  *best = 0;
+    const Elf_Sym  *best = NULL;
     int		    i;
 
     for (i = 0, es = ef->ddbsymtab; i < ef->ddbsymcnt; i++, es++) {
@@ -986,7 +985,7 @@ link_elf_search_symbol(linker_file_t lf, caddr_t value,
 	    }
 	}
     }
-    if (best == 0)
+    if (best == NULL)
 	*diffp = off;
     else
 	*diffp = diff;

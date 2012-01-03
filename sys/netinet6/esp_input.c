@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.17 2008/05/27 01:10:43 dillon Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -155,7 +154,7 @@ esp4_input(struct mbuf **mp, int *offp, int proto)
 
 	if ((sav = key_allocsa(AF_INET,
 	                      (caddr_t)&ip->ip_src, (caddr_t)&ip->ip_dst,
-	                      IPPROTO_ESP, spi)) == 0) {
+	                      IPPROTO_ESP, spi)) == NULL) {
 		ipseclog((LOG_WARNING,
 		    "IPv4 ESP input: no key association found for spi %u\n",
 		    (u_int32_t)ntohl(spi)));
@@ -518,7 +517,7 @@ esp6_input(struct mbuf **mp, int *offp, int proto)
 
 	if ((sav = key_allocsa(AF_INET6,
 	                      (caddr_t)&ip6->ip6_src, (caddr_t)&ip6->ip6_dst,
-	                      IPPROTO_ESP, spi)) == 0) {
+	                      IPPROTO_ESP, spi)) == NULL) {
 		ipseclog((LOG_WARNING,
 		    "IPv6 ESP input: no key association found for spi %u\n",
 		    (u_int32_t)ntohl(spi)));

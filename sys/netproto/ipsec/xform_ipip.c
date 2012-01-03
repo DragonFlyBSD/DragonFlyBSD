@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.15 2008/11/01 04:22:15 sephe Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -432,7 +431,7 @@ ipip_output(
 		}
 
 		M_PREPEND(m, sizeof(struct ip), MB_DONTWAIT);
-		if (m == 0) {
+		if (m == NULL) {
 			DPRINTF(("ipip_output: M_PREPEND failed\n"));
 			ipipstat.ipips_hdrops++;
 			error = ENOBUFS;
@@ -516,7 +515,7 @@ ipip_output(
 			ip6->ip6_dst.s6_addr16[1] = 0;
 
 		M_PREPEND(m, sizeof(struct ip6_hdr), MB_DONTWAIT);
-		if (m == 0) {
+		if (m == NULL) {
 			DPRINTF(("ipip_output: M_PREPEND failed\n"));
 			ipipstat.ipips_hdrops++;
 			*mp = NULL;

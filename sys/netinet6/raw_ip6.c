@@ -139,7 +139,7 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 	struct mbuf *m = *mp;
 	struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
 	struct inpcb *in6p;
-	struct inpcb *last = 0;
+	struct inpcb *last = NULL;
 	struct mbuf *opts = NULL;
 	struct sockaddr_in6 rip6src;
 
@@ -342,7 +342,7 @@ rip6_output(struct mbuf *m, struct socket *so, ...)
 	struct inpcb *in6p;
 	u_int	plen = m->m_pkthdr.len;
 	int error = 0;
-	struct ip6_pktopts opt, *optp = 0;
+	struct ip6_pktopts opt, *optp = NULL;
 	struct ifnet *oifp = NULL;
 	int type = 0, code = 0;		/* for ICMPv6 output statistics only */
 	int priv = 0;

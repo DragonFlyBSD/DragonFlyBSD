@@ -748,7 +748,7 @@ sys_setitimer(struct setitimer_args *uap)
 	if ((uap->itv = uap->oitv) &&
 	    (error = sys_getitimer((struct getitimer_args *)uap)))
 		return (error);
-	if (itvp == 0)
+	if (itvp == NULL)
 		return (0);
 	if (itimerfix(&aitv.it_value))
 		return (EINVAL);

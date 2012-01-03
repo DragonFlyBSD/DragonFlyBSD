@@ -447,7 +447,7 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 
 	default:
 		procp = PFIND(pfs->pfs_pid);
-		if (procp == 0 || procp->p_ucred == NULL)
+		if (procp == NULL || procp->p_ucred == NULL)
 			return (ENOENT);
 	}
 
@@ -826,7 +826,7 @@ linprocfs_lookup(struct vop_old_lookup_args *ap)
 			break;
 
 		p = PFIND(pid);
-		if (p == 0)
+		if (p == NULL)
 			break;
 
 		if (!PRISON_CHECK(ap->a_cnp->cn_cred, p->p_ucred))
@@ -846,7 +846,7 @@ linprocfs_lookup(struct vop_old_lookup_args *ap)
 		}
 
 		p = PFIND(pfs->pfs_pid);
-		if (p == 0)
+		if (p == NULL)
 			break;
 
 		if (!PRISON_CHECK(ap->a_cnp->cn_cred, p->p_ucred))

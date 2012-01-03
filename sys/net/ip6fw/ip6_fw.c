@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.10 2003/08/03 17:52:54 ume Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.19 2008/03/07 11:34:20 sephe Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -805,7 +804,7 @@ got_match:
 						- off - (ti.th.th_off << 2);
 				} else {
 					m_freem(*m);
-					*m = 0;
+					*m = NULL;
 					break;
 				}
 				seq = 0;
@@ -841,8 +840,8 @@ dropit:
 static int
 add_entry6(struct ip6_fw_head *chainptr, struct ip6_fw *frwl)
 {
-	struct ip6_fw *ftmp = 0;
-	struct ip6_fw_chain *fwc = 0, *fcp, *fcpl = 0;
+	struct ip6_fw *ftmp = NULL;
+	struct ip6_fw_chain *fwc = NULL, *fcp, *fcpl = NULL;
 	u_short nbr = 0;
 
 	fwc = kmalloc(sizeof *fwc, M_IP6FW, M_INTWAIT);
@@ -1136,7 +1135,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 	if (securelevel > 2) {
 		if (m) {
 			m_freem(m);
-			*mm = 0;
+			*mm = NULL;
 		}
 		return(EPERM);
 	}
@@ -1152,7 +1151,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 		}
 		if (m) {
 			m_freem(m);
-			*mm = 0;
+			*mm = NULL;
 		}
 		return (0);
 	}
@@ -1160,7 +1159,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 		error = zero_entry6(m);
 		if (m) {
 			m_freem(m);
-			*mm = 0;
+			*mm = NULL;
 		}
 		return (error);
 	}
@@ -1178,7 +1177,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 			error = add_entry6(&ip6_fw_chain, frwl);
 		if (m) {
 			m_freem(m);
-			*mm = 0;
+			*mm = NULL;
 		}
 		return error;
 	}
@@ -1195,7 +1194,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 			    mtod(m, struct ip6_fw *)->fw_number);
 		if (m) {
 			m_freem(m);
-			*mm = 0;
+			*mm = NULL;
 		}
 		return error;
 	}
@@ -1203,7 +1202,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 	dprintf(("%s unknown request %d\n", err_prefix, stage));
 	if (m) {
 		m_freem(m);
-		*mm = 0;
+		*mm = NULL;
 	}
 	return (EINVAL);
 }

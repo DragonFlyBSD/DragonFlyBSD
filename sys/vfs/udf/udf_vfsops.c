@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.28 2008/09/17 21:44:25 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -133,7 +132,7 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct vnode *devvp;	/* vnode of the mount device */
 	struct udf_args args;
-	struct udf_mnt *imp = 0;
+	struct udf_mnt *imp = NULL;
 	size_t size;
 	int error;
 	struct nlookupdata nd;

@@ -4166,7 +4166,7 @@ tulip_pci_attach(device_t dev)
 	    rid = 0;
 	    res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 				         RF_SHAREABLE | RF_ACTIVE);
-	    if (res == 0 || bus_setup_intr(dev, res, INTR_MPSAFE,
+	    if (res == NULL || bus_setup_intr(dev, res, INTR_MPSAFE,
 					   intr_rtn, sc, &ih,
 					   sc->tulip_if.if_serializer)) {
 		device_printf(dev, "couldn't map interrupt\n");

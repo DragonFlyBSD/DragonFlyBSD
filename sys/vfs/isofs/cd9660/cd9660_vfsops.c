@@ -190,7 +190,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	size_t size;
 	int error;
 	mode_t accessmode;
-	struct iso_mnt *imp = 0;
+	struct iso_mnt *imp = NULL;
 	struct nlookupdata nd;
 
 	if ((mp->mnt_flag & (MNT_ROOTFS|MNT_UPDATE)) == MNT_ROOTFS) {
@@ -281,7 +281,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 	int iso_bsize;
 	int iso_blknum;
 	int joliet_level;
-	struct iso_volume_descriptor *vdp = 0;
+	struct iso_volume_descriptor *vdp = NULL;
 	struct iso_primary_descriptor *pri = NULL;
 	struct iso_sierra_primary_descriptor *pri_sierra = NULL;
 	struct iso_supplementary_descriptor *sup = NULL;
@@ -802,7 +802,7 @@ again:
 		}
 #endif
 	} else
-		bp = 0;
+		bp = NULL;
 
 	ip->i_mnt = imp;
 	ip->i_devvp = imp->im_devvp;

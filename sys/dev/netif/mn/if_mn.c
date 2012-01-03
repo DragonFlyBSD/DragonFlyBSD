@@ -607,7 +607,7 @@ ngmn_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 				mn_free_desc(dp);
 				dp = dp2;
 			}
-			sc->ch[chan]->xl->vnext = 0;
+			sc->ch[chan]->xl->vnext = NULL;
 			break;
 		}
 		dp->data = vtophys(m2->m_data);
@@ -615,7 +615,7 @@ ngmn_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		dp->flags += 1;
 		len -= m2->m_len;
 		dp->next = vtophys(dp);
-		dp->vnext = 0;
+		dp->vnext = NULL;
 		sc->ch[chan]->xl->next = vtophys(dp);
 		sc->ch[chan]->xl->vnext = dp;
 		sc->ch[chan]->xl = dp;
@@ -624,7 +624,7 @@ ngmn_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 			dp->flags |= 0xc0000000;
 			dp2->flags &= ~0x40000000;
 		} else {
-			dp->m = 0;
+			dp->m = NULL;
 			m2 = m2->m_next;
 		}
 	} 
@@ -690,7 +690,7 @@ ngmn_connect(hook_p hook)
 	dp->m = m;
 	dp->flags = 0xc0000000 + (1 << 16);
 	dp->next = vtophys(dp);
-	dp->vnext = 0;
+	dp->vnext = NULL;
 	dp->data = vtophys(sc->name);
 	sc->m32_mem.cs[chan].tdesc = vtophys(dp);
 	sc->ch[chan]->x1 = dp;
@@ -716,7 +716,7 @@ ngmn_connect(hook_p hook)
 	dp->flags = 0x40000000;
 	dp->flags += 1600 << 16;
 	dp->next = vtophys(dp);
-	dp->vnext = 0;
+	dp->vnext = NULL;
 	sc->ch[chan]->rl = dp;
 
 	for (i = 0; i < (nts + 10); i++) {
@@ -1136,13 +1136,13 @@ mn_rx_intr(struct softc *sc, u_int32_t vector)
 		if (vtophys(dp) == sc->m32_mem.crxd[chan]) 
 			return;
 		m = dp->m;
-		dp->m = 0;
+		dp->m = NULL;
 		m->m_pkthdr.len = m->m_len = (dp->status >> 16) & 0x1fff;
 		err = (dp->status >> 8) & 0xff;
 		if (!err) {
 			ng_queue_data(sch->hook, m, NULL);
 			sch->last_recv = time_second;
-			m = 0;
+			m = NULL;
 			/* we could be down by now... */
 			if (sch->state != UP) 
 				return;
@@ -1186,7 +1186,7 @@ mn_rx_intr(struct softc *sc, u_int32_t vector)
 		dp->flags = 0x40000000;
 		dp->flags += 1600 << 16;
 		dp->next = vtophys(dp);
-		dp->vnext = 0;
+		dp->vnext = NULL;
 		sc->ch[chan]->rl->next = vtophys(dp);
 		sc->ch[chan]->rl->vnext = dp;
 		sc->ch[chan]->rl->flags &= ~0x40000000;

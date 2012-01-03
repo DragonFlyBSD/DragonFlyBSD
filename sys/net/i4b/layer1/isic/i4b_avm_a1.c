@@ -36,7 +36,6 @@
  *	------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_avm_a1.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_avm_a1.c,v 1.7 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:25:23 2001]
  *
@@ -163,8 +162,8 @@ int
 isic_probe_avma1(device_t dev)
 {
 	size_t unit = device_get_unit(dev);	/* get unit */
-	struct l1_softc *sc = 0;	/* pointer to softc */
-	void *ih = 0;			/* dummy */
+	struct l1_softc *sc = NULL;	/* pointer to softc */
+	void *ih = NULL;			/* dummy */
 	bus_space_tag_t    t;		/* bus things */
 	bus_space_handle_t h;
 	u_char savebyte;

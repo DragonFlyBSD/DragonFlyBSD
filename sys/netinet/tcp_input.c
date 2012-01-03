@@ -537,7 +537,7 @@ tcp_input(struct mbuf **mp, int *offp, int proto)
 	int drop_hdrlen;
 	struct tcpcb *tp = NULL;
 	int thflags;
-	struct socket *so = 0;
+	struct socket *so = NULL;
 	int todrop, acked;
 	boolean_t ourfinisacked, needoutput = FALSE;
 	u_long tiwin;
@@ -2773,7 +2773,7 @@ tcp_pulloutofband(struct socket *so, struct tcphdr *th, struct mbuf *m, int off)
 		}
 		cnt -= m->m_len;
 		m = m->m_next;
-		if (m == 0)
+		if (m == NULL)
 			break;
 	}
 	panic("tcp_pulloutofband");

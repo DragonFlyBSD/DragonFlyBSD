@@ -571,8 +571,8 @@ isp_get_specific_options(device_t dev, int chan, ispsoftc_t *isp)
 	if (resource_int_value(device_get_name(dev), device_get_unit(dev), "fullduplex", &tval) == 0 && tval != 0) {
 		isp->isp_confopts |= ISP_CFG_FULL_DUPLEX;
 	}
-	sptr = 0;
-	if (resource_string_value(device_get_name(dev), device_get_unit(dev), "topology", &sptr) == 0 && sptr != 0) {
+	sptr = NULL;
+	if (resource_string_value(device_get_name(dev), device_get_unit(dev), "topology", &sptr) == 0 && sptr != NULL) {
 		if (strcmp(sptr, "lport") == 0) {
 			isp->isp_confopts |= ISP_CFG_LPORT;
 		} else if (strcmp(sptr, "nport") == 0) {
@@ -592,10 +592,10 @@ isp_get_specific_options(device_t dev, int chan, ispsoftc_t *isp)
 	 * hint replacement to specify WWN strings with a leading
 	 * 'w' (e..g w50000000aaaa0001). Sigh.
 	 */
-	sptr = 0;
+	sptr = NULL;
 	tval = resource_string_value(device_get_name(dev), device_get_unit(dev), "portwwn", &sptr);
-	if (tval == 0 && sptr != 0 && *sptr++ == 'w') {
-		char *eptr = 0;
+	if (tval == 0 && sptr != NULL && *sptr++ == 'w') {
+		char *eptr = NULL;
 		ISP_FC_PC(isp, chan)->def_wwpn = strtouq(sptr, &eptr, 16);
 		if (eptr < sptr + 16 || ISP_FC_PC(isp, chan)->def_wwpn == -1) {
 			device_printf(dev, "mangled portwwn hint '%s'\n", sptr);
@@ -603,10 +603,10 @@ isp_get_specific_options(device_t dev, int chan, ispsoftc_t *isp)
 		}
 	}
 
-	sptr = 0;
+	sptr = NULL;
 	tval = resource_string_value(device_get_name(dev), device_get_unit(dev), "nodewwn", &sptr);
-	if (tval == 0 && sptr != 0 && *sptr++ == 'w') {
-		char *eptr = 0;
+	if (tval == 0 && sptr != NULL && *sptr++ == 'w') {
+		char *eptr = NULL;
 		ISP_FC_PC(isp, chan)->def_wwnn = strtouq(sptr, &eptr, 16);
 		if (eptr < sptr + 16 || ISP_FC_PC(isp, chan)->def_wwnn == 0) {
 			device_printf(dev, "mangled nodewwn hint '%s'\n", sptr);

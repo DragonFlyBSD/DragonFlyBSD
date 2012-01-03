@@ -4083,7 +4083,7 @@ sctp_input(struct mbuf **mp, int *offp, int proto)
 	struct ip *ip;
 	struct sctphdr *sh;
 	struct sctp_inpcb *inp = NULL;
-	struct mbuf *opts = 0;
+	struct mbuf *opts = NULL;
 /*#ifdef INET6*/
 /* Don't think this is needed */
 /*	struct ip6_recvpktopts opts6;*/
@@ -4130,7 +4130,7 @@ sctp_input(struct mbuf **mp, int *offp, int proto)
 	ip = mtod(m, struct ip *);
 	offset = iphlen + sizeof(*sh) + sizeof(*ch);
 	if (m->m_len < offset) {
-		if ((m = m_pullup(m, offset)) == 0) {
+		if ((m = m_pullup(m, offset)) == NULL) {
 			sctp_pegs[SCTP_HDR_DROPS]++;
 			return(IPPROTO_DONE);
 		}

@@ -138,7 +138,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 	struct vnode	*devvp;
 
 	struct ufs_args args;
-	struct ufsmount *ump = 0;
+	struct ufsmount *ump = NULL;
 	struct fs *fs;
 	int flags, ronly = 0;
 	mode_t accessmode;

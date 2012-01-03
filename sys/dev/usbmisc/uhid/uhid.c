@@ -382,7 +382,7 @@ uhidopen(struct dev_open_args *ap)
 
 	sc->sc_state &= ~UHID_IMMED;
 
-	sc->sc_async = 0;
+	sc->sc_async = NULL;
 
 	return (0);
 }
@@ -411,7 +411,7 @@ uhidclose(struct dev_close_args *ap)
 
 	sc->sc_state &= ~UHID_OPEN;
 
-	sc->sc_async = 0;
+	sc->sc_async = NULL;
 
 	return (0);
 }

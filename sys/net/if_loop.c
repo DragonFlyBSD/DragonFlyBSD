@@ -237,7 +237,7 @@ rel:
 		ifq_classify(&ifp->if_snd, m, af, &pktattr);
 
 		M_PREPEND(m, sizeof(int32_t), MB_DONTWAIT);
-		if (m == 0)
+		if (m == NULL)
 			return(ENOBUFS);
 		afp = mtod(m, int32_t *);
 		*afp = (int32_t)af;
@@ -379,7 +379,7 @@ loioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		if (ifr == 0) {
+		if (ifr == NULL) {
 			error = EAFNOSUPPORT;		/* XXX */
 			break;
 		}

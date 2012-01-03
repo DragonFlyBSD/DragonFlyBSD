@@ -28,7 +28,6 @@
  *	================================================================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.5.2.2 2001/10/24 14:17:20 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_elsa_pcc16.c,v 1.7 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Wed Oct 24 16:15:26 2001]
  *
@@ -222,8 +221,8 @@ int
 isic_probe_Epcc16(device_t dev)
 {
 	size_t unit = device_get_unit(dev);	/* get unit */
-	struct l1_softc *sc = 0;		/* pointer to softc */
-	void *ih = 0;				/* dummy */
+	struct l1_softc *sc = NULL;		/* pointer to softc */
+	void *ih = NULL;				/* dummy */
 
 	/* check max unit range */
 	if(unit >= ISIC_MAXUNIT)

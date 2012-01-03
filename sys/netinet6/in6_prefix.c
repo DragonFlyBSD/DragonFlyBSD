@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.c,v 1.4.2.3 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.13 2008/03/07 11:34:21 sephe Exp $	*/
 /*	$KAME: in6_prefix.c,v 1.47 2001/03/25 08:41:39 itojun Exp $	*/
 
 /*
@@ -206,7 +205,7 @@ search_matched_prefix(struct ifnet *ifp, struct in6_prefixreq *ipr)
 		return NULL;
 
 	rpp = ifpr2rp(((struct in6_ifaddr *)ifa)->ia6_ifpr);
-	if (rpp != 0)
+	if (rpp != NULL)
 		return rpp;
 
 	for (ifpr = TAILQ_FIRST(&ifp->if_prefixhead); ifpr;
@@ -273,7 +272,7 @@ mark_matched_prefixes(u_long cmd, struct ifnet *ifp, struct in6_rrenumreq *irr)
 		    irr->irr_m_maxlen < matchlen || irr->irr_m_len > matchlen)
  			continue;
 		rpp = ifpr2rp(((struct in6_ifaddr *)ifa)->ia6_ifpr);
-		if (rpp != 0) {
+		if (rpp != NULL) {
 			matched = 1;
 			rpp->rp_statef_addmark = 1;
 			if (cmd == SIOCCIFPREFIX_IN6)

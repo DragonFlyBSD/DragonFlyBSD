@@ -124,7 +124,7 @@ static struct command db_command_table[] = {
 	{ NULL, }
 };
 
-static struct command	*db_last_command = 0;
+static struct command	*db_last_command = NULL;
 
 /*
  * if 'ed' style: 'dot' is set at start of last item printed,
@@ -210,7 +210,7 @@ db_cmd_search(char *name, struct command *table, struct command **aux_tablep,
 		}
 	    }
 	}
-	if (result == CMD_NONE && aux_tablep != 0)
+	if (result == CMD_NONE && aux_tablep != NULL)
 	    /* XXX repeat too much code. */
 	    for (aux_cmdp = aux_tablep; aux_cmdp < aux_tablep_end; aux_cmdp++) {
 		char *lp;
@@ -262,7 +262,7 @@ db_cmd_list(struct command *table, struct command **aux_tablep,
 	    db_printf("%-12s", cmd->name);
 	    db_end_line();
 	}
-	if (aux_tablep == 0)
+	if (aux_tablep == NULL)
 	    return;
 	for (aux_cmdp = aux_tablep; aux_cmdp < aux_tablep_end; aux_cmdp++) {
 	    db_printf("%-12s", (*aux_cmdp)->name);
@@ -330,9 +330,9 @@ db_command(struct command **last_cmdp, struct command *cmd_table,
 		    default:
 			break;
 		}
-		if ((cmd_table = cmd->more) != 0) {
+		if ((cmd_table = cmd->more) != NULL) {
 		    /* XXX usually no more aux's. */
-		    aux_cmd_tablep = 0;
+		    aux_cmd_tablep = NULL;
 		    if (cmd_table == db_show_cmds) {
 			aux_cmd_tablep = SET_BEGIN(db_show_cmd_set);
 			aux_cmd_tablep_end = SET_LIMIT(db_show_cmd_set);
@@ -394,7 +394,7 @@ db_command(struct command **last_cmdp, struct command *cmd_table,
 	    }
 	}
 	*last_cmdp = cmd;
-	if (cmd != 0) {
+	if (cmd != NULL) {
 	    /*
 	     * Execute the command.
 	     */

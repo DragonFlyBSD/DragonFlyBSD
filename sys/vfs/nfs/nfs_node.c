@@ -177,7 +177,7 @@ loop:
 	 * Validate that we did not race another nfs_nget() due to blocking
 	 * here and there.
 	 */
-	for (np2 = nhpp->lh_first; np2 != 0; np2 = np2->n_hash.le_next) {
+	for (np2 = nhpp->lh_first; np2 != NULL; np2 = np2->n_hash.le_next) {
 		if (mntp != NFSTOV(np2)->v_mount || np2->n_fhsize != fhsize ||
 		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize)) {
 			continue;
@@ -311,7 +311,7 @@ loop:
 	 * Validate that we did not race another nfs_nget() due to blocking
 	 * here and there.
 	 */
-	for (np2 = nhpp->lh_first; np2 != 0; np2 = np2->n_hash.le_next) {
+	for (np2 = nhpp->lh_first; np2 != NULL; np2 = np2->n_hash.le_next) {
 		if (mntp != NFSTOV(np2)->v_mount || np2->n_fhsize != fhsize ||
 		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize)) {
 			continue;

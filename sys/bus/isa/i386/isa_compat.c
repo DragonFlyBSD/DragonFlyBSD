@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.c,v 1.18.2.1 2001/05/17 23:05:06 imp Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.12 2006/12/22 23:12:16 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -82,7 +81,7 @@ isa_compat_alloc_resources(device_t dev, struct isa_compat_resources *res)
 			kprintf("isa_compat: didn't get ports for %s\n",
 			       device_get_name(dev));
 	} else
-		res->ports = 0;
+		res->ports = NULL;
 
 	if (bus_get_resource(dev, SYS_RES_MEMORY, 0,
 			     &start, &count) == 0
@@ -95,7 +94,7 @@ isa_compat_alloc_resources(device_t dev, struct isa_compat_resources *res)
 			kprintf("isa_compat: didn't get memory for %s\n",
 			       device_get_name(dev));
 	} else
-		res->memory = 0;
+		res->memory = NULL;
 
 	if (bus_get_resource(dev, SYS_RES_DRQ, 0,
 			     &start, &count) == 0) {
@@ -107,7 +106,7 @@ isa_compat_alloc_resources(device_t dev, struct isa_compat_resources *res)
 			kprintf("isa_compat: didn't get drq for %s\n",
 			       device_get_name(dev));
 	} else
-		res->drq = 0;
+		res->drq = NULL;
 
 	if (bus_get_resource(dev, SYS_RES_IRQ, 0,
 			     &start, &count) == 0) {
@@ -119,7 +118,7 @@ isa_compat_alloc_resources(device_t dev, struct isa_compat_resources *res)
 			kprintf("isa_compat: didn't get irq for %s\n",
 			       device_get_name(dev));
 	} else
-		res->irq = 0;
+		res->irq = NULL;
 }
 
 static void
@@ -127,19 +126,19 @@ isa_compat_release_resources(device_t dev, struct isa_compat_resources *res)
 {
 	if (res->ports) {
 		bus_release_resource(dev, SYS_RES_IOPORT, 0, res->ports);
-		res->ports = 0;
+		res->ports = NULL;
 	}
 	if (res->memory) {
 		bus_release_resource(dev, SYS_RES_MEMORY, 0, res->memory);
-		res->memory = 0;
+		res->memory = NULL;
 	}
 	if (res->drq) {
 		bus_release_resource(dev, SYS_RES_DRQ, 0, res->drq);
-		res->drq = 0;
+		res->drq = NULL;
 	}
 	if (res->irq) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, res->irq);
-		res->irq = 0;
+		res->irq = NULL;
 	}
 }
 
@@ -204,7 +203,7 @@ isa_compat_probe(device_t dev)
 		if (res.memory)
 			maddr = rman_get_virtual(res.memory);
 		else
-			maddr = 0;
+			maddr = NULL;
 		dvp->id_maddr = maddr;
 		old = *dvp;
 		portsize = dvp->id_driver->probe(dvp);

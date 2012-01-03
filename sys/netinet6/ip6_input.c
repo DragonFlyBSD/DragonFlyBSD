@@ -175,7 +175,7 @@ ip6_init(void)
 	struct timeval tv;
 
 	pr = pffindproto(PF_INET6, IPPROTO_RAW, SOCK_RAW);
-	if (pr == 0)
+	if (pr == NULL)
 		panic("ip6_init");
 	for (i = 0; i < IPPROTO_MAX; i++)
 		ip6_protox[i] = pr - inet6sw;
@@ -312,7 +312,7 @@ ip6_input(netmsg_t msg)
 	if (m->m_len < sizeof(struct ip6_hdr)) {
 		struct ifnet *inifp;
 		inifp = m->m_pkthdr.rcvif;
-		if ((m = m_pullup(m, sizeof(struct ip6_hdr))) == 0) {
+		if ((m = m_pullup(m, sizeof(struct ip6_hdr))) == NULL) {
 			ip6stat.ip6s_toosmall++;
 			in6_ifstat_inc(inifp, ifs6_in_hdrerr);
 			goto bad2;
@@ -474,7 +474,7 @@ ip6_input(netmsg_t msg)
 	 * Multicast check
 	 */
 	if (IN6_IS_ADDR_MULTICAST(&ip6->ip6_dst)) {
-	  	struct	in6_multi *in6m = 0;
+		struct	in6_multi *in6m = NULL;
 
 		in6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_mcast);
 		/*

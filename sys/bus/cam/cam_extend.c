@@ -13,7 +13,6 @@
  * functioning of this software in any circumstances.
  *
  * $FreeBSD: src/sys/cam/cam_extend.c,v 1.3 1999/08/28 00:40:39 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_extend.c,v 1.8 2006/12/22 23:12:16 swildner Exp $
  */
 /*
  * XXX XXX XXX XXX  We should get DEVFS working so that we
@@ -92,6 +91,6 @@ cam_extend_release(struct extend_array *ea, int index)
 {
 	void *p = cam_extend_get(ea, index);
 	if (p) {
-		ea->ps[index] = 0;
+		ea->ps[index] = NULL;
 	}
 }

@@ -456,7 +456,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	case SIOCDELMULTI:
 		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 			break;
-		if (ifr == 0) {
+		if (ifr == NULL) {
 			error = EAFNOSUPPORT;
 			break;
 		}

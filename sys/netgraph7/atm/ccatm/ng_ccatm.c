@@ -31,8 +31,6 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/atm/ccatm/ng_ccatm.c,v 1.3 2006/09/30 12:37:43 netchild Exp $
- * $DragonFly: src/sys/netgraph7/atm/ccatm/ng_ccatm.c,v 1.2 2008/06/26 23:05:39 dillon Exp $
- * $DragonFly: src/sys/netgraph7/atm/ccatm/ng_ccatm.c,v 1.2 2008/06/26 23:05:39 dillon Exp $
  *
  * ATM call control and API
  */
@@ -442,7 +440,7 @@ send_dump(struct ccdata *data, void *uarg, const char *buf)
 		m->m_pkthdr.len = 0;
 	} else {
 		m = m_getcl(MB_DONTWAIT, MT_DATA, 0);
-		if (m == 0) {
+		if (m == NULL) {
 			m_freem(priv->dump_first);
 			return (ENOBUFS);
 		}

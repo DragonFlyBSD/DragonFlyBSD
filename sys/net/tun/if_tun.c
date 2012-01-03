@@ -493,7 +493,7 @@ tunioctl(struct dev_ioctl_args *ap)
 			struct mbuf *mb;
 
 			mb = ifq_poll(&tp->tun_if.if_snd);
-			for( *(int *)ap->a_data = 0; mb != 0; mb = mb->m_next) 
+			for( *(int *)ap->a_data = 0; mb != NULL; mb = mb->m_next)
 				*(int *)ap->a_data += mb->m_len;
 		} else {
 			*(int *)ap->a_data = 0;
@@ -615,7 +615,7 @@ tunwrite(struct dev_write_args *ap)
 		mp = &m->m_next;
 		if (uio->uio_resid > 0) {
 			MGET (m, MB_WAIT, MT_DATA);
-			if (m == 0) {
+			if (m == NULL) {
 				error = ENOBUFS;
 				break;
 			}

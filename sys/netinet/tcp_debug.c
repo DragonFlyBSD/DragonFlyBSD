@@ -32,7 +32,6 @@
  *
  *	@(#)tcp_debug.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp_debug.c,v 1.16.2.1 2000/07/15 07:14:31 kris Exp $
- * $DragonFly: src/sys/netinet/tcp_debug.c,v 1.6 2006/12/22 23:57:52 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -212,7 +211,7 @@ tcp_trace(short act, short ostate, struct tcpcb *tp, void *ipgen,
 		kprintf(" -> %s", tcpstates[tp->t_state]);
 	/* print out internal state of tp !?! */
 	kprintf("\n");
-	if (tp == 0)
+	if (tp == NULL)
 		return;
 	kprintf(
 	"\trcv_(nxt,wnd,up) (%lx,%lx,%lx) snd_(una,nxt,max) (%lx,%lx,%lx)\n",

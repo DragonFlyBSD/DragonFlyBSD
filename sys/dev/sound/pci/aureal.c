@@ -555,8 +555,8 @@ au_pci_attach(device_t dev)
 	struct resource *reg[10];
 	int		i, j, mapped = 0;
 	int		irqid;
-	struct resource *irq = 0;
-	void		*ih = 0;
+	struct resource *irq = NULL;
+	void		*ih = NULL;
 	struct ac97_info *codec;
 	char 		status[SND_STATUSLEN];
 

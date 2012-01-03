@@ -459,7 +459,7 @@ urioioctl(struct dev_ioctl_args *ap)
 	struct uio uio;
 	usb_device_request_t req;
 	int req_flags = 0, req_actlen = 0;
-	void *ptr = 0;
+	void *ptr = NULL;
 	int error = 0;
 	usbd_status r;
 

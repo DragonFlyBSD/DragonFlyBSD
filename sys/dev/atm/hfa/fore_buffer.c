@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_buffer.c,v 1.5 2000/01/15 21:01:04 mks Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_buffer.c,v 1.6 2008/06/05 18:06:31 swildner Exp $
  */
 
 /*
@@ -359,7 +358,7 @@ fore_buf_supply_1s(Fore_unit *fup)
 			 * Get a small buffer
 			 */
 			KB_ALLOCPKT(m, BUF1_SM_SIZE, KB_F_NOWAIT, KB_T_DATA);
-			if (m == 0) {
+			if (m == NULL) {
 				break;
 			}
 			KB_HEADSET(m, BUF1_SM_DOFF);
@@ -500,7 +499,7 @@ fore_buf_supply_1l(Fore_unit *fup)
 			 * Get a cluster buffer
 			 */
 			KB_ALLOCEXT(m, BUF1_LG_SIZE, KB_F_NOWAIT, KB_T_DATA);
-			if (m == 0) {
+			if (m == NULL) {
 				break;
 			}
 			KB_HEADSET(m, BUF1_LG_DOFF);

@@ -249,12 +249,12 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 					secp = *secpp;
 					secval = 0;
 				} else {
-					secp = 0;
+					secp = NULL;
 					secval = (u_int)(uintptr_t)*secpp;
 				}
 			} else {
-				secpp = 0;
-				secp = 0;
+				secpp = NULL;
+				secp = NULL;
 				secval = 0;
 			}
 			if (md_debug > 2)
@@ -265,7 +265,7 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 				if (secpp) {
 					if (secp)
 						kfree(secp, M_MDSECT);
-					*secpp = 0;
+					*secpp = NULL;
 				}
 				break;
 			case BUF_CMD_READ:

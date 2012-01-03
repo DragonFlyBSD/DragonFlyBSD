@@ -2248,7 +2248,7 @@ resource_list_alloc(struct resource_list *rl,
 		    u_long start, u_long end,
 		    u_long count, u_int flags, int cpuid)
 {
-	struct resource_list_entry *rle = 0;
+	struct resource_list_entry *rle = NULL;
 	int passthrough = (device_get_parent(child) != bus);
 	int isdefault = (start == 0UL && end == ~0UL);
 
@@ -2294,7 +2294,7 @@ resource_list_release(struct resource_list *rl,
 		      device_t bus, device_t child,
 		      int type, int rid, struct resource *res)
 {
-	struct resource_list_entry *rle = 0;
+	struct resource_list_entry *rle = NULL;
 	int passthrough = (device_get_parent(child) != bus);
 	int error;
 

@@ -308,7 +308,7 @@ uscanner_attach(device_t self)
 {
 	struct uscanner_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	usb_interface_descriptor_t *id = 0;
+	usb_interface_descriptor_t *id = NULL;
 	usb_endpoint_descriptor_t *ed, *ed_bulkin = NULL, *ed_bulkout = NULL;
 	int i;
 	usbd_status err;
@@ -330,7 +330,7 @@ uscanner_attach(device_t self)
 	err = usbd_device2interface_handle(sc->sc_udev, 0, &sc->sc_iface);
 	if (!err && sc->sc_iface)
 	    id = usbd_get_interface_descriptor(sc->sc_iface);
-	if (err || id == 0) {
+	if (err || id == NULL) {
 		kprintf("%s: could not get interface descriptor, err=%d,id=%p\n",
 		       device_get_nameunit(sc->sc_dev), err, id);
 		return ENXIO;
@@ -339,7 +339,7 @@ uscanner_attach(device_t self)
 	/* Find the two first bulk endpoints */
 	for (i = 0 ; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(sc->sc_iface, i);
-		if (ed == 0) {
+		if (ed == NULL) {
 			kprintf("%s: could not read endpoint descriptor\n",
 			       device_get_nameunit(sc->sc_dev));
 			return ENXIO;

@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipcomp.c,v 1.1.4.2 2003/02/26 00:14:06 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipcomp.c,v 1.10 2006/10/12 01:32:51 hsu Exp $	*/
 /* $OpenBSD: ip_ipcomp.c,v 1.1 2001/07/05 12:08:52 jjbg Exp $ */
 
 /*
@@ -299,7 +298,7 @@ ipcomp_input_cb(struct cryptop *crp)
 	/* In case it's not done already, adjust the size of the mbuf chain */
 	m->m_pkthdr.len = clen + hlen + skip;
 
-	if (m->m_len < skip + hlen && (m = m_pullup(m, skip + hlen)) == 0) {
+	if (m->m_len < skip + hlen && (m = m_pullup(m, skip + hlen)) == NULL) {
 		ipcompstat.ipcomps_hdrops++;		/*XXX*/
 		DPRINTF(("ipcomp_input_cb: m_pullup failed\n"));
 		error = EINVAL;				/*XXX*/

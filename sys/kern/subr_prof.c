@@ -115,7 +115,7 @@ kmstartup(void *dummy)
 	p->tossize = p->tolimit * sizeof(struct tostruct);
 	cp = (char *)kmalloc(p->kcountsize + p->fromssize + p->tossize,
 	    M_GPROF, M_NOWAIT | M_ZERO);
-	if (cp == 0) {
+	if (cp == NULL) {
 		kprintf("No memory for profiling.\n");
 		return;
 	}

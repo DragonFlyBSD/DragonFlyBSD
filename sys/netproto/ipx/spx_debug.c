@@ -34,7 +34,6 @@
  *	@(#)spx_debug.c
  *
  * $FreeBSD: src/sys/netipx/spx_debug.c,v 1.14 1999/08/28 00:49:43 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_debug.c,v 1.5 2006/12/22 23:57:54 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -155,7 +154,7 @@ spx_trace(int act, int ostate, struct spxpcb *sp, struct spx *si, int req)
 		kprintf(" -> %s", tcpstates[sp->s_state]);
 	/* print out internal state of sp !?! */
 	kprintf("\n");
-	if (sp == 0)
+	if (sp == NULL)
 		return;
 #ifndef lint
 #define p3(f)  { kprintf("%s = %x, ", "f", sp->s_ ## f); }

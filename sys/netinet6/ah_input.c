@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/ah_input.c,v 1.1.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.14 2007/11/26 11:43:09 sephe Exp $	*/
 /*	$KAME: ah_input.c,v 1.67 2002/01/07 11:39:56 kjc Exp $	*/
 
 /*
@@ -154,7 +153,7 @@ ah4_input(struct mbuf **mp, int *offp, int proto)
 
 	if ((sav = key_allocsa(AF_INET,
 	                      (caddr_t)&ip->ip_src, (caddr_t)&ip->ip_dst,
-	                      IPPROTO_AH, spi)) == 0) {
+	                      IPPROTO_AH, spi)) == NULL) {
 		ipseclog((LOG_WARNING,
 		    "IPv4 AH input: no key association found for spi %u\n",
 		    (u_int32_t)ntohl(spi)));
@@ -611,7 +610,7 @@ ah6_input(struct mbuf **mp, int *offp, int proto)
 
 	if ((sav = key_allocsa(AF_INET6,
 	                      (caddr_t)&ip6->ip6_src, (caddr_t)&ip6->ip6_dst,
-	                      IPPROTO_AH, spi)) == 0) {
+	                      IPPROTO_AH, spi)) == NULL) {
 		ipseclog((LOG_WARNING,
 		    "IPv6 AH input: no key association found for spi %u\n",
 		    (u_int32_t)ntohl(spi)));

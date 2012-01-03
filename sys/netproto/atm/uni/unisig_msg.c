@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_msg.c,v 1.6 2000/01/17 20:49:56 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_msg.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -781,8 +780,8 @@ unisig_rcv_msg(struct unisig *usp, KBuffer *m)
 	int			err;
 	u_int			cref;
 	struct usfmt		usf;
-	struct unisig_msg	*msg = 0;
-	struct unisig_vccb	*uvp = 0;
+	struct unisig_msg	*msg = NULL;
+	struct unisig_vccb	*uvp = NULL;
 	struct ie_generic	*iep;
 
 	ATM_DEBUG2("unisig_rcv_msg: bfr=%p, len=%d\n", m, KB_LEN(m));

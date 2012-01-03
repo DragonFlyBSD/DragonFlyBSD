@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.37 2008/01/06 16:55:49 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -388,7 +387,7 @@ acd_describe(struct acd_softc *cdp)
 	case MST_MECH_CARTRIDGE:
 	    mechanism = "cartridge"; break;
 	default:
-	    mechanism = 0; break;
+	    mechanism = NULL; break;
 	}
 	if (mechanism)
 	    kprintf("%s%s", cdp->cap.eject ? "ejectable " : "", mechanism);

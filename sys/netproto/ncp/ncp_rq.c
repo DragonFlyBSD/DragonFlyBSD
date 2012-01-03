@@ -32,7 +32,6 @@
  * Routines to prepare request and fetch reply
  *
  * $FreeBSD: src/sys/netncp/ncp_rq.c,v 1.1.2.1 2001/05/21 16:27:20 ru Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_rq.c,v 1.10 2006/12/22 23:57:54 swildner Exp $
  */ 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -358,7 +357,7 @@ ncp_rp_mem(struct ncp_rq *rqp,caddr_t target, int size) {
 	unsigned count;
 	
 	while (size > 0) {
-		if (m==0) {	/* should be panic */
+		if (m==NULL) {	/* should be panic */
 			kprintf("ncp_rp_mem: incomplete copy\n");
 			return;
 		}
@@ -385,7 +384,7 @@ ncp_rp_usermem(struct ncp_rq *rqp,caddr_t target, int size) {
 	int error;
 	
 	while (size>0) {
-		if (m==0) {	/* should be panic */
+		if (m==NULL) {	/* should be panic */
 			kprintf("ncp_rp_mem: incomplete copy\n");
 			return EFAULT;
 		}
@@ -413,7 +412,7 @@ ncp_rp_mbuf(struct ncp_rq *rqp, int size) {
 	
 	rm = m_copym(m, rqp->bpos - mtod(m,caddr_t), size, MB_WAIT);
 	while (size > 0) {
-		if (m == 0) {
+		if (m == NULL) {
 			kprintf("ncp_rp_mbuf: can't advance\n");
 			return rm;
 		}

@@ -32,7 +32,6 @@
  *
  *	From: @(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_disc.c,v 1.26.2.2 2001/12/20 10:30:16 ru Exp $
- * $DragonFly: src/sys/net/disc/if_disc.c,v 1.10 2006/12/22 23:44:55 swildner Exp $
  */
 
 /*
@@ -167,7 +166,7 @@ discioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	case SIOCSIFADDR:
 		ifp->if_flags |= IFF_UP;
 		ifa = (struct ifaddr *)data;
-		if (ifa != 0)
+		if (ifa != NULL)
 			ifa->ifa_rtrequest = discrtrequest;
 		/*
 		 * Everything else is done at a higher level.
@@ -176,7 +175,7 @@ discioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		if (ifr == 0) {
+		if (ifr == NULL) {
 			error = EAFNOSUPPORT;		/* XXX */
 			break;
 		}

@@ -80,7 +80,7 @@
 
 #include <setjmp.h>
 
-static jmp_buf *db_nofault = 0;
+static jmp_buf *db_nofault = NULL;
 extern jmp_buf	db_jmpbuf;
 
 extern void	gdb_handle_exception (db_regs_t *, int, int);
@@ -138,7 +138,7 @@ kdb_trap(int type, int code, struct x86_64_saved_state *regs)
 
 		if (db_nofault) {
 		    jmp_buf *no_fault = db_nofault;
-		    db_nofault = 0;
+		    db_nofault = NULL;
 		    longjmp(*no_fault, 1);
 		}
 	}
@@ -244,7 +244,7 @@ db_read_bytes(vm_offset_t addr, size_t size, char *data)
 	while (size-- > 0)
 	    *data++ = *src++;
 
-	db_nofault = 0;
+	db_nofault = NULL;
 }
 
 /*
@@ -297,7 +297,7 @@ db_write_bytes(vm_offset_t addr, size_t size, char *data)
 	while (size-- > 0)
 	    *dst++ = *data++;
 
-	db_nofault = 0;
+	db_nofault = NULL;
 
 #if 0
 	if (ptep0) {

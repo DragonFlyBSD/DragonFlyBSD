@@ -4857,7 +4857,7 @@ sppp_get_ip_addrs(struct sppp *sp, u_long *src, u_long *dst, u_long *srcmask)
 	 * Pick the first AF_INET address from the list,
 	 * aliases don't make any sense on a p2p link anyway.
 	 */
-	si = 0;
+	si = NULL;
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 		ifa = ifac->ifa;
 		if (ifa->ifa_addr->sa_family == AF_INET) {
@@ -4899,7 +4899,7 @@ sppp_set_ip_addr(struct sppp *sp, u_long src)
 	 * Pick the first AF_INET address from the list,
 	 * aliases don't make any sense on a p2p link anyway.
 	 */
-	si = 0;
+	si = NULL;
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 		ifa = ifac->ifa;
 		if (ifa->ifa_addr->sa_family == AF_INET) {
@@ -4969,7 +4969,7 @@ sppp_get_ip6_addrs(struct sppp *sp, struct in6_addr *src, struct in6_addr *dst,
 	 * Pick the first link-local AF_INET6 address from the list,
 	 * aliases don't make any sense on a p2p link anyway.
 	 */
-	si = 0;
+	si = NULL;
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 		ifa = ifac->ifa;
 		if (ifa->ifa_addr->sa_family == AF_INET6) {

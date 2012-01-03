@@ -961,7 +961,7 @@ ptcwrite(struct dev_write_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp = dev->si_tty;
-	u_char *cp = 0;
+	u_char *cp = NULL;
 	int cc = 0;
 	u_char locbuf[BUFSIZ];
 	int cnt = 0;

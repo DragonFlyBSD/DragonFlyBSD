@@ -2100,7 +2100,7 @@ outloop:
 		return;
 	}
 	m = ifq_dequeue(&ifp->if_snd, NULL);
-	if (m == 0) {
+	if (m == NULL) {
 
 		/*
 		 * We are using the !OACTIVE flag to indicate to the outside
@@ -2154,7 +2154,7 @@ outloop:
 				break;
 			}
 		}
-		for (len = 0; m != 0; m = m->m_next) {
+		for (len = 0; m != NULL; m = m->m_next) {
 			bcopy(mtod(m, caddr_t), buffer, m->m_len);
 			buffer += m->m_len;
 			len += m->m_len;

@@ -38,7 +38,6 @@
  * Author: Dave Chapeskie <dchapeskie@sandvine.com>
  *
  * $FreeBSD: src/sys/netgraph/ng_source.c,v 1.30 2007/03/02 14:36:19 emaste Exp $
- * $DragonFly: src/sys/netgraph7/ng_source.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -296,7 +295,7 @@ ng_source_newhook(node_p node, hook_p hook, const char *name)
 		sc->input = hook;
 	} else if (strcmp(name, NG_SOURCE_HOOK_OUTPUT) == 0) {
 		sc->output = hook;
-		sc->output_ifp = 0;
+		sc->output_ifp = NULL;
 		bzero(&sc->stats, sizeof(sc->stats));
 	} else
 		return (EINVAL);

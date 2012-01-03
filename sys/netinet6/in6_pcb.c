@@ -183,7 +183,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 				sin6->sin6_addr = kin6addr_any;
 				return(EINVAL);
 			}
-			if ((ia = ifa_ifwithaddr((struct sockaddr *)sin6)) == 0)
+			if ((ia = ifa_ifwithaddr((struct sockaddr *)sin6)) == NULL)
 				return (EADDRNOTAVAIL);
 
 			/*
@@ -337,7 +337,7 @@ in6_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 					      inp->in6p_moptions,
 					      &inp->in6p_route,
 					      &inp->in6p_laddr, &error, td);
-		if (*plocal_addr6 == 0) {
+		if (*plocal_addr6 == NULL) {
 			if (error == 0)
 				error = EADDRNOTAVAIL;
 			return (error);

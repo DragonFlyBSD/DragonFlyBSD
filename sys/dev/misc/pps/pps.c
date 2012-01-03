@@ -96,7 +96,7 @@ ppsattach(device_t ppsdev)
 		    &zero, irq, RF_SHAREABLE);
 	}
 	/* interrupts seem mandatory */
-	if (sc->intr_resource == 0)
+	if (sc->intr_resource == NULL)
 		return (ENXIO);
 
 	unit = device_get_unit(ppsdev);

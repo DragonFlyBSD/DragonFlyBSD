@@ -2965,7 +2965,7 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 	lwkt_gettoken(&vm_token);
 	
 	ptep = pmap_pte(pmap, addr);
-	if (ptep == 0) {
+	if (ptep == NULL) {
 		lwkt_reltoken(&vm_token);
 		return 0;
 	}

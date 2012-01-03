@@ -213,11 +213,11 @@ procfs_docmdline(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	 ) {
 		bp = p->p_args->ar_args;
 		buflen = p->p_args->ar_length;
-		buf = 0;
+		buf = NULL;
 	} else if (p != curp) {
 		bp = p->p_comm;
 		buflen = MAXCOMLEN;
-		buf = 0;
+		buf = NULL;
 	} else {
 		buflen = 256;
 		buf = kmalloc(buflen + 1, M_TEMP, M_WAITOK);

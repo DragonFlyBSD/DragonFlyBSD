@@ -1331,7 +1331,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 
 		/* Run the trim command if not already running */
 		if (!softc->trim_running &&
-		   (bio = bioq_first(&softc->bio_queue_trim)) != 0) {
+		   (bio = bioq_first(&softc->bio_queue_trim)) != NULL) {
 			struct trim_request *req = &softc->trim_req;
 			struct bio *bio1;
 			int bps = 0, ranges = 0;

@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_aout.c,v 1.27 1999/08/28 00:41:05 peter Exp $
- * $DragonFly: src/sys/ddb/db_aout.c,v 1.8 2006/12/28 21:24:01 dillon Exp $
  */
 
 /*
@@ -152,7 +151,7 @@ X_db_search_symbol(db_symtab_t *symtab, db_addr_t off, db_strategy_t strategy,
 		   db_expr_t *diffp)
 {
 	unsigned int	diff = *diffp;
-	struct nlist	*symp = 0;
+	struct nlist	*symp = NULL;
 	struct nlist	*sp, *ep;
 
 	sp = (struct nlist *)symtab->start;
@@ -177,7 +176,7 @@ X_db_search_symbol(db_symtab_t *symtab, db_addr_t off, db_strategy_t strategy,
 		    }
 		}
 		else if (off - sp->n_value == diff) {
-		    if (symp == 0)
+		    if (symp == NULL)
 			symp = sp;
 		    else if ((symp->n_type & N_EXT) == 0 &&
 				(sp->n_type & N_EXT) != 0)
@@ -185,7 +184,7 @@ X_db_search_symbol(db_symtab_t *symtab, db_addr_t off, db_strategy_t strategy,
 		}
 	    }
 	}
-	if (symp == 0) {
+	if (symp == NULL) {
 	    *diffp = off;
 	}
 	else {

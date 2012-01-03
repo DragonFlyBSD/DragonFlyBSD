@@ -32,7 +32,6 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.32 2008/10/27 02:56:30 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -286,7 +285,7 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 		goto freeit;
 	}
 	i = hlen + min(icmplen, ICMP_ADVLENMIN);
-	if (m->m_len < i && (m = m_pullup(m, i)) == 0)  {
+	if (m->m_len < i && (m = m_pullup(m, i)) == NULL)  {
 		icmpstat.icps_tooshort++;
 		return(IPPROTO_DONE);
 	}
@@ -512,7 +511,7 @@ badcode:
 		}
 		ia = (struct in_ifaddr *)ifaof_ifpforaddr(
 			    (struct sockaddr *)&icmpdst, m->m_pkthdr.rcvif);
-		if (ia == 0)
+		if (ia == NULL)
 			break;
 		if (ia->ia_ifp == 0)
 			break;
@@ -621,7 +620,7 @@ icmp_reflect(struct mbuf *m)
 	struct ifaddr_container *ifac;
 	struct ifnet *ifp;
 	struct in_addr t;
-	struct mbuf *opts = 0;
+	struct mbuf *opts = NULL;
 	int optlen = (IP_VHL_HL(ip->ip_vhl) << 2) - sizeof(struct ip);
 	struct route *ro = NULL, rt;
 
@@ -723,7 +722,7 @@ match:
 		 * add on any record-route or timestamp options.
 		 */
 		cp = (u_char *) (ip + 1);
-		if ((opts = ip_srcroute(m)) == 0 &&
+		if ((opts = ip_srcroute(m)) == NULL &&
 		    (opts = m_gethdr(MB_DONTWAIT, MT_HEADER))) {
 			opts->m_len = sizeof(struct in_addr);
 			mtod(opts, struct in_addr *)->s_addr = 0;

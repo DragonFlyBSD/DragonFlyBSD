@@ -124,7 +124,7 @@ ncp_getsockname(struct socket *so, caddr_t asa, int *alen) {
 	struct sockaddr *sa;
 	int len=0, error;
 
-	sa = 0;
+	sa = NULL;
 	error = so_pru_sockaddr(so, &sa);
 	if (error==0) {
 		if (sa) {
@@ -158,7 +158,7 @@ int
 ncp_sock_send(struct socket *so, struct mbuf *top, struct ncp_rq *rqp)
 {
 	struct thread *td = curthread; /* XXX */
-	struct sockaddr *to = 0;
+	struct sockaddr *to = NULL;
 	struct ncp_conn *conn = rqp->conn;
 	struct mbuf *m;
 	int error, flags=0;

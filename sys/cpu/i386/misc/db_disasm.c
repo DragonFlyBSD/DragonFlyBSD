@@ -886,7 +886,7 @@ db_read_address(db_addr_t loc, int short_addr, int regmodrm,
 	    return (loc);
 	}
 	addrp->is_reg = FALSE;
-	addrp->index = 0;
+	addrp->index = NULL;
 	addrp->ss = 0;
 	addrp->defss = 0;
 
@@ -913,7 +913,7 @@ db_read_address(db_addr_t loc, int short_addr, int regmodrm,
 		    if (rm == 6) {
 			get_value_inc(disp, loc, 2, FALSE);
 			addrp->disp = disp;
-			addrp->base = 0;
+			addrp->base = NULL;
 		    }
 		    else {
 			addrp->disp = 0;
@@ -946,7 +946,7 @@ db_read_address(db_addr_t loc, int short_addr, int regmodrm,
 		case 0:
 		    if (rm == 5) {
 			get_value_inc(addrp->disp, loc, 4, FALSE);
-			addrp->base = 0;
+			addrp->base = NULL;
 		    }
 		    else {
 			addrp->disp = 0;
@@ -985,7 +985,7 @@ db_print_address(const char *seg, int size, struct i_addr *addrp)
 	}
 
 	db_printsym((db_addr_t)addrp->disp, DB_STGY_ANY);
-	if (addrp->base != 0 || addrp->index != 0) {
+	if (addrp->base != NULL || addrp->index != NULL) {
 	    db_printf("(");
 	    if (addrp->base)
 		db_printf("%s", addrp->base);
@@ -1115,7 +1115,7 @@ db_disasm(db_addr_t loc, boolean_t altfmt, db_regs_t *regs)
 	struct i_addr	address;
 
 	get_value_inc(inst, loc, 1, FALSE);
-	seg = 0;
+	seg = NULL;
 
 #ifdef _GDT_ARRAY_PRESENT
 	if (regs && gdt[mycpu->gd_cpuid * NGDT + IDXSEL(regs->tf_cs & 0xFFFF)].sd.sd_def32 == 0) {
@@ -1185,7 +1185,7 @@ db_disasm(db_addr_t loc, boolean_t altfmt, db_regs_t *regs)
 	if (inst == 0x0f) {
 	    get_value_inc(inst, loc, 1, FALSE);
 	    ip = db_inst_0f[inst>>4];
-	    if (ip == 0) {
+	    if (ip == NULL) {
 		ip = &db_bad_inst;
 	    }
 	    else {

@@ -571,7 +571,7 @@ static int
 fm801_pci_attach(device_t dev)
 {
 	u_int32_t 		data;
-	struct ac97_info 	*codec = 0;
+	struct ac97_info 	*codec = NULL;
 	struct fm801_info 	*fm801;
 	int 			i;
 	int 			mapped = 0;

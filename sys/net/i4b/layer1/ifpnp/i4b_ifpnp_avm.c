@@ -457,7 +457,7 @@ avm_pnp_attach(device_t dev)
 	u_int v;
 	int unit, error = 0;
 	u_int16_t vid;
-	void *ih = 0;
+	void *ih = NULL;
 	bus_space_handle_t bhandle;
 	bus_space_tag_t btag; 
 

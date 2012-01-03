@@ -162,7 +162,7 @@ cb_dumpdata(struct md_pa *mdp, int seqnr, void *arg)
 
 	error = 0;	/* catch case in which chunk size is 0 */
 	counter = 0;	/* Update twiddle every 16MB */
-	va = 0;
+	va = NULL;
 	pgs = mdp->md_size / PAGE_SIZE;
 	pa = mdp->md_start;
 

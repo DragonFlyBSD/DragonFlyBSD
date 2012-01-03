@@ -352,7 +352,7 @@ nmdmwrite(struct dev_write_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
-	u_char *cp = 0;
+	u_char *cp = NULL;
 	size_t cc = 0;
 	u_char locbuf[BUFSIZ];
 	int cnt = 0;

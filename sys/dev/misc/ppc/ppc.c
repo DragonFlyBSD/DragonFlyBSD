@@ -1347,9 +1347,9 @@ ppc_exec_microseq(device_t dev, struct ppb_microseq **p_msq)
 	int reg;
 	char mask;
 	int accum = 0;
-	char *ptr = 0;
+	char *ptr = NULL;
 
-	struct ppb_microseq *stack = 0;
+	struct ppb_microseq *stack = NULL;
 
 /* microsequence registers are equivalent to PC-like port registers */
 
@@ -1516,7 +1516,7 @@ ppc_exec_microseq(device_t dev, struct ppb_microseq **p_msq)
 			mi = stack;
 
 			/* reset the stack */
-			stack = 0;
+			stack = NULL;
 
 			/* XXX return code */
 

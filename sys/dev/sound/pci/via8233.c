@@ -869,7 +869,7 @@ via_chip_init(device_t dev)
 static int
 via_attach(device_t dev)
 {
-	struct via_info *via = 0;
+	struct via_info *via = NULL;
 	char status[SND_STATUSLEN];
 	int i, via_dxs_disabled, via_dxs_src, via_dxs_chnum, via_sgd_chnum;
 	uint32_t revid;
@@ -1059,7 +1059,7 @@ static int
 via_detach(device_t dev)
 {
 	int r;
-	struct via_info *via = 0;
+	struct via_info *via = NULL;
 
 	r = pcm_unregister(dev);
 	if (r) return r;

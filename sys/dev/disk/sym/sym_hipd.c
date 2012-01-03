@@ -268,7 +268,7 @@ static __inline struct sym_quehead *sym_remque_head(struct sym_quehead *head)
 	if (elem != head)
 		__sym_que_del(head, elem->flink);
 	else
-		elem = 0;
+		elem = NULL;
 	return elem;
 }
 
@@ -281,7 +281,7 @@ static __inline struct sym_quehead *sym_remque_tail(struct sym_quehead *head)
 	if (elem != head)
 		__sym_que_del(elem->blink, head);
 	else
-		elem = 0;
+		elem = NULL;
 	return elem;
 }
 
@@ -497,7 +497,7 @@ static void *___sym_malloc(m_pool_s *mp, int size)
 		if (s == MEMO_CLUSTER_SIZE) {
 			h[j].next = (m_link_s *) M_GETP();
 			if (h[j].next)
-				h[j].next->next = 0;
+				h[j].next->next = NULL;
 			break;
 		}
 		++j;
@@ -510,7 +510,7 @@ static void *___sym_malloc(m_pool_s *mp, int size)
 			j -= 1;
 			s >>= 1;
 			h[j].next = (m_link_s *) (a+s);
-			h[j].next->next = 0;
+			h[j].next->next = NULL;
 		}
 	}
 #ifdef DEBUG
@@ -682,7 +682,7 @@ static void getbaddrcb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 static m_addr_t ___dma_getp(m_pool_s *mp)
 {
 	m_vtob_s *vbp;
-	void *vaddr = 0;
+	void *vaddr = NULL;
 	bus_addr_t baddr = 0;
 
 	vbp = __sym_calloc(&mp0, sizeof(*vbp), "VTOB");
@@ -745,7 +745,7 @@ static __inline m_pool_s *___get_dma_pool(bus_dma_tag_t dev_dmat)
 
 static m_pool_s *___cre_dma_pool(bus_dma_tag_t dev_dmat)
 {
-	m_pool_s *mp = 0;
+	m_pool_s *mp = NULL;
 
 	mp = __sym_calloc(&mp0, sizeof(*mp), "MPOOL");
 	if (mp) {
@@ -787,7 +787,7 @@ static void ___del_dma_pool(m_pool_s *p)
 static void *__sym_calloc_dma(bus_dma_tag_t dev_dmat, int size, char *name)
 {
 	struct m_pool *mp;
-	void *m = 0;
+	void *m = NULL;
 
 	/* Lock */
 	mp = ___get_dma_pool(dev_dmat);
@@ -824,7 +824,7 @@ static m_addr_t __vtobus(bus_dma_tag_t dev_dmat, void *m)
 {
 	m_pool_s *mp;
 	int hc = VTOB_HASH_CODE(m);
-	m_vtob_s *vp = 0;
+	m_vtob_s *vp = NULL;
 	m_addr_t a = ((m_addr_t) m) & ~MEMO_CLUSTER_MASK;
 
 	/* Lock */
@@ -3884,7 +3884,7 @@ static void sym_log_hard_error(hcb_p np, u_short sist, u_char dstat)
 	} else {
 		script_ofs	= dsp;
 		script_size	= 0;
-		script_base	= 0;
+		script_base	= NULL;
 		script_name	= "mem";
 	}
 
@@ -4476,7 +4476,7 @@ static void sym_int_ma (hcb_p np)
 	 *  try to find the interrupted script command,
 	 *  and the address at which to continue.
 	 */
-	vdsp	= 0;
+	vdsp	= NULL;
 	nxtdsp	= 0;
 	if	(dsp >  np->scripta_ba &&
 		 dsp <= np->scripta_ba + np->scripta_sz) {
@@ -4854,7 +4854,7 @@ static void sym_sir_bad_scsi_status(hcb_p np, int num, ccb_p cp)
 	 */
 #ifdef SYM_CONF_IARB_SUPPORT
 	if (np->last_cp)
-		np->last_cp = 0;
+		np->last_cp = NULL;
 #endif
 
 	/*
@@ -5021,7 +5021,7 @@ sym_clear_tasks(hcb_p np, int cam_status, int target, int lun, int task)
 	 *  the COMP queue and put back other ones into 
 	 *  the BUSY queue.
 	 */
-	while ((qp = sym_remque_head(&qtmp)) != 0) {
+	while ((qp = sym_remque_head(&qtmp)) != NULL) {
 		union ccb *ccb;
 		cp = sym_que_entry(qp, struct sym_ccb, link_ccbq);
 		ccb = cp->cam_ccb;
@@ -5159,7 +5159,7 @@ static void sym_sir_task_recovery(hcb_p np, int num)
 		 *  we are not in race.
 		 */
 		i = 0;
-		cp = 0;
+		cp = NULL;
 		FOR_EACH_QUEUED_ELEMENT(&np->busy_ccbq, qp) {
 			cp = sym_que_entry(qp, struct sym_ccb, link_ccbq);
 			if (cp->host_status != HS_BUSY &&
@@ -5271,7 +5271,7 @@ static void sym_sir_task_recovery(hcb_p np, int num)
 		 *  abort for this target.
 		 */
 		i = 0;
-		cp = 0;
+		cp = NULL;
 		FOR_EACH_QUEUED_ELEMENT(&np->busy_ccbq, qp) {
 			cp = sym_que_entry(qp, struct sym_ccb, link_ccbq);
 			if (cp->host_status != HS_DISCONNECT)
@@ -5453,7 +5453,7 @@ static int sym_evaluate_dp(hcb_p np, ccb_p cp, u32 scr, int *ofs)
 	else if (dp_scr == SCRIPTA_BA (np, pm1_data))
 		pm = &cp->phys.pm1;
 	else
-		pm = 0;
+		pm = NULL;
 
 	if (pm) {
 		dp_scr  = scr_to_cpu(pm->ret);
@@ -6623,7 +6623,7 @@ static void sym_free_ccb (hcb_p np, ccb_p cp)
 	 *  used for negotiation, clear this info in the tcb.
 	 */
 	if (cp == tp->nego_cp)
-		tp->nego_cp = 0;
+		tp->nego_cp = NULL;
 
 #ifdef SYM_CONF_IARB_SUPPORT
 	/*
@@ -6631,7 +6631,7 @@ static void sym_free_ccb (hcb_p np, ccb_p cp)
 	 *  clear this info that is no longer relevant.
 	 */
 	if (cp == np->last_cp)
-		np->last_cp = 0;
+		np->last_cp = NULL;
 #endif
 
 #ifdef	FreeBSD_Bus_Dma_Abstraction
@@ -6647,7 +6647,7 @@ static void sym_free_ccb (hcb_p np, ccb_p cp)
 	/*
 	 *  Make this CCB available.
 	 */
-	cp->cam_ccb = 0;
+	cp->cam_ccb = NULL;
 	cp->host_status = HS_IDLE;
 	sym_remque(&cp->link_ccbq);
 	sym_insque_head(&cp->link_ccbq, &np->free_ccbq);
@@ -6658,7 +6658,7 @@ static void sym_free_ccb (hcb_p np, ccb_p cp)
  */
 static ccb_p sym_alloc_ccb(hcb_p np)
 {
-	ccb_p cp = 0;
+	ccb_p cp = NULL;
 	int hcode;
 
 	/*
@@ -6874,7 +6874,7 @@ static void sym_alloc_lcb_tags (hcb_p np, u_char tn, u_char ln)
 	lp->cb_tags = sym_calloc(SYM_CONF_MAX_TASK, "CB_TAGS");
 	if (!lp->cb_tags) {
 		sym_mfree_dma(lp->itlq_tbl, SYM_CONF_MAX_TASK*4, "ITLQ_TBL");
-		lp->itlq_tbl = 0;
+		lp->itlq_tbl = NULL;
 		goto fail;
 	}
 
@@ -7545,7 +7545,7 @@ static int sym_abort_scsiio(hcb_p np, union ccb *ccb, int timed_out)
 	/*
 	 *  Look up our CCB control block.
 	 */
-	cp = 0;
+	cp = NULL;
 	FOR_EACH_QUEUED_ELEMENT(&np->busy_ccbq, qp) {
 		ccb_p cp2 = sym_que_entry(qp, struct sym_ccb, link_ccbq);
 		if (cp2->cam_ccb == ccb) {
@@ -8902,9 +8902,9 @@ sym_pci_attach2(pcici_t pci_tag, int unit)
 	struct	sym_pci_chip *chip;
 	u_short	command;
 	u_char	cachelnsz;
-	struct	sym_hcb *np = 0;
+	struct	sym_hcb *np = NULL;
 	struct	sym_nvram nvram;
-	struct	sym_fw *fw = 0;
+	struct	sym_fw *fw = NULL;
 	int 	i;
 #ifdef	FreeBSD_Bus_Dma_Abstraction
 	bus_dma_tag_t	bus_dmat;
@@ -9412,7 +9412,7 @@ static void sym_pci_free(hcb_p np)
 	if (np->dqueue)
 		sym_mfree_dma(np->dqueue, sizeof(u32)*(MAX_QUEUE*2), "DQUEUE");
 
-	while ((qp = sym_remque_head(&np->free_ccbq)) != 0) {
+	while ((qp = sym_remque_head(&np->free_ccbq)) != NULL) {
 		cp = sym_que_entry(qp, struct sym_ccb, link_ccbq);
 #ifdef	FreeBSD_Bus_Dma_Abstraction
 		bus_dmamap_destroy(np->data_dmat, cp->dmamap);
@@ -9458,9 +9458,9 @@ static void sym_pci_free(hcb_p np)
  */
 int sym_cam_attach(hcb_p np)
 {
-	struct cam_devq *devq = 0;
-	struct cam_sim *sim = 0;
-	struct cam_path *path = 0;
+	struct cam_devq *devq = NULL;
+	struct cam_sim *sim = NULL;
+	struct cam_path *path = NULL;
 	struct ccb_setasync csa;
 	int err;
 
@@ -9505,7 +9505,7 @@ int sym_cam_attach(hcb_p np)
 	if (xpt_bus_register(sim, 0) != CAM_SUCCESS)
 		goto fail;
 	np->sim = sim;
-	sim = 0;
+	sim = NULL;
 
 	if (xpt_create_path(&path, 0,
 			    cam_sim_path(np->sim), CAM_TARGET_WILDCARD,

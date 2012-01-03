@@ -437,7 +437,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 		}
 
 		db_nextframe(&frame, &callpc);
-		if (frame == 0)
+		if (frame == NULL)
 			break;
 	}
 }

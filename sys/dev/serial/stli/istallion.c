@@ -2451,7 +2451,7 @@ static char *stli_ecpgetmemptr(stlibrd_t *brdp, unsigned long offset, int line)
 		kprintf("STALLION: shared memory pointer=%x out of range at "
 			"line=%d(%d), brd=%d\n", (int) offset, line,
 			__LINE__, brdp->brdnr);
-		ptr = 0;
+		ptr = NULL;
 		val = 0;
 	} else {
 		ptr = (char *) brdp->vaddr + (offset % ECP_ATPAGESIZE);
@@ -2547,7 +2547,7 @@ static char *stli_onbgetmemptr(stlibrd_t *brdp, unsigned long offset, int line)
 		kprintf("STALLION: shared memory pointer=%x out of range at "
 			"line=%d(%d), brd=%d\n", (int) offset, line,
 			__LINE__, brdp->brdnr);
-		ptr = 0;
+		ptr = NULL;
 	} else {
 		ptr = (char *) brdp->vaddr + (offset % ONB_ATPAGESIZE);
 	}
@@ -2610,7 +2610,7 @@ static char *stli_bbygetmemptr(stlibrd_t *brdp, unsigned long offset, int line)
 		kprintf("STALLION: shared memory pointer=%x out of range at "
 			"line=%d(%d), brd=%d\n", (int) offset, line,
 			__LINE__, brdp->brdnr);
-		ptr = 0;
+		ptr = NULL;
 		val = 0;
 	} else {
 		ptr = (char *) brdp->vaddr + (offset % BBY_PAGESIZE);
@@ -2671,7 +2671,7 @@ static char *stli_stalgetmemptr(stlibrd_t *brdp, unsigned long offset, int line)
 		kprintf("STALLION: shared memory pointer=%x out of range at "
 			"line=%d(%d), brd=%d\n", (int) offset, line,
 			__LINE__, brdp->brdnr);
-		ptr = 0;
+		ptr = NULL;
 	} else {
 		ptr = (char *) brdp->vaddr + (offset % STAL_PAGESIZE);
 	}

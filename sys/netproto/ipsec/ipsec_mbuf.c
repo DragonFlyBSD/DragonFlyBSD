@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_mbuf.c,v 1.5.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_mbuf.c,v 1.7 2006/12/22 23:57:54 swildner Exp $
  */
 
 /*
@@ -359,7 +358,7 @@ KASSERT(m0->m_next != NULL, ("m_pad: m0 null, len %u m_len %u", len, m0->m_len))
 	if (pad > M_TRAILINGSPACE(m0)) {
 		/* Add an mbuf to the chain. */
 		MGET(m1, MB_DONTWAIT, MT_DATA);
-		if (m1 == 0) {
+		if (m1 == NULL) {
 			m_freem(m0);
 			DPRINTF(("m_pad: unable to get extra mbuf\n"));
 			return NULL;

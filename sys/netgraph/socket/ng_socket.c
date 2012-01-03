@@ -438,7 +438,7 @@ ng_setsockaddr(netmsg_t msg)
 
 	crit_enter();
 	pcbp = sotongpcb(so);
-	if ((pcbp == 0) || (pcbp->sockdata == NULL)) {
+	if ((pcbp == NULL) || (pcbp->sockdata == NULL)) {
 		crit_exit();
 		error = EINVAL;
 		goto out;

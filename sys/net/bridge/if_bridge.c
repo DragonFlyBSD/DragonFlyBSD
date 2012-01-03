@@ -2989,7 +2989,7 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 			return;
 	}
 
-	alt_if = 0;
+	alt_if = NULL;
 	alt_priority = 0;
 	found = 0;
 	used = 0;
@@ -3974,7 +3974,7 @@ bridge_pfil(struct mbuf **mp, struct ifnet *bifp, struct ifnet *ifp, int dir)
 		if (hlen < sizeof(struct ip))
 			goto bad;
 		if (hlen > (*mp)->m_len) {
-			if ((*mp = m_pullup(*mp, hlen)) == 0)
+			if ((*mp = m_pullup(*mp, hlen)) == NULL)
 				goto bad;
 			ip = mtod(*mp, struct ip *);
 			if (ip == NULL)
@@ -4099,7 +4099,7 @@ bridge_ip_checkbasic(struct mbuf **mp)
 		goto bad;
 	}
 	if (hlen > m->m_len) {
-		if ((m = m_pullup(m, hlen)) == 0) {
+		if ((m = m_pullup(m, hlen)) == NULL) {
 			ipstat.ips_badhlen++;
 			goto bad;
 		}

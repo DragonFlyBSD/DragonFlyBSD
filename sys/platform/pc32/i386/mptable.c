@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.60 2008/06/07 12:03:52 mneumann Exp $
  */
 
 #include "opt_cpu.h"
@@ -854,7 +853,7 @@ mptable_lapic_probe(struct lapic_enumerator *e)
 	error = EINVAL;
 	cth = mpt.mp_cth;
 
-	if (cth->apic_address == 0)
+	if (cth->apic_address == NULL)
 		goto done;
 
 	bzero(&arg, sizeof(arg));
@@ -901,7 +900,7 @@ mptable_ioapic_list_callback(void *xarg, const void *pos, int type)
 	if ((ent->apic_flags & IOAPICENTRY_FLAG_EN) == 0)
 		return 0;
 
-	if (ent->apic_address == 0) {
+	if (ent->apic_address == NULL) {
 		kprintf("mptable_ioapic_create_list: zero IOAPIC addr\n");
 		return EINVAL;
 	}
