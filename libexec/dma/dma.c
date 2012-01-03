@@ -32,10 +32,13 @@
  * SUCH DAMAGE.
  */
 
+#include "dfcompat.h"
+
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 
 #include <dirent.h>
@@ -60,50 +63,56 @@ static void deliver(struct qitem *);
 
 struct aliases aliases = LIST_HEAD_INITIALIZER(aliases);
 struct strlist tmpfs = SLIST_HEAD_INITIALIZER(tmpfs);
-struct virtusers virtusers = LIST_HEAD_INITIALIZER(virtusers);
 struct authusers authusers = LIST_HEAD_INITIALIZER(authusers);
-const char *username;
+char username[USERNAME_SIZE];
+uid_t useruid;
 const char *logident_base;
+char errmsg[ERRMSG_SIZE];
 
 static int daemonize = 1;
 
 struct config config = {
 	.smarthost	= NULL,
 	.port		= 25,
-	.aliases	= "/var/mail/aliases",
+	.aliases	= "/etc/aliases",
 	.spooldir	= "/var/spool/dma",
-	.virtualpath	= NULL,
 	.authpath	= NULL,
 	.certfile	= NULL,
 	.features	= 0,
 	.mailname	= NULL,
-	.mailnamefile	= NULL,
+	.masquerade_host = NULL,
+	.masquerade_user = NULL,
 };
 
+
+static void
+sighup_handler(int signo)
+{
+	(void)signo;	/* so that gcc doesn't complain */
+}
 
 static char *
 set_from(struct queue *queue, const char *osender)
 {
-	struct virtuser *v;
 	char *sender;
-
-	if ((config.features & VIRTUAL) != 0) {
-		SLIST_FOREACH(v, &virtusers, next) {
-			if (strcmp(v->login, username) == 0) {
-				sender = strdup(v->address);
-				if (sender == NULL)
-					return(NULL);
-				goto out;
-			}
-		}
-	}
 
 	if (osender) {
 		sender = strdup(osender);
 		if (sender == NULL)
 			return (NULL);
+	} else if (getenv("EMAIL") != NULL) {
+		sender = strdup(getenv("EMAIL"));
+		if (sender == NULL)
+			return (NULL);
 	} else {
-		if (asprintf(&sender, "%s@%s", username, hostname()) <= 0)
+		const char *from_user = username;
+		const char *from_host = hostname();
+
+		if (config.masquerade_user)
+			from_user = config.masquerade_user;
+		if (config.masquerade_host)
+			from_host = config.masquerade_host;
+		if (asprintf(&sender, "%s@%s", from_user, from_host) <= 0)
 			return (NULL);
 	}
 
@@ -112,7 +121,6 @@ set_from(struct queue *queue, const char *osender)
 		return (NULL);
 	}
 
-out:
 	queue->sender = sender;
 	return (sender);
 }
@@ -136,12 +144,30 @@ read_aliases(void)
 	return (0);
 }
 
+static int
+do_alias(struct queue *queue, const char *addr)
+{
+	struct alias *al;
+        struct stritem *sit;
+	int aliased = 0;
+
+        LIST_FOREACH(al, &aliases, next) {
+                if (strcmp(al->alias, addr) != 0)
+                        continue;
+		SLIST_FOREACH(sit, &al->dests, next) {
+			if (add_recp(queue, sit->str, EXPAND_ADDR) != 0)
+				return (-1);
+		}
+		aliased = 1;
+        }
+
+        return (aliased);
+}
+
 int
 add_recp(struct queue *queue, const char *str, int expand)
 {
 	struct qitem *it, *tit;
-	struct stritem *sit;
-	struct alias *al;
 	struct passwd *pw;
 	char *host;
 	int aliased = 0;
@@ -172,15 +198,11 @@ add_recp(struct queue *queue, const char *str, int expand)
 	if (strrchr(it->addr, '@') == NULL) {
 		it->remote = 0;
 		if (expand) {
-			LIST_FOREACH(al, &aliases, next) {
-				if (strcmp(al->alias, it->addr) != 0)
-					continue;
-				SLIST_FOREACH(sit, &al->dests, next) {
-					if (add_recp(queue, sit->str, 1) != 0)
-						return (-1);
-				}
-				aliased = 1;
-			}
+			aliased = do_alias(queue, it->addr);
+			if (!aliased && expand == EXPAND_WILDCARD)
+				aliased = do_alias(queue, "*");
+			if (aliased < 0)
+				return (-1);
 			if (aliased) {
 				LIST_REMOVE(it, next);
 			} else {
@@ -218,7 +240,6 @@ go_background(struct queue *queue)
 	daemonize = 0;
 
 	bzero(&sa, sizeof(sa));
-	sa.sa_flags = SA_NOCLDWAIT;
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGCHLD, &sa, NULL);
 
@@ -270,18 +291,19 @@ static void
 deliver(struct qitem *it)
 {
 	int error;
-	unsigned int backoff = it->remote? MIN_RETRY: MIN_RETRY_LOCAL;
-	const char *errmsg = "unknown bounce reason";
+	unsigned int backoff = MIN_RETRY;
 	struct timeval now;
 	struct stat st;
+
+	snprintf(errmsg, sizeof(errmsg), "unknown bounce reason");
 
 retry:
 	syslog(LOG_INFO, "trying delivery");
 
 	if (it->remote)
-		error = deliver_remote(it, &errmsg);
+		error = deliver_remote(it);
 	else
-		error = deliver_local(it, &errmsg);
+		error = deliver_local(it);
 
 	switch (error) {
 	case 0:
@@ -296,21 +318,17 @@ retry:
 		}
 		if (gettimeofday(&now, NULL) == 0 &&
 		    (now.tv_sec - st.st_mtim.tv_sec > MAX_TIMEOUT)) {
-			asprintf(__DECONST(void *, &errmsg),
+			snprintf(errmsg, sizeof(errmsg),
 				 "Could not deliver for the last %d seconds. Giving up.",
 				 MAX_TIMEOUT);
 			goto bounce;
 		}
-		sleep(backoff);
-		backoff = backoff * 2 + (
-#ifdef HAVE_RANDOM
-			random()
-#else
-			rand()
-#endif
-			% RETRY_JITTER);
-		if (backoff > MAX_RETRY)
-			backoff = MAX_RETRY;
+		if (sleep(backoff) == 0) {
+			/* pick the next backoff between [1.5, 2.5) times backoff */
+			backoff = backoff + backoff / 2 + random() % backoff;
+			if (backoff > MAX_RETRY)
+				backoff = MAX_RETRY;
+		}
 		goto retry;
 
 	case -1:
@@ -371,13 +389,35 @@ show_queue(struct queue *queue)
 int
 main(int argc, char **argv)
 {
+	struct sigaction act;
 	char *sender = NULL;
 	struct queue queue;
 	int i, ch;
 	int nodot = 0, doqueue = 0, showq = 0, queue_only = 0;
 	int recp_from_header = 0;
 
+	set_username();
+
+	/*
+	 * We never run as root.  If called by root, drop permissions
+	 * to the mail user.
+	 */
+	if (geteuid() == 0 || getuid() == 0) {
+		struct passwd *pw;
+
+		pw = getpwnam(DMA_ROOT_USER);
+		if (pw == NULL)
+			err(1, "cannot drop root privileges");
+
+		if (setuid(pw->pw_uid) != 0)
+			err(1, "cannot drop root privileges");
+
+		if (geteuid() == 0 || getuid() == 0)
+			errx(1, "cannot drop root privileges");
+	}
+
 	atexit(deltmp);
+	init_random();
 
 	bzero(&queue, sizeof(queue));
 	LIST_INIT(&queue.queue);
@@ -480,17 +520,14 @@ skipopts:
 	if (logident_base == NULL)
 		logident_base = "dma";
 	setlogident(NULL);
-	set_username();
 
-	/* XXX fork root here */
+	act.sa_handler = sighup_handler;
+	act.sa_flags = 0;
+	sigemptyset(&act.sa_mask);
+	if (sigaction(SIGHUP, &act, NULL) != 0)
+		syslog(LOG_WARNING, "can not set signal handler: %m");
 
-	parse_conf(CONF_PATH);
-
-	if (config.features & VIRTUAL) {
-		if (config.virtualpath == NULL)
-			errlogx(1, "no virtuser file specified, but VIRTUAL configured");
-		parse_virtuser(config.virtualpath);
-	}
+	parse_conf(CONF_PATH "/dma.conf");
 
 	if (config.authpath != NULL)
 		parse_authfile(config.authpath);
@@ -521,7 +558,7 @@ skipopts:
 	setlogident("%s", queue.id);
 
 	for (i = 0; i < argc; i++) {
-		if (add_recp(&queue, argv[i], 1) != 0)
+		if (add_recp(&queue, argv[i], EXPAND_WILDCARD) != 0)
 			errlogx(1, "invalid recipient `%s'", argv[i]);
 	}
 

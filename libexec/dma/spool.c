@@ -32,6 +32,9 @@
  * SUCH DAMAGE.
  */
 
+#include "dfcompat.h"
+
+#include <sys/file.h>
 #include <sys/stat.h>
 
 #include <ctype.h>
@@ -120,8 +123,10 @@ writequeuef(struct qitem *it)
 	int error;
 	int queuefd;
 
-	queuefd = open_locked(it->queuefn, O_CREAT|O_EXCL|O_RDWR, 0600);
+	queuefd = open_locked(it->queuefn, O_CREAT|O_EXCL|O_RDWR, 0660);
 	if (queuefd == -1)
+		return (-1);
+	if (fchmod(queuefd, 0660) < 0)
 		return (-1);
 	it->queuef = fdopen(queuefd, "w+");
 	if (it->queuef == NULL)
@@ -290,15 +295,25 @@ load_queue(struct queue *queue)
 		queuefn = NULL;
 		mailfn = NULL;
 
-		/* ignore temp files */
-		if (strncmp(de->d_name, "tmp_", 4) == 0 || de->d_type != DT_REG)
-			continue;
+		/* ignore non-queue files */
 		if (de->d_name[0] != 'Q')
 			continue;
 		if (asprintf(&queuefn, "%s/Q%s", config.spooldir, de->d_name + 1) < 0)
 			goto fail;
 		if (asprintf(&mailfn, "%s/M%s", config.spooldir, de->d_name + 1) < 0)
 			goto fail;
+
+		/*
+		 * Some file systems don't provide a de->d_type, so we have to
+		 * do an explicit stat on the queue file.
+		 * Move on if it turns out to be something else than a file.
+		 */
+		if (stat(queuefn, &sb) != 0)
+			goto skip_item;
+		if (!S_ISREG(sb.st_mode)) {
+			errno = EINVAL;
+			goto skip_item;
+		}
 
 		if (stat(mailfn, &sb) != 0)
 			goto skip_item;

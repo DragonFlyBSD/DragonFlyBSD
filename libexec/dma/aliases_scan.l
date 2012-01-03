@@ -14,8 +14,8 @@ int yylex(void);
 %%
 
 [^:,#[:space:][:cntrl:]]+	{yylval.ident = strdup(yytext); return T_IDENT;}
-[:,\n]				return yytext[0];
 ^([[:blank:]]*(#.*)?\n)+	;/* ignore empty lines */
+[:,\n]				return yytext[0];
 (\n?[[:blank:]]+|#.*)+		;/* ignore whitespace and continuation */
 \\\n				;/* ignore continuation.  not allowed in comments */
 .				return T_ERROR;

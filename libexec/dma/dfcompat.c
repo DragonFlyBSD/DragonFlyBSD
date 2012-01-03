@@ -1,4 +1,4 @@
-#ifdef NEED_STRLCPY
+#ifndef HAVE_STRLCPY
 
 /*
  * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
@@ -19,6 +19,8 @@
  * $FreeBSD: src/lib/libc/string/strlcpy.c,v 1.10 2008/10/19 10:11:35 delphij Exp $
  * $DragonFly: src/lib/libc/string/strlcpy.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
+
+#include "dfcompat.h"
 
 #include <sys/types.h>
 #include <string.h>
@@ -54,9 +56,9 @@ strlcpy(char *dst, const char *src, size_t siz)
 	return(s - src - 1);	/* count does not include NUL */
 }
 
-#endif /* NEED_STRLCPY */
+#endif /* !HAVE_STRLCPY */
 
-#ifdef NEED_REALLOCF
+#ifndef HAVE_REALLOCF
 
 /*-
  * Copyright (c) 1998, M. Warner Losh <imp@freebsd.org>
@@ -99,13 +101,12 @@ reallocf(void *ptr, size_t size)
 	return (nptr);
 }
 
-#endif /* NEED_REALLOCF */
+#endif /* !HAVE_REALLOCF */
 
-#ifdef NEED_GETPROGNAME
+#ifndef HAVE_GETPROGNAME
 
 #ifdef __GLIBC__
 
-#define __USE_GNU
 #include <errno.h>
 
 const char *
@@ -118,4 +119,4 @@ getprogname(void)
 #error "no getprogname implementation available"
 #endif
 
-#endif /* NEED_GETPROGNAME */
+#endif /* !HAVE_GETPROGNAME */

@@ -33,10 +33,15 @@
  */
 
 #include <sys/param.h>
+#include <sys/file.h>
+
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
 #include <pwd.h>
+#include <setjmp.h>
+#include <signal.h>
 #include <stdio.h>
 #include <syslog.h>
 #include <unistd.h>
@@ -46,61 +51,87 @@
 const char *
 hostname(void)
 {
-	static char name[MAXHOSTNAMELEN+1];
-	int initialized = 0;
-	FILE *fp;
-	size_t len;
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX	255
+#endif
+	static char name[HOST_NAME_MAX+1];
+	static int initialized = 0;
+	char *s;
 
 	if (initialized)
 		return (name);
 
-	if (config.mailname != NULL && config.mailname[0] != '\0') {
+	if (config.mailname == NULL || !*config.mailname)
+		goto local;
+
+	if (config.mailname[0] == '/') {
+		/*
+		 * If the mailname looks like an absolute path,
+		 * treat it as a file.
+		 */
+		FILE *fp;
+
+		fp = fopen(config.mailname, "r");
+		if (fp == NULL)
+			goto local;
+
+		s = fgets(name, sizeof(name), fp);
+		fclose(fp);
+		if (s == NULL)
+			goto local;
+
+		for (s = name; *s != 0 && (isalnum(*s) || strchr("_.-", *s)); ++s)
+			/* NOTHING */;
+		*s = 0;
+
+		if (!*name)
+			goto local;
+
+		initialized = 1;
+		return (name);
+	} else {
 		snprintf(name, sizeof(name), "%s", config.mailname);
 		initialized = 1;
 		return (name);
 	}
-	if (config.mailnamefile != NULL && config.mailnamefile[0] != '\0') {
-		fp = fopen(config.mailnamefile, "r");
-		if (fp != NULL) {
-			if (fgets(name, sizeof(name), fp) != NULL) {
-				len = strlen(name);
-				while (len > 0 &&
-				    (name[len - 1] == '\r' ||
-				     name[len - 1] == '\n'))
-					name[--len] = '\0';
-				if (name[0] != '\0') {
-					initialized = 1;
-					return (name);
-				}
-			}
-			fclose(fp);
-		}
-	}
+
+local:
 	if (gethostname(name, sizeof(name)) != 0)
-		strcpy(name, "(unknown hostname)");
+		*name = 0;
+	/*
+	 * gethostname() is allowed to truncate name without NUL-termination
+	 * and at the same time not return an error.
+	 */
+	name[sizeof(name) - 1] = 0;
+
+	for (s = name; *s != 0 && (isalnum(*s) || strchr("_.-", *s)); ++s)
+		/* NOTHING */;
+	*s = 0;
+
+	if (!*name)
+		snprintf(name, sizeof(name), "unknown-hostname");
+
 	initialized = 1;
-	return name;
+	return (name);
 }
 
 void
 setlogident(const char *fmt, ...)
 {
-	char *tag = NULL;
+	static char tag[50];
 
+	snprintf(tag, sizeof(tag), "%s", logident_base);
 	if (fmt != NULL) {
 		va_list ap;
-		char *sufx;
+		char sufx[50];
 
 		va_start(ap, fmt);
-		vasprintf(&sufx, fmt, ap);
-		if (sufx != NULL) {
-			asprintf(&tag, "%s[%s]", logident_base, sufx);
-			free(sufx);
-		}
+		vsnprintf(sufx, sizeof(sufx), fmt, ap);
 		va_end(ap);
+		snprintf(tag, sizeof(tag), "%s[%s]", logident_base, sufx);
 	}
 	closelog();
-	openlog(tag != NULL ? tag : logident_base, 0, LOG_MAIL);
+	openlog(tag, 0, LOG_MAIL);
 }
 
 void
@@ -108,15 +139,17 @@ errlog(int exitcode, const char *fmt, ...)
 {
 	int oerrno = errno;
 	va_list ap;
-	char *outs = NULL;
+	char outs[ERRMSG_SIZE];
 
+	outs[0] = 0;
 	if (fmt != NULL) {
 		va_start(ap, fmt);
-		vasprintf(&outs, fmt, ap);
+		vsnprintf(outs, sizeof(outs), fmt, ap);
 		va_end(ap);
 	}
 
-	if (outs != NULL) {
+	errno = oerrno;
+	if (*outs != 0) {
 		syslog(LOG_ERR, "%s: %m", outs);
 		fprintf(stderr, "%s: %s: %s\n", getprogname(), outs, strerror(oerrno));
 	} else {
@@ -131,15 +164,16 @@ void
 errlogx(int exitcode, const char *fmt, ...)
 {
 	va_list ap;
-	char *outs = NULL;
+	char outs[ERRMSG_SIZE];
 
+	outs[0] = 0;
 	if (fmt != NULL) {
 		va_start(ap, fmt);
-		vasprintf(&outs, fmt, ap);
+		vsnprintf(outs, sizeof(outs), fmt, ap);
 		va_end(ap);
 	}
 
-	if (outs != NULL) {
+	if (*outs != 0) {
 		syslog(LOG_ERR, "%s", outs);
 		fprintf(stderr, "%s: %s\n", getprogname(), outs);
 	} else {
@@ -150,49 +184,38 @@ errlogx(int exitcode, const char *fmt, ...)
 	exit(exitcode);
 }
 
-static const char *
+static int
 check_username(const char *name, uid_t ckuid)
 {
 	struct passwd *pwd;
 
 	if (name == NULL)
-		return (NULL);
+		return (0);
 	pwd = getpwnam(name);
 	if (pwd == NULL || pwd->pw_uid != ckuid)
-		return (NULL);
-	return (name);
+		return (0);
+	snprintf(username, sizeof(username), "%s", name);
+	return (1);
 }
 
 void
 set_username(void)
 {
 	struct passwd *pwd;
-	char *u = NULL;
-	uid_t uid;
 
-	uid = getuid();
-	username = check_username(getlogin(), uid);
-	if (username != NULL)
+	useruid = getuid();
+	if (check_username(getlogin(), useruid))
 		return;
-	username = check_username(getenv("LOGNAME"), uid);
-	if (username != NULL)
+	if (check_username(getenv("LOGNAME"), useruid))
 		return;
-	username = check_username(getenv("USER"), uid);
-	if (username != NULL)
+	if (check_username(getenv("USER"), useruid))
 		return;
-	pwd = getpwuid(uid);
-	if (pwd != NULL && pwd->pw_name != NULL && pwd->pw_name[0] != '\0' &&
-	    (u = strdup(pwd->pw_name)) != NULL) {
-		username = check_username(u, uid);
-		if (username != NULL)
+	pwd = getpwuid(useruid);
+	if (pwd != NULL && pwd->pw_name != NULL && pwd->pw_name[0] != '\0') {
+		if (check_username(pwd->pw_name, useruid))
 			return;
-		else
-			free(u);
 	}
-	asprintf(__DECONST(void *, &username), "%ld", (long)uid);
-	if (username != NULL)
-		return;
-	username = "unknown-or-invalid-username";
+	snprintf(username, sizeof(username), "uid=%ld", (long)useruid);
 }
 
 void
@@ -203,6 +226,52 @@ deltmp(void)
 	SLIST_FOREACH(t, &tmpfs, next) {
 		unlink(t->str);
 	}
+}
+
+static sigjmp_buf sigbuf;
+static int sigbuf_valid;
+
+static void
+sigalrm_handler(int signo)
+{
+	(void)signo;	/* so that gcc doesn't complain */
+	if (sigbuf_valid)
+		siglongjmp(sigbuf, 1);
+}
+
+int
+do_timeout(int timeout, int dojmp)
+{
+	struct sigaction act;
+	int ret = 0;
+
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+
+	if (timeout) {
+		act.sa_handler = sigalrm_handler;
+		if (sigaction(SIGALRM, &act, NULL) != 0)
+			syslog(LOG_WARNING, "can not set signal handler: %m");
+		if (dojmp) {
+			ret = sigsetjmp(sigbuf, 1);
+			if (ret)
+				goto disable;
+			/* else just programmed */
+			sigbuf_valid = 1;
+		}
+
+		alarm(timeout);
+	} else {
+disable:
+		alarm(0);
+
+		act.sa_handler = SIG_IGN;
+		if (sigaction(SIGALRM, &act, NULL) != 0)
+			syslog(LOG_WARNING, "can not remove signal handler: %m");
+		sigbuf_valid = 0;
+	}
+
+	return (ret);
 }
 
 int
@@ -256,3 +325,21 @@ strprefixcmp(const char *str, const char *prefix)
 	return (strncasecmp(str, prefix, strlen(prefix)));
 }
 
+void
+init_random(void)
+{
+	unsigned int seed;
+	int rf;
+
+	rf = open("/dev/urandom", O_RDONLY);
+	if (rf == -1)
+		rf = open("/dev/random", O_RDONLY);
+
+	if (!(rf != -1 && read(rf, &seed, sizeof(seed)) == sizeof(seed)))
+		seed = (time(NULL) ^ getpid()) + (uintptr_t)&seed;
+
+	srandom(seed);
+
+	if (rf != -1)
+		close(rf);
+}

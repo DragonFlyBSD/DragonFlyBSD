@@ -118,9 +118,13 @@ smtp_init_crypto(int fd, int feature)
 		if (read_remote(fd, 0, NULL) == 2) {
 			send_remote_command(fd, "STARTTLS");
 			if (read_remote(fd, 0, NULL) != 2) {
-				syslog(LOG_ERR, "remote delivery deferred:"
-				  " STARTTLS not available: %s", neterr);
-				return (1);
+				if ((feature & TLS_OPP) == 0) {
+					syslog(LOG_ERR, "remote delivery deferred: STARTTLS not available: %s", neterr);
+					return (1);
+				} else {
+					syslog(LOG_INFO, "in opportunistic TLS mode, STARTTLS not available: %s", neterr);
+					return (0);
+				}
 			}
 		}
 		/* End of TLS init phase, enable SSL_write/read */
@@ -176,7 +180,7 @@ smtp_init_crypto(int fd, int feature)
  */
 void
 hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
-    caddr_t digest)
+    unsigned char* digest)
 {
         MD5_CTX context;
         unsigned char k_ipad[65];    /* inner padding -
@@ -248,7 +252,8 @@ hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
 int
 smtp_auth_md5(int fd, char *login, char *password)
 {
-	unsigned char buffer[BUF_SIZE], digest[BUF_SIZE], ascii_digest[33];
+	unsigned char digest[BUF_SIZE];
+	char buffer[BUF_SIZE], ascii_digest[33];
 	char *temp;
 	int len, i;
 	static char hextab[] = "0123456789abcdef";
@@ -264,12 +269,14 @@ smtp_auth_md5(int fd, char *login, char *password)
 		syslog(LOG_DEBUG, "smarthost authentication:"
 		       " AUTH cram-md5 not available: %s", neterr);
 		/* if cram-md5 is not available */
+		free(temp);
 		return (-1);
 	}
 
 	/* skip 3 char status + 1 char space */
 	base64_decode(buffer + 4, temp);
-	hmac_md5(temp, strlen(temp), password, strlen(password), digest);
+	hmac_md5((unsigned char *)temp, strlen(temp),
+		 (unsigned char *)password, strlen(password), digest);
 	free(temp);
 
 	ascii_digest[32] = 0;

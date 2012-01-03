@@ -56,8 +56,6 @@ trim_line(char *line)
 	size_t linelen;
 	char *p;
 
-	p = line;
-
 	if ((p = strchr(line, '\n')))
 		*p = (char)0;
 
@@ -82,59 +80,6 @@ chomp(char *str)
 		return;
 	if (str[len - 1] == '\n')
 		str[len - 1] = 0;
-}
-
-/*
- * Read the virtual user table
- */
-void
-parse_virtuser(const char *path)
-{
-	char line[2048];
-	FILE *v;
-	char *data;
-	struct virtuser *vu;
-	int lineno = 0;
-
-	v = fopen(path, "r");
-	if (v == NULL) {
-		errlog(1, "can not open virtuser file `%s'", path);
-		/* NOTREACHED */
-	}
-
-	while (!feof(v)) {
-		if (fgets(line, sizeof(line), v) == NULL)
-			break;
-		lineno++;
-
-		chomp(line);
-
-		/* We hit a comment */
-		if (*line == '#')
-			continue;
-		/* Ignore empty lines */
-		if (*line == 0)
-			continue;
-
-		vu = calloc(1, sizeof(*vu));
-		if (vu == NULL)
-			errlog(1, NULL);
-
-		data = strdup(line);
-		vu->login = strsep(&data, DP);
-		vu->address = data;
-
-		if (vu->login == NULL ||
-		    vu->address == NULL) {
-			errlogx(1, "syntax error in virtuser file %s:%d",
-				path, lineno);
-			/* NOTREACHED */
-		}
-
-		SLIST_INSERT_HEAD(&virtusers, vu, next);
-	}
-
-	fclose(v);
 }
 
 /*
@@ -250,20 +195,32 @@ parse_conf(const char *config_path)
 			config.aliases = data;
 		else if (strcmp(word, "SPOOLDIR") == 0 && data != NULL)
 			config.spooldir = data;
-		else if (strcmp(word, "VIRTPATH") == 0 && data != NULL)
-			config.virtualpath = data;
 		else if (strcmp(word, "AUTHPATH") == 0 && data != NULL)
 			config.authpath= data;
 		else if (strcmp(word, "CERTFILE") == 0 && data != NULL)
 			config.certfile = data;
 		else if (strcmp(word, "MAILNAME") == 0 && data != NULL)
 			config.mailname = data;
-		else if (strcmp(word, "MAILNAMEFILE") == 0 && data != NULL)
-			config.mailnamefile = data;
-		else if (strcmp(word, "VIRTUAL") == 0 && data == NULL)
-			config.features |= VIRTUAL;
-		else if (strcmp(word, "STARTTLS") == 0 && data == NULL)
+		else if (strcmp(word, "MASQUERADE") == 0 && data != NULL) {
+			char *user = NULL, *host = NULL;
+			if (strrchr(data, '@')) {
+				host = strrchr(data, '@');
+				*host = 0;
+				host++;
+				user = data;
+			} else {
+				host = data;
+			}
+			if (host && *host == 0)
+				host = NULL;
+                        if (user && *user == 0)
+                                user = NULL;
+			config.masquerade_host = host;
+			config.masquerade_user = user;
+		} else if (strcmp(word, "STARTTLS") == 0 && data == NULL)
 			config.features |= STARTTLS;
+		else if (strcmp(word, "OPPORTUNISTIC_TLS") == 0 && data == NULL)
+			config.features |= TLS_OPP;
 		else if (strcmp(word, "SECURETRANSFER") == 0 && data == NULL)
 			config.features |= SECURETRANS;
 		else if (strcmp(word, "DEFER") == 0 && data == NULL)

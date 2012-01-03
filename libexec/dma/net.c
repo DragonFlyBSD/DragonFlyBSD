@@ -33,6 +33,8 @@
  * SUCH DAMAGE.
  */
 
+#include "dfcompat.h"
+
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
@@ -44,6 +46,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+#include <ctype.h>
 #include <err.h>
 #include <errno.h>
 #include <netdb.h>
@@ -54,8 +57,7 @@
 
 #include "dma.h"
 
-static jmp_buf timeout_alarm;
-char neterr[BUF_SIZE];
+char neterr[ERRMSG_SIZE];
 
 char *
 ssl_errstr(void)
@@ -67,13 +69,6 @@ ssl_errstr(void)
 		oerr = nerr;
 
 	return (ERR_error_string(oerr, NULL));
-}
-
-static void
-sig_alarm(int signo)
-{
-	(void)signo;	/* so that gcc doesn't complain */
-	longjmp(timeout_alarm, 1);
 }
 
 ssize_t
@@ -125,26 +120,25 @@ int
 read_remote(int fd, int extbufsize, char *extbuf)
 {
 	ssize_t rlen = 0;
-	size_t pos, len;
+	size_t pos, len, copysize;
 	char buff[BUF_SIZE];
-	int done = 0, status = 0, extbufpos = 0;
+	int done = 0, status = 0, status_running = 0, extbufpos = 0;
+	enum { parse_status, parse_spacedash, parse_rest } parsestate;
 
-	if (signal(SIGALRM, sig_alarm) == SIG_ERR) {
-		snprintf(neterr, sizeof(neterr), "SIGALRM error: %s",
-		    strerror(errno));
-		return (-1);
-	}
-	if (setjmp(timeout_alarm) != 0) {
+	if (do_timeout(CON_TIMEOUT, 1) != 0) {
 		snprintf(neterr, sizeof(neterr), "Timeout reached");
 		return (-1);
 	}
-	alarm(CON_TIMEOUT);
 
 	/*
 	 * Remote reading code from femail.c written by Henning Brauer of
 	 * OpenBSD and released under a BSD style license.
 	 */
-	for (len = pos = 0; !done; ) {
+	len = 0;
+	pos = 0;
+	parsestate = parse_status;
+	neterr[0] = 0;
+	while (!(done && parsestate == parse_status)) {
 		rlen = 0;
 		if (pos == 0 ||
 		    (pos > 0 && memchr(buff + pos, '\n', len - pos) == NULL)) {
@@ -153,18 +147,22 @@ read_remote(int fd, int extbufsize, char *extbuf)
 			pos = 0;
 			if (((config.features & SECURETRANS) != 0) &&
 			    (config.features & NOSSL) == 0) {
-				if ((rlen = SSL_read(config.ssl, buff + len,
-				    sizeof(buff) - len)) == -1) {
+				if ((rlen = SSL_read(config.ssl, buff + len, sizeof(buff) - len)) == -1) {
 					strncpy(neterr, ssl_errstr(), sizeof(neterr));
-					return (-1);
+					goto error;
 				}
 			} else {
 				if ((rlen = read(fd, buff + len, sizeof(buff) - len)) == -1) {
 					strncpy(neterr, strerror(errno), sizeof(neterr));
-					return (-1);
+					goto error;
 				}
 			}
 			len += rlen;
+
+			copysize = sizeof(neterr) - strlen(neterr) - 1;
+			if (copysize > len)
+				copysize = len;
+			strncat(neterr, buff, copysize);
 		}
 		/*
 		 * If there is an external buffer with a size bigger than zero
@@ -172,8 +170,7 @@ read_remote(int fd, int extbufsize, char *extbuf)
 		 * there are new characters read from the mailserver
 		 * copy them to the external buffer
 		 */
-		if (extbufpos <= (extbufsize - 1) && rlen && extbufsize > 0 
-		    && extbuf != NULL) {
+		if (extbufpos <= (extbufsize - 1) && rlen > 0 && extbufsize > 0 && extbuf != NULL) {
 			/* do not write over the bounds of the buffer */
 			if(extbufpos + rlen > (extbufsize - 1)) {
 				rlen = extbufsize - extbufpos;
@@ -181,32 +178,68 @@ read_remote(int fd, int extbufsize, char *extbuf)
 			memcpy(extbuf + extbufpos, buff + len - rlen, rlen);
 			extbufpos += rlen;
 		}
-		for (; pos < len && buff[pos] >= '0' && buff[pos] <= '9'; pos++)
-			; /* Do nothing */
 
 		if (pos == len)
-			return (0);
+			continue;
 
-		if (buff[pos] == ' ') {
-			done = 1;
-		} else if (buff[pos] != '-') {
-			strcpy(neterr, "invalid syntax in reply from server");
-			return (-1);
+		switch (parsestate) {
+		case parse_status:
+			for (; pos < len; pos++) {
+				if (isdigit(buff[pos])) {
+					status_running = status_running * 10 + (buff[pos] - '0');
+				} else {
+					status = status_running;
+					status_running = 0;
+					parsestate = parse_spacedash;
+					break;
+				}
+			}
+			continue;
+
+		case parse_spacedash:
+			switch (buff[pos]) {
+			case ' ':
+				done = 1;
+				break;
+
+			case '-':
+				/* ignore */
+				/* XXX read capabilities */
+				break;
+
+			default:
+				strcpy(neterr, "invalid syntax in reply from server");
+				goto error;
+			}
+
+			pos++;
+			parsestate = parse_rest;
+			continue;
+
+		case parse_rest:
+			/* skip up to \n */
+			for (; pos < len; pos++) {
+				if (buff[pos] == '\n') {
+					pos++;
+					parsestate = parse_status;
+					break;
+				}
+			}
 		}
 
-		/* skip up to \n */
-		for (; pos < len && buff[pos - 1] != '\n'; pos++)
-			; /* Do nothing */
-
 	}
-	alarm(0);
 
-	buff[len] = '\0';
-	while (len > 0 && (buff[len - 1] == '\r' || buff[len - 1] == '\n'))
-		buff[--len] = '\0';
-	snprintf(neterr, sizeof(neterr), "%s", buff);
-	status = atoi(buff);
+	do_timeout(0, 0);
+
+	/* chop off trailing newlines */
+	while (neterr[0] != 0 && strchr("\r\n", neterr[strlen(neterr) - 1]) != 0)
+		neterr[strlen(neterr) - 1] = 0;
+
 	return (status/100);
+
+error:
+	do_timeout(0, 0);
+	return (-1);
 }
 
 /*
@@ -308,7 +341,6 @@ close_connection(int fd)
 		if (((config.features & SECURETRANS) != 0) &&
 		    ((config.features & NOSSL) == 0))
 			SSL_shutdown(config.ssl);
-
 		SSL_free(config.ssl);
 	}
 
@@ -316,7 +348,7 @@ close_connection(int fd)
 }
 
 static int
-deliver_to_host(struct qitem *it, struct mx_hostentry *host, void *errmsgc)
+deliver_to_host(struct qitem *it, struct mx_hostentry *host)
 {
 	struct authuser *a;
 	char line[1000];
@@ -324,7 +356,7 @@ deliver_to_host(struct qitem *it, struct mx_hostentry *host, void *errmsgc)
 	int fd, error = 0, do_auth = 0, res = 0;
 
 	if (fseek(it->mailf, 0, SEEK_SET) != 0) {
-		asprintf(errmsgc, "can not seek: %s", strerror(errno));
+		snprintf(errmsg, sizeof(errmsg), "can not seek: %s", strerror(errno));
 		return (-1);
 	}
 
@@ -337,7 +369,7 @@ deliver_to_host(struct qitem *it, struct mx_hostentry *host, void *errmsgc)
 	if (res == 5) { \
 		syslog(LOG_ERR, "remote delivery to %s [%s] failed after %s: %s", \
 		       host->host, host->addr, c, neterr); \
-		asprintf(errmsgc, "%s [%s] did not like our %s:\n%s", \
+		snprintf(errmsg, sizeof(errmsg), "%s [%s] did not like our %s:\n%s", \
 			 host->host, host->addr, c, neterr); \
 		return (-1); \
 	} else if (res != exp) { \
@@ -347,10 +379,13 @@ deliver_to_host(struct qitem *it, struct mx_hostentry *host, void *errmsgc)
 	}
 
 	/* Check first reply from remote host */
-	config.features |= NOSSL;
-	READ_REMOTE_CHECK("connect", 2);
+	if ((config.features & SECURETRANS) == 0 ||
+	    (config.features & STARTTLS) != 0) {
+		config.features |= NOSSL;
+		READ_REMOTE_CHECK("connect", 2);
 
-	config.features &= ~NOSSL;
+		config.features &= ~NOSSL;
+	}
 
 	if ((config.features & SECURETRANS) != 0) {
 		error = smtp_init_crypto(fd, config.features);
@@ -358,6 +393,9 @@ deliver_to_host(struct qitem *it, struct mx_hostentry *host, void *errmsgc)
 			syslog(LOG_DEBUG, "SSL initialization successful");
 		else
 			goto out;
+
+		if ((config.features & STARTTLS) == 0)
+			READ_REMOTE_CHECK("connect", 2);
 	}
 
 	/* XXX allow HELO fallback */
@@ -386,7 +424,7 @@ deliver_to_host(struct qitem *it, struct mx_hostentry *host, void *errmsgc)
 		if (error < 0) {
 			syslog(LOG_ERR, "remote delivery failed:"
 					" SMTP login failed: %m");
-			asprintf(errmsgc, "SMTP login to %s failed", host->host);
+			snprintf(errmsg, sizeof(errmsg), "SMTP login to %s failed", host->host);
 			return (-1);
 		}
 		/* SMTP login is not available, so try without */
@@ -413,7 +451,7 @@ deliver_to_host(struct qitem *it, struct mx_hostentry *host, void *errmsgc)
 		linelen = strlen(line);
 		if (linelen == 0 || line[linelen - 1] != '\n') {
 			syslog(LOG_CRIT, "remote delivery failed: corrupted queue file");
-			*(const char **)errmsgc = "corrupted queue file";
+			snprintf(errmsg, sizeof(errmsg), "corrupted queue file");
 			error = -1;
 			goto out;
 		}
@@ -448,10 +486,8 @@ out:
 }
 
 int
-deliver_remote(struct qitem *it, const char **errmsg)
+deliver_remote(struct qitem *it)
 {
-	/* asprintf can't take const */
-	void *errmsgc = __DECONST(char **, errmsg);
 	struct mx_hostentry *hosts, *h;
 	const char *host;
 	int port;
@@ -460,7 +496,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	host = strrchr(it->addr, '@');
 	/* Should not happen */
 	if (host == NULL) {
-		asprintf(errmsgc, "Internal error: badly formed address %s",
+		snprintf(errmsg, sizeof(errmsg), "Internal error: badly formed address %s",
 		    it->addr);
 		return(-1);
 	} else {
@@ -487,7 +523,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	}
 
 	for (h = hosts; *h->host != 0; h++) {
-		switch (deliver_to_host(it, h, errmsgc)) {
+		switch (deliver_to_host(it, h)) {
 		case 0:
 			/* success */
 			error = 0;

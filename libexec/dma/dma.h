@@ -44,31 +44,43 @@
 #include <openssl/ssl.h>
 #include <netdb.h>
 
-#define VERSION	"DragonFly Mail Agent"
+#define VERSION	"DragonFly Mail Agent " DMA_VERSION
 
 #define BUF_SIZE	2048
+#define ERRMSG_SIZE	200
+#define USERNAME_SIZE	50
 #define MIN_RETRY	300		/* 5 minutes */
-#define MIN_RETRY_LOCAL	30		/* 30 seconds */
 #define MAX_RETRY	(3*60*60)	/* retry at least every 3 hours */
-#define RETRY_JITTER	10
 #define MAX_TIMEOUT	(5*24*60*60)	/* give up after 5 days */
 #ifndef PATH_MAX
 #define PATH_MAX	1024		/* Max path len */
 #endif
 #define	SMTP_PORT	25		/* Default SMTP port */
-#define CON_TIMEOUT	120		/* Connection timeout */
+#define CON_TIMEOUT	(5*60)		/* Connection timeout per RFC5321 */
 
-#define VIRTUAL		0x001		/* Support for address rewrites */
 #define STARTTLS	0x002		/* StartTLS support */
 #define SECURETRANS	0x004		/* SSL/TLS in general */
 #define NOSSL		0x008		/* Do not use SSL */
 #define DEFER		0x010		/* Defer mails */
 #define INSECURE	0x020		/* Allow plain login w/o encryption */
 #define FULLBOUNCE	0x040		/* Bounce the full message */
+#define TLS_OPP		0x080		/* Opportunistic STARTTLS */
 
 #ifndef CONF_PATH
-#define CONF_PATH	"/etc/dma/dma.conf"	/* Default path to dma.conf */
+#error Please define CONF_PATH
 #endif
+
+#ifndef LIBEXEC_PATH
+#error Please define LIBEXEC_PATH
+#endif
+
+#define DMA_ROOT_USER	"mail"
+#define DMA_GROUP	"mail"
+
+#ifndef MBOX_STRICT
+#define MBOX_STRICT	0
+#endif
+
 
 struct stritem {
 	SLIST_ENTRY(stritem) next;
@@ -109,24 +121,17 @@ struct config {
 	int port;
 	const char *aliases;
 	const char *spooldir;
-	const char *virtualpath;
 	const char *authpath;
 	const char *certfile;
 	int features;
 	const char *mailname;
-	const char *mailnamefile;
+	const char *masquerade_host;
+	const char *masquerade_user;
 
 	/* XXX does not belong into config */
 	SSL *ssl;
 };
 
-
-struct virtuser {
-	SLIST_ENTRY(virtuser) next;
-	char *login;
-	char *address;
-};
-SLIST_HEAD(virtusers, virtuser);
 
 struct authuser {
 	SLIST_ENTRY(authuser) next;
@@ -150,12 +155,13 @@ struct mx_hostentry {
 extern struct aliases aliases;
 extern struct config config;
 extern struct strlist tmpfs;
-extern struct virtusers virtusers;
 extern struct authusers authusers;
-extern const char *username;
+extern char username[USERNAME_SIZE];
+extern uid_t useruid;
 extern const char *logident_base;
 
-extern char neterr[BUF_SIZE];
+extern char neterr[ERRMSG_SIZE];
+extern char errmsg[ERRMSG_SIZE];
 
 /* aliases_parse.y */
 int yyparse(void);
@@ -164,11 +170,10 @@ extern FILE *yyin;
 /* conf.c */
 void trim_line(char *);
 void parse_conf(const char *);
-void parse_virtuser(const char *);
 void parse_authfile(const char *);
 
 /* crypto.c */
-void hmac_md5(unsigned char *, int, unsigned char *, int, caddr_t);
+void hmac_md5(unsigned char *, int, unsigned char *, int, unsigned char *);
 int smtp_auth_md5(int, char *, char *);
 int smtp_init_crypto(int, int);
 
@@ -179,13 +184,15 @@ int dns_get_mx_list(const char *, int, struct mx_hostentry **, int);
 char *ssl_errstr(void);
 int read_remote(int, int, char *);
 ssize_t send_remote_command(int, const char*, ...) __printflike(2, 3);
-int deliver_remote(struct qitem *, const char **);
+int deliver_remote(struct qitem *);
 
 /* base64.c */
 int base64_encode(const void *, int, char **);
 int base64_decode(const char *, void *);
 
 /* dma.c */
+#define EXPAND_ADDR	1
+#define EXPAND_WILDCARD	2
 int add_recp(struct queue *, const char *, int);
 void run_queue(struct queue *);
 
@@ -198,7 +205,7 @@ int acquirespool(struct qitem *);
 void dropspool(struct queue *, struct qitem *);
 
 /* local.c */
-int deliver_local(struct qitem *, const char **errmsg);
+int deliver_local(struct qitem *);
 
 /* mail.c */
 void bounce(struct qitem *, const char *);
@@ -211,8 +218,10 @@ void errlog(int, const char *, ...) __printf0like(2, 3);
 void errlogx(int, const char *, ...) __printf0like(2, 3);
 void set_username(void);
 void deltmp(void);
+int do_timeout(int, int);
 int open_locked(const char *, int, ...);
 char *rfc822date(void);
 int strprefixcmp(const char *, const char *);
+void init_random(void);
 
 #endif

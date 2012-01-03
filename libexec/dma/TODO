@@ -2,3 +2,4 @@
 - use proper sysexit codes
 - handle/use ESMTP extensions
 - .forward support
+- suggest way to run a queue flush on boot

@@ -11,8 +11,5 @@ FILES+=		auth.conf
 .if !exists(${DESTDIR}/etc/dma/dma.conf)
 FILES+=		dma.conf
 .endif
-.if !exists(${DESTDIR}/etc/dma/virtusertable)
-FILES+=		virtusertable
-.endif
 
 .include <bsd.prog.mk>

@@ -33,6 +33,8 @@
  */
 
 #include <errno.h>
+#include <inttypes.h>
+#include <signal.h>
 #include <syslog.h>
 #include <unistd.h>
 
@@ -55,7 +57,7 @@ bounce(struct qitem *it, const char *reason)
 	bzero(&bounceq, sizeof(bounceq));
 	LIST_INIT(&bounceq.queue);
 	bounceq.sender = "";
-	if (add_recp(&bounceq, it->sender, 1) != 0)
+	if (add_recp(&bounceq, it->sender, EXPAND_WILDCARD) != 0)
 		goto fail;
 
 	if (newspoolf(&bounceq) != 0)
@@ -67,7 +69,7 @@ bounce(struct qitem *it, const char *reason)
 	error = fprintf(bounceq.mailf,
 		"Received: from MAILER-DAEMON\n"
 		"\tid %s\n"
-		"\tby %s (%s)\n"
+		"\tby %s (%s);\n"
 		"\t%s\n"
 		"X-Original-To: <%s>\n"
 		"From: MAILER-DAEMON <>\n"
@@ -268,6 +270,7 @@ again:
 			goto skip;
 
 		case '<':
+			/* this is the real address now */
 			ps->brackets = 1;
 			ps->pos = 0;
 			goto skip;
@@ -287,6 +290,16 @@ again:
 
 		case ',':
 		case ';':
+			/*
+			 * Next address, copy previous one.
+			 * However, we might be directly after
+			 * a <address>, or have two consecutive
+			 * commas.
+			 * Skip the comma unless there is
+			 * really something to copy.
+			 */
+			if (ps->pos == 0)
+				goto skip;
 			s++;
 			goto newaddr;
 
@@ -321,9 +334,9 @@ newaddr:
 	if (addr == NULL)
 		errlog(1, NULL);
 
-	if (add_recp(queue, addr, 1) != 0)
+	if (add_recp(queue, addr, EXPAND_WILDCARD) != 0)
 		errlogx(1, "invalid recipient `%s'", addr);
-	fprintf(stderr, "parsed `%s'\n", addr);
+
 	goto again;
 }
 
@@ -338,6 +351,7 @@ readmail(struct queue *queue, int nodot, int recp_from_header)
 	int had_from = 0;
 	int had_messagid = 0;
 	int had_date = 0;
+	int had_last_line = 0;
 	int nocopy = 0;
 
 	parse_state.state = NONE;
@@ -346,9 +360,9 @@ readmail(struct queue *queue, int nodot, int recp_from_header)
 		"Received: from %s (uid %d)\n"
 		"\t(envelope-from %s)\n"
 		"\tid %s\n"
-		"\tby %s (%s)\n"
+		"\tby %s (%s);\n"
 		"\t%s\n",
-		username, getuid(),
+		username, useruid,
 		queue->sender,
 		queue->id,
 		hostname(), VERSION,
@@ -357,12 +371,20 @@ readmail(struct queue *queue, int nodot, int recp_from_header)
 		return (-1);
 
 	while (!feof(stdin)) {
-		if (fgets(line, sizeof(line), stdin) == NULL)
+		if (fgets(line, sizeof(line) - 1, stdin) == NULL)
 			break;
+		if (had_last_line)
+			errlogx(1, "bad mail input format");
 		linelen = strlen(line);
 		if (linelen == 0 || line[linelen - 1] != '\n') {
-			errno = EINVAL;		/* XXX mark permanent errors */
-			return (-1);
+			/*
+			 * This line did not end with a newline character.
+			 * If we fix it, it better be the last line of
+			 * the file.
+			 */
+			line[linelen] = '\n';
+			line[linelen + 1] = 0;
+			had_last_line = 1;
 		}
 		if (!had_headers) {
 			/*
@@ -407,10 +429,13 @@ readmail(struct queue *queue, int nodot, int recp_from_header)
 					had_date = 1;
 					snprintf(line, sizeof(line), "Date: %s\n", rfc822date());
 				} else if (!had_messagid) {
-					/* XXX better msgid, assign earlier and log? */
+					/* XXX msgid, assign earlier and log? */
 					had_messagid = 1;
-					snprintf(line, sizeof(line), "Message-Id: <%s@%s>\n",
-						 queue->id, hostname());
+					snprintf(line, sizeof(line), "Message-Id: <%"PRIxMAX".%s.%"PRIxMAX"@%s>\n",
+						 (uintmax_t)time(NULL),
+						 queue->id,
+						 (uintmax_t)random(),
+						 hostname());
 				} else if (!had_from) {
 					had_from = 1;
 					snprintf(line, sizeof(line), "From: <%s>\n", queue->sender);
