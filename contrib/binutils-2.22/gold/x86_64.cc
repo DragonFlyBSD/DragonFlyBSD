@@ -3181,12 +3181,6 @@ Target_x86_64::Relocate::relocate_tls(const Relocate_info<64, false>* relinfo,
             }
           if (optimized_type == tls::TLSOPT_TO_IE)
             {
-	      if (tls_segment == NULL)
-		{
-		  gold_assert(parameters->errors()->error_count() > 0
-			      || issue_undefined_symbol_error(gsym));
-		  return;
-		}
               value = target->got_plt_section()->address() + got_offset;
               this->tls_gd_to_ie(relinfo, relnum, tls_segment, rela, r_type,
                                  value, view, address, view_size);

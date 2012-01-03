@@ -2709,12 +2709,6 @@ Target_i386::Relocate::relocate_tls(const Relocate_info<32, false>* relinfo,
             }
           if (optimized_type == tls::TLSOPT_TO_IE)
 	    {
-	      if (tls_segment == NULL)
-		{
-		  gold_assert(parameters->errors()->error_count() > 0
-			      || issue_undefined_symbol_error(gsym));
-		  return;
-		}
 	      this->tls_gd_to_ie(relinfo, relnum, tls_segment, rel, r_type,
                                  got_offset, view, view_size);
               break;
