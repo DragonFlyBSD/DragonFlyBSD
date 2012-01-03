@@ -2468,6 +2468,21 @@ re_start(struct ifnet *ifp)
 		ETHER_BPF_MTAP(ifp, m_head);
 	}
 
+	/*
+	 * If sc->re_ldata.re_tx_mbuf[idx] is not NULL it is possible
+	 * for IFF_OACTIVE to not be properly set when we also do not
+	 * have sufficient free tx descriptors, leaving packet in
+	 * ifp->if_send.  This can cause if_start_dispatch() to loop
+	 * infinitely so make sure IFF_OACTIVE is set properly.
+	 */
+	if (sc->re_ldata.re_tx_free <= RE_TXDESC_SPARE) {
+		if ((ifp->if_flags & IFF_OACTIVE) == 0) {
+			device_printf(sc->re_dev,
+				      "Debug: IFF_OACTIVE was not set when"
+				      " re_tx_free was below minimum!\n");
+			ifp->if_flags |= IFF_OACTIVE;
+		}
+	}
 	if (!need_trans)
 		return;
 
