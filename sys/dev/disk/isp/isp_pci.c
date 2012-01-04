@@ -342,15 +342,17 @@ struct isp_pcisoftc {
 	device_t			pci_dev;
 	struct resource *		regs;
 	void *				irq;
+	int				irq_type;
 	int				iqd;
 	int				rtp;
 	int				rgd;
 	void *				ih;
 	int16_t				pci_poff[_NREG_BLKS];
 	bus_dma_tag_t			dmat;
-	int				msicount;
 };
 
+static int isp_msi_enable = 1;
+TUNABLE_INT("hw.isp.msi.enable", &isp_msi_enable);
 
 static device_method_t isp_pci_methods[] = {
 	/* Device interface */
@@ -649,6 +651,7 @@ isp_pci_attach(device_t dev)
 	ispsoftc_t *isp;
 	size_t psize, xsize;
 	char fwname[32];
+	u_int irq_flags;
 
 	pcs = device_get_softc(dev);
 	if (pcs == NULL) {
@@ -915,25 +918,10 @@ isp_pci_attach(device_t dev)
 	data &= ~1;
 	pci_write_config(dev, PCIR_ROMADDR, data, 4);
 
-#if 0 /* XXX swildner */
-	/*
-	 * Do MSI
-	 *
-	 * NB: MSI-X needs to be disabled for the 2432 (PCI-Express)
-	 */
-	if (IS_24XX(isp) || IS_2322(isp)) {
-		pcs->msicount = pci_msi_count(dev);
-		if (pcs->msicount > 1) {
-			pcs->msicount = 1;
-		}
-		if (pci_alloc_msi(dev, &pcs->msicount) == 0) {
-			pcs->iqd = 1;
-		} else {
-			pcs->iqd = 0;
-		}
-	}
-#endif
-	pcs->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &pcs->iqd, RF_ACTIVE | RF_SHAREABLE);
+	pcs->irq_type = pci_alloc_1intr(dev, isp_msi_enable, &pcs->iqd,
+	    &irq_flags);
+	pcs->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &pcs->iqd,
+	    irq_flags);
 	if (pcs->irq == NULL) {
 		device_printf(dev, "could not allocate interrupt\n");
 		goto bad;
@@ -987,7 +975,7 @@ bad:
 	if (pcs->irq) {
 		(void) bus_release_resource(dev, SYS_RES_IRQ, pcs->iqd, pcs->irq);
 	}
-	if (pcs->msicount) {
+	if (pcs->irq_type == PCI_INTR_TYPE_MSI) {
 		pci_release_msi(dev);
 	}
 	if (pcs->regs) {
@@ -1027,7 +1015,7 @@ isp_pci_detach(device_t dev)
 	ISP_UNLOCK(isp);
 	lockuninit(&isp->isp_osinfo.lock);
 	(void) bus_release_resource(dev, SYS_RES_IRQ, pcs->iqd, pcs->irq);
-	if (pcs->msicount) {
+	if (pcs->irq_type == PCI_INTR_TYPE_MSI) {
 		pci_release_msi(dev);
 	}
 	(void) bus_release_resource(dev, pcs->rtp, pcs->rgd, pcs->regs);
