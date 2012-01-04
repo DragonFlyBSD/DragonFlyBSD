@@ -103,6 +103,8 @@
 
 #include <bus/cam/scsi/scsi_all.h>
 
+#include <bus/pci/pcivar.h>
+
 #include <dev/raid/mfi/mfireg.h>
 #include <dev/raid/mfi/mfi_ioctl.h>
 #include <dev/raid/mfi/mfivar.h>
@@ -167,6 +169,9 @@ static int	mfi_max_cmds = 128;
 TUNABLE_INT("hw.mfi.max_cmds", &mfi_max_cmds);
 SYSCTL_INT(_hw_mfi, OID_AUTO, max_cmds, CTLFLAG_RD, &mfi_max_cmds,
 	   0, "Max commands");
+
+static int	mfi_msi_enable = 1;
+TUNABLE_INT("hw.mfi.msi.enable", &mfi_msi_enable);
 
 /* Management interface */
 static d_open_t		mfi_open;
@@ -371,6 +376,7 @@ mfi_attach(struct mfi_softc *sc)
 	uint32_t status;
 	int error, commsz, framessz, sensesz;
 	int frames, unit, max_fw_sge;
+	u_int irq_flags;
 
 	device_printf(sc->mfi_dev, "Megaraid SAS driver Ver 3.981\n");
 
@@ -571,8 +577,10 @@ mfi_attach(struct mfi_softc *sc)
 	 * mfi_pci.c
 	 */
 	sc->mfi_irq_rid = 0;
+	sc->mfi_irq_type = pci_alloc_1intr(sc->mfi_dev, mfi_msi_enable,
+	    &sc->mfi_irq_rid, &irq_flags);
 	if ((sc->mfi_irq = bus_alloc_resource_any(sc->mfi_dev, SYS_RES_IRQ,
-	    &sc->mfi_irq_rid, RF_SHAREABLE | RF_ACTIVE)) == NULL) {
+	    &sc->mfi_irq_rid, irq_flags)) == NULL) {
 		device_printf(sc->mfi_dev, "Cannot allocate interrupt\n");
 		return (EINVAL);
 	}
@@ -971,7 +979,8 @@ mfi_free(struct mfi_softc *sc)
 	if (sc->mfi_irq != NULL)
 		bus_release_resource(sc->mfi_dev, SYS_RES_IRQ, sc->mfi_irq_rid,
 		    sc->mfi_irq);
-
+	if (sc->mfi_irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(sc->mfi_dev);
 	if (sc->mfi_sense_busaddr != 0)
 		bus_dmamap_unload(sc->mfi_sense_dmat, sc->mfi_sense_dmamap);
 	if (sc->mfi_sense != NULL)

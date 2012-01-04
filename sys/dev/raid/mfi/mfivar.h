@@ -240,6 +240,7 @@ struct mfi_softc {
 	struct resource			*mfi_irq;
 	void				*mfi_intr;
 	int				mfi_irq_rid;
+	int				mfi_irq_type;
 
 	struct intr_config_hook		mfi_ich;
 	eventhandler_tag		eh;
