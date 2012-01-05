@@ -29,8 +29,6 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/libexec/dma/dma.8,v 1.10 2008/09/06 14:17:56 swildner Exp $
-.\"
 .Dd April 22, 2010
 .Dt DMA 8
 .Os
@@ -272,7 +270,7 @@ The internet hostname
 .Nm
 uses to identify the host.
 If not set or empty, the result of
-.Xr gethostname 2
+.Xr gethostname 3
 is used.
 If
 .Sq MAILNAME
@@ -281,7 +279,7 @@ as the hostname.
 .It Ic MASQUERADE Xo
 (string, default=empty)
 .Xc
-Masquerade the envelope from addresses with this address/hostname.
+Masquerade the envelope-from addresses with this address/hostname.
 Use this setting if mails are not accepted by destination mail servers
 because your sender domain is invalid.
 This setting is overridden by the
@@ -313,7 +311,6 @@ will send all mails as
 The behavior of
 .Nm
 can be influenced by some environment variables.
-.Pp
 .Bl -tag -width 4n
 .It Ev EMAIL Xo
 .Xc
