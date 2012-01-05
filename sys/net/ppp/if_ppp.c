@@ -715,7 +715,9 @@ pppoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
     int protocol, address, control;
     u_char *cp;
     int error;
+#ifdef INET
     struct ip *ip;
+#endif
     struct ifqueue *ifq;
     enum NPmode mode;
     int len;
@@ -1257,11 +1259,14 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
 {
     struct ifnet *ifp = &sc->sc_if;
     int isr;
-    int ilen = 0, xlen, proto, rv;
+    int ilen = 0, proto, rv;
     u_char *cp, adrs, ctrl;
     struct mbuf *mp, *dmp = NULL;
+#ifdef VJC
+    int xlen;
     u_char *iphdr;
     u_int hlen;
+#endif
 
     ASSERT_IFNET_SERIALIZED_ALL(ifp);
 

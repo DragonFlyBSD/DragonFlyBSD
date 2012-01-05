@@ -684,7 +684,9 @@ ether_resolvemulti(
 	struct sockaddr *sa)
 {
 	struct sockaddr_dl *sdl;
+#ifdef INET
 	struct sockaddr_in *sin;
+#endif
 #ifdef INET6
 	struct sockaddr_in6 *sin6;
 #endif

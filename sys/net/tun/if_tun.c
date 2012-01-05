@@ -230,7 +230,9 @@ tunclose(struct dev_close_args *ap)
 static int
 tuninit(struct ifnet *ifp)
 {
+#ifdef INET
 	struct tun_softc *tp = ifp->if_softc;
+#endif
 	struct ifaddr_container *ifac;
 	int error = 0;
 
