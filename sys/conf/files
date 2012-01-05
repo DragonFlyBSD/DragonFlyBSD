@@ -1083,7 +1083,7 @@ net/ef/if_ef.c			optional ef
 net/if_ethersubr.c		optional ether
 net/faith/if_faith.c		optional faith
 net/gif/if_gif.c		optional gif
-net/gre/if_gre.c		optional gre
+net/gre/if_gre.c		optional gre inet
 net/pfil.c			standard
 net/pf/if_pflog.c		optional pflog
 net/pf/if_pfsync.c		optional pf
