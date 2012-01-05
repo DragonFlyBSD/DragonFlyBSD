@@ -137,7 +137,7 @@ main(int argc, char *argv[])
 		 */
 		p = strrchr(runlist_file, '/');
 		if (p == NULL) {
-			fprintf(stderr, "Unkown error while determining "
+			fprintf(stderr, "Unknown error while determining "
 			    "default output file. runlist_file = %s\n",
 			    runlist_file);
 			exit(1);
