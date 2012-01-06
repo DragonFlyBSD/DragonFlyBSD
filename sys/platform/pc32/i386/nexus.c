@@ -59,6 +59,7 @@
 #include <machine/smp.h>
 #include <machine/intr_machdep.h>
 #include <machine_base/apic/ioapic.h>
+#include <machine_base/apic/lapic.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -106,6 +107,10 @@ static	int nexus_set_resource(device_t, device_t, int, int, u_long, u_long,
 static	int nexus_get_resource(device_t, device_t, int, int, u_long *, u_long *);
 static void nexus_delete_resource(device_t, device_t, int, int);
 
+static	int nexus_alloc_msi(device_t, device_t, int, int, int *, int);
+static	int nexus_release_msi(device_t, device_t, int, int *, int);
+static	int nexus_map_msi(device_t, device_t, int, uint64_t *, uint32_t *, int);
+
 /*
  * The device_identify method will cause nexus to automatically associate
  * and attach to the root bus.
@@ -135,6 +140,10 @@ static device_method_t nexus_methods[] = {
 	DEVMETHOD(bus_set_resource,	nexus_set_resource),
 	DEVMETHOD(bus_get_resource,	nexus_get_resource),
 	DEVMETHOD(bus_delete_resource,	nexus_delete_resource),
+
+	DEVMETHOD(pcib_alloc_msi,	nexus_alloc_msi),
+	DEVMETHOD(pcib_release_msi,	nexus_release_msi),
+	DEVMETHOD(pcib_map_msi,		nexus_map_msi),
 
 	{ 0, 0 }
 };
@@ -562,3 +571,33 @@ nexus_delete_resource(device_t dev, device_t child, int type, int rid)
 	resource_list_delete(rl, type, rid);
 }
 
+static int
+nexus_alloc_msi(device_t dev, device_t child, int count, int maxcount,
+    int *irqs, int cpuid)
+{
+	if (!lapic_enable)
+		return ENODEV;
+
+	/* XXX temporary */
+	if (MachIntrABI.msi_alloc == NULL)
+		return EOPNOTSUPP;
+
+	return MachIntrABI.msi_alloc(irqs, count, cpuid);
+}
+
+static int
+nexus_release_msi(device_t dev, device_t child, int count, int *irqs, int cpuid)
+{
+	KKASSERT(lapic_enable);
+	MachIntrABI.msi_release(irqs, count, cpuid);
+	return 0;
+}
+
+static int
+nexus_map_msi(device_t dev, device_t child, int irq, uint64_t *addr,
+    uint32_t *data, int cpuid)
+{
+	KKASSERT(lapic_enable);
+	MachIntrABI.msi_map(irq, addr, data, cpuid);
+	return 0;
+}
