@@ -74,6 +74,15 @@ static const struct ahci_device ahci_devices[] = {
 	    ahci_pci_attach, ahci_pci_detach, "AHCI-PCI-SATA" }
 };
 
+struct ahci_pciid {
+	uint16_t	ahci_vid;
+	uint16_t	ahci_did;
+};
+
+static const struct ahci_pciid ahci_msi_blacklist[] = {
+	{ PCI_VENDOR_ATI, PCI_PRODUCT_ATI_SB700_AHCI }
+};
+
 static int	ahci_msi_enable = 1;
 TUNABLE_INT("hw.ahci.msi.enable", &ahci_msi_enable);
 
@@ -167,10 +176,11 @@ ahci_pci_attach(device_t dev)
 	struct ahci_softc *sc = device_get_softc(dev);
 	struct ahci_port *ap;
 	const char *gen;
+	uint16_t vid, did;
 	u_int32_t cap, pi, reg;
 	u_int irq_flags;
 	bus_addr_t addr;
-	int i, error;
+	int i, error, msi_enable;
 	const char *revision;
 
 	if (pci_read_config(dev, PCIR_COMMAND, 2) & 0x0400) {
@@ -185,7 +195,20 @@ ahci_pci_attach(device_t dev)
 	/*
 	 * Map the AHCI controller's IRQ and BAR(5) (hardware registers)
 	 */
-	sc->sc_irq_type = pci_alloc_1intr(dev, ahci_msi_enable,
+
+	msi_enable = ahci_msi_enable;
+
+	vid = pci_get_vendor(dev);
+	did = pci_get_device(dev);
+	for (i = 0; i < NELEM(ahci_msi_blacklist); ++i) {
+		if (vid == ahci_msi_blacklist[i].ahci_vid &&
+		    did == ahci_msi_blacklist[i].ahci_did) {
+			msi_enable = 0;
+			break;
+		}
+	}
+
+	sc->sc_irq_type = pci_alloc_1intr(dev, msi_enable,
 	    &sc->sc_rid_irq, &irq_flags);
 
 	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->sc_rid_irq,
