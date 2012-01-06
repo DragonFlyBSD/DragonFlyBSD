@@ -672,11 +672,8 @@ ioapic_abi_intr_teardown(int intr)
 	KASSERT(IOAPIC_IMT_ISHWI(map),
 	    ("ioapic teardown, not hwi irq %d, type %d, cpu%d",
 	     intr, map->im_type, mycpuid));
-	if (map->im_type != IOAPIC_IMT_LINE) {
-		kprintf("ioapic teardown, irq %d cpu%d not LINE\n",
-		    intr, mycpuid);
+	if (map->im_type != IOAPIC_IMT_LINE)
 		return;
-	}
 
 	KASSERT(ioapic_irqs[intr].io_addr != NULL,
 	    ("ioapic teardown, no GSI information, irq %d\n", intr));
@@ -1199,7 +1196,6 @@ ioapic_abi_msi_alloc(int intrs[], int count, int cpuid)
 				kprintf("alloc MSI intr %d on cpu%d\n",
 				    intr, cpuid);
 			}
-
 		}
 		error = 0;
 		break;

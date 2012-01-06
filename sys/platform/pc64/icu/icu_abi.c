@@ -482,7 +482,6 @@ icu_abi_msi_alloc(int intrs[], int count, int cpuid)
 				kprintf("alloc MSI intr %d on cpu%d\n",
 				    intr, cpuid);
 			}
-
 		}
 		error = 0;
 		break;
