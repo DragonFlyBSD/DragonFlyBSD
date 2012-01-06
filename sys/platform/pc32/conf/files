@@ -192,6 +192,7 @@ platform/pc32/i386/elan-mmcr.c		optional	cpu_elan
 platform/pc32/i386/geode.c		optional	cpu_geode
 platform/pc32/i386/cs5536.c		optional	cpu_geode
 platform/pc32/i386/exception.s		standard
+platform/pc32/i386/msi_vector.s		standard
 platform/pc32/i386/ipl.s		standard
 platform/pc32/i386/ipl_funcs.c		standard		   \
 	compile-with	"${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
