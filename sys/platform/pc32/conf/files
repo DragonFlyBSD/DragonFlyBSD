@@ -241,6 +241,7 @@ platform/pc32/i386/userconfig.c		optional	userconfig
 platform/pc32/i386/vm86.c		standard
 platform/pc32/i386/vm_machdep.c		standard
 platform/pc32/i386/cpufreq_machdep.c	standard
+platform/pc32/i386/msi.c		standard
 platform/pc32/acpica5/acpi_sdt.c	standard
 platform/pc32/acpica5/acpi_fadt.c	standard
 platform/pc32/acpica5/acpi_madt.c	standard
