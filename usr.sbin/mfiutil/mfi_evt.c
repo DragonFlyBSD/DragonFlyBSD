@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/mfiutil/mfi_evt.c,v 1.5 2011/06/09 19:52:28 bz Exp $
+ * $FreeBSD: src/usr.sbin/mfiutil/mfi_evt.c,v 1.6 2011/12/05 15:11:35 jhb Exp $
  */
 
 #include <sys/types.h>
@@ -438,7 +438,7 @@ mfi_decode_evt(int fd, struct mfi_evt_detail *detail, int verbose)
 		printf(": ");
 		break;
 	case MR_EVT_ARGS_LD_STRIP:
-		printf("VOL %s", volume_name(fd, &detail->args.ld_prog.ld));
+		printf("VOL %s", volume_name(fd, &detail->args.ld_strip.ld));
 		if (verbose) {
 			printf(" strip %lld",
 			    (long long)detail->args.ld_strip.strip);

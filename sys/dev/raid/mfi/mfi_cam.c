@@ -53,7 +53,7 @@
  * are those of the authors and should not be interpreted as representing
  * official policies,either expressed or implied, of the FreeBSD Project.
  *
- * $FreeBSD: src/sys/dev/mfi/mfi_cam.c,v 1.6 2011/06/28 08:36:48 kevlo Exp $
+ * $FreeBSD: src/sys/dev/mfi/mfi_cam.c,v 1.7 2011/10/13 20:06:19 marius Exp $
  */
 
 #include "opt_mfi.h"
@@ -379,7 +379,13 @@ mfip_done(struct mfi_command *cm)
 
 		ccbh->status = CAM_SCSI_STATUS_ERROR | CAM_AUTOSNS_VALID;
 		csio->scsi_status = pt->header.scsi_status;
-		sense_len = min(pt->header.sense_len, sizeof(struct scsi_sense_data));
+		if (pt->header.sense_len < csio->sense_len)
+			csio->sense_resid = csio->sense_len -
+			    pt->header.sense_len;
+		else
+			csio->sense_resid = 0;
+		sense_len = min(pt->header.sense_len,
+		    sizeof(struct scsi_sense_data));
 		bzero(&csio->sense_data, sizeof(struct scsi_sense_data));
 		bcopy(&cm->cm_sense->data[0], &csio->sense_data, sense_len);
 		break;

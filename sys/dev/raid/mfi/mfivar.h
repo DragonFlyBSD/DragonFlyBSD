@@ -79,7 +79,7 @@
  * are those of the authors and should not be interpreted as representing
  * official policies,either expressed or implied, of the FreeBSD Project.
  *
- * $FreeBSD: src/sys/dev/mfi/mfivar.h,v 1.13 2009/07/10 08:18:08 scottl Exp $
+ * $FreeBSD: src/sys/dev/mfi/mfivar.h,v 1.14 2011/09/29 08:37:53 mav Exp $
  */
 
 #ifndef _MFIVAR_H
@@ -127,6 +127,7 @@ struct mfi_command {
 	union mfi_sgl		*cm_sg;
 	void			*cm_data;
 	int			cm_len;
+	int			cm_stp_len;
 	int			cm_total_frame_size;
 	int			cm_extra_frames;
 	int			cm_flags;
