@@ -640,7 +640,7 @@ mfi_attach(struct mfi_softc *sc)
 	bus_generic_attach(sc->mfi_dev);
 
 	/* Start the timeout watchdog */
-	callout_init(&sc->mfi_watchdog_callout);
+	callout_init_mp(&sc->mfi_watchdog_callout);
 	callout_reset(&sc->mfi_watchdog_callout, MFI_CMD_TIMEOUT * hz,
 	    mfi_timeout, sc);
 
