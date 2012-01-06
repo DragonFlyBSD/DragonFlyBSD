@@ -578,10 +578,6 @@ nexus_alloc_msi(device_t dev, device_t child, int count, int maxcount,
 	if (!lapic_enable)
 		return ENODEV;
 
-	/* XXX temporary */
-	if (MachIntrABI.msi_alloc == NULL)
-		return EOPNOTSUPP;
-
 	return MachIntrABI.msi_alloc(irqs, count, cpuid);
 }
 
