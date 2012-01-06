@@ -1590,6 +1590,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "SB600 SATA",
 	},
 	{
+	    PCI_VENDOR_ATI, PCI_PRODUCT_ATI_SB700_AHCI,
+	    0,
+	    "ATI Technologies",
+	    "SB700 AHCI",
+	},
+	{
 	    PCI_VENDOR_ATI, PCI_PRODUCT_ATI_RAGE_PRO_AGP,
 	    0,
 	    "ATI Technologies",
