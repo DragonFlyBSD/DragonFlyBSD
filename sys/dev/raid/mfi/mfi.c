@@ -1014,15 +1014,12 @@ mfi_free(struct mfi_softc *sc)
 		sysctl_ctx_free(&sc->mfi_sysctl_ctx);
 
 #if 0 /* XXX swildner: not sure if we need something like mtx_initialized() */
-
-	if (mtx_initialized(&sc->mfi_io_lock)) {
-		lockuninit(&sc->mfi_io_lock);
-		sx_destroy(&sc->mfi_config_lock);
-	}
+	if (mtx_initialized(&sc->mfi_io_lock))
 #endif
-
+	{
 	lockuninit(&sc->mfi_io_lock);
 	lockuninit(&sc->mfi_config_lock);
+	}
 
 	return;
 }
