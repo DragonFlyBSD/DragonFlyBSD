@@ -2644,10 +2644,6 @@ mfi_ioctl(struct dev_ioctl_args *ap)
 		    (cm->cm_flags & (MFI_CMD_DATAIN | MFI_CMD_DATAOUT))) {
 			cm->cm_data = data = kmalloc(cm->cm_len, M_MFIBUF,
 			    M_WAITOK | M_ZERO);
-			if (cm->cm_data == NULL) {
-				device_printf(sc->mfi_dev, "Malloc failed\n");
-				goto out;
-			}
 		} else {
 			cm->cm_data = 0;
 		}
@@ -2913,10 +2909,6 @@ mfi_linux_ioctl_int(struct cdev *dev, u_long cmd, caddr_t arg, int flag)
 		      (cm->cm_flags & (MFI_CMD_DATAIN | MFI_CMD_DATAOUT))) {
 			cm->cm_data = data = kmalloc(cm->cm_len, M_MFIBUF,
 			    M_WAITOK | M_ZERO);
-			if (cm->cm_data == NULL) {
-				device_printf(sc->mfi_dev, "Malloc failed\n");
-				goto out;
-			}
 		} else {
 			cm->cm_data = 0;
 		}
