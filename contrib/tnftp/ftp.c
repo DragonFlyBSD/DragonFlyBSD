@@ -1,4 +1,4 @@
-/*	$NetBSD: ftp.c,v 1.160 2010/03/05 07:41:10 lukem Exp $	*/
+/*	$NetBSD: ftp.c,v 1.163 2011/12/10 05:53:58 lukem Exp $	*/
 
 /*-
  * Copyright (c) 1996-2009 The NetBSD Foundation, Inc.
@@ -92,7 +92,7 @@
 #if 0
 static char sccsid[] = "@(#)ftp.c	8.6 (Berkeley) 10/27/94";
 #else
-__RCSID("$NetBSD: ftp.c,v 1.160 2010/03/05 07:41:10 lukem Exp $");
+__RCSID("$NetBSD: ftp.c,v 1.163 2011/12/10 05:53:58 lukem Exp $");
 #endif
 #endif /* not lint */
 
@@ -108,6 +108,7 @@ __RCSID("$NetBSD: ftp.c,v 1.160 2010/03/05 07:41:10 lukem Exp $");
 #include <arpa/ftp.h>
 #include <arpa/telnet.h>
 
+#include <assert.h>
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
@@ -131,6 +132,7 @@ int	ptflag = 0;
 char	pasv[BUFSIZ];	/* passive port for proxy data connection */
 
 static int empty(FILE *, FILE *, int);
+__dead static void abort_squared(int);
 
 struct sockinet {
 	union sockunion {
@@ -537,7 +539,7 @@ empty(FILE *ecin, FILE *din, int sec)
 
 sigjmp_buf	xferabort;
 
-void
+__dead static void
 abortxfer(int notused)
 {
 	char msgbuf[100];
@@ -764,6 +766,7 @@ sendrequest(const char *cmd, const char *local, const char *remote,
 	if (dout == NULL)
 		goto abort;
 
+	assert(sndbuf_size > 0);
 	if ((size_t)sndbuf_size > bufsize) {
 		if (buf)
 			(void)free(buf);
@@ -1025,6 +1028,7 @@ recvrequest(const char *cmd, const char *volatile local, const char *remote,
 		progress = 0;
 		preserve = 0;
 	}
+	assert(rcvbuf_size > 0);
 	if ((size_t)rcvbuf_size > bufsize) {
 		if (buf)
 			(void)free(buf);
@@ -1591,18 +1595,25 @@ initconn(void)
 				 UC(p[0]), UC(p[1]));
 			break;
 #ifdef INET6
-		case AF_INET6:
-			a = (char *)&data_addr.si_su.su_sin6.sin6_addr;
-			p = (char *)&data_addr.su_port;
+		case AF_INET6: {
+			uint8_t ua[sizeof(data_addr.si_su.su_sin6.sin6_addr)];
+			uint8_t up[sizeof(data_addr.su_port)];
+
+			memcpy(ua, &data_addr.si_su.su_sin6.sin6_addr,
+			    sizeof(ua));
+			memcpy(up, &data_addr.su_port, sizeof(up));
+			
 			result = command(
 	"LPRT %d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
 				 6, 16,
-				 UC(a[0]),UC(a[1]),UC(a[2]),UC(a[3]),
-				 UC(a[4]),UC(a[5]),UC(a[6]),UC(a[7]),
-				 UC(a[8]),UC(a[9]),UC(a[10]),UC(a[11]),
-				 UC(a[12]),UC(a[13]),UC(a[14]),UC(a[15]),
-				 2, UC(p[0]), UC(p[1]));
+				  ua[0],  ua[1],  ua[2],  ua[3],
+				  ua[4],  ua[5],  ua[6],  ua[7],
+				  ua[8],  ua[9], ua[10], ua[11],
+				 ua[12], ua[13], ua[14], ua[15],
+				 2,
+				 up[0], up[1]);
 			break;
+		}
 #endif
 		default:
 			result = COMPLETE + 1; /* xxx */
@@ -1812,7 +1823,7 @@ pswitch(int flag)
 	}
 }
 
-void
+__dead static void
 abortpt(int notused)
 {
 
@@ -2024,7 +2035,7 @@ gunique(const char *local)
  *	too impatient to wait or there's another problem then ftp really
  *	needs to get back to a known state.
  */
-void
+static void
 abort_squared(int dummy)
 {
 	char msgbuf[100];
