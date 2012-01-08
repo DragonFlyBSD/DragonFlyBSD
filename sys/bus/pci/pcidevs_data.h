@@ -4494,6 +4494,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "Yukon (Belkin F5D5005)",
 	},
 	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_88SE6121,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "88SE6121 SATA/ATA controller",
+	},
+	{
+	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_88SE6145,
+	    0,
+	    "Marvell (was Galileo Technology)",
+	    "88SE6145 SATA/ATA controller",
+	},
+	{
 	    PCI_VENDOR_MARVELL, PCI_PRODUCT_MARVELL_GT64130,
 	    0,
 	    "Marvell (was Galileo Technology)",
@@ -8572,6 +8584,30 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Nvidia Corporation",
 	    "MCP65 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_AHCI_5,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP65 AHCI",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_AHCI_6,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP65 AHCI",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_AHCI_7,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP65 AHCI",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_AHCI_8,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP65 AHCI",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP67_LAN1,
