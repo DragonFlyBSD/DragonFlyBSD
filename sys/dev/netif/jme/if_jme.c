@@ -215,10 +215,12 @@ static const struct {
 static int	jme_rx_desc_count = JME_RX_DESC_CNT_DEF;
 static int	jme_tx_desc_count = JME_TX_DESC_CNT_DEF;
 static int	jme_rx_ring_count = JME_NRXRING_DEF;
+static int	jme_msi_enable = 1;
 
 TUNABLE_INT("hw.jme.rx_desc_count", &jme_rx_desc_count);
 TUNABLE_INT("hw.jme.tx_desc_count", &jme_tx_desc_count);
 TUNABLE_INT("hw.jme.rx_ring_count", &jme_rx_ring_count);
+TUNABLE_INT("hw.jme.msi.enable", &jme_msi_enable);
 
 /*
  *	Read a PHY register on the MII of the JMC250.
@@ -610,6 +612,7 @@ jme_attach(device_t dev)
 	uint8_t pcie_ptr, rev;
 	int error = 0;
 	uint8_t eaddr[ETHER_ADDR_LEN];
+	u_int irq_flags;
 
 	sc->jme_rx_desc_cnt = roundup(jme_rx_desc_count, JME_NDESC_ALIGN);
 	if (sc->jme_rx_desc_cnt > JME_NDESC_MAX)
@@ -683,10 +686,11 @@ jme_attach(device_t dev)
 	/*
 	 * Allocate IRQ
 	 */
-	sc->jme_irq_rid = 0;
+	sc->jme_irq_type = pci_alloc_1intr(dev, jme_msi_enable,
+	    &sc->jme_irq_rid, &irq_flags);
+
 	sc->jme_irq_res = bus_alloc_resource_any(dev, SYS_RES_IRQ,
-						 &sc->jme_irq_rid,
-						 RF_SHAREABLE | RF_ACTIVE);
+	    &sc->jme_irq_rid, irq_flags);
 	if (sc->jme_irq_res == NULL) {
 		device_printf(dev, "can't allocate irq\n");
 		error = ENXIO;
@@ -922,6 +926,8 @@ jme_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_IRQ, sc->jme_irq_rid,
 				     sc->jme_irq_res);
 	}
+	if (sc->jme_irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(dev);
 
 	if (sc->jme_mem_res != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->jme_mem_rid,

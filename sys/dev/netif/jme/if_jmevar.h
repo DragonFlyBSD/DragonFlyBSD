@@ -196,6 +196,7 @@ struct jme_softc {
 	bus_space_tag_t		jme_mem_bt;
 	bus_space_handle_t	jme_mem_bh;
 
+	int			jme_irq_type;
 	int			jme_irq_rid;
 	struct resource		*jme_irq_res;
 	void			*jme_irq_handle;
