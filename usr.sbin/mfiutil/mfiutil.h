@@ -32,55 +32,9 @@
 #ifndef __MFIUTIL_H__
 #define	__MFIUTIL_H__
 
-#include <sys/cdefs.h>
 #include <sys/linker_set.h>
 
 #include <dev/raid/mfi/mfireg.h>
-
-/* 4.x compat */
-#ifndef SET_DECLARE
-
-/* <sys/cdefs.h> */
-#define	__used
-#define	__section(x)	__attribute__((__section__(x)))
-
-/* <sys/linker_set.h> */
-#undef __MAKE_SET
-#undef DATA_SET
-
-#define __MAKE_SET(set, sym)						\
-	__GLOBL(__CONCAT(__start_set_,set));				\
-	__GLOBL(__CONCAT(__stop_set_,set));				\
-	static void const * const __set_##set##_sym_##sym 		\
-	__section("set_" #set) __used = &sym
-
-#define DATA_SET(set, sym)	__MAKE_SET(set, sym)
-
-#define SET_DECLARE(set, ptype)						\
-	extern ptype *__CONCAT(__start_set_,set);			\
-	extern ptype *__CONCAT(__stop_set_,set)
-
-#define SET_BEGIN(set)							\
-	(&__CONCAT(__start_set_,set))
-#define SET_LIMIT(set)							\
-	(&__CONCAT(__stop_set_,set))
-
-#define	SET_FOREACH(pvar, set)						\
-	for (pvar = SET_BEGIN(set); pvar < SET_LIMIT(set); pvar++)
-
-int	humanize_number(char *_buf, size_t _len, int64_t _number,
-	    const char *_suffix, int _scale, int _flags);
-
-/* humanize_number(3) */
-#define HN_DECIMAL		0x01
-#define HN_NOSPACE		0x02
-#define HN_B			0x04
-#define HN_DIVISOR_1000		0x08
-
-#define HN_GETSCALE		0x10
-#define HN_AUTOSCALE		0x20
-
-#endif
 
 /* Constants for DDF RAID levels. */
 #define	DDF_RAID0		0x00
