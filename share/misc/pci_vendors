@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2011.12.21
-#	Date:    2011-12-21 03:15:01
+#	Version: 2012.01.06
+#	Date:    2012-01-06 03:15:01
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pciids.sf.net/.
@@ -605,6 +605,7 @@
 # nee ATI Technologies Inc.
 1002  Advanced Micro Devices [AMD] nee ATI
 	1314  Wrestler HDMI Audio [Radeon HD 6250/6310]
+	1714  BeaverCreek HDMI Audio [Radeon HD 6500D and 6400G-6600G series]
 	3150  M24 1P [Radeon Mobility X600]
 		103c 0934  nx8220
 	3151  M24 [FireMV 2400]
@@ -1827,6 +1828,9 @@
 	9614  RS780D [Radeon HD 3300]
 	9615  RS780E [Radeon HD 3200]
 	9616  RS780L [Radeon HD 3000]
+	9640  BeaverCreek [Radeon HD 6550D]
+	9641  BeaverCreek [Mobility Radeon HD 6620G]
+	964a  BeaverCreek [Radeon HD 6530D]
 	970f  RS880 HDMI Audio [Radeon HD 4200 Series]
 		1043 83a2  M4A785TD Motherboard
 		1043 843e  M5A88-V EVO
@@ -6431,7 +6435,7 @@
 	0427  G86 [GeForce 8400M GS]
 		103c 30cc  Pavilion dv6700
 	0428  G86 [GeForce 8400M G]
-	0429  G84M [Quadro NVS 140M]
+	0429  G86 [Quadro NVS 140M]
 		17aa 20d8  ThinkPad T61
 	042a  G86M [Quadro NVS 130M]
 	042b  G86M [Quadro NVS 135M]
@@ -11727,8 +11731,8 @@
 	4008  T420-CX Unified Wire Ethernet Controller
 	4009  T420-BT Unified Wire Ethernet Controller
 	400a  T404-BT Unified Wire Ethernet Controller
-	400c  T440-LP-CR Unified Wire Ethernet Controller
 	400d  T480 Unified Wire Ethernet Controller
+	400e  T440-LP-CR Unified Wire Ethernet Controller
 	4401  T420-CR Unified Wire Ethernet Controller
 	4402  T422-CR Unified Wire Ethernet Controller
 	4403  T440-CR Unified Wire Ethernet Controller
@@ -11739,8 +11743,8 @@
 	4408  T420-CX Unified Wire Ethernet Controller
 	4409  T420-BT Unified Wire Ethernet Controller
 	440a  T404-BT Unified Wire Ethernet Controller
-	440c  T440-LP-CR Unified Wire Ethernet Controller
 	440d  T480 Unified Wire Ethernet Controller
+	440e  T440-LP-CR Unified Wire Ethernet Controller
 	4501  T420-CR Unified Wire Storage Controller
 	4502  T422-CR Unified Wire Storage Controller
 	4503  T440-CR Unified Wire Storage Controller
@@ -11751,8 +11755,8 @@
 	4508  T420-CX Unified Wire Storage Controller
 	4509  T420-BT Unified Wire Storage Controller
 	450a  T404-BT Unified Wire Storage Controller
-	450c  T440-LP-CR Unified Wire Storage Controller
 	450d  T480 Unified Wire Storage Controller
+	450e  T440-LP-CR Unified Wire Storage Controller
 	4601  T420-CR Unified Wire Storage Controller
 	4602  T422-CR Unified Wire Storage Controller
 	4603  T440-CR Unified Wire Storage Controller
@@ -11763,8 +11767,8 @@
 	4608  T420-CX Unified Wire Storage Controller
 	4609  T420-BT Unified Wire Storage Controller
 	460a  T404-BT Unified Wire Storage Controller
-	460c  T440-LP-CR Unified Wire Storage Controller
 	460d  T480 Unified Wire Storage Controller
+	460e  T440-LP-CR Unified Wire Storage Controller
 	4701  T420-CR Unified Wire Ethernet Controller
 	4702  T422-CR Unified Wire Ethernet Controller
 	4703  T440-CR Unified Wire Ethernet Controller
@@ -11775,8 +11779,8 @@
 	4708  T420-CX Unified Wire Ethernet Controller
 	4709  T420-BT Unified Wire Ethernet Controller
 	470a  T404-BT Unified Wire Ethernet Controller
-	470c  T440-LP-CR Unified Wire Ethernet Controller
 	470d  T480 Unified Wire Ethernet Controller
+	470e  T440-LP-CR Unified Wire Ethernet Controller
 	4801  T420-CR Unified Wire Ethernet Controller
 	4802  T422-CR Unified Wire Ethernet Controller
 	4803  T440-CR Unified Wire Ethernet Controller
@@ -11787,6 +11791,8 @@
 	4808  T420-CX Unified Wire Ethernet Controller
 	4809  T420-BT Unified Wire Ethernet Controller
 	480a  T404-BT Unified Wire Ethernet Controller
+	480d  T480 Unified Wire Ethernet Controller
+	480e  T440-LP-CR Unified Wire Ethernet Controller
 	a000  PE10K Unified Wire Ethernet Controller
 1426  Storage Technology Corp.
 1427  Better On-Line Solutions
@@ -13704,7 +13710,7 @@
 		1b9a 0401  XW204E 802.11bgn Wireless Half-size Mini PCIe Card
 		1b9a 0c03  WB214E 802.11bgn Wireless Half-size Mini PCIe Card [AR9002WB-1NGCD]
 	002c  AR2427 802.11bg Wireless Network Adapter (PCI-Express)
-	002d  AR9287 Wireless Network Adapter
+	002d  AR9227 Wireless Network Adapter
 	002e  AR9287 Wireless Network Adapter (PCI-Express)
 	0030  AR9300 Wireless LAN adaptor
 		103c 1627  HB112AGN 802.11abgn 3x3 Wi-Fi Adapter
@@ -13944,6 +13950,7 @@
 17cb  Airgo Networks Inc
 	0001  AGN100 802.11 a/b/g True MIMO Wireless Card
 		1385 5c00  WGM511 Pre-N 802.11g Wireless CardBus Adapter
+		1737 0045  WMP54GX v1 802.11g Wireless-G PCI Adapter with SRX
 	0002  AGN300 802.11 a/b/g True MIMO Wireless Card
 		1385 6d00  WPNT511 RangeMax 240 Mbps Wireless CardBus Adapter
 		1737 0054  WPC54GX4 v1 802.11g Wireless-G Notebook Adapter with SRX400
@@ -14056,6 +14063,7 @@
 		1799 700a  F5D7000 v2000/v3000 Wireless G Desktop Card
 		1799 701a  F5D7010 v2000/v3000 Wireless G Notebook Card
 		1814 2560  RT2500 Wireless 802.11bg
+		182d 9073  WL-115 Wireless Network PCI Adapter
 		185f 22a0  CN-WF513 Wireless Cardbus Adapter
 		1948 3c00  C54RC v1 Wireless 11g CardBus Adapter
 		1948 3c01  C54Ri v1 Wireless 11g PCI Adapter
@@ -14722,7 +14730,7 @@
 	0611  ASM1061 SATA IDE Controller
 	0612  ASM1062 Serial ATA Controller
 	1042  ASM1042 SuperSpeed USB Host Controller
-	1080  ASM108x PCIe to PCI Bridge Controller
+	1080  ASM1083/1085 PCIe to PCI Bridge
 1b36  Red Hat, Inc.
 1b3a  Westar Display Technologies
 	7589  HRED J2000 - JPEG 2000 Video Codec Device
@@ -15625,30 +15633,30 @@
 	0960  80960RP (i960RP) Microprocessor/Bridge
 	0962  80960RM (i960RM) Bridge
 	0964  80960RP (i960RP) Microprocessor/Bridge
-	0be0  Atom Processor D2xxx Integrated Graphics Controller
-	0be1  Atom Processor D2xxx Integrated Graphics Controller
-	0be2  Atom Processor D2xxx Integrated Graphics Controller
-	0be3  Atom Processor D2xxx Integrated Graphics Controller
-	0be4  Atom Processor D2xxx Integrated Graphics Controller
-	0be5  Atom Processor D2xxx Integrated Graphics Controller
-	0be6  Atom Processor D2xxx Integrated Graphics Controller
-	0be7  Atom Processor D2xxx Integrated Graphics Controller
-	0be8  Atom Processor D2xxx Integrated Graphics Controller
-	0be9  Atom Processor D2xxx Integrated Graphics Controller
-	0bea  Atom Processor D2xxx Integrated Graphics Controller
-	0beb  Atom Processor D2xxx Integrated Graphics Controller
-	0bec  Atom Processor D2xxx Integrated Graphics Controller
-	0bed  Atom Processor D2xxx Integrated Graphics Controller
-	0bee  Atom Processor D2xxx Integrated Graphics Controller
-	0bef  Atom Processor D2xxx Integrated Graphics Controller
-	0bf0  Atom Processor D2xxx DRAM Controller
-	0bf1  Atom Processor D2xxx DRAM Controller
-	0bf2  Atom Processor D2xxx DRAM Controller
-	0bf3  Atom Processor D2xxx DRAM Controller
-	0bf4  Atom Processor D2xxx DRAM Controller
-	0bf5  Atom Processor D2xxx DRAM Controller
-	0bf6  Atom Processor D2xxx DRAM Controller
-	0bf7  Atom Processor D2xxx DRAM Controller
+	0be0  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0be1  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0be2  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0be3  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0be4  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0be5  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0be6  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0be7  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0be8  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0be9  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0bea  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0beb  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0bec  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0bed  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0bee  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0bef  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
+	0bf0  Atom Processor D2xxx/N2xxx DRAM Controller
+	0bf1  Atom Processor D2xxx/N2xxx DRAM Controller
+	0bf2  Atom Processor D2xxx/N2xxx DRAM Controller
+	0bf3  Atom Processor D2xxx/N2xxx DRAM Controller
+	0bf4  Atom Processor D2xxx/N2xxx DRAM Controller
+	0bf5  Atom Processor D2xxx/N2xxx DRAM Controller
+	0bf6  Atom Processor D2xxx/N2xxx DRAM Controller
+	0bf7  Atom Processor D2xxx/N2xxx DRAM Controller
 	1000  82542 Gigabit Ethernet Controller (Fiber)
 		0e11 b0df  NC6132 Gigabit Ethernet Adapter (1000-SX)
 		0e11 b0e0  NC6133 Gigabit Ethernet Adapter (1000-LX)
@@ -16399,6 +16407,9 @@
 		8086 5003  Ethernet 10G 2P X540-t Adapter
 	1529  82599 10 Gigabit Dual Port Backplane Connection with FCoE
 	152a  82599 10 Gigabit Dual port Network Connection with FCoE
+	154a  Ethernet Server Adapter X520-4
+		8086 011a  Ethernet Converged Network Adapter X520-4
+		8086 011b  Ethernet Converged Network Adapter X520-4
 	154d  82599EB 10-Gigabit SFP+ Network Connection
 		8086 7b11  10GbE 2P X520 Adapter
 	1960  80960RP (i960RP) Microprocessor
@@ -17114,7 +17125,7 @@
 		1028 0156  Precision 360
 		1028 0169  Precision 470
 		103c 12bc  d330 uT
-		1043 80a6  P4P800 Mainboard
+		1043 80a6  P4P800 series motherboard
 		1458 24d2  GA-8IPE1000 Pro2 motherboard (865PE)
 		1462 7280  865PE Neo2 (MS-6728)
 		1462 7650  Hetis 865GV-E (MS-7065)
@@ -17152,7 +17163,7 @@
 		1028 0169  Precision 470
 		103c 006a  NX9500
 		103c 12bc  d330 uT
-		1043 80f3  P4P800 Mainboard
+		1043 80f3  P4P800 series motherboard
 		1043 810f  P5P800-MX Mainboard
 		1458 a002  GA-8IPE1000/8KNXP motherboard
 		1462 0080  865PE Neo2-V (MS-6788) Mainboard
