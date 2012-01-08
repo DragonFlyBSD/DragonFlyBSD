@@ -77,10 +77,33 @@ static const struct ahci_device ahci_devices[] = {
 struct ahci_pciid {
 	uint16_t	ahci_vid;
 	uint16_t	ahci_did;
+	int		ahci_rev;
 };
 
 static const struct ahci_pciid ahci_msi_blacklist[] = {
-	{ PCI_VENDOR_ATI, PCI_PRODUCT_ATI_SB700_AHCI }
+	{ PCI_VENDOR_ATI,	PCI_PRODUCT_ATI_SB600_SATA, -1 },
+	{ PCI_VENDOR_ATI,	PCI_PRODUCT_ATI_SB700_AHCI, -1 },
+
+	{ PCI_VENDOR_MARVELL,	PCI_PRODUCT_MARVELL_88SE6121, -1 },
+	{ PCI_VENDOR_MARVELL,	PCI_PRODUCT_MARVELL_88SE6145, -1 },
+
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_1, 0xa1 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_2, 0xa1 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_3, 0xa1 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_4, 0xa1 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_5, 0xa1 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_6, 0xa1 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_7, 0xa1 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_8, 0xa1 },
+
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_1, 0xa2 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_2, 0xa2 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_3, 0xa2 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_4, 0xa2 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_5, 0xa2 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_6, 0xa2 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_7, 0xa2 },
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_8, 0xa2 }
 };
 
 static int	ahci_msi_enable = 1;
@@ -180,7 +203,7 @@ ahci_pci_attach(device_t dev)
 	u_int32_t cap, pi, reg;
 	u_int irq_flags;
 	bus_addr_t addr;
-	int i, error, msi_enable;
+	int i, error, msi_enable, rev;
 	const char *revision;
 
 	if (pci_read_config(dev, PCIR_COMMAND, 2) & 0x0400) {
@@ -200,11 +223,15 @@ ahci_pci_attach(device_t dev)
 
 	vid = pci_get_vendor(dev);
 	did = pci_get_device(dev);
+	rev = pci_get_revid(dev);
 	for (i = 0; i < NELEM(ahci_msi_blacklist); ++i) {
-		if (vid == ahci_msi_blacklist[i].ahci_vid &&
-		    did == ahci_msi_blacklist[i].ahci_did) {
-			msi_enable = 0;
-			break;
+		const struct ahci_pciid *id = &ahci_msi_blacklist[i];
+
+		if (vid == id->ahci_vid && did == id->ahci_did) {
+			if (id->ahci_rev < 0 || id->ahci_rev == rev) {
+				msi_enable = 0;
+				break;
+			}
 		}
 	}
 
