@@ -1,4 +1,4 @@
-/*	$NetBSD: fetch.c,v 1.193 2010/03/05 07:41:10 lukem Exp $	*/
+/*	$NetBSD: fetch.c,v 1.195 2011/12/10 05:53:58 lukem Exp $	*/
 
 /*-
  * Copyright (c) 1997-2009 The NetBSD Foundation, Inc.
@@ -34,7 +34,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: fetch.c,v 1.193 2010/03/05 07:41:10 lukem Exp $");
+__RCSID("$NetBSD: fetch.c,v 1.195 2011/12/10 05:53:58 lukem Exp $");
 #endif /* not lint */
 
 /*
@@ -52,6 +52,7 @@ __RCSID("$NetBSD: fetch.c,v 1.193 2010/03/05 07:41:10 lukem Exp $");
 #include <arpa/ftp.h>
 #include <arpa/inet.h>
 
+#include <assert.h>
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
@@ -75,7 +76,7 @@ typedef enum {
 	CLASSIC_URL_T
 } url_t;
 
-void		aborthttp(int);
+__dead static void	aborthttp(int);
 #ifndef NO_AUTH
 static int	auth_url(const char *, char **, const char *, const char *);
 static void	base64_encode(const unsigned char *, size_t, unsigned char *);
@@ -1126,6 +1127,7 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 	(void)xsignal(SIGQUIT, psummary);
 	oldintr = xsignal(SIGINT, aborthttp);
 
+	assert(rcvbuf_size > 0);
 	if ((size_t)rcvbuf_size > bufsize) {
 		if (xferbuf)
 			(void)free(xferbuf);
@@ -1324,7 +1326,7 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 /*
  * Abort a HTTP retrieval
  */
-void
+static void
 aborthttp(int notused)
 {
 	char msgbuf[100];
