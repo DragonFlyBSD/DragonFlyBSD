@@ -763,11 +763,19 @@ dointr(void)
 		if ((named = strncmp(intrname[i], "irq", 3)) != 0 ||
 		    intrcnt[i] > 0) {
 			infop = intrname[i];
-			if (verbose && named) {
-				snprintf(irqinfo, sizeof(irqinfo),
-					 "irq%-3zd %3zd: %s",
-					 i % MAX_INTS, i / MAX_INTS,
-					 intrname[i]);
+			if (verbose) {
+				ssize_t irq, cpu;
+
+				irq = i % MAX_INTS;
+				cpu = i / MAX_INTS;
+				if (named) {
+					snprintf(irqinfo, sizeof(irqinfo),
+						 "irq%-3zd %3zd: %s",
+						 irq, cpu, intrname[i]);
+				} else {
+					snprintf(irqinfo, sizeof(irqinfo),
+						 "irq%-3zd %3zd: ", irq, cpu);
+				}
 				infop = irqinfo;
 			}
 			printf("%-*.*s %11lu %10lu\n", 
