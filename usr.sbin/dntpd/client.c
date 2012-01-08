@@ -579,7 +579,8 @@ client_check_duplicate_ips(struct server_info **info_ary, int count)
 		info2 = info_ary[j];
 		if (i == j || info2->fd < 0)
 		    continue;
-		if (strcmp(info1->ipstr, info2->ipstr) == 0) {
+		if (info1->fd < 0 || /* info1 was lost in previous reconnect */
+		    strcmp(info1->ipstr, info2->ipstr) == 0) {
 		    reconnect_server(info1);
 		    break;
 		}
