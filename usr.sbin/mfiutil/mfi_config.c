@@ -52,34 +52,6 @@ static void	dump_config(int fd, struct mfi_config_data *config);
 static int	add_spare(int ac, char **av);
 static int	remove_spare(int ac, char **av);
 
-static long
-dehumanize(const char *value)
-{
-        char    *vtp;
-        long    iv;
-
-        if (value == NULL)
-                return (0);
-        iv = strtoq(value, &vtp, 0);
-        if (vtp == value || (vtp[0] != '\0' && vtp[1] != '\0')) {
-                return (0);
-        }
-        switch (vtp[0]) {
-        case 't': case 'T':
-                iv *= 1024;
-        case 'g': case 'G':
-                iv *= 1024;
-        case 'm': case 'M':
-                iv *= 1024;
-        case 'k': case 'K':
-                iv *= 1024;
-        case '\0':
-                break;
-        default:
-                return (0);
-        }
-        return (iv);
-}
 int
 mfi_config_read(int fd, struct mfi_config_data **configp)
 {
@@ -544,7 +516,7 @@ create_volume(int ac, char **av)
 	int error, fd, i, raid_type;
 	int narrays, nvolumes, arrays_per_volume;
 	struct array_info *arrays;
-	long stripe_size;
+	int64_t stripe_size;
 #ifdef DEBUG
 	int dump;
 #endif
@@ -620,9 +592,15 @@ create_volume(int ac, char **av)
 			break;
 #endif
 		case 's':
-			stripe_size = dehumanize(optarg);
-			if ((stripe_size < 512) || (!powerof2(stripe_size)))
+			error = dehumanize_number(optarg, &stripe_size);
+			if (error != 0) {
+				warnx("Illegal stripe size");
+				goto error;
+			}
+			if ((stripe_size < 512) || (!powerof2(stripe_size))) {
+				warnx("Illegal stripe size, using 64K");
 				stripe_size = 64 * 1024;
+			}
 			break;
 		case 'v':
 			verbose = 1;
