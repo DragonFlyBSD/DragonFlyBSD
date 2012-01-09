@@ -1,5 +1,4 @@
 # $FreeBSD: src/etc/master.passwd,v 1.25.2.6 2002/06/30 17:57:17 des Exp $
-# $DragonFly: src/etc/master.passwd,v 1.7 2008/08/30 16:07:58 hasso Exp $
 #
 root::0:0::0:0:Charlie &:/root:/bin/csh
 toor:*:0:0::0:0:Bourne-again Superuser:/root:
@@ -8,6 +7,7 @@ operator:*:2:5::0:0:System &:/:/sbin/nologin
 bin:*:3:7::0:0:Binaries Commands and Source:/:/sbin/nologin
 tty:*:4:65533::0:0:Tty Sandbox:/:/sbin/nologin
 kmem:*:5:65533::0:0:KMem Sandbox:/:/sbin/nologin
+mail:*:6:6::0:0:Mail user:/nonexistent:/sbin/nologin
 games:*:7:13::0:0:Games pseudo-user:/usr/games:/sbin/nologin
 news:*:8:8::0:0:News Subsystem:/:/sbin/nologin
 man:*:9:9::0:0:Mister Man Pages:/usr/share/man:/sbin/nologin

@@ -1,5 +1,4 @@
 # $FreeBSD: src/etc/ftpusers,v 1.6.2.3 2002/06/30 17:57:17 des Exp $
-# $DragonFly: src/etc/ftpusers,v 1.7 2008/08/30 16:07:58 hasso Exp $
 #
 # list of users disallowed any ftp access.
 # read by ftpd(8).
@@ -11,6 +10,7 @@ operator
 bin
 tty
 kmem
+mail
 games
 news
 man

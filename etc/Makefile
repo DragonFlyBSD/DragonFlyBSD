@@ -105,6 +105,10 @@ remove-obsolete-files:
 	done
 
 preupgrade:
+	(pw -V ${DESTDIR}/etc usershow mail -q > /dev/null) || \
+		pw -V ${DESTDIR}/etc useradd mail -u 6 -g 6 \
+		   -c "Mail user" \
+		   -d /nonexistent -s /sbin/nologin
 .if !defined(NO_SENDMAIL)
 	(pw -V ${DESTDIR}/etc groupshow smmsp -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc groupadd smmsp -g 25

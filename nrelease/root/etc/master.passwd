@@ -1,5 +1,3 @@
-# $DragonFly: src/nrelease/installer/etc/master.passwd,v 1.5 2008/08/31 17:12:13 swildner Exp $
-#
 root::0:0::0:0:Charlie &:/root:/bin/csh
 toor:*:0:0::0:0:Bourne-again Superuser:/root:
 installer::0:0::0:0:Bourne-again Superuser:/root:/usr/sbin/installer
@@ -8,6 +6,7 @@ operator:*:2:5::0:0:System &:/:/sbin/nologin
 bin:*:3:7::0:0:Binaries Commands and Source:/:/sbin/nologin
 tty:*:4:65533::0:0:Tty Sandbox:/:/sbin/nologin
 kmem:*:5:65533::0:0:KMem Sandbox:/:/sbin/nologin
+mail:*:6:6::0:0:Mail user:/nonexistent:/sbin/nologin
 games:*:7:13::0:0:Games pseudo-user:/usr/games:/sbin/nologin
 news:*:8:8::0:0:News Subsystem:/:/sbin/nologin
 man:*:9:9::0:0:Mister Man Pages:/usr/share/man:/sbin/nologin
