@@ -64,7 +64,7 @@
 
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_compression_compress.c 201094 2009-12-28 02:29:21Z kientzle $");
+__FBSDID("$FreeBSD$");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -95,6 +95,7 @@ struct private_data {
 	/* Input variables. */
 	const unsigned char	*next_in;
 	size_t			 avail_in;
+	size_t			 consume_unnotified;
 	int			 bit_buffer;
 	int			 bits_avail;
 	size_t			 bytes_in_section;
@@ -140,13 +141,25 @@ static int	compress_filter_close(struct archive_read_filter *);
 static int	getbits(struct archive_read_filter *, int n);
 static int	next_code(struct archive_read_filter *);
 
+#if ARCHIVE_VERSION_NUMBER < 4000000
+/* Deprecated; remove in libarchive 4.0 */
 int
-archive_read_support_compression_compress(struct archive *_a)
+archive_read_support_compression_compress(struct archive *a)
+{
+	return archive_read_support_filter_compress(a);
+}
+#endif
+
+int
+archive_read_support_filter_compress(struct archive *_a)
 {
 	struct archive_read *a = (struct archive_read *)_a;
-	struct archive_read_filter_bidder *bidder = __archive_read_get_bidder(a);
+	struct archive_read_filter_bidder *bidder;
 
-	if (bidder == NULL)
+	archive_check_magic(_a, ARCHIVE_READ_MAGIC,
+	    ARCHIVE_STATE_NEW, "archive_read_support_filter_compress");
+
+	if (__archive_read_get_bidder(a, &bidder) != ARCHIVE_OK)
 		return (ARCHIVE_FATAL);
 
 	bidder->data = NULL;
@@ -159,10 +172,7 @@ archive_read_support_compression_compress(struct archive *_a)
 
 /*
  * Test whether we can handle this data.
- *
- * This logic returns zero if any part of the signature fails.  It
- * also tries to Do The Right Thing if a very short buffer prevents us
- * from verifying as much as we would like.
+ * This logic returns zero if any part of the signature fails.
  */
 static int
 compress_bidder_bid(struct archive_read_filter_bidder *self,
@@ -180,13 +190,9 @@ compress_bidder_bid(struct archive_read_filter_bidder *self,
 		return (0);
 
 	bits_checked = 0;
-	if (buffer[0] != 037)	/* Verify first ID byte. */
+	if (buffer[0] != 0x1F || buffer[1] != 0x9D)
 		return (0);
-	bits_checked += 8;
-
-	if (buffer[1] != 0235)	/* Verify second ID byte. */
-		return (0);
-	bits_checked += 8;
+	bits_checked += 16;
 
 	/*
 	 * TODO: Verify more.
@@ -420,6 +426,11 @@ getbits(struct archive_read_filter *self, int n)
 
 	while (state->bits_avail < n) {
 		if (state->avail_in <= 0) {
+			if (state->consume_unnotified) {
+				__archive_read_filter_consume(self->upstream,
+					state->consume_unnotified);
+				state->consume_unnotified = 0;
+			}
 			state->next_in
 			    = __archive_read_filter_ahead(self->upstream,
 				1, &ret);
@@ -427,8 +438,7 @@ getbits(struct archive_read_filter *self, int n)
 				return (-1);
 			if (ret < 0 || state->next_in == NULL)
 				return (ARCHIVE_FATAL);
-			state->avail_in = ret;
-			__archive_read_filter_consume(self->upstream, ret);
+			state->consume_unnotified = state->avail_in = ret;
 		}
 		state->bit_buffer |= *state->next_in++ << state->bits_avail;
 		state->avail_in--;

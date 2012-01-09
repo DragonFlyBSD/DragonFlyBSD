@@ -63,15 +63,25 @@ static ssize_t	rpm_filter_read(struct archive_read_filter *,
 		    const void **);
 static int	rpm_filter_close(struct archive_read_filter *);
 
+#if ARCHIVE_VERSION_NUMBER < 4000000
+/* Deprecated; remove in libarchive 4.0 */
 int
-archive_read_support_compression_rpm(struct archive *_a)
+archive_read_support_compression_rpm(struct archive *a)
+{
+	return archive_read_support_filter_rpm(a);
+}
+#endif
+
+int
+archive_read_support_filter_rpm(struct archive *_a)
 {
 	struct archive_read *a = (struct archive_read *)_a;
 	struct archive_read_filter_bidder *bidder;
 
-	bidder = __archive_read_get_bidder(a);
-	archive_clear_error(_a);
-	if (bidder == NULL)
+	archive_check_magic(_a, ARCHIVE_READ_MAGIC,
+	    ARCHIVE_STATE_NEW, "archive_read_support_filter_rpm");
+
+	if (__archive_read_get_bidder(a, &bidder) != ARCHIVE_OK)
 		return (ARCHIVE_FATAL);
 
 	bidder->data = NULL;
@@ -98,20 +108,11 @@ rpm_bidder_bid(struct archive_read_filter_bidder *self,
 
 	bits_checked = 0;
 	/*
-	 * Verify Header Magic Bytes : 0xed 0xab 0xee 0xdb
+	 * Verify Header Magic Bytes : 0XED 0XAB 0XEE 0XDB
 	 */
-	if (b[0] != 0xed)
+	if (memcmp(b, "\xED\xAB\xEE\xDB", 4) != 0)
 		return (0);
-	bits_checked += 8;
-	if (b[1] != 0xab)
-		return (0);
-	bits_checked += 8;
-	if (b[2] != 0xee)
-		return (0);
-	bits_checked += 8;
-	if (b[3] != 0xdb)
-		return (0);
-	bits_checked += 8;
+	bits_checked += 32;
 	/*
 	 * Check major version.
 	 */

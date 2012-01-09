@@ -100,15 +100,16 @@ archive_read_extract2(struct archive *_a, struct archive_entry *entry,
 	int r, r2;
 
 	/* Set up for this particular entry. */
-	archive_write_disk_set_skip_file(ad,
-	    a->skip_file_dev, a->skip_file_ino);
+	if (a->skip_file_set)
+		archive_write_disk_set_skip_file(ad,
+		    a->skip_file_dev, a->skip_file_ino);
 	r = archive_write_header(ad, entry);
 	if (r < ARCHIVE_WARN)
 		r = ARCHIVE_WARN;
 	if (r != ARCHIVE_OK)
 		/* If _write_header failed, copy the error. */
  		archive_copy_error(&a->archive, ad);
-	else if (archive_entry_size(entry) > 0)
+	else if (!archive_entry_size_is_set(entry) || archive_entry_size(entry) > 0)
 		/* Otherwise, pour data into the entry. */
 		r = copy_data(_a, ad);
 	r2 = archive_write_finish_entry(ad);
@@ -116,7 +117,7 @@ archive_read_extract2(struct archive *_a, struct archive_entry *entry,
 		r2 = ARCHIVE_WARN;
 	/* Use the first message. */
 	if (r2 != ARCHIVE_OK && r == ARCHIVE_OK)
- 		archive_copy_error(&a->archive, ad);
+		archive_copy_error(&a->archive, ad);
 	/* Use the worst error return. */
 	if (r2 < r)
 		r = r2;
@@ -138,13 +139,15 @@ archive_read_extract_set_progress_callback(struct archive *_a,
 static int
 copy_data(struct archive *ar, struct archive *aw)
 {
-	off_t offset;
+	int64_t offset;
 	const void *buff;
 	struct extract *extract;
 	size_t size;
 	int r;
 
 	extract = get_extract((struct archive_read *)ar);
+	if (extract == NULL)
+		return (ARCHIVE_FATAL);
 	for (;;) {
 		r = archive_read_data_block(ar, &buff, &size, &offset);
 		if (r == ARCHIVE_EOF)
@@ -173,10 +176,7 @@ archive_read_extract_cleanup(struct archive_read *a)
 {
 	int ret = ARCHIVE_OK;
 
-#if ARCHIVE_API_VERSION > 1
-	ret =
-#endif
-	    archive_write_finish(a->extract->ad);
+	ret = archive_write_free(a->extract->ad);
 	free(a->extract);
 	a->extract = NULL;
 	return (ret);

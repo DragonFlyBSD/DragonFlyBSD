@@ -25,7 +25,7 @@
 
 #include "archive_platform.h"
 
-__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_compression_gzip.c 201082 2009-12-28 02:05:28Z kientzle $");
+__FBSDID("$FreeBSD$");
 
 
 #ifdef HAVE_ERRNO_H
@@ -78,13 +78,25 @@ static int	gzip_bidder_bid(struct archive_read_filter_bidder *,
 		    struct archive_read_filter *);
 static int	gzip_bidder_init(struct archive_read_filter *);
 
+#if ARCHIVE_VERSION_NUMBER < 4000000
+/* Deprecated; remove in libarchive 4.0 */
 int
-archive_read_support_compression_gzip(struct archive *_a)
+archive_read_support_compression_gzip(struct archive *a)
+{
+	return archive_read_support_filter_gzip(a);
+}
+#endif
+
+int
+archive_read_support_filter_gzip(struct archive *_a)
 {
 	struct archive_read *a = (struct archive_read *)_a;
-	struct archive_read_filter_bidder *bidder = __archive_read_get_bidder(a);
+	struct archive_read_filter_bidder *bidder;
 
-	if (bidder == NULL)
+	archive_check_magic(_a, ARCHIVE_READ_MAGIC,
+	    ARCHIVE_STATE_NEW, "archive_read_support_filter_gzip");
+
+	if (__archive_read_get_bidder(a, &bidder) != ARCHIVE_OK)
 		return (ARCHIVE_FATAL);
 
 	bidder->data = NULL;
@@ -123,15 +135,10 @@ peek_at_header(struct archive_read_filter *filter, int *pbits)
 	p = __archive_read_filter_ahead(filter, len, &avail);
 	if (p == NULL || avail == 0)
 		return (0);
-	if (p[0] != 037)
+	/* We only support deflation- third byte must be 0x08. */
+	if (memcmp(p, "\x1F\x8B\x08", 3) != 0)
 		return (0);
-	bits += 8;
-	if (p[1] != 0213)
-		return (0);
-	bits += 8;
-	if (p[2] != 8) /* We only support deflation. */
-		return (0);
-	bits += 8;
+	bits += 24;
 	if ((p[3] & 0xE0)!= 0)	/* No reserved flags set. */
 		return (0);
 	bits += 3;
@@ -394,8 +401,12 @@ gzip_filter_read(struct archive_read_filter *self, const void **p)
 		 * it so, hence this ugly cast. */
 		state->stream.next_in = (unsigned char *)(uintptr_t)
 		    __archive_read_filter_ahead(self->upstream, 1, &avail_in);
-		if (state->stream.next_in == NULL)
+		if (state->stream.next_in == NULL) {
+			archive_set_error(&self->archive->archive,
+			    ARCHIVE_ERRNO_MISC,
+			    "truncated gzip input");
 			return (ARCHIVE_FATAL);
+		}
 		state->stream.avail_in = avail_in;
 
 		/* Decompress and consume some of that data. */
