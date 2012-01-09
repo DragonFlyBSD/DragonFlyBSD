@@ -15,6 +15,7 @@ SRCS=	cmds.c cmdtab.c complete.c domacro.c fetch.c ftp.c main.c \
 	progressbar.c ruserpass.c util.c
 
 CFLAGS+=-DINET6 -I${.OBJDIR} -I${CONTRIBDIR} -I${.CURDIR}/../../lib/libc/stdtime
+CFLAGS+=-D__dead=__dead2
 LDADD+=	-ledit -ltermcap -lutil
 DPADD+=	${LIBEDIT} ${LIBTERMCAP} ${LIBUTIL}
 
