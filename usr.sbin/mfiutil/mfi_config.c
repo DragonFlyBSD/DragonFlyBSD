@@ -1220,7 +1220,7 @@ dump(int ac, char **av)
 	}
 
 	/* Get the stashed copy of the last dcmd from the driver. */
-	snprintf(buf, sizeof(buf), "dev.mfi.%d.debug_command", mfi_unit);
+	snprintf(buf, sizeof(buf), "hw.mfi%d.debug_command", mfi_unit);
 	if (sysctlbyname(buf, NULL, &len, NULL, 0) < 0) {
 		error = errno;
 		warn("Failed to read debug command");
