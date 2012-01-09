@@ -1202,7 +1202,12 @@ post_stats:
 			 * consistent view of inbound packets.
 			 */
 			M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
-
+			if (m == NULL) {
+				/*
+				 * M_PREPEND frees the mbuf in case of failure.
+				 */
+				return;
+			}
 			/*
 			 * Hold BGL and recheck ng_ether_input_orphan_p
 			 */
