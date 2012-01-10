@@ -473,7 +473,7 @@ static struct lwkt_token ioapic_irqmap_tok =
 
 #define IOAPIC_IMT_UNUSED	0
 #define IOAPIC_IMT_RESERVED	1
-#define IOAPIC_IMT_LINE		2
+#define IOAPIC_IMT_LEGACY	2
 #define IOAPIC_IMT_SYSCALL	3
 #define IOAPIC_IMT_SHADOW	4
 #define IOAPIC_IMT_MSI		5
@@ -533,7 +533,7 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 };
 
 static int	ioapic_abi_extint_irq = -1;
-static int	ioapic_abi_line_irq_max;
+static int	ioapic_abi_legacy_irq_max;
 static int	ioapic_abi_gsi_balance;
 static int	ioapic_abi_msi_start;	/* NOTE: for testing only */
 
@@ -551,7 +551,7 @@ ioapic_abi_intr_enable(int irq)
 	KASSERT(IOAPIC_IMT_ISHWI(map),
 	    ("ioapic enable, not hwi irq %d, type %d, cpu%d\n",
 	     irq, map->im_type, mycpuid));
-	if (map->im_type != IOAPIC_IMT_LINE)
+	if (map->im_type != IOAPIC_IMT_LEGACY)
 		return;
 
 	IOAPIC_INTREN(irq);
@@ -569,7 +569,7 @@ ioapic_abi_intr_disable(int irq)
 	KASSERT(IOAPIC_IMT_ISHWI(map),
 	    ("ioapic disable, not hwi irq %d, type %d, cpu%d\n",
 	     irq, map->im_type, mycpuid));
-	if (map->im_type != IOAPIC_IMT_LINE)
+	if (map->im_type != IOAPIC_IMT_LEGACY)
 		return;
 
 	IOAPIC_INTRDIS(irq);
@@ -624,7 +624,7 @@ ioapic_abi_intr_setup(int intr, int flags)
 	KASSERT(IOAPIC_IMT_ISHWI(map),
 	    ("ioapic setup, not hwi irq %d, type %d, cpu%d",
 	     intr, map->im_type, mycpuid));
-	if (map->im_type != IOAPIC_IMT_LINE)
+	if (map->im_type != IOAPIC_IMT_LEGACY)
 		return;
 
 	KASSERT(ioapic_irqs[intr].io_addr != NULL,
@@ -675,7 +675,7 @@ ioapic_abi_intr_teardown(int intr)
 	KASSERT(IOAPIC_IMT_ISHWI(map),
 	    ("ioapic teardown, not hwi irq %d, type %d, cpu%d",
 	     intr, map->im_type, mycpuid));
-	if (map->im_type != IOAPIC_IMT_LINE)
+	if (map->im_type != IOAPIC_IMT_LEGACY)
 		return;
 
 	KASSERT(ioapic_irqs[intr].io_addr != NULL,
@@ -764,15 +764,15 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
 
 	KKASSERT(irq >= 0 && irq < IOAPIC_HWI_VECTORS);
-	if (irq > ioapic_abi_line_irq_max)
-		ioapic_abi_line_irq_max = irq;
+	if (irq > ioapic_abi_legacy_irq_max)
+		ioapic_abi_legacy_irq_max = irq;
 
 	cpuid = ioapic_abi_gsi_cpuid(irq, gsi);
 
 	map = &ioapic_irqmaps[cpuid][irq];
 
 	KKASSERT(map->im_type == IOAPIC_IMT_UNUSED);
-	map->im_type = IOAPIC_IMT_LINE;
+	map->im_type = IOAPIC_IMT_LEGACY;
 
 	map->im_gsi = gsi;
 	map->im_trig = trig;
@@ -809,14 +809,16 @@ ioapic_abi_fixup_irqmap(void)
 {
 	int cpu;
 
-	ioapic_abi_line_irq_max += 1;
-	if (bootverbose)
-		kprintf("IOAPIC: line irq max %d\n", ioapic_abi_line_irq_max);
+	ioapic_abi_legacy_irq_max += 1;
+	if (bootverbose) {
+		kprintf("IOAPIC: legacy irq max %d\n",
+		    ioapic_abi_legacy_irq_max);
+	}
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		int i;
 
-		for (i = 0; i < ioapic_abi_line_irq_max; ++i) {
+		for (i = 0; i < ioapic_abi_legacy_irq_max; ++i) {
 			struct ioapic_irqmap *map = &ioapic_irqmaps[cpu][i];
 
 			if (map->im_type == IOAPIC_IMT_UNUSED) {
@@ -841,12 +843,12 @@ ioapic_abi_find_gsi(int gsi, enum intr_trigger trig, enum intr_polarity pola)
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		int irq;
 
-		for (irq = 0; irq < ioapic_abi_line_irq_max; ++irq) {
+		for (irq = 0; irq < ioapic_abi_legacy_irq_max; ++irq) {
 			const struct ioapic_irqmap *map =
 			    &ioapic_irqmaps[cpu][irq];
 
 			if (map->im_gsi == gsi) {
-				KKASSERT(map->im_type == IOAPIC_IMT_LINE);
+				KKASSERT(map->im_type == IOAPIC_IMT_LEGACY);
 
 				if (map->im_flags & IOAPIC_IMF_CONF) {
 					if (map->im_trig != trig ||
@@ -868,13 +870,13 @@ ioapic_abi_find_irq(int irq, enum intr_trigger trig, enum intr_polarity pola)
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
 
-	if (irq < 0 || irq >= ioapic_abi_line_irq_max)
+	if (irq < 0 || irq >= ioapic_abi_legacy_irq_max)
 		return -1;
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		const struct ioapic_irqmap *map = &ioapic_irqmaps[cpu][irq];
 
-		if (map->im_type == IOAPIC_IMT_LINE) {
+		if (map->im_type == IOAPIC_IMT_LEGACY) {
 			if (map->im_flags & IOAPIC_IMF_CONF) {
 				if (map->im_trig != trig ||
 				    map->im_pola != pola)
@@ -897,10 +899,10 @@ ioapic_abi_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 	KKASSERT(trig == INTR_TRIGGER_EDGE || trig == INTR_TRIGGER_LEVEL);
 	KKASSERT(pola == INTR_POLARITY_HIGH || pola == INTR_POLARITY_LOW);
 
-	KKASSERT(irq >= 0 && irq < ioapic_abi_line_irq_max);
+	KKASSERT(irq >= 0 && irq < ioapic_abi_legacy_irq_max);
 	for (cpuid = 0; cpuid < ncpus; ++cpuid) {
 		map = &ioapic_irqmaps[cpuid][irq];
-		if (map->im_type == IOAPIC_IMT_LINE)
+		if (map->im_type == IOAPIC_IMT_LEGACY)
 			break;
 	}
 	KKASSERT(cpuid < ncpus);
@@ -979,14 +981,14 @@ ioapic_abi_extint_irqmap(int irq)
 	map = &ioapic_irqmaps[0][irq];
 
 	KKASSERT(map->im_type == IOAPIC_IMT_RESERVED ||
-		 map->im_type == IOAPIC_IMT_LINE);
-	if (map->im_type == IOAPIC_IMT_LINE) {
+		 map->im_type == IOAPIC_IMT_LEGACY);
+	if (map->im_type == IOAPIC_IMT_LEGACY) {
 		if (map->im_flags & IOAPIC_IMF_CONF)
 			return EEXIST;
 	}
 	ioapic_abi_extint_irq = irq;
 
-	map->im_type = IOAPIC_IMT_LINE;
+	map->im_type = IOAPIC_IMT_LEGACY;
 	map->im_trig = INTR_TRIGGER_EDGE;
 	map->im_pola = INTR_POLARITY_HIGH;
 	map->im_flags = IOAPIC_IMF_CONF;
@@ -1025,11 +1027,11 @@ ioapic_abi_intr_cpuid(int irq)
 	const struct ioapic_irqmap *map = NULL;
 	int cpuid;
 
-	KKASSERT(irq >= 0 && irq < ioapic_abi_line_irq_max);
+	KKASSERT(irq >= 0 && irq < ioapic_abi_legacy_irq_max);
 
 	for (cpuid = 0; cpuid < ncpus; ++cpuid) {
 		map = &ioapic_irqmaps[cpuid][irq];
-		if (map->im_type == IOAPIC_IMT_LINE)
+		if (map->im_type == IOAPIC_IMT_LEGACY)
 			return cpuid;
 	}
 

@@ -94,7 +94,7 @@ static struct lwkt_token icu_irqmap_tok =
 
 #define ICU_IMT_UNUSED		0	/* KEEP THIS */
 #define ICU_IMT_RESERVED	1
-#define ICU_IMT_LINE		2
+#define ICU_IMT_LEGACY		2
 #define ICU_IMT_SYSCALL		3
 #define ICU_IMT_SHADOW		4
 #define ICU_IMT_MSI		5
@@ -165,7 +165,7 @@ icu_abi_intr_enable(int irq)
 	KASSERT(ICU_IMT_ISHWI(map),
 	    ("icu enable, not hwi irq %d, type %d, cpu%d\n",
 	     irq, map->im_type, mycpuid));
-	if (map->im_type != ICU_IMT_LINE)
+	if (map->im_type != ICU_IMT_LEGACY)
 		return;
 
 	ICU_INTREN(irq);
@@ -183,7 +183,7 @@ icu_abi_intr_disable(int irq)
 	KASSERT(ICU_IMT_ISHWI(map),
 	    ("icu disable, not hwi irq %d, type %d, cpu%d\n",
 	     irq, map->im_type, mycpuid));
-	if (map->im_type != ICU_IMT_LINE)
+	if (map->im_type != ICU_IMT_LEGACY)
 		return;
 
 	ICU_INTRDIS(irq);
@@ -250,7 +250,7 @@ icu_abi_intr_setup(int intr, int flags __unused)
 	KASSERT(ICU_IMT_ISHWI(map),
 	    ("icu setup, not hwi irq %d, type %d, cpu%d\n",
 	     intr, map->im_type, mycpuid));
-	if (map->im_type != ICU_IMT_LINE)
+	if (map->im_type != ICU_IMT_LEGACY)
 		return;
 
 	ef = read_eflags();
@@ -274,7 +274,7 @@ icu_abi_intr_teardown(int intr)
 	KASSERT(ICU_IMT_ISHWI(map),
 	    ("icu teardown, not hwi irq %d, type %d, cpu%d\n",
 	     intr, map->im_type, mycpuid));
-	if (map->im_type != ICU_IMT_LINE)
+	if (map->im_type != ICU_IMT_LEGACY)
 		return;
 
 	ef = read_eflags();
@@ -317,7 +317,7 @@ icu_abi_initmap(void)
 				icu_irqmaps[cpu][i].im_type = ICU_IMT_RESERVED;
 		} else {
 			for (i = 0; i < ICU_HWI_VECTORS; ++i)
-				icu_irqmaps[cpu][i].im_type = ICU_IMT_LINE;
+				icu_irqmaps[cpu][i].im_type = ICU_IMT_LEGACY;
 			icu_irqmaps[cpu][ICU_IRQ_SLAVE].im_type =
 			    ICU_IMT_RESERVED;
 
@@ -356,7 +356,7 @@ icu_abi_intr_config(int irq, enum intr_trigger trig,
 	KKASSERT(irq >= 0 && irq < IDT_HWI_VECTORS);
 	map = &icu_irqmaps[0][irq];
 
-	KKASSERT(map->im_type == ICU_IMT_LINE);
+	KKASSERT(map->im_type == ICU_IMT_LEGACY);
 
 	/* TODO: Check whether it is configured or not */
 
