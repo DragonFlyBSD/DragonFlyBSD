@@ -244,7 +244,6 @@ ng_ether_input2(node_p node, struct mbuf **mp)
 {
 	const priv_p priv = node->private;
 	meta_p meta = NULL;
-	int error;
 
 	/* Send out lower/orphan hook */
 	ng_queue_data(priv->lower, *mp, meta);
