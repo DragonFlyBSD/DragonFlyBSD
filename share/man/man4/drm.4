@@ -23,7 +23,7 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd November 15, 2011
+.Dd January 11, 2012
 .Dt DRM 4
 .Os
 .Sh NAME
@@ -109,6 +109,18 @@ link to
 .Pa /dev/dri/card0
 has to be created using
 .Xr devfsctl 8 .
+.Pp
+If
+.Xr Xorg 1
+acceleration fails to initialize with a
+.Dq contigmalloc_map: failed size...
+error in dmesg, the reserve of memory for DMA ran out early and should
+be increased to a sufficiently high value by setting the
+.Va vm.dma_reserved
+loader tunable.
+A read only
+.Xr sysctl 8
+variable of the same name is provided for obtaining its current value.
 .Pp
 Debugging output can be enabled and disabled by setting the
 .Xr sysctl 8
