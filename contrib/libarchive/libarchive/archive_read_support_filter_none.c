@@ -26,49 +26,27 @@
 #include "archive_platform.h"
 __FBSDID("$FreeBSD$");
 
+#include "archive.h"
 #include "archive_private.h"
-#include "archive_entry.h"
 
-#if defined(_WIN32) && !defined(__CYGWIN__)
-
-#define EPOC_TIME ARCHIVE_LITERAL_ULL(116444736000000000)
-
-__inline static void
-fileTimeToUtc(const FILETIME *filetime, time_t *time, long *ns)
+#if ARCHIVE_VERSION_NUMBER < 4000000
+/* Deprecated; remove in libarchive 4.0 */
+int
+archive_read_support_compression_none(struct archive *a)
 {
-	ULARGE_INTEGER utc;
-
-	utc.HighPart = filetime->dwHighDateTime;
-	utc.LowPart  = filetime->dwLowDateTime;
-	if (utc.QuadPart >= EPOC_TIME) {
-		utc.QuadPart -= EPOC_TIME;
-		*time = (time_t)(utc.QuadPart / 10000000);	/* milli seconds base */
-		*ns = (long)(utc.QuadPart % 10000000) * 100;/* nano seconds base */
-	} else {
-		*time = 0;
-		*ns = 0;
-	}
-}
-
-void
-archive_entry_copy_bhfi(struct archive_entry *entry,
-			BY_HANDLE_FILE_INFORMATION *bhfi)
-{
-	time_t secs;
-	long nsecs;
-
-	fileTimeToUtc(&bhfi->ftLastAccessTime, &secs, &nsecs);
-	archive_entry_set_atime(entry, secs, nsecs);
-	fileTimeToUtc(&bhfi->ftLastWriteTime, &secs, &nsecs);
-	archive_entry_set_mtime(entry, secs, nsecs);
-	fileTimeToUtc(&bhfi->ftCreationTime, &secs, &nsecs);
-	archive_entry_set_birthtime(entry, secs, nsecs);
-	archive_entry_set_dev(entry, bhfi->dwVolumeSerialNumber);
-	archive_entry_set_ino64(entry, (((int64_t)bhfi->nFileIndexHigh) << 32)
-		+ bhfi->nFileIndexLow);
-	archive_entry_set_nlink(entry, bhfi->nNumberOfLinks);
-	archive_entry_set_size(entry, (((int64_t)bhfi->nFileSizeHigh) << 32)
-		+ bhfi->nFileSizeLow);
-//	archive_entry_set_mode(entry, st->st_mode);
+	return archive_read_support_filter_none(a);
 }
 #endif
+
+/*
+ * Uncompressed streams are handled implicitly by the read core,
+ * so this is now a no-op.
+ */
+int
+archive_read_support_filter_none(struct archive *a)
+{
+	archive_check_magic(a, ARCHIVE_READ_MAGIC,
+	    ARCHIVE_STATE_NEW, "archive_read_support_filter_none");
+
+	return (ARCHIVE_OK);
+}

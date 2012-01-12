@@ -56,7 +56,7 @@ __FBSDID("$FreeBSD: src/usr.bin/tar/util.c,v 1.23 2008/12/15 06:00:25 kientzle E
 #include <wctype.h>
 #else
 /* If we don't have wctype, we need to hack up some version of iswprint(). */
-#define iswprint isprint
+#define	iswprint isprint
 #endif
 
 #include "bsdtar.h"
@@ -66,14 +66,14 @@ static size_t	bsdtar_expand_char(char *, size_t, char);
 static const char *strip_components(const char *path, int elements);
 
 #if defined(_WIN32) && !defined(__CYGWIN__)
-#define read _read
+#define	read _read
 #endif
 
 /* TODO:  Hack up a version of mbtowc for platforms with no wide
  * character support at all.  I think the following might suffice,
  * but it needs careful testing.
  * #if !HAVE_MBTOWC
- * #define mbtowc(wcp, p, n) ((*wcp = *p), 1)
+ * #define	mbtowc(wcp, p, n) ((*wcp = *p), 1)
  * #endif
  */
 
@@ -226,7 +226,11 @@ yes(const char *fmt, ...)
 	fflush(stderr);
 
 	l = read(2, buff, sizeof(buff) - 1);
-	if (l <= 0)
+	if (l < 0) {
+	  fprintf(stderr, "Keyboard read failed\n");
+	  exit(1);
+	}
+	if (l == 0)
 		return (0);
 	buff[l] = 0;
 
@@ -263,12 +267,19 @@ yes(const char *fmt, ...)
  * about -C with non-existent directories; such requests will only
  * fail if the directory must be accessed.
  *
- * TODO: Make this handle Windows paths correctly.
  */
 void
 set_chdir(struct bsdtar *bsdtar, const char *newdir)
 {
+#if defined(_WIN32) && !defined(__CYGWIN__)
+	if (newdir[0] == '/' || newdir[0] == '\\' ||
+	    /* Detect this type, for example, "C:\" or "C:/" */
+	    (((newdir[0] >= 'a' && newdir[0] <= 'z') ||
+	      (newdir[0] >= 'A' && newdir[0] <= 'Z')) &&
+	    newdir[1] == ':' && (newdir[2] == '/' || newdir[2] == '\\'))) {
+#else
 	if (newdir[0] == '/') {
+#endif
 		/* The -C /foo -C /bar case; dump first one. */
 		free(bsdtar->pending_chdir);
 		bsdtar->pending_chdir = NULL;
@@ -358,10 +369,8 @@ edit_pathname(struct bsdtar *bsdtar, struct archive_entry *entry)
 #if HAVE_REGEX_H
 	char *subst_name;
 	int r;
-#endif
 
-#if HAVE_REGEX_H
-	r = apply_substitution(bsdtar, name, &subst_name, 0);
+	r = apply_substitution(bsdtar, name, &subst_name, 0, 0);
 	if (r == -1) {
 		lafe_warnc(0, "Invalid substitution, skipping entry");
 		return 1;
@@ -377,7 +386,7 @@ edit_pathname(struct bsdtar *bsdtar, struct archive_entry *entry)
 	}
 
 	if (archive_entry_hardlink(entry)) {
-		r = apply_substitution(bsdtar, archive_entry_hardlink(entry), &subst_name, 1);
+		r = apply_substitution(bsdtar, archive_entry_hardlink(entry), &subst_name, 0, 1);
 		if (r == -1) {
 			lafe_warnc(0, "Invalid substitution, skipping entry");
 			return 1;
@@ -388,7 +397,7 @@ edit_pathname(struct bsdtar *bsdtar, struct archive_entry *entry)
 		}
 	}
 	if (archive_entry_symlink(entry) != NULL) {
-		r = apply_substitution(bsdtar, archive_entry_symlink(entry), &subst_name, 1);
+		r = apply_substitution(bsdtar, archive_entry_symlink(entry), &subst_name, 1, 0);
 		if (r == -1) {
 			lafe_warnc(0, "Invalid substitution, skipping entry");
 			return 1;
@@ -503,14 +512,13 @@ const char *
 tar_i64toa(int64_t n0)
 {
 	static char buff[24];
-	int64_t n = n0 < 0 ? -n0 : n0;
+	uint64_t n = n0 < 0 ? -n0 : n0;
 	char *p = buff + sizeof(buff);
 
 	*--p = '\0';
 	do {
 		*--p = '0' + (int)(n % 10);
-		n /= 10;
-	} while (n > 0);
+	} while (n /= 10);
 	if (n0 < 0)
 		*--p = '-';
 	return p;

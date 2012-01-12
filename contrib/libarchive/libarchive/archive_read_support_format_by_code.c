@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2003-2007 Tim Kientzle
+ * Copyright (c) 2003-2011 Tim Kientzle
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,17 +24,51 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_compression_none.c 185679 2008-12-06 06:45:15Z kientzle $");
+__FBSDID("$FreeBSD$");
 
 #include "archive.h"
+#include "archive_private.h"
 
-/*
- * Uncompressed streams are handled implicitly by the read core,
- * so this is now a no-op.
- */
 int
-archive_read_support_compression_none(struct archive *a)
+archive_read_support_format_by_code(struct archive *a, int format_code)
 {
-	(void)a; /* UNUSED */
-	return (ARCHIVE_OK);
+	archive_check_magic(a, ARCHIVE_READ_MAGIC,
+	    ARCHIVE_STATE_NEW, "archive_read_support_format_by_code");
+
+	switch (format_code & ARCHIVE_FORMAT_BASE_MASK) {
+	case ARCHIVE_FORMAT_7ZIP:
+		return archive_read_support_format_7zip(a);
+		break;
+	case ARCHIVE_FORMAT_AR:
+		return archive_read_support_format_ar(a);
+		break;
+	case ARCHIVE_FORMAT_CAB:
+		return archive_read_support_format_cab(a);
+		break;
+	case ARCHIVE_FORMAT_CPIO:
+		return archive_read_support_format_cpio(a);
+		break;
+	case ARCHIVE_FORMAT_ISO9660:
+		return archive_read_support_format_iso9660(a);
+		break;
+	case ARCHIVE_FORMAT_LHA:
+		return archive_read_support_format_lha(a);
+		break;
+	case ARCHIVE_FORMAT_MTREE:
+		return archive_read_support_format_mtree(a);
+		break;
+	case ARCHIVE_FORMAT_RAR:
+		return archive_read_support_format_rar(a);
+		break;
+	case ARCHIVE_FORMAT_TAR:
+		return archive_read_support_format_tar(a);
+		break;
+	case ARCHIVE_FORMAT_XAR:
+		return archive_read_support_format_xar(a);
+		break;
+	case ARCHIVE_FORMAT_ZIP:
+		return archive_read_support_format_zip(a);
+		break;
+	}
+	return (ARCHIVE_FATAL);
 }

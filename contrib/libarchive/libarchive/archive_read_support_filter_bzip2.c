@@ -25,7 +25,7 @@
 
 #include "archive_platform.h"
 
-__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_compression_bzip2.c 201108 2009-12-28 03:28:21Z kientzle $");
+__FBSDID("$FreeBSD$");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -72,13 +72,25 @@ static int	bzip2_reader_bid(struct archive_read_filter_bidder *, struct archive_
 static int	bzip2_reader_init(struct archive_read_filter *);
 static int	bzip2_reader_free(struct archive_read_filter_bidder *);
 
+#if ARCHIVE_VERSION_NUMBER < 4000000
+/* Deprecated; remove in libarchive 4.0 */
 int
-archive_read_support_compression_bzip2(struct archive *_a)
+archive_read_support_compression_bzip2(struct archive *a)
+{
+	return archive_read_support_filter_bzip2(a);
+}
+#endif
+
+int
+archive_read_support_filter_bzip2(struct archive *_a)
 {
 	struct archive_read *a = (struct archive_read *)_a;
-	struct archive_read_filter_bidder *reader = __archive_read_get_bidder(a);
+	struct archive_read_filter_bidder *reader;
 
-	if (reader == NULL)
+	archive_check_magic(_a, ARCHIVE_READ_MAGIC,
+	    ARCHIVE_STATE_NEW, "archive_read_support_filter_bzip2");
+
+	if (__archive_read_get_bidder(a, &reader) != ARCHIVE_OK)
 		return (ARCHIVE_FATAL);
 
 	reader->data = NULL;
@@ -124,7 +136,7 @@ bzip2_reader_bid(struct archive_read_filter_bidder *self, struct archive_read_fi
 
 	/* First three bytes must be "BZh" */
 	bits_checked = 0;
-	if (buffer[0] != 'B' || buffer[1] != 'Z' || buffer[2] != 'h')
+	if (memcmp(buffer, "BZh", 3) != 0)
 		return (0);
 	bits_checked += 24;
 
@@ -185,7 +197,7 @@ bzip2_reader_init(struct archive_read_filter *self)
 
 	state = (struct private_data *)calloc(sizeof(*state), 1);
 	out_block = (unsigned char *)malloc(out_block_size);
-	if (self == NULL || state == NULL || out_block == NULL) {
+	if (state == NULL || out_block == NULL) {
 		archive_set_error(&self->archive->archive, ENOMEM,
 		    "Can't allocate data for bzip2 decompression");
 		free(out_block);
@@ -274,8 +286,12 @@ bzip2_filter_read(struct archive_read_filter *self, const void **p)
 		 * doesn't declare it so. <sigh> */
 		read_buf =
 		    __archive_read_filter_ahead(self->upstream, 1, &ret);
-		if (read_buf == NULL)
+		if (read_buf == NULL) {
+			archive_set_error(&self->archive->archive,
+			    ARCHIVE_ERRNO_MISC,
+			    "truncated bzip2 input");
 			return (ARCHIVE_FATAL);
+		}
 		state->stream.next_in = (char *)(uintptr_t)read_buf;
 		state->stream.avail_in = ret;
 		/* There is no more data, return whatever we have. */
@@ -343,6 +359,7 @@ bzip2_filter_close(struct archive_read_filter *self)
 					  "Failed to clean up decompressor");
 			ret = ARCHIVE_FATAL;
 		}
+		state->valid = 0;
 	}
 
 	free(state->out_block);

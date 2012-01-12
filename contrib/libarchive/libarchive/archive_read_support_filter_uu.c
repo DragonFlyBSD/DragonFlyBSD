@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2009 Michihiro NAKAJIMA
+ * Copyright (c) 2009-2011 Michihiro NAKAJIMA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_compression_uu.c 201248 2009-12-30 06:12:03Z kientzle $");
+__FBSDID("$FreeBSD$");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -39,6 +39,9 @@ __FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_compression_uu.c 20
 #include "archive.h"
 #include "archive_private.h"
 #include "archive_read_private.h"
+
+/* Maximum lookahead during bid phase */
+#define UUENCODE_BID_MAX_READ 128*1024 /* in bytes */
 
 struct uudecode {
 	int64_t		 total;
@@ -63,15 +66,25 @@ static ssize_t	uudecode_filter_read(struct archive_read_filter *,
 		    const void **);
 static int	uudecode_filter_close(struct archive_read_filter *);
 
+#if ARCHIVE_VERSION_NUMBER < 4000000
+/* Deprecated; remove in libarchive 4.0 */
 int
-archive_read_support_compression_uu(struct archive *_a)
+archive_read_support_compression_uu(struct archive *a)
+{
+	return archive_read_support_filter_uu(a);
+}
+#endif
+
+int
+archive_read_support_filter_uu(struct archive *_a)
 {
 	struct archive_read *a = (struct archive_read *)_a;
 	struct archive_read_filter_bidder *bidder;
 
-	bidder = __archive_read_get_bidder(a);
-	archive_clear_error(_a);
-	if (bidder == NULL)
+	archive_check_magic(_a, ARCHIVE_READ_MAGIC,
+	    ARCHIVE_STATE_NEW, "archive_read_support_filter_uu");
+
+	if (__archive_read_get_bidder(a, &bidder) != ARCHIVE_OK)
 		return (ARCHIVE_FATAL);
 
 	bidder->data = NULL;
@@ -194,7 +207,8 @@ get_line(const unsigned char *b, ssize_t avail, ssize_t *nlsize)
 
 static ssize_t
 bid_get_line(struct archive_read_filter *filter,
-    const unsigned char **b, ssize_t *avail, ssize_t *ravail, ssize_t *nl)
+    const unsigned char **b, ssize_t *avail, ssize_t *ravail,
+    ssize_t *nl, size_t* nbytes_read)
 {
 	ssize_t len;
 	int quit;
@@ -205,24 +219,37 @@ bid_get_line(struct archive_read_filter *filter,
 		len = 0;
 	} else
 		len = get_line(*b, *avail, nl);
+
 	/*
 	 * Read bytes more while it does not reach the end of line.
 	 */
-	while (*nl == 0 && len == *avail && !quit) {
+	while (*nl == 0 && len == *avail && !quit &&
+	    *nbytes_read < UUENCODE_BID_MAX_READ) {
 		ssize_t diff = *ravail - *avail;
+		size_t nbytes_req = (*ravail+1023) & ~1023U;
+		ssize_t tested;
 
-		*b = __archive_read_filter_ahead(filter, 160 + *ravail, avail);
+		/* Increase reading bytes if it is not enough to at least
+		 * new two lines. */
+		if (nbytes_req < (size_t)*ravail + 160)
+			nbytes_req <<= 1;
+
+		*b = __archive_read_filter_ahead(filter, nbytes_req, avail);
 		if (*b == NULL) {
 			if (*ravail >= *avail)
 				return (0);
-			/* Reading bytes reaches the end of file. */
+			/* Reading bytes reaches the end of a stream. */
 			*b = __archive_read_filter_ahead(filter, *avail, avail);
 			quit = 1;
 		}
+		*nbytes_read = *avail;
 		*ravail = *avail;
 		*b += diff;
 		*avail -= diff;
-		len = get_line(*b, *avail, nl);
+		tested = len;/* Skip some bytes we already determinated. */
+		len = get_line(*b + tested, *avail - tested, nl);
+		if (len >= 0)
+			len += tested;
 	}
 	return (len);
 }
@@ -238,6 +265,7 @@ uudecode_bidder_bid(struct archive_read_filter_bidder *self,
 	ssize_t len, nl;
 	int l;
 	int firstline;
+	size_t nbytes_read;
 
 	(void)self; /* UNUSED */
 
@@ -247,13 +275,14 @@ uudecode_bidder_bid(struct archive_read_filter_bidder *self,
 
 	firstline = 20;
 	ravail = avail;
+	nbytes_read = avail;
 	for (;;) {
-		len = bid_get_line(filter, &b, &avail, &ravail, &nl);
+		len = bid_get_line(filter, &b, &avail, &ravail, &nl, &nbytes_read);
 		if (len < 0 || nl == 0)
-			return (0);/* Binary data. */
-		if (memcmp(b, "begin ", 6) == 0 && len - nl >= 11)
+			return (0); /* No match found. */
+		if (len - nl >= 11 && memcmp(b, "begin ", 6) == 0)
 			l = 6;
-		else if (memcmp(b, "begin-base64 ", 13) == 0 && len - nl >= 18)
+		else if (len -nl >= 18 && memcmp(b, "begin-base64 ", 13) == 0)
 			l = 13;
 		else
 			l = 0;
@@ -268,10 +297,14 @@ uudecode_bidder_bid(struct archive_read_filter_bidder *self,
 		if (l)
 			break;
 		firstline = 0;
+
+		/* Do not read more than UUENCODE_BID_MAX_READ bytes */
+		if (nbytes_read >= UUENCODE_BID_MAX_READ)
+			return (0);
 	}
 	if (!avail)
 		return (0);
-	len = bid_get_line(filter, &b, &avail, &ravail, &nl);
+	len = bid_get_line(filter, &b, &avail, &ravail, &nl, &nbytes_read);
 	if (len < 0 || nl == 0)
 		return (0);/* There are non-ascii characters. */
 	avail -= len;
@@ -392,18 +425,19 @@ ensure_in_buff_size(struct archive_read_filter *self,
 			else
 				newsize += IN_BUFF_SIZE;
 		} while (size > newsize);
+		/* Allocate the new buffer. */
 		ptr = malloc(newsize);
-		if (ptr == NULL ||
-		    newsize < uudecode->in_allocated) {
+		if (ptr == NULL) {
 			free(ptr);
 			archive_set_error(&self->archive->archive,
 			    ENOMEM,
     			    "Can't allocate data for uudecode");
 			return (ARCHIVE_FATAL);
 		}
+		/* Move the remaining data in in_buff into the new buffer. */
 		if (uudecode->in_cnt)
-			memmove(ptr, uudecode->in_buff,
-			    uudecode->in_cnt);
+			memmove(ptr, uudecode->in_buff, uudecode->in_cnt);
+		/* Replace in_buff with the new buffer. */
 		free(uudecode->in_buff);
 		uudecode->in_buff = ptr;
 		uudecode->in_allocated = newsize;
@@ -483,11 +517,16 @@ read_more:
 			}
 			break;
 		}
-		if (total + len * 2 > OUT_BUFF_SIZE)
-			break;
 		switch (uudecode->state) {
 		default:
 		case ST_FIND_HEAD:
+			/* Do not read more than UUENCODE_BID_MAX_READ bytes */
+			if (total + len >= UUENCODE_BID_MAX_READ) {
+				archive_set_error(&self->archive->archive,
+				    ARCHIVE_ERRNO_FILE_FORMAT,
+				    "Invalid format data");
+				return (ARCHIVE_FATAL);
+			}
 			if (len - nl >= 11 && memcmp(b, "begin ", 6) == 0)
 				l = 6;
 			else if (len - nl >= 18 &&
@@ -505,6 +544,8 @@ read_more:
 			}
 			break;
 		case ST_READ_UU:
+			if (total + len * 2 > OUT_BUFF_SIZE)
+				break;
 			body = len - nl;
 			if (!uuchar[*b] || body <= 0) {
 				archive_set_error(&self->archive->archive,
@@ -569,6 +610,8 @@ read_more:
 			}
 			break;
 		case ST_READ_BASE64:
+			if (total + len * 2 > OUT_BUFF_SIZE)
+				break;
 			l = len - nl;
 			if (l >= 3 && b[0] == '=' && b[1] == '=' &&
 			    b[2] == '=') {

@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_compression_program.c 201112 2009-12-28 06:59:35Z kientzle $");
+__FBSDID("$FreeBSD$");
 
 #ifdef HAVE_SYS_WAIT_H
 #  include <sys/wait.h>
@@ -55,10 +55,28 @@ __FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_compression_program
 #include "archive_private.h"
 #include "archive_read_private.h"
 
+
+#if ARCHIVE_VERSION_NUMBER < 4000000
+/* Deprecated; remove in libarchive 4.0 */
 int
 archive_read_support_compression_program(struct archive *a, const char *cmd)
 {
-	return (archive_read_support_compression_program_signature(a, cmd, NULL, 0));
+	return archive_read_support_filter_program(a, cmd);
+}
+
+int
+archive_read_support_compression_program_signature(struct archive *a,
+    const char *cmd, const void *signature, size_t signature_len)
+{
+	return archive_read_support_filter_program_signature(a,
+	    cmd, signature, signature_len);
+}
+#endif
+
+int
+archive_read_support_filter_program(struct archive *a, const char *cmd)
+{
+	return (archive_read_support_filter_program_signature(a, cmd, NULL, 0));
 }
 
 
@@ -71,8 +89,8 @@ archive_read_support_compression_program(struct archive *a, const char *cmd)
  * this function is actually invoked.
  */
 int
-archive_read_support_compression_program_signature(struct archive *_a,
-    const char *cmd, void *signature, size_t signature_len)
+archive_read_support_filter_program_signature(struct archive *_a,
+    const char *cmd, const void *signature, size_t signature_len)
 {
 	(void)_a; /* UNUSED */
 	(void)cmd; /* UNUSED */
@@ -135,7 +153,7 @@ static ssize_t	program_filter_read(struct archive_read_filter *,
 static int	program_filter_close(struct archive_read_filter *);
 
 int
-archive_read_support_compression_program_signature(struct archive *_a,
+archive_read_support_filter_program_signature(struct archive *_a,
     const char *cmd, const void *signature, size_t signature_len)
 {
 	struct archive_read *a = (struct archive_read *)_a;
@@ -145,8 +163,7 @@ archive_read_support_compression_program_signature(struct archive *_a,
 	/*
 	 * Get a bidder object from the read core.
 	 */
-	bidder = __archive_read_get_bidder(a);
-	if (bidder == NULL)
+	if (__archive_read_get_bidder(a, &bidder) != ARCHIVE_OK)
 		return (ARCHIVE_FATAL);
 
 	/*
@@ -388,7 +405,7 @@ __archive_read_program(struct archive_read_filter *self, const char *cmd)
 		free(state->out_buf);
 		free(state);
 		archive_set_error(&self->archive->archive, EINVAL,
-		    "Can't initialise filter");
+		    "Can't initialize filter; unable to run program \"%s\"", cmd);
 		return (ARCHIVE_FATAL);
 	}
 

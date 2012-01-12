@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2003-2007 Tim Kientzle
+ * Copyright (c) 2003-2010 Tim Kientzle
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,9 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: head/lib/libarchive/archive_write_disk.c 201159 2009-12-29 05:35:40Z kientzle $");
+__FBSDID("$FreeBSD$");
+
+#if !defined(_WIN32) || defined(__CYGWIN__)
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -38,6 +40,9 @@ __FBSDID("$FreeBSD: head/lib/libarchive/archive_write_disk.c 201159 2009-12-29 0
 #endif
 #ifdef HAVE_SYS_XATTR_H
 #include <sys/xattr.h>
+#endif
+#ifdef HAVE_SYS_EA_H
+#include <sys/ea.h>
 #endif
 #ifdef HAVE_ATTR_XATTR_H
 #include <attr/xattr.h>
@@ -54,6 +59,9 @@ __FBSDID("$FreeBSD: head/lib/libarchive/archive_write_disk.c 201159 2009-12-29 0
 #ifdef HAVE_SYS_UTIME_H
 #include <sys/utime.h>
 #endif
+#ifdef HAVE_COPYFILE_H
+#include <copyfile.h>
+#endif
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
 #endif
@@ -62,6 +70,9 @@ __FBSDID("$FreeBSD: head/lib/libarchive/archive_write_disk.c 201159 2009-12-29 0
 #endif
 #ifdef HAVE_GRP_H
 #include <grp.h>
+#endif
+#ifdef HAVE_LANGINFO_H
+#include <langinfo.h>
 #endif
 #ifdef HAVE_LINUX_FS_H
 #include <linux/fs.h>	/* for Linux file flags */
@@ -95,8 +106,26 @@ __FBSDID("$FreeBSD: head/lib/libarchive/archive_write_disk.c 201159 2009-12-29 0
 #ifdef HAVE_UTIME_H
 #include <utime.h>
 #endif
+#ifdef F_GETTIMES /* Tru64 specific */
+#include <sys/fcntl1.h>
+#endif
+
+#if __APPLE__
+#include <TargetConditionals.h>
+#if TARGET_OS_MAC && !TARGET_OS_EMBEDDED && HAVE_QUARANTINE_H
+#include <quarantine.h>
+#define HAVE_QUARANTINE 1
+#endif
+#endif
+
+/* TODO: Support Mac OS 'quarantine' feature.  This is really just a
+ * standard tag to mark files that have been downloaded as "tainted".
+ * On Mac OS, we should mark the extracted files as tainted if the
+ * archive being read was tainted.  Windows has a similar feature; we
+ * should investigate ways to support this generically. */
 
 #include "archive.h"
+#include "archive_acl_private.h"
 #include "archive_string.h"
 #include "archive_entry.h"
 #include "archive_private.h"
@@ -107,14 +136,19 @@ __FBSDID("$FreeBSD: head/lib/libarchive/archive_write_disk.c 201159 2009-12-29 0
 
 struct fixup_entry {
 	struct fixup_entry	*next;
+	struct archive_acl	 acl;
 	mode_t			 mode;
 	int64_t			 atime;
 	int64_t                  birthtime;
 	int64_t			 mtime;
+	int64_t			 ctime;
 	unsigned long		 atime_nanos;
 	unsigned long            birthtime_nanos;
 	unsigned long		 mtime_nanos;
+	unsigned long		 ctime_nanos;
 	unsigned long		 fflags_set;
+	size_t			 mac_metadata_size;
+	void			*mac_metadata;
 	int			 fixup; /* bitmask of what needs fixing */
 	char			*name;
 };
@@ -144,6 +178,7 @@ struct fixup_entry {
 #define	TODO_FFLAGS		ARCHIVE_EXTRACT_FFLAGS
 #define	TODO_ACLS		ARCHIVE_EXTRACT_ACL
 #define	TODO_XATTR		ARCHIVE_EXTRACT_XATTR
+#define	TODO_MAC_METADATA	ARCHIVE_EXTRACT_MAC_METADATA
 
 struct archive_write_disk {
 	struct archive	archive;
@@ -151,15 +186,16 @@ struct archive_write_disk {
 	mode_t			 user_umask;
 	struct fixup_entry	*fixup_list;
 	struct fixup_entry	*current_fixup;
-	uid_t			 user_uid;
+	int64_t			 user_uid;
+	int			 skip_file_set;
 	dev_t			 skip_file_dev;
 	ino_t			 skip_file_ino;
 	time_t			 start_time;
 
-	gid_t (*lookup_gid)(void *private, const char *gname, gid_t gid);
+	int64_t (*lookup_gid)(void *private, const char *gname, int64_t gid);
 	void  (*cleanup_gid)(void *private);
 	void			*lookup_gid_data;
-	uid_t (*lookup_uid)(void *private, const char *gname, gid_t gid);
+	int64_t (*lookup_uid)(void *private, const char *uname, int64_t uid);
 	void  (*cleanup_uid)(void *private);
 	void			*lookup_uid_data;
 
@@ -189,23 +225,25 @@ struct archive_write_disk {
 	/* Handle for the file we're restoring. */
 	int			 fd;
 	/* Current offset for writing data to the file. */
-	off_t			 offset;
+	int64_t			 offset;
 	/* Last offset actually written to disk. */
-	off_t			 fd_offset;
+	int64_t			 fd_offset;
+	/* Total bytes actually written to files. */
+	int64_t			 total_bytes_written;
 	/* Maximum size of file, -1 if unknown. */
-	off_t			 filesize;
+	int64_t			 filesize;
 	/* Dir we were in before this restore; only for deep paths. */
 	int			 restore_pwd;
 	/* Mode we should use for this entry; affected by _PERM and umask. */
 	mode_t			 mode;
 	/* UID/GID to use in restoring this entry. */
-	uid_t			 uid;
-	gid_t			 gid;
+	int64_t			 uid;
+	int64_t			 gid;
 };
 
 /*
  * Default mode for dirs created automatically (will be modified by umask).
- * Note that POSIX specifies 0777 for implicity-created dirs, "modified
+ * Note that POSIX specifies 0777 for implicitly-created dirs, "modified
  * by the process' file creation mask."
  */
 #define	DEFAULT_DIR_MODE 0777
@@ -221,7 +259,7 @@ struct archive_write_disk {
 static int	check_symlinks(struct archive_write_disk *);
 static int	create_filesystem_object(struct archive_write_disk *);
 static struct fixup_entry *current_fixup(struct archive_write_disk *, const char *pathname);
-#ifdef HAVE_FCHDIR
+#if defined(HAVE_FCHDIR) && defined(PATH_MAX)
 static void	edit_deep_directories(struct archive_write_disk *ad);
 #endif
 static int	cleanup_pathname(struct archive_write_disk *);
@@ -230,10 +268,12 @@ static int	create_parent_dir(struct archive_write_disk *, char *);
 static int	older(struct stat *, struct archive_entry *);
 static int	restore_entry(struct archive_write_disk *);
 #ifdef HAVE_POSIX_ACL
-static int	set_acl(struct archive_write_disk *, int fd, struct archive_entry *,
+static int	set_acl(struct archive_write_disk *, int fd, const char *, struct archive_acl *,
 		    acl_type_t, int archive_entry_acl_type, const char *tn);
 #endif
-static int	set_acls(struct archive_write_disk *);
+static int	set_acls(struct archive_write_disk *, int fd, const char *, struct archive_acl *);
+static int	set_mac_metadata(struct archive_write_disk *, const char *,
+				 const void *, size_t);
 static int	set_xattrs(struct archive_write_disk *);
 static int	set_fflags(struct archive_write_disk *);
 static int	set_fflags_platform(struct archive_write_disk *, int fd,
@@ -242,24 +282,25 @@ static int	set_fflags_platform(struct archive_write_disk *, int fd,
 static int	set_ownership(struct archive_write_disk *);
 static int	set_mode(struct archive_write_disk *, int mode);
 static int	set_time(int, int, const char *, time_t, long, time_t, long);
-static int	set_times(struct archive_write_disk *);
+static int	set_times(struct archive_write_disk *, int, int, const char *,
+		    time_t, long, time_t, long, time_t, long, time_t, long);
+static int	set_times_from_entry(struct archive_write_disk *);
 static struct fixup_entry *sort_dir_list(struct fixup_entry *p);
-static gid_t	trivial_lookup_gid(void *, const char *, gid_t);
-static uid_t	trivial_lookup_uid(void *, const char *, uid_t);
 static ssize_t	write_data_block(struct archive_write_disk *,
 		    const char *, size_t);
 
 static struct archive_vtable *archive_write_disk_vtable(void);
 
-static int	_archive_write_close(struct archive *);
-static int	_archive_write_finish(struct archive *);
-static int	_archive_write_header(struct archive *, struct archive_entry *);
-static int	_archive_write_finish_entry(struct archive *);
-static ssize_t	_archive_write_data(struct archive *, const void *, size_t);
-static ssize_t	_archive_write_data_block(struct archive *, const void *, size_t, off_t);
+static int	_archive_write_disk_close(struct archive *);
+static int	_archive_write_disk_free(struct archive *);
+static int	_archive_write_disk_header(struct archive *, struct archive_entry *);
+static int64_t	_archive_write_disk_filter_bytes(struct archive *, int);
+static int	_archive_write_disk_finish_entry(struct archive *);
+static ssize_t	_archive_write_disk_data(struct archive *, const void *, size_t);
+static ssize_t	_archive_write_disk_data_block(struct archive *, const void *, size_t, int64_t);
 
 static int
-_archive_write_disk_lazy_stat(struct archive_write_disk *a)
+lazy_stat(struct archive_write_disk *a)
 {
 	if (a->pst != NULL) {
 		/* Already have stat() data available. */
@@ -273,7 +314,7 @@ _archive_write_disk_lazy_stat(struct archive_write_disk *a)
 #endif
 	/*
 	 * XXX At this point, symlinks should not be hit, otherwise
-	 * XXX a race occured.  Do we want to check explicitly for that?
+	 * XXX a race occurred.  Do we want to check explicitly for that?
 	 */
 	if (lstat(a->name, &a->st) == 0) {
 		a->pst = &a->st;
@@ -290,14 +331,27 @@ archive_write_disk_vtable(void)
 	static int inited = 0;
 
 	if (!inited) {
-		av.archive_close = _archive_write_close;
-		av.archive_finish = _archive_write_finish;
-		av.archive_write_header = _archive_write_header;
-		av.archive_write_finish_entry = _archive_write_finish_entry;
-		av.archive_write_data = _archive_write_data;
-		av.archive_write_data_block = _archive_write_data_block;
+		av.archive_close = _archive_write_disk_close;
+		av.archive_filter_bytes = _archive_write_disk_filter_bytes;
+		av.archive_free = _archive_write_disk_free;
+		av.archive_write_header = _archive_write_disk_header;
+		av.archive_write_finish_entry
+		    = _archive_write_disk_finish_entry;
+		av.archive_write_data = _archive_write_disk_data;
+		av.archive_write_data_block = _archive_write_disk_data_block;
+		inited = 1;
 	}
 	return (&av);
+}
+
+static int64_t
+_archive_write_disk_filter_bytes(struct archive *_a, int n)
+{
+	struct archive_write_disk *a = (struct archive_write_disk *)_a;
+	(void)n; /* UNUSED */
+	if (n == -1 || n == 0)
+		return (a->total_bytes_written);
+	return (-1);
 }
 
 
@@ -323,18 +377,18 @@ archive_write_disk_set_options(struct archive *_a, int flags)
  *
  */
 static int
-_archive_write_header(struct archive *_a, struct archive_entry *entry)
+_archive_write_disk_header(struct archive *_a, struct archive_entry *entry)
 {
 	struct archive_write_disk *a = (struct archive_write_disk *)_a;
 	struct fixup_entry *fe;
 	int ret, r;
 
-	__archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
+	archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
 	    ARCHIVE_STATE_HEADER | ARCHIVE_STATE_DATA,
 	    "archive_write_disk_header");
 	archive_clear_error(&a->archive);
 	if (a->archive.state & ARCHIVE_STATE_DATA) {
-		r = _archive_write_finish_entry(&a->archive);
+		r = _archive_write_disk_finish_entry(&a->archive);
 		if (r == ARCHIVE_FATAL)
 			return (r);
 	}
@@ -351,6 +405,7 @@ _archive_write_header(struct archive *_a, struct archive_entry *entry)
 	a->fd = -1;
 	a->fd_offset = 0;
 	a->offset = 0;
+	a->restore_pwd = -1;
 	a->uid = a->user_uid;
 	a->mode = archive_entry_mode(a->entry);
 	if (archive_entry_size_is_set(a->entry))
@@ -371,15 +426,12 @@ _archive_write_header(struct archive *_a, struct archive_entry *entry)
 		return (ret);
 
 	/*
-	 * Set the umask to zero so we get predictable mode settings.
+	 * Query the umask so we get predictable mode settings.
 	 * This gets done on every call to _write_header in case the
 	 * user edits their umask during the extraction for some
-	 * reason. This will be reset before we return.  Note that we
-	 * don't need to do this in _finish_entry, as the chmod(), etc,
-	 * system calls don't obey umask.
+	 * reason.
 	 */
-	a->user_umask = umask(0);
-	/* From here on, early exit requires "goto done" to clean up. */
+	umask(a->user_umask = umask(0));
 
 	/* Figure out what we need to do for this entry. */
 	a->todo = TODO_MODE_BASE;
@@ -417,14 +469,22 @@ _archive_write_header(struct archive *_a, struct archive_entry *entry)
 		a->mode &= ~S_ISVTX;
 		a->mode &= ~a->user_umask;
 	}
-#if !defined(_WIN32) || defined(__CYGWIN__)
 	if (a->flags & ARCHIVE_EXTRACT_OWNER)
 		a->todo |= TODO_OWNER;
-#endif
 	if (a->flags & ARCHIVE_EXTRACT_TIME)
 		a->todo |= TODO_TIMES;
-	if (a->flags & ARCHIVE_EXTRACT_ACL)
-		a->todo |= TODO_ACLS;
+	if (a->flags & ARCHIVE_EXTRACT_ACL) {
+		if (archive_entry_filetype(a->entry) == AE_IFDIR)
+			a->deferred |= TODO_ACLS;
+		else
+			a->todo |= TODO_ACLS;
+	}
+	if (a->flags & ARCHIVE_EXTRACT_MAC_METADATA) {
+		if (archive_entry_filetype(a->entry) == AE_IFDIR)
+			a->deferred |= TODO_MAC_METADATA;
+		else
+			a->todo |= TODO_MAC_METADATA;
+	}
 	if (a->flags & ARCHIVE_EXTRACT_XATTR)
 		a->todo |= TODO_XATTR;
 	if (a->flags & ARCHIVE_EXTRACT_FFLAGS)
@@ -432,9 +492,9 @@ _archive_write_header(struct archive *_a, struct archive_entry *entry)
 	if (a->flags & ARCHIVE_EXTRACT_SECURE_SYMLINKS) {
 		ret = check_symlinks(a);
 		if (ret != ARCHIVE_OK)
-			goto done;
+			return (ret);
 	}
-#ifdef HAVE_FCHDIR
+#if defined(HAVE_FCHDIR) && defined(PATH_MAX)
 	/* If path exceeds PATH_MAX, shorten the path. */
 	edit_deep_directories(a);
 #endif
@@ -480,6 +540,7 @@ _archive_write_header(struct archive *_a, struct archive_entry *entry)
 		&& (archive_entry_mtime_is_set(entry)
 		    || archive_entry_atime_is_set(entry))) {
 		fe = current_fixup(a, archive_entry_pathname(entry));
+		fe->mode = a->mode;
 		fe->fixup |= TODO_TIMES;
 		if (archive_entry_atime_is_set(entry)) {
 			fe->atime = archive_entry_atime(entry);
@@ -507,6 +568,26 @@ _archive_write_header(struct archive *_a, struct archive_entry *entry)
 		}
 	}
 
+	if (a->deferred & TODO_ACLS) {
+		fe = current_fixup(a, archive_entry_pathname(entry));
+		archive_acl_copy(&fe->acl, archive_entry_acl(entry));
+	}
+
+	if (a->deferred & TODO_MAC_METADATA) {
+		const void *metadata;
+		size_t metadata_size;
+		metadata = archive_entry_mac_metadata(a->entry, &metadata_size);
+		if (metadata != NULL && metadata_size > 0) {
+			fe = current_fixup(a, archive_entry_pathname(entry));
+			fe->mac_metadata = malloc(metadata_size);
+			if (fe->mac_metadata != NULL) {
+				memcpy(fe->mac_metadata, metadata, metadata_size);
+				fe->mac_metadata_size = metadata_size;
+				fe->fixup |= TODO_MAC_METADATA;
+			}
+		}
+	}
+
 	if (a->deferred & TODO_FFLAGS) {
 		fe = current_fixup(a, archive_entry_pathname(entry));
 		fe->fixup |= TODO_FFLAGS;
@@ -524,19 +605,17 @@ _archive_write_header(struct archive *_a, struct archive_entry *entry)
 		archive_entry_set_size(entry, 0);
 		a->filesize = 0;
 	}
-done:
-	/* Restore the user's umask before returning. */
-	umask(a->user_umask);
 
 	return (ret);
 }
 
 int
-archive_write_disk_set_skip_file(struct archive *_a, dev_t d, ino_t i)
+archive_write_disk_set_skip_file(struct archive *_a, int64_t d, int64_t i)
 {
 	struct archive_write_disk *a = (struct archive_write_disk *)_a;
-	__archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
+	archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
 	    ARCHIVE_STATE_ANY, "archive_write_disk_set_skip_file");
+	a->skip_file_set = 1;
 	a->skip_file_dev = d;
 	a->skip_file_ino = i;
 	return (ARCHIVE_OK);
@@ -561,7 +640,7 @@ write_data_block(struct archive_write_disk *a, const char *buff, size_t size)
 	if (a->flags & ARCHIVE_EXTRACT_SPARSE) {
 #if HAVE_STRUCT_STAT_ST_BLKSIZE
 		int r;
-		if ((r = _archive_write_disk_lazy_stat(a)) != ARCHIVE_OK)
+		if ((r = lazy_stat(a)) != ARCHIVE_OK)
 			return (r);
 		block_size = a->pst->st_blksize;
 #else
@@ -572,7 +651,7 @@ write_data_block(struct archive_write_disk *a, const char *buff, size_t size)
 	}
 
 	/* If this write would run beyond the file size, truncate it. */
-	if (a->filesize >= 0 && (off_t)(a->offset + size) > a->filesize)
+	if (a->filesize >= 0 && (int64_t)(a->offset + size) > a->filesize)
 		start_size = size = (size_t)(a->filesize - a->offset);
 
 	/* Write the data. */
@@ -582,7 +661,7 @@ write_data_block(struct archive_write_disk *a, const char *buff, size_t size)
 		} else {
 			/* We're sparsifying the file. */
 			const char *p, *end;
-			off_t block_end;
+			int64_t block_end;
 
 			/* Skip leading zero bytes. */
 			for (p = buff, end = buff + size; p < end; ++p) {
@@ -613,9 +692,7 @@ write_data_block(struct archive_write_disk *a, const char *buff, size_t size)
 				return (ARCHIVE_FATAL);
 			}
 			a->fd_offset = a->offset;
-			a->archive.file_position = a->offset;
-			a->archive.raw_position = a->offset;
- 		}
+		}
 		bytes_written = write(a->fd, buff, bytes_to_write);
 		if (bytes_written < 0) {
 			archive_set_error(&a->archive, errno, "Write failed");
@@ -623,23 +700,22 @@ write_data_block(struct archive_write_disk *a, const char *buff, size_t size)
 		}
 		buff += bytes_written;
 		size -= bytes_written;
+		a->total_bytes_written += bytes_written;
 		a->offset += bytes_written;
-		a->archive.file_position += bytes_written;
-		a->archive.raw_position += bytes_written;
 		a->fd_offset = a->offset;
 	}
 	return (start_size - size);
 }
 
 static ssize_t
-_archive_write_data_block(struct archive *_a,
-    const void *buff, size_t size, off_t offset)
+_archive_write_disk_data_block(struct archive *_a,
+    const void *buff, size_t size, int64_t offset)
 {
 	struct archive_write_disk *a = (struct archive_write_disk *)_a;
 	ssize_t r;
 
-	__archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
-	    ARCHIVE_STATE_DATA, "archive_write_disk_block");
+	archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
+	    ARCHIVE_STATE_DATA, "archive_write_data_block");
 
 	a->offset = offset;
 	r = write_data_block(a, buff, size);
@@ -654,23 +730,23 @@ _archive_write_data_block(struct archive *_a,
 }
 
 static ssize_t
-_archive_write_data(struct archive *_a, const void *buff, size_t size)
+_archive_write_disk_data(struct archive *_a, const void *buff, size_t size)
 {
 	struct archive_write_disk *a = (struct archive_write_disk *)_a;
 
-	__archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
+	archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
 	    ARCHIVE_STATE_DATA, "archive_write_data");
 
 	return (write_data_block(a, buff, size));
 }
 
 static int
-_archive_write_finish_entry(struct archive *_a)
+_archive_write_disk_finish_entry(struct archive *_a)
 {
 	struct archive_write_disk *a = (struct archive_write_disk *)_a;
 	int ret = ARCHIVE_OK;
 
-	__archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
+	archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
 	    ARCHIVE_STATE_HEADER | ARCHIVE_STATE_DATA,
 	    "archive_write_finish_entry");
 	if (a->archive.state & ARCHIVE_STATE_HEADER)
@@ -700,7 +776,7 @@ _archive_write_finish_entry(struct archive *_a)
 		 * to see what happened.
 		 */
 		a->pst = NULL;
-		if ((ret = _archive_write_disk_lazy_stat(a)) != ARCHIVE_OK)
+		if ((ret = lazy_stat(a)) != ARCHIVE_OK)
 			return (ret);
 		/* We can use lseek()/write() to extend the file if
 		 * ftruncate didn't work or isn't available. */
@@ -727,30 +803,32 @@ _archive_write_finish_entry(struct archive *_a)
 	 * TODO: the TODO_SGID condition can be dropped here, can't it?
 	 */
 	if (a->todo & (TODO_OWNER | TODO_SUID | TODO_SGID)) {
-		a->uid = a->lookup_uid(a->lookup_uid_data,
+		a->uid = archive_write_disk_uid(&a->archive,
 		    archive_entry_uname(a->entry),
 		    archive_entry_uid(a->entry));
 	}
 	/* Look up the "real" GID only if we're going to need it. */
 	/* TODO: the TODO_SUID condition can be dropped here, can't it? */
 	if (a->todo & (TODO_OWNER | TODO_SGID | TODO_SUID)) {
-		a->gid = a->lookup_gid(a->lookup_gid_data,
+		a->gid = archive_write_disk_gid(&a->archive,
 		    archive_entry_gname(a->entry),
 		    archive_entry_gid(a->entry));
 	 }
+
 	/*
-	 * If restoring ownership, do it before trying to restore suid/sgid
+	 * Restore ownership before set_mode tries to restore suid/sgid
 	 * bits.  If we set the owner, we know what it is and can skip
 	 * a stat() call to examine the ownership of the file on disk.
 	 */
 	if (a->todo & TODO_OWNER)
 		ret = set_ownership(a);
+
+	/*
+	 * set_mode must precede ACLs on systems such as Solaris and
+	 * FreeBSD where setting the mode implicitly clears extended ACLs
+	 */
 	if (a->todo & TODO_MODE) {
 		int r2 = set_mode(a, a->mode);
-		if (r2 < ret) ret = r2;
-	}
-	if (a->todo & TODO_ACLS) {
-		int r2 = set_acls(a);
 		if (r2 < ret) ret = r2;
 	}
 
@@ -772,12 +850,37 @@ _archive_write_finish_entry(struct archive *_a)
 		int r2 = set_fflags(a);
 		if (r2 < ret) ret = r2;
 	}
+
 	/*
-	 * Time has to be restored after all other metadata;
+	 * Time must follow most other metadata;
 	 * otherwise atime will get changed.
 	 */
 	if (a->todo & TODO_TIMES) {
-		int r2 = set_times(a);
+		int r2 = set_times_from_entry(a);
+		if (r2 < ret) ret = r2;
+	}
+
+	/*
+	 * Mac extended metadata includes ACLs.
+	 */
+	if (a->todo & TODO_MAC_METADATA) {
+		const void *metadata;
+		size_t metadata_size;
+		metadata = archive_entry_mac_metadata(a->entry, &metadata_size);
+		if (metadata != NULL && metadata_size > 0) {
+			int r2 = set_mac_metadata(a, archive_entry_pathname(a->entry), metadata, metadata_size);
+			if (r2 < ret) ret = r2;
+		}
+	}
+
+	/*
+	 * ACLs must be restored after timestamps because there are
+	 * ACLs that prevent attribute changes (including time).
+	 */
+	if (a->todo & TODO_ACLS) {
+		int r2 = set_acls(a, a->fd,
+				  archive_entry_pathname(a->entry),
+				  archive_entry_acl(a->entry));
 		if (r2 < ret) ret = r2;
 	}
 
@@ -798,12 +901,15 @@ _archive_write_finish_entry(struct archive *_a)
 int
 archive_write_disk_set_group_lookup(struct archive *_a,
     void *private_data,
-    gid_t (*lookup_gid)(void *private, const char *gname, gid_t gid),
+    int64_t (*lookup_gid)(void *private, const char *gname, int64_t gid),
     void (*cleanup_gid)(void *private))
 {
 	struct archive_write_disk *a = (struct archive_write_disk *)_a;
-	__archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
+	archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
 	    ARCHIVE_STATE_ANY, "archive_write_disk_set_group_lookup");
+
+	if (a->cleanup_gid != NULL && a->lookup_gid_data != NULL)
+		(a->cleanup_gid)(a->lookup_gid_data);
 
 	a->lookup_gid = lookup_gid;
 	a->cleanup_gid = cleanup_gid;
@@ -814,12 +920,15 @@ archive_write_disk_set_group_lookup(struct archive *_a,
 int
 archive_write_disk_set_user_lookup(struct archive *_a,
     void *private_data,
-    uid_t (*lookup_uid)(void *private, const char *uname, uid_t uid),
+    int64_t (*lookup_uid)(void *private, const char *uname, int64_t uid),
     void (*cleanup_uid)(void *private))
 {
 	struct archive_write_disk *a = (struct archive_write_disk *)_a;
-	__archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
+	archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
 	    ARCHIVE_STATE_ANY, "archive_write_disk_set_user_lookup");
+
+	if (a->cleanup_uid != NULL && a->lookup_uid_data != NULL)
+		(a->cleanup_uid)(a->lookup_uid_data);
 
 	a->lookup_uid = lookup_uid;
 	a->cleanup_uid = cleanup_uid;
@@ -827,6 +936,27 @@ archive_write_disk_set_user_lookup(struct archive *_a,
 	return (ARCHIVE_OK);
 }
 
+int64_t
+archive_write_disk_gid(struct archive *_a, const char *name, int64_t id)
+{
+       struct archive_write_disk *a = (struct archive_write_disk *)_a;
+       archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
+           ARCHIVE_STATE_ANY, "archive_write_disk_gid");
+       if (a->lookup_gid)
+               return (a->lookup_gid)(a->lookup_gid_data, name, id);
+       return (id);
+}
+ 
+int64_t
+archive_write_disk_uid(struct archive *_a, const char *name, int64_t id)
+{
+       struct archive_write_disk *a = (struct archive_write_disk *)_a;
+       archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
+           ARCHIVE_STATE_ANY, "archive_write_disk_uid");
+       if (a->lookup_uid)
+               return (a->lookup_uid)(a->lookup_uid_data, name, id);
+       return (id);
+}
 
 /*
  * Create a new archive_write_disk object and initialize it with global state.
@@ -844,9 +974,9 @@ archive_write_disk_new(void)
 	/* We're ready to write a header immediately. */
 	a->archive.state = ARCHIVE_STATE_HEADER;
 	a->archive.vtable = archive_write_disk_vtable();
-	a->lookup_uid = trivial_lookup_uid;
-	a->lookup_gid = trivial_lookup_gid;
 	a->start_time = time(NULL);
+	/* Query and restore the umask. */
+	umask(a->user_umask = umask(0));
 #ifdef HAVE_GETEUID
 	a->user_uid = geteuid();
 #endif /* HAVE_GETEUID */
@@ -866,14 +996,12 @@ archive_write_disk_new(void)
  * object creation is likely to fail, but any error will get handled
  * at that time.
  */
-#ifdef HAVE_FCHDIR
+#if defined(HAVE_FCHDIR) && defined(PATH_MAX)
 static void
 edit_deep_directories(struct archive_write_disk *a)
 {
 	int ret;
 	char *tail = a->name;
-
-	a->restore_pwd = -1;
 
 	/* If path is short, avoid the open() below. */
 	if (strlen(tail) <= PATH_MAX)
@@ -956,8 +1084,8 @@ restore_entry(struct archive_write_disk *a)
 	if ((en == EISDIR || en == EEXIST)
 	    && (a->flags & ARCHIVE_EXTRACT_NO_OVERWRITE)) {
 		/* If we're not overwriting, we're done. */
-		archive_set_error(&a->archive, en, "Already exists");
-		return (ARCHIVE_FAILED);
+		archive_entry_unset_size(a->entry);
+		return (ARCHIVE_OK);
 	}
 
 	/*
@@ -984,7 +1112,7 @@ restore_entry(struct archive_write_disk *a)
 		 */
 		int r = 0;
 		/*
-		 * The SECURE_SYMLINK logic has already removed a
+		 * The SECURE_SYMLINKS logic has already removed a
 		 * symlink to a dir if the client wants that.  So
 		 * follow the symlink if we're creating a dir.
 		 */
@@ -1008,15 +1136,13 @@ restore_entry(struct archive_write_disk *a)
 		if ((a->flags & ARCHIVE_EXTRACT_NO_OVERWRITE_NEWER)
 		    &&  !S_ISDIR(a->st.st_mode)) {
 			if (!older(&(a->st), a->entry)) {
-				archive_set_error(&a->archive, 0,
-				    "File on disk is not older; skipping.");
-				return (ARCHIVE_FAILED);
+				archive_entry_unset_size(a->entry);
+				return (ARCHIVE_OK);
 			}
 		}
 
 		/* If it's our archive, we're done. */
-		if (a->skip_file_dev > 0 &&
-		    a->skip_file_ino > 0 &&
+		if (a->skip_file_set &&
 		    a->st.st_dev == a->skip_file_dev &&
 		    a->st.st_ino == a->skip_file_ino) {
 			archive_set_error(&a->archive, 0, "Refusing to overwrite archive");
@@ -1105,7 +1231,7 @@ create_filesystem_object(struct archive_write_disk *a)
 		if (r == 0 && a->filesize <= 0) {
 			a->todo = 0;
 			a->deferred = 0;
-		} if (r == 0 && a->filesize > 0) {
+		} else if (r == 0 && a->filesize > 0) {
 			a->fd = open(a->name, O_WRONLY | O_TRUNC | O_BINARY);
 			if (a->fd < 0)
 				r = errno;
@@ -1135,7 +1261,7 @@ create_filesystem_object(struct archive_write_disk *a)
 	 * that SUID, SGID, etc, require additional work to ensure
 	 * security, so we never restore them at this point.
 	 */
-	mode = final_mode & 0777;
+	mode = final_mode & 0777 & a->user_umask;
 
 	switch (a->mode & AE_IFMT) {
 	default:
@@ -1216,6 +1342,7 @@ create_filesystem_object(struct archive_write_disk *a)
  *     timestamps at the end as well.
  *   * Some file flags can interfere with the restore by, for example,
  *     preventing the creation of hardlinks to those files.
+ *   * Mac OS extended metadata includes ACLs, so must be deferred on dirs.
  *
  * Note that tar/cpio do not require that archives be in a particular
  * order; there is no way to know when the last file has been restored
@@ -1227,16 +1354,16 @@ create_filesystem_object(struct archive_write_disk *a)
  * reason we set directory perms here. XXX
  */
 static int
-_archive_write_close(struct archive *_a)
+_archive_write_disk_close(struct archive *_a)
 {
 	struct archive_write_disk *a = (struct archive_write_disk *)_a;
 	struct fixup_entry *next, *p;
 	int ret;
 
-	__archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
+	archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
 	    ARCHIVE_STATE_HEADER | ARCHIVE_STATE_DATA,
 	    "archive_write_disk_close");
-	ret = _archive_write_finish_entry(&a->archive);
+	ret = _archive_write_disk_finish_entry(&a->archive);
 
 	/* Sort dir list so directories are fixed up in depth-first order. */
 	p = sort_dir_list(a->fixup_list);
@@ -1244,48 +1371,25 @@ _archive_write_close(struct archive *_a)
 	while (p != NULL) {
 		a->pst = NULL; /* Mark stat cache as out-of-date. */
 		if (p->fixup & TODO_TIMES) {
-#ifdef HAVE_UTIMES
-			/* {f,l,}utimes() are preferred, when available. */
-#if defined(_WIN32) && !defined(__CYGWIN__)
-			struct __timeval times[2];
-#else
-			struct timeval times[2];
-#endif
-			times[0].tv_sec = p->atime;
-			times[0].tv_usec = p->atime_nanos / 1000;
-#ifdef HAVE_STRUCT_STAT_ST_BIRTHTIME
-			/* if it's valid and not mtime, push the birthtime first */
-			if (((times[1].tv_sec = p->birthtime) < p->mtime) &&
-			(p->birthtime > 0))
-			{
-				times[1].tv_usec = p->birthtime_nanos / 1000;
-				utimes(p->name, times);
-			}
-#endif
-			times[1].tv_sec = p->mtime;
-			times[1].tv_usec = p->mtime_nanos / 1000;
-#ifdef HAVE_LUTIMES
-			lutimes(p->name, times);
-#else
-			utimes(p->name, times);
-#endif
-#else
-			/* utime() is more portable, but less precise. */
-			struct utimbuf times;
-			times.modtime = p->mtime;
-			times.actime = p->atime;
-
-			utime(p->name, &times);
-#endif
+			set_times(a, -1, p->mode, p->name,
+			    p->atime, p->atime_nanos,
+			    p->birthtime, p->birthtime_nanos,
+			    p->mtime, p->mtime_nanos,
+			    p->ctime, p->ctime_nanos);
 		}
 		if (p->fixup & TODO_MODE_BASE)
 			chmod(p->name, p->mode);
-
+		if (p->fixup & TODO_ACLS)
+			set_acls(a, -1, p->name, &p->acl);
 		if (p->fixup & TODO_FFLAGS)
 			set_fflags_platform(a, -1, p->name,
 			    p->mode, p->fflags_set, 0);
-
+		if (p->fixup & TODO_MAC_METADATA)
+			set_mac_metadata(a, p->name, p->mac_metadata,
+					 p->mac_metadata_size);
 		next = p->next;
+		archive_acl_clear(&p->acl);
+		free(p->mac_metadata);
 		free(p->name);
 		free(p);
 		p = next;
@@ -1295,20 +1399,25 @@ _archive_write_close(struct archive *_a)
 }
 
 static int
-_archive_write_finish(struct archive *_a)
+_archive_write_disk_free(struct archive *_a)
 {
-	struct archive_write_disk *a = (struct archive_write_disk *)_a;
+	struct archive_write_disk *a;
 	int ret;
-	ret = _archive_write_close(&a->archive);
-	if (a->cleanup_gid != NULL && a->lookup_gid_data != NULL)
-		(a->cleanup_gid)(a->lookup_gid_data);
-	if (a->cleanup_uid != NULL && a->lookup_uid_data != NULL)
-		(a->cleanup_uid)(a->lookup_uid_data);
+	if (_a == NULL)
+		return (ARCHIVE_OK);
+	archive_check_magic(_a, ARCHIVE_WRITE_DISK_MAGIC,
+	    ARCHIVE_STATE_ANY | ARCHIVE_STATE_FATAL, "archive_write_disk_free");
+	a = (struct archive_write_disk *)_a;
+	ret = _archive_write_disk_close(&a->archive);
+	archive_write_disk_set_group_lookup(&a->archive, NULL, NULL, NULL);
+	archive_write_disk_set_user_lookup(&a->archive, NULL, NULL, NULL);
 	if (a->entry)
 		archive_entry_free(a->entry);
 	archive_string_free(&a->_name_data);
 	archive_string_free(&a->archive.error_string);
 	archive_string_free(&a->path_safe);
+	a->archive.magic = 0;
+	__archive_clean(&a->archive);
 	free(a);
 	return (ret);
 }
@@ -1389,7 +1498,7 @@ new_fixup(struct archive_write_disk *a, const char *pathname)
 {
 	struct fixup_entry *fe;
 
-	fe = (struct fixup_entry *)malloc(sizeof(struct fixup_entry));
+	fe = (struct fixup_entry *)calloc(1, sizeof(struct fixup_entry));
 	if (fe == NULL)
 		return (NULL);
 	fe->next = a->fixup_list;
@@ -1429,7 +1538,7 @@ check_symlinks(struct archive_write_disk *a)
 	(void)a; /* UNUSED */
 	return (ARCHIVE_OK);
 #else
-	char *pn, *p;
+	char *pn;
 	char c;
 	int r;
 	struct stat st;
@@ -1440,9 +1549,11 @@ check_symlinks(struct archive_write_disk *a)
 	 */
 	/* Whatever we checked last time doesn't need to be re-checked. */
 	pn = a->name;
-	p = a->path_safe.s;
-	while ((*pn != '\0') && (*p == *pn))
-		++p, ++pn;
+	if (archive_strlen(&(a->path_safe)) > 0) {
+		char *p = a->path_safe.s;
+		while ((*pn != '\0') && (*p == *pn))
+			++p, ++pn;
+	}
 	c = pn[0];
 	/* Keep going until we've checked the entire name. */
 	while (pn[0] != '\0' && (pn[0] != '/' || pn[1] != '\0')) {
@@ -1512,10 +1623,10 @@ check_symlinks(struct archive_write_disk *a)
 #endif
 }
 
-#if defined(_WIN32) || defined(__CYGWIN__)
+#if defined(__CYGWIN__)
 /*
  * 1. Convert a path separator from '\' to '/' .
- *    We shouldn't check multi-byte character directly because some
+ *    We shouldn't check multibyte character directly because some
  *    character-set have been using the '\' character for a part of
  *    its multibyte character code.
  * 2. Replace unusable characters in Windows with underscore('_').
@@ -1527,22 +1638,36 @@ cleanup_pathname_win(struct archive_write_disk *a)
 	wchar_t wc;
 	char *p;
 	size_t alen, l;
+	int mb, complete, utf8;
 
 	alen = 0;
-	l = 0;
+	mb = 0;
+	complete = 1;
+	utf8 = (strcmp(nl_langinfo(CODESET), "UTF-8") == 0)? 1: 0;
 	for (p = a->name; *p != '\0'; p++) {
 		++alen;
-		if (*p == '\\')
-			l = 1;
-		/* Rewrite the path name if its character is a unusable. */
+		if (*p == '\\') {
+			/* If previous byte is smaller than 128,
+			 * this is not second byte of multibyte characters,
+			 * so we can replace '\' with '/'. */
+			if (utf8 || !mb)
+				*p = '/';
+			else
+				complete = 0;/* uncompleted. */
+		} else if (*(unsigned char *)p > 127)
+			mb = 1;
+		else
+			mb = 0;
+		/* Rewrite the path name if its next character is unusable. */
 		if (*p == ':' || *p == '*' || *p == '?' || *p == '"' ||
 		    *p == '<' || *p == '>' || *p == '|')
 			*p = '_';
 	}
-	if (alen == 0 || l == 0)
+	if (complete)
 		return;
+
 	/*
-	 * Convert path separator.
+	 * Convert path separator in wide-character.
 	 */
 	p = a->name;
 	while (*p != '\0' && alen) {
@@ -1582,7 +1707,7 @@ cleanup_pathname(struct archive_write_disk *a)
 		return (ARCHIVE_FAILED);
 	}
 
-#if defined(_WIN32) || defined(__CYGWIN__)
+#if defined(__CYGWIN__)
 	cleanup_pathname_win(a);
 #endif
 	/* Skip leading '/'. */
@@ -1730,7 +1855,8 @@ create_dir(struct archive_write_disk *a, char *path)
 		if (unlink(path) != 0) {
 			archive_set_error(&a->archive, errno,
 			    "Can't create directory '%s': "
-			    "Conflicting file cannot be removed", path);
+			    "Conflicting file cannot be removed",
+			    path);
 			return (ARCHIVE_FAILED);
 		}
 	} else if (errno != ENOENT && errno != ENOTDIR) {
@@ -1801,7 +1927,7 @@ set_ownership(struct archive_write_disk *a)
 	/* If we know we can't change it, don't bother trying. */
 	if (a->user_uid != 0  &&  a->user_uid != a->uid) {
 		archive_set_error(&a->archive, errno,
-		    "Can't set UID=%d", a->uid);
+		    "Can't set UID=%jd", (intmax_t)a->uid);
 		return (ARCHIVE_WARN);
 	}
 #endif
@@ -1832,22 +1958,26 @@ set_ownership(struct archive_write_disk *a)
 #endif
 
 	archive_set_error(&a->archive, errno,
-	    "Can't set user=%d/group=%d for %s", a->uid, a->gid,
-	    a->name);
+	    "Can't set user=%jd/group=%jd for %s",
+	    (intmax_t)a->uid, (intmax_t)a->gid, a->name);
 	return (ARCHIVE_WARN);
 }
 
-
-#if defined(HAVE_UTIMENSAT) && defined(HAVE_FUTIMENS)
-/* 
- * utimensat() and futimens() are defined in POSIX.1-2008. They provide ns
- * resolution and setting times on fd and on symlinks, too.
+/*
+ * Note: Returns 0 on success, non-zero on failure.
  */
 static int
 set_time(int fd, int mode, const char *name,
     time_t atime, long atime_nsec,
     time_t mtime, long mtime_nsec)
 {
+	/* Select the best implementation for this platform. */
+#if defined(HAVE_UTIMENSAT) && defined(HAVE_FUTIMENS)
+	/*
+	 * utimensat() and futimens() are defined in
+	 * POSIX.1-2008. They support ns resolution and setting times
+	 * on fds and symlinks.
+	 */
 	struct timespec ts[2];
 	ts[0].tv_sec = atime;
 	ts[0].tv_nsec = atime_nsec;
@@ -1856,23 +1986,15 @@ set_time(int fd, int mode, const char *name,
 	if (fd >= 0)
 		return futimens(fd, ts);
 	return utimensat(AT_FDCWD, name, ts, AT_SYMLINK_NOFOLLOW);
-}
+
 #elif HAVE_UTIMES
-/*
- * The utimes()-family functions provide µs-resolution and
- * a way to set time on an fd or a symlink.  We prefer them
- * when they're available and utimensat/futimens aren't there.
- */
-static int
-set_time(int fd, int mode, const char *name,
-    time_t atime, long atime_nsec,
-    time_t mtime, long mtime_nsec)
-{
-#if defined(_WIN32) && !defined(__CYGWIN__)
-	struct __timeval times[2];
-#else
+	/*
+	 * The utimes()-family functions support µs-resolution and
+	 * setting times fds and symlinks.  utimes() is documented as
+	 * LEGACY by POSIX, futimes() and lutimes() are not described
+	 * in POSIX.
+	 */
 	struct timeval times[2];
-#endif
 
 	times[0].tv_sec = atime;
 	times[0].tv_usec = atime_nsec / 1000;
@@ -1893,17 +2015,12 @@ set_time(int fd, int mode, const char *name,
 		return (0);
 	return (utimes(name, times));
 #endif
-}
+
 #elif defined(HAVE_UTIME)
-/*
- * utime() is an older, more standard interface that we'll use
- * if utimes() isn't available.
- */
-static int
-set_time(int fd, int mode, const char *name,
-    time_t atime, long atime_nsec,
-    time_t mtime, long mtime_nsec)
-{
+	/*
+	 * utime() is POSIX-standard but only supports 1s resolution and
+	 * does not support fds or symlinks.
+	 */
 	struct utimbuf times;
 	(void)fd; /* UNUSED */
 	(void)name; /* UNUSED */
@@ -1914,22 +2031,98 @@ set_time(int fd, int mode, const char *name,
 	if (S_ISLNK(mode))
 		return (ARCHIVE_OK);
 	return (utime(name, &times));
-}
+
 #else
-static int
-set_time(int fd, int mode, const char *name,
-    time_t atime, long atime_nsec,
-    time_t mtime, long mtime_nsec)
-{
+	/*
+	 * We don't know how to set the time on this platform.
+	 */
 	return (ARCHIVE_WARN);
-}
 #endif
+}
+
+#ifdef F_SETTIMES /* Tru64 */
+static int
+set_time_tru64(int fd, int mode, const char *name,
+    time_t atime, long atime_nsec,
+    time_t mtime, long mtime_nsec,
+    time_t ctime, long ctime_nsec)
+{
+	struct attr_timbuf tstamp;
+	struct timeval times[3];
+	times[0].tv_sec = atime;
+	times[0].tv_usec = atime_nsec / 1000;
+	times[1].tv_sec = mtime;
+	times[1].tv_usec = mtime_nsec / 1000;
+	times[2].tv_sec = ctime;
+	times[2].tv_usec = ctime_nsec / 1000;
+	tstamp.atime = times[0];
+	tstamp.mtime = times[1];
+	tstamp.ctime = times[2];
+	return (fcntl(fd,F_SETTIMES,&tstamp));
+}
+#endif /* Tru64 */
 
 static int
-set_times(struct archive_write_disk *a)
+set_times(struct archive_write_disk *a,
+    int fd, int mode, const char *name,
+    time_t atime, long atime_nanos,
+    time_t birthtime, long birthtime_nanos,
+    time_t mtime, long mtime_nanos,
+    time_t ctime, long ctime_nanos)
 {
-	time_t atime = a->start_time, mtime = a->start_time;
-	long atime_nsec = 0, mtime_nsec = 0;
+	/* Note: set_time doesn't use libarchive return conventions!
+	 * It uses syscall conventions.  So 0 here instead of ARCHIVE_OK. */
+	int r1 = 0, r2 = 0;
+
+#ifdef F_SETTIMES
+	 /*
+	 * on Tru64 try own fcntl first which can restore even the
+	 * ctime, fall back to default code path below if it fails
+	 * or if we are not running as root
+	 */
+	if (a->user_uid == 0 &&
+	    set_time_tru64(fd, mode, name,
+			   atime, atime_nanos, mtime,
+			   mtime_nanos, ctime, ctime_nanos) == 0) {
+		return (ARCHIVE_OK);
+	}
+#endif /* Tru64 */
+
+#ifdef HAVE_STRUCT_STAT_ST_BIRTHTIME
+	/*
+	 * If you have struct stat.st_birthtime, we assume BSD
+	 * birthtime semantics, in which {f,l,}utimes() updates
+	 * birthtime to earliest mtime.  So we set the time twice,
+	 * first using the birthtime, then using the mtime.  If
+	 * birthtime == mtime, this isn't necessary, so we skip it.
+	 * If birthtime > mtime, then this won't work, so we skip it.
+	 */
+	if (birthtime < mtime
+	    || (birthtime == mtime && birthtime_nanos < mtime_nanos))
+		r1 = set_time(fd, mode, name,
+			      atime, atime_nanos,
+			      birthtime, birthtime_nanos);
+#endif
+	r2 = set_time(fd, mode, name,
+		      atime, atime_nanos,
+		      mtime, mtime_nanos);
+	if (r1 != 0 || r2 != 0) {
+		archive_set_error(&a->archive, errno,
+				  "Can't restore time");
+		return (ARCHIVE_WARN);
+	}
+	return (ARCHIVE_OK);
+}
+
+static int
+set_times_from_entry(struct archive_write_disk *a)
+{
+	time_t atime, birthtime, mtime, ctime;
+	long atime_nsec, birthtime_nsec, mtime_nsec, ctime_nsec;
+
+	/* Suitable defaults. */
+	atime = birthtime = mtime = ctime = a->start_time;
+	atime_nsec = birthtime_nsec = mtime_nsec = ctime_nsec = 0;
 
 	/* If no time was provided, we're done. */
 	if (!archive_entry_atime_is_set(a->entry)
@@ -1939,53 +2132,28 @@ set_times(struct archive_write_disk *a)
 	    && !archive_entry_mtime_is_set(a->entry))
 		return (ARCHIVE_OK);
 
-	/* If no atime was specified, use start time instead. */
-	/* In theory, it would be marginally more correct to use
-	 * time(NULL) here, but that would cost us an extra syscall
-	 * for little gain. */
 	if (archive_entry_atime_is_set(a->entry)) {
 		atime = archive_entry_atime(a->entry);
 		atime_nsec = archive_entry_atime_nsec(a->entry);
 	}
-
-	/*
-	 * If you have struct stat.st_birthtime, we assume BSD birthtime
-	 * semantics, in which {f,l,}utimes() updates birthtime to earliest
-	 * mtime.  So we set the time twice, first using the birthtime,
-	 * then using the mtime.
-	 */
-#if HAVE_STRUCT_STAT_ST_BIRTHTIME
-	/* If birthtime is set, flush that through to disk first. */
-	if (archive_entry_birthtime_is_set(a->entry))
-		if (set_time(a->fd, a->mode, a->name, atime, atime_nsec,
-			archive_entry_birthtime(a->entry),
-			archive_entry_birthtime_nsec(a->entry))) {
-			archive_set_error(&a->archive, errno,
-			    "Can't update time for %s",
-			    a->name);
-			return (ARCHIVE_WARN);
-		}
-#endif
-
+	if (archive_entry_birthtime_is_set(a->entry)) {
+		birthtime = archive_entry_birthtime(a->entry);
+		birthtime_nsec = archive_entry_birthtime_nsec(a->entry);
+	}
 	if (archive_entry_mtime_is_set(a->entry)) {
 		mtime = archive_entry_mtime(a->entry);
 		mtime_nsec = archive_entry_mtime_nsec(a->entry);
 	}
-	if (set_time(a->fd, a->mode, a->name,
-		atime, atime_nsec, mtime, mtime_nsec)) {
-		archive_set_error(&a->archive, errno,
-		    "Can't update time for %s",
-		    a->name);
-		return (ARCHIVE_WARN);
+	if (archive_entry_ctime_is_set(a->entry)) {
+		ctime = archive_entry_ctime(a->entry);
+		ctime_nsec = archive_entry_ctime_nsec(a->entry);
 	}
 
-	/*
-	 * Note: POSIX does not provide a portable way to restore ctime.
-	 * (Apart from resetting the system clock, which is distasteful.)
-	 * So, any restoration of ctime will necessarily be OS-specific.
-	 */
-
-	return (ARCHIVE_OK);
+	return set_times(a, a->fd, a->mode, a->name,
+			 atime, atime_nsec,
+			 birthtime, birthtime_nsec,
+			 mtime, mtime_nsec,
+			 ctime, ctime_nsec);
 }
 
 static int
@@ -2001,11 +2169,10 @@ set_mode(struct archive_write_disk *a, int mode)
 		 * process, since systems sometimes set GID from
 		 * the enclosing dir or based on ACLs.
 		 */
-		if ((r = _archive_write_disk_lazy_stat(a)) != ARCHIVE_OK)
+		if ((r = lazy_stat(a)) != ARCHIVE_OK)
 			return (r);
 		if (a->pst->st_gid != a->gid) {
 			mode &= ~ S_ISGID;
-#if !defined(_WIN32) || defined(__CYGWIN__)
 			if (a->flags & ARCHIVE_EXTRACT_OWNER) {
 				/*
 				 * This is only an error if you
@@ -2018,19 +2185,16 @@ set_mode(struct archive_write_disk *a, int mode)
 				    "Can't restore SGID bit");
 				r = ARCHIVE_WARN;
 			}
-#endif
 		}
 		/* While we're here, double-check the UID. */
 		if (a->pst->st_uid != a->uid
 		    && (a->todo & TODO_SUID)) {
 			mode &= ~ S_ISUID;
-#if !defined(_WIN32) || defined(__CYGWIN__)
 			if (a->flags & ARCHIVE_EXTRACT_OWNER) {
 				archive_set_error(&a->archive, -1,
 				    "Can't restore SUID bit");
 				r = ARCHIVE_WARN;
 			}
-#endif
 		}
 		a->todo &= ~TODO_SGID_CHECK;
 		a->todo &= ~TODO_SUID_CHECK;
@@ -2042,13 +2206,11 @@ set_mode(struct archive_write_disk *a, int mode)
 		 */
 		if (a->user_uid != a->uid) {
 			mode &= ~ S_ISUID;
-#if !defined(_WIN32) || defined(__CYGWIN__)
 			if (a->flags & ARCHIVE_EXTRACT_OWNER) {
 				archive_set_error(&a->archive, -1,
 				    "Can't make file SUID");
 				r = ARCHIVE_WARN;
 			}
-#endif
 		}
 		a->todo &= ~TODO_SUID_CHECK;
 	}
@@ -2186,7 +2348,7 @@ set_fflags_platform(struct archive_write_disk *a, int fd, const char *name,
 	 * about the correct approach if we're overwriting an existing
 	 * file that already has flags on it. XXX
 	 */
-	if ((r = _archive_write_disk_lazy_stat(a)) != ARCHIVE_OK)
+	if ((r = lazy_stat(a)) != ARCHIVE_OK)
 		return (r);
 
 	a->st.st_flags &= ~clear;
@@ -2218,7 +2380,7 @@ set_fflags_platform(struct archive_write_disk *a, int fd, const char *name,
 	return (ARCHIVE_WARN);
 }
 
-#elif defined(EXT2_IOC_GETFLAGS) && defined(EXT2_IOC_SETFLAGS)
+#elif defined(EXT2_IOC_GETFLAGS) && defined(EXT2_IOC_SETFLAGS) && defined(HAVE_WORKING_EXT2_IOC_GETFLAGS)
 /*
  * Linux uses ioctl() to read and write file flags.
  */
@@ -2261,22 +2423,25 @@ set_fflags_platform(struct archive_write_disk *a, int fd, const char *name,
 	 * to read the current flags from disk. XXX
 	 */
 	ret = ARCHIVE_OK;
+
+	/* Read the current file flags. */
+	if (ioctl(myfd, EXT2_IOC_GETFLAGS, &oldflags) < 0)
+		goto fail;
+
 	/* Try setting the flags as given. */
-	if (ioctl(myfd, EXT2_IOC_GETFLAGS, &oldflags) >= 0) {
-		newflags = (oldflags & ~clear) | set;
-		if (ioctl(myfd, EXT2_IOC_SETFLAGS, &newflags) >= 0)
-			goto cleanup;
-		if (errno != EPERM)
-			goto fail;
-	}
+	newflags = (oldflags & ~clear) | set;
+	if (ioctl(myfd, EXT2_IOC_SETFLAGS, &newflags) >= 0)
+		goto cleanup;
+	if (errno != EPERM)
+		goto fail;
+
 	/* If we couldn't set all the flags, try again with a subset. */
-	if (ioctl(myfd, EXT2_IOC_GETFLAGS, &oldflags) >= 0) {
-		newflags &= ~sf_mask;
-		oldflags &= sf_mask;
-		newflags |= oldflags;
-		if (ioctl(myfd, EXT2_IOC_SETFLAGS, &newflags) >= 0)
-			goto cleanup;
-	}
+	newflags &= ~sf_mask;
+	oldflags &= sf_mask;
+	newflags |= oldflags;
+	if (ioctl(myfd, EXT2_IOC_SETFLAGS, &newflags) >= 0)
+		goto cleanup;
+
 	/* We couldn't set the flags, so report the failure. */
 fail:
 	archive_set_error(&a->archive, errno,
@@ -2309,12 +2474,72 @@ set_fflags_platform(struct archive_write_disk *a, int fd, const char *name,
 
 #endif /* __linux */
 
+#ifndef HAVE_COPYFILE_H
+/* Default is to simply drop Mac extended metadata. */
+static int
+set_mac_metadata(struct archive_write_disk *a, const char *pathname,
+		 const void *metadata, size_t metadata_size)
+{
+	(void)a; /* UNUSED */
+	(void)pathname; /* UNUSED */
+	(void)metadata; /* UNUSED */
+	(void)metadata_size; /* UNUSED */
+	return (ARCHIVE_OK);
+}
+#else
+
+/*
+ * On Mac OS, we use copyfile() to unpack the metadata and
+ * apply it to the target file.
+ */
+static int
+set_mac_metadata(struct archive_write_disk *a, const char *pathname,
+		 const void *metadata, size_t metadata_size)
+{
+	struct archive_string tmp;
+	ssize_t written;
+	int fd;
+	int ret = ARCHIVE_OK;
+
+	/* This would be simpler if copyfile() could just accept the
+	 * metadata as a block of memory; then we could sidestep this
+	 * silly dance of writing the data to disk just so that
+	 * copyfile() can read it back in again. */
+	archive_string_init(&tmp);
+	archive_strcpy(&tmp, pathname);
+	archive_strcat(&tmp, ".XXXXXX");
+	fd = mkstemp(tmp.s);
+
+	if (fd < 0) {
+		archive_set_error(&a->archive, errno,
+				  "Failed to restore metadata");
+		return (ARCHIVE_WARN);
+	}
+	written = write(fd, metadata, metadata_size);
+	close(fd);
+	if (written != metadata_size
+	    || copyfile(tmp.s, pathname, 0,
+			COPYFILE_UNPACK | COPYFILE_NOFOLLOW
+			| COPYFILE_ACL | COPYFILE_XATTR)) {
+		archive_set_error(&a->archive, errno,
+				  "Failed to restore metadata");
+		ret = ARCHIVE_WARN;
+	}
+	unlink(tmp.s);
+	return (ret);
+}
+#endif
+
 #ifndef HAVE_POSIX_ACL
 /* Default empty function body to satisfy mainline code. */
 static int
-set_acls(struct archive_write_disk *a)
+set_acls(struct archive_write_disk *a, int fd, const char *name,
+	 struct archive_acl *acl)
 {
 	(void)a; /* UNUSED */
+	(void)fd; /* UNUSED */
+	(void)name; /* UNUSED */
+	(void)acl; /* UNUSED */
 	return (ARCHIVE_OK);
 }
 
@@ -2324,22 +2549,24 @@ set_acls(struct archive_write_disk *a)
  * XXX TODO: What about ACL types other than ACCESS and DEFAULT?
  */
 static int
-set_acls(struct archive_write_disk *a)
+set_acls(struct archive_write_disk *a, int fd, const char *name,
+	 struct archive_acl *abstract_acl)
 {
 	int		 ret;
 
-	ret = set_acl(a, a->fd, a->entry, ACL_TYPE_ACCESS,
+	ret = set_acl(a, fd, name, abstract_acl, ACL_TYPE_ACCESS,
 	    ARCHIVE_ENTRY_ACL_TYPE_ACCESS, "access");
 	if (ret != ARCHIVE_OK)
 		return (ret);
-	ret = set_acl(a, a->fd, a->entry, ACL_TYPE_DEFAULT,
+	ret = set_acl(a, fd, name, abstract_acl, ACL_TYPE_DEFAULT,
 	    ARCHIVE_ENTRY_ACL_TYPE_DEFAULT, "default");
 	return (ret);
 }
 
 
 static int
-set_acl(struct archive_write_disk *a, int fd, struct archive_entry *entry,
+set_acl(struct archive_write_disk *a, int fd, const char *name,
+    struct archive_acl *abstract_acl,
     acl_type_t acl_type, int ae_requested_type, const char *tname)
 {
 	acl_t		 acl;
@@ -2351,27 +2578,27 @@ set_acl(struct archive_write_disk *a, int fd, struct archive_entry *entry,
 	gid_t		 ae_gid;
 	const char	*ae_name;
 	int		 entries;
-	const char	*name;
 
 	ret = ARCHIVE_OK;
-	entries = archive_entry_acl_reset(entry, ae_requested_type);
+	entries = archive_acl_reset(abstract_acl, ae_requested_type);
 	if (entries == 0)
 		return (ARCHIVE_OK);
 	acl = acl_init(entries);
-	while (archive_entry_acl_next(entry, ae_requested_type, &ae_type,
-		   &ae_permset, &ae_tag, &ae_id, &ae_name) == ARCHIVE_OK) {
+	while (archive_acl_next(&a->archive, abstract_acl,
+	    ae_requested_type, &ae_type, &ae_permset, &ae_tag, &ae_id,
+	    &ae_name) == ARCHIVE_OK) {
 		acl_create_entry(&acl, &acl_entry);
 
 		switch (ae_tag) {
 		case ARCHIVE_ENTRY_ACL_USER:
 			acl_set_tag_type(acl_entry, ACL_USER);
-			ae_uid = a->lookup_uid(a->lookup_uid_data,
+			ae_uid = archive_write_disk_uid(&a->archive,
 			    ae_name, ae_id);
 			acl_set_qualifier(acl_entry, &ae_uid);
 			break;
 		case ARCHIVE_ENTRY_ACL_GROUP:
 			acl_set_tag_type(acl_entry, ACL_GROUP);
-			ae_gid = a->lookup_gid(a->lookup_gid_data,
+			ae_gid = archive_write_disk_gid(&a->archive,
 			    ae_name, ae_id);
 			acl_set_qualifier(acl_entry, &ae_gid);
 			break;
@@ -2402,8 +2629,6 @@ set_acl(struct archive_write_disk *a, int fd, struct archive_entry *entry,
 			acl_add_perm(acl_permset, ACL_READ);
 	}
 
-	name = archive_entry_pathname(entry);
-
 	/* Try restoring the ACL through 'fd' if we can. */
 #if HAVE_ACL_SET_FD
 	if (fd >= 0 && acl_type == ACL_TYPE_ACCESS && acl_set_fd(fd, acl) == 0)
@@ -2425,9 +2650,10 @@ set_acl(struct archive_write_disk *a, int fd, struct archive_entry *entry,
 }
 #endif
 
-#if HAVE_LSETXATTR
+#if HAVE_LSETXATTR || HAVE_LSETEA
 /*
- * Restore extended attributes -  Linux implementation
+ * Restore extended attributes -  Linux and AIX implementations:
+ * AIX' ea interface is syntaxwise identical to the Linux xattr interface.
  */
 static int
 set_xattrs(struct archive_write_disk *a)
@@ -2450,13 +2676,22 @@ set_xattrs(struct archive_write_disk *a)
 			if (a->fd >= 0)
 				e = fsetxattr(a->fd, name, value, size, 0);
 			else
+#elif HAVE_FSETEA
+			if (a->fd >= 0)
+				e = fsetea(a->fd, name, value, size, 0);
+			else
 #endif
 			{
+#if HAVE_LSETXATTR
 				e = lsetxattr(archive_entry_pathname(entry),
 				    name, value, size, 0);
+#elif HAVE_LSETEA
+				e = lsetea(archive_entry_pathname(entry),
+				    name, value, size, 0);
+#endif
 			}
 			if (e == -1) {
-				if (errno == ENOTSUP) {
+				if (errno == ENOTSUP || errno == ENOSYS) {
 					if (!warning_done) {
 						warning_done = 1;
 						archive_set_error(&a->archive, errno,
@@ -2523,7 +2758,7 @@ set_xattrs(struct archive_write_disk *a)
 				    namespace, name, value, size);
 			}
 			if (e != (int)size) {
-				if (errno == ENOTSUP) {
+				if (errno == ENOTSUP || errno == ENOSYS) {
 					if (!warning_done) {
 						warning_done = 1;
 						archive_set_error(&a->archive, errno,
@@ -2563,28 +2798,6 @@ set_xattrs(struct archive_write_disk *a)
 	return (ARCHIVE_OK);
 }
 #endif
-
-
-/*
- * Trivial implementations of gid/uid lookup functions.
- * These are normally overridden by the client, but these stub
- * versions ensure that we always have something that works.
- */
-static gid_t
-trivial_lookup_gid(void *private_data, const char *gname, gid_t gid)
-{
-	(void)private_data; /* UNUSED */
-	(void)gname; /* UNUSED */
-	return (gid);
-}
-
-static uid_t
-trivial_lookup_uid(void *private_data, const char *uname, uid_t uid)
-{
-	(void)private_data; /* UNUSED */
-	(void)uname; /* UNUSED */
-	return (uid);
-}
 
 /*
  * Test if file on disk is older than entry.
@@ -2626,3 +2839,6 @@ older(struct stat *st, struct archive_entry *entry)
 	/* Same age or newer, so not older. */
 	return (0);
 }
+
+#endif /* !_WIN32 || __CYGWIN__ */
+
