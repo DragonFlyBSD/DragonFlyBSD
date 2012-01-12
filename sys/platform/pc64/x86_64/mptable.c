@@ -1424,7 +1424,7 @@ mptable_pci_int_route(int bus, int dev, int pin, int intline)
 		gsi = ioapic_gsi(pci_int->mpci_ioapic_idx,
 			pci_int->mpci_ioapic_pin);
 		if (gsi >= 0) {
-			irq = ioapic_abi_find_gsi(gsi,
+			irq = ioapic_find_legacy_by_gsi(gsi,
 				INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
 		}
 	}
@@ -1435,7 +1435,7 @@ mptable_pci_int_route(int bus, int dev, int pin, int intline)
 				"for %d:%d INT%c\n", bus, dev, pin + 'A');
 		}
 
-		irq = ioapic_abi_find_irq(intline,
+		irq = ioapic_find_legacy_by_irq(intline,
 			INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
 	}
 

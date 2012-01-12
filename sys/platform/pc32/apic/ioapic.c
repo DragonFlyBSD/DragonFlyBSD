@@ -199,7 +199,7 @@ ioapic_config(void)
 	 */
 	TAILQ_FOREACH(info, &ioapic_conf.ioc_list, io_link)
 		ioapic_setup(info);
-	ioapic_abi_fixup_irqmap();
+	ioapic_fixup_legacy_irqmaps();
 
 	write_eflags(ef);
 
@@ -392,7 +392,7 @@ ioapic_gsi_setup(int gsi)
 		}
 	}
 
-	ioapic_abi_set_irqmap(irq, gsi, trig, pola);
+	ioapic_set_legacy_irqmap(irq, gsi, trig, pola);
 }
 
 void *

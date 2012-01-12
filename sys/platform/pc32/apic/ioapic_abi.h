@@ -65,11 +65,12 @@ extern struct ioapic_irqinfo	ioapic_irqs[];
 
 extern struct machintr_abi MachIntrABI_IOAPIC;
 
-int	ioapic_abi_extint_irqmap(int);
-void	ioapic_abi_set_irqmap(int, int, enum intr_trigger, enum intr_polarity);
-void	ioapic_abi_fixup_irqmap(void);
+int	ioapic_conf_legacy_extint(int);
+void	ioapic_set_legacy_irqmap(int, int, enum intr_trigger,
+	    enum intr_polarity);
+void	ioapic_fixup_legacy_irqmaps(void);
 
-int	ioapic_abi_find_gsi(int, enum intr_trigger, enum intr_polarity);
-int	ioapic_abi_find_irq(int, enum intr_trigger, enum intr_polarity);
+int	ioapic_find_legacy_by_gsi(int, enum intr_trigger, enum intr_polarity);
+int	ioapic_find_legacy_by_irq(int, enum intr_trigger, enum intr_polarity);
 
 #endif	/* !_ARCH_APIC_IOAPIC_ABI_H_ */

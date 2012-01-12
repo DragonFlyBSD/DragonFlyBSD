@@ -1057,14 +1057,14 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 
 	/* Finish initializing 8253 timer 0. */
 	if (ioapic_enable) {
-		irq = ioapic_abi_find_irq(0, INTR_TRIGGER_EDGE,
+		irq = ioapic_find_legacy_by_irq(0, INTR_TRIGGER_EDGE,
 			INTR_POLARITY_HIGH);
 		if (irq < 0) {
 mixed_mode_setup:
-			error = ioapic_abi_extint_irqmap(0);
+			error = ioapic_conf_legacy_extint(0);
 			if (!error) {
-				irq = ioapic_abi_find_irq(0, INTR_TRIGGER_EDGE,
-					INTR_POLARITY_HIGH);
+				irq = ioapic_find_legacy_by_irq(0,
+				    INTR_TRIGGER_EDGE, INTR_POLARITY_HIGH);
 				if (irq < 0)
 					error = ENOENT;
 			}

@@ -749,7 +749,7 @@ ioapic_abi_initmap(void)
 }
 
 void
-ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
+ioapic_set_legacy_irqmap(int irq, int gsi, enum intr_trigger trig,
     enum intr_polarity pola)
 {
 	struct ioapic_irqinfo *info;
@@ -802,7 +802,7 @@ ioapic_abi_set_irqmap(int irq, int gsi, enum intr_trigger trig,
 }
 
 void
-ioapic_abi_fixup_irqmap(void)
+ioapic_fixup_legacy_irqmaps(void)
 {
 	int cpu;
 
@@ -830,7 +830,8 @@ ioapic_abi_fixup_irqmap(void)
 }
 
 int
-ioapic_abi_find_gsi(int gsi, enum intr_trigger trig, enum intr_polarity pola)
+ioapic_find_legacy_by_gsi(int gsi, enum intr_trigger trig,
+    enum intr_polarity pola)
 {
 	int cpu;
 
@@ -860,7 +861,8 @@ ioapic_abi_find_gsi(int gsi, enum intr_trigger trig, enum intr_polarity pola)
 }
 
 int
-ioapic_abi_find_irq(int irq, enum intr_trigger trig, enum intr_polarity pola)
+ioapic_find_legacy_by_irq(int irq, enum intr_trigger trig,
+    enum intr_polarity pola)
 {
 	int cpu;
 
@@ -953,7 +955,7 @@ ioapic_abi_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
 }
 
 int
-ioapic_abi_extint_irqmap(int irq)
+ioapic_conf_legacy_extint(int irq)
 {
 	struct ioapic_irqinfo *info;
 	struct ioapic_irqmap *map;
