@@ -106,6 +106,13 @@ main(int ac, char **av)
 		SetAddrOpt = 1;
 
 	/*
+	 * Ignore SIGPIPE to prevent write() races against disconnecting
+	 * clients from killing vknetd.  Should be inherited by all I/O
+	 * threads.
+	 */
+	signal(SIGPIPE, SIG_IGN);
+
+	/*
 	 * Special connect/debug mode
 	 */
 	if (connectOpt) {
