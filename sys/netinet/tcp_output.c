@@ -155,15 +155,15 @@ tcp_output(struct tcpcb *tp)
 #ifdef TCP_SIGNATURE
 	int sigoff = 0;
 #endif
-	struct mbuf *m = NULL;
-	struct ip *ip = NULL;
-	struct ipovly *ipov = NULL;
-	struct tcphdr *th = NULL;
+	struct mbuf *m;
+	struct ip *ip;
+	struct ipovly *ipov;
+	struct tcphdr *th;
 	u_char opt[TCP_MAXOLEN];
 	unsigned int ipoptlen, optlen, hdrlen;
 	int idle;
 	boolean_t sendalot;
-	struct ip6_hdr *ip6 = NULL;
+	struct ip6_hdr *ip6;
 #ifdef INET6
 	const boolean_t isipv6 = (inp->inp_vflag & INP_IPV6) != 0;
 #else
@@ -213,6 +213,12 @@ tcp_output(struct tcpcb *tp)
 		nsacked = tcp_sack_bytes_below(&tp->scb, tp->snd_nxt);
 
 again:
+	m = NULL;
+	ip = NULL;
+	ipov = NULL;
+	th = NULL;
+	ip6 = NULL;
+
 	/* Make use of SACK information when slow-starting after a RTO. */
 	if (TCP_DO_SACK(tp) && tp->snd_nxt != tp->snd_max &&
 	    !IN_FASTRECOVERY(tp)) {
@@ -1117,10 +1123,8 @@ out:
 	tp->t_flags &= ~TF_ACKNOW;
 	if (tcp_delack_enabled)
 		tcp_callout_stop(tp, tp->tt_delack);
-	if (sendalot) {
-		th = NULL;
+	if (sendalot)
 		goto again;
-	}
 	return (0);
 }
 
