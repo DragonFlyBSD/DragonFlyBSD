@@ -1,74 +1,107 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* MD5 via ARCHIVE_HASH_MD5_LIBC supported. */
-#define ARCHIVE_HASH_MD5_LIBC 1
+/* MD5 via ARCHIVE_CRYPTO_MD5_LIBC supported. */
+/* #undef ARCHIVE_CRYPTO_MD5_LIBC */
 
-/* MD5 via ARCHIVE_HASH_MD5_LIBSYSTEM supported. */
-/* #undef ARCHIVE_HASH_MD5_LIBSYSTEM */
+/* MD5 via ARCHIVE_CRYPTO_MD5_LIBMD supported. */
+#define ARCHIVE_CRYPTO_MD5_LIBMD 1
 
-/* MD5 via ARCHIVE_HASH_MD5_OPENSSL supported. */
-/* #undef ARCHIVE_HASH_MD5_OPENSSL */
+/* MD5 via ARCHIVE_CRYPTO_MD5_LIBSYSTEM supported. */
+/* #undef ARCHIVE_CRYPTO_MD5_LIBSYSTEM */
 
-/* RMD160 via ARCHIVE_HASH_RMD160_LIBC supported. */
-#define ARCHIVE_HASH_RMD160_LIBC 1
+/* MD5 via ARCHIVE_CRYPTO_MD5_NETTLE supported. */
+/* #undef ARCHIVE_CRYPTO_MD5_NETTLE */
 
-/* RMD160 via ARCHIVE_HASH_RMD160_OPENSSL supported. */
-/* #undef ARCHIVE_HASH_RMD160_OPENSSL */
+/* MD5 via ARCHIVE_CRYPTO_MD5_OPENSSL supported. */
+/* #undef ARCHIVE_CRYPTO_MD5_OPENSSL */
 
-/* SHA1 via ARCHIVE_HASH_SHA1_LIBC supported. */
-#define ARCHIVE_HASH_SHA1_LIBC 1
+/* RMD160 via ARCHIVE_CRYPTO_RMD160_LIBC supported. */
+/* #undef ARCHIVE_CRYPTO_RMD160_LIBC */
 
-/* SHA1 via ARCHIVE_HASH_SHA1_LIBSYSTEM supported. */
-/* #undef ARCHIVE_HASH_SHA1_LIBSYSTEM */
+/* RMD160 via ARCHIVE_CRYPTO_RMD160_LIBMD supported. */
+#define ARCHIVE_CRYPTO_RMD160_LIBMD 1
 
-/* SHA1 via ARCHIVE_HASH_SHA1_OPENSSL supported. */
-/* #undef ARCHIVE_HASH_SHA1_OPENSSL */
+/* RMD160 via ARCHIVE_CRYPTO_RMD160_NETTLE supported. */
+/* #undef ARCHIVE_CRYPTO_RMD160_NETTLE */
 
-/* SHA256 via ARCHIVE_HASH_SHA256_LIBC supported. */
-#define ARCHIVE_HASH_SHA256_LIBC 1
+/* RMD160 via ARCHIVE_CRYPTO_RMD160_OPENSSL supported. */
+/* #undef ARCHIVE_CRYPTO_RMD160_OPENSSL */
 
-/* SHA256 via ARCHIVE_HASH_SHA256_LIBC2 supported. */
-/* #undef ARCHIVE_HASH_SHA256_LIBC2 */
+/* SHA1 via ARCHIVE_CRYPTO_SHA1_LIBC supported. */
+/* #undef ARCHIVE_CRYPTO_SHA1_LIBC */
 
-/* SHA256 via ARCHIVE_HASH_SHA256_LIBC3 supported. */
-/* #undef ARCHIVE_HASH_SHA256_LIBC3 */
+/* SHA1 via ARCHIVE_CRYPTO_SHA1_LIBMD supported. */
+#define ARCHIVE_CRYPTO_SHA1_LIBMD 1
 
-/* SHA256 via ARCHIVE_HASH_SHA256_LIBSYSTEM supported. */
-/* #undef ARCHIVE_HASH_SHA256_LIBSYSTEM */
+/* SHA1 via ARCHIVE_CRYPTO_SHA1_LIBSYSTEM supported. */
+/* #undef ARCHIVE_CRYPTO_SHA1_LIBSYSTEM */
 
-/* SHA256 via ARCHIVE_HASH_SHA256_OPENSSL supported. */
-/* #undef ARCHIVE_HASH_SHA256_OPENSSL */
+/* SHA1 via ARCHIVE_CRYPTO_SHA1_NETTLE supported. */
+/* #undef ARCHIVE_CRYPTO_SHA1_NETTLE */
 
-/* SHA384 via ARCHIVE_HASH_SHA384_LIBC supported. */
-#define ARCHIVE_HASH_SHA384_LIBC 1
+/* SHA1 via ARCHIVE_CRYPTO_SHA1_OPENSSL supported. */
+/* #undef ARCHIVE_CRYPTO_SHA1_OPENSSL */
 
-/* SHA384 via ARCHIVE_HASH_SHA384_LIBC2 supported. */
-/* #undef ARCHIVE_HASH_SHA384_LIBC2 */
+/* SHA256 via ARCHIVE_CRYPTO_SHA256_LIBC supported. */
+/* #undef ARCHIVE_CRYPTO_SHA256_LIBC */
 
-/* SHA384 via ARCHIVE_HASH_SHA384_LIBC3 supported. */
-/* #undef ARCHIVE_HASH_SHA384_LIBC3 */
+/* SHA256 via ARCHIVE_CRYPTO_SHA256_LIBC2 supported. */
+/* #undef ARCHIVE_CRYPTO_SHA256_LIBC2 */
 
-/* SHA384 via ARCHIVE_HASH_SHA384_LIBSYSTEM supported. */
-/* #undef ARCHIVE_HASH_SHA384_LIBSYSTEM */
+/* SHA256 via ARCHIVE_CRYPTO_SHA256_LIBC3 supported. */
+/* #undef ARCHIVE_CRYPTO_SHA256_LIBC3 */
 
-/* SHA384 via ARCHIVE_HASH_SHA384_OPENSSL supported. */
-/* #undef ARCHIVE_HASH_SHA384_OPENSSL */
+/* SHA256 via ARCHIVE_CRYPTO_SHA256_LIBMD supported. */
+#define ARCHIVE_CRYPTO_SHA256_LIBMD 1
 
-/* SHA512 via ARCHIVE_HASH_SHA512_LIBC supported. */
-#define ARCHIVE_HASH_SHA512_LIBC 1
+/* SHA256 via ARCHIVE_CRYPTO_SHA256_LIBSYSTEM supported. */
+/* #undef ARCHIVE_CRYPTO_SHA256_LIBSYSTEM */
 
-/* SHA512 via ARCHIVE_HASH_SHA512_LIBC2 supported. */
-/* #undef ARCHIVE_HASH_SHA512_LIBC2 */
+/* SHA256 via ARCHIVE_CRYPTO_SHA256_NETTLE supported. */
+/* #undef ARCHIVE_CRYPTO_SHA256_NETTLE */
 
-/* SHA512 via ARCHIVE_HASH_SHA512_LIBC3 supported. */
-/* #undef ARCHIVE_HASH_SHA512_LIBC3 */
+/* SHA256 via ARCHIVE_CRYPTO_SHA256_OPENSSL supported. */
+/* #undef ARCHIVE_CRYPTO_SHA256_OPENSSL */
 
-/* SHA512 via ARCHIVE_HASH_SHA512_LIBSYSTEM supported. */
-/* #undef ARCHIVE_HASH_SHA512_LIBSYSTEM */
+/* SHA384 via ARCHIVE_CRYPTO_SHA384_LIBC supported. */
+/* #undef ARCHIVE_CRYPTO_SHA384_LIBC */
 
-/* SHA512 via ARCHIVE_HASH_SHA512_OPENSSL supported. */
-/* #undef ARCHIVE_HASH_SHA512_OPENSSL */
+/* SHA384 via ARCHIVE_CRYPTO_SHA384_LIBC2 supported. */
+/* #undef ARCHIVE_CRYPTO_SHA384_LIBC2 */
+
+/* SHA384 via ARCHIVE_CRYPTO_SHA384_LIBC3 supported. */
+/* #undef ARCHIVE_CRYPTO_SHA384_LIBC3 */
+
+/* SHA384 via ARCHIVE_CRYPTO_SHA384_LIBSYSTEM supported. */
+/* #undef ARCHIVE_CRYPTO_SHA384_LIBSYSTEM */
+
+/* SHA384 via ARCHIVE_CRYPTO_SHA384_NETTLE supported. */
+/* #undef ARCHIVE_CRYPTO_SHA384_NETTLE */
+
+/* SHA384 via ARCHIVE_CRYPTO_SHA384_OPENSSL supported. */
+/* #undef ARCHIVE_CRYPTO_SHA384_OPENSSL */
+
+/* SHA512 via ARCHIVE_CRYPTO_SHA512_LIBC supported. */
+/* #undef ARCHIVE_CRYPTO_SHA512_LIBC */
+
+/* SHA512 via ARCHIVE_CRYPTO_SHA512_LIBC2 supported. */
+/* #undef ARCHIVE_CRYPTO_SHA512_LIBC2 */
+
+/* SHA512 via ARCHIVE_CRYPTO_SHA512_LIBC3 supported. */
+/* #undef ARCHIVE_CRYPTO_SHA512_LIBC3 */
+
+/* SHA512 via ARCHIVE_CRYPTO_SHA512_LIBMD supported. */
+#define ARCHIVE_CRYPTO_SHA512_LIBMD 1
+
+/* SHA512 via ARCHIVE_CRYPTO_SHA512_LIBSYSTEM supported. */
+/* #undef ARCHIVE_CRYPTO_SHA512_LIBSYSTEM */
+
+/* SHA512 via ARCHIVE_CRYPTO_SHA512_NETTLE supported. */
+/* #undef ARCHIVE_CRYPTO_SHA512_NETTLE */
+
+/* SHA512 via ARCHIVE_CRYPTO_SHA512_OPENSSL supported. */
+/* #undef ARCHIVE_CRYPTO_SHA512_OPENSSL */
 
 /* Version number of bsdcpio */
 /* #undef BSDCPIO_VERSION_STRING */
@@ -126,6 +159,12 @@
 
 /* Define to 1 if you have the `chroot' function. */
 #define HAVE_CHROOT 1
+
+/* Define to 1 if you have the <copyfile.h> header file. */
+/* #undef HAVE_COPYFILE_H */
+
+/* Define to 1 if you have the `ctime_r' function. */
+#define HAVE_CTIME_R 1
 
 /* Define to 1 if you have the <ctype.h> header file. */
 #define HAVE_CTYPE_H 1
@@ -223,17 +262,44 @@
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
 
+/* Define to 1 if you have the `fdopendir' function. */
+#define HAVE_FDOPENDIR 1
+
+/* Define to 1 if you have the `fgetea' function. */
+/* #undef HAVE_FGETEA */
+
+/* Define to 1 if you have the `fgetxattr' function. */
+/* #undef HAVE_FGETXATTR */
+
+/* Define to 1 if you have the `flistea' function. */
+/* #undef HAVE_FLISTEA */
+
+/* Define to 1 if you have the `flistxattr' function. */
+/* #undef HAVE_FLISTXATTR */
+
 /* Define to 1 if you have the `fork' function. */
 #define HAVE_FORK 1
 
 /* Define to 1 if fseeko (and presumably ftello) exists and is declared. */
 #define HAVE_FSEEKO 1
 
+/* Define to 1 if you have the `fsetea' function. */
+/* #undef HAVE_FSETEA */
+
 /* Define to 1 if you have the `fsetxattr' function. */
 /* #undef HAVE_FSETXATTR */
 
 /* Define to 1 if you have the `fstat' function. */
 #define HAVE_FSTAT 1
+
+/* Define to 1 if you have the `fstatat' function. */
+#define HAVE_FSTATAT 1
+
+/* Define to 1 if you have the `fstatfs' function. */
+#define HAVE_FSTATFS 1
+
+/* Define to 1 if you have the `fstatvfs' function. */
+#define HAVE_FSTATVFS 1
 
 /* Define to 1 if you have the `ftruncate' function. */
 #define HAVE_FTRUNCATE 1
@@ -243,6 +309,12 @@
 
 /* Define to 1 if you have the `futimes' function. */
 #define HAVE_FUTIMES 1
+
+/* Define to 1 if you have the `futimesat' function. */
+/* #undef HAVE_FUTIMESAT */
+
+/* Define to 1 if you have the `getea' function. */
+/* #undef HAVE_GETEA */
 
 /* Define to 1 if you have the `geteuid' function. */
 #define HAVE_GETEUID 1
@@ -262,11 +334,23 @@
 /* Define to 1 if you have the `getpwuid_r' function. */
 #define HAVE_GETPWUID_R 1
 
+/* Define to 1 if you have the `getvfsbyname' function. */
+#define HAVE_GETVFSBYNAME 1
+
 /* Define to 1 if you have the `getxattr' function. */
 /* #undef HAVE_GETXATTR */
 
+/* Define to 1 if you have the `gmtime_r' function. */
+#define HAVE_GMTIME_R 1
+
 /* Define to 1 if you have the <grp.h> header file. */
 #define HAVE_GRP_H 1
+
+/* Define if you have the iconv() function and it works. */
+#define HAVE_ICONV 1
+
+/* Define to 1 if you have the <iconv.h> header file. */
+#define HAVE_ICONV_H 1
 
 /* Define to 1 if the system has the type `intmax_t'. */
 #define HAVE_INTMAX_T 1
@@ -289,6 +373,9 @@
 /* Define to 1 if you have the `lchown' function. */
 #define HAVE_LCHOWN 1
 
+/* Define to 1 if you have the `lgetea' function. */
+/* #undef HAVE_LGETEA */
+
 /* Define to 1 if you have the `lgetxattr' function. */
 /* #undef HAVE_LGETXATTR */
 
@@ -300,6 +387,9 @@
 
 /* Define to 1 if you have the `bz2' library (-lbz2). */
 #define HAVE_LIBBZ2 1
+
+/* Define to 1 if you have the `charset' library (-lcharset). */
+/* #undef HAVE_LIBCHARSET */
 
 /* Define to 1 if you have the `expat' library (-lexpat). */
 /* #undef HAVE_LIBEXPAT */
@@ -316,6 +406,9 @@
 /* Define to 1 if you have the <libxml/xmlreader.h> header file. */
 /* #undef HAVE_LIBXML_XMLREADER_H */
 
+/* Define to 1 if you have the <libxml/xmlwriter.h> header file. */
+/* #undef HAVE_LIBXML_XMLWRITER_H */
+
 /* Define to 1 if you have the `z' library (-lz). */
 #define HAVE_LIBZ 1
 
@@ -325,20 +418,44 @@
 /* Define to 1 if you have the `link' function. */
 #define HAVE_LINK 1
 
+/* Define to 1 if you have the <linux/fiemap.h> header file. */
+/* #undef HAVE_LINUX_FIEMAP_H */
+
 /* Define to 1 if you have the <linux/fs.h> header file. */
 /* #undef HAVE_LINUX_FS_H */
+
+/* Define to 1 if you have the <linux/magic.h> header file. */
+/* #undef HAVE_LINUX_MAGIC_H */
+
+/* Define to 1 if you have the `listea' function. */
+/* #undef HAVE_LISTEA */
 
 /* Define to 1 if you have the `listxattr' function. */
 /* #undef HAVE_LISTXATTR */
 
+/* Define to 1 if you have the `llistea' function. */
+/* #undef HAVE_LLISTEA */
+
 /* Define to 1 if you have the `llistxattr' function. */
 /* #undef HAVE_LLISTXATTR */
+
+/* Define to 1 if you have the <localcharset.h> header file. */
+/* #undef HAVE_LOCALCHARSET_H */
+
+/* Define to 1 if you have the `locale_charset' function. */
+/* #undef HAVE_LOCALE_CHARSET */
 
 /* Define to 1 if you have the <locale.h> header file. */
 #define HAVE_LOCALE_H 1
 
+/* Define to 1 if you have the `localtime_r' function. */
+#define HAVE_LOCALTIME_R 1
+
 /* Define to 1 if the system has the type `long long int'. */
 #define HAVE_LONG_LONG_INT 1
+
+/* Define to 1 if you have the `lsetea' function. */
+/* #undef HAVE_LSETEA */
 
 /* Define to 1 if you have the `lsetxattr' function. */
 /* #undef HAVE_LSETXATTR */
@@ -359,6 +476,12 @@
 /* Define to 1 if you have the <lzma.h> header file. */
 #define HAVE_LZMA_H 1
 
+/* Define to 1 if you have the `mbrtowc' function. */
+#define HAVE_MBRTOWC 1
+
+/* Define to 1 if you have the `mbsnrtowcs' function. */
+/* #undef HAVE_MBSNRTOWCS */
+
 /* Define to 1 if you have the `memmove' function. */
 #define HAVE_MEMMOVE 1
 
@@ -377,11 +500,17 @@
 /* Define to 1 if you have the `mknod' function. */
 #define HAVE_MKNOD 1
 
+/* Define to 1 if you have the `mkstemp' function. */
+#define HAVE_MKSTEMP 1
+
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
 /* #undef HAVE_NDIR_H */
 
 /* Define to 1 if you have the `nl_langinfo' function. */
 #define HAVE_NL_LANGINFO 1
+
+/* Define to 1 if you have the `openat' function. */
+#define HAVE_OPENAT 1
 
 /* Define to 1 if you have the <paths.h> header file. */
 #define HAVE_PATHS_H 1
@@ -398,8 +527,14 @@
 /* Define to 1 if you have the <pwd.h> header file. */
 #define HAVE_PWD_H 1
 
+/* Define to 1 if you have a POSIX compatible readdir_r */
+#define HAVE_READDIR_R 1
+
 /* Define to 1 if you have the `readlink' function. */
 #define HAVE_READLINK 1
+
+/* Define to 1 if you have the `readlinkat' function. */
+#define HAVE_READLINKAT 1
 
 /* Define to 1 if you have the <regex.h> header file. */
 #define HAVE_REGEX_H 1
@@ -418,6 +553,12 @@
 
 /* Define to 1 if you have the <signal.h> header file. */
 #define HAVE_SIGNAL_H 1
+
+/* Define to 1 if you have the `statfs' function. */
+#define HAVE_STATFS 1
+
+/* Define to 1 if you have the `statvfs' function. */
+#define HAVE_STATVFS 1
 
 /* Define to 1 if `stat' has the bug that it succeeds when given the
    zero-length file name argument. */
@@ -459,6 +600,9 @@
 /* Define to 1 if you have the `strrchr' function. */
 #define HAVE_STRRCHR 1
 
+/* Define to 1 if `f_namemax' is a member of `struct statfs'. */
+/* #undef HAVE_STRUCT_STATFS_F_NAMEMAX */
+
 /* Define to 1 if `st_birthtime' is a member of `struct stat'. */
 /* #undef HAVE_STRUCT_STAT_ST_BIRTHTIME */
 
@@ -486,6 +630,12 @@
 /* Define to 1 if `st_umtime' is a member of `struct stat'. */
 /* #undef HAVE_STRUCT_STAT_ST_UMTIME */
 
+/* Define to 1 if `tm_gmtoff' is a member of `struct tm'. */
+#define HAVE_STRUCT_TM_TM_GMTOFF 1
+
+/* Define to 1 if `__tm_gmtoff' is a member of `struct tm'. */
+/* #undef HAVE_STRUCT_TM___TM_GMTOFF */
+
 /* Define to 1 if you have the `symlink' function. */
 #define HAVE_SYMLINK 1
 
@@ -499,6 +649,9 @@
    */
 /* #undef HAVE_SYS_DIR_H */
 
+/* Define to 1 if you have the <sys/ea.h> header file. */
+/* #undef HAVE_SYS_EA_H */
+
 /* Define to 1 if you have the <sys/extattr.h> header file. */
 #define HAVE_SYS_EXTATTR_H 1
 
@@ -507,6 +660,9 @@
 
 /* Define to 1 if you have the <sys/mkdev.h> header file. */
 /* #undef HAVE_SYS_MKDEV_H */
+
+/* Define to 1 if you have the <sys/mount.h> header file. */
+#define HAVE_SYS_MOUNT_H 1
 
 /* Define to 1 if you have the <sys/ndir.h> header file, and it defines `DIR'.
    */
@@ -521,6 +677,12 @@
 /* Define to 1 if you have the <sys/select.h> header file. */
 #define HAVE_SYS_SELECT_H 1
 
+/* Define to 1 if you have the <sys/statfs.h> header file. */
+/* #undef HAVE_SYS_STATFS_H */
+
+/* Define to 1 if you have the <sys/statvfs.h> header file. */
+#define HAVE_SYS_STATVFS_H 1
+
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1
 
@@ -532,6 +694,12 @@
 
 /* Define to 1 if you have the <sys/utime.h> header file. */
 /* #undef HAVE_SYS_UTIME_H */
+
+/* Define to 1 if you have the <sys/utsname.h> header file. */
+#define HAVE_SYS_UTSNAME_H 1
+
+/* Define to 1 if you have the <sys/vfs.h> header file. */
+/* #undef HAVE_SYS_VFS_H */
 
 /* Define to 1 if you have <sys/wait.h> that is POSIX.1 compatible. */
 #define HAVE_SYS_WAIT_H 1
@@ -599,14 +767,23 @@
 /* Define to 1 if you have the `wcslen' function. */
 #define HAVE_WCSLEN 1
 
+/* Define to 1 if you have the `wcsnrtombs' function. */
+/* #undef HAVE_WCSNRTOMBS */
+
 /* Define to 1 if you have the `wctomb' function. */
 #define HAVE_WCTOMB 1
 
 /* Define to 1 if you have the <wctype.h> header file. */
 #define HAVE_WCTYPE_H 1
 
+/* Define to 1 if you have the <wincrypt.h> header file. */
+/* #undef HAVE_WINCRYPT_H */
+
 /* Define to 1 if you have the <windows.h> header file. */
 /* #undef HAVE_WINDOWS_H */
+
+/* Define to 1 if you have the <winioctl.h> header file. */
+/* #undef HAVE_WINIOCTL_H */
 
 /* Define to 1 if you have the `wmemcmp' function. */
 #define HAVE_WMEMCMP 1
@@ -614,8 +791,29 @@
 /* Define to 1 if you have the `wmemcpy' function. */
 #define HAVE_WMEMCPY 1
 
+/* Define to 1 if you have a working EXT2_IOC_GETFLAGS */
+/* #undef HAVE_WORKING_EXT2_IOC_GETFLAGS */
+
 /* Define to 1 if you have the <zlib.h> header file. */
 #define HAVE_ZLIB_H 1
+
+/* Define to 1 if you have the `_ctime64_s' function. */
+/* #undef HAVE__CTIME64_S */
+
+/* Define to 1 if you have the `_fseeki64' function. */
+/* #undef HAVE__FSEEKI64 */
+
+/* Define to 1 if you have the `_get_timezone' function. */
+/* #undef HAVE__GET_TIMEZONE */
+
+/* Define to 1 if you have the `_localtime64_s' function. */
+/* #undef HAVE__LOCALTIME64_S */
+
+/* Define to 1 if you have the `_mkgmtime64' function. */
+/* #undef HAVE__MKGMTIME64 */
+
+/* Define as const if the declaration of iconv() needs const. */
+#define ICONV_CONST 
 
 /* Version number of libarchive as a single integer */
 /* #undef LIBARCHIVE_VERSION_NUMBER */
@@ -646,7 +844,7 @@
 #define PACKAGE "libarchive"
 
 /* Define to the address where bug reports for this package should be sent. */
-#define PACKAGE_BUGREPORT "kientzle@freebsd.org"
+#define PACKAGE_BUGREPORT "kientzle@FreeBSD.org"
 
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "libarchive"
@@ -722,10 +920,20 @@
 /* Define to 1 if you need to in order for `stat' and other things to work. */
 /* #undef _POSIX_SOURCE */
 
+/* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
+   <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
+   #define below would cause a syntax error. */
+/* #undef _UINT32_T */
+
 /* Define for Solaris 2.5.1 so the uint64_t typedef from <sys/synch.h>,
    <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
    #define below would cause a syntax error. */
 /* #undef _UINT64_T */
+
+/* Define for Solaris 2.5.1 so the uint8_t typedef from <sys/synch.h>,
+   <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
+   #define below would cause a syntax error. */
+/* #undef _UINT8_T */
 
 /* Define to '0x0500' for Windows 2000 APIs. */
 /* #undef _WIN32_WINNT */
@@ -739,6 +947,14 @@
 
 /* Define to `unsigned long' if <sys/types.h> does not define. */
 /* #undef id_t */
+
+/* Define to the type of a signed integer type of width exactly 16 bits if
+   such a type exists and the standard includes do not define it. */
+/* #undef int16_t */
+
+/* Define to the type of a signed integer type of width exactly 32 bits if
+   such a type exists and the standard includes do not define it. */
+/* #undef int32_t */
 
 /* Define to the type of a signed integer type of width exactly 64 bits if
    such a type exists and the standard includes do not define it. */
@@ -761,9 +977,21 @@
    define. */
 /* #undef uid_t */
 
+/* Define to the type of an unsigned integer type of width exactly 16 bits if
+   such a type exists and the standard includes do not define it. */
+/* #undef uint16_t */
+
+/* Define to the type of an unsigned integer type of width exactly 32 bits if
+   such a type exists and the standard includes do not define it. */
+/* #undef uint32_t */
+
 /* Define to the type of an unsigned integer type of width exactly 64 bits if
    such a type exists and the standard includes do not define it. */
 /* #undef uint64_t */
+
+/* Define to the type of an unsigned integer type of width exactly 8 bits if
+   such a type exists and the standard includes do not define it. */
+/* #undef uint8_t */
 
 /* Define to the widest unsigned integer type if <stdint.h> and <inttypes.h>
    do not define. */

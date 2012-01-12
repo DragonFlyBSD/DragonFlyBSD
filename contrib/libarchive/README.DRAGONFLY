@@ -3,6 +3,9 @@ http://code.google.com/p/libarchive/
 
 A list of deleted files is in README.DELETED.
 
+configure hint:
+./configure --without-nettle --without-openssl --without-xml2
+
 This source is used in:
 	lib/libarchive
 	usr.bin/cpio
