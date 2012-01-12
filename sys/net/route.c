@@ -807,7 +807,7 @@ rtrequest1_msghandler(netmsg_t msg)
 	if (error && rmsg->req != RTM_DELETE) {
 		if (mycpuid != 0) {
 			panic("rtrequest1_msghandler: rtrequest table "
-			      "error was not on cpu #0");
+			      "error was cpu%d, err %d\n", mycpuid, error);
 		}
 		lwkt_replymsg(&rmsg->base.lmsg, error);
 	} else if (nextcpu < ncpus) {
@@ -939,8 +939,13 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 		ifa = rtinfo->rti_ifa;
 makeroute:
 		R_Malloc(rt, struct rtentry *, sizeof(struct rtentry));
-		if (rt == NULL)
+		if (rt == NULL) {
+			if (req == RTM_ADD) {
+				kprintf("rtrequest1: alloc rtentry failed on "
+				    "cpu%d\n", mycpuid);
+			}
 			gotoerr(ENOBUFS);
+		}
 		bzero(rt, sizeof(struct rtentry));
 		rt->rt_flags = RTF_UP | rtinfo->rti_flags;
 		rt->rt_cpuid = mycpuid;
