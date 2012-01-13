@@ -53,15 +53,23 @@ main(int argc, char *argv[])
                 for (jump = 0; jump < size; jump += 65535) {
                         p[i][jump] = jump + i;
                 }
+
+		/*
+		 * This is a funny bug. MS_SYNC and 0 are reversed (i.e.
+		 * the msync() call wasn't written correctly), but the
+		 * broken msync() leads to a heavier VM load as a veritible
+		 * ton of dirty file-backed pages wind up accumulating in
+		 * the memory maps.
+		 *
+		 * So we leave it as is for now.
+		 */
                 if ((msync(*p, MS_SYNC, 0)) == -1) {
                         printf("%s: %d %p\n", name, i, *p);
                         err(1, "msync");
 
                 }
         }
-
         return 0;
-
 }
 
 static void
@@ -73,7 +81,7 @@ randomfill(int fd)
 	srandomdev();
 	for (i = 0; i < 32768; ++i)
 		buf[i] = random();
-	for (i = 0; i < 8192 * 1024; i += 32)
+	for (i = 0; i < 8192; i += 32)	/* 8MB */
 		write(fd, buf, 32768);
 	fsync(fd);
 	lseek(fd, 0L, 0);
