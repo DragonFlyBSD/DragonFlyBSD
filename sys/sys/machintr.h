@@ -60,19 +60,21 @@ enum machintr_type { MACHINTR_GENERIC, MACHINTR_ICU, MACHINTR_IOAPIC };
 struct machintr_abi {
     enum machintr_type type;
 
-    void	(*intr_disable)(int);		/* hardware disable intr */
-    void	(*intr_enable)(int);		/* hardware enable intr */
-    void	(*intr_setup)(int, int);	/* setup intr */
-    void	(*intr_teardown)(int);		/* tear down intr */
-    void	(*intr_config)			/* config intr */
-    		(int, enum intr_trigger, enum intr_polarity);
-    int		(*intr_cpuid)(int);		/* intr target cpu */
+    void	(*intr_disable)(int intr);	/* hardware disable intr */
+    void	(*intr_enable)(int intr);	/* hardware enable intr */
+    void	(*intr_setup)(int intr, int flags);
+    						/* setup intr */
+    void	(*intr_teardown)(int intr);	/* tear down intr */
 
-    int		(*msi_alloc)			/* alloc count intrs on cpu */
+    void	(*legacy_intr_config)		/* config legacy intr */
+    		(int intr, enum intr_trigger trig, enum intr_polarity pola);
+    int		(*legacy_intr_cpuid)(int intr);	/* legacy intr target cpu */
+
+    int		(*msi_alloc)			/* alloc count MSIs on cpu */
     		(int intrs[], int count, int cpuid);
-    void	(*msi_release)			/* release count intrs on cpu */
+    void	(*msi_release)			/* release count MSIs on cpu */
     		(const int intrs[], int count, int cpuid);
-    void	(*msi_map)			/* addr/data for intr on cpu */
+    void	(*msi_map)			/* addr/data for MSI on cpu */
     		(int intr, uint64_t *addr, uint32_t *data, int cpuid);
 
     void	(*finalize)(void);		/* final before ints enabled */
@@ -80,7 +82,7 @@ struct machintr_abi {
     void	(*setdefault)(void);		/* set default vectors */
     void	(*stabilize)(void);		/* stable before ints enabled */
     void	(*initmap)(void);		/* init irq mapping */
-    void	(*rman_setup)(struct rman *);	/* setup rman */
+    void	(*rman_setup)(struct rman *rm);	/* setup rman */
 };
 
 #define machintr_intr_enable(intr)	MachIntrABI.intr_enable(intr)
@@ -90,9 +92,10 @@ struct machintr_abi {
 #define machintr_intr_teardown(intr) \
 	    MachIntrABI.intr_teardown((intr))
 
-#define machintr_intr_config(intr, trig, pola)	\
-	    MachIntrABI.intr_config((intr), (trig), (pola))
-#define machintr_intr_cpuid(intr)	MachIntrABI.intr_cpuid((intr))
+#define machintr_legacy_intr_config(intr, trig, pola) \
+	    MachIntrABI.legacy_intr_config((intr), (trig), (pola))
+#define machintr_legacy_intr_cpuid(intr) \
+	    MachIntrABI.legacy_intr_cpuid((intr))
 
 extern struct machintr_abi MachIntrABI;
 

@@ -56,7 +56,7 @@ static void dummy_intr_disable(int);
 static void dummy_intr_enable(int);
 static void dummy_intr_setup(int, int);
 static void dummy_intr_teardown(int);
-static int dummy_intr_cpuid(int);
+static int dummy_legacy_intr_cpuid(int);
 static void dummy_finalize(void);
 static void dummy_intrcleanup(void);
 static void dummy_stabilize(void);
@@ -67,7 +67,7 @@ struct machintr_abi MachIntrABI = {
 	.intr_enable =	dummy_intr_enable,
 	.intr_setup =	dummy_intr_setup,
 	.intr_teardown = dummy_intr_teardown,
-	.intr_cpuid = dummy_intr_cpuid,
+	.legacy_intr_cpuid = dummy_legacy_intr_cpuid,
 
 	.finalize =	dummy_finalize,
 	.cleanup =	dummy_intrcleanup,
@@ -110,7 +110,7 @@ dummy_stabilize(void)
 }
 
 static int
-dummy_intr_cpuid(int irq __unused)
+dummy_legacy_intr_cpuid(int irq __unused)
 {
 	return 0;
 }

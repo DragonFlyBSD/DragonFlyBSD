@@ -217,7 +217,7 @@ isa_compat_probe(device_t dev)
 				int intr = ffs(dvp->id_irq) - 1;
 
 				bus_set_resource(dev, SYS_RES_IRQ, 0, intr, 1,
-				    machintr_intr_cpuid(intr));
+				    machintr_legacy_intr_cpuid(intr));
 			}
 			if (dvp->id_drq != old.id_drq) {
 				bus_set_resource(dev, SYS_RES_DRQ, 0,

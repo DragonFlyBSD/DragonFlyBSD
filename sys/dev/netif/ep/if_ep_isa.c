@@ -261,7 +261,7 @@ ep_isa_identify(driver_t *driver, device_t parent)
 		device_set_desc_copy(child, desc);
 		device_set_driver(child, driver);
 		bus_set_resource(child, SYS_RES_IRQ, 0, irq, 1,
-		    machintr_intr_cpuid(irq));
+		    machintr_legacy_intr_cpuid(irq));
 		bus_set_resource(child, SYS_RES_IOPORT, 0, ioport, EP_IOSIZE, -1);
 
 		if (bootverbose) {

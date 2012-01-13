@@ -72,7 +72,7 @@ isahint_add_device(device_t parent, const char *name, int unit)
 
 	if (resource_int_value(name, unit, "irq", &start) == 0 && start > 0) {
 		bus_set_resource(child, SYS_RES_IRQ, 0, start, 1,
-		    machintr_intr_cpuid(start));
+		    machintr_legacy_intr_cpuid(start));
 	}
 
 	if (resource_int_value(name, unit, "drq", &start) == 0 && start >= 0)

@@ -491,9 +491,10 @@ static void	ioapic_abi_intr_enable(int);
 static void	ioapic_abi_intr_disable(int);
 static void	ioapic_abi_intr_setup(int, int);
 static void	ioapic_abi_intr_teardown(int);
-static void	ioapic_abi_intr_config(int,
+
+static void	ioapic_abi_legacy_intr_config(int,
 		    enum intr_trigger, enum intr_polarity);
-static int	ioapic_abi_intr_cpuid(int);
+static int	ioapic_abi_legacy_intr_cpuid(int);
 
 static int	ioapic_abi_msi_alloc(int [], int, int);
 static void	ioapic_abi_msi_release(const int [], int, int);
@@ -514,8 +515,9 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 	.intr_enable	= ioapic_abi_intr_enable,
 	.intr_setup	= ioapic_abi_intr_setup,
 	.intr_teardown	= ioapic_abi_intr_teardown,
-	.intr_config	= ioapic_abi_intr_config,
-	.intr_cpuid	= ioapic_abi_intr_cpuid,
+
+	.legacy_intr_config = ioapic_abi_legacy_intr_config,
+	.legacy_intr_cpuid = ioapic_abi_legacy_intr_cpuid,
 
 	.msi_alloc	= ioapic_abi_msi_alloc,
 	.msi_release	= ioapic_abi_msi_release,
@@ -888,7 +890,8 @@ ioapic_find_legacy_by_irq(int irq, enum intr_trigger trig,
 }
 
 static void
-ioapic_abi_intr_config(int irq, enum intr_trigger trig, enum intr_polarity pola)
+ioapic_abi_legacy_intr_config(int irq, enum intr_trigger trig,
+    enum intr_polarity pola)
 {
 	struct ioapic_irqinfo *info;
 	struct ioapic_irqmap *map = NULL;
@@ -1021,7 +1024,7 @@ ioapic_conf_legacy_extint(int irq)
 }
 
 static int
-ioapic_abi_intr_cpuid(int irq)
+ioapic_abi_legacy_intr_cpuid(int irq)
 {
 	const struct ioapic_irqmap *map = NULL;
 	int cpuid;

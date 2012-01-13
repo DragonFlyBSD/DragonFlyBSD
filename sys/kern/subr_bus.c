@@ -2848,7 +2848,7 @@ bus_alloc_legacy_irq_resource(device_t dev, int *rid, u_long irq, u_int flags)
 	if (dev->parent == 0)
 		return(0);
 	return BUS_ALLOC_RESOURCE(dev->parent, dev, SYS_RES_IRQ, rid,
-	    irq, irq, 1, flags, machintr_intr_cpuid(irq));
+	    irq, irq, 1, flags, machintr_legacy_intr_cpuid(irq));
 }
 
 int

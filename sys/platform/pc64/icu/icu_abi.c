@@ -110,8 +110,10 @@ static void	icu_abi_intr_enable(int);
 static void	icu_abi_intr_disable(int);
 static void	icu_abi_intr_setup(int, int);
 static void	icu_abi_intr_teardown(int);
-static void	icu_abi_intr_config(int, enum intr_trigger, enum intr_polarity);
-static int	icu_abi_intr_cpuid(int);
+
+static void	icu_abi_legacy_intr_config(int, enum intr_trigger,
+		    enum intr_polarity);
+static int	icu_abi_legacy_intr_cpuid(int);
 
 static int	icu_abi_msi_alloc(int [], int, int);
 static void	icu_abi_msi_release(const int [], int, int);
@@ -130,8 +132,9 @@ struct machintr_abi MachIntrABI_ICU = {
 	.intr_enable	= icu_abi_intr_enable,
 	.intr_setup	= icu_abi_intr_setup,
 	.intr_teardown	= icu_abi_intr_teardown,
-	.intr_config	= icu_abi_intr_config,
-	.intr_cpuid	= icu_abi_intr_cpuid,
+
+	.legacy_intr_config = icu_abi_legacy_intr_config,
+	.legacy_intr_cpuid = icu_abi_legacy_intr_cpuid,
 
 	.msi_alloc	= icu_abi_msi_alloc,
 	.msi_release	= icu_abi_msi_release,
@@ -344,7 +347,7 @@ icu_abi_initmap(void)
 }
 
 static void
-icu_abi_intr_config(int irq, enum intr_trigger trig,
+icu_abi_legacy_intr_config(int irq, enum intr_trigger trig,
     enum intr_polarity pola __unused)
 {
 	struct icu_irqmap *map;
@@ -377,7 +380,7 @@ icu_abi_intr_config(int irq, enum intr_trigger trig,
 }
 
 static int
-icu_abi_intr_cpuid(int irq __unused)
+icu_abi_legacy_intr_cpuid(int irq __unused)
 {
 	return 0;
 }

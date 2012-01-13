@@ -597,7 +597,7 @@ acpi_res_set_irq(device_t dev, void *context, u_int8_t *irq, int count,
 	return;
 
     bus_set_resource(dev, SYS_RES_IRQ, cp->ar_nirq++, *irq, 1,
-        machintr_intr_cpuid(*irq));
+        machintr_legacy_intr_cpuid(*irq));
 }
 
 static void
@@ -614,7 +614,7 @@ acpi_res_set_ext_irq(device_t dev, void *context, u_int32_t *irq, int count,
 	return;
 
     bus_set_resource(dev, SYS_RES_IRQ, cp->ar_nirq++, *irq, 1,
-        machintr_intr_cpuid(*irq));
+        machintr_legacy_intr_cpuid(*irq));
 }
 
 static void

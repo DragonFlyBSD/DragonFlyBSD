@@ -170,7 +170,7 @@ bt_isa_probe(device_t dev)
 
 		bus_set_resource(dev, SYS_RES_DRQ, 0, info.drq, 1, -1);
 		bus_set_resource(dev, SYS_RES_IRQ, 0, info.irq, 1,
-		    machintr_intr_cpuid(info.irq));
+		    machintr_legacy_intr_cpuid(info.irq));
 
 		return (0);
 	}

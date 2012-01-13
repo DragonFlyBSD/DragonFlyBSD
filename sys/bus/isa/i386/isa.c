@@ -108,7 +108,7 @@ isa_alloc_resource(device_t bus, device_t child, int type, int *rid,
 			case SYS_RES_IRQ:
 				if (*rid >= ISA_NIRQ)
 					return 0;
-				cpuid = machintr_intr_cpuid(start);
+				cpuid = machintr_legacy_intr_cpuid(start);
 				break;
 			case SYS_RES_DRQ:
 				if (*rid >= ISA_NDRQ)

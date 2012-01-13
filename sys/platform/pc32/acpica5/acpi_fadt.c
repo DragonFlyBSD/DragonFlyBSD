@@ -189,7 +189,7 @@ acpi_sci_config(void)
 
 	if (acpi_sci_trig != INTR_TRIGGER_CONFORM) {
 		KKASSERT(acpi_sci_pola != INTR_POLARITY_CONFORM);
-		machintr_intr_config(acpi_sci_irq,
+		machintr_legacy_intr_config(acpi_sci_irq,
 		    acpi_sci_trig, acpi_sci_pola);
 		return;
 	}
@@ -206,7 +206,7 @@ acpi_sci_config(void)
 
 		last_cnt = get_interrupt_counter(acpi_sci_irq, 0);
 
-		machintr_intr_config(acpi_sci_irq,
+		machintr_legacy_intr_config(acpi_sci_irq,
 		    mode->sci_trig, mode->sci_pola);
 
 		sci_desc = register_int(acpi_sci_irq,

@@ -186,7 +186,7 @@ intsmb_attach(device_t dev)
 	rid = 0;
 	if (sc->cfg_irq9) {
 		bus_set_resource(dev, SYS_RES_IRQ, rid, 9, 1,
-		    machintr_intr_cpuid(9));
+		    machintr_legacy_intr_cpuid(9));
 	}
 
 	sc->irq_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,

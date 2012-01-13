@@ -474,7 +474,7 @@ static int
 nexus_config_intr(device_t bus, device_t chile, int irq,
     enum intr_trigger trig, enum intr_polarity pola)
 {
-	machintr_intr_config(irq, trig, pola);
+	machintr_legacy_intr_config(irq, trig, pola);
 	return 0;
 }
 

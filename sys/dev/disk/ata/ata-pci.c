@@ -341,7 +341,7 @@ ata_pci_match(device_t dev)
 	    }
 	    else if (pci_get_slot(dev) == 2 && start && end) {
 		bus_set_resource(dev, SYS_RES_IRQ, 0, start, end,
-		    machintr_intr_cpuid(start));
+		    machintr_legacy_intr_cpuid(start));
 		start = end = 0;
 		return "Promise TX4 ATA100 controller (channel 2+3)";
 	    }
@@ -821,7 +821,7 @@ ata_pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	if (ATA_MASTERDEV(dev)) {
 	    int irq = (unit == 0 ? 14 : 15);
 
-	    cpuid = machintr_intr_cpuid(irq);
+	    cpuid = machintr_legacy_intr_cpuid(irq);
 	    return BUS_ALLOC_RESOURCE(device_get_parent(dev), child,
 				      SYS_RES_IRQ, rid, irq, irq, 1, flags,
 				      cpuid);

@@ -149,7 +149,7 @@ ex_isa_identify (driver_t *driver, device_t parent)
 		device_set_desc_copy(child, desc);
 		device_set_driver(child, driver);
 		bus_set_resource(child, SYS_RES_IRQ, 0, irq, 1,
-		    machintr_intr_cpuid(irq));
+		    machintr_legacy_intr_cpuid(irq));
 		bus_set_resource(child, SYS_RES_IOPORT, 0, ioport, EX_IOSIZE, -1);
 		++count;
 
@@ -223,7 +223,7 @@ ex_isa_probe(device_t dev)
 	} else {
 		irq = ee2irq[tmp];
 		bus_set_resource(dev, SYS_RES_IRQ, 0, irq, 1,
-		    machintr_intr_cpuid(irq));
+		    machintr_legacy_intr_cpuid(irq));
 	}
 
 	if (irq == 0) {

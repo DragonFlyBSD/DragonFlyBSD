@@ -2114,7 +2114,7 @@ opti_init(device_t dev, struct mss_info *mss)
 		u_int32_t irq = isa_get_irq(dev);
 		u_int32_t drq = isa_get_drq(dev);
 		bus_set_resource(dev, SYS_RES_IRQ, 0, irq, 1,
-		    machintr_intr_cpuid(irq));
+		    machintr_legacy_intr_cpuid(irq));
 		bus_set_resource(dev, SYS_RES_DRQ, mss->drq1_rid, drq, 1, -1);
 		if (flags & DV_F_DUAL_DMA) {
 			bus_set_resource(dev, SYS_RES_DRQ, 1,

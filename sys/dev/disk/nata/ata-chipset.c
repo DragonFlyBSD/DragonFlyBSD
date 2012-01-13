@@ -3467,7 +3467,7 @@ ata_promise_ident(device_t dev)
 	}
 	else if (pci_get_slot(dev) == 2 && start && end) {
 	    bus_set_resource(dev, SYS_RES_IRQ, 0, start, end,
-	        machintr_intr_cpuid(start));
+	        machintr_legacy_intr_cpuid(start));
 	    strcat(buffer, " (channel 2+3)");
 	}
 	else {

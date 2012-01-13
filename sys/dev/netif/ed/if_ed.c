@@ -419,7 +419,7 @@ ed_probe_WD80x3_generic(device_t dev, int flags, u_short *intr_vals[])
 			int intr_val = intr_vals[0][iptr];
 
 			error = bus_set_resource(dev, SYS_RES_IRQ, 0,
-			    intr_val, 1, machintr_intr_cpuid(intr_val));
+			    intr_val, 1, machintr_legacy_intr_cpuid(intr_val));
 		}
 		if (error)
 			return (error);
@@ -448,7 +448,7 @@ ed_probe_WD80x3_generic(device_t dev, int flags, u_short *intr_vals[])
 			int intr_val = intr_vals[1][iptr];
 
 			error = bus_set_resource(dev, SYS_RES_IRQ, 0,
-			    intr_val, 1, machintr_intr_cpuid(intr_val));
+			    intr_val, 1, machintr_legacy_intr_cpuid(intr_val));
 		}
 		if (error)
 			return (error);
@@ -1380,7 +1380,7 @@ ed_probe_HP_pclanp(device_t dev, int port_rid, int flags)
 		int intr_val = ed_hpp_intr_val[irq];
 
 		bus_set_resource(dev, SYS_RES_IRQ, 0, intr_val, 1,
-		    machintr_intr_cpuid(intr_val));
+		    machintr_legacy_intr_cpuid(intr_val));
 	} else {
 		if (conf_irq != ed_hpp_intr_val[irq])
 			return (ENXIO);

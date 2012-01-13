@@ -284,7 +284,7 @@ isa_find_irq(device_t child,
 		     irq != -1;
 		     irq = find_next_bit(mask, irq)) {
 			bus_set_resource(child, SYS_RES_IRQ, i,
-			    irq, 1, machintr_intr_cpuid(irq));
+			    irq, 1, machintr_legacy_intr_cpuid(irq));
 			res[i] = bus_alloc_resource(child,
 						    SYS_RES_IRQ, &i,
 						    0, ~0, 1, 0 /* !RF_ACTIVE */ );

@@ -2912,7 +2912,7 @@ pci_assign_interrupt(device_t bus, device_t dev, int force_route)
 
 	/* Add this IRQ as rid 0 interrupt resource. */
 	resource_list_add(&dinfo->resources, SYS_RES_IRQ, 0, irq, irq, 1,
-	    machintr_intr_cpuid(irq));
+	    machintr_legacy_intr_cpuid(irq));
 }
 
 void

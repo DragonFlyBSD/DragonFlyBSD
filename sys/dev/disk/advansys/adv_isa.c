@@ -313,7 +313,7 @@ adv_isa_probe(device_t dev)
 			int chip_irq = adv_get_chip_irq(adv);
 
 			bus_set_resource(dev, SYS_RES_IRQ, 0, chip_irq, 1,
-			    machintr_intr_cpuid(chip_irq));
+			    machintr_legacy_intr_cpuid(chip_irq));
 		} else {
 			adv_set_chip_irq(adv, irq);
 		}

@@ -160,7 +160,7 @@ aic_isa_probe(device_t dev)
 		int irq = PORTA_IRQ(porta);
 
 		bus_set_resource(dev, SYS_RES_IRQ, 0, irq, 1,
-		    machintr_intr_cpuid(irq));
+		    machintr_legacy_intr_cpuid(irq));
 	}
 	if ((aic->flags & AIC_DMA_ENABLE) && isa_get_drq(dev) == -1)
 		bus_set_resource(dev, SYS_RES_DRQ, 0, PORTA_DRQ(porta), 1, -1);
