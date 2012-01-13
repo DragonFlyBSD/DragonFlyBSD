@@ -190,12 +190,11 @@ map_object(int fd, const char *path, const struct stat *sb)
 
 	    if ((nclear = data_vlimit - clear_vaddr) > 0) {
 		/* Make sure the end of the segment is writable */
-		if ((data_prot & PROT_WRITE) == 0) {
-		    if (mprotect(clear_page, PAGE_SIZE, data_prot|PROT_WRITE) < 0) {
+		if ((data_prot & PROT_WRITE) == 0 && -1 ==
+		     mprotect(clear_page, PAGE_SIZE, data_prot|PROT_WRITE)) {
 			_rtld_error("%s: mprotect failed: %s", path,
 			    strerror(errno));
 			return NULL;
-		    }
 		}
 
 		memset(clear_addr, 0, nclear);
