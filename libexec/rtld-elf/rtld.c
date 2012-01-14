@@ -147,7 +147,7 @@ static void ld_utrace_log(int, void *, void *, size_t, int, const char *);
 static void rtld_fill_dl_phdr_info(const Obj_Entry *obj,
     struct dl_phdr_info *phdr_info);
 
-void r_debug_state(struct r_debug *, struct link_map *);
+void r_debug_state(struct r_debug *, struct link_map *) __noinline;
 
 /*
  * Data declarations.
@@ -1024,8 +1024,8 @@ digest_dynamic(Obj_Entry *obj, int early)
 		    obj->textrel = true;
 		if (dynp->d_un.d_val & DF_BIND_NOW)
 		    obj->bind_now = true;
-		if (dynp->d_un.d_val & DF_STATIC_TLS)
-		    ;
+		/*if (dynp->d_un.d_val & DF_STATIC_TLS)
+		    ;*/
 	    break;
 
 	case DT_FLAGS_1:
@@ -1033,8 +1033,8 @@ digest_dynamic(Obj_Entry *obj, int early)
 		    obj->z_noopen = true;
 		if ((dynp->d_un.d_val & DF_1_ORIGIN) && trust)
 		    obj->z_origin = true;
-		if (dynp->d_un.d_val & DF_1_GLOBAL)
-			/* XXX */;
+		/*if (dynp->d_un.d_val & DF_1_GLOBAL)
+		    XXX ;*/
 		if (dynp->d_un.d_val & DF_1_BIND_NOW)
 		    obj->bind_now = true;
 		if (dynp->d_un.d_val & DF_1_NODELETE)
@@ -2724,6 +2724,14 @@ linkmap_delete(Obj_Entry *obj)
 void
 r_debug_state(struct r_debug* rd, struct link_map *m)
 {
+    /*
+     * The following is a hack to force the compiler to emit calls to
+     * this function, even when optimizing.  If the function is empty,
+     * the compiler is not obliged to emit any code for calls to it,
+     * even when marked __noinline.  However, gdb depends on those
+     * calls being made.
+     */
+    __asm __volatile("" : : : "memory");
 }
 
 /*
