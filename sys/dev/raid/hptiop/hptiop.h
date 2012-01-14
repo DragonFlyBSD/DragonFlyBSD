@@ -33,10 +33,8 @@
 #ifdef DBG
 int hpt_iop_dbg_level = 0;
 #define KdPrint(x)  do { if (hpt_iop_dbg_level) kprintf x; } while (0)
-#define HPT_ASSERT(x) assert(x)
 #else
 #define KdPrint(x)
-#define HPT_ASSERT(x)
 #endif
 
 #define HPT_SRB_MAX_REQ_SIZE                600
