@@ -1958,7 +1958,7 @@ relocate_objects(Obj_Entry *first, bool bind_now, Obj_Entry *rtldobj)
 	init_pltgot(obj);
     }
 
-    return 0;
+    return (0);
 }
 
 /*
@@ -2306,9 +2306,9 @@ do_dlsym(void *handle, const char *name, void *retaddr, const Ver_Entry *ve,
 	 * the relocated value of the symbol.
 	 */
 	if (ELF_ST_TYPE(def->st_info) == STT_FUNC)
-	    return make_function_pointer(def, defobj);
+	    return (make_function_pointer(def, defobj));
 	else
-	    return defobj->relocbase + def->st_value;
+	    return (defobj->relocbase + def->st_value);
     }
 
     _rtld_error("Undefined symbol \"%s\"", name);
@@ -3275,7 +3275,7 @@ tls_get_addr_common(Elf_Addr** dtvp, int index, size_t offset)
 	newdtv[1] = tls_max_index;
 	free(dtv);
 	lock_release(rtld_bind_lock, &lockstate);
-	*dtvp = newdtv;
+	dtv = *dtvp = newdtv;
     }
 
     /* Dynamically allocate module TLS if necessary */
