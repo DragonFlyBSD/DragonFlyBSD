@@ -317,15 +317,22 @@ reloc_plt(Obj_Entry *obj)
     const Elf_Rel *rellim;
     const Elf_Rel *rel;
 
-    rellim = (const Elf_Rel *)((const char *)obj->pltrel + obj->pltrelsize);
+    rellim = (const Elf_Rel *)((char *)obj->pltrel + obj->pltrelsize);
     for (rel = obj->pltrel;  rel < rellim;  rel++) {
 	Elf_Addr *where;
 
-	assert(ELF_R_TYPE(rel->r_info) == R_386_JMP_SLOT);
+	switch (ELF_R_TYPE(rel->r_info)) {
+	case R_386_JMP_SLOT:
+	  /* Relocate the GOT slot pointing into the PLT. */
+	  where = (Elf_Addr *)(obj->relocbase + rel->r_offset);
+	  *where += (Elf_Addr)obj->relocbase;
+	  break;
 
-	/* Relocate the GOT slot pointing into the PLT. */
-	where = (Elf_Addr *)(obj->relocbase + rel->r_offset);
-	*where += (Elf_Addr)obj->relocbase;
+	default:
+	  _rtld_error("Unknown relocation type %x in PLT",
+	    ELF_R_TYPE(rel->r_info));
+	  return (-1);
+	}
     }
     return 0;
 }
@@ -345,14 +352,23 @@ reloc_jmpslots(Obj_Entry *obj)
 	const Elf_Sym *def;
 	const Obj_Entry *defobj;
 
-	assert(ELF_R_TYPE(rel->r_info) == R_386_JMP_SLOT);
-	where = (Elf_Addr *)(obj->relocbase + rel->r_offset);
-	def = find_symdef(ELF_R_SYM(rel->r_info), obj, &defobj, true, NULL);
-	if (def == NULL)
-	    return -1;
-	target = (Elf_Addr)(defobj->relocbase + def->st_value);
-	reloc_jmpslot(where, target, defobj, obj, rel);
+	switch (ELF_R_TYPE(rel->r_info)) {
+	case R_386_JMP_SLOT:
+	  where = (Elf_Addr *)(obj->relocbase + rel->r_offset);
+	  def = find_symdef(ELF_R_SYM(rel->r_info), obj, &defobj, true, NULL);
+	  if (def == NULL)
+	      return (-1);
+	  target = (Elf_Addr)(defobj->relocbase + def->st_value);
+	  reloc_jmpslot(where, target, defobj, obj, rel);
+	  break;
+
+	default:
+	  _rtld_error("Unknown relocation type %x in PLT",
+	    ELF_R_TYPE(rel->r_info));
+	  return (-1);
+	}
     }
+
     obj->jmpslots_done = true;
     return 0;
 }
@@ -384,4 +400,3 @@ __tls_get_addr_tcb(struct tls_tcb *tcb, tls_index *ti)
 {
     return tls_get_addr_common((Elf_Addr **)&tcb->tcb_dtv, ti->ti_module, ti->ti_offset);
 }
-
