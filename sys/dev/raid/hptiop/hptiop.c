@@ -1284,8 +1284,8 @@ static int hptiop_attach(device_t dev)
 	struct ccb_setasync ccb;
 	u_int32_t unit = device_get_unit(dev);
 
-	device_printf(dev, "%d RocketRAID 3xxx/4xxx controller driver %s\n",
-			unit, driver_version);
+	device_printf(dev, "RocketRAID 3xxx/4xxx controller driver %s\n",
+	    driver_version);
 
 	KdPrint(("hptiop: attach(%d, %d/%d/%d) ops=%p\n", unit,
 		pci_get_bus(dev), pci_get_slot(dev),
@@ -1293,7 +1293,6 @@ static int hptiop_attach(device_t dev)
 
 	pci_enable_busmaster(dev);
 	hba->pcidev = dev;
-	hba->pciunit = unit;
 
 	if (hba->ops->alloc_pci_res(hba))
 		return ENXIO;
@@ -1520,8 +1519,7 @@ static int hptiop_detach(device_t dev)
 	hptiop_lock_adapter(hba);
 	for (i = 0; i < hba->max_devices; i++)
 		if (hptiop_os_query_remove_device(hba, i)) {
-			device_printf(dev, "%d file system is busy. id=%d",
-						hba->pciunit, i);
+			device_printf(dev, "file system is busy. id=%d", i);
 			goto out;
 		}
 
@@ -1545,7 +1543,7 @@ static int hptiop_shutdown(device_t dev)
 	int error = 0;
 
 	if (hba->flag & HPT_IOCTL_FLAG_OPEN) {
-		device_printf(dev, "%d device is busy", hba->pciunit);
+		device_printf(dev, "device is busy");
 		return EBUSY;
 	}
 
@@ -1680,8 +1678,7 @@ static void hptiop_action(struct cam_sim *sim, union ccb *ccb)
 
 				if (error && error != EINPROGRESS) {
 					device_printf(hba->pcidev,
-						"%d bus_dmamap_load error %d",
-						hba->pciunit, error);
+					    "bus_dmamap_load error %d", error);
 					xpt_freeze_simq(hba->sim, 1);
 					ccb->ccb_h.status = CAM_REQ_CMP_ERR;
 invalid:
@@ -2051,10 +2048,8 @@ static  int hptiop_os_query_remove_device(struct hpt_iop_hba * hba,
 	if (status == CAM_REQ_CMP) {
 		if ((periph = cam_periph_find(path, "da")) != NULL) {
 			if (periph->refcount >= 1) {
-				device_printf(hba->pcidev, "%d ,"
-					"target_id=0x%x,"
-					"refcount=%d",
-				    hba->pciunit, target_id, periph->refcount);
+				device_printf(hba->pcidev, "target_id=0x%x,"
+				    "refcount=%d", target_id, periph->refcount);
 				retval = -1;
 			}
 		}

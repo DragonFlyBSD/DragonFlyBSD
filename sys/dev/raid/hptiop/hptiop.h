@@ -292,7 +292,6 @@ struct hpt_iop_hba {
 	u_int32_t             msg_done;
 
 	device_t              pcidev;
-	u_int32_t             pciunit;
 	ioctl_dev_t           ioctl_dev;
 
 	bus_dma_tag_t         parent_dmat;
