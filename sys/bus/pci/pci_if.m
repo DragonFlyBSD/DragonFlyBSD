@@ -126,13 +126,6 @@ METHOD int alloc_msix {
 	int		*count;
 };
 
-METHOD int remap_msix {
-	device_t	dev;
-	device_t	child;
-	int		count;
-	const u_int	*vectors;
-};
-
 METHOD int release_msi {
 	device_t	dev;
 	device_t	child;
