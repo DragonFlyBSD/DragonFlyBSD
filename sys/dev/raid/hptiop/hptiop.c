@@ -1219,6 +1219,7 @@ static driver_t hptiop_pci_driver = {
 };
 
 DRIVER_MODULE(hptiop, pci, hptiop_pci_driver, hptiop_devclass, NULL, NULL);
+MODULE_VERSION(hptiop, 1);
 
 static int hptiop_probe(device_t dev)
 {
