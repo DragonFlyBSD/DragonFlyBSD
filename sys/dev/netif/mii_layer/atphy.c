@@ -64,6 +64,7 @@ static device_method_t atphy_methods[] = {
 
 static const struct mii_phydesc atphys[] = {
 	MII_PHYDESC(ATHEROS,	F1),
+	MII_PHYDESC(ATHEROS,	F1_7),
 	MII_PHYDESC(ATHEROS,	F2),
 	MII_PHYDESC_NULL
 };
