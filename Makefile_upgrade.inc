@@ -1869,6 +1869,24 @@ TO_REMOVE+=/usr/share/man/man3/archive_write_set_compression_bzip2.3.gz
 TO_REMOVE+=/usr/share/man/cat3/archive_write_set_compression_bzip2.3.gz
 TO_REMOVE+=/usr/share/man/man3/archive_write_set_compression_compress.3.gz
 TO_REMOVE+=/usr/share/man/cat3/archive_write_set_compression_compress.3.gz
+TO_REMOVE+=/usr/share/man/man3/archive_write_set_compression_gzip.3.gz
+TO_REMOVE+=/usr/share/man/cat3/archive_write_set_compression_gzip.3.gz
+TO_REMOVE+=/usr/share/man/man3/archive_write_set_compression_none.3.gz
+TO_REMOVE+=/usr/share/man/cat3/archive_write_set_compression_none.3.gz
+TO_REMOVE+=/usr/share/man/man3/archive_write_set_compression_program.3.gz
+TO_REMOVE+=/usr/share/man/cat3/archive_write_set_compression_program.3.gz
+TO_REMOVE+=/usr/share/man/man3/archive_write_set_format_cpio.3.gz
+TO_REMOVE+=/usr/share/man/cat3/archive_write_set_format_cpio.3.gz
+TO_REMOVE+=/usr/share/man/man3/archive_write_set_format_pax.3.gz
+TO_REMOVE+=/usr/share/man/cat3/archive_write_set_format_pax.3.gz
+TO_REMOVE+=/usr/share/man/man3/archive_write_set_format_pax_restricted.3.gz
+TO_REMOVE+=/usr/share/man/cat3/archive_write_set_format_pax_restricted.3.gz
+TO_REMOVE+=/usr/share/man/man3/archive_write_set_format_shar.3.gz
+TO_REMOVE+=/usr/share/man/cat3/archive_write_set_format_shar.3.gz
+TO_REMOVE+=/usr/share/man/man3/archive_write_set_format_shar_binary.3.gz
+TO_REMOVE+=/usr/share/man/cat3/archive_write_set_format_shar_binary.3.gz
+TO_REMOVE+=/usr/share/man/man3/archive_write_set_format_ustar.3.gz
+TO_REMOVE+=/usr/share/man/cat3/archive_write_set_format_ustar.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
