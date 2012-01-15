@@ -108,10 +108,10 @@ static void		pci_read_vpd(device_t pcib, pcicfgregs *cfg);
 static void		pci_disable_msi(device_t dev);
 static void		pci_enable_msi(device_t dev, uint64_t address,
 			    uint16_t data);
-static void		pci_enable_msix(device_t dev, u_int index,
+static void		pci_setup_msix_vector(device_t dev, u_int index,
 			    uint64_t address, uint32_t data);
-static void		pci_mask_msix(device_t dev, u_int index);
-static void		pci_unmask_msix(device_t dev, u_int index);
+static void		pci_mask_msix_vector(device_t dev, u_int index);
+static void		pci_unmask_msix_vector(device_t dev, u_int index);
 static int		pci_msi_blacklisted(void);
 static void		pci_resume_msi(device_t dev);
 static void		pci_resume_msix(device_t dev);
@@ -1363,8 +1363,9 @@ pci_find_extcap_method(device_t dev, device_t child, int capability,
 /*
  * Support for MSI-X message interrupts.
  */
-void
-pci_enable_msix(device_t dev, u_int index, uint64_t address, uint32_t data)
+static void
+pci_setup_msix_vector(device_t dev, u_int index, uint64_t address,
+    uint32_t data)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(dev);
 	struct pcicfg_msix *msix = &dinfo->cfg.msix;
@@ -1380,8 +1381,8 @@ pci_enable_msix(device_t dev, u_int index, uint64_t address, uint32_t data)
 	pci_ht_map_msi(dev, address);
 }
 
-void
-pci_mask_msix(device_t dev, u_int index)
+static void
+pci_mask_msix_vector(device_t dev, u_int index)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(dev);
 	struct pcicfg_msix *msix = &dinfo->cfg.msix;
@@ -1396,8 +1397,8 @@ pci_mask_msix(device_t dev, u_int index)
 	}
 }
 
-void
-pci_unmask_msix(device_t dev, u_int index)
+static void
+pci_unmask_msix_vector(device_t dev, u_int index)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(dev);
 	struct pcicfg_msix *msix = &dinfo->cfg.msix;
@@ -1413,7 +1414,7 @@ pci_unmask_msix(device_t dev, u_int index)
 }
 
 int
-pci_pending_msix(device_t dev, u_int index)
+pci_pending_msix_vector(device_t dev, u_int index)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(dev);
 	struct pcicfg_msix *msix = &dinfo->cfg.msix;
@@ -1442,7 +1443,7 @@ pci_resume_msix(device_t dev)
 	if (msix->msix_alloc > 0) {
 		/* First, mask all vectors. */
 		for (i = 0; i < msix->msix_msgnum; i++)
-			pci_mask_msix(dev, i);
+			pci_mask_msix_vector(dev, i);
 
 		/* Second, program any messages with at least one handler. */
 		for (i = 0; i < msix->msix_table_len; i++) {
@@ -1450,8 +1451,9 @@ pci_resume_msix(device_t dev)
 			if (mte->mte_vector == 0 || mte->mte_handlers == 0)
 				continue;
 			mv = &msix->msix_vectors[mte->mte_vector - 1];
-			pci_enable_msix(dev, i, mv->mv_address, mv->mv_data);
-			pci_unmask_msix(dev, i);
+			pci_setup_msix_vector(dev, i, mv->mv_address,
+			    mv->mv_data);
+			pci_unmask_msix_vector(dev, i);
 		}
 	}
 	pci_write_config(dev, msix->msix_location + PCIR_MSIX_CTRL,
@@ -1578,7 +1580,7 @@ pci_alloc_msix_method(device_t dev, device_t child, int *count)
 
 	/* Mask all vectors. */
 	for (i = 0; i < cfg->msix.msix_msgnum; i++)
-		pci_mask_msix(child, i);
+		pci_mask_msix_vector(child, i);
 
 	/* Allocate and initialize vector data and virtual table. */
 	cfg->msix.msix_vectors = kmalloc(sizeof(struct msix_vector) * actual,
@@ -3010,9 +3012,9 @@ pci_setup_intr(device_t dev, device_t child, struct resource *irq, int flags,
 				mv->mv_data = data;
 			}
 			if (mte->mte_handlers == 0) {
-				pci_enable_msix(child, rid - 1, mv->mv_address,
-				    mv->mv_data);
-				pci_unmask_msix(child, rid - 1);
+				pci_setup_msix_vector(child, rid - 1,
+				    mv->mv_address, mv->mv_data);
+				pci_unmask_msix_vector(child, rid - 1);
 			}
 			mte->mte_handlers++;
 		}
@@ -3079,7 +3081,7 @@ pci_teardown_intr(device_t dev, device_t child, struct resource *irq,
 				return (EINVAL);
 			mte->mte_handlers--;
 			if (mte->mte_handlers == 0)
-				pci_mask_msix(child, rid - 1);
+				pci_mask_msix_vector(child, rid - 1);
 		}
 	}
 	error = bus_generic_teardown_intr(dev, child, irq, cookie);

@@ -499,7 +499,7 @@ device_t pci_find_dbsf(uint32_t, uint8_t, uint8_t, uint8_t);
 device_t pci_find_device(uint16_t, uint16_t);
 
 /* Can be used by drivers to manage the MSI-X table. */
-int	pci_pending_msix(device_t dev, u_int index);
+int	pci_pending_msix_vector(device_t dev, u_int index);
 
 int	pci_msi_device_blacklisted(device_t dev);
 
