@@ -1603,6 +1603,7 @@ pci_alloc_msix_method(device_t dev, device_t child, int *count)
 	return (0);
 }
 
+#ifdef notyet
 static int
 pci_release_msix(device_t dev, device_t child)
 {
@@ -1649,6 +1650,7 @@ pci_release_msix(device_t dev, device_t child)
 	msix->msix_alloc = 0;
 	return (0);
 }
+#endif
 
 /*
  * Return the max supported MSI-X messages this device supports.
@@ -1962,12 +1964,7 @@ pci_release_msi_method(device_t dev, device_t child)
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	struct pcicfg_msi *msi = &dinfo->cfg.msi;
 	struct resource_list_entry *rle;
-	int error, i, irqs[32], cpuid = -1;
-
-	/* Try MSI-X first. */
-	error = pci_release_msix(dev, child);
-	if (error != ENODEV)
-		return (error);
+	int i, irqs[32], cpuid = -1;
 
 	/* Do we have any messages to release? */
 	if (msi->msi_alloc == 0)
