@@ -576,7 +576,7 @@ archive_write_pax_header(struct archive_write *a,
 
 	/*
 	 * If Mac OS metadata blob is here, recurse to write that
-	 * as a separate entry.  This is realy a pretty poor design:
+	 * as a separate entry.  This is really a pretty poor design:
 	 * In particular, it doubles the overhead for long filenames.
 	 * TODO: Help Apple folks design something better and figure
 	 * out how to transition from this legacy format.
@@ -1439,7 +1439,7 @@ build_ustar_entry_name(char *dest, const char *src, size_t src_length,
  *
  * Joerg Schilling has argued that this is unnecessary because, in
  * practice, if the pax extended attributes get extracted as regular
- * files, noone is going to bother reading those attributes to
+ * files, no one is going to bother reading those attributes to
  * manually restore them.  Based on this, 'star' uses
  * /tmp/PaxHeader/'basename' as the ustar header name.  This is a
  * tempting argument, in part because it's simpler than the SUSv3
@@ -1596,7 +1596,8 @@ archive_write_pax_finish_entry(struct archive_write *a)
 	if (remaining == 0) {
 		while (pax->sparse_list) {
 			struct sparse_block *sb;
-			remaining += pax->sparse_list->remaining;
+			if (!pax->sparse_list->is_hole)
+				remaining += pax->sparse_list->remaining;
 			sb = pax->sparse_list->next;
 			free(pax->sparse_list);
 			pax->sparse_list = sb;
@@ -1647,7 +1648,7 @@ archive_write_pax_data(struct archive_write *a, const void *buff, size_t s)
 			return (total);
 
 		p = ((const unsigned char *)buff) + total;
-		ws = s;
+		ws = s - total;
 		if (ws > pax->sparse_list->remaining)
 			ws = pax->sparse_list->remaining;
 
