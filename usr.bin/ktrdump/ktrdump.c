@@ -96,9 +96,15 @@ struct my_va_list {
 	uint32_t fp_offset;	/* offset to next available fpr in reg_save_area */
 	void *overflow_arg_area;	/* args that are passed on the stack */
 	struct reg_save_area *reg_save_area;		/* register args */
+	/*
+	 * NOT part of the ABI. ->overflow_arg_area gets advanced when code
+	 * iterates over the arguments with va_arg(). That means we need to
+	 * keep a copy in order to free the allocated memory (if any)
+	 */
+	void *overflow_arg_area_save;
 } __attribute__((packed));
 
-typedef struct my_va_list machine_va_list;
+typedef struct my_va_list *machine_va_list;
 
 struct reg_save_area {
 	uint64_t rdi, rsi, rdx, rcx, r8, r9;
@@ -155,7 +161,7 @@ static void iterate_buf(FILE *, struct ktr_buffer *, int, u_int64_t *, ktr_iter_
 static void iterate_bufs_timesorted(FILE *, struct ktr_buffer *, u_int64_t *, ktr_iter_cb_t);
 static void kvmfprintf(FILE *fp, const char *ctl, va_list va);
 static int va_list_from_blob(machine_va_list *valist, const char *fmt, char *blob, size_t blobsize);
-
+static void va_list_cleanup(machine_va_list *valist);
 /*
  * Reads the ktr trace buffer from kernel memory and prints the trace entries.
  */
@@ -500,7 +506,8 @@ print_entry(FILE *fo, int n, int row, struct ktr_entry *entry,
 					      info->kf_data_size))
 				err(2, "Can't generate va_list from %s\n", fmt);
 			kvmfprintf(fo, kvm_string(info->kf_format, &fmtctx),
-				   (void *)&ap);
+				   (void *)ap);
+			va_list_cleanup(&ap);
 		}
 	}
 	fprintf(fo, "\n");
@@ -1278,6 +1285,11 @@ va_list_push_integral(struct my_va_list *valist, void *val, size_t valsize,
 	if (!(valist->overflow_arg_area = realloc(valist->overflow_arg_area,
 						  *stacksize + sizeof(r))))
 		return -1;
+	/*
+	 * Keep a pointer to the start of the allocated memory block so
+	 * we can free it later. We need to update it after every realloc().
+	 */
+	valist->overflow_arg_area_save = valist->overflow_arg_area;
 	memcpy((char *)valist->overflow_arg_area + *stacksize, &r, sizeof(r));
 	*stacksize += sizeof(r);
 	return 0;
@@ -1289,20 +1301,38 @@ va_list_rewind(struct my_va_list *valist)
 	valist->gp_offset = 0;
 }
 
-static int
-va_list_from_blob(machine_va_list *valist, const char *fmt, char *blob, size_t blobsize)
+static void
+va_list_cleanup(machine_va_list *_valist)
 {
+	machine_va_list valist;
+	if (!_valist || !*_valist)
+		return;
+	valist = *_valist;
+	if (valist->reg_save_area)
+		free(valist->reg_save_area);
+	if (valist->overflow_arg_area_save)
+		free(valist->overflow_arg_area_save);
+	free(valist);
+}
+
+static int
+va_list_from_blob(machine_va_list *_valist, const char *fmt, char *blob, size_t blobsize)
+{
+	machine_va_list valist;
 	struct reg_save_area *regs;
 	const char *f;
 	size_t sz;
 
-	if (!(regs = malloc(sizeof(*regs))))
+	if (!(valist = malloc(sizeof(*valist))))
 		return -1;
+	if (!(regs = malloc(sizeof(*regs))))
+		goto free_valist;
 	*valist = (struct my_va_list) {
 		.gp_offset = 0,
 		.fp_offset = 0,
 		.overflow_arg_area = NULL,
 		.reg_save_area = regs,
+		.overflow_arg_area_save = NULL,
 	};
 	enum argument_class argclass;
 	size_t stacksize = 0;
@@ -1315,26 +1345,44 @@ va_list_from_blob(machine_va_list *valist, const char *fmt, char *blob, size_t b
 			if (blobsize < sz) {
 				fprintf(stderr, "not enough data available "
 					"for format: %s", fmt);
-				return -1;
+				goto free_areas;
 			}
 			if (va_list_push_integral(valist, blob, sz, &stacksize))
-				return -1;
+				goto free_areas;
 			blob += sz;
 			blobsize -= sz;
 		} else if (argclass != ARGCLASS_NONE)
-			return -1;
+			goto free_areas;
 		/* walk past the '%' */
 		++f;
 	}
 	if (blobsize) {
 		fprintf(stderr, "Couldn't consume all data for format %s "
 			"(%zd bytes left over)\n", fmt, blobsize);
-		return -1;
+		goto free_areas;
 	}
 	va_list_rewind(valist);
+	*_valist = valist;
 	return 0;
+free_areas:
+	if (valist->reg_save_area)
+		free(valist->reg_save_area);
+	if (valist->overflow_arg_area_save)
+		free(valist->overflow_arg_area_save);
+free_valist:
+	free(valist);
+	*_valist = NULL;
+	return -1;
 }
 #elif __i386__
+
+static void
+va_list_cleanup(machine_va_list *valist)
+{
+	if (*valist)
+		free(*valist);
+}
+
 static int
 va_list_from_blob(machine_va_list *valist, const char *fmt, char *blob, size_t blobsize)
 {
@@ -1352,7 +1400,7 @@ va_list_from_blob(machine_va_list *valist, const char *fmt, char *blob, size_t b
 		if (blobsize < sz) {
 			fprintf(stderr, "not enough data available "
 				"for format: %s", fmt);
-			return -1;
+			goto free_va;
 		}
 		if ((argclass == ARGCLASS_INTEGER) && (sz < 4)) {
 			int i = -1;	/* do C integer promotion */
@@ -1361,12 +1409,12 @@ va_list_from_blob(machine_va_list *valist, const char *fmt, char *blob, size_t b
 			else
 				i = *(short *)blob;
 			if (!(n = realloc(n, bytes + 4)))
-				return -1;
+				goto free_va;
 			memcpy(n + bytes, &i, sizeof(i));
 			bytes += 4;
 		} else {
 			if (!(n = realloc(n, bytes + sz)))
-				return -1;
+				goto free_va;
 			memcpy(n + bytes, blob, sz);
 			bytes += sz;
 		}
@@ -1377,11 +1425,17 @@ va_list_from_blob(machine_va_list *valist, const char *fmt, char *blob, size_t b
 	if (blobsize) {
 		fprintf(stderr, "Couldn't consume all data for format %s "
 			"(%zd bytes left over)\n", fmt, blobsize);
-		return -1;
+		goto free_va;
 	}
 	*valist = n;
 	return 0;
+free_va:
+	if (n)
+		free(n);
+	*valist = NULL;
+	return -1;
 }
+
 #else
 #error "Don't know how to get a va_list on this platform"
 #endif
