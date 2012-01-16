@@ -1010,7 +1010,7 @@ hammer_cmd_mirror_copy(char **av, int ac, int streaming)
 	pid_t pid1;
 	pid_t pid2;
 	int fds[2];
-	const char *xav[16];
+	const char *xav[32];
 	char tbuf[16];
 	char *ptr;
 	int xac;
@@ -1070,6 +1070,10 @@ again:
 				snprintf(tbuf, sizeof(tbuf), "%d", TimeoutOpt);
 				xav[xac++] = "-t";
 				xav[xac++] = tbuf;
+			}
+			if (SplitupOptStr) {
+				xav[xac++] = "-S";
+				xav[xac++] = SplitupOptStr;
 			}
 			if (streaming)
 				xav[xac++] = "mirror-read-stream";
