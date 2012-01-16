@@ -78,7 +78,7 @@ static int		acpi_pcib_alloc_msi(device_t pcib, device_t dev,
 static int		acpi_pcib_map_msi(device_t pcib, device_t dev,
 			    int irq, uint64_t *addr, uint32_t *data, int cpuid);
 static int		acpi_pcib_alloc_msix(device_t pcib, device_t dev,
-			    int *irq);
+			    int *irq, int cpuid);
 static struct resource *acpi_pcib_acpi_alloc_resource(device_t dev,
 			    device_t child, int type, int *rid,
 			    u_long start, u_long end, u_long count,
@@ -339,12 +339,12 @@ acpi_pcib_alloc_msi(device_t pcib, device_t dev, int count, int maxcount,
 }
 
 static int
-acpi_pcib_alloc_msix(device_t pcib, device_t dev, int *irq)
+acpi_pcib_alloc_msix(device_t pcib, device_t dev, int *irq, int cpuid)
 {
 	device_t bus;
 
 	bus = device_get_parent(pcib);
-	return (PCIB_ALLOC_MSIX(device_get_parent(bus), dev, irq));
+	return (PCIB_ALLOC_MSIX(device_get_parent(bus), dev, irq, cpuid));
 }
 
 static int

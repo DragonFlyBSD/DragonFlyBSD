@@ -124,6 +124,7 @@ METHOD int alloc_msix {
 	device_t	pcib;
 	device_t	dev;
 	int		*irq;
+	int		cpuid;
 };
 
 #
@@ -133,6 +134,7 @@ METHOD int release_msix {
 	device_t	pcib;
 	device_t	dev;
 	int		irq;
+	int		cpuid;
 };
 
 #

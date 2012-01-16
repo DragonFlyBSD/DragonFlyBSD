@@ -88,12 +88,12 @@ legacy_pcib_alloc_msi(device_t pcib, device_t dev, int count, int maxcount,
 }
 
 static int
-legacy_pcib_alloc_msix(device_t pcib, device_t dev, int *irq)
+legacy_pcib_alloc_msix(device_t pcib, device_t dev, int *irq, int cpuid)
 {
 	device_t bus;
 
 	bus = device_get_parent(pcib);
-	return (PCIB_ALLOC_MSIX(device_get_parent(bus), dev, irq));
+	return (PCIB_ALLOC_MSIX(device_get_parent(bus), dev, irq, cpuid));
 }
 
 static int

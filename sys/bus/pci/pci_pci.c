@@ -620,7 +620,7 @@ pcib_release_msi(device_t pcib, device_t dev, int count, int *irqs, int cpuid)
 
 /* Pass request to alloc an MSI-X message up to the parent bridge. */
 int
-pcib_alloc_msix(device_t pcib, device_t dev, int *irq)
+pcib_alloc_msix(device_t pcib, device_t dev, int *irq, int cpuid)
 {
 	struct pcib_softc *sc = device_get_softc(pcib);
 	device_t bus;
@@ -628,17 +628,17 @@ pcib_alloc_msix(device_t pcib, device_t dev, int *irq)
 	if (sc->flags & PCIB_DISABLE_MSI)
 		return (ENXIO);
 	bus = device_get_parent(pcib);
-	return (PCIB_ALLOC_MSIX(device_get_parent(bus), dev, irq));
+	return (PCIB_ALLOC_MSIX(device_get_parent(bus), dev, irq, cpuid));
 }
 
 /* Pass request to release an MSI-X message up to the parent bridge. */
 int
-pcib_release_msix(device_t pcib, device_t dev, int irq)
+pcib_release_msix(device_t pcib, device_t dev, int irq, int cpuid)
 {
 	device_t bus;
 
 	bus = device_get_parent(pcib);
-	return (PCIB_RELEASE_MSIX(device_get_parent(bus), dev, irq));
+	return (PCIB_RELEASE_MSIX(device_get_parent(bus), dev, irq, cpuid));
 }
 
 /* Pass request to map MSI/MSI-X message up to parent bridge. */

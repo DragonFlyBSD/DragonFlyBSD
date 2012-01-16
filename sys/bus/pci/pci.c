@@ -1517,7 +1517,8 @@ pci_alloc_msix_method(device_t dev, device_t child, int *count)
 	max = min(*count, cfg->msix.msix_msgnum);
 	for (i = 0; i < max; i++) {
 		/* Allocate a message. */
-		error = PCIB_ALLOC_MSIX(device_get_parent(dev), child, &irq);
+		error = PCIB_ALLOC_MSIX(device_get_parent(dev), child, &irq,
+		    -1 /* XXX */);
 		if (error)
 			break;
 		resource_list_add(&dinfo->resources, SYS_RES_IRQ, i + 1, irq,
@@ -1647,7 +1648,7 @@ pci_release_msix(device_t dev, device_t child)
 	/* Release the IRQs. */
 	for (i = 0; i < msix->msix_alloc; i++)
 		PCIB_RELEASE_MSIX(device_get_parent(dev), child,
-		    msix->msix_vectors[i].mv_irq);
+		    msix->msix_vectors[i].mv_irq, -1 /* XXX */);
 	kfree(msix->msix_vectors, M_DEVBUF);
 	msix->msix_alloc = 0;
 	return (0);
