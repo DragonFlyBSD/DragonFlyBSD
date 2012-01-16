@@ -681,14 +681,12 @@ mbinit(void *dummy)
 	    &limit, 0,
 	    mbufjcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	mb_limit += limit;
 
 	limit = nmbclusters;
 	mbufphdrjcluster_cache = objcache_create("mbuf pkt hdr + jcluster",
 	    &limit, nmbclusters / 16,
 	    mbufphdrjcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	mb_limit += limit;
 
 	/*
 	 * Adjust backing kmalloc pools' limit
