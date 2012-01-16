@@ -118,7 +118,6 @@
 #include <bus/cam/scsi/scsi_da.h>
 #include <bus/cam/scsi/scsi_cd.h>
 #include <bus/cam/scsi/scsi_ch.h>
-#include <dev/disk/ata/atapi-all.h>
 
 #include <bus/cam/cam_periph.h>
 
