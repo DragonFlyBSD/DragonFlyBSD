@@ -1741,6 +1741,39 @@ pci_teardown_msix(device_t dev)
 	msix->msix_pba_res = NULL;
 }
 
+void
+pci_enable_msix(device_t dev)
+{
+	struct pci_devinfo *dinfo = device_get_ivars(dev);
+	struct pcicfg_msix *msix = &dinfo->cfg.msix;
+
+	KASSERT(msix->msix_table_res != NULL &&
+	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet\n"));
+
+	/* Update control register to enable MSI-X. */
+	msix->msix_ctrl |= PCIM_MSIXCTRL_MSIX_ENABLE;
+	pci_write_config(dev, msix->msix_location + PCIR_MSIX_CTRL,
+	    msix->msix_ctrl, 2);
+}
+
+void
+pci_disable_msix(device_t dev)
+{
+	struct pci_devinfo *dinfo = device_get_ivars(dev);
+	struct pcicfg_msix *msix = &dinfo->cfg.msix;
+
+	KASSERT(msix->msix_table_res != NULL &&
+	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet\n"));
+
+	/* Disable MSI -> HT mapping. */
+	pci_ht_map_msi(dev, 0);
+
+	/* Update control register to disable MSI-X. */
+	msix->msix_ctrl &= ~PCIM_MSIXCTRL_MSIX_ENABLE;
+	pci_write_config(dev, msix->msix_location + PCIR_MSIX_CTRL,
+	    msix->msix_ctrl, 2);
+}
+
 static void
 pci_mask_msix_allvectors(device_t dev)
 {
@@ -1771,7 +1804,7 @@ pci_ht_map_msi(device_t dev, uint64_t addr)
 		    ht->ht_msictrl, 2);
 	}
 
-	if (!addr && ht->ht_msictrl & PCIM_HTCMD_MSI_ENABLE) {
+	if (!addr && (ht->ht_msictrl & PCIM_HTCMD_MSI_ENABLE)) {
 		/* Disable MSI -> HT mapping. */
 		ht->ht_msictrl &= ~PCIM_HTCMD_MSI_ENABLE;
 		pci_write_config(dev, ht->ht_msimap + PCIR_HT_COMMAND,

@@ -502,6 +502,8 @@ device_t pci_find_device(uint16_t, uint16_t);
 int	pci_pending_msix_vector(device_t dev, u_int index);
 int	pci_setup_msix(device_t dev);
 void	pci_teardown_msix(device_t dev);
+void	pci_enable_msix(device_t dev);
+void	pci_disable_msix(device_t dev);
 
 int	pci_msi_device_blacklisted(device_t dev);
 
