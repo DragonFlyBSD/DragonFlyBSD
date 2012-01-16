@@ -112,6 +112,7 @@ static void		pci_setup_msix_vector(device_t dev, u_int index,
 			    uint64_t address, uint32_t data);
 static void		pci_mask_msix_vector(device_t dev, u_int index);
 static void		pci_unmask_msix_vector(device_t dev, u_int index);
+static void		pci_mask_msix_allvectors(device_t dev);
 static int		pci_msi_blacklisted(void);
 static void		pci_resume_msi(device_t dev);
 static void		pci_resume_msix(device_t dev);
@@ -1420,6 +1421,9 @@ pci_pending_msix_vector(device_t dev, u_int index)
 	struct pcicfg_msix *msix = &dinfo->cfg.msix;
 	uint32_t offset, bit;
 
+	KASSERT(msix->msix_table_res != NULL && msix->msix_pba_res != NULL,
+	    ("MSI-X is not setup yet\n"));
+
 	KASSERT(msix->msix_table_len > index, ("bogus index"));
 	offset = msix->msix_pba_offset + (index / 32) * 4;
 	bit = 1 << index % 32;
@@ -1441,11 +1445,9 @@ pci_resume_msix(device_t dev)
 	int i;
 
 	if (msix->msix_alloc > 0) {
-		/* First, mask all vectors. */
-		for (i = 0; i < msix->msix_msgnum; i++)
-			pci_mask_msix_vector(dev, i);
+		pci_mask_msix_allvectors(dev);
 
-		/* Second, program any messages with at least one handler. */
+		/* Program any messages with at least one handler. */
 		for (i = 0; i < msix->msix_table_len; i++) {
 			mte = &msix->msix_table[i];
 			if (mte->mte_vector == 0 || mte->mte_handlers == 0)
@@ -1670,6 +1672,83 @@ pci_msix_count_method(device_t dev, device_t child)
 	if (pci_do_msix && msix->msix_location != 0)
 		return (msix->msix_msgnum);
 	return (0);
+}
+
+int
+pci_setup_msix(device_t dev)
+{
+	struct pci_devinfo *dinfo = device_get_ivars(dev);
+	pcicfgregs *cfg = &dinfo->cfg;
+	struct resource_list_entry *rle;
+	struct resource *table_res, *pba_res;
+
+	KASSERT(cfg->msix.msix_table_res == NULL &&
+	    cfg->msix.msix_pba_res == NULL, ("MSI-X has been setup yet\n"));
+
+	/* If rid 0 is allocated, then fail. */
+	rle = resource_list_find(&dinfo->resources, SYS_RES_IRQ, 0);
+	if (rle != NULL && rle->res != NULL)
+		return (ENXIO);
+
+	/* Already have allocated MSIs? */
+	if (cfg->msi.msi_alloc != 0)
+		return (ENXIO);
+
+	/* If MSI is blacklisted for this system, fail. */
+	if (pci_msi_blacklisted())
+		return (ENXIO);
+
+	/* MSI-X capability present? */
+	if (cfg->msix.msix_location == 0 || !pci_do_msix)
+		return (ENODEV);
+
+	/* Make sure the appropriate BARs are mapped. */
+	rle = resource_list_find(&dinfo->resources, SYS_RES_MEMORY,
+	    cfg->msix.msix_table_bar);
+	if (rle == NULL || rle->res == NULL ||
+	    !(rman_get_flags(rle->res) & RF_ACTIVE))
+		return (ENXIO);
+	table_res = rle->res;
+	if (cfg->msix.msix_pba_bar != cfg->msix.msix_table_bar) {
+		rle = resource_list_find(&dinfo->resources, SYS_RES_MEMORY,
+		    cfg->msix.msix_pba_bar);
+		if (rle == NULL || rle->res == NULL ||
+		    !(rman_get_flags(rle->res) & RF_ACTIVE))
+			return (ENXIO);
+	}
+	pba_res = rle->res;
+
+	cfg->msix.msix_table_res = table_res;
+	cfg->msix.msix_pba_res = pba_res;
+
+	pci_mask_msix_allvectors(dev);
+
+	return 0;
+}
+
+void
+pci_teardown_msix(device_t dev)
+{
+	struct pci_devinfo *dinfo = device_get_ivars(dev);
+	struct pcicfg_msix *msix = &dinfo->cfg.msix;
+
+	KASSERT(msix->msix_table_res != NULL &&
+	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet\n"));
+
+	pci_mask_msix_allvectors(dev);
+
+	msix->msix_table_res = NULL;
+	msix->msix_pba_res = NULL;
+}
+
+static void
+pci_mask_msix_allvectors(device_t dev)
+{
+	struct pci_devinfo *dinfo = device_get_ivars(dev);
+	u_int i;
+
+	for (i = 0; i < dinfo->cfg.msix.msix_msgnum; ++i)
+		pci_mask_msix_vector(dev, i);
 }
 
 /*
