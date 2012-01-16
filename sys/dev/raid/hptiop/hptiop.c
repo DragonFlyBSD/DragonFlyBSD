@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/hptiop/hptiop.c,v 1.9 2011/08/01 21:12:41 delphij Exp $
+ * $FreeBSD: src/sys/dev/hptiop/hptiop.c,v 1.10 2011/10/13 20:06:19 marius Exp $
  */
 
 #include <sys/param.h>
@@ -386,6 +386,13 @@ srb_complete:
 			ccb->ccb_h.status = CAM_BUSY;
 			break;
 		case IOP_RESULT_CHECK_CONDITION:
+			memset(&ccb->csio.sense_data, 0,
+			    sizeof(ccb->csio.sense_data));
+			if (dxfer < ccb->csio.sense_len)
+				ccb->csio.sense_resid = ccb->csio.sense_len -
+				    dxfer;
+			else
+				ccb->csio.sense_resid = 0;
 			if (srb->srb_flag & HPT_SRB_FLAG_HIGH_MEM_ACESS) {/*iop*/
 				bus_space_read_region_1(hba->bar0t, hba->bar0h,
 					index + offsetof(struct hpt_iop_request_scsi_command,
@@ -535,6 +542,13 @@ static void hptiop_request_callback_mv(struct hpt_iop_hba * hba,
 			ccb->ccb_h.status = CAM_BUSY;
 			break;
 		case IOP_RESULT_CHECK_CONDITION:
+			memset(&ccb->csio.sense_data, 0,
+			    sizeof(ccb->csio.sense_data));
+			if (req->dataxfer_length < ccb->csio.sense_len)
+				ccb->csio.sense_resid = ccb->csio.sense_len -
+				    req->dataxfer_length;
+			else
+				ccb->csio.sense_resid = 0;
 			memcpy(&ccb->csio.sense_data, &req->sg_list,
 				MIN(req->dataxfer_length, sizeof(ccb->csio.sense_data)));
 			ccb->ccb_h.status = CAM_SCSI_STATUS_ERROR;
