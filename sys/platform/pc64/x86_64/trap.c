@@ -231,7 +231,7 @@ userret(struct lwp *lp, struct trapframe *frame, int sticks)
 	 * means some system time will be charged as user time.
 	 */
 	if (p->p_flags & P_PROFIL) {
-		addupc_task(p, frame->tf_rip, 
+		addupc_task(p, frame->tf_rip,
 			(u_int)((int)lp->lwp_thread->td_sticks - sticks));
 	}
 
@@ -324,7 +324,7 @@ static __inline void
 userexit(struct lwp *lp)
 {
 	struct thread *td = lp->lwp_thread;
-/*	globaldata_t gd = td->td_gd;*/
+	/* globaldata_t gd = td->td_gd; */
 
 	/*
 	 * Handle stop requests at kernel priority.  Any requests queued
@@ -383,7 +383,7 @@ KTR_INFO(KTR_KERNENTRY, kernentry, fork_ret, 0, "FORKRET(pid %hd, tid %hd)",
  *
  * XXX gd_trap_nesting_level currently prevents lwkt_switch() from panicing
  * if an attempt is made to switch from a fast interrupt or IPI.  This is
- * necessary to properly take fatal kernel traps on SMP machines if 
+ * necessary to properly take fatal kernel traps on SMP machines if
  * get_mplock() has to block.
  */
 
@@ -470,28 +470,20 @@ trap(struct trapframe *frame)
 
 		switch (type) {
 		case T_PRIVINFLT:	/* privileged instruction fault */
-			ucode = ILL_PRVOPC;
 			i = SIGILL;
+			ucode = ILL_PRVOPC;
 			break;
 
 		case T_BPTFLT:		/* bpt instruction fault */
 		case T_TRCTRAP:		/* trace trap */
 			frame->tf_rflags &= ~PSL_T;
-			ucode = TRAP_TRACE;
 			i = SIGTRAP;
+			ucode = (type == T_TRCTRAP ? TRAP_TRACE : TRAP_BRKPT);
 			break;
 
 		case T_ARITHTRAP:	/* arithmetic trap */
 			ucode = code;
 			i = SIGFPE;
-#if 0
-#if JG
-			ucode = fputrap();
-#else
-			ucode = code;
-#endif
-			i = SIGFPE;
-#endif
 			break;
 
 		case T_ASTFLT:		/* Allow process switch */
@@ -508,20 +500,16 @@ trap(struct trapframe *frame)
 			i = SIGBUS;
 			ucode = BUS_OBJERR;
 			break;
+		case T_STKFLT:		/* stack fault */
 		case T_SEGNPFLT:	/* segment not present fault */
 			i = SIGBUS;
 			ucode = BUS_ADRERR;
 			break;
 		case T_TSSFLT:		/* invalid TSS fault */
 		case T_DOUBLEFLT:	/* double fault */
-			i = SIGBUS;
-			ucode = BUS_OBJERR;
 		default:
-#if 0
-			ucode = code + BUS_SEGM_FAULT ; /* XXX: ???*/
-#endif
-			ucode = BUS_OBJERR;
 			i = SIGBUS;
+			ucode = BUS_OBJERR;
 			break;
 
 		case T_PAGEFLT:		/* page fault */
@@ -532,18 +520,16 @@ trap(struct trapframe *frame)
 					tsleep(p, 0, "freeze", hz * 20);
 				}
 			}
-			if (i == -1)
-				goto out;
-			if (i == 0)
+			if (i == -1 || i == 0)
 				goto out;
 
-#if 0
-			ucode = T_PAGEFLT;
-#endif
+
 			if (i == SIGSEGV)
 				ucode = SEGV_MAPERR;
-			else
-				ucode = BUS_ADRERR;
+			else {
+				i = SIGSEGV;
+				ucode = SEGV_ACCERR;
+			}
 			break;
 
 		case T_DIVIDE:		/* integer divide fault */
@@ -779,9 +765,7 @@ trap(struct trapframe *frame)
 		goto out;
 	}
 
-	/*
-	 * Translate fault for emulators (e.g. Linux) 
-	 */
+	/* Translate fault for emulators (e.g. Linux) */
 	if (*p->p_sysent->sv_transtrap)
 		i = (*p->p_sysent->sv_transtrap)(i, type);
 
@@ -910,13 +894,12 @@ trap_pfault(struct trapframe *frame, int usermode)
 		PRELE(lp->lwp_proc);
 	} else {
 		/*
-		 * Don't have to worry about process locking or stacks
-		 * in the kernel.
+		 * Don't have to worry about process locking or stacks in the
+		 * kernel.
 		 */
 		fault_flags = VM_FAULT_NORMAL;
 		rv = vm_fault(map, va, ftype, VM_FAULT_NORMAL);
 	}
-
 	if (rv == KERN_SUCCESS)
 		return (0);
 nogo:
@@ -1171,8 +1154,8 @@ syscall2(struct trapframe *frame)
 		}
 	}
 
- 	if (p->p_sysent->sv_mask)
- 		code &= p->p_sysent->sv_mask;
+	if (p->p_sysent->sv_mask)
+		code &= p->p_sysent->sv_mask;
 
 	if (code >= p->p_sysent->sv_size)
 		callp = &p->p_sysent->sv_table[0];
@@ -1201,12 +1184,12 @@ syscall2(struct trapframe *frame)
 	if (narg > regcnt) {
 		KASSERT(params != NULL, ("copyin args with no params!"));
 		error = copyin(params, &argsdst[regcnt],
-	    		(narg - regcnt) * sizeof(register_t));
+			(narg - regcnt) * sizeof(register_t));
 		if (error) {
 #ifdef KTRACE
 			if (KTRPOINT(td, KTR_SYSCALL)) {
 				MAKEMPSAFE(have_mplock);
-				
+
 				ktrsyscall(lp, code, narg,
 					(void *)(&args.nosys.sysmsg + 1));
 			}

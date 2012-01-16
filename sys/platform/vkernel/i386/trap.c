@@ -36,7 +36,6 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.35 2008/09/09 04:06:19 dillon Exp $
  */
 
 /*
@@ -173,8 +172,8 @@ MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
 extern int max_sysmsg;
 
 /*
- * Passively intercepts the thread switch function to increase
- * the thread priority from a user priority to a kernel priority, reducing
+ * Passively intercepts the thread switch function to increase the thread
+ * priority from a user priority to a kernel priority, reducing
  * syscall and trap overhead for the case where no switch occurs.
  *
  * Synchronizes td_ucred with p_ucred.  This is used by system calls,
@@ -197,6 +196,7 @@ userenter(struct thread *curtd, struct proc *curp)
 		if (ocred)
 			crfree(ocred);
 	}
+
 }
 
 /*
@@ -445,15 +445,15 @@ restart:
 
 	switch (type) {
 	case T_PRIVINFLT:	/* privileged instruction fault */
-		ucode = ILL_PRVOPC;
 		i = SIGILL;
+		ucode = ILL_PRVOPC;
 		break;
 
 	case T_BPTFLT:		/* bpt instruction fault */
 	case T_TRCTRAP:		/* trace trap */
 		frame->tf_eflags &= ~PSL_T;
-		ucode = TRAP_TRACE;
 		i = SIGTRAP;
+		ucode = (type == T_TRCTRAP ? TRAP_TRACE : TRAP_BRKPT);
 		break;
 
 	case T_ARITHTRAP:	/* arithmetic trap */
@@ -495,14 +495,9 @@ restart:
 		break;
 	case T_TSSFLT:		/* invalid TSS fault */
 	case T_DOUBLEFLT:	/* double fault */
-		i = SIGBUS;
-		ucode = BUS_OBJERR;
 	default:
-#if 0
-		ucode = code + BUS_SEGM_FAULT ; /* XXX: ???*/
-#endif
-		ucode = BUS_OBJERR;
 		i = SIGBUS;
+		ucode = BUS_OBJERR;
 		break;
 
 	case T_PAGEFLT:		/* page fault */
@@ -517,13 +512,12 @@ restart:
 		if (i == 0)
 			goto out;
 
-#if 0
-		ucode = T_PAGEFLT;
-#endif
 		if (i == SIGSEGV)
 			ucode = SEGV_MAPERR;
-		else
-			ucode = BUS_ADRERR;
+		else {
+			i = SIGSEGV;
+			ucode = SEGV_ACCERR;
+		}
 		break;
 
 	case T_DIVIDE:		/* integer divide fault */
@@ -580,6 +574,7 @@ restart:
 			npxdna(frame);
 			break;
 		}
+
 #if NNPX > 0
 		/* 
 		 * The kernel may have switched out the FP unit's
@@ -803,7 +798,7 @@ kernel_trap:
 		}
 #endif
 		/*
-		 * Fall through (TRCTRAP kernel mode, kernel address)
+		 * FALLTHROUGH (TRCTRAP kernel mode, kernel address)
 		 */
 	case T_BPTFLT:
 		/*
@@ -928,7 +923,6 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		else
 			fault_flags |= VM_FAULT_NORMAL;
 		rv = vm_fault(map, va, ftype, fault_flags);
-
 		PRELE(lp->lwp_proc);
 	} else {
 		/*
@@ -936,7 +930,6 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		 */
 		rv = vm_fault(map, va, ftype, VM_FAULT_NORMAL);
 	}
-
 	if (rv == KERN_SUCCESS)
 		return (0);
 nogo:
@@ -1430,7 +1423,7 @@ go_user(struct intrframe *frame)
  * If PGEX_FPFAULT is set then set FP_VIRTFP in the PCB to force a T_DNA
  * fault (which is then passed back to the virtual kernel) if an attempt is
  * made to use the FP unit.
- * 
+ *
  * XXX this is a fairly big hack.
  */
 void

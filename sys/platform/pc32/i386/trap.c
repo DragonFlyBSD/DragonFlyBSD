@@ -36,7 +36,6 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.115 2008/09/09 04:06:17 dillon Exp $
  */
 
 /*
@@ -540,15 +539,15 @@ restart:
 
 		switch (type) {
 		case T_PRIVINFLT:	/* privileged instruction fault */
-			ucode = ILL_COPROC;
 			i = SIGILL;
+			ucode = ILL_PRVOPC;
 			break;
 
 		case T_BPTFLT:		/* bpt instruction fault */
 		case T_TRCTRAP:		/* trace trap */
 			frame->tf_eflags &= ~PSL_T;
-			ucode = TRAP_TRACE;
 			i = SIGTRAP;
+			ucode = (type == T_TRCTRAP ? TRAP_TRACE : TRAP_BRKPT);
 			break;
 
 		case T_ARITHTRAP:	/* arithmetic trap */
@@ -588,14 +587,9 @@ restart:
 			break;
 		case T_TSSFLT:		/* invalid TSS fault */
 		case T_DOUBLEFLT:	/* double fault */
-			i = SIGBUS;
-			ucode = BUS_OBJERR;
 		default:
-#if 0
-			ucode = code + BUS_SEGM_FAULT ; /* XXX: ???*/
-#endif
-			ucode = BUS_OBJERR;
 			i = SIGBUS;
+			ucode = BUS_OBJERR;
 			break;
 
 		case T_PAGEFLT:		/* page fault */
@@ -608,13 +602,13 @@ restart:
 #endif
 			if (i == 0)
 				goto out;
-#if 0
-			ucode = T_PAGEFLT;
-#endif
+
 			if (i == SIGSEGV)
 				ucode = SEGV_MAPERR;
-			else
-				ucode = BUS_ADRERR; /* XXX */
+			else {
+				i = SIGSEGV;
+				ucode = SEGV_ACCERR;
+			}
 			break;
 
 		case T_DIVIDE:		/* integer divide fault */
@@ -702,7 +696,7 @@ restart:
 			break;
 
 		case T_FPOPFLT:		/* FPU operand fetch fault */
-			ucode = ILL_ILLOPN;
+			ucode = ILL_COPROC;
 			i = SIGILL;
 			break;
 
@@ -831,7 +825,7 @@ kernel_trap:
                                 goto out2;
                         }
 			/*
-			 * Fall through (TRCTRAP kernel mode, kernel address)
+			 * FALLTHROUGH (TRCTRAP kernel mode, kernel address)
 			 */
 		case T_BPTFLT:
 			/*
@@ -902,9 +896,7 @@ kernel_trap:
 		goto out;
 	}
 
-	/*
-	 * Translate fault for emulators (e.g. Linux) 
-	 */
+	/* Translate fault for emulators (e.g. Linux) */
 	if (*p->p_sysent->sv_transtrap)
 		i = (*p->p_sysent->sv_transtrap)(i, type);
 
@@ -1015,12 +1007,11 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		PRELE(lp->lwp_proc);
 	} else {
 		/*
-		 * Don't have to worry about process locking or stacks
-		 * in the kernel.
+		 * Don't have to worry about process locking or stacks in the
+		 * kernel.
 		 */
 		rv = vm_fault(map, va, ftype, VM_FAULT_NORMAL);
 	}
-
 	if (rv == KERN_SUCCESS)
 		return (0);
 nogo:
