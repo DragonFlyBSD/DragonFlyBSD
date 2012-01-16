@@ -835,7 +835,7 @@ domem(void)
 	for (i = 0, ks = &kmemstats[0]; i < nkms; i++, ks++) {
 		if (ks->ks_calls == 0)
 			continue;
-		printf("%19s%7ld%7ldK%7ldK%11zdK%10jd%5u%6u",
+		printf("%19s%7ld%7ldK%7ldK%11zuK%10jd%5u%6u",
 		    ks->ks_shortdesc,
 		    cpuagg(ks->ks_inuse), (cpuagg(ks->ks_memuse) + 1023) / 1024,
 		    (ks->ks_maxused + 1023) / 1024,
