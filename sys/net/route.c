@@ -134,6 +134,9 @@ int route_assert_owner_access = 0;
 SYSCTL_INT(_net_route, OID_AUTO, assert_owner_access, CTLFLAG_RW,
            &route_assert_owner_access, 0, "");
 
+u_long route_kmalloc_limit = 0;
+TUNABLE_ULONG("net.route.kmalloc_limit", &route_kmalloc_limit);
+
 /*
  * Initialize the route table(s) for protocol domains and
  * create a helper thread which will be responsible for updating
@@ -155,6 +158,9 @@ route_init(void)
 			    0, cpu, "rtable_cpu %d", cpu);
 		rt_ports[cpu] = &rtd->td_msgport;
 	}
+
+	if (route_kmalloc_limit)
+		kmalloc_raise_limit(M_RTABLE, route_kmalloc_limit);
 }
 
 static void
