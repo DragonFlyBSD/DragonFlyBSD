@@ -1131,6 +1131,11 @@ digest_phdr(const Elf_Phdr *phdr, int phnum, caddr_t entry, const char *path)
 	    obj->tlsinitsize = ph->p_filesz;
 	    obj->tlsinit = (void*)(ph->p_vaddr + obj->relocbase);
 	    break;
+
+	case PT_GNU_RELRO:
+	    obj->relro_page = obj->relocbase + trunc_page(ph->p_vaddr);
+	    obj->relro_size = round_page(ph->p_memsz);
+	    break;
 	}
     }
     if (nsegs < 1) {
@@ -1945,6 +1950,8 @@ relocate_objects(Obj_Entry *first, bool bind_now, Obj_Entry *rtldobj)
 	    if (reloc_jmpslots(obj) == -1)
 		return -1;
 
+	/* Set the special PLT or GOT entries. */
+	init_pltgot(obj);
 
 	/*
 	 * Set up the magic number and version in the Obj_Entry.  These
@@ -1954,8 +1961,17 @@ relocate_objects(Obj_Entry *first, bool bind_now, Obj_Entry *rtldobj)
 	obj->magic = RTLD_MAGIC;
 	obj->version = RTLD_VERSION;
 
-	/* Set the special PLT or GOT entries. */
-	init_pltgot(obj);
+	/*
+	 * Set relocated data to read-only status if protection specified
+	 */
+
+	if (obj->relro_size) {
+	    if (mprotect(obj->relro_page, obj->relro_size, PROT_READ) == -1) {
+		_rtld_error("%s: Cannot enforce relro relocation: %s",
+		  obj->path, strerror(errno));
+		return -1;
+	    }
+	}
     }
 
     return (0);

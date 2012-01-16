@@ -145,6 +145,8 @@ typedef struct Struct_Obj_Entry {
     const Elf_Phdr *phdr;	/* Program header if it is mapped, else NULL */
     size_t phsize;		/* Size of program header in bytes */
     const char *interp;		/* Pathname of the interpreter, if any */
+    caddr_t relro_page; 	/* Address of first page of read-only data */
+    size_t relro_size;  	/* Size of relro page(s) in bytes */
 
     /* TLS information */
     int tlsindex;		/* Index in DTV for this module */

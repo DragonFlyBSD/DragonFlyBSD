@@ -83,6 +83,8 @@ map_object(int fd, const char *path, const struct stat *sb)
     Elf_Addr bss_vaddr;
     Elf_Addr bss_vlimit;
     caddr_t bss_addr;
+    Elf_Addr relro_page;
+    size_t relro_size;
 
     hdr = get_elf_header(fd, path);
     if (hdr == NULL)
@@ -99,6 +101,8 @@ map_object(int fd, const char *path, const struct stat *sb)
     nsegs = -1;
     phdyn = phinterp = phtls = NULL;
     phdr_vaddr = 0;
+    relro_page = 0;
+    relro_size = 0;
     segs = alloca(sizeof(segs[0]) * hdr->e_phnum);
     while (phdr < phlimit) {
 	switch (phdr->p_type) {
@@ -127,6 +131,11 @@ map_object(int fd, const char *path, const struct stat *sb)
 
 	case PT_TLS:
 	    phtls = phdr;
+	    break;
+
+	case PT_GNU_RELRO:
+	    relro_page = phdr->p_vaddr;
+	    relro_size = phdr->p_memsz;
 	    break;
 	}
 
@@ -266,6 +275,11 @@ map_object(int fd, const char *path, const struct stat *sb)
 	obj->tlsalign = phtls->p_align;
 	obj->tlsinitsize = phtls->p_filesz;
 	obj->tlsinit = mapbase + phtls->p_vaddr;
+    }
+
+    if (relro_size) {
+        obj->relro_page = obj->relocbase + trunc_page(relro_page);
+        obj->relro_size = round_page(relro_size);
     }
     return obj;
 }
