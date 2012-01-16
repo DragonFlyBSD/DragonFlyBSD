@@ -318,7 +318,7 @@ struct _7zip {
 	uint32_t		 bcj2_code;
 	uint64_t		 bcj2_outPos;
 
-	/* Filename character-set convertion data. */
+	/* Filename character-set conversion data. */
 	struct archive_string_conv *sconv;
 
 	char			 format_name[64];
@@ -381,7 +381,7 @@ static int	setup_decode_folder(struct archive_read *, struct _7z_folder *,
 		    int);
 static void	x86_Init(struct _7zip *);
 static size_t	x86_Convert(struct _7zip *, uint8_t *, size_t);
-ssize_t		Bcj2_Decode(struct _7zip *, uint8_t *, size_t);
+static ssize_t		Bcj2_Decode(struct _7zip *, uint8_t *, size_t);
 
 
 int
@@ -1382,7 +1382,7 @@ decompress(struct archive_read *a, struct _7zip *zip,
 		uint64_t flush_bytes;
 
 		if (!zip->ppmd7_valid || zip->ppmd7_stat < 0 ||
-		    t_avail_in < 0 || t_avail_out <= 0) {
+		    t_avail_out <= 0) {
 			archive_set_error(&(a->archive),
 			    ARCHIVE_ERRNO_MISC,
 			    "Decompression internal error");
@@ -1570,7 +1570,7 @@ static int
 read_Bools(struct archive_read *a, unsigned char *data, size_t num)
 {
 	const unsigned char *p;
-	unsigned i, mask = 0, avail;
+	unsigned i, mask = 0, avail = 0;
 
 	for (i = 0; i < num; i++) {
 		if (mask == 0) {
@@ -3564,7 +3564,7 @@ x86_Convert(struct _7zip *zip, uint8_t *data, size_t size)
 #define UPDATE_0(p) zip->bcj2_range = bound; *(p) = (CProb)(ttt + ((kBitModelTotal - ttt) >> kNumMoveBits)); NORMALIZE;
 #define UPDATE_1(p) zip->bcj2_range -= bound; zip->bcj2_code -= bound; *(p) = (CProb)(ttt - (ttt >> kNumMoveBits)); NORMALIZE;
 
-ssize_t
+static ssize_t
 Bcj2_Decode(struct _7zip *zip, uint8_t *outBuf, size_t outSize)
 {
 	size_t inPos = 0, outPos = 0;
