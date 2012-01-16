@@ -1602,7 +1602,8 @@ pci_setup_msix(device_t dev)
 		return (ENXIO);
 
 	/* MSI-X capability present? */
-	if (cfg->msix.msix_location == 0 || !pci_do_msix)
+	if (cfg->msix.msix_location == 0 || cfg->msix.msix_msgnum == 0 ||
+	    !pci_do_msix)
 		return (ENODEV);
 
 	/* Make sure the appropriate BARs are mapped. */
@@ -1884,7 +1885,8 @@ pci_alloc_msi_method(device_t dev, device_t child, int *rid, int count,
 		return (ENXIO);
 
 	/* MSI capability present? */
-	if (cfg->msi.msi_location == 0 || !pci_do_msi)
+	if (cfg->msi.msi_location == 0 || cfg->msi.msi_msgnum == 0 ||
+	    !pci_do_msi)
 		return (ENODEV);
 
 	KASSERT(count <= cfg->msi.msi_msgnum, ("large MSI count %d, max %d\n",
