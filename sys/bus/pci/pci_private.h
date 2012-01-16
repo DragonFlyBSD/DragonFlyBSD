@@ -73,7 +73,7 @@ int		pci_disable_io_method(device_t dev, device_t child, int space);
 int		pci_find_extcap_method(device_t dev, device_t child,
 		    int capability, int *capreg);
 int		pci_alloc_msi_method(device_t dev, device_t child, int *rid, int count, int cpuid);
-int		pci_alloc_msix_method(device_t dev, device_t child, int *count);
+int		pci_alloc_msix_vector_method(device_t dev, device_t child, u_int vector, int *rid, int cpuid);
 int		pci_release_msi_method(device_t dev, device_t child);
 int		pci_msi_count_method(device_t dev, device_t child);
 int		pci_msix_count_method(device_t dev, device_t child);

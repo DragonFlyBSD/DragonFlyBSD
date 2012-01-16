@@ -173,7 +173,7 @@ static device_method_t pci_methods[] = {
 	DEVMETHOD(pci_assign_interrupt,	pci_assign_interrupt_method),
 	DEVMETHOD(pci_find_extcap,	pci_find_extcap_method),
 	DEVMETHOD(pci_alloc_msi,	pci_alloc_msi_method),
-	DEVMETHOD(pci_alloc_msix,	pci_alloc_msix_method),
+	DEVMETHOD(pci_alloc_msix_vector, pci_alloc_msix_vector_method),
 	DEVMETHOD(pci_release_msi,	pci_release_msi_method),
 	DEVMETHOD(pci_msi_count,	pci_msi_count_method),
 	DEVMETHOD(pci_msix_count,	pci_msix_count_method),
@@ -1463,149 +1463,52 @@ pci_resume_msix(device_t dev)
 }
 
 /*
- * Attempt to allocate *count MSI-X messages.  The actual number allocated is
- * returned in *count.  After this function returns, each message will be
- * available to the driver as SYS_RES_IRQ resources starting at rid 1.
+ * Attempt to allocate one MSI-X message at the specified vector on cpuid.
+ *
+ * After this function returns, the MSI-X's rid will be saved in rid0.
  */
 int
-pci_alloc_msix_method(device_t dev, device_t child, int *count)
+pci_alloc_msix_vector_method(device_t dev, device_t child, u_int vector,
+    int *rid0, int cpuid)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
-	pcicfgregs *cfg = &dinfo->cfg;
+	struct pcicfg_msix *msix = &dinfo->cfg.msix;
 	struct resource_list_entry *rle;
-	int actual, error, i, irq, max;
+	int error, irq, rid;
 
-	/* Don't let count == 0 get us into trouble. */
-	if (*count == 0)
-		return (EINVAL);
-
-	/* If rid 0 is allocated, then fail. */
-	rle = resource_list_find(&dinfo->resources, SYS_RES_IRQ, 0);
-	if (rle != NULL && rle->res != NULL)
-		return (ENXIO);
-
-	/* Already have allocated messages? */
-	if (cfg->msi.msi_alloc != 0 || cfg->msix.msix_alloc != 0)
-		return (ENXIO);
-
-	/* If MSI is blacklisted for this system, fail. */
-	if (pci_msi_blacklisted())
-		return (ENXIO);
-
-	/* MSI-X capability present? */
-	if (cfg->msix.msix_location == 0 || !pci_do_msix)
-		return (ENODEV);
-
-	/* Make sure the appropriate BARs are mapped. */
-	rle = resource_list_find(&dinfo->resources, SYS_RES_MEMORY,
-	    cfg->msix.msix_table_bar);
-	if (rle == NULL || rle->res == NULL ||
-	    !(rman_get_flags(rle->res) & RF_ACTIVE))
-		return (ENXIO);
-	cfg->msix.msix_table_res = rle->res;
-	if (cfg->msix.msix_pba_bar != cfg->msix.msix_table_bar) {
-		rle = resource_list_find(&dinfo->resources, SYS_RES_MEMORY,
-		    cfg->msix.msix_pba_bar);
-		if (rle == NULL || rle->res == NULL ||
-		    !(rman_get_flags(rle->res) & RF_ACTIVE))
-			return (ENXIO);
-	}
-	cfg->msix.msix_pba_res = rle->res;
-
-	if (bootverbose)
-		device_printf(child,
-		    "attempting to allocate %d MSI-X vectors (%d supported)\n",
-		    *count, cfg->msix.msix_msgnum);
-	max = min(*count, cfg->msix.msix_msgnum);
-	for (i = 0; i < max; i++) {
-		/* Allocate a message. */
-		error = PCIB_ALLOC_MSIX(device_get_parent(dev), child, &irq,
-		    -1 /* XXX */);
-		if (error)
-			break;
-		resource_list_add(&dinfo->resources, SYS_RES_IRQ, i + 1, irq,
-		    irq, 1, -1);
-	}
-	actual = i;
-
-	if (actual == 0) {
-		if (bootverbose) {
-			device_printf(child,
-			    "could not allocate any MSI-X vectors\n");
-		}
-		return  (ENXIO);
-	}
+	KASSERT(msix->msix_table_res != NULL &&
+	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet\n"));
+	KASSERT(cpuid >= 0 && cpuid < ncpus, ("invalid cpuid %d\n", cpuid));
+	KASSERT(vector < msix->msix_msgnum,
+	    ("invalid MSI-X vector %u, total %d\n", vector, msix->msix_msgnum));
 
 	if (bootverbose) {
-		rle = resource_list_find(&dinfo->resources, SYS_RES_IRQ, 1);
-		if (actual == 1)
-			device_printf(child, "using IRQ %lu for MSI-X\n",
-			    rle->start);
-		else {
-			int run;
-
-			/*
-			 * Be fancy and try to print contiguous runs of
-			 * IRQ values as ranges.  'irq' is the previous IRQ.
-			 * 'run' is true if we are in a range.
-			 */
-			device_printf(child, "using IRQs %lu", rle->start);
-			irq = rle->start;
-			run = 0;
-			for (i = 1; i < actual; i++) {
-				rle = resource_list_find(&dinfo->resources,
-				    SYS_RES_IRQ, i + 1);
-
-				/* Still in a run? */
-				if (rle->start == irq + 1) {
-					run = 1;
-					irq++;
-					continue;
-				}
-
-				/* Finish previous range. */
-				if (run) {
-					kprintf("-%d", irq);
-					run = 0;
-				}
-
-				/* Start new range. */
-				kprintf(",%lu", rle->start);
-				irq = rle->start;
-			}
-
-			/* Unfinished range? */
-			if (run)
-				kprintf("-%d", irq);
-			kprintf(" for MSI-X\n");
-		}
+		device_printf(child,
+		    "attempting to allocate MSI-X #%u vector (%d supported)\n",
+		    vector, msix->msix_msgnum);
 	}
 
-	/* Mask all vectors. */
-	for (i = 0; i < cfg->msix.msix_msgnum; i++)
-		pci_mask_msix_vector(child, i);
+	/* Set rid according to vector number */
+	rid = vector + 1;
 
-	/* Allocate and initialize vector data and virtual table. */
-	cfg->msix.msix_vectors = kmalloc(sizeof(struct msix_vector) * actual,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	cfg->msix.msix_table = kmalloc(sizeof(struct msix_table_entry) * actual,
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	for (i = 0; i < actual; i++) {
-		rle = resource_list_find(&dinfo->resources, SYS_RES_IRQ, i + 1);
-		cfg->msix.msix_vectors[i].mv_irq = rle->start;
-		cfg->msix.msix_table[i].mte_vector = i + 1;
+	/* Allocate a message. */
+	error = PCIB_ALLOC_MSIX(device_get_parent(dev), child, &irq, cpuid);
+	if (error)
+		return error;
+	resource_list_add(&dinfo->resources, SYS_RES_IRQ, rid,
+	    irq, irq, 1, cpuid);
+
+	if (bootverbose) {
+		rle = resource_list_find(&dinfo->resources, SYS_RES_IRQ, rid);
+		device_printf(child, "using IRQ %lu for MSI-X on cpu%d\n",
+		    rle->start, cpuid);
 	}
-
-	/* Update control register to enable MSI-X. */
-	cfg->msix.msix_ctrl |= PCIM_MSIXCTRL_MSIX_ENABLE;
-	pci_write_config(child, cfg->msix.msix_location + PCIR_MSIX_CTRL,
-	    cfg->msix.msix_ctrl, 2);
 
 	/* Update counts of alloc'd messages. */
-	cfg->msix.msix_alloc = actual;
-	cfg->msix.msix_table_len = actual;
-	*count = actual;
-	return (0);
+	msix->msix_alloc++;
+
+	*rid0 = rid;
+	return 0;
 }
 
 #ifdef notyet

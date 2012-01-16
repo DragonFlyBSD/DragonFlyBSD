@@ -471,9 +471,10 @@ pci_alloc_msi(device_t dev, int *rid, int count, int cpuid)
 }
 
 static __inline int
-pci_alloc_msix(device_t dev, int *count)
+pci_alloc_msix_vector(device_t dev, u_int vector, int *rid, int cpuid)
 {
-    return (PCI_ALLOC_MSIX(device_get_parent(dev), dev, count));
+    return (PCI_ALLOC_MSIX_VECTOR(device_get_parent(dev), dev, vector, rid,
+        cpuid));
 }
 
 static __inline int
