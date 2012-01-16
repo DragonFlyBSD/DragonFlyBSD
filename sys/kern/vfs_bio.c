@@ -1172,7 +1172,8 @@ buwrite(struct buf *bp)
 void
 bdirty(struct buf *bp)
 {
-	KASSERT(bp->b_qindex == BQUEUE_NONE, ("bdirty: buffer %p still on queue %d", bp, bp->b_qindex));
+	KASSERT(bp->b_qindex == BQUEUE_NONE,
+		("bdirty: buffer %p still on queue %d", bp, bp->b_qindex));
 	if (bp->b_flags & B_NOCACHE) {
 		kprintf("bdirty: clearing B_NOCACHE on buf %p\n", bp);
 		bp->b_flags &= ~B_NOCACHE;
@@ -1363,7 +1364,7 @@ brelse(struct buf *bp)
 	 */
 	if ((bp->b_flags & (B_DELWRI | B_LOCKED)) || bp->b_refs) {
 		bp->b_flags &= ~B_RELBUF;
-	} else if (vm_page_count_severe()) {
+	} else if (vm_page_count_min(0)) {
 		if (LIST_FIRST(&bp->b_dep) != NULL)
 			buf_deallocate(bp);		/* can set B_LOCKED */
 		if (bp->b_flags & (B_DELWRI | B_LOCKED))
@@ -1681,7 +1682,7 @@ bqrelse(struct buf *bp)
 		bp->b_qindex = (bp->b_flags & B_HEAVY) ?
 			       BQUEUE_DIRTY_HW : BQUEUE_DIRTY;
 		TAILQ_INSERT_TAIL(&bufqueues[bp->b_qindex], bp, b_freelist);
-	} else if (vm_page_count_severe()) {
+	} else if (vm_page_count_min(0)) {
 		/*
 		 * We are too low on memory, we have to try to free the
 		 * buffer (most importantly: the wired pages making up its
@@ -1745,17 +1746,18 @@ bqdrop(struct buf *bp)
 }
 
 /*
- * vfs_vmio_release:
+ * Return backing pages held by the buffer 'bp' back to the VM system.
+ * This routine is called when the bp is invalidated, released, or
+ * reused.
  *
- *	Return backing pages held by the buffer 'bp' back to the VM system
- *	if possible.  The pages are freed if they are no longer valid or
- *	attempt to free if it was used for direct I/O otherwise they are
- *	sent to the page cache.
+ * The KVA mapping (b_data) for the underlying pages is removed by
+ * this function.
  *
- *	Pages that were marked busy are left alone and skipped.
- *
- *	The KVA mapping (b_data) for the underlying pages is removed by
- *	this function.
+ * WARNING! This routine is integral to the low memory critical path
+ *          when a buffer is B_RELBUF'd.  If the system has a severe page
+ *          deficit we need to get the page(s) onto the PQ_FREE or PQ_CACHE
+ *          queues so they can be reused in the current pageout daemon
+ *          pass.
  */
 static void
 vfs_vmio_release(struct buf *bp)
@@ -1767,6 +1769,9 @@ vfs_vmio_release(struct buf *bp)
 		m = bp->b_xio.xio_pages[i];
 		bp->b_xio.xio_pages[i] = NULL;
 
+		/*
+		 * We need to own the page in order to safely unwire it.
+		 */
 		vm_page_busy_wait(m, FALSE, "vmiopg");
 
 		/*
@@ -1794,53 +1799,43 @@ vfs_vmio_release(struct buf *bp)
 			vm_page_unwire(m, 1);
 
 		/*
-		 * We don't mess with busy pages, it is the responsibility
-		 * of the process that busied the pages to deal with them.
-		 *
-		 * However, the caller may have marked the page invalid and
-		 * we must still make sure the page is no longer mapped.
+		 * If the wire_count has dropped to 0 we may need to take
+		 * further action before unbusying the page
 		 */
-		if ((m->flags & PG_BUSY) || (m->busy != 0)) {
-			vm_page_protect(m, VM_PROT_NONE);
-			vm_page_wakeup(m);
-			continue;
-		}
-			
 		if (m->wire_count == 0) {
 			vm_page_flag_clear(m, PG_ZERO);
-			/*
-			 * Might as well free the page if we can and it has
-			 * no valid data.  We also free the page if the
-			 * buffer was used for direct I/O.
-			 */
-#if 0
-			if ((bp->b_flags & B_ASYNC) == 0 && !m->valid &&
-					m->hold_count == 0) {
-				vm_page_protect(m, VM_PROT_NONE);
-				vm_page_free(m);
-			} else
-#endif
-			/*
-			 * Cache the page if we are really low on free
-			 * pages.
-			 *
-			 * Also bypass the active and inactive queues
-			 * if B_NOTMETA is set.  This flag is set by HAMMER
-			 * on a regular file buffer when double buffering
-			 * is enabled or on a block device buffer representing
-			 * file data when double buffering is not enabled.
-			 * The flag prevents two copies of the same data from
-			 * being cached for long periods of time.
-			 */
+
 			if (bp->b_flags & B_DIRECT) {
+				/*
+				 * Attempt to free the page if B_DIRECT is
+				 * set, the caller does not desire the page
+				 * to be cached.
+				 */
 				vm_page_wakeup(m);
 				vm_page_try_to_free(m);
 			} else if ((bp->b_flags & B_NOTMETA) ||
-				   vm_page_count_severe()) {
+				   vm_page_count_min(0)) {
+				/*
+				 * Attempt to move the page to PQ_CACHE
+				 * if B_NOTMETA is set.  This flag is set
+				 * by HAMMER to remove one of the two pages
+				 * present when double buffering is enabled.
+				 *
+				 * Attempt to move the page to PQ_CACHE
+				 * If we have a severe page deficit.  This
+				 * will cause buffer cache operations related
+				 * to pageouts to recycle the related pages
+				 * in order to avoid a low memory deadlock.
+				 */
 				m->act_count = bp->b_act_count;
 				vm_page_wakeup(m);
 				vm_page_try_to_cache(m);
 			} else {
+				/*
+				 * Nominal case, leave the page on the
+				 * queue the original unwiring placed it on
+				 * (active or inactive).
+				 */
 				m->act_count = bp->b_act_count;
 				vm_page_wakeup(m);
 			}
@@ -2346,12 +2341,14 @@ restart:
 	return(bp);
 }
 
+#if 0
 /*
  * This routine is called in an emergency to recover VM pages from the
  * buffer cache by cashing in clean buffers.  The idea is to recover
  * enough pages to be able to satisfy a stuck bio_page_alloc().
  *
- * MPSAFE
+ * XXX Currently not implemented.  This function can wind up deadlocking
+ * against another thread holding one or more of the backing pages busy.
  */
 static int
 recoverbufpages(void)
@@ -2467,6 +2464,7 @@ recoverbufpages(void)
 	spin_unlock(&bufqspin);
 	return(bytes);
 }
+#endif
 
 /*
  * buf_daemon:
@@ -2479,7 +2477,6 @@ recoverbufpages(void)
  *	of buffers falls below lodirtybuffers, but we will wake up anyone
  *	waiting at the mid-point.
  */
-
 static struct kproc_desc buf_kp = {
 	"bufdaemon",
 	buf_daemon,
@@ -4526,81 +4523,83 @@ vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 }
 
 /*
- * Allocate pages for a buffer cache buffer.
- *
- * Under extremely severe memory conditions even allocating out of the
- * system reserve can fail.  If this occurs we must allocate out of the
- * interrupt reserve to avoid a deadlock with the pageout daemon.
- *
- * The pageout daemon can run (putpages -> VOP_WRITE -> getblk -> allocbuf).
- * If the buffer cache's vm_page_alloc() fails a vm_wait() can deadlock
- * against the pageout daemon if pages are not freed from other sources.
+ * Allocate a page for a buffer cache buffer.
  *
  * If NULL is returned the caller is expected to retry (typically check if
  * the page already exists on retry before trying to allocate one).
+ *
+ * NOTE! Low-memory handling is dealt with in b[q]relse(), not here.  This
+ *	 function will use the system reserve with the hope that the page
+ *	 allocations can be returned to PQ_CACHE/PQ_FREE when the caller
+ *	 is done with the buffer.
  */
 static
 vm_page_t
 bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit)
 {
+	int vmflags = VM_ALLOC_NORMAL | VM_ALLOC_NULL_OK;
 	vm_page_t p;
 
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(obj));
 
 	/*
-	 * Try a normal allocation, allow use of system reserve.
+	 * Try a normal allocation first.
 	 */
-	p = vm_page_alloc(obj, pg, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM |
-				   VM_ALLOC_NULL_OK);
+	p = vm_page_alloc(obj, pg, vmflags);
 	if (p)
 		return(p);
-
-	/*
-	 * The normal allocation failed and we clearly have a page
-	 * deficit.  Try to reclaim some clean VM pages directly
-	 * from the buffer cache.
-	 */
+	if (vm_page_lookup(obj, pg))
+		return(NULL);
 	vm_pageout_deficit += deficit;
-	recoverbufpages();
 
 	/*
-	 * We may have blocked, the caller will know what to do if the
-	 * page now exists.
-	 */
-	if (vm_page_lookup(obj, pg)) {
-		return(NULL);
-	}
-
-	/*
-	 * Only system threads can use the interrupt reserve
-	 */
-	if ((curthread->td_flags & TDF_SYSTHREAD) == 0) {
-		vm_wait(hz);
-		return(NULL);
-	}
-
-
-	/*
-	 * Allocate and allow use of the interrupt reserve.
+	 * Try again, digging into the system reserve.
 	 *
-	 * If after all that we still can't allocate a VM page we are
-	 * in real trouble, but we slog on anyway hoping that the system
-	 * won't deadlock.
+	 * Trying to recover pages from the buffer cache here can deadlock
+	 * against other threads trying to busy underlying pages so we
+	 * depend on the code in brelse() and bqrelse() to free/cache the
+	 * underlying buffer cache pages when memory is low.
 	 */
-	p = vm_page_alloc(obj, pg, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM |
-				   VM_ALLOC_INTERRUPT | VM_ALLOC_NULL_OK);
-	if (p) {
-		if (vm_page_count_severe()) {
-			++lowmempgallocs;
-			vm_wait(hz / 20 + 1);
-		}
-	} else if (vm_page_lookup(obj, pg) == NULL) {
-		kprintf("bio_page_alloc: Memory exhausted during bufcache "
-			"page allocation\n");
-		++lowmempgfails;
-		vm_wait(hz);
+	if (curthread->td_flags & TDF_SYSTHREAD)
+		vmflags |= VM_ALLOC_SYSTEM | VM_ALLOC_INTERRUPT;
+	else
+		vmflags |= VM_ALLOC_SYSTEM;
+
+	/*recoverbufpages();*/
+	p = vm_page_alloc(obj, pg, vmflags);
+	if (p)
+		return(p);
+	if (vm_page_lookup(obj, pg))
+		return(NULL);
+
+	/*
+	 * Wait for memory to free up and try again
+	 */
+	if (vm_page_count_severe())
+		++lowmempgallocs;
+	vm_wait(hz / 20 + 1);
+
+	p = vm_page_alloc(obj, pg, vmflags);
+	if (p)
+		return(p);
+	if (vm_page_lookup(obj, pg))
+		return(NULL);
+
+	/*
+	 * Ok, now we are really in trouble.
+	 */
+	{
+		static struct krate biokrate = { .freq = 1 };
+		krateprintf(&biokrate,
+			    "Warning: bio_page_alloc: memory exhausted "
+			    "during bufcache page allocation from %s\n",
+			    curthread->td_comm);
 	}
-	return(p);
+	if (curthread->td_flags & TDF_SYSTHREAD)
+		vm_wait(hz / 20 + 1);
+	else
+		vm_wait(hz / 2 + 1);
+	return (NULL);
 }
 
 /*

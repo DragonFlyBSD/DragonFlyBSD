@@ -2787,6 +2787,7 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 				     NULL,
 				     record->leaf.data_len);
 	}
+
 	for (;;) {
 		error = hammer_ip_sync_record_cursor(cursor, record);
 		if (error != EDEADLK)
@@ -2814,12 +2815,12 @@ done:
 	 *
 	 * WARNING: See warnings in hammer_unlock_cursor() function.
 	 */
-        if (hammer_flusher_meta_limit(hmp)) {
+        if (hammer_flusher_meta_limit(hmp) ||
+	    vm_page_count_severe()) {
 		hammer_unlock_cursor(cursor);
                 hammer_flusher_finalize(trans, 0);
 		hammer_lock_cursor(cursor);
 	}
-
 	return(error);
 }
 

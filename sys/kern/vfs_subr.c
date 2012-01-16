@@ -865,6 +865,7 @@ vfsync_bp(struct buf *bp, void *data)
 			bawrite(bp);
 		}
 		waitrunningbufspace();
+		vm_wait_nominal();
 		if (info->lazylimit && info->lazycount >= info->lazylimit)
 			error = 1;
 		else

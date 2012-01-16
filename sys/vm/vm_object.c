@@ -1225,6 +1225,7 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	 * we raced an object modification.
 	 */
 	vm_object_page_collect_flush(info->object, p, info->pagerflags);
+	vm_wait_nominal();
 done:
 	lwkt_yield();
 	return(0);

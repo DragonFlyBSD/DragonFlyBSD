@@ -42,6 +42,7 @@ hammer_ioc_dedup(hammer_transaction_t trans, hammer_inode_t ip,
 {
 	struct hammer_cursor cursor1, cursor2;
 	int error;
+	int seq;
 
 	/*
 	 * Enforce hammer filesystem version requirements
@@ -175,6 +176,16 @@ done_cursors:
 	hammer_done_cursor(&cursor2);
 done_cursor:
 	hammer_done_cursor(&cursor1);
+
+	/*
+	 * Avoid deadlocking the buffer cache
+	 */
+	seq = trans->hmp->flusher.done;
+	while (hammer_flusher_meta_halflimit(trans->hmp) ||
+	       hammer_flusher_undo_exhausted(trans, 2)) {
+		hammer_flusher_wait(trans->hmp, seq);
+		seq = hammer_flusher_async_one(trans->hmp);
+	}
 	return (error);
 }
 

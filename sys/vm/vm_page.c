@@ -1764,6 +1764,9 @@ vm_page_free_contig(vm_page_t m, unsigned long size)
 /*
  * Wait for sufficient free memory for nominal heavy memory use kernel
  * operations.
+ *
+ * WARNING!  Be sure never to call this in any vm_pageout code path, which
+ *	     will trivially deadlock the system.
  */
 void
 vm_wait_nominal(void)

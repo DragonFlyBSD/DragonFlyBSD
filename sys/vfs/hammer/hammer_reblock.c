@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2008-2012 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.34 2008/11/13 02:18:43 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -57,7 +55,7 @@ static int hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 
 int
 hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
-	       struct hammer_ioc_reblock *reblock)
+		   struct hammer_ioc_reblock *reblock)
 {
 	struct hammer_cursor cursor;
 	hammer_btree_elm_t elm;
@@ -205,6 +203,7 @@ retry:
 			bwillwrite(HAMMER_XBUFSIZE);
 			hammer_lock_cursor(&cursor);
 		}
+		vm_wait_nominal();
 skip:
 		if (error == 0) {
 			error = hammer_btree_iterate(&cursor);

@@ -822,6 +822,11 @@ hammer_vop_write(struct vop_write_args *ap)
 		 *	  If we queue it immediately the buf could be left
 		 *	  locked on the device queue for a very long time.
 		 *
+		 *	  However, failing to flush a dirty buffer out when
+		 *        issued from the pageout daemon can result in a low
+		 *        memory deadlock against bio_page_alloc(), so we
+		 *	  have to bawrite() on IO_ASYNC as well.
+		 *
 		 * NOTE!  To avoid degenerate stalls due to mismatched block
 		 *	  sizes we only honor IO_DIRECT on the write which
 		 *	  abuts the end of the buffer.  However, we must
@@ -833,6 +838,8 @@ hammer_vop_write(struct vop_write_args *ap)
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if ((ap->a_ioflag & IO_DIRECT) && endofblk) {
+			bawrite(bp);
+		} else if (ap->a_ioflag & IO_ASYNC) {
 			bawrite(bp);
 		} else {
 #if 0
