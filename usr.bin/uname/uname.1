@@ -89,9 +89,20 @@ utility (except for
 .Fl a )
 will allow the corresponding data to be set to the contents
 of the environment variable.
+.Pp
+A varsym composed of the string
+.Ev UNAME_
+followed by any flag to the
+.Nm
+utility (except for
+.Fl a )
+will allow the corresponding data to be set from the contents
+of the varsym.
+Environment variables override varsyms in this case.
 .Sh EXIT STATUS
 .Ex -std
 .Sh SEE ALSO
+.Xr varsym 1 ,
 .Xr sysctl 3 ,
 .Xr uname 3 ,
 .Xr sysctl 8

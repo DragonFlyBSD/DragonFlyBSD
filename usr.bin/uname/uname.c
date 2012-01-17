@@ -30,20 +30,17 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
- * @(#)uname.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/usr.bin/uname/uname.c,v 1.4.6.2 2002/10/17 07:47:29 jmallett Exp $
- * $DragonFly: src/usr.bin/uname/uname.c,v 1.6 2007/01/19 07:23:43 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
+#include <sys/varsym.h>
 
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #define	MFLAG	0x01
 #define	NFLAG	0x02
@@ -54,7 +51,8 @@
 #define	IFLAG   0x40
 
 typedef void (*get_t)(void);
-get_t get_ident, get_machine, get_hostname, get_arch, get_release, get_sysname, get_version;
+get_t get_ident, get_machine, get_hostname, get_arch;
+get_t get_release, get_sysname, get_version;
   
 void native_ident(void);
 void native_machine(void);
@@ -67,7 +65,8 @@ void print_uname(u_int);
 void setup_get(void);
 void usage(void);
 
-char *ident, *machine, *hostname, *arch, *release, *sysname, *version;
+char *ident, *machine, *hostname, *arch;
+char *release, *sysname, *version;
 int space;
 
 int
@@ -123,25 +122,40 @@ main(int argc, char *argv[])
 	exit(0);
 }
 
-#define	CHECK_ENV(opt,var)				\
-do {							\
-	if ((var = getenv("UNAME_" opt)) == NULL) {	\
-		get_##var = native_##var;		\
-	} else {					\
-		get_##var = (get_t)NULL;		\
-	}						\
-} while (0)
+/*
+ * Overrides.
+ *
+ * UNAME_x env variables have the highest priority
+ * UNAME_x varsyms have the next highest priority
+ * values retrieved from sysctls have the lowest priority
+ */
+static
+void
+CHECK_ENV(const char *envname, get_t *getp, get_t nativep, char **varp)
+{
+	char buf[1024];
+
+	if ((*varp = getenv(envname)) == NULL) {
+		if (varsym_get(VARSYM_ALL_MASK, envname,
+			       buf, sizeof(buf)) < 0) {
+			*getp = nativep;
+			return;
+		}
+		*varp = strdup(buf);
+	}
+	*getp = NULL;
+}
 
 void
 setup_get(void)
 {
-	CHECK_ENV("s", sysname);
-	CHECK_ENV("n", hostname);
-	CHECK_ENV("r", release);
-	CHECK_ENV("v", version);
-	CHECK_ENV("m", machine);
-	CHECK_ENV("p", arch);
-	CHECK_ENV("i", ident);
+	CHECK_ENV("UNAME_s", &get_sysname, native_sysname, &sysname);
+	CHECK_ENV("UNAME_n", &get_hostname, native_hostname, &hostname);
+	CHECK_ENV("UNAME_r", &get_release, native_release, &release);
+	CHECK_ENV("UNAME_v", &get_version, native_version, &version);
+	CHECK_ENV("UNAME_m", &get_machine, native_machine, &machine);
+	CHECK_ENV("UNAME_p", &get_arch, native_arch, &arch);
+	CHECK_ENV("UNAME_i", &get_ident, native_ident, &ident);
 }
 
 #define	PRINT_FLAG(flags,flag,var)		\
