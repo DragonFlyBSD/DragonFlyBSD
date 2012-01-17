@@ -1614,6 +1614,10 @@ pci_setup_msix(device_t dev)
 	    !pci_do_msix)
 		return (ENODEV);
 
+	KASSERT(cfg->msix.msix_alloc == 0 &&
+	    TAILQ_EMPTY(&cfg->msix.msix_vectors),
+	    ("MSI-X vector has been allocated\n"));
+
 	/* Make sure the appropriate BARs are mapped. */
 	rle = resource_list_find(&dinfo->resources, SYS_RES_MEMORY,
 	    cfg->msix.msix_table_bar);
@@ -1646,6 +1650,8 @@ pci_teardown_msix(device_t dev)
 
 	KASSERT(msix->msix_table_res != NULL &&
 	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet\n"));
+	KASSERT(msix->msix_alloc == 0 && TAILQ_EMPTY(&msix->msix_vectors),
+	    ("MSI-X vector is still allocated\n"));
 
 	pci_mask_msix_allvectors(dev);
 
