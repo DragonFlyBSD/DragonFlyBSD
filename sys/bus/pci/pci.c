@@ -174,8 +174,9 @@ static device_method_t pci_methods[] = {
 	DEVMETHOD(pci_assign_interrupt,	pci_assign_interrupt_method),
 	DEVMETHOD(pci_find_extcap,	pci_find_extcap_method),
 	DEVMETHOD(pci_alloc_msi,	pci_alloc_msi_method),
-	DEVMETHOD(pci_alloc_msix_vector, pci_alloc_msix_vector_method),
 	DEVMETHOD(pci_release_msi,	pci_release_msi_method),
+	DEVMETHOD(pci_alloc_msix_vector, pci_alloc_msix_vector_method),
+	DEVMETHOD(pci_release_msix_vector, pci_release_msix_vector_method),
 	DEVMETHOD(pci_msi_count,	pci_msi_count_method),
 	DEVMETHOD(pci_msix_count,	pci_msix_count_method),
 
@@ -1527,54 +1528,45 @@ pci_alloc_msix_vector_method(device_t dev, device_t child, u_int vector,
 	return 0;
 }
 
-#ifdef notyet
-static int
-pci_release_msix(device_t dev, device_t child)
+int
+pci_release_msix_vector_method(device_t dev, device_t child, int rid)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	struct pcicfg_msix *msix = &dinfo->cfg.msix;
 	struct resource_list_entry *rle;
-	int i;
+	struct msix_vector *mv;
+	int irq, cpuid;
 
-	/* Do we have any messages to release? */
-	if (msix->msix_alloc == 0)
-		return (ENODEV);
+	KASSERT(msix->msix_table_res != NULL &&
+	    msix->msix_pba_res != NULL, ("MSI-X is not setup yet\n"));
+	KASSERT(msix->msix_alloc > 0, ("No MSI-X allocated\n"));
+	KASSERT(rid > 0, ("invalid rid %d\n", rid));
 
-	/* Make sure none of the resources are allocated. */
-	for (i = 0; i < msix->msix_table_len; i++) {
-		if (msix->msix_table[i].mte_vector == 0)
-			continue;
-		if (msix->msix_table[i].mte_handlers > 0)
-			return (EBUSY);
-		rle = resource_list_find(&dinfo->resources, SYS_RES_IRQ, i + 1);
-		KASSERT(rle != NULL, ("missing resource"));
-		if (rle->res != NULL)
-			return (EBUSY);
-	}
+	mv = pci_find_msix_vector(child, rid);
+	KASSERT(mv != NULL, ("MSI-X rid %d is not allocated\n", rid));
+	KASSERT(mv->mv_address == 0, ("MSI-X rid %d not teardown\n", rid));
 
-	/* Update control register to disable MSI-X. */
-	msix->msix_ctrl &= ~PCIM_MSIXCTRL_MSIX_ENABLE;
-	pci_write_config(child, msix->msix_location + PCIR_MSIX_CTRL,
-	    msix->msix_ctrl, 2);
+	/* Make sure resource is no longer allocated. */
+	rle = resource_list_find(&dinfo->resources, SYS_RES_IRQ, rid);
+	KASSERT(rle != NULL, ("missing MSI-X resource, rid %d\n", rid));
+	KASSERT(rle->res == NULL,
+	    ("MSI-X resource is still allocated, rid %d\n", rid));
+
+	irq = rle->start;
+	cpuid = rle->cpuid;
 
 	/* Free the resource list entries. */
-	for (i = 0; i < msix->msix_table_len; i++) {
-		if (msix->msix_table[i].mte_vector == 0)
-			continue;
-		resource_list_delete(&dinfo->resources, SYS_RES_IRQ, i + 1);
-	}
-	kfree(msix->msix_table, M_DEVBUF);
-	msix->msix_table_len = 0;
+	resource_list_delete(&dinfo->resources, SYS_RES_IRQ, rid);
 
-	/* Release the IRQs. */
-	for (i = 0; i < msix->msix_alloc; i++)
-		PCIB_RELEASE_MSIX(device_get_parent(dev), child,
-		    msix->msix_vectors[i].mv_irq, -1 /* XXX */);
-	kfree(msix->msix_vectors, M_DEVBUF);
-	msix->msix_alloc = 0;
+	/* Release the IRQ. */
+	PCIB_RELEASE_MSIX(device_get_parent(dev), child, irq, cpuid);
+
+	TAILQ_REMOVE(&msix->msix_vectors, mv, mv_link);
+	kfree(mv, M_DEVBUF);
+
+	msix->msix_alloc--;
 	return (0);
 }
-#endif
 
 /*
  * Return the max supported MSI-X messages this device supports.

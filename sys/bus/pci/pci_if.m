@@ -133,6 +133,12 @@ METHOD int alloc_msix_vector {
 	int		cpuid;
 };
 
+METHOD int release_msix_vector {
+	device_t	dev;
+	device_t	child;
+	int		rid;
+};
+
 METHOD int msi_count {
 	device_t	dev;
 	device_t	child;

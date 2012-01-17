@@ -466,6 +466,12 @@ pci_alloc_msi(device_t dev, int *rid, int count, int cpuid)
 }
 
 static __inline int
+pci_release_msi(device_t dev)
+{
+    return (PCI_RELEASE_MSI(device_get_parent(dev), dev));
+}
+
+static __inline int
 pci_alloc_msix_vector(device_t dev, u_int vector, int *rid, int cpuid)
 {
     return (PCI_ALLOC_MSIX_VECTOR(device_get_parent(dev), dev, vector, rid,
@@ -473,9 +479,9 @@ pci_alloc_msix_vector(device_t dev, u_int vector, int *rid, int cpuid)
 }
 
 static __inline int
-pci_release_msi(device_t dev)
+pci_release_msix_vector(device_t dev, int rid)
 {
-    return (PCI_RELEASE_MSI(device_get_parent(dev), dev));
+	return PCI_RELEASE_MSIX_VECTOR(device_get_parent(dev), dev, rid);
 }
 
 static __inline int
