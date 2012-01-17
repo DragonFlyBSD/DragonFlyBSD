@@ -32,11 +32,19 @@
 .Nd get and set user and system-wide variables for variant symlinks
 .Sh SYNOPSIS
 .Nm
-.Op Fl adpqsu
+.Op Fl adpqsux
 .Oo
 .Ar var Ns Op Ns Cm = Ns Ar data
 .Ar ...
 .Oc
+.Nm
+.Fl x
+.Oo
+.Ar var Ns Op Ns Cm = Ns Ar data
+.Ar ...
+.Oc
+.Ar command
+.Ar args
 .Sh DESCRIPTION
 The
 .Nm
@@ -66,6 +74,9 @@ Note that since
 .Nm
 is run as its own process, using this option to set a variable will not
 affect your shell's namespace.
+Instead you might want to use the
+.Fl x
+option to set local varsyms and exec a command.
 .It Fl q
 Quiet mode.
 When retrieving a variable only its data is printed.
@@ -75,7 +86,14 @@ to system-specific variables.
 .It Fl u
 This option causes variables to be set on a per-user-id basis and restricts
 retrievals to user-specific variables.
-This is the default.
+This is the default unless
+.Fl x
+is used.
+.It Fl x
+This option causes variables to be set only within the
+.Nm
+process and its children, and also allows you to specify a command and
+arguments to exec after the var=data specifications.
 .El
 .Sh DIAGNOSTICS
 The

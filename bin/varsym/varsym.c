@@ -33,8 +33,9 @@
 #include <unistd.h>
 #include <sys/varsym.h>
 
-static void usage(void);
 static void dumpvars(char *buf, int bytes);
+static int doexec(char **av);
+static void usage(void);
 
 int
 main(int ac, char **av)
@@ -45,8 +46,9 @@ main(int ac, char **av)
 	int deleteOpt = 0;
 	int verboseOpt = 1;
 	int allOpt = 0;
+	int execok = 0;
 
-	while ((i = getopt(ac, av, "adhpqsu")) != -1) {
+	while ((i = getopt(ac, av, "adhpqsux")) != -1) {
 		switch (i) {
 		case 'a':
 			allOpt = 1;
@@ -68,6 +70,11 @@ main(int ac, char **av)
 		case 'u':
 			mask = VARSYM_USER_MASK;
 			level = VARSYM_USER;
+			break;
+		case 'x':
+			mask = VARSYM_PROC_MASK;
+			level = VARSYM_PROC;
+			execok = 1;
 			break;
 		case 'h':
 		default:
@@ -102,13 +109,21 @@ main(int ac, char **av)
 		if (data)
 			*data++ = 0;
 
-		if (deleteOpt) {
+		if (execok) {
+			if (deleteOpt) {
+				usage();
+				exit(1);
+			}
+			if (data) {
+				error = varsym_set(level, name, data);
+			} else {
+				error = doexec(av + optind);
+			}
+		} else if (deleteOpt) {
 			error = varsym_set(level, name, NULL);
-		}
-		else if (data) {
+		} else if (data) {
 			error = varsym_set(level, name, data);
-		}
-		else {
+		} else {
 			error = varsym_get(mask, name, buf, sizeof(buf));
 			if (error >= 0 && error <= (int)sizeof(buf)) {
 				if (verboseOpt)
@@ -126,23 +141,32 @@ main(int ac, char **av)
 static void
 dumpvars(char *buf, int bytes)
 {
-    int b;
-    int i;
-    char *vname = NULL;
-    char *vdata = NULL;
+	int b;
+	int i;
+	char *vname = NULL;
+	char *vdata = NULL;
 
-    for (b = i = 0; i < bytes; ++i) {
-	if (buf[i] == 0) {
-	    if (vname == NULL) {
-		vname = buf + b;
-	    } else {
-		vdata = buf + b;
-		printf("%s=%s\n", vname, vdata);
-		vname = vdata = NULL;
-	    }
-	    b = i + 1;
+	for (b = i = 0; i < bytes; ++i) {
+		if (buf[i] == 0) {
+			if (vname == NULL) {
+				vname = buf + b;
+			} else {
+				vdata = buf + b;
+				printf("%s=%s\n", vname, vdata);
+				vname = vdata = NULL;
+			}
+			b = i + 1;
+		}
 	}
-    }
+}
+
+static int
+doexec(char **av)
+{
+	int error;
+
+	error = execvp(av[0], av);
+	return (error);
 }
 
 static void
