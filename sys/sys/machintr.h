@@ -76,6 +76,10 @@ struct machintr_abi {
     		(const int intrs[], int count, int cpuid);
     void	(*msi_map)			/* addr/data for MSI on cpu */
     		(int intr, uint64_t *addr, uint32_t *data, int cpuid);
+    int		(*msix_alloc)			/* alloc one MSI-X on cpu */
+		(int *intr, int cpuid);
+    void	(*msix_release)			/* release one MSI-X on cpu */
+		(int intr, int cpuid);
 
     void	(*finalize)(void);		/* final before ints enabled */
     void	(*cleanup)(void);		/* cleanup */
