@@ -91,15 +91,12 @@ struct pcicfg_msi {
 
 /* Interesting values for PCI MSI-X */
 struct msix_vector {
+    TAILQ_ENTRY(msix_vector) mv_link;
     uint64_t	mv_address;	/* Contents of address register. */
     uint32_t	mv_data;	/* Contents of data register. */
-    int		mv_irq;
+    int		mv_rid;
 };
-
-struct msix_table_entry {
-    u_int	mte_vector;	/* 1-based index into msix_vectors array. */
-    u_int	mte_handlers;
-};
+TAILQ_HEAD(msix_vectorlist, msix_vector);
 
 struct pcicfg_msix {
     uint16_t	msix_ctrl;	/* Message Control */
@@ -110,11 +107,9 @@ struct pcicfg_msix {
     uint32_t	msix_table_offset;
     uint32_t	msix_pba_offset;
     int		msix_alloc;	/* Number of allocated vectors. */
-    int		msix_table_len;	/* Length of virtual table. */
-    struct msix_table_entry *msix_table; /* Virtual table. */
-    struct msix_vector *msix_vectors;	/* Array of allocated vectors. */
     struct resource *msix_table_res;	/* Resource containing vector table. */
     struct resource *msix_pba_res;	/* Resource containing PBA. */
+    struct msix_vectorlist msix_vectors;
 };
 
 /* Interesting values for HyperTransport */
