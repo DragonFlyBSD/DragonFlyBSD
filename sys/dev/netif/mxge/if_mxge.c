@@ -4281,6 +4281,7 @@ abort_with_fw:
 	(void) mxge_load_firmware(sc, 0);
 }
 
+#if 0
 static int
 mxge_add_msix_irqs(mxge_softc_t *sc)
 {
@@ -4387,6 +4388,7 @@ abort_with_msix_table:
 
 	return err;
 }
+#endif
 
 static int
 mxge_add_single_irq(mxge_softc_t *sc)
@@ -4429,6 +4431,7 @@ mxge_add_single_irq(mxge_softc_t *sc)
 	return err;
 }
 
+#if 0
 static void
 mxge_rem_msix_irqs(mxge_softc_t *sc)
 {
@@ -4458,6 +4461,7 @@ mxge_rem_msix_irqs(mxge_softc_t *sc)
 	pci_release_msi(sc->dev);
 	return;
 }
+#endif
 
 static void
 mxge_rem_single_irq(mxge_softc_t *sc)
@@ -4472,15 +4476,18 @@ mxge_rem_single_irq(mxge_softc_t *sc)
 static void
 mxge_rem_irq(mxge_softc_t *sc)
 {
+#if 0
 	if (sc->num_slices > 1)
 		mxge_rem_msix_irqs(sc);
 	else
+#endif
 		mxge_rem_single_irq(sc);
 }
 
 static int
 mxge_add_irq(mxge_softc_t *sc)
 {
+#if 0
 	int err;
 
 	if (sc->num_slices > 1)
@@ -4493,6 +4500,9 @@ mxge_add_irq(mxge_softc_t *sc)
 		err = mxge_add_msix_irqs(sc);
 	}
 	return err;
+#else
+	return mxge_add_single_irq(sc);
+#endif
 }
 
 
