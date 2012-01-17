@@ -1448,7 +1448,7 @@ pci_resume_msix(device_t dev)
 	struct pci_devinfo *dinfo = device_get_ivars(dev);
 	struct pcicfg_msix *msix = &dinfo->cfg.msix;
 
-	if (msix->msix_alloc > 0) {
+	if (msix->msix_table_res != NULL) {
 		const struct msix_vector *mv;
 
 		pci_mask_msix_allvectors(dev);
@@ -1905,7 +1905,7 @@ pci_alloc_msi_method(device_t dev, device_t child, int *rid, int count,
 		return (ENXIO);
 
 	/* Already have allocated messages? */
-	if (cfg->msi.msi_alloc != 0 || cfg->msix.msix_alloc != 0)
+	if (cfg->msi.msi_alloc != 0 || cfg->msix.msix_table_res != NULL)
 		return (ENXIO);
 
 	/* If MSI is blacklisted for this system, fail. */
