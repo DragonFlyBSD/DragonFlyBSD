@@ -296,12 +296,10 @@ TUNABLE_INT("hw.pci.enable_msi", &pci_do_msi);
 SYSCTL_INT(_hw_pci, OID_AUTO, enable_msi, CTLFLAG_RW, &pci_do_msi, 1,
     "Enable support for MSI interrupts");
 
-static int pci_do_msix = 0;
-#if 0
+static int pci_do_msix = 1;
 TUNABLE_INT("hw.pci.enable_msix", &pci_do_msix);
 SYSCTL_INT(_hw_pci, OID_AUTO, enable_msix, CTLFLAG_RW, &pci_do_msix, 1,
     "Enable support for MSI-X interrupts");
-#endif
 
 static int pci_honor_msi_blacklist = 1;
 TUNABLE_INT("hw.pci.honor_msi_blacklist", &pci_honor_msi_blacklist);
