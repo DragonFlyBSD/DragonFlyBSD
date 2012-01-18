@@ -2433,8 +2433,19 @@ carp_ifaddr(void *arg __unused, struct ifnet *ifp,
 		case IFADDR_EVENT_DELETE:
 			if (sc->sc_carpdev != NULL) {
 				carp_unlink_addrs(sc, ifp, ifa);
-				if (sc->sc_carpdev == NULL)
+				if (sc->sc_carpdev == NULL) {
+					/*
+					 * We no longer have the parent
+					 * interface, however, certain
+					 * virtual addresses, which are
+					 * not used because they can't
+					 * match the previous parent
+					 * interface's addresses, may now
+					 * match different interface's
+					 * addresses.
+					 */
 					carp_update_addrs(sc);
+				}
 			} else {
 				/*
 				 * The carp(4) interface didn't have a
@@ -2466,8 +2477,13 @@ carp_ifaddr(void *arg __unused, struct ifnet *ifp,
 				 */
 				carp_unlink_addrs(sc, ifp, ifa);
 				carp_link_addrs(sc, ifp, ifa);
-				if (sc->sc_carpdev == NULL)
+				if (sc->sc_carpdev == NULL) {
+					/*
+					 * See the comment in the above
+					 * IFADDR_EVENT_DELETE block.
+					 */
 					carp_update_addrs(sc);
+				}
 			}
 			break;
 		}
