@@ -108,6 +108,8 @@ static void nexus_delete_resource(device_t, device_t, int, int);
 static	int nexus_alloc_msi(device_t, device_t, int, int, int *, int);
 static	int nexus_release_msi(device_t, device_t, int, int *, int);
 static	int nexus_map_msi(device_t, device_t, int, uint64_t *, uint32_t *, int);
+static	int nexus_alloc_msix(device_t, device_t, int *, int);
+static	int nexus_release_msix(device_t, device_t, int, int);
 
 /*
  * The device_identify method will cause nexus to automatically associate
@@ -142,6 +144,8 @@ static device_method_t nexus_methods[] = {
 	DEVMETHOD(pcib_alloc_msi,	nexus_alloc_msi),
 	DEVMETHOD(pcib_release_msi,	nexus_release_msi),
 	DEVMETHOD(pcib_map_msi,		nexus_map_msi),
+	DEVMETHOD(pcib_alloc_msix,	nexus_alloc_msix),
+	DEVMETHOD(pcib_release_msix,	nexus_release_msix),
 
 	{ 0, 0 }
 };
@@ -593,5 +597,26 @@ nexus_map_msi(device_t dev, device_t child, int irq, uint64_t *addr,
 {
 	KKASSERT(lapic_enable);
 	MachIntrABI.msi_map(irq, addr, data, cpuid);
+	return 0;
+}
+
+static int
+nexus_alloc_msix(device_t dev, device_t child, int *irq, int cpuid)
+{
+	if (!lapic_enable)
+		return ENODEV;
+
+	/* XXX temporary */
+	if (MachIntrABI.msix_alloc == NULL)
+		return EOPNOTSUPP;
+
+	return MachIntrABI.msix_alloc(irq, cpuid);
+}
+
+static int
+nexus_release_msix(device_t dev, device_t child, int irq, int cpuid)
+{
+	KKASSERT(lapic_enable);
+	MachIntrABI.msix_release(irq, cpuid);
 	return 0;
 }
