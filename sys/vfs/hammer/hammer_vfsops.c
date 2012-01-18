@@ -158,8 +158,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, cluster_enable, CTLFLAG_RW,
  * 1 - dedup cache is populated on reads only
  * 2 - dedup cache is populated on both reads and writes
  */
-SYSCTL_INT(_vfs_hammer, OID_AUTO, live_dedup, CTLFLAG_RW,
-	   &hammer_live_dedup, 0, "Enable live dedup");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, live_dedup, CTLFLAG_RD,
+	   &hammer_live_dedup, 0, "Enable live dedup (experimental)");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, tdmux_ticks, CTLFLAG_RW,
 	   &hammer_tdmux_ticks, 0, "Hammer tdmux ticks");
 
