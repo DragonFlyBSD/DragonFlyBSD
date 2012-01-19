@@ -235,7 +235,7 @@ puc_pci_attach(device_t dev)
 	sc->irqrid = rid;
 	irq_setup = BUS_SETUP_INTR(device_get_parent(dev), dev, res,
 				   0, puc_intr, sc,
-				   &sc->intr_cookie, NULL);
+				   &sc->intr_cookie, NULL, NULL);
 	if (irq_setup != 0)
 		return (ENXIO);
 

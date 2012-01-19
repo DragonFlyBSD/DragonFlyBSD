@@ -786,7 +786,7 @@ fdc_attach(device_t dev)
 	}
 	error = BUS_SETUP_INTR(device_get_parent(dev), dev, fdc->res_irq,
 			       0, fdc_intr, fdc,
-			       &fdc->fdc_intr, NULL);
+			       &fdc->fdc_intr, NULL, NULL);
 	if (error) {
 		device_printf(dev, "cannot setup interrupt\n");
 		return error;
