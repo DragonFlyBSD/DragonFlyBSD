@@ -523,12 +523,10 @@ show_mp(char *path)
 
 	while ((item = prop_object_iterator_next(iter)) != NULL) {
 		rv = prop_dictionary_get_uint64(item, "space used", &space);
-		if (prop_dictionary_get_uint32(item, "uid", &id)) {
+		if (prop_dictionary_get_uint32(item, "uid", &id))
 			print_user(id);
-		}
-		else if (prop_dictionary_get_uint32(item, "gid", &id)) {
+		else if (prop_dictionary_get_uint32(item, "gid", &id))
 			print_group(id);
-		}
 		else
 			printf("total:");
 		if (flag_humanize) {
