@@ -53,6 +53,8 @@
 #define JME_NRXRING_MIN		JME_NRXRING_1
 #define JME_NRXRING_MAX		JME_NRXRING_4
 
+#define JME_NSERIALIZE		(JME_NRXRING_MAX + 2)
+
 /*
  * Tx/Rx descriptor queue base should be 16bytes aligned and
  * should not cross 4G bytes boundary on the 64bits address
@@ -129,6 +131,7 @@ struct jme_rxdesc {
  * RX ring/descs
  */
 struct jme_rxdata {
+	struct lwkt_serialize	jme_rx_serialize;
 	bus_dma_tag_t		jme_rx_tag;	/* RX mbuf tag */
 	bus_dmamap_t		jme_rx_sparemap;
 	struct jme_rxdesc	*jme_rxdesc;
@@ -163,6 +166,7 @@ struct jme_chain_data {
 	/*
 	 * TX ring/descs
 	 */
+	struct lwkt_serialize	jme_tx_serialize;
 	bus_dma_tag_t		jme_tx_tag;	/* TX mbuf tag */
 	struct jme_txdesc	*jme_txdesc;
 
@@ -226,6 +230,10 @@ struct jme_softc {
 #define	JME_FLAG_MSIX		0x0002
 #define	JME_FLAG_DETACH		0x0004
 #define	JME_FLAG_LINK		0x0008
+
+	struct lwkt_serialize	jme_serialize;
+	struct lwkt_serialize	*jme_serialize_arr[JME_NSERIALIZE];
+	int			jme_serialize_cnt;
 
 	struct callout		jme_tick_ch;
 	struct jme_chain_data	jme_cdata;

@@ -40,6 +40,7 @@
 #include <sys/proc.h>
 #include <sys/rman.h>
 #include <sys/serialize.h>
+#include <sys/serialize2.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
@@ -104,6 +105,13 @@ static void	jme_mediastatus(struct ifnet *, struct ifmediareq *);
 static int	jme_mediachange(struct ifnet *);
 #ifdef DEVICE_POLLING
 static void	jme_poll(struct ifnet *, enum poll_cmd, int);
+#endif
+static void	jme_serialize(struct ifnet *, enum ifnet_serialize);
+static void	jme_deserialize(struct ifnet *, enum ifnet_serialize);
+static int	jme_tryserialize(struct ifnet *, enum ifnet_serialize);
+#ifdef INVARIANTS
+static void	jme_serialize_assert(struct ifnet *, enum ifnet_serialize,
+		    boolean_t);
 #endif
 
 static void	jme_intr(void *);
@@ -306,7 +314,7 @@ jme_miibus_statchg(device_t dev)
 	bus_addr_t paddr;
 	int i, r;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
@@ -439,7 +447,7 @@ jme_mediastatus(struct ifnet *ifp, struct ifmediareq *ifmr)
 	struct jme_softc *sc = ifp->if_softc;
 	struct mii_data *mii = device_get_softc(sc->jme_miibus);
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	mii_pollstat(mii);
 	ifmr->ifm_status = mii->mii_media_status;
@@ -456,7 +464,7 @@ jme_mediachange(struct ifnet *ifp)
 	struct mii_data *mii = device_get_softc(sc->jme_miibus);
 	int error;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (mii->mii_instance != 0) {
 		struct mii_softc *miisc;
@@ -610,9 +618,16 @@ jme_attach(device_t dev)
 	uint32_t reg;
 	uint16_t did;
 	uint8_t pcie_ptr, rev;
-	int error = 0;
+	int error = 0, i, j;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	u_int irq_flags;
+
+	lwkt_serialize_init(&sc->jme_serialize);
+	lwkt_serialize_init(&sc->jme_cdata.jme_tx_serialize);
+	for (i = 0; i < JME_NRXRING_MAX; ++i) {
+		lwkt_serialize_init(
+		    &sc->jme_cdata.jme_rx_data[i].jme_rx_serialize);
+	}
 
 	sc->jme_rx_desc_cnt = roundup(jme_rx_desc_count, JME_NDESC_ALIGN);
 	if (sc->jme_rx_desc_cnt > JME_NDESC_MAX)
@@ -636,6 +651,16 @@ jme_attach(device_t dev)
 	else if (sc->jme_rx_ring_cnt >= JME_NRXRING_2)
 		sc->jme_rx_ring_cnt = JME_NRXRING_2;
 	sc->jme_rx_ring_inuse = sc->jme_rx_ring_cnt;
+
+	i = 0;
+	sc->jme_serialize_arr[i++] = &sc->jme_serialize;
+	sc->jme_serialize_arr[i++] = &sc->jme_cdata.jme_tx_serialize;
+	for (j = 0; j < sc->jme_rx_ring_cnt; ++j) {
+		sc->jme_serialize_arr[i++] =
+		    &sc->jme_cdata.jme_rx_data[j].jme_rx_serialize;
+	}
+	KKASSERT(i <= JME_NSERIALIZE);
+	sc->jme_serialize_cnt = i;
 
 	sc->jme_dev = dev;
 	sc->jme_lowaddr = BUS_SPACE_MAXADDR;
@@ -823,6 +848,12 @@ jme_attach(device_t dev)
 	ifp->if_poll = jme_poll;
 #endif
 	ifp->if_watchdog = jme_watchdog;
+	ifp->if_serialize = jme_serialize;
+	ifp->if_deserialize = jme_deserialize;
+	ifp->if_tryserialize = jme_tryserialize;
+#ifdef INVARIANTS
+	ifp->if_serialize_assert = jme_serialize_assert;
+#endif
 	ifq_set_maxlen(&ifp->if_snd, sc->jme_tx_desc_cnt - JME_TXD_RSVD);
 	ifq_set_ready(&ifp->if_snd);
 
@@ -884,7 +915,7 @@ jme_attach(device_t dev)
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
 	error = bus_setup_intr(dev, sc->jme_irq_res, INTR_MPSAFE, jme_intr, sc,
-			       &sc->jme_irq_handle, ifp->if_serializer);
+			       &sc->jme_irq_handle, &sc->jme_serialize);
 	if (error) {
 		device_printf(dev, "could not set up interrupt handler.\n");
 		ether_ifdetach(ifp);
@@ -907,10 +938,10 @@ jme_detach(device_t dev)
 	if (device_is_attached(dev)) {
 		struct ifnet *ifp = &sc->arpcom.ac_if;
 
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		jme_stop(sc);
 		bus_teardown_intr(dev, sc->jme_irq_res, sc->jme_irq_handle);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 
 		ether_ifdetach(ifp);
 	}
@@ -1409,12 +1440,12 @@ jme_suspend(device_t dev)
 	struct jme_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	jme_stop(sc);
 #ifdef notyet
 	jme_setwol(sc);
 #endif
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	return (0);
 }
@@ -1428,7 +1459,7 @@ jme_resume(device_t dev)
 	int pmc;
 #endif
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 #ifdef notyet
 	if (pci_find_extcap(sc->jme_dev, PCIY_PMG, &pmc) != 0) {
@@ -1446,7 +1477,7 @@ jme_resume(device_t dev)
 	if (ifp->if_flags & IFF_UP)
 		jme_init(sc);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	return (0);
 }
@@ -1581,7 +1612,7 @@ jme_start(struct ifnet *ifp)
 	struct mbuf *m_head;
 	int enq = 0;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->jme_cdata.jme_tx_serialize);
 
 	if ((sc->jme_flags & JME_FLAG_LINK) == 0) {
 		ifq_purge(&ifp->if_snd);
@@ -1648,7 +1679,7 @@ jme_watchdog(struct ifnet *ifp)
 {
 	struct jme_softc *sc = ifp->if_softc;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if ((sc->jme_flags & JME_FLAG_LINK) == 0) {
 		if_printf(ifp, "watchdog timeout (missed link)\n");
@@ -1681,7 +1712,7 @@ jme_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *)data;
 	int error = 0, mask;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	switch (cmd) {
 	case SIOCSIFMTU:
@@ -1879,7 +1910,7 @@ jme_intr(void *xsc)
 	uint32_t status;
 	int r;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->jme_serialize);
 
 	status = CSR_READ_4(sc, JME_INTR_REQ_STATUS);
 	if (status == 0 || status == 0xFFFFFFFF)
@@ -1924,9 +1955,11 @@ jme_intr(void *xsc)
 		}
 
 		if (status & (INTR_TXQ_COAL | INTR_TXQ_COAL_TO)) {
+			lwkt_serialize_enter(&sc->jme_cdata.jme_tx_serialize);
 			jme_txeof(sc);
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
+			lwkt_serialize_exit(&sc->jme_cdata.jme_tx_serialize);
 		}
 	}
 back:
@@ -2262,12 +2295,12 @@ jme_tick(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii = device_get_softc(sc->jme_miibus);
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	mii_tick(mii);
 	callout_reset(&sc->jme_tick_ch, hz, jme_tick, sc);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 }
 
 static void
@@ -2353,7 +2386,7 @@ jme_init(void *xsc)
 	uint32_t reg;
 	int error, r;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	/*
 	 * Cancel any pending I/O.
@@ -2584,7 +2617,7 @@ jme_stop(struct jme_softc *sc)
 	struct jme_rxdata *rdata;
 	int i, r;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	/*
 	 * Mark the interface down and cancel the watchdog timer.
@@ -2798,7 +2831,7 @@ jme_set_vlan(struct jme_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t reg;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	reg = CSR_READ_4(sc, JME_RXMAC);
 	reg &= ~RXMAC_VLAN_ENB;
@@ -2816,7 +2849,7 @@ jme_set_filter(struct jme_softc *sc)
 	uint32_t mchash[2];
 	uint32_t rxcfg;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	rxcfg = CSR_READ_4(sc, JME_RXMAC);
 	rxcfg &= ~(RXMAC_BROADCAST | RXMAC_PROMISC | RXMAC_MULTICAST |
@@ -2874,7 +2907,7 @@ jme_sysctl_tx_coal_to(SYSCTL_HANDLER_ARGS)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error, v;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	v = sc->jme_tx_coal_to;
 	error = sysctl_handle_int(oidp, &v, 0, req);
@@ -2892,7 +2925,7 @@ jme_sysctl_tx_coal_to(SYSCTL_HANDLER_ARGS)
 			jme_set_tx_coal(sc);
 	}
 back:
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	return error;
 }
 
@@ -2903,7 +2936,7 @@ jme_sysctl_tx_coal_pkt(SYSCTL_HANDLER_ARGS)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error, v;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	v = sc->jme_tx_coal_pkt;
 	error = sysctl_handle_int(oidp, &v, 0, req);
@@ -2921,7 +2954,7 @@ jme_sysctl_tx_coal_pkt(SYSCTL_HANDLER_ARGS)
 			jme_set_tx_coal(sc);
 	}
 back:
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	return error;
 }
 
@@ -2932,7 +2965,7 @@ jme_sysctl_rx_coal_to(SYSCTL_HANDLER_ARGS)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error, v;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	v = sc->jme_rx_coal_to;
 	error = sysctl_handle_int(oidp, &v, 0, req);
@@ -2950,7 +2983,7 @@ jme_sysctl_rx_coal_to(SYSCTL_HANDLER_ARGS)
 			jme_set_rx_coal(sc);
 	}
 back:
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	return error;
 }
 
@@ -2961,7 +2994,7 @@ jme_sysctl_rx_coal_pkt(SYSCTL_HANDLER_ARGS)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error, v;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	v = sc->jme_rx_coal_pkt;
 	error = sysctl_handle_int(oidp, &v, 0, req);
@@ -2979,7 +3012,7 @@ jme_sysctl_rx_coal_pkt(SYSCTL_HANDLER_ARGS)
 			jme_set_rx_coal(sc);
 	}
 back:
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	return error;
 }
 
@@ -3024,7 +3057,7 @@ jme_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	uint32_t status;
 	int r, prog = 0;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->jme_serialize);
 
 	switch (cmd) {
 	case POLL_REGISTER:
@@ -3040,8 +3073,14 @@ jme_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		status = CSR_READ_4(sc, JME_INTR_STATUS);
 
 		ether_input_chain_init(chain);
-		for (r = 0; r < sc->jme_rx_ring_inuse; ++r)
+		for (r = 0; r < sc->jme_rx_ring_inuse; ++r) {
+			struct jme_rxdata *rdata =
+			    &sc->jme_cdata.jme_rx_data[r];
+
+			lwkt_serialize_enter(&rdata->jme_rx_serialize);
 			prog += jme_rxeof_chain(sc, r, chain, count);
+			lwkt_serialize_exit(&rdata->jme_rx_serialize);
+		}
 		if (prog)
 			ether_input_dispatch(chain);
 
@@ -3051,9 +3090,11 @@ jme_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 			    RXCSR_RX_ENB | RXCSR_RXQ_START);
 		}
 
+		lwkt_serialize_enter(&sc->jme_cdata.jme_tx_serialize);
 		jme_txeof(sc);
 		if (!ifq_is_empty(&ifp->if_snd))
 			if_devstart(ifp);
+		lwkt_serialize_exit(&sc->jme_cdata.jme_tx_serialize);
 		break;
 	}
 }
@@ -3153,8 +3194,14 @@ jme_rx_intr(struct jme_softc *sc, uint32_t status)
 
 	ether_input_chain_init(chain);
 	for (r = 0; r < sc->jme_rx_ring_inuse; ++r) {
-		if (status & jme_rx_status[r].jme_coal)
+		if (status & jme_rx_status[r].jme_coal) {
+			struct jme_rxdata *rdata =
+			    &sc->jme_cdata.jme_rx_data[r];
+
+			lwkt_serialize_enter(&rdata->jme_rx_serialize);
 			prog += jme_rxeof_chain(sc, r, chain, -1);
+			lwkt_serialize_exit(&rdata->jme_rx_serialize);
+		}
 	}
 	if (prog)
 		ether_input_dispatch(chain);
@@ -3213,3 +3260,202 @@ jme_disable_rss(struct jme_softc *sc)
 	sc->jme_rx_ring_inuse = JME_NRXRING_1;
 	CSR_WRITE_4(sc, JME_RSSC, RSSC_DIS_RSS);
 }
+
+static void
+jme_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct jme_softc *sc = ifp->if_softc;
+
+	switch (slz) {
+	case IFNET_SERIALIZE_ALL:
+		lwkt_serialize_array_enter(sc->jme_serialize_arr,
+		    sc->jme_serialize_cnt, 0);
+		break;
+
+	case IFNET_SERIALIZE_MAIN:
+		lwkt_serialize_enter(&sc->jme_serialize);
+		break;
+
+	case IFNET_SERIALIZE_TX:
+		lwkt_serialize_enter(&sc->jme_cdata.jme_tx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX(0):
+		lwkt_serialize_enter(
+		    &sc->jme_cdata.jme_rx_data[0].jme_rx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX(1):
+		lwkt_serialize_enter(
+		    &sc->jme_cdata.jme_rx_data[1].jme_rx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX(2):
+		lwkt_serialize_enter(
+		    &sc->jme_cdata.jme_rx_data[2].jme_rx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX(3):
+		lwkt_serialize_enter(
+		    &sc->jme_cdata.jme_rx_data[3].jme_rx_serialize);
+		break;
+
+	default:
+		panic("%s unsupported serialize type\n", ifp->if_xname);
+	}
+}
+
+static void
+jme_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct jme_softc *sc = ifp->if_softc;
+
+	switch (slz) {
+	case IFNET_SERIALIZE_ALL:
+		lwkt_serialize_array_exit(sc->jme_serialize_arr,
+		    sc->jme_serialize_cnt, 0);
+		break;
+
+	case IFNET_SERIALIZE_MAIN:
+		lwkt_serialize_exit(&sc->jme_serialize);
+		break;
+
+	case IFNET_SERIALIZE_TX:
+		lwkt_serialize_exit(&sc->jme_cdata.jme_tx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX(0):
+		lwkt_serialize_exit(
+		    &sc->jme_cdata.jme_rx_data[0].jme_rx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX(1):
+		lwkt_serialize_exit(
+		    &sc->jme_cdata.jme_rx_data[1].jme_rx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX(2):
+		lwkt_serialize_exit(
+		    &sc->jme_cdata.jme_rx_data[2].jme_rx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX(3):
+		lwkt_serialize_exit(
+		    &sc->jme_cdata.jme_rx_data[3].jme_rx_serialize);
+		break;
+
+	default:
+		panic("%s unsupported serialize type\n", ifp->if_xname);
+	}
+}
+
+static int
+jme_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct jme_softc *sc = ifp->if_softc;
+
+	switch (slz) {
+	case IFNET_SERIALIZE_ALL:
+		return lwkt_serialize_array_try(sc->jme_serialize_arr,
+		    sc->jme_serialize_cnt, 0);
+
+	case IFNET_SERIALIZE_MAIN:
+		return lwkt_serialize_try(&sc->jme_serialize);
+
+	case IFNET_SERIALIZE_TX:
+		return lwkt_serialize_try(&sc->jme_cdata.jme_tx_serialize);
+
+	case IFNET_SERIALIZE_RX(0):
+		return lwkt_serialize_try(
+		    &sc->jme_cdata.jme_rx_data[0].jme_rx_serialize);
+
+	case IFNET_SERIALIZE_RX(1):
+		return lwkt_serialize_try(
+		    &sc->jme_cdata.jme_rx_data[1].jme_rx_serialize);
+
+	case IFNET_SERIALIZE_RX(2):
+		return lwkt_serialize_try(
+		    &sc->jme_cdata.jme_rx_data[2].jme_rx_serialize);
+
+	case IFNET_SERIALIZE_RX(3):
+		return lwkt_serialize_try(
+		    &sc->jme_cdata.jme_rx_data[3].jme_rx_serialize);
+
+	default:
+		panic("%s unsupported serialize type\n", ifp->if_xname);
+	}
+}
+
+#ifdef INVARIANTS
+
+static void
+jme_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
+    boolean_t serialized)
+{
+	struct jme_softc *sc = ifp->if_softc;
+	struct jme_rxdata *rdata;
+	int i;
+
+	switch (slz) {
+	case IFNET_SERIALIZE_ALL:
+		if (serialized) {
+			for (i = 0; i < sc->jme_serialize_cnt; ++i)
+				ASSERT_SERIALIZED(sc->jme_serialize_arr[i]);
+		} else {
+			for (i = 0; i < sc->jme_serialize_cnt; ++i)
+				ASSERT_NOT_SERIALIZED(sc->jme_serialize_arr[i]);
+		}
+		break;
+
+	case IFNET_SERIALIZE_MAIN:
+		if (serialized)
+			ASSERT_SERIALIZED(&sc->jme_serialize);
+		else
+			ASSERT_NOT_SERIALIZED(&sc->jme_serialize);
+		break;
+
+	case IFNET_SERIALIZE_TX:
+		if (serialized)
+			ASSERT_SERIALIZED(&sc->jme_cdata.jme_tx_serialize);
+		else
+			ASSERT_NOT_SERIALIZED(&sc->jme_cdata.jme_tx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX(0):
+		rdata = &sc->jme_cdata.jme_rx_data[0];
+		if (serialized)
+			ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
+		else
+			ASSERT_NOT_SERIALIZED(&rdata->jme_rx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX(1):
+		rdata = &sc->jme_cdata.jme_rx_data[1];
+		if (serialized)
+			ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
+		else
+			ASSERT_NOT_SERIALIZED(&rdata->jme_rx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX(2):
+		rdata = &sc->jme_cdata.jme_rx_data[2];
+		if (serialized)
+			ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
+		else
+			ASSERT_NOT_SERIALIZED(&rdata->jme_rx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX(3):
+		rdata = &sc->jme_cdata.jme_rx_data[3];
+		if (serialized)
+			ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
+		else
+			ASSERT_NOT_SERIALIZED(&rdata->jme_rx_serialize);
+		break;
+
+	default:
+		panic("%s unsupported serialize type\n", ifp->if_xname);
+	}
+}
+
+#endif	/* INVARIANTS */
