@@ -271,9 +271,8 @@ void	bus_generic_delete_resource(device_t dev, device_t child,
 				     int type, int rid);
 int	bus_generic_resume(device_t dev);
 int	bus_generic_setup_intr(device_t dev, device_t child,
-			       struct resource *irq, int flags,
-			       driver_intr_t *intr, void *arg,
-			       void **cookiep, lwkt_serialize_t serializer);
+	    struct resource *irq, int flags, driver_intr_t *intr, void *arg,
+	    void **cookiep, lwkt_serialize_t serializer, const char *desc);
 int	bus_generic_shutdown(device_t dev);
 int	bus_generic_suspend(device_t dev);
 int	bus_generic_teardown_intr(device_t dev, device_t child,
@@ -323,6 +322,9 @@ int	bus_release_resource(device_t dev, int type, int rid,
 int	bus_setup_intr(device_t dev, struct resource *r, int flags,
 		       driver_intr_t handler, void *arg,
 		       void **cookiep, lwkt_serialize_t serializer);
+int	bus_setup_intr_descr(device_t dev, struct resource *r, int flags,
+	    driver_intr_t handler, void *arg, void **cookiep,
+	    lwkt_serialize_t serializer, const char *desc);
 int	bus_teardown_intr(device_t dev, struct resource *r, void *cookie);
 int	bus_set_resource(device_t dev, int type, int rid,
 			 u_long start, u_long count, int cpuid);

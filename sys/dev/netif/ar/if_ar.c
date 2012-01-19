@@ -270,7 +270,7 @@ ar_attach(device_t device)
 
 	error = BUS_SETUP_INTR(device_get_parent(device), device, hc->res_irq,
 			       0, arintr, hc,
-			       &hc->intr_cookie, &ar_serializer);
+			       &hc->intr_cookie, &ar_serializer, NULL);
 	if (error)
 		return (1);
 

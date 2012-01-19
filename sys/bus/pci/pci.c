@@ -2986,13 +2986,14 @@ pci_child_detached(device_t parent __unused, device_t child)
 
 int
 pci_setup_intr(device_t dev, device_t child, struct resource *irq, int flags,
-    driver_intr_t *intr, void *arg, void **cookiep, lwkt_serialize_t serializer)
+    driver_intr_t *intr, void *arg, void **cookiep,
+    lwkt_serialize_t serializer, const char *desc)
 {
 	int rid, error;
 	void *cookie;
 
 	error = bus_generic_setup_intr(dev, child, irq, flags, intr,
-	    arg, &cookie, serializer);
+	    arg, &cookie, serializer, desc);
 	if (error)
 		return (error);
 

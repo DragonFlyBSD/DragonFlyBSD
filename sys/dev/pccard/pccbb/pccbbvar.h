@@ -144,7 +144,7 @@ int	cbb_release_resource(device_t brdev, device_t child,
 int	cbb_resume(device_t self);
 int	cbb_setup_intr(device_t dev, device_t child, struct resource *irq,
 	    int flags, driver_intr_t *intr, void *arg, void **cookiep,
-	    lwkt_serialize_t serializer);
+	    lwkt_serialize_t serializer, const char *desc);
 int	cbb_shutdown(device_t brdev);
 int	cbb_suspend(device_t self);
 int	cbb_teardown_intr(device_t dev, device_t child, struct resource *irq,

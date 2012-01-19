@@ -156,7 +156,7 @@ isa_setup_intr(device_t bus, device_t child, struct resource *r, int flags,
 	       void **cookiep, lwkt_serialize_t serializer)
 {
 	return (BUS_SETUP_INTR(device_get_parent(bus), child, r, flags,
-			       ihand, arg, cookiep, serializer));
+			       ihand, arg, cookiep, serializer, NULL));
 }
 
 int

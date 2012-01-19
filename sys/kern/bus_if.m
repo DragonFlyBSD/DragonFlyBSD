@@ -198,6 +198,7 @@ METHOD int setup_intr {
 	void		*arg;
 	void		**cookiep;
 	lwkt_serialize_t serializer;
+	const char	*desc;
 };
 
 METHOD int teardown_intr {

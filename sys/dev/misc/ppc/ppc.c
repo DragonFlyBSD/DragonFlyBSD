@@ -1990,7 +1990,7 @@ ppc_attach(device_t dev)
 		/* default to the tty mask for registration */	/* XXX */
 		if (BUS_SETUP_INTR(parent, dev, ppc->res_irq, 0,
 				   ppcintr, dev,
-				   &ppc->intr_cookie, NULL) == 0) {
+				   &ppc->intr_cookie, NULL, NULL) == 0) {
 			/* remember the ppcintr is registered */
 			ppc->ppc_registered = 1;
 		}
@@ -2120,7 +2120,8 @@ ppc_setup_intr(device_t bus, device_t child, struct resource *r, int flags,
 
 	/* pass registration to the upper layer, ignore the incoming resource */
 	return (BUS_SETUP_INTR(device_get_parent(bus), child,
-			       r, flags, ihand, arg, cookiep, serializer));
+			       r, flags, ihand, arg, cookiep,
+			       serializer, NULL));
 }
 
 /*
@@ -2142,7 +2143,7 @@ ppc_teardown_intr(device_t bus, device_t child, struct resource *r, void *ih)
 	if (ppc->ppc_irq &&
 		!(error = BUS_SETUP_INTR(parent, bus, ppc->res_irq,
 					 0, ppcintr, bus,
-					 &ppc->intr_cookie, NULL))
+					 &ppc->intr_cookie, NULL, NULL))
 	) {
 		/* remember the ppcintr is registered */
 		ppc->ppc_registered = 1;

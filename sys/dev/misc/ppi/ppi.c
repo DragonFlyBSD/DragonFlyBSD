@@ -266,7 +266,7 @@ ppiopen(struct dev_open_args *ap)
 			BUS_SETUP_INTR(device_get_parent(ppidev), ppidev,
 				       ppi->intr_resource, 0,
 				       ppiintr, dev, 
-				       &ppi->intr_cookie, NULL);
+				       &ppi->intr_cookie, NULL, NULL);
 		}
 #endif /* PERIPH_1284 */
 	}

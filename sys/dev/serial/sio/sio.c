@@ -1218,7 +1218,7 @@ determined_type: ;
 	if (com->irqres) {
 		ret = BUS_SETUP_INTR(device_get_parent(dev), dev,
 				     com->irqres, INTR_MPSAFE, siointr, com,
-				     &com->cookie, NULL);
+				     &com->cookie, NULL, NULL);
 		if (ret)
 			device_printf(dev, "could not activate interrupt\n");
 #if defined(DDB) && (defined(BREAK_TO_DEBUGGER) || \

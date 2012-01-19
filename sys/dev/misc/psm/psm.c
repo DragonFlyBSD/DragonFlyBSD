@@ -1437,7 +1437,7 @@ psmattach(device_t dev)
 	if (sc->intr == NULL)
 		return (ENXIO);
 	error = BUS_SETUP_INTR(device_get_parent(dev), dev, sc->intr,
-			INTR_NOPOLL, psmintr, sc, &sc->ih, NULL);
+			INTR_NOPOLL, psmintr, sc, &sc->ih, NULL, NULL);
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IRQ, rid, sc->intr);
 		return (error);

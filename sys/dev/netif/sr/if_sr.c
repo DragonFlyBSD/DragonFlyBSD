@@ -394,7 +394,7 @@ sr_attach(device_t device)
 
 	if (BUS_SETUP_INTR(device_get_parent(device), device, hc->res_irq,
 			   0, srintr, hc,
-			   &hc->intr_cookie, NULL) != 0)
+			   &hc->intr_cookie, NULL, NULL) != 0)
 		goto errexit;
 
 	/*

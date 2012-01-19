@@ -260,7 +260,7 @@ isa_compat_attach(device_t dev)
 				       res.irq, op->type,
 				       dvp->id_intr,
 				       (void *)(uintptr_t)dvp->id_unit,
-				       &ih, NULL);
+				       &ih, NULL, NULL);
 		if (error)
 			kprintf("isa_compat_attach: failed to setup intr: %d\n",
 			       error);

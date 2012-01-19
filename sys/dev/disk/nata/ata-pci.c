@@ -388,7 +388,7 @@ ata_pci_setup_intr(device_t dev, device_t child, struct resource *irq,
 
     if (controller->legacy) {
 	return BUS_SETUP_INTR(device_get_parent(dev), child, irq,
-			      flags, function, argument, cookiep, NULL);
+			      flags, function, argument, cookiep, NULL, NULL);
     }
     else {
 	struct ata_pci_controller *controller = device_get_softc(dev);

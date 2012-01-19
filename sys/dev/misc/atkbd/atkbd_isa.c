@@ -119,7 +119,7 @@ atkbdattach(device_t dev)
 	rid = 0;
 	sc->intr = bus_alloc_legacy_irq_resource(dev, &rid, irq, RF_ACTIVE);
 	BUS_SETUP_INTR(device_get_parent(dev), dev, sc->intr, INTR_MPSAFE,
-		       atkbd_isa_intr, kbd, &sc->ih, NULL);
+		       atkbd_isa_intr, kbd, &sc->ih, NULL, NULL);
 
 	return 0;
 }

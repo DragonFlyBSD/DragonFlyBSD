@@ -192,7 +192,7 @@ pcf_attach(device_t pcfdev)
 		/* default to the tty mask for registration */	/* XXX */
 		error = BUS_SETUP_INTR(parent, pcfdev, pcf->res_irq,
 					0, pcfintr, pcfdev,
-					&pcf->intr_cookie, NULL);
+					&pcf->intr_cookie, NULL, NULL);
 		if (error)
 			return (error);
 	}

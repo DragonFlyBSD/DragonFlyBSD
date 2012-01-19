@@ -2576,16 +2576,17 @@ bus_generic_driver_added(device_t dev, driver_t *driver)
 }
 
 int
-bus_generic_setup_intr(device_t dev, device_t child, struct resource *irq, 
-		       int flags, driver_intr_t *intr, void *arg,
-		       void **cookiep, lwkt_serialize_t serializer)
+bus_generic_setup_intr(device_t dev, device_t child, struct resource *irq,
+    int flags, driver_intr_t *intr, void *arg, void **cookiep,
+    lwkt_serialize_t serializer, const char *desc)
 {
 	/* Propagate up the bus hierarchy until someone handles it. */
-	if (dev->parent)
-		return(BUS_SETUP_INTR(dev->parent, child, irq, flags,
-				      intr, arg, cookiep, serializer));
-	else
-		return(EINVAL);
+	if (dev->parent) {
+		return BUS_SETUP_INTR(dev->parent, child, irq, flags,
+		    intr, arg, cookiep, serializer, desc);
+	} else {
+		return EINVAL;
+	}
 }
 
 int
@@ -2876,14 +2877,23 @@ bus_release_resource(device_t dev, int type, int rid, struct resource *r)
 }
 
 int
-bus_setup_intr(device_t dev, struct resource *r, int flags,
-	       driver_intr_t handler, void *arg,
-	       void **cookiep, lwkt_serialize_t serializer)
+bus_setup_intr_descr(device_t dev, struct resource *r, int flags,
+    driver_intr_t handler, void *arg, void **cookiep,
+    lwkt_serialize_t serializer, const char *desc)
 {
 	if (dev->parent == 0)
-		return(EINVAL);
-	return(BUS_SETUP_INTR(dev->parent, dev, r, flags, handler, arg,
-			      cookiep, serializer));
+		return EINVAL;
+	return BUS_SETUP_INTR(dev->parent, dev, r, flags, handler, arg,
+	    cookiep, serializer, desc);
+}
+
+int
+bus_setup_intr(device_t dev, struct resource *r, int flags,
+    driver_intr_t handler, void *arg, void **cookiep,
+    lwkt_serialize_t serializer)
+{
+	return bus_setup_intr_descr(dev, r, flags, handler, arg, cookiep,
+	    serializer, NULL);
 }
 
 int
@@ -2998,7 +3008,7 @@ root_print_child(device_t dev, device_t child)
 
 static int
 root_setup_intr(device_t dev, device_t child, driver_intr_t *intr, void *arg,
-		void **cookiep, lwkt_serialize_t serializer)
+		void **cookiep, lwkt_serialize_t serializer, const char *desc)
 {
 	/*
 	 * If an interrupt mapping gets to here something bad has happened.

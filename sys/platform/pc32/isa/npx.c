@@ -385,7 +385,7 @@ npx_probe1(device_t dev)
 					panic("npx: can't get IRQ");
 				BUS_SETUP_INTR(device_get_parent(dev),
 					       dev, r, 0,
-					       npx_intr, 0, &intr, NULL);
+					       npx_intr, 0, &intr, NULL, NULL);
 				if (intr == NULL)
 					panic("npx: can't create intr");
 

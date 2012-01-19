@@ -98,8 +98,8 @@ static	int nexus_release_resource(device_t, device_t, int, int,
 static	int nexus_config_intr(device_t, device_t, int, enum intr_trigger,
 			      enum intr_polarity);
 static	int nexus_setup_intr(device_t, device_t, struct resource *, int flags,
-			     void (*)(void *), void *, 
-			     void **, lwkt_serialize_t);
+		void (*)(void *), void *, void **, lwkt_serialize_t,
+		const char *);
 static	int nexus_teardown_intr(device_t, device_t, struct resource *,
 				void *);
 static	int nexus_set_resource(device_t, device_t, int, int, u_long, u_long,
@@ -486,8 +486,8 @@ nexus_config_intr(device_t bus, device_t chile, int irq,
  */
 static int
 nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
-		 int flags, void (*ihand)(void *), void *arg,
-		 void **cookiep, lwkt_serialize_t serializer)
+    int flags, void (*ihand)(void *), void *arg, void **cookiep,
+    lwkt_serialize_t serializer, const char *desc)
 {
 	int	error, icflags;
 
@@ -507,14 +507,17 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 	if (error)
 		return (error);
 
+	/* Use device name, if description is not specified */
+	if (desc == NULL)
+		desc = device_get_nameunit(child);
+
 	/*
 	 * XXX cast the interrupt handler function to an inthand2_t.  The
 	 * difference is that an additional frame argument is passed which
 	 * we do not currently want to expose the BUS subsystem to.
 	 */
 	*cookiep = register_int(irq->r_start, (inthand2_t *)ihand, arg,
-				device_get_nameunit(child), serializer,
-				icflags, rman_get_cpuid(irq));
+				desc, serializer, icflags, rman_get_cpuid(irq));
 	if (*cookiep == NULL)
 		error = EINVAL;
 	return (error);

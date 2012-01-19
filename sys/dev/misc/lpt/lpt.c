@@ -752,7 +752,7 @@ lptwrite(struct dev_write_args *ap)
 		/* register our interrupt handler */
 		err = BUS_SETUP_INTR(ppbus, lptdev, sc->intr_resource,
 			       0, lpt_intr, lptdev,
-			       &sc->intr_cookie, NULL);
+			       &sc->intr_cookie, NULL, NULL);
 		if (err) {
 			device_printf(lptdev, "handler registration failed, polled mode.\n");
 			sc->sc_irq &= ~LP_USE_IRQ;

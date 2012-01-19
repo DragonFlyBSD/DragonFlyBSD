@@ -346,7 +346,7 @@ cbb_shutdown(device_t brdev)
 int
 cbb_setup_intr(device_t dev, device_t child, struct resource *irq,
 	       int flags, driver_intr_t *intr, void *arg,
-	       void **cookiep, lwkt_serialize_t serializer)
+	       void **cookiep, lwkt_serialize_t serializer, const char *desc)
 {
 	struct cbb_intrhand *ih;
 	struct cbb_softc *sc = device_get_softc(dev);
@@ -365,7 +365,7 @@ cbb_setup_intr(device_t dev, device_t child, struct resource *irq,
 	 * XXX for now that's all we need to do.
 	 */
 	err = BUS_SETUP_INTR(device_get_parent(dev), child, irq, flags,
-	    cbb_func_intr, ih, &ih->cookie, NULL);
+	    cbb_func_intr, ih, &ih->cookie, NULL, desc);
 	if (err != 0) {
 		kfree(ih, M_DEVBUF);
 		return (err);

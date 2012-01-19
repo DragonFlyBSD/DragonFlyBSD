@@ -144,7 +144,8 @@ pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg, u_int intflags
 		 */
 
 		error = BUS_SETUP_INTR(device_get_parent(cfg->dev), cfg->dev,
-				       res, flags, handler, arg, &ih, NULL);
+				       res, flags, handler, arg, &ih,
+				       NULL, NULL);
 		if (error != 0)
 			return 0;
 

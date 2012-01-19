@@ -122,7 +122,7 @@ ppsopen(struct dev_open_args *ap)
 		/* attach the interrupt handler */
 		if ((error = BUS_SETUP_INTR(ppbus, ppsdev, sc->intr_resource,
 			       0, ppsintr, ppsdev,
-			       &sc->intr_cookie, NULL))) {
+			       &sc->intr_cookie, NULL, NULL))) {
 			ppb_release_bus(ppbus, ppsdev);
 			return (error);
 		}
