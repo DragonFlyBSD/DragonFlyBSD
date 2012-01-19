@@ -25,7 +25,7 @@
 .
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
-.Dd December 2, 2011
+.Dd January 19, 2012
 .Dt VQUOTA 8
 .Os
 .Sh NAME
@@ -53,6 +53,10 @@ Debug flag, show raw messages sent to and received from kernel
 "Human-readable" output. Use unit suffixes: Byte, Kilobyte, Megabyte,
 Gigabyte, Terabyte and Petabyte in order to reduce the number of
 digits to four or fewer.
+.It Fl n
+Show raw user and group ids. Normally
+.Nm
+attempts to resolve and display full user and group names.
 .El
 .Pp
 The commands are as follows:

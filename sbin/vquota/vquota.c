@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2011, 2012 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,9 +46,12 @@
 #include <inttypes.h>
 #include <sys/types.h>
 #include <libutil.h>
+#include <pwd.h>
+#include <grp.h>
 
 static bool flag_debug = 0;
 static bool flag_humanize = 0;
+static bool flag_resolve_ids = 1;
 
 static void usage(int);
 static int get_dirsize(char *);
@@ -57,10 +60,10 @@ static int get_fslist(void);
 static void
 usage(int retcode)
 {
-	fprintf(stderr, "usage: vquota [-Dh] check directory\n");
-	fprintf(stderr, "       vquota [-Dh] lsfs\n");
-	fprintf(stderr, "       vquota [-Dh] show mount_point\n");
-	fprintf(stderr, "       vquota [-Dh] sync mount_point\n");
+	fprintf(stderr, "usage: vquota [-Dhn] check directory\n");
+	fprintf(stderr, "       vquota [-Dhn] lsfs\n");
+	fprintf(stderr, "       vquota [-Dhn] show mount_point\n");
+	fprintf(stderr, "       vquota [-Dhn] sync mount_point\n");
 	exit(retcode);
 }
 
@@ -318,6 +321,30 @@ get_dirsize(char* dirname)
 	return retval;
 }
 
+static void
+print_user(uid_t uid)
+{
+	struct passwd *pw;
+
+	if (flag_resolve_ids && ((pw = getpwuid(uid)) != NULL)) {
+		printf("user %s:", pw->pw_name);
+	} else {
+		printf("uid %u:", uid);
+	}
+}
+
+static void
+print_group(gid_t gid)
+{
+	struct group *gr;
+
+	if (flag_resolve_ids && ((gr = getgrgid(gid)) != NULL)) {
+		printf("group %s:", gr->gr_name);
+	} else {
+		printf("gid %u:", gid);
+	}
+}
+
 static int
 cmd_check(char* dirname)
 {
@@ -340,12 +367,13 @@ cmd_check(char* dirname)
 	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
 		if (unp->uid_chunk[i] != 0) {
 		    uid = (unp->left_bits << ACCT_CHUNK_BITS) + i;
+		    print_user(uid);
 		    if (flag_humanize) {
 			humanize_number(hbuf, sizeof(hbuf),
 			unp->uid_chunk[i], "", HN_AUTOSCALE, HN_NOSPACE);
-			printf("uid %"PRIu32": %s\n", uid, hbuf);
+			printf(" %s\n", hbuf);
 		    } else {
-			printf("uid %"PRIu32": %"PRIu64"\n", uid, unp->uid_chunk[i]);
+			printf(" %" PRIu64 "\n", unp->uid_chunk[i]);
 		    }
 		}
 	    }
@@ -354,12 +382,13 @@ cmd_check(char* dirname)
 	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
 		if (gnp->gid_chunk[i] != 0) {
 		    gid = (gnp->left_bits << ACCT_CHUNK_BITS) + i;
+		    print_group(gid);
 		    if (flag_humanize) {
 			humanize_number(hbuf, sizeof(hbuf),
 			gnp->gid_chunk[i], "", HN_AUTOSCALE, HN_NOSPACE);
-			printf("gid %"PRIu32": %s\n", gid, hbuf);
+			printf(" %s\n", hbuf);
 		    } else {
-			printf("gid %"PRIu32": %"PRIu64"\n", gid, gnp->gid_chunk[i]);
+			printf(" %" PRIu64 "\n", gnp->gid_chunk[i]);
 		    }
 		}
 	    }
@@ -494,10 +523,12 @@ show_mp(char *path)
 
 	while ((item = prop_object_iterator_next(iter)) != NULL) {
 		rv = prop_dictionary_get_uint64(item, "space used", &space);
-		if (prop_dictionary_get_uint32(item, "uid", &id))
-			printf("uid %u:", id);
-		else if (prop_dictionary_get_uint32(item, "gid", &id))
-			printf("gid %u:", id);
+		if (prop_dictionary_get_uint32(item, "uid", &id)) {
+			print_user(id);
+		}
+		else if (prop_dictionary_get_uint32(item, "gid", &id)) {
+			print_group(id);
+		}
 		else
 			printf("total:");
 		if (flag_humanize) {
@@ -580,13 +611,16 @@ main(int argc, char **argv)
 {
 	int ch;
 
-	while ((ch = getopt(argc, argv, "Dh")) != -1) {
+	while ((ch = getopt(argc, argv, "Dhn")) != -1) {
 		switch(ch) {
 		case 'D':
 			flag_debug = 1;
 			break;
 		case 'h':
 			flag_humanize = 1;
+			break;
+		case 'n':
+			flag_resolve_ids = 0;
 			break;
 		}
 	}
