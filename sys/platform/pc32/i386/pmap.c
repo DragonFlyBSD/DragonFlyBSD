@@ -1078,7 +1078,12 @@ _pmap_unwire_pte(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 
 /*
  * The caller must hold vm_token.
+ *
  * This function can block.
+ *
+ * This function can race the wire_count 2->1 case because the page
+ * is not busied during the unwire_quick operation.  An eventual
+ * pmap_release() will catch the case.
  */
 static PMAP_INLINE int
 pmap_unwire_pte(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
@@ -1320,8 +1325,12 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		vm_page_flag_set(p, PG_ZERO);
 		vm_page_wakeup(p);
 	} else {
-		panic("pmap_release: page should already be gone %p", p);
-		/*vm_page_flag_clear(p, PG_MAPPED); should already be clear */
+		/*
+		 * This case can occur if a pmap_unwire_pte() loses a race
+		 * while the page is unbusied.
+		 */
+		/*panic("pmap_release: page should already be gone %p", p);*/
+		vm_page_flag_clear(p, PG_MAPPED);
 		vm_page_unwire(p, 0);
 		vm_page_free_zero(p);
 	}
