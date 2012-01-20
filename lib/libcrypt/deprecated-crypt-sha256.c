@@ -56,7 +56,7 @@ crypt_deprecated_sha256(const char *pw, const char *salt)
          * the closing $. This data is what just happened to be (consistently
          * miraculously) on the stack following magic on 64-bit.
          */
-	static const char *magic = "$3$";
+	static const char *magic = "$3$\0sha5";
 
 	static char         passwd[120], *p;
 	static const char *sp, *ep;
