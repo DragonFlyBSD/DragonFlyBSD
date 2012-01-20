@@ -569,13 +569,9 @@
 
 /* MSIX entry number of interrupt source. */
 #define	JME_MSINUM_BASE		0x0810
-#define	JME_MSINUM_END		0x081F
-#define	MSINUM_MASK		0x7FFFFFFF
-#define	MSINUM_ENTRY_MASK	7
-#define	MSINUM_REG_INDEX(x)	((x) / 8)
-#define	MSINUM_INTR_SOURCE(x, y)	\
-	(((x) & MSINUM_ENTRY_MASK) << (((y) & 7) * 4))
-#define	MSINUM_NUM_INTR_SOURCE	32
+#define JME_MSINUM(x)		(JME_MSINUM_BASE + (4 * (x)))
+#define JME_MSINUM_CNT		4
+#define JME_MSINUM_FACTOR	8
 
 /* Interrupt event status. */
 #define	JME_INTR_STATUS		0x0820
@@ -611,6 +607,8 @@
 #define	INTR_TXQ2_COMP		0x00000004
 #define	INTR_TXQ1_COMP		0x00000002
 #define	INTR_TXQ0_COMP		0x00000001
+
+#define JME_INTR_CNT		32
 
 #define	INTR_RXQ_COAL_TO					\
 	(INTR_RXQ0_COAL_TO | INTR_RXQ1_COAL_TO |		\
