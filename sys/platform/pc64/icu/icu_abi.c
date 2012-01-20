@@ -587,7 +587,7 @@ icu_abi_msi_alloc(int intrs[], int count, int cpuid)
 static void
 icu_abi_msi_release(const int intrs[], int count, int cpuid)
 {
-	return icu_abi_msi_release_intern(ICU_IMT_MSI, "MSI",
+	icu_abi_msi_release_intern(ICU_IMT_MSI, "MSI",
 	    intrs, count, cpuid);
 }
 
@@ -601,7 +601,7 @@ icu_abi_msix_alloc(int *intr, int cpuid)
 static void
 icu_abi_msix_release(int intr, int cpuid)
 {
-	return icu_abi_msi_release_intern(ICU_IMT_MSIX, "MXI-X",
+	icu_abi_msi_release_intern(ICU_IMT_MSIX, "MXI-X",
 	    &intr, 1, cpuid);
 }
 
