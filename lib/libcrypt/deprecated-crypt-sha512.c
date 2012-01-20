@@ -47,10 +47,17 @@
 char*
 crypt_deprecated_sha512(const char *pw, const char *salt)
 {
-	static const char *magic = "$4$"; /* Magic string for this
-										 * algorithm. Easier to change
-										 * when factored as constant.
-										 */
+	/*
+	 * Magic constant (prefix) used to run over the password data.
+	 *
+	 * XXX:
+	 *
+	 * A bug below (sizeof instead of strlen) mandates the extra data after
+	 * the closing $. This data is what just happened to be (consistently
+	 * miraculously) on the stack following magic on 64-bit.
+	 */
+	static const char *magic = "$4$\0/etc";
+
 	static char         passwd[120], *p;
 	static const char *sp, *ep;
 	unsigned char final[SHA512_SIZE];
@@ -77,7 +84,11 @@ crypt_deprecated_sha512(const char *pw, const char *salt)
 	/* Hash in the password first. */
 	SHA512_Update(&ctx, pw, strlen(pw));
 	
-	/* Then the magic string */
+	/*
+	 * Then the magic string
+	 *
+	 * XXX: sizeof instead of strlen, must retain
+	 */
 	SHA512_Update(&ctx, magic, sizeof(magic));
 	
 	/* Then the raw salt. */
