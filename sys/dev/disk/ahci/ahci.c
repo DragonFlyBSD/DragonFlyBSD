@@ -1671,6 +1671,7 @@ ahci_port_hardstop(struct ahci_port *ap)
 	u_int32_t cmd;
 	int slot;
 	int i;
+	int serial;
 
 	/*
 	 * Stop the port.  We can't modify things like SUD if the port
@@ -1747,13 +1748,20 @@ ahci_port_hardstop(struct ahci_port *ap)
 	/*
 	 * Clean out pending ccbs
 	 */
+restart:
 	while (ap->ap_active) {
 		slot = ffs(ap->ap_active) - 1;
 		ap->ap_active &= ~(1 << slot);
 		--ap->ap_active_cnt;
 		ccb = &ap->ap_ccbs[slot];
 		if (ccb->ccb_xa.flags & ATA_F_TIMEOUT_RUNNING) {
+			serial = ccb->ccb_xa.serial;
 			callout_stop_sync(&ccb->ccb_timeout);
+			if (serial != ccb->ccb_xa.serial) {
+				kprintf("%s: Warning: timeout race ccb %p\n",
+					PORTNAME(ap), ccb);
+				goto restart;
+			}
 			ccb->ccb_xa.flags &= ~ATA_F_TIMEOUT_RUNNING;
 		}
 		ap->ap_expired &= ~(1 << slot);
@@ -1768,7 +1776,13 @@ ahci_port_hardstop(struct ahci_port *ap)
 		ap->ap_sactive &= ~(1 << slot);
 		ccb = &ap->ap_ccbs[slot];
 		if (ccb->ccb_xa.flags & ATA_F_TIMEOUT_RUNNING) {
+			serial = ccb->ccb_xa.serial;
 			callout_stop_sync(&ccb->ccb_timeout);
+			if (serial != ccb->ccb_xa.serial) {
+				kprintf("%s: Warning: timeout race ccb %p\n",
+					PORTNAME(ap), ccb);
+				goto restart;
+			}
 			ccb->ccb_xa.flags &= ~ATA_F_TIMEOUT_RUNNING;
 		}
 		ap->ap_expired &= ~(1 << slot);
@@ -3119,6 +3133,7 @@ ahci_put_ccb(struct ahci_ccb *ccb)
 
 	lockmgr(&ap->ap_ccb_lock, LK_EXCLUSIVE);
 	ccb->ccb_xa.state = ATA_S_PUT;
+	++ccb->ccb_xa.serial;
 	TAILQ_INSERT_TAIL(&ap->ap_ccb_free, ccb, ccb_entry);
 	lockmgr(&ap->ap_ccb_lock, LK_RELEASE);
 }
@@ -3545,15 +3560,25 @@ failcmd:
 void
 ahci_ata_cmd_done(struct ahci_ccb *ccb)
 {
-	struct ata_xfer			*xa = &ccb->ccb_xa;
+	struct ata_xfer	*xa = &ccb->ccb_xa;
+	int serial;
 
 	/*
-	 * NOTE: callout does not lock port and may race us modifying
-	 * the flags, so make sure its stopped.
+	 * NOTE: Callout does not lock port and may race us modifying
+	 *	 the flags, so make sure its stopped.
+	 *
+	 *	 A callout race can clean up the ccb.  A change in the
+	 *	 serial number should catch this condition.
 	 */
 	if (xa->flags & ATA_F_TIMEOUT_RUNNING) {
+		serial = ccb->ccb_xa.serial;
 		callout_stop_sync(&ccb->ccb_timeout);
 		xa->flags &= ~ATA_F_TIMEOUT_RUNNING;
+		if (serial != ccb->ccb_xa.serial) {
+			kprintf("%s: Warning: timeout race ccb %p\n",
+				PORTNAME(ccb->ccb_port), ccb);
+			return;
+		}
 	}
 	xa->flags &= ~(ATA_F_TIMEOUT_DESIRED | ATA_F_TIMEOUT_EXPIRED);
 	ccb->ccb_port->ap_expired &= ~(1 << ccb->ccb_slot);
