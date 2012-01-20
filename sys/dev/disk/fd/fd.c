@@ -58,7 +58,6 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/bootmaj.h>
 #include <sys/kernel.h>
 #include <sys/buf.h>
 #include <sys/bus.h>

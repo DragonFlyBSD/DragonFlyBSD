@@ -49,7 +49,6 @@
 #include "opt_cd.h"
 
 #include <sys/param.h>
-#include <sys/bootmaj.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/buf.h>
@@ -301,7 +300,7 @@ static struct periph_driver cddriver =
 PERIPHDRIVER_DECLARE(cd, cddriver);
 
 static struct dev_ops cd_ops = {
-	{ "cd", SCSICD_CDEV_MAJOR, D_DISK | D_MPSAFE },
+	{ "cd", 0, D_DISK | D_MPSAFE },
 	.d_open = cdopen,
 	.d_close = cdclose,
 	.d_read = physread,

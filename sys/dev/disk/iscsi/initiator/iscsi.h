@@ -37,7 +37,6 @@ typedef int boolean_t;
 #include <sys/objcache.h>
 #include <bus/cam/cam.h>
 #include <sys/device.h>
-#include <sys/bootmaj.h>
 
 #define ISCSIDEV	"iscsi"
 
