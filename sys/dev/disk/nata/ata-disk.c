@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.199 2006/09/14 19:12:29 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.9 2008/08/29 20:08:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -57,7 +56,7 @@ static	d_ioctl_t	ad_ioctl;
 static	d_strategy_t	ad_strategy;
 static	d_dump_t	ad_dump;
 static struct dev_ops ad_ops = {
-	{ "ad", 116, D_DISK },
+	{ "ad", 0, D_DISK },
 	.d_open =	ad_open,
 	.d_close =	ad_close,
 	.d_read =	physread,

@@ -57,7 +57,7 @@
 /* device structures */ 
 static d_strategy_t pststrategy;
 static struct dev_ops pst_ops = {
-	{ "pst", 168, D_DISK },
+	{ "pst", 0, D_DISK },
 	.d_open =	nullopen,
 	.d_close =	nullclose,
 	.d_read =	physread,

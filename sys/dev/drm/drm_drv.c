@@ -119,7 +119,7 @@ static drm_ioctl_desc_t		  drm_ioctls[256] = {
 };
 
 static struct dev_ops drm_cdevsw = {
-	{ "drm", 145, D_TRACKCLOSE },
+	{ "drm", 0, D_TRACKCLOSE },
 	.d_open =       drm_open,
 	.d_close =	drm_close,
 	.d_read =       drm_read,

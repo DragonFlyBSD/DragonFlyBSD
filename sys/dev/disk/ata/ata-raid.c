@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.26 2007/05/15 00:01:03 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -55,7 +54,7 @@ static d_open_t		aropen;
 static d_strategy_t	arstrategy;
 
 static struct dev_ops ar_ops = {
-	{ "ar", 157, D_DISK },
+	{ "ar", 0, D_DISK },
 	.d_open =	aropen,
 	.d_close =	nullclose,
 	.d_read =	physread,
