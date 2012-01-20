@@ -609,10 +609,6 @@ nexus_alloc_msix(device_t dev, device_t child, int *irq, int cpuid)
 	if (!lapic_enable)
 		return ENODEV;
 
-	/* XXX temporary */
-	if (MachIntrABI.msix_alloc == NULL)
-		return EOPNOTSUPP;
-
 	return MachIntrABI.msix_alloc(irq, cpuid);
 }
 
