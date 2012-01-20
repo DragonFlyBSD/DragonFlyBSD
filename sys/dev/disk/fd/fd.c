@@ -328,7 +328,7 @@ static	d_ioctl_t	fdioctl;
 static	d_strategy_t	fdstrategy;
 
 static struct dev_ops fd_ops = {
-	{ "fd", FD_CDEV_MAJOR, D_DISK },
+	{ "fd", 0, D_DISK },
 	.d_open =	Fdopen,
 	.d_close =	fdclose,
 	.d_read =	physread,
