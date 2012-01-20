@@ -431,7 +431,7 @@ gusc_setup_intr(device_t dev, device_t child, struct resource *irq,
 		return 0;
 	}
 	return bus_generic_setup_intr(dev, child, irq, flags, intr,
-				      arg, cookiep, NULL);
+				      arg, cookiep, NULL, NULL);
 }
 
 static device_t
