@@ -3,12 +3,14 @@
 # $DragonFly: src/lib/libcrypt/Makefile,v 1.8 2008/10/28 17:23:45 swildner Exp $
 #
 
-SHLIB_MAJOR=	3
+SHLIB_MAJOR=	4
 LIB=		crypt
 
 .PATH:		${.CURDIR}/../libmd
-SRCS=		crypt.c crypt-md5.c crypt-sha256.c crypt-sha512.c \
-            md5c.c sha256c.c sha512c.c misc.c
+SRCS=		crypt.c crypt-md5.c \
+		crypt-sha256.c crypt-sha512.c \
+		deprecated-crypt-sha256.c deprecated-crypt-sha512.c \
+		md5c.c sha256c.c sha512c.c misc.c
 WARNS?=		2
 MAN=		crypt.3
 MLINKS=		crypt.3 crypt_get_format.3 crypt.3 crypt_set_format.3

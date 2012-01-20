@@ -67,13 +67,17 @@ void	*memcpy(void * __restrict, const void * __restrict, size_t);
 #endif
 #if __BSD_VISIBLE
 void	*memmem(const void *, size_t, const void *, size_t);
+void	*mempcpy(void *, const void *, size_t);
 #endif
 #if !defined(_KERNEL_VIRTUAL)
 void	*memmove(void *, const void *, size_t);
 void	*memset(void *, int, size_t);
 #endif
+#if __POSIX_VISIBLE >= 200809 || __BSD_VISIBLE
+char    *stpcpy(char *, const char *);
+char    *stpncpy(char * __restrict, const char * __restrict, size_t);
+#endif
 #if __BSD_VISIBLE
-char	*stpcpy(char *, const char *);
 char	*strcasestr(const char *, const char *) __pure;
 #endif
 #if !defined(_KERNEL_VIRTUAL)

@@ -32,6 +32,18 @@
 #include <libutil.h>
 #include "crypt.h"
 
+/*
+ * XXX - NOTE:
+ *
+ * The deprecated sha256/512 functions are somehow sensitive to the
+ * order of this crypt_types array as well as their respective "name" members.
+ *
+ * In order to ensure that both existing passwords will continue to work and
+ * that new passwords will be more secure by using the new algorithms even
+ * without updating the existing login.conf, this array is now scanned
+ * backwards. This could be reverted in the future when the deprecated SHA
+ * functionality is removed.
+ */
 static const struct {
 	const char *const name;
 	char *(*const func)(const char *, const char *);
@@ -58,17 +70,23 @@ static const struct {
 #endif
 	{
 		"sha256",
-		crypt_sha256,
+		crypt_deprecated_sha256,
 		"$3$"
 	},
 	{
 		"sha512",
-		crypt_sha512,
+		crypt_deprecated_sha512,
 		"$4$"
 	},
 	{
-		NULL,
-		NULL
+		"sha256",
+		crypt_sha256,
+		"$5$"
+	},
+	{
+		"sha512",
+		crypt_sha512,
+		"$6$"
 	}
 };
 
@@ -87,7 +105,7 @@ crypt_setdefault(void)
 		crypt_type = 0;
 		return;
 	}
-	for (i = 0; i < sizeof(crypt_types) / sizeof(crypt_types[0]) - 1; i++) {
+	for (i = sizeof(crypt_types) / sizeof(crypt_types[0]) - 1; i >= 0; i--) {
 		if (strcmp(def, crypt_types[i].name) == 0) {
 			crypt_type = i;
 			return;
@@ -110,7 +128,7 @@ crypt_set_format(char *type)
 	int i;
 
 	crypt_setdefault();
-	for (i = 0; i < sizeof(crypt_types) / sizeof(crypt_types[0]) - 1; i++) {
+	for (i = sizeof(crypt_types) / sizeof(crypt_types[0]) - 1; i >= 0; i--) {
 		if (strcmp(type, crypt_types[i].name) == 0) {
 			crypt_type = i;
 			return (1);
@@ -125,7 +143,7 @@ crypt(char *passwd, char *salt)
 	int i;
 
 	crypt_setdefault();
-	for (i = 0; i < sizeof(crypt_types) / sizeof(crypt_types[0]) - 1; i++) {
+	for (i = sizeof(crypt_types) / sizeof(crypt_types[0]) - 1; i >= 0; i--) {
 		if (crypt_types[i].magic != NULL && strncmp(salt,
 		    crypt_types[i].magic, strlen(crypt_types[i].magic)) == 0)
 			return (crypt_types[i].func(passwd, salt));
