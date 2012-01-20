@@ -499,7 +499,7 @@ callout_stop_sync(struct callout *c)
 {
 	softclock_pcpu_t sc;
 
-	if (c->c_flags & CALLOUT_DID_INIT) {
+	while (c->c_flags & CALLOUT_DID_INIT) {
 		callout_stop(c);
 #ifdef SMP
 		if (c->c_gd) {
@@ -516,7 +516,9 @@ callout_stop_sync(struct callout *c)
 				tsleep(&sc->running, 0, "crace", 1);
 		}
 #endif
-		KKASSERT((c->c_flags & (CALLOUT_PENDING|CALLOUT_ACTIVE)) == 0);
+		if ((c->c_flags & (CALLOUT_PENDING | CALLOUT_ACTIVE)) == 0)
+			break;
+		kprintf("Warning: %s: callout race\n", curthread->td_comm);
 	}
 }
 
