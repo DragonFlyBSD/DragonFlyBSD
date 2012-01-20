@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ar5416/ar9160_attach.c 203882 2010-02-14 16:26:32Z rpaulo $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

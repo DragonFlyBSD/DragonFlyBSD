@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $Id: ah_eeprom.h,v 1.11 2008/11/27 22:32:48 sam Exp $
- * $DragonFly$
  */
 #ifndef _ATH_AH_EEPROM_H_
 #define _ATH_AH_EEPROM_H_

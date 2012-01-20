@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_ratectl.h 206398 2010-04-08 13:34:08Z rpaulo $
- * $DragonFly$
  */
 
 enum ieee80211_ratealgs {

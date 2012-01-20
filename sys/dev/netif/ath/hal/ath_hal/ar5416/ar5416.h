@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ar5416/ar5416.h 203930 2010-02-15 17:49:49Z rpaulo $
- * $DragonFly$
  */
 #ifndef _ATH_AR5416_H_
 #define _ATH_AR5416_H_

@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ar5210/ar5210_reset.c 202161 2010-01-12 17:59:58Z gavin $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

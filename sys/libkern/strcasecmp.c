@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/libkern/strcasecmp.c 148865 2005-08-08 19:38:00Z pjd $
- * $DragonFly$
  */
 
 #include <sys/param.h>

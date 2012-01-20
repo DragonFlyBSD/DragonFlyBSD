@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_xauth.c 178354 2008-04-20 20:35:46Z sam $
- * $DragonFly$
  */
 
 /*

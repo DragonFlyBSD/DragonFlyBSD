@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_crypto.c 195812 2009-07-21 19:36:32Z sam $
- * $DragonFly$
  */
 
 /*

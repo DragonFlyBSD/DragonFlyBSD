@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_crypto_ccmp.c 193840 2009-06-09 16:32:07Z sam $
- * $DragonFly$
  */
 
 /*

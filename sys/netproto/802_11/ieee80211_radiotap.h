@@ -1,4 +1,3 @@
-/* $DragonFly$ */
 /* $FreeBSD: head/sys/net80211/ieee80211_radiotap.h 174568 2007-12-13 01:23:40Z sam $ */
 /* $NetBSD: ieee80211_radiotap.h,v 1.16 2007/01/06 05:51:15 dyoung Exp $ */
 

@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/dev/wi/if_wi_pci.c 181209 2008-08-02 20:45:28Z imp $
- * $DragonFly$
  */
 
 /*

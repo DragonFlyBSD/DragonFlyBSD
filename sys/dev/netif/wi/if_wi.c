@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/dev/wi/if_wi.c 196970 2009-09-08 13:19:05Z phk $
- * $DragonFly$
  */
 
 /*

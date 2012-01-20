@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $Id: ar5212_eeprom.c,v 1.6 2008/11/10 04:08:03 sam Exp $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

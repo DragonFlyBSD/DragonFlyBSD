@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $Id: ar5211_keycache.c,v 1.4 2008/11/10 04:08:02 sam Exp $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_ioctl.c 202935 2010-01-24 16:17:58Z syrinx $
- * $DragonFly$
  */
 
 /*

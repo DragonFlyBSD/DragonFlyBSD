@@ -1,5 +1,3 @@
-# $DragonFly$
-
 .PATH: ${.CURDIR}/../wlan
 
 KMOD     = wlan_amrr

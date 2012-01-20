@@ -34,7 +34,6 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: head/sys/dev/ath/ath_rate/sample/sample.c 194135 2009-06-13 23:36:54Z sam $
- * $DragonFly$
  */
 
 /*

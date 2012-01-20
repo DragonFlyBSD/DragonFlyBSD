@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_radiotap.c 193761 2009-06-08 21:16:06Z sam $
- * $DragonFly$
  */
 
 /*

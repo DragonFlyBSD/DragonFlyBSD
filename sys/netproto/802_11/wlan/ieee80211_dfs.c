@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_dfs.c 196785 2009-09-03 16:29:02Z sam $
- * $DragonFly$
  */
 
 /*

@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $Id: ah_debug.h,v 1.1 2008/10/12 16:44:34 sam Exp $
- * $DragonFly$
  */
 #ifndef _ATH_AH_DEBUG_H_
 #define _ATH_AH_DEBUG_H_

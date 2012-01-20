@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ar5211/ar5211_interrupts.c 192397 2009-05-19 17:35:15Z sam $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $Id: ar5211desc.h,v 1.5 2008/11/10 04:08:03 sam Exp $
- * $DragonFly$
  */
 #ifndef _DEV_ATH_AR5211DESC_H
 #define _DEV_ATH_AR5211DESC_H

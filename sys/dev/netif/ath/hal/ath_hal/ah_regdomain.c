@@ -16,7 +16,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ah_regdomain.c 199491 2009-11-18 18:48:18Z rpaulo $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

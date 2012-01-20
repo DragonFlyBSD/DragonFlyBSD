@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ar5210/ar5210_phy.c 191022 2009-04-13 21:01:08Z sam $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

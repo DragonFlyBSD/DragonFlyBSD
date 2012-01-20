@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ar5212/ar5212.h 188979 2009-02-24 01:07:06Z sam $
- * $DragonFly$
  */
 #ifndef _ATH_AR5212_H_
 #define _ATH_AR5212_H_

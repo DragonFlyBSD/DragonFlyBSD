@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ar5211/ar5211_reset.c 201758 2010-01-07 21:01:37Z mbr $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

@@ -25,7 +25,6 @@
  * SUCH DAMATE.
  *
  * $FreeBSD: src/sys/dev/alc/if_alcreg.h,v 1.1 2009/06/10 02:07:58 yongari Exp $
- * $DragonFly$
  */
 
 #ifndef	_IF_ALCREG_H

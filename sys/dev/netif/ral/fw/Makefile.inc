@@ -1,5 +1,3 @@
-# $DragonFly$
-
 #
 # Common rules for building firmware.  Note this gets auto-included
 # by the subdir Makefile's as a consequence of included bsd.kmod.mk.

@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/kern/subr_firmware.c,v 1.13.2.2 2010/02/11 18:34:06 mjacob Exp $
- * $DragonFly$
  */
 
 #include <sys/param.h>

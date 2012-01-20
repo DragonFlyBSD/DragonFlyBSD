@@ -1,5 +1,3 @@
-# $DragonFly$
-
 .include "${.CURDIR}/../Makefile.inc"
 
 .PATH.c:${HOSTAPD_DISTDIR}/hostapd \

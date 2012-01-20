@@ -18,7 +18,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_amrr.c 206358 2010-04-07 15:29:13Z rpaulo $
- * $DragonFly$
  */
 
 

@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $Id: ah_devid.h,v 1.4 2008/10/06 18:32:46 sam Exp $
- * $DragonFly$
  */
 
 #ifndef _DEV_ATH_DEVID_H_

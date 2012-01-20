@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/alc/if_alc.c,v 1.6 2009/09/29 23:03:16 yongari Exp $
- * $DragonFly$
  */
 
 /* Driver for Atheros AR8131/AR8132 PCIe Ethernet. */

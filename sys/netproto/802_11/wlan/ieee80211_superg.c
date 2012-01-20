@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_superg.c 193115 2009-05-30 20:11:23Z sam $
- * $DragonFly$
  */
 
 #include "opt_wlan.h"

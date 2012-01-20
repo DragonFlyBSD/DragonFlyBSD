@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_hostap.c 203422 2010-02-03 10:07:43Z rpaulo $
- * $DragonFly$
  */
 
 /*

@@ -17,7 +17,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ral/rt2661.c 195618 2009-07-11 15:02:45Z rpaulo $
- * $DragonFly$
  */
 
 /*-

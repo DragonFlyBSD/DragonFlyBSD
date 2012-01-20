@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ah_desc.h 194135 2009-06-13 23:36:54Z sam $
- * $DragonFly$
  */
 
 #ifndef _DEV_ATH_DESC_H

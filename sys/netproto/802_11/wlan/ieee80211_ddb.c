@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_ddb.c 196019 2009-08-01 19:26:27Z rwatson $
- * $DragonFly$
  */
 
 #include "opt_ddb.h"

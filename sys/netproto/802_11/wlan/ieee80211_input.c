@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_input.c 205986 2010-03-31 16:07:36Z rpaulo $
- * $DragonFly$
  */
 
 #include "opt_wlan.h"

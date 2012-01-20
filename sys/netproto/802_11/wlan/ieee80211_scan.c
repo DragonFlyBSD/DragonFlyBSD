@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_scan.c 195618 2009-07-11 15:02:45Z rpaulo $
- * $DragonFly$
  */
 
 /*

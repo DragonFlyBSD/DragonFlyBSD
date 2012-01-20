@@ -13,7 +13,6 @@
  * See README and COPYING for more details.
  *
  * $FreeBSD: head/usr.sbin/wpa/hostapd/driver_freebsd.c 193524 2009-06-05 17:19:55Z sam $
- * $DragonFly$
  */
 #include <stdlib.h>
 #include <stdio.h>

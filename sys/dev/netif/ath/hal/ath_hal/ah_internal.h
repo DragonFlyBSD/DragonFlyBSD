@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ah_internal.h 195114 2009-06-27 20:06:56Z sam $
- * $DragonFly$
  */
 #ifndef _ATH_AH_INTERAL_H_
 #define _ATH_AH_INTERAL_H_

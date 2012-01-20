@@ -13,7 +13,6 @@
  * See README and COPYING for more details.
  *
  * $FreeBSD: head/usr.sbin/wpa/l2_packet.c 172682 2007-10-16 02:12:06Z mlaier $
- * $DragonFly$
  */
 
 /*

@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ar5211/ar5211_misc.c 188974 2009-02-24 00:12:16Z sam $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

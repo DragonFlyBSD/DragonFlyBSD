@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_monitor.c 193287 2009-06-02 00:04:10Z sam $
- * $DragonFly$
  */
 
 /*

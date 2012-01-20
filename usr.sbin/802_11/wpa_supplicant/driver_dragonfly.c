@@ -12,7 +12,6 @@
  * See README and COPYING for more details.
  *
  * $FreeBSD: head/usr.sbin/wpa/wpa_supplicant/driver_freebsd.c 189263 2009-03-02 02:28:22Z sam $
- * $DragonFly$
  */
 
 #include <stdlib.h>

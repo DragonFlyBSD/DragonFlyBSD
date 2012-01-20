@@ -1,5 +1,3 @@
-# $DragonFly$
-
 .include "${.CURDIR}/../Makefile.inc"
 
 .PATH.c:${WPA_DISTDIR}/wpa_supplicant

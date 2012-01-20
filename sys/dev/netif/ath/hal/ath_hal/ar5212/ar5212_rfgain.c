@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ar5212/ar5212_rfgain.c 188197 2009-02-05 21:13:31Z sam $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

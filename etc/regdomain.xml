@@ -23,7 +23,6 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  
   $FreeBSD: head/etc/regdomain.xml 187846 2009-01-28 19:25:51Z sam $
-  $DragonFly$
 -->
 
 <regulatory-data>

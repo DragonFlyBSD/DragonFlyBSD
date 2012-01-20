@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ah_eeprom_v3.c 196970 2009-09-08 13:19:05Z phk $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_output.c 198384 2009-10-23 11:13:08Z rpaulo $
- * $DragonFly$
  */
 
 #include "opt_inet.h"

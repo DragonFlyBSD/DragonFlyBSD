@@ -1,5 +1,4 @@
 # $FreeBSD: head/usr.sbin/wpa/wpa_supplicant/Makefile 189263 2009-03-02 02:28:22Z sam $
-# $DragonFly$
 
 .include "${.CURDIR}/../Makefile.inc"
 

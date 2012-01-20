@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $Id: ar5312_misc.c,v 1.4 2008/11/22 07:40:15 sam Exp $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

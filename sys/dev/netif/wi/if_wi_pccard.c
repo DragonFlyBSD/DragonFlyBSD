@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/dev/wi/if_wi_pccard.c 182250 2008-08-27 05:39:44Z imp $
- * $DragonFly$
  */
 
 /*

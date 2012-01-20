@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ar5416/ar5416_gpio.c 203159 2010-01-29 10:10:14Z rpaulo $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

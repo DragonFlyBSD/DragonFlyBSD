@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $Id: ar5312phy.h,v 1.3 2008/10/06 18:32:50 sam Exp $
- * $DragonFly$
  */
 #ifndef _DEV_ATH_AR5312PHY_H_
 #define _DEV_ATH_AR5312PHY_H_

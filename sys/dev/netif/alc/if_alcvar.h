@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/alc/if_alcvar.h,v 1.1 2009/06/10 02:07:58 yongari Exp $
- * $DragonFly$
  */
 
 #ifndef	_IF_ALCVAR_H

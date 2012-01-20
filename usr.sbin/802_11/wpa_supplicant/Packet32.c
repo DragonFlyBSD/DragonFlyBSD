@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/usr.sbin/wpa/wpa_supplicant/Packet32.c 189220 2009-03-01 08:01:38Z sam $
- * $DragonFly$
  */
 
 

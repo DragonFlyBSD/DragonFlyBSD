@@ -1,6 +1,5 @@
 /*	$FreeBSD$	*/
 /*	$OpenBSD: microcode.h,v 1.5 2008/03/06 09:18:04 deraadt Exp $	*/
-/*	$DragonFly$	*/
 
 /*-
  * Copyright (c) 2005-2008, Ralink Technology, Corp.

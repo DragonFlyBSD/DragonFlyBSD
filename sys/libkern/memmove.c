@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/libkern/memmove.c 189170 2009-02-28 16:21:25Z ed $
- * $DragonFly$
  */
 
 #include <sys/libkern.h>

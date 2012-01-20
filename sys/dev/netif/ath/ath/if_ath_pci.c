@@ -27,7 +27,6 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: head/sys/dev/ath/if_ath_pci.c 192147 2009-05-15 17:02:11Z imp $
- * $DragonFly$
  */
 
 /*

@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $Id: ah_soc.h,v 1.4 2008/11/10 04:08:00 sam Exp $
- * $DragonFly$
  */
 #ifndef _ATH_AH_SOC_H_
 #define _ATH_AH_SOC_H_

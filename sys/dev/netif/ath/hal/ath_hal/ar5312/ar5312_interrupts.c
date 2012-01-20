@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $Id: ar5312_interrupts.c,v 1.2 2008/11/10 01:19:39 sam Exp $
- * $DragonFly$
  */
 #include "opt_ah.h"
 

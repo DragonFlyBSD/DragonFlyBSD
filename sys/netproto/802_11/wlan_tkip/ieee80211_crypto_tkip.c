@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_crypto_tkip.c 203673 2010-02-08 18:16:59Z bschmidt $
- * $DragonFly$
  */
 
 /*

@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_freebsd.c 202612 2010-01-19 05:00:57Z thompsa $
- * $DragonFly$
  */
 
 /*

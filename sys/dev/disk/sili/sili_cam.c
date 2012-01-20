@@ -49,7 +49,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $OpenBSD: atascsi.c,v 1.64 2009/02/16 21:19:06 miod Exp $
- * $DragonFly$
  */
 /*
  * Implement each SATA port as its own SCSI bus on CAM.  This way we can

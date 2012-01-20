@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_regdomain.c 188782 2009-02-19 05:21:54Z sam $
- * $DragonFly$
  */
 
 /*

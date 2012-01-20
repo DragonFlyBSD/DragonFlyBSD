@@ -27,7 +27,6 @@
  * SUCH DAMAGE. 
  *
  * $FreeBSD: head/sys/net80211/ieee80211_hwmp.c 198581 2009-10-29 12:19:10Z rpaulo $
- * $DragonFly$
  */ 
 
 /*

@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/usr.sbin/wpa/wpa_supplicant/Packet32.h 151517 2005-10-20 16:49:31Z wpaul $
- * $DragonFly$
  */
 
 #ifndef _PACKET32_H_

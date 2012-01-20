@@ -27,7 +27,6 @@
  * SUCH DAMAGE. 
  *
  * $FreeBSD: head/sys/net80211/ieee80211_mesh.c 203423 2010-02-03 10:12:49Z rpaulo $
- * $DragonFly$
  */ 
 
 /*

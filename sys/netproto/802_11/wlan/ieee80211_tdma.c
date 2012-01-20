@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: head/sys/net80211/ieee80211_tdma.c 193114 2009-05-30 19:57:31Z sam $
- * $DragonFly$
  */
 
 /*

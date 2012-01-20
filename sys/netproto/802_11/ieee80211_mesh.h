@@ -27,7 +27,6 @@
  * SUCH DAMAGE. 
  * 
  * $FreeBSD: head/sys/net80211/ieee80211_mesh.h 202178 2010-01-12 22:22:27Z rpaulo $
- * $DragonFly$
  */
 #ifndef _NET80211_IEEE80211_MESH_H_
 #define _NET80211_IEEE80211_MESH_H_

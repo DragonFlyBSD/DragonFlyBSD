@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ah_eeprom_v14.h 203682 2010-02-08 20:12:01Z rpaulo $
- * $DragonFly$
  */
 #ifndef _AH_EEPROM_V14_H_
 #define _AH_EEPROM_V14_H_

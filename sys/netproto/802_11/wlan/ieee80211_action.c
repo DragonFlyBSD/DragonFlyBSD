@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: head/sys/net80211/ieee80211_action.c 199186 2009-11-11 14:58:48Z antoine $
- * $DragonFly$
  */
 
 /*
