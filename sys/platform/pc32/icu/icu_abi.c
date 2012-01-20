@@ -98,6 +98,7 @@ static struct lwkt_token icu_irqmap_tok =
 #define ICU_IMT_SYSCALL		3
 #define ICU_IMT_SHADOW		4
 #define ICU_IMT_MSI		5
+#define ICU_IMT_MSIX		6
 
 #define ICU_IMT_ISHWI(map)	((map)->im_type != ICU_IMT_RESERVED && \
 				 (map)->im_type != ICU_IMT_SYSCALL && \
@@ -120,6 +121,13 @@ static int	icu_abi_legacy_intr_cpuid(int);
 static int	icu_abi_msi_alloc(int [], int, int);
 static void	icu_abi_msi_release(const int [], int, int);
 static void	icu_abi_msi_map(int, uint64_t *, uint32_t *, int);
+static int	icu_abi_msix_alloc(int *, int);
+static void	icu_abi_msix_release(int, int);
+
+static int	icu_abi_msi_alloc_intern(int, const char *,
+		    int [], int, int);
+static void	icu_abi_msi_release_intern(int, const char *,
+		    const int [], int, int);
 
 static void	icu_abi_finalize(void);
 static void	icu_abi_cleanup(void);
@@ -141,6 +149,8 @@ struct machintr_abi MachIntrABI_ICU = {
 	.msi_alloc	= icu_abi_msi_alloc,
 	.msi_release	= icu_abi_msi_release,
 	.msi_map	= icu_abi_msi_map,
+	.msix_alloc	= icu_abi_msix_alloc,
+	.msix_release	= icu_abi_msix_release,
 
 	.finalize	= icu_abi_finalize,
 	.cleanup	= icu_abi_cleanup,
@@ -434,7 +444,8 @@ icu_abi_rman_setup(struct rman *rm)
 }
 
 static int
-icu_abi_msi_alloc(int intrs[], int count, int cpuid)
+icu_abi_msi_alloc_intern(int type, const char *desc,
+    int intrs[], int count, int cpuid)
 {
 	int i, error;
 
@@ -476,14 +487,14 @@ icu_abi_msi_alloc(int intrs[], int count, int cpuid)
 
 				map = &icu_irqmaps[cpu][intr];
 				KASSERT(map->im_msi_base < 0,
-				    ("intr %d cpu%d, stale MSI-base %d\n",
-				     intr, cpu, map->im_msi_base));
+				    ("intr %d cpu%d, stale %s-base %d\n",
+				     intr, cpu, desc, map->im_msi_base));
 				KASSERT(map->im_type == ICU_IMT_UNUSED,
 				    ("intr %d cpu%d, already allocated\n",
 				     intr, cpu));
 
 				if (cpu == cpuid) {
-					map->im_type = ICU_IMT_MSI;
+					map->im_type = type;
 					map->im_msi_base = i;
 				} else {
 					map->im_type = ICU_IMT_SHADOW;
@@ -494,8 +505,8 @@ icu_abi_msi_alloc(int intrs[], int count, int cpuid)
 			msi_setup(intr);
 
 			if (bootverbose) {
-				kprintf("alloc MSI intr %d on cpu%d\n",
-				    intr, cpuid);
+				kprintf("alloc %s intr %d on cpu%d\n",
+				    desc, intr, cpuid);
 			}
 		}
 		error = 0;
@@ -508,7 +519,8 @@ icu_abi_msi_alloc(int intrs[], int count, int cpuid)
 }
 
 static void
-icu_abi_msi_release(const int intrs[], int count, int cpuid)
+icu_abi_msi_release_intern(int type, const char *desc,
+    const int intrs[], int count, int cpuid)
 {
 	int i, msi_base = -1, intr_next = -1, mask;
 
@@ -534,36 +546,38 @@ icu_abi_msi_release(const int intrs[], int count, int cpuid)
 			map = &icu_irqmaps[cpu][intr];
 
 			if (cpu == cpuid) {
-				KASSERT(map->im_type == ICU_IMT_MSI,
-				    ("try release non-MSI intr %d cpu%d, "
-				     "type %d\n", intr, cpu, map->im_type));
+				KASSERT(map->im_type == type,
+				    ("try release non-%s intr %d cpu%d, "
+				     "type %d\n", desc, intr, cpu,
+				     map->im_type));
 				KASSERT(map->im_msi_base >= 0 &&
 				    map->im_msi_base <= intr,
-				    ("intr %d cpu%d, invalid MSI-base %d\n",
-				     intr, cpu, map->im_msi_base));
+				    ("intr %d cpu%d, invalid %s-base %d\n",
+				     intr, cpu, desc, map->im_msi_base));
 				KASSERT((map->im_msi_base & mask) == 0,
-				    ("intr %d cpu%d, MSI-base %d is "
+				    ("intr %d cpu%d, %s-base %d is "
 				     "not proper aligned %d\n",
-				     intr, cpu, map->im_msi_base, count));
+				     intr, cpu, desc, map->im_msi_base, count));
 
 				if (msi_base < 0) {
 					msi_base = map->im_msi_base;
 				} else {
 					KASSERT(map->im_msi_base == msi_base,
 					    ("intr %d cpu%d, "
-					     "inconsistent MSI-base, "
+					     "inconsistent %s-base, "
 					     "was %d, now %d\n",
-					     intr, cpu,
+					     intr, cpu, desc,
 					     msi_base, map->im_msi_base));
 				}
 				map->im_msi_base = -1;
 			} else {
 				KASSERT(map->im_type == ICU_IMT_SHADOW,
-				    ("try release non-MSIsh intr %d cpu%d, "
-				     "type %d\n", intr, cpu, map->im_type));
+				    ("try release non-%ssh intr %d cpu%d, "
+				     "type %d\n", desc, intr, cpu,
+				     map->im_type));
 				KASSERT(map->im_msi_base < 0,
-				    ("intr %d cpu%d, invalid MSIsh-base %d\n",
-				     intr, cpu, map->im_msi_base));
+				    ("intr %d cpu%d, invalid %ssh-base %d\n",
+				     intr, cpu, desc, map->im_msi_base));
 			}
 			map->im_type = ICU_IMT_UNUSED;
 		}
@@ -571,8 +585,10 @@ icu_abi_msi_release(const int intrs[], int count, int cpuid)
 		if (intr_next < intr)
 			intr_next = intr;
 
-		if (bootverbose)
-			kprintf("release MSI intr %d on cpu%d\n", intr, cpuid);
+		if (bootverbose) {
+			kprintf("release %s intr %d on cpu%d\n",
+			    desc, intr, cpuid);
+		}
 	}
 
 	KKASSERT(intr_next > 0);
@@ -586,14 +602,43 @@ icu_abi_msi_release(const int intrs[], int count, int cpuid)
 			const struct icu_irqmap *map =
 			    &icu_irqmaps[cpu][intr_next];
 
-			if (map->im_type == ICU_IMT_MSI) {
+			if (map->im_type == type) {
 				KASSERT(map->im_msi_base != msi_base,
-				    ("more than %d MSI was allocated\n", count));
+				    ("more than %d %s was allocated\n",
+				     count, desc));
 			}
 		}
 	}
 
 	lwkt_reltoken(&icu_irqmap_tok);
+}
+
+static int
+icu_abi_msi_alloc(int intrs[], int count, int cpuid)
+{
+	return icu_abi_msi_alloc_intern(ICU_IMT_MSI, "MSI",
+	    intrs, count, cpuid);
+}
+
+static void
+icu_abi_msi_release(const int intrs[], int count, int cpuid)
+{
+	icu_abi_msi_release_intern(ICU_IMT_MSI, "MSI",
+	    intrs, count, cpuid);
+}
+
+static int
+icu_abi_msix_alloc(int *intr, int cpuid)
+{
+	return icu_abi_msi_alloc_intern(ICU_IMT_MSIX, "MSI-X",
+	    intr, 1, cpuid);
+}
+
+static void
+icu_abi_msix_release(int intr, int cpuid)
+{
+	icu_abi_msi_release_intern(ICU_IMT_MSIX, "MSI-X",
+	    &intr, 1, cpuid);
 }
 
 static void
@@ -610,15 +655,21 @@ icu_abi_msi_map(int intr, uint64_t *addr, uint32_t *data, int cpuid)
 	lwkt_gettoken(&icu_irqmap_tok);
 
 	map = &icu_irqmaps[cpuid][intr];
-	KASSERT(map->im_type == ICU_IMT_MSI,
-	    ("try map non-MSI intr %d, type %d\n", intr, map->im_type));
+	KASSERT(map->im_type == ICU_IMT_MSI ||
+	    map->im_type == ICU_IMT_MSIX,
+	    ("try map non-MSI/MSI-X intr %d, type %d\n", intr, map->im_type));
 	KASSERT(map->im_msi_base >= 0 && map->im_msi_base <= intr,
-	    ("intr %d, invalid MSI-base %d\n", intr, map->im_msi_base));
+	    ("intr %d, invalid %s-base %d\n", intr,
+	     map->im_type == ICU_IMT_MSI ? "MSI" : "MSI-X",
+	     map->im_msi_base));
 
 	msi_map(map->im_msi_base, addr, data, cpuid);
 
-	if (bootverbose)
-		kprintf("map MSI intr %d on cpu%d\n", intr, cpuid);
+	if (bootverbose) {
+		kprintf("map %s intr %d on cpu%d\n",
+		    map->im_type == ICU_IMT_MSI ? "MSI" : "MSI-X",
+		    intr, cpuid);
+	}
 
 	lwkt_reltoken(&icu_irqmap_tok);
 }
