@@ -3573,12 +3573,12 @@ ahci_ata_cmd_done(struct ahci_ccb *ccb)
 	if (xa->flags & ATA_F_TIMEOUT_RUNNING) {
 		serial = ccb->ccb_xa.serial;
 		callout_stop_sync(&ccb->ccb_timeout);
-		xa->flags &= ~ATA_F_TIMEOUT_RUNNING;
 		if (serial != ccb->ccb_xa.serial) {
 			kprintf("%s: Warning: timeout race ccb %p\n",
 				PORTNAME(ccb->ccb_port), ccb);
 			return;
 		}
+		xa->flags &= ~ATA_F_TIMEOUT_RUNNING;
 	}
 	xa->flags &= ~(ATA_F_TIMEOUT_DESIRED | ATA_F_TIMEOUT_EXPIRED);
 	ccb->ccb_port->ap_expired &= ~(1 << ccb->ccb_slot);
