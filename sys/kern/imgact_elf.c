@@ -87,6 +87,8 @@ static boolean_t __elfN(bsd_trans_osrel)(const Elf_Note *note,
     int32_t *osrel);
 static boolean_t __elfN(check_note)(struct image_params *imgp,
     Elf_Brandnote *checknote, int32_t *osrel);
+static vm_prot_t __elfN(trans_prot)(Elf_Word);
+static Elf_Word __elfN(untrans_prot)(vm_prot_t);
 static boolean_t check_PT_NOTE(struct image_params *imgp,
     Elf_Brandnote *checknote, int32_t *osrel, const Elf_Phdr * pnote);
 static boolean_t extract_interpreter(struct image_params *imgp,
@@ -478,14 +480,7 @@ __elfN(load_file)(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	for (i = 0, numsegs = 0; i < hdr->e_phnum; i++) {
 		if (phdr[i].p_type == PT_LOAD && phdr[i].p_memsz != 0) {
 			/* Loadable segment */
-			prot = 0;
-			if (phdr[i].p_flags & PF_X)
-  				prot |= VM_PROT_EXECUTE;
-			if (phdr[i].p_flags & PF_W)
-  				prot |= VM_PROT_WRITE;
-			if (phdr[i].p_flags & PF_R)
-  				prot |= VM_PROT_READ;
-
+			prot = __elfN(trans_prot)(phdr[i].p_flags);
 			error = __elfN(load_section)(
 				    p, vmspace, imgp->vp,
 				    phdr[i].p_offset,
@@ -705,17 +700,10 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 
 	for (i = 0; i < hdr->e_phnum; i++) {
 		switch (phdr[i].p_type) {
-
 		case PT_LOAD:	/* Loadable segment */
 			if (phdr[i].p_memsz == 0)
 				break;
-			prot = 0;
-			if (phdr[i].p_flags & PF_X)
-  				prot |= VM_PROT_EXECUTE;
-			if (phdr[i].p_flags & PF_W)
-  				prot |= VM_PROT_WRITE;
-			if (phdr[i].p_flags & PF_R)
-  				prot |= VM_PROT_READ;
+			prot = __elfN(trans_prot)(phdr[i].p_flags);
 
 			if ((error = __elfN(load_section)(
 					imgp->proc,
@@ -1058,13 +1046,7 @@ cb_put_phdr(vm_map_entry_t entry, void *closure)
 	phdr->p_paddr = 0;
 	phdr->p_filesz = phdr->p_memsz = entry->end - entry->start;
 	phdr->p_align = PAGE_SIZE;
-	phdr->p_flags = 0;
-	if (entry->protection & VM_PROT_READ)
-		phdr->p_flags |= PF_R;
-	if (entry->protection & VM_PROT_WRITE)
-		phdr->p_flags |= PF_W;
-	if (entry->protection & VM_PROT_EXECUTE)
-		phdr->p_flags |= PF_X;
+	phdr->p_flags = __elfN(untrans_prot)(entry->protection);
 
 	phc->offset += phdr->p_filesz;
 	++phc->phdr;
@@ -1854,3 +1836,33 @@ EXEC_SET_ORDERED(elf64, elf_execsw, SI_ORDER_FIRST);
 static struct execsw elf_execsw = {exec_elf32_imgact, "ELF32"};
 EXEC_SET_ORDERED(elf32, elf_execsw, SI_ORDER_FIRST);
 #endif
+
+static vm_prot_t
+__elfN(trans_prot)(Elf_Word flags)
+{
+	vm_prot_t prot;
+
+	prot = 0;
+	if (flags & PF_X)
+		prot |= VM_PROT_EXECUTE;
+	if (flags & PF_W)
+		prot |= VM_PROT_WRITE;
+	if (flags & PF_R)
+		prot |= VM_PROT_READ;
+	return (prot);
+}
+
+static Elf_Word
+__elfN(untrans_prot)(vm_prot_t prot)
+{
+	Elf_Word flags;
+
+	flags = 0;
+	if (prot & VM_PROT_EXECUTE)
+		flags |= PF_X;
+	if (prot & VM_PROT_READ)
+		flags |= PF_R;
+	if (prot & VM_PROT_WRITE)
+		flags |= PF_W;
+	return (flags);
+}
