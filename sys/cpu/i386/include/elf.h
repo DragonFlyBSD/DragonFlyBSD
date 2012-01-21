@@ -149,8 +149,10 @@ __ElfType(Auxinfo);
 #define R_386_TLS_DTPMOD32 35	/* GOT entry containing TLS index */
 #define R_386_TLS_DTPOFF32 36	/* GOT entry containing TLS offset */
 #define R_386_TLS_TPOFF32 37	/* GOT entry of -ve static TLS offset */
+#define	R_386_IRELATIVE 42	/* PLT entry resolved indirectly at runtime */
 
-#define R_386_COUNT	38	/* Count of defined relocation types. */
+
+#define R_386_COUNT	43	/* Count of defined relocation types. */
 
 /* Define "machine" characteristics */
 #define ELF_TARG_CLASS	ELFCLASS32

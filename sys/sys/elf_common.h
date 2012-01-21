@@ -52,7 +52,7 @@ typedef struct {
 	u_int32_t	n_type;		/* Type of this note. */
 } Elf_Note;
 
-/* Indexes into the e_ident array.  Keep synced with 
+/* Indexes into the e_ident array.  Keep synced with
    http://www.sco.com/developers/gabi/latest/ch4.eheader.html */
 #define EI_MAG0		0	/* Magic number, byte 0. */
 #define EI_MAG1		1	/* Magic number, byte 1. */
@@ -467,6 +467,7 @@ typedef struct {
 #define STT_TLS		6	/* TLS object. */
 #define STT_NUM		7
 #define STT_LOOS	10	/* Reserved range for operating system */
+#define STT_GNU_IFUNC	10
 #define STT_HIOS	12	/*   specific semantics. */
 #define STT_LOPROC	13	/* reserved range for processor */
 #define STT_HIPROC	15	/*   specific semantics. */

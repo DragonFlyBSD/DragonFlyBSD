@@ -141,8 +141,9 @@ __ElfType(Auxinfo);
 #define	R_X86_64_DTPOFF32 21	/* Offset in TLS block */
 #define	R_X86_64_GOTTPOFF 22	/* PC relative offset to IE GOT entry */
 #define	R_X86_64_TPOFF32 23	/* Offset in static TLS block */
+#define	R_X86_64_IRELATIVE 37
 
-#define	R_X86_64_COUNT	24	/* Count of defined relocation types. */
+#define	R_X86_64_COUNT	38	/* Count of defined relocation types. */
 
 /* Define "machine" characteristics */
 #if __ELF_WORD_SIZE == 32
