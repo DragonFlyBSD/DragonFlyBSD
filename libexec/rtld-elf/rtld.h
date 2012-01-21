@@ -251,7 +251,6 @@ Obj_Entry *map_object(int, const char *, const struct stat *);
 void *xcalloc(size_t);
 void *xmalloc(size_t);
 char *xstrdup(const char *);
-void *xrealloc(void *, size_t);
 extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
 
 void dump_relocations(Obj_Entry *);
