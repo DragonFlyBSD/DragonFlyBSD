@@ -78,4 +78,7 @@ struct tls_tcb;
 extern void *__tls_get_addr(tls_index *ti);
 extern void *__tls_get_addr_tcb(struct tls_tcb *tcb, tls_index *ti);
 
+#define	RTLD_DEFAULT_STACK_PF_EXEC	PF_X
+#define	RTLD_DEFAULT_STACK_EXEC		PROT_EXEC
+
 #endif

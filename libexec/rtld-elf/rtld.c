@@ -106,6 +106,7 @@ static void unload_filtees(Obj_Entry *);
 static int load_needed_objects(Obj_Entry *, int);
 static int load_preload_objects(void);
 static Obj_Entry *load_object(const char *, const Obj_Entry *, int);
+static void map_stacks_exec(RtldLockState *);
 static Obj_Entry *obj_from_addr(const void *);
 static void objlist_call_fini(Objlist *, Obj_Entry *, RtldLockState *);
 static void objlist_call_init(Objlist *, RtldLockState *);
@@ -205,6 +206,9 @@ extern Elf_Dyn _DYNAMIC;
 int osreldate;
 #endif
 
+static int stack_prot = PROT_READ | PROT_WRITE | RTLD_DEFAULT_STACK_EXEC;
+static int max_stack_flags;
+
 /*
  * These are the functions the dynamic linker exports to application
  * programs.  They are the only symbols the dynamic linker is willing
@@ -231,6 +235,7 @@ static func_ptr_type exports[] = {
     (func_ptr_type) &_rtld_call_init,
     (func_ptr_type) &_rtld_thread_init,
     (func_ptr_type) &_rtld_addr_phdr,
+    (func_ptr_type) &_rtld_get_stack_prot,
     NULL
 };
 
@@ -462,6 +467,7 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	close(fd);
 	if (obj_main == NULL)
 	    die();
+	max_stack_flags = obj->stack_flags;
     } else {				/* Main program already loaded. */
 	const Elf_Phdr *phdr;
 	int phnum;
@@ -515,6 +521,10 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     }
     dbg("obj_main path %s", obj_main->path);
     obj_main->mainprog = true;
+
+    if (aux_info[AT_STACKPROT] != NULL &&
+      aux_info[AT_STACKPROT]->a_un.a_val != 0)
+	    stack_prot = aux_info[AT_STACKPROT]->a_un.a_val;
 
     /*
      * Get the actual dynamic linker pathname from the executable if
@@ -646,6 +656,8 @@ resident_skip2:
     initlist_add_objects(obj_list, preload_tail, &initlist);
 
     r_debug_state(NULL, &obj_main->linkmap); /* say hello to gdb! */
+
+    map_stacks_exec(NULL);
 
     /*
      * Do NOT call the initlist here, give libc a chance to set up
@@ -1166,6 +1178,8 @@ digest_phdr(const Elf_Phdr *phdr, int phnum, caddr_t entry, const char *path)
 	break;
     }
 
+    obj->stack_flags = PF_X | PF_R | PF_W;
+
     for (ph = phdr;  ph < phlimit;  ph++) {
 	switch (ph->p_type) {
 
@@ -1196,6 +1210,10 @@ digest_phdr(const Elf_Phdr *phdr, int phnum, caddr_t entry, const char *path)
 	    obj->tlsalign = ph->p_align;
 	    obj->tlsinitsize = ph->p_filesz;
 	    obj->tlsinit = (void*)(ph->p_vaddr + obj->relocbase);
+	    break;
+
+	case PT_GNU_STACK:
+	    obj->stack_flags = ph->p_flags;
 	    break;
 
 	case PT_GNU_RELRO:
@@ -1842,6 +1860,7 @@ do_load_object(int fd, const char *name, char *path, struct stat *sbp,
     obj_count++;
     obj_loads++;
     linkmap_add(obj);	/* for GDB & dlinfo() */
+    max_stack_flags |= obj->stack_flags;
 
     dbg("  %p .. %p: %s", obj->mapbase,
          obj->mapbase + obj->mapsize - 1, obj->path);
@@ -2358,6 +2377,8 @@ dlopen_object(const char *name, Obj_Entry *refobj, int lo_flags, int mode)
     LD_UTRACE(UTRACE_DLOPEN_STOP, obj, NULL, 0, obj ? obj->dl_refcount : 0,
 	name);
     GDB_STATE(RT_CONSISTENT,obj ? &obj->linkmap : NULL);
+
+    map_stacks_exec(&lockstate);
 
     /* Call the init functions. */
     objlist_call_init(&initlist, &lockstate);
@@ -3972,6 +3993,34 @@ fetch_ventry(const Obj_Entry *obj, unsigned long symnum)
 	}
     }
     return NULL;
+}
+
+int
+_rtld_get_stack_prot(void)
+{
+
+	return (stack_prot);
+}
+
+static void
+map_stacks_exec(RtldLockState *lockstate)
+{
+	return;
+	/*
+	 * Stack protection must be implemented in the kernel before the dynamic
+	 * linker can handle PT_GNU_STACK sections.
+	 * The following is the FreeBSD implementation of map_stacks_exec()
+	 * void (*thr_map_stacks_exec)(void);
+	 *
+	 * if ((max_stack_flags & PF_X) == 0 || (stack_prot & PROT_EXEC) != 0)
+	 *     return;
+	 * thr_map_stacks_exec = (void (*)(void))(uintptr_t)
+	 *     get_program_var_addr("__pthread_map_stacks_exec", lockstate);
+	 * if (thr_map_stacks_exec != NULL) {
+	 *     stack_prot |= PROT_EXEC;
+	 *     thr_map_stacks_exec();
+	 * }
+	 */
 }
 
 void

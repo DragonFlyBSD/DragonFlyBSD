@@ -148,6 +148,7 @@ typedef struct Struct_Obj_Entry {
     const char *interp;		/* Pathname of the interpreter, if any */
     caddr_t relro_page; 	/* Address of first page of read-only data */
     size_t relro_size;  	/* Size of relro page(s) in bytes */
+    Elf_Word stack_flags;
 
     /* TLS information */
     int tlsindex;		/* Index in DTV for this module */
