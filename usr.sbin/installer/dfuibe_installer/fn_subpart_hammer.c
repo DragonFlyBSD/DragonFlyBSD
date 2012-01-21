@@ -359,7 +359,9 @@ check_capacity(struct i_fn_args *a)
 		    "not recommended!\n"
 		    "You may have to run 'hammer prune-everything' and "
 		    "'hammer reblock'\n"
-		    "quite often, even if using a nohistory mount.")));
+		    "quite often, even if using a nohistory mount.\n\n"
+		    "NOTE: HAMMER filesystems smaller than 10GB are "
+		    "unsupported. Use at your own risk.")));
 
 	return(1);
 }

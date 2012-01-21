@@ -28,11 +28,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	$FreeBSD: src/lib/libcrypt/crypt.3,v 1.6.2.14 2002/12/29 16:35:35 schweikh Exp $
-.\"	$DragonFly: src/lib/libcrypt/crypt.3,v 1.5 2006/03/26 22:56:56 swildner Exp $
 .\"
 .\" Manual page, using -mandoc macros
 .\"
-.Dd January 19, 1997
+.Dd January 21, 2012
 .Dt CRYPT 3
 .Os
 .Sh NAME
@@ -52,7 +51,8 @@
 The
 .Fn crypt
 function performs password hashing with additional code added to
-deter key search attempts.  Different algorithms can be used to
+deter key search attempts.
+Different algorithms can be used to
 in the hash.
 .\"
 .\" NOTICE:
@@ -62,8 +62,8 @@ in the hash.
 Currently these include the
 .Tn NBS
 .Tn Data Encryption Standard (DES) ,
-.Tn MD5
-.Tn SHA256
+.Tn MD5 ,
+.Tn SHA256 ,
 .Tn SHA512
 and
 .Tn Blowfish .
@@ -100,7 +100,8 @@ If neither of the above is true, it assumes the Traditional Format,
 using the entire string as the salt (or the first portion).
 .El
 .Pp
-All routines are designed to be time-consuming.  A brief test on a
+All routines are designed to be time-consuming.
+A brief test on a
 .Tn Pentium
 166/MMX shows the
 .Tn DES
@@ -138,7 +139,7 @@ The
 introduces disorder in the
 .Tn DES
 algorithm in one of 16777216 or 4096 possible ways
-(ie. with 24 or 12 bits: if bit
+(ie.\& with 24 or 12 bits: if bit
 .Em i
 of the
 .Ar salt
@@ -164,13 +165,18 @@ followed by the encoded 64-bit encryption.
 .Ss "Modular" crypt:
 If the salt begins with the string
 .Fa $digit$
-then the Modular Crypt Format is used.  The
+then the Modular Crypt Format is used.
+The
 .Fa digit
-represents which algorithm is used in encryption.  Following the token is
-the actual salt to use in the encryption.  The length of the salt is limited
+represents which algorithm is used in encryption.
+Following the token is
+the actual salt to use in the encryption.
+The length of the salt is limited
 to 8 characters--because the length of the returned output is also limited
-(_PASSWORD_LEN).  The salt must be terminated with the end of the string
-(NULL) or a dollar sign.  Any characters after the dollar sign are ignored.
+(_PASSWORD_LEN).
+The salt must be terminated with the end of the string
+(NULL) or a dollar sign.
+Any characters after the dollar sign are ignored.
 .Pp
 Currently supported algorithms are:
 .Pp
@@ -178,15 +184,20 @@ Currently supported algorithms are:
 .It
 MD5
 .It
+Blowfish
+.It
+SHA256 deprecated implementation
+.It
+SHA512 deprecated implementation
+.It
 SHA256
 .It
 SHA512
-.It
-Blowfish
 .El
 .Pp
-Other crypt formats may be easily added.  An example salt would be:
-.Bl -tag -offset indent
+Other crypt formats may be easily added.
+An example salt would be:
+.Bl -tag -width ".Cm $3$thesalt$rest" -offset indent
 .It Cm "$3$thesalt$rest"
 .El
 .Ss "Traditional" crypt:
@@ -204,8 +215,8 @@ This is currently
 DES
 if it is available, or MD5 if not.
 .Pp
-How the salt is used will depend upon the algorithm for the hash.  For
-best results, specify at least two characters of salt.
+How the salt is used will depend upon the algorithm for the hash.
+For best results, specify at least two characters of salt.
 .Pp
 The
 .Fn crypt_get_format
@@ -218,7 +229,7 @@ Valid values are
 .Ql des ,
 .Ql blf ,
 .Ql sha256 ,
-.Ql sha512 ,
+.Ql sha512
 and
 .Ql md5 .
 .Pp
@@ -283,6 +294,7 @@ The
 .Fn crypt
 function returns a pointer to static data, and subsequent calls to
 .Fn crypt
-will modify the same data.  Likewise,
+will modify the same data.
+Likewise,
 .Fn crypt_set_format
 modifies static data.
