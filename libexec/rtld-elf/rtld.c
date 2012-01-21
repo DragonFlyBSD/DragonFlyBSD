@@ -63,6 +63,7 @@
 #include "debug.h"
 #include "rtld.h"
 #include "libmap.h"
+#include "rtld_printf.h"
 
 #define PATH_RTLD	"/usr/libexec/ld-elf.so.2"
 #define LD_ARY_CACHE	16
@@ -743,7 +744,7 @@ _rtld_error(const char *fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    vsnprintf(buf, sizeof buf, fmt, ap);
+    rtld_vsnprintf(buf, sizeof buf, fmt, ap);
     error_message = buf;
     va_end(ap);
 }
@@ -863,7 +864,8 @@ die(void)
 
     if (msg == NULL)
 	msg = "Fatal error";
-    errx(1, "%s", msg);
+    rtld_fdputstr(STDERR_FILENO, msg);
+    _exit(1);
 }
 
 /*
@@ -3164,7 +3166,7 @@ trace_loaded_objects(Obj_Entry *obj)
 	bool			is_lib;
 
 	if (list_containers && obj->needed != NULL)
-	    printf("%s:\n", obj->path);
+	    rtld_printf("%s:\n", obj->path);
 	for (needed = obj->needed; needed; needed = needed->next) {
 	    if (needed->obj != NULL) {
 		if (needed->obj->traced && !list_containers)
@@ -3181,17 +3183,17 @@ trace_loaded_objects(Obj_Entry *obj)
 	    while ((c = *fmt++) != '\0') {
 		switch (c) {
 		default:
-		    putchar(c);
+		    rtld_putchar(c);
 		    continue;
 		case '\\':
 		    switch (c = *fmt) {
 		    case '\0':
 			continue;
 		    case 'n':
-			putchar('\n');
+			rtld_putchar('\n');
 			break;
 		    case 't':
-			putchar('\t');
+			rtld_putchar('\t');
 			break;
 		    }
 		    break;
@@ -3201,22 +3203,23 @@ trace_loaded_objects(Obj_Entry *obj)
 			continue;
 		    case '%':
 		    default:
-			putchar(c);
+			rtld_putchar(c);
 			break;
 		    case 'A':
-			printf("%s", main_local);
+			rtld_putstr(main_local);
 			break;
 		    case 'a':
-			printf("%s", obj_main->path);
+			rtld_putstr(obj_main->path);
 			break;
 		    case 'o':
-			printf("%s", name);
+			rtld_putstr(name);
 			break;
 		    case 'p':
-			printf("%s", path);
+			rtld_putstr(path);
 			break;
 		    case 'x':
-			printf("%p", needed->obj ? needed->obj->mapbase : 0);
+			rtld_printf("%p", needed->obj ? needed->obj->mapbase :
+			  0);
 			break;
 		    }
 		    break;

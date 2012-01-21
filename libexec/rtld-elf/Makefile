@@ -1,9 +1,11 @@
-# $FreeBSD: src/libexec/rtld-elf/Makefile,v 1.10.2.6 2002/06/22 17:03:13 jdp Exp $
+# $FreeBSD$
 
 PROG=		ld-elf.so.2
-SRCS=		rtld_start.S rtld.c rtld_lock.c map_object.c malloc.c \
-		xmalloc.c debug.c reloc.c libmap.c
+SRCS=		rtld_start.S \
+		reloc.c rtld.c rtld_lock.c rtld_printf.c map_object.c \
+		malloc.c xmalloc.c debug.c libmap.c
 MAN=		rtld.1
+CSTD?=		gnu99
 WARNS?=		2
 
 # To activate LD_DEBUG functionality, define ENABLE_DEBUG
@@ -24,24 +26,14 @@ MLINKS+=	rtld.1 _rtld_functrace.3
 .include "${.CURDIR}/${MACHINE_ARCH}/Makefile.inc"
 .endif
 
-.ifdef LDSCRIPT
-OBJS+=		dyn_hack.so
-LDFLAGS+=	-Wl,-T,${LDSCRIPT} -Wl,-E -Wl,-Bstatic
-DPADD=		${.OBJDIR}/../../lib/libc_rtld/libc_rtld.a
-LDADD=		-L${.OBJDIR}/../../lib/libc_rtld -lc_rtld
-.else
 CFLAGS+=	-fpic -DPIC
 LDFLAGS+=	-shared -Wl,-Bsymbolic
 DPADD=		${.OBJDIR}/../../lib/libc_rtld/libc_rtld_pic.a
 LDADD=		-L${.OBJDIR}/../../lib/libc_rtld -lc_rtld_pic
-.endif
 
 .ifdef ENABLE_DEBUG
 CFLAGS+=	-DDEBUG
 .endif
-
-dyn_hack.so:
-	${CC} -shared -nostdlib -o dyn_hack.so -x c /dev/null
 
 .PATH: ${.CURDIR}/${MACHINE_ARCH}
 
