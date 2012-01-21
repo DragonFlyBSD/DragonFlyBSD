@@ -29,9 +29,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)malloc.c	5.11 (Berkeley) 2/23/91
- * $FreeBSD: src/libexec/rtld-elf/malloc.c, svn 114625 2003/05/04 obrien Exp $
  */
 
 /*
