@@ -28,7 +28,7 @@
 .\"
 .\" $FreeBSD$
 .\"
-.Dd February 21, 2011
+.Dd January 20, 2012
 .Dt RTLD 1
 .Os
 .Sh NAME
@@ -220,6 +220,14 @@ If set,
 .Nm
 will log events such as the loading and unloading of shared objects via
 .Xr utrace 2 .
+.Pp
+.It Ev LD_LOADFLTR
+If set,
+.Nm
+will process the filtee dependencies of the loaded objects immediately,
+instead of postponing it until required.
+Normally, the filtees are opened at the time of the first symbol resolution
+from the filter object.
 .El
 .Pp
 If a shared object preloaded by the
