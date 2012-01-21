@@ -66,7 +66,7 @@
 #include <security/pam_modules.h>
 #include <security/pam_mod_misc.h>
 
-#define PASSWORD_HASH		"sha256"
+#define PASSWORD_HASH		"sha512"
 #define DEFAULT_WARN		(2L * 7L * 86400L)  /* Two weeks */
 #define	SALTSIZE		32
 
