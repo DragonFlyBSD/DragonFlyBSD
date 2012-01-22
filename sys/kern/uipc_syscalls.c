@@ -1599,6 +1599,7 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	for (off = offset; ; off += xfsize, *sbytes += xfsize + hbytes) {
 		vm_pindex_t pindex;
 		vm_offset_t pgoff;
+		int space;
 
 		pindex = OFF_TO_IDX(off);
 retry_lookup:
@@ -1781,7 +1782,8 @@ retry_space:
 		 * after checking the connection state above in order to avoid
 		 * a race condition with ssb_wait().
 		 */
-		if (ssb_space_prealloc(&so->so_snd) < so->so_snd.ssb_lowat) {
+		space = ssb_space_prealloc(&so->so_snd);
+		if (space < m->m_pkthdr.len && space < so->so_snd.ssb_lowat) {
 			if (fp->f_flag & FNONBLOCK) {
 				m_freem(m);
 				ssb_unlock(&so->so_snd);
