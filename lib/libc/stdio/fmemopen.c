@@ -2,6 +2,7 @@
 
 /*-
  * Copyright (c)2007, 2010 Takehiko NOZAKI,
+ * Copyright (c) 2012, Venkatesh Srinivas <vsrinivas@dragonflybsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,10 +25,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
-#include <sys/cdefs.h>
+#include <sys/param.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -42,10 +42,6 @@ struct fmemopen_cookie {
 	char *head, *tail, *cur, *eob;
 };
 
-static int min(int x, int y) {
-	return (x > y) ? (y) : (x);
-}
-
 static int
 fmemopen_read(void *cookie, char *buf, int nbytes)
 {
@@ -56,9 +52,9 @@ fmemopen_read(void *cookie, char *buf, int nbytes)
 	assert(cookie != NULL);
 	assert(buf != NULL && nbytes > 0);
 
-	p = (struct fmemopen_cookie *)cookie;
+	p = cookie;
 	s = p->cur;
-	len = min(p->tail - p->cur, nbytes);
+	len = MIN(p->tail - p->cur, nbytes);
 	bcopy(p->cur, buf, len);
 	p->cur += len;
 
@@ -70,26 +66,29 @@ fmemopen_write(void *cookie, const char *buf, int nbytes)
 {
 	struct fmemopen_cookie *p;
 	char *s;
+	int len;
 
 	assert(cookie != NULL);
 	assert(buf != NULL && nbytes > 0);
 
-	p = (struct fmemopen_cookie *)cookie;
+	p = cookie;
 	if (p->cur >= p->tail)
 		return 0;
 	s = p->cur;
-	do {
-		if (p->cur == p->tail - 1) {
-			if (*buf == '\0') {
-				*p->cur++ = '\0';
-				goto ok;
-			}
-			break;
-		}
-		*p->cur++ = *buf++;
-	} while (--nbytes > 0);
-	*p->cur = '\0';
-ok:
+	
+	len = MIN(p->tail - p->cur, nbytes);
+
+	bcopy(buf, p->cur, len);
+	
+	p->cur += len - 1;
+	if (p->cur == p->tail - 1) {
+		*p->cur = '\0';
+		if (buf[len - 1] == '\0')
+			p->cur++;
+	} else {
+		*++p->cur = '\0';
+	}
+	
 	if (p->cur > p->eob)
 		p->eob = p->cur;
 
@@ -142,7 +141,7 @@ fmemopen_close1(void *cookie)
 
 	assert(cookie != NULL);
 
-	p = (struct fmemopen_cookie *)cookie;
+	p = cookie;
 	free(p->head);
 	free(p);
 
