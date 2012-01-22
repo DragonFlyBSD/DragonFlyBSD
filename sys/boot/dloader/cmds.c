@@ -340,7 +340,6 @@ static int
 command_menuitem(int ac, char **av)
 {
 	char namebuf[32];
-	char *cp;
 
 	if (ac != 3) {
 		sprintf(command_errbuf, "Bad menuitem syntax");
@@ -365,7 +364,6 @@ static int
 command_menuadd(int ac, char **av)
 {
 	char namebuf[32];
-	int i;
 
 	if (ac == 1)
 		return(CMD_OK);
@@ -393,7 +391,6 @@ command_menu(int ac, char **av)
 	int c;
 	int res;
 	int counting = 1;
-	char *argv[4];
 
 	menu_display();
 	if ((cp = getenv("autoboot_delay")) != NULL)
@@ -518,7 +515,6 @@ menu_display(void)
 	int i;
 	int logo_left = 0;		/* default to fred on right */
 	char **logo = logo_mono;
-	const char *fmt;
 
 	if (dvar_istrue(dvar_get("loader_color")))
 		logo = logo_color;
