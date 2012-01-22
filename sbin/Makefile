@@ -4,7 +4,6 @@
 # XXX MISSING:		icheck ncheck
 
 SUBDIR=	adjkerntz \
-	atacontrol \
 	atm \
 	badsect \
 	camcontrol \

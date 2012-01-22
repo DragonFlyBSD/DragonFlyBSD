@@ -253,7 +253,7 @@ SCSI_NCR_MYADDR		opt_ncr.h
 # Options used only in pci/isp_pci.c
 ISP_TARGET_MODE		opt_isp.h
 
-# Options used in the 'ata' ATA/ATAPI driver
+# Options used in the 'nata' ATA/ATAPI driver
 ATA_STATIC_ID		opt_ata.h
 
 # Net stuff.

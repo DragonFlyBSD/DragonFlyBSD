@@ -1,4 +1,4 @@
-.\" Copyright (c) 2002
+.\" Copyright (c) 2002, 2004
 .\"	Thomas Quinot <thomas@FreeBSD.org>. All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -16,7 +16,7 @@
 .\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
 .\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 .\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR THE VOICES IN HIS HEAD
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL AUTHOR OR CONTRIBUTORS
 .\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
 .\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
 .\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
@@ -25,17 +25,30 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\"	$FreeBSD: src/share/man/man4/atapicam.4,v 1.2.2.2 2003/03/03 18:51:16 trhodes Exp $
-.\"	$DragonFly: src/share/man/man4/atapicam.4,v 1.3 2008/09/06 10:36:27 thomas Exp $
+.\" $FreeBSD: src/share/man/man4/atapicam.4,v 1.8 2009/10/29 15:59:27 brueffer Exp $
 .\"
-.Dd October 23, 2002
-.Dt ATAPICAM 4
+.Dd January 22, 2012
+.Dt NATAPICAM 4
 .Os
 .Sh NAME
-.Nm atapicam
+.Nm natapicam
 .Nd CAM XPT (transport) module for ATAPI devices
 .Sh SYNOPSIS
-.Cd "device atapicam"
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device scbus"
+.Cd "device nata"
+.Cd "device natapicam"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+natapicam_load="YES"
+.Ed
 .Sh DESCRIPTION
 The ATAPI/CAM module allows ATAPI devices (CD-ROM, CD-RW, DVD drives,
 floppy drives such as Iomega Zip, tape drives) to be accessed through
@@ -43,8 +56,6 @@ the SCSI subsystem,
 .Xr cam 4 .
 .Pp
 .Xr nata 4
-or
-.Xr ata 4
 and
 .Xr scbus 4
 must be configured in the kernel as well.
@@ -78,7 +89,8 @@ extended
 information.
 .Sh EXAMPLES
 .Bd -literal -offset indent
-device atapicam
+device nata
+device natapicam
 device scbus
 device cd
 device pass
@@ -92,17 +104,15 @@ driver to the kernel.
 .Pp
 Print the list of all devices available through CAM.
 .Pp
-.Dl "mount -t cd9660 /dev/cd0c /mnt"
+.Dl "mount -t cd9660 /dev/cd0 /mnt"
 .Pp
 Mount a CD-ROM from an ATAPI CD-ROM drive
 (the command above assumes that the ATAPI drive is the only CD-ROM unit).
 .Sh SEE ALSO
-.Xr ata 4 ,
 .Xr cam 4 ,
 .Xr nata 4 ,
 .Xr scsi 4 ,
-.Xr atacontrol 8 ,
-.Xr camcontrol 8
+.Xr camcontrol 8 ,
 .Xr natacontrol 8
 .Sh HISTORY
 The ATAPI/CAM driver first appeared in

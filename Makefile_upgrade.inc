@@ -1883,6 +1883,13 @@ TO_REMOVE+=/usr/share/man/man3/archive_write_set_format_shar_binary.3.gz
 TO_REMOVE+=/usr/share/man/cat3/archive_write_set_format_shar_binary.3.gz
 TO_REMOVE+=/usr/share/man/man3/archive_write_set_format_ustar.3.gz
 TO_REMOVE+=/usr/share/man/cat3/archive_write_set_format_ustar.3.gz
+TO_REMOVE+=/sbin/atacontrol
+TO_REMOVE+=/usr/share/man/cat8/atacontrol.8.gz
+TO_REMOVE+=/usr/share/man/man8/atacontrol.8.gz
+TO_REMOVE+=/usr/share/man/cat4/ata.4.gz
+TO_REMOVE+=/usr/share/man/man4/ata.4.gz
+TO_REMOVE+=/usr/share/man/cat4/atapicam.4.gz
+TO_REMOVE+=/usr/share/man/man4/atapicam.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys

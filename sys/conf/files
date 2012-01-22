@@ -142,21 +142,6 @@ dev/netif/an/if_an_pccard.c		optional an pccard
 dev/netif/ar/if_ar.c			optional ar
 dev/netif/ar/if_ar_pci.c		optional ar pci
 dev/raid/asr/asr.c			optional asr pci
-dev/disk/ata/ata-all.c			optional ata
-dev/disk/ata/ata-isa.c			optional ata isa
-dev/disk/ata/ata-card.c			optional ata pccard
-dev/disk/ata/ata-pci.c			optional ata pci
-dev/disk/ata/ata-dma.c			optional ata pci
-dev/disk/ata/ata-disk.c			optional atadisk
-dev/disk/ata/ata-raid.c			optional atadisk
-dev/disk/ata/atapi-all.c		optional atapicd
-dev/disk/ata/atapi-all.c		optional atapifd
-dev/disk/ata/atapi-all.c		optional atapist
-dev/disk/ata/atapi-all.c		optional atapicam
-dev/disk/ata/atapi-cd.c			optional atapicd
-dev/disk/ata/atapi-fd.c			optional atapifd
-dev/disk/ata/atapi-tape.c		optional atapist
-dev/disk/ata/atapi-cam.c		optional atapicam
 dev/disk/ahci/ahci.c			optional ahci
 dev/disk/ahci/ahci_dragonfly.c		optional ahci
 dev/disk/ahci/ahci_attach.c		optional ahci

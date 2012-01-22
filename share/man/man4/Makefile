@@ -33,8 +33,6 @@ MAN=	aac.4 \
 	aps.4 \
 	arcmsr.4 \
 	arp.4 \
-	ata.4 \
-	atapicam.4 \
 	ath.4 \
 	ath_hal.4 \
 	atkbd.4 \
@@ -166,6 +164,7 @@ MAN=	aac.4 \
 	mxge.4 \
 	my.4 \
 	nata.4 \
+	natapicam.4 \
 	nataraid.4 \
 	natm.4 \
 	ncr.4 \

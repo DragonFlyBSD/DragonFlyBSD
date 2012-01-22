@@ -26,7 +26,6 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ata.4,v 1.72 2007/03/10 12:44:22 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/nata.4,v 1.4 2008/01/01 12:16:40 swildner Exp $
 .\"
 .Dd January 1, 2008
 .Dt NATA 4
@@ -80,15 +79,6 @@ The
 driver provides access to ATA (IDE) and SerialATA disk drives,
 ATAPI CDROM/DVD drives, ZIP/LS120 ATAPI drives and ATAPI tape drives
 connected to controllers according to the ATA/ATAPI standards.
-.Pp
-.Nm Nata
-is the default ATA driver of
-.Dx .
-The old
-.Fx 4.8
-driver is still available, but deprecated.
-For more information, see
-.Xr ata 4 .
 .Pp
 The currently supported ATA/SATA controller chips are:
 .Pp
@@ -207,7 +197,7 @@ as the same numbered device, and not depend on attach order.
 Native Command Queuing (NCQ) on SATA drives is not yet supported.
 .Sh SEE ALSO
 .Xr ahci 4 ,
-.Xr ata 4 ,
+.Xr natapicam 4 ,
 .Xr nataraid 4 ,
 .Xr sili 4 ,
 .Xr burncd 8 ,
