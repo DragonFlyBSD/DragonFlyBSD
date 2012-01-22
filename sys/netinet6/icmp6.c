@@ -2643,9 +2643,7 @@ icmp6_ctloutput(netmsg_t msg)
 		switch (optname) {
 		case ICMP6_FILTER:
 		    {
-			struct icmp6_filter *p;
-
-			if (optlen != sizeof(*p)) {
+			if (optlen != sizeof(struct icmp6_filter)) {
 				error = EMSGSIZE;
 				break;
 			}
