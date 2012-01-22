@@ -1247,6 +1247,7 @@ acpi_isa_get_compatid(device_t dev, uint32_t *cids, int count)
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
+    devinfo = NULL;
     pnpid = cids;
     valid = 0;
 
