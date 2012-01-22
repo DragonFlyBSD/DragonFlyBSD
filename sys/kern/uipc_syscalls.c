@@ -85,6 +85,7 @@
 #endif /* SCTP */
 
 extern int use_soaccept_pred_fast;
+extern int use_sendfile_async;
 
 /*
  * System call interface to the socket abstraction.
@@ -1801,7 +1802,10 @@ retry_space:
 			}
 			goto retry_space;
 		}
-		error = so_pru_senda(so, 0, m, NULL, NULL, td);
+		if (use_sendfile_async)
+			error = so_pru_senda(so, 0, m, NULL, NULL, td);
+		else
+			error = so_pru_send(so, 0, m, NULL, NULL, td);
 		crit_exit();
 		if (error) {
 			ssb_unlock(&so->so_snd);
@@ -1810,7 +1814,10 @@ retry_space:
 	}
 	if (mheader != NULL) {
 		*sbytes += mheader->m_pkthdr.len;
-		error = so_pru_senda(so, 0, mheader, NULL, NULL, td);
+		if (use_sendfile_async)
+			error = so_pru_senda(so, 0, mheader, NULL, NULL, td);
+		else
+			error = so_pru_send(so, 0, mheader, NULL, NULL, td);
 		mheader = NULL;
 	}
 	ssb_unlock(&so->so_snd);
