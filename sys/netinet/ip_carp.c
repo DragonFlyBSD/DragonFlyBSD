@@ -45,6 +45,7 @@
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
+#include <sys/thread.h>
 
 #include <machine/stdarg.h>
 #include <crypto/sha1.h>
@@ -170,6 +171,8 @@ SYSCTL_STRUCT(_net_inet_carp, CARPCTL_STATS, stats, CTLFLAG_RW,
 	if (carp_opts[CARPCTL_LOG] > 1)			\
 		log(LOG_DEBUG, __VA_ARGS__);		\
 } while (0)
+
+static struct lwkt_token carp_tok = LWKT_TOKEN_INITIALIZER(carp_token);
 
 static void	carp_hmac_prepare(struct carp_softc *);
 static void	carp_hmac_generate(struct carp_softc *, uint32_t *,
@@ -358,7 +361,6 @@ carp_setroute(struct carp_softc *sc, int cmd)
 #ifdef INET6
 	struct ifaddr_container *ifac;
 
-	crit_enter();
 	TAILQ_FOREACH(ifac, &sc->sc_if.if_addrheads[mycpuid], ifa_link) {
 		struct ifaddr *ifa = ifac->ifa;
 
@@ -369,7 +371,6 @@ carp_setroute(struct carp_softc *sc, int cmd)
 				in6_ifremloop(ifa);
 		}
 	}
-	crit_exit();
 #endif /* INET6 */
 }
 
@@ -413,9 +414,9 @@ carp_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	if_attach(ifp, NULL);
 	bpfattach(ifp, DLT_NULL, sizeof(u_int));
 
-	crit_enter();
+	carp_gettok();
 	LIST_INSERT_HEAD(&carpif_list, sc, sc_next);
-	crit_exit();
+	carp_reltok();
 
 	return (0);
 }
@@ -425,12 +426,14 @@ carp_clone_destroy(struct ifnet *ifp)
 {
 	struct carp_softc *sc = ifp->if_softc;
 
+	carp_gettok();
+
 	sc->sc_dead = 1;
 	carp_detach(sc, 1);
-
-	crit_enter();
 	LIST_REMOVE(sc, sc_next);
-	crit_exit();
+
+	carp_reltok();
+
 	bpfdetach(ifp);
 	if_detach(ifp);
 
@@ -480,9 +483,13 @@ carp_ifdetach(void *arg __unused, struct ifnet *ifp)
 	struct carp_if *cif = ifp->if_carp;
 	struct carp_softc *sc;
 
+	carp_gettok();
+
 	while (ifp->if_carp &&
 	       (sc = TAILQ_FIRST(&cif->vhif_vrs)) != NULL)
 		carp_detach(sc, 1);
+
+	carp_reltok();
 }
 
 /*
@@ -498,6 +505,8 @@ carp_input(struct mbuf **mp, int *offp, int proto)
 	struct carp_header *ch;
 	int len, iphlen;
 
+	carp_gettok();
+
 	iphlen = *offp;
 	*mp = NULL;
 
@@ -505,7 +514,7 @@ carp_input(struct mbuf **mp, int *offp, int proto)
 
 	if (!carp_opts[CARPCTL_ALLOW]) {
 		m_freem(m);
-		return(IPPROTO_DONE);
+		goto back;
 	}
 
 	/* Check if received on a valid carp interface */
@@ -515,7 +524,7 @@ carp_input(struct mbuf **mp, int *offp, int proto)
 		    "interface: %s\n",
 		    m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
-		return(IPPROTO_DONE);
+		goto back;
 	}
 
 	/* Verify that the IP TTL is CARP_DFLTTL. */
@@ -525,7 +534,7 @@ carp_input(struct mbuf **mp, int *offp, int proto)
 		    ip->ip_ttl, CARP_DFLTTL,
 		    m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
-		return(IPPROTO_DONE);
+		goto back;
 	}
 
 	/* Minimal CARP packet size */
@@ -540,7 +549,7 @@ carp_input(struct mbuf **mp, int *offp, int proto)
 		CARP_LOG("packet too short %d on %s\n", m->m_pkthdr.len,
 			 m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
-		return(IPPROTO_DONE);
+		goto back;
 	}
 
 	/* Make sure that CARP header is contiguous */
@@ -549,7 +558,7 @@ carp_input(struct mbuf **mp, int *offp, int proto)
 		if (m == NULL) {
 			carpstats.carps_hdrops++;
 			CARP_LOG("carp_input: m_pullup failed\n");
-			return(IPPROTO_DONE);
+			goto back;
 		}
 		ip = mtod(m, struct ip *);
 	}
@@ -561,9 +570,12 @@ carp_input(struct mbuf **mp, int *offp, int proto)
 		CARP_LOG("carp_input: checksum failed on %s\n",
 		    m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
-		return(IPPROTO_DONE);
+		goto back;
 	}
 	carp_input_c(m, ch, AF_INET);
+
+back:
+	carp_reltok();
 	return(IPPROTO_DONE);
 }
 
@@ -576,11 +588,13 @@ carp6_input(struct mbuf **mp, int *offp, int proto)
 	struct carp_header *ch;
 	u_int len;
 
+	carp_gettok();
+
 	carpstats.carps_ipackets6++;
 
 	if (!carp_opts[CARPCTL_ALLOW]) {
 		m_freem(m);
-		return (IPPROTO_DONE);
+		goto back;
 	}
 
 	/* check if received on a valid carp interface */
@@ -590,7 +604,7 @@ carp6_input(struct mbuf **mp, int *offp, int proto)
 		    "interface: %s\n",
 		    m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
-		return (IPPROTO_DONE);
+		goto back;
 	}
 
 	/* verify that the IP TTL is 255 */
@@ -600,7 +614,7 @@ carp6_input(struct mbuf **mp, int *offp, int proto)
 		    ip6->ip6_hlim,
 		    m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
-		return (IPPROTO_DONE);
+		goto back;
 	}
 
 	/* verify that we have a complete carp packet */
@@ -609,7 +623,7 @@ carp6_input(struct mbuf **mp, int *offp, int proto)
 	if (ch == NULL) {
 		carpstats.carps_badlen++;
 		CARP_LOG("carp6_input: packet size %u too small\n", len);
-		return (IPPROTO_DONE);
+		goto back;
 	}
 
 	/* verify the CARP checksum */
@@ -618,10 +632,12 @@ carp6_input(struct mbuf **mp, int *offp, int proto)
 		CARP_LOG("carp6_input: checksum failed, on %s\n",
 		    m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
-		return (IPPROTO_DONE);
+		goto back;
 	}
 
 	carp_input_c(m, ch, AF_INET6);
+back:
+	carp_reltok();
 	return (IPPROTO_DONE);
 }
 #endif /* INET6 */
@@ -1098,6 +1114,8 @@ carp_iamatch(const void *v, const struct in_addr *itaddr,
 	const struct carp_if *cif = v;
 	const struct carp_softc *vh;
 
+	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
+
 	if (carp_opts[CARPCTL_ARPBALANCE])
 		return carp_iamatch_balance(cif, itaddr, isaddr, enaddr);
 
@@ -1119,6 +1137,8 @@ carp_iamatch6(void *v, struct in6_addr *taddr)
 {
 	struct carp_if *cif = v;
 	struct carp_softc *vh;
+
+	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
 
 	TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
 		struct ifaddr_container *ifac;
@@ -1144,6 +1164,8 @@ carp_macmatch6(void *v, struct mbuf *m, const struct in6_addr *taddr)
 	struct m_tag *mtag;
 	struct carp_if *cif = v;
 	struct carp_softc *sc;
+
+	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
 
 	TAILQ_FOREACH(sc, &cif->vhif_vrs, sc_list) {
 		struct ifaddr_container *ifac;
@@ -1181,6 +1203,8 @@ carp_forus(const void *v, const void *dhost)
 	const struct carp_if *cif = v;
 	const struct carp_softc *vh;
 	const uint8_t *ena = dhost;
+
+	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
 
 	if (ena[0] || ena[1] || ena[2] != 0x5e || ena[3] || ena[4] != 1)
 		return 0;
@@ -1727,6 +1751,8 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 	char devname[IFNAMSIZ];
 	int error = 0;
 
+	carp_gettok();
+
 	ifa = (struct ifaddr *)addr;
 	ifra = (struct ifaliasreq *)addr;
 	ifr = (struct ifreq *)addr;
@@ -1836,8 +1862,10 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 
 				TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list) {
 					if (vr != sc &&
-					    vr->sc_vhid == carpr.carpr_vhid)
+					    vr->sc_vhid == carpr.carpr_vhid) {
+						carp_reltok();
 						return EEXIST;
+					}
 				}
 			}
 			sc->sc_vhid = carpr.carpr_vhid;
@@ -1925,6 +1953,8 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 		break;
 	}
 	carp_hmac_prepare(sc);
+
+	carp_reltok();
 	return error;
 }
 
@@ -1988,6 +2018,8 @@ carp_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *sa,
 	struct carp_softc *sc;
 	struct ifnet *carp_ifp;
 	struct ether_header *eh;
+
+	ASSERT_LWKT_TOKEN_HELD(&carp_tok);
 
 	if (!sa)
 		return (0);
@@ -2063,7 +2095,9 @@ carp_group_demote_adj(struct ifnet *ifp, int adj)
 {
 	struct ifg_list	*ifgl;
 	int *dm;
-	
+
+	carp_gettok();
+
 	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next) {
 		if (!strcmp(ifgl->ifgl_group->ifg_group, IFG_ALL))
 			continue;
@@ -2079,6 +2113,8 @@ carp_group_demote_adj(struct ifnet *ifp, int adj)
 		CARP_LOG("%s demoted group %s to %d", ifp->if_xname,
                     ifgl->ifgl_group->ifg_group, *dm);
 	}
+
+	carp_reltok();
 }
 
 void
@@ -2087,8 +2123,12 @@ carp_carpdev_state(void *v)
 	struct carp_if *cif = v;
 	struct carp_softc *sc;
 
+	carp_gettok();
+
 	TAILQ_FOREACH(sc, &cif->vhif_vrs, sc_list)
 		carp_sc_state(sc);
+
+	carp_reltok();
 }
 
 static void
@@ -2389,8 +2429,10 @@ carp_ifaddr(void *arg __unused, struct ifnet *ifp,
 {
 	struct carp_softc *sc;
 
+	carp_gettok();
+
 	if (ifa->ifa_addr->sa_family != AF_INET)
-		return;
+		goto back;
 
 	if (ifp->if_type == IFT_CARP) {
 		/*
@@ -2409,16 +2451,15 @@ carp_ifaddr(void *arg __unused, struct ifnet *ifp,
 			carp_del_addr(ifp->if_softc, ifa);
 			break;
 		}
-		return;
+		goto back;
 	}
 
 	/*
 	 * Address is changed on non-carp(4) interface
 	 */
 	if ((ifp->if_flags & IFF_MULTICAST) == 0)
-		return;
+		goto back;
 
-	crit_enter();
 	LIST_FOREACH(sc, &carpif_list, sc_next) {
 		if (sc->sc_carpdev != NULL && sc->sc_carpdev != ifp) {
 			/* Not the parent iface; skip */
@@ -2488,7 +2529,21 @@ carp_ifaddr(void *arg __unused, struct ifnet *ifp,
 			break;
 		}
 	}
-	crit_exit();
+
+back:
+	carp_reltok();
+}
+
+void
+carp_gettok(void)
+{
+	lwkt_gettoken(&carp_tok);
+}
+
+void
+carp_reltok(void)
+{
+	lwkt_reltoken(&carp_tok);
 }
 
 static int

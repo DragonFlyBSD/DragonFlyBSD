@@ -871,14 +871,14 @@ in_arpinput(struct mbuf *m)
 	myaddr.s_addr = INADDR_ANY;
 #ifdef CARP
 	if (ifp->if_carp != NULL) {
-		get_mplock();
+		carp_gettok();
 		if (ifp->if_carp != NULL &&
 		    carp_iamatch(ifp->if_carp, &itaddr, &isaddr, &enaddr)) {
-			rel_mplock();
+			carp_reltok();
 			myaddr = itaddr;
 			goto match;
 		}
-		rel_mplock();
+		carp_reltok();
 	}
 #endif
 

@@ -180,6 +180,9 @@ int		 carp_iamatch(const void *, const struct in_addr *,
 struct ifaddr	*carp_iamatch6(void *, struct in6_addr *);
 void		*carp_macmatch6(void *, struct mbuf *, const struct in6_addr *);
 int		 carp_forus(const void *, const void *);
+
+void		 carp_gettok(void);
+void		 carp_reltok(void);
 #endif /* _KERNEL */
 
 #endif /* _IP_CARP_H */

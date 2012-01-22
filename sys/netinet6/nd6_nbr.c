@@ -220,10 +220,14 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 	 */
 	/* (1) and (3) check. */
 #ifdef CARP
-       if (ifp->if_carp)
-               ifa = carp_iamatch6(ifp->if_carp, &taddr6);
-       if (!ifa)
-               ifa = (struct ifaddr *)in6ifa_ifpwithaddr(ifp, &taddr6);
+	if (ifp->if_carp) {
+		carp_gettok();
+		if (ifp->if_carp)
+			ifa = carp_iamatch6(ifp->if_carp, &taddr6);
+		carp_reltok();
+	}
+	if (!ifa)
+		ifa = (struct ifaddr *)in6ifa_ifpwithaddr(ifp, &taddr6);
 #else
 	ifa = (struct ifaddr *)in6ifa_ifpwithaddr(ifp, &taddr6);
 #endif
@@ -930,8 +934,14 @@ nd6_na_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 		 */
 		if (sdl0 == NULL) {
 #ifdef CARP
-			if (ifp->if_carp)
-				mac = carp_macmatch6(ifp->if_carp, m, taddr6);
+			if (ifp->if_carp) {
+				carp_gettok();
+				if (ifp->if_carp) {
+					mac = carp_macmatch6(ifp->if_carp, m,
+					    taddr6);
+				}
+				carp_reltok();
+			}
 			if (mac == NULL)
 				mac = nd6_ifptomac(ifp);
 #else

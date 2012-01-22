@@ -335,14 +335,14 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 #ifdef CARP
 	if (ifp->if_carp) {
 		/*
-		 * Hold BGL and recheck ifp->if_carp
+		 * Hold CARP token and recheck ifp->if_carp
 		 */
-		get_mplock();
+		carp_gettok();
 		if (ifp->if_carp && (error = carp_output(ifp, m, dst, NULL))) {
-			rel_mplock();
+			carp_reltok();
 			goto bad;
 		}
-		rel_mplock();
+		carp_reltok();
 	}
 #endif
  
@@ -1019,14 +1019,14 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 	 */
 	if (ifp->if_carp) {
 		/*
-		 * Hold BGL and recheck ifp->if_carp
+		 * Hold CARP token and recheck ifp->if_carp
 		 */
-		get_mplock();
+		carp_gettok();
 		if (ifp->if_carp && carp_forus(ifp->if_carp, eh->ether_dhost)) {
-			rel_mplock();
+			carp_reltok();
 			goto post_stats;
 		}
-		rel_mplock();
+		carp_reltok();
 	}
 #endif
 
