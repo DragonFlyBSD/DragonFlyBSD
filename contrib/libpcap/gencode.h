@@ -18,7 +18,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * @(#) $Header: /tcpdump/master/libpcap/gencode.h,v 1.70.2.1 2007/11/18 02:04:55 guy Exp $ (LBL)
+ * @(#) $Header: /tcpdump/master/libpcap/gencode.h,v 1.71 2007-11-18 02:03:52 guy Exp $ (LBL)
  */
 
 /*
@@ -126,6 +126,8 @@
 
 #define Q_RADIO		40
 
+#define Q_CARP		41
+
 /* Directional qualifiers. */
 
 #define Q_SRC		1
@@ -136,6 +138,8 @@
 #define Q_ADDR2		6
 #define Q_ADDR3		7
 #define Q_ADDR4		8
+#define Q_RA		9
+#define Q_TA		10
 
 #define Q_DEFAULT	0
 #define Q_UNDEF		255
