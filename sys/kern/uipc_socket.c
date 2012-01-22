@@ -142,7 +142,7 @@ int use_soaccept_pred_fast = 1;
 SYSCTL_INT(_kern_ipc, OID_AUTO, soaccept_pred_fast, CTLFLAG_RW,
     &use_soaccept_pred_fast, 0, "Fast socket accept predication");
 
-int use_sendfile_async = 1;
+int use_sendfile_async = 0;
 SYSCTL_INT(_kern_ipc, OID_AUTO, sendfile_async, CTLFLAG_RW,
     &use_sendfile_async, 0, "sendfile uses asynchronized pru_send");
 
