@@ -142,7 +142,7 @@ int use_soaccept_pred_fast = 1;
 SYSCTL_INT(_kern_ipc, OID_AUTO, soaccept_pred_fast, CTLFLAG_RW,
     &use_soaccept_pred_fast, 0, "Fast socket accept predication");
 
-int use_sendfile_async = 0;
+int use_sendfile_async = 1;
 SYSCTL_INT(_kern_ipc, OID_AUTO, sendfile_async, CTLFLAG_RW,
     &use_sendfile_async, 0, "sendfile uses asynchronized pru_send");
 
@@ -1033,7 +1033,7 @@ restart:
 		if (allatonce && resid > so->so_snd.ssb_hiwat)
 			gotoerr(EMSGSIZE);
 
-		space = ssb_space(&so->so_snd);
+		space = ssb_space_prealloc(&so->so_snd);
 		if (flags & MSG_OOB)
 			space += 1024;
 		if ((space < 0 || (size_t)space < resid) && !allatonce &&
@@ -1107,6 +1107,8 @@ restart:
 		     * here, but there are probably other places that this
 		     * also happens.  We must rethink this.
 		     */
+		    for (m = top; m; m = m->m_next)
+			    ssb_preallocstream(&so->so_snd, m);
 		    if (!async) {
 			    error = so_pru_send(so, pru_flags, top,
 			        NULL, NULL, td);

@@ -52,6 +52,8 @@
 struct sockbuf {
 	u_long	sb_cc;		/* actual chars in buffer */
 	u_long	sb_mbcnt;	/* chars of mbufs used */
+	u_long	sb_cc_prealloc;
+	u_long	sb_mbcnt_prealloc;
 	u_long	sb_climit;	/* data limit when used for I/O */
 	struct	mbuf *sb_mb;	/* the mbuf chain */
 	struct	mbuf *sb_lastmbuf;	/* last mbuf in sb_mb */
@@ -64,6 +66,11 @@ struct sockbuf {
 #endif
 
 #ifdef _KERNEL
+
+#include <machine/atomic.h>
+#ifndef _SYS_MBUF_H_
+#include <sys/mbuf.h>
+#endif
 
 /*
  * Macros for sockets and socket buffering.
@@ -83,12 +90,30 @@ struct sockbuf {
 		(sb)->sb_mbcnt += (m)->m_ext.ext_size; \
 }
 
+/* adjust counters in sb reflecting allocation of m */
+#define	sbprealloc(sb, m) { \
+	u_long __mbcnt_sz; \
+ \
+	atomic_add_long(&((sb)->sb_cc_prealloc), (m)->m_len); \
+ \
+	__mbcnt_sz = MSIZE; \
+	if ((m)->m_flags & M_EXT) \
+		__mbcnt_sz += (m)->m_ext.ext_size; \
+	atomic_add_long(&((sb)->sb_mbcnt_prealloc), __mbcnt_sz); \
+}
+
 /* adjust counters in sb reflecting freeing of m */
 #define	sbfree(sb, m) { \
+	u_long __mbcnt_sz; \
+ \
 	(sb)->sb_cc -= (m)->m_len; \
-	(sb)->sb_mbcnt -= MSIZE; \
+	atomic_subtract_long(&((sb)->sb_cc_prealloc), (m)->m_len); \
+ \
+	__mbcnt_sz = MSIZE; \
 	if ((m)->m_flags & M_EXT) \
-		(sb)->sb_mbcnt -= (m)->m_ext.ext_size; \
+		__mbcnt_sz += (m)->m_ext.ext_size; \
+	(sb)->sb_mbcnt -= __mbcnt_sz; \
+	atomic_subtract_long(&((sb)->sb_mbcnt_prealloc), __mbcnt_sz); \
 }
 
 static __inline void
@@ -96,6 +121,8 @@ sbinit(struct sockbuf *sb, u_long climit)
 {
 	sb->sb_cc = 0;
 	sb->sb_mbcnt = 0;
+	sb->sb_cc_prealloc = 0;
+	sb->sb_mbcnt_prealloc = 0;
 	sb->sb_climit = climit;
 	sb->sb_mb = NULL;
 	sb->sb_lastmbuf = NULL;

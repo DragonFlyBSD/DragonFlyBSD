@@ -379,11 +379,23 @@ sbcompress(struct sockbuf *sb, struct mbuf *m, struct mbuf *tailm)
 		    m->m_len <= MCLBYTES / 4 && /* XXX: Don't copy too much */
 		    m->m_len <= M_TRAILINGSPACE(tailm) &&
 		    tailm->m_type == m->m_type) {
+			u_long mbcnt_sz;
+
 			bcopy(mtod(m, caddr_t),
 			      mtod(tailm, caddr_t) + tailm->m_len,
 			      (unsigned)m->m_len);
 			tailm->m_len += m->m_len;
+
 			sb->sb_cc += m->m_len;		/* update sb counter */
+
+			/*
+			 * Fix the wrongly updated mbcnt_prealloc
+			 */
+			mbcnt_sz = MSIZE;
+			if (m->m_flags & M_EXT)
+				mbcnt_sz += m->m_ext.ext_size;
+			atomic_subtract_long(&sb->sb_mbcnt_prealloc, mbcnt_sz);
+
 			o = m->m_next;
 			m->m_next = free_chain;
 			free_chain = m;
@@ -473,6 +485,7 @@ sbdrop(struct sockbuf *sb, int len)
 			m->m_len -= len;
 			m->m_data += len;
 			sb->sb_cc -= len;
+			atomic_subtract_long(&sb->sb_cc_prealloc, len);
 			break;
 		}
 		len -= m->m_len;

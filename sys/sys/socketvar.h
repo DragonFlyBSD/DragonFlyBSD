@@ -83,6 +83,8 @@ struct signalsockbuf {
 #define ssb_cc		sb.sb_cc	/* commonly used fields */
 #define ssb_mb		sb.sb_mb	/* commonly used fields */
 #define ssb_mbcnt	sb.sb_mbcnt	/* commonly used fields */
+#define ssb_cc_prealloc	sb.sb_cc_prealloc
+#define ssb_mbcnt_prealloc sb.sb_mbcnt_prealloc
 
 #define	SSB_LOCK	0x0001		/* lock on data queue */
 #define	SSB_WANT	0x0002		/* someone is waiting to lock */
@@ -274,6 +276,39 @@ ssb_space(struct signalsockbuf *ssb)
 	bleft = ssb->ssb_hiwat - ssb->ssb_cc;
 	mleft = ssb->ssb_mbmax - ssb->ssb_mbcnt;
 	return((bleft < mleft) ? bleft : mleft);
+}
+
+static __inline long
+ssb_space_prealloc(struct signalsockbuf *ssb)
+{
+	long bleft, bleft_prealloc;
+	long mleft, mleft_prealloc;
+
+	if (ssb->ssb_flags & SSB_STOP)
+		return(0);
+
+	bleft = ssb->ssb_hiwat - ssb->ssb_cc;
+	bleft_prealloc = ssb->ssb_hiwat - ssb->ssb_cc_prealloc;
+	if (bleft_prealloc < bleft)
+		bleft = bleft_prealloc;
+
+	mleft = ssb->ssb_mbmax - ssb->ssb_mbcnt;
+	mleft_prealloc = ssb->ssb_mbmax - ssb->ssb_mbcnt_prealloc;
+	if (mleft_prealloc < mleft)
+		mleft = mleft_prealloc;
+
+	return((bleft < mleft) ? bleft : mleft);
+}
+
+/*
+ * NOTE: Only works w/ later ssb_appendstream() on m
+ */
+static __inline void
+ssb_preallocstream(struct signalsockbuf *ssb, struct mbuf *m)
+{
+	if (m->m_len == 0)
+		return;
+	sbprealloc(&ssb->sb, m);
 }
 
 #endif
