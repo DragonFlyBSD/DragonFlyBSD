@@ -16,7 +16,6 @@
  *
  * From Id: crontab.c,v 2.13 1994/01/17 03:20:37 vixie Exp
  * $FreeBSD: src/usr.sbin/cron/crontab/crontab.c,v 1.12.2.4 2001/06/16 03:18:37 peter Exp $
- * $DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* crontab - install and manage per-user crontab files
@@ -43,7 +42,7 @@
 #endif
 
 
-#define NHEADER_LINES 3
+#define NHEADER_LINES 2
 
 
 enum opt_t	{ opt_unknown, opt_list, opt_delete, opt_edit, opt_replace };
