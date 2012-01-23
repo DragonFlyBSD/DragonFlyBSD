@@ -22,12 +22,26 @@
 
 #ifndef lint
 static const char rcsid[] _U_ =
-    "@(#) $Header: /tcpdump/master/libpcap/scanner.l,v 1.110.2.2 2008/02/06 10:21:47 guy Exp $ (LBL)";
+    "@(#) $Header: /tcpdump/master/libpcap/scanner.l,v 1.112 2008-02-06 10:21:30 guy Exp $ (LBL)";
 #endif
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#ifdef WIN32
+#include <pcap-stdinc.h>
+#else /* WIN32 */
+#if HAVE_INTTYPES_H
+#include <inttypes.h>
+#elif HAVE_STDINT_H
+#include <stdint.h>
+#endif
+#ifdef HAVE_SYS_BITYPES_H
+#include <sys/bitypes.h>
+#endif
+#include <sys/types.h>
+#endif /* WIN32 */
 
 #include <ctype.h>
 #include <string.h>
@@ -40,7 +54,7 @@ static const char rcsid[] _U_ =
 #include <pcap-stdinc.h>
 
 #ifdef __MINGW32__
-#include "IP6_misc.h"
+#include "ip6_misc.h"
 #endif
 #else /* WIN32 */
 #include <sys/socket.h>	/* for "struct sockaddr" in "struct addrinfo" */
@@ -63,11 +77,12 @@ static int stoi(char *);
 static inline int xdtoi(int);
 
 #ifdef FLEX_SCANNER
+#define YY_NO_INPUT
 #define YY_NO_UNPUT
 #define YY_NO_INPUT
 static YY_BUFFER_STATE in_buffer;
 #else
-static char *in_buffer;
+static const char *in_buffer;
 
 #undef getc
 #define getc(fp)  (*in_buffer == 0 ? EOF : *in_buffer++)
@@ -189,6 +204,7 @@ igmp		return IGMP;
 igrp		return IGRP;
 pim		return PIM;
 vrrp		return VRRP;
+carp		return CARP;
 radio		return RADIO;
 
 ip6		{
@@ -260,6 +276,8 @@ address1|addr1	return ADDR1;
 address2|addr2	return ADDR2;
 address3|addr3	return ADDR3;
 address4|addr4	return ADDR4;
+ra		return RA;
+ta		return TA;
 
 less		return LESS;
 greater		return GREATER;
@@ -335,6 +353,7 @@ ${B}			{ yylval.e = pcap_ether_aton(((char *)yytext)+1);
 			  if (getaddrinfo(yytext, NULL, &hints, &res))
 				bpf_error("bogus IPv6 address %s", yytext);
 			  else {
+				freeaddrinfo(res);
 				yylval.s = sdup((char *)yytext); return HID6;
 			  }
 #else

@@ -20,7 +20,7 @@
  */
 #ifndef lint
 static const char rcsid[] _U_ =
-    "@(#) $Header: /tcpdump/master/libpcap/pcap-bpf.c,v 1.99.2.17 2008-09-16 18:43:02 guy Exp $ (LBL)";
+    "@(#) $Header: /tcpdump/master/libpcap/pcap-bpf.c,v 1.116 2008-09-16 18:42:29 guy Exp $ (LBL)";
 #endif
 
 #ifdef HAVE_CONFIG_H
@@ -31,11 +31,25 @@ static const char rcsid[] _U_ =
 #ifdef HAVE_ZEROCOPY_BPF
 #include <sys/mman.h>
 #endif
-#include <sys/time.h>
-#include <sys/timeb.h>
 #include <sys/socket.h>
-#include <sys/file.h>
+#include <time.h>
+/*
+ * <net/bpf.h> defines ioctls, but doesn't include <sys/ioccom.h>.
+ *
+ * We include <sys/ioctl.h> as it might be necessary to declare ioctl();
+ * at least on *BSD and Mac OS X, it also defines various SIOC ioctls -
+ * we could include <sys/sockio.h>, but if we're already including
+ * <sys/ioctl.h>, which includes <sys/sockio.h> on those platforms,
+ * there's not much point in doing so.
+ *
+ * If we have <sys/ioccom.h>, we include it as well, to handle systems
+ * such as Solaris which don't arrange to include <sys/ioccom.h> if you
+ * include <sys/ioctl.h>
+ */
 #include <sys/ioctl.h>
+#ifdef HAVE_SYS_IOCCOM_H
+#include <sys/ioccom.h>
+#endif
 #include <sys/utsname.h>
 
 #ifdef HAVE_ZEROCOPY_BPF
@@ -85,6 +99,8 @@ static const char rcsid[] _U_ =
 static int bpfloadedflag = 0;
 static int odmlockid = 0;
 
+static int bpf_load(char *errbuf);
+
 #else /* _AIX */
 
 #include <net/bpf.h>
@@ -92,6 +108,7 @@ static int odmlockid = 0;
 #endif /* _AIX */
 
 #include <ctype.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <netdb.h>
 #include <stdio.h>
@@ -108,6 +125,10 @@ static int odmlockid = 0;
 #ifdef HAVE_DAG_API
 #include "pcap-dag.h"
 #endif /* HAVE_DAG_API */
+
+#ifdef HAVE_SNF_API
+#include "pcap-snf.h"
+#endif /* HAVE_SNF_API */
 
 #ifdef HAVE_OS_PROTO_H
 #include "os-proto.h"
@@ -165,62 +186,67 @@ static int pcap_setfilter_bpf(pcap_t *p, struct bpf_program *fp);
 static int pcap_setdirection_bpf(pcap_t *, pcap_direction_t);
 static int pcap_set_datalink_bpf(pcap_t *p, int dlt);
 
-#ifdef HAVE_ZEROCOPY_BPF
 /*
- * For zerocopy bpf, we need to override the setnonblock/getnonblock routines
- * so we don't call select(2) if the pcap handle is in non-blocking mode.  We
- * preserve the timeout supplied by pcap_open functions to make sure it
- * does not get clobbered if the pcap handle moves between blocking and non-
- * blocking mode.
+ * For zerocopy bpf, the setnonblock/getnonblock routines need to modify
+ * p->md.timeout so we don't call select(2) if the pcap handle is in non-
+ * blocking mode.  We preserve the timeout supplied by pcap_open functions
+ * to make sure it does not get clobbered if the pcap handle moves between
+ * blocking and non-blocking mode.
  */
 static int
-pcap_getnonblock_zbuf(pcap_t *p, char *errbuf)
+pcap_getnonblock_bpf(pcap_t *p, char *errbuf)
 { 
-	/*
-	 * Use a negative value for the timeout to represent that the
-	 * pcap handle is in non-blocking mode.
-	 */
-	return (p->md.timeout < 0);
+#ifdef HAVE_ZEROCOPY_BPF
+	if (p->md.zerocopy) {
+		/*
+		 * Use a negative value for the timeout to represent that the
+		 * pcap handle is in non-blocking mode.
+		 */
+		return (p->md.timeout < 0);
+	}
+#endif
+	return (pcap_getnonblock_fd(p, errbuf));
 }
 
 static int
-pcap_setnonblock_zbuf(pcap_t *p, int nonblock, char *errbuf)
+pcap_setnonblock_bpf(pcap_t *p, int nonblock, char *errbuf)
 {   
-	/*
-	 * Map each value to the corresponding 2's complement, to
-	 * preserve the timeout value provided with pcap_set_timeout.
-	 * (from pcap-linux.c).
-	 */
-	if (nonblock) {
-		if (p->md.timeout > 0)
-			p->md.timeout = p->md.timeout * -1 - 1;
-	} else
-		if (p->md.timeout < 0)
-			p->md.timeout = (p->md.timeout + 1) * -1;
-	return (0);
+#ifdef HAVE_ZEROCOPY_BPF
+	if (p->md.zerocopy) {
+		/*
+		 * Map each value to the corresponding 2's complement, to
+		 * preserve the timeout value provided with pcap_set_timeout.
+		 * (from pcap-linux.c).
+		 */
+		if (nonblock) {
+			if (p->md.timeout >= 0) {
+				/*
+				 * Timeout is non-negative, so we're not
+				 * currently in non-blocking mode; set it
+				 * to the 2's complement, to make it
+				 * negative, as an indication that we're
+				 * in non-blocking mode.
+				 */
+				p->md.timeout = p->md.timeout * -1 - 1;
+			}
+		} else {
+			if (p->md.timeout < 0) {
+				/*
+				 * Timeout is negative, so we're currently
+				 * in blocking mode; reverse the previous
+				 * operation, to make the timeout non-negative
+				 * again.
+				 */
+				p->md.timeout = (p->md.timeout + 1) * -1;
+			}
+		}
+		return (0);
+	}
+#endif
+	return (pcap_setnonblock_fd(p, nonblock, errbuf));
 }
 
-/*
- * Zero-copy specific close method.  Un-map the shared buffers then call
- * pcap_cleanup_live_common.
- */
-static void
-pcap_cleanup_zbuf(pcap_t *p)
-{
-	/*
-	 * Delete the mappings.  Note that p->buffer gets initialized to one
-	 * of the mmapped regions in this case, so do not try and free it
-	 * directly; null it out so that pcap_cleanup_live_common() doesn't
-	 * try to free it.
-	 */
-	if (p->md.zbuf1 != MAP_FAILED && p->md.zbuf1 != NULL)
-		(void) munmap(p->md.zbuf1, p->md.zbufsize);
-	if (p->md.zbuf2 != MAP_FAILED && p->md.zbuf2 != NULL)
-		(void) munmap(p->md.zbuf2, p->md.zbufsize);
-	p->buffer = NULL;
-	pcap_cleanup_live_common(p);
-}
-
+#ifdef HAVE_ZEROCOPY_BPF
 /*
  * Zero-copy BPF buffer routines to check for and acknowledge BPF data in
  * shared memory buffers.
@@ -374,7 +400,7 @@ pcap_ack_zbuf(pcap_t *p)
 	p->buffer = NULL;
 	return (0);
 }
-#endif
+#endif /* HAVE_ZEROCOPY_BPF */
 
 pcap_t *
 pcap_create(const char *device, char *ebuf)
@@ -385,6 +411,10 @@ pcap_create(const char *device, char *ebuf)
 	if (strstr(device, "dag"))
 		return (dag_create(device, ebuf));
 #endif /* HAVE_DAG_API */
+#ifdef HAVE_SNF_API
+	if (strstr(device, "snf"))
+		return (snf_create(device, ebuf));
+#endif /* HAVE_SNF_API */
 
 	p = pcap_create_common(device, ebuf);
 	if (p == NULL)
@@ -395,6 +425,10 @@ pcap_create(const char *device, char *ebuf)
 	return (p);
 }
 
+/*
+ * On success, returns a file descriptor for a BPF device.
+ * On failure, returns a PCAP_ERROR_ value, and sets p->errbuf.
+ */
 static int
 bpf_open(pcap_t *p)
 {
@@ -455,12 +489,52 @@ bpf_open(pcap_t *p)
 	 * XXX better message for all minors used
 	 */
 	if (fd < 0) {
-		if (errno == EACCES)
-			fd = PCAP_ERROR_PERM_DENIED;
-		else
+		switch (errno) {
+
+		case ENOENT:
 			fd = PCAP_ERROR;
-		snprintf(p->errbuf, PCAP_ERRBUF_SIZE, "(no devices found) %s: %s",
-		    device, pcap_strerror(errno));
+			if (n == 1) {
+				/*
+				 * /dev/bpf0 doesn't exist, which
+				 * means we probably have no BPF
+				 * devices.
+				 */
+				snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+				    "(there are no BPF devices)");
+			} else {
+				/*
+				 * We got EBUSY on at least one
+				 * BPF device, so we have BPF
+				 * devices, but all the ones
+				 * that exist are busy.
+				 */
+				snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+				    "(all BPF devices are busy)");
+			}
+			break;
+
+		case EACCES:
+			/*
+			 * Got EACCES on the last device we tried,
+			 * and EBUSY on all devices before that,
+			 * if any.
+			 */
+			fd = PCAP_ERROR_PERM_DENIED;
+			snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+			    "(cannot open BPF device) %s: %s", device,
+			    pcap_strerror(errno));
+			break;
+
+		default:
+			/*
+			 * Some other problem.
+			 */
+			fd = PCAP_ERROR;
+			snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+			    "(cannot open BPF device) %s: %s", device,
+			    pcap_strerror(errno));
+			break;
+		}
 	}
 #endif
 
@@ -506,11 +580,20 @@ get_dlt_list(int fd, int v, struct bpf_dltlist *bdlp, char *ebuf)
 		 * right thing to do, but I suspect it is - Ethernet <->
 		 * 802.11 bridges would probably badly mishandle frames
 		 * that don't have Ethernet headers).
+		 *
+		 * On Solaris with BPF, Ethernet devices also offer
+		 * DLT_IPNET, so we, if DLT_IPNET is defined, we don't
+		 * treat it as an indication that the device isn't an
+		 * Ethernet.
 		 */
 		if (v == DLT_EN10MB) {
 			is_ethernet = 1;
 			for (i = 0; i < bdlp->bfl_len; i++) {
-				if (bdlp->bfl_list[i] != DLT_EN10MB) {
+				if (bdlp->bfl_list[i] != DLT_EN10MB
+#ifdef DLT_IPNET
+				    && bdlp->bfl_list[i] != DLT_IPNET
+#endif
+				    ) {
 					is_ethernet = 0;
 					break;
 				}
@@ -624,14 +707,23 @@ pcap_can_set_rfmon_bpf(pcap_t *p)
 	 */
 	fd = bpf_open(p);
 	if (fd < 0)
-		return (fd);
+		return (fd);	/* fd is the appropriate error code */
 
 	/*
 	 * Now bind to the device.
 	 */
 	(void)strncpy(ifr.ifr_name, p->opt.source, sizeof(ifr.ifr_name));
 	if (ioctl(fd, BIOCSETIF, (caddr_t)&ifr) < 0) {
-		if (errno == ENETDOWN) {
+		switch (errno) {
+
+		case ENXIO:
+			/*
+			 * There's no such device.
+			 */
+			close(fd);
+			return (PCAP_ERROR_NO_SUCH_DEVICE);
+
+		case ENETDOWN:
 			/*
 			 * Return a "network down" indication, so that
 			 * the application can report that rather than
@@ -641,7 +733,8 @@ pcap_can_set_rfmon_bpf(pcap_t *p)
 			 */
 			close(fd);
 			return (PCAP_ERROR_IFACE_NOT_UP);
-		} else {
+
+		default:
 			snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
 			    "BIOCSETIF: %s: %s",
 			    p->opt.source, pcap_strerror(errno));
@@ -712,6 +805,7 @@ pcap_stats_bpf(pcap_t *p, struct pcap_stat *ps)
 
 	ps->ps_recv = s.bs_recv;
 	ps->ps_drop = s.bs_drop;
+	ps->ps_ifdrop = 0;
 	return (0);
 }
 
@@ -801,7 +895,22 @@ pcap_read_bpf(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
 
 			case EWOULDBLOCK:
 				return (0);
-#if defined(sun) && !defined(BSD)
+
+			case ENXIO:
+				/*
+				 * The device on which we're capturing
+				 * went away.
+				 *
+				 * XXX - we should really return
+				 * PCAP_ERROR_IFACE_NOT_UP, but
+				 * pcap_dispatch() etc. aren't
+				 * defined to retur that.
+				 */
+				snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+				    "The interface went down");
+				return (PCAP_ERROR);
+
+#if defined(sun) && !defined(BSD) && !defined(__svr4__) && !defined(__SVR4)
 			/*
 			 * Due to a SunOS bug, after 2^31 bytes, the kernel
 			 * file offset overflows and read fails with EINVAL.
@@ -846,14 +955,28 @@ pcap_read_bpf(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
 		 * processed so far.
 		 */
 		if (p->break_loop) {
+			p->bp = bp;
+			p->cc = ep - bp;
+			/*
+			 * ep is set based on the return value of read(),
+			 * but read() from a BPF device doesn't necessarily
+			 * return a value that's a multiple of the alignment
+			 * value for BPF_WORDALIGN().  However, whenever we
+			 * increment bp, we round up the increment value by
+			 * a value rounded up by BPF_WORDALIGN(), so we
+			 * could increment bp past ep after processing the
+			 * last packet in the buffer.
+			 *
+			 * We treat ep < bp as an indication that this
+			 * happened, and just set p->cc to 0.
+			 */
+			if (p->cc < 0)
+				p->cc = 0;
 			if (n == 0) {
 				p->break_loop = 0;
 				return (PCAP_ERROR_BREAK);
-			} else {
-				p->bp = bp;
-				p->cc = ep - bp;
+			} else
 				return (n);
-			}
 		}
 
 		caplen = bhp->bh_caplen;
@@ -905,6 +1028,11 @@ pcap_read_bpf(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
 			if (++n >= cnt && cnt > 0) {
 				p->bp = bp;
 				p->cc = ep - bp;
+				/*
+				 * See comment above about p->cc < 0.
+				 */
+				if (p->cc < 0)
+					p->cc = 0;
 				return (n);
 			}
 		} else {
@@ -989,6 +1117,7 @@ bpf_odminit(char *errbuf)
 		snprintf(errbuf, PCAP_ERRBUF_SIZE,
 		    "bpf_load: odm_lock of /etc/objrepos/config_lock failed: %s",
 		    errstr);
+		(void)odm_terminate();
 		return (PCAP_ERROR);
 	}
 
@@ -1001,20 +1130,24 @@ bpf_odmcleanup(char *errbuf)
 	char *errstr;
 
 	if (odm_unlock(odmlockid) == -1) {
-		if (odm_err_msg(odmerrno, &errstr) == -1)
-			errstr = "Unknown error";
-		snprintf(errbuf, PCAP_ERRBUF_SIZE,
-		    "bpf_load: odm_unlock failed: %s",
-		    errstr);
+		if (errbuf != NULL) {
+			if (odm_err_msg(odmerrno, &errstr) == -1)
+				errstr = "Unknown error";
+			snprintf(errbuf, PCAP_ERRBUF_SIZE,
+			    "bpf_load: odm_unlock failed: %s",
+			    errstr);
+		}
 		return (PCAP_ERROR);
 	}
 
 	if (odm_terminate() == -1) {
-		if (odm_err_msg(odmerrno, &errstr) == -1)
-			errstr = "Unknown error";
-		snprintf(errbuf, PCAP_ERRBUF_SIZE,
-		    "bpf_load: odm_terminate failed: %s",
-		    errstr);
+		if (errbuf != NULL) {
+			if (odm_err_msg(odmerrno, &errstr) == -1)
+				errstr = "Unknown error";
+			snprintf(errbuf, PCAP_ERRBUF_SIZE,
+			    "bpf_load: odm_terminate failed: %s",
+			    errstr);
+		}
 		return (PCAP_ERROR);
 	}
 
@@ -1047,6 +1180,7 @@ bpf_load(char *errbuf)
 	if (major == -1) {
 		snprintf(errbuf, PCAP_ERRBUF_SIZE,
 		    "bpf_load: genmajor failed: %s", pcap_strerror(errno));
+		(void)bpf_odmcleanup(NULL);
 		return (PCAP_ERROR);
 	}
 
@@ -1057,6 +1191,7 @@ bpf_load(char *errbuf)
 			snprintf(errbuf, PCAP_ERRBUF_SIZE,
 			    "bpf_load: genminor failed: %s",
 			    pcap_strerror(errno));
+			(void)bpf_odmcleanup(NULL);
 			return (PCAP_ERROR);
 		}
 	}
@@ -1133,13 +1268,13 @@ pcap_cleanup_bpf(pcap_t *p)
 	struct ifreq ifr;
 #endif
 
-	if (p->md.must_clear != 0) {
+	if (p->md.must_do_on_close != 0) {
 		/*
 		 * There's something we have to do when closing this
 		 * pcap_t.
 		 */
 #ifdef HAVE_BSD_IEEE80211
-		if (p->md.must_clear & MUST_CLEAR_RFMON) {
+		if (p->md.must_do_on_close & MUST_CLEAR_RFMON) {
 			/*
 			 * We put the interface into rfmon mode;
 			 * take it out of rfmon mode.
@@ -1194,19 +1329,23 @@ pcap_cleanup_bpf(pcap_t *p)
 		 * have to take the interface out of some mode.
 		 */
 		pcap_remove_from_pcaps_to_close(p);
-		p->md.must_clear = 0;
+		p->md.must_do_on_close = 0;
 	}
 
 #ifdef HAVE_ZEROCOPY_BPF
-	/*
-	 * In zero-copy mode, p->buffer is just a pointer into one of the two
-	 * memory-mapped buffers, so no need to free it.
-	 */
 	if (p->md.zerocopy) {
+		/*
+		 * Delete the mappings.  Note that p->buffer gets
+		 * initialized to one of the mmapped regions in
+		 * this case, so do not try and free it directly;
+		 * null it out so that pcap_cleanup_live_common()
+		 * doesn't try to free it.
+		 */
 		if (p->md.zbuf1 != MAP_FAILED && p->md.zbuf1 != NULL)
-			munmap(p->md.zbuf1, p->md.zbufsize);
+			(void) munmap(p->md.zbuf1, p->md.zbufsize);
 		if (p->md.zbuf2 != MAP_FAILED && p->md.zbuf2 != NULL)
-			munmap(p->md.zbuf2, p->md.zbufsize);
+			(void) munmap(p->md.zbuf2, p->md.zbufsize);
+		p->buffer = NULL;
 	}
 #endif
 	if (p->md.device != NULL) {
@@ -1251,7 +1390,9 @@ check_setif_failure(pcap_t *p, int error)
 					 * exist.
 					 */
 					err = PCAP_ERROR_NO_SUCH_DEVICE;
-					strcpy(p->errbuf, "");
+					snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+					    "SIOCGIFFLAGS on %s failed: %s",
+					    ifr.ifr_name, pcap_strerror(errno));
 				} else {
 					/*
 					 * The underlying "enN" device
@@ -1273,7 +1414,9 @@ check_setif_failure(pcap_t *p, int error)
 				 * just report "no such device".
 				 */
 				err = PCAP_ERROR_NO_SUCH_DEVICE;
-				strcpy(p->errbuf, "");
+				snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+				    "socket() failed: %s",
+				    pcap_strerror(errno));
 			}
 			return (err);
 		}
@@ -1281,7 +1424,8 @@ check_setif_failure(pcap_t *p, int error)
 		/*
 		 * No such device.
 		 */
-		strcpy(p->errbuf, "");
+		snprintf(p->errbuf, PCAP_ERRBUF_SIZE, "BIOCSETIF failed: %s",
+		    pcap_strerror(errno));
 		return (PCAP_ERROR_NO_SUCH_DEVICE);
 	} else if (errno == ENETDOWN) {
 		/*
@@ -1303,12 +1447,27 @@ check_setif_failure(pcap_t *p, int error)
 	}
 }
 
+/*
+ * Default capture buffer size.
+ * 32K isn't very much for modern machines with fast networks; we
+ * pick .5M, as that's the maximum on at least some systems with BPF.
+ */
+#define DEFAULT_BUFSIZE	524288
+
 static int
 pcap_activate_bpf(pcap_t *p)
 {
 	int status = 0;
 	int fd;
+#ifdef LIFNAMSIZ
+	struct lifreq ifr;
+	char *ifrname = ifr.lifr_name;
+	const size_t ifnamsiz = sizeof(ifr.lifr_name);
+#else
 	struct ifreq ifr;
+	char *ifrname = ifr.ifr_name;
+	const size_t ifnamsiz = sizeof(ifr.ifr_name);
+#endif
 	struct bpf_version bv;
 #ifdef __APPLE__
 	int sockfd;
@@ -1400,9 +1559,8 @@ pcap_activate_bpf(pcap_t *p)
 					 */
 					sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 					if (sockfd != -1) {
-						strlcpy(ifr.ifr_name,
-						    p->opt.source,
-						    sizeof(ifr.ifr_name));
+						strlcpy(ifrname,
+						    p->opt.source, ifnamsiz);
 						if (ioctl(sockfd, SIOCGIFFLAGS,
 						    (char *)&ifr) < 0) {
 							/*
@@ -1413,7 +1571,10 @@ pcap_activate_bpf(pcap_t *p)
 							 * exist.
 							 */
 							status = PCAP_ERROR_NO_SUCH_DEVICE;
-							strcpy(p->errbuf, "");
+							snprintf(p->errbuf,
+							    PCAP_ERRBUF_SIZE,
+							    "SIOCGIFFLAGS failed: %s",
+							    pcap_strerror(errno));
 						} else
 							status = PCAP_ERROR_RFMON_NOTSUP;
 						close(sockfd);
@@ -1424,7 +1585,10 @@ pcap_activate_bpf(pcap_t *p)
 						 * report "no such device".
 						 */
 						status = PCAP_ERROR_NO_SUCH_DEVICE;
-						strcpy(p->errbuf, "");
+						snprintf(p->errbuf,
+						    PCAP_ERRBUF_SIZE,
+						    "socket() failed: %s",
+						    pcap_strerror(errno));
 					}
 					goto bad;
 				}
@@ -1462,14 +1626,6 @@ pcap_activate_bpf(pcap_t *p)
 		p->md.zerocopy = 1;
 
 		/*
-		 * Set the cleanup and set/get nonblocking mode ops
-		 * as appropriate for zero-copy mode.
-		 */
-		p->cleanup_op = pcap_cleanup_zbuf;
-		p->setnonblock_op = pcap_setnonblock_zbuf;
-		p->getnonblock_op = pcap_getnonblock_zbuf;
-
-		/*
 		 * How to pick a buffer size: first, query the maximum buffer
 		 * size supported by zero-copy.  This also lets us quickly
 		 * determine whether the kernel generally supports zero-copy.
@@ -1491,8 +1647,8 @@ pcap_activate_bpf(pcap_t *p)
 			v = p->opt.buffer_size;
 		} else {
 			if ((ioctl(fd, BIOCGBLEN, (caddr_t)&v) < 0) ||
-			    v < 32768)
-				v = 32768;
+			    v < DEFAULT_BUFSIZE)
+				v = DEFAULT_BUFSIZE;
 		}
 #ifndef roundup
 #define roundup(x, y)   ((((x)+((y)-1))/(y))*(y))  /* to any y */
@@ -1518,7 +1674,7 @@ pcap_activate_bpf(pcap_t *p)
 			    pcap_strerror(errno));
 			goto bad;
 		}
-		(void)strncpy(ifr.ifr_name, p->opt.source, sizeof(ifr.ifr_name));
+		(void)strncpy(ifrname, p->opt.source, ifnamsiz);
 		if (ioctl(fd, BIOCSETIF, (caddr_t)&ifr) < 0) {
 			snprintf(p->errbuf, PCAP_ERRBUF_SIZE, "BIOCSETIF: %s: %s",
 			    p->opt.source, pcap_strerror(errno));
@@ -1548,9 +1704,13 @@ pcap_activate_bpf(pcap_t *p)
 			/*
 			 * Now bind to the device.
 			 */
-			(void)strncpy(ifr.ifr_name, p->opt.source,
-			    sizeof(ifr.ifr_name));
-			if (ioctl(fd, BIOCSETIF, (caddr_t)&ifr) < 0) {
+			(void)strncpy(ifrname, p->opt.source, ifnamsiz);
+#ifdef BIOCSETLIF
+			if (ioctl(fd, BIOCSETLIF, (caddr_t)&ifr) < 0)
+#else
+			if (ioctl(fd, BIOCSETIF, (caddr_t)&ifr) < 0)
+#endif
+			{
 				status = check_setif_failure(p, errno);
 				goto bad;
 			}
@@ -1558,14 +1718,15 @@ pcap_activate_bpf(pcap_t *p)
 			/*
 			 * No buffer size was explicitly specified.
 			 *
-			 * Try finding a good size for the buffer; 32768 may
-			 * be too big, so keep cutting it in half until we
-			 * find a size that works, or run out of sizes to try.
+			 * Try finding a good size for the buffer;
+			 * DEFAULT_BUFSIZE may be too big, so keep
+			 * cutting it in half until we find a size
+			 * that works, or run out of sizes to try.
 			 * If the default is larger, don't make it smaller.
 			 */
 			if ((ioctl(fd, BIOCGBLEN, (caddr_t)&v) < 0) ||
-			    v < 32768)
-				v = 32768;
+			    v < DEFAULT_BUFSIZE)
+				v = DEFAULT_BUFSIZE;
 			for ( ; v != 0; v >>= 1) {
 				/*
 				 * Ignore the return value - this is because the
@@ -1576,9 +1737,12 @@ pcap_activate_bpf(pcap_t *p)
 				 */
 				(void) ioctl(fd, BIOCSBLEN, (caddr_t)&v);
 
-				(void)strncpy(ifr.ifr_name, p->opt.source,
-				    sizeof(ifr.ifr_name));
+				(void)strncpy(ifrname, p->opt.source, ifnamsiz);
+#ifdef BIOCSETLIF
+				if (ioctl(fd, BIOCSETLIF, (caddr_t)&ifr) >= 0)
+#else
 				if (ioctl(fd, BIOCSETIF, (caddr_t)&ifr) >= 0)
+#endif
 					break;	/* that size worked; we're done */
 
 				if (errno != ENOBUFS) {
@@ -1859,16 +2023,45 @@ pcap_activate_bpf(pcap_t *p)
 		 * XXX - is this seconds/nanoseconds in AIX?
 		 * (Treating it as such doesn't fix the timeout
 		 * problem described below.)
+		 *
+		 * XXX - Mac OS X 10.6 mishandles BIOCSRTIMEOUT in
+		 * 64-bit userland - it takes, as an argument, a
+		 * "struct BPF_TIMEVAL", which has 32-bit tv_sec
+		 * and tv_usec, rather than a "struct timeval".
+		 *
+		 * If this platform defines "struct BPF_TIMEVAL",
+		 * we check whether the structure size in BIOCSRTIMEOUT
+		 * is that of a "struct timeval" and, if not, we use
+		 * a "struct BPF_TIMEVAL" rather than a "struct timeval".
+		 * (That way, if the bug is fixed in a future release,
+		 * we will still do the right thing.)
 		 */
 		struct timeval to;
-		to.tv_sec = p->md.timeout / 1000;
-		to.tv_usec = (p->md.timeout * 1000) % 1000000;
-		if (ioctl(p->fd, BIOCSRTIMEOUT, (caddr_t)&to) < 0) {
-			snprintf(p->errbuf, PCAP_ERRBUF_SIZE, "BIOCSRTIMEOUT: %s",
-			    pcap_strerror(errno));
-			status = PCAP_ERROR;
-			goto bad;
+#ifdef HAVE_STRUCT_BPF_TIMEVAL
+		struct BPF_TIMEVAL bpf_to;
+
+		if (IOCPARM_LEN(BIOCSRTIMEOUT) != sizeof(struct timeval)) {
+			bpf_to.tv_sec = p->md.timeout / 1000;
+			bpf_to.tv_usec = (p->md.timeout * 1000) % 1000000;
+			if (ioctl(p->fd, BIOCSRTIMEOUT, (caddr_t)&bpf_to) < 0) {
+				snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+				    "BIOCSRTIMEOUT: %s", pcap_strerror(errno));
+				status = PCAP_ERROR;
+				goto bad;
+			}
+		} else {
+#endif
+			to.tv_sec = p->md.timeout / 1000;
+			to.tv_usec = (p->md.timeout * 1000) % 1000000;
+			if (ioctl(p->fd, BIOCSRTIMEOUT, (caddr_t)&to) < 0) {
+				snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+				    "BIOCSRTIMEOUT: %s", pcap_strerror(errno));
+				status = PCAP_ERROR;
+				goto bad;
+			}
+#ifdef HAVE_STRUCT_BPF_TIMEVAL
 		}
+#endif
 	}
 
 #ifdef _AIX
@@ -2040,8 +2233,8 @@ pcap_activate_bpf(pcap_t *p)
 	p->setfilter_op = pcap_setfilter_bpf;
 	p->setdirection_op = pcap_setdirection_bpf;
 	p->set_datalink_op = pcap_set_datalink_bpf;
-	p->getnonblock_op = pcap_getnonblock_fd;
-	p->setnonblock_op = pcap_setnonblock_fd;
+	p->getnonblock_op = pcap_getnonblock_bpf;
+	p->setnonblock_op = pcap_setnonblock_bpf;
 	p->stats_op = pcap_stats_bpf;
 	p->cleanup_op = pcap_cleanup_bpf;
 
@@ -2058,6 +2251,10 @@ pcap_platform_finddevs(pcap_if_t **alldevsp, char *errbuf)
 	if (dag_platform_finddevs(alldevsp, errbuf) < 0)
 		return (-1);
 #endif /* HAVE_DAG_API */
+#ifdef HAVE_SNF_API
+	if (snf_platform_finddevs(alldevsp, errbuf) < 0)
+		return (-1);
+#endif /* HAVE_SNF_API */
 
 	return (0);
 }
@@ -2090,17 +2287,28 @@ monitor_mode(pcap_t *p, int set)
 		/*
 		 * Can't get the media types.
 		 */
-		if (errno == EINVAL) {
+		switch (errno) {
+
+		case ENXIO:
+			/*
+			 * There's no such device.
+			 */
+			close(sock);
+			return (PCAP_ERROR_NO_SUCH_DEVICE);
+
+		case EINVAL:
 			/*
 			 * Interface doesn't support SIOC{G,S}IFMEDIA.
 			 */
 			close(sock);
 			return (PCAP_ERROR_RFMON_NOTSUP);
+
+		default:
+			snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+			    "SIOCGIFMEDIA 1: %s", pcap_strerror(errno));
+			close(sock);
+			return (PCAP_ERROR);
 		}
-		snprintf(p->errbuf, PCAP_ERRBUF_SIZE, "SIOCGIFMEDIA 1: %s",
-		    pcap_strerror(errno));
-		close(sock);
-		return (PCAP_ERROR);
 	}
 	if (req.ifm_count == 0) {
 		/*
@@ -2192,7 +2400,7 @@ monitor_mode(pcap_t *p, int set)
 				return (PCAP_ERROR);
 			}
 
-			p->md.must_clear |= MUST_CLEAR_RFMON;
+			p->md.must_do_on_close |= MUST_CLEAR_RFMON;
 
 			/*
 			 * Add this to the list of pcaps to close when we exit.
@@ -2277,7 +2485,8 @@ find_802_11(struct bpf_dltlist *bdlp)
 
 #if defined(__APPLE__) && defined(BIOCGDLTLIST)
 /*
- * Remove DLT_EN10MB from the list of DLT_ values.
+ * Remove DLT_EN10MB from the list of DLT_ values, as we're in monitor mode,
+ * and DLT_EN10MB isn't supported in monitor mode.
  */
 static void
 remove_en(pcap_t *p)
@@ -2318,10 +2527,9 @@ remove_en(pcap_t *p)
 }
 
 /*
- * Remove DLT_EN10MB from the list of DLT_ values, and look for the
- * best 802.11 link-layer type in that list and return it.
- * Radiotap is better than anything else; 802.11 with any other radio
- * header is better than 802.11 with no radio header.
+ * Remove 802.11 link-layer types from the list of DLT_ values, as
+ * we're not in monitor mode, and those DLT_ values will switch us
+ * to monitor mode.
  */
 static void
 remove_802_11(pcap_t *p)

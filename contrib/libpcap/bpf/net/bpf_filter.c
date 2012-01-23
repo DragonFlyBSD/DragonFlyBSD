@@ -40,7 +40,7 @@
 
 #if !(defined(lint) || defined(KERNEL) || defined(_KERNEL))
 static const char rcsid[] _U_ =
-    "@(#) $Header: /tcpdump/master/libpcap/bpf/net/bpf_filter.c,v 1.45.2.1 2008/01/02 04:22:16 guy Exp $ (LBL)";
+    "@(#) $Header: /tcpdump/master/libpcap/bpf/net/bpf_filter.c,v 1.46 2008-01-02 04:16:46 guy Exp $ (LBL)";
 #endif
 
 #ifdef HAVE_CONFIG_H
@@ -52,6 +52,15 @@ static const char rcsid[] _U_ =
 #include <pcap-stdinc.h>
 
 #else /* WIN32 */
+
+#if HAVE_INTTYPES_H
+#include <inttypes.h>
+#elif HAVE_STDINT_H
+#include <stdint.h>
+#endif
+#ifdef HAVE_SYS_BITYPES_H
+#include <sys/bitypes.h>
+#endif
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -65,9 +74,9 @@ static const char rcsid[] _U_ =
 # define	m_next	b_cont
 # define	MLEN(m)	((m)->b_wptr - (m)->b_rptr)
 # define	mtod(m,t)	((t)(m)->b_rptr)
-#else
+#else /* defined(__hpux) || SOLARIS */
 # define	MLEN(m)	((m)->m_len)
-#endif
+#endif /* defined(__hpux) || SOLARIS */
 
 #endif /* WIN32 */
 
@@ -396,7 +405,18 @@ bpf_filter(pc, p, wirelen, buflen)
 			continue;
 
 		case BPF_JMP|BPF_JA:
+#if defined(KERNEL) || defined(_KERNEL)
+			/*
+			 * No backward jumps allowed.
+			 */
 			pc += pc->k;
+#else
+			/*
+			 * XXX - we currently implement "ip6 protochain"
+			 * with backward jumps, so sign-extend pc->k.
+			 */
+			pc += (bpf_int32)pc->k;
+#endif
 			continue;
 
 		case BPF_JMP|BPF_JGT|BPF_K:
@@ -599,7 +619,7 @@ bpf_validate(f, len)
 				/*
 				 * Check for constant division by 0.
 				 */
-				if (BPF_RVAL(p->code) == BPF_K && p->k == 0)
+				if (BPF_SRC(p->code) == BPF_K && p->k == 0)
 					return 0;
 				break;
 			default:
