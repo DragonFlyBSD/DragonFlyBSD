@@ -234,7 +234,7 @@ get_free_unit(void)
 #endif /* NGD_DEBUG */
 
 	/* When there is no list yet, the first device unit is always 0. */
-	if SLIST_EMPTY(&sc->head) {
+	if (SLIST_EMPTY(&sc->head)) {
 		unit = 0;
 		return(unit);
 	}
