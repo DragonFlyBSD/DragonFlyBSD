@@ -861,7 +861,7 @@ video_open( bktr_ptr_t bktr )
 	bktr->flags |= METEOR_OPEN;
 
 #ifdef BT848_DUMP
-	dump_bt848( bt848 );
+	dump_bt848(bktr);
 #endif
 
         bktr->clr_on_start = FALSE;
@@ -1577,7 +1577,7 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
 			                    BT848_INT_VSYNC      |
 					    BT848_INT_FMTCHG);
 #ifdef BT848_DUMP
-			dump_bt848( bt848 );
+			dump_bt848(bktr);
 #endif
 			break;
 		
@@ -2414,7 +2414,7 @@ dump_bt848( bktr_ptr_t bktr )
 		       r[i], INL(bktr, r[i]),
 		       r[i+1], INL(bktr, r[i+1]),
 		       r[i+2], INL(bktr, r[i+2]),
-		       r[i+3], INL(bktr, r[i+3]]));
+		       r[i+3], INL(bktr, r[i+3]));
 	}
 
 	kprintf("%s: INT STAT %x \n", bktr_name(bktr),
