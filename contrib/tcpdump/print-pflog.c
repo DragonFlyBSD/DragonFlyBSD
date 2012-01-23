@@ -43,6 +43,7 @@ static const char rcsid[] _U_ =
 #include <stdio.h>
 #include <pcap.h>
 
+#include "extract.h"
 #include "interface.h"
 #include "addrtoname.h"
 
@@ -95,8 +96,8 @@ pflog_print(const struct pfloghdr *hdr)
 {
 	u_int32_t rulenr, subrulenr;
 
-	rulenr = ntohl(hdr->rulenr);
-	subrulenr = ntohl(hdr->subrulenr);
+	rulenr = EXTRACT_32BITS(&hdr->rulenr);
+	subrulenr = EXTRACT_32BITS(&hdr->subrulenr);
 	if (subrulenr == (u_int32_t)-1)
 		printf("rule %u/", rulenr);
 	else
@@ -162,7 +163,7 @@ pflog_if_print(const struct pcap_pkthdr *h, register const u_char *p)
 #if OPENBSD_AF_INET6 != AF_INET6
 		case OPENBSD_AF_INET6:		/* XXX: read pcap files */
 #endif
-			ip6_print(p, length);
+			ip6_print(gndo, p, length);
 			break;
 #endif
 

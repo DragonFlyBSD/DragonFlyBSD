@@ -1,9 +1,11 @@
 CREDITS
+Makefile-devel-adds
 Makefile.in
 Readme.Win32
 acconfig.h
 aclocal.m4
 atime.awk
+bpf_dump.c
 config.guess
 config.h.in
 config.sub
@@ -11,10 +13,14 @@ configure
 configure.in
 install-sh
 lbl/
+makemib
 missing/
 mkdep
 packetdat.awk
-print-bt.c
+pcap_dump_ftell.c
 send-ack.awk
 stime.awk
+strcasecmp.c
+tests/
+vfprintf.c
 win32/

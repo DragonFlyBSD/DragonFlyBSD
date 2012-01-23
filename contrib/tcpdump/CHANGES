@@ -1,4 +1,106 @@
-$Header: /tcpdump/master/tcpdump/CHANGES,v 1.98.2.2 2008-10-15 23:26:30 ken Exp $
+Friday  December 9, 2011.  guy@alum.mit.edu.
+  Summary for 4.2.1 tcpdump release
+	Only build the Babel printer if IPv6 is enabled.
+	Support Babel on port 6696 as well as 6697.
+	Include ppi.h in release tarball.
+	Include all the test files in the release tarball, and don't
+	 "include" test files that no longer exist.
+	Don't assume we have <rpc/rpc.h> - check for it.
+	Support "-T carp" as a way of dissecting IP protocol 112 as CARP
+	 rather than VRRP.
+	Support Hilscher NetAnalyzer link-layer header format.
+	Constify some pointers and fix compiler warnings.
+	Get rid of never-true test.
+	Fix an unintended fall-through in a case statement in the ARP
+	 printer.
+	Fix several cases where sizeof(sizeof(XXX)) was used when just
+	 sizeof(XXX) was intended.
+	Make stricter sanity checks in the ES-IS printer.
+	Get rid of some GCCisms that caused builds to fai with compilers
+	 that don't support them.
+	Fix typo in man page.
+	Added length checks to Babel printer.
+
+Sunday  July 24, 2011.  mcr@sandelman.ca.
+  Summary for 4.2.+
+	merged 802.15.4 decoder from Dmitry Eremin-Solenikov <dbaryshkov
+	  at gmail dot com>
+        updates to forces for new port numbers
+        Use "-H", not "-h", for the 802.11s option. (-h always help)
+        Better ICMPv6 checksum handling.
+        add support for the RPKI/Router Protocol, per -ietf-sidr-rpki-rtr-12
+        get rid of uuencoded pcap test files, git can do binary.
+        sFlow changes for 64-bit counters.
+        fixes for PPI packet header handling and printing.
+        Add DCB Exchange protocol (DCBX) version 1.01.
+        Babel dissector, from Juliusz Chroboczek and Grégoire Henry.
+        improvements to radiotap for rate values > 127.
+        Many improvements to ForCES decode, including fix SCTP TML port
+        updated RPL type code to RPL-17 draft
+        Improve printout of DHCPv6 options.
+        added support and test case for QinQ (802.1q VLAN) packets
+        Handle DLT_IEEE802_15_4_NOFCS like DLT_IEEE802_15_4.
+        Build fixes for Sparc and other machines with alignment restrictions.
+        Merged changes from Debian package.
+        PGM: Add ACK decoding and add PGMCC DATA and FEEDBACK options.
+        Build fixes for OSX (Snow Leopard and others)
+        Add support for IEEE 802.15.4 packets
+
+Tue.    July 20, 2010.  guy@alum.mit.edu.
+  Summary for 4.1.2 tcpdump release
+	If -U is specified, flush the file after creating it, so it's
+	  not zero-length
+	Fix TCP flags output description, and some typoes, in the man
+	  page
+	Add a -h flag, and only attempt to recognize 802.11s mesh
+	  headers if it's set
+	When printing the link-layer type list, send *all* output to
+	  stderr
+	Include the CFLAGS setting when configure was run in the
+	  compiler flags
+
+Thu.	April 1, 2010.  guy@alum.mit.edu.
+  Summary for 4.1.1 tcpdump release
+	Fix build on systems with PF, such as FreeBSD and OpenBSD.
+	Don't blow up if a zero-length link-layer address is passed to
+	  linkaddr_string(). 
+
+Thu.	March 11, 2010.  ken@netfunctional.ca/guy@alum.mit.edu.
+  Summary for 4.1.0 tcpdump release
+	Fix printing of MAC addresses for VLAN frames with a length
+	  field
+	Add some additional bounds checks and use the EXTRACT_ macros
+	  more
+	Add a -b flag to print the AS number in BGP packets in ASDOT
+	  notation rather than ASPLAIN notation
+	Add ICMPv6 RFC 5006 support
+	Decode the access flags in NFS access requests
+	Handle the new DLT_ for memory-mapped USB captures on Linux
+	Make the default snapshot (-s) the maximum
+	Print name of device (when -L is used)
+	Support for OpenSolaris (and SXCE build 125 and later)
+	Print new TCP flags
+	Add support for RPL DIO
+	Add support for TCP User Timeout (UTO)
+	Add support for non-standard Ethertypes used by 3com PPPoE gear
+	Add support for 802.11n and 802.11s
+	Add support for Transparent Ethernet Bridge ethertype in GRE
+	Add 4 byte AS support for BGP printer
+	Add support for the MDT SAFI 66 BG printer
+	Add basic IPv6 support to print-olsr
+	Add USB printer
+	Add printer for ForCES
+	Handle frames with an FCS
+	Handle 802.11n Control Wrapper, Block Acq Req and Block Ack frames
+	Fix TCP sequence number printing 
+	Report 802.2 packets as 802.2 instead of 802.3
+	Don't include -L/usr/lib in LDFLAGS
+	On x86_64 Linux, look in lib64 directory too
+	Lots of code clean ups
+	Autoconf clean ups
+	Update testcases to make output changes
+	Fix compiling with/out smi (--with{,out}-smi)
+	Fix compiling without IPv6 support (--disable-ipv6)
 
 Mon.    October 27, 2008.  ken@netfunctional.ca.  Summary for 4.0.0 tcpdump release
         Add support for Bluetooth Sniffing
