@@ -27,7 +27,7 @@ static const char rcsid[] _U_ =
 #include "interface.h"
 #include "ipproto.h"
 
-struct tok ipproto_values[] = {
+const struct tok ipproto_values[] = {
     { IPPROTO_HOPOPTS, "Options" },
     { IPPROTO_ICMP, "ICMP" },
     { IPPROTO_IGMP, "IGMP" },
@@ -55,6 +55,7 @@ struct tok ipproto_values[] = {
     { IPPROTO_PGM, "PGM" },
     { IPPROTO_SCTP, "SCTP" },
     { IPPROTO_MOBILITY, "Mobility" },
+    { IPPROTO_CARP, "CARP" },
     { 0, NULL }
 };
 

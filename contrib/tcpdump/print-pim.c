@@ -29,7 +29,15 @@ static const char rcsid[] _U_ =
 #endif
 
 #include <tcpdump-stdinc.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "interface.h"
+#include "addrtoname.h"
+#include "extract.h"
+
+#include "ip.h"
 
 #define PIMV2_TYPE_HELLO         0
 #define PIMV2_TYPE_REGISTER      1
@@ -108,17 +116,7 @@ struct pim {
 	u_short	pim_cksum;	/* IP style check sum */
 };
 
-
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "interface.h"
-#include "addrtoname.h"
-#include "extract.h"
-
-#include "ip.h"
-
-static void pimv2_print(register const u_char *bp, register u_int len);
+static void pimv2_print(register const u_char *bp, register u_int len, u_int cksum);
 
 static void
 pimv1_join_prune_print(register const u_char *bp, register u_int len)
@@ -399,8 +397,12 @@ cisco_autorp_print(register const u_char *bp, register u_int len)
 			TCHECK2(bp[0], 6);
 			(void)printf("%c%s%s/%d", s, bp[0] & 1 ? "!" : "",
 			    ipaddr_string(&bp[2]), bp[1]);
-			if (bp[0] & 0xfe)
-				(void)printf("[rsvd=0x%02x]", bp[0] & 0xfe);
+			if (bp[0] & 0x02) {
+			    (void)printf(" bidir");
+			}
+			if (bp[0] & 0xfc) {
+			    (void)printf("[rsvd=0x%02x]", bp[0] & 0xfc);
+			}
 			s = ',';
 			bp += 6; len -= 6;
 		}
@@ -413,7 +415,7 @@ trunc:
 }
 
 void
-pim_print(register const u_char *bp, register u_int len)
+pim_print(register const u_char *bp, register u_int len, u_int cksum)
 {
 	register const u_char *ep;
 	register struct pim *pim = (struct pim *)bp;
@@ -438,7 +440,7 @@ pim_print(register const u_char *bp, register u_int len)
                        PIM_VER(pim->pim_typever),
                        len,
                        tok2str(pimv2_type_values,"Unknown Type",PIM_TYPE(pim->pim_typever)));
-                pimv2_print(bp, len);
+                pimv2_print(bp, len, cksum);
             }
             break;
 	default:
@@ -618,7 +620,7 @@ trunc:
 }
 
 static void
-pimv2_print(register const u_char *bp, register u_int len)
+pimv2_print(register const u_char *bp, register u_int len, u_int cksum)
 {
 	register const u_char *ep;
 	register struct pim *pim = (struct pim *)bp;
@@ -638,9 +640,7 @@ pimv2_print(register const u_char *bp, register u_int len)
         if (EXTRACT_16BITS(&pim->pim_cksum) == 0) {
                 printf("(unverified)");
         } else {
-                printf("(%scorrect)",
-                       TTEST2(bp[0], len) &&
-                       in_cksum((const u_short*)bp, len, 0) ? "in" : "" );
+                printf("(%scorrect)", TTEST2(bp[0], len) && cksum ? "in" : "" );
         }
 
 	switch (PIM_TYPE(pim->pim_typever)) {
@@ -770,7 +770,7 @@ pimv2_print(register const u_char *bp, register u_int len)
 			break;
 #ifdef INET6
 		case 6:	/* IPv6 */
-			ip6_print(bp, len);
+			ip6_print(gndo, bp, len);
 			break;
 #endif
                 default:

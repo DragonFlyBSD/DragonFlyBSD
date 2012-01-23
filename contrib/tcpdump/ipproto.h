@@ -37,7 +37,7 @@
  * $FreeBSD: src/sys/netinet/in.h,v 1.38.2.3 1999/08/29 16:29:34 peter Exp $
  */
 
-extern struct tok ipproto_values[];
+extern const struct tok ipproto_values[];
 
 #ifndef IPPROTO_IP
 #define	IPPROTO_IP		0		/* dummy for IP */
@@ -132,6 +132,9 @@ extern struct tok ipproto_values[];
 #endif
 #ifndef IPPROTO_VRRP
 #define IPPROTO_VRRP		112
+#endif
+#ifndef IPPROTO_CARP
+#define IPPROTO_CARP		112
 #endif
 #ifndef IPPROTO_PGM
 #define IPPROTO_PGM             113

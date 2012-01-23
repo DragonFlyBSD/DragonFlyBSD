@@ -25,8 +25,8 @@
 
 #ifndef lint
 static const char rcsid[] _U_ =
-"@(#) $Header: /tcpdump/master/tcpdump/print-tcp.c,v 1.130.2.3 2007-12-22 03:08:45 guy Exp $ (LBL)";
-  #else
+"@(#) $Header: /tcpdump/master/tcpdump/print-tcp.c,v 1.135 2008-11-09 23:35:03 mcr Exp $ (LBL)";
+#else
 __RCSID("$NetBSD: print-tcp.c,v 1.8 2007/07/24 11:53:48 drochner Exp $");
 #endif
 
@@ -58,10 +58,7 @@ __RCSID("$NetBSD: print-tcp.c,v 1.8 2007/07/24 11:53:48 drochner Exp $");
 
 #ifdef HAVE_LIBCRYPTO
 #include <openssl/md5.h>
-
-#define SIGNATURE_VALID		0
-#define SIGNATURE_INVALID	1
-#define CANT_CHECK_SIGNATURE	2
+#include <signature.h>
 
 static int tcp_verify_signature(const struct ip *ip, const struct tcphdr *tp,
                                 const u_char *data, int length, const u_char *rcvsig);
@@ -124,6 +121,7 @@ struct tok tcp_option_values[] = {
         { TCPOPT_CCECHO, "" },
         { TCPOPT_SIGNATURE, "md5" },
         { TCPOPT_AUTH, "enhanced auth" },
+        { TCPOPT_UTO, "uto" },
         { 0, NULL }
 };
 
@@ -131,63 +129,9 @@ static int tcp_cksum(register const struct ip *ip,
 		     register const struct tcphdr *tp,
 		     register u_int len)
 {
-        union phu {
-                struct phdr {
-                        u_int32_t src;
-                        u_int32_t dst;
-                        u_char mbz;
-                        u_char proto;
-                        u_int16_t len;
-                } ph;
-                u_int16_t pa[6];
-        } phu;
-        const u_int16_t *sp;
-
-        /* pseudo-header.. */
-        phu.ph.len = htons((u_int16_t)len);
-        phu.ph.mbz = 0;
-        phu.ph.proto = IPPROTO_TCP;
-        memcpy(&phu.ph.src, &ip->ip_src.s_addr, sizeof(u_int32_t));
-        if (IP_HL(ip) == 5)
-                memcpy(&phu.ph.dst, &ip->ip_dst.s_addr, sizeof(u_int32_t));
-        else
-                phu.ph.dst = ip_finddst(ip);
-
-        sp = &phu.pa[0];
-        return in_cksum((u_short *)tp, len,
-                        sp[0]+sp[1]+sp[2]+sp[3]+sp[4]+sp[5]);
+	return (nextproto4_cksum(ip, (const u_int8_t *)tp, len,
+	    IPPROTO_TCP));
 }
-
-#ifdef INET6
-static int tcp6_cksum(const struct ip6_hdr *ip6, const struct tcphdr *tp,
-                      u_int len)
-{
-        size_t i;
-        u_int32_t sum = 0;
-        union {
-                struct {
-                        struct in6_addr ph_src;
-                        struct in6_addr ph_dst;
-                        u_int32_t	ph_len;
-                        u_int8_t	ph_zero[3];
-                        u_int8_t	ph_nxt;
-                } ph;
-                u_int16_t pa[20];
-        } phu;
-
-        /* pseudo-header */
-        memset(&phu, 0, sizeof(phu));
-        phu.ph.ph_src = ip6->ip6_src;
-        phu.ph.ph_dst = ip6->ip6_dst;
-        phu.ph.ph_len = htonl(len);
-        phu.ph.ph_nxt = IPPROTO_TCP;
-
-        for (i = 0; i < sizeof(phu.pa) / sizeof(phu.pa[0]); i++)
-                sum += phu.pa[i];
-
-        return in_cksum((u_short *)tp, len, sum);
-}
-#endif
 
 void
 tcp_print(register const u_char *bp, register u_int length,
@@ -200,6 +144,7 @@ tcp_print(register const u_char *bp, register u_int length,
         register char ch;
         u_int16_t sport, dport, win, urp;
         u_int32_t seq, ack, thseq, thack;
+        u_int utoval;
         int threv;
 #ifdef INET6
         register const struct ip6_hdr *ip6;
@@ -326,7 +271,6 @@ tcp_print(register const u_char *bp, register u_int length,
                  * both directions).
                  */
 #ifdef INET6
-                memset(&tha, 0, sizeof(tha));
                 rev = 0;
                 if (ip6) {
                         src = &ip6->ip6_src;
@@ -347,6 +291,27 @@ tcp_print(register const u_char *bp, register u_int length,
                                 tha.port = sport << 16 | dport;
                         }
                 } else {
+                        /*
+                         * Zero out the tha structure; the src and dst
+                         * fields are big enough to hold an IPv6
+                         * address, but we only have IPv4 addresses
+                         * and thus must clear out the remaining 124
+                         * bits.
+                         *
+                         * XXX - should we just clear those bytes after
+                         * copying the IPv4 addresses, rather than
+                         * zeroing out the entire structure and then
+                         * overwriting some of the zeroes?
+                         *
+                         * XXX - this could fail if we see TCP packets
+                         * with an IPv6 address with the lower 124 bits
+                         * all zero and also see TCP packes with an
+                         * IPv4 address with the same 32 bits as the
+                         * upper 32 bits of the IPv6 address in question.
+                         * Can that happen?  Is it likely enough to be
+                         * an issue?
+                         */
+                        memset(&tha, 0, sizeof(tha));
                         src = &ip->ip_src;
                         dst = &ip->ip_dst;
                         if (sport > dport)
@@ -425,37 +390,43 @@ tcp_print(register const u_char *bp, register u_int length,
                 return;
         }
 
-        if (IP_V(ip) == 4 && vflag && !Kflag && !fragmented) {
+        if (vflag && !Kflag && !fragmented) {
+                /* Check the checksum, if possible. */
                 u_int16_t sum, tcp_sum;
-                if (TTEST2(tp->th_sport, length)) {
-                        sum = tcp_cksum(ip, tp, length);
 
-                        (void)printf(", cksum 0x%04x",EXTRACT_16BITS(&tp->th_sum));
-                        if (sum != 0) {
+                if (IP_V(ip) == 4) {
+                        if (TTEST2(tp->th_sport, length)) {
+                                sum = tcp_cksum(ip, tp, length);
                                 tcp_sum = EXTRACT_16BITS(&tp->th_sum);
-                                (void)printf(" (incorrect -> 0x%04x)",in_cksum_shouldbe(tcp_sum, sum));
-                        } else
-                                (void)printf(" (correct)");
+
+                                (void)printf(", cksum 0x%04x", tcp_sum);
+                                if (sum != 0)
+                                        (void)printf(" (incorrect -> 0x%04x)",
+                                            in_cksum_shouldbe(tcp_sum, sum));
+                                else
+                                        (void)printf(" (correct)");
+                        }
                 }
-        }
 #ifdef INET6
-        if (IP_V(ip) == 6 && ip6->ip6_plen && vflag && !Kflag && !fragmented) {
-                u_int16_t sum,tcp_sum;
-                if (TTEST2(tp->th_sport, length)) {
-                        sum = tcp6_cksum(ip6, tp, length);
-                        (void)printf(", cksum 0x%04x",EXTRACT_16BITS(&tp->th_sum));
-                        if (sum != 0) {
+                else if (IP_V(ip) == 6 && ip6->ip6_plen) {
+                        if (TTEST2(tp->th_sport, length)) {
+                                sum = nextproto6_cksum(ip6, (const u_int8_t *)tp, length, IPPROTO_TCP);
                                 tcp_sum = EXTRACT_16BITS(&tp->th_sum);
-                                (void)printf(" (incorrect -> 0x%04x)",in_cksum_shouldbe(tcp_sum, sum));
-                        } else
-                                (void)printf(" (correct)");
 
+                                (void)printf(", cksum 0x%04x", tcp_sum);
+                                if (sum != 0)
+                                        (void)printf(" (incorrect -> 0x%04x)",
+                                            in_cksum_shouldbe(tcp_sum, sum));
+                                else
+                                        (void)printf(" (correct)");
+
+                        }
                 }
-        }
 #endif
+        }
 
         length -= hlen;
-        if (vflag > 1 || flags & (TH_SYN | TH_FIN | TH_RST)) {
+        if (vflag > 1 || length > 0 || flags & (TH_SYN | TH_FIN | TH_RST)) {
                 (void)printf(", seq %u", seq);
 
                 if (length > 0) {
@@ -613,6 +584,18 @@ tcp_print(register const u_char *bp, register u_int length,
                                  */
                                 break;
 
+                        case TCPOPT_UTO:
+                                datalen = 2;
+                                LENCHECK(datalen);
+                                utoval = EXTRACT_16BITS(cp);
+                                (void)printf("0x%x", utoval);
+                                if (utoval & 0x0001)
+                                        utoval = (utoval >> 1) * 60;
+                                else
+                                        utoval >>= 1;
+                                (void)printf(" %u", utoval);
+                                break;
+
                         default:
                                 datalen = len - 2;
                                 for (i = 0; i < datalen; ++i) {
@@ -681,6 +664,8 @@ tcp_print(register const u_char *bp, register u_int length,
                 ns_print(bp + 2, length - 2, 0);
         } else if (sport == MSDP_PORT || dport == MSDP_PORT) {
                 msdp_print(bp, length);
+        } else if (sport == RPKI_RTR_PORT || dport == RPKI_RTR_PORT) {
+                rpki_rtr_print(bp, length);
         }
         else if (length > 0 && (sport == LDP_PORT || dport == LDP_PORT)) {
                 ldp_print(bp, length);
@@ -750,10 +735,17 @@ tcp_verify_signature(const struct ip *ip, const struct tcphdr *tp,
         u_int8_t nxt;
 #endif
 
+	if (data + length > snapend) {
+		printf("snaplen too short, ");
+		return (CANT_CHECK_SIGNATURE);
+	}
+
         tp1 = *tp;
 
-        if (tcpmd5secret == NULL)
+        if (sigsecret == NULL) {
+		printf("shared secret not supplied with -M, ");
                 return (CANT_CHECK_SIGNATURE);
+        }
 
         MD5_Init(&ctx);
         /*
@@ -772,7 +764,7 @@ tcp_verify_signature(const struct ip *ip, const struct tcphdr *tp,
                 ip6 = (struct ip6_hdr *)ip;
                 MD5_Update(&ctx, (char *)&ip6->ip6_src, sizeof(ip6->ip6_src));
                 MD5_Update(&ctx, (char *)&ip6->ip6_dst, sizeof(ip6->ip6_dst));
-                len32 = htonl(ntohs(ip6->ip6_plen));
+                len32 = htonl(EXTRACT_16BITS(&ip6->ip6_plen));
                 MD5_Update(&ctx, (char *)&len32, sizeof(len32));
                 nxt = 0;
                 MD5_Update(&ctx, (char *)&nxt, sizeof(nxt));
@@ -781,8 +773,14 @@ tcp_verify_signature(const struct ip *ip, const struct tcphdr *tp,
                 nxt = IPPROTO_TCP;
                 MD5_Update(&ctx, (char *)&nxt, sizeof(nxt));
 #endif
-        } else
+        } else {
+#ifdef INET6
+		printf("IP version not 4 or 6, ");
+#else
+		printf("IP version not 4, ");
+#endif
                 return (CANT_CHECK_SIGNATURE);
+        }
 
         /*
          * Step 2: Update MD5 hash with TCP header, excluding options.
@@ -800,7 +798,7 @@ tcp_verify_signature(const struct ip *ip, const struct tcphdr *tp,
         /*
          * Step 4: Update MD5 hash with shared secret.
          */
-        MD5_Update(&ctx, tcpmd5secret, strlen(tcpmd5secret));
+        MD5_Update(&ctx, sigsecret, strlen(sigsecret));
         MD5_Final(sig, &ctx);
 
         if (memcmp(rcvsig, sig, TCP_SIGLEN) == 0)
