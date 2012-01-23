@@ -6,7 +6,8 @@ SRCS=	pcap-bpf.c \
 	pcap.c inet.c gencode.c optimize.c nametoaddr.c etherent.c \
 	savefile.c sf-pcap.c sf-pcap-ng.c pcap-common.c \
 	bpf_image.c bpf_dump.c \
-	scanner.l grammar.y bpf_filter.c version.c
+	scanner.l grammar.y bpf_filter.c version.c \
+	version.h tokdefs.h
 
 INCS=	pcap.h \
 	pcap-bpf.h \
@@ -100,7 +101,7 @@ WARNS?=	2
 
 LFLAGS+=-Ppcap_
 YFLAGS+=-p pcap_
-CFLAGS+=-DHAVE_CONFIG_H -I${.CURDIR}
+CFLAGS+=-DHAVE_CONFIG_H -I${.CURDIR} -I${.OBJDIR}
 CFLAGS+=-D_U_="__attribute__((unused))" -DYYBISON
 CFLAGS+=-DHAVE_STRUCT_ETHER_ADDR -DHAVE_NET_PFVAR_H
 .if !defined(NOINET6)
@@ -126,9 +127,6 @@ version.h: VERSION
 
 tokdefs.h: grammar.h
 	${LN} -sf grammar.h tokdefs.h
-
-pcap.o:	version.h
-scanner.o: scanner.c tokdefs.h
 
 #
 # Magic to convert the man pages to something non Solarish

@@ -2,7 +2,8 @@
 
 LDADD+= -lpcap -lutil
 DPADD+=	${LIBPCAP} ${LIBUTIL}
-CFLAGS+= -DHAVE_SNPRINTF
+CFLAGS+= -DHAVE_SNPRINTF -I${.CURDIR}/../../contrib/libpcap
+WARNS?=	4
 
 PROG=	pflogd
 SRCS=	pflogd.c privsep.c privsep_fdpass.c

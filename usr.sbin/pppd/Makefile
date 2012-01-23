@@ -24,7 +24,7 @@ CFLAGS+=-DCBCP_SUPPORT
 SRCS+=	cbcp.c
 
 # Filter support
-CFLAGS+=-DPPP_FILTER
+CFLAGS+=-DPPP_FILTER -I${.CURDIR}/../../contrib/libpcap
 LDADD+=	-lpcap
 DPADD+=	${LIBPCAP}
 

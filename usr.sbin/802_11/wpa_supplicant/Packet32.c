@@ -55,6 +55,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <net/bpf.h>
 #include <net/route.h>
 
 #include <netproto/802_11/ieee80211_ioctl.h>
