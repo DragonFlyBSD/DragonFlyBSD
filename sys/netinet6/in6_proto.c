@@ -366,7 +366,7 @@ struct protosw inet6sw[] = {
 	.pr_protocol = IPPROTO_CARP,
 	.pr_flags = PR_ATOMIC|PR_ADDR,
 
-	.pr_input = carp6_input,
+	.pr_input = carp6_proto_input,
 	.pr_output = rip6_output,
 	.pr_ctlinput = NULL,
 	.pr_ctloutput = rip6_ctloutput,

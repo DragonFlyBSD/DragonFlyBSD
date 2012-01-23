@@ -36,6 +36,7 @@
 
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
+#include "opt_carp.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -57,6 +58,9 @@
 #include <machine/stdarg.h>
 
 #include <net/if.h>
+#ifdef CARP
+#include <net/if_types.h>
+#endif
 #include <net/route.h>
 
 #define _IP_VHL
@@ -522,6 +526,16 @@ rip_ctlinput(netmsg_t msg)
 			goto done;
 		flags = RTF_UP;
 		ifp = ia->ia_ifa.ifa_ifp;
+
+#ifdef CARP
+		/*
+		 * Don't add prefix routes for CARP interfaces.
+		 * Prefix routes creation is handled by CARP
+		 * interfaces themselves.
+		 */
+		if (ifp->if_type == IFT_CARP)
+			goto done;
+#endif
 
 		if ((ifp->if_flags & IFF_LOOPBACK) ||
 		    (ifp->if_flags & IFF_POINTOPOINT))

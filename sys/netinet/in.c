@@ -36,6 +36,7 @@
  */
 
 #include "opt_bootp.h"
+#include "opt_carp.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1124,6 +1125,16 @@ in_addprefix(struct in_ifaddr *target, int flags)
 	struct in_addr prefix, mask;
 	int error;
 
+#ifdef CARP
+	/*
+	 * Don't add prefix routes for CARP interfaces.
+	 * Prefix routes creation is handled by CARP
+	 * interfaces themselves.
+	 */
+	if (target->ia_ifp->if_type == IFT_CARP)
+		return 0;
+#endif
+
 	mask = target->ia_sockmask.sin_addr;
 	if (flags & RTF_HOST) {
 		prefix = target->ia_dstaddr.sin_addr;
@@ -1221,6 +1232,16 @@ in_scrubprefix(struct in_ifaddr *target)
 		 */
 		if ((ia->ia_ifp->if_flags & IFF_UP) == 0)
 			continue;
+
+#ifdef CARP
+		/*
+		 * Don't add prefix routes for CARP interfaces.
+		 * Prefix routes creation is handled by CARP
+		 * interfaces themselves.
+		 */
+		if (ia->ia_ifp->if_type == IFT_CARP)
+			continue;
+#endif
 
 		/* Prefix test */
 		if (rtinitflags(ia)) {
