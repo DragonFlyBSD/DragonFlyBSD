@@ -1050,6 +1050,7 @@ sili_port_hardstop(struct sili_port *ap)
 	struct ata_port *at;
 	int i;
 	int slot;
+	int serial;
 
 	ap->ap_state = AP_S_FATAL_ERROR;
 	ap->ap_probe = ATA_PROBE_FAILED;
@@ -1085,6 +1086,7 @@ sili_port_hardstop(struct sili_port *ap)
 	/*
 	 * Clean up the command list.
 	 */
+restart:
 	while (ap->ap_active) {
 		slot = ffs(ap->ap_active) - 1;
 		ap->ap_active &= ~(1 << slot);
@@ -1092,7 +1094,13 @@ sili_port_hardstop(struct sili_port *ap)
 		--ap->ap_active_cnt;
 		ccb = &ap->ap_ccbs[slot];
 		if (ccb->ccb_xa.flags & ATA_F_TIMEOUT_RUNNING) {
-			callout_stop(&ccb->ccb_timeout);
+			serial = ccb->ccb_xa.serial;
+			callout_stop_sync(&ccb->ccb_timeout);
+			if (serial != ccb->ccb_xa.serial) {
+				kprintf("%s: Warning: timeout race ccb %p\n",
+					PORTNAME(ap), ccb);
+				goto restart;
+			}
 			ccb->ccb_xa.flags &= ~ATA_F_TIMEOUT_RUNNING;
 		}
 		ccb->ccb_xa.flags &= ~(ATA_F_TIMEOUT_DESIRED |
@@ -2024,6 +2032,7 @@ sili_put_ccb(struct sili_ccb *ccb)
 
 	lockmgr(&ap->ap_ccb_lock, LK_EXCLUSIVE);
 	ccb->ccb_xa.state = ATA_S_PUT;
+	++ccb->ccb_xa.serial;
 	TAILQ_INSERT_TAIL(&ap->ap_ccb_free, ccb, ccb_entry);
 	lockmgr(&ap->ap_ccb_lock, LK_RELEASE);
 }
@@ -2392,13 +2401,20 @@ static void
 sili_ata_cmd_done(struct sili_ccb *ccb)
 {
 	struct ata_xfer			*xa = &ccb->ccb_xa;
+	int serial;
 
 	/*
 	 * NOTE: callout does not lock port and may race us modifying
 	 * the flags, so make sure its stopped.
 	 */
 	if (xa->flags & ATA_F_TIMEOUT_RUNNING) {
-		callout_stop(&ccb->ccb_timeout);
+		serial = ccb->ccb_xa.serial;
+		callout_stop_sync(&ccb->ccb_timeout);
+		if (serial != ccb->ccb_xa.serial) {
+			kprintf("%s: Warning: timeout race ccb %p\n",
+				PORTNAME(ccb->ccb_port), ccb);
+			return;
+		}
 		xa->flags &= ~ATA_F_TIMEOUT_RUNNING;
 	}
 	xa->flags &= ~(ATA_F_TIMEOUT_DESIRED | ATA_F_TIMEOUT_EXPIRED);

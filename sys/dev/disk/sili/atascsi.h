@@ -309,6 +309,7 @@ struct ata_xfer {
 
 	void			(*complete)(struct ata_xfer *);
 	u_int			timeout;
+	int			serial;		/* detect timeout races */
 
 	int			flags;
 #define ATA_F_READ			(1<<0)
