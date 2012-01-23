@@ -57,6 +57,7 @@
 #include <net/if_types.h>
 #include <net/route.h>
 #include <net/if_clone.h>
+#include <net/ifq_var.h>
 
 #ifdef INET
 #include <netinet/in.h>
@@ -402,14 +403,14 @@ carp_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	callout_init(&sc->sc_md6_tmo);
 
 	ifp->if_softc = sc;
-        if_initname(ifp, CARP_IFNAME, unit);	
+	if_initname(ifp, CARP_IFNAME, unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_LOOPBACK;
 	ifp->if_ioctl = carp_ioctl;
 	ifp->if_output = carp_looutput;
 	ifp->if_start = carp_start;
 	ifp->if_type = IFT_CARP;
-	ifp->if_snd.ifq_maxlen = ifqmaxlen;
+	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifp->if_hdrlen = 0;
 	if_attach(ifp, NULL);
 	bpfattach(ifp, DLT_NULL, sizeof(u_int));
