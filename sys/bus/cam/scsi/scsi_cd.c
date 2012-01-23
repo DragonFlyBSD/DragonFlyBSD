@@ -400,8 +400,7 @@ cdoninvalidate(struct cam_periph *periph)
 	 * XXX Handle any transactions queued to the card
 	 *     with XPT_ABORT_CCB.
 	 */
-	while ((q_bio = bioq_first(&softc->bio_queue)) != NULL){
-		bioq_remove(&softc->bio_queue, q_bio);
+	while ((q_bio = bioq_takefirst(&softc->bio_queue)) != NULL) {
 		q_bp = q_bio->bio_buf;
 		q_bp->b_resid = q_bp->b_bcount;
 		q_bp->b_error = ENXIO;
@@ -1612,8 +1611,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 
 			xpt_print(periph->path,
 				  "cddone: got error %#x back\n", error);
-			while ((q_bio = bioq_first(&softc->bio_queue)) != NULL) {
-				bioq_remove(&softc->bio_queue, q_bio);
+			while ((q_bio = bioq_takefirst(&softc->bio_queue)) != NULL) {
 				q_bp = q_bio->bio_buf;
 				q_bp->b_resid = q_bp->b_bcount;
 				q_bp->b_error = EIO;

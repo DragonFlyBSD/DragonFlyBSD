@@ -448,8 +448,7 @@ mfs_start(struct mount *mp, int flags)
 	while (mfsp->mfs_active) {
 		crit_enter();
 
-		while ((bio = bioq_first(&mfsp->bio_queue)) != NULL) {
-			bioq_remove(&mfsp->bio_queue, bio);
+		while ((bio = bioq_takefirst(&mfsp->bio_queue)) != NULL) {
 			crit_exit();
 			bp = bio->bio_buf;
 			mfs_doio(bio, mfsp);

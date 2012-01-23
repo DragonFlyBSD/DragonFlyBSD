@@ -30,7 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
  */
 
 /*
@@ -146,8 +145,7 @@ vcdstrategy(struct dev_strategy_args *ap)
 	sc = dev->si_drv1;
 
 	bioqdisksort(&sc->bio_queue, bio);
-	while ((bio = bioq_first(&sc->bio_queue)) != NULL) {
-		bioq_remove(&sc->bio_queue, bio);
+	while ((bio = bioq_takefirst(&sc->bio_queue)) != NULL) {
 		bp = bio->bio_buf;
 
 		devstat_start_transaction(&sc->stats);

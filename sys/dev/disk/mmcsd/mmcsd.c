@@ -214,8 +214,7 @@ mmcsd_detach(device_t dev)
 	 *
 	 * XXX: Return all queued I/O with ENXIO. Is this correct?
 	 */
-	while ((q_bio = bioq_first(&sc->bio_queue)) != NULL){
-		bioq_remove(&sc->bio_queue, q_bio);
+	while ((q_bio = bioq_takefirst(&sc->bio_queue)) != NULL) {
 		q_bp = q_bio->bio_buf;
 		q_bp->b_resid = q_bp->b_bcount;
 		q_bp->b_error = ENXIO;

@@ -359,9 +359,7 @@ mdstrategy_preload(struct dev_strategy_args *ap)
 	sc->busy++;
 	
 	while (1) {
-		bio = bioq_first(&sc->bio_queue);
-		if (bio)
-			bioq_remove(&sc->bio_queue, bio);
+		bio = bioq_takefirst(&sc->bio_queue);
 		crit_exit();
 		if (bio == NULL)
 			break;
