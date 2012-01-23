@@ -26,11 +26,11 @@
  */
 
 	.section .init,"ax",@progbits
-	addq    $8,%rsp
+	addq	$8,%rsp
 	ret
 
 	.section .fini,"ax",@progbits
-	addq    $8,%rsp
+	addq	$8,%rsp
 	ret
 
-	.section .rodata
+	.section .note.GNU-stack,"",%progbits

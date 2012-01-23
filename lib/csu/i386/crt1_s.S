@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/csi/i386-elf/crt1_s.S, svn 217383 2011/01/19 kib $
+ * $FreeBSD: src/lib/csi/i386-elf/crt1_s.S, svn 217383 2011/01/13 kib $
  */
 
 	.text
@@ -47,3 +47,5 @@ _start:
 	int3
 	.cfi_endproc
 	.size	_start, . - _start
+
+	.section .note.GNU-stack,"",%progbits

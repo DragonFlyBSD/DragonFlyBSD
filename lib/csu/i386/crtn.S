@@ -22,12 +22,15 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/csu/i386-elf/crtn.S,v 1.2.2.2 2000/10/30 20:32:25 obrien Exp $
- * $DragonFly: src/lib/csu/i386/crtn.S,v 1.1 2004/06/15 08:53:09 joerg Exp $
+ * $FreeBSD: src/lib/csu/i386-elf/crtn.S SVN 217105 2011/01/07 kib $
  */
 
 	.section .init,"ax",@progbits
+	add	$12,%esp
 	ret
 
 	.section .fini,"ax",@progbits
+	add	$12,%esp
 	ret
+
+	.section .note.GNU-stack,"",%progbits

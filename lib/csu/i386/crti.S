@@ -22,8 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/csu/i386-elf/crti.S,v 1.2.2.2 2000/10/30 20:32:25 obrien Exp $
- * $DragonFly: src/lib/csu/i386/crti.S,v 1.1 2004/06/15 08:53:09 joerg Exp $
+ * $FreeBSD: src/lib/csu/i386-elf/crti.S SVN 217105 2011/01/07 kib $
  */
 
 	.section .init,"ax",@progbits
@@ -31,9 +30,13 @@
 	.globl	_init
 	.type	_init,@function
 _init:
+	sub	$12,%esp	/* re-align stack pointer */
 
 	.section .fini,"ax",@progbits
 	.align	4
 	.globl	_fini
 	.type	_fini,@function
 _fini:
+	sub	$12,%esp	/* re-align stack pointer */
+
+	.section .note.GNU-stack,"",%progbits

@@ -22,8 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/csu/common/crtbrand.c,v 1.1.2.1 2000/10/30 20:32:24 obrien Exp $
- * $DragonFly: src/lib/csu/common/crtbrand.c,v 1.5 2006/09/30 18:07:04 corecode Exp $
+ * $FreeBSD: src/lib/csu/common/crtbrand.c SVN 217375 2011/01/13 dim $
  */
 
 #include <sys/param.h>
@@ -36,6 +35,23 @@
  * Special ".note" entry specifying the ABI version.  See
  * http://www.netbsd.org/Documentation/kernel/elf-notes.html
  * for more information.
+ *
+ * For all arches except sparc, gcc emits the section directive for the
+ * following struct with a PROGBITS type.  However, newer versions of binutils
+ * (after 2.16.90) require the section to be of NOTE type, to guarantee that the
+ * .note.ABI-tag section correctly ends up in the first page of the final
+ * executable.
+ *
+ * Unfortunately, there is no clean way to tell gcc to use another section type,
+ * so this C file (or the C file that includes it) must be compiled in multiple
+ * steps:
+ *
+ * - Compile the .c file to a .s file.
+ * - Edit the .s file to change the 'progbits' type to 'note', for the section
+ *   directive that defines the .note.ABI-tag section.
+ * - Compile the .s file to an object file.
+ *
+ * These steps are done in the individual Makefiles for each applicable arch.
  */
 static const struct {
     int32_t	namesz;
