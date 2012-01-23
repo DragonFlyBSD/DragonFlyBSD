@@ -22,7 +22,7 @@ MAN=	ndp.8
 WARNS?=	2
 
 CFLAGS+=-DINET6
-CFLAGS+=-I. -I${.CURDIR} -I${.CURDIR}/../tcpdump -I${.CURDIR}/../../contrib/tcpdump
+CFLAGS+= -I${.CURDIR}/../tcpdump -I${.CURDIR}/../../contrib/tcpdump
 CFLAGS+= -DHAVE_CONFIG_H -D_U_="__attribute__((unused))"
 
 

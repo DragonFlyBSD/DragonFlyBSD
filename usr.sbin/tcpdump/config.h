@@ -3,31 +3,11 @@
 /* "generated automatically" means DO NOT MAKE CHANGES TO config.h.in --
  * make them to acconfig.h and rerun autoheader */
 
-/* Define if you have SSLeay 0.9.0b with the buggy cast128. */
-/* #undef HAVE_BUGGY_CAST128 */
-
 /* Define if you enable IPv6 support */
 /* #undef INET6 */
 
 /* Define if you enable support for the libsmi. */
 /* #undef LIBSMI */
-
-/* Define if you have the <smi.h> header file.  */
-/* #undef HAVE_SMI_H */
-
-/* define if you have struct __res_state_ext */
-/* #undef HAVE_RES_STATE_EXT */
-
-/* define if your struct __res_state has the nsort member */
-/* #undef HAVE_NEW_RES_STATE */
-
-/*
- * define if struct ether_header.ether_dhost is a struct with ether_addr_octet
- */
-/* #undef ETHER_HEADER_HAS_EA */
-
-/* define if struct ether_arp contains arp_xsha */
-/* #undef ETHER_ARP_HAS_X */
 
 /* define if you have the addrinfo function. */
 #define HAVE_ADDRINFO 1
@@ -37,24 +17,6 @@
 
 /* define ifyou have the h_errno variable. */
 #define HAVE_H_ERRNO 1
-
-/* define if IN6ADDRSZ is defined (XXX not used!) */
-#define HAVE_IN6ADDRSZ 1
-
-/* define if INADDRSZ is defined (XXX not used!) */
-#define HAVE_INADDRSZ 1
-
-/* define if this is a development version, to use additional prototypes. */
-/* #undef HAVE_OS_PROTO_H */
-
-/* define if <unistd.h> defines __P() */
-/* #undef HAVE_PORTABLE_PROTOTYPE */
-
-/* define if RES_USE_INET6 is defined */
-#define HAVE_RES_USE_INET6 1
-
-/* define if struct sockaddr has the sa_len member */
-#define HAVE_SOCKADDR_SA_LEN 1
 
 /* define if you have struct sockaddr_storage */
 #define HAVE_SOCKADDR_STORAGE 1
@@ -69,10 +31,10 @@
 /* #undef HAVE_PCAP_VERSION */
 
 /* define if libpcap has pcap_debug */
-/* #undef HAVE_PCAP_DEBUG */
+#define HAVE_PCAP_DEBUG 1
 
 /* define if libpcap has yydebug */
-#define HAVE_YYDEBUG 1
+/* #undef HAVE_YYDEBUG */
 
 /* define if libpcap has pcap_list_datalinks() */
 #define HAVE_PCAP_LIST_DATALINKS 1
@@ -92,21 +54,6 @@
 /* define if you have getrpcbynumber() */
 #define HAVE_GETRPCBYNUMBER 1
 
-/* define if unaligned memory accesses fail */
-/* #undef LBL_ALIGN */
-
-/* The successful return value from signal (?)XXX */
-#define RETSIGVAL 
-
-/* Define this on IRIX */
-/* #undef _BSD_SIGNALS */
-
-/* For HP/UX ANSI compiler? */
-/* #undef _HPUX_SOURCE */
-
-/* AIX hack. */
-/* #undef _SUN */
-
 /* Workaround for missing 64-bit formats */
 /* #undef PRId64 */
 /* #undef PRIo64 */
@@ -115,14 +62,6 @@
 
 /* Whether or not to include the possibly-buggy SMB printer */
 #define TCPDUMP_DO_SMB 1
-
-/* Long story short: aclocal.m4 depends on autoconf 2.13
- * implementation details wrt "const"; newer versions
- * have different implementation details so for now we
- * put "const" here.  This may cause duplicate definitions
- * in config.h but that should be OK since they're the same.
- */
-/* #undef const */
 
 /* Define if you have the dnet_htoa function.  */
 /* #undef HAVE_DNET_HTOA */
@@ -152,8 +91,8 @@
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
 
-/* Define to 1 if you have the `getaddrinfo' function. */
-/* #undef HAVE_GETADDRINFO */
+/* Define to 1 if you have the `fork' function. */
+#define HAVE_FORK 1
 
 /* Define to 1 if you have the `getnameinfo' function. */
 /* #undef HAVE_GETNAMEINFO */
@@ -188,6 +127,9 @@
 /* Define to 1 if you have the <openssl/evp.h> header file. */
 /* #undef HAVE_OPENSSL_EVP_H */
 
+/* if there's an os_proto.h for this platform, to use additional prototypes */
+/* #undef HAVE_OS_PROTO_H */
+
 /* Define to 1 if you have the <pcap/bluetooth.h> header file. */
 /* #undef HAVE_PCAP_BLUETOOTH_H */
 
@@ -209,11 +151,20 @@
 /* Define to 1 if you have the `pcap_lib_version' function. */
 #define HAVE_PCAP_LIB_VERSION 1
 
+/* Define to 1 if you have the `pcap_set_tstamp_type' function. */
+#define HAVE_PCAP_SET_TSTAMP_TYPE 1
+
+/* Define to 1 if you have the <pcap/usb.h> header file. */
+/* #undef HAVE_PCAP_USB_H */
+
 /* Define to 1 if you have the `pfopen' function. */
 /* #undef HAVE_PFOPEN */
 
 /* Define to 1 if you have the <rpc/rpcent.h> header file. */
 #define HAVE_RPC_RPCENT_H 1
+
+/* Define to 1 if you have the <rpc/rpc.h> header file. */
+#define HAVE_RPC_RPC_H 1
 
 /* Define to 1 if you have the `setlinebuf' function. */
 #define HAVE_SETLINEBUF 1
@@ -229,6 +180,9 @@
 
 /* Define to 1 if you have the `snprintf' function. */
 #define HAVE_SNPRINTF 1
+
+/* if struct sockaddr has the sa_len member */
+#define HAVE_SOCKADDR_SA_LEN 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -275,6 +229,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
 
+/* Define to 1 if you have the `vfork' function. */
+#define HAVE_VFORK 1
+
 /* Define to 1 if you have the `vfprintf' function. */
 #define HAVE_VFPRINTF 1
 
@@ -283,6 +240,9 @@
 
 /* define if your compiler has __attribute__ */
 #define HAVE___ATTRIBUTE__ 1
+
+/* if unaligned access fails */
+/* #undef LBL_ALIGN */
 
 /* Define to 1 if netinet/ether.h declares `ether_ntohost' */
 /* #undef NETINET_ETHER_H_DECLARES_ETHER_NTOHOST */
@@ -308,26 +268,30 @@
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void
 
-/* The size of `char', as computed by sizeof. */
-#define SIZEOF_CHAR 1
-
-/* The size of `int', as computed by sizeof. */
-#define SIZEOF_INT 4
-
-/* The size of `long', as computed by sizeof. */
-#define SIZEOF_LONG 4
-
-/* The size of `long long', as computed by sizeof. */
-#define SIZEOF_LONG_LONG 8
-
-/* The size of `short', as computed by sizeof. */
-#define SIZEOF_SHORT 2
+/* return value of signal handlers */
+#define RETSIGVAL 
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
 #define TIME_WITH_SYS_TIME 1
+
+/* get BSD semantics on Irix */
+/* #undef _BSD_SIGNALS */
+
+/* needed on HP-UX */
+/* #undef _HPUX_SOURCE */
+
+/* define on AIX to get certain functions */
+/* #undef _SUN */
+
+/* define if your compiler allows __attribute__((format)) to be applied to
+   function pointers */
+#define __ATTRIBUTE___FORMAT_OK_FOR_FUNCTION_POINTERS 1
+
+/* to handle Ultrix compilers that don't support const in prototypes */
+/* #undef const */
 
 /* Define as token for inline if inlining supported */
 #define inline inline
