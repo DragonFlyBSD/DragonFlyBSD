@@ -55,11 +55,10 @@ struct rtentry;
 #include "gencode.h"
 #ifdef HAVE_NET_PFVAR_H
 #include <net/if.h>
-#include <net/if_var.h>
 #include <net/pf/pfvar.h>
 #include <net/pf/if_pflog.h>
 #endif
-#include <netproto/802_11/ieee80211.h>
+#include "ieee80211.h"
 #include <pcap/namedb.h>
 
 #ifdef HAVE_OS_PROTO_H
@@ -121,16 +120,16 @@ static const struct tok ieee80211_data_subtypes[] = {
 	{ IEEE80211_FC0_SUBTYPE_CF_POLL, "data-cf-poll" },
 	{ IEEE80211_FC0_SUBTYPE_CF_ACPL, "data-cf-ack-poll" },
 	{ IEEE80211_FC0_SUBTYPE_NODATA, "null" },
-	{ IEEE80211_FC0_SUBTYPE_CFACK, "cf-ack" },
-	{ IEEE80211_FC0_SUBTYPE_CFPOLL, "cf-poll"  },
-	{ IEEE80211_FC0_SUBTYPE_CF_ACK_CF_ACK, "cf-ack-poll" },
+	{ IEEE80211_FC0_SUBTYPE_NODATA_CF_ACK, "cf-ack" },
+	{ IEEE80211_FC0_SUBTYPE_NODATA_CF_POLL, "cf-poll"  },
+	{ IEEE80211_FC0_SUBTYPE_NODATA_CF_ACPL, "cf-ack-poll" },
 	{ IEEE80211_FC0_SUBTYPE_QOS|IEEE80211_FC0_SUBTYPE_DATA, "qos-data" },
 	{ IEEE80211_FC0_SUBTYPE_QOS|IEEE80211_FC0_SUBTYPE_CF_ACK, "qos-data-cf-ack" },
 	{ IEEE80211_FC0_SUBTYPE_QOS|IEEE80211_FC0_SUBTYPE_CF_POLL, "qos-data-cf-poll" },
 	{ IEEE80211_FC0_SUBTYPE_QOS|IEEE80211_FC0_SUBTYPE_CF_ACPL, "qos-data-cf-ack-poll" },
 	{ IEEE80211_FC0_SUBTYPE_QOS|IEEE80211_FC0_SUBTYPE_NODATA, "qos" },
-	{ IEEE80211_FC0_SUBTYPE_QOS|IEEE80211_FC0_SUBTYPE_CFPOLL, "qos-cf-poll" },
-	{ IEEE80211_FC0_SUBTYPE_QOS|IEEE80211_FC0_SUBTYPE_CF_ACK_CF_ACK, "qos-cf-ack-poll" },
+	{ IEEE80211_FC0_SUBTYPE_QOS|IEEE80211_FC0_SUBTYPE_NODATA_CF_POLL, "qos-cf-poll" },
+	{ IEEE80211_FC0_SUBTYPE_QOS|IEEE80211_FC0_SUBTYPE_NODATA_CF_ACPL, "qos-cf-ack-poll" },
 	{ 0, NULL }
 };
 struct type2tok {

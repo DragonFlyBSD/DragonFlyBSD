@@ -1,30 +1,44 @@
-# Makefile for libpcap
-# $FreeBSD: src/lib/libpcap/Makefile,v 1.24.2.4 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libpcap/Makefile,v 1.12 2007/10/11 01:07:29 pavalos Exp $
-
 SRCDIR=	${.CURDIR}/../../contrib/libpcap
 
 LIB=    pcap
-SRCS=	grammar.y tokdefs.h pcap-bpf.c version.h \
-	pcap.c inet.c fad-getad.c gencode.c optimize.c nametoaddr.c \
-	etherent.c savefile.c bpf_filter.c bpf_image.c bpf_dump.c \
-	scanner.l version.c
+SRCS=	pcap-bpf.c \
+	fad-getad.c \
+	pcap.c inet.c gencode.c optimize.c nametoaddr.c etherent.c \
+	savefile.c sf-pcap.c sf-pcap-ng.c pcap-common.c \
+	bpf_image.c bpf_dump.c \
+	scanner.l grammar.y bpf_filter.c version.c
 
-# Old compatibility headers
-INCS=	pcap.h pcap-namedb.h pcap-int.h
+INCS=	pcap.h \
+	pcap-bpf.h \
+	pcap-namedb.h
 
-PCAPINCS=	pcap/pcap.h pcap/namedb.h
+PCAPINCS= \
+	pcap/bpf.h \
+	pcap/bluetooth.h \
+	pcap/ipnet.h \
+	pcap/namedb.h \
+	pcap/pcap.h \
+	pcap/sll.h \
+	pcap/vlan.h \
+	pcap/usb.h
+
 PCAPINCSDIR=	${INCLUDEDIR}/pcap
 INCSGROUPS=	INCS PCAPINCS
 
 MAN=	pcap.3 \
-	pcap_activate.3 \
+	pcap_compile.3 \
+	pcap_datalink.3 \
+	pcap_dump_open.3 \
+	pcap_list_datalinks.3 \
+	pcap_list_tstamp_types.3 \
+	pcap_open_dead.3 \
+	pcap_open_offline.3 \
+	pcap_set_tstamp_type.3
+MAN+=	pcap_activate.3 \
 	pcap_breakloop.3 \
 	pcap_can_set_rfmon.3 \
 	pcap_close.3 \
-	pcap_compile.3 \
 	pcap_create.3 \
-	pcap_datalink.3 \
 	pcap_datalink_name_to_val.3 \
 	pcap_datalink_val_to_name.3 \
 	pcap_dump.3 \
@@ -32,28 +46,22 @@ MAN=	pcap.3 \
 	pcap_dump_file.3 \
 	pcap_dump_flush.3 \
 	pcap_dump_ftell.3 \
-	pcap_dump_open.3 \
 	pcap_file.3 \
 	pcap_fileno.3 \
 	pcap_findalldevs.3 \
-	pcap_free_datalinks.3 \
-	pcap_freealldevs.3 \
 	pcap_freecode.3 \
 	pcap_get_selectable_fd.3 \
 	pcap_geterr.3 \
 	pcap_inject.3 \
 	pcap_is_swapped.3 \
 	pcap_lib_version.3 \
-	pcap_list_datalinks.3 \
 	pcap_lookupdev.3 \
 	pcap_lookupnet.3 \
 	pcap_loop.3 \
 	pcap_major_version.3 \
 	pcap_next_ex.3 \
 	pcap_offline_filter.3 \
-	pcap_open_dead.3 \
 	pcap_open_live.3 \
-	pcap_open_offline.3 \
 	pcap_set_buffer_size.3 \
 	pcap_set_datalink.3 \
 	pcap_set_promisc.3 \
@@ -67,13 +75,19 @@ MAN=	pcap.3 \
 	pcap_stats.3 \
 	pcap_statustostr.3 \
 	pcap_strerror.3 \
-	pcap-savefile.5 \
-	pcap-filter.7 \
-	pcap-linktype.7
+	pcap_tstamp_type_name_to_val.3 \
+	pcap_tstamp_type_val_to_name.3
+MAN+=	pcap-savefile.5
+MAN+=	pcap-filter.7 \
+	pcap-linktype.7 \
+	pcap-tstamp.7
 MLINKS=	pcap_datalink_val_to_name.3 pcap_datalink_val_to_description.3 \
 	pcap_dump_open.3 pcap_dump_fopen.3 \
+	pcap_findalldevs.3 pcap_freealldevs.3 \
 	pcap_geterr.3 pcap_perror.3 \
 	pcap_inject.3 pcap_sendpacket.3 \
+	pcap_list_datalinks.3 pcap_free_datalinks.3 \
+	pcap_list_tstamp_types.3 pcap_free_tstamp_types.3 \
 	pcap_loop.3 pcap_dispatch.3 \
 	pcap_major_version.3 pcap_minor_version.3 \
 	pcap_next_ex.3 pcap_next.3 \
@@ -84,8 +98,10 @@ CLEANFILES=tokdefs.h version.c version.h
 CLEANFILES+=${MAN}
 WARNS?=	2
 
-CFLAGS+=-DHAVE_CONFIG_H -Dyylval=pcap_lval -I${.CURDIR} -I.
-CFLAGS+=-D_U_="__attribute__((unused))"
+LFLAGS+=-Ppcap_
+YFLAGS+=-p pcap_
+CFLAGS+=-DHAVE_CONFIG_H -I${.CURDIR}
+CFLAGS+=-D_U_="__attribute__((unused))" -DYYBISON
 CFLAGS+=-DHAVE_STRUCT_ETHER_ADDR -DHAVE_NET_PFVAR_H
 .if !defined(NOINET6)
 CFLAGS+=-DINET6
@@ -101,17 +117,18 @@ CFLAGS+=-I${PCAP_DISTDIR}
 .PATH:	${PCAP_DISTDIR}
 .PATH:	${PCAP_DISTDIR}/bpf/net
 
-version.c: ${PCAP_DISTDIR}/VERSION
-	@rm -f $@
-	sed 's/.*/char pcap_version[] = "&";/' ${PCAP_DISTDIR}/VERSION > $@
+version.c: VERSION
+	sed -e 's/.*/char pcap_version[] = "&";/' ${.ALLSRC} > ${.TARGET}
 
-version.h: ${PCAP_DISTDIR}/VERSION
-	@rm -f $@
-	sed 's/.*/static const char pcap_version_string[] = "libpcap version &";/' \
-		${PCAP_DISTDIR}/VERSION > $@
+version.h: VERSION
+	sed -e 's/.*/static const char pcap_version_string[] = "libpcap version &";/' \
+		${.ALLSRC} > ${.TARGET}
 
 tokdefs.h: grammar.h
 	${LN} -sf grammar.h tokdefs.h
+
+pcap.o:	version.h
+scanner.o: scanner.c tokdefs.h
 
 #
 # Magic to convert the man pages to something non Solarish

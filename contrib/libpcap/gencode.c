@@ -77,7 +77,7 @@ static const char rcsid[] _U_ =
 #include "nlpid.h"
 #include "llc.h"
 #include "gencode.h"
-#include <netproto/802_11/ieee80211.h>
+#include "ieee80211.h"
 #include "atmuni31.h"
 #include "sunatmpos.h"
 #include "ppp.h"
@@ -87,7 +87,6 @@ static const char rcsid[] _U_ =
 #ifdef HAVE_NET_PFVAR_H
 #include <sys/socket.h>
 #include <net/if.h>
-#include <net/if_var.h>
 #include <net/pf/pfvar.h>
 #include <net/pf/if_pflog.h>
 #endif
@@ -100,8 +99,6 @@ static const char rcsid[] _U_ =
 #endif /* WIN32 */
 #endif /*INET6*/
 #include <pcap/namedb.h>
-
-#include <netproto/802_11/ieee80211_radiotap.h>
 
 #define ETHERMTU	1500
 

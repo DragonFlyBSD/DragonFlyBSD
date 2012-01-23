@@ -985,7 +985,6 @@ TO_REMOVE+=/usr/share/examples/cvsup/DragonFly-release1_10-supfile
 TO_REMOVE+=/usr/share/examples/cvsup/DragonFly-release1_12-supfile
 TO_REMOVE+=/usr/share/examples/cvsup/DragonFly-release2_0-supfile
 TO_REMOVE+=/usr/share/examples/cvsup/DragonFly-src-supfile
-TO_REMOVE+=/usr/include/pcap-bpf.h
 TO_REMOVE+=/etc/rc.d/nfslocking
 TO_REMOVE+=/usr/sbin/pmap_dump
 TO_REMOVE+=/usr/sbin/pmap_set
@@ -1890,6 +1889,7 @@ TO_REMOVE+=/usr/share/man/cat4/ata.4.gz
 TO_REMOVE+=/usr/share/man/man4/ata.4.gz
 TO_REMOVE+=/usr/share/man/cat4/atapicam.4.gz
 TO_REMOVE+=/usr/share/man/man4/atapicam.4.gz
+TO_REMOVE+=/usr/include/pcap-int.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
