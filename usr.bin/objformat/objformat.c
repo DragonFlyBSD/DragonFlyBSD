@@ -41,7 +41,7 @@
 #endif
 
 #ifndef BINUTILSVER_DEFAULT
-#define	BINUTILSVER_DEFAULT "binutils222"
+#define	BINUTILSVER_DEFAULT "binutils221"
 #endif
 
 #ifndef OBJFORMAT_PATH_DEFAULT
@@ -69,6 +69,7 @@ static struct command commands[] = {
 	{"c++filt",	BINUTILS},
 	{"elfedit",	BINUTILS},
 	{"gprof",       BINUTILS},
+	{"incremental-dump", BINUTILS},
 	{"ld",		BINUTILS},
 	{"nm",		BINUTILS},
 	{"objcopy",	BINUTILS},
@@ -78,7 +79,6 @@ static struct command commands[] = {
 	{"size",	BINUTILS},
 	{"strings",	BINUTILS},
 	{"strip",	BINUTILS},
-	{"incremental-dump", BINUTILS},
 	{"objformat",	OBJFORMAT},
 	{"",		-1}
 };

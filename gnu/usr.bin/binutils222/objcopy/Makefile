@@ -5,7 +5,6 @@
 PROG=	objcopy
 SRCS=	not-strip.c objcopy.c
 MAN=	objcopy222.1
-MLINKS+=objcopy222.1 objcopy.1
 WARNS=	1
 
 objcopy222.1: ${SRCDIR}/binutils/doc/objcopy.1

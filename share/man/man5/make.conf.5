@@ -129,9 +129,8 @@ All other values will handled according to the settings in
 Controls which binutils to use by default.
 Currently accepted values are
 .Dq binutils221
-and
-.Dq binutils222
-(default).
+(default) and
+.Dq binutils222 .
 .It Va CFLAGS
 .Pq Vt str
 Controls the compiler setting when compiling C code.
@@ -342,9 +341,9 @@ with the setuid bit turned on.
 .It Va MODULES_WITH_WORLD
 .Pq Vt bool
 Set to build modules with the system instead of the kernel.
-.It Va NO_BINUTILS221
+.It Va NO_BINUTILS222
 .Pq Vt bool
-Set to not build the older version of binutils (2.21).
+Set to not build the newer, non-default version of binutils (2.22).
 .It Va NO_CRYPT
 .Pq Vt bool
 Set to not build crypto code.

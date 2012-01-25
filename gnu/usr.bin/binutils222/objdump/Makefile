@@ -5,7 +5,6 @@
 PROG=	objdump
 SRCS=	elfcomm.c objdump.c
 MAN=	objdump222.1
-MLINKS+=objdump222.1 objdump.1
 WARNS=	1
 
 CFLAGS+= -DOBJDUMP_PRIVATE_VECTORS=""

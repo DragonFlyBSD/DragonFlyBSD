@@ -4,7 +4,6 @@
 
 PROG=	nm
 MAN=	nm222.1
-MLINKS+=nm222.1 nm.1
 WARNS=	2
 
 nm222.1: ${SRCDIR}/binutils/doc/nm.1

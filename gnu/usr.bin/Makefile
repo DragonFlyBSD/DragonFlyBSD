@@ -10,18 +10,18 @@ SUBDIR+=cvs
 SUBDIR+=gdb
 .endif
 
+.if !defined(NO_BINUTILS222)
 SUBDIR+= binutils222
-.if !defined(NO_BINUTILS221)
-SUBDIR+= binutils221
 .endif
+SUBDIR+= binutils221
 
 .if !defined(NO_GCC41)
 SUBDIR+= cc41
-.ORDER: binutils222 cc41
+.ORDER: binutils221 cc41
 .endif
 
 SUBDIR+= cc44
-.ORDER: binutils222 cc44
+.ORDER: binutils221 cc44
 
 # maximum parallelism
 #

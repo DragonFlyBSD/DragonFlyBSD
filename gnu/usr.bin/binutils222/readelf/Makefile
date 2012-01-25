@@ -5,7 +5,6 @@
 PROG=	readelf
 SRCS=	readelf.c unwind-ia64.c dwarf.c elfcomm.c
 MAN=	readelf222.1
-MLINKS+=readelf222.1 readelf.1
 WARNS=	1
 
 readelf222.1: ${SRCDIR}/binutils/doc/readelf.1

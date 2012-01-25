@@ -15,7 +15,7 @@
 # we back off to something it probably does have.
 
 _DEFAULT_CCVER=		gcc44
-_DEFAULT_BINUTILSVER=	binutils222
+_DEFAULT_BINUTILSVER=	binutils221
 
 CCVER ?= ${_DEFAULT_CCVER}
 _CCVER := ${CCVER}

@@ -5,7 +5,6 @@
 PROG=	ranlib
 SRCS=	ar.c is-ranlib.c
 MAN=	ranlib222.1
-MLINKS+=ranlib222.1 ranlib.1
 
 NOSHARED?= yes
 
