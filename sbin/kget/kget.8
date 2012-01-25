@@ -23,7 +23,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/kget/kget.8,v 1.3.2.5 2001/08/16 11:35:45 ru Exp $
-.\" $DragonFly: src/sbin/kget/kget.8,v 1.3 2006/02/17 19:33:32 swildner Exp $
 .\"
 .Dd February 20, 1999
 .Dt KGET 8
@@ -38,30 +37,22 @@
 The
 .Nm
 utility allows one to view or save any device configuration information
-which was changed in userconfig (-c) session.  Most typically, it is written
-to a /boot/kernel.conf file which is then loaded from /boot/loader.rc
-(using "load -t userconfig_script /boot/kernel.conf"), saving the user
-from having to re-enter it each time the system is booted.
+which was changed in a userconfig (-c) session.
 .Pp
-.Nm
-uses the
-.Xr sysctl 3
-interface to retrieve data from the kernel and requires that at least
-the
-.Va machdep.uc_devlist
-symbol be present.  If it's not, you may need to update your kernel
-before using this utility.
-.Pp
-Usage:
-.Nm
+The
 .Ar filename
+argument specifies which file (or
+.Sq -
+for stdout) the information should be saved to.
+If the file exists, it will be overwritten.
 .Pp
-where
-.Ar filename
-is either a regular file (which is overwritten) or -, indicating that
-standard output should be used.
-.Sh SEE ALSO
-.Xr sysctl 3
+Most typically, the information is written to a
+.Pa /boot/kernel.conf
+file which is then loaded from
+.Pa /boot/loader.rc
+(using
+.Dq "load -t userconfig_script /boot/kernel.conf" ) ,
+saving the user from having to re-enter it each time the system is booted.
 .Sh HISTORY
 The
 .Nm
