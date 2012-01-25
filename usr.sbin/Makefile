@@ -58,7 +58,6 @@ SUBDIR= 802_11 \
 	makewhatis \
 	manctl \
 	memcontrol \
-	mergemaster \
 	mfiutil \
 	mixer \
 	mld6query \
