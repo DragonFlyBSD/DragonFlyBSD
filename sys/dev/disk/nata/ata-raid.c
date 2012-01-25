@@ -35,7 +35,6 @@
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/device.h>
-#include <sys/devicestat.h>
 #include <sys/disk.h>
 #include <sys/endian.h>
 #include <sys/libkern.h>
@@ -151,12 +150,7 @@ ata_raid_attach(struct ar_softc *rdp, int writeback)
     }
     else
 	buffer[0] = '\0';
-
-    devstat_add_entry(&rdp->devstat, "ar", rdp->lun,
-	DEV_BSIZE, DEVSTAT_NO_ORDERED_TAGS,
-	DEVSTAT_TYPE_STORARRAY | DEVSTAT_TYPE_IF_OTHER,
-	DEVSTAT_PRIORITY_ARRAY);
-
+    /* XXX TGEN add devstats? */
     cdev = disk_create(rdp->lun, &rdp->disk, &ar_ops);
     cdev->si_drv1 = rdp;
     cdev->si_iosize_max = 128 * DEV_BSIZE;
@@ -391,7 +385,6 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 	request->u.ata.lba = lba;
 	request->u.ata.count = request->bytecount / DEV_BSIZE;
 	    
-	devstat_start_transaction(&rdp->devstat);
 	switch (rdp->type) {
 	case AR_T_JBOD:
 	case AR_T_SPAN:
@@ -833,7 +826,6 @@ ata_raid_done(struct ata_request *request)
     default:
 	kprintf("ar%d: unknown array type in ata_raid_done\n", rdp->lun);
     }
-    devstat_end_transaction_buf(&rdp->devstat, bbp);
 
     if (finished) {
 	if ((rdp->status & AR_S_REBUILDING) && 
@@ -1285,7 +1277,6 @@ ata_raid_delete(int array)
  
     rdp->status &= ~AR_S_READY;
     disk_destroy(&rdp->disk);
-    devstat_remove_entry(&rdp->devstat);
 
     for (disk = 0; disk < rdp->total_disks; disk++) {
 	if ((rdp->disks[disk].flags & AR_DF_PRESENT) && rdp->disks[disk].dev) {
@@ -4222,7 +4213,6 @@ ata_raid_module_event_handler(module_t mod, int what, void *arg)
 	    if (!rdp || !rdp->status)
 		continue;
 	    disk_destroy(&rdp->disk);
-	    devstat_remove_entry(&rdp->devstat);
 	}
 	if (testing || bootverbose)
 	    kprintf("ATA PseudoRAID unloaded\n");
