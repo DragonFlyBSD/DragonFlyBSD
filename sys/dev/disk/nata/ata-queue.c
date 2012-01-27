@@ -168,7 +168,7 @@ ata_controlcmd(device_t dev, u_int8_t command, u_int16_t feature,
 	request->u.ata.count = count;
 	request->u.ata.feature = feature;
 	request->flags = ATA_R_CONTROL;
-	request->timeout = 1;
+	request->timeout = ATA_DEFAULT_TIMEOUT;
 	request->retries = 0;
 	ata_queue_request(request);
 	error = request->result;
