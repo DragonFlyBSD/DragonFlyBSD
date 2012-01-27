@@ -1,17 +1,15 @@
 /*
- * Copyright (c) 2001 Daniel M. Eischen <deischen@freebsd.org>
+ * Copyright (c) 2003 Marcel Moolenaar
  * All rights reserved.
- * Copyright (c) 2007 Matthew Dillon <dillon@backplane.com>
+ * Copyright (c) 2012 Markus Pfeiffer <markus.pfeiffer@morphism.de>
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
- * 2. Neither the name of the author nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -25,7 +23,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/i386/gen/makecontext.c,v 1.5 2004/12/05 21:22:08 deischen Exp $
  */
 
 #include <sys/cdefs.h>
@@ -91,6 +88,7 @@ _makecontext(ucontext_t *ucp, void (*start)(void), int argc, ...)
 			argp[i] = va_arg(ap, uint64_t);
 		}
 		va_end(ap);
+		/* The first six arguments are passed via registers. */
 		for(i = argc; i < 6; i++) {
 			argp[i] = 0;
 		}
