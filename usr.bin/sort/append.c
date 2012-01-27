@@ -63,8 +63,6 @@
 
 #include "sort.h"
 
-__RCSID("$NetBSD: append.c,v 1.22 2009/09/10 22:02:40 dsl Exp $");
-
 #include <stdlib.h>
 
 /*

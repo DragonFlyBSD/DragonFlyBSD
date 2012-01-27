@@ -64,8 +64,6 @@
 #include "sort.h"
 #include "fsort.h"
 
-__RCSID("$NetBSD: files.c,v 1.40 2009/10/07 21:03:29 dsl Exp $");
-
 #include <string.h>
 
 /* Align records in temporary files to avoid misaligned copies */

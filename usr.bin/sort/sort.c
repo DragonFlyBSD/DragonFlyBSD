@@ -71,13 +71,6 @@
 #include "fsort.h"
 #include "pathnames.h"
 
-#ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1993\
- The Regents of the University of California.  All rights reserved.");
-#endif /* not lint */
-
-__RCSID("$NetBSD: sort.c,v 1.59 2010/06/05 17:44:51 dholland Exp $");
-
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/resource.h>

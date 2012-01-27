@@ -63,8 +63,6 @@
 
 #include "sort.h"
 
-__RCSID("$NetBSD: init.c,v 1.27 2010/06/06 00:00:33 wiz Exp $");
-
 #include <ctype.h>
 #include <string.h>
 

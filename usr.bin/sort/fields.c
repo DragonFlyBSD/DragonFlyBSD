@@ -65,8 +65,6 @@
 
 #include "sort.h"
 
-__RCSID("$NetBSD: fields.c,v 1.31 2009/11/06 18:34:22 joerg Exp $");
-
 #define SKIP_BLANKS(ptr) {					\
 	if (BLANK & d_mask[*(ptr)])				\
 		while (BLANK & d_mask[*(++(ptr))]);		\

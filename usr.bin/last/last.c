@@ -1,3 +1,4 @@
+/*	@(#)last.c	8.2 (Berkeley) 4/2/94 */
 /*	$NetBSD: last.c,v 1.15 2000/06/30 06:19:58 simonb Exp $	*/
 
 /*
@@ -32,14 +33,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)last.c	8.2 (Berkeley) 4/2/94";
-#endif
-__RCSID("$NetBSD: last.c,v 1.15 2000/06/30 06:19:58 simonb Exp $");
-#endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/stat.h>

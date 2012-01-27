@@ -63,8 +63,6 @@
 
 #include <sys/cdefs.h>
 
-__RCSID("$NetBSD: tmp.c,v 1.15 2009/09/26 21:16:55 dsl Exp $");
-
 #include <sys/param.h>
 
 #include <err.h>

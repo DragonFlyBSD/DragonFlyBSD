@@ -1,3 +1,4 @@
+/*	@(#)radixsort.c	8.2 (Berkeley) 4/28/95				*/
 /*	$NetBSD: radix_sort.c,v 1.3 2009/09/10 22:02:40 dsl Exp $	*/
 
 /*-
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)radixsort.c	8.2 (Berkeley) 4/28/95";
-#else
-__RCSID("$NetBSD: radix_sort.c,v 1.3 2009/09/10 22:02:40 dsl Exp $");
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 /*
  * 'stable' radix sort initially from libc/stdlib/radixsort.c
