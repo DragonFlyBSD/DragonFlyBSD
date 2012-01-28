@@ -59,7 +59,7 @@
 16	STD	LINUX	{ int linux_lchown16(char *path, l_uid16_t uid, \
 				l_gid16_t gid); }
 17	UNIMPL	LINUX	break
-18	STD	LINUX	{ int linux_stat(char *path, struct ostat *up); }
+18	STD	LINUX	{ int linux_stat(char *path, struct ostat *statbuf); }
 19	STD	LINUX	{ int linux_lseek(l_uint fdes, l_off_t off, \
 				l_int whence); }
 20	STD	LINUX	{ int linux_getpid(void); }
@@ -126,8 +126,7 @@
 72	STD	LINUX	{ int linux_sigsuspend(l_int hist0, l_int hist1, \
 				l_osigset_t mask); }
 73	STD	LINUX	{ int linux_sigpending(l_osigset_t *mask); }
-74	NOPROTO LINUX	{ int osethostname(char *hostname, u_int len); } \
-			    osethostname sethostname_args int
+74	STD	LINUX	{ int linux_sethostname(char *hostname, u_int len); }
 75	STD	LINUX	{ int linux_setrlimit(l_uint resource, \
 				struct l_rlimit *rlim); }
 76	STD	LINUX	{ int linux_old_getrlimit(l_uint resource, \
@@ -144,7 +143,7 @@
 82	STD	LINUX	{ int linux_old_select(struct l_old_select_argv \
 				*ptr); }
 83	STD	LINUX	{ int linux_symlink(char *path, char *to); }
-84	NOPROTO	LINUX	{ int ostat(char *path, struct ostat *up); }
+84	STD	LINUX	{ int linux_ostat(char *path, struct ostat *statbuf); }
 85	STD	LINUX	{ int linux_readlink(char *name, char *buf, \
 				l_int count); }
 86	STD	LINUX	{ int linux_uselib(char *library); }

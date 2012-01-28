@@ -40,7 +40,4 @@ linux_support.o: linux_support.s linux_assym.h assym.s
 linux_genassym.o: linux_genassym.c linux.h @
 	${CC} -c ${CFLAGS:N-fno-common} ${.IMPSRC}
 
-opt_compat.h:
-	echo "#define COMPAT_43 1" > opt_compat.h
-
 .include <bsd.kmod.mk>
