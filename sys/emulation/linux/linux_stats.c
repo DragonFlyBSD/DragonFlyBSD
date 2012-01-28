@@ -45,6 +45,7 @@
 #include <sys/vnode.h>
 #include <sys/device.h>
 #include <sys/kern_syscall.h>
+#include <emulation/43bsd/stat.h>
 
 #include <sys/file2.h>
 #include <sys/mplock2.h>
@@ -75,6 +76,35 @@ newstat_copyout(struct stat *buf, void *ubuf)
 	tbuf.st_blocks = buf->st_blocks;
 
 	error = copyout(&tbuf, ubuf, sizeof(tbuf));
+	return (error);
+}
+
+static int
+ostat_copyout(struct stat *st, struct ostat *uaddr)
+{
+	struct ostat ost;
+	int error;
+
+	ost.st_dev = st->st_dev;
+	ost.st_ino = st->st_ino;
+	ost.st_mode = st->st_mode;
+	ost.st_nlink = st->st_nlink;
+	ost.st_uid = st->st_uid;
+	ost.st_gid = st->st_gid;
+	ost.st_rdev = st->st_rdev;
+	if (st->st_size < (quad_t)1 << 32)
+		ost.st_size = st->st_size;
+	else
+		ost.st_size = -2;
+	ost.st_atime = st->st_atime;
+	ost.st_mtime = st->st_mtime;
+	ost.st_ctime = st->st_ctime;
+	ost.st_blksize = st->st_blksize;
+	ost.st_blocks = st->st_blocks;
+	ost.st_flags = st->st_flags;
+	ost.st_gen = st->st_gen;
+
+	error = copyout(&ost, uaddr, sizeof(ost));
 	return (error);
 }
 
@@ -511,5 +541,32 @@ sys_linux_fstatat64(struct linux_fstatat64_args *args)
 	return (error);
 }
 
+int
+sys_linux_ostat(struct linux_ostat_args *args)
+{
+	struct nlookupdata nd;
+	struct stat buf;
+	char *path;
+	int error;
+
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
+#ifdef DEBUG
+	if (ldebug(ostat))
+		kprintf(ARGS(ostat, "%s, *"), path);
+#endif
+	get_mplock();
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_stat(&nd, &buf);
+		nlookup_done(&nd);
+	}
+	rel_mplock();
+	if (error == 0)
+		error = ostat_copyout(&buf, args->statbuf);
+	linux_free_path(&path);
+	return (error);
+}
 
 #endif /* __i386__ */
