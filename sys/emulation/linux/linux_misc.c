@@ -1933,3 +1933,34 @@ sys_linux_getcpu(struct linux_getcpu_args *args)
 	error = copyout(&node, args->pnode, sizeof(node));
 	return (error);
 }
+
+int
+sys_linux_sethostname(struct linux_sethostname_args *uap)
+{
+	struct thread *td = curthread;
+	size_t len;
+	char *hostname;
+	int name[2];
+	int error;
+
+	name[0] = CTL_KERN;
+	name[1] = KERN_HOSTNAME;
+	error = priv_check_cred(td->td_ucred, PRIV_SETHOSTNAME, 0);
+	if (error)
+		return (error);
+	len = MIN(uap->len, MAXHOSTNAMELEN);
+	hostname = kmalloc(MAXHOSTNAMELEN, M_TEMP, M_WAITOK);
+
+	error = copyin(uap->hostname, hostname, len);
+	if (error) {
+		kfree(hostname, M_TEMP);
+		return (error);
+	}
+
+	get_mplock();
+	error = kernel_sysctl(name, 2, NULL, 0, hostname, len, NULL);
+	rel_mplock();
+
+	kfree(hostname, M_TEMP);
+	return (error);
+}

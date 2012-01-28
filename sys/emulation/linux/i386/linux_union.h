@@ -62,12 +62,14 @@ union sysunion {
 	struct	linux_setregid16_args linux_setregid16;
 	struct	linux_sigsuspend_args linux_sigsuspend;
 	struct	linux_sigpending_args linux_sigpending;
+	struct	linux_sethostname_args linux_sethostname;
 	struct	linux_setrlimit_args linux_setrlimit;
 	struct	linux_old_getrlimit_args linux_old_getrlimit;
 	struct	linux_getgroups16_args linux_getgroups16;
 	struct	linux_setgroups16_args linux_setgroups16;
 	struct	linux_old_select_args linux_old_select;
 	struct	linux_symlink_args linux_symlink;
+	struct	linux_ostat_args linux_ostat;
 	struct	linux_readlink_args linux_readlink;
 	struct	linux_uselib_args linux_uselib;
 	struct	linux_reboot_args linux_reboot;

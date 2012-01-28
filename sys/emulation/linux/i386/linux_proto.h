@@ -113,7 +113,7 @@ struct	linux_stat_args {
 	struct sysmsg sysmsg;
 #endif
 	char *	path;	char path_[PAD_(char *)];
-	struct ostat *	up;	char up_[PAD_(struct ostat *)];
+	struct ostat *	statbuf;	char statbuf_[PAD_(struct ostat *)];
 };
 struct	linux_lseek_args {
 #ifdef _KERNEL
@@ -377,6 +377,13 @@ struct	linux_sigpending_args {
 #endif
 	l_osigset_t *	mask;	char mask_[PAD_(l_osigset_t *)];
 };
+struct	linux_sethostname_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	char *	hostname;	char hostname_[PAD_(char *)];
+	u_int	len;	char len_[PAD_(u_int)];
+};
 struct	linux_setrlimit_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -417,6 +424,13 @@ struct	linux_symlink_args {
 #endif
 	char *	path;	char path_[PAD_(char *)];
 	char *	to;	char to_[PAD_(char *)];
+};
+struct	linux_ostat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	char *	path;	char path_[PAD_(char *)];
+	struct ostat *	statbuf;	char statbuf_[PAD_(struct ostat *)];
 };
 struct	linux_readlink_args {
 #ifdef _KERNEL
@@ -1744,12 +1758,14 @@ int	sys_linux_setreuid16 (struct linux_setreuid16_args *);
 int	sys_linux_setregid16 (struct linux_setregid16_args *);
 int	sys_linux_sigsuspend (struct linux_sigsuspend_args *);
 int	sys_linux_sigpending (struct linux_sigpending_args *);
+int	sys_linux_sethostname (struct linux_sethostname_args *);
 int	sys_linux_setrlimit (struct linux_setrlimit_args *);
 int	sys_linux_old_getrlimit (struct linux_old_getrlimit_args *);
 int	sys_linux_getgroups16 (struct linux_getgroups16_args *);
 int	sys_linux_setgroups16 (struct linux_setgroups16_args *);
 int	sys_linux_old_select (struct linux_old_select_args *);
 int	sys_linux_symlink (struct linux_symlink_args *);
+int	sys_linux_ostat (struct linux_ostat_args *);
 int	sys_linux_readlink (struct linux_readlink_args *);
 int	sys_linux_uselib (struct linux_uselib_args *);
 int	sys_linux_reboot (struct linux_reboot_args *);

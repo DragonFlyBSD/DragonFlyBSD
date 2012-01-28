@@ -69,7 +69,7 @@
 #define	LINUX_SYS_linux_setregid16	71
 #define	LINUX_SYS_linux_sigsuspend	72
 #define	LINUX_SYS_linux_sigpending	73
-#define	LINUX_SYS_osethostname	74
+#define	LINUX_SYS_linux_sethostname	74
 #define	LINUX_SYS_linux_setrlimit	75
 #define	LINUX_SYS_linux_old_getrlimit	76
 #define	LINUX_SYS_getrusage	77
@@ -79,7 +79,7 @@
 #define	LINUX_SYS_linux_setgroups16	81
 #define	LINUX_SYS_linux_old_select	82
 #define	LINUX_SYS_linux_symlink	83
-#define	LINUX_SYS_ostat	84
+#define	LINUX_SYS_linux_ostat	84
 #define	LINUX_SYS_linux_readlink	85
 #define	LINUX_SYS_linux_uselib	86
 #define	LINUX_SYS_swapon	87
