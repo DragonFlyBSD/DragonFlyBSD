@@ -198,7 +198,7 @@ struct vnode {
 	} v_pollinfo;
 	struct vmresident *v_resident;		/* optional vmresident */
 	struct ccms_dataspace v_ccms;		/* cache coherency */
-	struct mount *v_pfsmp;			/* XXX: hack for PFS accounting */
+	struct mount *v_pfsmp;			/* real mount point for pfs/nullfs mounts */
 #ifdef	DEBUG_LOCKS
 	const char *filename;			/* Source file doing locking */
 	int line;				/* Line number doing locking */
