@@ -1,6 +1,4 @@
-/* $FreeBSD: src/sys/dev/asr/osd_defs.h,v 1.1.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/osd_defs.h,v 1.3 2004/02/12 00:00:19 dillon Exp $ */
-/*
+/*-
  * Copyright (c) 1996-1999 Distributed Processing Technology Corporation
  * All rights reserved.
  *
@@ -20,6 +18,7 @@
  * arising in any way out of the use of this driver software, even if advised
  * of the possibility of such damage.
  *
+ * $FreeBSD: src/sys/dev/asr/osd_defs.h,v 1.7 2005/01/06 01:42:29 imp Exp $
  */
 
 #ifndef		_OSD_DEFS_H
@@ -35,8 +34,8 @@
  *
  *Copyright Distributed Processing Technology, Corp.
  *	  140 Candace Dr.
- *	  Maitland, Fl.	32751   USA
- *	  Phone: (407) 830-5522  Fax: (407) 260-5366
+ *	  Maitland, Fl. 32751	USA
+ *	  Phone: (407) 830-5522	 Fax: (407) 260-5366
  *	  All Rights Reserved
  *
  *Author:	Doug Anderson
@@ -57,17 +56,17 @@
 # define _DPT_LINUX
 #elif (defined(__bsdi__))
 # define _DPT_BSDI
-#elif (defined(__DragonFly__))
+#elif (defined(__FreeBSD__) || defined(__DragonFly__))
 # undef _DPT_FREE_BSD
 # define _DPT_FREE_BSD
 #else
 # define _DPT_SCO
 #endif
 
-#if defined (ZIL_CURSES)
+#if defined(ZIL_CURSES)
 #define		_DPT_CURSES
 #else
-#define         _DPT_MOTIF
+#define		_DPT_MOTIF
 #endif
 
   /* Redefine 'far' to nothing - no far pointer type required in UNIX */

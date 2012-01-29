@@ -2392,6 +2392,7 @@ options		DIRECTIO
 # These controllers require the CAM infrastructure.
 #
 device		asr
+options		ASR_COMPAT
 
 # The 'dpt' driver provides support for DPT controllers (http://www.dpt.com/).
 # These have hardware RAID-{0,1,5} support, and do multi-initiator I/O.

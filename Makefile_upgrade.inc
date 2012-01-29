@@ -1890,6 +1890,8 @@ TO_REMOVE+=/usr/share/man/man4/ata.4.gz
 TO_REMOVE+=/usr/share/man/cat4/atapicam.4.gz
 TO_REMOVE+=/usr/share/man/man4/atapicam.4.gz
 TO_REMOVE+=/usr/include/pcap-int.h
+TO_REMOVE+=/usr/share/man/cat4/i386/asr.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/asr.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
