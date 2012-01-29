@@ -10,6 +10,10 @@ CFLAGS+=	-I${SRCDIR} -I${SRCDIR}/lib -I${SRCDIR}/gnulib/lib
 CFLAGS+=	-I${SRCDIR}/info -I${.CURDIR}/../libgnu
 CFLAGS+=	-DHAVE_CONFIG_H
 
+# Additional info dirs
+#
+CFLAGS+=-DINFODIR=\"/usr/pkg/info\"
+
 SRCS=	dir.c \
 	display.c \
 	dribble.c \
