@@ -949,6 +949,7 @@ allocvnode(int lktimeout, int lkflags)
 	vp->v_tag = 0;
 	vp->v_ops = NULL;
 	vp->v_data = NULL;
+	vp->v_pfsmp = NULL;
 	KKASSERT(vp->v_mount == NULL);
 
 	return (vp);
