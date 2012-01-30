@@ -448,6 +448,14 @@ kern_getrlimit(u_int which, struct rlimit *limp)
 	struct proc *p = curproc;
 	struct plimit *limit;
 
+	/*
+	 * p is NULL when kern_getrlimit is called from a
+	 * kernel thread. In this case as the calling proc
+	 * isn't available we just skip the limit check.
+	 */
+	if (p == NULL)
+		return 0;
+
         if (which >= RLIM_NLIMITS)
                 return (EINVAL);
 
