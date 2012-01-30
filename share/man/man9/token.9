@@ -62,6 +62,8 @@
 .Ft struct lwkt_token *
 .Fn lwkt_getpooltoken "void *ptr"
 .Ft void
+.Fn lwkt_gettoken_shared "struct lwkt_token *tok"
+.Ft void
 .Fn lwkt_token_swap "void"
 .Sh DESCRIPTION
 A soft token is a lock which is only held while a thread is running.
@@ -73,10 +75,23 @@ may change and may need to be reevaluated on wakeup.
 Tokens may be taken recursively.
 However, tokens must be released in the reverse order they were acquired.
 .Pp
+Tokens may be acquired in shared mode, allowing multiple concurrent holders,
+via
+.Fn lwkt_gettoken_shared ,
+or in exclusive mode, allowing only one holder, via
+.Fn lwkt_gettoken .
+It is safe to acquire a token shared while holding it exclusively.
+A thread attempting to acquire a token exclusively after holding it shared
+will deadlock. 
+.Pp
 The pool token interface exists to allow using tokens with data structures
 which may be deallocated.
 It allows getting a token reference from an address, which
 is implemented by a set of statically allocated tokens and a hash function.
+.Pp
+It is not recommended to take pool tokens in shared mode. A hash collision
+from a subsequent exclusive pool token request will hit the
+exclusive-after-shared deadlock.
 .Pp
 The
 .Fn lwkt_token_init
@@ -230,6 +245,8 @@ The LWKT Token implementation is in
 .Sh HISTORY
 LWKT tokens first appeared in
 .Dx 1.0 .
+Shared tokens first appeared in
+.Dx 2.11 .
 .Sh AUTHORS
 The
 .Nm token
