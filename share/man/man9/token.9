@@ -133,6 +133,9 @@ The
 function swaps the two most recently acquired tokens; this allows release of
 tokens out-of-order.
 This function should not be called when less than two tokens are held.
+.Sh FILES
+The LWKT Token implementation is in
+.Pa /sys/kern/lwkt_token.c .
 .Sh EXAMPLES
 A simple example of using a token to protect access to a data structure:
 .Bd -literal
@@ -234,9 +237,6 @@ is used, tokens are not released until blocking happens - that is until the
 paired with the
 .Fn tsleep_interlock
 is called.
-.Sh FILES
-The LWKT Token implementation is in
-.Pa /sys/kern/lwkt_token.c .
 .Sh SEE ALSO
 .Xr crit_enter 9 ,
 .Xr lockmgr 9 ,
