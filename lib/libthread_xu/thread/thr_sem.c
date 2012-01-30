@@ -245,6 +245,27 @@ _sem_post(sem_t *sem)
 	return (0);
 }
 
+sem_t *
+_sem_open(const char *name, int oflag, ...)
+{
+	errno = ENOSYS;
+	return (SEM_FAILED);
+}
+
+int
+_sem_close(sem_t *sem)
+{
+	errno = ENOSYS;
+	return (-1);
+}
+
+int
+_sem_unlink(const char *name)
+{
+	errno = ENOSYS;
+	return (-1);
+}
+
 __strong_reference(_sem_destroy, sem_destroy);
 __strong_reference(_sem_getvalue, sem_getvalue);
 __strong_reference(_sem_init, sem_init);
@@ -254,4 +275,7 @@ __strong_reference(_sem_wait, sem_wait);
 __strong_reference(_sem_timedwait, sem_timedwait);
 #endif
 __strong_reference(_sem_post, sem_post);
+__strong_reference(_sem_open, sem_open);
+__strong_reference(_sem_close, sem_close);
+__strong_reference(_sem_unlink, sem_unlink);
 
