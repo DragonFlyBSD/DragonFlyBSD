@@ -772,62 +772,6 @@ gnu/vfs/ext2fs/ext2_vfsops.c		optional ext2fs
 gnu/vfs/ext2fs/ext2_vnops.c		optional ext2fs
 gnu/vfs/ext2fs/ext2_ihash.c		optional ext2fs
 gnu/vfs/ext2fs/ext2_quota.c		optional ext2fs
-#
-# isdn4bsd device drivers
-#
-net/i4b/driver/i4b_trace.c		optional i4btrc
-net/i4b/driver/i4b_rbch.c		optional i4brbch
-net/i4b/driver/i4b_tel.c		optional i4btel
-net/i4b/driver/i4b_ipr.c		optional i4bipr
-net/i4b/driver/i4b_ctl.c		optional nowerror i4bctl
-net/i4b/driver/i4b_ing.c		optional i4bing
-net/i4b/driver/i4b_isppp.c		optional i4bisppp
-#
-# isdn4bsd CAPI driver
-#
-net/i4b/capi/capi_l4if.c		optional i4bcapi
-net/i4b/capi/capi_llif.c		optional i4bcapi
-net/i4b/capi/capi_msgs.c		optional i4bcapi
-#
-# isdn4bsd AVM B1/T1 CAPI driver
-#
-net/i4b/capi/iavc/iavc_pci.c	optional iavc
-net/i4b/capi/iavc/iavc_isa.c	optional iavc
-net/i4b/capi/iavc/iavc_lli.c	optional iavc
-net/i4b/capi/iavc/iavc_card.c	optional iavc
-#
-# isdn4bsd support
-#
-net/i4b/layer2/i4b_mbuf.c		optional i4btrc
-#
-# isdn4bsd Q.921 handler
-#
-net/i4b/layer2/i4b_l2.c		optional i4bq921
-net/i4b/layer2/i4b_l2fsm.c		optional i4bq921
-net/i4b/layer2/i4b_uframe.c		optional i4bq921
-net/i4b/layer2/i4b_tei.c		optional i4bq921
-net/i4b/layer2/i4b_sframe.c		optional i4bq921
-net/i4b/layer2/i4b_iframe.c		optional i4bq921
-net/i4b/layer2/i4b_l2timer.c	optional i4bq921
-net/i4b/layer2/i4b_util.c		optional i4bq921
-net/i4b/layer2/i4b_lme.c		optional i4bq921
-#
-# isdn4bsd Q.931 handler
-#
-net/i4b/layer3/i4b_q931.c		optional i4bq931
-net/i4b/layer3/i4b_l3fsm.c		optional i4bq931
-net/i4b/layer3/i4b_l3timer.c	optional i4bq931
-net/i4b/layer3/i4b_l2if.c		optional i4bq931
-net/i4b/layer3/i4b_l4if.c		optional i4bq931
-net/i4b/layer3/i4b_q932fac.c	optional i4bq931
-#
-# isdn4bsd control device driver, interface to isdnd
-#
-net/i4b/layer4/i4b_i4bdrv.c		optional i4b
-net/i4b/layer4/i4b_l4.c		optional i4b
-net/i4b/layer4/i4b_l4mgmt.c		optional i4b
-net/i4b/layer4/i4b_l4timer.c	optional i4b
-#
 vfs/isofs/cd9660/cd9660_bmap.c	optional cd9660
 vfs/isofs/cd9660/cd9660_lookup.c	optional cd9660
 vfs/isofs/cd9660/cd9660_node.c	optional cd9660
@@ -1083,8 +1027,6 @@ net/pf/pf_osfp.c		optional pf
 net/ppp_layer/slcompress.c	optional ppp
 net/ppp_layer/slcompress.c	optional sl
 net/ppp_layer/slcompress.c	optional sppp
-net/ppp_layer/slcompress.c	optional i4bisppp
-net/ppp_layer/slcompress.c	optional i4bipr
 net/ppp_layer/ppp_deflate.c	optional ppp_deflate
 net/ppp_layer/ppp_tty.c		optional ppp
 net/if_loop.c		optional loop
@@ -1093,7 +1035,6 @@ net/if_mib.c		standard
 net/ppp/if_ppp.c		optional ppp
 net/sl/if_sl.c		optional sl
 net/sppp/if_spppsubr.c	optional sppp
-net/sppp/if_spppsubr.c	optional i4bisppp
 net/stf/if_stf.c		optional stf
 net/tun/if_tun.c		optional tun
 net/tap/if_tap.c		optional tap

@@ -171,9 +171,6 @@ upgrade_etc:	preupgrade remove-obsolete-files
 	cd ${UPGRADE_SRCDIR}/sendmail; ${MAKE} upgrade
 .endif
 .endif
-.if !defined(NO_I4B)
-	cd ${UPGRADE_SRCDIR}/isdn; ${MAKE} install
-.endif
 	cd ${UPGRADE_SRCDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${MTREE} ${DESTDIR}/etc/mtree
 	cd ${UPGRADE_SRCDIR}/bluetooth; ${MAKE} install
@@ -278,9 +275,6 @@ distribution:
 	cd ${.CURDIR}; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 		Makefile.usr ${DESTDIR}/usr/Makefile
-.if !defined(NO_I4B)
-	cd ${.CURDIR}/isdn; ${MAKE} install
-.endif
 .if !defined(NO_SENDMAIL)
 	cd ${.CURDIR}/sendmail; ${MAKE} obj
 	cd ${.CURDIR}/sendmail; ${MAKE} distribution

@@ -24,8 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/radius.c,v 1.11.2.5 2002/09/01 02:12:32 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/radius.c,v 1.4 2006/08/03 16:40:48 swildner Exp $
- *
  */
 
 #include <sys/param.h>
@@ -679,10 +677,6 @@ radius_put_physical_details(struct rad_handle *rad, struct physical *p)
   type = RAD_VIRTUAL;
   if (p->handler)
     switch (p->handler->type) {
-      case I4B_DEVICE:
-        type = RAD_ISDN_SYNC;
-        break;
-
       case TTY_DEVICE:
         type = RAD_ASYNC;
         break;

@@ -5,7 +5,6 @@
 #           Originally written by Toshiharu OHNO
 #
 # $FreeBSD: src/share/examples/ppp/ppp.conf.sample,v 1.16.2.10 2003/05/03 21:35:06 keramida Exp $
-# $DragonFly: src/share/examples/ppp/ppp.conf.sample,v 1.2 2003/06/17 04:36:57 dillon Exp $
 #
 #################################################################
 
@@ -672,8 +671,6 @@ callback-server-client-decides:
 #
 #  It's worth increasing your MTU and MRU slightly in multi-link mode to
 #  prevent full packets from being fragmented.
-#
-#  See ppp.conf.isdn for an example of how to do multi-link isdn.
 #
 #  You can now ``dial'' specific links, or even dial all links at the
 #  same time.  The `dial' command may also be prefixed with a specific

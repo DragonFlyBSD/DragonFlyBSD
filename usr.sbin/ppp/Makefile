@@ -1,5 +1,4 @@
 # $FreeBSD: src/usr.sbin/ppp/Makefile,v 1.73.2.8 2002/09/01 02:12:22 brian Exp $
-# $DragonFly: src/usr.sbin/ppp/Makefile,v 1.4 2005/09/06 18:55:47 dillon Exp $
 
 PROG=	ppp
 MAN=	ppp.8
@@ -77,12 +76,6 @@ CFLAGS+=-DNORADIUS
 SRCS+=	radius.c
 LDADD+=	-lradius
 DPADD+= ${LIBRADIUS}
-.endif
-
-.if defined(NOI4B) || ${MACHINE_ARCH} != "i386"
-CFLAGS+=-DNOI4B
-.else
-SRCS+=	i4b.c
 .endif
 
 .if defined(NONETGRAPH)

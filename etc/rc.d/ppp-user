@@ -4,7 +4,7 @@
 #
 
 # PROVIDE: ppp-user
-# REQUIRE: netif isdnd
+# REQUIRE: netif
 
 . /etc/rc.subr
 

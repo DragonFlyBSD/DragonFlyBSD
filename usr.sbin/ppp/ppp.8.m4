@@ -26,7 +26,6 @@ changecom(,)dnl
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
-.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.12 2008/05/02 02:05:08 swildner Exp $
 .\"
 .Dd August 6, 2009
 .Dt PPP 8
@@ -338,13 +337,6 @@ conventional serial device.
 UDP connections force
 .Nm
 into synchronous mode.
-.It Supports PPP over ISDN.
-If
-.Nm
-is given a raw B-channel i4b device to open as a link, it's able to talk
-to the
-.Xr isdnd 8
-daemon to establish an ISDN connection.
 .It Supports PPP over Ethernet (rfc 2516).
 If
 .Nm
@@ -4330,12 +4322,6 @@ As ptys don't support the
 .Dv TIOCMGET
 ioctl, the tty device will switch all
 carrier detection off when it detects that the device is a pty.
-.It ISDN (i4b) Devices
-Carrier is checked once per second for 6 seconds.
-If it's not set after
-the sixth second, the connection attempt is considered to have failed and
-the device is closed.
-Carrier is always required for i4b devices.
 .It PPPoE (netgraph) Devices
 Carrier is checked once per second for 5 seconds.
 If it's not set after
@@ -4462,11 +4448,9 @@ This sets the device(s) to which
 will talk to the given
 .Dq value .
 .Pp
-All ISDN and serial device names are expected to begin with
-.Pa /dev/ .
-ISDN devices are usually called
-.Pa i4brbchX
-and serial devices are usually called
+All serial device names are expected to begin with
+.Pa /dev/
+and are usually called
 .Pa cuaXX .
 .Pp
 If
@@ -5862,7 +5846,6 @@ ifdef({LOCALRAD},{},{.Xr libradius 3 ,
 .Xr getty 8 ,
 .Xr inetd 8 ,
 .Xr init 8 ,
-.Xr isdnd 8 ,
 .Xr named 8 ,
 .Xr ping 8 ,
 .Xr pppctl 8 ,

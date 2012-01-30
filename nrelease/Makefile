@@ -295,7 +295,6 @@ customizeiso:
 	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
 .for UPGRADE_ITEM in Makefile			\
 		     etc.${MACHINE_ARCH} 	\
-		     isdn/Makefile		\
 		     rc.d/Makefile		\
 		     periodic/Makefile		\
 		     periodic/daily/Makefile	\

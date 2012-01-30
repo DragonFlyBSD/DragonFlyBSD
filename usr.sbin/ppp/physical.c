@@ -17,8 +17,6 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/ppp/physical.c,v 1.34.2.8 2002/09/01 02:12:29 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/physical.c,v 1.3 2005/11/24 23:42:54 swildner Exp $
- *
  */
 
 #include <sys/param.h>
@@ -93,9 +91,6 @@
 #include "udp.h"
 #include "exec.h"
 #include "tty.h"
-#ifndef NOI4B
-#include "i4b.h"
-#endif
 #ifndef NONETGRAPH
 #include "ether.h"
 #include "netgraph.h"
@@ -122,13 +117,6 @@ struct {
                                int *, int, int *, int *);
   int (*DeviceSize)(void);
 } devices[] = {
-#ifndef NOI4B
-  /*
-   * This must come before ``tty'' so that the probe routine is
-   * able to identify it as a more specific type of terminal device.
-   */
-  { i4b_Create, i4b_iov2device, i4b_DeviceSize },
-#endif
   { tty_Create, tty_iov2device, tty_DeviceSize },
 #ifndef NONETGRAPH
   /*

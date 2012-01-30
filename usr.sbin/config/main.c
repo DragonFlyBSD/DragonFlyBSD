@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.24 2008/07/11 09:28:20 thomas Exp $
  */
 
 #include <sys/types.h>
@@ -214,18 +213,6 @@ main(int argc, char *argv[])
 	 * XXX check directory structure for architecture subdirectories and
 	 * create the symlinks automatically XXX
 	 */
-	if (*srcdir == '\0')
-		snprintf(linkdest, sizeof(linkdest),
-		    "../../../../../net/i4b/include/%s",
-		    machinearchname);
-	else
-		snprintf(linkdest, sizeof(linkdest), "%s/net/i4b/include/%s",
-		    srcdir, machinearchname);
-	mkdir(path("net"), 0755);
-	mkdir(path("net/i4b"), 0755);
-	mkdir(path("net/i4b/include"), 0755);
-	symlink(linkdest, path("net/i4b/include/machine"));
-
 	for (i = 0; i < sizeof(emus) / sizeof(emus[0]); ++i) {
 		if (*srcdir == 0)  {
 			snprintf(linkdest, sizeof(linkdest),

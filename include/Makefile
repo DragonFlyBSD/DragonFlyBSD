@@ -80,7 +80,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netproto/key netproto/natm netproto/ncp netproto/smb \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
 	netproto/atm/uni netproto/802_11 netproto/mpls \
-	vfs/isofs/cd9660 net/i4b/include \
+	vfs/isofs/cd9660 \
 	dev/disk/mpt/mpilib \
 	dev/disk/dm \
 	dev/misc/lpt dev/misc/ppi \
@@ -196,11 +196,6 @@ copies:		mtree_setup
 		${DESTDIR}/usr/include/machine/pc
 .endif
 .endif
-.if exists(${.CURDIR}/../sys/net/i4b/include/${MACHINE_ARCH})
-	cd ${.CURDIR}/../sys/net/i4b/include/${MACHINE_ARCH}; \
-		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 *.h \
-		${DESTDIR}/usr/include/i4b_machine
-.endif
 .for i in ${SHDRS}
 	${LN} -sf ../sys/$i ${DESTDIR}/usr/include/machine/$i
 .endfor
@@ -227,8 +222,6 @@ symlinks:	mtree_setup
 		${DESTDIR}/usr/include/machine
 	cpdup -o ${.CURDIR}/../sys/platform/${MACHINE_PLATFORM}/include \
 		${DESTDIR}/usr/include/machine
-	rm -rf ${DESTDIR}/usr/include/i4b_machine
-	${LN} -s ../../sys/net/i4b/include/${MACHINE_ARCH} ${DESTDIR}/usr/include/i4b_machine
 
 .include <bsd.prog.mk>
 

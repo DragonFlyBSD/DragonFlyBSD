@@ -2,11 +2,10 @@
 #
 # $NetBSD: NETWORKING,v 1.2 2002/03/22 04:33:57 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/NETWORKING,v 1.6 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/NETWORKING,v 1.7 2007/07/30 22:17:23 swildner Exp $
 #
 
 # PROVIDE: NETWORKING NETWORK
-# REQUIRE: netif routing network_ipv6 isdnd ppp-user
+# REQUIRE: netif routing network_ipv6 ppp-user
 # REQUIRE: routed mrouted route6d mroute6d
 
 #	This is a dummy dependency, for services which require networking

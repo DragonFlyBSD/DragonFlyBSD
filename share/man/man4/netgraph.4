@@ -34,7 +34,6 @@
 .\"          Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/netgraph.4,v 1.39.2.1 2001/12/21 09:00:50 ru Exp $
-.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.14 2008/09/02 11:50:46 matthias Exp $
 .\" $Whistle: netgraph.4,v 1.7 1999/01/28 23:54:52 julian Exp $
 .\"
 .Dd September 2, 2008
@@ -445,19 +444,6 @@ receives a frame on hook
 .Em data
 it decodes the frame relay header to determine the DLCI,
 and then forwards the unwrapped frame to either C or D.
-.Pp
-A similar graph might be used to represent multi-link PPP running
-over an ISDN line:
-.Bd -literal
-[ type BRI ](B1)<--->(link1)[ type MPP  ]
-[  "ISDN1" ](B2)<--->(link2)[ (no name) ]
-[          ](D) <-+
-                  |
- +----------------+
- |
- +->(switch)[ type Q.921 ](term1)<---->(datalink)[ type Q.931 ]
-            [ (no name)  ]                       [ (no name)  ]
-.Ed
 .Sh Netgraph Structures
 Interesting members of the node and hook structures are shown below:
 .Bd -literal

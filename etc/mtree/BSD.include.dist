@@ -103,8 +103,6 @@
             ..
         ..
     ..
-    i4b_machine
-    ..
     libmilter
     ..
     libprop
@@ -143,10 +141,6 @@
         tap
         ..
         tun
-        ..
-        i4b
-            include
-            ..
         ..
     ..
     netbt
