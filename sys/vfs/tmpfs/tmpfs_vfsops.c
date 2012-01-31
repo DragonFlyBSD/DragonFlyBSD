@@ -518,6 +518,26 @@ tmpfs_vptofh(struct vnode *vp, struct fid *fhp)
 
 /* --------------------------------------------------------------------- */
 
+static int 
+tmpfs_checkexp(struct mount *mp, struct sockaddr *nam, int *exflagsp, 
+	       struct ucred **credanonp) 
+{ 
+	struct tmpfs_mount *tmp; 
+	struct netcred *nc; 
+ 
+	tmp = (struct tmpfs_mount *) mp->mnt_data;
+	nc = vfs_export_lookup(mp, &tmp->tm_export, nam); 
+	if (nc == NULL) 
+		return (EACCES); 
+
+	*exflagsp = nc->netc_exflags; 
+	*credanonp = &nc->netc_anon; 
+ 
+	return (0); 
+} 
+
+/* --------------------------------------------------------------------- */ 
+
 /*
  * tmpfs vfs operations.
  */
@@ -529,7 +549,8 @@ static struct vfsops tmpfs_vfsops = {
 	.vfs_statfs =			tmpfs_statfs,
 	.vfs_fhtovp =			tmpfs_fhtovp,
 	.vfs_vptofh =			tmpfs_vptofh, 
-	.vfs_sync =			vfs_stdsync
+	.vfs_sync =			vfs_stdsync,
+	.vfs_checkexp =			tmpfs_checkexp,
 };
 
 VFS_SET(tmpfs_vfsops, tmpfs, 0);

@@ -48,6 +48,7 @@
 #include <sys/unistd.h>
 #include <sys/vfsops.h>
 #include <sys/vnode.h>
+#include <sys/mountctl.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -1498,6 +1499,33 @@ tmpfs_reclaim(struct vop_reclaim_args *v)
 	return 0;
 }
 
+/* --------------------------------------------------------------------- */ 
+
+static int 
+tmpfs_mountctl(struct vop_mountctl_args *ap) 
+{ 
+	struct tmpfs_mount *tmp; 
+	struct mount *mp; 
+	int rc; 
+
+	switch (ap->a_op) { 
+	case (MOUNTCTL_SET_EXPORT): 
+		mp = ap->a_head.a_ops->head.vv_mount; 
+		tmp = (struct tmpfs_mount *) mp->mnt_data; 
+ 
+		if (ap->a_ctllen != sizeof(struct export_args)) 
+			rc = (EINVAL); 
+		else 
+			rc = vfs_export(mp, &tmp->tm_export, 
+					(const struct export_args *) ap->a_ctl); 
+		break; 
+	default: 
+		rc = vop_stdmountctl(ap); 
+		break; 
+	} 
+	return (rc); 
+} 
+
 /* --------------------------------------------------------------------- */
 
 static int
@@ -1699,6 +1727,7 @@ struct vop_ops tmpfs_vnode_vops = {
 	.vop_read =			tmpfs_read,
 	.vop_write =			tmpfs_write,
 	.vop_fsync =			tmpfs_fsync,
+	.vop_mountctl =			tmpfs_mountctl,
 	.vop_nremove =			tmpfs_nremove,
 	.vop_nlink =			tmpfs_nlink,
 	.vop_nrename =			tmpfs_nrename,
