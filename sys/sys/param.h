@@ -91,7 +91,7 @@
  * 300101 - i4b (ISDN) removal
  */
 #undef __DragonFly_version
-#define __DragonFly_version 300100	/* propagated to newvers */
+#define __DragonFly_version 300101	/* propagated to newvers */
 
 #include <sys/_null.h>
 
