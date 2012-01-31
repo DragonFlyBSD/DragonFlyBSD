@@ -11,7 +11,7 @@
 .PATH:	${.CURDIR}/../crypto/serpent
 
 KMOD	= crypto
-SRCS	= crypto.c cryptodev_if.c
+SRCS	= crypto.c cryptodev_if.c gmac.c
 SRCS	+= criov.c cryptosoft.c xform.c
 SRCS	+= cast.c deflate.c rmd160.c rijndael-alg-fst.c rijndael-api.c
 SRCS	+= skipjack.c bf_enc.c bf_skey.c
