@@ -857,6 +857,7 @@ MLINKS+=time.9 boottime.9 \
 	time.9 time_second.9
 MLINKS+=token.9 lwkt_getpooltoken.9 \
 	token.9 lwkt_gettoken.9 \
+	token.9 lwkt_gettoken_shared.9 \
 	token.9 lwkt_reltoken.9 \
 	token.9 lwkt_token_init.9 \
 	token.9 lwkt_token_pool_lookup.9 \
