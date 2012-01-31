@@ -399,6 +399,8 @@ struct tmpfs_mount {
 	struct objcache		*tm_node_pool;
 
 	int			tm_flags;
+
+	struct netexport	tm_export;
 };
 
 #define TMPFS_LOCK(tm) lockmgr(&(tm)->allnode_lock, LK_EXCLUSIVE|LK_RETRY)
