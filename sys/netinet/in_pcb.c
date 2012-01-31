@@ -287,7 +287,6 @@ int
 in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
 	struct socket *so = inp->inp_socket;
-	struct proc *p = td->td_proc;
 	unsigned short *lastport;
 	struct sockaddr_in *sin;
 	struct sockaddr_in jsin;
@@ -297,8 +296,6 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	int wild = 0, reuseport = (so->so_options & SO_REUSEPORT);
 	int error;
 
-	KKASSERT(p);
-
 	if (TAILQ_EMPTY(&in_ifaddrheads[mycpuid])) /* XXX broken! */
 		return (EADDRNOTAVAIL);
 	if (inp->inp_lport != 0 || inp->inp_laddr.s_addr != INADDR_ANY)
@@ -306,8 +303,8 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 	if (!(so->so_options & (SO_REUSEADDR|SO_REUSEPORT)))
 		wild = 1;    /* neither SO_REUSEADDR nor SO_REUSEPORT is set */
-	if (p)
-		cred = p->p_ucred;
+	if (td->td_proc)
+		cred = td->td_proc->p_ucred;
 
 	/*
 	 * This has to be atomic.  If the porthash is shared across multiple
