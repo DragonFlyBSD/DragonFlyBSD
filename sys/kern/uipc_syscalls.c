@@ -1413,7 +1413,9 @@ sf_buf_mfree(void *arg)
 		/* sf invalid now */
 		vm_page_busy_wait(m, FALSE, "sockpgf");
 		vm_page_unwire(m, 0);
-		if (m->wire_count == 0 && m->object == NULL) {
+		if (m->object == NULL &&
+		    m->wire_count == 0 &&
+		    (m->flags & PG_NEED_COMMIT) == 0) {
 			vm_page_free(m);
 		} else {
 			vm_page_wakeup(m);

@@ -318,6 +318,7 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define PG_NOTMETA	0x00008000	/* do not back with swap */
 #define PG_ACTIONLIST	0x00010000	/* lookaside action list present */
 #define PG_SBUSY	0x00020000	/* soft-busy also set */
+#define PG_NEED_COMMIT	0x00040000	/* clean page requires commit */
 
 /*
  * Misc constants.
@@ -432,6 +433,8 @@ void vm_page_and_queue_spin_unlock(vm_page_t m);
 
 void vm_page_io_finish(vm_page_t m);
 void vm_page_io_start(vm_page_t m);
+void vm_page_need_commit(vm_page_t m);
+void vm_page_clear_commit(vm_page_t m);
 void vm_page_wakeup(vm_page_t m);
 void vm_page_hold(vm_page_t);
 void vm_page_unhold(vm_page_t);

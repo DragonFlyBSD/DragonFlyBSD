@@ -1335,7 +1335,8 @@ readrest:
 						break;
 					}
 					if ((mt->flags &
-					     (PG_FICTITIOUS | PG_UNMANAGED)) ||
+					     (PG_FICTITIOUS | PG_UNMANAGED |
+					      PG_NEED_COMMIT)) ||
 					    mt->hold_count ||
 					    mt->wire_count)  {
 						vm_page_wakeup(mt);
