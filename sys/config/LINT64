@@ -1609,7 +1609,7 @@ device		trm		# Tekram DC395U/UW/F and DC315U
 #	ISP_TARGET_MODE		-	enable target mode operation
 #options 	ISP_TARGET_MODE=1
 
-# Options used in dev/sym/ (Symbios SCSI driver).
+# Options used in dev/disk/sym/ (Symbios SCSI driver).
 #options 	SYM_SETUP_LP_PROBE_MAP	#-Low Priority Probe Map (bits)
 					# Allows the ncr to take precedence
 					# 1 (1<<0) -> 810a, 860
@@ -1967,7 +1967,7 @@ device		asr
 #                           option will create more trouble than solve.
 #   DPT_TIMEOUT_FACTOR      Used to compute the excessive amount of time to
 #                           wait when timing out with the above option.
-#  DPT_DEBUG_xxxx           These are controllable from sys/dev/dpt/raid/dpt.h
+#  DPT_DEBUG_xxxx           These are controllable from sys/dev/raid/dpt/dpt.h
 #  DPT_LOST_IRQ             When enabled, will try, once per second, to catch
 #                           any interrupt that got lost.  Seems to help in some
 #                           DPT-firmware/Motherboard combinations.  Minimal
