@@ -54,44 +54,41 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/sym.4,v 1.5.2.7 2001/10/01 13:07:23 dd Exp $
-.\" $DragonFly: src/share/man/man4/sym.4,v 1.4 2008/05/02 02:05:05 swildner Exp $
+.\" $FreeBSD: src/share/man/man4/sym.4,v 1.21 2010/10/08 12:40:16 uqs Exp $
 .\"
-.Dd January 12, 2000
+.Dd February 1, 2012
 .Dt SYM 4
 .Os
 .Sh NAME
 .Nm sym
 .Nd NCR/Symbios/LSI Logic 53C8XX PCI SCSI host adapter driver
 .Sh SYNOPSIS
-For any number of cards:
-.Cd device sym
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device pci"
+.Cd "device scbus"
+.Cd "device sym"
 .Pp
-To disable PCI parity checking (needed for broken bridges)
-.Cd options SYM_SETUP_PCI_PARITY=<boolean>
+To disable PCI parity checking (needed for broken bridges):
+.Cd "options SYM_SETUP_PCI_PARITY=<boolean>"
 .Pp
-To control driver probing against HVD buses
-.Cd options SYM_SETUP_SCSI_DIFF=<bit combination>
+To control driver probing against HVD buses:
+.Cd "options SYM_SETUP_SCSI_DIFF=<bit combination>"
 .Pp
-To control chip attachment balancing between the ncr driver and this driver
-.Cd options SYM_SETUP_LP_PROBE_MAP=<bit combination>
+To control chip attachment balancing between the ncr driver and this driver:
+.Cd "options SYM_SETUP_LP_PROBE_MAP=<bit combination>"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+sym_load="YES"
+.Ed
 .Sh DESCRIPTION
-This driver provides support for the Symbios/LSI Logic
-.Tn 53C810 ,
-.Tn 53C815 ,
-.Tn 53C825 ,
-.Tn 53C810A ,
-.Tn 53C825A ,
-.Tn 53C860 ,
-.Tn 53C875 ,
-.Tn 53C876 ,
-.Tn 53C895 ,
-.Tn 53C895A ,
-.Tn 53C896 ,
-.Tn 53C897 ,
-.Tn 53C1510D ,
-and
-.Tn 53C1010
+This driver provides support for the Symbios/LSI Logic 53C8XX
 PCI SCSI controllers.
 .Pp
 Driver features include support for wide SCSI busses and fast10, fast20,
@@ -239,12 +236,12 @@ following settings are taken into account and reported to CAM:
 .Bl -column "Synchronous period" "Symbios"
 .It Em "Device settings	Symbios	Tekram"
 .It "Synchronous period	Y	Y"
-.It "SCSI bus width  	Y	Y"
+.It "SCSI bus width	Y	Y"
 .It "Queue tag enable	Y	Y"
-.It "Number of tags  	NA	Y"
+.It "Number of tags	NA	Y"
 .It "Disconnect enable	Y	Y"
 .It "Scan at boot time	Y	N"
-.It "Scan LUN       	Y	N"
+.It "Scan LUN	Y	N"
 .El
 .Pp
 Devices that are configured as disabled for 'scan' in the NVRAM are not
@@ -274,6 +271,78 @@ NCR/Symbios/LSI Logic 53C8XX family of PCI SCSI controllers.
 .It "sym53c1510D	40MHz	16Bit	4KB	Y	Y"
 .It "sym53c1010	80MHz	16Bit	8KB	Y	Y"
 .El
+.Sh HARDWARE
+The
+.Nm
+driver provides support for the following Symbios/LSI Logic PCI SCSI
+controllers:
+.Pp
+.Bl -bullet -compact
+.It
+.Tn 53C810
+.It
+.Tn 53C810A
+.It
+.Tn 53C815
+.It
+.Tn 53C825
+.It
+.Tn 53C825A
+.It
+.Tn 53C860
+.It
+.Tn 53C875
+.It
+.Tn 53C876
+.It
+.Tn 53C895
+.It
+.Tn 53C895A
+.It
+.Tn 53C896
+.It
+.Tn 53C897
+.It
+.Tn 53C1000
+.It
+.Tn 53C1000R
+.It
+.Tn 53C1010-33
+.It
+.Tn 53C1010-66
+.It
+.Tn 53C1510D
+.El
+.Pp
+The SCSI controllers supported by
+.Nm
+can be either embedded on a motherboard, or on
+one of the following add-on boards:
+.Pp
+.Bl -bullet -compact
+.It
+ASUS SC-200, SC-896
+.It
+Data Technology DTC3130 (all variants)
+.It
+DawiControl DC2976UW
+.It
+Diamond FirePort (all)
+.It
+I-O DATA SC-UPCI (PC-98)
+.It
+Logitec LHA-521UA (PC-98)
+.It
+NCR cards (all)
+.It
+Symbios cards (all)
+.It
+Tekram DC390W, 390U, 390F, 390U2B, 390U2W, 390U3D, and 390U3W
+.It
+Tyan S1365
+.El
+.Sh MISC
+The DEC KZPCA-AA is a rebadged SYM8952U.
 .Sh SEE ALSO
 .Xr cd 4 ,
 .Xr da 4 ,

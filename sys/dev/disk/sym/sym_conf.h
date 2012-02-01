@@ -1,5 +1,5 @@
-/*
- *  Device driver optimized for the Symbios/LSI 53C896/53C895A/53C1010 
+/*-
+ *  Device driver optimized for the Symbios/LSI 53C896/53C895A/53C1010
  *  PCI-SCSI controllers.
  *
  *  Copyright (C) 1999-2001  Gerard Roudier <groudier@free.fr>
@@ -8,11 +8,11 @@
  *	53C810A, 53C825A, 53C860, 53C875, 53C876, 53C885, 53C895,
  *	53C810,  53C815,  53C825 and the 53C1510D is 53C8XX mode.
  *
- *  
+ *
  *  This driver for FreeBSD-CAM is derived from the Linux sym53c8xx driver.
  *  Copyright (C) 1998-1999  Gerard Roudier
  *
- *  The sym53c8xx driver is derived from the ncr53c8xx driver that had been 
+ *  The sym53c8xx driver is derived from the ncr53c8xx driver that had been
  *  a port of the FreeBSD ncr driver to Linux-1.2.13.
  *
  *  The original ncr driver has been written for 386bsd and FreeBSD by
@@ -20,8 +20,8 @@
  *          Stefan Esser                <se@mi.Uni-Koeln.de>
  *  Copyright (C) 1994  Wolfgang Stanglmeier
  *
- *  The initialisation code, and part of the code that addresses 
- *  FreeBSD-CAM services is based on the aic7xxx driver for FreeBSD-CAM 
+ *  The initialisation code, and part of the code that addresses
+ *  FreeBSD-CAM services is based on the aic7xxx driver for FreeBSD-CAM
  *  written by Justin T. Gibbs.
  *
  *  Other major contributions:
@@ -55,8 +55,7 @@
  * SUCH DAMAGE.
  */
 
-/* $FreeBSD: src/sys/dev/sym/sym_conf.h,v 1.4.2.2 2001/11/11 17:58:53 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_conf.h,v 1.2 2003/06/17 04:28:31 dillon Exp $ */
+/* $FreeBSD: src/sys/dev/sym/sym_conf.h,v 1.9 2005/01/06 01:43:24 imp Exp $ */
 
 #ifndef SYM_CONF_H
 #define SYM_CONF_H
@@ -100,7 +99,7 @@
  *  Max number of logical units.
  *  SPI-2 allows up to 64 logical units, but in real life, target
  *  that implements more that 7 logical units are pretty rare.
- *  Anyway, the cost of accepting up to 64 logical unit is low in 
+ *  Anyway, the cost of accepting up to 64 logical unit is low in
  *  this driver, thus going with the maximum is acceptable.
  */
 #define SYM_CONF_MAX_LUN		(64)
@@ -108,10 +107,10 @@
 /*
  *  Max number of IO control blocks queued to the controller.
  *  Each entry needs 8 bytes and the queues are allocated contiguously.
- *  Since we donnot want to allocate more than a page, the theorical 
- *  maximum is PAGE_SIZE/8. For safety, we announce a bit less to the 
+ *  Since we donnot want to allocate more than a page, the theorical
+ *  maximum is PAGE_SIZE/8. For safety, we announce a bit less to the
  *  access method. :)
- *  When not supplied, as it is suggested, the driver compute some 
+ *  When not supplied, as it is suggested, the driver compute some
  *  good value for this parameter.
  */
 /* #define SYM_CONF_MAX_START	(PAGE_SIZE/8 - 16) */
@@ -129,7 +128,7 @@
 /* #define SYM_CONF_IARB_SUPPORT */
 
 /*-------------------------------------------------------------------
- *  Configuration that could be dynamic if it was possible 
+ *  Configuration that could be dynamic if it was possible
  *  to pass arguments to the driver.
  *-------------------------------------------------------------------
  */
@@ -171,10 +170,10 @@
 
 /*
  *  PCI parity checking.
- *  It should not be an option, but some poor or broken 
- *  PCI-HOST bridges have been reported to make problems 
+ *  It should not be an option, but some poor or broken
+ *  PCI-HOST bridges have been reported to make problems
  *  when this feature is enabled.
- *  Setting this option to 0 tells the driver not to 
+ *  Setting this option to 0 tells the driver not to
  *  enable the checking against PCI parity.
  */
 #ifndef SYM_SETUP_PCI_PARITY
@@ -194,22 +193,22 @@
 /*
  *  SCSI High Voltage Differential support.
  *
- *  HVD/LVD/SE capable controllers (895, 895A, 896, 1010) 
- *  report the actual SCSI BUS mode from the STEST4 IO 
+ *  HVD/LVD/SE capable controllers (895, 895A, 896, 1010)
+ *  report the actual SCSI BUS mode from the STEST4 IO
  *  register.
  *
- *  But for HVD/SE only capable chips (825a, 875, 885), 
- *  the driver uses some heuristic to probe against HVD. 
- *  Normally, the chip senses the DIFFSENS signal and 
- *  should switch its BUS tranceivers to high impedance 
- *  in situation of the driver having been wrong about 
- *  the actual BUS mode. May-be, the BUS mode probing of 
- *  the driver is safe, but, given that it may be partially 
- *  based on some previous IO register settings, it 
- *  cannot be stated so. Thus, decision has been taken 
- *  to require a user option to be set for the DIFF probing 
+ *  But for HVD/SE only capable chips (825a, 875, 885),
+ *  the driver uses some heuristic to probe against HVD.
+ *  Normally, the chip senses the DIFFSENS signal and
+ *  should switch its BUS tranceivers to high impedance
+ *  in situation of the driver having been wrong about
+ *  the actual BUS mode. May-be, the BUS mode probing of
+ *  the driver is safe, but, given that it may be partially
+ *  based on some previous IO register settings, it
+ *  cannot be stated so. Thus, decision has been taken
+ *  to require a user option to be set for the DIFF probing
  *  to be applied for the 825a, 875 and 885 chips.
- *  
+ *
  *  This setup option works as follows:
  *
  *    0  ->  HVD only supported for 895, 895A, 896, 1010.
@@ -246,19 +245,19 @@
 
 /*
  *  Returning wrong residuals may make problems.
- *  When zero, this define tells the driver to 
+ *  When zero, this define tells the driver to
  *  always return 0 as transfer residual.
  *  Btw, all my testings of residuals have succeeded.
  */
 #define SYM_CONF_RESIDUAL_SUPPORT 1
 
 /*
- *  Supported maximum number of LUNs to announce to 
+ *  Supported maximum number of LUNs to announce to
  *  the access method.
- *  The driver supports up to 64 LUNs per target as 
- *  required by SPI-2/SPI-3. However some SCSI devices  
- *  designed prior to these specifications or not being  
- *  conformant may be highly confused when they are 
+ *  The driver supports up to 64 LUNs per target as
+ *  required by SPI-2/SPI-3. However some SCSI devices
+ *  designed prior to these specifications or not being
+ *  conformant may be highly confused when they are
  *  asked about a LUN > 7.
  */
 #ifndef SYM_SETUP_MAX_LUN
@@ -267,13 +266,13 @@
 
 /*
  *  Low priority probe map.
- * 
- *  This option is used as a bitmap to tell the driver 
- *  about chips that are to be claimed with a low priority 
- *  (-2000) by the probe method. This allows any other driver 
- *  that may return some higher priority value for the same 
+ *
+ *  This option is used as a bitmap to tell the driver
+ *  about chips that are to be claimed with a low priority
+ *  (-2000) by the probe method. This allows any other driver
+ *  that may return some higher priority value for the same
  *  chips to take precedence over this driver (sym).
- *  This option may be used when both the ncr driver and this 
+ *  This option may be used when both the ncr driver and this
  *  driver are configured.
  *
  *  Bits are to be coded as follows:
@@ -283,8 +282,8 @@
  *    0x08  ->  1010
  *    0x40  ->  810, 815, 825
  *
- *  For example, value 5 tells the driver to claim support 
- *  for 810a, 860, 895a, 896 and 1510d with low priority, 
+ *  For example, value 5 tells the driver to claim support
+ *  for 810a, 860, 895a, 896 and 1510d with low priority,
  *  allowing the ncr driver to take precedence if configured.
  */
 #ifndef SYM_SETUP_LP_PROBE_MAP

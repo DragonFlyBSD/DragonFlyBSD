@@ -1,7 +1,7 @@
 .include "${.CURDIR}/../../platform/${MACHINE_PLATFORM}/Makefile.inc"
 
 SUBDIR= ahci aic aic7xxx ccd dm iscsi isp ispfw md mmcsd mps mpt ncv nsp
-SUBDIR+= sbp sdhci sili stg trm vn vpo
+SUBDIR+= sbp sdhci sili stg sym trm vn vpo
 
 .for dir in ${SUBDIR}
 .if empty(DEV_SUPPORT:Mdisk) && \
