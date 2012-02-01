@@ -645,6 +645,7 @@ static int i915_batchbuffer(struct drm_device *dev, void *data,
 	if (sarea_priv)
 		sarea_priv->last_dispatch = READ_BREADCRUMB(dev_priv);
 
+	DRM_LOCK();
 	return ret;
 }
 
