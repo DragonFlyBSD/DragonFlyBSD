@@ -2163,6 +2163,10 @@ vm_page_wire(vm_page_t m)
  * processes.  This optimization causes one-time-use metadata to be
  * reused more quickly.
  *
+ * Pages marked PG_NEED_COMMIT are always activated and never placed on
+ * the inactive queue.  This helps the pageout daemon determine memory
+ * pressure and act on out-of-memory situations more quickly.
+ *
  * BUT, if we are in a low-memory situation we have no choice but to
  * put clean pages on the cache queue.
  *
@@ -2187,7 +2191,7 @@ vm_page_unwire(vm_page_t m, int activate)
 			atomic_add_int(&vmstats.v_wire_count, -1);
 			if (m->flags & PG_UNMANAGED) {
 				;
-			} else if (activate) {
+			} else if (activate || (m->flags & PG_NEED_COMMIT)) {
 				vm_page_spin_lock(m);
 				_vm_page_add_queue_spinlocked(m,
 							PQ_ACTIVE + m->pc, 0);
