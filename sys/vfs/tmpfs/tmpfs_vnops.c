@@ -594,37 +594,22 @@ tmpfs_write (struct vop_write_args *ap)
 		kflags |= NOTE_WRITE;
 
 		/*
-		 * The data has been loaded into the buffer, write it out.
+		 * Always try to flush the page if the request is coming
+		 * from the pageout daemon (IO_ASYNC), else buwrite() the
+		 * buffer.
 		 *
-		 * We want tmpfs to be able to use all available ram, not
-		 * just the buffer cache, so if not explicitly paging we
-		 * use buwrite() to leave the buffer clean but mark all the
-		 * VM pages valid+dirty.
-		 *
-		 * When the kernel is paging, either via normal pageout
-		 * operation or when cleaning the object during a recycle,
-		 * the underlying VM pages are going to get thrown away
-		 * so we MUST write them to swap.
-		 *
-		 * XXX unfortunately this catches msync() system calls too
-		 * for the moment.
+		 * buwrite() dirties the underlying VM pages instead of
+		 * dirtying the buffer, releasing the buffer as a clean
+		 * buffer.  This allows tmpfs to use essentially all
+		 * available memory to cache file data.  If we used bdwrite()
+		 * the buffer cache would wind up flushing the data to
+		 * swap too quickly.
 		 */
-		if (vm_swap_size == 0) {
-			/*
-			 * if swap isn't configured yet, force a buwrite() to
-			 * avoid problems further down the line, due to flushing
-			 * to swap.
-			 */
-			buwrite(bp);
+		bp->b_flags |= B_AGE;
+		if (ap->a_ioflag & IO_ASYNC) {
+			bawrite(bp);
 		} else {
-			if (ap->a_ioflag & IO_SYNC) {
-				bwrite(bp);
-			} else if ((ap->a_ioflag & IO_ASYNC) ||
-				 (uio->uio_segflg == UIO_NOCOPY)) {
-				bawrite(bp);
-			} else {
-				buwrite(bp);
-			}
+			buwrite(bp);
 		}
 
 		if (bp->b_error) {
@@ -641,9 +626,22 @@ tmpfs_write (struct vop_write_args *ap)
 		goto done;
 	}
 
+	/*
+	 * Currently we don't set the mtime on files modified via mmap()
+	 * because we can't tell the difference between those modifications
+	 * and an attempt by the pageout daemon to flush tmpfs pages to
+	 * swap.
+	 *
+	 * This is because in order to defer flushes as long as possible
+	 * buwrite() works by marking the underlying VM pages dirty in
+	 * order to be able to dispose of the buffer cache buffer without
+	 * flushing it.
+	 */
 	TMPFS_NODE_LOCK(node);
-	node->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_MODIFIED |
-	    (extended? TMPFS_NODE_CHANGED : 0);
+	if (uio->uio_segflg != UIO_NOCOPY)
+		node->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_MODIFIED;
+	if (extended)
+		node->tn_status |= TMPFS_NODE_CHANGED;
 
 	if (node->tn_mode & (S_ISUID | S_ISGID)) {
 		if (priv_check_cred(ap->a_cred, PRIV_VFS_RETAINSUGID, 0))
@@ -670,6 +668,12 @@ tmpfs_advlock (struct vop_advlock_args *ap)
 	return (lf_advlock(ap, &node->tn_advlock, node->tn_size));
 }
 
+/*
+ * The strategy function is typically only called when memory pressure
+ * forces the system to attempt to pageout pages.  It can also be called
+ * by [n]vtruncbuf() when a truncation cuts a page in half.  Normal write
+ * operations
+ */
 static int
 tmpfs_strategy(struct vop_strategy_args *ap)
 {
@@ -696,22 +700,13 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 	uobj = node->tn_reg.tn_aobj;
 
 	/*
-	 * Certain operations such as nvtruncbuf() can result in a
-	 * bdwrite() of one or more buffers related to the file,
-	 * leading to the possibility of our strategy function
-	 * being called for writing even when there is no swap space.
-	 *
-	 * When this case occurs we mark the underlying pages as valid
-	 * and dirty and complete the I/O manually.
-	 *
-	 * Otherwise just call swap_pager_strategy to read or write,
-	 * potentially assigning swap on write.  We push a BIO to catch
-	 * any swap allocation errors.
+	 * Don't bother flushing to swap if there is no swap, just
+	 * ensure that the pages are marked as needing a commit (still).
 	 */
 	if (bp->b_cmd == BUF_CMD_WRITE && vm_swap_size == 0) {
 		for (i = 0; i < bp->b_xio.xio_npages; ++i) {
 			m = bp->b_xio.xio_pages[i];
-			vm_page_set_validdirty(m, 0, PAGE_SIZE);
+			vm_page_need_commit(m);
 		}
 		bp->b_resid = 0;
 		bp->b_error = 0;
@@ -728,8 +723,9 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 }
 
 /*
- * bio finished.  If we ran out of sap just mark the pages valid
- * and dirty and make it appear that the I/O has completed successfully.
+ * If we were unable to commit the pages to swap make sure they are marked
+ * as needing a commit (again).  If we were, clear the flag to allow the
+ * pages to be freed.
  */
 static void
 tmpfs_strategy_done(struct bio *bio)
@@ -740,13 +736,18 @@ tmpfs_strategy_done(struct bio *bio)
 
 	bp = bio->bio_buf;
 
-	if ((bp->b_flags & B_ERROR) && bp->b_error == ENOMEM) {
+	if (bp->b_flags & B_ERROR) {
 		bp->b_flags &= ~B_ERROR;
 		bp->b_error = 0;
 		bp->b_resid = 0;
 		for (i = 0; i < bp->b_xio.xio_npages; ++i) {
 			m = bp->b_xio.xio_pages[i];
-			vm_page_set_validdirty(m, 0, PAGE_SIZE);
+			vm_page_need_commit(m);
+		}
+	} else {
+		for (i = 0; i < bp->b_xio.xio_npages; ++i) {
+			m = bp->b_xio.xio_pages[i];
+			vm_page_clear_commit(m);
 		}
 	}
 	bio = pop_bio(bio);
