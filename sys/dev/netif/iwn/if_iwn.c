@@ -5666,16 +5666,19 @@ iwn_read_firmware(struct iwn_softc *sc)
 	const uint32_t *ptr;
 	uint32_t rev;
 	size_t size;
+	int wlan_serialized;
 
 	/*
 	 * Read firmware image from filesystem.  The firmware can block
 	 * in a taskq and deadlock against our serializer so unlock
 	 * while we do tihs.
 	 */
-	wlan_assert_serialized();
-	wlan_serialize_exit();
+	wlan_serialized = IS_SERIALIZED(&wlan_global_serializer);
+	if (wlan_serialized)
+		wlan_serialize_exit();
 	sc->fw_fp = firmware_get(sc->fwname);
-	wlan_serialize_enter();
+	if (wlan_serialized)
+		wlan_serialize_enter();
 	if (sc->fw_fp == NULL) {
 		device_printf(sc->sc_dev,
 		    "%s: could not load firmare image \"%s\"\n", __func__,
@@ -5964,25 +5967,25 @@ iwn_hw_init(struct iwn_softc *sc)
 		device_printf(sc->sc_dev,
 		    "%s: could not power ON adapter, error %d\n",
 		    __func__, error);
-		return error;
+		goto done;
 	}
 
 	/* Select VMAIN power source. */
 	error = iwn_nic_lock(sc);
 	if (error != 0)
-		return error;
+		goto done;
 	iwn_prph_clrbits(sc, IWN_APMG_PS, IWN_APMG_PS_PWR_SRC_MASK);
 	iwn_nic_unlock(sc);
 
 	/* Perform adapter-specific initialization. */
 	error = hal->nic_config(sc);
 	if (error != 0)
-		return error;
+		goto done;
 
 	/* Initialize RX ring. */
 	error = iwn_nic_lock(sc);
 	if (error != 0)
-		return error;
+		goto done;
 	IWN_WRITE(sc, IWN_FH_RX_CONFIG, 0);
 	IWN_WRITE(sc, IWN_FH_RX_WPTR, 0);
 	/* Set physical address of RX ring (256-byte aligned.) */
@@ -6002,7 +6005,7 @@ iwn_hw_init(struct iwn_softc *sc)
 
 	error = iwn_nic_lock(sc);
 	if (error != 0)
-		return error;
+		goto done;
 
 	/* Initialize TX scheduler. */
 	iwn_prph_write(sc, hal->sched_txfact_addr, 0);
@@ -6047,7 +6050,7 @@ iwn_hw_init(struct iwn_softc *sc)
 		device_printf(sc->sc_dev,
 		    "%s: could not load firmware, error %d\n",
 		    __func__, error);
-		return error;
+		goto done;
 	}
 	/* Wait at most one second for firmware alive notification. */
 	error = zsleep(sc, &wlan_global_serializer, 0, "iwninit", hz);
@@ -6055,10 +6058,12 @@ iwn_hw_init(struct iwn_softc *sc)
 		device_printf(sc->sc_dev,
 		    "%s: timeout waiting for adapter to initialize, error %d\n",
 		    __func__, error);
-		return error;
+		goto done;
 	}
 	/* Do post-firmware initialization. */
-	return hal->post_alive(sc);
+	error = hal->post_alive(sc);
+done:
+	return error;
 }
 
 static void
@@ -6120,6 +6125,19 @@ iwn_init_locked(struct iwn_softc *sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	int error;
+	int wlan_serializer_needed;
+
+	/*
+	 * The kernel generic firmware loader can wind up calling this
+	 * without the wlan serializer, while the wlan subsystem will
+	 * call it with the serializer.
+	 *
+	 * Make sure we hold the serializer or we will have timing issues
+	 * with the wlan subsystem.
+	 */
+	wlan_serializer_needed = !IS_SERIALIZED(&wlan_global_serializer);
+	if (wlan_serializer_needed)
+		wlan_serialize_enter();
 
 	error = iwn_hw_prepare(sc);
 	if (error != 0) {
@@ -6140,6 +6158,8 @@ iwn_init_locked(struct iwn_softc *sc)
 		/* Enable interrupts to get RF toggle notifications. */
 		IWN_WRITE(sc, IWN_INT, 0xffffffff);
 		IWN_WRITE(sc, IWN_INT_MASK, sc->int_mask);
+		if (wlan_serializer_needed)
+			wlan_serialize_exit();
 		return;
 	}
 
@@ -6174,11 +6194,14 @@ iwn_init_locked(struct iwn_softc *sc)
 
 	ifp->if_flags &= ~IFF_OACTIVE;
 	ifp->if_flags |= IFF_RUNNING;
-
+	if (wlan_serializer_needed)
+		wlan_serialize_exit();
 	return;
 
 fail:
 	iwn_stop_locked(sc);
+	if (wlan_serializer_needed)
+		wlan_serialize_exit();
 }
 
 static void
