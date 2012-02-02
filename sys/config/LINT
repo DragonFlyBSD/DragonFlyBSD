@@ -2151,7 +2151,11 @@ options 	VM_SWZONE_SIZE_MAX="(50*1024*1024)"
 # that it is likely to break e.g. fstat(1) unless you recompile your
 # userland with -DDEBUG_LOCKS as well.
 #
+# DEBUG_LOCKS_LATENCY adds a sysctl to add a forced latency loop
+# (count to N) in front of any spinlock or gettoken.
+#
 options 	DEBUG_LOCKS
+options		DEBUG_LOCKS_LATENCY
 
 # Set the amount of time (in seconds) the system will wait before
 # rebooting automatically when a kernel panic occurs.  If set to (-1),
