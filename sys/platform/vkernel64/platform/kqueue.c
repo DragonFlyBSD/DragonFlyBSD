@@ -83,7 +83,7 @@ init_kqueue(void)
 
 	bzero(&sa, sizeof(sa));
 	/*sa.sa_mailbox = &mdcpu->gd_mailbox;*/
-	sa.sa_flags = SA_NODEFER;
+	sa.sa_flags = 0;
 	sa.sa_handler = kqueuesig;
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGIO, &sa, NULL);
