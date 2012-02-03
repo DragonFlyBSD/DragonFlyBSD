@@ -9,6 +9,18 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 3.0 to later versions                +
++-----------------------------------------------------------------------+
+
+APIC_IO OPTION REMOVED
+----------------------
+
+The APIC_IO kernel option is no longer accepted after having been without
+effect for a while. The hw.ioapic_enable tunable now serves its purpose.
+If you have 'options APIC_IO' in your kernel config, you'll have to
+remove it.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 2.10 to later versions               +
 +-----------------------------------------------------------------------+
 
