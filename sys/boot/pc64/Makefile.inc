@@ -5,6 +5,7 @@ __pc64__:
 
 CFLAGS+=		-m32
 LDFLAGS+=		-m elf_i386
+COMPILER_LDFLAGS+=	-Wl,-m,elf_i386
 AFLAGS+=		--32
 
 .include "../pc32/Makefile.inc"
