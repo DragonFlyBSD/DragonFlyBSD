@@ -35,10 +35,13 @@ elif [ "${CCVER}" = "clangsvn" ]; then
 		    -isystem /usr/include/c++/4.4"
 	fi
 elif [ "${CCVER}" = "gcc46" ]; then
+	GCC46VER=`gnatc++ -dumpversion`
+	GCC46MAC=`gnatc++ -dumpmachine`
 	INCOPT="-nostdinc \
 	    -isysroot @@INCPREFIX@@ \
 	    -isystem /usr/include \
-	    -isystem /usr/include/c++/4.4"
+	    -isystem /usr/pkg/include/c++/${GCC46VER} \
+	    -isystem /usr/pkg/include/c++/${GCC46VER}/${GCC46MAC}"
 fi
 
 . /etc/defaults/compilers.conf
