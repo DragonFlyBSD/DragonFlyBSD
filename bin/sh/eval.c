@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.115 2011/12/28 22:10:12 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.116 2012/01/15 20:04:05 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -379,7 +379,6 @@ evalcase(union node *n, int flags)
 	setstackmark(&smark);
 	arglist.lastp = &arglist.list;
 	oexitstatus = exitstatus;
-	exitstatus = 0;
 	expandarg(n->ncase.expr, &arglist, EXP_TILDE);
 	for (cp = n->ncase.cases ; cp ; cp = cp->nclist.next) {
 		for (patp = cp->nclist.pattern ; patp ; patp = patp->narg.next) {
@@ -393,11 +392,14 @@ evalcase(union node *n, int flags)
 						return (NULL);
 					cp = cp->nclist.next;
 				}
+				if (cp->nclist.body == NULL)
+					exitstatus = 0;
 				return (cp->nclist.body);
 			}
 		}
 	}
 	popstackmark(&smark);
+	exitstatus = 0;
 	return (NULL);
 }
 
