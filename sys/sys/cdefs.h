@@ -41,12 +41,6 @@
 #ifndef	_SYS_CDEFS_H_
 #define	_SYS_CDEFS_H_
 
-#if defined(__GNUC__)
-#define __exported __attribute__((__visibility__("default")))
-#else
-#define __exported
-#endif
-
 #if defined(__cplusplus)
 #define	__BEGIN_DECLS	extern "C" {
 #define	__END_DECLS	}
@@ -297,6 +291,16 @@
 #define __ARRAY_ZERO	0
 #else
 #define __ARRAY_ZERO
+#endif
+
+#if __GNUC_PREREQ__(4, 0)
+#define __exported	__attribute__((__visibility__("default")))
+#define __dso_public	__attribute__((__visibility__("default")))
+#define __dso_hidden	__attribute__((__visibility__("hidden")))
+#else
+#define __exported
+#define __dso_public
+#define __dso_hidden
 #endif
 
 /*
