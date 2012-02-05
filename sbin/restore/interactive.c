@@ -699,9 +699,12 @@ formatf(struct afile *list, int nentry)
 struct dirent *
 glob_readdir(RST_DIR *dirp)
 {
+	enum {
+		ADIRENT_STORAGE_LEN = _DIRENT_RECLEN(NAME_MAX),
+	};
 	static union {
-		uint8_t storage[_DIRENT_RECLEN(NAME_MAX)];
-		struct dirent aligment;
+		uint8_t storage[ADIRENT_STORAGE_LEN];
+		struct dirent alignment;
 	} adirent;
 	struct direct *dp;
 	struct dirent *adp;
