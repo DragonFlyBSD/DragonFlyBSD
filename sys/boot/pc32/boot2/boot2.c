@@ -45,7 +45,6 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.18 2008/09/13 11:45:45 corecode Exp $
  */
 
 #define AOUT_H_FORCE32
@@ -99,6 +98,8 @@
 #define RBF_MUTE	(1 << RBX_MUTE)
 #define RBF_SERIAL	(1 << RBX_SERIAL)
 #define RBF_VIDEO	(1 << RBX_VIDEO)
+#define RBF_NOINTR	(1 << RBX_NOINTR)
+#define RBF_PROBEKBD	(1 << RBX_PROBEKBD)
 
 /* pass: -a, -s, -r, -d, -c, -v, -h, -C, -g, -m, -p, -V */
 #define RBX_MASK	0x2005ffff
@@ -108,6 +109,7 @@
 #define PATH_BOOT3_ALT	"/boot/loader"		/* /boot in root */
 #define PATH_KERNEL	"/kernel"
 
+#define NOPT		12
 #define NDEV		3
 #define MEM_BASE	0x12
 #define MEM_EXT 	0x15
@@ -121,8 +123,6 @@
 #define TYPE_DA		1
 #define TYPE_MAXHARD	TYPE_DA
 #define TYPE_FD		2
-
-#define NOPT		12
 
 #define INVALID_S	"Bad %s\n"
 
@@ -151,14 +151,14 @@ static struct dsk {
     unsigned drive;
     unsigned type;
     unsigned unit;
-    unsigned slice;
-    unsigned part;
+    uint8_t slice;
+    uint8_t part;
     unsigned start;
     int init;
 } dsk;
 
 static char cmd[512];
-static char kname[1024];
+static const char *kname;
 static uint32_t opts = RBF_VIDEO;
 static struct bootinfo bootinfo;
 
@@ -176,10 +176,9 @@ static void load(void);
 static int parse(void);
 static int dskprobe(void);
 static int xfsread(boot2_ino_t, void *, size_t);
-static uint32_t memsize(void);
 static int drvread(void *, unsigned, unsigned);
 static int keyhit(unsigned);
-static void xputc(int);
+static int xputc(int);
 static int xgetc(int);
 static int getc(int);
 
@@ -189,17 +188,8 @@ memcpy(void *d, const void *s, int len)
     char *dd = d;
     const char *ss = s;
 
-#if 0
-    if (dd < ss) {
-	while (--len >= 0)
-	    *dd++ = *ss++;
-    } else {
-#endif
 	while (--len >= 0)
 	    dd[len] = ss[len];
-#if 0
-    }
-#endif
 }
 
 int
@@ -232,15 +222,6 @@ xfsread(boot2_ino_t inode, void *buf, size_t nbyte)
 	return -1;
     }
     return 0;
-}
-
-static inline uint32_t
-memsize(void)
-{
-    v86.addr = MEM_EXT;
-    v86.eax = 0x8800;
-    v86int();
-    return v86.eax;
 }
 
 static inline void
@@ -285,9 +266,10 @@ putc(int c)
 int
 main(void)
 {
-    int autoboot;
+    uint8_t autoboot;
     boot2_ino_t ino;
 
+    kname = NULL;
     boot2_dmadat =
 		(void *)(roundup2(__base + (int32_t)&_end, 0x10000) - __base);
     v86.ctl = V86_FLAGS;
@@ -298,9 +280,6 @@ main(void)
     dsk.slice = *(uint8_t *)PTOV(MEM_BTX_USR_ARG + 1) + 1;
     bootinfo.bi_version = BOOTINFO_VERSION;
     bootinfo.bi_size = sizeof(bootinfo);
-    bootinfo.bi_basemem = 0;	/* XXX will be filled by loader or kernel */
-    bootinfo.bi_extmem = memsize();
-    bootinfo.bi_memsizes_valid++;
 
     autoboot = 1;
 
@@ -344,13 +323,13 @@ main(void)
      * We have to try boot /boot/loader and /loader to support booting
      * from a /boot partition instead of a root partition.
      */
-    if (autoboot && !*kname) {
-	memcpy(kname, PATH_BOOT3, sizeof(PATH_BOOT3));
+    if (autoboot && !kname) {
+        kname = PATH_BOOT3;
 	if (!keyhit(3*SECOND)) {
 	    load();
-	    memcpy(kname, PATH_BOOT3_ALT, sizeof(PATH_BOOT3_ALT));
+	    kname = PATH_BOOT3_ALT;
 	    load();
-	    memcpy(kname, PATH_KERNEL, sizeof(PATH_KERNEL));
+	    kname = PATH_KERNEL;
 	}
     }
 
@@ -386,12 +365,12 @@ load(void)
 	struct exec ex;
 	Elf32_Ehdr eh;
     } hdr;
-    Elf32_Phdr ep[2];
-    Elf32_Shdr es[2];
+    static Elf32_Phdr ep[2];
+    static Elf32_Shdr es[2];
     caddr_t p;
     boot2_ino_t ino;
-    uint32_t addr, x;
-    int fmt, i, j;
+    uint32_t addr;
+    int i, j;
 
     if (!(ino = fsapi->fslookup(kname))) {
 	if (!ls)
@@ -400,15 +379,8 @@ load(void)
     }
     if (xfsread(ino, &hdr, sizeof(hdr)))
 	return;
-    if (N_GETMAGIC(hdr.ex) == ZMAGIC)
-	fmt = 0;
-    else if (IS_ELF(hdr.eh))
-	fmt = 1;
-    else {
-	printf(INVALID_S, "format");
-	return;
-    }
-    if (fmt == 0) {
+
+    if (N_GETMAGIC(hdr.ex) == ZMAGIC) {
 	addr = hdr.ex.a_entry & 0xffffff;
 	p = PTOV(addr);
 	fs_off = PAGE_SIZE;
@@ -417,24 +389,7 @@ load(void)
 	p += roundup2(hdr.ex.a_text, PAGE_SIZE);
 	if (xfsread(ino, p, hdr.ex.a_data))
 	    return;
-	p += hdr.ex.a_data + roundup2(hdr.ex.a_bss, PAGE_SIZE);
-	bootinfo.bi_symtab = VTOP(p);
-	memcpy(p, &hdr.ex.a_syms, sizeof(hdr.ex.a_syms));
-	p += sizeof(hdr.ex.a_syms);
-	if (hdr.ex.a_syms) {
-	    if (xfsread(ino, p, hdr.ex.a_syms))
-		return;
-	    p += hdr.ex.a_syms;
-	    if (xfsread(ino, p, sizeof(int)))
-		return;
-	    x = *(uint32_t *)p;
-	    p += sizeof(int);
-	    x -= sizeof(int);
-	    if (xfsread(ino, p, x))
-		return;
-	    p += x;
-	}
-    } else {
+    } else if (IS_ELF(hdr.eh)) {
 	fs_off = hdr.eh.e_phoff;
 	for (j = i = 0; i < hdr.eh.e_phnum && j < 2; i++) {
 	    if (xfsread(ino, ep + j, sizeof(ep[0])))
@@ -456,7 +411,7 @@ load(void)
 	    if (xfsread(ino, &es, sizeof(es)))
 		return;
 	    for (i = 0; i < 2; i++) {
-		memcpy(p, &es[i].sh_size, sizeof(es[i].sh_size));
+		*(Elf32_Word *)p = es[i].sh_size;
 		p += sizeof(es[i].sh_size);
 		fs_off = es[i].sh_offset;
 		if (xfsread(ino, p, es[i].sh_size))
@@ -465,8 +420,12 @@ load(void)
 	    }
 	}
 	addr = hdr.eh.e_entry & 0xffffff;
+        bootinfo.bi_esymtab = VTOP(p);
+    } else {
+	printf(INVALID_S, "format");
+        return;
     }
-    bootinfo.bi_esymtab = VTOP(p);
+
     bootinfo.bi_kernelname = VTOP(kname);
     bootinfo.bi_bios_dev = dsk.drive;
     __exec((caddr_t)addr, opts & RBX_MASK,
@@ -500,13 +459,13 @@ parse(void)
 		return(-1);
 		ok: ;	/* ugly but save space */
 	    }
-	    if (opts & (1 << RBX_PROBEKBD)) {
+	    if (opts & RBF_PROBEKBD) {
 		i = *(uint8_t *)PTOV(0x496) & 0x10;
 		if (!i) {
 		    printf("NO KB\n");
 		    opts |= RBF_VIDEO | RBF_SERIAL;
 		}
-		opts &= ~(1 << RBX_PROBEKBD);
+		opts &= ~RBF_PROBEKBD;
 	    }
 	} else {
 	    for (q = arg--; *q && *q != '('; q++);
@@ -533,7 +492,7 @@ parse(void)
 		dsk.slice = WHOLE_DISK_SLICE;
 		if (arg[1] == ',') {
 		    dsk.slice = *arg - '0' + 1;
-		    if (dsk.slice > NDOSPART)
+		    if (dsk.slice > NDOSPART + 1)
 			return -1;
 		    arg += 2;
 		}
@@ -548,11 +507,7 @@ parse(void)
 		dsk.drive = (dsk.type <= TYPE_MAXHARD
 			     ? DRV_HARD : 0) + drv;
 	    }
-	    if ((i = p - arg - !*(p - 1))) {
-		if ((size_t)i >= sizeof(kname))
-		    return -1;
-		memcpy(kname, arg, i + 1);
-	    }
+	    kname = arg;
 	}
 	arg = p;
     }
@@ -569,7 +524,8 @@ dskprobe(void)
     struct disklabel32 *d;
 #endif
     char *sec;
-    unsigned sl, i;
+    unsigned i;
+    uint8_t sl;
 
     /*
      * Probe slice table
@@ -680,7 +636,7 @@ void
 printf(const char *fmt,...)
 {
     va_list ap;
-    char buf[10];
+    static char buf[10];
     char *s;
     unsigned u;
     int c;
@@ -711,6 +667,7 @@ printf(const char *fmt,...)
 	putchar(c);
     }
     va_end(ap);
+    return;
 }
 
 /*
@@ -727,7 +684,7 @@ putchar(int c)
 /*
  * boot encapsulated ABI
  */
-int
+static int
 drvread(void *buf, unsigned lba, unsigned nblk)
 {
     static unsigned c = 0x2d5c7c2f;	/* twiddle */
@@ -756,7 +713,7 @@ keyhit(unsigned ticks)
 {
     uint32_t t0, t1;
 
-    if (opts & 1 << RBX_NOINTR)
+    if (opts & RBF_NOINTR)
 	return 0;
     t0 = 0;
     for (;;) {
@@ -765,33 +722,19 @@ keyhit(unsigned ticks)
 	t1 = *(uint32_t *)PTOV(0x46c);
 	if (!t0)
 	    t0 = t1;
-	if (t1 < t0 || t1 >= t0 + ticks)
+        if ((uint32_t)(t1 - t0) >= ticks)
 	    return 0;
     }
 }
 
-static void
+static int
 xputc(int c)
 {
     if (opts & RBF_VIDEO)
 	putc(c);
     if (opts & RBF_SERIAL)
 	sio_putc(c);
-}
-
-static int
-xgetc(int fn)
-{
-    if (opts & 1 << RBX_NOINTR)
-	return 0;
-    for (;;) {
-	if ((opts & RBF_VIDEO) && getc(1))
-	    return fn ? 1 : getc(0);
-	if ((opts & RBF_SERIAL) && sio_ischar())
-	    return fn ? 1 : sio_getc();
-	if (fn)
-	    return 0;
-    }
+    return c;
 }
 
 static int
@@ -801,4 +744,19 @@ getc(int fn)
     v86.eax = fn << 8;
     v86int();
     return fn == 0 ? v86.eax & 0xff : !V86_ZR(v86.efl);
+}
+
+static int
+xgetc(int fn)
+{
+    if (opts & RBF_NOINTR)
+	return 0;
+    for (;;) {
+	if ((opts & RBF_VIDEO) && getc(1))
+	    return fn ? 1 : getc(0);
+	if ((opts & RBF_SERIAL) && sio_ischar())
+	    return fn ? 1 : sio_getc();
+	if (fn)
+	    return 0;
+    }
 }
