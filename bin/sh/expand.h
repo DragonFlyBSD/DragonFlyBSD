@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)expand.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/expand.h,v 1.17 2011/06/13 21:03:27 jilles Exp $
+ * $FreeBSD: src/bin/sh/expand.h,v 1.18 2012/01/01 22:17:12 jilles Exp $
  */
 
 struct strlist {
@@ -64,6 +64,5 @@ union node;
 void expandhere(union node *, int);
 void expandarg(union node *, struct arglist *, int);
 void expari(int);
-int patmatch(const char *, const char *, int);
 void rmescapes(char *);
 int casematch(union node *, const char *);

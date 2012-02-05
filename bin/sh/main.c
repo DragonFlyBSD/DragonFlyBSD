@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
- * $FreeBSD: src/bin/sh/main.c,v 1.52 2011/06/13 21:03:27 jilles Exp $
+ * $FreeBSD: src/bin/sh/main.c,v 1.53 2012/01/01 22:17:12 jilles Exp $
  */
 
 #include <stdio.h>
@@ -73,6 +73,7 @@ int rootshell;
 struct jmploc main_handler;
 int localeisutf8, initial_localeisutf8;
 
+static void cmdloop(int);
 static void read_profile(const char *);
 static const char *find_dot_file(const char *);
 
@@ -178,7 +179,7 @@ state4:	/* XXX ??? - why isn't this before the "if" statement */
  * loop; it turns on prompting if the shell is interactive.
  */
 
-void
+static void
 cmdloop(int top)
 {
 	union node *n;

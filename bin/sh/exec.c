@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)exec.c	8.4 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/exec.c,v 1.52 2011/02/05 14:08:51 jilles Exp $
+ * $FreeBSD: src/bin/sh/exec.c,v 1.53 2012/01/01 22:17:12 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -99,6 +99,7 @@ static void tryexec(char *, char **, char **);
 static void printentry(struct tblentry *, int);
 static struct tblentry *cmdlookup(const char *, int);
 static void delete_cmd_entry(void);
+static void addcmdentry(const char *, struct cmdentry *);
 
 /*
  * Exec a program.  Never returns.  If you change this routine, you may
@@ -593,7 +594,7 @@ delete_cmd_entry(void)
  * the same name.
  */
 
-void
+static void
 addcmdentry(const char *name, struct cmdentry *entry)
 {
 	struct tblentry *cmdp;

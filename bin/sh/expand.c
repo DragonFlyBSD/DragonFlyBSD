@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
- * $FreeBSD: src/bin/sh/expand.c,v 1.94 2012/01/01 20:50:19 jilles Exp $
+ * $FreeBSD: src/bin/sh/expand.c,v 1.95 2012/01/01 22:17:12 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -112,6 +112,7 @@ static void expmeta(char *, char *);
 static void addfname(char *);
 static struct strlist *expsort(struct strlist *);
 static struct strlist *msort(struct strlist *, int);
+static int patmatch(const char *, const char *, int);
 static char *cvtnum(int, char *);
 static int collate_range_cmp(wchar_t, wchar_t);
 
@@ -1440,7 +1441,7 @@ match_charclass(const char *p, wchar_t chr, const char **end)
  * Returns true if the pattern matches the string.
  */
 
-int
+static int
 patmatch(const char *pattern, const char *string, int squoted)
 {
 	const char *p, *q, *end;

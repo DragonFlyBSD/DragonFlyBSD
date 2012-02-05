@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)input.c	8.3 (Berkeley) 6/9/95
- * $FreeBSD: src/bin/sh/input.c,v 1.33 2011/06/04 15:05:52 jilles Exp $
+ * $FreeBSD: src/bin/sh/input.c,v 1.34 2012/01/01 22:17:12 jilles Exp $
  */
 
 #include <stdio.h>	/* defines BUFSIZ */
@@ -105,6 +105,7 @@ EditLine *el;			/* cookie for editline package */
 
 static void pushfile(void);
 static int preadfd(void);
+static void popstring(void);
 
 #ifdef mkinit
 INCLUDE <stdio.h>
@@ -370,7 +371,7 @@ pushstring(char *s, int len, void *ap)
 	INTON;
 }
 
-void
+static void
 popstring(void)
 {
 	struct strpush *sp = parsefile->strpush;
