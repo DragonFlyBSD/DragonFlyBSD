@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/var.c,v 1.64 2012/02/04 23:12:14 jilles Exp $
+ * $FreeBSD: src/bin/sh/var.c,v 1.65 2012/02/04 23:29:07 jilles Exp $
  */
 
 #include <unistd.h>
@@ -600,7 +600,7 @@ showvarscmd(int argc __unused, char **argv __unused)
 		}
 	}
 
-	INTON;
+	INTOFF;
 	vars = ckmalloc(n * sizeof(*vars));
 	i = 0;
 	for (vpp = vartab; vpp < vartab + VTABSIZE; vpp++) {
@@ -625,7 +625,7 @@ showvarscmd(int argc __unused, char **argv __unused)
 		out1c('\n');
 	}
 	ckfree(vars);
-	INTOFF;
+	INTON;
 
 	return 0;
 }
