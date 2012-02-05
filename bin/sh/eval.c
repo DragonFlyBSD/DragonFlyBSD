@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.118 2012/01/16 11:07:46 dumbbell Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.119 2012/01/22 14:00:33 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -349,6 +349,7 @@ evalfor(union node *n, int flags)
 	union node *argp;
 	struct strlist *sp;
 	struct stackmark smark;
+	int status;
 
 	setstackmark(&smark);
 	arglist.lastp = &arglist.list;
@@ -358,11 +359,12 @@ evalfor(union node *n, int flags)
 	}
 	*arglist.lastp = NULL;
 
-	exitstatus = 0;
 	loopnest++;
+	status = 0;
 	for (sp = arglist.list ; sp ; sp = sp->next) {
 		setvar(n->nfor.var, sp->text, 0);
 		evaltree(n->nfor.body, flags);
+		status = exitstatus;
 		if (evalskip) {
 			if (evalskip == SKIPCONT && --skipcount <= 0) {
 				evalskip = 0;
@@ -375,6 +377,7 @@ evalfor(union node *n, int flags)
 	}
 	loopnest--;
 	popstackmark(&smark);
+	exitstatus = status;
 }
 
 
