@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mksyntax.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mksyntax.c,v 1.35 2011/05/05 20:55:55 jilles Exp $
+ * $FreeBSD: src/bin/sh/mksyntax.c,v 1.36 2011/12/28 23:51:17 jilles Exp $
  */
 
 /*
@@ -213,16 +213,16 @@ main(int argc __unused, char **argv __unused)
 	add("`", "CBQUOTE");
 	add("$", "CVAR");
 	add("}", "CENDVAR");
-	/* ':/' for tilde expansion, '-' for [a\-x] pattern ranges */
-	add("!*?[=~:/-", "CCTL");
+	/* ':/' for tilde expansion, '-^]' for [a\-x] pattern ranges */
+	add("!*?[]=~:/-^", "CCTL");
 	print("dqsyntax");
 	init();
 	fputs("\n/* syntax table used when in single quotes */\n", cfile);
 	add("\n", "CNL");
 	add("\\", "CSBACK");
 	add("'", "CENDQUOTE");
-	/* ':/' for tilde expansion, '-' for [a\-x] pattern ranges */
-	add("!*?[=~:/-", "CCTL");
+	/* ':/' for tilde expansion, '-^]' for [a\-x] pattern ranges */
+	add("!*?[]=~:/-^", "CCTL");
 	print("sqsyntax");
 	init();
 	fputs("\n/* syntax table used when in arithmetic */\n", cfile);
