@@ -31,6 +31,7 @@
 #include <link.h>
 #include <stddef.h>
 
+extern char **environ;
 void	_rtld_error(const char *, ...);
 
 static char sorry[] = "Service unavailable";
@@ -115,13 +116,68 @@ dlinfo(void *handle __unused, int request __unused, void *p __unused)
 	return 0;
 }
 
+__dso_hidden struct dl_phdr_info
+build_phdr_info(void)
+{
+	struct dl_phdr_info phdr_info;
+	Elf_Addr *sp;
+	Elf_Auxinfo *aux, *auxp;
+	size_t phent;
+	unsigned int i;
+
+	sp = (Elf_Addr *) environ;
+	while (*sp++ != 0)
+	        ;
+	aux = (Elf_Auxinfo *) sp;
+	phent = 0;
+	memset (&phdr_info, 0, sizeof(phdr_info));
+	for (auxp = aux; auxp->a_type != AT_NULL; auxp++) {
+		switch (auxp->a_type) {
+		case AT_BASE:
+			phdr_info.dlpi_addr = (Elf_Addr) auxp->a_un.a_ptr;
+			break;
+
+		case AT_EXECPATH:
+			phdr_info.dlpi_name = (const char *) auxp->a_un.a_ptr;
+			break;
+
+		case AT_PHDR:
+			phdr_info.dlpi_phdr = (const Elf_Phdr *) auxp->a_un.a_ptr;
+			break;
+
+		case AT_PHENT:
+			phent = auxp->a_un.a_val;
+			break;
+
+		case AT_PHNUM:
+			phdr_info.dlpi_phnum = (Elf_Half) auxp->a_un.a_val;
+			break;
+		}
+	}
+
+	for (i = 0; i < phdr_info.dlpi_phnum; i++)
+	    if (phdr_info.dlpi_phdr[i].p_type == PT_TLS) {
+		phdr_info.dlpi_tls_modid = 1;
+		phdr_info.dlpi_tls_data =
+		  (void*) phdr_info.dlpi_phdr[i].p_vaddr;
+	    }
+
+	return (phdr_info);
+}
+
 #pragma weak dl_iterate_phdr
 int
 dl_iterate_phdr(int (*callback)(struct dl_phdr_info *, size_t, void *),
     void *data)
 {
-	_rtld_error(sorry);
-	return 0;
+	static seen = 0;
+	static struct dl_phdr_info phdr_info;
+	if (!seen) {
+		seen = 1;
+		phdr_info = build_phdr_info();
+	}
+
+	return callback(&phdr_info, sizeof(phdr_info), data);
 }
 
 #pragma weak _rtld_addr_phdr
