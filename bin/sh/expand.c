@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
- * $FreeBSD: src/bin/sh/expand.c,v 1.91 2011/06/15 21:48:10 jilles Exp $
+ * $FreeBSD: src/bin/sh/expand.c,v 1.92 2011/12/28 23:30:17 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -1185,6 +1185,7 @@ expmeta(char *enddir, char *name)
 	int atend;
 	int matchdot;
 	int esc;
+	int namlen;
 
 	metaflag = 0;
 	start = name;
@@ -1283,17 +1284,18 @@ expmeta(char *enddir, char *name)
 		if (dp->d_name[0] == '.' && ! matchdot)
 			continue;
 		if (patmatch(start, dp->d_name, 0)) {
-			if (enddir + dp->d_namlen + 1 > expdir_end)
+			namlen = dp->d_namlen;
+			if (enddir + namlen + 1 > expdir_end)
 				continue;
-			memcpy(enddir, dp->d_name, dp->d_namlen + 1);
+			memcpy(enddir, dp->d_name, namlen + 1);
 			if (atend)
 				addfname(expdir);
 			else {
-				if (enddir + dp->d_namlen + 2 > expdir_end)
+				if (enddir + namlen + 2 > expdir_end)
 					continue;
-				enddir[dp->d_namlen] = '/';
-				enddir[dp->d_namlen + 1] = '\0';
-				expmeta(enddir + dp->d_namlen + 1, endname);
+				enddir[namlen] = '/';
+				enddir[namlen + 1] = '\0';
+				expmeta(enddir + namlen + 1, endname);
 			}
 		}
 	}
