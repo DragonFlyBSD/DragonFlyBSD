@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)jobs.c	8.5 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/jobs.c,v 1.95 2011/06/13 21:03:27 jilles Exp $
+ * $FreeBSD: src/bin/sh/jobs.c,v 1.97 2012/02/04 23:12:14 jilles Exp $
  */
 
 #include <sys/ioctl.h>
@@ -56,6 +56,7 @@
 #undef CEOF			/* syntax.h redefines this */
 #endif
 #include "redir.h"
+#include "exec.h"
 #include "show.h"
 #include "main.h"
 #include "parser.h"
@@ -882,6 +883,54 @@ forkshell(struct job *jp, union node *n, int mode)
 	return pid;
 }
 
+
+pid_t
+vforkexecshell(struct job *jp, char **argv, char **envp, const char *path, int idx, int pip[2])
+{
+	pid_t pid;
+	struct jmploc jmploc;
+	struct jmploc *savehandler;
+
+	TRACE(("vforkexecshell(%%%td, %p, %d) called\n", jp - jobtab, (void *)n,
+	    mode));
+	INTOFF;
+	flushall();
+	savehandler = handler;
+	pid = vfork();
+	if (pid == -1) {
+		TRACE(("Vfork failed, errno=%d\n", errno));
+		INTON;
+		error("Cannot fork: %s", strerror(errno));
+	}
+	if (pid == 0) {
+		TRACE(("Child shell %d\n", (int)getpid()));
+		if (setjmp(jmploc.loc))
+			_exit(exception == EXEXEC ? exerrno : 2);
+		if (pip != NULL) {
+			close(pip[0]);
+			if (pip[1] != 1) {
+				dup2(pip[1], 1);
+				close(pip[1]);
+			}
+		}
+		handler = &jmploc;
+		shellexec(argv, envp, path, idx);
+	}
+	handler = savehandler;
+	if (jp) {
+		struct procstat *ps = &jp->ps[jp->nprocs++];
+		ps->pid = pid;
+		ps->status = -1;
+		ps->cmd = nullstr;
+		jp->foreground = 1;
+#if JOBS
+		setcurjob(jp);
+#endif
+	}
+	INTON;
+	TRACE(("In parent shell:  child = %d\n", (int)pid));
+	return pid;
+}
 
 
 /*

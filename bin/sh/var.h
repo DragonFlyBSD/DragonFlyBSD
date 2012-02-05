@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)var.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/var.h,v 1.24 2011/06/13 21:03:27 jilles Exp $
+ * $FreeBSD: src/bin/sh/var.h,v 1.25 2012/02/04 23:12:14 jilles Exp $
  */
 
 /*
@@ -83,6 +83,7 @@ extern struct var vppid;
 extern struct var vps1;
 extern struct var vps2;
 extern struct var vps4;
+extern struct var vdisvfork;
 #ifndef NO_HISTORY
 extern struct var vhistsize;
 extern struct var vterm;
@@ -113,6 +114,7 @@ extern int initial_localeisutf8;
 #endif
 
 #define mpathset()	((vmpath.flags & VUNSET) == 0)
+#define disvforkset()	((vdisvfork.flags & VUNSET) == 0)
 
 void initvar(void);
 void setvar(const char *, const char *, int);

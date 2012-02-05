@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.119 2012/01/22 14:00:33 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.120 2012/02/04 23:12:14 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -923,6 +923,15 @@ evalcommand(union node *cmd, int flgs, struct backcmd *backcmd)
 			mode = FORK_NOJOB;
 			if (pipe(pip) < 0)
 				error("Pipe call failed: %s", strerror(errno));
+		}
+		if (cmdentry.cmdtype == CMDNORMAL &&
+		    cmd->ncmd.redirect == NULL &&
+		    varlist.list == NULL &&
+		    (mode == FORK_FG || mode == FORK_NOJOB) &&
+		    !disvforkset() && !iflag && !mflag) {
+			vforkexecshell(jp, argv, environment(), path,
+			    cmdentry.u.index, flags & EV_BACKCMD ? pip : NULL);
+			goto parent;
 		}
 		if (forkshell(jp, cmd, mode) != 0)
 			goto parent;	/* at end of routine */
