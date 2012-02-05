@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)trap.c	8.5 (Berkeley) 6/5/95
- * $FreeBSD: src/bin/sh/trap.c,v 1.46 2011/06/13 21:03:27 jilles Exp $
+ * $FreeBSD: src/bin/sh/trap.c,v 1.47 2012/01/14 21:54:12 jilles Exp $
  */
 
 #include <signal.h>
@@ -190,10 +190,11 @@ trapcmd(int argc __unused, char **argv)
 			argv++;
 		}
 	}
-	while (*argv) {
+	for (; *argv; argv++) {
 		if ((signo = sigstring_to_signum(*argv)) == -1) {
 			warning("bad signal %s", *argv);
 			errors = 1;
+			continue;
 		}
 		INTOFF;
 		if (action)
@@ -204,7 +205,6 @@ trapcmd(int argc __unused, char **argv)
 		if (signo != 0)
 			setsignal(signo);
 		INTON;
-		argv++;
 	}
 	return errors;
 }
