@@ -220,8 +220,6 @@ loop:
 		continue;
 	*pp = pfs;
 
-	vx_unlock(vp);	/* vnode ready to roll! */
-
 out:
 	pfsvplock &= ~PROCFS_LOCKED;
 
