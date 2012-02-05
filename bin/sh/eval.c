@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.114 2011/11/27 00:09:59 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.115 2011/12/28 22:10:12 jilles Exp $
  */
 
 #include <sys/time.h>
@@ -981,7 +981,6 @@ evalcommand(union node *cmd, int flgs, struct backcmd *backcmd)
 			memout.nextc = memout.buf;
 			memout.bufsize = 64;
 			mode |= REDIR_BACKQ;
-			cmdentry.special = 0;
 		}
 		savecmdname = commandname;
 		savetopfile = getcurrentfile();
@@ -1002,7 +1001,7 @@ evalcommand(union node *cmd, int flgs, struct backcmd *backcmd)
 		 * If there is no command word, redirection errors should
 		 * not be fatal but assignment errors should.
 		 */
-		if (argc == 0 && !(flags & EV_BACKCMD))
+		if (argc == 0)
 			cmdentry.special = 1;
 		listsetvar(cmdenviron, cmdentry.special ? 0 : VNOSET);
 		if (argc > 0)
