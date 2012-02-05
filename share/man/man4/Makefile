@@ -227,6 +227,7 @@ MAN=	aac.4 \
 	pt.4 \
 	pty.4 \
 	puc.4 \
+	puffs.4 \
 	ral.4 \
 	random.4 \
 	re.4 \
