@@ -73,7 +73,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libposix1e \
 	libprop \
 	libpuffs \
-	librefuse \
 	librpcsvc \
 	librt \
 	libsctp \
