@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
- * $FreeBSD: src/bin/sh/expand.c,v 1.92 2011/12/28 23:30:17 jilles Exp $
+ * $FreeBSD: src/bin/sh/expand.c,v 1.93 2011/12/28 23:40:46 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -1291,6 +1291,10 @@ expmeta(char *enddir, char *name)
 			if (atend)
 				addfname(expdir);
 			else {
+				if (dp->d_type != DT_UNKNOWN &&
+				    dp->d_type != DT_DIR &&
+				    dp->d_type != DT_LNK)
+					continue;
 				if (enddir + namlen + 2 > expdir_end)
 					continue;
 				enddir[namlen] = '/';
