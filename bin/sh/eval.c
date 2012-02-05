@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/eval.c,v 1.117 2012/01/15 21:39:38 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.c,v 1.118 2012/01/16 11:07:46 dumbbell Exp $
  */
 
 #include <sys/time.h>
@@ -76,7 +76,7 @@
 
 
 int evalskip;			/* set if we are skipping commands */
-static int skipcount;		/* number of levels to skip */
+int skipcount;			/* number of levels to skip */
 MKINIT int loopnest;		/* current loop nesting level */
 int funcnest;			/* depth of function calls */
 static int builtin_flags;	/* evalcommand flags for builtins */
