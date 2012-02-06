@@ -1,11 +1,11 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2012.01.06
-#	Date:    2012-01-06 03:15:01
+#	Version: 2012.01.18
+#	Date:    2012-01-18 03:15:02
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
-#	PCI ID Project at http://pciids.sf.net/.
+#	PCI ID Project at http://pci-ids.ucw.cz/.
 #
 #	New data are always welcome, especially if they are accurate. If you have
 #	anything to contribute, please follow the instructions at the web site.
@@ -1847,7 +1847,7 @@
 	9806  Wrestler [Radeon HD 6320]
 	aa00  R600 Audio Device [Radeon HD 2900 Series]
 	aa08  RV630 audio device [Radeon HD 2600 Series]
-	aa10  RV610 audio device [Radeon HD 2400 PRO]
+	aa10  RV610 HDMI Audio [Radeon HD 2350/2400 Series]
 		174b aa10  Sapphire HD 2400 PRO audio device
 		18bc aa10  GeCube Radeon HD 2400 PRO HDCP-capable digital-only audio device
 	aa18  RV670/680 HDMI Audio [Radeon HD 3690/3800 Series]
@@ -1860,14 +1860,19 @@
 		174b aa38  R700 Audio Device [Radeon HD 4000 Series]
 	aa50  Cypress HDMI Audio [Radeon HD 5800 Series]
 	aa58  Juniper HDMI Audio [Radeon HD 5700 Series]
-	aa60  Redwood HDMI Audio [Radeon HD 5600 Series]
+# 5500, 5600 and mobile 5700 series
+	aa60  Redwood HDMI Audio [Radeon HD 5000 Series]
 		1025 033d  Mobility Radeon HD 5650
 		1025 0347  Aspire 7740G
-	aa68  Manhattan HDMI Audio [Mobility Radeon HD 5000 Series]
+	aa68  Cedar HDMI Audio [Radeon HD 5400/6300 Series]
 		1028 aa68  XPS 8300
+	aa80  Cayman/Antilles HDMI Audio [Radeon HD 6900 Series]
 	aa88  Barts HDMI Audio [Radeon HD 6800 Series]
+# 6500, 6600 and mobile 6700 series
+	aa90  Turks HDMI Audio [Radeon HD 6000 Series]
 	aa98  Caicos HDMI Audio [Radeon HD 6400 Series]
 		174b aa98  Sapphire HD 6450 1GB DDR3
+	aaa0  Tahiti XT HDMI Audio [Radeon HD 7970 Series]
 	ac00  Theater 600 Pro
 	ac02  TV Wonder HD 600 PCIe
 	ac12  Theater HD T507 (DVB-T) TV tuner/capture device
@@ -2355,6 +2360,21 @@
 	1302  Family 11h Processor DRAM Controller
 	1303  Family 11h Processor Miscellaneous Control
 	1304  Family 11h Processor Link Control
+	1400  Family 15h (Models 10h-1fh) Processor Function 0
+	1401  Family 15h (Models 10h-1fh) Processor Function 1
+	1402  Family 15h (Models 10h-1fh) Processor Function 2
+	1403  Family 15h (Models 10h-1fh) Processor Function 3
+	1404  Family 15h (Models 10h-1fh) Processor Function 4
+	1405  Family 15h (Models 10h-1fh) Processor Function 5
+	1410  Family 15h (Models 10h-1fh) Processor Root Complex
+	1412  Family 15h (Models 10h-1fh) Processor Root Port
+	1413  Family 15h (Models 10h-1fh) Processor Root Port
+	1414  Family 15h (Models 10h-1fh) Processor Root Port
+	1415  Family 15h (Models 10h-1fh) Processor Root Port
+	1416  Family 15h (Models 10h-1fh) Processor Root Port
+	1417  Family 15h (Models 10h-1fh) Processor Root Port
+	1418  Family 15h (Models 10h-1fh) Processor Root Port
+	1419  Family 15h (Models 10h-1fh) I/O Memory Management Unit
 	1510  Family 14h Processor Root Complex
 	1512  Family 14h Processor Root Port
 	1513  Family 14h Processor Root Port
@@ -3325,6 +3345,12 @@
 		103c 3249  Smart Array P812
 		103c 324a  HP Smart Array 712m (Mezzanine RAID controller)
 		103c 324b  Smart Array P711m (Mezzanine RAID controller)
+	323b  Smart Array Gen8 Controllers
+		103c 3350  P222
+		103c 3351  P420
+		103c 3352  P421
+		103c 3354  P420i
+		103c 3355  P220i
 	3300  Integrated Lights-Out Standard Virtual USB Controller
 		103c 3304  iLO2
 		103c 3305  iLO2
@@ -4117,7 +4143,7 @@
 	ba57  eXtremeRAID 4000/5000 support Device
 		1069 0072  eXtremeRAID 5000 support Device
 106a  Aten Research Inc
-106b  Apple Computer Inc.
+106b  Apple Inc.
 	0001  Bandit PowerPC host bridge
 	0002  Grand Central I/O
 	0003  Control Video
@@ -5427,7 +5453,7 @@
 10dd  Evans & Sutherland
 	0100  Lightning 1200
 		10dd 0023  Lightning 1200 15+16M
-10de  nVidia Corporation
+10de  NVIDIA Corporation
 	0008  NV1 [EDGE 3D]
 	0009  NV1 [EDGE 3D]
 	0010  NV2 [Mutara V08]
@@ -6404,6 +6430,7 @@
 		1849 03f6  939NF6G-VSTA Board
 	03f7  MCP61 SATA Controller
 	0400  G84 [GeForce 8600 GTS]
+		1043 8241  EN8600GTS
 	0401  G84 [GeForce 8600GT]
 	0402  G84 [GeForce 8600 GT]
 		1462 0910  NX8600GT-T2D256EZ
@@ -7011,6 +7038,7 @@
 	0dfa  GF108 [Quadro 1000M]
 	0e08  HDMI Audio stub
 	0e09  GF110 High Definition Audio Controller
+	0e0c  GF110 High Definition Audio Controller
 	0e22  GF104 [GeForce GTX 460]
 		1462 2322  N460GTX Cyclone 1GD5/OC
 	0e3a  GF104 [Quadro 3000M]
@@ -7019,6 +7047,7 @@
 	1050  GF119 [GeForce GT 520M]
 	1051  GF119 [GeForce GT 520MX]
 	1056  GF119 [Quadro NVS 4200M]
+	1057  GF119 [Quadro NVS 4200M]
 	1080  GF110 [GeForce GTX 580]
 	1081  GF110 [GeForce GTX 570]
 		10de 087e  Leadtek WinFast GTX 570
@@ -7266,7 +7295,7 @@
 		1462 7522  X58 Pro-E
 		1775 11cc  CC11/CL11
 		1849 8168  Motherboard (one of many)
-		8086 d615  DeskTop Board D510MO
+		8086 d615  Desktop Board D510MO
 	8169  RTL-8169 Gigabit Ethernet
 		1025 0079  Aspire 5024WLMi
 		10bd 3202  EP-320G-TX1 32-bit PCI Gigabit Ethernet Adapter
@@ -7393,6 +7422,7 @@
 		1102 1009  SB Audigy2 OEM HP
 		1102 2002  SB Audigy 2 ZS (SB0350)
 		1102 4001  E-MU 1010
+		1102 4002  E-MU 0404
 	0005  SB X-Fi
 		1102 0021  X-Fi Platinum
 		1102 002c  X-Fi XtremeGamer FATAL1TY PRO
@@ -7467,6 +7497,7 @@
 	2340  RocketRAID 2340 16 Port SATA-II Controller
 	2640  RocketRAID 2640 SAS/SATA Controller
 	2722  RocketRAID 2722
+	3120  RocketRAID 3120
 	3220  RocketRAID 3220
 	3320  RocketRAID 3320
 1104  RasterOps Corp.
@@ -9499,8 +9530,7 @@
 11be  International Microcircuits Inc
 11bf  Astrodesign, Inc.
 11c0  Hewlett Packard
-# Nee Lucent Microelectronics
-11c1  Agere Systems
+11c1  nee Agere Systems nee Lucent Microelectronics
 	0440  56k WinModem
 		1033 8015  LT WinModem 56k Data+Fax+Voice+Dsvd
 		1033 8047  LT WinModem 56k Data+Fax+Voice+Dsvd
@@ -12158,6 +12188,7 @@
 	163b  NetXtreme II BCM5716 Gigabit Ethernet
 		1028 028c  PowerEdge R410 BCM5716 Gigabit Ethernet
 		1028 028d  PowerEdge T410 BCM5716 Gigabit Ethernet
+		1028 02f1  PowerEdge R510 BCM5716 Gigabit Ethernet
 	163c  NetXtreme II BCM5716S Gigabit Ethernet
 	1644  NetXtreme BCM5700 Gigabit Ethernet
 		1014 0277  Broadcom Vigil B5700 1000Base-T
@@ -14209,7 +14240,8 @@
 	0027  Z11/Z11M
 	0040  Volari V3XT/V5/V8
 	0047  Volari 8300 (chip: XP10, codename: XG47)
-18d2  Sitecom
+# should be 182d
+18d2  Sitecom Europe BV (Wrong ID)
 # Sitecom HFC-S based ISDN controller card DC-105v2
 	3069  DC-105v2 ISDN controller
 18d8  Dialogue Technology Corp.
@@ -14357,15 +14389,21 @@
 		1924 6204  SFN5122F-R4
 		1924 6205  SFN5122F-R5
 		1924 6206  SFN5122F-R6
+		1924 6207  SFN5122F-R7
 		1924 6210  SFN5322F-R0
 		1924 6211  SFN5322F-R1
+		1924 6217  SFN5322F-R7
+		1924 6227  SFN6122F-R7
+		1924 6237  SFN6322F-R7
 		1924 6501  SFN5802K-R1
 		1924 6511  SFN5814H-R1
 		1924 6521  SFN5812H-R1
 		1924 6a05  SFN5112F-R5
 		1924 6a06  SFN5112F-R6
 		1924 7206  SFN5162F-R6
+		1924 7207  SFN5162F-R7
 		1924 7a06  SFN5152F-R6
+		1924 7a07  SFN5152F-R7
 	0813  SFL9021 [Solarstorm]
 		1924 6100  SFN5121T-R0
 		1924 6102  SFN5121T-R2
@@ -14709,9 +14747,17 @@
 1aed  Fusion-io
 	1003  ioDimm3 (v1.2)
 	1005  ioDimm3
+		1014 03c3  High IOPS SSD PCIe Adapter
+		103c 176f  1.28TB MLC PCIe ioDrive Duo
+		103c 1770  5.2TB MLC PCIe ioDrive Octal
+		103c 178b  160GB SLC PCIe ioDrive
+		103c 178c  320GB MLC PCIe ioDrive
+		103c 178d  320GB SLC PCIe ioDrive Duo
+		103c 178e  640GB MLC PCIe ioDrive Duo
 	1006  ioXtreme
 	1007  ioXtreme Pro
 	1008  ioXtreme-2
+	2001  ioDrive2
 1aee  Caustic Graphics Inc.
 # nee Qumranet, Inc.
 1af4  Red Hat, Inc
@@ -14732,6 +14778,8 @@
 	1042  ASM1042 SuperSpeed USB Host Controller
 	1080  ASM1083/1085 PCIe to PCI Bridge
 1b36  Red Hat, Inc.
+1b37  Signal Processing Devices Sweden AB
+	0014  ADQ412
 1b3a  Westar Display Technologies
 	7589  HRED J2000 - JPEG 2000 Video Codec Device
 1b3e  Teradata Corp.
@@ -15962,8 +16010,8 @@
 		17aa 2001  ThinkPad T60
 		17aa 207e  ThinkPad X60s
 		8086 109a  PRO/1000 PL Network Connection
-		8086 309c  DeskTop Board D945GTP
-		8086 30a5  DeskTop Board D975XBX
+		8086 309c  Desktop Board D945GTP
+		8086 30a5  Desktop Board D975XBX
 	109b  82546GB PRO/1000 GF Quad Port Server Adapter
 	109e  82597EX 10GbE Ethernet Controller
 		8086 a01f  PRO/10GbE CX4 Server Adapter
@@ -16410,6 +16458,7 @@
 	154a  Ethernet Server Adapter X520-4
 		8086 011a  Ethernet Converged Network Adapter X520-4
 		8086 011b  Ethernet Converged Network Adapter X520-4
+		8086 011c  Ethernet Converged Network Adapter X520-4
 	154d  82599EB 10-Gigabit SFP+ Network Connection
 		8086 7b11  10GbE 2P X520 Adapter
 	1960  80960RP (i960RP) Microprocessor
@@ -16475,6 +16524,7 @@
 	1c1c  6 Series/C200 Series Chipset Family PCI Express Root Port 7
 	1c1e  6 Series/C200 Series Chipset Family PCI Express Root Port 8
 	1c20  6 Series/C200 Series Chipset Family High Definition Audio Controller
+		1028 0490  Alienware M17x R3
 		1028 04aa  XPS 8300
 		1028 04b2  Vostro 3350
 		1043 8418  P8P67 Deluxe Motherboard
@@ -16538,48 +16588,47 @@
 	1c5d  6 Series/C200 Series Chipset Family LPC Controller
 	1c5e  6 Series/C200 Series Chipset Family LPC Controller
 	1c5f  6 Series/C200 Series Chipset Family LPC Controller
-	1d00  Patsburg 4-Port SATA IDE Controller
-	1d02  Patsburg 6-Port SATA AHCI Controller
-	1d04  Patsburg SATA RAID Controller
+	1d00  X79 series chipset 4-Port SATA IDE Controller
+	1d02  X79 series chipset 6-Port SATA AHCI Controller
+	1d04  X79 series chipset SATA RAID Controller
 	1d06  Patsburg SATA Premium RAID Controller
-	1d08  Patsburg 2-Port SATA IDE Controller
-	1d10  Patsburg PCI Express Root Port 1
-	1d11  Patsburg PCI Express Root Port 1
-	1d12  Patsburg PCI Express Root Port 2
-	1d13  Patsburg PCI Express Root Port 2
-	1d14  Patsburg PCI Express Root Port 3
-	1d15  Patsburg PCI Express Root Port 3
-	1d16  Patsburg PCI Express Root Port 4
-	1d17  Patsburg PCI Express Root Port 4
-	1d18  Patsburg PCI Express Root Port 5
-	1d19  Patsburg PCI Express Root Port 5
-	1d1a  Patsburg PCI Express Root Port 6
-	1d1b  Patsburg PCI Express Root Port 6
-	1d1c  Patsburg PCI Express Root Port 7
-	1d1d  Patsburg PCI Express Root Port 7
-	1d1e  Patsburg PCI Express Root Port 8
-	1d1f  Patsburg PCI Express Root Port 8
-	1d20  Patsburg High Definition Audio Controller
-	1d22  Patsburg SMBus Host Controller
-	1d24  Patsburg Thermal Management Controller
-	1d25  Patsburg DMI to PCI Bridge
-	1d26  Patsburg USB2 Enhanced Host Controller #1
-	1d2d  Patsburg USB2 Enhanced Host Controller #2
-	1d33  Patsburg LAN Controller
+	1d08  X79 series chipset 2-Port SATA IDE Controller
+	1d10  X79 series chipset PCI Express Root Port 1
+	1d11  X79 series chipset PCI Express Root Port 1
+	1d12  X79 series chipset PCI Express Root Port 2
+	1d13  X79 series chipset PCI Express Root Port 2
+	1d14  X79 series chipset PCI Express Root Port 3
+	1d15  X79 series chipset PCI Express Root Port 3
+	1d16  X79 series chipset PCI Express Root Port 4
+	1d17  X79 series chipset PCI Express Root Port 4
+	1d18  X79 series chipset PCI Express Root Port 5
+	1d19  X79 series chipset PCI Express Root Port 5
+	1d1a  X79 series chipset PCI Express Root Port 6
+	1d1b  X79 series chipset PCI Express Root Port 6
+	1d1c  X79 series chipset PCI Express Root Port 7
+	1d1d  X79 series chipset PCI Express Root Port 7
+	1d1e  X79 series chipset PCI Express Root Port 8
+	1d1f  X79 series chipset PCI Express Root Port 8
+	1d20  X79 series chipset High Definition Audio Controller
+	1d22  X79 series chipset SMBus Host Controller
+	1d24  X79 series chipset Thermal Management Controller
+	1d25  X79 series chipset DMI to PCI Bridge
+	1d26  X79 series chipset USB2 Enhanced Host Controller #1
+	1d2d  X79 series chipset USB2 Enhanced Host Controller #2
+	1d33  X79 series chipset LAN Controller
 	1d35  Patsburg VECI Controller
-	1d3a  Patsburg MEI Controller #1
-	1d3b  Patsburg MEI Controller #2
-	1d3c  Patsburg IDE-r Controller
-	1d3d  Patsburg KT Controller
+	1d3a  X79 series chipset HECI Controller #2
+	1d3b  X79 series chipset IDE-r Controller
+	1d3d  X79 series chipset KT Controller
 	1d3e  Patsburg PCI Express Virtual Root Port
 	1d3f  Patsburg PCI Express Virtual Switch Port
-	1d40  Patsburg LPC Controller
-	1d41  Patsburg LPC Controller
+	1d40  X79 series chipset LPC Controller
+	1d41  X79 series chipset LPC Controller
 	1d50  Patsburg Dual 4-Port SATA/SAS Storage Control Unit
 	1d54  Patsburg Dual 4-Port SATA/SAS Storage Control Unit
-	1d55  Patsburg 4-Port SATA/SAS Storage Control Unit
+	1d55  X79 series chipset 4-Port SATA/SAS Storage Control Unit
 	1d58  Patsburg Dual 4-Port SATA/SAS Storage Control Unit
-	1d59  Patsburg 4-Port SATA/SAS Storage Control Unit
+	1d59  X79 series chipset 4-Port SATA/SAS Storage Control Unit
 	1d5a  Patsburg Dual 4-Port SATA Storage Control Unit
 	1d5b  Patsburg 4-Port SATA Storage Control Unit
 	1d5c  Patsburg Dual 4-Port SATA/SAS Storage Control Unit
@@ -16588,16 +16637,16 @@
 	1d5f  Patsburg 4-Port SATA Storage Control Unit
 	1d60  Patsburg Dual 4-Port SATA/SAS Storage Control Unit
 	1d64  Patsburg Dual 4-Port SATA/SAS Storage Control Unit
-	1d65  Patsburg 4-Port SATA/SAS Storage Control Unit
+	1d65  X79 series chipset 4-Port SATA/SAS Storage Control Unit
 	1d68  Patsburg Dual 4-Port SATA/SAS Storage Control Unit
-	1d69  Patsburg 4-Port SATA/SAS Storage Control Unit
+	1d69  X79 series chipset 4-Port SATA/SAS Storage Control Unit
 	1d6a  Patsburg Dual 4-Port SATA Storage Control Unit
 	1d6b  Patsburg 4-Port SATA Storage Control Unit
 	1d6c  Patsburg Dual 4-Port SATA/SAS Storage Control Unit
 	1d6d  Patsburg 4-Port SATA/SAS Storage Control Unit
 	1d6e  Patsburg Dual 4-Port SATA Storage Control Unit
 	1d6f  Patsburg 4-Port SATA Storage Control Unit
-	1d70  Patsburg SMBus Controller 0
+	1d70  X79 series chipset SMBus Controller 0
 	1d71  Patsburg SMBus Controller 1
 	1d72  Patsburg SMBus Controller 2
 	1d73  Patsburg Integrated NVSRAM Controller
@@ -17125,7 +17174,7 @@
 		1028 0156  Precision 360
 		1028 0169  Precision 470
 		103c 12bc  d330 uT
-		1043 80a6  P4P800 series motherboard
+		1043 80a6  P4P800/P5P800 series motherboard
 		1458 24d2  GA-8IPE1000 Pro2 motherboard (865PE)
 		1462 7280  865PE Neo2 (MS-6728)
 		1462 7650  Hetis 865GV-E (MS-7065)
@@ -17345,7 +17394,7 @@
 	258a  E7221 Integrated Graphics Controller
 	2590  Mobile 915GM/PM/GMS/910GML Express Processor to DRAM Controller
 		1014 0575  ThinkPad Z60t
-		1028 0182  Dell Latidude C610
+		1028 0182  Dell Latitude C610
 		103c 0934  Compaq nw8240/nx8220
 		103c 099c  NX6110/NC6120
 		104d 81b7  Vaio VGN-S3XP
@@ -20106,6 +20155,8 @@ dada  Datapath Limited
 db10  Diablo Technologies
 dcba  Dynamic Engineering
 	0046  PCIeAlteraCycloneIV
+dd01  Digital Devices GmbH
+	0003  Octopus LE DVB adapter
 dead  Indigita Corporation
 deaf  Middle Digital Inc.
 	9050  PC Weasel Virtual VGA
@@ -20348,6 +20399,7 @@ C 08  Generic system peripheral
 		01  ISA RTC
 	04  PCI Hot-plug controller
 	05  SD Host controller
+	06  IOMMU
 	80  System peripheral
 C 09  Input device controller
 	00  Keyboard controller
