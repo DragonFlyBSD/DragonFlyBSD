@@ -416,6 +416,9 @@ static const struct {
 
 MALLOC_DEFINE(M_HDAC, "hdac", "High Definition Audio Controller");
 
+static int hdac_msi_enable = 1;
+TUNABLE_INT("hw.snd.hdac.msi.enable", &hdac_msi_enable);
+
 enum {
 	HDA_PARSE_MIXER,
 	HDA_PARSE_DIRECT
@@ -1565,21 +1568,14 @@ hdac_irq_alloc(struct hdac_softc *sc)
 {
 	struct hdac_irq *irq;
 	int result;
+	u_int irq_flags;
 
 	irq = &sc->irq;
 	irq->irq_rid = 0x0;
-
-#if 0 /* TODO: No MSI support in DragonFly yet. */
-	if ((sc->flags & HDAC_F_MSI) &&
-	    (result = pci_msi_count(sc->dev)) == 1 &&
-	    pci_alloc_msi(sc->dev, &result) == 0)
-		irq->irq_rid = 0x1;
-	else
-#endif
-		sc->flags &= ~HDAC_F_MSI;
-
+	irq->irq_type = pci_alloc_1intr(sc->dev, hdac_msi_enable,
+	    &irq->irq_rid, &irq_flags);
 	irq->irq_res = bus_alloc_resource_any(sc->dev, SYS_RES_IRQ,
-	    &irq->irq_rid, RF_SHAREABLE | RF_ACTIVE);
+	    &irq->irq_rid, irq_flags);
 	if (irq->irq_res == NULL) {
 		device_printf(sc->dev, "%s: Unable to allocate irq\n",
 		    __func__);
@@ -1618,10 +1614,8 @@ hdac_irq_free(struct hdac_softc *sc)
 	if (irq->irq_res != NULL)
 		bus_release_resource(sc->dev, SYS_RES_IRQ, irq->irq_rid,
 		    irq->irq_res);
-#if 0 /* TODO: No MSI support in DragonFly yet. */
-	if ((sc->flags & HDAC_F_MSI) && irq->irq_rid == 0x1)
+	if (irq->irq_type == PCI_INTR_TYPE_MSI)
 		pci_release_msi(sc->dev);
-#endif
 	irq->irq_handle = NULL;
 	irq->irq_res = NULL;
 	irq->irq_rid = 0x0;
@@ -3810,14 +3804,6 @@ hdac_attach(device_t dev)
 			    pci_read_config(dev, 0x44, 1));
 		);
 	}
-#if 0 /* TODO: No MSI support yet in DragonFly. */
-	if (resource_int_value(device_get_name(dev),
-	    device_get_unit(dev), "msi", &i) == 0 && i != 0 &&
-	    pci_msi_count(dev) == 1)
-		sc->flags |= HDAC_F_MSI;
-	else
-#endif
-		sc->flags &= ~HDAC_F_MSI;
 
 #if 0 /* TODO: No uncacheable DMA support in DragonFly. */
 	sc->flags |= HDAC_F_DMA_NOCACHE;

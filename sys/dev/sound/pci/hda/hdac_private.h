@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/hda/hdac_private.h,v 1.6.2.3 2007/07/12 06:39:08 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/hda/hdac_private.h,v 1.6 2007/11/30 07:47:44 hasso Exp $
  */
 
 #ifndef _HDAC_PRIVATE_H_
@@ -111,6 +110,7 @@ struct hdac_mem {
 struct hdac_irq {
 	struct resource		*irq_res;
 	int			irq_rid;
+	int			irq_type;
 	void			*irq_handle;
 };
 
