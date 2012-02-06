@@ -2690,10 +2690,16 @@ pci_assign_interrupt(device_t bus, device_t dev, int force_route)
 	/* Let the user override the IRQ with a tunable. */
 	irq = PCI_INVALID_IRQ;
 	ksnprintf(tunable_name, sizeof(tunable_name),
-	    "hw.pci%d.%d.%d.INT%c.irq",
-	    cfg->domain, cfg->bus, cfg->slot, cfg->intpin + 'A' - 1);
-	if (TUNABLE_INT_FETCH(tunable_name, &irq) && (irq >= 255 || irq <= 0))
-		irq = PCI_INVALID_IRQ;
+	    "hw.pci%d.%d.%d.%d.INT%c.irq",
+	    cfg->domain, cfg->bus, cfg->slot, cfg->func, cfg->intpin + 'A' - 1);
+	if (TUNABLE_INT_FETCH(tunable_name, &irq)) {
+		if (irq >= 255 || irq <= 0) {
+			irq = PCI_INVALID_IRQ;
+		} else {
+			BUS_CONFIG_INTR(bus, dev, irq,
+			    INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
+		}
+	}
 
 	/*
 	 * If we didn't get an IRQ via the tunable, then we either use the
