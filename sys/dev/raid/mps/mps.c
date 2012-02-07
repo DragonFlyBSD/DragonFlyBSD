@@ -1044,7 +1044,7 @@ mps_attach(struct mps_softc *sc)
 	}
 
 	sc->facts = kmalloc(sizeof(MPI2_IOC_FACTS_REPLY), M_MPT2,
-	    M_ZERO|M_NOWAIT);
+	    M_ZERO|M_WAITOK);
 	if ((error = mps_get_iocfacts(sc, sc->facts)) != 0)
 		return (error);
 
