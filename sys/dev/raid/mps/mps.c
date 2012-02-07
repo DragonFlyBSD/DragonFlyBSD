@@ -584,7 +584,7 @@ mps_get_portfacts(struct mps_softc *sc, MPI2_PORT_FACTS_REPLY *facts, int port)
 	if ((reply->IOCStatus & MPI2_IOCSTATUS_MASK) != MPI2_IOCSTATUS_SUCCESS) {
 		mps_printf(sc,
 		    "%s error %d iocstatus 0x%x iocloginfo 0x%x type 0x%x\n",
-		    __func__, error, reply->IOCStatus, (u_int)reply->IOCLogInfo,
+		    __func__, error, reply->IOCStatus, reply->IOCLogInfo,
 		    reply->PortType);
 		error = ENXIO;
 	}
@@ -1059,7 +1059,7 @@ mps_attach(struct mps_softc *sc)
 
 	mps_printf(sc, "Firmware: %s, Driver: %s\n", sc->fw_version,
 	    MPS_DRIVER_VERSION);
-	mps_printf(sc, "IOCCapabilities: %b\n", (int)sc->facts->IOCCapabilities,
+	mps_printf(sc, "IOCCapabilities: %b\n", sc->facts->IOCCapabilities,
 	    "\20" "\3ScsiTaskFull" "\4DiagTrace" "\5SnapBuf" "\6ExtBuf"
 	    "\7EEDP" "\10BiDirTarg" "\11Multicast" "\14TransRetry" "\15IR"
 	    "\16EventReplay" "\17RaidAccel" "\20MSIXIndex" "\21HostDisc");
@@ -1863,7 +1863,7 @@ mps_push_sge(struct mps_command *cm, void *sgep, size_t len, int segsleft)
 		if (((sge->FlagsLength >> MPI2_SGE_FLAGS_SHIFT) &
 		    MPI2_SGE_FLAGS_ADDRESS_SIZE) == 0)
 			panic("SGE simple %p flags %02x not marked 64-bit?",
-			    sge, (u_int)(sge->FlagsLength >> MPI2_SGE_FLAGS_SHIFT));
+			    sge, sge->FlagsLength >> MPI2_SGE_FLAGS_SHIFT);
 
 		break;
 	default:

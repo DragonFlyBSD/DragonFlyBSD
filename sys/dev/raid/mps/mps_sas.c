@@ -472,7 +472,7 @@ mpssas_remove_device(struct mps_softc *sc, struct mps_command *tm)
 	}
 
 	mps_dprint(sc, MPS_INFO, "Reset aborted %u commands\n",
-	    (u_int)reply->TerminationCount);
+	    reply->TerminationCount);
 	mps_free_reply(sc, tm->cm_reply_data);
 	tm->cm_reply = NULL;	/* Ensures the the reply won't get re-freed */
 
