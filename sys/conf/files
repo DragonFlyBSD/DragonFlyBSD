@@ -617,11 +617,14 @@ bus/mmc/mmc.c			optional mmc
 bus/mmc/mmcbr_if.m		standard
 bus/mmc/mmcbus_if.m		standard
 dev/disk/mmcsd/mmcsd.c		optional mmcsd
-dev/disk/mps/mps.c		optional mps
-dev/disk/mps/mps_pci.c		optional mps pci
-dev/disk/mps/mps_sas.c		optional mps
-dev/disk/mps/mps_table.c	optional mps
-dev/disk/mps/mps_user.c		optional mps
+dev/raid/mps/mps.c		optional mps
+dev/raid/mps/mps_config.c	optional mps
+dev/raid/mps/mps_mapping.c	optional mps
+dev/raid/mps/mps_pci.c		optional mps pci
+dev/raid/mps/mps_sas.c		optional mps
+dev/raid/mps/mps_sas_lsi.c	optional mps
+dev/raid/mps/mps_table.c	optional mps
+dev/raid/mps/mps_user.c		optional mps
 dev/disk/mpt/mpt.c		optional mpt
 dev/disk/mpt/mpt_cam.c		optional mpt
 dev/disk/mpt/mpt_debug.c	optional mpt
