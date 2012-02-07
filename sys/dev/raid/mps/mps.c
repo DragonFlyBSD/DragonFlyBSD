@@ -1887,6 +1887,7 @@ mps_push_sge(struct mps_command *cm, void *sgep, size_t len, int segsleft)
 		panic("MPS: Need SGE Error Code\n");
 
 	if (segsleft >= 2 &&
+	    cm->cm_sglsize >= len + MPS_SGC_SIZE &&
 	    cm->cm_sglsize < len + MPS_SGC_SIZE + MPS_SGE64_SIZE) {
 		/*
 		 * There are 2 or more segments left to add, and only
