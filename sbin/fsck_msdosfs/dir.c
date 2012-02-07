@@ -33,7 +33,6 @@
  *
  * $NetBSD: dir.c,v 1.14 1998/08/25 19:18:15 ross Exp $
  * $FreeBSD: src/sbin/fsck_msdosfs/dir.c,v 1.1.2.1 2001/08/01 05:47:55 obrien Exp $
- * $DragonFly: src/sbin/fsck_msdosfs/dir.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
  */
 
 
@@ -43,7 +42,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <stdio.h>
 #include <unistd.h>
 #include <time.h>
 

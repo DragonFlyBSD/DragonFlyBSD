@@ -70,7 +70,6 @@
 #include <sys/kerneldump.h>
 #include <sys/diskslice.h>
 #include <sys/ioctl.h>
-#include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <errno.h>

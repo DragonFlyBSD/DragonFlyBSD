@@ -32,7 +32,6 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nfsd.c	8.9 (Berkeley) 3/29/95
  * $FreeBSD: src/usr.sbin/nfsd/nfsd.c,v 1.34 2005/12/21 10:12:05 delphij Exp $
- * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.10 2006/12/27 23:06:29 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -58,7 +57,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <netdb.h>
 
 /* Global defs */
 #ifdef DEBUG
