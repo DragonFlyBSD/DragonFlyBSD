@@ -585,16 +585,16 @@ It is useful for file systems such as
 which depend on a single connection.
 .El
 .Sh CODE REFERENCES
-The current users of
+The current user of
 .Nm
-in the tree are
-.Xr mount_psshfs 8
-and
-.Xr mount_9p 8 .
+in the tree is
+.Xr mount_psshfs 8 .
+.\"and
+.\".Xr mount_9p 8 .
 See
-.Pa src/usr.sbin/puffs/mount_psshfs
-and
-.Pa src/usr.sbin/puffs/mount_9p
+.Pa src/usr.sbin/puffs/mount_psshfs .
+.\"and
+.\".Pa src/usr.sbin/puffs/mount_9p
 for the respective usage examples.
 .Sh RETURN VALUES
 These functions generally return \-1 to signal error and set

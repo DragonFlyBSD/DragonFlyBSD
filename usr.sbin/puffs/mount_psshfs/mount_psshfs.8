@@ -54,7 +54,6 @@ If no path is given, the user's home directory on the remote machine
 will be used.
 .Pp
 The following command line options are available:
-.Pp
 .Bl -tag -width xxx
 .It Fl c Ar nconnect
 Opens
@@ -145,8 +144,8 @@ number of available vnodes in the system (kern.maxvnodes).
 Converts remote
 .Ar mangleuid
 to the effective uid of the file server and vice versa.
-This is a simple special case of the functionality of
-.Xr mount_umap 8 .
+.\"This is a simple special case of the functionality of
+.\".Xr mount_umap 8 .
 For example: you mount remote me@darkmoon as the local user "me".
 If the uid of "me" on the local system is 101 and on
 darkmoon it is 202, you would use
