@@ -812,11 +812,13 @@ mpssas_ir_shutdown(struct mps_softc *sc)
 	struct mps_command *cm;
 	Mpi2RaidActionRequest_t	*action;
 
+	mps_lock(sc);
+
 	mps_dprint(sc, MPS_TRACE, "%s\n", __func__);
 
 	/* is IR firmware build loaded? */
 	if (!sc->ir_firmware)
-		return;
+		goto back;
 
 	/* are there any volumes?  Look at IR target IDs. */
 	// TODO-later, this should be looked up in the RAID config structure
@@ -841,11 +843,11 @@ mpssas_ir_shutdown(struct mps_softc *sc)
 	}
 
 	if (!found_volume)
-		return;
+		goto back;
 
 	if ((cm = mps_alloc_command(sc)) == NULL) {
 		kprintf("%s: command alloc failed\n", __func__);
-		return;
+		goto back;
 	}
 
 	action = (MPI2_RAID_ACTION_REQUEST *)cm->cm_req;
@@ -859,4 +861,7 @@ mpssas_ir_shutdown(struct mps_softc *sc)
 	 */
 	if (cm)
 		mps_free_command(sc, cm);
+
+back:
+	mps_unlock(sc);
 }
