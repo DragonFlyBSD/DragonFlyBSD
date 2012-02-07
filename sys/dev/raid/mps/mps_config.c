@@ -295,7 +295,7 @@ mps_config_get_man_pg10(struct mps_softc *sc, Mpi2ConfigReply_t *mpi_reply)
 	/*
 	 * Set the phys disks hide/expose value.
 	 */
-	pPS_info = (uint32_t *)&page->ProductSpecificInfo;
+	pPS_info = &page->ProductSpecificInfo;
 	sc->WD_hide_expose = (uint8_t)(pPS_info[5]);
 	sc->WD_hide_expose &= MPS_WD_HIDE_EXPOSE_MASK;
 	if ((sc->WD_hide_expose != MPS_WD_HIDE_ALWAYS) &&

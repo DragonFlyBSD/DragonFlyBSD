@@ -359,22 +359,22 @@ mpssas_fw_work(struct mps_softc *sc, struct mps_fw_event_work *fw_event)
 		case MPI2_EVENT_IR_VOLUME_RC_SETTINGS_CHANGED:
 			mps_dprint(sc, MPS_INFO, "   Volume Settings "
 			    "changed from 0x%x to 0x%x for Volome with "
-			    "handle 0x%x", (u_int)event_data->PreviousValue,
-			    (u_int)event_data->NewValue,
+			    "handle 0x%x", event_data->PreviousValue,
+			    event_data->NewValue,
 			    event_data->VolDevHandle);
 			break;
 		case MPI2_EVENT_IR_VOLUME_RC_STATUS_FLAGS_CHANGED:
 			mps_dprint(sc, MPS_INFO, "   Volume Status "
 			    "changed from 0x%x to 0x%x for Volome with "
-			    "handle 0x%x", (u_int)event_data->PreviousValue,
-			    (u_int)event_data->NewValue,
+			    "handle 0x%x", event_data->PreviousValue,
+			    event_data->NewValue,
 			    event_data->VolDevHandle);
 			break;
 		case MPI2_EVENT_IR_VOLUME_RC_STATE_CHANGED:
 			mps_dprint(sc, MPS_INFO, "   Volume State "
 			    "changed from 0x%x to 0x%x for Volome with "
-			    "handle 0x%x", (u_int)event_data->PreviousValue,
-			    (u_int)event_data->NewValue,
+			    "handle 0x%x", event_data->PreviousValue,
+			    event_data->NewValue,
 			    event_data->VolDevHandle);
 			break;
 		default:
@@ -396,8 +396,8 @@ mpssas_fw_work(struct mps_softc *sc, struct mps_fw_event_work *fw_event)
 			mps_dprint(sc, MPS_INFO, "   Phys Disk Settings "
 			    "changed from 0x%x to 0x%x for Phys Disk Number "
 			    "%d and handle 0x%x at Enclosure handle 0x%x, Slot "
-			    "%d", (u_int)event_data->PreviousValue,
-			    (u_int)event_data->NewValue, event_data->PhysDiskNum,
+			    "%d", event_data->PreviousValue,
+			    event_data->NewValue, event_data->PhysDiskNum,
 			    event_data->PhysDiskDevHandle,
 			    event_data->EnclosureHandle, event_data->Slot);
 			break;
@@ -405,7 +405,7 @@ mpssas_fw_work(struct mps_softc *sc, struct mps_fw_event_work *fw_event)
 			mps_dprint(sc, MPS_INFO, "   Phys Disk Status changed "
 			    "from 0x%x to 0x%x for Phys Disk Number %d and "
 			    "handle 0x%x at Enclosure handle 0x%x, Slot %d",
-			    (u_int)event_data->PreviousValue, (u_int)event_data->NewValue,
+			    event_data->PreviousValue, event_data->NewValue,
 			    event_data->PhysDiskNum,
 			    event_data->PhysDiskDevHandle,
 			    event_data->EnclosureHandle, event_data->Slot);
@@ -414,7 +414,7 @@ mpssas_fw_work(struct mps_softc *sc, struct mps_fw_event_work *fw_event)
 			mps_dprint(sc, MPS_INFO, "   Phys Disk State changed "
 			    "from 0x%x to 0x%x for Phys Disk Number %d and "
 			    "handle 0x%x at Enclosure handle 0x%x, Slot %d",
-			    (u_int)event_data->PreviousValue, (u_int)event_data->NewValue,
+			    event_data->PreviousValue, event_data->NewValue,
 			    event_data->PhysDiskNum,
 			    event_data->PhysDiskDevHandle,
 			    event_data->EnclosureHandle, event_data->Slot);

@@ -1205,7 +1205,7 @@ mps_post_fw_diag_buffer(struct mps_softc *sc,
 		mps_dprint(sc, MPS_FAULT, "%s: post of FW  Diag Buffer failed "
 		    "with IOCStatus = 0x%x, IOCLogInfo = 0x%x and "
 		    "TransferLength = 0x%x\n", __func__, reply->IOCStatus,
-		    (u_int)reply->IOCLogInfo, (u_int)reply->TransferLength);
+		    reply->IOCLogInfo, reply->TransferLength);
 		goto done;
 	}
 
@@ -1289,7 +1289,7 @@ mps_release_fw_diag_buffer(struct mps_softc *sc,
 		status = MPS_DIAG_FAILURE;
 		mps_dprint(sc, MPS_FAULT, "%s: release of FW Diag Buffer "
 		    "failed with IOCStatus = 0x%x and IOCLogInfo = 0x%x\n",
-		    __func__, reply->IOCStatus, (u_int)reply->IOCLogInfo);
+		    __func__, reply->IOCStatus, reply->IOCLogInfo);
 		goto done;
 	}
 
