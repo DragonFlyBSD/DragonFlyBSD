@@ -74,7 +74,7 @@ typedef unsigned char   U8;
 typedef signed   short  S16;
 typedef unsigned short  U16;
 
-#ifdef	__FreeBSD__
+#ifdef	__DragonFly__
 
 typedef int32_t  S32;
 typedef uint32_t U32;
