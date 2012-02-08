@@ -4,7 +4,7 @@ MOUNT=	${.CURDIR}/../../../sbin/mount
 
 WARNS?=	2
 
-CFLAGS+=-I${MOUNT} -I${.CURDIR}/../../../lib/libpuffs -I${.CURDIR}/../../../sys
+CFLAGS+=-I${MOUNT} -I${.CURDIR}/../../../sys
 
 LDADD=	-lpuffs
 DPADD=	${LIBPUFFS}
