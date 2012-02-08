@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: main.c	8.1 (Berkeley) 6/20/93
  * $FreeBSD: src/libexec/getty/main.c,v 1.28.2.4 2003/02/06 11:45:31 sobomax Exp $
- * $DragonFly: src/libexec/getty/main.c,v 1.4 2004/03/26 00:30:12 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -49,7 +48,6 @@
 #include <libutil.h>
 #include <signal.h>
 #include <setjmp.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>

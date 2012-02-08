@@ -42,7 +42,6 @@
 #include <sys/sysctl.h>
 #include <sys/time.h>
 #include <sys/vmmeter.h>
-#include <sys/param.h>
 
 #include <err.h>
 #include <fcntl.h>
