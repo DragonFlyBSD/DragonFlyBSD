@@ -32,7 +32,6 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/auth.c,v 1.24.2.2 2002/03/12 08:55:22 maxim Exp $
- * $DragonFly: src/usr.sbin/pppd/auth.c,v 1.5 2005/11/24 23:42:54 swildner Exp $
  */
 
 #include <stdio.h>
@@ -58,7 +57,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
-#include <utmp.h>
 
 #ifdef USE_PAM
 #include <security/pam_appl.h>

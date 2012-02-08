@@ -29,11 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp $
- * $DragonFly: src/usr.sbin/ancontrol/ancontrol.c,v 1.6 2005/12/05 01:04:00 swildner Exp $
- *
  * @(#) Copyright (c) 1997, 1998, 1999 Bill Paul. All rights reserved.
- * @(#) $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp
  * $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp $
  */
 
@@ -42,7 +38,6 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
 
 #include <net/if.h>
 #include <net/if_var.h>

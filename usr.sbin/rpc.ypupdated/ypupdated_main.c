@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.10 2004/05/24 12:28:27 stefanf Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.5 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include "ypupdate_prot.h"
@@ -50,7 +49,6 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <err.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include "ypupdated_extern.h"
 #include "yp_extern.h"
