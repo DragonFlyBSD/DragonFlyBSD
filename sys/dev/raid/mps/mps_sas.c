@@ -136,6 +136,8 @@ static uint8_t op_code_prot[256] = {
 MALLOC_DEFINE(M_MPSSAS, "MPSSAS", "MPS SAS memory");
 
 static struct mpssas_target * mpssas_find_target_by_handle(struct mpssas_softc *, int, uint16_t);
+static void mpssas_log_command(struct mps_command *, const char *, ...)
+		__printflike(2, 3);
 #if 0 /* XXX unused */
 static void mpssas_discovery_timeout(void *data);
 #endif
@@ -1094,7 +1096,7 @@ mpssas_logical_unit_reset_complete(struct mps_softc *sc, struct mps_command *tm)
 	if (cm_count == 0) {
 		mpssas_log_command(tm,
 		    "logical unit %u finished recovery after reset\n",
-		    tm->cm_lun, tm);
+		    tm->cm_lun);
 
 		mpssas_announce_reset(sc, AC_SENT_BDR, tm->cm_targ->tid,
 		    tm->cm_lun);
