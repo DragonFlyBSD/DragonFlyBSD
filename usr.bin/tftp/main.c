@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tftp/main.c,v 1.8.2.3 2002/05/14 22:08:07 bsd Exp $
- * $DragonFly: src/usr.bin/tftp/main.c,v 1.6 2008/10/16 01:52:33 swildner Exp $
  */
 
 /* Many bug fixes are from Jim Guyton <guyton@rand-unix> */
@@ -45,7 +44,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/file.h>
-#include <sys/param.h>
 
 #include <netinet/in.h>
 

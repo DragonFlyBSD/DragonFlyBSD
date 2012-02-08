@@ -21,8 +21,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/usr.bin/checkpt/checkpt.c,v 1.5 2007/07/24 19:44:18 dillon Exp $
  */
 
 #include <sys/signal.h>
@@ -38,7 +36,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <string.h>
 #include <errno.h>
 
 static
