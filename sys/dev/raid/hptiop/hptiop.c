@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/hptiop/hptiop.c,v 1.10 2011/10/13 20:06:19 marius Exp $
+ * $FreeBSD: src/sys/dev/hptiop/hptiop.c,v 1.11 2011/11/23 21:43:51 marius Exp $
  */
 
 #include <sys/param.h>
@@ -1738,11 +1738,7 @@ scsi_done:
 		break;
 
 	case XPT_CALC_GEOMETRY:
-		ccb->ccg.heads = 255;
-		ccb->ccg.secs_per_track = 63;
-		ccb->ccg.cylinders = ccb->ccg.volume_size /
-				(ccb->ccg.heads * ccb->ccg.secs_per_track);
-		ccb->ccb_h.status = CAM_REQ_CMP;
+		cam_calc_geometry(&ccb->ccg, 1);
 		break;
 
 	case XPT_PATH_INQ:
