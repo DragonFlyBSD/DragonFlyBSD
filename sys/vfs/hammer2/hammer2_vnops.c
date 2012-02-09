@@ -47,10 +47,10 @@ hammer2_reclaim(struct vop_reclaim_args *ap)
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
-	hmp = ip->hi_mp;
+	hmp = ip->mp;
 
 	vp->v_data = NULL;
-	ip->hi_vnode = NULL;
+	ip->vp = NULL;
 
 	return (0);
 }
@@ -269,11 +269,11 @@ tmpfs_nresolve(struct vop_nresolve_args *v)
 	struct vnode *dvp = v->a_dvp;
 	struct vnode *vp = NULL;
 	struct namecache *ncp = v->a_nch->ncp;
-	struct tmpfs_node *tnode;
+	struct hammer2_node *tnode;
 
 	int error;
-	struct tmpfs_dirent *de;
-	struct tmpfs_node *dnode;
+	struct hammer2_dirent *de;
+	struct hammer2_node *dnode;
 
 	dnode = VP_TO_TMPFS_DIR(dvp);
 
@@ -313,7 +313,7 @@ tmpfs_nlookupdotdot(struct vop_nlookupdotdot_args *v)
 {
 	struct vnode *dvp = v->a_dvp;
 	struct vnode **vpp = v->a_vpp;
-	struct tmpfs_node *dnode = VP_TO_TMPFS_NODE(dvp);
+	struct hammer2_node *dnode = VP_TO_TMPFS_NODE(dvp);
 	struct ucred *cred = v->a_cred;
 	int error;
 
@@ -393,7 +393,7 @@ tmpfs_open(struct vop_open_args *v)
 	int mode = v->a_mode;
 
 	int error;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
 
@@ -419,7 +419,7 @@ static int
 tmpfs_close(struct vop_close_args *v)
 {
 	struct vnode *vp = v->a_vp;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
 
@@ -439,7 +439,7 @@ tmpfs_access(struct vop_access_args *v)
 {
 	struct vnode *vp = v->a_vp;
 	int error;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
 
@@ -488,7 +488,7 @@ tmpfs_getattr(struct vop_getattr_args *v)
 {
 	struct vnode *vp = v->a_vp;
 	struct vattr *vap = v->a_vap;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
 
@@ -533,7 +533,7 @@ tmpfs_setattr(struct vop_setattr_args *v)
 	struct vnode *vp = v->a_vp;
 	struct vattr *vap = v->a_vap;
 	struct ucred *cred = v->a_cred;
-	struct tmpfs_node *node = VP_TO_TMPFS_NODE(vp);
+	struct hammer2_node *node = VP_TO_TMPFS_NODE(vp);
 	int error = 0;
 	int kflags = 0;
 
@@ -589,7 +589,7 @@ static int
 tmpfs_fsync(struct vop_fsync_args *v)
 {
 	struct hammer2_mount *tmp;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 	struct vnode *vp = v->a_vp;
 
 	tmp = VFS_TO_TMPFS(vp->v_mount);
@@ -615,7 +615,7 @@ tmpfs_read (struct vop_read_args *ap)
 	struct buf *bp;
 	struct vnode *vp = ap->a_vp;
 	struct uio *uio = ap->a_uio;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 	off_t base_offset;
 	size_t offset;
 	size_t len;
@@ -695,7 +695,7 @@ tmpfs_write (struct vop_write_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct uio *uio = ap->a_uio;
 	struct thread *td = uio->uio_td;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 	boolean_t extended;
 	off_t oldsize;
 	int error;
@@ -859,7 +859,7 @@ done:
 static int
 tmpfs_advlock (struct vop_advlock_args *ap)
 {
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 	struct vnode *vp = ap->a_vp;
 
 	node = VP_TO_TMPFS_NODE(vp);
@@ -874,7 +874,7 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 	struct bio *nbio;
 	struct buf *bp = bio->bio_buf;
 	struct vnode *vp = ap->a_vp;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 	vm_object_t uobj;
 	vm_page_t m;
 	int i;
@@ -972,10 +972,10 @@ tmpfs_nremove(struct vop_nremove_args *v)
 	struct namecache *ncp = v->a_nch->ncp;
 	struct vnode *vp;
 	int error;
-	struct tmpfs_dirent *de;
+	struct hammer2_dirent *de;
 	struct hammer2_mount *tmp;
-	struct tmpfs_node *dnode;
-	struct tmpfs_node *node;
+	struct hammer2_node *dnode;
+	struct hammer2_node *node;
 
 	/*
 	 * We have to acquire the vp from v->a_nch because we will likely
@@ -1048,9 +1048,9 @@ tmpfs_nlink(struct vop_nlink_args *v)
 	struct vnode *dvp = v->a_dvp;
 	struct vnode *vp = v->a_vp;
 	struct namecache *ncp = v->a_nch->ncp;
-	struct tmpfs_dirent *de;
-	struct tmpfs_node *node;
-	struct tmpfs_node *dnode;
+	struct hammer2_dirent *de;
+	struct hammer2_node *node;
+	struct hammer2_node *dnode;
 	int error;
 
 	KKASSERT(dvp != vp); /* XXX When can this be false? */
@@ -1123,12 +1123,12 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	struct vnode *tdvp = v->a_tdvp;
 	struct namecache *tncp = v->a_tnch->ncp;
 	struct vnode *tvp;
-	struct tmpfs_dirent *de;
+	struct hammer2_dirent *de;
 	struct hammer2_mount *tmp;
-	struct tmpfs_node *fdnode;
-	struct tmpfs_node *fnode;
-	struct tmpfs_node *tnode;
-	struct tmpfs_node *tdnode;
+	struct hammer2_node *fdnode;
+	struct hammer2_node *fnode;
+	struct hammer2_node *tnode;
+	struct hammer2_node *tdnode;
 	char *newname;
 	char *oldname;
 	int error;
@@ -1361,10 +1361,10 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	struct vnode *dvp = v->a_dvp;
 	struct namecache *ncp = v->a_nch->ncp;
 	struct vnode *vp;
-	struct tmpfs_dirent *de;
+	struct hammer2_dirent *de;
 	struct hammer2_mount *tmp;
-	struct tmpfs_node *dnode;
-	struct tmpfs_node *node;
+	struct hammer2_node *dnode;
+	struct hammer2_node *node;
 	int error;
 
 	/*
@@ -1516,7 +1516,7 @@ tmpfs_readdir(struct vop_readdir_args *v)
 	int error;
 	off_t startoff;
 	off_t cnt = 0;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	/* This operation only makes sense on directory nodes. */
 	if (vp->v_type != VDIR)
@@ -1556,7 +1556,7 @@ outok:
 	if (error == 0 && cookies != NULL && ncookies != NULL) {
 		off_t i;
 		off_t off = startoff;
-		struct tmpfs_dirent *de = NULL;
+		struct hammer2_dirent *de = NULL;
 
 		*ncookies = cnt;
 		*cookies = kmalloc(cnt * sizeof(off_t), M_TEMP, M_WAITOK);
@@ -1599,7 +1599,7 @@ tmpfs_readlink(struct vop_readlink_args *v)
 	struct uio *uio = v->a_uio;
 
 	int error;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	KKASSERT(uio->uio_offset == 0);
 	KKASSERT(vp->v_type == VLNK);
@@ -1621,7 +1621,7 @@ static int
 tmpfs_inactive(struct vop_inactive_args *v)
 {
 	struct vnode *vp = v->a_vp;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
 
@@ -1665,7 +1665,7 @@ tmpfs_reclaim(struct vop_reclaim_args *v)
 {
 	struct vnode *vp = v->a_vp;
 	struct hammer2_mount *tmp;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
 	tmp = VFS_TO_TMPFS(vp->v_mount);
@@ -1703,11 +1703,11 @@ tmpfs_print(struct vop_print_args *v)
 {
 	struct vnode *vp = v->a_vp;
 
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
 
-	kprintf("tag VT_TMPFS, tmpfs_node %p, flags 0x%x, links %d\n",
+	kprintf("tag VT_TMPFS, hammer2_node %p, flags 0x%x, links %d\n",
 	    node, node->tn_flags, node->tn_links);
 	kprintf("\tmode 0%o, owner %d, group %d, size %ju, status 0x%x\n",
 	    node->tn_mode, node->tn_uid, node->tn_gid,
@@ -1828,7 +1828,7 @@ static int
 filt_tmpfsread(struct knote *kn, long hint)
 {
 	struct vnode *vp = (void *)kn->kn_hook;
-	struct tmpfs_node *node = VP_TO_TMPFS_NODE(vp);
+	struct hammer2_node *node = VP_TO_TMPFS_NODE(vp);
 	off_t off;
 
 	if (hint == NOTE_REVOKE) {
@@ -1968,7 +1968,7 @@ static int
 tmpfs_fifo_kqfilter(struct vop_kqfilter_args *ap)
 {
 	struct vnode *vp;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	vp = ap->a_vp;
 	node = VP_TO_TMPFS_NODE(vp);
@@ -1990,7 +1990,7 @@ tmpfs_fifo_kqfilter(struct vop_kqfilter_args *ap)
 static int
 tmpfs_fifo_close(struct vop_close_args *v)
 {
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 	node = VP_TO_TMPFS_NODE(v->a_vp);
 	node->tn_status |= TMPFS_NODE_ACCESSED;
 

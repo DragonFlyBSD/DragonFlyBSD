@@ -28,36 +28,36 @@
 
 void hammer2_inode_lock_sh(struct hammer2_inode *ip)
 {
-	lockmgr(&ip->hi_lk, LK_SHARED);
+	lockmgr(&ip->lk, LK_SHARED);
 }
 
 void hammer2_inode_lock_up(struct hammer2_inode *ip)
 {
-	lockmgr(&ip->hi_lk, LK_EXCLUSIVE);
-	++ip->hi_busy;
-	lockmgr(&ip->hi_lk, LK_DOWNGRADE);
+	lockmgr(&ip->lk, LK_EXCLUSIVE);
+	++ip->busy;
+	lockmgr(&ip->lk, LK_DOWNGRADE);
 }
 
 void hammer2_inode_lock_ex(struct hammer2_inode *ip)
 {
-	lockmgr(&ip->hi_lk, LK_EXCLUSIVE);
+	lockmgr(&ip->lk, LK_EXCLUSIVE);
 }
 
 void hammer2_inode_unlock_ex(struct hammer2_inode *ip)
 {
-	lockmgr(&ip->hi_lk, LK_RELEASE);
+	lockmgr(&ip->lk, LK_RELEASE);
 }
 
 void hammer2_inode_unlock_up(struct hammer2_inode *ip)
 {
-	lockmgr(&ip->hi_lk, LK_UPGRADE);
-	--ip->hi_busy;
-	lockmgr(&ip->hi_lk, LK_RELEASE);
+	lockmgr(&ip->lk, LK_UPGRADE);
+	--ip->busy;
+	lockmgr(&ip->lk, LK_RELEASE);
 }
 
 void hammer2_inode_unlock_sh(struct hammer2_inode *ip)
 {
-	lockmgr(&ip->hi_lk, LK_RELEASE);
+	lockmgr(&ip->lk, LK_RELEASE);
 }
 
 /*
@@ -102,7 +102,7 @@ igetv(struct hammer2_inode *ip, int *error)
 	struct hammer2_mount *hmp;
 	int rc;
 
-	hmp = ip->hi_mp;
+	hmp = ip->mp;
 	rc = 0;
 
 	kprintf("igetv\n");
@@ -111,7 +111,7 @@ igetv(struct hammer2_inode *ip, int *error)
 	hammer2_inode_lock_ex(ip);
 	do {
 		/* Reuse existing vnode */
-		vp = ip->hi_vnode;
+		vp = ip->vp;
 		if (vp) {
 			/* XXX: Is this necessary? */
 			vx_lock(vp);
@@ -128,10 +128,10 @@ igetv(struct hammer2_inode *ip, int *error)
 
 		kprintf("igetv new\n");
 		switch (ip->type & HAMMER2_INODE_TYPE_MASK) {
-		case HAMMER2_INODE_DIR:
+		case HAMMER2_INODE_TYPE_DIR:
 			vp->v_type = VDIR;
 			break;
-		case HAMMER2_INODE_FILE:
+		case HAMMER2_INODE_TYPE_FILE:
 			vp->v_type = VREG;
 				/*XXX: Init w/ true file size; 0*/
 			vinitvmio(vp, 0, PAGE_SIZE, -1);
@@ -140,11 +140,11 @@ igetv(struct hammer2_inode *ip, int *error)
 			break;
 		}
 
-		if (ip->type & HAMMER2_INODE_ROOT)
+		if (ip->type & HAMMER2_INODE_TYPE_ROOT)
 			vsetflags(vp, VROOT);
 
 		vp->v_data = ip;
-		ip->hi_vnode = vp;
+		ip->vp = vp;
 	} while (0);
 	hammer2_inode_unlock_ex(ip);
 
@@ -180,9 +180,9 @@ struct hammer2_inode *alloci(struct hammer2_mount *hmp) {
 	++hmp->hm_ninodes;
 
 	ip->type = 0;
-	ip->hi_mp = hmp;
-	lockinit(&ip->hi_lk, "h2inode", 0, 0);
-	ip->hi_vnode = NULL;
+	ip->mp = hmp;
+	lockinit(&ip->lk, "h2inode", 0, 0);
+	ip->vp = NULL;
 
 	hammer2_inode_lock_ex(ip);
 
@@ -274,10 +274,10 @@ static ino_t tmpfs_fetch_ino(void);
  */
 int
 tmpfs_alloc_node(struct hammer2_mount *tmp, enum vtype type,
-    uid_t uid, gid_t gid, mode_t mode, struct tmpfs_node *parent,
-    char *target, int rmajor, int rminor, struct tmpfs_node **node)
+    uid_t uid, gid_t gid, mode_t mode, struct hammer2_node *parent,
+    char *target, int rmajor, int rminor, struct hammer2_node **node)
 {
-	struct tmpfs_node *nnode;
+	struct hammer2_node *nnode;
 	struct timespec ts;
 	udev_t rdev;
 
@@ -395,7 +395,7 @@ tmpfs_alloc_node(struct hammer2_mount *tmp, enum vtype type,
  * until reused.
  */
 void
-tmpfs_free_node(struct hammer2_mount *tmp, struct tmpfs_node *node)
+tmpfs_free_node(struct hammer2_mount *tmp, struct hammer2_node *node)
 {
 	vm_pindex_t pages = 0;
 
@@ -503,10 +503,10 @@ tmpfs_free_node(struct hammer2_mount *tmp, struct tmpfs_node *node)
  * Returns zero on success or an appropriate error code on failure.
  */
 int
-tmpfs_alloc_dirent(struct hammer2_mount *tmp, struct tmpfs_node *node,
-    const char *name, uint16_t len, struct tmpfs_dirent **de)
+tmpfs_alloc_dirent(struct hammer2_mount *tmp, struct hammer2_node *node,
+    const char *name, uint16_t len, struct hammer2_dirent **de)
 {
-	struct tmpfs_dirent *nde;
+	struct hammer2_dirent *nde;
 
 	nde = objcache_get(tmp->tm_dirent_pool, M_WAITOK);
 	nde->td_name = kmalloc(len + 1, tmp->tm_name_zone, M_WAITOK | M_NULLOK);
@@ -542,9 +542,9 @@ tmpfs_alloc_dirent(struct hammer2_mount *tmp, struct tmpfs_node *node,
  * directory entry, as it may already have been released from the outside.
  */
 void
-tmpfs_free_dirent(struct hammer2_mount *tmp, struct tmpfs_dirent *de)
+tmpfs_free_dirent(struct hammer2_mount *tmp, struct hammer2_dirent *de)
 {
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	node = de->td_node;
 
@@ -571,7 +571,7 @@ tmpfs_free_dirent(struct hammer2_mount *tmp, struct tmpfs_dirent *de)
  * Returns zero on success or an appropriate error code on failure.
  */
 int
-tmpfs_alloc_vp(struct mount *mp, struct tmpfs_node *node, int lkflag,
+tmpfs_alloc_vp(struct mount *mp, struct hammer2_node *node, int lkflag,
 	       struct vnode **vpp)
 {
 	int error = 0;
@@ -703,7 +703,7 @@ out:
 void
 tmpfs_free_vp(struct vnode *vp)
 {
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
 
@@ -731,11 +731,11 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
 		 struct namecache *ncp, struct ucred *cred, char *target)
 {
 	int error;
-	struct tmpfs_dirent *de;
+	struct hammer2_dirent *de;
 	struct hammer2_mount *tmp;
-	struct tmpfs_node *dnode;
-	struct tmpfs_node *node;
-	struct tmpfs_node *parent;
+	struct hammer2_node *dnode;
+	struct hammer2_node *node;
+	struct hammer2_node *parent;
 
 	tmp = VFS_TO_TMPFS(dvp->v_mount);
 	dnode = VP_TO_TMPFS_DIR(dvp);
@@ -798,13 +798,13 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
  * the directory entry, as this is done by tmpfs_alloc_dirent.
  */
 void
-tmpfs_dir_attach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
+tmpfs_dir_attach(struct hammer2_node *dnode, struct hammer2_dirent *de)
 {
 	TMPFS_NODE_LOCK(dnode);
 	TAILQ_INSERT_TAIL(&dnode->tn_dir.tn_dirhead, de, td_entries);
 
 	TMPFS_ASSERT_ELOCKED(dnode);
-	dnode->tn_size += sizeof(struct tmpfs_dirent);
+	dnode->tn_size += sizeof(struct hammer2_dirent);
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
 			    TMPFS_NODE_MODIFIED;
 	TMPFS_NODE_UNLOCK(dnode);
@@ -818,7 +818,7 @@ tmpfs_dir_attach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
  * the directory entry, as this is done by tmpfs_free_dirent.
  */
 void
-tmpfs_dir_detach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
+tmpfs_dir_detach(struct hammer2_node *dnode, struct hammer2_dirent *de)
 {
 	TMPFS_NODE_LOCK(dnode);
 	if (dnode->tn_dir.tn_readdir_lastp == de) {
@@ -828,7 +828,7 @@ tmpfs_dir_detach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 	TAILQ_REMOVE(&dnode->tn_dir.tn_dirhead, de, td_entries);
 
 	TMPFS_ASSERT_ELOCKED(dnode);
-	dnode->tn_size -= sizeof(struct tmpfs_dirent);
+	dnode->tn_size -= sizeof(struct hammer2_dirent);
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
 			    TMPFS_NODE_MODIFIED;
 	TMPFS_NODE_UNLOCK(dnode);
@@ -844,11 +844,11 @@ tmpfs_dir_detach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
  *
  * Returns a pointer to the entry when found, otherwise NULL.
  */
-struct tmpfs_dirent *
-tmpfs_dir_lookup(struct tmpfs_node *node, struct tmpfs_node *f,
+struct hammer2_dirent *
+tmpfs_dir_lookup(struct hammer2_node *node, struct hammer2_node *f,
     struct namecache *ncp)
 {
-	struct tmpfs_dirent *de;
+	struct hammer2_dirent *de;
 	int len = ncp->nc_nlen;
 
 	TMPFS_VALIDATE_DIR(node);
@@ -879,7 +879,7 @@ tmpfs_dir_lookup(struct tmpfs_node *node, struct tmpfs_node *f,
  * error happens.
  */
 int
-tmpfs_dir_getdotdent(struct tmpfs_node *node, struct uio *uio)
+tmpfs_dir_getdotdent(struct hammer2_node *node, struct uio *uio)
 {
 	int error;
 	struct dirent dent;
@@ -920,7 +920,7 @@ tmpfs_dir_getdotdent(struct tmpfs_node *node, struct uio *uio)
  * error happens.
  */
 int
-tmpfs_dir_getdotdotdent(struct hammer2_mount *tmp, struct tmpfs_node *node,
+tmpfs_dir_getdotdotdent(struct hammer2_mount *tmp, struct hammer2_node *node,
 			struct uio *uio)
 {
 	int error;
@@ -950,7 +950,7 @@ tmpfs_dir_getdotdotdent(struct hammer2_mount *tmp, struct tmpfs_node *node,
 	else {
 		error = uiomove((caddr_t)&dent, dirsize, uio);
 		if (error == 0) {
-			struct tmpfs_dirent *de;
+			struct hammer2_dirent *de;
 
 			de = TAILQ_FIRST(&node->tn_dir.tn_dirhead);
 			if (de == NULL)
@@ -972,10 +972,10 @@ tmpfs_dir_getdotdotdent(struct hammer2_mount *tmp, struct tmpfs_node *node,
 /*
  * Lookup a directory entry by its associated cookie.
  */
-struct tmpfs_dirent *
-tmpfs_dir_lookupbycookie(struct tmpfs_node *node, off_t cookie)
+struct hammer2_dirent *
+tmpfs_dir_lookupbycookie(struct hammer2_node *node, off_t cookie)
 {
-	struct tmpfs_dirent *de;
+	struct hammer2_dirent *de;
 
 	if (cookie == node->tn_dir.tn_readdir_lastn &&
 	    node->tn_dir.tn_readdir_lastp != NULL) {
@@ -1001,11 +1001,11 @@ tmpfs_dir_lookupbycookie(struct tmpfs_node *node, off_t cookie)
  * error code if another error happens.
  */
 int
-tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
+tmpfs_dir_getdents(struct hammer2_node *node, struct uio *uio, off_t *cntp)
 {
 	int error;
 	off_t startcookie;
-	struct tmpfs_dirent *de;
+	struct hammer2_dirent *de;
 
 	TMPFS_VALIDATE_DIR(node);
 
@@ -1031,7 +1031,7 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
 		int reclen;
 
 		/* Create a dirent structure representing the current
-		 * tmpfs_node and fill it. */
+		 * hammer2_node and fill it. */
 		d.d_ino = de->td_node->tn_id;
 		switch (de->td_node->tn_type) {
 		case VBLK:
@@ -1119,7 +1119,7 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	int error;
 	vm_pindex_t newpages, oldpages;
 	struct hammer2_mount *tmp;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 	off_t oldsize;
 
 #ifdef INVARIANTS
@@ -1203,7 +1203,7 @@ int
 tmpfs_chflags(struct vnode *vp, int vaflags, struct ucred *cred)
 {
 	int error;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 	int flags;
 
 	KKASSERT(vn_islocked(vp));
@@ -1258,7 +1258,7 @@ tmpfs_chflags(struct vnode *vp, int vaflags, struct ucred *cred)
 int
 tmpfs_chmod(struct vnode *vp, mode_t vamode, struct ucred *cred)
 {
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 	mode_t cur_mode;
 	int error;
 
@@ -1308,7 +1308,7 @@ tmpfs_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred)
 	mode_t cur_mode;
 	uid_t cur_uid;
 	gid_t cur_gid;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 	int error;
 
 	KKASSERT(vn_islocked(vp));
@@ -1355,7 +1355,7 @@ int
 tmpfs_chsize(struct vnode *vp, u_quad_t size, struct ucred *cred)
 {
 	int error;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	KKASSERT(vn_islocked(vp));
 
@@ -1411,7 +1411,7 @@ int
 tmpfs_chtimes(struct vnode *vp, struct timespec *atime, struct timespec *mtime,
 	int vaflags, struct ucred *cred)
 {
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	KKASSERT(vn_islocked(vp));
 
@@ -1447,7 +1447,7 @@ void
 tmpfs_itimes(struct vnode *vp, const struct timespec *acc,
     const struct timespec *mod)
 {
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 	struct timespec now;
 
 	node = VP_TO_TMPFS_NODE(vp);
@@ -1495,7 +1495,7 @@ int
 tmpfs_truncate(struct vnode *vp, off_t length)
 {
 	int error;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
 

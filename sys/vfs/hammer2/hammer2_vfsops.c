@@ -70,6 +70,7 @@
 #include <sys/fcntl.h>
 #include <sys/buf.h>
 #include <sys/uuid.h>
+#include <sys/vfsops.h>
 
 #include "hammer2.h"
 #include "hammer2_disk.h"
@@ -136,13 +137,13 @@ hammer2_init(struct vfsconf *conf)
 
 	error = 0;
 
-	if (HAMMER2_BLOCKREF_SIZE != sizeof(struct hammer2_blockref))
+	if (HAMMER2_BLOCKREF_BYTES != sizeof(struct hammer2_blockref))
 		error = EINVAL;
-	if (HAMMER2_INODE_SIZE != sizeof(struct hammer2_inode_data))
+	if (HAMMER2_INODE_BYTES != sizeof(struct hammer2_inode_data))
 		error = EINVAL;
-	if (HAMMER2_ALLOCREF_SIZE != sizeof(struct hammer2_allocref))
+	if (HAMMER2_ALLOCREF_BYTES != sizeof(struct hammer2_allocref))
 		error = EINVAL;
-	if (HAMMER2_VOLUME_SIZE != sizeof(struct hammer2_volume_data))
+	if (HAMMER2_VOLUME_BYTES != sizeof(struct hammer2_volume_data))
 		error = EINVAL;
 
 	if (error)
@@ -232,6 +233,7 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 		}
 	}
 
+	kprintf("hammer2_mount2\n");
 	/*
 	 * New non-root mount
 	 */
@@ -247,32 +249,38 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 		return (error);
 	nlookup_done(&nd);
 
+	kprintf("hammer2_mount3\n");
 	if (!vn_isdisk(devvp, &error)) {
 		vrele(devvp);
 		return (error);
 	}
 
+	kprintf("hammer2_mount4\n");
 	/*
 	 * Common path for new root/non-root mounts;
 	 * devvp is a ref-ed by not locked vnode referring to the fs device
 	 */
 
+	kprintf("hammer2_mount5\n");
 	error = vfs_mountedon(devvp);
 	if (error) {
 		vrele(devvp);
 		return (error);
 	}
 
+	kprintf("hammer2_mount6\n");
 	if (vcount(devvp) > 0) {
 		vrele(devvp);
 		return (EBUSY);
 	}
 
+	kprintf("hammer2_mount7\n");
 	/*
 	 * Open the fs device
 	 */
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
+	kprintf("hammer2_mount8\n");
 	error = vinvalbuf(devvp, V_SAVE, 0, 0);
 	if (error) {
 		vn_unlock(devvp);
@@ -281,6 +289,8 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	}
 	/* This is correct; however due to an NFS quirk of my setup, FREAD
 	 * is required... */
+
+	kprintf("hammer2_mount9\n");
 	/*
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD | FWRITE, FSCRED, NULL);
 	 */
@@ -298,6 +308,7 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	/* check if device supports BUF_CMD_WRITEALL; */
 #endif
 
+	kprintf("hammer2_mount10\n");
 	hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
 	/*mp->mnt_data = (qaddr_t) hmp;*/
 	hmp->hm_mp = mp;
@@ -306,77 +317,42 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	lockinit(&hmp->hm_lk, "h2mp", 0, 0);
 	kmalloc_create(&hmp->hm_inodes, "HAMMER2-inodes");
 	kmalloc_create(&hmp->hm_ipstacks, "HAMMER2-ipstacks");
+	
+	kprintf("hammer2_mount11\n");
 
-	/* Readout volume headers, make sure we have a live filesystem */
-	/* Kinda hacky atm */
-	{
-		struct buf *bps[HAMMER2_NUM_VOLHDRS];
-		int valid = 0;
-		int hi_tid = 0;
-		int hi_num = 0;
-		int i;
-		uint32_t crc;
-		struct hammer2_volume_data *vd;
-		for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++) {
-			rc = bread(devvp, i * HAMMER2_RESERVE_ALIGN64,
-				HAMMER2_BUFSIZE, &bps[i]);
-			if (rc != 0) {
-				brelse(bps[i]);
-				bps[i] = NULL;
-				continue;
-			}
-
-			vd = bps[i]->b_data;
-			if (vd->magic == HAMMER2_VOLUME_ID_HBO) {
-				uint32_t ccrc;
-				unsigned char tmp[512];
-				bcopy(bps[i]->b_data, &tmp, 512);
-				bzero(&tmp[512 - 4], 4);
-					/* Calculate CRC32 w/ crc field zero */
-					/* XXX: Can we modify b_data? */
-				ccrc = hammer2_icrc32(tmp, 512);
-				crc = vd->icrc_sect0;
-
-				if (ccrc != crc) {
-					brelse(bps[i]);
-					bps[i] = NULL;
-					continue;
-				}
-
-				valid++;
-				if (vd->last_tid > hi_tid) {
-					hi_tid = vd->last_tid;
-					hi_num = i;
-				}
-			}
-		}
-		if (valid) {
-			/* We have found the hammer volume header w/
-			 * the highest transaction id. Use it. */
-
-			bcopy(bps[hi_num]->b_data, &hmp->hm_sb,
-				HAMMER2_BUFSIZE);
-
-			for (i = 0 ; i < HAMMER2_NUM_VOLHDRS; i++)
-				brelse(bps[i]);
-
-			kprintf("HAMMER2 volume %d by\n", hmp->hm_sb.volu_size);
-		} else {
-			/* XXX More to do! Release structures and stuff */
-			return (EINVAL);
-		}
+	int valid = 0;
+	struct buf *bp;
+	struct hammer2_volume_data *vd;
+	do {
+		rc = bread(devvp, 0, HAMMER2_PBUFSIZE, &bp);
+		if (rc != 0) 
+			break;
+		
+		vd = bp->b_data;
+		if (vd->magic != HAMMER2_VOLUME_ID_HBO)
+			break;
+	} while(0);
+	brelse(bp);
+	vd = NULL;
+	if (!valid) {
+		/* XXX: close in the correct mode */
+		VOP_CLOSE(devvp, FREAD);
+		kfree(hmp, M_HAMMER2);
+		return (EINVAL);
 	}
+
 
 	/*
 	 * Filesystem subroutines are self-synchronized
 	 */
 	/*mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;*/
 
+	kprintf("hammer2_mount 20\n");
 
 	/* Setup root inode */
 	hmp->hm_iroot = alloci(hmp);
-	hmp->hm_iroot->type = HAMMER2_INODE_DIR | HAMMER2_INODE_ROOT;
-	hmp->hm_iroot->hi_inum = 1;
+	hmp->hm_iroot->type = HAMMER2_INODE_TYPE_DIR | HAMMER2_INODE_TYPE_ROOT;
+	hmp->hm_iroot->inum = 1;
 
 	/* currently rely on tmpfs routines */
 	/*vfs_getnewfsid(mp);*/
@@ -391,10 +367,12 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 		  sizeof(mp->mnt_stat.f_mntonname) - 1,
 		  &size);
 
+	kprintf("hammer2_mount 21\n");
 	hammer2_statfs(mp, &mp->mnt_stat, cred);
 
 	hammer2_inode_unlock_ex(hmp->hm_iroot);
 
+	kprintf("hammer2_mount 22\n");
 	return (tmpfs_mount(hmp, mp, path, data, cred));
 }
 
@@ -594,7 +572,7 @@ hammer2_checkexp(struct mount *mp, struct sockaddr *nam,
 int
 tmpfs_node_ctor(void *obj, void *privdata, int flags)
 {
-	struct tmpfs_node *node = (struct tmpfs_node *)obj;
+	struct hammer2_node *node = (struct hammer2_node *)obj;
 
 	node->tn_gen++;
 	node->tn_size = 0;
@@ -611,7 +589,7 @@ tmpfs_node_ctor(void *obj, void *privdata, int flags)
 static void
 tmpfs_node_dtor(void *obj, void *privdata)
 {
-	struct tmpfs_node *node = (struct tmpfs_node *)obj;
+	struct hammer2_node *node = (struct hammer2_node *)obj;
 	node->tn_type = VNON;
 	node->tn_vpstate = TMPFS_VNODE_DOOMED;
 }
@@ -619,7 +597,7 @@ tmpfs_node_dtor(void *obj, void *privdata)
 static void*
 tmpfs_node_init(void *args, int flags)
 {
-	struct tmpfs_node *node = (struct tmpfs_node *)objcache_malloc_alloc(args, flags);
+	struct hammer2_node *node = (struct hammer2_node *)objcache_malloc_alloc(args, flags);
 	if (node == NULL)
 		return (NULL);
 	node->tn_id = 0;
@@ -633,7 +611,7 @@ tmpfs_node_init(void *args, int flags)
 static void
 tmpfs_node_fini(void *obj, void *args)
 {
-	struct tmpfs_node *node = (struct tmpfs_node *)obj;
+	struct hammer2_node *node = (struct hammer2_node *)obj;
 	lockuninit(&node->tn_interlock);
 	objcache_malloc_free(obj, args);
 }
@@ -643,7 +621,7 @@ tmpfs_mount(struct hammer2_mount *hmp,
 	    struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 //	struct tmpfs_mount *tmp;
-	struct tmpfs_node *root;
+	struct hammer2_node *root;
 //	struct tmpfs_args args;
 	vm_pindex_t pages;
 	vm_pindex_t pages_limit;
@@ -745,13 +723,13 @@ tmpfs_mount(struct hammer2_mount *hmp,
 	kmalloc_create(&tmp->tm_dirent_zone, "tmpfs dirent");
 	kmalloc_create(&tmp->tm_name_zone, "tmpfs name zone");
 
-	kmalloc_raise_limit(tmp->tm_node_zone, sizeof(struct tmpfs_node) *
+	kmalloc_raise_limit(tmp->tm_node_zone, sizeof(struct hammer2_node) *
 			    tmp->tm_nodes_max);
 
-	tmp->tm_node_zone_malloc_args.objsize = sizeof(struct tmpfs_node);
+	tmp->tm_node_zone_malloc_args.objsize = sizeof(struct hammer2_node);
 	tmp->tm_node_zone_malloc_args.mtype = tmp->tm_node_zone;
 
-	tmp->tm_dirent_zone_malloc_args.objsize = sizeof(struct tmpfs_dirent);
+	tmp->tm_dirent_zone_malloc_args.objsize = sizeof(struct hammer2_dirent);
 	tmp->tm_dirent_zone_malloc_args.mtype = tmp->tm_dirent_zone;
 
 	tmp->tm_dirent_pool =  objcache_create( "tmpfs dirent cache",
@@ -815,7 +793,7 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	int flags = 0;
 	int found;
 	struct hammer2_mount *tmp;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	kprintf("tmpfs_umount\n");
 
@@ -862,7 +840,7 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 				de = TAILQ_FIRST(&node->tn_dir.tn_dirhead);
 				tmpfs_dir_detach(node, de);
 				tmpfs_free_dirent(tmp, de);
-				node->tn_size -= sizeof(struct tmpfs_dirent);
+				node->tn_size -= sizeof(struct hammer2_dirent);
 			}
 		}
 		KKASSERT(node->tn_vnode == NULL);
@@ -962,7 +940,7 @@ tmpfs_fhtovp(struct mount *mp, struct vnode *rootvp, struct fid *fhp, struct vno
 	boolean_t found;
 	struct tmpfs_fid *tfhp;
 	struct hammer2_mount *tmp;
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	tmp = VFS_TO_TMPFS(mp);
 
@@ -996,7 +974,7 @@ tmpfs_fhtovp(struct mount *mp, struct vnode *rootvp, struct fid *fhp, struct vno
 static int
 tmpfs_vptofh(struct vnode *vp, struct fid *fhp)
 {
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 	struct tmpfs_fid tfh;
 	node = VP_TO_TMPFS_NODE(vp);
 	memset(&tfh, 0, sizeof(tfh));
