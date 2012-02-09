@@ -216,8 +216,8 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 	uint8_t		methods;	/* check method & compression method */
 	uint8_t		copyid;		/* specify which copy this is */
 	uint8_t		keybits;	/* key mask bits for recursion */
-	uint8_t		vradix;
-	uint8_t		reserved05;
+	uint8_t		vradix;		/* virtual data/meta-data size */
+	uint8_t		flags;		/* blockref flags */
 	uint8_t		reserved06;
 	uint8_t		reserved07;
 	hammer2_key_t	key;		/* key specification */
@@ -241,6 +241,11 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 };
 
 typedef struct hammer2_blockref hammer2_blockref_t;
+
+#define HAMMER2_BREF_SYNC1	0x01	/* modification synchronized */
+#define HAMMER2_BREF_SYNC2	0x02	/* modification committed */
+#define HAMMER2_BREF_DESYNCCHLD	0x04	/* children must be desynchronized */
+#define HAMMER2_BREF_DELETED	0x80	/* indicates a deletion */
 
 #define HAMMER2_BLOCKREF_BYTES		64	/* blockref struct in bytes */
 #define HAMMER2_ENC_COMPMETHOD(n)	(n)
@@ -425,7 +430,7 @@ struct hammer2_inode_data {
  * 11 bits off the 64-bit storage space, with leaf entries representing
  * 64KB blocks.  So:  (12, 12, 12, 12, 16) = 64 bit storage space.
  *
- * Each 64K allocmap block breaks the 4096 entries into a 64x64 tree with
+ * Each 64K freemap block breaks the 4096 entries into a 64x64 tree with
  * big_hint1 representing the top level every 64th entry and big_hint2
  * representing the lower level in each entry.  These fields specify the
  * largest contiguous radix (1-63) available for allocation in the related
@@ -568,7 +573,7 @@ typedef struct hammer2_copy_data hammer2_copy_data_t;
 
 struct hammer2_volume_data {
 	/*
-	 * First 512-byte section
+	 * 512-byte sector #0
 	 */
 	uint64_t	magic;			/* 0000 Signature */
 	hammer2_off_t	boot_beg;		/* 0008 Boot area (future) */
@@ -580,7 +585,7 @@ struct hammer2_volume_data {
 	uint32_t	version;		/* 0030 */
 	uint32_t	flags;			/* 0034 */
 	uint8_t		copyid;			/* 0038 copyid of phys vol */
-	uint8_t		reserved0039;		/* 0039 */
+	uint8_t		freemap_version;	/* 0039 freemap algorithm */
 	uint8_t		reserved003A;		/* 003A */
 	uint8_t		reserved003B;		/* 003B */
 	uint32_t	reserved003C;		/* 003C */
@@ -626,25 +631,28 @@ struct hammer2_volume_data {
 	hammer2_crc32_t	icrc_sects[8];		/* 01E0-01FF */
 
 	/*
-	 * Second 512-byte section.
+	 * 512-byte sector #1
 	 *
 	 * The entire sector is used by a blockset.
 	 */
 	hammer2_blockset_t sroot_blockset;	/* 0200 Superroot directory */
 
 	/*
-	 * Third 512-byte section .
+	 * 512-byte sector #2-33
 	 *
-	 * This entire section contains copyinfo specifications, typically
-	 * device serno specifications such as 'serno/<serial>.s1d'.  Each
-	 * element eats 64 bytes x 8 elements is 512 bytes.
+	 * Up to 256 copyinfo specifications can be configured.  Note that
+	 * any given subdirectory tree can only use 8 of the 256.  Having
+	 * up to 256 configurable in the volume header allows
+	 *
+	 * A specification takes 64 bytes.  Each specification typically
+	 * configures a device path such as 'serno/<serial>.s1d'.
 	 */
-	struct hammer2_copy_data copyinfo[8];
+	struct hammer2_copy_data copyinfo[256];	/* 0400-43FF copyinfo config */
 
 	/*
 	 * Remaining sections are reserved for future use.
 	 */
-	char		reserved0400[0xFBFC];	/* 0400-FFFC reserved */
+	char		reserved0400[0xBBFC];	/* 4400-FFFB reserved */
 
 	/*
 	 * icrc on entire volume header
