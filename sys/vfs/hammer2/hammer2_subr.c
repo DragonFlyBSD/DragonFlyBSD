@@ -482,7 +482,7 @@ tmpfs_free_node(struct hammer2_mount *tmp, struct hammer2_node *node)
 	 * Clean up fields for the next allocation.  The objcache only ctors
 	 * new allocations.
 	 */
-	hammer2_node_ctor(node, NULL, 0);
+	tmpfs_node_ctor(node, NULL, 0);
 	objcache_put(tmp->tm_node_pool, node);
 	/* node is now invalid */
 

@@ -232,6 +232,7 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 		}
 	}
 
+	kprintf("hammer2_mount2\n");
 	/*
 	 * New non-root mount
 	 */
@@ -247,32 +248,38 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 		return (error);
 	nlookup_done(&nd);
 
+	kprintf("hammer2_mount3\n");
 	if (!vn_isdisk(devvp, &error)) {
 		vrele(devvp);
 		return (error);
 	}
 
+	kprintf("hammer2_mount4\n");
 	/*
 	 * Common path for new root/non-root mounts;
 	 * devvp is a ref-ed by not locked vnode referring to the fs device
 	 */
 
+	kprintf("hammer2_mount5\n");
 	error = vfs_mountedon(devvp);
 	if (error) {
 		vrele(devvp);
 		return (error);
 	}
 
+	kprintf("hammer2_mount6\n");
 	if (vcount(devvp) > 0) {
 		vrele(devvp);
 		return (EBUSY);
 	}
 
+	kprintf("hammer2_mount7\n");
 	/*
 	 * Open the fs device
 	 */
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
+	kprintf("hammer2_mount8\n");
 	error = vinvalbuf(devvp, V_SAVE, 0, 0);
 	if (error) {
 		vn_unlock(devvp);
@@ -281,6 +288,8 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	}
 	/* This is correct; however due to an NFS quirk of my setup, FREAD
 	 * is required... */
+
+	kprintf("hammer2_mount9\n");
 	/*
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD | FWRITE, FSCRED, NULL);
 	 */
@@ -298,6 +307,7 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	/* check if device supports BUF_CMD_WRITEALL; */
 #endif
 
+	kprintf("hammer2_mount10\n");
 	hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
 	/*mp->mnt_data = (qaddr_t) hmp;*/
 	hmp->hm_mp = mp;
@@ -306,7 +316,9 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	lockinit(&hmp->hm_lk, "h2mp", 0, 0);
 	kmalloc_create(&hmp->hm_inodes, "HAMMER2-inodes");
 	kmalloc_create(&hmp->hm_ipstacks, "HAMMER2-ipstacks");
-
+	
+	kprintf("hammer2_mount11\n");
+#if 0
 	/* Readout volume headers, make sure we have a live filesystem */
 	/* Kinda hacky atm */
 	{
@@ -362,16 +374,20 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 
 			kprintf("HAMMER2 volume %d by\n", hmp->hm_sb.volu_size);
 		} else {
+
+			kprintf("hammer2_mount valid fail\n");
 			/* XXX More to do! Release structures and stuff */
 			return (EINVAL);
 		}
 	}
+#endif
 
 	/*
 	 * Filesystem subroutines are self-synchronized
 	 */
 	/*mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;*/
 
+	kprintf("hammer2_mount 20\n");
 
 	/* Setup root inode */
 	hmp->hm_iroot = alloci(hmp);
@@ -391,10 +407,12 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 		  sizeof(mp->mnt_stat.f_mntonname) - 1,
 		  &size);
 
+	kprintf("hammer2_mount 21\n");
 	hammer2_statfs(mp, &mp->mnt_stat, cred);
 
 	hammer2_inode_unlock_ex(hmp->hm_iroot);
 
+	kprintf("hammer2_mount 22\n");
 	return (tmpfs_mount(hmp, mp, path, data, cred));
 }
 
