@@ -80,6 +80,7 @@ struct hammer2_inode {
 	struct vnode		*vp;
 	hammer2_tid_t		inum;
 	unsigned char		type;
+	int			busy;
 };
 
 #define HAMMER2_INODE_TYPE_DIR	0x01
@@ -145,7 +146,7 @@ struct hammer2_node {
 	/* Doubly-linked list entry which links all existing nodes for a
 	 * single file system.  This is provided to ease the removal of
 	 * all nodes during the unmount operation. */
-	LIST_ENTRY(tmpfs_node)	tn_entries;
+	LIST_ENTRY(hammer2_node)	tn_entries;
 
 	/* The node's type.  Any of 'VBLK', 'VCHR', 'VDIR', 'VFIFO',
 	 * 'VLNK', 'VREG' and 'VSOCK' is allowed.  The usage of vnode
@@ -217,12 +218,12 @@ struct hammer2_node {
 			/* Pointer to the parent directory.  The root
 			 * directory has a pointer to itself in this field;
 			 * this property identifies the root node. */
-			struct tmpfs_node *	tn_parent;
+			struct hammer2_node *	tn_parent;
 
 			/* Head of a tail-queue that links the contents of
 			 * the directory together.  See above for a
 			 * description of its contents. */
-			struct tmpfs_dir	tn_dirhead;
+			struct hammer2_dir	tn_dirhead;
 
 			/* Number and pointer of the first directory entry
 			 * returned by the readdir operation if it were
@@ -234,7 +235,7 @@ struct hammer2_node {
 			 * scan is performed from the beginning up to the
 			 * point where readdir starts returning values. */
 			off_t			tn_readdir_lastn;
-			struct tmpfs_dirent *	tn_readdir_lastp;
+			struct hammer2_dirent *	tn_readdir_lastp;
 		}tn_dir;
 
 		/* Valid when tn_type == VLNK. */
@@ -266,7 +267,7 @@ struct hammer2_node {
 		}tn_fifo;
 	}tn_spec;
 };
-LIST_HEAD(tmpfs_node_list, tmpfs_node);
+LIST_HEAD(tmpfs_node_list, hammer2_node);
 
 #define tn_rdev tn_spec.tn_rdev
 #define tn_dir tn_spec.tn_dir
@@ -342,7 +343,7 @@ struct hammer2_mount {
 
 	/* Pointer to the node representing the root directory of this
 	 * file system. */
-	struct tmpfs_node *	tm_root;
+	struct hammer2_node *	tm_root;
 
 	/* Maximum number of possible nodes for this file system; set
 	 * during mount time.  We need a hard limit on the maximum number
@@ -508,7 +509,7 @@ MALLOC_DECLARE(M_TMPFSMNT);
 #define	TMPFS_DIRCOOKIE_EOF	2
 static __inline
 off_t
-tmpfs_dircookie(struct tmpfs_dirent *de)
+tmpfs_dircookie(struct hammer2_dirent *de)
 {
 	off_t cookie;
 
@@ -550,27 +551,27 @@ struct tmpfs_fid {
  */
 
 int	tmpfs_alloc_node(struct hammer2_mount *, enum vtype,
-			 uid_t uid, gid_t gid, mode_t mode, struct tmpfs_node *,
-			 char *, int, int, struct tmpfs_node **);
-void	tmpfs_free_node(struct hammer2_mount *, struct tmpfs_node *);
-int	tmpfs_alloc_dirent(struct hammer2_mount *, struct tmpfs_node *,
-			   const char *, uint16_t, struct tmpfs_dirent **);
-void	tmpfs_free_dirent(struct hammer2_mount *, struct tmpfs_dirent *);
-int	tmpfs_alloc_vp(struct mount *, struct tmpfs_node *, int,
+			 uid_t uid, gid_t gid, mode_t mode, struct hammer2_node *,
+			 char *, int, int, struct hammer2_node **);
+void	tmpfs_free_node(struct hammer2_mount *, struct hammer2_node *);
+int	tmpfs_alloc_dirent(struct hammer2_mount *, struct hammer2_node *,
+			   const char *, uint16_t, struct hammer2_dirent **);
+void	tmpfs_free_dirent(struct hammer2_mount *, struct hammer2_dirent *);
+int	tmpfs_alloc_vp(struct mount *, struct hammer2_node *, int,
 		       struct vnode **);
 void	tmpfs_free_vp(struct vnode *);
 int	tmpfs_alloc_file(struct vnode *, struct vnode **, struct vattr *,
 			 struct namecache *, struct ucred *, char *);
-void	tmpfs_dir_attach(struct tmpfs_node *, struct tmpfs_dirent *);
-void	tmpfs_dir_detach(struct tmpfs_node *, struct tmpfs_dirent *);
-struct tmpfs_dirent *	tmpfs_dir_lookup(struct tmpfs_node *node,
-					 struct tmpfs_node *f,
+void	tmpfs_dir_attach(struct hammer2_node *, struct hammer2_dirent *);
+void	tmpfs_dir_detach(struct hammer2_node *, struct hammer2_dirent *);
+struct hammer2_dirent *	tmpfs_dir_lookup(struct hammer2_node *node,
+					 struct hammer2_node *f,
 					 struct namecache *ncp);
-int	tmpfs_dir_getdotdent(struct tmpfs_node *, struct uio *);
+int	tmpfs_dir_getdotdent(struct hammer2_node *, struct uio *);
 int	tmpfs_dir_getdotdotdent(struct hammer2_mount *,
-				struct tmpfs_node *, struct uio *);
-struct tmpfs_dirent *	tmpfs_dir_lookupbycookie(struct tmpfs_node *, off_t);
-int	tmpfs_dir_getdents(struct tmpfs_node *, struct uio *, off_t *);
+				struct hammer2_node *, struct uio *);
+struct hammer2_dirent *	tmpfs_dir_lookupbycookie(struct hammer2_node *, off_t);
+int	tmpfs_dir_getdents(struct hammer2_node *, struct uio *, off_t *);
 int	tmpfs_reg_resize(struct vnode *, off_t, int);
 int	tmpfs_chflags(struct vnode *, int, struct ucred *);
 int	tmpfs_chmod(struct vnode *, mode_t, struct ucred *);
@@ -611,7 +612,7 @@ bcmp((de)->td_name, (name), (de)->td_namelen) == 0)
  */
 #define TMPFS_VALIDATE_DIR(node) \
 KKASSERT((node)->tn_type == VDIR); \
-KKASSERT((node)->tn_size % sizeof(struct tmpfs_dirent) == 0); \
+KKASSERT((node)->tn_size % sizeof(struct hammer2_dirent) == 0); \
 KKASSERT((node)->tn_dir.tn_readdir_lastp == NULL || \
 tmpfs_dircookie((node)->tn_dir.tn_readdir_lastp) == (node)->tn_dir.tn_readdir_lastn);
 
@@ -636,21 +637,21 @@ VFS_TO_TMPFS(struct mount *mp)
 }
 
 static inline
-struct tmpfs_node *
+struct hammer2_node *
 VP_TO_TMPFS_NODE(struct vnode *vp)
 {
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	KKASSERT((vp) != NULL && (vp)->v_data != NULL);
-	node = (struct tmpfs_node *)vp->v_data;
+	node = (struct hammer2_node *)vp->v_data;
 	return node;
 }
 
 static inline
-struct tmpfs_node *
+struct hammer2_node *
 VP_TO_TMPFS_DIR(struct vnode *vp)
 {
-	struct tmpfs_node *node;
+	struct hammer2_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
 	TMPFS_VALIDATE_DIR(node);

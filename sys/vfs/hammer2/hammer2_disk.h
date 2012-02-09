@@ -432,20 +432,6 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_CHECK_NONE		0
 #define HAMMER2_CHECK_ICRC		1
 
-
-#if 0
-/*
- * HAMMER2 special blocks, 64 x 64K buffers at the beginning of each
- * 2GB segment.
- */
-#define HAMMER2_SPECBLOCK(n)			(HAMMER2_PBUFSIZE64 * (n))
-
-#define HAMMER2_SBLOCK_VOLHDR			(0)
-#define HAMMER2_SBLOCK_FREEMAP_ROOT(side)	(1 + (8 * (side)))
-#define HAMMER2_SBLOCK_FREEMAP_L1(side)		(2 + (8 * (side)))
-#define HAMMER2_SBLOCK_FREEMAP_L2(side)		(3 + (8 * (side)))
-#define HAMMER2_SBLOCK_FREEMAP_LEAF(side, n)	(4 + (8 * (side)) + (n))
-
 /*
  * The allocref structure represents the allocation table.  One 64K block
  * is broken down into 4096 x 16 byte entries.  Each indirect block chops
@@ -516,8 +502,6 @@ typedef struct hammer2_allocref hammer2_allocref_t;
 #define HAMMER2_ALLOCREF_ALTC		0x0002	/* unsupported */
 #define HAMMER2_ALLOCREF_ALTD		0x0003	/* unsupported */
 #define HAMMER2_ALLOCREF_LEAF		0x0004
-
-#endif
 
 /*
  * Copies information stored in the volume header.  Typically formatted
