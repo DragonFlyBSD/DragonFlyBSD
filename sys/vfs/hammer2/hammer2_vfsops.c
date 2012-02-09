@@ -70,6 +70,7 @@
 #include <sys/fcntl.h>
 #include <sys/buf.h>
 #include <sys/uuid.h>
+#include <sys/vfsops.h>
 
 #include "hammer2.h"
 #include "hammer2_disk.h"
@@ -318,69 +319,28 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	kmalloc_create(&hmp->hm_ipstacks, "HAMMER2-ipstacks");
 	
 	kprintf("hammer2_mount11\n");
-#if 0
-	/* Readout volume headers, make sure we have a live filesystem */
-	/* Kinda hacky atm */
-	{
-		struct buf *bps[HAMMER2_NUM_VOLHDRS];
-		int valid = 0;
-		int hi_tid = 0;
-		int hi_num = 0;
-		int i;
-		uint32_t crc;
-		struct hammer2_volume_data *vd;
-		for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++) {
-			//rc = bread(devvp, i * HAMMER2_RESERVE_ALIGN64,
-			//	HAMMER2_PBUFSIZE, &bps[i]);
-			if (rc != 0) {
-				brelse(bps[i]);
-				bps[i] = NULL;
-				continue;
-			}
 
-			vd = bps[i]->b_data;
-			if (vd->magic == HAMMER2_VOLUME_ID_HBO) {
-				uint32_t ccrc;
-				unsigned char tmp[512];
-				bcopy(bps[i]->b_data, &tmp, 512);
-				bzero(&tmp[512 - 4], 4);
-					/* Calculate CRC32 w/ crc field zero */
-					/* XXX: Can we modify b_data? */
-				//ccrc = hammer2_icrc32(tmp, 512);
-				//crc = vd->icrc_sect0;
-
-				if (ccrc != crc) {
-					brelse(bps[i]);
-					bps[i] = NULL;
-					continue;
-				}
-
-				valid++;
-				if (vd->last_tid > hi_tid) {
-					hi_tid = vd->last_tid;
-					hi_num = i;
-				}
-			}
-		}
-		if (valid) {
-			/* We have found the hammer volume header w/
-			 * the highest transaction id. Use it. */
-
-			bcopy(bps[hi_num]->b_data, &hmp->hm_sb,
-				HAMMER2_PBUFSIZE);
-
-			for (i = 0 ; i < HAMMER2_NUM_VOLHDRS; i++)
-				brelse(bps[i]);
-
-			kprintf("HAMMER2 volume %d by\n", hmp->hm_sb.volu_size);
-		} else {
-
-			kprintf("hammer2_mount valid fail\n");
-			/* XXX More to do! Release structures and stuff */
-			return (EINVAL);
-		}
+	int valid = 0;
+	struct buf *bp;
+	struct hammer2_volume_data *vd;
+	do {
+		rc = bread(devvp, 0, HAMMER2_PBUFSIZE, &bp);
+		if (rc != 0) 
+			break;
+		
+		vd = bp->b_data;
+		if (vd->magic != HAMMER2_VOLUME_ID_HBO)
+			break;
+	} while(0);
+	brelse(bp);
+	vd = NULL;
+	if (!valid) {
+		/* XXX: close in the correct mode */
+		VOP_CLOSE(devvp, FREAD);
+		kfree(hmp, M_HAMMER2);
+		return (EINVAL);
 	}
-#endif
+
 
 	/*
 	 * Filesystem subroutines are self-synchronized
