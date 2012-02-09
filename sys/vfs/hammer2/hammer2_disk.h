@@ -115,8 +115,9 @@
 /*
  * A HAMMER2 filesystem is always sized in multiples of 8MB.
  *
- * A 2MB segment is reserved at the beginning of each 2GB zone.  This segment
- * contains the volume header and the free block table.
+ * A 4MB segment is reserved at the beginning of each 2GB zone.  This segment
+ * contains the volume header, the free block table, and possibly other
+ * information in the future.  4MB = 64 x 64K blocks.
  */
 #define HAMMER2_VOLUME_ALIGN		(8 * 1024 * 1024)
 #define HAMMER2_VOLUME_ALIGN64		((hammer2_off_t)HAMMER2_VOLUME_ALIGN)
@@ -130,9 +131,9 @@
 
 #define HAMMER2_RESERVE_BYTES64		(2LLU * 1024 * 1024 * 1024)
 #define HAMMER2_RESERVE_MASK64		(HAMMER2_RESERVE_BYTES64 - 1)
-#define HAMMER2_RESERVE_SEG		(2 * 1024 * 1024)
+#define HAMMER2_RESERVE_SEG		(4 * 1024 * 1024)
 #define HAMMER2_RESERVE_SEG64		((hammer2_off_t)HAMMER2_RESERVE_SEG)
-#define HAMMER2_RESERVE_SEG_ENTRIES	(HAMMER2_RESERVE_SEG/HAMMER2_BUFSIZE)
+#define HAMMER2_RESERVE_BLOCKS		(HAMMER2_RESERVE_SEG / HAMMER2_PBUFSIZE)
 
 /*
  * Two linear areas can be reserved after the initial 2MB segment in the base
@@ -215,7 +216,7 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 	uint8_t		type;		/* type of underlying item */
 	uint8_t		methods;	/* check method & compression method */
 	uint8_t		copyid;		/* specify which copy this is */
-	uint8_t		keybits;	/* key mask bits for recursion */
+	uint8_t		keybits;	/* keymask = ((1ULL << keybits) - 1) */
 	uint8_t		vradix;		/* virtual data/meta-data size */
 	uint8_t		flags;		/* blockref flags */
 	uint8_t		reserved06;
@@ -242,12 +243,18 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 
 typedef struct hammer2_blockref hammer2_blockref_t;
 
-#define HAMMER2_BREF_SYNC1	0x01	/* modification synchronized */
-#define HAMMER2_BREF_SYNC2	0x02	/* modification committed */
-#define HAMMER2_BREF_DESYNCCHLD	0x04	/* children must be desynchronized */
-#define HAMMER2_BREF_DELETED	0x80	/* indicates a deletion */
+#define HAMMER2_BREF_SYNC1		0x01	/* modification synchronized */
+#define HAMMER2_BREF_SYNC2		0x02	/* modification committed */
+#define HAMMER2_BREF_DESYNCCHLD		0x04	/* desynchronize children */
+#define HAMMER2_BREF_DELETED		0x80	/* indicates a deletion */
 
 #define HAMMER2_BLOCKREF_BYTES		64	/* blockref struct in bytes */
+
+#define HAMMER2_BREF_TYPE_EMPTY		0
+#define HAMMER2_BREF_TYPE_INODE		1
+#define HAMMER2_BREF_TYPE_INDBLOCK	2
+#define HAMMER2_BREF_TYPE_DATA		3
+
 #define HAMMER2_ENC_COMPMETHOD(n)	(n)
 #define HAMMER2_ENC_CHECKMETHOD(n)	((n) << 4)
 #define HAMMER2_DEC_COMPMETHOD(n)	((n) & 15)
@@ -276,8 +283,10 @@ typedef struct hammer2_blockref hammer2_blockref_t;
  * things are filled multiple indirect blocks will eventually be created.
  */
 struct hammer2_blockset {
-	hammer2_blockref_t	refs[HAMMER2_SET_COUNT];
+	hammer2_blockref_t	blockref[HAMMER2_SET_COUNT];
 };
+
+typedef struct hammer2_blockset hammer2_blockset_t;
 
 /*
  * Catch programmer snafus
@@ -285,7 +294,7 @@ struct hammer2_blockset {
 #if (1 << HAMMER2_IND_RADIX) != HAMMER2_IND_COUNT
 #error "hammer2 indirect radix is incorrect"
 #endif
-#if (HAMMER2_IND_COUNT * 64) != HAMMER2_BUFSIZE
+#if (HAMMER2_IND_COUNT * 64) != HAMMER2_PBUFSIZE
 #error "hammer2 indirect entries is incorrect"
 #endif
 #if (1 << HAMMER2_SET_RADIX) != HAMMER2_SET_COUNT
@@ -381,8 +390,7 @@ struct hammer2_inode_data {
 	uint32_t	reservedA4;	/* 00A4 */
 	hammer2_key_t	name_key;	/* 00A8 full filename key */
 	uint8_t		copyids[8];	/* 00B0 request copies to (up to 8) */
-	uint64_t	reservedB8;	/* 00B8 */
-	uint64_t	reservedC0;	/* 00C0 */
+	uuid_t		pfsid;		/* 00B8 pfs uuid if PFSROOT */
 	uint64_t	reservedC8;	/* 00C8 */
 	uint64_t	reservedD0;	/* 00D0 */
 	uint64_t	reservedD8;	/* 00D8 */
@@ -391,7 +399,7 @@ struct hammer2_inode_data {
 	uint64_t	reservedF0;	/* 00F0 */
 	uint64_t	reservedF8;	/* 00F8 */
 
-	char		filename[HAMMER_INODE_MAXNAME];
+	unsigned char	filename[HAMMER2_INODE_MAXNAME];
 					/* 0100-01FF (256 char, unterminated) */
 	union {				/* 0200-03FF (64x8 = 512 bytes) */
 		struct hammer2_blockset blockset;
@@ -399,7 +407,10 @@ struct hammer2_inode_data {
 	} u;
 };
 
+typedef struct hammer2_inode_data hammer2_inode_data_t;
+
 #define HAMMER2_OPFLAG_DIRECTDATA	0x01
+#define HAMMER2_OPFLAG_PFSROOT		0x02
 
 #define HAMMER2_OBJTYPE_UNKNOWN		0
 #define HAMMER2_OBJTYPE_DIRECTORY	1
@@ -412,9 +423,20 @@ struct hammer2_inode_data {
 #define HAMMER2_OBJTYPE_SOCKET		9
 #define HAMMER2_OBJTYPE_WHITEOUT	10
 
+#define HAMMER2_COPYID_NONE		0
+#define HAMMER2_COPYID_LOCAL		((uint8_t)-1)
+
+#define HAMMER2_COMP_NONE		0
+#define HAMMER2_COMP_AUTOZERO		1
+
+#define HAMMER2_CHECK_NONE		0
+#define HAMMER2_CHECK_ICRC		1
+
+
 #if 0
 /*
- * HAMMER2 special blocks, 128 64K buffers at the beginning of each 2GB segment.
+ * HAMMER2 special blocks, 64 x 64K buffers at the beginning of each
+ * 2GB segment.
  */
 #define HAMMER2_SPECBLOCK(n)			(HAMMER2_PBUFSIZE64 * (n))
 
@@ -481,7 +503,7 @@ typedef struct hammer2_allocref hammer2_allocref_t;
 #define HAMMER2_ALLOCREF_ENTRIES	4096	/* entries */
 #define HAMMER2_ALLOCREF_RADIX		12	/* log2(entries) */
 
-#if (HAMMER2_ALLOCREF_BYTES * HAMMER2_ALLOCREF_ENTRIES) != HAMMER2_BUFSIZE
+#if (HAMMER2_ALLOCREF_BYTES * HAMMER2_ALLOCREF_ENTRIES) != HAMMER2_PBUFSIZE
 #error "allocref parameters do not fit in hammer buffer"
 #endif
 #if (1 << HAMMER2_ALLOCREF_RADIX) != HAMMER2_ALLOCREF_ENTRIES
@@ -660,19 +682,33 @@ struct hammer2_volume_data {
 	hammer2_crc32_t	icrc_volheader;		/* FFFC-FFFF full volume icrc*/
 };
 
+typedef struct hammer2_volume_data hammer2_volume_data_t;
+
 /*
- * Section 0 and section 1 have their own iCRCs.  Remaining icrc_sets[]
- * entries are reserved for future use.
+ * Various parts of the volume header have their own iCRCs.
  *
- * icrc_volheader iCRCs the whole 64K volume header block and is catch-all
- * for anything not individually iCRCd.
+ * The first 512 bytes has its own iCRC stored at the end of the 512 bytes
+ * and not included the icrc calculation.
+ *
+ * The second 512 bytes also has its own iCRC but it is stored in the first
+ * 512 bytes so it covers the entire second 512 bytes.
+ *
+ * The whole volume block (64KB) has an iCRC covering all but the last 4 bytes,
+ * which is where the iCRC for the whole volume is stored.  This is currently
+ * a catch-all for anything not individually iCRCd.
  */
 #define HAMMER2_VOL_ICRC_SECT0		7
 #define HAMMER2_VOL_ICRC_SECT1		6
 
-
 #define HAMMER2_VOLUME_BYTES		65536
-#define HAMMER2_VOLUME_ICRCSIZE	offsetof(hammer2_volume_data_t, icrc_sect0)
+
+#define HAMMER2_VOLUME_ICRC0_OFF	0
+#define HAMMER2_VOLUME_ICRC1_OFF	512
+#define HAMMER2_VOLUME_ICRCVH_OFF	0
+
+#define HAMMER2_VOLUME_ICRC0_SIZE	(512 - 4)
+#define HAMMER2_VOLUME_ICRC1_SIZE	(512)
+#define HAMMER2_VOLUME_ICRCVH_SIZE	(65536 - 4)
 
 #define HAMMER2_VOL_VERSION_MIN		1
 #define HAMMER2_VOL_VERSION_DEFAULT	1
