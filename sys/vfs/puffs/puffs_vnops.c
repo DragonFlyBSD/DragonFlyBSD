@@ -917,7 +917,7 @@ puffs_vnop_remove(struct vop_nremove_args *ap)
 	struct vnode *dvp = ap->a_dvp;
 	struct vnode *vp;
 	struct puffs_node *dpn = VPTOPP(dvp);
-	struct puffs_node *pn = VPTOPP(vp);
+	struct puffs_node *pn;
 	struct nchandle *nch = ap->a_nch;
 	struct namecache *ncp = nch->ncp;
 	struct ucred *cred = ap->a_cred;
@@ -943,6 +943,7 @@ puffs_vnop_remove(struct vop_nremove_args *ap)
 		goto out;
 	}
 
+	pn = VPTOPP(vp);
 	PUFFS_MSG_ALLOC(vn, remove);
 	remove_msg->pvnr_cookie_targ = VPTOPNC(vp);
 	puffs_makecn(&remove_msg->pvnr_cn, &remove_msg->pvnr_cn_cred,
@@ -1042,7 +1043,7 @@ puffs_vnop_rmdir(struct vop_nrmdir_args *ap)
 	struct vnode *dvp = ap->a_dvp;
 	struct vnode *vp;
 	struct puffs_node *dpn = VPTOPP(dvp);
-	struct puffs_node *pn = VPTOPP(vp);
+	struct puffs_node *pn;
 	struct puffs_mount *pmp = MPTOPUFFSMP(dvp->v_mount);
 	struct nchandle *nch = ap->a_nch;
 	struct namecache *ncp = nch->ncp;
@@ -1066,6 +1067,7 @@ puffs_vnop_rmdir(struct vop_nrmdir_args *ap)
 		goto out;
 	}
 
+	pn = VPTOPP(vp);
 	PUFFS_MSG_ALLOC(vn, rmdir);
 	rmdir_msg->pvnr_cookie_targ = VPTOPNC(vp);
 	puffs_makecn(&rmdir_msg->pvnr_cn, &rmdir_msg->pvnr_cn_cred,
