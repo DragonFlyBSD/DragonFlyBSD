@@ -1,6 +1,10 @@
 
 			    HAMMER2 DESIGN DOCUMENT
 
+				Matthew Dillon
+				 08-Feb-2012
+			     dillon@backplane.com
+
 * These features have been speced in the media structures.
 
 * Implementation work has begun.
