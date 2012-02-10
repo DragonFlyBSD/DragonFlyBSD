@@ -31,7 +31,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -89,7 +88,8 @@ MALLOC_DEFINE(M_HAMMER2, "HAMMER2-mount", "");
 VFS_SET(hammer2_vfsops, hammer2, 0);
 MODULE_VERSION(hammer2, 1);
 
-static int
+static
+int
 hammer2_init(struct vfsconf *conf)
 {
 	int error;
@@ -131,7 +131,8 @@ hammer2_init(struct vfsconf *conf)
  * RETURNS:	0	Success
  *		!0	error number
  */
-static int
+static
+int
 hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	      struct ucred *cred)
 {
@@ -145,7 +146,9 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	char *dev, *label;
 	int ronly;
 	int error;
+#if 0
 	int rc;
+#endif
 
 	hmp = NULL;
 	dev = label = NULL;
@@ -300,14 +303,16 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	return 0;
 }
 
-static int
+static
+int
 hammer2_remount(struct mount *mp, char *path, struct vnode *devvp,
                 struct ucred *cred)
 {
 	return (0);
 }
 
-static int
+static
+int
 hammer2_unmount(struct mount *mp, int mntflags)
 {
 	struct hammer2_mount *hmp;
@@ -346,7 +351,8 @@ hammer2_unmount(struct mount *mp, int mntflags)
 	return (error);
 }
 
-static int
+static
+int
 hammer2_vget(struct mount *mp, struct vnode *dvp,
 	     ino_t ino, struct vnode **vpp)
 {
@@ -354,7 +360,8 @@ hammer2_vget(struct mount *mp, struct vnode *dvp,
 	return (EOPNOTSUPP);
 }
 
-static int
+static
+int
 hammer2_root(struct mount *mp, struct vnode **vpp)
 {
 	struct hammer2_mount *hmp;
@@ -364,7 +371,7 @@ hammer2_root(struct mount *mp, struct vnode **vpp)
 	kprintf("hammer2_root\n");
 
 	hmp = MPTOH2(mp);
-	hammer2_mount_lock_ex(hmp);
+	hammer2_mount_exlock(hmp);
 	if (hmp->hm_iroot == NULL) {
 		*vpp = NULL;
 		error = EINVAL;
@@ -379,7 +386,8 @@ hammer2_root(struct mount *mp, struct vnode **vpp)
 	return (error);
 }
 
-static int
+static
+int
 hammer2_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct hammer2_mount *hmp;
@@ -402,7 +410,8 @@ hammer2_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	return (0);
 }
 
-static int
+static
+int
 hammer2_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 {
 	kprintf("hammer2_statvfs\n");
@@ -425,33 +434,41 @@ hammer2_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
  *
  * THINKS: side A vs side B, to have sync not stall all I/O?
  */
-static int
+static
+int
 hammer2_sync(struct mount *mp, int waitfor)
 {
+#if 0
 	struct hammer2_mount *hmp;
 	struct hammer2_inode *ip;
+#endif
 
 	kprintf("hammer2_sync \n");
 
-//	hmp = MPTOH2(mp);
+#if 0
+	hmp = MPTOH2(mp);
+#endif
 
 	return (0);
 }
 
-static int
+static
+int
 hammer2_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	return (0);
 }
 
-static int
+static
+int
 hammer2_fhtovp(struct mount *mp, struct vnode *rootvp,
 	       struct fid *fhp, struct vnode **vpp)
 {
 	return (0);
 }
 
-static int
+static
+int
 hammer2_checkexp(struct mount *mp, struct sockaddr *nam,
 		 int *exflagsp, struct ucred **credanonp)
 {

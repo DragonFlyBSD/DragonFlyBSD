@@ -116,7 +116,8 @@ struct hammer2_mount {
 
 MALLOC_DECLARE(M_HAMMER2);
 
-static inline struct mount *
+static __inline
+struct mount *
 H2TOMP(struct hammer2_mount *hmp)
 {
 	return (struct mount *) hmp->hm_mp;
@@ -125,7 +126,8 @@ H2TOMP(struct hammer2_mount *hmp)
 #define VTOI(vp)	((struct hammer2_inode *) (vp)->v_data)
 #define ITOV(ip)	((ip)->vp)
 
-static inline struct hammer2_mount *
+static __inline
+struct hammer2_mount *
 MPTOH2(struct mount *mp)
 {
 	return (struct hammer2_mount *) mp->mnt_data;
@@ -135,18 +137,21 @@ extern struct vop_ops hammer2_vnode_vops;
 extern struct vop_ops hammer2_spec_vops;
 extern struct vop_ops hammer2_fifo_vops;
 
-/* hammer2_inode.c */
-
-extern int hammer2_inactive(struct vop_inactive_args *);
-extern int hammer2_reclaim(struct vop_reclaim_args *);
-
 /* hammer2_subr.c */
 
-extern struct vnode *igetv(struct hammer2_inode *, int *);
+void hammer2_inode_lock_sh(struct hammer2_inode *ip);
+void hammer2_inode_lock_up(struct hammer2_inode *ip);
+void hammer2_inode_lock_ex(struct hammer2_inode *ip);
+void hammer2_inode_unlock_ex(struct hammer2_inode *ip);
+void hammer2_inode_unlock_up(struct hammer2_inode *ip);
+void hammer2_inode_unlock_sh(struct hammer2_inode *ip);
 
-extern void hammer2_mount_exlock(struct hammer2_mount *);
-extern void hammer2_mount_shlock(struct hammer2_mount *);
-extern void hammer2_mount_unlock(struct hammer2_mount *);
+struct vnode *igetv(struct hammer2_inode *, int *);
+
+void hammer2_mount_exlock(struct hammer2_mount *);
+void hammer2_mount_shlock(struct hammer2_mount *);
+void hammer2_mount_unlock(struct hammer2_mount *);
+struct hammer2_inode *alloci(struct hammer2_mount *hmp);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */
