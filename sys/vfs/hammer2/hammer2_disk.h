@@ -551,8 +551,6 @@ typedef struct hammer2_copy_data hammer2_copy_data_t;
  * the tree which are stored in the volumeh eader and must be tracked on
  * the fly.
  *
- * icrc_sect0 only applies to the first 512-4 bytes in the volume header.
- *
  * COPIES: Multiple copies may be specified on the mount line AND/OR you
  *	   just specify one and the mount code tries to pick up the others
  *	   from copyinfo[].  The copyid field in the volume header along

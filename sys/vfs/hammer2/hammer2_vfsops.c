@@ -510,21 +510,62 @@ int
 hammer2_install_volume_header(hammer2_mount_t *hmp)
 {
 	hammer2_volume_data_t *vd;
-	struct buf *bp = NULL;
+	struct buf *bp[HAMMER2_NUM_VOLHDRS];
+	hammer2_tid_t hi_tid;
+	hammer2_crc32_t ccrc, crc;
+	int hi_idx;
+	int valid;
+	int i;
 	int error;
 
-	error = bread(hmp->devvp, 0, HAMMER2_PBUFSIZE, &bp);
-	if (error)
-		return error;
-	bcopy(bp->b_data, &hmp->voldata, sizeof(hmp->voldata));
-	brelse(bp);
-	bp = NULL;
+	error = 0;
+	valid = 0;
+	hi_tid = 0;
+	hi_idx = -1;
+	bzero(bp, sizeof(bp));
 
-	vd = &hmp->voldata;
-	if (vd->magic != HAMMER2_VOLUME_ID_HBO) {
-		kprintf("hammer_mount: volume header magic is wrong\n");
-		return EINVAL;
+	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++) {
+		error = bread(hmp->devvp, i * HAMMER2_RESERVE_BYTES64, 
+			      HAMMER2_VOLUME_BYTES, &bp[i]);
+		if (error) {
+			brelse(bp[i]);
+			bp[i] = NULL;
+			continue;
+		}
+
+		vd = (struct hammer2_volume_data *) bp[i]->b_data;
+
+		if (vd->magic != HAMMER2_VOLUME_ID_HBO) 
+			continue;
+
+		crc = vd->icrc_sects[HAMMER2_VOL_ICRC_SECT0];
+		ccrc = hammer2_icrc32(bp[i]->b_data, HAMMER2_VOLUME_ICRC0_SIZE);
+		if (ccrc != crc) {
+			kprintf("hammer2 volume header %d crc mismatch\n", i);
+			continue;
+		}
+
+		valid++;
+
+		if (hi_tid < vd->last_tid) {
+			hi_tid = vd->last_tid;
+			hi_idx = i;
+		}
 	}
-	kprintf("hammer_mount: volume header magic good\n");
-	return 0;
+	if (valid) {
+		KKASSERT(hi_idx != -1);
+
+		bcopy(bp[hi_idx]->b_data, &hmp->voldata, sizeof(hmp->voldata));
+	} else {
+		error = EINVAL;
+	}
+
+	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++) {
+		if (bp[i])
+			brelse(bp[i]);
+		bp[i] = NULL;
+	}
+
+	return (error);
 }
+
