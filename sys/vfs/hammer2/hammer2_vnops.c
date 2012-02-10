@@ -232,8 +232,8 @@ hammer2_vop_mountctl(struct vop_mountctl_args *ap)
 		if (ap->a_ctllen != sizeof(struct export_args))
 			rc = (EINVAL);
 		else
-			rc = vfs_export(mp, &hmp->hm_export,
-				(const struct export_args *) ap->a_ctl);
+			rc = vfs_export(mp, &hmp->export,
+					(const struct export_args *)ap->a_ctl);
 		break;
 	default:
 		rc = vop_stdmountctl(ap);
