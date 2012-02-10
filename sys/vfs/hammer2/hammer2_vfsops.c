@@ -137,14 +137,14 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	      struct ucred *cred)
 {
 	struct hammer2_mount_info info;
-	struct hammer2_mount *hmp;
+	hammer2_mount_t *hmp;
 	struct vnode *devvp;
 	struct nlookupdata nd;
 	char devstr[MNAMELEN];
 	size_t size;
 	size_t done;
 	char *dev, *label;
-	int ronly;
+	int ronly = 1;
 	int error;
 #if 0
 	int rc;
@@ -160,13 +160,11 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 		/*
 		 * Root mount
 		 */
-
 		return (EOPNOTSUPP);
 	} else {
 		/*
 		 * Non-root mount or updating a mount
 		 */
-
 		error = copyin(data, &info, sizeof(info));
 		if (error)
 			return (error);
@@ -190,8 +188,9 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 			/* Update mount */
 			/* HAMMER2 implements NFS export via mountctl */
 			hmp = MPTOH2(mp);
-			devvp = hmp->hm_devvp;
-			return hammer2_remount(mp, path, devvp, cred);
+			devvp = hmp->devvp;
+			error = hammer2_remount(mp, path, devvp, cred);
+			return error;
 		}
 	}
 
@@ -200,76 +199,53 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	 */
 	/* Lookup name and verify it refers to a block device */
 	error = nlookup_init(&nd, dev, UIO_SYSSPACE, NLC_FOLLOW);
-	if (error)
-		return (error);
-	error = nlookup(&nd);
-	if (error)
-		return (error);
-	error = cache_vref(&nd.nl_nch, nd.nl_cred, &devvp);
-	if (error)
-		return (error);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &devvp);
 	nlookup_done(&nd);
 
-	if (!vn_isdisk(devvp, &error)) {
-		vrele(devvp);
-		return (error);
+	if (error == 0) {
+		if (vn_isdisk(devvp, &error))
+			error = vfs_mountedon(devvp);
 	}
+	if (error == 0 && vcount(devvp) > 0)
+		error = EBUSY;
 
 	/*
-	 * Common path for new root/non-root mounts;
-	 * devvp is a ref-ed by not locked vnode referring to the fs device
+	 * Now open the device
 	 */
-
-	error = vfs_mountedon(devvp);
-	if (error) {
-		vrele(devvp);
-		return (error);
-	}
-
-	if (vcount(devvp) > 0) {
-		vrele(devvp);
-		return (EBUSY);
-	}
-
-	/*
-	 * Open the fs device
-	 */
-	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = vinvalbuf(devvp, V_SAVE, 0, 0);
-	if (error) {
+	if (error == 0) {
+		ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
+		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
+		error = vinvalbuf(devvp, V_SAVE, 0, 0);
+		if (error == 0) {
+			error = VOP_OPEN(devvp, ronly ? FREAD : FREAD | FWRITE,
+					 FSCRED, NULL);
+		}
 		vn_unlock(devvp);
-		vrele(devvp);
-		return (error);
 	}
-	/* This is correct; however due to an NFS quirk of my setup, FREAD
-	 * is required... */
+	if (error && devvp) {
+		vrele(devvp);
+		devvp = NULL;
+	}
+	if (error)
+		return error;
+
 	/*
-	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD | FWRITE, FSCRED, NULL);
+	 * Block device opened successfully, finish initializing the
+	 * mount structure.
+	 *
+	 * From this point on we have to call hammer2_unmount() on failure.
 	 */
-
-	error = VOP_OPEN(devvp, FREAD, FSCRED, NULL);
-	vn_unlock(devvp);
-	if (error) {
-		vrele(devvp);
-		return (error);
-	}
-
-#ifdef notyet
-	/* VOP_IOCTL(EXTENDED_DISK_INFO, devvp); */
-	/* if vn device, never use bdwrite(); */
-	/* check if device supports BUF_CMD_READALL; */
-	/* check if device supports BUF_CMD_WRITEALL; */
-#endif
-
 	hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
-	mp->mnt_data = (qaddr_t) hmp;
-	hmp->hm_mp = mp;
-	hmp->hm_ronly = ronly;
-	hmp->hm_devvp = devvp;
-	lockinit(&hmp->hm_lk, "h2mp", 0, 0);
-	kmalloc_create(&hmp->hm_inodes, "HAMMER2-inodes");
-	kmalloc_create(&hmp->hm_ipstacks, "HAMMER2-ipstacks");
+	mp->mnt_data = (qaddr_t)hmp;
+	hmp->mp = mp;
+	hmp->ronly = ronly;
+	hmp->devvp = devvp;
+	lockinit(&hmp->lk, "h2mp", 0, 0);
+	kmalloc_create(&hmp->inodes, "HAMMER2-inodes");
+	kmalloc_create(&hmp->ipstacks, "HAMMER2-ipstacks");
 	
 	mp->mnt_flag = MNT_LOCAL;
 
@@ -279,9 +255,9 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
 
 	/* Setup root inode */
-	hmp->hm_iroot = alloci(hmp);
-	hmp->hm_iroot->type = HAMMER2_INODE_TYPE_DIR | HAMMER2_INODE_TYPE_ROOT;
-	hmp->hm_iroot->inum = 1;
+	hmp->iroot = hammer2_alloci(hmp);
+	hmp->iroot->type = HAMMER2_INODE_TYPE_DIR | HAMMER2_INODE_TYPE_ROOT;
+	hmp->iroot->data.inum = 1;
 
 	/* currently rely on tmpfs routines */
 	vfs_getnewfsid(mp);
@@ -298,7 +274,7 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 
 	hammer2_statfs(mp, &mp->mnt_stat, cred);
 
-	hammer2_inode_unlock_ex(hmp->hm_iroot);
+	hammer2_inode_unlock_ex(hmp->iroot);
 
 	return 0;
 }
@@ -315,9 +291,11 @@ static
 int
 hammer2_unmount(struct mount *mp, int mntflags)
 {
-	struct hammer2_mount *hmp;
+	hammer2_mount_t *hmp;
 	int flags;
 	int error;
+	int ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
+	struct vnode *devvp;
 
 	kprintf("hammer2_unmount\n");
 
@@ -339,14 +317,27 @@ hammer2_unmount(struct mount *mp, int mntflags)
 	 *	4) Free the mount point
 	 */
 
-	kmalloc_destroy(&hmp->hm_inodes);
-	kmalloc_destroy(&hmp->hm_ipstacks);
+	if (hmp->iroot) {
+		hammer2_inode_lock_ex(hmp->iroot);
+		hammer2_freei(hmp->iroot);
+		hmp->iroot = NULL;
+	}
+	if ((devvp = hmp->devvp) != NULL) {
+		vinvalbuf(devvp, (ronly ? 0 : V_SAVE), 0, 0);
+		hmp->devvp = NULL;
+		VOP_CLOSE(devvp, (ronly ? FREAD : FREAD|FWRITE));
+		vrele(devvp);
+		devvp = NULL;
+	}
+
+	kmalloc_destroy(&hmp->inodes);
+	kmalloc_destroy(&hmp->ipstacks);
 
 	hammer2_mount_unlock(hmp);
 
-	// Tmpfs does this
-	//kfree(hmp, M_HAMMER2);
-
+	mp->mnt_data = NULL;
+	hmp->mp = NULL;
+	kfree(hmp, M_HAMMER2);
 
 	return (error);
 }
@@ -364,7 +355,7 @@ static
 int
 hammer2_root(struct mount *mp, struct vnode **vpp)
 {
-	struct hammer2_mount *hmp;
+	hammer2_mount_t *hmp;
 	int error;
 	struct vnode *vp;
 
@@ -372,11 +363,11 @@ hammer2_root(struct mount *mp, struct vnode **vpp)
 
 	hmp = MPTOH2(mp);
 	hammer2_mount_exlock(hmp);
-	if (hmp->hm_iroot == NULL) {
+	if (hmp->iroot == NULL) {
 		*vpp = NULL;
 		error = EINVAL;
 	} else {
-		vp = igetv(hmp->hm_iroot, &error);
+		vp = hammer2_igetv(hmp->iroot, &error);
 		*vpp = vp;
 		if (vp == NULL)
 			kprintf("vnodefail\n");
@@ -390,7 +381,7 @@ static
 int
 hammer2_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
-	struct hammer2_mount *hmp;
+	hammer2_mount_t *hmp;
 
 	kprintf("hammer2_statfs\n");
 
@@ -439,8 +430,8 @@ int
 hammer2_sync(struct mount *mp, int waitfor)
 {
 #if 0
-	struct hammer2_mount *hmp;
-	struct hammer2_inode *ip;
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *ip;
 #endif
 
 	kprintf("hammer2_sync \n");

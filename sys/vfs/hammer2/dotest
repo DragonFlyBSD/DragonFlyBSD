@@ -1,0 +1,6 @@
+#!/bin/csh
+#
+
+# ./mkvntest
+# kldload /usr/obj/usr/src/sys/vfs/hammer2/hammer2.ko
+mount_hammer2 /dev/vn0@ROOTx /mnt

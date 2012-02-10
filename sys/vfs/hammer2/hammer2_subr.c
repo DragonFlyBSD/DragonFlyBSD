@@ -61,13 +61,13 @@
  */
 
 void
-hammer2_inode_lock_sh(struct hammer2_inode *ip)
+hammer2_inode_lock_sh(hammer2_inode_t *ip)
 {
 	lockmgr(&ip->lk, LK_SHARED);
 }
 
 void
-hammer2_inode_lock_up(struct hammer2_inode *ip)
+hammer2_inode_lock_up(hammer2_inode_t *ip)
 {
 	lockmgr(&ip->lk, LK_EXCLUSIVE);
 	++ip->busy;
@@ -75,19 +75,19 @@ hammer2_inode_lock_up(struct hammer2_inode *ip)
 }
 
 void
-hammer2_inode_lock_ex(struct hammer2_inode *ip)
+hammer2_inode_lock_ex(hammer2_inode_t *ip)
 {
 	lockmgr(&ip->lk, LK_EXCLUSIVE);
 }
 
 void
-hammer2_inode_unlock_ex(struct hammer2_inode *ip)
+hammer2_inode_unlock_ex(hammer2_inode_t *ip)
 {
 	lockmgr(&ip->lk, LK_RELEASE);
 }
 
 void
-hammer2_inode_unlock_up(struct hammer2_inode *ip)
+hammer2_inode_unlock_up(hammer2_inode_t *ip)
 {
 	lockmgr(&ip->lk, LK_UPGRADE);
 	--ip->busy;
@@ -95,7 +95,7 @@ hammer2_inode_unlock_up(struct hammer2_inode *ip)
 }
 
 void
-hammer2_inode_unlock_sh(struct hammer2_inode *ip)
+hammer2_inode_unlock_sh(hammer2_inode_t *ip)
 {
 	lockmgr(&ip->lk, LK_RELEASE);
 }
@@ -105,21 +105,21 @@ hammer2_inode_unlock_sh(struct hammer2_inode *ip)
  */
 
 void
-hammer2_mount_exlock(struct hammer2_mount *hmp)
+hammer2_mount_exlock(hammer2_mount_t *hmp)
 {
-	lockmgr(&hmp->hm_lk, LK_EXCLUSIVE);
+	lockmgr(&hmp->lk, LK_EXCLUSIVE);
 }
 
 void
-hammer2_mount_shlock(struct hammer2_mount *hmp)
+hammer2_mount_shlock(hammer2_mount_t *hmp)
 {
-	lockmgr(&hmp->hm_lk, LK_SHARED);
+	lockmgr(&hmp->lk, LK_SHARED);
 }
 
 void
-hammer2_mount_unlock(struct hammer2_mount *hmp)
+hammer2_mount_unlock(hammer2_mount_t *hmp)
 {
-	lockmgr(&hmp->hm_lk, LK_RELEASE);
+	lockmgr(&hmp->lk, LK_RELEASE);
 }
 
 /*
@@ -127,43 +127,83 @@ hammer2_mount_unlock(struct hammer2_mount *hmp)
  */
 
 /*
- * igetv:
+ * Get the vnode associated with the given inode, allocating the vnode if
+ * necessary.
  *
- *	Get a vnode associated with the given inode. If one exists, return it,
- *	locked and ref-ed. Otherwise, a new vnode is allocated and associated
- *	with the vnode.
+ * Great care must be taken to avoid deadlocks and vnode acquisition/reclaim
+ * races.
  *
- *	The lock prevents the inode from being reclaimed, I believe (XXX)
+ * The vnode will be returned exclusively locked and referenced.  The
+ * reference on the vnode prevents it from being reclaimed.
+ *
+ * The inode (ip) must be referenced by the caller and not locked to avoid
+ * it getting ripped out from under us or deadlocked.
  */
 struct vnode *
-igetv(struct hammer2_inode *ip, int *error)
+hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 {
 	struct vnode *vp;
-	struct hammer2_mount *hmp;
-	int rc;
+	hammer2_mount_t *hmp;
 
-	hmp = ip->mp;
-	rc = 0;
+	hmp = ip->hmp;
+	*errorp = 0;
 
-	kprintf("igetv\n");
-	tsleep(&igetv, 0, "", hz * 10);
-
-	hammer2_inode_lock_ex(ip);
-	do {
-		/* Reuse existing vnode */
+	for (;;) {
+		/*
+		 * Attempt to reuse an existing vnode assignment.  It is
+		 * possible to race a reclaim so the vget() may fail.  The
+		 * inode must be unlocked during the vget() to avoid a
+		 * deadlock against a reclaim.
+		 */
 		vp = ip->vp;
 		if (vp) {
-			/* XXX: Is this necessary? */
-			vx_lock(vp);
+			/*
+			 * Lock the inode and check for a reclaim race
+			 */
+			hammer2_inode_lock_ex(ip);
+			if (ip->vp != vp) {
+				hammer2_inode_unlock_ex(ip);
+				continue;
+			}
+
+			/*
+			 * Inode must be unlocked during the vget() to avoid
+			 * possible deadlocks, vnode is held to prevent
+			 * destruction during the vget().  The vget() can
+			 * still fail if we lost a reclaim race on the vnode.
+			 */
+			vhold_interlocked(vp);
+			hammer2_inode_unlock_ex(ip);
+			if (vget(vp, LK_EXCLUSIVE)) {
+				vdrop(vp);
+				continue;
+			}
+			vdrop(vp);
+			/* vp still locked and ref from vget */
+			*errorp = 0;
 			break;
 		}
 
-		/* Allocate and initialize a new vnode */
-		rc = getnewvnode(VT_HAMMER2, H2TOMP(hmp), &vp,
-				    VLKTIMEOUT, LK_CANRECURSE);
-		if (rc) {
+		/*
+		 * No vnode exists, allocate a new vnode.  Beware of
+		 * allocation races.  This function will return an
+		 * exclusively locked and referenced vnode.
+		 */
+		*errorp = getnewvnode(VT_HAMMER2, H2TOMP(hmp), &vp, 0, 0);
+		if (*errorp) {
 			vp = NULL;
 			break;
+		}
+
+		/*
+		 * Lock the inode and check for an allocation race.
+		 */
+		hammer2_inode_lock_ex(ip);
+		if (ip->vp != NULL) {
+			vp->v_type = VBAD;
+			vx_put(vp);
+			hammer2_inode_unlock_ex(ip);
+			continue;
 		}
 
 		kprintf("igetv new\n");
@@ -173,9 +213,10 @@ igetv(struct hammer2_inode *ip, int *error)
 			break;
 		case HAMMER2_INODE_TYPE_FILE:
 			vp->v_type = VREG;
-				/*XXX: Init w/ true file size; 0*/
-			vinitvmio(vp, 0, PAGE_SIZE, -1);
+			vinitvmio(vp, 0, HAMMER2_LBUFSIZE,
+				  (int)ip->data.size & HAMMER2_LBUFMASK);
 			break;
+		/* XXX FIFO */
 		default:
 			break;
 		}
@@ -185,49 +226,60 @@ igetv(struct hammer2_inode *ip, int *error)
 
 		vp->v_data = ip;
 		ip->vp = vp;
-	} while (0);
-	hammer2_inode_unlock_ex(ip);
+		hammer2_inode_unlock_ex(ip);
+		break;
+	}
 
 	/*
-	 * XXX: Under what conditions can a vnode be reclaimed? How do we want
-	 * to interlock against vreclaim calls into hammer2? When do we need to?
+	 * Return non-NULL vp and *errorp == 0, or NULL vp and *errorp != 0.
 	 */
-
-	kprintf("igetv exit\n");
-
-	/* vp is either NULL or a locked, ref-ed vnode referring to inode ip */
-	*error = rc;
 	return (vp);
 }
 
 /*
- * alloci:
+ * Allocate a HAMMER2 inode memory structure.
  *
- *	Allocate an inode in a HAMMER2 mount. The returned inode is locked
- *	exclusively. The HAMMER2 mountpoint must be locked on entry.
+ * The returned inode is locked exclusively and referenced.
+ * The HAMMER2 mountpoint must be locked on entry.
  */
-struct hammer2_inode *
-alloci(struct hammer2_mount *hmp)
+hammer2_inode_t *
+hammer2_alloci(hammer2_mount_t *hmp)
 {
-	struct hammer2_inode *ip;
+	hammer2_inode_t *ip;
 
 	kprintf("alloci\n");
 
-	ip = kmalloc(sizeof(struct hammer2_inode), hmp->hm_inodes,
-		     M_WAITOK | M_ZERO);
+	ip = kmalloc(sizeof(hammer2_inode_t), hmp->inodes, M_WAITOK | M_ZERO);
 	if (!ip) {
 		/* XXX */
 	}
 
-	++hmp->hm_ninodes;
+	++hmp->ninodes;
 
 	ip->type = 0;
-	ip->mp = hmp;
+	ip->hmp = hmp;
 	lockinit(&ip->lk, "h2inode", 0, 0);
 	ip->vp = NULL;
-
+	ip->refs = 1;
 	hammer2_inode_lock_ex(ip);
 
 	return (ip);
 }
 
+/*
+ * Free a HAMMER2 inode memory structure.
+ *
+ * The inode must be locked exclusively with one reference and will
+ * be destroyed on return.
+ */
+void
+hammer2_freei(hammer2_inode_t *ip)
+{
+	hammer2_mount_t *hmp = ip->hmp;
+
+	KKASSERT(ip->hmp == NULL);
+	KKASSERT(ip->vp == NULL);
+	KKASSERT(ip->refs == 1);
+	hammer2_inode_unlock_ex(ip);
+	kfree(ip, hmp->inodes);
+}

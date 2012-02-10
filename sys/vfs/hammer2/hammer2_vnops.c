@@ -78,16 +78,20 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	struct hammer2_inode *ip;
 	struct hammer2_mount *hmp;
 
-	kprintf("hammer2_reclaim\n");
-
-	/* Is the vnode locked? Must it be on exit? */
-
 	vp = ap->a_vp;
 	ip = VTOI(vp);
-	hmp = ip->mp;
+	hmp = ip->hmp;
 
+	hammer2_inode_lock_ex(ip);
 	vp->v_data = NULL;
 	ip->vp = NULL;
+	hammer2_inode_unlock_ex(ip);
+
+	/*
+	 * XXX handle background sync when ip dirty, kernel will no longer
+	 * notify us regarding this inode because there is no longer a
+	 * vnode attached to it.
+	 */
 
 	return (0);
 }

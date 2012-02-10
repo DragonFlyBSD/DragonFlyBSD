@@ -73,13 +73,16 @@ struct hammer2_mount;
  * A hammer2 inode.
  */
 struct hammer2_inode {
-	struct hammer2_mount	*mp;
+	struct hammer2_mount	*hmp;
 	struct lock		lk;
 	struct vnode		*vp;
-	hammer2_tid_t		inum;
+	hammer2_inode_data_t	data;
 	unsigned char		type;
 	int			busy;
+	u_int			refs;
 };
+
+typedef struct hammer2_inode hammer2_inode_t;
 
 #define HAMMER2_INODE_TYPE_DIR	0x01
 #define HAMMER2_INODE_TYPE_FILE	0x02
@@ -90,27 +93,27 @@ struct hammer2_inode {
  * Governing mount structure for filesystem (aka vp->v_mount)
  */
 struct hammer2_mount {
-	struct mount	*hm_mp;
-	int		hm_ronly;	/* block device mounted read-only */
-	struct vnode	*hm_devvp;	/* device vnode */
-	struct lock	hm_lk;
+	struct mount	*mp;
+	int		ronly;	/* block device mounted read-only */
+	struct vnode	*devvp;	/* device vnode */
+	struct lock	lk;
 
-	/* Root inode */
-	struct hammer2_inode	*hm_iroot;
+	struct hammer2_inode *iroot;
 
-	/* Per-mount inode zone */
-	struct malloc_type *hm_inodes;
-	int 		hm_ninodes;
-	int 		hm_maxinodes;
+	struct malloc_type *inodes;
+	int 		ninodes;
+	int 		maxinodes;
 
-	struct malloc_type *hm_ipstacks;
-	int		hm_nipstacks;
-	int		hm_maxipstacks;
+	struct malloc_type *ipstacks;
+	int		nipstacks;
+	int		maxipstacks;
 
-	struct hammer2_volume_data hm_sb;
+	hammer2_volume_data_t voldata;
 
-	struct netexport	hm_export;
+	struct netexport export;
 };
+
+typedef struct hammer2_mount hammer2_mount_t;
 
 #if defined(_KERNEL)
 
@@ -120,17 +123,17 @@ static __inline
 struct mount *
 H2TOMP(struct hammer2_mount *hmp)
 {
-	return (struct mount *) hmp->hm_mp;
+	return (struct mount *) hmp->mp;
 }
 
-#define VTOI(vp)	((struct hammer2_inode *) (vp)->v_data)
+#define VTOI(vp)	((hammer2_inode_t *)(vp)->v_data)
 #define ITOV(ip)	((ip)->vp)
 
 static __inline
 struct hammer2_mount *
 MPTOH2(struct mount *mp)
 {
-	return (struct hammer2_mount *) mp->mnt_data;
+	return (hammer2_mount_t *) mp->mnt_data;
 }
 
 extern struct vop_ops hammer2_vnode_vops;
@@ -139,19 +142,20 @@ extern struct vop_ops hammer2_fifo_vops;
 
 /* hammer2_subr.c */
 
-void hammer2_inode_lock_sh(struct hammer2_inode *ip);
-void hammer2_inode_lock_up(struct hammer2_inode *ip);
-void hammer2_inode_lock_ex(struct hammer2_inode *ip);
-void hammer2_inode_unlock_ex(struct hammer2_inode *ip);
-void hammer2_inode_unlock_up(struct hammer2_inode *ip);
-void hammer2_inode_unlock_sh(struct hammer2_inode *ip);
+void hammer2_inode_lock_sh(hammer2_inode_t *ip);
+void hammer2_inode_lock_up(hammer2_inode_t *ip);
+void hammer2_inode_lock_ex(hammer2_inode_t *ip);
+void hammer2_inode_unlock_ex(hammer2_inode_t *ip);
+void hammer2_inode_unlock_up(hammer2_inode_t *ip);
+void hammer2_inode_unlock_sh(hammer2_inode_t *ip);
 
-struct vnode *igetv(struct hammer2_inode *, int *);
+void hammer2_mount_exlock(hammer2_mount_t *hmp);
+void hammer2_mount_shlock(hammer2_mount_t *hmp);
+void hammer2_mount_unlock(hammer2_mount_t *hmp);
 
-void hammer2_mount_exlock(struct hammer2_mount *);
-void hammer2_mount_shlock(struct hammer2_mount *);
-void hammer2_mount_unlock(struct hammer2_mount *);
-struct hammer2_inode *alloci(struct hammer2_mount *hmp);
+struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
+hammer2_inode_t *hammer2_alloci(hammer2_mount_t *hmp);
+void hammer2_freei(hammer2_inode_t *ip);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */
