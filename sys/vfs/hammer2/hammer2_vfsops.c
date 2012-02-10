@@ -139,20 +139,20 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	struct hammer2_mount_info info;
 	hammer2_mount_t *hmp;
 	struct vnode *devvp;
+	struct hammer2_volume_data *vd;
 	struct nlookupdata nd;
+	struct buf *bp;
 	char devstr[MNAMELEN];
 	size_t size;
 	size_t done;
 	char *dev, *label;
 	int ronly = 1;
 	int error;
-#if 0
-	int rc;
-#endif
 
 	hmp = NULL;
 	dev = label = NULL;
 	devvp = NULL;
+	vd = NULL;
 
 	kprintf("hammer2_mount\n");
 
@@ -232,6 +232,18 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	if (error)
 		return error;
 
+	/* Read the volume header */
+	/* XXX: Read four volhdrs, find one w/ highest TID & CRC */
+	error = bread(devvp, 0, HAMMER2_PBUFSIZE, &bp);
+	vd = (struct hammer2_volume_data *) bp->b_data;
+	if (error ||
+	    (vd->magic != HAMMER2_VOLUME_ID_HBO)) {
+		brelse(bp);
+		vrele(devvp);
+		VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE);
+		return (EINVAL);
+	}
+
 	/*
 	 * Block device opened successfully, finish initializing the
 	 * mount structure.
@@ -247,6 +259,10 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	kmalloc_create(&hmp->inodes, "HAMMER2-inodes");
 	kmalloc_create(&hmp->ipstacks, "HAMMER2-ipstacks");
 	
+	bcopy(bp->b_data, &hmp->voldata, sizeof(struct hammer2_volume_data));
+	brelse(bp);
+	bp = NULL;
+
 	mp->mnt_flag = MNT_LOCAL;
 
 	/*
@@ -259,7 +275,6 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	hmp->iroot->type = HAMMER2_INODE_TYPE_DIR | HAMMER2_INODE_TYPE_ROOT;
 	hmp->iroot->data.inum = 1;
 
-	/* currently rely on tmpfs routines */
 	vfs_getnewfsid(mp);
 	vfs_add_vnodeops(mp, &hammer2_vnode_vops, &mp->mnt_vn_norm_ops);
 	vfs_add_vnodeops(mp, &hammer2_spec_vops, &mp->mnt_vn_spec_ops);
