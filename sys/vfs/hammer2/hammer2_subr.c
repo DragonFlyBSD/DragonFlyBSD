@@ -276,8 +276,8 @@ void
 hammer2_freei(hammer2_inode_t *ip)
 {
 	hammer2_mount_t *hmp = ip->hmp;
-
-	KKASSERT(ip->hmp == NULL);
+	
+	KKASSERT(ip->hmp != NULL);
 	KKASSERT(ip->vp == NULL);
 	KKASSERT(ip->refs == 1);
 	hammer2_inode_unlock_ex(ip);
