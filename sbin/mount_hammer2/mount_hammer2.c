@@ -59,13 +59,16 @@ main(int argc, char *argv[])
 		exit(1);
 
 	error = getvfsbyname("hammer2", &vfc);
+	if (error) {
+		fprintf(stderr, "hammer2 vfs not loaded\n");
+		exit(1);
+	}
 
 	info.volume = argv[1];
 	info.hflags = 0;
 	mountpt = argv[2];
 
 	error = mount(vfc.vfc_name, mountpt, mount_flags, &info);
-	if (error) {
+	if (error)
 		perror("mount: ");
-	}
 }
