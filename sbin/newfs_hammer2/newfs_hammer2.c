@@ -52,14 +52,16 @@
 #include <err.h>
 #include <uuid.h>
 
-static off_t check_volume(const char *path, int *fdp);
+static hammer2_off_t check_volume(const char *path, int *fdp);
 static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
-static const char *sizetostr(off_t size);
+static const char *sizetostr(hammer2_off_t size);
 static uint64_t nowtime(void);
 static void usage(void);
 
-static void format_hammer2(int fd, off_t total_space, off_t free_space);
-static void alloc_direct(off_t *basep, hammer2_blockref_t *bref, size_t bytes);
+static void format_hammer2(int fd, hammer2_off_t total_space,
+				hammer2_off_t free_space);
+static void alloc_direct(hammer2_off_t *basep, hammer2_blockref_t *bref,
+				size_t bytes);
 static hammer2_key_t dirhash(const unsigned char *name, size_t len);
 
 static int Hammer2Version = -1;
@@ -68,18 +70,18 @@ static uuid_t Hammer2_FSType;	/* static filesystem type id for HAMMER2 */
 static uuid_t Hammer2_FSId;	/* unique filesystem id in volu header */
 static uuid_t Hammer2_PFSId;	/* PFS id in super-root inode */
 static const char *Label;
-static int64_t BootAreaSize;
-static int64_t RedoAreaSize;
+static hammer2_off_t BootAreaSize;
+static hammer2_off_t RedoAreaSize;
 
-#define GIG	((hammer_off_t)1024*1024*1024)
+#define GIG	((hammer2_off_t)1024*1024*1024)
 
 int
 main(int ac, char **av)
 {
 	uint32_t status;
-	off_t total_space;
-	off_t free_space;
-	off_t reserved_space;
+	hammer2_off_t total_space;
+	hammer2_off_t free_space;
+	hammer2_off_t reserved_space;
 	int ch;
 	int fd = -1;
 	char *fsidstr;
@@ -283,7 +285,7 @@ usage(void)
  */
 static
 const char *
-sizetostr(off_t size)
+sizetostr(hammer2_off_t size)
 {
 	static char buf[32];
 
@@ -377,12 +379,12 @@ nowtime(void)
  * Figure out how big the volume is.
  */
 static
-off_t
+hammer2_off_t
 check_volume(const char *path, int *fdp)
 {
 	struct partinfo pinfo;
 	struct stat st;
-	off_t size;
+	hammer2_off_t size;
 
 	/*
 	 * Get basic information about the volume
@@ -438,7 +440,7 @@ check_volume(const char *path, int *fdp)
  */
 static
 void
-format_hammer2(int fd, off_t total_space, off_t free_space)
+format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 {
 	char *buf = malloc(HAMMER2_PBUFSIZE);
 	hammer2_volume_data_t *vol;
@@ -446,11 +448,11 @@ format_hammer2(int fd, off_t total_space, off_t free_space)
 	hammer2_blockref_t sroot_blockref;
 	hammer2_blockref_t root_blockref;
 	uint64_t now;
-	off_t volu_base = 0;
-	off_t boot_base = HAMMER2_RESERVE_SEG;
-	off_t redo_base = boot_base + BootAreaSize;
-	off_t alloc_base = redo_base + RedoAreaSize;
-	off_t tmp_base;
+	hammer2_off_t volu_base = 0;
+	hammer2_off_t boot_base = HAMMER2_RESERVE_SEG;
+	hammer2_off_t redo_base = boot_base + BootAreaSize;
+	hammer2_off_t alloc_base = redo_base + RedoAreaSize;
+	hammer2_off_t tmp_base;
 	size_t n;
 	int i;
 
@@ -626,20 +628,34 @@ format_hammer2(int fd, off_t total_space, off_t free_space)
 	vol->sroot_blockset.blockref[0] = sroot_blockref;
 	vol->last_tid = 0;
 	vol->alloc_tid = 0;
-	vol->icrc_sects[HAMMER2_VOL_ICRC_SECT0] =
-			hammer2_icrc32((char *)vol + HAMMER2_VOLUME_ICRC0_OFF,
-				       HAMMER2_VOLUME_ICRC0_SIZE);
 	vol->icrc_sects[HAMMER2_VOL_ICRC_SECT1] =
 			hammer2_icrc32((char *)vol + HAMMER2_VOLUME_ICRC1_OFF,
 				       HAMMER2_VOLUME_ICRC1_SIZE);
+
+	/*
+	 * Set ICRC_SECT0 after all remaining elements of sect0 have been
+	 * populated in the volume header.  Note hat ICRC_SECT* (except for
+	 * SECT0) are part of sect0.
+	 */
+	vol->icrc_sects[HAMMER2_VOL_ICRC_SECT0] =
+			hammer2_icrc32((char *)vol + HAMMER2_VOLUME_ICRC0_OFF,
+				       HAMMER2_VOLUME_ICRC0_SIZE);
 	vol->icrc_volheader =
 			hammer2_icrc32((char *)vol + HAMMER2_VOLUME_ICRCVH_OFF,
 				       HAMMER2_VOLUME_ICRCVH_SIZE);
 
-	n = pwrite(fd, buf, HAMMER2_PBUFSIZE, volu_base);
-	if (n != HAMMER2_PBUFSIZE) {
-		perror("write");
-		exit(1);
+	/*
+	 * Write the volume header and all alternates.
+	 */
+	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
+		if (i * HAMMER2_RESERVE_BYTES64 >= total_space)
+			break;
+		n = pwrite(fd, buf, HAMMER2_PBUFSIZE,
+			   volu_base + i * HAMMER2_RESERVE_BYTES64);
+		if (n != HAMMER2_PBUFSIZE) {
+			perror("write");
+			exit(1);
+		}
 	}
 
 	/*
@@ -649,7 +665,7 @@ format_hammer2(int fd, off_t total_space, off_t free_space)
 }
 
 static void
-alloc_direct(off_t *basep, hammer2_blockref_t *bref, size_t bytes)
+alloc_direct(hammer2_off_t *basep, hammer2_blockref_t *bref, size_t bytes)
 {
 	int radix;
 
