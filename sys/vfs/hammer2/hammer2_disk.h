@@ -190,6 +190,14 @@ typedef uint32_t hammer2_crc32_t;
 #define HAMMER2_MAX_COPIES	6
 
 /*
+ * HAMMER2 directory support and pre-defined keys
+ */
+#define HAMMER2_DIRHASH_VISIBLE	0x8000000000000000ULL
+#define HAMMER2_DIRHASH_LOMASK	0x00000000FFFFFFFFULL
+
+#define HAMMER2_SROOT_KEY	0x0000000000000000ULL	/* volume to sroot */
+
+/*
  * The media block reference structure.  This forms the core of the HAMMER2
  * media topology recursion.  This 64-byte data structure is embedded in the
  * volume header, in inodes (which are also directory entries), and in
@@ -310,11 +318,11 @@ typedef struct hammer2_blockset hammer2_blockset_t;
 /*
  * The media indirect block structure.
  */
-struct hammer2_indblock {
+struct hammer2_indblock_data {
 	hammer2_blockref_t blocks[HAMMER2_IND_COUNT];
 };
 
-typedef struct hammer2_indblock hammer2_indblock_t;
+typedef struct hammer2_indblock_data hammer2_indblock_data_t;
 
 /*
  * In HAMMER2 inodes ARE directory entries, with a special exception for

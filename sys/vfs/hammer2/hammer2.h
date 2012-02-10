@@ -74,21 +74,32 @@ struct hammer2_mount;
  * the root volume.  These consist of indirect blocks, inodes,
  * and eventually the volume header.
  *
- * The chain structure is embedded in the hammer2_mount and
- * hammer2_inode, and dynamically allocated for indirect blocks.
- * ip will be non-NULL for chain elements representing inodes.
+ * The chain structure is embedded in the hammer2_mount, hammer2_inode,
+ * and other system memory structures.  The chain structure typically
+ * implements the reference count and busy flag for the larger structure.
+ *
+ * It is always possible to track a chain element all the way back to the
+ * root by following the (parent) links.  (index) is a type-dependent index
+ * in the parent indicating where in the parent the chain element resides.
  */
 struct hammer2_chain {
 	struct hammer2_blockref	bref;
-	struct hammer2_inode *ip;
-	struct hammer2_chain *parent;
+	struct hammer2_chain *parent;	/* return chain to root */
+	union {
+		struct hammer2_inode *ip;
+		struct hammer2_indblock *ind;
+	} u;
+	u_int	index;			/* index in parent */
 	u_int	refs;
+	u_int	busy;
 };
 
 typedef struct hammer2_chain hammer2_chain_t;
 
 /*
  * A hammer2 inode.
+ *
+ * NOTE: An inode's ref count shares chain.refs.
  */
 struct hammer2_inode {
 	struct hammer2_mount	*hmp;
@@ -96,8 +107,6 @@ struct hammer2_inode {
 	struct vnode		*vp;
 
 	unsigned char		type;
-	u_int			refs;
-	int			busy;
 
 	hammer2_chain_t		chain;
 	hammer2_inode_data_t	data;
@@ -111,6 +120,16 @@ typedef struct hammer2_inode hammer2_inode_t;
 #define HAMMER2_INODE_TYPE_MASK	0x07
 
 /*
+ * A hammer2 indirect block
+ */
+struct hammer2_indblock {
+	hammer2_chain_t		chain;
+	hammer2_indblock_data_t	data;
+};
+
+typedef struct hammer2_indblock hammer2_indblock_t;
+
+/*
  * Governing mount structure for filesystem (aka vp->v_mount)
  */
 struct hammer2_mount {
@@ -120,8 +139,6 @@ struct hammer2_mount {
 	struct netexport export;	/* nfs export */
 	int		ronly;		/* read-only mount */
 
-	struct hammer2_inode *iroot;
-
 	struct malloc_type *inodes;
 	int 		ninodes;
 	int 		maxinodes;
@@ -129,7 +146,10 @@ struct hammer2_mount {
 	struct malloc_type *ipstacks;
 	int		nipstacks;
 	int		maxipstacks;
-	hammer2_chain_t chain;
+	hammer2_chain_t vchain;		/* anchor chain */
+	hammer2_chain_t *schain;	/* super-root */
+	hammer2_chain_t *rchain;	/* label-root */
+	struct hammer2_inode *iroot;
 
 	hammer2_volume_data_t voldata;
 };
@@ -161,8 +181,9 @@ extern struct vop_ops hammer2_vnode_vops;
 extern struct vop_ops hammer2_spec_vops;
 extern struct vop_ops hammer2_fifo_vops;
 
-/* hammer2_subr.c */
-
+/*
+ * hammer2_subr.c
+ */
 void hammer2_inode_lock_sh(hammer2_inode_t *ip);
 void hammer2_inode_lock_up(hammer2_inode_t *ip);
 void hammer2_inode_lock_ex(hammer2_inode_t *ip);
@@ -174,11 +195,34 @@ void hammer2_mount_exlock(hammer2_mount_t *hmp);
 void hammer2_mount_shlock(hammer2_mount_t *hmp);
 void hammer2_mount_unlock(hammer2_mount_t *hmp);
 
-struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
-hammer2_inode_t *hammer2_alloci(hammer2_mount_t *hmp);
-void hammer2_freei(hammer2_inode_t *ip);
-
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
+
+/*
+ * hammer2_inode.c
+ */
+struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
+hammer2_inode_t *hammer2_inode_alloc(hammer2_mount_t *hmp);
+void hammer2_inode_free(hammer2_inode_t *ip);
+void hammer2_inode_ref(hammer2_inode_t *ip);
+void hammer2_inode_drop(hammer2_inode_t *ip);
+
+/*
+ * hammer2_chain.c
+ */
+void hammer2_chain_ref(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+void hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+
+hammer2_chain_t *hammer2_chain_push(hammer2_mount_t *hmp,
+				    hammer2_chain_t *parent,
+				    hammer2_key_t key);
+hammer2_chain_t *hammer2_chain_first(hammer2_mount_t *hmp,
+				     hammer2_chain_t *parent,
+				     hammer2_key_t key,
+				     hammer2_key_t mask);
+hammer2_chain_t *hammer2_chain_next(hammer2_mount_t *hmp,
+				    hammer2_chain_t *current,
+				    hammer2_key_t key,
+				    hammer2_key_t mask);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

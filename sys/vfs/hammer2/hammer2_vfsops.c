@@ -140,8 +140,11 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 {
 	struct hammer2_mount_info info;
 	hammer2_mount_t *hmp;
+	hammer2_key_t lhc;
 	struct vnode *devvp;
 	struct nlookupdata nd;
+	hammer2_chain_t *schain;
+	hammer2_chain_t *rchain;
 	char devstr[MNAMELEN];
 	size_t size;
 	size_t done;
@@ -271,16 +274,39 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
 
 	/*
-	 * Locate the root inode.  The volume header points to the
-	 * super-root directory.
+	 * First locate the super-root inode, which is key 0 relative to the
+	 * volume header's blockset.
+	 *
+	 * Then locate the root inode by scanning the directory keyspace
+	 * represented by the label.
 	 */
-	/* XXX */
-
-
-	/* Setup root inode */
-	hmp->iroot = hammer2_alloci(hmp);
-	hmp->iroot->type = HAMMER2_INODE_TYPE_DIR | HAMMER2_INODE_TYPE_ROOT;
-	hmp->iroot->data.inum = 1;
+	lhc = hammer2_dirhash(label, strlen(label));
+	schain = hammer2_chain_push(hmp, &hmp->vchain, HAMMER2_SROOT_KEY);
+	if (schain == NULL) {
+		kprintf("hammer2_mount: invalid super-root\n");
+		hammer2_unmount(mp, MNT_FORCE);
+		return EINVAL;
+	}
+	rchain = hammer2_chain_first(hmp, schain, lhc, HAMMER2_DIRHASH_LOMASK);
+	while (rchain) {
+		if (rchain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+		    rchain->u.ip &&
+		    strcmp(label, rchain->u.ip->data.filename) == 0) {
+			break;
+		}
+		rchain = hammer2_chain_next(hmp, rchain,
+					    lhc, HAMMER2_DIRHASH_LOMASK);
+	}
+	if (rchain == NULL) {
+		kprintf("hammer2_mount: root label not found\n");
+		hammer2_chain_drop(hmp, schain);
+		hammer2_unmount(mp, MNT_FORCE);
+		return EINVAL;
+	}
+	hmp->schain = schain;
+	hmp->rchain = rchain;
+	hmp->iroot = rchain->u.ip;
+	hammer2_inode_ref(hmp->iroot);
 
 	vfs_getnewfsid(mp);
 	vfs_add_vnodeops(mp, &hammer2_vnode_vops, &mp->mnt_vn_norm_ops);
@@ -346,10 +372,16 @@ hammer2_unmount(struct mount *mp, int mntflags)
 	 *	3) Destroy the kmalloc inode zone
 	 *	4) Free the mount point
 	 */
-
+	if (hmp->rchain) {
+		hammer2_chain_drop(hmp, hmp->rchain);
+		hmp->rchain = NULL;
+	}
+	if (hmp->schain) {
+		hammer2_chain_drop(hmp, hmp->schain);
+		hmp->schain = NULL;
+	}
 	if (hmp->iroot) {
-		hammer2_inode_lock_ex(hmp->iroot);
-		hammer2_freei(hmp->iroot);
+		hammer2_inode_drop(hmp->iroot);
 		hmp->iroot = NULL;
 	}
 	if ((devvp = hmp->devvp) != NULL) {
