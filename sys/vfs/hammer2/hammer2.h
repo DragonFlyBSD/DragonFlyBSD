@@ -70,16 +70,37 @@ struct hammer2_inode;
 struct hammer2_mount;
 
 /*
+ * The chain structure tracks blockref recursions all the way to
+ * the root volume.  These consist of indirect blocks, inodes,
+ * and eventually the volume header.
+ *
+ * The chain structure is embedded in the hammer2_mount and
+ * hammer2_inode, and dynamically allocated for indirect blocks.
+ * ip will be non-NULL for chain elements representing inodes.
+ */
+struct hammer2_chain {
+	struct hammer2_blockref	bref;
+	struct hammer2_inode *ip;
+	struct hammer2_chain *parent;
+	u_int	refs;
+};
+
+typedef struct hammer2_chain hammer2_chain_t;
+
+/*
  * A hammer2 inode.
  */
 struct hammer2_inode {
 	struct hammer2_mount	*hmp;
 	struct lock		lk;
 	struct vnode		*vp;
-	hammer2_inode_data_t	data;
+
 	unsigned char		type;
-	int			busy;
 	u_int			refs;
+	int			busy;
+
+	hammer2_chain_t		chain;
+	hammer2_inode_data_t	data;
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
@@ -93,10 +114,11 @@ typedef struct hammer2_inode hammer2_inode_t;
  * Governing mount structure for filesystem (aka vp->v_mount)
  */
 struct hammer2_mount {
-	struct mount	*mp;
-	int		ronly;	/* block device mounted read-only */
-	struct vnode	*devvp;	/* device vnode */
+	struct mount	*mp;		/* kernel mount */
+	struct vnode	*devvp;		/* device vnode */
 	struct lock	lk;
+	struct netexport export;	/* nfs export */
+	int		ronly;		/* read-only mount */
 
 	struct hammer2_inode *iroot;
 
@@ -107,10 +129,9 @@ struct hammer2_mount {
 	struct malloc_type *ipstacks;
 	int		nipstacks;
 	int		maxipstacks;
+	hammer2_chain_t chain;
 
 	hammer2_volume_data_t voldata;
-
-	struct netexport export;
 };
 
 typedef struct hammer2_mount hammer2_mount_t;
@@ -156,6 +177,8 @@ void hammer2_mount_unlock(hammer2_mount_t *hmp);
 struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
 hammer2_inode_t *hammer2_alloci(hammer2_mount_t *hmp);
 void hammer2_freei(hammer2_inode_t *ip);
+
+hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

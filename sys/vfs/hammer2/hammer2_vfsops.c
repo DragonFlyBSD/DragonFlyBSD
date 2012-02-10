@@ -66,6 +66,8 @@ static int	hammer2_vptofh(struct vnode *vp, struct fid *fhp);
 static int	hammer2_checkexp(struct mount *mp, struct sockaddr *nam,
 				 int *exflagsp, struct ucred **credanonp);
 
+static int	hammer2_install_volume_header(hammer2_mount_t *hmp);
+
 /*
  * HAMMER2 vfs operations.
  */
@@ -139,20 +141,19 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	struct hammer2_mount_info info;
 	hammer2_mount_t *hmp;
 	struct vnode *devvp;
-	struct hammer2_volume_data *vd;
 	struct nlookupdata nd;
-	struct buf *bp;
 	char devstr[MNAMELEN];
 	size_t size;
 	size_t done;
-	char *dev, *label;
+	char *dev;
+	char *label;
 	int ronly = 1;
 	int error;
 
 	hmp = NULL;
-	dev = label = NULL;
+	dev = NULL;
+	label = NULL;
 	devvp = NULL;
-	vd = NULL;
 
 	kprintf("hammer2_mount\n");
 
@@ -177,8 +178,9 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 		dev = devstr;
 		label = strchr(devstr, '@');
 		if (label == NULL ||
-		    ((label + 1) - dev) > done)
+		    ((label + 1) - dev) > done) {
 			return (EINVAL);
+		}
 		*label = '\0';
 		label++;
 		if (*label == '\0')
@@ -232,18 +234,6 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	if (error)
 		return error;
 
-	/* Read the volume header */
-	/* XXX: Read four volhdrs, find one w/ highest TID & CRC */
-	error = bread(devvp, 0, HAMMER2_PBUFSIZE, &bp);
-	vd = (struct hammer2_volume_data *) bp->b_data;
-	if (error ||
-	    (vd->magic != HAMMER2_VOLUME_ID_HBO)) {
-		brelse(bp);
-		vrele(devvp);
-		VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE);
-		return (EINVAL);
-	}
-
 	/*
 	 * Block device opened successfully, finish initializing the
 	 * mount structure.
@@ -259,16 +249,33 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	kmalloc_create(&hmp->inodes, "HAMMER2-inodes");
 	kmalloc_create(&hmp->ipstacks, "HAMMER2-ipstacks");
 	
-	bcopy(bp->b_data, &hmp->voldata, sizeof(struct hammer2_volume_data));
-	brelse(bp);
-	bp = NULL;
-
 	mp->mnt_flag = MNT_LOCAL;
+	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;	/* all entry pts are SMP */
 
 	/*
-	 * Filesystem subroutines are self-synchronized
+	 * Install the volume header
 	 */
-	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
+	error = hammer2_install_volume_header(hmp);
+	if (error) {
+		hammer2_unmount(mp, MNT_FORCE);
+		return error;
+	}
+
+	/*
+	 * required mount structure initializations
+	 */
+	mp->mnt_stat.f_iosize = HAMMER2_PBUFSIZE;
+	mp->mnt_stat.f_bsize = HAMMER2_PBUFSIZE;
+
+	mp->mnt_vstat.f_frsize = HAMMER2_PBUFSIZE;
+	mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
+
+	/*
+	 * Locate the root inode.  The volume header points to the
+	 * super-root directory.
+	 */
+	/* XXX */
+
 
 	/* Setup root inode */
 	hmp->iroot = hammer2_alloci(hmp);
@@ -308,7 +315,7 @@ hammer2_unmount(struct mount *mp, int mntflags)
 {
 	hammer2_mount_t *hmp;
 	int flags;
-	int error;
+	int error = 0;
 	int ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
 	struct vnode *devvp;
 
@@ -322,7 +329,15 @@ hammer2_unmount(struct mount *mp, int mntflags)
 
 	hammer2_mount_exlock(hmp);
 
-	error = vflush(mp, 0, flags);
+	/*
+	 * If mount initialization proceeded far enough we must flush
+	 * its vnodes.
+	 */
+	if (hmp->iroot)
+		error = vflush(mp, 0, flags);
+
+	if (error)
+		return error;
 
 	/*
 	 * Work to do:
@@ -398,21 +413,13 @@ hammer2_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	hammer2_mount_t *hmp;
 
-	kprintf("hammer2_statfs\n");
-
 	hmp = MPTOH2(mp);
 
-	sbp->f_iosize = PAGE_SIZE;
-	sbp->f_bsize = PAGE_SIZE;
+	mp->mnt_stat.f_files = 10;
+	mp->mnt_stat.f_bfree = 10;
+	mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
 
-	sbp->f_blocks = 10;
-	sbp->f_bavail = 10;
-	sbp->f_bfree = 10;
-
-	sbp->f_files = 10;
-	sbp->f_ffree = 10;
-	sbp->f_owner = 0;
-
+	*sbp = mp->mnt_stat;
 	return (0);
 }
 
@@ -420,8 +427,16 @@ static
 int
 hammer2_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 {
-	kprintf("hammer2_statvfs\n");
-	return (EOPNOTSUPP);
+	hammer2_mount_t *hmp;
+
+	hmp = MPTOH2(mp);
+
+	mp->mnt_vstat.f_files = 10;
+	mp->mnt_vstat.f_bfree = 10;
+	mp->mnt_vstat.f_bavail = mp->mnt_stat.f_bfree;
+
+	*sbp = mp->mnt_vstat;
+	return (0);
 }
 
 /*
@@ -479,4 +494,37 @@ hammer2_checkexp(struct mount *mp, struct sockaddr *nam,
 		 int *exflagsp, struct ucred **credanonp)
 {
 	return (0);
+}
+
+/*
+ * Support code for hammer2_mount().  Read, verify, and install the volume
+ * header into the HMP
+ *
+ * XXX read four volhdrs and use the one with the highest TID whos CRC
+ *     matches.
+ *
+ * XXX check iCRCs.
+ */
+static
+int
+hammer2_install_volume_header(hammer2_mount_t *hmp)
+{
+	hammer2_volume_data_t *vd;
+	struct buf *bp = NULL;
+	int error;
+
+	error = bread(hmp->devvp, 0, HAMMER2_PBUFSIZE, &bp);
+	if (error)
+		return error;
+	bcopy(bp->b_data, &hmp->voldata, sizeof(hmp->voldata));
+	brelse(bp);
+	bp = NULL;
+
+	vd = &hmp->voldata;
+	if (vd->magic != HAMMER2_VOLUME_ID_HBO) {
+		kprintf("hammer_mount: volume header magic is wrong\n");
+		return EINVAL;
+	}
+	kprintf("hammer_mount: volume header magic good\n");
+	return 0;
 }

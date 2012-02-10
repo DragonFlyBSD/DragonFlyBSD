@@ -283,3 +283,70 @@ hammer2_freei(hammer2_inode_t *ip)
 	hammer2_inode_unlock_ex(ip);
 	kfree(ip, hmp->inodes);
 }
+
+/*
+ * Borrow HAMMER1's directory hash algorithm #1 with a few modifications.
+ * The filename is split into fields which are hashed separately and then
+ * added together.
+ *
+ * Differences include: bit 63 must be set to 1 for HAMMER2 (HAMMER1 sets
+ * it to 0), this is because bit63=0 is used for hidden hardlinked inodes.
+ * (This means we do not need to do a 0-check/or-with-0x100000000 either).
+ *
+ * Also, the iscsi crc code is used instead of the old crc32 code.
+ */
+hammer2_key_t
+hammer2_dirhash(const unsigned char *name, size_t len)
+{
+	const unsigned char *aname = name;
+	uint32_t crcx;
+	uint64_t key;
+	size_t i;
+	size_t j;
+
+	/*
+	 * Filesystem version 6 or better will create directories
+	 * using the ALG1 dirhash.  This hash breaks the filename
+	 * up into domains separated by special characters and
+	 * hashes each domain independently.
+	 *
+	 * We also do a simple sub-sort using the first character
+	 * of the filename in the top 5-bits.
+	 */
+	key = 0;
+
+	/*
+	 * m32
+	 */
+	crcx = 0;
+	for (i = j = 0; i < len; ++i) {
+		if (aname[i] == '.' ||
+		    aname[i] == '-' ||
+		    aname[i] == '_' ||
+		    aname[i] == '~') {
+			if (i != j)
+				crcx += hammer2_icrc32(aname + j, i - j);
+			j = i + 1;
+		}
+	}
+	if (i != j)
+		crcx += hammer2_icrc32(aname + j, i - j);
+
+	/*
+	 * The directory hash utilizes the top 32 bits of the 64-bit key.
+	 * Bit 63 must be set to 1.
+	 */
+	crcx |= 0x80000000U;
+	key |= (uint64_t)crcx << 32;
+
+	/*
+	 * l16 - crc of entire filename
+	 *
+	 * This crc reduces degenerate hash collision conditions
+	 */
+	crcx = hammer2_icrc32(aname, len);
+	crcx = crcx ^ (crcx << 16);
+	key |= crcx & 0xFFFF0000U;
+
+	return (key);
+}
