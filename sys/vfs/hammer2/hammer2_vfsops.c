@@ -504,6 +504,11 @@ hammer2_checkexp(struct mount *mp, struct sockaddr *nam,
  *     matches.
  *
  * XXX check iCRCs.
+ *
+ * XXX For filesystems w/ less than 4 volhdrs, make sure to not write to
+ *     nonexistant locations.
+ *
+ * XXX Record selected volhdr and ring updates to each of 4 volhdrs
  */
 static
 int
@@ -539,9 +544,11 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 			continue;
 
 		crc = vd->icrc_sects[HAMMER2_VOL_ICRC_SECT0];
-		ccrc = hammer2_icrc32(bp[i]->b_data, HAMMER2_VOLUME_ICRC0_SIZE);
+		ccrc = hammer2_icrc32(bp[i]->b_data + HAMMER2_VOLUME_ICRC0_OFF,
+					HAMMER2_VOLUME_ICRC0_SIZE);
 		if (ccrc != crc) {
 			kprintf("hammer2 volume header %d crc mismatch\n", i);
+			kprintf("%x %x\n", ccrc, crc);
 			continue;
 		}
 
@@ -556,6 +563,7 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 		KKASSERT(hi_idx != -1);
 
 		bcopy(bp[hi_idx]->b_data, &hmp->voldata, sizeof(hmp->voldata));
+		error = 0;
 	} else {
 		error = EINVAL;
 	}
