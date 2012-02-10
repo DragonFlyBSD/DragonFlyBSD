@@ -515,65 +515,65 @@ int
 hammer2_install_volume_header(hammer2_mount_t *hmp)
 {
 	hammer2_volume_data_t *vd;
-	struct buf *bp[HAMMER2_NUM_VOLHDRS];
-	hammer2_tid_t hi_tid;
+	struct buf *bp;
 	hammer2_crc32_t ccrc, crc;
-	int hi_idx;
+	int error_reported;
+	int error;
 	int valid;
 	int i;
-	int error;
 
+	error_reported = 0;
 	error = 0;
 	valid = 0;
-	hi_tid = 0;
-	hi_idx = -1;
-	bzero(bp, sizeof(bp));
+	bp = NULL;
 
+	/*
+	 * There are up to 4 copies of the volume header (syncs iterate
+	 * between them so there is no single master).  We don't trust the
+	 * volu_size field so we don't know precisely how large the filesystem
+	 * is, so depend on the OS to return an error if we go beyond the
+	 * block device's EOF.
+	 */
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++) {
 		error = bread(hmp->devvp, i * HAMMER2_RESERVE_BYTES64, 
-			      HAMMER2_VOLUME_BYTES, &bp[i]);
+			      HAMMER2_VOLUME_BYTES, &bp);
 		if (error) {
-			brelse(bp[i]);
-			bp[i] = NULL;
+			brelse(bp);
+			bp = NULL;
 			continue;
 		}
 
-		vd = (struct hammer2_volume_data *) bp[i]->b_data;
-
+		vd = (struct hammer2_volume_data *)bp->b_data;
 		if (vd->magic != HAMMER2_VOLUME_ID_HBO) 
 			continue;
 
 		crc = vd->icrc_sects[HAMMER2_VOL_ICRC_SECT0];
-		ccrc = hammer2_icrc32(bp[i]->b_data + HAMMER2_VOLUME_ICRC0_OFF,
-					HAMMER2_VOLUME_ICRC0_SIZE);
+		ccrc = hammer2_icrc32(bp->b_data + HAMMER2_VOLUME_ICRC0_OFF,
+				      HAMMER2_VOLUME_ICRC0_SIZE);
 		if (ccrc != crc) {
-			kprintf("hammer2 volume header %d crc mismatch\n", i);
-			kprintf("%x %x\n", ccrc, crc);
+			kprintf("hammer2 volume header crc "
+				"mismatch copy #%d\t%08x %08x",
+				i, ccrc, crc);
+			error_reported = 1;
+			brelse(bp);
+			bp = NULL;
 			continue;
 		}
-
-		valid++;
-
-		if (hi_tid < vd->last_tid) {
-			hi_tid = vd->last_tid;
-			hi_idx = i;
+		if (valid == 0 || hmp->voldata.last_tid < vd->last_tid) {
+			valid = 1;
+			hmp->voldata = *vd;
 		}
+		brelse(bp);
+		bp = NULL;
 	}
 	if (valid) {
-		KKASSERT(hi_idx != -1);
-
-		bcopy(bp[hi_idx]->b_data, &hmp->voldata, sizeof(hmp->voldata));
 		error = 0;
+		if (error_reported)
+			kprintf("hammer2: a valid volume header was found\n");
 	} else {
 		error = EINVAL;
+		kprintf("hammer2: no valid volume headers found!\n");
 	}
-
-	for (i = 0; i < HAMMER2_NUM_VOLHDRS; i++) {
-		if (bp[i])
-			brelse(bp[i]);
-		bp[i] = NULL;
-	}
-
 	return (error);
 }
 
