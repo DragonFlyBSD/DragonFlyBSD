@@ -7,6 +7,7 @@
 #include <sys/namei.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
+#include <sys/mountctl.h>
 
 #include "hammer2.h"
 
@@ -165,6 +166,31 @@ hammer2_strategy(struct vop_strategy_args *ap)
 	return (error);
 }
 
+int 
+hammer2_mountctl(struct vop_mountctl_args *ap)
+{
+	struct mount *mp;
+	struct hammer2_mount *hmp;
+	int rc;
+
+	switch (ap->a_op) {
+	case (MOUNTCTL_SET_EXPORT):
+		mp = ap->a_head.a_ops->head.vv_mount;
+		hmp = MPTOH2(mp);
+
+		if (ap->a_ctllen != sizeof(struct export_args))
+			rc = (EINVAL);
+		else
+			rc = vfs_export(mp, &hmp->hm_export,
+				(const struct export_args *) ap->a_ctl);
+		break;
+	default:
+		rc = vop_stdmountctl(ap);
+		break;
+	}
+	return (rc);
+}
+
 struct vop_ops hammer2_vnode_vops = {
 	.vop_default	= vop_defaultop,
 	.vop_fsync	= hammer2_fsync,
@@ -179,7 +205,7 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_inactive	= hammer2_inactive,
 	.vop_reclaim 	= hammer2_reclaim,
 	.vop_nresolve	= hammer2_nresolve,
-
+	.vop_mountctl	= hammer2_mountctl,
 	.vop_bmap	= hammer2_bmap,
 	.vop_strategy	= hammer2_strategy,
 };

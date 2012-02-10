@@ -192,7 +192,6 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 		}
 	}
 
-	kprintf("hammer2_mount2\n");
 	/*
 	 * New non-root mount
 	 */
@@ -208,38 +207,32 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 		return (error);
 	nlookup_done(&nd);
 
-	kprintf("hammer2_mount3\n");
 	if (!vn_isdisk(devvp, &error)) {
 		vrele(devvp);
 		return (error);
 	}
 
-	kprintf("hammer2_mount4\n");
 	/*
 	 * Common path for new root/non-root mounts;
 	 * devvp is a ref-ed by not locked vnode referring to the fs device
 	 */
 
-	kprintf("hammer2_mount5\n");
 	error = vfs_mountedon(devvp);
 	if (error) {
 		vrele(devvp);
 		return (error);
 	}
 
-	kprintf("hammer2_mount6\n");
 	if (vcount(devvp) > 0) {
 		vrele(devvp);
 		return (EBUSY);
 	}
 
-	kprintf("hammer2_mount7\n");
 	/*
 	 * Open the fs device
 	 */
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	kprintf("hammer2_mount8\n");
 	error = vinvalbuf(devvp, V_SAVE, 0, 0);
 	if (error) {
 		vn_unlock(devvp);
@@ -248,11 +241,10 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	}
 	/* This is correct; however due to an NFS quirk of my setup, FREAD
 	 * is required... */
-
-	kprintf("hammer2_mount9\n");
 	/*
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD | FWRITE, FSCRED, NULL);
 	 */
+
 	error = VOP_OPEN(devvp, FREAD, FSCRED, NULL);
 	vn_unlock(devvp);
 	if (error) {
@@ -267,46 +259,21 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	/* check if device supports BUF_CMD_WRITEALL; */
 #endif
 
-	kprintf("hammer2_mount10\n");
 	hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
-	/*mp->mnt_data = (qaddr_t) hmp;*/
+	mp->mnt_data = (qaddr_t) hmp;
 	hmp->hm_mp = mp;
-	/*hmp->hm_ronly = ronly;*/
-	/*hmp->hm_devvp = devvp;*/
+	hmp->hm_ronly = ronly;
+	hmp->hm_devvp = devvp;
 	lockinit(&hmp->hm_lk, "h2mp", 0, 0);
 	kmalloc_create(&hmp->hm_inodes, "HAMMER2-inodes");
 	kmalloc_create(&hmp->hm_ipstacks, "HAMMER2-ipstacks");
 	
-	kprintf("hammer2_mount11\n");
-
-	int valid = 0;
-	struct buf *bp;
-	struct hammer2_volume_data *vd;
-	do {
-		rc = bread(devvp, 0, HAMMER2_PBUFSIZE, &bp);
-		if (rc != 0) 
-			break;
-		
-		vd = bp->b_data;
-		if (vd->magic != HAMMER2_VOLUME_ID_HBO)
-			break;
-	} while(0);
-	brelse(bp);
-	vd = NULL;
-	if (!valid) {
-		/* XXX: close in the correct mode */
-		VOP_CLOSE(devvp, FREAD);
-		kfree(hmp, M_HAMMER2);
-		return (EINVAL);
-	}
-
+	mp->mnt_flag = MNT_LOCAL;
 
 	/*
 	 * Filesystem subroutines are self-synchronized
 	 */
-	/*mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;*/
-
-	kprintf("hammer2_mount 20\n");
+	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
 
 	/* Setup root inode */
 	hmp->hm_iroot = alloci(hmp);
@@ -314,24 +281,22 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	hmp->hm_iroot->inum = 1;
 
 	/* currently rely on tmpfs routines */
-	/*vfs_getnewfsid(mp);*/
-	/*vfs_add_vnodeops(mp, &hammer2_vnode_vops, &mp->mnt_vn_norm_ops);*/
-	/*vfs_add_vnodeops(mp, &hammer2_spec_vops, &mp->mnt_vn_spec_ops);*/
-	/*vfs_add_vnodeops(mp, &hammer2_fifo_vops, &mp->mnt_vn_fifo_ops);*/
+	vfs_getnewfsid(mp);
+	vfs_add_vnodeops(mp, &hammer2_vnode_vops, &mp->mnt_vn_norm_ops);
+	vfs_add_vnodeops(mp, &hammer2_spec_vops, &mp->mnt_vn_spec_ops);
+	vfs_add_vnodeops(mp, &hammer2_fifo_vops, &mp->mnt_vn_fifo_ops);
 
-	copystr("hammer2", mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
+	copystr(info.volume, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 	bzero(mp->mnt_stat.f_mntonname, sizeof(mp->mnt_stat.f_mntonname));
 	copyinstr(path, mp->mnt_stat.f_mntonname,
 		  sizeof(mp->mnt_stat.f_mntonname) - 1,
 		  &size);
 
-	kprintf("hammer2_mount 21\n");
 	hammer2_statfs(mp, &mp->mnt_stat, cred);
 
 	hammer2_inode_unlock_ex(hmp->hm_iroot);
 
-	kprintf("hammer2_mount 22\n");
 	return 0;
 }
 

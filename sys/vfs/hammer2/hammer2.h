@@ -108,6 +108,8 @@ struct hammer2_mount {
 	int		hm_maxipstacks;
 
 	struct hammer2_volume_data hm_sb;
+
+	struct netexport	hm_export;
 };
 
 #if defined(_KERNEL)
