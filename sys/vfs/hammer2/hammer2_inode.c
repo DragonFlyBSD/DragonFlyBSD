@@ -180,22 +180,18 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
  * Returns a busied but unlocked inode
  */
 hammer2_inode_t *
-hammer2_inode_alloc(hammer2_mount_t *hmp)
+hammer2_inode_alloc(hammer2_mount_t *hmp, void *data)
 {
 	hammer2_inode_t *ip;
 
 	ip = kmalloc(sizeof(hammer2_inode_t), hmp->inodes, M_WAITOK | M_ZERO);
-	if (!ip) {
-		/* XXX */
-	}
 
 	atomic_add_int(&hmp->ninodes, 1);
 	ip->type = 0;
 	ip->hmp = hmp;
 	lockinit(&ip->lk, "h2inode", 0, 0);
 	ip->vp = NULL;
-	ip->chain.refs = 1;
-	ip->chain.busy = 1;
+	ip->data = *(struct hammer2_inode_data *)data;
 
 	return (ip);
 }
@@ -214,6 +210,8 @@ hammer2_inode_free(hammer2_inode_t *ip)
 	KKASSERT(ip->hmp != NULL);
 	KKASSERT(ip->vp == NULL);
 	KKASSERT(ip->chain.refs == 0);
+
+	hammer2_chain_unlink(hmp, &ip->chain);	/* XXX races */
 
 	atomic_add_int(&hmp->ninodes, -1);
 	ip->chain.u.ip = NULL;

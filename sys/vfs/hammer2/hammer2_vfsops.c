@@ -255,6 +255,8 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	mp->mnt_flag = MNT_LOCAL;
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;	/* all entry pts are SMP */
 
+	hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
+
 	/*
 	 * Install the volume header
 	 */
@@ -306,7 +308,7 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	hmp->schain = schain;
 	hmp->rchain = rchain;
 	hmp->iroot = rchain->u.ip;
-	hammer2_inode_ref(hmp->iroot);
+	hammer2_inode_ref(hmp->iroot);	/* additional ref */
 
 	vfs_getnewfsid(mp);
 	vfs_add_vnodeops(mp, &hammer2_vnode_vops, &mp->mnt_vn_norm_ops);
@@ -321,8 +323,6 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 		  &size);
 
 	hammer2_statfs(mp, &mp->mnt_stat, cred);
-
-	hammer2_inode_unlock_ex(hmp->iroot);
 
 	return 0;
 }

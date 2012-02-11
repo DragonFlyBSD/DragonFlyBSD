@@ -85,11 +85,13 @@ struct hammer2_mount;
 struct hammer2_chain {
 	struct hammer2_blockref	bref;
 	struct hammer2_chain *parent;	/* return chain to root */
+	struct hammer2_chain *subs;	/* children (base) */
+	struct hammer2_chain *next;	/* linked list */
 	union {
 		struct hammer2_inode *ip;
 		struct hammer2_indblock *ind;
 	} u;
-	u_int	index;			/* index in parent */
+	int	index;			/* index in parent */
 	u_int	refs;
 	u_int	busy;
 };
@@ -123,8 +125,9 @@ typedef struct hammer2_inode hammer2_inode_t;
  * A hammer2 indirect block
  */
 struct hammer2_indblock {
+	struct buf		*bp;
 	hammer2_chain_t		chain;
-	hammer2_indblock_data_t	data;
+	hammer2_indblock_data_t	*data;
 };
 
 typedef struct hammer2_indblock hammer2_indblock_t;
@@ -201,7 +204,7 @@ hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
  * hammer2_inode.c
  */
 struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
-hammer2_inode_t *hammer2_inode_alloc(hammer2_mount_t *hmp);
+hammer2_inode_t *hammer2_inode_alloc(hammer2_mount_t *hmp, void *data);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
@@ -211,14 +214,24 @@ void hammer2_inode_drop(hammer2_inode_t *ip);
  */
 void hammer2_chain_ref(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+void hammer2_chain_link(hammer2_mount_t *hmp __unused, hammer2_chain_t *parent,
+				    int index, hammer2_chain_t *chain);
+void hammer2_chain_unlink(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+
+hammer2_chain_t *hammer2_chain_get(hammer2_mount_t *hmp,
+				    hammer2_chain_t *parent, int index,
+				    hammer2_blockref_t *bref);
+void hammer2_chain_put(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 
 hammer2_chain_t *hammer2_chain_push(hammer2_mount_t *hmp,
 				    hammer2_chain_t *parent,
 				    hammer2_key_t key);
+
 hammer2_chain_t *hammer2_chain_first(hammer2_mount_t *hmp,
-				     hammer2_chain_t *parent,
-				     hammer2_key_t key,
-				     hammer2_key_t mask);
+				    hammer2_chain_t *parent,
+				    hammer2_key_t key,
+				    hammer2_key_t mask);
+
 hammer2_chain_t *hammer2_chain_next(hammer2_mount_t *hmp,
 				    hammer2_chain_t *current,
 				    hammer2_key_t key,

@@ -224,7 +224,7 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 	uint8_t		type;		/* type of underlying item */
 	uint8_t		methods;	/* check method & compression method */
 	uint8_t		copyid;		/* specify which copy this is */
-	uint8_t		keybits;	/* keymask = ((1ULL << keybits) - 1) */
+	uint8_t		keybits;	/* #of keybits masked off 0=leaf */
 	uint8_t		vradix;		/* virtual data/meta-data size */
 	uint8_t		flags;		/* blockref flags */
 	uint8_t		reserved06;
@@ -260,8 +260,9 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 
 #define HAMMER2_BREF_TYPE_EMPTY		0
 #define HAMMER2_BREF_TYPE_INODE		1
-#define HAMMER2_BREF_TYPE_INDBLOCK	2
+#define HAMMER2_BREF_TYPE_INDIRECT	2
 #define HAMMER2_BREF_TYPE_DATA		3
+#define HAMMER2_BREF_TYPE_VOLUME	255	/* pseudo-type */
 
 #define HAMMER2_ENC_COMPMETHOD(n)	(n)
 #define HAMMER2_ENC_CHECKMETHOD(n)	((n) << 4)
@@ -319,7 +320,7 @@ typedef struct hammer2_blockset hammer2_blockset_t;
  * The media indirect block structure.
  */
 struct hammer2_indblock_data {
-	hammer2_blockref_t blocks[HAMMER2_IND_COUNT];
+	hammer2_blockset_t blocksets[HAMMER2_IND_COUNT / HAMMER2_SET_COUNT];
 };
 
 typedef struct hammer2_indblock_data hammer2_indblock_data_t;
