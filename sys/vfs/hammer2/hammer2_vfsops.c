@@ -315,7 +315,7 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	vfs_add_vnodeops(mp, &hammer2_spec_vops, &mp->mnt_vn_spec_ops);
 	vfs_add_vnodeops(mp, &hammer2_fifo_vops, &mp->mnt_vn_fifo_ops);
 
-	copystr(info.volume, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
+	copyinstr(info.volume, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 	bzero(mp->mnt_stat.f_mntonname, sizeof(mp->mnt_stat.f_mntonname));
 	copyinstr(path, mp->mnt_stat.f_mntonname,
