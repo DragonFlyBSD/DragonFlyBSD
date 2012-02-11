@@ -63,6 +63,14 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 
+	/*
+	 * Degenerate case
+	 */
+	if (ip == NULL) {
+		vrecycle(vp);
+		return (0);
+	}
+
 	return (0);
 }
 
@@ -78,6 +86,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	struct hammer2_inode *ip;
 	struct hammer2_mount *hmp;
 
+	kprintf("hammer2_reclaim\n");
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 	hmp = ip->hmp;
@@ -134,7 +143,7 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_uid = 0;
 	vap->va_gid = 0;
 	vap->va_size = 0;
-	vap->va_blocksize = PAGE_SIZE;
+	vap->va_blocksize = HAMMER2_PBUFSIZE;
 	vap->va_flags = 0;
 
 	hammer2_inode_unlock_sh(ip);

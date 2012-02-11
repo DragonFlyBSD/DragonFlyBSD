@@ -308,6 +308,7 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	hmp->schain = schain;
 	hmp->rchain = rchain;
 	hmp->iroot = rchain->u.ip;
+	kprintf("iroot %p\n", rchain->u.ip);
 	hammer2_inode_ref(hmp->iroot);	/* additional ref */
 
 	vfs_getnewfsid(mp);
@@ -359,6 +360,7 @@ hammer2_unmount(struct mount *mp, int mntflags)
 	 * If mount initialization proceeded far enough we must flush
 	 * its vnodes.
 	 */
+	kprintf("iroot %p\n", hmp->iroot);
 	if (hmp->iroot)
 		error = vflush(mp, 0, flags);
 

@@ -107,19 +107,11 @@ struct hammer2_inode {
 	struct hammer2_mount	*hmp;
 	struct lock		lk;
 	struct vnode		*vp;
-
-	unsigned char		type;
-
 	hammer2_chain_t		chain;
 	hammer2_inode_data_t	data;
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
-
-#define HAMMER2_INODE_TYPE_DIR	0x01
-#define HAMMER2_INODE_TYPE_FILE	0x02
-#define HAMMER2_INODE_TYPE_ROOT	0x10
-#define HAMMER2_INODE_TYPE_MASK	0x07
 
 /*
  * A hammer2 indirect block
@@ -155,6 +147,7 @@ struct hammer2_mount {
 	struct hammer2_inode *iroot;
 
 	hammer2_volume_data_t voldata;
+	hammer2_off_t	freecache[HAMMER2_MAX_RADIX];
 };
 
 typedef struct hammer2_mount hammer2_mount_t;
@@ -236,6 +229,11 @@ hammer2_chain_t *hammer2_chain_next(hammer2_mount_t *hmp,
 				    hammer2_chain_t *current,
 				    hammer2_key_t key,
 				    hammer2_key_t mask);
+
+/*
+ * hammer2_freemap.c
+ */
+hammer2_off_t hammer_freemap_alloc(hammer2_mount_t *hmp, size_t bytes);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

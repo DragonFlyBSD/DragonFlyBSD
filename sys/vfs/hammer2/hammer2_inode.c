@@ -145,21 +145,22 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 		}
 
 		kprintf("igetv new\n");
-		switch (ip->type & HAMMER2_INODE_TYPE_MASK) {
-		case HAMMER2_INODE_TYPE_DIR:
+		switch (ip->data.type) {
+		case HAMMER2_OBJTYPE_DIRECTORY:
 			vp->v_type = VDIR;
 			break;
-		case HAMMER2_INODE_TYPE_FILE:
+		case HAMMER2_OBJTYPE_REGFILE:
 			vp->v_type = VREG;
 			vinitvmio(vp, 0, HAMMER2_LBUFSIZE,
 				  (int)ip->data.size & HAMMER2_LBUFMASK);
 			break;
 		/* XXX FIFO */
 		default:
+			panic("hammer2: unhandled objtype %d", ip->data.type);
 			break;
 		}
 
-		if (ip->type & HAMMER2_INODE_TYPE_ROOT)
+		if (ip == hmp->iroot)
 			vsetflags(vp, VROOT);
 
 		vp->v_data = ip;
@@ -171,6 +172,8 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 	/*
 	 * Return non-NULL vp and *errorp == 0, or NULL vp and *errorp != 0.
 	 */
+	kprintf("igetv vp %p refs %d aux %d\n",
+		vp, vp->v_sysref.refcnt, vp->v_auxrefs);
 	return (vp);
 }
 
@@ -187,7 +190,6 @@ hammer2_inode_alloc(hammer2_mount_t *hmp, void *data)
 	ip = kmalloc(sizeof(hammer2_inode_t), hmp->inodes, M_WAITOK | M_ZERO);
 
 	atomic_add_int(&hmp->ninodes, 1);
-	ip->type = 0;
 	ip->hmp = hmp;
 	lockinit(&ip->lk, "h2inode", 0, 0);
 	ip->vp = NULL;
