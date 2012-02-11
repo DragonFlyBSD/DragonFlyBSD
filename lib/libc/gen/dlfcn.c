@@ -122,14 +122,12 @@ build_phdr_info(void)
 	struct dl_phdr_info phdr_info;
 	Elf_Addr *sp;
 	Elf_Auxinfo *aux, *auxp;
-	size_t phent;
 	unsigned int i;
 
 	sp = (Elf_Addr *) environ;
 	while (*sp++ != 0)
 	        ;
 	aux = (Elf_Auxinfo *) sp;
-	phent = 0;
 	memset (&phdr_info, 0, sizeof(phdr_info));
 	for (auxp = aux; auxp->a_type != AT_NULL; auxp++) {
 		switch (auxp->a_type) {
@@ -143,10 +141,6 @@ build_phdr_info(void)
 
 		case AT_PHDR:
 			phdr_info.dlpi_phdr = (const Elf_Phdr *) auxp->a_un.a_ptr;
-			break;
-
-		case AT_PHENT:
-			phent = auxp->a_un.a_val;
 			break;
 
 		case AT_PHNUM:
