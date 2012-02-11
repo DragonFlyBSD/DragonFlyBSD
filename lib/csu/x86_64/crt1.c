@@ -48,6 +48,13 @@ extern void _init(void);
 extern int main(int, char **, char **);
 extern void _start(char **, void (*)(void));
 
+extern void (*__preinit_array_start []) (int, char **, char **) __dso_hidden;
+extern void (*__preinit_array_end   []) (int, char **, char **) __dso_hidden;
+extern void (*__init_array_start    []) (int, char **, char **) __dso_hidden;
+extern void (*__init_array_end      []) (int, char **, char **) __dso_hidden;
+extern void (*__fini_array_start    []) (void) __dso_hidden;
+extern void (*__fini_array_end      []) (void) __dso_hidden;
+
 #ifdef GCRT
 extern void _mcleanup(void);
 extern void monstartup(void *, void *);
@@ -66,6 +73,7 @@ _start(char **ap, void (*cleanup)(void))
 	char **argv;
 	char **env;
 	const char *s;
+	size_t n, array_size;
 
 	argc = *(long *)(void *)ap;
 	argv = ap + 1;
@@ -93,11 +101,33 @@ _start(char **ap, void (*cleanup)(void))
 #ifdef GCRT
 	atexit(_mcleanup);
 #endif
+	/*
+	 * The fini_array needs to be executed in the opposite order of its
+	 * definition.  However, atexit works like a LIFO stack, so by
+	 * pushing functions in array order, they will be executed in the
+	 * reverse order as required.
+	 */
 	atexit(_fini);
+	array_size = __fini_array_end - __fini_array_start;
+	for (n = 0; n < array_size; n++)
+		atexit(*__fini_array_start [n]);
 #ifdef GCRT
 	monstartup(&eprol, &etext);
 #endif
+	if (&_DYNAMIC == NULL) {
+		/*
+		 * For static executables preinit happens right before init.
+		 * Dynamic executable preinit arrays are handled by rtld
+		 * before any DSOs are initialized.
+		 */
+		array_size = __preinit_array_end - __preinit_array_start;
+		for (n = 0; n < array_size; n++)
+			(*__preinit_array_start [n])(argc, argv, env);
+	}
 	_init();
+	array_size = __init_array_end - __init_array_start;
+	for (n = 0; n < array_size; n++)
+		(*__init_array_start [n])(argc, argv, env);
 	exit( main(argc, argv, env) );
 }
 

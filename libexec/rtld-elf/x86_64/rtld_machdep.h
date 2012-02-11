@@ -60,6 +60,9 @@ reloc_jmpslot(Elf_Addr *where, Elf_Addr target,
 #define call_initfini_pointer(obj, target) \
 	(((InitFunc)(target))())
 
+#define call_array_pointer(target, argc, argv, env) \
+	(((InitArrayFunc)(target))(argc, argv, env))
+
 #define round(size, align) \
 	(((size) + (align) - 1) & ~((align) - 1))
 #define calculate_first_tls_offset(size, align) \

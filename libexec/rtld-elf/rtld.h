@@ -72,6 +72,7 @@ typedef STAILQ_HEAD(Struct_Objlist, Struct_Objlist_Entry) Objlist;
 
 /* Types of init and fini functions */
 typedef void (*InitFunc)(void);
+typedef void (*InitArrayFunc)(int, char **, char **);
 
 /* Lists of shared object dependencies */
 typedef struct Struct_Needed_Entry {
@@ -195,6 +196,12 @@ typedef struct Struct_Obj_Entry {
 
     Elf_Addr init;		/* Initialization function to call */
     Elf_Addr fini;		/* Termination function to call */
+    Elf_Addr preinit_array;	/* Pre-initialization array of functions */
+    Elf_Addr init_array;	/* Initialization array of functions */
+    Elf_Addr fini_array;	/* Termination array of functions */
+    int preinit_array_num;	/* Number of entries in preinit_array */
+    int init_array_num; 	/* Number of entries in init_array */
+    int fini_array_num; 	/* Number of entries in fini_array */
 
     bool mainprog : 1;		/* True if this is the main program */
     bool rtld : 1;		/* True if this is the dynamic linker */
