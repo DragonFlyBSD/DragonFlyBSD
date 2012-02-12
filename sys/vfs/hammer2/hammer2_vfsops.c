@@ -46,24 +46,24 @@
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
 
-static int	hammer2_init(struct vfsconf *conf);
-static int	hammer2_mount(struct mount *mp, char *path, caddr_t data,
+static int	hammer2_vfs_init(struct vfsconf *conf);
+static int	hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			      struct ucred *cred);
 static int	hammer2_remount(struct mount *, char *, struct vnode *,
 				struct ucred *);
-static int	hammer2_unmount(struct mount *mp, int mntflags);
-static int	hammer2_root(struct mount *mp, struct vnode **vpp);
-static int	hammer2_statfs(struct mount *mp, struct statfs *sbp,
+static int	hammer2_vfs_unmount(struct mount *mp, int mntflags);
+static int	hammer2_vfs_root(struct mount *mp, struct vnode **vpp);
+static int	hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp,
 			       struct ucred *cred);
-static int	hammer2_statvfs(struct mount *mp, struct statvfs *sbp,
+static int	hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp,
 				struct ucred *cred);
-static int	hammer2_sync(struct mount *mp, int waitfor);
-static int	hammer2_vget(struct mount *mp, struct vnode *dvp,
+static int	hammer2_vfs_sync(struct mount *mp, int waitfor);
+static int	hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
 			     ino_t ino, struct vnode **vpp);
-static int	hammer2_fhtovp(struct mount *mp, struct vnode *rootvp,
+static int	hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 			       struct fid *fhp, struct vnode **vpp);
-static int	hammer2_vptofh(struct vnode *vp, struct fid *fhp);
-static int	hammer2_checkexp(struct mount *mp, struct sockaddr *nam,
+static int	hammer2_vfs_vptofh(struct vnode *vp, struct fid *fhp);
+static int	hammer2_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 				 int *exflagsp, struct ucred **credanonp);
 
 static int	hammer2_install_volume_header(hammer2_mount_t *hmp);
@@ -72,17 +72,17 @@ static int	hammer2_install_volume_header(hammer2_mount_t *hmp);
  * HAMMER2 vfs operations.
  */
 static struct vfsops hammer2_vfsops = {
-	.vfs_init	= hammer2_init,
-	.vfs_sync	= hammer2_sync,
-	.vfs_mount	= hammer2_mount,
-	.vfs_unmount	= hammer2_unmount,
-	.vfs_root 	= hammer2_root,
-	.vfs_statfs	= hammer2_statfs,
-	.vfs_statvfs	= hammer2_statvfs,
-	.vfs_vget	= hammer2_vget,
-	.vfs_vptofh	= hammer2_vptofh,
-	.vfs_fhtovp	= hammer2_fhtovp,
-	.vfs_checkexp	= hammer2_checkexp
+	.vfs_init	= hammer2_vfs_init,
+	.vfs_sync	= hammer2_vfs_sync,
+	.vfs_mount	= hammer2_vfs_mount,
+	.vfs_unmount	= hammer2_vfs_unmount,
+	.vfs_root 	= hammer2_vfs_root,
+	.vfs_statfs	= hammer2_vfs_statfs,
+	.vfs_statvfs	= hammer2_vfs_statvfs,
+	.vfs_vget	= hammer2_vfs_vget,
+	.vfs_vptofh	= hammer2_vfs_vptofh,
+	.vfs_fhtovp	= hammer2_vfs_fhtovp,
+	.vfs_checkexp	= hammer2_vfs_checkexp
 };
 
 MALLOC_DEFINE(M_HAMMER2, "HAMMER2-mount", "");
@@ -92,7 +92,7 @@ MODULE_VERSION(hammer2, 1);
 
 static
 int
-hammer2_init(struct vfsconf *conf)
+hammer2_vfs_init(struct vfsconf *conf)
 {
 	int error;
 
@@ -135,7 +135,7 @@ hammer2_init(struct vfsconf *conf)
  */
 static
 int
-hammer2_mount(struct mount *mp, char *path, caddr_t data,
+hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	      struct ucred *cred)
 {
 	struct hammer2_mount_info info;
@@ -269,7 +269,7 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	 */
 	error = hammer2_install_volume_header(hmp);
 	if (error) {
-		hammer2_unmount(mp, MNT_FORCE);
+		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return error;
 	}
 
@@ -298,7 +298,7 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	hammer2_chain_put(hmp, parent);
 	if (schain == NULL) {
 		kprintf("hammer2_mount: invalid super-root\n");
-		hammer2_unmount(mp, MNT_FORCE);
+		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EINVAL;
 	}
 
@@ -340,7 +340,7 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 		  sizeof(mp->mnt_stat.f_mntonname) - 1,
 		  &size);
 
-	hammer2_statfs(mp, &mp->mnt_stat, cred);
+	hammer2_vfs_statfs(mp, &mp->mnt_stat, cred);
 
 	return 0;
 }
@@ -355,7 +355,7 @@ hammer2_remount(struct mount *mp, char *path, struct vnode *devvp,
 
 static
 int
-hammer2_unmount(struct mount *mp, int mntflags)
+hammer2_vfs_unmount(struct mount *mp, int mntflags)
 {
 	hammer2_mount_t *hmp;
 	int flags;
@@ -424,7 +424,7 @@ hammer2_unmount(struct mount *mp, int mntflags)
 
 static
 int
-hammer2_vget(struct mount *mp, struct vnode *dvp,
+hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
 	     ino_t ino, struct vnode **vpp)
 {
 	kprintf("hammer2_vget\n");
@@ -433,7 +433,7 @@ hammer2_vget(struct mount *mp, struct vnode *dvp,
 
 static
 int
-hammer2_root(struct mount *mp, struct vnode **vpp)
+hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 {
 	hammer2_mount_t *hmp;
 	int error;
@@ -459,7 +459,7 @@ hammer2_root(struct mount *mp, struct vnode **vpp)
 
 static
 int
-hammer2_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
+hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	hammer2_mount_t *hmp;
 
@@ -475,7 +475,7 @@ hammer2_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 
 static
 int
-hammer2_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
+hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 {
 	hammer2_mount_t *hmp;
 
@@ -507,7 +507,7 @@ hammer2_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
  */
 static
 int
-hammer2_sync(struct mount *mp, int waitfor)
+hammer2_vfs_sync(struct mount *mp, int waitfor)
 {
 #if 0
 	hammer2_mount_t *hmp;
@@ -525,14 +525,14 @@ hammer2_sync(struct mount *mp, int waitfor)
 
 static
 int
-hammer2_vptofh(struct vnode *vp, struct fid *fhp)
+hammer2_vfs_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	return (0);
 }
 
 static
 int
-hammer2_fhtovp(struct mount *mp, struct vnode *rootvp,
+hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	       struct fid *fhp, struct vnode **vpp)
 {
 	return (0);
@@ -540,7 +540,7 @@ hammer2_fhtovp(struct mount *mp, struct vnode *rootvp,
 
 static
 int
-hammer2_checkexp(struct mount *mp, struct sockaddr *nam,
+hammer2_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 		 int *exflagsp, struct ucred **credanonp)
 {
 	return (0);
