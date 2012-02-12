@@ -51,6 +51,11 @@
 #define OBJFORMAT_PATH_DEFAULT ""
 #endif
 
+/* Macro for array size */
+#ifndef NELEM
+#define NELEM(ary)      (sizeof(ary) / sizeof((ary)[0]))
+#endif
+
 enum cmd_type { OBJFORMAT, COMPILER, BINUTILS, LINKER };
 
 struct command {
