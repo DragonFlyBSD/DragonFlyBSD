@@ -1,1 +1,1 @@
-BINDIR?=	/usr/libexec/${BUVERSION}/elf
+BINDIR?=	/usr/libexec/binutils221/elf
