@@ -59,31 +59,31 @@ struct command {
 };
 
 static struct command commands[] = {
-	{"CC",		COMPILER},
-	{"c++",		COMPILER},
-	{"cc",		COMPILER},
-	{"cpp",		COMPILER},
-	{"g++",		COMPILER},
-	{"gcc",		COMPILER},
-	{"gcov",	COMPILER},
-	{"ld",		LINKER},
-	{"addr2line",	BINUTILS},
-	{"ar",		BINUTILS},
-	{"as",		BINUTILS},
-	{"c++filt",	BINUTILS},
-	{"elfedit",	BINUTILS},
-	{"gprof",       BINUTILS},
-	{"nm",		BINUTILS},
-	{"objcopy",	BINUTILS},
-	{"objdump",	BINUTILS},
-	{"ranlib",	BINUTILS},
-	{"readelf",	BINUTILS},
-	{"size",	BINUTILS},
-	{"strings",	BINUTILS},
-	{"strip",	BINUTILS},
-	{"incremental-dump", BINUTILS},
-	{"objformat",	OBJFORMAT},
-	{"",		-1}
+	{"CC",			COMPILER},
+	{"c++",			COMPILER},
+	{"cc",			COMPILER},
+	{"cpp",			COMPILER},
+	{"g++",			COMPILER},
+	{"gcc",			COMPILER},
+	{"gcov",		COMPILER},
+	{"ld",			LINKER},
+	{"addr2line",		BINUTILS},
+	{"ar",			BINUTILS},
+	{"as",			BINUTILS},
+	{"c++filt",		BINUTILS},
+	{"elfedit",		BINUTILS},
+	{"gprof",       	BINUTILS},
+	{"nm",			BINUTILS},
+	{"objcopy",		BINUTILS},
+	{"objdump",		BINUTILS},
+	{"ranlib",		BINUTILS},
+	{"readelf",		BINUTILS},
+	{"size",		BINUTILS},
+	{"strings",		BINUTILS},
+	{"strip",		BINUTILS},
+	{"incremental-dump",	BINUTILS},
+	{"objformat",		OBJFORMAT},
+	{"",			-1}
 };
 
 int
@@ -121,24 +121,28 @@ main(int argc, char **argv)
 			break;
 	}
 
-	if ((ccver = getenv("CCVER")) == NULL || ccver[0] == 0)
-		ccver = CCVER_DEFAULT;
-	if ((buver = getenv("BINUTILSVER")) == NULL)
-		buver = BINUTILSVER_DEFAULT;
-
 	if (cmds) {
 		switch (cmds->type) {
 		case COMPILER:
+			ccver = getenv("CCVER");
+			if ((ccver == NULL) || ccver[0] == 0)
+			    ccver = CCVER_DEFAULT;
 			base_path = "/usr/libexec";
 			use_objformat = 0;
 			env_value = ccver;
 			break;
 		case BINUTILS:
+			buver = getenv("BINUTILSVER");
+			if (buver == NULL)
+			    buver = BINUTILSVER_DEFAULT;
 			base_path = "/usr/libexec";
 			use_objformat = 1;
 			env_value = buver;
 			break;
 		case LINKER:
+			buver = getenv("BINUTILSVER");
+			if (buver == NULL)
+			    buver = BINUTILSVER_DEFAULT;
 			ldver = getenv("LINKERVER");
 			if ((ldver != NULL) && (strcmp(ldver, ld_gold) == 0))
 			    ldcmd = ld_gold;
