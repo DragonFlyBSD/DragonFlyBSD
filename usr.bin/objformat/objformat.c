@@ -44,11 +44,14 @@
 #define	BINUTILSVER_DEFAULT "binutils222"
 #endif
 
+#define LINKER_DEFAULT "ld.bfd"
+#define LINKER_GOLD    "ld.gold"
+
 #ifndef OBJFORMAT_PATH_DEFAULT
 #define OBJFORMAT_PATH_DEFAULT ""
 #endif
 
-enum cmd_type { OBJFORMAT, COMPILER, BINUTILS };
+enum cmd_type { OBJFORMAT, COMPILER, BINUTILS, LINKER };
 
 struct command {
 	const char *cmd;
@@ -63,13 +66,13 @@ static struct command commands[] = {
 	{"g++",		COMPILER},
 	{"gcc",		COMPILER},
 	{"gcov",	COMPILER},
+	{"ld",		LINKER},
 	{"addr2line",	BINUTILS},
 	{"ar",		BINUTILS},
 	{"as",		BINUTILS},
 	{"c++filt",	BINUTILS},
 	{"elfedit",	BINUTILS},
 	{"gprof",       BINUTILS},
-	{"ld",		BINUTILS},
 	{"nm",		BINUTILS},
 	{"objcopy",	BINUTILS},
 	{"objdump",	BINUTILS},
@@ -86,13 +89,17 @@ static struct command commands[] = {
 int
 main(int argc, char **argv)
 {
+	char ld_orig[] = LINKER_DEFAULT;
+	char ld_gold[] = LINKER_GOLD;
 	struct command *cmds;
 	char objformat[32];
 	char *path, *chunk;
 	char *cmd, *newcmd = NULL;
+	char *ldcmd = ld_orig;
 	const char *objformat_path;
 	const char *ccver;
 	const char *buver;
+	const char *ldver;
 	const char *env_value = NULL;
 	const char *base_path = NULL;
 	int use_objformat = 0;
@@ -116,9 +123,8 @@ main(int argc, char **argv)
 
 	if ((ccver = getenv("CCVER")) == NULL || ccver[0] == 0)
 		ccver = CCVER_DEFAULT;
-	if ((buver = getenv("BINUTILSVER")) == NULL) {
+	if ((buver = getenv("BINUTILSVER")) == NULL)
 		buver = BINUTILSVER_DEFAULT;
-	}
 
 	if (cmds) {
 		switch (cmds->type) {
@@ -131,6 +137,15 @@ main(int argc, char **argv)
 			base_path = "/usr/libexec";
 			use_objformat = 1;
 			env_value = buver;
+			break;
+		case LINKER:
+			ldver = getenv("LINKERVER");
+			if ((ldver != NULL) && (strcmp(ldver, ld_gold) == 0))
+			    ldcmd = ld_gold;
+			base_path = "/usr/libexec";
+			use_objformat = 1;
+			env_value = buver;
+			cmd = ldcmd;
 			break;
 		case OBJFORMAT:
 			break;
