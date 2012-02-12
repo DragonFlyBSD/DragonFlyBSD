@@ -1,3 +1,4 @@
+.include "../Makefile.inc1"
 .include "../Makefile.bu"
 
 .PATH: ${SRCDIR}/gprof
@@ -27,14 +28,14 @@ SRCS=   basic_blocks.c	\
 	flat_bl.c	\
 	bsd_callg_bl.c	\
 	fsf_callg_bl.c
-MAN=	gprof222.1
-MLINKS+=gprof222.1 gprof.1
+MFILE=	gprof${MANPAGEVER}.1
+MAN=	${MFILE}
 
 CFLAGS=	-DHAVE_CONFIG_H
 CFLAGS+=-I${.CURDIR} -I${.CURDIR}/../libbfd -I${.OBJDIR}/../libbfd
 CFLAGS+=-I${SRCDIR}/include -I${SRCDIR}/bfd
 
-gprof222.1: ${.CURDIR}/gprof.1
+${MFILE}: ${.CURDIR}/gprof.1
 	cp ${.ALLSRC} ${.TARGET}
 
 flat_bl.c:
@@ -52,9 +53,13 @@ fsf_callg_bl.c:
 	FUNCTION=`(echo fsf_callg_bl|sed -e 's,.*/,,g' -e 's/_bl//')`_blurb \
 	FILE=fsf_callg_bl.m ${SRCDIR}/gprof/fsf_callg_bl.m
 
-CLEANFILES+=	gprof222.1     \
+CLEANFILES+=	${MFILE}       \
 		flat_bl.c      \
 		bsd_callg_bl.c \
 		fsf_callg_bl.c
+
+.if defined(IS_PRIMARY)
+MLINKS+=	${MFILE} gprof.1
+.endif
 
 .include <bsd.prog.mk>

@@ -1,4 +1,5 @@
 .include "${.CURDIR}/../../Makefile.inc0"
+.include "${.CURDIR}/../../Makefile.inc1"
 
 RELTOP:= ../${RELTOP}
 .PATH: ${SRCDIR}/gas ${SRCDIR}/gas/config ${.CURDIR}/..
@@ -6,7 +7,8 @@ RELTOP:= ../${RELTOP}
 TARGET_OS?=	dragonfly
 
 PROG=	as
-MAN=	as221.1
+MFILE=	as${MANPAGEVER}.1
+MAN=	${MFILE}
 SRCS+=	app.c			\
 	as.c			\
 	atof-generic.c		\
@@ -54,7 +56,11 @@ NOSHARED?=	yes
 DPADD+=	${RELTOP}/libopcodes/libopcodes.a
 LDADD+=	${RELTOP}/libopcodes/libopcodes.a
 
-as221.1: ${SRCDIR}/gas/doc/as.1
+${MFILE}: ${SRCDIR}/gas/doc/as.1
 	cp ${.ALLSRC} ${.TARGET}
 
-CLEANFILES+=	as221.1
+CLEANFILES+=	${MFILE}
+
+.if defined(IS_PRIMARY)
+MLINKS+=	${MFILE} as.1
+.endif

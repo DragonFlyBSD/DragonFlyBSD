@@ -1,16 +1,22 @@
+.include "../Makefile.inc1"
 .include "../Makefile.bu"
 
 .PATH: ${SRCDIR}/binutils ${SRCDIR}/binutils/doc
 
 PROG=	ranlib
 SRCS=	ar.c is-ranlib.c
-MAN=	ranlib221.1
+MFILE=	ranlib${MANPAGEVER}.1
+MAN=	${MFILE}
 
 NOSHARED?= yes
 
-ranlib221.1: ${SRCDIR}/binutils/doc/ranlib.1
+${MFILE}: ${SRCDIR}/binutils/doc/ranlib.1
 	cp ${.ALLSRC} ${.TARGET}
 
-CLEANFILES+=	ranlib221.1
+CLEANFILES+=	${MFILE}
+
+.if defined(IS_PRIMARY)
+MLINKS+=	${MFILE} ranlib.1
+.endif
 
 .include <bsd.prog.mk>
