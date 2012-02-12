@@ -1,11 +1,12 @@
+.include "../Makefile.inc1"
 .include "../Makefile.bu"
 
 .PATH: ${SRCDIR}/binutils ${SRCDIR}/binutils/doc
 
 PROG=	objdump
 SRCS=	elfcomm.c objdump.c
-MAN=	objdump222.1
-MLINKS+=objdump222.1 objdump.1
+MFILE=	objdump${MANPAGEVER}.1
+MAN=	${MFILE}
 WARNS=	1
 
 CFLAGS+= -DOBJDUMP_PRIVATE_VECTORS=""
@@ -13,9 +14,13 @@ CFLAGS+= -DOBJDUMP_PRIVATE_VECTORS=""
 DPADD+=	${.OBJDIR}/../libopcodes/libopcodes.a
 LDADD+=	${.OBJDIR}/../libopcodes/libopcodes.a
 
-objdump222.1: ${SRCDIR}/binutils/doc/objdump.1
+${MFILE}: ${SRCDIR}/binutils/doc/objdump.1
 	cp ${.ALLSRC} ${.TARGET}
 
-CLEANFILES+=	objdump222.1
+CLEANFILES+=	${MFILE}
+
+.if defined(IS_PRIMARY)
+MLINKS+=	${MFILE} objdump.1
+.endif
 
 .include <bsd.prog.mk>

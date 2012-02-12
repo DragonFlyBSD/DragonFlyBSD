@@ -1,12 +1,13 @@
 ELF_SCR_EXT=	x xbn xc xd xdc xdw xn xr xs xsc xsw xu xw
 
 .include "../Makefile.inc0"
+.include "../Makefile.inc1"
 
 .PATH: ${SRCDIR}/ld
 
 PROG=	ld.bfd
-MAN=	ld222.1
-MLINKS+=ld222.1 ld.1
+MFILE=	ld${MANPAGEVER}.1
+MAN=	${MFILE}
 LIBEXEC_BINUTILS= ${BINDIR}/..
 SCRIPTDIR= ${LIBEXEC_BINUTILS}/ldscripts
 SRCS+=	ldgram.y	\
@@ -36,8 +37,6 @@ NOSHARED?= yes
 CLEANDIRS+=	ldscripts tmpdir
 CLEANFILES+=	ldemul-list.h stringify.sed
 
-LINKS= ${BINDIR}/ld.bfd ${BINDIR}/ld
-
 EMXFR=
 EMLST=
 .for _e in ${EMS}
@@ -52,10 +51,14 @@ ldemul-list.h:
 stringify.sed:
 	${LN} -sf ${SRCDIR}/ld/emultempl/astring.sed ${.TARGET}
 
-ld222.1: ${SRCDIR}/ld/ld.1
+${MFILE}: ${SRCDIR}/ld/ld.1
 	cp ${.ALLSRC} ${.TARGET}
 
-CLEANFILES+=	ld222.1
+CLEANFILES+=	${MFILE}
+
+.if defined(IS_PRIMARY)
+MLINKS+=	${MFILE} ld.1
+.endif
 
 afterinstall: install-ldscripts
 
