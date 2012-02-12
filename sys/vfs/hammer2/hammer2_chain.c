@@ -32,6 +32,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+/*
+ * This subsystem handles direct and indirect block searches, recursions,
+ * creation, and deletion.  Chains of blockrefs are tracked and modifications
+ * are flag for propagation... eventually all the way back to the volume
+ * header.
+ */
+
 #include <sys/cdefs.h>
 #include <sys/cdefs.h>
 #include <sys/param.h>
@@ -42,9 +49,94 @@
 
 #include "hammer2.h"
 
+SPLAY_GENERATE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
+
+/*
+ * Compare function for chain splay tree
+ */
+int
+hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
+{
+	return(chain2->index - chain1->index);
+}
+
+/*
+ * Allocate a new disconnected chain element representing the specified
+ * bref.
+ *
+ * This essentially allocates a system memory structure representing one
+ * of the media structure types, including inodes.
+ */
+hammer2_chain_t *
+hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_blockref_t *bref)
+{
+	hammer2_chain_t *chain;
+	hammer2_inode_t *ip;
+	hammer2_indblock_t *np;
+	hammer2_data_t *dp;
+
+	/*
+	 * Construct the appropriate system structure.
+	 */
+	switch(bref->type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		ip = kmalloc(sizeof(*ip), hmp->minode, M_WAITOK | M_ZERO);
+		chain = &ip->chain;
+		chain->u.ip = ip;
+		lockinit(&chain->lk, "inode", 0, LK_CANRECURSE);
+		ip->hmp = hmp;
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		np = kmalloc(sizeof(*np), hmp->mchain, M_WAITOK | M_ZERO);
+		chain = &np->chain;
+		chain->u.np = np;
+		lockinit(&chain->lk, "iblk", 0, LK_CANRECURSE);
+		break;
+	case HAMMER2_BREF_TYPE_DATA:
+		dp = kmalloc(sizeof(*dp), hmp->mchain, M_WAITOK | M_ZERO);
+		chain = &dp->chain;
+		chain->u.dp = dp;
+		lockinit(&chain->lk, "dblk", 0, LK_CANRECURSE);
+		break;
+	case HAMMER2_BREF_TYPE_VOLUME:
+		chain = NULL;
+		panic("hammer2_chain_get: volume type illegal for op");
+	default:
+		chain = NULL;
+		panic("hammer2_chain_get: unrecognized blockref type: %d",
+		      bref->type);
+	}
+	chain->bref = *bref;
+	chain->refs = 1;
+
+	return (chain);
+}
+
+/*
+ * Free a disconnected chain element
+ */
+void
+hammer2_chain_free(hammer2_mount_t *hmp, hammer2_chain_t *chain)
+{
+	void *mem;
+
+	KKASSERT(chain->bp == NULL);
+	KKASSERT(chain->data == NULL);
+	KKASSERT(chain->bref.type != HAMMER2_BREF_TYPE_INODE ||
+		 chain->u.ip->vp == NULL);
+
+	if ((mem = chain->u.mem) != NULL) {
+		chain->u.mem = NULL;
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
+			kfree(mem, hmp->minode);
+		else
+			kfree(mem, hmp->mchain);
+	}
+}
+
 /*
  * Add a reference to a chain element (for shared access).  The chain
- * element must already have at least 1 ref.
+ * element must already have at least 1 ref controlled by the caller.
  */
 void
 hammer2_chain_ref(hammer2_mount_t *hmp, hammer2_chain_t *chain)
@@ -55,342 +147,699 @@ hammer2_chain_ref(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 
 /*
  * Drop the callers reference to the chain element.  If the ref count
- * reaches zero the chain element and any related structure (typically an
- * inode or indirect block) will be freed.
+ * reaches zero the chain element and its related structure (typically an
+ * inode or indirect block) will be freed and the parent will be
+ * recursively dropped.
  *
- * Keep in mind that hammer2_chain structures are typically directly embedded
- * in major hammer2 memory structures.
+ * Modified elements hold an additional reference so it should not be
+ * possible for the count on a modified element to drop to 0.
+ *
+ * The chain element must NOT be locked by the caller.
+ *
+ * The parent might or might not be locked by the caller but if so it
+ * will also be referenced so we shouldn't recurse upward.
  */
 void
 hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
-	if (atomic_fetchadd_int(&chain->refs, -1) == 1) {
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
-			KKASSERT(chain == &chain->u.ip->chain);
-			hammer2_inode_free(chain->u.ip);
-		}
-	}
-}
+	hammer2_chain_t *parent;
+	u_int refs;
 
-void
-hammer2_chain_link(hammer2_mount_t *hmp __unused, hammer2_chain_t *parent,
-		   int index, hammer2_chain_t *chain)
-{
-	chain->parent = parent;
-	chain->index = index;
-	chain->refs = 1;
-	chain->next = parent->subs;
-	parent->subs = chain;
-}
-
-/*
- * Remove the chain linkage to its parent.  The chain must not have any
- * children.
- */
-void
-hammer2_chain_unlink(hammer2_mount_t *hmp __unused, hammer2_chain_t *chain)
-{
-	hammer2_chain_t **scanp;
-	hammer2_chain_t *scan;
-
-	KKASSERT(chain->subs == NULL);
-	if (chain->parent) {
-		scanp = &chain->parent->subs;
-		while ((scan = *scanp) != NULL) {
-			if (scan == chain)
+	while (chain) {
+		refs = chain->refs;
+		cpu_ccfence();
+		if (refs == 1) {
+			KKASSERT(chain != &hmp->vchain);
+			parent = chain->parent;
+			lockmgr(&parent->lk, LK_EXCLUSIVE);
+			if (atomic_cmpset_int(&chain->refs, 1, 0)) {
+				/*
+				 * Succeeded, recurse and drop parent
+				 */
+				SPLAY_REMOVE(hammer2_chain_splay,
+					     &parent->shead, chain);
+				chain->parent = NULL;
+				lockmgr(&parent->lk, LK_RELEASE);
+				hammer2_chain_free(hmp, chain);
+				chain = parent;
+			}
+		} else {
+			if (atomic_cmpset_int(&chain->refs, refs, refs - 1)) {
+				/*
+				 * Succeeded, count did not reach zero so
+				 * cut out of the loop.
+				 */
 				break;
+			}
 		}
-		KKASSERT(scan == chain);
-		*scanp = scan->next;
-		chain->parent = NULL;
 	}
 }
 
 /*
- * Find or allocate a chain element representing a blockref.
+ * Lock a chain element, acquiring its data with I/O if necessary.
  *
- * The blockref at (parent, index) representing (bref) is located or
- * created and returned.  I/O is issued to read the contents if necessary.
- *
- * XXX use RB-Tree instead of linked list
+ * Returns 0 on success or an error code if the data could not be acquired.
+ * The chain element is locked either way.
  */
-hammer2_chain_t *
-hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
-		  int index, hammer2_blockref_t *bref)
+int
+hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
-	struct buf *bp;
-	void *data;
-	hammer2_chain_t *chain;
-	hammer2_inode_t *ip;
-	hammer2_off_t dblock;
-	int off;
+	hammer2_blockref_t *bref;
+	hammer2_off_t off_hi;
+	size_t off_lo;
+	size_t bytes;
 	int error;
+	void *data;
 
 	/*
-	 * Look for a cached chain element
+	 * Lock the element.  Under certain conditions this might end up
+	 * being a recursive lock.
 	 */
-	for (chain = parent->subs; chain; chain = chain->next) {
-		if (chain->index == index) {
-			atomic_add_int(&chain->refs, 1);
-			return (chain);
-		}
+	KKASSERT(chain->refs > 0);
+	lockmgr(&chain->lk, LK_EXCLUSIVE);
+
+	/*
+	 * The volume header is a special case
+	 */
+	if (chain->bref.type == HAMMER2_BREF_TYPE_VOLUME)
+		return(0);
+
+	/*
+	 * If data is present the element may have been modified.  Assert
+	 * the case and return the chain.
+	 *
+	 * data will point to the inode-embedded copy of hammer2_inode_data
+	 * for inodes, whether modified or not.
+	 */
+	if (chain->data) {
+		KKASSERT(chain->bp == NULL);
+		return (0);
 	}
 
 	/*
-	 * Issue I/O to read the underlying object
+	 * Issue I/O.  If an error occurs we return the error but still
+	 * leave the chain locked.
 	 */
-	dblock = bref->data_off & HAMMER2_OFF_MASK_HI;
-	off = (int)bref->data_off & HAMMER2_OFF_MASK_LO;
-	KKASSERT(dblock != 0);
+	KKASSERT(chain->bp == NULL);
+	bref = &chain->bref;
 
-	error = bread(hmp->devvp, dblock, HAMMER2_PBUFSIZE, &bp);
+	off_hi = bref->data_off & HAMMER2_OFF_MASK_HI;
+	off_lo = (size_t)bref->data_off & HAMMER2_OFF_MASK_LO;
+	bytes = HAMMER2_PBUFSIZE;
+	KKASSERT(off_hi != 0);
+	KKASSERT(chain->bp == NULL);
+	error = bread(hmp->devvp, off_hi, bytes, &chain->bp);
+
 	if (error) {
 		kprintf("hammer2_chain_get: I/O error %016jx: %d\n",
-			(intmax_t)dblock, error);
-		brelse(bp);
-		return(NULL);
+			(intmax_t)off_hi, error);
+		brelse(chain->bp);
+		chain->bp = NULL;
+		return (error);
 	}
-	data = (char *)bp->b_data + off;
 
 	/*
-	 * Construct the appropriate system structure.
+	 * Extract the data.  Inodes have local embedded copies.  We can
+	 * retain the bp for all other types.
+	 *
+	 * WARNING: Generally speaking we can only retain bp's that represent
+	 *	    full blocks to avoid potential deadlocks or attempts to
+	 *	    recursively acquire the same bp.
 	 */
-	switch(bref->type) {
+	switch (bref->type) {
 	case HAMMER2_BREF_TYPE_INODE:
-		ip = hammer2_inode_alloc(hmp, data);
-		chain = &ip->chain;
-		chain->bref = *bref;
-		chain->u.ip = ip;
-		hammer2_chain_link(hmp, parent, index, chain);
-		kprintf("found inode %jd\n", (intmax_t)ip->data.inum);
-		/* hammer2_chain_unbusy */
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		kprintf("hammer2_chain_get: indirect (not impl yet)\n");
-		break;
-	case HAMMER2_BREF_TYPE_DATA:
-		panic("hammer2_chain_get: data type illegal for op");
-		break;
-	case HAMMER2_BREF_TYPE_VOLUME:
-		panic("hammer2_chain_get: volume type illegal for op");
+		/*
+		 * Copy data from bp to embedded buffer.
+		 */
+		bcopy((char *)chain->bp->b_data + off_lo,
+		      &chain->u.ip->ip_data,
+		      HAMMER2_INODE_BYTES);
+		chain->data = (void *)&chain->u.ip->ip_data;
+		brelse(chain->bp);
+		chain->bp = NULL;
 		break;
 	default:
-		panic("hammer2_chain_get: unrecognized blockref type: %d",
-		      bref->type);
+		/*
+		 * Leave bp intact
+		 */
+		data = (char *)chain->bp->b_data + off_lo;
+		chain->data = data;
+		break;
 	}
-	brelse(bp);
+	return (0);
+}
+
+/*
+ * Convert a locked chain that was retrieved read-only to read-write.
+ */
+void
+hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
+{
+	hammer2_chain_t *parent;
+	size_t off_lo;
+	size_t bytes;
+	void *data;
+
+	/*
+	 * Nothing to do if it is already RW
+	 */
+	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
+		KKASSERT(chain->bp == NULL);
+		KKASSERT(chain->data != NULL);
+		return;
+	}
+
+	/*
+	 * Create an allocated copy of the data if it is not embedded.
+	 */
+	if (chain->data == NULL) {
+		/*
+		 * Allocate in-memory data and copy from the read-only bp
+		 */
+		KKASSERT(chain->bp != NULL);
+		off_lo = (size_t)chain->bref.data_off & HAMMER2_OFF_MASK_LO;
+		data = (char *)chain->bp->b_data + off_lo;
+
+		bytes = 1 << (int)(chain->bref.data_off &
+				   HAMMER2_OFF_MASK_RADIX);
+		chain->data = kmalloc(bytes, hmp->mchain, M_WAITOK | M_ZERO);
+		bcopy(data, chain->data, bytes);
+		brelse(chain->bp);
+		chain->bp = NULL;
+
+		/*
+		 * Assert correctness to prevent system memory corruption.
+		 */
+		switch(chain->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
+			KKASSERT(bytes == sizeof(hammer2_inode_data_t));
+			break;
+		case HAMMER2_BREF_TYPE_INDIRECT:
+			KKASSERT(bytes == sizeof(hammer2_indblock_data_t));
+			break;
+		default:
+			/* do nothing */
+			break;
+		}
+	}
+
+	/*
+	 * Mark modified
+	 */
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+	parent = chain->parent;
+	while (parent && (parent->flags & HAMMER2_CHAIN_SUBMODIFIED) == 0) {
+		atomic_set_int(&parent->flags, HAMMER2_CHAIN_SUBMODIFIED);
+		parent = parent->parent;
+	}
+}
+
+/*
+ * Unlock a chain element without dropping its reference count.
+ * (see hammer2_chain_put() to do both).
+ *
+ * Any read-only data reference (bp present) is cleaned out.  If the
+ * chain was modified the writable copy of the data sticks around.
+ */
+void
+hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
+{
+	if (chain->bp) {
+		chain->data = NULL;
+		brelse(chain->bp);
+		chain->bp = NULL;
+	}
+	lockmgr(&chain->lk, LK_RELEASE);
+}
+
+/*
+ * Return a locked chain structure with all associated data acquired.
+ *
+ * If this is a read-only request the data may wind up pointing into a
+ * buffer cache buffer.  If read-write a kmalloc()'d copy of the data
+ * will be made and the buffer released, and the chain will be marked
+ * modified.
+ *
+ * Caller must lock the parent on call, the returned child will be locked.
+ */
+hammer2_chain_t *
+hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent, int index)
+{
+	hammer2_blockref_t *bref;
+	hammer2_chain_t *chain;
+	hammer2_chain_t dummy;
+
+	/*
+	 * First see if we have a (possibly modified) chain element cached
+	 * for this (parent, index).  Acquire the data if necessary.
+	 *
+	 * If chain->data is non-NULL the chain should already be marked
+	 * modified.
+	 */
+	dummy.index = index;
+	chain = SPLAY_FIND(hammer2_chain_splay, &parent->shead, &dummy);
+	if (chain) {
+		hammer2_chain_ref(hmp, chain);
+		hammer2_chain_lock(hmp, chain);
+		return(chain);
+	}
+
+	/*
+	 * Otherwise lookup the bref and issue I/O
+	 */
+	switch(parent->bref.type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		KKASSERT(index >= 0 && index < HAMMER2_SET_COUNT);
+		bref = &parent->data->ipdata.u.blockset.blockref[index];
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		KKASSERT(index >= 0 && index < HAMMER2_IND_COUNT);
+		bref = &parent->data->npdata.blockref[index];
+		break;
+	case HAMMER2_BREF_TYPE_VOLUME:
+		KKASSERT(index >= 0 && index < HAMMER2_SET_COUNT);
+		bref = &hmp->voldata.sroot_blockset.blockref[index];
+		break;
+	default:
+		bref = NULL;
+		panic("hammer2_chain_get: unrecognized blockref type: %d",
+		      parent->bref.type);
+	}
+	chain = hammer2_chain_alloc(hmp, bref);
+	lockmgr(&chain->lk, LK_EXCLUSIVE);
+
+	/*
+	 * Link the chain into its parent.  Caller is expected to hold an
+	 * exclusive lock on the parent.
+	 */
+	chain->parent = parent;
+	chain->index = index;
+	if (SPLAY_INSERT(hammer2_chain_splay, &parent->shead, chain))
+		panic("hammer2_chain_link: collision");
+	KKASSERT(parent->refs > 1);
+	atomic_add_int(&parent->refs, 1);
+
+	/*
+	 * Our new chain structure has already been referenced and locked
+	 * but the lock code handles the I/O so call it to resolve the data.
+	 * Then release one of our two exclusive locks.
+	 */
+	hammer2_chain_lock(hmp, chain);
+	lockmgr(&chain->lk, LK_RELEASE);
+	/* still locked */
 
 	return (chain);
 }
 
+/*
+ * Unlock and dereference a chain after use.  It is possible for this to
+ * recurse up the chain.
+ */
 void
 hammer2_chain_put(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
+	hammer2_chain_unlock(hmp, chain);
 	hammer2_chain_drop(hmp, chain);
 }
 
 /*
- * Locate the exact key relative to the parent chain.
+ * Locate the first masked key relative to the parent chain in (*parentp).
+ * The mask indicates which bits must match and should be set to -1 if an
+ * exact match is desired.
+ *
+ * (*parentp) must be exclusively locked and referenced and can be an inode
+ * or an existing indirect block within the inode.
+ *
+ * On return (*parentp) will be modified to point at the deepest parent chain
+ * element encountered during the search, as a helper for an insertion or
+ * deletion.   The new (*parentp) will be locked and referenced and the old
+ * will be unlocked and dereferenced (no change if they are both the same).
+ *
+ * The matching chain will be returned exclusively locked and referenced.
+ *
+ * NULL is returned if no match was found, but (*parentp) will still
+ * potentially be adjusted.
+ *
+ * This function will also recurse up the chain if the key is not within the
+ * current parent's range.  (*parentp) can never be set to NULL.  An iteration
+ * can simply allow (*parentp) to float inside the loop.
  */
 hammer2_chain_t *
-hammer2_chain_push(hammer2_mount_t *hmp, hammer2_chain_t *parent,
-		   hammer2_key_t key)
+hammer2_chain_lookup(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
+		     hammer2_key_t key, hammer2_key_t mask)
 {
+	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
+	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
-	hammer2_blockset_t *bset;
+	hammer2_key_t pmask;
 	int count = 0;
-	int n;
 	int i;
 
-	chain = NULL;
-	bset = NULL;
+	key &= mask;
 
 	/*
-	 * Locate the blockset(s) to search.  Currently we do a fully
-	 * associative search across all blocksets instead of seeking to
-	 * a blockset and doing a fully associative search inside one set.
+	 * Recurse (*parentp) upward if necessary if the key is outside the
+	 * range of the current indirect block.
+	 */
+	parent = *parentp;
+	while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
+		pmask = ~(((hammer2_key_t)1 << parent->bref.keybits) - 1);
+		if (((parent->bref.key ^ key) & pmask & mask) == 0)
+			break;
+		hammer2_chain_unlock(hmp, parent);
+		parent = parent->parent;
+		hammer2_chain_ref(hmp, parent);		/* ref new parent */
+		hammer2_chain_lock(hmp, parent);	/* lock new parent */
+		hammer2_chain_drop(hmp, *parentp);	/* drop old parent */
+		*parentp = parent;			/* new parent */
+	}
+
+again:
+	/*
+	 * Locate the blockref array.  Currently we do a fully associative
+	 * search through the array.
 	 */
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
-		bset = &parent->u.ip->data.u.blockset;
-		count = 1;
+		base = &parent->data->ipdata.u.blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		bset = &parent->u.ind->data->blocksets[0];
-		count = HAMMER2_IND_COUNT / HAMMER2_SET_COUNT;
-		break;
-	case HAMMER2_BREF_TYPE_DATA:
+		base = &parent->data->npdata.blockref[0];
+		count = HAMMER2_IND_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
-		bset = &hmp->voldata.sroot_blockset;
-		count = 1;
+		base = &hmp->voldata.sroot_blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
 		break;
 	default:
 		panic("hammer2_chain_push: unrecognized blockref type: %d",
 		      parent->bref.type);
+		base = NULL;	/* safety */
+		count = 0;	/* safety */
 	}
-
-	for (n = 0; n < count; ++n) {
-		bref = NULL;
-		for (i = 0; i < HAMMER2_SET_COUNT; ++i) {
-			bref = &bset->blockref[i];
-			if (bref->key == key &&
-			    bref->keybits == 0 &&
-			    bref->type != 0) {
-				break;
-			}
-		}
-		if (i != HAMMER2_SET_COUNT) {
-			chain = hammer2_chain_get(hmp, parent,
-						  n * HAMMER2_SET_COUNT + i,
-						  bref);
-			break;
-		}
-		++bset;
-	}
-	return (chain);
-}
-
-/*
- * Initiate a ranged search, locating the first element matching (key & ~mask).
- * That is, the passed mask represents the bits we wish to ignore.
- */
-hammer2_chain_t *
-hammer2_chain_first(hammer2_mount_t *hmp, hammer2_chain_t *parent,
-		    hammer2_key_t key, hammer2_key_t mask)
-{
-	hammer2_chain_t *chain;
-	hammer2_blockref_t *bref;
-	hammer2_blockset_t *bset;
-	int count = 0;
-	int n;
-	int i;
-
-	chain = NULL;
-	bset = NULL;
 
 	/*
-	 * Locate the blockset(s) to search.  Currently we do a fully
-	 * associative search across all blocksets instead of seeking to
-	 * a blockset and doing a fully associative search inside one set.
+	 * Look for the key.  If we are unable to find a match and an exact
+	 * match was requested we return NULL.  If a range was requested we
+	 * run hammer2_chain_next() to iterate.
 	 */
-	switch(parent->bref.type) {
-	case HAMMER2_BREF_TYPE_INODE:
-		bset = &parent->u.ip->data.u.blockset;
-		count = 1;
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		bset = &parent->u.ind->data->blocksets[0];
-		count = HAMMER2_IND_COUNT / HAMMER2_SET_COUNT;
-		break;
-	case HAMMER2_BREF_TYPE_DATA:
-		break;
-	case HAMMER2_BREF_TYPE_VOLUME:
-		bset = &hmp->voldata.sroot_blockset;
-		count = 1;
-		break;
-	default:
-		panic("hammer2_chain_first: unrecognized blockref type: %d",
-		      parent->bref.type);
-	}
-	kprintf("first key %016jx %016jx\n", (intmax_t)key, (intmax_t)mask);
-
-	for (n = 0; n < count; ++n) {
-		bref = NULL;
-		for (i = 0; i < HAMMER2_SET_COUNT; ++i) {
-			bref = &bset->blockref[i];
-			kprintf("test %016jx\n", bref->key);
-			if ((bref->key & ~((1ULL << bref->keybits) - 1) & ~mask)
-			    == (key & ~mask) &&
-			    bref->type != 0) {
-				break;
-			}
-		}
-		if (i != HAMMER2_SET_COUNT) {
-			chain = hammer2_chain_get(hmp, parent,
-						  n * HAMMER2_SET_COUNT + i,
-						  bref);
+	bref = NULL;
+	for (i = 0; i < count; ++i) {
+		bref = &base[i];
+		pmask = ~(((hammer2_key_t)1 << bref->keybits) - 1);
+		if (((bref->key ^ key) & pmask & mask) == 0 && bref->type != 0)
 			break;
-		}
-		++bset;
 	}
+	if (i == count) {
+		if (mask == (hammer2_key_t)-1)
+			return (NULL);
+		return (hammer2_chain_next(hmp, parentp, NULL, key, mask));
+	}
+
+	/*
+	 * Acquire the new chain element.  If the chain element is an
+	 * indirect block we must search recursively.
+	 */
+	chain = hammer2_chain_get(hmp, parent, i);
+	if (chain == NULL)
+		return (NULL);
+
+	/*
+	 * If the chain element is an indirect block it becomes the new
+	 * parent and we loop on it.
+	 */
+	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
+		hammer2_chain_put(hmp, parent);
+		*parentp = parent = chain;
+		goto again;
+	}
+
+	/*
+	 * All done, return chain
+	 */
 	return (chain);
 }
 
 /*
- * Locate the next element matching (key & ~mask) occuring after the current
- * element.
+ * After having issued a lookup we can iterate all matching keys.
+ *
+ * If chain is non-NULL we continue the iteration from just after it's index.
+ *
+ * If chain is NULL we assume the parent was exhausted and continue the
+ * iteration at the next parent.
  */
 hammer2_chain_t *
-hammer2_chain_next(hammer2_mount_t *hmp, hammer2_chain_t *current,
+hammer2_chain_next(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
+		   hammer2_chain_t *chain,
 		   hammer2_key_t key, hammer2_key_t mask)
 {
 	hammer2_chain_t *parent;
-	hammer2_chain_t *chain;
+	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
-	hammer2_blockset_t *bset;
-	int count = 0;
-	int n;
+	hammer2_key_t pmask;
 	int i;
+	int count;
 
-	chain = NULL;
-	bset = NULL;
+	parent = *parentp;
 
+again:
 	/*
-	 * Locate the blockset(s) to search.  Currently we do a fully
-	 * associative search across all blocksets instead of seeking to
-	 * a blockset and doing a fully associative search inside one set.
+	 * Calculate the next index and recalculate the parent if necessary.
 	 */
-	parent = current->parent;
+	if (chain) {
+		/*
+		 * Continue iteration within current parent
+		 */
+		i = chain->index + 1;
+		hammer2_chain_put(hmp, chain);
+		chain = NULL;
+	} else if (parent->bref.type != HAMMER2_BREF_TYPE_INDIRECT) {
+		/*
+		 * We reached the end of the iteration.
+		 */
+		return (NULL);
+	} else {
+		/*
+		 * Continue iteration with next parent
+		 */
+		if (parent->bref.type != HAMMER2_BREF_TYPE_INDIRECT)
+			return (NULL);
+		i = parent->index + 1;
+		hammer2_chain_unlock(hmp, parent);
+		parent = parent->parent;
+		hammer2_chain_ref(hmp, parent);		/* ref new parent */
+		hammer2_chain_lock(hmp, parent);	/* lock new parent */
+		hammer2_chain_drop(hmp, *parentp);	/* drop old parent */
+		*parentp = parent;			/* new parent */
+	}
 
+again2:
+	/*
+	 * Locate the blockref array.  Currently we do a fully associative
+	 * search through the array.
+	 */
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
-		bset = &parent->u.ip->data.u.blockset;
-		count = 1;
+		base = &parent->data->ipdata.u.blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		bset = &parent->u.ind->data->blocksets[0];
-		count = HAMMER2_IND_COUNT / HAMMER2_SET_COUNT;
-		break;
-	case HAMMER2_BREF_TYPE_DATA:
+		base = &parent->data->npdata.blockref[0];
+		count = HAMMER2_IND_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
-		bset = &hmp->voldata.sroot_blockset;
-		count = 1;
+		base = &hmp->voldata.sroot_blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
 		break;
 	default:
-		panic("hammer2_chain_next: unrecognized blockref type: %d",
+		panic("hammer2_chain_push: unrecognized blockref type: %d",
 		      parent->bref.type);
+		base = NULL;	/* safety */
+		count = 0;	/* safety */
+		break;
 	}
+	KKASSERT(i <= count);
 
-	kprintf("next key %016jx %016jx\n", (intmax_t)key, (intmax_t)mask);
-
-	n = current->index / HAMMER2_SET_COUNT;
-	i = current->index % HAMMER2_SET_COUNT;
-	bset += n;
-
-	while (n < count) {
-		bref = NULL;
-		while (i < HAMMER2_SET_COUNT) {
-			bref = &bset->blockref[i];
-			kprintf("test %016jx\n", bref->key);
-			if ((bref->key & ~((1ULL << bref->keybits) - 1) & ~mask)
-			    == (key & ~mask) &&
-			    bref->type != 0) {
-				break;
-			}
-			++i;
-		}
-		if (i != HAMMER2_SET_COUNT) {
-			chain = hammer2_chain_get(hmp, parent,
-						  n * HAMMER2_SET_COUNT + i,
-						  bref);
+	/*
+	 * Look for the key.  If we are unable to find a match and an exact
+	 * match was requested we return NULL.  If a range was requested we
+	 * run hammer2_chain_next() to iterate.
+	 */
+	bref = NULL;
+	while (i < count) {
+		bref = &base[i];
+		pmask = ~(((hammer2_key_t)1 << bref->keybits) - 1);
+		if (((bref->key ^ key) & pmask & mask) == 0 && bref->type != 0)
 			break;
-		}
-		++bset;
-		++n;
-		i = 0;
+		++i;
 	}
+
+	/*
+	 * If we couldn't find a match recurse up a parent to continue the
+	 * search.
+	 */
+	if (i == count)
+		goto again;
+
+	/*
+	 * Acquire the new chain element.  If the chain element is an
+	 * indirect block we must search recursively.
+	 */
+	chain = hammer2_chain_get(hmp, parent, i);
+	if (chain == NULL)
+		return (NULL);
+
+	/*
+	 * If the chain element is an indirect block it becomes the new
+	 * parent and we loop on it.
+	 */
+	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
+		hammer2_chain_put(hmp, parent);
+		*parentp = parent = chain;
+		i = 0;
+		goto again2;
+	}
+
+	/*
+	 * All done, return chain
+	 */
 	return (chain);
+}
+
+/*
+ * Create and return a new hammer2 system memory structure of the specified
+ * key, type and size and insert it under (parent).  (parent) is typically
+ * acquired as a side effect of issuing a prior lookup.  parent must be locked
+ * and held.
+ *
+ * Non-indirect types will automatically allocate indirect blocks as required
+ * if the new item does not fit in the current (parent).
+ *
+ * Indirect types will move a portion of the existing blockref array in
+ * (parent) into the new indirect type and then use one of the free slots
+ * to emplace the new indirect type.
+ *
+ * A new locked, referenced chain element is returned of the specified type.
+ * This element will also be marked as modified and contain a kmalloc()'d
+ * pre-zero'd data area that is ready for initialization.
+ */
+hammer2_chain_t *
+hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
+		     hammer2_key_t key, int keybits, int type, size_t bytes)
+{
+	hammer2_blockref_t dummy;
+	hammer2_blockref_t *base;
+	hammer2_blockref_t *bref;
+	hammer2_chain_t *chain;
+	int count;
+	int i;
+
+	/*
+	 * First allocate media space and construct the dummy bref, then
+	 * allocate the in-memory chain structure.
+	 */
+	bzero(&dummy, sizeof(dummy));
+	dummy.type = type;
+	dummy.key = key;
+	dummy.keybits = keybits;
+	dummy.data_off = hammer2_freemap_alloc(hmp, bytes);
+	chain = hammer2_chain_alloc(hmp, &dummy);
+
+	/*
+	 * Recalculate bytes to reflect the actual media block allocation,
+	 * then allocate the local memory copy.  This is a new structure
+	 * so no I/O is performed.
+	 */
+	bytes = (hammer2_off_t)1 <<
+		(int)(chain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
+	switch(type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		KKASSERT(bytes == HAMMER2_INODE_BYTES);
+		chain->data = (void *)&chain->u.ip->ip_data;
+		break;
+	default:
+		chain->data = kmalloc(bytes, hmp->mchain, M_WAITOK | M_ZERO);
+		break;
+	}
+	chain->flags |= HAMMER2_CHAIN_INITIAL;
+
+	/*
+	 * Indicate that the parent is being modified before we dive
+	 * the parent's media data (since this will relocate the media
+	 * data pointer).
+	 */
+	hammer2_chain_modify(hmp, parent);
+
+	/*
+	 * Locate a free blockref in the parent's array
+	 */
+	switch(parent->bref.type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		base = &parent->data->ipdata.u.blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		base = &parent->data->npdata.blockref[0];
+		count = HAMMER2_IND_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_VOLUME:
+		base = &hmp->voldata.sroot_blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
+		break;
+	default:
+		panic("hammer2_chain_push: unrecognized blockref type: %d",
+		      parent->bref.type);
+		count = 0;
+		break;
+	}
+
+	bref = NULL;
+	for (i = 0; i < count; ++i) {
+		bref = &base[i];
+		if (bref->type == 0)
+			break;
+	}
+
+	/*
+	 * If no free blockref count be found, fail us for now
+	 */
+	if (i == count) {
+		hammer2_chain_free(hmp, chain);
+		return (NULL);
+	}
+
+	/*
+	 * Link the chain into its parent and load the blockref slot in
+	 * the parent with a pointer to the data allocation.
+	 */
+	chain->parent = parent;
+	chain->index = i;
+	if (SPLAY_INSERT(hammer2_chain_splay, &parent->shead, chain))
+		panic("hammer2_chain_link: collision");
+	KKASSERT(parent->refs > 1);
+	atomic_add_int(&parent->refs, 1);
+	base[i] = chain->bref;
+
+	return (chain);
+}
+
+/*
+ * Physically delete the specified chain element.  Note that inodes with
+ * open descriptors should not be deleted (as with other filesystems) until
+ * the last open descriptor is closed.
+ *
+ * This routine will remove the chain element from its parent and potentially
+ * also recurse upward and delete indirect blocks which become empty as a
+ * side effect.
+ *
+ * The caller must pass a pointer to the chain's parent, also locked and
+ * referenced.  (*parentp) will be modified in a manner similar to a lookup
+ * or iteration when indirect blocks are also deleted as a side effect.
+ */
+void
+hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
+		     hammer2_chain_t *chain)
+{
 }

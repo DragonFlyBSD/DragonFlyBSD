@@ -63,41 +63,41 @@
 void
 hammer2_inode_lock_sh(hammer2_inode_t *ip)
 {
-	lockmgr(&ip->lk, LK_SHARED);
+	lockmgr(&ip->chain.lk, LK_SHARED);
 }
 
 void
 hammer2_inode_lock_up(hammer2_inode_t *ip)
 {
-	lockmgr(&ip->lk, LK_EXCLUSIVE);
+	lockmgr(&ip->chain.lk, LK_EXCLUSIVE);
 	++ip->chain.busy;
-	lockmgr(&ip->lk, LK_DOWNGRADE);
+	lockmgr(&ip->chain.lk, LK_DOWNGRADE);
 }
 
 void
 hammer2_inode_lock_ex(hammer2_inode_t *ip)
 {
-	lockmgr(&ip->lk, LK_EXCLUSIVE);
+	lockmgr(&ip->chain.lk, LK_EXCLUSIVE);
 }
 
 void
 hammer2_inode_unlock_ex(hammer2_inode_t *ip)
 {
-	lockmgr(&ip->lk, LK_RELEASE);
+	lockmgr(&ip->chain.lk, LK_RELEASE);
 }
 
 void
 hammer2_inode_unlock_up(hammer2_inode_t *ip)
 {
-	lockmgr(&ip->lk, LK_UPGRADE);
+	lockmgr(&ip->chain.lk, LK_UPGRADE);
 	--ip->chain.busy;
-	lockmgr(&ip->lk, LK_RELEASE);
+	lockmgr(&ip->chain.lk, LK_RELEASE);
 }
 
 void
 hammer2_inode_unlock_sh(hammer2_inode_t *ip)
 {
-	lockmgr(&ip->lk, LK_RELEASE);
+	lockmgr(&ip->chain.lk, LK_RELEASE);
 }
 
 /*
@@ -107,19 +107,19 @@ hammer2_inode_unlock_sh(hammer2_inode_t *ip)
 void
 hammer2_mount_exlock(hammer2_mount_t *hmp)
 {
-	lockmgr(&hmp->lk, LK_EXCLUSIVE);
+	lockmgr(&hmp->vchain.lk, LK_EXCLUSIVE);
 }
 
 void
 hammer2_mount_shlock(hammer2_mount_t *hmp)
 {
-	lockmgr(&hmp->lk, LK_SHARED);
+	lockmgr(&hmp->vchain.lk, LK_SHARED);
 }
 
 void
 hammer2_mount_unlock(hammer2_mount_t *hmp)
 {
-	lockmgr(&hmp->lk, LK_RELEASE);
+	lockmgr(&hmp->vchain.lk, LK_RELEASE);
 }
 
 /*

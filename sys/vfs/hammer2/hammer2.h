@@ -66,6 +66,7 @@
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
 
+struct hammer2_chain;
 struct hammer2_inode;
 struct hammer2_mount;
 
@@ -81,34 +82,80 @@ struct hammer2_mount;
  * It is always possible to track a chain element all the way back to the
  * root by following the (parent) links.  (index) is a type-dependent index
  * in the parent indicating where in the parent the chain element resides.
+ *
+ * When a blockref is added or deleted the related chain element is marked
+ * modified and all of its parents are marked SUBMODIFIED (the parent
+ * recursion can stop once we hit a node that is already marked SUBMODIFIED).
+ * A deleted chain element must remain intact until synchronized against
+ * its parent.
+ *
+ * The blockref at (parent, index) is not adjusted until the modified chain
+ * element is flushed and unmarked.  Until then the child's blockref may
+ * not match the blockref at (parent, index).
  */
+SPLAY_HEAD(hammer2_chain_splay, hammer2_chain);
+
 struct hammer2_chain {
 	struct hammer2_blockref	bref;
 	struct hammer2_chain *parent;	/* return chain to root */
-	struct hammer2_chain *subs;	/* children (base) */
-	struct hammer2_chain *next;	/* linked list */
+	struct hammer2_chain_splay shead;
+	SPLAY_ENTRY(hammer2_chain) snode;
 	union {
 		struct hammer2_inode *ip;
-		struct hammer2_indblock *ind;
+		struct hammer2_indblock *np;
+		struct hammer2_data *dp;
+		void *mem;
 	} u;
-	int	index;			/* index in parent */
-	u_int	refs;
-	u_int	busy;
+
+	struct buf	*bp;		/* buffer cache (ro) */
+	hammer2_media_data_t *data;	/* modified copy of data (rw) */
+
+	struct lock	lk;		/* lockmgr lock */
+	int		index;		/* index in parent */
+	u_int		refs;
+	u_int		busy;		/* soft-busy */
+	u_int		flags;
 };
 
 typedef struct hammer2_chain hammer2_chain_t;
 
+int hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2);
+SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
+
+#define HAMMER2_CHAIN_MODIFIED		0x00000001	/* this elm modified */
+#define HAMMER2_CHAIN_SUBMODIFIED	0x00000002	/* 1+ subs modified */
+#define HAMMER2_CHAIN_DELETED		0x00000004
+#define HAMMER2_CHAIN_INITIAL		0x00000008	/* initial write */
+
+/*
+ * HAMMER2 IN-MEMORY CACHE OF MEDIA STRUCTURES
+ *
+ * There is an in-memory representation of all on-media data structure.
+ *
+ * When accessed read-only the data will be mapped to the related buffer
+ * cache buffer.
+ *
+ * When accessed read-write (marked modified) a kmalloc()'d copy of the
+ * is created which can then be modified.  The copy is destroyed when a
+ * filesystem block is allocated to replace it.
+ *
+ * Active inodes (those with vnodes attached) will maintain the kmalloc()'d
+ * copy for both the read-only and the read-write case.  The combination of
+ * (bp) and (data) determines whether (data) was allocated or not.
+ *
+ * The in-memory representation may remain cached (for example in order to
+ * placemark clustering locks) even after the related data has been
+ * detached.
+ */
+
 /*
  * A hammer2 inode.
- *
- * NOTE: An inode's ref count shares chain.refs.
  */
 struct hammer2_inode {
 	struct hammer2_mount	*hmp;
-	struct lock		lk;
 	struct vnode		*vp;
 	hammer2_chain_t		chain;
-	hammer2_inode_data_t	data;
+	struct hammer2_inode_data ip_data;
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
@@ -117,12 +164,23 @@ typedef struct hammer2_inode hammer2_inode_t;
  * A hammer2 indirect block
  */
 struct hammer2_indblock {
-	struct buf		*bp;
 	hammer2_chain_t		chain;
-	hammer2_indblock_data_t	*data;
 };
 
 typedef struct hammer2_indblock hammer2_indblock_t;
+
+#define np_data		chain.data->npdata
+
+/*
+ * A hammer2 data block
+ */
+struct hammer2_data {
+	hammer2_chain_t		chain;
+};
+
+#define dp_data		chain.data->buf
+
+typedef struct hammer2_data hammer2_data_t;
 
 /*
  * Governing mount structure for filesystem (aka vp->v_mount)
@@ -130,15 +188,14 @@ typedef struct hammer2_indblock hammer2_indblock_t;
 struct hammer2_mount {
 	struct mount	*mp;		/* kernel mount */
 	struct vnode	*devvp;		/* device vnode */
-	struct lock	lk;
 	struct netexport export;	/* nfs export */
 	int		ronly;		/* read-only mount */
 
-	struct malloc_type *inodes;
+	struct malloc_type *minode;
 	int 		ninodes;
 	int 		maxinodes;
 
-	struct malloc_type *ipstacks;
+	struct malloc_type *mchain;
 	int		nipstacks;
 	int		maxipstacks;
 	hammer2_chain_t vchain;		/* anchor chain */
@@ -205,35 +262,36 @@ void hammer2_inode_drop(hammer2_inode_t *ip);
 /*
  * hammer2_chain.c
  */
+hammer2_chain_t *hammer2_chain_alloc(hammer2_mount_t *hmp,
+				hammer2_blockref_t *bref);
+void hammer2_chain_free(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-void hammer2_chain_link(hammer2_mount_t *hmp __unused, hammer2_chain_t *parent,
-				    int index, hammer2_chain_t *chain);
-void hammer2_chain_unlink(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-
+int hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+void hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+void hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_get(hammer2_mount_t *hmp,
-				    hammer2_chain_t *parent, int index,
-				    hammer2_blockref_t *bref);
+				hammer2_chain_t *parent, int index);
 void hammer2_chain_put(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-
-hammer2_chain_t *hammer2_chain_push(hammer2_mount_t *hmp,
-				    hammer2_chain_t *parent,
-				    hammer2_key_t key);
-
-hammer2_chain_t *hammer2_chain_first(hammer2_mount_t *hmp,
-				    hammer2_chain_t *parent,
-				    hammer2_key_t key,
-				    hammer2_key_t mask);
-
+hammer2_chain_t *hammer2_chain_lookup(hammer2_mount_t *hmp,
+				hammer2_chain_t **parentp, hammer2_key_t key,
+				hammer2_key_t mask);
 hammer2_chain_t *hammer2_chain_next(hammer2_mount_t *hmp,
-				    hammer2_chain_t *current,
-				    hammer2_key_t key,
-				    hammer2_key_t mask);
+				hammer2_chain_t **parentp,
+				hammer2_chain_t *chain,
+				hammer2_key_t key, hammer2_key_t mask);
+hammer2_chain_t *hammer2_chain_create(hammer2_mount_t *hmp,
+				hammer2_chain_t *parent,
+				hammer2_key_t key, int keybits,
+				int type, size_t bytes);
+void hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
+				hammer2_chain_t *chain);
+
 
 /*
  * hammer2_freemap.c
  */
-hammer2_off_t hammer_freemap_alloc(hammer2_mount_t *hmp, size_t bytes);
+hammer2_off_t hammer2_freemap_alloc(hammer2_mount_t *hmp, size_t bytes);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

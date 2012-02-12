@@ -193,7 +193,8 @@ typedef uint32_t hammer2_crc32_t;
  * HAMMER2 directory support and pre-defined keys
  */
 #define HAMMER2_DIRHASH_VISIBLE	0x8000000000000000ULL
-#define HAMMER2_DIRHASH_LOMASK	0x00000000FFFFFFFFULL
+#define HAMMER2_DIRHASH_LOMASK	0x000000000000FFFFULL
+#define HAMMER2_DIRHASH_HIMASK	0xFFFFFFFFFFFF0000ULL
 
 #define HAMMER2_SROOT_KEY	0x0000000000000000ULL	/* volume to sroot */
 
@@ -320,7 +321,7 @@ typedef struct hammer2_blockset hammer2_blockset_t;
  * The media indirect block structure.
  */
 struct hammer2_indblock_data {
-	hammer2_blockset_t blocksets[HAMMER2_IND_COUNT / HAMMER2_SET_COUNT];
+	hammer2_blockref_t blockref[HAMMER2_IND_COUNT];
 };
 
 typedef struct hammer2_indblock_data hammer2_indblock_data_t;
@@ -706,6 +707,14 @@ typedef struct hammer2_volume_data hammer2_volume_data_t;
 #define HAMMER2_VOL_VERSION_WIP 	2
 
 #define HAMMER2_NUM_VOLHDRS		4
+
+union hammer2_media_data {
+        hammer2_inode_data_t    ipdata;
+	hammer2_indblock_data_t npdata;
+	char			buf[HAMMER2_PBUFSIZE];
+};
+
+typedef union hammer2_media_data hammer2_media_data_t;
 
 /*
  * Prototypes for user & kernel functions.  Kernel-only prototypes are

@@ -143,6 +143,7 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	hammer2_key_t lhc;
 	struct vnode *devvp;
 	struct nlookupdata nd;
+	hammer2_chain_t *parent;
 	hammer2_chain_t *schain;
 	hammer2_chain_t *rchain;
 	char devstr[MNAMELEN];
@@ -248,14 +249,20 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	hmp->mp = mp;
 	hmp->ronly = ronly;
 	hmp->devvp = devvp;
-	lockinit(&hmp->lk, "h2mp", 0, 0);
-	kmalloc_create(&hmp->inodes, "HAMMER2-inodes");
-	kmalloc_create(&hmp->ipstacks, "HAMMER2-ipstacks");
+	kmalloc_create(&hmp->minode, "HAMMER2-inodes");
+	kmalloc_create(&hmp->mchain, "HAMMER2-chains");
 	
 	mp->mnt_flag = MNT_LOCAL;
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;	/* all entry pts are SMP */
 
+	/*
+	 * vchain setup. vchain.data is special cased to NULL.  vchain.refs
+	 * is initialized and will never drop to 0.
+	 */
 	hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
+	hmp->vchain.refs = 1;
+	/* hmp->vchain.data is special cased to NULL */
+	lockinit(&hmp->vchain.lk, "volume", 0, LK_CANRECURSE);
 
 	/*
 	 * Install the volume header
@@ -283,33 +290,43 @@ hammer2_mount(struct mount *mp, char *path, caddr_t data,
 	 * represented by the label.
 	 */
 	lhc = hammer2_dirhash(label, strlen(label));
-	schain = hammer2_chain_push(hmp, &hmp->vchain, HAMMER2_SROOT_KEY);
+	parent = &hmp->vchain;
+	hammer2_chain_ref(hmp, parent);
+	hammer2_chain_lock(hmp, parent);
+	schain = hammer2_chain_lookup(hmp, &parent,
+				      HAMMER2_SROOT_KEY, (hammer2_key_t)-1);
+	hammer2_chain_put(hmp, parent);
 	if (schain == NULL) {
 		kprintf("hammer2_mount: invalid super-root\n");
 		hammer2_unmount(mp, MNT_FORCE);
 		return EINVAL;
 	}
-	rchain = hammer2_chain_first(hmp, schain, lhc, HAMMER2_DIRHASH_LOMASK);
+
+	parent = schain;
+	hammer2_chain_ref(hmp, parent);
+	rchain = hammer2_chain_lookup(hmp, &parent,
+				      lhc, HAMMER2_DIRHASH_HIMASK);
 	while (rchain) {
 		if (rchain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		    rchain->u.ip &&
-		    strcmp(label, rchain->u.ip->data.filename) == 0) {
+		    strcmp(label, rchain->data->ipdata.filename) == 0) {
 			break;
 		}
-		rchain = hammer2_chain_next(hmp, rchain,
-					    lhc, HAMMER2_DIRHASH_LOMASK);
+		rchain = hammer2_chain_next(hmp, &parent, rchain,
+					    lhc, HAMMER2_DIRHASH_HIMASK);
 	}
+	hammer2_chain_put(hmp, parent);
 	if (rchain == NULL) {
 		kprintf("hammer2_mount: root label not found\n");
 		hammer2_chain_drop(hmp, schain);
 		hammer2_unmount(mp, MNT_FORCE);
 		return EINVAL;
 	}
-	hmp->schain = schain;
-	hmp->rchain = rchain;
-	hmp->iroot = rchain->u.ip;
+
+	hmp->schain = schain;		/* left held & unlocked */
+	hmp->rchain = rchain;		/* left held & unlocked */
+	hmp->iroot = rchain->u.ip;	/* implied hold from rchain */
 	kprintf("iroot %p\n", rchain->u.ip);
-	hammer2_inode_ref(hmp->iroot);	/* additional ref */
 
 	vfs_getnewfsid(mp);
 	vfs_add_vnodeops(mp, &hammer2_vnode_vops, &mp->mnt_vn_norm_ops);
@@ -374,17 +391,16 @@ hammer2_unmount(struct mount *mp, int mntflags)
 	 *	3) Destroy the kmalloc inode zone
 	 *	4) Free the mount point
 	 */
+	hmp->iroot = NULL;
 	if (hmp->rchain) {
+		KKASSERT(hmp->rchain->refs == 1);
 		hammer2_chain_drop(hmp, hmp->rchain);
 		hmp->rchain = NULL;
 	}
 	if (hmp->schain) {
+		KKASSERT(hmp->schain->refs == 1);
 		hammer2_chain_drop(hmp, hmp->schain);
 		hmp->schain = NULL;
-	}
-	if (hmp->iroot) {
-		hammer2_inode_drop(hmp->iroot);
-		hmp->iroot = NULL;
 	}
 	if ((devvp = hmp->devvp) != NULL) {
 		vinvalbuf(devvp, (ronly ? 0 : V_SAVE), 0, 0);
@@ -394,8 +410,8 @@ hammer2_unmount(struct mount *mp, int mntflags)
 		devvp = NULL;
 	}
 
-	kmalloc_destroy(&hmp->inodes);
-	kmalloc_destroy(&hmp->ipstacks);
+	kmalloc_destroy(&hmp->minode);
+	kmalloc_destroy(&hmp->mchain);
 
 	hammer2_mount_unlock(hmp);
 
