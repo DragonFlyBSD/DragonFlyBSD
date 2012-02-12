@@ -89,12 +89,15 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	kprintf("hammer2_reclaim\n");
 	vp = ap->a_vp;
 	ip = VTOI(vp);
-	hmp = ip->hmp;
+	if (ip == NULL)
+		return(0);
 
+	hmp = ip->hmp;
 	hammer2_inode_lock_ex(ip);
 	vp->v_data = NULL;
 	ip->vp = NULL;
 	hammer2_inode_unlock_ex(ip);
+	hammer2_chain_drop(hmp, &ip->chain);	/* vp ref removed */
 
 	/*
 	 * XXX handle background sync when ip dirty, kernel will no longer
@@ -132,7 +135,7 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	vp = ap->a_vp;
 	vap = ap->a_vap;
 
-	kprintf("hammer2_getattr\n");
+	kprintf("hammer2_getattr iplock %p\n", &ip->chain.lk);
 
 	ip = VTOI(vp);
 	hammer2_inode_lock_sh(ip);
@@ -213,8 +216,8 @@ hammer2_vop_strategy(struct vop_strategy_args *ap)
 	ip = VTOI(vp);
 
 	switch(bp->b_cmd) {
-	case (BUF_CMD_READ):
-	case (BUF_CMD_WRITE):
+	case BUF_CMD_READ:
+	case BUF_CMD_WRITE:
 	default:
 		bp->b_error = error = EINVAL;
 		bp->b_flags |= B_ERROR;

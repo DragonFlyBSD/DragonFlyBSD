@@ -164,6 +164,7 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 
 		vp->v_data = ip;
 		ip->vp = vp;
+		hammer2_chain_ref(hmp, &ip->chain);	/* vp association */
 		hammer2_inode_unlock_ex(ip);
 		break;
 	}

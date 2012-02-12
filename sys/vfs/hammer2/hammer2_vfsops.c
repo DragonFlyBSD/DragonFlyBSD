@@ -303,7 +303,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 
 	parent = schain;
-	hammer2_chain_ref(hmp, parent);
+	hammer2_chain_ref(hmp, parent);	/* parent: lock+ref, schain: ref */
 	rchain = hammer2_chain_lookup(hmp, &parent,
 				      lhc, HAMMER2_DIRHASH_HIMASK);
 	while (rchain) {
@@ -319,9 +319,10 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	if (rchain == NULL) {
 		kprintf("hammer2_mount: root label not found\n");
 		hammer2_chain_drop(hmp, schain);
-		hammer2_unmount(mp, MNT_FORCE);
+		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EINVAL;
 	}
+	hammer2_chain_unlock(hmp, rchain); /* rchain: ref */
 
 	hmp->schain = schain;		/* left held & unlocked */
 	hmp->rchain = rchain;		/* left held & unlocked */

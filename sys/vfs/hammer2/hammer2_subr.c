@@ -60,44 +60,50 @@
  * XXX: What do we use each for? How is visibility to the inode controlled?
  */
 
-void
-hammer2_inode_lock_sh(hammer2_inode_t *ip)
-{
-	lockmgr(&ip->chain.lk, LK_SHARED);
-}
-
-void
-hammer2_inode_lock_up(hammer2_inode_t *ip)
-{
-	lockmgr(&ip->chain.lk, LK_EXCLUSIVE);
-	++ip->chain.busy;
-	lockmgr(&ip->chain.lk, LK_DOWNGRADE);
-}
 
 void
 hammer2_inode_lock_ex(hammer2_inode_t *ip)
 {
-	lockmgr(&ip->chain.lk, LK_EXCLUSIVE);
+	hammer2_chain_lock(ip->hmp, &ip->chain);
 }
 
 void
 hammer2_inode_unlock_ex(hammer2_inode_t *ip)
 {
-	lockmgr(&ip->chain.lk, LK_RELEASE);
+	hammer2_chain_unlock(ip->hmp, &ip->chain);
 }
 
 void
-hammer2_inode_unlock_up(hammer2_inode_t *ip)
+hammer2_inode_lock_sh(hammer2_inode_t *ip)
 {
-	lockmgr(&ip->chain.lk, LK_UPGRADE);
-	--ip->chain.busy;
-	lockmgr(&ip->chain.lk, LK_RELEASE);
+	KKASSERT(ip->chain.refs > 0);
+	lockmgr(&ip->chain.lk, LK_SHARED);
 }
 
 void
 hammer2_inode_unlock_sh(hammer2_inode_t *ip)
 {
 	lockmgr(&ip->chain.lk, LK_RELEASE);
+}
+
+/*
+ * Soft-busy an inode.
+ *
+ * The inode must be exclusively locked while soft-busying or soft-unbusying
+ * an inode.  Once busied or unbusied the caller can release the lock.
+ */
+void
+hammer2_inode_busy(hammer2_inode_t *ip)
+{
+	if (ip->chain.busy++ == 0)
+		hammer2_chain_ref(ip->hmp, &ip->chain);
+}
+
+void
+hammer2_inode_unbusy(hammer2_inode_t *ip)
+{
+	if (--ip->chain.busy == 0)
+		hammer2_chain_drop(ip->hmp, &ip->chain);
 }
 
 /*

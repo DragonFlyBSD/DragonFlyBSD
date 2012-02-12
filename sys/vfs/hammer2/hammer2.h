@@ -237,12 +237,12 @@ extern struct vop_ops hammer2_fifo_vops;
 /*
  * hammer2_subr.c
  */
-void hammer2_inode_lock_sh(hammer2_inode_t *ip);
-void hammer2_inode_lock_up(hammer2_inode_t *ip);
 void hammer2_inode_lock_ex(hammer2_inode_t *ip);
 void hammer2_inode_unlock_ex(hammer2_inode_t *ip);
-void hammer2_inode_unlock_up(hammer2_inode_t *ip);
+void hammer2_inode_lock_sh(hammer2_inode_t *ip);
 void hammer2_inode_unlock_sh(hammer2_inode_t *ip);
+void hammer2_inode_busy(hammer2_inode_t *ip);
+void hammer2_inode_unbusy(hammer2_inode_t *ip);
 
 void hammer2_mount_exlock(hammer2_mount_t *hmp);
 void hammer2_mount_shlock(hammer2_mount_t *hmp);

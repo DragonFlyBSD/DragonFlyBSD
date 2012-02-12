@@ -182,6 +182,8 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 				lockmgr(&parent->lk, LK_RELEASE);
 				hammer2_chain_free(hmp, chain);
 				chain = parent;
+			} else {
+				lockmgr(&parent->lk, LK_RELEASE);
 			}
 		} else {
 			if (atomic_cmpset_int(&chain->refs, refs, refs - 1)) {
