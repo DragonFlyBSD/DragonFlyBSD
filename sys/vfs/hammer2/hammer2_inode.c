@@ -177,49 +177,85 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 	return (vp);
 }
 
-#if 0
 /*
- * Allocate a HAMMER2 inode memory structure.
+ * Create a new inode in the specified directory using the vattr to
+ * figure out the type of inode.
  *
- * Returns a busied but unlocked inode
+ * If no error occurs the new inode is returned in *nipp, otherwise an
+ * error is returned and *nipp is set to NULL.
  */
-hammer2_inode_t *
-hammer2_inode_alloc(hammer2_mount_t *hmp, void *data)
+int
+hammer2_create_inode(hammer2_mount_t *hmp,
+		     struct vattr *vap, struct ucred *cred,
+		     hammer2_inode_t *dip,
+		     const uint8_t *name, size_t name_len,
+		     hammer2_inode_t **nipp)
 {
-	hammer2_inode_t *ip;
+	hammer2_chain_t *chain;
+	hammer2_chain_t *parent;
+	hammer2_inode_t *nip;
+	hammer2_key_t lhc;
+	int error;
 
-	ip = kmalloc(sizeof(hammer2_inode_t), hmp->inodes, M_WAITOK | M_ZERO);
+	lhc = hammer2_dirhash(name, name_len);
 
-	atomic_add_int(&hmp->ninodes, 1);
-	ip->hmp = hmp;
-	lockinit(&ip->lk, "h2inode", 0, 0);
-	ip->vp = NULL;
-	ip->data = *(struct hammer2_inode_data *)data;
+	/*
+	 * Locate the inode or indirect block to create the new
+	 * entry in.  At the same time check for key collisions
+	 * and iterate until we don't get one.
+	 */
+	parent = &dip->chain;
+	hammer2_chain_ref(hmp, parent);
+	hammer2_chain_lock(hmp, parent);
 
-	return (ip);
+	error = 0;
+	while (error == 0) {
+		chain = hammer2_chain_lookup(hmp, &parent, lhc, lhc);
+		if (chain == NULL)
+			break;
+		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
+			error = ENOSPC;
+		hammer2_chain_put(hmp, chain);
+		chain = NULL;
+		++lhc;
+	}
+	if (error == 0) {
+		chain = hammer2_chain_create(hmp, &dip->chain, lhc, 0,
+					     HAMMER2_BREF_TYPE_INODE,
+					     HAMMER2_INODE_BYTES);
+		if (chain == NULL)
+			error = EIO;
+	}
+	hammer2_chain_put(hmp, parent);
+
+	/*
+	 * Handle the error case
+	 */
+	if (error) {
+		KKASSERT(chain == NULL);
+		*nipp = NULL;
+		return (error);
+	}
+
+	/*
+	 * Set up the new inode
+	 */
+	nip = chain->u.ip;
+	*nipp = nip;
+
+	nip->ip_data.type = hammer2_get_obj_type(vap->va_type);
+	nip->ip_data.inum = hmp->voldata.alloc_tid++;	/* XXX modify/lock */
+	nip->ip_data.version = HAMMER2_INODE_VERSION_ONE;
+	nip->ip_data.ctime = 0;
+	nip->ip_data.mtime = 0;
+	nip->ip_data.mode = vap->va_mode;
+	nip->ip_data.nlinks = 1;
+	/* uid, gid, etc */
+
+	KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
+	bcopy(name, nip->ip_data.filename, name_len);
+	nip->ip_data.name_key = lhc;
+	nip->ip_data.name_len = name_len;
+
+	return (0);
 }
-
-/*
- * Free a HAMMER2 inode memory structure.
- *
- * The inode must be locked exclusively with one reference and will
- * be destroyed on return.
- */
-void
-hammer2_inode_free(hammer2_inode_t *ip)
-{
-	hammer2_mount_t *hmp = ip->hmp;
-
-	KKASSERT(ip->hmp != NULL);
-	KKASSERT(ip->vp == NULL);
-	KKASSERT(ip->chain.refs == 0);
-
-	hammer2_chain_unlink(hmp, &ip->chain);	/* XXX races */
-
-	atomic_add_int(&hmp->ninodes, -1);
-	ip->chain.u.ip = NULL;
-
-	kfree(ip, hmp->inodes);
-}
-
-#endif

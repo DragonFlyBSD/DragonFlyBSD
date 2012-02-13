@@ -195,6 +195,30 @@ hammer2_get_vtype(hammer2_inode_t *ip)
 	/* not reached */
 }
 
+u_int8_t
+hammer2_get_obj_type(enum vtype vtype)
+{
+	switch(vtype) {
+	case VDIR:
+		return(HAMMER2_OBJTYPE_DIRECTORY);
+	case VREG:
+		return(HAMMER2_OBJTYPE_REGFILE);
+	case VFIFO:
+		return(HAMMER2_OBJTYPE_FIFO);
+	case VSOCK:
+		return(HAMMER2_OBJTYPE_SOCKET);
+	case VCHR:
+		return(HAMMER2_OBJTYPE_CDEV);
+	case VBLK:
+		return(HAMMER2_OBJTYPE_BDEV);
+	case VLNK:
+		return(HAMMER2_OBJTYPE_SOFTLINK);
+	default:
+		return(HAMMER2_OBJTYPE_UNKNOWN);
+	}
+	/* not reached */
+}
+
 /*
  * Convert a hammer2 64-bit time to a timespec.
  */
@@ -205,7 +229,14 @@ hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts)
 	ts->tv_nsec = (unsigned int)(xtime % 1000000) * 1000L;
 }
 
-
+/*
+ * Convert a uuid to a unix uid or gid
+ */
+u_int32_t
+hammer2_to_unix_xid(uuid_t *uuid)
+{
+	return(*(u_int32_t *)&uuid->node[2]);
+}
 
 /*
  * Borrow HAMMER1's directory hash algorithm #1 with a few modifications.

@@ -62,7 +62,7 @@ hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
 
 /*
  * Allocate a new disconnected chain element representing the specified
- * bref.
+ * bref.  The chain element is locked exclusively and refs is set to 1.
  *
  * This essentially allocates a system memory structure representing one
  * of the media structure types, including inodes.
@@ -108,6 +108,7 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_blockref_t *bref)
 	}
 	chain->bref = *bref;
 	chain->refs = 1;
+	lockmgr(&chain->lk, LK_EXCLUSIVE);
 
 	return (chain);
 }
@@ -310,6 +311,7 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		KKASSERT(chain->data != NULL);
 		return;
 	}
+	hammer2_chain_ref(hmp, chain);
 
 	/*
 	 * Create an allocated copy of the data if it is not embedded.
@@ -428,7 +430,6 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent, int index)
 		      parent->bref.type);
 	}
 	chain = hammer2_chain_alloc(hmp, bref);
-	lockmgr(&chain->lk, LK_EXCLUSIVE);
 
 	/*
 	 * Link the chain into its parent.  Caller is expected to hold an
@@ -848,6 +849,13 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE)
 			chain->u.ip->pip = parent->u.ip;
 	}
+
+	/*
+	 * Make the newly created chain as modified.  We have already
+	 * assigned the data pointer so it will not try to read from the
+	 * media.
+	 */
+	hammer2_chain_modify(hmp, chain);
 
 	return (chain);
 }

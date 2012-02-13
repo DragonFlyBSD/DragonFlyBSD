@@ -251,7 +251,9 @@ void hammer2_mount_unlock(hammer2_mount_t *hmp);
 
 int hammer2_get_dtype(hammer2_inode_t *ip);
 int hammer2_get_vtype(hammer2_inode_t *ip);
+u_int8_t hammer2_get_obj_type(enum vtype vtype);
 void hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts);
+u_int32_t hammer2_to_unix_xid(uuid_t *uuid);
 
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
 
@@ -263,6 +265,11 @@ hammer2_inode_t *hammer2_inode_alloc(hammer2_mount_t *hmp, void *data);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
+int hammer2_create_inode(hammer2_mount_t *hmp,
+			 struct vattr *vap, struct ucred *cred,
+			 hammer2_inode_t *dip,
+			 const uint8_t *name, size_t name_len,
+			 hammer2_inode_t **nipp);
 
 /*
  * hammer2_chain.c

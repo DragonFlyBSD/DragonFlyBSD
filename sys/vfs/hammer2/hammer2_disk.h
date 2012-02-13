@@ -403,7 +403,7 @@ struct hammer2_inode_data {
 	hammer2_key_t	name_key;	/* 00A8 full filename key */
 	uint8_t		copyids[8];	/* 00B0 request copies to (up to 8) */
 	uuid_t		pfsid;		/* 00B8 pfs uuid if PFSROOT */
-	uint64_t	reservedC8;	/* 00C8 */
+	uint64_t	pfsinum;	/* 00C8 pfs inum allocator */
 	uint64_t	reservedD0;	/* 00D0 */
 	uint64_t	reservedD8;	/* 00D8 */
 	uint64_t	reservedE0;	/* 00E0 */

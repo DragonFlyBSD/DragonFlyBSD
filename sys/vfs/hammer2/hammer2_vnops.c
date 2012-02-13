@@ -121,8 +121,17 @@ static
 int
 hammer2_vop_access(struct vop_access_args *ap)
 {
-	kprintf("hammer2_access\n");
-	return (0);
+	hammer2_inode_t *ip = VTOI(ap->a_vp);
+	uid_t uid;
+	gid_t gid;
+	int error;
+
+	uid = hammer2_to_unix_xid(&ip->ip_data.uid);
+	gid = hammer2_to_unix_xid(&ip->ip_data.gid);
+
+	error = vop_helper_access(ap, uid, gid, ip->ip_data.mode,
+				  ip->ip_data.uflags);
+	return (error);
 }
 
 static
@@ -327,8 +336,116 @@ static
 int
 hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 {
-	kprintf("hammer2_nresolve\n");
-	return (EOPNOTSUPP);
+	hammer2_inode_t *dip;
+	hammer2_mount_t *hmp;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	struct namecache *ncp;
+	const uint8_t *name;
+	size_t name_len;
+	hammer2_key_t lhc;
+	int error = 0;
+	struct vnode *vp;
+
+	dip = VTOI(ap->a_dvp);
+	hmp = dip->hmp;
+	ncp = ap->a_nch->ncp;
+	name = ncp->nc_name;
+	name_len = ncp->nc_nlen;
+	lhc = hammer2_dirhash(name, name_len);
+
+	/*
+	 * Note: In DragonFly the kernel handles '.' and '..'.
+	 */
+	parent = &dip->chain;
+	hammer2_chain_ref(hmp, parent);
+	hammer2_chain_lock(hmp, parent);
+	chain = hammer2_chain_lookup(hmp, &parent,
+				     lhc, lhc + HAMMER2_DIRHASH_LOMASK);
+	while (chain) {
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+		    chain->u.ip &&
+		    name_len == chain->data->ipdata.name_len &&
+		    bcmp(name, chain->data->ipdata.filename, name_len) == 0) {
+			break;
+		}
+		chain = hammer2_chain_next(hmp, &parent, chain,
+					   lhc, lhc + HAMMER2_DIRHASH_LOMASK);
+	}
+	hammer2_chain_put(hmp, parent);
+
+	if (chain) {
+		vp = hammer2_igetv(chain->u.ip, &error);
+		if (error == 0) {
+			vn_unlock(vp);
+			cache_setvp(ap->a_nch, vp);
+			vrele(vp);
+		}
+		hammer2_chain_put(hmp, chain);
+	} else {
+		error = ENOENT;
+		cache_setvp(ap->a_nch, NULL);
+	}
+	return error;
+}
+
+static
+int
+hammer2_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
+{
+	hammer2_inode_t *dip;
+	hammer2_inode_t *ip;
+	hammer2_mount_t *hmp;
+	int error;
+
+	dip = VTOI(ap->a_dvp);
+	hmp = dip->hmp;
+
+	if ((ip = dip->pip) == NULL) {
+		*ap->a_vpp = NULL;
+		return ENOENT;
+	}
+	hammer2_chain_ref(hmp, &ip->chain);
+	hammer2_chain_lock(hmp, &ip->chain);
+	*ap->a_vpp = hammer2_igetv(ip, &error);
+	hammer2_chain_put(hmp, &ip->chain);
+
+	return error;
+}
+
+static
+int
+hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
+{
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *dip;
+	hammer2_inode_t *nip;
+	struct namecache *ncp;
+	const uint8_t *name;
+	size_t name_len;
+	int error;
+
+	dip = VTOI(ap->a_dvp);
+	hmp = dip->hmp;
+	ncp = ap->a_nch->ncp;
+	name = ncp->nc_name;
+	name_len = ncp->nc_nlen;
+
+	error = hammer2_create_inode(hmp, ap->a_vap, ap->a_cred,
+				     dip, name, name_len, &nip);
+	if (error) {
+		KKASSERT(nip == NULL);
+		*ap->a_vpp = NULL;
+		return error;
+	}
+	*ap->a_vpp = hammer2_igetv(nip, &error);
+	hammer2_chain_put(hmp, &nip->chain);
+
+	if (error == 0) {
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, *ap->a_vpp);
+	}
+	return error;
 }
 
 static
@@ -415,6 +532,8 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_inactive	= hammer2_vop_inactive,
 	.vop_reclaim 	= hammer2_vop_reclaim,
 	.vop_nresolve	= hammer2_vop_nresolve,
+	.vop_nlookupdotdot = hammer2_vop_nlookupdotdot,
+	.vop_nmkdir 	= hammer2_vop_nmkdir,
 	.vop_mountctl	= hammer2_vop_mountctl,
 	.vop_bmap	= hammer2_vop_bmap,
 	.vop_strategy	= hammer2_vop_strategy,
