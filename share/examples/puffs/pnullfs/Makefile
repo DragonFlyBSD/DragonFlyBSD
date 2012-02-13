@@ -1,6 +1,7 @@
 PROG=	pnullfs
 SRCS=	pnullfs.c getmntopts.c
 LDADD+= -lpuffs -lutil
+DPADD+= ${LIBPUFFS} ${LIBUTIL}
 
 WARNS=	2
 
