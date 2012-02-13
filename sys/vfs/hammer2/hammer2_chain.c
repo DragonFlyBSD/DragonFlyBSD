@@ -210,7 +210,6 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	hammer2_blockref_t *bref;
 	hammer2_off_t off_hi;
 	size_t off_lo;
-	size_t bytes;
 	int error;
 	void *data;
 
@@ -248,10 +247,9 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 
 	off_hi = bref->data_off & HAMMER2_OFF_MASK_HI;
 	off_lo = (size_t)bref->data_off & HAMMER2_OFF_MASK_LO;
-	bytes = HAMMER2_PBUFSIZE;
 	KKASSERT(off_hi != 0);
 	KKASSERT(chain->bp == NULL);
-	error = bread(hmp->devvp, off_hi, bytes, &chain->bp);
+	error = bread(hmp->devvp, off_hi, HAMMER2_PBUFSIZE, &chain->bp);
 
 	if (error) {
 		kprintf("hammer2_chain_get: I/O error %016jx: %d\n",
@@ -270,6 +268,18 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	 *	    recursively acquire the same bp.
 	 */
 	switch (bref->type) {
+	case HAMMER2_BREF_TYPE_VOLUME:
+		/*
+		 * Copy data from bp to embedded buffer
+		 */
+		KKASSERT(0);	/* not yet - have mount use this soon */
+		KKASSERT(off_hi == 0);
+		bcopy((char *)chain->bp->b_data + off_lo,
+		      &hmp->voldata, HAMMER2_PBUFSIZE);
+		chain->data = (void *)&hmp->voldata;
+		brelse(chain->bp);
+		chain->bp = NULL;
+		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		/*
 		 * Copy data from bp to embedded buffer.
@@ -306,12 +316,10 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	/*
 	 * Nothing to do if it is already RW
 	 */
-	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
+	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) && chain->data != NULL) {
 		KKASSERT(chain->bp == NULL);
-		KKASSERT(chain->data != NULL);
 		return;
 	}
-	hammer2_chain_ref(hmp, chain);
 
 	/*
 	 * Create an allocated copy of the data if it is not embedded.
@@ -320,6 +328,7 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		/*
 		 * Allocate in-memory data and copy from the read-only bp
 		 */
+		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT);
 		KKASSERT(chain->bp != NULL);
 		off_lo = (size_t)chain->bref.data_off & HAMMER2_OFF_MASK_LO;
 		data = (char *)chain->bp->b_data + off_lo;
@@ -333,6 +342,8 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 
 		/*
 		 * Assert correctness to prevent system memory corruption.
+		 *
+		 * XXX can only be for indirect
 		 */
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_INODE:
@@ -348,9 +359,23 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	}
 
 	/*
-	 * Mark modified
+	 * Mark modified and reallocate the block for copy-on-write.
+	 * The root volume header is not reallocated.
+	 *
+	 * Modified chain buffers are given an extra ref to prevent
+	 * their destruction.
 	 */
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+		hammer2_chain_ref(hmp, chain);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+		if (chain != &hmp->vchain) {
+			bytes = 1 << (int)(chain->bref.data_off &
+					   HAMMER2_OFF_MASK_RADIX);
+			chain->bref.data_off =
+					   hammer2_freemap_alloc(hmp, bytes);
+			/* XXX failed allocation */
+		}
+	}
 	parent = chain->parent;
 	while (parent && (parent->flags & HAMMER2_CHAIN_SUBMODIFIED) == 0) {
 		atomic_set_int(&parent->flags, HAMMER2_CHAIN_SUBMODIFIED);
@@ -374,6 +399,23 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		chain->bp = NULL;
 	}
 	lockmgr(&chain->lk, LK_RELEASE);
+}
+
+/*
+ * Locate an in-memory chain.  The parent must be locked.  The in-memory
+ * chain is returned or NULL if no in-memory chain is present.
+ *
+ * NOTE: A chain on-media might exist for this index when NULL is returned.
+ */
+hammer2_chain_t *
+hammer2_chain_find(hammer2_mount_t *hmp, hammer2_chain_t *parent, int index)
+{
+	hammer2_chain_t dummy;
+	hammer2_chain_t *chain;
+
+	dummy.index = index;
+	chain = SPLAY_FIND(hammer2_chain_splay, &parent->shead, &dummy);
+	return (chain);
 }
 
 /*
@@ -504,6 +546,7 @@ hammer2_chain_lookup(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
 {
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
+	hammer2_chain_t *tmp;
 	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
 	hammer2_key_t scan_beg;
@@ -560,7 +603,8 @@ again:
 	 */
 	bref = NULL;
 	for (i = 0; i < count; ++i) {
-		bref = &base[i];
+		tmp = hammer2_chain_find(hmp, parent, i);
+		bref = (tmp) ? &tmp->bref : &base[i];
 		scan_beg = bref->key;
 		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
 		if (key_beg <= scan_end && key_end >= scan_beg)
@@ -611,6 +655,7 @@ hammer2_chain_next(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
 		   hammer2_key_t key_beg, hammer2_key_t key_end)
 {
 	hammer2_chain_t *parent;
+	hammer2_chain_t *tmp;
 	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
 	hammer2_key_t scan_beg;
@@ -685,7 +730,8 @@ again2:
 	 */
 	bref = NULL;
 	while (i < count) {
-		bref = &base[i];
+		tmp = hammer2_chain_find(hmp, parent, i);
+		bref = (tmp) ? &tmp->bref : &base[i];
 		scan_beg = bref->key;
 		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
 		if (key_beg <= scan_end && key_end >= scan_beg)
@@ -750,6 +796,7 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
 	hammer2_chain_t *chain;
+	hammer2_chain_t dummy_chain;
 	int count;
 	int i;
 
@@ -780,14 +827,7 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		chain->data = kmalloc(bytes, hmp->mchain, M_WAITOK | M_ZERO);
 		break;
 	}
-	chain->flags |= HAMMER2_CHAIN_INITIAL;
-
-	/*
-	 * Indicate that the parent is being modified before we dive
-	 * the parent's media data (since this will relocate the media
-	 * data pointer).
-	 */
-	hammer2_chain_modify(hmp, parent);
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
 
 	/*
 	 * Locate a free blockref in the parent's array
@@ -812,11 +852,20 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		break;
 	}
 
+	/*
+	 * Scan the brefs and also check for in-memory chain elements that
+	 * might not yet be reflected in the parent's bref array.
+	 */
+	bzero(&dummy_chain, sizeof(dummy_chain));
 	bref = NULL;
 	for (i = 0; i < count; ++i) {
 		bref = &base[i];
-		if (bref->type == 0)
+		dummy_chain.index = i;
+		if (bref->type == 0 &&
+		    SPLAY_FIND(hammer2_chain_splay,
+			       &parent->shead, &dummy_chain) == NULL) {
 			break;
+		}
 	}
 
 	/*
@@ -828,8 +877,7 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	}
 
 	/*
-	 * Link the chain into its parent and load the blockref slot in
-	 * the parent with a pointer to the data allocation.
+	 * Link the chain into its parent.
 	 */
 	chain->parent = parent;
 	chain->index = i;
@@ -837,13 +885,12 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		panic("hammer2_chain_link: collision");
 	KKASSERT(parent->refs > 1);
 	atomic_add_int(&parent->refs, 1);
-	*bref = chain->bref;
 
 	/*
 	 * Additional linkage for inodes.  Reuse the parent pointer to
 	 * find the parent directory.
 	 */
-	if (bref->type == HAMMER2_BREF_TYPE_INODE) {
+	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT)
 			parent = parent->parent;
 		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE)
@@ -878,3 +925,297 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
 		     hammer2_chain_t *chain)
 {
 }
+
+/*
+ * Recursively flush the specified chain.  The chain is locked and
+ * referenced by the caller and will remain so on return.
+ *
+ * This cannot be called with the volume header's vchain
+ */
+void
+hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
+		    hammer2_blockref_t *parent_bref)
+{
+	hammer2_chain_t *scan;
+
+	/*
+	 * Flush any children of this chain entry.
+	 */
+	if (chain->flags & HAMMER2_CHAIN_SUBMODIFIED) {
+		hammer2_blockref_t *base;
+		hammer2_blockref_t bref;
+		int count;
+		int submodified = 0;
+
+		/*
+		 * Modifications to the children will propagate up, forcing
+		 * us to become modified and copy-on-write too.
+		 */
+		hammer2_chain_modify(hmp, chain);
+
+		/*
+		 * The blockref in the parent's array must be repointed at
+		 * the new block allocated by the child after its flush.
+		 *
+		 * Calculate the base of the array.
+		 */
+		switch(chain->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
+			KKASSERT(index >= 0 && index < HAMMER2_SET_COUNT);
+			base = &chain->data->ipdata.u.blockset.blockref[0];
+			count = HAMMER2_SET_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_INDIRECT:
+			base = &chain->data->npdata.blockref[0];
+			count = HAMMER2_IND_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_VOLUME:
+			KKASSERT(index >= 0 && index < HAMMER2_SET_COUNT);
+			base = &hmp->voldata.sroot_blockset.blockref[0];
+			count = HAMMER2_SET_COUNT;
+			break;
+		default:
+			base = NULL;
+			panic("hammer2_chain_get: unrecognized blockref type: %d",
+			      chain->bref.type);
+		}
+
+		/*
+		 * Flush the children and update the blockrefs in the parent
+		 */
+		SPLAY_FOREACH(scan, hammer2_chain_splay, &chain->shead) {
+			if (scan->flags & (HAMMER2_CHAIN_SUBMODIFIED |
+					   HAMMER2_CHAIN_MODIFIED)) {
+				hammer2_chain_ref(hmp, scan);
+				hammer2_chain_lock(hmp, scan);
+				bref = base[scan->index];
+				hammer2_chain_flush(hmp, scan, &bref);
+				if (scan->flags & (HAMMER2_CHAIN_SUBMODIFIED |
+						   HAMMER2_CHAIN_MODIFIED)) {
+					submodified = 1;
+					kprintf("flush race, sub dirty\n");
+				} else {
+					KKASSERT(scan->index < count);
+					base[scan->index] = bref;
+				}
+				hammer2_chain_put(hmp, scan);
+			}
+		}
+		if (submodified == 0) {
+			atomic_clear_int(&chain->flags,
+					 HAMMER2_CHAIN_SUBMODIFIED);
+		}
+	}
+
+	/*
+	 * Flush this chain entry.
+	 */
+	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0)
+		return;
+
+	/*
+	 * If this is part of a recursive flush we can go ahead and write
+	 * out the buffer cache buffer and pass a new bref back up the chain.
+	 *
+	 * This will never be a volume header.
+	 */
+	if (parent_bref) {
+		hammer2_blockref_t *bref;
+		hammer2_off_t off_hi;
+		size_t off_lo;
+		size_t bytes;
+		int error;
+		char *data;
+
+		KKASSERT(chain->data != NULL);
+		KKASSERT(chain->bp == NULL);
+		bref = &chain->bref;
+
+		off_hi = bref->data_off & HAMMER2_OFF_MASK_HI;
+		off_lo = (size_t)bref->data_off & HAMMER2_OFF_MASK_LO;
+		bytes = 1 << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+		KKASSERT(off_hi != 0);	/* not the root volume header */
+		KKASSERT(chain->bp == NULL);
+		error = bread(hmp->devvp, off_hi, HAMMER2_PBUFSIZE, &chain->bp);
+		if (error == 0) {
+			/*
+			 * Copy the data to the buffer, mark the buffer
+			 * dirty, and convert the chain to unmodified.
+			 *
+			 * A chain that is not modified might not have a
+			 * local copy of the data.  Only TYPE_INDIRECT
+			 * uses a buffer cache buffer for the non-modified
+			 * chain.
+			 */
+			bcopy(chain->data,
+			      (char *)chain->bp->b_data + off_lo,
+			      bytes);
+
+			switch(bref->type) {
+			case HAMMER2_BREF_TYPE_INDIRECT:
+				bdirty(chain->bp);
+				data = (char *)chain->bp->b_data + off_lo;
+				kfree(chain->data, hmp->mchain);
+				chain->data = (void *)data;
+				/* leave chain->bp intact */
+				break;
+			case HAMMER2_BREF_TYPE_VOLUME:
+				panic("hammer2_chain_flush: illegal flush");
+				break;
+			default:
+				bdwrite(chain->bp);
+				chain->bp = NULL;
+				/* leave chain->data intact */
+				break;
+			}
+			chain->bref.check.iscsi32.value =
+					hammer2_icrc32(chain->data, bytes);
+
+			/*
+			 * If parent_bref is not NULL we can clear the modified
+			 * flag and remove the ref associated with that flag.
+			 *
+			 * If parent_bref is NULL the chain must be left in a
+			 * modified state because the blockref in the parent
+			 * that points to this chain is not being updated.
+			 */
+			*parent_bref = chain->bref;
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+			hammer2_chain_drop(hmp, chain);
+			kprintf("flush %016jx\n", (intmax_t)(off_hi | off_lo));
+		} else {
+			/*
+			 * Leave buffer dirty, with its kmalloc()'d data.
+			 */
+			brelse(chain->bp);
+			chain->bp = NULL;
+		}
+	} else {
+		hammer2_blockref_t *bref;
+
+		KKASSERT(chain->data != NULL);
+		KKASSERT(chain->bp == NULL);
+		bref = &chain->bref;
+
+		switch(bref->type) {
+		case HAMMER2_BREF_TYPE_VOLUME:
+			hmp->voldata.icrc_sects[HAMMER2_VOL_ICRC_SECT1]=
+				hammer2_icrc32(
+					(char *)&hmp->voldata +
+					 HAMMER2_VOLUME_ICRC1_OFF,
+					HAMMER2_VOLUME_ICRC1_SIZE);
+			hmp->voldata.icrc_sects[HAMMER2_VOL_ICRC_SECT0]=
+				hammer2_icrc32(
+					(char *)&hmp->voldata +
+					 HAMMER2_VOLUME_ICRC0_OFF,
+					HAMMER2_VOLUME_ICRC0_SIZE);
+			hmp->voldata.icrc_volheader =
+				hammer2_icrc32(
+					(char *)&hmp->voldata +
+					 HAMMER2_VOLUME_ICRCVH_OFF,
+					HAMMER2_VOLUME_ICRCVH_SIZE);
+			break;
+		}
+	}
+}
+
+#if 0
+/*
+ * Recursively commit the specified chain.  The chain is locked and
+ * referenced by the caller and will remain so on return.
+ *
+ * This is typically called with the volume header's vchain
+ */
+void
+hammer2_chain_commit(hammer2_mount_t *hmp, hammer2_chain_t *chain)
+{
+	hammer2_chain_t *scan;
+
+	/*
+	 * Scan active children
+	 */
+	if (chain->flags & HAMMER2_CHAIN_SUBCOMMITTING) {
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_SUBCOMMITTING);
+		SPLAY_FOREACH(scan, hammer2_chain_splay, &chain->shead) {
+			if (scan->flags & (HAMMER2_CHAIN_SUBCOMMITTING |
+					   HAMMER2_CHAIN_COMMITTING)) {
+				hammer2_chain_ref(hmp, scan);
+				hammer2_chain_lock(hmp, scan);
+				hammer2_chain_commit(hmp, scan);
+				if (scan->flags & (HAMMER2_CHAIN_SUBCOMMITTING |
+						   HAMMER2_CHAIN_COMMITTING)) {
+					atomic_set_int(&chain->flags,
+						HAMMER2_CHAIN_SUBCOMMITTING);
+				}
+				hammer2_chain_put(hmp, scan);
+			}
+		}
+	}
+	if (chain->flags & HAMMER2_CHAIN_COMMITTING) {
+		hammer2_chain_t *parent;
+		hammer2_blockref_t *bref;
+		hammer2_off_t off_hi;
+		size_t off_lo;
+		size_t bytes;
+		int error;
+		char *data;
+
+		/*
+		 * Determine if the buffer cache still has the block and
+		 * that the block is still B_CACHE.  If it does we check
+		 * the dirty state and bawrite() the block.
+		 */
+		bref = &chain->bref;
+		off_hi = bref->data_off & HAMMER2_OFF_MASK_HI;
+		KKASSERT(chain->bp == NULL);
+		chain->bp = getcacheblk(hmp->devvp, off_hi, HAMMER2_PBUFSIZE);
+		if (chain->bp) {
+
+
+
+
+
+		KKASSERT(chain->data != NULL);
+		KKASSERT(chain->bp == NULL);
+
+		bref = &chain->bref;
+		off_hi = bref->data_off & HAMMER2_OFF_MASK_HI;
+		off_lo = (size_t)bref->data_off & HAMMER2_OFF_MASK_LO;
+		bytes = 1 << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+		KKASSERT(off_hi != 0);	/* not the root volume header */
+		KKASSERT(chain->bp == NULL);
+		error = bread(hmp->devvp, off_hi, HAMMER2_PBUFSIZE, &chain->bp);
+		if (error == 0) {
+			/*
+			 * Mark the buffer dirty and convert to a clean
+			 * chain (where data typically points into the bp).
+			 *
+			 * The buffer will be brelse()'d when the caller
+			 * unlocks the chain.
+			 *
+			 * We have to drop a ref when clearing the COMMITTING
+			 * bit.
+			 */
+			bcopy(chain->data,
+			      (char *)chain->bp->b_data + off_lo,
+			      bytes);
+			bdirty(chain->bp);
+			if (bref->type != HAMMER2_BREF_TYPE_INODE) {
+				data = (char *)chain->bp->b_data + off_lo;
+				kfree(chain->data, hmp->mchain);
+				chain->data = (void *)data;
+			}
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_COMMITTING);
+			hammer2_chain_drop(hmp, chain);
+			kprintf("committ %016jx\n", (intmax_t)(off_hi | off_lo));
+		} else {
+			/*
+			 * Leave buffer dirty, with its kmalloc()'d data.
+			 */
+			brelse(chain->bp);
+			chain->bp = NULL;
+		}
+	}
+}
+
+#endif

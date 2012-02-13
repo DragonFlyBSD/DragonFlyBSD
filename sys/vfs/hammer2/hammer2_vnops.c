@@ -83,20 +83,20 @@ static
 int
 hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 {
-	struct vnode *vp;
 	struct hammer2_inode *ip;
 	struct hammer2_mount *hmp;
+	struct vnode *vp;
 
-	kprintf("hammer2_reclaim\n");
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 	if (ip == NULL)
 		return(0);
-
 	hmp = ip->hmp;
+
 	hammer2_inode_lock_ex(ip);
 	vp->v_data = NULL;
 	ip->vp = NULL;
+	hammer2_chain_flush(hmp, &ip->chain, NULL);
 	hammer2_inode_unlock_ex(ip);
 	hammer2_chain_drop(hmp, &ip->chain);	/* vp ref removed */
 
@@ -113,8 +113,19 @@ static
 int
 hammer2_vop_fsync(struct vop_fsync_args *ap)
 {
-	kprintf("hammer2_fsync\n");
-	return (EOPNOTSUPP);
+	struct hammer2_inode *ip;
+	struct hammer2_mount *hmp;
+	struct vnode *vp;
+
+	vp = ap->a_vp;
+	ip = VTOI(vp);
+	hmp = ip->hmp;
+
+	hammer2_inode_lock_ex(ip);
+	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
+	hammer2_chain_flush(hmp, &ip->chain, NULL);
+	hammer2_inode_unlock_ex(ip);
+	return (0);
 }
 
 static

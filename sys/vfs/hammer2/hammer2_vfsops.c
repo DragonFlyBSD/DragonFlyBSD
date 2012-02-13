@@ -46,27 +46,34 @@
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
 
-static int	hammer2_vfs_init(struct vfsconf *conf);
-static int	hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
-			      struct ucred *cred);
-static int	hammer2_remount(struct mount *, char *, struct vnode *,
-				struct ucred *);
-static int	hammer2_vfs_unmount(struct mount *mp, int mntflags);
-static int	hammer2_vfs_root(struct mount *mp, struct vnode **vpp);
-static int	hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp,
-			       struct ucred *cred);
-static int	hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp,
-				struct ucred *cred);
-static int	hammer2_vfs_sync(struct mount *mp, int waitfor);
-static int	hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
-			     ino_t ino, struct vnode **vpp);
-static int	hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
-			       struct fid *fhp, struct vnode **vpp);
-static int	hammer2_vfs_vptofh(struct vnode *vp, struct fid *fhp);
-static int	hammer2_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
-				 int *exflagsp, struct ucred **credanonp);
+struct hammer2_sync_info {
+	int error;
+	int waitfor;
+};
 
-static int	hammer2_install_volume_header(hammer2_mount_t *hmp);
+static int hammer2_vfs_init(struct vfsconf *conf);
+static int hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
+				struct ucred *cred);
+static int hammer2_remount(struct mount *, char *, struct vnode *,
+				struct ucred *);
+static int hammer2_vfs_unmount(struct mount *mp, int mntflags);
+static int hammer2_vfs_root(struct mount *mp, struct vnode **vpp);
+static int hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp,
+				struct ucred *cred);
+static int hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp,
+				struct ucred *cred);
+static int hammer2_vfs_sync(struct mount *mp, int waitfor);
+static int hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
+				ino_t ino, struct vnode **vpp);
+static int hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
+				struct fid *fhp, struct vnode **vpp);
+static int hammer2_vfs_vptofh(struct vnode *vp, struct fid *fhp);
+static int hammer2_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
+				int *exflagsp, struct ucred **credanonp);
+
+static int hammer2_install_volume_header(hammer2_mount_t *hmp);
+static int hammer2_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
+static int hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
 /*
  * HAMMER2 vfs operations.
@@ -261,7 +268,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 */
 	hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
 	hmp->vchain.refs = 1;
-	/* hmp->vchain.data is special cased to NULL */
+	hmp->vchain.data = (void *)&hmp->voldata;
+	hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
+	/* hmp->vchain.u.xxx is left NULL */
 	lockinit(&hmp->vchain.lk, "volume", 0, LK_CANRECURSE);
 
 	/*
@@ -510,18 +519,96 @@ static
 int
 hammer2_vfs_sync(struct mount *mp, int waitfor)
 {
-#if 0
+	struct hammer2_sync_info info;
 	hammer2_mount_t *hmp;
-	hammer2_inode_t *ip;
-#endif
+	int flags;
+	int error;
 
 	kprintf("hammer2_sync \n");
-
-#if 0
 	hmp = MPTOH2(mp);
-#endif
 
-	return (0);
+	flags = VMSC_GETVP;
+	if (waitfor & MNT_LAZY)
+		flags |= VMSC_ONEPASS;
+
+	info.error = 0;
+	info.waitfor = MNT_NOWAIT;
+	vmntvnodescan(mp, flags | VMSC_NOWAIT,
+		      hammer2_sync_scan1,
+		      hammer2_sync_scan2, &info);
+	if (info.error == 0 && (waitfor & MNT_WAIT)) {
+		info.waitfor = waitfor;
+		    vmntvnodescan(mp, flags,
+				  hammer2_sync_scan1,
+				  hammer2_sync_scan2, &info);
+
+	}
+#if 0
+	if (waitfor == MNT_WAIT) {
+		/* XXX */
+	} else {
+		/* XXX */
+	}
+#endif
+	hammer2_chain_lock(hmp, &hmp->vchain);
+	hammer2_chain_flush(hmp, &hmp->vchain, NULL);
+	hammer2_chain_unlock(hmp, &hmp->vchain);
+	error = vinvalbuf(hmp->devvp, V_SAVE, 0, 0);
+	if (error == 0) {
+		struct buf *bp;
+
+		bp = getpbuf(NULL);
+		bp->b_bio1.bio_offset = 0;
+		bp->b_bufsize = 0;
+		bp->b_bcount = 0;
+		bp->b_cmd = BUF_CMD_FLUSH;
+		bp->b_bio1.bio_done = biodone_sync;
+		bp->b_bio1.bio_flags |= BIO_SYNC;
+		vn_strategy(hmp->devvp, &bp->b_bio1);
+		biowait(&bp->b_bio1, "h2vol");
+		relpbuf(bp, NULL);
+
+		kprintf("flush volume header\n");
+
+		bp = getblk(hmp->devvp, 0, HAMMER2_PBUFSIZE, 0, 0);
+		bcopy(&hmp->voldata, bp->b_data, HAMMER2_PBUFSIZE);
+		bawrite(bp);
+	}
+	return (error);
+}
+
+
+static int
+hammer2_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
+{
+	hammer2_inode_t *ip;
+
+	ip = VTOI(vp);
+	if (vp->v_type == VNON || ip == NULL ||
+	    ((ip->chain.flags & HAMMER2_CHAIN_MODIFIED) == 0 &&
+	     RB_EMPTY(&vp->v_rbdirty_tree))) {
+		return(-1);
+	}
+	return(0);
+}
+
+static int
+hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
+{
+	struct hammer2_sync_info *info = data;
+	hammer2_inode_t *ip;
+	int error;
+
+	ip = VTOI(vp);
+	if (vp->v_type == VNON || vp->v_type == VBAD ||
+	    ((ip->chain.flags & HAMMER2_CHAIN_MODIFIED) == 0 &&
+	     RB_EMPTY(&vp->v_rbdirty_tree))) {
+		return(0);
+	}
+	error = VOP_FSYNC(vp, MNT_NOWAIT, 0);
+	if (error)
+		info->error = error;
+	return(0);
 }
 
 static

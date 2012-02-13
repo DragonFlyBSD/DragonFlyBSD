@@ -47,6 +47,10 @@
 
 /*
  * Allocate media space, returning a combined data offset and radix.
+ *
+ * XXX when diving a new full block create a clean empty buffer and bqrelse()
+ *     it, so small data structures do not have to issue read-IO when they
+ *     do the read-modify-write on the backing store.
  */
 hammer2_off_t
 hammer2_freemap_alloc(hammer2_mount_t *hmp, size_t bytes)
