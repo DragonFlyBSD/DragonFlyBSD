@@ -39,6 +39,7 @@
 #include <sys/types.h>
 #include <sys/lock.h>
 #include <sys/uuid.h>
+#include <sys/dirent.h>
 
 #include "hammer2.h"
 
@@ -129,6 +130,40 @@ hammer2_mount_unlock(hammer2_mount_t *hmp)
 }
 
 /*
+ * Return the directory entry type for an inode
+ */
+int
+hammer2_get_dtype(hammer2_inode_t *ip)
+{
+	switch(ip->ip_data.type) {
+	case HAMMER2_OBJTYPE_UNKNOWN:
+		return (DT_UNKNOWN);
+	case HAMMER2_OBJTYPE_DIRECTORY:
+		return (DT_DIR);
+	case HAMMER2_OBJTYPE_REGFILE:
+		return (DT_REG);
+	case HAMMER2_OBJTYPE_FIFO:
+		return (DT_FIFO);
+	case HAMMER2_OBJTYPE_CDEV:	/* not supported */
+		return (DT_CHR);
+	case HAMMER2_OBJTYPE_BDEV:	/* not supported */
+		return (DT_BLK);
+	case HAMMER2_OBJTYPE_SOFTLINK:
+		return (DT_LNK);
+	case HAMMER2_OBJTYPE_HARDLINK:	/* XXX */
+		return (DT_UNKNOWN);
+	case HAMMER2_OBJTYPE_SOCKET:
+		return (DT_SOCK);
+	case HAMMER2_OBJTYPE_WHITEOUT:	/* not supported */
+		return (DT_UNKNOWN);
+	default:
+		return (DT_UNKNOWN);
+	}
+	/* not reached */
+}
+
+
+/*
  * Borrow HAMMER1's directory hash algorithm #1 with a few modifications.
  * The filename is split into fields which are hashed separately and then
  * added together.
@@ -182,6 +217,14 @@ hammer2_dirhash(const unsigned char *name, size_t len)
 	crcx = hammer2_icrc32(aname, len);
 	crcx = crcx ^ (crcx << 16);
 	key |= crcx & 0xFFFF0000U;
+
+	/*
+	 * Set bit 15.  This allows readdir to strip bit 63 so a positive
+	 * 64-bit cookie/offset can always be returned, and still guarantee
+	 * that the values 0x0000-0x7FFF are available for artificial entries.
+	 * ('.' and '..').
+	 */
+	key |= 0x8000U;
 
 	return (key);
 }

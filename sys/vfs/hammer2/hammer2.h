@@ -153,6 +153,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
  */
 struct hammer2_inode {
 	struct hammer2_mount	*hmp;
+	struct hammer2_inode	*pip;		/* parent inode */
 	struct vnode		*vp;
 	hammer2_chain_t		chain;
 	struct hammer2_inode_data ip_data;
@@ -248,6 +249,8 @@ void hammer2_mount_exlock(hammer2_mount_t *hmp);
 void hammer2_mount_shlock(hammer2_mount_t *hmp);
 void hammer2_mount_unlock(hammer2_mount_t *hmp);
 
+int hammer2_get_dtype(hammer2_inode_t *ip);
+
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
 
 /*
@@ -274,12 +277,12 @@ hammer2_chain_t *hammer2_chain_get(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent, int index);
 void hammer2_chain_put(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_mount_t *hmp,
-				hammer2_chain_t **parentp, hammer2_key_t key,
-				hammer2_key_t mask);
+				hammer2_chain_t **parentp,
+				hammer2_key_t key_beg, hammer2_key_t key_end);
 hammer2_chain_t *hammer2_chain_next(hammer2_mount_t *hmp,
 				hammer2_chain_t **parentp,
 				hammer2_chain_t *chain,
-				hammer2_key_t key, hammer2_key_t mask);
+				hammer2_key_t key_beg, hammer2_key_t key_end);
 hammer2_chain_t *hammer2_chain_create(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent,
 				hammer2_key_t key, int keybits,

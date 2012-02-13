@@ -42,6 +42,7 @@
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/mountctl.h>
+#include <sys/dirent.h>
 
 #include "hammer2.h"
 
@@ -158,8 +159,137 @@ static
 int
 hammer2_vop_readdir(struct vop_readdir_args *ap)
 {
-	kprintf("hammer2_readdir\n");
-	return (EOPNOTSUPP);
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *ip;
+	hammer2_inode_t *xip;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t lkey;
+	struct uio *uio;
+	off_t *cookies;
+	off_t saveoff;
+	int cookie_index;
+	int ncookies;
+	int error;
+	int dtype;
+	int r;
+
+	ip = VTOI(ap->a_vp);
+	hmp = ip->hmp;
+	uio = ap->a_uio;
+	saveoff = uio->uio_offset;
+
+	/*
+	 * Setup cookies directory entry cookies if requested
+	 */
+	if (ap->a_ncookies) {
+		ncookies = uio->uio_resid / 16 + 1;
+		if (ncookies > 1024)
+			ncookies = 1024;
+		cookies = kmalloc(ncookies * sizeof(off_t), M_TEMP, M_WAITOK);
+	} else {
+		ncookies = -1;
+		cookies = NULL;
+	}
+	cookie_index = 0;
+
+	/*
+	 * Handle artificial entries.  To ensure that only positive 64 bit
+	 * quantities are returned to userland we always strip off bit 63.
+	 * The hash code is designed such that codes 0x0000-0x7FFF are not
+	 * used, allowing us to use these codes for articial entries.
+	 *
+	 * Entry 0 is used for '.' and entry 1 is used for '..'.  Do not
+	 * allow '..' to cross the mount point into (e.g.) the super-root.
+	 */
+	error = 0;
+	chain = (void *)(intptr_t)-1;	/* non-NULL early done means not eof */
+
+	if (saveoff == 0) {
+		r = vop_write_dirent(&error, uio,
+				     ip->ip_data.inum &
+					HAMMER2_DIRHASH_USERMSK,
+				     DT_DIR, 1, ".");
+		if (r)
+			goto done;
+		if (cookies)
+			cookies[cookie_index] = saveoff;
+		++saveoff;
+		++cookie_index;
+		if (cookie_index == ncookies)
+			goto done;
+	}
+	if (saveoff == 1) {
+		if (ip->pip == NULL || ip == hmp->iroot)
+			xip = ip;
+		else
+			xip = ip->pip;
+
+		r = vop_write_dirent(&error, uio,
+				     xip->ip_data.inum &
+				      HAMMER2_DIRHASH_USERMSK,
+				     DT_DIR, 2, "..");
+		if (r)
+			goto done;
+		if (cookies)
+			cookies[cookie_index] = saveoff;
+		++saveoff;
+		++cookie_index;
+		if (cookie_index == ncookies)
+			goto done;
+	}
+
+	lkey = saveoff | HAMMER2_DIRHASH_VISIBLE;
+
+	parent = &ip->chain;
+	hammer2_chain_ref(hmp, parent);
+	error = hammer2_chain_lock(hmp, parent);
+	if (error) {
+		hammer2_chain_put(hmp, parent);
+		goto done;
+	}
+	chain = hammer2_chain_lookup(hmp, &parent, lkey, (hammer2_key_t)-1);
+	while (chain) {
+		/* XXX chain error */
+		if (chain->bref.type != HAMMER2_BREF_TYPE_INODE)
+			continue;
+		dtype = hammer2_get_dtype(chain->u.ip);
+		saveoff = chain->bref.key & HAMMER2_DIRHASH_USERMSK;
+		r = vop_write_dirent(&error, uio,
+				     chain->u.ip->ip_data.inum &
+				      HAMMER2_DIRHASH_USERMSK,
+				     dtype, chain->u.ip->ip_data.name_len,
+				     chain->u.ip->ip_data.filename);
+		if (r)
+			break;
+		if (cookies)
+			cookies[cookie_index] = saveoff;
+		++saveoff;
+		++cookie_index;
+		if (cookie_index == ncookies)
+			break;
+
+		chain = hammer2_chain_next(hmp, &parent, chain,
+					   lkey, (hammer2_key_t)-1);
+	}
+	hammer2_chain_put(hmp, parent);
+done:
+	if (ap->a_eofflag)
+		*ap->a_eofflag = (chain == NULL);
+	uio->uio_offset = saveoff;
+	if (error && cookie_index == 0) {
+		if (cookies) {
+			kfree(cookies, M_TEMP);
+			*ap->a_ncookies = 0;
+			*ap->a_cookies = NULL;
+		}
+	} else {
+		if (cookies) {
+			*ap->a_ncookies = cookie_index;
+			*ap->a_cookies = cookies;
+		}
+	}
+	return (error);
 }
 
 static

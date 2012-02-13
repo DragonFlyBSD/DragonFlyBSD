@@ -442,6 +442,17 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent, int index)
 	atomic_add_int(&parent->refs, 1);
 
 	/*
+	 * Additional linkage for inodes.  Reuse the parent pointer to
+	 * find the parent directory.
+	 */
+	if (bref->type == HAMMER2_BREF_TYPE_INODE) {
+		while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT)
+			parent = parent->parent;
+		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE)
+			chain->u.ip->pip = parent->u.ip;
+	}
+
+	/*
 	 * Our new chain structure has already been referenced and locked
 	 * but the lock code handles the I/O so call it to resolve the data.
 	 * Then release one of our two exclusive locks.
@@ -465,9 +476,9 @@ hammer2_chain_put(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 }
 
 /*
- * Locate the first masked key relative to the parent chain in (*parentp).
- * The mask indicates which bits must match and should be set to -1 if an
- * exact match is desired.
+ * Locate any key between key_beg and key_end inclusive.  (*parentp)
+ * typically points to an inode but can also point to a related indirect
+ * block and this function will recurse upwards and find the inode again.
  *
  * (*parentp) must be exclusively locked and referenced and can be an inode
  * or an existing indirect block within the inode.
@@ -488,26 +499,27 @@ hammer2_chain_put(hammer2_mount_t *hmp, hammer2_chain_t *chain)
  */
 hammer2_chain_t *
 hammer2_chain_lookup(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
-		     hammer2_key_t key, hammer2_key_t mask)
+		     hammer2_key_t key_beg, hammer2_key_t key_end)
 {
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
-	hammer2_key_t pmask;
+	hammer2_key_t scan_beg;
+	hammer2_key_t scan_end;
 	int count = 0;
 	int i;
 
-	key &= mask;
-
 	/*
-	 * Recurse (*parentp) upward if necessary if the key is outside the
-	 * range of the current indirect block.
+	 * Recurse (*parentp) upward if necessary until the parent completely
+	 * encloses the key range or we hit the inode.
 	 */
 	parent = *parentp;
 	while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
-		pmask = ~(((hammer2_key_t)1 << parent->bref.keybits) - 1);
-		if (((parent->bref.key ^ key) & pmask & mask) == 0)
+		scan_beg = parent->bref.key;
+		scan_end = scan_beg +
+			   ((hammer2_key_t)1 << parent->bref.keybits) - 1;
+		if (key_beg >= scan_beg && key_end <= scan_end)
 			break;
 		hammer2_chain_unlock(hmp, parent);
 		parent = parent->parent;
@@ -543,21 +555,21 @@ again:
 	}
 
 	/*
-	 * Look for the key.  If we are unable to find a match and an exact
-	 * match was requested we return NULL.  If a range was requested we
-	 * run hammer2_chain_next() to iterate.
+	 * If the element and key overlap we use the element.
 	 */
 	bref = NULL;
 	for (i = 0; i < count; ++i) {
 		bref = &base[i];
-		pmask = ~(((hammer2_key_t)1 << bref->keybits) - 1);
-		if (((bref->key ^ key) & pmask & mask) == 0 && bref->type != 0)
+		scan_beg = bref->key;
+		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
+		if (key_beg <= scan_end && key_end >= scan_beg)
 			break;
 	}
 	if (i == count) {
-		if (mask == (hammer2_key_t)-1)
+		if (key_beg == key_end)
 			return (NULL);
-		return (hammer2_chain_next(hmp, parentp, NULL, key, mask));
+		return (hammer2_chain_next(hmp, parentp, NULL,
+					   key_beg, key_end));
 	}
 
 	/*
@@ -595,12 +607,13 @@ again:
 hammer2_chain_t *
 hammer2_chain_next(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
 		   hammer2_chain_t *chain,
-		   hammer2_key_t key, hammer2_key_t mask)
+		   hammer2_key_t key_beg, hammer2_key_t key_end)
 {
 	hammer2_chain_t *parent;
 	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
-	hammer2_key_t pmask;
+	hammer2_key_t scan_beg;
+	hammer2_key_t scan_end;
 	int i;
 	int count;
 
@@ -672,8 +685,9 @@ again2:
 	bref = NULL;
 	while (i < count) {
 		bref = &base[i];
-		pmask = ~(((hammer2_key_t)1 << bref->keybits) - 1);
-		if (((bref->key ^ key) & pmask & mask) == 0 && bref->type != 0)
+		scan_beg = bref->key;
+		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
+		if (key_beg <= scan_end && key_end >= scan_beg)
 			break;
 		++i;
 	}
@@ -822,7 +836,18 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		panic("hammer2_chain_link: collision");
 	KKASSERT(parent->refs > 1);
 	atomic_add_int(&parent->refs, 1);
-	base[i] = chain->bref;
+	*bref = chain->bref;
+
+	/*
+	 * Additional linkage for inodes.  Reuse the parent pointer to
+	 * find the parent directory.
+	 */
+	if (bref->type == HAMMER2_BREF_TYPE_INODE) {
+		while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT)
+			parent = parent->parent;
+		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE)
+			chain->u.ip->pip = parent->u.ip;
+	}
 
 	return (chain);
 }
