@@ -14,7 +14,7 @@ SUBDIR+=gdb
 
 SUBDIR+= ${BU_PRIMARY}
 .if !defined(NO_BINUTILS221)
-SUBDIR+= ${BU_SECONDARY}
+SUBDIR+= ${BU_BACKUP}
 .endif
 
 .if !defined(NO_GCC41)
