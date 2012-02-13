@@ -129,26 +129,43 @@ static
 int
 hammer2_vop_getattr(struct vop_getattr_args *ap)
 {
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *ip;
 	struct vnode *vp;
 	struct vattr *vap;
-	struct hammer2_inode *ip;
 
 	vp = ap->a_vp;
 	vap = ap->a_vap;
 
+	ip = VTOI(vp);
+	hmp = ip->hmp;
+
 	kprintf("hammer2_getattr iplock %p\n", &ip->chain.lk);
 
-	ip = VTOI(vp);
 	hammer2_inode_lock_sh(ip);
 
-	vap->va_type = vp->v_type;
-	vap->va_mode = 0777;
-	vap->va_nlink = 1;
+	vap->va_fsid = hmp->mp->mnt_stat.f_fsid.val[0];
+	vap->va_fileid = ip->ip_data.inum;
+	vap->va_mode = ip->ip_data.mode;
+	vap->va_nlink = ip->ip_data.nlinks;
 	vap->va_uid = 0;
 	vap->va_gid = 0;
-	vap->va_size = 0;
+	vap->va_rmajor = 0;
+	vap->va_rminor = 0;
+	vap->va_size = ip->ip_data.size;
 	vap->va_blocksize = HAMMER2_PBUFSIZE;
-	vap->va_flags = 0;
+	vap->va_flags = ip->ip_data.uflags;
+	hammer2_time_to_timespec(ip->ip_data.ctime, &vap->va_ctime);
+	hammer2_time_to_timespec(ip->ip_data.mtime, &vap->va_mtime);
+	hammer2_time_to_timespec(ip->ip_data.mtime, &vap->va_atime);
+	vap->va_gen = 1;
+	vap->va_bytes = vap->va_size;
+	vap->va_type = hammer2_get_vtype(ip);
+	vap->va_filerev = 0;
+	vap->va_uid_uuid = ip->ip_data.uid;
+	vap->va_gid_uuid = ip->ip_data.gid;
+	vap->va_vaflags = VA_UID_UUID_VALID | VA_GID_UUID_VALID |
+			  VA_FSID_UUID_VALID;
 
 	hammer2_inode_unlock_sh(ip);
 

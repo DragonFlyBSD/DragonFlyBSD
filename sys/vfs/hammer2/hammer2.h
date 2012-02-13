@@ -250,6 +250,8 @@ void hammer2_mount_shlock(hammer2_mount_t *hmp);
 void hammer2_mount_unlock(hammer2_mount_t *hmp);
 
 int hammer2_get_dtype(hammer2_inode_t *ip);
+int hammer2_get_vtype(hammer2_inode_t *ip);
+void hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts);
 
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
 

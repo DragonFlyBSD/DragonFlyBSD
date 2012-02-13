@@ -162,6 +162,50 @@ hammer2_get_dtype(hammer2_inode_t *ip)
 	/* not reached */
 }
 
+/*
+ * Return the directory entry type for an inode
+ */
+int
+hammer2_get_vtype(hammer2_inode_t *ip)
+{
+	switch(ip->ip_data.type) {
+	case HAMMER2_OBJTYPE_UNKNOWN:
+		return (VBAD);
+	case HAMMER2_OBJTYPE_DIRECTORY:
+		return (VDIR);
+	case HAMMER2_OBJTYPE_REGFILE:
+		return (VREG);
+	case HAMMER2_OBJTYPE_FIFO:
+		return (VFIFO);
+	case HAMMER2_OBJTYPE_CDEV:	/* not supported */
+		return (VCHR);
+	case HAMMER2_OBJTYPE_BDEV:	/* not supported */
+		return (VBLK);
+	case HAMMER2_OBJTYPE_SOFTLINK:
+		return (VLNK);
+	case HAMMER2_OBJTYPE_HARDLINK:	/* XXX */
+		return (VBAD);
+	case HAMMER2_OBJTYPE_SOCKET:
+		return (VSOCK);
+	case HAMMER2_OBJTYPE_WHITEOUT:	/* not supported */
+		return (DT_UNKNOWN);
+	default:
+		return (DT_UNKNOWN);
+	}
+	/* not reached */
+}
+
+/*
+ * Convert a hammer2 64-bit time to a timespec.
+ */
+void
+hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts)
+{
+	ts->tv_sec = (unsigned long)(xtime / 1000000);
+	ts->tv_nsec = (unsigned int)(xtime % 1000000) * 1000L;
+}
+
+
 
 /*
  * Borrow HAMMER1's directory hash algorithm #1 with a few modifications.
