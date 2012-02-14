@@ -1,0 +1,10 @@
+
+			    DESIGN CHANGES & ISSUES
+
+* Indirect blocks have to be fully associative (all 1024 entries) for now,
+  I haven't figured out a way to break it down into smaller associative
+  blocks without breaking copies.
+
+* (temporary) all data blocks are 64K at the moment.
+
+* currently directory cookies are non-linear.

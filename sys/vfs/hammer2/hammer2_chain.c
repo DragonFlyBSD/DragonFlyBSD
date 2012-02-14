@@ -203,6 +203,10 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
  *
  * Returns 0 on success or an error code if the data could not be acquired.
  * The chain element is locked either way.
+ *
+ * chain->data will be pointed either at the embedded data (e.g. for
+ * inodes), in which case the buffer cache buffer is released, or will
+ * point into the bp->b_data buffer with the bp left intact while locked.
  */
 int
 hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
@@ -227,28 +231,26 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		return(0);
 
 	/*
-	 * If data is present the element may have been modified.  Assert
-	 * the case and return the chain.
-	 *
-	 * data will point to the inode-embedded copy of hammer2_inode_data
-	 * for inodes, whether modified or not.
-	 */
-	if (chain->data) {
-		KKASSERT(chain->bp == NULL);
-		return (0);
-	}
-
-	/*
-	 * Issue I/O.  If an error occurs we return the error but still
-	 * leave the chain locked.
+	 * bp must be NULL, so if the data pointer is valid here it points
+	 * to embedded data and no I/O is necessary (whether modified or not).
 	 */
 	KKASSERT(chain->bp == NULL);
+	if (chain->data)
+		return (0);
+
+	/*
+	 * If data is NULL we must issue I/O.  Any error returns the error
+	 * code but leaves the chain locked.
+	 *
+	 * If the chain was modified a new bref will have already been
+	 * allocated and its related bp is probably still sitting in the
+	 * buffer cache.
+	 */
 	bref = &chain->bref;
 
 	off_hi = bref->data_off & HAMMER2_OFF_MASK_HI;
 	off_lo = (size_t)bref->data_off & HAMMER2_OFF_MASK_LO;
 	KKASSERT(off_hi != 0);
-	KKASSERT(chain->bp == NULL);
 	error = bread(hmp->devvp, off_hi, HAMMER2_PBUFSIZE, &chain->bp);
 
 	if (error) {
@@ -260,12 +262,13 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	}
 
 	/*
-	 * Extract the data.  Inodes have local embedded copies.  We can
-	 * retain the bp for all other types.
+	 * Setup the data pointer, either pointing it to an embedded data
+	 * structure and copying the data from the buffer, or pointint it
+	 * into the buffer.
 	 *
-	 * WARNING: Generally speaking we can only retain bp's that represent
-	 *	    full blocks to avoid potential deadlocks or attempts to
-	 *	    recursively acquire the same bp.
+	 * The buffer is not retained when copying to an embedded data
+	 * structure in order to avoid potential deadlocks or recursions
+	 * on the same physical buffer.
 	 */
 	switch (bref->type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
@@ -304,78 +307,101 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 
 /*
  * Convert a locked chain that was retrieved read-only to read-write.
+ *
+ * If not already marked modified a new physical block will be allocated
+ * and assigned to the bref.  If the data is pointing into an existing
+ * bp it will be copied to the new bp and the new bp will replace the
+ * existing bp.
+ *
+ * If the data is embedded we allocate the new physical block but don't
+ * bother copying the data into it (yet).
  */
 void
 hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
 	hammer2_chain_t *parent;
-	size_t off_lo;
+	struct buf *nbp;
 	size_t bytes;
-	void *data;
+	void *ndata;
+	int error;
 
 	/*
-	 * Nothing to do if it is already RW
+	 * If the chain is already marked modified we can just return.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) && chain->data != NULL) {
-		KKASSERT(chain->bp == NULL);
+	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
+		KKASSERT(chain->data != NULL);
 		return;
 	}
 
 	/*
-	 * Create an allocated copy of the data if it is not embedded.
+	 * The MODIFIED bit is not yet set, we must allocate the
+	 * copy-on-write block.
+	 *
+	 * If the data is embedded no other action is required.
+	 *
+	 * If the data is not embedded we acquire and clear the
+	 * new block.  If chain->data is not NULL we then do the
+	 * copy-on-write.  chain->data will then be repointed to the new
+	 * buffer and the old buffer will be released.
 	 */
-	if (chain->data == NULL) {
-		/*
-		 * Allocate in-memory data and copy from the read-only bp
-		 */
-		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT);
-		KKASSERT(chain->bp != NULL);
-		off_lo = (size_t)chain->bref.data_off & HAMMER2_OFF_MASK_LO;
-		data = (char *)chain->bp->b_data + off_lo;
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+	hammer2_chain_ref(hmp, chain);	/* ref for modified bit */
 
-		bytes = 1 << (int)(chain->bref.data_off &
-				   HAMMER2_OFF_MASK_RADIX);
-		chain->data = kmalloc(bytes, hmp->mchain, M_WAITOK | M_ZERO);
-		bcopy(data, chain->data, bytes);
-		brelse(chain->bp);
-		chain->bp = NULL;
+	bytes = 1 << (int)(chain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
+	if (chain != &hmp->vchain) {
+		chain->bref.data_off = hammer2_freemap_alloc(hmp, bytes);
+		/* XXX failed allocation */
+	}
 
+	switch(chain->bref.type) {
+	case HAMMER2_BREF_TYPE_VOLUME:		/* embedded */
+	case HAMMER2_BREF_TYPE_INODE:		/* embedded */
 		/*
-		 * Assert correctness to prevent system memory corruption.
-		 *
-		 * XXX can only be for indirect
+		 * data points to embedded structure, no copy needed
 		 */
-		switch(chain->bref.type) {
-		case HAMMER2_BREF_TYPE_INODE:
-			KKASSERT(bytes == sizeof(hammer2_inode_data_t));
-			break;
-		case HAMMER2_BREF_TYPE_INDIRECT:
-			KKASSERT(bytes == sizeof(hammer2_indblock_data_t));
-			break;
-		default:
-			/* do nothing */
-			break;
+		error = 0;
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+	case HAMMER2_BREF_TYPE_DATA:
+		/*
+		 * data (if not NULL) points into original bp, copy-on-write
+		 * to new block.
+		 */
+		KKASSERT(chain != &hmp->vchain);	/* safety */
+		KKASSERT(chain->data == NULL || chain->bp != NULL);
+		if (bytes == HAMMER2_PBUFSIZE) {
+			nbp = getblk(hmp->devvp,
+				     chain->bref.data_off & HAMMER2_OFF_MASK_HI,
+				     HAMMER2_PBUFSIZE, 0, 0);
+			vfs_bio_clrbuf(nbp);
+			bdirty(nbp);
+			error = 0;
+		} else {
+			error = bread(hmp->devvp,
+				     chain->bref.data_off & HAMMER2_OFF_MASK_HI,
+				     HAMMER2_PBUFSIZE, &nbp);
+			KKASSERT(error == 0);/* XXX handle error */
 		}
+		ndata = nbp->b_data + (chain->bref.data_off &
+				       HAMMER2_OFF_MASK_LO);
+		if (chain->data) {
+			bcopy(chain->data, ndata, bytes);
+			KKASSERT(chain->bp != NULL);
+			brelse(chain->bp);
+		}
+		chain->bp = nbp;
+		chain->data = ndata;
+		break;
+	default:
+		panic("hammer2_chain_modify: unknown bref type");
+		break;
+
 	}
 
 	/*
-	 * Mark modified and reallocate the block for copy-on-write.
-	 * The root volume header is not reallocated.
-	 *
-	 * Modified chain buffers are given an extra ref to prevent
-	 * their destruction.
+	 * Recursively mark the parent chain elements so flushes can find
+	 * modified elements.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
-		hammer2_chain_ref(hmp, chain);
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
-		if (chain != &hmp->vchain) {
-			bytes = 1 << (int)(chain->bref.data_off &
-					   HAMMER2_OFF_MASK_RADIX);
-			chain->bref.data_off =
-					   hammer2_freemap_alloc(hmp, bytes);
-			/* XXX failed allocation */
-		}
-	}
 	parent = chain->parent;
 	while (parent && (parent->flags & HAMMER2_CHAIN_SUBMODIFIED) == 0) {
 		atomic_set_int(&parent->flags, HAMMER2_CHAIN_SUBMODIFIED);
@@ -387,8 +413,10 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
  * Unlock a chain element without dropping its reference count.
  * (see hammer2_chain_put() to do both).
  *
- * Any read-only data reference (bp present) is cleaned out.  If the
- * chain was modified the writable copy of the data sticks around.
+ * Non-embedded data references (chain->bp != NULL) are returned to the
+ * system and the data field is cleared in that case.  If modified the
+ * dirty buffer is still returned to the system, can be flushed to disk by
+ * the system at any time, and will be reconstituted/re-read as needed.
  */
 void
 hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
@@ -421,11 +449,6 @@ hammer2_chain_find(hammer2_mount_t *hmp, hammer2_chain_t *parent, int index)
 /*
  * Return a locked chain structure with all associated data acquired.
  *
- * If this is a read-only request the data may wind up pointing into a
- * buffer cache buffer.  If read-write a kmalloc()'d copy of the data
- * will be made and the buffer released, and the chain will be marked
- * modified.
- *
  * Caller must lock the parent on call, the returned child will be locked.
  */
 hammer2_chain_t *
@@ -451,7 +474,7 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent, int index)
 	}
 
 	/*
-	 * Otherwise lookup the bref and issue I/O
+	 * Otherwise lookup the bref and issue I/O (switch on the parent)
 	 */
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
@@ -785,8 +808,8 @@ again2:
  * to emplace the new indirect type.
  *
  * A new locked, referenced chain element is returned of the specified type.
- * This element will also be marked as modified and contain a kmalloc()'d
- * pre-zero'd data area that is ready for initialization.
+ * This element will also be marked as modified and contain a data area
+ * ready for initialization.
  */
 hammer2_chain_t *
 hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
@@ -818,13 +841,18 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 */
 	bytes = (hammer2_off_t)1 <<
 		(int)(chain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
+
 	switch(type) {
+	case HAMMER2_BREF_TYPE_VOLUME:
+		panic("hammer2_chain_create: called with volume type");
+		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		KKASSERT(bytes == HAMMER2_INODE_BYTES);
 		chain->data = (void *)&chain->u.ip->ip_data;
 		break;
 	default:
-		chain->data = kmalloc(bytes, hmp->mchain, M_WAITOK | M_ZERO);
+		/* leave chain->data NULL */
+		KKASSERT(chain->data == NULL);
 		break;
 	}
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
@@ -853,8 +881,9 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	}
 
 	/*
-	 * Scan the brefs and also check for in-memory chain elements that
-	 * might not yet be reflected in the parent's bref array.
+	 * Scan for an unallocated bref, also skipping any slots occupied
+	 * by in-memory chain elements that may not yet have been updated
+	 * in the parent's bref array.
 	 */
 	bzero(&dummy_chain, sizeof(dummy_chain));
 	bref = NULL;
@@ -898,9 +927,15 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	}
 
 	/*
-	 * Make the newly created chain as modified.  We have already
-	 * assigned the data pointer so it will not try to read from the
-	 * media.
+	 * Mark the newly created chain element as modified and fully
+	 * resolve the chain->data pointer.
+	 *
+	 * Chain elements with embedded data will not issue I/O at this time.
+	 * A new block will be allocated for the buffer but not instantiated.
+	 *
+	 * Chain elements which do not use embedded data will allocate
+	 * the new block AND instantiate its buffer cache buffer, pointing
+	 * the data at the bp.
 	 */
 	hammer2_chain_modify(hmp, chain);
 
@@ -1008,7 +1043,7 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 	}
 
 	/*
-	 * Flush this chain entry.
+	 * Flush this chain entry only if it is marked modified.
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0)
 		return;
@@ -1022,52 +1057,43 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 	if (parent_bref) {
 		hammer2_blockref_t *bref;
 		hammer2_off_t off_hi;
+		struct buf *bp;
 		size_t off_lo;
 		size_t bytes;
 		int error;
-		char *data;
 
 		KKASSERT(chain->data != NULL);
-		KKASSERT(chain->bp == NULL);
 		bref = &chain->bref;
 
 		off_hi = bref->data_off & HAMMER2_OFF_MASK_HI;
 		off_lo = (size_t)bref->data_off & HAMMER2_OFF_MASK_LO;
 		bytes = 1 << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 		KKASSERT(off_hi != 0);	/* not the root volume header */
-		KKASSERT(chain->bp == NULL);
-		error = bread(hmp->devvp, off_hi, HAMMER2_PBUFSIZE, &chain->bp);
-		if (error == 0) {
+
+		if (chain->bp) {
+			/*
+			 * The data is mapped directly to the bp, no further
+			 * action is required.
+			 */
+			;
+		} else {
+			/*
+			 * The data is embedded, we have to acquire the
+			 * buffer cache buffer and copy the data into it.
+			 */
+			bp = NULL;
+			error = bread(hmp->devvp, off_hi,
+				      HAMMER2_PBUFSIZE, &bp);
+			KKASSERT(error == 0); /* XXX */
+
 			/*
 			 * Copy the data to the buffer, mark the buffer
 			 * dirty, and convert the chain to unmodified.
-			 *
-			 * A chain that is not modified might not have a
-			 * local copy of the data.  Only TYPE_INDIRECT
-			 * uses a buffer cache buffer for the non-modified
-			 * chain.
 			 */
-			bcopy(chain->data,
-			      (char *)chain->bp->b_data + off_lo,
-			      bytes);
+			bcopy(chain->data, (char *)bp->b_data + off_lo, bytes);
+			bdwrite(bp);
+			bp = NULL;
 
-			switch(bref->type) {
-			case HAMMER2_BREF_TYPE_INDIRECT:
-				bdirty(chain->bp);
-				data = (char *)chain->bp->b_data + off_lo;
-				kfree(chain->data, hmp->mchain);
-				chain->data = (void *)data;
-				/* leave chain->bp intact */
-				break;
-			case HAMMER2_BREF_TYPE_VOLUME:
-				panic("hammer2_chain_flush: illegal flush");
-				break;
-			default:
-				bdwrite(chain->bp);
-				chain->bp = NULL;
-				/* leave chain->data intact */
-				break;
-			}
 			chain->bref.check.iscsi32.value =
 					hammer2_icrc32(chain->data, bytes);
 
@@ -1080,16 +1106,10 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 			 * that points to this chain is not being updated.
 			 */
 			*parent_bref = chain->bref;
-			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
-			hammer2_chain_drop(hmp, chain);
-			kprintf("flush %016jx\n", (intmax_t)(off_hi | off_lo));
-		} else {
-			/*
-			 * Leave buffer dirty, with its kmalloc()'d data.
-			 */
-			brelse(chain->bp);
-			chain->bp = NULL;
 		}
+		kprintf("flush %016jx\n", (intmax_t)(off_hi | off_lo));
+		hammer2_chain_drop(hmp, chain);
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 	} else {
 		hammer2_blockref_t *bref;
 
@@ -1118,104 +1138,3 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		}
 	}
 }
-
-#if 0
-/*
- * Recursively commit the specified chain.  The chain is locked and
- * referenced by the caller and will remain so on return.
- *
- * This is typically called with the volume header's vchain
- */
-void
-hammer2_chain_commit(hammer2_mount_t *hmp, hammer2_chain_t *chain)
-{
-	hammer2_chain_t *scan;
-
-	/*
-	 * Scan active children
-	 */
-	if (chain->flags & HAMMER2_CHAIN_SUBCOMMITTING) {
-		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_SUBCOMMITTING);
-		SPLAY_FOREACH(scan, hammer2_chain_splay, &chain->shead) {
-			if (scan->flags & (HAMMER2_CHAIN_SUBCOMMITTING |
-					   HAMMER2_CHAIN_COMMITTING)) {
-				hammer2_chain_ref(hmp, scan);
-				hammer2_chain_lock(hmp, scan);
-				hammer2_chain_commit(hmp, scan);
-				if (scan->flags & (HAMMER2_CHAIN_SUBCOMMITTING |
-						   HAMMER2_CHAIN_COMMITTING)) {
-					atomic_set_int(&chain->flags,
-						HAMMER2_CHAIN_SUBCOMMITTING);
-				}
-				hammer2_chain_put(hmp, scan);
-			}
-		}
-	}
-	if (chain->flags & HAMMER2_CHAIN_COMMITTING) {
-		hammer2_chain_t *parent;
-		hammer2_blockref_t *bref;
-		hammer2_off_t off_hi;
-		size_t off_lo;
-		size_t bytes;
-		int error;
-		char *data;
-
-		/*
-		 * Determine if the buffer cache still has the block and
-		 * that the block is still B_CACHE.  If it does we check
-		 * the dirty state and bawrite() the block.
-		 */
-		bref = &chain->bref;
-		off_hi = bref->data_off & HAMMER2_OFF_MASK_HI;
-		KKASSERT(chain->bp == NULL);
-		chain->bp = getcacheblk(hmp->devvp, off_hi, HAMMER2_PBUFSIZE);
-		if (chain->bp) {
-
-
-
-
-
-		KKASSERT(chain->data != NULL);
-		KKASSERT(chain->bp == NULL);
-
-		bref = &chain->bref;
-		off_hi = bref->data_off & HAMMER2_OFF_MASK_HI;
-		off_lo = (size_t)bref->data_off & HAMMER2_OFF_MASK_LO;
-		bytes = 1 << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
-		KKASSERT(off_hi != 0);	/* not the root volume header */
-		KKASSERT(chain->bp == NULL);
-		error = bread(hmp->devvp, off_hi, HAMMER2_PBUFSIZE, &chain->bp);
-		if (error == 0) {
-			/*
-			 * Mark the buffer dirty and convert to a clean
-			 * chain (where data typically points into the bp).
-			 *
-			 * The buffer will be brelse()'d when the caller
-			 * unlocks the chain.
-			 *
-			 * We have to drop a ref when clearing the COMMITTING
-			 * bit.
-			 */
-			bcopy(chain->data,
-			      (char *)chain->bp->b_data + off_lo,
-			      bytes);
-			bdirty(chain->bp);
-			if (bref->type != HAMMER2_BREF_TYPE_INODE) {
-				data = (char *)chain->bp->b_data + off_lo;
-				kfree(chain->data, hmp->mchain);
-				chain->data = (void *)data;
-			}
-			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_COMMITTING);
-			hammer2_chain_drop(hmp, chain);
-			kprintf("committ %016jx\n", (intmax_t)(off_hi | off_lo));
-		} else {
-			/*
-			 * Leave buffer dirty, with its kmalloc()'d data.
-			 */
-			brelse(chain->bp);
-			chain->bp = NULL;
-		}
-	}
-}
-
-#endif

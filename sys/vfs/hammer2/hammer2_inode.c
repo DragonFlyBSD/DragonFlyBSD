@@ -181,8 +181,8 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
  * Create a new inode in the specified directory using the vattr to
  * figure out the type of inode.
  *
- * If no error occurs the new inode is returned in *nipp, otherwise an
- * error is returned and *nipp is set to NULL.
+ * If no error occurs the new inode with its chain locked is returned in
+ * *nipp, otherwise an error is returned and *nipp is set to NULL.
  */
 int
 hammer2_create_inode(hammer2_mount_t *hmp,

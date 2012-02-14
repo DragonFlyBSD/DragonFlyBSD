@@ -46,6 +46,8 @@
 
 #include "hammer2.h"
 
+#define ZFOFFSET	(-2LL)
+
 /*
  * Last reference to a vnode is going away but it is still cached.
  */
@@ -339,14 +341,242 @@ static
 int
 hammer2_vop_read(struct vop_read_args *ap)
 {
-	return (EOPNOTSUPP);
+	struct vnode *vp;
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *ip;
+	struct buf *bp;
+	struct uio *uio;
+	int error;
+	int seqcount;
+	int bigread;
+
+	/*
+	 * Read operations supported on this vnode?
+	 */
+	vp = ap->a_vp;
+	if (vp->v_type != VREG)
+		return (EINVAL);
+
+	/*
+	 * Misc
+	 */
+	ip = VTOI(vp);
+	hmp = ip->hmp;
+	uio = ap->a_uio;
+	error = 0;
+
+	seqcount = ap->a_ioflag >> 16;
+	bigread = (uio->uio_resid > 100 * 1024 * 1024);
+
+	/*
+	 * UIO read loop
+	 */
+	while (uio->uio_resid > 0 && uio->uio_offset < ip->ip_data.size) {
+		hammer2_key_t off_hi;
+		int off_lo;
+		int n;
+
+		off_hi = uio->uio_offset & ~HAMMER2_LBUFMASK64;
+		off_lo = (int)(uio->uio_offset & HAMMER2_LBUFMASK64);
+
+		/* XXX bigread & signal check test */
+
+		error = cluster_read(vp, ip->ip_data.size, off_hi,
+				     HAMMER2_LBUFSIZE, HAMMER2_PBUFSIZE,
+				     seqcount * BKVASIZE, &bp);
+		if (error)
+			break;
+		n = HAMMER2_LBUFSIZE - off_lo;
+		if (n > uio->uio_resid)
+			n = uio->uio_resid;
+		if (n > ip->ip_data.size - uio->uio_offset)
+			n = (int)(ip->ip_data.size - uio->uio_offset);
+		bp->b_flags |= B_AGE;
+		uiomove((char *)bp->b_data + off_lo, n, uio);
+	}
+	return (error);
 }
 
 static
 int
 hammer2_vop_write(struct vop_write_args *ap)
 {
-	return (EOPNOTSUPP);
+	thread_t td;
+	struct vnode *vp;
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *ip;
+	struct buf *bp;
+	struct uio *uio;
+	int error;
+	int kflags;
+	int seqcount;
+	int bigwrite;
+
+	/*
+	 * Read operations supported on this vnode?
+	 */
+	vp = ap->a_vp;
+	if (vp->v_type != VREG)
+		return (EINVAL);
+
+	/*
+	 * Misc
+	 */
+	ip = VTOI(vp);
+	hmp = ip->hmp;
+	uio = ap->a_uio;
+	error = 0;
+	kflags = 0;
+	if (hmp->ronly)
+		return (EROFS);
+
+	seqcount = ap->a_ioflag >> 16;
+	bigwrite = (uio->uio_resid > 100 * 1024 * 1024);
+
+	/*
+	 * Check resource limit
+	 */
+	if (uio->uio_resid > 0 && (td = uio->uio_td) != NULL && td->td_proc &&
+	    uio->uio_offset + uio->uio_resid >
+	     td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
+		lwpsignal(td->td_proc, td->td_lwp, SIGXFSZ);
+		return (EFBIG);
+	}
+
+	bigwrite = (uio->uio_resid > 100 * 1024 * 1024);
+
+	/*
+	 * UIO read loop
+	 */
+	while (uio->uio_resid > 0) {
+		hammer2_key_t nsize;
+		hammer2_key_t off_hi;
+		int fixsize;
+		int off_lo;
+		int n;
+		int trivial;
+		int endofblk;
+
+		off_hi = uio->uio_offset & ~HAMMER2_LBUFMASK64;
+		off_lo = (int)(uio->uio_offset & HAMMER2_LBUFMASK64);
+
+		n = HAMMER2_LBUFSIZE - off_lo;
+		if (n > uio->uio_resid) {
+			n = uio->uio_resid;
+			endofblk = 0;
+		} else {
+			endofblk = 1;
+		}
+		nsize = uio->uio_offset + n;
+
+		/* XXX bigwrite & signal check test */
+
+		/*
+		 * Don't allow the buffer build to blow out the buffer
+		 * cache.
+		 */
+		if ((ap->a_ioflag & IO_RECURSE) == 0)
+			bwillwrite(HAMMER2_LBUFSIZE);
+
+		/*
+		 * Extend the size of the file as needed
+		 * XXX lock.
+		 */
+		if (nsize > ip->ip_data.size) {
+			if (uio->uio_offset > ip->ip_data.size)
+				trivial = 0;
+			else
+				trivial = 1;
+			nvextendbuf(vp, ip->ip_data.size, nsize,
+				    HAMMER2_LBUFSIZE, HAMMER2_LBUFSIZE,
+				    (int)(ip->ip_data.size & HAMMER2_LBUFMASK),
+				    (int)(nsize),
+				    trivial);
+			kflags |= NOTE_EXTEND;
+			fixsize = 1;
+		} else {
+			fixsize = 0;
+		}
+
+		if (uio->uio_segflg == UIO_NOCOPY) {
+			/*
+			 * Issuing a write with the same data backing the
+			 * buffer.  Instantiate the buffer to collect the
+			 * backing vm pages, then read-in any missing bits.
+			 *
+			 * This case is used by vop_stdputpages().
+			 */
+			bp = getblk(vp, off_hi,
+				    HAMMER2_LBUFSIZE, GETBLK_BHEAVY, 0);
+			if ((bp->b_flags & B_CACHE) == 0) {
+				bqrelse(bp);
+				error = bread(ap->a_vp,
+					      off_hi, HAMMER2_LBUFSIZE, &bp);
+			}
+		} else if (off_lo == 0 && uio->uio_resid >= HAMMER2_LBUFSIZE) {
+			/*
+			 * Even though we are entirely overwriting the buffer
+			 * we may still have to zero it out to avoid a
+			 * mmap/write visibility issue.
+			 */
+			bp = getblk(vp, off_hi,
+				    HAMMER2_LBUFSIZE, GETBLK_BHEAVY, 0);
+			if ((bp->b_flags & B_CACHE) == 0)
+				vfs_bio_clrbuf(bp);
+		} else if (off_hi >= ip->ip_data.size) {
+			/*
+			 * If the base offset of the buffer is beyond the
+			 * file EOF, we don't have to issue a read.
+			 */
+			bp = getblk(vp, off_hi,
+				    HAMMER2_LBUFSIZE, GETBLK_BHEAVY, 0);
+			vfs_bio_clrbuf(bp);
+		} else {
+			/*
+			 * Partial overwrite, read in any missing bits then
+			 * replace the portion being written.
+			 */
+			error = bread(vp, off_hi, HAMMER2_LBUFSIZE, &bp);
+			if (error == 0)
+				bheavy(bp);
+		}
+
+		if (error == 0) {
+			/* release lock */
+			error = uiomove(bp->b_data + off_lo, n, uio);
+			/* acquire lock */
+		}
+
+		if (error) {
+			brelse(bp);
+			if (fixsize) {
+				nvtruncbuf(vp, ip->ip_data.size,
+					   HAMMER2_LBUFSIZE, HAMMER2_LBUFSIZE);
+			}
+			break;
+		}
+		kflags |= NOTE_WRITE;
+		if (ip->ip_data.size < uio->uio_offset)
+			ip->ip_data.size = uio->uio_offset;
+		/* XXX update ino_data.mtime */
+
+		/*
+		 * Once we dirty a buffer any cached offset becomes invalid.
+		 */
+		bp->b_bio2.bio_offset = NOOFFSET;
+		bp->b_flags |= B_AGE;
+		if (ap->a_ioflag & IO_SYNC) {
+			bwrite(bp);
+		} else if ((ap->a_ioflag & IO_DIRECT) && endofblk) {
+			bawrite(bp);
+		} else if (ap->a_ioflag & IO_ASYNC) {
+			bawrite(bp);
+		} else {
+			bdwrite(bp);
+		}
+	}
+	/* hammer2_knote(vp, kflags); */
+	return (error);
 }
 
 static
@@ -444,6 +674,9 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 
 	dip = VTOI(ap->a_dvp);
 	hmp = dip->hmp;
+	if (hmp->ronly)
+		return (EROFS);
+
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
@@ -465,12 +698,52 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	return error;
 }
 
+/*
+ * Return the largest contiguous physical disk range for the logical
+ * request.
+ *
+ * (struct vnode *vp, off_t loffset, off_t *doffsetp, int *runp, int *runb)
+ */
 static
 int
 hammer2_vop_bmap(struct vop_bmap_args *ap)
 {
-	kprintf("hammer2_bmap\n");
-	return (EOPNOTSUPP);
+	struct vnode *vp;
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *ip;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t off_hi;
+
+	/*
+	 * Only supported on regular files
+	 *
+	 * Only supported for read operations (required for cluster_read).
+	 * The block allocation is delayed for write operations.
+	 */
+	vp = ap->a_vp;
+	if (vp->v_type != VREG)
+		return (EOPNOTSUPP);
+	if (ap->a_cmd != BUF_CMD_READ)
+		return (EOPNOTSUPP);
+
+	ip = VTOI(vp);
+	hmp = ip->hmp;
+	off_hi = ap->a_loffset & HAMMER2_OFF_MASK_HI;
+	KKASSERT((ap->a_loffset & HAMMER2_LBUFMASK64) == 0);
+
+	parent = &ip->chain;
+	hammer2_chain_ref(hmp, parent);
+	hammer2_chain_lock(hmp, parent);
+	chain = hammer2_chain_lookup(hmp, &parent, off_hi, off_hi);
+	if (chain) {
+		*ap->a_doffsetp = (chain->bref.data_off & ~HAMMER2_LBUFMASK64);
+		hammer2_chain_put(hmp, chain);
+	} else {
+		*ap->a_doffsetp = ZFOFFSET;	/* zero-fill hole */
+	}
+	hammer2_chain_put(hmp, parent);
+	return (0);
 }
 
 static
@@ -481,24 +754,27 @@ hammer2_vop_open(struct vop_open_args *ap)
 	return vop_stdopen(ap);
 }
 
+static int hammer2_strategy_read(struct vop_strategy_args *ap);
+static int hammer2_strategy_write(struct vop_strategy_args *ap);
+
 static
 int
 hammer2_vop_strategy(struct vop_strategy_args *ap)
 {
-	struct vnode *vp;
 	struct bio *biop;
 	struct buf *bp;
-	struct hammer2_inode *ip;
 	int error;
 
-	vp = ap->a_vp;
 	biop = ap->a_bio;
 	bp = biop->bio_buf;
-	ip = VTOI(vp);
 
 	switch(bp->b_cmd) {
 	case BUF_CMD_READ:
+		error = hammer2_strategy_read(ap);
+		break;
 	case BUF_CMD_WRITE:
+		error = hammer2_strategy_write(ap);
+		break;
 	default:
 		bp->b_error = error = EINVAL;
 		bp->b_flags |= B_ERROR;
@@ -507,6 +783,108 @@ hammer2_vop_strategy(struct vop_strategy_args *ap)
 	}
 
 	return (error);
+}
+
+static
+int
+hammer2_strategy_read(struct vop_strategy_args *ap)
+{
+	struct buf *bp;
+	struct bio *bio;
+	struct bio *nbio;
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *ip;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t off_hi;
+
+	bio = ap->a_bio;
+	bp = bio->bio_buf;
+	ip = VTOI(ap->a_vp);
+	hmp = ip->hmp;
+	nbio = push_bio(bio);
+
+	if (nbio->bio_offset == NOOFFSET) {
+		off_hi = bio->bio_offset & HAMMER2_OFF_MASK_HI;
+		KKASSERT((bio->bio_offset & HAMMER2_LBUFMASK64) == 0);
+
+		parent = &ip->chain;
+		hammer2_chain_ref(hmp, parent);
+		hammer2_chain_lock(hmp, parent);
+		chain = hammer2_chain_lookup(hmp, &parent, off_hi, off_hi);
+		if (chain) {
+			nbio->bio_offset = (chain->bref.data_off &
+					    ~HAMMER2_LBUFMASK64);
+		} else {
+			nbio->bio_offset = ZFOFFSET;
+		}
+		hammer2_chain_put(hmp, parent);
+	}
+	if (nbio->bio_offset == ZFOFFSET) {
+		bp->b_resid = 0;
+		bp->b_error = 0;
+		vfs_bio_clrbuf(bp);
+		biodone(nbio);
+	} else {
+		vn_strategy(hmp->devvp, nbio);
+	}
+	return (0);
+}
+
+static
+int
+hammer2_strategy_write(struct vop_strategy_args *ap)
+{
+	struct buf *bp;
+	struct bio *bio;
+	struct bio *nbio;
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *ip;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t off_hi;
+	int off_lo;
+
+	bio = ap->a_bio;
+	bp = bio->bio_buf;
+	ip = VTOI(ap->a_vp);
+	hmp = ip->hmp;
+	nbio = push_bio(bio);
+
+	/*
+	 * Our bmap doesn't support writes atm, and a vop_write should
+	 * clear the physical disk offset cache for the copy-on-write
+	 * operation.
+	 */
+	KKASSERT(nbio->bio_offset == NOOFFSET);
+
+	off_hi = bio->bio_offset & HAMMER2_OFF_MASK_HI;
+	off_lo = bio->bio_offset & HAMMER2_OFF_MASK_LO;
+	KKASSERT((bio->bio_offset & HAMMER2_LBUFMASK64) == 0);
+
+	parent = &ip->chain;
+	hammer2_chain_ref(hmp, parent);
+	hammer2_chain_lock(hmp, parent);
+	chain = hammer2_chain_lookup(hmp, &parent, off_hi, off_hi);
+	if (chain) {
+		hammer2_chain_modify(hmp, chain);
+		bcopy(bp->b_data, chain->data->buf + off_lo, bp->b_bcount);
+		hammer2_chain_put(hmp, chain);
+	} else {
+		chain = hammer2_chain_create(hmp, parent,
+					     off_hi, HAMMER2_PBUFRADIX,
+					     HAMMER2_BREF_TYPE_DATA,
+					     HAMMER2_PBUFSIZE);
+		bcopy(bp->b_data, chain->data->buf + off_lo, bp->b_bcount);
+		hammer2_chain_put(hmp, chain);
+	}
+	hammer2_chain_put(hmp, parent);
+
+	bp->b_resid = 0;
+	bp->b_error = 0;
+	biodone(nbio);
+
+	return (0);
 }
 
 static
