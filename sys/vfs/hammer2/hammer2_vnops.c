@@ -301,15 +301,21 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			break;
 		if (cookies)
 			cookies[cookie_index] = saveoff;
-		++saveoff;
 		++cookie_index;
-		if (cookie_index == ncookies)
-			break;
-
 		chain = hammer2_chain_next(hmp, &parent, chain,
 					   lkey, (hammer2_key_t)-1);
+		if (chain) {
+			saveoff = (chain->bref.key &
+				   HAMMER2_DIRHASH_USERMSK) + 1;
+		} else {
+			saveoff = (hammer2_key_t)-1;
+		}
+		if (cookie_index == ncookies)
+			break;
 	}
 	hammer2_chain_put(hmp, parent);
+	if (chain)
+		hammer2_chain_put(hmp, chain);
 done:
 	if (ap->a_eofflag)
 		*ap->a_eofflag = (chain == NULL);
