@@ -2667,7 +2667,7 @@ mpssas_action_resetdev(struct mpssas_softc *sassc, union ccb *ccb)
 	sc = sassc->sc;
 	tm = mps_alloc_command(sc);
 	if (tm == NULL) {
-		mps_printf(sc, "comand alloc failure in mpssas_action_resetdev\n");
+		mps_printf(sc, "command alloc failure in mpssas_action_resetdev\n");
 		ccb->ccb_h.status = CAM_RESRC_UNAVAIL;
 		xpt_done(ccb);
 		return;
