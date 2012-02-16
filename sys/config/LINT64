@@ -1166,6 +1166,12 @@ options 	COM_MULTIPORT		#code for some cards with shared IRQs
 #	0x20000	enable hardware RTS/CTS and larger FIFOs.  Only works for
 #		ST16650A-compatible UARTs.
 
+# PCI Universal Communications driver
+# Supports various single and multi port PCI serial cards. Maybe later
+# also the parallel ports on combination serial/parallel cards. New cards
+# can be added in src/sys/dev/misc/puc/pucdata.c.
+device		puc
+
 #
 # Network interfaces: `ed', `ep', `is', `lnc'
 #

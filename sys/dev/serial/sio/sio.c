@@ -42,9 +42,7 @@
 #include "opt_ddb.h"
 #include "opt_sio.h"
 #include "use_pci.h"
-#ifdef __i386__
 #include "use_puc.h"
-#endif
 
 /*
  * Serial driver, based on 386BSD-0.1 com driver.
@@ -434,7 +432,7 @@ sio_pci_probe(device_t dev)
 static int
 sio_puc_attach(device_t dev)
 {
-	u_int rclk;
+	uintptr_t rclk;
 
 	if (BUS_READ_IVAR(device_get_parent(dev), dev, PUC_IVAR_FREQ,
 	    &rclk) != 0)
@@ -445,7 +443,7 @@ sio_puc_attach(device_t dev)
 static int
 sio_puc_probe(device_t dev)
 {
-	u_int rclk;
+	uintptr_t rclk;
 
 	if (BUS_READ_IVAR(device_get_parent(dev), dev, PUC_IVAR_FREQ,
 	    &rclk) != 0)
