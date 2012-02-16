@@ -32,8 +32,6 @@
  * 852GM/855GM/865G support added by David Dawes <dawes@xfree86.org>
  */
 
-#include "opt_bus.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>

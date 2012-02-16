@@ -7,6 +7,8 @@
 #ifndef _SCSI_SG_H
 #define _SCSI_SG_H
 
+#include <sys/ioccom.h>
+
 #define SGIOC	'"'
 #define SG_SET_TIMEOUT		_IO(SGIOC, 0x01)
 #define SG_GET_TIMEOUT		_IO(SGIOC, 0x02)

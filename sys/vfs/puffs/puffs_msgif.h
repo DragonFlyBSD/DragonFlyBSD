@@ -34,7 +34,6 @@
 
 #include <sys/param.h>
 #include <sys/time.h>
-#include <sys/ioccom.h>
 #include <sys/mount.h>
 #include <sys/uio.h>
 #include <sys/vfscache.h>

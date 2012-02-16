@@ -45,7 +45,6 @@
 #include <sys/eventhandler.h>
 #include <sys/bus.h>
 #include <sys/taskqueue.h>
-#include <sys/ioccom.h>
 #include <sys/device.h>
 #include <sys/mplock2.h>
 

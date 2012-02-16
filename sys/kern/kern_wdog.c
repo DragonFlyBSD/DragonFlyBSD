@@ -37,7 +37,6 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/sysproto.h>
-#include <sys/ioccom.h>
 #include <sys/spinlock2.h>
 #include <sys/conf.h>
 #include <sys/device.h>

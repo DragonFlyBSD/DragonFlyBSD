@@ -26,7 +26,6 @@
  * $FreeBSD: src/sys/dev/pci/pci_user.c,v 1.22.2.4.2.1 2009/04/15 03:14:26 kensmith Exp $
  */
 
-#include "opt_bus.h"	/* XXX trim includes */
 #include "opt_compat.h"
 
 #include <sys/param.h>
@@ -731,6 +730,16 @@ getconfexit:
 		else
 			bio->pbi_enabled = (value & PCIM_CMD_PORTEN) != 0;
 		error = 0;
+		break;
+	case PCIOCATTACHED:
+		error = 0;
+		io = (struct pci_io *)ap->a_data;
+		pcidev = pci_find_dbsf(io->pi_sel.pc_domain, io->pi_sel.pc_bus,
+				       io->pi_sel.pc_dev, io->pi_sel.pc_func);
+		if (pcidev != NULL)
+			io->pi_data = device_is_attached(pcidev);
+		else
+			error = ENODEV;
 		break;
 	default:
 		error = ENOTTY;

@@ -648,7 +648,7 @@ drive_clear(int ac, char **av)
 
 	if (ac != 3) {
 		warnx("drive clear: %s", ac > 3 ? "extra arguments" :
-		    "drive and action requires");
+		    "drive and action required");
 		return (EINVAL);
 	}
 

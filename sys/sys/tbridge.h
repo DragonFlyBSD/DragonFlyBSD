@@ -27,6 +27,8 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/ioccom.h>
+
 #define TBRIDGE_LOADTEST	_IOW('T', 0xBB, struct plistref)
 #define TBRIDGE_GETRESULT	_IOR('T', 0xBC, struct plistref)
 

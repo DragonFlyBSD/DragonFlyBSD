@@ -37,7 +37,6 @@
 #include <sys/bio.h>
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
-#include <sys/ioccom.h>
 #include <sys/errno.h>
 #include <sys/devicestat.h>
 #include <sys/proc.h>

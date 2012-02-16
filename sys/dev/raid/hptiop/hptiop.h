@@ -28,6 +28,8 @@
 #ifndef _HPTIOP_H
 #define _HPTIOP_H
 
+#include <sys/ioccom.h>
+
 #define DBG 0
 
 #ifdef DBG

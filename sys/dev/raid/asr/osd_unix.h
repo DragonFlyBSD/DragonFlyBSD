@@ -24,6 +24,8 @@
 #ifndef		__OSD_UNIX_H
 #define		__OSD_UNIX_H
 
+#include <sys/ioccom.h>
+
 /*File - OSD_UNIX.H */
 /*****************************************************************************/
 /*									     */

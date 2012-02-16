@@ -82,7 +82,6 @@
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 #include <sys/poll.h>
-#include <sys/ioccom.h>
 #include <sys/device.h>
 #include <vm/vm.h>
 #include <vm/vm_param.h>

@@ -1,6 +1,4 @@
 # Makefile - module build for usb.ko
-#
-# $DragonFly: src/sys/bus/usb/usb/Makefile,v 1.4 2007/11/05 19:09:43 hasso Exp $
 
 S		 = ${.CURDIR}/../../..
 .PATH:		 $S/bus/pci $S/bus/usb
@@ -21,7 +19,7 @@ SRCS		 = bus_if.h device_if.h usb_if.h usb_if.c \
 
 SRCS		+= uhci_pci.c uhci.c uhcireg.h uhcivar.h
 SRCS		+= ohci_pci.c ohci.c ohcireg.h ohcivar.h
-SRCS		+= opt_bus.h pci_if.h
+SRCS		+= pci_if.h
 
 .include <bsd.kmod.mk>
 

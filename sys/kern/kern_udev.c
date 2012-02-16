@@ -38,7 +38,6 @@
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/event.h>
-#include <sys/ioccom.h>
 #include <sys/malloc.h>
 #include <sys/ctype.h>
 #include <sys/syslog.h>

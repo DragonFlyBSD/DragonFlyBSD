@@ -34,6 +34,8 @@
 #ifndef _SYS_WDOG_H_
 #define	_SYS_WDOG_H_
 
+#include <sys/ioccom.h>
+
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #ifndef _SYS_QUEUE_H_

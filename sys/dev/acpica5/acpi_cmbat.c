@@ -34,7 +34,6 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/ioccom.h>
 
 #include <sys/rman.h>
 #include <sys/malloc.h>

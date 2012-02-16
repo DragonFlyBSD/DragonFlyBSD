@@ -38,7 +38,6 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
-#include <sys/ioccom.h>
 #include <sys/reboot.h>
 #include <sys/sysctl.h>
 #include <sys/ctype.h>

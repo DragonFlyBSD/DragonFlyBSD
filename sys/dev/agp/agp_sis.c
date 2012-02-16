@@ -26,8 +26,6 @@
  *	$FreeBSD: src/sys/dev/agp/agp_sis.c,v 1.22 2007/11/12 21:51:37 jhb Exp $
  */
 
-#include "opt_bus.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>

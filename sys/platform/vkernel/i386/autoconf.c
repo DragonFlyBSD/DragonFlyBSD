@@ -50,7 +50,6 @@
 #include "opt_cd9660.h"
 #include "opt_nfs.h"
 #include "opt_nfsroot.h"
-#include "opt_bus.h"
 #include "opt_rootdevname.h"
 
 #include "use_isa.h"

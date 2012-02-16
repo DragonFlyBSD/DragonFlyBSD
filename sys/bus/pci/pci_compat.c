@@ -24,11 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci_compat.c,v 1.35.2.1 2001/10/14 21:14:14 luigi Exp $
- * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.14 2007/05/13 18:33:56 swildner Exp $
- *
  */
-
-#include "opt_bus.h"
 
 /* for compatibility to FreeBSD-2.2 and 3.x versions of PCI code */
 

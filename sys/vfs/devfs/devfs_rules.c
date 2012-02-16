@@ -36,7 +36,6 @@
 #include <sys/kernel.h>
 #include <sys/types.h>
 #include <sys/param.h>
-#include <sys/ioccom.h>
 #include <sys/lock.h>
 #include <sys/spinlock2.h>
 #include <sys/fcntl.h>
