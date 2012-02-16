@@ -628,7 +628,7 @@ static prop_object_t
 _prop_dictionary_iterator_next_object(void *v)
 {
 	struct _prop_dictionary_iterator *pdi = v;
-	prop_dictionary_t pd __unused = pdi->pdi_base.pi_obj;
+	prop_dictionary_t pd = pdi->pdi_base.pi_obj;
 	prop_dictionary_keysym_t pdk;
 
 	_PROP_ASSERT(prop_object_is_dictionary(pd));
@@ -655,7 +655,7 @@ static void
 _prop_dictionary_iterator_reset(void *v)
 {
 	struct _prop_dictionary_iterator *pdi = v;
-	prop_dictionary_t pd __unused = pdi->pdi_base.pi_obj;
+	prop_dictionary_t pd = pdi->pdi_base.pi_obj;
 
 	_PROP_RWLOCK_RDLOCK(pd->pd_rwlock);
 	_prop_dictionary_iterator_reset_locked(pdi);
