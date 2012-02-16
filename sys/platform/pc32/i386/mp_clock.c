@@ -32,8 +32,6 @@
  * $FreeBSD: src/sys/i386/i386/mp_clock.c,v 1.4.2.2 2000/09/30 02:49:32 ps Exp $
  */
 
-/* #include "opt_bus.h" */
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/time.h>

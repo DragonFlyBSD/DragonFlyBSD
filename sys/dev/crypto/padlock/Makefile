@@ -2,6 +2,6 @@
 
 KMOD=	padlock
 SRCS=	padlock.c padlock_cipher.c padlock_hash.c padlock_rng.c rng_harvest_$(MACHINE_ARCH).S
-SRCS   += device_if.h bus_if.h opt_bus.h cryptodev_if.h
+SRCS   += device_if.h bus_if.h cryptodev_if.h
 
 .include <bsd.kmod.mk>
