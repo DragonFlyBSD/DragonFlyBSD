@@ -35,6 +35,8 @@
 #ifndef _MPT_IOCTL_H_
 #define	_MPT_IOCTL_H_
 
+#include <sys/ioccom.h>
+
 #include <dev/disk/mpt/mpilib/mpi_type.h>
 #include <dev/disk/mpt/mpilib/mpi.h>
 #include <dev/disk/mpt/mpilib/mpi_cnfg.h>

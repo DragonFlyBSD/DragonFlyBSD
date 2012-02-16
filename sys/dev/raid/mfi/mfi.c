@@ -94,7 +94,6 @@
 #include <sys/rman.h>
 #include <sys/bus_dma.h>
 #include <sys/buf2.h>
-#include <sys/ioccom.h>
 #include <sys/uio.h>
 #include <sys/proc.h>
 #include <sys/signalvar.h>

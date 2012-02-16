@@ -36,7 +36,6 @@
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/errno.h>
-#include <sys/ioccom.h>
 #include <sys/mpt_ioctl.h>
 
 #include <dev/disk/mpt/mpt.h>

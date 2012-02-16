@@ -44,7 +44,6 @@
 #include <sys/disk.h>
 #include <sys/disklabel.h>
 #include <sys/dtype.h>
-#include <sys/ioccom.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
