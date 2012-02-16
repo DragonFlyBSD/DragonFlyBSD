@@ -110,13 +110,15 @@ vfs_start(struct mount *mp, int flags)
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK1(mp);
+	VFS_MPLOCK_FLAG(mp, MNTK_ST_MPSAFE);
 	error = (mp->mnt_op->vfs_start)(mp, flags);
 	if (error == 0)
 		/* do not call vfs_acinit on mount updates */
 		if ((mp->mnt_flag & MNT_UPDATE) == 0)
 			error = (mp->mnt_op->vfs_acinit)(mp);
 	VFS_MPUNLOCK(mp);
+	if (error == EMOUNTEXIT)
+		error = 0;
 	return (error);
 }
 
