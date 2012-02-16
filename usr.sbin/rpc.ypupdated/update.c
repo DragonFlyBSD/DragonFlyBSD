@@ -29,7 +29,6 @@
  *
  * @(#)update.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/update.c,v 1.8 2007/02/15 02:45:14 trhodes Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/update.c,v 1.4 2005/11/25 00:32:49 swildner Exp $
  */
 
 /*
@@ -53,7 +52,6 @@
 #include <pwd.h>
 #include <string.h>
 #include <sys/resource.h>
-#include <stdlib.h>
 #include "ypupdated_extern.h"
 
 #ifdef YP

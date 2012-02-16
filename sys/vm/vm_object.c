@@ -998,6 +998,9 @@ vm_object_terminate_callback(vm_page_t p, void *data __unused)
 			"busied page %p on queue %d\n", p, p->queue);
 		vm_page_wakeup(p);
 	} else if (p->wire_count == 0) {
+		/*
+		 * NOTE: PG_NEED_COMMIT is ignored.
+		 */
 		vm_page_free(p);
 		mycpu->gd_cnt.v_pfree++;
 	} else {
@@ -1524,10 +1527,8 @@ shadowlookup:
 		 * mess with.  Things can break if we mess with pages in
 		 * any of the below states.
 		 */
-		if (
-		    /*m->hold_count ||*/
-		    m->wire_count ||
-		    (m->flags & PG_UNMANAGED) ||
+		if (m->wire_count ||
+		    (m->flags & (PG_UNMANAGED | PG_NEED_COMMIT)) ||
 		    m->valid != VM_PAGE_BITS_ALL
 		) {
 			vm_page_wakeup(m);
@@ -1834,8 +1835,9 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 		}
 
 		if (op & OBSC_COLLAPSE_NOWAIT) {
-			if (p->valid == 0 /*|| p->hold_count*/ ||
-			    p->wire_count) {
+			if (p->valid == 0 ||
+			    p->wire_count ||
+			    (p->flags & PG_NEED_COMMIT)) {
 				vm_page_wakeup(p);
 				return(0);
 			}
@@ -2370,6 +2372,8 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 	 *	     cache buffer, and the buffer might be marked B_CACHE.
 	 *	     This is fine as part of a truncation but VFSs must be
 	 *	     sure to fix the buffer up when re-extending the file.
+	 *
+	 * NOTE!     PG_NEED_COMMIT is ignored.
 	 */
 	if (p->wire_count != 0) {
 		vm_page_protect(p, VM_PROT_NONE);

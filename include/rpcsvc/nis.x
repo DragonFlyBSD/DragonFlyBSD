@@ -28,7 +28,6 @@
 % * Mountain View, California  94043
 % *
 % * $FreeBSD: src/include/rpcsvc/nis.x,v 1.6 2003/05/04 02:51:42 obrien Exp $
-% * $DragonFly: src/include/rpcsvc/nis.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 
 /* 
@@ -397,10 +396,7 @@ program  NIS_PROG {
 %#define OARIGHTS(d, n) (((d)->do_armask.do_armask_val+n)->oa_rights)
 %#define WORLD_DEFAULT (NIS_READ_ACC)
 %#define GROUP_DEFAULT (NIS_READ_ACC << 8)
-%#define OWNER_DEFAULT ((NIS_READ_ACC +\
-			 NIS_MODIFY_ACC +\
-			 NIS_CREATE_ACC +\
-			 NIS_DESTROY_ACC) << 16)
+%#define OWNER_DEFAULT ((NIS_READ_ACC + NIS_MODIFY_ACC + NIS_CREATE_ACC + NIS_DESTROY_ACC) << 16)
 %#define DEFAULT_RIGHTS (WORLD_DEFAULT | GROUP_DEFAULT | OWNER_DEFAULT)
 %
 %/* Result manipulation defines ... */
@@ -429,10 +425,8 @@ program  NIS_PROG {
 % * these definitions they take an nis_object *, and an int and return
 % * a u_char * for Value, and an int for length.
 % */
-%#define ENTRY_VAL(obj, col) \
-	(obj)->EN_data.en_cols.en_cols_val[col].ec_value.ec_value_val
-%#define ENTRY_LEN(obj, col) \
-	(obj)->EN_data.en_cols.en_cols_val[col].ec_value.ec_value_len
+%#define ENTRY_VAL(obj, col) (obj)->EN_data.en_cols.en_cols_val[col].ec_value.ec_value_val
+%#define ENTRY_LEN(obj, col) (obj)->EN_data.en_cols.en_cols_val[col].ec_value.ec_value_len
 %
 %#ifdef __cplusplus
 %}

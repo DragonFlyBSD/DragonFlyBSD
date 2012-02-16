@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/var.c,v 1.63 2011/06/17 10:21:24 jilles Exp $
+ * $FreeBSD: src/bin/sh/var.c,v 1.65 2012/02/04 23:29:07 jilles Exp $
  */
 
 #include <unistd.h>
@@ -93,6 +93,7 @@ struct var vps2;
 struct var vps4;
 struct var vvers;
 static struct var voptind;
+struct var vdisvfork;
 
 int forcelocal;
 
@@ -124,6 +125,8 @@ static const struct varinit varinit[] = {
 #endif
 	{ &voptind,	0,				"OPTIND=1",
 	  getoptsreset },
+	{ &vdisvfork,	VUNSET,				"SH_DISABLE_VFORK=",
+	  NULL },
 	{ NULL,	0,				NULL,
 	  NULL }
 };
@@ -597,7 +600,7 @@ showvarscmd(int argc __unused, char **argv __unused)
 		}
 	}
 
-	INTON;
+	INTOFF;
 	vars = ckmalloc(n * sizeof(*vars));
 	i = 0;
 	for (vpp = vartab; vpp < vartab + VTABSIZE; vpp++) {
@@ -622,7 +625,7 @@ showvarscmd(int argc __unused, char **argv __unused)
 		out1c('\n');
 	}
 	ckfree(vars);
-	INTOFF;
+	INTON;
 
 	return 0;
 }

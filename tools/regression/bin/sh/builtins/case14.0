@@ -1,0 +1,5 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/case14.0,v 1.1 2012/01/15 20:04:05 jilles Exp $
+
+case `false` in
+no) exit 3 ;;
+esac

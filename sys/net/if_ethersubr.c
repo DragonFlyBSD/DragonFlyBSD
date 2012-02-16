@@ -333,19 +333,22 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	}
 
 #ifdef CARP
-	if (ifp->if_carp) {
+	if (ifp->if_type == IFT_CARP) {
+		ifp = carp_parent(ifp);
+		ac = IFP2AC(ifp);
+
 		/*
-		 * Hold CARP token and recheck ifp->if_carp
+		 * Check precondition again
 		 */
-		carp_gettok();
-		if (ifp->if_carp && (error = carp_output(ifp, m, dst, NULL))) {
-			carp_reltok();
-			goto bad;
-		}
-		carp_reltok();
+		ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
+
+		if (ifp->if_flags & IFF_MONITOR)
+			gotoerr(ENETDOWN);
+		if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) !=
+		    (IFF_UP | IFF_RUNNING))
+			gotoerr(ENETDOWN);
 	}
 #endif
- 
 
 	/* Handle ng_ether(4) processing, if any */
 	if (ng_ether_output_p != NULL) {
@@ -1007,29 +1010,6 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 		goto post_stats;
 	}
 
-#ifdef CARP
-	/*
-	 * XXX: Okay, we need to call carp_forus() and - if it is for
-	 * us jump over code that does the normal check
-	 * "ac_enaddr == ether_dhost". The check sequence is a bit
-	 * different from OpenBSD, so we jump over as few code as
-	 * possible, to catch _all_ sanity checks. This needs
-	 * evaluation, to see if the carp ether_dhost values break any
-	 * of these checks!
-	 */
-	if (ifp->if_carp) {
-		/*
-		 * Hold CARP token and recheck ifp->if_carp
-		 */
-		carp_gettok();
-		if (ifp->if_carp && carp_forus(ifp->if_carp, eh->ether_dhost)) {
-			carp_reltok();
-			goto post_stats;
-		}
-		carp_reltok();
-	}
-#endif
-
 	/*
 	 * We got a packet which was unicast to a different Ethernet
 	 * address.  If the driver is working properly, then this
@@ -1280,6 +1260,25 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 				("bridge_input_p changed rcvif\n"));
 		}
 	}
+
+#ifdef CARP
+	if (ifp->if_carp) {
+		/*
+		 * Hold CARP token and recheck ifp->if_carp
+		 */
+		carp_gettok();
+		if (ifp->if_carp) {
+			m = carp_input(ifp->if_carp, m);
+			if (m == NULL) {
+				carp_reltok();
+				return;
+			}
+			KASSERT(ifp == m->m_pkthdr.rcvif,
+				("carp_input changed rcvif\n"));
+		}
+		carp_reltok();
+	}
+#endif
 
 	/* Handle ng_ether(4) processing, if any */
 	if (ng_ether_input_p != NULL) {

@@ -47,7 +47,6 @@
 #include <netinet/in.h>
 #include <net/if_var.h>		/* for struct ifaddr */
 #include <netinet/in_var.h>
-#include <arpa/inet.h>
 #include <netdb.h>
 
 #include <netinet6/nd6.h>	/* Define ND6_INFINITE_LIFETIME */

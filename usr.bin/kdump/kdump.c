@@ -39,7 +39,6 @@
 
 #include <sys/errno.h>
 #include <sys/param.h>
-#include <sys/errno.h>
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/ktrace.h>

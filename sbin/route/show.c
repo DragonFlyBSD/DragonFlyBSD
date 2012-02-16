@@ -304,6 +304,8 @@ p_sockaddr(struct sockaddr *sa, int flags, int width)
 		} else {
 			switch (sdl->sdl_type) {
 			case IFT_ETHER:
+			case IFT_L2VLAN:
+			case IFT_CARP:
 			    {
 				int i;
 				u_char *lla = (u_char *)sdl->sdl_data +
@@ -311,7 +313,8 @@ p_sockaddr(struct sockaddr *sa, int flags, int width)
 
 				cplim = "";
 				for (i = 0; i < sdl->sdl_alen; i++, lla++) {
-					snprintf(cp, len, "%s%x", cplim, *lla);
+					snprintf(cp, len, "%s%02x",
+					    cplim, *lla);
 					len -= strlen(cp);
 					cp += strlen(cp);
 					if (len <= 0)

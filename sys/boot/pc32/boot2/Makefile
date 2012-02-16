@@ -41,11 +41,11 @@ ORG1D = `${.OBJDIR}/bootasmdef.nx -d MEM_BIOS_LADDR`
 #
 ORG2=	`${.OBJDIR}/bootasmdef.nx BOOT2_VORIGIN`
 
-# gcc3.x
-#	-fno-guess-branch-probability
-#	-mno-align-long-strings
-CFLAGS=	-elf -ffreestanding -Os -fno-builtin \
+CFLAGS=	-Os \
+	-fno-guess-branch-probability \
 	-fomit-frame-pointer \
+	-fno-unwind-tables \
+	-fno-asynchronous-unwind-tables \
 	-DBOOT2 \
 	-I${.CURDIR}/../../common \
 	-I${.CURDIR}/../../../../lib/libstand \

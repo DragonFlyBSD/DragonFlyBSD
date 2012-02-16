@@ -1,7 +1,5 @@
 # Works like the normal loader except the kernel, modules, and other loader
 # files are loaded via TFTP instead of NFS.
-#
-# $DragonFly: src/sys/boot/pc32/loader_tftp/Makefile,v 1.2 2005/09/04 12:20:46 swildner Exp $
 
 PROG=		loader_tftp
 STRIP=
@@ -21,7 +19,6 @@ ORG= 0x0
 # architecture-specific loader code
 SRCS=		main.c conf.c
 
-CFLAGS+=	-ffreestanding
 CFLAGS+=	-DLOADER_TFTP_SUPPORT
 #CFLAGS+=	-DLOADER_NFS_SUPPORT
 
@@ -52,8 +49,8 @@ CFLAGS+=	-I${.CURDIR}/../../.. -I.
 
 CLEANFILES+=	vers.c vers.o ${PROG}.list ${PROG}.bin ${PROG}.sym ${PROG}.help
 
-CFLAGS+=	-Wall
-LDFLAGS=	-nostdlib -static -Ttext ${ORG}
+CFLAGS+=		-Wall
+COMPILER_LDFLAGS=	-nostdlib -static -Ttext ${ORG}
 
 # i386 standalone support library
 LIBI386=	${.OBJDIR}/../libi386/libi386.a
@@ -86,7 +83,6 @@ CFLAGS+=	-elf
 
 # Debug me!
 #CFLAGS+=	-g
-#LDFLAGS+=	-g
 
 vers.o:	${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version
 	sh ${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version ${NEWVERSWHAT}
@@ -120,7 +116,7 @@ FILES+=	${.CURDIR}/../loader/dloader.rc
 .include <bsd.prog.mk>
 
 ${PROG}.sym: ${OBJS} ${LIBI386} ${LIBSTAND} ${LIBDLOADER} vers.o
-	${CC} ${LDFLAGS} -o ${.TARGET} ${BTXCRT} ${OBJS} vers.o \
+	${CC} ${COMPILER_LDFLAGS} -o ${.TARGET} ${BTXCRT} ${OBJS} vers.o \
 		${LIBDLOADER} ${LIBI386} ${LIBSTAND}
 
 # If it's not there, don't consider it a target

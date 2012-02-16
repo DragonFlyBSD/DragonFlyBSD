@@ -1,16 +1,21 @@
+.include "../Makefile.inc1"
 .include "../Makefile.bu"
 
 .PATH: ${SRCDIR}/binutils
 
 PROG=	c++filt
 SRCS=   cxxfilt.c
-MAN=	c++filt222.1
-MLINKS+=c++filt222.1 c++filt.1
+MFILE=	c++filt${MANPAGEVER}.1
+MAN=	${MFILE}
 WARNS=	1
 
-c++filt222.1: ${.CURDIR}/c++filt.1
+${MFILE}: ${.CURDIR}/c++filt.1
 	cp ${.ALLSRC} ${.TARGET}
 
-CLEANFILES+=	c++filt222.1
+CLEANFILES+=	${MFILE}
+
+.if defined(IS_PRIMARY)
+MLINKS+=	${MFILE} c++filt.1
+.endif
 
 .include <bsd.prog.mk>

@@ -34,12 +34,11 @@
  * SUCH DAMAGE.
  *
  *	@(#)mystring.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mystring.h,v 1.8 2004/04/06 20:06:51 markm Exp $
+ * $FreeBSD: src/bin/sh/mystring.h,v 1.9 2012/01/01 22:15:38 jilles Exp $
  */
 
 #include <string.h>
 
-void scopyn(const char *, char *, int);
 int prefix(const char *, const char *);
 int number(const char *);
 int is_number(const char *);

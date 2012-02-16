@@ -3568,7 +3568,7 @@ ntoskrnl_insert_timer(ktimer *timer, int ticks)
 
 	timer->k_callout = c;
 
-	callout_init(c);
+	callout_init_mp(c);
 	callout_reset(c, ticks, ntoskrnl_timercall, timer);
 }
 

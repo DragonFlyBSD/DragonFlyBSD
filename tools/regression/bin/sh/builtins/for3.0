@@ -1,0 +1,8 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/for3.0,v 1.1 2012/01/22 14:00:33 jilles Exp $
+
+r=x
+f() { return 42; }
+for i in x`f`; do
+	r=$?
+done
+[ "$r" = 42 ]

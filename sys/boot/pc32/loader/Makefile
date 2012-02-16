@@ -1,5 +1,4 @@
 # $FreeBSD: src/sys/boot/i386/loader/Makefile,v 1.66 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/pc32/loader/Makefile,v 1.11 2005/09/03 23:52:49 dillon Exp $
 #
 
 PROG=		loader
@@ -19,7 +18,6 @@ ORG= 0x0
 # architecture-specific loader code
 SRCS=		main.c conf.c
 
-CFLAGS+=	-ffreestanding
 # Enable PXE TFTP or NFS support, not both.
 #CFLAGS+=	-DLOADER_TFTP_SUPPORT
 CFLAGS+=	-DLOADER_NFS_SUPPORT
@@ -51,8 +49,8 @@ CFLAGS+=	-I${.CURDIR}/../../.. -I.
 
 CLEANFILES+=	vers.c vers.o ${PROG}.list ${PROG}.bin ${PROG}.sym ${PROG}.help
 
-CFLAGS+=	-Wall
-LDFLAGS=	-nostdlib -static -Ttext ${ORG}
+CFLAGS+=		-Wall
+COMPILER_LDFLAGS=	-nostdlib -static -Ttext ${ORG}
 
 # i386 standalone support library
 LIBI386=	${.OBJDIR}/../libi386/libi386.a
@@ -85,7 +83,6 @@ CFLAGS+=	-elf
 
 # Debug me!
 #CFLAGS+=	-g
-#LDFLAGS+=	-g
 
 vers.o:	${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version
 	sh ${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version ${NEWVERSWHAT}
@@ -120,7 +117,7 @@ FILES+=	${.CURDIR}/dloader.rc
 .include <bsd.prog.mk>
 
 ${PROG}.sym: ${OBJS} ${LIBI386} ${LIBSTAND} ${LIBDLOADER} vers.o
-	${CC} ${LDFLAGS} -o ${.TARGET} ${BTXCRT} ${OBJS} vers.o \
+	${CC} ${COMPILER_LDFLAGS} -o ${.TARGET} ${BTXCRT} ${OBJS} vers.o \
 		${LIBDLOADER} ${LIBI386} ${LIBSTAND}
 
 # If it's not there, don't consider it a target

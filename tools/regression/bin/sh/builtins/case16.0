@@ -1,0 +1,7 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/case16.0,v 1.1 2012/01/15 20:04:05 jilles Exp $
+
+f() { return 42; }
+f
+case x in
+x) [ $? = 42 ] ;;
+esac

@@ -202,7 +202,7 @@ vm_contig_pg_clean(int queue, int count)
 			continue;
 		}
 		vm_page_test_dirty(m);
-		if (m->dirty) {
+		if (m->dirty || (m->flags & PG_NEED_COMMIT)) {
 			vm_object_hold(object);
 			KKASSERT(m->object == object);
 
@@ -293,9 +293,9 @@ again:
 			    ((phys & (alignment - 1)) == 0) &&
 			    (((phys ^ (phys + size - 1)) & ~(boundary - 1)) == 0) &&
 			    m->busy == 0 && m->wire_count == 0 &&
-			    m->hold_count == 0 && (m->flags & PG_BUSY) == 0
-
-			) {
+			    m->hold_count == 0 &&
+			    (m->flags & (PG_BUSY | PG_NEED_COMMIT)) == 0)
+			{
 				break;
 			}
 		}
@@ -359,8 +359,9 @@ again:
 			    (VM_PAGE_TO_PHYS(&m[-1]) + PAGE_SIZE)) ||
 			    ((pqtype != PQ_FREE) && (pqtype != PQ_CACHE)) ||
 			    m->busy || m->wire_count ||
-			    m->hold_count || (m->flags & PG_BUSY)
-			) {
+			    m->hold_count ||
+			    (m->flags & (PG_BUSY | PG_NEED_COMMIT)))
+			{
 				start++;
 				goto again;
 			}
@@ -384,7 +385,7 @@ again:
 			if (pqtype == PQ_CACHE &&
 			    m->hold_count == 0 &&
 			    m->wire_count == 0 &&
-			    (m->flags & PG_UNMANAGED) == 0) {
+			    (m->flags & (PG_UNMANAGED | PG_NEED_COMMIT)) == 0) {
 				vm_page_protect(m, VM_PROT_NONE);
 				KKASSERT((m->flags & PG_MAPPED) == 0);
 				KKASSERT(m->dirty == 0);

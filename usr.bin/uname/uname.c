@@ -30,6 +30,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
+ * @(#)uname.c	8.2 (Berkeley) 5/4/95
+ * $FreeBSD: src/usr.bin/uname/uname.c,v 1.4.6.2 2002/10/17 07:47:29 jmallett Exp $
  */
 
 #include <sys/param.h>

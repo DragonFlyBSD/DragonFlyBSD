@@ -295,7 +295,8 @@ more:
 			break;
 		}
 		vm_page_test_dirty(p);
-		if ((p->dirty & p->valid) == 0 ||
+		if (((p->dirty & p->valid) == 0 &&
+		     (p->flags & PG_NEED_COMMIT) == 0) ||
 		    p->queue - p->pc != PQ_INACTIVE ||
 		    p->wire_count != 0 ||	/* may be held by buf cache */
 		    p->hold_count != 0) {	/* may be undergoing I/O */
@@ -327,7 +328,8 @@ more:
 			break;
 		}
 		vm_page_test_dirty(p);
-		if ((p->dirty & p->valid) == 0 ||
+		if (((p->dirty & p->valid) == 0 &&
+		     (p->flags & PG_NEED_COMMIT) == 0) ||
 		    p->queue - p->pc != PQ_INACTIVE ||
 		    p->wire_count != 0 ||	/* may be held by buf cache */
 		    p->hold_count != 0) {	/* may be undergoing I/O */
@@ -922,14 +924,14 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 			vm_page_dirty(m);
 		}
 
-		if (m->valid == 0) {
+		if (m->valid == 0 && (m->flags & PG_NEED_COMMIT) == 0) {
 			/*
 			 * Invalid pages can be easily freed
 			 */
 			vm_pageout_page_free(m);
 			mycpu->gd_cnt.v_dfree++;
 			++delta;
-		} else if (m->dirty == 0) {
+		} else if (m->dirty == 0 && (m->flags & PG_NEED_COMMIT) == 0) {
 			/*
 			 * Clean pages can be placed onto the cache queue.
 			 * This effectively frees them.
@@ -1299,6 +1301,7 @@ vm_pageout_scan_active(int pass, int q,
 						++*recycle_countp;
 					vm_page_protect(m, VM_PROT_NONE);
 					if (m->dirty == 0 &&
+					    (m->flags & PG_NEED_COMMIT) == 0 &&
 					    avail_shortage - delta > 0) {
 						vm_page_cache(m);
 					} else {
@@ -1398,7 +1401,7 @@ vm_pageout_scan_cache(int avail_shortage, int vnodes_skipped, int recycle_count)
 		 * Page has been successfully busied and it and its queue
 		 * is no longer spinlocked.
 		 */
-		if ((m->flags & PG_UNMANAGED) ||
+		if ((m->flags & (PG_UNMANAGED | PG_NEED_COMMIT)) ||
 		    m->hold_count ||
 		    m->wire_count) {
 			vm_page_deactivate(m);

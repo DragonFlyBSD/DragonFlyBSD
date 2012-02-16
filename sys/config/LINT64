@@ -156,10 +156,6 @@ device		ndis
 #
 # System V shared memory and tunable parameters
 options 	SYSVSHM		# include support for shared memory
-options 	SHMMAXPGS=1025	# max amount of shared memory pages (4k on i386)
-options 	SHMALL=1025	# max amount of shared memory (bytes)
-options 	SHMMAX="(SHMMAXPGS*PAGE_SIZE+1)"
-				# max shared memory segment size (bytes)
 options 	SHMMIN=2	# min shared memory segment size (bytes)
 options 	SHMMNI=33	# max number of shared memory identifiers
 options 	SHMSEG=9	# max shared memory segments per process
@@ -577,6 +573,7 @@ options 	NULLFS			#NULL filesystem
 options 	NWFS			#NetWare filesystem
 options 	PORTAL			#Portal filesystem
 options 	PROCFS			#Process filesystem
+options		PUFFS			#Userspace file systems (e.g. ntfs-3g & sshfs)
 options 	SMBFS			#SMB/CIFS filesystem
 options 	TMPFS			#Temporary filesystem
 options		UDF			#UDF filesystem
@@ -840,6 +837,7 @@ pseudo-device	pty		#Pseudo ttys
 pseudo-device	gzip		#Exec gzipped a.out's
 pseudo-device	vn		#Vnode driver (turns a file into a device)
 pseudo-device	md		#Memory/malloc disk
+pseudo-device	putter		#for puffs and pud
 pseudo-device	snp		#Snoop device - to look at pty/vty/etc..
 pseudo-device	ccd	4	#Concatenated disk driver
 
@@ -1390,8 +1388,6 @@ device		pci
 
 # PCI options
 #
-#Enable pci resources left off by a "lazy" BIOS.
-#
 options 	COMPAT_OLDPCI	#FreeBSD 2.2 and 3.x compatibility shims
 
 # AGP GART support
@@ -1609,7 +1605,7 @@ device		trm		# Tekram DC395U/UW/F and DC315U
 #	ISP_TARGET_MODE		-	enable target mode operation
 #options 	ISP_TARGET_MODE=1
 
-# Options used in dev/sym/ (Symbios SCSI driver).
+# Options used in dev/disk/sym/ (Symbios SCSI driver).
 #options 	SYM_SETUP_LP_PROBE_MAP	#-Low Priority Probe Map (bits)
 					# Allows the ncr to take precedence
 					# 1 (1<<0) -> 810a, 860
@@ -1924,7 +1920,11 @@ options 	VM_SWZONE_SIZE_MAX="(50*1024*1024)"
 # that it is likely to break e.g. fstat(1) unless you recompile your
 # userland with -DDEBUG_LOCKS as well.
 #
+# DEBUG_LOCKS_LATENCY adds a sysctl to add a forced latency loop
+# (count to N) in front of any spinlock or gettoken.
+#
 options 	DEBUG_LOCKS
+options		DEBUG_LOCKS_LATENCY
 
 # Set the amount of time (in seconds) the system will wait before
 # rebooting automatically when a kernel panic occurs.  If set to (-1),
@@ -1967,7 +1967,7 @@ device		asr
 #                           option will create more trouble than solve.
 #   DPT_TIMEOUT_FACTOR      Used to compute the excessive amount of time to
 #                           wait when timing out with the above option.
-#  DPT_DEBUG_xxxx           These are controllable from sys/dev/dpt/raid/dpt.h
+#  DPT_DEBUG_xxxx           These are controllable from sys/dev/raid/dpt/dpt.h
 #  DPT_LOST_IRQ             When enabled, will try, once per second, to catch
 #                           any interrupt that got lost.  Seems to help in some
 #                           DPT-firmware/Motherboard combinations.  Minimal

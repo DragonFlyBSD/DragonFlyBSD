@@ -506,14 +506,14 @@ struct protosw inetsw[] = {
 	.pr_type = SOCK_RAW,
 	.pr_domain = &inetdomain,
 	.pr_protocol = IPPROTO_CARP,
-	.pr_flags = PR_ATOMIC|PR_ADDR,
+	.pr_flags = PR_ATOMIC|PR_ADDR|PR_MPSAFE,
 
-	.pr_input = carp_input,
+	.pr_input = carp_proto_input,
 	.pr_output = rip_output,
-	.pr_ctlinput = NULL,
+	.pr_ctlinput = carp_proto_ctlinput,
 	.pr_ctloutput = rip_ctloutput,
 
-	.pr_ctlport = NULL,
+	.pr_ctlport = cpu0_ctlport,
 	.pr_usrreqs = &rip_usrreqs
     },
 #endif

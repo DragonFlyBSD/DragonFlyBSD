@@ -1,5 +1,7 @@
 # $FreeBSD: src/gnu/usr.bin/Makefile,v 1.51 2000/01/16 00:11:34 obrien Exp $
 
+.include "Makefile.buo"
+
 SUBDIR= dialog diff grep groff man rcs texinfo
 
 .if !defined(NO_CVS)
@@ -10,18 +12,18 @@ SUBDIR+=cvs
 SUBDIR+=gdb
 .endif
 
-SUBDIR+= binutils222
+SUBDIR+= ${BU_PRIMARY}
 .if !defined(NO_BINUTILS221)
-SUBDIR+= binutils221
+SUBDIR+= ${BU_BACKUP}
 .endif
 
 .if !defined(NO_GCC41)
 SUBDIR+= cc41
-.ORDER: binutils222 cc41
+.ORDER: ${BU_PRIMARY} cc41
 .endif
 
 SUBDIR+= cc44
-.ORDER: binutils222 cc44
+.ORDER: ${BU_PRIMARY} cc44
 
 # maximum parallelism
 #

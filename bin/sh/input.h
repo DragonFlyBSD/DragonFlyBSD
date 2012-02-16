@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)input.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/input.h,v 1.12 2009/12/24 18:41:14 jilles Exp $
+ * $FreeBSD: src/bin/sh/input.h,v 1.13 2012/01/01 22:17:12 jilles Exp $
  */
 
 /* PEOF (the end of file marker) is defined in syntax.h */
@@ -57,7 +57,6 @@ int preadbuffer(void);
 int preadateof(void);
 void pungetc(void);
 void pushstring(char *, int, void *);
-void popstring(void);
 void setinputfile(const char *, int);
 void setinputfd(int, int);
 void setinputstring(char *, int);

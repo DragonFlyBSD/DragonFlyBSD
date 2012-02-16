@@ -1,3 +1,7 @@
-/* $DragonFly: src/gnu/usr.bin/cc41/cc_prep/gthr-default.h,v 1.1 2006/09/27 12:10:33 corecode Exp $ */
+/* XXX marino: disable GTHREAD_USE_WEAK to deal with gcc 4.6 error
+               weakref '__gthrw_<something>' must have static linkage.
+               GTHREAD is for use with GNAT, the Ada compiler, which isn't
+               even switched on. */
+#define GTHREAD_USE_WEAK 0
 
 #include "gthr-posix.h"

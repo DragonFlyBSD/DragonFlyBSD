@@ -97,7 +97,9 @@ struct buf *buf;		/* buffer header pool */
 
 static void vfs_clean_pages(struct buf *bp);
 static void vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m);
+#if 0
 static void vfs_dirty_one_page(struct buf *bp, int pageno, vm_page_t m);
+#endif
 static void vfs_vmio_release(struct buf *bp);
 static int flushbufqueues(bufq_type_t q);
 static vm_page_t bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit);
@@ -1148,11 +1150,11 @@ buwrite(struct buf *bp)
 	}
 
 	/*
-	 * Set valid & dirty.
+	 * Mark as needing a commit.
 	 */
 	for (i = 0; i < bp->b_xio.xio_npages; i++) {
 		m = bp->b_xio.xio_pages[i];
-		vfs_dirty_one_page(bp, i, m);
+		vm_page_need_commit(m);
 	}
 	bqrelse(bp);
 }
@@ -1800,7 +1802,9 @@ vfs_vmio_release(struct buf *bp)
 
 		/*
 		 * If the wire_count has dropped to 0 we may need to take
-		 * further action before unbusying the page
+		 * further action before unbusying the page.
+		 *
+		 * WARNING: vm_page_try_*() also checks PG_NEED_COMMIT for us.
 		 */
 		if (m->wire_count == 0) {
 			vm_page_flag_clear(m, PG_ZERO);
@@ -3915,8 +3919,10 @@ bpdone(struct buf *bp, int elseit)
 					kprintf(" VDEV, loffset: %lld, flags: 0x%08x, npages: %d\n",
 					    (long long)bp->b_loffset,
 					    bp->b_flags, bp->b_xio.xio_npages);
-				kprintf(" valid: 0x%x, dirty: 0x%x, wired: %d\n",
-				    m->valid, m->dirty, m->wire_count);
+				kprintf(" valid: 0x%x, dirty: 0x%x, "
+					"wired: %d\n",
+					m->valid, m->dirty,
+					m->wire_count);
 				panic("biodone: page busy < 0");
 			}
 			vm_page_io_finish(m);
@@ -4377,6 +4383,7 @@ vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
 	vm_page_set_validclean(m, soff & PAGE_MASK, eoff - soff);
 }
 
+#if 0
 /*
  * Similar to vfs_clean_one_page() but sets the bits to valid and dirty.
  * The page data is assumed to be valid (there is no zeroing here).
@@ -4409,6 +4416,7 @@ vfs_dirty_one_page(struct buf *bp, int pageno, vm_page_t m)
 		return;
 	vm_page_set_validdirty(m, soff & PAGE_MASK, eoff - soff);
 }
+#endif
 
 /*
  * vfs_bio_clrbuf:

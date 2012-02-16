@@ -1036,10 +1036,9 @@ set80211chanlist(const char *val, int d, int s, const struct afswtch *rafp)
 	struct ieee80211req_chanlist chanlist;
 	char *temp, *cp, *tp;
 
-	temp = malloc(strlen(val) + 1);
+	temp = strdup(val);
 	if (temp == NULL)
-		errx(1, "malloc failed");
-	strcpy(temp, val);
+		errx(1, "strdup failed");
 	memset(&chanlist, 0, sizeof(chanlist));
 	cp = temp;
 	for (;;) {

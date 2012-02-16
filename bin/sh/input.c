@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)input.c	8.3 (Berkeley) 6/9/95
- * $FreeBSD: src/bin/sh/input.c,v 1.33 2011/06/04 15:05:52 jilles Exp $
+ * $FreeBSD: src/bin/sh/input.c,v 1.35 2012/01/14 22:46:18 jilles Exp $
  */
 
 #include <stdio.h>	/* defines BUFSIZ */
@@ -96,7 +96,7 @@ int parsenleft;			/* copy of parsefile->nleft */
 MKINIT int parselleft;		/* copy of parsefile->lleft */
 char *parsenextc;		/* copy of parsefile->nextc */
 MKINIT struct parsefile basepf;	/* top level input file */
-MKINIT char basebuf[BUFSIZ];	/* buffer for top level input file */
+MKINIT char basebuf[BUFSIZ + 1];	/* buffer for top level input file */
 static struct parsefile *parsefile = &basepf;	/* current input file */
 int init_editline = 0;		/* editline library initialized? */
 int whichprompt;		/* 1 == PS1, 2 == PS2 */
@@ -105,6 +105,7 @@ EditLine *el;			/* cookie for editline package */
 
 static void pushfile(void);
 static int preadfd(void);
+static void popstring(void);
 
 #ifdef mkinit
 INCLUDE <stdio.h>
@@ -186,8 +187,8 @@ retry:
 			nr = 0;
 		else {
 			nr = el_len;
-			if (nr > BUFSIZ - 1)
-				nr = BUFSIZ - 1;
+			if (nr > BUFSIZ)
+				nr = BUFSIZ;
 			memcpy(parsenextc, rl_cp, nr);
 			if (nr != el_len) {
 				el_len -= nr;
@@ -197,7 +198,7 @@ retry:
 		}
 	} else
 #endif
-		nr = read(parsefile->fd, parsenextc, BUFSIZ - 1);
+		nr = read(parsefile->fd, parsenextc, BUFSIZ);
 
 	if (nr <= 0) {
                 if (nr < 0) {
@@ -370,7 +371,7 @@ pushstring(char *s, int len, void *ap)
 	INTON;
 }
 
-void
+static void
 popstring(void)
 {
 	struct strpush *sp = parsefile->strpush;
@@ -425,13 +426,13 @@ setinputfd(int fd, int push)
 	fcntl(fd, F_SETFD, FD_CLOEXEC);
 	if (push) {
 		pushfile();
-		parsefile->buf = ckmalloc(BUFSIZ);
+		parsefile->buf = ckmalloc(BUFSIZ + 1);
 	}
 	if (parsefile->fd > 0)
 		close(parsefile->fd);
 	parsefile->fd = fd;
 	if (parsefile->buf == NULL)
-		parsefile->buf = ckmalloc(BUFSIZ);
+		parsefile->buf = ckmalloc(BUFSIZ + 1);
 	parselleft = parsenleft = 0;
 	plinno = 1;
 }

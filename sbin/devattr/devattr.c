@@ -196,8 +196,10 @@ main(int argc, char* argv[])
 	int ret;
 
 	ctx = udev_new();
-	if (ctx == NULL)
+	if (ctx == NULL) {
+		fprintf(stderr, "Make sure udevd is running\n");
 		err(EX_UNAVAILABLE, "udev_new");
+	}
 
 	enumerate = udev_enumerate_new(ctx);
 	if (enumerate == NULL)

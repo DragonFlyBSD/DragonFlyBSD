@@ -228,6 +228,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 						make_dev_alias(ndev,
 						    "part-by-uuid/%s",
 						    uuid_buf);
+						udev_dict_set_cstr(ndev, "uuid", uuid_buf);
 					}
 				} else {
 					ndev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
@@ -260,6 +261,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 						make_dev_alias(ndev,
 						    "part-by-uuid/%s",
 						    uuid_buf);
+						udev_dict_set_cstr(ndev, "uuid", uuid_buf);
 					}
 					ndev->si_flags |= SI_REPROBE_TEST;
 				}

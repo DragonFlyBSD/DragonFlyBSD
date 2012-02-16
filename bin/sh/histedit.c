@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)histedit.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/histedit.c,v 1.43 2011/06/13 21:03:27 jilles Exp $
+ * $FreeBSD: src/bin/sh/histedit.c,v 1.44 2012/01/01 22:17:12 jilles Exp $
  */
 
 #include <sys/param.h>
@@ -69,6 +69,8 @@ int displayhist;
 static FILE *el_in, *el_out, *el_err;
 
 static char *fc_replace(const char *, char *, char *);
+static int not_fcnumber(const char *);
+static int str_to_event(const char *, int);
 
 /*
  * Set history and editing status.  Called whenever the status may
@@ -427,7 +429,7 @@ fc_replace(const char *s, char *p, char *r)
 	return (dest);
 }
 
-int
+static int
 not_fcnumber(const char *s)
 {
 	if (s == NULL)
@@ -437,7 +439,7 @@ not_fcnumber(const char *s)
 	return (!is_number(s));
 }
 
-int
+static int
 str_to_event(const char *str, int last)
 {
 	HistEvent he;

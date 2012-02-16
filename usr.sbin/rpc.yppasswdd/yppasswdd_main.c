@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.27 2008/10/30 01:54:31 rafan Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.5 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +47,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h> /* getenv, exit */
-#include <string.h>
 #include <string.h> /* strcmp */
 #include <syslog.h>
 #include <unistd.h>

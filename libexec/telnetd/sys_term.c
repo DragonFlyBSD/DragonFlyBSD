@@ -132,9 +132,6 @@ struct termbuf {
 struct termios termbuf, termbuf2;	/* pty control structure */
 #endif	/* USE_TERMIO */
 
-#include <sys/types.h>
-#include <libutil.h>
-
 int cleanopen(char *);
 void scrub_env(void);
 static char **addarg(char **, const char *);

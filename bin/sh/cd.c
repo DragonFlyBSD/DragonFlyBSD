@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)cd.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/cd.c,v 1.49 2011/06/13 21:03:27 jilles Exp $
+ * $FreeBSD: src/bin/sh/cd.c,v 1.50 2012/01/13 23:32:27 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -129,7 +129,12 @@ cdcmd(int argc, char **argv)
 	    (path = bltinlookup("CDPATH", 1)) == NULL)
 		path = nullstr;
 	while ((p = padvance(&path, dest)) != NULL) {
-		if (stat(p, &statb) >= 0 && S_ISDIR(statb.st_mode)) {
+		if (stat(p, &statb) < 0) {
+			if (errno != ENOENT)
+				errno1 = errno;
+		} else if (!S_ISDIR(statb.st_mode))
+			errno1 = ENOTDIR;
+		else {
 			if (!print) {
 				/*
 				 * XXX - rethink

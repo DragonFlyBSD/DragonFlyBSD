@@ -36,7 +36,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sbin/rconfig/rconfig.c,v 1.4 2007/02/20 15:52:43 swildner Exp $
  */
 
 #include "defs.h"
@@ -58,7 +57,7 @@ main(int ac, char **av)
     int i;
     int serverMode = 0;
     
-    while ((ch = getopt(ac, av, "aD:W:irt:f:sv")) != -1) {
+    while ((ch = getopt(ac, av, "aW:T:C:sv")) != -1) {
 	switch(ch) {
 	case 'a':	/* auto tag / standard broadcast */
 	    addTag(&AddrBase, NULL, 0);

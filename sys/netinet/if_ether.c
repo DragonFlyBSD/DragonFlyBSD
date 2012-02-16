@@ -868,20 +868,6 @@ in_arpinput(struct mbuf *m)
 	memcpy(&isaddr, ar_spa(ah), sizeof isaddr);
 	memcpy(&itaddr, ar_tpa(ah), sizeof itaddr);
 
-	myaddr.s_addr = INADDR_ANY;
-#ifdef CARP
-	if (ifp->if_carp != NULL) {
-		carp_gettok();
-		if (ifp->if_carp != NULL &&
-		    carp_iamatch(ifp->if_carp, &itaddr, &isaddr, &enaddr)) {
-			carp_reltok();
-			myaddr = itaddr;
-			goto match;
-		}
-		carp_reltok();
-	}
-#endif
-
 	/*
 	 * Check both target and sender IP addresses:
 	 *
@@ -893,6 +879,48 @@ in_arpinput(struct mbuf *m)
 	 * use the bridge MAC as the is-at response.  The bridge will be
 	 * responsible for handling the packet.
 	 *
+	 * (0) Check target IP against CARP IPs
+	 */
+#ifdef CARP
+	LIST_FOREACH(iac, INADDR_HASH(itaddr.s_addr), ia_hash) {
+		int is_match = 0, is_parent = 0;
+
+		ia = iac->ia;
+
+		/* Skip all ia's which don't match */
+		if (itaddr.s_addr != ia->ia_addr.sin_addr.s_addr)
+			continue;
+
+		if (ia->ia_ifp->if_type != IFT_CARP)
+			continue;
+
+		carp_gettok();
+		if (carp_parent(ia->ia_ifp) == ifp)
+			is_parent = 1;
+		if (is_parent || ia->ia_ifp == ifp)
+			is_match = carp_iamatch(ia);
+		carp_reltok();
+
+		if (is_match) {
+			if (is_parent) {
+				/*
+				 * The parent interface will also receive
+				 * the ethernet broadcast packets, e.g. ARP
+				 * REQUEST, so if we could find a CARP
+				 * interface of the parent that could match
+				 * the target IP address, we then drop the
+				 * packets, which is delieverd to us through
+				 * the parent interface.
+				 */
+				m_freem(m);
+				return;
+			}
+			goto match;
+		}
+	}
+#endif	/* CARP */
+
+	/*
 	 * (1) Check target IP against our local IPs
 	 */
 	LIST_FOREACH(iac, INADDR_HASH(itaddr.s_addr), ia_hash) {
@@ -901,10 +929,13 @@ in_arpinput(struct mbuf *m)
 		/* Skip all ia's which don't match */
 		if (itaddr.s_addr != ia->ia_addr.sin_addr.s_addr)
 			continue;
+
 #ifdef CARP
+		/* CARP interfaces are checked in (0) */
 		if (ia->ia_ifp->if_type == IFT_CARP)
 			continue;
 #endif
+
 		if (ifp->if_bridge && ia->ia_ifp &&
 		    ifp->if_bridge == ia->ia_ifp->if_bridge) {
 			ifp = ether_bridge_interface(ifp);
@@ -918,9 +949,9 @@ in_arpinput(struct mbuf *m)
 		    ia->ia_ifp) {
 			goto match;
 		}
-		if (ia->ia_ifp == ifp)
+		if (ia->ia_ifp == ifp) {
 			goto match;
-
+		}
 	}
 
 	/*
@@ -932,10 +963,7 @@ in_arpinput(struct mbuf *m)
 		/* Skip all ia's which don't match */
 		if (isaddr.s_addr != ia->ia_addr.sin_addr.s_addr)
 			continue;
-#ifdef CARP
-		if (ia->ia_ifp->if_type == IFT_CARP)
-			continue;
-#endif
+
 		if (ifp->if_bridge && ia->ia_ifp &&
 		    ifp->if_bridge == ia->ia_ifp->if_bridge) {
 			ifp = ether_bridge_interface(ifp);
@@ -977,8 +1005,7 @@ in_arpinput(struct mbuf *m)
 match:
 	if (!enaddr)
 		enaddr = (uint8_t *)IF_LLADDR(ifp);
-	if (myaddr.s_addr == INADDR_ANY)
-		myaddr = ia->ia_addr.sin_addr;
+	myaddr = ia->ia_addr.sin_addr;
 	if (!bcmp(ar_sha(ah), enaddr, ifp->if_addrlen)) {
 		m_freem(m);	/* it's from me, ignore it. */
 		return;
@@ -1202,7 +1229,15 @@ arplookup(in_addr_t addr, boolean_t create, boolean_t generate_report,
 void
 arp_ifinit(struct ifnet *ifp, struct ifaddr *ifa)
 {
-	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY) {
+	/*
+	 * CARP interfaces will take care of gratuitous ARP
+	 * themselves.
+	 */
+	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY
+#ifdef CARP
+	    && ifp->if_type != IFT_CARP
+#endif
+	    ) {
 		arprequest_async(ifp, &IA_SIN(ifa)->sin_addr,
 				 &IA_SIN(ifa)->sin_addr, NULL);
 	}
@@ -1211,10 +1246,10 @@ arp_ifinit(struct ifnet *ifp, struct ifaddr *ifa)
 }
 
 void
-arp_iainit(struct ifnet *ifp, const struct in_addr *addr, const u_char *enaddr)
+arp_iainit(struct ifnet *ifp, const struct in_addr *addr)
 {
 	if (addr->s_addr != INADDR_ANY)
-		arprequest_async(ifp, addr, addr, enaddr);
+		arprequest_async(ifp, addr, addr, NULL);
 }
 
 static void

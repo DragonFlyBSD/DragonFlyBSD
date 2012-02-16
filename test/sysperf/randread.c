@@ -71,6 +71,8 @@ main(int ac, char **av)
 
     for (i = 0; i < nprocs; ++i) {
 	if (fork() == 0) {
+	    close(fd);
+	    fd = open(av[1], O_RDONLY);
 	    srandomdev();
 	    for (;;) {
 		long pos = (random() % limit) & ~(off_t)(bytes - 1);

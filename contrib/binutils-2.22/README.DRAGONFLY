@@ -14,6 +14,5 @@ Local modifications applied to following files:
 	bfd/bfdver.h (new)
 	gold/i386.cc
 	gold/options.cc
-	gold/options.h
 	gold/x86_64.cc
 	ld/ldlex.l

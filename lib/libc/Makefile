@@ -1,6 +1,5 @@
 #	@(#)Makefile	8.2 (Berkeley) 2/3/94
 # $FreeBSD: src/lib/libc/Makefile,v 1.24 1999/09/29 15:18:29 marcel Exp $
-# $DragonFly: src/lib/libc/Makefile,v 1.14 2007/01/16 07:16:22 dillon Exp $
 #
 # All library objects contain rcsid strings by default; they may be
 # excluded as a space-saving measure.  To produce a library that does
@@ -14,7 +13,7 @@ AINC=	-I${.OBJDIR} -I${.CURDIR}/${MACHINE_ARCH}
 CLEANFILES+=tags
 PRECIOUSLIB=	yes
 
-.if ${CCVER} != "clang" && ${CCVER} != "clangsvn"
+.if ${CCVER} == "gcc41" || ${CCVER} == "gcc44"
 DPADD+=	${LIBGCC}
 LDADD+=	-lgcc
 .endif

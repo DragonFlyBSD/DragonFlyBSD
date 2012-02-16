@@ -552,7 +552,7 @@ ndis_attach(device_t dev)
 	KeInitializeSpinLock(&sc->ndisusb_xferlock);
 	InitializeListHead(&sc->ndis_shlist);
 	InitializeListHead(&sc->ndisusb_xferlist);
-	callout_init(&sc->ndis_stat_callout);
+	callout_init_mp(&sc->ndis_stat_callout);
 
 	if (sc->ndis_iftype == PCMCIABus) {
 		error = ndis_alloc_amem(sc);
@@ -732,7 +732,7 @@ ndis_attach(device_t dev)
 		uint32_t		arg;
 		int			r;
 
-		callout_init(&sc->ndis_scan_callout);
+		callout_init_mp(&sc->ndis_scan_callout);
 
 		ifp->if_ioctl = ndis_ioctl_80211;
 		ic->ic_ifp = ifp;

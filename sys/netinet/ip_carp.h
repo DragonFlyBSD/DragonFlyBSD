@@ -171,15 +171,14 @@ struct ifcarpvhaddr {
 #ifdef _KERNEL
 void		 carp_carpdev_state(void *);
 void		 carp_group_demote_adj(struct ifnet *, int);
-int		 carp_input(struct mbuf **, int *, int);
-int		 carp6_input(struct mbuf **, int *, int);
-int		 carp_output(struct ifnet *, struct mbuf *, struct sockaddr *,
-		     struct rtentry *);
-int		 carp_iamatch(const void *, const struct in_addr *,
-		     const struct in_addr *, uint8_t **);
+int		 carp_proto_input(struct mbuf **, int *, int);
+int		 carp6_proto_input(struct mbuf **, int *, int);
+void		 carp_proto_ctlinput(netmsg_t);
+int		 carp_iamatch(const struct in_ifaddr *);
 struct ifaddr	*carp_iamatch6(void *, struct in6_addr *);
 void		*carp_macmatch6(void *, struct mbuf *, const struct in6_addr *);
-int		 carp_forus(const void *, const void *);
+struct mbuf	*carp_input(void *, struct mbuf *);
+struct ifnet	*carp_parent(struct ifnet *);
 
 void		 carp_gettok(void);
 void		 carp_reltok(void);

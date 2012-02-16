@@ -32,7 +32,7 @@
 .\" Author: Ken Merry <ken@FreeBSD.org>
 .\"
 .\" $Id: //depot/SpectraBSD/head/share/man/man4/mps.4#4 $
-.\" $FreeBSD: src/share/man/man4/mps.4,v 1.3 2010/10/07 21:56:10 ken Exp $
+.\" $FreeBSD: src/share/man/man4/mps.4,v 1.5 2011/11/11 12:06:09 brueffer Exp $
 .\"
 .Dd September 13, 2010
 .Dt MPS 4
@@ -60,9 +60,9 @@ driver provides support for LSI Logic Fusion-MPT 2
 .Tn SAS
 controllers.
 .Sh HARDWARE
-The following controllers are supported by the
+The
 .Nm
-driver
+driver supports the following controllers:
 .Pp
 .Bl -bullet -compact
 .It
@@ -87,17 +87,17 @@ To disable MSI interrupts for all
 driver instances, set the following tunable value in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
-hw.mps.disable_msi=1
+hw.mps.msi.enable=0
 .Ed
 .Pp
-To disable MSI-X interrupts for all
-.Nm
-driver instances, set the following tunable value in
-.Xr loader.conf 5 :
-.Bd -literal -offset indent
-hw.mps.disable_msix=1
-.Ed
-.Pp
+.\"To disable MSI-X interrupts for all
+.\".Nm
+.\"driver instances, set the following tunable value in
+.\".Xr loader.conf 5 :
+.\".Bd -literal -offset indent
+.\"hw.mps.disable_msix=1
+.\".Ed
+.\".Pp
 To allow the driver to send multiple task management commands (like abort,
 LUN reset, etc.), set the following variable:
 .Bd -literal -offset indent
@@ -143,6 +143,19 @@ Enable prints for controller events.
 .Xr sa 4 ,
 .Xr scsi 4 ,
 .Xr targ 4
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Fx 9.0 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+driver was originally written by
+.An Scott Long Aq scottl@FreeBSD.org .
+This man page was written by
+.An Ken Merry Aq ken@FreeBSD.org .
 .Sh BUGS
 This driver is still in development, it has only been tested on the amd64
 architecture and has some known shortcomings:
@@ -158,16 +171,3 @@ times, without user intervention.
 .It
 The error recovery code isn't complete.
 .El
-.Sh HISTORY
-The
-.Nm
-driver first appeared in
-.Fx 9.0 .
-.Sh AUTHORS
-.An -nosplit
-The
-.Nm
-driver was originally written by
-.An Scott Long Aq scottl@FreeBSD.org .
-This man page was written by
-.An Ken Merry Aq ken@FreeBSD.org .

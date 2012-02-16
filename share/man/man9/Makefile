@@ -132,6 +132,7 @@ MAN=	accept_filter.9 \
 	posix4.9 \
 	priv.9 \
 	prop_copyin_ioctl.9 \
+	putter.9 \
 	resettodr.9 \
 	rman.9 \
 	rtalloc.9 \

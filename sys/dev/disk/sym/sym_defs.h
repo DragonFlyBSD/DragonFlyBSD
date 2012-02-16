@@ -1,5 +1,5 @@
-/*
- *  Device driver optimized for the Symbios/LSI 53C896/53C895A/53C1010 
+/*-
+ *  Device driver optimized for the Symbios/LSI 53C896/53C895A/53C1010
  *  PCI-SCSI controllers.
  *
  *  Copyright (C) 1999-2001  Gerard Roudier <groudier@free.fr>
@@ -8,11 +8,11 @@
  *	53C810A, 53C825A, 53C860, 53C875, 53C876, 53C885, 53C895,
  *	53C810,  53C815,  53C825 and the 53C1510D is 53C8XX mode.
  *
- *  
+ *
  *  This driver for FreeBSD-CAM is derived from the Linux sym53c8xx driver.
  *  Copyright (C) 1998-1999  Gerard Roudier
  *
- *  The sym53c8xx driver is derived from the ncr53c8xx driver that had been 
+ *  The sym53c8xx driver is derived from the ncr53c8xx driver that had been
  *  a port of the FreeBSD ncr driver to Linux-1.2.13.
  *
  *  The original ncr driver has been written for 386bsd and FreeBSD by
@@ -20,8 +20,8 @@
  *          Stefan Esser                <se@mi.Uni-Koeln.de>
  *  Copyright (C) 1994  Wolfgang Stanglmeier
  *
- *  The initialisation code, and part of the code that addresses 
- *  FreeBSD-CAM services is based on the aic7xxx driver for FreeBSD-CAM 
+ *  The initialisation code, and part of the code that addresses
+ *  FreeBSD-CAM services is based on the aic7xxx driver for FreeBSD-CAM
  *  written by Justin T. Gibbs.
  *
  *  Other major contributions:
@@ -55,8 +55,7 @@
  * SUCH DAMAGE.
  */
 
-/* $FreeBSD: src/sys/dev/sym/sym_defs.h,v 1.4.2.4 2001/11/11 17:58:53 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_defs.h,v 1.2 2003/06/17 04:28:31 dillon Exp $ */
+/* $FreeBSD: src/sys/dev/sym/sym_defs.h,v 1.12 2008/05/15 20:27:18 marius Exp $ */
 
 #ifndef SYM_DEFS_H
 #define SYM_DEFS_H
@@ -91,7 +90,7 @@
 struct sym_pci_chip {
 	u_short	device_id;
 	unsigned short	revision_id;
-	char	*name;
+	const char *name;
 	u_char	burst_max;	/* log-base-2 of max burst */
 	u_char	offset_max;
 	u_char	nr_divisor;
@@ -447,7 +446,7 @@ struct sym_reg {
 	#define   SCLK    0x80	/* Use the PCI clock as SCSI clock	*/
 	#define   DBLEN   0x08	/* clock doubler running		*/
 	#define   DBLSEL  0x04	/* clock doubler selected		*/
-  
+
 
 /*4e*/  u8	nc_stest2;
 	#define   ROF     0x40	/* reset scsi offset (after gross error!) */
@@ -537,7 +536,7 @@ struct sym_reg {
 /*e4*/	u32    nc_crcdata;	/* CRC data register                */
 /*e8*/	u32    nc_e8_;
 /*ec*/	u32    nc_ec_;
-/*f0*/	u16    nc_dfbc;		/* DMA FIFO byte count              */ 
+/*f0*/	u16    nc_dfbc;		/* DMA FIFO byte count              */
 };
 
 /*-----------------------------------------------------------
@@ -715,16 +714,16 @@ struct sym_tblsel {
  *
  *-----------------------------------------------------------
  *
- *	On 825A, 875, 895 and 896 chips the content 
+ *	On 825A, 875, 895 and 896 chips the content
  *	of SFBR register can be used as data (SCR_SFBR_DATA).
- *	The 896 has additionnal IO registers starting at 
- *	offset 0x80. Bit 7 of register offset is stored in 
+ *	The 896 has additionnal IO registers starting at
+ *	offset 0x80. Bit 7 of register offset is stored in
  *	bit 7 of the SCRIPTS instruction first DWORD.
  *
  *-----------------------------------------------------------
  */
 
-#define SCR_REG_OFS(ofs) ((((ofs) & 0x7f) << 16ul) + ((ofs) & 0x80)) 
+#define SCR_REG_OFS(ofs) ((((ofs) & 0x7f) << 16ul) + ((ofs) & 0x80))
 
 #define SCR_SFBR_REG(reg,op,data) \
         (0x68000000 | (SCR_REG_OFS(REG(reg))) | (op) | (((data)&0xff)<<8ul))
@@ -799,10 +798,10 @@ struct sym_tblsel {
 #define SCR_DSA_REL2	0x10000000
 
 #define SCR_LOAD_R(reg, how, n) \
-        (0xe1000000 | how | (SCR_REG_OFS2(REG(reg))) | (n))
+        (0xe1000000 | (how) | (SCR_REG_OFS2(REG(reg))) | (n))
 
 #define SCR_STORE_R(reg, how, n) \
-        (0xe0000000 | how | (SCR_REG_OFS2(REG(reg))) | (n))
+        (0xe0000000 | (how) | (SCR_REG_OFS2(REG(reg))) | (n))
 
 #define SCR_LOAD_ABS(reg, n)	SCR_LOAD_R(reg, SCR_NO_FLUSH2, n)
 #define SCR_LOAD_REL(reg, n)	SCR_LOAD_R(reg, SCR_NO_FLUSH2|SCR_DSA_REL2, n)

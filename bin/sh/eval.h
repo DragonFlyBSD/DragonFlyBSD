@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)eval.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/eval.h,v 1.15 2011/06/13 21:03:27 jilles Exp $
+ * $FreeBSD: src/bin/sh/eval.h,v 1.16 2012/01/16 11:07:46 dumbbell Exp $
  */
 
 extern const char *commandname;	/* currently executing command */
@@ -64,6 +64,7 @@ void evalbackcmd(union node *, struct backcmd *);
 #define in_function()	funcnest
 extern int funcnest;
 extern int evalskip;
+extern int skipcount;
 
 /* reasons for skipping commands (see comment on breakcmd routine) */
 #define SKIPBREAK	1

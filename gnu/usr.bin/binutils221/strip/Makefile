@@ -1,10 +1,12 @@
+.include "../Makefile.inc1"
 .include "../Makefile.bu"
 
 .PATH: ${SRCDIR}/binutils ${SRCDIR}/binutils/doc
 
 PROG=	strip
 SRCS=	objcopy.c is-strip.c
-MAN=	strip221.1
+MFILE=	strip${MANPAGEVER}.1
+MAN=	${MFILE}
 WARNS=	1
 
 CLEANFILES+=	maybe_stripped
@@ -19,10 +21,14 @@ maybe_stripped: strip
 .endif
 .endif
 
-strip221.1: ${SRCDIR}/binutils/doc/strip.1
+${MFILE}: ${SRCDIR}/binutils/doc/strip.1
 	cp ${.ALLSRC} ${.TARGET}
 
-CLEANFILES+=	strip221.1
+CLEANFILES+=	${MFILE}
+
+.if defined(IS_PRIMARY)
+MLINKS+=	${MFILE} strip.1
+.endif
 
 realinstall:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \

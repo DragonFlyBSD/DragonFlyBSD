@@ -20,7 +20,6 @@
  * work of many other people, e.g. Matthew Dillon, Simon Schubert, Jordan Gordeev.
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.26 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/user.h>
@@ -45,7 +44,6 @@
 
 /* Swap */
 #include <stdlib.h>
-#include <stdio.h>
 #include <sys/conf.h>
 
 #include <osreldate.h>		/* for changes in kernel structures */

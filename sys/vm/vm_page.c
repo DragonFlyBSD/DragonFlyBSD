@@ -1336,13 +1336,18 @@ vm_page_select_cache(u_short pg_color)
 			/*
 			 * We successfully busied the page
 			 */
-			if ((m->flags & PG_UNMANAGED) == 0 &&
+			if ((m->flags & (PG_UNMANAGED | PG_NEED_COMMIT)) == 0 &&
 			    m->hold_count == 0 &&
-			    m->wire_count == 0) {
+			    m->wire_count == 0 &&
+			    (m->dirty & m->valid) == 0) {
 				vm_page_spin_unlock(m);
 				pagedaemon_wakeup();
 				return(m);
 			}
+
+			/*
+			 * The page cannot be recycled, deactivate it.
+			 */
 			_vm_page_deactivate_locked(m, 0);
 			if (_vm_page_wakeup(m)) {
 				vm_page_spin_unlock(m);
@@ -1402,7 +1407,8 @@ vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
 			 * lock) nobody else should be able to mess with the
 			 * page before us.
 			 */
-			KKASSERT((m->flags & PG_UNMANAGED) == 0);
+			KKASSERT((m->flags & (PG_UNMANAGED |
+					      PG_NEED_COMMIT)) == 0);
 			KKASSERT(m->hold_count == 0);
 			KKASSERT(m->wire_count == 0);
 			vm_page_spin_unlock(m);
@@ -1999,10 +2005,12 @@ vm_page_free_toq(vm_page_t m)
 
 	/*
 	 * Clear the UNMANAGED flag when freeing an unmanaged page.
+	 * Clear the NEED_COMMIT flag
 	 */
-	if (m->flags & PG_UNMANAGED) {
+	if (m->flags & PG_UNMANAGED)
 		vm_page_flag_clear(m, PG_UNMANAGED);
-	}
+	if (m->flags & PG_NEED_COMMIT)
+		vm_page_flag_clear(m, PG_NEED_COMMIT);
 
 	if (m->hold_count != 0) {
 		vm_page_flag_clear(m, PG_ZERO);
@@ -2070,7 +2078,8 @@ vm_page_free_fromq_fast(void)
 				 * The page is not PG_ZERO'd so return it.
 				 */
 				vm_page_spin_unlock(m);
-				KKASSERT((m->flags & PG_UNMANAGED) == 0);
+				KKASSERT((m->flags & (PG_UNMANAGED |
+						      PG_NEED_COMMIT)) == 0);
 				KKASSERT(m->hold_count == 0);
 				KKASSERT(m->wire_count == 0);
 				break;
@@ -2154,6 +2163,10 @@ vm_page_wire(vm_page_t m)
  * processes.  This optimization causes one-time-use metadata to be
  * reused more quickly.
  *
+ * Pages marked PG_NEED_COMMIT are always activated and never placed on
+ * the inactive queue.  This helps the pageout daemon determine memory
+ * pressure and act on out-of-memory situations more quickly.
+ *
  * BUT, if we are in a low-memory situation we have no choice but to
  * put clean pages on the cache queue.
  *
@@ -2178,7 +2191,7 @@ vm_page_unwire(vm_page_t m, int activate)
 			atomic_add_int(&vmstats.v_wire_count, -1);
 			if (m->flags & PG_UNMANAGED) {
 				;
-			} else if (activate) {
+			} else if (activate || (m->flags & PG_NEED_COMMIT)) {
 				vm_page_spin_lock(m);
 				_vm_page_add_queue_spinlocked(m,
 							PQ_ACTIVE + m->pc, 0);
@@ -2267,7 +2280,7 @@ vm_page_try_to_cache(vm_page_t m)
 		return(0);
 	}
 	if (m->dirty || m->hold_count || m->wire_count ||
-	    (m->flags & PG_UNMANAGED)) {
+	    (m->flags & (PG_UNMANAGED | PG_NEED_COMMIT))) {
 		if (_vm_page_wakeup(m)) {
 			vm_page_spin_unlock(m);
 			wakeup(m);
@@ -2313,7 +2326,8 @@ vm_page_try_to_free(vm_page_t m)
 	if (m->dirty ||				/* can't free if it is dirty */
 	    m->hold_count ||			/* or held (XXX may be wrong) */
 	    m->wire_count ||			/* or wired */
-	    (m->flags & PG_UNMANAGED) ||	/* or unmanaged */
+	    (m->flags & (PG_UNMANAGED |		/* or unmanaged */
+			 PG_NEED_COMMIT)) ||	/* or needs a commit */
 	    m->queue - m->pc == PQ_FREE ||	/* already on PQ_FREE */
 	    m->queue - m->pc == PQ_HOLD) {	/* already on PQ_HOLD */
 		if (_vm_page_wakeup(m)) {
@@ -2358,8 +2372,8 @@ vm_page_try_to_free(vm_page_t m)
 void
 vm_page_cache(vm_page_t m)
 {
-	if ((m->flags & PG_UNMANAGED) || m->busy ||
-	    m->wire_count || m->hold_count) {
+	if ((m->flags & (PG_UNMANAGED | PG_NEED_COMMIT)) ||
+	    m->busy || m->wire_count || m->hold_count) {
 		kprintf("vm_page_cache: attempting to cache busy/held page\n");
 		vm_page_wakeup(m);
 		return;
@@ -2391,10 +2405,10 @@ vm_page_cache(vm_page_t m)
 	 * everything.
 	 */
 	vm_page_protect(m, VM_PROT_NONE);
-	if ((m->flags & (PG_UNMANAGED|PG_MAPPED)) || m->busy ||
-			m->wire_count || m->hold_count) {
+	if ((m->flags & (PG_UNMANAGED | PG_MAPPED)) ||
+	    m->busy || m->wire_count || m->hold_count) {
 		vm_page_wakeup(m);
-	} else if (m->dirty) {
+	} else if (m->dirty || (m->flags & PG_NEED_COMMIT)) {
 		vm_page_deactivate(m);
 		vm_page_wakeup(m);
 	} else {
@@ -2511,6 +2525,22 @@ vm_page_io_finish(vm_page_t m)
         atomic_subtract_char(&m->busy, 1);
 	if (m->busy == 0)
 		vm_page_flag_clear(m, PG_SBUSY);
+}
+
+/*
+ * Indicate that a clean VM page requires a filesystem commit and cannot
+ * be reused.  Used by tmpfs.
+ */
+void
+vm_page_need_commit(vm_page_t m)
+{
+	vm_page_flag_set(m, PG_NEED_COMMIT);
+}
+
+void
+vm_page_clear_commit(vm_page_t m)
+{
+	vm_page_flag_clear(m, PG_NEED_COMMIT);
 }
 
 /*
@@ -2737,7 +2767,7 @@ vm_page_set_validclean(vm_page_t m, int base, int size)
  *
  * WARNING: Page must be busied?  But vfs_dirty_one_page() will
  *	    call this function in buwrite() so for now vm_token must
- * 	    be held.
+ *	    be held.
  *
  * No other requirements.
  */
@@ -2750,7 +2780,7 @@ vm_page_set_validdirty(vm_page_t m, int base, int size)
 	m->valid |= pagebits;
 	m->dirty |= pagebits;
 	if (m->object)
-		vm_object_set_writeable_dirty(m->object);
+	       vm_object_set_writeable_dirty(m->object);
 }
 
 /*
