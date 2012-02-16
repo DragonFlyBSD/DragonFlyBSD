@@ -30,6 +30,8 @@
 #ifndef _ACPIIO_H_
 #define _ACPIIO_H_
 
+#include <sys/ioccom.h>
+
 /*
  * Core ACPI subsystem ioctls
  */

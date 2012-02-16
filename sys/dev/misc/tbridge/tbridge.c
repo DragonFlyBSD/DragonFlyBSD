@@ -38,7 +38,6 @@
 #include <sys/kthread.h>
 #include <sys/device.h>
 #include <sys/fcntl.h>
-#include <sys/ioccom.h>
 #include <machine/varargs.h>
 #include <sys/module.h>
 #include <libprop/proplib.h>

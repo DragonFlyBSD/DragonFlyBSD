@@ -46,7 +46,6 @@
 #include <sys/socket.h>
 #include <sys/protosw.h>
 #include <sys/proc.h>
-#include <sys/ioccom.h>
 #include <sys/queue.h>
 #include <sys/kthread.h>
 #include <sys/syslog.h>

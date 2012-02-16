@@ -34,6 +34,8 @@
 #ifndef _SYS_DEVFS_RULES_H_
 #define	_SYS_DEVFS_RULES_H_
 
+#include <sys/ioccom.h>
+
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif

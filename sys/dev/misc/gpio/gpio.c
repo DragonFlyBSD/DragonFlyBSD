@@ -65,7 +65,6 @@
 #include <sys/queue.h>
 #include <sys/uio.h>
 #include <sys/lock.h>
-#include <sys/ioccom.h>
 #include <dev/misc/gpio/gpio.h>
 #include <sys/devfs.h>
 

@@ -34,6 +34,8 @@
 #ifndef _SYS_UDEV_H_
 #define	_SYS_UDEV_H_
 
+#include <sys/ioccom.h>
+
 #if defined(_KERNEL)
 
 #ifndef _SYS_QUEUE_H_

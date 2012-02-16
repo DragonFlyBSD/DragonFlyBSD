@@ -41,7 +41,6 @@
 #include <sys/device.h>
 #include <sys/udev.h>
 #include <sys/devfs.h>
-#include <sys/ioccom.h>
 #include <sys/malloc.h>
 #include <dev/disk/dm/dm.h>
 
