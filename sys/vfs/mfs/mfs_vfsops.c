@@ -396,6 +396,12 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	 */
 	VFS_STATFS(mp, &mp->mnt_stat, cred);
 
+	/*
+	 * Mark VFS_START MPSAFE; this is to avoid accessing
+	 * per-mount token after VFS_START exits
+	 */
+	mp->mnt_kern_flag |= MNTK_ST_MPSAFE;
+
 	goto success;
 
 error_2:	/* error with devvp held*/
@@ -490,7 +496,7 @@ mfs_start(struct mount *mp, int flags)
                 mfsp->mfs_dev = NULL;
         }
 	kfree(mfsp, M_MFSNODE);
-	return (0);
+	return (EMOUNTEXIT);
 }
 
 /*

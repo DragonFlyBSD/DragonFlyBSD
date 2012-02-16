@@ -343,9 +343,11 @@ struct mount {
 #define MNTK_NOSTKMNT	0x10000000	/* no stacked mount point allowed */
 #define MNTK_NOMSYNC	0x20000000	/* used by tmpfs */
 #define MNTK_THR_SYNC	0x40000000	/* fs sync thread requested */
+#define MNTK_ST_MPSAFE	0x80000000	/* (mfs) vfs_start is MPSAFE */
 
 #define MNTK_ALL_MPSAFE	(MNTK_MPSAFE | MNTK_RD_MPSAFE | MNTK_WR_MPSAFE | \
-			 MNTK_GA_MPSAFE | MNTK_IN_MPSAFE | MNTK_SG_MPSAFE)
+			 MNTK_GA_MPSAFE | MNTK_IN_MPSAFE | MNTK_SG_MPSAFE | \
+			 MNTK_ST_MPSAFE)
 
 /*
  * mountlist_*() defines
