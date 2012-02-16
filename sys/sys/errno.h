@@ -195,6 +195,7 @@ static __inline int *__error(void)
 #define	ERESTART	(-1)		/* restart syscall */
 #define	EJUSTRETURN	(-2)		/* don't modify regs, just return */
 #define	ENOIOCTL	(-3)		/* ioctl not handled by this layer */
+#define	EMOUNTEXIT	(-4)		/* mfs: mountpoint released via vfs_start */
 #endif
 
 #endif
