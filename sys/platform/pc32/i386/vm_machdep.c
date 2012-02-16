@@ -42,7 +42,6 @@
  */
 
 #include "use_npx.h"
-#include "use_isa.h"
 #include "opt_reset.h"
 
 #include <sys/param.h>
