@@ -124,7 +124,7 @@ static void	amr_freecmd_cluster(struct amr_command_cluster *acc);
  * Command processing.
  */
 static int	amr_bio_command(struct amr_softc *sc, struct amr_command **acp);
-static int	amr_wait_command(struct amr_command *ac) __unused;
+static int	amr_wait_command(struct amr_command *ac);
 static int	amr_mapcmd(struct amr_command *ac);
 static void	amr_unmapcmd(struct amr_command *ac);
 static int	amr_start(struct amr_command *ac);

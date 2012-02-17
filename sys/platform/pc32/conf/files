@@ -146,8 +146,6 @@ dev/misc/kbd/kbdsw.c			optional	ukbd
 dev/raid/pst/pst-pci.c			optional	pst pci
 dev/raid/pst/pst-iop.c			optional	pst
 dev/raid/pst/pst-raid.c			optional	pst
-dev/misc/puc/puc.c			optional	puc
-dev/misc/puc/pucdata.c			optional	puc
 dev/netif/sbni/if_sbni.c		optional	sbni
 dev/netif/sbni/if_sbni_pci.c		optional	sbni pci
 dev/misc/syscons/schistory.c		optional	sc

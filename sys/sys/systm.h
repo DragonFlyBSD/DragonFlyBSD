@@ -172,7 +172,6 @@ void	set_vkernel_fp(struct trapframe *);
 int	kvm_access_check(vm_offset_t, vm_offset_t, int);
 
 vm_paddr_t kvtop(void *addr);
-int	is_physical_memory (vm_offset_t addr);
 
 extern uint32_t crc32_tab[];
 uint32_t crc32(const void *buf, size_t size);

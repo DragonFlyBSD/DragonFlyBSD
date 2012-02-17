@@ -498,7 +498,7 @@ static void drm_unload(struct drm_device *dev)
 	drm_ctxbitmap_cleanup(dev);
 
 	if (dev->agp && dev->agp->mtrr) {
-		int __unused retcode;
+		int retcode;
 
 		retcode = drm_mtrr_del(0, dev->agp->info.ai_aperture_base,
 		    dev->agp->info.ai_aperture_size, DRM_MTRR_WC);

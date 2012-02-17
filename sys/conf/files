@@ -647,6 +647,8 @@ dev/misc/nmdm/nmdm.c		optional nmdm
 dev/disk/nsp/nsp.c		optional nsp
 dev/disk/nsp/nsp_pccard.c	optional nsp pccard
 bus/ppbus/ppbus_if.m		optional ppbus
+dev/misc/puc/puc.c		optional puc
+dev/misc/puc/pucdata.c		optional puc
 dev/disk/vpo/immio.c	optional vpo
 dev/netif/plip/if_plip.c	optional plip
 dev/misc/lpbb/lpbb.c	optional lpbb

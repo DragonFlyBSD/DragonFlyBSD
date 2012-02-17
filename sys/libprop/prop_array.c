@@ -340,7 +340,7 @@ static prop_object_t
 _prop_array_iterator_next_object(void *v)
 {
 	struct _prop_array_iterator *pai = v;
-	prop_array_t pa __unused = pai->pai_base.pi_obj;
+	prop_array_t pa = pai->pai_base.pi_obj;
 	prop_object_t po;
 
 	_PROP_ASSERT(prop_object_is_array(pa));
@@ -367,7 +367,7 @@ static void
 _prop_array_iterator_reset(void *v)
 {
 	struct _prop_array_iterator *pai = v;
-	prop_array_t pa __unused = pai->pai_base.pi_obj;
+	prop_array_t pa = pai->pai_base.pi_obj;
 
 	_PROP_ASSERT(prop_object_is_array(pa));
 

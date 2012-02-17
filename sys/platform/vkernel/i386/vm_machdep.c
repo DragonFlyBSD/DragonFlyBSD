@@ -357,19 +357,6 @@ kvtop(void *addr)
 SYSCTL_DECL(_vm_stats_misc);
 
 /*
- * Tell whether this address is in some physical memory region.
- * Currently used by the kernel coredump code in order to avoid
- * dumping the ``ISA memory hole'' which could cause indefinite hangs,
- * or other unpredictable behaviour.
- */
-
-int
-is_physical_memory(vm_offset_t addr)
-{
-	return 1;
-}
-
-/*
  * Used by /dev/kmem to determine if we can safely read or write
  * the requested KVA range.  Some portions of kernel memory are
  * not governed by our virtual page table.

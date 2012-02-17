@@ -309,7 +309,7 @@ void drm_rmmap(struct drm_device *dev, drm_local_map_t *map)
 		/* FALLTHROUGH */
 	case _DRM_FRAME_BUFFER:
 		if (map->mtrr) {
-			int __unused retcode;
+			int retcode;
 			
 			retcode = drm_mtrr_del(0, map->offset, map->size,
 			    DRM_MTRR_WC);
