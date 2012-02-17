@@ -752,6 +752,7 @@ void	mountlist_insert(struct mount *, int);
 int	mountlist_interlock(int (*callback)(struct mount *), struct mount *);
 struct mount *mountlist_boot_getfirst(void);
 void	mountlist_remove(struct mount *mp);
+int	mountlist_exists(struct mount *mp);
 int	mountlist_scan(int (*callback)(struct mount *, void *), void *, int);
 struct mount *mount_get_by_nc(struct namecache *ncp);
 #else /* !_KERNEL */

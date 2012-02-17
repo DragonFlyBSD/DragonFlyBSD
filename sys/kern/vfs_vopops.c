@@ -439,7 +439,10 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	if ((error == 0) && do_accounting) {
 		size_after = vp->v_filesize;
 		/* does this vnode belong to a pfs/nullfs mount ? */
-		if (vp->v_pfsmp != NULL) {
+		/* XXX: vp->v_pfsmp may point to a freed structure
+		* we use mountlist_exists() to check if it is valid
+		* before using it */
+		if ((vp->v_pfsmp != NULL) && (mountlist_exists(vp->v_pfsmp))) {
 			/* yes, use a copy of the real mp */
 			mp = vp->v_pfsmp;
 		} else {
