@@ -45,6 +45,25 @@
 
 #include "hammer2.h"
 
+int
+hammer2_freemap_bytes_to_radix(size_t bytes)
+{
+	int radix;
+
+	if (bytes < HAMMER2_MIN_ALLOC)
+		bytes = HAMMER2_MIN_ALLOC;
+	if (bytes == HAMMER2_PBUFSIZE)
+		radix = HAMMER2_PBUFRADIX;
+	else if (bytes >= 1024)
+		radix = 10;
+	else
+		radix = HAMMER2_MIN_RADIX;
+
+	while (((size_t)1 << radix) < bytes)
+		++radix;
+	return (radix);
+}
+
 /*
  * Allocate media space, returning a combined data offset and radix.
  *
@@ -62,17 +81,7 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, size_t bytes)
 	/*
 	 * Figure out the base 2 radix of the allocation (rounded up)
 	 */
-	if (bytes < HAMMER2_MIN_ALLOC)
-		bytes = HAMMER2_MIN_ALLOC;
-	if (bytes == HAMMER2_PBUFSIZE)
-		radix = HAMMER2_PBUFRADIX;
-	else if (bytes >= 1024)
-		radix = 10;
-	else
-		radix = HAMMER2_MIN_RADIX;
-
-	while (((size_t)1 << radix) < bytes)
-		++radix;
+	radix = hammer2_freemap_bytes_to_radix(bytes);
 	bytes = 1 << radix;
 
 	if (radix < HAMMER2_MAX_RADIX && hmp->freecache[radix]) {

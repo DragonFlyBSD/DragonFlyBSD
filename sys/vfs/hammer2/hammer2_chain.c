@@ -343,6 +343,9 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	 * new block.  If chain->data is not NULL we then do the
 	 * copy-on-write.  chain->data will then be repointed to the new
 	 * buffer and the old buffer will be released.
+	 *
+	 * For newly created elements with no prior allocation we go
+	 * through the copy-on-write steps except without the copying part.
 	 */
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 	hammer2_chain_ref(hmp, chain);	/* ref for modified bit */
@@ -368,13 +371,11 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		 * to new block.
 		 */
 		KKASSERT(chain != &hmp->vchain);	/* safety */
-		KKASSERT(chain->data == NULL || chain->bp != NULL);
 		if (bytes == HAMMER2_PBUFSIZE) {
 			nbp = getblk(hmp->devvp,
 				     chain->bref.data_off & HAMMER2_OFF_MASK_HI,
 				     HAMMER2_PBUFSIZE, 0, 0);
 			vfs_bio_clrbuf(nbp);
-			bdirty(nbp);
 			error = 0;
 		} else {
 			error = bread(hmp->devvp,
@@ -423,7 +424,11 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
 	if (chain->bp) {
 		chain->data = NULL;
-		brelse(chain->bp);
+		if (chain->flags & (HAMMER2_CHAIN_MODIFIED |
+				    HAMMER2_CHAIN_FLUSHED))
+			bdwrite(chain->bp);
+		else
+			bqrelse(chain->bp);
 		chain->bp = NULL;
 	}
 	lockmgr(&chain->lk, LK_RELEASE);
@@ -452,7 +457,8 @@ hammer2_chain_find(hammer2_mount_t *hmp, hammer2_chain_t *parent, int index)
  * Caller must lock the parent on call, the returned child will be locked.
  */
 hammer2_chain_t *
-hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent, int index)
+hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
+		  int index, int flags)
 {
 	hammer2_blockref_t *bref;
 	hammer2_chain_t *chain;
@@ -469,7 +475,8 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent, int index)
 	chain = SPLAY_FIND(hammer2_chain_splay, &parent->shead, &dummy);
 	if (chain) {
 		hammer2_chain_ref(hmp, chain);
-		hammer2_chain_lock(hmp, chain);
+		if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
+			hammer2_chain_lock(hmp, chain);
 		return(chain);
 	}
 
@@ -522,8 +529,11 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent, int index)
 	 * Our new chain structure has already been referenced and locked
 	 * but the lock code handles the I/O so call it to resolve the data.
 	 * Then release one of our two exclusive locks.
+	 *
+	 * If NOLOCK is set the release will release the one-and-only lock.
 	 */
-	hammer2_chain_lock(hmp, chain);
+	if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
+		hammer2_chain_lock(hmp, chain);
 	lockmgr(&chain->lk, LK_RELEASE);
 	/* still locked */
 
@@ -565,7 +575,8 @@ hammer2_chain_put(hammer2_mount_t *hmp, hammer2_chain_t *chain)
  */
 hammer2_chain_t *
 hammer2_chain_lookup(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
-		     hammer2_key_t key_beg, hammer2_key_t key_end)
+		     hammer2_key_t key_beg, hammer2_key_t key_end,
+		     int flags)
 {
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
@@ -628,6 +639,8 @@ again:
 	for (i = 0; i < count; ++i) {
 		tmp = hammer2_chain_find(hmp, parent, i);
 		bref = (tmp) ? &tmp->bref : &base[i];
+		if (bref->type == 0)
+			continue;
 		scan_beg = bref->key;
 		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
 		if (key_beg <= scan_end && key_end >= scan_beg)
@@ -637,14 +650,14 @@ again:
 		if (key_beg == key_end)
 			return (NULL);
 		return (hammer2_chain_next(hmp, parentp, NULL,
-					   key_beg, key_end));
+					   key_beg, key_end, flags));
 	}
 
 	/*
 	 * Acquire the new chain element.  If the chain element is an
 	 * indirect block we must search recursively.
 	 */
-	chain = hammer2_chain_get(hmp, parent, i);
+	chain = hammer2_chain_get(hmp, parent, i, flags);
 	if (chain == NULL)
 		return (NULL);
 
@@ -675,7 +688,8 @@ again:
 hammer2_chain_t *
 hammer2_chain_next(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
 		   hammer2_chain_t *chain,
-		   hammer2_key_t key_beg, hammer2_key_t key_end)
+		   hammer2_key_t key_beg, hammer2_key_t key_end,
+		   int flags)
 {
 	hammer2_chain_t *parent;
 	hammer2_chain_t *tmp;
@@ -755,6 +769,10 @@ again2:
 	while (i < count) {
 		tmp = hammer2_chain_find(hmp, parent, i);
 		bref = (tmp) ? &tmp->bref : &base[i];
+		if (bref->type == 0) {
+			++i;
+			continue;
+		}
 		scan_beg = bref->key;
 		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
 		if (key_beg <= scan_end && key_end >= scan_beg)
@@ -773,7 +791,7 @@ again2:
 	 * Acquire the new chain element.  If the chain element is an
 	 * indirect block we must search recursively.
 	 */
-	chain = hammer2_chain_get(hmp, parent, i);
+	chain = hammer2_chain_get(hmp, parent, i, flags);
 	if (chain == NULL)
 		return (NULL);
 
@@ -831,7 +849,7 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	dummy.type = type;
 	dummy.key = key;
 	dummy.keybits = keybits;
-	dummy.data_off = hammer2_freemap_alloc(hmp, bytes);
+	dummy.data_off = (hammer2_off_t)hammer2_freemap_bytes_to_radix(bytes);
 	chain = hammer2_chain_alloc(hmp, &dummy);
 
 	/*
@@ -971,14 +989,14 @@ void
 hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		    hammer2_blockref_t *parent_bref)
 {
-	hammer2_chain_t *scan;
-
 	/*
 	 * Flush any children of this chain entry.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_SUBMODIFIED) {
 		hammer2_blockref_t *base;
 		hammer2_blockref_t bref;
+		hammer2_chain_t *scan;
+		hammer2_chain_t *next;
 		int count;
 		int submodified = 0;
 
@@ -1016,9 +1034,13 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		}
 
 		/*
-		 * Flush the children and update the blockrefs in the parent
+		 * Flush the children and update the blockrefs in the parent.
+		 * Be careful of ripouts during the loop.
 		 */
-		SPLAY_FOREACH(scan, hammer2_chain_splay, &chain->shead) {
+		next = SPLAY_MIN(hammer2_chain_splay, &chain->shead);
+		while ((scan = next) != NULL) {
+			next = SPLAY_NEXT(hammer2_chain_splay, &chain->shead,
+					  scan);
 			if (scan->flags & (HAMMER2_CHAIN_SUBMODIFIED |
 					   HAMMER2_CHAIN_MODIFIED)) {
 				hammer2_chain_ref(hmp, scan);
@@ -1072,10 +1094,14 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 
 		if (chain->bp) {
 			/*
-			 * The data is mapped directly to the bp, no further
-			 * action is required.
+			 * The data is mapped directly to the bp and will be
+			 * written out when the chain is unlocked by the
+			 * parent.  However, since we are clearing the
+			 * MODIFIED flag we have to set the FLUSHED flag
+			 * so the hammer2_chain_unlock() code knows to
+			 * bdwrite() the buffer.
 			 */
-			;
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_FLUSHED);
 		} else {
 			/*
 			 * The data is embedded, we have to acquire the
@@ -1096,19 +1122,13 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 
 			chain->bref.check.iscsi32.value =
 					hammer2_icrc32(chain->data, bytes);
-
-			/*
-			 * If parent_bref is not NULL we can clear the modified
-			 * flag and remove the ref associated with that flag.
-			 *
-			 * If parent_bref is NULL the chain must be left in a
-			 * modified state because the blockref in the parent
-			 * that points to this chain is not being updated.
-			 */
-			*parent_bref = chain->bref;
 		}
-		kprintf("flush %016jx\n", (intmax_t)(off_hi | off_lo));
-		hammer2_chain_drop(hmp, chain);
+
+		/*
+		 * Return information on the new block to the parent.
+		 */
+		*parent_bref = chain->bref;
+		hammer2_chain_drop(hmp, chain);	/* drop ref tracking mod bit */
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 	} else {
 		hammer2_blockref_t *bref;

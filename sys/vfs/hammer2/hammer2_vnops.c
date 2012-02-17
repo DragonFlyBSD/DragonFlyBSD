@@ -61,8 +61,6 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	struct hammer2_mount *hmp;
 #endif
 
-	kprintf("hammer2_inactive\n");
-
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 
@@ -161,8 +159,6 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 
 	ip = VTOI(vp);
 	hmp = ip->hmp;
-
-	kprintf("hammer2_getattr iplock %p\n", &ip->chain.lk);
 
 	hammer2_inode_lock_sh(ip);
 
@@ -287,25 +283,28 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		hammer2_chain_put(hmp, parent);
 		goto done;
 	}
-	chain = hammer2_chain_lookup(hmp, &parent, lkey, (hammer2_key_t)-1);
+	chain = hammer2_chain_lookup(hmp, &parent, lkey, (hammer2_key_t)-1, 0);
 	while (chain) {
-		/* XXX chain error */
-		if (chain->bref.type != HAMMER2_BREF_TYPE_INODE)
-			continue;
-		dtype = hammer2_get_dtype(chain->u.ip);
-		saveoff = chain->bref.key & HAMMER2_DIRHASH_USERMSK;
-		r = vop_write_dirent(&error, uio,
-				     chain->u.ip->ip_data.inum &
-				      HAMMER2_DIRHASH_USERMSK,
-				     dtype, chain->u.ip->ip_data.name_len,
-				     chain->u.ip->ip_data.filename);
-		if (r)
-			break;
-		if (cookies)
-			cookies[cookie_index] = saveoff;
-		++cookie_index;
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
+			dtype = hammer2_get_dtype(chain->u.ip);
+			saveoff = chain->bref.key & HAMMER2_DIRHASH_USERMSK;
+			r = vop_write_dirent(&error, uio,
+					     chain->u.ip->ip_data.inum &
+					      HAMMER2_DIRHASH_USERMSK,
+					     dtype, chain->u.ip->ip_data.name_len,
+					     chain->u.ip->ip_data.filename);
+			if (r)
+				break;
+			if (cookies)
+				cookies[cookie_index] = saveoff;
+			++cookie_index;
+		} else {
+			/* XXX chain error */
+			kprintf("bad chain type readdir %d\n",
+				chain->bref.type);
+		}
 		chain = hammer2_chain_next(hmp, &parent, chain,
-					   lkey, (hammer2_key_t)-1);
+					   lkey, (hammer2_key_t)-1, 0);
 		if (chain) {
 			saveoff = (chain->bref.key &
 				   HAMMER2_DIRHASH_USERMSK) + 1;
@@ -393,6 +392,7 @@ hammer2_vop_read(struct vop_read_args *ap)
 			n = (int)(ip->ip_data.size - uio->uio_offset);
 		bp->b_flags |= B_AGE;
 		uiomove((char *)bp->b_data + off_lo, n, uio);
+		bqrelse(bp);
 	}
 	return (error);
 }
@@ -608,7 +608,8 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	hammer2_chain_ref(hmp, parent);
 	hammer2_chain_lock(hmp, parent);
 	chain = hammer2_chain_lookup(hmp, &parent,
-				     lhc, lhc + HAMMER2_DIRHASH_LOMASK);
+				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
+				     0);
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		    chain->u.ip &&
@@ -617,7 +618,8 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 			break;
 		}
 		chain = hammer2_chain_next(hmp, &parent, chain,
-					   lhc, lhc + HAMMER2_DIRHASH_LOMASK);
+					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
+					   0);
 	}
 	hammer2_chain_put(hmp, parent);
 
@@ -735,7 +737,7 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 	parent = &ip->chain;
 	hammer2_chain_ref(hmp, parent);
 	hammer2_chain_lock(hmp, parent);
-	chain = hammer2_chain_lookup(hmp, &parent, off_hi, off_hi);
+	chain = hammer2_chain_lookup(hmp, &parent, off_hi, off_hi, 0);
 	if (chain) {
 		*ap->a_doffsetp = (chain->bref.data_off & ~HAMMER2_LBUFMASK64);
 		hammer2_chain_put(hmp, chain);
@@ -750,8 +752,58 @@ static
 int
 hammer2_vop_open(struct vop_open_args *ap)
 {
-	kprintf("hammer2_open\n");
 	return vop_stdopen(ap);
+}
+
+static
+int
+hammer2_vop_close(struct vop_close_args *ap)
+{
+	return vop_stdclose(ap);
+}
+
+/*
+ * hammer_vop_ncreate { nch, dvp, vpp, cred, vap }
+ *
+ * The operating system has already ensured that the directory entry
+ * does not exist and done all appropriate namespace locking.
+ */
+static
+int
+hammer2_vop_ncreate(struct vop_ncreate_args *ap)
+{
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *dip;
+	hammer2_inode_t *nip;
+	struct namecache *ncp;
+	const uint8_t *name;
+	size_t name_len;
+	int error;
+
+	dip = VTOI(ap->a_dvp);
+	hmp = dip->hmp;
+	if (hmp->ronly)
+		return (EROFS);
+
+	ncp = ap->a_nch->ncp;
+	name = ncp->nc_name;
+	name_len = ncp->nc_nlen;
+
+	error = hammer2_create_inode(hmp, ap->a_vap, ap->a_cred,
+				     dip, name, name_len, &nip);
+	if (error) {
+		KKASSERT(nip == NULL);
+		*ap->a_vpp = NULL;
+		return error;
+	}
+	*ap->a_vpp = hammer2_igetv(nip, &error);
+	hammer2_chain_put(hmp, &nip->chain);
+
+	if (error == 0) {
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, *ap->a_vpp);
+	}
+	return error;
 }
 
 static int hammer2_strategy_read(struct vop_strategy_args *ap);
@@ -811,11 +863,22 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 		parent = &ip->chain;
 		hammer2_chain_ref(hmp, parent);
 		hammer2_chain_lock(hmp, parent);
-		chain = hammer2_chain_lookup(hmp, &parent, off_hi, off_hi);
+
+		/*
+		 * Specifying NOLOCK avoids unnecessary bread()s of the
+		 * chain element's content.  We just need the block device
+		 * offset.
+		 */
+		kprintf("lookup data logical %016jx\n", off_hi);
+		chain = hammer2_chain_lookup(hmp, &parent, off_hi, off_hi,
+					     HAMMER2_LOOKUP_NOLOCK);
 		if (chain) {
+			kprintf("lookup success\n");
 			nbio->bio_offset = (chain->bref.data_off &
 					    ~HAMMER2_LBUFMASK64);
+			hammer2_chain_drop(hmp, chain);
 		} else {
+			kprintf("lookup zero-fill\n");
 			nbio->bio_offset = ZFOFFSET;
 		}
 		hammer2_chain_put(hmp, parent);
@@ -826,6 +889,7 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 		vfs_bio_clrbuf(bp);
 		biodone(nbio);
 	} else {
+		kprintf("data read %016jx\n", nbio->bio_offset);
 		vn_strategy(hmp->devvp, nbio);
 	}
 	return (0);
@@ -865,7 +929,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	parent = &ip->chain;
 	hammer2_chain_ref(hmp, parent);
 	hammer2_chain_lock(hmp, parent);
-	chain = hammer2_chain_lookup(hmp, &parent, off_hi, off_hi);
+	chain = hammer2_chain_lookup(hmp, &parent, off_hi, off_hi, 0);
 	if (chain) {
 		hammer2_chain_modify(hmp, chain);
 		bcopy(bp->b_data, chain->data->buf + off_lo, bp->b_bcount);
@@ -919,6 +983,8 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_getpages	= vop_stdgetpages,
 	.vop_putpages	= vop_stdputpages,
 	.vop_access	= hammer2_vop_access,
+	.vop_close	= hammer2_vop_close,
+	.vop_ncreate	= hammer2_vop_ncreate,
 	.vop_getattr	= hammer2_vop_getattr,
 	.vop_readdir	= hammer2_vop_readdir,
 	.vop_read	= hammer2_vop_read,

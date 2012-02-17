@@ -303,7 +303,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	hammer2_chain_ref(hmp, parent);
 	hammer2_chain_lock(hmp, parent);
 	schain = hammer2_chain_lookup(hmp, &parent,
-				      HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY);
+				      HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY, 0);
 	hammer2_chain_put(hmp, parent);
 	if (schain == NULL) {
 		kprintf("hammer2_mount: invalid super-root\n");
@@ -314,7 +314,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	parent = schain;
 	hammer2_chain_ref(hmp, parent);	/* parent: lock+ref, schain: ref */
 	rchain = hammer2_chain_lookup(hmp, &parent,
-				      lhc, lhc + HAMMER2_DIRHASH_LOMASK);
+				      lhc, lhc + HAMMER2_DIRHASH_LOMASK,
+				      0);
 	while (rchain) {
 		if (rchain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		    rchain->u.ip &&
@@ -322,7 +323,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			break;
 		}
 		rchain = hammer2_chain_next(hmp, &parent, rchain,
-					    lhc, lhc + HAMMER2_DIRHASH_LOMASK);
+					    lhc, lhc + HAMMER2_DIRHASH_LOMASK,
+					    0);
 	}
 	hammer2_chain_put(hmp, parent);
 	if (rchain == NULL) {

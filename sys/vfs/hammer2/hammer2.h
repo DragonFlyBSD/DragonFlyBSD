@@ -128,6 +128,12 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_SUBCOMMITTING	0x00000008	/* 1+ subs committing */
 #define HAMMER2_CHAIN_DELETED		0x00000010
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial write */
+#define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
+
+/*
+ * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
+ */
+#define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
 
 /*
  * HAMMER2 IN-MEMORY CACHE OF MEDIA STRUCTURES
@@ -287,15 +293,18 @@ void hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_find(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent, int index);
 hammer2_chain_t *hammer2_chain_get(hammer2_mount_t *hmp,
-				hammer2_chain_t *parent, int index);
+				hammer2_chain_t *parent,
+				int index, int flags);
 void hammer2_chain_put(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_mount_t *hmp,
 				hammer2_chain_t **parentp,
-				hammer2_key_t key_beg, hammer2_key_t key_end);
+				hammer2_key_t key_beg, hammer2_key_t key_end,
+				int flags);
 hammer2_chain_t *hammer2_chain_next(hammer2_mount_t *hmp,
 				hammer2_chain_t **parentp,
 				hammer2_chain_t *chain,
-				hammer2_key_t key_beg, hammer2_key_t key_end);
+				hammer2_key_t key_beg, hammer2_key_t key_end,
+				int flags);
 hammer2_chain_t *hammer2_chain_create(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent,
 				hammer2_key_t key, int keybits,
@@ -310,6 +319,7 @@ void hammer2_chain_commit(hammer2_mount_t *hmp, hammer2_chain_t *chain);
  * hammer2_freemap.c
  */
 hammer2_off_t hammer2_freemap_alloc(hammer2_mount_t *hmp, size_t bytes);
+int hammer2_freemap_bytes_to_radix(size_t bytes);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

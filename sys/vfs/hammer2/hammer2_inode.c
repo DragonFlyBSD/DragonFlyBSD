@@ -210,7 +210,7 @@ hammer2_create_inode(hammer2_mount_t *hmp,
 
 	error = 0;
 	while (error == 0) {
-		chain = hammer2_chain_lookup(hmp, &parent, lhc, lhc);
+		chain = hammer2_chain_lookup(hmp, &parent, lhc, lhc, 0);
 		if (chain == NULL)
 			break;
 		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
