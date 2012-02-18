@@ -303,8 +303,14 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			kprintf("bad chain type readdir %d\n",
 				chain->bref.type);
 		}
+
+		/*
+		 * Keys may not be returned in order so once we have a
+		 * placemarker (chain) the scan must allow the full range
+		 * or some entries will be missed.
+		 */
 		chain = hammer2_chain_next(hmp, &parent, chain,
-					   lkey, (hammer2_key_t)-1, 0);
+					   0, (hammer2_key_t)-1, 0);
 		if (chain) {
 			saveoff = (chain->bref.key &
 				   HAMMER2_DIRHASH_USERMSK) + 1;

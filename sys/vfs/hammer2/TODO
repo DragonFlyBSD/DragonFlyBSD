@@ -1,0 +1,15 @@
+
+* The freemap allocator needs to getblk/clrbuf/bdwrite any partial
+  block allocations (less than 64KB) that allocate out of a new 64K
+  block, to avoid causing a read-before-write I/O.
+
+* Check flush race upward recursion setting SUBMODIFIED vs downward
+  recursion checking SUBMODIFIED then locking (must clear before the
+  recursion and might need additional synchronization)
+
+* When a directory entry is created and also if an indirect block is
+  created and entries moved into it, the directory seek position can
+  potentially become incorrect during a scan.
+
+* When a directory entry is deleted a directory seek position depending
+  on that key can cause readdir to skip entries.

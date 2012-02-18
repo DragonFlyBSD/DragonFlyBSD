@@ -129,6 +129,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DELETED		0x00000010
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial write */
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
+#define HAMMER2_CHAIN_MOVED		0x00000080	/* moved */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()

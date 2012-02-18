@@ -51,6 +51,12 @@
 
 SPLAY_GENERATE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 
+static int hammer2_indirect_optimize;	/* XXX SYSCTL */
+
+static hammer2_chain_t *hammer2_chain_create_indirect(
+			hammer2_mount_t *hmp, hammer2_chain_t *parent,
+			hammer2_key_t key, int keybits);
+
 /*
  * Compare function for chain splay tree
  */
@@ -107,6 +113,8 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_blockref_t *bref)
 		      bref->type);
 	}
 	chain->bref = *bref;
+	chain->index = -1;	/* not yet assigned */
+
 	chain->refs = 1;
 	lockmgr(&chain->lk, LK_EXCLUSIVE);
 
@@ -641,11 +649,15 @@ again:
 		bref = (tmp) ? &tmp->bref : &base[i];
 		if (bref->type == 0)
 			continue;
+		kprintf("lookup(%016jx,%d) %d: %016jx/%d\n",
+			parent->bref.data_off, i,
+			bref->type,bref->key, bref->keybits);
 		scan_beg = bref->key;
 		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
 		if (key_beg <= scan_end && key_end >= scan_beg)
 			break;
 	}
+	kprintf("lookup scan %d\n", i);
 	if (i == count) {
 		if (key_beg == key_end)
 			return (NULL);
@@ -722,12 +734,15 @@ again:
 		/*
 		 * Continue iteration with next parent
 		 */
+		hammer2_chain_t *nparent;
+
 		if (parent->bref.type != HAMMER2_BREF_TYPE_INDIRECT)
 			return (NULL);
 		i = parent->index + 1;
+		nparent = parent->parent;
+		hammer2_chain_ref(hmp, nparent);	/* ref new parent */
 		hammer2_chain_unlock(hmp, parent);
-		parent = parent->parent;
-		hammer2_chain_ref(hmp, parent);		/* ref new parent */
+		parent = nparent;
 		hammer2_chain_lock(hmp, parent);	/* lock new parent */
 		hammer2_chain_drop(hmp, *parentp);	/* drop old parent */
 		*parentp = parent;			/* new parent */
@@ -773,6 +788,9 @@ again2:
 			++i;
 			continue;
 		}
+		kprintf("nextxx(%016jx,%d) %d: %016jx/%d\n",
+			parent->bref.data_off, i,
+			bref->type,bref->key, bref->keybits);
 		scan_beg = bref->key;
 		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
 		if (key_beg <= scan_end && key_end >= scan_beg)
@@ -840,6 +858,7 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	hammer2_chain_t dummy_chain;
 	int count;
 	int i;
+	int unlock_parent = 0;
 
 	/*
 	 * First allocate media space and construct the dummy bref, then
@@ -875,19 +894,23 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	}
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
 
+again:
 	/*
 	 * Locate a free blockref in the parent's array
 	 */
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
+		KKASSERT(parent->data != NULL);
 		base = &parent->data->ipdata.u.blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
+		KKASSERT(parent->data != NULL);
 		base = &parent->data->npdata.blockref[0];
 		count = HAMMER2_IND_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
+		KKASSERT(parent->data != NULL);
 		base = &hmp->voldata.sroot_blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
@@ -916,11 +939,31 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	}
 
 	/*
-	 * If no free blockref count be found, fail us for now
+	 * If no free blockref count be found we must create an indirect
+	 * block and move a number of blockrefs into it.  With the parent
+	 * locked we can safely lock each child in order to move it without
+	 * causing a deadlock.
+	 *
+	 * This may return the new indirect block or the old parent depending
+	 * on where the key falls.
 	 */
 	if (i == count) {
-		hammer2_chain_free(hmp, chain);
-		return (NULL);
+		hammer2_chain_t *nparent;
+
+		nparent = hammer2_chain_create_indirect(hmp, parent,
+							key, keybits);
+		if (nparent == NULL) {
+			hammer2_chain_free(hmp, chain);
+			chain = NULL;
+			goto done;
+		}
+		if (parent != nparent) {
+			if (unlock_parent)
+				hammer2_chain_put(hmp, parent);
+			parent = nparent;
+			unlock_parent = 1;
+		}
+		goto again;
 	}
 
 	/*
@@ -938,10 +981,11 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * find the parent directory.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
-		while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT)
-			parent = parent->parent;
-		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE)
-			chain->u.ip->pip = parent->u.ip;
+		hammer2_chain_t *scan = parent;
+		while (scan->bref.type == HAMMER2_BREF_TYPE_INDIRECT)
+			scan = scan->parent;
+		if (scan->bref.type == HAMMER2_BREF_TYPE_INODE)
+			chain->u.ip->pip = scan->u.ip;
 	}
 
 	/*
@@ -957,7 +1001,305 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 */
 	hammer2_chain_modify(hmp, chain);
 
+done:
+	if (unlock_parent)
+		hammer2_chain_put(hmp, parent);
 	return (chain);
+}
+
+/*
+ * Create an indirect block that covers one or more of the elements in the
+ * current parent.  Either returns the existing parent with no locking or
+ * ref changes or returns the new indirect block locked and referenced,
+ * depending on what the specified key falls into.
+ *
+ * The key/keybits for the indirect mode only needs to follow three rules:
+ *
+ * (1) That all elements underneath it fit within its key space and
+ *
+ * (2) That all elements outside it are outside its key space.
+ *
+ * (3) When creating the new indirect block any elements in the current
+ *     parent that fit within the new indirect block's keyspace must be
+ *     moved into the new indirect block.
+ *
+ * (4) The keyspace chosen for the inserted indirect block CAN cover a wider
+ *     keyspace the the current parent, but lookup/iteration rules will
+ *     ensure (and must ensure) that rule (2) for all parents leading up
+ *     to the nearest inode or the root volume header is adhered to.  This
+ *     is accomplished by always recursing through matching keyspaces in
+ *     the hammer2_chain_lookup() and hammer2_chain_next() API.
+ *
+ * The current implementation calculates the current worst-case keyspace by
+ * iterating the current parent and then divides it into two halves, choosing
+ * whichever half has the most elements (not necessarily the half containing
+ * the requested key).
+ *
+ * We can also opt to use the half with the least number of elements.  This
+ * causes lower-numbered keys (aka logical file offsets) to recurse through
+ * fewer indirect blocks and higher-numbered keys to recurse through more.
+ * This also has the risk of not moving enough elements to the new indirect
+ * block and being forced to create several indirect blocks before the element
+ * can be inserted.
+ */
+static
+hammer2_chain_t *
+hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
+			      hammer2_key_t create_key, int create_bits)
+{
+	hammer2_blockref_t *base;
+	hammer2_blockref_t *bref;
+	hammer2_chain_t *chain;
+	hammer2_chain_t *ichain;
+	hammer2_chain_t dummy;
+	hammer2_key_t key = create_key;
+	int keybits = create_bits;
+	int locount = 0;
+	int hicount = 0;
+	int count;
+	int i;
+
+	kprintf("create_indirect1\n");
+
+	/*
+	 * Mark the parent modified so our base[] pointer remains valid
+	 * while we move entries.
+	 */
+	hammer2_chain_modify(hmp, parent);
+
+	/*
+	 * Locate a free blockref in the parent's array
+	 */
+	switch(parent->bref.type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		base = &parent->data->ipdata.u.blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		base = &parent->data->npdata.blockref[0];
+		count = HAMMER2_IND_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_VOLUME:
+		base = &hmp->voldata.sroot_blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
+		break;
+	default:
+		panic("hammer2_chain_push: unrecognized blockref type: %d",
+		      parent->bref.type);
+		count = 0;
+		break;
+	}
+
+	/*
+	 * Scan for an unallocated bref, also skipping any slots occupied
+	 * by in-memory chain elements that may not yet have been updated
+	 * in the parent's bref array.
+	 */
+	bzero(&dummy, sizeof(dummy));
+	for (i = 0; i < count; ++i) {
+		int nkeybits;
+
+		bref = &base[i];
+		if (bref->type == 0) {
+			dummy.index = i;
+			chain = SPLAY_FIND(hammer2_chain_splay, &parent->shead,
+					   &dummy);
+			if (chain == NULL)
+				continue;
+			bref = &chain->bref;
+		}
+
+		/*
+		 * Expand are calculated key range (key, keybits) to fit
+		 * the scanned key.
+		 */
+		nkeybits = keybits;
+		if (nkeybits < bref->keybits)
+			nkeybits = bref->keybits;
+		while ((~(((hammer2_key_t)1 << nkeybits) - 1) &
+		        (key ^ bref->key)) != 0) {
+			++nkeybits;
+		}
+
+		/*
+		 * If the new key range is larger we have to determine
+		 * which side of the new key range the existing keys fall
+		 * under by checking the high bit, then collapsing the
+		 * locount into the hicount or vise-versa.
+		 */
+		if (keybits != nkeybits) {
+			if (((hammer2_key_t)1 << (nkeybits - 1)) & key) {
+				hicount += locount;
+				locount = 0;
+			} else {
+				locount += hicount;
+				hicount = 0;
+			}
+			keybits = nkeybits;
+		}
+
+		/*
+		 * The newly scanned key will be in the lower half or the
+		 * higher half of the (new) key range.
+		 */
+		if (((hammer2_key_t)1 << (nkeybits - 1)) & bref->key)
+			++hicount;
+		else
+			++locount;
+		kprintf("consolidate %016jx keybits %d lo %d hi %d\n",
+			bref->key, keybits, locount, hicount);
+	}
+
+	/*
+	 * The key for the indirect block will be the lower half or
+	 * the upper half of the above calculated keyspace.
+	 */
+	key &= ~(((hammer2_key_t)1 << keybits) - 1);
+	if (hammer2_indirect_optimize) {
+		/*
+		 * Insert node for least number of keys, best for linear
+		 * files (?)  XXX won't work if least number is 0.
+		 */
+		panic("hammer2_indirect_optimize not working yet");
+		if (hicount < locount)
+			key |= (hammer2_key_t)1 << (keybits - 1);
+	} else {
+		/*
+		 * Insert node for most number of keys, best for heavily
+		 * fragmented files.
+		 */
+		if (hicount > locount)
+			key |= (hammer2_key_t)1 << (keybits - 1);
+	}
+
+	/*
+	 * Ok, create our new indirect block
+	 */
+	dummy.bref.type = HAMMER2_BREF_TYPE_INDIRECT;
+	dummy.bref.key = key;
+	dummy.bref.keybits = keybits - 1;
+	dummy.bref.data_off = (hammer2_off_t)
+			    hammer2_freemap_bytes_to_radix(HAMMER2_PBUFSIZE);
+	dummy.index = -1;	/* not yet assigned */
+	ichain = hammer2_chain_alloc(hmp, &dummy.bref);
+	kprintf("create_indirect2: allocate %016jx/%d\n", key, keybits);
+
+	/*
+	 * Iterate the original parent and move the matching brefs into
+	 * the new indirect block.  All the keys are inclusive of keybits
+	 * so we only have to check bit (keybits - 1).
+	 */
+	for (i = 0; i < count; ++i) {
+		bref = &base[i];
+		if (bref->type == 0) {
+			dummy.index = i;
+			chain = SPLAY_FIND(hammer2_chain_splay, &parent->shead,
+					   &dummy);
+			if (chain == NULL) {
+				/*
+				 * Select index indirect block is placed in
+				 */
+				if (ichain->index < 0)
+					ichain->index = i;
+				continue;
+			}
+			kprintf("pre-move index %d\n", i);
+			bref = &chain->bref;
+		}
+
+		/*
+		 * Skip keys not in the chosen half (low or high), only bit
+		 * (keybits - 1) needs to be compared but for safety we
+		 * will compare all msb bits plus that bit again.
+		 */
+		if ((~(((hammer2_key_t)1 << (keybits - 1)) - 1) &
+		    (key ^ bref->key)) != 0) {
+			continue;
+		}
+
+		/*
+		 * This element is being moved, its slot is available
+		 * for our indirect block.
+		 */
+		kprintf("move index %d\n", i);
+		if (ichain->index < 0)
+			ichain->index = i;
+		bzero(&base[i], sizeof(base[i]));
+
+		/*
+		 * Load the new indirect block by acquiring or allocating
+		 * the related chain entries, then simply move it to the
+		 * new parent (ichain).
+		 *
+		 * Flagging the new chain entry MOVED will cause a flush
+		 * to synchronize its block into the new indirect block.
+		 * We must still set SUBMODIFIED but we do that after the
+		 * loop.
+		 */
+		chain = hammer2_chain_get(hmp, parent, i,
+					  HAMMER2_LOOKUP_NOLOCK);
+		SPLAY_REMOVE(hammer2_chain_splay, &parent->shead, chain);
+		if (SPLAY_INSERT(hammer2_chain_splay, &ichain->shead, chain))
+			panic("hammer2_chain_create_indirect: collision");
+		chain->parent = ichain;
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
+		atomic_add_int(&parent->refs, -1);
+		atomic_add_int(&ichain->refs, 1);
+		hammer2_chain_drop(hmp, chain);
+		KKASSERT(parent->refs > 0);
+		chain = NULL;
+	}
+
+	/*
+	 * Insert the new indirect block into the parent now that we've
+	 * cleared out some entries in the parent.  We calculated a good
+	 * insertion index in the loop above (ichain->index).
+	 */
+	KKASSERT(ichain->index >= 0);
+	kprintf("insert ichain at %d\n", ichain->index);
+	if (SPLAY_INSERT(hammer2_chain_splay, &parent->shead, ichain))
+		panic("hammer2_chain_create_indirect: ichain insertion");
+	ichain->parent = parent;
+	atomic_add_int(&parent->refs, 1);
+
+	/*
+	 * Mark the new indirect block modified after insertion, which
+	 * will propagate up through parent all the way to the root and
+	 * also allocate the physical block in ichain for our caller.
+	 *
+	 * We have to set SUBMODIFIED in ichain's flags manually so the
+	 * flusher knows it has to recurse through it to get to all of
+	 * our moved blocks.
+	 */
+	hammer2_chain_modify(hmp, ichain);
+	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_SUBMODIFIED);
+
+	/*
+	 * Figure out what to return.
+	 */
+	if (create_bits >= keybits) {
+		/*
+		 * Key being created is way outside the key range,
+		 * return the original parent.
+		 */
+		hammer2_chain_put(hmp, ichain);
+	} else if (~(((hammer2_key_t)1 << (keybits - 1)) - 1) &
+		   (create_key ^ key)) {
+		/*
+		 * Key being created is outside the key range,
+		 * return the original parent.
+		 */
+		hammer2_chain_put(hmp, ichain);
+	} else {
+		/*
+		 * Otherwise its in the range, return the new parent.
+		 */
+		parent = ichain;
+	}
+
+	kprintf("create_indirect9\n");
+
+	return(parent);
 }
 
 /*
@@ -1042,7 +1384,8 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 			next = SPLAY_NEXT(hammer2_chain_splay, &chain->shead,
 					  scan);
 			if (scan->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-					   HAMMER2_CHAIN_MODIFIED)) {
+					   HAMMER2_CHAIN_MODIFIED |
+					   HAMMER2_CHAIN_MOVED)) {
 				hammer2_chain_ref(hmp, scan);
 				hammer2_chain_lock(hmp, scan);
 				bref = base[scan->index];
@@ -1054,6 +1397,8 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				} else {
 					KKASSERT(scan->index < count);
 					base[scan->index] = bref;
+					atomic_clear_int(&scan->flags,
+							 HAMMER2_CHAIN_MOVED);
 				}
 				hammer2_chain_put(hmp, scan);
 			}
@@ -1066,9 +1411,15 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 
 	/*
 	 * Flush this chain entry only if it is marked modified.
+	 *
+	 * If the chain entry was moved we must still updated *parent_bref
+	 * or the indirect block won't be adjusted to point to us.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0)
+	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+		if (chain->flags & HAMMER2_CHAIN_MOVED)
+			*parent_bref = chain->bref;
 		return;
+	}
 
 	/*
 	 * If this is part of a recursive flush we can go ahead and write

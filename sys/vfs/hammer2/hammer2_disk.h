@@ -72,11 +72,7 @@
 #define HAMMER2_MIN_ALLOC	64	/* minimum allocation size */
 #define HAMMER2_MIN_RADIX	6	/* minimum allocation size 2^N */
 #define HAMMER2_MAX_RADIX	16	/* maximum allocation size 2^N */
-#define HAMMER2_IND1_RADIX	26	/* lowest full indirect block radix */
-#define HAMMER2_IND2_RADIX	36
-#define HAMMER2_IND3_RADIX	46
-#define HAMMER2_IND4_RADIX	56
-#define HAMMER2_IND5_RADIX	66	/* highest full indirect block radix */
+#define HAMMER2_KEY_RADIX	64	/* number of bits in key */
 
 /*
  * HAMMER2 utilizes 64K physical buffers and 16K logical filesystem buffers.
