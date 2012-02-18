@@ -109,7 +109,7 @@ gnode_insert(struct mount *mp, gid_t gid)
 	return gnp;
 }
 
-static int vfs_accounting_enabled = 0;	/* global vfs accounting enable */
+int vfs_accounting_enabled = 0;	/* global vfs accounting enable */
 TUNABLE_INT("vfs.accounting_enabled", &vfs_accounting_enabled);
 SYSCTL_INT(_vfs, OID_AUTO, accounting_enabled, CTLFLAG_RD,
                  &vfs_accounting_enabled, 0, "Enable VFS accounting");
