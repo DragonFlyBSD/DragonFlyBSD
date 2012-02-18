@@ -41,5 +41,7 @@ extern void vq_done(struct mount*);
 
 int vquotactl(const char *path, struct plistref *pref);
 
+extern int vfs_accounting_enabled;
+
 #endif
 

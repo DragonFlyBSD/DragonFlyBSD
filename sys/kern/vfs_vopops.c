@@ -63,6 +63,7 @@
 #include <sys/vnode.h>
 #include <sys/vfsops.h>
 #include <sys/sysmsg.h>
+#include <sys/vfs_quota.h>
 
 #include <machine/limits.h>
 
@@ -427,7 +428,7 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	ap.a_cred = cred;
 
 	/* is this a regular vnode ? */
-	if (vp->v_type == VREG) {
+	if ((vp->v_type == VREG) && vfs_accounting_enabled) {
 		do_accounting = 1;
 		if ((error = VOP_GETATTR(vp, &va)) != 0)
 			return (error);
