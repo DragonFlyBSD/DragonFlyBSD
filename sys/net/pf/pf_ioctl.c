@@ -75,11 +75,8 @@
 #include <sys/md5.h>
 #include <net/pf/pfvar.h>
 
+#include <net/pf/if_pflog.h>
 #include <net/pf/if_pfsync.h>
-
-#if NPFLOG > 0
-#include <net/if_pflog.h>
-#endif /* NPFLOG > 0 */
 
 #ifdef INET6
 #include <netinet/ip6.h>
