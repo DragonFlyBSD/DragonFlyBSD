@@ -86,7 +86,7 @@ main(int argc, char **argv)
 	struct tm *timp;
 	int ch, failures, sectimeout, usemine, vtylock;
 	long tmp;
-	char *ap, *ep, *mypw, *ttynam, *tzn;
+	char *ap, *ep, *mypw, *cryptpw, *ttynam, *tzn;
 	char hostname[MAXHOSTNAMELEN + 1], s[BUFSIZ], s1[BUFSIZ];
 
 	openlog("lock", LOG_ODELAY, LOG_AUTH);
@@ -211,7 +211,8 @@ main(int argc, char **argv)
 		}
 		if (usemine) {
 			s[strlen(s) - 1] = '\0';
-			if (!strcmp(mypw, crypt(s, mypw)))
+			cryptpw = crypt(s, mypw);
+			if (cryptpw == NULL || !strcmp(mypw, cryptpw))
 				break;
 		}
 		else if (!strcmp(s, s1))
