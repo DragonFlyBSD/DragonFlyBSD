@@ -904,7 +904,7 @@ s32 e1000_check_for_serdes_link_generic(struct e1000_hw *hw)
 				if (!(rxcw & E1000_RXCW_IV)) {
 					mac->serdes_has_link = TRUE;
 					DEBUGOUT("SERDES: Link up - autoneg "
-					   "completed sucessfully.\n");
+					   "completed successfully.\n");
 				} else {
 					mac->serdes_has_link = FALSE;
 					DEBUGOUT("SERDES: Link down - invalid"

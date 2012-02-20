@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 
 	if ( (ret = pthread_barrier_init(&bar, NULL, nthreads + 1)) != 0)
 	{
-		printf("error occured during pthread_barrier_init, ret = %d\n", ret);
+		printf("error occurred during pthread_barrier_init, ret = %d\n", ret);
 		perror("Or: ");
 		exit(1);
 	}
