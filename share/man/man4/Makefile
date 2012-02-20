@@ -42,7 +42,6 @@ MAN=	aac.4 \
 	axe.4 \
 	bce.4 \
 	bfe.4 \
-	bfq.4 \
 	bge.4 \
 	bktr.4 \
 	blackhole.4 \
@@ -75,6 +74,7 @@ MAN=	aac.4 \
 	dpt.4 \
 	drm.4 \
 	dsched.4 \
+	dsched_bfq.4 \
 	dummynet.4 \
 	ecc.4 \
 	ed.4 \

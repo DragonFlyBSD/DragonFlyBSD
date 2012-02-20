@@ -652,8 +652,9 @@ SCTP_MAP_LOGGING	opt_sctp.h
 SYSLINK			opt_syslink.h
 
 # DSCHED stuff
-DSCHED_FQ		opt_dsched.h
+DSCHED_AS		opt_dsched.h
 DSCHED_BFQ		opt_dsched.h
+DSCHED_FQ		opt_dsched.h
 
 # Receive Side Scaling (now basecode)
 RSS_DEBUG		opt_rss.h

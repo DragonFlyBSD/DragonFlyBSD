@@ -1977,6 +1977,8 @@ TO_REMOVE+=/usr/share/man/man8/isdntrace.8.gz
 TO_REMOVE+=/usr/libexec/binutils221/elf/ld
 TO_REMOVE+=/usr/libexec/binutils222/elf/ld
 TO_REMOVE+=/usr/include/sys/dataacq.h
+TO_REMOVE+=/usr/share/man/cat4/bfq.4.gz
+TO_REMOVE+=/usr/share/man/man4/bfq.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
