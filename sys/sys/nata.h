@@ -24,14 +24,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/ata.h,v 1.35 2006/03/31 08:09:04 sos Exp $
- * $DragonFly: src/sys/sys/nata.h,v 1.2 2007/06/02 19:17:01 dillon Exp $
  */
 
-/* XXX TGEN Don't define anything if sys/ata.h is being included. This makes
-   various tools like kdump(1) which grovel headers for e.g. ioctl numbers
-   compile/work. The check will be removed once NATA is mature enough to
-   replace the older ATA code. */
-#ifndef _SYS_ATA_H_
 #ifndef _SYS_NATA_H_
 #define _SYS_NATA_H_
 
@@ -467,4 +461,3 @@ struct ata_ioc_raid_config {
 #define IOCATARAIDREBUILD       _IOW('a', 204, int)
 
 #endif /* _SYS_NATA_H_ */
-#endif /* _SYS_ATA_H_ */

@@ -89,9 +89,10 @@
  * 300000 - 3.0 release
  * 300100 - 3.1 master
  * 300101 - i4b (ISDN) removal
+ * 300102 - <sys/ata.h> is now just a link of <sys/nata.h>
  */
 #undef __DragonFly_version
-#define __DragonFly_version 300101	/* propagated to newvers */
+#define __DragonFly_version 300102	/* propagated to newvers */
 
 #include <sys/_null.h>
 
