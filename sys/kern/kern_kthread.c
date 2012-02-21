@@ -43,65 +43,60 @@ static struct lwkt_token kpsus_token = LWKT_TOKEN_INITIALIZER(kpsus_token);
 
 
 /*
- * Create a kernel process/thread/whatever.  It shares it's address space
- * with proc0 - ie: kernel only.  5.x compatible.
- *
- * All kthreads are created as MPSAFE threads.
+ * Create a new lightweight kernel thread.
+ */
+int
+_kthread_create(void (*func)(void *), void *arg,
+    struct thread **tdp, int cpu, const char *fmt, ...)
+{
+    thread_t td;
+    __va_list ap;
+    int flags = 0;
+
+    if (bootverbose)
+        atomic_set_int(&flags, TDF_VERBOSE);
+
+    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, cpu, flags);
+    if (tdp)
+	*tdp = td;
+    cpu_set_thread_handler(td, kthread_exit, func, arg);
+
+    /*
+     * Set up arg0 for 'ps' etc
+     */
+    __va_start(ap, fmt);
+    kvsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
+    __va_end(ap);
+
+    td->td_ucred = crhold(proc0.p_ucred);
+
+    /*
+     * Schedule the thread to run
+     */
+    lwkt_schedule(td);
+
+    return 0;
+}
+
+/*
+ * Creates a lwkt. No CPU preference.
  */
 int
 kthread_create(void (*func)(void *), void *arg,
 	       struct thread **tdp, const char *fmt, ...)
 {
-    thread_t td;
-    __va_list ap;
-
-    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, TDF_VERBOSE);
-    if (tdp)
-	*tdp = td;
-    cpu_set_thread_handler(td, kthread_exit, func, arg);
-
-    /*
-     * Set up arg0 for 'ps' etc
-     */
-    __va_start(ap, fmt);
-    kvsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
-    __va_end(ap);
-
-    td->td_ucred = crhold(proc0.p_ucred);
-
-    /*
-     * Schedule the thread to run
-     */
-    lwkt_schedule(td);
-    return 0;
+	return _kthread_create(func, arg, tdp, -1, fmt);
 }
 
+/*
+ * Creates a lwkt and schedule it to run in a specific CPU.
+ *
+ */
 int
 kthread_create_cpu(void (*func)(void *), void *arg,
 		   struct thread **tdp, int cpu, const char *fmt, ...)
 {
-    thread_t td;
-    __va_list ap;
-
-    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, cpu, TDF_VERBOSE);
-    if (tdp)
-	*tdp = td;
-    cpu_set_thread_handler(td, kthread_exit, func, arg);
-
-    /*
-     * Set up arg0 for 'ps' etc
-     */
-    __va_start(ap, fmt);
-    kvsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
-    __va_end(ap);
-
-    td->td_ucred = crhold(proc0.p_ucred);
-
-    /*
-     * Schedule the thread to run
-     */
-    lwkt_schedule(td);
-    return 0;
+    return _kthread_create(func, arg, tdp, cpu, fmt);
 }
 
 #if 0
