@@ -595,7 +595,6 @@ KTR_IF_START			opt_ktr.h
 KTR_IPIQ			opt_ktr.h
 KTR_KERNENTRY			opt_ktr.h
 KTR_MEMORY			opt_ktr.h
-KTR_MSGPORT			opt_ktr.h
 KTR_POLLING			opt_ktr.h
 KTR_SERIALIZER			opt_ktr.h
 KTR_SPIN_CONTENTION		opt_ktr.h
