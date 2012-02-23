@@ -78,9 +78,6 @@ BTXKERN=	${BTXDIR}/btx/btx
 BTXCRT=		${BTXDIR}/lib/crt0.o
 CFLAGS+=	-I${.CURDIR}/../btx/lib
 
-# BTX is expecting ELF components
-CFLAGS+=	-elf
-
 # Debug me!
 #CFLAGS+=	-g
 
