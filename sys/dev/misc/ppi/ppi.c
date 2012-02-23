@@ -429,7 +429,7 @@ ppiwrite(struct dev_write_args *ap)
 
 	/* negociate ECP mode */
 	if (ppb_1284_negociate(ppbus, PPB_ECP, 0)) {
-		kprintf("ppiwrite: ECP negociation failed\n");
+		kprintf("ppiwrite: ECP negotiation failed\n");
 	}
 
 	while (!error && (len = (int)szmin(uio->uio_resid, BUFSIZE))) {

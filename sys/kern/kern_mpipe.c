@@ -55,7 +55,7 @@ struct mpipe_callback {
 	void *arg2;
 };
 
-static MALLOC_DEFINE(M_MPIPEARY, "MPipe Array", "Auxillary MPIPE structure");
+static MALLOC_DEFINE(M_MPIPEARY, "MPipe Array", "Auxiliary MPIPE structure");
 
 static void mpipe_thread(void *arg);
 

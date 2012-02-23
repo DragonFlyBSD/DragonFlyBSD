@@ -195,7 +195,7 @@ as_dequeue(struct dsched_disk_ctx *diskctx)
 		bio = TAILQ_FIRST(&as_diskctx->as_queue_rd);
 		tdio = dsched_get_bio_priv(bio);
 		//kernel thread
-		if (!tdio->p || (uint32_t)(tdio->p) == ~0){
+		if (!tdio->p) {
 			TAILQ_REMOVE(&as_diskctx->as_queue_rd, bio, link);
 			dsched_strategy_request_polling(as_diskctx->head.dp, bio, diskctx);
 		} else {

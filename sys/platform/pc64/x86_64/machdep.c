@@ -1575,7 +1575,7 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			/*
 			 * block out kernel memory as not available.
 			 */
-			if (pa >= 0x100000 && pa < first)
+			if (pa >= 0x200000 && pa < first)
 				goto do_dump_avail;
 
 			/*

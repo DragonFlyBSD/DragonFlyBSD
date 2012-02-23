@@ -1003,6 +1003,7 @@ pw_pwcrypt(char *password)
 {
 	int             i;
 	char            salt[12];
+	char		*cryptpw;
 
 	static char     buf[256];
 
@@ -1013,7 +1014,10 @@ pw_pwcrypt(char *password)
 		salt[i] = chars[arc4random() % 63];
 	salt[i] = '\0';
 
-	return strcpy(buf, crypt(password, salt));
+	cryptpw = crypt(password, salt);
+	if (cryptpw == NULL)
+		errx(EX_CONFIG, "crypt(3) failure");
+	return strcpy(buf, cryptpw);
 }
 
 #if defined(USE_MD5RAND)

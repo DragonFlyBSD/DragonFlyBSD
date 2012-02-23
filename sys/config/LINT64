@@ -2354,6 +2354,8 @@ options		SCTP_FR_LOGGING
 options		SCTP_MAP_LOGGING
 
 # DSCHED stuff
+options		DSCHED_AS
+options		DSCHED_BFQ
 options		DSCHED_FQ
 
 # WATCHDOG

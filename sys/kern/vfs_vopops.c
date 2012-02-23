@@ -63,6 +63,7 @@
 #include <sys/vnode.h>
 #include <sys/vfsops.h>
 #include <sys/sysmsg.h>
+#include <sys/vfs_quota.h>
 
 #include <machine/limits.h>
 
@@ -427,7 +428,7 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	ap.a_cred = cred;
 
 	/* is this a regular vnode ? */
-	if (vp->v_type == VREG) {
+	if ((vp->v_type == VREG) && vfs_accounting_enabled) {
 		do_accounting = 1;
 		if ((error = VOP_GETATTR(vp, &va)) != 0)
 			return (error);
@@ -439,7 +440,10 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	if ((error == 0) && do_accounting) {
 		size_after = vp->v_filesize;
 		/* does this vnode belong to a pfs/nullfs mount ? */
-		if (vp->v_pfsmp != NULL) {
+		/* XXX: vp->v_pfsmp may point to a freed structure
+		* we use mountlist_exists() to check if it is valid
+		* before using it */
+		if ((vp->v_pfsmp != NULL) && (mountlist_exists(vp->v_pfsmp))) {
 			/* yes, use a copy of the real mp */
 			mp = vp->v_pfsmp;
 		} else {
