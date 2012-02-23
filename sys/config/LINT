@@ -177,6 +177,10 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 #
 # CPU_FASTER_5X86_FPU enables faster FPU exception handler.
 #
+# CPU_HAS_SSE2 will enable the lfence and mfence instructions in
+# cpu_lfence() and cpu_mfence().  If the CPU does not support them,
+# it will cause a panic.
+#
 # CPU_I486_ON_386 enables CPU cache on i486 based CPU upgrade products
 # for i386 machines.
 #
@@ -248,6 +252,7 @@ options 	CPU_ENABLE_LONGRUN
 options		CPU_ENABLE_TCC
 options 	CPU_FASTER_5X86_FPU
 options		CPU_GEODE
+options		CPU_HAS_SSE2
 options 	CPU_I486_ON_386
 options 	CPU_IORT
 options 	CPU_L2_LATENCY=5
