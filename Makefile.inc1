@@ -118,8 +118,9 @@ DESTDIRBASE?=		${OBJTREE}${.CURDIR}
 # anyhow, and we need to be able to override it for stage installs
 .MAKEFLAGS:=	${.MAKEFLAGS:NDESTDIR=*}
 
-# This sets the compiler we use to build the world/kernel with
-WORLD_CCVER?=	gcc44
+# This section sets the tools used to build the world/kernel
+WORLD_CCVER?=		gcc44
+WORLD_LDVER?=		ld.bfd
 WORLD_BINUTILSVER?=	binutils222
 
 # temporary until everybody has converted to x86_64
@@ -287,6 +288,7 @@ CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
 		OBJFORMAT_PATH=${CTOOLSDEST} \
 		HOST_CCVER=${HOST_CCVER} \
 		CCVER=${WORLD_CCVER} \
+		LDVER=${WORLD_LDVER} \
 		BINUTILSVER=${WORLD_BINUTILSVER}
 
 WMAKEENV=	${CROSSENV} \
