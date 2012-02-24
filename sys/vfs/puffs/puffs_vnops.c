@@ -1115,7 +1115,6 @@ puffs_vnop_link(struct vop_nlink_args *ap)
 		    ncp, ncp->nc_name));
 		return EAGAIN;
 	}
-	vn_lock(vp, LK_EXCLUSIVE);
 
 	PUFFS_MSG_ALLOC(vn, link);
 	link_msg->pvnr_cookie_targ = VPTOPNC(vp);
@@ -1140,7 +1139,6 @@ puffs_vnop_link(struct vop_nlink_args *ap)
 	}
 
 	vput(dvp);
-	vn_unlock(vp);
 	if (error == 0) {
 		cache_setunresolved(nch);
 		cache_setvp(nch, vp);
