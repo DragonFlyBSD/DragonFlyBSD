@@ -71,6 +71,8 @@ MAN=	aac.4 \
 	disc.4 \
 	divert.4 \
 	dm.4 \
+	dm_target_striped.4 \
+	dm_target_crypt.4 \
 	dpt.4 \
 	drm.4 \
 	dsched.4 \
@@ -384,6 +386,7 @@ MLINKS=	acpi_thermal.4 acpi_tz.4
 MLINKS+=agp.4 agpgart.4
 MLINKS+=bktr.4 brooktree.4
 MLINKS+=crypto.4 cryptodev.4
+MLINKS+=dm.4 dm_target_linear.4
 MLINKS+=drm.4 i915drm.4 \
 	drm.4 mach64drm.4 \
 	drm.4 mgadrm.4 \
