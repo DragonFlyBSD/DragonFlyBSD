@@ -4,7 +4,8 @@
 # machine-independent stdlib sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib ${.CURDIR}/../libc/stdlib
 
-MISRCS+=a64l.c abort.c abs.c atexit.c atof.c atoi.c atol.c atoll.c \
+MISRCS+=a64l.c abort.c abs.c atexit.c aligned_alloc.c \
+	atof.c atoi.c atol.c atoll.c \
 	bsearch.c div.c exit.c getenv.c getopt.c getopt_long.c \
 	getsubopt.c hcreate.c heapsort.c imaxabs.c imaxdiv.c \
 	insque.c l64a.c labs.c ldiv.c llabs.c lldiv.c lsearch.c \

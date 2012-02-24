@@ -289,8 +289,9 @@ long long
 /*
  * C11 functions.
  */
-int at_quick_exit(void (*func)(void));
-void quick_exit(int);
+int 	at_quick_exit(void (*func)(void));
+void 	quick_exit(int);
+void	*aligned_alloc(size_t, size_t);
 
 /* Deprecated interfaces. */
 #if !defined(_KERNEL_VIRTUAL)
