@@ -656,7 +656,7 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 {
 	hammer2_volume_data_t *vd;
 	struct buf *bp;
-	hammer2_crc32_t ccrc, crc;
+	hammer2_crc32_t crc0, crc, bcrc0, bcrc;
 	int error_reported;
 	int error;
 	int valid;
@@ -688,12 +688,15 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 			continue;
 
 		crc = vd->icrc_sects[HAMMER2_VOL_ICRC_SECT0];
-		ccrc = hammer2_icrc32(bp->b_data + HAMMER2_VOLUME_ICRC0_OFF,
+		crc0 = hammer2_icrc32(bp->b_data + HAMMER2_VOLUME_ICRC0_OFF,
 				      HAMMER2_VOLUME_ICRC0_SIZE);
-		if (ccrc != crc) {
+		bcrc = vd->icrc_sects[HAMMER2_VOL_ICRC_SECT1];
+		bcrc0 = hammer2_icrc32(bp->b_data + HAMMER2_VOLUME_ICRC1_OFF,
+				       HAMMER2_VOLUME_ICRC1_SIZE);
+		if ((crc0 != crc) || (bcrc0 != bcrc)) {
 			kprintf("hammer2 volume header crc "
 				"mismatch copy #%d\t%08x %08x",
-				i, ccrc, crc);
+				i, crc0, crc);
 			error_reported = 1;
 			brelse(bp);
 			bp = NULL;
