@@ -45,7 +45,7 @@ static struct lwkt_token kpsus_token = LWKT_TOKEN_INITIALIZER(kpsus_token);
 /*
  * Create a new lightweight kernel thread.
  */
-int
+static int
 _kthread_create(void (*func)(void *), void *arg,
     struct thread **tdp, int cpu, const char *fmt, ...)
 {
