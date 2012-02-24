@@ -47,10 +47,9 @@ static struct lwkt_token kpsus_token = LWKT_TOKEN_INITIALIZER(kpsus_token);
  */
 static int
 _kthread_create(void (*func)(void *), void *arg,
-    struct thread **tdp, int cpu, const char *fmt, ...)
+    struct thread **tdp, int cpu, const char *fmt, __va_list ap)
 {
     thread_t td;
-    __va_list ap;
     int flags = 0;
 
     if (bootverbose)
@@ -64,9 +63,7 @@ _kthread_create(void (*func)(void *), void *arg,
     /*
      * Set up arg0 for 'ps' etc
      */
-    __va_start(ap, fmt);
     kvsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
-    __va_end(ap);
 
     td->td_ucred = crhold(proc0.p_ucred);
 
@@ -85,7 +82,14 @@ int
 kthread_create(void (*func)(void *), void *arg,
 	       struct thread **tdp, const char *fmt, ...)
 {
-	return _kthread_create(func, arg, tdp, -1, fmt);
+	__va_list ap;
+	int ret;
+
+	__va_start(ap, fmt);
+	ret = _kthread_create(func, arg, tdp, -1, fmt, ap);
+	__va_end(ap);
+
+	return ret;
 }
 
 /*
@@ -96,7 +100,14 @@ int
 kthread_create_cpu(void (*func)(void *), void *arg,
 		   struct thread **tdp, int cpu, const char *fmt, ...)
 {
-    return _kthread_create(func, arg, tdp, cpu, fmt);
+	__va_list ap;
+	int ret;
+
+	__va_start(ap, fmt);
+	ret = _kthread_create(func, arg, tdp, cpu, fmt, ap);
+	__va_end(ap);
+
+	return ret;
 }
 
 #if 0
