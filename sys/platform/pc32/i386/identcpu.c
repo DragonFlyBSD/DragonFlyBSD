@@ -758,7 +758,7 @@ printcpuinfo(void)
 				"\034OSXSAVE"	/* OS-Enabled State Management */
 				"\035AVX"	/* Advanced Vector Extensions */
 				"\036F16C"	/* Half-precision conversions */
-				"\037<b30>"
+				"\037RDRND"	/* RDRAND RNG function */
 				"\040VMM"	/* Running on a hypervisor */
 				);
 			}
