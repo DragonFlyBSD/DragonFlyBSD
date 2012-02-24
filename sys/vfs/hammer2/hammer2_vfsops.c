@@ -493,8 +493,8 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 
 	hmp = MPTOH2(mp);
 
-	mp->mnt_vstat.f_files = 10;
-	mp->mnt_vstat.f_bfree = 10;
+	mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
+	mp->mnt_vstat.f_files = 0;
 	mp->mnt_vstat.f_bavail = mp->mnt_stat.f_bfree;
 
 	*sbp = mp->mnt_vstat;
@@ -683,9 +683,21 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 			continue;
 		}
 
-		vd = (struct hammer2_volume_data *)bp->b_data;
-		if (vd->magic != HAMMER2_VOLUME_ID_HBO) 
+		vd = (struct hammer2_volume_data *) bp->b_data;
+		if ((vd->magic != HAMMER2_VOLUME_ID_HBO) &&
+		    (vd->magic != HAMMER2_VOLUME_ID_ABO)) {
+			brelse(bp);
+			bp = NULL;
 			continue;
+		}
+
+		if (vd->magic == HAMMER2_VOLUME_ID_ABO) {
+			/* XXX: Reversed-endianness filesystem */
+			kprintf("hammer2: reverse-endian filesystem detected");
+			brelse(bp);
+			bp = NULL;
+			continue;
+		}
 
 		crc = vd->icrc_sects[HAMMER2_VOL_ICRC_SECT0];
 		crc0 = hammer2_icrc32(bp->b_data + HAMMER2_VOLUME_ICRC0_OFF,
