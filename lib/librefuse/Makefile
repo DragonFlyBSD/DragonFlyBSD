@@ -8,7 +8,7 @@ FUSE_OPT_DEBUG_FLAGS=	-g -DFUSE_OPT_DEBUG
 
 SRCROOT=	${.CURDIR}/../..
 CFLAGS+=	${FUSE_OPT_DEBUG_FLAGS}
-CFLAGS+=	-I${SRCROOT}/lib/libpuffs -I${SRCROOT}/sys -I.
+CFLAGS+=	-I${SRCROOT}/lib/libpuffs -I.
 SRCS=		refuse.c refuse_opt.c
 MAN=		refuse.3
 WARNS=		2

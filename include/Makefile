@@ -80,10 +80,10 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netproto/key netproto/natm netproto/ncp netproto/smb \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
 	netproto/atm/uni netproto/802_11 netproto/mpls \
-	vfs/isofs/cd9660 \
+	vfs/isofs/cd9660 vfs/puffs \
 	dev/disk/mpt/mpilib \
 	dev/disk/dm \
-	dev/misc/lpt dev/misc/ppi \
+	dev/misc/lpt dev/misc/ppi dev/misc/putter \
 	dev/netif/wi \
 	dev/raid/ciss dev/raid/mfi \
 	dev/video/bktr dev/video/meteor libprop
