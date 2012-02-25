@@ -111,7 +111,7 @@ puffs_vnop_lookup(struct vop_nresolve_args *ap)
 	struct nchandle *nch = ap->a_nch;
 	struct namecache *ncp = nch->ncp;
 	struct ucred *cred = ap->a_cred;
-	struct vnode *vp, *dvp = ap->a_dvp;
+	struct vnode *vp = NULL, *dvp = ap->a_dvp;
 	struct puffs_node *dpn;
 	int error;
 
@@ -169,7 +169,7 @@ puffs_vnop_lookup(struct vop_nresolve_args *ap)
 
  out:
 	vput(dvp);
-	if (!error) {
+	if (!error && vp != NULL) {
 		vn_unlock(vp);
 		cache_setvp(nch, vp);
 		vrele(vp);
