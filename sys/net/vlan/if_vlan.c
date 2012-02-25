@@ -884,7 +884,7 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 			ifnet_serialize_all(ifp);
 
-			if (ifv->ifv_p == NULL && ifv->ifv_p != ifp_p) {
+			if (ifv->ifv_p == NULL || ifv->ifv_p != ifp_p) {
 				/*
 				 * We are disconnected from the original
 				 * parent interface or the parent interface
