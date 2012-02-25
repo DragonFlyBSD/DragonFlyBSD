@@ -232,6 +232,7 @@ MAN=	aac.4 \
 	puffs.4 \
 	ral.4 \
 	random.4 \
+	rdrand.4 \
 	re.4 \
 	rl.4 \
 	rndtest.4 \
