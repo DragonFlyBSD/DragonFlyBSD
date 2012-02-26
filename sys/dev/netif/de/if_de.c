@@ -77,7 +77,7 @@
 #include <vm/pmap.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#include <bus/pci/dc21040reg.h>
+#include <dev/netif/de/dc21040reg.h>
 
 /*
  * Intel CPUs should use I/O mapped access.
