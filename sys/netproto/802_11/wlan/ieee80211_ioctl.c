@@ -3215,7 +3215,6 @@ ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred
 	struct ieee80211com *ic = vap->iv_ic;
 	int error = 0;
 	struct ifreq *ifr;
-	struct ifaddr *ifa;			/* XXX */
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
@@ -3270,51 +3269,6 @@ ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred
 			error = EINVAL;
 		else
 			ifp->if_mtu = ifr->ifr_mtu;
-		break;
-	case SIOCSIFADDR:
-		/*
-		 * XXX Handle this directly so we can supress if_init calls.
-		 * XXX This should be done in ether_ioctl but for the moment
-		 * XXX there are too many other parts of the system that
-		 * XXX set IFF_UP and so supress if_init being called when
-		 * XXX it should be.
-		 */
-		ifa = (struct ifaddr *) data;
-		switch (ifa->ifa_addr->sa_family) {
-#ifdef INET
-		case AF_INET:
-			if ((ifp->if_flags & IFF_UP) == 0) {
-				ifp->if_flags |= IFF_UP;
-				ifp->if_init(ifp->if_softc);
-			}
-			arp_ifinit(ifp, ifa);
-			break;
-#endif
-#ifdef IPX
-		/*
-		 * XXX - This code is probably wrong,
-		 *	 but has been copied many times.
-		 */
-		case AF_IPX: {
-			struct ipx_addr *ina = &(IA_SIPX(ifa)->sipx_addr);
-
-			if (ipx_nullhost(*ina))
-				ina->x_host = *(union ipx_host *)
-				    IF_LLADDR(ifp);
-			else
-				bcopy((caddr_t) ina->x_host.c_host,
-				      (caddr_t) IF_LLADDR(ifp),
-				      ETHER_ADDR_LEN);
-			/* fall thru... */
-		}
-#endif
-		default:
-			if ((ifp->if_flags & IFF_UP) == 0) {
-				ifp->if_flags |= IFF_UP;
-				ifp->if_init(ifp->if_softc);
-			}
-			break;
-		}
 		break;
 	/* Pass NDIS ioctls up to the driver */
 	case SIOCGDRVSPEC:

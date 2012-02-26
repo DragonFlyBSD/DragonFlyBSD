@@ -924,37 +924,12 @@ igb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cred)
 {
 	struct adapter	*adapter = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
-#ifdef INET
-	struct ifaddr *ifa = (struct ifaddr *)data;
-#endif
 	int error = 0;
 
 	if (adapter->in_detach)
 		return (error);
 
 	switch (command) {
-	case SIOCSIFADDR:
-#ifdef INET
-		if (ifa->ifa_addr->sa_family == AF_INET) {
-			/*
-			 * XXX
-			 * Since resetting hardware takes a very long time
-			 * and results in link renegotiation we only
-			 * initialize the hardware only when it is absolutely
-			 * required.
-			 */
-			ifp->if_flags |= IFF_UP;
-			if (!(ifp->if_flags & IFF_RUNNING)) {
-				IGB_CORE_LOCK(adapter);
-				igb_init_locked(adapter);
-				IGB_CORE_UNLOCK(adapter);
-			}
-			if (!(ifp->if_flags & IFF_NOARP))
-				arp_ifinit(ifp, ifa);
-		} else
-#endif
-			error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFMTU:
 	    {
 		int max_frame_size;
