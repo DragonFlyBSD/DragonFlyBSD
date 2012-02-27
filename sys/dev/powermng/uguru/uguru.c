@@ -891,6 +891,9 @@ uguru_detach(struct device *dev)
 {
 	struct uguru_softc *sc = device_get_softc(dev);
 
+	sensordev_deinstall(&sc->sc_sensordev);
+	sensor_task_unregister(sc);
+
 	return bus_release_resource(dev, SYS_RES_IOPORT,
 	    sc->sc_iorid, sc->sc_iores);
 }
