@@ -1,28 +1,19 @@
-/* Default linker script, for normal executables */
-OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64",
-	      "elf64-x86-64")
-OUTPUT_ARCH(i386:x86-64)
-ENTRY(btext)
-SEARCH_DIR("/usr/lib");
+OUTPUT_FORMAT("elf32-i386", "elf32-i386",
+	      "elf32-i386")
+OUTPUT_ARCH(i386)
+ENTRY(_start)
 
 PHDRS
 {
-  headers PT_PHDR PHDRS ;
-  interp PT_INTERP ;
-  text PT_LOAD FILEHDR PHDRS ;
-  data PT_LOAD ;
-  dynamic PT_DYNAMIC ;
+	text PT_LOAD ;
+	data PT_LOAD ;
 }
 
 SECTIONS
 {
-  /* Read-only sections, merged into text segment: */
-  kernphys = 0x200000;
-  kernmxps = CONSTANT (MAXPAGESIZE);
-  kernpage = CONSTANT (COMMONPAGESIZE);
-  . = kernbase + kernphys + SIZEOF_HEADERS;
-  .interp         : { *(.interp) } :text :interp
-  .note.gnu.build-id : { *(.note.gnu.build-id) } :text
+  . = 0x0;
+  .interp         : { *(.interp) } : text
+  .note.gnu.build-id : { *(.note.gnu.build-id) }
   .hash           : { *(.hash) }
   .gnu.hash       : { *(.gnu.hash) }
   .dynsym         : { *(.dynsym) }
@@ -30,28 +21,25 @@ SECTIONS
   .gnu.version    : { *(.gnu.version) }
   .gnu.version_d  : { *(.gnu.version_d) }
   .gnu.version_r  : { *(.gnu.version_r) }
-  .rela.init      : { *(.rela.init) }
-  .rela.text      : { *(.rela.text .rela.text.* .rela.gnu.linkonce.t.*) }
-  .rela.fini      : { *(.rela.fini) }
-  .rela.rodata    : { *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.*) }
-  .rela.data.rel.ro   : { *(.rela.data.rel.ro* .rela.gnu.linkonce.d.rel.ro.*) }
-  .rela.data      : { *(.rela.data .rela.data.* .rela.gnu.linkonce.d.*) }
-  .rela.tdata	  : { *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.*) }
-  .rela.tbss	  : { *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.*) }
-  .rela.ctors     : { *(.rela.ctors) }
-  .rela.dtors     : { *(.rela.dtors) }
-  .rela.got       : { *(.rela.got) }
-  .rela.bss       : { *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*) }
-  .rela.ldata     : { *(.rela.ldata .rela.ldata.* .rela.gnu.linkonce.l.*) }
-  .rela.lbss      : { *(.rela.lbss .rela.lbss.* .rela.gnu.linkonce.lb.*) }
-  .rela.lrodata   : { *(.rela.lrodata .rela.lrodata.* .rela.gnu.linkonce.lr.*) }
-  .rela.ifunc     : { *(.rela.ifunc) }
-  .rela.plt       :
+  .rel.init       : { *(.rel.init) }
+  .rel.text       : { *(.rel.text .rel.text.* .rel.gnu.linkonce.t.*) }
+  .rel.fini       : { *(.rel.fini) }
+  .rel.rodata     : { *(.rel.rodata .rel.rodata.* .rel.gnu.linkonce.r.*) }
+  .rel.data.rel.ro   : { *(.rel.data.rel.ro* .rel.gnu.linkonce.d.rel.ro.*) }
+  .rel.data       : { *(.rel.data .rel.data.* .rel.gnu.linkonce.d.*) }
+  .rel.tdata	  : { *(.rel.tdata .rel.tdata.* .rel.gnu.linkonce.td.*) }
+  .rel.tbss	  : { *(.rel.tbss .rel.tbss.* .rel.gnu.linkonce.tb.*) }
+  .rel.ctors      : { *(.rel.ctors) }
+  .rel.dtors      : { *(.rel.dtors) }
+  .rel.got        : { *(.rel.got) }
+  .rel.bss        : { *(.rel.bss .rel.bss.* .rel.gnu.linkonce.b.*) }
+  .rel.ifunc      : { *(.rel.ifunc) }
+  .rel.plt        :
     {
-      *(.rela.plt)
-      PROVIDE_HIDDEN (__rela_iplt_start = .);
-      *(.rela.iplt)
-      PROVIDE_HIDDEN (__rela_iplt_end = .);
+      *(.rel.plt)
+      PROVIDE_HIDDEN (__rel_iplt_start = .);
+      *(.rel.iplt)
+      PROVIDE_HIDDEN (__rel_iplt_end = .);
     }
   .init           :
   {
@@ -86,8 +74,7 @@ SECTIONS
   .exception_ranges*) }
   /* Adjust the address for the data segment.  We want to adjust up to
      the same address within the page on the next page up.  */
-  . = ALIGN (kernmxps) - ((kernmxps - .) & (kernmxps - 1));
-  . = DATA_SEGMENT_ALIGN (kernmxps, kernpage);
+  . = ALIGN (CONSTANT (MAXPAGESIZE)) - ((CONSTANT (MAXPAGESIZE) - .) & (CONSTANT (MAXPAGESIZE) - 1)); . = DATA_SEGMENT_ALIGN (CONSTANT (MAXPAGESIZE), CONSTANT (COMMONPAGESIZE));
   /* Exception handling  */
   .eh_frame       : ONLY_IF_RW { KEEP (*(.eh_frame)) }
   .gcc_except_table   : ONLY_IF_RW { *(.gcc_except_table .gcc_except_table.*) }
@@ -103,10 +90,10 @@ SECTIONS
   }
   .init_array     :
   {
-     PROVIDE_HIDDEN (__init_array_start = .);
-     KEEP (*(SORT(.init_array.*)))
-     KEEP (*(.init_array))
-     PROVIDE_HIDDEN (__init_array_end = .);
+    PROVIDE_HIDDEN (__init_array_start = .);
+    KEEP (*(SORT(.init_array.*)))
+    KEEP (*(.init_array))
+    PROVIDE_HIDDEN (__init_array_end = .);
   }
   .fini_array     :
   {
@@ -115,8 +102,6 @@ SECTIONS
     KEEP (*(.fini_array))
     PROVIDE_HIDDEN (__fini_array_end = .);
   }
-  _start_ctors = .;
-  PROVIDE (start_ctors = .);
   .ctors          :
   {
     /* gcc uses crtbegin.o to find the start of
@@ -138,8 +123,6 @@ SECTIONS
     KEEP (*(SORT(.ctors.*)))
     KEEP (*(.ctors))
   }
-  _stop_ctors = .;
-  PROVIDE (stop_ctors = .);
   .dtors          :
   {
     KEEP (*crtbegin.o(.dtors))
@@ -150,9 +133,9 @@ SECTIONS
   }
   .jcr            : { KEEP (*(.jcr)) }
   .data.rel.ro : { *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*) *(.data.rel.ro* .gnu.linkonce.d.rel.ro.*) } :data
-  .dynamic        : { *(.dynamic) } :data :dynamic
-  .got            : { *(.got) *(.igot) } :data
-  . = DATA_SEGMENT_RELRO_END (24, .);
+  .dynamic        : { *(.dynamic) }
+  .got            : { *(.got) *(.igot) }
+  . = DATA_SEGMENT_RELRO_END (12, .);
   .got.plt        : { *(.got.plt)  *(.igot.plt) }
   .data           :
   {
@@ -172,25 +155,10 @@ SECTIONS
       .bss section disappears because there are no input sections.
       FIXME: Why do we need it? When there is no .bss section, we don't
       pad the .data section.  */
-   . = ALIGN(. != 0 ? 64 / 8 : 1);
+   . = ALIGN(. != 0 ? 32 / 8 : 1);
   }
-  .lbss   :
-  {
-    *(.dynlbss)
-    *(.lbss .lbss.* .gnu.linkonce.lb.*)
-    *(LARGE_COMMON)
-  }
-  . = ALIGN(64 / 8);
-  .lrodata   ALIGN(kernmxps) + (. & (kernmxps - 1)) :
-  {
-    *(.lrodata .lrodata.* .gnu.linkonce.lr.*)
-  }
-  .ldata   ALIGN(kernmxps) + (. & (kernmxps - 1)) :
-  {
-    *(.ldata .ldata.* .gnu.linkonce.l.*)
-    . = ALIGN(. != 0 ? 64 / 8 : 1);
-  }
-  . = ALIGN(64 / 8);
+  . = ALIGN(32 / 8);
+  . = ALIGN(32 / 8);
   _end = .; PROVIDE (end = .);
   . = DATA_SEGMENT_END (.);
   /* Stabs debugging sections.  */

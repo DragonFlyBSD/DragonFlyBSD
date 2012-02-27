@@ -751,6 +751,43 @@ psshfs_node_mkdir(struct puffs_usermount *pu, puffs_cookie_t opc,
 }
 
 int
+psshfs_node_link(struct puffs_usermount *pu, puffs_cookie_t opc,
+	puffs_cookie_t targ, const struct puffs_cn *pcn)
+{
+	PSSHFSAUTOVAR(pu);
+	struct puffs_node *pn = opc;
+	struct puffs_node *pn_targ = targ;
+
+	if (pctx->protover < 3) {
+		rv = EOPNOTSUPP;
+		goto out;
+	}
+
+	psbuf_req_str(pb, SSH_FXP_EXTENDED, reqid, "hardlink@openssh.com");
+	psbuf_put_str(pb, PNPATH(pn_targ));
+	psbuf_put_str(pb, PCNPATH(pcn));
+
+	GETRESPONSE(pb, pctx->sshfd);
+	rv = psbuf_expect_status(pb);
+
+	if (rv == 0) {
+		struct psshfs_node *psn;
+
+		/* Force refresh of attributes */
+		psn = pn_targ->pn_data;
+		psn->attrread = 0;
+
+		/* Force refresh of dirents */
+		psn = pn->pn_data;
+		if (psn->dir)
+			psn->dentread = 0;
+	}
+
+ out:
+	PSSHFSRETURN(rv);
+}
+
+int
 psshfs_node_symlink(struct puffs_usermount *pu, puffs_cookie_t opc,
 	struct puffs_newinfo *pni, const struct puffs_cn *pcn,
 	const struct vattr *va, const char *link_target)

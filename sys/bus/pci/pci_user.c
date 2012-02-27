@@ -58,31 +58,29 @@
  * This is the user interface to PCI configuration space.
  */
 
-#if 0
 static d_open_t 	pci_open;
 static d_close_t	pci_close;
 static int	pci_conf_match(struct pci_match_conf *matches, int num_matches,
 			       struct pci_conf *match_buf);
 static d_ioctl_t	pci_ioctl;
-static struct cdevsw pcicdev = {
-	.d_open =	pci_open,
-	.d_close =	pci_close,
-	.d_ioctl =	pci_ioctl,
-	.d_name =	"pci",
+
+struct dev_ops pcic_ops = {
+	{ "pci", 0, 0 },
+	.d_open =       pci_open,
+	.d_close =      pci_close,
+	.d_ioctl =      pci_ioctl,
 };
-#endif
 
 static int
 pci_open(struct dev_open_args *ap)
 {
-#if 0
-	int error;
+	int oflags = ap->a_oflags;
+
 	if (oflags & FWRITE) {
-		error = securelevel_gt(td->td_ucred, 0);
-		if (error)
-			return (error);
+		if (securelevel > 0)
+			return (EPERM);
 	}
-#endif
+
 	return (0);
 }
 
@@ -748,12 +746,3 @@ getconfexit:
 
 	return (error);
 }
-
-
-#define PCI_CDEV        78
-struct dev_ops pcic_ops = {
-        { "pci", PCI_CDEV, 0 },
-        .d_open =       pci_open,
-        .d_close =      pci_close,
-        .d_ioctl =      pci_ioctl,
-};

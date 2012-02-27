@@ -13,7 +13,6 @@ INSTALLFLAGS=	-b
 # MEM_BTX_USR_ARG is not used in the boot2->loader stage, only in the
 # boot1->boot2 stage (XXX what about the use in cdboot and pxeboot?)
 #
-ORG= 0x0
 
 # architecture-specific loader code
 SRCS=		main.c conf.c
@@ -50,7 +49,8 @@ CFLAGS+=	-I${.CURDIR}/../../.. -I.
 CLEANFILES+=	vers.c vers.o ${PROG}.list ${PROG}.bin ${PROG}.sym ${PROG}.help
 
 CFLAGS+=		-Wall
-COMPILER_LDFLAGS=	-nostdlib -static -Ttext ${ORG}
+COMPILER_LDFLAGS=	-nostdlib -static
+COMPILER_LDFLAGS+=	-Wl,--script,${.CURDIR}/loader.ldscript
 
 # i386 standalone support library
 LIBI386=	${.OBJDIR}/../libi386/libi386.a
@@ -78,9 +78,6 @@ BTXKERN=	${BTXDIR}/btx/btx
 BTXCRT=		${BTXDIR}/lib/crt0.o
 CFLAGS+=	-I${.CURDIR}/../btx/lib
 
-# BTX is expecting ELF components
-CFLAGS+=	-elf
-
 # Debug me!
 #CFLAGS+=	-g
 
@@ -91,12 +88,10 @@ vers.o:	${.CURDIR}/../../common/newvers.sh ${.CURDIR}/version
 ${PROG}: ${PROG}.bin ${BTXLDR} ${BTXKERN} ${BTXCRT}
 	btxld -v -f aout -e ${LOADER_ADDRESS} -o ${.TARGET} -l ${BTXLDR} \
 		-b ${BTXKERN} ${PROG}.bin
-#	/usr/bin/kzip ${.TARGET}
-#	mv ${.TARGET}.kz ${.TARGET}
 
 ${PROG}.bin: ${PROG}.sym
 	cp ${.ALLSRC} ${.TARGET}
-	strip -R .comment -R .note ${.TARGET}
+	strip -R .comment -R .note -R .note.gnu.gold-version ${.TARGET}
 
 ${PROG}.help: help.common help.i386
 	cat ${.ALLSRC} | awk -f ${.CURDIR}/../../common/merge_help.awk > ${.TARGET}

@@ -129,6 +129,7 @@
 #define	CPUID2_X2APIC	0x00200000
 #define	CPUID2_POPCNT	0x00800000
 #define	CPUID2_AESNI	0x02000000
+#define	CPUID2_RDRAND	0x40000000
 
 /*
  * Important bits in the AMD extended cpuid flags

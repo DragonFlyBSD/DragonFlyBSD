@@ -758,7 +758,7 @@ printcpuinfo(void)
 				"\034OSXSAVE"	/* OS-Enabled State Management */
 				"\035AVX"	/* Advanced Vector Extensions */
 				"\036F16C"	/* Half-precision conversions */
-				"\037<b30>"
+				"\037RDRND"	/* RDRAND RNG function */
 				"\040VMM"	/* Running on a hypervisor */
 				);
 			}
@@ -949,9 +949,6 @@ printcpuinfo(void)
 
 #ifdef CPU_HAS_SSE2
 	kprintf("Use SSE2 (lfence, mfence)\n");
-#endif
-#ifdef CPU_HAS_FXSR
-	kprintf("Use FXSR (sfence)\n");
 #endif
 }
 
@@ -1282,10 +1279,6 @@ finish:
 #ifdef CPU_HAS_SSE2
 	if ((cpu_feature & CPUID_SSE2) == 0)
 		panic("CPU does not has SSE2, remove options CPU_HAS_SSE2\n");
-#endif
-#ifdef CPU_HAS_FXSR
-	if ((cpu_feature & CPUID_FXSR) == 0)
-		panic("CPU does not has FXSR, remove options CPU_HAS_FXSR\n");
 #endif
 }
 

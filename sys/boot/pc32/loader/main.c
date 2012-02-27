@@ -103,7 +103,7 @@ void			exit(int code);
 extern	char bootprog_name[], bootprog_rev[], bootprog_date[], bootprog_maker[];
 
 /* XXX debugging */
-extern char end[];
+extern char _end[];
 
 #define COMCONSOLE_DEBUG
 #ifdef COMCONSOLE_DEBUG
@@ -174,12 +174,12 @@ main(void)
     bios_getmem();
     memend = (char *)&memend - 0x8000;	/* space for stack */
     memend = (char *)((uintptr_t)memend & ~(uintptr_t)(0x1000 - 1));
-    if (memend < (char *)end) {
-	setheap((void *)end, PTOV(bios_basemem));
+    if (memend < (char *)_end) {
+	setheap((void *)_end, PTOV(bios_basemem));
     } else {
 	if (memend > (char *)PTOV(bios_basemem))
 	    memend = (char *)PTOV(bios_basemem);
-	setheap((void *)end, memend);
+	setheap((void *)_end, memend);
     }
 
     /* 
@@ -365,7 +365,7 @@ static int
 command_heap(int argc, char *argv[])
 {
     mallocstats();
-    printf("heap base at %p, top at %p\n", end, sbrk(0));
+    printf("heap base at %p, top at %p\n", _end, sbrk(0));
     return(CMD_OK);
 }
 

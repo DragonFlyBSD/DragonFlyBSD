@@ -286,6 +286,13 @@ void	 srandomdev(void);
 long long
 	 strtonum(const char *, long long, long long, const char **);
 
+/*
+ * C11 functions.
+ */
+int 	at_quick_exit(void (*func)(void));
+void 	quick_exit(int);
+void	*aligned_alloc(size_t, size_t);
+
 /* Deprecated interfaces. */
 #if !defined(_KERNEL_VIRTUAL)
 __int64_t

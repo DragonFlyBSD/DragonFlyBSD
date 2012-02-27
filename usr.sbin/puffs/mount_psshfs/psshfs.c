@@ -223,6 +223,7 @@ main(int argc, char *argv[])
 	PUFFSOP_SET(pops, psshfs, node, remove);
 	PUFFSOP_SET(pops, psshfs, node, readlink);
 	PUFFSOP_SET(pops, psshfs, node, rmdir);
+	PUFFSOP_SET(pops, psshfs, node, link);
 	PUFFSOP_SET(pops, psshfs, node, symlink);
 	PUFFSOP_SET(pops, psshfs, node, rename);
 	PUFFSOP_SET(pops, psshfs, node, read);

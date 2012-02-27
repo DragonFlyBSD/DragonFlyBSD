@@ -1,7 +1,6 @@
 /*	$NetBSD: dc21040reg.h,v 1.15 1998/05/22 18:50:59 matt Exp $	*/
 
 /* $FreeBSD: src/sys/pci/dc21040reg.h,v 1.5 1999/08/09 12:52:49 peter Exp $ */
-/* $DragonFly: src/sys/bus/pci/dc21040reg.h,v 1.2 2003/06/17 04:28:56 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1996 Matt Thomas <matt@3am-software.com>

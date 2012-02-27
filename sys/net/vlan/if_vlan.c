@@ -40,6 +40,57 @@
  * ether_output() left on our output queue queue when it calls
  * if_start(), rewrite them for use by the real outgoing interface,
  * and ask it to send them.
+ *
+ *
+ * Note about vlan's MP safe approach:
+ *
+ * - All configuration operation, e.g. config, unconfig and change flags,
+ *   is serialized by netisr0; not by vlan's serializer
+ *
+ * - Parent interface's trunk and vlans are linked in the following
+ *   fashion:
+ *                     CPU0     CPU1     CPU2     CPU3
+ *   +--------------+--------+--------+--------+--------+
+ *   | parent ifnet |trunk[0]|trunk[1]|trunk[2]|trunk[3]|
+ *   +--------------+--------+--------+--------+--------+
+ *                       |        |        |        |
+ *                       V        V        V        V
+ *   +--------------+--------+--------+--------+--------+
+ *   |   vlan ifnet |entry[0]|entry[1]|entry[2]|entry[3]|
+ *   +--------------+--------+--------+--------+--------+
+ *                       |        |        |        |
+ *                       V        V        V        V
+ *   +--------------+--------+--------+--------+--------+
+ *   |   vlan ifnet |entry[0]|entry[1]|entry[2]|entry[3]|
+ *   +--------------+--------+--------+--------+--------+
+ *
+ * - Vlan is linked/unlinked onto parent interface's trunk using following
+ *   way:
+ *
+ *       CPU0             CPU1             CPU2             CPU3
+ *
+ *      netisr0 <---------------------------------------------+
+ *  (config/unconfig)                                         |
+ *         |                                                  |
+ *         | domsg                                            | replymsg
+ *         |                                                  |
+ *         V     fwdmsg           fwdmsg           fwdmsg     |
+ *       ifnet0 --------> ifnet1 --------> ifnet2 --------> ifnet3
+ *    (link/unlink)    (link/unlink)    (link/unlink)    (link/unlink)
+ *
+ * - Parent interface's trunk is destroyed in the following lockless way:
+ *
+ *     old_trunk = ifp->if_vlantrunks;
+ *     ifp->if_vlantrunks = NULL;
+ *     netmsg_service_sync();
+ *     (*)
+ *     free(old_trunk);
+ *
+ *   Since all of the accessing of if_vlantrunks only happens in network
+ *   threads (percpu netisr and ifnet threads), after netmsg_service_sync()
+ *   the network threads are promised to see only NULL if_vlantrunks; we
+ *   are safe to free the "to be destroyed" parent interface's trunk
+ *   afterwards.
  */
 
 #ifndef NVLAN
@@ -884,7 +935,7 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 			ifnet_serialize_all(ifp);
 
-			if (ifv->ifv_p == NULL && ifv->ifv_p != ifp_p) {
+			if (ifv->ifv_p == NULL || ifv->ifv_p != ifp_p) {
 				/*
 				 * We are disconnected from the original
 				 * parent interface or the parent interface

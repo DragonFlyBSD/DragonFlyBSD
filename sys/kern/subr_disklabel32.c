@@ -159,6 +159,13 @@ l32_getnumparts(disklabel_t lp)
 	return(lp.lab32->d_npartitions);
 }
 
+static void
+l32_freedisklabel(disklabel_t *lpp)
+{
+	kfree((*lpp).lab32, M_DEVBUF);
+	(*lpp).lab32 = NULL;
+}
+
 /*
  * Attempt to read a disk label from a device.  
  *
@@ -626,6 +633,7 @@ struct disklabel_ops disklabel32_ops = {
 	.op_getpartbounds = l32_getpartbounds,
 	.op_loadpartinfo = l32_loadpartinfo,
 	.op_getnumparts = l32_getnumparts,
-	.op_makevirginlabel = l32_makevirginlabel
+	.op_makevirginlabel = l32_makevirginlabel,
+	.op_freedisklabel = l32_freedisklabel
 };
 

@@ -76,7 +76,8 @@ CFLAGS+= -fno-unit-at-a-time
 #
 NSECT_32?=	16
 NSECT_64?=	30
-LDFLAGS=-nostdlib -static -N --gc-sections
+LDFLAGS=	-nostdlib -static -N --gc-sections
+LINKSCRIPT=	--script ${.CURDIR}/boot2.ldscript
 
 all: boot
 
@@ -135,7 +136,7 @@ boot2$s.bin: boot2$s.out
 	objcopy -S -O binary boot2$s.out ${.TARGET}
 
 boot2$s.out: boot2$s.o sio.o ${_ADDOBJS$s}
-	${LD} ${LDFLAGS} -Ttext ${ORG2} -o ${.TARGET} \
+	${LD} ${LDFLAGS} -Ttext ${ORG2} ${LINKSCRIPT} -o ${.TARGET} \
 		${BTX}/lib/crt0.o ${.ALLSRC}
 
 boot2$s.o: boot2$s.h

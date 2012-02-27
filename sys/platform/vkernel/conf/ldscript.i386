@@ -4,6 +4,16 @@ OUTPUT_FORMAT("elf32-i386", "elf32-i386",
 OUTPUT_ARCH(i386)
 ENTRY(btext)
 SEARCH_DIR(/usr/lib);
+
+PHDRS
+{
+  headers PT_PHDR PHDRS ;
+  interp PT_INTERP ;
+  text PT_LOAD FILEHDR PHDRS ;
+  data PT_LOAD ;
+  dynamic PT_DYNAMIC ;
+}
+
 SECTIONS
 {
   /* Read-only sections, merged into text segment: */
@@ -11,8 +21,8 @@ SECTIONS
   kernmxps = CONSTANT (MAXPAGESIZE);
   kernpage = CONSTANT (COMMONPAGESIZE);
   . = kernbase + kernphys + SIZEOF_HEADERS;
-  .interp         : { *(.interp) }
-  .note.gnu.build-id : { *(.note.gnu.build-id) }
+  .interp         : { *(.interp) } :text :interp
+  .note.gnu.build-id : { *(.note.gnu.build-id) } :text
   .hash           : { *(.hash) }
   .gnu.hash       : { *(.gnu.hash) }
   .dynsym         : { *(.dynsym) }
@@ -136,9 +146,9 @@ SECTIONS
     KEEP (*(.dtors))
   }
   .jcr            : { KEEP (*(.jcr)) }
-  .data.rel.ro : { *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*) *(.data.rel.ro* .gnu.linkonce.d.rel.ro.*) }
-  .dynamic        : { *(.dynamic) }
-  .got            : { *(.got) *(.igot) }
+  .data.rel.ro : { *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*) *(.data.rel.ro* .gnu.linkonce.d.rel.ro.*) } :data
+  .dynamic        : { *(.dynamic) } :data :dynamic
+  .got            : { *(.got) *(.igot) } :data
   . = DATA_SEGMENT_RELRO_END (12, .);
   .got.plt        : { *(.got.plt)  *(.igot.plt) }
   .data           :

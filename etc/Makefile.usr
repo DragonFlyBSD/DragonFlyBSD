@@ -50,6 +50,9 @@ help all:
 	@echo "make src-create and/or make pkgsrc-create to set up the initial"
 	@echo "git repo."
 
+# NOTE: Adding the git gc --aggressive helps nrelease builds by significantly
+#	reducing the disk space required.
+#
 pkgsrc-create-repo:
 	@echo "If problems occur you may have to rm -rf pkgsrc and try again."
 	@echo ""
@@ -60,6 +63,7 @@ pkgsrc-create-repo:
 	cd ${.CURDIR}/pkgsrc && git fetch origin
 	cd ${.CURDIR}/pkgsrc && git branch master origin/master
 	cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2011Q4 origin/pkgsrc-2011Q4
+	cd ${.CURDIR}/pkgsrc && git gc --aggressive
 
 pkgsrc-create: pkgsrc-create-repo
 	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2011Q4
@@ -71,6 +75,9 @@ pkgsrc-checkout:
 pkgsrc-update:
 	cd ${.CURDIR}/pkgsrc && git pull
 
+# NOTE: Adding the git gc --aggressive helps nrelease builds by significantly
+#	reducing the disk space required.
+#
 src-create-repo:
 	@echo "If problems occur you may have to rm -rf src and try again."
 	@echo ""
@@ -80,6 +87,7 @@ src-create-repo:
 		git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch origin
 	cd ${.CURDIR}/src && git branch master origin/master
+	cd ${.CURDIR}/src && git gc --aggressive
 
 src-create: src-create-repo
 	cd ${.CURDIR}/src && git checkout master

@@ -77,7 +77,7 @@
 #include <vm/pmap.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#include <bus/pci/dc21040reg.h>
+#include <dev/netif/de/dc21040reg.h>
 
 /*
  * Intel CPUs should use I/O mapped access.
@@ -3710,45 +3710,10 @@ static int
 tulip_ifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred * cr)
 {
     tulip_softc_t *sc = (tulip_softc_t *)ifp->if_softc;
-    struct ifaddr *ifa = (struct ifaddr *)data;
     struct ifreq *ifr = (struct ifreq *)data;
     int error = 0;
 
     switch (cmd) {
-	case SIOCSIFADDR: {
-	    ifp->if_flags |= IFF_UP;
-	    switch(ifa->ifa_addr->sa_family) {
-#ifdef INET
-		case AF_INET: {
-		    tulip_init(sc);
-		    arp_ifinit(&(sc)->tulip_ac.ac_if, ifa);
-		    break;
-		}
-#endif /* INET */
-
-#ifdef IPX
-		case AF_IPX: {
-		    struct ipx_addr *ina = &(IA_SIPX(ifa)->sipx_addr);
-		    if (ipx_nullhost(*ina)) {
-			ina->x_host = *(union ipx_host *)(sc->tulip_enaddr);
-		    } else {
-			ifp->if_flags &= ~IFF_RUNNING;
-			bcopy((caddr_t)ina->x_host.c_host,
-			      (caddr_t)sc->tulip_enaddr,
-			      sizeof(sc->tulip_enaddr));
-		    }
-		    tulip_init(sc);
-		    break;
-		}
-#endif /* IPX */
-
-		default: {
-		    tulip_init(sc);
-		    break;
-		}
-	    }
-	    break;
-	}
 	case SIOCGIFADDR: {
 	    bcopy((caddr_t) sc->tulip_enaddr,
 		  (caddr_t) ((struct sockaddr *)&ifr->ifr_data)->sa_data,
@@ -3813,7 +3778,7 @@ tulip_ifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred * cr)
 	}
 #endif
 	default: {
-	    error = EINVAL;
+	    error = ether_ioctl(ifp, cmd, data);
 	    break;
 	}
     }

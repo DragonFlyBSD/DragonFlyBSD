@@ -1,0 +1,11 @@
+PHDRS
+{
+	text PT_LOAD;
+}
+
+SECTIONS {
+	. = 0x9000;
+	.text   : { *(.text) } :text
+	.data	: { *(.data) }
+	.bss	: { *(.bss) }
+}

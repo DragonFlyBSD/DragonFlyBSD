@@ -1,0 +1,13 @@
+PHDRS
+{
+	text PT_LOAD ;
+}
+
+SECTIONS {
+	.text   : { KEEP (*(.text)) } :text
+	.rodata	: { KEEP (*(.rodata .rodata.*)) }
+	.data	: { KEEP (*(.data)) }
+	_edata = .;
+	.bss	: { KEEP (*(.bss)) }
+	_end = .;
+}

@@ -111,7 +111,7 @@ puffs_vnop_lookup(struct vop_nresolve_args *ap)
 	struct nchandle *nch = ap->a_nch;
 	struct namecache *ncp = nch->ncp;
 	struct ucred *cred = ap->a_cred;
-	struct vnode *vp, *dvp = ap->a_dvp;
+	struct vnode *vp = NULL, *dvp = ap->a_dvp;
 	struct puffs_node *dpn;
 	int error;
 
@@ -169,7 +169,7 @@ puffs_vnop_lookup(struct vop_nresolve_args *ap)
 
  out:
 	vput(dvp);
-	if (!error) {
+	if (!error && vp != NULL) {
 		vn_unlock(vp);
 		cache_setvp(nch, vp);
 		vrele(vp);
@@ -259,6 +259,9 @@ puffs_vnop_create(struct vop_ncreate_args *ap)
 	struct puffs_mount *pmp = MPTOPUFFSMP(mp);
 	int error;
 
+	if (!EXISTSOP(pmp, CREATE))
+		return EOPNOTSUPP;
+
 	DPRINTF(("puffs_create: dvp %p, name: %s\n",
 	    dvp, ncp->nc_name));
 
@@ -313,6 +316,9 @@ puffs_vnop_mknod(struct vop_nmknod_args *ap)
 	struct mount *mp = dvp->v_mount;
 	struct puffs_mount *pmp = MPTOPUFFSMP(mp);
 	int error;
+
+	if (!EXISTSOP(pmp, MKNOD))
+		return EOPNOTSUPP;
 
 	DPRINTF(("puffs_mknod: dvp %p, name: %s\n",
 	    dvp, ncp->nc_name));
@@ -395,6 +401,9 @@ puffs_vnop_close(struct vop_close_args *ap)
 	PUFFS_MSG_VARS(vn, close);
 	struct vnode *vp = ap->a_vp;
 	struct puffs_mount *pmp = MPTOPUFFSMP(vp->v_mount);
+
+	if (!EXISTSOP(pmp, CLOSE))
+		return vop_stdclose(ap);
 
 	PUFFS_MSG_ALLOC(vn, close);
 	puffs_msg_setfaf(park_close);
@@ -722,6 +731,9 @@ puffs_vnop_readdir(struct vop_readdir_args *ap)
 	size_t howmuch, resid;
 	int error;
 
+	if (!EXISTSOP(pmp, READDIR))
+		return EOPNOTSUPP;
+
 	/*
 	 * ok, so we need: resid + cookiemem = maxreq
 	 * => resid + cookiesize * (resid/minsize) = maxreq
@@ -925,6 +937,9 @@ puffs_vnop_remove(struct vop_nremove_args *ap)
 	struct puffs_mount *pmp = MPTOPUFFSMP(mp);
 	int error;
 
+	if (!EXISTSOP(pmp, REMOVE))
+		return EOPNOTSUPP;
+
 	error = vget(dvp, LK_EXCLUSIVE);
 	if (error != 0) {
 		DPRINTF(("puffs_vnop_remove: EAGAIN on parent vnode %p %s\n",
@@ -981,6 +996,9 @@ puffs_vnop_mkdir(struct vop_nmkdir_args *ap)
 	struct mount *mp = dvp->v_mount;
 	struct puffs_mount *pmp = MPTOPUFFSMP(mp);
 	int error;
+
+	if (!EXISTSOP(pmp, MKDIR))
+		return EOPNOTSUPP;
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		DPRINTF(("puffs_vnop_mkdir: EAGAIN on ncp %p %s\n",
@@ -1050,6 +1068,9 @@ puffs_vnop_rmdir(struct vop_nrmdir_args *ap)
 	struct ucred *cred = ap->a_cred;
 	int error;
 
+	if (!EXISTSOP(pmp, RMDIR))
+		return EOPNOTSUPP;
+
 	error = vget(dvp, LK_EXCLUSIVE);
 	if (error != 0) {
 		DPRINTF(("puffs_vnop_rmdir: EAGAIN on parent vnode %p %s\n",
@@ -1107,6 +1128,9 @@ puffs_vnop_link(struct vop_nlink_args *ap)
 	struct ucred *cred = ap->a_cred;
 	int error;
 
+	if (!EXISTSOP(pmp, LINK))
+		return EOPNOTSUPP;
+
 	if (vp->v_mount != dvp->v_mount)
 		return EXDEV;
 
@@ -1115,7 +1139,6 @@ puffs_vnop_link(struct vop_nlink_args *ap)
 		    ncp, ncp->nc_name));
 		return EAGAIN;
 	}
-	vn_lock(vp, LK_EXCLUSIVE);
 
 	PUFFS_MSG_ALLOC(vn, link);
 	link_msg->pvnr_cookie_targ = VPTOPNC(vp);
@@ -1140,7 +1163,6 @@ puffs_vnop_link(struct vop_nlink_args *ap)
 	}
 
 	vput(dvp);
-	vn_unlock(vp);
 	if (error == 0) {
 		cache_setunresolved(nch);
 		cache_setvp(nch, vp);
@@ -1160,6 +1182,9 @@ puffs_vnop_symlink(struct vop_nsymlink_args *ap)
 	struct namecache *ncp = nch->ncp;
 	struct ucred *cred = ap->a_cred;
 	int error;
+
+	if (!EXISTSOP(pmp, SYMLINK))
+		return EOPNOTSUPP;
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		DPRINTF(("puffs_vnop_symlink: EAGAIN on ncp %p %s\n",
@@ -1209,6 +1234,9 @@ puffs_vnop_readlink(struct vop_readlink_args *ap)
 	size_t linklen;
 	int error;
 
+	if (!EXISTSOP(pmp, READLINK))
+		return EOPNOTSUPP;
+
 	PUFFS_MSG_ALLOC(vn, readlink);
 	puffs_credcvt(&readlink_msg->pvnr_cred, ap->a_cred);
 	linklen = sizeof(readlink_msg->pvnr_link);
@@ -1250,6 +1278,9 @@ puffs_vnop_rename(struct vop_nrename_args *ap)
 	struct puffs_mount *pmp = MPTOPUFFSMP(fdvp->v_mount);
 	int error;
 	boolean_t doabort = TRUE;
+
+	if (!EXISTSOP(pmp, RENAME))
+		return EOPNOTSUPP;
 
 	error = vget(tdvp, LK_EXCLUSIVE);
 	if (error != 0) {
@@ -1329,6 +1360,9 @@ puffs_vnop_read(struct vop_read_args *ap)
 	struct puffs_mount *pmp = MPTOPUFFSMP(vp->v_mount);
 	int error;
 
+	if (!EXISTSOP(pmp, READ))
+		return EOPNOTSUPP;
+
 	if (vp->v_type == VDIR)
 		return EISDIR;
 	else if (vp->v_type != VREG)
@@ -1351,6 +1385,9 @@ puffs_vnop_write(struct vop_write_args *ap)
 	struct ucred * cred = ap->a_cred;
 	struct puffs_mount *pmp = MPTOPUFFSMP(vp->v_mount);
 	int error;
+
+	if (!EXISTSOP(pmp, WRITE))
+		return EOPNOTSUPP;
 
 	if (vp->v_type == VDIR)
 		return EISDIR;
@@ -1401,6 +1438,9 @@ puffs_vnop_pathconf(struct vop_pathconf_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct puffs_mount *pmp = MPTOPUFFSMP(vp->v_mount);
 	int error;
+
+	if (!EXISTSOP(pmp, PATHCONF))
+		return EOPNOTSUPP;
 
 	PUFFS_MSG_ALLOC(vn, pathconf);
 	pathconf_msg->pvnr_name = ap->a_name;

@@ -1,0 +1,67 @@
+.\" Copyright (c) 2012 The DragonFly BSD Project.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly BSD Project
+.\" by Alex Hornung
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.Dd February 24, 2012
+.Dt DM_TARGET_CRYPT 4
+.Os
+.Sh NAME
+.Nm dm_target_crypt
+.Nd Device-mapper crypt target
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device dm"
+.Cd "device dm_target_crypt"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+dm_target_crypt_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+target for
+.Xr dm 4
+provides transparent disk encryption compatible with Linux
+.Nm dm-crypt .
+.Sh SEE ALSO
+.Xr dm 4 ,
+.Xr cryptsetup 8 ,
+.Xr dmsetup 8 ,
+.Xr tcplay 8
+.Sh HISTORY
+The
+.Nm
+.Xr dm 4
+target first appeared in
+.Dx 2.7 .
+.Sh AUTHORS
+.An Alex Hornung

@@ -794,8 +794,10 @@ agp_close(struct dev_close_args *ap)
 	}
 	if (sc->as_state == AGP_ACQUIRE_USER)
 		agp_release_helper(dev, AGP_ACQUIRE_USER);
-	sc->as_isopen = 0;
-	device_unbusy(dev);
+	if (sc->as_isopen) {
+		sc->as_isopen = 0;
+		device_unbusy(dev);
+	}
 
 	return 0;
 }

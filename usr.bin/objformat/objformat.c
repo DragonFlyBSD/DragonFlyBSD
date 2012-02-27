@@ -148,7 +148,7 @@ main(int argc, char **argv)
 			buver = getenv("BINUTILSVER");
 			if (buver == NULL)
 			    buver = BINUTILSVER_DEFAULT;
-			ldver = getenv("LINKERVER");
+			ldver = getenv("LDVER");
 			if ((ldver != NULL) && (strcmp(ldver, ld_gold) == 0))
 			    ldcmd = ld_gold;
 			base_path = "/usr/libexec";

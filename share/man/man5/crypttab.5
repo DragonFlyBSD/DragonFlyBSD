@@ -96,6 +96,16 @@ file on
 currently only supports LUKS volumes and not raw
 .Xr cryptsetup 8
 volumes.
+.Pp
+If the
+.Xr dm_target_crypt 4
+target is not built-in, make sure to set up
+.Xr loader.conf 5
+to preload it, since
+.Xr dm 4
+is not able to autoload the targets before
+.Pa /boot
+is mounted.
 .Sh FILES
 .Bl -tag -width ".Pa /etc/crypttab" -compact
 .It Pa /etc/crypttab

@@ -89,6 +89,8 @@ struct disklabel_ops {
 	void (*op_makevirginlabel)
 		    (disklabel_t, struct diskslices *,
 		     struct diskslice *, struct disk_info *);
+	void (*op_freedisklabel)
+		    (disklabel_t *);
 };
 
 typedef struct disklabel_ops	*disklabel_ops_t;

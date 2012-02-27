@@ -195,6 +195,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 		ops = &disklabel64_ops;
 		msg = ops->op_readdisklabel(dev, sp, &sp->ds_label, info);
 	}
+
 	if (msg == NULL) {
 		if (slice != WHOLE_DISK_SLICE)
 			ops->op_adjust_label_reserved(dp->d_slice, slice, sp);
@@ -280,6 +281,16 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 		    sp->ds_type == DOSPTYP_OPENBSD) {
 			log(LOG_WARNING, "%s: cannot find label (%s)\n",
 			    dev->si_name, msg);
+		}
+
+		if (sp->ds_label.opaque != NULL && sp->ds_ops != NULL) {
+			/* Clear out old label - it's not around anymore */
+			disk_debug(2,
+			    "disk_probe_slice: clear out old diskabel on %s\n",
+			    dev->si_name);
+
+			sp->ds_ops->op_freedisklabel(&sp->ds_label);
+			sp->ds_ops = NULL;
 		}
 	}
 
