@@ -1123,7 +1123,7 @@ diskpsize(struct dev_psize_args *ap)
 	ap->a_result = dssize(dev, &dp->d_slice);
 
 	if ((ap->a_result == -1) &&
-	   (dp->d_info.d_dsflags & DSO_DEVICEMAPPER)) {
+	   (dp->d_info.d_dsflags & DSO_RAWPSIZE)) {
 		ap->a_head.a_dev = dp->d_rawdev;
 		return dev_doperate(&ap->a_head);
 	}

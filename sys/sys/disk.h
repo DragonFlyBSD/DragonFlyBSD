@@ -111,6 +111,9 @@ struct disk_info {
  *
  * DEVICEMAPPER	- used by the device mapper (dm). Adds a '.' between the
  *		  device name and the slice/part stuff (i.e. foo.s0).
+ *
+ * RAWPSIZE	- use the dev_psize of the underlying raw device if the top
+ *		  psize fails.
  */
 #define DSO_NOLABELS		0x0001
 #define DSO_ONESLICE		0x0002
@@ -120,6 +123,7 @@ struct disk_info {
 #define DSO_RAWEXTENSIONS	0x0020
 #define DSO_MBRQUIET		0x0040
 #define DSO_DEVICEMAPPER	0x0080
+#define DSO_RAWPSIZE		0x0100
 
 /*
  * Disk management structure - automated disklabel support.
