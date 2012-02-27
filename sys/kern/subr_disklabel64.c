@@ -112,6 +112,13 @@ l64_getnumparts(disklabel_t lp)
 	return(lp.lab64->d_npartitions);
 }
 
+static void
+l64_freedisklabel(disklabel_t *lpp)
+{
+	kfree((*lpp).lab64, M_DEVBUF);
+	(*lpp).lab64 = NULL;
+}
+
 /*
  * Attempt to read a disk label from a device.  64 bit disklabels are
  * sector-agnostic and begin at offset 0 on the device.  64 bit disklabels
@@ -503,6 +510,7 @@ struct disklabel_ops disklabel64_ops = {
 	.op_getpartbounds = l64_getpartbounds,
 	.op_loadpartinfo = l64_loadpartinfo,
 	.op_getnumparts = l64_getnumparts,
-	.op_makevirginlabel = l64_makevirginlabel
+	.op_makevirginlabel = l64_makevirginlabel,
+	.op_freedisklabel = l64_freedisklabel
 };
 
