@@ -567,7 +567,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	 * reserve mbr sector for backwards compatibility
 	 * when no slices exist.
 	 */
-	info.d_dsflags = DSO_COMPATMBR;
+	info.d_dsflags = DSO_COMPATMBR | DSO_RAWPSIZE;
 	info.d_secpertrack = 32;
 	info.d_nheads = 64 / (vn->sc_secsize / DEV_BSIZE);
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
@@ -644,7 +644,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 		 * reserve mbr sector for backwards compatibility
 		 * when no slices exist.
 		 */
-		info.d_dsflags = DSO_COMPATMBR;
+		info.d_dsflags = DSO_COMPATMBR | DSO_RAWPSIZE;
 		info.d_secpertrack = 32;
 		info.d_nheads = 64 / (vn->sc_secsize / DEV_BSIZE);
 		info.d_secpercyl = info.d_secpertrack * info.d_nheads;
@@ -851,7 +851,7 @@ vn_create(int unit, struct devfs_bitmap *bitmap, int clone)
 	bzero(&info, sizeof(struct disk_info));
 	info.d_media_blksize = 512;
 	info.d_media_blocks = 0;
-	info.d_dsflags = DSO_MBRQUIET;
+	info.d_dsflags = DSO_MBRQUIET | DSO_RAWPSIZE;
 	info.d_secpertrack = 32;
 	info.d_nheads = 64;
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
