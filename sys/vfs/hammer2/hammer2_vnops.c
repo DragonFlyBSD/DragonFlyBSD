@@ -721,7 +721,8 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 	hammer2_inode_t *ip;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
-	hammer2_key_t off_hi;
+	hammer2_key_t loff;
+	hammer2_off_t poff;
 
 	/*
 	 * Only supported on regular files
@@ -737,15 +738,18 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 
 	ip = VTOI(vp);
 	hmp = ip->hmp;
-	off_hi = ap->a_loffset & HAMMER2_OFF_MASK_HI;
-	KKASSERT((ap->a_loffset & HAMMER2_LBUFMASK64) == 0);
+
+	loff = ap->a_loffset;
+	KKASSERT((loff & HAMMER2_LBUFMASK64) == 0);
 
 	parent = &ip->chain;
 	hammer2_chain_ref(hmp, parent);
 	hammer2_chain_lock(hmp, parent);
-	chain = hammer2_chain_lookup(hmp, &parent, off_hi, off_hi, 0);
+	chain = hammer2_chain_lookup(hmp, &parent, loff, loff, 0);
 	if (chain) {
-		*ap->a_doffsetp = (chain->bref.data_off & ~HAMMER2_LBUFMASK64);
+		poff = loff - chain->bref.key +
+		       (chain->bref.data_off & HAMMER2_OFF_MASK);
+		*ap->a_doffsetp = poff;
 		hammer2_chain_put(hmp, chain);
 	} else {
 		*ap->a_doffsetp = ZFOFFSET;	/* zero-fill hole */
@@ -854,7 +858,8 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	hammer2_inode_t *ip;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
-	hammer2_key_t off_hi;
+	hammer2_key_t loff;
+	hammer2_off_t poff;
 
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
@@ -863,8 +868,8 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	nbio = push_bio(bio);
 
 	if (nbio->bio_offset == NOOFFSET) {
-		off_hi = bio->bio_offset & HAMMER2_OFF_MASK_HI;
-		KKASSERT((bio->bio_offset & HAMMER2_LBUFMASK64) == 0);
+		loff = bio->bio_offset;
+		KKASSERT((loff & HAMMER2_LBUFMASK64) == 0);
 
 		parent = &ip->chain;
 		hammer2_chain_ref(hmp, parent);
@@ -875,16 +880,14 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 		 * chain element's content.  We just need the block device
 		 * offset.
 		 */
-		kprintf("lookup data logical %016jx\n", off_hi);
-		chain = hammer2_chain_lookup(hmp, &parent, off_hi, off_hi,
+		chain = hammer2_chain_lookup(hmp, &parent, loff, loff,
 					     HAMMER2_LOOKUP_NOLOCK);
 		if (chain) {
-			kprintf("lookup success\n");
-			nbio->bio_offset = (chain->bref.data_off &
-					    ~HAMMER2_LBUFMASK64);
+			poff = loff - chain->bref.key +
+			       (chain->bref.data_off & HAMMER2_OFF_MASK);
+			nbio->bio_offset = poff;
 			hammer2_chain_drop(hmp, chain);
 		} else {
-			kprintf("lookup zero-fill\n");
 			nbio->bio_offset = ZFOFFSET;
 		}
 		hammer2_chain_put(hmp, parent);
@@ -895,7 +898,6 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 		vfs_bio_clrbuf(bp);
 		biodone(nbio);
 	} else {
-		kprintf("data read %016jx\n", nbio->bio_offset);
 		vn_strategy(hmp->devvp, nbio);
 	}
 	return (0);
@@ -993,6 +995,8 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_ncreate	= hammer2_vop_ncreate,
 	.vop_getattr	= hammer2_vop_getattr,
 	.vop_readdir	= hammer2_vop_readdir,
+	.vop_getpages	= vop_stdgetpages,
+	.vop_putpages	= vop_stdputpages,
 	.vop_read	= hammer2_vop_read,
 	.vop_write	= hammer2_vop_write,
 	.vop_open	= hammer2_vop_open,

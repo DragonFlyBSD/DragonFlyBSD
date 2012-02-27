@@ -520,7 +520,7 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	if (SPLAY_INSERT(hammer2_chain_splay, &parent->shead, chain))
 		panic("hammer2_chain_link: collision");
 	KKASSERT(parent->refs > 1);
-	atomic_add_int(&parent->refs, 1);
+	atomic_add_int(&parent->refs, 1);	/* for splay entry */
 
 	/*
 	 * Additional linkage for inodes.  Reuse the parent pointer to
@@ -543,7 +543,6 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
 		hammer2_chain_lock(hmp, chain);
 	lockmgr(&chain->lk, LK_RELEASE);
-	/* still locked */
 
 	return (chain);
 }
@@ -626,6 +625,8 @@ again:
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
+		if (parent->data == NULL)
+			panic("parent->data is NULL");
 		base = &parent->data->npdata.blockref[0];
 		count = HAMMER2_IND_COUNT;
 		break;
@@ -649,15 +650,11 @@ again:
 		bref = (tmp) ? &tmp->bref : &base[i];
 		if (bref->type == 0)
 			continue;
-		kprintf("lookup(%016jx,%d) %d: %016jx/%d\n",
-			parent->bref.data_off, i,
-			bref->type,bref->key, bref->keybits);
 		scan_beg = bref->key;
 		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
 		if (key_beg <= scan_end && key_end >= scan_beg)
 			break;
 	}
-	kprintf("lookup scan %d\n", i);
 	if (i == count) {
 		if (key_beg == key_end)
 			return (NULL);
@@ -675,11 +672,15 @@ again:
 
 	/*
 	 * If the chain element is an indirect block it becomes the new
-	 * parent and we loop on it.
+	 * parent and we loop on it.  We must fixup the chain we loop on
+	 * if the caller passed flags to us that aren't sufficient for our
+	 * needs.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
 		hammer2_chain_put(hmp, parent);
 		*parentp = parent = chain;
+		if (flags & HAMMER2_LOOKUP_NOLOCK)
+			hammer2_chain_lock(hmp, chain);
 		goto again;
 	}
 
@@ -742,10 +743,9 @@ again:
 		nparent = parent->parent;
 		hammer2_chain_ref(hmp, nparent);	/* ref new parent */
 		hammer2_chain_unlock(hmp, parent);
-		parent = nparent;
-		hammer2_chain_lock(hmp, parent);	/* lock new parent */
-		hammer2_chain_drop(hmp, *parentp);	/* drop old parent */
-		*parentp = parent;			/* new parent */
+		hammer2_chain_lock(hmp, nparent);	/* lock new parent */
+		hammer2_chain_drop(hmp, parent);	/* drop old parent */
+		*parentp = parent = nparent;
 	}
 
 again2:
@@ -788,9 +788,11 @@ again2:
 			++i;
 			continue;
 		}
+#if 0
 		kprintf("nextxx(%016jx,%d) %d: %016jx/%d\n",
 			parent->bref.data_off, i,
 			bref->type,bref->key, bref->keybits);
+#endif
 		scan_beg = bref->key;
 		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
 		if (key_beg <= scan_end && key_end >= scan_beg)
@@ -1059,8 +1061,6 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	int count;
 	int i;
 
-	kprintf("create_indirect1\n");
-
 	/*
 	 * Mark the parent modified so our base[] pointer remains valid
 	 * while we move entries.
@@ -1146,8 +1146,6 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 			++hicount;
 		else
 			++locount;
-		kprintf("consolidate %016jx keybits %d lo %d hi %d\n",
-			bref->key, keybits, locount, hicount);
 	}
 
 	/*
@@ -1203,7 +1201,6 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 					ichain->index = i;
 				continue;
 			}
-			kprintf("pre-move index %d\n", i);
 			bref = &chain->bref;
 		}
 
@@ -1221,7 +1218,6 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		 * This element is being moved, its slot is available
 		 * for our indirect block.
 		 */
-		kprintf("move index %d\n", i);
 		if (ichain->index < 0)
 			ichain->index = i;
 		bzero(&base[i], sizeof(base[i]));
@@ -1233,8 +1229,14 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		 *
 		 * Flagging the new chain entry MOVED will cause a flush
 		 * to synchronize its block into the new indirect block.
-		 * We must still set SUBMODIFIED but we do that after the
-		 * loop.
+		 * The chain is unlocked after being moved but needs to
+		 * retain a reference for the MOVED state
+		 *
+		 * We must still set SUBMODIFIED in the parent but we do
+		 * that after the loop.
+		 *
+		 * XXX we really need a lock here but we don't need the
+		 *     data.  NODATA feature needed.
 		 */
 		chain = hammer2_chain_get(hmp, parent, i,
 					  HAMMER2_LOOKUP_NOLOCK);
@@ -1242,10 +1244,13 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		if (SPLAY_INSERT(hammer2_chain_splay, &ichain->shead, chain))
 			panic("hammer2_chain_create_indirect: collision");
 		chain->parent = ichain;
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
 		atomic_add_int(&parent->refs, -1);
 		atomic_add_int(&ichain->refs, 1);
-		hammer2_chain_drop(hmp, chain);
+		if (chain->flags & HAMMER2_CHAIN_MOVED) {
+			hammer2_chain_drop(hmp, chain);
+		} else {
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
+		}
 		KKASSERT(parent->refs > 0);
 		chain = NULL;
 	}
@@ -1397,8 +1402,11 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				} else {
 					KKASSERT(scan->index < count);
 					base[scan->index] = bref;
-					atomic_clear_int(&scan->flags,
+					if (scan->flags & HAMMER2_CHAIN_MOVED) {
+						atomic_clear_int(&scan->flags,
 							 HAMMER2_CHAIN_MOVED);
+						hammer2_chain_drop(hmp, scan);
+					}
 				}
 				hammer2_chain_put(hmp, scan);
 			}
