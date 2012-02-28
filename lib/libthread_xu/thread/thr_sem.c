@@ -60,7 +60,7 @@ static inline int
 sem_check_validity(sem_t *sem)
 {
 
-	if ((sem != NULL) && ((*sem)->magic == SEM_MAGIC)) {
+	if ((sem != NULL) && (*sem != NULL) && ((*sem)->magic == SEM_MAGIC)) {
 		return (0);
 	} else {
 		errno = EINVAL;
