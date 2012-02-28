@@ -124,7 +124,7 @@ extern u_char	ether_ipmulticast_max[ETHER_ADDR_LEN];
 int	arpresolve (struct ifnet *, struct rtentry *, struct mbuf *,
 			struct sockaddr *, u_char *);
 void	arp_ifinit (struct ifnet *, struct ifaddr *);
-void	arp_iainit (struct ifnet *, const struct in_addr *);
+void	arp_gratuitous (struct ifnet *, struct ifaddr *);
 #endif
 
 #endif
