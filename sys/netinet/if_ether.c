@@ -1229,27 +1229,39 @@ arplookup(in_addr_t addr, boolean_t create, boolean_t generate_report,
 void
 arp_ifinit(struct ifnet *ifp, struct ifaddr *ifa)
 {
-	/*
-	 * CARP interfaces will take care of gratuitous ARP
-	 * themselves.
-	 */
-	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY
-#ifdef CARP
-	    && ifp->if_type != IFT_CARP
-#endif
-	    ) {
-		arprequest_async(ifp, &IA_SIN(ifa)->sin_addr,
-				 &IA_SIN(ifa)->sin_addr, NULL);
-	}
 	ifa->ifa_rtrequest = arp_rtrequest;
 	ifa->ifa_flags |= RTF_CLONING;
 }
 
 void
-arp_iainit(struct ifnet *ifp, const struct in_addr *addr)
+arp_gratuitous(struct ifnet *ifp, struct ifaddr *ifa)
 {
-	if (addr->s_addr != INADDR_ANY)
-		arprequest_async(ifp, addr, addr, NULL);
+	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY) {
+		arprequest_async(ifp, &IA_SIN(ifa)->sin_addr,
+				 &IA_SIN(ifa)->sin_addr, NULL);
+	}
+}
+
+static void
+arp_ifaddr(void *arg __unused, struct ifnet *ifp,
+    enum ifaddr_event event, struct ifaddr *ifa)
+{
+	if (ifa->ifa_addr->sa_family != AF_INET)
+		return;
+	if (event == IFADDR_EVENT_DELETE)
+		return;
+
+	/*
+	 * - CARP interfaces will take care of gratuitous ARP themselves.
+	 * - If we are the CARP interface's parent, don't send gratuitous
+	 *   ARP to avoid unnecessary confusion.
+	 */
+#ifdef CARP
+	if (ifp->if_type != IFT_CARP && ifp->if_carp == NULL)
+#endif
+	{
+		arp_gratuitous(ifp, ifa);
+	}
 }
 
 static void
@@ -1261,6 +1273,9 @@ arp_init(void)
 		LIST_INIT(&llinfo_arp_list[cpu]);
 
 	netisr_register(NETISR_ARP, arpintr, NULL);
+
+	EVENTHANDLER_REGISTER(ifaddr_event, arp_ifaddr, NULL,
+	    EVENTHANDLER_PRI_LAST);
 }
 
 SYSINIT(arp, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, arp_init, 0);

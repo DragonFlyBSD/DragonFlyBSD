@@ -1110,7 +1110,7 @@ carp_send_arp(struct carp_softc *sc)
 	TAILQ_FOREACH(vha, &sc->sc_vha_list, vha_link) {
 		if (vha->vha_iaback == NULL)
 			continue;
-		arp_iainit(&sc->sc_if, &vha->vha_ia->ia_addr.sin_addr);
+		arp_gratuitous(&sc->sc_if, &vha->vha_ia->ia_ifa);
 	}
 }
 
@@ -2671,7 +2671,7 @@ carp_modevent(module_t mod, int type, void *data)
 				      EVENTHANDLER_PRI_ANY);
 		carp_ifaddr_event =
 		EVENTHANDLER_REGISTER(ifaddr_event, carp_ifaddr, NULL,
-				      EVENTHANDLER_PRI_ANY);
+				      EVENTHANDLER_PRI_FIRST);
 		if_clone_attach(&carp_cloner);
 		break;
 

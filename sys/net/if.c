@@ -2298,7 +2298,7 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 
 			if (ifa->ifa_addr != NULL &&
 			    ifa->ifa_addr->sa_family == AF_INET)
-				arp_ifinit(ifp, ifa);
+				arp_gratuitous(ifp, ifa);
 		}
 #endif
 	}
