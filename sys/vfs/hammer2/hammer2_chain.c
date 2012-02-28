@@ -185,8 +185,10 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 				/*
 				 * Succeeded, recurse and drop parent
 				 */
-				SPLAY_REMOVE(hammer2_chain_splay,
-					     &parent->shead, chain);
+				if (!(chain->flags & HAMMER2_CHAIN_DELETED)) {
+					SPLAY_REMOVE(hammer2_chain_splay,
+						     &parent->shead, chain);
+				}
 				chain->parent = NULL;
 				lockmgr(&parent->lk, LK_RELEASE);
 				hammer2_chain_free(hmp, chain);
@@ -629,6 +631,20 @@ again:
 	 */
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
+		/*
+		 * Special shortcut for embedded data returns the inode
+		 * itself.  Callers must detect this condition and access
+		 * the embedded data (the strategy code does this for us).
+		 *
+		 * This is only applicable to regular files and softlinks.
+		 */
+		if (parent->data->ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
+			hammer2_chain_ref(hmp, parent);
+			if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
+				hammer2_chain_lock(hmp, parent);
+			kprintf("DIRECT DATA RETURNED\n");
+			return (parent);
+		}
 		base = &parent->data->ipdata.u.blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
@@ -643,7 +659,7 @@ again:
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
-		panic("hammer2_chain_push: unrecognized blockref type: %d",
+		panic("hammer2_chain_lookup: unrecognized blockref type: %d",
 		      parent->bref.type);
 		base = NULL;	/* safety */
 		count = 0;	/* safety */
@@ -729,10 +745,23 @@ again:
 	 */
 	if (chain) {
 		/*
-		 * Continue iteration within current parent
+		 * Continue iteration within current parent.  If not NULL
+		 * the passed-in chain may or may not be locked, based on
+		 * the LOOKUP_NOLOCK flag (passed in as returned from lookup
+		 * or a prior next).
 		 */
 		i = chain->index + 1;
-		hammer2_chain_put(hmp, chain);
+		if (flags & HAMMER2_LOOKUP_NOLOCK)
+			hammer2_chain_drop(hmp, chain);
+		else
+			hammer2_chain_put(hmp, chain);
+
+		/*
+		 * Any scan where the lookup returned degenerate data embedded
+		 * in the inode has an invalid index and must terminate.
+		 */
+		if (chain == parent)
+			return(NULL);
 		chain = NULL;
 	} else if (parent->bref.type != HAMMER2_BREF_TYPE_INDIRECT) {
 		/*
@@ -783,7 +812,7 @@ again2:
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
-		panic("hammer2_chain_push: unrecognized blockref type: %d",
+		panic("hammer2_chain_next: unrecognized blockref type: %d",
 		      parent->bref.type);
 		base = NULL;	/* safety */
 		count = 0;	/* safety */
@@ -828,11 +857,15 @@ again2:
 
 	/*
 	 * If the chain element is an indirect block it becomes the new
-	 * parent and we loop on it.
+	 * parent and we loop on it.  We may have to lock the chain when
+	 * cycling it in as the new parent as it will not be locked if the
+	 * caller passed NOLOCK.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
 		hammer2_chain_put(hmp, parent);
 		*parentp = parent = chain;
+		if (flags & HAMMER2_LOOKUP_NOLOCK)
+			hammer2_chain_lock(hmp, chain);
 		i = 0;
 		goto again2;
 	}
@@ -931,7 +964,7 @@ again:
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
-		panic("hammer2_chain_push: unrecognized blockref type: %d",
+		panic("hammer2_chain_create: unrecognized blockref type: %d",
 		      parent->bref.type);
 		count = 0;
 		break;
@@ -1098,7 +1131,8 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
-		panic("hammer2_chain_push: unrecognized blockref type: %d",
+		panic("hammer2_chain_create_indirect: "
+		      "unrecognized blockref type: %d",
 		      parent->bref.type);
 		count = 0;
 		break;
@@ -1350,9 +1384,44 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
  * or iteration when indirect blocks are also deleted as a side effect.
  */
 void
-hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
+hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		     hammer2_chain_t *chain)
 {
+	hammer2_blockref_t *base;
+	int count;
+
+	/*
+	 * Mark the parent modified so our base[] pointer remains valid
+	 * while we move entries.
+	 *
+	 * Calculate the blockref reference in the parent
+	 */
+	hammer2_chain_modify(hmp, parent);
+
+	switch(parent->bref.type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		base = &parent->data->ipdata.u.blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		base = &parent->data->npdata.blockref[0];
+		count = HAMMER2_IND_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_VOLUME:
+		base = &hmp->voldata.sroot_blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
+		break;
+	default:
+		panic("hammer2_chain_delete: unrecognized blockref type: %d",
+		      parent->bref.type);
+		count = 0;
+		break;
+	}
+	KKASSERT(chain->index >= 0 && chain->index < count);
+	base += chain->index;
+	bzero(base, sizeof(*base));
+	SPLAY_REMOVE(hammer2_chain_splay, &parent->shead, chain);
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 }
 
 /*

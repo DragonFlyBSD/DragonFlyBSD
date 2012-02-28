@@ -314,7 +314,7 @@ hammer2_chain_t *hammer2_chain_create(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent,
 				hammer2_key_t key, int keybits,
 				int type, size_t bytes);
-void hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
+void hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 				hammer2_chain_t *chain);
 void hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				hammer2_blockref_t *parent_bref);

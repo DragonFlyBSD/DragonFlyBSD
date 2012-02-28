@@ -253,6 +253,16 @@ hammer2_create_inode(hammer2_mount_t *hmp,
 	nip->ip_data.nlinks = 1;
 	/* uid, gid, etc */
 
+	/*
+	 * Regular files and softlinks allow a small amount of data to be
+	 * directly embedded in the inode.  This flag will be cleared if
+	 * the size is extended past the embedded limit.
+	 */
+	if (nip->ip_data.type == HAMMER2_OBJTYPE_REGFILE ||
+	    nip->ip_data.type == HAMMER2_OBJTYPE_SOFTLINK) {
+		nip->ip_data.op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
+	}
+
 	KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 	bcopy(name, nip->ip_data.filename, name_len);
 	nip->ip_data.name_key = lhc;
