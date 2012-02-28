@@ -31,13 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.40 2008/10/21 13:51:01 sephe Exp $
  */
 
 #define	_IP_VHL
 
 #include "opt_inet.h"
-#include "opt_ipfw.h"
 #include "opt_ipdivert.h"
 #include "opt_ipsec.h"
 

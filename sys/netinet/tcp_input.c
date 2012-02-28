@@ -67,7 +67,6 @@
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
  */
 
-#include "opt_ipfw.h"		/* for ipfw_fwd		*/
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"

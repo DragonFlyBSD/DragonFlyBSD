@@ -70,7 +70,6 @@
 #define	_IP_VHL
 
 #include "opt_bootp.h"
-#include "opt_ipfw.h"
 #include "opt_ipdn.h"
 #include "opt_ipdivert.h"
 #include "opt_ipstealth.h"
