@@ -433,10 +433,14 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	if (chain->bp) {
 		chain->data = NULL;
 		if (chain->flags & (HAMMER2_CHAIN_MODIFIED |
-				    HAMMER2_CHAIN_FLUSHED))
-			bdwrite(chain->bp);
-		else
+				    HAMMER2_CHAIN_FLUSHED)) {
+			if (chain->flags & HAMMER2_CHAIN_IOFLUSH)
+				bawrite(chain->bp);
+			else
+				bdwrite(chain->bp);
+		} else {
 			bqrelse(chain->bp);
+		}
 		chain->bp = NULL;
 	}
 	lockmgr(&chain->lk, LK_RELEASE);
@@ -562,6 +566,10 @@ hammer2_chain_put(hammer2_mount_t *hmp, hammer2_chain_t *chain)
  * Locate any key between key_beg and key_end inclusive.  (*parentp)
  * typically points to an inode but can also point to a related indirect
  * block and this function will recurse upwards and find the inode again.
+ *
+ * WARNING!  THIS DOES NOT RETURN KEYS IN LOGICAL KEY ORDER!  ANY KEY
+ *	     WITHIN THE RANGE CAN BE RETURNED.  HOWEVER, AN ITERATION
+ *	     WHICH PICKS UP WHERE WE LEFT OFF WILL CONTINUE THE SCAN.
  *
  * (*parentp) must be exclusively locked and referenced and can be an inode
  * or an existing indirect block within the inode.
@@ -733,12 +741,20 @@ again:
 		return (NULL);
 	} else {
 		/*
-		 * Continue iteration with next parent
+		 * Continue iteration with next parent unless the current
+		 * parent covers the range.
 		 */
 		hammer2_chain_t *nparent;
 
 		if (parent->bref.type != HAMMER2_BREF_TYPE_INDIRECT)
 			return (NULL);
+
+		scan_beg = parent->bref.key;
+		scan_end = scan_beg +
+			    ((hammer2_key_t)1 << parent->bref.keybits) - 1;
+		if (key_beg >= scan_beg && key_end <= scan_end)
+			return (NULL);
+
 		i = parent->index + 1;
 		nparent = parent->parent;
 		hammer2_chain_ref(hmp, nparent);	/* ref new parent */
@@ -788,11 +804,6 @@ again2:
 			++i;
 			continue;
 		}
-#if 0
-		kprintf("nextxx(%016jx,%d) %d: %016jx/%d\n",
-			parent->bref.data_off, i,
-			bref->type,bref->key, bref->keybits);
-#endif
 		scan_beg = bref->key;
 		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
 		if (key_beg <= scan_end && key_end >= scan_beg)
@@ -834,9 +845,12 @@ again2:
 
 /*
  * Create and return a new hammer2 system memory structure of the specified
- * key, type and size and insert it under (parent).  (parent) is typically
- * acquired as a side effect of issuing a prior lookup.  parent must be locked
- * and held.
+ * key, type and size and insert it RELATIVE TO (PARENT).
+ *
+ * (parent) is typically either an inode or an indirect  block, acquired
+ * acquired as a side effect of issuing a prior failed lookup.  parent
+ * must be locked and held.  Do not pass the inode chain to this function
+ * unless that is the chain returned by the failed lookup.
  *
  * Non-indirect types will automatically allocate indirect blocks as required
  * if the new item does not fit in the current (parent).
@@ -1110,8 +1124,9 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		}
 
 		/*
-		 * Expand are calculated key range (key, keybits) to fit
-		 * the scanned key.
+		 * Expand our calculated key range (key, keybits) to fit
+		 * the scanned key.  nkeybits represents the full range
+		 * that we will later cut in half (two halves @ nkeybits - 1).
 		 */
 		nkeybits = keybits;
 		if (nkeybits < bref->keybits)
@@ -1149,25 +1164,38 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	}
 
 	/*
-	 * The key for the indirect block will be the lower half or
-	 * the upper half of the above calculated keyspace.
+	 * Adjust keybits to represent half of the full range calculated
+	 * above.
+	 */
+	--keybits;
+
+	/*
+	 * Select whichever half contains the most elements.  Theoretically
+	 * we can select either side as long as it contains at least one
+	 * element (in order to ensure that a free slot is present to hold
+	 * the indirect block).
 	 */
 	key &= ~(((hammer2_key_t)1 << keybits) - 1);
 	if (hammer2_indirect_optimize) {
 		/*
-		 * Insert node for least number of keys, best for linear
-		 * files (?)  XXX won't work if least number is 0.
+		 * Insert node for least number of keys, this will arrange
+		 * the first few blocks of a large file or the first few
+		 * inodes in a directory with fewer indirect blocks when
+		 * created linearly.
 		 */
-		panic("hammer2_indirect_optimize not working yet");
-		if (hicount < locount)
-			key |= (hammer2_key_t)1 << (keybits - 1);
+		if (hicount < locount && hicount != 0)
+			key |= (hammer2_key_t)1 << keybits;
+		else
+			key &= ~(hammer2_key_t)1 << keybits;
 	} else {
 		/*
 		 * Insert node for most number of keys, best for heavily
 		 * fragmented files.
 		 */
 		if (hicount > locount)
-			key |= (hammer2_key_t)1 << (keybits - 1);
+			key |= (hammer2_key_t)1 << keybits;
+		else
+			key &= ~(hammer2_key_t)1 << keybits;
 	}
 
 	/*
@@ -1175,19 +1203,23 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 */
 	dummy.bref.type = HAMMER2_BREF_TYPE_INDIRECT;
 	dummy.bref.key = key;
-	dummy.bref.keybits = keybits - 1;
+	dummy.bref.keybits = keybits;
 	dummy.bref.data_off = (hammer2_off_t)
 			    hammer2_freemap_bytes_to_radix(HAMMER2_PBUFSIZE);
-	dummy.index = -1;	/* not yet assigned */
 	ichain = hammer2_chain_alloc(hmp, &dummy.bref);
-	kprintf("create_indirect2: allocate %016jx/%d\n", key, keybits);
 
 	/*
 	 * Iterate the original parent and move the matching brefs into
-	 * the new indirect block.  All the keys are inclusive of keybits
-	 * so we only have to check bit (keybits - 1).
+	 * the new indirect block.
 	 */
 	for (i = 0; i < count; ++i) {
+		/*
+		 * For keying purposes access the bref from the media or
+		 * from our in-memory cache.  In cases where the in-memory
+		 * cache overrides the media the keyrefs will be the same
+		 * anyway so we can avoid checking the cache when the media
+		 * has a key.
+		 */
 		bref = &base[i];
 		if (bref->type == 0) {
 			dummy.index = i;
@@ -1209,7 +1241,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		 * (keybits - 1) needs to be compared but for safety we
 		 * will compare all msb bits plus that bit again.
 		 */
-		if ((~(((hammer2_key_t)1 << (keybits - 1)) - 1) &
+		if ((~(((hammer2_key_t)1 << keybits) - 1) &
 		    (key ^ bref->key)) != 0) {
 			continue;
 		}
@@ -1220,7 +1252,6 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		 */
 		if (ichain->index < 0)
 			ichain->index = i;
-		bzero(&base[i], sizeof(base[i]));
 
 		/*
 		 * Load the new indirect block by acquiring or allocating
@@ -1244,6 +1275,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		if (SPLAY_INSERT(hammer2_chain_splay, &ichain->shead, chain))
 			panic("hammer2_chain_create_indirect: collision");
 		chain->parent = ichain;
+		bzero(&base[i], sizeof(base[i]));
 		atomic_add_int(&parent->refs, -1);
 		atomic_add_int(&ichain->refs, 1);
 		if (chain->flags & HAMMER2_CHAIN_MOVED) {
@@ -1261,7 +1293,6 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * insertion index in the loop above (ichain->index).
 	 */
 	KKASSERT(ichain->index >= 0);
-	kprintf("insert ichain at %d\n", ichain->index);
 	if (SPLAY_INSERT(hammer2_chain_splay, &parent->shead, ichain))
 		panic("hammer2_chain_create_indirect: ichain insertion");
 	ichain->parent = parent;
@@ -1288,7 +1319,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		 * return the original parent.
 		 */
 		hammer2_chain_put(hmp, ichain);
-	} else if (~(((hammer2_key_t)1 << (keybits - 1)) - 1) &
+	} else if (~(((hammer2_key_t)1 << keybits) - 1) &
 		   (create_key ^ key)) {
 		/*
 		 * Key being created is outside the key range,
@@ -1301,8 +1332,6 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		 */
 		parent = ichain;
 	}
-
-	kprintf("create_indirect9\n");
 
 	return(parent);
 }

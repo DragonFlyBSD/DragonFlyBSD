@@ -112,7 +112,10 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, size_t bytes)
 			hmp->freecache[radix] = data_next;
 		}
 	}
-	kprintf("hammer2: allocate %016jx: %zd\n", (intmax_t)data_off, bytes);
+	if (hammer2_debug & 0x0001) {
+		kprintf("hammer2: allocate %016jx: %zd\n",
+			(intmax_t)data_off, bytes);
+	}
 	return (data_off | radix);
 }
 

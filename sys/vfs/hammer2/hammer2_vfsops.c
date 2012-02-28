@@ -41,6 +41,7 @@
 #include <sys/buf.h>
 #include <sys/uuid.h>
 #include <sys/vfsops.h>
+#include <sys/sysctl.h>
 
 #include "hammer2.h"
 #include "hammer2_disk.h"
@@ -50,6 +51,13 @@ struct hammer2_sync_info {
 	int error;
 	int waitfor;
 };
+
+int hammer2_debug;
+
+SYSCTL_NODE(_vfs, OID_AUTO, hammer2, CTLFLAG_RW, 0, "HAMMER2 filesystem");
+
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, debug, CTLFLAG_RW,
+	   &hammer2_debug, 0, "");
 
 static int hammer2_vfs_init(struct vfsconf *conf);
 static int hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,

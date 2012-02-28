@@ -238,7 +238,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	 * allow '..' to cross the mount point into (e.g.) the super-root.
 	 */
 	error = 0;
-	chain = (void *)(intptr_t)-1;	/* non-NULL early done means not eof */
+	chain = (void *)(intptr_t)-1;	/* non-NULL for early goto done case */
 
 	if (saveoff == 0) {
 		r = vop_write_dirent(&error, uio,
@@ -283,7 +283,11 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		hammer2_chain_put(hmp, parent);
 		goto done;
 	}
-	chain = hammer2_chain_lookup(hmp, &parent, lkey, (hammer2_key_t)-1, 0);
+	chain = hammer2_chain_lookup(hmp, &parent, lkey, lkey, 0);
+	if (chain == NULL) {
+		chain = hammer2_chain_lookup(hmp, &parent,
+					     lkey, (hammer2_key_t)-1, 0);
+	}
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			dtype = hammer2_get_dtype(chain->u.ip);
@@ -326,7 +330,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 done:
 	if (ap->a_eofflag)
 		*ap->a_eofflag = (chain == NULL);
-	uio->uio_offset = saveoff;
+	uio->uio_offset = saveoff & ~HAMMER2_DIRHASH_VISIBLE;
 	if (error && cookie_index == 0) {
 		if (cookies) {
 			kfree(cookies, M_TEMP);
@@ -765,6 +769,21 @@ hammer2_vop_open(struct vop_open_args *ap)
 	return vop_stdopen(ap);
 }
 
+/*
+ * hammer_vop_advlock { vp, id, op, fl, flags }
+ *
+ * MPSAFE - does not require fs_token
+ */
+static
+int
+hammer2_vop_advlock(struct vop_advlock_args *ap)
+{
+	hammer2_inode_t *ip = VTOI(ap->a_vp);
+
+	return (lf_advlock(ap, &ip->advlock, ip->ip_data.size));
+}
+
+
 static
 int
 hammer2_vop_close(struct vop_close_args *ap)
@@ -941,15 +960,16 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	if (chain) {
 		hammer2_chain_modify(hmp, chain);
 		bcopy(bp->b_data, chain->data->buf + off_lo, bp->b_bcount);
-		hammer2_chain_put(hmp, chain);
 	} else {
 		chain = hammer2_chain_create(hmp, parent,
 					     off_hi, HAMMER2_PBUFRADIX,
 					     HAMMER2_BREF_TYPE_DATA,
 					     HAMMER2_PBUFSIZE);
 		bcopy(bp->b_data, chain->data->buf + off_lo, bp->b_bcount);
-		hammer2_chain_put(hmp, chain);
 	}
+	if (off_lo + bp->b_bcount == HAMMER2_PBUFSIZE)
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_IOFLUSH);
+	hammer2_chain_put(hmp, chain);
 	hammer2_chain_put(hmp, parent);
 
 	bp->b_resid = 0;
@@ -991,6 +1011,7 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_getpages	= vop_stdgetpages,
 	.vop_putpages	= vop_stdputpages,
 	.vop_access	= hammer2_vop_access,
+	.vop_advlock	= hammer2_vop_advlock,
 	.vop_close	= hammer2_vop_close,
 	.vop_ncreate	= hammer2_vop_ncreate,
 	.vop_getattr	= hammer2_vop_getattr,

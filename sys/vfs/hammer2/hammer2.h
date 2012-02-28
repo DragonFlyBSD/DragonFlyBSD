@@ -130,6 +130,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial write */
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
 #define HAMMER2_CHAIN_MOVED		0x00000080	/* moved */
+#define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -166,6 +167,7 @@ struct hammer2_inode {
 	struct vnode		*vp;
 	hammer2_chain_t		chain;
 	struct hammer2_inode_data ip_data;
+	struct lockf		advlock;
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
@@ -243,6 +245,8 @@ MPTOH2(struct mount *mp)
 extern struct vop_ops hammer2_vnode_vops;
 extern struct vop_ops hammer2_spec_vops;
 extern struct vop_ops hammer2_fifo_vops;
+
+extern int hammer2_debug;
 
 /*
  * hammer2_subr.c

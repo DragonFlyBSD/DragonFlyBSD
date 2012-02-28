@@ -142,7 +142,6 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 			continue;
 		}
 
-		kprintf("igetv new\n");
 		switch (ip->ip_data.type) {
 		case HAMMER2_OBJTYPE_DIRECTORY:
 			vp->v_type = VDIR;
@@ -172,8 +171,10 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 	/*
 	 * Return non-NULL vp and *errorp == 0, or NULL vp and *errorp != 0.
 	 */
-	kprintf("igetv vp %p refs %d aux %d\n",
-		vp, vp->v_sysref.refcnt, vp->v_auxrefs);
+	if (hammer2_debug & 0x0002) {
+		kprintf("igetv vp %p refs %d aux %d\n",
+			vp, vp->v_sysref.refcnt, vp->v_auxrefs);
+	}
 	return (vp);
 }
 
@@ -220,7 +221,7 @@ hammer2_create_inode(hammer2_mount_t *hmp,
 		++lhc;
 	}
 	if (error == 0) {
-		chain = hammer2_chain_create(hmp, &dip->chain, lhc, 0,
+		chain = hammer2_chain_create(hmp, parent, lhc, 0,
 					     HAMMER2_BREF_TYPE_INODE,
 					     HAMMER2_INODE_BYTES);
 		if (chain == NULL)
