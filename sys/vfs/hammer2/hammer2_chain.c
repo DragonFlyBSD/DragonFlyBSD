@@ -180,7 +180,8 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		if (refs == 1) {
 			KKASSERT(chain != &hmp->vchain);
 			parent = chain->parent;
-			lockmgr(&parent->lk, LK_EXCLUSIVE);
+			if (parent)
+				lockmgr(&parent->lk, LK_EXCLUSIVE);
 			if (atomic_cmpset_int(&chain->refs, 1, 0)) {
 				/*
 				 * Succeeded, recurse and drop parent
@@ -193,7 +194,7 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 				lockmgr(&parent->lk, LK_RELEASE);
 				hammer2_chain_free(hmp, chain);
 				chain = parent;
-			} else {
+			} else if (parent) {
 				lockmgr(&parent->lk, LK_RELEASE);
 			}
 		} else {
@@ -1422,6 +1423,19 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	bzero(base, sizeof(*base));
 	SPLAY_REMOVE(hammer2_chain_splay, &parent->shead, chain);
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
+	chain->parent = NULL;
+
+	/*
+	 * Nobody references the underlying object any more so we can
+	 * clear any pending modification(s) on it.  This can theoretically
+	 * recurse downward but even just clearing the bit on this item
+	 * will effectively recurse if someone is doing a rm -rf and greatly
+	 * reduce the I/O required.
+	 */
+	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+		hammer2_chain_drop(hmp, chain);	/* ref for modified bit */
+	}
 }
 
 /*

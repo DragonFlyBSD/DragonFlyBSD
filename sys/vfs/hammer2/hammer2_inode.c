@@ -151,6 +151,16 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 			vinitvmio(vp, 0, HAMMER2_LBUFSIZE,
 				  (int)ip->ip_data.size & HAMMER2_LBUFMASK);
 			break;
+		case HAMMER2_OBJTYPE_SOFTLINK:
+			/*
+			 * XXX for now we are using the generic file_read
+			 * and file_write code so we need a buffer cache
+			 * association.
+			 */
+			vp->v_type = VLNK;
+			vinitvmio(vp, 0, HAMMER2_LBUFSIZE,
+				  (int)ip->ip_data.size & HAMMER2_LBUFMASK);
+			break;
 		/* XXX FIFO */
 		default:
 			panic("hammer2: unhandled objtype %d",

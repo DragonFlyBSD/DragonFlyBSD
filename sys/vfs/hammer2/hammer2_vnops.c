@@ -43,14 +43,21 @@
 #include <sys/vnode.h>
 #include <sys/mountctl.h>
 #include <sys/dirent.h>
+#include <sys/uio.h>
 
 #include "hammer2.h"
 
 #define ZFOFFSET	(-2LL)
 
+static int hammer2_read_file(hammer2_inode_t *ip, struct uio *uio,
+				int seqcount);
+static int hammer2_write_file(hammer2_inode_t *ip, struct uio *uio, int ioflag);
 static void hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize,
 				int trivial);
 static void hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize);
+static int hammer2_unlink_file(hammer2_inode_t *dip,
+				const uint8_t *name, size_t name_len,
+				int isdir);
 
 /*
  * Last reference to a vnode is going away but it is still cached.
@@ -431,6 +438,28 @@ done:
 	return (error);
 }
 
+/*
+ * hammer2_vop_readlink { vp, uio, cred }
+ */
+static
+int
+hammer2_vop_readlink(struct vop_readlink_args *ap)
+{
+	struct vnode *vp;
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *ip;
+	int error;
+
+	vp = ap->a_vp;
+	if (vp->v_type != VLNK)
+		return (EINVAL);
+	ip = VTOI(vp);
+	hmp = ip->hmp;
+
+	error = hammer2_read_file(ip, ap->a_uio, 0);
+	return (error);
+}
+
 static
 int
 hammer2_vop_read(struct vop_read_args *ap)
@@ -438,7 +467,6 @@ hammer2_vop_read(struct vop_read_args *ap)
 	struct vnode *vp;
 	hammer2_mount_t *hmp;
 	hammer2_inode_t *ip;
-	struct buf *bp;
 	struct uio *uio;
 	int error;
 	int seqcount;
@@ -462,33 +490,7 @@ hammer2_vop_read(struct vop_read_args *ap)
 	seqcount = ap->a_ioflag >> 16;
 	bigread = (uio->uio_resid > 100 * 1024 * 1024);
 
-	/*
-	 * UIO read loop
-	 */
-	while (uio->uio_resid > 0 && uio->uio_offset < ip->ip_data.size) {
-		hammer2_key_t off_hi;
-		int off_lo;
-		int n;
-
-		off_hi = uio->uio_offset & ~HAMMER2_LBUFMASK64;
-		off_lo = (int)(uio->uio_offset & HAMMER2_LBUFMASK64);
-
-		/* XXX bigread & signal check test */
-
-		error = cluster_read(vp, ip->ip_data.size, off_hi,
-				     HAMMER2_LBUFSIZE, HAMMER2_PBUFSIZE,
-				     seqcount * BKVASIZE, &bp);
-		if (error)
-			break;
-		n = HAMMER2_LBUFSIZE - off_lo;
-		if (n > uio->uio_resid)
-			n = uio->uio_resid;
-		if (n > ip->ip_data.size - uio->uio_offset)
-			n = (int)(ip->ip_data.size - uio->uio_offset);
-		bp->b_flags |= B_AGE;
-		uiomove((char *)bp->b_data + off_lo, n, uio);
-		bqrelse(bp);
-	}
+	error = hammer2_read_file(ip, uio, seqcount);
 	return (error);
 }
 
@@ -500,10 +502,8 @@ hammer2_vop_write(struct vop_write_args *ap)
 	struct vnode *vp;
 	hammer2_mount_t *hmp;
 	hammer2_inode_t *ip;
-	struct buf *bp;
 	struct uio *uio;
 	int error;
-	int kflags;
 	int seqcount;
 	int bigwrite;
 
@@ -521,7 +521,6 @@ hammer2_vop_write(struct vop_write_args *ap)
 	hmp = ip->hmp;
 	uio = ap->a_uio;
 	error = 0;
-	kflags = 0;
 	if (hmp->ronly)
 		return (EROFS);
 
@@ -546,9 +545,74 @@ hammer2_vop_write(struct vop_write_args *ap)
 	 */
 	hammer2_inode_lock_ex(ip);
 	hammer2_chain_modify(hmp, &ip->chain);
+	error = hammer2_write_file(ip, uio, ap->a_ioflag);
 
-	if (ap->a_ioflag & IO_APPEND)
+	hammer2_inode_unlock_ex(ip);
+	return (error);
+}
+
+/*
+ * Perform read operations on a file or symlink given an UNLOCKED
+ * inode and uio.
+ */
+static
+int
+hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
+{
+	struct buf *bp;
+	int error;
+
+	error = 0;
+
+	/*
+	 * UIO read loop
+	 */
+	while (uio->uio_resid > 0 && uio->uio_offset < ip->ip_data.size) {
+		hammer2_key_t off_hi;
+		int off_lo;
+		int n;
+
+		off_hi = uio->uio_offset & ~HAMMER2_LBUFMASK64;
+		off_lo = (int)(uio->uio_offset & HAMMER2_LBUFMASK64);
+
+		/* XXX bigread & signal check test */
+
+		error = cluster_read(ip->vp, ip->ip_data.size, off_hi,
+				     HAMMER2_LBUFSIZE, HAMMER2_PBUFSIZE,
+				     seqcount * BKVASIZE, &bp);
+		if (error)
+			break;
+		n = HAMMER2_LBUFSIZE - off_lo;
+		if (n > uio->uio_resid)
+			n = uio->uio_resid;
+		if (n > ip->ip_data.size - uio->uio_offset)
+			n = (int)(ip->ip_data.size - uio->uio_offset);
+		bp->b_flags |= B_AGE;
+		uiomove((char *)bp->b_data + off_lo, n, uio);
+		bqrelse(bp);
+	}
+	return (error);
+}
+
+/*
+ * Called with a locked (ip) to do the underlying write to a file or
+ * to build the symlink target.
+ */
+static
+int
+hammer2_write_file(hammer2_inode_t *ip, struct uio *uio, int ioflag)
+{
+	struct buf *bp;
+	int kflags;
+	int error;
+
+	/*
+	 * Setup if append
+	 */
+	if (ioflag & IO_APPEND)
 		uio->uio_offset = ip->ip_data.size;
+	kflags = 0;
+	error = 0;
 
 	/*
 	 * UIO write loop
@@ -580,7 +644,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 		 * Don't allow the buffer build to blow out the buffer
 		 * cache.
 		 */
-		if ((ap->a_ioflag & IO_RECURSE) == 0)
+		if ((ioflag & IO_RECURSE) == 0)
 			bwillwrite(HAMMER2_LBUFSIZE);
 
 		/*
@@ -607,12 +671,12 @@ hammer2_vop_write(struct vop_write_args *ap)
 			 *
 			 * This case is used by vop_stdputpages().
 			 */
-			bp = getblk(vp, off_hi,
+			bp = getblk(ip->vp, off_hi,
 				    HAMMER2_LBUFSIZE, GETBLK_BHEAVY, 0);
 			if ((bp->b_flags & B_CACHE) == 0) {
 				bqrelse(bp);
-				error = bread(ap->a_vp,
-					      off_hi, HAMMER2_LBUFSIZE, &bp);
+				error = bread(ip->vp, off_hi,
+					      HAMMER2_LBUFSIZE, &bp);
 			}
 		} else if (off_lo == 0 && uio->uio_resid >= HAMMER2_LBUFSIZE) {
 			/*
@@ -620,7 +684,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 			 * we may still have to zero it out to avoid a
 			 * mmap/write visibility issue.
 			 */
-			bp = getblk(vp, off_hi,
+			bp = getblk(ip->vp, off_hi,
 				    HAMMER2_LBUFSIZE, GETBLK_BHEAVY, 0);
 			if ((bp->b_flags & B_CACHE) == 0)
 				vfs_bio_clrbuf(bp);
@@ -629,7 +693,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 			 * If the base offset of the buffer is beyond the
 			 * file EOF, we don't have to issue a read.
 			 */
-			bp = getblk(vp, off_hi,
+			bp = getblk(ip->vp, off_hi,
 				    HAMMER2_LBUFSIZE, GETBLK_BHEAVY, 0);
 			vfs_bio_clrbuf(bp);
 		} else {
@@ -637,7 +701,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 			 * Partial overwrite, read in any missing bits then
 			 * replace the portion being written.
 			 */
-			error = bread(vp, off_hi, HAMMER2_LBUFSIZE, &bp);
+			error = bread(ip->vp, off_hi, HAMMER2_LBUFSIZE, &bp);
 			if (error == 0)
 				bheavy(bp);
 		}
@@ -664,19 +728,18 @@ hammer2_vop_write(struct vop_write_args *ap)
 		 */
 		bp->b_bio2.bio_offset = NOOFFSET;
 		bp->b_flags |= B_AGE;
-		if (ap->a_ioflag & IO_SYNC) {
+		if (ioflag & IO_SYNC) {
 			bwrite(bp);
-		} else if ((ap->a_ioflag & IO_DIRECT) && endofblk) {
+		} else if ((ioflag & IO_DIRECT) && endofblk) {
 			bawrite(bp);
-		} else if (ap->a_ioflag & IO_ASYNC) {
+		} else if (ioflag & IO_ASYNC) {
 			bawrite(bp);
 		} else {
 			bdwrite(bp);
 		}
 	}
-	/* hammer2_knote(vp, kflags); */
-	hammer2_inode_unlock_ex(ip);
-	return (error);
+	/* hammer2_knote(ip->vp, kflags); */
+	return error;
 }
 
 /*
@@ -1057,6 +1120,261 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	return error;
 }
 
+/*
+ * hammer2_vop_nsymlink { nch, dvp, vpp, cred, vap, target }
+ */
+static
+int
+hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
+{
+	hammer2_mount_t *hmp;
+	hammer2_inode_t *dip;
+	hammer2_inode_t *nip;
+	struct namecache *ncp;
+	const uint8_t *name;
+	size_t name_len;
+	int error;
+
+	dip = VTOI(ap->a_dvp);
+	hmp = dip->hmp;
+	if (hmp->ronly)
+		return (EROFS);
+
+	ncp = ap->a_nch->ncp;
+	name = ncp->nc_name;
+	name_len = ncp->nc_nlen;
+
+	ap->a_vap->va_type = VLNK;	/* enforce type */
+
+	error = hammer2_create_inode(hmp, ap->a_vap, ap->a_cred,
+				     dip, name, name_len, &nip);
+	if (error) {
+		KKASSERT(nip == NULL);
+		*ap->a_vpp = NULL;
+		return error;
+	}
+	*ap->a_vpp = hammer2_igetv(nip, &error);
+
+	/*
+	 * Build the softlink (~like file data) and finalize the namecache.
+	 */
+	if (error == 0) {
+		size_t bytes;
+		struct uio auio;
+		struct iovec aiov;
+
+		bytes = strlen(ap->a_target);
+
+		if (bytes <= HAMMER2_EMBEDDED_BYTES) {
+			KKASSERT(nip->ip_data.op_flags &
+				 HAMMER2_OPFLAG_DIRECTDATA);
+			bcopy(ap->a_target, nip->ip_data.u.data, bytes);
+			nip->ip_data.size = bytes;
+		} else {
+			bzero(&auio, sizeof(auio));
+			bzero(&aiov, sizeof(aiov));
+			auio.uio_iov = &aiov;
+			auio.uio_segflg = UIO_SYSSPACE;
+			auio.uio_rw = UIO_WRITE;
+			auio.uio_resid = bytes;
+			auio.uio_iovcnt = 1;
+			auio.uio_td = curthread;
+			aiov.iov_base = ap->a_target;
+			aiov.iov_len = bytes;
+			error = hammer2_write_file(nip, &auio, IO_APPEND);
+			/* XXX handle error */
+			error = 0;
+		}
+	}
+	hammer2_chain_put(hmp, &nip->chain);
+
+	/*
+	 * Finalize namecache
+	 */
+	if (error == 0) {
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, *ap->a_vpp);
+		/* hammer2_knote(ap->a_dvp, NOTE_WRITE); */
+	}
+	return error;
+}
+
+/*
+ * hammer2_vop_nremove { nch, dvp, cred }
+ */
+static
+int
+hammer2_vop_nremove(struct vop_nremove_args *ap)
+{
+	hammer2_inode_t *dip;
+	hammer2_mount_t *hmp;
+	struct namecache *ncp;
+	const uint8_t *name;
+	size_t name_len;
+	int error;
+
+	dip = VTOI(ap->a_dvp);
+	hmp = dip->hmp;
+	if (hmp->ronly)
+		return(EROFS);
+
+	ncp = ap->a_nch->ncp;
+	name = ncp->nc_name;
+	name_len = ncp->nc_nlen;
+
+	error = hammer2_unlink_file(dip, name, name_len, 0);
+
+	if (error == 0) {
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, NULL);
+	}
+	return (error);
+}
+
+/*
+ * hammer2_vop_nrmdir { nch, dvp, cred }
+ */
+static
+int
+hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
+{
+	hammer2_inode_t *dip;
+	hammer2_mount_t *hmp;
+	struct namecache *ncp;
+	const uint8_t *name;
+	size_t name_len;
+	int error;
+
+	dip = VTOI(ap->a_dvp);
+	hmp = dip->hmp;
+	if (hmp->ronly)
+		return(EROFS);
+
+	ncp = ap->a_nch->ncp;
+	name = ncp->nc_name;
+	name_len = ncp->nc_nlen;
+
+	error = hammer2_unlink_file(dip, name, name_len, 1);
+
+	if (error == 0) {
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, NULL);
+	}
+	return (error);
+}
+
+static
+int
+hammer2_vop_nrename(struct vop_nrename_args *ap)
+{
+	return (EINVAL);
+}
+
+static
+int
+hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
+		    int isdir)
+{
+	hammer2_mount_t *hmp;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_chain_t *dparent;
+	hammer2_chain_t *dchain;
+	hammer2_key_t lhc;
+	struct vnode *vp;
+	int error;
+
+	error = 0;
+	/*vap->va_nlink = ip->ip_data.nlinks;*/
+
+	hmp = dip->hmp;
+	lhc = hammer2_dirhash(name, name_len);
+
+	/*
+	 * Search for the filename in the directory
+	 */
+	parent = &dip->chain;
+	hammer2_chain_ref(hmp, parent);
+	hammer2_chain_lock(hmp, parent);
+	chain = hammer2_chain_lookup(hmp, &parent,
+				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
+				     0);
+	while (chain) {
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+		    chain->u.ip &&
+		    name_len == chain->data->ipdata.name_len &&
+		    bcmp(name, chain->data->ipdata.filename, name_len) == 0) {
+			break;
+		}
+		chain = hammer2_chain_next(hmp, &parent, chain,
+					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
+					   0);
+	}
+
+	/*
+	 * Not found or wrong type
+	 */
+	if (chain == NULL) {
+		hammer2_chain_put(hmp, parent);
+		return ENOENT;
+	}
+	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_DIRECTORY && !isdir) {
+		error = ENOTDIR;
+		goto done;
+	}
+	if (chain->data->ipdata.type != HAMMER2_OBJTYPE_DIRECTORY && isdir) {
+		error = EISDIR;
+		goto done;
+	}
+
+	/*
+	 * If this is a directory the directory must be empty
+	 */
+	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_DIRECTORY) {
+		dparent = chain;
+		hammer2_chain_ref(hmp, dparent);
+		hammer2_chain_lock(hmp, dparent);
+		dchain = hammer2_chain_lookup(hmp, &dparent,
+					      0, (hammer2_key_t)-1,
+					      HAMMER2_LOOKUP_NOLOCK);
+		if (dchain) {
+			hammer2_chain_drop(hmp, dchain);
+			hammer2_chain_put(hmp, dparent);
+			error = ENOTEMPTY;
+			goto done;
+		}
+		hammer2_chain_put(hmp, dparent);
+		dparent = NULL;
+		/* dchain NULL */
+	}
+
+	/*
+	 * Found, the chain represents the inode.  Remove the parent reference
+	 * to the chain.  The chain itself is no longer referenced and will
+	 * be marked unmodified by hammer2_chain_delete(), avoiding unnecessary
+	 * I/O.
+	 */
+	hammer2_chain_delete(hmp, parent, chain);
+	/* XXX nlinks (hardlink special case) */
+	/* XXX nlinks (parent directory) */
+
+	vp = hammer2_igetv(chain->u.ip, &error);
+	if (error == 0) {
+		vn_unlock(vp);
+		/* hammer2_knote(vp, NOTE_DELETE); */
+		cache_inval_vp(vp, CINV_DESTROY);
+		vrele(vp);
+	}
+	error = 0;
+
+done:
+	hammer2_chain_put(hmp, chain);
+	hammer2_chain_put(hmp, parent);
+
+	return error;
+}
+
+
 static int hammer2_strategy_read(struct vop_strategy_args *ap);
 static int hammer2_strategy_write(struct vop_strategy_args *ap);
 
@@ -1294,9 +1612,14 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_advlock	= hammer2_vop_advlock,
 	.vop_close	= hammer2_vop_close,
 	.vop_ncreate	= hammer2_vop_ncreate,
+	.vop_nsymlink	= hammer2_vop_nsymlink,
+	.vop_nremove	= hammer2_vop_nremove,
+	.vop_nrmdir	= hammer2_vop_nrmdir,
+	.vop_nrename	= hammer2_vop_nrename,
 	.vop_getattr	= hammer2_vop_getattr,
 	.vop_setattr	= hammer2_vop_setattr,
 	.vop_readdir	= hammer2_vop_readdir,
+	.vop_readlink	= hammer2_vop_readlink,
 	.vop_getpages	= vop_stdgetpages,
 	.vop_putpages	= vop_stdputpages,
 	.vop_read	= hammer2_vop_read,
