@@ -20,7 +20,6 @@ options		DEBUG_PCTRACK
 options		QUOTA
 options		DUMMYNET
 options         IPFIREWALL              #firewall
-options		IPFIREWALL_FORWARD      #enable transparent proxy support
 options		IPFIREWALL_DEFAULT_TO_ACCEPT    #allow everything by default
 
 # ALTQ
