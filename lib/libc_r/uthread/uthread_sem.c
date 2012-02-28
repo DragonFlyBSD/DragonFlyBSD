@@ -27,7 +27,6 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_sem.c,v 1.3.2.5 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_sem.c,v 1.4 2007/06/26 23:30:05 josepht Exp $
  */
 
 #include <sys/semaphore.h>
@@ -39,7 +38,8 @@
 #include "pthread_private.h"
 
 #define _SEM_CHECK_VALIDITY(sem)		\
-	if ((*(sem))->magic != SEM_MAGIC) {	\
+	if ((sem) == NULL || *(sem) == NULL ||	\
+	    (*(sem))->magic != SEM_MAGIC) {	\
 		errno = EINVAL;			\
 		retval = -1;			\
 		goto RETURN;			\
