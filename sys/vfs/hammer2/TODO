@@ -7,9 +7,25 @@
   recursion checking SUBMODIFIED then locking (must clear before the
   recursion and might need additional synchronization)
 
+* There is definitely a flush race in the hardlink implementation between
+  the forwarding entries and the actual (hidden) hardlink inode.
+
+  This will require us to associate a small hard-link-adjust structure
+  with the chain whenever we create or delete hardlinks, on top of
+  adjusting the hardlink inode itself.  Any actual flush to the media
+  has to synchronize the correct nlinks value based on whether related
+  created or deleted hardlinks were also flushed.
+
 * When a directory entry is created and also if an indirect block is
   created and entries moved into it, the directory seek position can
   potentially become incorrect during a scan.
 
 * When a directory entry is deleted a directory seek position depending
   on that key can cause readdir to skip entries.
+
+
+				OPTIMIZATIONS
+
+* If a file is unlinked buts its descriptors is left open and used, we
+  should allow data blocks on-media to be reused since there is no
+  topology left to point at them.

@@ -280,13 +280,16 @@ void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
 
-int hammer2_create_inode(hammer2_mount_t *hmp,
+int hammer2_inode_create(hammer2_mount_t *hmp,
 			struct vattr *vap, struct ucred *cred,
 			hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len,
 			hammer2_inode_t **nipp);
 
-int hammer2_connect_inode(hammer2_inode_t *dip, hammer2_inode_t *nip,
+int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *nip,
+			const uint8_t *name, size_t name_len);
+
+int hammer2_hardlink_create(hammer2_inode_t *ip, hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len);
 
 /*

@@ -150,7 +150,7 @@ hammer2_get_dtype(hammer2_inode_t *ip)
 		return (DT_BLK);
 	case HAMMER2_OBJTYPE_SOFTLINK:
 		return (DT_LNK);
-	case HAMMER2_OBJTYPE_HARDLINK:	/* XXX */
+	case HAMMER2_OBJTYPE_HARDLINK:	/* (never directly associated w/vp) */
 		return (DT_UNKNOWN);
 	case HAMMER2_OBJTYPE_SOCKET:
 		return (DT_SOCK);

@@ -427,7 +427,7 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_OBJTYPE_CDEV		5
 #define HAMMER2_OBJTYPE_BDEV		6
 #define HAMMER2_OBJTYPE_SOFTLINK	7
-#define HAMMER2_OBJTYPE_HARDLINK	8
+#define HAMMER2_OBJTYPE_HARDLINK	8	/* dummy entry for hardlink */
 #define HAMMER2_OBJTYPE_SOCKET		9
 #define HAMMER2_OBJTYPE_WHITEOUT	10
 

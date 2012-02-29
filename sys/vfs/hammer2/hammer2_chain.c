@@ -176,6 +176,7 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	while (chain) {
 		refs = chain->refs;
 		cpu_ccfence();
+		KKASSERT(refs > 0);
 		if (refs == 1) {
 			KKASSERT(chain != &hmp->vchain);
 			parent = chain->parent;
@@ -347,6 +348,19 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	 * If the chain is already marked modified we can just return.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
+		KKASSERT(chain->data != NULL);
+		return;
+	}
+
+	/*
+	 * A deleted inode may still be active but unreachable via sync
+	 * because it has been disconnected from the tree.  Do not allow
+	 * deleted inodes to be marked as being modified because this will
+	 * bump the refs and never get resolved by the sync, leaving the
+	 * inode structure allocated after umount.
+	 */
+	if ((chain->flags & HAMMER2_CHAIN_DELETED) &&
+	    chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		KKASSERT(chain->data != NULL);
 		return;
 	}
@@ -1430,6 +1444,9 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	hammer2_blockref_t *base;
 	int count;
 
+	if (chain->parent != parent)
+		panic("hammer2_chain_delete: parent mismatch");
+
 	/*
 	 * Mark the parent modified so our base[] pointer remains valid
 	 * while we move entries.
@@ -1485,6 +1502,7 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * The MODIFIED bit is cleared but we have to remember the old state
 	 * in case this deletion is related to a rename.
 	 */
+	kprintf("chain_delete %p %d refs=%d\n", chain, chain->flags & HAMMER2_CHAIN_MODIFIED, chain->refs);
 	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_WAS_MODIFIED);
@@ -1653,8 +1671,8 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		 * Return information on the new block to the parent.
 		 */
 		*parent_bref = chain->bref;
-		hammer2_chain_drop(hmp, chain);	/* drop ref tracking mod bit */
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+		hammer2_chain_drop(hmp, chain);	/* drop ref tracking mod bit */
 	} else {
 		hammer2_blockref_t *bref;
 

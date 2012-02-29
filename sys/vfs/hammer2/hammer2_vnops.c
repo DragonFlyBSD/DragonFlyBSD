@@ -57,7 +57,7 @@ static void hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize,
 static void hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize);
 static int hammer2_unlink_file(hammer2_inode_t *dip,
 				const uint8_t *name, size_t name_len,
-				int isdir);
+				int isdir, int adjlinks);
 
 /*
  * Last reference to a vnode is going away but it is still cached.
@@ -820,6 +820,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
 			hammer2_chain_delete(hmp, parent, chain);
 		}
+		/* XXX check parent if empty indirect block & delete */
 		chain = hammer2_chain_next(hmp, &parent, chain,
 					   psize, (hammer2_key_t)-1,
 					   HAMMER2_LOOKUP_NOLOCK);
@@ -966,7 +967,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
-	error = hammer2_create_inode(hmp, ap->a_vap, ap->a_cred,
+	error = hammer2_inode_create(hmp, ap->a_vap, ap->a_cred,
 				     dip, name, name_len, &nip);
 	if (error) {
 		KKASSERT(nip == NULL);
@@ -1055,9 +1056,7 @@ hammer2_vop_open(struct vop_open_args *ap)
 }
 
 /*
- * hammer_vop_advlock { vp, id, op, fl, flags }
- *
- * MPSAFE - does not require fs_token
+ * hammer2_vop_advlock { vp, id, op, fl, flags }
  */
 static
 int
@@ -1077,7 +1076,43 @@ hammer2_vop_close(struct vop_close_args *ap)
 }
 
 /*
- * hammer_vop_ncreate { nch, dvp, vpp, cred, vap }
+ * hammer2_vop_nlink { nch, dvp, vp, cred }
+ *
+ * Create a hardlink to vp.
+ */
+static
+int
+hammer2_vop_nlink(struct vop_nlink_args *ap)
+{
+	hammer2_inode_t *dip;
+	hammer2_inode_t *ip;	/* inode we are hardlinking to */
+	hammer2_mount_t *hmp;
+	struct namecache *ncp;
+	const uint8_t *name;
+	size_t name_len;
+	int error;
+
+	dip = VTOI(ap->a_dvp);
+	hmp = dip->hmp;
+	if (hmp->ronly)
+		return (EROFS);
+
+	ip = VTOI(ap->a_vp);
+
+	ncp = ap->a_nch->ncp;
+	name = ncp->nc_name;
+	name_len = ncp->nc_nlen;
+
+	error = hammer2_hardlink_create(ip, dip, name, name_len);
+	if (error == 0) {
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, ap->a_vp);
+	}
+	return error;
+}
+
+/*
+ * hammer2_vop_ncreate { nch, dvp, vpp, cred, vap }
  *
  * The operating system has already ensured that the directory entry
  * does not exist and done all appropriate namespace locking.
@@ -1103,7 +1138,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
-	error = hammer2_create_inode(hmp, ap->a_vap, ap->a_cred,
+	error = hammer2_inode_create(hmp, ap->a_vap, ap->a_cred,
 				     dip, name, name_len, &nip);
 	if (error) {
 		KKASSERT(nip == NULL);
@@ -1146,7 +1181,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 
 	ap->a_vap->va_type = VLNK;	/* enforce type */
 
-	error = hammer2_create_inode(hmp, ap->a_vap, ap->a_cred,
+	error = hammer2_inode_create(hmp, ap->a_vap, ap->a_cred,
 				     dip, name, name_len, &nip);
 	if (error) {
 		KKASSERT(nip == NULL);
@@ -1222,7 +1257,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
-	error = hammer2_unlink_file(dip, name, name_len, 0);
+	error = hammer2_unlink_file(dip, name, name_len, 0, 1);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1254,7 +1289,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
-	error = hammer2_unlink_file(dip, name, name_len, 1);
+	error = hammer2_unlink_file(dip, name, name_len, 1, 1);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1314,16 +1349,20 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	/*
 	 * Remove target if it exists
 	 */
-	error = hammer2_unlink_file(tdip, tname, tname_len, -1);
+	error = hammer2_unlink_file(tdip, tname, tname_len, -1, 1);
 	if (error && error != ENOENT)
 		goto done;
 	cache_setunresolved(ap->a_tnch);
 	cache_setvp(ap->a_tnch, NULL);
 
 	/*
-	 * Disconnect ip from the source directory.
+	 * Disconnect ip from the source directory, do not adjust
+	 * the link count.  Note that rename doesn't need to understand
+	 * whether this is a hardlink or not, we can just rename the
+	 * forwarding entry and don't even have to adjust the related
+	 * hardlink's link count.
 	 */
-	error = hammer2_unlink_file(fdip, fname, fname_len, -1);
+	error = hammer2_unlink_file(fdip, fname, fname_len, -1, 0);
 	if (error)
 		goto done;
 
@@ -1333,7 +1372,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	/*
 	 * Reconnect ip to target directory.
 	 */
-	error = hammer2_connect_inode(tdip, ip, tname, tname_len);
+	error = hammer2_inode_connect(tdip, ip, tname, tname_len);
 
 	if (error == 0) {
 		cache_rename(ap->a_fnch, ap->a_tnch);
@@ -1348,11 +1387,22 @@ done:
 /*
  * Unlink the file from the specified directory inode.  The directory inode
  * does not need to be locked.
+ *
+ * isdir determines whether a directory/non-directory check should be made.
+ * No check is made if isdir is set to -1.
+ *
+ * adjlinks tells unlink that we want to adjust the nlinks count of the
+ * inode.  When removing the last link for a NON forwarding entry we can
+ * just ignore the link count... no point updating the inode that we are
+ * about to dereference, it would just result in a lot of wasted I/O.
+ *
+ * However, if the entry is a forwarding entry (aka a hardlink), and adjlinks
+ * is non-zero, we have to locate the hardlink and adjust its nlinks field.
  */
 static
 int
 hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
-		    int isdir)
+		    int isdir, int adjlinks)
 {
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *parent;
@@ -1360,11 +1410,9 @@ hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
 	hammer2_chain_t *dparent;
 	hammer2_chain_t *dchain;
 	hammer2_key_t lhc;
-	struct vnode *vp;
 	int error;
 
 	error = 0;
-	/*vap->va_nlink = ip->ip_data.nlinks;*/
 
 	hmp = dip->hmp;
 	lhc = hammer2_dirhash(name, name_len);
@@ -1432,6 +1480,23 @@ hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
 		/* dchain NULL */
 	}
 
+#if 0
+	/*
+	 * If adjlinks is non-zero this is a real deletion (otherwise it is
+	 * probably a rename).  XXX
+	 */
+	if (adjlinks) {
+		if (chain->data->ipdata.type == HAMMER2_OBJTYPE_HARDLINK) {
+			/*hammer2_adjust_hardlink(chain->u.ip, -1);*/
+			/* error handling */
+		} else {
+			waslastlink = 1;
+		}
+	} else {
+		waslastlink = 0;
+	}
+#endif
+
 	/*
 	 * Found, the chain represents the inode.  Remove the parent reference
 	 * to the chain.  The chain itself is no longer referenced and will
@@ -1442,7 +1507,13 @@ hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
 	/* XXX nlinks (hardlink special case) */
 	/* XXX nlinks (parent directory) */
 
+#if 0
+	/*
+	 * Destroy any associated vnode, but only if this was the last
+	 * link.  XXX this might not be needed.
+	 */
 	if (chain->u.ip->vp) {
+		struct vnode *vp;
 		vp = hammer2_igetv(chain->u.ip, &error);
 		if (error == 0) {
 			vn_unlock(vp);
@@ -1451,6 +1522,7 @@ hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
 			vrele(vp);
 		}
 	}
+#endif
 	error = 0;
 
 done:
@@ -1697,6 +1769,7 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_access	= hammer2_vop_access,
 	.vop_advlock	= hammer2_vop_advlock,
 	.vop_close	= hammer2_vop_close,
+	.vop_nlink	= hammer2_vop_nlink,
 	.vop_ncreate	= hammer2_vop_ncreate,
 	.vop_nsymlink	= hammer2_vop_nsymlink,
 	.vop_nremove	= hammer2_vop_nremove,
