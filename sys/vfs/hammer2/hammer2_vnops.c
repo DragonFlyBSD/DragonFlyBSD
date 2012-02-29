@@ -1263,13 +1263,92 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	return (error);
 }
 
+/*
+ * hammer2_vop_nrename { fnch, tnch, fdvp, tdvp, cred }
+ */
 static
 int
 hammer2_vop_nrename(struct vop_nrename_args *ap)
 {
-	return (EINVAL);
+	struct namecache *fncp;
+	struct namecache *tncp;
+	hammer2_inode_t *fdip;
+	hammer2_inode_t *tdip;
+	hammer2_inode_t *ip;
+	hammer2_mount_t *hmp;
+	const uint8_t *fname;
+	size_t fname_len;
+	const uint8_t *tname;
+	size_t tname_len;
+	int error;
+
+	if (ap->a_fdvp->v_mount != ap->a_tdvp->v_mount)
+		return(EXDEV);
+	if (ap->a_fdvp->v_mount != ap->a_fnch->ncp->nc_vp->v_mount)
+		return(EXDEV);
+
+	fdip = VTOI(ap->a_fdvp);	/* source directory */
+	tdip = VTOI(ap->a_tdvp);	/* target directory */
+
+	hmp = fdip->hmp;		/* check read-only filesystem */
+	if (hmp->ronly)
+		return(EROFS);
+
+	fncp = ap->a_fnch->ncp;		/* entry name in source */
+	fname = fncp->nc_name;
+	fname_len = fncp->nc_nlen;
+
+	tncp = ap->a_tnch->ncp;		/* entry name in target */
+	tname = tncp->nc_name;
+	tname_len = tncp->nc_nlen;
+
+	ip = VTOI(fncp->nc_vp);		/* inode being moved */
+
+	/*
+	 * Keep a tight grip on the inode as removing it should disconnect
+	 * it and we don't want to destroy it.
+	 */
+	hammer2_chain_ref(hmp, &ip->chain);
+	hammer2_chain_lock(hmp, &ip->chain);
+
+	/*
+	 * Remove target if it exists
+	 */
+	error = hammer2_unlink_file(tdip, tname, tname_len, -1);
+	if (error && error != ENOENT)
+		goto done;
+	cache_setunresolved(ap->a_tnch);
+	cache_setvp(ap->a_tnch, NULL);
+
+	/*
+	 * Disconnect ip from the source directory.
+	 */
+	error = hammer2_unlink_file(fdip, fname, fname_len, -1);
+	if (error)
+		goto done;
+
+	if (ip->chain.parent != NULL)
+		panic("hammer2_vop_nrename(): rename source != ip!");
+
+	/*
+	 * Reconnect ip to target directory.
+	 */
+	error = hammer2_connect_inode(tdip, ip, tname, tname_len);
+
+	if (error == 0) {
+		cache_rename(ap->a_fnch, ap->a_tnch);
+	}
+done:
+	hammer2_chain_unlock(hmp, &ip->chain);
+	hammer2_chain_drop(hmp, &ip->chain);
+
+	return (error);
 }
 
+/*
+ * Unlink the file from the specified directory inode.  The directory inode
+ * does not need to be locked.
+ */
 static
 int
 hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
@@ -1312,25 +1391,30 @@ hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
 	}
 
 	/*
-	 * Not found or wrong type
+	 * Not found or wrong type (isdir < 0 disables the type check).
 	 */
 	if (chain == NULL) {
 		hammer2_chain_put(hmp, parent);
 		return ENOENT;
 	}
-	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_DIRECTORY && !isdir) {
+	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_DIRECTORY &&
+	    isdir == 0) {
 		error = ENOTDIR;
 		goto done;
 	}
-	if (chain->data->ipdata.type != HAMMER2_OBJTYPE_DIRECTORY && isdir) {
+	if (chain->data->ipdata.type != HAMMER2_OBJTYPE_DIRECTORY &&
+	    isdir == 1) {
 		error = EISDIR;
 		goto done;
 	}
 
 	/*
-	 * If this is a directory the directory must be empty
+	 * If this is a directory the directory must be empty.  However, if
+	 * isdir < 0 we are doing a rename and the directory does not have
+	 * to be empty.
 	 */
-	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_DIRECTORY) {
+	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_DIRECTORY &&
+	    isdir >= 0) {
 		dparent = chain;
 		hammer2_chain_ref(hmp, dparent);
 		hammer2_chain_lock(hmp, dparent);
@@ -1358,12 +1442,14 @@ hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
 	/* XXX nlinks (hardlink special case) */
 	/* XXX nlinks (parent directory) */
 
-	vp = hammer2_igetv(chain->u.ip, &error);
-	if (error == 0) {
-		vn_unlock(vp);
-		/* hammer2_knote(vp, NOTE_DELETE); */
-		cache_inval_vp(vp, CINV_DESTROY);
-		vrele(vp);
+	if (chain->u.ip->vp) {
+		vp = hammer2_igetv(chain->u.ip, &error);
+		if (error == 0) {
+			vn_unlock(vp);
+			/* hammer2_knote(vp, NOTE_DELETE); */
+			cache_inval_vp(vp, CINV_DESTROY);
+			vrele(vp);
+		}
 	}
 	error = 0;
 
@@ -1539,7 +1625,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 		/*
 		 * A new data block must be allocated.
 		 */
-		chain = hammer2_chain_create(hmp, parent,
+		chain = hammer2_chain_create(hmp, parent, NULL,
 					     off_hi, HAMMER2_PBUFRADIX,
 					     HAMMER2_BREF_TYPE_DATA,
 					     HAMMER2_PBUFSIZE);

@@ -231,7 +231,7 @@ hammer2_create_inode(hammer2_mount_t *hmp,
 		++lhc;
 	}
 	if (error == 0) {
-		chain = hammer2_chain_create(hmp, parent, lhc, 0,
+		chain = hammer2_chain_create(hmp, parent, NULL, lhc, 0,
 					     HAMMER2_BREF_TYPE_INODE,
 					     HAMMER2_INODE_BYTES);
 		if (chain == NULL)
@@ -277,6 +277,82 @@ hammer2_create_inode(hammer2_mount_t *hmp,
 	bcopy(name, nip->ip_data.filename, name_len);
 	nip->ip_data.name_key = lhc;
 	nip->ip_data.name_len = name_len;
+
+	return (0);
+}
+
+/*
+ * Connect inode (ip) to the specified directory using the specified name.
+ * (ip) must be locked.
+ */
+int
+hammer2_connect_inode(hammer2_inode_t *dip, hammer2_inode_t *ip,
+		      const uint8_t *name, size_t name_len)
+{
+	hammer2_mount_t *hmp = dip->hmp;
+	hammer2_chain_t *chain;
+	hammer2_chain_t *parent;
+	hammer2_key_t lhc;
+	int error;
+
+	lhc = hammer2_dirhash(name, name_len);
+
+	/*
+	 * Locate the inode or indirect block to create the new
+	 * entry in.  At the same time check for key collisions
+	 * and iterate until we don't get one.
+	 */
+	parent = &dip->chain;
+	hammer2_chain_ref(hmp, parent);
+	hammer2_chain_lock(hmp, parent);
+
+	error = 0;
+	while (error == 0) {
+		chain = hammer2_chain_lookup(hmp, &parent, lhc, lhc, 0);
+		if (chain == NULL)
+			break;
+		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
+			error = ENOSPC;
+		hammer2_chain_put(hmp, chain);
+		chain = NULL;
+		++lhc;
+	}
+
+	/*
+	 * Passing a non-NULL chain to hammer2_chain_create() reconnects the
+	 * existing chain instead of creating a new one.  The chain's bref
+	 * will be properly updated.
+	 */
+	if (error == 0) {
+		chain = hammer2_chain_create(hmp, parent, &ip->chain, lhc, 0,
+					     HAMMER2_BREF_TYPE_INODE /* n/a */,
+					     HAMMER2_INODE_BYTES);   /* n/a */
+		if (chain == NULL)
+			error = EIO;
+	}
+	hammer2_chain_put(hmp, parent);
+
+	/*
+	 * Handle the error case
+	 */
+	if (error) {
+		KKASSERT(chain == NULL);
+		return (error);
+	}
+
+	/*
+	 * Directory entries are inodes so if the name has changed we have
+	 * to update the inode.
+	 */
+	if (ip->ip_data.name_len != name_len ||
+	    bcmp(ip->ip_data.filename, name, name_len) != 0) {
+		hammer2_chain_modify(hmp, chain);
+		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
+		bcopy(name, ip->ip_data.filename, name_len);
+		ip->ip_data.name_key = lhc;
+		ip->ip_data.name_len = name_len;
+	}
+	/*nip->ip_data.nlinks = 1;*/
 
 	return (0);
 }

@@ -131,6 +131,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
 #define HAMMER2_CHAIN_MOVED		0x00000080	/* moved */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
+#define HAMMER2_CHAIN_WAS_MODIFIED	0x00000200	/* used w/rename */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -278,11 +279,15 @@ hammer2_inode_t *hammer2_inode_alloc(hammer2_mount_t *hmp, void *data);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
+
 int hammer2_create_inode(hammer2_mount_t *hmp,
-			 struct vattr *vap, struct ucred *cred,
-			 hammer2_inode_t *dip,
-			 const uint8_t *name, size_t name_len,
-			 hammer2_inode_t **nipp);
+			struct vattr *vap, struct ucred *cred,
+			hammer2_inode_t *dip,
+			const uint8_t *name, size_t name_len,
+			hammer2_inode_t **nipp);
+
+int hammer2_connect_inode(hammer2_inode_t *dip, hammer2_inode_t *nip,
+			const uint8_t *name, size_t name_len);
 
 /*
  * hammer2_chain.c
@@ -312,6 +317,7 @@ hammer2_chain_t *hammer2_chain_next(hammer2_mount_t *hmp,
 				int flags);
 hammer2_chain_t *hammer2_chain_create(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent,
+				hammer2_chain_t *chain,
 				hammer2_key_t key, int keybits,
 				int type, size_t bytes);
 void hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
