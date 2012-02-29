@@ -1035,6 +1035,7 @@ cdopen(struct dev_open_args *ap)
 	 */
 	error = cdcheckmedia(periph);
 
+	cdprevent(periph, PR_PREVENT);
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, ("leaving cdopen\n"));
 	cam_periph_unhold(periph, 1);
 	/* stays acquired */
@@ -2799,8 +2800,6 @@ cdcheckmedia(struct cam_periph *periph)
 	first_track_audio = -1;
 	error = 0;
 
-	cdprevent(periph, PR_PREVENT);
-
 	/*
 	 * Set up disk info fields and tell the disk subsystem to reset
 	 * its internal copy of the label.
@@ -2847,8 +2846,6 @@ cdcheckmedia(struct cam_periph *periph)
 		 * Tell devstat(9) we don't have a blocksize.
 		 */
 		softc->device_stats.flags |= DEVSTAT_BS_UNAVAILABLE;
-
-		cdprevent(periph, PR_ALLOW);
 
 		return (error);
 	} else {
