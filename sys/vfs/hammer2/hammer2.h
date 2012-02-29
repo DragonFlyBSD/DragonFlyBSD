@@ -122,10 +122,10 @@ typedef struct hammer2_chain hammer2_chain_t;
 int hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2);
 SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 
-#define HAMMER2_CHAIN_MODIFIED		0x00000001	/* this elm modified */
-#define HAMMER2_CHAIN_COMMITTING	0x00000002	/* mods committing */
-#define HAMMER2_CHAIN_SUBMODIFIED	0x00000004	/* 1+ subs modified */
-#define HAMMER2_CHAIN_SUBCOMMITTING	0x00000008	/* 1+ subs committing */
+#define HAMMER2_CHAIN_MODIFIED1		0x00000001	/* active mods */
+#define HAMMER2_CHAIN_MODIFIED2		0x00000002	/* queued mods */
+#define HAMMER2_CHAIN_UNUSED0004	0x00000004
+#define HAMMER2_CHAIN_SUBMODIFIED	0x00000008	/* 1+ subs modified */
 #define HAMMER2_CHAIN_DELETED		0x00000010
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial write */
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
@@ -325,8 +325,7 @@ hammer2_chain_t *hammer2_chain_create(hammer2_mount_t *hmp,
 				int type, size_t bytes);
 void hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 				hammer2_chain_t *chain);
-void hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
-				hammer2_blockref_t *parent_bref);
+void hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_commit(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 
 /*

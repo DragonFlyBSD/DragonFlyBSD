@@ -23,6 +23,10 @@
 * When a directory entry is deleted a directory seek position depending
   on that key can cause readdir to skip entries.
 
+* TWO PHASE COMMIT - store two data offsets in the chain, and
+  hammer2_chain_delete() needs to leave the chain intact if MODIFIED2 is
+  set on its buffer until the flusher gets to it?
+
 
 				OPTIMIZATIONS
 

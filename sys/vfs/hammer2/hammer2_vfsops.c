@@ -397,7 +397,6 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	 * If mount initialization proceeded far enough we must flush
 	 * its vnodes.
 	 */
-	kprintf("iroot %p\n", hmp->iroot);
 	if (hmp->iroot)
 		error = vflush(mp, 0, flags);
 
@@ -533,6 +532,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	hammer2_mount_t *hmp;
 	int flags;
 	int error;
+	int haswork;
 
 	kprintf("hammer2_sync \n");
 	hmp = MPTOH2(mp);
@@ -561,11 +561,19 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	}
 #endif
 	hammer2_chain_lock(hmp, &hmp->vchain);
-	hammer2_chain_flush(hmp, &hmp->vchain, NULL);
+	if (hmp->vchain.flags &
+	    (HAMMER2_CHAIN_MODIFIED1 | HAMMER2_CHAIN_SUBMODIFIED)) {
+		hammer2_chain_flush(hmp, &hmp->vchain);
+		haswork = 1;
+	} else {
+		haswork = 0;
+	}
 	hammer2_chain_unlock(hmp, &hmp->vchain);
 	error = vinvalbuf(hmp->devvp, V_SAVE, 0, 0);
-	if (error == 0) {
+	if (error == 0 && haswork) {
 		struct buf *bp;
+
+		kprintf("synchronize disk\n");
 
 		bp = getpbuf(NULL);
 		bp->b_bio1.bio_offset = 0;
@@ -595,7 +603,7 @@ hammer2_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 
 	ip = VTOI(vp);
 	if (vp->v_type == VNON || ip == NULL ||
-	    ((ip->chain.flags & HAMMER2_CHAIN_MODIFIED) == 0 &&
+	    ((ip->chain.flags & HAMMER2_CHAIN_MODIFIED1) == 0 &&
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(-1);
 	}
@@ -611,7 +619,7 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 
 	ip = VTOI(vp);
 	if (vp->v_type == VNON || vp->v_type == VBAD ||
-	    ((ip->chain.flags & HAMMER2_CHAIN_MODIFIED) == 0 &&
+	    ((ip->chain.flags & HAMMER2_CHAIN_MODIFIED1) == 0 &&
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(0);
 	}

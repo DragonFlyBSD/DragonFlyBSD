@@ -107,7 +107,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	hammer2_inode_lock_ex(ip);
 	vp->v_data = NULL;
 	ip->vp = NULL;
-	hammer2_chain_flush(hmp, &ip->chain, NULL);
+	hammer2_chain_flush(hmp, &ip->chain);
 	hammer2_inode_unlock_ex(ip);
 	hammer2_chain_drop(hmp, &ip->chain);	/* vp ref removed */
 
@@ -134,7 +134,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 
 	hammer2_inode_lock_ex(ip);
 	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
-	hammer2_chain_flush(hmp, &ip->chain, NULL);
+	hammer2_chain_flush(hmp, &ip->chain);
 	hammer2_inode_unlock_ex(ip);
 	return (0);
 }
@@ -1667,6 +1667,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	hammer2_chain_t *chain;
 	hammer2_key_t off_hi;
 	int off_lo;
+	size_t radix;
 
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
@@ -1694,13 +1695,30 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	 */
 	chain = hammer2_chain_lookup(hmp, &parent, off_hi, off_hi, 0);
 	if (chain == NULL) {
+#if 0
 		/*
 		 * A new data block must be allocated.
+		 *
+		 * XXX check file size too, allocate smaller pieces
+		 * (1K, 2K, 4K, 8K, etc), make sure logical buffer
+		 * zero's past the end or pull size from logical buffer?
+		 *
+		 * XXX needs a lot of work, need to be able to extend
+		 * logical block 0's size, several bcopies assume L->P
+		 * or just P, etc.
 		 */
+		if (bio->bio_offset >= HAMMER2_PBUFSIZE)
+			radix = HAMMER2_PBUFRADIX;
+		else if (bp->b_bcount == HAMMER2_LBUFSIZE)
+			radix = HAMMER2_PBUFRADIX;
+		else
+			radix = HAMMER2_PBUFRADIX;
+#endif
+		radix = HAMMER2_PBUFRADIX;
 		chain = hammer2_chain_create(hmp, parent, NULL,
-					     off_hi, HAMMER2_PBUFRADIX,
+					     off_hi, radix,
 					     HAMMER2_BREF_TYPE_DATA,
-					     HAMMER2_PBUFSIZE);
+					     (size_t)1 << radix);
 		bcopy(bp->b_data, chain->data->buf + off_lo, bp->b_bcount);
 	} else if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		/*
@@ -1718,6 +1736,8 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 		 *
 		 * XXX implement direct-write if bp not cached using NODATA
 		 *     flag.
+		 *
+		 * XXX implement data block resizing for logical block 0
 		 */
 		hammer2_chain_modify(hmp, chain);
 		KKASSERT(bp->b_bcount <= HAMMER2_PBUFSIZE - off_lo);

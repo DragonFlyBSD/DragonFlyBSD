@@ -81,6 +81,7 @@
  */
 #define HAMMER2_PBUFRADIX	16	/* physical buf (1<<16) bytes */
 #define HAMMER2_PBUFSIZE	65536	/* fixed physical device buffer size */
+#define HAMMER2_LBUFRADIX	14	/* logical buf (1<<14) bytes */
 #define HAMMER2_LBUFSIZE	16384	/* vnode/logical file buffer size */
 
 /*
