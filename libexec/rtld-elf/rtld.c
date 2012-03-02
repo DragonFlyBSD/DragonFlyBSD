@@ -2323,7 +2323,12 @@ do_dlsym(void *handle, const char *name, void *retaddr, const Ver_Entry *ve,
 	 */
 	if (ELF_ST_TYPE(def->st_info) == STT_FUNC)
 	    return (make_function_pointer(def, defobj));
-	else
+	else if (ELF_ST_TYPE(def->st_info) == STT_TLS) {
+	    tls_index ti;
+	    ti.ti_module = defobj->tlsindex;
+	    ti.ti_offset = def->st_value;
+	    return (__tls_get_addr(&ti));
+	} else
 	    return (defobj->relocbase + def->st_value);
     }
 
