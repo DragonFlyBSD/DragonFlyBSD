@@ -5,7 +5,7 @@
 PROG=	mount_ntfs
 SRCS=	mount_ntfs.c getmntopts.c
 MAN=	mount_ntfs.8
-DPADD=	${LIBUTIL} ${LIBKICONF}
+DPADD=	${LIBUTIL} ${LIBKICONV}
 LDADD=	-lutil -lkiconv
 
 MOUNT=	${.CURDIR}/../mount
