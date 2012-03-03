@@ -10,6 +10,7 @@ TARGET_SHLIBDIR=	${LIBDIR}/security
 
 CFLAGS+=	-I${LIBPAMDIR}
 LDADD+=	-lpam
+DPADD+=	${LIBPAM}
 
 OPENPAM_DIR=	${.CURDIR}/../../../contrib/openpam
 
