@@ -1,6 +1,5 @@
 #
 # $FreeBSD: src/usr.bin/vi/Makefile,v 1.27.2.7 2002/08/07 16:32:01 ru Exp $
-# $DragonFly: src/usr.bin/vi/Makefile,v 1.6 2007/08/27 16:51:01 pavalos Exp $
 #
 
 SRCDIR=		${.CURDIR}/../../contrib/nvi
@@ -46,28 +45,13 @@ PLLINKS= pl_PL
 
 CFLAGS+=-I${.CURDIR} -I${SRCDIR} -I${SRCDIR}/include -I${SRCDIR}/vi
 
-.if !defined(TKNVI)
 DPADD+=		${LIBNCURSES}
 LDADD+=		-lncurses
-
-.else
-
-.PATH:		${SRCDIR}/tk
-LDADD+=		-L/usr/local/lib -L/usr/X11R6/lib -ltk41 -lX11
-CFLAGS+=	-I/usr/local/include -I/usr/X11R6/include
-.endif
 
 CLEANFILES+=${EX}
 
 # Vi curses sources
-.if !defined(TKNVI)
 SRCS+=	cl_bsd.c cl_funcs.c cl_main.c cl_read.c cl_screen.c cl_term.c
-.endif
-
-# Vi Tk sources
-.if defined(TKNVI)
-SRCS+=	tk_funcs.c tk_main.c tk_read.c tk_screen.c tk_term.c tk_util.c
-.endif
 
 # General sources.
 SRCS+=	cut.c delete.c exf.c key.c line.c log.c main.c mark.c msg.c options.c \
