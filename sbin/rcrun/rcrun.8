@@ -36,6 +36,7 @@
 .Nm rcstart ,
 .Nm rcforce ,
 .Nm rcfast ,
+.Nm rcone ,
 .Nm rcstop ,
 .Nm rcrestart ,
 .Nm rcvar ,
@@ -51,6 +52,8 @@
 .Nm rcforce
 .Ar script ...
 .Nm rcfast
+.Ar script ...
+.Nm rcone
 .Ar script ...
 .Nm rcstop
 .Ar script ...
@@ -75,6 +78,7 @@ The
 .Cm start ,
 .Cm forcestart ,
 .Cm faststart ,
+.Cm onestart ,
 .Cm stop ,
 .Cm restart ,
 and
@@ -114,6 +118,7 @@ If no argument is specified, the status of all scripts is shown.
 .Nm Rcstart ,
 .Nm rcforce ,
 .Nm rcfast ,
+.Nm rcone ,
 .Nm rcstop ,
 .Nm rcrestart ,
 .Nm rcvar ,
@@ -126,7 +131,8 @@ are shortcuts for
 commands.
 .Sh SEE ALSO
 .Xr rc.conf 5 ,
-.Xr rc 8
+.Xr rc 8 ,
+.Xr rc.subr 8
 .Sh HISTORY
 The
 .Nm
