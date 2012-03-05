@@ -1980,6 +1980,7 @@ TO_REMOVE+=/usr/include/sys/dataacq.h
 TO_REMOVE+=/usr/share/man/cat4/bfq.4.gz
 TO_REMOVE+=/usr/share/man/man4/bfq.4.gz
 TO_REMOVE+=/usr/include/bus/pci/dc21040reg.h
+TO_REMOVE+=/usr/lib/profile/libtinfo.aa
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys

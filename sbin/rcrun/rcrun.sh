@@ -87,7 +87,7 @@ dostart()
 		(sh $j $arg)
 		case X`varsym -s -q rcng_$i` in
 		Xdisabled*)
-		    echo "$i is disabled, enable in rc.conf first or use rcforce"
+		    echo "$i is disabled, enable in rc.conf first or use rcforce/rcone"
 		    ;;
 		Xfailed*)
 		    echo "$i has failed to start"
@@ -126,6 +126,9 @@ rcforce)
 rcfast)
     arg=faststart
     ;;
+rcone)
+    arg=onestart
+    ;;
 rcenable)
     arg=enable
     ;;
@@ -147,6 +150,9 @@ forcestart)
 	;;
 faststart)
 	dostart faststart $@
+	;;
+onestart)
+	dostart onestart $@
 	;;
 stop)
 	for i in $@; do
@@ -224,7 +230,9 @@ list)
 	fi
 	;;
 *)
-	echo "usage: rcrun start|stop|restart|rcvar|list|forcestart|faststart|disable|enable"
-	echo "             script ..."
+	echo "usage: rcrun action rcscript1 ..."
+	echo "  where 'action' is one of:"
+	echo "    start|stop|restart|rcvar|list|forcestart|faststart|onestart"
+	echo "    disable|enable"
 	;;
 esac

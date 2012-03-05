@@ -430,6 +430,7 @@ wait_for_pids()
 #		------	---------
 #		fast	Skip the pid check, and set rc_fast=yes
 #		force	Set ${rcvar} to YES, and set rc_force=yes
+#		one	Set ${rcvar} to YES
 #
 #	The following globals are used:
 #
@@ -541,7 +542,7 @@ wait_for_pids()
 #
 #	Variable	Purpose
 #	--------	-------
-#	rc_arg		Argument to command, after fast/force processing
+#	rc_arg		Argument to command, after fast/force/one processing
 #			performed
 #
 #	rc_flags	Flags to start the default command with.
@@ -564,8 +565,11 @@ dummy_rc_command()
 	fast*)				# "fast" prefix; don't check pid
 		rc_arg=${rc_arg#fast}
 		;;
-	force*)				# "force prefix; always start
+	force*)				# "force" prefix; always start
 		rc_arg=${rc_arg#force}
+		;;
+	one*)				# "one" prefix; set ${rcvar}=yes
+		rc_arg=${rc_arg#one}
 		;;
 	esac
 	set_provide_list $rc_arg $RC_CONFIGURED
@@ -585,13 +589,18 @@ run_rc_command()
 		rc_arg=${rc_arg#fast}
 		rc_fast=yes
 		;;
-	force*)				# "force prefix; always start
+	force*)				# "force" prefix; always start
 		rc_arg=${rc_arg#force}
 		rc_force=yes
 		if [ -n "${rcvar}" ]; then
 			eval ${rcvar}=YES
 		fi
 		;;
+	one*)				# "one" prefix; set ${rcvar}=yes
+		rc_arg=${rc_arg#one}
+		if [ -n "${rcvar}" ]; then
+			eval ${rcvar}=YES
+		fi
 	esac
 
 	eval _override_command=\$${name}_program
@@ -1038,7 +1047,7 @@ load_rc_config()
 #
 rc_usage()
 {
-	echo -n 1>&2 "Usage: $0 [fast|force]("
+	echo -n 1>&2 "Usage: $0 [fast|force|one]("
 
 	_sep=
 	for _elem in $*; do

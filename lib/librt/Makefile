@@ -2,6 +2,7 @@ LIB=rt
 SHLIB_MAJOR=0
 WARNS?=2
 LDADD+=-pthread
+DPADD+=${LIBPTHREAD}
 
 SRCS+= mq.c aio.c
 

@@ -1,5 +1,4 @@
 #	$OpenBSD: Makefile,v 1.10 2003/11/20 23:23:09 avsm Exp $
-# $DragonFly: src/usr.sbin/authpf/Makefile,v 1.2 2005/02/12 03:06:23 joerg Exp $
 
 PROG=	authpf
 MAN=	authpf.8
@@ -12,7 +11,7 @@ SRCS=	authpf.c
 CFLAGS+=	-I${.CURDIR}/../pfctl
 
 LDADD+= -lm -lmd -lutil
-DPADD+= ${LIBM}
+DPADD+= ${LIBM} ${LIBMD} ${LIBUTIL}
 
 CLEANFILES+=	y.tab.h
 

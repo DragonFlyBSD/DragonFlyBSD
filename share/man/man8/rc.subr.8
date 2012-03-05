@@ -329,7 +329,7 @@ with
 .Ar commands
 being the list of valid arguments
 prefixed by
-.Dq "[fast|force]" .
+.Dq "[fast|force|one]" .
 .It Ic reverse_list Ar item Op Ar ...
 Print the list of
 .Ar items
@@ -378,6 +378,10 @@ This ignores
 returning non-zero, and ignores any of the
 .Sy required_*
 tests failing .
+.It Li one
+Skip the checks for
+.Sy rcvar
+being set to yes, but performs all the other prerequisite tests.
 .El
 .Pp
 .Ic run_rc_command
