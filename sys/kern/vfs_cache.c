@@ -920,7 +920,7 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 		spin_unlock(&ncspin);
 		ncp->nc_error = ENOENT;
 		if (mp)
-			ncp->nc_namecache_gen = mp->mnt_namecache_gen;
+			VFS_NCPGEN_SET(mp, ncp);
 	}
 	ncp->nc_flag &= ~(NCF_UNRESOLVED | NCF_DEFEREDZAP);
 }
@@ -1032,8 +1032,7 @@ _cache_auto_unresolve(struct mount *mp, struct namecache *ncp)
 	 * If a resolved negative cache hit is invalid due to
 	 * the mount's namecache generation being bumped, zap it.
 	 */
-	if (ncp->nc_vp == NULL &&
-	    ncp->nc_namecache_gen != mp->mnt_namecache_gen) {
+	if (ncp->nc_vp == NULL && VFS_NCPGEN_TEST(mp, ncp)) {
 		_cache_setunresolved(ncp);
 		return;
 	}

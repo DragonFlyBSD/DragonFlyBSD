@@ -37,6 +37,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/mount.h>
+#include <sys/namecache.h>
 #include <sys/vnode.h>
 #include <sys/jail.h>
 #include <sys/lock.h>
@@ -252,6 +253,17 @@ devfs_vfs_vget(struct mount *mp, struct vnode *dvp,
 	return 0;
 }
 
+static void
+devfs_vfs_ncpgen_set(struct mount *mp, struct namecache *ncp)
+{
+	ncp->nc_namecache_gen = mp->mnt_namecache_gen;
+}
+
+static int
+devfs_vfs_ncpgen_test(struct mount *mp, struct namecache *ncp)
+{
+	return (ncp->nc_namecache_gen != mp->mnt_namecache_gen);
+}
 
 static struct vfsops devfs_vfsops = {
 	.vfs_mount 	= devfs_vfs_mount,
@@ -261,7 +273,9 @@ static struct vfsops devfs_vfsops = {
 	.vfs_sync 	= vfs_stdsync,
 	.vfs_vget	= devfs_vfs_vget,
 	.vfs_vptofh	= devfs_vfs_vptofh,
-	.vfs_fhtovp	= devfs_vfs_fhtovp
+	.vfs_fhtovp	= devfs_vfs_fhtovp,
+	.vfs_ncpgen_set	= devfs_vfs_ncpgen_set,
+	.vfs_ncpgen_test	= devfs_vfs_ncpgen_test
 };
 
 VFS_SET(devfs_vfsops, devfs, VFCF_SYNTHETIC);
