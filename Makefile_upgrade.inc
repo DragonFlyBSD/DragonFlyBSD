@@ -1883,6 +1883,7 @@ TO_REMOVE+=/usr/share/man/man3/archive_write_set_format_shar_binary.3.gz
 TO_REMOVE+=/usr/share/man/cat3/archive_write_set_format_shar_binary.3.gz
 TO_REMOVE+=/usr/share/man/man3/archive_write_set_format_ustar.3.gz
 TO_REMOVE+=/usr/share/man/cat3/archive_write_set_format_ustar.3.gz
+TO_REMOVE+=/usr/lib/profile/libtinfo.aa
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys

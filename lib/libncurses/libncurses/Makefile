@@ -1,5 +1,3 @@
-# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.11 2005/12/06 02:22:23 corecode Exp $
-
 LIB=    ncurses
 
 .include "../Makefile.inc"
@@ -302,7 +300,7 @@ SYMLINKS+=libncurses.a ${PROFLIBDIR}/libcurses.a
 SYMLINKS+=libncurses.a ${PROFLIBDIR}/libtermcap.a
 SYMLINKS+=libncurses.a ${PROFLIBDIR}/libtermlib.a
 SYMLINKS+=libncurses.a ${PROFLIBDIR}/libmytinfo.a
-SYMLINKS+=libncurses.a ${PROFLIBDIR}/libtinfo.aa
+SYMLINKS+=libncurses.a ${PROFLIBDIR}/libtinfo.a
 .endif
 
 INCS=	term.h ${.CURDIR}/../include/termcap.h \
