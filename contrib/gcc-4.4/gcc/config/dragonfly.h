@@ -148,8 +148,6 @@ along with GCC; see the file COPYING3.  If not see
 #undef  WCHAR_TYPE
 #define WCHAR_TYPE "int"
 
-#define MATH_LIBRARY_PROFILE    "-lm_p"
-
 /* Code generation parameters.  */
 
 /* Use periods rather than dollar signs in special g++ assembler names.
