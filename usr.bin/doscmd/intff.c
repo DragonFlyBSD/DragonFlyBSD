@@ -30,7 +30,6 @@
  *	BSDI intff.c,v 2.2 1996/04/08 19:32:56 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/intff.c,v 1.7.2.2 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/intff.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,8 +40,8 @@
 #include "cwd.h"
 #include "dispatch.h"
 
-static LOL	*lol = 0;		/* DOS list-of-lists */
-static SDA	*sda = 0;		/* DOS swappable data area */
+static LOL	*lol = NULL;		/* DOS list-of-lists */
+static SDA	*sda = NULL;		/* DOS swappable data area */
 
 /******************************************************************************
 ** redirector functions
@@ -785,7 +784,7 @@ init_drives(void)
 
     /* for all possible drives */
     for (drive = 0; drive < 26; ++drive) {
-	if ((path = dos_getpath(drive)) != 0)	/* assigned to a path? */
+	if ((path = dos_getpath(drive)) != NULL)	/* assigned to a path? */
 	    install_drive(drive, path);		/* make it visible to DOS */
     }	
 }

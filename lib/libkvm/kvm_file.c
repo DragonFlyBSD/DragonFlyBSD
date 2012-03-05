@@ -32,7 +32,6 @@
  *
  * @(#)kvm_file.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_file.c,v 1.11 2000/02/18 16:39:00 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_file.c,v 1.5 2007/05/13 18:33:56 swildner Exp $
  */
 
 /*
@@ -94,7 +93,7 @@ kvm_deadfiles(kvm_t *kd, int op, int arg, long filehead_o, int nfiles)
 	/*
 	 * followed by an array of file structures
 	 */
-	for (fp = filehead.lh_first; fp != 0; fp = fp->f_list.le_next) {
+	for (fp = filehead.lh_first; fp != NULL; fp = fp->f_list.le_next) {
 		if (buflen > sizeof (struct file)) {
 			if (KREAD(kd, (long)fp, ((struct file *)where))) {
 				_kvm_err(kd, kd->program, "can't read kfp");

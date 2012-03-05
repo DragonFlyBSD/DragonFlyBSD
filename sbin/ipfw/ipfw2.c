@@ -1766,7 +1766,7 @@ lookup_host (char *host, struct in_addr *ipaddr)
 static void
 fill_ip(ipfw_insn_ip *cmd, char *av)
 {
-	char *p = 0, md = 0;
+	char *p = NULL, md = 0;
 	u_int32_t i;
 
 	cmd->o.len &= ~F_LEN_MASK;	/* zero len */
@@ -3546,7 +3546,7 @@ ipfw_readfile(int ac, char *av[])
 		/* pipe through preprocessor (cpp or m4) */
 		int pipedes[2];
 
-		args[i] = 0;
+		args[i] = NULL;
 
 		if (pipe(pipedes) == -1)
 			err(EX_OSERR, "cannot create pipe");

@@ -48,7 +48,6 @@
  *
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/gethostbyht.c,v 1.27 2007/01/09 00:28:02 imp Exp $
- * $DragonFly: src/lib/libc/net/gethostbyht.c,v 1.6 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -254,7 +253,7 @@ _ht_gethostbyname(void *rval, void *cb_data, va_list ap)
 		}
 		if (strcasecmp(he.h_name, name) == 0)
 			break;
-		for (cp = he.h_aliases; *cp != 0; cp++)
+		for (cp = he.h_aliases; *cp != NULL; cp++)
 			if (strcasecmp(*cp, name) == 0)
 				goto found;
 	}

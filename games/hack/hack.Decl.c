@@ -1,6 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.Decl.c - version 1.0.3 */
-/* $DragonFly: src/games/hack/hack.Decl.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 char nul[40];			/* contains zeros */
@@ -14,12 +13,12 @@ struct rm levl[COLNO][ROWNO];	/* level map */
 struct mkroom rooms[MAXNROFROOMS + 1];
 coord doors[DOORMAX];
 #endif /* QUEST */
-struct monst *fmon = 0;
-struct trap *ftrap = 0;
-struct gold *fgold = 0;
-struct obj *fobj = 0, *fcobj = 0, *invent = 0, *uwep = 0, *uarm = 0,
-	*uarm2 = 0, *uarmh = 0, *uarms = 0, *uarmg = 0, *uright = 0,
-	*uleft = 0, *uchain = 0, *uball = 0;
+struct monst *fmon = NULL;
+struct trap *ftrap = NULL;
+struct gold *fgold = NULL;
+struct obj *fobj = NULL, *fcobj = NULL, *invent = NULL, *uwep = NULL, *uarm = NULL,
+	*uarm2 = NULL, *uarmh = NULL, *uarms = NULL, *uarmg = NULL, *uright = NULL,
+	*uleft = NULL, *uchain = NULL, *uball = NULL;
 struct flag flags;
 struct you u;
 struct monst youmonst;	/* dummy; used as return value for boomhit */

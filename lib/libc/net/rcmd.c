@@ -28,7 +28,6 @@
  *
  * @(#)rcmd.c	8.3 (Berkeley) 3/26/94
  * $FreeBSD: src/lib/libc/net/rcmd.c,v 1.42 2007/01/09 00:28:02 imp Exp $
- * $DragonFly: src/lib/libc/net/rcmd.c,v 1.7 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include "namespace.h"
@@ -202,7 +201,7 @@ rcmd_af(char **ahost, int rport, const char *locuser, const char *remuser,
 		}
 	}
 	lport--;
-	if (fd2p == 0) {
+	if (fd2p == NULL) {
 		_write(s, "", 1);
 		lport = 0;
 	} else {

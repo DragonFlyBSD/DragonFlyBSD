@@ -10,7 +10,6 @@
  * prune.c,v 3.8.4.59 1998/03/01 02:06:32 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/prune.c,v 1.17.2.1 2000/10/29 03:59:57 kris Exp $
- * $DragonFly: src/usr.sbin/mrouted/prune.c,v 1.6 2008/04/20 13:44:26 swildner Exp $
  */
 
 #include "defs.h"
@@ -627,7 +626,7 @@ next_grp_src_mask(struct gtable **gtpp, /* ordered by group  */
    }
    (*gtpp) = gbest;
    (*stpp) = sbest;
-   return (*gtpp)!=0;
+   return (*gtpp)!=NULL;
 }
 
 /*

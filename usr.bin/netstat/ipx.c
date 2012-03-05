@@ -33,7 +33,6 @@
  *
  * @(#)ns.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/ipx.c,v 1.13.2.1 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/ipx.c,v 1.6 2007/05/17 08:19:02 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -316,12 +315,12 @@ ipx_erputil(int z, int c)
 	char *name, *where;
 
 	for(j = 0;; j ++) {
-		if ((name = ipx_errnames[j].name) == 0)
+		if ((name = ipx_errnames[j].name) == NULL)
 			break;
 		if (ipx_errnames[j].code == c)
 			break;
 	}
-	if (name == 0)  {
+	if (name == NULL)  {
 		if (c > 01000)
 			where = "in transit";
 		else

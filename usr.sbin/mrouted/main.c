@@ -940,7 +940,7 @@ dolog(int severity, int syserr, char *format, ...)
 
 	for (i = 0; i < NLOGMSGS; i++) {
 	    logmsg[i] = malloc(LOGMSGSIZE);
-	    if (logmsg[i] == 0) {
+	    if (logmsg[i] == NULL) {
 		syslog(LOG_ERR, "out of memory");
 		exit(-1);
 	    }

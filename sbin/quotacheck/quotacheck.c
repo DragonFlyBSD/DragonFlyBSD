@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quotacheck.c	8.3 (Berkeley) 1/29/94
  * $FreeBSD: src/sbin/quotacheck/quotacheck.c,v 1.11 1999/08/28 00:14:01 peter Exp $
- * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.10 2006/10/19 21:22:13 pavalos Exp $
  */
 
 /*
@@ -335,7 +334,7 @@ update(char *fsname, char *quotafile, int type)
 	    id++, offset += sizeof(struct ufs_dqblk)) {
 		if (fread((char *)&dqbuf, sizeof(struct ufs_dqblk), 1, qfi) == 0)
 			dqbuf = zerodqbuf;
-		if ((fup = lookup(id, type)) == 0)
+		if ((fup = lookup(id, type)) == NULL)
 			fup = &zerofileusage;
 		if (dqbuf.dqb_curinodes == fup->fu_curinodes &&
 		    dqbuf.dqb_curblocks == fup->fu_curblocks) {
@@ -465,7 +464,7 @@ lookup(u_long id, int type)
 {
 	struct fileusage *fup;
 
-	for (fup = fuhead[type][id & (FUHASH-1)]; fup != 0; fup = fup->fu_next)
+	for (fup = fuhead[type][id & (FUHASH-1)]; fup != NULL; fup = fup->fu_next)
 		if (fup->fu_id == id)
 			return (fup);
 	return (NULL);

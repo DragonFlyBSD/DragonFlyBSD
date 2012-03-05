@@ -32,7 +32,6 @@
  *
  * @(#)expand.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/expand.c,v 1.8 1999/08/28 01:05:06 peter Exp $
- * $DragonFly: src/usr.bin/rdist/expand.c,v 1.6 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include "defs.h"
@@ -109,7 +108,7 @@ expand(struct namelist *list, int wh)
 	tilde = "";
 	eargc = 0;
 	eargv = sortbase = argvbuf;
-	*eargv = 0;
+	*eargv = NULL;
 	nleft = NCARGS - 4;
 	/*
 	 * Walk the name list and expand names into eargv[];
@@ -386,7 +385,7 @@ doit:
 			strcpy(lm, pl);
 			strcat(restbuf, pe + 1);
 			*pm = savec;
-			if (s == 0) {
+			if (s == NULL) {
 				spathp = pathp;
 				expsh(restbuf);
 				pathp = spathp;
@@ -580,7 +579,7 @@ Cat(char *s1, char *s2)
 	nleft -= len;
 	if (nleft <= 0 || ++eargc >= GAVSIZ)
 		yyerror("Arguments too long");
-	eargv[eargc] = 0;
+	eargv[eargc] = NULL;
 	eargv[eargc - 1] = s = malloc(len);
 	if (s == NULL)
 		fatal("ran out of memory\n");

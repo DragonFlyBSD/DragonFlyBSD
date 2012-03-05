@@ -1,6 +1,5 @@
 /*	diag.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/diag.c,v 1.5 1999/11/16 02:57:21 billf Exp $ */
-/* $DragonFly: src/games/larn/diag.c,v 1.5 2006/08/26 17:05:05 pavalos Exp $ */
 #include <sys/types.h>
 #include <sys/times.h>
 #include <sys/stat.h>
@@ -288,10 +287,10 @@ restoregame(char *fname)
 
 	for (i = 0; i < MAXMONST; i++)
 		monster[i].genocided = lgetc();	/* genocide info */
-	for (sp = 0, i = 0; i < c[SPHCAST]; i++) {
+	for (sp = NULL, i = 0; i < c[SPHCAST]; i++) {
 		sp2 = sp;
 		sp = malloc(sizeof(struct sphere));
-		if (sp == 0) {
+		if (sp == NULL) {
 			write(2, "Can't malloc() for sphere space\n", 32);
 			break;
 		}

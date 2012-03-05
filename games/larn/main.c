@@ -1,5 +1,4 @@
 /* $FreeBSD: src/games/larn/main.c,v 1.9 1999/11/30 03:48:59 billf Exp $ */
-/* $DragonFly: src/games/larn/main.c,v 1.5 2008/06/05 18:06:30 swildner Exp $ */
 /* main.c */
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -82,17 +81,17 @@ main(int argc, char **argv)
 	init_term();	/* setup the terminal (find out what type) for termcap */
 #endif /* VT100 */
 	/* try to get login name */
-	if (((ptr = getlogin()) == 0) || (*ptr == 0)) {
+	if (((ptr = getlogin()) == NULL) || (*ptr == 0)) {
 		/* can we get it from /etc/passwd? */
 		if ((pwe = getpwuid(getuid())) != NULL)
 			ptr = pwe->pw_name;
-		else if ((ptr = getenv("USER")) == 0)
-			if ((ptr = getenv("LOGNAME")) == 0) {
+		else if ((ptr = getenv("USER")) == NULL)
+			if ((ptr = getenv("LOGNAME")) == NULL) {
 noone: 				write(2, "Can't find your logname.  Who Are You?\n", 39);
 				exit(1);
 			}
 	}
-	if (ptr == 0)
+	if (ptr == NULL)
 		goto noone;
 	if (strlen(ptr) == 0)
 		goto noone;
@@ -102,7 +101,7 @@ noone: 				write(2, "Can't find your logname.  Who Are You?\n", 39);
 	 */
 	strcpy(loginname, ptr);	/* save loginname of the user for logging purposes */
 	strcpy(logname, ptr);	/* this will be overwritten with the players name */
-	if ((ptr = getenv("HOME")) == 0)
+	if ((ptr = getenv("HOME")) == NULL)
 		ptr = ".";
 	strcpy(savefilename, ptr);
 	strcat(savefilename, "/Larn.sav");	/* save file name in home directory */

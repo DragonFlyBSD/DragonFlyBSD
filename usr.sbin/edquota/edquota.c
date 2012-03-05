@@ -391,7 +391,7 @@ getprivs(long id, int quotatype, char *fspath)
 		else
 			quptail->next = qup;
 		quptail = qup;
-		qup->next = 0;
+		qup->next = NULL;
 	}
 	endfsent();
 	return (quphead);

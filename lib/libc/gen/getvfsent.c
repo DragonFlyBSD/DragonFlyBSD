@@ -4,7 +4,6 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/lib/libc/gen/getvfsent.c,v 1.14.2.1 2001/03/05 09:19:38 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getvfsent.c,v 1.3 2005/04/26 06:16:29 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -18,7 +17,7 @@
 /* XXX hide some compatibility problems. */
 #undef getvfsbyname
 
-static struct ovfsconf *_vfslist = 0;
+static struct ovfsconf *_vfslist = NULL;
 static struct ovfsconf _vfsconf;
 static size_t _vfslistlen = 0;
 static int _vfs_keeplist = 0;
@@ -44,7 +43,7 @@ initvfs(void)
 	rv = sysctl(mib, 2, _vfslist, &size, NULL, (size_t)0);
 	if(rv < 0) {
 		free(_vfslist);
-		_vfslist = 0;
+		_vfslist = NULL;
 		return 0;
 	}
 
@@ -67,7 +66,7 @@ getvfsent(void)
 
 	if(!_vfs_keeplist) {
 		free(_vfslist);
-		_vfslist = 0;
+		_vfslist = NULL;
 	}
 	return &_vfsconf;
 }
@@ -90,7 +89,7 @@ getvfsbyname(const char *name)
 
 	if(!_vfs_keeplist) {
 		free(_vfslist);
-		_vfslist = 0;
+		_vfslist = NULL;
 	}
 
 	if(i < _vfslistlen)
@@ -117,7 +116,7 @@ getvfsbytype(int type)
 
 	if(!_vfs_keeplist) {
 		free(_vfslist);
-		_vfslist = 0;
+		_vfslist = NULL;
 	}
 
 	if(i < _vfslistlen)
@@ -131,7 +130,7 @@ setvfsent(int keep)
 {
 	if(_vfslist && !keep) {
 		free(_vfslist);
-		_vfslist = 0;
+		_vfslist = NULL;
 	}
 
 	_vfs_keeplist = keep;
@@ -143,7 +142,7 @@ endvfsent(void)
 {
 	if(_vfslist) {
 		free(_vfslist);
-		_vfslist = 0;
+		_vfslist = NULL;
 	}
 
 	_vfs_index = 0;

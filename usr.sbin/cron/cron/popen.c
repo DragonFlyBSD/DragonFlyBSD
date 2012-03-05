@@ -19,7 +19,6 @@
  *
  * @(#)popen.c	5.7 (Berkeley) 2/14/89
  * $FreeBSD: src/usr.sbin/cron/cron/popen.c,v 1.7.2.3 2000/12/11 01:03:31 obrien Exp $
- * $DragonFly: src/usr.sbin/cron/cron/popen.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* this came out of the ftpd sources; it's been modified to avoid the
@@ -220,7 +219,7 @@ cron_pclose(FILE *iop)
 	 * pclose returns -1 if stream is not associated with a
 	 * `popened' command, or, if already `pclosed'.
 	 */
-	if (pids == 0 || pids[fdes = fileno(iop)] == 0)
+	if (pids == NULL || pids[fdes = fileno(iop)] == 0)
 		return(-1);
 	fclose(iop);
 	omask = sigblock(sigmask(SIGINT)|sigmask(SIGQUIT)|sigmask(SIGHUP));

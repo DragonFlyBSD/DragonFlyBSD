@@ -35,7 +35,6 @@
  *
  * @(#)net.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/finger/net.c,v 1.12.2.4 2002/12/16 08:41:28 roam Exp $
- * $DragonFly: src/usr.bin/finger/net.c,v 1.5 2004/09/03 19:13:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +65,7 @@ netfinger(char *name)
 	static struct addrinfo hint;
 
 	host = strrchr(name, '@');
-	if (host == 0)
+	if (host == NULL)
 		return;
 	*host++ = '\0';
 	signal(SIGALRM, cleanup);
@@ -90,7 +89,7 @@ netfinger(char *name)
 	else
 		printf("[%s]\n", ai0->ai_canonname);
 
-	for (ai = ai0; ai != 0; ai = ai->ai_next) {
+	for (ai = ai0; ai != NULL; ai = ai->ai_next) {
 		if (multi)
 			trying(ai);
 

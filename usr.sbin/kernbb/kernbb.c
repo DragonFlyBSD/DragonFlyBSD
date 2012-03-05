@@ -7,7 +7,6 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/usr.sbin/kernbb/kernbb.c,v 1.11.2.1 2001/07/19 04:17:03 kris Exp $
- * $DragonFly: src/usr.sbin/kernbb/kernbb.c,v 1.3 2003/11/16 15:17:36 eirikn Exp $
  */
 
 #include <err.h>
@@ -129,8 +128,8 @@ main(int argc __unused, char **argv __unused)
 				free(pn[i]);
 			if (file[i] && fn[i])
 				free(fn[i]);
-			pn[i] = 0;
-			fn[i] = 0;
+			pn[i] = NULL;
+			fn[i] = NULL;
 		}
 	}
 	return 0;

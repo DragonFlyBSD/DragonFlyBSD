@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/crypto/telnet/libtelnet/auth.c,v 1.3.2.5 2002/04/13 10:59:07 markm Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/auth.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  *
  * @(#)auth.c	8.3 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/libtelnet/auth.c,v 1.3.2.5 2002/04/13 10:59:07 markm Exp $
@@ -96,7 +95,7 @@ extern rsaencpwd_printsub();
 int auth_debug_mode = 0;
 static 	const char	*Name = "Noname";
 static	int	Server = 0;
-static	Authenticator	*authenticated = 0;
+static	Authenticator	*authenticated = NULL;
 static	int	authenticating = 0;
 static	int	validuser = 0;
 static	unsigned char	_auth_send_data[256];
@@ -202,7 +201,7 @@ auth_init(const char *name, int server)
 	Name = name;
 
 	i_support = 0;
-	authenticated = 0;
+	authenticated = NULL;
 	authenticating = 0;
 	while (ap->type) {
 		if (!ap->init || (*ap->init)(ap, server)) {

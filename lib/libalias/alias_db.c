@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_db.c,v 1.21.2.14 2002/07/24 03:21:24 luigi Exp $
- * $DragonFly: src/lib/libalias/alias_db.c,v 1.7 2008/09/30 16:57:04 swildner Exp $
  */
 
 /*
@@ -815,7 +814,7 @@ FindNewPortGroup(struct in_addr  dst_addr,
       struct alias_link *search_result;
 
       for (j = 0; j < port_count; j++)
-        if (0 != (search_result = FindLinkIn(dst_addr, alias_addr,
+        if (NULL != (search_result = FindLinkIn(dst_addr, alias_addr,
                                         dst_port, htons(port_sys + j),
                                         link_type, 0)))
 	  break;

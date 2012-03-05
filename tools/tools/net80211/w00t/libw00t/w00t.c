@@ -228,7 +228,7 @@ void *get_wifi(void *buf, int *len)
 int send_ack(int fd, char *mac)
 {
 	static char buf[2+2+6];
-	static char *p = 0;
+	static char *p = NULL;
 	int rc;
 
 	if (!p) {

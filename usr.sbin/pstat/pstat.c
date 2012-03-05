@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.22 2008/03/04 18:10:44 swildner Exp $
  */
 
 #include <sys/user.h>
@@ -265,7 +264,7 @@ main(int argc, char **argv)
 	if (nlistf != NULL || memf != NULL)
 		setgid(getgid());
 
-	if ((kd = kvm_openfiles(nlistf, memf, NULL, O_RDONLY, buf)) == 0)
+	if ((kd = kvm_openfiles(nlistf, memf, NULL, O_RDONLY, buf)) == NULL)
 		errx(1, "kvm_openfiles: %s", buf);
 #ifdef USE_KCORE
 	if (kcore_wrapper_open(nlistf, memf, buf))
@@ -757,7 +756,7 @@ ttytype(struct tty *tty, const char *name, int type, int number, int indir)
 	printf("%d %s %s\n", ntty, name, (ntty == 1) ? "line" : "lines");
 	if (ntty > ttyspace) {
 		ttyspace = ntty;
-		if ((tty = realloc(tty, ttyspace * sizeof(*tty))) == 0)
+		if ((tty = realloc(tty, ttyspace * sizeof(*tty))) == NULL)
 			errx(1, "realloc");
 	}
 	if (indir) {

@@ -123,7 +123,6 @@
  *   been tested on my FreeBSD machine. Your mileage may vary.
  *
  * $FreeBSD: src/usr.bin/fmt/fmt.c,v 1.12.2.2 2002/01/14 09:48:26 ru Exp $
- * $DragonFly: src/usr.bin/fmt/fmt.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 /* Copyright (c) 1997 Gareth McCaughan. All rights reserved.
@@ -223,7 +222,7 @@ static int grok_mail_headers=0;	/* treat embedded mail headers magically? */
 static int format_troff=0;	/* Format troff? */
 
 static int n_errors=0;		/* Number of failed files. Return on exit. */
-static char *output_buffer=0;	/* Output line will be built here */
+static char *output_buffer=NULL;	/* Output line will be built here */
 static size_t x;		/* Horizontal position in output line */
 static size_t x0;		/* Ditto, ignoring leading whitespace */
 static size_t pending_spaces;	/* Spaces to add before next word */
@@ -574,7 +573,7 @@ static void
 center_stream(FILE *stream, const char *name) {
   char *line;
   size_t length;
-  while ((line=get_line(stream, &length)) != 0) {
+  while ((line=get_line(stream, &length)) != NULL) {
     size_t l=length;
     while (l>0 && isspace(*line)) { ++line; --l; }
     length=l;

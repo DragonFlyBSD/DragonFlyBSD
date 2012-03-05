@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.vault.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.vault.c,v 1.4 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.vault.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 #ifdef QUEST
@@ -76,7 +75,7 @@ restfakecorr(void)
 	}
 	/* it seems he left the corridor - let the guard disappear */
 	mondead(guard);
-	guard = 0;
+	guard = NULL;
 }
 
 static bool
@@ -101,7 +100,7 @@ setgd(void)
 			gdlevel = dlevel;
 			return;
 		}
-	guard = 0;
+	guard = NULL;
 }
 
 void
@@ -161,7 +160,7 @@ fnd:
 		gdlevel = dlevel;
 		if (!cansee(guard->mx, guard->my)) {
 			mondead(guard);
-			guard = 0;
+			guard = NULL;
 			return;
 		}
 
@@ -175,7 +174,7 @@ fnd:
 		if (!strcmp(buf, "Croesus") || !strcmp(buf, "Kroisos")) {
 			pline("\"Oh, yes - of course. Sorry to have disturbed you.\"");
 			mondead(guard);
-			guard = 0;
+			guard = NULL;
 			return;
 		}
 		clrlin();
@@ -298,7 +297,7 @@ newpos:
 void
 gddead(void)
 {
-	guard = 0;
+	guard = NULL;
 }
 
 void

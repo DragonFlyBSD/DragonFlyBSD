@@ -52,7 +52,7 @@ p_expr3_10(int level, struct value *v, char flag)
 {
 	struct value l, r;
 	int op;
-	const char *opname = 0;
+	const char *opname = NULL;
 
 	if ((level == 10 ? p_expr11(v, flag)
 	     : p_expr3_10(level + 1, v, flag)) < 0)

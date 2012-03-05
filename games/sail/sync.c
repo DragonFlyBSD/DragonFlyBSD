@@ -28,7 +28,6 @@
  *
  * @(#)sync.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/sync.c,v 1.9 1999/11/30 03:49:38 billf Exp $
- * $DragonFly: src/games/sail/sync.c,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include <sys/file.h>
@@ -84,7 +83,7 @@ makesignal(struct ship *from, const char *fmt, struct ship *ship, ...)
 	va_list ap;
 
 	va_start(ap, ship);
-	if (ship == 0)
+	if (ship == NULL)
 		vsprintf(message, fmt, ap);
 	else {
 		fmtship(format, sizeof(format), fmt, ship);
@@ -136,7 +135,7 @@ sync_open(void)
 void
 sync_close(char rm)
 {
-	if (sync_fp != 0)
+	if (sync_fp != NULL)
 		fclose(sync_fp);
 	if (rm)
 		unlink(sync_file);

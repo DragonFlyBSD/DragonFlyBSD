@@ -36,7 +36,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/input.c,v 1.7 1999/08/28 01:15:02 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/input.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#)input.c	8.1 (Berkeley) 6/5/93
  */
@@ -69,13 +68,13 @@ rip_input(struct sockaddr *from, int size)
 	int rtchanged = 0;
 	struct rt_entry *rt;
 	struct netinfo *n;
-	struct interface *ifp = 0;
+	struct interface *ifp = NULL;
 	struct afswitch *afp;
 	struct sockaddr_ipx *ipxp;
 
 	ifp = if_ifwithnet(from);
 	ipxp = (struct sockaddr_ipx *)from;
-	if (ifp == 0) {
+	if (ifp == NULL) {
 		if(ftrace) {
 			fprintf(ftrace, "Received bogus packet from %s\n",
 				ipxdp_ntoa(&ipxp->sipx_addr));
@@ -133,7 +132,7 @@ rip_input(struct sockaddr *from, int size)
 			 * found. The specs is a bit vague here. I'm not
 			 * sure what we should do.
 			 */
-			if (rt == 0)
+			if (rt == NULL)
 				return;
 			/* XXX
 			 * According to the spec we should not include
@@ -142,7 +141,7 @@ rip_input(struct sockaddr *from, int size)
 			 */
 			if (rt->rt_metric == (HOPCNT_INFINITY-1))
 				return;
-			n->rip_metric = htons( rt == 0 ? HOPCNT_INFINITY :
+			n->rip_metric = htons( rt == NULL ? HOPCNT_INFINITY :
 				min(rt->rt_metric+1, HOPCNT_INFINITY));
 			n->rip_ticks = htons(rt->rt_ticks+1);
 
@@ -174,7 +173,7 @@ rip_input(struct sockaddr *from, int size)
 			TRACE_OUTPUT(ifp, from, newsize);
 			if (ftrace) {
 				/* XXX This should not happen anymore. */
-				if(ifp == 0)
+				if(ifp == NULL)
 					fprintf(ftrace, "--- ifp = 0\n");
 				else
 					fprintf(ftrace,
@@ -190,9 +189,9 @@ rip_input(struct sockaddr *from, int size)
 			return;
 		(*afp->af_canon)(from);
 		/* are we talking to ourselves? */
-		if ((ifp = if_ifwithaddr(from)) != 0) {
+		if ((ifp = if_ifwithaddr(from)) != NULL) {
 			rt = rtfind(from);
-			if (rt == 0 || (rt->rt_state & RTS_INTERFACE) == 0) {
+			if (rt == NULL || (rt->rt_state & RTS_INTERFACE) == 0) {
 				addrouteforif(ifp);
 				rtchanged = 1;
 			} else
@@ -206,7 +205,7 @@ rip_input(struct sockaddr *from, int size)
 		if ((rt = rtfind(from)) && (rt->rt_state & RTS_INTERFACE)) {
 			if(ftrace) fprintf(ftrace, "Got route\n");
 			rt->rt_timer = 0;
-		} else if ((ifp = if_ifwithdstaddr(from)) != 0) {
+		} else if ((ifp = if_ifwithdstaddr(from)) != NULL) {
 			if(ftrace) fprintf(ftrace, "Got partner\n");
 			addrouteforif(ifp);
 			rtchanged = 1;
@@ -218,7 +217,7 @@ rip_input(struct sockaddr *from, int size)
 			if ((unsigned) ntohs(n->rip_metric) > HOPCNT_INFINITY)
 				continue;
 			rt = rtfind(sa = ipx_nettosa(n->rip_dst));
-			if (rt == 0) {
+			if (rt == NULL) {
 				if (ntohs(n->rip_metric) == HOPCNT_INFINITY)
 					continue;
 				rtadd(sa, from, ntohs(n->rip_metric),

@@ -30,7 +30,6 @@
  *	BSDI tty.c,v 2.4 1996/04/08 22:03:27 prb Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/tty.c,v 1.8.2.2 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/tty.c,v 1.6 2004/01/26 18:16:18 drhodus Exp $
  */
 
 #include <sys/ioctl.h>
@@ -77,13 +76,13 @@ static u_short scan_code = 0x00;
 int height;
 int width;
 int vattr;
-const char *xfont = 0;
+const char *xfont = NULL;
 
 #ifndef NO_X
 Display *dpy;
 Window win;
 XFontStruct *font;
-XImage *xi = 0;
+XImage *xi = NULL;
 Visual *visual;
 unsigned int depth;
 unsigned long black;
@@ -660,7 +659,7 @@ debug_event(int fd __unused, int cond, void *arg __unused, regcontext_t *REGS)
     icnt += r;
 
     ibuf[icnt] = 0;
-    while ((ep = strchr(ibuf, '\n')) != 0) {
+    while ((ep = strchr(ibuf, '\n')) != NULL) {
     	int ac;
     	char *_av[16];
     	char **av;
@@ -672,7 +671,7 @@ debug_event(int fd __unused, int cond, void *arg __unused, regcontext_t *REGS)
     	    if (!strcasecmp(av[0], "dump")) {
     	    	if (ac > 1) {
 		    char *c;
-		    if ((c = strchr(av[1], ':')) != 0) {
+		    if ((c = strchr(av[1], ':')) != NULL) {
 			ds = strtol(av[1], 0, 16);
 			di = strtol(c+1, 0, 16);
 		    } else
@@ -708,7 +707,7 @@ debug_event(int fd __unused, int cond, void *arg __unused, regcontext_t *REGS)
 
     	    	if (ac > 1) {
 		    char *c;
-		    if ((c = strchr(av[1], ':')) != 0) {
+		    if ((c = strchr(av[1], ':')) != NULL) {
 			ds = strtol(av[1], 0, 16);
 			di = strtol(c+1, 0, 16);
 		    } else
@@ -729,7 +728,7 @@ debug_event(int fd __unused, int cond, void *arg __unused, regcontext_t *REGS)
     	    } else if (!strcasecmp(av[0], "force")) {
 		char *p = av[1];
 
-    	    	while ((p = *++av) != 0) {
+		while ((p = *++av) != NULL) {
 		    while (*p) {
 			if (*p >= ' ' && *p <= '~')
 			    KbdWrite(ScanCodes[Ascii2Scan[(int)*p] & 0xff].base);

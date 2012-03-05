@@ -36,7 +36,6 @@
  *
  * @(#)kvm_sparc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_sparc.c,v 1.3 1999/12/27 07:14:58 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_sparc.c,v 1.4 2007/04/29 01:36:04 dillon Exp $
  */
 
 /*
@@ -92,7 +91,7 @@ _kvm_initvtop(kvm_t *kd)
 	struct nlist nlist[2];
 
 	vm = (struct vmstate *)_kvm_malloc(kd, sizeof(*vm));
-	if (vm == 0)
+	if (vm == NULL)
 		return (-1);
 
 	kd->vmst = vm;

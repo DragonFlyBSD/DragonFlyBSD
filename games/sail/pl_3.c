@@ -28,7 +28,6 @@
  *
  * @(#)pl_3.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_3.c,v 1.6 1999/11/30 03:49:37 billf Exp $
- * $DragonFly: src/games/sail/pl_3.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "player.h"
@@ -81,7 +80,7 @@ acceptcombat(void)
 		if (mf->struck || !crew[2])
 			goto cant;
 		closest = closestenemy(ms, (r ? 'r' : 'l'), 1);
-		if (closest == 0)
+		if (closest == NULL)
 			goto cant;
 		if (closest->file->struck)
 			goto cant;

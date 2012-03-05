@@ -32,7 +32,6 @@
  *
  * @(#)pass5.c	8.9 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass5.c,v 1.17.2.2 2002/11/26 04:46:59 julian Exp $
- * $DragonFly: src/sbin/fsck/pass5.c,v 1.5 2005/11/06 12:13:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -76,7 +75,7 @@ pass5(void)
 			}
 		}
 		if (fs->fs_maxcontig > 1) {
-			char *doit = 0;
+			char *doit = NULL;
 
 			if (fs->fs_contigsumsize < 1) {
 				doit = "CREAT";

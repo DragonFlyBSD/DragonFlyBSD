@@ -32,7 +32,6 @@
  *
  * @(#)server.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/server.c,v 1.10 1999/08/28 01:05:09 peter Exp $
- * $DragonFly: src/usr.bin/rdist/server.c,v 1.7 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/wait.h>
@@ -301,7 +300,7 @@ install(char *src, char *dest, int destdir, int opts)
 		Tdest = destcopy;
 	}
 	sendf(rname, opts);
-	Tdest = 0;
+	Tdest = NULL;
 }
 
 static char *

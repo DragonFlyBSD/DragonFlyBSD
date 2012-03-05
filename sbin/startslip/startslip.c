@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1990, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)startslip.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/startslip/startslip.c,v 1.31.2.1 2000/05/07 18:26:51 joe Exp $
- * $DragonFly: src/sbin/startslip/startslip.c,v 1.7 2005/02/02 20:27:51 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -109,7 +108,7 @@ main(int argc, char **argv)
 	char *cp, **ap;
 	int ch, disc;
 	FILE *wfd = NULL;
-	char *dialerstring = 0, buf[BUFSIZ];
+	char *dialerstring = NULL, buf[BUFSIZ];
 	int unitnum, keepal = 0, outfill = 0;
 	char unitname[32];
 	char *password;

@@ -244,7 +244,7 @@ run(int num)
 		if (debug)
 			printf("%s\n", from);
 		len = strlen(from);
-		if ((p = malloc(len)) == 0) {
+		if ((p = malloc(len)) == NULL) {
 			warn("malloc");
 			goto done;
 		}
@@ -259,7 +259,7 @@ run(int num)
 		data[i] = p;
 	}
 	len = length[TST_PLAIN];
-	if ((p = malloc(len)) == 0) {
+	if ((p = malloc(len)) == NULL) {
 		warn("malloc");
 		return (1);
 	}

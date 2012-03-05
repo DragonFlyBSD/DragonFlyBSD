@@ -28,7 +28,6 @@
  *
  * @(#)pl_7.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_7.c,v 1.7 1999/11/30 03:49:37 billf Exp $
- * $DragonFly: src/games/sail/pl_7.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include <sys/ttydefaults.h>
@@ -170,7 +169,7 @@ prompt(const char *p, struct ship *ship)
 {
 	static char buf[60];
 
-	if (ship != 0) {
+	if (ship != NULL) {
 		printf(buf, p, ship->shipname, colours(ship),
 			sterncolour(ship));
 		p = buf;

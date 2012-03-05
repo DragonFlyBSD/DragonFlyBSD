@@ -28,7 +28,6 @@
  *
  * @(#) Copyright (C) 1997, Massachusetts Institute of Technology
  * $FreeBSD: src/usr.sbin/lpr/chkprintcap/chkprintcap.c,v 1.3.2.2 2002/04/18 20:45:23 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/chkprintcap/chkprintcap.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -220,7 +219,7 @@ note_spool_dir(const struct printer *pp, const struct stat *st)
 	struct dirlist *dp, *dp2, *last;
 
 	dp = malloc(sizeof *dp);
-	if (dp == 0)
+	if (dp == NULL)
 		err(++problems, "malloc(%lu)", (u_long)sizeof *dp);
 	
 	dp->stab = *st;
@@ -231,7 +230,7 @@ note_spool_dir(const struct printer *pp, const struct stat *st)
 	if (dp->path == 0)
 		err(++problems, "malloc(%lu)", strlen(pp->spool_dir) + 1UL);
 	
-	last = 0;
+	last = NULL;
 	LIST_FOREACH(dp2, &dirlist, link) {
 		if(!lessp(dp, dp2))
 			break;
@@ -253,7 +252,7 @@ check_spool_dirs(void)
 	for (dp = LIST_FIRST(&dirlist); dp; dp = dp2) {
 		dp2 = LIST_NEXT(dp, link);
 
-		if (dp2 != 0 && equal(dp, dp2)) {
+		if (dp2 != NULL && equal(dp, dp2)) {
 			++problems;
 			if (strcmp(dp->path, dp2->path) == 0) {
 				warnx("%s and %s share the same spool, %s",
@@ -287,7 +286,7 @@ make_spool_dir(const struct printer *pp)
 		return;
 	}
 	gr = getgrnam("daemon");
-	if (gr == 0)
+	if (gr == NULL)
 		errx(++problems, "cannot locate daemon group");
 
 	if (chown(sd, pp->daemon_user, gr->gr_gid) < 0) {

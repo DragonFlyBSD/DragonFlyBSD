@@ -64,9 +64,9 @@ tt_wyse60(void)
 		return -1;
 	tt.tt_availmodes |= WWM_GRP;
 	tt.tt_frame = wyse60_frame;
-	if (gen_AS == 0)
+	if (gen_AS == NULL)
 		gen_AS = &as;
-	if (gen_AE == 0)
+	if (gen_AE == NULL)
 		gen_AE = &ae;
 	return 0;
 }

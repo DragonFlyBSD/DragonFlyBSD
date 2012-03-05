@@ -29,7 +29,6 @@
  *
  * @(#)generic.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.bin/newkey/generic.c,v 1.3.2.1 2001/07/04 22:32:20 kris Exp $
- * $DragonFly: src/usr.bin/newkey/generic.c,v 1.8 2008/06/05 18:06:33 swildner Exp $
  */
 
 /*
@@ -70,7 +69,7 @@ getseed(char *seed, int seedsize, unsigned char *pass)
 static BIGNUM *
 itobn(long i)
 {
-	BIGNUM *n = 0;
+	BIGNUM *n = NULL;
 
 	if ((n = BN_new()) == NULL)
 		errx(1, "could not create BIGNUM: %s",

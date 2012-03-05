@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/trace.c,v 1.5.2.1 2002/11/07 17:19:13 imp Exp $
- * $DragonFly: src/sbin/routed/trace.c,v 1.3 2004/12/18 21:43:40 swildner Exp $
  */
 
 #define	RIPCMDS
@@ -143,7 +142,7 @@ naddr_ntoa(naddr a)
 const char *
 saddr_ntoa(struct sockaddr *sa)
 {
-	return (sa == 0) ? "?" : naddr_ntoa(S_ADDR(sa));
+	return (sa == NULL) ? "?" : naddr_ntoa(S_ADDR(sa));
 }
 
 
@@ -184,7 +183,7 @@ tmsg(const char *p, ...)
 {
 	va_list args;
 
-	if (ftrace != 0) {
+	if (ftrace != NULL) {
 		lastlog();
 		va_start(args, p);
 		vfprintf(ftrace, p, args);
@@ -203,10 +202,10 @@ trace_close(int zap_stdio)
 	fflush(stdout);
 	fflush(stderr);
 
-	if (ftrace != 0 && zap_stdio) {
+	if (ftrace != NULL && zap_stdio) {
 		if (ftrace != stdout)
 			fclose(ftrace);
-		ftrace = 0;
+		ftrace = NULL;
 		fd = open(_PATH_DEVNULL, O_RDWR);
 		if (isatty(STDIN_FILENO))
 			dup2(fd, STDIN_FILENO);
@@ -223,7 +222,7 @@ trace_close(int zap_stdio)
 void
 trace_flush(void)
 {
-	if (ftrace != 0) {
+	if (ftrace != NULL) {
 		fflush(ftrace);
 		if (ferror(ftrace))
 			trace_off("tracing off: %s", strerror(ferror(ftrace)));
@@ -237,7 +236,7 @@ trace_off(const char *p, ...)
 	va_list args;
 
 
-	if (ftrace != 0) {
+	if (ftrace != NULL) {
 		lastlog();
 		va_start(args, p);
 		vfprintf(ftrace, p, args);
@@ -309,16 +308,16 @@ set_tracefile(const char *filename,
 	 * is already open or if coming from a trusted source, such as
 	 * a signal or the command line.
 	 */
-	if (filename == 0 || filename[0] == '\0') {
-		filename = 0;
-		if (ftrace == 0) {
+	if (filename == NULL || filename[0] == '\0') {
+		filename = NULL;
+		if (ftrace == NULL) {
 			if (inittracename[0] == '\0') {
 				msglog("missing trace file name");
 				return;
 			}
 			fn = inittracename;
 		} else {
-			fn = 0;
+			fn = NULL;
 		}
 
 	} else if (!strcmp(filename,"dump/../table")) {
@@ -353,9 +352,9 @@ set_tracefile(const char *filename,
 		fn = filename;
 	}
 
-	if (fn != 0) {
+	if (fn != NULL) {
 		n_ftrace = fopen(fn, "a");
-		if (n_ftrace == 0) {
+		if (n_ftrace == NULL) {
 			msglog("failed to open trace file \"%s\" %s",
 			       fn, strerror(errno));
 			if (fn == inittracename)
@@ -377,9 +376,9 @@ set_tracefile(const char *filename,
 		dup2(fileno(ftrace), STDERR_FILENO);
 	}
 
-	if (new_tracelevel == 0 || filename == 0)
+	if (new_tracelevel == 0 || filename == NULL)
 		new_tracelevel++;
-	tracelevel_msg(pat, dump != 0 ? dump : (filename != 0));
+	tracelevel_msg(pat, dump != 0 ? dump : (filename != NULL));
 }
 
 
@@ -412,7 +411,7 @@ set_tracelevel(void)
 	/* If tracing entirely off, and there was no tracefile specified
 	 * on the command line, then leave it off.
 	 */
-	if (new_tracelevel > tracelevel && ftrace == 0) {
+	if (new_tracelevel > tracelevel && ftrace == NULL) {
 		if (savetracename[0] != '\0') {
 			set_tracefile(savetracename,sigtrace_pat,0);
 		} else if (inittracename[0] != '\0') {
@@ -565,7 +564,7 @@ trace_bits(const struct bits *tbl,
 		}
 		tbl++;
 	}
-	if (field != 0 && tbl->bits_name != 0) {
+	if (field != 0 && tbl->bits_name != NULL) {
 		if (c)
 			putc(c, ftrace);
 		fprintf(ftrace, tbl->bits_name, field);
@@ -629,7 +628,7 @@ void
 trace_if(const char *act,
 	 struct interface *ifp)
 {
-	if (!TRACEACTIONS || ftrace == 0)
+	if (!TRACEACTIONS || ftrace == NULL)
 		return;
 
 	lastlog();
@@ -655,7 +654,7 @@ trace_upslot(struct rt_entry *rt,
 	     struct rt_spare *rts,
 	     struct rt_spare *new)
 {
-	if (!TRACEACTIONS || ftrace == 0)
+	if (!TRACEACTIONS || ftrace == NULL)
 		return;
 
 	if (rts->rts_gate == new->rts_gate
@@ -715,7 +714,7 @@ trace_misc(const char *p, ...)
 {
 	va_list args;
 
-	if (ftrace == 0)
+	if (ftrace == NULL)
 		return;
 
 	lastlog();
@@ -732,7 +731,7 @@ trace_act(const char *p, ...)
 {
 	va_list args;
 
-	if (!TRACEACTIONS || ftrace == 0)
+	if (!TRACEACTIONS || ftrace == NULL)
 		return;
 
 	lastlog();
@@ -749,7 +748,7 @@ trace_pkt(const char *p, ...)
 {
 	va_list args;
 
-	if (!TRACEPACKETS || ftrace == 0)
+	if (!TRACEPACKETS || ftrace == NULL)
 		return;
 
 	lastlog();
@@ -765,7 +764,7 @@ trace_change(struct rt_entry *rt,
 	     struct	rt_spare *new,
 	     const char	*label)
 {
-	if (ftrace == 0)
+	if (ftrace == NULL)
 		return;
 
 	if (rt->rt_metric == new->rts_metric
@@ -803,7 +802,7 @@ trace_change(struct rt_entry *rt,
 void
 trace_add_del(const char * action, struct rt_entry *rt)
 {
-	if (ftrace == 0)
+	if (ftrace == NULL)
 		return;
 
 	lastlog();
@@ -852,12 +851,12 @@ trace_dump(void)
 {
 	struct interface *ifp;
 
-	if (ftrace == 0)
+	if (ftrace == NULL)
 		return;
 	lastlog();
 
 	fputs("current daemon state:\n", ftrace);
-	for (ifp = ifnet; ifp != 0; ifp = ifp->int_next)
+	for (ifp = ifnet; ifp != NULL; ifp = ifp->int_next)
 		trace_if("", ifp);
 	rn_walktree(rhead, walk_trace, 0);
 }
@@ -874,7 +873,7 @@ trace_rip(const char *dir1, const char *dir2,
 #	define NA ((struct netauth*)n)
 	int i, seen_route;
 
-	if (!TRACEPACKETS || ftrace == 0)
+	if (!TRACEPACKETS || ftrace == NULL)
 		return;
 
 	lastlog();

@@ -32,7 +32,6 @@
  *
  * @(#)master.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/master.c,v 1.6 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.8 2004/09/05 02:20:15 dillon Exp $
  */
 
 #include "globals.h"
@@ -186,7 +185,7 @@ loop:
 			tsp_time_sec = msg->tsp_time.tv_sec;
 			strlcpy(newdate, ctime(&tsp_time_sec), sizeof(newdate));
 			htp = findhost(msg->tsp_name);
-			if (htp == 0) {
+			if (htp == NULL) {
 				syslog(LOG_ERR,
 				       "attempted SET DATEREQ by uncontrolled %s to %s",
 				       msg->tsp_name, newdate);
@@ -469,7 +468,7 @@ spreadtime(void)
 		gettimeofday(&to.tsp_time, 0);
 		answer = acksend(&to, &htp->addr, htp->name,
 				 TSP_ACK, 0, htp->noanswer);
-		if (answer == 0) {
+		if (answer == NULL) {
 			/* We client does not respond, then we have
 			 * just wasted lots of time on it.
 			 */
@@ -558,7 +557,7 @@ addmach(char *name, struct sockaddr_in *addr, struct netinfo *ntp)
 	struct hosttbl *ret, *p, *b, *f;
 
 	ret = findhost(name);
-	if (ret == 0) {
+	if (ret == NULL) {
 		if (slvcount >= NHOSTS) {
 			if (trace) {
 				fprintf(fd, "no more slots in host table\n");

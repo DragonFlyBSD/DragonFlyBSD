@@ -28,7 +28,6 @@
  *
  * @(#)data.c	5.3 (Berkeley) 5/13/91
  * $FreeBSD: src/games/larn/data.c,v 1.5 1999/11/30 03:48:59 billf Exp $
- * $DragonFly: src/games/larn/data.c,v 1.5 2008/06/08 20:40:15 swildner Exp $
  */
 
 /*	data.c		Larn is copyrighted 1986 by Noah Morgan. */
@@ -152,7 +151,7 @@ long outstanding_taxes = 0;	/* present tax bill from score file */
 long c[100], cbak[100];		/* the character description arrays */
 int enable_scroll = 0;		/* constant for enabled/disabled scrolling regn */
 char aborted[] = " aborted";
-struct sphere *spheres = 0;	/* pointer to linked list for spheres of annihilation */
+struct sphere *spheres = NULL;	/* pointer to linked list for spheres of annihilation */
 const char *levelname[] =
 { " H"," 1"," 2"," 3"," 4"," 5"," 6"," 7"," 8"," 9","10","V1","V2","V3" };
 

@@ -32,7 +32,6 @@
  *
  * @(#)unix.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/unix.c,v 1.12.2.2 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/unix.c,v 1.4 2005/03/05 13:23:15 hmp Exp $
  */
 
 /*
@@ -81,7 +80,7 @@ unixpr(void)
 				warn("sysctl: %s", mibvar);
 			continue;
 		}
-		if ((buf = malloc(len)) == 0) {
+		if ((buf = malloc(len)) == NULL) {
 			warn("malloc %lu bytes", (u_long)len);
 			return;
 		}

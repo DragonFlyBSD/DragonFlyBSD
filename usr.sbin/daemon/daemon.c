@@ -27,7 +27,6 @@
  *
  *	From BSDI: daemon.c,v 1.2 1996/08/15 01:11:09 jch Exp
  * $FreeBSD: src/usr.sbin/daemon/daemon.c,v 1.1.2.1 2002/08/28 17:25:54 sheldonh Exp $
- * $DragonFly: src/usr.sbin/daemon/daemon.c,v 1.4 2004/12/21 23:30:57 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -49,7 +48,7 @@ main(int argc, char *argv[])
 
 	nochdir = noclose = 1;
 	pidfile = NULL;
-	pidf = 0;
+	pidf = NULL;
 	while ((ch = getopt(argc, argv, "cfp:")) != -1) {
 		switch (ch) {
 		case 'c':

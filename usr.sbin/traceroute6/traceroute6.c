@@ -68,7 +68,6 @@
  *	The Regents of the University of California.  All rights reserved.
  *
  * $FreeBSD: src/usr.sbin/traceroute6/traceroute6.c,v 1.22 2008/02/10 21:06:38 dwmalone Exp $
- * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.9 2008/09/04 09:08:22 hasso Exp $
  */
 
 /*
@@ -332,7 +331,7 @@ u_long datalen;			/* How much data */
 /* XXX: 2064 = 127(max hops in type 0 rthdr) * sizeof(ip6_hdr) + 16(margin) */
 char rtbuf[2064];
 
-char *source = 0;
+char *source = NULL;
 char *hostname;
 
 u_long nprobes = 3;

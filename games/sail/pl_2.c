@@ -28,7 +28,6 @@
  *
  * @(#)pl_2.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_2.c,v 1.4 1999/11/30 03:49:36 billf Exp $
- * $DragonFly: src/games/sail/pl_2.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "player.h"
@@ -101,7 +100,7 @@ play(void)
 					eyeball(sp);
 			break;
 		case 'i':
-			if ((sp = closestenemy(ms, 0, 1)) == 0)
+			if ((sp = closestenemy(ms, 0, 1)) == NULL)
 				Signal("No more ships left.", NULL);
 			else
 				eyeball(sp);

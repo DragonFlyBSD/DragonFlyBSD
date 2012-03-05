@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/uuid/uuid_to_string.c,v 1.3 2005/01/03 02:56:15 marcel Exp $
- * $DragonFly: src/lib/libc/uuid/uuid_to_string.c,v 1.1 2007/06/16 19:57:14 dillon Exp $
  */
 
 #include <stdio.h>
@@ -50,7 +49,7 @@ uuid_to_string(const uuid_t *u, char **s, uint32_t *status)
 		*status = uuid_s_ok;
 
 	/* Why allow a NULL-pointer here? */
-	if (s == 0)
+	if (s == NULL)
 		return;
 
 	if (u == NULL) {

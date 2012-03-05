@@ -28,7 +28,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsdb/fsdbutil.c,v 1.9.2.2 2002/03/20 13:39:02 joerg Exp $
- * $DragonFly: src/sbin/fsdb/fsdbutil.c,v 1.7 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -257,7 +256,7 @@ printblocks(ino_t inum, struct ufs1_dinode *dp)
 	return;
 
     bufp = malloc((unsigned int)sblock.fs_bsize);
-    if (bufp == 0)
+    if (bufp == NULL)
 	errx(EEXIT, "cannot allocate indirect block buffer");
     printf("Indirect blocks:\n");
     for (i = 0; i < NIADDR; i++)

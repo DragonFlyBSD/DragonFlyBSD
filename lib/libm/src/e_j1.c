@@ -57,6 +57,7 @@
  *	   by method mentioned above.
  */
 
+#include <sys/_null.h>
 #include <math.h>
 #include "math_private.h"
 
@@ -267,7 +268,7 @@ pone(double x)
 	double z,r,s;
         int32_t ix;
 
-	p = q = 0;
+	p = q = NULL;
 	GET_HIGH_WORD(ix,x);
 	ix &= 0x7fffffff;
         if(ix>=0x40200000)     {p = pr8; q= ps8;}
@@ -366,7 +367,7 @@ qone(double x)
 	double  s,r,z;
 	int32_t ix;
 
-	p = q = 0;
+	p = q = NULL;
 	GET_HIGH_WORD(ix,x);
 	ix &= 0x7fffffff;
 	if(ix>=0x40200000)     {p = qr8; q= qs8;}

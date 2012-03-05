@@ -195,7 +195,7 @@ dialit(phonenum, acu)
 	for (vp = vaconfig; vp->vc_name; vp++)
 		if (strcmp(vp->vc_name, acu) == 0)
 			break;
-	if (vp->vc_name == 0) {
+	if (vp->vc_name == NULL) {
 		printf("Unable to locate dialer (%s)\n", acu);
 		return ('K');
 	}

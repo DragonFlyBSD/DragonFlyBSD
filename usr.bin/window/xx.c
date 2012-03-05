@@ -83,7 +83,7 @@ xxreset1(void)
 {
 	struct xx *xp, *xq;
 
-	for (xp = xx_head; xp != 0; xp = xq) {
+	for (xp = xx_head; xp != NULL; xp = xq) {
 		xq = xp->link;
 		xxfree(xp);
 	}
@@ -115,7 +115,7 @@ xxalloc(void)
 
 	if (xxbufp > xxbufe)
 		abort();
-	if ((xp = xx_freelist) == 0)
+	if ((xp = xx_freelist) == NULL)
 		/* XXX can't deal with failure */
 		xp = (struct xx *) malloc((unsigned) sizeof *xp);
 	else
@@ -141,7 +141,7 @@ xxmove(int row, int col)
 {
 	struct xx *xp = xx_tail;
 
-	if (xp == 0 || xp->cmd != xc_move) {
+	if (xp == NULL || xp->cmd != xc_move) {
 		xp = xxalloc();
 		xp->cmd = xc_move;
 	}
@@ -154,7 +154,7 @@ xxscroll(int dir, int top, int bot)
 {
 	struct xx *xp = xx_tail;
 
-	if (xp != 0 && xp->cmd == xc_scroll &&
+	if (xp != NULL && xp->cmd == xc_scroll &&
 	    xp->arg1 == top && xp->arg2 == bot &&
 	    ((xp->arg0 < 0 && dir < 0) || (xp->arg0 > 0 && dir > 0))) {
 		xp->arg0 += dir;
@@ -185,7 +185,7 @@ xxinsspace(int row, int col)
 {
 	struct xx *xp = xx_tail;
 
-	if (xp != 0 && xp->cmd == xc_insspace && xp->arg0 == row &&
+	if (xp != NULL && xp->cmd == xc_insspace && xp->arg0 == row &&
 	    col >= xp->arg1 && col <= xp->arg1 + xp->arg2) {
 		xp->arg2++;
 		return;
@@ -202,7 +202,7 @@ xxdelchar(int row, int col)
 {
 	struct xx *xp = xx_tail;
 
-	if (xp != 0 && xp->cmd == xc_delchar &&
+	if (xp != NULL && xp->cmd == xc_delchar &&
 	    xp->arg0 == row && xp->arg1 == col) {
 		xp->arg2++;
 		return;

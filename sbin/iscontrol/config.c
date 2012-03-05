@@ -280,7 +280,7 @@ getConfig(FILE *fd, char *key, char **Ar, int *nargs)
 
  done:
      if(*nargs > 0)
-	  *ar = 0;
+	  *ar = NULL;
      *nargs =  ar - Ar;
      return ar - Ar;
 }

@@ -732,7 +732,7 @@ void skelout(void)
 	 */
 	while ( skelfile ?
 		(fgets( buf, MAXLINE, skelfile ) != NULL) :
-		((buf = (char *) skel[skel_ind++]) != 0) )
+		((buf = (char *) skel[skel_ind++]) != NULL) )
 		{ /* copy from skel array */
 		if ( buf[0] == '%' )
 			{ /* control line */

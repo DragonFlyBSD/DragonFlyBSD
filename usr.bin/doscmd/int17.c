@@ -30,7 +30,6 @@
  *	BSDI int17.c,v 2.2 1996/04/08 19:32:48 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/int17.c,v 1.4.2.3 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/int17.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -113,7 +112,7 @@ lpt_poll(void)
 		pclose(lpt_file[i]);
 	    }
 	    lpt_fd[i] = -1;
-	    lpt_file[i] = 0;
+	    lpt_file[i] = NULL;
 	}
 
 	last_count[i] = current_count[i];
@@ -134,7 +133,7 @@ open_printer(int printer)
      * if printer is direct then open output device.
      */
     if (direct[printer]) {
-	if ((p = queue[printer]) != 0) {
+	if ((p = queue[printer]) != NULL) {
 	    if ((fd = open(p, O_WRONLY|O_APPEND|O_CREAT, 0666)) < 0) {
 		perror(p);
 		return;
@@ -163,7 +162,7 @@ open_printer(int printer)
     snprintf(command, sizeof(command), "lpr -P %s", printer_name);
     debug(D_PRINTER, "opening pipe to %s\n", printer_name);
 
-    if ((file = popen(command, "w")) == 0) {
+    if ((file = popen(command, "w")) == NULL) {
 	perror(command);
 	return;
     }

@@ -45,7 +45,6 @@
  *
  * @(#)bpf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rbootd/bpf.c,v 1.10 1999/08/28 00:09:44 peter Exp $
- * $DragonFly: src/libexec/rbootd/bpf.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -250,7 +249,7 @@ BpfGetIntfName(errmsg)
 	ifrp = ibuf;
 	ifend = (struct ifreq *)((char *)ibuf + ifc.ifc_len);
 
-	mp = 0;
+	mp = NULL;
 	minunit = 666;
 	for (; ifrp < ifend; ++ifrp) {
 		if (ioctl(fd, SIOCGIFFLAGS, (char *)ifrp) < 0) {
@@ -280,7 +279,7 @@ BpfGetIntfName(errmsg)
 	}
 
 	(void) close(fd);
-	if (mp == 0) {
+	if (mp == NULL) {
 		(void) strcpy(errbuf, "bpf: no interfaces found");
 		return(NULL);
 	}

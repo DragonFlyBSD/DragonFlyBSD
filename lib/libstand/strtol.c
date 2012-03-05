@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * @(#)strtol.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libstand/strtol.c,v 1.4 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include "stand.h"
@@ -123,7 +122,7 @@ strtol(const char *nptr, char **endptr, int base)
 		errno = ERANGE;
 	} else if (neg)
 		acc = -acc;
-	if (endptr != 0)
+	if (endptr != NULL)
 		*endptr = (char *)(any ? s - 1 : nptr);
 	return (acc);
 }

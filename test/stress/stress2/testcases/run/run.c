@@ -57,7 +57,7 @@ static char **
 mkargv(char *name)
 {
 	av[0] = name;
-	av[1] = 0;
+	av[1] = NULL;
 	return (av);
 }
 

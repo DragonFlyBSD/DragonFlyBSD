@@ -32,7 +32,6 @@
  *
  * @(#)lex.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/lex.c,v 1.5.6.5 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/lex.c,v 1.6 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -364,7 +363,7 @@ execute(char *linebuf, int contxt)
 		 * A message list defaulting to nearest forward
 		 * legal message.
 		 */
-		if (msgvec == 0) {
+		if (msgvec == NULL) {
 			printf("Illegal use of \"message list\"\n");
 			break;
 		}
@@ -386,7 +385,7 @@ execute(char *linebuf, int contxt)
 		 * A message list with no defaults, but no error
 		 * if none exist.
 		 */
-		if (msgvec == 0) {
+		if (msgvec == NULL) {
 			printf("Illegal use of \"message list\"\n");
 			break;
 		}

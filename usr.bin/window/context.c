@@ -56,7 +56,7 @@ cx_alloc(void)
 	if (cx.x_type != 0) {
 		xp = (struct context *)
 			malloc((unsigned) sizeof (struct context));
-		if (xp == 0)
+		if (xp == NULL)
 			return -1;
 		*xp = cx;
 		cx.x_link = xp;
@@ -73,7 +73,7 @@ cx_free(void)
 {
 	struct context *xp;
 
-	if ((xp = cx.x_link) != 0) {
+	if ((xp = cx.x_link) != NULL) {
 		cx = *xp;
 		free((char *)xp);
 	} else

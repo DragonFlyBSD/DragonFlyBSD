@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1983, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)from: inetd.c	8.4 (Berkeley) 4/13/94
  * $FreeBSD: src/usr.sbin/inetd/inetd.c,v 1.80.2.11 2003/04/05 13:39:18 dwmalone Exp $
- * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.11 2008/05/23 23:40:59 swildner Exp $
  */
 
 /*
@@ -986,7 +985,7 @@ config(void)
 			    sep->se_socktype == new->se_socktype &&
 			    sep->se_family == new->se_family)
 				break;
-		if (sep != 0) {
+		if (sep != NULL) {
 			int i;
 
 #define SWAP(a, b) { typeof(a) c = a; a = b; b = c; }
@@ -1068,7 +1067,7 @@ config(void)
 		if (!sep->se_rpc) {
 			if (sep->se_family != AF_UNIX) {
 				sp = getservbyname(sep->se_service, sep->se_proto);
-				if (sp == 0) {
+				if (sp == NULL) {
 					syslog(LOG_ERR, "%s/%s: unknown service",
 					sep->se_service, sep->se_proto);
 					sep->se_checked = 0;
@@ -1098,7 +1097,7 @@ config(void)
 				close_sep(sep);
 		} else {
 			rpc = getrpcbyname(sep->se_service);
-			if (rpc == 0) {
+			if (rpc == NULL) {
 				syslog(LOG_ERR, "%s/%s unknown RPC service",
 					sep->se_service, sep->se_proto);
 				if (sep->se_fd != -1)

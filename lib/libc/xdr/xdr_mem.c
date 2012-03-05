@@ -30,7 +30,6 @@
  * @(#)xdr_mem.c	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: xdr_mem.c,v 1.15 2000/01/22 22:19:18 mycroft Exp $
  * $FreeBSD: src/lib/libc/xdr/xdr_mem.c,v 1.13 2004/10/16 06:32:43 obrien Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_mem.c,v 1.4 2005/12/05 00:47:57 swildner Exp $
  */
 
 /*
@@ -212,7 +211,7 @@ xdrmem_setpos(XDR *xdrs, u_int pos)
 static int32_t *
 xdrmem_inline_aligned(XDR *xdrs, u_int len)
 {
-	int32_t *buf = 0;
+	int32_t *buf = NULL;
 
 	if (xdrs->x_handy >= len) {
 		xdrs->x_handy -= len;

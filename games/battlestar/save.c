@@ -28,7 +28,6 @@
  *
  * @(#)save.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/save.c,v 1.8.2.1 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/save.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include <sys/stat.h>
@@ -50,7 +49,7 @@ restore(void)
 	else
 		return;
 
-	if ((fp = fopen(home1, "r")) == 0) {
+	if ((fp = fopen(home1, "r")) == NULL) {
 		perror(home1);
 		return;
 	}
@@ -105,7 +104,7 @@ save(void)
 	FILE *fp;
 
 	home = getenv("HOME");
-	if (home == 0)
+	if (home == NULL)
 		return;
 	sprintf(home1, "%.*s/Bstar", MAXPATHLEN - 7, home);
 
@@ -129,7 +128,7 @@ save(void)
 		}
 	}
 
-	if ((fp = fdopen(fd, "w")) == 0) {
+	if ((fp = fdopen(fd, "w")) == NULL) {
 		perror(home1);
 		return;
 	}

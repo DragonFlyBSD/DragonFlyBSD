@@ -32,7 +32,6 @@
  *
  * @(#)slave.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/slave.c,v 1.7 1999/08/28 01:20:18 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/slave.c,v 1.9 2004/09/05 02:20:15 dillon Exp $
  */
 
 #include "globals.h"
@@ -75,7 +74,7 @@ slave(void)
 	struct hosttbl *htp;
 
 
-	old_slavenet = 0;
+	old_slavenet = NULL;
 	seq = 0;
 	refusetime = 0;
 	adjusttime = 0;
@@ -344,7 +343,7 @@ loop:
 			tsp_time_sec = msg->tsp_time.tv_sec;
 			strlcpy(newdate, ctime(&tsp_time_sec), sizeof(newdate));
 			htp = findhost(msg->tsp_name);
-			if (0 == htp) {
+			if (NULL == htp) {
 				syslog(LOG_WARNING,
 				       "DATEREQ from uncontrolled machine");
 				break;
@@ -541,7 +540,7 @@ loop:
 				if (msg->tsp_hopcnt-- < 1)
 				    break;
 				bytenetorder(msg);
-				for (ntp = nettab; ntp != 0; ntp = ntp->next) {
+				for (ntp = nettab; ntp != NULL; ntp = ntp->next) {
 				    if (ntp->status == MASTER
 					&& 0 > sendto(sock, (char *)msg,
 						      sizeof(struct tsp), 0,

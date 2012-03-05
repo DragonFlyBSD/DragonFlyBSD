@@ -91,7 +91,7 @@ struct node_info {
 
 	struct node_info* prev;
 	struct node_info* next;
-} *nodes = 0;
+} *nodes = NULL;
 
 void clean_crap() {
 	struct node_info* next;
@@ -118,7 +118,7 @@ char* mac2str(unsigned char* mac) {
 }
 
 char* wep2str(int w) {
-	char* wep = 0;
+	char* wep = NULL;
 	static char res[14];
 
 	switch (w) {
@@ -394,9 +394,9 @@ void display_node(struct node_info* node) {
 	int y = 0;
 	int i;
 	char chan[3];
-	char* ssid = 0;
+	char* ssid = NULL;
 	int sig, max, left, noise;
-	char* wep = 0;
+	char* wep = NULL;
 
 	y = node->pos;
 	if (y == -1) // offscreen

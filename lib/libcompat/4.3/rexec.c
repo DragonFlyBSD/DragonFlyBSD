@@ -198,14 +198,14 @@ next:
 				}
 			break;
 		case PASSWD:
-			if ((*aname == 0 || strcmp(*aname, "anonymous")) &&
+			if ((*aname == NULL || strcmp(*aname, "anonymous")) &&
 			    fstat(fileno(cfile), &stb) >= 0 &&
 			    (stb.st_mode & 077) != 0) {
 	warnx("Error: .netrc file is readable by others.");
 	warnx("Remove password or make file unreadable by others.");
 				goto bad;
 			}
-			if (token() && *apass == 0) {
+			if (token() && *apass == NULL) {
 				char *tmp;
 				tmp = malloc(strlen(tokval) + 1);
 				strcpy(tmp, tokval);
@@ -219,7 +219,7 @@ next:
 	warnx("Remove account or make file unreadable by others.");
 				goto bad;
 			}
-			if (token() && *aacct == 0) {
+			if (token() && *aacct == NULL) {
 				*aacct = malloc((unsigned) strlen(tokval) + 1);
 				(void) strcpy(*aacct, tokval);
 			}
@@ -354,7 +354,7 @@ retry:
 		perror(res0->ai_canonname);
 		return (-1);
 	}
-	if (fd2p == 0) {
+	if (fd2p == NULL) {
 		(void) write(s, "", 1);
 		port = 0;
 	} else {
@@ -444,7 +444,7 @@ rexec(char **ahost, int rport, const char *name, const char *pass, char *cmd, in
 	char *acct = NULL;
 
 	hp = gethostbyname(*ahost);
-	if (hp == 0) {
+	if (hp == NULL) {
 		herror(*ahost);
 		return (-1);
 	}
@@ -471,7 +471,7 @@ retry:
 		perror(hp->h_name);
 		return (-1);
 	}
-	if (fd2p == 0) {
+	if (fd2p == NULL) {
 		(void) write(s, "", 1);
 		port = 0;
 	} else {

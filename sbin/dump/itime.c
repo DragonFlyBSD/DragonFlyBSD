@@ -170,7 +170,7 @@ putdumptime(void)
 	flock(fd, LOCK_EX);
 	fname = disk;
 	free((char *)ddatev);
-	ddatev = 0;
+	ddatev = NULL;
 	nddates = 0;
 	readdumptimes(df);
 	if (fseek(df, 0L, 0) < 0)

@@ -1,4 +1,3 @@
-/* $DragonFly: src/lib/libcompat/regexp/regexp.c,v 1.3 2008/09/30 16:57:04 swildner Exp $								*/
 /*
  * regcomp and regexec -- regsub and regerror are elsewhere
  *
@@ -596,7 +595,7 @@ regatom(int *flagp)
 
 			regparse--;			/* Look at cur char */
 			ret = regnode(EXACTLY);
-			for ( regprev = 0 ; ; ) {
+			for ( regprev = NULL ; ; ) {
 				ch = *regparse++;	/* Get current char */
 				switch (*regparse) {	/* look at next one */
 

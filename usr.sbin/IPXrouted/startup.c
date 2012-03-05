@@ -117,7 +117,7 @@ ifinit(void)
 	char *buf, *cplim, *cp;
 	struct if_msghdr *ifm;
 	struct ifa_msghdr *ifam;
-	struct sockaddr_dl *sdl = 0;
+	struct sockaddr_dl *sdl = NULL;
 
         mib[0] = CTL_NET;
         mib[1] = PF_ROUTE;
@@ -194,7 +194,7 @@ ifinit(void)
 			continue;
 		ifp = (struct interface *)
 			malloc(sdl->sdl_nlen + 1 + sizeof(ifs));
-		if (ifp == 0) {
+		if (ifp == NULL) {
 			syslog(LOG_ERR, "IPXrouted: out of memory\n");
 			lookforinterfaces = 1;
 			break;

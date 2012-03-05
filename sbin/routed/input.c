@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/input.c,v 1.7.2.1 2001/08/01 09:01:45 obrien Exp $
- * $DragonFly: src/sbin/routed/input.c,v 1.4 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include "defs.h"
@@ -102,9 +101,9 @@ read_rip(int sock,
 			if (aifp->int_addr == from.sin_addr.s_addr)
 				break;
 		}
-		if (aifp == 0) {
+		if (aifp == NULL) {
 			aifp = ifwithname(inbuf.ifname, 0);
-			if (aifp == 0) {
+			if (aifp == NULL) {
 				msglim(&bad_name, from.sin_addr.s_addr,
 				       "impossible interface name %.*s",
 				       IFNAMSIZ, inbuf.ifname);
@@ -117,13 +116,13 @@ read_rip(int sock,
 				/* If it came via the wrong interface, do not
 				 * trust it.
 				 */
-				aifp = 0;
+				aifp = NULL;
 			}
 		}
 #else
 		aifp = iflookup(from.sin_addr.s_addr);
 #endif
-		if (sifp == 0)
+		if (sifp == NULL)
 			sifp = aifp;
 
 		input(&from, sifp, aifp, &inbuf.pbuf.rip, cc);
@@ -150,13 +149,13 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 	struct interface *ifp1;
 	naddr gate, mask, v1_mask, dst, ddst_h = 0;
 	struct auth *ap;
-	struct tgate *tg = 0;
+	struct tgate *tg = NULL;
 	struct tgate_net *tn;
 	int i, j;
 
 	/* Notice when we hear from a remote gateway
 	 */
-	if (aifp != 0
+	if (aifp != NULL
 	    && (aifp->int_state & IS_REMOTE))
 		aifp->int_act_time = now.tv_sec;
 
@@ -202,7 +201,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 	case RIPCMD_REQUEST:
 		/* For mere requests, be a little sloppy about the source
 		 */
-		if (aifp == 0)
+		if (aifp == NULL)
 			aifp = sifp;
 
 		/* Are we talking to ourself or a remote gateway?
@@ -229,7 +228,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 			 * the router does not depend on us.
 			 */
 			if (rip_sock < 0
-			    || (aifp != 0
+			    || (aifp != NULL
 				&& IS_RIP_OUT_OFF(aifp->int_state))) {
 				trace_pkt("    discard request while RIP off");
 				return;
@@ -259,20 +258,20 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 		}
 
 		if (rip->rip_vers == RIPv2
-		    && (aifp == 0 || (aifp->int_state & IS_NO_RIPV1_OUT))) {
+		    && (aifp == NULL || (aifp->int_state & IS_NO_RIPV1_OUT))) {
 			v12buf.buf->rip_vers = RIPv2;
 			/* If we have a secret but it is a cleartext secret,
 			 * do not disclose our secret unless the other guy
 			 * already knows it.
 			 */
 			ap = find_auth(aifp);
-			if (ap != 0 && ap->type == RIP_AUTH_PW
+			if (ap != NULL && ap->type == RIP_AUTH_PW
 			    && n->n_family == RIP_AF_AUTH
 			    && !ck_passwd(aifp,rip,lim,FROM_NADDR,&use_auth))
-				ap = 0;
+				ap = NULL;
 		} else {
 			v12buf.buf->rip_vers = RIPv1;
-			ap = 0;
+			ap = NULL;
 		}
 		clr_ws_buf(&v12buf, ap);
 
@@ -292,7 +291,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 				 */
 				if (from->sin_port != htons(RIP_PORT)) {
 					supply(from, aifp, OUT_QUERY, 0,
-					       rip->rip_vers, ap != 0);
+					       rip->rip_vers, ap != NULL);
 					return;
 				}
 
@@ -304,7 +303,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 				 * to keep an unwary host that is just starting
 				 * from picking us as a router.
 				 */
-				if (aifp == 0) {
+				if (aifp == NULL) {
 					trace_pkt("ignore distant router");
 					return;
 				}
@@ -328,7 +327,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 					v12buf.n->n_family = RIP_AF_INET;
 					v12buf.n->n_dst = RIP_DEFAULT;
 					i = aifp->int_d_metric;
-					if (0 != (rt = rtget(RIP_DEFAULT, 0)))
+					if (NULL != (rt = rtget(RIP_DEFAULT, 0)))
 					    i = MIN(i, (rt->rt_metric
 							+aifp->int_metric+1));
 					v12buf.n->n_metric = htonl(i);
@@ -345,7 +344,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 				supply(from, aifp, OUT_UNICAST, 0,
 				       (aifp->int_state & IS_NO_RIPV1_OUT)
 				       ? RIPv2 : RIPv1,
-				       ap != 0);
+				       ap != NULL);
 				return;
 			}
 
@@ -387,7 +386,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 
 			if (v12buf.buf->rip_vers != RIPv1)
 				v12buf.n->n_mask = mask;
-			if (rt == 0) {
+			if (rt == NULL) {
 				/* we do not have the answer */
 				v12buf.n->n_metric = HOPCNT_INFINITY;
 			} else {
@@ -397,7 +396,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 				v12buf.n->n_family = RIP_AF_INET;
 				v12buf.n->n_dst = dst;
 				v12buf.n->n_metric = (rt->rt_metric+1
-						      + ((aifp!=0)
+						      + ((aifp!=NULL)
 							  ? aifp->int_metric
 							  : 1));
 				if (v12buf.n->n_metric > HOPCNT_INFINITY)
@@ -405,7 +404,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 				if (v12buf.buf->rip_vers != RIPv1) {
 					v12buf.n->n_tag = rt->rt_tag;
 					v12buf.n->n_mask = mask;
-					if (aifp != 0
+					if (aifp != NULL
 					    && on_net(rt->rt_gate,
 						      aifp->int_net,
 						      aifp->int_mask)
@@ -423,7 +422,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 
 		/* Send the answer about specific routes.
 		 */
-		if (ap != 0 && ap->type == RIP_AUTH_MD5)
+		if (ap != NULL && ap->type == RIP_AUTH_MD5)
 			end_md5_auth(&v12buf, ap);
 
 		if (from->sin_port != htons(RIP_PORT)) {
@@ -458,7 +457,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 			       naddr_ntoa(FROM_NADDR));
 			return;
 		}
-		if (aifp == 0) {
+		if (aifp == NULL) {
 			msglog("trace command from unknown router %s",
 			       naddr_ntoa(FROM_NADDR));
 			return;
@@ -515,7 +514,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 		 * via broadcast or point-to-point networks, and from
 		 * those listed in /etc/gateways.
 		 */
-		if (aifp == 0) {
+		if (aifp == NULL) {
 			msglim(&unk_router, FROM_NADDR,
 			       "   discard response from %s"
 			       " via unexpected interface",
@@ -560,7 +559,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 			tg = tgates;
 			while (tg->tgate_addr != FROM_NADDR) {
 				tg = tg->tgate_next;
-				if (tg == 0) {
+				if (tg == NULL) {
 					trace_pkt("    discard RIP response"
 						  " from untrusted router %s",
 						  naddr_ntoa(FROM_NADDR));
@@ -704,7 +703,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 			 * of the defense against RS_NET_SYN.
 			 */
 			if (have_ripv1_out
-			    && (((rt = rtget(dst,mask)) == 0
+			    && (((rt = rtget(dst,mask)) == NULL
 				 || !(rt->rt_state & RS_NET_SYN)))
 			    && (v1_mask = ripv1_mask_net(dst,0)) > mask) {
 				ddst_h = v1_mask & -v1_mask;
@@ -769,7 +768,7 @@ input_route(naddr dst,			/* network order */
 	 * If our interface is broken, switch to using the other guy.
 	 */
 	ifp1 = ifwithaddr(dst, 1, 1);
-	if (ifp1 != 0
+	if (ifp1 != NULL
 	    && (!(ifp1->int_state & IS_BROKE)
 		|| (ifp1->int_state & IS_PASSIVE)))
 		return;
@@ -780,7 +779,7 @@ input_route(naddr dst,			/* network order */
 
 	/* Consider adding the route if we do not already have it.
 	 */
-	if (rt == 0) {
+	if (rt == NULL) {
 		/* Ignore unknown routes being poisoned.
 		 */
 		if (new->rts_metric == HOPCNT_INFINITY)

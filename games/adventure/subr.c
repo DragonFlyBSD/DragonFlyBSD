@@ -33,7 +33,6 @@
  *
  * @(#)subr.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/adventure/subr.c,v 1.7.2.1 2001/03/05 11:43:11 kris Exp $
- * $DragonFly: src/games/adventure/subr.c,v 1.4 2007/04/18 18:32:12 swildner Exp $
  */
 
 /* Re-coding of advent in C: subroutines from main */
@@ -187,7 +186,7 @@ fdwarf(void)
 		if (dloc[i] == 0)
 			continue;
 		j = 1;
-		for (kk = travel[dloc[i]]; kk != 0; kk = kk->next) {
+		for (kk = travel[dloc[i]]; kk != NULL; kk = kk->next) {
 			newloc = kk->tloc;
 			if (newloc > 300 || newloc < 15 || newloc == odloc[i]
 			    || (j > 1 && newloc == tk[j - 1]) || j >= 20
@@ -383,7 +382,7 @@ mback(void)
 		k = oldlc2;
 	oldlc2 = oldloc;
 	oldloc = loc;
-	tk2 = 0;
+	tk2 = NULL;
 	if (k == loc) {
 		rspeak(91);
 		return (2);

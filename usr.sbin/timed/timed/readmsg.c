@@ -32,7 +32,6 @@
  *
  * @(#)readmsg.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/readmsg.c,v 1.5.2.3 2001/08/31 08:02:05 kris Exp $
- * $DragonFly: src/usr.sbin/timed/timed/readmsg.c,v 1.6 2004/09/05 02:20:15 dillon Exp $
  */
 
 #include "globals.h"
@@ -87,9 +86,9 @@ readmsg(int type, char *machfrom, struct timeval *intvl,
 		fprintf(fd, "readmsg: looking for %s from %s, %s\n",
 			tsptype[type], machfrom == NULL ? "ANY" : machfrom,
 			netfrom == NULL ? "ANYNET" : inet_ntoa(netfrom->net));
-		if (head->p != 0) {
+		if (head->p != NULL) {
 			length = 1;
-			for (ptr = head->p; ptr != 0; ptr = ptr->p) {
+			for (ptr = head->p; ptr != NULL; ptr = ptr->p) {
 				/* do not repeat the hundreds of messages */
 				if (++length > 3) {
 					if (ptr == tail) {

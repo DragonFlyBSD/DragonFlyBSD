@@ -56,7 +56,7 @@ main(int argc, char **argv)
 	char fflag = 0;
 	char dflag = 0;
 	char xflag = 0;
-	char *cmd = 0;
+	char *cmd = NULL;
 	char tflag = 0;
 	int ch;
 
@@ -68,7 +68,7 @@ main(int argc, char **argv)
 			fflag++;
 			break;
 		case 'c':
-			if (cmd != 0) {
+			if (cmd != NULL) {
 				warnx("Only one -c allowed");
 				usage();
 			}
@@ -93,7 +93,7 @@ main(int argc, char **argv)
 			usage();
 		}
 	}
-	if ((kp = getenv("SHELL")) == 0)
+	if ((kp = getenv("SHELL")) == NULL)
 		kp = _PATH_BSHELL;
 	if ((default_shellfile = str_cpy(kp)) == 0)
 		errx(1, "Out of memory.");
@@ -162,7 +162,7 @@ main(int argc, char **argv)
 
 	setterse(tflag);
 	setcmd(1);
-	if (cmd != 0)
+	if (cmd != NULL)
 		(void) dolongcmd(cmd, (struct value *)0, 0);
 	if (!fflag)
 		if (dflag || doconfig() < 0)

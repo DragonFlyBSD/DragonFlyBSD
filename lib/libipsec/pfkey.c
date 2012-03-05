@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/lib/libipsec/pfkey.c,v 1.1.2.2 2001/07/03 11:01:14 ume Exp $	*/
-/*	$DragonFly: src/lib/libipsec/pfkey.c,v 1.4 2003/11/13 02:39:42 drhodus Exp $	*/
 /*	$KAME: pfkey.c,v 1.39 2001/03/05 18:22:17 thorpej Exp $	*/
 
 /*
@@ -1642,7 +1641,7 @@ pfkey_recv(so)
 
 	/* read real message */
 	reallen = PFKEY_UNUNIT64(buf.sadb_msg_len);
-	if ((newmsg = CALLOC(reallen, struct sadb_msg *)) == 0) {
+	if ((newmsg = CALLOC(reallen, struct sadb_msg *)) == NULL) {
 		__ipsec_set_strerror(strerror(errno));
 		return NULL;
 	}

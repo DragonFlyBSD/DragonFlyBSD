@@ -83,7 +83,7 @@ docmd(void)
 		switch (c) {
 		case '1': case '2': case '3': case '4': case '5':
 		case '6': case '7': case '8': case '9':
-			if ((w = window[c - '1']) == 0) {
+			if ((w = window[c - '1']) == NULL) {
 				error("%c: No such window.", c);
 				break;
 			}
@@ -92,7 +92,7 @@ docmd(void)
 				 out = 1;
 			break;
 		case '%':
-			if ((w = getwin()) != 0)
+			if ((w = getwin()) != NULL)
 				setselwin(w);
 			break;
 		case ctrl('^'):
@@ -104,26 +104,26 @@ docmd(void)
 				error("No previous window.");
 			break;
 		case 'c':
-			if ((w = getwin()) != 0)
+			if ((w = getwin()) != NULL)
 				closewin(w);
 			break;
 		case 'w':
 			c_window();
 			break;
 		case 'm':
-			if ((w = getwin()) != 0)
+			if ((w = getwin()) != NULL)
 				c_move(w);
 			break;
 		case 'M':
-			if ((w = getwin()) != 0)
+			if ((w = getwin()) != NULL)
 				movewin(w, w->ww_alt.t, w->ww_alt.l);
 			break;
 		case 's':
-			if ((w = getwin()) != 0)
+			if ((w = getwin()) != NULL)
 				c_size(w);
 			break;
 		case 'S':
-			if ((w = getwin()) != 0)
+			if ((w = getwin()) != NULL)
 				sizewin(w, w->ww_alt.nr, w->ww_alt.nc);
 			break;
 		case 'y':
@@ -215,7 +215,7 @@ struct ww *
 getwin(void)
 {
 	int c;
-	struct ww *w = 0;
+	struct ww *w = NULL;
 
 	if (!terse)
 		wwputs("Which window? ", cmdwin);
@@ -234,7 +234,7 @@ getwin(void)
 		w = selwin;
 	else if (c == '-')
 		w = lastselwin;
-	if (w == 0)
+	if (w == NULL)
 		wwbell();
 	if (!terse)
 		wwputc('\n', cmdwin);
@@ -295,6 +295,6 @@ setselwin(struct ww *w)
 		return;
 	if (selwin != 0)
 		lastselwin = selwin;
-	if ((selwin = w) != 0)
+	if ((selwin = w) != NULL)
 		front(selwin, 1);
 }

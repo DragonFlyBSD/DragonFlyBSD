@@ -38,7 +38,6 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.148 2008/03/05 10:37:24 corecode Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2912,7 +2911,7 @@ Compat_RunCommand(GNode *gn, const char cmd[], GNode *ENDNode)
 		brk_string(&aa, line, true);
 		av = aa.argv + 1;
 
-		for (p = sh_builtin; *p != 0; p++) {
+		for (p = sh_builtin; *p != NULL; p++) {
 			if (strcmp(av[0], *p) == 0) {
 				/*
 				 * This command must be passed by the shell

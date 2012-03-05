@@ -30,14 +30,13 @@
  *	BSDI int33.c,v 2.2 1996/04/08 19:32:54 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/mouse.c,v 1.3.2.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/mouse.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 #include "doscmd.h"
 #include "mouse.h"
 
 mouse_t		mouse_status;
-u_char		*mouse_area = 0;
+u_char		*mouse_area = NULL;
 int 		nmice = 1;
 
 static void 

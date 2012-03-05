@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/inetd/builtins.c,v 1.19.2.7 2002/07/22 14:05:56 fanf Exp $
- * $DragonFly: src/usr.sbin/inetd/builtins.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  *
  */
 
@@ -127,7 +126,7 @@ chargen_dg(int s, struct servtab *sep)		/* Character generator */
 	socklen_t size;
 	char text[LINESIZ+2];
 
-	if (endring == 0) {
+	if (endring == NULL) {
 		initring();
 		rs = ring;
 	}

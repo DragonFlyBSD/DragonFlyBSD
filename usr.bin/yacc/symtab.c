@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/symtab.c,v 1.6 1999/08/28 01:08:03 peter Exp $
- * $DragonFly: src/usr.bin/yacc/symtab.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
  *
  * @(#)symtab.c	5.3 (Berkeley) 6/1/90
  */
@@ -78,7 +77,7 @@ make_bucket(const char *name)
 
     assert(name);
     bp = (bucket *) MALLOC(sizeof(bucket));
-    if (bp == 0) no_space();
+    if (bp == NULL) no_space();
     bp->link = 0;
     bp->next = 0;
     bp->name = MALLOC(strlen(name) + 1);
@@ -127,9 +126,9 @@ create_symbol_table(void)
     bucket *bp;
 
     symbol_table = (bucket **) MALLOC(TABLE_SIZE*sizeof(bucket *));
-    if (symbol_table == 0) no_space();
+    if (symbol_table == NULL) no_space();
     for (i = 0; i < TABLE_SIZE; i++)
-	symbol_table[i] = 0;
+	symbol_table[i] = NULL;
 
     bp = make_bucket("error");
     bp->index = 1;
@@ -145,7 +144,7 @@ void
 free_symbol_table(void)
 {
     FREE(symbol_table);
-    symbol_table = 0;
+    symbol_table = NULL;
 }
 
 

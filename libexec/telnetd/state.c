@@ -32,7 +32,6 @@
  *
  * @(#)state.c	8.5 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/telnetd/state.c,v 1.4.2.3 2002/04/13 10:59:08 markm Exp $
- * $DragonFly: src/crypto/telnet/telnetd/state.c,v 1.3 2006/01/17 23:50:35 dillon Exp $
  */
 
 #include <stdarg.h>
@@ -449,7 +448,7 @@ void
 willoption(int option)
 {
 	int changeok = 0;
-	void (*func)(void) = 0;
+	void (*func)(void) = NULL;
 
 	/*
 	 * process input from peer.
@@ -1403,7 +1402,7 @@ suboption(void)
 		return;
 
 	cp = varp = (char *)subpointer;
-	valp = 0;
+	valp = NULL;
 
 	while (!SB_EOF()) {
 		c = SB_GET();
@@ -1432,7 +1431,7 @@ suboption(void)
 					unsetenv(varp);
 			}
 			cp = varp = (char *)subpointer;
-			valp = 0;
+			valp = NULL;
 			break;
 
 		case ENV_ESC:

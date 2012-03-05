@@ -32,7 +32,6 @@
  *
  * @(#)main.c	8.3 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/telnet/main.c,v 1.4.2.5 2002/04/13 10:59:08 markm Exp $
- * $DragonFly: src/crypto/telnet/telnet/main.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -352,7 +351,7 @@ main(int argc, char *argv[])
 		*argp++ = argv[0];		/* host */
 		if (argc > 1)
 			*argp++ = argv[1];	/* port */
-		*argp = 0;
+		*argp = NULL;
 
 		if (setjmp(toplevel) != 0)
 			Exit(0);

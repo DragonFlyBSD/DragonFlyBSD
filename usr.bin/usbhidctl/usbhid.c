@@ -168,9 +168,9 @@ rev(struct hid_item **p)
 {
 	struct hid_item *cur, *prev, *next;
 
-	prev = 0;
+	prev = NULL;
 	cur = *p;
-	while(cur != 0) {
+	while(cur != NULL) {
 		next = cur->next;
 		cur->next = prev;
 		prev = cur;
@@ -210,7 +210,7 @@ dumpdata(int f, report_desc_t rd, int loop)
 	int sp = 0;
 	char namebuf[10000], *namep;
 
-	hids = 0;
+	hids = NULL;
 	for (d = hid_start_parse(rd, 1<<hid_input, reportid);
 	     hid_get_item(d, &h); ) {
 		if (h.kind == hid_collection)
@@ -266,11 +266,11 @@ main(int argc, char **argv)
 {
 	int f;
 	report_desc_t r;
-	char devnam[100], *dev = 0;
+	char devnam[100], *dev = NULL;
 	int ch;
 	int repdump = 0;
 	int loop = 0;
-	char *table = 0;
+	char *table = NULL;
 
 	while ((ch = getopt(argc, argv, "af:lnrt:vx")) != -1) {
 		switch(ch) {
@@ -305,7 +305,7 @@ main(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
-	if (dev == 0)
+	if (dev == NULL)
 		usage();
 	names = argv;
 	nnames = argc;

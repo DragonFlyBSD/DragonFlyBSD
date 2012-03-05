@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/crypto/telnet/libtelnet/kerberos5.c,v 1.1.1.1.8.2 2003/04/24 19:13:59 nectar Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/kerberos5.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 /*
@@ -447,7 +446,7 @@ kerberos5_is(Authenticator *ap, unsigned char *data, int cnt)
 	    Data(ap, KRB_RESPONSE, outbuf.data, outbuf.length);
 	}
 	if (krb5_unparse_name(context, ticket->client, &name))
-	    name = 0;
+	    name = NULL;
 
 	if(UserNameRequested && krb5_kuserok(context,
 					     ticket->client,

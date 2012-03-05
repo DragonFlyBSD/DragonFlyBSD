@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/lib/libc/net/getifaddrs.c,v 1.6 2002/07/25 08:08:30 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/getifaddrs.c,v 1.5 2005/01/31 22:29:33 dillon Exp $	*/
 /*	$KAME: getifaddrs.c,v 1.9 2001/08/20 02:31:20 itojun Exp $	*/
 
 /*
@@ -98,7 +97,7 @@ getifaddrs(struct ifaddrs **pif)
 	size_t needed;
 	char *buf;
 	char *next;
-	struct ifaddrs *cif = 0;
+	struct ifaddrs *cif = NULL;
 	char *p, *p0;
 	struct rt_msghdr *rtm;
 	struct if_msghdr *ifm;

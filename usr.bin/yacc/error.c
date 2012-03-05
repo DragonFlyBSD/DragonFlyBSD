@@ -35,7 +35,6 @@
  *
  * @(#)error.c	5.3 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/yacc/error.c,v 1.7 1999/08/28 01:07:59 peter Exp $
- * $DragonFly: src/usr.bin/yacc/error.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
  */
 
 /* routines for printing error messages  */
@@ -79,7 +78,7 @@ print_pos(const char *st_line, const char *st_cptr)
 {
     const char *s;
 
-    if (st_line == 0) return;
+    if (st_line == NULL) return;
     for (s = st_line; *s != '\n'; ++s)
     {
 	if (isprint(*s) || *s == '\t')

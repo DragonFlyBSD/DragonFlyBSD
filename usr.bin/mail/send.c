@@ -32,7 +32,6 @@
  *
  * @(#)send.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/send.c,v 1.5.6.5 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/send.c,v 1.5 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -65,7 +64,7 @@ sendmessage(struct message *mp, FILE *obuf, struct ignoretab *doign,
 	 * Compute the prefix string, without trailing whitespace
 	 */
 	if (prefix != NULL) {
-		cp2 = 0;
+		cp2 = NULL;
 		for (cp = prefix; *cp != '\0'; cp++)
 			if (*cp != ' ' && *cp != '\t')
 				cp2 = cp;
@@ -74,7 +73,7 @@ sendmessage(struct message *mp, FILE *obuf, struct ignoretab *doign,
 	ibuf = setinput(mp);
 	count = mp->m_size;
 	ishead = 1;
-	dostat = doign == 0 || !isign("status", doign);
+	dostat = doign == NULL || !isign("status", doign);
 	infld = 0;
 	firstline = 1;
 	/*

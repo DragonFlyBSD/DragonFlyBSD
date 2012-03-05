@@ -71,7 +71,7 @@ setup(int nb)
 		err(1, "shmget (%s:%d)", __FILE__, __LINE__);
 	}
 
-	shm_buf = 0;
+	shm_buf = NULL;
 	if ((shm_buf = shmat(shmid, NULL, 0)) == (void *) -1)
 		err(1, "sender: shmat (%s:%d)", __FILE__, __LINE__);
 

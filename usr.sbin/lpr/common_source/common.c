@@ -37,7 +37,6 @@
  *
  * @(#)common.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/common_source/common.c,v 1.12.2.17 2002/07/14 23:58:52 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/common.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -224,7 +223,7 @@ lock_file_name(const struct printer *pp, char *buf, size_t len)
 {
 	static char staticbuf[MAXPATHLEN];
 
-	if (buf == 0)
+	if (buf == NULL)
 		buf = staticbuf;
 	if (len == 0)
 		len = MAXPATHLEN;
@@ -242,7 +241,7 @@ status_file_name(const struct printer *pp, char *buf, size_t len)
 {
 	static char staticbuf[MAXPATHLEN];
 
-	if (buf == 0)
+	if (buf == NULL)
 		buf = staticbuf;
 	if (len == 0)
 		len = MAXPATHLEN;

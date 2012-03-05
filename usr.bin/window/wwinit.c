@@ -344,7 +344,7 @@ wwaddcap(const char *cap, char **kp)
 	char *str;
 	const char *p;
 
-	if ((str = tgetstr(cap, &tp)) != 0) {
+	if ((str = tgetstr(cap, &tp)) != NULL) {
 		while ((*(*kp)++ = *cap++))
 			;
 		(*kp)[-1] = '=';

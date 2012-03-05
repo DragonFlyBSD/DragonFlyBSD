@@ -30,7 +30,6 @@
  * @(#)clnt_perror.c	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: clnt_perror.c,v 1.24 2000/06/02 23:11:07 fvdl Exp $
  * $FreeBSD: src/lib/libc/rpc/clnt_perror.c,v 1.17 2004/10/16 06:11:34 obrien Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_perror.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -61,7 +60,7 @@ static char *
 _buf(void)
 {
 
-	if (buf == 0)
+	if (buf == NULL)
 		buf = (char *)malloc(CLNT_PERROR_BUFLEN);
 	return (buf);
 }
@@ -82,7 +81,7 @@ clnt_sperror(CLIENT *rpch, const char *s)
 	assert(s != NULL);
 
 	str = _buf(); /* side effect: sets CLNT_PERROR_BUFLEN */
-	if (str == 0)
+	if (str == NULL)
 		return (0);
 	len = CLNT_PERROR_BUFLEN;
 	strstart = str;
@@ -237,7 +236,7 @@ clnt_spcreateerror(const char *s)
 	assert(s != NULL);
 
 	str = _buf(); /* side effect: sets CLNT_PERROR_BUFLEN */
-	if (str == 0)
+	if (str == NULL)
 		return(0);
 	len = CLNT_PERROR_BUFLEN;
 	i = snprintf(str, len, "%s: ", s);

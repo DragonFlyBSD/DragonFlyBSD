@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cfscores.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/canfield/cfscores/cfscores.c,v 1.9 1999/12/12 07:25:14 billf Exp $
- * $DragonFly: src/games/canfield/cfscores/cfscores.c,v 1.4 2005/11/19 09:50:30 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -76,7 +75,7 @@ main(int argc, char *argv[])
 	if (argc == 1) {
 		uid = getuid();
 		pw = getpwuid(uid);
-		if (pw == 0) {
+		if (pw == NULL) {
 			printf("You are not listed in the password file?!?\n");
 			exit(2);
 		}
@@ -84,12 +83,12 @@ main(int argc, char *argv[])
 		exit(0);
 	}
 	if (strcmp(argv[1], "-a") == 0) {
-		while ((pw = getpwent()) != 0)
+		while ((pw = getpwent()) != NULL)
 			printuser(pw, 0);
 		exit(0);
 	}
 	pw = getpwnam(argv[1]);
-	if (pw == 0) {
+	if (pw == NULL) {
 		printf("User %s unknown\n", argv[1]);
 		exit(3);
 	}

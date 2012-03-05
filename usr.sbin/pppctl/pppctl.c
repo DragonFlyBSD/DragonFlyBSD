@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pppctl/pppctl.c,v 1.21.2.2 2001/11/23 13:18:39 brian Exp $
- * $DragonFly: src/usr.sbin/pppctl/pppctl.c,v 1.7 2006/01/14 22:58:18 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -313,7 +312,7 @@ main(int argc, char **argv)
                 warnx("cannot translate %s", host);
                 return 1;
             }
-        } else if ((h = gethostbyname(host)) == 0) {
+        } else if ((h = gethostbyname(host)) == NULL) {
             warnx("cannot resolve %s", host);
             return 1;
         }

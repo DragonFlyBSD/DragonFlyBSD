@@ -35,7 +35,6 @@
  *
  * @(#)find.c	8.5 (Berkeley) 8/5/94
  * $FreeBSD: src/usr.bin/find/find.c,v 1.17 2004/05/28 17:17:15 eik Exp $
- * $DragonFly: src/usr.bin/find/find.c,v 1.6 2005/02/14 20:31:59 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -110,7 +109,7 @@ find_formplan(char *argv[])
 	 */
 	if (!isoutput) {
 		OPTION *p;
-		char **argv1 = 0;
+		char **argv1 = NULL;
 
 		if (plan == NULL) {
 			p = lookup_option("-print");

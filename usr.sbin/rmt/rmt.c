@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rmt.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rmt/rmt.c,v 1.7 2000/02/12 01:14:33 mjacob Exp $
- * $DragonFly: src/usr.sbin/rmt/rmt.c,v 1.5 2005/12/05 02:40:28 swildner Exp $
  */
 
 /*
@@ -80,7 +79,7 @@ main(int argc, char **argv)
 	argc--, argv++;
 	if (argc > 0) {
 		debug = fopen(*argv, "w");
-		if (debug == 0)
+		if (debug == NULL)
 			exit(1);
 		setbuf(debug, NULL);
 	}
@@ -222,10 +221,10 @@ checkbuf(char *record, int size)
 
 	if (size <= maxrecsize)
 		return (record);
-	if (record != 0)
+	if (record != NULL)
 		free(record);
 	record = malloc(size);
-	if (record == 0) {
+	if (record == NULL) {
 		DEBUG("rmtd: cannot allocate buffer space\n");
 		exit(4);
 	}

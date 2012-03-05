@@ -35,7 +35,6 @@
  *
  * @(#)popen.c	8.3 (Berkeley) 4/6/94
  * $FreeBSD: src/libexec/ftpd/popen.c,v 1.26 2004/11/18 13:46:29 yar Exp $
- * $DragonFly: src/libexec/ftpd/popen.c,v 1.3 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -181,7 +180,7 @@ ftpd_pclose(FILE *iop)
 	 * pclose returns -1 if stream is not associated with a
 	 * `popened' command, or, if already `pclosed'.
 	 */
-	if (pids == 0 || pids[fdes = fileno(iop)] == 0)
+	if (pids == NULL || pids[fdes = fileno(iop)] == 0)
 		return (-1);
 	fclose(iop);
 	omask = sigblock(sigmask(SIGINT)|sigmask(SIGQUIT)|sigmask(SIGHUP));

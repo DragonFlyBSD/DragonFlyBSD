@@ -1,5 +1,4 @@
 /* $NetBSD: citrus_iso2022.c,v 1.18 2007/11/21 14:19:32 tnozaki Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_iso2022.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)1999, 2002 Citrus Project,
@@ -849,7 +848,7 @@ _citrus_ISO2022_mbrtowc_priv(_ISO2022EncodingInfo * __restrict ei,
 	int c;
 	int chlenbak;
 
-	_DIAGASSERT(nresult != 0);
+	_DIAGASSERT(nresult != NULL);
 	_DIAGASSERT(ei != NULL);
 	_DIAGASSERT(psenc != NULL);
 	_DIAGASSERT(s != NULL);
@@ -1204,7 +1203,7 @@ _citrus_ISO2022_put_state_reset(_ISO2022EncodingInfo * __restrict ei,
 	size_t len;
 
 	_DIAGASSERT(ei != NULL);
-	_DIAGASSERT(nresult != 0);
+	_DIAGASSERT(nresult != NULL);
 	_DIAGASSERT(s != NULL);
 
 	/* XXX state will be modified after this operation... */
@@ -1240,7 +1239,7 @@ _citrus_ISO2022_wcrtomb_priv(_ISO2022EncodingInfo * __restrict ei,
 	_DIAGASSERT(ei != NULL);
 	_DIAGASSERT(s != NULL);
 	_DIAGASSERT(psenc != NULL);
-	_DIAGASSERT(nresult != 0);
+	_DIAGASSERT(nresult != NULL);
 
 	/* XXX state will be modified after this operation... */
 	ret = _ISO2022_sputwchar(ei, wc, buf, sizeof(buf), &result, psenc,

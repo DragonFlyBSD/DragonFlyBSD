@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libipx/ipx_addr.c,v 1.2.8.1 2001/03/05 06:21:40 kris Exp $
- * $DragonFly: src/lib/libipx/ipx_addr.c,v 1.4 2005/08/04 17:27:09 drhodus Exp $
  *
  * @(#)ipx_addr.c
  */
@@ -69,7 +68,7 @@ ipx_addr(const char *name)
 	else {
 		hostname = strchr(buf, '.');
 		if ((cp = strchr(buf, ':')) &&
-		    ((hostname && cp < hostname) || (hostname == 0))) {
+		    ((hostname && cp < hostname) || (hostname == NULL))) {
 			hostname = cp;
 			separator = ':';
 		} else
@@ -80,7 +79,7 @@ ipx_addr(const char *name)
 
 	addr = zero_addr;
 	Field(buf, addr.x_net.c_net, 4);
-	if (hostname == 0)
+	if (hostname == NULL)
 		return (addr);  /* No separator means net only */
 
 	socketname = strchr(hostname, separator);

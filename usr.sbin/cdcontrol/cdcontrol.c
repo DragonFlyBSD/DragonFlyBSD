@@ -18,7 +18,6 @@
  *              Some code style reformatting.
  *
  * $FreeBSD: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.24.2.11 2002/11/20 00:26:19 njl Exp $
- * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.11 2006/09/26 17:32:09 dillon Exp $
  */
 
 #include <sys/cdio.h>
@@ -796,7 +795,7 @@ pstatus(char *arg)
 	char *p, vmcn[(4 * 15) + 1];
 
 	while ((p = strtok(arg, " \t"))) {
-	    arg = 0;
+	    arg = NULL;
 	    if (!strncasecmp(p, "audio", strlen(p)))
 		what |= STATUS_AUDIO;
 	    else if (!strncasecmp(p, "media", strlen(p)))

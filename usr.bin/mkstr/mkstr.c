@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkstr.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mkstr/mkstr.c,v 1.4.2.1 2002/11/16 01:07:42 tjr Exp $
- * $DragonFly: src/usr.bin/mkstr/mkstr.c,v 1.3 2008/06/05 18:06:33 swildner Exp $
  */
 
 #include <err.h>
@@ -284,7 +283,7 @@ hashit(char *str, int really, unsigned fakept)
 	if (i < 0)
 		i += NBUCKETS;
 	if (really != 0)
-		for (hp = bucket[i]; hp != 0; hp = hp->hnext)
+		for (hp = bucket[i]; hp != NULL; hp = hp->hnext)
 		if (hp->hval == hashval) {
 			fseek(mesgread, (long) hp->hpt, 0);
 			fgetNUL(buf, sizeof buf, mesgread);
@@ -294,7 +293,7 @@ hashit(char *str, int really, unsigned fakept)
 			if (strcmp(buf, str) == 0)
 				break;
 		}
-	if (!really || hp == 0) {
+	if (!really || hp == NULL) {
 		hp = (struct hash *) calloc(1, sizeof *hp);
 		if (hp == NULL)
 			err(1, NULL);

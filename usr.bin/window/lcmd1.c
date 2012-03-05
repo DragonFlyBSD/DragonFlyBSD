@@ -96,7 +96,7 @@ l_window(struct value *v, struct value *a)
 		for (pp = argv; a->v_type != V_ERR &&
 		     pp < &argv[sizeof argv/sizeof *argv-1]; pp++, a++)
 			*pp = a->v_str;
-		*pp = 0;
+		*pp = NULL;
 		shf = *(sh = argv);
 		if ((*sh = strrchr(shf, '/')))
 			(*sh)++;
@@ -108,7 +108,7 @@ l_window(struct value *v, struct value *a)
 	}
 	if ((w = openwin(id, row, col, nrow, ncol, nline, label,
 	    haspty ? WWT_PTY : WWT_SOCKET, hasframe ? WWU_HASFRAME : 0, shf,
-	    sh)) == 0)
+	    sh)) == NULL)
 		return;
 	if (mapnl)
 		SET(w->ww_wflags, WWW_MAPNL);
@@ -153,7 +153,7 @@ l_smooth(struct value *v, struct value *a)
 
 	v->v_type = V_NUM;
 	v->v_num = 0;
-	if ((w = vtowin(a++, selwin)) == 0)
+	if ((w = vtowin(a++, selwin)) == NULL)
 		return;
 	v->v_num = ISSET(w->ww_wflags, WWW_NOUPDATE) == 0;
 	if (!vtobool(a, v->v_num, v->v_num))
@@ -189,7 +189,7 @@ l_select(struct value *v, struct value *a)
 	v->v_num = selwin ? selwin->ww_id + 1 : -1;
 	if (a->v_type == V_ERR)
 		return;
-	if ((w = vtowin(a, (struct ww *)0)) == 0)
+	if ((w = vtowin(a, (struct ww *)0)) == NULL)
 		return;
 	setselwin(w);
 }
@@ -239,7 +239,7 @@ l_label(struct value *v __unused, struct value *a)
 {
 	struct ww *w;
 
-	if ((w = vtowin(a, selwin)) == 0)
+	if ((w = vtowin(a, selwin)) == NULL)
 		return;
 	if ((++a)->v_type != V_ERR && setlabel(w, a->v_str) < 0)
 		error("Out of memory.");
@@ -258,7 +258,7 @@ l_foreground(struct value *v, struct value *a)
 	struct ww *w;
 	char flag;
 
-	if ((w = vtowin(a, selwin)) == 0)
+	if ((w = vtowin(a, selwin)) == NULL)
 		return;
 	v->v_type = V_NUM;
 	v->v_num = isfg(w);
@@ -311,7 +311,7 @@ l_write(struct value *v __unused, struct value *a)
 	char buf[20];
 	struct ww *w;
 
-	if ((w = vtowin(a++, selwin)) == 0)
+	if ((w = vtowin(a++, selwin)) == NULL)
 		return;
 	while (a->v_type != V_ERR) {
 		if (a->v_type == V_NUM) {
@@ -338,7 +338,7 @@ l_close(struct value *v __unused, struct value *a)
 		closewin((struct ww *)0);
 	else
 		for (; a->v_type != V_ERR; a++)
-			if ((w = vtowin(a, (struct ww *)0)) != 0)
+			if ((w = vtowin(a, (struct ww *)0)) != NULL)
 				closewin(w);
 }
 
@@ -387,7 +387,7 @@ vtowin(struct value *v, struct ww *w)
 {
 	switch (v->v_type) {
 	case V_ERR:
-		if (w != 0)
+		if (w != NULL)
 			return w;
 		error("No window specified.");
 		return 0;
@@ -396,7 +396,7 @@ vtowin(struct value *v, struct ww *w)
 		return 0;
 	}
 	if (v->v_num < 1 || v->v_num > NWINDOW
-	    || (w = window[v->v_num - 1]) == 0) {
+	    || (w = window[v->v_num - 1]) == NULL) {
 		error("%d: No such window.", v->v_num);
 		return 0;
 	}

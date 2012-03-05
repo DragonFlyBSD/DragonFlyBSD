@@ -32,7 +32,6 @@
  *
  * @(#)utilities.c	8.6 (Berkeley) 5/19/95
  * $FreeBSD: src/sbin/fsck/utilities.c,v 1.11.2.3 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/utilities.c,v 1.10 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -139,7 +138,7 @@ bufinit(void)
 
 	pbp = pdirbp = NULL;
 	bufp = malloc((unsigned int)sblock.fs_bsize);
-	if (bufp == 0)
+	if (bufp == NULL)
 		errx(EEXIT, "cannot allocate buffer pool");
 	cgblk.b_un.b_buf = bufp;
 	initbarea(&cgblk);

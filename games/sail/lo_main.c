@@ -28,7 +28,6 @@
  *
  * @(#)lo_main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/lo_main.c,v 1.2 1999/11/30 03:49:34 billf Exp $
- * $DragonFly: src/games/sail/lo_main.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 /*
@@ -57,7 +56,7 @@ lo_main(void)
 	struct logs log;
 	struct ship *ship;
 
-	if ((fp = fopen(_PATH_LOGFILE, "r")) == 0) {
+	if ((fp = fopen(_PATH_LOGFILE, "r")) == NULL) {
 		perror(_PATH_LOGFILE);
 		exit(1);
 	}

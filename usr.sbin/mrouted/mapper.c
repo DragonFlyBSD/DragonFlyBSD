@@ -4,7 +4,6 @@
  * mapper.c,v 3.8.4.3 1998/01/06 01:57:47 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/mapper.c,v 1.15.2.1 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/mapper.c,v 1.4 2004/03/15 18:10:28 dillon Exp $
  */
 
 /*
@@ -65,7 +64,7 @@ typedef struct node {
 } Node;
 
 
-Node   *routers = 0;
+Node   *routers = NULL;
 u_int32	our_addr, target_addr = 0;		/* in NET order */
 int	debug = 0;
 int	retries = DEFAULT_RETRIES;
@@ -102,8 +101,8 @@ find_node(u_int32 addr, Node **ptr)
 	n->addr = addr;
 	n->version = 0;
 	n->tries = 0;
-	n->u.interfaces = 0;
-	n->left = n->right = 0;
+	n->u.interfaces = NULL;
+	n->left = n->right = NULL;
 	return n;
     } else if (addr == n->addr)
 	return n;
@@ -126,7 +125,7 @@ find_interface(u_int32 addr, Node *node)
     ifc->addr = addr;
     ifc->next = node->u.interfaces;
     node->u.interfaces = ifc;
-    ifc->neighbors = 0;
+    ifc->neighbors = NULL;
 
     return ifc;
 }

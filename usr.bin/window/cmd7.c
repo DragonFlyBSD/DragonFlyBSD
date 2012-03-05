@@ -231,7 +231,7 @@ unyank(void)
 		str_free(yp->line);
 		free((char *) yp);
 	}
-	yb_head = yb_tail = 0;
+	yb_head = yb_tail = NULL;
 }
 
 void
@@ -245,9 +245,9 @@ yank_line(int r, int c, int cend)
 
 	if (c == cend)
 		return;
-	if ((yp = (struct yb *) malloc(sizeof *yp)) == 0)
+	if ((yp = (struct yb *) malloc(sizeof *yp)) == NULL)
 		return;
-	yp->link = 0;
+	yp->link = NULL;
 	nl = cend == selwin->ww_b.r;
 	bp = selwin->ww_buf[r];
 	for (cend--; cend >= c; cend--)

@@ -30,7 +30,6 @@
  *	BSDI int13.c,v 2.3 1996/04/08 19:32:43 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/int13.c,v 1.4.2.2 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/int13.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
  */
 
 #include <sys/ioctl.h>
@@ -144,7 +143,7 @@ getdisk(int drive)
 	drive += 2;
     }
 
-    if (drive > 25 || diskinfo[drive].path == 0) {
+    if (drive > 25 || diskinfo[drive].path == NULL) {
 	return(0);
     }
     di = &diskinfo[drive];
@@ -194,7 +193,7 @@ init_hdisk(int drive, int cyl, int head, int tracksize, char *file, char *fake_p
 
     if (drive < 0) {
 	for (drive = 2; drive < 26; ++drive) {
-	    if (diskinfo[drive].path == 0)
+	    if (diskinfo[drive].path == NULL)
 		break;
 	}
     }
@@ -219,7 +218,7 @@ init_hdisk(int drive, int cyl, int head, int tracksize, char *file, char *fake_p
     di->sectors = tracksize;
     di->cylinders = cyl;
     di->sides = head;
-    di->sector0 = 0;
+    di->sector0 = NULL;
     di->offset = 0;
 
     if (fake_ptab) {
@@ -367,9 +366,9 @@ init_floppy(int drive, int type, char *file)
     }
 
     if (drive < 0) {
-    	if (diskinfo[0].path == 0) {
+	if (diskinfo[0].path == NULL) {
 	    drive = 0;
-    	} else if (diskinfo[1].path == 0) {
+	} else if (diskinfo[1].path == NULL) {
 	    drive = 1;
 	} else {
 	    fprintf(stderr, "Too many floppy drives (only 2 allowed)\n");
@@ -384,7 +383,7 @@ init_floppy(int drive, int type, char *file)
     if (drive >= nfloppies)
 	nfloppies = drive + 1;
 
-    if (diskinfo[drive].path == 0) {
+    if (diskinfo[drive].path == NULL) {
 	diskinfo[drive] = *di;
     }
 
@@ -427,7 +426,7 @@ init_floppy(int drive, int type, char *file)
     }
     di->fd = -1;
     di->location = ((table & 0xf0000) << 12) | (table & 0xffff);
-    di->sector0 = 0;
+    di->sector0 = NULL;
     di->offset = 0;
 
     ivec[0x1e] = ((ftable & 0xf0000) << 12) | (ftable & 0xffff);
@@ -624,7 +623,7 @@ int13(regcontext_t *REGS)
 		cyl = R_CH;
 	    }
 
-	    if ((di = getdisk(drive)) == 0) {
+	    if ((di = getdisk(drive)) == NULL) {
 		debug(D_DISK, "Bad drive: %02x (%d : %d : %d)\n",
 		      drive, cyl, side, sector);
 		seterror(INT13_ERR_BAD_COMMAND);
@@ -683,7 +682,7 @@ int13(regcontext_t *REGS)
 		cyl = R_CH;
 	    }
 
-	    if ((di = getdisk(drive)) == 0) {
+	    if ((di = getdisk(drive)) == NULL) {
 		debug(D_DISK, "Bad drive: %d (%d : %d : %d)\n",
 		      drive, cyl, side, sector);
 		seterror(INT13_ERR_BAD_COMMAND);
@@ -740,7 +739,7 @@ int13(regcontext_t *REGS)
 		cyl = R_CH;
 	    }
 
-	    if ((di = getdisk(drive)) == 0) {
+	    if ((di = getdisk(drive)) == NULL) {
 		debug(D_DISK, "Bad drive: %d (%d : %d : %d)\n",
 		      drive, cyl, side, sector);
 		seterror(INT13_ERR_BAD_COMMAND);
@@ -794,7 +793,7 @@ int13(regcontext_t *REGS)
     case 0x08:	/* Status */
 	R_AH = 0;
 
-	if ((di = getdisk(drive)) == 0) {
+	if ((di = getdisk(drive)) == NULL) {
 	    debug(D_DISK, "Bad drive: %d\n", drive);
 	    seterror(INT13_ERR_BAD_COMMAND);
 	    break;
@@ -826,7 +825,7 @@ int13(regcontext_t *REGS)
 	break;
 	    
     case 0x15:
-	if ((di = getdisk(drive)) == 0) {
+	if ((di = getdisk(drive)) == NULL) {
 	    R_AH = 0;
 	    R_FLAGS |= PSL_C;
 	    break;
@@ -855,7 +854,7 @@ int13(regcontext_t *REGS)
 	break;
 	
     case 0x18:	/* Determine disk format */
-	if ((di = getdisk(drive)) == 0) {
+	if ((di = getdisk(drive)) == NULL) {
 	    R_AH = 0;
 	    R_FLAGS |= PSL_C;
 	    break;

@@ -32,9 +32,9 @@
  *
  * @(#)genget.c	8.2 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/libtelnet/genget.c,v 1.2.8.2 2002/04/13 10:59:07 markm Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/genget.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
+#include <sys/_null.h>
 #include <ctype.h>
 
 #include "misc-proto.h"
@@ -74,11 +74,11 @@ genget(char *name, char **table, int stlen)
 	char **c, **found;
 	int n;
 
-	if (name == 0)
+	if (name == NULL)
 	    return 0;
 
-	found = 0;
-	for (c = table; *c != 0; c = (char **)((char *)c + stlen)) {
+	found = NULL;
+	for (c = table; *c != NULL; c = (char **)((char *)c + stlen)) {
 		if ((n = isprefix(name, *c)) == 0)
 			continue;
 		if (n < 0)		/* exact match */

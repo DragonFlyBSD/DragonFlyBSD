@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/usr.sbin/gifconfig/gifconfig.c,v 1.2.2.4 2002/08/30 14:23:39 sobomax Exp $	*/
-/*	$DragonFly: src/usr.sbin/gifconfig/gifconfig.c,v 1.6 2004/03/24 18:23:46 cpressey Exp $	*/
 /*	$KAME: gifconfig.c,v 1.14 2001/01/01 04:04:56 jinmei Exp $	*/
 
 /*
@@ -388,7 +387,7 @@ ifconfig(int argc, char **argv, int af, struct afswtch *rafp)
 		for (p = cmds; p->c_name; p++)
 			if (strcmp(*argv, p->c_name) == 0)
 				break;
-		if (p->c_name == 0 && setpsrc)
+		if (p->c_name == NULL && setpsrc)
 			p++;	/* got src, do dst */
 		if (p->c_func) {
 			if (p->c_parameter == NEXTARG) {

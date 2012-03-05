@@ -1,5 +1,4 @@
 /* $NetBSD: ungetwc.c,v 1.3 2005/06/12 05:21:27 lukem Exp $ */
-/* $DragonFly: src/lib/libc/stdio/ungetwc.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
 
 /*-
  * Copyright (c)2001 Citrus Project,
@@ -59,7 +58,7 @@ ungetwc(wint_t wc, FILE *fp)
 	/* XXX should we flush ungetc buffer? */
 
 	wcio = WCIO_GET(fp);
-	if (wcio == 0) {
+	if (wcio == NULL) {
 		FUNLOCKFILE(fp);
 		errno = ENOMEM; /* XXX */
 		return WEOF;

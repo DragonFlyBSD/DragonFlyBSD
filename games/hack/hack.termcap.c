@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.termcap.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.termcap.c,v 1.10 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.termcap.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include <termcap.h>
 #include "hack.h"
@@ -73,7 +72,7 @@ startup(void)
 	SO = tgetstr(__DECONST(char *, "so"), &tbufptr);
 	SE = tgetstr(__DECONST(char *, "se"), &tbufptr);
 	SG = tgetnum(__DECONST(char *, "sg"));
-	if (!SO || !SE || (SG > 0)) SO = SE = 0;
+	if (!SO || !SE || (SG > 0)) SO = SE = NULL;
 	CD = tgetstr(__DECONST(char *, "cd"), &tbufptr);
 	set_whole_screen();             /* uses LI and CD */
 	if (tbufptr - tbuf > (int)sizeof(tbuf)) error(

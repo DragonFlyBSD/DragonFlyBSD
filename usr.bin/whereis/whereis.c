@@ -22,7 +22,6 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/usr.bin/whereis/whereis.c,v 1.12 2002/08/22 01:50:51 johan Exp $
- * $DragonFly: src/usr.bin/whereis/whereis.c,v 1.6 2008/06/05 18:06:33 swildner Exp $
  */
 
 /*
@@ -442,7 +441,7 @@ main(int argc, char **argv)
 						nlen = strlen(cp);
 						bin = realloc(bin, 
 							      olen + nlen + 2);
-						if (bin == 0)
+						if (bin == NULL)
 							abort();
 						strcat(bin, " ");
 						strcat(bin, cp);
@@ -516,7 +515,7 @@ main(int argc, char **argv)
 						nlen = strlen(cp2);
 						man = realloc(man, 
 							      olen + nlen + 2);
-						if (man == 0)
+						if (man == NULL)
 							abort();
 						strcat(man, " ");
 						strcat(man, cp2);
@@ -555,7 +554,7 @@ main(int argc, char **argv)
 						nlen = strlen(cp);
 						src = realloc(src, 
 							      olen + nlen + 2);
-						if (src == 0)
+						if (src == NULL)
 							abort();
 						strcat(src, " ");
 						strcat(src, cp);
@@ -623,7 +622,7 @@ main(int argc, char **argv)
 							src = realloc(src, 
 								      olen + 
 								      nlen + 2);
-							if (src == 0)
+							if (src == NULL)
 								abort();
 							strcat(src, " ");
 							strcat(src, buf);

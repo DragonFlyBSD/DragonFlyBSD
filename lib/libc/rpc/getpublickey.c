@@ -28,7 +28,6 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/lib/libc/rpc/getpublickey.c,v 1.9 2006/02/28 16:02:26 deischen Exp $
- * $DragonFly: src/lib/libc/rpc/getpublickey.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  *
  * @(#)publickey.c 1.10 91/03/11 Copyr 1986 Sun Micro
  */
@@ -57,7 +56,7 @@
 /*
  * Hack to let ypserv/rpc.nisd use AUTH_DES.
  */
-int (*__getpublickey_LOCAL)() = 0;
+int (*__getpublickey_LOCAL)() = NULL;
 
 /*
  * Get somebody's public key

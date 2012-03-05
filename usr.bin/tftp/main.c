@@ -594,7 +594,7 @@ command(void)
 			printf("?Ambiguous command\n");
 			continue;
 		}
-		if (c == 0) {
+		if (c == NULL) {
 			printf("?Invalid command\n");
 			continue;
 		}
@@ -612,7 +612,7 @@ getcmd(char *name)
 
 	longest = 0;
 	nmatches = 0;
-	found = 0;
+	found = NULL;
 	for (c = cmdtab; (p = c->name) != NULL; c++) {
 		for (q = name; *q == *p++; q++)
 			if (*q == 0)		/* exact match? */
@@ -656,7 +656,7 @@ makeargv(void)
 			break;
 		*cp++ = '\0';
 	}
-	*argp++ = 0;
+	*argp++ = NULL;
 }
 
 void

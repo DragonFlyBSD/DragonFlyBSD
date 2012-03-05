@@ -76,7 +76,6 @@
  *
  *
  * $FreeBSD: src/usr.bin/chat/chat.c,v 1.21 2003/10/31 06:22:03 kientzle Exp $
- * $DragonFly: src/usr.bin/chat/chat.c,v 1.11 2005/01/01 00:13:49 cpressey Exp $
  */
 
 #include <sys/cdefs.h>
@@ -1400,7 +1399,7 @@ vfmtmsg(char *buf, int buflen, const char *fmt, va_list args)
 		}
 	    }
 	}
-	str = 0;
+	str = NULL;
 	base = 0;
 	neg = 0;
 	++fmt;

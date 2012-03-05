@@ -36,7 +36,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/af.c,v 1.6 1999/08/28 01:15:01 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/af.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  *
  * @(#)af.c	8.1 (Berkeley) 6/5/93
  */
@@ -191,7 +190,7 @@ ipxnet_checkhost(struct sockaddr_ipx *sipx)
 	 * We want this route if there is no more than one 
 	 * point to point interface with this network.
 	 */
-	if (ifp == 0 || (ifp->int_flags & IFF_POINTOPOINT)==0) return (1);
+	if (ifp == NULL || (ifp->int_flags & IFF_POINTOPOINT)==0) return (1);
 	return (ifp->int_sq.n == ifp->int_sq.p);
 }
 

@@ -28,7 +28,6 @@
  *
  * @(#)des_crypt.c	2.2 88/08/10 4.0 RPCSRC; from 1.13 88/02/08 SMI
  * $FreeBSD: src/lib/libc/rpc/des_crypt.c,v 1.3 1999/08/28 00:00:38 peter Exp $
- * $DragonFly: src/lib/libc/rpc/des_crypt.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 /*
  * des_crypt.c, DES encryption library routines
@@ -40,7 +39,7 @@
 #include <rpc/des.h>
 
 static int common_crypt	( char *, char *, unsigned, unsigned, struct desparams * );
-int (*__des_crypt_LOCAL)() = 0;
+int (*__des_crypt_LOCAL)() = NULL;
 extern int _des_crypt_call( char *, int, struct desparams * );
 /*
  * Copy 8 bytes

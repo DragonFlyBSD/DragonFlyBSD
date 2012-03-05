@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/command.c,v 1.230.2.18 2003/04/05 10:48:08 ume Exp $
- * $DragonFly: src/usr.sbin/ppp/command.c,v 1.4 2008/03/11 10:53:07 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -626,7 +625,7 @@ ShellCommand(struct cmdargs const *arg, int bg)
   if ((shpid = fork()) == 0) {
     int i, fd;
 
-    if ((shell = getenv("SHELL")) == 0)
+    if ((shell = getenv("SHELL")) == NULL)
       shell = _PATH_BSHELL;
 
     timer_TermService();

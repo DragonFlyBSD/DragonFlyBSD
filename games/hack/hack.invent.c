@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.invent.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.invent.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.invent.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 extern struct obj zeroobj;
@@ -67,7 +66,7 @@ addinv(struct obj *obj)
 	/* merge or attach to end of chain */
 	if (!invent) {
 		invent = obj;
-		otmp = 0;
+		otmp = NULL;
 	} else
 		for (otmp = invent; /* otmp */; otmp = otmp->nobj) {
 			if (merged(otmp, obj, 0))
@@ -202,7 +201,7 @@ m_at(int x, int y)
 	struct wseg *wtmp;
 #endif /* NOWORM */
 
-	m_atseg = 0;
+	m_atseg = NULL;
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 		if (mtmp->mx == x && mtmp->my == y)
 			return (mtmp);

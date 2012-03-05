@@ -32,7 +32,6 @@
  *
  * @(#)netstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netstat.c,v 1.13 1999/08/30 08:18:08 peter Exp $
- * $DragonFly: src/usr.bin/systat/netstat.c,v 1.11 2008/11/10 04:59:45 swildner Exp $
  */
 
 /*
@@ -393,7 +392,7 @@ shownetstat(void)
 static void
 inetprint(struct in_addr *in, int port, const char *proto)
 {
-	struct servent *sp = 0;
+	struct servent *sp = NULL;
 	char line[80], *cp;
 
 	snprintf(line, sizeof(line), "%.*s.", 16, inetname(*in));
@@ -422,7 +421,7 @@ inetprint(struct in_addr *in, int port, const char *proto)
 static char *
 inetname(struct in_addr in)
 {
-	char *cp = 0;
+	char *cp = NULL;
 	static char line[50];
 	struct hostent *hp;
 	struct netent *np;
@@ -436,7 +435,7 @@ inetname(struct in_addr in)
 			if (np)
 				cp = np->n_name;
 		}
-		if (cp == 0) {
+		if (cp == NULL) {
 			hp = gethostbyaddr(&in, sizeof (in), AF_INET);
 			if (hp)
 				cp = hp->h_name;

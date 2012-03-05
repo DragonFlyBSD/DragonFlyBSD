@@ -28,7 +28,6 @@
  *
  * @(#)subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/subs.c,v 1.12 1999/11/30 03:48:27 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/subs.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include <stdio.h>
@@ -369,7 +368,7 @@ getarg(int argc, char **argv)
 			recover(optarg);
 			break;
 		case 'h':
-			for (i = 0; descr[i] != 0; i++)
+			for (i = 0; descr[i] != NULL; i++)
 				puts(descr[i]);
 			getout();
 		}

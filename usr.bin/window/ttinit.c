@@ -73,7 +73,7 @@ ttinit(void)
 	 * Set output buffer size to about 1 second of output time.
 	 */
 	i = MIN(wwbaud/10, 512);
-	if ((tt_ob = malloc((unsigned) i)) == 0) {
+	if ((tt_ob = malloc((unsigned) i)) == NULL) {
 		wwerrno = WWE_NOMEM;
 		return -1;
 	}
@@ -90,7 +90,7 @@ ttinit(void)
 		p++;
 	for (q = p; *q && *q != '|' && *q != ':'; q++)
 		;
-	if (q != p && (t = malloc((unsigned) (q - p + 1))) != 0) {
+	if (q != p && (t = malloc((unsigned) (q - p + 1))) != NULL) {
 		wwterm = t;
 		while (p < q)
 			*t++ = *p++;

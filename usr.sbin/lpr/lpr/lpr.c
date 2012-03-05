@@ -39,7 +39,6 @@
  * @(#) Copyright (c) 1983, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: lpr.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpr/lpr.c,v 1.32.2.11 2002/04/28 23:40:23 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpr/lpr.c,v 1.5 2005/08/08 18:58:56 joerg Exp $
  */
 
 /*
@@ -282,7 +281,7 @@ main(int argc, char *argv[])
 		lpr_username = Uflag;		/* -U person doing 'lpr' */
 	} else {
 		lpr_username = getlogin();	/* person doing 'lpr' */
-		if (userid != pp->daemon_user || lpr_username == 0) {
+		if (userid != pp->daemon_user || lpr_username == NULL) {
 			if ((pw = getpwuid(userid)) == NULL)
 				errx(1, "Who are you?");
 			lpr_username = pw->pw_name;
@@ -334,7 +333,7 @@ main(int argc, char *argv[])
 		card('J', jobname);
 		card('L', lpr_username);
 	}
-	if (format != 'p' && Zflag != 0)
+	if (format != 'p' && Zflag != NULL)
 		card('Z', Zflag);
 	if (iflag)
 		card('I', itoa(indent));

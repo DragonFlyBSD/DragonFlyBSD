@@ -50,15 +50,15 @@ int
 p_function(const char *name, struct value *v, int flag)
 {
 	struct value t;
-	struct lcmd_tab *c = 0;
-	struct alias *a = 0;
+	struct lcmd_tab *c = NULL;
+	struct alias *a = NULL;
 	struct lcmd_arg *ap;			/* this arg */
-	struct lcmd_arg *lp = 0;		/* list arg */
+	struct lcmd_arg *lp = NULL;		/* list arg */
 	int i;
 	struct value av[LCMD_NARG + 1];
 	struct value *vp;
 
-	if (name != 0) {
+	if (name != NULL) {
 		if ((c = lcmd_lookup(name)))
 			name = c->lc_name;
 		else if ((a = alias_lookup(name)))
@@ -75,8 +75,8 @@ p_function(const char *name, struct value *v, int flag)
 		(void) s_gettok();
 	i = 0;
 	for (;;) {
-		ap = 0;
-		vp = 0;
+		ap = NULL;
+		vp = NULL;
 		if (token == T_COMMA)		/* null argument */
 			t.v_type = V_ERR;
 		else {
@@ -87,7 +87,7 @@ p_function(const char *name, struct value *v, int flag)
 		}
 		if (token != T_ASSIGN) {
 			if (i >= LCMD_NARG ||
-			    (c != 0 && (ap = lp) == 0 &&
+			    (c != NULL && (ap = lp) == NULL &&
 			    (ap = c->lc_arg + i)->arg_name == 0)) {
 				p_error("%s: Too many arguments.", name);
 				flag = 0;
@@ -108,30 +108,30 @@ p_function(const char *name, struct value *v, int flag)
 			if (t.v_type == V_ERR)
 				flag = 0;
 			if (tmp) {
-				if (c == 0) {
+				if (c == NULL) {
 					/* an aliase */
 					p_error("%s: Bad alias syntax.", name);
 					flag = 0;
 				} else {
 					for (ap = c->lc_arg, vp = av;
-					     ap != 0 && ap->arg_name != 0 &&
+					     ap != NULL && ap->arg_name != 0 &&
 					     (*ap->arg_name == '\0' ||
 					      !str_match(tmp, ap->arg_name,
 							ap->arg_minlen));
 					     ap++, vp++)
 						;
-					if (ap == 0 || ap->arg_name == 0) {
+					if (ap == NULL || ap->arg_name == 0) {
 						p_error("%s: Unknown argument \"%s\".",
 							name, tmp);
 						flag = 0;
-						ap = 0;
-						vp = 0;
+						ap = NULL;
+						vp = NULL;
 					}
 				}
 				str_free(tmp);
 			}
 		}
-		if (ap != 0) {
+		if (ap != NULL) {
 			if (ap->arg_flags & ARG_LIST) {
 				i = vp - av + 1;
 				lp = ap;
@@ -145,7 +145,7 @@ p_function(const char *name, struct value *v, int flag)
 					p_error("%s: Argument %d duplicated.",
 						name, (int)(vp - av + 1));
 				flag = 0;
-				vp = 0;
+				vp = NULL;
 			} else if (t.v_type == V_ERR) {
 				/* do nothing */
 			} else if (((ap->arg_flags&ARG_TYPE) == ARG_NUM &&
@@ -160,10 +160,10 @@ p_function(const char *name, struct value *v, int flag)
 					p_error("%s: Argument %d type mismatch.",
 						name, (int)(vp - av + 1));
 				flag = 0;
-				vp = 0;
+				vp = NULL;
 			}
 		}
-		if (vp != 0)
+		if (vp != NULL)
 			*vp = t;
 		else
 			val_free(t);
@@ -179,7 +179,7 @@ p_function(const char *name, struct value *v, int flag)
 		flag = 0;		/* look for legal follow set */
 	v->v_type = V_ERR;
 	if (flag) {
-		if (c != 0)
+		if (c != NULL)
 			(*c->lc_func)(v, av);
 		else {
 			if (a->a_flags & A_INUSE)

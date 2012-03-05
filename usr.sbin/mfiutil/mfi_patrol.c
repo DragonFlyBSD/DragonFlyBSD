@@ -55,7 +55,7 @@ mfi_get_time(int fd, uint32_t *at)
 	if (mfi_dcmd_command(fd, MFI_DCMD_TIME_SECS_GET, at, sizeof(*at), NULL,
 	    0, NULL) < 0) {
 		warn("Couldn't fetch adapter time");
-		at = 0;
+		at = NULL;
 	}
 }
 

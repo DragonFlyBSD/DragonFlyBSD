@@ -32,7 +32,6 @@
  *
  * @(#)ftpd.c	8.4 (Berkeley) 4/16/94
  * $FreeBSD: src/libexec/ftpd/ftpd.c,v 1.213 2008/12/23 01:23:09 cperciva Exp $
- * $DragonFly: src/libexec/ftpd/ftpd.c,v 1.7 2005/10/28 18:06:57 joerg Exp $
  */
 
 /*
@@ -1653,7 +1652,7 @@ retrieve(char *cmd, char *name)
 	int (*closefunc)(FILE *);
 	time_t start;
 
-	if (cmd == 0) {
+	if (cmd == NULL) {
 		fin = fopen(name, "r"), closefunc = fclose;
 		st.st_size = 0;
 	} else {
@@ -1667,14 +1666,14 @@ retrieve(char *cmd, char *name)
 	if (fin == NULL) {
 		if (errno != 0) {
 			perror_reply(550, name);
-			if (cmd == 0) {
+			if (cmd == NULL) {
 				LOGCMD("get", name);
 			}
 		}
 		return;
 	}
 	byte_count = -1;
-	if (cmd == 0) {
+	if (cmd == NULL) {
 		if (fstat(fileno(fin), &st) < 0) {
 			perror_reply(550, name);
 			goto done;
@@ -1720,14 +1719,14 @@ retrieve(char *cmd, char *name)
 		goto done;
 	time(&start);
 	send_data(fin, dout, st.st_blksize, st.st_size,
-		  restart_point == 0 && cmd == 0 && S_ISREG(st.st_mode));
-	if (cmd == 0 && guest && stats && byte_count > 0)
+		  restart_point == 0 && cmd == NULL && S_ISREG(st.st_mode));
+	if (cmd == NULL && guest && stats && byte_count > 0)
 		logxfer(name, byte_count, start);
 	fclose(dout);
 	data = -1;
 	pdata = -1;
 done:
-	if (cmd == 0)
+	if (cmd == NULL)
 		LOGBYTES("get", name, byte_count);
 	(*closefunc)(fin);
 }

@@ -32,7 +32,6 @@
  *
  * @(#)encrypt.c	8.2 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/libtelnet/encrypt.c,v 1.3.2.2 2002/04/13 10:59:07 markm Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/encrypt.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 /*
@@ -188,8 +187,8 @@ encrypt_init(const char *name, int server)
 	remote_supports_encrypt = remote_supports_decrypt = 0;
 	encrypt_mode = 0;
 	decrypt_mode = 0;
-	encrypt_output = 0;
-	decrypt_input = 0;
+	encrypt_output = NULL;
+	decrypt_input = NULL;
 
 	str_suplen = 4;
 
@@ -245,18 +244,18 @@ EncryptDisable(char *type, char *mode)
 		printf("Usage: encrypt disable <type> [input|output]\n");
 		encrypt_list_types();
 	} else if ((ep = (Encryptions *)genget(type, (char **)encryptions,
-						sizeof(Encryptions))) == 0) {
+						sizeof(Encryptions))) == NULL) {
 		printf("%s: invalid encryption type\n", type);
 	} else if (Ambiguous((char **)ep)) {
 		printf("Ambiguous type '%s'\n", type);
 	} else {
-		if ((mode == 0) || (isprefix(mode, "input") ? 1 : 0)) {
+		if ((mode == NULL) || (isprefix(mode, "input") ? 1 : 0)) {
 			if (decrypt_mode == ep->type)
 				EncryptStopInput();
 			i_wont_support_decrypt |= typemask(ep->type);
 			ret = 1;
 		}
-		if ((mode == 0) || (isprefix(mode, "output"))) {
+		if ((mode == NULL) || (isprefix(mode, "output"))) {
 			if (encrypt_mode == ep->type)
 				EncryptStopOutput();
 			i_wont_support_encrypt |= typemask(ep->type);
@@ -278,17 +277,17 @@ EncryptType(char *type, char *mode)
 		printf("Usage: encrypt type <type> [input|output]\n");
 		encrypt_list_types();
 	} else if ((ep = (Encryptions *)genget(type, (char **)encryptions,
-						sizeof(Encryptions))) == 0) {
+						sizeof(Encryptions))) == NULL) {
 		printf("%s: invalid encryption type\n", type);
 	} else if (Ambiguous((char **)ep)) {
 		printf("Ambiguous type '%s'\n", type);
 	} else {
-		if ((mode == 0) || isprefix(mode, "input")) {
+		if ((mode == NULL) || isprefix(mode, "input")) {
 			decrypt_mode = ep->type;
 			i_wont_support_decrypt &= ~typemask(ep->type);
 			ret = 1;
 		}
-		if ((mode == 0) || isprefix(mode, "output")) {
+		if ((mode == NULL) || isprefix(mode, "output")) {
 			encrypt_mode = ep->type;
 			i_wont_support_encrypt &= ~typemask(ep->type);
 			ret = 1;
@@ -660,7 +659,7 @@ encrypt_session_key( Session_Key *key, int server)
 void
 encrypt_end(void)
 {
-	decrypt_input = 0;
+	decrypt_input = NULL;
 	if (encrypt_debug_mode)
 		printf(">>>%s: Input is back to clear text\r\n", Name);
 	if (encrypt_verbose)
@@ -862,7 +861,7 @@ encrypt_send_end(void)
 	 * Encrypt the output buffer now because it will not be done by
 	 * netflush...
 	 */
-	encrypt_output = 0;
+	encrypt_output = NULL;
 	if (encrypt_debug_mode)
 		printf(">>>%s: Output is back to clear text\r\n", Name);
 	if (encrypt_verbose)

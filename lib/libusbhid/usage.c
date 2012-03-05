@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libusbhid/usage.c,v 1.8 2003/04/09 01:52:48 mdodd Exp $
- * $DragonFly: src/lib/libusbhid/usage.c,v 1.3 2008/11/24 17:15:17 hasso Exp $
  */
 
 #include <assert.h>
@@ -76,9 +75,9 @@ hid_init(const char *hidname)
 	char line[100], name[100], *p, *n;
 	int no;
 	int lineno;
-	struct usage_page *curpage = 0;
+	struct usage_page *curpage = NULL;
 
-	if (hidname == 0)
+	if (hidname == NULL)
 		hidname = _PATH_HIDTABLE;
 
 	f = fopen(hidname, "r");
@@ -123,7 +122,7 @@ hid_init(const char *hidname)
 			curpage->pagesize++;
 		} else {
 			if (npages >= npagesmax) {
-				if (pages == 0) {
+				if (pages == NULL) {
 					npagesmax = 5;
 					pages = malloc(npagesmax *
 						  sizeof (struct usage_page));

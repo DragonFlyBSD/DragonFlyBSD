@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timed.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/timed.c,v 1.9 1999/08/28 01:20:19 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.8 2004/09/05 02:20:15 dillon Exp $
  */
 
 #define TSPTYPES
@@ -63,7 +62,7 @@ FILE *fd;				/* trace file FD */
 
 jmp_buf jmpenv;
 
-struct netinfo *nettab = 0;
+struct netinfo *nettab = NULL;
 struct netinfo *slavenet;
 int Mflag;
 int justquit = 0;
@@ -73,7 +72,7 @@ static struct nets {
 	char	*name;
 	long	net;
 	struct nets *next;
-} *nets = 0;
+} *nets = NULL;
 
 struct hosttbl hosttbl[NHOSTS+1];	/* known hosts */
 
@@ -168,7 +167,7 @@ main(int argc, char *argv[])
 			debug = 1;
 			break;
 		case 'G':
-			if (goodgroup != 0)
+			if (goodgroup != NULL)
 				errx(1, "only one net group");
 			goodgroup = optarg;
 			break;
@@ -183,7 +182,7 @@ main(int argc, char *argv[])
 	/* If we care about which machine is the master, then we must
 	 *	be willing to be a master
 	 */
-	if (0 != goodgroup || 0 != goodhosts)
+	if (NULL != goodgroup || NULL != goodhosts)
 		Mflag = 1;
 
 	if (gethostname(hostname, sizeof(hostname) - 1) < 0)
@@ -195,11 +194,11 @@ main(int argc, char *argv[])
 	self.head = 1;
 	self.good = 1;
 
-	if (goodhosts != 0)		/* trust ourself */
+	if (goodhosts != NULL)		/* trust ourself */
 		add_good_host(hostname,1);
 
 	srvp = getservbyname("timed", "udp");
-	if (srvp == 0)
+	if (srvp == NULL)
 		errx(1, "unknown service 'timed/udp'");
 	port = srvp->s_port;
 	bzero(&server, sizeof(struct sockaddr_in));
@@ -232,12 +231,12 @@ main(int argc, char *argv[])
 
 	for (nt = nets; nt; nt = nt->next) {
 		nentp = getnetbyname(nt->name);
-		if (nentp == 0) {
+		if (nentp == NULL) {
 			nt->net = inet_network(nt->name);
 			if (nt->net != (long)INADDR_NONE)
 				nentp = getnetbyaddr(nt->net, AF_INET);
 		}
-		if (nentp != 0) {
+		if (nentp != NULL) {
 			nt->net = nentp->n_net;
 		} else if (nt->net == (long)INADDR_NONE) {
 			errx(1, "unknown net %s", nt->name);
@@ -369,7 +368,7 @@ main(int argc, char *argv[])
 			break;
 		case 1:
 			/* Just lost our master */
-			if (slavenet != 0)
+			if (slavenet != NULL)
 				slavenet->status = election(slavenet);
 			if (!slavenet || slavenet->status == MASTER) {
 				checkignorednets();
@@ -481,12 +480,12 @@ lookformaster(struct netinfo *ntp)
 	strlcpy(resp.tsp_name, hostname, sizeof(resp.tsp_name));
 	answer = acksend(&resp, &ntp->dest_addr, ANYADDR,
 			 TSP_MASTERACK, ntp, 0);
-	if (answer != 0 && !good_host_name(answer->tsp_name)) {
+	if (answer != NULL && !good_host_name(answer->tsp_name)) {
 		suppress(&from, answer->tsp_name, ntp);
 		ntp->status = NOMASTER;
-		answer = 0;
+		answer = NULL;
 	}
-	if (answer == 0) {
+	if (answer == NULL) {
 		/*
 		 * Various conditions can cause conflict: races between
 		 * two just started timedaemons when no master is
@@ -497,7 +496,7 @@ lookformaster(struct netinfo *ntp)
 		 */
 		ntime.tv_sec = ntime.tv_usec = 0;
 		answer = readmsg(TSP_MASTERREQ, ANYADDR, &ntime, ntp);
-		if (answer != 0) {
+		if (answer != NULL) {
 			if (!good_host_name(answer->tsp_name)) {
 				suppress(&from, answer->tsp_name, ntp);
 				ntp->status = NOMASTER;
@@ -507,7 +506,7 @@ lookformaster(struct netinfo *ntp)
 
 		ntime.tv_sec = ntime.tv_usec = 0;
 		answer = readmsg(TSP_MASTERUP, ANYADDR, &ntime, ntp);
-		if (answer != 0) {
+		if (answer != NULL) {
 			if (!good_host_name(answer->tsp_name)) {
 				suppress(&from, answer->tsp_name, ntp);
 				ntp->status = NOMASTER;
@@ -517,7 +516,7 @@ lookformaster(struct netinfo *ntp)
 
 		ntime.tv_sec = ntime.tv_usec = 0;
 		answer = readmsg(TSP_ELECTION, ANYADDR, &ntime, ntp);
-		if (answer != 0) {
+		if (answer != NULL) {
 			if (!good_host_name(answer->tsp_name)) {
 				suppress(&from, answer->tsp_name, ntp);
 				ntp->status = NOMASTER;
@@ -658,13 +657,13 @@ static void
 pickslavenet(struct netinfo *ntp)
 {
 
-	if (slavenet != 0 && slavenet->status == SLAVE) {
+	if (slavenet != NULL && slavenet->status == SLAVE) {
 		makeslave(slavenet);		/* prune extras */
 		return;
 	}
 
-	if (ntp == 0 || ntp->status != SLAVE) {
-		for (ntp = nettab; ntp != 0; ntp = ntp->next) {
+	if (ntp == NULL || ntp->status != SLAVE) {
+		for (ntp = nettab; ntp != NULL; ntp = ntp->next) {
 			if (ntp->status == SLAVE)
 				break;
 		}
@@ -703,7 +702,7 @@ addnetname(char *name)
 	while (*netlist)
 		netlist = &((*netlist)->next);
 	*netlist = (struct nets *)malloc(sizeof **netlist);
-	if (*netlist == 0)
+	if (*netlist == NULL)
 		errx(1, "malloc failed");
 	bzero((char *)*netlist, sizeof(**netlist));
 	(*netlist)->name = name;
@@ -730,7 +729,7 @@ add_good_host(char *name,
 	goodhosts = ghp;
 
 	hentp = gethostbyname(name);
-	if (0 == hentp && perm)
+	if (NULL == hentp && perm)
 		warnx("unknown host %s", name);
 }
 
@@ -752,7 +751,7 @@ get_goodgroup(int force)
 
 
 	/* if no netgroup, then we are finished */
-	if (goodgroup == 0 || !Mflag)
+	if (goodgroup == NULL || !Mflag)
 		return;
 
 	/* Do not chatter with the netgroup master too often.
@@ -765,7 +764,7 @@ get_goodgroup(int force)
 
 	/* forget the old temporary entries */
 	ghpp = &goodhosts;
-	while (0 != (ghp = *ghpp)) {
+	while (NULL != (ghp = *ghpp)) {
 		if (!ghp->perm) {
 			*ghpp = ghp->next;
 			free((char*)ghp);
@@ -790,7 +789,7 @@ get_goodgroup(int force)
 	/* mark the entire netgroup as trusted */
 	setnetgrent(goodgroup);
 	while (getnetgrent(&mach,&usr,&dom)) {
-		if (0 != mach)
+		if (NULL != mach)
 			add_good_host(mach,0);
 	}
 	endnetgrent();
@@ -819,7 +818,7 @@ good_host_name(char *name)
 		if (c == ghp->name[0]
 		    && !strcasecmp(name, ghp->name))
 			return 1;	/* found him, so say so */
-	} while (0 != (ghp = ghp->next));
+	} while (NULL != (ghp = ghp->next));
 
 	if (!strcasecmp(name,hostname))	/* trust ourself */
 		return 1;

@@ -28,7 +28,6 @@
  *
  * @(#)move.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/backgammon/move.c,v 1.5 1999/11/30 03:48:23 billf Exp $
- * $DragonFly: src/games/backgammon/backgammon/move.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
@@ -60,8 +59,8 @@ struct BOARD  {				/* structure of game position */
 	struct BOARD	*b_next;		/* forward queue pointer */
 };
 
-struct BOARD *freeq = 0;
-struct BOARD *checkq = 0;
+struct BOARD *freeq = NULL;
+struct BOARD *checkq = NULL;
 
 /* these variables are values for the candidate move */
 static int	ch;				/* chance of being hit */
@@ -262,9 +261,9 @@ binsert(struct BOARD *new)
 	struct BOARD *qp;	/* queue pointer */
 
 	qp = checkq;
-	if (qp == 0) {			/* check if queue empty */
+	if (qp == NULL) {			/* check if queue empty */
 		checkq = qp = new;
-		qp->b_next = 0;
+		qp->b_next = NULL;
 		return;
 	}
 	result = bcomp(new, qp);	/* compare to first element */
@@ -278,7 +277,7 @@ binsert(struct BOARD *new)
 		makefree(new);
 		return;
 	}
-	while (qp->b_next != 0) {	/* traverse queue */
+	while (qp->b_next != NULL) {	/* traverse queue */
 		result = bcomp(new, qp->b_next);
 		if (result < 0) {	/* found place */
 			new->b_next = qp->b_next;
@@ -294,7 +293,7 @@ binsert(struct BOARD *new)
 	}
 	/* place at end of queue */
 	qp->b_next = new;
-	new->b_next = 0;
+	new->b_next = NULL;
 }
 
 static int
@@ -346,13 +345,13 @@ nextfree(void)
 {
 	struct BOARD *new;
 
-	if (freeq == 0) {
+	if (freeq == NULL) {
 		new = calloc(1, sizeof(struct BOARD));
-		if (new == 0) {
+		if (new == NULL) {
 			writel("\nOut of memory\n");
 			getout();
 		}
-		new->b_next = 0;
+		new->b_next = NULL;
 	} else {
 		new = freeq;
 		freeq = freeq->b_next;
@@ -379,7 +378,7 @@ pickmove(void)
 		makefree(checkq);
 		checkq = next;
 		movcmp();
-	} while (checkq != 0);
+	} while (checkq != NULL);
 
 	boardcopy(now);
 }

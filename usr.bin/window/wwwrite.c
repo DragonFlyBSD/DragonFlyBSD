@@ -58,11 +58,11 @@ wwwrite(struct ww *w, const char *p, int n)
 	int hascursor;
 	const char *savep = p;
 	const char *q = p + n;
-	const char *r = 0;
-	const char *s = 0;
+	const char *r = NULL;
+	const char *s = NULL;
 
 #ifdef lint
-	s = 0;			/* define it before possible use */
+	s = NULL;			/* define it before possible use */
 #endif
 	hascursor = ISSET(w->ww_wflags, WWW_HASCURSOR);
 	if (hascursor)
@@ -72,7 +72,7 @@ wwwrite(struct ww *w, const char *p, int n)
 		if (r && !*p) {
 			p = r;
 			q = s;
-			r = 0;
+			r = NULL;
 			continue;
 		}
 		if (w->ww_wstate == 0 &&
@@ -107,7 +107,7 @@ wwwrite(struct ww *w, const char *p, int n)
 				if (!*p && r) {
 					p = r;
 					q = s;
-					r = 0;
+					r = NULL;
 				} else if (*p == '\t') {
 					int tmp = 8 - ((i - w->ww_w.l) & 7);
 					p++;

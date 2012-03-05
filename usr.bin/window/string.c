@@ -47,7 +47,7 @@ str_cpy(const char *s)
 	char *p;
 
 	str = p = str_alloc(strlen(s) + 1);
-	if (p == 0)
+	if (p == NULL)
 		return 0;
 	while ((*p++ = *s++))
 		;
@@ -64,7 +64,7 @@ str_ncpy(const char *s, int n)
 	if (n > l)
 		n = l;
 	str = p = str_alloc(n + 1);
-	if (p == 0)
+	if (p == NULL)
 		return 0;
 	while (--n >= 0)
 		*p++ = *s++;
@@ -89,7 +89,7 @@ str_cat(const char *s1, const char *s2)
 	const char *q;
 
 	str = p = str_alloc(strlen(s1) + strlen(s2) + 1);
-	if (p == 0)
+	if (p == NULL)
 		return 0;
 	for (q = s1; (*p++ = *q++);)
 		;
@@ -117,7 +117,7 @@ str_alloc(size_t l)
 	struct string *s;
 
 	s = (struct string *) malloc(l + str_offset);
-	if (s == 0)
+	if (s == NULL)
 		return 0;
 	if (str_head.s_forw == 0)
 		str_head.s_forw = str_head.s_back = &str_head;

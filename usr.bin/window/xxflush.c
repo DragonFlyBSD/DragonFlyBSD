@@ -42,7 +42,7 @@ xxflush(int intr)
 {
 	struct xx *xp, *xq;
 
-	for (xp = xx_head; xp != 0 && !(intr && wwinterrupt()); xp = xq) {
+	for (xp = xx_head; xp != NULL && !(intr && wwinterrupt()); xp = xq) {
 		switch (xp->cmd) {
 		case xc_move:
 			if (xp->link == 0)
@@ -84,7 +84,7 @@ xxflush(int intr)
 		xq = xp->link;
 		xxfree(xp);
 	}
-	if ((xx_head = xp) == 0) {
+	if ((xx_head = xp) == NULL) {
 		xx_tail = 0;
 		xxbufp = xxbuf;
 	}
@@ -121,7 +121,7 @@ xxflush_scroll(struct xx *xp)
 	 * on vt100 style scrolling regions (I think).
 	 */
 	if (xp->arg0 > 0) {
-		if ((xq = xp->link) != 0 && xq->cmd == xc_scroll &&
+		if ((xq = xp->link) != NULL && xq->cmd == xc_scroll &&
 		    xp->arg2 == xq->arg2 && xq->arg0 < 0) {
 			if (xp->arg1 < xq->arg1) {
 				if (xp->arg2 - xp->arg0 <= xq->arg1) {

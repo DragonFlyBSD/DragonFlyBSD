@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.pager.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.pager.c,v 1.7 1999/11/16 02:57:09 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.pager.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 /* This file contains the command routine dowhatis() and a pager. */
 /*
@@ -199,7 +198,7 @@ cornline(int mode, const char *text)
 	struct line *tl;
 
 	if (mode == 0) {
-		texthead = 0;
+		texthead = NULL;
 		maxlen = 0;
 		linect = 0;
 		if (text) {
@@ -219,7 +218,7 @@ cornline(int mode, const char *text)
 		if (len > maxlen)
 			maxlen = len;
 		tl = alloc((unsigned)(len + sizeof(struct line) + 1));
-		tl->next_line = 0;
+		tl->next_line = NULL;
 		tl->line_text = (char *)(tl + 1);
 		strcpy(tl->line_text, text);
 		if (!texthead)

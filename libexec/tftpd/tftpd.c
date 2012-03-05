@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tftpd.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/tftpd/tftpd.c,v 1.15.2.5 2003/04/06 19:42:56 dwmalone Exp $
- * $DragonFly: src/libexec/tftpd/tftpd.c,v 1.3 2003/11/20 14:32:17 eirikn Exp $
  */
 
 /*
@@ -387,7 +386,7 @@ again:
 	for (pf = formats; pf->f_mode; pf++)
 		if (strcmp(pf->f_mode, mode) == 0)
 			break;
-	if (pf->f_mode == 0) {
+	if (pf->f_mode == NULL) {
 		nak(EBADOP);
 		exit(1);
 	}

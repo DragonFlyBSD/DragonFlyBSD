@@ -49,7 +49,7 @@ wwopen(int type, int oflags, int nrow, int ncol, int row, int col, int nline)
 	short nvis;
 
 	w = (struct ww *)calloc(1, sizeof (struct ww));
-	if (w == 0) {
+	if (w == NULL) {
 		wwerrno = WWE_NOMEM;
 		goto bad;
 	}
@@ -172,7 +172,7 @@ wwopen(int type, int oflags, int nrow, int ncol, int row, int col, int nline)
 	SET(w->ww_oflags, oflags);
 	return wwindex[w->ww_index] = w;
 bad:
-	if (w != 0) {
+	if (w != NULL) {
 		if (w->ww_win != 0)
 			wwfree(w->ww_win, w->ww_w.t);
 		if (w->ww_fmap != 0)

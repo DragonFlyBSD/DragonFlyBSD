@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.unix.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.unix.c,v 1.8 1999/11/16 02:57:13 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.unix.c,v 1.7 2006/08/21 19:45:32 pavalos Exp $ */
 
 /* This file collects some Unix dependencies; hack.pager.c contains some more */
 
@@ -271,7 +270,7 @@ getmailstatus(void)
 	if (stat(mailbox, &omstat)) {
 #ifdef PERMANENT_MAILBOX
 		pline("Cannot get status of MAIL=%s .", mailbox);
-		mailbox = 0;
+		mailbox = NULL;
 #else
 		omstat.st_mtime = 0;
 #endif /* PERMANENT_MAILBOX */
@@ -291,7 +290,7 @@ ckmailstatus(void)
 	if (stat(mailbox, &nmstat)) {
 #ifdef PERMANENT_MAILBOX
 		pline("Cannot get status of MAIL=%s anymore.", mailbox);
-		mailbox = 0;
+		mailbox = NULL;
 #else
 		nmstat.st_mtime = 0;
 #endif /* PERMANENT_MAILBOX */
@@ -392,7 +391,7 @@ void
 readmail(void)
 {
 #ifdef DEF_MAILREADER		/* This implies that UNIX is defined */
-	char *mr = 0;
+	char *mr = NULL;
 
 	more();
 	if (!(mr = getenv("MAILREADER")))

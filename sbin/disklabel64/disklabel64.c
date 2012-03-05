@@ -187,7 +187,7 @@ main(int argc, char *argv[])
 	struct disklabel64 *lp;
 	FILE *t;
 	int ch, f = 0, flag, error = 0;
-	char *name = 0;
+	char *name = NULL;
 
 	while ((ch = getopt(argc, argv, OPTIONS)) != -1)
 		switch (ch) {
@@ -878,7 +878,7 @@ getasciilabel(FILE *f, struct disklabel64 *lp)
 	bzero(&part_offset_type, sizeof(part_offset_type));
 	while (fgets(line, sizeof(line) - 1, f)) {
 		lineno++;
-		if ((cp = strchr(line,'\n')) != 0)
+		if ((cp = strchr(line,'\n')) != NULL)
 			*cp = '\0';
 		cp = skip(line);
 		if (cp == NULL)

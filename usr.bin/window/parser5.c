@@ -108,8 +108,8 @@ p_expr11(struct value *v, char flag)
 			struct var *r = var_lookup(name);
 			if (op == T_DQ) {
 				v->v_type = V_NUM;
-				v->v_num = r != 0;
-			} else if (r != 0)
+				v->v_num = r != NULL;
+			} else if (r != NULL)
 				*v = r->r_val;
 			else {
 				p_error("%s: Undefined variable.", name);

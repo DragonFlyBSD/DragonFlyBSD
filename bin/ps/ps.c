@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.25 2008/01/10 14:18:39 matthias Exp $
  */
 
 #include <sys/user.h>
@@ -339,7 +338,7 @@ main(int argc, char **argv)
 	}
 
 	kd = kvm_openfiles(nlistf, memf, NULL, O_RDONLY, errbuf);
-	if (kd == 0)
+	if (kd == NULL)
 		errx(1, "%s", errbuf);
 
 	if (!fmt)

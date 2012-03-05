@@ -488,13 +488,13 @@ tt_generic(void)
 	gen_LI = tgetnum("li");
 	gen_UG = tgetnum("ug");
 	gen_SG = tgetnum("sg");
-	if (gen_CL == 0 || gen_OS || gen_CM == 0)
+	if (gen_CL == NULL || gen_OS || gen_CM == NULL)
 		return -1;
 
 	/*
 	 * Deal with obsolete termcap fields.
 	 */
-	if (gen_LE == 0) {
+	if (gen_LE == NULL) {
 		if (gen_BC)
 			gen_LE = gen_BC;
 		else if (gen_BS) {
@@ -502,13 +502,13 @@ tt_generic(void)
 			gen_BC = &bc;
 		}
 	}
-	if (gen_NL == 0) {
+	if (gen_NL == NULL) {
 		static struct tt_str nl = { "\n", 1 };
 		gen_NL = &nl;
 	}
-	if (gen_DO == 0)
+	if (gen_DO == NULL)
 		gen_DO = gen_NL;
-	if (gen_CR == 0) {
+	if (gen_CR == NULL) {
 		static struct tt_str cr = { "\r", 1 };
 		gen_CR = &cr;
 	}
@@ -516,7 +516,7 @@ tt_generic(void)
 	 * Most terminal will scroll with "nl", but very few specify "sf".
 	 * We shouldn't use "do" here.
 	 */
-	if (gen_SF == 0 && !gen_NS)
+	if (gen_SF == NULL && !gen_NS)
 		gen_SF = gen_NL;
 	BC = gen_LE ? __DECONST(char *, gen_LE->ts_str) : 0;
 	UP = gen_UP ? __DECONST(char *, gen_UP->ts_str) : 0;
@@ -525,21 +525,21 @@ tt_generic(void)
 	 * really exist.
 	 */
 	if (gen_SG > 0)
-		gen_SO = 0;
+		gen_SO = NULL;
 	if (gen_UG > 0 || (gen_US && gen_SO && ttstrcmp(gen_US, gen_SO) == 0))
-		gen_US = 0;
+		gen_US = NULL;
 
 	if (gen_IM && gen_IM->ts_n == 0) {
 		free((char *) gen_IM);
-		gen_IM = 0;
+		gen_IM = NULL;
 	}
 	if (gen_EI && gen_EI->ts_n == 0) {
 		free((char *) gen_EI);
-		gen_EI = 0;
+		gen_EI = NULL;
 	}
 	if (gen_IC && gen_IC->ts_n == 0) {
 		free((char *) gen_IC);
-		gen_IC = 0;
+		gen_IC = NULL;
 	}
 	if (gen_IM)
 		tt.tt_inschar = gen_inschar;

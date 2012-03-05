@@ -30,7 +30,6 @@
  * @(#)auth_none.c	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: auth_none.c,v 1.13 2000/01/22 22:19:17 mycroft Exp $
  * $FreeBSD: src/lib/libc/rpc/auth_none.c,v 1.14 2006/02/27 22:10:58 deischen Exp $
- * $DragonFly: src/lib/libc/rpc/auth_none.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -79,9 +78,9 @@ authnone_create(void)
 	XDR *xdrs;
 
 	mutex_lock(&authnone_lock);
-	if (ap == 0) {
+	if (ap == NULL) {
 		ap = (struct authnone_private *)calloc(1, sizeof (*ap));
-		if (ap == 0) {
+		if (ap == NULL) {
 			mutex_unlock(&authnone_lock);
 			return (0);
 		}

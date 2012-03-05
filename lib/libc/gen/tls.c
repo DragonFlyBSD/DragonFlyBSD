@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/tls.c,v 1.7 2005/03/01 23:42:00 davidxu Exp $
- *	$DragonFly: src/lib/libc/gen/tls.c,v 1.10 2005/11/19 22:32:53 swildner Exp $
  */
 
 /*
@@ -227,7 +226,7 @@ _libc_init_tls(void)
 	while (*sp++ != 0)
 		;
 	aux = (Elf_Auxinfo *) sp;
-	phdr = 0;
+	phdr = NULL;
 	phent = phnum = 0;
 	for (auxp = aux; auxp->a_type != AT_NULL; auxp++) {
 		switch (auxp->a_type) {
@@ -244,7 +243,7 @@ _libc_init_tls(void)
 			break;
 		}
 	}
-	if (phdr == 0 || phent != sizeof(Elf_Phdr) || phnum == 0)
+	if (phdr == NULL || phent != sizeof(Elf_Phdr) || phnum == 0)
 		return(NULL);
 
 	for (i = 0; (unsigned)i < phnum; i++) {

@@ -4,7 +4,6 @@
  * Chris Siebenmann <cks@utcc.utoronto.ca>.
  *
  * $FreeBSD: src/usr.bin/rdist/rshrcmd.c,v 1.6 1999/08/28 01:05:08 peter Exp $
- * $DragonFly: src/usr.bin/rdist/rshrcmd.c,v 1.3 2004/07/24 19:45:10 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -42,11 +41,11 @@ rshrcmd(char **ahost, u_short port, char *luser, char *ruser, char *cmd, int *fd
 	struct hostent  *hp;
 
 	/* insure that we are indeed being used as we thought. */
-	if (fd2p != 0)
+	if (fd2p != NULL)
 		return -1;
 	/* validate remote hostname. */
 	hp = gethostbyname(*ahost);
-	if (hp == 0) {
+	if (hp == NULL) {
 		error("%s: unknown host", *ahost);
 		return -1;
 	}

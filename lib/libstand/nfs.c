@@ -1,5 +1,4 @@
 /* $FreeBSD: src/lib/libstand/nfs.c,v 1.2.6.3 2000/09/10 01:33:25 ps Exp $ */
-/* $DragonFly: src/lib/libstand/nfs.c,v 1.4 2005/12/11 02:27:26 swildner Exp $ */
 /*	$NetBSD: nfs.c,v 1.2 1998/01/24 12:43:09 drochner Exp $	*/
 
 /*-
@@ -411,7 +410,7 @@ nfs_open(const char *upath, struct open_file *f)
 	fa->fa_nlink = htonl(2);
 
 	currfd = &nfs_root_node;
-	newfd = 0;
+	newfd = NULL;
 
 	cp = path = strdup(upath);
 	if (path == NULL) {
@@ -497,7 +496,7 @@ nfs_open(const char *upath, struct open_file *f)
 			}
 
 			free(newfd);
-			newfd = 0;
+			newfd = NULL;
 			
 			continue;
 		}
@@ -505,7 +504,7 @@ nfs_open(const char *upath, struct open_file *f)
 		if (currfd != &nfs_root_node)
 			free(currfd);
 		currfd = newfd;
-		newfd = 0;
+		newfd = NULL;
 	}
 
 	error = 0;

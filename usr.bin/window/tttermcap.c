@@ -57,9 +57,9 @@ tttgetstr(const char *str)
 {
 	struct tt_str *s;
 
-	if ((str = tgetstr(str, &tt_strp)) == 0)
+	if ((str = tgetstr(str, &tt_strp)) == NULL)
 		return 0;
-	if ((s = (struct tt_str *) malloc(sizeof *s)) == 0)
+	if ((s = (struct tt_str *) malloc(sizeof *s)) == NULL)
 		return 0;
 	s->ts_str = str;
 	s->ts_n = tt_strp - s->ts_str - 1;
@@ -75,7 +75,7 @@ ttxgetstr(const char *str)
 
 	if (tgetstr(str, &bufp) == 0)
 		return 0;
-	if ((s = (struct tt_str *) malloc(sizeof *s)) == 0)
+	if ((s = (struct tt_str *) malloc(sizeof *s)) == NULL)
 		return 0;
 	s->ts_str = tt_strp;
 	tputs(buf, 1, ttxputc);

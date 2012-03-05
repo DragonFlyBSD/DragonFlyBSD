@@ -1,5 +1,4 @@
 /* $NetBSD: citrus_euc.c,v 1.11 2006/03/19 01:25:44 christos Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_euc.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -205,7 +204,7 @@ _citrus_EUC_mbrtowc_priv(_EUCEncodingInfo *ei, wchar_t *pwc, const char **s,
 	int chlenbak;
 	const char *s0, *s1 = NULL;
 
-	_DIAGASSERT(nresult != 0);
+	_DIAGASSERT(nresult != NULL);
 	_DIAGASSERT(ei != NULL);
 	_DIAGASSERT(psenc != NULL);
 	_DIAGASSERT(s != NULL);
@@ -300,7 +299,7 @@ _citrus_EUC_wcrtomb_priv(_EUCEncodingInfo *ei, char *s, size_t n, wchar_t wc,
 	int cs, i, ret;
 
 	_DIAGASSERT(ei != NULL);
-	_DIAGASSERT(nresult != 0);
+	_DIAGASSERT(nresult != NULL);
 	_DIAGASSERT(s != NULL);
 
 	m = wc & ei->mask;

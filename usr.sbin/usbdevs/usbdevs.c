@@ -1,7 +1,6 @@
 /*
  * $NetBSD: usbdevs.c,v 1.17 2001/02/19 23:22:48 cgd Exp $
  * $FreeBSD: src/usr.sbin/usbdevs/usbdevs.c,v 1.8 2002/04/22 13:44:47 des Exp $
- * $DragonFly: src/usr.sbin/usbdevs/usbdevs.c,v 1.7 2005/12/05 01:23:23 swildner Exp $
  */
 
 /*
@@ -176,7 +175,7 @@ main(int argc, char **argv)
 {
 	int ch, i, f;
 	char buf[50];
-	char *dev = 0;
+	char *dev = NULL;
 	int addr = 0;
 	int ncont;
 
@@ -201,7 +200,7 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (dev == 0) {
+	if (dev == NULL) {
 		for (ncont = 0, i = 0; i < 10; i++) {
 			sprintf(buf, "%s%d", USBDEV, i);
 			f = open(buf, O_RDONLY);

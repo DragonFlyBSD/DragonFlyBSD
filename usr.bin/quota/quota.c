@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/quota/quota.c,v 1.11.2.5 2002/11/30 23:54:21 iedowse Exp $
- * $DragonFly: src/usr.bin/quota/quota.c,v 1.7 2006/04/03 01:59:28 dillon Exp $
  */
 
 /*
@@ -480,7 +479,7 @@ getprivs(long id, int quotatype)
 		else
 			quptail->next = qup;
 		quptail = qup;
-		quptail->next = 0;
+		quptail->next = NULL;
 		qup = NULL;
 	}
 	if (qup)

@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.dog.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.dog.c,v 1.3 1999/11/16 02:57:03 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.dog.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 #include "hack.mfndpos.h"
@@ -40,8 +39,8 @@ initedog(struct monst *mtmp)
 }
 
 /* attach the monsters that went down (or up) together with @ */
-struct monst *mydogs = 0;
-struct monst *fallen_down = 0;	/* monsters that fell through a trapdoor */
+struct monst *mydogs = NULL;
+struct monst *fallen_down = NULL;	/* monsters that fell through a trapdoor */
 /* they will appear on the next level @ goes to, even if he goes up! */
 
 void

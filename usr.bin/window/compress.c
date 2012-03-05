@@ -241,30 +241,30 @@ ccinit(void)
 #endif
 #undef C
 	if ((cc_output = (struct cc **)
-	     malloc((unsigned) cc_bufsize * sizeof *cc_output)) == 0)
+	     malloc((unsigned) cc_bufsize * sizeof *cc_output)) == NULL)
 		goto nomem;
 	if ((cc_hashcodes = (short *)
-	     malloc((unsigned) cc_bufsize * sizeof *cc_hashcodes)) == 0)
+	     malloc((unsigned) cc_bufsize * sizeof *cc_hashcodes)) == NULL)
 		goto nomem;
-	if ((cc_htab = (struct cc **) malloc(HSIZE * sizeof *cc_htab)) == 0)
+	if ((cc_htab = (struct cc **) malloc(HSIZE * sizeof *cc_htab)) == NULL)
 		goto nomem;
 	if ((cc_tokens = (struct cc **)
 	     malloc((unsigned)
 	            (cc_ntoken + tt.tt_token_max - tt.tt_token_min + 1) *
-		    sizeof *cc_tokens)) == 0)
+		    sizeof *cc_tokens)) == NULL)
 		goto nomem;
 	if ((cc_undo = (struct cc_undo *)
-	     malloc((unsigned) cc_bufsize * sizeof *cc_undo)) == 0)
+	     malloc((unsigned) cc_bufsize * sizeof *cc_undo)) == NULL)
 		goto nomem;
 	for (i = tt.tt_token_min; i <= tt.tt_token_max; i++)
 		if ((cc_places[i] = (short *)
-		     malloc((unsigned) cc_bufsize * sizeof **cc_places)) == 0)
+		     malloc((unsigned) cc_bufsize * sizeof **cc_places)) == NULL)
 			goto nomem;
 	cc_q0a.qforw = cc_q0a.qback = &cc_q0a;
 	cc_q0b.qforw = cc_q0b.qback = &cc_q0b;
 	cc_q1a.qforw = cc_q1a.qback = &cc_q1a;
 	cc_q1b.qforw = cc_q1b.qback = &cc_q1b;
-	if ((p = (struct cc *) malloc((unsigned) cc_ntoken * sizeof *p)) == 0)
+	if ((p = (struct cc *) malloc((unsigned) cc_ntoken * sizeof *p)) == NULL)
 		goto nomem;
 	for (i = 0; i < tt.tt_ntoken; i++) {
 		p->code = i;
@@ -286,7 +286,7 @@ ccinit(void)
 	}
 	cc_tt_ob = tt_ob;
 	cc_tt_obe = tt_obe;
-	if ((cc_buffer = malloc((unsigned) cc_bufsize)) == 0)
+	if ((cc_buffer = malloc((unsigned) cc_bufsize)) == NULL)
 		goto nomem;
 	return 0;
 nomem:
@@ -315,9 +315,9 @@ ccreset(void)
 
 	memset((char *) cc_htab, 0, HSIZE * sizeof *cc_htab);
 	for (p = cc_q0a.qforw; p != &cc_q0a; p = p->qforw)
-		p->hback = 0;
+		p->hback = NULL;
 	for (p = cc_q1a.qforw; p != &cc_q1a; p = p->qforw)
-		p->hback = 0;
+		p->hback = NULL;
 }
 
 void
@@ -490,7 +490,7 @@ cc_sweep(char *buffer, int bufsize, struct cc **tokens, int length)
 			h = cc_htab + (*hc1++ = hash(hh, c));
 			hc = hc1;
 		}
-		for (p = *h; p != 0; p = p->hforw)
+		for (p = *h; p != NULL; p = p->hforw)
 			if (p->length == (char) length) {
 				char *p1 = p->string;
 				char *p2 = cp - length;
@@ -502,13 +502,13 @@ cc_sweep(char *buffer, int bufsize, struct cc **tokens, int length)
 				break;
 			fail:;
 			}
-		if (p == 0) {
+		if (p == NULL) {
 			p = cc_q1a.qback;
 			if (p == &cc_q1a ||
 			    (p->time >= cc_time0 && p->length == (char) length))
 				continue;
-			if (p->hback != 0)
-				if ((*p->hback = p->hforw) != 0)
+			if (p->hback != NULL)
+				if ((*p->hback = p->hforw) != NULL)
 					p->hforw->hback = p->hback;
 			{
 				char *p1 = p->string;
@@ -526,7 +526,7 @@ cc_sweep(char *buffer, int bufsize, struct cc **tokens, int length)
 			p->bcount = 1;
 			p->ccount = 0;
 			p->flag = 0;
-			if ((p->hforw = *h) != 0)
+			if ((p->hforw = *h) != NULL)
 				p->hforw->hback = &p->hforw;
 			*h = p;
 			p->hback = h;
@@ -609,7 +609,7 @@ cc_sweep(char *buffer, int bufsize, struct cc **tokens, int length)
 		}
 	}
 	if ((i = pp - tokens) > 0) {
-		*pp = 0;
+		*pp = NULL;
 		if (cc_reverse)
 			cc_sweep_reverse(tokens, places);
 		if (cc_sort && i > 1) {
@@ -619,7 +619,7 @@ cc_sweep(char *buffer, int bufsize, struct cc **tokens, int length)
 		if (cc_chop) {
 			if ((i = i * cc_chop / 100) == 0)
 				i = 1;
-			tokens[i] = 0;
+			tokens[i] = NULL;
 		}
 		i++;
 	}
@@ -632,7 +632,7 @@ cc_sweep_reverse(struct cc **pp, short int *places)
 	struct cc *p;
 	short frnt, back, t;
 
-	while ((p = *pp++) != 0) {
+	while ((p = *pp++) != NULL) {
 		back = -1;
 		t = p->places;
 		/* the list is never empty */
@@ -718,7 +718,7 @@ cc_compress_cleanup(struct cc **output, int bufsize)
 	for (end = output + bufsize; output < end;) {
 		struct cc *p;
 		int length;
-		if ((p = *output) == 0) {
+		if ((p = *output) == NULL) {
 			output++;
 			continue;
 		}
@@ -728,7 +728,7 @@ cc_compress_cleanup(struct cc **output, int bufsize)
 			qinsert(p, &cc_q0b);
 			p->flag = 0;
 		} else if (p->ccount == 0) {
-			*output = 0;
+			*output = NULL;
 		} else if (p->ccount >= thresh(length)
 #ifndef cc_weight
 			   || wthreshp(p->weight, length)
@@ -737,7 +737,7 @@ cc_compress_cleanup(struct cc **output, int bufsize)
 			p->flag = 0;
 		} else {
 			p->ccount = 0;
-			*output = 0;
+			*output = NULL;
 		}
 		output += length;
 	}
@@ -791,17 +791,17 @@ cc_compress(struct cc **output, struct cc **tokens, char flag)
 			struct cc **iip = ip + length;
 			struct cc_undo *undop1 = undop;
 
-			if ((x = *(jp = ip)) != 0)
+			if ((x = *(jp = ip)) != NULL)
 				goto z;
 			while (--jp >= output)
-				if ((x = *jp) != 0) {
+				if ((x = *jp) != NULL) {
 					if (jp + x->length > ip)
 						goto z;
 					break;
 				}
 			jp = ip + 1;
 			while (jp < iip) {
-				if ((x = *jp) == 0) {
+				if ((x = *jp) == NULL) {
 					jp++;
 					continue;
 				}
@@ -814,7 +814,7 @@ cc_compress(struct cc **output, struct cc **tokens, char flag)
 				undop->pos = jp;
 				undop->val = x;
 				undop++;
-				*jp = 0;
+				*jp = NULL;
 				x->ccount--;
 				score_adjust(score0, x);
 				if (score0 < 0 && flag)
@@ -822,7 +822,7 @@ cc_compress(struct cc **output, struct cc **tokens, char flag)
 				jp += x->length;
 			}
 			undop->pos = ip;
-			undop->val = 0;
+			undop->val = NULL;
 			undop++;
 			*ip = p;
 			ccount++;
@@ -849,7 +849,7 @@ cc_compress(struct cc **output, struct cc **tokens, char flag)
 					x->ccount++;
 			}
 		}
-	} while ((p = *pp++) != 0);
+	} while ((p = *pp++) != NULL);
 	return pp - tokens;
 }
 
@@ -860,7 +860,7 @@ cc_output_phase(char *buffer, struct cc **output, int bufsize)
 	struct cc *p, *p1;
 
 	for (i = 0; i < bufsize;) {
-		if ((p = output[i]) == 0) {
+		if ((p = output[i]) == NULL) {
 			ttputc(buffer[i]);
 			i++;
 		} else if (p->code >= 0) {

@@ -36,7 +36,6 @@
  *
  * @(#)kvm.c	8.2 (Berkeley) 2/13/94
  * $FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $
- * $DragonFly: src/lib/libkvm/kvm.c,v 1.12 2008/02/13 00:12:46 corecode Exp $
  */
 
 #include <sys/user.h>	/* MUST BE FIRST */
@@ -163,7 +162,7 @@ _kvm_open(kvm_t *kd, const char *uf, const char *mf, int flag, char *errout)
 	kd->argv = 0;
 	kd->flags = 0;
 
-	if (uf == 0)
+	if (uf == NULL)
 		uf = getbootfile();
 	else if (strlen(uf) >= MAXPATHLEN) {
 		_kvm_err(kd, kd->program, "exec file name too long");
@@ -173,7 +172,7 @@ _kvm_open(kvm_t *kd, const char *uf, const char *mf, int flag, char *errout)
 		_kvm_err(kd, kd->program, "bad flags arg");
 		goto failed;
 	}
-	if (mf == 0)
+	if (mf == NULL)
 		mf = _PATH_MEM;
 
 	if ((kd->pmfd = open(mf, flag, 0)) < 0) {
@@ -250,7 +249,7 @@ failed:
 	/*
 	 * Copy out the error if doing sane error semantics.
 	 */
-	if (errout != 0)
+	if (errout != NULL)
 		strlcpy(errout, kd->errbuf, _POSIX2_LINE_MAX);
 	(void)kvm_close(kd);
 	return (0);

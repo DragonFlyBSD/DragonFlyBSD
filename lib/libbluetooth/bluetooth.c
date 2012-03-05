@@ -1,5 +1,4 @@
 /* $NetBSD: bluetooth.c,v 1.1 2006/06/19 15:44:36 gdamore Exp $ */
-/* $DragonFly: src/lib/libbluetooth/bluetooth.c,v 1.1 2008/01/03 11:47:52 hasso Exp $ */
 
 /*
  * bluetooth.c
@@ -68,7 +67,7 @@ bt_gethostbyname(char const *name)
 	while ((p = bt_gethostent()) != NULL) {
 		if (strcasecmp(p->h_name, name) == 0)
 			break;
-		for (cp = p->h_aliases; *cp != 0; cp++)
+		for (cp = p->h_aliases; *cp != NULL; cp++)
 			if (strcasecmp(*cp, name) == 0)
 				goto found;
 	}
@@ -181,7 +180,7 @@ bt_getprotobyname(char const *name)
 	while ((p = bt_getprotoent()) != NULL) {
 		if (strcmp(p->p_name, name) == 0)
 			break;
-		for (cp = p->p_aliases; *cp != 0; cp++)
+		for (cp = p->p_aliases; *cp != NULL; cp++)
 			if (strcmp(*cp, name) == 0)
 				goto found;
 	}

@@ -29,7 +29,6 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/quot/quot.c,v 1.11.2.4 2002/03/15 18:12:41 mikeh Exp $
- * $DragonFly: src/usr.sbin/quot/quot.c,v 1.7 2007/12/27 02:25:41 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -106,7 +105,7 @@ get_inode(int fd, struct fs *super, ino_t ino)
 	if (fd < 0) {		/* flush cache */
 		if (ip) {
 			free(ip);
-			ip = 0;
+			ip = NULL;
 		}
 		return 0;
 	}

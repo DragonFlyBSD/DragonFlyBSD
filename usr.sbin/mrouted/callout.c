@@ -10,14 +10,13 @@
  * callout.c,v 3.8.4.8 1998/01/06 01:58:45 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/callout.c,v 1.12 1999/08/28 01:17:03 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/callout.c,v 1.6 2008/04/20 19:26:53 swildner Exp $
  */
 
 #include "defs.h"
 
 /* the code below implements a callout queue */
 static int id = 0;
-static struct timeout_q  *Q = 0; /* pointer to the beginning of timeout queue */
+static struct timeout_q  *Q = NULL; /* pointer to the beginning of timeout queue */
 
 struct timeout_q {
 	struct timeout_q *next;		/* next event */
@@ -111,14 +110,14 @@ timer_setTimer(int delay, cfunc_t action, void *data)
 
     /* create a node */
     node = (struct timeout_q *)malloc(sizeof(struct timeout_q));
-    if (node == 0) {
+    if (node == NULL) {
 	dolog(LOG_WARNING, 0, "Malloc Failed in timer_setTimer\n");
 	return -1;
     }
     node->func = action;
     node->data = data;
     node->time = delay;
-    node->next = 0;
+    node->next = NULL;
     node->id   = ++id;
 
     prev = ptr = Q;
@@ -209,7 +208,7 @@ timer_clearTimer(int timer_id)
 		prev->next = ptr->next;
 
 	    /* increment next node if any */
-	    if (ptr->next != 0)
+	    if (ptr->next != NULL)
 		(ptr->next)->time += ptr->time;
 
 	    if (ptr->data)

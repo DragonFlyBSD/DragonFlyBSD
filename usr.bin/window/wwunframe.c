@@ -52,7 +52,7 @@ wwunframe(struct ww *w)
 			if (win[j] & WWM_GLS)
 				continue;
 			win[j] |= WWM_GLS;
-			if (fmap != 0)
+			if (fmap != NULL)
 				fmap[j] = 0;
 			if (smap[j] == w->ww_index) {
 				smap[j] = WWX_NOBODY;

@@ -32,7 +32,6 @@
  *
  * @(#)inode.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/inode.c,v 1.20 2000/02/28 20:02:41 mckusick Exp $
- * $DragonFly: src/sbin/fsck/inode.c,v 1.11 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -518,7 +517,7 @@ pinode(ufs1_ino_t ino)
 		return;
 	dp = ginode(ino);
 	printf(" OWNER=");
-	if ((pw = getpwuid((int)dp->di_uid)) != 0)
+	if ((pw = getpwuid((int)dp->di_uid)) != NULL)
 		printf("%s ", pw->pw_name);
 	else
 		printf("%u ", (unsigned)dp->di_uid);

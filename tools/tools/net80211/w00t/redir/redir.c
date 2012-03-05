@@ -383,7 +383,7 @@ void got_ack(struct params *p)
 
 void read_wifi(struct params *p)
 {
-	static char *buf = 0;
+	static char *buf = NULL;
 	static int buflen = 4096;
 	struct ieee80211_frame *wh;
 	int rc;
@@ -544,7 +544,7 @@ void read_buddy_data(struct params *p)
 		while (last) {
 			if (!last->next) {
 				last->next = q;
-				q->next = 0;
+				q->next = NULL;
 				break;
 			}
 			last = last->next;

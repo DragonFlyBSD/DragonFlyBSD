@@ -17,7 +17,6 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/main.c,v 1.19.2.1 2002/07/30 03:50:40 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/main.c,v 1.6 2006/07/27 00:40:55 corecode Exp $
  */
 
 #include <stdio.h>
@@ -1449,7 +1448,7 @@ vfmtmsg(char *buf, int buflen, char *fmt, va_list args)
 		}
 	    }
 	}
-	str = 0;
+	str = NULL;
 	base = 0;
 	neg = 0;
 	++fmt;
@@ -1615,15 +1614,15 @@ script_setenv(char *var, char *value)
     char *p, *newstring;
 
     newstring = (char *) malloc(vl + strlen(value) + 2);
-    if (newstring == 0)
+    if (newstring == NULL)
 	return;
     strcpy(newstring, var);
     newstring[vl] = '=';
     strcpy(newstring+vl+1, value);
 
     /* check if this variable is already set */
-    if (script_env != 0) {
-	for (i = 0; (p = script_env[i]) != 0; ++i) {
+    if (script_env != NULL) {
+	for (i = 0; (p = script_env[i]) != NULL; ++i) {
 	    if (strncmp(p, var, vl) == 0 && p[vl] == '=') {
 		free(p);
 		script_env[i] = newstring;
@@ -1633,7 +1632,7 @@ script_setenv(char *var, char *value)
     } else {
 	i = 0;
 	script_env = (char **) malloc(16 * sizeof(char *));
-	if (script_env == 0)
+	if (script_env == NULL)
 	    return;
 	s_env_nalloc = 16;
     }
@@ -1643,14 +1642,14 @@ script_setenv(char *var, char *value)
 	int new_n = i + 17;
 	char **newenv = (char **) realloc((void *)script_env,
 					  new_n * sizeof(char *));
-	if (newenv == 0)
+	if (newenv == NULL)
 	    return;
 	script_env = newenv;
 	s_env_nalloc = new_n;
     }
 
     script_env[i] = newstring;
-    script_env[i+1] = 0;
+    script_env[i+1] = NULL;
 }
 
 /*
@@ -1664,12 +1663,12 @@ script_unsetenv(char *var)
     int i;
     char *p;
 
-    if (script_env == 0)
+    if (script_env == NULL)
 	return;
-    for (i = 0; (p = script_env[i]) != 0; ++i) {
+    for (i = 0; (p = script_env[i]) != NULL; ++i) {
 	if (strncmp(p, var, vl) == 0 && p[vl] == '=') {
 	    free(p);
-	    while ((script_env[i] = script_env[i+1]) != 0)
+	    while ((script_env[i] = script_env[i+1]) != NULL)
 		++i;
 	    break;
 	}

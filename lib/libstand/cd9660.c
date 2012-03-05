@@ -30,7 +30,6 @@
  *
  * $NetBSD: cd9660.c,v 1.5 1997/06/26 19:11:33 drochner Exp $
  * $FreeBSD: src/lib/libstand/cd9660.c,v 1.4.2.4 2001/12/21 22:17:44 jhb Exp $
- * $DragonFly: src/lib/libstand/cd9660.c,v 1.6 2005/12/11 02:27:26 swildner Exp $
  */
 
 /*
@@ -287,13 +286,13 @@ dirmatch(struct open_file *f, const char *path, struct iso_directory_record *dp,
 static int
 cd9660_open(const char *path, struct open_file *f)
 {
-	struct file *fp = 0;
+	struct file *fp = NULL;
 	void *buf;
 	struct iso_primary_descriptor *vd;
 	size_t buf_size, read, dsize, off;
 	daddr_t bno, boff;
 	struct iso_directory_record rec;
-	struct iso_directory_record *dp = 0;
+	struct iso_directory_record *dp = NULL;
 	int rc, first, use_rrip, lenskip;
 
 	/* First find the volume descriptor */

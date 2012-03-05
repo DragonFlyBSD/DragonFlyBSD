@@ -14,7 +14,6 @@
 * merchantibility and fitness for any particular purpose.
 ************************************************************************/
 /* $FreeBSD: src/usr.bin/login/login_fbtab.c,v 1.18 2007/09/21 01:55:11 kevlo Exp $ */
-/* $DragonFly: src/usr.bin/login/login_fbtab.c,v 1.3 2003/10/04 20:36:48 hmp Exp $ */
 /*
     SYNOPSIS
 	void login_fbtab(tty, uid, gid)
@@ -96,15 +95,15 @@ login_fbtab(char *tty, uid_t uid, gid_t gid)
     while (fgets(buf, sizeof(buf), fp)) {
 	if ((cp = strchr(buf, '#')))
 	    *cp = 0;				/* strip comment */
-	if ((cp = devname = strtok(buf, WSPACE)) == 0)
+	if ((cp = devname = strtok(buf, WSPACE)) == NULL)
 	    continue;				/* empty or comment */
 	if (strncmp(devname, _PATH_DEV, sizeof _PATH_DEV - 1) != 0
-	       || (cp = strtok(NULL, WSPACE)) == 0
+	       || (cp = strtok(NULL, WSPACE)) == NULL
 	       || *cp != '0'
 	       || sscanf(cp, "%o", &prot) == 0
 	       || prot == 0
 	       || (prot & 0777) != prot
-	       || (cp = strtok(NULL, WSPACE)) == 0) {
+	       || (cp = strtok(NULL, WSPACE)) == NULL) {
 	    syslog(LOG_ERR, "%s: bad entry: %s", table, cp ? cp : "(null)");
 	    continue;
 	}

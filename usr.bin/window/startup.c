@@ -46,7 +46,7 @@ doconfig(void)
 	const char *home;
 	static char runcom[] = RUNCOM;
 
-	if ((home = getenv("HOME")) == 0)
+	if ((home = getenv("HOME")) == NULL)
 		home = ".";
 	(void) sprintf(buf, "%.*s/%s",
 		(int)((sizeof buf - sizeof runcom) / sizeof (char) - 1),
@@ -69,7 +69,7 @@ dodefault(void)
 		return;
 	if ((w = openwin(0, 1, 0, r, wwncol, default_nline,
 	    (char *) 0, WWT_PTY, WWU_HASFRAME, default_shellfile,
-	    default_shell)) == 0)
+	    default_shell)) == NULL)
 		return;
 	wwprintf(w, "Escape character is %s.\r\n", unctrl(escapec));
 }

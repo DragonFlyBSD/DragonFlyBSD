@@ -28,7 +28,6 @@
  * 
  *
  * $FreeBSD: src/crypto/telnet/libtelnet/pk.c,v 1.2.2.4 2002/08/24 07:28:35 nsayer Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/pk.c,v 1.5 2005/07/18 16:43:26 joerg Exp $
  */
 
 /* public key routines */
@@ -170,7 +169,7 @@ getseed(char *seed, int seedsize)
 static BIGNUM *
 itobn(long i)
 {
-	BIGNUM *n = 0;
+	BIGNUM *n = NULL;
 
 	if ((n = BN_new()) == NULL)
 		errx(1, "could not create BIGNUM: %s",

@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/filter.c,v 1.39.2.7 2002/09/01 02:12:26 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/filter.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,7 +80,7 @@ ParsePort(const char *service, const char *proto)
   int port;
 
   servent = getservbyname(service, proto);
-  if (servent != 0)
+  if (servent != NULL)
     return ntohs(servent->s_port);
 
   port = strtol(service, &cp, 0);

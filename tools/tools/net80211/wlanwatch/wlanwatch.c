@@ -156,10 +156,10 @@ routename(struct sockaddr *sa)
 	    {	struct in_addr in;
 		in = ((struct sockaddr_in *)sa)->sin_addr;
 
-		cp = 0;
+		cp = NULL;
 		if (in.s_addr == INADDR_ANY || sa->sa_len < 4)
 			cp = "default";
-		if (cp == 0 && !nflag) {
+		if (cp == NULL && !nflag) {
 			hp = gethostbyaddr((char *)&in, sizeof (struct in_addr),
 				AF_INET);
 			if (hp) {
