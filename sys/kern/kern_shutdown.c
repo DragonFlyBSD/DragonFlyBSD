@@ -661,10 +661,22 @@ dump_conf(void *dummy)
 {
 	char *path;
 	cdev_t dev;
+	int _dummy;
 
 	path = kmalloc(MNAMELEN, M_TEMP, M_WAITOK);
 	if (TUNABLE_STR_FETCH("dumpdev", path, MNAMELEN) != 0) {
+		/*
+		 * Make sure all disk devices created so far have also been
+		 * probed, and also make sure that the newly created device
+		 * nodes for probed disks are ready, too.
+		 *
+		 * XXX - Delay an additional 2 seconds to help drivers which
+		 *	 pickup devices asynchronously and are not caught by
+		 *	 CAM's initial probe.
+		 */
 		sync_devs();
+		tsleep(&_dummy, 0, "syncer", hz*2);
+
 		dev = kgetdiskbyname(path);
 		if (dev != NULL)
 			dumpdev = dev;
