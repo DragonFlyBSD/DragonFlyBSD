@@ -2587,7 +2587,7 @@ ngsr_watchdog_frame(void * arg)
 	crit_enter();
 
 	if (sc->running == 0) {
-		crit_enter();
+		crit_exit();
 		return; /* if we are not running let timeouts die */
 	}
 	/*

@@ -936,6 +936,7 @@ sctp_timeout_handler(void *t)
 	sctp_pegs[SCTP_TIMERS_EXP]++;
 
 	if (inp == NULL) {
+		crit_exit();
 		return;
 	}
 
