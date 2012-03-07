@@ -216,6 +216,6 @@ show_ifconfig(struct dfui_connection *c, char *ifname)
 
 	e = aura_buffer_new(1024);
 	aura_buffer_cat_pipe(e, "/sbin/ifconfig %s", ifname);
-	inform(c, aura_buffer_buf(e));
+	inform(c, "%s", aura_buffer_buf(e));
 	aura_buffer_free(e);
 }
