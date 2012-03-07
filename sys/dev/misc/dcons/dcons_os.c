@@ -367,6 +367,7 @@ dcons_tty_start(struct tty *tp)
 	crit_enter();
 	if (tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {
 		ttwwakeup(tp);
+		crit_exit();
 		lwkt_reltoken(&tty_token);
 		return;
 	}

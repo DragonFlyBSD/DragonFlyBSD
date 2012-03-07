@@ -1519,6 +1519,7 @@ rpparam(struct tty *tp, struct termios *t)
 
 	ospeed = ttspeedtab(t->c_ispeed, baud_table);
 	if(ospeed < 0 || t->c_ispeed != t->c_ospeed) {
+		crit_exit();
 		lwkt_reltoken(&tty_token);
 		return(EINVAL);
 	}
@@ -1532,6 +1533,7 @@ rpparam(struct tty *tp, struct termios *t)
 
 	if(t->c_ospeed == 0) {
 		sClrDTR(cp);
+		crit_exit();
 		lwkt_reltoken(&tty_token);
 		return(0);
 	}

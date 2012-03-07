@@ -24,7 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_vcm.c,v 1.5 2000/01/17 20:49:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_vcm.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -487,6 +486,7 @@ uniarp_svcactive(struct ipvcc *ivp)
 			atm_cm_release(ivp->iv_arpconn, &uniarp_cause);
 			ivp->iv_arpconn = NULL;
 		}
+		crit_exit();
 		return (err);
 	}
 
