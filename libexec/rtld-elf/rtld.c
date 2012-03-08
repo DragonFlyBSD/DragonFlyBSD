@@ -2046,7 +2046,7 @@ preinitialize_main_object (void)
     for (index = 0; index < obj_main->preinit_array_num; index++)
 	if (init_addr[index] != 0 && init_addr[index] != 1) {
 	    dbg("Calling preinit array function for %s at %p",
-		(void *) obj_main->path, (void *)init_addr[index]);
+		obj_main->path, (void *)init_addr[index]);
 	    LD_UTRACE(UTRACE_INIT_CALL, obj_main, (void *)init_addr[index],
 		0, 0, obj_main->path);
 	    call_array_pointer(init_addr[index], glac, glav, environ);
