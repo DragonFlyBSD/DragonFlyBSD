@@ -1957,7 +1957,6 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 		 */
 		src_m = vm_page_lookup(src_object,
 				       OFF_TO_IDX(dst_offset + src_offset));
-
 		if (src_m == NULL)
 			panic("vm_fault_copy_wired: page missing");
 
