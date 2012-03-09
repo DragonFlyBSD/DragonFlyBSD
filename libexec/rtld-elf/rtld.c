@@ -2,6 +2,7 @@
  * Copyright 1996, 1997, 1998, 1999, 2000 John D. Polstra.
  * Copyright 2003 Alexander Kabaev <kan@FreeBSD.ORG>.
  * Copyright 2009, 2010, 2011 Konstantin Belousov <kib@FreeBSD.ORG>.
+ * Copyright 2012 John Marino <draco@marino.st>.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -132,6 +133,7 @@ static void symlook_init_from_req(SymLook *, const SymLook *);
 static int symlook_list(SymLook *, const Objlist *, DoneList *);
 static int symlook_needed(SymLook *, const Needed_Entry *, DoneList *);
 static int symlook_obj1(SymLook *, const Obj_Entry *);
+static int symlook_obj2(SymLook *, const Obj_Entry *);
 static void trace_loaded_objects(Obj_Entry *);
 static void unlink_object(Obj_Entry *);
 static void unload_object(Obj_Entry *);
@@ -147,6 +149,9 @@ static int  object_match_name(const Obj_Entry *, const char *);
 static void ld_utrace_log(int, void *, void *, size_t, int, const char *);
 static void rtld_fill_dl_phdr_info(const Obj_Entry *obj,
     struct dl_phdr_info *phdr_info);
+static uint_fast32_t gnu_hash (const char *);
+static bool matched_symbol(SymLook *, const Obj_Entry *, Sym_Match_Result *,
+    const unsigned long);
 
 void r_debug_state(struct r_debug *, struct link_map *) __noinline;
 
@@ -1029,6 +1034,29 @@ digest_dynamic1(Obj_Entry *obj, int early, const Elf_Dyn **dyn_rpath,
 		obj->nchains = hashtab[1];
 		obj->buckets = hashtab + 2;
 		obj->chains = obj->buckets + obj->nbuckets;
+		obj->valid_hash_sysv = obj->nbuckets > 0 && obj->nchains > 0 &&
+		  obj->buckets != NULL;
+	    }
+	    break;
+
+	case DT_GNU_HASH:
+	    {
+		const Elf_Hashelt *hashtab = (const Elf_Hashelt *)
+		  (obj->relocbase + dynp->d_un.d_ptr);
+		obj->nbuckets_gnu = hashtab[0];
+		obj->symndx_gnu = hashtab[1];
+		const Elf32_Word nmaskwords = hashtab[2];
+		const int bloom_size32 = (__ELF_WORD_SIZE / 32) * nmaskwords;
+		/* Number of bitmask words is required to be power of 2 */
+		const bool nmw_power2 = ((nmaskwords & (nmaskwords - 1)) == 0);
+		obj->maskwords_bm_gnu = nmaskwords - 1;
+		obj->shift2_gnu = hashtab[3];
+		obj->bloom_gnu = (Elf_Addr *) (hashtab + 4);
+		obj->buckets_gnu = hashtab + 4 + bloom_size32;
+		obj->chain_zero_gnu = obj->buckets_gnu + obj->nbuckets_gnu -
+		  obj->symndx_gnu;
+		obj->valid_hash_gnu = nmw_power2 && obj->nbuckets_gnu > 0 &&
+		  obj->buckets_gnu != NULL;
 	    }
 	    break;
 
@@ -1176,6 +1204,22 @@ digest_dynamic1(Obj_Entry *obj, int early, const Elf_Dyn **dyn_rpath,
 	obj->pltrel = NULL;
 	obj->pltrelasize = obj->pltrelsize;
 	obj->pltrelsize = 0;
+    }
+
+    /* Determine size of dynsym table (equal to nchains of sysv hash) */
+    if (obj->valid_hash_sysv)
+	obj->dynsymcount = obj->nchains;
+    else if (obj->valid_hash_gnu) {
+	obj->dynsymcount = 0;
+	for (Elf32_Word bkt = 0; bkt < obj->nbuckets_gnu; bkt++) {
+	    if (obj->buckets_gnu[bkt] == 0)
+		continue;
+	    const Elf32_Word *hashval = &obj->chain_zero_gnu[obj->buckets_gnu[bkt]];
+	    do
+		obj->dynsymcount++;
+	    while ((*hashval++ & 1u) == 0);
+	}
+	obj->dynsymcount += obj->symndx_gnu;
     }
 }
 
@@ -1348,6 +1392,19 @@ elf_hash(const char *name)
 }
 
 /*
+ * The GNU hash function is the Daniel J. Bernstein hash clipped to 32 bits
+ * unsigned in case it's implemented with a wider type.
+ */
+static uint_fast32_t
+gnu_hash (const char *s)
+{
+    uint_fast32_t h = 5381;
+    for (unsigned char c = *s; c != '\0'; c = *++s)
+	h = h * 33 + c;
+    return h & 0xffffffff;
+}
+
+/*
  * Find the library with the given name, and return its full pathname.
  * The returned string is dynamically allocated.  Generates an error
  * message and returns NULL if the library cannot be found.
@@ -1423,7 +1480,7 @@ find_symdef(unsigned long symnum, const Obj_Entry *refobj,
      * If we have already found this symbol, get the information from
      * the cache.
      */
-    if (symnum >= refobj->nchains)
+    if (symnum >= refobj->dynsymcount)
 	return NULL;	/* Bad object */
     if (cache != NULL && cache[symnum].sym != NULL) {
 	*defobj_out = cache[symnum].obj;
@@ -2196,8 +2253,8 @@ relocate_objects(Obj_Entry *first, bool bind_now, Obj_Entry *rtldobj,
     for (obj = first;  obj != NULL;  obj = obj->next) {
 	if (obj != rtldobj)
 	    dbg("relocating \"%s\"", obj->path);
-	if (obj->nbuckets == 0 || obj->nchains == 0 || obj->buckets == NULL ||
-	    obj->symtab == NULL || obj->strtab == NULL) {
+	if (obj->symtab == NULL || obj->strtab == NULL ||
+	  !(obj->valid_hash_sysv || obj->valid_hash_gnu)) {
 	    _rtld_error("%s: Shared object has no run-time symbol table",
 	      obj->path);
 	    return -1;
@@ -2807,7 +2864,7 @@ dladdr(const void *addr, Dl_info *info)
      * Walk the symbol list looking for the symbol whose address is
      * closest to the address sent in.
      */
-    for (symoffset = 0; symoffset < obj->nchains; symoffset++) {
+    for (symoffset = 0; symoffset < obj->dynsymcount; symoffset++) {
         def = obj->symtab + symoffset;
 
         /*
@@ -3170,8 +3227,7 @@ get_program_var_addr(const char *name, RtldLockState *lockstate)
     else if (ELF_ST_TYPE(req.sym_out->st_info) == STT_GNU_IFUNC)
 	return ((const void **)rtld_resolve_ifunc(req.defobj_out, req.sym_out));
     else
-	    return ((const void **)(req.defobj_out->relocbase +
-	      req.sym_out->st_value));
+	return ((const void **)(req.defobj_out->relocbase + req.sym_out->st_value));
 }
 
 /*
@@ -3409,7 +3465,15 @@ symlook_obj(SymLook *req, const Obj_Entry *obj)
     SymLook req1;
     int res, mres;
 
-    mres = symlook_obj1(req, obj);
+    /*
+     * There is at least one valid hash at this point, and we prefer to use
+     * the faster GNU version if available.
+     */
+    if (obj->valid_hash_gnu)
+	mres = symlook_obj2(req, obj);
+    else
+	mres = symlook_obj1(req, obj);
+
     if (mres == 0) {
 	if (obj->needed_filtees != NULL) {
 	    load_filtees(__DECONST(Obj_Entry *, obj), 0, req->lockstate);
@@ -3437,126 +3501,181 @@ symlook_obj(SymLook *req, const Obj_Entry *obj)
     return (mres);
 }
 
+/* Symbol match routine common to both hash functions */
+static bool
+matched_symbol(SymLook *req, const Obj_Entry *obj, Sym_Match_Result *result,
+	const unsigned long symnum)
+{
+    Elf_Versym verndx;
+    const Elf_Sym *symp = obj->symtab + symnum;
+    const char *strp = obj->strtab + symp->st_name;
+
+    switch (ELF_ST_TYPE(symp->st_info)) {
+    case STT_FUNC:
+    case STT_NOTYPE:
+    case STT_OBJECT:
+    case STT_COMMON:
+    case STT_GNU_IFUNC:
+	if (symp->st_value == 0)
+	    return (false);
+	/* fallthrough */
+    case STT_TLS:
+	if (symp->st_shndx != SHN_UNDEF)
+	    break;
+	else if (((req->flags & SYMLOOK_IN_PLT) == 0) &&
+	      (ELF_ST_TYPE(symp->st_info) == STT_FUNC))
+	    break;
+	/* fallthrough */
+    default:
+	return (false);
+    }
+    if (strcmp(req->name, strp) != 0)
+	return (false);
+
+    if (req->ventry == NULL) {
+	if (obj->versyms != NULL) {
+	    verndx = VER_NDX(obj->versyms[symnum]);
+	    if (verndx > obj->vernum) {
+		_rtld_error("%s: symbol %s references wrong version %d",
+		    obj->path, obj->strtab + symnum, verndx);
+		return (false);
+	    }
+	    /*
+	     * If we are not called from dlsym (i.e. this is a normal relocation
+	     * from unversioned binary), accept the symbol immediately if it happens
+	     * to have first version after this shared object became versioned.
+	     * Otherwise, if symbol is versioned and not hidden, remember it. If it
+	     * is the only symbol with this name exported by the shared object, it
+	     * will be returned as a match by the calling function. If symbol is
+	     * global (verndx < 2) accept it unconditionally.
+	     */
+	    if ((req->flags & SYMLOOK_DLSYM) == 0 && verndx == VER_NDX_GIVEN) {
+		result->sym_out = symp;
+		return (true);
+	    }
+	    else if (verndx >= VER_NDX_GIVEN) {
+		if ((obj->versyms[symnum] & VER_NDX_HIDDEN) == 0) {
+		    if (result->vsymp == NULL)
+			result->vsymp = symp;
+		    result->vcount++;
+		}
+		return (false);
+	    }
+	}
+	result->sym_out = symp;
+	return (true);
+    }
+    if (obj->versyms == NULL) {
+	if (object_match_name(obj, req->ventry->name)) {
+	    _rtld_error("%s: object %s should provide version %s for "
+		"symbol %s", obj_rtld.path, obj->path,
+		req->ventry->name, obj->strtab + symnum);
+	    return (false);
+	}
+    } else {
+	verndx = VER_NDX(obj->versyms[symnum]);
+	if (verndx > obj->vernum) {
+	    _rtld_error("%s: symbol %s references wrong version %d",
+		obj->path, obj->strtab + symnum, verndx);
+	    return (false);
+	}
+	if (obj->vertab[verndx].hash != req->ventry->hash ||
+	  strcmp(obj->vertab[verndx].name, req->ventry->name)) {
+	    /*
+	     * Version does not match. Look if this is a global symbol and if it is
+	     * not hidden. If global symbol (verndx < 2) is available, use it. Do not
+	     * return symbol if we are called by dlvsym, because dlvsym looks for a
+	     * specific version and default one is not what dlvsym wants.
+	     */
+	    if ((req->flags & SYMLOOK_DLSYM) || (verndx >= VER_NDX_GIVEN) ||
+		(obj->versyms[symnum] & VER_NDX_HIDDEN))
+	        return (false);
+	}
+    }
+    result->sym_out = symp;
+    return (true);
+}
+
+/*
+ * Search for symbol using SysV hash function.
+ * obj->buckets is known not to be NULL at this point; the test for this was
+ * performed with the obj->valid_hash_sysv assignment.
+ */
 static int
 symlook_obj1(SymLook *req, const Obj_Entry *obj)
 {
     unsigned long symnum;
-    const Elf_Sym *vsymp;
-    Elf_Versym verndx;
-    int vcount;
+    Sym_Match_Result matchres;
 
-    if (obj->buckets == NULL)
-	return (ESRCH);
+    matchres.sym_out = NULL;
+    matchres.vsymp = NULL;
+    matchres.vcount = 0;
 
-    vsymp = NULL;
-    vcount = 0;
-    symnum = obj->buckets[req->hash % obj->nbuckets];
-
-    for (; symnum != STN_UNDEF; symnum = obj->chains[symnum]) {
-	const Elf_Sym *symp;
-	const char *strp;
+    for (symnum = obj->buckets[req->hash % obj->nbuckets];
+	 symnum != STN_UNDEF;
+	 symnum = obj->chains[symnum]) {
 
 	if (symnum >= obj->nchains)
 	    return (ESRCH);	/* Bad object */
 
-	symp = obj->symtab + symnum;
-	strp = obj->strtab + symp->st_name;
-
-	switch (ELF_ST_TYPE(symp->st_info)) {
-	case STT_FUNC:
-	case STT_NOTYPE:
-	case STT_OBJECT:
-	case STT_GNU_IFUNC:
-	    if (symp->st_value == 0)
-		continue;
-		/* fallthrough */
-	case STT_TLS:
-	    if (symp->st_shndx != SHN_UNDEF)
-		break;
-	    else if (((req->flags & SYMLOOK_IN_PLT) == 0) &&
-		 (ELF_ST_TYPE(symp->st_info) == STT_FUNC))
-		break;
-		/* fallthrough */
-	default:
-	    continue;
-	}
-	if (req->name[0] != strp[0] || strcmp(req->name, strp) != 0)
-	    continue;
-
-	if (req->ventry == NULL) {
-	    if (obj->versyms != NULL) {
-		verndx = VER_NDX(obj->versyms[symnum]);
-		if (verndx > obj->vernum) {
-		    _rtld_error("%s: symbol %s references wrong version %d",
-			obj->path, obj->strtab + symnum, verndx);
-		    continue;
-		}
-		/*
-		 * If we are not called from dlsym (i.e. this is a normal
-		 * relocation from unversioned binary), accept the symbol
-		 * immediately if it happens to have first version after
-		 * this shared object became versioned. Otherwise, if
-		 * symbol is versioned and not hidden, remember it. If it
-		 * is the only symbol with this name exported by the
-		 * shared object, it will be returned as a match at the
-		 * end of the function. If symbol is global (verndx < 2)
-		 * accept it unconditionally.
-		 */
-		if ((req->flags & SYMLOOK_DLSYM) == 0 &&
-		  verndx == VER_NDX_GIVEN) {
-		    req->sym_out = symp;
-		    req->defobj_out = obj;
-		    return (0);
-		}
-		else if (verndx >= VER_NDX_GIVEN) {
-		    if ((obj->versyms[symnum] & VER_NDX_HIDDEN) == 0) {
-			if (vsymp == NULL)
-			    vsymp = symp;
-			vcount ++;
-		    }
-		    continue;
-		}
-	    }
-	    req->sym_out = symp;
-	    req->defobj_out = obj;
-	    return (0);
-	} else {
-	    if (obj->versyms == NULL) {
-		if (object_match_name(obj, req->ventry->name)) {
-		    _rtld_error("%s: object %s should provide version %s for "
-			"symbol %s", obj_rtld.path, obj->path,
-			req->ventry->name, obj->strtab + symnum);
-		    continue;
-		}
-	    } else {
-		verndx = VER_NDX(obj->versyms[symnum]);
-		if (verndx > obj->vernum) {
-		    _rtld_error("%s: symbol %s references wrong version %d",
-			obj->path, obj->strtab + symnum, verndx);
-		    continue;
-		}
-		if (obj->vertab[verndx].hash != req->ventry->hash ||
-		    strcmp(obj->vertab[verndx].name, req->ventry->name)) {
-		    /*
-		     * Version does not match. Look if this is a global symbol
-		     * and if it is not hidden. If global symbol (verndx < 2)
-		     * is available, use it. Do not return symbol if we are
-		     * called by dlvsym, because dlvsym looks for a specific
-		     * version and default one is not what dlvsym wants.
-		     */
-		    if ((req->flags & SYMLOOK_DLSYM) ||
-			(obj->versyms[symnum] & VER_NDX_HIDDEN) ||
-			(verndx >= VER_NDX_GIVEN))
-			continue;
-		}
-	    }
-	    req->sym_out = symp;
+	if (matched_symbol(req, obj, &matchres, symnum)) {
+	    req->sym_out = matchres.sym_out;
 	    req->defobj_out = obj;
 	    return (0);
 	}
     }
-    if (vcount == 1) {
-	req->sym_out = vsymp;
+    if (matchres.vcount == 1) {
+	req->sym_out = matchres.vsymp;
+	req->defobj_out = obj;
+	return (0);
+    }
+    return (ESRCH);
+}
+
+/* Search for symbol using GNU hash function */
+static int
+symlook_obj2(SymLook *req, const Obj_Entry *obj)
+{
+    Elf_Addr bloom_word;
+    Elf32_Word bucket;
+    unsigned int h1, h2;
+    unsigned long symnum;
+    const int c = __ELF_WORD_SIZE;
+    Sym_Match_Result matchres;
+
+    matchres.sym_out = NULL;
+    matchres.vsymp = NULL;
+    matchres.vcount = 0;
+
+    /* pick right bitmask word from Bloom filter array*/
+    bloom_word = obj->bloom_gnu[(req->hash_gnu / c) & obj->maskwords_bm_gnu];
+
+    /* calculate modulus 32 (64 for x86_64) of gnu hash and its derivative */
+    h1 = req->hash_gnu & (c - 1);
+    h2 = ((req->hash_gnu >> obj->shift2_gnu) & (c - 1));
+
+    /* Filter out the "definitely not in set" queries */
+    if (((bloom_word >> h1) & (bloom_word >> h2) & 1) == 0)
+	return (ESRCH);
+
+    /* Locate hash chain and corresponding value element*/
+    bucket = obj->buckets_gnu[req->hash_gnu % obj->nbuckets_gnu];
+    if (bucket == 0)
+	return (ESRCH);
+    const Elf32_Word *hashval = &obj->chain_zero_gnu[bucket];
+    do
+	if (((*hashval ^ req->hash_gnu) >> 1) == 0)
+	{
+	    symnum = hashval - obj->chain_zero_gnu;
+	    if (matched_symbol(req, obj, &matchres, symnum)) {
+		req->sym_out = matchres.sym_out;
+		req->defobj_out = obj;
+		return (0);
+	    }
+	}
+    while ((*hashval++ & 1u) == 0);
+    if (matchres.vcount == 1) {
+	req->sym_out = matchres.vsymp;
 	req->defobj_out = obj;
 	return (0);
     }
@@ -4236,6 +4355,7 @@ symlook_init(SymLook *dst, const char *name)
 	bzero(dst, sizeof(*dst));
 	dst->name = name;
 	dst->hash = elf_hash(name);
+	dst->hash_gnu = gnu_hash(name);
 }
 
 static void
@@ -4244,6 +4364,7 @@ symlook_init_from_req(SymLook *dst, const SymLook *src)
 
 	dst->name = src->name;
 	dst->hash = src->hash;
+	dst->hash_gnu = src->hash_gnu;
 	dst->ventry = src->ventry;
 	dst->flags = src->flags;
 	dst->defobj_out = NULL;
