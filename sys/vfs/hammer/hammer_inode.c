@@ -2435,9 +2435,11 @@ hammer_wait_inode(hammer_inode_t ip)
 		if (ip->flush_state == HAMMER_FST_FLUSH) {
 			KKASSERT(ip->flush_group);
 			if (ip->flush_group->closed == 0) {
-				kprintf("hammer: debug: forcing async "
-					"flush ip %016jx\n",
-					(intmax_t)ip->obj_id);
+				if (hammer_debug_inode) {
+					kprintf("hammer: debug: forcing "
+						"async flush ip %016jx\n",
+						(intmax_t)ip->obj_id);
+				}
 				hammer_flusher_async(ip->hmp,
 						     ip->flush_group);
 				continue; /* retest */
