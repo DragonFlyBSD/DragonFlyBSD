@@ -53,6 +53,7 @@
 .Op Fl s Ar sid
 .Op Fl t Ar tty
 .Op Fl u Ar euid
+.Op Fl j Ar jid
 .Op Ar pattern Op ...
 .Nm pkill
 .Op Fl signal
@@ -64,6 +65,7 @@
 .Op Fl s Ar sid
 .Op Fl t Ar tty
 .Op Fl u Ar euid
+.Op Fl j Ar jid
 .Op Ar pattern Op ...
 .Sh DESCRIPTION
 The
@@ -109,6 +111,16 @@ The value zero is taken to mean the process group ID of the running
 or
 .Nm pkill
 command.
+.It Fl j Ar jid
+Restrict matches to processes inside jails with a jail ID in the comma-separated
+list
+.Ar jid .
+The value
+.Dq Li -1
+matches processes in any jail.
+The value
+.Dq Li 0
+matches processes not in a jail.
 .It Fl l
 Long output.
 Print the process name in addition to the process ID for each matching
