@@ -92,7 +92,6 @@ SUBDIR=	alias \
 	killall \
 	ktrace \
 	ktrdump \
-	kzip \
 	lam \
 	last \
 	lastcomm \
