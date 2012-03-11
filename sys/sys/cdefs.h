@@ -35,19 +35,10 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.20 2008/11/20 11:27:24 hasso Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
 #define	_SYS_CDEFS_H_
-
-#if defined(__cplusplus)
-#define	__BEGIN_DECLS	extern "C" {
-#define	__END_DECLS	}
-#else
-#define	__BEGIN_DECLS
-#define	__END_DECLS
-#endif
 
 /*
  * Macro to test if we are using a specific version of gcc or later.
@@ -57,6 +48,19 @@
         (__GNUC__ > (ma) || __GNUC__ == (ma) && __GNUC_MINOR__ >= (mi))
 #else
 #define __GNUC_PREREQ__(ma, mi) 0
+#endif
+
+#if defined(__cplusplus)
+#if __GNUC_PREREQ__(4, 0)
+#define	__BEGIN_DECLS	_Pragma("GCC visibility push(default)") extern "C" {
+#define	__END_DECLS	} _Pragma("GCC visibility pop")
+#else
+#define	__BEGIN_DECLS	extern "C" {
+#define	__END_DECLS	}
+#endif
+#else
+#define	__BEGIN_DECLS
+#define	__END_DECLS
 #endif
 
 /*
@@ -294,11 +298,9 @@
 #endif
 
 #if __GNUC_PREREQ__(4, 0)
-#define __exported	__attribute__((__visibility__("default")))
 #define __dso_public	__attribute__((__visibility__("default")))
 #define __dso_hidden	__attribute__((__visibility__("hidden")))
 #else
-#define __exported
 #define __dso_public
 #define __dso_hidden
 #endif
