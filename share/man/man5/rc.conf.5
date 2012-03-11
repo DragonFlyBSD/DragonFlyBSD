@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd December 6, 2011
+.Dd March 11, 2012
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -675,7 +675,8 @@ For instance, to initialize the
 device via DHCP, using WPA authentication and 802.11b mode, it is
 possible to use something like:
 .Bd -literal
-ifconfig_wi0="up DHCP WPA mode 11b"
+wlans_wi0="wlan0"
+ifconfig_wlan0="up DHCP WPA mode 11b"
 .Ed
 .Pp
 .\"
