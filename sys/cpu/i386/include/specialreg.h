@@ -130,6 +130,7 @@
 #define	CPUID2_POPCNT	0x00800000
 #define	CPUID2_AESNI	0x02000000
 #define	CPUID2_RDRAND	0x40000000
+#define	CPUID2_VMM	0x80000000	/* AMD 25481 2.34 page 11 */
 
 /*
  * Important bits in the AMD extended cpuid flags
