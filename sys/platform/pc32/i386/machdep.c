@@ -1953,6 +1953,19 @@ init386(int first)
 	TUNABLE_INT_FETCH("hw.lapic_enable", &lapic_enable);
 
 	/*
+	 * Some of the virtaul machines do not work w/ I/O APIC
+	 * enabled.  If the user does not explicitly enable or
+	 * disable the I/O APIC (ioapic_enable < 0), then we
+	 * disable I/O APIC on all virtual machines.
+	 */
+	if (ioapic_enable < 0) {
+		if (cpu_feature2 & CPUID2_VMM)
+			ioapic_enable = 0;
+		else
+			ioapic_enable = 1;
+	}
+
+	/*
 	 * start with one cpu.  Note: with one cpu, ncpus2_shift, ncpus2_mask,
 	 * and ncpus_fit_mask remain 0.
 	 */
