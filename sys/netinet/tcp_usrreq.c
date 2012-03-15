@@ -1353,10 +1353,20 @@ tcp_ctloutput(netmsg_t msg)
 			break;
 #ifdef TCP_SIGNATURE
 		case TCP_SIGNATURE_ENABLE:
-			if (optval > 0)
-				tp->t_flags |= TF_SIGNATURE;
-			else
-				tp->t_flags &= ~TF_SIGNATURE;
+			if (tp->t_state == TCPS_CLOSED) {
+				/*
+				 * This is the only safe state that this
+				 * option could be changed.  Some segments
+				 * could already have been sent in other
+				 * states.
+				 */
+				if (optval > 0)
+					tp->t_flags |= TF_SIGNATURE;
+				else
+					tp->t_flags &= ~TF_SIGNATURE;
+			} else {
+				error = EOPNOTSUPP;
+			}
 			break;
 #endif /* TCP_SIGNATURE */
 		case TCP_NODELAY:
