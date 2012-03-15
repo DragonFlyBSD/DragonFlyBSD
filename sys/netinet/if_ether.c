@@ -1246,6 +1246,8 @@ static void
 arp_ifaddr(void *arg __unused, struct ifnet *ifp,
     enum ifaddr_event event, struct ifaddr *ifa)
 {
+	if (ifa->ifa_rtrequest != arp_rtrequest) /* XXX need a generic way */
+		return;
 	if (ifa->ifa_addr->sa_family != AF_INET)
 		return;
 	if (event == IFADDR_EVENT_DELETE)
