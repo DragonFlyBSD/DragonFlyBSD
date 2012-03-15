@@ -473,7 +473,8 @@ options                ACCEPT_FILTER_HTTP
 # TCP_SIGNATURE adds support for RFC 2385 (TCP-MD5) digests. These are
 # carried in TCP option 19. This option is commonly used to protect
 # TCP sessions (e.g. BGP) where IPSEC is not available nor desirable.
-# This is enabled on a per-socket basis using the TCP_MD5SIG socket option.
+# This is enabled on a per-socket basis using the TCP_SIGNATURE_ENABLE
+# socket option.
 # This requires the use of 'device crypto', 'options IPSEC'
 # or 'device cryptodev'.
 options   TCP_SIGNATURE   #include support for RFC 2385
