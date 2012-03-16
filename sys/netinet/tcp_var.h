@@ -83,6 +83,7 @@
  */
 extern int tcp_do_rfc1323;
 extern int tcp_do_rfc3390;
+extern int tcp_low_rtobase;
 extern int tcp_do_sack;
 extern int tcp_do_smartsack;
 extern int tcp_aggregate_acks;

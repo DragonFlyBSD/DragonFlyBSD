@@ -246,6 +246,10 @@ static int tcp_inflight_stab = 50;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_stab, CTLFLAG_RW,
     &tcp_inflight_stab, 0, "Slop in maximal packets / 10 (20 = 3 packets)");
 
+int tcp_low_rtobase = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, low_rtobase, CTLFLAG_RW,
+    &tcp_low_rtobase, 0, "Lowering the Initial RTO (RFC 6298)");
+
 static MALLOC_DEFINE(M_TCPTEMP, "tcptemp", "TCP Templates for Keepalives");
 static struct malloc_pipe tcptemp_mpipe;
 

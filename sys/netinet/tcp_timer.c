@@ -225,6 +225,9 @@ tcp_send_timermsg(struct tcpcb *tp, uint32_t task)
 int	tcp_syn_backoff[TCP_MAXRXTSHIFT + 1] =
     { 1, 1, 1, 1, 1, 2, 4, 8, 16, 32, 64, 64, 64 };
 
+int	tcp_syn_backoff_low[TCP_MAXRXTSHIFT + 1] =
+    { 1, 2, 4, 4, 4, 8, 16, 16, 32, 64, 64, 64, 64 };
+
 int	tcp_backoff[TCP_MAXRXTSHIFT + 1] =
     { 1, 2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 64, 64 };
 
@@ -544,10 +547,17 @@ tcp_timer_rexmt_handler(struct tcpcb *tp)
 	/* Throw away SACK blocks on a RTO, as specified by RFC2018. */
 	tcp_sack_cleanup(&tp->scb);
 	tcpstat.tcps_rexmttimeo++;
-	if (tp->t_state == TCPS_SYN_SENT)
-		rexmt = TCP_REXMTVAL(tp) * tcp_syn_backoff[tp->t_rxtshift];
-	else
+	if (tp->t_state == TCPS_SYN_SENT) {
+		if (tcp_low_rtobase) {
+			rexmt = TCP_REXMTVAL(tp) *
+				tcp_syn_backoff_low[tp->t_rxtshift];
+		} else {
+			rexmt = TCP_REXMTVAL(tp) *
+				tcp_syn_backoff[tp->t_rxtshift];
+		}
+	} else {
 		rexmt = TCP_REXMTVAL(tp) * tcp_backoff[tp->t_rxtshift];
+	}
 	TCPT_RANGESET(tp->t_rxtcur, rexmt,
 		      tp->t_rttmin, TCPTV_REXMTMAX);
 	/*

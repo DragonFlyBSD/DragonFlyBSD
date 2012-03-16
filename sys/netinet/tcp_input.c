@@ -3208,5 +3208,15 @@ tcp_established(struct tcpcb *tp)
 		 *  segment consisting of MSS bytes."
 		 */
 		tp->snd_cwnd = tp->t_maxseg;
+
+		/*
+		 * RFC6298:
+		 * "If the timer expires awaiting the ACK of a SYN segment
+		 *  and the TCP implementation is using an RTO less than 3
+		 *  seconds, the RTO MUST be re-initialized to 3 seconds
+		 *  when data transmission begins"
+		 */
+		if (tp->t_rxtcur < TCPTV_RTOBASE3)
+			tp->t_rxtcur = TCPTV_RTOBASE3;
 	}
 }

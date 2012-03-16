@@ -80,7 +80,8 @@
 #define	TCPTV_MSL	( 30*hz)		/* max seg lifetime (hah!) */
 #define	TCPTV_SRTTBASE	0			/* base roundtrip time;
 						   if 0, no idea yet */
-#define	TCPTV_RTOBASE	(  3*hz)		/* assumed RTO if no info */
+#define	TCPTV_RTOBASE3	(  3*hz)		/* assumed RTO if no info */
+#define	TCPTV_RTOBASE1	(  1*hz)		/* assumed RTO (RFC 6298) */
 #define	TCPTV_SRTTDFLT	(  3*hz)		/* assumed RTT if no info */
 
 #define	TCPTV_PERSMIN	(  5*hz)		/* retransmit persistence */
@@ -129,6 +130,9 @@ static const char *tcptimers[] =
 } while(0)
 
 #ifdef _KERNEL
+
+#define TCPTV_RTOBASE \
+	(tcp_low_rtobase ? TCPTV_RTOBASE1 : TCPTV_RTOBASE3)
 
 struct tcpcb;
 struct netmsg_tcp_timer {
