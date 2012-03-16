@@ -242,6 +242,7 @@ static void	 tcp_xmit_timer(struct tcpcb *, int);
 static void	 tcp_newreno_partial_ack(struct tcpcb *, struct tcphdr *, int);
 static void	 tcp_sack_rexmt(struct tcpcb *, struct tcphdr *);
 static int	 tcp_rmx_msl(const struct tcpcb *);
+static void	 tcp_established(struct tcpcb *);
 
 /* Neighbor Discovery, Neighbor Unreachability Detection Upper layer hint. */
 #ifdef INET6
@@ -1475,10 +1476,7 @@ after_listen:
 				tp->t_flags &= ~TF_NEEDFIN;
 				thflags &= ~TH_SYN;
 			} else {
-				tp->t_state = TCPS_ESTABLISHED;
-				tcp_callout_reset(tp, tp->tt_keep,
-						  tcp_getkeepidle(tp),
-						  tcp_timer_keep);
+				tcp_established(tp);
 			}
 		} else {
 			/*
@@ -1848,10 +1846,7 @@ after_listen:
 			tp->t_state = TCPS_FIN_WAIT_1;
 			tp->t_flags &= ~TF_NEEDFIN;
 		} else {
-			tp->t_state = TCPS_ESTABLISHED;
-			tcp_callout_reset(tp, tp->tt_keep,
-					  tcp_getkeepidle(tp),
-					  tcp_timer_keep);
+			tcp_established(tp);
 		}
 		/*
 		 * If segment contains data or ACK, will call tcp_reass()
@@ -3197,4 +3192,11 @@ tcp_rmx_msl(const struct tcpcb *tp)
 		msl = 1;
 
 	return msl;
+}
+
+static void
+tcp_established(struct tcpcb *tp)
+{
+	tp->t_state = TCPS_ESTABLISHED;
+	tcp_callout_reset(tp, tp->tt_keep, tcp_getkeepidle(tp), tcp_timer_keep);
 }
