@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libfetch/ftp.c,v 1.102 2008/02/08 09:48:48 des Exp $
- * $DragonFly: src/lib/libfetch/ftp.c,v 1.4 2007/08/05 21:48:12 swildner Exp $
  */
 
 /*
@@ -931,7 +930,7 @@ ftp_authenticate(conn_t *conn, struct url *url, struct url *purl)
 		if (*pwd == '\0')
 			pwd = getenv("FTP_PASSWORD");
 		if (pwd == NULL || *pwd == '\0') {
-			if ((logname = getlogin()) == 0)
+			if ((logname = getlogin()) == NULL)
 				logname = FTP_ANONYMOUS_USER;
 			if ((len = snprintf(pbuf, MAXLOGNAME + 1, "%s@", logname)) < 0)
 				len = 0;

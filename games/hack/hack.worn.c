@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.worn.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.worn.c,v 1.3 1999/11/16 02:57:14 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.worn.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 
@@ -60,7 +59,7 @@ setnotworn(struct obj *obj)
 
 	for (wp = worn; wp->w_mask; wp++)
 		if (obj == *(wp->w_obj)) {
-			*(wp->w_obj) = 0;
+			*(wp->w_obj) = NULL;
 			obj->owornmask &= ~wp->w_mask;
 		}
 	if (uarm2 && !uarm) {

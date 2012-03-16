@@ -33,7 +33,6 @@
  *
  * @(#)io.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/adventure/io.c,v 1.8.2.1 2001/03/05 11:43:11 kris Exp $
- * $DragonFly: src/games/adventure/io.c,v 1.3 2007/04/18 18:32:12 swildner Exp $
  */
 
 /* Re-coding of advent in C: file i/o and user i/o */
@@ -419,7 +418,7 @@ twrite(int loq)
 	printf("If");
 	speak(&ltext[loq]);
 	printf("then\n");
-	for (t = travel[loq]; t != 0; t = t->next) {
+	for (t = travel[loq]; t != NULL; t = t->next) {
 		printf("verb %d takes you to ", t->tverb);
 		if (t->tloc <= 300)
 			speak(&ltext[t->tloc]);
@@ -570,7 +569,7 @@ pspeak(int m, int skip)
 	char *tbuf;
 
 	msg = &ptext[m];
-	if ((tbuf = malloc(msg->txtlen + 1)) == 0)
+	if ((tbuf = malloc(msg->txtlen + 1)) == NULL)
 		errx(1, "Out of memory!");
 	memcpy(tbuf, msg->seekadr, (unsigned)msg->txtlen + 1); /* Room to null */
 	s = tbuf;

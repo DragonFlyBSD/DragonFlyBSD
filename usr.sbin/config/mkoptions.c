@@ -33,7 +33,6 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.19 2007/01/19 07:23:43 dillon Exp $
  */
 
 /*
@@ -232,7 +231,7 @@ do_option(char *name)
 	}
 
 	outf = fopen(file, "w");
-	if (outf == 0)
+	if (outf == NULL)
 		err(1, "%s", file);
 	for (op = op_head; op != NULL; op = topp) {
 		/* was the option in the config file? */
@@ -333,7 +332,7 @@ next:
 	val = get_word(fp);
 	if (val == (char *)EOF)
 		return;
-	if (val == 0) {
+	if (val == NULL) {
 		char *s;
 	
 		s = strdup(this);

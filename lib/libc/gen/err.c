@@ -28,7 +28,6 @@
  *
  * @(#)err.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/err.c,v 1.15 2008/04/03 20:36:44 imp Exp $
- * $DragonFly: src/lib/libc/gen/err.c,v 1.5 2006/02/12 21:14:11 dillon Exp $
  */
 
 #include "namespace.h"
@@ -96,7 +95,7 @@ errc(int eval, int code, const char *fmt, ...)
 void
 verrc(int eval, int code, const char *fmt, va_list ap)
 {
-	if (err_file == 0)
+	if (err_file == NULL)
 		err_set_file(NULL);
 	fprintf(err_file, "%s: ", _getprogname());
 	if (fmt != NULL) {
@@ -121,7 +120,7 @@ errx(int eval, const char *fmt, ...)
 void
 verrx(int eval, const char *fmt, va_list ap)
 {
-	if (err_file == 0)
+	if (err_file == NULL)
 		err_set_file(NULL);
 	fprintf(err_file, "%s: ", _getprogname());
 	if (fmt != NULL)
@@ -163,7 +162,7 @@ warnc(int code, const char *fmt, ...)
 void
 vwarnc(int code, const char *fmt, va_list ap)
 {
-	if (err_file == 0)
+	if (err_file == NULL)
 		err_set_file(NULL);
 	fprintf(err_file, "%s: ", _getprogname());
 	if (fmt != NULL) {
@@ -185,7 +184,7 @@ warnx(const char *fmt, ...)
 void
 vwarnx(const char *fmt, va_list ap)
 {
-	if (err_file == 0)
+	if (err_file == NULL)
 		err_set_file(NULL);
 	fprintf(err_file, "%s: ", _getprogname());
 	if (fmt != NULL)

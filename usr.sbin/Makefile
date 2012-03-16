@@ -165,7 +165,6 @@ SUBDIR+=apm \
 	battd \
 	btxld \
 	kgmon \
-	kgzip \
 	lptcontrol \
 	mptable \
 	rndcontrol \
@@ -174,7 +173,8 @@ SUBDIR+=apm \
 .endif
 
 .if ${MACHINE_ARCH} == "i386"
-SUBDIR+=stallion
+SUBDIR+=kgzip \
+	stallion
 .endif
 
 .ifdef BOOT0CFG_SUPPORT

@@ -370,7 +370,7 @@ spcset(int func, cc_t *valp, cc_t **valpp)
 
 	default:
 		*valp = 0;
-		*valpp = 0;
+		*valpp = NULL;
 		return(SLC_NOSUPPORT);
 	}
 }
@@ -1024,7 +1024,7 @@ init_env(void)
 	envp = envinit;
 	if ((*envp = getenv("TZ")))
 		*envp++ -= 3;
-	*envp = 0;
+	*envp = NULL;
 	environ = envinit;
 }
 
@@ -1251,7 +1251,7 @@ addarg(char **argv, const char *val)
 		cpp = &argv[(long)argv[-1] - 10];
 	}
 	*cpp++ = strdup(val);
-	*cpp = 0;
+	*cpp = NULL;
 	return(argv);
 }
 

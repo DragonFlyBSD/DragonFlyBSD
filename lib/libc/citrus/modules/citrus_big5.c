@@ -1,5 +1,4 @@
 /* $NetBSD: citrus_big5.c,v 1.11 2006/11/22 23:38:27 tnozaki Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_big5.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2002, 2006 Citrus Project,
@@ -301,7 +300,7 @@ _citrus_BIG5_mbrtowc_priv(_BIG5EncodingInfo * __restrict ei,
 	int chlenbak;
 	const char *s0;
 
-	_DIAGASSERT(nresult != 0);
+	_DIAGASSERT(nresult != NULL);
 	_DIAGASSERT(ei != NULL);
 	_DIAGASSERT(psenc != NULL);
 	_DIAGASSERT(s != NULL && *s != NULL);
@@ -393,7 +392,7 @@ _citrus_BIG5_wcrtomb_priv(_BIG5EncodingInfo * __restrict ei,
 	int l, ret;
 
 	_DIAGASSERT(ei != NULL);
-	_DIAGASSERT(nresult != 0);
+	_DIAGASSERT(nresult != NULL);
 	_DIAGASSERT(s != NULL);
 
 	/* check invalid sequence */

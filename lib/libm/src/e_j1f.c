@@ -15,6 +15,7 @@
  * $NetBSD: e_j1f.c,v 1.11 2007/08/20 16:01:38 drochner Exp $
  */
 
+#include <sys/_null.h>
 #include <math.h>
 #include "math_private.h"
 
@@ -228,7 +229,7 @@ ponef(float x)
 	float z,r,s;
         int32_t ix;
 
-	p = q = 0;
+	p = q = NULL;
 	GET_FLOAT_WORD(ix,x);
 	ix &= 0x7fffffff;
         if(ix>=0x41000000)     {p = pr8; q= ps8;}
@@ -327,7 +328,7 @@ qonef(float x)
 	float  s,r,z;
 	int32_t ix;
 
-	p = q = 0;
+	p = q = NULL;
 	GET_FLOAT_WORD(ix,x);
 	ix &= 0x7fffffff;
 	/* [inf, 8]		(8      41000000) */

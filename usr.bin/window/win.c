@@ -70,7 +70,7 @@ openwin(int id, int row, int col, int nrow, int ncol, int nline, char *label, in
 		return 0;
 	}
 	w = wwopen(type, 0, nrow, ncol, row, col, nline);
-	if (w == 0) {
+	if (w == NULL) {
 		error("Can't open window: %s.", wwerror());
 		return 0;
 	}
@@ -79,7 +79,7 @@ openwin(int id, int row, int col, int nrow, int ncol, int nline, char *label, in
 	CLR(w->ww_uflags, WWU_ALLFLAGS);
 	SET(w->ww_uflags, uflags);
 	w->ww_alt = w->ww_w;
-	if (label != 0 && setlabel(w, label) < 0)
+	if (label != NULL && setlabel(w, label) < 0)
 		error("No memory for label.");
 	wwcursor(w, 1);
 	/*
@@ -115,12 +115,12 @@ findid(void)
 struct ww *
 findselwin(void)
 {
-	struct ww *w, *s = 0;
+	struct ww *w, *s = NULL;
 	int i;
 
 	for (i = 0; i < NWINDOW; i++)
-		if ((w = window[i]) != 0 && w != selwin &&
-		    (s == 0 ||
+		if ((w = window[i]) != NULL && w != selwin &&
+		    (s == NULL ||
 		     (!isfg(w) && (w->ww_order < s->ww_order || isfg(s)))))
 			s = w;
 	return s;
@@ -135,12 +135,12 @@ closewin(struct ww *w)
 	char didit = 0;
 	int i;
 
-	if (w != 0) {
+	if (w != NULL) {
 		closewin1(w);
 		didit++;
 	} else
 		for (i = 0; i < NWINDOW; i++) {
-			if ((w = window[i]) == 0)
+			if ((w = window[i]) == NULL)
 				continue;
 			closewin1(w);
 			didit++;
@@ -168,7 +168,7 @@ openiwin(int nrow, const char *label)
 {
 	struct ww *w;
 
-	if ((w = wwopen(WWT_INTERNAL, 0, nrow, wwncol, 2, 0, 0)) == 0)
+	if ((w = wwopen(WWT_INTERNAL, 0, nrow, wwncol, 2, 0, 0)) == NULL)
 		return 0;
 	SET(w->ww_wflags, WWW_MAPNL | WWW_NOINTR | WWW_NOUPDATE | WWW_UNCTRL);
 	SET(w->ww_uflags, WWU_HASFRAME | WWU_CENTER);

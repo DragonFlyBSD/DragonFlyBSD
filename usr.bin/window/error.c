@@ -55,9 +55,9 @@ verror(const char *fmt, va_list ap)
 	struct context *x;
 	struct ww *w;
 
-	for (x = &cx; x != 0 && x->x_type != X_FILE; x = x->x_link)
+	for (x = &cx; x != NULL && x->x_type != X_FILE; x = x->x_link)
 		;
-	if (x == 0) {
+	if (x == NULL) {
 		if (terse)
 			wwbell();
 		else {
@@ -68,12 +68,12 @@ verror(const char *fmt, va_list ap)
 	}
 	if (x->x_noerr)
 		return;
-	if ((w = x->x_errwin) == 0) {
+	if ((w = x->x_errwin) == NULL) {
 		char buf[512];
 
 		(void) snprintf(buf, sizeof(buf), "Errors from %s",
 		    x->x_filename);
-		if ((w = x->x_errwin = openiwin(ERRLINES, buf)) == 0) {
+		if ((w = x->x_errwin = openiwin(ERRLINES, buf)) == NULL) {
 			wwputs("Can't open error window.  ", cmdwin);
 			x->x_noerr = 1;
 			return;

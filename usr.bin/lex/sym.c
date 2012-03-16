@@ -28,7 +28,6 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/sym.c,v 2.19 95/03/04 16:11:04 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/sym.c,v 1.5 1999/10/27 07:56:47 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/sym.c,v 1.4 2005/08/04 17:31:22 drhodus Exp $ */
 
 #include "flexdef.h"
 
@@ -75,7 +74,7 @@ int addsym(char *sym, char *str_def, int int_def, hash_table table,
 	if ( new_entry == NULL )
 		flexfatal( _( "symbol table memory allocation failed" ) );
 
-	if ( (successor = table[hash_val]) != 0 )
+	if ( (successor = table[hash_val]) != NULL )
 		{
 		new_entry->next = successor;
 		successor->prev = new_entry;

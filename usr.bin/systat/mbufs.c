@@ -32,7 +32,6 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/mbufs.c,v 1.10.2.1 2000/08/26 09:36:55 ps Exp $
- * $DragonFly: src/usr.bin/systat/mbufs.c,v 1.8 2008/11/10 04:59:45 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -97,7 +96,7 @@ showmbufs(void)
 	char buf[10];
 	const char *mtname;
 
-	if (mb == 0)
+	if (mb == NULL)
 		return;
 	for (j = 0; j < wnd->_maxy; j++) {
 		max = 0, idx = -1;
@@ -175,7 +174,7 @@ initmbufs(void)
 		return 0;
 	}
 
-	if (mb == 0)
+	if (mb == NULL)
 		mb = (struct mbstat *)calloc(1, sizeof *mb);
 	return 1;
 }

@@ -28,7 +28,6 @@
  *
  * @(#)klmove.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/klmove.c,v 1.4 1999/11/30 03:49:49 billf Exp $
- * $DragonFly: src/games/trek/klmove.c,v 1.4 2006/10/08 17:11:30 pavalos Exp $
  */
 
 #include "trek.h"
@@ -141,7 +140,7 @@ klmove(int fl)
 				Etc.nkling -= 1;
 				bmove(&Etc.klingon[Etc.nkling], k, sizeof *k);
 				Quad[Ship.quadx][Ship.quady].klings -= 1;
-				k = 0;
+				k = NULL;
 				break;
 			}
 			if (Sect[lookx][looky] != EMPTY) {

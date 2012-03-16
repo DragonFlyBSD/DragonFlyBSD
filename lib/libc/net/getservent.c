@@ -28,7 +28,6 @@
  *
  * @(#)getservent.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/getservent.c,v 1.23 2007/01/09 00:28:02 imp Exp $
- * $DragonFly: src/lib/libc/net/getservent.c,v 1.7 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -389,14 +388,14 @@ files_servent(void *retval, void *mdata, va_list ap)
 
 			continue;
 		gotname:
-			if (proto == 0 || strcmp(serv->s_proto, proto) == 0)
+			if (proto == NULL || strcmp(serv->s_proto, proto) == 0)
 				rv = NS_SUCCESS;
 			break;
 		case nss_lt_id:
 			if (port != serv->s_port)
 				continue;
 
-			if (proto == 0 || strcmp(serv->s_proto, proto) == 0)
+			if (proto == NULL || strcmp(serv->s_proto, proto) == 0)
 				rv = NS_SUCCESS;
 			break;
 		case nss_lt_all:

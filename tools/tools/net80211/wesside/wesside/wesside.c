@@ -117,15 +117,15 @@ struct wep_log {
 #define LINKTYPE_IEEE802_11     105
 #define TCPDUMP_MAGIC           0xA1B2C3D4
 
-unsigned char* floodip = 0;
+unsigned char* floodip = NULL;
 unsigned short floodport = 6969;
 unsigned short floodsport = 53;
 
-unsigned char* netip = 0;
+unsigned char* netip = NULL;
 int netip_arg = 0;
 int max_chan = 11;
 
-unsigned char* rtrmac = 0;
+unsigned char* rtrmac = NULL;
 
 unsigned char mymac[] = "\x00\x00\xde\xfa\xce\x0d";
 unsigned char myip[16] = "192.168.0.123";
@@ -135,7 +135,7 @@ int ttl_val = 0;
 
 PTW_attackstate *ptw;
 
-unsigned char *victim_mac = 0;
+unsigned char *victim_mac = NULL;
 
 int ack_timeout = 100*1000;
 
@@ -520,7 +520,7 @@ void inject(int fd, void *buf, int len)
 }
 
 void send_frame(int tx, unsigned char* buf, int len) {
-	static unsigned char* lame = 0;
+	static unsigned char* lame = NULL;
 	static int lamelen = 0;
 	static int lastlen = 0;
 
@@ -1487,7 +1487,7 @@ void got_wep(struct ieee80211_frame* wh, int rd) {
 //			printf("I fink AP relayed it...\n");
 			set_prga(body, &body[4], fragstate.data, dlen);
 			free(fragstate.data);
-			fragstate.data = 0;
+			fragstate.data = NULL;
 			fragstate.waiting_relay = 0;
 		}
 
@@ -2741,7 +2741,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	chaninfo.s = -1;
-	victim.ssid = 0;
+	victim.ssid = NULL;
 	prgainfo.len = 0;
 
 	memset(&txstate, 0, sizeof(txstate));

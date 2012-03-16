@@ -28,7 +28,6 @@
  *
  * @(#)fancy.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/fancy.c,v 1.7 1999/11/30 03:48:25 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/fancy.c,v 1.4 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include <string.h>
@@ -569,7 +568,7 @@ clear(void)
 	int i;
 
 	/* double space if can't clear */
-	if (CL == 0) {
+	if (CL == NULL) {
 		writel("\n\n");
 		return;
 	}

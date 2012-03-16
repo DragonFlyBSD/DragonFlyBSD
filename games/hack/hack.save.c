@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.save.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.save.c,v 1.4 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.save.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 
@@ -176,11 +175,11 @@ struct obj *
 restobjchn(int fd)
 {
 	struct obj *otmp, *otmp2;
-	struct obj *first = 0;
+	struct obj *first = NULL;
 	int xl;
 
 	/* suppress "used before set" warning from lint */
-	otmp2 = 0;
+	otmp2 = NULL;
 	for (;;) {
 		mread(fd, (char *)&xl, sizeof(xl));
 		if (xl == -1)
@@ -205,7 +204,7 @@ struct monst *
 restmonchn(int fd)
 {
 	struct monst *mtmp, *mtmp2;
-	struct monst *first = 0;
+	struct monst *first = NULL;
 	int xl;
 	struct permonst *monbegin;
 	long differ;
@@ -214,7 +213,7 @@ restmonchn(int fd)
 	differ = (char *)(&mons[0]) - (char *)(monbegin);
 
 	/* suppress "used before set" warning from lint */
-	mtmp2 = 0;
+	mtmp2 = NULL;
 	for (;;) {
 		mread(fd, (char *)&xl, sizeof(xl));
 		if (xl == -1)

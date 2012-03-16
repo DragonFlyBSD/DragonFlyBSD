@@ -37,7 +37,6 @@
  *	@(#)conf.c	8.2 (Berkeley) 3/27/94
  *
  * $FreeBSD: src/sbin/mount_portal/conf.c,v 1.8 1999/08/28 00:13:35 peter Exp $
- * $DragonFly: src/sbin/mount_portal/conf.c,v 1.5 2005/11/06 12:36:40 swildner Exp $
  */
 
 #include <errno.h>
@@ -186,7 +185,7 @@ palloc(char *cline, int lno)
 			p->p_argc++;
 		}
 	}
-	*ap = 0;
+	*ap = NULL;
 
 #ifdef DEBUG
 	for (c = 0; c < p->p_argc; c++)
@@ -209,7 +208,7 @@ palloc(char *cline, int lno)
 		} else {
 			p->p_rxvalid = 1;
 		}
-		curp = 0;			/* XXX */
+		curp = NULL;			/* XXX */
 	} else {
 		p->p_rxvalid = 0;
 	}
@@ -303,7 +302,7 @@ conf_read(qelem *q, char *conf)
 	if (fp) {
 		conf_file = conf;		/* XXX */
 		readfp(q, fp);
-		conf_file = 0;		/* XXX */
+		conf_file = NULL;		/* XXX */
 		fclose(fp);
 	} else {
 		syslog(LOG_ERR, "open config file \"%s\": %s", conf, strerror(errno));

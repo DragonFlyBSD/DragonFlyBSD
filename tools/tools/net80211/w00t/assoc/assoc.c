@@ -706,7 +706,7 @@ void read_tap(struct params *p)
 
 int main(int argc, char *argv[])
 {
-	char* ssid = 0;
+	char* ssid = NULL;
 	char mac[] = { 0x00, 0x00, 0xde, 0xfa, 0xce, 0xd };
 	int ch;
 	struct params p;

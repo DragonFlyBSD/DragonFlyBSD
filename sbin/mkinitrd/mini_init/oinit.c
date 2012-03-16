@@ -122,7 +122,7 @@ runcom(char **argv_orig)
 		argv[0] = "sh";
 		argv[1] = _PATH_RUNCOM;
 		argv[2] = "autoboot" ;
-		argv[3] = 0;
+		argv[3] = NULL;
 
 		sigprocmask(SIG_SETMASK, &sa.sa_mask, NULL);
 

@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/sap_input.c,v 1.7 1999/08/28 01:15:04 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/sap_input.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  */
 
 /*
@@ -49,13 +48,13 @@ sap_input(struct sockaddr *from, int size)
 	int sapchanged = 0;
 	struct sap_entry *sap;
 	struct sap_info *n;
-	struct interface *ifp = 0;
+	struct interface *ifp = NULL;
 	struct afswitch *afp;
 	struct sockaddr_ipx *ipxp;
 
 	ifp = if_ifwithnet(from);
 	ipxp = (struct sockaddr_ipx *)from;
-	if (ifp == 0) {
+	if (ifp == NULL) {
 		if(ftrace) {
 			fprintf(ftrace, "Received bogus packet from %s\n",
 				ipxdp_ntoa(&ipxp->sipx_addr));
@@ -144,7 +143,7 @@ sap_input(struct sockaddr *from, int size)
 			if (ntohs(n->hops) > HOPCNT_INFINITY)
 				continue;
 			sap = sap_lookup(n->ServType, n->ServName);
-			if (sap == 0) {
+			if (sap == NULL) {
 				if (ntohs(n->hops) == HOPCNT_INFINITY)
 					continue;
 				sap_add(n, from);

@@ -42,7 +42,6 @@
 
 /*
  * $FreeBSD: src/lib/libc/net/base64.c,v 1.4 1999/11/04 04:30:43 ache Exp $
- * $DragonFly: src/lib/libc/net/base64.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -212,7 +211,7 @@ b64_pton(char const *src, u_char *target, size_t targsize)
 			break;
 
 		pos = strchr(Base64, ch);
-		if (pos == 0) 		/* A non-base64 character. */
+		if (pos == NULL) 		/* A non-base64 character. */
 			return (-1);
 
 		switch (state) {

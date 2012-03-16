@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.rumors.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.rumors.c,v 1.3 1999/11/16 02:57:10 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.rumors.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"			/* for RUMORFILE and BSD (index) */
 #define	CHARSZ	8			/* number of bits in a char */
@@ -50,7 +49,7 @@ outline(FILE *rumf)
 
 	if (!fgets(line, sizeof(line), rumf))
 		return;
-	if ((ep = strchr(line, '\n')) != 0)
+	if ((ep = strchr(line, '\n')) != NULL)
 		*ep = 0;
 	pline("This cookie has a scrap of paper inside! It reads: ");
 	pline(line);

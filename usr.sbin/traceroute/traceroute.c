@@ -32,7 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.9 2007/10/25 08:12:42 hasso Exp $
  * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
  */
 
@@ -296,7 +295,7 @@ int sndsock;			/* send (udp) socket file descriptor */
 int datalen;			/* How much data */
 int headerlen;			/* How long packet's header is */
 
-char *source = 0;
+char *source = NULL;
 char *hostname;
 
 int nprobes = 3;
@@ -367,7 +366,7 @@ main(int argc, char *argv[])
 				errx(1, "too many gateways; max %d", MAX_LSRR);
 			if (inet_aton(optarg, &gateway[lsrr]) == 0) {
 				hp = gethostbyname(optarg);
-				if (hp == 0)
+				if (hp == NULL)
 					errx(1, "unknown host %s", optarg);
 				memcpy(&gateway[lsrr], hp->h_addr, hp->h_length);
 			}
@@ -481,7 +480,7 @@ main(int argc, char *argv[])
 		hostname = *argv;
 	else {
 		hp = gethostbyname(*argv);
-		if (hp == 0)
+		if (hp == NULL)
 			errx(1, "unknown host %s", *argv);
 		to.sin_family = hp->h_addrtype;
 		memcpy(&to.sin_addr, hp->h_addr, hp->h_length);

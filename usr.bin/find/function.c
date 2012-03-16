@@ -35,7 +35,6 @@
  *
  * @(#)function.c  8.10 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/find/function.c,v 1.52 2004/07/29 03:33:55 tjr Exp $
- * $DragonFly: src/usr.bin/find/function.c,v 1.7 2005/03/13 22:22:42 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -221,7 +220,7 @@ nextarg(OPTION *option, char ***argvp)
 {
 	char *arg;
 
-	if ((arg = **argvp) == 0)
+	if ((arg = **argvp) == NULL)
 		errx(1, "%s: requires additional arguments", option->name);
 	(*argvp)++;
 	return arg;

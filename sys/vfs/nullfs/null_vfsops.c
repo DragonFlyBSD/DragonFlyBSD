@@ -52,6 +52,7 @@
 #include <sys/malloc.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
+#include <sys/namecache.h>
 #include <sys/nlookup.h>
 #include <sys/mountctl.h>
 #include "null.h"
@@ -372,6 +373,23 @@ nullfs_extattrctl(struct mount *mp, int cmd, struct vnode *vp,
 			      vp, attrnamespace, attrname, cred);
 }
 
+static void
+nullfs_ncpgen_set(struct mount *mp, struct namecache *ncp)
+{
+	struct null_mount *xmp = MOUNTTONULLMOUNT(mp);
+
+	VFS_NCPGEN_SET(xmp->nullm_vfs, ncp);
+}
+
+
+static int
+nullfs_ncpgen_test(struct mount *mp, struct namecache *ncp)
+{
+	struct null_mount *xmp = MOUNTTONULLMOUNT(mp);
+
+	return VFS_NCPGEN_TEST(xmp->nullm_vfs, ncp);
+}
+
 
 static struct vfsops null_vfsops = {
 	.vfs_mount =   	 	nullfs_mount,
@@ -383,6 +401,8 @@ static struct vfsops null_vfsops = {
 	.vfs_extattrctl =  	nullfs_extattrctl,
 	.vfs_fhtovp =		nullfs_fhtovp,
 	.vfs_vptofh =		nullfs_vptofh,
+	.vfs_ncpgen_set =	nullfs_ncpgen_set,
+	.vfs_ncpgen_test =	nullfs_ncpgen_test,
 	.vfs_checkexp =  	nullfs_checkexp
 };
 

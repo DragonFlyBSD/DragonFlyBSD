@@ -1,5 +1,4 @@
 /* $NetBSD: citrus_johab.c,v 1.3 2007/10/23 15:28:25 tnozaki Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_johab.c,v 1.1 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2006 Citrus Project,
@@ -174,7 +173,7 @@ _citrus_JOHAB_mbrtowc_priv(_JOHABEncodingInfo * __restrict ei,
 	/* ei may be unused */
 	_DIAGASSERT(s != NULL);
 	_DIAGASSERT(psenc != NULL);
-	_DIAGASSERT(nresult != 0);
+	_DIAGASSERT(nresult != NULL);
 
 	if (*s == NULL) {
 		_citrus_JOHAB_init_state(ei, psenc);

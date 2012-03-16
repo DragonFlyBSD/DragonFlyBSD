@@ -1,6 +1,5 @@
 /* io.c			 Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/io.c,v 1.7 1999/11/16 02:57:22 billf Exp $
- * $DragonFly: src/games/larn/io.c,v 1.7 2008/06/05 18:06:30 swildner Exp $
  *
  *	Below are the functions in this file:
  *
@@ -672,7 +671,7 @@ cursors(void)
 
 static char cap[256];
 char *CM, *CE, *CD, *CL, *SO, *SE, *AL, *DL;/* Termcap capabilities */
-static char *outbuf = 0;	/* translated output buffer */
+static char *outbuf = NULL;	/* translated output buffer */
 
 /*
  * init_term()		Terminal initialization -- setup termcap info
@@ -725,7 +724,7 @@ init_term(void)
 		exit(1);
 	}
 	/* get memory for decoded output buffer*/
-	if ((outbuf = malloc(BUFBIG + 16)) == 0) {
+	if ((outbuf = malloc(BUFBIG + 16)) == NULL) {
 		write(2, "Error malloc'ing memory for decoded output buffer\n", 50);
 		died(-285);	/* malloc() failure */
 	}

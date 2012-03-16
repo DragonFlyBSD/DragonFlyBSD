@@ -901,7 +901,7 @@ ra_input(int len, struct nd_router_advert *ra,
 	/*
 	 * RA consistency check according to RFC-2461 6.2.7
 	 */
-	if ((rai = if_indextorainfo(pi->ipi6_ifindex)) == 0) {
+	if ((rai = if_indextorainfo(pi->ipi6_ifindex)) == NULL) {
 		syslog(LOG_INFO,
 		       "<%s> received RA from %s on non-advertising"
 		       " interface(%s)",

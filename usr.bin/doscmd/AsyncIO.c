@@ -30,7 +30,6 @@
  *	BSDI AsyncIO.c,v 2.2 1996/04/08 19:32:10 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/AsyncIO.c,v 1.3.2.3 2002/05/21 11:49:47 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/AsyncIO.c,v 1.3 2008/10/16 01:52:32 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -103,7 +102,7 @@ printf("%d: Invalid FD\n", fd);
     	    	setsignal(SIGIO, HandleIO);
 	}
 
-	if ((handlers[fd].func = func) != 0) {
+	if ((handlers[fd].func = func) != NULL) {
 		as->lockcnt = 0;
 		as->arg = arg;
 		as->failure = failure;
@@ -116,8 +115,8 @@ printf("%d: Invalid FD\n", fd);
 		}
 		SETASYNC(fd);
 	} else {
-		as->arg = 0;
-		as->failure = 0;
+		as->arg = NULL;
+		as->failure = NULL;
 		as->lockcnt = 0;
 
 		CLRASYNC(fd);
@@ -153,9 +152,9 @@ printf("Closed file descriptor %d\n", x);
 
 			f = handlers[x].failure;
 			a = handlers[x].arg;
-			handlers[x].failure = 0;
-			handlers[x].func = 0;
-			handlers[x].arg = 0;
+			handlers[x].failure = NULL;
+			handlers[x].func = NULL;
+			handlers[x].arg = NULL;
 			handlers[x].lockcnt = 0;
 			FD_CLR(x, &fdset);
 			if (f)

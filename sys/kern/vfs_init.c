@@ -421,6 +421,16 @@ vfs_register(struct vfsconf *vfc)
 		vfsops->vfs_extattrctl = vfs_stdextattrctl;
 	}
 
+	if (vfsops->vfs_ncpgen_set == NULL) {
+		/* namecache generation number */
+		vfsops->vfs_ncpgen_set = vfs_stdncpgen_set;
+	}
+
+	if (vfsops->vfs_ncpgen_test == NULL) {
+		/* check namecache generation */
+		vfsops->vfs_ncpgen_test = vfs_stdncpgen_test;
+	}
+
 	/* file system uid and gid accounting */
 	if (vfsops->vfs_acinit == NULL) {
 		vfsops->vfs_acinit = vfs_stdac_init;

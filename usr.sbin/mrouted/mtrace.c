@@ -110,7 +110,6 @@
  * The mtrace program is COPYRIGHT 1998 by Xerox Corporation.
  *
  * $FreeBSD: src/usr.sbin/mrouted/mtrace.c,v 1.17.2.3 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.8 2005/12/05 00:58:50 swildner Exp $
  */
 
 #include <ctype.h>
@@ -368,10 +367,10 @@ init_igmp(void)
     struct ip *ip;
 
     recv_buf = (char *)malloc(RECV_BUF_SIZE);
-    if (recv_buf == 0)
+    if (recv_buf == NULL)
 	dolog(LOG_ERR, 0, "Out of memory allocating recv_buf!");
     send_buf = (char *)malloc(RECV_BUF_SIZE);
-    if (send_buf == 0)
+    if (send_buf == NULL)
 	dolog(LOG_ERR, 0, "Out of memory allocating send_buf!");
 
     if ((igmp_socket = socket(AF_INET, SOCK_RAW, IPPROTO_IGMP)) < 0) 
@@ -1518,7 +1517,7 @@ passive_mode(void)
 
 	/* XXX This should be a hash table */
 	/* XXX garbage-collection should be more efficient */
-	for (nn = &remembered, n = *nn, m = 0; n; n = *nn) {
+	for (nn = &remembered, n = *nn, m = NULL; n; n = *nn) {
 	    if ((n->base.qhdr.tr_src == base.qhdr.tr_src) &&
 		(n->base.qhdr.tr_dst == base.qhdr.tr_dst) &&
 		(n->base.igmp.igmp_group.s_addr == igmp->igmp_group.s_addr)) {

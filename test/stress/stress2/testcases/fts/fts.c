@@ -62,7 +62,7 @@ test(void)
 
 	ftsoptions = 0;
 	args[0] = ".";
-	args[1] = 0;
+	args[1] = NULL;
 
 	if ((fts = fts_open(args, ftsoptions, NULL)) == NULL)
 		err(1, "fts_open");

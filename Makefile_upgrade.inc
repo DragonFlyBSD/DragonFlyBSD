@@ -1981,6 +1981,9 @@ TO_REMOVE+=/usr/share/man/cat4/bfq.4.gz
 TO_REMOVE+=/usr/share/man/man4/bfq.4.gz
 TO_REMOVE+=/usr/include/bus/pci/dc21040reg.h
 TO_REMOVE+=/usr/lib/profile/libtinfo.aa
+TO_REMOVE+=/usr/bin/kzip
+TO_REMOVE+=/usr/share/man/cat8/kzip.8.gz
+TO_REMOVE+=/usr/share/man/man8/kzip.8.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/libdata/stallion/2681.sys
@@ -1998,6 +2001,9 @@ TO_REMOVE+=/usr/share/man/cat4/i386/stl.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/stl.4.gz
 TO_REMOVE+=/usr/share/man/cat4/i386/stli.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/stli.4.gz
+TO_REMOVE+=/usr/sbin/kgzip
+TO_REMOVE+=/usr/share/man/cat8/kgzip.8.gz
+TO_REMOVE+=/usr/share/man/man8/kgzip.8.gz
 .endif
 
 # XXX Remove when pfsync(4) has been fixed

@@ -32,7 +32,6 @@
  *
  * @(#)utilities.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/restore/utilities.c,v 1.8.2.2 2001/07/30 10:30:08 dd Exp $
- * $DragonFly: src/sbin/restore/utilities.c,v 1.7 2005/11/06 12:49:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -61,7 +60,7 @@ pathcheck(char *name)
 	char *start;
 
 	start = strchr(name, '/');
-	if (start == 0)
+	if (start == NULL)
 		return;
 	for (cp = start; *cp != '\0'; cp++) {
 		if (*cp != '/')

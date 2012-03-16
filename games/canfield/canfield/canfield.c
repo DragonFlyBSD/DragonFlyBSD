@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)canfield.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/canfield/canfield/canfield.c,v 1.11 1999/12/12 07:25:13 billf Exp $
- * $DragonFly: src/games/canfield/canfield/canfield.c,v 1.4 2005/11/19 09:50:30 swildner Exp $
  */
 
 /*
@@ -1608,7 +1607,7 @@ instruct(void)
 	if (srcpile == 'n')
 		return;
 	clear();
-	for (cp = basicinstructions; *cp != 0; cp++)
+	for (cp = basicinstructions; *cp != NULL; cp++)
 		printw(*cp);
 	refresh();
 	getch();
@@ -1621,7 +1620,7 @@ instruct(void)
 	if (srcpile == 'n')
 		return;
 	clear();
-	for (cp = bettinginstructions; *cp != 0; cp++)
+	for (cp = bettinginstructions; *cp != NULL; cp++)
 		printw(*cp);
 	refresh();
 	getch();

@@ -1,7 +1,6 @@
 /*
  *	monster.c		Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/monster.c,v 1.6 1999/11/16 11:47:40 marcel Exp $
- * $DragonFly: src/games/larn/monster.c,v 1.4 2006/08/26 17:05:05 pavalos Exp $
  *
  *	This file contains the following functions:
  *	----------------------------------------------------------------------------
@@ -716,7 +715,7 @@ direct(int spnum, int dam, const char *str, int arg)
 {
 	int x, y;
 	int m;
-	if (spnum < 0 || spnum >= SPNUM || str == 0)	/* bad arguments */
+	if (spnum < 0 || spnum >= SPNUM || str == NULL)	/* bad arguments */
 		return;
 	if (isconfuse())
 		return;
@@ -777,7 +776,7 @@ godirect(int spnum, int dam, const char *str, int delay, char cshow)
 	char *p;
 	int x, y, m;
 	int dx, dy;
-	if (spnum < 0 || spnum >= SPNUM || str == 0 || delay < 0)	/* bad args */
+	if (spnum < 0 || spnum >= SPNUM || str == NULL || delay < 0)	/* bad args */
 		return;
 	if (isconfuse())
 		return;
@@ -955,7 +954,7 @@ static void
 omnidirect(int spnum, int dam, const char *str)
 {
 	int x, y, m;
-	if (spnum < 0 || spnum >= SPNUM || str == 0)	/* bad args */
+	if (spnum < 0 || spnum >= SPNUM || str == NULL)	/* bad args */
 		return;
 	for (x = playerx - 1; x < playerx + 2; x++)
 		for (y = playery - 1; y < playery + 2; y++) {
@@ -1721,7 +1720,7 @@ newsphere(int x, int y, int dir, int life)
 {
 	int m;
 	struct sphere *sp;
-	if (((sp = malloc(sizeof(struct sphere)))) == 0)
+	if (((sp = malloc(sizeof(struct sphere)))) == NULL)
 		return (c[SPHCAST]);	/* can't malloc, therefore failure */
 	if (dir >= 9)		/* no movement if direction not found */
 		dir = 0;
@@ -1804,7 +1803,7 @@ boom:		sphboom(x, y);		/* blow up stuff around sphere */
 long
 rmsphere(int x, int y)
 {
-	struct sphere *sp, *sp2 = 0;
+	struct sphere *sp, *sp2 = NULL;
 	for (sp = spheres; sp; sp2 = sp, sp = sp->p)
 		if (level == sp->lev)	/* is sphere on this level? */
 			if ((x == sp->x) && (y == sp->y)) {	/* locate sphere at this location */

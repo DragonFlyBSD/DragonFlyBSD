@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  *
  * @(#)getmntinfo.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/getmntvinfo.c,v 1.1 2008/06/01 20:46:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,9 +61,9 @@ getmntvinfo(struct statfs **mntbufp, struct statvfs **mntvbufp, int flags)
 			free(mntsbuf);
 		bufsize = (mntsize + 1) * sizeof(struct statfs);
 		vbufsize = (mntsize + 1) * sizeof(struct statvfs);
-		if ((mntsbuf = (struct statfs *)malloc(bufsize)) == 0)
+		if ((mntsbuf = (struct statfs *)malloc(bufsize)) == NULL)
 			return (0);
-		if ((mntvbuf = (struct statvfs *)malloc(vbufsize)) == 0)
+		if ((mntvbuf = (struct statvfs *)malloc(vbufsize)) == NULL)
 			return (0);
 		if ((mntsize = getvfsstat(mntsbuf, mntvbuf, vbufsize, flags)) < 0)
 			return (0);

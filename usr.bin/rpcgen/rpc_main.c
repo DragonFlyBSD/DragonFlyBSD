@@ -28,7 +28,6 @@
  *
  * @(#)rpc_main.c	1.21	94/04/25 SMI; 1.30 89/03/30 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_main.c,v 1.33 2007/08/23 09:38:26 delphij Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.12 2008/10/16 01:52:33 swildner Exp $
  */
 
 
@@ -427,7 +426,7 @@ generate_guard(const char *pathname)
 	char *guard, *tmp, *stopat;
 
 	filename = strrchr(pathname, '/');  /* find last component */
-	filename = ((filename == 0) ? pathname : filename+1);
+	filename = ((filename == NULL) ? pathname : filename+1);
 	guard = xstrdup(filename);
 	stopat = strrchr(guard, '.');
 
@@ -507,7 +506,7 @@ h_output(const char *infile, const char *define, int extend, const char *outfile
 	tell = ftell(fout);
 
 	/* print data definitions */
-	while ((def = get_definition()) != 0)
+	while ((def = get_definition()) != NULL)
 		print_datadef(def, headeronly);
 
 	/*
@@ -614,7 +613,7 @@ s_output(int argc, const char **argv, const char *infile, const char *define,
 	if (timerflag)
 		f_print(fout, "\n#define	_RPCSVC_CLOSEDOWN %s\n",
 			svcclosetime);
-	while ((def = get_definition()) != 0)
+	while ((def = get_definition()) != NULL)
 		foundprogram |= (def->def_kind == DEF_PROGRAM);
 	if (extend && !foundprogram) {
 		unlink(outfilename);
@@ -652,7 +651,7 @@ l_output(const char *infile, const char *define, int extend, const char *outfile
 		free(include);
 	} else
 		f_print(fout, "#include <rpc/rpc.h>\n");
-	while ((def = get_definition()) != 0)
+	while ((def = get_definition()) != NULL)
 		foundprogram |= (def->def_kind == DEF_PROGRAM);
 	if (extend && !foundprogram)
 		unlink(outfilename);
@@ -674,7 +673,7 @@ t_output(const char *infile, const char *define, int extend, const char *outfile
 	outfilename = extend ? extendfile(infile, outfile) : outfile;
 	open_output(infile, outfilename);
 	add_warning();
-	while ((def = get_definition()) != 0)
+	while ((def = get_definition()) != NULL)
 		foundprogram |= (def->def_kind == DEF_PROGRAM);
 	if (extend && !foundprogram)
 		unlink(outfilename);
@@ -707,7 +706,7 @@ svc_output(const char *infile, const char *define, int extend, const char *outfi
 		f_print(fout, "#include <rpc/rpc.h>\n");
 
 	tell = ftell(fout);
-	while ((def = get_definition()) != 0)
+	while ((def = get_definition()) != NULL)
 		write_sample_svc(def);
 	if (extend && tell == ftell(fout))
 		unlink(outfilename);
@@ -739,7 +738,7 @@ clnt_output(const char *infile, const char *define, int extend, const char *outf
 	} else
 		f_print(fout, "#include <rpc/rpc.h>\n");
 	tell = ftell(fout);
-	while ((def = get_definition()) != 0)
+	while ((def = get_definition()) != NULL)
 		has_program += write_sample_clnt(def);
 
 	if (has_program)

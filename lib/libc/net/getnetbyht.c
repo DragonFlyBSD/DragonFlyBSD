@@ -29,7 +29,6 @@
  * @(#)getnetent.c	8.1 (Berkeley) 6/4/93
  * From: Id: getnetent.c,v 8.4 1997/06/01 20:34:37 vixie Exp
  * $FreeBSD: src/lib/libc/net/getnetbyht.c,v 1.19 2007/01/09 00:28:02 imp Exp $
- * $DragonFly: src/lib/libc/net/getnetbyht.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 /* Portions Copyright (c) 1993 Carlos Leandro and Rui Salgueiro
@@ -212,7 +211,7 @@ _ht_getnetbyname(void *rval, void *cb_data, va_list ap)
 	while ((error = getnetent_p(&ne, ned)) == 0) {
 		if (strcasecmp(ne.n_name, name) == 0)
 			break;
-		for (cp = ne.n_aliases; *cp != 0; cp++)
+		for (cp = ne.n_aliases; *cp != NULL; cp++)
 			if (strcasecmp(*cp, name) == 0)
 				goto found;
 	}

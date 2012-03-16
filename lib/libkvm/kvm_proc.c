@@ -35,7 +35,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.18 2008/06/05 18:06:30 swildner Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -542,7 +541,7 @@ _kvm_realloc(kvm_t *kd, void *p, size_t n)
 {
 	void *np = (void *)realloc(p, n);
 
-	if (np == 0) {
+	if (np == NULL) {
 		free(p);
 		_kvm_err(kd, kd->program, "out of memory");
 	}
@@ -639,7 +638,7 @@ kvm_argv(kvm_t *kd, pid_t pid, u_long addr, int narg, int maxcnt)
 	 * that crosses a page boundary.  We copy the next part of the string
 	 * into to "np" and eventually convert the pointer.
 	 */
-	while (argv < kd->argv + narg && *argv != 0) {
+	while (argv < kd->argv + narg && *argv != NULL) {
 
 		/* get the address that the current argv string is on */
 		addr = (u_long)*argv & ~(PAGE_SIZE - 1);
@@ -665,7 +664,7 @@ kvm_argv(kvm_t *kd, pid_t pid, u_long addr, int narg, int maxcnt)
 
 		/* pointer to end of string if we found it in this page */
 		ep = memchr(cp, '\0', cc);
-		if (ep != 0)
+		if (ep != NULL)
 			cc = ep - cp + 1;
 		/*
 		 * at this point, cc is the count of the chars that we are
@@ -707,7 +706,7 @@ kvm_argv(kvm_t *kd, pid_t pid, u_long addr, int narg, int maxcnt)
 		 * to the target process, but when we close it off, we set
 		 * it to point in our address space.
 		 */
-		if (ep != 0) {
+		if (ep != NULL) {
 			*argv++ = ap;
 			ap = np;
 		} else {
@@ -720,7 +719,7 @@ kvm_argv(kvm_t *kd, pid_t pid, u_long addr, int narg, int maxcnt)
 			 * We're stopping prematurely.  Terminate the
 			 * current string.
 			 */
-			if (ep == 0) {
+			if (ep == NULL) {
 				*np = '\0';
 				*argv++ = ap;
 			}
@@ -728,7 +727,7 @@ kvm_argv(kvm_t *kd, pid_t pid, u_long addr, int narg, int maxcnt)
 		}
 	}
 	/* Make sure argv is terminated. */
-	*argv = 0;
+	*argv = NULL;
 	return (kd->argv);
 }
 
@@ -807,9 +806,9 @@ kvm_doargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr,
 	/*
 	 * For live kernels, make sure this process didn't go away.
 	 */
-	if (ap != 0 && (kvm_ishost(kd) || kvm_isvkernel(kd)) &&
+	if (ap != NULL && (kvm_ishost(kd) || kvm_isvkernel(kd)) &&
 	    !proc_verify(kd, kp))
-		ap = 0;
+		ap = NULL;
 	return (ap);
 }
 
@@ -866,7 +865,7 @@ kvm_getargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr)
 					    sizeof(char *) * argc);
 				}
 			} while (p < buf + bufsz);
-			bufp[i++] = 0;
+			bufp[i++] = NULL;
 			return (bufp);
 		}
 	}

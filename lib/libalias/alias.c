@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias.c,v 1.16.2.11 2002/07/25 12:31:37 ru Exp $
- * $DragonFly: src/lib/libalias/alias.c,v 1.3 2004/08/20 00:08:17 joerg Exp $
  */
 
 /*
@@ -138,8 +137,20 @@
 #define TFTP_PORT_NUMBER 69
 #define PPTP_CONTROL_PORT_NUMBER 1723
 
+static __inline int
+twowords(void *p)
+{
+    uint8_t *c = p;
 
-
+#if BYTE_ORDER == LITTLE_ENDIAN
+    uint16_t s1 = ((uint16_t)c[1] << 8) + (uint16_t)c[0];
+    uint16_t s2 = ((uint16_t)c[3] << 8) + (uint16_t)c[2];
+#else
+    uint16_t s1 = ((uint16_t)c[0] << 8) + (uint16_t)c[1];
+    uint16_t s2 = ((uint16_t)c[2] << 8) + (uint16_t)c[3];
+#endif
+    return (s1 + s2);
+}
 
 /* TCP Handling Routines
 
@@ -351,7 +362,6 @@ IcmpAliasIn2(struct ip *pip)
     {
         if (ip->ip_p == IPPROTO_UDP || ip->ip_p == IPPROTO_TCP)
         {
-            u_short *sptr;
             int accumulate, accumulate2;
             struct in_addr original_address;
             u_short original_port;
@@ -360,12 +370,8 @@ IcmpAliasIn2(struct ip *pip)
             original_port = GetOriginalPort(link);
     
 /* Adjust ICMP checksum */
-            sptr = (u_short *) &(ip->ip_src);
-            accumulate  = *sptr++;
-            accumulate += *sptr;
-            sptr = (u_short *) &original_address;
-            accumulate -= *sptr++;
-            accumulate -= *sptr;
+            accumulate  = twowords(&ip->ip_src);
+            accumulate -= twowords(&original_address);
             accumulate += ud->uh_sport;
             accumulate -= original_port;
             accumulate2 = accumulate;
@@ -388,7 +394,6 @@ fragment contained in ICMP data section */
         }
         else if (ip->ip_p == IPPROTO_ICMP)
         {
-            u_short *sptr;
             int accumulate, accumulate2;
             struct in_addr original_address;
             u_short original_id;
@@ -397,12 +402,8 @@ fragment contained in ICMP data section */
             original_id = GetOriginalPort(link);
 
 /* Adjust ICMP checksum */
-            sptr = (u_short *) &(ip->ip_src);
-            accumulate  = *sptr++;
-            accumulate += *sptr;
-            sptr = (u_short *) &original_address;
-            accumulate -= *sptr++;
-            accumulate -= *sptr;
+            accumulate  = twowords(&ip->ip_src);
+	    accumulate -= twowords(&original_address);
             accumulate += ic2->icmp_id;
             accumulate -= original_id;
             accumulate2 = accumulate;
@@ -553,7 +554,6 @@ IcmpAliasOut2(struct ip *pip)
     {
         if (ip->ip_p == IPPROTO_UDP || ip->ip_p == IPPROTO_TCP)
         {
-            u_short *sptr;
             int accumulate;
             struct in_addr alias_address;
             u_short alias_port;
@@ -562,12 +562,8 @@ IcmpAliasOut2(struct ip *pip)
             alias_port = GetAliasPort(link);
     
 /* Adjust ICMP checksum */
-            sptr = (u_short *) &(ip->ip_dst);
-            accumulate  = *sptr++;
-            accumulate += *sptr;
-            sptr = (u_short *) &alias_address;
-            accumulate -= *sptr++;
-            accumulate -= *sptr;
+            accumulate  = twowords(&ip->ip_dst);
+            accumulate -= twowords(&alias_address);
             accumulate += ud->uh_dport;
             accumulate -= alias_port;
             ADJUST_CHECKSUM(accumulate, ic->icmp_cksum);
@@ -591,7 +587,6 @@ fragment contained in ICMP data section */
         }
         else if (ip->ip_p == IPPROTO_ICMP)
         {
-            u_short *sptr;
             int accumulate;
             struct in_addr alias_address;
             u_short alias_id;
@@ -600,12 +595,8 @@ fragment contained in ICMP data section */
             alias_id = GetAliasPort(link);
 
 /* Adjust ICMP checksum */
-            sptr = (u_short *) &(ip->ip_dst);
-            accumulate  = *sptr++;
-            accumulate += *sptr;
-            sptr = (u_short *) &alias_address;
-            accumulate -= *sptr++;
-            accumulate -= *sptr;
+            accumulate  = twowords(&ip->ip_dst);
+            accumulate -= twowords(&alias_address);
             accumulate += ic2->icmp_id;
             accumulate -= alias_id;
             ADJUST_CHECKSUM(accumulate, ic->icmp_cksum);
@@ -760,7 +751,6 @@ UdpAliasIn(struct ip *pip)
         struct in_addr original_address;
         u_short alias_port;
         int accumulate;
-        u_short *sptr;
 	int r = 0;
 
         alias_address = GetAliasAddress(link);
@@ -786,12 +776,8 @@ UdpAliasIn(struct ip *pip)
         {
             accumulate  = alias_port;
             accumulate -= ud->uh_dport;
-            sptr = (u_short *) &alias_address;
-            accumulate += *sptr++;
-            accumulate += *sptr;
-            sptr = (u_short *) &original_address;
-            accumulate -= *sptr++;
-            accumulate -= *sptr;
+            accumulate += twowords(&alias_address);
+            accumulate -= twowords(&original_address);
             ADJUST_CHECKSUM(accumulate, ud->uh_sum);
         }
 
@@ -861,16 +847,11 @@ UdpAliasOut(struct ip *pip)
         if (ud->uh_sum != 0)
         {
             int accumulate;
-            u_short *sptr;
 
             accumulate  = ud->uh_sport;
             accumulate -= alias_port;
-            sptr = (u_short *) &(pip->ip_src);
-            accumulate += *sptr++;
-            accumulate += *sptr;
-            sptr = (u_short *) &alias_address;
-            accumulate -= *sptr++;
-            accumulate -= *sptr;
+            accumulate += twowords(&pip->ip_src);
+            accumulate -= twowords(&alias_address);
             ADJUST_CHECKSUM(accumulate, ud->uh_sum);
         }
 
@@ -911,7 +892,6 @@ TcpAliasIn(struct ip *pip)
         u_short alias_port;
         u_short proxy_port;
         int accumulate;
-        u_short *sptr;
 
 /* Special processing for IP encoding protocols */
         if (ntohs(tc->th_dport) == PPTP_CONTROL_PORT_NUMBER
@@ -929,12 +909,8 @@ TcpAliasIn(struct ip *pip)
 /* and destination port is being altered.                        */
         accumulate  = alias_port;
         accumulate -= tc->th_dport;
-        sptr = (u_short *) &alias_address;
-        accumulate += *sptr++;
-        accumulate += *sptr;
-        sptr = (u_short *) &original_address;
-        accumulate -= *sptr++;
-        accumulate -= *sptr;
+        accumulate += twowords(&alias_address);
+        accumulate -= twowords(&original_address);
 
 /* If this is a proxy, then modify the TCP source port and
    checksum accumulation */
@@ -943,13 +919,8 @@ TcpAliasIn(struct ip *pip)
             accumulate += tc->th_sport;
             tc->th_sport = proxy_port;
             accumulate -= tc->th_sport;
-
-            sptr = (u_short *) &pip->ip_src;
-            accumulate += *sptr++;
-            accumulate += *sptr;
-            sptr = (u_short *) &proxy_address;
-            accumulate -= *sptr++;
-            accumulate -= *sptr;
+            accumulate += twowords(&pip->ip_src);
+            accumulate -= twowords(&proxy_address);
         }
 
 /* See if ACK number needs to be modified */
@@ -960,38 +931,26 @@ TcpAliasIn(struct ip *pip)
             delta = GetDeltaAckIn(pip, link);
             if (delta != 0)
             {
-                sptr = (u_short *) &tc->th_ack;
-                accumulate += *sptr++;
-                accumulate += *sptr;
+                accumulate += twowords(&tc->th_ack);
                 tc->th_ack = htonl(ntohl(tc->th_ack) - delta);
-                sptr = (u_short *) &tc->th_ack;
-                accumulate -= *sptr++;
-                accumulate -= *sptr;
+                accumulate -= twowords(&tc->th_ack);
             }
         }
 
         ADJUST_CHECKSUM(accumulate, tc->th_sum);
 
 /* Restore original IP address */
-        sptr = (u_short *) &pip->ip_dst;
-        accumulate  = *sptr++;
-        accumulate += *sptr;
+        accumulate  = twowords(&pip->ip_dst);
         pip->ip_dst = original_address;
-        sptr = (u_short *) &pip->ip_dst;
-        accumulate -= *sptr++;
-        accumulate -= *sptr;
+        accumulate -= twowords(&pip->ip_dst);
 
 /* If this is a transparent proxy packet, then modify the source
    address */
         if (proxy_address.s_addr != 0)
         {
-            sptr = (u_short *) &pip->ip_src;
-            accumulate += *sptr++;
-            accumulate += *sptr;
-            pip->ip_src = proxy_address;
-            sptr = (u_short *) &pip->ip_src;
-            accumulate -= *sptr++;
-            accumulate -= *sptr;
+	  accumulate += twowords(&pip->ip_src);
+	  pip->ip_src = proxy_address;
+	  accumulate -= twowords(&pip->ip_src);
         }
 
         ADJUST_CHECKSUM(accumulate, pip->ip_sum);
@@ -1029,29 +988,17 @@ TcpAliasOut(struct ip *pip, int maxpacketsize)
     if (proxy_type != 0)
     {
         int accumulate;
-        u_short *sptr;
 
         accumulate = tc->th_dport;
         tc->th_dport = proxy_server_port;
         accumulate -= tc->th_dport;
-
-        sptr = (u_short *) &(pip->ip_dst);
-        accumulate += *sptr++;
-        accumulate += *sptr;
-        sptr = (u_short *) &proxy_server_address;
-        accumulate -= *sptr++;
-        accumulate -= *sptr;
-
+        accumulate += twowords(&pip->ip_dst);
+        accumulate -= twowords(&proxy_server_address);
         ADJUST_CHECKSUM(accumulate, tc->th_sum);
 
-        sptr = (u_short *) &(pip->ip_dst);
-        accumulate  = *sptr++;
-        accumulate += *sptr;
+        accumulate  = twowords(&pip->ip_dst);
         pip->ip_dst = proxy_server_address;
-        sptr = (u_short *) &(pip->ip_dst);
-        accumulate -= *sptr++;
-        accumulate -= *sptr;
-
+        accumulate -= twowords(&pip->ip_dst);
         ADJUST_CHECKSUM(accumulate, pip->ip_sum);
     }
 
@@ -1063,7 +1010,6 @@ TcpAliasOut(struct ip *pip, int maxpacketsize)
         u_short alias_port;
         struct in_addr alias_address;
         int accumulate;
-        u_short *sptr;
 
 /* Save original destination address, if this is a proxy packet.
    Also modify packet to include destination encoding.  This may
@@ -1104,13 +1050,8 @@ TcpAliasOut(struct ip *pip, int maxpacketsize)
         accumulate  = tc->th_sport;
         tc->th_sport = alias_port;
         accumulate -= tc->th_sport;
-
-        sptr = (u_short *) &(pip->ip_src);
-        accumulate += *sptr++;
-        accumulate += *sptr;
-        sptr = (u_short *) &alias_address;
-        accumulate -= *sptr++;
-        accumulate -= *sptr;
+        accumulate += twowords(&pip->ip_src);
+        accumulate -= twowords(&alias_address);
 
 /* Modify sequence number if necessary */
         if (GetAckModified(link) == 1)
@@ -1120,27 +1061,18 @@ TcpAliasOut(struct ip *pip, int maxpacketsize)
             delta = GetDeltaSeqOut(pip, link);
             if (delta != 0)
             {
-                sptr = (u_short *) &tc->th_seq;
-                accumulate += *sptr++;
-                accumulate += *sptr;
-                tc->th_seq = htonl(ntohl(tc->th_seq) + delta);
-                sptr = (u_short *) &tc->th_seq;
-                accumulate -= *sptr++;
-                accumulate -= *sptr;
+                accumulate += twowords(&tc->th_seq);
+                tc->th_seq  = htonl(ntohl(tc->th_seq) + delta);
+                accumulate -= twowords(&tc->th_seq);
             }
         }
 
         ADJUST_CHECKSUM(accumulate, tc->th_sum);
 
 /* Change source address */
-        sptr = (u_short *) &(pip->ip_src);
-        accumulate  = *sptr++;
-        accumulate += *sptr;
+        accumulate  = twowords(&pip->ip_src);
         pip->ip_src = alias_address;
-        sptr = (u_short *) &(pip->ip_src);
-        accumulate -= *sptr++;
-        accumulate -= *sptr;
-
+        accumulate -= twowords(&pip->ip_src);
         ADJUST_CHECKSUM(accumulate, pip->ip_sum);
 
         return(PKT_ALIAS_OK);
@@ -1502,7 +1434,6 @@ PacketUnaliasOut(char *ptr,           /* valid IP packet */
     {
         if (pip->ip_p == IPPROTO_UDP || pip->ip_p == IPPROTO_TCP)
         {
-            u_short        *sptr;
             int 	   accumulate;
             struct in_addr original_address;
             u_short        original_port;
@@ -1511,12 +1442,8 @@ PacketUnaliasOut(char *ptr,           /* valid IP packet */
             original_port = GetOriginalPort(link);
     
             /* Adjust TCP/UDP checksum */
-            sptr = (u_short *) &(pip->ip_src);
-            accumulate  = *sptr++;
-            accumulate += *sptr;
-            sptr = (u_short *) &original_address;
-            accumulate -= *sptr++;
-            accumulate -= *sptr;
+            accumulate  = twowords(&pip->ip_src);
+            accumulate -= twowords(&original_address);
 
             if (pip->ip_p == IPPROTO_UDP) {
                 accumulate += ud->uh_sport;
@@ -1545,7 +1472,6 @@ PacketUnaliasOut(char *ptr,           /* valid IP packet */
 
         } else if (pip->ip_p == IPPROTO_ICMP) {
 
-            u_short        *sptr;
             int            accumulate;
             struct in_addr original_address;
             u_short        original_id;
@@ -1554,12 +1480,8 @@ PacketUnaliasOut(char *ptr,           /* valid IP packet */
             original_id = GetOriginalPort(link);
 
             /* Adjust ICMP checksum */
-            sptr = (u_short *) &(pip->ip_src);
-            accumulate  = *sptr++;
-            accumulate += *sptr;
-            sptr = (u_short *) &original_address;
-            accumulate -= *sptr++;
-            accumulate -= *sptr;
+            accumulate  = twowords(&pip->ip_src);
+            accumulate -= twowords(&original_address);
             accumulate += ic->icmp_id;
             accumulate -= original_id;
             ADJUST_CHECKSUM(accumulate, ic->icmp_cksum);

@@ -37,7 +37,6 @@
  *	@(#)pt_tcp.c	8.5 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/mount_portal/pt_tcp.c,v 1.9 1999/08/28 00:13:38 peter Exp $
- * $DragonFly: src/sbin/mount_portal/pt_tcp.c,v 1.5 2005/11/06 12:36:40 swildner Exp $
  */
 
 #include <errno.h>
@@ -79,7 +78,7 @@ portal_tcp(struct portal_cred *pcr, char *key, char **v, int kso __unused,
 	struct sockaddr_in sain;
 
 	q = strchr(p, '/');
-	if (q == 0 || (size_t)(q - p) >= sizeof(host))
+	if (q == NULL || (size_t)(q - p) >= sizeof(host))
 		return (EINVAL);
 	*q = '\0';
 	strcpy(host, p);
@@ -104,14 +103,14 @@ portal_tcp(struct portal_cred *pcr, char *key, char **v, int kso __unused,
 	}
 
 	hp = gethostbyname(host);
-	if (hp != 0) {
+	if (hp != NULL) {
 		ipp = (struct in_addr **) hp->h_addr_list;
 	} else {
 		ina.s_addr = inet_addr(host);
 		if (ina.s_addr == INADDR_NONE)
 			return (EINVAL);
 		ip[0] = &ina;
-		ip[1] = 0;
+		ip[1] = NULL;
 		ipp = ip;
 	}
 #ifdef DEBUG

@@ -70,11 +70,11 @@ c_debug(void)
 		debug_str();
 		break;
 	case 'v':
-		if ((w = getwin()) != 0)
+		if ((w = getwin()) != NULL)
 			wwdumpnvis(w);
 		break;
 	case 'w':
-		if ((w = getwin()) != 0)
+		if ((w = getwin()) != NULL)
 			wwdumpwin(w);
 		break;
 	default:
@@ -89,7 +89,7 @@ debug_str(void)
 	struct ww *w;
 	struct string *s;
 
-	if ((w = openiwin(wwnrow - 3, "Allocated Strings")) == 0) {
+	if ((w = openiwin(wwnrow - 3, "Allocated Strings")) == NULL) {
 		error("Can't open string window: %s.", wwerror());
 		return;
 	}

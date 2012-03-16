@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/killall/killall.c,v 1.5.2.4 2001/05/19 19:22:49 phk Exp $
- * $DragonFly: src/usr.bin/killall/killall.c,v 1.9 2007/02/01 10:33:26 corecode Exp $
  */
 
 #include <sys/user.h>
@@ -286,7 +285,7 @@ main(int ac, char **av)
 	do {
 		size += size / 10;
 		newprocs = realloc(procs, size);
-		if (newprocs == 0) {
+		if (newprocs == NULL) {
 			if (procs)
 				free(procs);
 			errx(1, "could not reallocate memory");

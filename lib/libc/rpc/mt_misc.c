@@ -88,12 +88,12 @@ struct rpc_createerr *
 __rpc_createerr(void)
 {
 	static thread_key_t rce_key = 0;
-	struct rpc_createerr *rce_addr = 0;
+	struct rpc_createerr *rce_addr = NULL;
 
 	if (thr_main())
 		return (&rpc_createerr);
 	if ((rce_addr =
-	    (struct rpc_createerr *)thr_getspecific(rce_key)) != 0) {
+	    (struct rpc_createerr *)thr_getspecific(rce_key)) != NULL) {
 		mutex_lock(&tsd_lock);
 		if (thr_keycreate(&rce_key, free) != 0) {
 			mutex_unlock(&tsd_lock);

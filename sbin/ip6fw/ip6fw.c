@@ -49,7 +49,6 @@
  *
  * $Id: ip6fw.c,v 1.1.2.2.2.2 1999/05/14 05:13:50 shin Exp $
  * $FreeBSD: src/sbin/ip6fw/ip6fw.c,v 1.1.2.9 2003/04/05 10:54:51 ume Exp $
- * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.9 2005/11/06 12:29:11 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -551,7 +550,7 @@ fill_ip6(struct in6_addr *ipno, struct in6_addr *mask, int *acp, char ***avp)
 {
 	int ac = *acp;
 	char **av = *avp;
-	char *p = 0, md = 0;
+	char *p = NULL, md = 0;
 	int i;
 
 	if (ac && !strncmp(*av,"any",strlen(*av))) {
@@ -1324,7 +1323,7 @@ main(int ac, char **av)
 			/* pipe through preprocessor (cpp or m4) */
 			int pipedes[2];
 
-			args[i] = 0;
+			args[i] = NULL;
 
 			if (pipe(pipedes) == -1)
 				err(EX_OSERR, "cannot create pipe");

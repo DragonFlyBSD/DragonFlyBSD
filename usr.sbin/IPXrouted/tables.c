@@ -33,7 +33,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/tables.c,v 1.7 1999/08/28 01:15:05 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/tables.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#)tables.c	8.1 (Berkeley) 6/5/93
  */
@@ -95,7 +94,7 @@ rtfind(struct sockaddr *dst)
 	u_int hash;
 	struct afhash h;
 	int af = dst->sa_family;
-	int (*match)() = 0;
+	int (*match)() = NULL;
 
 	if (af >= AF_MAX)
 		return (0);
@@ -133,7 +132,7 @@ rtadd(struct sockaddr *dst, struct sockaddr *gate, short metric, short ticks,
 	hash = h.afh_nethash;
 	rh = &nethash[hash & ROUTEHASHMASK];
 	rt = (struct rt_entry *)malloc(sizeof (*rt));
-	if (rt == 0)
+	if (rt == NULL)
 		return;
 	rt->rt_hash = hash;
 	rt->rt_dst = *dst;
@@ -184,7 +183,7 @@ rtadd_clone(struct rt_entry *ort, struct sockaddr *dst, struct sockaddr *gate,
 	hash = h.afh_nethash;
 	rh = &nethash[hash & ROUTEHASHMASK];
 	rt = (struct rt_entry *)malloc(sizeof (*rt));
-	if (rt == 0)
+	if (rt == NULL)
 		return;
 	rt->rt_hash = hash;
 	rt->rt_dst = *dst;

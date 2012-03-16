@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/main.c,v 1.5 1999/08/28 01:05:07 peter Exp $
- * $DragonFly: src/usr.bin/rdist/main.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 /*
  * Remote distribution program.
@@ -92,7 +91,7 @@ main(int argc, char **argv)
 	gethostname(host, sizeof(host));
 	strcpy(tempfile, _PATH_TMP);
 	strcat(tempfile, _RDIST_TMP);
-	if ((tempname = rindex(tempfile, '/')) != 0)
+	if ((tempname = rindex(tempfile, '/')) != NULL)
 		tempname++;
 	else
 		tempname = tempfile;

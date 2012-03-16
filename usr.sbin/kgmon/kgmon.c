@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kgmon.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/kgmon/kgmon.c,v 1.9 1999/08/28 01:16:42 peter Exp $
- * $DragonFly: src/usr.sbin/kgmon/kgmon.c,v 1.7 2008/04/20 13:44:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -314,7 +313,7 @@ dumpstate(struct kvmvars *kvp)
 
 	setprof(kvp, GMON_PROF_OFF);
 	fp = fopen("gmon.out", "w");
-	if (fp == 0) {
+	if (fp == NULL) {
 		warn("gmon.out");
 		return;
 	}

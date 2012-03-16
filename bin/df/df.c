@@ -38,7 +38,6 @@
  * @(#) Copyright (c) 1980, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)df.c	8.9 (Berkeley) 5/8/95
  * $FreeBSD: src/bin/df/df.c,v 1.23.2.9 2002/07/01 00:14:24 iedowse Exp $
- * $DragonFly: src/bin/df/df.c,v 1.13 2008/08/07 09:59:49 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -197,13 +196,13 @@ main(int argc, char **argv)
 
 	for (; *argv; argv++) {
 		if (stat(*argv, &stbuf) < 0) {
-			if ((mntpt = getmntpt(*argv)) == 0) {
+			if ((mntpt = getmntpt(*argv)) == NULL) {
 				warn("%s", *argv);
 				rv = 1;
 				continue;
 			}
 		} else if (S_ISCHR(stbuf.st_mode)) {
-			if ((mntpt = getmntpt(*argv)) == 0) {
+			if ((mntpt = getmntpt(*argv)) == NULL) {
 				mdev.fspec = *argv;
 				mntpath = strdup("/tmp/df.XXXXXX");
 				if (mntpath == NULL) {
@@ -510,7 +509,7 @@ ufs_df(char *file, struct maxwidths *mwp)
 	sfsp->f_ffree = vsfsp->f_ffree = sblock.fs_cstotal.cs_nifree;
 	sfsp->f_fsid.val[0] = 0;
 	sfsp->f_fsid.val[1] = 0;
-	if ((mntpt = getmntpt(file)) == 0)
+	if ((mntpt = getmntpt(file)) == NULL)
 		mntpt = "";
 	memmove(&sfsp->f_mntonname[0], mntpt, (size_t)MNAMELEN);
 	memmove(&sfsp->f_mntfromname[0], file, (size_t)MNAMELEN);

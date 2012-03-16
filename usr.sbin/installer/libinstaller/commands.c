@@ -268,7 +268,7 @@ commands_preview(struct dfui_connection *c, const struct commands *cmds)
 		aura_buffer_cat(preview, "\n");
 	}
 
-	inform(c, aura_buffer_buf(preview));
+	inform(c, "%s", aura_buffer_buf(preview));
 
 	aura_buffer_free(preview);
 }

@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/parms.c,v 1.7.2.1 2000/08/14 17:00:03 sheldonh Exp $
- * $DragonFly: src/sbin/routed/parms.c,v 1.4 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include "defs.h"
@@ -62,7 +61,7 @@ get_parms(struct interface *ifp)
 
 	/* get all relevant parameters
 	 */
-	for (parmp = parms; parmp != 0; parmp = parmp->parm_next) {
+	for (parmp = parms; parmp != NULL; parmp = parmp->parm_next) {
 		if (parmp->parm_name[0] == '\0'
 		    || !strcmp(ifp->int_name, parmp->parm_name)
 		    || (parmp->parm_name[0] == '\n'
@@ -178,7 +177,7 @@ gwkludge(void)
 
 
 	fp = fopen(_PATH_GATEWAYS, "r");
-	if (fp == 0)
+	if (fp == NULL)
 		return;
 
 	if (0 > fstat(fileno(fp), &sb)) {
@@ -208,7 +207,7 @@ gwkludge(void)
 			cp = parse_parms(lptr,
 					 (sb.st_uid == 0
 					  && !(sb.st_mode&(S_IRWXG|S_IRWXO))));
-			if (cp != 0)
+			if (cp != NULL)
 				msglog("%s in line %d of "_PATH_GATEWAYS,
 				       cp, lnum);
 			continue;
@@ -314,7 +313,7 @@ gwkludge(void)
 			state |= IS_NO_RIP;
 
 		ifp = check_dup(gate,dst,netmask,0);
-		if (ifp != 0) {
+		if (ifp != NULL) {
 			msglog("duplicate "_PATH_GATEWAYS" entry \"%s\"",lptr);
 			continue;
 		}
@@ -349,7 +348,7 @@ gwkludge(void)
 	/* After all of the parameter lines have been read,
 	 * apply them to any remote interfaces.
 	 */
-	for (ifp = ifnet; 0 != ifp; ifp = ifp->int_next) {
+	for (ifp = ifnet; NULL != ifp; ifp = ifp->int_next) {
 		get_parms(ifp);
 
 		tot_interfaces++;
@@ -418,7 +417,7 @@ exit:
 		return -1;
 
 	*buf = '\0';			/* terminate copy of token */
-	if (delimp != 0)
+	if (delimp != NULL)
 		*delimp = c;		/* return delimiter */
 	*linep = pc-1;			/* say where we ended */
 	return 0;
@@ -536,13 +535,13 @@ get_passwd(char *tgt,
 
 		if (delim == '|') {
 			val0 = ++val;
-			if (0 != (p = parse_ts(&k.start,&val,val0,&delim,
+			if (NULL != (p = parse_ts(&k.start,&val,val0,&delim,
 					       buf,sizeof(buf))))
 				return p;
 			if (delim != '|')
 				return "missing second timestamp";
 			val0 = ++val;
-			if (0 != (p = parse_ts(&k.end,&val,val0,&delim,
+			if (NULL != (p = parse_ts(&k.end,&val,val0,&delim,
 					       buf,sizeof(buf))))
 				return p;
 			if ((u_long)k.start > (u_long)k.end) {
@@ -585,7 +584,7 @@ parse_parms(char *line,
 	struct r1net *r1netp;
 	struct tgate *tg;
 	naddr addr, mask;
-	char delim, *val0 = 0, *tgt, *val, *p;
+	char delim, *val0 = NULL, *tgt, *val, *p;
 	const char *msg;
 	char buf[BUFSIZ], buf2[BUFSIZ];
 	int i;
@@ -852,7 +851,7 @@ check_parms(struct parm *new)
 	/* compare with existing sets of parameters
 	 */
 	for (parmpp = &parms;
-	     (parmp = *parmpp) != 0;
+	     (parmp = *parmpp) != NULL;
 	     parmpp = &parmp->parm_next) {
 		if (strcmp(new->parm_name, parmp->parm_name))
 			continue;
@@ -925,7 +924,7 @@ getnet(char *name,
 
 	/* Detect and separate "1.2.3.4/24"
 	 */
-	if (0 != (mname = strrchr(name,'/'))) {
+	if (NULL != (mname = strrchr(name,'/'))) {
 		i = (int)(mname - name);
 		if (i > (int)sizeof(hname)-1)	/* name too long */
 			return 0;
@@ -936,7 +935,7 @@ getnet(char *name,
 	}
 
 	np = getnetbyname(name);
-	if (np != 0) {
+	if (np != NULL) {
 		in.s_addr = (naddr)np->n_net;
 		if (0 == (in.s_addr & 0xff000000))
 			in.s_addr <<= 8;

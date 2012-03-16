@@ -29,7 +29,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/tools/regression/p1003_1b/sched.c,v 1.1 2000/02/16 14:28:42 dufault Exp $
- * $DragonFly: src/tools/regression/p1003_1b/sched.c,v 1.3 2007/06/26 23:30:05 josepht Exp $
  *
  */
 
@@ -110,7 +109,7 @@ int sched(int ac, char *av[])
 	int n_instances = 10;
 	int sched;
 
-	verbose = 0;
+	verbose = NULL;
 
 #if _POSIX_VERSION < 199309
 	try_anyway("The _POSIX_VERSION predates P1003.1B\n");

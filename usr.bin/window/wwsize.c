@@ -44,32 +44,32 @@ wwsize(struct ww *w, int nrow, int ncol)
 {
 	int i, j;
 	int nline = 0;
-	union ww_char **buf = 0;
-	char **win = 0;
-	short *nvis = 0;
-	char **fmap = 0;
+	union ww_char **buf = NULL;
+	char **win = NULL;
+	short *nvis = NULL;
+	char **fmap = NULL;
 	char m;
 
 	/*
 	 * First allocate new buffers.
 	 */
 	win = wwalloc(w->ww_w.t, w->ww_w.l, nrow, ncol, sizeof (char));
-	if (win == 0)
+	if (win == NULL)
 		goto bad;
 	if (w->ww_fmap != 0) {
 		fmap = wwalloc(w->ww_w.t, w->ww_w.l, nrow, ncol, sizeof (char));
-		if (fmap == 0)
+		if (fmap == NULL)
 			goto bad;
 	}
 	if (nrow > w->ww_b.nr || ncol > w->ww_b.nc) {
 		nline = MAX(w->ww_b.nr, nrow);
 		buf = (union ww_char **) wwalloc(w->ww_b.t, w->ww_b.l,
 			nline, ncol, sizeof (union ww_char));
-		if (buf == 0)
+		if (buf == NULL)
 			goto bad;
 	}
 	nvis = (short *)malloc((unsigned) nrow * sizeof (short));
-	if (nvis == 0) {
+	if (nvis == NULL) {
 		wwerrno = WWE_NOMEM;
 		goto bad;
 	}
@@ -77,7 +77,7 @@ wwsize(struct ww *w, int nrow, int ncol)
 	/*
 	 * Copy text buffer.
 	 */
-	if (buf != 0) {
+	if (buf != NULL) {
 		int b, r;
 
 		b = w->ww_b.t + nline;
@@ -102,7 +102,7 @@ wwsize(struct ww *w, int nrow, int ncol)
 	 */
 	wwfree((char **)w->ww_win, w->ww_w.t);
 	w->ww_win = win;
-	if (buf != 0) {
+	if (buf != NULL) {
 		wwfree((char **)w->ww_buf, w->ww_b.t);
 		w->ww_buf = buf;
 	}
@@ -121,7 +121,7 @@ wwsize(struct ww *w, int nrow, int ncol)
 	w->ww_w.nr = nrow;
 	w->ww_w.nc = ncol;
 		/* text buffer */
-	if (buf != 0) {
+	if (buf != NULL) {
 		w->ww_b.b = w->ww_b.t + nline;
 		w->ww_b.r = w->ww_b.l + ncol;
 		w->ww_b.nr = nline;
@@ -153,7 +153,7 @@ wwsize(struct ww *w, int nrow, int ncol)
 		for (j = w->ww_w.l; j < w->ww_w.r; j++)
 			w->ww_win[i][j] = m;
 		/* frame map */
-	if (fmap != 0)
+	if (fmap != NULL)
 		for (i = w->ww_w.t; i < w->ww_w.b; i++)
 			for (j = w->ww_w.l; j < w->ww_w.r; j++)
 				w->ww_fmap[i][j] = 0;
@@ -175,11 +175,11 @@ wwsize(struct ww *w, int nrow, int ncol)
 		(void) wwsetttysize(w->ww_pty, nrow, ncol);
 	return 0;
 bad:
-	if (win != 0)
+	if (win != NULL)
 		wwfree(win, w->ww_w.t);
-	if (fmap != 0)
+	if (fmap != NULL)
 		wwfree(fmap, w->ww_w.t);
-	if (buf != 0)
+	if (buf != NULL)
 		wwfree((char **)buf, w->ww_b.t);
 	return -1;
 }

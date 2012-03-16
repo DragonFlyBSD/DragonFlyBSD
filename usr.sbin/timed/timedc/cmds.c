@@ -32,7 +32,6 @@
  *
  * @(#)cmds.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timedc/cmds.c,v 1.6.2.2 2001/08/31 08:02:06 kris Exp $
- * $DragonFly: src/usr.sbin/timed/timedc/cmds.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include "timedc.h"
@@ -278,7 +277,7 @@ msite(int argc, char *argv[])
 	}
 
 	srvp = getservbyname("timed", "udp");
-	if (srvp == 0) {
+	if (srvp == NULL) {
 		warnx("udp/timed: unknown service");
 		return;
 	}
@@ -291,7 +290,7 @@ msite(int argc, char *argv[])
 	do {
 		tgtname = (i >= argc) ? myname : argv[i];
 		hp = gethostbyname(tgtname);
-		if (hp == 0) {
+		if (hp == NULL) {
 			warnx("%s: %s", tgtname, hstrerror(h_errno));
 			continue;
 		}
@@ -379,7 +378,7 @@ testing(int argc, char *argv[])
 	}
 
 	srvp = getservbyname("timed", "udp");
-	if (srvp == 0) {
+	if (srvp == NULL) {
 		warnx("udp/timed: unknown service");
 		return;
 	}
@@ -433,7 +432,7 @@ tracing(int argc, char *argv[])
 	}
 
 	srvp = getservbyname("timed", "udp");
-	if (srvp == 0) {
+	if (srvp == NULL) {
 		warnx("udp/timed: unknown service");
 		return;
 	}

@@ -36,7 +36,6 @@
  *
  * @(#)kvm_hp300.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_i386.c,v 1.11.2.1 2001/09/21 04:01:51 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_i386.c,v 1.3 2007/04/29 01:36:04 dillon Exp $
  */
 
 /*
@@ -250,7 +249,7 @@ _kvm_vatop(kvm_t *kd, u_long va, off_t *pa)
 	 * If we are initializing (kernel page table descriptor pointer
 	 * not yet set) then return pa == va to avoid infinite recursion.
 	 */
-	if (PTD == 0) {
+	if (PTD == NULL) {
 		s = _kvm_pa2off(kd, va, pa);
 		if (s == 0) {
 			_kvm_err(kd, kd->program,

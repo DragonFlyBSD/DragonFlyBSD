@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/lib/libkcore/kcore_proc.c,v 1.2 2007/04/29 01:36:03 dillon Exp $
  */
 
 #include <sys/user.h>	/* MUST BE FIRST */
@@ -64,7 +62,7 @@ kcore_get_procs(struct kcore_data *kc, struct kinfo_proc **procs, size_t *len)
 	}
 	if (nlen == 0) {
 		procs = NULL;
-		len = 0;
+		len = NULL;
 	}
 	*procs = malloc(sizeof(struct kinfo_proc) * nlen);
 	if (*procs == NULL)

@@ -163,7 +163,7 @@ routepr(u_long rtree)
 		}
 		kget(rtree, rt_tables);
 		for (i = 0; i <= AF_MAX; i++) {
-			if ((rnh = rt_tables[i]) == 0)
+			if ((rnh = rt_tables[i]) == NULL)
 				continue;
 			kget(rnh, head);
 			if (i == AF_UNSPEC) {
@@ -467,7 +467,7 @@ p_rtnode(void)
 			printf("\t  mask ");
 			p_sockaddr(kgetsa((struct sockaddr *)rnode.rn_mask),
 				   NULL, 0, -1);
-		} else if (rm == 0)
+		} else if (rm == NULL)
 			return;
 	} else {
 		sprintf(nbuf, "(%d)", rnode.rn_bit);
@@ -519,7 +519,7 @@ ntreestuff(void)
 		err(1, "sysctl: net.route.0.0.dump estimate");
 	}
 
-	if ((buf = malloc(needed)) == 0) {
+	if ((buf = malloc(needed)) == NULL) {
 		err(2, "malloc(%lu)", (unsigned long)needed);
 	}
 	if (sysctl(mib, miblen, buf, &needed, NULL, 0) < 0) {
@@ -813,7 +813,7 @@ routename(u_long in)
 	static char line[MAXHOSTNAMELEN];
 	struct hostent *hp;
 
-	cp = 0;
+	cp = NULL;
 	if (!numeric_addr) {
 		hp = gethostbyaddr(&in, sizeof (struct in_addr), AF_INET);
 		if (hp) {
@@ -882,9 +882,9 @@ domask(char *dst, u_long addr, u_long mask)
 char *
 netname(u_long in, u_long mask)
 {
-	char *cp = 0;
+	char *cp = NULL;
 	static char line[MAXHOSTNAMELEN];
-	struct netent *np = 0;
+	struct netent *np = NULL;
 	u_long dmask;
 	u_long i;
 
@@ -1047,7 +1047,7 @@ char *
 ipx_print(struct sockaddr *sa)
 {
 	u_short port;
-	struct servent *sp = 0;
+	struct servent *sp = NULL;
 	const char *net = "", *host = "";
 	char *p;
 	u_char *q;

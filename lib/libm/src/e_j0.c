@@ -57,6 +57,7 @@
  *	3. Special cases: y0(0)=-inf, y0(x<0)=NaN, y0(inf)=0.
  */
 
+#include <sys/_null.h>
 #include <math.h>
 #include "math_private.h"
 
@@ -273,7 +274,7 @@ pzero(double x)
 	double z,r,s;
 	int32_t ix;
 
-	p = q = 0;
+	p = q = NULL;
 	GET_HIGH_WORD(ix,x);
 	ix &= 0x7fffffff;
 	if(ix>=0x40200000)     {p = pR8; q= pS8;}
@@ -371,7 +372,7 @@ qzero(double x)
 	double s,r,z;
 	int32_t ix;
 
-	p = q = 0;
+	p = q = NULL;
 	GET_HIGH_WORD(ix,x);
 	ix &= 0x7fffffff;
 	if(ix>=0x40200000)     {p = qR8; q= qS8;}

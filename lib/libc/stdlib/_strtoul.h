@@ -1,5 +1,3 @@
-/* $DragonFly: src/lib/libc/stdlib/_strtoul.h,v 1.1 2005/03/17 15:09:01 joerg Exp $ */
-
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -114,7 +112,7 @@ _FUNCNAME(const char *nptr, char **endptr, int base)
 	}
 	if (neg && any > 0)
 		acc = -acc;
-	if (endptr != 0)
+	if (endptr != NULL)
 		/* LINTED interface specification */
 		*endptr = __DECONST(char *, (any ? s - 1 : nptr));
 	return(acc);

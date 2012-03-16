@@ -32,7 +32,6 @@
  *
  * @(#)commands.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/telnet/commands.c,v 1.12.2.7 2003/04/23 07:16:32 ru Exp $
- * $DragonFly: src/crypto/telnet/telnet/commands.c,v 1.3 2008/09/04 11:54:24 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -199,7 +198,7 @@ makeargv(void)
 	    break;
 	cp++;
     }
-    *argp++ = 0;
+    *argp++ = NULL;
 }
 
 /*
@@ -349,7 +348,7 @@ sendcmd(int argc, char *argv[])
     count = 0;
     for (i = 1; i < argc; i++) {
 	s = GETSEND(argv[i]);
-	if (s == 0) {
+	if (s == NULL) {
 	    printf("Unknown send argument '%s'\n'send ?' for help.\n",
 			argv[i]);
 	    return 0;
@@ -389,7 +388,7 @@ sendcmd(int argc, char *argv[])
     /* OK, they are all OK, now go through again and actually send */
     count = 0;
     for (i = 1; i < argc; i++) {
-	if ((s = GETSEND(argv[i])) == 0) {
+	if ((s = GETSEND(argv[i])) == NULL) {
 	    fprintf(stderr, "Telnet 'send' error - argument disappeared!\n");
 	    quit();
 	    /*NOTREACHED*/
@@ -830,7 +829,7 @@ toggle(int argc, char *argv[])
 	    fprintf(stderr, "'%s': ambiguous argument ('toggle ?' for help).\n",
 					name);
 	    return 0;
-	} else if (c == 0) {
+	} else if (c == NULL) {
 	    fprintf(stderr, "'%s': unknown argument ('toggle ?' for help).\n",
 					name);
 	    return 0;
@@ -935,9 +934,9 @@ setcmd(int argc, char *argv[])
     }
 
     ct = getset(argv[1]);
-    if (ct == 0) {
+    if (ct == NULL) {
 	c = GETTOGGLE(argv[1]);
-	if (c == 0) {
+	if (c == NULL) {
 	    fprintf(stderr, "'%s': unknown argument ('set ?' for help).\n",
 			argv[1]);
 	    return 0;
@@ -1011,9 +1010,9 @@ unsetcmd(int argc, char *argv[])
     while (argc--) {
 	name = *argv++;
 	ct = getset(name);
-	if (ct == 0) {
+	if (ct == NULL) {
 	    c = GETTOGGLE(name);
-	    if (c == 0) {
+	    if (c == NULL) {
 		fprintf(stderr, "'%s': unknown argument ('unset ?' for help).\n",
 			name);
 		return 0;
@@ -1190,7 +1189,7 @@ modecmd(int argc, char *argv[])
     if (argc != 2) {
 	printf("'mode' command requires an argument\n");
 	printf("'mode ?' for help.\n");
-    } else if ((mt = GETMODECMD(argv[1])) == 0) {
+    } else if ((mt = GETMODECMD(argv[1])) == NULL) {
 	fprintf(stderr, "Unknown mode '%s' ('mode ?' for help).\n", argv[1]);
     } else if (Ambiguous((void *)mt)) {
 	fprintf(stderr, "Ambiguous mode '%s' ('mode ?' for help).\n", argv[1]);
@@ -1361,7 +1360,7 @@ shell(int argc, char *argv[] __unused)
 	    shellp = getenv("SHELL");
 	    if (shellp == NULL)
 		shellp = "/bin/sh";
-	    if ((shellname = strrchr(shellp, '/')) == 0)
+	    if ((shellname = strrchr(shellp, '/')) == NULL)
 		shellname = shellp;
 	    else
 		shellname++;
@@ -1484,7 +1483,7 @@ slccmd(int argc, char *argv[])
 	return 0;
     }
     c = getslc(argv[1]);
-    if (c == 0) {
+    if (c == NULL) {
 	fprintf(stderr, "'%s': unknown argument ('slc ?' for help).\n",
     				argv[1]);
 	return 0;
@@ -1578,7 +1577,7 @@ env_cmd(int argc, char *argv[])
 	return 0;
     }
     c = getenvcmd(argv[1]);
-    if (c == 0) {
+    if (c == NULL) {
 	fprintf(stderr, "'%s': unknown argument ('environ ?' for help).\n",
     				argv[1]);
 	return 0;
@@ -1745,7 +1744,7 @@ env_send(unsigned char *var)
 		return;
 	}
 	ep = env_find(var);
-	if (ep == 0) {
+	if (ep == NULL) {
 		fprintf(stderr, "Cannot send '%s': variable not defined\n",
 									var);
 		return;
@@ -1891,7 +1890,7 @@ auth_cmd(int argc, char *argv[])
 
     c = (struct authlist *)
 		genget(argv[1], (char **) AuthList, sizeof(struct authlist));
-    if (c == 0) {
+    if (c == NULL) {
 	fprintf(stderr, "'%s': unknown argument ('auth ?' for help).\n",
     				argv[1]);
 	return 0;
@@ -1996,7 +1995,7 @@ encrypt_cmd(int argc, char *argv[])
 
     c = (struct encryptlist *)
 		genget(argv[1], (char **) EncryptList, sizeof(struct encryptlist));
-    if (c == 0) {
+    if (c == NULL) {
 	fprintf(stderr, "'%s': unknown argument ('encrypt ?' for help).\n",
     				argv[1]);
 	return 0;
@@ -2165,11 +2164,11 @@ switch_af(struct addrinfo **aip)
 int
 tn(int argc, char *argv[])
 {
-    char *srp = 0;
+    char *srp = NULL;
     int proto, opt;
     int srlen;
     int srcroute = 0, result;
-    char *cmd, *hostp = 0, *portp = 0, *user = 0;
+    char *cmd, *hostp = NULL, *portp = NULL, *user = NULL;
     char *src_addr = NULL;
     struct addrinfo hints, *res, *res0 = NULL, *src_res, *src_res0 = NULL;
     int error = 0, af_error = 0;
@@ -2213,12 +2212,12 @@ tn(int argc, char *argv[])
 	    --argc;
 	    continue;
 	}
-	if (hostp == 0) {
+	if (hostp == NULL) {
 	    hostp = *argv++;
 	    --argc;
 	    continue;
 	}
-	if (portp == 0) {
+	if (portp == NULL) {
 	    portp = *argv++;
 	    --argc;
 	    continue;
@@ -2228,7 +2227,7 @@ tn(int argc, char *argv[])
 	setuid(getuid());
 	return 0;
     }
-    if (hostp == 0)
+    if (hostp == NULL)
 	goto usage;
 
     if (src_addr != NULL) {
@@ -2348,7 +2347,7 @@ tn(int argc, char *argv[])
 		hostbuf[BUFSIZ - 1] = '\0';
 	} else
 		hostp = hostbuf;
-	srp = 0;
+	srp = NULL;
 	result = sourceroute(res, hostp, &srp, &srlen, &proto, &opt);
 	if (result == 0) {
 #ifdef INET6
@@ -2405,7 +2404,7 @@ tn(int argc, char *argv[])
 	}
 
 	if (src_addr != NULL) {
-	    for (src_res = src_res0; src_res != 0; src_res = src_res->ai_next)
+	    for (src_res = src_res0; src_res != NULL; src_res = src_res->ai_next)
 	        if (src_res->ai_family == res->ai_family)
 		    break;
 	    if (src_res == NULL)
@@ -2577,7 +2576,7 @@ call(intrtn_t routine, ...)
     int argno = 0;
 
     va_start(ap, routine);
-    while ((args[argno++] = va_arg(ap, char *)) != 0);
+    while ((args[argno++] = va_arg(ap, char *)) != NULL);
     va_end(ap);
     return (*routine)(argno-1, args);
 }
@@ -2613,7 +2612,7 @@ command(int top, const char *tbuf, int cnt)
 	    cp = line;
 	    while (cnt > 0 && (*cp++ = *tbuf++) != '\n')
 		cnt--;
-	    tbuf = 0;
+	    tbuf = NULL;
 	    if (cp == line || *--cp != '\n' || cp == line)
 		goto getline;
 	    *cp = '\0';
@@ -2634,7 +2633,7 @@ command(int top, const char *tbuf, int cnt)
 	if (line[0] == 0)
 	    break;
 	makeargv();
-	if (margv[0] == 0) {
+	if (margv[0] == NULL) {
 	    break;
 	}
 	c = getcmd(margv[0]);
@@ -2642,7 +2641,7 @@ command(int top, const char *tbuf, int cnt)
 	    printf("?Ambiguous command\n");
 	    continue;
 	}
-	if (c == 0) {
+	if (c == NULL) {
 	    printf("?Invalid command\n");
 	    continue;
 	}
@@ -2694,7 +2693,7 @@ help(int argc, char *argv[])
 	return 0;
 }
 
-static char *rcname = 0;
+static char *rcname = NULL;
 static char rcbuf[128];
 
 void
@@ -2713,7 +2712,7 @@ cmdrc(char *m1, char *m2)
     strlcpy(m1save, m1, sizeof(m1save));
     m1 = m1save;
 
-    if (rcname == 0) {
+    if (rcname == NULL) {
 	rcname = getenv("HOME");
 	if (rcname && (strlen(rcname) + 10) < sizeof(rcbuf))
 	    strcpy(rcbuf, rcname);
@@ -2723,7 +2722,7 @@ cmdrc(char *m1, char *m2)
 	rcname = rcbuf;
     }
 
-    if ((rcfile = fopen(rcname, "r")) == 0) {
+    if ((rcfile = fopen(rcname, "r")) == NULL) {
 	return;
     }
 
@@ -2754,14 +2753,14 @@ cmdrc(char *m1, char *m2)
 	    gotmachine = 1;
 	}
 	makeargv();
-	if (margv[0] == 0)
+	if (margv[0] == NULL)
 	    continue;
 	c = getcmd(margv[0]);
 	if (Ambiguous((void *)c)) {
 	    printf("?Ambiguous command: %s\n", margv[0]);
 	    continue;
 	}
-	if (c == 0) {
+	if (c == NULL) {
 	    printf("?Invalid command: %s\n", margv[0]);
 	    continue;
 	}
@@ -2931,7 +2930,7 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 		    ai->ai_family != AF_INET6 &&
 #endif
 		    c == ':')
-			cp2 = 0;
+			cp2 = NULL;
 		else for (cp2 = cp; (c = *cp2); cp2++) {
 			if (c == ',') {
 				*cp2++ = '\0';
@@ -2950,7 +2949,7 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 			break;
 		}
 		if (!c)
-			cp2 = 0;
+			cp2 = NULL;
 
 		hints.ai_flags = AI_NUMERICHOST;
 		error = getaddrinfo(cp, NULL, &hints, &res);
@@ -3005,7 +3004,7 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 #endif
       {
 	if ((*(*cpp+IPOPT_OLEN) = lsrp - *cpp) <= 7) {
-		*cpp = 0;
+		*cpp = NULL;
 		*lenp = 0;
 		return -1;
 	}

@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1989 The Regents of the University of California. All rights reserved.
  * @(#)main.c	5.5 (Berkeley) 5/24/93
  * $FreeBSD: src/usr.bin/yacc/main.c,v 1.12 2000/01/10 20:26:24 kris Exp $
- * $DragonFly: src/usr.bin/yacc/main.c,v 1.6 2006/01/22 13:38:50 swildner Exp $
  */
 
 #include <signal.h>
@@ -293,7 +292,7 @@ create_file_names(void)
     const char *tmpdir;
 
     tmpdir = getenv("TMPDIR");
-    if (tmpdir == 0) tmpdir = "/tmp";
+    if (tmpdir == NULL) tmpdir = "/tmp";
 
     len = strlen(tmpdir);
     i = len + 17;
@@ -301,11 +300,11 @@ create_file_names(void)
 	++i;
 
     action_file_name = MALLOC(i);
-    if (action_file_name == 0) no_space();
+    if (action_file_name == NULL) no_space();
     text_file_name = MALLOC(i);
-    if (text_file_name == 0) no_space();
+    if (text_file_name == NULL) no_space();
     union_file_name = MALLOC(i);
-    if (union_file_name == 0) no_space();
+    if (union_file_name == NULL) no_space();
 
     strcpy(action_file_name, tmpdir);
     strcpy(text_file_name, tmpdir);
@@ -327,7 +326,7 @@ create_file_names(void)
     text_file_name[len + 5] = 't';
     union_file_name[len + 5] = 'u';
 
-    if (output_file_name != 0)
+    if (output_file_name != NULL)
     {
 	file_prefix = output_file_name;
 	len = strlen(file_prefix);
@@ -336,7 +335,7 @@ create_file_names(void)
     {
 	len = strlen(file_prefix);
 	output_file_name = MALLOC(len + 7);
-	if (output_file_name == 0)
+	if (output_file_name == NULL)
 	    no_space();
 	strcpy(output_file_name, file_prefix);
 	strcpy(output_file_name + len, OUTPUT_SUFFIX);
@@ -345,7 +344,7 @@ create_file_names(void)
     if (rflag)
     {
 	code_file_name = MALLOC(len + 8);
-	if (code_file_name == 0)
+	if (code_file_name == NULL)
 	    no_space();
 	strcpy(code_file_name, file_prefix);
 	if (file_prefix == output_file_name)
@@ -370,7 +369,7 @@ create_file_names(void)
     if (dflag)
     {
 	defines_file_name = MALLOC(len + 7);
-	if (defines_file_name == 0)
+	if (defines_file_name == NULL)
 	    no_space();
 	strcpy(defines_file_name, file_prefix);
 	if (file_prefix == output_file_name)
@@ -388,7 +387,7 @@ create_file_names(void)
     if (vflag)
     {
 	verbose_file_name = MALLOC(len + 8);
-	if (verbose_file_name == 0)
+	if (verbose_file_name == NULL)
 	    no_space();
 	strcpy(verbose_file_name, file_prefix);
 	if (file_prefix == output_file_name)
@@ -413,10 +412,10 @@ open_files(void)
 
     create_file_names();
 
-    if (input_file == 0)
+    if (input_file == NULL)
     {
 	input_file = fopen(input_file_name, "r");
-	if (input_file == 0)
+	if (input_file == NULL)
 	    open_error(input_file_name);
     }
 
@@ -440,34 +439,34 @@ open_files(void)
     }
 
     text_file = fopen(text_file_name, "w");
-    if (text_file == 0)
+    if (text_file == NULL)
 	open_error(text_file_name);
 
     if (vflag)
     {
 	verbose_file = fopen(verbose_file_name, "w");
-	if (verbose_file == 0)
+	if (verbose_file == NULL)
 	    open_error(verbose_file_name);
     }
 
     if (dflag)
     {
 	defines_file = fopen(defines_file_name, "w");
-	if (defines_file == 0)
+	if (defines_file == NULL)
 	    open_error(defines_file_name);
 	union_file = fopen(union_file_name, "w");
-	if (union_file ==  0)
+	if (union_file ==  NULL)
 	    open_error(union_file_name);
     }
 
     output_file = fopen(output_file_name, "w");
-    if (output_file == 0)
+    if (output_file == NULL)
 	open_error(output_file_name);
 
     if (rflag)
     {
 	code_file = fopen(code_file_name, "w");
-	if (code_file == 0)
+	if (code_file == NULL)
 	    open_error(code_file_name);
     }
     else

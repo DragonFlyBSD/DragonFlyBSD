@@ -28,7 +28,6 @@
  *
  * @(#)dr_1.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/dr_1.c,v 1.7 1999/11/30 03:49:32 billf Exp $
- * $DragonFly: src/games/sail/dr_1.c,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "driver.h"
@@ -136,9 +135,9 @@ fightitout(struct ship *from, struct ship *to, int key)
 
 	menfrom = mensent(from, to, crewfrom, &fromcap, &pcfrom, key);
 	mento = mensent(to, from, crewto, &tocap, &pcto, 0);
-	if (fromcap == 0)
+	if (fromcap == NULL)
 		fromcap = from;
-	if (tocap == 0)
+	if (tocap == NULL)
 		tocap = to;
 	if (key) {
 		if (!menfrom) {		 /* if crew surprised */
@@ -304,7 +303,7 @@ compcombat(void)
 			if ((ready & R_LOADED) == 0)
 				continue;
 			closest = closestenemy(sp, r ? 'r' : 'l', 0);
-			if (closest == 0)
+			if (closest == NULL)
 				continue;
 			if (range(closest, sp) >
 			    range(sp, closestenemy(sp, r ? 'r' : 'l', 1)))
@@ -413,7 +412,7 @@ next(void)
 		}
 		if (best > 0.0) {
 			char *p = getenv("WOTD");
-			if (p == 0) {
+			if (p == NULL) {
 				char buf[6] = "Driver";
 				p = buf;
 			}

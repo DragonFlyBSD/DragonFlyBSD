@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1984, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: arp.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.sbin/arp/arp.c,v 1.22.2.12 2003/04/16 10:02:37 ru Exp $
- * $DragonFly: src/usr.sbin/arp/arp.c,v 1.11 2008/02/03 00:41:44 swildner Exp $
  */
 
 /*
@@ -515,7 +514,7 @@ print_entry(struct sockaddr_dl *sdl,
 		hp = gethostbyaddr(&(addr->sin_addr), sizeof(addr->sin_addr),
 		    AF_INET);
 	else
-		hp = 0;
+		hp = NULL;
 	if (hp)
 		host = hp->h_name;
 	else {

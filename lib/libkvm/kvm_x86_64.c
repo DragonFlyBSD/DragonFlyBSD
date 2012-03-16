@@ -250,7 +250,7 @@ _kvm_vatop(kvm_t *kd, u_long va, off_t *pa)
 	 * If we are initializing (kernel page table descriptor pointer
 	 * not yet set) then return pa == va to avoid infinite recursion.
 	 */
-	if (vm->PML4 == 0) {
+	if (vm->PML4 == NULL) {
 		s = _kvm_pa2off(kd, va, pa);
 		if (s == 0) {
 			_kvm_err(kd, kd->program,

@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.c,v 1.4 1999/11/16 10:26:35 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.c,v 1.6 2007/05/13 18:33:55 swildner Exp $ */
 
 #include "hack.h"
 
@@ -516,7 +515,7 @@ lookaround(void)
 				    (x == u.ux + u.dx && y == u.uy + u.dy))
 					goto stop;
 			} else		/* invisible M cannot influence us */
-				mtmp = 0;
+				mtmp = NULL;
 			if (x == u.ux - u.dx && y == u.uy - u.dy)
 				continue;
 			switch (levl[x][y].scrsym) {

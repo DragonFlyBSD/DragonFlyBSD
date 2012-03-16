@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/rs/rs.c,v 1.5.2.2 2002/08/03 00:48:43 tjr Exp $
- * $DragonFly: src/usr.bin/rs/rs.c,v 1.3 2005/01/05 00:32:50 cpressey Exp $
  */
 
 /*
@@ -178,7 +177,7 @@ getfile(void)
 			}
 		}
 	} while (getline() != EOF);
-	*ep = 0;				/* mark end of pointers */
+	*ep = NULL;				/* mark end of pointers */
 	nelem = ep - elem;
 }
 

@@ -10,7 +10,6 @@
  * route.c,v 3.8.4.41 1998/01/15 00:08:34 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/route.c,v 1.12 1999/08/28 01:17:08 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/route.c,v 1.5 2005/12/05 00:58:50 swildner Exp $
  */
 
 #include "defs.h"
@@ -93,7 +92,7 @@ next_route(struct rtentry **rtpp, u_int32 src, u_int32 mask)
                rbest = rt;
    }
    (*rtpp) = rbest;
-   return (*rtpp)!=0;
+   return (*rtpp)!=NULL;
 }
 
 /*

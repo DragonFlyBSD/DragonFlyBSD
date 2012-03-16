@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/if.c,v 1.6.2.1 2000/08/14 17:00:03 sheldonh Exp $
- * $DragonFly: src/sbin/routed/if.c,v 1.5 2005/03/16 21:21:34 cpressey Exp $
  */
 
 #include "defs.h"
@@ -106,20 +105,20 @@ if_link(struct interface *ifp)
 
 	ifp->int_prev = &ifnet;
 	ifp->int_next = ifnet;
-	if (ifnet != 0)
+	if (ifnet != NULL)
 		ifnet->int_prev = &ifp->int_next;
 	ifnet = ifp;
 
 	hifp = AHASH(ifp->int_addr);
 	ifp->int_ahash_prev = hifp;
-	if ((ifp->int_ahash = *hifp) != 0)
+	if ((ifp->int_ahash = *hifp) != NULL)
 		(*hifp)->int_ahash_prev = &ifp->int_ahash;
 	*hifp = ifp;
 
 	if (ifp->int_if_flags & IFF_BROADCAST) {
 		hifp = BHASH(ifp->int_brdaddr);
 		ifp->int_bhash_prev = hifp;
-		if ((ifp->int_bhash = *hifp) != 0)
+		if ((ifp->int_bhash = *hifp) != NULL)
 			(*hifp)->int_bhash_prev = &ifp->int_bhash;
 		*hifp = ifp;
 	}
@@ -127,7 +126,7 @@ if_link(struct interface *ifp)
 	if (ifp->int_state & IS_REMOTE) {
 		ifp->int_rlink_prev = &remote_if;
 		ifp->int_rlink = remote_if;
-		if (remote_if != 0)
+		if (remote_if != NULL)
 			remote_if->int_rlink_prev = &ifp->int_rlink;
 		remote_if = ifp;
 	}
@@ -135,11 +134,11 @@ if_link(struct interface *ifp)
 	hifp = nhash(ifp->int_name);
 	if (ifp->int_state & IS_ALIAS) {
 		/* put aliases on the end of the hash chain */
-		while (*hifp != 0)
+		while (*hifp != NULL)
 			hifp = &(*hifp)->int_nhash;
 	}
 	ifp->int_nhash_prev = hifp;
-	if ((ifp->int_nhash = *hifp) != 0)
+	if ((ifp->int_nhash = *hifp) != NULL)
 		(*hifp)->int_nhash_prev = &ifp->int_nhash;
 	*hifp = ifp;
 }
@@ -152,7 +151,7 @@ ifwithaddr(naddr addr,
 	   int	bcast,			/* notice IFF_BROADCAST address */
 	   int	remote)			/* include IS_REMOTE interfaces */
 {
-	struct interface *ifp, *possible = 0;
+	struct interface *ifp, *possible = NULL;
 
 	remote = (remote == 0) ? IS_REMOTE : 0;
 
@@ -192,7 +191,7 @@ ifwithname(char *name,			/* "ec0" or whatever */
 	struct interface *ifp;
 
 	for (;;) {
-		for (ifp = *nhash(name); ifp != 0; ifp = ifp->int_nhash) {
+		for (ifp = *nhash(name); ifp != NULL; ifp = ifp->int_nhash) {
 			/* If the network address is not specified,
 			 * ignore any alias interfaces.  Otherwise, look
 			 * for the interface with the target name and address.
@@ -219,7 +218,7 @@ ifwithindex(u_short idx, int rescan_ok)
 	struct interface *ifp;
 
 	for (;;) {
-		for (ifp = ifnet; 0 != ifp; ifp = ifp->int_next) {
+		for (ifp = ifnet; NULL != ifp; ifp = ifp->int_next) {
 			if (ifp->int_index == idx)
 				return ifp;
 		}
@@ -244,7 +243,7 @@ iflookup(naddr addr)
 {
 	struct interface *ifp, *maybe;
 
-	maybe = 0;
+	maybe = NULL;
 	for (;;) {
 		for (ifp = ifnet; ifp; ifp = ifp->int_next) {
 			if (ifp->int_if_flags & IFF_POINTOPOINT) {
@@ -260,13 +259,13 @@ iflookup(naddr addr)
 				/* Look for the longest approximate match.
 				 */
 				if (on_net(addr, ifp->int_net, ifp->int_mask)
-				    && (maybe == 0
+				    && (maybe == NULL
 					|| ifp->int_mask > maybe->int_mask))
 					maybe = ifp;
 			}
 		}
 
-		if (maybe != 0
+		if (maybe != NULL
 		    || IF_RESCAN_DELAY())
 			return maybe;
 
@@ -309,7 +308,7 @@ ripv1_mask_net(naddr addr,		/* in network byte order */
 	if (addr == 0)			/* default always has 0 mask */
 		return mask;
 
-	if (ifp != 0 && ifp->int_ripv1_mask != HOST_MASK) {
+	if (ifp != NULL && ifp->int_ripv1_mask != HOST_MASK) {
 		/* If the target network is that of the associated interface
 		 * on which it arrived, then use the netmask of the interface.
 		 */
@@ -323,7 +322,7 @@ ripv1_mask_net(naddr addr,		/* in network byte order */
 		 * such interface, prefer the interface with the longest
 		 * match.
 		 */
-		for (ifp = ifnet; ifp != 0; ifp = ifp->int_next) {
+		for (ifp = ifnet; ifp != NULL; ifp = ifp->int_next) {
 			if (on_net(addr, ifp->int_std_net, ifp->int_std_mask)
 			    && ifp->int_ripv1_mask > mask
 			    && ifp->int_ripv1_mask != HOST_MASK)
@@ -334,7 +333,7 @@ ripv1_mask_net(naddr addr,		/* in network byte order */
 
 	/* check special definitions */
 	if (mask == 0) {
-		for (r1p = r1nets; r1p != 0; r1p = r1p->r1net_next) {
+		for (r1p = r1nets; r1p != NULL; r1p = r1p->r1net_next) {
 			if (on_net(addr, r1p->r1net_net, r1p->r1net_match)
 			    && r1p->r1net_mask > mask)
 				mask = r1p->r1net_mask;
@@ -395,7 +394,7 @@ check_dup(naddr addr,			/* IP address, so network byte order */
 {
 	struct interface *ifp;
 
-	for (ifp = ifnet; 0 != ifp; ifp = ifp->int_next) {
+	for (ifp = ifnet; NULL != ifp; ifp = ifp->int_next) {
 		if (ifp->int_mask != mask)
 			continue;
 
@@ -429,7 +428,7 @@ check_remote(struct interface *ifp)
 	    return 1;
 
 	rt = rtfind(ifp->int_addr);
-	if (rt != 0
+	if (rt != NULL
 	    && rt->rt_ifp != 0
 	    &&on_net(ifp->int_addr,
 		     rt->rt_ifp->int_net, rt->rt_ifp->int_mask))
@@ -485,7 +484,7 @@ ifdel(struct interface *ifp)
 	if (!(ifp->int_state & IS_ALIAS)) {
 		/* delete aliases when the main interface dies
 		 */
-		for (ifp1 = ifnet; 0 != ifp1; ifp1 = ifp1->int_next) {
+		for (ifp1 = ifnet; NULL != ifp1; ifp1 = ifp1->int_next) {
 			if (ifp1 != ifp
 			    && !strcmp(ifp->int_name, ifp1->int_name))
 				ifdel(ifp1);
@@ -569,7 +568,7 @@ if_bad(struct interface *ifp)
 	trace_if("Chg", ifp);
 
 	if (!(ifp->int_state & IS_ALIAS)) {
-		for (ifp1 = ifnet; 0 != ifp1; ifp1 = ifp1->int_next) {
+		for (ifp1 = ifnet; NULL != ifp1; ifp1 = ifp1->int_next) {
 			if (ifp1 != ifp
 			    && !strcmp(ifp->int_name, ifp1->int_name))
 				if_bad(ifp1);
@@ -605,7 +604,7 @@ if_ok(struct interface *ifp,
 	ifp->int_data.ts = 0;
 
 	if (!(ifp->int_state & IS_ALIAS)) {
-		for (ifp1 = ifnet; 0 != ifp1; ifp1 = ifp1->int_next) {
+		for (ifp1 = ifnet; NULL != ifp1; ifp1 = ifp1->int_next) {
 			if (ifp1 != ifp
 			    && !strcmp(ifp->int_name, ifp1->int_name))
 				if_ok(ifp1, type);
@@ -701,7 +700,7 @@ ifinit(void)
 					    : CHECK_QUIET_INTERVAL);
 
 	/* mark all interfaces so we can get rid of those that disappear */
-	for (ifp = ifnet; 0 != ifp; ifp = ifp->int_next)
+	for (ifp = ifnet; NULL != ifp; ifp = ifp->int_next)
 		ifp->int_state &= ~(IS_CHECKED | IS_DUP);
 
 	/* Fetch the interface list, without too many system calls
@@ -925,7 +924,7 @@ ifinit(void)
 		ifp = ifwithname(ifs.int_name, ((ifs.int_state & IS_ALIAS)
 						? ifs.int_addr
 						: 0));
-		if (ifp != 0) {
+		if (ifp != NULL) {
 			ifp->int_state |= IS_CHECKED;
 
 			if (0 != ((ifp->int_if_flags ^ ifs.int_if_flags)
@@ -946,11 +945,11 @@ ifinit(void)
 				trace_act("interface %s has changed",
 					  ifp->int_name);
 				ifdel(ifp);
-				ifp = 0;
+				ifp = NULL;
 			}
 		}
 
-		if (ifp != 0) {
+		if (ifp != NULL) {
 			/* The primary representative of an alias worries
 			 * about how things are working.
 			 */
@@ -1069,7 +1068,7 @@ ifinit(void)
 		 */
 		ifp = check_dup(ifs.int_addr,ifs.int_dstaddr,ifs.int_mask,
 				ifs.int_if_flags);
-		if (ifp != 0) {
+		if (ifp != NULL) {
 			/* Ignore duplicates of itself, caused by having
 			 * IP aliases on the same network.
 			 */
@@ -1120,7 +1119,7 @@ ifinit(void)
 		if (!(prev_complaints & COMP_NETMASK)
 		    && !(ifp->int_if_flags & IFF_POINTOPOINT)
 		    && ifp->int_addr != RIP_DEFAULT) {
-			for (ifp1 = ifnet; 0 != ifp1; ifp1 = ifp1->int_next) {
+			for (ifp1 = ifnet; NULL != ifp1; ifp1 = ifp1->int_next) {
 				if (ifp1->int_mask == ifp->int_mask)
 					continue;
 				if (ifp1->int_if_flags & IFF_POINTOPOINT)
@@ -1173,15 +1172,15 @@ ifinit(void)
 	if (advertise_mhome
 	    || (tot_interfaces > 1
 		&& mhome
-		&& (ifp = ifwithaddr(myaddr, 0, 0)) != 0
+		&& (ifp = ifwithaddr(myaddr, 0, 0)) != NULL
 		&& foundloopback)) {
 		advertise_mhome = 1;
 		rt = rtget(myaddr, HOST_MASK);
-		if (rt != 0) {
+		if (rt != NULL) {
 			if (rt->rt_ifp != ifp
 			    || rt->rt_router != loopaddr) {
 				rtdelete(rt);
-				rt = 0;
+				rt = NULL;
 			} else {
 				loop_rts.rts_ifp = ifp;
 				loop_rts.rts_metric = 0;
@@ -1190,14 +1189,14 @@ ifinit(void)
 					 &loop_rts, 0);
 			}
 		}
-		if (rt == 0) {
+		if (rt == NULL) {
 			loop_rts.rts_ifp = ifp;
 			loop_rts.rts_metric = 0;
 			rtadd(myaddr, HOST_MASK, RS_MHOME, &loop_rts);
 		}
 	}
 
-	for (ifp = ifnet; ifp != 0; ifp = ifp1) {
+	for (ifp = ifnet; ifp != NULL; ifp = ifp1) {
 		ifp1 = ifp->int_next;	/* because we may delete it */
 
 		/* Forget any interfaces that have disappeared.
@@ -1222,7 +1221,7 @@ ifinit(void)
 			have_ripv1_in = 1;
 	}
 
-	for (ifp = ifnet; ifp != 0; ifp = ifp->int_next) {
+	for (ifp = ifnet; ifp != NULL; ifp = ifp->int_next) {
 		/* Ensure there is always a network route for interfaces,
 		 * after any dead interfaces have been deleted, which
 		 * might affect routes for point-to-point links.
@@ -1241,11 +1240,11 @@ ifinit(void)
 			 */
 			del_static(ifp->int_addr, HOST_MASK, 0, 0);
 			rt = rtget(ifp->int_addr, HOST_MASK);
-			if (rt != 0 && rt->rt_router != loopaddr) {
+			if (rt != NULL && rt->rt_router != loopaddr) {
 				rtdelete(rt);
-				rt = 0;
+				rt = NULL;
 			}
-			if (rt != 0) {
+			if (rt != NULL) {
 				if (!(rt->rt_state & RS_LOCAL)
 				    || rt->rt_metric > ifp->int_metric) {
 					ifp1 = ifp;
@@ -1268,15 +1267,15 @@ ifinit(void)
 	}
 
 	/* add the authority routes */
-	for (intnetp = intnets; intnetp!=0; intnetp = intnetp->intnet_next) {
+	for (intnetp = intnets; intnetp!=NULL; intnetp = intnetp->intnet_next) {
 		rt = rtget(intnetp->intnet_addr, intnetp->intnet_mask);
-		if (rt != 0
+		if (rt != NULL
 		    && !(rt->rt_state & RS_NO_NET_SYN)
 		    && !(rt->rt_state & RS_NET_INT)) {
 			rtdelete(rt);
-			rt = 0;
+			rt = NULL;
 		}
-		if (rt == 0) {
+		if (rt == NULL) {
 			loop_rts.rts_ifp = 0;
 			loop_rts.rts_metric = intnetp->intnet_metric-1;
 			rtadd(intnetp->intnet_addr, intnetp->intnet_mask,
@@ -1302,14 +1301,14 @@ check_net_syn(struct interface *ifp)
 	if (have_ripv1_out || have_ripv1_in) {
 		ifp->int_state |= IS_NEED_NET_SYN;
 		rt = rtget(ifp->int_std_addr, ifp->int_std_mask);
-		if (rt != 0
+		if (rt != NULL
 		    && 0 == (rt->rt_state & RS_NO_NET_SYN)
 		    && (!(rt->rt_state & RS_NET_SYN)
 			|| rt->rt_metric > ifp->int_metric)) {
 			rtdelete(rt);
-			rt = 0;
+			rt = NULL;
 		}
-		if (rt == 0) {
+		if (rt == NULL) {
 			new.rts_ifp = ifp;
 			new.rts_gate = ifp->int_addr;
 			new.rts_router = ifp->int_addr;
@@ -1323,7 +1322,7 @@ check_net_syn(struct interface *ifp)
 
 		rt = rtget(ifp->int_std_addr,
 			   ifp->int_std_mask);
-		if (rt != 0
+		if (rt != NULL
 		    && (rt->rt_state & RS_NET_SYN)
 		    && rt->rt_ifp == ifp)
 			rtbad_sub(rt);
@@ -1378,21 +1377,21 @@ addrouteforif(struct interface *ifp)
 	 */
 	del_static(dst, ifp->int_mask, 0, 0);
 	rt = rtget(dst, ifp->int_mask);
-	if (rt != 0) {
+	if (rt != NULL) {
 		if ((rt->rt_ifp != ifp
 		     || rt->rt_router != ifp->int_addr)
 		    && (!(ifp->int_state & IS_DUP)
 			|| rt->rt_ifp == 0
 			|| (rt->rt_ifp->int_state & IS_BROKE))) {
 			rtdelete(rt);
-			rt = 0;
+			rt = NULL;
 		} else {
 			rtchange(rt, ((rt->rt_state | RS_IF)
 				      & ~(RS_NET_SYN | RS_LOCAL)),
 				 &new, 0);
 		}
 	}
-	if (rt == 0) {
+	if (rt == NULL) {
 		if (ifp->int_transitions++ > 0)
 			trace_act("re-install interface %s",
 				  ifp->int_name);

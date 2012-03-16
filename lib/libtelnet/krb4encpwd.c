@@ -32,7 +32,6 @@
  *
  * @(#)krb4encpwd.c	8.3 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/libtelnet/krb4encpwd.c,v 1.3.2.1 2002/04/13 10:59:07 markm Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/krb4encpwd.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #ifdef	KRB4_ENCPWD
@@ -208,7 +207,7 @@ krb4encpwd_is(ap, data, cnt)
 		memmove((void *)auth.dat, (void *)data, auth.length = cnt);
 
 		gethostname(lhostname, sizeof(lhostname));
-		if ((cp = strchr(lhostname, '.')) != 0)  *cp = '\0';
+		if ((cp = strchr(lhostname, '.')) != NULL)  *cp = '\0';
 
 		if (r = krb_rd_encpwd_req(&auth, KRB_SERVICE_NAME, lhostname, 0, &adat, NULL, challenge, r_user, r_passwd)) {
 			Data(ap, KRB4_ENCPWD_REJECT, (void *)"Auth failed", -1);
@@ -307,7 +306,7 @@ krb4encpwd_reply(ap, data, cnt)
 		UserPassword = user_passwd;
 		Challenge = challenge;
 		strcpy(instance, RemoteHostName);
-		if ((cp = strchr(instance, '.')) != 0)  *cp = '\0';
+		if ((cp = strchr(instance, '.')) != NULL)  *cp = '\0';
 
 		if (r = krb_mk_encpwd_req(&krb_token, KRB_SERVICE_NAME, instance, realm, Challenge, UserNameRequested, user_passwd)) {
 		  krb_token.length = 0;

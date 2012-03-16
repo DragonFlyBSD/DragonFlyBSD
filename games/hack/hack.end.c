@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.end.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.end.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.end.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 #define	Sprintf	(void) sprintf
@@ -294,7 +293,7 @@ topten(void)
 		t0->points = 0;
 
 	t1 = tt_head = newttentry();
-	tprev = 0;
+	tprev = NULL;
 	/* rank0: -1 undefined, 0 not_on_list, n n_th on list */
 	for (rank = 1;;) {
 		if (fscanf(rfile, "%6s %d %d %d %d %d %ld %c%c %[^,],%[^\n]",
@@ -306,7 +305,7 @@ topten(void)
 			t1->points = 0;
 		if (rank0 < 0 && t1->points < t0->points) {
 			rank0 = rank++;
-			if (tprev == 0)
+			if (tprev == NULL)
 				tt_head = t0;
 			else
 				tprev->tt_next = t0;

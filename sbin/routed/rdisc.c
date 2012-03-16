@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/rdisc.c,v 1.5.2.1 2000/08/14 17:00:04 sheldonh Exp $
- * $DragonFly: src/sbin/routed/rdisc.c,v 1.4 2005/03/16 21:21:34 cpressey Exp $
  */
 
 #include "defs.h"
@@ -306,7 +305,7 @@ rdisc_age(naddr bad_gate)
 		/* If switching from client to server, get rid of old
 		 * default routes.
 		 */
-		if (cur_drp != 0)
+		if (cur_drp != NULL)
 			rdisc_sort();
 		rdisc_adv();
 		return;
@@ -458,7 +457,7 @@ rdisc_sort(void)
 
 	/* Find the best discovered route.
 	 */
-	new_drp = 0;
+	new_drp = NULL;
 	for (drp = drs; drp < &drs[MAX_ADS]; drp++) {
 		if (drp->dr_ts == 0)
 			continue;
@@ -483,7 +482,7 @@ rdisc_sort(void)
 		 * bad routers.
 		 * Avoid sick interfaces.
 		 */
-		if (new_drp == 0
+		if (new_drp == NULL
 		    || (!((new_st ^ drp->dr_ifp->int_state) & IS_SICK)
 			&& (new_pref < drp->dr_pref
 			    || (new_pref == drp->dr_pref
@@ -505,11 +504,11 @@ rdisc_sort(void)
 
 		/* Stop using discovered routes if they are all bad
 		 */
-		if (new_drp == 0) {
+		if (new_drp == NULL) {
 			trace_act("turn off Router Discovery client");
 			rdisc_ok = 0;
 
-			if (rt != 0
+			if (rt != NULL
 			    && (rt->rt_state & RS_RDISC)) {
 				new = rt->rt_spares[0];
 				new.rts_metric = HOPCNT_INFINITY;
@@ -520,7 +519,7 @@ rdisc_sort(void)
 			}
 
 		} else {
-			if (cur_drp == 0) {
+			if (cur_drp == NULL) {
 				trace_act("turn on Router Discovery client"
 					  " using %s via %s",
 					  naddr_ntoa(new_drp->dr_gate),
@@ -542,7 +541,7 @@ rdisc_sort(void)
 			new.rts_router = new_drp->dr_gate;
 			new.rts_metric = HOPCNT_INFINITY-1;
 			new.rts_time = now.tv_sec;
-			if (rt != 0) {
+			if (rt != NULL) {
 				rtchange(rt, rt->rt_state | RS_RDISC, &new, 0);
 			} else {
 				rtadd(RIP_DEFAULT, 0, RS_RDISC, &new);
@@ -604,7 +603,7 @@ parse_ad(naddr from,
 		life = 0;
 	}
 
-	for (new_drp = 0, drp = drs; drp < &drs[MAX_ADS]; drp++) {
+	for (new_drp = NULL, drp = drs; drp < &drs[MAX_ADS]; drp++) {
 		/* accept new info for a familiar entry
 		 */
 		if (drp->dr_gate == gate) {
@@ -618,7 +617,7 @@ parse_ad(naddr from,
 		if (drp->dr_ts == 0) {
 			new_drp = drp;	/* use unused entry */
 
-		} else if (new_drp == 0) {
+		} else if (new_drp == NULL) {
 			/* look for an entry worse than the new one to
 			 * reuse.
 			 */
@@ -643,7 +642,7 @@ parse_ad(naddr from,
 	}
 
 	/* forget it if all of the current entries are better */
-	if (new_drp == 0)
+	if (new_drp == NULL)
 		return;
 
 	new_drp->dr_ifp = ifp;
@@ -751,7 +750,7 @@ send_rdisc(union ad_u *p,
 					   &tgt_mcast, sizeof(tgt_mcast))) {
 				LOGERR("setsockopt(rdisc_sock,"
 				       "IP_MULTICAST_IF)");
-				rdisc_sock_mcast = 0;
+				rdisc_sock_mcast = NULL;
 				return;
 			}
 			rdisc_sock_mcast = ifp;
@@ -768,13 +767,13 @@ send_rdisc(union ad_u *p,
 
 	if (0 > sendto(rdisc_sock, p, p_size, flags,
 		       (struct sockaddr *)&in, sizeof(in))) {
-		if (ifp == 0 || !(ifp->int_state & IS_BROKE))
+		if (ifp == NULL || !(ifp->int_state & IS_BROKE))
 			msglog("sendto(%s%s%s): %s",
-			       ifp != 0 ? ifp->int_name : "",
-			       ifp != 0 ? ", " : "",
+			       ifp != NULL ? ifp->int_name : "",
+			       ifp != NULL ? ", " : "",
 			       inet_ntoa(in.sin_addr),
 			       strerror(errno));
-		if (ifp != 0)
+		if (ifp != NULL)
 			if_sick(ifp);
 	}
 }
@@ -925,7 +924,7 @@ ck_icmp(const char *act,
 
 	trace_rdisc(act, from, to, ifp, p, len);
 
-	if (ifp == 0)
+	if (ifp == NULL)
 		trace_pkt("unknown interface for router-discovery %s"
 			  " from %s to %s",
 			  type, naddr_ntoa(from), naddr_ntoa(to));
@@ -987,7 +986,7 @@ read_d(void)
 
 #ifdef USE_PASSIFNAME
 		ifp = ifwithname(buf.ifname, 0);
-		if (ifp == 0)
+		if (ifp == NULL)
 			msglim(&bad_name, from.sin_addr.s_addr,
 			       "impossible rdisc if_ name %.*s",
 			       IFNAMSIZ, buf.ifname);
@@ -1000,7 +999,7 @@ read_d(void)
 #endif
 		ifp = ck_icmp("Recv", from.sin_addr.s_addr, ifp,
 			      buf.pkt.ip.ip_dst.s_addr, p, cc);
-		if (ifp == 0)
+		if (ifp == NULL)
 			continue;
 		if (ifwithaddr(from.sin_addr.s_addr, 0, 0)) {
 			trace_pkt("    "

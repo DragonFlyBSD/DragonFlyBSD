@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.worm.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.worm.c,v 1.4 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.worm.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 #ifndef NOWORM
@@ -83,7 +82,7 @@ worm_nomove(struct monst *mtmp)
 	wtmp = wsegs[tmp];
 	if (wtmp == wheads[tmp])
 		return;
-	if (wtmp == 0 || wtmp->nseg == 0)
+	if (wtmp == NULL || wtmp->nseg == 0)
 		panic("worm_nomove?");
 	wsegs[tmp] = wtmp->nseg;
 	remseg(wtmp);
@@ -103,7 +102,7 @@ wormdead(struct monst *mtmp)
 		wtmp2 = wtmp->nseg;
 		remseg(wtmp);
 	}
-	wsegs[tmp] = 0;
+	wsegs[tmp] = NULL;
 }
 
 void

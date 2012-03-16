@@ -35,7 +35,6 @@
  *
  * @(#)mkpar.c	5.3 (Berkeley) 1/20/91
  * $FreeBSD: src/usr.bin/yacc/mkpar.c,v 1.10 1999/08/28 01:08:01 peter Exp $
- * $DragonFly: src/usr.bin/yacc/mkpar.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
  */
 
 #include <stdlib.h>
@@ -105,7 +104,7 @@ get_shifts(int stateno)
     int i, k;
     int symbol;
 
-    actions = 0;
+    actions = NULL;
     sp = shift_table[stateno];
     if (sp)
     {
@@ -159,7 +158,7 @@ add_reduce(action *actions, int ruleno, int symbol)
 {
     action *temp, *prev, *next;
 
-    prev = 0;
+    prev = NULL;
     for (next = actions; next && next->symbol < symbol; next = next->next)
 	prev = next;
 
@@ -218,7 +217,7 @@ unused_rules(void)
     action *p;
 
     rules_used = (short *) MALLOC(nrules*sizeof(short));
-    if (rules_used == 0) no_space();
+    if (rules_used == NULL) no_space();
 
     for (i = 0; i < nrules; ++i)
 	rules_used[i] = 0;

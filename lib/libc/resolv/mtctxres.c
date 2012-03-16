@@ -75,7 +75,7 @@ __res_init_ctx(void) {
 		return (0);
 	}
 
-	if ((mt = malloc(sizeof (mtctxres_t))) == 0) {
+	if ((mt = malloc(sizeof (mtctxres_t))) == NULL) {
 		errno = ENOMEM;
 		return (-1);
 	}
@@ -96,7 +96,7 @@ __res_destroy_ctx(void *value) {
 
 	mtctxres_t	*mt = (mtctxres_t *)value;
 
-	if (mt != 0)
+	if (mt != NULL)
 		free(mt);
 }
 #endif
@@ -131,9 +131,9 @@ ___mtctxres(void) {
 	 * that fails return a global context.
 	 */
 	if (mt_key_initialized) {
-		if (((mt = pthread_getspecific(key)) != 0) ||
+		if (((mt = pthread_getspecific(key)) != NULL) ||
 		    (__res_init_ctx() == 0 &&
-		     (mt = pthread_getspecific(key)) != 0)) {
+		     (mt = pthread_getspecific(key)) != NULL)) {
 			return (mt);
 		}
 	}

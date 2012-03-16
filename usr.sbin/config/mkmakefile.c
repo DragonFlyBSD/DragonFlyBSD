@@ -287,7 +287,7 @@ next:
 		}
 		return;
 	}
-	if (wd == 0)
+	if (wd == NULL)
 		goto next;
 	if (wd[0] == '#')
 	{
@@ -297,7 +297,7 @@ next:
 	}
 	this = strdup(wd);
 	next_word(fp, wd);
-	if (wd == 0) {
+	if (wd == NULL) {
 		printf("%s: No type for %s.\n",
 		    fname, this);
 		exit(1);
@@ -306,7 +306,7 @@ next:
 		isdup = 1;
 	else
 		isdup = 0;
-	tp = 0;
+	tp = NULL;
 	if (first == 3 && pf == NULL && (tp = fltail_lookup(this)) != NULL) {
 		if (tp->f_type != INVISIBLE || tp->f_flags)
 			printf("%s: Local file %s overrides %s.\n",
@@ -435,7 +435,7 @@ nextparam:
 		filetype = PROFILING;
 		goto nextparam;
 	}
-	if (needs == 0 && nreqs == 1)
+	if (needs == NULL && nreqs == 1)
 		needs = strdup(wd);
 	if (isdup)
 		goto invis;
@@ -476,7 +476,7 @@ nextparam:
 		exit(1);
 	}
 invis:
-	while ((wd = get_word(fp)) != 0)
+	while ((wd = get_word(fp)) != NULL)
 		;
 	if (tp == NULL)
 		tp = new_fent();
@@ -686,7 +686,7 @@ tail(char *fn)
 	char *cp;
 
 	cp = strrchr(fn, '/');
-	if (cp == 0)
+	if (cp == NULL)
 		return(fn);
 	return(cp + 1);
 }

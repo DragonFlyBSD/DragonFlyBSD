@@ -1932,6 +1932,8 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 	 * one from the source object (it should be there) to the destination
 	 * object.
 	 */
+	vm_object_hold(src_object);
+	vm_object_hold(dst_object);
 	for (vaddr = dst_entry->start, dst_offset = 0;
 	    vaddr < dst_entry->end;
 	    vaddr += PAGE_SIZE, dst_offset += PAGE_SIZE) {
@@ -1974,6 +1976,8 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 		vm_page_activate(dst_m);
 		vm_page_wakeup(dst_m);
 	}
+	vm_object_drop(dst_object);
+	vm_object_drop(src_object);
 }
 
 #if 0

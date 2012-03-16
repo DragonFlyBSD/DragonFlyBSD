@@ -144,7 +144,7 @@ void *hackbench_thread(void *t)
 	char dummy;
 
 	num_groups = 50;
-	t = 0;
+	t = NULL;
 
 	fdpair(readyfds);
 	fdpair(wakefds);

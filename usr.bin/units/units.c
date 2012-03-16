@@ -15,7 +15,6 @@
  * improvements you might make to this program.
  *
  * $FreeBSD: src/usr.bin/units/units.c,v 1.11 2008/08/16 16:27:41 dwmalone Exp $
- * $DragonFly: src/usr.bin/units/units.c,v 1.4 2006/08/13 19:19:44 swildner Exp $
  */
 
 #include <ctype.h>
@@ -227,7 +226,7 @@ addsubunit(char *product[], char *toadd)
 		return 1;
 	}
 	if (!*ptr)
-		*(ptr + 1) = 0;
+		*(ptr + 1) = NULL;
 	*ptr = dupstr(toadd);
 	return 0;
 }
@@ -676,7 +675,7 @@ main(int argc, char **argv)
 	struct unittype have, want;
 	char havestr[81], wantstr[81];
 	int optchar;
-	char *userfile = 0;
+	char *userfile = NULL;
 	int quiet = 0;
 
 	while ((optchar = getopt(argc, argv, "vqf:")) != -1) {

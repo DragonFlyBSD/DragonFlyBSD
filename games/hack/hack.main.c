@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.main.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.main.c,v 1.9 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.main.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include <sys/stat.h>
 #include "hack.h"
@@ -345,7 +344,7 @@ not_recovered:
 				nomovemsg = 0;
 				if (afternmv)
 					(*afternmv)();
-				afternmv = 0;
+				afternmv = NULL;
 			}
 		}
 		find_ac();
@@ -366,7 +365,7 @@ not_recovered:
 			if (monster_nearby())
 				stop_occupation();
 			else if ((*occupation)() == 0)
-				occupation = 0;
+				occupation = NULL;
 			continue;
 		}
 
@@ -503,6 +502,6 @@ stop_occupation(void)
 {
 	if (occupation) {
 		pline("You stop %s.", occtxt);
-		occupation = 0;
+		occupation = NULL;
 	}
 }

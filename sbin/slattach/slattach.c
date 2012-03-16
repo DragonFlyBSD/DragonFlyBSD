@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
  * @(#)slattach.c	4.6 (Berkeley) 6/1/90
  * $FreeBSD: src/sbin/slattach/slattach.c,v 1.36 1999/08/28 00:14:25 peter Exp $
- * $DragonFly: src/sbin/slattach/slattach.c,v 1.6 2005/02/02 07:59:48 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -93,9 +92,9 @@ struct	termios tty;		/* tty configuration/state */
 
 char	tty_path[32];		/* path name of the tty (e.g. /dev/tty01) */
 char	pidfilename[40];	/* e.g. /var/run/slattach.tty01.pid */
-char	*redial_cmd = 0;	/* command to exec upon shutdown. */
-char	*config_cmd = 0;	/* command to exec if slip unit changes. */
-char	*exit_cmd = 0;		/* command to exec before exiting. */
+char	*redial_cmd = NULL;	/* command to exec upon shutdown. */
+char	*config_cmd = NULL;	/* command to exec if slip unit changes. */
+char	*exit_cmd = NULL;		/* command to exec before exiting. */
 
 static void
 usage(void)

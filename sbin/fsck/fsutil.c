@@ -155,7 +155,7 @@ unrawname(const char *name)
 	const char *dp;
 	struct stat stb;
 
-	if ((dp = strrchr(name, '/')) == 0)
+	if ((dp = strrchr(name, '/')) == NULL)
 		return (name);
 	if (stat(name, &stb) < 0)
 		return (name);
@@ -173,7 +173,7 @@ rawname(const char *name)
 	static char rawbuf[32];
 	const char *dp;
 
-	if ((dp = strrchr(name, '/')) == 0)
+	if ((dp = strrchr(name, '/')) == NULL)
 		return (0);
 	snprintf(rawbuf, 32, "%.*s/r%s", (int)(dp - name), name, dp + 1);
 	return (rawbuf);

@@ -1,5 +1,4 @@
 /* $NetBSD: src/lib/libc/locale/_wcstol.h,v 1.2 2003/08/07 16:43:03 agc Exp $ */
-/* $DragonFly: src/lib/libc/locale/_wcstol.h,v 1.1 2005/03/16 06:54:41 joerg Exp $ */
 
 /*-
  * Copyright (c) 1990, 1993
@@ -132,7 +131,7 @@ _FUNCNAME(const wchar_t *nptr, wchar_t **endptr, int base)
 			}
 		}
 	}
-	if (endptr != 0)
+	if (endptr != NULL)
 		/* LINTED interface specification */
 		*endptr = (wchar_t *)(any ? s - 1 : nptr);
 	return(acc);

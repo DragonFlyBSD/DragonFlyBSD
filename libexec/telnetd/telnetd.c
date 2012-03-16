@@ -32,7 +32,6 @@
  *
  * @(#)telnetd.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/telnetd/telnetd.c,v 1.11.2.5 2002/04/13 10:59:09 markm Exp $
- * $DragonFly: src/crypto/telnet/telnetd/telnetd.c,v 1.3 2006/01/17 23:50:35 dillon Exp $
  */
 
 #include "telnetd.h"
@@ -889,11 +888,11 @@ telnet(int f, int p, char *host)
 		IM = Getstr("im", &cp);
 		if (HN && *HN)
 			(void) strlcpy(host_name, HN, sizeof(host_name));
-		if (IM == 0)
+		if (IM == NULL)
 			IM = strdup("");
 	} else {
 		IM = strdup(DEFAULT_IM);
-		HE = 0;
+		HE = NULL;
 	}
 	edithost(HE, host_name);
 	if (hostinfo && *IM)

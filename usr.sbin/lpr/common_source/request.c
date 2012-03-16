@@ -28,7 +28,6 @@
  *
  * @(#) Copyright (C) 1997, Massachusetts Institute of Technology
  * $FreeBSD: src/usr.sbin/lpr/common_source/request.c,v 1.2.2.1 2001/06/12 16:40:57 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/request.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -67,11 +66,11 @@ free_request(struct request *rp)
 		free(rp->prettyname);
 	if (rp->authinfo)
 		free(rp->authinfo);
-	while ((ru = TAILQ_FIRST(&rp->users)) != 0) {
+	while ((ru = TAILQ_FIRST(&rp->users)) != NULL) {
 		TAILQ_REMOVE(&rp->users, ru, ru_link);
 		free(ru);
 	}
-	while ((rj = TAILQ_FIRST(&rp->jobids)) != 0) {
+	while ((rj = TAILQ_FIRST(&rp->jobids)) != NULL) {
 		TAILQ_REMOVE(&rp->jobids, rj, rj_link);
 		free(rj);
 	}

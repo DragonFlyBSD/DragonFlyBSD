@@ -53,9 +53,9 @@ var_set1(struct var **head, const char *name, struct value *v)
 	if (val.v_type == V_STR && val.v_str != 0 &&
 	    (val.v_str = str_cpy(val.v_str)) == 0)
 		return 0;
-	if (*(p = var_lookup1(head, name)) == 0) {
+	if (*(p = var_lookup1(head, name)) == NULL) {
 		r = (struct var *) malloc(sizeof (struct var));
-		if (r == 0) {
+		if (r == NULL) {
 			val_free(val);
 			return 0;
 		}
@@ -100,11 +100,11 @@ var_unset1(struct var **head, const char *name)
 	struct var **p;
 	struct var *r;
 
-	if (*(p = var_lookup1(head, name)) == 0)
+	if (*(p = var_lookup1(head, name)) == NULL)
 		return -1;
 	r = *p;
 	*p = r->r_left;
-	while (*p != 0)
+	while (*p != NULL)
 		p = &(*p)->r_right;
 	*p = r->r_right;
 	val_free(r->r_val);
@@ -118,7 +118,7 @@ var_lookup1(struct var **p, const char *name)
 {
 	int cmp;
 
-	while (*p != 0) {
+	while (*p != NULL) {
 		if ((cmp = strcmp(name, (*p)->r_name)) < 0)
 			p = &(*p)->r_left;
 		else if (cmp > 0)
@@ -132,7 +132,7 @@ var_lookup1(struct var **p, const char *name)
 int
 var_walk1(struct var *r, int (*func) (void *, struct var *), void *a)
 {
-	if (r == 0)
+	if (r == NULL)
 		return 0;
 	if (var_walk1(r->r_left, func, a) < 0 || (*func)(a, r) < 0
 	    || var_walk1(r->r_right, func, a) < 0)

@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.23 2008/02/19 18:19:15 thomas Exp $
  */
 
 #include <sys/user.h>
@@ -229,7 +228,7 @@ main(int argc, char **argv)
 		setgid(getgid());
 
 	kd = kvm_openfiles(nlistf, memf, NULL, O_RDONLY, errbuf);
-	if (kd == 0) 
+	if (kd == NULL)
 		errx(1, "kvm_openfiles: %s", errbuf);
 
 	if ((c = kvm_nlist(kd, namelist)) != 0) {

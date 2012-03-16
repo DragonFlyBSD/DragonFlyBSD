@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * @(#)getmntinfo.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/getmntinfo.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -57,7 +56,7 @@ getmntinfo(struct statfs **mntbufp, int flags)
 		if (mntbuf)
 			free(mntbuf);
 		bufsize = (mntsize + 1) * sizeof(struct statfs);
-		if ((mntbuf = (struct statfs *)malloc(bufsize)) == 0)
+		if ((mntbuf = (struct statfs *)malloc(bufsize)) == NULL)
 			return (0);
 		if ((mntsize = getfsstat(mntbuf, bufsize, flags)) < 0)
 			return (0);

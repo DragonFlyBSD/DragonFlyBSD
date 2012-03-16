@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/lr0.c,v 1.6 1999/08/28 01:08:00 peter Exp $
- * $DragonFly: src/usr.bin/yacc/lr0.c,v 1.4 2004/04/07 20:43:24 cpressey Exp $
  *
  * @(#)lr0.c	5.3 (Berkeley) 1/20/91
  */
@@ -286,7 +285,7 @@ initialize_states(void)
 	continue;
 
     p = (core *) MALLOC(sizeof(core) + i*sizeof(short));
-    if (p == 0) no_space();
+    if (p == NULL) no_space();
 
     p->next = 0;
     p->link = 0;
@@ -312,7 +311,7 @@ new_itemsets(void)
     int symbol;
 
     for (i = 0; i < nsyms; i++)
-	kernel_end[i] = 0;
+	kernel_end[i] = NULL;
 
     shiftcount = 0;
     isp = itemset;

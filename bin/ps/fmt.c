@@ -32,7 +32,6 @@
  *
  * @(#)fmt.c	8.4 (Berkeley) 4/15/94
  * $FreeBSD: src/bin/ps/fmt.c,v 1.14.2.1 2002/03/16 01:15:11 mikeh Exp $
- * $DragonFly: src/bin/ps/fmt.c,v 1.7 2004/11/16 12:16:36 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -69,12 +68,12 @@ shquote(char **argv)
 			errx(1, "malloc failed");
 	}
 
-	if (*argv == 0) {
+	if (*argv == NULL) {
 		buf[0] = 0;
 		return (buf);
 	}
 	dst = buf;
-	for (p = argv; (src = *p++) != 0; ) {
+	for (p = argv; (src = *p++) != NULL; ) {
 		if (*src == 0)
 			continue;
 		len = (4 * arg_max - (dst - buf)) / 4;
@@ -106,7 +105,7 @@ fmt_argv(char **argv, char *cmd, int maxlen)
 	int len;
 	char *ap, *cp;
 
-	if (argv == 0 || argv[0] == 0) {
+	if (argv == NULL || argv[0] == NULL) {
 		if (cmd == NULL)
 			return ("");
 		ap = NULL;

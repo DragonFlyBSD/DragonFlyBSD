@@ -30,7 +30,6 @@
  *	BSDI cwd.c,v 2.2 1996/04/08 19:32:25 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/cwd.c,v 1.6.2.3 2002/04/25 11:04:50 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/cwd.c,v 1.3 2006/08/03 16:40:48 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -359,7 +358,7 @@ dos_to_real_path(u_char *dos_path, u_char *real_path, int *drivep)
      * There are no . or .. entries to worry about either
      */
 
-    while ((dir = *++dirs) != 0) {
+    while ((dir = *++dirs) != NULL) {
 	*rp++ = '/';
 	dos_to_real(dir, rp);
 	while (*rp)
@@ -480,7 +479,7 @@ real_to_dos(u_char *real, u_char *dos)
 	    }
 	    n = n->next;
 	}
-	if (n == 0) {
+	if (n == NULL) {
 	    ustrcpy(dos, real);
 	    return;
 	}
@@ -691,7 +690,7 @@ get_entries(u_char *path)
     	if (*p)
 	    *p++ = 0;
     }
-    *e = 0;
+    *e = NULL;
     return (entries);
 }
 
@@ -706,7 +705,7 @@ get_space(int drive, fsstat_t *fs)
     struct statfs *buf;
     int nfs;
     int i;
-    struct statfs *me = 0;
+    struct statfs *me = NULL;
 
     if (drive < 0 || drive >= MAX_DRIVE)
 	return (DISK_DRIVE_INVALID);
@@ -861,7 +860,7 @@ find_first(u_char *path, int attr, dosdir_t *dir, find_block_t *dta)
 	return (error);
 
     expr = new_path;
-    slash = 0;
+    slash = NULL;
     while (*expr != '\0') {
 	if (*expr == '\\' || *expr == '/')
 	    slash = expr;
@@ -918,7 +917,7 @@ find_next(dosdir_t *dir, find_block_t *dta)
     debug(D_REDIR, "find_next()\n");
 #endif
 
-    while ((d = readdir(search->dp)) != 0) {
+    while ((d = readdir(search->dp)) != NULL) {
     	real_to_dos((u_char *)d->d_name, name);
 	to_dos_fcb(dir->name, name);
 #if 0

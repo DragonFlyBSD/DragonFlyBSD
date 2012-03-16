@@ -212,7 +212,7 @@ wwiomux(void)
 		 * Update will eventually happen when output from wwcurwin
 		 * dies down.
 		 */
-		if ((w = wwcurwin) != 0 && w->ww_pty >= 0 &&
+		if ((w = wwcurwin) != NULL && w->ww_pty >= 0 &&
 		    w->ww_obq > w->ww_obp &&
 		    !ISSET(w->ww_pflags, WWP_STOPPED)) {
 			int n = wwwrite(w, w->ww_obp, w->ww_obq - w->ww_obp);

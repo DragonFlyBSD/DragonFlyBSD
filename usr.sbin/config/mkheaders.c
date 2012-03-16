@@ -32,7 +32,6 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkheaders.c,v 1.14.2.2 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.13 2005/01/12 00:26:03 cpressey Exp $
  */
 
 /*
@@ -198,7 +197,7 @@ do_header(const char *dev, char *hname, int count)
 		fl_head = fl;
 	}
 	outf = fopen(file, "w");
-	if (outf == 0)
+	if (outf == NULL)
 		err(1, "%s", file);
 	for (fl = fl_head; fl != NULL; fl = tflp) {
 		fprintf(outf,

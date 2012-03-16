@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/m4/gnum4.c,v 1.9 2004/05/18 15:53:58 stefanf Exp $
- * $DragonFly: src/usr.bin/m4/gnum4.c,v 1.3 2006/12/27 21:29:02 pavalos Exp $
  */
 
 /* 
@@ -80,7 +79,7 @@ new_path_entry(const char *dirname)
 	n->name = strdup(dirname);
 	if (!n->name)
 		errx(1, "out of memory");
-	n->next = 0;
+	n->next = NULL;
 	return n;
 }
 
@@ -133,7 +132,7 @@ dopath(struct input_file *i, const char *filename)
 
 	for (pe = first; pe; pe = pe->next) {
 		snprintf(path, sizeof(path), "%s/%s", pe->name, filename);
-		if ((f = fopen(path, "r")) != 0) {
+		if ((f = fopen(path, "r")) != NULL) {
 			set_input(i, f, path);
 			return i;
 		}

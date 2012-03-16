@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.lev.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.lev.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.lev.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 extern struct obj *billobjs;
@@ -44,7 +43,7 @@ savelev(int fd, xchar lev)
 	savetrapchn(fd, ftrap);
 	saveobjchn(fd, fobj);
 	saveobjchn(fd, billobjs);
-	billobjs = 0;
+	billobjs = NULL;
 	save_engravings(fd);
 #ifndef QUEST
 	bwrite(fd, (char *)rooms, sizeof(rooms));
@@ -61,7 +60,7 @@ savelev(int fd, xchar lev)
 			wtmp2 = wtmp->nseg;
 			bwrite(fd, (char *)wtmp, sizeof(struct wseg));
 		}
-		wsegs[tmp] = 0;
+		wsegs[tmp] = NULL;
 	}
 	bwrite(fd, (char *)wgrowtime, sizeof(wgrowtime));
 #endif /* NOWORM */

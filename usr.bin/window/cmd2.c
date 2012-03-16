@@ -103,7 +103,7 @@ c_help(void)
 {
 	struct ww *w;
 
-	if ((w = openiwin(wwnrow - 3, "Help")) == 0) {
+	if ((w = openiwin(wwnrow - 3, "Help")) == NULL) {
 		error("Can't open help window: %s.", wwerror());
 		return;
 	}

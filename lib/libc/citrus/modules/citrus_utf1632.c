@@ -1,5 +1,4 @@
 /* $NetBSD: citrus_utf1632.c,v 1.8 2008/03/20 11:47:45 tnozaki Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_utf1632.c,v 1.2 2008/04/10 10:21:02 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -94,7 +93,7 @@ _citrus_UTF1632_mbrtowc_priv(_UTF1632EncodingInfo *ei, wchar_t *pwc,
 	size_t result;
 	const char *s0;
 
-	_DIAGASSERT(nresult != 0);
+	_DIAGASSERT(nresult != NULL);
 	_DIAGASSERT(ei != NULL);
 	_DIAGASSERT(s != NULL);
 	_DIAGASSERT(psenc != NULL);
@@ -258,7 +257,7 @@ _citrus_UTF1632_wcrtomb_priv(_UTF1632EncodingInfo *ei, char *s, size_t n,
 	size_t cnt;
 
 	_DIAGASSERT(ei != NULL);
-	_DIAGASSERT(nresult != 0);
+	_DIAGASSERT(nresult != NULL);
 	_DIAGASSERT(s != NULL);
 
 	cnt = (size_t)0;

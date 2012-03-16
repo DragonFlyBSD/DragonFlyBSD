@@ -32,7 +32,6 @@
  *
  * @(#)ftpd.c	8.4 (Berkeley) 4/16/94
  * $FreeBSD: src/libexec/ftpd/ftpd.c,v 1.213 2008/12/23 01:23:09 cperciva Exp $
- * $DragonFly: src/libexec/ftpd/ftpd.c,v 1.7 2005/10/28 18:06:57 joerg Exp $
  */
 
 /*
@@ -197,10 +196,6 @@ int	swaitmax = SWAITMAX;
 int	swaitint = SWAITINT;
 
 #ifdef SETPROCTITLE
-#ifdef OLD_SETPROCTITLE
-char	**Argv = NULL;		/* pointer to argument vector */
-char	*LastArgv = NULL;	/* end of argv */
-#endif /* OLD_SETPROCTITLE */
 char	proctitle[LINE_MAX];	/* initial part of title */
 #endif /* SETPROCTITLE */
 
@@ -257,7 +252,7 @@ static char	*doublequote(char *);
 static int	*socksetup(int, char *, const char *);
 
 int
-main(int argc, char *argv[], char **envp)
+main(int argc, char *argv[])
 {
 	socklen_t addrlen;
 	int ch, on = 1, tos;
@@ -271,16 +266,6 @@ main(int argc, char *argv[], char **envp)
 	tzset();		/* in case no timezone database in ~ftp */
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART;
-
-#ifdef OLD_SETPROCTITLE
-	/*
-	 *  Save start and extent of argv for setproctitle.
-	 */
-	Argv = argv;
-	while (*envp)
-		envp++;
-	LastArgv = envp[-1] + strlen(envp[-1]);
-#endif /* OLD_SETPROCTITLE */
 
 	/*
 	 * Prevent diagnostic messages from appearing on stderr.
@@ -1653,7 +1638,7 @@ retrieve(char *cmd, char *name)
 	int (*closefunc)(FILE *);
 	time_t start;
 
-	if (cmd == 0) {
+	if (cmd == NULL) {
 		fin = fopen(name, "r"), closefunc = fclose;
 		st.st_size = 0;
 	} else {
@@ -1667,14 +1652,14 @@ retrieve(char *cmd, char *name)
 	if (fin == NULL) {
 		if (errno != 0) {
 			perror_reply(550, name);
-			if (cmd == 0) {
+			if (cmd == NULL) {
 				LOGCMD("get", name);
 			}
 		}
 		return;
 	}
 	byte_count = -1;
-	if (cmd == 0) {
+	if (cmd == NULL) {
 		if (fstat(fileno(fin), &st) < 0) {
 			perror_reply(550, name);
 			goto done;
@@ -1720,14 +1705,14 @@ retrieve(char *cmd, char *name)
 		goto done;
 	time(&start);
 	send_data(fin, dout, st.st_blksize, st.st_size,
-		  restart_point == 0 && cmd == 0 && S_ISREG(st.st_mode));
-	if (cmd == 0 && guest && stats && byte_count > 0)
+		  restart_point == 0 && cmd == NULL && S_ISREG(st.st_mode));
+	if (cmd == NULL && guest && stats && byte_count > 0)
 		logxfer(name, byte_count, start);
 	fclose(dout);
 	data = -1;
 	pdata = -1;
 done:
-	if (cmd == 0)
+	if (cmd == NULL)
 		LOGBYTES("get", name, byte_count);
 	(*closefunc)(fin);
 }
@@ -3267,41 +3252,6 @@ reapchild(int signo)
 {
 	while (waitpid(-1, NULL, WNOHANG) > 0);
 }
-
-#ifdef OLD_SETPROCTITLE
-/*
- * Clobber argv so ps will show what we're doing.  (Stolen from sendmail.)
- * Warning, since this is usually started from inetd.conf, it often doesn't
- * have much of an environment or arglist to overwrite.
- */
-void
-setproctitle(const char *fmt, ...)
-{
-	int i;
-	va_list ap;
-	char *p, *bp, ch;
-	char buf[LINE_MAX];
-
-	va_start(ap, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, ap);
-
-	/* make ps print our process name */
-	p = Argv[0];
-	*p++ = '-';
-
-	i = strlen(buf);
-	if (i > LastArgv - p - 2) {
-		i = LastArgv - p - 2;
-		buf[i] = '\0';
-	}
-	bp = buf;
-	while (ch = *bp++)
-		if (ch != '\n' && ch != '\r')
-			*p++ = ch;
-	while (p < LastArgv)
-		*p++ = ' ';
-}
-#endif /* OLD_SETPROCTITLE */
 
 static void
 appendf(char **strp, char *fmt, ...)

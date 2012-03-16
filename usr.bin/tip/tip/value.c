@@ -350,7 +350,7 @@ vstring(s,v)
 	char *expand();
 
 	p = vlookup(s);
-	if (p == 0)
+	if (p == NULL)
 		return (1);
 	if (p->v_type&NUMBER)
 		vassign(p, (char *)(intptr_t)atoi(v));

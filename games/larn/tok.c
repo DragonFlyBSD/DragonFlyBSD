@@ -1,6 +1,5 @@
 /* tok.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/tok.c,v 1.5 1999/11/16 02:57:25 billf Exp $ */
-/* $DragonFly: src/games/larn/tok.c,v 1.5 2006/10/08 17:11:30 pavalos Exp $ */
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
@@ -176,7 +175,7 @@ readopts(void)
 		return;                            /* user name if no character name */
 	}
 	do {
-		if ((i = (char *)lgetw()) == 0)
+		if ((i = (char *)lgetw()) == NULL)
 			break;	/* check for EOF */
 		while ((*i == ' ') || (*i == '\t'))
 			i++;	/* eat leading whitespace */
@@ -203,7 +202,7 @@ readopts(void)
 
 		case 'm':
 			if (strcmp(i, "monster:") == 0) {	/* name favorite monster */
-				if ((i = lgetw()) == 0)
+				if ((i = lgetw()) == NULL)
 					break;
 				if (strlen(i) >= MAXMNAME)
 					i[MAXMNAME - 1] = 0;
@@ -223,7 +222,7 @@ readopts(void)
 
 		case 'n':
 			if (strcmp(i, "name:") == 0) {	/* defining players name */
-				if ((i = lgetw()) == 0)
+				if ((i = lgetw()) == NULL)
 					break;
 				if (strlen(i) >= LOGNAMESIZE) i[LOGNAMESIZE - 1] = 0;
 				strcpy(logname, i);
@@ -236,7 +235,7 @@ readopts(void)
 
 		case 'p':
 			if (strcmp(i, "process-name:") == 0) {
-				if ((i = lgetw()) == 0)
+				if ((i = lgetw()) == NULL)
 					break;
 				if (strlen(i) >= PSNAMESIZE)
 					i[PSNAMESIZE - 1] = 0;
@@ -247,7 +246,7 @@ readopts(void)
 
 		case 's':
 			if (strcmp(i, "savefile:") == 0) {	/* defining savefilename */
-				if ((i = lgetw()) == 0)
+				if ((i = lgetw()) == NULL)
 					break;
 				strcpy(savefilename, i);
 				flag = 0;

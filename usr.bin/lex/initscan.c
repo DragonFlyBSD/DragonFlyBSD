@@ -188,7 +188,7 @@ struct yy_buffer_state
 #define YY_BUFFER_EOF_PENDING 2
 	};
 
-static YY_BUFFER_STATE yy_current_buffer = 0;
+static YY_BUFFER_STATE yy_current_buffer = NULL;
 
 /* We provide macros for accessing buffer states in case in the
  * future we want to put the buffer states in a more general
@@ -1355,7 +1355,7 @@ static int input YY_PROTO(( void ));
 #if YY_STACK_USED
 static int yy_start_stack_ptr = 0;
 static int yy_start_stack_depth = 0;
-static int *yy_start_stack = 0;
+static int *yy_start_stack = NULL;
 #ifndef YY_NO_PUSH_STATE
 static void yy_push_state YY_PROTO(( int new_state ));
 #endif
@@ -2947,7 +2947,7 @@ static int yy_get_next_buffer()
 				}
 			else
 				/* Can't grow it, we don't own it. */
-				b->yy_ch_buf = 0;
+				b->yy_ch_buf = NULL;
 
 			if ( ! b->yy_ch_buf )
 				YY_FATAL_ERROR(
@@ -3380,7 +3380,7 @@ yy_size_t size;
 	b->yy_buf_size = size - 2;	/* "- 2" to take care of EOB's */
 	b->yy_buf_pos = b->yy_ch_buf = base;
 	b->yy_is_our_buffer = 0;
-	b->yy_input_file = 0;
+	b->yy_input_file = NULL;
 	b->yy_n_chars = b->yy_buf_size;
 	b->yy_is_interactive = 0;
 	b->yy_at_bol = 1;

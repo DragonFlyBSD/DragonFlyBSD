@@ -1,7 +1,6 @@
 /*
  *	movem.c (move monster)		Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/movem.c,v 1.4 1999/11/16 02:57:23 billf Exp $
- * $DragonFly: src/games/larn/movem.c,v 1.3 2006/08/26 17:05:05 pavalos Exp $
  *
  *	Here are the functions in this file:
  *
@@ -355,7 +354,7 @@ mmove(int aa, int bb, int cc, int dd)
 	if (c[BLINDCOUNT])	/* if blind don't show where monsters are */
 		return;
 	if (know[cc][dd] & 1) {
-		p = 0;
+		p = NULL;
 		if (flag)
 			cursors();
 		switch (flag) {
@@ -401,7 +400,7 @@ movsphere(void)
 
 	/* first duplicate sphere list */
 	/* look through sphere list */
-	for (sp = 0, x = 0, sp2 = spheres; sp2; sp2 = sp2->p)
+	for (sp = NULL, x = 0, sp2 = spheres; sp2; sp2 = sp2->p)
 		if (sp2->lev == level) {	/* only if this level */
 			sph[x] = *sp2;
 			sph[x++].p = 0;		/* copy the struct */

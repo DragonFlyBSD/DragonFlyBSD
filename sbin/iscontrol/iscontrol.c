@@ -148,7 +148,7 @@ main(int cc, char **vv)
      if((p = strrchr(pname, '/')) != NULL)
 	  pname = p + 1;
 
-     kw = ta = 0;
+     kw = ta = NULL;
      disco = 0;
 
      while((ch = getopt(cc, vv, OPTIONS)) != -1) {

@@ -604,7 +604,6 @@ kgetdiskbyname(const char *name)
 	/*
 	 * Locate the device
 	 */
-	kprintf("tryroot %s\n", name);
 	rdev = devfs_find_device_by_name(name);
 	if (rdev == NULL) {
 		kprintf("no disk named '%s'\n", name);

@@ -28,7 +28,6 @@
  *
  * @(#)dr_3.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/dr_3.c,v 1.6 1999/11/30 03:49:32 billf Exp $
- * $DragonFly: src/games/sail/dr_3.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "driver.h"
@@ -63,7 +62,7 @@ moveall(void)
 			ta = maxturns(sp, &af);
 			ma = maxmove(sp, sp->file->dir, 0);
 			closest = closestenemy(sp, 0, 0);
-			if (closest == 0)
+			if (closest == NULL)
 				*sp->file->movebuf = '\0';
 			else
 				closeon(sp, closest, sp->file->movebuf,
@@ -331,7 +330,7 @@ checksails(void)
 			rig = 0;
 		if (rig && sp->specs->crew3) {
 			closest = closestenemy(sp, 0, 0);
-			if (closest != 0) {
+			if (closest != NULL) {
 				if (range(sp, closest) > 9)
 					full = 1;
 				else

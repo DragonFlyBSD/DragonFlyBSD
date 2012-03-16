@@ -675,7 +675,7 @@ single_user(void)
 			write(2, banner, sizeof banner - 1);
 			for (;;) {
 				clear = getpass("Password:");
-				if (clear == 0 || *clear == '\0')
+				if (clear == NULL || *clear == '\0')
 					_exit(0);
 				password = crypt(clear, pp->pw_passwd);
 				bzero(clear, _PASSWORD_LEN);
@@ -718,7 +718,7 @@ single_user(void)
 		 * If the default one doesn't work, try the Bourne shell.
 		 */
 		argv[0] = "-sh";
-		argv[1] = 0;
+		argv[1] = NULL;
 		execv(shell, __DECONST(char **, argv));
 		emergency("can't exec %s for single user: %m", shell);
 		execv(_PATH_BSHELL, __DECONST(char **, argv));
@@ -737,7 +737,7 @@ single_user(void)
 		return (state_func_t) single_user;
 	}
 
-	requested_transition = 0;
+	requested_transition = NULL;
 	do {
 		if ((wpid = waitpid(-1, &status, WUNTRACED)) != -1)
 			collect_child(wpid);
@@ -798,7 +798,7 @@ runcom(void)
 		argv[0] = "sh";
 		argv[1] = _PATH_RUNCOM;
 		argv[2] = runcom_mode == AUTOBOOT ? "autoboot" : 0;
-		argv[3] = 0;
+		argv[3] = NULL;
 
 		sigprocmask(SIG_SETMASK, &sa.sa_mask, NULL);
 
@@ -822,7 +822,7 @@ runcom(void)
 	/*
 	 * Copied from single_user().  This is a bit paranoid.
 	 */
-	requested_transition = 0;
+	requested_transition = NULL;
 	do {
 		if ((wpid = waitpid(-1, &status, WUNTRACED)) != -1)
 			collect_child(wpid);
@@ -881,7 +881,7 @@ start_session_db(void)
 {
 	if (session_db && (*session_db->close)(session_db))
 		emergency("session database close: %s", strerror(errno));
-	if ((session_db = dbopen(NULL, O_RDWR, 0, DB_HASH, NULL)) == 0) {
+	if ((session_db = dbopen(NULL, O_RDWR, 0, DB_HASH, NULL)) == NULL) {
 		emergency("session database open: %s", strerror(errno));
 		return (1);
 	}
@@ -956,7 +956,7 @@ construct_argv(char *command)
 	char **argv = malloc(((strlen(command) + 1) / 2 + 1)
 						* sizeof (char *));
 
-	if ((argv[argc++] = strk(command)) == 0) {
+	if ((argv[argc++] = strk(command)) == NULL) {
 		free(argv);
 		return (NULL);
 	}
@@ -1027,10 +1027,10 @@ new_session(session_t *sprev, int session_index, struct ttyent *typ)
 		return (0);
 	}
 
-	sp->se_next = 0;
-	if (sprev == 0) {
+	sp->se_next = NULL;
+	if (sprev == NULL) {
 		sessions = sp;
-		sp->se_prev = 0;
+		sp->se_prev = NULL;
 	} else {
 		sprev->se_next = sp;
 		sp->se_prev = sprev;
@@ -1055,11 +1055,11 @@ setupargv(session_t *sp, struct ttyent *typ)
 	sprintf(sp->se_getty, "%s %s", typ->ty_getty, typ->ty_name);
 	sp->se_getty_argv_space = strdup(sp->se_getty);
 	sp->se_getty_argv = construct_argv(sp->se_getty_argv_space);
-	if (sp->se_getty_argv == 0) {
+	if (sp->se_getty_argv == NULL) {
 		warning("can't parse getty for port %s", sp->se_device);
 		free(sp->se_getty);
 		free(sp->se_getty_argv_space);
-		sp->se_getty = sp->se_getty_argv_space = 0;
+		sp->se_getty = sp->se_getty_argv_space = NULL;
 		return (0);
 	}
 	if (sp->se_window) {
@@ -1067,18 +1067,18 @@ setupargv(session_t *sp, struct ttyent *typ)
 		free(sp->se_window_argv_space);
 		free(sp->se_window_argv);
 	}
-	sp->se_window = sp->se_window_argv_space = 0;
-	sp->se_window_argv = 0;
+	sp->se_window = sp->se_window_argv_space = NULL;
+	sp->se_window_argv = NULL;
 	if (typ->ty_window) {
 		sp->se_window = strdup(typ->ty_window);
 		sp->se_window_argv_space = strdup(sp->se_window);
 		sp->se_window_argv = construct_argv(sp->se_window_argv_space);
-		if (sp->se_window_argv == 0) {
+		if (sp->se_window_argv == NULL) {
 			warning("can't parse window for port %s",
 				sp->se_device);
 			free(sp->se_window_argv_space);
 			free(sp->se_window);
-			sp->se_window = sp->se_window_argv_space = 0;
+			sp->se_window = sp->se_window_argv_space = NULL;
 			return (0);
 		}
 	}
@@ -1127,7 +1127,7 @@ read_ttys(void)
 		snext = sp->se_next;
 		free_session(sp);
 	}
-	sessions = 0;
+	sessions = NULL;
 	if (start_session_db())
 		return (state_func_t) single_user;
 
@@ -1178,10 +1178,10 @@ start_window_system(session_t *sp)
 		strcpy(term, "TERM=");
 		strncat(term, sp->se_type, sizeof(term) - 6);
 		env[0] = term;
-		env[1] = 0;
+		env[1] = NULL;
 	}
 	else
-		env[0] = 0;
+		env[0] = NULL;
 	execve(sp->se_window_argv[0], sp->se_window_argv, env);
 	stall("can't exec window system '%s' for port %s: %m",
 		sp->se_window_argv[0], sp->se_device);
@@ -1242,10 +1242,10 @@ start_getty(session_t *sp)
 		strcpy(term, "TERM=");
 		strncat(term, sp->se_type, sizeof(term) - 6);
 		env[0] = term;
-		env[1] = 0;
+		env[1] = NULL;
 	}
 	else
-		env[0] = 0;
+		env[0] = NULL;
 	execve(sp->se_getty_argv[0], sp->se_getty_argv, env);
 	stall("can't exec getty '%s' for port %s: %m",
 		sp->se_getty_argv[0], sp->se_device);
@@ -1317,7 +1317,7 @@ transition_handler(int sig)
 		requested_transition = catatonia;
 		break;
 	default:
-		requested_transition = 0;
+		requested_transition = NULL;
 		break;
 	}
 }
@@ -1331,7 +1331,7 @@ multi_user(void)
 	pid_t pid;
 	session_t *sp;
 
-	requested_transition = 0;
+	requested_transition = NULL;
 
 	/*
 	 * If the administrator has not set the security level to -1
@@ -1389,7 +1389,7 @@ clean_ttys(void)
 	while ((typ = getttyent()) != NULL) {
 		++session_index;
 
-		for (sprev = 0, sp = sessions; sp; sprev = sp, sp = sp->se_next)
+		for (sprev = NULL, sp = sessions; sp; sprev = sp, sp = sp->se_next)
 			if (strcmp(typ->ty_name, sp->se_device + devlen) == 0)
 				break;
 
@@ -1587,7 +1587,7 @@ runshutdown(void)
 			argv[2] = "reboot";
 		else
 			argv[2] = "single";
-		argv[3] = 0;
+		argv[3] = NULL;
 
 		sigprocmask(SIG_SETMASK, &sa.sa_mask, NULL);
 
@@ -1688,7 +1688,7 @@ strk(char *p)
     while (c == ' ' || c == '\t' )
 	c = *++t;
     if (!c) {
-	t = 0;
+	t = NULL;
 	return 0;
     }
     q = t;
@@ -1698,7 +1698,7 @@ strk(char *p)
 	while (c && c != '\'')
 	    c = *++t;
 	if (!c)  /* unterminated string */
-	    q = t = 0;
+	    q = t = NULL;
 	else
 	    *t++ = 0;
     } else {
@@ -1706,7 +1706,7 @@ strk(char *p)
 	    c = *++t;
 	*t++ = 0;
 	if (!c)
-	    t = 0;
+	    t = NULL;
     }
     return q;
 }

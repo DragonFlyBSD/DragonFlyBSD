@@ -30,7 +30,6 @@
  *	BSDI port.c,v 2.2 1996/04/08 19:33:03 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/port.c,v 1.5.2.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/port.c,v 1.6 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/ioctl.h>
@@ -54,7 +53,7 @@
 #define out(port, data) \
         asm volatile ("outb %%al,%%dx" : : "a" (data), "d" (port))
 
-FILE *iolog = 0;
+FILE *iolog = NULL;
 u_long ioports[MAXPORT/32];
 #ifdef __DragonFly__
 static void
@@ -211,9 +210,9 @@ init_io_port_handlers(void)
     int i;
 
     for (i = 0; i < MAXPORT; i++) {
-	if (portsw[i].p_inb == 0)
+	if (portsw[i].p_inb == NULL)
 	    portsw[i].p_inb = inb_nullport;
-	if (portsw[i].p_outb == 0)
+	if (portsw[i].p_outb == NULL)
 	    portsw[i].p_outb = outb_nullport;
     }
 

@@ -148,7 +148,7 @@ changeitems(char *args, int onoff)
 			continue;
 		}
 		hp = gethostbyname(args);
-		if (hp == 0) {
+		if (hp == NULL) {
 			in.s_addr = inet_addr(args);
 			if ((int)in.s_addr == -1) {
 				error("%s: unknown host or port", args);
@@ -164,7 +164,7 @@ static int
 selectproto(char *proto)
 {
 
-	if (proto == 0 || streq(proto, "all"))
+	if (proto == NULL || streq(proto, "all"))
 		protos = TCP | UDP;
 	else if (streq(proto, "tcp"))
 		protos = TCP;
@@ -199,9 +199,9 @@ selectport(long port, int onoff)
 	struct pitem *p;
 
 	if (port == -1) {
-		if (ports == 0)
+		if (ports == NULL)
 			return (0);
-		free((char *)ports), ports = 0;
+		free((char *)ports), ports = NULL;
 		nports = 0;
 		return (1);
 	}
@@ -257,10 +257,10 @@ selecthost(struct in_addr *in, int onoff)
 {
 	struct hitem *p;
 
-	if (in == 0) {
-		if (hosts == 0)
+	if (in == NULL) {
+		if (hosts == NULL)
 			return (0);
-		free((char *)hosts), hosts = 0;
+		free((char *)hosts), hosts = NULL;
 		nhosts = 0;
 		return (1);
 	}

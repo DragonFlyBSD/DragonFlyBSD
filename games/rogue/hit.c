@@ -31,7 +31,6 @@
  *
  * @(#)hit.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/hit.c,v 1.6 1999/11/30 03:49:22 billf Exp $
- * $DragonFly: src/games/rogue/hit.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -67,7 +66,7 @@ mon_hit(object *monster)
 	float minus;
 
 	if (fight_monster && (monster != fight_monster)) {
-		fight_monster = 0;
+		fight_monster = NULL;
 	}
 	monster->trow = NO_ROOM;
 	if (cur_level >= (AMULET_LEVEL * 2)) {
@@ -298,7 +297,7 @@ mon_damage(object *monster, short damage)
 		dungeon[row][col] &= ~MONSTER;
 		mvaddch(row, col, (int)get_dungeon_char(row, col));
 
-		fight_monster = 0;
+		fight_monster = NULL;
 		cough_up(monster);
 		mn = mon_name(monster);
 		sprintf(hit_message+strlen(hit_message), "defeated the %s", mn);
@@ -357,11 +356,11 @@ fight(boolean to_the_death)
 		one_move_rogue(ch, 0);
 		if (((!to_the_death) && (rogue.hp_current <= possible_damage)) ||
 			interrupted || (!(dungeon[row][col] & MONSTER))) {
-			fight_monster = 0;
+			fight_monster = NULL;
 		} else {
 			monster = object_at(&level_monsters, row, col);
 			if (monster != fight_monster) {
-				fight_monster = 0;
+				fight_monster = NULL;
 			}
 		}
 	}

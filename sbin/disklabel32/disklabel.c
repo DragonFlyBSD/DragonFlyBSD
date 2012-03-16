@@ -161,7 +161,7 @@ main(int argc, char *argv[])
 	struct disklabel32 *lp;
 	FILE *t;
 	int ch, f = 0, flag, error = 0;
-	char *name = 0;
+	char *name = NULL;
 
 	while ((ch = getopt(argc, argv, OPTIONS)) != -1)
 		switch (ch) {
@@ -233,7 +233,7 @@ main(int argc, char *argv[])
 	} else {
 		if (op == UNSPEC)
 			op = READ;
-		xxboot = bootxx = 0;
+		xxboot = bootxx = NULL;
 	}
 #else
 	if (op == UNSPEC)
@@ -605,7 +605,7 @@ makebootarea(char *boot, struct disklabel32 *dp, int f)
 	 * only if it does already contain some data.  (Otherwise,
 	 * the xxboot provides a template.)
 	 */
-	if ((tmpbuf = (char *)malloc((int)dp->d_secsize)) == 0)
+	if ((tmpbuf = (char *)malloc((int)dp->d_secsize)) == NULL)
 		err(4, "%s", xxboot);
 	memcpy((void *)tmpbuf, (void *)boot, (int)dp->d_secsize);
 #endif /* i386 */
@@ -643,7 +643,7 @@ makebootarea(char *boot, struct disklabel32 *dp, int f)
 		/* XXX assume d_secsize is a power of two */
 		bootsize = (bootsize + dp->d_secsize-1) & ~(dp->d_secsize-1);
 		bootbuf = (char *)malloc((size_t)bootsize);
-		if (bootbuf == 0)
+		if (bootbuf == NULL)
 			err(4, "%s", xxboot);
 		if (read(b, bootbuf, bootsize) < 0) {
 			free(bootbuf);
@@ -856,7 +856,7 @@ getasciilabel(FILE *f, struct disklabel32 *lp)
 	lp->d_sbsize = SBSIZE;				/* XXX */
 	while (fgets(line, sizeof(line) - 1, f)) {
 		lineno++;
-		if ((cp = strchr(line,'\n')) != 0)
+		if ((cp = strchr(line,'\n')) != NULL)
 			*cp = '\0';
 		cp = skip(line);
 		if (cp == NULL)
@@ -1608,7 +1608,7 @@ setbootflag(struct disklabel32 *lp)
 	char part;
 	u_long boffset;
 
-	if (bootbuf == 0)
+	if (bootbuf == NULL)
 		return;
 	boffset = bootsize / lp->d_secsize;
 	for (i = 0; i < lp->d_npartitions; i++) {

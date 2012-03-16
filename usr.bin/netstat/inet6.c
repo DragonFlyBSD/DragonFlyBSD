@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/netstat/inet6.c,v 1.3.2.11 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet6.c,v 1.7 2006/05/21 03:43:47 dillon Exp $
  *
  * @(#)inet6.c	8.4 (Berkeley) 4/20/94
  */
@@ -1041,7 +1040,7 @@ rip6_stats(u_long off __unused, const char *name, int af1 __unused)
 void
 inet6print(struct in6_addr *in6, int port, char *proto, int numeric)
 {
-	struct servent *sp = 0;
+	struct servent *sp = NULL;
 	char line[80], *cp;
 	int width;
 
@@ -1081,7 +1080,7 @@ inet6name(struct in6_addr *in6p)
 		else
 			domain[0] = 0;
 	}
-	cp = 0;
+	cp = NULL;
 	if (!numeric_addr && !IN6_IS_ADDR_UNSPECIFIED(in6p)) {
 		hp = gethostbyaddr(in6p, sizeof(*in6p), AF_INET6);
 		if (hp) {

@@ -1132,8 +1132,9 @@ after_listen:
 			tp->ts_recent = to.to_tsval;
 			tp->ts_recent_age = ticks;
 		}
-		if (to.to_flags & TOF_MSS)
-			tcp_mss(tp, to.to_mss);
+		if (!(to.to_flags & TOF_MSS))
+			to.to_mss = 0;
+		tcp_mss(tp, to.to_mss);
 		/*
 		 * Only set the TF_SACK_PERMITTED per-connection flag
 		 * if we got a SACK_PERMITTED option from the other side

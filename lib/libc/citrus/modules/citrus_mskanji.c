@@ -1,5 +1,4 @@
 /* $NetBSD: citrus_mskanji.c,v 1.12 2007/03/05 16:57:06 tnozaki Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_mskanji.c,v 1.2 2008/04/10 10:21:02 hasso Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -181,7 +180,7 @@ _citrus_MSKanji_mbrtowc_priv(_MSKanjiEncodingInfo * __restrict ei,
 	int chlenbak;
 	const char *s0;
 
-	_DIAGASSERT(nresult != 0);
+	_DIAGASSERT(nresult != NULL);
 	_DIAGASSERT(ei != NULL);
 	_DIAGASSERT(s != NULL);
 	_DIAGASSERT(psenc != NULL);

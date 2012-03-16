@@ -32,7 +32,6 @@
  *
  * @(#)preen.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/preen.c,v 1.16 1999/12/30 16:32:40 peter Exp $
- * $DragonFly: src/sbin/fsck/preen.c,v 1.10 2006/10/19 21:22:13 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -87,12 +86,12 @@ checkfstab(int do_preen, int maxrun, int (*docheck)(struct fstab *),
 			    _PATH_FSTAB);
 			return (8);
 		}
-		while ((fsp = getfsent()) != 0) {
+		while ((fsp = getfsent()) != NULL) {
 			if ((auxdata = (*docheck)(fsp)) == 0)
 				continue;
 			if (do_preen == 0 ||
 			    (passno == 1 && fsp->fs_passno == 1)) {
-				if ((name = blockcheck(fsp->fs_spec)) != 0) {
+				if ((name = blockcheck(fsp->fs_spec)) != NULL) {
 					if ((sumstatus = (*chkit)(name,
 					    fsp->fs_file, auxdata, 0)) != 0)
 						return (sumstatus);
@@ -128,7 +127,7 @@ checkfstab(int do_preen, int maxrun, int (*docheck)(struct fstab *),
 			for (dk = disks; dk; dk = dk->next)
 				if (dk->pid == pid)
 					break;
-			if (dk == 0) {
+			if (dk == NULL) {
 				printf("Unknown pid %d\n", pid);
 				continue;
 			}
@@ -180,7 +179,7 @@ checkfstab(int do_preen, int maxrun, int (*docheck)(struct fstab *),
 		}
 	}
 	if (sumstatus) {
-		if (badlist == 0)
+		if (badlist == NULL)
 			return (sumstatus);
 		fprintf(stderr, "THE FOLLOWING FILE SYSTEM%s HAD AN %s\n\t",
 			badlist->next ? "S" : "", "UNEXPECTED INCONSISTENCY:");

@@ -417,7 +417,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 				if (msa.sa.sa_family != sa->sa_family)
 					continue;
 				
-				fmt = 0;
+				fmt = NULL;
 				switch (msa.sa.sa_family) {
 				case AF_INET:
 					fmt = routename(msa.in.sin_addr.s_addr);

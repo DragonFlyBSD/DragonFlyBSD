@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1980, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)umount.c	8.8 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/umount/umount.c,v 1.28 2001/10/13 02:04:54 iedowse Exp $
- * $DragonFly: src/sbin/umount/umount.c,v 1.4 2005/11/06 12:51:01 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -680,7 +679,7 @@ getrealname(char *name, char *realname)
 	size_t baselen;
 	size_t dirlen;
 	
-	dirname = '\0';
+	dirname = NULL;
 	havedir = 0;
 	if (*name == '/') {
 		if (ISDOT(name + 1) || ISDOTDOT(name + 1))

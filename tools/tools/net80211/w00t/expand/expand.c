@@ -323,7 +323,7 @@ void got_mcast(struct params *p, struct ieee80211_frame *wh, int len)
 
 void read_wifi(struct params *p)
 {
-	static char *buf = 0;
+	static char *buf = NULL;
 	static int buflen = 4096;
 	struct ieee80211_frame *wh;
 	int rc;

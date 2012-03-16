@@ -29,7 +29,6 @@
  *
  * @(#)rpcdname.c 1.7 91/03/11 Copyr 1989 Sun Micro
  * $FreeBSD: src/lib/libc/rpc/rpcdname.c,v 1.5 2004/10/16 06:11:35 obrien Exp $
- * $DragonFly: src/lib/libc/rpc/rpcdname.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -43,7 +42,7 @@
 #include <string.h>
 #include "un-namespace.h"
 
-static char *default_domain = 0;
+static char *default_domain = NULL;
 
 static char *
 get_default_domain(void)
@@ -56,7 +55,7 @@ get_default_domain(void)
 		return (0);
 	if ((int) strlen(temp) > 0) {
 		default_domain = (char *)malloc((strlen(temp)+(unsigned)1));
-		if (default_domain == 0)
+		if (default_domain == NULL)
 			return (0);
 		strcpy(default_domain, temp);
 		return (default_domain);
@@ -73,7 +72,7 @@ get_default_domain(void)
 int
 __rpc_get_default_domain(char **domain)
 {
-	if ((*domain = get_default_domain()) != 0)
+	if ((*domain = get_default_domain()) != NULL)
 		return (0);
 	return (-1);
 }

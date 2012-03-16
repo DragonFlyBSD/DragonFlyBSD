@@ -32,7 +32,6 @@
  *
  * @(#)telnet.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/telnet/telnet.c,v 1.4.2.5 2002/04/13 10:59:08 markm Exp $
- * $DragonFly: src/crypto/telnet/telnet/telnet.c,v 1.3 2005/03/28 18:03:32 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -110,7 +109,7 @@ int
 	doaddrlookup = 1, /* do a reverse address lookup? */
 	clienteof = 0;
 
-char *prompt = 0;
+char *prompt = NULL;
 #ifdef ENCRYPTION
 char *line;		/* hack around breakage in sra.c :-( !! */
 #endif
@@ -535,7 +534,7 @@ mklist(char *buf, char *name)
 
 	if (name) {
 		if (strlen(name) > 40) {
-			name = 0;
+			name = NULL;
 			unknown[0] = name_unknown;
 		} else {
 			unknown[0] = name;
@@ -554,13 +553,13 @@ mklist(char *buf, char *name)
 	 * Allocate an array to put the name pointers into
 	 */
 	argv = (char **)malloc((n+3)*sizeof(char *));
-	if (argv == 0)
+	if (argv == NULL)
 		return(unknown);
 
 	/*
 	 * Fill up the array of pointers to names.
 	 */
-	*argv = 0;
+	*argv = NULL;
 	argvp = argv+1;
 	n = 0;
 	for (cp = cp2 = buf; (c = *cp);  cp++) {
@@ -620,9 +619,9 @@ mklist(char *buf, char *name)
 	 */
 	cp = *(argvp-1);
 	*argvp++ = cp;
-	*argvp = 0;
+	*argvp = NULL;
 
-	if (*argv == 0) {
+	if (*argv == NULL) {
 		if (name)
 			*argv = name;
 		else {
@@ -678,7 +677,7 @@ static const char *
 gettermname(void)
 {
 	char *tname;
-	static const char **tnamep = 0;
+	static const char **tnamep = NULL;
 	static const char **next;
 	int err;
 
@@ -699,7 +698,7 @@ gettermname(void)
 		}
 		next = tnamep;
 	}
-	if (*next == 0)
+	if (*next == NULL)
 		next = tnamep;
 	return(*next++);
 }
@@ -1100,7 +1099,7 @@ slc_init(void)
 	localchars = 1;
 	for (spcp = spc_data; spcp < &spc_data[NSLC+1]; spcp++) {
 		spcp->val = 0;
-		spcp->valp = 0;
+		spcp->valp = NULL;
 		spcp->flags = spcp->mylevel = SLC_NOSUPPORT;
 	}
 
@@ -1406,7 +1405,7 @@ int old_env_value = OLD_ENV_VALUE;
 void
 env_opt(unsigned char *buf, int len)
 {
-	unsigned char *ep = 0, *epc = 0;
+	unsigned char *ep = NULL, *epc = NULL;
 	int i;
 
 	switch(buf[0]&0xff) {

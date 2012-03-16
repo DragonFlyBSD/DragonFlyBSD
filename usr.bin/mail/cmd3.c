@@ -32,7 +32,6 @@
  *
  * @(#)cmd3.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/cmd3.c,v 1.4.6.4 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/cmd3.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -705,6 +704,6 @@ alternates(char **namelist)
 		strcpy(cp, *ap);
 		*ap2 = cp;
 	}
-	*ap2 = 0;
+	*ap2 = NULL;
 	return (0);
 }

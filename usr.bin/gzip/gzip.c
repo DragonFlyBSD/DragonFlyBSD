@@ -1,5 +1,4 @@
 /*	$NetBSD: gzip.c,v 1.94 2009/04/12 10:31:14 lukem Exp $	*/
-/*	$DragonFly: src/usr.bin/gzip/gzip.c,v 1.7 2007/12/06 19:54:52 hasso Exp $ */
 
 /*
  * Copyright (c) 1997, 1998, 2003, 2004, 2006 Matthew R. Green
@@ -1812,7 +1811,7 @@ handle_dir(char *dir)
 	FTSENT *entry;
 
 	path_argv[0] = dir;
-	path_argv[1] = 0;
+	path_argv[1] = NULL;
 	fts = fts_open(path_argv, FTS_PHYSICAL | FTS_NOCHDIR, NULL);
 	if (fts == NULL) {
 		warn("couldn't fts_open %s", dir);

@@ -612,7 +612,7 @@ printproto(struct protox *tp, const char *name)
 int
 kread(u_long addr, char *buf, int size)
 {
-	if (kvmd == 0) {
+	if (kvmd == NULL) {
 		/*
 		 * XXX.
 		 */

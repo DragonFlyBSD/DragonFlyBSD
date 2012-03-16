@@ -30,7 +30,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcompat/4.1/getpw.c,v 1.5 1999/08/28 00:04:12 peter Exp $
- * $DragonFly: src/lib/libcompat/4.1/getpw.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -52,7 +51,7 @@ getpw(uid, buf)
   pw = getpwuid(uid);
   endpwent();
 
-  if(pw == 0) return -1;
+  if(pw == NULL) return -1;
 
   strncpy(buf, pw->pw_name, L_cuserid);
   return 0;

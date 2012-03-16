@@ -1,8 +1,8 @@
-    GCC-4.4.7 PRE-RELEASE
-    =====================
+    GCC-4.4.7 RELEASE
+    =================
 
     This directory contains a selected set of files from the GNU
-    gcc-4.4.7 snapshot distribution.
+    gcc-4.4.7 release distribution.
 
     ON THE VENDOR BRANCH (vendor/GCC44), DO NOT CREATE OR EDIT ANY FILES
     IN THIS DIRECTORY HIERARCHY!  THIS HIERARCHY REPRESENTS AN EXACT COPY,
@@ -11,10 +11,10 @@
     All modifications are made in the master or release branches!
     The file README.DELETED contains a list of deleted files.
 
-    file = gcc-4.4-20111025.tar.bz2
-    date = 26 October 2011
-    size = 59618628
-    sha1 = b480c0066d41b74d3c65e863f585ab09eee4697a
+    file = gcc-4.4-7.tar.bz2
+    date = 13 March 2012
+    size = 63179340
+    sha1 = a6c834b0c2f58583da1d093de7a81a20ede9af75
 
 
     The following files have been added or patched:
@@ -29,6 +29,7 @@
     /libgcc/config.host
     /gcc/c-format.c
     /gcc/c-opts.c
+    /gcc/cfgloop.c
     /gcc/crtstuff.c
     /gcc/tree-inline.c
     /gcc/unwind-dw2-fde-glibc.c

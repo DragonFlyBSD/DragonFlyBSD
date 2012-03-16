@@ -32,7 +32,6 @@
  *
  * @(#)cmd2.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/cmd2.c,v 1.5.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/cmd2.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -377,7 +376,7 @@ clobber(char **argv)
 {
 	int times;
 
-	if (argv[0] == 0)
+	if (argv[0] == NULL)
 		times = 1;
 	else
 		times = (atoi(argv[0]) + 511) / 512;
@@ -443,7 +442,7 @@ ignore1(char **list, struct ignoretab *tab, const char *which)
 
 	if (*list == NULL)
 		return (igshow(tab, which));
-	for (ap = list; *ap != 0; ap++) {
+	for (ap = list; *ap != NULL; ap++) {
 		istrncpy(field, *ap, sizeof(field));
 		if (member(field, tab))
 			continue;
@@ -478,9 +477,9 @@ igshow(struct ignoretab *tab, const char *which)
 	for (h = 0; h < HSHSIZE; h++)
 		for (igp = tab->i_head[h]; igp != NULL; igp = igp->i_link)
 			*ap++ = igp->i_field;
-	*ap = 0;
+	*ap = NULL;
 	qsort(ring, tab->i_count, sizeof(char *), igcomp);
-	for (ap = ring; *ap != 0; ap++)
+	for (ap = ring; *ap != NULL; ap++)
 		printf("%s\n", *ap);
 	return (0);
 }

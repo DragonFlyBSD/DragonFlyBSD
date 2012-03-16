@@ -32,7 +32,6 @@
  *
  * @(#)pass4.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass4.c,v 1.7.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass4.c,v 1.7 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -136,7 +135,7 @@ pass4check(struct inodesc *idesc)
 				free((char *)dlp);
 				break;
 			}
-			if (dlp == 0) {
+			if (dlp == NULL) {
 				clrbmap(blkno);
 				n_blks--;
 			}

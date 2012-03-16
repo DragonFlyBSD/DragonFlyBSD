@@ -1,5 +1,4 @@
 /* $NetBSD: fputwc.c,v 1.4 2005/06/12 05:21:27 lukem Exp $ */
-/* $DragonFly: src/lib/libc/stdio/fputwc.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
 
 /*-
  * Copyright (c)2001 Citrus Project,
@@ -60,7 +59,7 @@ __fputwc_unlock(wchar_t wc, FILE *fp)
 
 	_SET_ORIENTATION(fp, 1);
 	wcio = WCIO_GET(fp);
-	if (wcio == 0) {
+	if (wcio == NULL) {
 		errno = ENOMEM;
 		return WEOF;
 	}

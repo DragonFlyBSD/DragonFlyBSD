@@ -32,7 +32,6 @@
  *
  * @(#)acksend.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/acksend.c,v 1.4 1999/08/28 01:20:16 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/acksend.c,v 1.4 2004/09/05 01:59:44 dillon Exp $
  */
 
 #include "globals.h"
@@ -89,7 +88,7 @@ acksend(struct tsp *message,		/* this message */
 
 	msec = 200;
 	count = bad ? 1 : 5;	/* 5 packets in 6.4 seconds */
-	answer = 0;
+	answer = NULL;
 	do {
 		if (!answer) {
 			/* do not go crazy transmitting just because the
@@ -106,7 +105,7 @@ acksend(struct tsp *message,		/* this message */
 
 		mstotvround(&twait, msec);
 		answer  = readmsg(ack, name, &twait, net);
-		if (answer != 0) {
+		if (answer != NULL) {
 			if (answer->tsp_seq != sequence) {
 				if (trace)
 					fprintf(fd,"acksend: seq # %u!=%u\n",

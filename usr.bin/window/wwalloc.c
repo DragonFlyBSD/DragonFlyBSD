@@ -45,7 +45,7 @@ wwalloc(int row, int col, int nrow, int ncol, int size)
 	/* fast, call malloc only once */
 	pp = (char **)
 		malloc((unsigned) sizeof (char **) * nrow + size * nrow * ncol);
-	if (pp == 0) {
+	if (pp == NULL) {
 		wwerrno = WWE_NOMEM;
 		return 0;
 	}

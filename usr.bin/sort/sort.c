@@ -113,7 +113,7 @@ main(int argc, char *argv[])
 {
 	int ch, i, stdinflag = 0;
 	char cflag = 0, mflag = 0;
-	char *outfile, *outpath = 0;
+	char *outfile, *outpath = NULL;
 	struct field *fldtab;
 	size_t fldtab_sz, fld_cnt;
 	size_t alloc_size;

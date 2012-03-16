@@ -30,7 +30,6 @@
  *	BSDI config.c,v 2.2 1996/04/08 19:32:22 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/config.c,v 1.4.2.1 2002/04/25 11:04:50 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/config.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -59,7 +58,7 @@ read_config(FILE *fp)
     int ac;
     int bootdrive = -1;
 
-    while ((buffer = fgets(_buffer, sizeof(_buffer), fp)) != 0) {
+    while ((buffer = fgets(_buffer, sizeof(_buffer), fp)) != NULL) {
 	char *comment = strchr(buffer, '#');
 	char *equal;
 

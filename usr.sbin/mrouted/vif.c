@@ -10,7 +10,6 @@
  * vif.c,v 3.8.4.56.2.1 1999/01/20 05:18:50 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/vif.c,v 1.15 1999/08/28 01:17:09 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/vif.c,v 1.4 2004/03/15 18:10:28 dillon Exp $
  */
 
 #include "defs.h"
@@ -902,21 +901,21 @@ accept_neighbor_request(u_int32 src, u_int32 dst)
 	if (v->uv_flags & VIFF_DISABLED)
 	    continue;
 
-	ncount = 0;
+	ncount = NULL;
 
 	for (la = v->uv_neighbors; la; la = la->al_next) {
 
 	    /* Make sure that there's room for this neighbor... */
-	    if (datalen + (ncount == 0 ? 4 + 3 + 4 : 4) > MAX_DVMRP_DATA_LEN) {
+	    if (datalen + (ncount == NULL ? 4 + 3 + 4 : 4) > MAX_DVMRP_DATA_LEN) {
 		send_igmp(INADDR_ANY, them, IGMP_DVMRP, DVMRP_NEIGHBORS,
 			  htonl(MROUTED_LEVEL), datalen);
 		p = (u_char *) (send_buf + MIN_IP_HEADER_LEN + IGMP_MINLEN);
 		datalen = 0;
-		ncount = 0;
+		ncount = NULL;
 	    }
 
 	    /* Put out the header for this neighbor list... */
-	    if (ncount == 0) {
+	    if (ncount == NULL) {
 		PUT_ADDR(v->uv_lcl_addr);
 		*p++ = v->uv_metric;
 		*p++ = v->uv_threshold;
@@ -968,7 +967,7 @@ accept_neighbor_request2(u_int32 src, u_int32 dst)
 	    rflags |= DVMRP_NF_QUERIER;
 	if (vflags & VIFF_LEAF)
 	    rflags |= DVMRP_NF_LEAF;
-	ncount = 0;
+	ncount = NULL;
 	la = v->uv_neighbors;
 	if (la == NULL) {
 	    /*
@@ -995,15 +994,15 @@ accept_neighbor_request2(u_int32 src, u_int32 dst)
 	} else {
 	    for ( ; la; la = la->al_next) {
 		/* Make sure that there's room for this neighbor... */
-		if (datalen + (ncount == 0 ? 4+4+4 : 4) > MAX_DVMRP_DATA_LEN) {
+		if (datalen + (ncount == NULL ? 4+4+4 : 4) > MAX_DVMRP_DATA_LEN) {
 		    send_igmp(INADDR_ANY, them, IGMP_DVMRP, DVMRP_NEIGHBORS2,
 			      htonl(MROUTED_LEVEL), datalen);
 		    p = (u_char *) (send_buf + MIN_IP_HEADER_LEN + IGMP_MINLEN);
 		    datalen = 0;
-		    ncount = 0;
+		    ncount = NULL;
 		}
 		/* Put out the header for this neighbor list... */
-		if (ncount == 0) {
+		if (ncount == NULL) {
 		    /* If it's a one-way tunnel, mark it down. */
 		    if (rflags & DVMRP_NF_TUNNEL && la->al_flags & NBRF_ONEWAY)
 			rflags |= DVMRP_NF_DOWN;

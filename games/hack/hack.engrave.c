@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.engrave.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.engrave.c,v 1.4 1999/11/16 02:57:04 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.engrave.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 
@@ -154,7 +153,7 @@ doengrave(void)
 		return (0);
 
 	if (otmp == &zeroobj)
-		otmp = 0;
+		otmp = NULL;
 	if (otmp && otmp->otyp == WAN_FIRE && otmp->spe) {
 		type = BURN;
 		otmp->spe--;
@@ -202,7 +201,7 @@ doengrave(void)
 	if (oep && oep->engr_type == DUST) {
 		pline("You wipe out the message that was written here.");
 		del_engr(oep);
-		oep = 0;
+		oep = NULL;
 	}
 	if (type == DUST && oep) {
 		pline("You cannot wipe out the message that is %s in the rock.",
@@ -294,7 +293,7 @@ save_engravings(int fd)
 		ep = ep->nxt_engr;
 	}
 	bwrite(fd, (char *)nul, sizeof(unsigned));
-	head_engr = 0;
+	head_engr = NULL;
 }
 
 void
@@ -303,7 +302,7 @@ rest_engravings(int fd)
 	struct engr *ep;
 	unsigned lth;
 
-	head_engr = 0;
+	head_engr = NULL;
 	for (;;) {
 		mread(fd, (char *)&lth, sizeof(unsigned));
 		if (lth == 0)

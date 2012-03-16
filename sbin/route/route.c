@@ -428,9 +428,9 @@ routename(struct sockaddr *sa)
 char *
 netname(struct sockaddr *sa)
 {
-	const char *cp = 0;
+	const char *cp = NULL;
 	static char line[MAXHOSTNAMELEN + 1];
-	struct netent *np = 0;
+	struct netent *np = NULL;
 	u_long net, mask;
 	u_long i;
 	int subnetshift;
@@ -579,7 +579,7 @@ newroute(int argc, char **argv)
 	const char *err_str, *dest = "", *gateway = "";
 	int ishost = 0, proxy = 0, ret, attempts, oerrno, flags = RTF_STATIC;
 	int key;
-	struct hostent *hp = 0;
+	struct hostent *hp = NULL;
 
 	if (uid != 0) {
 		errx(EX_NOPERM, "must be root to alter routing table");

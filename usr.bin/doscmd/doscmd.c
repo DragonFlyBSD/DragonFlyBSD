@@ -30,7 +30,6 @@
  *	BSDI doscmd.c,v 2.3 1996/04/08 19:32:30 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/doscmd.c,v 1.13.2.6 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/doscmd.c,v 1.4 2004/01/21 21:48:21 rob Exp $
  */
 
 #include <sys/types.h>
@@ -97,7 +96,7 @@ static unsigned	ecnt = 0;
 static char 	*envs[256];
 
 /* Search path and command name */
-static char	*dos_path = 0;
+static char	*dos_path = NULL;
 char		cmdname[256];	/* referenced from dos.c */
 
 static struct vm86_init_args kargs;
@@ -447,7 +446,7 @@ setup_command(int argc, char *argv[], regcontext_t *REGS)
 	put_dosenv("PROMPT=DOS> ");
 
     /* terminate environment */
-    envs[ecnt] = 0;
+    envs[ecnt] = NULL;
 
     /* XXX ??? */
     if (dos_getcwd(drlton('R')) == NULL)
@@ -542,7 +541,7 @@ do_args(int argc, char *argv[])
 	    debug_flags |= D_DISK | D_FILE_OPS;
 	    break;
 	case 'd':
-	    if ((fp = fopen(optarg, "w")) != 0) {
+	    if ((fp = fopen(optarg, "w")) != NULL) {
 		debugf = fp;
 		setbuf (fp, NULL);
 	    } else
@@ -564,7 +563,7 @@ do_args(int argc, char *argv[])
 	    break;
 	case 'i':
 	    i = 1;
-	    if ((col = strchr(optarg, ':')) != 0) {
+	    if ((col = strchr(optarg, ':')) != NULL) {
 		*col++ = 0;
 		i = strtol(col, 0, 0);
 	    }
@@ -589,7 +588,7 @@ do_args(int argc, char *argv[])
 	    break;
 	case 'o':
 	    i = 1;
-	    if ((col = strchr(optarg, ':')) != 0) {
+	    if ((col = strchr(optarg, ':')) != NULL) {
 		*col++ = 0;
 		i = strtol(col, 0, 0);
 	    }
@@ -604,7 +603,7 @@ do_args(int argc, char *argv[])
 	    break;
 	case 'p':
 	    i = 1;
-	    if ((col = strchr(optarg, ':')) != 0) {
+	    if ((col = strchr(optarg, ':')) != NULL) {
 		*col++ = 0;
 		i = strtol(col, 0, 0);
 	    }
@@ -847,7 +846,7 @@ typedef struct COQ {
     struct COQ	*next;
 } COQ;
 
-COQ *coq = 0;
+COQ *coq = NULL;
 
 void
 quit(int status)

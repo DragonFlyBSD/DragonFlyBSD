@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)repquota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/repquota/repquota.c,v 1.9.2.2 2002/03/15 22:18:25 mikeh Exp $
- * $DragonFly: src/usr.sbin/repquota/repquota.c,v 1.7 2006/04/03 01:58:49 dillon Exp $
  */
 
 /*
@@ -133,13 +132,13 @@ main(int argc, char **argv)
 	}
 	if (gflag) {
 		setgrent();
-		while ((gr = getgrent()) != 0)
+		while ((gr = getgrent()) != NULL)
 			addid((u_long)gr->gr_gid, GRPQUOTA, gr->gr_name);
 		endgrent();
 	}
 	if (uflag) {
 		setpwent();
-		while ((pw = getpwent()) != 0)
+		while ((pw = getpwent()) != NULL)
 			addid((u_long)pw->pw_uid, USRQUOTA, pw->pw_name);
 		endpwent();
 	}
@@ -211,7 +210,7 @@ repquota(struct fstab *fs, int type, char *qfpathname)
 			break;
 		if (dqbuf.dqb_curinodes == 0 && dqbuf.dqb_curblocks == 0)
 			continue;
-		if ((fup = lookup(id, type)) == 0)
+		if ((fup = lookup(id, type)) == NULL)
 			fup = addid(id, type, NULL);
 		fup->fu_dqblk = dqbuf;
 	}
@@ -222,7 +221,7 @@ repquota(struct fstab *fs, int type, char *qfpathname)
 		max(UT_NAMESIZE,10), " ");
 	for (id = 0; id <= highid[type]; id++) {
 		fup = lookup(id, type);
-		if (fup == 0)
+		if (fup == NULL)
 			continue;
 		if (fup->fu_dqblk.dqb_curinodes == 0 &&
 		    fup->fu_dqblk.dqb_curblocks == 0)
@@ -315,7 +314,7 @@ lookup(u_long id, int type)
 {
 	struct fileusage *fup;
 
-	for (fup = fuhead[type][id & (FUHASH-1)]; fup != 0; fup = fup->fu_next)
+	for (fup = fuhead[type][id & (FUHASH-1)]; fup != NULL; fup = fup->fu_next)
 		if (fup->fu_id == id)
 			return (fup);
 	return (NULL);

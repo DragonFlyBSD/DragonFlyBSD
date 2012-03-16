@@ -257,7 +257,7 @@ psshfs_fs_fhtonode(struct puffs_usermount *pu, void *fid, size_t fidsize,
 
 	if (pf->mounttime != pctx->mounttime)
 		return EINVAL;
-	if (pn == 0)
+	if (pn == NULL)
 		return EINVAL;
 	psn = pn->pn_data;
 	if ((psn->stat & PSN_HASFH) == 0)

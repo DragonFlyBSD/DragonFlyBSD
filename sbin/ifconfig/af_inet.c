@@ -126,10 +126,10 @@ in_getaddr(const char *s, int which)
 
 	if (inet_aton(s, &sin->sin_addr))
 		return;
-	if ((hp = gethostbyname(s)) != 0)
+	if ((hp = gethostbyname(s)) != NULL)
 		bcopy(hp->h_addr, (char *)&sin->sin_addr, 
 		    MIN(hp->h_length, sizeof(sin->sin_addr)));
-	else if ((np = getnetbyname(s)) != 0)
+	else if ((np = getnetbyname(s)) != NULL)
 		sin->sin_addr = inet_makeaddr(np->n_net, INADDR_ANY);
 	else
 		errx(1, "%s: bad value", s);

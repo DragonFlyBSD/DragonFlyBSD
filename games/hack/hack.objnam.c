@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.objnam.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.objnam.c,v 1.3 1999/11/16 02:57:08 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.objnam.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 #define	Sprintf	(void) sprintf
@@ -362,7 +361,7 @@ readobjnam(char *bp)
 
 	cnt = spe = spesgn = typ = heavy = 0;
 	let = 0;
-	an = dn = un = 0;
+	an = dn = un = NULL;
 	for (p = bp; *p; p++)
 		if ('A' <= *p && *p <= 'Z')
 			*p += 'a' - 'A';

@@ -32,7 +32,6 @@
  *
  * @(#)rsaencpwd.c	8.3 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/libtelnet/rsaencpwd.c,v 1.1.1.1.8.1 2002/04/13 10:59:07 markm Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/rsaencpwd.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #ifdef	RSA_ENCPWD
@@ -152,7 +151,7 @@ rsaencpwd_init(ap, server)
 		str_data[3] = TELQUAL_REPLY;
 		memset(key_file, 0, sizeof(key_file));
 		gethostname(lhostname, sizeof(lhostname));
-		if ((cp = strchr(lhostname, '.')) != 0)  *cp = '\0';
+		if ((cp = strchr(lhostname, '.')) != NULL)  *cp = '\0';
 		strcpy(key_file, "/etc/.");
 		strcat(key_file, lhostname);
 		strcat(key_file, "_privkey");

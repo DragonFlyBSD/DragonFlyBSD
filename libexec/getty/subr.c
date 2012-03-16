@@ -32,7 +32,6 @@
  *
  * @(#)from: subr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/getty/subr.c,v 1.16.2.1 2001/05/12 10:16:51 kris Exp $
- * $DragonFly: src/libexec/getty/subr.c,v 1.4 2004/03/26 00:30:12 cpressey Exp $
  */
 
 /*
@@ -78,7 +77,7 @@ gettable(const char *name, char *buf)
 	static int firsttime = 1;
 
 	dba[0] = _PATH_GETTYTAB;
-	dba[1] = 0;
+	dba[1] = NULL;
 
 	if (firsttime) {
 		/*

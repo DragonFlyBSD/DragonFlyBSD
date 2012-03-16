@@ -34,7 +34,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lpc.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpc/lpc.c,v 1.13.2.11 2002/07/26 03:12:07 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpc/lpc.c,v 1.7 2006/01/14 22:58:18 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -97,7 +96,7 @@ main(int argc, char **argv)
 			printf("?Ambiguous command\n");
 			exit(1);
 		}
-		if (c == 0) {
+		if (c == NULL) {
 			printf("?Invalid command\n");
 			exit(1);
 		}
@@ -199,7 +198,7 @@ cmdscanner(void)
 			printf("?Ambiguous command\n");
 			continue;
 		}
-		if (c == 0) {
+		if (c == NULL) {
 			printf("?Invalid command\n");
 			continue;
 		}
@@ -233,7 +232,7 @@ getcmd(const char *name)
 
 	longest = 0;
 	nmatches = 0;
-	found = 0;
+	found = NULL;
 	for (c = cmdtab; (p = c->c_name); c++) {
 		for (q = name; *q == *p++; q++)
 			if (*q == 0)		/* exact match? */
@@ -277,7 +276,7 @@ makeargv(void)
 			break;
 		*cp++ = '\0';
 	}
-	*argp++ = 0;
+	*argp++ = NULL;
 }
 
 #define HELPINDENT (sizeof ("directory"))

@@ -786,13 +786,13 @@ _thr_isthreaded(void)
 static inline int
 _thr_is_inited(void)
 {
-	return (_thr_initial != 0);
+	return (_thr_initial != NULL);
 }
 
 static inline void
 _thr_check_init(void)
 {
-	if (_thr_initial == 0)
+	if (_thr_initial == NULL)
 		_libpthread_init(0);
 }
 

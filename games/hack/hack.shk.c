@@ -1,13 +1,12 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.shk.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.shk.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.shk.c,v 1.6 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 #ifdef QUEST
 int shlevel = 0;
-struct monst *shopkeeper = 0;
-struct obj *billobjs = 0;
+struct monst *shopkeeper = NULL;
+struct obj *billobjs = NULL;
 
 void
 obfree(struct obj *obj, struct obj *merge)
@@ -96,7 +95,7 @@ shkname(void)
 
 /* Descriptor of current shopkeeper. Note that the bill need not be
  * per-shopkeeper, since it is valid only when in a shop. */
-static struct monst *shopkeeper = 0;
+static struct monst *shopkeeper = NULL;
 static struct bill_x *bill;
 static int shlevel = 0;		/* level of this shopkeeper */
 struct obj *billobjs;		/* objects on bill with bp->useup */
@@ -145,7 +144,7 @@ shkdead(struct monst *mtmp)		/* called in mon.c */
 		rooms[eshk->shoproom].rtype = 0;
 	if (mtmp == shopkeeper) {
 		setpaid();
-		shopkeeper = 0;
+		shopkeeper = NULL;
 		bill = (struct bill_x *) - 1000; /* dump core when referenced */
 	}
 }
@@ -221,7 +220,7 @@ inshop(void)
 				    == (rn2(3) == 0))
 					ESHK(shopkeeper)->following = 1;
 			}
-			shopkeeper = 0;
+			shopkeeper = NULL;
 			shlevel = 0;
 		}
 		u.uinshop = 0;
@@ -311,7 +310,7 @@ findshk(int roomno)
 			/* (and it is harmless to have too many things in billobjs) */
 			return;
 		}
-	shopkeeper = 0;
+	shopkeeper = NULL;
 	shlevel = 0;
 	bill = (struct bill_x *) - 1000;	/* dump core when referenced */
 }
@@ -660,7 +659,7 @@ subfrombill(struct obj *obj)
 	    (u.ux == ESHK(shopkeeper)->shk.x && u.uy == ESHK(shopkeeper)->shk.y) ||
 	    (u.ux == ESHK(shopkeeper)->shd.x && u.uy == ESHK(shopkeeper)->shd.y))
 		return;
-	if ((bp = onbill(obj)) != 0) {
+	if ((bp = onbill(obj)) != NULL) {
 		obj->unpaid = 0;
 		if (bp->bquan > obj->quan) {
 			otmp = newobj(0);
@@ -888,7 +887,7 @@ shk_move(struct monst *shkp)
 	boolean uondoor = 0, satdoor, avoid = 0, badinv;
 	coord poss[9];
 	int info[9];
-	struct obj *ib = 0;
+	struct obj *ib = NULL;
 
 	omx = shkp->mx;
 	omy = shkp->my;

@@ -31,7 +31,6 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ping.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/ping6/ping6.c,v 1.30 2007/04/19 15:41:00 mtm Exp $
- * $DragonFly: src/sbin/ping6/ping6.c,v 1.10 2008/09/04 10:13:10 hasso Exp $
  */
 
 /*	BSDI	ping.c,v 2.3 1996/01/21 17:56:50 jch Exp	*/
@@ -232,7 +231,7 @@ u_short naflags;
 /* for ancillary data(advanced API) */
 struct msghdr smsghdr;
 struct iovec smsgiov;
-char *scmsg = 0;
+char *scmsg = NULL;
 
 volatile sig_atomic_t seenalrm;
 volatile sig_atomic_t seenint;
@@ -819,7 +818,7 @@ main(int argc, char **argv)
 
 	/* set IP6 packet options */
 	if (ip6optlen) {
-		if ((scmsg = (char *)malloc(ip6optlen)) == 0)
+		if ((scmsg = (char *)malloc(ip6optlen)) == NULL)
 			errx(1, "can't allocate enough memory");
 		smsghdr.msg_control = (caddr_t)scmsg;
 		smsghdr.msg_controllen = ip6optlen;

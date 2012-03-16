@@ -95,7 +95,6 @@ setnetpath(void)
 	return (NULL);
     }
     if ((np_sessionp->nc_handlep = setnetconfig()) == NULL) {
-	free(np_sessionp);
 	syslog (LOG_ERR, "rpc: failed to open " NETCONFIG);
 	goto failed;
     }
@@ -260,7 +259,7 @@ _get_next_token(char *npp,		/* string */
     *cp++ = '\0';		/* null-terminate token */
     /* get rid of any backslash escapes */
     ep = npp;
-    while ((np = strchr(ep, '\\')) != 0) {
+    while ((np = strchr(ep, '\\')) != NULL) {
 	if (np[1] == '\\')
 	    np++;
 	strcpy(np, (ep = &np[1]));  /* XXX: overlapping string copy */

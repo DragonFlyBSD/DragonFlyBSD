@@ -24,7 +24,6 @@
  * There is an e-mail list for tcpdump: <tcpdump@ee.lbl.gov>
  *
  * $FreeBSD: src/libexec/bootpd/tools/bootptest/print-bootp.c,v 1.6.2.1 2001/10/14 21:39:54 iedowse Exp $
- * $DragonFly: src/libexec/bootpd/tools/bootptest/print-bootp.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <stdio.h>
@@ -109,8 +108,8 @@ bootp_print(struct bootp *bp, int length, u_short sport, u_short dport)
 		else if (bp->bp_op == BOOTREPLY)
 			e = (char *) EDST(eh);
 		else
-			e = 0;
-		if (e == 0 || bcmp((char *) bp->bp_chaddr, e, 6))
+			e = NULL;
+		if (e == NULL || bcmp((char *) bp->bp_chaddr, e, 6))
 			dump_hex(bp->bp_chaddr, bp->bp_hlen);
 	}
 	/* Only print interesting fields */

@@ -1,5 +1,4 @@
 /* $NetBSD: citrus_none.c,v 1.17 2005/12/02 11:14:20 yamt Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_none.c,v 1.5 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -330,7 +329,7 @@ _citrus_NONE_ctype_wctomb(void * __restrict cl, char * __restrict s,
 	int ret;
 	size_t nr;
 
-	if (s == 0) {
+	if (s == NULL) {
 		/*
 		 * initialize state here.
 		 * (nothing to do for us.)

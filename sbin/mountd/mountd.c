@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mountd.c	8.15 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/mountd/mountd.c,v 1.39.2.5 2002/09/13 15:57:43 joerg Exp $
- * $DragonFly: src/sbin/mountd/mountd.c,v 1.9 2008/02/05 20:49:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1061,7 +1060,7 @@ get_exportlist(void)
 				    grp = grp->gr_next;
 				}
 				if (netgrp) {
-				    if (hst == 0) {
+				    if (hst == NULL) {
 					syslog(LOG_ERR,
 				"null hostname in netgroup %s, skipping", cp);
 					grp->gr_type = GT_IGNORE;

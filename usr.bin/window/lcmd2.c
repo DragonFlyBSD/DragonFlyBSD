@@ -52,7 +52,7 @@ l_iostat(struct value *v __unused, struct value *a __unused)
 {
 	struct ww *w;
 
-	if ((w = openiwin(16, "IO Statistics")) == 0) {
+	if ((w = openiwin(16, "IO Statistics")) == NULL) {
 		error("Can't open statistics window: %s.", wwerror());
 		return;
 	}
@@ -106,7 +106,7 @@ l_time(struct value *v __unused, struct value *a)
 	struct rusage rusage;
 	struct timeval timeval;
 
-	if ((w = openiwin(8, "Timing and Resource Usage")) == 0) {
+	if ((w = openiwin(8, "Timing and Resource Usage")) == NULL) {
 		error("Can't open time window: %s.", wwerror());
 		return;
 	}
@@ -183,12 +183,12 @@ l_list(struct value *v __unused, struct value *a __unused)
 		error("No windows.");
 		return;
 	}
-	if ((w = openiwin(n + 2, "Windows")) == 0) {
+	if ((w = openiwin(n + 2, "Windows")) == NULL) {
 		error("Can't open listing window: %s.", wwerror());
 		return;
 	}
 	for (i = 0; i < NWINDOW; i++) {
-		if ((wp = window[i]) == 0)
+		if ((wp = window[i]) == NULL)
 			continue;
 		wwprintf(w, "%c %c %-13s %-.*s\n",
 			wp == selwin ? '+' : (wp == lastselwin ? '-' : ' '),
@@ -206,7 +206,7 @@ l_variable(struct value *v __unused, struct value *a __unused)
 {
 	struct ww *w;
 
-	if ((w = openiwin(wwnrow - 3, "Variables")) == 0) {
+	if ((w = openiwin(wwnrow - 3, "Variables")) == NULL) {
 		error("Can't open variable window: %s.", wwerror());
 		return;
 	}
@@ -256,7 +256,7 @@ l_def_shell(struct value *v, struct value *a)
 		v->v_type = V_STR;
 		for (pp = default_shell + 1; *pp; pp++) {
 			str_free(*pp);
-			*pp = 0;
+			*pp = NULL;
 		}
 	}
 	for (pp = default_shell, vp = a;
@@ -264,7 +264,7 @@ l_def_shell(struct value *v, struct value *a)
 	     pp < &default_shell[sizeof default_shell/sizeof *default_shell-1];
 	     pp++, vp++)
 		if ((*pp = vp->v_type == V_STR ?
-		     str_cpy(vp->v_str) : str_itoa(vp->v_num)) == 0) {
+		     str_cpy(vp->v_str) : str_itoa(vp->v_num)) == NULL) {
 			/* just leave default_shell[] the way it is */
 			p_memerror();
 			break;
@@ -289,7 +289,7 @@ l_alias(struct value *v, struct value *a)
 	if (a->v_type == V_ERR) {
 		struct ww *w;
 
-		if ((w = openiwin(wwnrow - 3, "Aliases")) == 0) {
+		if ((w = openiwin(wwnrow - 3, "Aliases")) == NULL) {
 			error("Can't open alias window: %s.", wwerror());
 			return;
 		}
@@ -297,7 +297,7 @@ l_alias(struct value *v, struct value *a)
 			waitnl(w);
 		closeiwin(w);
 	} else {
-		struct alias *ap = 0;
+		struct alias *ap = NULL;
 
 		if ((ap = alias_lookup(a->v_str))) {
 			if ((v->v_str = str_cpy(ap->a_buf)) == 0) {
@@ -315,7 +315,7 @@ l_alias(struct value *v, struct value *a)
 			for (n = 0, vp = a + 1; vp->v_type != V_ERR; vp++, n++)
 				for (p = vp->v_str; *p; p++, n++)
 					;
-			if ((str = str_alloc(n)) == 0) {
+			if ((str = str_alloc(n)) == NULL) {
 				p_memerror();
 				return;
 			}
@@ -324,7 +324,7 @@ l_alias(struct value *v, struct value *a)
 				for (p = vp->v_str; (*q++ = *p++);)
 					;
 			q[-1] = 0;
-			if ((ap = alias_set(a[0].v_str, (char *)0)) == 0) {
+			if ((ap = alias_set(a[0].v_str, (char *)0)) == NULL) {
 				p_memerror();
 				str_free(str);
 				return;
@@ -369,7 +369,7 @@ l_echo(struct value *v __unused, struct value *a)
 	char buf[20];
 	struct ww *w;
 
-	if ((w = vtowin(a++, selwin)) == 0)
+	if ((w = vtowin(a++, selwin)) == NULL)
 		return;
 	while (a->v_type != V_ERR) {
 		if (a->v_type == V_NUM) {

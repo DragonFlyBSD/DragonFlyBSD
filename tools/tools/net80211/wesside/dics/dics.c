@@ -317,7 +317,7 @@ int main(int argc, char *argv[]) {
 	struct sockaddr_in s_in;
 	struct timeval tv;
 	fd_set rfds;
-	unsigned char* sip = 0;
+	unsigned char* sip = NULL;
 
 	if (argc < 2) {
 		printf("Usage: %s <sip> [pps]\n", argv[0]);

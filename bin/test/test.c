@@ -431,7 +431,7 @@ t_lex(char *s)
 {
 	struct t_op const *op = ops;
 
-	if (s == 0) {
+	if (s == NULL) {
 		t_wp_op = NULL;
 		return EOI;
 	}

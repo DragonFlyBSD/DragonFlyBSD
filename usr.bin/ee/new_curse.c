@@ -38,7 +38,6 @@
  |	All are rights reserved.
  |
  | $FreeBSD: src/usr.bin/ee/new_curse.c,v 1.4.2.1 2001/06/10 11:06:06 sobomax Exp $
- | $DragonFly: src/usr.bin/ee/new_curse.c,v 1.4 2005/10/30 23:00:57 swildner Exp $
  |
  */
 
@@ -2784,7 +2783,7 @@ delwin(WINDOW *window)		/* delete the window structure			*/
 		free(window->first_line->prev_screen);
 	}
 	if (window == last_window_refreshed)
-		last_window_refreshed = 0;
+		last_window_refreshed = NULL;
 	if (window->first_line != NULL)
 	{
 		free(window->first_line->row);

@@ -28,7 +28,6 @@
  *
  * @(#)getprotoname.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/getprotoname.c,v 1.7 2007/01/09 00:28:02 imp Exp $
- * $DragonFly: src/lib/libc/net/getprotoname.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <netdb.h>
@@ -81,7 +80,7 @@ files_getprotobyname(void *retval, void *mdata, va_list ap)
 	while ((error = __getprotoent_p(&pe, ped)) == 0) {
 		if (strcmp(pe.p_name, name) == 0)
 			break;
-		for (cp = pe.p_aliases; *cp != 0; cp++)
+		for (cp = pe.p_aliases; *cp != NULL; cp++)
 			if (strcmp(*cp, name) == 0)
 				goto found;
 	}

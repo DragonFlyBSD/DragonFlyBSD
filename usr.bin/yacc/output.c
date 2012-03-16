@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/output.c,v 1.13.2.3 2001/10/05 03:03:14 obrien Exp $
- * $DragonFly: src/usr.bin/yacc/output.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
  *
  * @(#)output.c	5.7 (Berkeley) 5/24/93
  */
@@ -965,12 +964,12 @@ output_debug(void)
     fprintf(code_file, "#define YYMAXTOKEN %d\n", max);
 
     symnam = MALLOC((max+1)*sizeof(char *));
-    if (symnam == 0) no_space();
+    if (symnam == NULL) no_space();
 
     /* Note that it is  not necessary to initialize the element		*/
     /* symnam[max].							*/
     for (i = 0; i < max; ++i)
-	symnam[i] = 0;
+	symnam[i] = NULL;
     for (i = ntokens - 1; i >= 2; --i)
 	symnam[symbol_value[i]] = symbol_name[i];
     symnam[0] = "end-of-file";
@@ -1325,9 +1324,9 @@ increase_maxtable(int loc)
 
     do { newmax += 200; } while (newmax <= loc);
     table = (short *) REALLOC(table, newmax*sizeof(short));
-	if (table == 0) no_space();
+	if (table == NULL) no_space();
 	check = (short *) REALLOC(check, newmax*sizeof(short));
-	if (check == 0) no_space();
+	if (check == NULL) no_space();
 	for (l  = maxtable; l < newmax; ++l)
 	{
 	    table[l] = 0;

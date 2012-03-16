@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1983, 1988, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rlogind.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rlogind/rlogind.c,v 1.29.2.5 2000/12/07 15:02:31 ru Exp $
- * $DragonFly: src/libexec/rlogind/rlogind.c,v 1.5 2007/05/18 17:05:12 dillon Exp $
  */
 
 /*
@@ -608,7 +607,7 @@ setup_term(int fd)
 #endif
 
 	env[0] = term;
-	env[1] = 0;
+	env[1] = NULL;
 	environ = env;
 }
 

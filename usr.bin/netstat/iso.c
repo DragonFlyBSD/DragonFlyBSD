@@ -35,7 +35,6 @@
 
 /*
  * $FreeBSD: src/usr.bin/netstat/iso.c,v 1.4.2.2 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/iso.c,v 1.5 2007/04/22 01:25:04 dillon Exp $
  */
 /*******************************************************************************
 	          Copyright IBM Corporation 1987
@@ -302,7 +301,7 @@ tp_protopr(u_long off, const char *name, int af __unused)
 	kget(off, tpkerninfo);
 	size = tpkerninfo.tpr_size * sizeof (*tpr);
 	tpr_base = (struct tp_ref *)malloc(size);
-	if (tpr_base == 0)
+	if (tpr_base == NULL)
 		return;
 	kread((u_long)(tpkerninfo.tpr_base), (char *)tpr_base, size);
 	for (tpr = tpr_base; tpr < tpr_base + tpkerninfo.tpr_size; tpr++) {
@@ -361,7 +360,7 @@ char *
 isonetname(struct iso_addr *iso)
 {
 	struct sockaddr_iso sa;
-	struct iso_hostent *ihe = 0;
+	struct iso_hostent *ihe = NULL;
 	struct iso_hostent *iso_gethostentrybyaddr();
 	struct iso_hostent *iso_getserventrybytsel();
 	struct iso_hostent Ihe;

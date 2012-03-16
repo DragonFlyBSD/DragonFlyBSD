@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.topl.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.topl.c,v 1.3 1999/11/16 02:57:12 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.topl.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 extern int CO;
@@ -58,7 +57,7 @@ remember_topl(void)
 	if (old_toplines &&
 	    !strcmp(toplines, old_toplines->topl_text))
 		return;
-	last_redone_topl = 0;
+	last_redone_topl = NULL;
 	tl = alloc((unsigned)(strlen(toplines) + sizeof(struct topl) + 1));
 	tl->next_topl = old_toplines;
 	tl->topl_text = (char *)(tl + 1);
@@ -70,7 +69,7 @@ remember_topl(void)
 	}
 	if (tl && tl->next_topl) {
 		free(tl->next_topl);
-		tl->next_topl = 0;
+		tl->next_topl = NULL;
 	}
 }
 

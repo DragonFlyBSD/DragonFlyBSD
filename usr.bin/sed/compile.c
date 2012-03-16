@@ -32,7 +32,6 @@
  *
  * @(#)compile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/sed/compile.c,v 1.34 2009/05/25 06:45:33 brian Exp $
- * $DragonFly: src/usr.bin/sed/compile.c,v 1.4 2008/04/08 13:23:38 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -157,10 +156,10 @@ compile_stream(struct s_command **link)
 	char re[_POSIX2_LINE_MAX + 1];
 	int naddr;				/* Number of addresses */
 
-	stack = 0;
+	stack = NULL;
 	for (;;) {
 		if ((p = cu_fgets(lbuf, sizeof(lbuf), NULL)) == NULL) {
-			if (stack != 0)
+			if (stack != NULL)
 				errx(1, "%lu: %s: unexpected EOF (pending }'s)",
 							linenum, fname);
 			return (link);
@@ -238,7 +237,7 @@ nonsel:		/* Now parse the command */
 			 * group is really just a noop.
 			 */
 			cmd->nonsel = 1;
-			if (stack == 0)
+			if (stack == NULL)
 				errx(1, "%lu: %s: unexpected }", linenum, fname);
 			cmd2 = stack;
 			stack = cmd2->next;

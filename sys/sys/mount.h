@@ -546,6 +546,8 @@ typedef int vfs_acinit_t(struct mount *mp);
 typedef int vfs_acdone_t(struct mount *mp);
 typedef void vfs_account_t(struct mount *mp,
 			uid_t uid, gid_t gid, int64_t delta);
+typedef void vfs_ncpgen_set_t(struct mount *mp, struct namecache *ncp);
+typedef int vfs_ncpgen_test_t(struct mount *mp, struct namecache *ncp);
 
 int vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred);
 int vfs_start(struct mount *mp, int flags);
@@ -589,6 +591,8 @@ struct vfsops {
 	vfs_acinit_t	*vfs_acinit;
 	vfs_acdone_t	*vfs_acdone;
 	vfs_account_t	*vfs_account;
+	vfs_ncpgen_set_t	*vfs_ncpgen_set;
+	vfs_ncpgen_test_t	*vfs_ncpgen_test;
 };
 
 #define VFS_MOUNT(MP, PATH, DATA, CRED)		\
@@ -620,6 +624,10 @@ struct vfsops {
 #define VFS_ACCOUNT(MP, U, G, D) \
 	if (MP->mnt_op->vfs_account != NULL) \
 		MP->mnt_op->vfs_account(MP, U, G, D);
+#define VFS_NCPGEN_SET(MP, NCP) \
+	MP->mnt_op->vfs_ncpgen_set(MP, NCP)
+#define VFS_NCPGEN_TEST(MP, NCP) \
+	MP->mnt_op->vfs_ncpgen_test(MP, NCP)
 
 #endif
 
@@ -728,6 +736,8 @@ vfs_acinit_t	vfs_stdac_init;
 vfs_acdone_t	vfs_stdac_done;
 vfs_account_t	vfs_stdaccount;
 vfs_account_t	vfs_noaccount;
+vfs_ncpgen_set_t	vfs_stdncpgen_set;
+vfs_ncpgen_test_t	vfs_stdncpgen_test;
 
 struct vop_access_args;
 int vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,

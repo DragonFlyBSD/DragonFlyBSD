@@ -421,7 +421,7 @@ fn_complete(EditLine *el,
 
 	/* these can be used by function called in completion_matches() */
 	/* or (*attempted_completion_function)() */
-	if (point != 0)
+	if (point != NULL)
 		*point = li->cursor - li->buffer;
 	if (end != NULL)
 		*end = li->lastchar - li->buffer;
@@ -431,7 +431,7 @@ fn_complete(EditLine *el,
 		matches = (*attempted_completion_function) (temp,
 		    (int)(cur_off - len), cur_off);
 	} else
-		matches = 0;
+		matches = NULL;
 	if (!attempted_completion_function || 
 	    (over != NULL && !*over && !matches))
 		matches = completion_matches(temp, complet_func);

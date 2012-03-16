@@ -32,7 +32,6 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/crypto/telnet/libtelnet/misc.c,v 1.2.8.2 2002/04/13 10:59:07 markm Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/misc.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #include <stdio.h>
@@ -49,7 +48,7 @@
 
 char *RemoteHostName;
 char *LocalHostName;
-char *UserNameRequested = 0;
+char *UserNameRequested = NULL;
 int ConnectedCount = 0;
 
 #ifndef AUTHENTICATION

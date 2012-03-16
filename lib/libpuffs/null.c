@@ -402,7 +402,7 @@ puffs_null_node_fsync(struct puffs_usermount *pu, puffs_cookie_t opc,
 		return errno;
 	if (S_ISDIR(sb.st_mode)) {
 		DIR *dirp;
-		if ((dirp = opendir(PNPATH(pn))) == 0)
+		if ((dirp = opendir(PNPATH(pn))) == NULL)
 			return errno;
 		fd = dirfd(dirp);
 		if (fd == -1)

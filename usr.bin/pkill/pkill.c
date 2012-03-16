@@ -71,7 +71,8 @@ enum listtype {
 	LT_TTY,			/* tty:				dev_t */
 	LT_PPID,		/* parent pid:			pid_t */
 	LT_PGRP,		/* process group:		pid_t */
-	LT_SID			/* session id:			pid_t */
+	LT_SID,			/* session id:			pid_t */
+	LT_JID			/* jail id:			pid_t */
 };
 
 struct list {
@@ -107,6 +108,7 @@ struct listhead pgrplist = SLIST_HEAD_INITIALIZER(list);
 struct listhead ppidlist = SLIST_HEAD_INITIALIZER(list);
 struct listhead tdevlist = SLIST_HEAD_INITIALIZER(list);
 struct listhead sidlist = SLIST_HEAD_INITIALIZER(list);
+struct listhead jidlist = SLIST_HEAD_INITIALIZER(list);
 
 void	usage(void);
 void	killact(struct kinfo_proc *, int);
@@ -166,7 +168,7 @@ main(int argc, char **argv)
 
 	criteria = 0;
 
-	while ((ch = getopt(argc, argv, "G:P:U:d:fg:lns:t:u:vx")) != -1) {
+	while ((ch = getopt(argc, argv, "G:P:U:d:fg:j:lns:t:u:vx")) != -1) {
 		switch (ch) {
 		case 'G':
 			makelist(&rgidlist, LT_GROUP, optarg);
@@ -190,6 +192,10 @@ main(int argc, char **argv)
 			break;
 		case 'g':
 			makelist(&pgrplist, LT_PGRP, optarg);
+			criteria = 1;
+			break;
+		case 'j':
+			makelist(&jidlist, LT_JID, optarg);
 			criteria = 1;
 			break;
 		case 'l':
@@ -373,6 +379,19 @@ main(int argc, char **argv)
 			continue;
 		}
 
+		SLIST_FOREACH(li, &jidlist, li_chain) {
+			/* A particular jail ID, including 0 (not in jail) */
+			if (kp->kp_jailid == li->li_datum.ld_pid)
+				break;
+			/* Any jail */
+			if (kp->kp_jailid > 0 && li->li_datum.ld_pid < 0)
+				break;
+		}
+		if (SLIST_FIRST(&jidlist) != NULL && li == NULL) {
+			selected[i] = 0;
+			continue;
+		}
+
 		if (argc == 0)
 			selected[i] = 1;
 	}
@@ -437,8 +456,8 @@ usage(void)
 
 	fprintf(stderr,
 		"usage: %s %s [-G gid] [-P ppid] [-U uid] [-g pgrp] [-s sid]\n"
-		"             [-t tty] [-u euid] pattern ...\n", getprogname(),
-		ustr);
+		"             [-t tty] [-u euid] [-j jid] pattern ...\n",
+		getprogname(), ustr);
 
 	exit(STATUS_ERROR);
 }
@@ -532,6 +551,15 @@ makelist(struct listhead *head, enum listtype type, char *src)
 		case LT_SID:
 			if (!parse_pid(sp, &p, li, getsid(mypid)))
 				usage();
+			break;
+		case LT_JID:
+			/* default to no jail */
+			if (!parse_pid(sp, &p, li, 0))
+				usage();
+			if (li->li_datum.ld_pid < -1) {
+				errx(STATUS_BADUSAGE,
+				     "Negative jail ID `%s'", sp);
+			}
 			break;
 		case LT_USER:
 			li->li_datum.ld_uid = (uid_t)strtol(sp, &p, 0);

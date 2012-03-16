@@ -10,7 +10,6 @@
  *
  * $NetBSD: tsearch.c,v 1.3 1999/09/16 11:45:37 lukem Exp $
  * $FreeBSD: src/lib/libc/stdlib/tsearch.c,v 1.4 2003/01/05 02:43:18 tjr Exp $
- * $DragonFly: src/lib/libc/stdlib/tsearch.c,v 1.6 2005/11/24 17:18:30 swildner Exp $
  */
 
 #define _SEARCH_PRIVATE
@@ -47,7 +46,7 @@ tsearch(const void *vkey, void **vrootp,
 	}
 
 	q = malloc(sizeof(node_t));		/* T5: key not found */
-	if (q != 0) {				/* make new node */
+	if (q != NULL) {			/* make new node */
 		*rootp = q;			/* link new node to old */
 		/* LINTED const castaway ok */
 		q->key = __DECONST(void *, vkey); /* initialize new node */

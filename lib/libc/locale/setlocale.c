@@ -1,5 +1,4 @@
 /*	$NetBSD: src/lib/libc/locale/setlocale.c,v 1.47 2004/07/21 20:27:46 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/locale/setlocale.c,v 1.3 2005/04/21 16:36:34 joerg Exp $ */
 
 /*
  * Copyright (c) 1991, 1993
@@ -200,7 +199,7 @@ setlocale(int category, const char *locale)
 		strlcpy(new_categories[category], locale,
 		        sizeof(new_categories[category]));
 	} else {
-		if ((r = strchr(locale, '/')) == 0) {
+		if ((r = strchr(locale, '/')) == NULL) {
 			for (i = 1; i < _LC_LAST; ++i) {
 				strlcpy(new_categories[i], locale,
 				        sizeof(new_categories[i]));

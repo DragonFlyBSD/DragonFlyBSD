@@ -35,7 +35,6 @@
  * static char sccsid[] = "@(#)if.c	5.1 (Berkeley) 6/4/85"; (routed/if.c)
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/if.c,v 1.5 1999/08/28 01:15:02 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/if.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#)if.c	8.1 (Berkeley) 6/5/93
  */
@@ -127,7 +126,7 @@ if_iflookup(struct sockaddr *addr)
 
 	if (af >= AF_MAX)
 		return (0);
-	maybe = 0;
+	maybe = NULL;
 	netmatch = afswitch[af].af_netmatch;
 	for (ifp = ifnet; ifp; ifp = ifp->int_next) {
 		if (ifp->int_addr.sa_family != af)
@@ -137,10 +136,10 @@ if_iflookup(struct sockaddr *addr)
 		if ((ifp->int_flags & IFF_BROADCAST) &&
 		    same(&ifp->int_broadaddr, addr))
 			break;
-		if (maybe == 0 && (*netmatch)(addr, &ifp->int_addr))
+		if (maybe == NULL && (*netmatch)(addr, &ifp->int_addr))
 			maybe = ifp;
 	}
-	if (ifp == 0)
+	if (ifp == NULL)
 		ifp = maybe;
 	return (ifp);
 }

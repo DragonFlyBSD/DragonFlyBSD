@@ -28,7 +28,6 @@
  *
  * @(#)getpar.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/getpar.c,v 1.5 1999/11/30 03:49:48 billf Exp $
- * $DragonFly: src/games/trek/getpar.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 #include "getpar.h"
@@ -185,7 +184,7 @@ getstrpar(const char *s, char *r, int l, const char *t)
 	char		format[20];
 	int	f;
 
-	if (t == 0)
+	if (t == NULL)
 		t = " \t\n;";
 	sprintf(format, "%%%d[^%s]", l, t);
 	while (1) {

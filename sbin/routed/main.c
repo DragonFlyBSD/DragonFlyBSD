@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/main.c,v 1.11.2.1 2000/08/14 17:00:03 sheldonh Exp $
- * $DragonFly: src/sbin/routed/main.c,v 1.4 2005/03/16 21:21:34 cpressey Exp $
  */
 
 #include "defs.h"
@@ -575,7 +574,7 @@ fix_select(void)
 		if (sock_max <= rip_sock)
 			sock_max = rip_sock+1;
 	}
-	for (ifp = ifnet; 0 != ifp; ifp = ifp->int_next) {
+	for (ifp = ifnet; NULL != ifp; ifp = ifp->int_next) {
 		if (ifp->int_rip_sock >= 0) {
 			FD_SET(ifp->int_rip_sock, &fdbits);
 			if (sock_max <= ifp->int_rip_sock)
@@ -687,7 +686,7 @@ rip_off(void)
 
 		/* get non-broadcast sockets to listen to queries.
 		 */
-		for (ifp = ifnet; ifp != 0; ifp = ifp->int_next) {
+		for (ifp = ifnet; ifp != NULL; ifp = ifp->int_next) {
 			if (ifp->int_state & IS_REMOTE)
 				continue;
 			if (ifp->int_rip_sock < 0) {
@@ -738,7 +737,7 @@ rip_on(struct interface *ifp)
 	 * multicasts for this interface.
 	 */
 	if (rip_sock >= 0) {
-		if (ifp != 0)
+		if (ifp != NULL)
 			rip_mcast_on(ifp);
 		return;
 	}
@@ -756,7 +755,7 @@ rip_on(struct interface *ifp)
 		 * since that would let two daemons bind to the broadcast
 		 * socket.
 		 */
-		for (ifp = ifnet; ifp != 0; ifp = ifp->int_next) {
+		for (ifp = ifnet; ifp != NULL; ifp = ifp->int_next) {
 			if (ifp->int_rip_sock >= 0) {
 				close(ifp->int_rip_sock);
 				ifp->int_rip_sock = -1;
@@ -764,20 +763,20 @@ rip_on(struct interface *ifp)
 		}
 
 		rip_sock = get_rip_sock(INADDR_ANY, 1);
-		rip_sock_mcast = 0;
+		rip_sock_mcast = NULL;
 
 		/* Do not advertise anything until we have heard something
 		 */
 		if (next_bcast.tv_sec < now.tv_sec+MIN_WAITTIME)
 			next_bcast.tv_sec = now.tv_sec+MIN_WAITTIME;
 
-		for (ifp = ifnet; ifp != 0; ifp = ifp->int_next) {
+		for (ifp = ifnet; ifp != NULL; ifp = ifp->int_next) {
 			ifp->int_query_time = NEVER;
 			rip_mcast_on(ifp);
 		}
 		ifinit_timer.tv_sec = now.tv_sec;
 
-	} else if (ifp != 0
+	} else if (ifp != NULL
 		   && !(ifp->int_state & IS_REMOTE)
 		   && ifp->int_rip_sock < 0) {
 		/* RIP is off, so ensure there are sockets on which
@@ -797,7 +796,7 @@ rtmalloc(size_t size,
 	 const char *msg)
 {
 	void *p = malloc(size);
-	if (p == 0)
+	if (p == NULL)
 		logbad(1,"malloc(%lu) failed in %s", (u_long)size, msg);
 	return p;
 }
@@ -892,7 +891,7 @@ msglim(struct msg_limit *lim, naddr addr, const char *p, ...)
 			/* Reuse a slot at most once every 10 minutes.
 			 */
 			if (lim->reuse > now.tv_sec) {
-				ms = 0;
+				ms = NULL;
 			} else {
 				ms = ms1;
 				lim->reuse = now.tv_sec + 10*60;
@@ -904,13 +903,13 @@ msglim(struct msg_limit *lim, naddr addr, const char *p, ...)
 			 * most once an hour.
 			 */
 			if (ms->until > now.tv_sec)
-				ms = 0;
+				ms = NULL;
 			break;
 		}
 		if (ms->until < ms1->until)
 			ms = ms1;
 	}
-	if (ms != 0) {
+	if (ms != NULL) {
 		ms->addr = addr;
 		ms->until = now.tv_sec + 60*60;	/* 60 minutes */
 

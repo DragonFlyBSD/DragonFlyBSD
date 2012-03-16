@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/verbose.c,v 1.6 1999/08/28 01:08:03 peter Exp $
- * $DragonFly: src/usr.bin/yacc/verbose.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
  *
  * @(#)verbose.c	5.3 (Berkeley) 1/20/91
  */
@@ -63,7 +62,7 @@ verbose(void)
     if (!vflag) return;
 
     null_rules = (short *) MALLOC(nrules*sizeof(short));
-    if (null_rules == 0) no_space();
+    if (null_rules == NULL) no_space();
     fprintf(verbose_file, "\f\n");
     for (i = 0; i < nstates; i++)
 	print_state(i);

@@ -32,7 +32,6 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.21 2007/12/29 22:15:06 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -140,7 +139,7 @@ protopr(u_long proto, const char *name, int af1 __unused)
 	}
 	if (len == 0)
 		return;
-	if ((buf = malloc(len)) == 0) {
+	if ((buf = malloc(len)) == NULL) {
 		warn("malloc %lu bytes", (u_long)len);
 		return;
 	}
@@ -883,7 +882,7 @@ pim_stats(u_long off __unused, const char *name, int af1 __unused)
 void
 inetprint(struct in_addr *in, int port, const char *proto, int num_port)
 {
-	struct servent *sp = 0;
+	struct servent *sp = NULL;
 	char line[80], *cp;
 	int width;
 
@@ -918,7 +917,7 @@ inetname(struct in_addr *inp)
 	struct hostent *hp;
 	struct netent *np;
 
-	cp = 0;
+	cp = NULL;
 	if (!numeric_addr && inp->s_addr != INADDR_ANY) {
 		int net = inet_netof(*inp);
 		int lna = inet_lnaof(*inp);
@@ -928,7 +927,7 @@ inetname(struct in_addr *inp)
 			if (np)
 				cp = np->n_name;
 		}
-		if (cp == 0) {
+		if (cp == NULL) {
 			hp = gethostbyaddr(inp, sizeof (*inp), AF_INET);
 			if (hp) {
 				cp = hp->h_name;
