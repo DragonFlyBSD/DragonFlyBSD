@@ -555,7 +555,7 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 		printf(" %jd", (intmax_t)fst.offset);
 		break;
 	default:
-		printf(" %8ju", (intmax_t)fst.size);
+		printf(" %8ju", (uintmax_t)fst.size);
 	}
 	rw[0] = '\0';
 	if (flag & FREAD)
