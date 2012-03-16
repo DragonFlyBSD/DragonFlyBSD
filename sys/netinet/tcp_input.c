@@ -3199,4 +3199,14 @@ tcp_established(struct tcpcb *tp)
 {
 	tp->t_state = TCPS_ESTABLISHED;
 	tcp_callout_reset(tp, tp->tt_keep, tcp_getkeepidle(tp), tcp_timer_keep);
+
+	if (tp->t_flags & TF_SYN_WASLOST) {
+		/*
+		 * RFC3390:
+		 * "If the SYN or SYN/ACK is lost, the initial window used by
+		 *  a sender after a correctly transmitted SYN MUST be one
+		 *  segment consisting of MSS bytes."
+		 */
+		tp->snd_cwnd = tp->t_maxseg;
+	}
 }

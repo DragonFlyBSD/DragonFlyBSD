@@ -243,6 +243,13 @@ static __inline void
 syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
 		 struct syncache *sc, int slot)
 {
+	if (slot > 0) {
+		/*
+		 * Record that SYN|ACK was lost.
+		 * Needed by RFC3390 and RFC6298.
+		 */
+		sc->sc_flags |= SCF_SYN_WASLOST;
+	}
 	sc->sc_rxtslot = slot;
 	sc->sc_rxttime = ticks + TCPTV_RTOBASE * tcp_backoff[slot];
 	TAILQ_INSERT_TAIL(&syncache_percpu->timerq[slot], sc, sc_timerq);
@@ -849,6 +856,8 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	}
 	if (sc->sc_flags & SCF_SACK_PERMITTED)
 		tp->t_flags |= TF_SACK_PERMITTED;
+	if (sc->sc_flags & SCF_SYN_WASLOST)
+		tp->t_flags |= TF_SYN_WASLOST;
 
 #ifdef TCP_SIGNATURE
 	if (sc->sc_flags & SCF_SIGNATURE)
@@ -857,12 +866,6 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 
 
 	tcp_mss(tp, sc->sc_peer_mss);
-
-	/*
-	 * If the SYN,ACK was retransmitted, reset cwnd to 1 segment.
-	 */
-	if (sc->sc_rxtslot != 0)
-		tp->snd_cwnd = tp->t_maxseg;
 
 	/*
 	 * Inherit some properties from the listen socket

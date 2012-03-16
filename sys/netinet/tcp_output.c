@@ -187,7 +187,7 @@ tcp_output(struct tcpcb *tp)
 	 */
 	if (tp->snd_max == tp->snd_una &&
 	    (ticks - tp->t_rcvtime) >= tp->t_rxtcur) {
-		if (tcp_do_rfc3390) {
+		if (tcp_do_rfc3390 && !(tp->t_flags & TF_SYN_WASLOST)) {
 			int initial_cwnd =
 			    min(4 * tp->t_maxseg, max(2 * tp->t_maxseg, 4380));
 

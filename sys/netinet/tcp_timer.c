@@ -531,6 +531,15 @@ tcp_timer_rexmt_handler(struct tcpcb *tp)
 		tp->t_badrxtwin = ticks + (tp->t_srtt >> (TCP_RTT_SHIFT + 1));
 		tcp_save_congestion_state(tp);
 		tp->t_flags &= ~(TF_FASTREXMT | TF_EARLYREXMT);
+
+		if (tp->t_state == TCPS_SYN_SENT ||
+		    tp->t_state == TCPS_SYN_RECEIVED) {
+			/*
+			 * Record that SYN or SYN|ACK was lost.
+			 * Needed by RFC3390 and RFC6298.
+			 */
+			tp->t_flags |= TF_SYN_WASLOST;
+		}
 	}
 	/* Throw away SACK blocks on a RTO, as specified by RFC2018. */
 	tcp_sack_cleanup(&tp->scb);
