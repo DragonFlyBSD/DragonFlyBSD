@@ -963,18 +963,16 @@ resetandabort:
  */
 int
 syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
-	     struct socket **sop, struct mbuf *m)
+	     struct socket *so, struct mbuf *m)
 {
 	struct tcp_syncache_percpu *syncache_percpu;
 	struct tcpcb *tp;
-	struct socket *so;
 	struct syncache *sc = NULL;
 	struct syncache_head *sch;
 	struct mbuf *ipopts = NULL;
 	int win;
 
 	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
-	so = *sop;
 	tp = sototcpcb(so);
 
 	/*
@@ -1029,7 +1027,6 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 			tcpstat.tcps_sndacks++;
 			tcpstat.tcps_sndtotal++;
 		}
-		*sop = NULL;
 		return (1);
 	}
 
@@ -1115,7 +1112,6 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 		syncache_free(sc);
 		tcpstat.tcps_sc_dropped++;
 	}
-	*sop = NULL;
 	return (1);
 }
 

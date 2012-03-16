@@ -645,7 +645,7 @@ void	 syncache_unreach(struct in_conninfo *, struct tcphdr *);
 int	 syncache_expand(struct in_conninfo *, struct tcphdr *,
 	     struct socket **, struct mbuf *);
 int	 syncache_add(struct in_conninfo *, struct tcpopt *,
-	     struct tcphdr *, struct socket **, struct mbuf *);
+	     struct tcphdr *, struct socket *, struct mbuf *);
 void	 syncache_chkrst(struct in_conninfo *, struct tcphdr *);
 void	 syncache_badack(struct in_conninfo *);
 void	 syncache_destroy(struct tcpcb *tp);
