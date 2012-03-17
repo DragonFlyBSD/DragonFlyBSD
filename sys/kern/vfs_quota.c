@@ -269,6 +269,20 @@ cmd_set_usage_all(struct mount *mp, prop_array_t args)
 	return 0;
 }
 
+static int
+cmd_set_limit(struct mount *mp, prop_dictionary_t args)
+{
+	uint64_t limit;
+
+	prop_dictionary_get_uint64(args, "limit", &limit);
+
+	spin_lock(&mp->mnt_acct.ac_spin);
+	mp->mnt_acct.ac_limit = limit;
+	spin_unlock(&mp->mnt_acct.ac_spin);
+
+	return 0;
+}
+
 int
 sys_vquotactl(struct vquotactl_args *vqa)
 /* const char *path, struct plistref *pref */
@@ -324,6 +338,10 @@ sys_vquotactl(struct vquotactl_args *vqa)
 	}
 	if (strcmp(cmd, "set usage all") == 0) {
 		error = cmd_set_usage_all(mp, args);
+		goto done;
+	}
+	if (strcmp(cmd, "set limit") == 0) {
+		error = cmd_set_limit(mp, args);
 		goto done;
 	}
 	return EINVAL;

@@ -62,6 +62,7 @@ usage(int retcode)
 {
 	fprintf(stderr, "usage: vquota [-Dhn] check directory\n");
 	fprintf(stderr, "       vquota [-Dhn] lsfs\n");
+	fprintf(stderr, "       vquota [-Dhn] limit mount_point size\n");
 	fprintf(stderr, "       vquota [-Dhn] show mount_point\n");
 	fprintf(stderr, "       vquota [-Dhn] sync mount_point\n");
 	exit(retcode);
@@ -615,6 +616,32 @@ static int cmd_sync(char *dirname)
 	return rv;
 }
 
+static int
+cmd_limit(char *dirname, uint64_t limit)
+{
+	prop_dictionary_t res, args;
+	int rv = 0;
+
+	args = prop_dictionary_create();
+	if (args == NULL)
+		printf("cmd_limit(): couldn't create args dictionary\n");
+	res  = prop_dictionary_create();
+	if (res == NULL)
+		printf("cmd_limit(): couldn't create res dictionary\n");
+
+	(void) prop_dictionary_set_uint64(args, "limit", limit);
+
+	if (send_command(dirname, "set limit", args, &res) == false) {
+		printf("Failed to send message to kernel\n");
+		rv = 1;
+	}
+
+	prop_object_release(args);
+	prop_object_release(res);
+
+	return rv;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -645,6 +672,15 @@ main(int argc, char **argv)
 	}
 	if (strcmp(argv[0], "lsfs") == 0) {
 		return get_fslist();
+	}
+	if (strcmp(argv[0], "limit") == 0) {
+		uint64_t limit;
+		if (argc != 3)
+			usage(1);
+		if (dehumanize_number(argv[2], &limit) < 0)
+			err(1, "bad number for option: %s", argv[2]);
+
+		return cmd_limit(argv[1], limit);
 	}
 	if (strcmp(argv[0], "show") == 0) {
 		if (argc != 2)
