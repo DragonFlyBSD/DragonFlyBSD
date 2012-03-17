@@ -181,6 +181,7 @@ cmd_get_usage_all(struct mount *mp, prop_array_t dict_out)
 
 	item = prop_dictionary_create();
 	(void) prop_dictionary_set_uint64(item, "space used", mp->mnt_acct.ac_bytes);
+	(void) prop_dictionary_set_uint64(item, "limit", mp->mnt_acct.ac_limit);
 	prop_array_add_and_rel(dict_out, item);
 
 	RB_FOREACH(unp, ac_utree, &mp->mnt_acct.ac_uroot) {
@@ -191,6 +192,8 @@ cmd_get_usage_all(struct mount *mp, prop_array_t dict_out)
 					(unp->left_bits << ACCT_CHUNK_BITS) + i);
 				(void) prop_dictionary_set_uint64(item, "space used",
 					unp->uid_chunk[i].space);
+				(void) prop_dictionary_set_uint64(item, "limit",
+					unp->uid_chunk[i].limit);
 				prop_array_add_and_rel(dict_out, item);
 			}
 		}
@@ -204,6 +207,8 @@ cmd_get_usage_all(struct mount *mp, prop_array_t dict_out)
 					(gnp->left_bits << ACCT_CHUNK_BITS) + i);
 				(void) prop_dictionary_set_uint64(item, "space used",
 					gnp->gid_chunk[i].space);
+				(void) prop_dictionary_set_uint64(item, "limit",
+					gnp->gid_chunk[i].limit);
 				prop_array_add_and_rel(dict_out, item);
 			}
 		}
