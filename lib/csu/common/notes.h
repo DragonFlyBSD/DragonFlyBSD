@@ -29,7 +29,7 @@
 #define	CSU_COMMON_NOTES_H
 
 #define NOTE_VENDOR		"DragonFly"
-#define NOTE_SECTION		".note.ABI-tag"
+#define NOTE_SECTION		".note.tag"
 #define ABI_NOTETYPE		1
 #define CRT_NOINIT_NOTETYPE	0x20
 

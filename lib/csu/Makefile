@@ -1,5 +1,5 @@
 CSUDIR=	${.CURDIR}/${MACHINE_ARCH}
-SED_FIX_NOTE= -i "" -e '/\.note\.ABI-tag/s/progbits/note/'
+SED_FIX_NOTE= -i "" -e '/\.note\.tag/s/progbits/note/'
 
 .include "${.CURDIR}/${MACHINE_ARCH}/Makefile.csu"
 

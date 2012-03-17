@@ -55,12 +55,11 @@ void
 _start1(fptr cleanup, int argc, char *argv[])
 {
     char **env;
-    size_t n, array_size;
 
     env = argv + argc + 1;
     environ = env;
-	if (argc > 0 && argv[0] != NULL)
-		handle_progname(argv[0]);
+    if (argc > 0 && argv[0] != NULL)
+	handle_progname(argv[0]);
 
     /*
      * Setup the initial TLS space.  The RTLD does not set up our TLS
@@ -76,35 +75,11 @@ _start1(fptr cleanup, int argc, char *argv[])
 
 #ifdef GCRT
     atexit(_mcleanup);
-#endif
-    /*
-     * The fini_array needs to be executed in the opposite order of its
-     * definition.  However, atexit works like a LIFO stack, so by
-     * pushing functions in array order, they will be executed in the
-     * reverse order as required.
-     */
-    atexit(_fini);
-    array_size = __fini_array_end - __fini_array_start;
-    for (n = 0; n < array_size; n++)
-	atexit(*__fini_array_start [n]);
-#ifdef GCRT
     monstartup(&eprol, &etext);
 __asm__("eprol:");
 #endif
-    if (&_DYNAMIC == NULL) {
-	/*
-	 * For static executables preinit happens right before init.
-	 * Dynamic executable preinit arrays are handled by rtld
-	 * before any DSOs are initialized.
-	 */
-	array_size = __preinit_array_end - __preinit_array_start;
-	for (n = 0; n < array_size; n++)
-		(*__preinit_array_start [n])(argc, argv, env);
-    }
-    _init();
-    array_size = __init_array_end - __init_array_start;
-    for (n = 0; n < array_size; n++)
-	(*__init_array_start [n])(argc, argv, env);
+
+    handle_static_init(argc, argv, env);
     exit(main(argc, argv, env));
 }
 
