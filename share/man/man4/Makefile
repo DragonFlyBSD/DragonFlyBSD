@@ -5,12 +5,14 @@ MAN=	aac.4 \
 	acpi.4 \
 	acpi_asus.4 \
 	acpi_fujitsu.4 \
+	acpi_hp.4 \
 	acpi_panasonic.4 \
 	acpi_sony.4 \
 	acpi_thermal.4 \
 	acpi_thinkpad.4 \
 	acpi_toshiba.4 \
 	acpi_video.4 \
+	acpi_wmi.4 \
 	adv.4 \
 	adw.4 \
 	ae.4 \
@@ -379,9 +381,6 @@ MAN=	aac.4 \
 #	rtw.4 \
 #	rum.4 \
 #	ural.4 \
-
-# XXX re-add when acpi_hp(4) has been fixed
-#	acpi_hp.4 \
 
 MLINKS=	acpi_thermal.4 acpi_tz.4
 MLINKS+=agp.4 agpgart.4

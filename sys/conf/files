@@ -1969,7 +1969,7 @@ ${OSACPI_MI_DIR}/acpi_powerres.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_resource.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_thermal.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_timer.c		optional acpi
-#${OSACPI_MI_DIR}/acpi_wmi_if.m		optional acpi
+${OSACPI_MI_DIR}/acpi_wmi_if.m		optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdCache.c		optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdDebug.c		optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdHardware.c	optional acpi
@@ -1982,12 +1982,13 @@ ${OSACPI_MI_DIR}/Osd/OsdTable.c		optional acpi
 
 ${OSACPI_MI_DIR}/acpi_asus/acpi_asus.c		optional acpi_asus acpi
 ${OSACPI_MI_DIR}/acpi_fujitsu/acpi_fujitsu.c	optional acpi_fujitsu acpi
-#${OSACPI_MI_DIR}/acpi_hp/acpi_hp.c		optional acpi_hp acpi
+${OSACPI_MI_DIR}/acpi_hp/acpi_hp.c		optional acpi_hp acpi
 ${OSACPI_MI_DIR}/acpi_panasonic/acpi_panasonic.c optional acpi_panasonic acpi
 ${OSACPI_MI_DIR}/acpi_sony/acpi_sony.c		optional acpi_sony acpi
 ${OSACPI_MI_DIR}/acpi_thinkpad/acpi_thinkpad.c	optional acpi_thinkpad acpi
 ${OSACPI_MI_DIR}/acpi_toshiba/acpi_toshiba.c	optional acpi_toshiba acpi
 ${OSACPI_MI_DIR}/acpi_video/acpi_video.c	optional acpi_video acpi
+${OSACPI_MI_DIR}/acpi_wmi/acpi_wmi.c		optional acpi_wmi acpi
 ${OSACPI_MI_DIR}/aibs/atk0110.c			optional aibs acpi
 
 # dsched stuff

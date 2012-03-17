@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpi_support/acpi_hp.c,v 1.3 2009/07/03 21:12:37 rpaulo
+ * $FreeBSD: src/sys/dev/acpi_support/acpi_hp.c,v 1.7 2010/09/11 08:09:14 avg Exp $
  */
 
 /*
@@ -109,8 +109,6 @@ ACPI_MODULE_NAME("HP")
 #define ACPI_HP_CMI_DETAIL_FLAGS		0x04
 #define ACPI_HP_CMI_DETAIL_SHOW_MAX_INSTANCE	0x08
 
-#define sbuf_done(s)		((s)->s_flags & SBUF_FINISHED)
-
 struct acpi_hp_inst_seq_pair {
 	UINT32	sequence;	/* sequence number as suggested by cmi bios */
 	UINT8	instance;	/* object instance on guid */
@@ -118,7 +116,6 @@ struct acpi_hp_inst_seq_pair {
 
 struct acpi_hp_softc {
 	device_t	dev;
-	ACPI_HANDLE	handle;
 	device_t	wmi_dev;
 	int		has_notify;		/* notification GUID found */
 	int		has_cmi;		/* CMI GUID found */
@@ -291,6 +288,7 @@ static struct {
 
 ACPI_SERIAL_DECL(hp, "HP ACPI-WMI Mapping");
 
+static void	acpi_hp_identify(driver_t *driver, device_t parent);
 static int	acpi_hp_probe(device_t dev);
 static int	acpi_hp_attach(device_t dev);
 static int	acpi_hp_detach(device_t dev);
@@ -327,6 +325,7 @@ static struct dev_ops hpcmi_ops = {
 };
 
 static device_method_t acpi_hp_methods[] = {
+	DEVMETHOD(device_identify, acpi_hp_identify),
 	DEVMETHOD(device_probe, acpi_hp_probe),
 	DEVMETHOD(device_attach, acpi_hp_attach),
 	DEVMETHOD(device_detach, acpi_hp_detach),
@@ -341,8 +340,9 @@ static driver_t	acpi_hp_driver = {
 
 static devclass_t acpi_hp_devclass;
 
-DRIVER_MODULE(acpi_hp, acpi, acpi_hp_driver, acpi_hp_devclass,
-		0, 0);
+DRIVER_MODULE(acpi_hp, acpi_wmi, acpi_hp_driver, acpi_hp_devclass,
+		NULL, NULL);
+MODULE_VERSION(acpi_hp, 1);
 MODULE_DEPEND(acpi_hp, acpi_wmi, 1, 1, 1);
 MODULE_DEPEND(acpi_hp, acpi, 1, 1, 1);
 
@@ -412,7 +412,7 @@ acpi_hp_evaluate_auto_on_off(struct acpi_hp_softc *sc)
 			    	    "WLAN on air changed to %i "
 			    	    "(new_wlan_status is %i)\n",
 			    	    sc->was_wlan_on_air, new_wlan_status);
-			acpi_UserNotify("HP", sc->handle,
+			acpi_UserNotify("HP", ACPI_ROOT_OBJECT,
 			    0xc0+sc->was_wlan_on_air);
 		}
 	}
@@ -427,7 +427,7 @@ acpi_hp_evaluate_auto_on_off(struct acpi_hp_softc *sc)
 				    " to %i (new_bluetooth_status is %i)\n",
 				    sc->was_bluetooth_on_air,
 				    new_bluetooth_status);
-			acpi_UserNotify("HP", sc->handle,
+			acpi_UserNotify("HP", ACPI_ROOT_OBJECT,
 			    0xd0+sc->was_bluetooth_on_air);
 		}
 	}
@@ -440,19 +440,33 @@ acpi_hp_evaluate_auto_on_off(struct acpi_hp_softc *sc)
 				    "WWAN on air changed to %i"
 			    	    " (new_wwan_status is %i)\n",
 				    sc->was_wwan_on_air, new_wwan_status);
-			acpi_UserNotify("HP", sc->handle,
+			acpi_UserNotify("HP", ACPI_ROOT_OBJECT,
 			    0xe0+sc->was_wwan_on_air);
 		}
 	}
 }
 
+static void
+acpi_hp_identify(driver_t *driver, device_t parent)
+{
+
+	/* Don't do anything if driver is disabled. */
+	if (acpi_disabled("hp"))
+		return;
+
+	/* Add only a single device instance. */
+	if (device_find_child(parent, "acpi_hp", -1) != NULL)
+		return;
+
+	if (BUS_ADD_CHILD(parent, parent, 0, "acpi_hp", -1) == NULL)
+		device_printf(parent, "add acpi_hp child failed\n");
+}
+
 static int
 acpi_hp_probe(device_t dev)
 {
-	if (acpi_disabled("hp") || device_get_unit(dev) != 0)
-		return (ENXIO);
-	device_set_desc(dev, "HP ACPI-WMI Mapping");
 
+	device_set_desc(dev, "HP ACPI-WMI Mapping");
 	return (0);
 }
 
@@ -461,14 +475,12 @@ acpi_hp_attach(device_t dev)
 {
 	struct acpi_hp_softc	*sc;
 	struct acpi_softc	*acpi_sc;
-	devclass_t		wmi_devclass;
 	int			arg;
 
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t) __func__);
 
 	sc = device_get_softc(dev);
 	sc->dev = dev;
-	sc->handle = acpi_get_handle(dev);
 	sc->has_notify = 0;
 	sc->has_cmi = 0;
 	sc->bluetooth_enable_if_radio_on = 0;
@@ -486,14 +498,7 @@ acpi_hp_attach(device_t dev)
 	memset(sc->cmi_order, 0, sizeof(sc->cmi_order));
 	acpi_sc = acpi_device_get_parent_softc(dev);
 
-	if (!(wmi_devclass = devclass_find ("acpi_wmi"))) {
-		device_printf(dev, "Couldn't find acpi_wmi devclass\n");
-		return (EINVAL);
-	}
-	if (!(sc->wmi_dev = devclass_get_device(wmi_devclass, 0))) {
-		device_printf(dev, "Couldn't find acpi_wmi device\n");
-		return (EINVAL);
-	}
+	sc->wmi_dev = device_get_parent(dev);
 	if (!ACPI_WMI_PROVIDES_GUID_STRING(sc->wmi_dev,
 	    ACPI_HP_WMI_BIOS_GUID)) {
 		device_printf(dev,
@@ -816,7 +821,7 @@ acpi_hp_notify(ACPI_HANDLE h, UINT32 notify, void *context)
 	ACPI_OBJECT *obj;
 	ACPI_WMI_GET_EVENT_DATA(sc->wmi_dev, notify, &response);
 	obj = (ACPI_OBJECT*) response.Pointer;
-	if (obj && obj->Type == ACPI_TYPE_BUFFER && obj->Buffer.Length == 8) {
+	if (!obj || obj->Type != ACPI_TYPE_PACKAGE) {
 		if (*((UINT8 *) obj->Buffer.Pointer) == 0x5) {
 			acpi_hp_evaluate_auto_on_off(sc);
 		}
