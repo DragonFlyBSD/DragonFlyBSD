@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.114 2008/09/24 00:53:51 dillon Exp $
  */
 
 #include "hammer.h"
@@ -2403,10 +2401,6 @@ hammer_syncgrp_child_callback(hammer_record_t rec, void *data)
 void
 hammer_wait_inode(hammer_inode_t ip)
 {
-	hammer_flush_group_t flg;
-
-	flg = NULL;
-
 	/*
 	 * The inode can be in a SETUP state in which case RESIGNAL
 	 * should be set.  If RESIGNAL is not set then the previous
