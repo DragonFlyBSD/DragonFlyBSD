@@ -862,7 +862,6 @@ alst_radix_print(almeta_t *scan, alist_blk_t blk, alist_blk_t radix,
 	alist_blk_t i;
 	alist_blk_t next_skip;
 	alist_bmap_t mask;
-	int lastState = 0;
 
 	if (radix == ALIST_BMAP_RADIX) {
 		kprintf(
@@ -915,7 +914,6 @@ alst_radix_print(almeta_t *scan, alist_blk_t blk, alist_blk_t radix,
 			    tab, tab, "",
 			    blk, radix
 			);
-			lastState = 0;
 			break;
 		}
 		if ((scan->bm_bitmap & mask) == mask) {
