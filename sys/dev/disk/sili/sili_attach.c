@@ -239,7 +239,8 @@ sili_pci_attach(device_t dev)
 	nports = sc->sc_ad->ad_nports;
 	KKASSERT(nports <= SILI_MAX_PORTS);
 
-	device_printf(dev, "ports=%d tags=31, cap=NCQ,FBSS,SPM\n", nports);
+	device_printf(dev, "ports=%d tags=31, gen %s, cap=NCQ,FBSS,SPM\n",
+	    nports, gen);
 
 	/*
 	 * Allocate per-port resources
