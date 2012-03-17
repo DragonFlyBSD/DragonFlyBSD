@@ -1,4 +1,3 @@
-/* LINTLIBRARY */
 /*-
  * Copyright 1996-1998 John D. Polstra.
  * All rights reserved.
@@ -22,38 +21,20 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: src/lib/csu/amd64/crt1.c,v 1.13 2003/04/30 19:27:07 peter Exp $
  */
 
-#ifndef lint
 #ifndef __GNUC__
 #error "GCC is needed to compile this file"
 #endif
-#endif /* lint */
 
 #include <machine/tls.h>
 #include <stdlib.h>
 
 #include "libc_private.h"
+#include "initfini.c"
 #include "crtbrand.c"
 
-extern int _DYNAMIC;
-#pragma weak _DYNAMIC
-
 typedef void (*fptr)(void);
-
-extern void _fini(void);
-extern void _init(void);
-extern int main(int, char **, char **);
-extern void _start(char **, void (*)(void));
-
-extern void (*__preinit_array_start []) (int, char **, char **) __dso_hidden;
-extern void (*__preinit_array_end   []) (int, char **, char **) __dso_hidden;
-extern void (*__init_array_start    []) (int, char **, char **) __dso_hidden;
-extern void (*__init_array_end      []) (int, char **, char **) __dso_hidden;
-extern void (*__fini_array_start    []) (void) __dso_hidden;
-extern void (*__fini_array_end      []) (void) __dso_hidden;
 
 #ifdef GCRT
 extern void _mcleanup(void);
@@ -62,8 +43,7 @@ extern int eprol;
 extern int etext;
 #endif
 
-char **environ;
-const char *__progname = "";
+void _start(char **, void (*)(void));
 
 /* The entry function. */
 void
@@ -72,19 +52,14 @@ _start(char **ap, void (*cleanup)(void))
 	int argc;
 	char **argv;
 	char **env;
-	const char *s;
 	size_t n, array_size;
 
 	argc = *(long *)(void *)ap;
 	argv = ap + 1;
 	env = ap + 2 + argc;
 	environ = env;
-	if (argc > 0 && argv[0] != NULL) {
-		__progname = argv[0];
-		for (s = __progname; *s != '\0'; s++)
-			if (*s == '/')
-				__progname = s + 1;
-	}
+	if (argc > 0 && argv[0] != NULL)
+		handle_progname(argv[0]);
 
 	/*
 	 * Setup the initial TLS space.  The RTLD does not set up our TLS
@@ -128,7 +103,7 @@ _start(char **ap, void (*cleanup)(void))
 	array_size = __init_array_end - __init_array_start;
 	for (n = 0; n < array_size; n++)
 		(*__init_array_start [n])(argc, argv, env);
-	exit( main(argc, argv, env) );
+	exit(main(argc, argv, env));
 }
 
 #ifdef GCRT

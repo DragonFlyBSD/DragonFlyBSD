@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/csu/i386-elf/crt1.c, svn 200038 2009/12/02 kib $
+ * $FreeBSD$
  */
 
 #ifndef __GNUC__
@@ -34,23 +34,12 @@
 #include <stdlib.h>
 
 #include "libc_private.h"
+#include "initfini.c"
 #include "crtbrand.c"
-
-extern int _DYNAMIC;
-#pragma weak _DYNAMIC
 
 typedef void (*fptr)(void);
 
-extern void _fini(void);
-extern void _init(void);
-extern int main(int, char **, char **);
-
-extern void (*__preinit_array_start []) (int, char **, char **) __dso_hidden;
-extern void (*__preinit_array_end   []) (int, char **, char **) __dso_hidden;
-extern void (*__init_array_start    []) (int, char **, char **) __dso_hidden;
-extern void (*__init_array_end      []) (int, char **, char **) __dso_hidden;
-extern void (*__fini_array_start    []) (void) __dso_hidden;
-extern void (*__fini_array_end      []) (void) __dso_hidden;
+extern void _start(char *, ...);
 
 #ifdef GCRT
 extern void _mcleanup(void);
@@ -59,9 +48,6 @@ extern int eprol;
 extern int etext;
 #endif
 
-char **environ;
-const char *__progname = "";
-
 void _start1(fptr, int, char *[]) __dead2;
 
 /* The entry function, C part. */
@@ -69,17 +55,12 @@ void
 _start1(fptr cleanup, int argc, char *argv[])
 {
     char **env;
-    const char *s;
     size_t n, array_size;
 
     env = argv + argc + 1;
     environ = env;
-    if (argc > 0 && argv[0] != NULL) {
-	__progname = argv[0];
-	for (s = __progname; *s != '\0'; s++)
-	    if (*s == '/')
-		__progname = s + 1;
-    }
+	if (argc > 0 && argv[0] != NULL)
+		handle_progname(argv[0]);
 
     /*
      * Setup the initial TLS space.  The RTLD does not set up our TLS
@@ -124,7 +105,7 @@ __asm__("eprol:");
     array_size = __init_array_end - __init_array_start;
     for (n = 0; n < array_size; n++)
 	(*__init_array_start [n])(argc, argv, env);
-    exit( main(argc, argv, env) );
+    exit(main(argc, argv, env));
 }
 
-__asm(".hidden  _start1");
+__asm(".hidden	_start1");
