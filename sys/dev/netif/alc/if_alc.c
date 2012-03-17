@@ -2046,7 +2046,9 @@ alc_encap(struct alc_softc *sc, struct mbuf **m_head)
 	struct alc_txdesc *txd, *txd_last;
 	struct tx_desc *desc;
 	struct mbuf *m;
+#if 0 /* XXX: TSO */
 	struct ip *ip;
+#endif
 	struct tcphdr *tcp;
 	bus_dma_segment_t txsegs[ALC_MAXTXSEGS];
 	bus_dmamap_t map;
@@ -2058,11 +2060,11 @@ alc_encap(struct alc_softc *sc, struct mbuf **m_head)
 	M_ASSERTPKTHDR((*m_head));
 
 	m = *m_head;
-	ip = NULL;
 	tcp = NULL;
 	ip_off = poff = 0;
-#if 0
-/* XXX: TSO */
+#if 0 /* XXX: TSO */
+	ip = NULL;
+
 	if ((m->m_pkthdr.csum_flags & (ALC_CSUM_FEATURES | CSUM_TSO)) != 0) {
 		/*
 		 * AR813x/AR815x requires offset of TCP/UDP header in its
