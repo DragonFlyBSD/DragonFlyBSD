@@ -165,8 +165,8 @@ vfs_stdaccount(struct mount *mp, uid_t uid, gid_t gid, int64_t delta)
 		gnp = gnode_insert(mp, gid);
 
 	/* update existing chunk */
-	unp->uid_chunk[(uid & ACCT_CHUNK_MASK)] += delta;
-	gnp->gid_chunk[(gid & ACCT_CHUNK_MASK)] += delta;
+	unp->uid_chunk[(uid & ACCT_CHUNK_MASK)].space += delta;
+	gnp->gid_chunk[(gid & ACCT_CHUNK_MASK)].space += delta;
 
 	spin_unlock(&mp->mnt_acct.ac_spin);
 }
@@ -185,12 +185,12 @@ cmd_get_usage_all(struct mount *mp, prop_array_t dict_out)
 
 	RB_FOREACH(unp, ac_utree, &mp->mnt_acct.ac_uroot) {
 		for (i=0; i<ACCT_CHUNK_NIDS; i++) {
-			if (unp->uid_chunk[i] != 0) {
+			if (unp->uid_chunk[i].space != 0) {
 				item = prop_dictionary_create();
 				(void) prop_dictionary_set_uint32(item, "uid",
 					(unp->left_bits << ACCT_CHUNK_BITS) + i);
 				(void) prop_dictionary_set_uint64(item, "space used",
-					unp->uid_chunk[i]);
+					unp->uid_chunk[i].space);
 				prop_array_add_and_rel(dict_out, item);
 			}
 		}
@@ -198,12 +198,12 @@ cmd_get_usage_all(struct mount *mp, prop_array_t dict_out)
 
 	RB_FOREACH(gnp, ac_gtree, &mp->mnt_acct.ac_groot) {
 		for (i=0; i<ACCT_CHUNK_NIDS; i++) {
-			if (gnp->gid_chunk[i] != 0) {
+			if (gnp->gid_chunk[i].space != 0) {
 				item = prop_dictionary_create();
 				(void) prop_dictionary_set_uint32(item, "gid",
 					(gnp->left_bits << ACCT_CHUNK_BITS) + i);
 				(void) prop_dictionary_set_uint64(item, "space used",
-					gnp->gid_chunk[i]);
+					gnp->gid_chunk[i].space);
 				prop_array_add_and_rel(dict_out, item);
 			}
 		}
@@ -247,13 +247,13 @@ cmd_set_usage_all(struct mount *mp, prop_array_t args)
 			unp = RB_FIND(ac_utree, &mp->mnt_acct.ac_uroot, &ufind);
 			if (unp == NULL)
 				unp = unode_insert(mp, id);
-			unp->uid_chunk[(id & ACCT_CHUNK_MASK)] = space;
+			unp->uid_chunk[(id & ACCT_CHUNK_MASK)].space = space;
 		} else if (prop_dictionary_get_uint32(item, "gid", &id)) {
 			gfind.left_bits = (id >> ACCT_CHUNK_BITS);
 			gnp = RB_FIND(ac_gtree, &mp->mnt_acct.ac_groot, &gfind);
 			if (gnp == NULL)
 				gnp = gnode_insert(mp, id);
-			gnp->gid_chunk[(id & ACCT_CHUNK_MASK)] = space;
+			gnp->gid_chunk[(id & ACCT_CHUNK_MASK)].space = space;
 		} else {
 			mp->mnt_acct.ac_bytes = space;
 		}

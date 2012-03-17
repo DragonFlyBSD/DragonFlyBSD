@@ -155,16 +155,21 @@ struct bio_ops {
 #define ACCT_CHUNK_NIDS	(1<<ACCT_CHUNK_BITS)
 #define ACCT_CHUNK_MASK	(ACCT_CHUNK_NIDS - 1)
 
+struct ac_counters {
+	uint64_t space;
+	uint64_t limit;
+};
+
 struct ac_unode {
 	RB_ENTRY(ac_unode)	rb_entry;
 	uid_t			left_bits;
-	uint64_t		uid_chunk[ACCT_CHUNK_NIDS];
+	struct ac_counters	uid_chunk[ACCT_CHUNK_NIDS];
 };
 
 struct ac_gnode {
 	RB_ENTRY(ac_gnode)	rb_entry;
 	gid_t			left_bits;
-	uint64_t		gid_chunk[ACCT_CHUNK_NIDS];
+	struct ac_counters	gid_chunk[ACCT_CHUNK_NIDS];
 };
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
@@ -173,6 +178,7 @@ struct vfs_acct {
 	RB_HEAD(ac_utree,ac_unode)	ac_uroot;
 	RB_HEAD(ac_gtree,ac_gnode)	ac_groot;
 	uint64_t			ac_bytes;	/* total bytes used */
+	uint64_t			ac_limit;
 	struct spinlock			ac_spin;	/* protective spinlock */
 };
 

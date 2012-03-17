@@ -312,8 +312,8 @@ get_dirsize(char* dirname)
 				unp = unode_insert(file_uid);
 			if ((gnp = RB_FIND(ac_gtree, &ac_groot, &gfind)) == NULL)
 				gnp = gnode_insert(file_gid);
-			unp->uid_chunk[(file_uid & ACCT_CHUNK_MASK)] += file_size;
-			gnp->gid_chunk[(file_gid & ACCT_CHUNK_MASK)] += file_size;
+			unp->uid_chunk[(file_uid & ACCT_CHUNK_MASK)].space += file_size;
+			gnp->gid_chunk[(file_gid & ACCT_CHUNK_MASK)].space += file_size;
 		}
 	}
 	fts_close(fts);
@@ -365,30 +365,30 @@ cmd_check(char* dirname)
 	}
 	RB_FOREACH(unp, ac_utree, &ac_uroot) {
 	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
-		if (unp->uid_chunk[i] != 0) {
+		if (unp->uid_chunk[i].space != 0) {
 		    uid = (unp->left_bits << ACCT_CHUNK_BITS) + i;
 		    print_user(uid);
 		    if (flag_humanize) {
 			humanize_number(hbuf, sizeof(hbuf),
-			unp->uid_chunk[i], "", HN_AUTOSCALE, HN_NOSPACE);
+			unp->uid_chunk[i].space, "", HN_AUTOSCALE, HN_NOSPACE);
 			printf(" %s\n", hbuf);
 		    } else {
-			printf(" %" PRIu64 "\n", unp->uid_chunk[i]);
+			printf(" %" PRIu64 "\n", unp->uid_chunk[i].space);
 		    }
 		}
 	    }
 	}
 	RB_FOREACH(gnp, ac_gtree, &ac_groot) {
 	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
-		if (gnp->gid_chunk[i] != 0) {
+		if (gnp->gid_chunk[i].space != 0) {
 		    gid = (gnp->left_bits << ACCT_CHUNK_BITS) + i;
 		    print_group(gid);
 		    if (flag_humanize) {
 			humanize_number(hbuf, sizeof(hbuf),
-			gnp->gid_chunk[i], "", HN_AUTOSCALE, HN_NOSPACE);
+			gnp->gid_chunk[i].space, "", HN_AUTOSCALE, HN_NOSPACE);
 			printf(" %s\n", hbuf);
 		    } else {
-			printf(" %" PRIu64 "\n", gnp->gid_chunk[i]);
+			printf(" %" PRIu64 "\n", gnp->gid_chunk[i].space);
 		    }
 		}
 	    }
@@ -570,24 +570,24 @@ static int cmd_sync(char *dirname)
 
 	RB_FOREACH(unp, ac_utree, &ac_uroot) {
 	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
-		if (unp->uid_chunk[i] != 0) {
+		if (unp->uid_chunk[i].space != 0) {
 		    item = prop_dictionary_create();
 		    (void) prop_dictionary_set_uint32(item, "uid",
 				(unp->left_bits << ACCT_CHUNK_BITS) + i);
 		    (void) prop_dictionary_set_uint64(item, "space used",
-				unp->uid_chunk[i]);
+				unp->uid_chunk[i].space);
 		    prop_array_add_and_rel(args, item);
 		}
 	    }
 	}
 	RB_FOREACH(gnp, ac_gtree, &ac_groot) {
 	    for (i=0; i<ACCT_CHUNK_NIDS; i++) {
-		if (gnp->gid_chunk[i] != 0) {
+		if (gnp->gid_chunk[i].space != 0) {
 		    item = prop_dictionary_create();
 		    (void) prop_dictionary_set_uint32(item, "gid",
 				(gnp->left_bits << ACCT_CHUNK_BITS) + i);
 		    (void) prop_dictionary_set_uint64(item, "space used",
-				gnp->gid_chunk[i]);
+				gnp->gid_chunk[i].space);
 		    prop_array_add_and_rel(args, item);
 		}
 	    }
