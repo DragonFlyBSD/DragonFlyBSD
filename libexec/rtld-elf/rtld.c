@@ -702,6 +702,18 @@ _rtld_call_init(void)
     RtldLockState lockstate;
     Obj_Entry *obj;
 
+    if (!obj_main->note_present && obj_main->valid_hash_gnu) {
+	/*
+	 * The use of a linker script with a PHDRS directive that does not include
+	 * PT_NOTE will block the crt_no_init note.  In this case we'll look for the
+	 * recently added GNU hash dynamic tag which gets built by default.  It is
+	 * extremely unlikely to find a pre-3.1 binary without a PT_NOTE header and
+	 * a gnu hash tag.  If gnu hash found, consider binary to use new crt code.
+	 */
+	obj_main->crt_no_init = true;
+	dbg("Setting crt_no_init without presence of PT_NOTE header");
+    }
+
     wlock_acquire(rtld_bind_lock, &lockstate);
     if (obj_main->crt_no_init) {
 	preinitialize_main_object();
@@ -1331,6 +1343,7 @@ digest_phdr(const Elf_Phdr *phdr, int phnum, caddr_t entry, const char *path)
 	    break;
 
 	case PT_NOTE:
+	    obj->note_present = true;
 	    note_start = (Elf_Addr)obj->relocbase + ph->p_vaddr;
 	    note_end = note_start + ph->p_filesz;
 	    digest_notes(obj, note_start, note_end);
@@ -1367,14 +1380,14 @@ digest_notes(Obj_Entry *obj, Elf_Addr note_start, Elf_Addr note_end)
 			continue;
 		switch (note->n_type) {
 		case ABI_NOTETYPE:
-			/* FreeBSD osrel note */
+			/* DragonFly osrel note */
 			p = (uintptr_t)(note + 1);
 			p += roundup2(note->n_namesz, sizeof(Elf32_Addr));
 			obj->osrel = *(const int32_t *)(p);
 			dbg("note osrel %d", obj->osrel);
 			break;
 		case CRT_NOINIT_NOTETYPE:
-			/* FreeBSD 'crt does not call init' note */
+			/* DragonFly 'crt does not call init' note */
 			obj->crt_no_init = true;
 			dbg("note crt_no_init");
 			break;
@@ -2115,7 +2128,7 @@ objlist_call_fini(Objlist *list, Obj_Entry *root, RtldLockState *lockstate)
 	        }
 	    }
 	    if (elm->obj->fini != (Elf_Addr)NULL) {
-		dbg("DSO: calling fini function for %s at %p", elm->obj->path,
+		dbg("calling fini function for %s at %p", elm->obj->path,
 		    (void *)elm->obj->fini);
 		LD_UTRACE(UTRACE_FINI_CALL, elm->obj, (void *)elm->obj->fini,
 		    0, 0, elm->obj->path);
