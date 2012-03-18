@@ -69,7 +69,7 @@ SRCS+=  acpi_package.c
 SRCS+=	acpi_pci.c acpi_pcib.c acpi_pcib_acpi.c acpi_pcib_pci.c
 SRCS+=	acpi_pci_link.c
 SRCS+=  acpi_powerres.c acpi_resource.c acpi_thermal.c
-SRCS+=  acpi_timer.c acpi_hpet.c acpi_if.c
+SRCS+=  acpi_timer.c acpi_hpet.c acpi_if.c acpi_wmi_if.c
 SRCS+=  OsdDebug.c
 SRCS+=  OsdHardware.c OsdInterrupt.c OsdMemory.c OsdSchedule.c
 SRCS+=  OsdStream.c OsdSynch.c OsdTable.c OsdEnvironment.c
@@ -115,7 +115,7 @@ acpi_wakecode.h: acpi_wakecode.S
 	${MAKE} -f ${SYSDIR}/${OSACPI_MD_DIR}/Makefile \
 		MAKESRCPATH=${SYSDIR}/${OSACPI_MD_DIR}
 
-SUBDIR=	acpi_asus acpi_fujitsu acpi_panasonic acpi_sony acpi_thinkpad acpi_toshiba acpi_video aibs
-#SUBDIR+=acpi_hp
+SUBDIR=	acpi_asus acpi_fujitsu acpi_hp acpi_panasonic acpi_sony
+SUBDIR+=acpi_thinkpad acpi_toshiba acpi_video acpi_wmi aibs
 
 .include <bsd.kmod.mk>

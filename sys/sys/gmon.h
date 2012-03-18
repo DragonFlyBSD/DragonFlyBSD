@@ -201,4 +201,15 @@ extern struct gmonparam _gmonparam;
 #define	GPROF_TOS	3	/* struct: destination/count structure */
 #define	GPROF_GMONPARAM	4	/* struct: profiling parameters (see above) */
 
+#ifndef _KERNEL
+
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
+void	moncontrol(int);
+void	monstartup(u_long, u_long);
+__END_DECLS
+
+#endif /* !_KERNEL */
+
 #endif /* !_SYS_GMON_H_ */

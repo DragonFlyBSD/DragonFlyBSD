@@ -44,9 +44,9 @@ kern/subr_diskgpt.c			standard
 
 # DEVICES
 #
-dev/virtual/cdrom/vcd.c			optional	vcd
-dev/virtual/disk/vdisk.c		optional	vkd
-dev/virtual/net/if_vke.c		optional	vke
+dev/virtual/vkernel/cdrom/vcd.c		optional	vcd
+dev/virtual/vkernel/disk/vdisk.c	optional	vkd
+dev/virtual/vkernel/net/if_vke.c	optional	vke
 
 # PLATFORM FILES
 #

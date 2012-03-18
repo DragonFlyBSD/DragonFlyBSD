@@ -135,7 +135,7 @@ kvm_t *kd;
 
 void dofiles(struct kinfo_proc *kp, struct proc *p);
 void dommap(struct proc *p);
-void vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag);
+void vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off);
 int  ufs_filestat(struct vnode *vp, struct filestat *fsp);
 int  nfs_filestat(struct vnode *vp, struct filestat *fsp);
 int  devfs_filestat(struct vnode *vp, struct filestat *fsp);
@@ -326,23 +326,23 @@ dofiles(struct kinfo_proc *kp, struct proc *p)
 	 * root directory vnode, if one
 	 */
 	if (filed.fd_rdir)
-		vtrans(filed.fd_rdir, &filed.fd_nrdir, RDIR, FREAD);
+		vtrans(filed.fd_rdir, &filed.fd_nrdir, RDIR, FREAD, 0);
 	/*
 	 * current working directory vnode
 	 */
-	vtrans(filed.fd_cdir, &filed.fd_ncdir, CDIR, FREAD);
+	vtrans(filed.fd_cdir, &filed.fd_ncdir, CDIR, FREAD, 0);
 	/*
 	 * ktrace vnode, if one
 	 */
 	if (p->p_tracenode) {
 		if (kread(p->p_tracenode, &ktrace_node, sizeof (ktrace_node)))
-			vtrans(ktrace_node.kn_vp, NULL, TRACE, FREAD|FWRITE);
+			vtrans(ktrace_node.kn_vp, NULL, TRACE, FREAD|FWRITE, 0);
 	}
 	/*
 	 * text vnode, if one
 	 */
 	if (p->p_textvp)
-		vtrans(p->p_textvp, NULL, TEXT, FREAD);
+		vtrans(p->p_textvp, NULL, TEXT, FREAD, 0);
 	/*
 	 * open files
 	 */
@@ -363,8 +363,8 @@ dofiles(struct kinfo_proc *kp, struct proc *p)
 			continue;
 		}
 		if (file.f_type == DTYPE_VNODE) {
-			vtrans((struct vnode *)file.f_data, &file.f_nchandle, i, 
-				file.f_flag);
+			vtrans((struct vnode *)file.f_data, &file.f_nchandle,
+				i, file.f_flag, file.f_offset);
 		} else if (file.f_type == DTYPE_SOCKET) {
 			if (checkfile == 0)
 				socktrans((struct socket *)file.f_data, i);
@@ -379,8 +379,9 @@ dofiles(struct kinfo_proc *kp, struct proc *p)
 #ifdef DTYPE_FIFO
 		else if (file.f_type == DTYPE_FIFO) {
 			if (checkfile == 0)
-				vtrans((struct vnode *)file.f_data, &file.f_nchandle,
-					i, file.f_flag);
+				vtrans((struct vnode *)file.f_data,
+					&file.f_nchandle,
+					i, file.f_flag, file.f_offset);
 		}
 #endif
 		else {
@@ -441,7 +442,7 @@ dommap(struct proc *p)
 		switch (object.type) {
 		case OBJT_VNODE:
 			vtrans((struct vnode *)object.handle, NULL, 
-				MMAP, fflags);
+				MMAP, fflags, 0);
 			break;
 		default:
 			break;
@@ -450,13 +451,15 @@ dommap(struct proc *p)
 }
 
 void
-vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag)
+vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 {
 	struct vnode vn;
 	struct filestat fst;
 	char rw[3], mode[15];
 	const char *badtype = NULL, *filename;
+	char *name;
 
+	fst.offset = off;
 	filename = badtype = NULL;
 	if (!kread(vp, &vn, sizeof (struct vnode))) {
 		dprintf(stderr, "can't read vnode at %p for pid %d\n",
@@ -523,10 +526,11 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag)
 	}
 	PREFIX(i);
 	if (badtype) {
-		(void)printf(" %-*s  %10s    -\n", 
+		(void)printf(" %-*s  %10s    %jd\n",
 			     wflg_mnt,
 			     getmnton(vn.v_mount, &vn.v_namecache, ncr),
-			     badtype);
+			     badtype,
+			     (intmax_t)off);
 		return;
 	}
 	if (nflg)
@@ -540,18 +544,18 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag)
 	(void)printf(" %*ld %10s", ino_width, fst.fileid, mode);
 	switch (vn.v_type) {
 	case VBLK:
-	case VCHR: {
-		char *name;
-
+	case VCHR:
 		if (nflg || ((name = devname(fst.rdev, vn.v_type == VCHR ?
 		    S_IFCHR : S_IFBLK)) == NULL))
 			printf(" %3d,%-4d", major(fst.rdev), minor(fst.rdev));
 		else
 			printf(" %8s", name);
 		break;
-	}
+	case VREG:
+		printf(" %jd", (intmax_t)fst.offset);
+		break;
 	default:
-		printf(" %8llu", fst.size);
+		printf(" %8ju", (uintmax_t)fst.size);
 	}
 	rw[0] = '\0';
 	if (flag & FREAD)

@@ -51,6 +51,7 @@ struct  filestat {
 	long	fileid;
 	mode_t	mode;
 	long long size;
+	int64_t	offset;
 	dev_t	rdev;
 };
 

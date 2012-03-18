@@ -97,9 +97,9 @@ struct fs_ops cd9660_fsops = {
 struct file {
 	int 		f_flags;	/* file flags */
 	off_t 		f_off;		/* Current offset within file */
-	daddr_t 	f_bno;		/* Starting block number */
+	u_daddr_t 	f_bno;		/* Starting block number */
 	off_t 		f_size;		/* Size of file */
-	daddr_t		f_buf_blkno;	/* block number of data block */	
+	u_daddr_t	f_buf_blkno;	/* block number of data block */
 	char		*f_buf;		/* buffer for data block */
 	int		f_susp_skip;	/* len_skip for SUSP records */
 };
@@ -114,7 +114,7 @@ struct ptable_ent {
 #define	PTFIXSZ		8
 #define	PTSIZE(pp)	roundup(PTFIXSZ + isonum_711((pp)->namlen), 2)
 
-#define	cdb2devb(bno)	((bno) * ISO_DEFAULT_BLOCK_SIZE / DEV_BSIZE)
+#define	cdb2devb(bno)	((bno) * (ISO_DEFAULT_BLOCK_SIZE / DEV_BSIZE))
 
 /* XXX these should be in the system headers */
 static __inline int
@@ -290,7 +290,7 @@ cd9660_open(const char *path, struct open_file *f)
 	void *buf;
 	struct iso_primary_descriptor *vd;
 	size_t buf_size, read, dsize, off;
-	daddr_t bno, boff;
+	u_daddr_t bno, boff;
 	struct iso_directory_record rec;
 	struct iso_directory_record *dp = NULL;
 	int rc, first, use_rrip, lenskip;
@@ -446,7 +446,7 @@ static int
 buf_read_file(struct open_file *f, char **buf_p, size_t *size_p)
 {
 	struct file *fp = (struct file *)f->f_fsdata;
-	daddr_t blkno, blkoff;
+	u_daddr_t blkno, blkoff;
 	int rc = 0;
 	size_t read;
 
@@ -524,7 +524,7 @@ again:
 	ep = (struct iso_directory_record *)buf;
 
 	if (isonum_711(ep->length) == 0) {
-		daddr_t blkno;
+		u_daddr_t blkno;
 		
 		/* skip to next block, if any */
 		blkno = fp->f_off / ISO_DEFAULT_BLOCK_SIZE;

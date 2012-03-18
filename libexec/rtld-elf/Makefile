@@ -13,6 +13,7 @@ WARNS?=		2
 
 CFLAGS+=	-DIN_RTLD
 CFLAGS+=	-I${.CURDIR}/${MACHINE_ARCH} -I${.CURDIR} -D__thread=
+CFLAGS+=	-I${.CURDIR}/../../lib/csu/common
 LDFLAGS+=	-nostdlib -e .rtld_start -Wl,--no-undefined
 INSTALLFLAGS=	-C -b
 .ifndef NOFSCHG

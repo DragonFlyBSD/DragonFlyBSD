@@ -1,6 +1,12 @@
-# $DragonFly: src/sys/dev/virtual/Makefile,v 1.3 2007/05/25 02:21:12 dillon Exp $
-#
+.include "${.CURDIR}/../../platform/${MACHINE_PLATFORM}/Makefile.inc"
 
-SUBDIR= disk net cdrom
+SUBDIR=	vkernel
+
+.for dir in ${SUBDIR}
+.if empty(DEV_SUPPORT:Mvirtual) && \
+	empty(DEV_SUPPORT:Mvirtual/${dir}) && empty(DEV_SUPPORT:Mvirtual/${dir}/*)
+SUBDIR:= ${SUBDIR:N${dir}}
+.endif
+.endfor
 
 .include <bsd.subdir.mk>

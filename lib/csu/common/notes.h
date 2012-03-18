@@ -1,5 +1,5 @@
 /*-
- * Copyright 1996-1998 John D. Polstra.
+ * Copyright 2012 Konstantin Belousov <kib@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -21,63 +21,16 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD$
  */
 
-#ifndef __GNUC__
-#error "GCC is needed to compile this file"
+#ifndef	CSU_COMMON_NOTES_H
+#define	CSU_COMMON_NOTES_H
+
+#define NOTE_VENDOR		"DragonFly"
+#define NOTE_SECTION		".note.tag"
+#define ABI_NOTETYPE		1
+#define CRT_NOINIT_NOTETYPE	0x20
+
 #endif
-
-#include <machine/tls.h>
-#include <stdlib.h>
-
-#include "libc_private.h"
-#include "initfini.c"
-#include "crtbrand.c"
-
-typedef void (*fptr)(void);
-
-#ifdef GCRT
-extern void _mcleanup(void);
-extern void monstartup(void *, void *);
-extern int eprol;
-extern int etext;
-#endif
-
-void _start(char **, void (*)(void));
-
-/* The entry function. */
-void
-_start(char **ap, void (*cleanup)(void))
-{
-	int argc;
-	char **argv;
-	char **env;
-
-	argc = *(long *)(void *)ap;
-	argv = ap + 1;
-	env = ap + 2 + argc;
-	environ = env;
-	if (argc > 0 && argv[0] != NULL)
-		handle_progname(argv[0]);
-
-	/*
-	 * Setup the initial TLS space.  The RTLD does not set up our TLS
-	 * (it can't, it doesn't know how our errno is declared).  It simply
-	 * does all the groundwork required so that we can call
-	 * _rtld_allocate_tls().
-	 */
-	_init_tls();
-	_rtld_call_init();
-
-	if (&_DYNAMIC != NULL)
-		atexit(cleanup);
-
-#ifdef GCRT
-	atexit(_mcleanup);
-	monstartup(&eprol, &etext);
-__asm__("eprol:");
-#endif
-
-	handle_static_init(argc, argv, env);
-	exit(main(argc, argv, env));
-}

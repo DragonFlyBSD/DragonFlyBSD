@@ -924,7 +924,6 @@ blst_radix_print(blmeta_t *scan, swblk_t blk, int64_t radix, int skip, int tab)
 {
 	int i;
 	int next_skip;
-	int lastState = 0;
 
 	if (radix == BLIST_BMAP_RADIX) {
 		kprintf(
@@ -976,7 +975,6 @@ blst_radix_print(blmeta_t *scan, swblk_t blk, int64_t radix, int skip, int tab)
 			    tab, tab, "",
 			    blk, (long long)radix
 			);
-			lastState = 0;
 			break;
 		}
 		blst_radix_print(

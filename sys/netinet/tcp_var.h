@@ -83,6 +83,7 @@
  */
 extern int tcp_do_rfc1323;
 extern int tcp_do_rfc3390;
+extern int tcp_low_rtobase;
 extern int tcp_do_sack;
 extern int tcp_do_smartsack;
 extern int tcp_aggregate_acks;
@@ -163,7 +164,7 @@ struct tcpcb {
 #define TF_SIGNATURE	0x00004000	/* require MD5 digests (RFC2385) */
 #define TF_FASTKEEP	0x00008000	/* use a faster tcp_keepidle */
 #define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
-#define	TF_LQ_OVERFLOW	0x00020000	/* listen queue overflow */
+#define	TF_SYN_WASLOST	0x00020000	/* SYN or SYN|ACK was lost */
 #define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
 #define	TF_RXWIN0SENT	0x00080000	/* sent a receiver win 0 in response */
 #define	TF_FASTRECOVERY	0x00100000	/* in NewReno Fast Recovery */
@@ -455,9 +456,10 @@ struct syncache {
 #define SCF_NOOPT		0x01		/* no TCP options */
 #define SCF_WINSCALE		0x02		/* negotiated window scaling */
 #define SCF_TIMESTAMP		0x04		/* negotiated timestamps */
+#define SCF_SYN_WASLOST		0x08		/* SYN|ACK was lost */
 #define SCF_UNREACH		0x10		/* icmp unreachable received */
 #define	SCF_SACK_PERMITTED	0x20		/* saw SACK permitted option */
-#define SCF_SIGNATURE   0x40    /* send MD5 digests */
+#define SCF_SIGNATURE		0x40		/* send MD5 digests */
 #define SCF_MARKER		0x80		/* not a real entry */
 	TAILQ_ENTRY(syncache) sc_hash;
 	TAILQ_ENTRY(syncache) sc_timerq;
@@ -645,7 +647,7 @@ void	 syncache_unreach(struct in_conninfo *, struct tcphdr *);
 int	 syncache_expand(struct in_conninfo *, struct tcphdr *,
 	     struct socket **, struct mbuf *);
 int	 syncache_add(struct in_conninfo *, struct tcpopt *,
-	     struct tcphdr *, struct socket **, struct mbuf *);
+	     struct tcphdr *, struct socket *, struct mbuf *);
 void	 syncache_chkrst(struct in_conninfo *, struct tcphdr *);
 void	 syncache_badack(struct in_conninfo *);
 void	 syncache_destroy(struct tcpcb *tp);

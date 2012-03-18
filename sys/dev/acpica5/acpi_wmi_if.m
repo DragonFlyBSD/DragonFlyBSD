@@ -28,7 +28,7 @@
 
 #include <sys/bus.h>
 #include <sys/types.h>
-#include <contrib/dev/acpica/include/acpi.h>
+#include "acpi.h"
 
 INTERFACE acpi_wmi;
 

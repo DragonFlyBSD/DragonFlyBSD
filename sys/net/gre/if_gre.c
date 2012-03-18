@@ -235,7 +235,6 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct gre_softc *sc = ifp->if_softc;
 	struct greip *gh;
 	struct ip *ip;
-	u_char osrc;
 	u_short etype = 0;
 	struct mobile_h mob_h;
 
@@ -260,7 +259,6 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	gh = NULL;
 	ip = NULL;
-	osrc = 0;
 
 	if (ifp->if_bpf) {
 		uint32_t af = dst->sa_family;

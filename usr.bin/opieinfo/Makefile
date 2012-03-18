@@ -9,7 +9,7 @@ CFLAGS+=-I${.CURDIR}/../../lib/libopie
 CFLAGS+=-I${OPIE_DIST}
 CFLAGS+=-DINSECURE_OVERRIDE
 CSTD?=	gnu89
-WARNS?=	0
+WARNS?=	1
 
 DPADD=	${LIBOPIE} ${LIBMD}
 LDADD=	-lopie -lmd

@@ -24,8 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/include/uuid.h,v 1.3 2005/01/03 02:56:15 marcel Exp $
- * $DragonFly: src/include/uuid.h,v 1.2 2007/06/17 07:35:10 dillon Exp $
+ * $FreeBSD: src/include/uuid.h,v 1.4 2008/09/15 23:47:19 emax Exp $
  */
 
 #ifndef _UUID_H_
@@ -56,7 +55,11 @@ void	uuid_from_string(const char *, uuid_t *, uint32_t *);
 uint16_t uuid_hash(const uuid_t *, uint32_t *);
 int32_t	uuid_is_nil(const uuid_t *, uint32_t *);
 void	uuid_to_string(const uuid_t *, char **, uint32_t *);
-void    uuid_reset_lookup(void);
+void	uuid_enc_le(void *, const uuid_t *);
+void	uuid_dec_le(const void *, uuid_t *);
+void	uuid_enc_be(void *, const uuid_t *);
+void	uuid_dec_be(const void *, uuid_t *);
+void	uuid_reset_lookup(void);
 void	uuid_addr_lookup(const uuid_t *, char **, uint32_t *);
 void	uuid_name_lookup(uuid_t *, const char *, uint32_t *);
 __END_DECLS

@@ -242,6 +242,7 @@ static void	 tcp_xmit_timer(struct tcpcb *, int);
 static void	 tcp_newreno_partial_ack(struct tcpcb *, struct tcphdr *, int);
 static void	 tcp_sack_rexmt(struct tcpcb *, struct tcphdr *);
 static int	 tcp_rmx_msl(const struct tcpcb *);
+static void	 tcp_established(struct tcpcb *);
 
 /* Neighbor Discovery, Neighbor Unreachability Detection Upper layer hint. */
 #ifdef INET6
@@ -1040,50 +1041,14 @@ findpcb:
 		 */
 		if (so->so_qlen <= so->so_qlimit) {
 			tcp_dooptions(&to, optp, optlen, TRUE);
-			if (!syncache_add(&inc, &to, th, &so, m))
+			if (!syncache_add(&inc, &to, th, so, m))
 				goto drop;
 
 			/*
 			 * Entry added to syncache, mbuf used to
 			 * send SYN,ACK packet.
 			 */
-			if (so == NULL)
-				return(IPPROTO_DONE);
-
-			/*
-			 * We must be in the correct protocol thread for
-			 * this connection.
-			 */
-			KKASSERT(so->so_port == &curthread->td_msgport);
-
-			inp = so->so_pcb;
-			tp = intotcpcb(inp);
-			tp->snd_wnd = tiwin;
-			tp->t_starttime = ticks;
-			tp->t_state = TCPS_ESTABLISHED;
-
-			/*
-			 * If there is a FIN, or if there is data and the
-			 * connection is local, then delay SYN,ACK(SYN) in
-			 * the hope of piggy-backing it on a response
-			 * segment.  Otherwise must send ACK now in case
-			 * the other side is slow starting.
-			 */
-			if (DELAY_ACK(tp) &&
-			    ((thflags & TH_FIN) ||
-			     (tlen != 0 &&
-			      ((isipv6 && in6_localaddr(&inp->in6p_faddr)) ||
-			       (!isipv6 && in_localaddr(inp->inp_faddr)))))) {
-				tcp_callout_reset(tp, tp->tt_delack,
-				    tcp_delacktime, tcp_timer_delack);
-				tp->t_flags |= TF_NEEDSYN;
-			} else {
-				tp->t_flags |= (TF_ACKNOW | TF_NEEDSYN);
-			}
-
-			tcpstat.tcps_connects++;
-			soisconnected(so);
-			goto trimthenstep6;
+			return(IPPROTO_DONE);
 		}
 		goto drop;
 	}
@@ -1511,10 +1476,7 @@ after_listen:
 				tp->t_flags &= ~TF_NEEDFIN;
 				thflags &= ~TH_SYN;
 			} else {
-				tp->t_state = TCPS_ESTABLISHED;
-				tcp_callout_reset(tp, tp->tt_keep,
-						  tcp_getkeepidle(tp),
-						  tcp_timer_keep);
+				tcp_established(tp);
 			}
 		} else {
 			/*
@@ -1529,7 +1491,6 @@ after_listen:
 			tp->t_state = TCPS_SYN_RECEIVED;
 		}
 
-trimthenstep6:
 		/*
 		 * Advance th->th_seq to correspond to first data byte.
 		 * If data, trim to stay within window,
@@ -1885,10 +1846,7 @@ trimthenstep6:
 			tp->t_state = TCPS_FIN_WAIT_1;
 			tp->t_flags &= ~TF_NEEDFIN;
 		} else {
-			tp->t_state = TCPS_ESTABLISHED;
-			tcp_callout_reset(tp, tp->tt_keep,
-					  tcp_getkeepidle(tp),
-					  tcp_timer_keep);
+			tcp_established(tp);
 		}
 		/*
 		 * If segment contains data or ACK, will call tcp_reass()
@@ -3234,4 +3192,31 @@ tcp_rmx_msl(const struct tcpcb *tp)
 		msl = 1;
 
 	return msl;
+}
+
+static void
+tcp_established(struct tcpcb *tp)
+{
+	tp->t_state = TCPS_ESTABLISHED;
+	tcp_callout_reset(tp, tp->tt_keep, tcp_getkeepidle(tp), tcp_timer_keep);
+
+	if (tp->t_flags & TF_SYN_WASLOST) {
+		/*
+		 * RFC3390:
+		 * "If the SYN or SYN/ACK is lost, the initial window used by
+		 *  a sender after a correctly transmitted SYN MUST be one
+		 *  segment consisting of MSS bytes."
+		 */
+		tp->snd_cwnd = tp->t_maxseg;
+
+		/*
+		 * RFC6298:
+		 * "If the timer expires awaiting the ACK of a SYN segment
+		 *  and the TCP implementation is using an RTO less than 3
+		 *  seconds, the RTO MUST be re-initialized to 3 seconds
+		 *  when data transmission begins"
+		 */
+		if (tp->t_rxtcur < TCPTV_RTOBASE3)
+			tp->t_rxtcur = TCPTV_RTOBASE3;
+	}
 }

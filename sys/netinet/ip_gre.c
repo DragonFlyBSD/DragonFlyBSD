@@ -204,7 +204,6 @@ gre_mobile_input(struct mbuf **mp, int *offp, int proto)
 	struct ip *ip = mtod(m, struct ip *);
 	struct mobip_h *mip = mtod(m, struct mobip_h *);
 	struct gre_softc *sc;
-	u_char osrc = 0;
 	int msiz, hlen;
 
 	hlen = *offp;
@@ -219,7 +218,6 @@ gre_mobile_input(struct mbuf **mp, int *offp, int proto)
 	sc->sc_if.if_ibytes += m->m_pkthdr.len;
 
 	if(ntohs(mip->mh.proto) & MOB_H_SBIT) {
-		osrc = 1;
 		msiz = MOB_H_SIZ_L;
 		mip->mi.ip_src.s_addr = mip->mh.osrc;
 	} else {

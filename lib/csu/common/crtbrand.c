@@ -22,14 +22,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/csu/common/crtbrand.c SVN 217375 2011/01/13 dim $
+ * $FreeBSD: src/lib/csu/common/crtbrand.c SVN 232832 2012/03/11 kib $
  */
 
 #include <sys/param.h>
-
-#define ABI_VENDOR	"DragonFly"
-#define ABI_SECTION	".note.ABI-tag"
-#define ABI_NOTETYPE	1
+#include "notes.h"
 
 /*
  * Special ".note" entry specifying the ABI version.  See
@@ -54,15 +51,16 @@
  * These steps are done in the individual Makefiles for each applicable arch.
  */
 static const struct {
-    int32_t	namesz;
-    int32_t	descsz;
-    int32_t	type;
-    char	name[sizeof ABI_VENDOR];
-    int32_t	desc;
-} abitag __attribute__ ((section (ABI_SECTION))) __attribute__ ((used))= {
-    sizeof ABI_VENDOR,
-    sizeof(int32_t),
-    ABI_NOTETYPE,
-    ABI_VENDOR,
-    __DragonFly_version
+	int32_t	namesz;
+	int32_t	descsz;
+	int32_t	type;
+	char	name[sizeof(NOTE_VENDOR)];
+	int32_t	desc;
+} abitag __attribute__ ((section (NOTE_SECTION),
+    aligned(4))) __attribute__ ((used)) = {
+	.namesz = sizeof(NOTE_VENDOR),
+	.descsz = sizeof(int32_t),
+	.type = ABI_NOTETYPE,
+	.name = NOTE_VENDOR,
+	.desc = __DragonFly_version
 };

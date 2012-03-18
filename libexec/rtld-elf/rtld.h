@@ -59,6 +59,10 @@ extern size_t tls_static_space;
 extern int tls_dtv_generation;
 extern int tls_max_index;
 
+extern int main_argc;
+extern char **main_argv;
+extern char **environ;
+
 struct stat;
 struct Struct_Obj_Entry;
 
@@ -72,7 +76,7 @@ typedef STAILQ_HEAD(Struct_Objlist, Struct_Objlist_Entry) Objlist;
 
 /* Types of init and fini functions */
 typedef void (*InitFunc)(void);
-typedef void (*InitArrayFunc)(int, char **, char **);
+typedef void (*InitArrFunc)(int, char **, char **);
 
 /* Lists of shared object dependencies */
 typedef struct Struct_Needed_Entry {
@@ -218,6 +222,8 @@ typedef struct Struct_Obj_Entry {
     int init_array_num; 	/* Number of entries in init_array */
     int fini_array_num; 	/* Number of entries in fini_array */
 
+    int32_t osrel;		/* OSREL note value */
+
     bool mainprog : 1;		/* True if this is the main program */
     bool rtld : 1;		/* True if this is the dynamic linker */
     bool textrel : 1;		/* True if there are relocations to text seg */
@@ -239,6 +245,8 @@ typedef struct Struct_Obj_Entry {
     bool filtees_loaded : 1;	/* Filtees loaded */
     bool irelative : 1;		/* Object has R_MACHDEP_IRELATIVE relocs */
     bool gnu_ifunc : 1;		/* Object has references to STT_GNU_IFUNC */
+    bool crt_no_init : 1;	/* Object's crt does not call _init/_fini */
+    bool note_present : 1;	/* True if at least one PT_NOTE header found */
     bool valid_hash_sysv : 1;	/* A valid System V hash hash tag is available */
     bool valid_hash_gnu : 1;	/* A valid GNU hash tag is available */
 
@@ -306,6 +314,7 @@ typedef struct Struct_SymLook {
 } SymLook;
 
 void _rtld_error(const char *, ...) __printflike(1, 2);
+const char *rtld_strerror(int);
 Obj_Entry *map_object(int, const char *, const struct stat *);
 void *xcalloc(size_t);
 void *xmalloc(size_t);
@@ -326,6 +335,7 @@ const Elf_Sym *find_symdef(unsigned long, const Obj_Entry *,
   const Obj_Entry **, int, SymCache *, struct Struct_RtldLockState *);
 void init_pltgot(Obj_Entry *);
 void lockdflt_init(void);
+void digest_notes(Obj_Entry *, Elf_Addr, Elf_Addr);
 void obj_free(Obj_Entry *);
 Obj_Entry *obj_new(void);
 void _rtld_bind_start(void);

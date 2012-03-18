@@ -225,6 +225,9 @@ tcp_send_timermsg(struct tcpcb *tp, uint32_t task)
 int	tcp_syn_backoff[TCP_MAXRXTSHIFT + 1] =
     { 1, 1, 1, 1, 1, 2, 4, 8, 16, 32, 64, 64, 64 };
 
+int	tcp_syn_backoff_low[TCP_MAXRXTSHIFT + 1] =
+    { 1, 2, 4, 4, 4, 8, 16, 16, 32, 64, 64, 64, 64 };
+
 int	tcp_backoff[TCP_MAXRXTSHIFT + 1] =
     { 1, 2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 64, 64 };
 
@@ -531,25 +534,32 @@ tcp_timer_rexmt_handler(struct tcpcb *tp)
 		tp->t_badrxtwin = ticks + (tp->t_srtt >> (TCP_RTT_SHIFT + 1));
 		tcp_save_congestion_state(tp);
 		tp->t_flags &= ~(TF_FASTREXMT | TF_EARLYREXMT);
+
+		if (tp->t_state == TCPS_SYN_SENT ||
+		    tp->t_state == TCPS_SYN_RECEIVED) {
+			/*
+			 * Record that SYN or SYN|ACK was lost.
+			 * Needed by RFC3390 and RFC6298.
+			 */
+			tp->t_flags |= TF_SYN_WASLOST;
+		}
 	}
 	/* Throw away SACK blocks on a RTO, as specified by RFC2018. */
 	tcp_sack_cleanup(&tp->scb);
 	tcpstat.tcps_rexmttimeo++;
-	if (tp->t_state == TCPS_SYN_SENT)
-		rexmt = TCP_REXMTVAL(tp) * tcp_syn_backoff[tp->t_rxtshift];
-	else
+	if (tp->t_state == TCPS_SYN_SENT) {
+		if (tcp_low_rtobase) {
+			rexmt = TCP_REXMTVAL(tp) *
+				tcp_syn_backoff_low[tp->t_rxtshift];
+		} else {
+			rexmt = TCP_REXMTVAL(tp) *
+				tcp_syn_backoff[tp->t_rxtshift];
+		}
+	} else {
 		rexmt = TCP_REXMTVAL(tp) * tcp_backoff[tp->t_rxtshift];
+	}
 	TCPT_RANGESET(tp->t_rxtcur, rexmt,
 		      tp->t_rttmin, TCPTV_REXMTMAX);
-	/*
-	 * Disable rfc1323 if we havn't got any response to
-	 * our third SYN to work-around some broken terminal servers
-	 * (most of which have hopefully been retired) that have bad VJ
-	 * header compression code which trashes TCP segments containing
-	 * unknown-to-them TCP options.
-	 */
-	if ((tp->t_state == TCPS_SYN_SENT) && (tp->t_rxtshift == 3))
-		tp->t_flags &= ~(TF_REQ_SCALE|TF_REQ_TSTMP);
 	/*
 	 * If losing, let the lower level know and try for
 	 * a better route.  Also, if we backed off this far,
