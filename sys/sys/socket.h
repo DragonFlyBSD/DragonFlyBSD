@@ -489,6 +489,7 @@ ssize_t	sendmsg (int, const struct msghdr *, int);
 int	sendfile (int, int, off_t, size_t, struct sf_hdtr *, off_t *, int);
 int	setsockopt (int, int, int, const void *, socklen_t);
 int	shutdown (int, int);
+int	sockatmark(int);
 int	socketpair (int, int, int, int *);
 
 void	pfctlinput (int, struct sockaddr *);
