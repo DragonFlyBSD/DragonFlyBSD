@@ -864,7 +864,6 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		tp->t_flags |= TF_SIGNATURE;
 #endif /* TCP_SIGNATURE */
 
-
 	tcp_mss(tp, sc->sc_peer_mss);
 
 	/*
@@ -1162,8 +1161,8 @@ syncache_respond(struct syncache *sc, struct mbuf *m)
 		    ((sc->sc_flags & SCF_SACK_PERMITTED) ?
 			TCPOLEN_SACK_PERMITTED_ALIGNED : 0);
 #ifdef TCP_SIGNATURE
-				optlen += ((sc->sc_flags & SCF_SIGNATURE) ?
-						(TCPOLEN_SIGNATURE + 2) : 0);
+		optlen += ((sc->sc_flags & SCF_SIGNATURE) ?
+		    (TCPOLEN_SIGNATURE + 2) : 0);
 #endif /* TCP_SIGNATURE */
 	}
 	tlen = hlen + sizeof(struct tcphdr) + optlen;
@@ -1282,7 +1281,7 @@ syncache_respond(struct syncache *sc, struct mbuf *m)
 		*bp++ = TCPOPT_NOP;
 		*bp++ = TCPOPT_EOL;
 		optp += TCPOLEN_SIGNATURE + 2;
-}
+	}
 #endif /* TCP_SIGNATURE */
 
 	if (sc->sc_flags & SCF_SACK_PERMITTED) {
