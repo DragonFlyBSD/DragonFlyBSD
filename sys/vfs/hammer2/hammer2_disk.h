@@ -80,9 +80,11 @@
  * caching lots of small files.
  */
 #define HAMMER2_PBUFRADIX	16	/* physical buf (1<<16) bytes */
-#define HAMMER2_PBUFSIZE	65536	/* fixed physical device buffer size */
+#define HAMMER2_PBUFSIZE	65536
 #define HAMMER2_LBUFRADIX	14	/* logical buf (1<<14) bytes */
-#define HAMMER2_LBUFSIZE	16384	/* vnode/logical file buffer size */
+#define HAMMER2_LBUFSIZE	16384
+#define HAMMER2_MINIORADIX	10	/* minimum IO size for direct IO */
+#define HAMMER2_MINIOSIZE	1024
 
 /*
  * HAMMER2 processes blockrefs in sets of 8.  The set is fully associative,
@@ -591,8 +593,8 @@ struct hammer2_volume_data {
 	uint64_t	magic;			/* 0000 Signature */
 	hammer2_off_t	boot_beg;		/* 0008 Boot area (future) */
 	hammer2_off_t	boot_end;		/* 0010 (size = end - beg) */
-	hammer2_off_t	redo_beg;		/* 0018 Redo area (future) */
-	hammer2_off_t	redo_end;		/* 0020 (size = end - beg) */
+	hammer2_off_t	aux_beg;		/* 0018 Aux area (future) */
+	hammer2_off_t	aux_end;		/* 0020 (size = end - beg) */
 	hammer2_off_t	volu_size;		/* 0028 Volume size, bytes */
 
 	uint32_t	version;		/* 0030 */

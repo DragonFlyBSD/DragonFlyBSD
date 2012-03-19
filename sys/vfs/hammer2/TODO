@@ -1,4 +1,10 @@
 
+* The direct write code needs to invalidate any underlying physical buffers.
+  Direct write needs to be implemented.
+
+* Make sure a resized block (hammer2_chain_resize()) calculates a new
+  hash code.
+
 * The freemap allocator needs to getblk/clrbuf/bdwrite any partial
   block allocations (less than 64KB) that allocate out of a new 64K
   block, to avoid causing a read-before-write I/O.

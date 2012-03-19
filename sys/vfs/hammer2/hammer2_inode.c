@@ -414,3 +414,16 @@ hammer2_hardlink_create(hammer2_inode_t *ip, hammer2_inode_t *dip,
 	/
 #endif
 }
+
+int
+hammer2_inode_calc_alloc(hammer2_key_t filesize)
+{
+	int frag = (int)filesize & HAMMER2_PBUFMASK;
+	int radix;
+
+	if (frag == 0)
+		return(0);
+	for (radix = HAMMER2_MINIORADIX; frag > (1 << radix); ++radix)
+		;
+	return (radix);
+}

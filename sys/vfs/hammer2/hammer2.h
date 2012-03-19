@@ -109,7 +109,7 @@ struct hammer2_chain {
 
 	struct buf	*bp;		/* buffer cache (ro) */
 	hammer2_media_data_t *data;	/* modified copy of data (rw) */
-
+	u_int		bytes;		/* physical size of data */
 	struct lock	lk;		/* lockmgr lock */
 	int		index;		/* index in parent */
 	u_int		refs;
@@ -279,6 +279,7 @@ hammer2_inode_t *hammer2_inode_alloc(hammer2_mount_t *hmp, void *data);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
+int hammer2_inode_calc_alloc(hammer2_key_t filesize);
 
 int hammer2_inode_create(hammer2_mount_t *hmp,
 			struct vattr *vap, struct ucred *cred,
@@ -302,6 +303,8 @@ void hammer2_chain_ref(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+void hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain,
+				int nradix);
 void hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_find(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent, int index);
