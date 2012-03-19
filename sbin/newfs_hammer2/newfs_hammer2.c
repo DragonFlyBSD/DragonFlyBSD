@@ -69,9 +69,9 @@ static int ForceOpt = 0;
 static uuid_t Hammer2_FSType;	/* static filesystem type id for HAMMER2 */
 static uuid_t Hammer2_FSId;	/* unique filesystem id in volu header */
 static uuid_t Hammer2_PFSId;	/* PFS id in super-root inode */
-static const char *Label;
+static const char *Label = "ROOT";
 static hammer2_off_t BootAreaSize;
-static hammer2_off_t RedoAreaSize;
+static hammer2_off_t AuxAreaSize;
 
 #define GIG	((hammer2_off_t)1024*1024*1024)
 
@@ -131,7 +131,7 @@ main(int ac, char **av)
 					 HAMMER2_BOOT_MAX_BYTES, 2);
 			break;
 		case 'r':
-			RedoAreaSize = getsize(optarg,
+			AuxAreaSize = getsize(optarg,
 					 HAMMER2_NEWFS_ALIGN,
 					 HAMMER2_REDO_MAX_BYTES, 2);
 			break;
@@ -149,12 +149,6 @@ main(int ac, char **av)
 			usage();
 			break;
 		}
-	}
-
-	if (Label == NULL) {
-		fprintf(stderr,
-			"newfs_hammer: A root label must be specified\n");
-		usage();
 	}
 
 	if (Hammer2Version < 0) {
@@ -211,23 +205,23 @@ main(int ac, char **av)
 	} else if (BootAreaSize < HAMMER2_BOOT_MIN_BYTES) {
 		BootAreaSize = HAMMER2_BOOT_MIN_BYTES;
 	}
-	BootAreaSize = (RedoAreaSize + HAMMER2_VOLUME_ALIGNMASK64) &
+	BootAreaSize = (BootAreaSize + HAMMER2_VOLUME_ALIGNMASK64) &
 		       ~HAMMER2_VOLUME_ALIGNMASK64;
 
 	/*
 	 * Calculate defaults for the redo area size and round to the
 	 * volume alignment boundary.
 	 */
-	if (RedoAreaSize == 0) {
-		RedoAreaSize = HAMMER2_REDO_NOM_BYTES;
-		while (RedoAreaSize > total_space / 20)
-			RedoAreaSize >>= 1;
-		if (RedoAreaSize < HAMMER2_REDO_MIN_BYTES)
-			RedoAreaSize = HAMMER2_REDO_MIN_BYTES;
-	} else if (RedoAreaSize < HAMMER2_REDO_MIN_BYTES) {
-		RedoAreaSize = HAMMER2_REDO_MIN_BYTES;
+	if (AuxAreaSize == 0) {
+		AuxAreaSize = HAMMER2_REDO_NOM_BYTES;
+		while (AuxAreaSize > total_space / 20)
+			AuxAreaSize >>= 1;
+		if (AuxAreaSize < HAMMER2_REDO_MIN_BYTES)
+			AuxAreaSize = HAMMER2_REDO_MIN_BYTES;
+	} else if (AuxAreaSize < HAMMER2_REDO_MIN_BYTES) {
+		AuxAreaSize = HAMMER2_REDO_MIN_BYTES;
 	}
-	RedoAreaSize = (RedoAreaSize + HAMMER2_VOLUME_ALIGNMASK64) &
+	AuxAreaSize = (AuxAreaSize + HAMMER2_VOLUME_ALIGNMASK64) &
 		       ~HAMMER2_VOLUME_ALIGNMASK64;
 
 	/*
@@ -249,21 +243,24 @@ main(int ac, char **av)
 			  HAMMER2_RESERVE_BYTES64) * HAMMER2_RESERVE_SEG64;
 
 	free_space = total_space - reserved_space -
-		     BootAreaSize - RedoAreaSize;
+		     BootAreaSize - AuxAreaSize;
 
 	format_hammer2(fd, total_space, free_space);
 	fsync(fd);
 	close(fd);
 
 	printf("---------------------------------------------\n");
-	printf("total size %s version %d\n",
-		sizetostr(total_space), Hammer2Version);
-	printf("boot-area-size:      %s\n", sizetostr(BootAreaSize));
-	printf("redo-buffer-size:    %s\n", sizetostr(RedoAreaSize));
-	printf("topo-reserved:	     %s\n", sizetostr(reserved_space));
-	printf("free-space:          %s\n", sizetostr(free_space));
-	printf("fsid:                %s\n", fsidstr);
-	printf("pfsid:               %s\n", pfsidstr);
+	printf("total-size:       %s (%jd bytes)\n",
+	       sizetostr(total_space),
+	       (intmax_t)total_space);
+	printf("root-label:       %s\n", Label);
+	printf("version:            %d\n", Hammer2Version);
+	printf("boot-area-size:   %s\n", sizetostr(BootAreaSize));
+	printf("aux-area-size:    %s\n", sizetostr(AuxAreaSize));
+	printf("topo-reserved:	  %s\n", sizetostr(reserved_space));
+	printf("free-space:       %s\n", sizetostr(free_space));
+	printf("fsid:             %s\n", fsidstr);
+	printf("pfsid:            %s\n", pfsidstr);
 	printf("\n");
 
 	return(0);
@@ -426,7 +423,7 @@ check_volume(const char *path, int *fdp)
  * the writable snapshot subdirectory (named via the label) which
  * is to be the initial mount point, or at least the first mount point.
  *
- * [----reserved_area----][boot_area][redo_area]
+ * [----reserved_area----][boot_area][aux_area]
  * [[vol_hdr]...         ]                      [sroot][root]
  *
  * The sroot and root inodes eat 512 bytes each.  newfs labels can only be
@@ -450,8 +447,8 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	uint64_t now;
 	hammer2_off_t volu_base = 0;
 	hammer2_off_t boot_base = HAMMER2_RESERVE_SEG;
-	hammer2_off_t redo_base = boot_base + BootAreaSize;
-	hammer2_off_t alloc_base = redo_base + RedoAreaSize;
+	hammer2_off_t aux_base = boot_base + BootAreaSize;
+	hammer2_off_t alloc_base = aux_base + AuxAreaSize;
 	hammer2_off_t tmp_base;
 	size_t n;
 	int i;
@@ -612,8 +609,8 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	vol->magic = HAMMER2_VOLUME_ID_HBO;
 	vol->boot_beg = boot_base;
 	vol->boot_end = boot_base + BootAreaSize;
-	vol->redo_beg = redo_base;
-	vol->redo_end = redo_base + RedoAreaSize;
+	vol->aux_beg = aux_base;
+	vol->aux_end = aux_base + AuxAreaSize;
 	vol->volu_size = total_space;
 	vol->version = Hammer2Version;
 	vol->flags = 0;
