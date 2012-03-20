@@ -780,7 +780,8 @@ hammer_vop_write(struct vop_write_args *ap)
 			if (fixsize) {
 				nvtruncbuf(ap->a_vp, ip->ino_data.size,
 					  hammer_blocksize(ip->ino_data.size),
-					  hammer_blockoff(ip->ino_data.size));
+					  hammer_blockoff(ip->ino_data.size),
+					  0);
 			}
 			break;
 		}
@@ -2305,7 +2306,8 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			if (vap->va_size < ip->ino_data.size) {
 				nvtruncbuf(ap->a_vp, vap->va_size,
 					   blksize,
-					   hammer_blockoff(vap->va_size));
+					   hammer_blockoff(vap->va_size),
+					   0);
 				truncating = 1;
 				kflags |= NOTE_WRITE;
 			} else {
