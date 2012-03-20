@@ -413,7 +413,7 @@ puffs_meta_setsize(struct vnode *vp, off_t nsize, int trivial)
 		return 0;
 
 	if (nsize < osize) {
-		error = nvtruncbuf(vp, nsize, biosize, -1);
+		error = nvtruncbuf(vp, nsize, biosize, -1, 0);
 	} else {
 		error = nvextendbuf(vp, osize, nsize,
 				    biosize, biosize, -1, -1,

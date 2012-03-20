@@ -1289,7 +1289,7 @@ nfs_meta_setsize(struct vnode *vp, struct thread *td, off_t nsize, int trivial)
 	np->n_size = nsize;
 
 	if (nsize < osize) {
-		error = nvtruncbuf(vp, nsize, biosize, -1);
+		error = nvtruncbuf(vp, nsize, biosize, -1, 0);
 	} else {
 		error = nvextendbuf(vp, osize, nsize,
 				    biosize, biosize, -1, -1,

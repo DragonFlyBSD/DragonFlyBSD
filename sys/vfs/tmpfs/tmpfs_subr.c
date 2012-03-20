@@ -977,7 +977,7 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 		vm_pindex_t nsize;
 		vm_object_t aobj;
 
-		error = nvtruncbuf(vp, newsize, BSIZE, -1);
+		error = nvtruncbuf(vp, newsize, BSIZE, -1, 0);
 		aobj = node->tn_reg.tn_aobj;
 		if (aobj) {
 			osize = aobj->size;

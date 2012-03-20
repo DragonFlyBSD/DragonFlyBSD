@@ -128,7 +128,7 @@ struct truncbuf_info {
 };
 
 int
-nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
+nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff, int trivial)
 {
 	struct truncbuf_info info;
 	off_t truncboffset;
@@ -173,8 +173,11 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
 	 * the block.
 	 *
 	 * The VFS is responsible for dealing with the actual truncation.
+	 *
+	 * Only do this if trivial is zero, otherwise it is up to the
+	 * VFS to handle the block straddling the EOF.
 	 */
-	if (boff) {
+	if (boff && trivial == 0) {
 		truncboffset = length - boff;
 		error = bread(vp, truncboffset, blksize, &bp);
 		if (error == 0) {
@@ -345,6 +348,7 @@ nvtruncbuf_bp_metasync(struct buf *bp, void *data)
  * If the caller intends to immediately write into the newly extended
  * space pass trivial == 1.  If trivial is 0 the original buffer will be
  * zero-filled as necessary to clean out any junk in the extended space.
+ * If non-zero the original buffer (straddling EOF) is not touched.
  *
  * When zero-filling we must bdwrite() to avoid a window of opportunity
  * where the kernel might throw away a clean buffer and the filesystem

@@ -3200,7 +3200,7 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 		 * Final cleanup
 		 */
 		if (ip->vp)
-			nvtruncbuf(ip->vp, 0, HAMMER_BUFSIZE, 0);
+			nvtruncbuf(ip->vp, 0, HAMMER_BUFSIZE, 0, 0);
 		if (getvp)
 			vput(vp);
 	}

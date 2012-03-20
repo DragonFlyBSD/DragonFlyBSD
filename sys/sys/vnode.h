@@ -434,7 +434,8 @@ int	vrevoke (struct vnode *vp, struct ucred *cred);
 int	vinvalbuf (struct vnode *vp, int save, int slpflag, int slptimeo);
 int	vtruncbuf (struct vnode *vp, off_t length, int blksize);
 void	vnode_pager_setsize (struct vnode *, vm_ooffset_t);
-int	nvtruncbuf (struct vnode *vp, off_t length, int blksize, int boff);
+int	nvtruncbuf (struct vnode *vp, off_t length, int blksize, int boff,
+		int trivial);
 int	nvextendbuf(struct vnode *vp, off_t olength, off_t nlength,
 		int oblksize, int nblksize,
 		int oboff, int nboff, int trivial);

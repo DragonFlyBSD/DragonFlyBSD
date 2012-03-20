@@ -251,7 +251,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	 *	 of the block.
 	 */
 	allerror = nvtruncbuf(ovp, length, blkoffsize(fs, oip, length),
-			      blkoff(fs, length));
+			      blkoff(fs, length), 0);
 	offset = blkoff(fs, length);
 	if (offset == 0) {
 		oip->i_size = length;
