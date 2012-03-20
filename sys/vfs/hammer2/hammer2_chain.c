@@ -535,6 +535,15 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	int error;
 
 	/*
+	 * Setting the DIRTYBP flag will cause the buffer to be dirtied or
+	 * written-out on unlock.  This bit is independent of the MODIFIED1
+	 * bit because the chain may still need meta-data adjustments done
+	 * by virtue of MODIFIED1 for its parent, and the buffer can be
+	 * flushed out (possibly multiple times) by the OS before that.
+	 */
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
+
+	/*
 	 * If the chain is already marked MODIFIED1 we can just return.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_MODIFIED1) {
@@ -692,20 +701,29 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
 	if (chain->bp) {
 		chain->data = NULL;
-		if (chain->flags & HAMMER2_CHAIN_MODIFIED1) {
+		if (chain->flags & HAMMER2_CHAIN_DIRTYBP) {
 			if (chain->flags & HAMMER2_CHAIN_IOFLUSH) {
 				atomic_clear_int(&chain->flags,
 						 HAMMER2_CHAIN_IOFLUSH);
-				bdwrite(chain->bp);
+				chain->bp->b_flags |= B_RELBUF;
+				bawrite(chain->bp);
 			} else {
 				bdwrite(chain->bp);
 			}
 		} else {
-			/* bp might still be dirty */
-			bqrelse(chain->bp);
+			if (chain->flags & HAMMER2_CHAIN_IOFLUSH) {
+				atomic_clear_int(&chain->flags,
+						 HAMMER2_CHAIN_IOFLUSH);
+				chain->bp->b_flags |= B_RELBUF;
+				brelse(chain->bp);
+			} else {
+				/* bp might still be dirty */
+				bqrelse(chain->bp);
+			}
 		}
 		chain->bp = NULL;
 	}
+	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
 	lockmgr(&chain->lk, LK_RELEASE);
 }
 
@@ -1915,13 +1933,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		bytes = 1 << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 		KKASSERT(off_hi != 0);	/* not the root volume header */
 
-		if (chain->bp) {
-			/*
-			 * The data is mapped directly to the bp.  Dirty the
-			 * bp so it gets flushed out by the kernel later on.
-			 */
-			bdirty(chain->bp);
-		} else {
+		if (chain->bp == NULL) {
 			/*
 			 * The data is embedded, we have to acquire the
 			 * buffer cache buffer and copy the data into it.

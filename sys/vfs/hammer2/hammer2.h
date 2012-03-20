@@ -124,7 +124,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 
 #define HAMMER2_CHAIN_MODIFIED1		0x00000001	/* active mods */
 #define HAMMER2_CHAIN_MODIFIED2		0x00000002	/* queued mods */
-#define HAMMER2_CHAIN_UNUSED0004	0x00000004
+#define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
 #define HAMMER2_CHAIN_SUBMODIFIED	0x00000008	/* 1+ subs modified */
 #define HAMMER2_CHAIN_DELETED		0x00000010
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial write */

@@ -656,8 +656,15 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio, int ioflag)
 		 * Don't allow the buffer build to blow out the buffer
 		 * cache.
 		 */
-		if ((ioflag & IO_RECURSE) == 0)
+		if ((ioflag & IO_RECURSE) == 0) {
+			/*
+			 * XXX should try to leave this unlocked through
+			 *	the whole loop
+			 */
+			hammer2_chain_unlock(ip->hmp, &ip->chain);
 			bwillwrite(HAMMER2_LBUFSIZE);
+			hammer2_chain_lock(ip->hmp, &ip->chain);
+		}
 
 		/*
 		 * Extend the size of the file as needed
@@ -1779,9 +1786,24 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 		panic("hammer2_strategy_read: illegal state");
 	}
 
+	/*
+	 * Clean up the chain.
+	 *
+	 * We set CHAIN_IOFLUSH to try to get rid of excess double-buffered
+	 * data.  If the chain isn't dirty no flush will actually occur, but
+	 * the underlying bp will be released.
+	 */
 	if (chain) {
-		if (didlock)
+		if (didlock) {
+#if 1
+			if (((int)bio->bio_offset & HAMMER2_PBUFMASK) ==
+			    HAMMER2_PBUFSIZE - HAMMER2_LBUFSIZE) {
+				atomic_set_int(&chain->flags,
+					       HAMMER2_CHAIN_IOFLUSH);
+			}
+#endif
 			hammer2_chain_unlock(hmp, chain);
+		}
 		hammer2_chain_drop(hmp, chain);
 		chain = NULL;
 	}
@@ -1892,12 +1914,27 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 			;/* urmm.  Shouldn't be possible, LBUF < PBUF */
 	}
 
-	if (poff + bp->b_bcount == HAMMER2_PBUFSIZE)
+	/*
+	 * We set CHAIN_IOFLUSH to try to get rid of excess double-buffered
+	 * data.  This will cause a bawrite() to be issued instead of a
+	 * bdwrite() when the last chunk in a physical buffer is being put
+	 * away.
+	 *
+	 * Only do this for data elements.  There isn't much point doing
+	 * this for other types (e.g. embedded data in inode) because the
+	 * hashes in the blockref's are not likely to be updated yet.
+	 */
+#if 1
+	if (chain->bref.type == HAMMER2_BREF_TYPE_DATA &&
+	    poff + bp->b_bcount == HAMMER2_PBUFSIZE) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_IOFLUSH);
+	}
+#endif
 
 	hammer2_chain_put(hmp, chain);
 	hammer2_chain_put(hmp, parent);
 
+	bp->b_flags |= B_RELBUF;
 	bp->b_resid = 0;
 	bp->b_error = 0;
 	biodone(nbio);
