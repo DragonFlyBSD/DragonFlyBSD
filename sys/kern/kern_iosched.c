@@ -159,8 +159,8 @@ bwillread(int bytes)
 void
 bwillinode(int n)
 {
-	int count;
-	int factor;
+	long count;
+	long factor;
 
 	count = bd_heatup();
 	if (count > 0) {
