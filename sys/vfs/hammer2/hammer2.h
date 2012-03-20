@@ -123,7 +123,7 @@ int hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2);
 SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 
 #define HAMMER2_CHAIN_MODIFIED1		0x00000001	/* active mods */
-#define HAMMER2_CHAIN_MODIFIED2		0x00000002	/* queued mods */
+#define HAMMER2_CHAIN_UNUSED02		0x00000002
 #define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
 #define HAMMER2_CHAIN_SUBMODIFIED	0x00000008	/* 1+ subs modified */
 #define HAMMER2_CHAIN_DELETED		0x00000010
@@ -137,6 +137,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
  */
 #define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
+#define HAMMER2_LOOKUP_NODATA		0x00000002	/* data left NULL */
 
 /*
  * Cluster different types of storage together for allocations
@@ -190,14 +191,9 @@ typedef struct hammer2_inode hammer2_inode_t;
 
 /*
  * A hammer2 indirect block
- *
- * If is_embedded != 0 the buffer is extended.  This is used for
- * indirect blocks which are not whole-physical-blocks.
  */
 struct hammer2_indblock {
 	hammer2_chain_t		chain;
-	int			is_embedded;
-	char			buf[4];
 };
 
 typedef struct hammer2_indblock hammer2_indblock_t;
@@ -288,6 +284,9 @@ u_int32_t hammer2_to_unix_xid(uuid_t *uuid);
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
 int hammer2_bytes_to_radix(size_t bytes);
 
+int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
+			 hammer2_key_t *lbasep, hammer2_key_t *leofp);
+
 /*
  * hammer2_inode.c
  */
@@ -321,6 +320,9 @@ void hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain,
+				int nradix);
+void hammer2_chain_modify_quick(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+void hammer2_chain_resize_quick(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				int nradix);
 void hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_find(hammer2_mount_t *hmp,

@@ -1,4 +1,11 @@
 
+* Use bp->b_dep to interlock the buffer with the chain structure so the
+  strategy code can calculate the crc and assert that the chain is marked
+  modified (not yet flushed).
+
+* Deleted inode not reachable via tree for volume flush but still reachable
+  via fsync/inactive/reclaim.  Its tree can be destroyed at that point.
+
 * The direct write code needs to invalidate any underlying physical buffers.
   Direct write needs to be implemented.
 

@@ -328,3 +328,24 @@ hammer2_bytes_to_radix(size_t bytes)
 		++radix;
 	return (radix);
 }
+
+int
+hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
+		     hammer2_key_t *lbasep, hammer2_key_t *leofp)
+{
+	int radix;
+
+	*lbasep = uoff & ~HAMMER2_PBUFMASK64;
+	*leofp = ip->ip_data.size & ~HAMMER2_PBUFMASK;
+	KKASSERT(*lbasep <= *leofp);
+	if (*lbasep == *leofp) {
+		radix = hammer2_bytes_to_radix(
+				(size_t)(ip->ip_data.size - *leofp));
+		if (radix < HAMMER2_MINIORADIX)
+			radix = HAMMER2_MINIORADIX;
+		*leofp += 1U << radix;
+		return (1U << radix);
+	} else {
+		return (HAMMER2_PBUFSIZE);
+	}
+}
