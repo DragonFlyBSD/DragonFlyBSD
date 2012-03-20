@@ -139,6 +139,21 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
 
 /*
+ * Cluster different types of storage together for allocations
+ */
+#define HAMMER2_FREECACHE_INODE		0
+#define HAMMER2_FREECACHE_INDIR		1
+#define HAMMER2_FREECACHE_DATA		2
+#define HAMMER2_FREECACHE_UNUSED3	3
+#define HAMMER2_FREECACHE_TYPES		4
+
+/*
+ * BMAP read-ahead maximum parameters
+ */
+#define HAMMER2_BMAP_COUNT		16	/* max bmap read-ahead */
+#define HAMMER2_BMAP_BYTES		(HAMMER2_PBUFSIZE * HAMMER2_BMAP_COUNT)
+
+/*
  * HAMMER2 IN-MEMORY CACHE OF MEDIA STRUCTURES
  *
  * There is an in-memory representation of all on-media data structure.
@@ -175,14 +190,17 @@ typedef struct hammer2_inode hammer2_inode_t;
 
 /*
  * A hammer2 indirect block
+ *
+ * If is_embedded != 0 the buffer is extended.  This is used for
+ * indirect blocks which are not whole-physical-blocks.
  */
 struct hammer2_indblock {
 	hammer2_chain_t		chain;
+	int			is_embedded;
+	char			buf[4];
 };
 
 typedef struct hammer2_indblock hammer2_indblock_t;
-
-#define np_data		chain.data->npdata
 
 /*
  * A hammer2 data block
@@ -190,8 +208,6 @@ typedef struct hammer2_indblock hammer2_indblock_t;
 struct hammer2_data {
 	hammer2_chain_t		chain;
 };
-
-#define dp_data		chain.data->buf
 
 typedef struct hammer2_data hammer2_data_t;
 
@@ -217,7 +233,7 @@ struct hammer2_mount {
 	struct hammer2_inode *iroot;
 
 	hammer2_volume_data_t voldata;
-	hammer2_off_t	freecache[HAMMER2_MAX_RADIX];
+	hammer2_off_t	freecache[HAMMER2_FREECACHE_TYPES][HAMMER2_MAX_RADIX];
 };
 
 typedef struct hammer2_mount hammer2_mount_t;
@@ -270,6 +286,7 @@ void hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts);
 u_int32_t hammer2_to_unix_xid(uuid_t *uuid);
 
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
+int hammer2_bytes_to_radix(size_t bytes);
 
 /*
  * hammer2_inode.c
@@ -334,8 +351,8 @@ void hammer2_chain_commit(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 /*
  * hammer2_freemap.c
  */
-hammer2_off_t hammer2_freemap_alloc(hammer2_mount_t *hmp, size_t bytes);
-int hammer2_freemap_bytes_to_radix(size_t bytes);
+hammer2_off_t hammer2_freemap_alloc(hammer2_mount_t *hmp,
+				int type, size_t bytes);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

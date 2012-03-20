@@ -303,3 +303,28 @@ hammer2_dirhash(const unsigned char *name, size_t len)
 
 	return (key);
 }
+
+/*
+ * Return the power-of-2 radix greater or equal to
+ * the specified number of bytes.
+ *
+ * Always returns at least HAMMER2_MIN_RADIX (2^6).
+ */
+int
+hammer2_bytes_to_radix(size_t bytes)
+{
+	int radix;
+
+	if (bytes < HAMMER2_MIN_ALLOC)
+		bytes = HAMMER2_MIN_ALLOC;
+	if (bytes == HAMMER2_PBUFSIZE)
+		radix = HAMMER2_PBUFRADIX;
+	else if (bytes >= 1024)
+		radix = 10;
+	else
+		radix = HAMMER2_MIN_RADIX;
+
+	while (((size_t)1 << radix) < bytes)
+		++radix;
+	return (radix);
+}

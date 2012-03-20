@@ -45,25 +45,6 @@
 
 #include "hammer2.h"
 
-int
-hammer2_freemap_bytes_to_radix(size_t bytes)
-{
-	int radix;
-
-	if (bytes < HAMMER2_MIN_ALLOC)
-		bytes = HAMMER2_MIN_ALLOC;
-	if (bytes == HAMMER2_PBUFSIZE)
-		radix = HAMMER2_PBUFRADIX;
-	else if (bytes >= 1024)
-		radix = 10;
-	else
-		radix = HAMMER2_MIN_RADIX;
-
-	while (((size_t)1 << radix) < bytes)
-		++radix;
-	return (radix);
-}
-
 /*
  * Allocate media space, returning a combined data offset and radix.
  *
@@ -72,26 +53,42 @@ hammer2_freemap_bytes_to_radix(size_t bytes)
  *     do the read-modify-write on the backing store.
  */
 hammer2_off_t
-hammer2_freemap_alloc(hammer2_mount_t *hmp, size_t bytes)
+hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 {
 	hammer2_off_t data_off;
 	hammer2_off_t data_next;
 	int radix;
+	int fctype;
+
+	switch(type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		fctype = HAMMER2_FREECACHE_INODE;
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		fctype = HAMMER2_FREECACHE_INDIR;
+		break;
+	case HAMMER2_BREF_TYPE_DATA:
+		fctype = HAMMER2_FREECACHE_DATA;
+		break;
+	default:
+		fctype = HAMMER2_FREECACHE_DATA;
+		break;
+	}
 
 	/*
 	 * Figure out the base 2 radix of the allocation (rounded up)
 	 */
-	radix = hammer2_freemap_bytes_to_radix(bytes);
+	radix = hammer2_bytes_to_radix(bytes);
 	bytes = 1 << radix;
 
-	if (radix < HAMMER2_MAX_RADIX && hmp->freecache[radix]) {
+	if (radix < HAMMER2_MAX_RADIX && hmp->freecache[fctype][radix]) {
 		/*
 		 * Allocate from our packing cache
 		 */
-		data_off = hmp->freecache[radix];
-		hmp->freecache[radix] += bytes;
-		if ((hmp->freecache[radix] & HAMMER2_PBUFMASK) == 0)
-			hmp->freecache[radix] = 0;
+		data_off = hmp->freecache[fctype][radix];
+		hmp->freecache[fctype][radix] += bytes;
+		if ((hmp->freecache[fctype][radix] & HAMMER2_PBUFMASK) == 0)
+			hmp->freecache[fctype][radix] = 0;
 	} else {
 		/*
 		 * Allocate from the allocation iterator using a PBUFSIZE
@@ -109,12 +106,12 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, size_t bytes)
 			hmp->voldata.allocator_beg =
 					(data_next + HAMMER2_PBUFMASK64) &
 					~HAMMER2_PBUFMASK64;
-			hmp->freecache[radix] = data_next;
+			hmp->freecache[fctype][radix] = data_next;
 		}
 	}
 	if (hammer2_debug & 0x0001) {
-		kprintf("hammer2: allocate %016jx: %zd\n",
-			(intmax_t)data_off, bytes);
+		kprintf("hammer2: allocate %d %016jx: %zd\n",
+			type, (intmax_t)data_off, bytes);
 	}
 	return (data_off | radix);
 }

@@ -134,7 +134,17 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 
 	hammer2_inode_lock_ex(ip);
 	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
-	hammer2_chain_flush(hmp, &ip->chain);
+
+	/*
+	 * Calling chain_flush here creates a lot of duplicative
+	 * COW operations due to non-optimal vnode ordering.
+	 *
+	 * Only do it for an actual fsync() syscall.  The other forms
+	 * which call this function will eventually call chain_flush
+	 * on the volume root as a catch-all, which is far more optimal.
+	 */
+	if (ap->a_flags & VOP_FSYNC_SYSCALL)
+		hammer2_chain_flush(hmp, &ip->chain);
 	hammer2_inode_unlock_ex(ip);
 	return (0);
 }
@@ -577,9 +587,11 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 
 		/* XXX bigread & signal check test */
 
-		error = cluster_read(ip->vp, ip->ip_data.size, off_hi,
-				     HAMMER2_LBUFSIZE, HAMMER2_PBUFSIZE,
-				     seqcount * BKVASIZE, &bp);
+		error = cluster_read(ip->vp,
+				     ip->ip_data.size, off_hi,
+				     HAMMER2_LBUFSIZE,
+				     uio->uio_resid, seqcount * BKVASIZE,
+				     &bp);
 		if (error)
 			break;
 		n = HAMMER2_LBUFSIZE - off_lo;
@@ -1026,8 +1038,13 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 	hammer2_inode_t *ip;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
-	hammer2_key_t loff;
-	hammer2_off_t poff;
+	hammer2_key_t lbeg;
+	hammer2_key_t lend;
+	hammer2_off_t pbeg;
+	hammer2_off_t pbytes;
+	hammer2_off_t array[HAMMER2_BMAP_COUNT][2];
+	int loff;
+	int ai;
 
 	/*
 	 * Only supported on regular files
@@ -1043,35 +1060,68 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 
 	ip = VTOI(vp);
 	hmp = ip->hmp;
+	bzero(array, sizeof(array));
 
-	loff = ap->a_loffset;
-	KKASSERT((loff & HAMMER2_LBUFMASK64) == 0);
+	/*
+	 * Calculate logical range
+	 */
+	KKASSERT((ap->a_loffset & HAMMER2_LBUFMASK64) == 0);
+	lbeg = ap->a_loffset & HAMMER2_OFF_MASK_HI;
+	lend = lbeg + HAMMER2_BMAP_COUNT * HAMMER2_PBUFSIZE - 1;
+	if (lend < lbeg)
+		lend = lbeg;
+	loff = ap->a_loffset & HAMMER2_OFF_MASK_LO;
 
 	parent = &ip->chain;
 	hammer2_chain_ref(hmp, parent);
 	hammer2_chain_lock(hmp, parent);
-	chain = hammer2_chain_lookup(hmp, &parent, loff, loff, 0);
+	chain = hammer2_chain_lookup(hmp, &parent,
+				     lbeg, lend,
+				     HAMMER2_LOOKUP_NOLOCK);
 	if (chain == NULL) {
-		/*
-		 * zero-fill hole
-		 */
 		*ap->a_doffsetp = ZFOFFSET;
-	} else if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
-		/*
-		 * Normal data ref
-		 */
-		poff = loff - chain->bref.key +
-		       (chain->bref.data_off & HAMMER2_OFF_MASK);
-		*ap->a_doffsetp = poff;
-		hammer2_chain_put(hmp, chain);
-	} else {
-		/*
-		 * Data is embedded in inode, no direct I/O possible.
-		 */
-		*ap->a_doffsetp = NOOFFSET;
-		hammer2_chain_put(hmp, chain);
+		hammer2_chain_put(hmp, parent);
+		return (0);
+	}
+
+	while (chain) {
+		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+			ai = (chain->bref.key - lbeg) / HAMMER2_PBUFSIZE;
+			KKASSERT(ai >= 0 && ai < HAMMER2_BMAP_COUNT);
+			array[ai][0] = chain->bref.data_off & HAMMER2_OFF_MASK;
+			array[ai][1] = chain->bytes;
+		}
+		chain = hammer2_chain_next(hmp, &parent, chain,
+					   lbeg, lend,
+					   HAMMER2_LOOKUP_NOLOCK);
 	}
 	hammer2_chain_put(hmp, parent);
+
+	/*
+	 * If the requested loffset is not mappable physically we can't
+	 * bmap.  The caller will have to access the file data via a
+	 * device buffer.
+	 */
+	if (array[0][0] == 0 || array[0][1] < loff + HAMMER2_LBUFSIZE) {
+		*ap->a_doffsetp = NOOFFSET;
+		return (0);
+	}
+
+	/*
+	 * Calculate the physical disk offset range for array[0]
+	 */
+	pbeg = array[0][0] + loff;
+	pbytes = array[0][1] - loff;
+
+	for (ai = 1; ai < HAMMER2_BMAP_COUNT; ++ai) {
+		if (array[ai][0] != pbeg + pbytes)
+			break;
+		pbytes += array[ai][1];
+	}
+
+	*ap->a_doffsetp = pbeg;
+	if (ap->a_runp)
+		*ap->a_runp = pbytes;
 	return (0);
 }
 
@@ -1658,12 +1708,26 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 			 * Data is on-media
 			 *
 			 * We can set nbio->bio_offset only if the entire
-			 * request can be handled by the chain element.
+			 * request can be handled by the chain element.  That
+			 * is, the chain element's storage size is at least
+			 * the size of the IO.  Hopefully this will also
+			 * read-ahead.
+			 *
+			 * For now double-buffer reads for small files in
+			 * order to take advantage of clustering in the
+			 * physical device layer.
 			 */
-			if (chain->bytes >= bp->b_bcount) {
+			if (chain->bytes >= bp->b_bcount &&
+			    ip->ip_data.size >= HAMMER2_PBUFSIZE / 2) {
+				/*
+				 * Direct read
+				 */
 				nbio->bio_offset = (chain->bref.data_off &
 						    HAMMER2_OFF_MASK) + poff;
 			} else {
+				/*
+				 * Double-buffer through physical buffer
+				 */
 				hammer2_chain_lock(hmp, chain);
 				ddata = chain->data->buf;
 				ddlen = chain->bytes;
@@ -1711,6 +1775,8 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 		bp->b_resid = 0;
 		bp->b_error = 0;
 		biodone(nbio);
+	} else {
+		panic("hammer2_strategy_read: illegal state");
 	}
 
 	if (chain) {
@@ -1782,7 +1848,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	 */
 	if (chain == NULL) {
 		/*
-		 * No indirect block present, allocate new chain
+		 * Allocate a new chain as necessary
 		 */
 		KKASSERT(radix > 0);
 		chain = hammer2_chain_create(hmp, parent, NULL,

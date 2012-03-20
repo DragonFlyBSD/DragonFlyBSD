@@ -148,7 +148,8 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 			break;
 		case HAMMER2_OBJTYPE_REGFILE:
 			vp->v_type = VREG;
-			vinitvmio(vp, 0, HAMMER2_LBUFSIZE,
+			vinitvmio(vp, ip->ip_data.size,
+				  HAMMER2_LBUFSIZE,
 				  (int)ip->ip_data.size & HAMMER2_LBUFMASK);
 			break;
 		case HAMMER2_OBJTYPE_SOFTLINK:
@@ -158,7 +159,8 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 			 * association.
 			 */
 			vp->v_type = VLNK;
-			vinitvmio(vp, 0, HAMMER2_LBUFSIZE,
+			vinitvmio(vp, ip->ip_data.size,
+				  HAMMER2_LBUFSIZE,
 				  (int)ip->ip_data.size & HAMMER2_LBUFMASK);
 			break;
 		/* XXX FIFO */

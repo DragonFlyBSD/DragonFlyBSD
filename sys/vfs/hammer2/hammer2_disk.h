@@ -85,6 +85,12 @@
 #define HAMMER2_LBUFSIZE	16384
 #define HAMMER2_MINIORADIX	10	/* minimum IO size for direct IO */
 #define HAMMER2_MINIOSIZE	1024
+#define HAMMER2_IND_BYTES_MIN	4096	/* first indirect layer only */
+#define HAMMER2_IND_BYTES_MAX	HAMMER2_PBUFSIZE
+#define HAMMER2_IND_COUNT_MIN	(HAMMER2_IND_BYTES_MIN / \
+				 sizeof(hammer2_blockref_t))
+#define HAMMER2_IND_COUNT_MAX	(HAMMER2_IND_BYTES_MAX / \
+				 sizeof(hammer2_blockref_t))
 
 /*
  * HAMMER2 processes blockrefs in sets of 8.  The set is fully associative,
@@ -97,8 +103,6 @@
  */
 #define HAMMER2_SET_COUNT	8	/* direct entries & associativity */
 #define HAMMER2_SET_RADIX	3
-#define HAMMER2_IND_COUNT	1024	/* 1 << HAMMER2_IND_RADIX */
-#define HAMMER2_IND_RADIX	10
 #define HAMMER2_EMBEDDED_BYTES	512
 #define HAMMER2_EMBEDDED_RADIX	9
 
@@ -302,12 +306,6 @@ typedef struct hammer2_blockset hammer2_blockset_t;
 /*
  * Catch programmer snafus
  */
-#if (1 << HAMMER2_IND_RADIX) != HAMMER2_IND_COUNT
-#error "hammer2 indirect radix is incorrect"
-#endif
-#if (HAMMER2_IND_COUNT * 64) != HAMMER2_PBUFSIZE
-#error "hammer2 indirect entries is incorrect"
-#endif
 #if (1 << HAMMER2_SET_RADIX) != HAMMER2_SET_COUNT
 #error "hammer2 direct radix is incorrect"
 #endif
@@ -322,7 +320,7 @@ typedef struct hammer2_blockset hammer2_blockset_t;
  * The media indirect block structure.
  */
 struct hammer2_indblock_data {
-	hammer2_blockref_t blockref[HAMMER2_IND_COUNT];
+	hammer2_blockref_t blockref[HAMMER2_IND_COUNT_MAX];
 };
 
 typedef struct hammer2_indblock_data hammer2_indblock_data_t;

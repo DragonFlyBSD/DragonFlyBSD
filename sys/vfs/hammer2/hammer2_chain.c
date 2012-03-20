@@ -80,6 +80,7 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_blockref_t *bref)
 	hammer2_inode_t *ip;
 	hammer2_indblock_t *np;
 	hammer2_data_t *dp;
+	u_int bytes = 1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 
 	/*
 	 * Construct the appropriate system structure.
@@ -93,7 +94,18 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_blockref_t *bref)
 		ip->hmp = hmp;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		np = kmalloc(sizeof(*np), hmp->mchain, M_WAITOK | M_ZERO);
+		if (bytes == HAMMER2_PBUFSIZE) {
+			np = kmalloc(sizeof(*np),
+				     hmp->mchain,
+				     M_WAITOK | M_ZERO);
+			np->is_embedded = 0;
+		} else {
+			np = kmalloc(offsetof(struct hammer2_indblock,
+					      buf[bytes]),
+				     hmp->mchain,
+				     M_WAITOK | M_ZERO);
+			np->is_embedded = 1;
+		}
 		chain = &np->chain;
 		chain->u.np = np;
 		lockinit(&chain->lk, "iblk", 0, LK_CANRECURSE);
@@ -115,7 +127,7 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_blockref_t *bref)
 	chain->bref = *bref;
 	chain->index = -1;	/* not yet assigned */
 	chain->refs = 1;
-	chain->bytes = 1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	chain->bytes = bytes;
 	lockmgr(&chain->lk, LK_EXCLUSIVE);
 
 	return (chain);
@@ -271,18 +283,25 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	off_hi = bref->data_off & HAMMER2_OFF_MASK_HI;
 	off_lo = (size_t)bref->data_off & HAMMER2_OFF_MASK_LO;
 	KKASSERT(off_hi != 0);
-	error = bread(hmp->devvp, off_hi, HAMMER2_PBUFSIZE, &chain->bp);
+	error = cluster_read(hmp->devvp,
+			     hmp->voldata.volu_size, off_hi,
+			     HAMMER2_PBUFSIZE,
+			     HAMMER2_PBUFSIZE, HAMMER2_PBUFSIZE*8,
+			     &chain->bp);
 
 	/*
 	 * Even though this can be synthesized from bref->data_off we
 	 * store it in the in-memory chain structure for convenience.
 	 */
-	chain->bytes = 1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	if (chain->bytes !=
+	    (1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX))) {
+		panic("hammer2_chain_lock: chain->bytes mismatch");
+	}
 
 	if (error) {
 		kprintf("hammer2_chain_get: I/O error %016jx: %d\n",
 			(intmax_t)off_hi, error);
-		brelse(chain->bp);
+		bqrelse(chain->bp);
 		chain->bp = NULL;
 		return (error);
 	}
@@ -306,7 +325,7 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		bcopy((char *)chain->bp->b_data + off_lo,
 		      &hmp->voldata, HAMMER2_PBUFSIZE);
 		chain->data = (void *)&hmp->voldata;
-		brelse(chain->bp);
+		bqrelse(chain->bp);
 		chain->bp = NULL;
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
@@ -317,9 +336,24 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		      &chain->u.ip->ip_data,
 		      HAMMER2_INODE_BYTES);
 		chain->data = (void *)&chain->u.ip->ip_data;
-		brelse(chain->bp);
+		bqrelse(chain->bp);
 		chain->bp = NULL;
 		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		/*
+		 * Indirect node data may or may not be embedded depending
+		 * on how much there is.
+		 */
+		if (chain->u.np->is_embedded) {
+			bcopy((char *)chain->bp->b_data + off_lo,
+			      chain->u.np->buf,
+			      chain->bytes);
+			chain->data = (void *)&chain->u.np->buf[0];
+			bqrelse(chain->bp);
+			chain->bp = NULL;
+			break;
+		}
+		/* fall through */
 	default:
 		/*
 		 * Leave bp intact
@@ -332,7 +366,7 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 }
 
 /*
- * Resdize the chain's physical storage allocation.  Chains can be resized
+ * Resize the chain's physical storage allocation.  Chains can be resized
  * smaller without reallocating the storage.  Resizing larger will reallocate
  * the storage.
  */
@@ -396,7 +430,7 @@ hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain, int nradix)
 		 */
 		if (chain != &hmp->vchain) {
 			chain->bref.data_off =
-					hammer2_freemap_alloc(hmp, nbytes);
+			  hammer2_freemap_alloc(hmp, chain->bref.type, nbytes);
 			chain->bytes = nbytes;
 		}
 		/* XXX failed allocation */
@@ -410,21 +444,27 @@ hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain, int nradix)
 			error = 0;
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
+			panic("hammer2_chain_resize: "
+			      "cannot resize indirect block");
+			/* NOT REACHED */
+			break;
 		case HAMMER2_BREF_TYPE_DATA:
 			/*
-			 * data (if not NULL) points into original bp,
-			 * copy-on-write to new block.
+			 * data (if not NULL) points into original bp or
+			 * to embedded data.  Copy-on-write to new block.
 			 */
 			KKASSERT(chain != &hmp->vchain);	/* safety */
 			if (nbytes == HAMMER2_PBUFSIZE) {
 				nbp = getblk(hmp->devvp,
-					     chain->bref.data_off & HAMMER2_OFF_MASK_HI,
+					     chain->bref.data_off &
+					      HAMMER2_OFF_MASK_HI,
 					     HAMMER2_PBUFSIZE, 0, 0);
 				vfs_bio_clrbuf(nbp);
 				error = 0;
 			} else {
 				error = bread(hmp->devvp,
-					     chain->bref.data_off & HAMMER2_OFF_MASK_HI,
+					     chain->bref.data_off &
+					      HAMMER2_OFF_MASK_HI,
 					     HAMMER2_PBUFSIZE, &nbp);
 				KKASSERT(error == 0);/* XXX handle error */
 			}
@@ -441,7 +481,7 @@ hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain, int nradix)
 				else
 					bcopy(chain->data, ndata, obytes);
 				KKASSERT(chain->bp != NULL);
-				brelse(chain->bp);
+				bqrelse(chain->bp);
 			}
 			chain->bp = nbp;
 			chain->data = ndata;
@@ -477,12 +517,14 @@ hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain, int nradix)
  * Convert a locked chain that was retrieved read-only to read-write.
  *
  * If not already marked modified a new physical block will be allocated
- * and assigned to the bref.  If the data is pointing into an existing
- * bp it will be copied to the new bp and the new bp will replace the
- * existing bp.
+ * and assigned to the bref.
  *
- * If the data is embedded we allocate the new physical block but don't
- * bother copying the data into it (yet).
+ * allocated->modified (without calling hammer2_chain_lock()) results
+ * in chain->data typically being NULL.  In this situation chain->data
+ * is assigned and the target area is zero'd out.
+ *
+ * If the data is pointing into a bp it will be relocated to a new bp.
+ * If the data is embedded we leave it alone for now.
  */
 void
 hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
@@ -535,7 +577,10 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	 * through the copy-on-write steps except without the copying part.
 	 */
 	if (chain != &hmp->vchain) {
-		chain->bref.data_off = hammer2_freemap_alloc(hmp, chain->bytes);
+		if (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)
+			kprintf("Replace %d\n", chain->bytes);
+		chain->bref.data_off =
+		    hammer2_freemap_alloc(hmp, chain->bref.type, chain->bytes);
 		/* XXX failed allocation */
 	}
 
@@ -543,21 +588,45 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	case HAMMER2_BREF_TYPE_VOLUME:		/* embedded */
 	case HAMMER2_BREF_TYPE_INODE:		/* embedded */
 		/*
-		 * data points to embedded structure, no copy needed
+		 * Inode and Volume data already points to the embedded
+		 * structure, no copy is needed
 		 */
 		error = 0;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
+		/*
+		 * If the indirect data is embedded we just leave it
+		 * in its embedded space, otherwise fall-through to
+		 * the bp-handling code.
+		 *
+		 * If this is a newly allocated block chain->data will
+		 * be NULL, so make sure it is properly assigned.  In
+		 * this case the embedded space has already been zero'd
+		 * by the kmalloc().
+		 */
+		if (chain->u.np->is_embedded) {
+			chain->data = (void *)&chain->u.np->buf[0];
+			error = 0;
+			break;
+		}
+		/* fallthrough */
 	case HAMMER2_BREF_TYPE_DATA:
 		/*
-		 * data (if not NULL) points into original bp, copy-on-write
-		 * to new block.
+		 * data (if not NULL) points into original bp or to embedded
+		 * data, copy-on-write to the new block.
+		 *
+		 * data (if NULL) indicates that no prior copy exists, the
+		 * storage must be zero'd.
 		 */
 		KKASSERT(chain != &hmp->vchain);	/* safety */
 		if (chain->bytes == HAMMER2_PBUFSIZE) {
 			nbp = getblk(hmp->devvp,
 				     chain->bref.data_off & HAMMER2_OFF_MASK_HI,
 				     HAMMER2_PBUFSIZE, 0, 0);
+			/*
+			 * XXX want to set B_CACHE but not bother to
+			 * zero because it will be zero'd below?
+			 */
 			vfs_bio_clrbuf(nbp);
 			error = 0;
 		} else {
@@ -568,15 +637,17 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		}
 
 		/*
-		 * The new block may be smaller or larger than the old block,
-		 * only copy what fits.
+		 * Copy or zero-fill on write depending on whether
+		 * chain->data exists or not.
 		 */
 		ndata = nbp->b_data + (chain->bref.data_off &
 				       HAMMER2_OFF_MASK_LO);
 		if (chain->data) {
 			bcopy(chain->data, ndata, chain->bytes);
 			KKASSERT(chain->bp != NULL);
-			brelse(chain->bp);
+			bqrelse(chain->bp);
+		} else {
+			bzero(ndata, chain->bytes);
 		}
 		chain->bp = nbp;
 		chain->data = ndata;
@@ -693,7 +764,8 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		bref = &parent->data->ipdata.u.blockset.blockref[index];
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		KKASSERT(index >= 0 && index < HAMMER2_IND_COUNT);
+		KKASSERT(index >= 0 &&
+			 index < parent->bytes / sizeof(hammer2_blockref_t));
 		bref = &parent->data->npdata.blockref[index];
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
@@ -847,7 +919,7 @@ again:
 		if (parent->data == NULL)
 			panic("parent->data is NULL");
 		base = &parent->data->npdata.blockref[0];
-		count = HAMMER2_IND_COUNT;
+		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		base = &hmp->voldata.sroot_blockset.blockref[0];
@@ -1000,7 +1072,7 @@ again2:
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		base = &parent->data->npdata.blockref[0];
-		count = HAMMER2_IND_COUNT;
+		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		base = &hmp->voldata.sroot_blockset.blockref[0];
@@ -1114,7 +1186,7 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		dummy.type = type;
 		dummy.key = key;
 		dummy.keybits = keybits;
-		dummy.data_off = hammer2_freemap_bytes_to_radix(bytes);
+		dummy.data_off = hammer2_bytes_to_radix(bytes);
 		chain = hammer2_chain_alloc(hmp, &dummy);
 		allocated = 1;
 
@@ -1140,6 +1212,17 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		case HAMMER2_BREF_TYPE_INODE:
 			KKASSERT(bytes == HAMMER2_INODE_BYTES);
 			chain->data = (void *)&chain->u.ip->ip_data;
+			break;
+		case HAMMER2_BREF_TYPE_INDIRECT:
+			/*
+			 * May or may not be embedded (chain->data may or
+			 * may not be NULL)
+			 */
+			if (chain->u.np->is_embedded) {
+				chain->data = (void *)&chain->u.np->buf[0];
+			} else {
+				KKASSERT(chain->data == NULL);
+			}
 			break;
 		default:
 			/* leave chain->data NULL */
@@ -1169,7 +1252,7 @@ again:
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		KKASSERT(parent->data != NULL);
 		base = &parent->data->npdata.blockref[0];
-		count = HAMMER2_IND_COUNT;
+		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		KKASSERT(parent->data != NULL);
@@ -1328,6 +1411,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	int locount = 0;
 	int hicount = 0;
 	int count;
+	int nbytes;
 	int i;
 
 	/*
@@ -1346,7 +1430,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		base = &parent->data->npdata.blockref[0];
-		count = HAMMER2_IND_COUNT;
+		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		base = &hmp->voldata.sroot_blockset.blockref[0];
@@ -1455,13 +1539,23 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	}
 
 	/*
+	 * How big should our new indirect block be?  It has to be at least
+	 * as large as its parent.
+	 */
+	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE)
+		nbytes = HAMMER2_IND_BYTES_MIN;
+	else
+		nbytes = HAMMER2_IND_BYTES_MAX;
+	if (nbytes < count * sizeof(hammer2_blockref_t))
+		nbytes = count * sizeof(hammer2_blockref_t);
+
+	/*
 	 * Ok, create our new indirect block
 	 */
 	dummy.bref.type = HAMMER2_BREF_TYPE_INDIRECT;
 	dummy.bref.key = key;
 	dummy.bref.keybits = keybits;
-	dummy.bref.data_off = (hammer2_off_t)
-			    hammer2_freemap_bytes_to_radix(HAMMER2_PBUFSIZE);
+	dummy.bref.data_off = hammer2_bytes_to_radix(nbytes);
 	ichain = hammer2_chain_alloc(hmp, &dummy.bref);
 	ichain->flags |= HAMMER2_CHAIN_INITIAL;
 
@@ -1560,7 +1654,9 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	/*
 	 * Mark the new indirect block modified after insertion, which
 	 * will propagate up through parent all the way to the root and
-	 * also allocate the physical block in ichain for our caller.
+	 * also allocate the physical block in ichain for our caller,
+	 * and assign ichain->data to a pre-zero'd space (because there
+	 * is not prior data to copy into it).
 	 *
 	 * We have to set SUBMODIFIED in ichain's flags manually so the
 	 * flusher knows it has to recurse through it to get to all of
@@ -1633,7 +1729,7 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		base = &parent->data->npdata.blockref[0];
-		count = HAMMER2_IND_COUNT;
+		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		base = &hmp->voldata.sroot_blockset.blockref[0];
@@ -1728,7 +1824,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
 			base = &chain->data->npdata.blockref[0];
-			count = HAMMER2_IND_COUNT;
+			count = chain->bytes / sizeof(hammer2_blockref_t);
 			break;
 		case HAMMER2_BREF_TYPE_VOLUME:
 			KKASSERT(index >= 0 && index < HAMMER2_SET_COUNT);
@@ -1758,7 +1854,6 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 				if (scan->flags & (HAMMER2_CHAIN_SUBMODIFIED |
 						   HAMMER2_CHAIN_MODIFIED1)) {
 					submodified = 1;
-					kprintf("x");
 				} else {
 					KKASSERT(scan->index < count);
 					base[scan->index] = scan->bref;
