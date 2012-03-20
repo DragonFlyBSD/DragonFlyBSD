@@ -104,7 +104,7 @@ static void vfs_vmio_release(struct buf *bp);
 static int flushbufqueues(bufq_type_t q);
 static vm_page_t bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit);
 
-static void bd_signal(int totalspace);
+static void bd_signal(long totalspace);
 static void buf_daemon(void);
 static void buf_daemon_hw(void);
 
@@ -129,6 +129,7 @@ static int bufreusecnt, bufdefragcnt, buffreekvacnt;
 static long lorunningspace;
 static long hirunningspace;
 static int runningbufreq;		/* locked by bufcspin */
+static long dirtykvaspace;		/* locked by bufcspin */
 static long dirtybufspace;		/* locked by bufcspin */
 static int dirtybufcount;		/* locked by bufcspin */
 static long dirtybufspacehw;		/* locked by bufcspin */
@@ -175,6 +176,8 @@ SYSCTL_UINT(_vfs, OID_AUTO, vm_cycle_point, CTLFLAG_RW, &vm_cycle_point, 0,
  */
 SYSCTL_INT(_vfs, OID_AUTO, nbuf, CTLFLAG_RD, &nbuf, 0,
 	"Total number of buffers in buffer cache");
+SYSCTL_LONG(_vfs, OID_AUTO, dirtykvaspace, CTLFLAG_RD, &dirtykvaspace, 0,
+	"KVA reserved by dirty buffers (all)");
 SYSCTL_LONG(_vfs, OID_AUTO, dirtybufspace, CTLFLAG_RD, &dirtybufspace, 0,
 	"Pending bytes of dirty buffers (all)");
 SYSCTL_LONG(_vfs, OID_AUTO, dirtybufspacehw, CTLFLAG_RD, &dirtybufspacehw, 0,
@@ -339,7 +342,7 @@ waitrunningbufspace(void)
 int
 buf_dirty_count_severe(void)
 {
-	return (runningbufspace + dirtybufspace >= hidirtybufspace ||
+	return (runningbufspace + dirtykvaspace >= hidirtybufspace ||
 	        dirtybufcount >= nbuf / 2);
 }
 
@@ -389,11 +392,11 @@ static __inline__
 void
 bd_speedup(void)
 {
-	if (dirtybufspace < lodirtybufspace && dirtybufcount < nbuf / 2)
+	if (dirtykvaspace < lodirtybufspace && dirtybufcount < nbuf / 2)
 		return;
 
 	if (bd_request == 0 &&
-	    (dirtybufspace - dirtybufspacehw > lodirtybufspace / 2 ||
+	    (dirtykvaspace > lodirtybufspace / 2 ||
 	     dirtybufcount - dirtybufcounthw >= nbuf / 2)) {
 		spin_lock(&bufcspin);
 		bd_request = 1;
@@ -401,7 +404,7 @@ bd_speedup(void)
 		wakeup(&bd_request);
 	}
 	if (bd_request_hw == 0 &&
-	    (dirtybufspacehw > lodirtybufspace / 2 ||
+	    (dirtykvaspace > lodirtybufspace / 2 ||
 	     dirtybufcounthw >= nbuf / 2)) {
 		spin_lock(&bufcspin);
 		bd_request_hw = 1;
@@ -421,7 +424,7 @@ bd_speedup(void)
  *
  * MPSAFE
  */
-int
+long
 bd_heatup(void)
 {
 	long mid1;
@@ -430,7 +433,7 @@ bd_heatup(void)
 
 	mid1 = lodirtybufspace + (hidirtybufspace - lodirtybufspace) / 2;
 
-	totalspace = runningbufspace + dirtybufspace;
+	totalspace = runningbufspace + dirtykvaspace;
 	if (totalspace >= mid1 || dirtybufcount >= nbuf / 2) {
 		bd_speedup();
 		mid2 = mid1 + (hidirtybufspace - mid1) / 2;
@@ -452,7 +455,7 @@ bd_heatup(void)
  * MPSAFE
  */
 void
-bd_wait(int totalspace)
+bd_wait(long totalspace)
 {
 	u_int i;
 	int count;
@@ -462,8 +465,8 @@ bd_wait(int totalspace)
 
 	while (totalspace > 0) {
 		bd_heatup();
-		if (totalspace > runningbufspace + dirtybufspace)
-			totalspace = runningbufspace + dirtybufspace;
+		if (totalspace > runningbufspace + dirtykvaspace)
+			totalspace = runningbufspace + dirtykvaspace;
 		count = totalspace / BKVASIZE;
 		if (count >= BD_WAKE_SIZE)
 			count = BD_WAKE_SIZE - 1;
@@ -480,21 +483,21 @@ bd_wait(int totalspace)
 		spin_unlock(&bufcspin);
 		tsleep(&bd_wake_ary[i], PINTERLOCKED, "flstik", hz);
 
-		totalspace = runningbufspace + dirtybufspace - hidirtybufspace;
+		totalspace = runningbufspace + dirtykvaspace - hidirtybufspace;
 	}
 }
 
 /*
  * bd_signal()
  * 
- *	This function is called whenever runningbufspace or dirtybufspace
+ *	This function is called whenever runningbufspace or dirtykvaspace
  *	is reduced.  Track threads waiting for run+dirty buffer I/O
  *	complete.
  *
  * MPSAFE
  */
 static void
-bd_signal(int totalspace)
+bd_signal(long totalspace)
 {
 	u_int i;
 
@@ -677,6 +680,7 @@ bufinit(void)
 	if (hirunningspace < 1024 * 1024)
 		hirunningspace = 1024 * 1024;
 
+	dirtykvaspace = 0;
 	dirtybufspace = 0;
 	dirtybufspacehw = 0;
 
@@ -1193,6 +1197,7 @@ bdirty(struct buf *bp)
 
 		spin_lock(&bufcspin);
 		++dirtybufcount;
+		dirtykvaspace += bp->b_kvasize;
 		dirtybufspace += bp->b_bufsize;
 		if (bp->b_flags & B_HEAVY) {
 			++dirtybufcounthw;
@@ -1247,6 +1252,7 @@ bundirty(struct buf *bp)
 
 		spin_lock(&bufcspin);
 		--dirtybufcount;
+		dirtykvaspace -= bp->b_kvasize;
 		dirtybufspace -= bp->b_bufsize;
 		if (bp->b_flags & B_HEAVY) {
 			--dirtybufcounthw;
@@ -1332,6 +1338,7 @@ brelse(struct buf *bp)
 		if (bp->b_flags & B_DELWRI) {
 			spin_lock(&bufcspin);
 			--dirtybufcount;
+			dirtykvaspace -= bp->b_kvasize;
 			dirtybufspace -= bp->b_bufsize;
 			if (bp->b_flags & B_HEAVY) {
 				--dirtybufcounthw;
@@ -2559,14 +2566,14 @@ buf_daemon1(struct thread *td, int queue, int (*buf_limit_fn)(long),
 static int
 buf_daemon_limit(long limit)
 {
-	return (runningbufspace + dirtybufspace > limit ||
+	return (runningbufspace + dirtykvaspace > limit ||
 		dirtybufcount - dirtybufcounthw >= nbuf / 2);
 }
 
 static int
 buf_daemon_hw_limit(long limit)
 {
-	return (runningbufspace + dirtybufspacehw > limit ||
+	return (runningbufspace + dirtykvaspace > limit ||
 		dirtybufcounthw >= nbuf / 2);
 }
 
@@ -3503,6 +3510,7 @@ allocbuf(struct buf *bp, int size)
 	/* adjust space use on already-dirty buffer */
 	if (bp->b_flags & B_DELWRI) {
 		spin_lock(&bufcspin);
+		/* dirtykvaspace unchanged */
 		dirtybufspace += newbsize - bp->b_bufsize;
 		if (bp->b_flags & B_HEAVY)
 			dirtybufspacehw += newbsize - bp->b_bufsize;

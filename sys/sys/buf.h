@@ -393,8 +393,8 @@ struct uio;
 struct devstat;
 
 void	bufinit (void);
-int	bd_heatup (void);
-void	bd_wait (int count);
+long	bd_heatup (void);
+void	bd_wait (long count);
 void	waitrunningbufspace(void);
 int	buf_dirty_count_severe (void);
 int	buf_runningbufspace_severe (void);
