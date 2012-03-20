@@ -1135,7 +1135,7 @@ ndis_pnpevent_nic(void *arg, int type)
 	ndis_pnpevent_handler	pnpeventfunc;
 
 	dev = arg;
-	sc = device_get_softc(arg);
+	sc = device_get_softc(dev);
 	NDIS_LOCK(sc);
 	adapter = sc->ndis_block->nmb_miniportadapterctx;
 	pnpeventfunc = sc->ndis_chars->nmc_pnpevent_handler;
