@@ -224,9 +224,19 @@ cluster_readx(struct vnode *vp, off_t filesize, off_t loffset,
 		 * (maxra) when we've found a read-ahead mark.  We do
 		 * not want to reduce maxra here as it will cause
 		 * successive read-ahead I/O's to be smaller and smaller.
+		 *
+		 * However, we have to make sure we don't break the
+		 * filesize limitation for the clustered operation.
 		 */
 		loffset += i * blksize;
 		reqbp = bp = NULL;
+
+		if (loffset >= filesize)
+			return 0;
+		if (loffset + maxra * blksize > filesize) {
+			maxreq = filesize - loffset;
+			maxra = (int)(maxreq / blksize);
+		}
 	} else {
 		__debugvar off_t firstread = bp->b_loffset;
 		int nblks;
