@@ -111,7 +111,6 @@
  * $FreeBSD: src/sys/dev/asr/asr.c,v 1.90 2011/10/13 20:06:19 marius Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>	/* TRUE=1 and FALSE=0 defined here */
 #include <sys/kernel.h>
 #include <sys/module.h>
