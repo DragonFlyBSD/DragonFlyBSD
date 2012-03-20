@@ -1913,7 +1913,6 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	hammer2_blockref_t *bref;
 	hammer2_off_t pbase;
 	struct buf *bp;
-	int error;
 
 	/*
 	 * Flush any children of this chain entry.
@@ -2016,6 +2015,12 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	}
 
 	/*
+	 * Deleted nodes do not have to be flushed.
+	 */
+	if (chain->flags & HAMMER2_CHAIN_DELETED)
+		return;
+
+	/*
 	 * If this is part of a recursive flush we can go ahead and write
 	 * out the buffer cache buffer and pass a new bref back up the chain.
 	 *
@@ -2047,9 +2052,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 			 * The data is embedded, we have to acquire the
 			 * buffer cache buffer and copy the data into it.
 			 */
-			bp = NULL;
-			error = bread(hmp->devvp, pbase, chain->bytes, &bp);
-			KKASSERT(error == 0); /* XXX */
+			bp = getblk(hmp->devvp, pbase, chain->bytes, 0, 0);
 
 			/*
 			 * Copy the data to the buffer, mark the buffer
