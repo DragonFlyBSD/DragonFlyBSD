@@ -220,14 +220,14 @@ aesni_cipher_setup_common(struct aesni_session *ses, const uint8_t *key,
 int
 aesni_cipher_setup(struct aesni_session *ses, struct cryptoini *encini)
 {
-	struct thread *td;
 	int error = 0;
 #if 0
+	struct thread *td;
 	int saved_ctx;
 #endif
 
-	td = curthread;
 #if 0
+	td = curthread;
 	if (!is_fpu_kern_thread(0)) {
 		error = fpu_kern_enter(td, &ses->fpu_ctx, FPU_KERN_NORMAL);
 		saved_ctx = 1;
@@ -251,10 +251,10 @@ int
 aesni_cipher_process(struct aesni_session *ses, struct cryptodesc *enccrd,
     struct cryptop *crp)
 {
-	struct thread *td;
 	uint8_t *buf;
 	int error = 0, allocated;
 #if 0
+	struct thread *td;
 	int saved_ctx;
 #endif
 
@@ -262,8 +262,8 @@ aesni_cipher_process(struct aesni_session *ses, struct cryptodesc *enccrd,
 	if (buf == NULL)
 		return (ENOMEM);
 
-	td = curthread;
 #if 0
+	td = curthread;
 	if (!is_fpu_kern_thread(0)) {
 		error = fpu_kern_enter(td, &ses->fpu_ctx, FPU_KERN_NORMAL);
 		if (error != 0)
