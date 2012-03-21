@@ -84,6 +84,24 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 		return (0);
 	}
 
+	/*
+	 * Detect updates to the embedded data which may be synchronized by
+	 * the strategy code.  Simply mark the inode modified so it gets
+	 * picked up by our normal flush.
+	 */
+	if (ip->chain.flags & HAMMER2_CHAIN_DIRTYEMBED) {
+		hammer2_inode_lock_ex(ip);
+		atomic_clear_int(&ip->chain.flags, HAMMER2_CHAIN_DIRTYEMBED);
+		hammer2_chain_modify(ip->hmp, &ip->chain, 1);
+		hammer2_inode_unlock_ex(ip);
+	}
+
+	/*
+	 * Check for deleted inodes and recycle immediately.
+	 */
+	if (ip->chain.flags & HAMMER2_CHAIN_DELETED) {
+		vrecycle(vp);
+	}
 	return (0);
 }
 
@@ -137,6 +155,16 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 
 	hammer2_inode_lock_ex(ip);
 	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
+
+	/*
+	 * Detect updates to the embedded data which may be synchronized by
+	 * the strategy code.  Simply mark the inode modified so it gets
+	 * picked up by our normal flush.
+	 */
+	if (ip->chain.flags & HAMMER2_CHAIN_DIRTYEMBED) {
+		atomic_clear_int(&ip->chain.flags, HAMMER2_CHAIN_DIRTYEMBED);
+		hammer2_chain_modify(hmp, &ip->chain, 1);
+	}
 
 	/*
 	 * Calling chain_flush here creates a lot of duplicative
@@ -248,7 +276,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 					 ap->a_cred);
 		if (error == 0) {
 			if (ip->ip_data.uflags != flags) {
-				hammer2_chain_modify(hmp, &ip->chain);
+				hammer2_chain_modify(hmp, &ip->chain, 1);
 				ip->ip_data.uflags = flags;
 				doctime = 1;
 				kflags |= NOTE_ATTRIB;
@@ -556,7 +584,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 	 * might wind up being copied into the embedded data area.
 	 */
 	hammer2_inode_lock_ex(ip);
-	hammer2_chain_modify(hmp, &ip->chain);
+	hammer2_chain_modify(hmp, &ip->chain, 1);
 	error = hammer2_write_file(ip, uio, ap->a_ioflag);
 
 	hammer2_inode_unlock_ex(ip);
@@ -840,9 +868,11 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_key_t lbase,
 		switch (chain->bref.type) {
 		case HAMMER2_BREF_TYPE_INODE:
 			/*
-			 * The data is embedded in the inode
+			 * The data is embedded in the inode.  The
+			 * caller is responsible for marking the inode
+			 * modified and copying the data to the embedded
+			 * area.
 			 */
-			hammer2_chain_modify(hmp, chain);
 			pbase = NOOFFSET;
 			break;
 		case HAMMER2_BREF_TYPE_DATA:
@@ -893,7 +923,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	int oblksize;
 	int nblksize;
 
-	hammer2_chain_modify(hmp, &ip->chain);
+	hammer2_chain_modify(hmp, &ip->chain, 1);
 	bp = NULL;
 
 	/*
@@ -981,12 +1011,12 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			case HAMMER2_BREF_TYPE_DATA:
 				hammer2_chain_resize(hmp, chain,
 					     hammer2_bytes_to_radix(nblksize));
-				hammer2_chain_modify(hmp, chain);
+				hammer2_chain_modify(hmp, chain, 1);
 				bzero(chain->data->buf + loff, nblksize - loff);
 				break;
 			case HAMMER2_BREF_TYPE_INODE:
 				if (loff < HAMMER2_EMBEDDED_BYTES) {
-					hammer2_chain_modify(hmp, chain);
+					hammer2_chain_modify(hmp, chain, 1);
 					bzero(chain->data->ipdata.u.data + loff,
 					      HAMMER2_EMBEDDED_BYTES - loff);
 				}
@@ -1060,7 +1090,7 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	KKASSERT(ip->vp);
 	hmp = ip->hmp;
 
-	hammer2_chain_modify(hmp, &ip->chain);
+	hammer2_chain_modify(hmp, &ip->chain, 1);
 
 	/*
 	 * Nothing to do if the direct-data case is still intact
@@ -2023,6 +2053,13 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 		bp->b_resid = 0;
 		bp->b_error = 0;
 		biodone(nbio);
+
+		/*
+		 * This special flag does not follow the normal MODIFY1 rules
+		 * because we might deadlock on ip.  Instead we depend on
+		 * VOP_FSYNC() to detect the case.
+		 */
+		atomic_set_int(&ip->chain.flags, HAMMER2_CHAIN_DIRTYEMBED);
 	} else {
 		/*
 		 * Forward direct IO to the device

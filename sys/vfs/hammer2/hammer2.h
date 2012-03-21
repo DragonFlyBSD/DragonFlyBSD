@@ -123,7 +123,7 @@ int hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2);
 SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 
 #define HAMMER2_CHAIN_MODIFIED1		0x00000001	/* active mods */
-#define HAMMER2_CHAIN_UNUSED02		0x00000002
+#define HAMMER2_CHAIN_DIRTYEMBED	0x00000002	/* inode embedded */
 #define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
 #define HAMMER2_CHAIN_SUBMODIFIED	0x00000008	/* 1+ subs modified */
 #define HAMMER2_CHAIN_DELETED		0x00000010
@@ -319,7 +319,8 @@ void hammer2_chain_free(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-void hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+void hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain,
+				int setsubmod);
 void hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 				int nradix);
 void hammer2_chain_modify_quick(hammer2_mount_t *hmp, hammer2_chain_t *chain);

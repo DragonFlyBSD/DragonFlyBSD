@@ -555,7 +555,8 @@ hammer2_chain_resize_quick(hammer2_mount_t *hmp, hammer2_chain_t *chain,
  *	 data that would interfere with the file's logical buffers.
  */
 void
-hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
+hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain,
+		     int setsubmod)
 {
 	hammer2_off_t pbase;
 	struct buf *nbp;
@@ -660,7 +661,8 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		break;
 
 	}
-	hammer2_chain_parent_setsubmod(hmp, chain);
+	if (setsubmod)
+		hammer2_chain_parent_setsubmod(hmp, chain);
 }
 
 /*
@@ -1401,7 +1403,7 @@ again:
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
 			hammer2_chain_modify_quick(hmp, chain);
 		else
-			hammer2_chain_modify(hmp, chain);
+			hammer2_chain_modify(hmp, chain, 1);
 	}
 
 done:
@@ -1467,7 +1469,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * Mark the parent modified so our base[] pointer remains valid
 	 * while we move entries.
 	 */
-	hammer2_chain_modify(hmp, parent);
+	hammer2_chain_modify(hmp, parent, 1);
 
 	/*
 	 * Locate a free blockref in the parent's array
@@ -1715,7 +1717,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * our moved blocks, then call setsubmod() to set the bit
 	 * recursively.
 	 */
-	hammer2_chain_modify(hmp, ichain);
+	hammer2_chain_modify(hmp, ichain, 1);
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_SUBMODIFIED);
 	hammer2_chain_parent_setsubmod(hmp, ichain);
 
@@ -1774,7 +1776,7 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 *
 	 * Calculate the blockref reference in the parent
 	 */
-	hammer2_chain_modify(hmp, parent);
+	hammer2_chain_modify(hmp, parent, 1);
 
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
@@ -1920,10 +1922,14 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 			hammer2_chain_put(hmp, scan);
 		}
 
-		if (submodified) {
+		if (submodified || (chain->flags & HAMMER2_CHAIN_SUBMODIFIED)) {
 			/*
 			 * No point loading up the blockrefs if submodified
 			 * got re-set.
+			 *
+			 * NOTE: Even though we cleared the SUBMODIFIED flag
+			 *	 it can still get re-set by operations
+			 *	 occuring under our chain, so check both.
 			 */
 			atomic_set_int(&chain->flags,
 				       HAMMER2_CHAIN_SUBMODIFIED);
@@ -1939,8 +1945,12 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 			 *	 the chain modified will re-arm the MOVED
 			 *	 bit recursively, resulting in O(N^2)
 			 *	 flushes.
+			 *
+			 * NOTE: We don't want hammer2_chain_modify() to
+			 *	 recursively set the SUBMODIFIED flag
+			 *	 upward in this case!
 			 */
-			hammer2_chain_modify(hmp, chain);
+			hammer2_chain_modify(hmp, chain, 0);
 
 			switch(chain->bref.type) {
 			case HAMMER2_BREF_TYPE_INODE:
@@ -2180,9 +2190,15 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	if (lockmgr(&parent->lk, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
 		return;
 	}
+
+	/*
+	 * We updating brefs but we have to call chain_modify() w/
+	 * setsubmod = TRUE because our caller is not a recursive
+	 * flush.
+	 */
 	hammer2_chain_ref(hmp, parent);
 	hammer2_chain_lock(hmp, parent);
-	hammer2_chain_modify(hmp, parent);
+	hammer2_chain_modify(hmp, parent, 1);
 
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:

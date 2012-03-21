@@ -413,6 +413,8 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED1 |
 				 HAMMER2_CHAIN_SUBMODIFIED)) {
 		kprintf("hammer2_unmount: chains left over after final sync\n");
+		if (hammer2_debug & 0x0010)
+			Debugger("entered debugger");
 	}
 
 	/*
@@ -470,8 +472,6 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 	hammer2_mount_t *hmp;
 	int error;
 	struct vnode *vp;
-
-	kprintf("hammer2_root\n");
 
 	hmp = MPTOH2(mp);
 	hammer2_mount_exlock(hmp);
@@ -547,7 +547,6 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	int error;
 	int haswork;
 
-	kprintf("hammer2_sync \n");
 	hmp = MPTOH2(mp);
 
 	flags = VMSC_GETVP;
@@ -608,7 +607,13 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	return (error);
 }
 
-
+/*
+ * Sync passes.
+ *
+ * NOTE: We don't test SUBMODIFIED or MOVED here because the fsync code
+ *	 won't flush on those flags.  The syncer code above will do a
+ *	 general meta-data flush globally that will catch these flags.
+ */
 static int
 hammer2_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 {
@@ -616,7 +621,8 @@ hammer2_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 
 	ip = VTOI(vp);
 	if (vp->v_type == VNON || ip == NULL ||
-	    ((ip->chain.flags & HAMMER2_CHAIN_MODIFIED1) == 0 &&
+	    ((ip->chain.flags & (HAMMER2_CHAIN_MODIFIED1 |
+				 HAMMER2_CHAIN_DIRTYEMBED)) == 0 &&
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(-1);
 	}
@@ -632,8 +638,9 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 
 	ip = VTOI(vp);
 	if (vp->v_type == VNON || vp->v_type == VBAD ||
-	    ((ip->chain.flags & HAMMER2_CHAIN_MODIFIED1) == 0 &&
-	     RB_EMPTY(&vp->v_rbdirty_tree))) {
+	    ((ip->chain.flags & (HAMMER2_CHAIN_MODIFIED1 |
+				 HAMMER2_CHAIN_DIRTYEMBED)) == 0 &&
+	    RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(0);
 	}
 	error = VOP_FSYNC(vp, MNT_NOWAIT, 0);

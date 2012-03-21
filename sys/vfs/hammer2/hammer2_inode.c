@@ -348,7 +348,7 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 	 */
 	if (ip->ip_data.name_len != name_len ||
 	    bcmp(ip->ip_data.filename, name, name_len) != 0) {
-		hammer2_chain_modify(hmp, chain);
+		hammer2_chain_modify(hmp, chain, 1);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		bcopy(name, ip->ip_data.filename, name_len);
 		ip->ip_data.name_key = lhc;
@@ -410,7 +410,7 @@ hammer2_hardlink_create(hammer2_inode_t *ip, hammer2_inode_t *dip,
                 return error;
         }
         KKASSERT(nip->ip_data.type == HAMMER2_OBJTYPE_HARDLINK);
-        hammer2_chain_modify(&nip->chain);
+        hammer2_chain_modify(&nip->chain, 1);
         nip->ip_data.inum = ip->ip_data.inum;
 	hammer2_chain_put(hmp, &nip->chain);
 	/
