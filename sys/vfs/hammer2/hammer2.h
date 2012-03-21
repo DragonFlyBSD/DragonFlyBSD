@@ -132,6 +132,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MOVED		0x00000080	/* moved */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
 #define HAMMER2_CHAIN_WAS_MODIFIED	0x00000200	/* used w/rename */
+#define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()

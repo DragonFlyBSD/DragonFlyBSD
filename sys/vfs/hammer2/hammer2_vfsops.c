@@ -404,11 +404,20 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		return error;
 
 	/*
-	 * Work to do:
-	 *	1) Wait on the flusher having no work; heat up if needed
-	 *	2) Scan inode RB tree till all the inodes are free
-	 *	3) Destroy the kmalloc inode zone
-	 *	4) Free the mount point
+	 * Flush any left over chains
+	 */
+	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED1 |
+				 HAMMER2_CHAIN_SUBMODIFIED)) {
+		hammer2_vfs_sync(mp, MNT_WAIT);
+	}
+	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED1 |
+				 HAMMER2_CHAIN_SUBMODIFIED)) {
+		kprintf("hammer2_unmount: chains left over after final sync\n");
+	}
+
+	/*
+	 * Cleanup the root and super-root chain elements (which should be
+	 * clean).
 	 */
 	hmp->iroot = NULL;
 	if (hmp->rchain) {
@@ -421,6 +430,10 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		hammer2_chain_drop(hmp, hmp->schain);
 		hmp->schain = NULL;
 	}
+
+	/*
+	 * Finish up with the device vnode
+	 */
 	if ((devvp = hmp->devvp) != NULL) {
 		vinvalbuf(devvp, (ronly ? 0 : V_SAVE), 0, 0);
 		hmp->devvp = NULL;

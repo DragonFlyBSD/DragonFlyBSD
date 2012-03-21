@@ -108,9 +108,11 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	hammer2_inode_lock_ex(ip);
 	vp->v_data = NULL;
 	ip->vp = NULL;
+	if (ip->chain.flags & HAMMER2_CHAIN_DELETED)
+		atomic_set_int(&ip->chain.flags, HAMMER2_CHAIN_DESTROYED);
 	hammer2_chain_flush(hmp, &ip->chain);
 	hammer2_inode_unlock_ex(ip);
-	hammer2_chain_drop(hmp, &ip->chain);	/* vp ref removed */
+	hammer2_chain_drop(hmp, &ip->chain);	/* vp ref */
 
 	/*
 	 * XXX handle background sync when ip dirty, kernel will no longer
@@ -1672,9 +1674,11 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	/*
 	 * Keep a tight grip on the inode as removing it should disconnect
 	 * it and we don't want to destroy it.
+	 *
+	 * NOTE: To avoid deadlocks we cannot lock (ip) while we are
+	 *	 unlinking elements from their directories.
 	 */
 	hammer2_chain_ref(hmp, &ip->chain);
-	hammer2_chain_lock(hmp, &ip->chain);
 
 	/*
 	 * Remove target if it exists
@@ -1702,13 +1706,14 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	/*
 	 * Reconnect ip to target directory.
 	 */
+	hammer2_chain_lock(hmp, &ip->chain);
 	error = hammer2_inode_connect(tdip, ip, tname, tname_len);
 
 	if (error == 0) {
 		cache_rename(ap->a_fnch, ap->a_tnch);
 	}
-done:
 	hammer2_chain_unlock(hmp, &ip->chain);
+done:
 	hammer2_chain_drop(hmp, &ip->chain);
 
 	return (error);

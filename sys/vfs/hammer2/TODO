@@ -1,3 +1,8 @@
+* Nesting problems in the flusher.
+
+* Adjust the flusher to unlock the parent after the child is locked,
+  then restart if the parent changed out from under us.  This will
+  greatly reduce namecache contention.
 
 * Use bp->b_dep to interlock the buffer with the chain structure so the
   strategy code can calculate the crc and assert that the chain is marked
@@ -10,7 +15,7 @@
   Direct write needs to be implemented.
 
 * Make sure a resized block (hammer2_chain_resize()) calculates a new
-  hash code.
+  hash code in the parent bref
 
 * The freemap allocator needs to getblk/clrbuf/bdwrite any partial
   block allocations (less than 64KB) that allocate out of a new 64K
