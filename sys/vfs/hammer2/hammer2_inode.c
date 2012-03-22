@@ -218,8 +218,7 @@ hammer2_inode_create(hammer2_mount_t *hmp,
 	 * and iterate until we don't get one.
 	 */
 	parent = &dip->chain;
-	hammer2_chain_ref(hmp, parent);
-	hammer2_chain_lock(hmp, parent);
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 
 	error = 0;
 	while (error == 0) {
@@ -228,7 +227,7 @@ hammer2_inode_create(hammer2_mount_t *hmp,
 			break;
 		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
 			error = ENOSPC;
-		hammer2_chain_put(hmp, chain);
+		hammer2_chain_unlock(hmp, chain);
 		chain = NULL;
 		++lhc;
 	}
@@ -239,7 +238,7 @@ hammer2_inode_create(hammer2_mount_t *hmp,
 		if (chain == NULL)
 			error = EIO;
 	}
-	hammer2_chain_put(hmp, parent);
+	hammer2_chain_unlock(hmp, parent);
 
 	/*
 	 * Handle the error case
@@ -305,8 +304,7 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 	 * and iterate until we don't get one.
 	 */
 	parent = &dip->chain;
-	hammer2_chain_ref(hmp, parent);
-	hammer2_chain_lock(hmp, parent);
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 
 	error = 0;
 	while (error == 0) {
@@ -315,7 +313,7 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 			break;
 		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
 			error = ENOSPC;
-		hammer2_chain_put(hmp, chain);
+		hammer2_chain_unlock(hmp, chain);
 		chain = NULL;
 		++lhc;
 	}
@@ -332,7 +330,7 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 		if (chain == NULL)
 			error = EIO;
 	}
-	hammer2_chain_put(hmp, parent);
+	hammer2_chain_unlock(hmp, parent);
 
 	/*
 	 * Handle the error case
@@ -348,7 +346,7 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 	 */
 	if (ip->ip_data.name_len != name_len ||
 	    bcmp(ip->ip_data.filename, name, name_len) != 0) {
-		hammer2_chain_modify(hmp, chain, 1);
+		hammer2_chain_modify(hmp, chain, 0);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		bcopy(name, ip->ip_data.filename, name_len);
 		ip->ip_data.name_key = lhc;
@@ -410,13 +408,16 @@ hammer2_hardlink_create(hammer2_inode_t *ip, hammer2_inode_t *dip,
                 return error;
         }
         KKASSERT(nip->ip_data.type == HAMMER2_OBJTYPE_HARDLINK);
-        hammer2_chain_modify(&nip->chain, 1);
+        hammer2_chain_modify(&nip->chain, 0);
         nip->ip_data.inum = ip->ip_data.inum;
-	hammer2_chain_put(hmp, &nip->chain);
+	hammer2_chain_unlock(hmp, &nip->chain);
 	/
 #endif
 }
 
+/*
+ * Calculate the allocation size for the file fragment straddling EOF
+ */
 int
 hammer2_inode_calc_alloc(hammer2_key_t filesize)
 {
@@ -425,7 +426,7 @@ hammer2_inode_calc_alloc(hammer2_key_t filesize)
 
 	if (frag == 0)
 		return(0);
-	for (radix = HAMMER2_MINIORADIX; frag > (1 << radix); ++radix)
+	for (radix = HAMMER2_MINALLOCRADIX; frag > (1 << radix); ++radix)
 		;
 	return (radix);
 }

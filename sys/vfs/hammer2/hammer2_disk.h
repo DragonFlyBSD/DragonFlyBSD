@@ -75,16 +75,40 @@
 #define HAMMER2_KEY_RADIX	64	/* number of bits in key */
 
 /*
- * HAMMER2 utilizes 64K physical buffers and 16K logical filesystem buffers.
- * The smaller logical filesystem buffers reduce ram waste when the OS is
- * caching lots of small files.
+ * MINALLOCSIZE		- The minimum allocation size.  This can be smaller
+ *		  	  or larger than the minimum physical IO size.
+ *
+ *			  NOTE: Should not be larger than 1K since inodes
+ *				are 1K.
+ *
+ * MINIOSIZE		- The minimum IO size.  This must be less than
+ *			  or equal to HAMMER2_PBUFSIZE.
+ *
+ *			  XXX currently must be set to MINALLOCSIZE until/if
+ *			      we deal with recursive buffer cache locks.
+ *
+ * HAMMER2_PBUFSIZE	- Topological block size used by files for all
+ *			  blocks except the block straddling EOF.
+ *
+ * HAMMER2_SEGSIZE	- Allocation map segment size, typically 2MB
  */
+
+#define HAMMER2_SEGSIZE		(65536 * 8)
+
 #define HAMMER2_PBUFRADIX	16	/* physical buf (1<<16) bytes */
 #define HAMMER2_PBUFSIZE	65536
 #define HAMMER2_LBUFRADIX	14	/* logical buf (1<<14) bytes */
 #define HAMMER2_LBUFSIZE	16384
-#define HAMMER2_MINIORADIX	10	/* minimum IO size for direct IO */
-#define HAMMER2_MINIOSIZE	1024
+
+#if 0
+#define HAMMER2_MINIORADIX	16	/* minimum phsical IO size */
+#define HAMMER2_MINIOSIZE	65536
+#endif
+#define HAMMER2_MINIORADIX	HAMMER2_MINALLOCRADIX
+#define HAMMER2_MINIOSIZE	HAMMER2_MINALLOCSIZE
+
+#define HAMMER2_MINALLOCRADIX	10	/* minimum block allocation size */
+#define HAMMER2_MINALLOCSIZE	1024
 #define HAMMER2_IND_BYTES_MIN	4096	/* first indirect layer only */
 #define HAMMER2_IND_BYTES_MAX	HAMMER2_PBUFSIZE
 #define HAMMER2_IND_COUNT_MIN	(HAMMER2_IND_BYTES_MIN / \
@@ -108,10 +132,13 @@
 
 #define HAMMER2_PBUFMASK	(HAMMER2_PBUFSIZE - 1)
 #define HAMMER2_LBUFMASK	(HAMMER2_LBUFSIZE - 1)
+#define HAMMER2_SEGMASK		(HAMMER2_SEGSIZE - 1)
 
+#define HAMMER2_LBUFMASK64	((hammer2_off_t)HAMMER2_LBUFMASK)
 #define HAMMER2_PBUFSIZE64	((hammer2_off_t)HAMMER2_PBUFSIZE)
 #define HAMMER2_PBUFMASK64	((hammer2_off_t)HAMMER2_PBUFMASK)
-#define HAMMER2_LBUFMASK64	((hammer2_off_t)HAMMER2_LBUFMASK)
+#define HAMMER2_SEGSIZE64	((hammer2_off_t)HAMMER2_SEGSIZE)
+#define HAMMER2_SEGMASK64	((hammer2_off_t)HAMMER2_SEGMASK)
 
 #define HAMMER2_UUID_STRING	"5cbb9ad1-862d-11dc-a94d-01301bb8a9f5"
 

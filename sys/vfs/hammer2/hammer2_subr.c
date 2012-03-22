@@ -65,7 +65,7 @@
 void
 hammer2_inode_lock_ex(hammer2_inode_t *ip)
 {
-	hammer2_chain_lock(ip->hmp, &ip->chain);
+	hammer2_chain_lock(ip->hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
 }
 
 void
@@ -341,8 +341,8 @@ hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 	if (*lbasep == *leofp) {
 		radix = hammer2_bytes_to_radix(
 				(size_t)(ip->ip_data.size - *leofp));
-		if (radix < HAMMER2_MINIORADIX)
-			radix = HAMMER2_MINIORADIX;
+		if (radix < HAMMER2_MINALLOCRADIX)
+			radix = HAMMER2_MINALLOCRADIX;
 		*leofp += 1U << radix;
 		return (1U << radix);
 	} else {

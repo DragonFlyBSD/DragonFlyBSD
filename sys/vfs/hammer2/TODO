@@ -1,5 +1,8 @@
 * Nesting problems in the flusher.
 
+* Inefficient vfsync due to thousands of file buffers, one per-vnode.
+  (need to aggregate using a device buffer?)
+
 * Adjust the flusher to unlock the parent after the child is locked,
   then restart if the parent changed out from under us.  This will
   greatly reduce namecache contention.

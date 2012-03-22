@@ -127,7 +127,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
 #define HAMMER2_CHAIN_SUBMODIFIED	0x00000008	/* 1+ subs modified */
 #define HAMMER2_CHAIN_DELETED		0x00000010
-#define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial write */
+#define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
 #define HAMMER2_CHAIN_MOVED		0x00000080	/* moved */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
@@ -139,6 +139,22 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
  */
 #define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
 #define HAMMER2_LOOKUP_NODATA		0x00000002	/* data left NULL */
+
+/*
+ * Flags passed to hammer2_chain_modify() and hammer2_chain_resize()
+ *
+ * NOTE: OPTDATA allows us to avoid instantiating buffers for INDIRECT
+ *	 blocks in the INITIAL-create state.
+ */
+#define HAMMER2_MODIFY_NOSUB		0x00000001	/* do not set SUBMOD */
+#define HAMMER2_MODIFY_OPTDATA		0x00000002	/* data can be NULL */
+
+/*
+ * Flags passed to hammer2_chain_lock()
+ */
+#define HAMMER2_RESOLVE_NEVER		1
+#define HAMMER2_RESOLVE_MAYBE		2
+#define HAMMER2_RESOLVE_ALWAYS		3
 
 /*
  * Cluster different types of storage together for allocations
@@ -228,6 +244,7 @@ struct hammer2_mount {
 	hammer2_chain_t *schain;	/* super-root */
 	hammer2_chain_t *rchain;	/* label-root */
 	struct hammer2_inode *iroot;
+	struct lock	alloclk;	/* lockmgr lock */
 
 	hammer2_volume_data_t voldata;
 	hammer2_off_t	freecache[HAMMER2_FREECACHE_TYPES][HAMMER2_MAX_RADIX];
@@ -261,6 +278,21 @@ extern struct vop_ops hammer2_spec_vops;
 extern struct vop_ops hammer2_fifo_vops;
 
 extern int hammer2_debug;
+extern int hammer2_cluster_enable;
+extern long hammer2_iod_file_read;
+extern long hammer2_iod_meta_read;
+extern long hammer2_iod_indr_read;
+extern long hammer2_iod_file_write;
+extern long hammer2_iod_meta_write;
+extern long hammer2_iod_indr_write;
+extern long hammer2_iod_volu_write;
+extern long hammer2_ioa_file_read;
+extern long hammer2_ioa_meta_read;
+extern long hammer2_ioa_indr_read;
+extern long hammer2_ioa_file_write;
+extern long hammer2_ioa_meta_write;
+extern long hammer2_ioa_indr_write;
+extern long hammer2_ioa_volu_write;
 
 /*
  * hammer2_subr.c
@@ -318,21 +350,18 @@ hammer2_chain_t *hammer2_chain_alloc(hammer2_mount_t *hmp,
 void hammer2_chain_free(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-int hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
+int hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain, int how);
+void hammer2_chain_moved(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain,
-				int setsubmod);
+				int flags);
 void hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain,
-				int nradix);
-void hammer2_chain_modify_quick(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-void hammer2_chain_resize_quick(hammer2_mount_t *hmp, hammer2_chain_t *chain,
-				int nradix);
+				int nradix, int flags);
 void hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_find(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent, int index);
 hammer2_chain_t *hammer2_chain_get(hammer2_mount_t *hmp,
 				hammer2_chain_t *parent,
 				int index, int flags);
-void hammer2_chain_put(hammer2_mount_t *hmp, hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_mount_t *hmp,
 				hammer2_chain_t **parentp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,

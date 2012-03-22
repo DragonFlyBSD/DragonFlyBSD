@@ -57,6 +57,7 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 {
 	hammer2_off_t data_off;
 	hammer2_off_t data_next;
+	/*struct buf *bp;*/
 	int radix;
 	int fctype;
 
@@ -65,7 +66,7 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 		fctype = HAMMER2_FREECACHE_INODE;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		fctype = HAMMER2_FREECACHE_INDIR;
+		fctype = HAMMER2_FREECACHE_INODE;
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
 		fctype = HAMMER2_FREECACHE_DATA;
@@ -81,34 +82,60 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 	radix = hammer2_bytes_to_radix(bytes);
 	bytes = 1 << radix;
 
+	lockmgr(&hmp->alloclk, LK_EXCLUSIVE);
 	if (radix < HAMMER2_MAX_RADIX && hmp->freecache[fctype][radix]) {
 		/*
 		 * Allocate from our packing cache
 		 */
 		data_off = hmp->freecache[fctype][radix];
 		hmp->freecache[fctype][radix] += bytes;
-		if ((hmp->freecache[fctype][radix] & HAMMER2_PBUFMASK) == 0)
+		if ((hmp->freecache[fctype][radix] & HAMMER2_SEGMASK) == 0)
 			hmp->freecache[fctype][radix] = 0;
 	} else {
 		/*
-		 * Allocate from the allocation iterator using a PBUFSIZE
+		 * Allocate from the allocation iterator using a SEGSIZE
 		 * aligned block and reload the packing cache if possible.
 		 */
 		data_off = hmp->voldata.allocator_beg;
-		data_off = (data_off + HAMMER2_PBUFMASK64) &
-			   ~HAMMER2_PBUFMASK64;
+		data_off = (data_off + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
 		data_next = data_off + bytes;
 
-		if ((data_next & HAMMER2_PBUFMASK) == 0) {
+		if ((data_next & HAMMER2_SEGMASK) == 0) {
 			hmp->voldata.allocator_beg = data_next;
 		} else {
-			KKASSERT(radix < HAMMER2_MAX_RADIX);
+			KKASSERT(radix <= HAMMER2_MAX_RADIX);
 			hmp->voldata.allocator_beg =
-					(data_next + HAMMER2_PBUFMASK64) &
-					~HAMMER2_PBUFMASK64;
+					(data_next + HAMMER2_SEGMASK64) &
+					~HAMMER2_SEGMASK64;
 			hmp->freecache[fctype][radix] = data_next;
 		}
 	}
+	lockmgr(&hmp->alloclk, LK_RELEASE);
+
+#if 0
+	/*
+	 * Allocations on-media are always in multiples of 64K but
+	 * partial-block allocations can be tracked in-memory.
+	 *
+	 * We can reduce the need for read-modify-write IOs by
+	 * telling the kernel that the contents of a new 64K block is
+	 * initially good (before we use any of it).
+	 *
+	 * Worst case is the kernel evicts the buffer and causes HAMMER2's
+	 * bread later on to actually issue a read I/O.
+	 *
+	 * XXX Maybe do this in SEGSIZE increments? Needs a lot of work.
+	 *     Also watch out for buffer size mismatches.
+	 */
+	if (bytes < HAMMER2_MINIOSIZE &&
+	    (data_off & (HAMMER2_MINIOSIZE - 1)) == 0) {
+		bp = getblk(hmp->devvp, data_off, HAMMER2_MINIOSIZE, 0, 0);
+		bp->b_flags |= B_CACHE;
+		bp->b_resid = 0;
+		bqrelse(bp);
+	}
+#endif
+
 	if (hammer2_debug & 0x0001) {
 		kprintf("hammer2: allocate %d %016jx: %zd\n",
 			type, (intmax_t)data_off, bytes);

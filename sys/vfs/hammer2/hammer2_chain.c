@@ -49,8 +49,6 @@
 
 #include "hammer2.h"
 
-SPLAY_GENERATE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
-
 static int hammer2_indirect_optimize;	/* XXX SYSCTL */
 
 static hammer2_chain_t *hammer2_chain_create_indirect(
@@ -58,12 +56,41 @@ static hammer2_chain_t *hammer2_chain_create_indirect(
 			hammer2_key_t key, int keybits);
 
 /*
- * Compare function for chain splay tree
+ * Splay tree
  */
+SPLAY_GENERATE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
+
 int
 hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
 {
 	return(chain2->index - chain1->index);
+}
+
+/*
+ * Recursively mark the parent chain elements so flushes can find
+ * modified elements.
+ *
+ * NOTE: The flush code will modify a SUBMODIFIED-flagged chain
+ *	 during the flush recursion after clearing the parent's
+ *	 SUBMODIFIED bit.  We don't want to re-set the parent's
+ *	 SUBMODIFIED bit in this case!
+ *
+ * XXX rename of parent can create a SMP race
+ */
+static void
+hammer2_chain_parent_setsubmod(hammer2_mount_t *hmp, hammer2_chain_t *chain)
+{
+	hammer2_chain_t *parent;
+
+	if ((chain->flags & HAMMER2_CHAIN_SUBMODIFIED) == 0) {
+		parent = chain->parent;
+		while (parent &&
+		       (parent->flags & HAMMER2_CHAIN_SUBMODIFIED) == 0) {
+			atomic_set_int(&parent->flags,
+				       HAMMER2_CHAIN_SUBMODIFIED);
+			parent = parent->parent;
+		}
+	}
 }
 
 /*
@@ -225,69 +252,121 @@ hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 }
 
 /*
- * Lock a chain element, acquiring its data with I/O if necessary.
+ * Ref and lock a chain element, acquiring its data with I/O if necessary,
+ * and specify how you would like the data to be resolved.
  *
  * Returns 0 on success or an error code if the data could not be acquired.
  * The chain element is locked either way.
  *
- * chain->data will be pointed either at the embedded data (e.g. for
- * inodes), in which case the buffer cache buffer is released, or will
- * point into the bp->b_data buffer with the bp left intact while locked.
+ * The lock is allowed to recurse, multiple locking ops will aggregate
+ * the requested resolve types.  Once data is assigned it will not be
+ * removed until the last unlock.
  *
- * NOTE: Chain elements of type DATA do not instantiate a buffer or set
- *	 the data pointer.
+ * HAMMER2_RESOLVE_NEVER - Do not resolve the data element.
+ *			   (typically used to avoid device/logical buffer
+ *			    aliasing for data)
+ *
+ * HAMMER2_RESOLVE_MAYBE - Do not resolve data elements for chains in
+ *			   the INITIAL-create state (indirect blocks only).
+ *
+ *			   Do not resolve data elements for DATA chains.
+ *			   (typically used to avoid device/logical buffer
+ *			    aliasing for data)
+ *
+ * HAMMER2_RESOLVE_ALWAYS- Always resolve the data element.
+ *
+ *
+ * NOTE: Embedded elements (volume header, inodes) are always resolved
+ *	 regardless.
+ *
+ * NOTE: Specifying HAMMER2_RESOLVE_ALWAYS on a newly-created non-embedded
+ *	 element will instantiate and zero its buffer, and flush it on
+ *	 release.
+ *
+ * NOTE: (data) elements are normally locked RESOLVE_NEVER or RESOLVE_MAYBE
+ *	 so as not to instantiate a device buffer, which could alias against
+ *	 a logical file buffer.  However, if ALWAYS is specified the
+ *	 device buffer will be instantiated anyway.
  */
 int
-hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
+hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain, int how)
 {
 	hammer2_blockref_t *bref;
 	hammer2_off_t pbase;
+	hammer2_off_t peof;
+	size_t boff;
+	size_t bbytes;
 	int error;
+	char *bdata;
 
 	/*
 	 * Lock the element.  Under certain conditions this might end up
 	 * being a recursive lock.
 	 */
 	KKASSERT(chain->refs > 0);
+	atomic_add_int(&chain->refs, 1);
 	lockmgr(&chain->lk, LK_EXCLUSIVE);
 
 	/*
-	 * The volume header is a special case
+	 * If we already have a valid data pointer no further action is
+	 * necessary.
 	 */
-	if (chain->bref.type == HAMMER2_BREF_TYPE_VOLUME)
-		return(0);
-
-	/*
-	 * bp must be NULL, so if the data pointer is valid here it points
-	 * to embedded data and no I/O is necessary (whether modified or not).
-	 */
-	KKASSERT(chain->bp == NULL);
 	if (chain->data)
 		return (0);
 
 	/*
-	 * We do not instantiate a device buffer for DATA chain elements,
-	 * as this would cause unnecessary double-buffering.
+	 * Do we have to resolve the data?
 	 */
-	if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
+	switch(how) {
+	case HAMMER2_RESOLVE_NEVER:
 		return(0);
+	case HAMMER2_RESOLVE_MAYBE:
+		if (chain->flags & HAMMER2_CHAIN_INITIAL)
+			return(0);
+		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
+			return(0);
+		/* fall through */
+	case HAMMER2_RESOLVE_ALWAYS:
+		break;
+	}
 
 	/*
-	 * If data is NULL we must issue I/O.  Any error returns the error
-	 * code but leaves the chain locked.
+	 * We must resolve to a device buffer, either by issuing I/O or
+	 * by creating a zero-fill element.  We do not mark the buffer
+	 * dirty when creating a zero-fill element (the hammer2_chain_modify()
+	 * API must still be used to do that).
 	 *
-	 * If the chain was modified a new bref will have already been
-	 * allocated and its related bp is probably still sitting in the
-	 * buffer cache.
+	 * The device buffer is variable-sized in powers of 2 down
+	 * to HAMMER2_MINALLOCSIZE (typically 1K).  A 64K physical storage
+	 * chunk always contains buffers of the same size. (XXX)
 	 *
-	 * The buffer cache buffer is variable-sized in powers of 2 down
-	 * to HAMMER2_MINIOSIZE (typically 1K).
+	 * The minimum physical IO size may be larger than the variable
+	 * block size.
 	 */
 	bref = &chain->bref;
 
-	pbase = bref->data_off & ~(hammer2_off_t)(chain->bytes - 1);
+	if ((bbytes = chain->bytes) < HAMMER2_MINIOSIZE)
+		bbytes = HAMMER2_MINIOSIZE;
+	pbase = bref->data_off & ~(hammer2_off_t)(bbytes - 1);
+	peof = (pbase + HAMMER2_PBUFSIZE64) & ~HAMMER2_PBUFMASK64;
+	boff = bref->data_off & HAMMER2_OFF_MASK & (bbytes - 1);
 	KKASSERT(pbase != 0);
-	error = bread(hmp->devvp, pbase, chain->bytes, &chain->bp);
+
+	/*
+	 * The getblk() optimization can only be used on newly created
+	 * elements if the physical block size matches the request.
+	 */
+	if ((chain->flags & HAMMER2_CHAIN_INITIAL) &&
+	    chain->bytes == bbytes) {
+		chain->bp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
+		error = 0;
+	} else if (hammer2_cluster_enable) {
+		error = cluster_read(hmp->devvp, peof, pbase, bbytes,
+				     HAMMER2_PBUFSIZE, HAMMER2_PBUFSIZE,
+				     &chain->bp);
+	} else {
+		error = bread(hmp->devvp, pbase, bbytes, &chain->bp);
+	}
 
 	if (error) {
 		kprintf("hammer2_chain_get: I/O error %016jx: %d\n",
@@ -296,6 +375,13 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		chain->bp = NULL;
 		return (error);
 	}
+
+	/*
+	 * Zero the data area if the chain is in the INITIAL-create state
+	 */
+	bdata = (char *)chain->bp->b_data + boff;
+	if (chain->flags & HAMMER2_CHAIN_INITIAL)
+		bzero(bdata, chain->bytes);
 
 	/*
 	 * Setup the data pointer, either pointing it to an embedded data
@@ -311,19 +397,23 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		/*
 		 * Copy data from bp to embedded buffer
 		 */
-		KKASSERT(0);	/* not yet - have mount use this soon */
+		panic("hammer2_chain_lock: called on unresolved volume header");
+#if 0
+		/* NOT YET */
 		KKASSERT(pbase == 0);
 		KKASSERT(chain->bytes == HAMMER2_PBUFSIZE);
-		bcopy(chain->bp->b_data, &hmp->voldata, chain->bytes);
+		bcopy(bdata, &hmp->voldata, chain->bytes);
 		chain->data = (void *)&hmp->voldata;
 		bqrelse(chain->bp);
 		chain->bp = NULL;
+#endif
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		/*
-		 * Copy data from bp to embedded buffer.
+		 * Copy data from bp to embedded buffer, do not retain the
+		 * device buffer.
 		 */
-		bcopy(chain->bp->b_data, &chain->u.ip->ip_data, chain->bytes);
+		bcopy(bdata, &chain->u.ip->ip_data, chain->bytes);
 		chain->data = (void *)&chain->u.ip->ip_data;
 		bqrelse(chain->bp);
 		chain->bp = NULL;
@@ -332,39 +422,120 @@ hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	case HAMMER2_BREF_TYPE_DATA:
 	default:
 		/*
-		 * Leave bp intact
+		 * Point data at the device buffer and leave bp intact.
 		 */
-		chain->data = (void *)chain->bp->b_data;
+		chain->data = (void *)bdata;
 		break;
 	}
 	return (0);
 }
 
 /*
- * Recursively mark the parent chain elements so flushes can find
- * modified elements.
+ * Unlock and deref a chain element.
  *
- * NOTE: The flush code will modify a SUBMODIFIED-flagged chain
- *	 during the flush recursion after clearing the parent's
- *	 SUBMODIFIED bit.  We don't want to re-set the parent's
- *	 SUBMODIFIED bit in this case!
- *
- * XXX rename of parent can create a SMP race
+ * On the last lock release any non-embedded data (chain->bp) will be
+ * retired.
  */
-static void
-hammer2_chain_parent_setsubmod(hammer2_mount_t *hmp, hammer2_chain_t *chain)
+void
+hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
-	hammer2_chain_t *parent;
+	long *counterp;
 
-	if ((chain->flags & HAMMER2_CHAIN_SUBMODIFIED) == 0) {
-		parent = chain->parent;
-		while (parent &&
-		       (parent->flags & HAMMER2_CHAIN_SUBMODIFIED) == 0) {
-			atomic_set_int(&parent->flags,
-				       HAMMER2_CHAIN_SUBMODIFIED);
-			parent = parent->parent;
+	/*
+	 * Undo a recursive lock
+	 */
+	if (lockcountnb(&chain->lk) > 1) {
+		KKASSERT(chain->refs > 1);
+		atomic_add_int(&chain->refs, -1);
+		lockmgr(&chain->lk, LK_RELEASE);
+		return;
+	}
+
+	/*
+	 * Shortcut the case if the data is embedded or not resolved.
+	 * Do NOT null-out pointers to embedded data (e.g. inode).
+	 */
+	if (chain->bp == NULL) {
+		lockmgr(&chain->lk, LK_RELEASE);
+		hammer2_chain_drop(hmp, chain);
+		return;
+	}
+
+	/*
+	 * Statistics
+	 */
+	if ((chain->flags & HAMMER2_CHAIN_DIRTYBP) == 0) {
+		;
+	} else if (chain->flags & HAMMER2_CHAIN_IOFLUSH) {
+		switch(chain->bref.type) {
+		case HAMMER2_BREF_TYPE_DATA:
+			counterp = &hammer2_ioa_file_write;
+			break;
+		case HAMMER2_BREF_TYPE_INODE:
+			counterp = &hammer2_ioa_meta_write;
+			break;
+		case HAMMER2_BREF_TYPE_INDIRECT:
+			counterp = &hammer2_ioa_indr_write;
+			break;
+		default:
+			counterp = &hammer2_ioa_volu_write;
+			break;
+		}
+		++*counterp;
+	} else {
+		switch(chain->bref.type) {
+		case HAMMER2_BREF_TYPE_DATA:
+			counterp = &hammer2_iod_file_write;
+			break;
+		case HAMMER2_BREF_TYPE_INODE:
+			counterp = &hammer2_iod_meta_write;
+			break;
+		case HAMMER2_BREF_TYPE_INDIRECT:
+			counterp = &hammer2_iod_indr_write;
+			break;
+		default:
+			counterp = &hammer2_iod_volu_write;
+			break;
+		}
+		++*counterp;
+	}
+
+	/*
+	 * Clean out the bp.
+	 *
+	 * If a device buffer was used for data be sure to destroy the
+	 * buffer when we are done to avoid aliases (XXX what about the
+	 * underlying VM pages?).
+	 */
+	if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
+		chain->bp->b_flags |= B_RELBUF;
+
+	chain->data = NULL;
+	if (chain->flags & HAMMER2_CHAIN_DIRTYBP) {
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
+		if (chain->flags & HAMMER2_CHAIN_IOFLUSH) {
+			atomic_clear_int(&chain->flags,
+					 HAMMER2_CHAIN_IOFLUSH);
+			chain->bp->b_flags |= B_RELBUF;
+			bawrite(chain->bp);
+		} else {
+			chain->bp->b_flags |= B_CLUSTEROK;
+			bdwrite(chain->bp);
+		}
+	} else {
+		if (chain->flags & HAMMER2_CHAIN_IOFLUSH) {
+			atomic_clear_int(&chain->flags,
+					 HAMMER2_CHAIN_IOFLUSH);
+			chain->bp->b_flags |= B_RELBUF;
+			brelse(chain->bp);
+		} else {
+			/* bp might still be dirty */
+			bqrelse(chain->bp);
 		}
 	}
+	chain->bp = NULL;
+	lockmgr(&chain->lk, LK_RELEASE);
+	hammer2_chain_drop(hmp, chain);
 }
 
 /*
@@ -372,15 +543,27 @@ hammer2_chain_parent_setsubmod(hammer2_mount_t *hmp, hammer2_chain_t *chain)
  * smaller without reallocating the storage.  Resizing larger will reallocate
  * the storage.
  *
- * Must be passed a locked chain
+ * Must be passed a locked chain.  If you want the resize to copy the data
+ * you should lock the chain with RESOLVE_MAYBE or RESOLVE_ALWAYS, otherwise
+ * the resize operation will not copy the data.
+ *
+ * This function is mostly used with DATA blocks locked RESOLVE_NEVER in order
+ * to avoid instantiating a device buffer that conflicts with the vnode
+ * data buffer.
+ *
+ * XXX flags currently ignored, uses chain->bp to detect data/no-data.
  */
 void
-hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain, int nradix)
+hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain,
+		     int nradix, int flags)
 {
 	struct buf *nbp;
+	hammer2_off_t pbase;
 	size_t obytes;
 	size_t nbytes;
-	void *ndata;
+	size_t bbytes;
+	int boff;
+	char *bdata;
 	int error;
 
 	/*
@@ -407,134 +590,65 @@ hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain, int nradix)
 		hammer2_chain_ref(hmp, chain);
 	}
 
-	if (nbytes < obytes) {
+	/*
+	 * Relocate the block, even if making it smaller (because different
+	 * block sizes may be in different regions).
+	 */
+	chain->bref.data_off = hammer2_freemap_alloc(hmp, chain->bref.type,
+						     nbytes);
+	chain->bytes = nbytes;
+
+	/*
+	 * The device buffer may be larger than the allocation size.
+	 */
+	if ((bbytes = chain->bytes) < HAMMER2_MINIOSIZE)
+		bbytes = HAMMER2_MINIOSIZE;
+	pbase = chain->bref.data_off & ~(hammer2_off_t)(bbytes - 1);
+	boff = chain->bref.data_off & HAMMER2_OFF_MASK & (bbytes - 1);
+
+	/*
+	 * Only copy the data if resolved, otherwise the caller is
+	 * responsible.
+	 */
+	if (chain->bp) {
+		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
+			 chain->bref.type == HAMMER2_BREF_TYPE_DATA);
+		KKASSERT(chain != &hmp->vchain);	/* safety */
+
 		/*
-		 * If we are making it smaller we don't have to reallocate
-		 * the block but we still need to resize it.
+		 * The getblk() optimization can only be used if the
+		 * physical block size matches the request.
 		 */
-		chain->bref.data_off &= ~HAMMER2_OFF_MASK_RADIX;
-		chain->bref.data_off |= (nradix & HAMMER2_OFF_MASK_RADIX);
-		chain->bytes = nbytes;
-		allocbuf(chain->bp, nbytes);
-	} else {
-		/*
-		 * Otherwise we do
-		 */
-		chain->bref.data_off =
-			hammer2_freemap_alloc(hmp, chain->bref.type, nbytes);
-		chain->bytes = nbytes;
-
-		switch(chain->bref.type) {
-		case HAMMER2_BREF_TYPE_VOLUME:		/* embedded */
-		case HAMMER2_BREF_TYPE_INODE:		/* embedded */
-			/*
-			 * data points to embedded structure, no copy needed
-			 */
+		if (nbytes == bbytes) {
+			nbp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
 			error = 0;
-			break;
-		case HAMMER2_BREF_TYPE_INDIRECT:
-			panic("hammer2_chain_resize: "
-			      "cannot resize indirect block");
-			/* NOT REACHED */
-			break;
-		case HAMMER2_BREF_TYPE_DATA:
-			/*
-			 * data (if not NULL) points into original bp or
-			 * to embedded data.  Copy-on-write to new block.
-			 */
-			KKASSERT(chain != &hmp->vchain);	/* safety */
-			nbp = getblk(hmp->devvp,
-				     chain->bref.data_off &
-				      ~(hammer2_off_t)(nbytes - 1),
-				     nbytes, 0, 0);
-			vfs_bio_clrbuf(nbp);
-			error = 0;
-
-			/*
-			 * The new block is larger than the old one, only
-			 * copy what fits.
-			 */
-			ndata = nbp->b_data;
-			if (chain->data) {
-				if (nbytes < obytes)
-					bcopy(chain->data, ndata, nbytes);
-				else
-					bcopy(chain->data, ndata, obytes);
-				KKASSERT(chain->bp != NULL);
-			}
-			if (chain->bp) {
-				chain->bp->b_flags |= B_RELBUF;
-				brelse(chain->bp);
-			}
-			chain->bp = nbp;
-			chain->data = ndata;
-			break;
-		default:
-			panic("hammer2_chain_modify: unknown bref type");
-			break;
-
+		} else {
+			error = bread(hmp->devvp, pbase, bbytes, &nbp);
+			KKASSERT(error == 0);
 		}
+		bdata = (char *)nbp->b_data + boff;
+
+		if (nbytes < obytes) {
+			bcopy(chain->data, bdata, nbytes);
+		} else {
+			bcopy(chain->data, bdata, obytes);
+			bzero(bdata + obytes, nbytes - obytes);
+		}
+
+		/*
+		 * NOTE: The INITIAL state of the chain is left intact.
+		 *
+		 * NOTE: Because of the reallocation we have to set DIRTYBP
+		 *	 if INITIAL is not set.
+		 */
+		chain->bp->b_flags |= B_RELBUF;
+		brelse(chain->bp);
+		chain->bp = nbp;
+		chain->data = (void *)bdata;
+		if ((chain->flags & HAMMER2_CHAIN_INITIAL) == 0)
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
 	}
 	hammer2_chain_parent_setsubmod(hmp, chain);
-}
-
-/*
- * This is the same as hammer2_chain_resize() except the chain does NOT
- * have to be locked and any underlying data is NOT copied to the new
- * location.
- */
-void
-hammer2_chain_resize_quick(hammer2_mount_t *hmp, hammer2_chain_t *chain,
-			   int nradix)
-{
-	size_t obytes;
-	size_t nbytes;
-
-	/*
-	 * Only data and indirect blocks can be resized for now
-	 */
-	KKASSERT(chain != &hmp->vchain);
-	KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA ||
-		 chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT);
-
-	/*
-	 * Nothing to do if the element is already the proper size
-	 */
-	obytes = chain->bytes;
-	nbytes = 1 << nradix;
-	if (obytes == nbytes)
-		return;
-
-	lockmgr(&chain->lk, LK_EXCLUSIVE);
-	KKASSERT(chain->bp == NULL);
-
-	/*
-	 * Set MODIFIED1 and add a chain ref to prevent destruction.  Both
-	 * modified flags share the same ref.
-	 */
-	if ((chain->flags & HAMMER2_CHAIN_MODIFIED1) == 0) {
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED1);
-		hammer2_chain_ref(hmp, chain);
-	}
-
-	if (nbytes < obytes) {
-		/*
-		 * If we are making it smaller we don't have to reallocate
-		 * the block but we still need to resize it.
-		 */
-		chain->bref.data_off &= ~HAMMER2_OFF_MASK_RADIX;
-		chain->bref.data_off |= (nradix & HAMMER2_OFF_MASK_RADIX);
-		chain->bytes = nbytes;
-	} else {
-		/*
-		 * Otherwise we do
-		 */
-		chain->bref.data_off =
-			hammer2_freemap_alloc(hmp, chain->bref.type, nbytes);
-		chain->bytes = nbytes;
-	}
-	hammer2_chain_parent_setsubmod(hmp, chain);
-	lockmgr(&chain->lk, LK_RELEASE);
 }
 
 /*
@@ -543,42 +657,30 @@ hammer2_chain_resize_quick(hammer2_mount_t *hmp, hammer2_chain_t *chain,
  * If not already marked modified a new physical block will be allocated
  * and assigned to the bref.
  *
- * allocated->modified (without calling hammer2_chain_lock()) results
- * in chain->data typically being NULL.  In this situation chain->data
- * is assigned and the target area is zero'd out.
+ * Non-data blocks - The chain should be locked to at least the RESOLVE_MAYBE
+ *		     level or the COW operation will not work.
  *
- * If the data is pointing into a bp it will be relocated to a new bp.
- * If the data is embedded we leave it alone for now.
- *
- * NOTE: Not used for DATA chain types, hammer2_chain_modify_quick() is
- *	 used instead.  We don't want to allocate a device buffer for
- *	 data that would interfere with the file's logical buffers.
+ * Data blocks	   - The chain is usually locked RESOLVE_NEVER so as not to
+ *		     run the data through the device buffers.
  */
 void
-hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain,
-		     int setsubmod)
+hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain, int flags)
 {
-	hammer2_off_t pbase;
 	struct buf *nbp;
-	void *ndata;
 	int error;
-
-	KKASSERT(chain->bref.type != HAMMER2_BREF_TYPE_DATA);
-
-	/*
-	 * Setting the DIRTYBP flag will cause the buffer to be dirtied or
-	 * written-out on unlock.  This bit is independent of the MODIFIED1
-	 * bit because the chain may still need meta-data adjustments done
-	 * by virtue of MODIFIED1 for its parent, and the buffer can be
-	 * flushed out (possibly multiple times) by the OS before that.
-	 */
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
+	hammer2_off_t pbase;
+	size_t bbytes;
+	size_t boff;
+	void *bdata;
 
 	/*
 	 * If the chain is already marked MODIFIED1 we can just return.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_MODIFIED1) {
-		KKASSERT(chain->data != NULL);
+		if ((flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
+		    chain->bp == NULL) {
+			goto skip1;
+		}
 		return;
 	}
 
@@ -604,7 +706,7 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 	 */
 	if (chain != &hmp->vchain) {
 		if ((hammer2_debug & 0x0001) &&
-		    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
+		    (chain->bref.data_off & HAMMER2_OFF_MASK)) {
 			kprintf("Replace %d\n", chain->bytes);
 		}
 		chain->bref.data_off =
@@ -613,153 +715,99 @@ hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 		/* XXX failed allocation */
 	}
 
+	/*
+	 * If data instantiation is optional and the chain has no current
+	 * data association (typical for DATA and newly-created INDIRECT
+	 * elements), don't instantiate the buffer now.
+	 */
+	if ((flags & HAMMER2_MODIFY_OPTDATA) && chain->bp == NULL)
+		goto skip2;
+
+skip1:
+	/*
+	 * Setting the DIRTYBP flag will cause the buffer to be dirtied or
+	 * written-out on unlock.  This bit is independent of the MODIFIED1
+	 * bit because the chain may still need meta-data adjustments done
+	 * by virtue of MODIFIED1 for its parent, and the buffer can be
+	 * flushed out (possibly multiple times) by the OS before that.
+	 *
+	 * Clearing the INITIAL flag (for indirect blocks) indicates that
+	 * a zero-fill buffer has been instantiated.
+	 */
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
+	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
+
+	/*
+	 * We currently should never instantiate a device buffer for a
+	 * data chain.
+	 */
+	KKASSERT(chain->bref.type != HAMMER2_BREF_TYPE_DATA);
+
+	/*
+	 * Execute COW operation
+	 */
 	switch(chain->bref.type) {
-	case HAMMER2_BREF_TYPE_VOLUME:		/* embedded */
-	case HAMMER2_BREF_TYPE_INODE:		/* embedded */
+	case HAMMER2_BREF_TYPE_VOLUME:
+	case HAMMER2_BREF_TYPE_INODE:
 		/*
-		 * Inode and Volume data already points to the embedded
-		 * structure, no copy is needed
+		 * The data is embedded, no copy-on-write operation is
+		 * needed.
 		 */
-		error = 0;
+		KKASSERT(chain->bp == NULL);
 		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_DATA:
+	case HAMMER2_BREF_TYPE_INDIRECT:
 		/*
-		 * data (if not NULL) points into original bp or to embedded
-		 * data, copy-on-write to the new block.
-		 *
-		 * data (if NULL) indicates that no prior copy exists, the
-		 * storage must be zero'd.
+		 * Perform the copy-on-write operation
 		 */
 		KKASSERT(chain != &hmp->vchain);	/* safety */
-		pbase = chain->bref.data_off &
-			 ~(hammer2_off_t)(chain->bytes - 1);
-		nbp = getblk(hmp->devvp, pbase, chain->bytes, 0, 0);
-		vfs_bio_clrbuf(nbp);	/* XXX */
-		error = 0;
+		/*
+		 * The device buffer may be larger than the allocation size.
+		 */
+		if ((bbytes = chain->bytes) < HAMMER2_MINIOSIZE)
+			bbytes = HAMMER2_MINIOSIZE;
+		pbase = chain->bref.data_off & ~(hammer2_off_t)(bbytes - 1);
+		boff = chain->bref.data_off & HAMMER2_OFF_MASK & (bbytes - 1);
+
+		/*
+		 * The getblk() optimization can only be used if the
+		 * physical block size matches the request.
+		 */
+		if (chain->bytes == bbytes) {
+			nbp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
+			error = 0;
+		} else {
+			error = bread(hmp->devvp, pbase, bbytes, &nbp);
+			KKASSERT(error == 0);
+		}
+		bdata = (char *)nbp->b_data + boff;
 
 		/*
 		 * Copy or zero-fill on write depending on whether
 		 * chain->data exists or not.
 		 */
-		ndata = nbp->b_data;
 		if (chain->data) {
-			bcopy(chain->data, ndata, chain->bytes);
+			bcopy(chain->data, bdata, chain->bytes);
 			KKASSERT(chain->bp != NULL);
 		} else {
-			bzero(ndata, chain->bytes);
+			bzero(bdata, chain->bytes);
 		}
 		if (chain->bp) {
 			chain->bp->b_flags |= B_RELBUF;
 			brelse(chain->bp);
 		}
 		chain->bp = nbp;
-		chain->data = ndata;
+		chain->data = bdata;
 		break;
 	default:
-		panic("hammer2_chain_modify: unknown bref type");
+		panic("hammer2_chain_modify: illegal non-embedded type %d",
+		      chain->bref.type);
 		break;
 
 	}
-	if (setsubmod)
+skip2:
+	if ((flags & HAMMER2_MODIFY_NOSUB) == 0)
 		hammer2_chain_parent_setsubmod(hmp, chain);
-}
-
-/*
- * Same as hammer2_chain_modify() except the chain does not have to be
- * locked and the underlying data will NOT be copied to the new location.
- */
-void
-hammer2_chain_modify_quick(hammer2_mount_t *hmp, hammer2_chain_t *chain)
-{
-	/*
-	 * Set the MODIFIED1 bit and handle degenerate cases.
-	 *
-	 * We do not set the DIRTYBP flag, we don't want the flush code to
-	 * read-modify-write the underlying physical buffer because it
-	 * is probably aliased against a logical buffer.
-	 *
-	 * We must lock the chain but not instantiate its data.
-	 *
-	 * If the chain is already marked MODIFIED1 we can just return,
-	 * but must interlock a failed test to avoid races.
-	 */
-	if (chain->flags & HAMMER2_CHAIN_MODIFIED1)
-		return;
-	lockmgr(&chain->lk, LK_EXCLUSIVE);
-	if (chain->flags & HAMMER2_CHAIN_MODIFIED1) {
-		lockmgr(&chain->lk, LK_RELEASE);
-		return;
-	}
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED1);
-	hammer2_chain_ref(hmp, chain);	/* ref for MODIFIED1 bit */
-
-	/*
-	 * We must allocate the copy-on-write block.
-	 *
-	 * If the data is embedded no other action is required.
-	 *
-	 * If the data is not embedded we acquire and clear the
-	 * new block.  If chain->data is not NULL we then do the
-	 * copy-on-write.  chain->data will then be repointed to the new
-	 * buffer and the old buffer will be released.
-	 *
-	 * For newly created elements with no prior allocation we go
-	 * through the copy-on-write steps except without the copying part.
-	 */
-	if (chain != &hmp->vchain) {
-		if ((hammer2_debug & 0x0001) &&
-		    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
-			kprintf("Replace %d\n", chain->bytes);
-		}
-		chain->bref.data_off =
-			hammer2_freemap_alloc(hmp, chain->bref.type,
-					      chain->bytes);
-		/* XXX failed allocation */
-	}
-	hammer2_chain_parent_setsubmod(hmp, chain);
-	lockmgr(&chain->lk, LK_RELEASE);
-}
-
-/*
- * Unlock a chain element without dropping its reference count.
- * (see hammer2_chain_put() to do both).
- *
- * Non-embedded data references (chain->bp != NULL) are returned to the
- * system and the data field is cleared in that case.  If modified the
- * dirty buffer is still returned to the system, can be flushed to disk by
- * the system at any time, and will be reconstituted/re-read as needed.
- */
-void
-hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
-{
-	if (chain->bp) {
-		chain->data = NULL;
-		if (chain->flags & HAMMER2_CHAIN_DIRTYBP) {
-			if (chain->flags & HAMMER2_CHAIN_IOFLUSH) {
-				atomic_clear_int(&chain->flags,
-						 HAMMER2_CHAIN_IOFLUSH);
-				chain->bp->b_flags |= B_RELBUF;
-				bawrite(chain->bp);
-			} else {
-				chain->bp->b_flags |= B_CLUSTEROK;
-				bdwrite(chain->bp);
-			}
-		} else {
-			if (chain->flags & HAMMER2_CHAIN_IOFLUSH) {
-				atomic_clear_int(&chain->flags,
-						 HAMMER2_CHAIN_IOFLUSH);
-				chain->bp->b_flags |= B_RELBUF;
-				brelse(chain->bp);
-			} else {
-				/* bp might still be dirty */
-				bqrelse(chain->bp);
-			}
-		}
-		chain->bp = NULL;
-	}
-	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
-	lockmgr(&chain->lk, LK_RELEASE);
 }
 
 /*
@@ -791,6 +839,16 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	hammer2_blockref_t *bref;
 	hammer2_chain_t *chain;
 	hammer2_chain_t dummy;
+	int how;
+
+	/*
+	 * Figure out how to lock.  MAYBE can be used to optimized
+	 * the initial-create state for indirect blocks.
+	 */
+	if (flags & (HAMMER2_LOOKUP_NODATA | HAMMER2_LOOKUP_NOLOCK))
+		how = HAMMER2_RESOLVE_NEVER;
+	else
+		how = HAMMER2_RESOLVE_MAYBE;
 
 	/*
 	 * First see if we have a (possibly modified) chain element cached
@@ -802,10 +860,20 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	dummy.index = index;
 	chain = SPLAY_FIND(hammer2_chain_splay, &parent->shead, &dummy);
 	if (chain) {
-		hammer2_chain_ref(hmp, chain);
-		if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
-			hammer2_chain_lock(hmp, chain);
+		if (flags & HAMMER2_LOOKUP_NOLOCK)
+			hammer2_chain_ref(hmp, chain);
+		else
+			hammer2_chain_lock(hmp, chain, how);
 		return(chain);
+	}
+
+	/*
+	 * the get function must always succeed, panic if there's no
+	 * data to index.
+	 */
+	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
+		panic("hammer2_chain_get: Missing bref(1)");
+		/* NOT REACHED */
 	}
 
 	/*
@@ -817,6 +885,7 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		bref = &parent->data->ipdata.u.blockset.blockref[index];
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
+		KKASSERT(parent->data != NULL);
 		KKASSERT(index >= 0 &&
 			 index < parent->bytes / sizeof(hammer2_blockref_t));
 		bref = &parent->data->npdata.blockref[index];
@@ -830,11 +899,16 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		panic("hammer2_chain_get: unrecognized blockref type: %d",
 		      parent->bref.type);
 	}
+	if (bref->type == 0) {
+		panic("hammer2_chain_get: Missing bref(2)");
+		/* NOT REACHED */
+	}
 
 	/*
 	 * Allocate a chain structure representing the existing media
-	 * entry.  Thus the chain is *not* INITIAL and certainly not
-	 * MODIFIED (yet).
+	 * entry.
+	 *
+	 * The locking operation we do later will issue I/O to read it.
 	 */
 	chain = hammer2_chain_alloc(hmp, bref);
 
@@ -867,22 +941,13 @@ hammer2_chain_get(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 *
 	 * If NOLOCK is set the release will release the one-and-only lock.
 	 */
-	if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
-		hammer2_chain_lock(hmp, chain);
-	lockmgr(&chain->lk, LK_RELEASE);
+	if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0) {
+		hammer2_chain_lock(hmp, chain, how);	/* recusive lock */
+		hammer2_chain_drop(hmp, chain);		/* excess ref */
+	}
+	lockmgr(&chain->lk, LK_RELEASE);		/* from alloc */
 
 	return (chain);
-}
-
-/*
- * Unlock and dereference a chain after use.  It is possible for this to
- * recurse up the chain.
- */
-void
-hammer2_chain_put(hammer2_mount_t *hmp, hammer2_chain_t *chain)
-{
-	hammer2_chain_unlock(hmp, chain);
-	hammer2_chain_drop(hmp, chain);
 }
 
 /*
@@ -937,10 +1002,11 @@ hammer2_chain_lookup(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
 			   ((hammer2_key_t)1 << parent->bref.keybits) - 1;
 		if (key_beg >= scan_beg && key_end <= scan_end)
 			break;
-		hammer2_chain_unlock(hmp, parent);
+		hammer2_chain_ref(hmp, parent);		/* ref old parent */
+		hammer2_chain_unlock(hmp, parent);	/* unlock old parent */
 		parent = parent->parent;
-		hammer2_chain_ref(hmp, parent);		/* ref new parent */
-		hammer2_chain_lock(hmp, parent);	/* lock new parent */
+							/* lock new parent */
+		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_MAYBE);
 		hammer2_chain_drop(hmp, *parentp);	/* drop old parent */
 		*parentp = parent;			/* new parent */
 	}
@@ -960,18 +1026,28 @@ again:
 		 * This is only applicable to regular files and softlinks.
 		 */
 		if (parent->data->ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
-			hammer2_chain_ref(hmp, parent);
-			if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
-				hammer2_chain_lock(hmp, parent);
+			if (flags & HAMMER2_LOOKUP_NOLOCK)
+				hammer2_chain_ref(hmp, parent);
+			else
+				hammer2_chain_lock(hmp, parent,
+						   HAMMER2_RESOLVE_ALWAYS);
 			return (parent);
 		}
 		base = &parent->data->ipdata.u.blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		if (parent->data == NULL)
-			panic("parent->data is NULL");
-		base = &parent->data->npdata.blockref[0];
+		/*
+		 * Optimize indirect blocks in the INITIAL state to avoid
+		 * I/O.
+		 */
+		if (parent->flags & HAMMER2_CHAIN_INITIAL) {
+			base = NULL;
+		} else {
+			if (parent->data == NULL)
+				panic("parent->data is NULL");
+			base = &parent->data->npdata.blockref[0];
+		}
 		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
@@ -991,9 +1067,14 @@ again:
 	bref = NULL;
 	for (i = 0; i < count; ++i) {
 		tmp = hammer2_chain_find(hmp, parent, i);
-		bref = (tmp) ? &tmp->bref : &base[i];
-		if (bref->type == 0)
+		if (tmp) {
+			bref = &tmp->bref;
+			KKASSERT(bref->type != 0);
+		} else if (base == NULL || base[i].type == 0) {
 			continue;
+		} else {
+			bref = &base[i];
+		}
 		scan_beg = bref->key;
 		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
 		if (key_beg <= scan_end && key_end >= scan_beg)
@@ -1016,15 +1097,21 @@ again:
 
 	/*
 	 * If the chain element is an indirect block it becomes the new
-	 * parent and we loop on it.  We must fixup the chain we loop on
-	 * if the caller passed flags to us that aren't sufficient for our
-	 * needs.
+	 * parent and we loop on it.
+	 *
+	 * The parent always has to be locked with at least RESOLVE_MAYBE,
+	 * so it might need a fixup if the caller passed incompatible flags.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
-		hammer2_chain_put(hmp, parent);
+		hammer2_chain_unlock(hmp, parent);
 		*parentp = parent = chain;
-		if (flags & HAMMER2_LOOKUP_NOLOCK)
-			hammer2_chain_lock(hmp, chain);
+		if (flags & HAMMER2_LOOKUP_NOLOCK) {
+			hammer2_chain_lock(hmp, chain, HAMMER2_RESOLVE_MAYBE);
+			hammer2_chain_drop(hmp, chain);	/* excess ref */
+		} else if (flags & HAMMER2_LOOKUP_NODATA) {
+			hammer2_chain_lock(hmp, chain, HAMMER2_RESOLVE_MAYBE);
+			hammer2_chain_unlock(hmp, chain);
+		}
 		goto again;
 	}
 
@@ -1074,7 +1161,7 @@ again:
 		if (flags & HAMMER2_LOOKUP_NOLOCK)
 			hammer2_chain_drop(hmp, chain);
 		else
-			hammer2_chain_put(hmp, chain);
+			hammer2_chain_unlock(hmp, chain);
 
 		/*
 		 * Any scan where the lookup returned degenerate data embedded
@@ -1095,9 +1182,6 @@ again:
 		 */
 		hammer2_chain_t *nparent;
 
-		if (parent->bref.type != HAMMER2_BREF_TYPE_INDIRECT)
-			return (NULL);
-
 		scan_beg = parent->bref.key;
 		scan_end = scan_beg +
 			    ((hammer2_key_t)1 << parent->bref.keybits) - 1;
@@ -1107,9 +1191,10 @@ again:
 		i = parent->index + 1;
 		nparent = parent->parent;
 		hammer2_chain_ref(hmp, nparent);	/* ref new parent */
-		hammer2_chain_unlock(hmp, parent);
-		hammer2_chain_lock(hmp, nparent);	/* lock new parent */
-		hammer2_chain_drop(hmp, parent);	/* drop old parent */
+		hammer2_chain_unlock(hmp, parent);	/* unlock old parent */
+							/* lock new parent */
+		hammer2_chain_lock(hmp, nparent, HAMMER2_RESOLVE_MAYBE);
+		hammer2_chain_drop(hmp, nparent);	/* drop excess ref */
 		*parentp = parent = nparent;
 	}
 
@@ -1124,7 +1209,12 @@ again2:
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		base = &parent->data->npdata.blockref[0];
+		if (parent->flags & HAMMER2_CHAIN_INITIAL) {
+			base = NULL;
+		} else {
+			KKASSERT(parent->data != NULL);
+			base = &parent->data->npdata.blockref[0];
+		}
 		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
@@ -1148,10 +1238,13 @@ again2:
 	bref = NULL;
 	while (i < count) {
 		tmp = hammer2_chain_find(hmp, parent, i);
-		bref = (tmp) ? &tmp->bref : &base[i];
-		if (bref->type == 0) {
+		if (tmp) {
+			bref = &tmp->bref;
+		} else if (base == NULL || base[i].type == 0) {
 			++i;
 			continue;
+		} else {
+			bref = &base[i];
 		}
 		scan_beg = bref->key;
 		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
@@ -1177,15 +1270,21 @@ again2:
 
 	/*
 	 * If the chain element is an indirect block it becomes the new
-	 * parent and we loop on it.  We may have to lock the chain when
-	 * cycling it in as the new parent as it will not be locked if the
-	 * caller passed NOLOCK.
+	 * parent and we loop on it.
+	 *
+	 * The parent always has to be locked with at least RESOLVE_MAYBE,
+	 * so it might need a fixup if the caller passed incompatible flags.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
-		hammer2_chain_put(hmp, parent);
+		hammer2_chain_unlock(hmp, parent);
 		*parentp = parent = chain;
-		if (flags & HAMMER2_LOOKUP_NOLOCK)
-			hammer2_chain_lock(hmp, chain);
+		if (flags & HAMMER2_LOOKUP_NOLOCK) {
+			hammer2_chain_lock(hmp, chain, HAMMER2_RESOLVE_MAYBE);
+			hammer2_chain_drop(hmp, chain);	/* excess ref */
+		} else if (flags & HAMMER2_LOOKUP_NODATA) {
+			hammer2_chain_lock(hmp, chain, HAMMER2_RESOLVE_MAYBE);
+			hammer2_chain_unlock(hmp, chain);
+		}
 		i = 0;
 		goto again2;
 	}
@@ -1200,7 +1299,7 @@ again2:
  * Create and return a new hammer2 system memory structure of the specified
  * key, type and size and insert it RELATIVE TO (PARENT).
  *
- * (parent) is typically either an inode or an indirect  block, acquired
+ * (parent) is typically either an inode or an indirect block, acquired
  * acquired as a side effect of issuing a prior failed lookup.  parent
  * must be locked and held.  Do not pass the inode chain to this function
  * unless that is the chain returned by the failed lookup.
@@ -1213,8 +1312,14 @@ again2:
  * to emplace the new indirect type.
  *
  * A new locked, referenced chain element is returned of the specified type.
- * This element will also be marked as modified and contain a data area
- * ready for initialization.
+ * The element may or may not have a data area associated with it:
+ *
+ *	VOLUME		not allowed here
+ *	INODE		embedded data are will be set-up
+ *	INDIRECT	not allowed here
+ *	DATA		no data area will be set-up (caller is expected
+ *			to have logical buffers, we don't want to alias
+ *			the data onto device buffers!).
  */
 hammer2_chain_t *
 hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
@@ -1223,7 +1328,6 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 {
 	hammer2_blockref_t dummy;
 	hammer2_blockref_t *base;
-	hammer2_blockref_t *bref;
 	hammer2_chain_t dummy_chain;
 	int unlock_parent = 0;
 	int allocated = 0;
@@ -1246,9 +1350,11 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		/*
 		 * We set the WAS_MODIFIED flag here so the chain gets
 		 * marked as modified below.
+		 *
+		 * We do NOT set INITIAL here (yet).  INITIAL is only
+		 * used for indirect blocks.
 		 */
-		chain->flags |= HAMMER2_CHAIN_INITIAL |
-			        HAMMER2_CHAIN_WAS_MODIFIED;
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_WAS_MODIFIED);
 
 		/*
 		 * Recalculate bytes to reflect the actual media block
@@ -1267,6 +1373,9 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 			chain->data = (void *)&chain->u.ip->ip_data;
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
+			panic("hammer2_chain_create: cannot be used to"
+			      "create indirect block");
+			break;
 		case HAMMER2_BREF_TYPE_DATA:
 		default:
 			/* leave chain->data NULL */
@@ -1294,8 +1403,12 @@ again:
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		KKASSERT(parent->data != NULL);
-		base = &parent->data->npdata.blockref[0];
+		if (parent->flags & HAMMER2_CHAIN_INITIAL) {
+			base = NULL;
+		} else {
+			KKASSERT(parent->data != NULL);
+			base = &parent->data->npdata.blockref[0];
+		}
 		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
@@ -1316,14 +1429,19 @@ again:
 	 * in the parent's bref array.
 	 */
 	bzero(&dummy_chain, sizeof(dummy_chain));
-	bref = NULL;
 	for (i = 0; i < count; ++i) {
-		bref = &base[i];
-		dummy_chain.index = i;
-		if (bref->type == 0 &&
-		    SPLAY_FIND(hammer2_chain_splay,
-			       &parent->shead, &dummy_chain) == NULL) {
-			break;
+		if (base == NULL) {
+			dummy_chain.index = i;
+			if (SPLAY_FIND(hammer2_chain_splay,
+				       &parent->shead, &dummy_chain) == NULL) {
+				break;
+			}
+		} else if (base[i].type == 0) {
+			dummy_chain.index = i;
+			if (SPLAY_FIND(hammer2_chain_splay,
+				       &parent->shead, &dummy_chain) == NULL) {
+				break;
+			}
 		}
 	}
 
@@ -1349,7 +1467,7 @@ again:
 		}
 		if (parent != nparent) {
 			if (unlock_parent)
-				hammer2_chain_put(hmp, parent);
+				hammer2_chain_unlock(hmp, parent);
 			parent = nparent;
 			unlock_parent = 1;
 		}
@@ -1385,30 +1503,39 @@ again:
 	/*
 	 * WAS_MODIFIED indicates that this is a newly-created chain element
 	 * rather than a renamed chain element.  In this situation we want
-	 * to mark non-data chain elements as modified in order to resolve
-	 * the data pointer.
+	 * to place the chain element in the MODIFIED1 state.
 	 *
-	 * data chain elements are marked modified but WITHOUT resolving the
-	 * data pointer, as a device buffer would interfere otherwise.
+	 * The data area will be set up as follows:
 	 *
-	 * Chain elements with embedded data will not issue I/O at this time.
-	 * A new block will be allocated for the buffer but not instantiated.
+	 *	VOLUME		not allowed here.
 	 *
-	 * NON-DATA chain elements which do not use embedded data will
-	 * allocate the new block AND instantiate its buffer cache buffer,
-	 * pointing the data at the bp.
+	 *	INODE		embedded data are will be set-up.
+	 *
+	 *	INDIRECT	not allowed here.
+	 *
+	 *	DATA		no data area will be set-up (caller is expected
+	 *			to have logical buffers, we don't want to alias
+	 *			the data onto device buffers!).
 	 */
 	if (chain->flags & HAMMER2_CHAIN_WAS_MODIFIED) {
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_WAS_MODIFIED);
-		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
-			hammer2_chain_modify_quick(hmp, chain);
-		else
-			hammer2_chain_modify(hmp, chain, 1);
+		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+			hammer2_chain_modify(hmp, chain,
+					     HAMMER2_MODIFY_OPTDATA);
+		} else if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
+			/* not supported in this function */
+			panic("hammer2_chain_create: bad type");
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
+			hammer2_chain_modify(hmp, chain,
+					     HAMMER2_MODIFY_OPTDATA);
+		} else {
+			hammer2_chain_modify(hmp, chain, 0);
+		}
 	}
 
 done:
 	if (unlock_parent)
-		hammer2_chain_put(hmp, parent);
+		hammer2_chain_unlock(hmp, parent);
 	return (chain);
 }
 
@@ -1466,33 +1593,57 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	int i;
 
 	/*
-	 * Mark the parent modified so our base[] pointer remains valid
-	 * while we move entries.
+	 * Calculate the base blockref pointer or NULL if the chain
+	 * is known to be empty.
 	 */
-	hammer2_chain_modify(hmp, parent, 1);
+	hammer2_chain_modify(hmp, parent, HAMMER2_MODIFY_OPTDATA);
+	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
+		base = NULL;
 
-	/*
-	 * Locate a free blockref in the parent's array
-	 */
-	switch(parent->bref.type) {
-	case HAMMER2_BREF_TYPE_INODE:
-		base = &parent->data->ipdata.u.blockset.blockref[0];
-		count = HAMMER2_SET_COUNT;
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		base = &parent->data->npdata.blockref[0];
-		count = parent->bytes / sizeof(hammer2_blockref_t);
-		break;
-	case HAMMER2_BREF_TYPE_VOLUME:
-		base = &hmp->voldata.sroot_blockset.blockref[0];
-		count = HAMMER2_SET_COUNT;
-		break;
-	default:
-		panic("hammer2_chain_create_indirect: "
-		      "unrecognized blockref type: %d",
-		      parent->bref.type);
-		count = 0;
-		break;
+		/*
+		 * We still need to calculate the count for SPLAY lookups
+		 */
+		switch(parent->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
+			count = HAMMER2_SET_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_INDIRECT:
+			count = parent->bytes / sizeof(hammer2_blockref_t);
+			break;
+		case HAMMER2_BREF_TYPE_VOLUME:
+			count = HAMMER2_SET_COUNT;
+			break;
+		default:
+			panic("hammer2_chain_create_indirect: "
+			      "unrecognized blockref type: %d",
+			      parent->bref.type);
+			count = 0;
+			break;
+		}
+	} else {
+		/*
+		 * Locate a free blockref in the parent's array
+		 */
+		switch(parent->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
+			base = &parent->data->ipdata.u.blockset.blockref[0];
+			count = HAMMER2_SET_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_INDIRECT:
+			base = &parent->data->npdata.blockref[0];
+			count = parent->bytes / sizeof(hammer2_blockref_t);
+			break;
+		case HAMMER2_BREF_TYPE_VOLUME:
+			base = &hmp->voldata.sroot_blockset.blockref[0];
+			count = HAMMER2_SET_COUNT;
+			break;
+		default:
+			panic("hammer2_chain_create_indirect: "
+			      "unrecognized blockref type: %d",
+			      parent->bref.type);
+			count = 0;
+			break;
+		}
 	}
 
 	/*
@@ -1504,14 +1655,19 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	for (i = 0; i < count; ++i) {
 		int nkeybits;
 
-		bref = &base[i];
-		if (bref->type == 0) {
+		/*
+		 * Optimize the case where the parent is still in its
+		 * initially created state.
+		 */
+		if (base == NULL || base[i].type == 0) {
 			dummy.index = i;
-			chain = SPLAY_FIND(hammer2_chain_splay, &parent->shead,
-					   &dummy);
+			chain = SPLAY_FIND(hammer2_chain_splay,
+					   &parent->shead, &dummy);
 			if (chain == NULL)
 				continue;
 			bref = &chain->bref;
+		} else {
+			bref = &base[i];
 		}
 
 		/*
@@ -1608,7 +1764,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	dummy.bref.keybits = keybits;
 	dummy.bref.data_off = hammer2_bytes_to_radix(nbytes);
 	ichain = hammer2_chain_alloc(hmp, &dummy.bref);
-	ichain->flags |= HAMMER2_CHAIN_INITIAL;
+	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_INITIAL);
 
 	/*
 	 * Iterate the original parent and move the matching brefs into
@@ -1622,11 +1778,10 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		 * anyway so we can avoid checking the cache when the media
 		 * has a key.
 		 */
-		bref = &base[i];
-		if (bref->type == 0) {
+		if (base == NULL || base[i].type == 0) {
 			dummy.index = i;
-			chain = SPLAY_FIND(hammer2_chain_splay, &parent->shead,
-					   &dummy);
+			chain = SPLAY_FIND(hammer2_chain_splay,
+					   &parent->shead, &dummy);
 			if (chain == NULL) {
 				/*
 				 * Select index indirect block is placed in
@@ -1636,6 +1791,8 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 				continue;
 			}
 			bref = &chain->bref;
+		} else {
+			bref = &base[i];
 		}
 
 		/*
@@ -1672,24 +1829,20 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		 *     data.  NODATA feature needed.
 		 */
 		chain = hammer2_chain_get(hmp, parent, i,
-					  HAMMER2_LOOKUP_NOLOCK);
-		lockmgr(&chain->lk, LK_EXCLUSIVE);
+					  HAMMER2_LOOKUP_NODATA);
 		SPLAY_REMOVE(hammer2_chain_splay, &parent->shead, chain);
 		if (SPLAY_INSERT(hammer2_chain_splay, &ichain->shead, chain))
 			panic("hammer2_chain_create_indirect: collision");
 		chain->parent = ichain;
-		bzero(&base[i], sizeof(base[i]));
+		if (base)
+			bzero(&base[i], sizeof(base[i]));
 		atomic_add_int(&parent->refs, -1);
 		atomic_add_int(&ichain->refs, 1);
-		if (chain->flags & HAMMER2_CHAIN_MOVED) {
-			/* We don't need the ref from the chain_get */
-			lockmgr(&chain->lk, LK_RELEASE);
-			hammer2_chain_drop(hmp, chain);
-		} else {
-			/* MOVED bit inherits the ref from the chain_get */
+		if ((chain->flags & HAMMER2_CHAIN_MOVED) == 0) {
+			hammer2_chain_ref(hmp, chain);
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
-			lockmgr(&chain->lk, LK_RELEASE);
 		}
+		hammer2_chain_unlock(hmp, chain);
 		KKASSERT(parent->refs > 0);
 		chain = NULL;
 	}
@@ -1717,7 +1870,7 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * our moved blocks, then call setsubmod() to set the bit
 	 * recursively.
 	 */
-	hammer2_chain_modify(hmp, ichain, 1);
+	hammer2_chain_modify(hmp, ichain, HAMMER2_MODIFY_OPTDATA);
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_SUBMODIFIED);
 	hammer2_chain_parent_setsubmod(hmp, ichain);
 
@@ -1729,14 +1882,14 @@ hammer2_chain_create_indirect(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		 * Key being created is way outside the key range,
 		 * return the original parent.
 		 */
-		hammer2_chain_put(hmp, ichain);
+		hammer2_chain_unlock(hmp, ichain);
 	} else if (~(((hammer2_key_t)1 << keybits) - 1) &
 		   (create_key ^ key)) {
 		/*
 		 * Key being created is outside the key range,
 		 * return the original parent.
 		 */
-		hammer2_chain_put(hmp, ichain);
+		hammer2_chain_unlock(hmp, ichain);
 	} else {
 		/*
 		 * Otherwise its in the range, return the new parent.
@@ -1772,22 +1925,27 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 
 	/*
 	 * Mark the parent modified so our base[] pointer remains valid
-	 * while we move entries.
+	 * while we move entries.  For the optimized indirect block
+	 * case mark the parent moved instead.
 	 *
 	 * Calculate the blockref reference in the parent
 	 */
-	hammer2_chain_modify(hmp, parent, 1);
-
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
+		hammer2_chain_modify(hmp, parent, 0);
 		base = &parent->data->ipdata.u.blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		base = &parent->data->npdata.blockref[0];
+		hammer2_chain_modify(hmp, parent, HAMMER2_MODIFY_OPTDATA);
+		if (parent->flags & HAMMER2_CHAIN_INITIAL)
+			base = NULL;
+		else
+			base = &parent->data->npdata.blockref[0];
 		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
+		hammer2_chain_modify(hmp, parent, 0);
 		base = &hmp->voldata.sroot_blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
@@ -1803,8 +1961,8 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 	 * disconnect in-memory fields from the parent.
 	 */
 	KKASSERT(chain->index >= 0 && chain->index < count);
-	base += chain->index;
-	bzero(base, sizeof(*base));
+	if (base)
+		bzero(&base[chain->index], sizeof(*base));
 
 	SPLAY_REMOVE(hammer2_chain_splay, &parent->shead, chain);
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
@@ -1838,7 +1996,11 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 {
 	hammer2_blockref_t *bref;
 	hammer2_off_t pbase;
+	size_t bbytes;
+	size_t boff;
+	char *bdata;
 	struct buf *bp;
+	int error;
 
 	if (hammer2_debug & 0x0008)
 		kprintf("%*.*sCHAIN type=%d@%08jx %p/%d %04x {\n",
@@ -1894,8 +2056,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 			/*
 			 * Recurse the flush
 			 */
-			hammer2_chain_ref(hmp, scan);
-			hammer2_chain_lock(hmp, scan);
+			hammer2_chain_lock(hmp, scan, HAMMER2_RESOLVE_MAYBE);
 			if (chain->flags & HAMMER2_CHAIN_DESTROYED) {
 				atomic_set_int(&scan->flags,
 					       HAMMER2_CHAIN_DESTROYED);
@@ -1919,7 +2080,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 			}
 			if (hammer2_debug & 0x0008)
 				kprintf("\n");
-			hammer2_chain_put(hmp, scan);
+			hammer2_chain_unlock(hmp, scan);
 		}
 
 		if (submodified || (chain->flags & HAMMER2_CHAIN_SUBMODIFIED)) {
@@ -1950,7 +2111,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 			 *	 recursively set the SUBMODIFIED flag
 			 *	 upward in this case!
 			 */
-			hammer2_chain_modify(hmp, chain, 0);
+			hammer2_chain_modify(hmp, chain, HAMMER2_MODIFY_NOSUB);
 
 			switch(chain->bref.type) {
 			case HAMMER2_BREF_TYPE_INODE:
@@ -1983,16 +2144,15 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 						  &chain->shead, scan);
 				KKASSERT(scan->index >= 0 &&
 					 scan->index < count);
-				hammer2_chain_ref(hmp, scan);
-				lockmgr(&scan->lk, LK_EXCLUSIVE);
+				hammer2_chain_lock(hmp, scan,
+						   HAMMER2_RESOLVE_NEVER);
 				base[scan->index] = scan->bref;
 				if (scan->flags & HAMMER2_CHAIN_MOVED) {
 					atomic_clear_int(&scan->flags,
 						 HAMMER2_CHAIN_MOVED);
 					hammer2_chain_drop(hmp, scan);
 				}
-				lockmgr(&scan->lk, LK_RELEASE);
-				hammer2_chain_drop(hmp, scan);
+				hammer2_chain_unlock(hmp, scan);
 			}
 		}
 	}
@@ -2067,30 +2227,57 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 		 * the vop_write code.
 		 */
 		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		/*
+		 * Indirect blocks may be in an INITIAL state.
+		 */
+		break;
 	default:
+		/*
+		 * Embedded elements have to be flushed out.
+		 */
 		KKASSERT(chain->data != NULL);
 		bref = &chain->bref;
 
-		pbase = bref->data_off & ~(hammer2_off_t)(chain->bytes - 1);
-		KKASSERT(pbase != 0);	/* not the root volume header */
+		KKASSERT((bref->data_off & HAMMER2_OFF_MASK) != 0);
 
 		if (chain->bp == NULL) {
 			/*
 			 * The data is embedded, we have to acquire the
 			 * buffer cache buffer and copy the data into it.
 			 */
-			bp = getblk(hmp->devvp, pbase, chain->bytes, 0, 0);
+			if ((bbytes = chain->bytes) < HAMMER2_MINIOSIZE)
+				bbytes = HAMMER2_MINIOSIZE;
+			pbase = bref->data_off & ~(hammer2_off_t)(bbytes - 1);
+			boff = bref->data_off & HAMMER2_OFF_MASK & (bbytes - 1);
+
+			/*
+			 * The getblk() optimization can only be used if the
+			 * physical block size matches the request.
+			 */
+			if (chain->bytes == bbytes) {
+				bp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
+				error = 0;
+			} else {
+				error = bread(hmp->devvp, pbase, bbytes, &bp);
+				KKASSERT(error == 0);
+			}
+			bdata = (char *)bp->b_data + boff;
 
 			/*
 			 * Copy the data to the buffer, mark the buffer
 			 * dirty, and convert the chain to unmodified.
 			 */
-			bcopy(chain->data, bp->b_data, chain->bytes);
+			bcopy(chain->data, bdata, chain->bytes);
 			bp->b_flags |= B_CLUSTEROK;
 			bdwrite(bp);
 			bp = NULL;
 			chain->bref.check.iscsi32.value =
 				hammer2_icrc32(chain->data, chain->bytes);
+			if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
+				++hammer2_iod_meta_write;
+			else
+				++hammer2_iod_indr_write;
 		} else {
 			chain->bref.check.iscsi32.value =
 				hammer2_icrc32(chain->data, chain->bytes);
@@ -2192,13 +2379,12 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 	}
 
 	/*
-	 * We updating brefs but we have to call chain_modify() w/
+	 * We are updating brefs but we have to call chain_modify() w/
 	 * setsubmod = TRUE because our caller is not a recursive
 	 * flush.
 	 */
-	hammer2_chain_ref(hmp, parent);
-	hammer2_chain_lock(hmp, parent);
-	hammer2_chain_modify(hmp, parent, 1);
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_MAYBE);
+	hammer2_chain_modify(hmp, parent, 0);
 
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
@@ -2233,6 +2419,6 @@ hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 		hammer2_chain_drop(hmp, chain);
 	}
 
-	lockmgr(&parent->lk, LK_RELEASE);
-	hammer2_chain_put(hmp, parent);
+	lockmgr(&parent->lk, LK_RELEASE);	/* release manual lockmgr op */
+	hammer2_chain_unlock(hmp, parent);
 }

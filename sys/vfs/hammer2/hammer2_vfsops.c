@@ -53,11 +53,56 @@ struct hammer2_sync_info {
 };
 
 int hammer2_debug;
+int hammer2_cluster_enable = 1;
+long hammer2_iod_file_read;
+long hammer2_iod_meta_read;
+long hammer2_iod_indr_read;
+long hammer2_iod_file_write;
+long hammer2_iod_meta_write;
+long hammer2_iod_indr_write;
+long hammer2_iod_volu_write;
+long hammer2_ioa_file_read;
+long hammer2_ioa_meta_read;
+long hammer2_ioa_indr_read;
+long hammer2_ioa_file_write;
+long hammer2_ioa_meta_write;
+long hammer2_ioa_indr_write;
+long hammer2_ioa_volu_write;
 
 SYSCTL_NODE(_vfs, OID_AUTO, hammer2, CTLFLAG_RW, 0, "HAMMER2 filesystem");
 
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, debug, CTLFLAG_RW,
 	   &hammer2_debug, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_enable, CTLFLAG_RW,
+	   &hammer2_cluster_enable, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_read, CTLFLAG_RW,
+	   &hammer2_iod_file_read, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_read, CTLFLAG_RW,
+	   &hammer2_iod_meta_read, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_read, CTLFLAG_RW,
+	   &hammer2_iod_indr_read, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_write, CTLFLAG_RW,
+	   &hammer2_iod_file_write, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_write, CTLFLAG_RW,
+	   &hammer2_iod_meta_write, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_write, CTLFLAG_RW,
+	   &hammer2_iod_indr_write, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_write, CTLFLAG_RW,
+	   &hammer2_iod_volu_write, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_file_read, CTLFLAG_RW,
+	   &hammer2_ioa_file_read, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_meta_read, CTLFLAG_RW,
+	   &hammer2_ioa_meta_read, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_indr_read, CTLFLAG_RW,
+	   &hammer2_ioa_indr_read, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_file_write, CTLFLAG_RW,
+	   &hammer2_ioa_file_write, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_meta_write, CTLFLAG_RW,
+	   &hammer2_ioa_meta_write, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_indr_write, CTLFLAG_RW,
+	   &hammer2_ioa_indr_write, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_volu_write, CTLFLAG_RW,
+	   &hammer2_ioa_volu_write, 0, "");
 
 static int hammer2_vfs_init(struct vfsconf *conf);
 static int hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
@@ -280,6 +325,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
 	/* hmp->vchain.u.xxx is left NULL */
 	lockinit(&hmp->vchain.lk, "volume", 0, LK_CANRECURSE);
+	lockinit(&hmp->alloclk, "h2alloc", 0, 0);
 
 	/*
 	 * Install the volume header
@@ -308,19 +354,18 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 */
 	lhc = hammer2_dirhash(label, strlen(label));
 	parent = &hmp->vchain;
-	hammer2_chain_ref(hmp, parent);
-	hammer2_chain_lock(hmp, parent);
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 	schain = hammer2_chain_lookup(hmp, &parent,
 				      HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY, 0);
-	hammer2_chain_put(hmp, parent);
+	hammer2_chain_unlock(hmp, parent);
 	if (schain == NULL) {
 		kprintf("hammer2_mount: invalid super-root\n");
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EINVAL;
 	}
 
+	hammer2_chain_ref(hmp, schain);	/* for hmp->schain */
 	parent = schain;
-	hammer2_chain_ref(hmp, parent);	/* parent: lock+ref, schain: ref */
 	rchain = hammer2_chain_lookup(hmp, &parent,
 				      lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 				      0);
@@ -334,14 +379,15 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 					    lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 					    0);
 	}
-	hammer2_chain_put(hmp, parent);
+	hammer2_chain_unlock(hmp, parent);
 	if (rchain == NULL) {
 		kprintf("hammer2_mount: root label not found\n");
 		hammer2_chain_drop(hmp, schain);
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EINVAL;
 	}
-	hammer2_chain_unlock(hmp, rchain); /* rchain: ref */
+	hammer2_chain_ref(hmp, rchain);	/* for hmp->rchain */
+	hammer2_chain_unlock(hmp, rchain);
 
 	hmp->schain = schain;		/* left held & unlocked */
 	hmp->rchain = rchain;		/* left held & unlocked */
@@ -572,7 +618,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		/* XXX */
 	}
 #endif
-	hammer2_chain_lock(hmp, &hmp->vchain);
+	hammer2_chain_lock(hmp, &hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 	if (hmp->vchain.flags &
 	    (HAMMER2_CHAIN_MODIFIED1 | HAMMER2_CHAIN_SUBMODIFIED)) {
 		hammer2_chain_flush(hmp, &hmp->vchain);

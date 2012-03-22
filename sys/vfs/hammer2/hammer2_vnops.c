@@ -92,7 +92,7 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	if (ip->chain.flags & HAMMER2_CHAIN_DIRTYEMBED) {
 		hammer2_inode_lock_ex(ip);
 		atomic_clear_int(&ip->chain.flags, HAMMER2_CHAIN_DIRTYEMBED);
-		hammer2_chain_modify(ip->hmp, &ip->chain, 1);
+		hammer2_chain_modify(ip->hmp, &ip->chain, 0);
 		hammer2_inode_unlock_ex(ip);
 	}
 
@@ -163,7 +163,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 */
 	if (ip->chain.flags & HAMMER2_CHAIN_DIRTYEMBED) {
 		atomic_clear_int(&ip->chain.flags, HAMMER2_CHAIN_DIRTYEMBED);
-		hammer2_chain_modify(hmp, &ip->chain, 1);
+		hammer2_chain_modify(hmp, &ip->chain, 0);
 	}
 
 	/*
@@ -276,7 +276,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 					 ap->a_cred);
 		if (error == 0) {
 			if (ip->ip_data.uflags != flags) {
-				hammer2_chain_modify(hmp, &ip->chain, 1);
+				hammer2_chain_modify(hmp, &ip->chain, 0);
 				ip->ip_data.uflags = flags;
 				doctime = 1;
 				kflags |= NOTE_ATTRIB;
@@ -406,10 +406,9 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	lkey = saveoff | HAMMER2_DIRHASH_VISIBLE;
 
 	parent = &ip->chain;
-	hammer2_chain_ref(hmp, parent);
-	error = hammer2_chain_lock(hmp, parent);
+	error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 	if (error) {
-		hammer2_chain_put(hmp, parent);
+		hammer2_chain_unlock(hmp, parent);
 		goto done;
 	}
 	chain = hammer2_chain_lookup(hmp, &parent, lkey, lkey, 0);
@@ -453,9 +452,9 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		if (cookie_index == ncookies)
 			break;
 	}
-	hammer2_chain_put(hmp, parent);
 	if (chain)
-		hammer2_chain_put(hmp, chain);
+		hammer2_chain_unlock(hmp, chain);
+	hammer2_chain_unlock(hmp, parent);
 done:
 	if (ap->a_eofflag)
 		*ap->a_eofflag = (chain == NULL);
@@ -584,7 +583,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 	 * might wind up being copied into the embedded data area.
 	 */
 	hammer2_inode_lock_ex(ip);
-	hammer2_chain_modify(hmp, &ip->chain, 1);
+	hammer2_chain_modify(hmp, &ip->chain, 0);
 	error = hammer2_write_file(ip, uio, ap->a_ioflag);
 
 	hammer2_inode_unlock_ex(ip);
@@ -692,8 +691,9 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio, int ioflag)
 			 *	the whole loop
 			 */
 			hammer2_chain_unlock(ip->hmp, &ip->chain);
-			bwillwrite(HAMMER2_LBUFSIZE);
-			hammer2_chain_lock(ip->hmp, &ip->chain);
+			bwillwrite(HAMMER2_PBUFSIZE);
+			hammer2_chain_lock(ip->hmp, &ip->chain,
+					   HAMMER2_RESOLVE_ALWAYS);
 		}
 
 		/* XXX bigwrite & signal check test */
@@ -785,7 +785,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio, int ioflag)
 		 */
 		hammer2_chain_unlock(ip->hmp, &ip->chain);
 		error = uiomove(bp->b_data + loff, n, uio);
-		hammer2_chain_lock(ip->hmp, &ip->chain);
+		hammer2_chain_lock(ip->hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
 		kflags |= NOTE_WRITE;
 
 		if (error) {
@@ -802,10 +802,12 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio, int ioflag)
 		if (ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if ((ioflag & IO_DIRECT) && loff + n == lblksize) {
+			bp->b_flags |= B_CLUSTEROK;
 			bdwrite(bp);
 		} else if (ioflag & IO_ASYNC) {
 			bawrite(bp);
 		} else {
+			bp->b_flags |= B_CLUSTEROK;
 			bdwrite(bp);
 		}
 	}
@@ -846,8 +848,7 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_key_t lbase,
 	 * logical buffer cache buffer.
 	 */
 	parent = &ip->chain;
-	hammer2_chain_ref(hmp, parent);
-	hammer2_chain_lock(hmp, parent);
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lbase, lbase,
@@ -855,9 +856,10 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_key_t lbase,
 
 	if (chain == NULL) {
 		/*
-		 * We found a hole, create a new chain entry.  No meta-data
-		 * buffer or data pointer will be assigned (indicating
-		 * new, unwritten storage).
+		 * We found a hole, create a new chain entry.
+		 *
+		 * NOTE: DATA chains are created without device backing
+		 *	 store (nor do we want any).
 		 */
 		chain = hammer2_chain_create(hmp, parent, NULL,
 					     lbase, HAMMER2_PBUFRADIX,
@@ -881,7 +883,8 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_key_t lbase,
 				      "size mismatch %d/%d\n",
 				      lblksize, chain->bytes);
 			}
-			hammer2_chain_modify_quick(hmp, chain);
+			hammer2_chain_modify(hmp, chain,
+					     HAMMER2_MODIFY_OPTDATA);
 			pbase = chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX;
 			break;
 		default:
@@ -893,8 +896,8 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_key_t lbase,
 	}
 
 	if (chain)
-		hammer2_chain_put(hmp, chain);
-	hammer2_chain_put(hmp, parent);
+		hammer2_chain_unlock(hmp, chain);
+	hammer2_chain_unlock(hmp, parent);
 
 	return (pbase);
 }
@@ -923,7 +926,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	int oblksize;
 	int nblksize;
 
-	hammer2_chain_modify(hmp, &ip->chain, 1);
+	hammer2_chain_modify(hmp, &ip->chain, 0);
 	bp = NULL;
 
 	/*
@@ -943,10 +946,9 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	 * Setup for lookup/search
 	 */
 	parent = &ip->chain;
-	hammer2_chain_ref(hmp, parent);
-	error = hammer2_chain_lock(hmp, parent);
+	error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 	if (error) {
-		hammer2_chain_put(hmp, parent);
+		hammer2_chain_unlock(hmp, parent);
 		/* XXX error reporting */
 		return;
 	}
@@ -972,14 +974,14 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	 */
 	if (loff && bp) {
 		chain = hammer2_chain_lookup(hmp, &parent, lbase, lbase,
-					     HAMMER2_LOOKUP_NOLOCK);
+					     HAMMER2_LOOKUP_NODATA);
 		if (chain) {
 			allocbuf(bp, nblksize);
 			switch(chain->bref.type) {
 			case HAMMER2_BREF_TYPE_DATA:
-				hammer2_chain_resize_quick(hmp, chain,
-					     hammer2_bytes_to_radix(nblksize));
-				hammer2_chain_modify_quick(hmp, chain);
+				hammer2_chain_resize(hmp, chain,
+					     hammer2_bytes_to_radix(nblksize),
+					     HAMMER2_MODIFY_OPTDATA);
 				bzero(bp->b_data + loff, nblksize - loff);
 				bp->b_bio2.bio_offset = chain->bref.data_off &
 							HAMMER2_OFF_MASK;
@@ -992,7 +994,8 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 				panic("hammer2_truncate_file: bad type");
 				break;
 			}
-			hammer2_chain_drop(hmp, chain);
+			hammer2_chain_unlock(hmp, chain);
+			bp->b_flags |= B_CLUSTEROK;
 			bdwrite(bp);
 		} else {
 			/*
@@ -1005,24 +1008,31 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			bqrelse(bp);
 		}
 	} else if (loff) {
+		/*
+		 * WARNING: This utilizes a device buffer for the data.
+		 *
+		 * XXX case should not occur
+		 */
+		panic("hammer2_truncate_file: non-zero truncation, no-vnode");
 		chain = hammer2_chain_lookup(hmp, &parent, lbase, lbase, 0);
 		if (chain) {
 			switch(chain->bref.type) {
 			case HAMMER2_BREF_TYPE_DATA:
 				hammer2_chain_resize(hmp, chain,
-					     hammer2_bytes_to_radix(nblksize));
-				hammer2_chain_modify(hmp, chain, 1);
+					     hammer2_bytes_to_radix(nblksize),
+					     0);
+				hammer2_chain_modify(hmp, chain, 0);
 				bzero(chain->data->buf + loff, nblksize - loff);
 				break;
 			case HAMMER2_BREF_TYPE_INODE:
 				if (loff < HAMMER2_EMBEDDED_BYTES) {
-					hammer2_chain_modify(hmp, chain, 1);
+					hammer2_chain_modify(hmp, chain, 0);
 					bzero(chain->data->ipdata.u.data + loff,
 					      HAMMER2_EMBEDDED_BYTES - loff);
 				}
 				break;
 			}
-			hammer2_chain_put(hmp, chain);
+			hammer2_chain_unlock(hmp, chain);
 		}
 	}
 
@@ -1043,7 +1053,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	lbase = (nsize + HAMMER2_PBUFMASK64) & ~HAMMER2_PBUFMASK64;
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lbase, (hammer2_key_t)-1,
-				     HAMMER2_LOOKUP_NOLOCK);
+				     HAMMER2_LOOKUP_NODATA);
 	while (chain) {
 		/*
 		 * Degenerate embedded data case, nothing to loop on.
@@ -1060,9 +1070,9 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		/* XXX check parent if empty indirect block & delete */
 		chain = hammer2_chain_next(hmp, &parent, chain,
 					   lbase, (hammer2_key_t)-1,
-					   HAMMER2_LOOKUP_NOLOCK);
+					   HAMMER2_LOOKUP_NODATA);
 	}
-	hammer2_chain_put(hmp, parent);
+	hammer2_chain_unlock(hmp, parent);
 }
 
 /*
@@ -1090,7 +1100,7 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	KKASSERT(ip->vp);
 	hmp = ip->hmp;
 
-	hammer2_chain_modify(hmp, &ip->chain, 1);
+	hammer2_chain_modify(hmp, &ip->chain, 0);
 
 	/*
 	 * Nothing to do if the direct-data case is still intact
@@ -1160,15 +1170,14 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	 */
 	if (((int)osize & HAMMER2_PBUFMASK)) {
 		parent = &ip->chain;
-		hammer2_chain_ref(hmp, parent);
-		error = hammer2_chain_lock(hmp, parent);
+		error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 		KKASSERT(error == 0);
 
 		nradix = hammer2_bytes_to_radix(nblksize);
 
 		chain = hammer2_chain_lookup(hmp, &parent,
 					     obase, obase,
-					     HAMMER2_LOOKUP_NOLOCK);
+					     HAMMER2_LOOKUP_NODATA);
 		if (chain == NULL) {
 			chain = hammer2_chain_create(hmp, parent, NULL,
 						     obase, nblksize,
@@ -1176,14 +1185,15 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 						     nradix);
 		} else {
 			KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA);
-			hammer2_chain_resize_quick(hmp, chain, nradix);
-			hammer2_chain_modify_quick(hmp, chain);
+			hammer2_chain_resize(hmp, chain, nradix,
+					     HAMMER2_MODIFY_OPTDATA);
 		}
 		bp->b_bio2.bio_offset = chain->bref.data_off &
 					HAMMER2_OFF_MASK;
-		hammer2_chain_drop(hmp, chain);
+		hammer2_chain_unlock(hmp, chain);
+		bp->b_flags |= B_CLUSTEROK;
 		bdwrite(bp);
-		hammer2_chain_put(hmp, parent);
+		hammer2_chain_unlock(hmp, parent);
 	}
 }
 
@@ -1213,8 +1223,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 * Note: In DragonFly the kernel handles '.' and '..'.
 	 */
 	parent = &dip->chain;
-	hammer2_chain_ref(hmp, parent);
-	hammer2_chain_lock(hmp, parent);
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 				     0);
@@ -1229,7 +1238,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 					   0);
 	}
-	hammer2_chain_put(hmp, parent);
+	hammer2_chain_unlock(hmp, parent);
 
 	if (chain) {
 		vp = hammer2_igetv(chain->u.ip, &error);
@@ -1238,7 +1247,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 			cache_setvp(ap->a_nch, vp);
 			vrele(vp);
 		}
-		hammer2_chain_put(hmp, chain);
+		hammer2_chain_unlock(hmp, chain);
 	} else {
 		error = ENOENT;
 		cache_setvp(ap->a_nch, NULL);
@@ -1262,10 +1271,9 @@ hammer2_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 		*ap->a_vpp = NULL;
 		return ENOENT;
 	}
-	hammer2_chain_ref(hmp, &ip->chain);
-	hammer2_chain_lock(hmp, &ip->chain);
+	hammer2_chain_lock(hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
 	*ap->a_vpp = hammer2_igetv(ip, &error);
-	hammer2_chain_put(hmp, &ip->chain);
+	hammer2_chain_unlock(hmp, &ip->chain);
 
 	return error;
 }
@@ -1299,7 +1307,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 		return error;
 	}
 	*ap->a_vpp = hammer2_igetv(nip, &error);
-	hammer2_chain_put(hmp, &nip->chain);
+	hammer2_chain_unlock(hmp, &nip->chain);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1358,14 +1366,13 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 	loff = ap->a_loffset & HAMMER2_OFF_MASK_LO;
 
 	parent = &ip->chain;
-	hammer2_chain_ref(hmp, parent);
-	hammer2_chain_lock(hmp, parent);
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lbeg, lend,
-				     HAMMER2_LOOKUP_NOLOCK);
+				     HAMMER2_LOOKUP_NODATA);
 	if (chain == NULL) {
 		*ap->a_doffsetp = ZFOFFSET;
-		hammer2_chain_put(hmp, parent);
+		hammer2_chain_unlock(hmp, parent);
 		return (0);
 	}
 
@@ -1378,9 +1385,9 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 		}
 		chain = hammer2_chain_next(hmp, &parent, chain,
 					   lbeg, lend,
-					   HAMMER2_LOOKUP_NOLOCK);
+					   HAMMER2_LOOKUP_NODATA);
 	}
-	hammer2_chain_put(hmp, parent);
+	hammer2_chain_unlock(hmp, parent);
 
 	/*
 	 * If the requested loffset is not mappable physically we can't
@@ -1508,7 +1515,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 		return error;
 	}
 	*ap->a_vpp = hammer2_igetv(nip, &error);
-	hammer2_chain_put(hmp, &nip->chain);
+	hammer2_chain_unlock(hmp, &nip->chain);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1583,7 +1590,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 			error = 0;
 		}
 	}
-	hammer2_chain_put(hmp, &nip->chain);
+	hammer2_chain_unlock(hmp, &nip->chain);
 
 	/*
 	 * Finalize namecache
@@ -1736,7 +1743,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	/*
 	 * Reconnect ip to target directory.
 	 */
-	hammer2_chain_lock(hmp, &ip->chain);
+	hammer2_chain_lock(hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
 	error = hammer2_inode_connect(tdip, ip, tname, tname_len);
 
 	if (error == 0) {
@@ -1744,7 +1751,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	}
 	hammer2_chain_unlock(hmp, &ip->chain);
 done:
-	hammer2_chain_drop(hmp, &ip->chain);
+	hammer2_chain_drop(hmp, &ip->chain);	/* from ref up top */
 
 	return (error);
 }
@@ -1786,8 +1793,7 @@ hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
 	 * Search for the filename in the directory
 	 */
 	parent = &dip->chain;
-	hammer2_chain_ref(hmp, parent);
-	hammer2_chain_lock(hmp, parent);
+	hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 	chain = hammer2_chain_lookup(hmp, &parent,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 				     0);
@@ -1807,7 +1813,7 @@ hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
 	 * Not found or wrong type (isdir < 0 disables the type check).
 	 */
 	if (chain == NULL) {
-		hammer2_chain_put(hmp, parent);
+		hammer2_chain_unlock(hmp, parent);
 		return ENOENT;
 	}
 	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_DIRECTORY &&
@@ -1829,18 +1835,17 @@ hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
 	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_DIRECTORY &&
 	    isdir >= 0) {
 		dparent = chain;
-		hammer2_chain_ref(hmp, dparent);
-		hammer2_chain_lock(hmp, dparent);
+		hammer2_chain_lock(hmp, dparent, HAMMER2_RESOLVE_ALWAYS);
 		dchain = hammer2_chain_lookup(hmp, &dparent,
 					      0, (hammer2_key_t)-1,
-					      HAMMER2_LOOKUP_NOLOCK);
+					      HAMMER2_LOOKUP_NODATA);
 		if (dchain) {
-			hammer2_chain_drop(hmp, dchain);
-			hammer2_chain_put(hmp, dparent);
+			hammer2_chain_unlock(hmp, dchain);
+			hammer2_chain_unlock(hmp, dparent);
 			error = ENOTEMPTY;
 			goto done;
 		}
-		hammer2_chain_put(hmp, dparent);
+		hammer2_chain_unlock(hmp, dparent);
 		dparent = NULL;
 		/* dchain NULL */
 	}
@@ -1891,8 +1896,8 @@ hammer2_unlink_file(hammer2_inode_t *dip, const uint8_t *name, size_t name_len,
 	error = 0;
 
 done:
-	hammer2_chain_put(hmp, chain);
-	hammer2_chain_put(hmp, parent);
+	hammer2_chain_unlock(hmp, chain);
+	hammer2_chain_unlock(hmp, parent);
 
 	return error;
 }
@@ -1915,9 +1920,11 @@ hammer2_vop_strategy(struct vop_strategy_args *ap)
 	switch(bp->b_cmd) {
 	case BUF_CMD_READ:
 		error = hammer2_strategy_read(ap);
+		++hammer2_iod_file_read;
 		break;
 	case BUF_CMD_WRITE:
 		error = hammer2_strategy_write(ap);
+		++hammer2_iod_file_write;
 		break;
 	default:
 		bp->b_error = error = EINVAL;
@@ -1961,16 +1968,10 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	 */
 	if (nbio->bio_offset == NOOFFSET) {
 		parent = &ip->chain;
-		hammer2_chain_ref(hmp, parent);
-		hammer2_chain_lock(hmp, parent);
+		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
 
-		/*
-		 * Specifying NOLOCK avoids unnecessary bread()s of the
-		 * chain element's content.  We just need the block device
-		 * offset.
-		 */
 		chain = hammer2_chain_lookup(hmp, &parent, lbase, lbase,
-					     HAMMER2_LOOKUP_NOLOCK);
+					     HAMMER2_LOOKUP_NODATA);
 		if (chain == NULL) {
 			/*
 			 * Data is zero-fill
@@ -1981,7 +1982,7 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 			 * Data is embedded in the inode (do nothing)
 			 */
 			KKASSERT(chain == parent);
-			hammer2_chain_drop(hmp, chain);
+			hammer2_chain_unlock(hmp, chain);
 		} else if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
 			/*
 			 * Data is on-media
@@ -1989,12 +1990,12 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 			KKASSERT(bp->b_bcount == chain->bytes);
 			nbio->bio_offset = chain->bref.data_off &
 					   HAMMER2_OFF_MASK;
-			hammer2_chain_drop(hmp, chain);
+			hammer2_chain_unlock(hmp, chain);
 			KKASSERT(nbio->bio_offset != 0);
 		} else {
 			panic("hammer2_strategy_read: unknown bref type");
 		}
-		hammer2_chain_put(hmp, parent);
+		hammer2_chain_unlock(hmp, parent);
 	}
 
 	if (nbio->bio_offset == ZFOFFSET) {
