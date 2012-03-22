@@ -401,31 +401,22 @@ vinvalbuf_bp(struct buf *bp, void *data)
 	}
 
 	/*
-	 * Note that vfs_bio_awrite expects buffers to reside
-	 * on a queue, while bwrite() and brelse() do not.
-	 *
 	 * NOTE:  NO B_LOCKED CHECK.  Also no buf_checkwrite()
 	 * check.  This code will write out the buffer, period.
 	 */
+	bremfree(bp);
 	if (((bp->b_flags & (B_DELWRI | B_INVAL)) == B_DELWRI) &&
 	    (info->flags & V_SAVE)) {
-		if (bp->b_flags & B_CLUSTEROK) {
-			vfs_bio_awrite(bp);
-		} else {
-			bremfree(bp);
-			bawrite(bp);
-		}
+		cluster_awrite(bp);
 	} else if (info->flags & V_SAVE) {
 		/*
 		 * Cannot set B_NOCACHE on a clean buffer as this will
 		 * destroy the VM backing store which might actually
 		 * be dirty (and unsynchronized).
 		 */
-		bremfree(bp);
 		bp->b_flags |= (B_INVAL | B_RELBUF);
 		brelse(bp);
 	} else {
-		bremfree(bp);
 		bp->b_flags |= (B_INVAL | B_NOCACHE | B_RELBUF);
 		brelse(bp);
 	}
@@ -857,13 +848,8 @@ vfsync_bp(struct buf *bp, void *data)
 		 * this to support limited MNT_LAZY flushes.
 		 */
 		vp->v_lazyw = bp->b_loffset;
-		if ((vp->v_flag & VOBJBUF) && (bp->b_flags & B_CLUSTEROK)) {
-			info->lazycount += vfs_bio_awrite(bp);
-		} else {
-			info->lazycount += bp->b_bufsize;
-			bremfree(bp);
-			bawrite(bp);
-		}
+		bremfree(bp);
+		info->lazycount += cluster_awrite(bp);
 		waitrunningbufspace();
 		vm_wait_nominal();
 		if (info->lazylimit && info->lazycount >= info->lazylimit)

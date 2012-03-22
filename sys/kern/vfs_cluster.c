@@ -76,6 +76,8 @@ static struct buf *
 			    struct buf *fbp);
 static void cluster_callback (struct bio *);
 static void cluster_setram (struct buf *);
+static int cluster_wbuild(struct vnode *vp, struct buf **bpp, int blksize,
+			    off_t start_loffset, int bytes);
 
 static int write_behind = 1;
 SYSCTL_INT(_vfs, OID_AUTO, write_behind, CTLFLAG_RW, &write_behind, 0,
@@ -684,7 +686,7 @@ cluster_wbuild_wb(struct vnode *vp, int blksize, off_t start_loffset, int len)
 		start_loffset -= len;
 		/* fall through */
 	case 1:
-		r = cluster_wbuild(vp, blksize, start_loffset, len);
+		r = cluster_wbuild(vp, NULL, blksize, start_loffset, len);
 		/* fall through */
 	default:
 		/* fall through */
@@ -746,7 +748,7 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 			 * flush.
 			 */
 			cursize = vp->v_lastw - vp->v_cstart + blksize;
-			if (bp->b_loffset + blksize != filesize ||
+			if (bp->b_loffset + blksize < filesize ||
 			    loffset != vp->v_lastw + blksize || vp->v_clen <= cursize) {
 				if (!async && seqcount > 0) {
 					cluster_wbuild_wb(vp, blksize,
@@ -797,7 +799,7 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 		 * existing cluster.
 		 */
 		if ((vp->v_type == VREG) &&
-		    bp->b_loffset + blksize != filesize &&
+		    bp->b_loffset + blksize < filesize &&
 		    (bp->b_bio2.bio_offset == NOOFFSET) &&
 		    (VOP_BMAP(vp, loffset, &bp->b_bio2.bio_offset, &maxclen, NULL, BUF_CMD_WRITE) ||
 		     bp->b_bio2.bio_offset == NOOFFSET)) {
@@ -846,38 +848,81 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 	vp->v_lasta = bp->b_bio2.bio_offset;
 }
 
+/*
+ * This is the clustered version of bawrite().  It works similarly to
+ * cluster_write() except I/O on the buffer is guaranteed to occur.
+ */
+int
+cluster_awrite(struct buf *bp)
+{
+	int total;
+
+	/*
+	 * Don't bother if it isn't clusterable.
+	 */
+	if ((bp->b_flags & B_CLUSTEROK) == 0 ||
+	    bp->b_vp == NULL ||
+	    (bp->b_vp->v_flag & VOBJBUF) == 0) {
+		total = bp->b_bufsize;
+		bawrite(bp);
+		return (total);
+	}
+
+	total = cluster_wbuild(bp->b_vp, &bp, bp->b_bufsize,
+			       bp->b_loffset, vmaxiosize(bp->b_vp));
+	if (bp)
+		bawrite(bp);
+
+	return total;
+}
 
 /*
  * This is an awful lot like cluster_rbuild...wish they could be combined.
  * The last lbn argument is the current block on which I/O is being
  * performed.  Check to see that it doesn't fall in the middle of
  * the current block (if last_bp == NULL).
+ *
+ * cluster_wbuild() normally does not guarantee anything.  If bpp is
+ * non-NULL and cluster_wbuild() is able to incorporate it into the
+ * I/O it will set *bpp to NULL, otherwise it will leave it alone and
+ * the caller must dispose of *bpp.
  */
-int
-cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
+static int
+cluster_wbuild(struct vnode *vp, struct buf **bpp,
+	       int blksize, off_t start_loffset, int bytes)
 {
 	struct buf *bp, *tbp;
 	int i, j;
 	int totalwritten = 0;
+	int must_initiate;
 	int maxiosize = vmaxiosize(vp);
 
 	while (bytes > 0) {
 		/*
-		 * If the buffer is not delayed-write (i.e. dirty), or it 
-		 * is delayed-write but either locked or inval, it cannot 
-		 * partake in the clustered write.
+		 * If the buffer matches the passed locked & removed buffer
+		 * we used the passed buffer (which might not be B_DELWRI).
+		 *
+		 * Otherwise locate the buffer and determine if it is
+		 * compatible.
 		 */
-		tbp = findblk(vp, start_loffset, FINDBLK_NBLOCK);
-		if (tbp == NULL ||
-		    (tbp->b_flags & (B_LOCKED | B_INVAL | B_DELWRI)) != B_DELWRI ||
-		    (LIST_FIRST(&tbp->b_dep) && buf_checkwrite(tbp))) {
-			if (tbp)
-				BUF_UNLOCK(tbp);
-			start_loffset += blksize;
-			bytes -= blksize;
-			continue;
+		if (bpp && (*bpp)->b_loffset == start_loffset) {
+			tbp = *bpp;
+			*bpp = NULL;
+			bpp = NULL;
+		} else {
+			tbp = findblk(vp, start_loffset, FINDBLK_NBLOCK);
+			if (tbp == NULL ||
+			    (tbp->b_flags & (B_LOCKED | B_INVAL | B_DELWRI)) !=
+			     B_DELWRI ||
+			    (LIST_FIRST(&tbp->b_dep) && buf_checkwrite(tbp))) {
+				if (tbp)
+					BUF_UNLOCK(tbp);
+				start_loffset += blksize;
+				bytes -= blksize;
+				continue;
+			}
+			bremfree(tbp);
 		}
-		bremfree(tbp);
 		KKASSERT(tbp->b_cmd == BUF_CMD_DONE);
 
 		/*
@@ -930,9 +975,18 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 		 * From this location in the file, scan forward to see
 		 * if there are buffers with adjacent data that need to
 		 * be written as well.
+		 *
+		 * IO *must* be initiated on index 0 at this point
+		 * (particularly when called from cluster_awrite()).
 		 */
 		for (i = 0; i < bytes; (i += blksize), (start_loffset += blksize)) {
-			if (i != 0) { /* If not the first buffer */
+			if (i == 0) {
+				must_initiate = 1;
+			} else {
+				/*
+				 * Not first buffer.
+				 */
+				must_initiate = 0;
 				tbp = findblk(vp, start_loffset,
 					      FINDBLK_NBLOCK);
 				/*
@@ -951,9 +1005,7 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 				     B_INVAL | B_DELWRI | B_NEEDCOMMIT))
 				    != (B_DELWRI | B_CLUSTEROK |
 				     (bp->b_flags & (B_VMIO | B_NEEDCOMMIT))) ||
-				    (tbp->b_flags & B_LOCKED) ||
-				    (LIST_FIRST(&tbp->b_dep) &&
-				     buf_checkwrite(tbp))
+				    (tbp->b_flags & B_LOCKED)
 				) {
 					BUF_UNLOCK(tbp);
 					break;
@@ -963,15 +1015,24 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 				 * Check that the combined cluster
 				 * would make sense with regard to pages
 				 * and would not be too large
+				 *
+				 * WARNING! buf_checkwrite() must be the last
+				 *	    check made.  If it returns 0 then
+				 *	    we must initiate the I/O.
 				 */
 				if ((tbp->b_bcount != blksize) ||
 				  ((bp->b_bio2.bio_offset + i) !=
 				    tbp->b_bio2.bio_offset) ||
 				  ((tbp->b_xio.xio_npages + bp->b_xio.xio_npages) >
-				    (maxiosize / PAGE_SIZE))) {
+				    (maxiosize / PAGE_SIZE)) ||
+				  (LIST_FIRST(&tbp->b_dep) &&
+				   buf_checkwrite(tbp))
+				) {
 					BUF_UNLOCK(tbp);
 					break;
 				}
+				if (LIST_FIRST(&tbp->b_dep))
+					must_initiate = 1;
 				/*
 				 * Ok, it's passed all the tests,
 				 * so remove it from the free list
@@ -979,7 +1040,7 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 				 */
 				bremfree(tbp);
 				KKASSERT(tbp->b_cmd == BUF_CMD_DONE);
-			} /* end of code for non-first buffers only */
+			}
 
 			/*
 			 * If the IO is via the VM then we do some
@@ -992,8 +1053,15 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 			if (tbp->b_flags & B_VMIO) {
 				vm_page_t m;
 
-				if (i != 0) { /* if not first buffer */
-					for (j = 0; j < tbp->b_xio.xio_npages; ++j) {
+				/*
+				 * Try to avoid deadlocks with the VM system.
+				 * However, we cannot abort the I/O if
+				 * must_initiate is non-zero.
+				 */
+				if (must_initiate == 0) {
+					for (j = 0;
+					     j < tbp->b_xio.xio_npages;
+					     ++j) {
 						m = tbp->b_xio.xio_pages[j];
 						if (m->flags & PG_BUSY) {
 							bqrelse(tbp);
@@ -1031,12 +1099,13 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 				buf_start(tbp);
 		}
 	finishcluster:
-		pmap_qenter(trunc_page((vm_offset_t) bp->b_data),
-			(vm_page_t *) bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+		pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
+			    (vm_page_t *)bp->b_xio.xio_pages,
+			    bp->b_xio.xio_npages);
 		if (bp->b_bufsize > bp->b_kvasize) {
-			panic(
-			    "cluster_wbuild: b_bufsize(%d) > b_kvasize(%d)\n",
-			    bp->b_bufsize, bp->b_kvasize);
+			panic("cluster_wbuild: b_bufsize(%d) "
+			      "> b_kvasize(%d)\n",
+			      bp->b_bufsize, bp->b_kvasize);
 		}
 		totalwritten += bp->b_bufsize;
 		bp->b_dirtyoff = 0;

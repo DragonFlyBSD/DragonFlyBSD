@@ -589,6 +589,7 @@ hammer_io_release(struct hammer_io *io, int flush)
 		case HAMMER_STRUCTURE_UNDO_BUFFER:
 			if (io->released == 0) {
 				io->released = 1;
+				bp->b_flags |= B_CLUSTEROK;
 				bdwrite(bp);
 			}
 			break;
@@ -743,7 +744,7 @@ hammer_io_flush(struct hammer_io *io, int reclaim)
 	lwkt_gettoken(&hmp->io_token);
 	TAILQ_INSERT_TAIL(&hmp->iorun_list, io, iorun_entry);
 	lwkt_reltoken(&hmp->io_token);
-	bawrite(bp);
+	cluster_awrite(bp);
 	hammer_io_flush_mark(io->volume);
 }
 
