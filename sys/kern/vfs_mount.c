@@ -337,7 +337,7 @@ mount_init(struct mount *mp)
 	TAILQ_INIT(&mp->mnt_jlist);
 	mp->mnt_nvnodelistsize = 0;
 	mp->mnt_flag = 0;
-	mp->mnt_iosize_max = DFLTPHYS;
+	mp->mnt_iosize_max = MAXPHYS;
 }
 
 /*

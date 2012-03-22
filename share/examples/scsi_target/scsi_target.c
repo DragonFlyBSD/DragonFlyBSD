@@ -110,7 +110,7 @@ main(int argc, char *argv[])
 	targ_fd = file_fd = kq_fd = -1;
 	num_ctios = 0;
 	sector_size = SECTOR_SIZE;
-	buf_size = DFLTPHYS;
+	buf_size = MAXPHYS;
 
 	/* Prepare resource pools */
 	TAILQ_INIT(&pending_queue);

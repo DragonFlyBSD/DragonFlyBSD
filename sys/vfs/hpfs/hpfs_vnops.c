@@ -322,7 +322,7 @@ hpfs_read(struct vop_read_args *ap)
 		if (error)
 			return (error);
 
-		toread = min(off + resid, min(DFLTPHYS, (runl+1)*DEV_BSIZE));
+		toread = min(off + resid, min(64*1024, (runl+1)*DEV_BSIZE));
 		xfersz = (toread + DEV_BSIZE - 1) & ~(DEV_BSIZE - 1);
 		dprintf(("hpfs_read: bn: 0x%x (0x%x) toread: 0x%x (0x%x)\n",
 			bn, runl, toread, xfersz));
@@ -391,7 +391,7 @@ hpfs_write(struct vop_write_args *ap)
 			return (error);
 
 		towrite = szmin(off + uio->uio_resid,
-				min(DFLTPHYS, (runl+1)*DEV_BSIZE));
+				min(64*1024, (runl+1)*DEV_BSIZE));
 		xfersz = (towrite + DEV_BSIZE - 1) & ~(DEV_BSIZE - 1);
 		dprintf(("hpfs_write: bn: 0x%x (0x%x) towrite: 0x%x (0x%x)\n",
 			bn, runl, towrite, xfersz));

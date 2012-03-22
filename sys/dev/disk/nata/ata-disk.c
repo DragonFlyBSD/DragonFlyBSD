@@ -154,7 +154,7 @@ ad_attach(device_t dev)
     if (ch->dma)
         cdev->si_iosize_max = ch->dma->max_iosize;
     else
-        cdev->si_iosize_max = DFLTPHYS;
+        cdev->si_iosize_max = min(MAXPHYS,64*1024);
     adp->cdev = cdev;
 
     bzero(&info, sizeof(info));
