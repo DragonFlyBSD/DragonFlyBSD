@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 François Tigeot <ftigeot@wolpond.org>
+ * Copyright (c) 2011,2012 François Tigeot <ftigeot@wolpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -330,4 +330,24 @@ done:
 	error = copyout(&pref, vqa->pref, sizeof(pref));
 
 	return error;
+}
+
+/* 
+ * Returns a valid mount point for accounting purposes
+ * We cannot simply use vp->v_mount if the vnode belongs
+ * to a PFS mount point
+ */
+struct mount*
+vq_vptomp(struct vnode *vp)
+{
+	/* XXX: vp->v_pfsmp may point to a freed structure
+	* we use mountlist_exists() to check if it is valid
+	* before using it */
+	if ((vp->v_pfsmp != NULL) && (mountlist_exists(vp->v_pfsmp))) {
+		/* This is a PFS, use a copy of the real mp */
+		return vp->v_pfsmp;
+	} else {
+		/* Not a PFS or a PFS beeing unmounted */
+		return vp->v_mount;
+	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 François Tigeot <ftigeot@wolpond.org>
+ * Copyright (c) 2011,2012 François Tigeot <ftigeot@wolpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,6 +42,8 @@ extern void vq_done(struct mount*);
 int vquotactl(const char *path, struct plistref *pref);
 
 extern int vfs_accounting_enabled;
+
+struct mount* vq_vptomp(struct vnode*);
 
 #endif
 
