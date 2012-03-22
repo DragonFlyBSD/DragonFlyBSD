@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_kobj.c,v 1.4.2.1 2001/02/02 19:49:13 cg Exp $
- * $DragonFly: src/sys/kern/subr_kobj.c,v 1.9 2007/04/30 07:18:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,7 +61,7 @@ SYSINIT(kobj, SI_BOOT1_LOCK, SI_ORDER_ANY, kobj_init_token, NULL);
  * desc pointer is NULL, it is guaranteed never to match any real
  * descriptors.
  */
-static struct kobj_method null_method = {
+static const struct kobj_method null_method = {
 	0, 0,
 };
 
@@ -170,7 +169,7 @@ kobj_lookup_method(kobj_class_t cls,
 
 	ce = kobj_lookup_method_mi(cls, desc);
 	if (!ce)
-		ce = desc->deflt;
+		ce = &desc->deflt;
 	*cep = ce;
 	return(ce);
 }

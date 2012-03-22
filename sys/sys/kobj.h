@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kobj.h,v 1.8 2003/09/22 21:32:49 peter Exp $
- * $DragonFly: src/sys/sys/kobj.h,v 1.11 2007/10/03 18:58:20 dillon Exp $
  */
 
 #ifndef _SYS_KOBJ_H_
@@ -43,7 +42,7 @@
  */
 typedef struct kobj		*kobj_t;
 typedef struct kobj_class	*kobj_class_t;
-typedef struct kobj_method	kobj_method_t;
+typedef const struct kobj_method kobj_method_t;
 typedef int			(*kobjop_t)(void);
 typedef struct kobj_ops		*kobj_ops_t;
 typedef struct kobjop_desc	*kobjop_desc_t;
@@ -95,7 +94,7 @@ struct kobj_ops {
 
 struct kobjop_desc {
 	unsigned int	id;	/* unique ID */
-	kobj_method_t	*deflt;	/* default implementation */
+	kobj_method_t	deflt;	/* default implementation */
 };
 
 /*
