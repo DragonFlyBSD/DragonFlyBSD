@@ -45,8 +45,10 @@ int vquotactl(const char *path, struct plistref *pref);
 extern int vfs_accounting_enabled;
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-struct mount* vq_vptomp(struct vnode*);
+struct mount* vq_vptomp(struct vnode *vp);
 #endif
+
+int vq_write_ok(struct mount *mp, uid_t uid, gid_t gid, uint64_t delta);
 
 #endif
 

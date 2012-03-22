@@ -357,7 +357,7 @@ done:
 	return error;
 }
 
-/* 
+/*
  * Returns a valid mount point for accounting purposes
  * We cannot simply use vp->v_mount if the vnode belongs
  * to a PFS mount point
@@ -375,4 +375,20 @@ vq_vptomp(struct vnode *vp)
 		/* Not a PFS or a PFS beeing unmounted */
 		return vp->v_mount;
 	}
+}
+
+int
+vq_write_ok(struct mount *mp, uid_t uid, gid_t gid, uint64_t delta)
+{
+	int rv = 1;
+
+	spin_lock(&mp->mnt_acct.ac_spin);
+
+	if (mp->mnt_acct.ac_limit == 0)
+		goto done;
+	if ((mp->mnt_acct.ac_bytes + delta) > mp->mnt_acct.ac_limit)
+		rv = 0;
+done:
+	spin_unlock(&mp->mnt_acct.ac_spin);
+	return rv;
 }

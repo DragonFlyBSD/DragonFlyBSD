@@ -419,6 +419,7 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	struct vattr va;
 	uint64_t size_before=0, size_after=0;
 	struct mount *mp;
+	uint64_t offset, delta;
 
 	ap.a_head.a_desc = &vop_write_desc;
 	ap.a_head.a_ops = ops;
@@ -428,22 +429,34 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	ap.a_cred = cred;
 
 	/* is this a regular vnode ? */
-	if ((vp->v_type == VREG) && vfs_accounting_enabled) {
+	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_WR_MPSAFE);
+	if (vfs_accounting_enabled && (vp->v_type == VREG)) {
 		if ((error = VOP_GETATTR(vp, &va)) != 0)
-			return (error);
+			goto done;
 		size_before = va.va_size;
 		/* this file may already have been removed */
 		if (va.va_nlink > 0)
 			do_accounting = 1;
-	}
 
-	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_WR_MPSAFE);
+		offset = uio->uio_offset;
+		if (ioflag & IO_APPEND)
+			offset = size_before;
+		size_after = offset + uio->uio_resid;
+		if (size_after < size_before)
+			size_after = size_before;
+		delta = size_after - size_before;
+		mp = vq_vptomp(vp);
+		/* QUOTA CHECK */
+		if (!vq_write_ok(mp, va.va_uid, va.va_gid, delta)) {
+			error = EDQUOT;
+			goto done;
+		}
+	}
 	DO_OPS(ops, error, &ap, vop_write);
 	if ((error == 0) && do_accounting) {
-		size_after = vp->v_filesize;
-		mp = vq_vptomp(vp);
 		VFS_ACCOUNT(mp, va.va_uid, va.va_gid, size_after - size_before);
 	}
+done:
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
