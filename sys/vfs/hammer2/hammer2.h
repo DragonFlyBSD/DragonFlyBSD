@@ -97,9 +97,10 @@ SPLAY_HEAD(hammer2_chain_splay, hammer2_chain);
 
 struct hammer2_chain {
 	struct hammer2_blockref	bref;
-	struct hammer2_chain *parent;	/* return chain to root */
+	struct hammer2_chain *parent;		/* return chain to root */
 	struct hammer2_chain_splay shead;
 	SPLAY_ENTRY(hammer2_chain) snode;
+	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush deferral list */
 	union {
 		struct hammer2_inode *ip;
 		struct hammer2_indblock *np;
@@ -131,7 +132,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
 #define HAMMER2_CHAIN_MOVED		0x00000080	/* moved */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
-#define HAMMER2_CHAIN_UNUSED200		0x00000200
+#define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list*/
 #define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying */
 
 /*
@@ -170,6 +171,11 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
  */
 #define HAMMER2_BMAP_COUNT		16	/* max bmap read-ahead */
 #define HAMMER2_BMAP_BYTES		(HAMMER2_PBUFSIZE * HAMMER2_BMAP_COUNT)
+
+/*
+ * Misc
+ */
+#define HAMMER2_FLUSH_DEPTH_LIMIT	40	/* stack recursion limit */
 
 /*
  * HAMMER2 IN-MEMORY CACHE OF MEDIA STRUCTURES

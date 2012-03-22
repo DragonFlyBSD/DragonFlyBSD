@@ -627,7 +627,16 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		haswork = 0;
 	}
 	hammer2_chain_unlock(hmp, &hmp->vchain);
-	error = vinvalbuf(hmp->devvp, V_SAVE, 0, 0);
+
+	error = 0;
+
+	if ((waitfor & MNT_LAZY) == 0) {
+		waitfor = MNT_NOWAIT;
+		vn_lock(hmp->devvp, LK_EXCLUSIVE | LK_RETRY);
+		error = VOP_FSYNC(hmp->devvp, waitfor, 0);
+		vn_unlock(hmp->devvp);
+	}
+
 	if (error == 0 && haswork) {
 		struct buf *bp;
 

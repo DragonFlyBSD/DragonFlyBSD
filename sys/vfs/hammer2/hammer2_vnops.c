@@ -51,7 +51,8 @@
 
 static int hammer2_read_file(hammer2_inode_t *ip, struct uio *uio,
 				int seqcount);
-static int hammer2_write_file(hammer2_inode_t *ip, struct uio *uio, int ioflag);
+static int hammer2_write_file(hammer2_inode_t *ip, struct uio *uio, int ioflag,
+			      int seqcount);
 static hammer2_off_t hammer2_assign_physical(hammer2_inode_t *ip,
 				hammer2_key_t lbase, int lblksize, int *errorp);
 static void hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize);
@@ -123,11 +124,17 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		return(0);
 	hmp = ip->hmp;
 
+	/*
+	 * Set SUBMODIFIED so we can detect and propagate the DESTROYED
+	 * bit in the flush code.
+	 */
 	hammer2_inode_lock_ex(ip);
 	vp->v_data = NULL;
 	ip->vp = NULL;
-	if (ip->chain.flags & HAMMER2_CHAIN_DELETED)
-		atomic_set_int(&ip->chain.flags, HAMMER2_CHAIN_DESTROYED);
+	if (ip->chain.flags & HAMMER2_CHAIN_DELETED) {
+		atomic_set_int(&ip->chain.flags, HAMMER2_CHAIN_DESTROYED |
+						 HAMMER2_CHAIN_SUBMODIFIED);
+	}
 	hammer2_chain_flush(hmp, &ip->chain);
 	hammer2_inode_unlock_ex(ip);
 	hammer2_chain_drop(hmp, &ip->chain);	/* vp ref */
@@ -584,7 +591,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 	 */
 	hammer2_inode_lock_ex(ip);
 	hammer2_chain_modify(hmp, &ip->chain, 0);
-	error = hammer2_write_file(ip, uio, ap->a_ioflag);
+	error = hammer2_write_file(ip, uio, ap->a_ioflag, seqcount);
 
 	hammer2_inode_unlock_ex(ip);
 	return (error);
@@ -641,7 +648,8 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
  */
 static
 int
-hammer2_write_file(hammer2_inode_t *ip, struct uio *uio, int ioflag)
+hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
+		   int ioflag, int seqcount)
 {
 	hammer2_key_t old_eof;
 	struct buf *bp;
@@ -797,6 +805,10 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio, int ioflag)
 
 		/*
 		 * Once we dirty a buffer any cached offset becomes invalid.
+		 *
+		 * NOTE: For cluster_write() always use the trailing block
+		 *	 size, which is HAMMER2_PBUFSIZE.  lblksize is the
+		 *	 eof-straddling blocksize and is incorrect.
 		 */
 		bp->b_flags |= B_AGE;
 		if (ioflag & IO_SYNC) {
@@ -806,6 +818,9 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio, int ioflag)
 			bdwrite(bp);
 		} else if (ioflag & IO_ASYNC) {
 			bawrite(bp);
+		} else if (hammer2_cluster_enable) {
+			bp->b_flags |= B_CLUSTEROK;
+			cluster_write(bp, leof, HAMMER2_PBUFSIZE, seqcount);
 		} else {
 			bp->b_flags |= B_CLUSTEROK;
 			bdwrite(bp);
@@ -1184,7 +1199,7 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			chain = hammer2_chain_create(hmp, parent, NULL,
 						     obase, nblksize,
 						     HAMMER2_BREF_TYPE_DATA,
-						     nradix);
+						     nblksize);
 		} else {
 			KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA);
 			hammer2_chain_resize(hmp, chain, nradix,
@@ -1587,7 +1602,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 			auio.uio_td = curthread;
 			aiov.iov_base = ap->a_target;
 			aiov.iov_len = bytes;
-			error = hammer2_write_file(nip, &auio, IO_APPEND);
+			error = hammer2_write_file(nip, &auio, IO_APPEND, 0);
 			/* XXX handle error */
 			error = 0;
 		}
@@ -1744,14 +1759,18 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 
 	/*
 	 * Reconnect ip to target directory.
+	 *
+	 * WARNING: chain locks can lock buffer cache buffers, to avoid
+	 *	    deadlocks we want to unlock before issuing a cache_*()
+	 *	    op (that might have to lock a vnode).
 	 */
 	hammer2_chain_lock(hmp, &ip->chain, HAMMER2_RESOLVE_ALWAYS);
 	error = hammer2_inode_connect(tdip, ip, tname, tname_len);
+	hammer2_chain_unlock(hmp, &ip->chain);
 
 	if (error == 0) {
 		cache_rename(ap->a_fnch, ap->a_tnch);
 	}
-	hammer2_chain_unlock(hmp, &ip->chain);
 done:
 	hammer2_chain_drop(hmp, &ip->chain);	/* from ref up top */
 

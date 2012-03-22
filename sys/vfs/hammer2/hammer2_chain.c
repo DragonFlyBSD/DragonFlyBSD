@@ -517,7 +517,7 @@ hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 			atomic_clear_int(&chain->flags,
 					 HAMMER2_CHAIN_IOFLUSH);
 			chain->bp->b_flags |= B_RELBUF;
-			bawrite(chain->bp);
+			cluster_awrite(chain->bp);
 		} else {
 			chain->bp->b_flags |= B_CLUSTEROK;
 			bdwrite(chain->bp);
@@ -577,7 +577,7 @@ hammer2_chain_resize(hammer2_mount_t *hmp, hammer2_chain_t *chain,
 	 * Nothing to do if the element is already the proper size
 	 */
 	obytes = chain->bytes;
-	nbytes = 1 << nradix;
+	nbytes = 1U << nradix;
 	if (obytes == nbytes)
 		return;
 
@@ -1997,14 +1997,25 @@ hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 
 /*
  * Recursively flush the specified chain.  The chain is locked and
- * referenced by the caller and will remain so on return.
+ * referenced by the caller and will remain so on return.  The chain
+ * will remain referenced throughout but can temporarily lose its
+ * lock during the recursion to avoid unnecessarily stalling user
+ * processes.
  *
- * This cannot be called with the volume header's vchain (yet).
  *
- * PASS1 - clear the MODIFIED1 bit.
  */
+TAILQ_HEAD(flush_deferral_list, hammer2_chain);
+
+struct hammer2_flush_info {
+	struct flush_deferral_list flush_list;
+	int		depth;
+};
+
+typedef struct hammer2_flush_info hammer2_flush_info_t;
+
 static void
-hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
+hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *parent,
+			  hammer2_flush_info_t *info)
 {
 	hammer2_blockref_t *bref;
 	hammer2_off_t pbase;
@@ -2014,22 +2025,45 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 	struct buf *bp;
 	int error;
 
+	/*
+	 * If we hit the stack recursion depth limit defer the operation.
+	 * The controller of the info structure will execute the deferral
+	 * list and then retry.
+	 *
+	 * This is only applicable if SUBMODIFIED is set.  After a reflush
+	 * SUBMODIFIED will probably be cleared and we want to drop through
+	 * to finish processing the current element so our direct parent
+	 * can process the results.
+	 */
+	if (info->depth == HAMMER2_FLUSH_DEPTH_LIMIT &&
+	    (parent->flags & HAMMER2_CHAIN_SUBMODIFIED)) {
+		if ((parent->flags & HAMMER2_CHAIN_DEFERRED) == 0 &&
+		    ((parent->flags & (HAMMER2_CHAIN_SUBMODIFIED |
+				       HAMMER2_CHAIN_MODIFIED1 |
+				       HAMMER2_CHAIN_MOVED)) != 0)) {
+			hammer2_chain_ref(hmp, parent);
+			TAILQ_INSERT_TAIL(&info->flush_list,
+					  parent, flush_node);
+			atomic_set_int(&parent->flags, HAMMER2_CHAIN_DEFERRED);
+		}
+		return;
+	}
+
 	if (hammer2_debug & 0x0008)
 		kprintf("%*.*sCHAIN type=%d@%08jx %p/%d %04x {\n",
-			tab, tab, "",
-			chain->bref.type, chain->bref.data_off,
-			chain, chain->refs, chain->flags);
+			info->depth, info->depth, "",
+			parent->bref.type, parent->bref.data_off,
+			parent, parent->refs, parent->flags);
 
 	/*
-	 * Flush any children of this chain entry.
+	 * Flush any children of this parent.
 	 *
 	 * NOTE: If we use a while() here an active filesystem can
 	 *	 prevent the flush from ever finishing.
 	 */
-	if (chain->flags &
-	    (HAMMER2_CHAIN_SUBMODIFIED | HAMMER2_CHAIN_DESTROYED)) {
+	if (parent->flags & HAMMER2_CHAIN_SUBMODIFIED) {
 		hammer2_blockref_t *base;
-		hammer2_chain_t *scan;
+		hammer2_chain_t *chain;
 		hammer2_chain_t *next;
 		int count;
 		int submodified = 0;
@@ -2040,62 +2074,76 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 		 * with the (submodified) local variable and re-arm it
 		 * as necessary after the loop is done.
 		 *
-		 * Delaying the setting of the chain to MODIFIED can reduce
+		 * Delaying the setting of the parent to MODIFIED can reduce
 		 * unnecessary I/O.
 		 *
 		 * Modifications to the children will propagate up, forcing
 		 * us to become modified and copy-on-write too.  Be sure
-		 * to modify chain (as a side effect of the recursive
+		 * to modify parent (as a side effect of the recursive
 		 * flush) ONLY if it is actually being modified by the
 		 * recursive flush.
 		 */
-		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_SUBMODIFIED);
+		atomic_clear_int(&parent->flags, HAMMER2_CHAIN_SUBMODIFIED);
 
 		/*
 		 * Flush the children and update the blockrefs in the parent.
 		 * Be careful of ripouts during the loop.
 		 */
-		next = SPLAY_MIN(hammer2_chain_splay, &chain->shead);
-		while ((scan = next) != NULL) {
+		next = SPLAY_MIN(hammer2_chain_splay, &parent->shead);
+		while ((chain = next) != NULL) {
 			next = SPLAY_NEXT(hammer2_chain_splay,
-					  &chain->shead, scan);
-			if ((scan->flags & (HAMMER2_CHAIN_SUBMODIFIED |
-					    HAMMER2_CHAIN_MODIFIED1 |
-					    HAMMER2_CHAIN_MOVED)) == 0) {
+					  &parent->shead, chain);
+			/*
+			 * We only recurse if SUBMODIFIED (internal node)
+			 * or MODIFIED1 (internal node or leaf) is set.
+			 * However, we must still track whether any MOVED
+			 * entries are present to determine if the parent's
+			 * blockref's need updating or not.
+			 */
+			if (chain->flags & HAMMER2_CHAIN_MOVED)
+				submoved = 1;
+			if ((chain->flags & (HAMMER2_CHAIN_SUBMODIFIED |
+					     HAMMER2_CHAIN_MODIFIED1)) == 0) {
 				continue;
 			}
 
 			/*
-			 * Recurse the flush
+			 * Propagate the DESTROYED flag if found set, then
+			 * recurse the flush.
 			 */
-			hammer2_chain_lock(hmp, scan, HAMMER2_RESOLVE_MAYBE);
-			if (chain->flags & HAMMER2_CHAIN_DESTROYED) {
-				atomic_set_int(&scan->flags,
-					       HAMMER2_CHAIN_DESTROYED);
+			hammer2_chain_lock(hmp, chain, HAMMER2_RESOLVE_MAYBE);
+			if ((parent->flags & HAMMER2_CHAIN_DESTROYED) &&
+			    (chain->flags & HAMMER2_CHAIN_DESTROYED) == 0) {
+				atomic_set_int(&chain->flags,
+					       HAMMER2_CHAIN_DESTROYED |
+					       HAMMER2_CHAIN_SUBMODIFIED);
 			}
-			hammer2_chain_flush_pass1(hmp, scan, tab + 4);
+			++info->depth;
+			hammer2_chain_flush_pass1(hmp, chain, info);
+			--info->depth;
 
 			/*
 			 * No point loading blockrefs yet if the
 			 * child (recursively) is still dirty.
 			 */
-			if (scan->flags & (HAMMER2_CHAIN_SUBMODIFIED |
+			if (chain->flags & (HAMMER2_CHAIN_SUBMODIFIED |
 					   HAMMER2_CHAIN_MODIFIED1)) {
 				submodified = 1;
 				if (hammer2_debug & 0x0008)
 					kprintf("s");
 			}
-			if (scan->flags & HAMMER2_CHAIN_MOVED) {
+			if (chain->flags & HAMMER2_CHAIN_MOVED) {
 				if (hammer2_debug & 0x0008)
 					kprintf("m");
 				submoved = 1;
 			}
 			if (hammer2_debug & 0x0008)
 				kprintf("\n");
-			hammer2_chain_unlock(hmp, scan);
+			hammer2_chain_unlock(hmp, chain);
 		}
 
-		if (submodified || (chain->flags & HAMMER2_CHAIN_SUBMODIFIED)) {
+		if (submodified ||
+		    (parent->flags & HAMMER2_CHAIN_SUBMODIFIED)) {
 			/*
 			 * No point loading up the blockrefs if submodified
 			 * got re-set.
@@ -2104,18 +2152,18 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 			 *	 it can still get re-set by operations
 			 *	 occuring under our chain, so check both.
 			 */
-			atomic_set_int(&chain->flags,
+			atomic_set_int(&parent->flags,
 				       HAMMER2_CHAIN_SUBMODIFIED);
 		} else if (submoved) {
 			/*
-			 * Ok, we can modify the blockrefs in this chain
+			 * Ok, we can modify the blockrefs in this parent
 			 * entry.  Mark it modified.  Calculate the
 			 * blockref array after marking it modified (since
 			 * that may change the underlying data ptr).
 			 *
 			 * NOTE: We only do this if submoved != 0, otherwise
 			 *	 there may not be any changes and setting
-			 *	 the chain modified will re-arm the MOVED
+			 *	 the parent modified will re-arm the MOVED
 			 *	 bit recursively, resulting in O(N^2)
 			 *	 flushes.
 			 *
@@ -2123,17 +2171,17 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 			 *	 recursively set the SUBMODIFIED flag
 			 *	 upward in this case!
 			 */
-			hammer2_chain_modify(hmp, chain, HAMMER2_MODIFY_NOSUB);
+			hammer2_chain_modify(hmp, parent, HAMMER2_MODIFY_NOSUB);
 
-			switch(chain->bref.type) {
+			switch(parent->bref.type) {
 			case HAMMER2_BREF_TYPE_INODE:
-				base = &chain->data->ipdata.u.blockset.
+				base = &parent->data->ipdata.u.blockset.
 					blockref[0];
 				count = HAMMER2_SET_COUNT;
 				break;
 			case HAMMER2_BREF_TYPE_INDIRECT:
-				base = &chain->data->npdata.blockref[0];
-				count = chain->bytes /
+				base = &parent->data->npdata.blockref[0];
+				count = parent->bytes /
 					sizeof(hammer2_blockref_t);
 				break;
 			case HAMMER2_BREF_TYPE_VOLUME:
@@ -2144,27 +2192,27 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 				base = NULL;
 				panic("hammer2_chain_get: "
 				      "unrecognized blockref type: %d",
-				      chain->bref.type);
+				      parent->bref.type);
 			}
 
 			/*
 			 * Update the blockrefs.
 			 */
-			next = SPLAY_MIN(hammer2_chain_splay, &chain->shead);
-			while ((scan = next) != NULL) {
+			next = SPLAY_MIN(hammer2_chain_splay, &parent->shead);
+			while ((chain = next) != NULL) {
 				next = SPLAY_NEXT(hammer2_chain_splay,
-						  &chain->shead, scan);
-				KKASSERT(scan->index >= 0 &&
-					 scan->index < count);
-				hammer2_chain_lock(hmp, scan,
+						  &parent->shead, chain);
+				KKASSERT(chain->index >= 0 &&
+					 chain->index < count);
+				hammer2_chain_lock(hmp, chain,
 						   HAMMER2_RESOLVE_NEVER);
-				base[scan->index] = scan->bref;
-				if (scan->flags & HAMMER2_CHAIN_MOVED) {
-					atomic_clear_int(&scan->flags,
+				base[chain->index] = chain->bref;
+				if (chain->flags & HAMMER2_CHAIN_MOVED) {
+					atomic_clear_int(&chain->flags,
 						 HAMMER2_CHAIN_MOVED);
-					hammer2_chain_drop(hmp, scan);
+					hammer2_chain_drop(hmp, chain);
 				}
-				hammer2_chain_unlock(hmp, scan);
+				hammer2_chain_unlock(hmp, chain);
 			}
 		}
 	}
@@ -2179,19 +2227,19 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 	 * XXX allocations for unflushed data can be returned to the
 	 *     free pool.
 	 */
-	if (chain->flags & HAMMER2_CHAIN_DESTROYED) {
-		if (chain->flags & HAMMER2_CHAIN_MODIFIED1) {
-			if (chain->bp) {
-				chain->bp->b_flags |= B_INVAL|B_RELBUF;
+	if (parent->flags & HAMMER2_CHAIN_DESTROYED) {
+		if (parent->flags & HAMMER2_CHAIN_MODIFIED1) {
+			if (parent->bp) {
+				parent->bp->b_flags |= B_INVAL|B_RELBUF;
 			}
-			atomic_clear_int(&chain->flags,
+			atomic_clear_int(&parent->flags,
 					 HAMMER2_CHAIN_MODIFIED1);
-			hammer2_chain_drop(hmp, chain);
+			hammer2_chain_drop(hmp, parent);
 		}
-		if (chain->flags & HAMMER2_CHAIN_MOVED) {
-			atomic_clear_int(&chain->flags,
+		if (parent->flags & HAMMER2_CHAIN_MOVED) {
+			atomic_clear_int(&parent->flags,
 					 HAMMER2_CHAIN_MOVED);
-			hammer2_chain_drop(hmp, chain);
+			hammer2_chain_drop(hmp, parent);
 		}
 		return;
 	}
@@ -2199,9 +2247,8 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 	/*
 	 * Flush this chain entry only if it is marked modified.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_MODIFIED1) == 0) {
+	if ((parent->flags & HAMMER2_CHAIN_MODIFIED1) == 0) {
 		goto done;
-		return;
 	}
 
 	/*
@@ -2211,12 +2258,12 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 	 * bits own a single parent ref and the MOVED bit owns its own
 	 * parent ref.
 	 */
-	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED1);
-	if (chain->flags & HAMMER2_CHAIN_MOVED) {
-		hammer2_chain_drop(hmp, chain);
+	atomic_clear_int(&parent->flags, HAMMER2_CHAIN_MODIFIED1);
+	if (parent->flags & HAMMER2_CHAIN_MOVED) {
+		hammer2_chain_drop(hmp, parent);
 	} else {
 		/* inherit ref from the MODIFIED1 we cleared */
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
+		atomic_set_int(&parent->flags, HAMMER2_CHAIN_MOVED);
 	}
 
 	/*
@@ -2225,7 +2272,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 	 *
 	 * This will never be a volume header.
 	 */
-	switch(chain->bref.type) {
+	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
 		/*
 		 * The volume header is flushed manually by the syncer, not
@@ -2237,7 +2284,26 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 		 * Data elements have already been flushed via the logical
 		 * file buffer cache.  Their hash was set in the bref by
 		 * the vop_write code.
+		 *
+		 * Make sure the buffer(s) have been flushed out here.
 		 */
+#if 1
+		bbytes = parent->bytes;
+		pbase = parent->bref.data_off & ~(hammer2_off_t)(bbytes - 1);
+		boff = parent->bref.data_off & HAMMER2_OFF_MASK & (bbytes - 1);
+
+		bp = getblk(hmp->devvp, pbase, bbytes, GETBLK_NOWAIT, 0);
+		if (bp) {
+			if ((bp->b_flags & (B_CACHE | B_DIRTY)) ==
+			    (B_CACHE | B_DIRTY)) {
+				kprintf("x");
+				cluster_awrite(bp);
+			} else {
+				bp->b_flags |= B_RELBUF;
+				brelse(bp);
+			}
+		}
+#endif
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		/*
@@ -2248,17 +2314,17 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 		/*
 		 * Embedded elements have to be flushed out.
 		 */
-		KKASSERT(chain->data != NULL);
-		bref = &chain->bref;
+		KKASSERT(parent->data != NULL);
+		bref = &parent->bref;
 
 		KKASSERT((bref->data_off & HAMMER2_OFF_MASK) != 0);
 
-		if (chain->bp == NULL) {
+		if (parent->bp == NULL) {
 			/*
 			 * The data is embedded, we have to acquire the
 			 * buffer cache buffer and copy the data into it.
 			 */
-			if ((bbytes = chain->bytes) < HAMMER2_MINIOSIZE)
+			if ((bbytes = parent->bytes) < HAMMER2_MINIOSIZE)
 				bbytes = HAMMER2_MINIOSIZE;
 			pbase = bref->data_off & ~(hammer2_off_t)(bbytes - 1);
 			boff = bref->data_off & HAMMER2_OFF_MASK & (bbytes - 1);
@@ -2267,7 +2333,7 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 			 * The getblk() optimization can only be used if the
 			 * physical block size matches the request.
 			 */
-			if (chain->bytes == bbytes) {
+			if (parent->bytes == bbytes) {
 				bp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
 				error = 0;
 			} else {
@@ -2278,33 +2344,33 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 
 			/*
 			 * Copy the data to the buffer, mark the buffer
-			 * dirty, and convert the chain to unmodified.
+			 * dirty, and convert the parent to unmodified.
 			 */
-			bcopy(chain->data, bdata, chain->bytes);
+			bcopy(parent->data, bdata, parent->bytes);
 			bp->b_flags |= B_CLUSTEROK;
 			bdwrite(bp);
 			bp = NULL;
-			chain->bref.check.iscsi32.value =
-				hammer2_icrc32(chain->data, chain->bytes);
-			if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
+			parent->bref.check.iscsi32.value =
+				hammer2_icrc32(parent->data, parent->bytes);
+			if (parent->bref.type == HAMMER2_BREF_TYPE_INODE)
 				++hammer2_iod_meta_write;
 			else
 				++hammer2_iod_indr_write;
 		} else {
-			chain->bref.check.iscsi32.value =
-				hammer2_icrc32(chain->data, chain->bytes);
+			parent->bref.check.iscsi32.value =
+				hammer2_icrc32(parent->data, parent->bytes);
 		}
 	}
 
 	/*
 	 * Special handling
 	 */
-	bref = &chain->bref;
+	bref = &parent->bref;
 
 	switch(bref->type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
-		KKASSERT(chain->data != NULL);
-		KKASSERT(chain->bp == NULL);
+		KKASSERT(parent->data != NULL);
+		KKASSERT(parent->bp == NULL);
 
 		hmp->voldata.icrc_sects[HAMMER2_VOL_ICRC_SECT1]=
 			hammer2_icrc32(
@@ -2324,9 +2390,11 @@ hammer2_chain_flush_pass1(hammer2_mount_t *hmp, hammer2_chain_t *chain, int tab)
 		break;
 	}
 done:
-	if (hammer2_debug & 0x0008)
+	if (hammer2_debug & 0x0008) {
 		kprintf("%*.*s} %p/%d %04x ",
-			tab, tab, "", chain, chain->refs, chain->flags);
+			info->depth, info->depth, "",
+			parent, parent->refs, parent->flags);
+	}
 }
 
 #if 0
@@ -2352,13 +2420,64 @@ void
 hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain)
 {
 	hammer2_chain_t *parent;
+	hammer2_chain_t *scan;
 	hammer2_blockref_t *base;
+	hammer2_flush_info_t info;
 	int count;
+	int reflush;
 
 	/*
-	 * Recursive flush
+	 * Execute the recursive flush and handle deferrals.
+	 *
+	 * Chains can be ridiculously long (thousands deep), so to
+	 * avoid blowing out the kernel stack the recursive flush has a
+	 * depth limit.  Elements at the limit are placed on a list
+	 * for re-execution after the stack has been popped.
 	 */
-	hammer2_chain_flush_pass1(hmp, chain, 0);
+	bzero(&info, sizeof(info));
+	TAILQ_INIT(&info.flush_list);
+	reflush = 1;
+
+	while (reflush) {
+		/*
+		 * Primary recursion
+		 */
+		hammer2_chain_flush_pass1(hmp, chain, &info);
+		reflush = 0;
+
+		while ((scan = TAILQ_FIRST(&info.flush_list)) != NULL) {
+			/*
+			 * Secondary recursion.  Note that a reference is
+			 * retained from the element's presence on the
+			 * deferral list.
+			 */
+			KKASSERT(scan->flags & HAMMER2_CHAIN_DEFERRED);
+			TAILQ_REMOVE(&info.flush_list, scan, flush_node);
+			atomic_clear_int(&scan->flags, HAMMER2_CHAIN_DEFERRED);
+
+			/*
+			 * Now that we've popped back up we can do a secondary
+			 * recursion on the deferred elements.
+			 */
+			if (hammer2_debug & 0x0040)
+				kprintf("defered flush %p\n", scan);
+			hammer2_chain_lock(hmp, scan, HAMMER2_RESOLVE_MAYBE);
+			hammer2_chain_flush(hmp, scan);
+			hammer2_chain_unlock(hmp, scan);
+
+			/*
+			 * Only flag a reflush if SUBMODIFIED is no longer
+			 * set.  If SUBMODIFIED is set the element will just
+			 * wind up on our flush_list again.
+			 */
+			if ((scan->flags & (HAMMER2_CHAIN_SUBMODIFIED |
+					    HAMMER2_CHAIN_MODIFIED1)) == 0)
+				reflush = 1;
+			hammer2_chain_drop(hmp, scan);
+		}
+		if ((hammer2_debug & 0x0040) && reflush)
+			kprintf("reflush %p\n", chain);
+	}
 
 	/*
 	 * The SUBMODIFIED bit must propagate upward if the chain could not
