@@ -439,17 +439,7 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	DO_OPS(ops, error, &ap, vop_write);
 	if ((error == 0) && do_accounting) {
 		size_after = vp->v_filesize;
-		/* does this vnode belong to a pfs/nullfs mount ? */
-		/* XXX: vp->v_pfsmp may point to a freed structure
-		* we use mountlist_exists() to check if it is valid
-		* before using it */
-		if ((vp->v_pfsmp != NULL) && (mountlist_exists(vp->v_pfsmp))) {
-			/* yes, use a copy of the real mp */
-			mp = vp->v_pfsmp;
-		} else {
-			/* no, we can use vp->v_mount directly */
-			mp = vp->v_mount;
-		}
+		mp = vq_vptomp(vp);
 		VFS_ACCOUNT(mp, va.va_uid, va.va_gid, size_after - size_before);
 	}
 	VFS_MPUNLOCK(vp->v_mount);

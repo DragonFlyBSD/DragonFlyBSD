@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 François Tigeot <ftigeot@wolpond.org>
+ * Copyright (c) 2011,2012 François Tigeot <ftigeot@wolpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,7 @@
 #define _SYS_VFSQUOTA_H_
 
 #include <sys/mount.h>
+#include <sys/vnode.h>
 #include <libprop/proplib.h>
 
 extern void vq_init(struct mount*);
@@ -42,6 +43,10 @@ extern void vq_done(struct mount*);
 int vquotactl(const char *path, struct plistref *pref);
 
 extern int vfs_accounting_enabled;
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+struct mount* vq_vptomp(struct vnode*);
+#endif
 
 #endif
 

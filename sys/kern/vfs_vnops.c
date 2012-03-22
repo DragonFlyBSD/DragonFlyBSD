@@ -104,6 +104,8 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 	struct vattr *vap = &vat;
 	int error;
 	u_int flags;
+	uint64_t osize;
+	struct mount *mp;
 
 	/*
 	 * Certain combinations are illegal
@@ -233,11 +235,17 @@ again:
 	if (fmode & O_TRUNC) {
 		vn_unlock(vp);				/* XXX */
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);	/* XXX */
+		osize = vp->v_filesize;
 		VATTR_NULL(vap);
 		vap->va_size = 0;
 		error = VOP_SETATTR(vp, vap, cred);
 		if (error)
 			goto bad;
+		error = VOP_GETATTR(vp, vap);
+		if (error)
+			goto bad;
+		mp = vq_vptomp(vp);
+		VFS_ACCOUNT(mp, vap->va_uid, vap->va_gid, -osize);
 	}
 
 	/*
