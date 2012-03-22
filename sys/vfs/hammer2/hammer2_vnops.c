@@ -1058,8 +1058,10 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 		/*
 		 * Degenerate embedded data case, nothing to loop on.
 		 */
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
+			hammer2_chain_unlock(hmp, chain);
 			break;
+		}
 
 		/*
 		 * Delete physical data blocks past the file EOF.
@@ -1996,6 +1998,11 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 			panic("hammer2_strategy_read: unknown bref type");
 		}
 		hammer2_chain_unlock(hmp, parent);
+	}
+
+	if (hammer2_debug & 0x0020) {
+		kprintf("read %016jx %016jx\n",
+			bio->bio_offset, nbio->bio_offset);
 	}
 
 	if (nbio->bio_offset == ZFOFFSET) {

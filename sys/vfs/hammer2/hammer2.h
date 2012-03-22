@@ -131,7 +131,7 @@ SPLAY_PROTOTYPE(hammer2_chain_splay, hammer2_chain, snode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
 #define HAMMER2_CHAIN_MOVED		0x00000080	/* moved */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
-#define HAMMER2_CHAIN_WAS_MODIFIED	0x00000200	/* used w/rename */
+#define HAMMER2_CHAIN_UNUSED200		0x00000200
 #define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying */
 
 /*
@@ -247,7 +247,7 @@ struct hammer2_mount {
 	struct lock	alloclk;	/* lockmgr lock */
 
 	hammer2_volume_data_t voldata;
-	hammer2_off_t	freecache[HAMMER2_FREECACHE_TYPES][HAMMER2_MAX_RADIX];
+	hammer2_off_t	freecache[HAMMER2_FREECACHE_TYPES][HAMMER2_MAX_RADIX+1];
 };
 
 typedef struct hammer2_mount hammer2_mount_t;

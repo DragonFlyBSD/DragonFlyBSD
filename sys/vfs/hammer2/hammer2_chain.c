@@ -1128,6 +1128,9 @@ again:
  *
  * If chain is NULL we assume the parent was exhausted and continue the
  * iteration at the next parent.
+ *
+ * parent must be locked on entry and remains locked throughout.  chain's
+ * lock status must match flags.
  */
 hammer2_chain_t *
 hammer2_chain_next(hammer2_mount_t *hmp, hammer2_chain_t **parentp,
@@ -1278,12 +1281,13 @@ again2:
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
 		hammer2_chain_unlock(hmp, parent);
 		*parentp = parent = chain;
+		chain = NULL;
 		if (flags & HAMMER2_LOOKUP_NOLOCK) {
-			hammer2_chain_lock(hmp, chain, HAMMER2_RESOLVE_MAYBE);
-			hammer2_chain_drop(hmp, chain);	/* excess ref */
+			hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_MAYBE);
+			hammer2_chain_drop(hmp, parent);	/* excess ref */
 		} else if (flags & HAMMER2_LOOKUP_NODATA) {
-			hammer2_chain_lock(hmp, chain, HAMMER2_RESOLVE_MAYBE);
-			hammer2_chain_unlock(hmp, chain);
+			hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_MAYBE);
+			hammer2_chain_unlock(hmp, parent);
 		}
 		i = 0;
 		goto again2;
@@ -1348,15 +1352,9 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		allocated = 1;
 
 		/*
-		 * We set the WAS_MODIFIED flag here so the chain gets
-		 * marked as modified below.
-		 *
 		 * We do NOT set INITIAL here (yet).  INITIAL is only
 		 * used for indirect blocks.
-		 */
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_WAS_MODIFIED);
-
-		/*
+		 *
 		 * Recalculate bytes to reflect the actual media block
 		 * allocation.
 		 */
@@ -1384,9 +1382,7 @@ hammer2_chain_create(hammer2_mount_t *hmp, hammer2_chain_t *parent,
 		}
 	} else {
 		/*
-		 * Potentially update the chain's key/keybits, but it will
-		 * only be marked modified if WAS_MODIFIED is set (if it
-		 * was modified at the time of its removal during a rename).
+		 * Potentially update the chain's key/keybits.
 		 */
 		chain->bref.key = key;
 		chain->bref.keybits = keybits;
@@ -1501,7 +1497,7 @@ again:
 	}
 
 	/*
-	 * WAS_MODIFIED indicates that this is a newly-created chain element
+	 * (allocated) indicates that this is a newly-created chain element
 	 * rather than a renamed chain element.  In this situation we want
 	 * to place the chain element in the MODIFIED1 state.
 	 *
@@ -1517,8 +1513,7 @@ again:
 	 *			to have logical buffers, we don't want to alias
 	 *			the data onto device buffers!).
 	 */
-	if (chain->flags & HAMMER2_CHAIN_WAS_MODIFIED) {
-		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_WAS_MODIFIED);
+	if (allocated) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
 			hammer2_chain_modify(hmp, chain,
 					     HAMMER2_MODIFY_OPTDATA);
@@ -1531,6 +1526,23 @@ again:
 		} else {
 			hammer2_chain_modify(hmp, chain, 0);
 		}
+	} else {
+		/*
+		 * When reconnecting inodes we have to call setsubmod()
+		 * to ensure that its state propagates up the newly
+		 * connected parent.
+		 *
+		 * We cannot depend on the chain being in a MODIFIED1
+		 * state, or it might already be in that state, so
+		 * even if the parent calls hammer2_chain_modify()
+		 * MOVED might not get set.  Thus we have to set it
+		 * here, too.
+		 */
+		if ((chain->flags & HAMMER2_CHAIN_MOVED) == 0) {
+			hammer2_chain_ref(hmp, chain);
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
+		}
+		hammer2_chain_parent_setsubmod(hmp, chain);
 	}
 
 done:

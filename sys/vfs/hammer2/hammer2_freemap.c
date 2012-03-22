@@ -83,7 +83,7 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 	bytes = 1 << radix;
 
 	lockmgr(&hmp->alloclk, LK_EXCLUSIVE);
-	if (radix < HAMMER2_MAX_RADIX && hmp->freecache[fctype][radix]) {
+	if (radix <= HAMMER2_MAX_RADIX && hmp->freecache[fctype][radix]) {
 		/*
 		 * Allocate from our packing cache
 		 */
