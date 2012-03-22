@@ -1869,96 +1869,6 @@ vfs_vmio_release(struct buf *bp)
 }
 
 /*
- * vfs_bio_awrite:
- *
- *	Implement clustered async writes for clearing out B_DELWRI buffers.
- *	This is much better then the old way of writing only one buffer at
- *	a time.  Note that we may not be presented with the buffers in the 
- *	correct order, so we search for the cluster in both directions.
- *
- *	The buffer is locked on call.
- */
-int
-vfs_bio_awrite(struct buf *bp)
-{
-	int i;
-	int j;
-	off_t loffset = bp->b_loffset;
-	struct vnode *vp = bp->b_vp;
-	int nbytes;
-	struct buf *bpa;
-	int nwritten;
-	int size;
-
-	/*
-	 * right now we support clustered writing only to regular files.  If
-	 * we find a clusterable block we could be in the middle of a cluster
-	 * rather then at the beginning.
-	 *
-	 * NOTE: b_bio1 contains the logical loffset and is aliased
-	 * to b_loffset.  b_bio2 contains the translated block number.
-	 */
-	if ((vp->v_type == VREG) && 
-	    (vp->v_mount != 0) && /* Only on nodes that have the size info */
-	    (bp->b_flags & (B_CLUSTEROK | B_INVAL)) == B_CLUSTEROK) {
-
-		size = vp->v_mount->mnt_stat.f_iosize;
-
-		for (i = size; i < MAXPHYS; i += size) {
-			if ((bpa = findblk(vp, loffset + i, FINDBLK_TEST)) &&
-			    BUF_REFCNT(bpa) == 0 &&
-			    ((bpa->b_flags & (B_DELWRI | B_CLUSTEROK | B_INVAL)) ==
-			    (B_DELWRI | B_CLUSTEROK)) &&
-			    (bpa->b_bufsize == size)) {
-				if ((bpa->b_bio2.bio_offset == NOOFFSET) ||
-				    (bpa->b_bio2.bio_offset !=
-				     bp->b_bio2.bio_offset + i))
-					break;
-			} else {
-				break;
-			}
-		}
-		for (j = size; i + j <= MAXPHYS && j <= loffset; j += size) {
-			if ((bpa = findblk(vp, loffset - j, FINDBLK_TEST)) &&
-			    BUF_REFCNT(bpa) == 0 &&
-			    ((bpa->b_flags & (B_DELWRI | B_CLUSTEROK | B_INVAL)) ==
-			    (B_DELWRI | B_CLUSTEROK)) &&
-			    (bpa->b_bufsize == size)) {
-				if ((bpa->b_bio2.bio_offset == NOOFFSET) ||
-				    (bpa->b_bio2.bio_offset !=
-				     bp->b_bio2.bio_offset - j))
-					break;
-			} else {
-				break;
-			}
-		}
-		j -= size;
-		nbytes = (i + j);
-
-		/*
-		 * this is a possible cluster write
-		 */
-		if (nbytes != size) {
-			BUF_UNLOCK(bp);
-			nwritten = cluster_wbuild(vp, size,
-						  loffset - j, nbytes);
-			return nwritten;
-		}
-	}
-
-	/*
-	 * default (old) behavior, writing out only one block
-	 *
-	 * XXX returns b_bufsize instead of b_bcount for nwritten?
-	 */
-	nwritten = bp->b_bufsize;
-	bremfree(bp);
-	bawrite(bp);
-
-	return nwritten;
-}
-
-/*
  * getnewbuf:
  *
  *	Find and initialize a new buffer header, freeing up existing buffers 
@@ -2673,16 +2583,16 @@ flushbufqueues(bufq_type_t q)
 		 *
 		 * NOTE: buf_checkwrite is MPSAFE.
 		 */
+		bremfree(bp);
 		if (LIST_FIRST(&bp->b_dep) != NULL && buf_checkwrite(bp)) {
-			bremfree(bp);
 			brelse(bp);
 		} else if (bp->b_flags & B_ERROR) {
 			tsleep(bp, 0, "bioer", 1);
 			bp->b_flags &= ~B_AGE;
-			vfs_bio_awrite(bp);
+			cluster_awrite(bp);
 		} else {
 			bp->b_flags |= B_AGE;
-			vfs_bio_awrite(bp);
+			cluster_awrite(bp);
 		}
 		++r;
 		break;
@@ -2846,12 +2756,13 @@ findblk(struct vnode *vp, off_t loffset, int flags)
  *	still be fully cached after reinstantiation to be returned.
  */
 struct buf *
-getcacheblk(struct vnode *vp, off_t loffset, int blksize)
+getcacheblk(struct vnode *vp, off_t loffset, int blksize, int blkflags)
 {
 	struct buf *bp;
+	int fndflags = (blkflags & GETBLK_NOWAIT) ? FINDBLK_NBLOCK : 0;
 
 	if (blksize) {
-		bp = getblk(vp, loffset, blksize, 0, 0);
+		bp = getblk(vp, loffset, blksize, blkflags, 0);
 		if (bp) {
 			if ((bp->b_flags & (B_INVAL | B_CACHE | B_RAM)) ==
 			    B_CACHE) {
@@ -2862,7 +2773,7 @@ getcacheblk(struct vnode *vp, off_t loffset, int blksize)
 			}
 		}
 	} else {
-		bp = findblk(vp, loffset, 0);
+		bp = findblk(vp, loffset, fndflags);
 		if (bp) {
 			if ((bp->b_flags & (B_INVAL | B_CACHE | B_RAM)) ==
 			    B_CACHE) {

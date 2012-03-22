@@ -427,7 +427,7 @@ skip:
 		}
 		bp->b_flags &= ~B_IODEBUG;
 
-		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
+		bp->b_flags |= B_CLUSTEROK;
 		n = blksize - offset;
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
@@ -494,6 +494,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	struct uio *uio;
 	int offset;
 	off_t base_offset;
+	int64_t cluster_eof;
 	struct buf *bp;
 	int kflags;
 	int error;
@@ -787,7 +788,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		}
 		kflags |= NOTE_WRITE;
 		hammer_stats_file_write += n;
-		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
+		bp->b_flags |= B_CLUSTEROK;
 		if (ip->ino_data.size < uio->uio_offset) {
 			ip->ino_data.size = uio->uio_offset;
 			flags = HAMMER_INODE_SDIRTY;
@@ -835,25 +836,22 @@ hammer_vop_write(struct vop_write_args *ap)
 		 *	  configure a HAMMER file as swap, or when HAMMER
 		 *	  is serving NFS (for commits).  Ick ick.
 		 */
-		bp->b_flags |= B_AGE;
+		bp->b_flags |= B_AGE | B_CLUSTEROK;
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if ((ap->a_ioflag & IO_DIRECT) && endofblk) {
 			bawrite(bp);
 		} else if (ap->a_ioflag & IO_ASYNC) {
 			bawrite(bp);
+		} else if (hammer_cluster_enable &&
+			   !(ap->a_vp->v_mount->mnt_flag & MNT_NOCLUSTERW)) {
+			if (base_offset < HAMMER_XDEMARC)
+				cluster_eof = hammer_blockdemarc(base_offset,
+							 ip->ino_data.size);
+			else
+				cluster_eof = ip->ino_data.size;
+			cluster_write(bp, cluster_eof, blksize, seqcount);
 		} else {
-#if 0
-		if (offset + n == blksize) {
-			if (hammer_cluster_enable == 0 ||
-			    (ap->a_vp->v_mount->mnt_flag & MNT_NOCLUSTERW)) {
-				bawrite(bp);
-			} else {
-				cluster_write(bp, ip->ino_data.size,
-					      blksize, seqcount);
-			}
-		} else {
-#endif
 			bdwrite(bp);
 		}
 	}

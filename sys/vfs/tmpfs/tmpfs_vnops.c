@@ -453,9 +453,8 @@ tmpfs_read (struct vop_read_args *ap)
 		 */
 		offset = (size_t)uio->uio_offset & BMASK;
 		base_offset = (off_t)uio->uio_offset - offset;
-		bp = getcacheblk(vp, base_offset, BSIZE);
-		if (bp == NULL)
-		{
+		bp = getcacheblk(vp, base_offset, BSIZE, 0);
+		if (bp == NULL) {
 			lwkt_gettoken(&vp->v_mount->mnt_token);
 			error = bread(vp, base_offset, BSIZE, &bp);
 			if (error) {
