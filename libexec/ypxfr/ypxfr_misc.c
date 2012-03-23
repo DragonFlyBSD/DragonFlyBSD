@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/ypxfr/ypxfr_misc.c,v 1.9.2.2 2002/02/15 00:46:54 des Exp $
- * $DragonFly: src/libexec/ypxfr/ypxfr_misc.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 #include <stdio.h>
@@ -44,7 +43,7 @@ struct dom_binding {};
 #include <rpcsvc/ypclnt.h>
 #include "ypxfr_extern.h"
 
-char *
+const char *
 ypxfrerr_string(ypxfrstat code)
 {
 	switch (code) {
