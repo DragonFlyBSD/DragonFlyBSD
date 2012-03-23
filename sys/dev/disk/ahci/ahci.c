@@ -2143,36 +2143,6 @@ ahci_end_exclusive_access(struct ahci_port *ap, struct ata_port *at)
 	ahci_issue_pending_commands(ap, NULL);
 }
 
-#if 0
-
-static void
-fubar(struct ahci_ccb *ccb)
-{
-	struct ahci_port *ap = ccb->ccb_port;
-	struct ahci_cmd_hdr	*cmd;
-	struct ahci_cmd_table	*tab;
-	struct ahci_prdt	*prdt;
-	int i;
-
-	kprintf("%s: ISSUE %02x\n",
-		ATANAME(ap, ccb->ccb_xa.at),
-		ccb->ccb_xa.fis->command);
-	cmd = ccb->ccb_cmd_hdr;
-	tab = ccb->ccb_cmd_table;
-	prdt = ccb->ccb_cmd_table->prdt;
-	kprintf("cmd flags=%04x prdtl=%d prdbc=%d ctba=%08x%08x\n",
-		cmd->flags, cmd->prdtl, cmd->prdbc,
-		cmd->ctba_hi, cmd->ctba_lo);
-	for (i = 0; i < cmd->prdtl; ++i) {
-		kprintf("\t%d dba=%08x%08x res=%08x flags=%08x\n",
-			i, prdt->dba_hi, prdt->dba_lo, prdt->reserved,
-			prdt->flags);
-	}
-	kprintf("tab\n");
-}
-
-#endif
-
 /*
  * If ccb is not NULL enqueue and/or issue it.
  *
@@ -2257,7 +2227,10 @@ ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb)
 		mask = 0;
 		do {
 			TAILQ_REMOVE(&ap->ap_ccb_pending, ccb, ccb_entry);
+			KKASSERT((mask & (1 << ccb->ccb_slot)) == 0);
 			mask |= 1 << ccb->ccb_slot;
+			KKASSERT(ccb->ccb_xa.state == ATA_S_PENDING);
+			KKASSERT(ccb == &ap->ap_ccbs[ccb->ccb_slot]);
 			ccb->ccb_xa.state = ATA_S_ONCHIP;
 			ahci_start_timeout(ccb);
 			ap->ap_run_flags = ccb->ccb_xa.flags;
@@ -2265,6 +2238,8 @@ ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb)
 		} while (ccb && (ccb->ccb_xa.flags & ATA_F_NCQ) &&
 			 (ap->ap_run_flags &
 			     (ATA_F_EXCLUSIVE | ATA_F_AUTOSENSE)) == 0);
+
+		KKASSERT(((ap->ap_active | ap->ap_sactive) & mask) == 0);
 
 		ap->ap_sactive |= mask;
 		ahci_pwrite(ap, AHCI_PREG_SACT, mask);
@@ -2295,15 +2270,14 @@ ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb)
 		while (ap->ap_active_cnt < limit && ccb &&
 		       (ccb->ccb_xa.flags & ATA_F_NCQ) == 0) {
 			TAILQ_REMOVE(&ap->ap_ccb_pending, ccb, ccb_entry);
-#if 0
-			fubar(ccb);
-#endif
+			KKASSERT(((ap->ap_active | ap->ap_sactive) &
+				  (1 << ccb->ccb_slot)) == 0);
 			ap->ap_active |= 1 << ccb->ccb_slot;
 			ap->ap_active_cnt++;
 			ap->ap_run_flags = ccb->ccb_xa.flags;
 			ccb->ccb_xa.state = ATA_S_ONCHIP;
-			ahci_pwrite(ap, AHCI_PREG_CI, 1 << ccb->ccb_slot);
 			ahci_start_timeout(ccb);
+			ahci_pwrite(ap, AHCI_PREG_CI, 1 << ccb->ccb_slot);
 			if ((ap->ap_run_flags &
 			    (ATA_F_EXCLUSIVE | ATA_F_AUTOSENSE)) == 0) {
 				break;
@@ -2398,14 +2372,11 @@ ahci_port_thread_core(struct ahci_port *ap, int mask)
 	if (mask & AP_SIGF_PORTINT) {
 		ahci_port_intr(ap, 1);
 		ahci_port_interrupt_enable(ap);
-		ahci_os_unlock_port(ap);
 	} else if (ap->ap_probe != ATA_PROBE_FAILED) {
 		ahci_port_intr(ap, 1);
 		ahci_port_interrupt_enable(ap);
-		ahci_os_unlock_port(ap);
-	} else {
-		ahci_os_unlock_port(ap);
 	}
+	ahci_os_unlock_port(ap);
 }
 
 /*
@@ -2481,6 +2452,7 @@ ahci_port_intr(struct ahci_port *ap, int blockable)
 		active = &ap->ap_active;
 	}
 	KKASSERT(!(ap->ap_sactive && ap->ap_active));
+	KKASSERT((ci_saved & (ap->ap_sactive | ap->ap_active)) == ci_saved);
 #if 0
 	kprintf("CHECK act=%08x/%08x sact=%08x/%08x\n",
 		ap->ap_active, ahci_pread(ap, AHCI_PREG_CI),
@@ -3119,6 +3091,7 @@ ahci_get_ccb(struct ahci_port *ap)
 	lockmgr(&ap->ap_ccb_lock, LK_EXCLUSIVE);
 	ccb = TAILQ_FIRST(&ap->ap_ccb_free);
 	if (ccb != NULL) {
+		KKASSERT((ap->ap_sactive & (1 << ccb->ccb_slot)) == 0);
 		KKASSERT(ccb->ccb_xa.state == ATA_S_PUT);
 		TAILQ_REMOVE(&ap->ap_ccb_free, ccb, ccb_entry);
 		ccb->ccb_xa.state = ATA_S_SETUP;
@@ -3135,6 +3108,8 @@ ahci_put_ccb(struct ahci_ccb *ccb)
 {
 	struct ahci_port		*ap = ccb->ccb_port;
 
+	KKASSERT(ccb->ccb_xa.state != ATA_S_PUT);
+	KKASSERT((ap->ap_sactive & (1 << ccb->ccb_slot)) == 0);
 	lockmgr(&ap->ap_ccb_lock, LK_EXCLUSIVE);
 	ccb->ccb_xa.state = ATA_S_PUT;
 	++ccb->ccb_xa.serial;

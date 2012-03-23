@@ -57,6 +57,17 @@
  *
  * Much of the cdb<->xa conversion code was taken from OpenBSD, the rest
  * was written natively for DragonFly.
+ *
+ * NOTE-1: I was temporarily unlocking the port while making the CCB
+ *	   callback, to reduce the chance of a deadlock and to improve
+ *	   performance by allowing new commands to be queued.
+ *
+ *	   However, this also creates an opening where another AHCI
+ *	   interrupt can come in and execute the ahci_port_intr()
+ *	   function, creating a huge mess in the sequencing of the
+ *	   chipset.
+ *
+ *	   So for now we don't do this. XXX
  */
 
 #include "ahci.h"
@@ -1676,9 +1687,9 @@ ahci_ata_complete_disk_synchronize_cache(struct ata_xfer *xa)
 		break;
 	}
 	ahci_ata_put_xfer(xa);
-	ahci_os_unlock_port(ap);
+	/*ahci_os_unlock_port(ap); ILLEGAL SEE NOTE-1 AT TOP */
 	xpt_done(ccb);
-	ahci_os_lock_port(ap);
+	/*ahci_os_lock_port(ap);*/
 }
 
 /*
@@ -1718,9 +1729,9 @@ ahci_ata_complete_disk_rw(struct ata_xfer *xa)
 	}
 	ccb->csio.resid = xa->resid;
 	ahci_ata_put_xfer(xa);
-	ahci_os_unlock_port(ap);
+	/*ahci_os_unlock_port(ap); ILLEGAL SEE NOTE-1 AT TOP */
 	xpt_done(ccb);
-	ahci_os_lock_port(ap);
+	/*ahci_os_lock_port(ap);*/
 }
 
 /*
@@ -1765,10 +1776,11 @@ ahci_atapi_complete_cmd(struct ata_xfer *xa)
 		break;
 	}
 	ccb->csio.resid = xa->resid;
+	xa->atascsi_private = NULL;
 	ahci_ata_put_xfer(xa);
-	ahci_os_unlock_port(ap);
+	/*ahci_os_unlock_port(ap); ILLEGAL SEE NOTE-1 AT TOP */
 	xpt_done(ccb);
-	ahci_os_lock_port(ap);
+	/*ahci_os_lock_port(ap);*/
 }
 
 /*
