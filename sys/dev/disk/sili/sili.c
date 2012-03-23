@@ -1616,10 +1616,8 @@ sili_port_thread_core(struct sili_port *ap, int mask)
 	if (mask & AP_SIGF_PORTINT) {
 		sili_port_intr(ap, 1);
 		sili_port_interrupt_reenable(ap);
-		sili_os_unlock_port(ap);
-	} else {
-		sili_os_unlock_port(ap);
 	}
+	sili_os_unlock_port(ap);
 }
 
 /*
