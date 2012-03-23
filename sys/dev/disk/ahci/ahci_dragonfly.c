@@ -257,7 +257,7 @@ ahci_os_start_port(struct ahci_port *ap)
 	char name[16];
 
 	atomic_set_int(&ap->ap_signal, AP_SIGF_INIT | AP_SIGF_THREAD_SYNC);
-	lockinit(&ap->ap_lock, "ahcipo", 0, 0);
+	lockinit(&ap->ap_lock, "ahcipo", 0, LK_CANRECURSE);
 	lockinit(&ap->ap_sim_lock, "ahcicam", 0, LK_CANRECURSE);
 	lockinit(&ap->ap_sig_lock, "ahport", 0, 0);
 	sysctl_ctx_init(&ap->sysctl_ctx);
