@@ -396,7 +396,7 @@ ahci_port_thread(void *arg)
 	 */
 	mask = ap->ap_signal;
 	while ((mask & AP_SIGF_STOP) == 0) {
-		ahci_port_thread_core(ap, mask | AP_SIGF_PORTINT);
+		ahci_port_thread_core(ap, mask);
 		lockmgr(&ap->ap_sig_lock, LK_EXCLUSIVE);
 		if (ap->ap_signal == 0) {
 			lksleep(&ap->ap_thread, &ap->ap_sig_lock, 0,

@@ -195,7 +195,7 @@ void
 sili_os_start_port(struct sili_port *ap)
 {
 	atomic_set_int(&ap->ap_signal, AP_SIGF_INIT);
-	lockinit(&ap->ap_lock, "silipo", 0, 0);
+	lockinit(&ap->ap_lock, "silipo", 0, LK_CANRECURSE);
 	lockinit(&ap->ap_sim_lock, "silicam", 0, LK_CANRECURSE);
 	lockinit(&ap->ap_sig_lock, "siport", 0, 0);
 	kthread_create(sili_port_thread, ap, &ap->ap_thread,

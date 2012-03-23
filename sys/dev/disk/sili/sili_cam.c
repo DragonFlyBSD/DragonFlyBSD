@@ -1620,9 +1620,9 @@ sili_ata_complete_disk_synchronize_cache(struct ata_xfer *xa)
 		break;
 	}
 	sili_ata_put_xfer(xa);
-	sili_os_unlock_port(ap);
+	/*sili_os_unlock_port(ap);*/
 	xpt_done(ccb);
-	sili_os_lock_port(ap);
+	/*sili_os_lock_port(ap);*/
 }
 
 /*
@@ -1661,9 +1661,9 @@ sili_ata_complete_disk_rw(struct ata_xfer *xa)
 	}
 	ccb->csio.resid = xa->resid;
 	sili_ata_put_xfer(xa);
-	sili_os_unlock_port(ap);
+	/*sili_os_unlock_port(ap);*/
 	xpt_done(ccb);
-	sili_os_lock_port(ap);
+	/*sili_os_lock_port(ap);*/
 }
 
 /*
@@ -1708,9 +1708,9 @@ sili_atapi_complete_cmd(struct ata_xfer *xa)
 	}
 	ccb->csio.resid = xa->resid;
 	sili_ata_put_xfer(xa);
-	sili_os_unlock_port(ap);
+	/*sili_os_unlock_port(ap);*/
 	xpt_done(ccb);
-	sili_os_lock_port(ap);
+	/*sili_os_lock_port(ap);*/
 }
 
 /*
