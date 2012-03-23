@@ -2498,6 +2498,7 @@ cache_findmount_callback(struct mount *mp, void *data)
 	    mp->mnt_ncmounton.ncp == info->nch_ncp
 	) {
 	    info->result = mp;
+	    atomic_add_int(&mp->mnt_refs, 1);
 	    return(-1);
 	}
 	return(0);
@@ -2514,6 +2515,12 @@ cache_findmount(struct nchandle *nch)
 	mountlist_scan(cache_findmount_callback, &info,
 			       MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
 	return(info.result);
+}
+
+void
+cache_dropmount(struct mount *mp)
+{
+	atomic_add_int(&mp->mnt_refs, -1);
 }
 
 /*
