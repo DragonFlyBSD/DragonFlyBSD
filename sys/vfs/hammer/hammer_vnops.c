@@ -288,14 +288,20 @@ skip:
 
 	/*
 	 * Do a full flush sequence.
+	 *
+	 * Attempt to release the vnode while waiting for the inode to
+	 * finish flushing.  This can really mess up inactive->reclaim
+	 * sequences so only do it if the vnode is active.
 	 */
 	++hammer_count_fsyncs;
 	vfsync(ap->a_vp, waitfor, 1, NULL, NULL);
 	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
 	if (waitfor == MNT_WAIT) {
-		vn_unlock(ap->a_vp);
+		if ((ap->a_vp->v_flag & VINACTIVE) == 0)
+			vn_unlock(ap->a_vp);
 		hammer_wait_inode(ip);
-		vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
+		if ((ap->a_vp->v_flag & VINACTIVE) == 0)
+			vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
 	}
 	lwkt_reltoken(&hmp->fs_token);
 	return (ip->error);
