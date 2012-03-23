@@ -55,6 +55,14 @@
 #include <netinet/tcp_seq.h>
 #include <netinet/tcp_var.h>
 
+/*
+ * Implemented:
+ *
+ * RFC 2018
+ * RFC 2883
+ * RFC 3517
+ */
+
 struct sackblock {
 	tcp_seq			sblk_start;
 	tcp_seq			sblk_end;

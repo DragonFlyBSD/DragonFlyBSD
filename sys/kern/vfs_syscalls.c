@@ -181,10 +181,13 @@ sys_mount(struct mount_args *uap)
 	cache_zero(&nd.nl_nch);
 	nlookup_done(&nd);
 
-	if ((nch.ncp->nc_flag & NCF_ISMOUNTPT) && cache_findmount(&nch))
+	if ((nch.ncp->nc_flag & NCF_ISMOUNTPT) &&
+	    (mp = cache_findmount(&nch)) != NULL) {
+		cache_dropmount(mp);
 		hasmount = 1;
-	else
+	} else {
 		hasmount = 0;
+	}
 
 
 	/*
@@ -1544,6 +1547,7 @@ sys_fchdir(struct fchdir_args *uap)
 			cache_drop(&nch);
 			nch = tnch;
 		}
+		cache_dropmount(mp);
 	}
 	if (error == 0) {
 		ovp = fdp->fd_cdir;
