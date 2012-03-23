@@ -251,9 +251,12 @@ vfs_busy(struct mount *mp, int flags)
 {
 	int lkflags;
 
+	atomic_add_int(&mp->mnt_refs, 1);
 	if (mp->mnt_kern_flag & MNTK_UNMOUNT) {
-		if (flags & LK_NOWAIT)
+		if (flags & LK_NOWAIT) {
+			atomic_add_int(&mp->mnt_refs, -1);
 			return (ENOENT);
+		}
 		/* XXX not MP safe */
 		mp->mnt_kern_flag |= MNTK_MWAIT;
 		/*
@@ -263,6 +266,7 @@ vfs_busy(struct mount *mp, int flags)
 		 * exclusive lock at the end of dounmount.
 		 */
 		tsleep((caddr_t)mp, 0, "vfs_busy", 0);
+		atomic_add_int(&mp->mnt_refs, -1);
 		return (ENOENT);
 	}
 	lkflags = LK_SHARED;
@@ -273,10 +277,14 @@ vfs_busy(struct mount *mp, int flags)
 
 /*
  * Free a busy filesystem.
+ *
+ * Decrement refs before releasing the lock so e.g. a pending umount
+ * doesn't give us an unexpected busy error.
  */
 void
 vfs_unbusy(struct mount *mp)
 {
+	atomic_add_int(&mp->mnt_refs, -1);
 	lockmgr(&mp->mnt_lock, LK_RELEASE);
 }
 

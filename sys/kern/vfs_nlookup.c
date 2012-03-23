@@ -727,11 +727,14 @@ nlookup(struct nlookupdata *nd)
 		    ;
 		error = VFS_ROOT(mp, &tdp);
 		vfs_unbusy(mp);
-		if (error)
+		if (error) {
+		    cache_dropmount(mp);
 		    break;
+		}
 		cache_setvp(&nch, tdp);
 		vput(tdp);
 	    }
+	    cache_dropmount(mp);
 	}
 	if (error) {
 	    cache_put(&nch);
