@@ -2351,9 +2351,14 @@ ahci_intr(void *arg)
 	/*
 	 * Process interrupts for each port in a non-blocking fashion.
 	 *
-	 * The global IS bit is forced on if any unmasked port interrupts
-	 * are pending, even if we clear.
+	 * The global IS bit is supposed to be forced on if any unmasked
+	 * port interrupt is pending, even if we clear it.
+	 *
+	 * However it would appear that it is simply latched on some parts,
+	 * which means we have to clear it BEFORE processing the status bits
+	 * to avoid races.
 	 */
+	ahci_write(sc, AHCI_REG_IS, is);
 	for (ack = 0; is; is &= ~(1 << port)) {
 		port = ffs(is) - 1;
 		ack |= 1 << port;
@@ -2370,7 +2375,6 @@ ahci_intr(void *arg)
 			ahci_os_signal_port_thread(ap, AP_SIGF_PORTINT);
 		}
 	}
-	ahci_write(sc, AHCI_REG_IS, ack);
 }
 
 /*
@@ -2489,7 +2493,7 @@ ahci_port_intr(struct ahci_port *ap, int blockable)
 	if (ap->link_pwr_mgmt != AHCI_LINK_PWR_MGMT_NONE) {
 		is &= ~AHCI_PREG_IS_PRCS;
 		ahci_pwrite(ap, AHCI_PREG_SERR,
-		    AHCI_PREG_SERR_DIAG_N | AHCI_PREG_SERR_DIAG_W);
+			    AHCI_PREG_SERR_DIAG_N | AHCI_PREG_SERR_DIAG_W);
 	}
 
 	/*
@@ -2656,6 +2660,7 @@ finish_error:
 		tfd = ahci_pread(ap, AHCI_PREG_TFD);
 		cmd = ahci_pread(ap, AHCI_PREG_CMD);
 
+		ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_DHRS);
 		if ((tfd & AHCI_PREG_TFD_STS_ERR) &&
 		    (cmd & AHCI_PREG_CMD_CR) == 0) {
 			err_slot = AHCI_PREG_CMD_CCS(
@@ -2672,7 +2677,6 @@ finish_error:
 		 * code and only if no error occured and ATA_F_AUTOSENSE
 		 * was set.
 		 */
-		ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_DHRS);
 	}
 
 	/*
@@ -2731,8 +2735,8 @@ finish_error:
 		 * Try to clear the error condition.  The IFS error killed
 		 * the port so stop it so we can restart it.
 		 */
-		ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 		ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_IFS);
+		ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 		is &= ~AHCI_PREG_IS_IFS;
 		need = NEED_RESTART;
 		goto failall;
@@ -2777,6 +2781,8 @@ finish_error:
 	 *	    Only print something if we aren't in INIT/HARD-RESET.
 	 */
 	if (is & (AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS)) {
+		ahci_pwrite(ap, AHCI_PREG_IS,
+			    is & (AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS));
 		/*
 		 * Try to clear the error.  Because of the repetitiveness
 		 * of this interrupt avoid any harsh action if the port is
@@ -2784,8 +2790,6 @@ finish_error:
 		 */
 		ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 		/* (AHCI_PREG_SERR_DIAG_N | AHCI_PREG_SERR_DIAG_X) */
-		ahci_pwrite(ap, AHCI_PREG_IS,
-			    is & (AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS));
 
 		/*
 		 * Ignore PCS/PRCS errors during probes (but still clear the
@@ -3631,13 +3635,17 @@ ahci_ata_cmd_timeout(struct ahci_ccb *ccb)
 	at = ccb->ccb_xa.at;
 
 	kprintf("%s: CMD TIMEOUT state=%d slot=%d\n"
+		"\tglb-status 0x%08x\n"
 		"\tcmd-reg 0x%b\n"
+		"\tport_status 0x%b\n"
 		"\tsactive=%08x active=%08x expired=%08x\n"
 		"\t   sact=%08x     ci=%08x\n"
 		"\t    STS=%b\n",
 		ATANAME(ap, at),
 		ccb->ccb_xa.state, ccb->ccb_slot,
+		ahci_read(ap->ap_sc, AHCI_REG_IS),
 		ahci_pread(ap, AHCI_PREG_CMD), AHCI_PFMT_CMD,
+		ahci_pread(ap, AHCI_PREG_IS), AHCI_PFMT_IS,
 		ap->ap_sactive, ap->ap_active, ap->ap_expired,
 		ahci_pread(ap, AHCI_PREG_SACT),
 		ahci_pread(ap, AHCI_PREG_CI),
