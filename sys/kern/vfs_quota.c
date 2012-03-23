@@ -283,6 +283,27 @@ cmd_set_limit(struct mount *mp, prop_dictionary_t args)
 	return 0;
 }
 
+static int
+cmd_set_limit_uid(struct mount *mp, prop_dictionary_t args)
+{
+	uint64_t limit;
+	uid_t uid;
+	struct ac_unode ufind, *unp;
+
+	prop_dictionary_get_uint32(args, "uid", &uid);
+	prop_dictionary_get_uint64(args, "limit", &limit);
+
+	ufind.left_bits = (uid >> ACCT_CHUNK_BITS);
+
+	spin_lock(&mp->mnt_acct.ac_spin);
+	if ((unp = RB_FIND(ac_utree, &mp->mnt_acct.ac_uroot, &ufind)) == NULL)
+		unp = unode_insert(mp, uid);
+	unp->uid_chunk[(uid & ACCT_CHUNK_MASK)].limit = limit;
+	spin_unlock(&mp->mnt_acct.ac_spin);
+
+	return 0;
+}
+
 int
 sys_vquotactl(struct vquotactl_args *vqa)
 /* const char *path, struct plistref *pref */
@@ -342,6 +363,10 @@ sys_vquotactl(struct vquotactl_args *vqa)
 	}
 	if (strcmp(cmd, "set limit") == 0) {
 		error = cmd_set_limit(mp, args);
+		goto done;
+	}
+	if (strcmp(cmd, "set limit uid") == 0) {
+		error = cmd_set_limit_uid(mp, args);
 		goto done;
 	}
 	return EINVAL;
