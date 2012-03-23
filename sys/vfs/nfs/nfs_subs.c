@@ -1228,7 +1228,7 @@ nfsrv_fhtovp(fhandle_t *fhp, int lockflag,
 		return (error); 
 	error = VFS_FHTOVP(mp, NULL, &fhp->fh_fid, vpp);
 	if (error)
-		return (error);
+		return (ESTALE);
 #ifdef MNT_EXNORESPORT
 	if (!(exflags & (MNT_EXNORESPORT|MNT_EXPUBLIC))) {
 		saddr = (struct sockaddr_in *)nam;
