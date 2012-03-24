@@ -80,8 +80,9 @@ typedef void * (*path_enum_proc) (const char *path, size_t len, void *arg);
 static const char *_getenv_ld(const char *id);
 static void die(void) __dead2;
 static void digest_dynamic1(Obj_Entry *, int, const Elf_Dyn **,
-    const Elf_Dyn **);
-static void digest_dynamic2(Obj_Entry *, const Elf_Dyn *, const Elf_Dyn *);
+    const Elf_Dyn **, const Elf_Dyn **);
+static void digest_dynamic2(Obj_Entry *, const Elf_Dyn *, const Elf_Dyn *,
+    const Elf_Dyn *);
 static void digest_dynamic(Obj_Entry *, int);
 static Obj_Entry *digest_phdr(const Elf_Phdr *, int, caddr_t, const char *);
 static Obj_Entry *dlcheck(void *);
@@ -94,7 +95,7 @@ static void errmsg_restore(char *);
 static char *errmsg_save(void);
 static void *fill_search_info(const char *, size_t, void *);
 static char *find_library(const char *, const Obj_Entry *);
-static const char *gethints(void);
+static const char *gethints(const Obj_Entry *);
 static void init_dag(Obj_Entry *);
 static void init_rtld(caddr_t, Elf_Auxinfo **);
 static void initlist_add_neededs(Needed_Entry *, Objlist *);
@@ -952,7 +953,7 @@ die(void)
  */
 static void
 digest_dynamic1(Obj_Entry *obj, int early, const Elf_Dyn **dyn_rpath,
-    const Elf_Dyn **dyn_soname)
+    const Elf_Dyn **dyn_soname, const Elf_Dyn **dyn_runpath)
 {
     const Elf_Dyn *dynp;
     Needed_Entry **needed_tail = &obj->needed;
@@ -962,6 +963,7 @@ digest_dynamic1(Obj_Entry *obj, int early, const Elf_Dyn **dyn_rpath,
 
     *dyn_rpath = NULL;
     *dyn_soname = NULL;
+    *dyn_runpath = NULL;
 
     obj->bind_now = false;
     for (dynp = obj->dynamic;  dynp->d_tag != DT_NULL;  dynp++) {
@@ -1128,7 +1130,6 @@ digest_dynamic1(Obj_Entry *obj, int early, const Elf_Dyn **dyn_rpath,
 	    break;
 
 	case DT_RPATH:
-	case DT_RUNPATH:	/* XXX: process separately */
 	    /*
 	     * We have to wait until later to process this, because we
 	     * might not have gotten the address of the string table yet.
@@ -1138,6 +1139,10 @@ digest_dynamic1(Obj_Entry *obj, int early, const Elf_Dyn **dyn_rpath,
 
 	case DT_SONAME:
 	    *dyn_soname = dynp;
+	    break;
+
+	case DT_RUNPATH:
+	    *dyn_runpath = dynp;
 	    break;
 
 	case DT_INIT:
@@ -1205,6 +1210,8 @@ digest_dynamic1(Obj_Entry *obj, int early, const Elf_Dyn **dyn_rpath,
 		    obj->z_nodelete = true;
 		if (dynp->d_un.d_val & DF_1_LOADFLTR)
 		    obj->z_loadfltr = true;
+		if (dynp->d_un.d_val & DF_1_NODEFLIB)
+		    obj->z_nodeflib = true;
 	    break;
 
 	default:
@@ -1244,7 +1251,7 @@ digest_dynamic1(Obj_Entry *obj, int early, const Elf_Dyn **dyn_rpath,
 
 static void
 digest_dynamic2(Obj_Entry *obj, const Elf_Dyn *dyn_rpath,
-    const Elf_Dyn *dyn_soname)
+    const Elf_Dyn *dyn_soname, const Elf_Dyn *dyn_runpath)
 {
 
     if (obj->z_origin && obj->origin_path == NULL) {
@@ -1253,7 +1260,12 @@ digest_dynamic2(Obj_Entry *obj, const Elf_Dyn *dyn_rpath,
 	    die();
     }
 
-    if (dyn_rpath != NULL) {
+    if (dyn_runpath != NULL) {
+	obj->runpath = (char *)obj->strtab + dyn_runpath->d_un.d_val;
+	if (obj->z_origin)
+	    obj->runpath = origin_subst(obj->runpath, obj->origin_path);
+    }
+    else if (dyn_rpath != NULL) {
 	obj->rpath = (char *)obj->strtab + dyn_rpath->d_un.d_val;
 	if (obj->z_origin)
 	    obj->rpath = origin_subst(obj->rpath, obj->origin_path);
@@ -1268,9 +1280,10 @@ digest_dynamic(Obj_Entry *obj, int early)
 {
 	const Elf_Dyn *dyn_rpath;
 	const Elf_Dyn *dyn_soname;
+	const Elf_Dyn *dyn_runpath;
 
-	digest_dynamic1(obj, early, &dyn_rpath, &dyn_soname);
-	digest_dynamic2(obj, dyn_rpath, dyn_soname);
+	digest_dynamic1(obj, early, &dyn_rpath, &dyn_soname, &dyn_runpath);
+	digest_dynamic2(obj, dyn_rpath, dyn_soname, dyn_runpath);
 }
 
 /*
@@ -1476,16 +1489,21 @@ gnu_hash (const char *s)
  * loaded shared object, whose library search path will be searched.
  *
  * The search order is:
+ *   DT_RPATH in the referencing file _unless_ DT_RUNPATH is present (1)
+ *   DT_RPATH of the main object if DSO without defined DT_RUNPATH (1)
  *   LD_LIBRARY_PATH
- *   rpath in the referencing file
- *   ldconfig hints
- *   /usr/lib
+ *   DT_RUNPATH in the referencing file
+ *   ldconfig hints (if -z nodefaultlib, filter out /usr/lib from list)
+ *   /usr/lib _unless_ the referencing file is linked with -z nodefaultlib
+ *
+ * (1) Handled in digest_dynamic2 - rpath left NULL if runpath defined.
  */
 static char *
 find_library(const char *xname, const Obj_Entry *refobj)
 {
     char *pathname;
     char *name;
+    bool objgiven = (refobj != NULL);
 
     if (strchr(xname, '/') != NULL) {	/* Hard coded pathname */
 	if (xname[0] != '/' && !trust) {
@@ -1493,26 +1511,31 @@ find_library(const char *xname, const Obj_Entry *refobj)
 	      xname);
 	    return NULL;
 	}
-	if (refobj != NULL && refobj->z_origin)
+	if (objgiven && refobj->z_origin)
 	    return origin_subst(xname, refobj->origin_path);
 	else
 	    return xstrdup(xname);
     }
 
-    if (libmap_disable || (refobj == NULL) ||
+    if (libmap_disable || !objgiven ||
 	(name = lm_find(refobj->path, xname)) == NULL)
 	name = (char *)xname;
 
     dbg(" Searching for \"%s\"", name);
 
-    if ((pathname = search_library_path(name, ld_library_path)) != NULL ||
-      (refobj != NULL &&
+    if ((objgiven &&
       (pathname = search_library_path(name, refobj->rpath)) != NULL) ||
-      (pathname = search_library_path(name, gethints())) != NULL ||
-      (pathname = search_library_path(name, STANDARD_LIBRARY_PATH)) != NULL)
+      (objgiven && (refobj->runpath == NULL) && (refobj != obj_main) &&
+      (pathname = search_library_path(name, obj_main->rpath)) != NULL) ||
+      (pathname = search_library_path(name, ld_library_path)) != NULL ||
+      (objgiven &&
+      (pathname = search_library_path(name, refobj->runpath)) != NULL) ||
+      (pathname = search_library_path(name, gethints(refobj))) != NULL ||
+      (objgiven && !refobj->z_nodeflib &&
+      (pathname = search_library_path(name, STANDARD_LIBRARY_PATH)) != NULL))
 	return pathname;
 
-    if(refobj != NULL && refobj->path != NULL) {
+    if(objgiven && refobj->path != NULL) {
 	_rtld_error("Shared object \"%s\" not found, required by \"%s\"",
 	  name, basename(refobj->path));
     } else {
@@ -1611,9 +1634,10 @@ find_symdef(unsigned long symnum, const Obj_Entry *refobj,
  * Return the search path from the ldconfig hints file, reading it if
  * necessary.  Returns NULL if there are problems with the hints file,
  * or if the search path there is empty.
+ * If DF_1_NODEFLIB flag set, omit STANDARD_LIBRARY_PATH directories
  */
 static const char *
-gethints(void)
+gethints(const Obj_Entry *obj)
 {
     static char *hints;
 
@@ -1640,7 +1664,78 @@ gethints(void)
 	    close(fd);
 	    return NULL;
 	}
-	hints = p;
+	/* skip stdlib if compiled with -z nodeflib */
+	if ((obj != NULL) && obj->z_nodeflib) {
+	    struct fill_search_info_args sargs, hargs;
+	    struct dl_serinfo smeta, hmeta, *SLPinfo, *hintinfo;
+	    struct dl_serpath *SLPpath, *hintpath;
+	    unsigned int SLPndx, hintndx, fndx, fcount;
+	    char *filtered_path;
+	    size_t flen;
+	    bool skip;
+
+	    smeta.dls_size = __offsetof(struct dl_serinfo, dls_serpath);
+	    smeta.dls_cnt  = 0;
+	    hmeta.dls_size = __offsetof(struct dl_serinfo, dls_serpath);
+	    hmeta.dls_cnt  = 0;
+
+	    sargs.request = RTLD_DI_SERINFOSIZE;
+	    sargs.serinfo = &smeta;
+	    hargs.request = RTLD_DI_SERINFOSIZE;
+	    hargs.serinfo = &hmeta;
+
+	    path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &sargs);
+	    path_enumerate(p, fill_search_info, &hargs);
+
+	    SLPinfo = malloc(smeta.dls_size);
+	    hintinfo = malloc(hmeta.dls_size);
+
+	    sargs.request  = RTLD_DI_SERINFO;
+	    sargs.serinfo  = SLPinfo;
+	    sargs.serpath  = &SLPinfo->dls_serpath[0];
+	    sargs.strspace = (char *)&SLPinfo->dls_serpath[smeta.dls_cnt];
+
+	    hargs.request  = RTLD_DI_SERINFO;
+	    hargs.serinfo  = hintinfo;
+	    hargs.serpath  = &hintinfo->dls_serpath[0];
+	    hargs.strspace = (char *)&hintinfo->dls_serpath[hmeta.dls_cnt];
+
+	    path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &sargs);
+	    path_enumerate(p, fill_search_info, &hargs);
+
+	    fndx = 0;
+	    fcount = 0;
+	    filtered_path = xmalloc(hdr.dirlistlen + 1);
+	    hintpath = &hintinfo->dls_serpath[0];
+	    for (hintndx = 0; hintndx < hmeta.dls_cnt; hintndx++) {
+		skip = false;
+		SLPpath = &SLPinfo->dls_serpath[0];
+		for (SLPndx = 0; SLPndx < smeta.dls_cnt; SLPndx++) {
+		    if (strcmp(hintpath->dls_name, SLPpath->dls_name) == 0)
+			skip = true;
+		    SLPpath++;
+		}
+		if (!skip) {
+		    if (fcount > 0) {
+			filtered_path[fndx] = ':';
+			fndx++;
+		    }
+		    fcount++;
+		    flen = strlen(hintpath->dls_name);
+		    strncpy((filtered_path + fndx), hintpath->dls_name, flen);
+		    fndx+= flen;
+		}
+		hintpath++;
+	    }
+	    filtered_path[fndx] = '\0';
+
+	    free(p);
+	    free(SLPinfo);
+	    free(hintinfo);
+	    hints = filtered_path;
+	}
+	else
+	    hints = p;
 	close(fd);
     }
     return hints[0] != '\0' ? hints : NULL;
@@ -1689,6 +1784,7 @@ init_rtld(caddr_t mapbase, Elf_Auxinfo **aux_info)
     Obj_Entry objtmp;	/* Temporary rtld object */
     const Elf_Dyn *dyn_rpath;
     const Elf_Dyn *dyn_soname;
+    const Elf_Dyn *dyn_runpath;
 
     /*
      * Conjure up an Obj_Entry structure for the dynamic linker.
@@ -1705,7 +1801,7 @@ init_rtld(caddr_t mapbase, Elf_Auxinfo **aux_info)
 #endif
     if (RTLD_IS_DYNAMIC()) {
 	objtmp.dynamic = rtld_dynamic(&objtmp);
-	digest_dynamic1(&objtmp, 1, &dyn_rpath, &dyn_soname);
+	digest_dynamic1(&objtmp, 1, &dyn_rpath, &dyn_soname, &dyn_runpath);
 	assert(objtmp.needed == NULL);
 	assert(!objtmp.textrel);
 
@@ -1728,7 +1824,7 @@ init_rtld(caddr_t mapbase, Elf_Auxinfo **aux_info)
 	    osreldate = aux_info[AT_OSRELDATE]->a_un.a_val;
 #endif
 
-    digest_dynamic2(&obj_rtld, dyn_rpath, dyn_soname);
+    digest_dynamic2(&obj_rtld, dyn_rpath, dyn_soname, dyn_runpath);
 
     /* Replace the path with a dynamically allocated copy. */
     obj_rtld.path = xstrdup(PATH_RTLD);
@@ -3048,14 +3144,6 @@ dl_iterate_phdr(__dl_iterate_hdr_callback callback, void *param)
     return (error);
 }
 
-struct fill_search_info_args {
-    int		 request;
-    unsigned int flags;
-    Dl_serinfo  *serinfo;
-    Dl_serpath  *serpath;
-    char	*strspace;
-};
-
 static void *
 fill_search_info(const char *dir, size_t dirlen, void *param)
 {
@@ -3065,7 +3153,7 @@ fill_search_info(const char *dir, size_t dirlen, void *param)
 
     if (arg->request == RTLD_DI_SERINFOSIZE) {
 	arg->serinfo->dls_cnt ++;
-	arg->serinfo->dls_size += sizeof(Dl_serpath) + dirlen + 1;
+	arg->serinfo->dls_size += sizeof(struct dl_serpath) + dirlen + 1;
     } else {
 	struct dl_serpath *s_entry;
 
@@ -3095,10 +3183,12 @@ do_search_info(const Obj_Entry *obj, int request, struct dl_serinfo *info)
     _info.dls_size = __offsetof(struct dl_serinfo, dls_serpath);
     _info.dls_cnt  = 0;
 
-    path_enumerate(ld_library_path, fill_search_info, &args);
     path_enumerate(obj->rpath, fill_search_info, &args);
-    path_enumerate(gethints(), fill_search_info, &args);
-    path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &args);
+    path_enumerate(ld_library_path, fill_search_info, &args);
+    path_enumerate(obj->runpath, fill_search_info, &args);
+    path_enumerate(gethints(obj), fill_search_info, &args);
+    if (!obj->z_nodeflib)
+      path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &args);
 
 
     if (request == RTLD_DI_SERINFOSIZE) {
@@ -3117,20 +3207,25 @@ do_search_info(const Obj_Entry *obj, int request, struct dl_serinfo *info)
     args.serpath  = &info->dls_serpath[0];
     args.strspace = (char *)&info->dls_serpath[_info.dls_cnt];
 
+    args.flags = LA_SER_RUNPATH;
+    if (path_enumerate(obj->rpath, fill_search_info, &args) != NULL)
+	return (-1);
+
     args.flags = LA_SER_LIBPATH;
     if (path_enumerate(ld_library_path, fill_search_info, &args) != NULL)
 	return (-1);
 
     args.flags = LA_SER_RUNPATH;
-    if (path_enumerate(obj->rpath, fill_search_info, &args) != NULL)
+    if (path_enumerate(obj->runpath, fill_search_info, &args) != NULL)
 	return (-1);
 
     args.flags = LA_SER_CONFIG;
-    if (path_enumerate(gethints(), fill_search_info, &args) != NULL)
+    if (path_enumerate(gethints(obj), fill_search_info, &args) != NULL)
 	return (-1);
 
     args.flags = LA_SER_DEFAULT;
-    if (path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &args) != NULL)
+    if (!obj->z_nodeflib &&
+      path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &args) != NULL)
 	return (-1);
     return (0);
 }
