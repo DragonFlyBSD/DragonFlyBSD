@@ -1495,7 +1495,6 @@ vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  *
  * MPSAFE
  */
-/* FIXME: only substract the file size for its last link */
 int
 vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	    struct ucred *cred)
@@ -1516,7 +1515,10 @@ vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 
 	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nremove);
-	VFS_ACCOUNT(nch->mount, va.va_uid, va.va_gid, -va.va_size);
+	/* Only update space counters if this is the last hard link */
+	if ((error == 0) && (va.va_nlink == 1)) {
+		VFS_ACCOUNT(nch->mount, va.va_uid, va.va_gid, -va.va_size);
+	}
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
