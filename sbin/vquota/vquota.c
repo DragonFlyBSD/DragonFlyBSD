@@ -302,7 +302,7 @@ get_dirsize(char* dirname)
 			/* files with more than one hard link: */
 			/* process them only once */
 			if (p->fts_statp->st_nlink > 1)
-				if (hl_register(file_inode) == false)
+				if (hl_register(file_inode))
 					break;
 
 			global_size += file_size;
