@@ -496,9 +496,9 @@ acpi_hp_attach(device_t dev)
 	sc->cmi_order_size = -1;
 	sc->verbose = 0;
 	memset(sc->cmi_order, 0, sizeof(sc->cmi_order));
-	acpi_sc = acpi_device_get_parent_softc(dev);
-
 	sc->wmi_dev = device_get_parent(dev);
+	acpi_sc = acpi_device_get_parent_softc(sc->wmi_dev);
+
 	if (!ACPI_WMI_PROVIDES_GUID_STRING(sc->wmi_dev,
 	    ACPI_HP_WMI_BIOS_GUID)) {
 		device_printf(dev,
