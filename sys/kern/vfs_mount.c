@@ -864,13 +864,17 @@ int
 mountlist_exists(struct mount *mp)
 {
 	int node_exists = 0;
-	struct mountscan_info *msi;
+	struct mountscan_info msi;
+	struct mount* lmp;
 
 	lwkt_gettoken(&mountlist_token);
-	TAILQ_FOREACH(msi, &mountscan_list, msi_entry) {
-		if (msi->msi_node == mp) {
+	msi.msi_node = TAILQ_FIRST(&mountlist);
+	while ((lmp = msi.msi_node) != NULL) {
+		if (lmp == mp) {
 			node_exists = 1;
+			break;
 		}
+		msi.msi_node = TAILQ_NEXT(lmp, mnt_list);
 	}
 	lwkt_reltoken(&mountlist_token);
 	return(node_exists);
