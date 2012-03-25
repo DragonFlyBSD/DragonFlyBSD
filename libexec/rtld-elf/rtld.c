@@ -4056,7 +4056,7 @@ tls_get_addr_common(Elf_Addr** dtvp, int index, size_t offset)
 	int to_copy;
 
 	wlock_acquire(rtld_bind_lock, &lockstate);
-	newdtv = calloc(1, (tls_max_index + 2) * sizeof(Elf_Addr));
+	newdtv = xcalloc(tls_max_index + 2, sizeof(Elf_Addr));
 	to_copy = dtv[1];
 	if (to_copy > tls_max_index)
 	    to_copy = tls_max_index;
@@ -4428,7 +4428,7 @@ rtld_verify_object_versions(Obj_Entry *obj)
      * way.
      */
     obj->vernum = maxvernum + 1;
-    obj->vertab = calloc(obj->vernum, sizeof(Ver_Entry));
+    obj->vertab = xcalloc(obj->vernum, sizeof(Ver_Entry));
 
     vd = obj->verdef;
     while (vd != NULL) {

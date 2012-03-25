@@ -46,7 +46,7 @@
 #endif
 
 #define NEW(type)	((type *) xmalloc(sizeof(type)))
-#define CNEW(type)	((type *) xcalloc(sizeof(type)))
+#define CNEW(type)	((type *) xcalloc(1, sizeof(type)))
 
 /* We might as well do booleans like C++. */
 typedef unsigned char bool;
@@ -330,7 +330,7 @@ typedef struct Struct_SymLook {
 void _rtld_error(const char *, ...) __printflike(1, 2);
 const char *rtld_strerror(int);
 Obj_Entry *map_object(int, const char *, const struct stat *);
-void *xcalloc(size_t);
+void *xcalloc(size_t, size_t);
 void *xmalloc(size_t);
 char *xstrdup(const char *);
 extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
