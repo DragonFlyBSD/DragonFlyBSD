@@ -2725,6 +2725,17 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 
 				r->rblk_start = ntohl(r->rblk_start);
 				r->rblk_end = ntohl(r->rblk_end);
+
+				if (SEQ_LEQ(r->rblk_end, r->rblk_start)) {
+					/*
+					 * Invalid SACK block; discard all
+					 * SACK blocks
+					 */
+					to->to_nsackblocks = 0;
+					to->to_sackblocks = NULL;
+					to->to_flags &= ~TOF_SACK;
+					break;
+				}
 			}
 			break;
 #ifdef TCP_SIGNATURE
