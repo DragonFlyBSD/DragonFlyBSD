@@ -859,22 +859,22 @@ mountlist_remove(struct mount *mp)
  * Checks if a node exists in the mountlist.
  * This function is mainly used by VFS accounting code to check if a
  * cached nullfs struct mount pointer is still valid at use time
+ *
+ * FIXME: there is no warranty the mp passed to that function
+ * will be the same one used by VFS_ACCOUNT() later
  */
 int
 mountlist_exists(struct mount *mp)
 {
 	int node_exists = 0;
-	struct mountscan_info msi;
 	struct mount* lmp;
 
 	lwkt_gettoken(&mountlist_token);
-	msi.msi_node = TAILQ_FIRST(&mountlist);
-	while ((lmp = msi.msi_node) != NULL) {
+	TAILQ_FOREACH(lmp, &mountlist, mnt_list) {
 		if (lmp == mp) {
 			node_exists = 1;
 			break;
 		}
-		msi.msi_node = TAILQ_NEXT(lmp, mnt_list);
 	}
 	lwkt_reltoken(&mountlist_token);
 	return(node_exists);
