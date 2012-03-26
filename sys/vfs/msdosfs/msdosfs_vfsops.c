@@ -542,7 +542,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 		    && !bcmp(fp->fsisig3, "\0\0\125\252", 4)
 		    && !bcmp(fp->fsisig4, "\0\0\125\252", 4)) {
 			pmp->pm_nxtfree = getulong(fp->fsinxtfree);
-			if (pmp->pm_nxtfree == 0xffffffff)
+			if (pmp->pm_nxtfree == (u_long) -1)
 				pmp->pm_nxtfree = CLUST_FIRST;
 		} else
 			pmp->pm_fsinfo = 0;
