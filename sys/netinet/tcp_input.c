@@ -1170,6 +1170,9 @@ after_listen:
 					if (to.to_tsecr < tp->t_rexmtTS) {
 						tcp_revert_congestion_state(tp);
 						++tcpstat.tcps_eifeldetected;
+						if (tp->t_rxtshift != 1 ||
+						    ticks >= tp->t_badrxtwin)
+							++tcpstat.tcps_rttcantdetect;
 					}
 				} else if (tp->t_rxtshift == 1 &&
 					   ticks < tp->t_badrxtwin) {
@@ -2071,7 +2074,7 @@ process_ACK:
 			if (to.to_tsecr < tp->t_rexmtTS) {
 				++tcpstat.tcps_eifeldetected;
 				tcp_revert_congestion_state(tp);
-				if (tp->t_rxtshift == 1 &&
+				if (tp->t_rxtshift != 1 ||
 				    ticks >= tp->t_badrxtwin)
 					++tcpstat.tcps_rttcantdetect;
 			}
