@@ -92,4 +92,4 @@ Boston, MA 02111-1307, USA.  */
    program, which avoids race conditions if the program has forked.  */
 #define TARGET_HAS_F_SETLKW
 
-#define	DFBSD_MAJOR	1
+#define	DFBSD_MAJOR	3

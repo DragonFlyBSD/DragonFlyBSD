@@ -133,22 +133,16 @@ is built with the --enable-threads configure-time option.}		\
 #define LINK_LIBGCC_SPEC ""
 #define LIBGCC_SPEC "%{shared: -lgcc_pic} %{!shared: -lgcc}"
 
-#define PRE_LIB_SPEC "							\
-  %{pg: -L"PREFIX2"/lib/gcc41/profile 				\
-    %{!static: -rpath /usr/lib/gcc41/profile 				\
-      -rpath-link "PREFIX2"/lib/gcc41/profile}}			\
-  %{g: -L"PREFIX2"/lib/gcc41/debug 					\
-    %{!static: -rpath /usr/lib/gcc41/debug				\
-      -rpath-link "PREFIX2"/lib/gcc41/debug}}				\
-  -L"PREFIX2"/lib/gcc41							\
-  %{!static: -rpath /usr/lib/gcc41  -rpath-link "PREFIX2"/lib/gcc41} 	\
-  %{pg: -L"PREFIX2"/lib/profile 					\
-    %{!static: -rpath /usr/lib/profile				\
-      -rpath-link "PREFIX2"/lib/profile}} 				\
-  %{g: -L"PREFIX2"/lib/debug 						\
-    %{!static: -rpath /usr/lib/debug -rpath-link "PREFIX2"/lib/debug}} 	\
-  %{!static: -rpath /usr/lib -rpath-link "PREFIX2"/lib} 		\
-  "
+#define PRE_LIB_SPEC \
+" %{pg: -L"PREFIX2"/lib/gcc41/profile \
+   %{!static: -rpath /usr/lib/gcc41/profile} \
+  } \
+  -L"PREFIX2"/lib/gcc41	\
+  %{!static: -rpath /usr/lib/gcc41} \
+  %{pg: -L"PREFIX2"/lib/profile \
+   %{!static: -rpath /usr/lib/profile} \
+  } \
+"
 
 #define DFBSD_LINK_COMMAND_SPEC "\
 %{!fsyntax-only:%{!c:%{!M:%{!MM:%{!E:%{!S:\

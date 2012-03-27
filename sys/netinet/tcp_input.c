@@ -1170,6 +1170,9 @@ after_listen:
 					if (to.to_tsecr < tp->t_rexmtTS) {
 						tcp_revert_congestion_state(tp);
 						++tcpstat.tcps_eifeldetected;
+						if (tp->t_rxtshift != 1 ||
+						    ticks >= tp->t_badrxtwin)
+							++tcpstat.tcps_rttcantdetect;
 					}
 				} else if (tp->t_rxtshift == 1 &&
 					   ticks < tp->t_badrxtwin) {
@@ -2071,7 +2074,7 @@ process_ACK:
 			if (to.to_tsecr < tp->t_rexmtTS) {
 				++tcpstat.tcps_eifeldetected;
 				tcp_revert_congestion_state(tp);
-				if (tp->t_rxtshift == 1 &&
+				if (tp->t_rxtshift != 1 ||
 				    ticks >= tp->t_badrxtwin)
 					++tcpstat.tcps_rttcantdetect;
 			}
@@ -2683,6 +2686,17 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 
 				r->rblk_start = ntohl(r->rblk_start);
 				r->rblk_end = ntohl(r->rblk_end);
+
+				if (SEQ_LEQ(r->rblk_end, r->rblk_start)) {
+					/*
+					 * Invalid SACK block; discard all
+					 * SACK blocks
+					 */
+					to->to_nsackblocks = 0;
+					to->to_sackblocks = NULL;
+					to->to_flags &= ~TOF_SACK;
+					break;
+				}
 			}
 			break;
 #ifdef TCP_SIGNATURE

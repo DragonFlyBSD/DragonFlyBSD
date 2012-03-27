@@ -452,7 +452,8 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 	p(tcps_sndrtobad, "\t\t%lu spurious RTO retransmit%s\n");
 	p2a(tcps_sndfastrexmitbad, tcps_sndearlyrexmitbad,
 		"\t\t%lu spurious Fast Retransmit%s (%lu early)\n");
-	p(tcps_eifeldetected, "\t\t%lu Eifel-detected spurious retransmit%s\n");
+	p2a(tcps_eifeldetected, tcps_rttcantdetect,
+		"\t\t%lu Eifel-detected spurious retransmit%s (%lu non-RTT)\n");
 	p(tcps_rttdetected, "\t\t%lu RTT-detected spurious retransmit%s\n");
 	p(tcps_mturesent, "\t\t%lu resend%s initiated by MTU discovery\n");
 	p2a(tcps_sndacks, tcps_delack,

@@ -46,7 +46,7 @@
 #endif
 
 #define NEW(type)	((type *) xmalloc(sizeof(type)))
-#define CNEW(type)	((type *) xcalloc(sizeof(type)))
+#define CNEW(type)	((type *) xcalloc(1, sizeof(type)))
 
 /* We might as well do booleans like C++. */
 typedef unsigned char bool;
@@ -204,6 +204,7 @@ typedef struct Struct_Obj_Entry {
     const Elf_Hashelt *chain_zero_gnu;	/* GNU hash table value array (Zeroed) */
 
     char *rpath;		/* Search path specified in object */
+    char *runpath;		/* Search path with different priority */
     Needed_Entry *needed;	/* Shared objects needed by this one (%) */
     Needed_Entry *needed_filtees;
     Needed_Entry *needed_aux_filtees;
@@ -226,6 +227,7 @@ typedef struct Struct_Obj_Entry {
 
     bool mainprog : 1;		/* True if this is the main program */
     bool rtld : 1;		/* True if this is the dynamic linker */
+    bool relocated : 1;		/* True if processed by relocate_objects() */
     bool textrel : 1;		/* True if there are relocations to text seg */
     bool symbolic : 1;		/* True if generated with "-Bsymbolic" */
     bool bind_now : 1;		/* True if all relocations should be made first */
@@ -238,6 +240,7 @@ typedef struct Struct_Obj_Entry {
     bool z_nodelete : 1;	/* Do not unload the object and dependencies */
     bool z_noopen : 1;		/* Do not load on dlopen */
     bool z_loadfltr : 1;	/* Immediately load filtees */
+    bool z_nodeflib : 1;	/* Don't search default /usr/lib path */
     bool ref_nodel : 1;		/* Refcount increased to prevent dlclose */
     bool init_scanned: 1;	/* Object is already on init list. */
     bool on_fini_list: 1;	/* Object is already on fini list. */
@@ -267,6 +270,7 @@ typedef struct Struct_Obj_Entry {
 #define SYMLOOK_IN_PLT	0x01	/* Lookup for PLT symbol */
 #define SYMLOOK_DLSYM	0x02	/* Return newest versioned symbol. Used by
 				   dlsym. */
+#define	SYMLOOK_EARLY	0x04	/* Symlook is done during initialization. */
 
 /* Flags for load_object(). */
 #define	RTLD_LO_NOLOAD	0x01	/* dlopen() specified RTLD_NOLOAD. */
@@ -274,6 +278,8 @@ typedef struct Struct_Obj_Entry {
 #define	RTLD_LO_TRACE	0x04	/* Only tracing. */
 #define	RTLD_LO_NODELETE 0x08	/* Loaded object cannot be closed. */
 #define	RTLD_LO_FILTEES 0x10	/* Loading filtee. */
+#define	RTLD_LO_EARLY	0x20	/* Do not call ctors, postpone it to the
+				   initialization during the image start. */
 
 /*
  * Symbol cache entry used during relocation to avoid multiple lookups
@@ -299,6 +305,14 @@ struct Struct_RtldLockState {
 	sigjmp_buf env;
 };
 
+struct fill_search_info_args {
+	int request;
+	unsigned int flags;
+	struct dl_serinfo *serinfo;
+	struct dl_serpath *serpath;
+	char *strspace;
+};
+
 /*
  * The pack of arguments and results for the symbol lookup functions.
  */
@@ -316,7 +330,7 @@ typedef struct Struct_SymLook {
 void _rtld_error(const char *, ...) __printflike(1, 2);
 const char *rtld_strerror(int);
 Obj_Entry *map_object(int, const char *, const struct stat *);
-void *xcalloc(size_t);
+void *xcalloc(size_t, size_t);
 void *xmalloc(size_t);
 char *xstrdup(const char *);
 extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
@@ -354,11 +368,12 @@ const Ver_Entry *fetch_ventry(const Obj_Entry *obj, unsigned long);
  * MD function declarations.
  */
 int do_copy_relocations(Obj_Entry *);
-int reloc_non_plt(Obj_Entry *, Obj_Entry *, struct Struct_RtldLockState *);
+int reloc_non_plt(Obj_Entry *, Obj_Entry *, int flags,
+    struct Struct_RtldLockState *);
 int reloc_plt(Obj_Entry *);
-int reloc_jmpslots(Obj_Entry *, struct Struct_RtldLockState *);
+int reloc_jmpslots(Obj_Entry *, int flags, struct Struct_RtldLockState *);
 int reloc_iresolve(Obj_Entry *, struct Struct_RtldLockState *);
-int reloc_gnu_ifunc(Obj_Entry *, struct Struct_RtldLockState *);
+int reloc_gnu_ifunc(Obj_Entry *, int flags, struct Struct_RtldLockState *);
 void allocate_initial_tls(Obj_Entry *);
 
 #endif /* } */

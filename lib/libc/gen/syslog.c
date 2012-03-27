@@ -265,30 +265,39 @@ vsyslog(int pri, const char *fmt, va_list ap)
 	 *  1) syslogd was restarted
 	 *  2) /var/run/log is out of socket buffer space, which
 	 *     in most cases means local DoS.
+	 *  3) syslogd itself got stuck.
+	 *
 	 * We attempt to reconnect to /var/run/log to take care of
 	 * case #1 and keep send()ing data to cover case #2
 	 * to give syslogd a chance to empty its socket buffer.
+	 * However, to deal with #3 we retry no more than 10 times
+	 * for up to one second before giving up.  Otherwise a
+	 * broken syslogd will completely and utterly break the
+	 * entire system == bad.
 	 *
 	 * If we are working with a priveleged socket, then take
 	 * only one attempt, because we don't want to freeze a
 	 * critical application like su(1) or sshd(8).
 	 *
 	 */
-
 	if (send(LogFile, tbuf, cnt, 0) < 0) {
+		int maxtries;
+
 		if (errno != ENOBUFS) {
 			disconnectlog();
 			connectlog();
 		}
-		do {
-			_usleep(1);
+		for (maxtries = 10; maxtries; --maxtries) {
 			if (send(LogFile, tbuf, cnt, 0) >= 0) {
 				THREAD_UNLOCK();
 				return;
 			}
 			if (status == CONNPRIV)
 				break;
-		} while (errno == ENOBUFS);
+			if (errno != ENOBUFS)
+				break;
+			_usleep(1000000 / 10);
+		}
 	} else {
 		THREAD_UNLOCK();
 		return;
@@ -299,7 +308,7 @@ vsyslog(int pri, const char *fmt, va_list ap)
 	 * as a blocking console should not stop other processes.
 	 * Make sure the error reported is the one from the syslogd failure.
 	 */
-	if (LogStat & LOG_CONS &&
+	if ((LogStat & LOG_CONS) &&
 	    (fd = _open(_PATH_CONSOLE, O_WRONLY|O_NONBLOCK, 0)) >= 0) {
 		struct iovec iov[2];
 		struct iovec *v = iov;

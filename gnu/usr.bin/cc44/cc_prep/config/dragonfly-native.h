@@ -6,18 +6,19 @@
 #define LIBGCC_SPEC "%{shared: -lgcc_pic} %{!shared: -lgcc}"
 
 #undef	LINK_SPEC
-#define LINK_SPEC							\
-    DFBSD_LINK_SPEC "							\
-    %{pg: -L"PREFIX2"/lib/gcc"GCCSHORTVER"/profile			\
-      %{!static: -rpath /usr/lib/gcc"GCCSHORTVER"/profile		\
-        -rpath-link "PREFIX2"/lib/gcc"GCCSHORTVER"/profile}}		\
-    -L"PREFIX2"/lib/gcc"GCCSHORTVER"					\
-    %{!static: -rpath /usr/lib/gcc"GCCSHORTVER" -rpath-link "PREFIX2"/lib/gcc"GCCSHORTVER"}	\
-    %{pg: -L"PREFIX2"/lib/profile					\
-      %{!static: -rpath /usr/lib/profile				\
-        -rpath-link "PREFIX2"/lib/profile}}	 			\
-    %{!static: -rpath /usr/lib -rpath-link "PREFIX2"/lib} 		\
-  "
+#define LINK_SPEC DFBSD_LINK_SPEC \
+"%{pg: -L"PREFIX2"/lib/gcc"GCCSHORTVER"/profile \
+  %{!static: -rpath /usr/lib/gcc"GCCSHORTVER"/profile} \
+ } \
+ -L"PREFIX2"/lib/gcc"GCCSHORTVER" \
+ %{!static: -rpath /usr/lib/gcc"GCCSHORTVER"} \
+ %{pg: \
+  %{!nostdlib: \
+   %{!nodefaultlibs: -L"PREFIX2"/lib/profile \
+    %{!static: -rpath /usr/lib/profile} \
+   } \
+  } \
+ }"
 
 /*#define TARGET_SYSTEM_ROOT_RELOCATABLE */
 /*#define TARGET_SYSTEM_ROOT		"/"*/
