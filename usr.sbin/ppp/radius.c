@@ -559,7 +559,7 @@ radius_Timeout(void *v)
  * Time to call rad_continue_send_request() - something to read.
  */
 static void
-radius_Read(struct fdescriptor *d, struct bundle *bundle, const fd_set *fdset)
+radius_Read(struct fdescriptor *d, struct bundle *bundle __unused, const fd_set *fdset __unused)
 {
   radius_Continue(descriptor2radius(d), 1);
 }
@@ -568,7 +568,7 @@ radius_Read(struct fdescriptor *d, struct bundle *bundle, const fd_set *fdset)
  * Behave as a struct fdescriptor (descriptor.h)
  */
 static int
-radius_UpdateSet(struct fdescriptor *d, fd_set *r, fd_set *w, fd_set *e, int *n)
+radius_UpdateSet(struct fdescriptor *d, fd_set *r, fd_set *w __unused, fd_set *e __unused, int *n)
 {
   struct radius *rad = descriptor2radius(d);
 
@@ -598,7 +598,7 @@ radius_IsSet(struct fdescriptor *d, const fd_set *fdset)
  * Behave as a struct fdescriptor (descriptor.h)
  */
 static int
-radius_Write(struct fdescriptor *d, struct bundle *bundle, const fd_set *fdset)
+radius_Write(struct fdescriptor *d __unused, struct bundle *bundle __unused, const fd_set *fdset __unused)
 {
   /* We never want to write here ! */
   log_Printf(LogALERT, "radius_Write: Internal error: Bad call !\n");

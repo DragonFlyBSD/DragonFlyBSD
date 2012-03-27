@@ -71,7 +71,7 @@
 #define MAX_VJHEADER 16		/* Maximum size of compressed header */
 
 static struct mbuf *
-vj_LayerPush(struct bundle *bundle, struct link *l, struct mbuf *bp, int pri,
+vj_LayerPush(struct bundle *bundle, struct link *l __unused, struct mbuf *bp, int pri __unused,
              u_short *proto)
 {
   int type;
@@ -163,7 +163,7 @@ VjUncompressTcp(struct ipcp *ipcp, struct mbuf *bp, u_char type)
 }
 
 static struct mbuf *
-vj_LayerPull(struct bundle *bundle, struct link *l, struct mbuf *bp,
+vj_LayerPull(struct bundle *bundle, struct link *l __unused, struct mbuf *bp,
              u_short *proto)
 {
   u_char type;

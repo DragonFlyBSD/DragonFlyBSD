@@ -139,7 +139,7 @@ InterpretArg(const char *from, char *to, size_t tosiz)
         if (*to == '\0')
           *to++ = '$';
         else if ((env = getenv(to)) != NULL) {
-          if (endto - to < strlen(env))
+          if (endto - to < (int)strlen(env))
             return NULL;
           strncpy(to, env, endto - to);
           *endto = '\0';
@@ -149,7 +149,7 @@ InterpretArg(const char *from, char *to, size_t tosiz)
 
       case '~':
         ptr = strchr(++from, '/');
-        len = ptr ? ptr - from : strlen(from);
+        len = ptr ? (size_t)(ptr - from) : strlen(from);
         if (len == 0)
           pwd = getpwuid(ID0realuid());
         else {
@@ -164,7 +164,7 @@ InterpretArg(const char *from, char *to, size_t tosiz)
         if (pwd == NULL)
           *to++ = '~';
         else {
-          if (endto - to < strlen(pwd->pw_dir))
+          if (endto - to < (int)strlen(pwd->pw_dir))
             return NULL;
           strncpy(to, pwd->pw_dir, endto - to);
           *endto = '\0';

@@ -374,7 +374,8 @@ iface_addr_Add(const char *name, struct iface_addr *addr, int s)
 void
 iface_Clear(struct iface *iface, struct ncp *ncp, int family, int how)
 {
-  int addrs, af, inskip, in6skip, n, s4 = -1, s6 = -1, *s;
+  int addrs, af, inskip, in6skip, s4 = -1, s6 = -1, *s;
+  unsigned n;
 
   if (iface->addrs) {
     inskip = in6skip = how == IFACE_CLEAR_ALL ? 0 : 1;
@@ -432,7 +433,8 @@ int
 iface_Add(struct iface *iface, struct ncp *ncp, const struct ncprange *ifa,
           const struct ncpaddr *peer, int how)
 {
-  int af, n, removed, s;
+  int af, removed, s;
+  unsigned n;
   struct ncpaddr ncplocal;
   struct iface_addr *addr, newaddr;
 
@@ -516,7 +518,8 @@ int
 iface_Delete(struct iface *iface, struct ncp *ncp, const struct ncpaddr *del)
 {
   struct ncpaddr found;
-  int n, res, s;
+  unsigned n;
+  int res, s;
 
   if ((s = ID0socket(ncpaddr_family(del), SOCK_DGRAM, 0)) == -1) {
     log_Printf(LogERROR, "iface_Delete: socket(): %s\n", strerror(errno));
@@ -640,7 +643,8 @@ iface_Show(struct cmdargs const *arg)
 {
   struct ncpaddr ncpaddr;
   struct iface *iface = arg->bundle->iface, *current;
-  int f, flags;
+  unsigned f;
+  int flags;
 #ifndef NOINET6
   int scopeid, width;
 #endif
@@ -664,7 +668,7 @@ iface_Show(struct cmdargs const *arg)
                   flags);
 #endif
 
-  prompt_Printf(arg->prompt, "> mtu %d has %d address%s:\n", iface->mtu,
+  prompt_Printf(arg->prompt, "> mtu %lu has %d address%s:\n", iface->mtu,
                 iface->addrs, iface->addrs == 1 ? "" : "es");
 
   for (f = 0; f < iface->addrs; f++) {

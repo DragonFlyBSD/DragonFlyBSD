@@ -238,8 +238,7 @@ again:
 }
 
 int
-auth_Validate(struct bundle *bundle, const char *name,
-             const char *key, struct physical *physical)
+auth_Validate(struct bundle *bundle, const char *name, const char *key)
 {
   /* Used by PAP routines */
 
@@ -290,8 +289,7 @@ again:
 }
 
 char *
-auth_GetSecret(struct bundle *bundle, const char *name, int len,
-              struct physical *physical)
+auth_GetSecret(const char *name, size_t len)
 {
   /* Used by CHAP routines */
 
@@ -390,7 +388,7 @@ auth_StopTimer(struct authinfo *authp)
 struct mbuf *
 auth_ReadHeader(struct authinfo *authp, struct mbuf *bp)
 {
-  int len;
+  size_t len;
 
   len = m_length(bp);
   if (len >= sizeof authp->in.hdr) {
@@ -398,11 +396,11 @@ auth_ReadHeader(struct authinfo *authp, struct mbuf *bp)
     if (len >= ntohs(authp->in.hdr.length))
       return bp;
     authp->in.hdr.length = htons(0);
-    log_Printf(LogWARN, "auth_ReadHeader: Short packet (%d > %d) !\n",
+    log_Printf(LogWARN, "auth_ReadHeader: Short packet (%u > %zu) !\n",
                ntohs(authp->in.hdr.length), len);
   } else {
     authp->in.hdr.length = htons(0);
-    log_Printf(LogWARN, "auth_ReadHeader: Short packet header (%d > %d) !\n",
+    log_Printf(LogWARN, "auth_ReadHeader: Short packet header (%u > %zu) !\n",
                (int)(sizeof authp->in.hdr), len);
   }
 
@@ -411,15 +409,15 @@ auth_ReadHeader(struct authinfo *authp, struct mbuf *bp)
 }
 
 struct mbuf *
-auth_ReadName(struct authinfo *authp, struct mbuf *bp, int len)
+auth_ReadName(struct authinfo *authp, struct mbuf *bp, size_t len)
 {
   if (len > sizeof authp->in.name - 1)
-    log_Printf(LogWARN, "auth_ReadName: Name too long (%d) !\n", len);
+    log_Printf(LogWARN, "auth_ReadName: Name too long (%zu) !\n", len);
   else {
-    int mlen = m_length(bp);
+    size_t mlen = m_length(bp);
 
     if (len > mlen)
-      log_Printf(LogWARN, "auth_ReadName: Short packet (%d > %d) !\n",
+      log_Printf(LogWARN, "auth_ReadName: Short packet (%zu > %zu) !\n",
                  len, mlen);
     else {
       bp = mbuf_Read(bp, (u_char *)authp->in.name, len);

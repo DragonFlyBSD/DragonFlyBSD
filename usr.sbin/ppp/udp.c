@@ -74,7 +74,7 @@ struct udpdevice {
 
 #define device2udp(d) ((d)->type == UDP_DEVICE ? (struct udpdevice *)d : NULL)
 
-int
+unsigned
 udp_DeviceSize(void)
 {
   return sizeof(struct udpdevice);
@@ -139,7 +139,7 @@ udp_Free(struct physical *p)
 
 static void
 udp_device2iov(struct device *d, struct iovec *iov, int *niov,
-               int maxiov, int *auxfd, int *nauxfd)
+               int maxiov __unused, int *auxfd __unused, int *nauxfd __unused)
 {
   int sz = physical_MaxDeviceSize();
 
@@ -175,7 +175,7 @@ static const struct device baseudpdevice = {
 
 struct device *
 udp_iov2device(int type, struct physical *p, struct iovec *iov, int *niov,
-               int maxiov, int *auxfd, int *nauxfd)
+               int maxiov __unused, int *auxfd __unused, int *nauxfd __unused)
 {
   if (type == UDP_DEVICE) {
     struct udpdevice *dev = (struct udpdevice *)iov[(*niov)++].iov_base;

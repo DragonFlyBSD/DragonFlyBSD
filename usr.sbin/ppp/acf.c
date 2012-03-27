@@ -58,8 +58,8 @@ acf_WrapperOctets(struct lcp *lcp, u_short proto)
 }
 
 static struct mbuf *
-acf_LayerPush(struct bundle *b, struct link *l, struct mbuf *bp,
-              int pri, u_short *proto)
+acf_LayerPush(struct bundle *b __unused, struct link *l, struct mbuf *bp,
+              int pri __unused, u_short *proto)
 {
   const u_char cp[2] = { HDLC_ADDR, HDLC_UI };
 
@@ -72,7 +72,8 @@ acf_LayerPush(struct bundle *b, struct link *l, struct mbuf *bp,
 }
 
 static struct mbuf *
-acf_LayerPull(struct bundle *b, struct link *l, struct mbuf *bp, u_short *proto)
+acf_LayerPull(struct bundle *b __unused, struct link *l, struct mbuf *bp,
+	      u_short *proto __unused)
 {
   struct physical *p = link2physical(l);
   u_char cp[2];

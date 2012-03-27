@@ -67,8 +67,8 @@ DeflateResetOutput(void *v)
 }
 
 static struct mbuf *
-DeflateOutput(void *v, struct ccp *ccp, struct link *l, int pri, u_short *proto,
-              struct mbuf *mp)
+DeflateOutput(void *v, struct ccp *ccp, struct link *l __unused,
+	      int pri __unused, u_short *proto, struct mbuf *mp)
 {
   struct deflate_state *state = (struct deflate_state *)v;
   u_char *wp, *rp;
@@ -441,7 +441,7 @@ DeflateDispOpts(struct fsm_opt *o)
 }
 
 static void
-DeflateInitOptsOutput(struct bundle *bundle, struct fsm_opt *o,
+DeflateInitOptsOutput(struct bundle *bundle __unused, struct fsm_opt *o,
                       const struct ccp_config *cfg)
 {
   o->hdr.len = 4;
@@ -450,8 +450,8 @@ DeflateInitOptsOutput(struct bundle *bundle, struct fsm_opt *o,
 }
 
 static int
-DeflateSetOptsOutput(struct bundle *bundle, struct fsm_opt *o,
-                     const struct ccp_config *cfg)
+DeflateSetOptsOutput(struct bundle *bundle __unused, struct fsm_opt *o,
+                     const struct ccp_config *cfg __unused)
 {
   if (o->hdr.len != 4 || (o->data[0] & 15) != 8 || o->data[1] != '\0')
     return MODE_REJ;
@@ -465,7 +465,7 @@ DeflateSetOptsOutput(struct bundle *bundle, struct fsm_opt *o,
 }
 
 static int
-DeflateSetOptsInput(struct bundle *bundle, struct fsm_opt *o,
+DeflateSetOptsInput(struct bundle *bundle __unused, struct fsm_opt *o,
                     const struct ccp_config *cfg)
 {
   int want;
@@ -487,7 +487,7 @@ DeflateSetOptsInput(struct bundle *bundle, struct fsm_opt *o,
 }
 
 static void *
-DeflateInitInput(struct bundle *bundle, struct fsm_opt *o)
+DeflateInitInput(struct bundle *bundle __unused, struct fsm_opt *o)
 {
   struct deflate_state *state;
 
@@ -510,7 +510,7 @@ DeflateInitInput(struct bundle *bundle, struct fsm_opt *o)
 }
 
 static void *
-DeflateInitOutput(struct bundle *bundle, struct fsm_opt *o)
+DeflateInitOutput(struct bundle *bundle __unused, struct fsm_opt *o)
 {
   struct deflate_state *state;
 
