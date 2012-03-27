@@ -711,6 +711,10 @@ send:
 		else if (SEQ_LT(tp->snd_nxt, tp->snd_max)) {
 			if (tp->snd_nxt == tp->snd_una)
 				tp->snd_max_rexmt = tp->snd_max;
+			if (nsacked) {
+				tcpstat.tcps_sndsackrtopack++;
+				tcpstat.tcps_sndsackrtobyte += len;
+			}
 			tcpstat.tcps_sndrexmitpack++;
 			tcpstat.tcps_sndrexmitbyte += len;
 		} else {
