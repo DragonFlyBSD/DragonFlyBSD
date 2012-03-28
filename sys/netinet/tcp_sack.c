@@ -735,7 +735,9 @@ tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen)
 		while (q != NULL &&
 		    TCP_MAXOLEN - optlen >= TCPOLEN_SACK_BLOCK) {
 			*lp++ = htonl(q->tqe_th->th_seq);
-			*lp++ = htonl(q->tqe_th->th_seq + q->tqe_len);
+			*lp++ = htonl(TCP_SACK_BLKEND(
+			    q->tqe_th->th_seq + q->tqe_len,
+			    q->tqe_th->th_flags));
 			optlen += TCPOLEN_SACK_BLOCK;
 			q = LIST_NEXT(q, tqe_q);
 		}

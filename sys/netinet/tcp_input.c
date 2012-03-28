@@ -343,8 +343,9 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			tp->encloseblk.rblk_start = p->tqe_th->th_seq;
 			if (i >= *tlenp) {
 				/* preceding encloses incoming segment */
-				tp->encloseblk.rblk_end = p->tqe_th->th_seq +
-				    p->tqe_len;
+				tp->encloseblk.rblk_end = TCP_SACK_BLKEND(
+				    p->tqe_th->th_seq + p->tqe_len,
+				    p->tqe_th->th_flags);
 				tcpstat.tcps_rcvduppack++;
 				tcpstat.tcps_rcvdupbyte += *tlenp;
 				m_freem(m);
@@ -362,8 +363,8 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			*tlenp -= i;
 			th->th_seq += i;
 			/* incoming segment end is enclosing block end */
-			tp->encloseblk.rblk_end = th->th_seq + *tlenp +
-			    ((th->th_flags & TH_FIN) != 0);
+			tp->encloseblk.rblk_end = TCP_SACK_BLKEND(
+			    th->th_seq + *tlenp, th->th_flags);
 			/* trim end of reported D-SACK block */
 			tp->reportblk.rblk_end = th->th_seq;
 		}
@@ -378,6 +379,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	while (q) {
 		tcp_seq_diff_t i = (th->th_seq + *tlenp) - q->tqe_th->th_seq;
 		tcp_seq qend = q->tqe_th->th_seq + q->tqe_len;
+		tcp_seq qend_sack = TCP_SACK_BLKEND(qend, q->tqe_th->th_flags);
 		struct tseg_qent *nq;
 
 		if (i <= 0)
@@ -389,9 +391,9 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			tp->reportblk.rblk_start = q->tqe_th->th_seq;
 		}
 		if ((tp->t_flags & TF_ENCLOSESEG) &&
-		    SEQ_GT(qend, tp->encloseblk.rblk_end)) {
+		    SEQ_GT(qend_sack, tp->encloseblk.rblk_end)) {
 			/* extend enclosing block if one exists */
-			tp->encloseblk.rblk_end = qend;
+			tp->encloseblk.rblk_end = qend_sack;
 		}
 		if (i < q->tqe_len) {
 			q->tqe_th->th_seq += i;
@@ -416,18 +418,19 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	/* check if can coalesce with following segment */
 	if (q != NULL && (th->th_seq + *tlenp == q->tqe_th->th_seq)) {
 		tcp_seq tend = te->tqe_th->th_seq + te->tqe_len;
+		tcp_seq tend_sack = TCP_SACK_BLKEND(tend, te->tqe_th->th_flags);
 
 		te->tqe_len += q->tqe_len;
 		if (q->tqe_th->th_flags & TH_FIN)
 			te->tqe_th->th_flags |= TH_FIN;
 		m_cat(te->tqe_m, q->tqe_m);
-		tp->encloseblk.rblk_end = tend;
+		tp->encloseblk.rblk_end = tend_sack;
 		/*
 		 * When not reporting a duplicate segment, use
 		 * the larger enclosing block as the SACK block.
 		 */
 		if (!(tp->t_flags & TF_DUPSEG))
-			tp->reportblk.rblk_end = tend;
+			tp->reportblk.rblk_end = tend_sack;
 		LIST_REMOVE(q, tqe_q);
 		kfree(q, M_TSEGQ);
 		atomic_add_int(&tcp_reass_qsize, -1);
@@ -1668,9 +1671,8 @@ after_listen:
 		if (TCP_DO_SACK(tp)) {
 			/* Report duplicate segment at head of packet. */
 			tp->reportblk.rblk_start = th->th_seq;
-			tp->reportblk.rblk_end = th->th_seq + tlen;
-			if (thflags & TH_FIN)
-				++tp->reportblk.rblk_end;
+			tp->reportblk.rblk_end = TCP_SACK_BLKEND(
+			    th->th_seq + tlen, thflags);
 			if (SEQ_GT(tp->reportblk.rblk_end, tp->rcv_nxt))
 				tp->reportblk.rblk_end = tp->rcv_nxt;
 			tp->t_flags |= (TF_DUPSEG | TF_SACKLEFT | TF_ACKNOW);
@@ -2428,8 +2430,8 @@ dodata:							/* XXX */
 			if (!(tp->t_flags & TF_DUPSEG)) {
 				/* Initialize SACK report block. */
 				tp->reportblk.rblk_start = th->th_seq;
-				tp->reportblk.rblk_end = th->th_seq + tlen +
-				    ((thflags & TH_FIN) != 0);
+				tp->reportblk.rblk_end = TCP_SACK_BLKEND(
+				    th->th_seq + tlen, thflags);
 			}
 			thflags = tcp_reass(tp, th, &tlen, m);
 			tp->t_flags |= TF_ACKNOW;

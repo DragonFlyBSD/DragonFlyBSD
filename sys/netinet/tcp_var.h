@@ -574,6 +574,8 @@ SYSCTL_DECL(_net_inet_tcp);
 #endif
 
 #define TCP_DO_SACK(tp)		((tp)->t_flags & TF_SACK_PERMITTED)
+#define TCP_SACK_BLKEND(len, thflags) \
+	((len) + (((thflags) & TH_FIN) != 0))
 
 TAILQ_HEAD(tcpcbackqhead,tcpcb);
 
