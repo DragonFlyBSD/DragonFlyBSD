@@ -3472,6 +3472,7 @@ kern_ftruncate(int fd, off_t length)
 	uid_t uid;
 	gid_t gid;
 	uint64_t old_size;
+	struct mount *mp;
 
 	if (length < 0)
 		return(EINVAL);
@@ -3507,7 +3508,8 @@ kern_ftruncate(int fd, off_t length)
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
 		error = VOP_SETATTR(vp, &vattr, fp->f_cred);
-		VFS_ACCOUNT(p->p_fd->fd_ncdir.mount, uid, gid, length - old_size);
+		mp = vq_vptomp(vp);
+		VFS_ACCOUNT(mp, uid, gid, length - old_size);
 	}
 	vn_unlock(vp);
 done:
