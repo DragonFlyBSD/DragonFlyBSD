@@ -11,6 +11,7 @@ OPENSSL_SRC=	../../../../crypto/openssl
 	${OPENSSL_SRC}/crypto/camellia/asm \
 	${OPENSSL_SRC}/crypto/des/asm \
 	${OPENSSL_SRC}/crypto/md5/asm \
+	${OPENSSL_SRC}/crypto/modes/asm \
 	${OPENSSL_SRC}/crypto/perlasm \
 	${OPENSSL_SRC}/crypto/rc4/asm \
 	${OPENSSL_SRC}/crypto/ripemd/asm \
@@ -21,35 +22,38 @@ OPENSSL_SRC=	../../../../crypto/openssl
 # cpuid
 SRCS=	x86cpuid.pl
 
-# aes
-SRCS+=	aes-586.pl
-
-# bf
-SRCS+=	bf-586.pl
-
 # bn
-SRCS+=	bn-586.pl co-586.pl x86-mont.pl
-
-# camellia
-SRCS+=	cmll-x86.pl
+SRCS+=	bn-586.pl co-586.pl x86-mont.pl x86-gf2m.pl
 
 # des
 SRCS+=	des-586.pl crypt586.pl
 
-# md5
-SRCS+=	md5-586.pl
+# aes
+SRCS+=	aes-586.pl vpaes-x86.pl aesni-x86.pl
+
+# bf
+SRCS+=	bf-586.pl
 
 # rc4
 SRCS+=	rc4-586.pl
 
-# ripemd
-SRCS+=	rmd-586.pl
+# md5
+SRCS+=	md5-586.pl
 
 # sha
 SRCS+=	sha1-586.pl sha256-586.pl sha512-586.pl
 
+# ripemd
+SRCS+=	rmd-586.pl
+
 # whrlpool
 SRCS+=	wp-mmx.pl
+
+# camellia
+SRCS+=	cmll-x86.pl
+
+# modes
+SRCS+=	ghash-x86.pl
 
 PERLFLAGS=	${CFLAGS}
 
@@ -57,26 +61,30 @@ PERLFLAGS=	${CFLAGS}
 # cpuid
 SRCS=	x86_64cpuid.pl
 
-# aes
-SRCS+=	aes-x86_64.pl
-
 # bn
-SRCS+=	x86_64-mont.pl
+SRCS+=	x86_64-mont.pl x86_64-mont5.pl x86_64-gf2m.pl modexp512-x86_64.pl
 
-# camellia
-SRCS+=	cmll-x86_64.pl
+# aes
+SRCS+=	aes-x86_64.pl vpaes-x86_64.pl bsaes-x86_64.pl \
+	aesni-x86_64.pl aesni-sha1-x86_64.pl
+
+# rc4
+SRCS+=	rc4-x86_64.pl rc4-md5-x86_64.pl
 
 # md5
 SRCS+=	md5-x86_64.pl
-
-# rc4
-SRCS+=	rc4-x86_64.pl
 
 # sha
 SRCS+=	sha1-x86_64.pl sha256-x86_64.s sha512-x86_64.pl
 
 # whrlpool
 SRCS+=	wp-x86_64.pl
+
+# camellia
+SRCS+=	cmll-x86_64.pl
+
+# modes
+SRCS+=	ghash-x86_64.pl
 
 PERLFLAGS=
 .endif
