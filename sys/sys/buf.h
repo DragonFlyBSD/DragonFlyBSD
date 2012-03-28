@@ -284,6 +284,8 @@ struct buf {
  *			which will cause the buffer cache to set PG_NOTMETA
  *			in the VM pages when releasing them and the
  *			swapcache to not try to cache them.
+ *
+ *	B_MARKER	Special marker buf, always skip.
  */
 
 #define	B_AGE		0x00000001	/* Reuse more quickly */
@@ -304,7 +306,7 @@ struct buf {
 #define	B_NOCACHE	0x00008000	/* Destroy buffer AND backing store */
 #define	B_MALLOC	0x00010000	/* malloced b_data */
 #define	B_CLUSTEROK	0x00020000	/* Pagein op, so swap() can count it. */
-#define	B_UNUSED18	0x00040000
+#define	B_MARKER	0x00040000	/* Special marker buf in queue */
 #define	B_RAW		0x00080000	/* Set by physio for raw transfers. */
 #define	B_HEAVY		0x00100000	/* Heavy-weight buffer */
 #define	B_DIRTY		0x00200000	/* Needs writing later. */
