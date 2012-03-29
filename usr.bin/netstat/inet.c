@@ -446,6 +446,10 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 		"\t\t%lu data packet%s (%lu byte%s)\n");
 	p2(tcps_sndrexmitpack, tcps_sndrexmitbyte,
 		"\t\t%lu data packet%s (%lu byte%s) retransmitted\n");
+	p2(tcps_sndsackpack, tcps_sndsackbyte,
+		"\t\t%lu data packet%s (%lu byte%s) sent by SACK recovery\n");
+	p2(tcps_sndsackrtopack, tcps_sndsackrtobyte,
+		"\t\t%lu data packet%s (%lu byte%s) retransmitted by SACK\n");
 	p2a(tcps_sndfastrexmit, tcps_sndearlyrexmit,
 		"\t\t%lu Fast Retransmit%s (%lu early)\n");
 	p(tcps_sndlimited, "\t\t%lu packet%s sent by Limited Transmit\n");
@@ -456,6 +460,8 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 		"\t\t%lu Eifel-detected spurious retransmit%s (%lu non-RTT)\n");
 	p(tcps_rttdetected, "\t\t%lu RTT-detected spurious retransmit%s\n");
 	p(tcps_mturesent, "\t\t%lu resend%s initiated by MTU discovery\n");
+	p(tcps_sndsackopt, "\t\t%lu SACK option%s sent\n");
+	p(tcps_snddsackopt, "\t\t%lu D-SACK option%s sent\n");
 	p2a(tcps_sndacks, tcps_delack,
 		"\t\t%lu ack-only packet%s (%lu delayed)\n");
 	p(tcps_sndurg, "\t\t%lu URG only packet%s\n");
@@ -483,6 +489,7 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 	p(tcps_rcvbadsum, "\t\t%lu discarded for bad checksum%s\n");
 	p(tcps_rcvbadoff, "\t\t%lu discarded for bad header offset field%s\n");
 	p1a(tcps_rcvshort, "\t\t%lu discarded because packet too short\n");
+	p(tcps_rcvbadsackopt, "\t\t%lu bad SACK option%s\n");
 	p(tcps_connattempt, "\t%lu connection request%s\n");
 	p(tcps_accepts, "\t%lu connection accept%s\n");
 	p(tcps_badsyn, "\t%lu bad connection attempt%s\n");
@@ -521,8 +528,14 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 	p1a(tcps_sc_badack, "\t\t%lu badack\n"); 
 	p1a(tcps_sc_unreach, "\t\t%lu unreach\n"); 
 	p1a(tcps_sc_zonefail, "\t\t%lu zone failures\n"); 
-	p1a(tcps_sc_sendcookie, "\t%lu cookies sent\n"); 
-	p1a(tcps_sc_recvcookie, "\t%lu cookies received\n"); 
+	p1a(tcps_sc_sendcookie, "\t\t%lu cookies sent\n"); 
+	p1a(tcps_sc_recvcookie, "\t\t%lu cookies received\n"); 
+
+	p(tcps_sacksbupdate, "\t%lu SACK scoreboard update%s\n");
+	p(tcps_sacksboverflow, "\t\t%lu SACK scoreboard overflow%s\n");
+	p(tcps_sacksbfailed, "\t\t%lu SACK scoreboard updating failure%s\n");
+	p(tcps_sacksbreused, "\t\t%lu SACK scoreboard record%s reused\n");
+
 	free(stattmp);
 #undef p
 #undef p1a

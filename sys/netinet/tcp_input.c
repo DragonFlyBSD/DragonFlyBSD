@@ -2692,6 +2692,7 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 					 * Invalid SACK block; discard all
 					 * SACK blocks
 					 */
+					tcpstat.tcps_rcvbadsackopt++;
 					to->to_nsackblocks = 0;
 					to->to_sackblocks = NULL;
 					to->to_flags &= ~TOF_SACK;

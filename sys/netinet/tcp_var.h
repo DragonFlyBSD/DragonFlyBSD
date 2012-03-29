@@ -324,6 +324,8 @@ struct tcp_stats {
 	u_long	tcps_sndbyte;		/* data bytes sent */
 	u_long	tcps_sndrexmitpack;	/* data packets retransmitted */
 	u_long	tcps_sndrexmitbyte;	/* data bytes retransmitted */
+	u_long	tcps_sndsackrtopack;	/* packets sent by SACK after RTO */
+	u_long	tcps_sndsackrtobyte;	/* bytes sent by SACK after RTO */
 	u_long	tcps_sndfastrexmit;	/* Fast Retransmissions */
 	u_long	tcps_sndearlyrexmit;	/* early Fast Retransmissions */
 	u_long	tcps_sndlimited;	/* Limited Transmit packets */
@@ -343,6 +345,8 @@ struct tcp_stats {
 	u_long	tcps_sndsackbyte;	/* bytes sent by SACK recovery */
 	u_long	tcps_snduna3;		/* re-retransmit snd_una on 3 new seg */
 	u_long	tcps_snduna1;		/* re-retransmit snd_una on 1 new seg */
+	u_long	tcps_sndsackopt;	/* SACK options sent */
+	u_long	tcps_snddsackopt;	/* D-SACK options sent */
 
 	u_long	tcps_rcvtotal;		/* total packets received */
 	u_long	tcps_rcvpack;		/* packets received in sequence */
@@ -380,6 +384,12 @@ struct tcp_stats {
 	u_long	tcps_badsyn;		/* bogus SYN, e.g. premature ACK */
 	u_long	tcps_mturesent;		/* resends due to MTU discovery */
 	u_long	tcps_listendrop;	/* listen queue overflows */
+	u_long	tcps_rcvbadsackopt;	/* rcvd illegal SACK options */
+
+	u_long	tcps_sacksbupdate;	/* times SACK scoreboard updated */
+	u_long	tcps_sacksboverflow;	/* times SACK scoreboard overflowed */
+	u_long	tcps_sacksbreused;	/* times SACK sb-block reused */
+	u_long	tcps_sacksbfailed;	/* times SACK sb update failed */
 
 	u_long	tcps_sc_added;		/* entry added to syncache */
 	u_long	tcps_sc_retransmitted;	/* syncache entry was retransmitted */

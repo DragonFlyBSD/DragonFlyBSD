@@ -101,7 +101,7 @@ static void vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m);
 static void vfs_dirty_one_page(struct buf *bp, int pageno, vm_page_t m);
 #endif
 static void vfs_vmio_release(struct buf *bp);
-static int flushbufqueues(bufq_type_t q);
+static int flushbufqueues(struct buf *marker, bufq_type_t q);
 static vm_page_t bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit);
 
 static void bd_signal(long totalspace);
@@ -2329,6 +2329,11 @@ recoverbufpages(void)
 		spin_unlock(&bufqspin);
 
 		/*
+		 * Sanity check.  Only BQUEUE_DIRTY[_HW] employs markers.
+		 */
+		KKASSERT((bp->b_flags & B_MARKER) == 0);
+
+		/*
 		 * Dependancies must be handled before we disassociate the
 		 * vnode.
 		 *
@@ -2422,6 +2427,11 @@ buf_daemon1(struct thread *td, int queue, int (*buf_limit_fn)(long),
 	    int *bd_req)
 {
 	long limit;
+	struct buf *marker;
+
+	marker = kmalloc(sizeof(*marker), M_BIOBUF, M_WAITOK | M_ZERO);
+	marker->b_flags |= B_MARKER;
+	marker->b_qindex = BQUEUE_NONE;
 
 	/*
 	 * This process needs to be suspended prior to shutdown sync.
@@ -2453,7 +2463,7 @@ buf_daemon1(struct thread *td, int queue, int (*buf_limit_fn)(long),
 		waitrunningbufspace();
 		limit = lodirtybufspace / 2;
 		while (buf_limit_fn(limit)) {
-			if (flushbufqueues(queue) == 0)
+			if (flushbufqueues(marker, queue) == 0)
 				break;
 			if (runningbufspace < hirunningspace)
 				continue;
@@ -2471,6 +2481,8 @@ buf_daemon1(struct thread *td, int queue, int (*buf_limit_fn)(long),
 		*bd_req = 0;
 		spin_unlock(&bufcspin);
 	}
+	/* NOT REACHED */
+	/*kfree(marker, M_BIOBUF);*/
 }
 
 static int
@@ -2516,65 +2528,103 @@ buf_daemon_hw(void)
  *	can mess with its contents.  bufqspin isn't enough.
  */
 static int
-flushbufqueues(bufq_type_t q)
+flushbufqueues(struct buf *marker, bufq_type_t q)
 {
 	struct buf *bp;
 	int r = 0;
-	int spun;
 
+	KKASSERT(marker->b_qindex == BQUEUE_NONE);
+	KKASSERT(marker->b_flags & B_MARKER);
+
+	/*
+	 * Spinlock needed to perform operations on the queue and may be
+	 * held through a non-blocking BUF_LOCK(), but cannot be held when
+	 * BUF_UNLOCK()ing or through any other major operation.
+	 */
 	spin_lock(&bufqspin);
-	spun = 1;
+	marker->b_qindex = q;
+	TAILQ_INSERT_HEAD(&bufqueues[q], marker, b_freelist);
+	bp = marker;
 
-	bp = TAILQ_FIRST(&bufqueues[q]);
-	while (bp) {
+	while ((bp = TAILQ_NEXT(bp, b_freelist)) != NULL) {
+		/*
+		 * NOTE: spinlock is always held at the top of the loop
+		 */
+		if (bp->b_flags & B_MARKER)
+			continue;
 		if ((bp->b_flags & B_DELWRI) == 0) {
 			kprintf("Unexpected clean buffer %p\n", bp);
-			bp = TAILQ_NEXT(bp, b_freelist);
 			continue;
 		}
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
-			bp = TAILQ_NEXT(bp, b_freelist);
+		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
 			continue;
-		}
 		KKASSERT(bp->b_qindex == q);
+
+		/*
+		 * Once the buffer is locked we will have no choice but to
+		 * unlock the spinlock around a later BUF_UNLOCK and re-set
+		 * bp = marker when looping.  Move the marker now to make
+		 * things easier.
+		 */
+		TAILQ_REMOVE(&bufqueues[q], marker, b_freelist);
+		TAILQ_INSERT_AFTER(&bufqueues[q], bp, marker, b_freelist);
 
 		/*
 		 * Must recheck B_DELWRI after successfully locking
 		 * the buffer.
 		 */
 		if ((bp->b_flags & B_DELWRI) == 0) {
-			BUF_UNLOCK(bp);
-			bp = TAILQ_NEXT(bp, b_freelist);
-			continue;
-		}
-
-		if (bp->b_flags & B_INVAL) {
-			_bremfree(bp);
 			spin_unlock(&bufqspin);
-			spun = 0;
-			brelse(bp);
-			++r;
-			break;
-		}
-
-		spin_unlock(&bufqspin);
-		lwkt_yield();
-		spun = 0;
-
-		if (LIST_FIRST(&bp->b_dep) != NULL &&
-		    (bp->b_flags & B_DEFERRED) == 0 &&
-		    buf_countdeps(bp, 0)) {
-			spin_lock(&bufqspin);
-			spun = 1;
-			TAILQ_REMOVE(&bufqueues[q], bp, b_freelist);
-			TAILQ_INSERT_TAIL(&bufqueues[q], bp, b_freelist);
-			bp->b_flags |= B_DEFERRED;
 			BUF_UNLOCK(bp);
-			bp = TAILQ_FIRST(&bufqueues[q]);
+			spin_lock(&bufqspin);
+			bp = marker;
 			continue;
 		}
 
 		/*
+		 * Remove the buffer from its queue.  We still own the
+		 * spinlock here.
+		 */
+		_bremfree(bp);
+
+		/*
+		 * Disposing of an invalid buffer counts as a flush op
+		 */
+		if (bp->b_flags & B_INVAL) {
+			spin_unlock(&bufqspin);
+			brelse(bp);
+			spin_lock(&bufqspin);
+			++r;
+			break;
+		}
+
+		/*
+		 * Release the spinlock for the more complex ops we
+		 * are now going to do.
+		 */
+		spin_unlock(&bufqspin);
+		lwkt_yield();
+
+		/*
+		 * This is a bit messy
+		 */
+		if (LIST_FIRST(&bp->b_dep) != NULL &&
+		    (bp->b_flags & B_DEFERRED) == 0 &&
+		    buf_countdeps(bp, 0)) {
+			spin_lock(&bufqspin);
+			TAILQ_INSERT_TAIL(&bufqueues[q], bp, b_freelist);
+			bp->b_qindex = q;
+			bp->b_flags |= B_DEFERRED;
+			spin_unlock(&bufqspin);
+			BUF_UNLOCK(bp);
+			spin_lock(&bufqspin);
+			bp = marker;
+			continue;
+		}
+
+		/*
+		 * spinlock not held here.
+		 *
 		 * If the buffer has a dependancy, buf_checkwrite() must
 		 * also return 0 for us to be able to initate the write.
 		 *
@@ -2583,7 +2633,6 @@ flushbufqueues(bufq_type_t q)
 		 *
 		 * NOTE: buf_checkwrite is MPSAFE.
 		 */
-		bremfree(bp);
 		if (LIST_FIRST(&bp->b_dep) != NULL && buf_checkwrite(bp)) {
 			brelse(bp);
 		} else if (bp->b_flags & B_ERROR) {
@@ -2594,11 +2643,14 @@ flushbufqueues(bufq_type_t q)
 			bp->b_flags |= B_AGE;
 			cluster_awrite(bp);
 		}
+		spin_lock(&bufqspin);
 		++r;
 		break;
 	}
-	if (spun)
-		spin_unlock(&bufqspin);
+	TAILQ_REMOVE(&bufqueues[q], marker, b_freelist);
+	marker->b_qindex = BQUEUE_NONE;
+	spin_unlock(&bufqspin);
+
 	return (r);
 }
 
@@ -4861,6 +4913,8 @@ vfs_bufstats(void)
 
 		spin_lock(&bufqspin);
                 TAILQ_FOREACH(bp, dp, b_freelist) {
+			if (bp->b_flags & B_MARKER)
+				continue;
                         counts[bp->b_bufsize/PAGE_SIZE]++;
                         count++;
                 }
