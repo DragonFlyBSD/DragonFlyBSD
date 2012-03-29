@@ -48,38 +48,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- */
-/*-
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *            Copyright 1994-2009 The FreeBSD Project.
- *            All rights reserved.
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- *    THIS SOFTWARE IS PROVIDED BY THE FREEBSD PROJECT``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FREEBSD PROJECT OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY,OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION)HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * The views and conclusions contained in the software and documentation
- * are those of the authors and should not be interpreted as representing
- * official policies,either expressed or implied, of the FreeBSD Project.
  *
  * $FreeBSD: src/sys/dev/mfi/mfi_pci.c,v 1.16 2010/03/02 17:34:11 kib Exp $
+ * FreeBSD projects/head_mfi/ r232888
  */
 
 /* PCI/PCI-X/PCIe bus interface for the LSI MegaSAS controllers */
@@ -96,7 +67,6 @@
 #include <sys/malloc.h>
 #include <sys/uio.h>
 #include <sys/eventhandler.h>
-
 #include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
@@ -134,6 +104,9 @@ static devclass_t	mfi_devclass;
 DRIVER_MODULE(mfi, pci, mfi_pci_driver, mfi_devclass, NULL, NULL);
 MODULE_VERSION(mfi, 1);
 
+static int	mfi_msi_enable = 1;
+TUNABLE_INT("hw.mfi.msi.enable", &mfi_msi_enable);
+
 struct mfi_ident {
 	uint16_t	vendor;
 	uint16_t	device;
@@ -142,6 +115,17 @@ struct mfi_ident {
 	int		flags;
 	const char	*desc;
 } mfi_identifiers[] = {
+	{0x1000, 0x005b, 0x1028, 0x1f2d, MFI_FLAGS_SKINNY| MFI_FLAGS_TBOLT, "Dell PERC H810 Adapter"},
+	{0x1000, 0x005b, 0x1028, 0x1f30, MFI_FLAGS_SKINNY| MFI_FLAGS_TBOLT, "Dell PERC H710 Embedded"},
+	{0x1000, 0x005b, 0x1028, 0x1f31, MFI_FLAGS_SKINNY| MFI_FLAGS_TBOLT, "Dell PERC H710P Adapter"},
+	{0x1000, 0x005b, 0x1028, 0x1f33, MFI_FLAGS_SKINNY| MFI_FLAGS_TBOLT, "Dell PERC H710P Mini (blades)"},
+	{0x1000, 0x005b, 0x1028, 0x1f34, MFI_FLAGS_SKINNY| MFI_FLAGS_TBOLT, "Dell PERC H710P Mini (monolithics)"},
+	{0x1000, 0x005b, 0x1028, 0x1f35, MFI_FLAGS_SKINNY| MFI_FLAGS_TBOLT, "Dell PERC H710 Adapter"},
+	{0x1000, 0x005b, 0x1028, 0x1f37, MFI_FLAGS_SKINNY| MFI_FLAGS_TBOLT, "Dell PERC H710 Mini (blades)"},
+	{0x1000, 0x005b, 0x1028, 0x1f38, MFI_FLAGS_SKINNY| MFI_FLAGS_TBOLT, "Dell PERC H710 Mini (monolithics)"},
+	{0x1000, 0x005b, 0x8086, 0x9265, MFI_FLAGS_SKINNY| MFI_FLAGS_TBOLT, "Intel (R) RAID Controller RS25DB080"},
+	{0x1000, 0x005b, 0x8086, 0x9285, MFI_FLAGS_SKINNY| MFI_FLAGS_TBOLT, "Intel (R) RAID Controller RS25NB008"},
+	{0x1000, 0x005b, 0xffff, 0xffff, MFI_FLAGS_SKINNY| MFI_FLAGS_TBOLT, "ThunderBolt"},
 	{0x1000, 0x0060, 0x1028, 0xffff, MFI_FLAGS_1078,  "Dell PERC 6"},
 	{0x1000, 0x0060, 0xffff, 0xffff, MFI_FLAGS_1078,  "LSI MegaSAS 1078"},
 	{0x1000, 0x0071, 0xffff, 0xffff, MFI_FLAGS_SKINNY, "Drake Skinny"},
@@ -200,6 +184,7 @@ mfi_pci_attach(device_t dev)
 	struct mfi_ident *m;
 	uint32_t command;
 	int error;
+	u_int irq_flags;
 
 	sc = device_get_softc(dev);
 	bzero(sc, sizeof(*sc));
@@ -227,7 +212,8 @@ mfi_pci_attach(device_t dev)
 		/* 1068/1078: Memory mapped BAR is at offset 0x10 */
 		sc->mfi_regs_rid = PCIR_BAR(0);
 	} else if ((sc->mfi_flags & MFI_FLAGS_GEN2) ||
-		   (sc->mfi_flags & MFI_FLAGS_SKINNY)) {
+		   (sc->mfi_flags & MFI_FLAGS_SKINNY) ||
+		   (sc->mfi_flags & MFI_FLAGS_TBOLT)) {
 		/* GEN2/Skinny: Memory mapped BAR is at offset 0x14 */
 		sc->mfi_regs_rid = PCIR_BAR(1);
 	}
@@ -256,6 +242,16 @@ mfi_pci_attach(device_t dev)
 		goto out;
 	}
 
+	/* Allocate IRQ resource. */
+	sc->mfi_irq_rid = 0;
+	sc->mfi_irq_type = pci_alloc_1intr(sc->mfi_dev, mfi_msi_enable,
+	    &sc->mfi_irq_rid, &irq_flags);
+	if ((sc->mfi_irq = bus_alloc_resource_any(sc->mfi_dev, SYS_RES_IRQ,
+	    &sc->mfi_irq_rid, irq_flags)) == NULL) {
+		device_printf(sc->mfi_dev, "Cannot allocate interrupt\n");
+		return (EINVAL);
+	}
+
 	error = mfi_attach(sc);
 out:
 	if (error) {
@@ -270,9 +266,8 @@ static int
 mfi_pci_detach(device_t dev)
 {
 	struct mfi_softc *sc;
-	struct mfi_disk *ld;
-	struct mfi_system_pd *syspd = NULL;
-	int error;
+	device_t *devlist;
+	int error, devcount, i;
 
 	sc = device_get_softc(dev);
 
@@ -286,20 +281,13 @@ mfi_pci_detach(device_t dev)
 	sc->mfi_detaching = 1;
 	lockmgr(&sc->mfi_io_lock, LK_RELEASE);
 
-	while ((ld = TAILQ_FIRST(&sc->mfi_ld_tqh)) != NULL) {
-		if ((error = device_delete_child(dev, ld->ld_dev)) != 0) {
-			sc->mfi_detaching = 0;
-			lockmgr(&sc->mfi_config_lock, LK_RELEASE);
-			return (error);
-		}
+	if ((error = device_get_children(sc->mfi_dev, &devlist, &devcount)) != 0) {
+		lockmgr(&sc->mfi_config_lock, LK_RELEASE);
+		return error;
 	}
-	while ((syspd = TAILQ_FIRST(&sc->mfi_syspd_tqh)) != NULL) {
-		if ((error = device_delete_child(dev,syspd->pd_dev)) != 0) {
-			sc->mfi_detaching = 0;
-			lockmgr(&sc->mfi_config_lock, LK_RELEASE);
-			return (error);
-		}
-	}
+	for (i = 0; i < devcount; i++)
+		device_delete_child(sc->mfi_dev, devlist[i]);
+	kfree(devlist, M_TEMP);
 	lockmgr(&sc->mfi_config_lock, LK_RELEASE);
 
 	EVENTHANDLER_DEREGISTER(shutdown_final, sc->mfi_eh);
@@ -318,8 +306,8 @@ mfi_pci_free(struct mfi_softc *sc)
 		bus_release_resource(sc->mfi_dev, SYS_RES_MEMORY,
 		    sc->mfi_regs_rid, sc->mfi_regs_resource);
 	}
-
-	return;
+	if (sc->mfi_irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(sc->mfi_dev);
 }
 
 static int
